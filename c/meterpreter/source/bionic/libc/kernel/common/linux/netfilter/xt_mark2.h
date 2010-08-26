@@ -9,19 +9,22 @@
  ***
  ****************************************************************************
  ****************************************************************************/
-#ifndef _IP6T_HL_H
-#define _IP6T_HL_H
+#ifndef _XT_MARK_H_target
+#define _XT_MARK_H_target
 
-enum {
- IP6T_HL_EQ = 0,
- IP6T_HL_NE,
- IP6T_HL_LT,
- IP6T_HL_GT,
+struct xt_mark_target_info {
+ unsigned long mark;
 };
 
-struct ip6t_hl_info {
+enum {
+ XT_MARK_SET=0,
+ XT_MARK_AND,
+ XT_MARK_OR,
+};
+
+struct xt_mark_target_info_v1 {
+ unsigned long mark;
  u_int8_t mode;
- u_int8_t hop_limit;
 };
 
 #endif

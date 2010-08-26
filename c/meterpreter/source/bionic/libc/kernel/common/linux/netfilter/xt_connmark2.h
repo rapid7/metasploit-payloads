@@ -9,12 +9,19 @@
  ***
  ****************************************************************************
  ****************************************************************************/
-#ifndef _XT_MARK_H
-#define _XT_MARK_H
+#ifndef _XT_CONNMARK_H_target
+#define _XT_CONNMARK_H_target
 
-struct xt_mark_info {
- unsigned long mark, mask;
- u_int8_t invert;
+enum {
+ XT_CONNMARK_SET = 0,
+ XT_CONNMARK_SAVE,
+ XT_CONNMARK_RESTORE
+};
+
+struct xt_connmark_target_info {
+ unsigned long mark;
+ unsigned long mask;
+ u_int8_t mode;
 };
 
 #endif
