@@ -10,10 +10,10 @@ objects += source/bionic/compiled/libssl.so
 objects += source/bionic/compiled/libsupport.so
 objects += source/bionic/compiled/libmetsrv_main.so
 objects += source/bionic/compiled/libpcap.so
-#objects += data/meterpreter/msflinker_linux_x86.bin
-#objects += data/meterpreter/ext_server_stdapi.lso
-#objects += data/meterpreter/ext_server_sniffer.lso
-#objects += data/meterpreter/ext_server_networkpug.lso
+objects += data/meterpreter/msflinker_linux_x86.bin
+objects += data/meterpreter/ext_server_stdapi.lso
+objects += data/meterpreter/ext_server_sniffer.lso
+objects += data/meterpreter/ext_server_networkpug.lso
 
 BIONIC=$(PWD)/source/bionic
 LIBC=$(BIONIC)/libc
