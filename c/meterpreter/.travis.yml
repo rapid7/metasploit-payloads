@@ -1,2 +1,5 @@
 language: c
 script: make
+
+before_install:
+  - sudo apt-get install jam
