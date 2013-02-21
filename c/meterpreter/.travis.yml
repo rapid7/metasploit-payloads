@@ -1,5 +1,8 @@
 language: c
 script: make
 
+notifications:
+  irc: "irc.freenode.org#msfnotify"
+
 before_install:
   - sudo apt-get install jam
