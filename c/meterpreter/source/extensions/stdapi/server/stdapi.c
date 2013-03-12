@@ -83,6 +83,10 @@ Command customCommands[] =
 	  { request_fs_file_expand_path,                       { 0 }, 0 },
 	  { EMPTY_DISPATCH_HANDLER                                      },
 	},
+	{ "stdapi_fs_file_move",
+	  { request_fs_file_move,		                       { 0 }, 0 },
+	  { EMPTY_DISPATCH_HANDLER                                      },
+	},
 #ifdef _WIN32
 	{ "stdapi_fs_search",
 	  { request_fs_search,									{ 0 }, 0 },
