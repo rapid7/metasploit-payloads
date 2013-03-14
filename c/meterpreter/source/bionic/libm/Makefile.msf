@@ -5,7 +5,7 @@ TARGET_ALSO=i386
 TARGET_FPU=i387
 
 CFLAGS=-I`pwd`/include -I../libc/include -I${TARGET_ALSO} -I../libc/kernel/common/${TARGET_OS}/
-#-nostdinc -nostdlib 
+#-nostdinc -nostdlib
 CFLAGS+=-I../libc/kernel/common/ -I../libc/arch-${TARGET_ARCH}/include/ -I../libc/kernel/arch-${TARGET_ARCH}/
 CFLAGS+=-D_BYTE_ORDER=_LITTLE_ENDIAN -Ihack/ -I${TARGET_FPU} -I../libc/arch-${TARGET_ARCH}/include
 CFLAGS+=-fPIC -DPIC
@@ -222,20 +222,20 @@ OBJ=$(libm_common_src_files:.c=.o)
 SOBJ=$(OBJ:.S=.o)
 
 all: $(OBJ) ${SOBJ}
-	gcc ${CFLAGS} -shared -nostdinc -nostdlib -o libm.so *.o
+	$(CC) ${CFLAGS} -shared -nostdinc -nostdlib -o libm.so *.o
 
 debug: CFLAGS+=-ggdb
 debug: all
 
 .S.o:
-	gcc ${CFLAGS} -nostdinc -nostdlib -c $<
+	$(CC) ${CFLAGS} -nostdinc -nostdlib -c $<
 .c.o:
-	gcc ${CFLAGS} -nostdinc -nostdlib -c $<
+	$(CC) ${CFLAGS} -nostdinc -nostdlib -c $<
 
 test:
-	gcc ${CFLAGS} test.c -o test
+	$(CC) ${CFLAGS} test.c -o test
 
 clean:
 	rm *.o *.so
-	
+
 

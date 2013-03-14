@@ -35,14 +35,15 @@ debug: MAKE += debug
 debug: all
 
 source/bionic/compiled/libc.so: source/bionic/compiled
-	(cd source/bionic/libc && ARCH=x86 TOP=${PWD} jam && cd out/x86/ && sh make.sh && [ -f libbionic.so ] )
+	(cd source/bionic/libc && ARCH=x86 TOP=${PWD} jam)
+	(cd source/bionic/libc/out/x86/ && $(MAKE) -f Makefile.msf && [ -f libbionic.so ])
 	cp source/bionic/libc/out/x86/libbionic.so source/bionic/compiled/libc.so
 
 source/bionic/compiled:
 	mkdir source/bionic/compiled/
 
 source/bionic/compiled/libm.so:
-	$(MAKE) -C $(LIBM) -f msfMakefile && [ -f $(LIBM)/libm.so ]
+	$(MAKE) -C $(LIBM) -f Makefile.msf && [ -f $(LIBM)/libm.so ]
 	cp $(LIBM)/libm.so $(COMPILED)/libm.so
 
 source/bionic/compiled/libdl.so:
