@@ -6,3 +6,4 @@ notifications:
 
 before_install:
   - sudo apt-get install jam
+  - sudo apt-get install gcc-multilib
