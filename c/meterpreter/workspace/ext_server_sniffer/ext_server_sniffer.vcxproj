@@ -87,6 +87,8 @@
     <CodeAnalysisRuleSet Condition="'$(Configuration)|$(Platform)'=='Release|x64'">AllRules.ruleset</CodeAnalysisRuleSet>
     <CodeAnalysisRules Condition="'$(Configuration)|$(Platform)'=='Release|x64'" />
     <CodeAnalysisRuleAssemblies Condition="'$(Configuration)|$(Platform)'=='Release|x64'" />
+    <LibraryPath Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\..\..\pssdk\source\PSSDK_VC_LIB\_Libs;$(LibraryPath)</LibraryPath>
+    <IncludePath Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\..\..\pssdk\source\_Include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -140,7 +142,6 @@
       <AdditionalIncludeDirectories>..\..\source\extensions\sniffer;..\..\source\openssl\include;..\..\source\pssdk\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;_CRT_SECURE_NO_WARNINGS;EXT_SERVER_SNIFFER_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <FunctionLevelLinking>false</FunctionLevelLinking>
       <PrecompiledHeader>Create</PrecompiledHeader>
       <AssemblerListingLocation>.\Release/</AssemblerListingLocation>
