@@ -177,7 +177,7 @@
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
     </Link>
     <PostBuildEvent>
-      <Command>copy /y "$(ProjectDir)\release\*.dll" "$(ProjectDir)..\..\output\"</Command>
+      <Command>copy /y "$(ProjectDir)\release\*.dll" "$(ProjectDir)\..\..\output\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -228,7 +228,7 @@
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
     </Link>
     <PostBuildEvent>
-      <Command>copy /y "$(ProjectDir)\release\*.dll" "$(ProjectDir)..\..\output\"</Command>
+      <Command>copy /y "$(ProjectDir)\release\*.dll" "$(ProjectDir)\..\..\output\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
