@@ -136,7 +136,7 @@
       <BufferSecurityCheck>false</BufferSecurityCheck>
     </ClCompile>
     <Lib>
-      <OutputFile>.\Release/ReflectiveDllInjection.lib</OutputFile>
+      <OutputFile>.\Release\ReflectiveDllInjection.lib</OutputFile>
       <AdditionalDependencies>backcompat.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\backcompat\Release\</AdditionalLibraryDirectories>
     </Lib>
@@ -160,7 +160,7 @@
       <CompileAs>CompileAsC</CompileAs>
     </ClCompile>
     <Lib>
-      <OutputFile>.\Release/ReflectiveDllInjection.lib</OutputFile>
+      <OutputFile>.\Release\ReflectiveDllInjection.lib</OutputFile>
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>

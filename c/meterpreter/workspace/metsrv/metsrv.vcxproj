@@ -99,7 +99,7 @@
       <MkTypLibCompatible>true</MkTypLibCompatible>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <TargetEnvironment>Win32</TargetEnvironment>
-      <TypeLibraryName>.\Debug/metsrv.tlb</TypeLibraryName>
+      <TypeLibraryName>.\Debug\metsrv.tlb</TypeLibraryName>
       <HeaderFileName>
       </HeaderFileName>
     </Midl>
@@ -112,10 +112,10 @@
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>metsrv.h</PrecompiledHeaderFile>
-      <PrecompiledHeaderOutputFile>.\Debug/metsrv.pch</PrecompiledHeaderOutputFile>
-      <AssemblerListingLocation>.\Debug/</AssemblerListingLocation>
-      <ObjectFileName>.\Debug/</ObjectFileName>
-      <ProgramDataBaseFileName>.\Debug/</ProgramDataBaseFileName>
+      <PrecompiledHeaderOutputFile>.\Debug\metsrv.pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>.\Debug\</AssemblerListingLocation>
+      <ObjectFileName>.\Debug\</ObjectFileName>
+      <ProgramDataBaseFileName>.\Debug\</ProgramDataBaseFileName>
       <WarningLevel>Level3</WarningLevel>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
@@ -126,21 +126,21 @@
     </ResourceCompile>
     <Link>
       <AdditionalDependencies>backcompat.lib;ws2_32.lib;odbc32.lib;odbccp32.lib;wininet.lib;ssleay32.lib;libeay32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <OutputFile>.\Debug/metsrv.dll</OutputFile>
+      <OutputFile>.\Debug\metsrv.dll</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\common\Release; ..\..\source\openssl\lib\win\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ModuleDefinitionFile>..\..\source\server\win\metsrv.def</ModuleDefinitionFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <ProgramDatabaseFile>.\Debug/metsrv.pdb</ProgramDatabaseFile>
+      <ProgramDatabaseFile>.\Debug\metsrv.pdb</ProgramDatabaseFile>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention>
       </DataExecutionPrevention>
-      <ImportLibrary>.\Debug/metsrv.lib</ImportLibrary>
+      <ImportLibrary>.\Debug\metsrv.lib</ImportLibrary>
       <TargetMachine>MachineX86</TargetMachine>
     </Link>
     <Bscmake>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <OutputFile>.\Debug/metsrv.bsc</OutputFile>
+      <OutputFile>.\Debug\metsrv.bsc</OutputFile>
     </Bscmake>
     <PostBuildEvent>
       <Command>copy /y "$(ProjectDir)\debug\metsrv.dll" "$(ProjectDir)\..\..\output\"</Command>
@@ -152,7 +152,7 @@
       <MkTypLibCompatible>true</MkTypLibCompatible>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <TargetEnvironment>X64</TargetEnvironment>
-      <TypeLibraryName>.\Debug/metsrv.tlb</TypeLibraryName>
+      <TypeLibraryName>.\Debug\metsrv.tlb</TypeLibraryName>
       <HeaderFileName>
       </HeaderFileName>
     </Midl>
@@ -165,10 +165,10 @@
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>metsrv.h</PrecompiledHeaderFile>
-      <PrecompiledHeaderOutputFile>.\Debug/metsrv.pch</PrecompiledHeaderOutputFile>
-      <AssemblerListingLocation>.\Debug/</AssemblerListingLocation>
-      <ObjectFileName>.\Debug/</ObjectFileName>
-      <ProgramDataBaseFileName>.\Debug/</ProgramDataBaseFileName>
+      <PrecompiledHeaderOutputFile>.\Debug\metsrv.pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>.\Debug\</AssemblerListingLocation>
+      <ObjectFileName>.\Debug\</ObjectFileName>
+      <ProgramDataBaseFileName>.\Debug\</ProgramDataBaseFileName>
       <WarningLevel>Level3</WarningLevel>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
@@ -179,21 +179,21 @@
     </ResourceCompile>
     <Link>
       <AdditionalDependencies>common.lib;ws2_32.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <OutputFile>.\Debug/metsrv.dll</OutputFile>
+      <OutputFile>.\Debug\metsrv.dll</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\common\Release; ..\..\source\openssl\lib\win\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ModuleDefinitionFile>..\..\source\server\win\metsrv.def</ModuleDefinitionFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <ProgramDatabaseFile>.\Debug/metsrv.pdb</ProgramDatabaseFile>
+      <ProgramDatabaseFile>.\Debug\metsrv.pdb</ProgramDatabaseFile>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention>
       </DataExecutionPrevention>
-      <ImportLibrary>.\Debug/metsrv.lib</ImportLibrary>
+      <ImportLibrary>.\Debug\metsrv.lib</ImportLibrary>
       <TargetMachine>MachineX64</TargetMachine>
     </Link>
     <Bscmake>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <OutputFile>.\Debug/metsrv.bsc</OutputFile>
+      <OutputFile>.\Debug\metsrv.bsc</OutputFile>
     </Bscmake>
     <PostBuildEvent>
       <Command>copy $(ProjectDir)\debug\metsrv.dll $(ProjectDir)\..\..\output\server</Command>
@@ -242,18 +242,18 @@
       <DelayLoadDLLs>%(DelayLoadDLLs)</DelayLoadDLLs>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <GenerateMapFile>true</GenerateMapFile>
-      <MapFileName>.\Release/metsrv.map</MapFileName>
+      <MapFileName>.\Release\metsrv.map</MapFileName>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention>
       </DataExecutionPrevention>
-      <ImportLibrary>.\Release/metsrv.lib</ImportLibrary>
+      <ImportLibrary>.\Release\metsrv.lib</ImportLibrary>
       <TargetMachine>MachineX86</TargetMachine>
       <MinimumRequiredVersion>5.0</MinimumRequiredVersion>
       <SubSystem>Console</SubSystem>
     </Link>
     <Bscmake>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <OutputFile>.\Release/metsrv.bsc</OutputFile>
+      <OutputFile>.\Release\metsrv.bsc</OutputFile>
     </Bscmake>
     <PostBuildEvent>
       <Command>copy /y "$(ProjectDir)\release\metsrv.dll" "$(ProjectDir)\..\..\output\"</Command>
