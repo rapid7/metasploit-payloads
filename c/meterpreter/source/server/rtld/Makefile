@@ -53,7 +53,7 @@ rtldtest: rtldtest.c msflinker
 
 clean:
 	rm -f $(HEADERS)
-	rm -f *.o 
+	rm -f *.o
 	rm -f msflinker msflinker.bin msflinker.so
 	rm -f rtldtest elf2bin
 

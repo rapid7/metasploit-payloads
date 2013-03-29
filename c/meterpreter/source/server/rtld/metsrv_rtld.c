@@ -1,5 +1,5 @@
 /*
- * metasploit 
+ * metasploit
  */
 
 #include <stdlib.h>
@@ -112,7 +112,7 @@ unsigned metsrv_rtld(int fd, int options)
 		pthread_mutex_lock_fp = lock_sym;
 		pthread_mutex_unlock_fp = unlock_sym;
 	}
-	
+
 	if(fstat(fd, &statbuf) == -1) {
 		options = OPT_DEBUG_ENABLE;
 
@@ -202,8 +202,8 @@ void perform_fd_cleanup(int *fd)
 }
 
 /*
- * If we have been executed directly (instead of staging shellcode / 
- * rtldtest binary, we will have an invalid fd passed in. Here we 
+ * If we have been executed directly (instead of staging shellcode /
+ * rtldtest binary, we will have an invalid fd passed in. Here we
  * use the libc symbols to connect to the metasploit session
  */
 
@@ -215,7 +215,7 @@ int dlsocket(void *libc)
 	int (*libc_connect)();
 	int (*libc_inet_addr)();
 	struct sockaddr_in sin;
-	
+
 	libc_socket = dlsym(libc, "socket");
 	libc_connect = dlsym(libc, "connect");
 	libc_inet_addr = dlsym(libc, "inet_addr");
@@ -261,12 +261,12 @@ void dump_memory(char **ptr, int *len, char *prefix, long unsigned int location,
 			while(n < count) {
 
 				rc = format_buffer(*ptr, *len, "%s+%4d: %02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x\n",
-					prefix, n, discard[n + 0], discard[n + 1], discard[n + 2], discard[n + 3], 
+					prefix, n, discard[n + 0], discard[n + 1], discard[n + 2], discard[n + 3],
 					discard[n + 4], discard[n + 5], discard[n + 6], discard[n + 7],
 					discard[n + 8], discard[n + 9], discard[n + 10], discard[n + 11],
 					discard[n + 12], discard[n + 13], discard[n + 14], discard[n + 15]
 				);
-			
+
 				*ptr += rc;
 				*len -= rc;
 
@@ -277,7 +277,7 @@ void dump_memory(char **ptr, int *len, char *prefix, long unsigned int location,
 			*ptr += rc;
 			*len -= rc;
 		}
-	}	
+	}
 
 	close(fds[0]);
 	close(fds[1]);
@@ -309,13 +309,13 @@ void sigcrash(int signo, siginfo_t *info, void *context)
 	p += rc;
 	len -= rc;
 
-	rc = format_buffer(p, len, "Special registers:\nEIP: 0x%08x ESP: 0x%08x EBP: 0x%08x\n\n", 
+	rc = format_buffer(p, len, "Special registers:\nEIP: 0x%08x ESP: 0x%08x EBP: 0x%08x\n\n",
 		sg->eip, sg->esp, sg->ebp);
 	p += rc;
 	len -= rc;
 
 	rc = format_buffer(p, len, "General registers:\nEAX: 0x%08x EBX: 0x%08x ECX: 0x%08x" \
-		" EDX: 0x%08x ESI: 0x%08x EDI: 0x%08x\n\n", 
+		" EDX: 0x%08x ESI: 0x%08x EDI: 0x%08x\n\n",
 		sg->eax, sg->ebx, sg->ecx, sg->edx, sg->esi, sg->edi);
 	p += rc;
 	len -= rc;
@@ -398,7 +398,7 @@ void handle_crashes()
 
 	/*
 	 * We set up a special signal handler stack on the chance that
-	 * if our thread's esp is corrupt / too long, we can still execute 
+	 * if our thread's esp is corrupt / too long, we can still execute
 	 * the crash handler.
 	 */
 
@@ -431,7 +431,7 @@ void handle_crashes()
 }
 
 /*
- * This is the entry point for the meterpreter payload, either as a stand alone executable, or a 
+ * This is the entry point for the meterpreter payload, either as a stand alone executable, or a
  * payload executing on the remote machine.
  *
  * If executed as a stand alone, int fd will be invalid. Later on, once libc has been loaded,
@@ -447,5 +447,5 @@ void _start(int fd, int options)
 
 	handle_crashes();		// try to make debugging a little easier.
 
-	metsrv_rtld(fd, options);		
+	metsrv_rtld(fd, options);
 }
