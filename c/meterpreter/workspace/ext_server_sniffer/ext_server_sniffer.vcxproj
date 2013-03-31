@@ -135,9 +135,9 @@
       <PrecompiledHeaderOutputFile>$(OutDir)\ext_server_sniffer.pch</PrecompiledHeaderOutputFile>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>backcompat.lib;metsrv.lib;pssdk.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>backcompat.lib;metsrv.lib;pssdk_vc10_mt.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)\ext_server_sniffer.dll</OutputFile>
-      <AdditionalLibraryDirectories>..\backcompat\Release;..\metsrv\$(Configuration)\$(Platform);..\..\source\openssl\lib\win;..\..\source\pssdk\win32;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\backcompat\Release;..\metsrv\$(Configuration)\$(Platform);..\..\source\openssl\lib\win;..\..\..\pssdk\PSSDK_VC10_LIB\_Libs;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <DelayLoadDLLs>metsrv.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <GenerateMapFile>false</GenerateMapFile>
@@ -186,9 +186,9 @@
       <PrecompiledHeaderOutputFile>$(OutDir)\ext_server_sniffer.pch</PrecompiledHeaderOutputFile>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>metsrv.lib;pssdk.lib;kernel32.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>metsrv.lib;pssdk_vc10_mt.lib;kernel32.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)\ext_server_sniffer.x64.dll</OutputFile>
-      <AdditionalLibraryDirectories>..\metsrv\$(Configuration)\$(Platform);..\..\source\openssl\lib\win;..\..\source\pssdk\win64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\metsrv\$(Configuration)\$(Platform);..\..\source\openssl\lib\win;..\..\..\pssdk\PSSDK_VC10_LIB\_Libs64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <DelayLoadDLLs>metsrv.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <GenerateMapFile>true</GenerateMapFile>
