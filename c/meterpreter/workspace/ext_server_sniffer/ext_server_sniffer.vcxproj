@@ -137,7 +137,7 @@
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <IntrinsicFunctions>false</IntrinsicFunctions>
       <FavorSizeOrSpeed>Neither</FavorSizeOrSpeed>
-      <AdditionalIncludeDirectories>..\..\source\extensions\sniffer;..\..\source\openssl\include;..\..\source\pssdk\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\source\extensions\sniffer;..\..\source\openssl\include;..\..\..\pssdk\_include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;_CRT_SECURE_NO_WARNINGS;EXT_SERVER_SNIFFER_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -154,9 +154,9 @@
       <PrecompiledHeaderOutputFile>.\Release/ext_server_sniffer.pch</PrecompiledHeaderOutputFile>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>backcompat.lib;metsrv.lib;pssdk.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>backcompat.lib;metsrv.lib;pssdk_vc10_mt.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>.\Release/ext_server_sniffer.dll</OutputFile>
-      <AdditionalLibraryDirectories>..\backcompat\Release;..\metsrv\Release;..\..\source\openssl\lib\win;..\..\source\pssdk\win32;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\backcompat\Release;..\metsrv\Release;..\..\source\openssl\lib\win;..\..\..\pssdk\PSSDK_VC10_LIB\_Libs;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <DelayLoadDLLs>metsrv.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <GenerateMapFile>false</GenerateMapFile>
@@ -189,7 +189,7 @@
       <InlineFunctionExpansion>Default</InlineFunctionExpansion>
       <IntrinsicFunctions>false</IntrinsicFunctions>
       <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
-      <AdditionalIncludeDirectories>..\..\source\extensions\sniffer;..\..\source\openssl\include;..\..\source\pssdk\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\source\extensions\sniffer;r;..\..\source\openssl\include;..\..\..\pssdk\_include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_SNIFFER_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -205,9 +205,9 @@
       <PrecompiledHeaderOutputFile>.\Release/ext_server_sniffer.pch</PrecompiledHeaderOutputFile>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>metsrv.lib;pssdk.lib;kernel32.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>metsrv.lib;pssdk_vc10_mt.lib;kernel32.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>.\Release/ext_server_sniffer.x64.dll</OutputFile>
-      <AdditionalLibraryDirectories>..\metsrv\Release;..\..\source\openssl\lib\win;..\..\source\pssdk\win64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\metsrv\Release;..\..\source\openssl\lib\win;..\..\..\pssdk\PSSDK_VC10_LIB\_Libs64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <DelayLoadDLLs>metsrv.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <GenerateMapFile>true</GenerateMapFile>
