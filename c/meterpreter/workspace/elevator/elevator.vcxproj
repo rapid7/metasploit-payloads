@@ -144,7 +144,7 @@
       <UseFullPaths>false</UseFullPaths>
     </ClCompile>
     <Link>
-      <OutputFile>.\Release\elevator.dll</OutputFile>
+      <OutputFile>$(OutDir)\elevator.dll</OutputFile>
       <ModuleDefinitionFile>elevator.def</ModuleDefinitionFile>
       <DelayLoadDLLs>%(DelayLoadDLLs)</DelayLoadDLLs>
       <GenerateDebugInformation>false</GenerateDebugInformation>
@@ -161,8 +161,8 @@
       <AdditionalLibraryDirectories>..\backcompat\Release;</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>editbin.exe /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,4.0 "$(ProjectDir)\release\elevator.dll"
-copy /y "$(ProjectDir)\release\elevator.dll" "$(ProjectDir)..\..\output\"</Command>
+      <Command>editbin.exe /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,4.0 "$(OutDir)\elevator.dll"
+copy /y "$(OutDir)\elevator.dll" "$(ProjectDir)..\..\output\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -184,7 +184,7 @@ copy /y "$(ProjectDir)\release\elevator.dll" "$(ProjectDir)..\..\output\"</Comma
       <CompileAs>CompileAsC</CompileAs>
     </ClCompile>
     <Link>
-      <OutputFile>.\Release\elevator.x64.dll</OutputFile>
+      <OutputFile>$(OutDir)\elevator.x64.dll</OutputFile>
       <ModuleDefinitionFile>
       </ModuleDefinitionFile>
       <DelayLoadDLLs>%(DelayLoadDLLs)</DelayLoadDLLs>
@@ -199,7 +199,7 @@ copy /y "$(ProjectDir)\release\elevator.dll" "$(ProjectDir)..\..\output\"</Comma
       <TargetMachine>MachineX64</TargetMachine>
     </Link>
     <PostBuildEvent>
-      <Command>copy /y "$(ProjectDir)\release\elevator.x64.dll" "$(ProjectDir)..\..\output\"</Command>
+      <Command>copy /y "$(OutDir)\elevator.x64.dll" "$(ProjectDir)..\..\output\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>

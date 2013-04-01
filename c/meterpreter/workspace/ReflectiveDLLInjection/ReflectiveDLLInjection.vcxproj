@@ -88,7 +88,7 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MinimalRebuild>true</MinimalRebuild>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
-      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <PrecompiledHeader>
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
@@ -107,7 +107,7 @@
       <PreprocessorDefinitions>WIN64;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MinimalRebuild>true</MinimalRebuild>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
-      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <PrecompiledHeader>
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
@@ -136,7 +136,7 @@
       <BufferSecurityCheck>false</BufferSecurityCheck>
     </ClCompile>
     <Lib>
-      <OutputFile>.\Release/ReflectiveDllInjection.lib</OutputFile>
+      <OutputFile>$(OutDir)\ReflectiveDllInjection.lib</OutputFile>
       <AdditionalDependencies>backcompat.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\backcompat\Release\</AdditionalLibraryDirectories>
     </Lib>
@@ -160,7 +160,7 @@
       <CompileAs>CompileAsC</CompileAs>
     </ClCompile>
     <Lib>
-      <OutputFile>.\Release/ReflectiveDllInjection.lib</OutputFile>
+      <OutputFile>$(OutDir)\ReflectiveDllInjection.lib</OutputFile>
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
