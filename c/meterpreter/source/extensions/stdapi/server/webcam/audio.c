@@ -2,6 +2,7 @@
 #include "../../common/common.h"
 #include <windows.h>
 #include "audio.h"
+#include "precomp.h"
 
 //Handle used for synchronization. Main thread waits for event to be signalled to clean up
 HANDLE recordMicEvent;
@@ -13,7 +14,7 @@ PBYTE recordBuffer = NULL;
 PBYTE sendBuffer = NULL;
 PBYTE dataBuffer = NULL;
 
-//Callback saves data 
+//Callback saves data
 void CALLBACK waveInProc(HWAVEIN hwi, UINT uMsg, DWORD_PTR dwInstance, DWORD_PTR dwParam1,DWORD_PTR dwParam2){
 	if(uMsg != WIM_DATA)
 		return;
@@ -80,12 +81,12 @@ DWORD request_ui_record_mic( Remote * remote, Packet * request ){
 		memcpy(sendBuffer+40, &buffersize, 4);
 
 		// Set up WAVEFORMATEX for recording 11 kHz 8-bit mono. Not reusing wavFormat because this uses the cbSize member
-		wf.wFormatTag = WAVE_FORMAT_PCM; 
-		wf.nChannels = 1; 
-		wf.nSamplesPerSec = 11025L; 
-		wf.nAvgBytesPerSec = 11025L; 
-		wf.nBlockAlign = 1; 
-		wf.wBitsPerSample = 8; 
+		wf.wFormatTag = WAVE_FORMAT_PCM;
+		wf.nChannels = 1;
+		wf.nSamplesPerSec = 11025L;
+		wf.nAvgBytesPerSec = 11025L;
+		wf.nBlockAlign = 1;
+		wf.wBitsPerSample = 8;
 		wf.cbSize = 0;
 		dwResult = waveInOpen(&hWavIn, WAVE_MAPPER, &wf, (DWORD_PTR)&waveInProc, NULL, CALLBACK_FUNCTION);
 		if(dwResult != MMSYSERR_NOERROR)
@@ -95,7 +96,7 @@ DWORD request_ui_record_mic( Remote * remote, Packet * request ){
 		wh.dwFlags = 0;
 		waveInPrepareHeader(hWavIn, &wh, sizeof(wh));
 		waveInAddBuffer(hWavIn, &wh, sizeof(wh));
-		recordMicEvent = CreateEvent( 
+		recordMicEvent = CreateEvent(
 			NULL,               // default security attributes
 			FALSE,               // auto-reset event
 			FALSE,              // initial state is nonsignaled
@@ -111,6 +112,6 @@ DWORD request_ui_record_mic( Remote * remote, Packet * request ){
 	} while( 0 );
 
 	packet_transmit_response( dwResult, remote, response );
-	
+
 	return ERROR_SUCCESS;
 }

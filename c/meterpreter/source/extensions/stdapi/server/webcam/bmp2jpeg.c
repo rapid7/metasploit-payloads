@@ -1,17 +1,18 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include "bmp2jpeg.h"
+#include "precomp.h"
 #pragma comment(lib, "jpeg.lib")
 
-/* 
+/*
  * Please Note: bmp2jpeg.c and bmp2jpeg.h have been coppied over from screen.c
- * screen.h in the espia extension. The origional author of espia is Efrain Torres  
+ * screen.h in the espia extension. The origional author of espia is Efrain Torres
  * and a patch for JPEG suport was provided by Brett Blackham.
  * These were further slightly modified by scriptjunkie to work better with the
  * webcam extension.
  */
 
-/* Function modified to store bitmap in memory. et [ ] metasploit.com 
+/* Function modified to store bitmap in memory. et [ ] metasploit.com
 ======================================================================
 
    Saves a bitmap to a file
@@ -19,23 +20,23 @@
    The following function was adopted from pywin32, and is thus under the
 following copyright:
 
-  Copyright (c) 1994-2008, Mark Hammond 
+  Copyright (c) 1994-2008, Mark Hammond
   All rights reserved.
 
-  Redistribution and use in source and binary forms, with or without 
-  modification, are permitted provided that the following conditions 
+  Redistribution and use in source and binary forms, with or without
+  modification, are permitted provided that the following conditions
   are met:
 
-  Redistributions of source code must retain the above copyright notice, 
+  Redistributions of source code must retain the above copyright notice,
   this list of conditions and the following disclaimer.
 
-  Redistributions in binary form must reproduce the above copyright 
-  notice, this list of conditions and the following disclaimer in 
+  Redistributions in binary form must reproduce the above copyright
+  notice, this list of conditions and the following disclaimer in
   the documentation and/or other materials provided with the distribution.
 
-  Neither name of Mark Hammond nor the name of contributors may be used 
-  to endorse or promote products derived from this software without 
-  specific prior written permission. 
+  Neither name of Mark Hammond nor the name of contributors may be used
+  to endorse or promote products derived from this software without
+  specific prior written permission.
 
   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ``AS
   IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
@@ -47,7 +48,7 @@ following copyright:
   PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
   LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
   NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 */
 
@@ -55,19 +56,19 @@ following copyright:
  * The JPEG lib is from the Independent JPEG Group (IJG)
  * http://www.ijg.org/
  *
- * The jpeg lib included in source/jpeg-8/ has a small modification to the 
+ * The jpeg lib included in source/jpeg-8/ has a small modification to the
  * rdbmp.c example to support 32 BMP files. That modification was submitted
  * to the IJG to be included in future releases. The only other change to
  * JPEG library was to the makefile so the library would link to
  * meterperter without warning/error.
  *
  * Most the JPEG code used in espia is taken from the rdbmp.c example from
- * source/jpeg-8/. 
+ * source/jpeg-8/.
  *
  * from the JPEG README:
  * You are welcome to redistribute this software and
  * to use it for any purpose, subject to the conditions under LEGAL ISSUES, below.
- * 
+ *
  * ...
  *
  * This software is the work of Tom Lane, Guido Vollbeding, Philip Gladstone,
@@ -75,12 +76,12 @@ following copyright:
  * Julian Minguillon, Luis Ortiz, George Phillips, Davide Rossi, Ge' Weijers,
  * and other members of the Independent JPEG Group.
  *
- * 
+ *
  * LEGAL ISSUES
  * ============
- * 
+ *
  * In plain English:
- * 
+ *
  * 1. We don't promise that this software works.  (But if you find any bugs,
  *    please let us know!)
  * 2. You can use this software for whatever you want.  You don't have to pay us.
@@ -109,8 +110,8 @@ typedef char U_CHAR;
 /*
  * This function taken from the JPEG-8 example file rdbmp.c provided a
  * platform idenependant way to read files...
- * But, we "reading" from memory. So, return the current byte 
- * in the buf and inc the pointer so it "feels" like an fopen read. 
+ * But, we "reading" from memory. So, return the current byte
+ * in the buf and inc the pointer so it "feels" like an fopen read.
  */
 int ReadOK(bmp_source_ptr sinfo, char* buffer,int len)
 {
@@ -120,12 +121,12 @@ int ReadOK(bmp_source_ptr sinfo, char* buffer,int len)
 }
 
 /*
- * Like ReadOK, this would read from a file. But we aren't reading a file. 
+ * Like ReadOK, this would read from a file. But we aren't reading a file.
  * So, return the current byte in the buf and inc the pointer.
  * WARNING: I don't think this function is working. (My guess: read_offset++)
  * However, it just so happens since Windows 7 (and I think all the windows)
  * screenshots always return a 32 bit BMP, the code never calls this function.
- * 
+ *
  */
 int read_byte (bmp_source_ptr sinfo)
 {
@@ -134,10 +135,10 @@ int read_byte (bmp_source_ptr sinfo)
 
 /*
  * Since I think windows screenshot is always a 32bit BMP this function
- * will never be used, however, I am leaving it here in case there is a 
+ * will never be used, however, I am leaving it here in case there is a
  * version of windows that does return a 8bit indexed BMP. Once it is
- * confirmed that all windows use 32bit BMPs, I'll remove this. 
- * 
+ * confirmed that all windows use 32bit BMPs, I'll remove this.
+ *
  * How does a BMP look you ask?
  * see: http://local.wasp.uwa.edu.au/~pbourke/dataformats/bitmaps/
  */
@@ -173,11 +174,11 @@ void read_colormap (bmp_source_ptr sinfo, int cmaplen, int mapentrysize)
  * Used to help convert 16 bit BMP
  * Taken from: http://bytes.com/topic/c/answers/552128-how-convert-16-bit-565-rgb-value-32-bit
  *
- * BUG: I haven't been able to figure out the correct format of the BMP in memory. 
- *      Not sure if its 565 or 555. Nor am I sure if its rgb or bgr or what. Also 
- *      I can't say I'm sure which order the two 8 bits that make up the unsigned 
- *      short "a" should come in. As it is now, this will send back a valid JPEG. 
- *      But, the colors won't be exact. 
+ * BUG: I haven't been able to figure out the correct format of the BMP in memory.
+ *      Not sure if its 565 or 555. Nor am I sure if its rgb or bgr or what. Also
+ *      I can't say I'm sure which order the two 8 bits that make up the unsigned
+ *      short "a" should come in. As it is now, this will send back a valid JPEG.
+ *      But, the colors won't be exact.
  */
 unsigned long rgb16_to_rgb32(unsigned short a)
 {
@@ -236,7 +237,7 @@ b <<= 3;
 /* 3. Construct your 32-bit format (this is 0RGB): */
 //return (r << 16) | (g << 8) | b;
 
-// This is 0RBG?? Yeah, it makes no sense to me either. 
+// This is 0RBG?? Yeah, it makes no sense to me either.
 return (r << 16) | (b << 8) | g;
 
 /* Or for BGR0: */
@@ -251,10 +252,10 @@ return (r << 16) | (b << 8) | g;
  * The image has been read into the whole_image array, but is otherwise
  * unprocessed.  We must read it out in top-to-bottom row order, and if
  * it is an 8-bit image, we must expand colormapped pixels to 24bit format.
- * 
+ *
  * NOTE: Again, windows might only ever use 32bit BMP's making this function
- * useless. However, I'll leave it here until I can confirm that. 
- * 
+ * useless. However, I'll leave it here until I can confirm that.
+ *
  * NOTE: cjpeg_source_ptr sinfo is really a BMP ptr.
  */
 
@@ -288,12 +289,12 @@ JDIMENSION get_8bit_row (j_compress_ptr cinfo, cjpeg_source_ptr sinfo)
 }
 
 /*
- * 
+ *
  * NOTE: Damn it, windows uses what ever the colors option is set to-
  *  High Color (16 bit)
  *  True Color (32 bit)
  *  Who the hell would use High Color? PDA's?
- * 
+ *
  * NOTE: cjpeg_source_ptr sinfo is really a BMP ptr.
  *
  * Dev notes:
@@ -323,14 +324,14 @@ JDIMENSION get_16bit_row (j_compress_ptr cinfo, cjpeg_source_ptr sinfo)
   inptr = image_ptr[0];
   outptr = source->pub.buffer[0];
   for (col = cinfo->image_width; col > 0; col--) {
-    // Need to pull 16 bits at a time. 
+    // Need to pull 16 bits at a time.
 	a = *inptr++; // First 8
 	b = *inptr++; // Second 8
 	bit32_pix = rgb16_to_rgb32( a << 8 | b ); //Send all 16bits to be converted
 	pix_ptr = (char *)&bit32_pix;
-    outptr[2] = *pix_ptr++; 
-    outptr[1] = *pix_ptr++; 
-    outptr[0] = *pix_ptr++; 
+    outptr[2] = *pix_ptr++;
+    outptr[1] = *pix_ptr++;
+    outptr[0] = *pix_ptr++;
     outptr += 3;
   }
 
@@ -340,10 +341,10 @@ JDIMENSION get_16bit_row (j_compress_ptr cinfo, cjpeg_source_ptr sinfo)
 
 
 /*
- * 
+ *
  * NOTE: Again, windows might only ever use 32bit BMP's making this function
- * useless. However, I'll leave it here until I can confirm that. 
- * 
+ * useless. However, I'll leave it here until I can confirm that.
+ *
  * NOTE: cjpeg_source_ptr sinfo is really a BMP ptr.
  */
 
@@ -377,10 +378,10 @@ JDIMENSION get_24bit_row (j_compress_ptr cinfo, cjpeg_source_ptr sinfo)
 }
 
 /*
- * 
+ *
  * NOTE: Again, windows might only ever use 32bit BMP's making this function
- * useless. However, I'll leave it here until I can confirm that. 
- * 
+ * useless. However, I'll leave it here until I can confirm that.
+ *
  * NOTE: cjpeg_source_ptr sinfo is really a BMP ptr.
  */
 JDIMENSION get_32bit_row (j_compress_ptr cinfo, cjpeg_source_ptr sinfo)
@@ -416,7 +417,7 @@ JDIMENSION get_32bit_row (j_compress_ptr cinfo, cjpeg_source_ptr sinfo)
  * This method loads the image into whole_image during the first call on
  * get_pixel_rows.  The get_pixel_rows pointer is then adjusted to call
  * get_8bit_row, get_24bit_row or get_32bit_row on subsequent calls.
- * This will not copy the image header info. Just the raw image data. 
+ * This will not copy the image header info. Just the raw image data.
  */
 JDIMENSION preload_image (j_compress_ptr cinfo, cjpeg_source_ptr sinfo)
 {
@@ -495,7 +496,7 @@ void start_input_bmp (j_compress_ptr cinfo, cjpeg_source_ptr sinfo)
 
   /* Read and verify the bitmap file header */
   // Its a bitmap... I just made it.. But, if you findout otherwise
-  // return without an error message.. Better than a crash I guess. 
+  // return without an error message.. Better than a crash I guess.
 
   if (! ReadOK(source, bmpfileheader, 14))
     return; //ERREXIT(cinfo, JERR_INPUT_EOF);
@@ -506,14 +507,14 @@ void start_input_bmp (j_compress_ptr cinfo, cjpeg_source_ptr sinfo)
 
   /* The infoheader might be 12 bytes (OS/2 1.x), 40 bytes (Windows),
    * or 64 bytes (OS/2 2.x).  Check the first 4 bytes to find out which.
-   * 
-   * Read the first for bytes to figure out how big the header is. 
+   *
+   * Read the first for bytes to figure out how big the header is.
    * The read the rest of the header (once we know its size)
    */
   if (! ReadOK(source, bmpinfoheader, 4))
     return; //ERREXIT(cinfo, JERR_INPUT_EOF);
   headerSize = (INT32) GET_4B(bmpinfoheader,0);
-  
+
 
   if (headerSize < 12 || headerSize > 64)
     return; //ERREXIT(cinfo, JERR_BMP_BADHEADER);
@@ -703,10 +704,10 @@ cjpeg_source_ptr jinit_read_bmp (j_compress_ptr cinfo)
 
 /*
  * See: http://msdn.microsoft.com/en-us/library/dd145119%28VS.85%29.aspx
- * This function was copied from the MSDN example. 
+ * This function was copied from the MSDN example.
  * It was then modified to send the BMP data rather than save to disk
  * It was then modified to conver the BMP to JPEG and send
- * Now its realy big. 
+ * Now its realy big.
  */
 int bmp2jpeg(PBYTE buf, int quality, BYTE ** buf_jpeg, DWORD * buf_jpeg_size )
 {
@@ -716,12 +717,12 @@ int bmp2jpeg(PBYTE buf, int quality, BYTE ** buf_jpeg, DWORD * buf_jpeg_size )
 	struct jpeg_error_mgr jerr;
     cjpeg_source_ptr src_mgr;
     JDIMENSION num_scanlines;
-    
+
 
 	// JPEG conversion start here..'
 	// buf is a pointer to a BMP in memory.
-	
-	/* Initialize JPEG parameters. 
+
+	/* Initialize JPEG parameters.
      * Much of this may be overridden later.
      * We need to provide some value for jpeg_set_defaults() to work.
      */
@@ -733,15 +734,15 @@ int bmp2jpeg(PBYTE buf, int quality, BYTE ** buf_jpeg, DWORD * buf_jpeg_size )
 
 	src_mgr = jinit_read_bmp(&cinfo); //Returns a cjpeg_source_ptr but is really bmp_source_ptr...
 
-	src_mgr->input_buf = buf;  
+	src_mgr->input_buf = buf;
 	src_mgr->read_offset = 0;
     /* Read the input file header to obtain file size & colorspace. */
 
 	start_input_bmp(&cinfo, src_mgr);
 
     jpeg_default_colorspace(&cinfo);
-	
-	// TODO: accept options from the command line for grayscale and quality. 
+
+	// TODO: accept options from the command line for grayscale and quality.
 	/* Go GRAYSCALE */
 	//jpeg_set_colorspace(&cinfo, JCS_GRAYSCALE);
 	/* Quality */
@@ -758,7 +759,7 @@ int bmp2jpeg(PBYTE buf, int quality, BYTE ** buf_jpeg, DWORD * buf_jpeg_size )
 		num_scanlines = (*src_mgr->get_pixel_rows) (&cinfo, src_mgr);
 		(void) jpeg_write_scanlines(&cinfo, src_mgr->buffer, num_scanlines);
 	}
-	
+
 	/* Finish compression and release memory */
 	(*src_mgr->finish_input) (&cinfo, src_mgr);
 	jpeg_finish_compress(&cinfo);
