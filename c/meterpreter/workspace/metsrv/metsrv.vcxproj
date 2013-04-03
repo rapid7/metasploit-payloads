@@ -163,7 +163,7 @@
     <Link>
       <AdditionalDependencies>common.lib;ws2_32.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <AdditionalLibraryDirectories>..\common\Release; ..\..\source\openssl\lib\win\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\common\$(Configuration); ..\..\source\openssl\lib\win\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ModuleDefinitionFile>..\..\source\server\win\metsrv.def</ModuleDefinitionFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>$(OutDir)\metsrv.pdb</ProgramDatabaseFile>
@@ -277,7 +277,7 @@
     <Link>
       <AdditionalDependencies>ws2_32.lib;odbc32.lib;odbccp32.lib;wininet.lib;ssleay32.lib;libeay32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <AdditionalLibraryDirectories>..\common\Release;..\..\source\openssl\lib\win\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\common\$(Configuration);..\..\source\openssl\lib\win\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ModuleDefinitionFile>..\..\source\server\win\metsrv.def</ModuleDefinitionFile>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <GenerateMapFile>true</GenerateMapFile>

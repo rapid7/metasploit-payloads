@@ -113,7 +113,7 @@
     </ResourceCompile>
     <Link>
       <AdditionalDependencies>backcompat.lib;psapi.lib;odbc32.lib;odbccp32.lib;metsrv.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\backcompat\Release;..\metsrv\$(Configuration)\$(Platform);..\..\source\openssl\lib\win;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\backcompat\$(Configuration);..\metsrv\$(Configuration)\$(Platform);..\..\source\openssl\lib\win;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <DelayLoadDLLs>metsrv.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
       <ProgramDatabaseFile>$(OutDir)\ext_server_priv.pdb</ProgramDatabaseFile>
@@ -219,7 +219,7 @@
     </ResourceCompile>
     <Link>
       <AdditionalDependencies>backcompat.lib;psapi.lib;odbc32.lib;odbccp32.lib;metsrv.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\backcompat\Release;..\metsrv\$(Configuration)\$(Platform);..\..\source\openssl\lib\win;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\backcompat\$(Configuration);..\metsrv\$(Configuration)\$(Platform);..\..\source\openssl\lib\win;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>.\Debug\ext_server_priv.pdb</ProgramDatabaseFile>
