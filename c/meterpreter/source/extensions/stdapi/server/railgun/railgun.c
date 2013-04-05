@@ -249,32 +249,32 @@ DWORD railgun_call( RAILGUN_INPUT * pInput, RAILGUN_OUTPUT * pOutput )
 			{
 				switch( dwStackSizeInElements )
 				{
-					case  0: pOutput->qwReturnValue = ((CDECL_FUNC)pFuncAddr)(); break;
-					case  1: pOutput->qwReturnValue = ((CDECL_FUNC)pFuncAddr)( p(0) ); break;
-					case  2: pOutput->qwReturnValue = ((CDECL_FUNC)pFuncAddr)( p(0), p(1) ); break;
-					case  3: pOutput->qwReturnValue = ((CDECL_FUNC)pFuncAddr)( p(0), p(1), p(2) ); break;
-					case  4: pOutput->qwReturnValue = ((CDECL_FUNC)pFuncAddr)( p(0), p(1), p(2), p(3) );break;
-					case  5: pOutput->qwReturnValue = ((CDECL_FUNC)pFuncAddr)( p(0), p(1), p(2), p(3), p(4) );break;
-					case  6: pOutput->qwReturnValue = ((CDECL_FUNC)pFuncAddr)( p(0), p(1), p(2), p(3), p(4), p(5) );break;
-					case  7: pOutput->qwReturnValue = ((CDECL_FUNC)pFuncAddr)( p(0), p(1), p(2), p(3), p(4), p(5), p(6) );break;
-					case  8: pOutput->qwReturnValue = ((CDECL_FUNC)pFuncAddr)( p(0), p(1), p(2), p(3), p(4), p(5), p(6), p(7) );break;
-					case  9: pOutput->qwReturnValue = ((CDECL_FUNC)pFuncAddr)( p(0), p(1), p(2), p(3), p(4), p(5), p(6), p(7), p(8) );break;
-					case 10: pOutput->qwReturnValue = ((CDECL_FUNC)pFuncAddr)( p(0), p(1), p(2), p(3), p(4), p(5), p(6), p(7), p(8), p(9) );break;
-					case 11: pOutput->qwReturnValue = ((CDECL_FUNC)pFuncAddr)( p(0), p(1), p(2), p(3), p(4), p(5), p(6), p(7), p(8), p(9), p(10) );break;
-					case 12: pOutput->qwReturnValue = ((CDECL_FUNC)pFuncAddr)( p(0), p(1), p(2), p(3), p(4), p(5), p(6), p(7), p(8), p(9), p(10), p(11) );break;
-					case 13: pOutput->qwReturnValue = ((CDECL_FUNC)pFuncAddr)( p(0), p(1), p(2), p(3), p(4), p(5), p(6), p(7), p(8), p(9), p(10), p(11), p(12) );break;
-					case 14: pOutput->qwReturnValue = ((CDECL_FUNC)pFuncAddr)( p(0), p(1), p(2), p(3), p(4), p(5), p(6), p(7), p(8), p(9), p(10), p(11), p(12), p(13) );break;
-					case 15: pOutput->qwReturnValue = ((CDECL_FUNC)pFuncAddr)( p(0), p(1), p(2), p(3), p(4), p(5), p(6), p(7), p(8), p(9), p(10), p(11), p(12), p(13), p(14) );break;
-					case 16: pOutput->qwReturnValue = ((CDECL_FUNC)pFuncAddr)( p(0), p(1), p(2), p(3), p(4), p(5), p(6), p(7), p(8), p(9), p(10), p(11), p(12), p(13), p(14), p(15) );break;
-					case 17: pOutput->qwReturnValue = ((CDECL_FUNC)pFuncAddr)( p(0), p(1), p(2), p(3), p(4), p(5), p(6), p(7), p(8), p(9), p(10), p(11), p(12), p(13), p(14), p(15), p(16) );break;
-					case 18: pOutput->qwReturnValue = ((CDECL_FUNC)pFuncAddr)( p(0), p(1), p(2), p(3), p(4), p(5), p(6), p(7), p(8), p(9), p(10), p(11), p(12), p(13), p(14), p(15), p(16), p(17) );break;
-					case 19: pOutput->qwReturnValue = ((CDECL_FUNC)pFuncAddr)( p(0), p(1), p(2), p(3), p(4), p(5), p(6), p(7), p(8), p(9), p(10), p(11), p(12), p(13), p(14), p(15), p(16), p(17), p(18) );break;
-					case 20: pOutput->qwReturnValue = ((CDECL_FUNC)pFuncAddr)( p(0), p(1), p(2), p(3), p(4), p(5), p(6), p(7), p(8), p(9), p(10), p(11), p(12), p(13), p(14), p(15), p(16), p(17), p(18), p(19) );break;
-					case 21: pOutput->qwReturnValue = ((CDECL_FUNC)pFuncAddr)( p(0), p(1), p(2), p(3), p(4), p(5), p(6), p(7), p(8), p(9), p(10), p(11), p(12), p(13), p(14), p(15), p(16), p(17), p(18), p(19), p(20) );break;
-					case 22: pOutput->qwReturnValue = ((CDECL_FUNC)pFuncAddr)( p(0), p(1), p(2), p(3), p(4), p(5), p(6), p(7), p(8), p(9), p(10), p(11), p(12), p(13), p(14), p(15), p(16), p(17), p(18), p(19), p(20), p(21) );break;
-					case 23: pOutput->qwReturnValue = ((CDECL_FUNC)pFuncAddr)( p(0), p(1), p(2), p(3), p(4), p(5), p(6), p(7), p(8), p(9), p(10), p(11), p(12), p(13), p(14), p(15), p(16), p(17), p(18), p(19), p(20), p(21), p(22) );break;
-					case 24: pOutput->qwReturnValue = ((CDECL_FUNC)pFuncAddr)( p(0), p(1), p(2), p(3), p(4), p(5), p(6), p(7), p(8), p(9), p(10), p(11), p(12), p(13), p(14), p(15), p(16), p(17), p(18), p(19), p(20), p(21), p(22), p(23) );break;
-					case 25: pOutput->qwReturnValue = ((CDECL_FUNC)pFuncAddr)( p(0), p(1), p(2), p(3), p(4), p(5), p(6), p(7), p(8), p(9), p(10), p(11), p(12), p(13), p(14), p(15), p(16), p(17), p(18), p(19), p(20), p(21), p(22), p(23), p(24) );break;
+					case  0: pOutput->qwReturnValue = cdecl_func( 00 )(); break;
+					case  1: pOutput->qwReturnValue = cdecl_func( 01 )( p(0) ); break;
+					case  2: pOutput->qwReturnValue = cdecl_func( 02 )( p(0), p(1) ); break;
+					case  3: pOutput->qwReturnValue = cdecl_func( 03 )( p(0), p(1), p(2) ); break;
+					case  4: pOutput->qwReturnValue = cdecl_func( 04 )( p(0), p(1), p(2), p(3) );break;
+					case  5: pOutput->qwReturnValue = cdecl_func( 05 )( p(0), p(1), p(2), p(3), p(4) );break;
+					case  6: pOutput->qwReturnValue = cdecl_func( 06 )( p(0), p(1), p(2), p(3), p(4), p(5) );break;
+					case  7: pOutput->qwReturnValue = cdecl_func( 07 )( p(0), p(1), p(2), p(3), p(4), p(5), p(6) );break;
+					case  8: pOutput->qwReturnValue = cdecl_func( 08 )( p(0), p(1), p(2), p(3), p(4), p(5), p(6), p(7) );break;
+					case  9: pOutput->qwReturnValue = cdecl_func( 09 )( p(0), p(1), p(2), p(3), p(4), p(5), p(6), p(7), p(8) );break;
+					case 10: pOutput->qwReturnValue = cdecl_func( 10 )( p(0), p(1), p(2), p(3), p(4), p(5), p(6), p(7), p(8), p(9) );break;
+					case 11: pOutput->qwReturnValue = cdecl_func( 11 )( p(0), p(1), p(2), p(3), p(4), p(5), p(6), p(7), p(8), p(9), p(10) );break;
+					case 12: pOutput->qwReturnValue = cdecl_func( 12 )( p(0), p(1), p(2), p(3), p(4), p(5), p(6), p(7), p(8), p(9), p(10), p(11) );break;
+					case 13: pOutput->qwReturnValue = cdecl_func( 13 )( p(0), p(1), p(2), p(3), p(4), p(5), p(6), p(7), p(8), p(9), p(10), p(11), p(12) );break;
+					case 14: pOutput->qwReturnValue = cdecl_func( 14 )( p(0), p(1), p(2), p(3), p(4), p(5), p(6), p(7), p(8), p(9), p(10), p(11), p(12), p(13) );break;
+					case 15: pOutput->qwReturnValue = cdecl_func( 15 )( p(0), p(1), p(2), p(3), p(4), p(5), p(6), p(7), p(8), p(9), p(10), p(11), p(12), p(13), p(14) );break;
+					case 16: pOutput->qwReturnValue = cdecl_func( 16 )( p(0), p(1), p(2), p(3), p(4), p(5), p(6), p(7), p(8), p(9), p(10), p(11), p(12), p(13), p(14), p(15) );break;
+					case 17: pOutput->qwReturnValue = cdecl_func( 17 )( p(0), p(1), p(2), p(3), p(4), p(5), p(6), p(7), p(8), p(9), p(10), p(11), p(12), p(13), p(14), p(15), p(16) );break;
+					case 18: pOutput->qwReturnValue = cdecl_func( 18 )( p(0), p(1), p(2), p(3), p(4), p(5), p(6), p(7), p(8), p(9), p(10), p(11), p(12), p(13), p(14), p(15), p(16), p(17) );break;
+					case 19: pOutput->qwReturnValue = cdecl_func( 19 )( p(0), p(1), p(2), p(3), p(4), p(5), p(6), p(7), p(8), p(9), p(10), p(11), p(12), p(13), p(14), p(15), p(16), p(17), p(18) );break;
+					case 20: pOutput->qwReturnValue = cdecl_func( 20 )( p(0), p(1), p(2), p(3), p(4), p(5), p(6), p(7), p(8), p(9), p(10), p(11), p(12), p(13), p(14), p(15), p(16), p(17), p(18), p(19) );break;
+					case 21: pOutput->qwReturnValue = cdecl_func( 21 )( p(0), p(1), p(2), p(3), p(4), p(5), p(6), p(7), p(8), p(9), p(10), p(11), p(12), p(13), p(14), p(15), p(16), p(17), p(18), p(19), p(20) );break;
+					case 22: pOutput->qwReturnValue = cdecl_func( 22 )( p(0), p(1), p(2), p(3), p(4), p(5), p(6), p(7), p(8), p(9), p(10), p(11), p(12), p(13), p(14), p(15), p(16), p(17), p(18), p(19), p(20), p(21) );break;
+					case 23: pOutput->qwReturnValue = cdecl_func( 23 )( p(0), p(1), p(2), p(3), p(4), p(5), p(6), p(7), p(8), p(9), p(10), p(11), p(12), p(13), p(14), p(15), p(16), p(17), p(18), p(19), p(20), p(21), p(22) );break;
+					case 24: pOutput->qwReturnValue = cdecl_func( 24 )( p(0), p(1), p(2), p(3), p(4), p(5), p(6), p(7), p(8), p(9), p(10), p(11), p(12), p(13), p(14), p(15), p(16), p(17), p(18), p(19), p(20), p(21), p(22), p(23) );break;
+					case 25: pOutput->qwReturnValue = cdecl_func( 25 )( p(0), p(1), p(2), p(3), p(4), p(5), p(6), p(7), p(8), p(9), p(10), p(11), p(12), p(13), p(14), p(15), p(16), p(17), p(18), p(19), p(20), p(21), p(22), p(23), p(24) );break;
 
 					default:
 						dprintf( "[RAILGUN] railgun_call: Can't call function: dwStackSizeInElements (%d) is > 25", dwStackSizeInElements );
