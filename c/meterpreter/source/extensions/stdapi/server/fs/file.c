@@ -17,7 +17,7 @@ typedef struct
 /*
  * Writes the supplied data to the file
  */
-static DWORD file_channel_write(Channel *channel, Packet *request, 
+static DWORD file_channel_write(Channel *channel, Packet *request,
 		LPVOID context, LPVOID buffer, DWORD bufferSize,
 		LPDWORD bytesWritten)
 {
@@ -42,11 +42,11 @@ static DWORD file_channel_write(Channel *channel, Packet *request,
 /*
  * Closes the file
  */
-static DWORD file_channel_close(Channel *channel, Packet *request, 
+static DWORD file_channel_close(Channel *channel, Packet *request,
 		LPVOID context)
 {
 	FileContext *ctx = (FileContext *)context;
-			
+
 	fclose(ctx->fd);
 	free(ctx);
 
@@ -56,7 +56,7 @@ static DWORD file_channel_close(Channel *channel, Packet *request,
 /*
  * Reads data from the file (if any)
  */
-static DWORD file_channel_read(Channel *channel, Packet *request, 
+static DWORD file_channel_read(Channel *channel, Packet *request,
 		LPVOID context, LPVOID buffer, DWORD bufferSize,
 		LPDWORD bytesRead)
 {
@@ -81,7 +81,7 @@ static DWORD file_channel_read(Channel *channel, Packet *request,
 /*
  * Checks to see if the file pointer is currently at the end of the file
  */
-static DWORD file_channel_eof(Channel *channel, Packet *request, 
+static DWORD file_channel_eof(Channel *channel, Packet *request,
 		LPVOID context, LPBOOL isEof)
 {
 	FileContext *ctx = (FileContext *)context;
@@ -92,24 +92,24 @@ static DWORD file_channel_eof(Channel *channel, Packet *request,
 /*
  * Changes the current file pointer position in the file
  */
-static DWORD file_channel_seek(Channel *channel, Packet *request, 
+static DWORD file_channel_seek(Channel *channel, Packet *request,
 		LPVOID context, LONG offset, DWORD whence)
 {
 	FileContext *ctx = (FileContext *)context;
-		
+
 	return fseek(ctx->fd, offset, whence);
 }
 
 /*
  * Returns the current offset in the file to the requestor
  */
-static DWORD file_channel_tell(Channel *channel, Packet *request, 
+static DWORD file_channel_tell(Channel *channel, Packet *request,
 		LPVOID context, LPLONG offset)
 {
 	FileContext *ctx = (FileContext *)context;
 	DWORD result = ERROR_SUCCESS;
 	LONG pos = 0;
-		
+
 	if ((pos = ftell(ctx->fd)) < 0)
 		result = GetLastError();
 
@@ -166,7 +166,7 @@ DWORD request_fs_file_channel_open(Remote *remote, Packet *packet)
 			res = ERROR_NOT_ENOUGH_MEMORY;
 			break;
 		}
-	
+
 		if (!mode)
 			mode = "rb";
 
@@ -190,16 +190,14 @@ DWORD request_fs_file_channel_open(Remote *remote, Packet *packet)
 
 		// Check the response allocation & allocate a un-connected
 		// channel
-		if ((!response) ||
-		    (!(newChannel = channel_create_pool(0, flags,
-				&chops))))
+		if ((!response) || (!(newChannel = channel_create_pool(0, flags, &chops))))
 		{
 			res = ERROR_NOT_ENOUGH_MEMORY;
 			break;
 		}
 
 		// Add the channel identifier to the response
-		packet_add_tlv_uint(response, TLV_TYPE_CHANNEL_ID, 
+		packet_add_tlv_uint(response, TLV_TYPE_CHANNEL_ID,
 				channel_get_id(newChannel));
 
 	} while (0);
