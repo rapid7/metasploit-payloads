@@ -1,8 +1,8 @@
 #pragma comment(lib, "Winmm.lib")
-#include "../../common/common.h"
-#include <windows.h>
-#include "audio.h"
 #include "precomp.h"
+#include <windows.h>
+#include "../../common/common.h"
+#include "audio.h"
 
 //Handle used for synchronization. Main thread waits for event to be signalled to clean up
 HANDLE recordMicEvent;

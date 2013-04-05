@@ -1,7 +1,6 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include "bmp2jpeg.h"
-#include "precomp.h"
 #pragma comment(lib, "jpeg.lib")
 
 /*
