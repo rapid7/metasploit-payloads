@@ -5,8 +5,8 @@
 #include <ws2tcpip.h>
 #include <winsock2.h>
 #else
-#  include <netdb.h>
-#  include <arpa/inet.h>
+#include <netdb.h>
+#include <arpa/inet.h>
 #endif
 
 DWORD resolve_host(LPCTSTR hostname, char* addr, short* addr_type, short* addr_length)
