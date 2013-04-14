@@ -346,10 +346,6 @@ Command customCommands[] =
 	  { request_resolve_hosts,							  { 0 }, 0 },
 	  { EMPTY_DISPATCH_HANDLER                                     },
 	},
-	//{ "stdapi_net_resolve_host_ipv4",
-	//  { request_resolve_hostname_ipv4,                    { 0 }, 0 },
-	//  { EMPTY_DISPATCH_HANDLER                                     },
-	//},
 
 	// Socket
 	{ "stdapi_net_socket_tcp_shutdown",

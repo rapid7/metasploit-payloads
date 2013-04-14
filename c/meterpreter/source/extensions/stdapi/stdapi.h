@@ -412,31 +412,14 @@
                                 TLV_META_TYPE_UINT,      \
                                 TLV_TYPE_EXTENSION_STDAPI, \
                                 1443)
+
+	// Resolve
 #define TLV_TYPE_ADDR_TYPE         \
                 MAKE_CUSTOM_TLV(                 \
                 TLV_META_TYPE_UINT,      \
                 TLV_TYPE_EXTENSION_STDAPI, \
                 1444)
-#define TLV_TYPE_ADDR_LENGTH         \
-                MAKE_CUSTOM_TLV(                 \
-                TLV_META_TYPE_UINT,      \
-                TLV_TYPE_EXTENSION_STDAPI, \
-                1445)
-#define TLV_TYPE_RESOLVE         \
-                MAKE_CUSTOM_TLV(                 \
-                TLV_META_TYPE_GROUP,      \
-                TLV_TYPE_EXTENSION_STDAPI, \
-                1446)
-#define TLV_TYPE_ADDR_COUNT         \
-                MAKE_CUSTOM_TLV(                 \
-                TLV_META_TYPE_UINT,      \
-                TLV_TYPE_EXTENSION_STDAPI, \
-                1447)
-#define TLV_TYPE_HOSTNAMES        \
-                MAKE_CUSTOM_TLV(                 \
-                TLV_META_TYPE_UINT,      \
-                TLV_TYPE_EXTENSION_STDAPI, \
-                1448)
+
 	// Socket
 #define TLV_TYPE_PEER_HOST             \
 		MAKE_CUSTOM_TLV(                 \

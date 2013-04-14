@@ -43,7 +43,6 @@ DWORD request_net_tcp_server_channel_open(Remote *remote, Packet *packet);
 DWORD request_net_udp_channel_open(Remote *remote, Packet *packet);
 
 // Resolve
-//DWORD request_resolve_hostname_ipv4(Remote *remote, Packet *packet);
 DWORD request_resolve_host(Remote *remote, Packet *packet);
 DWORD request_resolve_hosts(Remote *remote, Packet *packet);
 
