@@ -9,7 +9,7 @@
   #include <arpa/inet.h>
 #endif
 
-DWORD resolve_host(LPCTSTR hostname, char* addr, u_short* addr_type, u_short* addr_length)
+DWORD resolve_host(LPCSTR hostname, char* addr, u_short* addr_type, u_short* addr_length)
 {
 	struct hostent *he;
 	int i = 0;
@@ -46,7 +46,7 @@ DWORD resolve_host(LPCTSTR hostname, char* addr, u_short* addr_type, u_short* ad
 DWORD request_resolve_host(Remote *remote, Packet *packet)
 {
 	Packet *response = packet_create_response(packet);
-	LPCTSTR hostname = NULL;
+	LPCSTR hostname = NULL;
 	char addr[16];
 	u_short addr_type;
 	u_short addr_length;
@@ -80,7 +80,7 @@ DWORD request_resolve_hosts(Remote *remote, Packet *packet)
 		u_short addr_type = 0;
 		u_short addr_length = 0;
 
-		resolve_host((LPCTSTR)hostname.buffer, addr, &addr_type, &addr_length);
+		resolve_host((LPCSTR)hostname.buffer, addr, &addr_type, &addr_length);
 
 		packet_add_tlv_raw(response, TLV_TYPE_IP, addr, addr_length);
 		packet_add_tlv_uint(response, TLV_TYPE_ADDR_TYPE, addr_type);
