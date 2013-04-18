@@ -37,6 +37,7 @@ objects = \
 	server/net/socket/tcp.o \
 	server/net/socket/tcp_server.o \
 	server/net/socket/udp.o \
+	server/net/resolve.o \
 	server/stdapi.o \
 	server/sys/config/config.o \
 	server/sys/process/linux-in-mem-exe.o \
