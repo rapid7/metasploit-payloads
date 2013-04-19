@@ -12,32 +12,36 @@
 
 DWORD resolve_host(LPCSTR hostname, u_short ai_family, struct in_addr *result)
 {
-	struct addrinfo hints;
-	struct addrinfo *list = NULL;
+	struct addrinfo hints, *list;
 	struct in_addr addr;
 	struct sockaddr_in *sockaddr_ipv4;
 	struct sockaddr_in6 *sockaddr_ipv6;
 	int iResult;
-
+	
 #ifdef _WIN32
 	WSADATA wsaData;
 	iResult = WSAStartup(MAKEWORD(2,2), &wsaData);
 	if (iResult != NO_ERROR)
 	{
-		dprintf("RESOLVE, resolve_host - Could not initialise Winsock: %x.\n", iResult);
+		dprintf("Could not initialise Winsock: %x.", iResult);
 		return iResult;
 	}
 #endif
 
 	memset(&hints, 0, sizeof(hints));
-	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_socktype = 0;
 	hints.ai_family = ai_family;
 
+	dprintf("Attempting to resolve '%s'", hostname);
+	
 	iResult = getaddrinfo(hostname, NULL, &hints, &list);
 
 	if (iResult != NO_ERROR)
 	{
-		dprintf("RESOLVE, resolve_host - Unable to resolve host %x.\n", iResult);
+		dprintf("Unable to resolve host Error: %x.", iResult);
+#ifndef _WIN32
+		dprintf("Error msg: %s", gai_strerror(iResult));
+#endif
 	}
 	else
 	{
@@ -53,9 +57,9 @@ DWORD resolve_host(LPCSTR hostname, u_short ai_family, struct in_addr *result)
 		}
 	}
 
-	freeaddrinfo(list);
-
 #ifdef _WIN32
+	// Causes segfaul in nix?
+	freeaddrinfo(list);
 	WSACleanup();
 #endif
 
@@ -66,21 +70,32 @@ DWORD request_resolve_host(Remote *remote, Packet *packet)
 {
 	Packet *response = packet_create_response(packet);
 	LPCSTR hostname = NULL;
-	struct in_addr raw;
+	struct in_addr addr;
 	u_short ai_family = AF_INET;
 	int iResult;
 
 	hostname = packet_get_tlv_value_string(packet, TLV_TYPE_HOST_NAME);
 
 	if (!hostname)
+	{
 		iResult = ERROR_INVALID_PARAMETER;
+		dprintf("Hostname not set");
+	}
 	else
 	{
-		iResult = resolve_host(hostname, ai_family, &raw);
+		iResult = resolve_host(hostname, ai_family, &addr);
 		if (iResult == NO_ERROR)
 		{
-			packet_add_tlv_raw(response, TLV_TYPE_IP, &raw, sizeof(raw));
+#ifdef _WIN32
+                        packet_add_tlv_raw(response, TLV_TYPE_IP, &addr, sizeof(addr));
+#else
+                        packet_add_tlv_raw(response, TLV_TYPE_IP, &(addr.s_addr), sizeof(addr.s_addr));
+#endif
 			packet_add_tlv_uint(response, TLV_TYPE_ADDR_TYPE, ai_family);
+		}
+		else
+		{
+			dprintf("Unable to resolve_host %s error: %x", hostname, iResult);
 		}
 	}
 
@@ -97,17 +112,22 @@ DWORD request_resolve_hosts(Remote *remote, Packet *packet)
 
 	while( packet_enum_tlv( packet, index++, TLV_TYPE_HOST_NAME, &hostname ) == ERROR_SUCCESS )
 	{
-		struct in_addr raw = {0};
+		struct in_addr addr = {0};
 		u_short ai_family = AF_INET;
 
-		iResult = resolve_host((LPCSTR)hostname.buffer, ai_family, &raw);
+		iResult = resolve_host((LPCSTR)hostname.buffer, ai_family, &addr);
 
 		if (iResult == NO_ERROR)
 		{
-			packet_add_tlv_raw(response, TLV_TYPE_IP, &raw, sizeof(raw));
+#ifdef _WIN32
+			packet_add_tlv_raw(response, TLV_TYPE_IP, &addr, sizeof(struct in_addr));
+#else
+			packet_add_tlv_raw(response, TLV_TYPE_IP, &(addr.s_addr), sizeof(addr.s_addr));
+#endif
 		}
 		else
 		{
+			dprintf("Unable to resolve_host %s error: %x", hostname.buffer, iResult);		
 			packet_add_tlv_raw(response, TLV_TYPE_IP, NULL, 0);
 		}
 		packet_add_tlv_uint(response, TLV_TYPE_ADDR_TYPE, ai_family);
