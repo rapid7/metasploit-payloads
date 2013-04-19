@@ -63,7 +63,7 @@ __forceinline DWORD ror( DWORD d )
 
 
 
-__forceinline DWORD _hash( char * c )
+__forceinline DWORD hash( char * c )
 {
     register DWORD h = 0;
 	do

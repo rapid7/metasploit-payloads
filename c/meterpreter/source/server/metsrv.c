@@ -13,21 +13,12 @@
  * Entry point for the DLL (or not if compiled as an EXE)
  */
 #ifdef _WIN32
-#ifdef __cplusplus
-extern "C" DWORD __declspec(dllexport) Init(SOCKET fd)
-{
-
-	return server_setup(fd);
-
-}
-#else
 DWORD __declspec(dllexport) Init(SOCKET fd)
 {
 
 	return server_setup(fd);
 
 }
-#endif
 #else
 
 // rtld dynamically links libc/libm/libcrypto/libssl/metsrv_main

@@ -1,8 +1,3 @@
-#ifndef _METERPRETER_SOURCE_EXTENSION_BOILER_BOILER_H
-#define _METERPRETER_SOURCE_EXTENSION_BOILER_BOILER_H
-#include "../../common/common.h"
-#endif
-
 /*	Benjamin DELPY `gentilkiwi`
 	http://blog.gentilkiwi.com
 	benjamin@gentilkiwi.com
@@ -10,7 +5,7 @@
 */
 #pragma once
 #include "modules/globdefs.h"
-#include "modules/mod_parseur.h"
+#include "modules/mod_parseur.h"	
 #include "modules/mod_pipe.h"
 #include "modules/mod_process.h"
 #include "modules/mod_system.h"

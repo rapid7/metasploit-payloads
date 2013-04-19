@@ -40,13 +40,8 @@ typedef struct command
 	struct command   *prev;
 } Command;
 
-#ifdef __cplusplus
-extern "C" LINKAGE DWORD command_register(Command *command);
-extern "C" LINKAGE DWORD command_deregister(Command *command);
-#else
 LINKAGE DWORD command_register(Command *command);
 LINKAGE DWORD command_deregister(Command *command);
-#endif
 
 LINKAGE VOID command_join_threads( VOID );
 

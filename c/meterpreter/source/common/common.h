@@ -203,7 +203,7 @@ static void real_dprintf(char *format, ...) {
 	va_start(args,format);
 	vsnprintf_s(buffer, sizeof(buffer), sizeof(buffer)-3, format,args);
 	strcat_s(buffer, sizeof(buffer), "\r\n");
-	OutputDebugStringA(buffer);
+	OutputDebugString(buffer);
 }
 
 #endif
