@@ -36,6 +36,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ext_server_lanattacks", "ex
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "backcompat", "backcompat\backcompat.vcxproj", "{C6FB3275-9067-4BBA-9206-0A720D2BC64F}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ext_server_mimikatz", "ext_server_mimikatz\ext_server_mimikatz.vcxproj", "{5104C280-92CA-4317-922C-1EF73DE1C6C1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -152,6 +154,12 @@ Global
 		{C6FB3275-9067-4BBA-9206-0A720D2BC64F}.Release|Win32.ActiveCfg = Release|Win32
 		{C6FB3275-9067-4BBA-9206-0A720D2BC64F}.Release|Win32.Build.0 = Release|Win32
 		{C6FB3275-9067-4BBA-9206-0A720D2BC64F}.Release|x64.ActiveCfg = Release|Win32
+		{5104C280-92CA-4317-922C-1EF73DE1C6C1}.Debug|Win32.ActiveCfg = Debug|Win32
+		{5104C280-92CA-4317-922C-1EF73DE1C6C1}.Debug|Win32.Build.0 = Debug|Win32
+		{5104C280-92CA-4317-922C-1EF73DE1C6C1}.Debug|x64.ActiveCfg = Debug|Win32
+		{5104C280-92CA-4317-922C-1EF73DE1C6C1}.Release|Win32.ActiveCfg = Release|Win32
+		{5104C280-92CA-4317-922C-1EF73DE1C6C1}.Release|Win32.Build.0 = Release|Win32
+		{5104C280-92CA-4317-922C-1EF73DE1C6C1}.Release|x64.ActiveCfg = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

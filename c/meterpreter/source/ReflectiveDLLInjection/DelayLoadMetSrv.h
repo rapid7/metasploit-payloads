@@ -35,11 +35,15 @@
 #pragma comment (lib,"Delayimp.lib")
 
 // we use this like a macro to set the hook in an server extension that requires it
-#define EnableDelayLoadMetSrv() PfnDliHook __pfnDliNotifyHook2 = delayHook; // set our delay loader hook, see DelayLoadMetSrv.c
+#define EnableDelayLoadMetSrv() PfnDliHook __pfnDliNotifyHook2 = delayHook;  // set our delay loader hook, see DelayLoadMetSrv.c
 
-extern HMODULE hMetSrv;
-
-FARPROC WINAPI delayHook( unsigned dliNotify, PDelayLoadInfo pdli );
+#ifdef __cplusplus
+	extern "C" HMODULE hMetSrv;
+	extern "C" FARPROC WINAPI delayHook( unsigned dliNotify, PDelayLoadInfo pdli );
+#else
+	extern HMODULE hMetSrv;
+	FARPROC WINAPI delayHook( unsigned dliNotify, PDelayLoadInfo pdli );
+#endif
 
 //===============================================================================================//
 #endif
