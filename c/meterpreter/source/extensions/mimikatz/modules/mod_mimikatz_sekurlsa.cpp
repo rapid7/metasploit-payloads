@@ -215,17 +215,17 @@ void mod_mimikatz_sekurlsa::genericCredsToStream(PKIWI_GENERIC_PRIMARY_CREDENTIA
 			{
 				if(!pos)
 					(*outputStream) << endl <<
-					L"\t * Utilisateur  : " << rUserName << endl <<
-					L"\t * Domaine      : " << rDomainName << endl <<
-					L"\t * Mot de passe : " << password;
+					rUserName << L"," <<
+					rDomainName << L"," <<
+					password;
 				else
 					(*outputStream) << endl <<
-					L"\t * [" << *pos  << L"] Utilisateur  : " << rUserName << endl <<
-					L"\t       Domaine      : " << rDomainName << endl <<
-					L"\t       Mot de passe : " << password;
+					rUserName << L"," <<
+					rDomainName << L"," <<
+					password;
 			}
 		}
-	} else (*outputStream) << L"n.t. (LUID KO)";
+	} else (*outputStream) << L"";
 }
 
 bool mod_mimikatz_sekurlsa::getLogonData(vector<wstring> * mesArguments, vector<pair<PFN_ENUM_BY_LUID, wstring>> * mesProviders)
@@ -242,17 +242,16 @@ bool mod_mimikatz_sekurlsa::getLogonData(vector<wstring> * mesArguments, vector<
 			{
 				if(sessionData->LogonType != Network)
 				{
-					(*outputStream) << endl <<
-						L"Authentification Id         : "	<< sessions[i].HighPart << L";" << sessions[i].LowPart << endl <<
-						L"Package d\'authentification  : "	<< mod_text::stringOfSTRING(sessionData->AuthenticationPackage) << endl <<
-						L"Utilisateur principal       : "	<< mod_text::stringOfSTRING(sessionData->UserName) << endl <<
-						L"Domaine d\'authentification  : "	<< mod_text::stringOfSTRING(sessionData->LogonDomain) << endl;
+					(*outputStream) <<
+						sessions[i].HighPart << L";" << sessions[i].LowPart << L"," <<
+						mod_text::stringOfSTRING(sessionData->AuthenticationPackage) << L",\"" <<
+						mod_text::stringOfSTRING(sessionData->UserName) << L"\",\"" <<
+						mod_text::stringOfSTRING(sessionData->LogonDomain) << L"\",\"";
 
 					for(vector<pair<PFN_ENUM_BY_LUID, wstring>>::iterator monProvider = mesProviders->begin(); monProvider != mesProviders->end(); monProvider++)
 					{
-						(*outputStream) << L'\t' << monProvider->second << (mesArguments->empty() ? (L" :") : (L"")) << L'\t';
 						monProvider->first(&sessions[i], mesArguments->empty());
-						(*outputStream) << endl;
+						(*outputStream) << L"\"" << endl;
 					}
 				}
 				LsaFreeReturnBuffer(sessionData);
