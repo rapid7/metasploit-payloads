@@ -1,7 +1,7 @@
 /*	Benjamin DELPY `gentilkiwi`
 	http://blog.gentilkiwi.com
 	benjamin@gentilkiwi.com
-	Licence    : http://creativecommons.org/licenses/by-nc-sa/3.0/fr/
+	Licence    : http://creativecommons.org/licenses/by/3.0/fr/
 	Ce fichier : http://creativecommons.org/licenses/by/3.0/fr/
 */
 #include "wdigest.h"
