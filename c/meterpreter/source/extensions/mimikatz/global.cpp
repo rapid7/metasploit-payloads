@@ -1,4 +1,5 @@
 #include "global.h" 
-#include <iostream> 
+#include <iostream>
 
-std::wostream *outputStream = &std::wcout;
+std::wostringstream oss;
+std::wostringstream *outputStream = &oss;

