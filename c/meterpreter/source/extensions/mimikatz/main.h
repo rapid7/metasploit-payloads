@@ -6,10 +6,6 @@ extern "C"
 }
 #endif
 
-#include <io.h>
-#include <fcntl.h>
-#include <iostream>
-#include <sstream>
 #include "mimikatz.h"
 #include "global.h"
 

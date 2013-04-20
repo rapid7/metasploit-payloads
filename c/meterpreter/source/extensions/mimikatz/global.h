@@ -1,4 +1,3 @@
-#include <ostream> 
 #include <sstream>
 
 extern std::wostringstream oss;
