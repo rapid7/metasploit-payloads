@@ -60,7 +60,7 @@ bool mod_mimikatz_sekurlsa_keys_nt5::searchAndInitLSASSData()
 				mesSucces++;
 		}
 	}
-	else wcout << L"mod_memory::searchMemory NT5 " << mod_system::getWinError() << endl; 
+	else (*outputStream) << L"mod_memory::searchMemory NT5 " << mod_system::getWinError() << endl; 
 	return (mesSucces == 6);
 }
 

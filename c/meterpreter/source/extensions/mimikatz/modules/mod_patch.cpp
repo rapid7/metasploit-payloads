@@ -14,12 +14,12 @@ bool mod_patch::patchModuleOfService(wstring serviceName, wstring moduleName, BY
 	{
 		if(monService.ServiceStatusProcess.dwCurrentState != SERVICE_STOPPED && monService.ServiceStatusProcess.dwCurrentState != SERVICE_STOP_PENDING)
 		{
-			wcout << L"Service : " << monService.serviceDisplayName << endl;
+			(*outputStream) << L"Service : " << monService.serviceDisplayName << endl;
 			reussite = patchModuleOfPID(monService.ServiceStatusProcess.dwProcessId, moduleName, patternToSearch, szPatternToSearch, patternToPlace, szPatternToPlace, offsetForPlace);
 		}
-		else wcout << L"Le service : " << serviceName << L" (" << monService.serviceDisplayName << L") ; n\'a pas l\'air très actif" << endl;
+		else (*outputStream) << L"Le service : " << serviceName << L" (" << monService.serviceDisplayName << L") ; n\'a pas l\'air très actif" << endl;
 	}
-	else wcout << L"Impossible de trouver le service : " << serviceName << L" ; " << mod_system::getWinError() << endl;
+	else (*outputStream) << L"Impossible de trouver le service : " << serviceName << L" ; " << mod_system::getWinError() << endl;
 
 	return reussite;
 }
@@ -36,21 +36,21 @@ bool mod_patch::patchModuleOfPID(DWORD pid, wstring moduleName, BYTE * patternTo
 
 		if(HANDLE processHandle = OpenProcess(PROCESS_VM_OPERATION | PROCESS_VM_WRITE | PROCESS_VM_READ, false, pid))
 		{
-			wcout << L"Recherche des patterns dans : " << moduleName << L"@pid(" << pid << L")" << endl;
+			(*outputStream) << L"Recherche des patterns dans : " << moduleName << L"@pid(" << pid << L")" << endl;
 
 			BYTE * addrPattern = NULL;
 			if(mod_memory::searchMemory(baseAddr, baseAddr + taille, patternToSearch, &addrPattern, szPatternToSearch, true, processHandle))
 			{
 				reussite = mod_memory::writeMemory(addrPattern + offsetForPlace, patternToPlace, szPatternToPlace, processHandle);
-				wcout << L"Patch " << moduleName << L"@pid(" << pid << L") : " << (reussite ? L"OK" : L"KO") << endl;
+				(*outputStream) << L"Patch " << moduleName << L"@pid(" << pid << L") : " << (reussite ? L"OK" : L"KO") << endl;
 			}
-			else wcout << L"mod_memory::searchMemory " << mod_system::getWinError() << endl;
+			else (*outputStream) << L"mod_memory::searchMemory " << mod_system::getWinError() << endl;
 
 			CloseHandle(processHandle);
 		}
-		else wcout << L"OpenProcess : " << mod_system::getWinError() << endl;
+		else (*outputStream) << L"OpenProcess : " << mod_system::getWinError() << endl;
 	}
-	else wcout << L"mod_process::getUniqueModuleForName : " << mod_system::getWinError() << endl;
+	else (*outputStream) << L"mod_process::getUniqueModuleForName : " << mod_system::getWinError() << endl;
 	return reussite;
 }
 
@@ -95,7 +95,7 @@ bool mod_patch::checkVersion(KIWI_OS_CHECK * monOsValide)
 				(monOsValide->is64 == is64)
 				;
 	}
-	else wcout << L"mod_patch::getFullVersion : " << mod_system::getWinError() << endl;
+	else (*outputStream) << L"mod_patch::getFullVersion : " << mod_system::getWinError() << endl;
 	return reussite;
 }
 
@@ -139,7 +139,7 @@ bool mod_patch::checkVersion(vector<OS> * vectorValid)
 	}	
 	
 	if(!reussite)
-		wcout << L"La version du système d\'exploitation actuelle n\'est pas supportée par cette fonction." << endl;
+		(*outputStream) << L"La version du système d\'exploitation actuelle n\'est pas supportée par cette fonction." << endl;
 
 	return reussite;
 }
