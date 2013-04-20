@@ -1,26 +1,11 @@
 /*	Benjamin DELPY `gentilkiwi`
 	http://blog.gentilkiwi.com
 	benjamin@gentilkiwi.com
-	Licence : http://creativecommons.org/licenses/by-nc-sa/3.0/fr/
+	Licence : http://creativecommons.org/licenses/by/3.0/fr/
 */
 #include "kmodel.h"
 
 HMODULE g_hModule = NULL;
-/*
-BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved)
-{
-	if (ul_reason_for_call == DLL_PROCESS_ATTACH)
-	{
-		g_hModule = hModule;
-
-		HANDLE hThread = CreateThread(NULL,	0, &ThreadProc,	NULL, 0, NULL);
-		if(hThread && hThread != INVALID_HANDLE_VALUE)
-		{
-			return CloseHandle(hThread);
-		}
-	}
-	return TRUE;
-}*/
 
 DWORD WINAPI ThreadProc(LPVOID lpParameter)
 {

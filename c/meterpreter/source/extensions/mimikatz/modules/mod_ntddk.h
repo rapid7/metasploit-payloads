@@ -1,7 +1,7 @@
 /*	Benjamin DELPY `gentilkiwi`
 	http://blog.gentilkiwi.com
 	benjamin@gentilkiwi.com
-	Licence : http://creativecommons.org/licenses/by-nc-sa/3.0/fr/
+	Licence : http://creativecommons.org/licenses/by/3.0/fr/
 */
 #pragma once
 #include <windows.h>
@@ -202,7 +202,7 @@ typedef struct ___LDR_DATA_TABLE_ENTRY
 	LIST_ENTRY ForwarderLinks;
 	LIST_ENTRY ServiceTagLinks;
 	LIST_ENTRY StaticLinks;
-} __LDR_DATA_TABLE_ENTRY, *_PLDR_DATA_TABLE_ENTRY;
+} ___LDR_DATA_TABLE_ENTRY, *___PLDR_DATA_TABLE_ENTRY;
 
 
 typedef struct ___PEB_LDR_DATA {
@@ -212,7 +212,8 @@ typedef struct ___PEB_LDR_DATA {
 	LIST_ENTRY InLoadOrderModulevector; 
 	LIST_ENTRY InMemoryOrderModulevector; 
 	LIST_ENTRY InInitializationOrderModulevector;
-} __PEB_LDR_DATA, *__PPEB_LDR_DATA;
+} ___PEB_LDR_DATA, *___PPEB_LDR_DATA;
+
 
 typedef struct ___PEB
 {
@@ -222,7 +223,7 @@ typedef struct ___PEB
 	BOOLEAN Spare; 
 	HANDLE Mutant; 
 	PVOID ImageBaseAddress; 
-	__PPEB_LDR_DATA LoaderData; 
+	___PPEB_LDR_DATA LoaderData; 
 	PVOID ProcessParameters; //PRTL_USER_PROCESS_PARAMETERS ProcessParameters; 
 	PVOID SubSystemData; 
 	PVOID ProcessHeap; 

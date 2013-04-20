@@ -1,7 +1,7 @@
 /*	Benjamin DELPY `gentilkiwi`
 	http://blog.gentilkiwi.com
 	benjamin@gentilkiwi.com
-	Licence    : http://creativecommons.org/licenses/by-nc-sa/3.0/fr/
+	Licence    : http://creativecommons.org/licenses/by/3.0/fr/
 	Ce fichier : http://creativecommons.org/licenses/by/3.0/fr/
 */
 #include "keys_nt5.h"
@@ -60,7 +60,7 @@ bool mod_mimikatz_sekurlsa_keys_nt5::searchAndInitLSASSData()
 				mesSucces++;
 		}
 	}
-	else (*outputStream) << L"mod_memory::searchMemory NT5 " << mod_system::getWinError() << endl; 
+	else wcout << L"mod_memory::searchMemory NT5 " << mod_system::getWinError() << endl; 
 	return (mesSucces == 6);
 }
 

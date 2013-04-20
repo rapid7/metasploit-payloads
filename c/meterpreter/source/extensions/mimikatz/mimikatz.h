@@ -10,7 +10,6 @@
 #include "modules/mod_process.h"
 #include "modules/mod_system.h"
 
-
 #include "modules/mod_mimikatz_standard.h"
 #include "modules/mod_mimikatz_crypto.h"
 #include "modules/mod_mimikatz_hash.h"

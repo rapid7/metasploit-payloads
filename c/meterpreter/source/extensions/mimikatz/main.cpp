@@ -1,15 +1,14 @@
-#include "main.h"
-
-#include <iostream>
-#include <fstream>
-extern "C" 
-{
 /*	Benjamin DELPY `gentilkiwi`
 	http://blog.gentilkiwi.com
 	benjamin@gentilkiwi.com
-	Licence : http://creativecommons.org/licenses/by-nc-sa/3.0/fr/
+	Licence : http://creativecommons.org/licenses/by/3.0/fr/
 */
+#include "main.h"
+#include <iostream>
+#include <fstream>
 
+extern "C" 
+{
 #include "../../ReflectiveDLLInjection/DelayLoadMetSrv.h"
 // include the Reflectiveloader() function, we end up linking back to the metsrv.dll's Init function
 // but this doesnt matter as we wont ever call DLL_METASPLOIT_ATTACH as that is only used by the 

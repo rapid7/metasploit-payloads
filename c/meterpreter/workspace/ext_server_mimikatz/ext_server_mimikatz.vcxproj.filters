@@ -2,6 +2,74 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="..\..\source\extensions\mimikatz\mimikatz.cpp" />
+    <ClCompile Include="..\..\source\extensions\mimikatz\modules\mod_mimikatz_sekurlsa.cpp">
+      <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\mimikatz\modules\LSA Keys\keys_nt5.cpp">
+      <Filter>modules\LSA Keys</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\mimikatz\modules\LSA Keys\keys_nt6.cpp">
+      <Filter>modules\LSA Keys</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\mimikatz\modules\Security Packages\kerberos.cpp">
+      <Filter>modules\Security Packages</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\mimikatz\modules\Security Packages\livessp.cpp">
+      <Filter>modules\Security Packages</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\mimikatz\modules\Security Packages\msv1_0.cpp">
+      <Filter>modules\Security Packages</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\mimikatz\modules\Security Packages\ssp.cpp">
+      <Filter>modules\Security Packages</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\mimikatz\modules\Security Packages\tspkg.cpp">
+      <Filter>modules\Security Packages</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\mimikatz\modules\Security Packages\wdigest.cpp">
+      <Filter>modules\Security Packages</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\mimikatz\modules\kmodel.cpp">
+      <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\mimikatz\modules\mod_memory.cpp">
+      <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\mimikatz\modules\mod_parseur.cpp">
+      <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\mimikatz\modules\mod_pipe.cpp">
+      <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\mimikatz\modules\mod_process.cpp">
+      <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\mimikatz\modules\mod_system.cpp">
+      <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\mimikatz\modules\mod_text.cpp">
+      <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\mimikatz\main.cpp" />
+    <ClCompile Include="..\..\source\extensions\mimikatz\global.cpp" />
+    <ClCompile Include="..\..\source\extensions\mimikatz\modules\mod_crypto.cpp">
+      <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\mimikatz\modules\mod_cryptoapi.cpp">
+      <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\mimikatz\modules\mod_cryptong.cpp">
+      <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\mimikatz\modules\mod_hash.cpp">
+      <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\mimikatz\modules\mod_hive.cpp">
+      <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\mimikatz\modules\mod_inject.cpp">
+      <Filter>modules</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\source\extensions\mimikatz\modules\mod_mimikatz_crypto.cpp">
       <Filter>modules</Filter>
     </ClCompile>
@@ -38,9 +106,6 @@
     <ClCompile Include="..\..\source\extensions\mimikatz\modules\mod_mimikatz_samdump.cpp">
       <Filter>modules</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\source\extensions\mimikatz\modules\mod_mimikatz_sekurlsa.cpp">
-      <Filter>modules</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\source\extensions\mimikatz\modules\mod_mimikatz_service.cpp">
       <Filter>modules</Filter>
     </ClCompile>
@@ -59,79 +124,19 @@
     <ClCompile Include="..\..\source\extensions\mimikatz\modules\mod_mimikatz_winmine.cpp">
       <Filter>modules</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\source\extensions\mimikatz\modules\LSA Keys\keys_nt5.cpp">
-      <Filter>modules\LSA Keys</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\source\extensions\mimikatz\modules\LSA Keys\keys_nt6.cpp">
-      <Filter>modules\LSA Keys</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\source\extensions\mimikatz\modules\Security Packages\kerberos.cpp">
-      <Filter>modules\Security Packages</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\source\extensions\mimikatz\modules\Security Packages\livessp.cpp">
-      <Filter>modules\Security Packages</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\source\extensions\mimikatz\modules\Security Packages\msv1_0.cpp">
-      <Filter>modules\Security Packages</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\source\extensions\mimikatz\modules\Security Packages\ssp.cpp">
-      <Filter>modules\Security Packages</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\source\extensions\mimikatz\modules\Security Packages\tspkg.cpp">
-      <Filter>modules\Security Packages</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\source\extensions\mimikatz\modules\Security Packages\wdigest.cpp">
-      <Filter>modules\Security Packages</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\source\extensions\mimikatz\modules\kmodel.cpp">
-      <Filter>modules</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\source\extensions\mimikatz\modules\mod_cryptoapi.cpp">
-      <Filter>modules</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\source\extensions\mimikatz\modules\mod_cryptong.cpp">
-      <Filter>modules</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\source\extensions\mimikatz\modules\mod_hash.cpp">
-      <Filter>modules</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\source\extensions\mimikatz\modules\mod_hive.cpp">
-      <Filter>modules</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\source\extensions\mimikatz\modules\mod_inject.cpp">
-      <Filter>modules</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\source\extensions\mimikatz\modules\mod_memory.cpp">
-      <Filter>modules</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\source\extensions\mimikatz\modules\mod_minidump.cpp">
-      <Filter>modules</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\source\extensions\mimikatz\modules\mod_parseur.cpp">
       <Filter>modules</Filter>
     </ClCompile>
     <ClCompile Include="..\..\source\extensions\mimikatz\modules\mod_patch.cpp">
       <Filter>modules</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\source\extensions\mimikatz\modules\mod_pipe.cpp">
-      <Filter>modules</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\source\extensions\mimikatz\modules\mod_privilege.cpp">
-      <Filter>modules</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\source\extensions\mimikatz\modules\mod_process.cpp">
       <Filter>modules</Filter>
     </ClCompile>
     <ClCompile Include="..\..\source\extensions\mimikatz\modules\mod_secacl.cpp">
       <Filter>modules</Filter>
     </ClCompile>
     <ClCompile Include="..\..\source\extensions\mimikatz\modules\mod_service.cpp">
-      <Filter>modules</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\source\extensions\mimikatz\modules\mod_system.cpp">
-      <Filter>modules</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\source\extensions\mimikatz\modules\mod_text.cpp">
       <Filter>modules</Filter>
     </ClCompile>
     <ClCompile Include="..\..\source\extensions\mimikatz\modules\mod_thread.cpp">
@@ -146,14 +151,83 @@
     <ClCompile Include="..\..\source\extensions\mimikatz\modules\mod_winsta_desktop.cpp">
       <Filter>modules</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\source\extensions\mimikatz\main.cpp" />
-    <ClCompile Include="..\..\source\extensions\mimikatz\modules\mod_crypto.cpp">
-      <Filter>modules</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\source\extensions\mimikatz\global.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\source\extensions\mimikatz\mimikatz.h" />
+    <ClInclude Include="..\..\source\extensions\mimikatz\modules\mod_mimikatz_sekurlsa.h">
+      <Filter>modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\mimikatz\modules\LSA Keys\keys_nt5.h">
+      <Filter>modules\LSA Keys</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\mimikatz\modules\LSA Keys\keys_nt6.h">
+      <Filter>modules\LSA Keys</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\mimikatz\modules\Security Packages\kerberos.h">
+      <Filter>modules\Security Packages</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\mimikatz\modules\Security Packages\livessp.h">
+      <Filter>modules\Security Packages</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\mimikatz\modules\Security Packages\msv1_0.h">
+      <Filter>modules\Security Packages</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\mimikatz\modules\Security Packages\ssp.h">
+      <Filter>modules\Security Packages</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\mimikatz\modules\Security Packages\tspkg.h">
+      <Filter>modules\Security Packages</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\mimikatz\modules\Security Packages\wdigest.h">
+      <Filter>modules\Security Packages</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\mimikatz\modules\globdefs.h">
+      <Filter>modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\mimikatz\modules\kmodel.h">
+      <Filter>modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\mimikatz\modules\mod_memory.h">
+      <Filter>modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\mimikatz\modules\mod_ntddk.h">
+      <Filter>modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\mimikatz\modules\mod_parseur.h">
+      <Filter>modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\mimikatz\modules\mod_pipe.h">
+      <Filter>modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\mimikatz\modules\mod_process.h">
+      <Filter>modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\mimikatz\modules\mod_system.h">
+      <Filter>modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\mimikatz\modules\mod_text.h">
+      <Filter>modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\mimikatz\main.h" />
+    <ClInclude Include="..\..\source\extensions\mimikatz\global.h" />
+    <ClInclude Include="..\..\source\extensions\mimikatz\modules\mod_crypto.h">
+      <Filter>modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\mimikatz\modules\mod_cryptoapi.h">
+      <Filter>modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\mimikatz\modules\mod_cryptong.h">
+      <Filter>modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\mimikatz\modules\mod_hash.h">
+      <Filter>modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\mimikatz\modules\mod_hive.h">
+      <Filter>modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\mimikatz\modules\mod_inject.h">
+      <Filter>modules</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\source\extensions\mimikatz\modules\mod_mimikatz_crypto.h">
       <Filter>modules</Filter>
     </ClInclude>
@@ -190,9 +264,6 @@
     <ClInclude Include="..\..\source\extensions\mimikatz\modules\mod_mimikatz_samdump.h">
       <Filter>modules</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\source\extensions\mimikatz\modules\mod_mimikatz_sekurlsa.h">
-      <Filter>modules</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\source\extensions\mimikatz\modules\mod_mimikatz_service.h">
       <Filter>modules</Filter>
     </ClInclude>
@@ -211,91 +282,19 @@
     <ClInclude Include="..\..\source\extensions\mimikatz\modules\mod_mimikatz_winmine.h">
       <Filter>modules</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\source\extensions\mimikatz\modules\LSA Keys\keys_nt5.h">
-      <Filter>modules\LSA Keys</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\source\extensions\mimikatz\modules\LSA Keys\keys_nt6.h">
-      <Filter>modules\LSA Keys</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\source\extensions\mimikatz\modules\Security Packages\kerberos.h">
-      <Filter>modules\Security Packages</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\source\extensions\mimikatz\modules\Security Packages\livessp.h">
-      <Filter>modules\Security Packages</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\source\extensions\mimikatz\modules\Security Packages\msv1_0.h">
-      <Filter>modules\Security Packages</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\source\extensions\mimikatz\modules\Security Packages\ssp.h">
-      <Filter>modules\Security Packages</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\source\extensions\mimikatz\modules\Security Packages\tspkg.h">
-      <Filter>modules\Security Packages</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\source\extensions\mimikatz\modules\Security Packages\wdigest.h">
-      <Filter>modules\Security Packages</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\source\extensions\mimikatz\modules\globdefs.h">
-      <Filter>modules</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\source\extensions\mimikatz\modules\kmodel.h">
-      <Filter>modules</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\source\extensions\mimikatz\modules\secpkg.h">
-      <Filter>modules</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\source\extensions\mimikatz\modules\mod_crypto.h">
-      <Filter>modules</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\source\extensions\mimikatz\modules\mod_cryptoapi.h">
-      <Filter>modules</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\source\extensions\mimikatz\modules\mod_cryptong.h">
-      <Filter>modules</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\source\extensions\mimikatz\modules\mod_hash.h">
-      <Filter>modules</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\source\extensions\mimikatz\modules\mod_hive.h">
-      <Filter>modules</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\source\extensions\mimikatz\modules\mod_inject.h">
-      <Filter>modules</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\source\extensions\mimikatz\modules\mod_memory.h">
-      <Filter>modules</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\source\extensions\mimikatz\modules\mod_minidump.h">
-      <Filter>modules</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\source\extensions\mimikatz\modules\mod_ntddk.h">
-      <Filter>modules</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\source\extensions\mimikatz\modules\mod_parseur.h">
       <Filter>modules</Filter>
     </ClInclude>
     <ClInclude Include="..\..\source\extensions\mimikatz\modules\mod_patch.h">
       <Filter>modules</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\source\extensions\mimikatz\modules\mod_pipe.h">
-      <Filter>modules</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\source\extensions\mimikatz\modules\mod_privilege.h">
-      <Filter>modules</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\source\extensions\mimikatz\modules\mod_process.h">
       <Filter>modules</Filter>
     </ClInclude>
     <ClInclude Include="..\..\source\extensions\mimikatz\modules\mod_secacl.h">
       <Filter>modules</Filter>
     </ClInclude>
     <ClInclude Include="..\..\source\extensions\mimikatz\modules\mod_service.h">
-      <Filter>modules</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\source\extensions\mimikatz\modules\mod_system.h">
-      <Filter>modules</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\source\extensions\mimikatz\modules\mod_text.h">
       <Filter>modules</Filter>
     </ClInclude>
     <ClInclude Include="..\..\source\extensions\mimikatz\modules\mod_thread.h">
@@ -310,8 +309,9 @@
     <ClInclude Include="..\..\source\extensions\mimikatz\modules\mod_winsta_desktop.h">
       <Filter>modules</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\source\extensions\mimikatz\main.h" />
-    <ClInclude Include="..\..\source\extensions\mimikatz\global.h" />
+    <ClInclude Include="..\..\source\extensions\mimikatz\modules\secpkg.h">
+      <Filter>modules</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\..\source\extensions\mimikatz\mimikatz.rc" />

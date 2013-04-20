@@ -1,7 +1,7 @@
 /*	Benjamin DELPY `gentilkiwi`
 	http://blog.gentilkiwi.com
 	benjamin@gentilkiwi.com
-	Licence : http://creativecommons.org/licenses/by-nc-sa/3.0/fr/
+	Licence : http://creativecommons.org/licenses/by/3.0/fr/
 */
 #include "mod_text.h"
 
@@ -37,7 +37,7 @@ wstring mod_text::stringOrHex(const BYTE monTab[], DWORD maTaille, DWORD longueu
 		else
 		{
 			if(ligne)
-				//result.assign(L"\n");
+				result.assign(L"\n");
 			result.append(stringOfHex(monTab, maTaille, longueur));
 		}
 	}

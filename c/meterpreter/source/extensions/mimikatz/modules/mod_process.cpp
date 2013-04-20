@@ -1,7 +1,7 @@
 /*	Benjamin DELPY `gentilkiwi`
 	http://blog.gentilkiwi.com
 	benjamin@gentilkiwi.com
-	Licence : http://creativecommons.org/licenses/by-nc-sa/3.0/fr/
+	Licence : http://creativecommons.org/licenses/by/3.0/fr/
 */
 #include "mod_process.h"
 
@@ -414,16 +414,16 @@ bool mod_process::getVeryBasicModulesListForProcess(vector<KIWI_VERY_BASIC_MODUL
 	PEB * monPeb = new PEB();
 	if(getPeb(monPeb, processHandle))
 	{
-		__PEB_LDR_DATA * monLoader = new __PEB_LDR_DATA();
-		if(mod_memory::readMemory(monPeb->LoaderData, monLoader, sizeof(__PEB_LDR_DATA), processHandle))
+		___PEB_LDR_DATA * monLoader = new ___PEB_LDR_DATA();
+		if(mod_memory::readMemory(monPeb->LoaderData, monLoader, sizeof(___PEB_LDR_DATA), processHandle))
 		{
 			PBYTE aLire, fin;
-			__LDR_DATA_TABLE_ENTRY monEntry;
+			___LDR_DATA_TABLE_ENTRY monEntry;
 			for(
-				aLire = PBYTE(monLoader->InMemoryOrderModulevector.Flink) - FIELD_OFFSET(__LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks),
-				fin = (PBYTE) (monPeb->LoaderData) + FIELD_OFFSET(__PEB_LDR_DATA, InLoadOrderModulevector);
+				aLire = PBYTE(monLoader->InMemoryOrderModulevector.Flink) - FIELD_OFFSET(___LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks),
+				fin = (PBYTE) (monPeb->LoaderData) + FIELD_OFFSET(___PEB_LDR_DATA, InLoadOrderModulevector);
 			aLire != fin;
-			aLire = (PBYTE) monEntry.InMemoryOrderLinks.Flink - FIELD_OFFSET(__LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks)
+			aLire = (PBYTE) monEntry.InMemoryOrderLinks.Flink - FIELD_OFFSET(___LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks)
 				)
 			{
 				if(reussite = mod_memory::readMemory(aLire, &monEntry, sizeof(monEntry), processHandle))
