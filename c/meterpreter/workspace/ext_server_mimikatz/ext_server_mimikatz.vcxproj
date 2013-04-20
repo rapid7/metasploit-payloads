@@ -239,6 +239,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\source\extensions\mimikatz\global.cpp" />
     <ClCompile Include="..\..\source\extensions\mimikatz\main.cpp" />
     <ClCompile Include="..\..\source\extensions\mimikatz\mimikatz.cpp" />
     <ClCompile Include="..\..\source\extensions\mimikatz\modules\kmodel.cpp" />
@@ -292,6 +293,8 @@
     <ClCompile Include="..\..\source\extensions\mimikatz\modules\Security Packages\wdigest.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\source\extensions\mimikatz\global.h" />
+    <ClInclude Include="..\..\source\extensions\mimikatz\main.h" />
     <ClInclude Include="..\..\source\extensions\mimikatz\mimikatz.h" />
     <ClInclude Include="..\..\source\extensions\mimikatz\modules\globdefs.h" />
     <ClInclude Include="..\..\source\extensions\mimikatz\modules\kmodel.h" />

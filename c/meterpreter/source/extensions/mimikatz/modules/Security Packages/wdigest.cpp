@@ -84,7 +84,7 @@ bool WINAPI mod_mimikatz_sekurlsa_wdigest::getWDigestLogonData(__in PLUID logId,
 		mod_mimikatz_sekurlsa::genericCredsToStream(mesCreds, justSecurity);
 		delete [] monBuff;
 	}
-	else wcout << L"n.a. (wdigest KO)";
+	else (*outputStream) << L"n.a. (wdigest KO)";
 
 	return true;
 }

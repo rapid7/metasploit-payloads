@@ -150,6 +150,7 @@
     <ClCompile Include="..\..\source\extensions\mimikatz\modules\mod_crypto.cpp">
       <Filter>modules</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\source\extensions\mimikatz\global.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\source\extensions\mimikatz\mimikatz.h" />
@@ -309,6 +310,8 @@
     <ClInclude Include="..\..\source\extensions\mimikatz\modules\mod_winsta_desktop.h">
       <Filter>modules</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\source\extensions\mimikatz\main.h" />
+    <ClInclude Include="..\..\source\extensions\mimikatz\global.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\..\source\extensions\mimikatz\mimikatz.rc" />

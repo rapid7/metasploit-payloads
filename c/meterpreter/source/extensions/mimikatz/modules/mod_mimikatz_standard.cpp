@@ -25,7 +25,7 @@ vector<KIWI_MIMIKATZ_LOCAL_MODULE_COMMAND> mod_mimikatz_standard::getMimiKatzCom
 
 bool mod_mimikatz_standard::version(vector<wstring> * arguments)
 {
-	wcout << MIMIKATZ_FULL << L" (" << __DATE__ << L' ' << __TIME__ << L')' << endl;
+	(*outputStream) << MIMIKATZ_FULL << L" (" << __DATE__ << L' ' << __TIME__ << L')' << endl;
 	return true;
 }
 
@@ -51,13 +51,13 @@ bool mod_mimikatz_standard::exit(vector<wstring> * arguments)
 
 bool mod_mimikatz_standard::reponse(vector<wstring> * arguments)
 {
-	wcout << L"La réponse est 42." << endl;
+	(*outputStream) << L"La réponse est 42." << endl;
 	return true;
 }
 
 bool mod_mimikatz_standard::cite(vector<wstring> * arguments)
 {
-	wcout << L"I edit the world in HEX" << endl;
+	(*outputStream) << L"I edit the world in HEX" << endl;
 	return true;
 }
 
@@ -69,8 +69,8 @@ bool mod_mimikatz_standard::sleep(vector<wstring> * arguments)
 		wstringstream z;
 		z << arguments->front(); z >> dwMilliseconds;
 	}
-	wcout << L"Sleep : " << dwMilliseconds << L" ms... " << flush;
+	(*outputStream) << L"Sleep : " << dwMilliseconds << L" ms... " << flush;
 	Sleep(dwMilliseconds);
-	wcout << L"Fin !" << endl;
+	(*outputStream) << L"Fin !" << endl;
 	return true;
 }

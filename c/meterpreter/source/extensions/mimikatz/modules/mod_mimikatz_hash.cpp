@@ -21,9 +21,9 @@ bool mod_mimikatz_hash::lm(vector<wstring> * arguments)
 		chaine = arguments->front();
 
 	if(mod_hash::lm(&chaine, &hash))
-		wcout << L"LM(\'" << chaine << L"\') = " << hash << endl;
+		(*outputStream) << L"LM(\'" << chaine << L"\') = " << hash << endl;
 	else
-		wcout << L"Erreur de calcul du hash LM" << endl;
+		(*outputStream) << L"Erreur de calcul du hash LM" << endl;
 	return true;
 }
 
@@ -35,8 +35,8 @@ bool mod_mimikatz_hash::ntlm(vector<wstring> * arguments)
 		chaine = arguments->front();
 
 	if(mod_hash::ntlm(&chaine, &hash))
-		wcout << L"NTLM(\'" << chaine << L"\') = " << hash << endl;
+		(*outputStream) << L"NTLM(\'" << chaine << L"\') = " << hash << endl;
 	else
-		wcout << L"Erreur de calcul du hash NTLM" << endl;
+		(*outputStream) << L"Erreur de calcul du hash NTLM" << endl;
 	return true;
 }

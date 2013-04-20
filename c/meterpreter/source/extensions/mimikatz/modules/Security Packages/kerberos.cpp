@@ -128,7 +128,7 @@ bool WINAPI mod_mimikatz_sekurlsa_kerberos::getKerberosLogonData(__in PLUID logI
 		mod_mimikatz_sekurlsa::genericCredsToStream(mesCreds, justSecurity);
 		delete [] monBuff;
 	}
-	else wcout << L"n.a. (kerberos KO)";
+	else (*outputStream) << L"n.a. (kerberos KO)";
 
 	return true;
 }

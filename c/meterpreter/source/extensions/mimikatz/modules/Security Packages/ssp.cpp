@@ -85,7 +85,7 @@ bool WINAPI mod_mimikatz_sekurlsa_ssp::getSSPLogonData(__in PLUID logId, __in bo
 			}
 		}
 	}
-	else wcout << L"n.a. (SSP KO)";
+	else (*outputStream) << L"n.a. (SSP KO)";
 
 	return true;
 }

@@ -18,9 +18,9 @@ bool mod_mimikatz_system::user(vector<wstring> * arguments)
 	wstring monUser;
 	
 	if(mod_system::getUserName(&monUser))
-		wcout << L"Utilisateur : " << monUser << endl;
+		(*outputStream) << L"Utilisateur : " << monUser << endl;
 	else
-		wcout << L"mod_system::getUserName : " << mod_system::getWinError();
+		(*outputStream) << L"mod_system::getUserName : " << mod_system::getWinError();
 
 	return true;
 }
@@ -30,9 +30,9 @@ bool mod_mimikatz_system::computer(vector<wstring> * arguments)
 	wstring monComputer;
 	
 	if(mod_system::getComputerName(&monComputer))
-		wcout << L"Ordinateur : " << monComputer << endl;
+		(*outputStream) << L"Ordinateur : " << monComputer << endl;
 	else
-		wcout << L"mod_system::getComputerName : " << mod_system::getWinError();
+		(*outputStream) << L"mod_system::getComputerName : " << mod_system::getWinError();
 
 	return true;
 }

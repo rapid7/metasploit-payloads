@@ -13,12 +13,12 @@ vector<KIWI_MIMIKATZ_LOCAL_MODULE_COMMAND> mod_mimikatz_impersonate::getMimiKatz
 }
 bool mod_mimikatz_impersonate::revert(vector<wstring> * arguments)
 {
-	wcout << L"RevertToSelf : ";
+	(*outputStream) << L"RevertToSelf : ";
 	if(RevertToSelf())
-		wcout << L"ok";
+		(*outputStream) << L"ok";
 	else
-		wcout << L"ko ; " << mod_system::getWinError();
-	wcout << endl;
+		(*outputStream) << L"ko ; " << mod_system::getWinError();
+	(*outputStream) << endl;
 
 	return true;
 }

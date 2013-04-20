@@ -29,7 +29,7 @@ bool mod_mimikatz_minesweeper::infos(vector<wstring> * arguments)
 			STRUCT_MINESWEEPER_BOARD monBoard;
 			if(mod_memory::readMemory(monGame.pBoard, &monBoard, sizeof(STRUCT_MINESWEEPER_BOARD), maStruct->hMineSweeper))
 			{
-				wcout << L"Mines           : " << monBoard.nbMines << endl <<
+				(*outputStream) << L"Mines           : " << monBoard.nbMines << endl <<
 					L"Dimension       : " << monBoard.nbLignes << L" lignes x " << monBoard.nbColonnes << L" colonnes" << endl <<
 					L"Champ           : " << endl << endl;
 
@@ -43,15 +43,15 @@ bool mod_mimikatz_minesweeper::infos(vector<wstring> * arguments)
 
 				for(DWORD l = 0; l < monBoard.nbLignes; l++)
 				{
-					wcout << L'\t';
+					(*outputStream) << L'\t';
 					for(DWORD c = 0; c < monBoard.nbColonnes; c++)
-						wcout << monTableau[l][c] << L' ';
-					wcout << endl;
+						(*outputStream) << monTableau[l][c] << L' ';
+					(*outputStream) << endl;
 					delete[] monTableau[l];
 				}
 				delete[] monTableau;
-			} else wcout << L"Impossible de lire les données du plateau" << endl;
-		} else wcout << L"Impossible de lire les données du jeu" << endl;
+			} else (*outputStream) << L"Impossible de lire les données du plateau" << endl;
+		} else (*outputStream) << L"Impossible de lire les données du jeu" << endl;
 		CloseHandle(maStruct->hMineSweeper);
 	}
 	delete maStruct;
@@ -84,13 +84,13 @@ bool mod_mimikatz_minesweeper::parseField(structHandleAndAddr * monHandleAndAddr
 							else
 								if(reinterpret_cast<BYTE *>(cellules)[l]) monTableau[l][c] = '*';
 						}
-					} else wcout << L"Impossible de lire les élements de la colonne : "  << c << endl;
+					} else (*outputStream) << L"Impossible de lire les élements de la colonne : "  << c << endl;
 					delete[] cellules;
-				} else wcout << L"Impossible de lire les références de la colonne : "  << c << endl;
+				} else (*outputStream) << L"Impossible de lire les références de la colonne : "  << c << endl;
 			}
-		} else wcout << L"Impossible de lire les références des colonnes" << endl;
+		} else (*outputStream) << L"Impossible de lire les références des colonnes" << endl;
 		delete[] ref_colonnes_elements;
-	} else wcout << L"Impossible de lire les références de l\'élement" << endl;
+	} else (*outputStream) << L"Impossible de lire les références de l\'élement" << endl;
 
 	return true;
 }

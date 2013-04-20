@@ -36,32 +36,32 @@ bool mod_mimikatz_winmine::infosOrCheat(vector<wstring> * arguments, bool cheat)
 		structMonDemineur monDemineur;
 		if(mod_memory::readMemory(maStruct->addrMonDemineur, &monDemineur, sizeof(structMonDemineur), maStruct->hWinmine))
 		{
-			wcout << L"Mines           : " << monDemineur.nbMines << endl <<
+			(*outputStream) << L"Mines           : " << monDemineur.nbMines << endl <<
 				L"Dimension       : " << monDemineur.hauteur << L" lignes x " << monDemineur.longueur << L" colonnes" << endl <<
 				L"Champ           : " << endl << endl;
 
 			for (DWORD y = 1; y <= monDemineur.hauteur; y++)
 			{
 				if(!cheat)
-					wcout << L'\t';
+					(*outputStream) << L'\t';
 				
 				for(DWORD x = 1; x <= monDemineur.longueur; x++)
 				{
 					BYTE laCase = monDemineur.tabMines[y][x];
 					
 					if(!cheat)
-						wcout << L' ' << static_cast<wchar_t>((laCase & 0x80) ? '*' : DISP_WINMINE[laCase & 0x0f]);
+						(*outputStream) << L' ' << static_cast<wchar_t>((laCase & 0x80) ? '*' : DISP_WINMINE[laCase & 0x0f]);
 					else if(laCase & 0x80)
 						monDemineur.tabMines[y][x] = 0x4e;
 				}
 				if(!cheat)
-					wcout << endl;
+					(*outputStream) << endl;
 			}
 		
 			if(cheat)
 			{
 				if(mod_memory::writeMemory(maStruct->addrMonDemineur, &monDemineur, sizeof(structMonDemineur), maStruct->hWinmine))
-					wcout << L"Patché ;)" << endl;
+					(*outputStream) << L"Patché ;)" << endl;
 
 				vector<mod_windows::KIWI_HWND_ENTRY> mesHWNDS;
 				if(mod_windows::getHWNDsFromProcessId(&mesHWNDS, maStruct->pidWinmine))

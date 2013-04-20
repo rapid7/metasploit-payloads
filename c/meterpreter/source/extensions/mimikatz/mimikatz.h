@@ -33,7 +33,7 @@
 
 class mimikatz
 {
-private:
+public:
 	static vector<KIWI_MIMIKATZ_LOCAL_MODULE_COMMAND> getMimiKatzCommands();
 	vector<KIWI_MIMIKATZ_LOCAL_MODULE> mesModules;
 	bool initLocalModules();

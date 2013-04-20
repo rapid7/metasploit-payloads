@@ -36,32 +36,32 @@ bool mimikatz::initLocalModules()
 mimikatz::mimikatz(vector<wstring> * mesArguments) : Kmimikatz(NULL)
 {
 	initLocalModules();
-	SetConsoleTitle(MIMIKATZ_FULL);
-	wcout << MIMIKATZ_FULL << L"\t/* Traitement du Kiwi (" << __DATE__ << L' ' << __TIME__ << L") */" << endl <<
-		L"// http://blog.gentilkiwi.com/mimikatz" << endl;
+	//SetConsoleTitle(MIMIKATZ_FULL);
+	//(*outputStream) << MIMIKATZ_FULL << L"\t/* Traitement du Kiwi (" << __DATE__ << L' ' << __TIME__ << L") */" << endl <<
+	//	L"// http://blog.gentilkiwi.com/mimikatz" << endl;
 
-	bool mustContinue = true;
-	if(mesArguments)
-	{
-		for(vector<wstring>::iterator maCommande = mesArguments->begin(); mustContinue && (maCommande != mesArguments->end()); maCommande++)
-		{
-			wstring commande = *maCommande;
-			wcout << endl << MIMIKATZ << L"(commandline) # " << dec << commande << endl;
-			mustContinue = tryToDispatch(&commande);
-		}
-	}
+	//bool mustContinue = true;
+	//if(mesArguments)
+	//{
+	//	for(vector<wstring>::iterator maCommande = mesArguments->begin(); mustContinue && (maCommande != mesArguments->end()); maCommande++)
+	//	{
+	//		wstring commande = *maCommande;
+	//		(*outputStream) << endl << MIMIKATZ << L"(commandline) # " << dec << commande << endl;
+	//		mustContinue = tryToDispatch(&commande);
+	//	}
+	//}
 
-	if(mustContinue)
-	{
-		wstring * monBuffer = new wstring();
-		do
-		{
-			wcout << endl << MIMIKATZ << L" # " << dec;
-			getline(wcin, *monBuffer);
-		} while(tryToDispatch(monBuffer));
-		delete monBuffer;
-	}
-	wcout.flush();
+	//if(mustContinue)
+	//{
+	//	wstring * monBuffer = new wstring();
+	//	do
+	//	{
+	//		(*outputStream) << endl << MIMIKATZ << L" # " << dec;
+	//		getline(wcin, *monBuffer);
+	//	} while(tryToDispatch(monBuffer));
+	//	delete monBuffer;
+	//}
+	//(*outputStream).flush();
 }
 
 mimikatz::~mimikatz(void)
@@ -128,17 +128,17 @@ bool mimikatz::doCommandeLocale(wstring * fonction, vector<wstring> * arguments)
 				}
 			}
 
-			if(module.empty()) wcout << L"Commande locale \'" << commande << L"\' introuvable" << endl; 
-			else wcout << L"Module : \'" << module << L"\' identifié, mais commande \'" << commande << L"\' introuvable" << endl; 
+			if(module.empty()) (*outputStream) << L"Commande locale \'" << commande << L"\' introuvable" << endl; 
+			else (*outputStream) << L"Module : \'" << module << L"\' identifié, mais commande \'" << commande << L"\' introuvable" << endl; 
 
-			wcout << endl << L"Description du module : " << monModule->description << endl;
+			(*outputStream) << endl << L"Description du module : " << monModule->description << endl;
 			listCommandes(monModule);
 
 			return true;
 		}
 	}
 
-	wcout << L"Module : \'" << module << L"\' introuvable" << endl << endl << L"Modules disponibles : " << endl;
+	(*outputStream) << L"Module : \'" << module << L"\' introuvable" << endl << endl << L"Modules disponibles : " << endl;
 	listModules();
 	return true;
 }
@@ -149,14 +149,14 @@ bool mimikatz::openKernel()
 
 	if(!Kmimikatz || Kmimikatz == INVALID_HANDLE_VALUE)
 	{
-		wcout << L"Ouverture du pilote mimikatz : ";
+		(*outputStream) << L"Ouverture du pilote mimikatz : ";
 		Kmimikatz = CreateFile(L"\\\\.\\mimikatz", GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
 
 		if(reussite = (Kmimikatz && Kmimikatz != INVALID_HANDLE_VALUE))
-			wcout << L"OK";
+			(*outputStream) << L"OK";
 		else
-			wcout << L"CreateFile ; " << mod_system::getWinError();
-		wcout << endl;
+			(*outputStream) << L"CreateFile ; " << mod_system::getWinError();
+		(*outputStream) << endl;
 	}
 	else
 	{
@@ -188,41 +188,41 @@ bool mimikatz::doCommandeKernel(std::wstring &commande)
 		{
 			DWORD dwReturn;
 			/*
-			wcout << L"DEBUG WriteFile " << endl <<
+			(*outputStream) << L"DEBUG WriteFile " << endl <<
 				L"\tToWrite : " << (commande.size() + 1) * sizeof(wchar_t) << endl;
 			*/
 			if(WriteFile(Kmimikatz, commande.c_str(), (commande.size() + 1) * sizeof(wchar_t), &dwReturn, NULL))
 			{
-				/*wcout << L"\tWriten  : " << dwReturn << endl << endl;*/
+				/*(*outputStream) << L"\tWriten  : " << dwReturn << endl << endl;*/
 
 				DWORD dwBuff = 0x40000;
 				DWORD dwRead = 0;
 				BYTE * buffer = new BYTE[dwBuff];
 				RtlZeroMemory(buffer, dwBuff);
 
-				/*wcout << L"DEBUG ReadFile " << endl <<
+				/*(*outputStream) << L"DEBUG ReadFile " << endl <<
 					L"\tBuffSize : " << dwBuff << endl;*/
 
 				if(ReadFile(Kmimikatz, buffer, dwBuff, &dwRead, NULL))
 				{
-					/*wcout <<
+					/*(*outputStream) <<
 						L"\tReaded   : " << dwRead << endl <<
 						endl;
 					*/
-					wcout /*<< L"BUFF : " << endl*/
+					(*outputStream) /*<< L"BUFF : " << endl*/
 						<< reinterpret_cast<wchar_t *>(buffer) << endl;
 				}
-				else wcout << L"ReadFile : " << mod_system::getWinError() << endl;
+				else (*outputStream) << L"ReadFile : " << mod_system::getWinError() << endl;
 
 				delete[] buffer;
 			}
-			else wcout << L"WriteFile : " << mod_system::getWinError() << endl;
+			else (*outputStream) << L"WriteFile : " << mod_system::getWinError() << endl;
 		}
-		else wcout << L"Impossible de communiquer avec le pilote mimikatz";
+		else (*outputStream) << L"Impossible de communiquer avec le pilote mimikatz";
 	}
 	else
 	{
-		wcout << L"Commande vide (fermeture forcée) reçue" << endl;
+		(*outputStream) << L"Commande vide (fermeture forcée) reçue" << endl;
 		closeKernel();
 	}
 
@@ -246,21 +246,21 @@ bool mimikatz::doCommandeDistante(std::wstring &commande)
 					{
 						if(commOk = mod_mimikatz_inject::monCommunicator->readFromPipe(buffer))
 						{
-							wcout << buffer.substr(1) ;
+							(*outputStream) << buffer.substr(1) ;
 						}
 						else
 						{
-							wcout << L"Erreur : pas de réponse possible ; " << mod_system::getWinError() << endl;
+							(*outputStream) << L"Erreur : pas de réponse possible ; " << mod_system::getWinError() << endl;
 							break;
 						}
 					} while(*(buffer.begin()) == L'#');
 				}
-				else wcout << L"Erreur : pas d\'écriture possible ; " << mod_system::getWinError() << endl;
+				else (*outputStream) << L"Erreur : pas d\'écriture possible ; " << mod_system::getWinError() << endl;
 			}
 		}
-		else wcout << L"Commande vide (déconnexion forcée) reçue" << endl;
+		else (*outputStream) << L"Commande vide (déconnexion forcée) reçue" << endl;
 	}
-	else wcout << L"Erreur : pas ou plus de communication établie" << endl;
+	else (*outputStream) << L"Erreur : pas ou plus de communication établie" << endl;
 
 	if(!commOk)
 		mod_mimikatz_inject::closeThisCommunicator();
@@ -272,7 +272,7 @@ void mimikatz::listModules()
 {
 	for(vector<KIWI_MIMIKATZ_LOCAL_MODULE>::iterator monModule = mesModules.begin(); monModule != mesModules.end(); monModule++)
 	{
-		wcout << setw(12) << setfill(wchar_t(' ')) << monModule->module << L"\t- " << monModule->description << endl;	
+		(*outputStream) << setw(12) << setfill(wchar_t(' ')) << monModule->module << L"\t- " << monModule->description << endl;	
 	}
 }
 
@@ -281,6 +281,6 @@ void mimikatz::listCommandes(vector<KIWI_MIMIKATZ_LOCAL_MODULE>::iterator monMod
 	for(vector<KIWI_MIMIKATZ_LOCAL_MODULE_COMMAND>::iterator maCommande = monModule->commandes.begin(); maCommande != monModule->commandes.end(); maCommande++)
 	{
 		if(maCommande->commandName.front() != L':')
-			wcout << setw(12) << setfill(wchar_t(' ')) << maCommande->commandName << L"\t- " << maCommande->commandHelp << endl;	
+			(*outputStream) << setw(12) << setfill(wchar_t(' ')) << maCommande->commandName << L"\t- " << maCommande->commandHelp << endl;	
 	}
 }

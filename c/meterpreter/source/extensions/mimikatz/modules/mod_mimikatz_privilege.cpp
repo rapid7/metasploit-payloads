@@ -45,7 +45,7 @@ bool mod_mimikatz_privilege::simplePriv(wstring priv, vector<wstring> * argument
 {
 	bool ajout = arguments->empty();
 	
-	wcout << L"Demande d" << (ajout ? L"\'ACTIVATION" : L"e RETRAIT") << L" du privilège : " << priv << L" : ";
+	(*outputStream) << L"Demande d" << (ajout ? L"\'ACTIVATION" : L"e RETRAIT") << L" du privilège : " << priv << L" : ";
 	
 	vector<pair<wstring, DWORD>> * mesPrivs = new vector<pair<wstring, DWORD>>;
 	mesPrivs->push_back(make_pair(priv, ajout ? SE_PRIVILEGE_ENABLED : 0));
@@ -54,10 +54,10 @@ bool mod_mimikatz_privilege::simplePriv(wstring priv, vector<wstring> * argument
 	delete mesPrivs;
 	
 	if(reussite)
-		wcout << L"OK";
+		(*outputStream) << L"OK";
 	else
-		wcout << L"KO ; " << mod_system::getWinError();
-	wcout << endl;
+		(*outputStream) << L"KO ; " << mod_system::getWinError();
+	(*outputStream) << endl;
 	
 	return reussite;
 }
@@ -74,10 +74,10 @@ bool mod_mimikatz_privilege::multiplePrivs(vector<wstring> * privs, DWORD type)
 	delete mesPrivs;
 
 	if(reussite)
-		wcout << L"OK";
+		(*outputStream) << L"OK";
 	else
-		wcout << L"KO ; " << mod_system::getWinError();
-	wcout << endl;
+		(*outputStream) << L"KO ; " << mod_system::getWinError();
+	(*outputStream) << endl;
 
 	return reussite;
 }
@@ -91,40 +91,40 @@ bool mod_mimikatz_privilege::list(vector<wstring> * arguments)
 	{
 		for(vector<pair<wstring, DWORD>>::iterator monPrivilege = mesPrivs->begin(); (monPrivilege != mesPrivs->end()) ; monPrivilege++)
 		{
-			wcout << setw(35) << setfill(wchar_t(L' ')) << left << monPrivilege->first << right << L'\t';
+			(*outputStream) << setw(35) << setfill(wchar_t(L' ')) << left << monPrivilege->first << right << L'\t';
 			
 			if(monPrivilege->second & SE_PRIVILEGE_VALID_ATTRIBUTES)
 			{
 				if(monPrivilege->second & SE_PRIVILEGE_ENABLED_BY_DEFAULT)
 				{
-					wcout << L"ENABLED_BY_DEFAULT ";
+					(*outputStream) << L"ENABLED_BY_DEFAULT ";
 				}
 
 				if(monPrivilege->second & SE_PRIVILEGE_ENABLED)
 				{
-					wcout << L"ENABLED ";
+					(*outputStream) << L"ENABLED ";
 				}
 
 				if(monPrivilege->second & SE_PRIVILEGE_REMOVED)
 				{
-					wcout << L"REMOVED ";
+					(*outputStream) << L"REMOVED ";
 				}
 
 				if(monPrivilege->second & SE_PRIVILEGE_USED_FOR_ACCESS)
 				{
-					wcout << L"USED_FOR_ACCESS ";
+					(*outputStream) << L"USED_FOR_ACCESS ";
 				}
 
 				if(monPrivilege->second & SE_PRIVILEGE_REMOVED)
 				{
-					wcout << L"REMOVED";
+					(*outputStream) << L"REMOVED";
 				}
 			}
 
-			wcout << endl;
+			(*outputStream) << endl;
 		}
 	}
-	else wcout << mod_system::getWinError() << endl;
+	else (*outputStream) << mod_system::getWinError() << endl;
 
 	return true;
 }

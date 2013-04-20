@@ -26,7 +26,7 @@ bool mod_mimikatz_process::start(vector<wstring> * arguments)
 		bool paused = false;
 		bool sudo = false;
 
-		wcout << L"Demande d\'exécution de : \'" << commande << L"'" << endl;
+		(*outputStream) << L"Demande d\'exécution de : \'" << commande << L"'" << endl;
 		PROCESS_INFORMATION pi = {INVALID_HANDLE_VALUE, INVALID_HANDLE_VALUE, 0, 0};
 
 		switch(arguments->size())
@@ -57,19 +57,19 @@ bool mod_mimikatz_process::start(vector<wstring> * arguments)
 		if(mod_process::start(&commande, &pi, paused, sudo))
 		{
 			if(paused)
-				wcout << L" * Le Thread principal est suspendu ! Reprise avec : thread::resume " << pi.dwThreadId << endl;
+				(*outputStream) << L" * Le Thread principal est suspendu ! Reprise avec : thread::resume " << pi.dwThreadId << endl;
 
 			if(sudo)
-				wcout << L" * Le processus est démarré avec de fausses données d\'identification" << endl;
+				(*outputStream) << L" * Le processus est démarré avec de fausses données d\'identification" << endl;
 
 			printInfosFromPid(pi.dwProcessId, pi.dwThreadId);
 		}
-		else wcout << L"mod_process::start ; " <<  mod_system::getWinError() << endl;
+		else (*outputStream) << L"mod_process::start ; " <<  mod_system::getWinError() << endl;
 	}
 	else
 	{
 doStartProcess_syntaxerror:
-		wcout << L"Erreur de syntaxe ; " << L"process::start [/paused] [/sudo] commande" << endl;
+		(*outputStream) << L"Erreur de syntaxe ; " << L"process::start [/paused] [/sudo] commande" << endl;
 	}
 	
 	return true;
@@ -84,14 +84,14 @@ bool mod_mimikatz_process::stop(vector<wstring> * arguments)
 
 		if(mod_process::getUniqueForName(&monProcess, &procName))
 		{
-			wcout << L"Fin de : " <<  procName << L'\t';
+			(*outputStream) << L"Fin de : " <<  procName << L'\t';
 			if(mod_process::stop(monProcess.th32ProcessID))
-				wcout << L"OK";
+				(*outputStream) << L"OK";
 			else
-				wcout << L"KO - mod_process::stop ; " << mod_system::getWinError();
-			wcout << endl;
+				(*outputStream) << L"KO - mod_process::stop ; " << mod_system::getWinError();
+			(*outputStream) << endl;
 		}
-		else wcout << L"mod_process::getUniqueForName ; " << mod_system::getWinError() << endl;
+		else (*outputStream) << L"mod_process::getUniqueForName ; " << mod_system::getWinError() << endl;
 	}
 
 	return true;
@@ -107,14 +107,14 @@ bool mod_mimikatz_process::suspend(vector<wstring> * arguments)
 
 		if(mod_process::getUniqueForName(&monProcess, &procName))
 		{
-			wcout << L"Suspension de : " <<  procName << L'\t';
+			(*outputStream) << L"Suspension de : " <<  procName << L'\t';
 			if(mod_process::suspend(monProcess.th32ProcessID))
-				wcout << L"OK";
+				(*outputStream) << L"OK";
 			else
-				wcout << L"KO - mod_process::suspend ; " << mod_system::getWinError();
-			wcout << endl;
+				(*outputStream) << L"KO - mod_process::suspend ; " << mod_system::getWinError();
+			(*outputStream) << endl;
 		}
-		else wcout << L"mod_process::getUniqueForName ; " << mod_system::getWinError() << endl;
+		else (*outputStream) << L"mod_process::getUniqueForName ; " << mod_system::getWinError() << endl;
 	}
 
 	return true;
@@ -130,14 +130,14 @@ bool mod_mimikatz_process::resume(vector<wstring> * arguments)
 
 		if(mod_process::getUniqueForName(&monProcess, &procName))
 		{
-			wcout << L"Reprise de : " <<  procName << L'\t';
+			(*outputStream) << L"Reprise de : " <<  procName << L'\t';
 			if(mod_process::resume(monProcess.th32ProcessID))
-				wcout << L"OK";
+				(*outputStream) << L"OK";
 			else
-				wcout << L"KO - mod_process::resume ; " << mod_system::getWinError();
-			wcout << endl;
+				(*outputStream) << L"KO - mod_process::resume ; " << mod_system::getWinError();
+			(*outputStream) << endl;
 		}
-		else wcout << L"mod_process::getUniqueForName ; " << mod_system::getWinError() << endl;
+		else (*outputStream) << L"mod_process::getUniqueForName ; " << mod_system::getWinError() << endl;
 	}
 
 	return true;
@@ -151,10 +151,10 @@ bool mod_mimikatz_process::list(vector<wstring> * arguments)
 	vector<mod_process::KIWI_PROCESSENTRY32> * vectorProcess = new vector<mod_process::KIWI_PROCESSENTRY32>();
 	if(mod_process::getList(vectorProcess))
 	{
-		wcout << L"PID\tPPID\t#Ths\tpri\timage" << endl;
+		(*outputStream) << L"PID\tPPID\t#Ths\tpri\timage" << endl;
 		for(vector<mod_process::KIWI_PROCESSENTRY32>::iterator monProcess = vectorProcess->begin(); monProcess != vectorProcess->end(); monProcess++)
 		{
-			wcout << 
+			(*outputStream) << 
 				setw(5) << setfill(wchar_t(' ')) << monProcess->th32ProcessID << L'\t' <<
 				setw(5) << setfill(wchar_t(' ')) << monProcess->th32ParentProcessID << L'\t' <<
 				setw(5) << setfill(wchar_t(' ')) << monProcess->cntThreads << L'\t' <<
@@ -163,7 +163,7 @@ bool mod_mimikatz_process::list(vector<wstring> * arguments)
 			endl;
 		}
 	}
-	else wcout << L"mod_process::getList ; " << mod_system::getWinError() << endl;
+	else (*outputStream) << L"mod_process::getList ; " << mod_system::getWinError() << endl;
 
 	delete vectorProcess;
 	return true;
@@ -183,14 +183,14 @@ bool mod_mimikatz_process::modules(vector<wstring> * arguments)
 	vector<mod_process::KIWI_MODULEENTRY32> * vectorModules = new vector<mod_process::KIWI_MODULEENTRY32>();
 	if(mod_process::getModulesListForProcessId(vectorModules, &processId))
 	{
-		wcout << L"@Base\tTaille\tModule\tPath" << endl;
+		(*outputStream) << L"@Base\tTaille\tModule\tPath" << endl;
 		for(vector<mod_process::KIWI_MODULEENTRY32>::iterator monModule = vectorModules->begin(); monModule != vectorModules->end(); monModule++)
 		{
-			wcout << monModule->modBaseAddr << L'\t' << monModule->modBaseSize << '\t' << monModule->szModule << L'\t' << monModule->szExePath << endl;
+			(*outputStream) << monModule->modBaseAddr << L'\t' << monModule->modBaseSize << '\t' << monModule->szModule << L'\t' << monModule->szExePath << endl;
 		}
 	}
 	else
-		wcout << L"mod_process::getModulesListForProcessId ; " << mod_system::getWinError() << endl;
+		(*outputStream) << L"mod_process::getModulesListForProcessId ; " << mod_system::getWinError() << endl;
 
 	delete vectorModules;
 	return true;
@@ -229,7 +229,7 @@ bool mod_mimikatz_process::iat(vector<wstring> * arguments)
 				{
 					printIATFromModule(monModule, monHandle);
 				}
-				else wcout << L"mod_process::getUniqueModuleForName ; " << mod_system::getWinError() << endl;
+				else (*outputStream) << L"mod_process::getUniqueModuleForName ; " << mod_system::getWinError() << endl;
 				delete monModule;
 			}
 			else
@@ -240,7 +240,7 @@ bool mod_mimikatz_process::iat(vector<wstring> * arguments)
 					for(vector<mod_process::KIWI_MODULEENTRY32>::iterator monModule = vectorModules->begin(); monModule != vectorModules->end(); monModule++)
 						printIATFromModule(&*monModule, monHandle);
 				}
-				else wcout << L"mod_process::getModulesListForProcessId ; " << mod_system::getWinError() << endl;
+				else (*outputStream) << L"mod_process::getModulesListForProcessId ; " << mod_system::getWinError() << endl;
 
 				delete vectorModules;
 			}
@@ -248,32 +248,32 @@ bool mod_mimikatz_process::iat(vector<wstring> * arguments)
 			CloseHandle(monHandle);
 		}
 	}
-	else wcout << L"mod_process::getUniqueForName ; " << mod_system::getWinError() << endl;
+	else (*outputStream) << L"mod_process::getUniqueForName ; " << mod_system::getWinError() << endl;
 
 	return true;
 }
 
 void mod_mimikatz_process::printInfosFromPid(DWORD &PID, DWORD ThreadId)
 {
-	wcout << L"PID      : " << PID << endl;
+	(*outputStream) << L"PID      : " << PID << endl;
 
 	if(ThreadId)
 	{
-		wcout << L"ThreadID : " << ThreadId << endl;
+		(*outputStream) << L"ThreadID : " << ThreadId << endl;
 	}
 
 	LUID monId = {0, 0};
 	if(mod_process::getAuthentificationIdFromProcessId(PID, monId))
 	{
-		wcout << "AuthId_h : " << monId.HighPart << endl;
-		wcout << "AuthId_l : " << monId.LowPart << endl;
+		(*outputStream) << "AuthId_h : " << monId.HighPart << endl;
+		(*outputStream) << "AuthId_l : " << monId.LowPart << endl;
 	}
-	else wcout << L"Erreur : " <<  mod_system::getWinError() << endl;
+	else (*outputStream) << L"Erreur : " <<  mod_system::getWinError() << endl;
 }
 
 void mod_mimikatz_process::printIATFromModule(mod_process::KIWI_MODULEENTRY32 * monModule, HANDLE monHandle)
 {
-	wcout << monModule->szModule << L" -> " << monModule->szExePath << endl;
+	(*outputStream) << monModule->szModule << L" -> " << monModule->szExePath << endl;
 	PBYTE baseAddr = reinterpret_cast<PBYTE>(monModule->modBaseAddr);
 
 	vector<pair<string, vector<mod_process::KIWI_IAT_MODULE>>> * monIAT = new vector<pair<string, vector<mod_process::KIWI_IAT_MODULE>>>();
@@ -281,15 +281,15 @@ void mod_mimikatz_process::printIATFromModule(mod_process::KIWI_MODULEENTRY32 * 
 	{
 		for(vector<pair<string, vector<mod_process::KIWI_IAT_MODULE>>>::iterator monModuleImporte = monIAT->begin(); monModuleImporte != monIAT->end(); monModuleImporte++)
 		{
-			wcout << L" - Imports depuis : " << monModuleImporte->first.c_str() << endl;
+			(*outputStream) << L" - Imports depuis : " << monModuleImporte->first.c_str() << endl;
 			for(vector<mod_process::KIWI_IAT_MODULE>::iterator maFonctionImporte = monModuleImporte->second.begin(); maFonctionImporte != monModuleImporte->second.end(); maFonctionImporte++)
 			{
-				wcout << L"      " << maFonctionImporte->ptrToFunc << L" -> " << maFonctionImporte->ptrFunc << L' ';
+				(*outputStream) << L"      " << maFonctionImporte->ptrToFunc << L" -> " << maFonctionImporte->ptrFunc << L' ';
 				if(maFonctionImporte->Ordinal != 0)
-					wcout << L"O# " << maFonctionImporte->Ordinal;
+					(*outputStream) << L"O# " << maFonctionImporte->Ordinal;
 				else
-					wcout << maFonctionImporte->funcName.c_str();
-				wcout << endl;
+					(*outputStream) << maFonctionImporte->funcName.c_str();
+				(*outputStream) << endl;
 			}
 		}
 	}

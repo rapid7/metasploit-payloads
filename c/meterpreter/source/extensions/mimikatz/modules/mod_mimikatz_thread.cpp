@@ -24,16 +24,16 @@ bool mod_mimikatz_thread::list(vector<wstring> * arguments)
 
 	if(mod_thread::getList(vectorThreads, arguments->empty() ? NULL : &processId))
 	{
-		wcout << L"PID\tTID\tprTh" << endl;
+		(*outputStream) << L"PID\tTID\tprTh" << endl;
 		for(vector<THREADENTRY32>::iterator monThread = vectorThreads->begin(); monThread != vectorThreads->end(); monThread++)
-			wcout << 
+			(*outputStream) << 
 				setw(5) << setfill(wchar_t(' ')) << monThread->th32OwnerProcessID << L'\t' <<
 				setw(5) << setfill(wchar_t(' ')) << monThread->th32ThreadID << L'\t' <<
 				setw(5) << setfill(wchar_t(' ')) << monThread->tpBasePri <<
 			endl;
 	}
 	else
-		wcout << L"mod_thread::getList ; " << mod_system::getWinError() << endl;
+		(*outputStream) << L"mod_thread::getList ; " << mod_system::getWinError() << endl;
 
 	delete vectorThreads;
 	return true;
@@ -47,17 +47,17 @@ bool mod_mimikatz_thread::resume(vector<wstring> * arguments)
 		
 		if(threadId != 0)
 		{
-			wcout << L"thread " << setw(5) << setfill(wchar_t(' ')) << threadId << L"\treprise ";
+			(*outputStream) << L"thread " << setw(5) << setfill(wchar_t(' ')) << threadId << L"\treprise ";
 			
 			if(mod_thread::resume(threadId))
-				wcout << L"OK";
+				(*outputStream) << L"OK";
 			else
-				wcout << L"KO - mod_thread::resume ; " << mod_system::getWinError();
+				(*outputStream) << L"KO - mod_thread::resume ; " << mod_system::getWinError();
 		}
 		else
-			wcout << L"argument \'" << *monArgThread << L"\' invalide";
+			(*outputStream) << L"argument \'" << *monArgThread << L"\' invalide";
 
-		wcout << endl;
+		(*outputStream) << endl;
 	}
 
 	return true;
@@ -71,17 +71,17 @@ bool mod_mimikatz_thread::suspend(vector<wstring> * arguments)
 		
 		if(threadId != 0)
 		{
-			wcout << L"thread " << setw(5) << setfill(wchar_t(' ')) << threadId << L"\tsuspension ";
+			(*outputStream) << L"thread " << setw(5) << setfill(wchar_t(' ')) << threadId << L"\tsuspension ";
 			
 			if(mod_thread::suspend(threadId))
-				wcout << L"OK";
+				(*outputStream) << L"OK";
 			else
-				wcout << L"KO - mod_thread::suspend ; " << mod_system::getWinError();
+				(*outputStream) << L"KO - mod_thread::suspend ; " << mod_system::getWinError();
 		}
 		else
-			wcout << L"argument \'" << *monArgThread << L"\' invalide";
+			(*outputStream) << L"argument \'" << *monArgThread << L"\' invalide";
 
-		wcout << endl;
+		(*outputStream) << endl;
 	}
 
 	return true;
@@ -95,17 +95,17 @@ bool mod_mimikatz_thread::stop(vector<wstring> * arguments)
 		
 		if(threadId != 0)
 		{
-			wcout << L"thread " << setw(5) << setfill(wchar_t(' ')) << threadId << L"\tarrêt ";
+			(*outputStream) << L"thread " << setw(5) << setfill(wchar_t(' ')) << threadId << L"\tarrêt ";
 			
 			if(mod_thread::stop(threadId))
-				wcout << L"OK";
+				(*outputStream) << L"OK";
 			else
-				wcout << L"KO - mod_thread::stop ; " << mod_system::getWinError();
+				(*outputStream) << L"KO - mod_thread::stop ; " << mod_system::getWinError();
 		}
 		else
-			wcout << L"argument \'" << *monArgThread << L"\' invalide";
+			(*outputStream) << L"argument \'" << *monArgThread << L"\' invalide";
 
-		wcout << endl;
+		(*outputStream) << endl;
 	}
 
 	return true;
@@ -120,17 +120,17 @@ bool mod_mimikatz_thread::quit(vector<wstring> * arguments)
 		
 		if(threadId != 0)
 		{
-			wcout << L"thread " << setw(5) << setfill(wchar_t(' ')) << threadId << L"\tmessage fermeture ";
+			(*outputStream) << L"thread " << setw(5) << setfill(wchar_t(' ')) << threadId << L"\tmessage fermeture ";
 			
 			if(mod_thread::quit(threadId))
-				wcout << L"OK";
+				(*outputStream) << L"OK";
 			else
-				wcout << L"KO - mod_thread::quit ; " << mod_system::getWinError();
+				(*outputStream) << L"KO - mod_thread::quit ; " << mod_system::getWinError();
 		}
 		else
-			wcout << L"argument \'" << *monArgThread << L"\' invalide";
+			(*outputStream) << L"argument \'" << *monArgThread << L"\' invalide";
 
-		wcout << endl;
+		(*outputStream) << endl;
 	}
 
 	return true;

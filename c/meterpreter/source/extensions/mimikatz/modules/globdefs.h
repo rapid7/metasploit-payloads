@@ -10,6 +10,7 @@
 #include <ntsecapi.h>
 #include <string>
 #include <vector>
+#include "../global.h"
 using namespace std;
 
 #define SECURITY_WIN32
