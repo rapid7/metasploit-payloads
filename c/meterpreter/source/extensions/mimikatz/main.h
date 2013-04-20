@@ -19,4 +19,4 @@ extern "C"
 	MAKE_CUSTOM_TLV(                 \
 	TLV_META_TYPE_STRING,      \
 	TLV_TYPE_EXTENSION_MIMIKATZ, \
-	1)
+	TLV_EXTENSIONS + 1)

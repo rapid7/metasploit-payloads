@@ -242,9 +242,9 @@ bool mod_mimikatz_sekurlsa::getLogonData(vector<wstring> * mesArguments, vector<
 			{
 				if(sessionData->LogonType != Network)
 				{
-					(*outputStream) <<
-						sessions[i].HighPart << L";" << sessions[i].LowPart << L"," <<
-						mod_text::stringOfSTRING(sessionData->AuthenticationPackage) << L",\"" <<
+					(*outputStream) << "\"" <<
+						sessions[i].HighPart << L";" << sessions[i].LowPart << L"\",\"" <<
+						mod_text::stringOfSTRING(sessionData->AuthenticationPackage) << L"\",\"" <<
 						mod_text::stringOfSTRING(sessionData->UserName) << L"\",\"" <<
 						mod_text::stringOfSTRING(sessionData->LogonDomain) << L"\",\"";
 

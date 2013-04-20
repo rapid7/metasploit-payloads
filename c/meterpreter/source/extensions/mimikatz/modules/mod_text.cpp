@@ -37,7 +37,7 @@ wstring mod_text::stringOrHex(const BYTE monTab[], DWORD maTaille, DWORD longueu
 		else
 		{
 			if(ligne)
-				result.assign(L"\n");
+				//result.assign(L"\n");
 			result.append(stringOfHex(monTab, maTaille, longueur));
 		}
 	}
