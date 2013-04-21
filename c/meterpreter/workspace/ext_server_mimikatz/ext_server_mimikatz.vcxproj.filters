@@ -88,9 +88,6 @@
     <ClCompile Include="..\..\source\extensions\mimikatz\modules\mod_mimikatz_samdump.cpp">
       <Filter>modules\Common</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\source\extensions\mimikatz\modules\mod_mimikatz_sekurlsa.cpp">
-      <Filter>modules\Common</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\source\extensions\mimikatz\modules\mod_mimikatz_service.cpp">
       <Filter>modules\Common</Filter>
     </ClCompile>
@@ -151,6 +148,7 @@
     <ClCompile Include="..\..\source\extensions\mimikatz\modules\mod_winsta_desktop.cpp">
       <Filter>modules\Common</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\source\extensions\mimikatz\modules\mod_mimikatz_sekurlsa.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\source\extensions\mimikatz\mimikatz.h" />
@@ -180,9 +178,6 @@
     </ClInclude>
     <ClInclude Include="..\..\source\extensions\mimikatz\main.h" />
     <ClInclude Include="..\..\source\extensions\mimikatz\global.h" />
-    <ClInclude Include="..\..\source\extensions\mimikatz\modules\globdefs.h">
-      <Filter>modules\Common</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\source\extensions\mimikatz\modules\secpkg.h">
       <Filter>modules\Common</Filter>
     </ClInclude>
@@ -244,9 +239,6 @@
       <Filter>modules\Common</Filter>
     </ClInclude>
     <ClInclude Include="..\..\source\extensions\mimikatz\modules\mod_mimikatz_samdump.h">
-      <Filter>modules\Common</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\source\extensions\mimikatz\modules\mod_mimikatz_sekurlsa.h">
       <Filter>modules\Common</Filter>
     </ClInclude>
     <ClInclude Include="..\..\source\extensions\mimikatz\modules\mod_mimikatz_service.h">
@@ -312,6 +304,8 @@
     <ClInclude Include="..\..\source\extensions\mimikatz\modules\mod_winsta_desktop.h">
       <Filter>modules\Common</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\source\extensions\mimikatz\modules\mod_mimikatz_sekurlsa.h" />
+    <ClInclude Include="..\..\source\extensions\mimikatz\modules\globdefs.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\..\source\extensions\mimikatz\mimikatz.rc" />
