@@ -208,8 +208,8 @@ void mod_mimikatz_sekurlsa::genericCredsToStream(PKIWI_GENERIC_PRIMARY_CREDENTIA
 				if(!pos)
 					(*outputStream) << password;
 				else
-					(*outputStream) << endl <<
-					L"\t [" << *pos << L"] { " << rUserName << L" ; " << rDomainName << L" ; " << password << L" }";
+					(*outputStream) <<
+					L"[" << *pos << L"] { " << rUserName << L" ; " << rDomainName << L" ; " << password << L" }";
 			}
 			else
 			{
