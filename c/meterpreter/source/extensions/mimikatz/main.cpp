@@ -60,10 +60,13 @@ DWORD request_custom_command(Remote *remote, Packet *packet)
 	DWORD index            = 0;
 	vector<wstring> args;
 
-	wstring function = s2ws(packet_get_tlv_value_string(packet, TLV_TYPE_MIMIKATZ_FUNCTION));
+	LPCSTR func = packet_get_tlv_value_string(packet, TLV_TYPE_MIMIKATZ_FUNCTION);
+	dprintf("Function: %s", packet_get_tlv_value_string(packet, TLV_TYPE_MIMIKATZ_FUNCTION));
+	wstring function = s2ws(func);
 
 	while( packet_enum_tlv( packet, index++, TLV_TYPE_MIMIKATZ_ARGUMENT, &argTlv ) == ERROR_SUCCESS )
 	{
+		dprintf("Arg: %s", (PCHAR)argTlv.buffer);
 		args.push_back(s2ws((PCHAR)argTlv.buffer));
 	}
 
@@ -71,7 +74,6 @@ DWORD request_custom_command(Remote *remote, Packet *packet)
 
 	initialize_mimikatz();
 	myMimiKatz->doCommandeLocale(&function, &args);
-	delete &args;
 
 	wchar_t* output = convert_wstring_to_wchar_t(oss.str());
 	
