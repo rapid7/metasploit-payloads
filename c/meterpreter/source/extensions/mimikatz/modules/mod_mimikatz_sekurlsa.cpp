@@ -198,10 +198,10 @@ wstring escape(const wstring& s)
   wstring::const_iterator it = s.begin();
   while (it != s.end())
   {
-    char c = *it++;
-    if (c == '"')
+    wchar_t c = *it++;
+    if (c == L'"')
     {
-		res += '"';
+		res += L'"';
     }
     res += c;
   }
