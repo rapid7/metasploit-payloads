@@ -183,7 +183,7 @@ geteip:
 	while( usCounter > 0 )
 	{
 		// compute the hash values for this function name
-		dwHashValue = hash( (char *)( uiBaseAddress + DEREF_32( uiNameArray ) )  );
+		dwHashValue = _hash( (char *)( uiBaseAddress + DEREF_32( uiNameArray ) )  );
 				
 		// if we have found a function we want we get its virtual address
 		if( dwHashValue == LOADLIBRARYA_HASH || dwHashValue == GETPROCADDRESS_HASH || dwHashValue == VIRTUALALLOC_HASH || dwHashValue == VIRTUALLOCK_HASH || dwHashValue == OUTPUTDEBUG_HASH )
