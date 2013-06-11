@@ -45,8 +45,8 @@ For NetBeans or IntelliJ IDEA, refer to the documentation at
 http://maven.apache.org/netbeans-module.html
 http://maven.apache.org/plugins/maven-idea-plugin/
 
-Android
-=======
+## Android
+
 
 ```
 mvn package -Dandroid.sdk.path=/path/to/android-sdk-linux/
