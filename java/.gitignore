@@ -1,0 +1,14 @@
+*/.classpath
+*/.project
+*/.settings
+*/bin
+*/target
+*/*/.classpath
+*/*/.project
+*/*/.settings
+*/*/bin
+*/*/target
+*.swp
+*.orig
+*.rej
+*~
