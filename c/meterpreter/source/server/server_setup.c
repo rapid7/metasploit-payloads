@@ -443,12 +443,12 @@ static DWORD server_dispatch_http_wininet( Remote * remote )
 	}
 	dprintf("[DISPATCH] Configured hConnection: 0x%.8x", remote->hConnection);
 
-	//authentification
+	//authentication
 	if (!(strcmp(global_meterpreter_proxy_username, "METERPRETER_USERNAME_PROXY") == 0))
 	{
 		InternetSetOption(remote->hConnection, INTERNET_OPTION_PROXY_USERNAME, global_meterpreter_proxy_username, strlen(global_meterpreter_proxy_username)+1);
 		InternetSetOption(remote->hConnection, INTERNET_OPTION_PROXY_PASSWORD, global_meterpreter_proxy_password, strlen(global_meterpreter_proxy_password)+1);
-		dprintf("[DISPATCH] Proxy authentification configured : %s/%s", global_meterpreter_proxy_username, global_meterpreter_proxy_password);
+		dprintf("[DISPATCH] Proxy authentication configured : %s/%s", global_meterpreter_proxy_username, global_meterpreter_proxy_password);
 	}
 
 	// Bring up the scheduler subsystem.
