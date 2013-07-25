@@ -35,7 +35,7 @@
 								</goals>
 								<configuration>
 									<target>
-										<copy todir="${project.basedir}/../../../../data/java">
+										<copy todir="${project.basedir}/../${deploy.path}/data/java">
 											<fileset dir="${project.basedir}/target/classes">
 												<exclude name="metasploit/PayloadApplet.class" />
 												<exclude name="rmi/**" />

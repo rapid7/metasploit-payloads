@@ -62,8 +62,8 @@
 										<touch datetime="01/01/2000 00:00 AM">
 											<fileset dir="${project.basedir}/target/tmp" includes="**/*" />
 										</touch>
-										<delete file="${project.basedir}/../../../../../data/meterpreter/${project.build.finalName}.jar"/>
-										<zip destfile="${project.basedir}/../../../../../data/meterpreter/${project.build.finalName}.jar">
+										<delete file="${project.basedir}/../../${deploy.path}/data/meterpreter/${project.build.finalName}.jar"/>
+										<zip destfile="${project.basedir}/../../${deploy.path}/data/meterpreter/${project.build.finalName}.jar">
 											<fileset dir="${project.basedir}/target/tmp" includes="META-INF/**" />
 											<fileset dir="${project.basedir}/target/tmp" excludes="META-INF/**" />
 										</zip>

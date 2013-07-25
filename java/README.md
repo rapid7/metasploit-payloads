@@ -12,9 +12,16 @@ mvn -P deploy package
 ```
 
 to package all the files and copy them into the correct place for Metasploit
-(/data/java). If you get spurious compilation errors, make sure that there
-is an exclude rule in your antivirus for the Metasploit directory (or that
-your antivirus is disabled).
+(`../metasploit-framework/data/java`). If you get spurious compilation errors, 
+make sure that there is an exclude rule in your antivirus for the Metasploit 
+directory (or that your antivirus is disabled).
+
+If the path to your metasploit framework repository is not `../metasploit-framework`,
+but for example `../msf3`, use
+
+```
+mvn -D deploy.path=../msf3 -P deploy package
+```
 
 In case you want to edit/debug JavaPayload for Metasploit or Java Meterpreter,
 Maven provides plugins to auto-generate project files for your favourite IDE
@@ -27,7 +34,7 @@ mvn eclipse:eclipse
 
 This will generate project files that can be imported via
 
-File->Import->Existing Projects into Workspace
+**File->Import->Existing Projects into Workspace**
 
 into your Eclipse workspace.
 
