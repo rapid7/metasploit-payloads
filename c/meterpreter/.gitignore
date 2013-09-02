@@ -25,6 +25,9 @@ tags
 *.sdf
 *.opensdf
 
+# VS ipch
+workspace/ipch/*
+
 # VS upgrade junk
 UpgradeLog.*
 _UpgradeReport_Files
