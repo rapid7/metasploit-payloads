@@ -11,7 +11,7 @@ mod_mimikatz_sekurlsa_livessp::PKIWI_LIVESSP_LIST_ENTRY mod_mimikatz_sekurlsa_li
 bool mod_mimikatz_sekurlsa_livessp::getLiveSSP(vector<wstring> * arguments)
 {
 	vector<pair<mod_mimikatz_sekurlsa::PFN_ENUM_BY_LUID, wstring>> monProvider;
-	monProvider.push_back(make_pair<mod_mimikatz_sekurlsa::PFN_ENUM_BY_LUID, wstring>(getLiveSSPLogonData, wstring(L"livessp")));
+	monProvider.push_back(pair<mod_mimikatz_sekurlsa::PFN_ENUM_BY_LUID, wstring>(getLiveSSPLogonData, wstring(L"livessp")));
 	return mod_mimikatz_sekurlsa::getLogonData(arguments, &monProvider);
 }
 

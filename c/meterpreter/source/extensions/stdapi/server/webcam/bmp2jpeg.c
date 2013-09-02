@@ -1,5 +1,6 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#include "precomp.h"
 #include "bmp2jpeg.h"
 #pragma comment(lib, "jpeg.lib")
 
@@ -91,6 +92,9 @@ following copyright:
  *  (The "non-english" version can be found in the ../../srouce/jpeg-8/README file)
  */
 
+#ifdef U_CHAR
+#undef U_CHAR
+#endif
 
 #ifdef HAVE_UNSIGNED_CHAR
 typedef unsigned char U_CHAR;
@@ -99,10 +103,10 @@ typedef unsigned char U_CHAR;
 #ifdef CHAR_IS_UNSIGNED
 typedef char U_CHAR;
 #define UCH(x)	((int) (x))
-#else
+#else /* !CHAR_IS_UNSIGNED */
 typedef char U_CHAR;
 #define UCH(x)	((int) (x) & 0xFF)
-#endif
+#endif /* CHAR_IS_UNSIGNED */
 #endif /* HAVE_UNSIGNED_CHAR */
 
 

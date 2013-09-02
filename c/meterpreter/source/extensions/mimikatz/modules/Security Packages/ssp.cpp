@@ -11,7 +11,7 @@ mod_mimikatz_sekurlsa_ssp::PKIWI_SSP_CREDENTIAL_LIST_ENTRY mod_mimikatz_sekurlsa
 bool mod_mimikatz_sekurlsa_ssp::getSSP(vector<wstring> * arguments)
 {
 	vector<pair<mod_mimikatz_sekurlsa::PFN_ENUM_BY_LUID, wstring>> monProvider;
-	monProvider.push_back(make_pair<mod_mimikatz_sekurlsa::PFN_ENUM_BY_LUID, wstring>(getSSPLogonData, wstring(L"ssp")));
+	monProvider.push_back(pair<mod_mimikatz_sekurlsa::PFN_ENUM_BY_LUID, wstring>(getSSPLogonData, wstring(L"ssp")));
 	return mod_mimikatz_sekurlsa::getLogonData(arguments, &monProvider);
 }
 
