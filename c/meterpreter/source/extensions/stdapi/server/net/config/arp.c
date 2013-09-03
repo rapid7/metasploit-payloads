@@ -39,17 +39,17 @@ DWORD windows_get_arp_table(Remote *remote, Packet *response)
 					// can't send interface name as it can be _big_, so send index instead
 					sprintf_s(interface_index, sizeof(interface_index), "%d", pIpNetTable->table[i].dwIndex);
 
-					arp[0].header.type	= TLV_TYPE_IP;
-					arp[0].header.length 	= sizeof(DWORD);
-					arp[0].buffer 		= (PUCHAR)&pIpNetTable->table[i].dwAddr;
+					arp[0].header.type   = TLV_TYPE_IP;
+					arp[0].header.length = sizeof(DWORD);
+					arp[0].buffer        = (PUCHAR)&pIpNetTable->table[i].dwAddr;
 
-					arp[1].header.type	= TLV_TYPE_MAC_ADDR;
-					arp[1].header.length	= 6;
-					arp[1].buffer		= (PUCHAR)pIpNetTable->table[i].bPhysAddr;
+					arp[1].header.type   = TLV_TYPE_MAC_ADDR;
+					arp[1].header.length = 6;
+					arp[1].buffer        = (PUCHAR)pIpNetTable->table[i].bPhysAddr;
 
-					arp[2].header.type	= TLV_TYPE_MAC_NAME;
-					arp[2].header.length	= strlen(interface_index) + 1;
-					arp[2].buffer		= (PUCHAR)interface_index;
+					arp[2].header.type   = TLV_TYPE_MAC_NAME;
+					arp[2].header.length = (DWORD)strlen(interface_index) + 1;
+					arp[2].buffer        = (PUCHAR)interface_index;
 
 					packet_add_tlv_group(response, TLV_TYPE_ARP_ENTRY, arp, 3);
 				}

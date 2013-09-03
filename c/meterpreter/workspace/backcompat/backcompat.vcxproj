@@ -90,7 +90,7 @@
       <SubSystem>Windows</SubSystem>
     </Lib>
     <Lib>
-      <MinimumRequiredVersion>5.0</MinimumRequiredVersion>
+      <MinimumRequiredVersion></MinimumRequiredVersion>
     </Lib>
     <Lib>
       <LinkTimeCodeGeneration>false</LinkTimeCodeGeneration>

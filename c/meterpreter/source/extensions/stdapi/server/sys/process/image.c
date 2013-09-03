@@ -295,10 +295,10 @@ DWORD request_sys_process_image_get_images(Remote *remote, Packet *packet)
 			tlvs[0].header.length = sizeof(HMODULE);
 			tlvs[0].header.type   = TLV_TYPE_IMAGE_BASE;
 			tlvs[0].buffer        = (PUCHAR)&base;
-			tlvs[1].header.length = strlen(path) + 1;
+			tlvs[1].header.length = (DWORD)strlen(path) + 1;
 			tlvs[1].header.type   = TLV_TYPE_IMAGE_FILE_PATH;
 			tlvs[1].buffer        = (PUCHAR)path;
-			tlvs[2].header.length = strlen(name) + 1;
+			tlvs[2].header.length = (DWORD)strlen(name) + 1;
 			tlvs[2].header.type   = TLV_TYPE_IMAGE_NAME;
 			tlvs[2].buffer        = (PUCHAR)name;
 
@@ -361,7 +361,7 @@ DWORD remote_load_library(HANDLE process, LPCSTR image, HMODULE *base)
 	do
 	{
 		// Calculate the size of the context we'll be passing
-		contextSize = strlen(image) + 1 + sizeof(LoadLibraryContext);
+		contextSize = (DWORD)strlen(image) + 1 + sizeof(LoadLibraryContext);
 
 		if (!(context = (LoadLibraryContext *)malloc(contextSize)))
 		{

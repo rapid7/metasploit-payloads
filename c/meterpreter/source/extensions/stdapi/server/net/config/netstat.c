@@ -1,5 +1,36 @@
 #include "precomp.h"
 
+// Note: both connection_entry and connection_table were moved from
+// common.h into here because:
+// 1) connection_table contains a zero-length array which causes all C++
+//    compiles to throw warnings.
+// 2) These two structures are only used by this file anyway.
+
+struct connection_entry {
+	char type; // AF_INET / AF_INET6
+	union {
+		__u32  addr;
+		__u128 addr6;
+	} local_addr;
+	union {
+		__u32  addr;
+		__u128 addr6;
+	} remote_addr;
+	__u32 local_port;
+	__u32 remote_port;
+	unsigned char protocol[5]; // tcp/tcp6/udp/udp6
+	unsigned char state[15]; // established, syn_sent..
+	__u32 uid;
+	__u32 inode;
+	unsigned char program_name[30]; // pid/program_name or "-"
+};
+
+struct connection_table {
+	int entries;
+	int max_entries;
+	struct connection_entry table[0];
+};
+
 #ifdef _WIN32
 
 /*
@@ -162,11 +193,11 @@ DWORD windows_get_tcp_table_win2000_down(struct connection_table **table_connect
 				state = pTcpTable->table[i].dwState;
 				if ((state <= 0) || (state > 12))
 					state = 13; // points to UNKNOWN in the state array
-				strncpy(current_connection->state, tcp_connection_states[state], sizeof(current_connection->state));
-				strncpy(current_connection->protocol, "tcp", sizeof(current_connection->protocol));
+				strncpy_s((char*)current_connection->state, sizeof(current_connection->state), tcp_connection_states[state], sizeof(current_connection->state));
+				strncpy_s((char*)current_connection->protocol, sizeof(current_connection->protocol), "tcp", sizeof(current_connection->protocol));
 
 				// force program_name to "-"
-				strncpy(current_connection->program_name, "-", sizeof(current_connection->program_name));
+				strncpy_s((char*)current_connection->program_name, sizeof(current_connection->program_name), "-", sizeof(current_connection->program_name));
 
 				(*table_connection)->entries++;
 			}
@@ -524,15 +555,15 @@ DWORD windows_get_connection_table(Remote *remote, Packet *response)
 		connection[3].buffer           = (PUCHAR)&remote_port_be;
 
 		connection[4].header.type      = TLV_TYPE_MAC_NAME;
-		connection[4].header.length    = strlen(current_connection->protocol) + 1;
+		connection[4].header.length    = (DWORD)strlen((char*)current_connection->protocol) + 1;
 		connection[4].buffer           = (PUCHAR)(current_connection->protocol);
 
 		connection[5].header.type      = TLV_TYPE_SUBNET_STRING;
-		connection[5].header.length    = strlen(current_connection->state) + 1;
+		connection[5].header.length    = (DWORD)strlen((char*)current_connection->state) + 1;
 		connection[5].buffer           = (PUCHAR)(current_connection->state);
 
 		connection[6].header.type      = TLV_TYPE_PROCESS_NAME;
-		connection[6].header.length    = strlen(current_connection->program_name) + 1;
+		connection[6].header.length    = (DWORD)strlen((char*)current_connection->program_name) + 1;
 		connection[6].buffer           = (PUCHAR)(current_connection->program_name);
 
 		packet_add_tlv_group(response, TLV_TYPE_NETSTAT_ENTRY, connection, 7);

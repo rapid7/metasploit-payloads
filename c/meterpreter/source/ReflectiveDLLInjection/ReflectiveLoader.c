@@ -83,7 +83,8 @@ DLLEXPORT UINT_PTR WINAPI ReflectiveLoader( VOID )
 	UINT_PTR uiValueD;
 	UINT_PTR uiValueE;
 
-	register UINT_PTR inspect;
+	// TODO: determine if this is really needed
+	//register UINT_PTR inspect;
 
 	// STEP 0: calculate our images current base address
 	// we will start searching backwards from our current EIP

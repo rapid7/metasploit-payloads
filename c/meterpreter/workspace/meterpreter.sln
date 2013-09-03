@@ -38,6 +38,11 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "backcompat", "backcompat\ba
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ext_server_mimikatz", "ext_server_mimikatz\ext_server_mimikatz.vcxproj", "{5104C280-92CA-4317-922C-1EF73DE1C6C1}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "!Documentation", "!Documentation", "{EF2FC794-127F-4DE7-9979-6767B2985C1D}"
+	ProjectSection(SolutionItems) = preProject
+		README.md = README.md
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -102,7 +107,6 @@ Global
 		{C427F6B9-C287-4BDA-A5BB-401FC19E207C}.Release|x64.Build.0 = Release|x64
 		{488BE203-8407-42D1-B334-8B5C3BC5AB3E}.Debug|Win32.ActiveCfg = Debug|Win32
 		{488BE203-8407-42D1-B334-8B5C3BC5AB3E}.Debug|x64.ActiveCfg = Release|x64
-		{488BE203-8407-42D1-B334-8B5C3BC5AB3E}.Debug|x64.Build.0 = Release|x64
 		{488BE203-8407-42D1-B334-8B5C3BC5AB3E}.Release|Win32.ActiveCfg = Release|Win32
 		{488BE203-8407-42D1-B334-8B5C3BC5AB3E}.Release|x64.ActiveCfg = Release|x64
 		{488BE203-8407-42D1-B334-8B5C3BC5AB3E}.Release|x64.Build.0 = Release|x64

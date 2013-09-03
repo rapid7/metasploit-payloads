@@ -18,9 +18,9 @@ BOOL capmicaudio(char *szFile, int millisecs)
 {
 	UINT wDeviceID;
     DWORD dwReturn;
-    MCI_OPEN_PARMS mciOpenParms;
+    MCI_OPEN_PARMSA mciOpenParms;
     MCI_RECORD_PARMS mciRecordParms;
-    MCI_SAVE_PARMS mciSaveParms;
+    MCI_SAVE_PARMSA mciSaveParms;
     MCI_PLAY_PARMS mciPlayParms;
 	DWORD dwMilliSeconds;
 
@@ -29,7 +29,7 @@ BOOL capmicaudio(char *szFile, int millisecs)
     // Open a waveform-audio device with a new file for recording.
     mciOpenParms.lpstrDeviceType = "waveaudio";
     mciOpenParms.lpstrElementName = "";
-    if (dwReturn = mciSendCommand(0, MCI_OPEN,MCI_OPEN_ELEMENT | MCI_OPEN_TYPE,(DWORD)(LPVOID) &mciOpenParms))
+    if (dwReturn = mciSendCommand(0, MCI_OPEN,MCI_OPEN_ELEMENT | MCI_OPEN_TYPE, (DWORD_PTR)(LPVOID) &mciOpenParms))
     {
         // Failed to open device; don't close it, just return error.
         return (dwReturn);
@@ -52,7 +52,7 @@ BOOL capmicaudio(char *szFile, int millisecs)
     // Save the recording to a file. Wait for
     // the operation to complete before continuing.
 	mciSaveParms.lpfilename = szFile;
-    if (dwReturn = mciSendCommand(wDeviceID, MCI_SAVE, MCI_SAVE_FILE | MCI_WAIT, (DWORD)(LPVOID) &mciSaveParms))
+    if (dwReturn = mciSendCommandA(wDeviceID, MCI_SAVE, MCI_SAVE_FILE | MCI_WAIT, (DWORD_PTR)(LPVOID) &mciSaveParms))
     {
         mciSendCommand(wDeviceID, MCI_CLOSE, 0, (DWORD_PTR)0 );
         return (dwReturn);

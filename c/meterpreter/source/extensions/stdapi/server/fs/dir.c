@@ -112,7 +112,7 @@ DWORD request_fs_ls(Remote *remote, Packet *packet)
 
 		do
 		{
-			DWORD fullSize = (baseDirectory ? strlen(baseDirectory) : 0) + strlen(DF_NAME) + 2;
+			size_t fullSize = (baseDirectory ? strlen(baseDirectory) : 0) + strlen(DF_NAME) + 2;
 
 			// No context?  Sucktastic
 			if (ctx == INVALID_HANDLE_VALUE)

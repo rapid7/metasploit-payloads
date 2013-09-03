@@ -129,31 +129,6 @@ void real_dprintf(char *filename, int line, const char *function, char *format, 
 
 #endif
 
-struct connection_entry {
-	char type; // AF_INET / AF_INET6
-	union {
-		__u32  addr;
-		__u128 addr6;
-	} local_addr;
-	union {
-		__u32  addr;
-		__u128 addr6;
-	} remote_addr;
-	__u32 local_port;
-	__u32 remote_port;
-	unsigned char protocol[5]; // tcp/tcp6/udp/udp6
-	unsigned char state[15]; // established, syn_sent..
-	__u32 uid;
-	__u32 inode;
-	unsigned char program_name[30]; // pid/program_name or "-"
-};
-
-struct connection_table {
-	int entries;
-	int max_entries;
-	struct connection_entry table[0];
-};
-
 #include "linkage.h"
 
 #include "args.h"

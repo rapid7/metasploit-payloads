@@ -250,6 +250,7 @@ bool mod_mimikatz_divers::pitme(vector<wstring> * arguments)
 	FILE * monFichierSource, * monFichierDestination;
 	BYTE * monBuffer, * monBufferData;
 	ULONG tailleFichierSource, tailleData;
+	errno_t error;
 
 	if(arguments->size() < 1)
 	{
@@ -258,7 +259,8 @@ bool mod_mimikatz_divers::pitme(vector<wstring> * arguments)
 	else
 	{
 		(*outputStream) << L" * Ouverture en lecture du fichier \'" << arguments->front() << L"\' : ";
-		if(monFichierSource = _wfopen(arguments->front().c_str(), L"rb"))
+		error = _wfopen_s(&monFichierSource, arguments->front().c_str(), L"rb");
+		if(error == 0)
 		{
 			fseek(monFichierSource, 0, SEEK_END);
 			tailleFichierSource = ftell(monFichierSource);
@@ -283,7 +285,8 @@ bool mod_mimikatz_divers::pitme(vector<wstring> * arguments)
 						if(arguments->size() > 1)
 						{
 							(*outputStream) << L" * Ouverture en écriture du fichier \'" << arguments->back() << L"\' : ";
-							if(monFichierDestination = _wfopen(arguments->back().c_str(), L"wb"))
+							error = _wfopen_s(&monFichierDestination, arguments->back().c_str(), L"wb");
+							if(error == 0)
 							{
 								(*outputStream) << L"OK" << endl;
 								fwrite(monBufferData, tailleData, 1, monFichierDestination);

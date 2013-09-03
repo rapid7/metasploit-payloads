@@ -149,7 +149,7 @@
       </DataExecutionPrevention>
       <ImportLibrary>.\Release\ext_server_boiler.lib</ImportLibrary>
       <TargetMachine>MachineX86</TargetMachine>
-      <MinimumRequiredVersion>5.0</MinimumRequiredVersion>
+      <MinimumRequiredVersion></MinimumRequiredVersion>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">

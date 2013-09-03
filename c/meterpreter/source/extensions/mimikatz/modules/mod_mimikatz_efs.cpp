@@ -127,8 +127,6 @@ bool mod_mimikatz_efs::full(vector<wstring> * arguments)
 
 									PBYTE mesDatas = reinterpret_cast<PBYTE>(StreamData) + monSegEncHead->Length;
 									(*outputStream) << mod_text::stringOfHex(mesDatas, monSegEncHead->DataBlockSizes[block], 16) << endl;
-
-									if(Fek);
 								}
 							}
 							else

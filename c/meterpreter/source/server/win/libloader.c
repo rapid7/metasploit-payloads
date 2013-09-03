@@ -294,7 +294,8 @@ void patch_function(SHELLCODE_CTX *ctx, DWORD address, unsigned char *stub,
 		unsigned char *hook) 
 {
 	DWORD				protect;
-	ULONG 				bytes, written;
+	ULONG 				bytes;
+	SIZE_T              written;
 	MEMORY_BASIC_INFORMATION	mbi_thunk;
 
 	/*
@@ -403,7 +404,8 @@ void install_hooks(SHELLCODE_CTX *ctx)
 void restore_function(SHELLCODE_CTX *ctx, DWORD address, unsigned char *stub) 
 {
 	DWORD				protect;
-	ULONG 				bytes, written;
+	ULONG 				bytes;
+	SIZE_T              written;
 	MEMORY_BASIC_INFORMATION	mbi_thunk;
 
 	bytes = 5;
@@ -561,7 +563,7 @@ HMODULE libloader_load_library(LPCSTR name, PUCHAR buffer, DWORD bufferLength)
 	{
 		// The name of the library to load it as
 		strncpy(ctx->libname, shortName, sizeof(ctx->libname));
-		ctx->liblen = strlen(ctx->libname) + 1;
+		ctx->liblen = (int)strlen(ctx->libname) + 1;
 
 		// The address of the raw buffer
 		ctx->file_address = (DWORD)buffer;

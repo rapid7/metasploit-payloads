@@ -88,7 +88,7 @@ DWORD request_ui_record_mic( Remote * remote, Packet * request ){
 		wf.nBlockAlign = 1;
 		wf.wBitsPerSample = 8;
 		wf.cbSize = 0;
-		dwResult = waveInOpen(&hWavIn, WAVE_MAPPER, &wf, (DWORD_PTR)&waveInProc, NULL, CALLBACK_FUNCTION);
+		dwResult = (DWORD)waveInOpen(&hWavIn, WAVE_MAPPER, &wf, (DWORD_PTR)&waveInProc, (DWORD_PTR)NULL, CALLBACK_FUNCTION);
 		if(dwResult != MMSYSERR_NOERROR)
 			BREAK_WITH_ERROR("request_ui_record_mic: WaveInOpen failed", dwResult) //Open failed
 		wh.lpData = (LPSTR)recordBuffer;
@@ -101,14 +101,14 @@ DWORD request_ui_record_mic( Remote * remote, Packet * request ){
 			FALSE,               // auto-reset event
 			FALSE,              // initial state is nonsignaled
 			NULL);  // no object name
-		dwResult = waveInStart(hWavIn);
+		dwResult = (DWORD)waveInStart(hWavIn);
 		if(dwResult != MMSYSERR_NOERROR)
 			BREAK_WITH_ERROR("request_ui_record_mic: WaveInStart failed", dwResult)
 		WaitForSingleObject(recordMicEvent, seconds * 1000 + 1000);
-		dwResult = waveInStop(hWavIn);//seems to wait for buffer to complete
+		dwResult = (DWORD)waveInStop(hWavIn);//seems to wait for buffer to complete
 		if(dwResult != MMSYSERR_NOERROR)
 			BREAK_WITH_ERROR("request_ui_record_mic: WaveInStop failed", dwResult)
-		packet_add_tlv_raw(response, TLV_TYPE_AUDIO_DATA|TLV_META_TYPE_COMPRESSED, sendBuffer, riffsize);
+		packet_add_tlv_raw(response, (TlvType)(TLV_TYPE_AUDIO_DATA|TLV_META_TYPE_COMPRESSED), sendBuffer, riffsize);
 	} while( 0 );
 
 	packet_transmit_response( dwResult, remote, response );

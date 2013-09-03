@@ -97,8 +97,8 @@ SavedToken *get_token_list(DWORD *num_tokens_enum)
 	NTSTATUS ntReturn;
 	SavedToken *token_list = (SavedToken*)calloc(token_list_size, sizeof(SavedToken)); 
 
-	NtQuerySystemInformation = (NTQUERYSYSTEMINFORMATION)GetProcAddress(GetModuleHandle("NTDLL.DLL"), "NtQuerySystemInformation");
-	NtQueryObject= (NTQUERYOBJECT)GetProcAddress(GetModuleHandle("NTDLL.DLL"), "NtQueryObject");
+	NtQuerySystemInformation = (NTQUERYSYSTEMINFORMATION)GetProcAddress(GetModuleHandleA("NTDLL.DLL"), "NtQuerySystemInformation");
+	NtQueryObject= (NTQUERYOBJECT)GetProcAddress(GetModuleHandleA("NTDLL.DLL"), "NtQueryObject");
 
 	pHandleInfo = (PSYSTEM_HANDLE_INFORMATION)malloc(dwSize);
 	ntReturn = NtQuerySystemInformation(SystemHandleInformation, pHandleInfo, dwSize, &dwSize);

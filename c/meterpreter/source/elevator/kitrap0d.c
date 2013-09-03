@@ -122,6 +122,7 @@ BOOL elevator_kitrap0d_findandreplace( PDWORD Structure, DWORD CurrentValue, DWO
 /*
  * This routine is where we land after successfully triggering the vulnerability.
  */
+#pragma warning(disable: 4731)
 VOID elevator_kitrap0d_firststage( VOID )
 {
 	FARPROC DbgPrint                     = NULL;
@@ -222,6 +223,7 @@ VOID elevator_kitrap0d_firststage( VOID )
 	};
 
 }
+#pragma warning(default: 4731)
 
 /*
  * Setup a minimal execution environment to satisfy NtVdmControl().
