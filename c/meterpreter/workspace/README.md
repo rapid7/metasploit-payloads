@@ -10,5 +10,5 @@ with Windows XP due to the fact that .NET 4.5 will not run on Windows XP. Howeve
 does not mean that Metepreter itself will not run on Windows XP, it just means that it's
 not possible to _build_ it on Windows XP.
 
-    [vs_express]: 
-    [vs_paid]: 
+    [vs_express]: http://www.microsoft.com/visualstudio/eng/downloads#d-2012-express
+    [vs_paid]: http://www.microsoft.com/visualstudio/eng/downloads#d-2012-editions

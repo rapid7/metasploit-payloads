@@ -107,7 +107,10 @@
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <PostBuildEvent>
-      <Command>copy /y "$(OutDir)$(TargetName)$(TargetExt)" "$(ProjectDir)..\..\output\"</Command>
+      <Command>IF EXIST "$(ProjectDir)..\..\output\$(PlatformShortName)\Debug\" GOTO COPY
+    mkdir "$(ProjectDir)..\..\output\$(PlatformShortName)\Debug\"
+:COPY
+copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformShortName)\Debug\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -139,7 +142,10 @@
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <PostBuildEvent>
-      <Command>copy /y "$(OutDir)$(TargetName)$(TargetExt)" "$(ProjectDir)..\..\output\"</Command>
+      <Command>IF EXIST "$(ProjectDir)..\..\output\$(PlatformShortName)\Debug\" GOTO COPY
+    mkdir "$(ProjectDir)..\..\output\$(PlatformShortName)\Debug\"
+:COPY
+copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformShortName)\Debug\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -205,7 +211,10 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <PostBuildEvent>
-      <Command>copy /y "$(OutDir)$(TargetName)$(TargetExt)" "$(ProjectDir)..\..\output\"</Command>
+      <Command>IF EXIST "$(ProjectDir)..\..\output\$(PlatformShortName)\" GOTO COPY
+    mkdir "$(ProjectDir)..\..\output\$(PlatformShortName)\"
+:COPY
+copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformShortName)\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>

@@ -109,7 +109,11 @@
       </MinimumRequiredVersion>
     </Link>
     <PostBuildEvent>
-      <Command>copy /y "$(OutDir)$(TargetName)$(TargetExt)" "$(ProjectDir)..\..\output\"</Command>
+      <Command>editbin.exe /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,4.0 "$(TargetDir)$(TargetFileName)"
+IF EXIST "$(ProjectDir)..\..\output\$(PlatformShortName)\Debug\" GOTO COPY
+    mkdir "$(ProjectDir)..\..\output\$(PlatformShortName)\Debug\"
+:COPY
+copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformShortName)\Debug\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -134,6 +138,13 @@
       <SubSystem>Windows</SubSystem>
       <TargetMachine>MachineX64</TargetMachine>
     </Link>
+    <PostBuildEvent>
+      <Command>editbin.exe /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,4.0 "$(TargetDir)$(TargetFileName)"
+IF EXIST "$(ProjectDir)..\..\output\$(PlatformShortName)\Debug\" GOTO COPY
+    mkdir "$(ProjectDir)..\..\output\$(PlatformShortName)\Debug\"
+:COPY
+copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformShortName)\Debug\"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -219,7 +230,11 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       </MinimumRequiredVersion>
     </Link>
     <PostBuildEvent>
-      <Command>copy /y "$(OutDir)$(TargetName)$(TargetExt)" "$(ProjectDir)..\..\output\"</Command>
+      <Command>editbin.exe /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,4.0 "$(TargetDir)$(TargetFileName)"
+IF EXIST "$(ProjectDir)..\..\output\$(PlatformShortName)\" GOTO COPY
+    mkdir "$(ProjectDir)..\..\output\$(PlatformShortName)\"
+:COPY
+copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformShortName)\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
