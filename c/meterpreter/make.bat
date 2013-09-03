@@ -1,7 +1,13 @@
 @ECHO OFF
 IF "%VCINSTALLDIR%" == "" GOTO NEED_VS
 IF "%1"=="x86" GOTO BUILD_X86
+IF "%1"=="X86" GOTO BUILD_X86
 IF "%1"=="x64" GOTO BUILD_X64
+IF "%1"=="X64" GOTO BUILD_X64
+
+ECHO "Building Meterpreter x64 and x86 (Release)"
+SET PLAT=all
+GOTO RUN
 
 :BUILD_X86
 ECHO "Building Meterpreter x86 (Release)"
@@ -12,9 +18,6 @@ GOTO RUN
 ECHO "Building Meterpreter x64 (Release)"
 SET PLAT=x64
 GOTO RUN
-
-ECHO "Building Meterpreter x64 and x86 (Release)"
-SET PLAT=all
 
 :RUN
 PUSHD workspace

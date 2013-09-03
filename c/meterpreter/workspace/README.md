@@ -10,5 +10,25 @@ with Windows XP due to the fact that .NET 4.5 will not run on Windows XP. Howeve
 does not mean that Metepreter itself will not run on Windows XP, it just means that it's
 not possible to _build_ it on Windows XP.
 
-    [vs_express]: http://www.microsoft.com/visualstudio/eng/downloads#d-2012-express
-    [vs_paid]: http://www.microsoft.com/visualstudio/eng/downloads#d-2012-editions
+Visual Studio 2012 Express
+--------------------------
+
+In order to build successfully with this version of Visual Studio you must first make sure
+that the most recent updates have been applied. At the time of writing, the latest known
+update is **Update 3**. Without this update you won't be able to build.
+
+Running the Build
+=================
+
+Open up a Visual Studio command prompt by selecting it in the Start menu, or alternatively
+you can manually run `vcvars32.bat` from an existing command line.
+
+Once you have your environment variables set up, change to the root folder where the
+meterpreter source is located. From here you can:
+
+* Build the x86 version by running: `make x86`
+* Build the x64 version by running: `make x64`
+* Build both x86 and x64 versions by running: `make`
+
+  [vs_express]: http://www.microsoft.com/visualstudio/eng/downloads#d-2012-express
+  [vs_paid]: http://www.microsoft.com/visualstudio/eng/downloads#d-2012-editions
