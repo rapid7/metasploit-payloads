@@ -1,3 +1,27 @@
+Intro
+=====
+
+This repo/branch is where work is being done to bring Metepreter up to speed with new
+toolsets, and to tidy it up and make more fitting for public consumption. This is very
+much a work in progress and hence the code will be rather turbulent and unstable until
+the changes start to settle and proper testing is put in place.
+
+In Development
+==============
+
+Known Issues
+------------
+
+1. Lots of warnings still present in both 32 and 64 bit builds.
+1. Most of the `mimikatz` extension methods come back with errors on x64.
+
+Things to do
+------------
+
+* Improve the speed of the build.
+* Improve (reduce) the size of the binaries.
+* Start working on a unit/functional testing strategy.
+
 Build Requirements
 ==================
 
