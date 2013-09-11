@@ -147,7 +147,7 @@ DLLEXPORT ULONG_PTR WINAPI ReflectiveLoader( VOID )
 		do
 		{
 			uiValueC = ror( (DWORD)uiValueC );
-			// normalize to uppercase if the madule name is in lowercase
+			// normalize to uppercase if the module name is in lowercase
 			if( *((BYTE *)uiValueB) >= 'a' )
 				uiValueC += *((BYTE *)uiValueB) - 0x20;
 			else
