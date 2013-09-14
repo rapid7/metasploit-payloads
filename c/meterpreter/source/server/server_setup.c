@@ -115,7 +115,7 @@ static VOID server_socket_flush( Remote * remote )
 	fd_set fdread;
 	DWORD ret;
 	SOCKET fd;
-    unsigned char buff[4096];
+    char buff[4096];
 
 	lock_acquire( remote->lock );
 
@@ -132,7 +132,7 @@ static VOID server_socket_flush( Remote * remote )
 		tv.tv_sec  = 1;
 		tv.tv_usec = 0;
 
-		data = select(fd + 1, &fdread, NULL, NULL, &tv);
+		data = select((SOCKET)(fd + 1), &fdread, NULL, NULL, &tv);
 		if(data == 0)
 			break;
 
@@ -169,7 +169,7 @@ static LONG server_socket_poll( Remote * remote, long timeout )
 	tv.tv_sec  = 0;
 	tv.tv_usec = timeout;
 
-	result = select( fd + 1, &fdread, NULL, NULL, &tv );
+	result = select((SOCKET)(fd + 1), &fdread, NULL, NULL, &tv );
 
 #ifndef _WIN32 
 	// Handle EAGAIN, etc.
@@ -278,7 +278,7 @@ static BOOL server_negotiate_ssl(Remote *remote)
 		remote->ssl  = SSL_new(remote->ctx);
 		SSL_set_verify(remote->ssl, SSL_VERIFY_NONE, NULL);
 		    
-		if( SSL_set_fd(remote->ssl, remote->fd) == 0 )
+		if( SSL_set_fd(remote->ssl, (int)remote->fd) == 0 )
 		{
 			dprintf("[SERVER] set fd failed");
 			success = FALSE;
@@ -446,8 +446,8 @@ static DWORD server_dispatch_http_wininet( Remote * remote )
 	//authentication
 	if (!(strcmp(global_meterpreter_proxy_username, "METERPRETER_USERNAME_PROXY") == 0))
 	{
-		InternetSetOption(remote->hConnection, INTERNET_OPTION_PROXY_USERNAME, global_meterpreter_proxy_username, strlen(global_meterpreter_proxy_username)+1);
-		InternetSetOption(remote->hConnection, INTERNET_OPTION_PROXY_PASSWORD, global_meterpreter_proxy_password, strlen(global_meterpreter_proxy_password)+1);
+		InternetSetOption(remote->hConnection, INTERNET_OPTION_PROXY_USERNAME, global_meterpreter_proxy_username, (DWORD)strlen(global_meterpreter_proxy_username)+1);
+		InternetSetOption(remote->hConnection, INTERNET_OPTION_PROXY_PASSWORD, global_meterpreter_proxy_password, (DWORD)strlen(global_meterpreter_proxy_password)+1);
 		dprintf("[DISPATCH] Proxy authentication configured : %s/%s", global_meterpreter_proxy_username, global_meterpreter_proxy_password);
 	}
 

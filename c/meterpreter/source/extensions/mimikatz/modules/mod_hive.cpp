@@ -135,24 +135,25 @@ bool mod_hive::RegOpenKey(hive *h, string * path, nk_hdr **nr)
 	nk_hdr *n = new nk_hdr();
 	char *t, *tpath;
 	unsigned long noff = 0;
+	char *tokctx = NULL;
 
 	read_nk(n, h, 0x1020);
 
 	if(n->id == NK_ID && n->type == NK_ROOT)
 	{
-		tpath = strdup(path->c_str());
-		t = strtok(tpath, "\\");
+		tpath = _strdup(path->c_str());
+		t = strtok_s(tpath, "\\", &tokctx);
 		
 		if(!memcmp(t, n->key_name, n->name_len))
 		{
-			t = strtok(NULL, "\\");
+			t = strtok_s(tpath, "\\", &tokctx);
 			while(t != NULL)
 			{
 				noff = parself(h, t, n->lf_off + 0x1000);
 				if(noff != -1)
 				{
 					read_nk(n, h, noff + 0x1000);
-					t = strtok( NULL, "\\" );
+					t = strtok_s(tpath, "\\", &tokctx);
 				}
 				else
 				{

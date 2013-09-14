@@ -18,3 +18,21 @@
 
 tags
 
+# temporary files
+*.swp
+
+# VS local dbs
+*.sdf
+*.opensdf
+
+# VS ipch
+workspace/ipch/*
+
+# VS upgrade junk
+UpgradeLog.*
+_UpgradeReport_Files
+workspace/Backup/*
+source/jpeg-8/Backup/*
+
+# other VS garbage
+*.*proj.filters

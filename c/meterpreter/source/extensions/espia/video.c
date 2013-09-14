@@ -1,4 +1,3 @@
-#define _CRT_SECURE_NO_DEPRECATE 1
 #include "../../common/common.h"
 #include <stdio.h>
 #include <windows.h>
@@ -17,53 +16,58 @@
 
 BOOL capWebCam(char *szFile, int nIndex, int nX, int nY, int nMsg) 
 {
-HWND hWndCap = capCreateCaptureWindow(NULL, WS_CHILD , 0, 0, nX, nY, GetDesktopWindow(), 0);
+	HWND hWndCap = capCreateCaptureWindow(NULL, WS_CHILD , 0, 0, nX, nY, GetDesktopWindow(), 0);
 
 
-if(!hWndCap) return FALSE;
+	if(!hWndCap) return FALSE;
 
-capDlgVideoSource(hWndCap);
+	capDlgVideoSource(hWndCap);
 
-SetWindowLong(hWndCap,GWL_EXSTYLE,GetWindowLong(hWndCap,GWL_EXSTYLE));
-ShowWindow(hWndCap,TRUE);
-capSendMessage(hWndCap, WM_CAP_DRIVER_DISCONNECT, 0, 0);
-capSendMessage(hWndCap, WM_CAP_DRIVER_CONNECT, 0, 0);
-capSendMessage(hWndCap, WM_CAP_SET_SCALE, TRUE, 0);
-capSendMessage(hWndCap, WM_CAP_SET_PREVIEWRATE, 1, 0);
-capSendMessage(hWndCap, WM_CAP_SET_PREVIEW, TRUE, 0);
-capSendMessage(hWndCap, WM_CAP_GRAB_FRAME_NOSTOP, 0, 0);
-capSendMessage(hWndCap, WM_CAP_FILE_SAVEDIB, 0, szFile);
-DestroyWindow(hWndCap);
+	SetWindowLong(hWndCap,GWL_EXSTYLE,GetWindowLong(hWndCap,GWL_EXSTYLE));
+	ShowWindow(hWndCap,TRUE);
+	capSendMessage(hWndCap, WM_CAP_DRIVER_DISCONNECT, 0, 0);
+	capSendMessage(hWndCap, WM_CAP_DRIVER_CONNECT, 0, 0);
+	capSendMessage(hWndCap, WM_CAP_SET_SCALE, TRUE, 0);
+	capSendMessage(hWndCap, WM_CAP_SET_PREVIEWRATE, 1, 0);
+	capSendMessage(hWndCap, WM_CAP_SET_PREVIEW, TRUE, 0);
+	capSendMessage(hWndCap, WM_CAP_GRAB_FRAME_NOSTOP, 0, 0);
+	capSendMessage(hWndCap, WM_CAP_FILE_SAVEDIB, 0, szFile);
+	DestroyWindow(hWndCap);
 
-return TRUE;
+	return TRUE;
 }
 
 
 int GetCamIndex()
 {
-int wIndex;
-char szDeviceName[80];
-char szDeviceVersion[80];
+	int wIndex;
+	char szDeviceName[80];
+	char szDeviceVersion[80];
 
-for (wIndex = 0; wIndex < 9; wIndex++){
-	if (capGetDriverDescription(wIndex, szDeviceName,sizeof (szDeviceName),szDeviceVersion, sizeof(szDeviceVersion)))
-		return wIndex;
-}
-return -1;
+	for (wIndex = 0; wIndex < 9; wIndex++){
+		if (capGetDriverDescriptionA(wIndex, szDeviceName, sizeof(szDeviceName), szDeviceVersion, sizeof(szDeviceVersion)))
+			return wIndex;
+	}
+	return -1;
 }
 
+// TODO: perhaps find a way of sharing this code with passwd.c?
 char *StringCombine(char *string1, char *string2) {
+	size_t s1len, s2len;
 
 	if (string2 == NULL) { // nothing to append
 		return string1;
 	}
 
+	// TODO: what do we want to do if memory allocation fails?
+	s2len = strlen(string2);
 	if (string1 == NULL) { // create a new string
-		string1 = (char *)malloc(strlen(string2) + 1);
-		strncpy(string1, string2, strlen(string2) + 1);
+		string1 = (char *)malloc(s2len + 1);
+		strncpy_s(string1, s2len + 1, string2, s2len + 1);
 	} else {			   // append data to the string
-		string1 = (char *)realloc(string1, strlen(string1) + strlen(string2) + 1);
-		string1 = strncat(string1, string2, strlen(string2) + 1);
+		s1len = strlen(string1);
+		string1 = (char *)realloc(string1, s1len + s2len + 1);
+		strncat_s(string1, s1len + s2len + 1, string2, s2len + 1);
 	}
 
 	return string1;

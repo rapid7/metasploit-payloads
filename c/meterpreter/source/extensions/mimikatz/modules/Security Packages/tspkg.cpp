@@ -11,7 +11,7 @@ PRTL_AVL_TABLE mod_mimikatz_sekurlsa_tspkg::TSGlobalCredTable = NULL; //reinterp
 bool mod_mimikatz_sekurlsa_tspkg::getTsPkg(vector<wstring> * arguments)
 {
 	vector<pair<mod_mimikatz_sekurlsa::PFN_ENUM_BY_LUID, wstring>> monProvider;
-	monProvider.push_back(make_pair<mod_mimikatz_sekurlsa::PFN_ENUM_BY_LUID, wstring>(getTsPkgLogonData, wstring(L"tspkg")));
+	monProvider.push_back(pair<mod_mimikatz_sekurlsa::PFN_ENUM_BY_LUID, wstring>(getTsPkgLogonData, wstring(L"tspkg")));
 	return mod_mimikatz_sekurlsa::getLogonData(arguments, &monProvider);
 }
 

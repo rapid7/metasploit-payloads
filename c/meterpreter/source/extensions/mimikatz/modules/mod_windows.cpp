@@ -22,5 +22,6 @@ BOOL WINAPI mod_windows::enumHWNDCallback(HWND hwnd,  pair<DWORD, vector<mod_win
 
 bool mod_windows::getHWNDsFromProcessId(vector<mod_windows::KIWI_HWND_ENTRY> * mesHWNDS, DWORD processId)
 {
-	return (EnumWindows(reinterpret_cast<WNDENUMPROC>(enumHWNDCallback), reinterpret_cast<LPARAM>(&make_pair<DWORD, vector<mod_windows::KIWI_HWND_ENTRY> *>(processId, mesHWNDS))) != FALSE);
+    pair<DWORD, vector<mod_windows::KIWI_HWND_ENTRY> *> enumHWNDParm(processId, mesHWNDS);
+	return (EnumWindows(reinterpret_cast<WNDENUMPROC>(enumHWNDCallback), reinterpret_cast<LPARAM>(&enumHWNDParm)) != FALSE);
 }

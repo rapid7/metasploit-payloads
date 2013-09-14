@@ -12,7 +12,7 @@ long mod_mimikatz_sekurlsa_wdigest::offsetWDigestPrimary = 0;
 bool mod_mimikatz_sekurlsa_wdigest::getWDigest(vector<wstring> * arguments)
 {
 	vector<pair<mod_mimikatz_sekurlsa::PFN_ENUM_BY_LUID, wstring>> monProvider;
-	monProvider.push_back(make_pair<mod_mimikatz_sekurlsa::PFN_ENUM_BY_LUID, wstring>(getWDigestLogonData, wstring(L"wdigest")));
+	monProvider.push_back(pair<mod_mimikatz_sekurlsa::PFN_ENUM_BY_LUID, wstring>(getWDigestLogonData, wstring(L"wdigest")));
 	return mod_mimikatz_sekurlsa::getLogonData(arguments, &monProvider);
 }
 

@@ -1,5 +1,5 @@
 //===============================================================================================//
-// Copyright (c) 2009, Stephen Fewer of Harmony Security (www.harmonysecurity.com)
+// Copyright (c) 2012, Stephen Fewer of Harmony Security (www.harmonysecurity.com)
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted 
@@ -60,6 +60,7 @@ DWORD GetReflectiveLoaderOffset( VOID * lpReflectiveDllBuffer )
 #ifdef _WIN64
 	DWORD dwMeterpreterArch = 2;
 #else
+	// This will catch Win32 and WinRT.
 	DWORD dwMeterpreterArch = 1;
 #endif
 
@@ -107,6 +108,7 @@ DWORD GetReflectiveLoaderOffset( VOID * lpReflectiveDllBuffer )
 	while( dwCounter-- )
 	{
 		char * cpExportedFunctionName = (char *)(uiBaseAddress + Rva2Offset( DEREF_32( uiNameArray ), uiBaseAddress ));
+
 		if( strstr( cpExportedFunctionName, "ReflectiveLoader" ) != NULL )
 		{
 			// get the File Offset for the array of addresses
@@ -185,7 +187,6 @@ HMODULE WINAPI LoadLibraryR( LPVOID lpBuffer, DWORD dwLength )
 //       same as the arch this function is compiled as, e.g. x86->x86 and x64->x64 but not x64->x86 or x86->x64.
 HANDLE WINAPI LoadRemoteLibraryR( HANDLE hProcess, LPVOID lpBuffer, DWORD dwLength, LPVOID lpParameter )
 {
-	BOOL bSuccess                             = FALSE;
 	LPVOID lpRemoteLibraryBuffer              = NULL;
 	LPTHREAD_START_ROUTINE lpReflectiveLoader = NULL;
 	HANDLE hThread                            = NULL;
@@ -214,7 +215,7 @@ HANDLE WINAPI LoadRemoteLibraryR( HANDLE hProcess, LPVOID lpBuffer, DWORD dwLeng
 				break;
 
 			// add the offset to ReflectiveLoader() to the remote library address...
-			lpReflectiveLoader = (LPTHREAD_START_ROUTINE)( (DWORD)lpRemoteLibraryBuffer + (DWORD)dwReflectiveLoaderOffset );
+			lpReflectiveLoader = (LPTHREAD_START_ROUTINE)( (ULONG_PTR)lpRemoteLibraryBuffer + dwReflectiveLoaderOffset );
 
 			// create a remote thread in the host process to call the ReflectiveLoader!
 			hThread = CreateRemoteThread( hProcess, NULL, 1024*1024, lpReflectiveLoader, lpParameter, (DWORD)NULL, &dwThreadId );

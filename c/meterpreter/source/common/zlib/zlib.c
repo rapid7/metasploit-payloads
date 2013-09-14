@@ -726,16 +726,8 @@ int deflateInit_(strm, level, version, stream_size)
 }
 
 /* ========================================================================= */
-int deflateInit2_(strm, level, method, windowBits, memLevel, strategy,
-		  version, stream_size)
-    z_streamp strm;
-    int  level;
-    int  method;
-    int  windowBits;
-    int  memLevel;
-    int  strategy;
-    const char *version;
-    int stream_size;
+int deflateInit2_(z_streamp strm, int  level, int  method, int  windowBits,
+				  int  memLevel, int  strategy, const char *version, int stream_size)
 {
     deflate_state *s;
     int noheader = 0;
@@ -814,10 +806,7 @@ int deflateInit2_(strm, level, method, windowBits, memLevel, strategy,
 }
 
 /* ========================================================================= */
-int deflateSetDictionary (strm, dictionary, dictLength)
-    z_streamp strm;
-    const Bytef *dictionary;
-    uInt  dictLength;
+int deflateSetDictionary(z_streamp strm, const Bytef *dictionary, uInt dictLength)
 {
     deflate_state *s;
     uInt length = dictLength;
@@ -857,8 +846,7 @@ int deflateSetDictionary (strm, dictionary, dictLength)
 }
 
 /* ========================================================================= */
-int deflateReset (strm)
-    z_streamp strm;
+int deflateReset(z_streamp strm)
 {
     deflate_state *s;
     
@@ -887,10 +875,7 @@ int deflateReset (strm)
 }
 
 /* ========================================================================= */
-int deflateParams(strm, level, strategy)
-    z_streamp strm;
-    int level;
-    int strategy;
+int deflateParams(z_streamp strm, int level, int strategy)
 {
     deflate_state *s;
     compress_func func;
@@ -900,23 +885,23 @@ int deflateParams(strm, level, strategy)
     s = (deflate_state *) strm->state;
 
     if (level == Z_DEFAULT_COMPRESSION) {
-	level = 6;
+		level = 6;
     }
     if (level < 0 || level > 9 || strategy < 0 || strategy > Z_HUFFMAN_ONLY) {
-	return Z_STREAM_ERROR;
+		return Z_STREAM_ERROR;
     }
     func = configuration_table[s->level].func;
 
     if (func != configuration_table[level].func && strm->total_in != 0) {
-	/* Flush the last buffer: */
-	err = deflate(strm, Z_PARTIAL_FLUSH);
+		/* Flush the last buffer: */
+		err = deflate(strm, Z_PARTIAL_FLUSH);
     }
     if (s->level != level) {
-	s->level = level;
-	s->max_lazy_match   = configuration_table[level].max_lazy;
-	s->good_match       = configuration_table[level].good_length;
-	s->nice_match       = configuration_table[level].nice_length;
-	s->max_chain_length = configuration_table[level].max_chain;
+		s->level = level;
+		s->max_lazy_match   = configuration_table[level].max_lazy;
+		s->good_match       = configuration_table[level].good_length;
+		s->nice_match       = configuration_table[level].nice_length;
+		s->max_chain_length = configuration_table[level].max_chain;
     }
     s->strategy = strategy;
     return err;
@@ -927,9 +912,7 @@ int deflateParams(strm, level, strategy)
  * IN assertion: the stream state is correct and there is enough room in
  * pending_buf.
  */
-local void putShortMSB (s, b)
-    deflate_state *s;
-    uInt b;
+local void putShortMSB (deflate_state *s, uInt b)
 {
     put_byte(s, (Byte)(b >> 8));
     put_byte(s, (Byte)(b & 0xff));
@@ -941,8 +924,7 @@ local void putShortMSB (s, b)
  * to avoid allocating a large strm->next_out buffer and copying into it.
  * (See also read_buf()).
  */
-local void flush_pending(strm)
-    z_streamp strm;
+local void flush_pending(z_streamp strm)
 {
     deflate_state *s = (deflate_state *) strm->state;
     unsigned len = s->pending;
@@ -951,8 +933,8 @@ local void flush_pending(strm)
     if (len == 0) return;
 
     if (strm->next_out != Z_NULL) {
-	zmemcpy(strm->next_out, s->pending_out, len);
-	strm->next_out += len;
+		zmemcpy(strm->next_out, s->pending_out, len);
+		strm->next_out += len;
     }
     s->pending_out += len;
     strm->total_out += len;
@@ -964,9 +946,7 @@ local void flush_pending(strm)
 }
 
 /* ========================================================================= */
-int deflate (strm, flush)
-    z_streamp strm;
-    int flush;
+int deflate (z_streamp strm, int flush)
 {
     int old_flush; /* value of flush param for previous deflate call */
     deflate_state *s;
@@ -2127,8 +2107,7 @@ local void tr_static_init()
 /* ===========================================================================
  * Initialize the tree data structures for a new zlib stream.
  */
-void _tr_init(s)
-    deflate_state *s;
+void _tr_init(deflate_state *s)
 {
     tr_static_init();
 
@@ -3078,8 +3057,7 @@ struct internal_state {
 };
 
 
-int inflateReset(z)
-z_streamp z;
+int inflateReset(z_streamp z)
 {
   uLong c;
 
@@ -3094,8 +3072,7 @@ z_streamp z;
 }
 
 
-int inflateEnd(z)
-z_streamp z;
+int inflateEnd(z_streamp z)
 {
   uLong c;
 
@@ -3110,11 +3087,7 @@ z_streamp z;
 }
 
 
-int inflateInit2_(z, w, version, stream_size)
-z_streamp z;
-int w;
-const char *version;
-int stream_size;
+int inflateInit2_(z_streamp z, int w, const char *version, int stream_size)
 {
   if (version == Z_NULL || version[0] != ZLIB_VERSION[0] ||
       stream_size != sizeof(z_stream))
@@ -3169,10 +3142,7 @@ int stream_size;
 }
 
 
-int inflateInit_(z, version, stream_size)
-z_streamp z;
-const char *version;
-int stream_size;
+int inflateInit_(z_streamp z, const char *version, int stream_size)
 {
   return inflateInit2_(z, DEF_WBITS, version, stream_size);
 }
@@ -3181,9 +3151,7 @@ int stream_size;
 #define NEEDBYTE {if(z->avail_in==0)goto empty;r=Z_OK;}
 #define NEXTBYTE (z->avail_in--,z->total_in++,*z->next_in++)
 
-int inflate(z, f)
-z_streamp z;
-int f;
+int inflate(z_streamp z, int f)
 {
   int r;
   uInt b;
@@ -3313,10 +3281,7 @@ int f;
 }
 
 
-int inflateSetDictionary(z, dictionary, dictLength)
-z_streamp z;
-const Bytef *dictionary;
-uInt  dictLength;
+int inflateSetDictionary(z_streamp z, const Bytef *dictionary, uInt dictLength)
 {
   uInt length = dictLength;
 
@@ -3345,8 +3310,7 @@ uInt  dictLength;
  * will have been updated if need be.
  */
 
-int inflateIncomp(z)
-z_stream *z;
+int inflateIncomp(z_streamp z)
 {
     if (z->state->mode != BLOCKS)
 	return Z_DATA_ERROR;
@@ -3354,8 +3318,7 @@ z_stream *z;
 }
 
 
-int inflateSync(z)
-z_streamp z;
+int inflateSync(z_streamp z)
 {
   uInt n;       /* number of bytes to look at */
   Bytef *p;     /* pointer to bytes */
@@ -3666,10 +3629,7 @@ local const uInt border[] = { /* Order of the bit length code lengths */
  */
 
 
-void inflate_blocks_reset(s, z, c)
-inflate_blocks_statef *s;
-z_streamp z;
-uLongf *c;
+void inflate_blocks_reset(inflate_blocks_statef *s, z_streamp z, uLongf *c)
 {
   if (s->checkfn != Z_NULL)
     *c = s->check;
@@ -3691,10 +3651,7 @@ uLongf *c;
 }
 
 
-inflate_blocks_statef *inflate_blocks_new(z, c, w)
-z_streamp z;
-check_func c;
-uInt w;
+inflate_blocks_statef *inflate_blocks_new(z_streamp z, check_func c, uInt w)
 {
   inflate_blocks_statef *s;
 
@@ -3718,10 +3675,7 @@ uInt w;
 #ifdef DEBUG_ZLIB
   extern uInt inflate_hufts;
 #endif
-int inflate_blocks(s, z, r)
-inflate_blocks_statef *s;
-z_streamp z;
-int r;
+int inflate_blocks(inflate_blocks_statef *s, z_streamp z, int r)
 {
   uInt t;               /* temporary storage */
   uLong b;              /* bit buffer */
@@ -3994,10 +3948,7 @@ int r;
 }
 
 
-int inflate_blocks_free(s, z, c)
-inflate_blocks_statef *s;
-z_streamp z;
-uLongf *c;
+int inflate_blocks_free(inflate_blocks_statef *s, z_streamp z, uLongf *c)
 {
   inflate_blocks_reset(s, z, c);
   ZFREE(z, s->window);
@@ -4007,10 +3958,7 @@ uLongf *c;
 }
 
 
-void inflate_set_dictionary(s, d, n)
-inflate_blocks_statef *s;
-const Bytef *d;
-uInt  n;
+void inflate_set_dictionary(inflate_blocks_statef *s, const Bytef *d, uInt n)
 {
   zmemcpy((charf *)s->window, d, n);
   s->read = s->write = s->window + n;
@@ -4024,9 +3972,7 @@ uInt  n;
  * BLOCKS).  On exit, the output will also be caught up, and the checksum
  * will have been updated if need be.
  */
-int inflate_addhistory(s, z)
-inflate_blocks_statef *s;
-z_stream *z;
+int inflate_addhistory(inflate_blocks_statef *s, z_stream *z)
 {
     uLong b;              /* bit buffer */  /* NOT USED HERE */
     uInt k;               /* bits in bit buffer */ /* NOT USED HERE */
@@ -4074,8 +4020,7 @@ z_stream *z;
  * At the end of a Deflate-compressed PPP packet, we expect to have seen
  * a `stored' block type value but not the (zero) length bytes.
  */
-int inflate_packet_flush(s)
-    inflate_blocks_statef *s;
+int inflate_packet_flush(inflate_blocks_statef *s)
 {
     if (s->mode != LENS)
 	return Z_DATA_ERROR;
@@ -4185,15 +4130,16 @@ local const uInt cpdext[30] = { /* Extra bits for distance codes */
   uInt inflate_hufts;
 #endif
 
-local int huft_build(b, n, s, d, e, t, m, zs)
-uIntf *b;               /* code lengths in bits (all assumed <= BMAX) */
-uInt n;                 /* number of codes (assumed <= N_MAX) */
-uInt s;                 /* number of simple-valued codes (0..s-1) */
-const uIntf *d;         /* list of base values for non-simple codes */
-const uIntf *e;         /* list of extra bits for non-simple codes */
-inflate_huft * FAR *t;  /* result: starting table */
-uIntf *m;               /* maximum lookup bits, returns actual */
-z_streamp zs;           /* for zalloc function */
+local int huft_build(
+uIntf *b,               /* code lengths in bits (all assumed <= BMAX) */
+uInt n,                 /* number of codes (assumed <= N_MAX) */
+uInt s,                 /* number of simple-valued codes (0..s-1) */
+const uIntf *d,         /* list of base values for non-simple codes */
+const uIntf *e,         /* list of extra bits for non-simple codes */
+inflate_huft * FAR *t,  /* result: starting table */
+uIntf *m,               /* maximum lookup bits, returns actual */
+z_streamp zs           /* for zalloc function */
+)
 /* Given a list of code lengths and a maximum table size, make a set of
    tables to decode that set of codes.  Return Z_OK on success, Z_BUF_ERROR
    if the given code set is incomplete (the tables are still built in this
@@ -4389,11 +4335,12 @@ z_streamp zs;           /* for zalloc function */
 }
 
 
-int inflate_trees_bits(c, bb, tb, z)
-uIntf *c;               /* 19 code lengths */
-uIntf *bb;              /* bits tree desired/actual depth */
-inflate_huft * FAR *tb; /* bits tree result */
-z_streamp z;            /* for zfree function */
+int inflate_trees_bits(
+uIntf *c,               /* 19 code lengths */
+uIntf *bb,              /* bits tree desired/actual depth */
+inflate_huft * FAR *tb, /* bits tree result */
+z_streamp z            /* for zfree function */
+)
 {
   int r;
 
@@ -4410,15 +4357,16 @@ z_streamp z;            /* for zfree function */
 }
 
 
-int inflate_trees_dynamic(nl, nd, c, bl, bd, tl, td, z)
-uInt nl;                /* number of literal/length codes */
-uInt nd;                /* number of distance codes */
-uIntf *c;               /* that many (total) code lengths */
-uIntf *bl;              /* literal desired/actual bit depth */
-uIntf *bd;              /* distance desired/actual bit depth */
-inflate_huft * FAR *tl; /* literal/length tree result */
-inflate_huft * FAR *td; /* distance tree result */
-z_streamp z;            /* for zfree function */
+int inflate_trees_dynamic(
+uInt nl,                /* number of literal/length codes */
+uInt nd,                /* number of distance codes */
+uIntf *c,               /* that many (total) code lengths */
+uIntf *bl,              /* literal desired/actual bit depth */
+uIntf *bd,              /* distance desired/actual bit depth */
+inflate_huft * FAR *tl, /* literal/length tree result */
+inflate_huft * FAR *td, /* distance tree result */
+z_streamp z            /* for zfree function */
+)
 {
   int r;
 
@@ -4477,10 +4425,11 @@ local inflate_huft *fixed_tl;
 local inflate_huft *fixed_td;
 
 
-local voidpf falloc(q, n, s)
-voidpf q;       /* opaque pointer */
-uInt n;         /* number of items */
-uInt s;         /* size of item */
+local voidpf falloc(
+voidpf q,       /* opaque pointer */
+uInt n,         /* number of items */
+uInt s          /* size of item */
+)
 {
   Assert(s == sizeof(inflate_huft) && n <= *(intf *)q,
          "inflate_trees falloc overflow");
@@ -4489,11 +4438,12 @@ uInt s;         /* size of item */
 }
 
 
-int inflate_trees_fixed(bl, bd, tl, td)
-uIntf *bl;               /* literal desired/actual bit depth */
-uIntf *bd;               /* distance desired/actual bit depth */
-inflate_huft * FAR *tl;  /* literal/length tree result */
-inflate_huft * FAR *td;  /* distance tree result */
+int inflate_trees_fixed(
+uIntf *bl,               /* literal desired/actual bit depth */
+uIntf *bd,               /* distance desired/actual bit depth */
+inflate_huft * FAR *tl,  /* literal/length tree result */
+inflate_huft * FAR *td   /* distance tree result */
+)
 {
   /* build fixed tables if not already (multiple overlapped executions ok) */
   if (!fixed_built)
@@ -4538,9 +4488,10 @@ inflate_huft * FAR *td;  /* distance tree result */
 }
 
 
-int inflate_trees_free(t, z)
-inflate_huft *t;        /* table to free */
-z_streamp z;            /* for zfree function */
+int inflate_trees_free(
+inflate_huft *t,        /* table to free */
+z_streamp z             /* for zfree function */
+)
 /* Free the malloc'ed tables built by huft_build(), which makes a linked
    list of the tables it made, with the links in a dummy first entry of
    each table. */
@@ -4646,11 +4597,13 @@ struct inflate_codes_state {
 };
 
 
-inflate_codes_statef *inflate_codes_new(bl, bd, tl, td, z)
-uInt bl, bd;
-inflate_huft *tl;
-inflate_huft *td; /* need separate declaration for Borland C++ */
-z_streamp z;
+inflate_codes_statef *inflate_codes_new(
+uInt bl,
+uInt bd,
+inflate_huft *tl,
+inflate_huft *td, /* need separate declaration for Borland C++ */
+z_streamp z 
+)
 {
   inflate_codes_statef *c;
 
@@ -4668,10 +4621,7 @@ z_streamp z;
 }
 
 
-int inflate_codes(s, z, r)
-inflate_blocks_statef *s;
-z_streamp z;
-int r;
+int inflate_codes(inflate_blocks_statef *s, z_streamp z, int r)
 {
   uInt j;               /* temporary storage */
   inflate_huft *t;      /* temporary pointer */
@@ -4828,9 +4778,7 @@ int r;
 }
 
 
-void inflate_codes_free(c, z)
-inflate_codes_statef *c;
-z_streamp z;
+void inflate_codes_free(inflate_codes_statef *c, z_streamp z)
 {
   ZFREE(z, c);
   Tracev((stderr, "inflate:       codes free\n"));
@@ -4862,10 +4810,7 @@ uInt inflate_mask[17] = {
 
 
 /* copy as much as possible from the sliding window to the output area */
-int inflate_flush(s, z, r)
-inflate_blocks_statef *s;
-z_streamp z;
-int r;
+int inflate_flush(inflate_blocks_statef *s, z_streamp z, int r)
 {
   uInt n;
   Bytef *p;
@@ -4965,12 +4910,14 @@ struct inflate_codes_state {int dummy;}; /* for buggy compilers */
    at least ten.  The ten bytes are six bytes for the longest length/
    distance pair plus four bytes for overloading the bit buffer. */
 
-int inflate_fast(bl, bd, tl, td, s, z)
-uInt bl, bd;
-inflate_huft *tl;
-inflate_huft *td; /* need separate declaration for Borland C++ */
-inflate_blocks_statef *s;
-z_streamp z;
+int inflate_fast(
+uInt bl,
+uInt bd,
+inflate_huft *tl,
+inflate_huft *td, /* need separate declaration for Borland C++ */
+inflate_blocks_statef *s,
+z_streamp z
+)
 {
   inflate_huft *t;      /* temporary pointer */
   uInt e;               /* extra bits or operation */
@@ -5147,8 +5094,7 @@ const char *zlibVersion()
 }
 
 #ifdef DEBUG_ZLIB
-void z_error (m)
-    char *m;
+void z_error (char *m)
 {
     fprintf(stderr, "%s\n", m);
     exit(1);
@@ -5157,10 +5103,7 @@ void z_error (m)
 
 #ifndef HAVE_MEMCPY
 
-void zmemcpy(dest, source, len)
-    Bytef* dest;
-    Bytef* source;
-    uInt  len;
+void zmemcpy(Bytef* dest, Bytef* source, uInt  len)
 {
     if (len == 0) return;
     do {
@@ -5168,10 +5111,7 @@ void zmemcpy(dest, source, len)
     } while (--len != 0);
 }
 
-int zmemcmp(s1, s2, len)
-    Bytef* s1;
-    Bytef* s2;
-    uInt  len;
+int zmemcmp(Bytef* s1, Bytef* s2, uInt len)
 {
     uInt j;
 
@@ -5181,9 +5121,7 @@ int zmemcmp(s1, s2, len)
     return 0;
 }
 
-void zmemzero(dest, len)
-    Bytef* dest;
-    uInt  len;
+void zmemzero(Bytef* dest, uInt len)
 {
     if (len == 0) return;
     do {
@@ -5304,18 +5242,13 @@ extern voidp  calloc OF((uInt items, uInt size));
 extern void   free   OF((voidpf ptr));
 #endif
 
-voidpf zcalloc (opaque, items, size)
-    voidpf opaque;
-    unsigned items;
-    unsigned size;
+voidpf zcalloc(voidpf opaque, unsigned items, unsigned size)
 {
     if (opaque) items += size - size; /* make compiler happy */
     return (voidpf)calloc(items, size);
 }
 
-void  zcfree (opaque, ptr)
-    voidpf opaque;
-    voidpf ptr;
+void  zcfree(voidpf opaque, voidpf ptr)
 {
     free(ptr);
     if (opaque) return; /* make compiler happy */
@@ -5345,10 +5278,7 @@ void  zcfree (opaque, ptr)
 #define DO16(buf)   DO8(buf,0); DO8(buf,8);
 
 /* ========================================================================= */
-uLong adler32(adler, buf, len)
-    uLong adler;
-    const Bytef *buf;
-    uInt len;
+uLong adler32(uLong adler, const Bytef *buf, uInt len)
 {
     unsigned long s1 = adler & 0xffff;
     unsigned long s2 = (adler >> 16) & 0xffff;

@@ -5,6 +5,15 @@
 */
 #include "main.h"
 
+// Moved this from the extern C section as it's clearly C++ related.
+std::wstring s2ws(const std::string& str)
+{
+    int size_needed = MultiByteToWideChar(CP_UTF8, 0, &str[0], (int)str.size(), NULL, 0);
+    std::wstring wstrTo( size_needed, 0 );
+    MultiByteToWideChar(CP_UTF8, 0, &str[0], (int)str.size(), &wstrTo[0], size_needed);
+    return wstrTo;
+}
+
 extern "C" 
 {
 #include "../../ReflectiveDLLInjection/DelayLoadMetSrv.h"
@@ -40,17 +49,9 @@ wchar_t* convert_wstring_to_wchar_t(wstring in)
 { 
 	const wchar_t* outputStr = in.c_str(); 
 	wchar_t* out = new wchar_t[in.size()+1]; 
-	wcscpy(out, outputStr); 
+	wcscpy_s(out, in.size() + 1, outputStr); 
 	out[in.size()] = '\0';
 	return out;
-}
-
-std::wstring s2ws(const std::string& str)
-{
-    int size_needed = MultiByteToWideChar(CP_UTF8, 0, &str[0], (int)str.size(), NULL, 0);
-    std::wstring wstrTo( size_needed, 0 );
-    MultiByteToWideChar(CP_UTF8, 0, &str[0], (int)str.size(), &wstrTo[0], size_needed);
-    return wstrTo;
 }
 
 DWORD request_custom_command(Remote *remote, Packet *packet)

@@ -16,7 +16,7 @@ DWORD request_net_config_get_routes(Remote *remote, Packet *packet)
 	PMIB_IPFORWARDTABLE table_ipv4 = NULL;
 	PMIB_IPFORWARDTABLE table_ipv6 = NULL;
 	DWORD tableSize = sizeof(MIB_IPFORWARDROW) * 96;
-	unsigned char int_name[20];
+	char int_name[20];
 
 	do
 	{
@@ -55,7 +55,7 @@ DWORD request_net_config_get_routes(Remote *remote, Packet *packet)
 			// we just get the interface index, not the name, because names can be __long__
             _itoa(table_ipv4->table[index].dwForwardIfIndex, int_name, 10);
     		route[3].header.type   = TLV_TYPE_STRING;
-			route[3].header.length = strlen(int_name)+1;
+			route[3].header.length = (DWORD)strlen(int_name)+1;
 			route[3].buffer        = (PUCHAR)int_name;
 
 			metric_bigendian = htonl(table_ipv4->table[index].dwForwardMetric1);

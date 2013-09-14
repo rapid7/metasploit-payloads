@@ -15,7 +15,10 @@
  */
 #include "precomp.h"
 
+#ifndef NTSTATUS
 typedef ULONG NTSTATUS;
+#endif
+
 typedef enum _PROCESSINFOCLASS
 {
 	ProcessBasicInformation = 0,

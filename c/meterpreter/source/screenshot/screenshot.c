@@ -78,7 +78,7 @@ DWORD screenshot( int quality, DWORD dwPipeName )
 
 	do
 	{
-		_snprintf( cNamedPipe, MAX_PATH, "\\\\.\\pipe\\%08X", dwPipeName );
+		_snprintf_s( cNamedPipe, sizeof(cNamedPipe), MAX_PATH, "\\\\.\\pipe\\%08X", dwPipeName );
 
 		os.dwOSVersionInfoSize = sizeof( OSVERSIONINFO );
 
@@ -93,11 +93,11 @@ DWORD screenshot( int quality, DWORD dwPipeName )
 		}
 		
 		// open the WinSta0 as some services are attached to a different window station.
-		hWindowStation = OpenWindowStation( "WinSta0", FALSE, WINSTA_ALL_ACCESS );
+		hWindowStation = OpenWindowStationA( "WinSta0", FALSE, WINSTA_ALL_ACCESS );
 		if( !hWindowStation )
 		{
 			if( RevertToSelf() )
-				hWindowStation = OpenWindowStation( "WinSta0", FALSE, WINSTA_ALL_ACCESS );
+				hWindowStation = OpenWindowStationA( "WinSta0", FALSE, WINSTA_ALL_ACCESS );
 		}
 		
 		// if we cant open the defaut input station we wont be able to take a screenshot
