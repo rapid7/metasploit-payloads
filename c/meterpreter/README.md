@@ -33,42 +33,69 @@ not considered stable.  It does stuff, but expect occasional problems.
 
 Building - Windows
 ==================
-You will need installed *in this order*:
 
-1. Visual C++ 2010 Express (VS2010Express1.iso)
-2. Visual Studio 2010 SP1 (VS2010SP1dvd1.iso)
-3. Windows SDK 7.1 (GRMSDK_EN_DVD.iso or GRMSDKX_EN_DVD.iso, for x64 compiler tools)
-4. VC-Compiler-KB2519277.exe (to fix broken x64 compiler tools)
+Meterpreter is now being built with [Visual Studio 2012 Express for Desktop][vs_express] or any
+paid version of [Visual Studio 2012][vs_paid]. Earlier toolsets on Windows are no longer
+supported.
 
-If you see an error like this during build:
+Visual Studio 2012 requires .NET 4.5 in order to run, and as a result isn't compatible
+with Windows XP due to the fact that .NET 4.5 will not run on Windows XP. However, this
+does not mean that Metepreter itself will not run on Windows XP, it just means that it's
+not possible to _build_ it on Windows XP.
 
-  Error: The "ConfigurationGeneral" rule is missing from the project.
+Visual Studio 2012 Express
+--------------------------
 
-Then your x64 compiler tools are broken. Reinstall Visual Studio and
-hope for the best.
+In order to build successfully with this version of Visual Studio you must first make sure
+that the most recent updates have been applied. At the time of writing, the latest known
+update is **Update 3**. Without this update you won't be able to build.
 
+To make sure you have the appropriate updates applied:
 
-Now start Visual Studio and open workspace\meterpreter.sln, and build
-the solution (F7). If you get errors about the linker being unable to
-open kernel32.lib or other standard Windows libraries, the most likely
-cause is an incorrectly installed SDK.
+1. Open Visual Studio 2012.
+1. Open the `Tools` menu and select `Extensions and Updates`
+1. Select the `Updates` item on the left side of the dialog box.
+1. Follow the prompts to install any updates that are found.
+
+With those updates applied you should be ready to build Meterpreeter.
+
+Running the Build
+-----------------
+
+Open up a Visual Studio command prompt by selecting `Developer Command Prompt for VS2012`
+from the Start menu. Alternatively you can run `vcvars32.bat` from an existing command
+line prompt, just make sure it's the VS2012 one if you have multiple versions of VS
+installed on your machine.
+
+Once you have your environment variables set up, change to the root folder where the
+meterpreter source is located. From here you can:
+
+* Build the x86 version by running: `make x86`
+* Build the x64 version by running: `make x64`
+* Build both x86 and x64 versions by running: `make`
+
+The compiled binaries are written to the `output/Win32` and `output/x64` folders.
 
 If you are not a Rapid7 employee and therefore don't have access to the
-PacketSniffer SDK, the ext_server_sniffer project will fail with an
+PacketSniffer SDK, the `ext_server_sniffer` project will fail with an
 error about being unable to find a header file. This is normal, don't
 worry about it.
 
 
 Testing
 =======
-There is currently no automated testing for meterpreter.
+
+There is currently no automated testing for meterpreter, but we're working on it.
 
 Once you've made changes and compiled a new .dll or .so, copy the
 contents of the output/ directory into your Metasploit Framework's
-data/meterpreter/ directory. In POSIX you can do this automatically if
+`data/meterpreter/` directory. In POSIX you can do this automatically if
 metasploit-framework and meterpreter live in the same place by running
 `make install`
 
-If you made any changes to metsrv.dll or msflinker_linux_x86.bin, ensure
+If you made any changes to `metsrv.dll` or `msflinker_linux_x86.bin`, ensure
 that all extensions still load and function properly.
+
+  [vs_express]: http://www.microsoft.com/visualstudio/eng/downloads#d-2012-express
+  [vs_paid]: http://www.microsoft.com/visualstudio/eng/downloads#d-2012-editions
 
