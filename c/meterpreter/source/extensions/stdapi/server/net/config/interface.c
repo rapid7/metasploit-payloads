@@ -133,6 +133,8 @@ DWORD get_interfaces_windows(Remote *remote, Packet *response) {
 	// when using newer structs.
 	IP_ADAPTER_PREFIX_XP *pPrefix = NULL;
 
+	MEMORY_BASIC_INFORMATION memInfo;
+
 	do
 	{
 		gaa = (DWORD (WINAPI *)(DWORD,DWORD,void*,void*,void*))GetProcAddress(
@@ -210,7 +212,14 @@ DWORD get_interfaces_windows(Remote *remote, Packet *response) {
 					// will be populated
 					prefixes[prefixes_cnt] = htonl(pAddr->OnLinkPrefixLength);
 				}
-				if (pPrefix && 0 == prefixes[prefixes_cnt]) {
+
+				// We'll only attempt to read the prefix information if the current process
+				// has a MEM_COMMIT state. Without this, XP SP0 (home) results in a crash
+				// in cases where exploitation of the Service process is underway
+				ZeroMemory(&memInfo, sizeof(memInfo));
+				VirtualQueryEx(GetCurrentProcess(), pPrefix, &memInfo, sizeof(memInfo));
+
+				if (pPrefix && 0 == prefixes[prefixes_cnt] && memInfo.State == MEM_COMMIT) {
 					// Otherwise, we have to walk the FirstPrefix linked list
 					prefixes[prefixes_cnt] = htonl(pPrefix->PrefixLength);
 					pPrefix = pPrefix->Next;
