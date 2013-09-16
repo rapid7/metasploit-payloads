@@ -1,4 +1,5 @@
 @ECHO OFF
+IF "%1"=="clean" GOTO CLEAN
 IF "%VCINSTALLDIR%" == "" GOTO NEED_VS
 IF "%1"=="x86" GOTO BUILD_X86
 IF "%1"=="X86" GOTO BUILD_X86
@@ -24,6 +25,15 @@ PUSHD workspace
 msbuild.exe make.msbuild /target:%PLAT%
 
 POPD
+GOTO :END
+
+:CLEAN
+IF EXIST "output\x86\" (
+  del output\x86\ /S /Q
+)
+IF EXIST "output\x64\" (
+  del output\x64\ /S /Q
+)
 GOTO :END
 
 :NEED_VS
