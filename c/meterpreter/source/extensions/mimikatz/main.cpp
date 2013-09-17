@@ -80,7 +80,7 @@ DWORD request_custom_command(Remote *remote, Packet *packet)
 	
 	clear_buffer();
 
-	packet_add_tlv_raw(response, TLV_TYPE_MIMIKATZ_RESULT, output, wcslen(output)*sizeof(wchar_t));
+	packet_add_tlv_raw(response, TLV_TYPE_MIMIKATZ_RESULT, output, (DWORD)(wcslen(output)*sizeof(wchar_t)));
 	packet_transmit_response(ERROR_SUCCESS, remote, response);
 
 	return ERROR_SUCCESS;	

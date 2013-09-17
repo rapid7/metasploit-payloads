@@ -753,7 +753,7 @@ int convert_bmp_and_send(HBITMAP hBmp, HDC hDC, Packet *resp){
     // contains a BITMAPINFOHEADER structure and an array of RGBQUAD 
     // data structures.) 
     if (cClrBits != 24) 
-        pbmi = (PBITMAPINFO) LocalAlloc(LPTR, sizeof(BITMAPINFOHEADER) + sizeof(RGBQUAD) * (1<< cClrBits)); 
+        pbmi = (PBITMAPINFO) LocalAlloc(LPTR, sizeof(BITMAPINFOHEADER) + sizeof(RGBQUAD) * (DWORD)(1 << cClrBits)); 
 
     // There is no RGBQUAD array for the 24-bit-per-pixel format. 
     else

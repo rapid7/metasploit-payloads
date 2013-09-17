@@ -1,8 +1,9 @@
 @ECHO OFF
 IF "%VCINSTALLDIR%" == "" GOTO NEED_VS
+SET PREF=
+IF EXIST "..\pssdk\" SET PREF=r7_
+
 IF "%1"=="x86" GOTO BUILD_X86
-IF "%1"=="X86" GOTO BUILD_X86
-IF "%1"=="x64" GOTO BUILD_X64
 IF "%1"=="X64" GOTO BUILD_X64
 
 ECHO "Building Meterpreter x64 and x86 (Release)"
@@ -21,7 +22,7 @@ GOTO RUN
 
 :RUN
 PUSHD workspace
-msbuild.exe make.msbuild /target:%PLAT%
+msbuild.exe make.msbuild /target:%PREF%%PLAT%
 
 POPD
 GOTO :END

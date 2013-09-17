@@ -132,7 +132,7 @@ static VOID server_socket_flush( Remote * remote )
 		tv.tv_sec  = 1;
 		tv.tv_usec = 0;
 
-		data = select((SOCKET)(fd + 1), &fdread, NULL, NULL, &tv);
+		data = select((int)fd + 1, &fdread, NULL, NULL, &tv);
 		if(data == 0)
 			break;
 
@@ -169,7 +169,7 @@ static LONG server_socket_poll( Remote * remote, long timeout )
 	tv.tv_sec  = 0;
 	tv.tv_usec = timeout;
 
-	result = select((SOCKET)(fd + 1), &fdread, NULL, NULL, &tv );
+	result = select((int)fd + 1, &fdread, NULL, NULL, &tv );
 
 #ifndef _WIN32 
 	// Handle EAGAIN, etc.

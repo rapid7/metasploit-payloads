@@ -469,7 +469,12 @@ DWORD InitServerExtension(Remote *remote)
 	for (index = 0;
 	     customCommands[index].method;
 	     index++)
+	{
+		dprintf("Registering command index %d", index);
+		dprintf("  Command: %s", customCommands[index].method);
+		dprintf(" Register: 0x%.8x", command_register);
 		command_register(&customCommands[index]);
+	}
 
 	return ERROR_SUCCESS;
 }

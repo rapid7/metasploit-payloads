@@ -18,6 +18,10 @@
 
 tags
 
+# project config output
+r7_release
+r7_debug
+
 # temporary files
 *.swp
 
