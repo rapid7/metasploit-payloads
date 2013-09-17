@@ -53,8 +53,8 @@ DWORD request_lanattacks_set_dhcp_option(Remote *remote, Packet *packet){
 			break;
 		//Get option name
 		name = packet_get_tlv_value_string(packet, TLV_TYPE_LANATTACKS_OPTION_NAME);
-		namelen = strlen(name);
-		setDHCPOption(dhcpserver, name, namelen, tlv.buffer, tlv.header.length);
+		namelen = (unsigned int)strlen(name);
+		setDHCPOption(dhcpserver, name, namelen, (char*)tlv.buffer, tlv.header.length);
 	} while (0);
 
 	packet_transmit_response(retval, remote, response);
@@ -122,8 +122,8 @@ DWORD request_lanattacks_add_tftp_file(Remote *remote, Packet *packet){
 			break;
 		//Get file name
 		name = packet_get_tlv_value_string(packet, TLV_TYPE_LANATTACKS_OPTION_NAME);
-		namelen = strlen(name);
-		addTFTPFile(tftpserver, name, namelen, tlv.buffer, tlv.header.length);
+		namelen = (unsigned int)strlen(name);
+		addTFTPFile(tftpserver, name, namelen, (char*)tlv.buffer, tlv.header.length);
 	} while (0);
 
 	packet_transmit_response(retval, remote, response);
@@ -211,10 +211,13 @@ DWORD __declspec(dllexport) InitServerExtension(Remote *remote){
 
 	hMetSrv = remote->hMetSrv;
 
-	for (index = 0;
-	     customCommands[index].method;
-	     index++)
+	for (index = 0; customCommands[index].method; index++)
+	{
+		dprintf("Registering command index %d", index);
+		dprintf("  Command: %s", customCommands[index].method);
+		dprintf(" Register: 0x%.8x", command_register);
 		command_register(&customCommands[index]);
+	}
 
 	dhcpserver = createDHCPServer();
 	tftpserver = createTFTPServer();

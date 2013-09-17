@@ -1,5 +1,5 @@
 //===============================================================================================//
-// Copyright (c) 2009, Stephen Fewer of Harmony Security (www.harmonysecurity.com)
+// Copyright (c) 2012, Stephen Fewer of Harmony Security (www.harmonysecurity.com)
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted 
@@ -43,7 +43,7 @@
 #define DEREF_16( name )*(WORD *)(name)
 #define DEREF_8( name )*(BYTE *)(name)
 
-typedef DWORD (WINAPI * REFLECTIVELOADER)( VOID );
+typedef UINT_PTR (WINAPI * REFLECTIVELOADER)( VOID );
 typedef BOOL (WINAPI * DLLMAIN)( HINSTANCE, DWORD, LPVOID );
 
 #define DLLEXPORT   __declspec( dllexport ) 

@@ -171,7 +171,7 @@ DWORD get_interfaces_windows(Remote *remote, Packet *response) {
 			entries[tlv_cnt].buffer        = (PUCHAR)pCurr->PhysicalAddress;
 			tlv_cnt++;
 
-			entries[tlv_cnt].header.length = wcslen(pCurr->Description)*2 + 1;
+			entries[tlv_cnt].header.length = (DWORD)wcslen(pCurr->Description)*2 + 1;
 			entries[tlv_cnt].header.type   = TLV_TYPE_MAC_NAME;
 			entries[tlv_cnt].buffer        = (PUCHAR)pCurr->Description;
 			tlv_cnt++;

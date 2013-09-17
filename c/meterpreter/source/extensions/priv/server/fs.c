@@ -5,14 +5,15 @@
 
 #define EpochTimeToSystemTime(epoch, sys) \
 	{ \
-		struct tm *et = localtime(&epoch); \
+		struct tm et; \
+		localtime_s(&et, &epoch); \
 		memset(sys, 0, sizeof(SYSTEMTIME)); \
-		(sys)->wYear    = et->tm_year + 1900; \
-		(sys)->wMonth   = et->tm_mon + 1; \
-		(sys)->wDay     = et->tm_mday; \
-		(sys)->wHour    = et->tm_hour; \
-		(sys)->wMinute  = et->tm_min; \
-		(sys)->wSecond  = et->tm_sec; \
+		(sys)->wYear    = et.tm_year + 1900; \
+		(sys)->wMonth   = et.tm_mon + 1; \
+		(sys)->wDay     = et.tm_mday; \
+		(sys)->wHour    = et.tm_hour; \
+		(sys)->wMinute  = et.tm_min; \
+		(sys)->wSecond  = et.tm_sec; \
 	}
 
 #define SystemTimeToEpochTime(sys, epoch) \
@@ -120,7 +121,7 @@ DWORD request_fs_set_file_mace(Remote *remote, Packet *packet)
 		for (x = 0; x < (sizeof(fields) / sizeof(fields[0])); x++)
 		{
 			SYSTEMTIME st;
-			time_t epoch = packet_get_tlv_value_uint(packet, fields[x].tlv);
+			time_t epoch = packet_get_tlv_value_uint(packet, (TlvType)fields[x].tlv);
 
 			if (!epoch)
 				continue;

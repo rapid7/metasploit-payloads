@@ -748,7 +748,7 @@ int bmp2jpeg(HBITMAP hBmp, HDC hDC, int quality, BYTE ** buf_jpeg, DWORD * buf_j
     // contains a BITMAPINFOHEADER structure and an array of RGBQUAD 
     // data structures.) 
     if (cClrBits != 24) 
-        pbmi = (PBITMAPINFO) LocalAlloc(LPTR, sizeof(BITMAPINFOHEADER) + sizeof(RGBQUAD) * (1<< cClrBits)); 
+        pbmi = (PBITMAPINFO) LocalAlloc(LPTR, sizeof(BITMAPINFOHEADER) + sizeof(RGBQUAD) * (size_t)(1<< cClrBits)); 
 
     // There is no RGBQUAD array for the 24-bit-per-pixel format. 
     else

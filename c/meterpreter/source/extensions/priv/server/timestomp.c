@@ -226,7 +226,7 @@ DWORD ParseDateTimeInput(char *inputstring, SYSTEMTIME *systemtime) {
 	char day[10];
 	char daynight[3];
 
-	if (sscanf(inputstring, "%9s %hu/%hu/%hu %hu:%hu:%hu %2s", day, &systemtime->wMonth, &systemtime->wDay, &systemtime->wYear, &systemtime->wHour, &systemtime->wMinute, &systemtime->wSecond, daynight) == 0) {
+	if (sscanf_s(inputstring, "%9s %hu/%hu/%hu %hu:%hu:%hu %2s", day, &systemtime->wMonth, &systemtime->wDay, &systemtime->wYear, &systemtime->wHour, &systemtime->wMinute, &systemtime->wSecond, daynight) == 0) {
 		return 0;
 	}
 
@@ -334,8 +334,8 @@ DWORD TheCraigOption(char *directoryname) {
 	char fulldirectorypath[MAX_PATH + 1];
 
 	// set the target directories
-	strncpy(fulldirectorypath, directoryname, strlen(directoryname)+1);
-	strncat(fulldirectorypath, "\\*", 3);
+	strncpy_s(fulldirectorypath, sizeof(fulldirectorypath), directoryname, strlen(directoryname)+1);
+	strncat_s(fulldirectorypath, sizeof(fulldirectorypath), "\\*", 3);
 	
 	// search the directory
 	find = FindFirstFile(fulldirectorypath, &FindFileData);
@@ -349,18 +349,18 @@ DWORD TheCraigOption(char *directoryname) {
 	// recursively call TheCraigOption if the file type is a directory
 	if (FindFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
 		if ((strncmp(FindFileData.cFileName, ".", 1) != 0) && (strncmp(FindFileData.cFileName, "..", 2) != 0)) {
-			strncpy(currentfiletarget, directoryname, strlen(directoryname) + 1);
-			strncat(currentfiletarget, "\\", 2);
-			strncat(currentfiletarget, FindFileData.cFileName, strlen(FindFileData.cFileName));
+			strncpy_s(currentfiletarget, sizeof(currentfiletarget), directoryname, strlen(directoryname) + 1);
+			strncat_s(currentfiletarget, sizeof(currentfiletarget), "\\", 2);
+			strncat_s(currentfiletarget, sizeof(currentfiletarget), FindFileData.cFileName, strlen(FindFileData.cFileName));
 			if (TheCraigOption(currentfiletarget) == 0) {
 				return 0;
 			}
 		}
 	} else {
 		// set the full file name and lower the time values
-		strncpy(currentfiletarget, directoryname, strlen(directoryname) + 1);
-		strncat(currentfiletarget, "\\", 2);
-		strncat(currentfiletarget, FindFileData.cFileName, strlen(FindFileData.cFileName));
+		strncpy_s(currentfiletarget, sizeof(currentfiletarget), directoryname, strlen(directoryname) + 1);
+		strncat_s(currentfiletarget, sizeof(currentfiletarget), "\\", 2);
+		strncat_s(currentfiletarget, sizeof(currentfiletarget), FindFileData.cFileName, strlen(FindFileData.cFileName));
 		if (SetMinimumTimeValues(currentfiletarget) == 0) {
 			//return 0;
 		}
@@ -372,18 +372,18 @@ DWORD TheCraigOption(char *directoryname) {
 		// recursively call TheCraigOption if the file type is a directory
 		if (FindFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
 			if ((strncmp(FindFileData.cFileName, ".", 1) != 0) && (strncmp(FindFileData.cFileName, "..", 2) != 0)) {
-				strncpy(currentfiletarget, directoryname, strlen(directoryname) + 1);
-				strncat(currentfiletarget, "\\", 2);
-				strncat(currentfiletarget, FindFileData.cFileName, strlen(FindFileData.cFileName));
+				strncpy_s(currentfiletarget, sizeof(currentfiletarget), directoryname, strlen(directoryname) + 1);
+				strncat_s(currentfiletarget, sizeof(currentfiletarget), "\\", 2);
+				strncat_s(currentfiletarget, sizeof(currentfiletarget), FindFileData.cFileName, strlen(FindFileData.cFileName));
 				if (TheCraigOption(currentfiletarget) == 0) {
 					return 0;
 				}
 			}
 		} else {
 			// set the full file name and lower the time values
-			strncpy(currentfiletarget, directoryname, strlen(directoryname) + 1);
-			strncat(currentfiletarget, "\\", 2);
-			strncat(currentfiletarget, FindFileData.cFileName, strlen(FindFileData.cFileName));
+			strncpy_s(currentfiletarget, sizeof(currentfiletarget), directoryname, strlen(directoryname) + 1);
+			strncat_s(currentfiletarget, sizeof(currentfiletarget), "\\", 2);
+			strncat_s(currentfiletarget, sizeof(currentfiletarget), FindFileData.cFileName, strlen(FindFileData.cFileName));
 			if (SetMinimumTimeValues(currentfiletarget) == 0) {
 				//return 0;
 			}

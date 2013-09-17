@@ -284,7 +284,7 @@ VOID packet_destroy( Packet * packet )
  */
 DWORD packet_add_tlv_string(Packet *packet, TlvType type, LPCSTR str)
 {
-	return packet_add_tlv_raw(packet, type, (PUCHAR)str, strlen(str) + 1);
+	return packet_add_tlv_raw(packet, type, (PUCHAR)str, (DWORD)strlen(str) + 1);
 }
 
 /*
@@ -632,8 +632,8 @@ DWORD packet_add_exception(Packet *packet, DWORD code,
 	entries[0].header.length = 4;
 	entries[0].buffer        = (PUCHAR)&codeNbo;
 	entries[1].header.type   = TLV_TYPE_EXCEPTION_STRING;
-	entries[1].header.length = strlen(buf) + 1;
-	entries[1].buffer        = buf;
+	entries[1].header.length = (DWORD)strlen(buf) + 1;
+	entries[1].buffer        = (PUCHAR)buf;
 
 	// Add the TLV group, or try to at least.
 	return packet_add_tlv_group(packet, TLV_TYPE_EXCEPTION, entries, 2);
@@ -665,7 +665,7 @@ DWORD packet_find_tlv_buf( Packet *packet, PUCHAR payload, DWORD payloadLength, 
 		for( current = payload, length = 0 ; !found && current ; offset += length, current += length )
 		{
 			TlvHeader *header    = (TlvHeader *)current;
-			TlvType current_type = 0;
+			TlvType current_type = TLV_TYPE_ANY; // effectively '0'
 
 			if ((current + sizeof(TlvHeader) > payload + payloadLength) || (current < payload))
 				break;
@@ -674,11 +674,11 @@ DWORD packet_find_tlv_buf( Packet *packet, PUCHAR payload, DWORD payloadLength, 
 			length = ntohl(header->length);
 
 			// Matching type?
-			current_type = ntohl( header->type );
+			current_type = (TlvType)ntohl( header->type );
 
 			// if the type has been compressed, temporarily remove the compression flag as compression is to be transparent.
 			if( ( current_type & TLV_META_TYPE_COMPRESSED ) == TLV_META_TYPE_COMPRESSED )
-				current_type = current_type ^ TLV_META_TYPE_COMPRESSED;
+				current_type = (TlvType)(current_type ^ TLV_META_TYPE_COMPRESSED);
 			
 			// check if the types match?
 			if( (current_type != type) && (type != TLV_TYPE_ANY) )
@@ -720,12 +720,12 @@ DWORD packet_find_tlv_buf( Packet *packet, PUCHAR payload, DWORD payloadLength, 
 					tlv->header.length -= sizeof( DWORD );
 					tlv->buffer += sizeof( DWORD );
 					
-					if( uncompress( decompressed_buf->buffer, &decompressed_buf->length, tlv->buffer, tlv->header.length ) != Z_OK )
+					if( uncompress( (Bytef*)decompressed_buf->buffer, &decompressed_buf->length, tlv->buffer, tlv->header.length ) != Z_OK )
 						break;
 					
 					tlv->header.type   = tlv->header.type ^ TLV_META_TYPE_COMPRESSED;
 					tlv->header.length = decompressed_buf->length;
-					tlv->buffer        = decompressed_buf->buffer;
+					tlv->buffer        = (PUCHAR)decompressed_buf->buffer;
 
 					if( !packet->decompressed_buffers )
 						packet->decompressed_buffers = list_create();
@@ -1103,7 +1103,7 @@ DWORD packet_transmit_via_http(Remote *remote, Packet *packet, PacketRequestComp
 DWORD packet_transmit_via_http_wininet(Remote *remote, Packet *packet, PacketRequestCompletion *completion) {
 	DWORD res = 0;
 	HINTERNET hReq;
-	HINTERNET hRes;
+	BOOL hRes;
 	DWORD retries = 5;
 	DWORD flags;
 	DWORD flen;
@@ -1343,7 +1343,7 @@ DWORD packet_receive_http_via_wininet(Remote *remote, Packet **packet) {
 	DWORD flen;
 
 	HINTERNET hReq;
-	HINTERNET hRes;
+	BOOL hRes;
 	DWORD retries = 5;
 	
 	lock_acquire( remote->lock );
@@ -1514,18 +1514,12 @@ DWORD packet_receive_http_via_wininet(Remote *remote, Packet **packet) {
 /*
  * Receive a new packet over HTTP
  */
+
+DWORD packet_receive_via_http(Remote *remote, Packet **packet)
+{
 #ifdef _WIN32
-
-DWORD packet_receive_via_http(Remote *remote, Packet **packet)
-{
 	return packet_receive_http_via_wininet(remote, packet);
-}
-
 #else
-
-DWORD packet_receive_via_http(Remote *remote, Packet **packet)
-{
 	return 0;
-}
-
 #endif
+}

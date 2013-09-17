@@ -19,7 +19,7 @@ DWORD request_incognito_snarf_hashes(Remote *remote, Packet *packet)
 {
 	DWORD num_tokens = 0, i;
 	SavedToken *token_list = NULL;
-	NETRESOURCE nr;
+	NETRESOURCEA nr;
 	HANDLE saved_token;
 	char conn_string[BUF_SIZE] = "", domain_name[BUF_SIZE] = "", *smb_sniffer_ip = NULL,
 		return_value[BUF_SIZE] = "", temp[BUF_SIZE] = "";

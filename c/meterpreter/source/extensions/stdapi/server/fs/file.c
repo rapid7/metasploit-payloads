@@ -23,7 +23,7 @@ static DWORD file_channel_write(Channel *channel, Packet *request,
 {
 	FileContext *ctx = (FileContext *)context;
 	DWORD result= ERROR_SUCCESS;
-	LONG written = 0;
+	size_t written = 0;
 
 	// Write a chunk
 	if ((written = fwrite(buffer, 1, bufferSize, ctx->fd)) <= 0)
@@ -62,7 +62,7 @@ static DWORD file_channel_read(Channel *channel, Packet *request,
 {
 	FileContext *ctx = (FileContext *)context;
 	DWORD result = ERROR_SUCCESS;
-	LONG bytes = 0;
+	size_t bytes = 0;
 
 	// Read a chunk
 	if ((bytes= fread(buffer, 1, bufferSize, ctx->fd)) <= 0)

