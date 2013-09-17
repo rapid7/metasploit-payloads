@@ -1,4 +1,5 @@
 @ECHO OFF
+IF "%1"=="clean" GOTO CLEAN
 IF "%VCINSTALLDIR%" == "" GOTO NEED_VS
 SET PREF=
 IF EXIST "..\pssdk\" SET PREF=r7_
@@ -25,6 +26,15 @@ PUSHD workspace
 msbuild.exe make.msbuild /target:%PREF%%PLAT%
 
 POPD
+GOTO :END
+
+:CLEAN
+IF EXIST "output\x86\" (
+  del output\x86\ /S /Q
+)
+IF EXIST "output\x64\" (
+  del output\x64\ /S /Q
+)
 GOTO :END
 
 :NEED_VS
