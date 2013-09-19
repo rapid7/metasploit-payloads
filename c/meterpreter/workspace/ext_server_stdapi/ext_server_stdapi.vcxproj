@@ -635,6 +635,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     </ClCompile>
     <ClCompile Include="..\..\source\extensions\stdapi\server\net\config\arp.c" />
     <ClCompile Include="..\..\source\extensions\stdapi\server\net\config\netstat.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\net\resolve.c" />
     <ClCompile Include="..\..\source\extensions\stdapi\server\stdapi.c">
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='r7_debug|Win32'">%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>

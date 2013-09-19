@@ -311,7 +311,6 @@ Command customCommands[] =
 	},
 #endif
 
-
 	// Net
 	{ "stdapi_net_config_get_routes",
 	  { request_net_config_get_routes,                     { 0 }, 0 },
@@ -337,6 +336,18 @@ Command customCommands[] =
 	  { request_net_config_get_netstat,                    { 0 }, 0 },
 	  { EMPTY_DISPATCH_HANDLER                                      },
 	},
+
+#ifdef WIN32
+	// Resolve
+	{ "stdapi_net_resolve_host",
+	  { request_resolve_host,							  { 0 }, 0 },
+	  { EMPTY_DISPATCH_HANDLER                                     },
+	},
+	{ "stdapi_net_resolve_hosts",
+	  { request_resolve_hosts,							  { 0 }, 0 },
+	  { EMPTY_DISPATCH_HANDLER                                     },
+	},
+#endif
 
 	// Socket
 	{ "stdapi_net_socket_tcp_shutdown",

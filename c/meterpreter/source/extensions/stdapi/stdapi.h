@@ -413,6 +413,13 @@
                                 TLV_TYPE_EXTENSION_STDAPI, \
                                 1443)
 
+	// Resolve
+#define TLV_TYPE_ADDR_TYPE         \
+                MAKE_CUSTOM_TLV(                 \
+                TLV_META_TYPE_UINT,      \
+                TLV_TYPE_EXTENSION_STDAPI, \
+                1444)
+
 	// Socket
 #define TLV_TYPE_PEER_HOST             \
 		MAKE_CUSTOM_TLV(                 \
