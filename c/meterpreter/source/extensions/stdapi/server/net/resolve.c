@@ -78,7 +78,6 @@ DWORD request_resolve_host(Remote *remote, Packet *packet)
 	int iResult;
 
 	hostname = packet_get_tlv_value_string(packet, TLV_TYPE_HOST_NAME);
-	ai_family = packet_get_tlv_value_uint(packet, TLV_TYPE_ADDR_TYPE);
 
 	if (!hostname)
 	{
@@ -87,12 +86,13 @@ DWORD request_resolve_host(Remote *remote, Packet *packet)
 	}
 	else
 	{
+		ai_family = packet_get_tlv_value_uint(packet, TLV_TYPE_ADDR_TYPE);
 		iResult = resolve_host(hostname, ai_family, &addr, &addr6);
 		if (iResult == NO_ERROR)
 		{
 			if (ai_family == AF_INET)
 			{
-                packet_add_tlv_raw(response, TLV_TYPE_IP, &addr, sizeof(struct in_addr));
+				packet_add_tlv_raw(response, TLV_TYPE_IP, &addr, sizeof(struct in_addr));
 			} else {
 				packet_add_tlv_raw(response, TLV_TYPE_IP, &addr6, sizeof(struct in_addr6));
 			}
