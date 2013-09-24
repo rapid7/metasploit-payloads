@@ -213,10 +213,8 @@ BOOL elevate_via_exploit_getpath( char cpOutput[MAX_PATH], DWORD dwOutputLength 
 			if( !cpFileName )
 				break;
 
-			if( cWinDir[ strlen(cWinDir) - 1 ] == '\\' )
-				_snprintf_s( cpOutput, sizeof(cpOutput), dwOutputLength, "%s%s", cWinDir, cpFileName );
-			else
-				_snprintf_s( cpOutput, sizeof(cpOutput), dwOutputLength, "%s\\%s", cWinDir, cpFileName );
+			_snprintf_s( cpOutput, sizeof(cpOutput[0]) * MAX_PATH, dwOutputLength, "%s%s%s", cWinDir,
+				 cWinDir[ strlen(cWinDir) - 1 ] == '\\' ? "" : "\\", cpFileName );
 
 			dprintf( "[KITRAP0D] elevate_via_exploit_getpath. Trying: %s", cpOutput );
 
