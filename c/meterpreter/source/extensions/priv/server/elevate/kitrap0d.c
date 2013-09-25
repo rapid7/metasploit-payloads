@@ -213,8 +213,12 @@ BOOL elevate_via_exploit_getpath( char cpOutput[MAX_PATH], DWORD dwOutputLength 
 			if( !cpFileName )
 				break;
 
-			_snprintf_s( cpOutput, sizeof(cpOutput[0]) * MAX_PATH, dwOutputLength, "%s%s%s", cWinDir,
-				 cWinDir[ strlen(cWinDir) - 1 ] == '\\' ? "" : "\\", cpFileName );
+			if ( _snprintf_s( cpOutput, dwOutputLength, dwOutputLength - 1, "%s%s%s", cWinDir,
+				 cWinDir[ strlen(cWinDir) - 1 ] == '\\' ? "" : "\\", cpFileName ) == -1 )
+			{
+				dprintf( "[KITRAP0D] elevate_via_exploit_getpath. Path truncation: %s", cpOutput );
+				break;
+			}
 
 			dprintf( "[KITRAP0D] elevate_via_exploit_getpath. Trying: %s", cpOutput );
 
