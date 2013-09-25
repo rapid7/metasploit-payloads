@@ -1,8 +1,15 @@
+/*!
+ * @file common.c
+ * @brief Definitions for various common components used across the Meterpreter suite.
+ */
 #include "common.h"
 
 
 #ifdef _WIN32
-// This function returns a unix timestamp in UTC
+/*!
+ * @brief Returns a unix timestamp in UTC.
+ * @return Integer value representing the UTC Unix timestamp of the current time.
+ */
 int current_unix_timestamp(void) {
 	SYSTEMTIME system_time;
 	FILETIME file_time;
@@ -19,7 +26,10 @@ int current_unix_timestamp(void) {
 
 #include <sys/time.h>
 
-// This function returns a unix timestamp in UTC
+/*!
+ * @brief Returns a unix timestamp in UTC.
+ * @return Integer value representing the UTC Unix timestamp of the current time.
+ */
 int current_unix_timestamp(void) {
 	struct timeval tv;
 	struct timezone tz;
@@ -37,10 +47,15 @@ int current_unix_timestamp(void) {
 int debugging_enabled;
 
 /*
- * If we supply real_dprintf in the common.h, each .o file will have a private copy of that symbol.
- * This leads to bloat. Defining it here means that there will only be a single implementation of it.
  */ 
 
+/*!
+ * @brief Output a debug string to the debug console.
+ * @details The function emits debug strings via `OutputDebugStringA`, hence all messages can be viewed
+ *          using Visual Studio's _Output_ window, _DebugView_ from _SysInternals_, or _Windbg_.
+ * @remark If we supply real_dprintf in the common.h, each .o file will have a private copy of that symbol.
+ *         This leads to bloat. Defining it here means that there will only be a single implementation of it.
+ */
 void real_dprintf(char *filename, int line, const char *function, char *format, ...)
 {
 	va_list args;

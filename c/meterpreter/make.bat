@@ -1,6 +1,25 @@
 @ECHO OFF
 IF "%1"=="clean" GOTO CLEAN
-IF "%VCINSTALLDIR%" == "" GOTO NEED_VS
+IF "%1"=="docs" GOTO DOCS
+IF "%VCINSTALLDIR%" == "" (
+  ECHO "VC++ Environment not found, attempting to locate..."
+  REM Attempt to load up the dev env variables if they're not
+  REM set, saves people doing it manually
+  SET SETUP="Microsoft Visual Studio 11.0\Common7\Tools\vsvars32.bat"
+  IF EXIST "%ProgramFiles%\%SETUP%" (
+    ECHO "Found at '%ProgramFiles%\%SETUP%'"
+    "%ProgramFiles%\%SETUP%"
+  )
+
+  IF EXIST "%ProgramFiles(x86)%\%SETUP%" (
+    ECHO "Found at '%ProgramFiles(x86)%\%SETUP%'"
+    "%ProgramFiles(x86)%\%SETUP%"
+  )
+
+  REM If we still don't have what we need, then throw an error
+  IF "%VCINSTALLDIR%" == "" GOTO NEED_VS
+)
+
 SET PREF=
 IF EXIST "..\pssdk\" SET PREF=r7_
 
@@ -35,6 +54,10 @@ IF EXIST "output\x86\" (
 IF EXIST "output\x64\" (
   del output\x64\ /S /Q
 )
+GOTO :END
+
+:DOCS
+tools\doxygen\doxygen.exe doxygen.cnf
 GOTO :END
 
 :NEED_VS

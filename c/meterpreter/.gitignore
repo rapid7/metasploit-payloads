@@ -40,3 +40,6 @@ source/jpeg-8/Backup/*
 
 # other VS garbage
 *.*proj.filters
+
+# Doxygen output
+docs/*

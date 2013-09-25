@@ -14,8 +14,11 @@ typedef DWORD (*DISPATCH_ROUTINE)(Remote *remote, Packet *packet);
 #define ARGUMENT_FLAG_REPEAT   (1 << 28)
 #define ARGUMENT_FLAG_MASK     0x0fffffff
 
-// Blank dispatch handler
 #define EMPTY_DISPATCH_HANDLER NULL, { 0 }, 0
+#define COMMAND_TERMINATOR { NULL, { EMPTY_DISPATCH_HANDLER }, { EMPTY_DISPATCH_HANDLER } }
+#define COMMAND_REQ(name, reqHandler) { name, { reqHandler, { 0 }, 0 }, { EMPTY_DISPATCH_HANDLER } }
+#define COMMAND_REP(name, repHandler) { name, { EMPTY_DISPATCH_HANDLER }, { repHandler, { 0 }, 0 } }
+#define COMMAND_REQ_REP(name, reqHandler, repHandler) { name, { reqHandler, { 0 }, 0 }, { repHandler, { 0 }, 0 } }
 
 // Place holders
 #define EXPORT_TABLE_BEGIN()
@@ -40,6 +43,8 @@ typedef struct command
 	struct command   *prev;
 } Command;
 
+LINKAGE DWORD command_register_all(Command commands[]);
+LINKAGE DWORD command_deregister_all(Command commands[]);
 LINKAGE DWORD command_register(Command *command);
 LINKAGE DWORD command_deregister(Command *command);
 
