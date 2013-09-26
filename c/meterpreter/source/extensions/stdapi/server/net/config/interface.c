@@ -133,8 +133,6 @@ DWORD get_interfaces_windows(Remote *remote, Packet *response) {
 	// when using newer structs.
 	IP_ADAPTER_PREFIX_XP *pPrefix = NULL;
 
-	MEMORY_BASIC_INFORMATION memInfo;
-
 	do
 	{
 		gaa = (DWORD (WINAPI *)(DWORD,DWORD,void*,void*,void*))GetProcAddress(
@@ -184,10 +182,11 @@ DWORD get_interfaces_windows(Remote *remote, Packet *response) {
 			entries[tlv_cnt].buffer        = (PUCHAR)&mtu_bigendian;
 			tlv_cnt++;
 
-			if (pCurr->Length > 68) {
-				// Then this is a Longhorn struct version and it contains the
-				// FirstPrefix member, save it for later in case we don't have
-				// an OnLinkPrefixLength
+			// According to http://msdn.microsoft.com/en-us/library/windows/desktop/aa366058(v=vs.85).aspx
+			// the PIP_ADAPTER_PREFIX doesn't exist prior to XP SP1. We check for this via the `Length`
+			// value, which is 72 in XP without an SP, but 144 in later versions.
+			if (pCurr->Length > 72) {
+				// Save the first prefix for later in case we don't have an OnLinkPrefixLength
 				pPrefix = pCurr->FirstPrefix;
 			}
 
@@ -213,13 +212,7 @@ DWORD get_interfaces_windows(Remote *remote, Packet *response) {
 					prefixes[prefixes_cnt] = htonl(pAddr->OnLinkPrefixLength);
 				}
 
-				// We'll only attempt to read the prefix information if the current process
-				// has a MEM_COMMIT state. Without this, XP SP0 (home) results in a crash
-				// in cases where exploitation of the Service process is underway
-				ZeroMemory(&memInfo, sizeof(memInfo));
-				VirtualQueryEx(GetCurrentProcess(), pPrefix, &memInfo, sizeof(memInfo));
-
-				if (pPrefix && 0 == prefixes[prefixes_cnt] && memInfo.State == MEM_COMMIT) {
+				if (pPrefix && 0 == prefixes[prefixes_cnt] ) {
 					// Otherwise, we have to walk the FirstPrefix linked list
 					prefixes[prefixes_cnt] = htonl(pPrefix->PrefixLength);
 					pPrefix = pPrefix->Next;
