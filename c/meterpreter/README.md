@@ -49,7 +49,7 @@ meterpreter source is located. From here you can:
 * Build the x64 version by running: `make x64`
 * Build both x86 and x64 versions by running: `make`
 
-The compiled binaries are written to the `output/Win32` and `output/x64` folders.
+The compiled binaries are written to the `output/x86` and `output/x64` folders.
 
 If you are not a Rapid7 employee, make sure you build the source using the `debug` or
 `release` configurations when inside Visual Studio. If you attempt to build `r7_debug` or
