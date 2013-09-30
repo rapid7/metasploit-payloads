@@ -76,11 +76,15 @@ meterpreter source is located. From here you can:
 
 The compiled binaries are written to the `output/Win32` and `output/x64` folders.
 
-If you are not a Rapid7 employee and therefore don't have access to the
-PacketSniffer SDK, the `ext_server_sniffer` project will fail with an
-error about being unable to find a header file. This is normal, don't
-worry about it.
+If you are not a Rapid7 employee, make sure you build the source using the `debug` or
+`release` configurations when inside Visual Studio. If you attempt to build `r7_debug` or
+`r7_release` you will get compiler errors due to missing libraries.
 
+If you build the source from the command line the toolset will choose the most
+appropriate build configuration for you and hence calling `make` should "Just Work&trade;".
+
+If you are a Rapid7 employee you will need the PSSDK source in order to build the
+extra components using the `r7_*` build configurations.
 
 Testing
 =======
