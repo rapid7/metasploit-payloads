@@ -82,6 +82,14 @@ DWORD railgun_call( RAILGUN_INPUT * pInput, RAILGUN_OUTPUT * pOutput )
 	DWORD dwStackSizeInElements              = 0;
 	DWORD dwIndex                            = 0;
 
+	// Set up vars for FormatMessage call
+	DWORD dwNumChars = 0;
+	// Set flags to look in the system error table if not found in the module table
+	DWORD dwMsgFlags = FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_FROM_HMODULE | FORMAT_MESSAGE_IGNORE_INSERTS;
+	// Set the Language ID for the Message to US English
+	DWORD dwLangId = 0;
+	LPSTR buffer;
+
 	do
 	{
 		if( !pInput || !pOutput )
@@ -105,6 +113,7 @@ DWORD railgun_call( RAILGUN_INPUT * pInput, RAILGUN_OUTPUT * pOutput )
 		pOutput->pBufferINOUT      = pInput->pBufferINOUT;
 		pOutput->dwBufferSizeOUT   = pInput->dwBufferSizeOUT;
 		pOutput->dwBufferSizeINOUT = pInput->dwBufferSizeINOUT;
+		pOutput->pErrMsg           = NULL;
 
 		if( pOutput->dwBufferSizeOUT )
 		{
@@ -330,6 +339,8 @@ DWORD railgun_call( RAILGUN_INPUT * pInput, RAILGUN_OUTPUT * pOutput )
 		}
 
 		pOutput->dwLastError = GetLastError();
+		dwNumChars = FormatMessageA(dwMsgFlags, hDll, pOutput->dwLastError, dwLangId, (LPSTR)&buffer, 0, NULL);
+		pOutput->pErrMsg = buffer;
 
 #ifdef _WIN64
 		dprintf("[RAILGUN] railgun_call: pOutput->dwLastError=0x%08X, pOutput->qwReturnValue=0x%llX", pOutput->dwLastError, pOutput->qwReturnValue );
@@ -527,9 +538,18 @@ DWORD request_railgun_api( Remote * pRemote, Packet * pPacket )
 			packet_add_tlv_qword( pResponse, TLV_TYPE_RAILGUN_BACK_RET, rOutput.qwReturnValue );
 			packet_add_tlv_raw( pResponse, TLV_TYPE_RAILGUN_BACK_BUFFERBLOB_OUT, rOutput.pBufferOUT, (DWORD)rOutput.dwBufferSizeOUT );
 			packet_add_tlv_raw( pResponse, TLV_TYPE_RAILGUN_BACK_BUFFERBLOB_INOUT, rOutput.pBufferINOUT, (DWORD)rOutput.dwBufferSizeINOUT );
+			packet_add_tlv_string( pResponse, TLV_TYPE_RAILGUN_BACK_MSG, rOutput.pErrMsg );
 		}
 
 		dwResult = packet_transmit( pRemote, pResponse, NULL );
+
+		// FormatMessage calls that use the FORMAT_MESSAGE_ALLOCATE_BUFFER flag allocate memory using LocalAlloc().
+		// We need to free this memory up here to prevent leaks.
+		if ( rOutput.pErrMsg != NULL )
+		{
+			LocalFree( (HLOCAL)rOutput.pErrMsg );
+			rOutput.pErrMsg = NULL;
+		}
 	}
 
 	if( rInput.pBufferIN )
