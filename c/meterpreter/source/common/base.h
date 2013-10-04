@@ -8,11 +8,17 @@
 #include "linkage.h"
 #include "core.h"
 
+/*! @brief Function pointer type that defines the interface for a dispatch handler. */
 typedef DWORD (*DISPATCH_ROUTINE)(Remote *remote, Packet *packet);
 
+/*! @brief Specifies the maximum number of arguments that are checked/handled
+ *         in a request/response packet dispatcher.
+ */
 #define MAX_CHECKED_ARGUMENTS  16
 
+/*! @brief Flag indicating that the command arguments repeat. */
 #define ARGUMENT_FLAG_REPEAT   (1 << 28)
+/*! @brief Mask indicating the range numbers allowed for command arguments. */
 #define ARGUMENT_FLAG_MASK     0x0fffffff
 
 /*! @brief Helper macro that contains the required NULL initialisations for a command handler TLV info. */
@@ -29,30 +35,41 @@ typedef DWORD (*DISPATCH_ROUTINE)(Remote *remote, Packet *packet);
 #define COMMAND_REQ_REP(name, reqHandler, repHandler) { name, { reqHandler, EMPTY_TLV }, { repHandler, EMPTY_TLV } }
 
 // Place holders
+/*! @deprecated This entity is not used and may be removed in future. */
 #define EXPORT_TABLE_BEGIN()
+/*! @deprecated This entity is not used and may be removed in future. */
 #define EXPORT_TABLE_END()
 
+/*!
+ * @brief Defines a command handler for requests and responses.
+ */
 typedef struct 
 {
+	/*! @brief Pointer to the routine that will be called to handle the request/response. */
 	DISPATCH_ROUTINE    handler;
 
+	/*! @brief Array of types that match the expected arguments for this response/request routine. */
 	TlvMetaType         argumentTypes[MAX_CHECKED_ARGUMENTS];
+	/*! @brief The number of entries in the \c argumentTypes array. */
 	DWORD               numArgumentTypes;
 } PacketDispatcher;
 
+/*!
+ * @brief Container for a command definition.
+ */
 typedef struct command
 {
-	LPCSTR           method; 
-	PacketDispatcher request;
-	PacketDispatcher response;
+	LPCSTR           method;     ///< Identifier for the command.
+	PacketDispatcher request;    ///< Defines the request handler.
+	PacketDispatcher response;   ///< Defines the response handler.
 
 	// Internal -- not stored
-	struct command   *next;
-	struct command   *prev;
+	struct command   *next;      ///< Pointer to the next command in the command list.
+	struct command   *prev;      ///< Pointer to the previous command in the command list.
 } Command;
 
-LINKAGE DWORD command_register_all(Command commands[]);
-LINKAGE DWORD command_deregister_all(Command commands[]);
+LINKAGE void command_register_all(Command commands[]);
+LINKAGE void command_deregister_all(Command commands[]);
 LINKAGE DWORD command_register(Command *command);
 LINKAGE DWORD command_deregister(Command *command);
 

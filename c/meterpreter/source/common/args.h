@@ -7,11 +7,12 @@
 
 #include "linkage.h"
 
-typedef struct 
+/*! @brief State container for \c args_parse calls. */
+typedef struct
 {
-	DWORD currentIndex;
-	PCHAR argument;
-	CHAR  toggle;
+	DWORD currentIndex;    ///< The index of the argument being parsed.
+	PCHAR argument;        ///< Pointer to the current switch's argument.
+	CHAR  toggle;          ///< Indicates of this parameter is a toggle parameter.
 } ArgumentContext;
 
 LINKAGE DWORD args_parse(UINT argc, CHAR **argv, PCHAR params, 

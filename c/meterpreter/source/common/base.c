@@ -82,20 +82,13 @@ Command *extension_commands = NULL;
 /*!
  * @brief Register a full list of commands with meterpreter.
  * @param commands The array of commands that are to be registered for the module/extension.
- * @return `ERROR_SUCCESS` when all commands register successfully, otherwise return the error.
  */
-DWORD command_register_all(Command commands[])
+void command_register_all(Command commands[])
 {
 	DWORD index;
-	DWORD result;
 
 	for (index = 0; commands[index].method; index++)
-	{
-		if( result = command_register(&commands[index]) != ERROR_SUCCESS )
-			break;
-	}
-
-	return result;
+		command_register(&commands[index]);
 }
 
 /*!
@@ -130,20 +123,13 @@ DWORD command_register(Command *command)
 /*!
  * @brief Deregister a full list of commands from meterpreter.
  * @param commands The array of commands that are to be deregistered from the module/extension.
- * @return `ERROR_SUCCESS` when all commands deregister successfully, otherwise return the error.
  */
-DWORD command_deregister_all(Command commands[])
+void command_deregister_all(Command commands[])
 {
 	DWORD index;
-	DWORD result;
 
 	for (index = 0; commands[index].method; index++)
-	{
-		if( result = command_deregister(&commands[index]) != ERROR_SUCCESS )
-			break;
-	}
-
-	return result;
+		command_deregister(&commands[index]);
 }
 
 /*!
@@ -183,9 +169,7 @@ DWORD command_deregister(Command *command)
 	return res;
 }
 
-/*!
- * @brief A list of all command threads currenlty executing.
- */
+/*! * @brief A list of all command threads currenlty executing. */
 LIST * commandThreadList = NULL;
 
 /*!
@@ -498,10 +482,9 @@ DWORD command_validate_arguments(Command *command, Packet *packet)
 
 	// Enumerate the arguments, validating the meta types of each
 	for (commandIndex = 0, packetIndex = 0;
-		((packet_enum_tlv(packet, packetIndex, TLV_TYPE_ANY, &current) 
-		== ERROR_SUCCESS) &&
-		(res == ERROR_SUCCESS));
-	commandIndex++, packetIndex++)
+		((packet_enum_tlv(packet, packetIndex, TLV_TYPE_ANY, &current) == ERROR_SUCCESS)
+		&& (res == ERROR_SUCCESS));
+		commandIndex++, packetIndex++)
 	{
 		TlvMetaType tlvMetaType;
 

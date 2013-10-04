@@ -58,11 +58,33 @@ typedef enum
 #define TLV_USER                    40000
 #define TLV_TEMP                    60000
 
+/*!
+ * @brief Indicates that the library in question should be stored on disk.
+ * @detail Some libraries can be written to disk and other libraries can't. The use of
+ *         this flag will indicate that the library should not be written to disk and
+ *         instead should be loaded reflectively.
+ */
 #define LOAD_LIBRARY_FLAG_ON_DISK   (1 << 0)
+
+/*!
+ * @brief Indicates that the library in question is an extension library.
+ * @detail Extension libraries have \c InitServerExtension and \c DeinitServerExtension
+ *         functions which need to be invoked. This flag indicates that the library has
+ *         these functions and that they should be called appropriately.
+ */
 #define LOAD_LIBRARY_FLAG_EXTENSION (1 << 1)
+
+/*!
+ * @brief Indicates that the library in question is a library that exists locally.
+ * @detail Libraries can already exist on the target machine. This flag indicates that
+ *         the library doesn't need to be uploaded, it just needs to be invoked directly
+ *         on the local machine.
+ */
 #define LOAD_LIBRARY_FLAG_LOCAL     (1 << 2)
 
+/*! @brief An indication of whether the challen is synchronous or asynchronous. */
 #define CHANNEL_FLAG_SYNCHRONOUS    (1 << 0)
+/*! @brief An indication of whether the content written to the channel should be compressed. */
 #define CHANNEL_FLAG_COMPRESS       (1 << 1)
 
 /*! @brief Type definition with defines `TlvMetaType` as an double-word. */
@@ -74,10 +96,10 @@ typedef DWORD TlvMetaType;
 typedef enum
 {
 	TLV_TYPE_ANY                 = TLV_VALUE(TLV_META_TYPE_NONE,        0),
-	TLV_TYPE_METHOD              = TLV_VALUE(TLV_META_TYPE_STRING,      1),
-	TLV_TYPE_REQUEST_ID          = TLV_VALUE(TLV_META_TYPE_STRING,      2),
-	TLV_TYPE_EXCEPTION           = TLV_VALUE(TLV_META_TYPE_GROUP,       3),
-	TLV_TYPE_RESULT              = TLV_VALUE(TLV_META_TYPE_UINT,        4),
+	TLV_TYPE_METHOD              = TLV_VALUE(TLV_META_TYPE_STRING,      1),   ///< Represents a method/function name value.
+	TLV_TYPE_REQUEST_ID          = TLV_VALUE(TLV_META_TYPE_STRING,      2),   ///< Represents a request identifier value.
+	TLV_TYPE_EXCEPTION           = TLV_VALUE(TLV_META_TYPE_GROUP,       3),   ///< Represents an exception value.
+	TLV_TYPE_RESULT              = TLV_VALUE(TLV_META_TYPE_UINT,        4),   ///< Represents a result value.
 
 	// Argument basic types
 	TLV_TYPE_STRING              = TLV_VALUE(TLV_META_TYPE_STRING,     10),   ///< Represents a string value.
@@ -116,8 +138,8 @@ typedef enum
 	TLV_TYPE_MIGRATE_TECHNIQUE   = TLV_VALUE(TLV_META_TYPE_UINT,      406),   ///< Represents a migration technique (unsigned int).
 
 	// Cryptography
-	TLV_TYPE_CIPHER_NAME         = TLV_VALUE(TLV_META_TYPE_STRING,    500),
-	TLV_TYPE_CIPHER_PARAMETERS   = TLV_VALUE(TLV_META_TYPE_GROUP,     501),
+	TLV_TYPE_CIPHER_NAME         = TLV_VALUE(TLV_META_TYPE_STRING,    500),   ///< Represents the name of a cipher.
+	TLV_TYPE_CIPHER_PARAMETERS   = TLV_VALUE(TLV_META_TYPE_GROUP,     501),   ///< Represents parameters for a cipher.
 
 	TLV_TYPE_EXTENSIONS          = TLV_VALUE(TLV_META_TYPE_COMPLEX, 20000),
 	TLV_TYPE_USER                = TLV_VALUE(TLV_META_TYPE_COMPLEX, 40000),
@@ -147,6 +169,7 @@ typedef struct
 	PUCHAR    buffer;
 } Tlv;
 
+/*! @brief Packet definition. */
 typedef struct _Packet
 {
 	TlvHeader header;
@@ -163,9 +186,7 @@ typedef struct _DECOMPRESSED_BUFFER
 	DWORD length;
 } DECOMPRESSED_BUFFER;
 
-/*
- * Packet request completion notification handler
- */
+/*! * @brief Packet request completion notification handler function pointer type. */
 typedef DWORD (*PacketRequestCompletionRoutine)(Remote *remote, 
 		Packet *response, LPVOID context, LPCSTR method, DWORD result);
 
