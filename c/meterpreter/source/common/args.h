@@ -1,3 +1,7 @@
+/*!
+ * @file args.h
+ * @brief Definitions for argument parsing functionality.
+ */
 #ifndef _METERPRETER_LIB_ARGS_H
 #define _METERPRETER_LIB_ARGS_H
 

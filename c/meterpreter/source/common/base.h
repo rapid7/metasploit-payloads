@@ -1,12 +1,13 @@
+/*!
+ * @file base.h
+ * @brief Declarations, macros and types that apply to almost any Meterpreter component.
+ */
 #ifndef _METERPRETER_BASE_H
 #define _METERPRETER_BASE_H
 
 #include "linkage.h"
 #include "core.h"
 
-/*
- * Command dispatch table types
- */
 typedef DWORD (*DISPATCH_ROUTINE)(Remote *remote, Packet *packet);
 
 #define MAX_CHECKED_ARGUMENTS  16
@@ -14,11 +15,18 @@ typedef DWORD (*DISPATCH_ROUTINE)(Remote *remote, Packet *packet);
 #define ARGUMENT_FLAG_REPEAT   (1 << 28)
 #define ARGUMENT_FLAG_MASK     0x0fffffff
 
-#define EMPTY_DISPATCH_HANDLER NULL, { 0 }, 0
+/*! @brief Helper macro that contains the required NULL initialisations for a command handler TLV info. */
+#define EMPTY_TLV { 0 }, 0
+/*! @brief Helper macro which defines an empty dispatch handler. */
+#define EMPTY_DISPATCH_HANDLER NULL, EMPTY_TLV
+/*! @brief Helper macro that defines terminator for command lists. */
 #define COMMAND_TERMINATOR { NULL, { EMPTY_DISPATCH_HANDLER }, { EMPTY_DISPATCH_HANDLER } }
-#define COMMAND_REQ(name, reqHandler) { name, { reqHandler, { 0 }, 0 }, { EMPTY_DISPATCH_HANDLER } }
-#define COMMAND_REP(name, repHandler) { name, { EMPTY_DISPATCH_HANDLER }, { repHandler, { 0 }, 0 } }
-#define COMMAND_REQ_REP(name, reqHandler, repHandler) { name, { reqHandler, { 0 }, 0 }, { repHandler, { 0 }, 0 } }
+/*! @brief Helper macro that defines a command instance with a request handler only. */
+#define COMMAND_REQ(name, reqHandler) { name, { reqHandler, EMPTY_TLV }, { EMPTY_DISPATCH_HANDLER } }
+/*! @brief Helper macro that defines a command instance with a response handler only. */
+#define COMMAND_REP(name, repHandler) { name, { EMPTY_DISPATCH_HANDLER }, { repHandler, EMPTY_TLV } }
+/*! @brief Helper macro that defines a command instance with both a request and response handler. */
+#define COMMAND_REQ_REP(name, reqHandler, repHandler) { name, { reqHandler, EMPTY_TLV }, { repHandler, EMPTY_TLV } }
 
 // Place holders
 #define EXPORT_TABLE_BEGIN()

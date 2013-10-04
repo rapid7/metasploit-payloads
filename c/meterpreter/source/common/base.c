@@ -1,3 +1,7 @@
+/*!
+ * @file base.c
+ * @brief Definitions that apply to almost any Meterpreter component.
+ */
 #include "common.h"
 
 // Local remote request implementors
@@ -47,7 +51,7 @@ Command commands[] =
 	// Console commands
 	{  "core_console_write",  
 		{ remote_request_core_console_write,     { TLV_META_TYPE_STRING }, 1 | ARGUMENT_FLAG_REPEAT },
-		{ remote_response_core_console_write,    { 0 },  0 },
+		{ remote_response_core_console_write,    EMPTY_TLV },
 	},
 
 	// Native Channel commands
@@ -179,14 +183,14 @@ DWORD command_deregister(Command *command)
 	return res;
 }
 
-/*
-* A list of all command threads currenlty executing.
-*/
+/*!
+ * @brief A list of all command threads currenlty executing.
+ */
 LIST * commandThreadList = NULL;
 
-/*
-* Block untill all running command threads have finished.
-*/
+/*!
+ * @brief Block untill all running command threads have finished.
+ */
 VOID command_join_threads( VOID )
 {
 	while( list_count( commandThreadList ) > 0 )
@@ -197,27 +201,12 @@ VOID command_join_threads( VOID )
 	}
 }
 
-/*
-* Crude method of throttling the ammount of concurrent command 
-* threads we allow in the system at a given time.
-*/
-/*
-VOID command_throtle( int maxthreads )
-{
-while( list_count( commandThreadList ) >= maxthreads )
-{
-Sleep( 250 );
-}
-}
-*/
-
 #ifndef _WIN32
-/*
-* Reap child zombie threads on linux 2.4 (before NPTL)
-* each thread appears as a process and pthread_join don't necessarily reap it
-* threads are created using the clone syscall, so use special __WCLONE flag in waitpid
-*/
-
+/*!
+ * @brief Reap child zombie threads on linux 2.4 (before NPTL).
+ * @detail Each thread appears as a process and pthread_join don't necessarily reap it
+ * threads are created using the clone syscall, so use special __WCLONE flag in waitpid.
+ */
 VOID reap_zombie_thread(void * param)
 {
 	while(1) {
@@ -228,9 +217,11 @@ VOID reap_zombie_thread(void * param)
 }
 #endif
 
-/*
-* Process a single command in a seperate thread of execution.
-*/
+/*!
+ * @brief Process a single command in a seperate thread of execution.
+ * @param thread Pointer to the thread to execute.
+ * @return Result of processing.
+ */
 DWORD THREADCALL command_process_thread( THREAD * thread )
 {
 	DWORD index       = 0;
@@ -448,8 +439,12 @@ DWORD command_process_remote_loop(Remote *remote)
 }
 */
 
-/*
- * Call the dispatch routine for a given command
+/*!
+ * @brief Call the dispatch routine for a given command.
+ * @param command The command to call the dispatch routine on.
+ * @param remote Pointer to the remote connection.
+ * @param packet Pointer to the current packet.
+ * @return Result of the command dispatch handler call.
  */
  DWORD command_call_dispatch(Command *command, Remote *remote, Packet *packet)
 {
@@ -480,9 +475,12 @@ DWORD command_process_remote_loop(Remote *remote)
 	return res;
 }
 
-/*
-* Validate command arguments
-*/
+/*!
+ * @brief Validate command arguments
+ * @return Indication of whether the commands are valid or not.
+ * @retval ERROR_SUCCESS All arguments are valid.
+ * @retval ERROR_INVALID_PARAMETER An invalid parameter exists.
+ */
 DWORD command_validate_arguments(Command *command, Packet *packet)
 {
 	PacketDispatcher *dispatcher = NULL;

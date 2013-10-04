@@ -149,16 +149,20 @@ void real_dprintf(char *filename, int line, const char *function, char *format, 
 
 #include "zlib/zlib.h"
 
-#define METERPRETER_TRANSPORT_SSL   0 ///< Indication that the Meterpreter transport is using SSL.
-#define METERPRETER_TRANSPORT_HTTP  1 ///< Indication that the Meterpreter transport is using HTTP.
-#define METERPRETER_TRANSPORT_HTTPS 2 ///< Indication that the Meterpreter transport is using HTTPS.
+/*! @brief Indication that the Meterpreter transport is using SSL. */
+#define METERPRETER_TRANSPORT_SSL   0
+/*! @brief Indication that the Meterpreter transport is using HTTP. */
+#define METERPRETER_TRANSPORT_HTTP  1
+/*! @brief Indication that the Meterpreter transport is using HTTPS. */
+#define METERPRETER_TRANSPORT_HTTPS 2
 
 #ifdef _WIN32
 
 
 #include <wininet.h>
 
-#define DEBUGTRACE 1 ///< When defined, debug output is enabled.
+/*! @brief When defined, debug output is enabled. */
+//#define DEBUGTRACE 1
 
 #ifdef DEBUGTRACE
 #define dprintf(...) real_dprintf(__VA_ARGS__)
