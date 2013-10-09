@@ -99,6 +99,30 @@ metasploit-framework and meterpreter live in the same place by running
 If you made any changes to `metsrv.dll` or `msflinker_linux_x86.bin`, ensure
 that all extensions still load and function properly.
 
+Creating Extensions
+===================
+
+Creating extensions isn't complicated, but it's not simple either. In an attempt make the set up a little easier on the Meterpreter side, a new project called `ext_server_bare` has been created which is just the shell of a project which can be used as the starting point for your code. To use this as a template to create your own project, you can follow these steps.
+
+Note: All paths listed here are relative to the root `meterpreter` folder where this document resides.
+
+Pick a name for your extension, make sure it's something meaningful and short. For the sake of example, we'll create a new extension called `splat`. Once you have a cool an meaningful name, you can get your project going by doing the following:
+
+1. Create a new folder called `workspace/ext_server_splat`.
+1. Copy `workspace/ext_server_bare/ext_server_bare.vcxproj` to `workspace/ext_server_bare/ext_server_splat.vcxproj`
+1. Open `workspace/ext_server_bare/ext_server_splat.vcxproj` with a text editor and..
+    * Replace all instances of `BARE` with `SPLAT`.
+    * Replace all instances of `bare` with `splat`.
+    * Search for the `ProjectGuid` property in the document. It looks like `<ProjectGuid>{D3F39324-040D-4B1F-ADA9-762F16A120E6}</ProjectGuid>`. When found, generate a new GUID for your project either using `guidgen.exe` or an online tool, and replace this GUID with your new GUID. Make sure you keep the curly braces.
+1. Create a new folder called `source/extensions/splat`.
+1. Copy `source/extensions/bare/bare.c` to `source/extensions/splat/splat.c`
+1. Copy `source/extensions/bare/bare.h` to `source/extensions/splat/splat.h`
+1. Open `workspace/meterpreter.sln` in Visual Studio 2012.
+1. Right-click on the solution item called `Solution 'meterpreter'` and select `Add`, then `Existing Project...`.
+1. Browse to your new project's location at `workspace/ext_server_splat` and select `ext_server_splat.vcxproj`.
+
+You're done! The solution should automagically pick up your project configurations and wire them in where appropriate.
+
   [vs_express]: http://www.microsoft.com/visualstudio/eng/downloads#d-2012-express
   [vs_paid]: http://www.microsoft.com/visualstudio/eng/downloads#d-2012-editions
 
