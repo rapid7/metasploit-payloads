@@ -120,8 +120,25 @@ Pick a name for your extension, make sure it's something meaningful and short. F
 1. Open `workspace/meterpreter.sln` in Visual Studio 2012.
 1. Right-click on the solution item called `Solution 'meterpreter'` and select `Add`, then `Existing Project...`.
 1. Browse to your new project's location at `workspace/ext_server_splat` and select `ext_server_splat.vcxproj`.
+1. The solution should automagically pick up your project configurations and wire them in where appropriate.
+1. Right-click, again, on the solution item and select `Configuration Manager`.
+1. In the resulting window, iterate through all combinations `Active Solution Configuration` and `Active Solution Platform` and make sure that:
+    * `Configuration` matches with all the other extensions in each case.
+    * `Platform` matches with all the other extensions in each case.
+    * `Build` is checked in each case.
+    * `Deploy` is **NOT** checked in each case.
+1. Modify the contents of `splat.c` and `splat.h` so that the file header commands are up to date, and that all references to `bare` have been removed.
 
-You're done! The solution should automagically pick up your project configurations and wire them in where appropriate.
+At this point you're ready to start adding your extension's functionality.
+
+Things to Remember
+------------------
+
+* Your extension is set up to build both 32 and 64 bit versions. Make sure you're mindful of this when you are writing your code. All of the usual pitfalls apply when dealing with things like pointer sizes, value trunction, etc.
+* Make sure your extension builds correctly from the command line using `make`.
+* The outputs of your builds, when successful, are copied to `output/x64` and `output/x86`.
+
+Good luck!
 
   [vs_express]: http://www.microsoft.com/visualstudio/eng/downloads#d-2012-express
   [vs_paid]: http://www.microsoft.com/visualstudio/eng/downloads#d-2012-editions
