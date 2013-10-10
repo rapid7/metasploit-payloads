@@ -1,6 +1,6 @@
 /*!
  * @file window.h
- * @brief Declarations for window management functionality
+ * @brief Definitions for window management functionality
  */
 #include "extapi.h"
 #include "window.h"

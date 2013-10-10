@@ -456,10 +456,12 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\source\extensions\extapi\extapi.c" />
+    <ClCompile Include="..\..\source\extensions\extapi\service.c" />
     <ClCompile Include="..\..\source\extensions\extapi\window.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\source\extensions\extapi\extapi.h" />
+    <ClInclude Include="..\..\source\extensions\extapi\service.h" />
     <ClInclude Include="..\..\source\extensions\extapi\window.h" />
   </ItemGroup>
   <ItemGroup>

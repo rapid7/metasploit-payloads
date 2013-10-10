@@ -11,6 +11,7 @@
 #include "../../ReflectiveDLLInjection/ReflectiveLoader.c"
 
 #include "window.h"
+#include "service.h"
 
 // this sets the delay load hook function, see DelayLoadMetSrv.h
 EnableDelayLoadMetSrv();
@@ -22,11 +23,16 @@ Command customCommands[] =
 		{ request_window_enum,          { 0 }, 0 },
 		{ EMPTY_DISPATCH_HANDLER                 }
 	},
+	// Service management and enumeration
+	{ "extapi_service_enum",
+		{ request_service_enum,         { 0 }, 0 },
+		{ EMPTY_DISPATCH_HANDLER                 }
+	},
 	// Terminator
 	{ NULL,
-	  { EMPTY_DISPATCH_HANDLER                      },
-	  { EMPTY_DISPATCH_HANDLER                      },
-	},
+		{ EMPTY_DISPATCH_HANDLER                 },
+		{ EMPTY_DISPATCH_HANDLER                 }
+	}
 };
 
 /*!
