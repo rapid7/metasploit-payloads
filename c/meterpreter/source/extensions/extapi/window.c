@@ -57,7 +57,7 @@ DWORD enumerate_windows( Packet *response )
 	// currently we only support Windoze
 
 	DWORD dwResult;
-	HMODULE hUser32;
+	HMODULE hUser32 = NULL;
 	PENUMDESKTOPWINDOWS pEnumDesktopWindows;
 	EnumWindowsState state;
 
@@ -89,6 +89,9 @@ DWORD enumerate_windows( Packet *response )
 
 		dwResult = ERROR_SUCCESS;
 	} while(0);
+
+	if( hUser32 )
+		FreeLibrary( hUser32 );
 
 	return dwResult;
 #else
