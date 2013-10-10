@@ -28,6 +28,10 @@ Command customCommands[] =
 		{ request_service_enum,         { 0 }, 0 },
 		{ EMPTY_DISPATCH_HANDLER                 }
 	},
+	{ "extapi_service_query",
+		{ request_service_query,        { 0 }, 0 },
+		{ EMPTY_DISPATCH_HANDLER                 }
+	},
 	// Terminator
 	{ NULL,
 		{ EMPTY_DISPATCH_HANDLER                 },

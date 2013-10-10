@@ -101,26 +101,27 @@ DWORD enumerate_windows( Packet *response )
 
 DWORD request_window_enum( Remote *remote, Packet *packet )
 {
-	DWORD result = ERROR_SUCCESS;
+	DWORD dwResult = ERROR_SUCCESS;
 	Packet * response = packet_create_response( packet );
 
 	do
 	{
 		if( !response ) {
 			dprintf( "Unable to create response packet" );
-			result = ERROR_OUTOFMEMORY;
+			dwResult = ERROR_OUTOFMEMORY;
 			break;
 		}
 
 		dprintf( "Beginning window enumeration" );
-		result = enumerate_windows( response );
+		dwResult = enumerate_windows( response );
 
 	} while(0);
 
 	dprintf( "Transmitting response back to caller." );
-	packet_transmit_response( result, remote, response );
+	if( response )
+		packet_transmit_response( dwResult, remote, response );
 
-	return result;
+	return dwResult;
 }
 
 VOID add_enumerated_window( Packet *pResponse, QWORD qwHandle, const char* cpWindowTitle, DWORD dwProcessId, BOOL bVisible )
