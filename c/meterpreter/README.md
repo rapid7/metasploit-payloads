@@ -1,10 +1,10 @@
-Current `master` branch: ![Meterpreter Build Status](http://r7jenkins.cloudapp.net/Meterpreter "Meterpreter Build Status")
+Current `master` branch: ![Meterpreter Build Status][build_icon]
 
 meterpreter >
 =============
 
 This is the new repository for the Meterpreter source, which was originally in the
-[Metasploit Framework](https://github.com/rapid7/meterpreter) source.
+[Metasploit Framework][source] source.
 
 Building - Windows
 ==================
@@ -101,4 +101,5 @@ that all extensions still load and function properly.
 
   [vs_express]: http://www.microsoft.com/visualstudio/eng/downloads#d-2012-express
   [vs_paid]: http://www.microsoft.com/visualstudio/eng/downloads#d-2012-editions
-
+  [source]: https://github.com/rapid7/meterpreter
+  [build_icon]: https://ci.metasploit.com/buildStatus/icon?job=MeterpreterWin
