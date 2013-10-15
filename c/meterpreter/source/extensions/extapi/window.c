@@ -11,13 +11,14 @@ DWORD enumerate_windows( Packet *response );
 #ifdef _WIN32
 #define MAX_WINDOW_TITLE 256
 
-typedef BOOL (WINAPI * PENUMDESKTOPWINDOWS)( HDESK hDesktop, WNDENUMPROC enumProc, LPARAM lparam );
+typedef BOOL (WINAPI * PENUMCHILDWINDOWS)( HWND hWndParent, WNDENUMPROC enumProc, LPARAM lparam );
 typedef int (WINAPI * PGETWINDOWTEXA)( HWND hWnd, LPSTR lpString, int nMaxCount );
 typedef DWORD (WINAPI * PGETWINDOWTHREADPROCESSID)( HWND hWnd, LPDWORD lpdwProcessId );
 
 typedef struct _EnumWindowsState
 {
 	Packet* pResponse;
+	BOOL bIncludeUnknown;
 	PGETWINDOWTEXA pGetWindowTextA;
 	PGETWINDOWTHREADPROCESSID pGetWindowThreadProcessId;
 } EnumWindowsState;
@@ -35,9 +36,12 @@ BOOL CALLBACK enumerate_windows_callback( HWND hWnd, LPARAM lParam )
 	{
 		dprintf( "Getting window title %p", pState->pGetWindowTextA );
 		if( pState->pGetWindowTextA( hWnd, windowTitle, MAX_WINDOW_TITLE ) == 0 ) {
-			strncpy_s( windowTitle, MAX_WINDOW_TITLE, "<unknown>", MAX_WINDOW_TITLE - 1 );
-			dprintf( "Unable to get window title. Skipping." );
-			break;
+			dprintf( "Unable to get window title. Setting to <unknown>." );
+			if( pState->bIncludeUnknown ) {
+				strncpy_s( windowTitle, MAX_WINDOW_TITLE, "<unknown>", MAX_WINDOW_TITLE - 1 );
+			} else {
+				break;
+			}
 		}
 
 		dprintf( "Getting process ID %p", pState->pGetWindowThreadProcessId );
@@ -51,14 +55,14 @@ BOOL CALLBACK enumerate_windows_callback( HWND hWnd, LPARAM lParam )
 }
 #endif
 
-DWORD enumerate_windows( Packet *response )
+DWORD enumerate_windows( Packet *response, BOOL bIncludeUnknown, QWORD parentWindow )
 {
 #ifdef _WIN32
 	// currently we only support Windoze
 
 	DWORD dwResult;
 	HMODULE hUser32 = NULL;
-	PENUMDESKTOPWINDOWS pEnumDesktopWindows;
+	PENUMCHILDWINDOWS pEnumChildWindows;
 	EnumWindowsState state;
 
 	do
@@ -66,10 +70,6 @@ DWORD enumerate_windows( Packet *response )
 		dprintf( "Loading user32.dll" );
 		if( (hUser32 = LoadLibraryA( "user32.dll" )) == NULL)
 			BREAK_ON_ERROR( "Unable to load user32.dll" );
-
-		dprintf( "Searching for EnumDesktopWindows" );
-		if( (pEnumDesktopWindows = (PENUMDESKTOPWINDOWS)GetProcAddress( hUser32, "EnumDesktopWindows" )) == NULL )
-			BREAK_ON_ERROR( "Unable to locate EnumDesktopWindows in user32.dll" );
 
 		dprintf( "Searching for GetWindowTextA" );
 		if( (state.pGetWindowTextA = (PGETWINDOWTEXA)GetProcAddress( hUser32, "GetWindowTextA" )) == NULL )
@@ -82,10 +82,15 @@ DWORD enumerate_windows( Packet *response )
 		dprintf( "Found GetWindowThreadProcessId %p", state.pGetWindowThreadProcessId );
 
 		state.pResponse = response;
+		state.bIncludeUnknown = bIncludeUnknown;
 
-		dprintf( "Beginning enumeration of desktop windows" );
-		if( !pEnumDesktopWindows( NULL, (WNDENUMPROC)enumerate_windows_callback, (LPARAM)&state ) )
-			BREAK_ON_ERROR( "Failed to enumerate windows" );
+		dprintf( "Searching for EnumChildWindows" );
+		if( (pEnumChildWindows = (PENUMCHILDWINDOWS)GetProcAddress( hUser32, "EnumChildWindows" )) == NULL )
+			BREAK_ON_ERROR( "Unable to locate EnumChildWindows in user32.dll" );
+
+		dprintf( "Beginning enumeration of child windows with parent %u", parentWindow );
+		if( !pEnumChildWindows( parentWindow != 0 ? (HWND)parentWindow : NULL, (WNDENUMPROC)enumerate_windows_callback, (LPARAM)&state ) )
+			BREAK_ON_ERROR( "Failed to enumerate child windows" );
 
 		dwResult = ERROR_SUCCESS;
 	} while(0);
@@ -101,7 +106,9 @@ DWORD enumerate_windows( Packet *response )
 
 DWORD request_window_enum( Remote *remote, Packet *packet )
 {
+	QWORD parentWindow = NULL;
 	DWORD dwResult = ERROR_SUCCESS;
+	BOOL bIncludeUnknown = FALSE;
 	Packet * response = packet_create_response( packet );
 
 	do
@@ -112,8 +119,15 @@ DWORD request_window_enum( Remote *remote, Packet *packet )
 			break;
 		}
 
+		// Extract the specified parent window. If this is NULL, that's ok, as we'll
+		// just enumerate top-level windows.
+		parentWindow = packet_get_tlv_value_qword( packet, TLV_TYPE_EXT_WINDOW_ENUM_HANDLE );
+
+		// Extract the flag that indicates of unknown windows should be included in the output
+		bIncludeUnknown = packet_get_tlv_value_bool( packet, TLV_TYPE_EXT_WINDOW_ENUM_INCLUDEUNKNOWN );
+
 		dprintf( "Beginning window enumeration" );
-		dwResult = enumerate_windows( response );
+		dwResult = enumerate_windows( response, bIncludeUnknown, parentWindow );
 
 	} while(0);
 
