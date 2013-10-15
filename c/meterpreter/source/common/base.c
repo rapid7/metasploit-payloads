@@ -506,7 +506,7 @@ DWORD command_validate_arguments(Command *command, Packet *packet)
 		switch (tlvMetaType)
 		{
 		case TLV_META_TYPE_STRING:
-			if (packet_is_tlv_null_terminated(packet, &current) != ERROR_SUCCESS)
+			if (packet_is_tlv_null_terminated(&current) != ERROR_SUCCESS)
 				res = ERROR_INVALID_PARAMETER;
 			break;
 		default:

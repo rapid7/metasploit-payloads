@@ -9,7 +9,7 @@
 #include "core.h"
 
 /*! @brief Function pointer type that defines the interface for a dispatch handler. */
-typedef DWORD (*DISPATCH_ROUTINE)(Remote *remote, Packet *packet);
+typedef DWORD (*DISPATCH_ROUTINE)( Remote *remote, Packet *packet );
 
 /*! @brief Specifies the maximum number of arguments that are checked/handled
  *         in a request/response packet dispatcher.

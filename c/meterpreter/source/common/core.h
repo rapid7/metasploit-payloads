@@ -53,9 +53,13 @@ typedef enum
 /*! @brief Meta TLV argument type representing a flag set/mask value. */
 #define TLV_META_TYPE_MASK(x)       ((x) & 0xffff0000)
 
+/*! @brief Base value for reserved TLV definitions. */
 #define TLV_RESERVED                0
+/*! @brief Base value for TLV definitions that are part of extensions. */
 #define TLV_EXTENSIONS              20000
+/*! @brief Base value for user TLV definitions. */
 #define TLV_USER                    40000
+/*! @brief Base value for temporary TLV definitions. */
 #define TLV_TEMP                    60000
 
 /*!
@@ -95,7 +99,7 @@ typedef DWORD TlvMetaType;
  */
 typedef enum
 {
-	TLV_TYPE_ANY                 = TLV_VALUE(TLV_META_TYPE_NONE,        0),
+	TLV_TYPE_ANY                 = TLV_VALUE(TLV_META_TYPE_NONE,        0),   ///< Represents an undefined/arbitrary value.
 	TLV_TYPE_METHOD              = TLV_VALUE(TLV_META_TYPE_STRING,      1),   ///< Represents a method/function name value.
 	TLV_TYPE_REQUEST_ID          = TLV_VALUE(TLV_META_TYPE_STRING,      2),   ///< Represents a request identifier value.
 	TLV_TYPE_EXCEPTION           = TLV_VALUE(TLV_META_TYPE_GROUP,       3),   ///< Represents an exception value.
@@ -125,8 +129,8 @@ typedef enum
 	TLV_TYPE_SEEK_POS            = TLV_VALUE(TLV_META_TYPE_UINT,       72),
 
 	// Grouped identifiers
-	TLV_TYPE_EXCEPTION_CODE      = TLV_VALUE(TLV_META_TYPE_UINT,      300),
-	TLV_TYPE_EXCEPTION_STRING    = TLV_VALUE(TLV_META_TYPE_STRING,    301),
+	TLV_TYPE_EXCEPTION_CODE      = TLV_VALUE(TLV_META_TYPE_UINT,      300),   ///< Represents an exception code value (unsigned in).
+	TLV_TYPE_EXCEPTION_STRING    = TLV_VALUE(TLV_META_TYPE_STRING,    301),   ///< Represents an exception message value (string).
 
 	// Library loading
 	TLV_TYPE_LIBRARY_PATH        = TLV_VALUE(TLV_META_TYPE_STRING,    400),   ///< Represents a path to the library to be loaded (string).
@@ -141,9 +145,9 @@ typedef enum
 	TLV_TYPE_CIPHER_NAME         = TLV_VALUE(TLV_META_TYPE_STRING,    500),   ///< Represents the name of a cipher.
 	TLV_TYPE_CIPHER_PARAMETERS   = TLV_VALUE(TLV_META_TYPE_GROUP,     501),   ///< Represents parameters for a cipher.
 
-	TLV_TYPE_EXTENSIONS          = TLV_VALUE(TLV_META_TYPE_COMPLEX, 20000),
-	TLV_TYPE_USER                = TLV_VALUE(TLV_META_TYPE_COMPLEX, 40000),
-	TLV_TYPE_TEMP                = TLV_VALUE(TLV_META_TYPE_COMPLEX, 60000),
+	TLV_TYPE_EXTENSIONS          = TLV_VALUE(TLV_META_TYPE_COMPLEX, 20000),   ///< Represents an extension value.
+	TLV_TYPE_USER                = TLV_VALUE(TLV_META_TYPE_COMPLEX, 40000),   ///< Represents a user value.
+	TLV_TYPE_TEMP                = TLV_VALUE(TLV_META_TYPE_COMPLEX, 60000),   ///< Represents a temporary value.
 } TlvType;
 
 #ifdef _WIN32
@@ -212,7 +216,7 @@ LINKAGE DWORD packet_add_tlv_bool(Packet *packet, TlvType type, BOOL val);
 LINKAGE DWORD packet_add_tlv_group(Packet *packet, TlvType type, Tlv *entries, DWORD numEntries);
 LINKAGE DWORD packet_add_tlvs(Packet *packet, Tlv *entries, DWORD numEntries);
 LINKAGE DWORD packet_add_tlv_raw(Packet *packet, TlvType type, LPVOID buf, DWORD length);
-LINKAGE DWORD packet_is_tlv_null_terminated(Packet *packet, Tlv *tlv);
+LINKAGE DWORD packet_is_tlv_null_terminated(Tlv *tlv);
 LINKAGE PacketTlvType packet_get_type(Packet *packet);
 LINKAGE TlvMetaType packet_get_tlv_meta(Packet *packet, Tlv *tlv);
 LINKAGE DWORD packet_get_tlv(Packet *packet, TlvType type, Tlv *tlv);
@@ -267,7 +271,8 @@ LINKAGE DWORD packet_remove_completion_handler(LPCSTR requestId);
 /*
  * Core API
  */
-LINKAGE DWORD send_core_console_write(Remote *remote, LPCSTR fmt, ...);
-LINKAGE HANDLE core_update_thread_token(Remote *remote, HANDLE token);
+LINKAGE DWORD send_core_console_write( Remote *remote, LPCSTR fmt, ... );
+LINKAGE HANDLE core_update_thread_token( Remote *remote, HANDLE token );
 LINKAGE VOID core_update_desktop( Remote * remote, DWORD dwSessionID, char * cpStationName, char * cpDesktopName );
+
 #endif
