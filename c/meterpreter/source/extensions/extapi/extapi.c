@@ -12,6 +12,7 @@
 
 #include "window.h"
 #include "service.h"
+#include "clipboard.h"
 
 // this sets the delay load hook function, see DelayLoadMetSrv.h
 EnableDelayLoadMetSrv();
@@ -30,6 +31,15 @@ Command customCommands[] =
 	},
 	{ "extapi_service_query",
 		{ request_service_query,        { 0 }, 0 },
+		{ EMPTY_DISPATCH_HANDLER                 }
+	},
+	// Clipboard interaction
+	{ "extapi_clipboard_get_data",
+		{ request_clipboard_get_data,   { 0 }, 0 },
+		{ EMPTY_DISPATCH_HANDLER                 }
+	},
+	{ "extapi_clipboard_set_data",
+		{ request_clipboard_set_data,   { 0 }, 0 },
 		{ EMPTY_DISPATCH_HANDLER                 }
 	},
 	// Terminator

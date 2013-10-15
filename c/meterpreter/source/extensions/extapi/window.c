@@ -1,5 +1,5 @@
 /*!
- * @file window.h
+ * @file window.c
  * @brief Definitions for window management functionality
  */
 #include "extapi.h"
@@ -9,18 +9,24 @@ VOID add_enumerated_window( Packet *pResponse, QWORD qwHandle, const char* lpWin
 DWORD enumerate_windows( Packet *response );
 
 #ifdef _WIN32
+
+/*! @brief The maximum number of characters extracted from a window title. */
 #define MAX_WINDOW_TITLE 256
 
+/*! @brief EnumChildWindows function pointer type. */
 typedef BOOL (WINAPI * PENUMCHILDWINDOWS)( HWND hWndParent, WNDENUMPROC enumProc, LPARAM lparam );
+/*! @brief GetWindowTextA function pointer type. */
 typedef int (WINAPI * PGETWINDOWTEXA)( HWND hWnd, LPSTR lpString, int nMaxCount );
+/*! @brief GetWindowThreadProcessId function pointer type. */
 typedef DWORD (WINAPI * PGETWINDOWTHREADPROCESSID)( HWND hWnd, LPDWORD lpdwProcessId );
 
+/*! @brief Container type used to maintain state across EnumChildWindows callback calls. */
 typedef struct _EnumWindowsState
 {
-	Packet* pResponse;
-	BOOL bIncludeUnknown;
-	PGETWINDOWTEXA pGetWindowTextA;
-	PGETWINDOWTHREADPROCESSID pGetWindowThreadProcessId;
+	Packet* pResponse;                                     ///< Pointer to the \c Packet to add results to.
+	BOOL bIncludeUnknown;                                  ///< Flag indicating if unknown windows should be included.
+	PGETWINDOWTEXA pGetWindowTextA;                        ///< Pointer to the GetWindowTextA function.
+	PGETWINDOWTHREADPROCESSID pGetWindowThreadProcessId;   ///< Pointer to the GetWindowThreadProcessId function.
 } EnumWindowsState;
 
 BOOL CALLBACK enumerate_windows_callback( HWND hWnd, LPARAM lParam )
