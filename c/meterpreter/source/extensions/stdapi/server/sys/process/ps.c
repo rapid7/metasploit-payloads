@@ -308,7 +308,7 @@ BOOL ps_getpath( DWORD pid, char * cpExePath, DWORD dwExePathSize, char * cpExeN
 					{
 						name = strrchr( cpExePath, '\\' );
 						if( name )
-							strncpy( cpExeName, name+1, dwExeNameSize );
+							strncpy( cpExeName, name+1, dwExeNameSize - 1 );
 					}
 					success = TRUE;
 				}
@@ -639,6 +639,9 @@ void parse_status(char * buffer, struct info_process * info) {
 			strncpy(info->name, str+strlen(NAME), sizeof(info->name)-1);
 
 		if ( strncmp(str, STATE, strlen(STATE)) == 0 ) {
+			// TODO: rather than use strncpy for 1 char, why can't
+			// we just write the one char given the state is already zeroed?
+			// info->state[0] = str[strlen(STATE)];
 			strncpy(info->state, str+strlen(STATE), 1); // want only 1 char
 		}
 
