@@ -41,5 +41,8 @@ source/jpeg-8/Backup/*
 # other VS garbage
 *.*proj.filters
 
+# ignore posix temp stuff
+posix-meterp-build-tmp/*
+
 # Doxygen output
 docs/*
