@@ -30,8 +30,14 @@ typedef HANDLE (WINAPI * PSETCLIPBOARDDATA)( UINT uFormat, HANDLE hMem );
 /*! @brief SetClipboardData function pointer type. */
 typedef HANDLE (WINAPI * PGETCLIPBOARDDATA)( UINT uFormat );
 
+/*! @brief EnumClipboardFormats function pointer type. */
+typedef UINT (WINAPI * PENUMCLIPBOARDFORMATS)( UINT uFormat );
+
 /*! @brief EmptyClipboard function pointer type. */
 typedef BOOL (WINAPI * PEMPTYCLIPBOARD)();
+
+/*! @brief DragQueryFileA function pointer type. */
+typedef BOOL (WINAPI * PDRAGQUERYFILEA)( HDROP hDrop, UINT iFile, LPSTR lpszFile, UINT cch );
 
 #endif
 
@@ -39,6 +45,7 @@ typedef BOOL (WINAPI * PEMPTYCLIPBOARD)();
  * @brief Handle the request to get the data from the clipboard.
  * @details This function currently only supports the following clipboard data formats:
  *             - CF_TEXT - raw text data.
+ *             - CF_HDROP - file selection.
  *
  *          Over time more formats will be supported.
  * @param remote Pointer to the remote endpoint.
@@ -52,6 +59,7 @@ DWORD request_clipboard_get_data( Remote *remote, Packet *packet )
 	DWORD dwResult;
 	HMODULE hKernel32 = NULL;
 	HMODULE hUser32 = NULL;
+	HMODULE hShell32 = NULL;
 
 	PGLOBALLOCK pGlobalLock = NULL;
 	PGLOBALUNLOCK pGlobalUnlock = NULL;
@@ -59,9 +67,16 @@ DWORD request_clipboard_get_data( Remote *remote, Packet *packet )
 	POPENCLIPBOARD pOpenClipboard = NULL;
 	PCLOSECLIPBOARD pCloseClipboard = NULL;
 	PGETCLIPBOARDDATA pGetClipboardData = NULL;
+	PENUMCLIPBOARDFORMATS pEnumClipboardFormats = NULL;
+	PDRAGQUERYFILEA pDragQueryFileA = NULL;
 
-	PCHAR lpClipString;
-	HGLOBAL hClipboardData;
+	PCHAR lpClipString = NULL;
+	HGLOBAL hClipboardData = NULL;
+	HDROP hFileDrop = NULL;
+	UINT uFormat = 0;
+	UINT uFileIndex = 0;
+	UINT uFileCount = 0;
+	CHAR lpFileName[MAX_PATH];
 
 	Packet *pResponse = packet_create_response( packet );
 
@@ -95,6 +110,10 @@ DWORD request_clipboard_get_data( Remote *remote, Packet *packet )
 		if( (pGetClipboardData = (PGETCLIPBOARDDATA)GetProcAddress( hUser32, "GetClipboardData" )) == NULL )
 			BREAK_ON_ERROR( "Unable to locate GetClipboardData in user32.dll" );
 
+		dprintf( "Searching for EnumClipboardFormats" );
+		if( (pEnumClipboardFormats = (PENUMCLIPBOARDFORMATS)GetProcAddress( hUser32, "EnumClipboardFormats" )) == NULL )
+			BREAK_ON_ERROR( "Unable to locate EnumClipboardFormats in user32.dll" );
+
 		// Try to get a lock on the clipboard
 		if( !pOpenClipboard( NULL ) ) {
 			dwResult = GetLastError();
@@ -103,21 +122,62 @@ DWORD request_clipboard_get_data( Remote *remote, Packet *packet )
 
 		dprintf( "Clipboard locked, attempting to get data..." );
 
-		// For now we only support  text, more formats to come later.
-		if( (hClipboardData = pGetClipboardData( CF_TEXT ) ) != NULL
-			&& (lpClipString = (PCHAR)pGlobalLock( hClipboardData )) != NULL ) {
-			dprintf( "Clipboard text captured: %s", lpClipString );
-			packet_add_tlv_string( pResponse, TLV_TYPE_EXT_CLIPBOARD_TYPE_TEXT, lpClipString );
-			pGlobalUnlock( hClipboardData );
-			dwResult = ERROR_SUCCESS;
-		} else {
-			dwResult = GetLastError();
-			dprintf( "Unable to get clipboard data %u (0x%x)", dwResult, dwResult );
+		while ( uFormat = pEnumClipboardFormats( uFormat ) )
+		{
+			if( uFormat == CF_TEXT ) {
+				// there's raw text on the clipboard
+				if ( (hClipboardData = pGetClipboardData( CF_TEXT ) ) != NULL
+					&& (lpClipString = (PCHAR)pGlobalLock( hClipboardData )) != NULL ) {
+
+					dprintf( "Clipboard text captured: %s", lpClipString );
+					packet_add_tlv_string( pResponse, TLV_TYPE_EXT_CLIPBOARD_TYPE_TEXT, lpClipString );
+
+					pGlobalUnlock( hClipboardData );
+				}
+			}
+			else if( uFormat == CF_HDROP ) {
+				// there's one or more files on the clipboard
+				dprintf( "Files have been located on the clipboard" );
+				do
+				{
+					dprintf( "Loading shell32.dll" );
+					if( (hShell32 = LoadLibraryA( "shell32.dll" )) == NULL)
+						BREAK_ON_ERROR( "Unable to load shell32.dll" );
+
+					dprintf( "Searching for DragQueryFileA" );
+					if( (pDragQueryFileA = (PDRAGQUERYFILEA)GetProcAddress( hShell32, "DragQueryFileA" )) == NULL )
+						BREAK_ON_ERROR( "Unable to locate CloseClipboard in shell32.dll" );
+
+					dprintf( "Grabbing the clipboard file drop data" );
+					if ( (hClipboardData = pGetClipboardData( CF_HDROP ) ) != NULL
+						&& (hFileDrop = (HDROP)pGlobalLock( hClipboardData )) != NULL ) {
+
+						uFileCount = pDragQueryFileA( hFileDrop, (UINT)-1, NULL, 0 );
+
+						dprintf( "Parsing %u file(s) on the clipboard.", uFileCount );
+
+						for( uFileIndex = 0; uFileIndex < uFileCount; ++uFileIndex ) {
+							if( pDragQueryFileA( hFileDrop, uFileIndex, lpFileName, sizeof( lpFileName ) ) ) {
+								dprintf( "Clipboard file entry: %s", lpFileName );
+								packet_add_tlv_string( pResponse, TLV_TYPE_EXT_CLIPBOARD_TYPE_FILE, lpFileName );
+							}
+						}
+
+						pGlobalUnlock( hClipboardData );
+					}
+
+				} while(0);
+			}
 		}
+
+		dwResult = GetLastError();
 
 		pCloseClipboard();
 
 	} while(0);
+
+	if( hShell32 )
+		FreeLibrary( hShell32 );
 
 	if( hKernel32 )
 		FreeLibrary( hKernel32 );
