@@ -39,6 +39,16 @@ typedef BOOL (WINAPI * PEMPTYCLIPBOARD)();
 /*! @brief DragQueryFileA function pointer type. */
 typedef BOOL (WINAPI * PDRAGQUERYFILEA)( HDROP hDrop, UINT iFile, LPSTR lpszFile, UINT cch );
 
+/*! @brief CreateFileA function pointer type. */
+typedef HANDLE (WINAPI * PCREATEFILEA)( LPCSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+									  DWORD dwCreationDisposition, DWORD dwFlagsAndAttributes, HANDLE hTemplateFile );
+
+/*! @brief CloseHandle function pointer type. */
+typedef BOOL (WINAPI * PCLOSEHANDLE)( HANDLE hObject );
+
+/*! @brief GetFileSizeEx function pointer type. */
+typedef BOOL (WINAPI * PGETFILESIZEEX)( HANDLE hFile, PLARGE_INTEGER lpFileSize );
+
 #endif
 
 /*!
@@ -69,7 +79,11 @@ DWORD request_clipboard_get_data( Remote *remote, Packet *packet )
 	PGETCLIPBOARDDATA pGetClipboardData = NULL;
 	PENUMCLIPBOARDFORMATS pEnumClipboardFormats = NULL;
 	PDRAGQUERYFILEA pDragQueryFileA = NULL;
+	PCREATEFILEA pCreateFileA = NULL;
+	PCLOSEHANDLE pCloseHandle = NULL;
+	PGETFILESIZEEX pGetFileSizeEx = NULL;
 
+	HANDLE hSourceFile = NULL;
 	PCHAR lpClipString = NULL;
 	HGLOBAL hClipboardData = NULL;
 	HDROP hFileDrop = NULL;
@@ -77,6 +91,9 @@ DWORD request_clipboard_get_data( Remote *remote, Packet *packet )
 	UINT uFileIndex = 0;
 	UINT uFileCount = 0;
 	CHAR lpFileName[MAX_PATH];
+	Tlv entries[2] = {0};
+	LARGE_INTEGER largeInt = {0};
+
 
 	Packet *pResponse = packet_create_response( packet );
 
@@ -144,6 +161,18 @@ DWORD request_clipboard_get_data( Remote *remote, Packet *packet )
 					if( (hShell32 = LoadLibraryA( "shell32.dll" )) == NULL)
 						BREAK_ON_ERROR( "Unable to load shell32.dll" );
 
+					dprintf( "Searching for CreateFileA" );
+					if( (pCreateFileA = (PCREATEFILEA)GetProcAddress( hKernel32, "CreateFileA" )) == NULL )
+						BREAK_ON_ERROR( "Unable to locate CreateFileA in kernel32.dll" );
+
+					dprintf( "Searching for CloseHandle" );
+					if( (pCloseHandle = (PCLOSEHANDLE)GetProcAddress( hKernel32, "CloseHandle" )) == NULL )
+						BREAK_ON_ERROR( "Unable to locate CloseHandle in kernel32.dll" );
+
+					dprintf( "Searching for GetFileSizeEx" );
+					if( (pGetFileSizeEx = (PGETFILESIZEEX)GetProcAddress( hKernel32, "GetFileSizeEx" )) == NULL )
+						BREAK_ON_ERROR( "Unable to locate GetFileSizeEx in kernel32.dll" );
+
 					dprintf( "Searching for DragQueryFileA" );
 					if( (pDragQueryFileA = (PDRAGQUERYFILEA)GetProcAddress( hShell32, "DragQueryFileA" )) == NULL )
 						BREAK_ON_ERROR( "Unable to locate CloseClipboard in shell32.dll" );
@@ -159,7 +188,27 @@ DWORD request_clipboard_get_data( Remote *remote, Packet *packet )
 						for( uFileIndex = 0; uFileIndex < uFileCount; ++uFileIndex ) {
 							if( pDragQueryFileA( hFileDrop, uFileIndex, lpFileName, sizeof( lpFileName ) ) ) {
 								dprintf( "Clipboard file entry: %s", lpFileName );
-								packet_add_tlv_string( pResponse, TLV_TYPE_EXT_CLIPBOARD_TYPE_FILE, lpFileName );
+
+								memset( &entries, 0, sizeof(entries) );
+								memset( &largeInt, 0, sizeof(largeInt) );
+
+								entries[0].header.type   = TLV_TYPE_EXT_CLIPBOARD_TYPE_FILE_NAME;
+								entries[0].header.length = (DWORD)strlen( lpFileName ) + 1;
+								entries[0].buffer        = (PUCHAR)lpFileName;
+
+								entries[1].header.type   = TLV_TYPE_EXT_CLIPBOARD_TYPE_FILE_SIZE;
+								entries[1].header.length = sizeof(QWORD);
+								entries[1].buffer        = (PUCHAR)&largeInt.QuadPart;
+
+								if( (hSourceFile = pCreateFileA( lpFileName, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL )) != NULL ) {
+									if( pGetFileSizeEx( hSourceFile, &largeInt ) ) {
+										largeInt.QuadPart = htonq( largeInt.QuadPart );
+									}
+
+									pCloseHandle( hSourceFile );
+								}
+
+								packet_add_tlv_group( pResponse, TLV_TYPE_EXT_CLIPBOARD_TYPE_FILE, entries, 2 );
 							}
 						}
 
