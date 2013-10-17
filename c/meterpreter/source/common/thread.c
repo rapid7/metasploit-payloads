@@ -323,6 +323,11 @@ void *__paused_thread(void *req)
  */
 THREAD * thread_create( THREADFUNK funk, LPVOID param1, LPVOID param2 )
 {
+	return thread_create3( funk, param1, param2, NULL );
+}
+
+THREAD * thread_create3( THREADFUNK funk, LPVOID param1, LPVOID param2, LPVOID param3 )
+{
 	THREAD * thread = NULL;
 	
 	if( funk == NULL )
@@ -344,6 +349,7 @@ THREAD * thread_create( THREADFUNK funk, LPVOID param1, LPVOID param2 )
 
 	thread->parameter1 = param1;
 	thread->parameter2 = param2;
+	thread->parameter3 = param3;
 
 #ifdef _WIN32
 	thread->handle = CreateThread( NULL, 0, funk, thread, CREATE_SUSPENDED, &thread->id );

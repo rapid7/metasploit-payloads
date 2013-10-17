@@ -76,7 +76,7 @@ DWORD scheduler_destroy( VOID )
 
 	while( TRUE )
 	{
-		dprintf( "[SCHEDULER] scheduler_destroy, popping off another item from thread liat..." );
+		dprintf( "[SCHEDULER] scheduler_destroy, popping off another item from thread list..." );
 		
 		thread = (THREAD *)list_pop( jlist );
 		if( thread == NULL )

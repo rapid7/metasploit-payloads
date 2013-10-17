@@ -162,7 +162,7 @@ void real_dprintf(char *filename, int line, const char *function, char *format, 
 #include <wininet.h>
 
 /*! @brief When defined, debug output is enabled. */
-//#define DEBUGTRACE 1
+#define DEBUGTRACE 1
 
 #ifdef DEBUGTRACE
 #define dprintf(...) real_dprintf(__VA_ARGS__)
@@ -180,9 +180,9 @@ void real_dprintf(char *filename, int line, const char *function, char *format, 
 #define CONTINUE_ON_ERROR( str ) { dwResult = GetLastError(); dprintf( "%s. error=%d", str, dwResult ); continue; }
 
 /*! @brief Close a service handle if not already closed and set the handle to NULL. */
-#define CLOSE_SERVICE_HANDLE( h )	if( h ) { CloseServiceHandle( h ); h = NULL; }
+#define CLOSE_SERVICE_HANDLE( h )  if( h ) { CloseServiceHandle( h ); h = NULL; }
 /*! @brief Close a handle if not already closed and set the handle to NULL. */
-#define CLOSE_HANDLE( h )			if( h ) { DWORD dwHandleFlags; if(GetHandleInformation( h , &dwHandleFlags)) CloseHandle( h ); h = NULL; }
+#define CLOSE_HANDLE( h )          if( h ) { DWORD dwHandleFlags; if(GetHandleInformation( h , &dwHandleFlags)) CloseHandle( h ); h = NULL; }
 
 #ifdef DEBUGTRACE
 /*!
