@@ -13,8 +13,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ReflectiveDLLInjection", "R
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ext_server_incognito", "ext_server_incognito\ext_server_incognito.vcxproj", "{C427F6B9-C287-4BDA-A5BB-401FC19E207C}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ext_server_boiler", "ext_server_boiler\ext_server_boiler.vcxproj", "{488BE203-8407-42D1-B334-8B5C3BC5AB3E}"
-EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ext_server_espia", "ext_server_espia\ext_server_espia.vcxproj", "{CF56DDCC-505F-4D5C-AC2E-9787C7EF1504}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "elevator", "elevator\elevator.vcxproj", "{662AFBB3-F64A-4AD1-8956-B9F1B846231C}"
@@ -137,14 +135,6 @@ Global
 		{C427F6B9-C287-4BDA-A5BB-401FC19E207C}.Release|Win32.Build.0 = Release|Win32
 		{C427F6B9-C287-4BDA-A5BB-401FC19E207C}.Release|x64.ActiveCfg = Release|x64
 		{C427F6B9-C287-4BDA-A5BB-401FC19E207C}.Release|x64.Build.0 = Release|x64
-		{488BE203-8407-42D1-B334-8B5C3BC5AB3E}.Debug|Win32.ActiveCfg = Debug|Win32
-		{488BE203-8407-42D1-B334-8B5C3BC5AB3E}.Debug|x64.ActiveCfg = Debug|x64
-		{488BE203-8407-42D1-B334-8B5C3BC5AB3E}.r7_debug|Win32.ActiveCfg = r7_debug|Win32
-		{488BE203-8407-42D1-B334-8B5C3BC5AB3E}.r7_debug|x64.ActiveCfg = r7_debug|x64
-		{488BE203-8407-42D1-B334-8B5C3BC5AB3E}.r7_release|Win32.ActiveCfg = r7_release|Win32
-		{488BE203-8407-42D1-B334-8B5C3BC5AB3E}.r7_release|x64.ActiveCfg = r7_release|x64
-		{488BE203-8407-42D1-B334-8B5C3BC5AB3E}.Release|Win32.ActiveCfg = Release|Win32
-		{488BE203-8407-42D1-B334-8B5C3BC5AB3E}.Release|x64.ActiveCfg = Release|x64
 		{CF56DDCC-505F-4D5C-AC2E-9787C7EF1504}.Debug|Win32.ActiveCfg = Debug|Win32
 		{CF56DDCC-505F-4D5C-AC2E-9787C7EF1504}.Debug|Win32.Build.0 = Debug|Win32
 		{CF56DDCC-505F-4D5C-AC2E-9787C7EF1504}.Debug|x64.ActiveCfg = Debug|x64
