@@ -568,7 +568,13 @@ DWORD request_railgun_api( Remote * pRemote, Packet * pPacket )
 			packet_add_tlv_qword( pResponse, TLV_TYPE_RAILGUN_BACK_RET, rOutput.qwReturnValue );
 			packet_add_tlv_raw( pResponse, TLV_TYPE_RAILGUN_BACK_BUFFERBLOB_OUT, rOutput.pBufferOUT, (DWORD)rOutput.dwBufferSizeOUT );
 			packet_add_tlv_raw( pResponse, TLV_TYPE_RAILGUN_BACK_BUFFERBLOB_INOUT, rOutput.pBufferINOUT, (DWORD)rOutput.dwBufferSizeINOUT );
-			packet_add_tlv_string( pResponse, TLV_TYPE_RAILGUN_BACK_MSG, rOutput.pErrMsg );
+
+			// On most windows platforms, calling FormatMessage and passing in ERROR_SUCCESS will result in a string that contains:
+			// "The operation completed successfully.". However, on some (such as XP SP3) FormatMessage will return NULL. As a result,
+			// adding the message to the packet response would cause a failure. FormatMessage doesn't appear to return NULL when the
+			// flag is anything other than ERROR_SUCCESS, hence at this point it's safe to assume that the message should indicate
+			// success. Therefore, we check for NULL here, and pass in the hard-coded message to cover for this case.
+			packet_add_tlv_string( pResponse, TLV_TYPE_RAILGUN_BACK_MSG, rOutput.pErrMsg ? rOutput.pErrMsg : "The operation completed successfully." );
 		}
 
 		dwResult = packet_transmit( pRemote, pResponse, NULL );
