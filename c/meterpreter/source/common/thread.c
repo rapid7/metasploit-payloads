@@ -321,12 +321,7 @@ void *__paused_thread(void *req)
 /*
  * Create a new thread in a suspended state.
  */
-THREAD * thread_create( THREADFUNK funk, LPVOID param1, LPVOID param2 )
-{
-	return thread_create3( funk, param1, param2, NULL );
-}
-
-THREAD * thread_create3( THREADFUNK funk, LPVOID param1, LPVOID param2, LPVOID param3 )
+THREAD * thread_create( THREADFUNK funk, LPVOID param1, LPVOID param2, LPVOID param3 )
 {
 	THREAD * thread = NULL;
 	

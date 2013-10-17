@@ -121,7 +121,7 @@ DWORD scheduler_insert_waitable( HANDLE waitable, LPVOID context, WaitableNotify
 	entry->context  = context;
 	entry->routine  = routine;
 
-	swt = thread_create( scheduler_waitable_thread, entry, NULL );
+	swt = thread_create( scheduler_waitable_thread, entry, NULL, NULL );
 	if( swt != NULL )
 	{
 		dprintf( "[SCHEDULER] created scheduler_waitable_thread 0x%08X", swt );

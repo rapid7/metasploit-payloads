@@ -675,7 +675,7 @@ DWORD request_sniffer_capture_start(Remote *remote, Packet *packet) {
 			dprintf("filter applied successfully");
 		}
 
-		j->thread = thread_create((THREADFUNK) sniffer_thread, j, NULL);
+		j->thread = thread_create((THREADFUNK) sniffer_thread, j, NULL, NULL);
 		if(! j->thread) {
 			pcap_close(j->pcap);
 			break;

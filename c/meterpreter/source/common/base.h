@@ -46,7 +46,7 @@ typedef BOOL (*INLINE_DISPATCH_ROUTINE)( Remote *remote, Packet *packet, DWORD* 
 #define COMMAND_REQ_REP(name, reqHandler, repHandler) { name, { reqHandler, NULL, EMPTY_TLV }, { repHandler, NULL, EMPTY_TLV } }
 /*!
  * @brief Helper macro that defines a command instance with an inline request handler only.
- * @remarks The request handler will be executed on the server thread thread.
+ * @remarks The request handler will be executed on the server thread.
  */
 #define COMMAND_INLINE_REQ(name, reqHandler) { name, { NULL, reqHandler, EMPTY_TLV }, { EMPTY_DISPATCH_HANDLER } }
 

@@ -100,8 +100,7 @@ BOOL event_poll( EVENT * event, DWORD timeout );
 
 THREAD * thread_open( VOID );
 
-THREAD * thread_create( THREADFUNK funk, LPVOID param1, LPVOID param2 );
-THREAD * thread_create3( THREADFUNK funk, LPVOID param1, LPVOID param2, LPVOID param3 );
+THREAD * thread_create( THREADFUNK funk, LPVOID param1, LPVOID param2, LPVOID param3 );
 
 BOOL thread_run( THREAD * thread );
 

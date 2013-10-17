@@ -58,7 +58,8 @@ Command base_commands[] =
 	},
 
 	// Native Channel commands
-	COMMAND_REQ_REP( "core_channel_open", remote_request_core_channel_open, remote_response_core_channel_open ),     // this overloads the base "core_channel_open"
+	// this overloads the "core_channel_open" in the base command list
+	COMMAND_REQ_REP( "core_channel_open", remote_request_core_channel_open, remote_response_core_channel_open ),
 	COMMAND_REQ( "core_channel_write", remote_request_core_channel_write ),
 	COMMAND_REQ_REP( "core_channel_close", remote_request_core_channel_close, remote_response_core_channel_close ),
 
@@ -244,7 +245,7 @@ BOOL command_process_inline( Command *command, Remote *remote, Packet *packet )
 
 			// Validate the arguments, if requested.  Always make sure argument 
 			// lengths are sane.
-			if( (result = command_validate_arguments( command, packet )) != ERROR_SUCCESS )
+			if( command_validate_arguments( command, packet ) != ERROR_SUCCESS )
 				break;
 
 			packetTlvType = packet_get_type( packet );
@@ -333,7 +334,7 @@ BOOL command_handle( Remote *remote, Packet *packet )
 			result = command_process_inline( command, remote, packet );
 		} else {
 			dprintf( "Executing in thread: %s", command->method );
-			cpt = thread_create3( command_process_thread, remote, packet, command );
+			cpt = thread_create( command_process_thread, remote, packet, command );
 			if( cpt )
 			{
 				dprintf( "[DISPATCH] created command_process_thread 0x%08X, handle=0x%08X", cpt, cpt->handle );

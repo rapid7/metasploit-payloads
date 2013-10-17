@@ -207,7 +207,8 @@ BOOL remote_request_core_migrate( Remote * remote, Packet * packet, DWORD* pResu
 	if( hEvent )
 		CloseHandle( hEvent );
 
-	*pResult = dwResult;
+	if( pResult )
+		*pResult = dwResult;
 
 	return dwResult = ERROR_SUCCESS ? TRUE : FALSE;
 }
