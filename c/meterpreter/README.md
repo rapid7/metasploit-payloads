@@ -88,7 +88,8 @@ not considered stable.  It does stuff, but expect occasional problems.
 Testing
 =======
 
-There is currently no automated testing for meterpreter, but we're working on it.
+There is currently no automated testing for meterpreter, but we're
+working on it.
 
 Once you've made changes and compiled a new .dll or .so, copy the
 contents of the output/ directory into your Metasploit Framework's
@@ -96,47 +97,74 @@ contents of the output/ directory into your Metasploit Framework's
 metasploit-framework and meterpreter live in the same place by running
 `make install`
 
-If you made any changes to `metsrv.dll` or `msflinker_linux_x86.bin`, ensure
-that all extensions still load and function properly.
+If you made any changes to `metsrv.dll` or `msflinker_linux_x86.bin`,
+ensure that all extensions still load and function properly.
 
 Creating Extensions
 ===================
 
-Creating extensions isn't complicated, but it's not simple either. In an attempt make the set up a little easier on the Meterpreter side, a new project called `ext_server_bare` has been created which is just the shell of a project which can be used as the starting point for your code. To use this as a template to create your own project, you can follow these steps.
+Creating extensions isn't complicated, but it's not simple either. In an
+attempt make the set up a little easier on the Meterpreter side, a new
+project called `ext_server_bare` has been created which is just the
+shell of a project which can be used as the starting point for your
+code. To use this as a template to create your own project, you can
+follow these steps.
 
-Note: All paths listed here are relative to the root `meterpreter` folder where this document resides.
+Note: All paths listed here are relative to the root `meterpreter`
+folder where this document resides.
 
-Pick a name for your extension, make sure it's something meaningful and short. For the sake of example, we'll create a new extension called `splat`. Once you have a cool an meaningful name, you can get your project going by doing the following:
+Pick a name for your extension, make sure it's something meaningful and
+short. For the sake of example, we'll create a new extension called
+`splat`. Once you have a cool an meaningful name, you can get your
+project going by doing the following:
 
 1. Create a new folder called `workspace/ext_server_splat`.
-1. Copy `workspace/ext_server_bare/ext_server_bare.vcxproj` to `workspace/ext_server_bare/ext_server_splat.vcxproj`
-1. Open `workspace/ext_server_bare/ext_server_splat.vcxproj` with a text editor and..
+1. Copy `workspace/ext_server_bare/ext_server_bare.vcxproj` to
+   `workspace/ext_server_bare/ext_server_splat.vcxproj`
+1. Open `workspace/ext_server_bare/ext_server_splat.vcxproj` with a text
+   editor and..
     * Replace all instances of `BARE` with `SPLAT`.
     * Replace all instances of `bare` with `splat`.
-    * Search for the `ProjectGuid` property in the document. It looks like `<ProjectGuid>{D3F39324-040D-4B1F-ADA9-762F16A120E6}</ProjectGuid>`. When found, generate a new GUID for your project either using `guidgen.exe` or an online tool, and replace this GUID with your new GUID. Make sure you keep the curly braces.
+    * Search for the `ProjectGuid` property in the document. It looks
+      like `<ProjectGuid>{D3F39324-040D-4B1F-ADA9-762F16A120E6}</ProjectGuid>`.
+      When found, generate a new GUID for your project either using
+      `guidgen.exe` or an online tool, and replace this GUID with your
+      new GUID. Make sure you keep the curly braces.
 1. Create a new folder called `source/extensions/splat`.
 1. Copy `source/extensions/bare/bare.c` to `source/extensions/splat/splat.c`
 1. Copy `source/extensions/bare/bare.h` to `source/extensions/splat/splat.h`
 1. Open `workspace/meterpreter.sln` in Visual Studio 2012.
-1. Right-click on the solution item called `Solution 'meterpreter'` and select `Add`, then `Existing Project...`.
-1. Browse to your new project's location at `workspace/ext_server_splat` and select `ext_server_splat.vcxproj`.
-1. The solution should automagically pick up your project configurations and wire them in where appropriate.
+1. Right-click on the solution item called `Solution 'meterpreter'` and
+   select `Add`, then `Existing Project...`.
+1. Browse to your new project's location at `workspace/ext_server_splat`
+   and select `ext_server_splat.vcxproj`.
+1. The solution should automagically pick up your project configurations
+   and wire them in where appropriate.
 1. Right-click, again, on the solution item and select `Configuration Manager`.
-1. In the resulting window, iterate through all combinations `Active Solution Configuration` and `Active Solution Platform` and make sure that:
+1. In the resulting window, iterate through all combinations
+   `Active Solution Configuration` and `Active Solution Platform` and
+   make sure that:
     * `Configuration` matches with all the other extensions in each case.
     * `Platform` matches with all the other extensions in each case.
     * `Build` is checked in each case.
     * `Deploy` is **NOT** checked in each case.
-1. Modify the contents of `splat.c` and `splat.h` so that the file header commands are up to date, and that all references to `bare` have been removed.
+1. Modify the contents of `splat.c` and `splat.h` so that the file
+   header commands are up to date, and that all references to `bare`
+   have been removed.
 
 At this point you're ready to start adding your extension's functionality.
 
 Things to Remember
 ------------------
 
-* Your extension is set up to build both 32 and 64 bit versions. Make sure you're mindful of this when you are writing your code. All of the usual pitfalls apply when dealing with things like pointer sizes, value trunction, etc.
-* Make sure your extension builds correctly from the command line using `make`.
-* The outputs of your builds, when successful, are copied to `output/x64` and `output/x86`.
+* Your extension is set up to build both 32 and 64 bit versions. Make
+  sure you're mindful of this when you are writing your code. All of the
+  usual pitfalls apply when dealing with things like pointer sizes,
+  value trunction, etc.
+* Make sure your extension builds correctly from the command line using
+  `make`.
+* The outputs of your builds, when successful, are copied to
+  `output/x64` and `output/x86`.
 
 Good luck!
 
