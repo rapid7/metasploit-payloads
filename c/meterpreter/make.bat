@@ -5,15 +5,13 @@ IF "%VCINSTALLDIR%" == "" (
   ECHO "VC++ Environment not found, attempting to locate..."
   REM Attempt to load up the dev env variables if they're not
   REM set, saves people doing it manually
-  SET SETUP="Microsoft Visual Studio 11.0\Common7\Tools\vsvars32.bat"
+  SET SETUP=Microsoft Visual Studio 11.0\Common7\Tools\vsvars32.bat
   IF EXIST "%ProgramFiles%\%SETUP%" (
-    ECHO "Found at '%ProgramFiles%\%SETUP%'"
-    "%ProgramFiles%\%SETUP%"
+    CALL "%ProgramFiles%\%SETUP%"
   )
 
   IF EXIST "%ProgramFiles(x86)%\%SETUP%" (
-    ECHO "Found at '%ProgramFiles(x86)%\%SETUP%'"
-    "%ProgramFiles(x86)%\%SETUP%"
+    CALL "%ProgramFiles(x86)%\%SETUP%"
   )
 
   REM If we still don't have what we need, then throw an error
