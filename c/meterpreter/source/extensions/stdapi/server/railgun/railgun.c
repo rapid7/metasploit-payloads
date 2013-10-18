@@ -510,6 +510,7 @@ DWORD request_railgun_api( Remote * pRemote, Packet * pPacket )
 	Packet * pResponse     = NULL;
 	RAILGUN_INPUT rInput   = {0};
 	RAILGUN_OUTPUT rOutput = {0};
+	const char* pErrorMsg  = NULL;
 
 	dprintf("[RAILGUN] request_railgun_api: Starting...");
 
@@ -569,12 +570,19 @@ DWORD request_railgun_api( Remote * pRemote, Packet * pPacket )
 			packet_add_tlv_raw( pResponse, TLV_TYPE_RAILGUN_BACK_BUFFERBLOB_OUT, rOutput.pBufferOUT, (DWORD)rOutput.dwBufferSizeOUT );
 			packet_add_tlv_raw( pResponse, TLV_TYPE_RAILGUN_BACK_BUFFERBLOB_INOUT, rOutput.pBufferINOUT, (DWORD)rOutput.dwBufferSizeINOUT );
 
-			// On most windows platforms, calling FormatMessage and passing in ERROR_SUCCESS will result in a string that contains:
-			// "The operation completed successfully.". However, on some (such as XP SP3) FormatMessage will return NULL. As a result,
-			// adding the message to the packet response would cause a failure. FormatMessage doesn't appear to return NULL when the
-			// flag is anything other than ERROR_SUCCESS, hence at this point it's safe to assume that the message should indicate
-			// success. Therefore, we check for NULL here, and pass in the hard-coded message to cover for this case.
-			packet_add_tlv_string( pResponse, TLV_TYPE_RAILGUN_BACK_MSG, rOutput.pErrMsg ? rOutput.pErrMsg : "The operation completed successfully." );
+			// There are cases where FormatMessage is failing for various functions on various platforms.
+			// eg. inet_addr() on Windows XP SP3 x86 and NetGetJoinInformation() on Windows 8 x64
+			// This code makes sure that a valid string is used when returning information back to the caller.
+			if( rOutput.pErrMsg )
+			{
+				pErrorMsg = rOutput.pErrMsg;
+			} else if( rOutput.dwLastError == ERROR_SUCCESS ) {
+				pErrorMsg = "The operation completed successfully.";
+			} else {
+				pErrorMsg = "FormatMessage failed to retrieve the error.";
+			}
+
+			packet_add_tlv_string( pResponse, TLV_TYPE_RAILGUN_BACK_MSG, pErrorMsg );
 		}
 
 		dwResult = packet_transmit( pRemote, pResponse, NULL );
