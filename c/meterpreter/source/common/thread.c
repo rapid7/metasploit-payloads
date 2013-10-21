@@ -137,8 +137,11 @@ BOOL event_signal( EVENT * event )
 		return FALSE;
 
 #ifdef _WIN32
-	if( SetEvent( event->handle ) == 0 )
+	dprintf( "Signalling 0x%x", event->handle );
+	if( SetEvent( event->handle ) == 0 ) {
+		dprintf( "Signalling 0x%x failed %u", event->handle, GetLastError() );
 		return FALSE;
+	}
 #else 
 	event->handle = (HANDLE)1;
 	__futex_wake(&(event->handle), 1);

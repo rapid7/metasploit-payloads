@@ -8,6 +8,7 @@ typedef struct _ProcessChannelContext
 {
 	HANDLE pStdin;
 	HANDLE pStdout;
+	HANDLE pProcess;
 } ProcessChannelContext;
 
 DWORD process_channel_read(Channel *channel, Packet *request, 

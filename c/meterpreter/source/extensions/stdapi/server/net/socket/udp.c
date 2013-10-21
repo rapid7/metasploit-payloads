@@ -129,7 +129,7 @@ VOID free_udp_context( UdpSocketContext * ctx )
 	{
 		dprintf( "[UDP] free_udp_context. remove_waitable ctx=0x%08X notify=0x%08X", ctx, ctx->sock.notify );
 		// The scheduler calls CloseHandle on our WSACreateEvent() for us
-		scheduler_remove_waitable( ctx->sock.notify );
+		scheduler_signal_waitable( ctx->sock.notify, Stop );
 		ctx->sock.notify = NULL;
 	}
 
@@ -323,7 +323,7 @@ DWORD request_net_udp_channel_open( Remote * remote, Packet * packet )
 		if( !ctx->sock.channel )
 			BREAK_WITH_ERROR( "[UDP] request_net_udp_channel_open. channel_create_stream failed", ERROR_INVALID_HANDLE );
 
-		scheduler_insert_waitable( ctx->sock.notify, ctx, (WaitableNotifyRoutine)udp_channel_notify );
+		scheduler_insert_waitable( ctx->sock.notify, ctx, (WaitableNotifyRoutine)udp_channel_notify, NULL );
 
 		packet_add_tlv_uint( response, TLV_TYPE_CHANNEL_ID, channel_get_id(ctx->sock.channel) );
 
