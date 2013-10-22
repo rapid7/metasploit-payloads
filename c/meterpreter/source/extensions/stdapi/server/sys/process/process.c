@@ -1116,7 +1116,7 @@ DWORD process_channel_interact_destroy( HANDLE waitable, LPVOID entryContext, LP
  */
 DWORD process_channel_interact_notify(Remote *remote, LPVOID entryContext, LPVOID threadContext)
 {
-  Channel *channel = (Channel*)entryContext;
+	Channel *channel = (Channel*)entryContext;
 	ProcessChannelContext *ctx = (ProcessChannelContext *)threadContext;
 	DWORD bytesRead, bytesAvail = 0;
 	CHAR buffer[16384];

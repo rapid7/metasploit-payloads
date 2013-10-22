@@ -113,7 +113,7 @@ DWORD scheduler_destroy( VOID )
 /*
  * Insert a new waitable thread for checking and processing.
  */
-DWORD scheduler_insert_waitable( HANDLE waitable, LPVOID context, WaitableNotifyRoutine routine, WaitableDestroyRoutine destroy )
+DWORD scheduler_insert_waitable( HANDLE waitable, LPVOID entryContext, LPVOID threadContext, WaitableNotifyRoutine routine, WaitableDestroyRoutine destroy )
 {
 	DWORD result = ERROR_SUCCESS;
 	THREAD * swt = NULL;
@@ -122,19 +122,20 @@ DWORD scheduler_insert_waitable( HANDLE waitable, LPVOID context, WaitableNotify
 	if( entry == NULL )
 		return ERROR_NOT_ENOUGH_MEMORY;
 
-	dprintf( "[SCHEDULER] entering scheduler_insert_waitable( 0x%08X, 0x%08X, 0x%08X )", waitable, context, routine );
+	dprintf( "[SCHEDULER] entering scheduler_insert_waitable( 0x%08X, 0x%08X, 0x%08X, 0x%08X, 0x%08X )",
+		waitable, entryContext, threadContext, routine, destroy );
 
 	memset( entry, 0, sizeof( WaitableEntry ) );
 	
 	entry->remote   = schedulerRemote;
 	entry->waitable = waitable;
 	entry->destroy  = destroy;
-	entry->context  = context;
+	entry->context  = entryContext;
 	entry->routine  = routine;
 	entry->pause    = event_create();
 	entry->resume   = event_create();
 
-	swt = thread_create( scheduler_waitable_thread, entry, NULL );
+	swt = thread_create( scheduler_waitable_thread, entry, threadContext );
 	if( swt != NULL )
 	{
 		dprintf( "[SCHEDULER] created scheduler_waitable_thread 0x%08X", swt );
@@ -257,7 +258,9 @@ DWORD THREADCALL scheduler_waitable_thread( THREAD * thread )
 	entry->running = TRUE;
 	while( !terminate )
 	{
+		dprintf( "[SCHEDULER] About to wait ( 0x%08X )", thread );
 		result = WaitForMultipleObjects( 3, waitableHandles, FALSE, INFINITE );
+		dprintf( "[SCHEDULER] Wait returned ( 0x%08X )", thread );
 		signalIndex = result - WAIT_OBJECT_0;
 		switch( signalIndex )
 		{
@@ -268,12 +271,12 @@ DWORD THREADCALL scheduler_waitable_thread( THREAD * thread )
 			case 1:
 				dprintf( "[SCHEDULER] scheduler_waitable_thread( 0x%08X ), signaled to pause...", thread );
 				entry->running = FALSE;
-				WaitForMultipleObjects( 1, (HANDLE*)&entry->resume->handle, FALSE, INFINITE );
+				event_poll( entry->resume, INFINITE );
 				entry->running = TRUE;
 				dprintf( "[SCHEDULER] scheduler_waitable_thread( 0x%08X ), signaled to resume...", thread );
 			case 2:
 				//dprintf( "[SCHEDULER] scheduler_waitable_thread( 0x%08X ), signaled on waitable...", thread );
-				entry->routine( entry->remote, entry->context );
+				entry->routine( entry->remote, entry->context, thread->parameter2 );
 				break;
 			default:
 				break;
@@ -288,7 +291,7 @@ DWORD THREADCALL scheduler_waitable_thread( THREAD * thread )
 	if( list_remove( schedulerThreadList, thread ) )
 	{
 		if( entry->destroy ) {
-			entry->destroy( entry->waitable, entry->context );
+			entry->destroy( entry->waitable, entry->context, thread->parameter2 );
 		}
 		else if( entry->waitable ) {
 			dprintf( "[SCHEDULER] scheduler_waitable_thread( 0x%08X ) closing handle 0x%08X", thread, entry->waitable);
