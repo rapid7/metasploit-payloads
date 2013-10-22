@@ -323,7 +323,7 @@ DWORD request_net_udp_channel_open( Remote * remote, Packet * packet )
 		if( !ctx->sock.channel )
 			BREAK_WITH_ERROR( "[UDP] request_net_udp_channel_open. channel_create_stream failed", ERROR_INVALID_HANDLE );
 
-		scheduler_insert_waitable( ctx->sock.notify, ctx, (WaitableNotifyRoutine)udp_channel_notify, NULL );
+		scheduler_insert_waitable( ctx->sock.notify, ctx, NULL, (WaitableNotifyRoutine)udp_channel_notify, NULL );
 
 		packet_add_tlv_uint( response, TLV_TYPE_CHANNEL_ID, channel_get_id(ctx->sock.channel) );
 

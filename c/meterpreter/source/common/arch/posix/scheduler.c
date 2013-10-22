@@ -1,317 +1,310 @@
-#include "queue.h"
 #include "common.h"
-#include <poll.h>
 
-#include <pthread.h>
+#include <poll.h>
 
 typedef struct _WaitableEntry
 {
-	HANDLE                waitable;
-	LPVOID                context;
-	WaitableNotifyRoutine routine;
-	LIST_ENTRY(_WaitableEntry) link;
+	Remote *               remote;
+	HANDLE                 waitable;
+	EVENT*                 pause;
+	EVENT*                 resume;
+	LPVOID                 context;
+	BOOL                   running;
+	WaitableNotifyRoutine  routine;
+	WaitableDestroyRoutine destroy;
 } WaitableEntry;
 
-int nentries = 0;
-int ntableentries = 0;
-struct pollfd *polltable;
-LIST_HEAD(_WaitableEntryHead, _WaitableEntry) WEHead;
-
-THREAD *scheduler_thread;
+/*
+ * The list of all currenltly running threads in the scheduler subsystem.
+ */
+LIST * schedulerThreadList = NULL;
 
 /*
- * If there are no waitables in the queue, we wait
- * for a conditional broadcast to start it.
+ * The Remote that is associated with the scheduler subsystem
  */
+Remote * schedulerRemote   = NULL;
 
-pthread_mutex_t scheduler_mutex;
-pthread_cond_t scheduler_cond;
-
-DWORD scheduler_run(THREAD *thread);
-     
-DWORD scheduler_destroy( VOID )
-{
-	WaitableEntry *current, *tmp;
-
-	dprintf("Shutdown of scheduler requested");
-
-	if(scheduler_thread)
-	{
-		dprintf("sigterm'ing thread");
-		thread_sigterm(scheduler_thread);
-
-		// wake up the thread if needed
-		pthread_cond_signal(&scheduler_cond);
-
-		// can delay execution up to 2 sec give or take
-		thread_join(scheduler_thread);
-
-		// free up memory
-		thread_destroy(scheduler_thread);
-		scheduler_thread = NULL;
-
-		dprintf("thread joined .. going for polltable");
-
-		if(polltable)
-		{
-			free(polltable);
-			polltable = NULL;
-			nentries = ntableentries = 0;
-		}
-
-		dprintf("Now for the fun part, iterating through list and removing items");
-
-		LIST_FOREACH_SAFE(current, &WEHead, link, tmp)
-		{
-			// can't call close function due to no remote struct
-			// will segfault if we try
-			// XXX could steal from scheduler_thread->parameter1 ?
-
-			dprintf("current: %08x, current->routine: %08x", current, current->routine);
-
-			LIST_REMOVE(current, link);
-			close(current->waitable);
-			free(current->context);
-			free(current);
-		}
-
-		dprintf("All done. Leaving");
-
-	}
-	return ERROR_SUCCESS;
-}
-
+/*
+ * Initialize the scheduler subsystem. Must be called before any calls to scheduler_insert_waitable.
+ */
 DWORD scheduler_initialize( Remote * remote )
 {
-	if(scheduler_thread) {
-		dprintf("Hmmm. scheduler_initialize() called twice?");
-		return ERROR_SUCCESS;
+	DWORD result = ERROR_SUCCESS;
+
+	dprintf( "[SCHEDULER] entering scheduler_initialize." );
+
+	if( remote == NULL )
+		return ERROR_INVALID_HANDLE;
+
+	schedulerThreadList = list_create();
+	if( schedulerThreadList == NULL )
+		return ERROR_INVALID_HANDLE;
+
+	schedulerRemote = remote;
+
+	dprintf( "[SCHEDULER] leaving scheduler_initialize." );
+
+	return result;
+}
+
+/*
+ * Destroy the scheduler subsystem. All waitable threads at signaled to terminate.
+ * this function blocks untill all waitable threads have terminated.
+ */
+DWORD scheduler_destroy( VOID )
+{
+	DWORD result    = ERROR_SUCCESS;
+	DWORD index     = 0;
+	DWORD count     = 0;
+	LIST * jlist    = list_create();
+	THREAD * thread = NULL;
+	WaitableEntry * entry = NULL;
+
+	dprintf( "[SCHEDULER] entering scheduler_destroy." );
+
+	lock_acquire( schedulerThreadList->lock );
+
+	count = list_count( schedulerThreadList );
+
+	for( index=0 ; index < count ; index++ )
+	{
+		thread = (THREAD *)list_get( schedulerThreadList, index );
+		if( thread == NULL )
+			continue;
+		
+		list_push( jlist, thread );
+
+		entry = (WaitableEntry *)thread->parameter1;
+
+		if( !entry->running )
+			event_signal( entry->resume );
+
+		thread_sigterm( thread );
 	}
 
-	pthread_mutex_init(&scheduler_mutex, NULL);
-	pthread_cond_init(&scheduler_cond, NULL);
+	lock_release( schedulerThreadList->lock );
 
-	scheduler_thread = thread_create(scheduler_run, remote, NULL);
-	if(! scheduler_thread) {
-		return ENOMEM;
+	dprintf( "[SCHEDULER] scheduler_destroy, joining all waitable threads..." );
+
+	while( TRUE )
+	{
+		dprintf( "[SCHEDULER] scheduler_destroy, popping off another item from thread liat..." );
+		
+		thread = (THREAD *)list_pop( jlist );
+		if( thread == NULL )
+			break;
+
+		dprintf( "[SCHEDULER] scheduler_destroy, joining thread 0x%08X...", thread );
+
+		thread_join( thread );
 	}
 
-	thread_run(scheduler_thread);
+	dprintf( "[SCHEDULER] scheduler_destroy, destroying lists..." );
 
-	dprintf("Initialized scheduler thread and started it running");
+	list_destroy( jlist );
+	
+	list_destroy( schedulerThreadList );
+
+	schedulerThreadList = NULL;
+
+	dprintf( "[SCHEDULER] leaving scheduler_destroy." );
+
+	return result;
+}
+
+/*
+ * Insert a new waitable thread for checking and processing.
+ */
+DWORD scheduler_insert_waitable( HANDLE waitable, LPVOID entryContext, LPVOID threadContext, WaitableNotifyRoutine routine, WaitableDestroyRoutine destroy )
+{
+	DWORD result = ERROR_SUCCESS;
+	THREAD * swt = NULL;
+
+	WaitableEntry * entry = (WaitableEntry *)malloc( sizeof( WaitableEntry ) );
+	if( entry == NULL )
+		return ERROR_NOT_ENOUGH_MEMORY;
+
+	dprintf( "[SCHEDULER] entering scheduler_insert_waitable( 0x%08X, 0x%08X, 0x%08X, 0x%08X, 0x%08X )",
+      waitable, entryContext, threadContext, routine, destroy );
+
+	memset( entry, 0, sizeof( WaitableEntry ) );
+	
+	entry->remote   = schedulerRemote;
+	entry->waitable = waitable;
+	entry->destroy  = destroy;
+	entry->context  = entryContext;
+	entry->routine  = routine;
+	entry->pause    = event_create();
+	entry->resume   = event_create();
+
+	swt = thread_create( scheduler_waitable_thread, entry, threadContext );
+	if( swt != NULL )
+	{
+		dprintf( "[SCHEDULER] created scheduler_waitable_thread 0x%08X", swt );
+		thread_run( swt );
+	}
+	else
+	{
+		free( entry );
+		result = ERROR_INVALID_HANDLE;
+	}
+
+	dprintf( "[SCHEDULER] leaving scheduler_insert_waitable" );
+
+	return result;
+}
+
+/*
+ * Signal a waitable object.
+ */
+DWORD scheduler_signal_waitable( HANDLE waitable, SchedularSignal signal )
+{
+	DWORD index           = 0;
+	DWORD count           = 0;
+	THREAD * thread       = NULL;
+	WaitableEntry * entry = NULL;
+	DWORD result          = ERROR_NOT_FOUND;
+
+	dprintf( "[SCHEDULER] entering scheduler_signal_waitable( 0x%08X )", waitable );
+
+	if( schedulerThreadList == NULL || waitable == NULL )
+		return ERROR_INVALID_HANDLE;
+
+	lock_acquire( schedulerThreadList->lock );
+
+	count = list_count( schedulerThreadList );
+
+	for( index=0 ; index < count ; index++ )
+	{
+		thread = (THREAD *)list_get( schedulerThreadList, index );
+		if( thread == NULL )
+			continue;
+	
+		entry = (WaitableEntry *)thread->parameter1;
+		if( entry == NULL )
+			continue;
+
+		if( entry->waitable == waitable )
+		{
+			dprintf( "[SCHEDULER] scheduler_signal_waitable: signaling waitable = 0x%08X, thread = 0x%08X", waitable, thread );
+			if( signal == Pause )
+			{
+				if( entry->running ) {
+					dprintf( "[SCHEDULER] scheduler_signal_waitable: thread running, pausing. waitable = 0x%08X, thread = 0x%08X, handle = 0x%X", waitable, thread, entry->pause->handle );
+					event_signal( entry->pause );
+				} else {
+					dprintf( "[SCHEDULER] scheduler_signal_waitable: thread already paused. waitable = 0x%08X, thread = 0x%08X", waitable, thread );
+				}
+			}
+			else
+			{
+				if( !entry->running ) {
+					dprintf( "[SCHEDULER] scheduler_signal_waitable: thread paused, resuming. waitable = 0x%08X, thread = 0x%08X, handle = 0x%X", waitable, thread, entry->resume->handle );
+					event_signal( entry->resume );
+				}
+
+				if( signal == Stop ) {
+					dprintf( "[SCHEDULER] scheduler_signal_waitable: stopping thread. waitable = 0x%08X, thread = 0x%08X, handle = 0x%X", waitable, thread, thread->sigterm->handle );
+					thread_sigterm( thread );
+				} else {
+					dprintf( "[SCHEDULER] scheduler_signal_waitable: thread already running. waitable = 0x%08X, thread = 0x%08X", waitable, thread );
+				}
+			}
+
+			result = ERROR_SUCCESS;
+			break;
+		}
+	}
+
+	lock_release( schedulerThreadList->lock );
+
+	dprintf( "[SCHEDULER] leaving scheduler_signal_waitable" );
+
+	return result;
+}
+
+/*
+ * The schedulers waitable thread. Each scheduled item will have its own thread which 
+ * waits for either data to process or the threads signal to terminate.
+ */
+DWORD THREADCALL scheduler_waitable_thread( THREAD * thread )
+{
+	struct pollfd pollDetail  = {0};
+	WaitableEntry * entry     = NULL;
+	DWORD result              = 0;
+	BOOL terminate            = FALSE;
+	UINT signalIndex          = 0;
+
+	if( thread == NULL )
+		return ERROR_INVALID_HANDLE;
+
+	entry = (WaitableEntry *)thread->parameter1;
+	if( entry == NULL )
+		return ERROR_INVALID_HANDLE;
+
+	if( entry->routine == NULL )
+		return ERROR_INVALID_HANDLE;
+
+	if( schedulerThreadList == NULL )
+		return ERROR_INVALID_HANDLE;
+
+	list_add( schedulerThreadList, thread );
+
+	pollDetail.fd      = entry->waitable;
+	pollDetail.events  = POLLRDNORM;
+	pollDetail.revents = 0;
+
+	dprintf( "[SCHEDULER] entering scheduler_waitable_thread( 0x%08X )", thread );
+
+
+	entry->running = TRUE;
+	while( !terminate )
+	{
+		if( event_poll( thread->sigterm, 0 ) ) {
+			dprintf( "[SCHEDULER] scheduler_waitable_thread( 0x%08X ), signaled to terminate...", thread );
+			terminate = TRUE;
+		}
+		else if( event_poll( entry->pause, 0 ) ) {
+			dprintf( "[SCHEDULER] scheduler_waitable_thread( 0x%08X ), signaled to pause...", thread );
+			entry->running = FALSE;
+			while( !event_poll( entry->resume, 1000 ) );
+			entry->running = TRUE;
+			dprintf( "[SCHEDULER] scheduler_waitable_thread( 0x%08X ), signaled to resume...", thread );
+		}
+		else if( poll( &pollDetail, 1, 100 ) == POLLIN ) {
+			//dprintf( "[SCHEDULER] scheduler_waitable_thread( 0x%08X ), signaled on waitable...", thread );
+			entry->routine( entry->remote, entry->context, (LPVOID)thread->parameter2 );
+		}
+	}
+
+	dprintf( "[SCHEDULER] leaving scheduler_waitable_thread( 0x%08X )", thread );
+	
+	// we acquire the lock for this block as we are freeing 'entry' which may be accessed 
+	// in a second call to scheduler_signal_waitable for this thread (unlikely but best practice).
+	dprintf( "[SCHEDULER] attempting to remove thread( 0x%08X )", thread );
+	lock_acquire( schedulerThreadList->lock );
+	if( list_remove( schedulerThreadList, thread ) )
+	{
+		if( entry->destroy ) {
+			dprintf( "[SCHEDULER] destroying thread( 0x%08X )", thread );
+			entry->destroy( entry->waitable, entry->context, (LPVOID)thread->parameter2 );
+			dprintf( "[SCHEDULER] destroyed thread( 0x%08X )", thread );
+		}
+		else if( entry->waitable ) {
+			dprintf( "[SCHEDULER] scheduler_waitable_thread( 0x%08X ) closing handle 0x%08X", thread, entry->waitable);
+			close( entry->waitable );
+		}
+
+		dprintf( "[SCHEDULER] cleaning up resume thread( 0x%08X )", thread );
+		event_destroy( entry->resume );
+		dprintf( "[SCHEDULER] cleaning up pause thread( 0x%08X )", thread );
+		event_destroy( entry->pause );
+		dprintf( "[SCHEDULER] cleaning up thread( 0x%08X )", thread );
+		thread_destroy( thread );
+		dprintf( "[SCHEDULER] cleaning up entry( 0x%08X )", thread );
+		free( entry );
+	}
+	lock_release( schedulerThreadList->lock );
 
 	return ERROR_SUCCESS;
 }
-
-/*
- * Insert a waitable object for checking and processing
- */
-DWORD
-scheduler_insert_waitable(HANDLE waitable, LPVOID context,
-    WaitableNotifyRoutine routine)
-{
-	DWORD retcode = ERROR_SUCCESS;
-
-	WaitableEntry *current;
-	struct pollfd *polltableprev;
-
-	pthread_mutex_lock(&scheduler_mutex);
-
-	//dprintf("Handle: %d, context: 0x%08x, routine: 0x%08x. nentries = %d, polltable = 0x%08x",
-	//	waitable, context, routine, nentries, polltable);
-
-	do {
-		if ((current = malloc(sizeof(WaitableEntry))) == NULL) {
-			retcode = ENOMEM;
-			break;
-		}
-
-		nentries++;
-
-		if (nentries > ntableentries) {
-			polltableprev = polltable;
-
-			// We do *2 because reallocating every scheduler_insert_waitable
-			// is slower than need be.
-
-			polltable = malloc((nentries*2)*sizeof(struct pollfd));
-
-			if (polltable == NULL) {
-				nentries--;
-				polltable = polltableprev;
-				free(current);
-
-				retcode = ENOMEM;
-				break;
-			}
-
-			if (polltableprev != NULL)
-				free(polltableprev);
-
-			ntableentries = (nentries*2);
-		}
-		current->waitable = waitable;
-		current->context = context;
-		current->routine = routine;
-
-		LIST_INSERT_HEAD(&WEHead, current, link);
-
-
-	} while(0);
-
-
-	dprintf("WEHead: %08x, Now nentries = %d, and polltable = 0x%08x. LIST_EMPTY: %d", &WEHead, nentries, polltable, LIST_EMPTY(&WEHead));
-	/*
-	LIST_FOREACH(current, &WEHead, link)
-		dprintf("current->waitable: %d, current->context: %08x, current->routine: %08x",
-			current->waitable, current->context, current->routine);
-	*/
-
-	pthread_mutex_unlock(&scheduler_mutex);
-
-	// wake up scheduler if needed.
-	pthread_cond_signal(&scheduler_cond);
-
-	return retcode;
-}
-
-/*
- * Remove a waitable object
- */
-DWORD
-scheduler_remove_waitable(HANDLE waitable)
-{
-	DWORD retcode = ERROR_SUCCESS;
-	WaitableEntry *current;
-
-	dprintf("Handle: %d", waitable);
-
-	pthread_mutex_lock(&scheduler_mutex);
-
-	do {
-		LIST_FOREACH(current, &WEHead, link)
-		    if (current->waitable == waitable)
-			    break;
-
-		if (current == NULL) {
-			retcode = ENOENT;
-			break;
-		}
-
-		LIST_REMOVE(current, link);
-		free(current);
-		nentries--;
-	} while(0);
-
-	pthread_mutex_unlock(&scheduler_mutex);
-
-	return retcode;
-}
-
-/*
- * Runs the scheduler, checking waitable objects for data
- */
-DWORD
-scheduler_run(THREAD *thread)
-{
-	Remote *remote;
-	remote = (Remote *) thread->parameter1;
-	WaitableEntry *current, *tmp;
-	int ret, i, found, idx;
-	int timeout;
-
-	timeout = 1000;
-
-	// see if we can modify this code to use waitable as the index into polltable
-	// and waitable events. saves time looking up in exchange for more memory use.
-
-	pthread_mutex_lock(&scheduler_mutex);
-
-	dprintf("Beginning loop");
-
-	while( event_poll(thread->sigterm, 0) == FALSE )
-	{
-		// scheduler_mutex is held upon entry and execution of the loop
-
-		idx = 0;
-
-		while(event_poll(thread->sigterm, 0) == FALSE && (LIST_EMPTY(&WEHead) || polltable == NULL)) {
-			// XXX I'd prefer to use pthread_cond_timedwait, but it's broken in bionic and just
-			// chews cpu
-
-			//dprintf(" Waiting for conditional (%08x). %d vs %d",
-			//	&scheduler_cond, LIST_EMPTY(&WEHead), polltable == NULL);
-
-			pthread_cond_wait(&scheduler_cond, &scheduler_mutex);
-
-			// pthread_cond_wait still chews CPU in some cases, usleep to yield
-			// processor so we don't just spin.
-			usleep(1000);
-		}
-
-		LIST_FOREACH(current, &WEHead, link) {
-			dprintf("current->waitable: %d, current->context: %08x, current->routine: %08x",
-				current->waitable, current->context, current->routine);
-			polltable[idx].fd = current->waitable;
-			polltable[idx].events = POLLRDNORM;
-			polltable[idx].revents = 0;
-			idx++;
-		}
-
-		dprintf("Created a polltable of %d", idx);
-
-		pthread_mutex_unlock(&scheduler_mutex);
-
-		ret = poll(polltable, idx, timeout);
-
-		pthread_mutex_lock(&scheduler_mutex);
-
-		if(ret == 0) continue;
-		if(ret == -1) {
-			if(errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR) {
-				continue;
-			}
-			dprintf("poll() failed, errno: %d (%s). Sleeping 1 second and retrying", errno, strerror(errno));
-			sleep(1);
-			continue;
-		}
-
-		for (found = i = 0; i < idx && found < ret; i++)
-		{
-			if (polltable[i].revents)
-			{
-				LIST_FOREACH(current, &WEHead, link)
-				    if (current->waitable == polltable[i].fd)
-					    break;
-
-				if(current)
-				{
-					ret = current->routine(remote, current->context);
-					if(ret != ERROR_SUCCESS)
-					{
-						// could call close due to remote, but it would deadlock
-						// if it calls remove waitable
-						// could make a separate list to handle when we are not locking
-						// unlink and let rest deal with it ?
-
-						dprintf("current->routine (%08x / %08x) returned an error message. destroying", current->routine, current->context);
-
-						LIST_REMOVE(current, link);
-						close(current->waitable);
-						channel_close((Channel *)current->context, remote, NULL, 0, NULL);
-						free(current);
-
-						nentries--;
-
-					}
-				}
-			}
-		}
-	}
-
-	dprintf("Ending loop");
-
-	pthread_mutex_unlock(&scheduler_mutex);
-}
-
-

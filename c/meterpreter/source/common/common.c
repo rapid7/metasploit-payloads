@@ -44,7 +44,7 @@ int current_unix_timestamp(void) {
 
 #ifndef _WIN32
 
-int debugging_enabled;
+int debugging_enabled = 1;
 
 /*
  */ 

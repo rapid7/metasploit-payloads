@@ -105,7 +105,7 @@ TcpClientContext * tcp_channel_server_create_client( TcpServerContext * serverct
 		if( !clientctx->channel )
 			BREAK_WITH_ERROR( "[TCP-SERVER] tcp_channel_server_create_client. clientctx->channel == NULL", ERROR_INVALID_HANDLE );
 
-		dwResult = scheduler_insert_waitable( clientctx->notify, clientctx, (WaitableNotifyRoutine)tcp_channel_client_local_notify, NULL );
+		dwResult = scheduler_insert_waitable( clientctx->notify, clientctx, NULL, (WaitableNotifyRoutine)tcp_channel_client_local_notify, NULL );
 
 	} while( 0 );
 
@@ -266,7 +266,7 @@ DWORD request_net_tcp_server_channel_open( Remote * remote, Packet * packet )
 		if( !ctx->channel )
 			BREAK_WITH_ERROR( "[TCP-SERVER] request_net_tcp_server_channel_open. channel_create_stream failed", ERROR_INVALID_HANDLE );
 
-		scheduler_insert_waitable( ctx->notify, ctx, (WaitableNotifyRoutine)tcp_channel_server_notify, NULL );
+		scheduler_insert_waitable( ctx->notify, ctx, NULL, (WaitableNotifyRoutine)tcp_channel_server_notify, NULL );
 
 		packet_add_tlv_uint( response, TLV_TYPE_CHANNEL_ID, channel_get_id(ctx->channel) );
 

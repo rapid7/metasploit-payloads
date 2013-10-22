@@ -328,7 +328,7 @@ DWORD create_tcp_client_channel(Remote *remote, LPCSTR remoteHost, USHORT remote
 			WSAEventSelect(ctx->fd, ctx->notify, FD_READ|FD_CLOSE);
 			dprintf( "[TCP] create_tcp_client_channel. host=%s, port=%d created the notify %.8x", remoteHost, remotePort, ctx->notify );
 
-			scheduler_insert_waitable( ctx->notify, ctx, (WaitableNotifyRoutine)tcp_channel_client_local_notify, NULL);
+			scheduler_insert_waitable( ctx->notify, ctx, NULL, (WaitableNotifyRoutine)tcp_channel_client_local_notify, NULL);
 		}
 
 	} while (0);

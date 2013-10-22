@@ -270,6 +270,7 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 			memset(&chops, 0, sizeof(PoolChannelOps));
 
 			// Initialize the channel operations
+			dprintf( "[PROCESS] context address 0x%p", ctx );
 			chops.native.context  = ctx;
 			chops.native.write    = process_channel_write;
 			chops.native.close    = process_channel_close;
@@ -570,6 +571,7 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 	int idx, i;
 	pid_t pid;
 	int have_pty = -1;
+	ProcessChannelContext * ctx = NULL;
 
 	int hidden = (flags & PROCESS_EXECUTE_FLAG_HIDDEN);
 
@@ -620,7 +622,6 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 		// such that input can be directed to and from the remote endpoint
 		if (flags & PROCESS_EXECUTE_FLAG_CHANNELIZED)
 		{
-			ProcessChannelContext * ctx = NULL;
 			PoolChannelOps chops;
 			Channel *newChannel;
 
@@ -634,6 +635,7 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 			memset(&chops, 0, sizeof(PoolChannelOps));
 
 			// Initialize the channel operations
+			dprintf( "[PROCESS] context address 0x%p", ctx );
 			chops.native.context  = ctx;
 			chops.native.write    = process_channel_write;
 			chops.native.close    = process_channel_close;
@@ -758,6 +760,7 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 				if(have_pty) {
 					dprintf("child channelized\n");
 					close(slave);
+					ctx->pProcess = (HANDLE)pid;
 				} else {
 					close(in[0]);
 					close(out[1]);
@@ -1073,11 +1076,14 @@ DWORD process_channel_close( Channel *channel, Packet *request, LPVOID context )
 	return result;
 }
 
-DWORD process_channel_interact_destroy( HANDLE waitable, Channel* channel )
+DWORD process_channel_interact_destroy( HANDLE waitable, LPVOID entryContext, LPVOID threadContext )
 {
+	ProcessChannelContext *ctx = (ProcessChannelContext *)threadContext;
 	DWORD dwResult = ERROR_SUCCESS;
+
+	dprintf( "[PROCESS] terminating context 0x%p", ctx );
+
 #ifdef _WIN32
-	ProcessChannelContext *ctx = (ProcessChannelContext *)channel->ops.stream.native.context;
 
 	CloseHandle( ctx->pStdin );
 	CloseHandle( ctx->pStdout );
@@ -1087,8 +1093,16 @@ DWORD process_channel_interact_destroy( HANDLE waitable, Channel* channel )
 		TerminateProcess( ctx->pProcess, 0 );
 	}
 #else
-	close( ctx->pStdin );
-	close( ctx->pStdout );
+	//dprintf( "[PROCESS] closing stdin 0x%x", ctx->pStdin );
+	//close( ctx->pStdin );
+	//dprintf( "[PROCESS] closing stdout 0x%x", ctx->pStdout );
+	//close( ctx->pStdout );
+
+  dprintf( "[PROCESS] pid %u", ctx->pProcess );
+	if( ctx->pProcess ) {
+		dprintf( "[PROCESS] terminating pid %u", ctx->pProcess );
+		kill( (pid_t)ctx->pProcess, 9 );
+	}
 #endif
 
 	free( ctx );
@@ -1100,10 +1114,10 @@ DWORD process_channel_interact_destroy( HANDLE waitable, Channel* channel )
  * Callback for when data is available on the standard output handle of
  * a process channel that is interactive mode
  */
-DWORD process_channel_interact_notify(Remote *remote, Channel *channel)
+DWORD process_channel_interact_notify(Remote *remote, LPVOID entryContext, LPVOID threadContext)
 {
-
-	ProcessChannelContext *ctx = (ProcessChannelContext *)channel->ops.stream.native.context;
+  Channel *channel = (Channel*)entryContext;
+	ProcessChannelContext *ctx = (ProcessChannelContext *)threadContext;
 	DWORD bytesRead, bytesAvail = 0;
 	CHAR buffer[16384];
 	DWORD result = ERROR_SUCCESS;
@@ -1174,7 +1188,7 @@ DWORD process_channel_interact(Channel *channel, Packet *request, LPVOID context
 	if (interact) {
 		// try to resume it first, if it's not there, we can create a new entry
 		if( (result = scheduler_signal_waitable( ctx->pStdout, Resume )) == ERROR_NOT_FOUND ) {
-			result = scheduler_insert_waitable( ctx->pStdout, channel,
+			result = scheduler_insert_waitable( ctx->pStdout, channel, context,
 				(WaitableNotifyRoutine)process_channel_interact_notify,
 				(WaitableDestroyRoutine)process_channel_interact_destroy );
 		}
