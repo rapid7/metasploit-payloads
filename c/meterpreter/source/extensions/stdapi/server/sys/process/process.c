@@ -1093,10 +1093,8 @@ DWORD process_channel_interact_destroy( HANDLE waitable, LPVOID entryContext, LP
 		TerminateProcess( ctx->pProcess, 0 );
 	}
 #else
-	//dprintf( "[PROCESS] closing stdin 0x%x", ctx->pStdin );
-	//close( ctx->pStdin );
-	//dprintf( "[PROCESS] closing stdout 0x%x", ctx->pStdout );
-	//close( ctx->pStdout );
+	close( ctx->pStdin );
+	close( ctx->pStdout );
 
   dprintf( "[PROCESS] pid %u", ctx->pProcess );
 	if( ctx->pProcess ) {
