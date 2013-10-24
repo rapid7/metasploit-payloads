@@ -11,7 +11,7 @@
 #include <wchar.h>
 #include "incognito.h"
 
-BOOL get_domain_from_token(HANDLE token, char *domain_to_return)
+BOOL get_domain_from_token(HANDLE token, char *domainBuffer, DWORD domainBufferSize)
 {
 	LPVOID TokenUserInfo[BUF_SIZE];
 	char username[BUF_SIZE] = "", domainname[BUF_SIZE] = "";
@@ -21,7 +21,7 @@ BOOL get_domain_from_token(HANDLE token, char *domain_to_return)
 		return FALSE;
 	LookupAccountSidA(NULL, ((TOKEN_USER*)TokenUserInfo)->User.Sid, username, &user_length, domainname, &domain_length, (PSID_NAME_USE)&sid_type);
 
-	strcpy(domain_to_return, domainname);
+	strcpy_s(domainBuffer, domainBufferSize, domainname);
 
 	return TRUE;
 }
