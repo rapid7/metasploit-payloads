@@ -19,34 +19,12 @@ EnableDelayLoadMetSrv();
 
 Command customCommands[] =
 {
-	// Window management and enumeration
-	{ "extapi_window_enum",
-		{ request_window_enum,          { 0 }, 0 },
-		{ EMPTY_DISPATCH_HANDLER                 }
-	},
-	// Service management and enumeration
-	{ "extapi_service_enum",
-		{ request_service_enum,         { 0 }, 0 },
-		{ EMPTY_DISPATCH_HANDLER                 }
-	},
-	{ "extapi_service_query",
-		{ request_service_query,        { 0 }, 0 },
-		{ EMPTY_DISPATCH_HANDLER                 }
-	},
-	// Clipboard interaction
-	{ "extapi_clipboard_get_data",
-		{ request_clipboard_get_data,   { 0 }, 0 },
-		{ EMPTY_DISPATCH_HANDLER                 }
-	},
-	{ "extapi_clipboard_set_data",
-		{ request_clipboard_set_data,   { 0 }, 0 },
-		{ EMPTY_DISPATCH_HANDLER                 }
-	},
-	// Terminator
-	{ NULL,
-		{ EMPTY_DISPATCH_HANDLER                 },
-		{ EMPTY_DISPATCH_HANDLER                 }
-	}
+	COMMAND_REQ("extapi_window_enum", request_window_enum),
+	COMMAND_REQ("extapi_service_enum", request_service_enum),
+	COMMAND_REQ("extapi_service_query", request_service_query),
+	COMMAND_REQ("extapi_clipboard_get_data", request_clipboard_get_data),
+	COMMAND_REQ("extapi_clipboard_set_data", request_clipboard_set_data),
+	COMMAND_TERMINATOR
 };
 
 /*!
@@ -76,4 +54,3 @@ DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
 
 	return ERROR_SUCCESS;
 }
-
