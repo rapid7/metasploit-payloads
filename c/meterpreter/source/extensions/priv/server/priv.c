@@ -1,5 +1,5 @@
-/*
- * This module implements privilege escalation features. 
+/*!
+ * @brief This module implements privilege escalation features. 
  */
 #include "precomp.h"
 
@@ -8,86 +8,42 @@
 // second stage reflective dll inject payload and not the metsrv itself when it loads extensions.
 #include "../../../ReflectiveDLLInjection/ReflectiveLoader.c"
 
-// NOTE: _CRT_SECURE_NO_WARNINGS has been added to Configuration->C/C++->Preprocessor->Preprocessor
-
 // this sets the delay load hook function, see DelayLoadMetSrv.h
 EnableDelayLoadMetSrv();
 
+/*!
+ * @brief `priv` extension dispatch table.
+ */
 Command customCommands[] =
 {
-
-	// Elevate
-	{ "priv_elevate_getsystem",
-	  { elevate_getsystem,							      { 0 }, 0 },
-	  { EMPTY_DISPATCH_HANDLER                                      },
-	},
-
-	// Priv
-	{ "priv_passwd_get_sam_hashes",
-	  { request_passwd_get_sam_hashes,                     { 0 }, 0 },
-	  { EMPTY_DISPATCH_HANDLER                                      },
-	},
-
-	// Fs
-	{ "priv_fs_get_file_mace",
-	  { request_fs_get_file_mace,                          { 0 }, 0 },
-	  { EMPTY_DISPATCH_HANDLER                                      },
-	},
-	{ "priv_fs_set_file_mace",
-	  { request_fs_set_file_mace,                          { 0 }, 0 },
-	  { EMPTY_DISPATCH_HANDLER                                      },
-	},
-	{ "priv_fs_set_file_mace_from_file",
-	  { request_fs_set_file_mace_from_file,                { 0 }, 0 },
-	  { EMPTY_DISPATCH_HANDLER                                      },
-	},
-	{ "priv_fs_blank_file_mace",
-	  { request_fs_blank_file_mace,                        { 0 }, 0 },
-	  { EMPTY_DISPATCH_HANDLER                                      },
-	},
-	{ "priv_fs_blank_directory_mace",
-	  { request_fs_blank_directory_mace,                   { 0 }, 0 },
-	  { EMPTY_DISPATCH_HANDLER                                      },
-	},
-
-	// Terminator
-	{ NULL,
-	  { EMPTY_DISPATCH_HANDLER                      },
-	  { EMPTY_DISPATCH_HANDLER                      },
-	},
+	COMMAND_REQ( "priv_elevate_getsystem", elevate_getsystem ),
+	COMMAND_REQ( "priv_passwd_get_sam_hashes", request_passwd_get_sam_hashes ),
+	COMMAND_REQ( "priv_fs_get_file_mace", request_fs_get_file_mace ),
+	COMMAND_REQ( "priv_fs_set_file_mace", request_fs_set_file_mace ),
+	COMMAND_REQ( "priv_fs_set_file_mace_from_file", request_fs_set_file_mace_from_file ),
+	COMMAND_REQ( "priv_fs_blank_file_mace", request_fs_blank_file_mace ),
+	COMMAND_REQ( "priv_fs_blank_directory_mace", request_fs_blank_directory_mace ),
+	COMMAND_TERMINATOR
 };
 
-/*
- * Initialize the server extension
- */
+/*!
+* @brief Initialize the `priv` server extension.
+*/
 DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
 {
-	DWORD index;
-
 	hMetSrv = remote->hMetSrv;
 
-	for (index = 0; customCommands[index].method; index++)
-	{
-		dprintf("Registering command index %d", index);
-		dprintf("  Command: %s", customCommands[index].method);
-		dprintf(" Register: 0x%.8x", command_register);
-		command_register(&customCommands[index]);
-	}
+	command_register_all(customCommands);
 
 	return ERROR_SUCCESS;
 }
 
-/*
- * Deinitialize the server extension
- */
+/*!
+* @brief Deinitialize the `priv` server extension.
+*/
 DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
 {
-	DWORD index;
-
-	for (index = 0;
-	     customCommands[index].method;
-	     index++)
-		command_deregister(&customCommands[index]);
+	command_deregister_all(customCommands);
 
 	return ERROR_SUCCESS;
 }

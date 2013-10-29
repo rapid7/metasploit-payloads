@@ -366,7 +366,7 @@ DWORD request_railgun_api_multi( Remote * remote, Packet * packet )
 	DWORD index            = 0;
 	Tlv reqTlv             = {0};
 	Tlv tmpTlv             = {0};
-	Tlv   tlvs[4]          = {0};
+	Tlv   tlvs[6]          = {0};
 	RAILGUN_INPUT rInput   = {0};
 	RAILGUN_OUTPUT rOutput = {0};
 
@@ -381,80 +381,105 @@ DWORD request_railgun_api_multi( Remote * remote, Packet * packet )
 		memset( &rInput, 0, sizeof(RAILGUN_INPUT) );
 		memset( &rOutput, 0, sizeof(RAILGUN_OUTPUT) );
 
-		// get ths inputs for this call...
-		if( packet_get_tlv_group_entry( packet, &reqTlv, TLV_TYPE_RAILGUN_SIZE_OUT, &tmpTlv ) != ERROR_SUCCESS )
+		do
 		{
-			dprintf( "[RAILGUN] request_railgun_api_multi: Could not get TLV_TYPE_RAILGUN_SIZE_OUT" );
-			goto cleanup;
-		}
+			// get ths inputs for this call...
+			if( packet_get_tlv_group_entry( packet, &reqTlv, TLV_TYPE_RAILGUN_SIZE_OUT, &tmpTlv ) != ERROR_SUCCESS )
+			{
+				dprintf( "[RAILGUN] request_railgun_api_multi: Could not get TLV_TYPE_RAILGUN_SIZE_OUT" );
+				break;
+			}
 
-		rInput.dwBufferSizeOUT = ntohl( *(LPDWORD)tmpTlv.buffer );
+			rInput.dwBufferSizeOUT = ntohl( *(LPDWORD)tmpTlv.buffer );
 
-		rInput.pBufferIN = getRawDataCopyFromGroup( packet, &reqTlv, TLV_TYPE_RAILGUN_BUFFERBLOB_IN, (DWORD *)&rInput.dwBufferSizeIN );
-		if( !rInput.pBufferIN )
-		{
-			dprintf( "[RAILGUN] request_railgun_api_multi: Could not get TLV_TYPE_RAILGUN_BUFFERBLOB_IN" );
-			goto cleanup;
-		}
+			rInput.pBufferIN = getRawDataCopyFromGroup( packet, &reqTlv, TLV_TYPE_RAILGUN_BUFFERBLOB_IN, (DWORD *)&rInput.dwBufferSizeIN );
+			if( !rInput.pBufferIN )
+			{
+				dprintf( "[RAILGUN] request_railgun_api_multi: Could not get TLV_TYPE_RAILGUN_BUFFERBLOB_IN" );
+				break;
+			}
 
-		rInput.pBufferINOUT = getRawDataCopyFromGroup( packet, &reqTlv, TLV_TYPE_RAILGUN_BUFFERBLOB_INOUT, (DWORD *)&rInput.dwBufferSizeINOUT );
-		if( !rInput.pBufferINOUT )
-		{
-			dprintf( "[RAILGUN] request_railgun_api_multi: Could not get TLV_TYPE_RAILGUN_BUFFERBLOB_INOUT" );
-			goto cleanup;
-		}
+			rInput.pBufferINOUT = getRawDataCopyFromGroup( packet, &reqTlv, TLV_TYPE_RAILGUN_BUFFERBLOB_INOUT, (DWORD *)&rInput.dwBufferSizeINOUT );
+			if( !rInput.pBufferINOUT )
+			{
+				dprintf( "[RAILGUN] request_railgun_api_multi: TLV_TYPE_RAILGUN_BUFFERBLOB_INOUT is empty" );
+				break;
+			}
 
-		if( packet_get_tlv_group_entry( packet, &reqTlv, TLV_TYPE_RAILGUN_DLLNAME, &tmpTlv ) != ERROR_SUCCESS )
-		{
-			dprintf( "[RAILGUN] request_railgun_api_multi: Could not get TLV_TYPE_RAILGUN_DLLNAME" );
-			goto cleanup;
-		}
+			if( packet_get_tlv_group_entry( packet, &reqTlv, TLV_TYPE_RAILGUN_DLLNAME, &tmpTlv ) != ERROR_SUCCESS )
+			{
+				dprintf( "[RAILGUN] request_railgun_api_multi: Could not get TLV_TYPE_RAILGUN_DLLNAME" );
+				break;
+			}
 
-		rInput.cpDllName = (PCHAR)tmpTlv.buffer;
-		if( !rInput.cpDllName )
-		{
-			dprintf( "[RAILGUN] request_railgun_api_multi: Could not get TLV_TYPE_RAILGUN_DLLNAME" );
-			goto cleanup;
-		}
+			rInput.cpDllName = (PCHAR)tmpTlv.buffer;
+			if( !rInput.cpDllName )
+			{
+				dprintf( "[RAILGUN] request_railgun_api_multi: TLV_TYPE_RAILGUN_DLLNAME is empty." );
+				break;
+			}
 
-		if( packet_get_tlv_group_entry( packet, &reqTlv, TLV_TYPE_RAILGUN_FUNCNAME, &tmpTlv ) != ERROR_SUCCESS )
-		{
-			dprintf( "[RAILGUN] request_railgun_api_multi: Could not get TLV_TYPE_RAILGUN_FUNCNAME" );
-			goto cleanup;
-		}
+			if( packet_get_tlv_group_entry( packet, &reqTlv, TLV_TYPE_RAILGUN_FUNCNAME, &tmpTlv ) != ERROR_SUCCESS )
+			{
+				dprintf( "[RAILGUN] request_railgun_api_multi: Could not get TLV_TYPE_RAILGUN_FUNCNAME" );
+				break;
+			}
 
-		rInput.cpFuncName = (PCHAR)tmpTlv.buffer;
-		if( !rInput.cpFuncName )
-		{
-			dprintf( "[RAILGUN] request_railgun_api_multi: Could not get TLV_TYPE_RAILGUN_FUNCNAME" );
-			goto cleanup;
-		}
+			rInput.cpFuncName = (PCHAR)tmpTlv.buffer;
+			if( !rInput.cpFuncName )
+			{
+				dprintf( "[RAILGUN] request_railgun_api_multi: TLV_TYPE_RAILGUN_FUNCNAME is empty." );
+				break;
+			}
 
-		if( packet_get_tlv_group_entry( packet, &reqTlv, TLV_TYPE_RAILGUN_STACKBLOB, &rInput.pStackDescriptorTlv ) != ERROR_SUCCESS )
-		{
-			dprintf( "[RAILGUN] request_railgun_api_multi: packet_get_tlv_group_entry failed" );
-			goto cleanup;
-		}
+			rInput.cpCallConv = "stdcall";
+			if( packet_get_tlv_group_entry( packet, &reqTlv, TLV_TYPE_RAILGUN_CALLCONV, &tmpTlv ) != ERROR_SUCCESS )
+			{
+				dprintf( "[RAILGUN] request_railgun_api_multi: Could not get TLV_TYPE_RAILGUN_CALLCONV, defaulting to stdcall" );
+			}
+			else if( tmpTlv.buffer )
+			{
+				rInput.cpCallConv = (PCHAR)tmpTlv.buffer;
+			}
 
-		dwResult = railgun_call( &rInput, &rOutput );
+			if( packet_get_tlv_group_entry( packet, &reqTlv, TLV_TYPE_RAILGUN_STACKBLOB, &rInput.pStackDescriptorTlv ) != ERROR_SUCCESS )
+			{
+				dprintf( "[RAILGUN] request_railgun_api_multi: packet_get_tlv_group_entry failed" );
+				break;
+			}
 
-		// time to ship stuff back
-		tlvs[0].header.length = sizeof(DWORD);
-		tlvs[0].header.type   = TLV_TYPE_RAILGUN_BACK_ERR;
-		tlvs[0].buffer        = (PUCHAR)&rOutput.dwLastError;
-		tlvs[1].header.length = sizeof(QWORD);
-		tlvs[1].header.type   = TLV_TYPE_RAILGUN_BACK_RET;
-		tlvs[1].buffer        = (PUCHAR)&rOutput.qwReturnValue;
-		tlvs[2].header.length = (DWORD)rOutput.dwBufferSizeOUT;
-		tlvs[2].header.type   = TLV_TYPE_RAILGUN_BACK_BUFFERBLOB_OUT;
-		tlvs[2].buffer        = (PUCHAR)rOutput.pBufferOUT;
-		tlvs[3].header.length = (DWORD)rOutput.dwBufferSizeINOUT;
-		tlvs[3].header.type   = TLV_TYPE_RAILGUN_BACK_BUFFERBLOB_INOUT;
-		tlvs[3].buffer        = (PUCHAR)rOutput.pBufferINOUT;
+			dwResult = railgun_call( &rInput, &rOutput );
 
-		packet_add_tlv_group( response, TLV_TYPE_RAILGUN_MULTI_GROUP, tlvs, 4 );
+			// time to ship stuff back
+			tlvs[0].header.length = sizeof(DWORD);
+			tlvs[0].header.type   = TLV_TYPE_RESULT;
+			tlvs[0].buffer        = (PUCHAR)&dwResult;
 
-	cleanup:
+			if( dwResult == ERROR_SUCCESS )
+			{
+				rOutput.dwLastError = htonl( rOutput.dwLastError );
+				rOutput.qwReturnValue = htonq( rOutput.qwReturnValue );
+
+				tlvs[1].header.length = sizeof(DWORD);
+				tlvs[1].header.type   = TLV_TYPE_RAILGUN_BACK_ERR;
+				tlvs[1].buffer        = (PUCHAR)&rOutput.dwLastError;
+				tlvs[2].header.length = sizeof(QWORD);
+				tlvs[2].header.type   = TLV_TYPE_RAILGUN_BACK_RET;
+				tlvs[2].buffer        = (PUCHAR)&rOutput.qwReturnValue;
+				tlvs[3].header.length = (DWORD)rOutput.dwBufferSizeOUT;
+				tlvs[3].header.type   = TLV_TYPE_RAILGUN_BACK_BUFFERBLOB_OUT;
+				tlvs[3].buffer        = (PUCHAR)rOutput.pBufferOUT;
+				tlvs[4].header.length = (DWORD)rOutput.dwBufferSizeINOUT;
+				tlvs[4].header.type   = TLV_TYPE_RAILGUN_BACK_BUFFERBLOB_INOUT;
+				tlvs[4].buffer        = (PUCHAR)rOutput.pBufferINOUT;
+				tlvs[5].header.length = (DWORD)strlen(rOutput.pErrMsg) + 1;
+				tlvs[5].header.type   = TLV_TYPE_RAILGUN_BACK_MSG;
+				tlvs[5].buffer        = (PUCHAR)rOutput.pErrMsg;
+			}
+
+			packet_add_tlv_group( response, TLV_TYPE_RAILGUN_MULTI_GROUP, tlvs, dwResult == ERROR_SUCCESS ? sizeof(tlvs) / sizeof(tlvs[0]) : 1 );
+
+		} while(0);
 
 		if( rInput.pBufferIN )
 			free( rInput.pBufferIN );
@@ -464,9 +489,14 @@ DWORD request_railgun_api_multi( Remote * remote, Packet * packet )
 
 		if( rOutput.pBufferOUT )
 			free( rOutput.pBufferOUT );
+
+		// FormatMessage calls that use the FORMAT_MESSAGE_ALLOCATE_BUFFER flag allocate memory using LocalAlloc().
+		// We need to free this memory up here to prevent leaks.
+		if ( rOutput.pErrMsg != NULL )
+			LocalFree( (HLOCAL)rOutput.pErrMsg );
 	}
 
-	packet_transmit_response( dwResult, remote, response );
+	packet_transmit_response( ERROR_SUCCESS, remote, response );
 
 	dprintf( "[RAILGUN] request_railgun_api_multi: Finished." );
 
@@ -480,6 +510,7 @@ DWORD request_railgun_api( Remote * pRemote, Packet * pPacket )
 	Packet * pResponse     = NULL;
 	RAILGUN_INPUT rInput   = {0};
 	RAILGUN_OUTPUT rOutput = {0};
+	const char* pErrorMsg  = NULL;
 
 	dprintf("[RAILGUN] request_railgun_api: Starting...");
 
@@ -538,18 +569,23 @@ DWORD request_railgun_api( Remote * pRemote, Packet * pPacket )
 			packet_add_tlv_qword( pResponse, TLV_TYPE_RAILGUN_BACK_RET, rOutput.qwReturnValue );
 			packet_add_tlv_raw( pResponse, TLV_TYPE_RAILGUN_BACK_BUFFERBLOB_OUT, rOutput.pBufferOUT, (DWORD)rOutput.dwBufferSizeOUT );
 			packet_add_tlv_raw( pResponse, TLV_TYPE_RAILGUN_BACK_BUFFERBLOB_INOUT, rOutput.pBufferINOUT, (DWORD)rOutput.dwBufferSizeINOUT );
-			packet_add_tlv_string( pResponse, TLV_TYPE_RAILGUN_BACK_MSG, rOutput.pErrMsg );
+
+			// There are cases where FormatMessage is failing for various functions on various platforms.
+			// eg. inet_addr() on Windows XP SP3 x86 and NetGetJoinInformation() on Windows 8 x64
+			// This code makes sure that a valid string is used when returning information back to the caller.
+			if( rOutput.pErrMsg )
+			{
+				pErrorMsg = rOutput.pErrMsg;
+			} else if( rOutput.dwLastError == ERROR_SUCCESS ) {
+				pErrorMsg = "The operation completed successfully.";
+			} else {
+				pErrorMsg = "FormatMessage failed to retrieve the error.";
+			}
+
+			packet_add_tlv_string( pResponse, TLV_TYPE_RAILGUN_BACK_MSG, pErrorMsg );
 		}
 
 		dwResult = packet_transmit( pRemote, pResponse, NULL );
-
-		// FormatMessage calls that use the FORMAT_MESSAGE_ALLOCATE_BUFFER flag allocate memory using LocalAlloc().
-		// We need to free this memory up here to prevent leaks.
-		if ( rOutput.pErrMsg != NULL )
-		{
-			LocalFree( (HLOCAL)rOutput.pErrMsg );
-			rOutput.pErrMsg = NULL;
-		}
 	}
 
 	if( rInput.pBufferIN )
@@ -560,6 +596,11 @@ DWORD request_railgun_api( Remote * pRemote, Packet * pPacket )
 
 	if( rOutput.pBufferOUT )
 		free( rOutput.pBufferOUT );
+
+	// FormatMessage calls that use the FORMAT_MESSAGE_ALLOCATE_BUFFER flag allocate memory using LocalAlloc().
+	// We need to free this memory up here to prevent leaks.
+	if ( rOutput.pErrMsg != NULL )
+		LocalFree( (HLOCAL)rOutput.pErrMsg );
 
 	dprintf("[RAILGUN] request_railgun_api: Finished.");
 

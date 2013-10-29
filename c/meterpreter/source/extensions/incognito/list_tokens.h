@@ -8,9 +8,11 @@ typedef struct
 	HANDLE token;
 } SavedToken;
 
+#define MAX_USERNAME 256
+
 typedef struct
 {
-	char username[256];
+	char username[MAX_USERNAME];
 	int token_num;
 	BOOL delegation_available;
 	BOOL impersonation_available;

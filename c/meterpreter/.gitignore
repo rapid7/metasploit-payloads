@@ -43,3 +43,6 @@ source/jpeg-8/Backup/*
 
 # ignore posix temp stuff
 posix-meterp-build-tmp/*
+
+# Doxygen output
+docs/*
