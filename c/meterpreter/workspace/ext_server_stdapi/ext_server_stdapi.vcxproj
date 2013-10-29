@@ -599,50 +599,51 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\source\extensions\stdapi\server\general.c"/>
-    <ClCompile Include="..\..\source\extensions\stdapi\server\net\config\arp.c"/>
+    <ClCompile Include="..\..\source\extensions\stdapi\server\general.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\net\config\arp.c" />
     <ClCompile Include="..\..\source\extensions\stdapi\server\net\config\netstat.c" />
     <ClCompile Include="..\..\source\extensions\stdapi\server\net\resolve.c" />
     <ClCompile Include="..\..\source\extensions\stdapi\server\stdapi.c">
       <PreCompiledHeader>Create</PreCompiledHeader>
     </ClCompile>
-    <ClCompile Include="..\..\source\extensions\stdapi\server\fs\dir.c"/>
-    <ClCompile Include="..\..\source\extensions\stdapi\server\fs\file.c"/>
-    <ClCompile Include="..\..\source\extensions\stdapi\server\fs\fs_util.c"/>
+    <ClCompile Include="..\..\source\extensions\stdapi\server\fs\dir.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\fs\file.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\fs\fs_util.c" />
     <ClCompile Include="..\..\source\extensions\stdapi\server\fs\search.c" />
-    <ClCompile Include="..\..\source\extensions\stdapi\server\net\net.c"/>
-    <ClCompile Include="..\..\source\extensions\stdapi\server\net\config\interface.c"/>
-    <ClCompile Include="..\..\source\extensions\stdapi\server\net\config\route.c"/>
-    <ClCompile Include="..\..\source\extensions\stdapi\server\net\socket\tcp.c"/>
+    <ClCompile Include="..\..\source\extensions\stdapi\server\net\net.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\net\config\interface.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\net\config\route.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\net\socket\tcp.c" />
     <ClCompile Include="..\..\source\extensions\stdapi\server\net\socket\tcp_server.c" />
     <ClCompile Include="..\..\source\extensions\stdapi\server\net\socket\udp.c" />
     <ClCompile Include="..\..\source\extensions\stdapi\server\sys\session.c" />
-    <ClCompile Include="..\..\source\extensions\stdapi\server\sys\process\image.c"/>
-    <ClCompile Include="..\..\source\extensions\stdapi\server\sys\process\in-mem-exe.c"/>
-    <ClCompile Include="..\..\source\extensions\stdapi\server\sys\process\memory.c"/>
-    <ClCompile Include="..\..\source\extensions\stdapi\server\sys\process\process.c"/>
+    <ClCompile Include="..\..\source\extensions\stdapi\server\sys\process\image.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\sys\process\in-mem-exe.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\sys\process\memory.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\sys\process\process.c" />
     <ClCompile Include="..\..\source\extensions\stdapi\server\sys\process\ps.c" />
-    <ClCompile Include="..\..\source\extensions\stdapi\server\sys\process\thread.c"/>
-    <ClCompile Include="..\..\source\extensions\stdapi\server\sys\process\util.c"/>
-    <ClCompile Include="..\..\source\extensions\stdapi\server\sys\registry\registry.c"/>
-    <ClCompile Include="..\..\source\extensions\stdapi\server\sys\power\power.c"/>
-    <ClCompile Include="..\..\source\extensions\stdapi\server\sys\eventlog\eventlog.c"/>
-    <ClCompile Include="..\..\source\extensions\stdapi\server\sys\config\config.c"/>
+    <ClCompile Include="..\..\source\extensions\stdapi\server\sys\process\thread.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\sys\process\util.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\sys\registry\registry.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\sys\power\power.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\sys\eventlog\eventlog.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\sys\config\config.c" />
     <ClCompile Include="..\..\source\extensions\stdapi\server\ui\desktop.c" />
-    <ClCompile Include="..\..\source\extensions\stdapi\server\ui\idle.c"/>
-    <ClCompile Include="..\..\source\extensions\stdapi\server\ui\keyboard.c"/>
-    <ClCompile Include="..\..\source\extensions\stdapi\server\ui\mouse.c"/>
-    <ClCompile Include="..\..\source\extensions\stdapi\server\ui\ui.c"/>
+    <ClCompile Include="..\..\source\extensions\stdapi\server\ui\idle.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\ui\keyboard.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\ui\mouse.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\ui\ui.c" />
     <ClCompile Include="..\..\source\extensions\stdapi\server\railgun\railgun.c" />
-    <ClCompile Include="..\..\source\extensions\stdapi\server\webcam\audio.c"/>
-    <ClCompile Include="..\..\source\extensions\stdapi\server\webcam\bmp2jpeg.c"/>
-    <ClCompile Include="..\..\source\extensions\stdapi\server\webcam\webcam.cpp"/>
+    <ClCompile Include="..\..\source\extensions\stdapi\server\webcam\audio.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\webcam\bmp2jpeg.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\webcam\webcam.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="..\..\source\extensions\stdapi\server\resource\stdapi.rc"/>
+    <ResourceCompile Include="..\..\source\extensions\stdapi\server\resource\stdapi.rc" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\source\extensions\stdapi\server\precomp.h" />
+    <ClInclude Include="..\..\source\extensions\stdapi\server\sys\config\config.h" />
     <ClInclude Include="..\..\source\extensions\stdapi\stdapi.h" />
     <ClInclude Include="..\..\source\extensions\stdapi\server\net\net.h" />
     <ClInclude Include="..\..\source\extensions\stdapi\server\net\socket\tcp.h" />
