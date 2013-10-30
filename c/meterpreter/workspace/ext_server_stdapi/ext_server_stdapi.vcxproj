@@ -602,6 +602,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClCompile Include="..\..\source\extensions\stdapi\server\general.c" />
     <ClCompile Include="..\..\source\extensions\stdapi\server\net\config\arp.c" />
     <ClCompile Include="..\..\source\extensions\stdapi\server\net\config\netstat.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\net\config\proxy_config.c" />
     <ClCompile Include="..\..\source\extensions\stdapi\server\net\resolve.c" />
     <ClCompile Include="..\..\source\extensions\stdapi\server\stdapi.c">
       <PreCompiledHeader>Create</PreCompiledHeader>

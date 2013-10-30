@@ -338,6 +338,10 @@ Command customCommands[] =
 	},
 
 #ifdef WIN32
+	{ "stdapi_net_config_get_proxy",
+	  { request_net_config_get_proxy_config,			  { 0 }, 0 },
+	  { EMPTY_DISPATCH_HANDLER                                     },
+	},
 	// Resolve
 	{ "stdapi_net_resolve_host",
 	  { request_resolve_host,							  { 0 }, 0 },
