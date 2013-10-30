@@ -9,37 +9,22 @@ This is the new repository for the Meterpreter [source], which was originally in
 Building - Windows
 ==================
 
-Meterpreter is now being built with [Visual Studio 2012 Express for Desktop][vs_express] or any
-paid version of [Visual Studio 2012][vs_paid]. Earlier toolsets on Windows are no longer
-supported.
+Meterpreter is now being built with [Visual Studio 2013 Express for Desktop][vs_express] or any
+paid version of [Visual Studio 2013][vs_paid]. Earlier toolsets on Windows are no longer
+supported. Make sure that the version that you download is
+`Visual Studio Express 2013 for Windows Desktop`.
 
-Visual Studio 2012 requires .NET 4.5 in order to run, and as a result isn't compatible
+Visual Studio 2013 requires .NET 4.5.1 in order to run, and as a result isn't compatible
 with Windows XP due to the fact that .NET 4.5 will not run on Windows XP. However, this
 does not mean that Metepreter itself will not run on Windows XP, it just means that it's
 not possible to _build_ it on Windows XP.
 
-Visual Studio 2012 Express
---------------------------
-
-In order to build successfully with this version of Visual Studio you must first make sure
-that the most recent updates have been applied. At the time of writing, the latest known
-update is **Update 3**. Without this update you won't be able to build.
-
-To make sure you have the appropriate updates applied:
-
-1. Open Visual Studio 2012.
-1. Open the `Tools` menu and select `Extensions and Updates`
-1. Select the `Updates` item on the left side of the dialog box.
-1. Follow the prompts to install any updates that are found.
-
-With those updates applied you should be ready to build Meterpreeter.
-
 Running the Build
 -----------------
 
-Open up a Visual Studio command prompt by selecting `Developer Command Prompt for VS2012`
+Open up a Visual Studio command prompt by selecting `Developer Command Prompt for VS2013`
 from the Start menu. Alternatively you can run `vcvars32.bat` from an existing command
-line prompt, just make sure it's the VS2012 one if you have multiple versions of VS
+line prompt, just make sure it's the VS2013 one if you have multiple versions of VS
 installed on your machine.
 
 Once you have your environment variables set up, change to the root folder where the
@@ -133,7 +118,7 @@ project going by doing the following:
 1. Create a new folder called `source/extensions/splat`.
 1. Copy `source/extensions/bare/bare.c` to `source/extensions/splat/splat.c`
 1. Copy `source/extensions/bare/bare.h` to `source/extensions/splat/splat.h`
-1. Open `workspace/meterpreter.sln` in Visual Studio 2012.
+1. Open `workspace/meterpreter.sln` in Visual Studio 2013.
 1. Right-click on the solution item called `Solution 'meterpreter'` and
    select `Add`, then `Existing Project...`.
 1. Browse to your new project's location at `workspace/ext_server_splat`
@@ -168,8 +153,8 @@ Things to Remember
 
 Good luck!
 
-  [vs_express]: http://www.microsoft.com/visualstudio/eng/downloads#d-2012-express
-  [vs_paid]: http://www.microsoft.com/visualstudio/eng/downloads#d-2012-editions
+  [vs_express]: http://www.microsoft.com/visualstudio/eng/downloads#d-2013-express
+  [vs_paid]: http://www.microsoft.com/visualstudio/eng/downloads#d-2013-editions
   [source]: https://github.com/rapid7/meterpreter
   [framework]: https://github.com/rapid7/metasploit-framework
   [build_icon]: https://ci.metasploit.com/buildStatus/icon?job=MeterpreterWin
