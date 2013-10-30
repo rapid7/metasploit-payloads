@@ -5,5 +5,6 @@ notifications:
   irc: "irc.freenode.org#msfnotify"
 
 before_install:
+  - sudo apt-get update
   - sudo apt-get install jam
   - sudo apt-get install gcc-multilib

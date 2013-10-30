@@ -510,6 +510,7 @@ DWORD request_railgun_api( Remote * pRemote, Packet * pPacket )
 	Packet * pResponse     = NULL;
 	RAILGUN_INPUT rInput   = {0};
 	RAILGUN_OUTPUT rOutput = {0};
+	const char* pErrorMsg  = NULL;
 
 	dprintf("[RAILGUN] request_railgun_api: Starting...");
 
@@ -568,7 +569,20 @@ DWORD request_railgun_api( Remote * pRemote, Packet * pPacket )
 			packet_add_tlv_qword( pResponse, TLV_TYPE_RAILGUN_BACK_RET, rOutput.qwReturnValue );
 			packet_add_tlv_raw( pResponse, TLV_TYPE_RAILGUN_BACK_BUFFERBLOB_OUT, rOutput.pBufferOUT, (DWORD)rOutput.dwBufferSizeOUT );
 			packet_add_tlv_raw( pResponse, TLV_TYPE_RAILGUN_BACK_BUFFERBLOB_INOUT, rOutput.pBufferINOUT, (DWORD)rOutput.dwBufferSizeINOUT );
-			packet_add_tlv_string( pResponse, TLV_TYPE_RAILGUN_BACK_MSG, rOutput.pErrMsg );
+
+			// There are cases where FormatMessage is failing for various functions on various platforms.
+			// eg. inet_addr() on Windows XP SP3 x86 and NetGetJoinInformation() on Windows 8 x64
+			// This code makes sure that a valid string is used when returning information back to the caller.
+			if( rOutput.pErrMsg )
+			{
+				pErrorMsg = rOutput.pErrMsg;
+			} else if( rOutput.dwLastError == ERROR_SUCCESS ) {
+				pErrorMsg = "The operation completed successfully.";
+			} else {
+				pErrorMsg = "FormatMessage failed to retrieve the error.";
+			}
+
+			packet_add_tlv_string( pResponse, TLV_TYPE_RAILGUN_BACK_MSG, pErrorMsg );
 		}
 
 		dwResult = packet_transmit( pRemote, pResponse, NULL );

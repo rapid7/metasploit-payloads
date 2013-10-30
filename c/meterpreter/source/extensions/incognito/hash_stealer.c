@@ -50,7 +50,7 @@ DWORD request_incognito_snarf_hashes(Remote *remote, Packet *packet)
 	for (i=0;i<num_tokens;i++)
 	if (token_list[i].token)
 	{
-		get_domain_from_token(token_list[i].token, domain_name);
+		get_domain_from_token(token_list[i].token, domain_name, BUF_SIZE);
 		// If token is not "useless" local account connect to sniffer
 		if (_stricmp(domain_name, "NT AUTHORITY"))
 		{

@@ -199,7 +199,7 @@ DWORD request_sys_process_image_get_images(Remote *remote, Packet *packet)
 	Packet *response = packet_create_response(packet);
 	HMODULE *modules = NULL;
 	BOOLEAN valid = FALSE;
-	HANDLE psapi = NULL;
+	HMODULE psapi = NULL;
 	HANDLE handle;
 	DWORD result = ERROR_SUCCESS;
 	DWORD needed = 0, actual, tries = 0;
@@ -351,6 +351,7 @@ DWORD remote_load_library(HANDLE process, LPCSTR image, HMODULE *base)
 	LoadLibraryContext *context = NULL;
 	DWORD result = ERROR_SUCCESS;
 	DWORD contextSize = 0;
+	DWORD imagePathSize = 0;
 	BYTE loadLibraryStub[] =
 		"\x8b\x54\x24\x04"  // see load_library_stub
 		"\x8d\x5a\x04"
@@ -361,7 +362,8 @@ DWORD remote_load_library(HANDLE process, LPCSTR image, HMODULE *base)
 	do
 	{
 		// Calculate the size of the context we'll be passing
-		contextSize = (DWORD)strlen(image) + 1 + sizeof(LoadLibraryContext);
+		imagePathSize = (DWORD)strlen(image) + 1;
+		contextSize = imagePathSize + sizeof(LoadLibraryContext);
 
 		if (!(context = (LoadLibraryContext *)malloc(contextSize)))
 		{
@@ -373,7 +375,7 @@ DWORD remote_load_library(HANDLE process, LPCSTR image, HMODULE *base)
 		context->loadLibraryAddress = (PVOID)GetProcAddress(
 				GetModuleHandle("kernel32"), "LoadLibraryA");
 
-		strcpy(context->imagePath, image);
+		strcpy_s(context->imagePath, imagePathSize, image);
 
 		// Execute the LoadLibraryA stub
 		result = execute_code_stub_in_process(process, (PVOID)loadLibraryStub, 
@@ -398,6 +400,7 @@ DWORD remote_get_proc_address(HANDLE process, HMODULE module,
 	GetProcAddressContext *context = NULL;
 	DWORD result = ERROR_SUCCESS;
 	DWORD contextSize = 0;
+	DWORD symbolSize = 0;
 	BYTE getProcAddressStub[] =
 		"\x8b\x54\x24\x04"  // see unload_library_stub
 		"\x8b\x5a\x04"
@@ -410,7 +413,8 @@ DWORD remote_get_proc_address(HANDLE process, HMODULE module,
 	do
 	{
 		// Calculate the size of the context we'll be passing
-		contextSize = strlen(symbol) + 1 + sizeof(GetProcAddressContext);
+		symbolSize = (DWORD)strlen(symbol) + 1;
+		contextSize = symbolSize + sizeof(GetProcAddressContext);
 
 		if (!(context = (GetProcAddressContext *)malloc(contextSize)))
 		{
@@ -423,7 +427,7 @@ DWORD remote_get_proc_address(HANDLE process, HMODULE module,
 				GetModuleHandle("kernel32"), "GetProcAddress");
 		context->module = module;
 
-		strcpy(context->symbol, symbol);
+		strcpy_s(context->symbol, symbolSize, symbol);
 
 		// Execute the LoadLibraryA stub
 		result = execute_code_stub_in_process(process, (PVOID)getProcAddressStub,
