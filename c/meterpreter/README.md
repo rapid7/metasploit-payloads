@@ -9,10 +9,13 @@ This is the new repository for the Meterpreter [source], which was originally in
 Building - Windows
 ==================
 
-Meterpreter is now being built with [Visual Studio 2013 Express for Desktop][vs_express] or any
-paid version of [Visual Studio 2013][vs_paid]. Earlier toolsets on Windows are no longer
-supported. Make sure that the version that you download is
-`Visual Studio Express 2013 for Windows Desktop`.
+As of commit a2888b1b4862819c9aae81bf46d8c92d8164c598, Meterpreter is built
+with [Visual Studio 2013 Express for Desktop][vs_express] or any paid version
+of [Visual Studio 2013][vs_paid]. Earlier toolsets on Windows are no longer
+supported -- this includes Visual Studio 2012. Make sure that the version that
+you download is `Visual Studio Express 2013 for Windows Desktop`. If you are
+using a dedicated build machine, your best bet is to uninstall Visual Studio
+2012 if your only project is Meterpreter.
 
 Visual Studio 2013 requires .NET 4.5.1 in order to run, and as a result isn't compatible
 with Windows XP due to the fact that .NET 4.5 will not run on Windows XP. However, this
