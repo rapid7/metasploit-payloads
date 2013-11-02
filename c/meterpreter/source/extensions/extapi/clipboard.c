@@ -103,45 +103,45 @@ DWORD request_clipboard_get_data(Remote *remote, Packet *packet)
 
 	do
 	{
-		dprintf("Loading user32.dll");
+		dprintf("[EXTAPI CLIPBOARD] Loading user32.dll");
 		if ((hUser32 = LoadLibraryA("user32.dll")) == NULL)
-			BREAK_ON_ERROR("Unable to load user32.dll");
+			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to load user32.dll");
 
-		dprintf("Loading kernel32.dll");
+		dprintf("[EXTAPI CLIPBOARD] Loading kernel32.dll");
 		if ((hKernel32 = LoadLibraryA("kernel32.dll")) == NULL)
-			BREAK_ON_ERROR("Unable to load kernel32.dll");
+			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to load kernel32.dll");
 
-		dprintf("Searching for GlobalLock");
+		dprintf("[EXTAPI CLIPBOARD] Searching for GlobalLock");
 		if ((pGlobalLock = (PGLOBALLOCK)GetProcAddress(hKernel32, "GlobalLock")) == NULL)
-			BREAK_ON_ERROR("Unable to locate GlobalLock in kernel32.dll");
+			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to locate GlobalLock in kernel32.dll");
 
-		dprintf("Searching for GlobalUnlock");
+		dprintf("[EXTAPI CLIPBOARD] Searching for GlobalUnlock");
 		if ((pGlobalUnlock = (PGLOBALUNLOCK)GetProcAddress(hKernel32, "GlobalUnlock")) == NULL)
-			BREAK_ON_ERROR("Unable to locate GlobalUnlock in kernel32.dll");
+			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to locate GlobalUnlock in kernel32.dll");
 
-		dprintf("Searching for OpenClipboard");
+		dprintf("[EXTAPI CLIPBOARD] Searching for OpenClipboard");
 		if ((pOpenClipboard = (POPENCLIPBOARD)GetProcAddress(hUser32, "OpenClipboard")) == NULL)
-			BREAK_ON_ERROR("Unable to locate OpenClipboard in user32.dll");
+			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to locate OpenClipboard in user32.dll");
 
-		dprintf("Searching for CloseClipboard");
+		dprintf("[EXTAPI CLIPBOARD] Searching for CloseClipboard");
 		if ((pCloseClipboard = (PCLOSECLIPBOARD)GetProcAddress(hUser32, "CloseClipboard")) == NULL)
-			BREAK_ON_ERROR("Unable to locate CloseClipboard in user32.dll");
+			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to locate CloseClipboard in user32.dll");
 
-		dprintf("Searching for GetClipboardData");
+		dprintf("[EXTAPI CLIPBOARD] Searching for GetClipboardData");
 		if ((pGetClipboardData = (PGETCLIPBOARDDATA)GetProcAddress(hUser32, "GetClipboardData")) == NULL)
-			BREAK_ON_ERROR("Unable to locate GetClipboardData in user32.dll");
+			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to locate GetClipboardData in user32.dll");
 
-		dprintf("Searching for EnumClipboardFormats");
+		dprintf("[EXTAPI CLIPBOARD] Searching for EnumClipboardFormats");
 		if ((pEnumClipboardFormats = (PENUMCLIPBOARDFORMATS)GetProcAddress(hUser32, "EnumClipboardFormats")) == NULL)
-			BREAK_ON_ERROR("Unable to locate EnumClipboardFormats in user32.dll");
+			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to locate EnumClipboardFormats in user32.dll");
 
 		// Try to get a lock on the clipboard
 		if (!pOpenClipboard(NULL)) {
 			dwResult = GetLastError();
-			BREAK_WITH_ERROR("Unable to open the clipboard", dwResult);
+			BREAK_WITH_ERROR("[EXTAPI CLIPBOARD] Unable to open the clipboard", dwResult);
 		}
 
-		dprintf("Clipboard locked, attempting to get data...");
+		dprintf("[EXTAPI CLIPBOARD] Clipboard locked, attempting to get data...");
 
 		while (uFormat = pEnumClipboardFormats(uFormat))
 		{
@@ -150,7 +150,7 @@ DWORD request_clipboard_get_data(Remote *remote, Packet *packet)
 				if ((hClipboardData = pGetClipboardData(CF_TEXT)) != NULL
 					&& (lpClipString = (PCHAR)pGlobalLock(hClipboardData)) != NULL) {
 
-					dprintf("Clipboard text captured: %s", lpClipString);
+					dprintf("[EXTAPI CLIPBOARD] Clipboard text captured: %s", lpClipString);
 					packet_add_tlv_string(pResponse, TLV_TYPE_EXT_CLIPBOARD_TYPE_TEXT, lpClipString);
 
 					pGlobalUnlock(hClipboardData);
@@ -158,13 +158,14 @@ DWORD request_clipboard_get_data(Remote *remote, Packet *packet)
 			}
 			else if (uFormat == CF_DIB) {
 				// an image of some kind is on the clipboard
-				dprintf("Grabbing the clipboard bitmap data");
+				dprintf("[EXTAPI CLIPBOARD] Grabbing the clipboard bitmap data");
 				if ((hClipboardData = pGetClipboardData(CF_DIB)) != NULL
 					&& (lpBI = (LPBITMAPINFO)pGlobalLock(hClipboardData)) != NULL) {
 
-					if (convert_to_jpg(lpBI, (LPVOID)(lpBI + 1), 80, &image) == ERROR_SUCCESS) {
+					// TODO: add the ability to encode with multiple encoders and return the smallest image.
+					if (convert_to_jpg(lpBI, (LPVOID)(lpBI + 1), 100, &image) == ERROR_SUCCESS) {
 
-						dprintf("Clipboard bitmap captured to image: %p, Size: %u bytes", image.pImageBuffer, image.dwImageBufferSize);
+						dprintf("[EXTAPI CLIPBOARD] Clipboard bitmap captured to image: %p, Size: %u bytes", image.pImageBuffer, image.dwImageBufferSize);
 						packet_add_tlv_raw(pResponse, TLV_TYPE_EXT_CLIPBOARD_TYPE_JPG, image.pImageBuffer, image.dwImageBufferSize);
 
 						// Just leaving this in for debugging purposes later on
@@ -180,40 +181,40 @@ DWORD request_clipboard_get_data(Remote *remote, Packet *packet)
 			}
 			else if (uFormat == CF_HDROP) {
 				// there's one or more files on the clipboard
-				dprintf("Files have been located on the clipboard");
+				dprintf("[EXTAPI CLIPBOARD] Files have been located on the clipboard");
 				do
 				{
-					dprintf("Loading shell32.dll");
+					dprintf("[EXTAPI CLIPBOARD] Loading shell32.dll");
 					if ((hShell32 = LoadLibraryA("shell32.dll")) == NULL)
-						BREAK_ON_ERROR("Unable to load shell32.dll");
+						BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to load shell32.dll");
 
-					dprintf("Searching for CreateFileA");
+					dprintf("[EXTAPI CLIPBOARD] Searching for CreateFileA");
 					if ((pCreateFileA = (PCREATEFILEA)GetProcAddress(hKernel32, "CreateFileA")) == NULL)
-						BREAK_ON_ERROR("Unable to locate CreateFileA in kernel32.dll");
+						BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to locate CreateFileA in kernel32.dll");
 
-					dprintf("Searching for CloseHandle");
+					dprintf("[EXTAPI CLIPBOARD] Searching for CloseHandle");
 					if ((pCloseHandle = (PCLOSEHANDLE)GetProcAddress(hKernel32, "CloseHandle")) == NULL)
-						BREAK_ON_ERROR("Unable to locate CloseHandle in kernel32.dll");
+						BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to locate CloseHandle in kernel32.dll");
 
-					dprintf("Searching for GetFileSizeEx");
+					dprintf("[EXTAPI CLIPBOARD] Searching for GetFileSizeEx");
 					if ((pGetFileSizeEx = (PGETFILESIZEEX)GetProcAddress(hKernel32, "GetFileSizeEx")) == NULL)
-						BREAK_ON_ERROR("Unable to locate GetFileSizeEx in kernel32.dll");
+						BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to locate GetFileSizeEx in kernel32.dll");
 
-					dprintf("Searching for DragQueryFileA");
+					dprintf("[EXTAPI CLIPBOARD] Searching for DragQueryFileA");
 					if ((pDragQueryFileA = (PDRAGQUERYFILEA)GetProcAddress(hShell32, "DragQueryFileA")) == NULL)
-						BREAK_ON_ERROR("Unable to locate CloseClipboard in shell32.dll");
+						BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to locate CloseClipboard in shell32.dll");
 
-					dprintf("Grabbing the clipboard file drop data");
+					dprintf("[EXTAPI CLIPBOARD] Grabbing the clipboard file drop data");
 					if ((hClipboardData = pGetClipboardData(CF_HDROP)) != NULL
 						&& (hFileDrop = (HDROP)pGlobalLock(hClipboardData)) != NULL) {
 
 						uFileCount = pDragQueryFileA(hFileDrop, (UINT)-1, NULL, 0);
 
-						dprintf("Parsing %u file(s) on the clipboard.", uFileCount);
+						dprintf("[EXTAPI CLIPBOARD] Parsing %u file(s) on the clipboard.", uFileCount);
 
 						for (uFileIndex = 0; uFileIndex < uFileCount; ++uFileIndex) {
 							if (pDragQueryFileA(hFileDrop, uFileIndex, lpFileName, sizeof(lpFileName))) {
-								dprintf("Clipboard file entry: %s", lpFileName);
+								dprintf("[EXTAPI CLIPBOARD] Clipboard file entry: %s", lpFileName);
 
 								memset(&entries, 0, sizeof(entries));
 								memset(&largeInt, 0, sizeof(largeInt));
@@ -305,43 +306,43 @@ DWORD request_clipboard_set_data(Remote *remote, Packet *packet)
 	do
 	{
 		if ((lpClipString = packet_get_tlv_value_string(packet, TLV_TYPE_EXT_CLIPBOARD_TYPE_TEXT)) == NULL)
-			BREAK_WITH_ERROR("No string data specified", ERROR_INVALID_PARAMETER);
+			BREAK_WITH_ERROR("[EXTAPI CLIPBOARD] No string data specified", ERROR_INVALID_PARAMETER);
 
-		dprintf("Loading user32.dll");
+		dprintf("[EXTAPI CLIPBOARD] Loading user32.dll");
 		if ((hUser32 = LoadLibraryA("user32.dll")) == NULL)
-			BREAK_ON_ERROR("Unable to load user32.dll");
+			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to load user32.dll");
 
-		dprintf("Loading kernel32.dll");
+		dprintf("[EXTAPI CLIPBOARD] Loading kernel32.dll");
 		if ((hKernel32 = LoadLibraryA("kernel32.dll")) == NULL)
-			BREAK_ON_ERROR("Unable to load kernel32.dll");
+			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to load kernel32.dll");
 
-		dprintf("Searching for GlobalAlloc");
+		dprintf("[EXTAPI CLIPBOARD] Searching for GlobalAlloc");
 		if ((pGlobalAlloc = (PGLOBALALLOC)GetProcAddress(hKernel32, "GlobalAlloc")) == NULL)
-			BREAK_ON_ERROR("Unable to locate GlobalAlloc in kernel32.dll");
+			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to locate GlobalAlloc in kernel32.dll");
 
-		dprintf("Searching for GlobalLock");
+		dprintf("[EXTAPI CLIPBOARD] Searching for GlobalLock");
 		if ((pGlobalLock = (PGLOBALLOCK)GetProcAddress(hKernel32, "GlobalLock")) == NULL)
-			BREAK_ON_ERROR("Unable to locate GlobalLock in kernel32.dll");
+			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to locate GlobalLock in kernel32.dll");
 
-		dprintf("Searching for GlobalUnlock");
+		dprintf("[EXTAPI CLIPBOARD] Searching for GlobalUnlock");
 		if ((pGlobalUnlock = (PGLOBALUNLOCK)GetProcAddress(hKernel32, "GlobalUnlock")) == NULL)
-			BREAK_ON_ERROR("Unable to locate GlobalUnlock in kernel32.dll");
+			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to locate GlobalUnlock in kernel32.dll");
 
-		dprintf("Searching for OpenClipboard");
+		dprintf("[EXTAPI CLIPBOARD] Searching for OpenClipboard");
 		if ((pOpenClipboard = (POPENCLIPBOARD)GetProcAddress(hUser32, "OpenClipboard")) == NULL)
-			BREAK_ON_ERROR("Unable to locate OpenClipboard in user32.dll");
+			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to locate OpenClipboard in user32.dll");
 
-		dprintf("Searching for CloseClipboard");
+		dprintf("[EXTAPI CLIPBOARD] Searching for CloseClipboard");
 		if ((pCloseClipboard = (PCLOSECLIPBOARD)GetProcAddress(hUser32, "CloseClipboard")) == NULL)
-			BREAK_ON_ERROR("Unable to locate CloseClipboard in user32.dll");
+			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to locate CloseClipboard in user32.dll");
 
-		dprintf("Searching for EmptyClipboard");
+		dprintf("[EXTAPI CLIPBOARD] Searching for EmptyClipboard");
 		if ((pEmptyClipboard = (PEMPTYCLIPBOARD)GetProcAddress(hUser32, "EmptyClipboard")) == NULL)
-			BREAK_ON_ERROR("Unable to locate EmptyClipboard in user32.dll");
+			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to locate EmptyClipboard in user32.dll");
 
-		dprintf("Searching for SetClipboardData");
+		dprintf("[EXTAPI CLIPBOARD] Searching for SetClipboardData");
 		if ((pSetClipboardData = (PSETCLIPBOARDDATA)GetProcAddress(hUser32, "SetClipboardData")) == NULL)
-			BREAK_ON_ERROR("Unable to locate SetClipboardData in user32.dll");
+			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to locate SetClipboardData in user32.dll");
 
 		cbStringBytes = (SIZE_T)strlen(lpClipString) + 1;
 
@@ -351,7 +352,7 @@ DWORD request_clipboard_set_data(Remote *remote, Packet *packet)
 		if ((hClipboardData = pGlobalAlloc(GMEM_MOVEABLE | GMEM_DDESHARE, cbStringBytes)) == NULL) {
 			dwResult = GetLastError();
 			pCloseClipboard();
-			BREAK_WITH_ERROR("Failed to allocate clipboard memory", dwResult);
+			BREAK_WITH_ERROR("[EXTAPI CLIPBOARD] Failed to allocate clipboard memory", dwResult);
 		}
 
 		lpLockedData = (PCHAR)pGlobalLock(hClipboardData);
@@ -363,7 +364,7 @@ DWORD request_clipboard_set_data(Remote *remote, Packet *packet)
 		// Try to get a lock on the clipboard
 		if (!pOpenClipboard(NULL)) {
 			dwResult = GetLastError();
-			BREAK_WITH_ERROR("Unable to open the clipboard", dwResult);
+			BREAK_WITH_ERROR("[EXTAPI CLIPBOARD] Unable to open the clipboard", dwResult);
 		}
 
 		// Clear the clipboard data
@@ -371,7 +372,7 @@ DWORD request_clipboard_set_data(Remote *remote, Packet *packet)
 
 		if (!pSetClipboardData(CF_TEXT, hClipboardData)) {
 			dwResult = GetLastError();
-			dprintf("Failed to set the clipboad data: %u", dwResult);
+			dprintf("[EXTAPI CLIPBOARD] Failed to set the clipboad data: %u", dwResult);
 		}
 		else {
 			dwResult = ERROR_SUCCESS;
@@ -384,7 +385,7 @@ DWORD request_clipboard_set_data(Remote *remote, Packet *packet)
 	// If something went wrong and we have clipboard data, then we need to
 	// free it up because the clipboard can't do it for us.
 	if (dwResult != ERROR_SUCCESS && hClipboardData != NULL) {
-		dprintf("Searching for GlobalFree");
+		dprintf("[EXTAPI CLIPBOARD] Searching for GlobalFree");
 		if ((pGlobalFree = (PGLOBALFREE)GetProcAddress(hKernel32, "GlobalFree")) != NULL)
 			pGlobalFree(hClipboardData);
 	}

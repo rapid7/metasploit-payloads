@@ -29,6 +29,13 @@ typedef struct _EnumWindowsState
 	PGETWINDOWTHREADPROCESSID pGetWindowThreadProcessId;   ///< Pointer to the GetWindowThreadProcessId function.
 } EnumWindowsState;
 
+/*!
+ * @brief Callback used during enumeration of desktop Windows.
+ * @hWnd Handle to the Window that was enumerated.
+ * @hWnd lParam State value passed in during enumeration.
+ * @returns Indication of whether to continue enumeration.
+ *          This function always returns \c TRUE.
+ */
 BOOL CALLBACK enumerate_windows_callback(HWND hWnd, LPARAM lParam)
 {
 	char windowTitle[MAX_WINDOW_TITLE];
@@ -36,13 +43,13 @@ BOOL CALLBACK enumerate_windows_callback(HWND hWnd, LPARAM lParam)
 	DWORD dwProcessId = 0;
 	EnumWindowsState* pState = (EnumWindowsState*)lParam;
 
-	dprintf("Enumerated window %x", hWnd);
+	dprintf("[EXTAPI WINDOW] Enumerated window %x", hWnd);
 
 	do
 	{
-		dprintf("Getting window title %p", pState->pGetWindowTextA);
+		dprintf("[EXTAPI WINDOW] Getting window title %p", pState->pGetWindowTextA);
 		if (pState->pGetWindowTextA(hWnd, windowTitle, MAX_WINDOW_TITLE) == 0) {
-			dprintf("Unable to get window title. Setting to <unknown>.");
+			dprintf("[EXTAPI WINDOW] Unable to get window title. Setting to <unknown>.");
 			if (pState->bIncludeUnknown) {
 				strncpy_s(windowTitle, MAX_WINDOW_TITLE, "<unknown>", MAX_WINDOW_TITLE - 1);
 			}
@@ -51,10 +58,10 @@ BOOL CALLBACK enumerate_windows_callback(HWND hWnd, LPARAM lParam)
 			}
 		}
 
-		dprintf("Getting process ID %p", pState->pGetWindowThreadProcessId);
+		dprintf("[EXTAPI WINDOW] Getting process ID %p", pState->pGetWindowThreadProcessId);
 		dwThreadId = pState->pGetWindowThreadProcessId(hWnd, &dwProcessId);
 
-		dprintf(" Adding enumerated response");
+		dprintf("[EXTAPI WINDOW] Adding enumerated response");
 		add_enumerated_window(pState->pResponse, (QWORD)hWnd, windowTitle, dwProcessId);
 	} while (0);
 
@@ -62,6 +69,15 @@ BOOL CALLBACK enumerate_windows_callback(HWND hWnd, LPARAM lParam)
 }
 #endif
 
+/*!
+ * @brief Perform enumeration of windows.
+ * @param response Pointer to the \c Packet which will contain the response.
+ * @param bIncludeUnknown Set to \c TRUE if unknown windows are to be included.
+ * @param parentWindow Handle to the parent window to use for enumeration.
+ *        Set this value to \c NULL to enumerate top-level windows.
+ * @returns Indication success or failure.
+ * @remark This function is currently only supported in Windows (not POSIX).
+ */
 DWORD enumerate_windows(Packet *response, BOOL bIncludeUnknown, QWORD parentWindow)
 {
 #ifdef _WIN32
@@ -74,30 +90,31 @@ DWORD enumerate_windows(Packet *response, BOOL bIncludeUnknown, QWORD parentWind
 
 	do
 	{
-		dprintf("Loading user32.dll");
+		dprintf("[EXTAPI WINDOW] Loading user32.dll");
 		if ((hUser32 = LoadLibraryA("user32.dll")) == NULL)
-			BREAK_ON_ERROR("Unable to load user32.dll");
+			BREAK_ON_ERROR("[EXTAPI WINDOW] Unable to load user32.dll");
 
-		dprintf("Searching for GetWindowTextA");
+		dprintf("[EXTAPI WINDOW] Searching for GetWindowTextA");
 		if ((state.pGetWindowTextA = (PGETWINDOWTEXA)GetProcAddress(hUser32, "GetWindowTextA")) == NULL)
-			BREAK_ON_ERROR("Unable to locate GetWindowTextA in user32.dll");
-		dprintf("Found GetWindowTextA %p", state.pGetWindowTextA);
+			BREAK_ON_ERROR("[EXTAPI WINDOW] Unable to locate GetWindowTextA in user32.dll");
+		dprintf("[EXTAPI WINDOW] Found GetWindowTextA %p", state.pGetWindowTextA);
 
-		dprintf("Searching for GetWindowThreadProcessId");
+		dprintf("[EXTAPI WINDOW] Searching for GetWindowThreadProcessId");
 		if ((state.pGetWindowThreadProcessId = (PGETWINDOWTHREADPROCESSID)GetProcAddress(hUser32, "GetWindowThreadProcessId")) == NULL)
-			BREAK_ON_ERROR("Unable to locate GetWindowThreadProcessId in user32.dll");
-		dprintf("Found GetWindowThreadProcessId %p", state.pGetWindowThreadProcessId);
+			BREAK_ON_ERROR("[EXTAPI WINDOW] Unable to locate GetWindowThreadProcessId in user32.dll");
+
+		dprintf("[EXTAPI WINDOW] Found GetWindowThreadProcessId %p", state.pGetWindowThreadProcessId);
 
 		state.pResponse = response;
 		state.bIncludeUnknown = bIncludeUnknown;
 
-		dprintf("Searching for EnumChildWindows");
+		dprintf("[EXTAPI WINDOW] Searching for EnumChildWindows");
 		if ((pEnumChildWindows = (PENUMCHILDWINDOWS)GetProcAddress(hUser32, "EnumChildWindows")) == NULL)
-			BREAK_ON_ERROR("Unable to locate EnumChildWindows in user32.dll");
+			BREAK_ON_ERROR("[EXTAPI WINDOW] Unable to locate EnumChildWindows in user32.dll");
 
-		dprintf("Beginning enumeration of child windows with parent %u", parentWindow);
+		dprintf("[EXTAPI WINDOW] Beginning enumeration of child windows with parent %u", parentWindow);
 		if (!pEnumChildWindows(parentWindow != 0 ? (HWND)parentWindow : NULL, (WNDENUMPROC)enumerate_windows_callback, (LPARAM)&state))
-			BREAK_ON_ERROR("Failed to enumerate child windows");
+			BREAK_ON_ERROR("[EXTAPI WINDOW] Failed to enumerate child windows");
 
 		dwResult = ERROR_SUCCESS;
 	} while (0);
@@ -111,6 +128,12 @@ DWORD enumerate_windows(Packet *response, BOOL bIncludeUnknown, QWORD parentWind
 #endif
 }
 
+/*!
+ * @brief Handle the request for window enumeration.
+ * @param remote Pointer to the \c Remote making the request.
+ * @param packet Pointer to the request \c Packet.
+ * @returns Indication of success or failure.
+ */
 DWORD request_window_enum(Remote *remote, Packet *packet)
 {
 	QWORD parentWindow = 0;
@@ -121,7 +144,7 @@ DWORD request_window_enum(Remote *remote, Packet *packet)
 	do
 	{
 		if (!response) {
-			dprintf("Unable to create response packet");
+			dprintf("[EXTAPI WINDOW] Unable to create response packet");
 			dwResult = ERROR_OUTOFMEMORY;
 			break;
 		}
@@ -133,39 +156,46 @@ DWORD request_window_enum(Remote *remote, Packet *packet)
 		// Extract the flag that indicates of unknown windows should be included in the output
 		bIncludeUnknown = packet_get_tlv_value_bool(packet, TLV_TYPE_EXT_WINDOW_ENUM_INCLUDEUNKNOWN);
 
-		dprintf("Beginning window enumeration");
+		dprintf("[EXTAPI WINDOW] Beginning window enumeration");
 		dwResult = enumerate_windows(response, bIncludeUnknown, parentWindow);
 
 	} while (0);
 
-	dprintf("Transmitting response back to caller.");
+	dprintf("[EXTAPI WINDOW] Transmitting response back to caller.");
 	if (response)
 		packet_transmit_response(dwResult, remote, response);
 
 	return dwResult;
 }
 
+/*!
+ * @brief Add an enumerated window to the response.
+ * @param pResponse Pointer to the \c Response to add the window detail to.
+ * @param qwHandle Handle to the window that was found/enumerated/
+ * @param cpWindowTitle Title of the window.
+ * @param dwProcessId ID of the process that the Window belongs to.
+ */
 VOID add_enumerated_window(Packet *pResponse, QWORD qwHandle, const char* cpWindowTitle, DWORD dwProcessId)
 {
 	Tlv entries[4] = { 0 };
 
-	dprintf("Adding PID: %u", dwProcessId);
+	dprintf("[EXTAPI WINDOW] Adding PID: %u", dwProcessId);
 	dwProcessId = htonl(dwProcessId);
 	entries[0].header.type = TLV_TYPE_EXT_WINDOW_ENUM_PID;
 	entries[0].header.length = sizeof(DWORD);
 	entries[0].buffer = (PUCHAR)&dwProcessId;
 
-	dprintf("Adding Handle: %p", qwHandle);
+	dprintf("[EXTAPI WINDOW] Adding Handle: %p", qwHandle);
 	qwHandle = htonq(qwHandle);
 	entries[1].header.type = TLV_TYPE_EXT_WINDOW_ENUM_HANDLE;
 	entries[1].header.length = sizeof(QWORD);
 	entries[1].buffer = (PUCHAR)&qwHandle;
 
-	dprintf("Adding title: %s", cpWindowTitle);
+	dprintf("[EXTAPI WINDOW] Adding title: %s", cpWindowTitle);
 	entries[2].header.type = TLV_TYPE_EXT_WINDOW_ENUM_TITLE;
 	entries[2].header.length = (DWORD)strlen(cpWindowTitle) + 1;
 	entries[2].buffer = (PUCHAR)cpWindowTitle;
 
-	dprintf("Adding group to response");
+	dprintf("[EXTAPI WINDOW] Adding group to response");
 	packet_add_tlv_group(pResponse, TLV_TYPE_EXT_WINDOW_ENUM_GROUP, entries, 3);
 }

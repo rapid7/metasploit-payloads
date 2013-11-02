@@ -17,6 +17,7 @@
 // this sets the delay load hook function, see DelayLoadMetSrv.h
 EnableDelayLoadMetSrv();
 
+/*! @brief List of commands that the extended API extension providers. */
 Command customCommands[] =
 {
 	COMMAND_REQ("extapi_window_enum", request_window_enum),
@@ -29,6 +30,9 @@ Command customCommands[] =
 
 /*!
  * @brief Initialize the server extension
+ * @details Registers all the extended API commands.
+ * @param remote Pointer to the \c Remote initialising the extension.
+ * @returns Always returns \c ERROR_SUCCESS.
  */
 DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
 {
@@ -43,7 +47,10 @@ DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
 }
 
 /*!
- * @brief Deinitialize the server extension
+ * @brief Deinitialize the server extension.
+ * @details Unregisters all the extended API commands.
+ * @param remote Pointer to the \c Remote destroying the extension.
+ * @returns Always returns \c ERROR_SUCCESS.
  */
 DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
 {

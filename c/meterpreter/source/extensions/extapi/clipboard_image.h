@@ -14,6 +14,9 @@ typedef struct _ConvertedImage
 	 *        \c free to release this memory.
 	 */
 	PBYTE              pImageBuffer;
+	/*!
+	 * @brief The size of the \c pImageBuffer buffer.
+	 */
 	DWORD              dwImageBufferSize;
 } ConvertedImage;
 
