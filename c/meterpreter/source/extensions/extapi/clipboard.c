@@ -97,7 +97,10 @@ DWORD request_clipboard_get_data(Remote *remote, Packet *packet)
 	LARGE_INTEGER largeInt = { 0 };
 	LPBITMAPINFO lpBI = NULL;
 	ConvertedImage image;
-
+	BOOL bImageDownload = FALSE;
+	DWORD dwWidth;
+	DWORD dwHeight;
+	Tlv imageTlv[3];
 
 	Packet *pResponse = packet_create_response(packet);
 
@@ -157,26 +160,61 @@ DWORD request_clipboard_get_data(Remote *remote, Packet *packet)
 				}
 			}
 			else if (uFormat == CF_DIB) {
-				// an image of some kind is on the clipboard
 				dprintf("[EXTAPI CLIPBOARD] Grabbing the clipboard bitmap data");
+				// an image of some kind is on the clipboard
 				if ((hClipboardData = pGetClipboardData(CF_DIB)) != NULL
 					&& (lpBI = (LPBITMAPINFO)pGlobalLock(hClipboardData)) != NULL) {
 
-					// TODO: add the ability to encode with multiple encoders and return the smallest image.
-					if (convert_to_jpg(lpBI, (LPVOID)(lpBI + 1), 100, &image) == ERROR_SUCCESS) {
+					dprintf("[EXTAPI CLIPBOARD] CF_DIB grabbed, extracting dimensions.");
 
-						dprintf("[EXTAPI CLIPBOARD] Clipboard bitmap captured to image: %p, Size: %u bytes", image.pImageBuffer, image.dwImageBufferSize);
-						packet_add_tlv_raw(pResponse, TLV_TYPE_EXT_CLIPBOARD_TYPE_JPG, image.pImageBuffer, image.dwImageBufferSize);
+					// grab the bitmap image size
+					dwWidth = htonl(lpBI->bmiHeader.biWidth);
+					dwHeight = htonl(lpBI->bmiHeader.biHeight);
 
-						// Just leaving this in for debugging purposes later on
-						//hSourceFile = CreateFileA("C:\\temp\\foo.jpg", GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-						//WriteFile(hSourceFile, image.pImageBuffer, image.dwImageBufferSize, &largeInt.LowPart, NULL);
-						//CloseHandle(hSourceFile);
+					imageTlv[0].header.type = TLV_TYPE_EXT_CLIPBOARD_TYPE_IMAGE_JPG_DIMX;
+					imageTlv[0].header.length = sizeof(UINT);
+					imageTlv[0].buffer = (PUCHAR)&dwWidth;
+					imageTlv[1].header.type = TLV_TYPE_EXT_CLIPBOARD_TYPE_IMAGE_JPG_DIMY;
+					imageTlv[1].header.length = sizeof(UINT);
+					imageTlv[1].buffer = (PUCHAR)&dwHeight;
 
-						free(image.pImageBuffer);
+					// only download the image if they want it
+					bImageDownload = packet_get_tlv_value_bool(packet, TLV_TYPE_EXT_CLIPBOARD_DOWNLOAD);
+					dprintf("[EXTAPI CLIPBOARD] Image is %dx%d and %s be downloaded", lpBI->bmiHeader.biWidth, lpBI->bmiHeader.biHeight,
+						bImageDownload ? "WILL" : "will NOT");
+
+					if (!bImageDownload) {
+						packet_add_tlv_group(pResponse, TLV_TYPE_EXT_CLIPBOARD_TYPE_IMAGE_JPG, imageTlv, 2);
+					}
+					else {
+						// TODO: add the ability to encode with multiple encoders and return the smallest image.
+						if (convert_to_jpg(lpBI, (LPVOID)(lpBI + 1), 100, &image) == ERROR_SUCCESS) {
+
+							dprintf("[EXTAPI CLIPBOARD] Clipboard bitmap captured to image: %p, Size: %u bytes", image.pImageBuffer, image.dwImageBufferSize);
+							imageTlv[2].header.type = TLV_TYPE_EXT_CLIPBOARD_TYPE_IMAGE_JPG_DATA;
+							imageTlv[2].header.length = image.dwImageBufferSize;
+							imageTlv[2].buffer = (PUCHAR)image.pImageBuffer;
+
+							packet_add_tlv_group(pResponse, TLV_TYPE_EXT_CLIPBOARD_TYPE_IMAGE_JPG, imageTlv, 3);
+
+							// Just leaving this in for debugging purposes later on
+							//hSourceFile = CreateFileA("C:\\temp\\foo.jpg", GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+							//WriteFile(hSourceFile, image.pImageBuffer, image.dwImageBufferSize, &largeInt.LowPart, NULL);
+							//CloseHandle(hSourceFile);
+
+							free(image.pImageBuffer);
+						}
+						else {
+							dwResult = GetLastError();
+							dprintf("[EXTAPI CLIPBOARD] Failed to convert clipboard image to JPG");
+						}
 					}
 
 					pGlobalUnlock(hClipboardData);
+				}
+				else {
+					dwResult = GetLastError();
+					dprintf("[EXTAPI CLIPBOARD] Failed to get access to the CF_DIB information");
 				}
 			}
 			else if (uFormat == CF_HDROP) {
