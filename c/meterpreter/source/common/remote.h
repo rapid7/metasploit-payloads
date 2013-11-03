@@ -1,14 +1,13 @@
 #ifndef _METERPRETER_LIB_REMOTE_H
 #define _METERPRETER_LIB_REMOTE_H
 
-
-
 #include "crypto.h"
 #include "thread.h"
-/*
- * Remote context allocation
+
+/*!
+ * @brief Remote context allocation.
  *
- * Wraps the initialized file descriptor for extension purposes
+ * Wraps the initialized file descriptor for extension purposes.
  */
 typedef struct _Remote
 {

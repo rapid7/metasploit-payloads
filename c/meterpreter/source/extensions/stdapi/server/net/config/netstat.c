@@ -261,13 +261,13 @@ DWORD windows_get_tcp_table(struct connection_table **table_connection)
 					state = currentv4->dwState;
 					if ((state <= 0) || (state > 12))
 						state = 13; // points to UNKNOWN in the state array
-					strncpy(current_connection->state, tcp_connection_states[state], sizeof(current_connection->state));
-					strncpy(current_connection->protocol, "tcp", sizeof(current_connection->protocol));
+					strncpy((char*)current_connection->state, tcp_connection_states[state], sizeof(current_connection->state) - 1);
+					strncpy((char*)current_connection->protocol, "tcp", sizeof(current_connection->protocol) - 1);
 
 					// force program_name to "-" and try to get real name through GetOwnerModuleFromXXXEntry
-					strncpy(current_connection->program_name, "-", sizeof(current_connection->program_name));
+					strncpy((char*)current_connection->program_name, "-", sizeof(current_connection->program_name) - 1);
 
-					set_process_name(currentv4->dwOwningPid, current_connection->program_name, sizeof(current_connection->program_name));
+					set_process_name(currentv4->dwOwningPid, (char*)current_connection->program_name, sizeof(current_connection->program_name) - 1);
 
 					(*table_connection)->entries++;
 				}
@@ -307,13 +307,13 @@ DWORD windows_get_tcp_table(struct connection_table **table_connection)
 					state = currentv6->dwState;
 					if ((state <= 0) || (state > 12))
 						state = 13; // points to UNKNOWN in the state array
-					strncpy(current_connection->state, tcp_connection_states[state], sizeof(current_connection->state));
-					strncpy(current_connection->protocol, "tcp6", sizeof(current_connection->protocol));
+					strncpy((char*)current_connection->state, tcp_connection_states[state], sizeof(current_connection->state) - 1);
+					strncpy((char*)current_connection->protocol, "tcp6", sizeof(current_connection->protocol) - 1);
 
 					// force program_name to "-" and try to get real name through GetOwnerModuleFromXXXEntry
-					strncpy(current_connection->program_name, "-", sizeof(current_connection->program_name));
+					strncpy((char*)current_connection->program_name, "-", sizeof(current_connection->program_name) - 1);
 
-					set_process_name(currentv6->dwOwningPid, current_connection->program_name, sizeof(current_connection->program_name));
+					set_process_name(currentv6->dwOwningPid, (char*)current_connection->program_name, sizeof(current_connection->program_name));
 
 					(*table_connection)->entries++;
 				}
@@ -373,11 +373,11 @@ DWORD windows_get_udp_table_win2000_down(struct connection_table **table_connect
 				current_connection->remote_port      = 0;
 
 				// force state to ""
-				strncpy(current_connection->state, "", sizeof(current_connection->state));
-				strncpy(current_connection->protocol, "udp", sizeof(current_connection->protocol));
+				strncpy((char*)current_connection->state, "", sizeof(current_connection->state) - 1);
+				strncpy((char*)current_connection->protocol, "udp", sizeof(current_connection->protocol) - 1);
 
 				// force program_name to "-"
-				strncpy(current_connection->program_name, "-", sizeof(current_connection->program_name));
+				strncpy((char*)current_connection->program_name, "-", sizeof(current_connection->program_name) - 1);
 
 				(*table_connection)->entries++;
 			}
@@ -435,13 +435,13 @@ DWORD windows_get_udp_table(struct connection_table **table_connection)
 					current_connection->local_port       = ntohs((u_short)(currentv4->dwLocalPort & 0x0000ffff));
 					current_connection->remote_port  = 0;
 
-					strncpy(current_connection->state, "", sizeof(current_connection->state));
-					strncpy(current_connection->protocol, "udp", sizeof(current_connection->protocol));
+					strncpy((char*)current_connection->state, "", sizeof(current_connection->state) - 1);
+					strncpy((char*)current_connection->protocol, "udp", sizeof(current_connection->protocol) - 1);
 
 					// force program_name to "-" and try to get real name through GetOwnerModuleFromXXXEntry
-					strncpy(current_connection->program_name, "-", sizeof(current_connection->program_name));
+					strncpy((char*)current_connection->program_name, "-", sizeof(current_connection->program_name) - 1);
 
-					set_process_name(currentv4->dwOwningPid, current_connection->program_name, sizeof(current_connection->program_name));
+					set_process_name(currentv4->dwOwningPid, (char*)current_connection->program_name, sizeof(current_connection->program_name));
 
 					(*table_connection)->entries++;
 				}
@@ -474,13 +474,13 @@ DWORD windows_get_udp_table(struct connection_table **table_connection)
 					current_connection->local_port   = ntohs((u_short)(currentv6->dwLocalPort & 0x0000ffff));
 					current_connection->remote_port  = 0;
 
-					strncpy(current_connection->state, "", sizeof(current_connection->state));
-					strncpy(current_connection->protocol, "udp6", sizeof(current_connection->protocol));
+					strncpy((char*)current_connection->state, "", sizeof(current_connection->state) - 1);
+					strncpy((char*)current_connection->protocol, "udp6", sizeof(current_connection->protocol) - 1);
 
 					// force program_name to "-" and try to get real name through GetOwnerModuleFromXXXEntry
-					strncpy(current_connection->program_name, "-", sizeof(current_connection->program_name));
+					strncpy((char*)current_connection->program_name, "-", sizeof(current_connection->program_name) - 1);
 
-					set_process_name(currentv6->dwOwningPid, current_connection->program_name, sizeof(current_connection->program_name));
+					set_process_name(currentv6->dwOwningPid, (char*)current_connection->program_name, sizeof(current_connection->program_name));
 
 					(*table_connection)->entries++;
 				}
@@ -656,15 +656,15 @@ DWORD linux_parse_proc_net_file(char * filename, struct connection_table ** tabl
 		current_connection->uid         = uid;
 		current_connection->inode       = inode;
 		// protocol such as tcp/tcp6/udp/udp6
-		strncpy(current_connection->protocol, protocol,	sizeof(current_connection->protocol));
+		strncpy((char*)current_connection->protocol, protocol,	sizeof(current_connection->protocol) - 1);
 		if ((state < 0) && (state > 11))
 			state = 12; // points to UNKNOWN in the table
 
 		// state, number to string : 0x0A --> LISTEN
-		strncpy(current_connection->state, connection_states[state], sizeof(current_connection->state));
+		strncpy((char*)current_connection->state, connection_states[state], sizeof(current_connection->state) - 1);
 
 		// initialize every program_name to "-", will be changed if we find the good info in /proc
-		strncpy(current_connection->program_name, "-", sizeof(current_connection->program_name));
+		strncpy((char*)current_connection->program_name, "-", sizeof(current_connection->program_name) - 1);
 
 		(*table_connection)->entries++;
 	}

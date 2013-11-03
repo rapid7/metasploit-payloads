@@ -1,3 +1,7 @@
+/*!
+ * @file common.h
+ * @brief Declarations for various common components used across the Meterpreter suite.
+ */
 #ifndef _METERPRETER_SOURCE_COMMON_COMMON_H
 #define _METERPRETER_SOURCE_COMMON_COMMON_H
 
@@ -145,8 +149,11 @@ void real_dprintf(char *filename, int line, const char *function, char *format, 
 
 #include "zlib/zlib.h"
 
-#define METERPRETER_TRANSPORT_SSL 0
-#define METERPRETER_TRANSPORT_HTTP 1
+/*! @brief Indication that the Meterpreter transport is using SSL. */
+#define METERPRETER_TRANSPORT_SSL   0
+/*! @brief Indication that the Meterpreter transport is using HTTP. */
+#define METERPRETER_TRANSPORT_HTTP  1
+/*! @brief Indication that the Meterpreter transport is using HTTPS. */
 #define METERPRETER_TRANSPORT_HTTPS 2
 
 #ifdef _WIN32
@@ -154,7 +161,7 @@ void real_dprintf(char *filename, int line, const char *function, char *format, 
 
 #include <wininet.h>
 
-// Enable debugging
+/*! @brief When defined, debug output is enabled. */
 //#define DEBUGTRACE 1
 
 #ifdef DEBUGTRACE
@@ -163,15 +170,26 @@ void real_dprintf(char *filename, int line, const char *function, char *format, 
 #define dprintf(...) do{}while(0);
 #endif
 
+/*! @brief Sets `dwResult` to the return value of `GetLastError()`, prints debug output, then does `break;` */
 #define BREAK_ON_ERROR( str ) { dwResult = GetLastError(); dprintf( "%s. error=%d", str, dwResult ); break; }
+/*! @brief Sets `dwResult` to `error`, prints debug output, then `break;` */
 #define BREAK_WITH_ERROR( str, err ) { dwResult = err; dprintf( "%s. error=%d", str, dwResult ); break; }
+/*! @brief Sets `dwResult` to the return value of `WASGetLastError()`, prints debug output, then does `break;` */
 #define BREAK_ON_WSAERROR( str ) { dwResult = WSAGetLastError(); dprintf( "%s. error=%d", str, dwResult ); break; }
+/*! @brief Sets `dwResult` to the return value of `GetLastError()`, prints debug output, then does `continue;` */
 #define CONTINUE_ON_ERROR( str ) { dwResult = GetLastError(); dprintf( "%s. error=%d", str, dwResult ); continue; }
 
-// Simple macros to close a handle and set the handle to NULL.
+/*! @brief Close a service handle if not already closed and set the handle to NULL. */
 #define CLOSE_SERVICE_HANDLE( h )	if( h ) { CloseServiceHandle( h ); h = NULL; }
+/*! @brief Close a handle if not already closed and set the handle to NULL. */
 #define CLOSE_HANDLE( h )			if( h ) { DWORD dwHandleFlags; if(GetHandleInformation( h , &dwHandleFlags)) CloseHandle( h ); h = NULL; }
 
+#ifdef DEBUGTRACE
+/*!
+ * @brief Output a debug string to the debug console.
+ * @details The function emits debug strings via `OutputDebugStringA`, hence all messages can be viewed
+ *          using Visual Studio's _Output_ window, _DebugView_ from _SysInternals_, or _Windbg_.
+ */
 static void real_dprintf(char *format, ...) {
 	va_list args;
 	char buffer[1024];
@@ -180,6 +198,7 @@ static void real_dprintf(char *format, ...) {
 	strcat_s(buffer, sizeof(buffer), "\r\n");
 	OutputDebugStringA(buffer);
 }
+#endif
 
 #endif
 

