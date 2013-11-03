@@ -96,6 +96,7 @@ DWORD request_clipboard_get_data(Remote *remote, Packet *packet)
 	Tlv entries[2] = { 0 };
 	LARGE_INTEGER largeInt = { 0 };
 	LPBITMAPINFO lpBI = NULL;
+	PUCHAR lpDIB = NULL;
 	ConvertedImage image;
 	BOOL bImageDownload = FALSE;
 	DWORD dwWidth;
@@ -187,8 +188,10 @@ DWORD request_clipboard_get_data(Remote *remote, Packet *packet)
 						packet_add_tlv_group(pResponse, TLV_TYPE_EXT_CLIPBOARD_TYPE_IMAGE_JPG, imageTlv, 2);
 					}
 					else {
+						lpDIB = ((PUCHAR)lpBI) + get_bitmapinfo_size(lpBI, TRUE);
+
 						// TODO: add the ability to encode with multiple encoders and return the smallest image.
-						if (convert_to_jpg(lpBI, (LPVOID)(lpBI + 1), 100, &image) == ERROR_SUCCESS) {
+						if (convert_to_jpg(lpBI, lpDIB, 75, &image) == ERROR_SUCCESS) {
 
 							dprintf("[EXTAPI CLIPBOARD] Clipboard bitmap captured to image: %p, Size: %u bytes", image.pImageBuffer, image.dwImageBufferSize);
 							imageTlv[2].header.type = TLV_TYPE_EXT_CLIPBOARD_TYPE_IMAGE_JPG_DATA;

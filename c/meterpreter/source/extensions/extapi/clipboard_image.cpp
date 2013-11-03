@@ -65,6 +65,44 @@ DWORD get_encoder_clsid(WCHAR *mimeType, CLSID * pClsId)
 extern "C" {
 
 /*!
+ * @brief Calculate the size of the specified bitmap information header.
+ * @param lpBI Pointer to the \cBITMAPINFO structure that contains the detail of the bitmap.
+ *             In the case of the clipboard, this is the CF_DIB data.
+ * @param bRGB Set to \c TRUE if the colors are in RBG format, \c FALSE otherwise.
+ * @remark This function is necessary due to the fact that the information
+ *         stored on the clipboard can't be handled properly unless we know
+ *         where in memory the DIB bits are.
+ * @returns The size of the bitmap information header.
+ */
+DWORD get_bitmapinfo_size(const LPBITMAPINFO lpBI, BOOL bRGB)
+{
+	DWORD dwColors, dwSize;
+
+	if (lpBI->bmiHeader.biSize == sizeof(BITMAPCOREHEADER)) {
+		const BITMAPCOREHEADER* core = (const BITMAPCOREHEADER*)lpBI;
+
+		dwColors = core->bcBitCount <= 8
+			? 1 << core->bcBitCount
+			: 0;
+
+		dwSize = sizeof(BITMAPCOREHEADER);
+	}
+	else {
+		dwColors = lpBI->bmiHeader.biClrUsed;
+
+		if (!dwColors && lpBI->bmiHeader.biBitCount <= 8) {
+			dwColors = 1 << lpBI->bmiHeader.biBitCount;
+		}
+
+		dwSize = max(lpBI->bmiHeader.biSize,
+			(lpBI->bmiHeader.biCompression == BI_BITFIELDS ? 3 : 0)
+			* sizeof(DWORD)+sizeof(BITMAPINFOHEADER));
+	}
+
+	return dwSize + dwColors * (bRGB ? sizeof(RGBTRIPLE) : sizeof(WORD));
+}
+
+/*!
  * @brief Convert the given bitmap data into a JPEG image of the specified quality.
  * @param lpBI Pointer to the \cBITMAPINFO structure that contains the detail of the bitmap.
  *             In the case of the clipboard, this is the CF_DIB data.

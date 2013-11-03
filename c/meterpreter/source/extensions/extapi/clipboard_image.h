@@ -20,6 +20,7 @@ typedef struct _ConvertedImage
 	DWORD              dwImageBufferSize;
 } ConvertedImage;
 
+DWORD get_bitmapinfo_size(const LPBITMAPINFO lpBI, BOOL bRGB);
 DWORD convert_to_jpg(const LPBITMAPINFO lpBI, const LPVOID lpDIB, ULONG ulQuality, ConvertedImage* pImage);
 
 #endif
