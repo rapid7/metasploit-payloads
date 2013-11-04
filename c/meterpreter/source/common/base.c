@@ -38,8 +38,6 @@ DWORD remote_response_core_console_write( Remote *remote, Packet *packet )
 	return ERROR_SUCCESS;
 }
 
-BOOL command_execute_base( Remote *remote, Packet *packet, const char* method, DWORD *result );
-BOOL command_execute_extension( Remote *remote, Packet *packet, const char* method, DWORD *result );
 BOOL command_is_inline( Command *command, Packet *packet );
 Command* command_locate( Packet *packet );
 DWORD command_validate_arguments(Command *command, Packet *packet);
