@@ -483,8 +483,10 @@ Command* command_locate( Packet *packet )
 	{
 		dwResult = packet_get_tlv_string( packet, TLV_TYPE_METHOD, &methodTlv );
 
-		if( dwResult != ERROR_SUCCESS )
-			BREAK_ON_ERROR( "[COMMAND] Unable to extract method from packet." );
+		if( dwResult != ERROR_SUCCESS ) {
+			dprintf( "[COMMAND] Unable to extract method from packet." );
+			break;
+		}
 
 		// check for an overload first.
 		command = command_locate_extension( (PCHAR)methodTlv.buffer );
