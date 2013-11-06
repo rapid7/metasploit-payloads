@@ -1,3 +1,7 @@
+/*!
+ * @file base.c
+ * @brief Definitions that apply to almost any Meterpreter component.
+ */
 #include "common.h"
 
 // Local remote request implementors
@@ -35,91 +39,62 @@ DWORD remote_response_core_console_write(Remote *remote, Packet *packet)
 }
 
 
-
-/*
- * Base RPC dispatch table
+/*!
+ * @brief Base RPC dispatch table.
  */
 Command commands[] =
 {
 	/*
-	 * Core commands
-	 */
+	* Core commands
+	*/
 
 	// Console commands
 	{  "core_console_write",  
 		{ remote_request_core_console_write,     { TLV_META_TYPE_STRING }, 1 | ARGUMENT_FLAG_REPEAT },
-		{ remote_response_core_console_write,    { 0 },  0 },
+		{ remote_response_core_console_write,    EMPTY_TLV },
 	},
 
 	// Native Channel commands
-	{  "core_channel_open",
-		{ remote_request_core_channel_open,      { 0 },  0 },	
-		{ remote_response_core_channel_open,     { 0 },  0 },
-	},
-	{  "core_channel_write",
-		{ remote_request_core_channel_write,     { 0 },  0 },	
-		{ EMPTY_DISPATCH_HANDLER                           },
-	},
-	{  "core_channel_close",
-		{ remote_request_core_channel_close,     { 0 },  0 },	
-		{ remote_response_core_channel_close,    { 0 },  0 },	
-	},
-
+	COMMAND_REQ_REP( "core_channel_open", remote_request_core_channel_open, remote_response_core_channel_open ),
+	COMMAND_REQ( "core_channel_write", remote_request_core_channel_write ),
+	COMMAND_REQ_REP( "core_channel_close", remote_request_core_channel_close, remote_response_core_channel_close ),
 	// Buffered/Pool channel commands
-	{  "core_channel_read",
-		{ remote_request_core_channel_read,      { 0 },  0 },	
-		{ EMPTY_DISPATCH_HANDLER                           },
-	},
+	COMMAND_REQ( "core_channel_read", remote_request_core_channel_read ),
 	// Pool channel commands
-	{  "core_channel_seek",
-		{ remote_request_core_channel_seek,      { 0 },  0 },	
-		{ EMPTY_DISPATCH_HANDLER                           },
-	},
-	{  "core_channel_eof",
-		{ remote_request_core_channel_eof,       { 0 },  0 },	
-		{ EMPTY_DISPATCH_HANDLER                           },
-	},
-	{  "core_channel_tell",
-		{ remote_request_core_channel_tell,      { 0 },  0 },	
-		{ EMPTY_DISPATCH_HANDLER                           },
-	},
-
+	COMMAND_REQ( "core_channel_seek", remote_request_core_channel_seek ),
+	COMMAND_REQ( "core_channel_eof", remote_request_core_channel_eof ),
+	COMMAND_REQ( "core_channel_tell", remote_request_core_channel_tell ),
 	// Soon to be deprecated
-	{  "core_channel_interact",
-		{ remote_request_core_channel_interact,  { 0 },  0 },	
-		{ EMPTY_DISPATCH_HANDLER                           },
-	},
-
+	COMMAND_REQ( "core_channel_interact", remote_request_core_channel_interact ),
 	// Crypto
-	{  "core_crypto_negotiate",
-	   { remote_request_core_crypto_negotiate,  { 0 },  0 },
-		{ EMPTY_DISPATCH_HANDLER                           },
-	},
-
+	COMMAND_REQ( "core_crypto_negotiate", remote_request_core_crypto_negotiate ),
 	// Migration
-	{  "core_migrate",
-	   { remote_request_core_migrate,           { 0 },  0 },
-		{ EMPTY_DISPATCH_HANDLER                           },
-	},
-
+	COMMAND_REQ( "core_migrate", remote_request_core_migrate ),
 	// Shutdown
-	{  "core_shutdown",
-	   { remote_request_core_shutdown,           { 0 },  0 },
-		{ EMPTY_DISPATCH_HANDLER                           },
-	},
-
+	COMMAND_REQ( "core_shutdown", remote_request_core_shutdown ),
 	// Terminator
-	{  NULL,
-		{ NULL, { 0 }, 0 },
-		{ NULL, { 0 }, 0 },
-	},
+	COMMAND_TERMINATOR
 };
 
 // Dynamically registered command extensions
 Command *extension_commands = NULL;
 
-/*
- * Dynamically register a custom command handler
+/*!
+ * @brief Register a full list of commands with meterpreter.
+ * @param commands The array of commands that are to be registered for the module/extension.
+ */
+void command_register_all(Command commands[])
+{
+	DWORD index;
+
+	for (index = 0; commands[index].method; index++)
+		command_register(&commands[index]);
+}
+
+/*!
+ * @brief Dynamically register a custom command handler
+ * @param command Pointer to the command that should be registered.
+ * @return `ERROR_SUCCESS` when command registers successfully, otherwise returns the error.
  */
 DWORD command_register(Command *command)
 {
@@ -139,24 +114,38 @@ DWORD command_register(Command *command)
 	dprintf("Fixing next/prev...");
 	newCommand->next    = extension_commands;
 	newCommand->prev    = NULL;
-	extension_commands       = newCommand;
+	extension_commands  = newCommand;
 
 	dprintf("Done...");
 	return ERROR_SUCCESS;
 }
 
-/*
- * Dynamically deregister a custom command handler
+/*!
+ * @brief Deregister a full list of commands from meterpreter.
+ * @param commands The array of commands that are to be deregistered from the module/extension.
+ */
+void command_deregister_all(Command commands[])
+{
+	DWORD index;
+
+	for (index = 0; commands[index].method; index++)
+		command_deregister(&commands[index]);
+}
+
+/*!
+ * @brief Dynamically deregister a custom command handler
+ * @param command Pointer to the command that should be deregistered.
+ * @return `ERROR_SUCCESS` when command deregisters successfully, otherwise returns the error.
  */
 DWORD command_deregister(Command *command)
 {
 	Command *current, *prev;
 	DWORD res = ERROR_NOT_FOUND;
-	
+
 	// Search the extension list for the command
 	for (current = extension_commands, prev = NULL;
-	     current;
-	     prev = current, current = current->next)
+		current;
+		prev = current, current = current->next)
 	{
 		if (strcmp(command->method, current->method))
 			continue;
@@ -171,7 +160,7 @@ DWORD command_deregister(Command *command)
 
 		// Deallocate it
 		free(current);
-		
+
 		res = ERROR_SUCCESS;
 
 		break;
@@ -180,13 +169,11 @@ DWORD command_deregister(Command *command)
 	return res;
 }
 
-/*
- * A list of all command threads currenlty executing.
- */
+/*! * @brief A list of all command threads currenlty executing. */
 LIST * commandThreadList = NULL;
 
-/*
- * Block untill all running command threads have finished.
+/*!
+ * @brief Block untill all running command threads have finished.
  */
 VOID command_join_threads( VOID )
 {
@@ -198,27 +185,12 @@ VOID command_join_threads( VOID )
 	}
 }
 
-/*
- * Crude method of throttling the ammount of concurrent command 
- * threads we allow in the system at a given time.
- */
-/*
-VOID command_throtle( int maxthreads )
-{
-	while( list_count( commandThreadList ) >= maxthreads )
-	{
-		Sleep( 250 );
-	}
-}
-*/
-
 #ifndef _WIN32
-/*
- * Reap child zombie threads on linux 2.4 (before NPTL)
- * each thread appears as a process and pthread_join don't necessarily reap it
- * threads are created using the clone syscall, so use special __WCLONE flag in waitpid
+/*!
+ * @brief Reap child zombie threads on linux 2.4 (before NPTL).
+ * @detail Each thread appears as a process and pthread_join don't necessarily reap it
+ * threads are created using the clone syscall, so use special __WCLONE flag in waitpid.
  */
-
 VOID reap_zombie_thread(void * param)
 {
 	while(1) {
@@ -229,8 +201,10 @@ VOID reap_zombie_thread(void * param)
 }
 #endif
 
-/*
- * Process a single command in a seperate thread of execution.
+/*!
+ * @brief Process a single command in a seperate thread of execution.
+ * @param thread Pointer to the thread to execute.
+ * @return Result of processing.
  */
 DWORD THREADCALL command_process_thread( THREAD * thread )
 {
@@ -243,14 +217,14 @@ DWORD THREADCALL command_process_thread( THREAD * thread )
 	Command * current = NULL;
 	Remote * remote   = NULL;
 	Packet * packet   = NULL;
-	
+
 	if( thread == NULL )
 		return ERROR_INVALID_HANDLE;
 
 	remote = (Remote *)thread->parameter1;
 	if( remote == NULL )
 		return ERROR_INVALID_HANDLE;
-	
+
 	packet = (Packet *)thread->parameter2;
 	if( packet == NULL )
 		return ERROR_INVALID_DATA;
@@ -289,7 +263,7 @@ DWORD THREADCALL command_process_thread( THREAD * thread )
 				}
 			}
 #endif
-			
+
 			// Get the request identifier if the packet has one.
 			result = packet_get_tlv_string( packet, TLV_TYPE_REQUEST_ID, &requestIdTlv );
 			if( result == ERROR_SUCCESS )
@@ -311,11 +285,11 @@ DWORD THREADCALL command_process_thread( THREAD * thread )
 
 			// Regardless of error code, try to see if someone has overriden a base handler
 			for( current = extension_commands, result = ERROR_NOT_FOUND ; 
-				  result == ERROR_NOT_FOUND && current && current->method ; current = current->next )
+				result == ERROR_NOT_FOUND && current && current->method ; current = current->next )
 			{
 				if( strcmp( current->method, method ) )
 					continue;
-			
+
 				// Call the custom handler
 				result = command_call_dispatch( current, remote, packet );
 			}
@@ -327,7 +301,7 @@ DWORD THREADCALL command_process_thread( THREAD * thread )
 
 			// If we get here, we're successful.
 			result = ERROR_SUCCESS;
-			
+
 		} while( 0 );
 	}
 	__except( EXCEPTION_EXECUTE_HANDLER )
@@ -449,10 +423,14 @@ DWORD command_process_remote_loop(Remote *remote)
 }
 */
 
-/*
- * Call the dispatch routine for a given command
+/*!
+ * @brief Call the dispatch routine for a given command.
+ * @param command The command to call the dispatch routine on.
+ * @param remote Pointer to the remote connection.
+ * @param packet Pointer to the current packet.
+ * @return Result of the command dispatch handler call.
  */
-DWORD command_call_dispatch(Command *command, Remote *remote, Packet *packet)
+ DWORD command_call_dispatch(Command *command, Remote *remote, Packet *packet)
 {
 	DWORD res;
 
@@ -463,26 +441,29 @@ DWORD command_call_dispatch(Command *command, Remote *remote, Packet *packet)
 
 	switch (packet_get_type(packet))
 	{
-		case PACKET_TLV_TYPE_REQUEST:
-		case PACKET_TLV_TYPE_PLAIN_REQUEST:
-			if (command->request.handler)
-				res = command->request.handler(remote, packet);
-			break;
-		case PACKET_TLV_TYPE_RESPONSE:
-		case PACKET_TLV_TYPE_PLAIN_RESPONSE:
-			if (command->response.handler)
-				res = command->response.handler(remote, packet);
-			break;
-		default:
-			res = ERROR_NOT_FOUND;
-			break;
+	case PACKET_TLV_TYPE_REQUEST:
+	case PACKET_TLV_TYPE_PLAIN_REQUEST:
+		if (command->request.handler)
+			res = command->request.handler(remote, packet);
+		break;
+	case PACKET_TLV_TYPE_RESPONSE:
+	case PACKET_TLV_TYPE_PLAIN_RESPONSE:
+		if (command->response.handler)
+			res = command->response.handler(remote, packet);
+		break;
+	default:
+		res = ERROR_NOT_FOUND;
+		break;
 	}
 
 	return res;
 }
 
-/*
- * Validate command arguments
+/*!
+ * @brief Validate command arguments
+ * @return Indication of whether the commands are valid or not.
+ * @retval ERROR_SUCCESS All arguments are valid.
+ * @retval ERROR_INVALID_PARAMETER An invalid parameter exists.
  */
 DWORD command_validate_arguments(Command *command, Packet *packet)
 {
@@ -494,23 +475,22 @@ DWORD command_validate_arguments(Command *command, Packet *packet)
 
 	// Select the dispatcher table
 	if ((type == PACKET_TLV_TYPE_RESPONSE) ||
-	    (type == PACKET_TLV_TYPE_PLAIN_RESPONSE))
+		(type == PACKET_TLV_TYPE_PLAIN_RESPONSE))
 		dispatcher = &command->response;
 	else
 		dispatcher = &command->request;
 
 	// Enumerate the arguments, validating the meta types of each
 	for (commandIndex = 0, packetIndex = 0;
-	     ((packet_enum_tlv(packet, packetIndex, TLV_TYPE_ANY, &current) 
-			 == ERROR_SUCCESS) &&
-	      (res == ERROR_SUCCESS));
-	     commandIndex++, packetIndex++)
+		((packet_enum_tlv(packet, packetIndex, TLV_TYPE_ANY, &current) == ERROR_SUCCESS)
+		&& (res == ERROR_SUCCESS));
+		commandIndex++, packetIndex++)
 	{
 		TlvMetaType tlvMetaType;
 
 		// Check to see if we've reached the end of the command arguments
 		if ((dispatcher->numArgumentTypes) &&
-		    (commandIndex == (dispatcher->numArgumentTypes & ARGUMENT_FLAG_MASK)))
+			(commandIndex == (dispatcher->numArgumentTypes & ARGUMENT_FLAG_MASK)))
 		{
 			// If the repeat flag is set, reset the index
 			if (commandIndex & ARGUMENT_FLAG_REPEAT)
@@ -518,23 +498,23 @@ DWORD command_validate_arguments(Command *command, Packet *packet)
 			else
 				break;
 		}
-		
+
 		// Make sure the argument is at least one of the meta types
 		tlvMetaType = packet_get_tlv_meta(packet, &current);
 
 		// Validate argument meta types
 		switch (tlvMetaType)
 		{
-			case TLV_META_TYPE_STRING:
-				if (packet_is_tlv_null_terminated(packet, &current) != ERROR_SUCCESS)
-					res = ERROR_INVALID_PARAMETER;
-				break;
-			default:
-				break;
+		case TLV_META_TYPE_STRING:
+			if (packet_is_tlv_null_terminated(&current) != ERROR_SUCCESS)
+				res = ERROR_INVALID_PARAMETER;
+			break;
+		default:
+			break;
 		}
-	
+
 		if ((res != ERROR_SUCCESS) && 
-		    (commandIndex < dispatcher->numArgumentTypes))
+			(commandIndex < dispatcher->numArgumentTypes))
 			break;
 	}
 

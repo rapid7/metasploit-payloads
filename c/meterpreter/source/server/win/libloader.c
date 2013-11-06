@@ -562,7 +562,7 @@ HMODULE libloader_load_library(LPCSTR name, PUCHAR buffer, DWORD bufferLength)
 	do
 	{
 		// The name of the library to load it as
-		strncpy(ctx->libname, shortName, sizeof(ctx->libname));
+		strncpy(ctx->libname, shortName, sizeof(ctx->libname) - 1);
 		ctx->liblen = (int)strlen(ctx->libname) + 1;
 
 		// The address of the raw buffer

@@ -8,6 +8,6 @@ BOOL is_local_system();
 
 BOOL get_domain_username_from_token(HANDLE token, char *full_name_to_return);
 BOOL get_domain_groups_from_token(HANDLE token, char **group_name_array[], DWORD *num_groups);
-BOOL get_domain_from_token(HANDLE token, char *domain_to_return);
+BOOL get_domain_from_token(HANDLE token, char *domainBuffer, DWORD domainBufferSize);
 
 #endif

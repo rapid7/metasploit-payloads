@@ -1,6 +1,8 @@
 @ECHO OFF
 IF "%1"=="clean" GOTO CLEAN
+IF "%1"=="docs" GOTO DOCS
 IF "%VCINSTALLDIR%" == "" GOTO NEED_VS
+
 SET PREF=
 IF EXIST "..\pssdk\" SET PREF=r7_
 
@@ -37,8 +39,12 @@ IF EXIST "output\x64\" (
 )
 GOTO :END
 
+:DOCS
+tools\doxygen\doxygen.exe doxygen.cnf
+GOTO :END
+
 :NEED_VS
 ECHO "This command must be executed from within a Visual Studio Command prompt."
-ECHO "This can be found under Microsoft Visual Studio 2012 -> Visual Studio Tools"
+ECHO "This can be found under Microsoft Visual Studio 2013 -> Visual Studio Tools"
 
 :END

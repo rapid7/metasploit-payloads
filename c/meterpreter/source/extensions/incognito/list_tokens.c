@@ -204,7 +204,7 @@ void process_user_token(HANDLE token, unique_user_token *uniq_tokens, DWORD *num
 		// If token user has not been seen yet then create new entry
 		if (!user_exists)
 		{
-			strcpy(uniq_tokens[*num_tokens].username, full_name);
+			strcpy_s(uniq_tokens[*num_tokens].username, MAX_USERNAME, full_name);
 			uniq_tokens[*num_tokens].token_num = 1;
 			uniq_tokens[*num_tokens].delegation_available = FALSE;
 			uniq_tokens[*num_tokens].impersonation_available = FALSE;

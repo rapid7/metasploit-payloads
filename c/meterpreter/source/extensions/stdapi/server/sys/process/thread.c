@@ -420,9 +420,8 @@ DWORD request_sys_process_thread_set_regs(Remote *remote, Packet *packet)
 					continue;
 				
 				// Validate them
-				if ((packet_is_tlv_null_terminated(packet, 
-						&nameTlv) != ERROR_SUCCESS) ||
-				    (valueTlv.header.length < sizeof(ULONG)))
+				if ((packet_is_tlv_null_terminated(&nameTlv) != ERROR_SUCCESS)
+					|| (valueTlv.header.length < sizeof(ULONG)))
 					continue;
 				
 				// Stash them
