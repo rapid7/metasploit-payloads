@@ -18,7 +18,7 @@ extern DWORD remote_request_core_channel_interact( Remote *remote, Packet *packe
 
 extern DWORD remote_request_core_crypto_negotiate( Remote *remote, Packet *packet );
 
-extern BOOL remote_request_core_shutdown(Remote *remote, Packet *packe, DWORD* pResult);
+extern BOOL remote_request_core_shutdown(Remote *remote, Packet *packet, DWORD* pResult);
 
 extern BOOL remote_request_core_migrate( Remote *remote, Packet *packet, DWORD* pResult );
 
