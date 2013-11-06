@@ -22,6 +22,7 @@ DWORD request_incognito_add_user(Remote *remote, Packet *packet)
 	HANDLE saved_token;
 	char *dc_netbios_name, *username, *password, return_value[BUF_SIZE] = "", temp[BUF_SIZE] = "";
 	wchar_t dc_netbios_name_u[BUF_SIZE], username_u[BUF_SIZE], password_u[BUF_SIZE];
+	TOKEN_PRIVS token_privs;
 	
 	// Read arguments
 	Packet *response = packet_create_response(packet);
@@ -45,7 +46,7 @@ DWORD request_incognito_add_user(Remote *remote, Packet *packet)
 	if (!OpenThreadToken(GetCurrentThread(), TOKEN_ALL_ACCESS, TRUE, &saved_token))
 		saved_token = INVALID_HANDLE_VALUE;
 
-	token_list = get_token_list(&num_tokens);
+	token_list = get_token_list(&num_tokens, &token_privs);
 	if (!token_list)
 	{
 		sprintf(return_value, "[-] Failed to enumerate tokens with error code: %d\n", GetLastError());
@@ -122,6 +123,7 @@ DWORD request_incognito_add_group_user(Remote *remote, Packet *packet)
 	HANDLE saved_token;
 	wchar_t dc_netbios_name_u[BUF_SIZE], username_u[BUF_SIZE], groupname_u[BUF_SIZE];
 	char *dc_netbios_name, *groupname, *username, return_value[BUF_SIZE] = "", temp[BUF_SIZE] = "";
+	TOKEN_PRIVS token_privs;
 
 	// Read arguments
 	Packet *response = packet_create_response(packet);
@@ -137,7 +139,7 @@ DWORD request_incognito_add_group_user(Remote *remote, Packet *packet)
 	if (!OpenThreadToken(GetCurrentThread(), TOKEN_ALL_ACCESS, TRUE, &saved_token))
 		saved_token = INVALID_HANDLE_VALUE;
 
-	token_list = get_token_list(&num_tokens);
+	token_list = get_token_list(&num_tokens, &token_privs);
 	if (!token_list)
 	{
 		sprintf(return_value, "[-] Failed to enumerate tokens with error code: %d\n", GetLastError());
@@ -218,6 +220,7 @@ DWORD request_incognito_add_localgroup_user(Remote *remote, Packet *packet)
 	HANDLE saved_token;
 	wchar_t dc_netbios_name_u[BUF_SIZE], username_u[BUF_SIZE], groupname_u[BUF_SIZE];
 	char *dc_netbios_name, *groupname, *username, return_value[BUF_SIZE] = "", temp[BUF_SIZE] = "";
+	TOKEN_PRIVS token_privs;
 
 	// Read arguments
 	Packet *response = packet_create_response(packet);
@@ -235,7 +238,7 @@ DWORD request_incognito_add_localgroup_user(Remote *remote, Packet *packet)
 	if (!OpenThreadToken(GetCurrentThread(), TOKEN_ALL_ACCESS, TRUE, &saved_token))
 		saved_token = INVALID_HANDLE_VALUE;
 
-	token_list = get_token_list(&num_tokens);
+	token_list = get_token_list(&num_tokens, &token_privs);
 	if (!token_list)
 	{
 		sprintf(return_value, "[-] Failed to enumerate tokens with error code: %d\n", GetLastError());
