@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
       <Configuration>Debug</Configuration>
@@ -43,49 +43,49 @@
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
-    <PlatformToolset>v110_xp</PlatformToolset>
+    <PlatformToolset>v120_xp</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='r7_release|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
-    <PlatformToolset>v110_xp</PlatformToolset>
+    <PlatformToolset>v120_xp</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
-    <PlatformToolset>v110_xp</PlatformToolset>
+    <PlatformToolset>v120_xp</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='r7_debug|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
-    <PlatformToolset>v110_xp</PlatformToolset>
+    <PlatformToolset>v120_xp</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
-    <PlatformToolset>v110_xp</PlatformToolset>
+    <PlatformToolset>v120_xp</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='r7_release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
-    <PlatformToolset>v110_xp</PlatformToolset>
+    <PlatformToolset>v120_xp</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
-    <PlatformToolset>v110_xp</PlatformToolset>
+    <PlatformToolset>v120_xp</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='r7_debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
-    <PlatformToolset>v110_xp</PlatformToolset>
+    <PlatformToolset>v120_xp</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -599,47 +599,48 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\source\extensions\stdapi\server\general.c"/>
-    <ClCompile Include="..\..\source\extensions\stdapi\server\net\config\arp.c"/>
+    <ClCompile Include="..\..\source\extensions\stdapi\server\general.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\net\config\arp.c" />
     <ClCompile Include="..\..\source\extensions\stdapi\server\net\config\netstat.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\net\config\proxy_config.c" />
     <ClCompile Include="..\..\source\extensions\stdapi\server\net\resolve.c" />
     <ClCompile Include="..\..\source\extensions\stdapi\server\stdapi.c">
       <PreCompiledHeader>Create</PreCompiledHeader>
     </ClCompile>
-    <ClCompile Include="..\..\source\extensions\stdapi\server\fs\dir.c"/>
-    <ClCompile Include="..\..\source\extensions\stdapi\server\fs\file.c"/>
-    <ClCompile Include="..\..\source\extensions\stdapi\server\fs\fs_util.c"/>
+    <ClCompile Include="..\..\source\extensions\stdapi\server\fs\dir.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\fs\file.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\fs\fs_util.c" />
     <ClCompile Include="..\..\source\extensions\stdapi\server\fs\search.c" />
-    <ClCompile Include="..\..\source\extensions\stdapi\server\net\net.c"/>
-    <ClCompile Include="..\..\source\extensions\stdapi\server\net\config\interface.c"/>
-    <ClCompile Include="..\..\source\extensions\stdapi\server\net\config\route.c"/>
-    <ClCompile Include="..\..\source\extensions\stdapi\server\net\socket\tcp.c"/>
+    <ClCompile Include="..\..\source\extensions\stdapi\server\net\net.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\net\config\interface.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\net\config\route.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\net\socket\tcp.c" />
     <ClCompile Include="..\..\source\extensions\stdapi\server\net\socket\tcp_server.c" />
     <ClCompile Include="..\..\source\extensions\stdapi\server\net\socket\udp.c" />
     <ClCompile Include="..\..\source\extensions\stdapi\server\sys\session.c" />
-    <ClCompile Include="..\..\source\extensions\stdapi\server\sys\process\image.c"/>
-    <ClCompile Include="..\..\source\extensions\stdapi\server\sys\process\in-mem-exe.c"/>
-    <ClCompile Include="..\..\source\extensions\stdapi\server\sys\process\memory.c"/>
-    <ClCompile Include="..\..\source\extensions\stdapi\server\sys\process\process.c"/>
+    <ClCompile Include="..\..\source\extensions\stdapi\server\sys\process\image.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\sys\process\in-mem-exe.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\sys\process\memory.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\sys\process\process.c" />
     <ClCompile Include="..\..\source\extensions\stdapi\server\sys\process\ps.c" />
-    <ClCompile Include="..\..\source\extensions\stdapi\server\sys\process\thread.c"/>
-    <ClCompile Include="..\..\source\extensions\stdapi\server\sys\process\util.c"/>
-    <ClCompile Include="..\..\source\extensions\stdapi\server\sys\registry\registry.c"/>
-    <ClCompile Include="..\..\source\extensions\stdapi\server\sys\power\power.c"/>
-    <ClCompile Include="..\..\source\extensions\stdapi\server\sys\eventlog\eventlog.c"/>
-    <ClCompile Include="..\..\source\extensions\stdapi\server\sys\config\config.c"/>
+    <ClCompile Include="..\..\source\extensions\stdapi\server\sys\process\thread.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\sys\process\util.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\sys\registry\registry.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\sys\power\power.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\sys\eventlog\eventlog.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\sys\config\config.c" />
     <ClCompile Include="..\..\source\extensions\stdapi\server\ui\desktop.c" />
-    <ClCompile Include="..\..\source\extensions\stdapi\server\ui\idle.c"/>
-    <ClCompile Include="..\..\source\extensions\stdapi\server\ui\keyboard.c"/>
-    <ClCompile Include="..\..\source\extensions\stdapi\server\ui\mouse.c"/>
-    <ClCompile Include="..\..\source\extensions\stdapi\server\ui\ui.c"/>
+    <ClCompile Include="..\..\source\extensions\stdapi\server\ui\idle.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\ui\keyboard.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\ui\mouse.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\ui\ui.c" />
     <ClCompile Include="..\..\source\extensions\stdapi\server\railgun\railgun.c" />
-    <ClCompile Include="..\..\source\extensions\stdapi\server\webcam\audio.c"/>
-    <ClCompile Include="..\..\source\extensions\stdapi\server\webcam\bmp2jpeg.c"/>
-    <ClCompile Include="..\..\source\extensions\stdapi\server\webcam\webcam.cpp"/>
+    <ClCompile Include="..\..\source\extensions\stdapi\server\webcam\audio.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\webcam\bmp2jpeg.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\webcam\webcam.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="..\..\source\extensions\stdapi\server\resource\stdapi.rc"/>
+    <ResourceCompile Include="..\..\source\extensions\stdapi\server\resource\stdapi.rc" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\source\extensions\stdapi\server\precomp.h" />

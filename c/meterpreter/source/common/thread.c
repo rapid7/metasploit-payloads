@@ -334,7 +334,7 @@ void *__paused_thread(void *req)
 /*
  * Create a new thread in a suspended state.
  */
-THREAD * thread_create( THREADFUNK funk, LPVOID param1, LPVOID param2 )
+THREAD * thread_create( THREADFUNK funk, LPVOID param1, LPVOID param2, LPVOID param3 )
 {
 	THREAD * thread = NULL;
 	
@@ -357,6 +357,7 @@ THREAD * thread_create( THREADFUNK funk, LPVOID param1, LPVOID param2 )
 
 	thread->parameter1 = param1;
 	thread->parameter2 = param2;
+	thread->parameter3 = param3;
 
 #ifdef _WIN32
 	thread->handle = CreateThread( NULL, 0, funk, thread, CREATE_SUSPENDED, &thread->id );

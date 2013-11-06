@@ -46,9 +46,6 @@ int current_unix_timestamp(void) {
 
 int debugging_enabled;
 
-/*
- */ 
-
 /*!
  * @brief Output a debug string to the debug console.
  * @details The function emits debug strings via `OutputDebugStringA`, hence all messages can be viewed

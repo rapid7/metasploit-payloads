@@ -324,7 +324,7 @@ DWORD request_networkpug_start(Remote *remote, Packet *packet)
 		np->remote = remote;
 		np->pcap = pcap_open_live(interface, MAX_MTU, 1, 1000, errbuf);
 		// xxx, add in filter support
-		np->thread = thread_create((THREADFUNK) networkpug_thread, np, remote);
+		np->thread = thread_create((THREADFUNK) networkpug_thread, np, remote, NULL);
 		
 		chops.native.context = np;
 		chops.native.write = networkpug_channel_write;

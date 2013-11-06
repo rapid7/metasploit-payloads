@@ -12,19 +12,10 @@ extern HINSTANCE hAppInstance;
 LIST * extension_list = NULL;
 
 // Dispatch table
-Command custom_commands[] = 
+Command customCommands[] = 
 {
-	{
-	  "core_loadlib", 
-	  { request_core_loadlib,              { 0 }, 0 },
-	  { EMPTY_DISPATCH_HANDLER                      },
-	},
-
-	// Terminator
-	{ NULL,
-	  { EMPTY_DISPATCH_HANDLER                      },
-	  { EMPTY_DISPATCH_HANDLER                      },
-	},
+	COMMAND_REQ( "core_loadlib", request_core_loadlib ),
+	COMMAND_TERMINATOR
 };
 
 /*
@@ -36,8 +27,7 @@ VOID register_dispatch_routines()
 
 	extension_list = list_create();
 
-	for( index=0 ; custom_commands[index].method ; index++ )
-		command_register( &custom_commands[index] );
+	command_register_all( customCommands );
 }
 
 /*
@@ -58,8 +48,7 @@ VOID deregister_dispatch_routines( Remote * remote )
 		free( extension );
 	}
 
-	for( index=0 ; custom_commands[index].method ; index++ )
-		command_deregister( &custom_commands[index] );
+	command_deregister_all( customCommands );
 
 	list_destroy( extension_list );
 }

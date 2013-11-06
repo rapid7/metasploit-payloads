@@ -137,7 +137,7 @@ DWORD scheduler_insert_waitable( HANDLE waitable, LPVOID entryContext, LPVOID th
 	entry->pause    = event_create();
 	entry->resume   = event_create();
 
-	swt = thread_create( scheduler_waitable_thread, entry, threadContext );
+	swt = thread_create( scheduler_waitable_thread, entry, threadContext, NULL );
 	if( swt != NULL )
 	{
 		dprintf( "[SCHEDULER] created scheduler_waitable_thread 0x%08X", swt );
