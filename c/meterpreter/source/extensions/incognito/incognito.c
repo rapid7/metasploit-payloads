@@ -36,6 +36,7 @@ DWORD request_incognito_list_tokens(Remote *remote, Packet *packet)
 	SavedToken *token_list = NULL;
 	BOOL bTokensAvailable = FALSE;
 	TOKEN_ORDER token_order;
+	TOKEN_PRIVS token_privs;
 	char *delegation_tokens = calloc(sizeof(char), BUF_SIZE), 
 		*impersonation_tokens = calloc(sizeof(char), BUF_SIZE),
 		temp[BUF_SIZE] = "";
@@ -44,7 +45,7 @@ DWORD request_incognito_list_tokens(Remote *remote, Packet *packet)
 	token_order = packet_get_tlv_value_uint(packet, TLV_TYPE_INCOGNITO_LIST_TOKENS_TOKEN_ORDER);
 
 	// Enumerate tokens
-	token_list = get_token_list(&num_tokens);
+	token_list = get_token_list(&num_tokens, &token_privs);
 
 	if (!token_list)
 	{
@@ -109,12 +110,13 @@ DWORD request_incognito_impersonate_token(Remote *remote, Packet *packet)
 	BOOL bTokensAvailable = FALSE, delegation_available = FALSE;
 	char temp[BUF_SIZE] = "", *requested_username, return_value[BUF_SIZE] = "";
 	HANDLE xtoken;
+	TOKEN_PRIVS token_privs;
 
 	Packet *response = packet_create_response(packet);
 	requested_username = packet_get_tlv_value_string(packet, TLV_TYPE_INCOGNITO_IMPERSONATE_TOKEN);
 	
 	// Enumerate tokens
-	token_list = get_token_list(&num_tokens);
+	token_list = get_token_list(&num_tokens, &token_privs);
 
 	if (!token_list)
 	{

@@ -210,6 +210,7 @@ LINKAGE Packet *packet_duplicate(Packet *packet);
 LINKAGE VOID packet_destroy(Packet *packet);
 
 LINKAGE DWORD packet_add_tlv_string(Packet *packet, TlvType type, LPCSTR str);
+LINKAGE DWORD packet_add_tlv_wstring(Packet *packet, TlvType type, LPCWSTR str);
 LINKAGE DWORD packet_add_tlv_uint(Packet *packet, TlvType type, UINT val);
 LINKAGE DWORD packet_add_tlv_qword(Packet *packet, TlvType type, QWORD val );
 LINKAGE DWORD packet_add_tlv_bool(Packet *packet, TlvType type, BOOL val);

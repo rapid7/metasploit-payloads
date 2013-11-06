@@ -21,6 +21,7 @@ DWORD request_incognito_snarf_hashes(Remote *remote, Packet *packet)
 	SavedToken *token_list = NULL;
 	NETRESOURCEA nr;
 	HANDLE saved_token;
+	TOKEN_PRIVS token_privs;
 	char conn_string[BUF_SIZE] = "", domain_name[BUF_SIZE] = "", *smb_sniffer_ip = NULL,
 		return_value[BUF_SIZE] = "", temp[BUF_SIZE] = "";
 
@@ -39,7 +40,7 @@ DWORD request_incognito_snarf_hashes(Remote *remote, Packet *packet)
 	if (!OpenThreadToken(GetCurrentThread(), TOKEN_ALL_ACCESS, TRUE, &saved_token))
 		saved_token = INVALID_HANDLE_VALUE;
 
-	token_list = get_token_list(&num_tokens);
+	token_list = get_token_list(&num_tokens, &token_privs);
 	if (!token_list)
 	{
 		packet_transmit_response(GetLastError(), remote, response);

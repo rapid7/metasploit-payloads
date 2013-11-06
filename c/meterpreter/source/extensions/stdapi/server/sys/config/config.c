@@ -363,26 +363,36 @@ DWORD request_sys_config_sysinfo(Remote *remote, Packet *packet)
 			else if (v.dwMinorVersion == 2)
 				osName = "Windows .NET Server";
 		}
-		else if (v.dwMajorVersion == 6 && v.dwMinorVersion == 0)
+		else if (v.dwMajorVersion == 6)
 		{
-			if (v.wProductType == VER_NT_WORKSTATION)
-				osName = "Windows Vista";
-			else 
-				osName = "Windows 2008";
-		}
-		else if (v.dwMajorVersion == 6 && v.dwMinorVersion == 1)
-		{
-			if (v.wProductType == VER_NT_WORKSTATION)
-				osName = "Windows 7";
-			else 
-				osName = "Windows 2008 R2";
-		}
-		else if (v.dwMajorVersion == 6 && v.dwMinorVersion == 2)
-		{
-			if (v.wProductType == VER_NT_WORKSTATION)
-				osName = "Windows 8";
-			else 
-				osName = "Windows 2012";
+			if (v.dwMinorVersion == 0)
+			{
+				if (v.wProductType == VER_NT_WORKSTATION)
+					osName = "Windows Vista";
+				else 
+					osName = "Windows 2008";
+			}
+			else if (v.dwMinorVersion == 1)
+			{
+				if (v.wProductType == VER_NT_WORKSTATION)
+					osName = "Windows 7";
+				else 
+					osName = "Windows 2008 R2";
+			}
+			else if (v.dwMinorVersion == 2)
+			{
+				if (v.wProductType == VER_NT_WORKSTATION)
+					osName = "Windows 8";
+				else 
+					osName = "Windows 2012";
+			}
+			else if (v.dwMinorVersion == 3)
+			{
+				if (v.wProductType == VER_NT_WORKSTATION)
+					osName = "Windows 8.1";
+				else 
+					osName = "Windows 2012 R2";
+			}
 		}
 		
 		if (!osName)
