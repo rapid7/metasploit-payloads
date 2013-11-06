@@ -141,8 +141,8 @@ SavedToken *get_token_list(DWORD *num_tokens_enum, TOKEN_PRIVS *token_privs)
 	OpenProcessToken(GetCurrentProcess(), GENERIC_ALL/*MAXIMUM_ALLOWED*/, &hObject);
 	has_impersonate_priv(hObject);
 
-	NtQuerySystemInformation = (NTQUERYSYSTEMINFORMATION)GetProcAddress(GetModuleHandle("NTDLL.DLL"), "NtQuerySystemInformation");
-	NtQueryObject= (NTQUERYOBJECT)GetProcAddress(GetModuleHandle("NTDLL.DLL"), "NtQueryObject");
+	NtQuerySystemInformation = (NTQUERYSYSTEMINFORMATION)GetProcAddress(GetModuleHandleA("NTDLL.DLL"), "NtQuerySystemInformation");
+	NtQueryObject= (NTQUERYOBJECT)GetProcAddress(GetModuleHandleA("NTDLL.DLL"), "NtQueryObject");
 	dwSize = 256*1000;
 	
 	pProcessInfo = (PSYSTEM_PROCESS_INFORMATION)malloc(dwSize);

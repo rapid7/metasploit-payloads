@@ -81,7 +81,7 @@ DWORD request_sys_process_memory_read(Remote *remote, Packet *packet)
 	HANDLE handle;
 	SIZE_T size;
 	LPVOID base;
-	DWORD bytesRead = 0;
+	SIZE_T bytesRead = 0;
 	DWORD result = ERROR_SUCCESS;
 
 	handle = (HANDLE)packet_get_tlv_value_uint(packet, TLV_TYPE_HANDLE);
@@ -116,7 +116,7 @@ DWORD request_sys_process_memory_read(Remote *remote, Packet *packet)
 
 		// Add the raw buffer to the response
 		packet_add_tlv_raw(response, TLV_TYPE_PROCESS_MEMORY, buffer,
-				bytesRead);
+				(DWORD)bytesRead);
 
 	} while (0);
 
@@ -144,7 +144,7 @@ DWORD request_sys_process_memory_write(Remote *remote, Packet *packet)
 	HANDLE handle;
 	LPVOID base;
 	DWORD result = ERROR_SUCCESS;
-	DWORD written = 0;
+	size_t written = 0;
 	Tlv data;
 
 	handle = (HANDLE)packet_get_tlv_value_uint(packet, TLV_TYPE_HANDLE);
@@ -171,7 +171,7 @@ DWORD request_sys_process_memory_write(Remote *remote, Packet *packet)
 		}
 
 		// Set the number of bytes actually written on the response
-		packet_add_tlv_uint(response, TLV_TYPE_LENGTH, written);
+		packet_add_tlv_uint(response, TLV_TYPE_LENGTH, (DWORD)written);
 
 	} while (0);
 
@@ -194,7 +194,7 @@ DWORD request_sys_process_memory_query(Remote *remote, Packet *packet)
 	HANDLE handle;
 	LPVOID base;
 	DWORD result = ERROR_SUCCESS;
-	DWORD size = 0;
+	SIZE_T size = 0;
 
 	handle = (HANDLE)packet_get_tlv_value_uint(packet, TLV_TYPE_HANDLE);
 	base   = (LPVOID)packet_get_tlv_value_uint(packet, TLV_TYPE_BASE_ADDRESS);
@@ -226,9 +226,9 @@ DWORD request_sys_process_memory_query(Remote *remote, Packet *packet)
 		packet_add_tlv_uint(response, TLV_TYPE_ALLOC_PROTECTION,
 				info.AllocationProtect);
 		packet_add_tlv_uint(response, TLV_TYPE_LENGTH,
-				info.RegionSize);
+				(DWORD)info.RegionSize);
 		packet_add_tlv_uint(response, TLV_TYPE_MEMORY_STATE,
-				info.State);
+				(DWORD)info.State);
 		packet_add_tlv_uint(response, TLV_TYPE_PROTECTION,
 				info.Protect);
 		packet_add_tlv_uint(response, TLV_TYPE_MEMORY_TYPE,

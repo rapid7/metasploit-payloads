@@ -235,7 +235,7 @@
       <FunctionLevelLinking>false</FunctionLevelLinking>
       <PrecompiledHeader>
       </PrecompiledHeader>
-      <WarningLevel>Level4</WarningLevel>
+      <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <CompileAs>CompileAsC</CompileAs>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
@@ -260,7 +260,7 @@
       <FunctionLevelLinking>false</FunctionLevelLinking>
       <PrecompiledHeader>
       </PrecompiledHeader>
-      <WarningLevel>Level4</WarningLevel>
+      <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <CompileAs>CompileAsC</CompileAs>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
