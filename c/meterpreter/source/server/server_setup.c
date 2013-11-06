@@ -355,11 +355,10 @@ static DWORD server_dispatch( Remote * remote )
 				break;
 			}
 
-			cpt = thread_create( command_process_thread, remote, packet );
-			if( cpt )
+			if( !command_handle( remote, packet ) )
 			{
-				dprintf( "[DISPATCH] created command_process_thread 0x%08X, handle=0x%08X", cpt, cpt->handle );
-				thread_run( cpt );
+				dprintf( "[DISPATCH] command_process indicated server stop. Exiting." );
+				break;
 			}
 		}
 		else if( result < 0 )
@@ -502,12 +501,11 @@ static DWORD server_dispatch_http_wininet( Remote * remote )
 
 		dprintf("[DISPATCH] Returned result: %d", result);
 
-		cpt = thread_create( command_process_thread, remote, packet );
-		if( cpt )
+		if( !command_handle( remote, packet ) )
 		{
-			dprintf( "[DISPATCH] created command_process_thread 0x%08X, handle=0x%08X", cpt, cpt->handle );
-			thread_run( cpt );
-		}	
+			dprintf( "[DISPATCH] command_process indicated server stop. Exiting." );
+			break;
+		}
 	}
 
 	// Close WinInet handles

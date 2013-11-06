@@ -1,15 +1,5 @@
 #include "common.h"
 
-#ifdef _WIN32
-/* it appears extern'd globals screw up the posix build because the linker
- * fails to find them and causes metsrv to exit.
- *  - egypt
- */
-
-// An external reference to the meterpreters main server thread, so we can shutdown gracefully after successfull migration.
-extern THREAD * serverThread;
-#endif
-
 /*
  * core_channel_open
  * -----------------
@@ -31,9 +21,10 @@ DWORD remote_request_core_channel_open(Remote *remote, Packet *packet)
 
 	do
 	{
+		dprintf( "[CHANNEL] Opening new channel for packet %p", packet );
+
 		// If the channel open request had a specific channel type
-		if ((channelType = packet_get_tlv_value_string(packet, 
-				TLV_TYPE_CHANNEL_TYPE)))
+		if ((channelType = packet_get_tlv_value_string(packet, TLV_TYPE_CHANNEL_TYPE)))
 		{
 			res = ERROR_NOT_FOUND;
 			break;
@@ -42,19 +33,24 @@ DWORD remote_request_core_channel_open(Remote *remote, Packet *packet)
 		// Get any flags that were supplied
 		flags = packet_get_tlv_value_uint(packet, TLV_TYPE_FLAGS);
 
+		dprintf( "[CHANNEL] Opening %s %u", channelType, flags );
+
 		// Allocate a response
 		response = packet_create_response(packet);
 		
 		// Did the response allocation fail?
-		if ((!response) ||
-		    (!(newChannel = channel_create(0, flags))))
+		if ((!response) || (!(newChannel = channel_create(0, flags))))
 		{
 			res = ERROR_NOT_ENOUGH_MEMORY;
 			break;
 		}
 
+		dprintf( "[CHANNEL] Opened %s %u", channelType, flags );
+
 		// Get the channel class and set it
 		newChannel->cls = packet_get_tlv_value_uint(packet, TLV_TYPE_CHANNEL_CLASS);
+
+		dprintf( "[CHANNEL] Channel class for %s: %u", channelType, newChannel->cls );
 
 		// Add the new channel identifier to the response
 		if ((res = packet_add_tlv_uint(response, TLV_TYPE_CHANNEL_ID,
@@ -62,7 +58,10 @@ DWORD remote_request_core_channel_open(Remote *remote, Packet *packet)
 			break;
 
 		// Transmit the response
+		dprintf( "[CHANNEL] Sending response for %s", channelType  );
 		res = packet_transmit(remote, response, NULL);
+
+		dprintf( "[CHANNEL] Done" );
 
 	} while (0);
 
@@ -615,29 +614,23 @@ DWORD remote_request_core_crypto_negotiate(Remote *remote, Packet *packet)
 	return ERROR_SUCCESS;
 }
 
-
-
 /*
  * core_shutdown
  * -----------------
- *
  */
-DWORD remote_request_core_shutdown(Remote *remote, Packet *packet)
+DWORD remote_request_core_shutdown( Remote *remote, Packet *packet, DWORD* pResult )
 {
 	Channel *channel = NULL;
-	Packet *response = packet_create_response(packet);
+	Packet *response = packet_create_response( packet );
 	DWORD result = ERROR_SUCCESS;
 
 	// Acknowledge the shutdown request
-	packet_add_tlv_bool(response, TLV_TYPE_BOOL, TRUE);
+	packet_add_tlv_bool( response, TLV_TYPE_BOOL, TRUE );
 
 	// Transmit the response
-	packet_transmit_response(result, remote, response);
+	packet_transmit_response( result, remote, response );
 
-#ifdef _WIN32
-// see note about posix above - egypt
-	dprintf("[SHUTDOWN] Shutting down the Meterpreter thread 1 (killing the main thread)...");
-	thread_kill( serverThread );
-#endif
-	return result;
+	*pResult = result;
+
+	return TRUE;
 }

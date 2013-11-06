@@ -91,7 +91,7 @@ DWORD scheduler_initialize( Remote * remote )
 	pthread_mutex_init(&scheduler_mutex, NULL);
 	pthread_cond_init(&scheduler_cond, NULL);
 
-	scheduler_thread = thread_create(scheduler_run, remote, NULL);
+	scheduler_thread = thread_create(scheduler_run, remote, NULL, NULL);
 	if(! scheduler_thread) {
 		return ENOMEM;
 	}
