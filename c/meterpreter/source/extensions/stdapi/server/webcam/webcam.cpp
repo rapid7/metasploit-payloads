@@ -497,7 +497,7 @@ DWORD THREADCALL webcam_control_thread(THREAD * thread)
 				event_signal(state->pResultEvent);
 				break;
 			default:
-				dprintf("[WEBCAM] Unexpected action %u", state->dwAction);
+				dprintf("[WEBCAM] Unexpected action %u", (DWORD)state->controlAction);
 				state->bRunning = FALSE;
 				dwResult = ERROR_UNKNOWN_FEATURE;
 				break;
@@ -689,22 +689,26 @@ DWORD request_webcam_start(Remote *remote, Packet *packet)
 	packet_transmit_response(dwResult, remote, response);
 
 	if (dwResult != ERROR_SUCCESS) {
+		dprintf("[WEBCAM] Failure found, cleaning up");
 		if (g_pWorkerThread != NULL) {
 			if (g_pThreadState != NULL) {
-				if (g_pThreadState->bRunning)
+				if (g_pThreadState->bRunning) {
 					thread_kill(g_pWorkerThread);
-				if (g_pThreadState->pCallEvent != NULL)
+				}
+
+				thread_destroy(g_pWorkerThread);
+				g_pWorkerThread = NULL;
+
+				if (g_pThreadState->pCallEvent != NULL) {
 					event_destroy(g_pThreadState->pCallEvent);
-				if (g_pThreadState->pResultEvent != NULL)
+				}
+				if (g_pThreadState->pResultEvent != NULL) {
 					event_destroy(g_pThreadState->pResultEvent);
+				}
 
 				free(g_pThreadState);
 				g_pThreadState = NULL;
 			}
-
-			thread_destroy(g_pWorkerThread);
-			free(g_pWorkerThread);
-			g_pWorkerThread = NULL;
 		}
 	}
 
