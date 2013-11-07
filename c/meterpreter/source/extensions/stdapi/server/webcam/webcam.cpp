@@ -667,7 +667,7 @@ DWORD request_webcam_start(Remote *remote, Packet *packet)
 
 		// kick off the worker thread that will do all the cam handling on one thread to avoid
 		// cross-threaded COM problems.
-		g_pWorkerThread = thread_create(webcam_control_thread, g_pThreadState, NULL);
+		g_pWorkerThread = thread_create(webcam_control_thread, g_pThreadState, NULL, NULL);
 
 		if (g_pWorkerThread == NULL) {
 			BREAK_WITH_ERROR("[WEBCAM] Failed to create thread.", ERROR_THREAD_1_INACTIVE);
