@@ -644,6 +644,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\source\extensions\stdapi\server\precomp.h" />
+    <ClInclude Include="..\..\source\extensions\stdapi\server\sys\config\config.h" />
     <ClInclude Include="..\..\source\extensions\stdapi\stdapi.h" />
     <ClInclude Include="..\..\source\extensions\stdapi\server\net\net.h" />
     <ClInclude Include="..\..\source\extensions\stdapi\server\net\socket\tcp.h" />
