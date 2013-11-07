@@ -476,6 +476,13 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\source\extensions\incognito\hash_stealer.h" />
+    <ClInclude Include="..\..\source\extensions\incognito\incognito.h" />
+    <ClInclude Include="..\..\source\extensions\incognito\list_tokens.h" />
+    <ClInclude Include="..\..\source\extensions\incognito\token_info.h" />
+    <ClInclude Include="..\..\source\extensions\incognito\user_management.h" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
     <Import Project="$(VCTargetsPath)\BuildCustomizations\masm.targets" />

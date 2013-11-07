@@ -5,59 +5,62 @@
 #include "common.h"
 
 // Local remote request implementors
-extern DWORD remote_request_core_console_write(Remote *remote, Packet *packet);
+extern DWORD remote_request_core_console_write( Remote *remote, Packet *packet );
 
-extern DWORD remote_request_core_channel_open(Remote *remote, Packet *packet);
-extern DWORD remote_request_core_channel_write(Remote *remote, Packet *packet);
-extern DWORD remote_request_core_channel_read(Remote *remote, Packet *packet);
-extern DWORD remote_request_core_channel_close(Remote *remote, Packet *packet);
-extern DWORD remote_request_core_channel_seek(Remote *remote, Packet *packet);
-extern DWORD remote_request_core_channel_eof(Remote *remote, Packet *packet);
-extern DWORD remote_request_core_channel_tell(Remote *remote, Packet *packet);
-extern DWORD remote_request_core_channel_interact(Remote *remote, Packet *packet);
+extern DWORD remote_request_core_channel_open( Remote *remote, Packet *packet );
+extern DWORD remote_request_core_channel_write( Remote *remote, Packet *packet );
+extern DWORD remote_request_core_channel_read( Remote *remote, Packet *packet );
+extern DWORD remote_request_core_channel_close( Remote *remote, Packet *packet );
+extern DWORD remote_request_core_channel_seek( Remote *remote, Packet *packet );
+extern DWORD remote_request_core_channel_eof( Remote *remote, Packet *packet );
+extern DWORD remote_request_core_channel_tell( Remote *remote, Packet *packet );
+extern DWORD remote_request_core_channel_interact( Remote *remote, Packet *packet );
 
-extern DWORD remote_request_core_crypto_negotiate(Remote *remote, Packet *packet);
+extern DWORD remote_request_core_crypto_negotiate( Remote *remote, Packet *packet );
 
-extern DWORD remote_request_core_shutdown(Remote *remote, Packet *packet);
+extern BOOL remote_request_core_shutdown(Remote *remote, Packet *packet, DWORD* pResult);
 
-extern DWORD remote_request_core_migrate(Remote *remote, Packet *packet);
+extern BOOL remote_request_core_migrate( Remote *remote, Packet *packet, DWORD* pResult );
 
 // Local remote response implementors
-extern DWORD remote_response_core_console_write(Remote *remote, Packet *packet);
+extern DWORD remote_response_core_console_write( Remote *remote, Packet *packet );
 
-extern DWORD remote_response_core_channel_open(Remote *remote, Packet *packet);
-extern DWORD remote_response_core_channel_close(Remote *remote, Packet *packet);
+extern DWORD remote_response_core_channel_open( Remote *remote, Packet *packet );
+extern DWORD remote_response_core_channel_close( Remote *remote, Packet *packet );
 
-DWORD remote_request_core_console_write(Remote *remote, Packet *packet)
+DWORD remote_request_core_console_write( Remote *remote, Packet *packet )
 {
 	return ERROR_SUCCESS;
 }
 
-DWORD remote_response_core_console_write(Remote *remote, Packet *packet)
+DWORD remote_response_core_console_write( Remote *remote, Packet *packet )
 {
 	return ERROR_SUCCESS;
 }
+
+BOOL command_is_inline( Command *command, Packet *packet );
+Command* command_locate( Packet *packet );
+DWORD command_validate_arguments(Command *command, Packet *packet);
+DWORD THREADCALL command_process_thread( THREAD * thread );
 
 
 /*!
  * @brief Base RPC dispatch table.
  */
-Command commands[] =
+Command base_commands[] =
 {
-	/*
-	* Core commands
-	*/
-
 	// Console commands
 	{  "core_console_write",  
-		{ remote_request_core_console_write,     { TLV_META_TYPE_STRING }, 1 | ARGUMENT_FLAG_REPEAT },
-		{ remote_response_core_console_write,    EMPTY_TLV },
+		{ remote_request_core_console_write,   NULL,   { TLV_META_TYPE_STRING }, 1 | ARGUMENT_FLAG_REPEAT },
+		{ remote_response_core_console_write,  NULL,   EMPTY_TLV },
 	},
 
 	// Native Channel commands
+	// this overloads the "core_channel_open" in the base command list
 	COMMAND_REQ_REP( "core_channel_open", remote_request_core_channel_open, remote_response_core_channel_open ),
 	COMMAND_REQ( "core_channel_write", remote_request_core_channel_write ),
 	COMMAND_REQ_REP( "core_channel_close", remote_request_core_channel_close, remote_response_core_channel_close ),
+
 	// Buffered/Pool channel commands
 	COMMAND_REQ( "core_channel_read", remote_request_core_channel_read ),
 	// Pool channel commands
@@ -69,14 +72,17 @@ Command commands[] =
 	// Crypto
 	COMMAND_REQ( "core_crypto_negotiate", remote_request_core_crypto_negotiate ),
 	// Migration
-	COMMAND_REQ( "core_migrate", remote_request_core_migrate ),
+	COMMAND_INLINE_REQ( "core_migrate", remote_request_core_migrate ),
 	// Shutdown
-	COMMAND_REQ( "core_shutdown", remote_request_core_shutdown ),
+	COMMAND_INLINE_REQ( "core_shutdown", remote_request_core_shutdown ),
 	// Terminator
 	COMMAND_TERMINATOR
 };
 
-// Dynamically registered command extensions
+/*!
+ * @brief Dynamically registered command extensions.
+ * @details A linked list of commands registered on the fly by reflectively-loaded extensions.
+ */
 Command *extension_commands = NULL;
 
 /*!
@@ -88,7 +94,7 @@ void command_register_all(Command commands[])
 	DWORD index;
 
 	for (index = 0; commands[index].method; index++)
-		command_register(&commands[index]);
+		command_register( &commands[index] );
 }
 
 /*!
@@ -202,19 +208,152 @@ VOID reap_zombie_thread(void * param)
 #endif
 
 /*!
+ * @brief Process a command directly on the current thread.
+ * @param command Pointer to the \c Command to be executed.
+ * @param remote Pointer to the \c Remote endpoint for this command.
+ * @param packet Pointer to the \c Packet containing the command detail.
+ * @returns Boolean value indicating if the server should continue processing.
+ * @retval TRUE The server can and should continue processing.
+ * @retval FALSE The server should stop processing and shut down.
+ * @sa command_handle
+ * @sa command_process_thread
+ */
+BOOL command_process_inline( Command *command, Remote *remote, Packet *packet )
+{
+	DWORD result;
+	BOOL serverContinue = TRUE;
+	Tlv requestIdTlv;
+	PCHAR requestId;
+	PacketTlvType packetTlvType;
+
+	dprintf( "[COMMAND] Executing command %s", command->method );
+
+	__try
+	{
+		do
+		{
+#ifdef _WIN32
+			// Impersonate the thread token if needed (only on Windows)
+			if(remote->hServerToken != remote->hThreadToken) {
+				if(! ImpersonateLoggedOnUser(remote->hThreadToken)) {
+					dprintf( "[COMMAND] Failed to impersonate thread token (%s) (%u)", command->method, GetLastError());
+				}
+			}
+#endif
+
+			// Validate the arguments, if requested.  Always make sure argument 
+			// lengths are sane.
+			if( command_validate_arguments( command, packet ) != ERROR_SUCCESS )
+				break;
+
+			packetTlvType = packet_get_type( packet );
+			switch ( packetTlvType )
+			{
+			case PACKET_TLV_TYPE_REQUEST:
+			case PACKET_TLV_TYPE_PLAIN_REQUEST:
+				if (command->request.inline_handler) {
+					dprintf( "[DISPATCH] executing inline request handler %s", command->method );
+					serverContinue = command->request.inline_handler( remote, packet, &result );
+				} else {
+					dprintf( "[DISPATCH] executing request handler %s", command->method );
+					result = command->request.handler( remote, packet );
+				}
+				break;
+			case PACKET_TLV_TYPE_RESPONSE:
+			case PACKET_TLV_TYPE_PLAIN_RESPONSE:
+				if (command->response.inline_handler) {
+					dprintf( "[DISPATCH] executing inline response handler %s", command->method );
+					serverContinue = command->response.inline_handler( remote, packet, &result );
+				} else {
+					dprintf( "[DISPATCH] executing response handler %s", command->method );
+					result = command->response.handler( remote, packet );
+				}
+				break;
+			}
+
+			dprintf("[COMMAND] Calling completion handlers...");
+
+			// Get the request identifier if the packet has one.
+			if ( packet_get_tlv_string( packet, TLV_TYPE_REQUEST_ID, &requestIdTlv ) == ERROR_SUCCESS )
+				requestId = (PCHAR)requestIdTlv.buffer;
+
+			// Finally, call completion routines for the provided identifier
+			if( ((packetTlvType == PACKET_TLV_TYPE_RESPONSE) || (packetTlvType == PACKET_TLV_TYPE_PLAIN_RESPONSE)) && requestId)
+				packet_call_completion_handlers( remote, packet, requestId );
+
+		} while( 0 );
+	}
+	__except( EXCEPTION_EXECUTE_HANDLER )
+	{
+		dprintf("[COMMAND] Exception hit in command %s", command->method );
+	}
+
+	packet_destroy( packet );
+
+	return serverContinue;
+}
+
+/*!
+ * @brief Handle an incoming command.
+ * @param remote Pointer to the \c Remote instance associated with this command.
+ * @param packet Pointer to the \c Packet containing the command data.
+ * @retval TRUE The server can and should continue processing.
+ * @retval FALSE The server should stop processing and shut down.
+ * @remark This function was incorporate to help support two things in meterpreter:
+ *         -# A way of allowing a command to be processed directly on the main server
+ *            thread and not on another thread (which in some cases can cause problems).
+ *         -# A cleaner way of shutting down the server so that container processes
+ *            can shutdown cleanly themselves, where appropriate.
+ *
+ *         This function will look at the command definition and determine if it should
+ *         be executed inline or on a new command thread.
+ * @sa command_process_inline
+ * @sa command_process_thread
+ */
+BOOL command_handle( Remote *remote, Packet *packet )
+{
+	BOOL result = TRUE;
+	THREAD* cpt = NULL;
+	Command* command = NULL;
+
+	do
+	{
+		command = command_locate( packet );
+
+		if( command == NULL ) {
+			// We have no matching command for this packet, so it won't get handled. We
+			// need to clean up here before exiting out.
+			packet_destroy( packet );
+			break;
+		}
+		
+		if( command_is_inline( command, packet ) ) {
+			dprintf( "Executing inline: %s", command->method );
+			result = command_process_inline( command, remote, packet );
+		} else {
+			dprintf( "Executing in thread: %s", command->method );
+			cpt = thread_create( command_process_thread, remote, packet, command );
+			if( cpt )
+			{
+				dprintf( "[DISPATCH] created command_process_thread 0x%08X, handle=0x%08X", cpt, cpt->handle );
+				thread_run( cpt );
+			}
+		}
+	} while(0);
+
+	return result;
+}
+
+/*!
  * @brief Process a single command in a seperate thread of execution.
  * @param thread Pointer to the thread to execute.
- * @return Result of processing.
+ * @return Result of thread execution (not the result of the command).
+ * @sa command_handle
+ * @sa command_process_thread
  */
 DWORD THREADCALL command_process_thread( THREAD * thread )
 {
-	DWORD index       = 0;
-	DWORD result      = ERROR_SUCCESS;
-	Tlv methodTlv     = {0};
-	Tlv requestIdTlv  = {0};
-	PCHAR method      = NULL;
-	PCHAR requestId   = NULL;
-	Command * current = NULL;
+	Command * command = NULL;
 	Remote * remote   = NULL;
 	Packet * packet   = NULL;
 
@@ -229,11 +368,16 @@ DWORD THREADCALL command_process_thread( THREAD * thread )
 	if( packet == NULL )
 		return ERROR_INVALID_DATA;
 
+	command = (Command *)thread->parameter3;
+	if( command == NULL )
+		return ERROR_INVALID_DATA;
+
 	if( commandThreadList == NULL )
 	{
 		commandThreadList = list_create();
 		if( commandThreadList == NULL )
 			return ERROR_INVALID_HANDLE;
+
 #ifndef _WIN32
 		pthread_t tid;
 		pthread_create(&tid, NULL, reap_zombie_thread, NULL);
@@ -243,73 +387,7 @@ DWORD THREADCALL command_process_thread( THREAD * thread )
 
 	list_add( commandThreadList, thread );
 
-	__try
-	{
-		do
-		{
-
-			// Extract the method
-			result = packet_get_tlv_string( packet, TLV_TYPE_METHOD, &methodTlv );
-			if( result != ERROR_SUCCESS )
-				break;
-
-			dprintf( "[COMMAND] Processing method %s", methodTlv.buffer );
-
-#ifdef _WIN32
-			// Impersonate the thread token if needed (only on Windows)
-			if(remote->hServerToken != remote->hThreadToken) {
-				if(! ImpersonateLoggedOnUser(remote->hThreadToken)) {
-					dprintf( "[COMMAND] Failed to impersonate thread token (%s) (%u)", methodTlv.buffer, GetLastError());
-				}
-			}
-#endif
-
-			// Get the request identifier if the packet has one.
-			result = packet_get_tlv_string( packet, TLV_TYPE_REQUEST_ID, &requestIdTlv );
-			if( result == ERROR_SUCCESS )
-				requestId = (PCHAR)requestIdTlv.buffer;
-
-			method = (PCHAR)methodTlv.buffer;
-
-			result = ERROR_NOT_FOUND;
-
-			// Try to find a match in the dispatch type
-			for( index = 0, result = ERROR_NOT_FOUND ; result == ERROR_NOT_FOUND && commands[index].method ; index++ )
-			{
-				if( strcmp( commands[index].method, method ) )
-					continue;
-
-				// Call the base handler
-				result = command_call_dispatch( &commands[index], remote, packet );
-			}
-
-			// Regardless of error code, try to see if someone has overriden a base handler
-			for( current = extension_commands, result = ERROR_NOT_FOUND ; 
-				result == ERROR_NOT_FOUND && current && current->method ; current = current->next )
-			{
-				if( strcmp( current->method, method ) )
-					continue;
-
-				// Call the custom handler
-				result = command_call_dispatch( current, remote, packet );
-			}
-
-			dprintf("[COMMAND] Calling completion handlers...");
-			// Finally, call completion routines for the provided identifier
-			if( ((packet_get_type(packet) == PACKET_TLV_TYPE_RESPONSE) || (packet_get_type(packet) == PACKET_TLV_TYPE_PLAIN_RESPONSE)) && (requestId))
-				packet_call_completion_handlers( remote, packet, requestId );
-
-			// If we get here, we're successful.
-			result = ERROR_SUCCESS;
-
-		} while( 0 );
-	}
-	__except( EXCEPTION_EXECUTE_HANDLER )
-	{
-		dprintf("[COMMAND] Exception hit in command thread 0x%08X!", thread );
-	}
-
-	packet_destroy( packet );
+	command_process_inline( command, remote, packet );
 
 	if( list_remove( commandThreadList, thread ) )
 		thread_destroy( thread );
@@ -317,146 +395,108 @@ DWORD THREADCALL command_process_thread( THREAD * thread )
 	return ERROR_SUCCESS;
 }
 
-/*
- * Process a single command
- */
-/*
-DWORD command_process_remote(Remote *remote, Packet *inPacket)
-{
-	DWORD res = ERROR_SUCCESS, index;
-	Tlv methodTlv, requestIdTlv;
-	Packet *localPacket = NULL;
-	PCHAR method, requestId = NULL;
-	Command *current;
-
-	do
-	{
-		// If no packet was providied, try to receive one.
-		if (!inPacket)
-		{
-			if ((res = packet_receive(remote, &localPacket)) != ERROR_SUCCESS)
-				break;
-			else
-				inPacket = localPacket;
-		}
-
-		// Extract the method
-		if ((packet_get_tlv_string(inPacket, TLV_TYPE_METHOD, &methodTlv)
-				!= ERROR_SUCCESS))
-			break;
-		dprintf("Processing method %s", methodTlv.buffer);
-
-		// Get the request identifier if the packet has one.
-		if (packet_get_tlv_string(inPacket, TLV_TYPE_REQUEST_ID, 
-				&requestIdTlv) == ERROR_SUCCESS)
-			requestId = (PCHAR)requestIdTlv.buffer;
-
-		method = (PCHAR)methodTlv.buffer;
-
-		res = ERROR_NOT_FOUND;
-
-		// Try to find a match in the dispatch type
-		for (index = 0, res = ERROR_NOT_FOUND; 
-			  res = ERROR_NOT_FOUND && commands[index].method; 
-			  index++)
-		{
-			if (strcmp(commands[index].method, method))
-				continue;
-
-			// Call the base handler
-			res = command_call_dispatch(&commands[index], remote, inPacket);
-		}
-
-		// Regardless of error code, try to see if someone has overriden
-		// a base handler
-		for (current = extension_commands, res = ERROR_NOT_FOUND; 
-			  res == ERROR_NOT_FOUND && current && current->method; 
-			  current = current->next)
-		{
-			if (strcmp(current->method, method))
-				continue;
-		
-			// Call the custom handler
-			res = command_call_dispatch(current, remote, inPacket);
-		}
-
-		dprintf("Calling completion handlers...");
-		// Finally, call completion routines for the provided identifier
-		if (((packet_get_type(inPacket) == PACKET_TLV_TYPE_RESPONSE) ||
-		     (packet_get_type(inPacket) == PACKET_TLV_TYPE_PLAIN_RESPONSE)) &&
-		    (requestId))
-			packet_call_completion_handlers(remote, inPacket, requestId);
-
-		// If we get here, we're successful.
-		res = ERROR_SUCCESS;
-		
-	} while (0);
-
-	if (localPacket)
-		packet_destroy(localPacket);
-
-	return res;
-}*/
-
-/*
- * Process incoming commands, calling dispatch tables appropriately
- */ 
-/*
-DWORD command_process_remote_loop(Remote *remote)
-{
-	DWORD res = ERROR_SUCCESS;
-	Packet *packet;
-
-	while ((res = packet_receive(remote, &packet)) == ERROR_SUCCESS)
-	{
-		res = command_process_remote(remote, packet);
-
-		// Destroy the packet
-		packet_destroy(packet);
-	
-		// If a command returned exit, we shall return.
-		if (res == ERROR_INSTALL_USEREXIT)
-			break;
-	}
-
-	return res;
-}
-*/
-
 /*!
- * @brief Call the dispatch routine for a given command.
- * @param command The command to call the dispatch routine on.
- * @param remote Pointer to the remote connection.
- * @param packet Pointer to the current packet.
- * @return Result of the command dispatch handler call.
+ * @brief Determine if a given command/packet combination should be invoked inline.
+ * @param command Pointer to the \c Command being invoked.
+ * @param packet Pointer to the \c Packet being received/sent.
+ * @returns Boolean indication of whether the command should be executed inline.
+ * @retval TRUE The command should be executed inline on the current thread.
+ * @retval FALSE The command should be executed on a new thread.
  */
- DWORD command_call_dispatch(Command *command, Remote *remote, Packet *packet)
+BOOL command_is_inline( Command *command, Packet *packet )
 {
-	DWORD res;
-
-	// Validate the arguments, if requested.  Always make sure argument 
-	// lengths are sane.
-	if ((res = command_validate_arguments(command, packet)) != ERROR_SUCCESS)
-		return res;
-
-	switch (packet_get_type(packet))
+	switch (packet_get_type( packet ))
 	{
 	case PACKET_TLV_TYPE_REQUEST:
 	case PACKET_TLV_TYPE_PLAIN_REQUEST:
-		if (command->request.handler)
-			res = command->request.handler(remote, packet);
-		break;
+		if (command->request.inline_handler)
+			return TRUE;
 	case PACKET_TLV_TYPE_RESPONSE:
 	case PACKET_TLV_TYPE_PLAIN_RESPONSE:
-		if (command->response.handler)
-			res = command->response.handler(remote, packet);
-		break;
-	default:
-		res = ERROR_NOT_FOUND;
-		break;
+		if (command->response.inline_handler)
+			return TRUE;
 	}
 
-	return res;
+	return FALSE;
+}
+
+/*!
+ * @brief Attempt to locate a command in the base command list.
+ * @param method String that identifies the command.
+ * @returns Pointer to the command entry in the base command list.
+ * @retval NULL Indicates that no command was found for the given method.
+ * @retval NON-NULL Pointer to the command that can be executed.
+ */
+Command* command_locate_base( const char* method )
+{
+	DWORD index;
+
+	dprintf( "[COMMAND EXEC] Attempting to locate base command %s", method );
+	for( index = 0; base_commands[index].method ; ++index )
+		if( strcmp( base_commands[index].method, method ) == 0 )
+			return &base_commands[index];
+
+	dprintf( "[COMMAND EXEC] Couldn't find base command %s", method );
+	return NULL;
+}
+
+/*!
+ * @brief Attempt to locate a command in the extensions command list.
+ * @param method String that identifies the command.
+ * @returns Pointer to the command entry in the extensions command list.
+ * @retval NULL Indicates that no command was found for the given method.
+ * @retval NON-NULL Pointer to the command that can be executed.
+ */
+Command* command_locate_extension( const char* method )
+{
+	Command* command;
+
+	dprintf( "[COMMAND EXEC] Attempting to locate extension command %s", method );
+	for( command = extension_commands; command; command = command->next )
+		if( strcmp( command->method, method ) == 0 )
+			return command;
+
+	dprintf( "[COMMAND EXEC] Couldn't find extension command %s", method );
+	return NULL;
+}
+
+/*!
+ * @brief Attempt to locate a command to execute based on the method.
+ * @param method String that identifies the command.
+ * @returns Pointer to the command entry to execute.
+ * @retval NULL Indicates that no command was found for the given method.
+ * @retval NON-NULL Pointer to the command that can be executed.
+ * @remark This function tries to find an extension command first. If
+ *         found it will be returned. If not, the base command list is
+ *         queried. This supports the notion of extensions overloading
+ *         the base commands.
+ * @sa command_locate_extension
+ * @sa command_locate_base
+ */
+Command* command_locate( Packet *packet )
+{
+	Command* command = NULL;
+	DWORD dwResult;
+	Tlv methodTlv;
+	
+	do
+	{
+		dwResult = packet_get_tlv_string( packet, TLV_TYPE_METHOD, &methodTlv );
+
+		if( dwResult != ERROR_SUCCESS ) {
+			dprintf( "[COMMAND] Unable to extract method from packet." );
+			break;
+		}
+
+		// check for an overload first.
+		command = command_locate_extension( (PCHAR)methodTlv.buffer );
+
+		// if no overload, then fallback on base.
+		if( command == NULL )
+			command = command_locate_base( (PCHAR)methodTlv.buffer );
+	} while(0);
+
+	return command;
 }
 
 /*!

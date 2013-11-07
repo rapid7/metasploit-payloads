@@ -76,7 +76,7 @@ DWORD scheduler_destroy( VOID )
 
 	while( TRUE )
 	{
-		dprintf( "[SCHEDULER] scheduler_destroy, popping off another item from thread liat..." );
+		dprintf( "[SCHEDULER] scheduler_destroy, popping off another item from thread list..." );
 		
 		thread = (THREAD *)list_pop( jlist );
 		if( thread == NULL )
@@ -121,7 +121,7 @@ DWORD scheduler_insert_waitable( HANDLE waitable, LPVOID context, WaitableNotify
 	entry->context  = context;
 	entry->routine  = routine;
 
-	swt = thread_create( scheduler_waitable_thread, entry, NULL );
+	swt = thread_create( scheduler_waitable_thread, entry, NULL, NULL );
 	if( swt != NULL )
 	{
 		dprintf( "[SCHEDULER] created scheduler_waitable_thread 0x%08X", swt );

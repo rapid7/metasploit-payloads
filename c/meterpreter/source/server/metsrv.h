@@ -30,12 +30,14 @@
 #endif
 
 DWORD server_setup(SOCKET fd);
+typedef DWORD (*PSRVINIT)(Remote *remote);
+typedef DWORD (*PSRVDEINIT)(Remote *remote);
 
 typedef struct _EXTENSION
 {
 	HMODULE library;
-	DWORD (*init)(Remote *remote);
-	DWORD (*deinit)(Remote *remote);
+	PSRVINIT init;
+	PSRVDEINIT deinit;
 } EXTENSION;
 
 #endif

@@ -675,7 +675,7 @@ DWORD request_sniffer_capture_start(Remote *remote, Packet *packet) {
 			dprintf("filter applied successfully");
 		}
 
-		j->thread = thread_create((THREADFUNK) sniffer_thread, j, NULL);
+		j->thread = thread_create((THREADFUNK) sniffer_thread, j, NULL, NULL);
 		if(! j->thread) {
 			pcap_close(j->pcap);
 			break;
@@ -1108,12 +1108,7 @@ DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
 #endif
 
 	dprintf("[SERVER] Registering command handlers...");
-	for (index = 0; customCommands[index].method; index++) {
-		dprintf("Registering command index %d", index);
-		dprintf("  Command: %s", customCommands[index].method);
-		dprintf(" Register: 0x%.8x", command_register);
-		command_register(&customCommands[index]);
-	}
+	command_register_all( customCommands );
 
 	dprintf("[SERVER] Memory reset of open_captures...");
 	memset(open_captures, 0, sizeof(open_captures));
@@ -1178,12 +1173,7 @@ DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
  */
 DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
 {
-	DWORD index;
-
-	for (index = 0;
-	     customCommands[index].method;
-	     index++)
-		command_deregister(&customCommands[index]);
+	command_register_all( customCommands );
 
 #ifdef _WIN32
 	MgrDestroy(hMgr);
