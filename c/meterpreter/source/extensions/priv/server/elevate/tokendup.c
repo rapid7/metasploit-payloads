@@ -78,7 +78,7 @@ DWORD elevate_via_service_tokendup( Remote * remote, Packet * packet )
 	{
 		// only works on x86 systems for now...
 		if( elevate_getnativearch() != PROCESS_ARCH_X86 )
-			BREAK_WITH_ERROR( "[KITRAP0D] elevate_via_service_debug. Unsuported platform", ERROR_BAD_ENVIRONMENT );
+			BREAK_WITH_ERROR( "[ELEVATE] elevate_via_service_debug. Unsuported platform", ERROR_BAD_ENVIRONMENT );
 
 		os.dwOSVersionInfoSize = sizeof( OSVERSIONINFO );
 

