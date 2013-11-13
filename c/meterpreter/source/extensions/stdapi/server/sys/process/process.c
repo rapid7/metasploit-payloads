@@ -1003,20 +1003,22 @@ DWORD request_sys_process_get_info(Remote *remote, Packet *packet)
  *
  * FIXME: can-block
  */
-DWORD process_channel_read( Channel *channel, Packet *request, 
-		LPVOID context, LPVOID buffer, DWORD bufferSize, LPDWORD bytesRead )
+DWORD process_channel_read(Channel *channel, Packet *request,
+	LPVOID context, LPVOID buffer, DWORD bufferSize, LPDWORD bytesRead)
 {
 	DWORD result = ERROR_SUCCESS;
 	ProcessChannelContext *ctx = (ProcessChannelContext *)context;
 
-	dprintf( "[PROCESS] process_channel_read. channel=0x%08X, ctx=0x%08X", channel, ctx );
+	dprintf("[PROCESS] process_channel_read. channel=0x%08X, ctx=0x%08X", channel, ctx);
 
 #ifdef _WIN32
-	if ( !ReadFile( ctx->pStdout, buffer, bufferSize, bytesRead, NULL ) )
+	if (!ReadFile(ctx->pStdout, buffer, bufferSize, bytesRead, NULL))
 		result = GetLastError();
 #else
 	if ( (*bytesRead = read( ctx->pStdout, buffer, bufferSize )) < 0 ) {
 		result = GetLastError();
+		// Always return zero bytes read on error
+		*bytesRead = 0;
 	}
 #endif
 	return result;

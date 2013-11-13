@@ -315,23 +315,27 @@ BOOL command_handle( Remote *remote, Packet *packet )
 	BOOL result = TRUE;
 	THREAD* cpt = NULL;
 	Command* command = NULL;
+	Packet* response = NULL;
 
 	do
 	{
 		command = command_locate( packet );
 
 		if( command == NULL ) {
+			dprintf( "[DISPATCH] Command not found" );
 			// We have no matching command for this packet, so it won't get handled. We
-			// need to clean up here before exiting out.
+			// need to send an empty response and clean up here before exiting out.
+			response = packet_create_response( packet );
+			packet_transmit_response( ERROR_NOT_SUPPORTED, remote, response );
 			packet_destroy( packet );
 			break;
 		}
 		
 		if( command_is_inline( command, packet ) ) {
-			dprintf( "Executing inline: %s", command->method );
+			dprintf( "[DISPATCH] Executing inline: %s", command->method );
 			result = command_process_inline( command, remote, packet );
 		} else {
-			dprintf( "Executing in thread: %s", command->method );
+			dprintf( "[DISPATCH] Executing in thread: %s", command->method );
 			cpt = thread_create( command_process_thread, remote, packet, command );
 			if( cpt )
 			{
