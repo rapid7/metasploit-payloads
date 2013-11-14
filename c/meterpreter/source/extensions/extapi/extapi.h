@@ -1,6 +1,6 @@
 /*!
  * @file extapi.h
- * @brief Entry point and intialisation declrations for the extended API extension.
+ * @brief Entry point and intialisation declarations for the extended API extension.
  */
 #ifndef _METERPRETER_SOURCE_EXTENSION_EXTAPI_EXTAPI_H
 #define _METERPRETER_SOURCE_EXTENSION_EXTAPI_EXTAPI_H
