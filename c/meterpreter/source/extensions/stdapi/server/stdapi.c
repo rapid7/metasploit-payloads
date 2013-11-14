@@ -179,7 +179,6 @@ DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
 DWORD InitServerExtension(Remote *remote)
 #endif
 {
-	DWORD index;
 #ifdef _WIN32
 	hMetSrv = remote->hMetSrv;
 #endif

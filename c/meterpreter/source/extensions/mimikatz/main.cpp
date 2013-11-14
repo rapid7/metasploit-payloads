@@ -97,8 +97,6 @@ Command customCommands[] =
  */
 DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
 {
-	DWORD index;
-
 	hMetSrv = remote->hMetSrv;
 
 	command_register_all( customCommands );

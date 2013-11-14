@@ -1114,8 +1114,6 @@ Command customCommands[] =
  */
 DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
 {
-	DWORD index;
-
 #ifdef _WIN32
 	// This handle has to be set before calls to command_register
 	// otherwise we get obscure crashes!

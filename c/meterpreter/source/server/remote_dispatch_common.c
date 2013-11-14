@@ -23,8 +23,6 @@ Command customCommands[] =
  */
 VOID register_dispatch_routines()
 {
-	DWORD index;
-
 	extension_list = list_create();
 
 	command_register_all( customCommands );
@@ -35,8 +33,6 @@ VOID register_dispatch_routines()
  */
 VOID deregister_dispatch_routines( Remote * remote )
 {
-	DWORD index;
-
 	while( TRUE )
 	{
 		EXTENSION * extension = list_pop( extension_list );
