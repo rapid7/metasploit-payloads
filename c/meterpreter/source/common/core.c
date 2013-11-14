@@ -337,7 +337,7 @@ DWORD packet_add_tlv_wstring(Packet *packet, TlvType type, LPCWSTR str)
 	if (lpStr) {
 		wcstombs(lpStr, str, charCount);
 		lpStr[charCount] = 0;
-		dwResult = packet_add_tlv_raw(packet, type, (PUCHAR)lpStr, charCount + 1);
+		dwResult = packet_add_tlv_raw(packet, type, (PUCHAR)lpStr, (DWORD)charCount + 1);
 		free(lpStr);
 	}
 	else {

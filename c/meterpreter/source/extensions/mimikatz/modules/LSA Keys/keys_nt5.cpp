@@ -9,7 +9,7 @@ PBYTE * mod_mimikatz_sekurlsa_keys_nt5::g_pRandomKey = NULL, * mod_mimikatz_seku
 
 #ifdef _M_X64
 BYTE PTRN_WNT5_LsaInitializeProtectedMemory_KEY[]	= {0x33, 0xdb, 0x8b, 0xc3, 0x48, 0x83, 0xc4, 0x20, 0x5b, 0xc3};
-LONG OFFS_WNT5_g_pRandomKey							= -(6 + 2 + 5 + sizeof(long));
+LONG OFFS_WNT5_g_pRandomKey							= -(6 + 2 + 5 + (LONG)sizeof(long));
 LONG OFFS_WNT5_g_cbRandomKey						= OFFS_WNT5_g_pRandomKey - (3 + sizeof(long));
 LONG OFFS_WNT5_g_pDESXKey							= OFFS_WNT5_g_cbRandomKey - (2 + 5 + sizeof(long));
 LONG OFFS_WNT5_g_Feedback							= OFFS_WNT5_g_pDESXKey - (3 + 7 + 6 + 2 + 5 + 5 + sizeof(long));

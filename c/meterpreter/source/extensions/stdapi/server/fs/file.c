@@ -23,10 +23,10 @@ static DWORD file_channel_write(Channel *channel, Packet *request,
 {
 	FileContext *ctx = (FileContext *)context;
 	DWORD result= ERROR_SUCCESS;
-	size_t written = 0;
+	DWORD written = 0;
 
 	// Write a chunk
-	if ((written = fwrite(buffer, 1, bufferSize, ctx->fd)) <= 0)
+	if ((written = (DWORD)fwrite(buffer, 1, bufferSize, ctx->fd)) <= 0)
 	{
 		written = 0;
 		result  = GetLastError();
@@ -34,7 +34,9 @@ static DWORD file_channel_write(Channel *channel, Packet *request,
 
 	// Set bytesWritten
 	if (bytesWritten)
+	{
 		*bytesWritten = written;
+	}
 
 	return result;
 }
@@ -62,10 +64,10 @@ static DWORD file_channel_read(Channel *channel, Packet *request,
 {
 	FileContext *ctx = (FileContext *)context;
 	DWORD result = ERROR_SUCCESS;
-	size_t bytes = 0;
+	DWORD bytes = 0;
 
 	// Read a chunk
-	if ((bytes= fread(buffer, 1, bufferSize, ctx->fd)) <= 0)
+	if ((bytes= (DWORD)fread(buffer, 1, bufferSize, ctx->fd)) <= 0)
 	{
 		bytes = 0;
 		result = GetLastError();

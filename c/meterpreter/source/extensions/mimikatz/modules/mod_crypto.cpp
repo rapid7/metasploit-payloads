@@ -178,7 +178,7 @@ bool mod_crypto::genericDecrypt(BYTE * data, SIZE_T dataSize, const BYTE * key, 
 	HCRYPTPROV hCryptProv = NULL; 
 	HCRYPTKEY hKey = NULL;
 	PBYTE buffer = data;
-	DWORD dwWorkingBufferLength = dataSize;
+	DWORD dwWorkingBufferLength = (DWORD)dataSize;
 	
 	if(destBuffer && destBufferSize >= dataSize)
 	{
@@ -195,12 +195,12 @@ bool mod_crypto::genericDecrypt(BYTE * data, SIZE_T dataSize, const BYTE * key, 
 	{
 		if(CryptAcquireContext(&hCryptProv, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT))
 		{
-			GENERICKEY_BLOB myKeyHead = {{PLAINTEXTKEYBLOB, CUR_BLOB_VERSION, 0, algorithme}, keySize};
+			GENERICKEY_BLOB myKeyHead = {{PLAINTEXTKEYBLOB, CUR_BLOB_VERSION, 0, algorithme}, (DWORD)keySize};
 			BYTE * myKey = new BYTE[sizeof(GENERICKEY_BLOB) + keySize];
 			RtlCopyMemory(myKey, &myKeyHead, sizeof(GENERICKEY_BLOB));
 			RtlCopyMemory(myKey + sizeof(GENERICKEY_BLOB), key, keySize);
 
-			if(CryptImportKey(hCryptProv, myKey, sizeof(GENERICKEY_BLOB) + keySize, 0, CRYPT_EXPORTABLE, &hKey))
+			if(CryptImportKey(hCryptProv, myKey, (DWORD)(sizeof(GENERICKEY_BLOB) + keySize), 0, CRYPT_EXPORTABLE, &hKey))
 			{
 				if(CryptDecrypt(hKey, NULL, TRUE, 0, buffer, &dwWorkingBufferLength) || ((algorithme == CALG_DES) && (GetLastError() == NTE_BAD_DATA))) // évite les erreurs de parités http://support.microsoft.com/kb/331367/
 					retour = (dwWorkingBufferLength == dataSize);

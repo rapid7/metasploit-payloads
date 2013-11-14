@@ -42,7 +42,7 @@ public:
 private:
 	bool shuttingDown;
 	void* thread;
-	int smellySock;
+	SOCKET smellySock;
 	unsigned int index;
 	map<string,unsigned int> fileIndexes;
 	map<unsigned int,string> files;

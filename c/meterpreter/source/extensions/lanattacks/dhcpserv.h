@@ -56,7 +56,7 @@ public:
 private:
 	bool shuttingDown;
 	void* thread;
-	int smellySock;
+	SOCKET smellySock;
 	unsigned int myIp;
 	map<string,string> options;
 	string log;

@@ -116,8 +116,8 @@ private:
 /*! @brief Valid actions that can be invoked on the webcam control thread. */
 typedef enum
 {
-	Stop = 1,       ///< Tell the webcam control thread to terminate.
-	GetFrame = 2    ///< Tell the webcam control thread to capture a frame.
+	StopCamera = 1,       ///< Tell the webcam control thread to terminate.
+	GetCameraFrame = 2    ///< Tell the webcam control thread to capture a frame.
 } WebcamAction;
 
 /*! @brief State structure which is used for C&C of the webcam control thread. */
@@ -486,13 +486,13 @@ DWORD THREADCALL webcam_control_thread(THREAD * thread)
 
 			switch (state->controlAction)
 			{
-			case Stop:
-				dprintf("[WEBCAM] ACTION_STOP called.");
+			case StopCamera:
+				dprintf("[WEBCAM] StopCamera called.");
 				dwResult = ERROR_SUCCESS;
 				state->bRunning = FALSE;
 				break;
-			case GetFrame:
-				dprintf("[WEBCAM] ACTION_GETFRAME called.");
+			case GetCameraFrame:
+				dprintf("[WEBCAM] GetCameraFrame called.");
 				dwResult = webcam_get_frame(state);
 				event_signal(state->pResultEvent);
 				break;
@@ -744,7 +744,7 @@ DWORD request_webcam_get_frame(Remote *remote, Packet *packet)
 		// set up the thread call
 		g_pThreadState->pResponse = response;
 		g_pThreadState->frameQuality = quality;
-		g_pThreadState->controlAction = GetFrame;
+		g_pThreadState->controlAction = GetCameraFrame;
 
 		// invoke and wait
 		event_signal(g_pThreadState->pCallEvent);
@@ -785,7 +785,7 @@ DWORD request_webcam_stop(Remote *remote, Packet *packet) {
 		}
 
 		// set up the thread call
-		g_pThreadState->controlAction = Stop;
+		g_pThreadState->controlAction = StopCamera;
 
 		// invoke and wait
 		event_signal(g_pThreadState->pCallEvent);

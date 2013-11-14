@@ -147,9 +147,11 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
       <TargetMachine>MachineX86</TargetMachine>
+      <MinimumRequiredVersion>
+      </MinimumRequiredVersion>
     </Link>
     <PostBuildEvent>
-      <Command>editbin.exe /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,4.0 "$(TargetDir)$(TargetFileName)"
+      <Command>editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,4.0 "$(TargetDir)$(TargetFileName)" > NUL
 IF EXIST "$(ProjectDir)..\..\output\$(PlatformShortName)\Debug\" GOTO COPY
     mkdir "$(ProjectDir)..\..\output\$(PlatformShortName)\Debug\"
 :COPY
@@ -176,9 +178,11 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
       <TargetMachine>MachineX86</TargetMachine>
+      <MinimumRequiredVersion>
+      </MinimumRequiredVersion>
     </Link>
     <PostBuildEvent>
-      <Command>editbin.exe /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,4.0 "$(TargetDir)$(TargetFileName)"
+      <Command>editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,4.0 "$(TargetDir)$(TargetFileName)" > NUL
 IF EXIST "$(ProjectDir)..\..\output\$(PlatformShortName)\Debug\" GOTO COPY
     mkdir "$(ProjectDir)..\..\output\$(PlatformShortName)\Debug\"
 :COPY
@@ -208,9 +212,10 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
       <TargetMachine>MachineX64</TargetMachine>
+      <MinimumRequiredVersion />
     </Link>
     <PostBuildEvent>
-      <Command>editbin.exe /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,4.0 "$(TargetDir)$(TargetFileName)"
+      <Command>editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,5.02 "$(TargetDir)$(TargetFileName)" > NUL
 IF EXIST "$(ProjectDir)..\..\output\$(PlatformShortName)\Debug\" GOTO COPY
     mkdir "$(ProjectDir)..\..\output\$(PlatformShortName)\Debug\"
 :COPY
@@ -240,9 +245,10 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
       <TargetMachine>MachineX64</TargetMachine>
+      <MinimumRequiredVersion />
     </Link>
     <PostBuildEvent>
-      <Command>editbin.exe /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,4.0 "$(TargetDir)$(TargetFileName)"
+      <Command>editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,5.02 "$(TargetDir)$(TargetFileName)" > NUL
 IF EXIST "$(ProjectDir)..\..\output\$(PlatformShortName)\Debug\" GOTO COPY
     mkdir "$(ProjectDir)..\..\output\$(PlatformShortName)\Debug\"
 :COPY
@@ -293,7 +299,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       </MinimumRequiredVersion>
     </Link>
     <PostBuildEvent>
-      <Command>editbin.exe /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,4.0 "$(TargetDir)$(TargetFileName)"
+      <Command>editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,4.0 "$(TargetDir)$(TargetFileName)" > NUL
 IF EXIST "$(ProjectDir)..\..\output\$(PlatformShortName)\" GOTO COPY
     mkdir "$(ProjectDir)..\..\output\$(PlatformShortName)\"
 :COPY
@@ -344,7 +350,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       </MinimumRequiredVersion>
     </Link>
     <PostBuildEvent>
-      <Command>editbin.exe /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,4.0 "$(TargetDir)$(TargetFileName)"
+      <Command>editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,4.0 "$(TargetDir)$(TargetFileName)" > NUL
 IF EXIST "$(ProjectDir)..\..\output\$(PlatformShortName)\" GOTO COPY
     mkdir "$(ProjectDir)..\..\output\$(PlatformShortName)\"
 :COPY
@@ -380,7 +386,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <GenerateMapFile>true</GenerateMapFile>
       <MapFileName>$(OutDir)\ext_server_espia.map</MapFileName>
-      <SubSystem>NotSet</SubSystem>
+      <SubSystem>Windows</SubSystem>
       <OptimizeReferences>
       </OptimizeReferences>
       <EnableCOMDATFolding>
@@ -395,7 +401,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       </MinimumRequiredVersion>
     </Link>
     <PostBuildEvent>
-      <Command>editbin.exe /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,4.0 "$(TargetDir)$(TargetFileName)"
+      <Command>editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,5.02 "$(TargetDir)$(TargetFileName)" > NUL
 IF EXIST "$(ProjectDir)..\..\output\$(PlatformShortName)\" GOTO COPY
     mkdir "$(ProjectDir)..\..\output\$(PlatformShortName)\"
 :COPY
@@ -431,7 +437,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <GenerateMapFile>true</GenerateMapFile>
       <MapFileName>$(OutDir)\ext_server_espia.map</MapFileName>
-      <SubSystem>NotSet</SubSystem>
+      <SubSystem>Windows</SubSystem>
       <OptimizeReferences>
       </OptimizeReferences>
       <EnableCOMDATFolding>
@@ -446,7 +452,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       </MinimumRequiredVersion>
     </Link>
     <PostBuildEvent>
-      <Command>editbin.exe /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,4.0 "$(TargetDir)$(TargetFileName)"
+      <Command>editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,5.02 "$(TargetDir)$(TargetFileName)" > NUL
 IF EXIST "$(ProjectDir)..\..\output\$(PlatformShortName)\" GOTO COPY
     mkdir "$(ProjectDir)..\..\output\$(PlatformShortName)\"
 :COPY

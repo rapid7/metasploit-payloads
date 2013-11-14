@@ -226,11 +226,11 @@ DWORD request_sniffer_interfaces(Remote *remote, Packet *packet)
 		entries[0].buffer        = (PUCHAR)&aidx;
 
 		entries[1].header.type   = TLV_TYPE_STRING;
-		entries[1].header.length = strlen(aname)+1;
+		entries[1].header.length = (DWORD)strlen(aname) + 1;
 		entries[1].buffer        = aname;
 
 		entries[2].header.type   = TLV_TYPE_STRING;
-		entries[2].header.length = strlen(adesc)+1;
+		entries[2].header.length = (DWORD)strlen(adesc) + 1;
 		entries[2].buffer        = adesc;
 
 		entries[3].header.type   = TLV_TYPE_UINT;
@@ -947,6 +947,9 @@ DWORD request_sniffer_capture_dump(Remote *remote, Packet *packet) {
 
 	CaptureJob *j;
 	DWORD result,pcnt,rcnt,i;
+#ifdef _WIN64
+	ULONGLONG thilo;
+#endif
 	DWORD thi, tlo;
 
 	check_pssdk();
@@ -1011,11 +1014,23 @@ DWORD request_sniffer_capture_dump(Remote *remote, Packet *packet) {
 			}
 
 			tmp = (unsigned int *)( j->dbuf + rcnt );
+#ifdef _WIN64
+			thilo = PktGetId(j->pkts[i]);
+			thi = (DWORD)(thilo >> 32);
+			tlo = (DWORD)(thilo & 0xFFFFFFFF);
+#else
 			tlo = PktGetId(j->pkts[i], &thi);
+#endif
 			*tmp = htonl(thi); tmp++;
 			*tmp = htonl(tlo); tmp++;
 
+#ifdef _WIN64
+			thilo = PktGetTimeStamp(j->pkts[i]);
+			thi = (DWORD)(thilo >> 32);
+			tlo = (DWORD)(thilo & 0xFFFFFFFF);
+#else
 			tlo = PktGetTimeStamp(j->pkts[i], &thi);
+#endif
 			*tmp = htonl(thi); tmp++;
 			*tmp = htonl(tlo); tmp++;
 
@@ -1099,8 +1114,6 @@ Command customCommands[] =
  */
 DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
 {
-	DWORD index;
-
 #ifdef _WIN32
 	// This handle has to be set before calls to command_register
 	// otherwise we get obscure crashes!

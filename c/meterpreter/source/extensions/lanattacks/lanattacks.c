@@ -157,9 +157,7 @@ Command customCommands[] =
 /*
  * Initialize the server extension
  */
-DWORD __declspec(dllexport) InitServerExtension(Remote *remote){
-	DWORD index;
-
+DWORD __declspec(dllexport) InitServerExtension(Remote *remote) {
 	hMetSrv = remote->hMetSrv;
 
 	command_register_all( customCommands );
@@ -167,10 +165,11 @@ DWORD __declspec(dllexport) InitServerExtension(Remote *remote){
 	dhcpserver = createDHCPServer();
 	tftpserver = createTFTPServer();
 
-	if(tftpserver)
+	if (tftpserver) {
 		return ERROR_SUCCESS;
-	else
-		return ERROR_NOT_ENOUGH_MEMORY;
+	}
+
+	return ERROR_NOT_ENOUGH_MEMORY;
 }
 
 /*
@@ -178,8 +177,6 @@ DWORD __declspec(dllexport) InitServerExtension(Remote *remote){
  */
 DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
 {
-	DWORD index;
-
 	destroyTFTPServer(tftpserver);
 	tftpserver = NULL;
 
