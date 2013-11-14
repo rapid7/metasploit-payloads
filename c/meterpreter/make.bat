@@ -32,10 +32,16 @@ POPD
 
 IF "%ERRORLEVEL%" == "0" (
   IF NOT EXIST "..\pssdk\" (
-    ECHO "Unable to build ext_server_sniffer: PSSDK not found."
+    ECHO Unable to build ext_server_sniffer:
+    ECHO PSSDK directory not found.
+    ECHO This is normal if you do not expect to have access to Rapid7 proprietary
+    ECHO sniffer source. Meterpreter will still function normally without this.
   ) else (
     IF NOT EXIST "..\pssdk\PSSDK_VC%PSSDK_VER%_LIB\_Libs\pssdk_vc%PSSDK_VER%_mt.lib" (
-      ECHO "Unable to build ext_server_sniffer: Required PSSDK library version 'vc%PSSDK_VER%' not found."
+      ECHO Unable to build ext_server_sniffer:
+      ECHO PSSDK lib version 'vc%PSSDK_VER%' not found.
+      ECHO This is normal if you do not expect to have access to Rapid7 proprietary
+      ECHO sniffer source. Meterpreter will still function normally without this.
     )
   )
 )
