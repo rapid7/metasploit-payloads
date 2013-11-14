@@ -348,7 +348,7 @@ DWORD request_sys_process_thread_query_regs(Remote *remote, Packet *packet)
 				valNbo  = htonl(value);
 
 				// Translate each register into a grouped TLV
-				reg[0].header.length = strlen(regs[index].name) + 1;
+				reg[0].header.length = (DWORD)strlen(regs[index].name) + 1;
 				reg[0].header.type   = TLV_TYPE_REGISTER_NAME;
 				reg[0].buffer        = (PUCHAR)regs[index].name;
 				reg[1].header.length = sizeof(DWORD);

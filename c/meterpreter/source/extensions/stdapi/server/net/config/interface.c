@@ -133,12 +133,18 @@ DWORD get_interfaces_windows(Remote *remote, Packet *response) {
 	// when using newer structs.
 	IP_ADAPTER_PREFIX_XP *pPrefix = NULL;
 
+	// We can't rely on the `Length` parameter of the IP_ADAPTER_PREFIX_XP struct
+	// to tell us if we're on Vista or not because it always comes out at 48 bytes
+	// so we have to check the version manually.
+	OSVERSIONINFOEX v;
+
 	do
 	{
 		gaa = (DWORD (WINAPI *)(DWORD,DWORD,void*,void*,void*))GetProcAddress(
 				GetModuleHandle("iphlpapi"), "GetAdaptersAddresses"
 			);
 		if (!gaa) {
+			dprintf( "[INTERFACE] No 'GetAdaptersAddresses'. Falling back on get_interfaces_windows_mib" );
 			result = get_interfaces_windows_mib(remote, response);
 			break;
 		}
@@ -155,42 +161,57 @@ DWORD get_interfaces_windows(Remote *remote, Packet *response) {
 			break;
 		}
 
+		dprintf( "[INTERFACE] pAdapters->Length = %d", pAdapters->Length );
+		// According to http://msdn.microsoft.com/en-us/library/windows/desktop/aa366058(v=vs.85).aspx
+		// the PIP_ADAPTER_PREFIX doesn't exist prior to XP SP1. We check for this via the `Length`
+		// value, which is 72 in XP without an SP, but 144 in later versions.
+		if (pAdapters->Length <= 72) {
+			dprintf( "[INTERFACE] PIP_ADAPTER_PREFIX is missing" );
+			result = get_interfaces_windows_mib(remote, response);
+			break;
+		}
+
+		// we'll need to know the version later on
+		memset( &v, 0, sizeof(v) );
+		v.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
+		GetVersionEx( (LPOSVERSIONINFO)&v );
+
 		// Enumerate the entries
-		for (pCurr = pAdapters; pCurr; pCurr = pCurr->Next)
+		for( pCurr = pAdapters; pCurr; pCurr = pCurr->Next )
 		{
+			// Save the first prefix for later in case we don't have an OnLinkPrefixLength
+			pPrefix = pCurr->FirstPrefix;
+
 			tlv_cnt = 0;
 
-			interface_index_bigendian = htonl(pCurr->IfIndex);
+			dprintf( "[INTERFACE] Adding index: %u", pCurr->IfIndex );
+			interface_index_bigendian      = htonl(pCurr->IfIndex);
 			entries[tlv_cnt].header.length = sizeof(DWORD);
 			entries[tlv_cnt].header.type   = TLV_TYPE_INTERFACE_INDEX;
 			entries[tlv_cnt].buffer        = (PUCHAR)&interface_index_bigendian;
 			tlv_cnt++;
 
+			dprintf( "[INTERFACE] Adding MAC" );
 			entries[tlv_cnt].header.length = pCurr->PhysicalAddressLength;
 			entries[tlv_cnt].header.type   = TLV_TYPE_MAC_ADDR;
 			entries[tlv_cnt].buffer        = (PUCHAR)pCurr->PhysicalAddress;
 			tlv_cnt++;
 
+			dprintf( "[INTERFACE] Adding Description" );
 			entries[tlv_cnt].header.length = (DWORD)wcslen(pCurr->Description)*2 + 1;
 			entries[tlv_cnt].header.type   = TLV_TYPE_MAC_NAME;
 			entries[tlv_cnt].buffer        = (PUCHAR)pCurr->Description;
 			tlv_cnt++;
 
-			mtu_bigendian            = htonl(pCurr->Mtu);
+			dprintf( "[INTERFACE] Adding MTU: %u", pCurr->Mtu );
+			mtu_bigendian                  = htonl(pCurr->Mtu);
 			entries[tlv_cnt].header.length = sizeof(DWORD);
 			entries[tlv_cnt].header.type   = TLV_TYPE_INTERFACE_MTU;
 			entries[tlv_cnt].buffer        = (PUCHAR)&mtu_bigendian;
 			tlv_cnt++;
 
-			// According to http://msdn.microsoft.com/en-us/library/windows/desktop/aa366058(v=vs.85).aspx
-			// the PIP_ADAPTER_PREFIX doesn't exist prior to XP SP1. We check for this via the `Length`
-			// value, which is 72 in XP without an SP, but 144 in later versions.
-			if (pCurr->Length > 72) {
-				// Save the first prefix for later in case we don't have an OnLinkPrefixLength
-				pPrefix = pCurr->FirstPrefix;
-			}
-
-			for (pAddr = (void*)pCurr->FirstUnicastAddress; pAddr; pAddr = (void*)pAddr->Next)
+			for (pAddr = (IP_ADAPTER_UNICAST_ADDRESS_LH*)pCurr->FirstUnicastAddress;
+				pAddr; pAddr = pAddr->Next)
 			{
 				sockaddr = pAddr->Address.lpSockaddr;
 				if (AF_INET != sockaddr->sa_family && AF_INET6 != sockaddr->sa_family) {
@@ -202,33 +223,26 @@ DWORD get_interfaces_windows(Remote *remote, Packet *response) {
 				// for scope_id, one for netmask.  Go ahead and allocate enough
 				// room for all of them.
 				if (allocd_entries < tlv_cnt+3) {
-					entries = realloc(entries, sizeof(Tlv) * (tlv_cnt+3));
+					entries = (Tlv*)realloc(entries, sizeof(Tlv) * (tlv_cnt+3));
 					allocd_entries += 3;
 				}
 
-				if (pAddr->Length > 44) {
+				if (v.dwMajorVersion >= 6) {
 					// Then this is Vista+ and the OnLinkPrefixLength member
 					// will be populated
+					dprintf( "[INTERFACES] >= Vista, using prefix: %x", pAddr->OnLinkPrefixLength );
 					prefixes[prefixes_cnt] = htonl(pAddr->OnLinkPrefixLength);
 				}
-
-				if (pPrefix && 0 == prefixes[prefixes_cnt] ) {
-					// Otherwise, we have to walk the FirstPrefix linked list
+				else if( pPrefix ) {
+					dprintf( "[INTERFACES] < Vista, using prefix: %x", pPrefix->PrefixLength );
 					prefixes[prefixes_cnt] = htonl(pPrefix->PrefixLength);
-					pPrefix = pPrefix->Next;
 				} else {
-					// This is XP SP0 and as far as I can tell, we have no way
-					// of determining the netmask short of bailing on
-					// this method and falling back to MIB, which doesn't
-					// return IPv6 addresses. Older versions (e.g. NT4, 2k)
-					// don't have GetAdapterAddresses, so they will have fallen
-					// through earlier to the MIB implementation.
-					free(entries);
-					free(pAdapters);
-					return get_interfaces_windows_mib(remote, response);
+					dprintf( "[INTERFACES] < Vista, no prefix" );
+					prefixes[prefixes_cnt] = 0;
 				}
 
 				if (prefixes[prefixes_cnt]) {
+					dprintf( "[INTERFACE] Adding Prefix: %x", prefixes[prefixes_cnt] );
 					entries[tlv_cnt].header.length = 4;
 					entries[tlv_cnt].header.type = TLV_TYPE_IP_PREFIX;
 					entries[tlv_cnt].buffer = (PUCHAR)&prefixes[prefixes_cnt];
@@ -237,12 +251,13 @@ DWORD get_interfaces_windows(Remote *remote, Packet *response) {
 				}
 
 				if (sockaddr->sa_family == AF_INET) {
+					dprintf( "[INTERFACE] Adding IPv4 Address: %x", ((struct sockaddr_in *)sockaddr)->sin_addr );
 					entries[tlv_cnt].header.length = 4;
 					entries[tlv_cnt].header.type = TLV_TYPE_IP;
 					entries[tlv_cnt].buffer = (PUCHAR)&(((struct sockaddr_in *)sockaddr)->sin_addr);
 					tlv_cnt++;
-
 				} else {
+					dprintf( "[INTERFACE] Adding IPv6 Address" );
 					entries[tlv_cnt].header.length = 16;
 					entries[tlv_cnt].header.type = TLV_TYPE_IP;
 					entries[tlv_cnt].buffer = (PUCHAR)&(((struct sockaddr_in6 *)sockaddr)->sin6_addr);

@@ -36,6 +36,7 @@ DWORD request_incognito_list_tokens(Remote *remote, Packet *packet)
 	SavedToken *token_list = NULL;
 	BOOL bTokensAvailable = FALSE;
 	TOKEN_ORDER token_order;
+	TOKEN_PRIVS token_privs;
 	char *delegation_tokens = calloc(sizeof(char), BUF_SIZE), 
 		*impersonation_tokens = calloc(sizeof(char), BUF_SIZE),
 		temp[BUF_SIZE] = "";
@@ -44,7 +45,7 @@ DWORD request_incognito_list_tokens(Remote *remote, Packet *packet)
 	token_order = packet_get_tlv_value_uint(packet, TLV_TYPE_INCOGNITO_LIST_TOKENS_TOKEN_ORDER);
 
 	// Enumerate tokens
-	token_list = get_token_list(&num_tokens);
+	token_list = get_token_list(&num_tokens, &token_privs);
 
 	if (!token_list)
 	{
@@ -109,12 +110,13 @@ DWORD request_incognito_impersonate_token(Remote *remote, Packet *packet)
 	BOOL bTokensAvailable = FALSE, delegation_available = FALSE;
 	char temp[BUF_SIZE] = "", *requested_username, return_value[BUF_SIZE] = "";
 	HANDLE xtoken;
+	TOKEN_PRIVS token_privs;
 
 	Packet *response = packet_create_response(packet);
 	requested_username = packet_get_tlv_value_string(packet, TLV_TYPE_INCOGNITO_IMPERSONATE_TOKEN);
 	
 	// Enumerate tokens
-	token_list = get_token_list(&num_tokens);
+	token_list = get_token_list(&num_tokens, &token_privs);
 
 	if (!token_list)
 	{
@@ -179,47 +181,13 @@ cleanup:
 
 Command customCommands[] =
 {
-	// List tokens
-	{ "incognito_list_tokens",
-	  { request_incognito_list_tokens,                     { 0 }, 0 },
-	  { EMPTY_DISPATCH_HANDLER                                      },
-	},
-
-	// Impersonate token
-	{ "incognito_impersonate_token",
-	  { request_incognito_impersonate_token,                     { 0 }, 0 },
-	  { EMPTY_DISPATCH_HANDLER                                      },
-	},
-
-	// Add user to host
-	{ "incognito_add_user",
-	  { request_incognito_add_user,                     { 0 }, 0 },
-	  { EMPTY_DISPATCH_HANDLER                                      },
-	},
-
-	// Add user to group
-	{ "incognito_add_group_user",
-	  { request_incognito_add_group_user,                     { 0 }, 0 },
-	  { EMPTY_DISPATCH_HANDLER                                      },
-	},
-
-	// Add user to local group
-	{ "incognito_add_localgroup_user",
-	  { request_incognito_add_localgroup_user,                     { 0 }, 0 },
-	  { EMPTY_DISPATCH_HANDLER                                      },
-	},
-
-	// Snarf token hashes
-	{ "incognito_snarf_hashes",
-	  { request_incognito_snarf_hashes,                     { 0 }, 0 },
-	  { EMPTY_DISPATCH_HANDLER                                      },
-	},
-
-	// Terminator
-	{ NULL,
-	  { EMPTY_DISPATCH_HANDLER                      },
-	  { EMPTY_DISPATCH_HANDLER                      },
-	},
+	COMMAND_REQ( "incognito_list_tokens", request_incognito_list_tokens ),
+	COMMAND_REQ( "incognito_impersonate_token", request_incognito_impersonate_token ),
+	COMMAND_REQ( "incognito_add_user", request_incognito_add_user ),
+	COMMAND_REQ( "incognito_add_group_user", request_incognito_add_group_user ),
+	COMMAND_REQ( "incognito_add_localgroup_user", request_incognito_add_localgroup_user ),
+	COMMAND_REQ( "incognito_snarf_hashes", request_incognito_snarf_hashes ),
+	COMMAND_TERMINATOR
 };
 
 /*
@@ -227,17 +195,9 @@ Command customCommands[] =
  */
 DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
 {
-	DWORD index;
-
 	hMetSrv = remote->hMetSrv;
 
-	for (index = 0; customCommands[index].method; index++)
-	{
-		dprintf("Registering command index %d", index);
-		dprintf("  Command: %s", customCommands[index].method);
-		dprintf(" Register: 0x%.8x", command_register);
-		command_register(&customCommands[index]);
-	}
+	command_register_all( customCommands );
 
 	return ERROR_SUCCESS;
 }
@@ -247,12 +207,7 @@ DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
  */
 DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
 {
-	DWORD index;
-
-	for (index = 0;
-	     customCommands[index].method;
-	     index++)
-		command_deregister(&customCommands[index]);
+	command_deregister_all( customCommands );
 
 	return ERROR_SUCCESS;
 }

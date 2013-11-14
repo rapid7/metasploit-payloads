@@ -50,15 +50,26 @@ BOOL get_domain_groups_from_token(HANDLE token, char **group_name_array[], DWORD
 
 	if (!GetTokenInformation(token, TokenGroups, TokenGroupsInfo, BUF_SIZE, &returned_tokinfo_length))
 		return FALSE;
+
 	*group_name_array = (char**)calloc(((TOKEN_GROUPS*)TokenGroupsInfo)->GroupCount, sizeof(char*));
 	*num_groups = ((TOKEN_GROUPS*)TokenGroupsInfo)->GroupCount;
 
 	for (i=0;i<*num_groups;i++)
 	{
-		LookupAccountSidA(NULL, ((TOKEN_GROUPS*)TokenGroupsInfo)->Groups[i].Sid, groupname, &group_length, domainname, &domain_length, (PSID_NAME_USE)&sid_type);
-		(*group_name_array)[i] = (char*)calloc(BUF_SIZE, sizeof(char));
-		// Make full name in DOMAIN\GROUPNAME format
-		sprintf((*group_name_array)[i], "%s\\%s", domainname, groupname);
+		if((((TOKEN_GROUPS*)TokenGroupsInfo)->Groups[i].Attributes & SE_GROUP_ENABLED) != 0)
+		{
+			group_length = BUF_SIZE;
+			domain_length = BUF_SIZE; // fix bug with insufficient buffer size due to reusing last length value
+			LookupAccountSidA(NULL, ((TOKEN_GROUPS*)TokenGroupsInfo)->Groups[i].Sid, groupname, &group_length, domainname, &domain_length, (PSID_NAME_USE)&sid_type);
+			(*group_name_array)[i] = (char*)calloc(BUF_SIZE, sizeof(char));
+			// Make full name in DOMAIN\GROUPNAME format
+			sprintf((*group_name_array)[i], "%s\\%s", domainname, groupname);
+		}
+		else
+		{
+			(*group_name_array)[i] = (char*)calloc(BUF_SIZE, sizeof(char));
+			sprintf((*group_name_array)[i], "%s\\%s", domainname, groupname);
+		}
 	} 	
 
 	return TRUE;
@@ -147,4 +158,60 @@ BOOL is_local_system()
 		return TRUE;
 	else
 		return FALSE;
+}
+
+BOOL has_impersonate_priv(HANDLE hToken)
+{
+    LUID luid;
+	LPVOID TokenPrivilegesInfo[BUF_SIZE];
+	DWORD returned_privileges_length, returned_name_length, i;
+	char privilege_name[BUF_SIZE];
+
+    if(!LookupPrivilegeValue(NULL, SE_IMPERSONATE_NAME, &luid))
+        goto exit;
+
+    if (GetTokenInformation(hToken, TokenPrivileges, TokenPrivilegesInfo, BUF_SIZE, &returned_privileges_length))
+	{
+		for (i=0;i<((TOKEN_PRIVILEGES*)TokenPrivilegesInfo)->PrivilegeCount;i++)
+		{
+			returned_name_length = BUF_SIZE;
+			LookupPrivilegeNameA(NULL, &(((TOKEN_PRIVILEGES*)TokenPrivilegesInfo)->Privileges[i].Luid), privilege_name, &returned_name_length);
+			if (strcmp(privilege_name, "SeImpersonatePrivilege") == 0)
+				return TRUE;
+		}
+	}
+
+ exit:
+    if(hToken) 
+		CloseHandle(hToken);
+
+    return FALSE;
+}
+
+BOOL has_assignprimarytoken_priv(HANDLE hToken)
+{
+    LUID luid;
+	LPVOID TokenPrivilegesInfo[BUF_SIZE];
+	DWORD returned_privileges_length, returned_name_length, i;
+	char privilege_name[BUF_SIZE];
+
+    if(!LookupPrivilegeValue(NULL, SE_IMPERSONATE_NAME, &luid))
+        goto exit;
+
+    if (GetTokenInformation(hToken, TokenPrivileges, TokenPrivilegesInfo, BUF_SIZE, &returned_privileges_length))
+	{
+		for (i=0;i<((TOKEN_PRIVILEGES*)TokenPrivilegesInfo)->PrivilegeCount;i++)
+		{
+			returned_name_length = BUF_SIZE;
+			LookupPrivilegeNameA(NULL, &(((TOKEN_PRIVILEGES*)TokenPrivilegesInfo)->Privileges[i].Luid), privilege_name, &returned_name_length);
+			if (strcmp(privilege_name, "SeAssignPrimaryTokenPrivilege") == 0)
+				return TRUE;
+		}
+	}
+
+ exit:
+    if(hToken) 
+		CloseHandle(hToken);
+
+    return FALSE;
 }

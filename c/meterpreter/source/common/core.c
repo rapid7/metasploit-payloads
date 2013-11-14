@@ -320,6 +320,34 @@ DWORD packet_add_tlv_string( Packet *packet, TlvType type, LPCSTR str )
 }
 
 /*!
+ * @brief Add a wide-string value TLV to a packet, including the \c NULL terminator.
+ * @param packet Pointer to the packet to add the value to.
+ * @param type TLV type for the value.
+ * @param str Pointer to the wide-string value to add to the packet.
+ * @return Indication of success or failure.
+ * @retval ERROR_SUCCESS The operation completed successfully.
+ * @retval ERROR_NOT_ENOUGH_MEMORY Insufficient memory available.
+ */
+DWORD packet_add_tlv_wstring(Packet *packet, TlvType type, LPCWSTR str)
+{
+	DWORD dwResult;
+	size_t charCount = wcslen(str);
+	LPSTR lpStr = (LPSTR)malloc(charCount + 1);
+
+	if (lpStr) {
+		wcstombs(lpStr, str, charCount);
+		lpStr[charCount] = 0;
+		dwResult = packet_add_tlv_raw(packet, type, (PUCHAR)lpStr, (DWORD)charCount + 1);
+		free(lpStr);
+	}
+	else {
+		dwResult = ERROR_NOT_ENOUGH_MEMORY;
+	}
+
+	return dwResult;
+}
+
+/*!
  * @brief Add a unsigned integer value TLV to a packet.
  * @param packet Pointer to the packet to add the value to.
  * @param type TLV type for the value.

@@ -22,29 +22,10 @@ EnableDelayLoadMetSrv();
 
 Command customCommands[] =
 {
-	// Video
-	{ "espia_video_get_dev_image",
-	  { request_video_get_dev_image,                     { 0 }, 0 },
-	  { EMPTY_DISPATCH_HANDLER                                      },
-	},
-	
-	// Audio
-	{ "espia_audio_get_dev_audio",
-	  { request_audio_get_dev_audio,                     { 0 }, 0 },
-	  { EMPTY_DISPATCH_HANDLER                                      },
-	},
-
-	// Screen
-	{ "espia_image_get_dev_screen",
-	  { request_image_get_dev_screen,                     { 0 }, 0 },
-	  { EMPTY_DISPATCH_HANDLER                                      },
-	},
-
-	// Terminator
-	{ NULL,
-	  { EMPTY_DISPATCH_HANDLER                      },
-	  { EMPTY_DISPATCH_HANDLER                      },
-	},
+	COMMAND_REQ( "espia_video_get_dev_image", request_video_get_dev_image ),
+	COMMAND_REQ( "espia_audio_get_dev_audio", request_audio_get_dev_audio ),
+	COMMAND_REQ( "espia_image_get_dev_screen", request_image_get_dev_screen ),
+	COMMAND_TERMINATOR
 };
 
 /*
@@ -52,17 +33,9 @@ Command customCommands[] =
  */
 DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
 {
-	DWORD index;
-
 	hMetSrv = remote->hMetSrv;
 
-	for (index = 0; customCommands[index].method; index++)
-	{
-		dprintf("Registering command index %d", index);
-		dprintf("  Command: %s", customCommands[index].method);
-		dprintf(" Register: 0x%.8x", command_register);
-		command_register(&customCommands[index]);
-	}
+	command_register_all( customCommands );
 
 	return ERROR_SUCCESS;
 }
@@ -72,12 +45,7 @@ DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
  */
 DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
 {
-	DWORD index;
-
-	for (index = 0;
-	     customCommands[index].method;
-	     index++)
-		command_deregister(&customCommands[index]);
+	command_deregister_all( customCommands );
 
 	return ERROR_SUCCESS;
 }

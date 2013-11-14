@@ -191,7 +191,7 @@ bool mimikatz::doCommandeKernel(std::wstring &commande)
 			(*outputStream) << L"DEBUG WriteFile " << endl <<
 				L"\tToWrite : " << (commande.size() + 1) * sizeof(wchar_t) << endl;
 			*/
-			if(WriteFile(Kmimikatz, commande.c_str(), (commande.size() + 1) * sizeof(wchar_t), &dwReturn, NULL))
+			if(WriteFile(Kmimikatz, commande.c_str(), (DWORD)((commande.size() + 1) * sizeof(wchar_t)), &dwReturn, NULL))
 			{
 				/*(*outputStream) << L"\tWriten  : " << dwReturn << endl << endl;*/
 

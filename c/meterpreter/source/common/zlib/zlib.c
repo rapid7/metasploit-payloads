@@ -3351,7 +3351,7 @@ int inflateSync(z_streamp z)
   }
 
   /* restore */
-  z->total_in += p - z->next_in;
+  z->total_in += (uLong)(p - z->next_in);
   z->next_in = p;
   z->avail_in = n;
   z->state->sub.marker = m;
@@ -3539,7 +3539,7 @@ struct inflate_blocks_state {
 /* defines for inflate input/output */
 /*   update pointers and return */
 #define UPDBITS {s->bitb=b;s->bitk=k;}
-#define UPDIN {z->avail_in=n;z->total_in+=p-z->next_in;z->next_in=p;}
+#define UPDIN {z->avail_in=n;z->total_in+=(uLong)(p-z->next_in);z->next_in=p;}
 #define UPDOUT {s->write=q;}
 #define UPDATE {UPDBITS UPDIN UPDOUT}
 #define LEAVE {UPDATE return inflate_flush(s,z,r);}

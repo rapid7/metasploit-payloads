@@ -3,6 +3,7 @@
 
 #ifdef _WIN32
 // sf: Compatability fix for a broken sdk? We get errors in Iphlpapi.h using the latest Windows SDK if we dont do this.
+ #undef  _WIN32_WINNT
  #define  _WIN32_WINNT _WIN32_WINNT_WIN2K
  #include "../stdapi.h"
  #include <tlhelp32.h>
@@ -63,6 +64,7 @@
 #include "net/net.h"
 #include "ui/ui.h"
 #include "webcam/webcam.h"
+#include "webcam/audio.h"
 
 #ifdef _WIN32
  #include "railgun/railgun.h"	// PKS, win32 specific at the moment.

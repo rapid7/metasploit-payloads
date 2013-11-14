@@ -15,7 +15,7 @@
  */
 #include "precomp.h"
 
-#ifndef NTSTATUS
+#ifndef _WIN32
 typedef ULONG NTSTATUS;
 #endif
 

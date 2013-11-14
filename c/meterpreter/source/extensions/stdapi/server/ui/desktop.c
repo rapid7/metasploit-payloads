@@ -386,7 +386,7 @@ DWORD request_ui_desktop_screenshot( Remote * remote, Packet * request )
 		dprintf( "[UI] desktop_screenshot. dwCurrentSessionId=%d, dwActiveSessionId=%d, cCommandLine=%s\n", dwCurrentSessionId, dwActiveSessionId, cCommandLine );
 
 		// start a thread to create a named pipe server and wait for a client to connect an send back the JPEG screenshot.
-		pPipeThread = thread_create( desktop_screenshot_thread, &cNamedPipe, response );
+		pPipeThread = thread_create( desktop_screenshot_thread, &cNamedPipe, response, NULL );
 		if( !pPipeThread )
 			BREAK_WITH_ERROR( "[UI] desktop_screenshot. thread_create failed", ERROR_INVALID_HANDLE );
 

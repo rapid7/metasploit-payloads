@@ -74,7 +74,7 @@ bool mod_memory::searchMemory(const PBYTE adresseBase, const long offsetMaxMin, 
 {
 	PBYTE addressePattern = NULL;
 	bool resultat = mod_memory::searchMemory(adresseBase, (offsetMaxMin != 0 ? (adresseBase + offsetMaxMin) : NULL), pattern, &addressePattern, longueur, enAvant, handleProcess);
-	*offsetPattern =  addressePattern - adresseBase;
+	*offsetPattern =  (long)(addressePattern - adresseBase);
 	return resultat;
 }
 

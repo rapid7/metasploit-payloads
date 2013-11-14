@@ -2,10 +2,14 @@
 
 typedef struct _WaitableEntry
 {
-	Remote *              remote;
-	HANDLE                waitable;
-	LPVOID                context;
-	WaitableNotifyRoutine routine;
+	Remote *               remote;
+	HANDLE                 waitable;
+	EVENT*                 pause;
+	EVENT*                 resume;
+	LPVOID                 context;
+	BOOL                   running;
+	WaitableNotifyRoutine  routine;
+	WaitableDestroyRoutine destroy;
 } WaitableEntry;
 
 /*
@@ -52,6 +56,7 @@ DWORD scheduler_destroy( VOID )
 	DWORD count     = 0;
 	LIST * jlist    = list_create();
 	THREAD * thread = NULL;
+	WaitableEntry * entry = NULL;
 
 	dprintf( "[SCHEDULER] entering scheduler_destroy." );
 
@@ -67,6 +72,11 @@ DWORD scheduler_destroy( VOID )
 		
 		list_push( jlist, thread );
 
+		entry = (WaitableEntry *)thread->parameter1;
+
+		if( !entry->running )
+			event_signal( entry->resume );
+
 		thread_sigterm( thread );
 	}
 
@@ -76,7 +86,7 @@ DWORD scheduler_destroy( VOID )
 
 	while( TRUE )
 	{
-		dprintf( "[SCHEDULER] scheduler_destroy, popping off another item from thread liat..." );
+		dprintf( "[SCHEDULER] scheduler_destroy, popping off another item from thread list..." );
 		
 		thread = (THREAD *)list_pop( jlist );
 		if( thread == NULL )
@@ -103,7 +113,7 @@ DWORD scheduler_destroy( VOID )
 /*
  * Insert a new waitable thread for checking and processing.
  */
-DWORD scheduler_insert_waitable( HANDLE waitable, LPVOID context, WaitableNotifyRoutine routine )
+DWORD scheduler_insert_waitable( HANDLE waitable, LPVOID entryContext, LPVOID threadContext, WaitableNotifyRoutine routine, WaitableDestroyRoutine destroy )
 {
 	DWORD result = ERROR_SUCCESS;
 	THREAD * swt = NULL;
@@ -112,16 +122,20 @@ DWORD scheduler_insert_waitable( HANDLE waitable, LPVOID context, WaitableNotify
 	if( entry == NULL )
 		return ERROR_NOT_ENOUGH_MEMORY;
 
-	dprintf( "[SCHEDULER] entering scheduler_insert_waitable( 0x%08X, 0x%08X, 0x%08X )", waitable, context, routine );
+	dprintf( "[SCHEDULER] entering scheduler_insert_waitable( 0x%08X, 0x%08X, 0x%08X, 0x%08X, 0x%08X )",
+		waitable, entryContext, threadContext, routine, destroy );
 
 	memset( entry, 0, sizeof( WaitableEntry ) );
 	
 	entry->remote   = schedulerRemote;
 	entry->waitable = waitable;
-	entry->context  = context;
+	entry->destroy  = destroy;
+	entry->context  = entryContext;
 	entry->routine  = routine;
+	entry->pause    = event_create();
+	entry->resume   = event_create();
 
-	swt = thread_create( scheduler_waitable_thread, entry, NULL );
+	swt = thread_create( scheduler_waitable_thread, entry, threadContext, NULL );
 	if( swt != NULL )
 	{
 		dprintf( "[SCHEDULER] created scheduler_waitable_thread 0x%08X", swt );
@@ -139,17 +153,17 @@ DWORD scheduler_insert_waitable( HANDLE waitable, LPVOID context, WaitableNotify
 }
 
 /*
- * Remove a waitable object by signaling the waitable thread to terminate.
+ * Signal a waitable object.
  */
-DWORD scheduler_remove_waitable( HANDLE waitable )
+DWORD scheduler_signal_waitable( HANDLE waitable, SchedularSignal signal )
 {
 	DWORD index           = 0;
 	DWORD count           = 0;
 	THREAD * thread       = NULL;
 	WaitableEntry * entry = NULL;
-	DWORD result          = ERROR_SUCCESS;
+	DWORD result          = ERROR_NOT_FOUND;
 
-	dprintf( "[SCHEDULER] entering scheduler_remove_waitable( 0x%08X )", waitable );
+	dprintf( "[SCHEDULER] entering scheduler_signal_waitable( 0x%08X )", waitable );
 
 	if( schedulerThreadList == NULL || waitable == NULL )
 		return ERROR_INVALID_HANDLE;
@@ -170,8 +184,31 @@ DWORD scheduler_remove_waitable( HANDLE waitable )
 
 		if( entry->waitable == waitable )
 		{
-			dprintf( "[SCHEDULER] scheduler_remove_waitable: signaling waitable = 0x%08X, thread = 0x%08X", waitable, thread );
-			thread_sigterm( thread );
+			dprintf( "[SCHEDULER] scheduler_signal_waitable: signaling waitable = 0x%08X, thread = 0x%08X", waitable, thread );
+			if( signal == Pause )
+			{
+				if( entry->running ) {
+					dprintf( "[SCHEDULER] scheduler_signal_waitable: thread running, pausing. waitable = 0x%08X, thread = 0x%08X, handle = 0x%X", waitable, thread, entry->pause->handle );
+					event_signal( entry->pause );
+				} else {
+					dprintf( "[SCHEDULER] scheduler_signal_waitable: thread already paused. waitable = 0x%08X, thread = 0x%08X", waitable, thread );
+				}
+			}
+			else
+			{
+				if( !entry->running ) {
+					dprintf( "[SCHEDULER] scheduler_signal_waitable: thread paused, resuming. waitable = 0x%08X, thread = 0x%08X, handle = 0x%X", waitable, thread, entry->resume->handle );
+					event_signal( entry->resume );
+				}
+
+				if( signal == Stop ) {
+					dprintf( "[SCHEDULER] scheduler_signal_waitable: stopping thread. waitable = 0x%08X, thread = 0x%08X, handle = 0x%X", waitable, thread, thread->sigterm->handle );
+					thread_sigterm( thread );
+				} else {
+					dprintf( "[SCHEDULER] scheduler_signal_waitable: thread already running. waitable = 0x%08X, thread = 0x%08X", waitable, thread );
+				}
+			}
+
 			result = ERROR_SUCCESS;
 			break;
 		}
@@ -179,7 +216,7 @@ DWORD scheduler_remove_waitable( HANDLE waitable )
 
 	lock_release( schedulerThreadList->lock );
 
-	dprintf( "[SCHEDULER] leaving scheduler_remove_waitable" );
+	dprintf( "[SCHEDULER] leaving scheduler_signal_waitable" );
 
 	return result;
 }
@@ -190,10 +227,11 @@ DWORD scheduler_remove_waitable( HANDLE waitable )
  */
 DWORD THREADCALL scheduler_waitable_thread( THREAD * thread )
 {
-	HANDLE waitableHandles[2] = {0};
+	HANDLE waitableHandles[3] = {0};
 	WaitableEntry * entry     = NULL;
 	DWORD result              = 0;
 	BOOL terminate            = FALSE;
+	UINT signalIndex          = 0;
 
 	if( thread == NULL )
 		return ERROR_INVALID_HANDLE;
@@ -211,23 +249,34 @@ DWORD THREADCALL scheduler_waitable_thread( THREAD * thread )
 	list_add( schedulerThreadList, thread );
 
 	waitableHandles[0] = thread->sigterm->handle;
-	waitableHandles[1] = entry->waitable;
+	waitableHandles[1] = entry->pause->handle;
+	waitableHandles[2] = entry->waitable;
 
 	dprintf( "[SCHEDULER] entering scheduler_waitable_thread( 0x%08X )", thread );
+	dprintf( "[SCHEDULER] waiting on term=0x%X pause=0x%X waitable=0x%X", waitableHandles[0], waitableHandles[1], waitableHandles[2] );
 
+	entry->running = TRUE;
 	while( !terminate )
 	{
-		
-		result = WaitForMultipleObjects( 2, (HANDLE *)&waitableHandles, FALSE, INFINITE );
-		switch( result - WAIT_OBJECT_0 )
+		dprintf( "[SCHEDULER] About to wait ( 0x%08X )", thread );
+		result = WaitForMultipleObjects( 3, waitableHandles, FALSE, INFINITE );
+		dprintf( "[SCHEDULER] Wait returned ( 0x%08X )", thread );
+		signalIndex = result - WAIT_OBJECT_0;
+		switch( signalIndex )
 		{
 			case 0:
 				dprintf( "[SCHEDULER] scheduler_waitable_thread( 0x%08X ), signaled to terminate...", thread );
 				terminate = TRUE;
 				break;
 			case 1:
+				dprintf( "[SCHEDULER] scheduler_waitable_thread( 0x%08X ), signaled to pause...", thread );
+				entry->running = FALSE;
+				event_poll( entry->resume, INFINITE );
+				entry->running = TRUE;
+				dprintf( "[SCHEDULER] scheduler_waitable_thread( 0x%08X ), signaled to resume...", thread );
+			case 2:
 				//dprintf( "[SCHEDULER] scheduler_waitable_thread( 0x%08X ), signaled on waitable...", thread );
-				entry->routine( entry->remote, entry->context );
+				entry->routine( entry->remote, entry->context, thread->parameter2 );
 				break;
 			default:
 				break;
@@ -237,14 +286,20 @@ DWORD THREADCALL scheduler_waitable_thread( THREAD * thread )
 	dprintf( "[SCHEDULER] leaving scheduler_waitable_thread( 0x%08X )", thread );
 	
 	// we acquire the lock for this block as we are freeing 'entry' which may be accessed 
-	// in a second call to scheduler_remove_waitable for this thread (unlikely but best practice).
+	// in a second call to scheduler_signal_waitable for this thread (unlikely but best practice).
 	lock_acquire( schedulerThreadList->lock );
 	if( list_remove( schedulerThreadList, thread ) )
 	{
-		if(entry->waitable) {
+		if( entry->destroy ) {
+			entry->destroy( entry->waitable, entry->context, thread->parameter2 );
+		}
+		else if( entry->waitable ) {
 			dprintf( "[SCHEDULER] scheduler_waitable_thread( 0x%08X ) closing handle 0x%08X", thread, entry->waitable);
 			CloseHandle( entry->waitable );
 		}
+
+		event_destroy( entry->resume );
+		event_destroy( entry->pause );
 		thread_destroy( thread );
 		free( entry );
 	}

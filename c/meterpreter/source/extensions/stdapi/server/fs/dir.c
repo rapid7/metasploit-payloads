@@ -19,7 +19,7 @@ DWORD request_fs_ls(Remote *remote, Packet *packet)
 	LPCSTR directory;
 	DWORD result = ERROR_SUCCESS;
 	LPSTR expanded = NULL, tempFile = NULL;
-	DWORD tempFileSize = 0;
+	size_t tempFileSize = 0;
 	LPSTR baseDirectory = NULL;
 	struct meterp_stat buf;
 
@@ -122,11 +122,12 @@ DWORD request_fs_ls(Remote *remote, Packet *packet)
 			}
 
 			// Allocate temporary storage to stat the file
-			if ((!tempFile) ||
-			    (tempFileSize < fullSize))
+			if ((!tempFile) || (tempFileSize < fullSize))
 			{
 				if (tempFile)
+				{
 					free(tempFile);
+				}
 
 				// No memory means we suck a lot like spoon's mom
 				if (!(tempFile = (LPSTR)malloc(fullSize)))
@@ -142,25 +143,28 @@ DWORD request_fs_ls(Remote *remote, Packet *packet)
 
 			// Build the full path
 			if (baseDirectory)
+			{
 #ifdef _WIN32
 				sprintf(tempFile, "%s\\%s", baseDirectory, DF_NAME);
 #else
 				sprintf(tempFile, "%s/%s", baseDirectory, DF_NAME);
 #endif
+			}
 			else
+			{
 				sprintf(tempFile, "%s", DF_NAME);
+			}
 
 			// Add the file name to the response
-			packet_add_tlv_string(response, TLV_TYPE_FILE_NAME, 
-					DF_NAME);
+			packet_add_tlv_string(response, TLV_TYPE_FILE_NAME, DF_NAME);
 			// Add the full path
-			packet_add_tlv_string(response, TLV_TYPE_FILE_PATH,
-					tempFile);
+			packet_add_tlv_string(response, TLV_TYPE_FILE_PATH, tempFile);
 
 			// Stat the file to get more information about it.
 			if (fs_stat(tempFile, &buf) >= 0)
-				packet_add_tlv_raw(response, TLV_TYPE_STAT_BUF, &buf,
-						sizeof(buf));
+			{
+				packet_add_tlv_raw(response, TLV_TYPE_STAT_BUF, &buf, sizeof(buf));
+			}
 
 #ifdef _WIN32
 		} while (FindNextFile(ctx, &data));
@@ -171,21 +175,30 @@ DWORD request_fs_ls(Remote *remote, Packet *packet)
 
 		// Clean up resources
 		if (freeDirectory)
+		{
 			free(tempDirectory);
+		}
+
 		if (ctx)
+		{
 #ifdef _WIN32
 			FindClose(ctx);
 #else
 			closedir(ctx);
 #endif
+		}
 	}
 
 	if (expanded)
+	{
 		free(expanded);
+	}
 
 out:
 	if (baseDirectory)
+	{
 		free(baseDirectory);
+	}
 
 	// Set the result and transmit the response
 	packet_add_tlv_uint(response, TLV_TYPE_RESULT, result);

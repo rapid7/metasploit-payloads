@@ -88,15 +88,8 @@ DWORD request_custom_command(Remote *remote, Packet *packet)
 
 Command customCommands[] =
 {
-	{ "mimikatz_custom_command",
-	  { request_custom_command,                                { 0 }, 0 },
-	  { EMPTY_DISPATCH_HANDLER                                   },
-	},
-	// Terminator
-	{ NULL,
-	  { EMPTY_DISPATCH_HANDLER                      },
-	  { EMPTY_DISPATCH_HANDLER                      },
-	},
+	COMMAND_REQ( "mimikatz_custom_command", request_custom_command ),
+	COMMAND_TERMINATOR
 };
 
 /*
@@ -104,14 +97,9 @@ Command customCommands[] =
  */
 DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
 {
-	DWORD index;
-
 	hMetSrv = remote->hMetSrv;
 
-	for (index = 0;
-	     customCommands[index].method;
-	     index++)
-		command_register(&customCommands[index]);
+	command_register_all( customCommands );
 
 	return ERROR_SUCCESS;
 }
@@ -121,12 +109,7 @@ DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
  */
 DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
 {
-	DWORD index;
-
-	for (index = 0;
-	     customCommands[index].method;
-	     index++)
-		command_deregister(&customCommands[index]);
+	command_deregister_all( customCommands );
 
 	return ERROR_SUCCESS;
 }

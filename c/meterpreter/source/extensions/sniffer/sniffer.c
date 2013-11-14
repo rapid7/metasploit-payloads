@@ -226,11 +226,11 @@ DWORD request_sniffer_interfaces(Remote *remote, Packet *packet)
 		entries[0].buffer        = (PUCHAR)&aidx;
 
 		entries[1].header.type   = TLV_TYPE_STRING;
-		entries[1].header.length = strlen(aname)+1;
+		entries[1].header.length = (DWORD)strlen(aname) + 1;
 		entries[1].buffer        = aname;
 
 		entries[2].header.type   = TLV_TYPE_STRING;
-		entries[2].header.length = strlen(adesc)+1;
+		entries[2].header.length = (DWORD)strlen(adesc) + 1;
 		entries[2].buffer        = adesc;
 
 		entries[3].header.type   = TLV_TYPE_UINT;
@@ -675,7 +675,7 @@ DWORD request_sniffer_capture_start(Remote *remote, Packet *packet) {
 			dprintf("filter applied successfully");
 		}
 
-		j->thread = thread_create((THREADFUNK) sniffer_thread, j, NULL);
+		j->thread = thread_create((THREADFUNK) sniffer_thread, j, NULL, NULL);
 		if(! j->thread) {
 			pcap_close(j->pcap);
 			break;
@@ -947,6 +947,9 @@ DWORD request_sniffer_capture_dump(Remote *remote, Packet *packet) {
 
 	CaptureJob *j;
 	DWORD result,pcnt,rcnt,i;
+#ifdef _WIN64
+	ULONGLONG thilo;
+#endif
 	DWORD thi, tlo;
 
 	check_pssdk();
@@ -1011,11 +1014,23 @@ DWORD request_sniffer_capture_dump(Remote *remote, Packet *packet) {
 			}
 
 			tmp = (unsigned int *)( j->dbuf + rcnt );
+#ifdef _WIN64
+			thilo = PktGetId(j->pkts[i]);
+			thi = (DWORD)(thilo >> 32);
+			tlo = (DWORD)(thilo & 0xFFFFFFFF);
+#else
 			tlo = PktGetId(j->pkts[i], &thi);
+#endif
 			*tmp = htonl(thi); tmp++;
 			*tmp = htonl(tlo); tmp++;
 
+#ifdef _WIN64
+			thilo = PktGetTimeStamp(j->pkts[i]);
+			thi = (DWORD)(thilo >> 32);
+			tlo = (DWORD)(thilo & 0xFFFFFFFF);
+#else
 			tlo = PktGetTimeStamp(j->pkts[i], &thi);
+#endif
 			*tmp = htonl(thi); tmp++;
 			*tmp = htonl(tlo); tmp++;
 
@@ -1099,8 +1114,6 @@ Command customCommands[] =
  */
 DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
 {
-	DWORD index;
-
 #ifdef _WIN32
 	// This handle has to be set before calls to command_register
 	// otherwise we get obscure crashes!
@@ -1108,12 +1121,7 @@ DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
 #endif
 
 	dprintf("[SERVER] Registering command handlers...");
-	for (index = 0; customCommands[index].method; index++) {
-		dprintf("Registering command index %d", index);
-		dprintf("  Command: %s", customCommands[index].method);
-		dprintf(" Register: 0x%.8x", command_register);
-		command_register(&customCommands[index]);
-	}
+	command_register_all( customCommands );
 
 	dprintf("[SERVER] Memory reset of open_captures...");
 	memset(open_captures, 0, sizeof(open_captures));
@@ -1178,12 +1186,7 @@ DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
  */
 DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
 {
-	DWORD index;
-
-	for (index = 0;
-	     customCommands[index].method;
-	     index++)
-		command_deregister(&customCommands[index]);
+	command_register_all( customCommands );
 
 #ifdef _WIN32
 	MgrDestroy(hMgr);

@@ -102,13 +102,13 @@ DWORD request_core_loadlib(Remote *remote, Packet *packet)
 				// if the library was loaded via its reflective loader we must use GetProcAddressR()
 				if( bLibLoadedReflectivly )
 				{
-					extension->init   = (LPVOID)GetProcAddressR( extension->library, "InitServerExtension" );
-					extension->deinit = (LPVOID)GetProcAddressR( extension->library, "DeinitServerExtension" );
+					extension->init   = (PSRVINIT)GetProcAddressR( extension->library, "InitServerExtension" );
+					extension->deinit = (PSRVDEINIT)GetProcAddressR( extension->library, "DeinitServerExtension" );
 				}
 				else
 				{
-					extension->init   = (LPVOID)GetProcAddress( extension->library, "InitServerExtension" );
-					extension->deinit = (LPVOID)GetProcAddress( extension->library, "DeinitServerExtension" );
+					extension->init   = (PSRVINIT)GetProcAddress( extension->library, "InitServerExtension" );
+					extension->deinit = (PSRVDEINIT)GetProcAddress( extension->library, "DeinitServerExtension" );
 				}
 
 				// patch in the metsrv.dll's HMODULE handle, used by the server extensions for delay loading
