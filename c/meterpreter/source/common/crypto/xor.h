@@ -1,3 +1,7 @@
+/*!
+ * @file xor.h
+ * @brief Declarations for functions that perform XOR encryption.
+ */
 #ifndef _METERPRETER_SOURCE_COMMON_CRYPTO_XOR_H
 #define _METERPRETER_SOURCE_COMMON_CRYPTO_XOR_H
 

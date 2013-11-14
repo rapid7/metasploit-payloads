@@ -1,18 +1,26 @@
+/*!
+ * @file remote.c
+ * @brief Definitions of functions and types that interact with a remote endpoint.
+ */
 #include "common.h"
 
-/*
- * Instantiate a remote context from a file descriptor
+/*!
+ * @brief Instantiate a remote context from a file descriptor.
+ * @details This function takes a file descriptor and wraps it in \c Remote
+ *          context which makes it easier to interact with the endpoint.
+ * @param fd File descriptor for the socket that needs to be wrapped.
+ * @returns Pointer to the created \c Remote instance.
+ * @retval NULL Indicates a memory allocation failure or a lock creation failure.
+ * @retval Non-NULL Successful creation of the context.
  */
 Remote *remote_allocate(SOCKET fd)
 {
 	Remote *remote = NULL;
 
-	// Allocate the remote context
 	if ((remote = (Remote *)malloc(sizeof(Remote))))
 	{
 		memset(remote, 0, sizeof(Remote));
 
-		// Set the file descriptor
 		remote->fd = fd;
 
 		remote->lock = lock_create();
@@ -30,19 +38,26 @@ Remote *remote_allocate(SOCKET fd)
 	return remote;
 }
 
-/*
- * Deallocate a remote context
+/*!
+ * @brief Deallocate a remote context.
+ * @param remote Pointer to the \c Remote instance to deallocate.
  */
-VOID remote_deallocate( Remote * remote )
+VOID remote_deallocate(Remote * remote)
 {
-	if( remote->fd )
-		closesocket( remote->fd );
-	
-	if( remote->lock )
-		lock_destroy( remote->lock );
+	if (remote->fd)
+	{
+		closesocket(remote->fd);
+	}
 
-	if ( remote->uri )
-		free( remote->uri);
+	if (remote->lock)
+	{
+		lock_destroy(remote->lock);
+	}
+
+	if (remote->uri)
+	{
+		free(remote->uri);
+	}
 
 	// Wipe our structure from memory
 	memset(remote, 0, sizeof(Remote));
@@ -50,24 +65,35 @@ VOID remote_deallocate( Remote * remote )
 	free(remote);
 }
 
-/*
- * Override a previously set file descriptor
+/*!
+ * @brief Override a previously set file descriptor.
+ * @param remote Pointer to the existing \c Remote instance.
+ * @param fd The new file descriptor to use for the \c Remote instance.
  */
 VOID remote_set_fd(Remote *remote, SOCKET fd)
 {
 	remote->fd = fd;
 }
 
-/*
- * Get the remote context's file descriptor
+/*!
+ * @brief Get the remote context's file descriptor.
+ * @param remote Pointer to the \c Remote instance to get the file descriptor from.
+ * @returns The associated file descriptor.
  */
 SOCKET remote_get_fd(Remote *remote)
 {
 	return remote->fd;
 }
 
-/*
- * Initializes a given cipher as instructed to by the remote endpoint
+/*!
+ * @brief Initializes a given cipher as instructed by the remote endpoint.
+ * @param remote Pointer to the \c Remote instance.
+ * @param cipher Name of the cipher to use.
+ * @param initializer Pointer to the received \c Packet instance.
+ * @returns Indication of success or failure.
+ * @retval ERROR_SUCCESS The cipher was set correctly.
+ * @retval ERROR_NOT_ENOUGH_MEMORY Memory allocation failed.
+ * @retval ERROR_NOT_FOUND An invalid value was specified for \c cipher.
  */
 DWORD remote_set_cipher(Remote *remote, LPCSTR cipher, Packet *initializer)
 {
@@ -92,15 +118,21 @@ DWORD remote_set_cipher(Remote *remote, LPCSTR cipher, Packet *initializer)
 
 		// Populate handlers according to what cipher was selected
 		if (!strcmp(cipher, "xor"))
+		{
 			res = xor_populate_handlers(remote->crypto);
+		}
 		else
+		{
 			res = ERROR_NOT_FOUND;
+		}
 
 		// If we got a context and it wants to process the request, do it.
 		if ((res == ERROR_SUCCESS) &&
-		    (remote->crypto->handlers.process_negotiate_request))
+			(remote->crypto->handlers.process_negotiate_request))
+		{
 			res = remote->crypto->handlers.process_negotiate_request(
-					remote->crypto, initializer);
+				remote->crypto, initializer);
+		}
 
 	} while (0);
 
@@ -108,7 +140,9 @@ DWORD remote_set_cipher(Remote *remote, LPCSTR cipher, Packet *initializer)
 	if (res != ERROR_SUCCESS)
 	{
 		if (remote->crypto)
+		{
 			free(remote->crypto);
+		}
 
 		remote->crypto = NULL;
 	}
@@ -116,8 +150,10 @@ DWORD remote_set_cipher(Remote *remote, LPCSTR cipher, Packet *initializer)
 	return res;
 }
 
-/*
- * Returns a pointer to the remote endpoint's crypto context
+/*!
+ * @brief Gets a pointer to the remote endpoint's crypto context.
+ * @param remote The \c Remote instance to get the crypto context from.
+ * @returns A pointer to the crypto context.
  */
 CryptoContext *remote_get_cipher(Remote *remote)
 {
