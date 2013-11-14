@@ -91,17 +91,20 @@ DWORD enumerate_windows(Packet *response, BOOL bIncludeUnknown, QWORD parentWind
 	do
 	{
 		dprintf("[EXTAPI WINDOW] Loading user32.dll");
-		if ((hUser32 = LoadLibraryA("user32.dll")) == NULL)
+		if ((hUser32 = LoadLibraryA("user32.dll")) == NULL) {
 			BREAK_ON_ERROR("[EXTAPI WINDOW] Unable to load user32.dll");
+		}
 
 		dprintf("[EXTAPI WINDOW] Searching for GetWindowTextA");
-		if ((state.pGetWindowTextA = (PGETWINDOWTEXA)GetProcAddress(hUser32, "GetWindowTextA")) == NULL)
+		if ((state.pGetWindowTextA = (PGETWINDOWTEXA)GetProcAddress(hUser32, "GetWindowTextA")) == NULL) {
 			BREAK_ON_ERROR("[EXTAPI WINDOW] Unable to locate GetWindowTextA in user32.dll");
+		}
 		dprintf("[EXTAPI WINDOW] Found GetWindowTextA %p", state.pGetWindowTextA);
 
 		dprintf("[EXTAPI WINDOW] Searching for GetWindowThreadProcessId");
-		if ((state.pGetWindowThreadProcessId = (PGETWINDOWTHREADPROCESSID)GetProcAddress(hUser32, "GetWindowThreadProcessId")) == NULL)
+		if ((state.pGetWindowThreadProcessId = (PGETWINDOWTHREADPROCESSID)GetProcAddress(hUser32, "GetWindowThreadProcessId")) == NULL) {
 			BREAK_ON_ERROR("[EXTAPI WINDOW] Unable to locate GetWindowThreadProcessId in user32.dll");
+		}
 
 		dprintf("[EXTAPI WINDOW] Found GetWindowThreadProcessId %p", state.pGetWindowThreadProcessId);
 
@@ -109,18 +112,21 @@ DWORD enumerate_windows(Packet *response, BOOL bIncludeUnknown, QWORD parentWind
 		state.bIncludeUnknown = bIncludeUnknown;
 
 		dprintf("[EXTAPI WINDOW] Searching for EnumChildWindows");
-		if ((pEnumChildWindows = (PENUMCHILDWINDOWS)GetProcAddress(hUser32, "EnumChildWindows")) == NULL)
+		if ((pEnumChildWindows = (PENUMCHILDWINDOWS)GetProcAddress(hUser32, "EnumChildWindows")) == NULL) {
 			BREAK_ON_ERROR("[EXTAPI WINDOW] Unable to locate EnumChildWindows in user32.dll");
+		}
 
 		dprintf("[EXTAPI WINDOW] Beginning enumeration of child windows with parent %u", parentWindow);
-		if (!pEnumChildWindows(parentWindow != 0 ? (HWND)parentWindow : NULL, (WNDENUMPROC)enumerate_windows_callback, (LPARAM)&state))
+		if (!pEnumChildWindows(parentWindow != 0 ? (HWND)parentWindow : NULL, (WNDENUMPROC)enumerate_windows_callback, (LPARAM)&state)) {
 			BREAK_ON_ERROR("[EXTAPI WINDOW] Failed to enumerate child windows");
+		}
 
 		dwResult = ERROR_SUCCESS;
 	} while (0);
 
-	if (hUser32)
+	if (hUser32) {
 		FreeLibrary(hUser32);
+	}
 
 	return dwResult;
 #else
@@ -162,8 +168,9 @@ DWORD request_window_enum(Remote *remote, Packet *packet)
 	} while (0);
 
 	dprintf("[EXTAPI WINDOW] Transmitting response back to caller.");
-	if (response)
+	if (response) {
 		packet_transmit_response(dwResult, remote, response);
+	}
 
 	return dwResult;
 }

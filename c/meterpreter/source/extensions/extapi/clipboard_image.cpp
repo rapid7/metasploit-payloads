@@ -32,17 +32,21 @@ DWORD get_encoder_clsid(WCHAR *mimeType, CLSID * pClsId)
 	{
 		UINT numEncoders;
 		UINT size;
-		if (GetImageEncodersSize(&numEncoders, &size) != Ok)
+		if (GetImageEncodersSize(&numEncoders, &size) != Ok) {
 			BREAK_WITH_ERROR("[EXTAPI CLIPIMG] Unable to get encoders array size.", ERROR_FUNCTION_FAILED);
+		}
 
-		if (size == 0)
+		if (size == 0) {
 			BREAK_WITH_ERROR("[EXTAPI CLIPIMG] No encoders found.", ERROR_FUNCTION_FAILED);
+		}
 
-		if ((pImageCodecInfo = (ImageCodecInfo*)malloc(size)) == NULL)
+		if ((pImageCodecInfo = (ImageCodecInfo*)malloc(size)) == NULL) {
 			BREAK_WITH_ERROR("[EXTAPI CLIPIMG] Couldn't allocate memory for ImageCodeInfo", ERROR_OUTOFMEMORY);
+		}
 
-		if (GetImageEncoders(numEncoders, size, pImageCodecInfo) != Ok)
+		if (GetImageEncoders(numEncoders, size, pImageCodecInfo) != Ok) {
 			BREAK_WITH_ERROR("[EXTAPI CLIPIMG] Unable to get encoders.", ERROR_FUNCTION_FAILED);
+		}
 
 		for (UINT i = 0; i < numEncoders; ++i) {
 			if (wcscmp(pImageCodecInfo[i].MimeType, mimeType) == 0) {
@@ -56,8 +60,9 @@ DWORD get_encoder_clsid(WCHAR *mimeType, CLSID * pClsId)
 		}
 	} while (0);
 
-	if (pImageCodecInfo != NULL)
+	if (pImageCodecInfo != NULL) {
 		free(pImageCodecInfo);
+	}
 
 	return dwResult;
 }
@@ -130,16 +135,19 @@ DWORD convert_to_jpg(const LPBITMAPINFO lpBI, const LPVOID lpDIB, ULONG ulQualit
 
 	do
 	{
-		if (GdiplusStartup(&gdiPlusToken, &gdiStartupInput, NULL) != Ok)
+		if (GdiplusStartup(&gdiPlusToken, &gdiStartupInput, NULL) != Ok) {
 			BREAK_WITH_ERROR("[EXTAPI CLIPIMG] Unable to initialize GdiPlus", ERROR_FUNCTION_FAILED);
+		}
 
 		CLSID jpegClsid;
 		dprintf("[EXTAPI CLIPIMG] Attempting to get the jpg class id");
-		if (get_encoder_clsid(L"image/jpeg", &jpegClsid) != ERROR_SUCCESS)
+		if (get_encoder_clsid(L"image/jpeg", &jpegClsid) != ERROR_SUCCESS) {
 			BREAK_WITH_ERROR("[EXTAPI CLIPIMG] Unable to find an appropriate image encoder", ERROR_FUNCTION_FAILED);
+		}
 
-		if ((pBitmap = new Bitmap(lpBI, lpDIB)) == NULL)
+		if ((pBitmap = new Bitmap(lpBI, lpDIB)) == NULL) {
 			BREAK_WITH_ERROR("[EXTAPI CLIPIMG] Failed to create bitmap instance", ERROR_FUNCTION_FAILED);
+		}
 
 		EncoderParameters encParams;
 		encParams.Count = 1;
@@ -148,27 +156,32 @@ DWORD convert_to_jpg(const LPBITMAPINFO lpBI, const LPVOID lpDIB, ULONG ulQualit
 		encParams.Parameter[0].Type = EncoderParameterValueTypeLong;
 		encParams.Parameter[0].Value = &ulQuality;
 
-		if (CreateStreamOnHGlobal(NULL, TRUE, &pStream) != S_OK)
+		if (CreateStreamOnHGlobal(NULL, TRUE, &pStream) != S_OK) {
 			BREAK_WITH_ERROR("[EXTAPI CLIPIMG] Failed to create stream", ERROR_FUNCTION_FAILED);
+		}
 
-		if (pBitmap->Save(pStream, &jpegClsid, &encParams) != Ok)
+		if (pBitmap->Save(pStream, &jpegClsid, &encParams) != Ok) {
 			BREAK_WITH_ERROR("[EXTAPI CLIPIMG] Failed to save image to stream", ERROR_FUNCTION_FAILED);
+		}
 
 		STATSTG stat;
-		if (pStream->Stat(&stat, STATFLAG_NONAME) != S_OK)
+		if (pStream->Stat(&stat, STATFLAG_NONAME) != S_OK) {
 			BREAK_WITH_ERROR("[EXTAPI CLIPIMG] Failed to get image stat", ERROR_FUNCTION_FAILED);
+		}
 
 		// if the image requires the quadpart, then we're in trouble anyway!
 		pImage->dwImageBufferSize = stat.cbSize.LowPart;
-		if ((pImage->pImageBuffer = (LPBYTE)malloc(pImage->dwImageBufferSize)) == NULL)
+		if ((pImage->pImageBuffer = (LPBYTE)malloc(pImage->dwImageBufferSize)) == NULL) {
 			BREAK_WITH_ERROR("[EXTAPI CLIPIMG] Failed to allocate memory for the JPEG", ERROR_OUTOFMEMORY);
+		}
 
 		ULARGE_INTEGER pos;
 		LARGE_INTEGER zero;
 		zero.QuadPart = 0;
 		pos.QuadPart = 0;
-		if (pStream->Seek(zero, STREAM_SEEK_SET, &pos) != S_OK)
+		if (pStream->Seek(zero, STREAM_SEEK_SET, &pos) != S_OK) {
 			BREAK_WITH_ERROR("[EXTAPI CLIPIMG] Failed set stream position", ERROR_FUNCTION_FAILED);
+		}
 
 		ULONG bytesRead = 0;
 		if ((hRes = pStream->Read(pImage->pImageBuffer, pImage->dwImageBufferSize, &bytesRead) != S_OK)) {
@@ -177,8 +190,9 @@ DWORD convert_to_jpg(const LPBITMAPINFO lpBI, const LPVOID lpDIB, ULONG ulQualit
 			break;
 		}
 
-		if (bytesRead != pImage->dwImageBufferSize)
+		if (bytesRead != pImage->dwImageBufferSize) {
 			BREAK_WITH_ERROR("[EXTAPI CLIPIMG] Failed to read image data from stream", ERROR_FUNCTION_FAILED);
+		}
 	} while (0);
 
 	if (dwResult != ERROR_SUCCESS && pImage->pImageBuffer != NULL) {
@@ -186,14 +200,17 @@ DWORD convert_to_jpg(const LPBITMAPINFO lpBI, const LPVOID lpDIB, ULONG ulQualit
 		pImage->pImageBuffer = NULL;
 	}
 
-	if (pStream != NULL)
+	if (pStream != NULL) {
 		pStream->Release();
+	}
 
-	if (pBitmap != NULL)
+	if (pBitmap != NULL) {
 		delete pBitmap;
+	}
 
-	if (gdiPlusToken != 0)
+	if (gdiPlusToken != 0) {
 		GdiplusShutdown(gdiPlusToken);
+	}
 
 	return dwResult;
 }

@@ -36,12 +36,9 @@ Command customCommands[] =
  */
 DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
 {
-	DWORD index;
-
 	hMetSrv = remote->hMetSrv;
 
-	for (index = 0; customCommands[index].method; index++)
-		command_register(&customCommands[index]);
+	command_register_all(customCommands);
 
 	return ERROR_SUCCESS;
 }
@@ -54,10 +51,7 @@ DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
  */
 DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
 {
-	DWORD index;
-
-	for (index = 0; customCommands[index].method; index++)
-		command_deregister(&customCommands[index]);
+	command_deregister_all(customCommands);
 
 	return ERROR_SUCCESS;
 }
