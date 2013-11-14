@@ -159,6 +159,7 @@ VOID channel_destroy(Channel *channel, Packet *request)
 	lock_destroy( channel->lock );
 
 	// Destroy the channel context
+	dprintf( "[CHANNEL] Free up the channel context 0x%p", channel );
 	free(channel);
 }
 
@@ -445,13 +446,16 @@ DWORD _channel_packet_completion_routine(Remote *remote, Packet *packet,
 				length);
 	}
 	else if ((!strcmp(method, "core_channel_close")) &&
-	         (comp->routine.close))
+	         (comp->routine.close)) {
+		dprintf( "[CHANNEL] freeing up the completion context" );
 		res = comp->routine.close(remote, channel, comp->context, result);
+	}
 	else if ((!strcmp(method, "core_channel_interact")) &&
 	         (comp->routine.interact))
 		res = comp->routine.interact(remote, channel, comp->context, result);
 
 	// Deallocate the completion context
+	dprintf( "[CHANNEL] freeing up the completion context" );
 	free(comp);
 
 	return res;

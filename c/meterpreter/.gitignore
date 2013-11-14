@@ -43,6 +43,12 @@ source/jpeg-8/Backup/*
 
 # ignore posix temp stuff
 posix-meterp-build-tmp/*
+data/meterpreter/*
+source/server/rtld/elf2bin
+source/server/rtld/lib*
+source/server/rtld/msflinker
+source/server/rtld/msflinker.bin
+source/server/rtld/rtldtest
 
 # Doxygen output
 docs/*

@@ -142,65 +142,16 @@ DWORD request_lanattacks_stop_tftp(Remote *remote, Packet *packet){
 }
 Command customCommands[] =
 {
-	// Launch DHCP server
-	{ "lanattacks_start_dhcp",
-	  { request_lanattacks_start_dhcp, { 0 }, 0 },
-	  { EMPTY_DISPATCH_HANDLER },
-	},
-
-	// Reset DHCP
-	{ "lanattacks_reset_dhcp",
-	  { request_lanattacks_reset_dhcp, { 0 }, 0 },
-	  { EMPTY_DISPATCH_HANDLER },
-	},
-
-	// Set DHCP Option
-	{ "lanattacks_set_dhcp_option",
-	  { request_lanattacks_set_dhcp_option, { 0 }, 0 },
-	  { EMPTY_DISPATCH_HANDLER },
-	},
-
-	// Stop DHCP
-	{ "lanattacks_stop_dhcp",
-	  { request_lanattacks_stop_dhcp, { 0 }, 0 },
-	  { EMPTY_DISPATCH_HANDLER },
-	},
-
-	// Get DHCP Log
-	{ "lanattacks_dhcp_log",
-	  { request_lanattacks_dhcp_log, { 0 }, 0 },
-	  { EMPTY_DISPATCH_HANDLER },
-	},
-
-	// Launch TFTP server
-	{ "lanattacks_start_tftp",
-	  { request_lanattacks_start_tftp, { 0 }, 0 },
-	  { EMPTY_DISPATCH_HANDLER },
-	},
-
-	// Reset TFTP
-	{ "lanattacks_reset_tftp",
-	  { request_lanattacks_stop_tftp, { 0 }, 0 },
-	  { EMPTY_DISPATCH_HANDLER },
-	},
-
-	// Add TFTP file
-	{ "lanattacks_add_tftp_file",
-	  { request_lanattacks_add_tftp_file, { 0 }, 0 },
-	  { EMPTY_DISPATCH_HANDLER },
-	},
-
-	// Stop TFTP
-	{ "lanattacks_stop_tftp",
-	  { request_lanattacks_stop_tftp, { 0 }, 0 },
-	  { EMPTY_DISPATCH_HANDLER },
-	},
-
-	// Terminator
-	{ NULL,
-	  { EMPTY_DISPATCH_HANDLER },
-	  { EMPTY_DISPATCH_HANDLER },
-	},
+	COMMAND_REQ( "lanattacks_start_dhcp", request_lanattacks_start_dhcp ),
+	COMMAND_REQ( "lanattacks_reset_dhcp", request_lanattacks_reset_dhcp ),
+	COMMAND_REQ( "lanattacks_set_dhcp_option", request_lanattacks_set_dhcp_option ),
+	COMMAND_REQ( "lanattacks_stop_dhcp", request_lanattacks_stop_dhcp ),
+	COMMAND_REQ( "lanattacks_dhcp_log", request_lanattacks_dhcp_log ),
+	COMMAND_REQ( "lanattacks_start_tftp", request_lanattacks_start_tftp ),
+	COMMAND_REQ( "lanattacks_reset_tftp", request_lanattacks_stop_tftp ),
+	COMMAND_REQ( "lanattacks_add_tftp_file", request_lanattacks_add_tftp_file ),
+	COMMAND_REQ( "lanattacks_stop_tftp", request_lanattacks_stop_tftp ),
+	COMMAND_TERMINATOR
 };
 
 /*
@@ -211,13 +162,7 @@ DWORD __declspec(dllexport) InitServerExtension(Remote *remote){
 
 	hMetSrv = remote->hMetSrv;
 
-	for (index = 0; customCommands[index].method; index++)
-	{
-		dprintf("Registering command index %d", index);
-		dprintf("  Command: %s", customCommands[index].method);
-		dprintf(" Register: 0x%.8x", command_register);
-		command_register(&customCommands[index]);
-	}
+	command_register_all( customCommands );
 
 	dhcpserver = createDHCPServer();
 	tftpserver = createTFTPServer();
@@ -235,15 +180,13 @@ DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
 {
 	DWORD index;
 
-	for (index = 0;
-	     customCommands[index].method;
-	     index++)
-		command_deregister(&customCommands[index]);
+	destroyTFTPServer(tftpserver);
+	tftpserver = NULL;
 
 	destroyDHCPServer(dhcpserver);
 	dhcpserver = NULL;
-	destroyTFTPServer(tftpserver);
-	tftpserver = NULL;
+
+	command_deregister_all( customCommands );
 
 	return ERROR_SUCCESS;
 }

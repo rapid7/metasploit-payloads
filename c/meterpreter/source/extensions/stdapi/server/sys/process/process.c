@@ -176,6 +176,7 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 	LPFNCREATEENVIRONMENTBLOCK  lpfnCreateEnvironmentBlock  = NULL;
 	LPFNDESTROYENVIRONMENTBLOCK lpfnDestroyEnvironmentBlock = NULL;
 	HMODULE hUserEnvLib = NULL;
+	ProcessChannelContext * ctx = NULL;
 
 	dprintf( "[PROCESS] request_sys_process_execute" );
 
@@ -258,7 +259,6 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 		if (flags & PROCESS_EXECUTE_FLAG_CHANNELIZED)
 		{
 			SECURITY_ATTRIBUTES sa = { sizeof(SECURITY_ATTRIBUTES), NULL, TRUE };
-			ProcessChannelContext * ctx = NULL;
 			PoolChannelOps chops;
 			Channel *newChannel;
 
@@ -272,6 +272,7 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 			memset(&chops, 0, sizeof(PoolChannelOps));
 
 			// Initialize the channel operations
+			dprintf( "[PROCESS] context address 0x%p", ctx );
 			chops.native.context  = ctx;
 			chops.native.write    = process_channel_write;
 			chops.native.close    = process_channel_close;
@@ -559,6 +560,15 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 		// failed but return a process id and this will throw off the ruby side.
 		if( result == ERROR_SUCCESS )
 		{
+			// if we managed to successfully create a channelized process, we need to retain
+			// a handle to it so that we can shut it down externally if required.
+			if ( flags & PROCESS_EXECUTE_FLAG_CHANNELIZED
+				&& ctx != NULL )
+			{
+				dprintf( "[PROCESS] started process 0x%x", pi.hProcess );
+				ctx->pProcess = pi.hProcess;
+			}
+
 			// Add the process identifier to the response packet
 			packet_add_tlv_uint(response, TLV_TYPE_PID, pi.dwProcessId);
 
@@ -600,6 +610,7 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 	int idx, i;
 	pid_t pid;
 	int have_pty = -1;
+	ProcessChannelContext * ctx = NULL;
 
 	int hidden = (flags & PROCESS_EXECUTE_FLAG_HIDDEN);
 
@@ -650,7 +661,6 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 		// such that input can be directed to and from the remote endpoint
 		if (flags & PROCESS_EXECUTE_FLAG_CHANNELIZED)
 		{
-			ProcessChannelContext * ctx = NULL;
 			PoolChannelOps chops;
 			Channel *newChannel;
 
@@ -664,6 +674,7 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 			memset(&chops, 0, sizeof(PoolChannelOps));
 
 			// Initialize the channel operations
+			dprintf( "[PROCESS] context address 0x%p", ctx );
 			chops.native.context  = ctx;
 			chops.native.write    = process_channel_write;
 			chops.native.close    = process_channel_close;
@@ -788,6 +799,7 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 				if(have_pty) {
 					dprintf("child channelized\n");
 					close(slave);
+					ctx->pProcess = (HANDLE)pid;
 				} else {
 					close(in[0]);
 					close(out[1]);
@@ -1030,20 +1042,22 @@ DWORD request_sys_process_get_info(Remote *remote, Packet *packet)
  *
  * FIXME: can-block
  */
-DWORD process_channel_read(Channel *channel, Packet *request, 
-		LPVOID context, LPVOID buffer, DWORD bufferSize, LPDWORD bytesRead)
+DWORD process_channel_read(Channel *channel, Packet *request,
+	LPVOID context, LPVOID buffer, DWORD bufferSize, LPDWORD bytesRead)
 {
 	DWORD result = ERROR_SUCCESS;
 	ProcessChannelContext *ctx = (ProcessChannelContext *)context;
 
-	dprintf( "[PROCESS] process_channel_read. channel=0x%08X, ctx=0x%08X", channel, ctx );
+	dprintf("[PROCESS] process_channel_read. channel=0x%08X, ctx=0x%08X", channel, ctx);
 
 #ifdef _WIN32
 	if (!ReadFile(ctx->pStdout, buffer, bufferSize, bytesRead, NULL))
 		result = GetLastError();
 #else
-	if ((*bytesRead = read(ctx->pStdout, buffer, bufferSize)) < 0) {
+	if ( (*bytesRead = read( ctx->pStdout, buffer, bufferSize )) < 0 ) {
 		result = GetLastError();
+		// Always return zero bytes read on error
+		*bytesRead = 0;
 	}
 #endif
 	return result;
@@ -1053,19 +1067,19 @@ DWORD process_channel_read(Channel *channel, Packet *request,
  * Writes data from the remote half of the channel to the process's standard
  * input handle
  */
-DWORD process_channel_write(Channel *channel, Packet *request, 
-		LPVOID context, LPVOID buffer, DWORD bufferSize, LPDWORD bytesWritten)
+DWORD process_channel_write( Channel *channel, Packet *request, 
+		LPVOID context, LPVOID buffer, DWORD bufferSize, LPDWORD bytesWritten )
 {
 	ProcessChannelContext *ctx = (ProcessChannelContext *)context;
 	DWORD result = ERROR_SUCCESS;
 
 	dprintf( "[PROCESS] process_channel_write. channel=0x%08X, ctx=0x%08X", channel, ctx );
 #ifdef _WIN32
-	if (!WriteFile(ctx->pStdin, buffer, bufferSize, bytesWritten, NULL))
+	if ( !WriteFile( ctx->pStdin, buffer, bufferSize, bytesWritten, NULL ) )
 		result = GetLastError();
 
 #else
-	if((*bytesWritten = write(ctx->pStdin, buffer, bufferSize)) < 0) {
+	if( (*bytesWritten = write( ctx->pStdin, buffer, bufferSize )) < 0 ) {
 		result = GetLastError();
 	}
 #endif
@@ -1075,38 +1089,74 @@ DWORD process_channel_write(Channel *channel, Packet *request,
 /*
  * Closes the channels that were opened to the process.
  */
-DWORD process_channel_close(Channel *channel, Packet *request, LPVOID context)
+DWORD process_channel_close( Channel *channel, Packet *request, LPVOID context )
 {
 	DWORD result = ERROR_SUCCESS;
 	ProcessChannelContext *ctx = (ProcessChannelContext *)context;
 
 	dprintf( "[PROCESS] process_channel_close. channel=0x%08X, ctx=0x%08X", channel, ctx );
 
-	if (channel_is_interactive(channel))
-		scheduler_remove_waitable(ctx->pStdout);
-
+	if ( ctx->pProcess != NULL ) {
+		dprintf( "[PROCESS] channel has an attached process, closing via scheduler signal. channel=0x%08X, ctx=0x%08X", channel, ctx );
+		scheduler_signal_waitable( ctx->pStdout, Stop );
+	} else {
 #ifdef _WIN32
-	// Note: We dont close the handle ctx->pStdout as this will introduce a synchronization
-	// problem with the channels interactive thread, specifically the call to WaitForMultipleObjects
-	// will have undefined behaviour. The interactive thread will close the handle instead.
+		// Note: We dont close the handle ctx->pStdout as this will introduce a synchronization
+		// problem with the channels interactive thread, specifically the call to WaitForMultipleObjects
+		// will have undefined behaviour. The interactive thread will close the handle instead.
 
-	CloseHandle(ctx->pStdin);
+		CloseHandle( ctx->pStdin );
+		CloseHandle( ctx->pStdout );
 #else
-	close(ctx->pStdin);
+		close( ctx->pStdin );
+		close( ctx->pStdout );
 #endif
 
-	free(ctx);
+		free( ctx );
+	}
 	return result;
+}
+
+DWORD process_channel_interact_destroy( HANDLE waitable, LPVOID entryContext, LPVOID threadContext )
+{
+	ProcessChannelContext *ctx = (ProcessChannelContext *)threadContext;
+	DWORD dwResult = ERROR_SUCCESS;
+
+	dprintf( "[PROCESS] terminating context 0x%p", ctx );
+
+#ifdef _WIN32
+
+	CloseHandle( ctx->pStdin );
+	CloseHandle( ctx->pStdout );
+
+	if( ctx->pProcess ) {
+		dprintf( "[PROCESS] terminating process 0x%x", ctx->pProcess );
+		TerminateProcess( ctx->pProcess, 0 );
+	}
+#else
+	close( ctx->pStdin );
+	close( ctx->pStdout );
+
+  dprintf( "[PROCESS] pid %u", ctx->pProcess );
+	if( ctx->pProcess ) {
+		dprintf( "[PROCESS] terminating pid %u", ctx->pProcess );
+		kill( (pid_t)ctx->pProcess, 9 );
+	}
+#endif
+
+	free( ctx );
+
+	return dwResult;
 }
 
 /*
  * Callback for when data is available on the standard output handle of
  * a process channel that is interactive mode
  */
-DWORD process_channel_interact_notify(Remote *remote, Channel *channel)
+DWORD process_channel_interact_notify(Remote *remote, LPVOID entryContext, LPVOID threadContext)
 {
-
-	ProcessChannelContext *ctx = (ProcessChannelContext *)channel->ops.stream.native.context;
+	Channel *channel = (Channel*)entryContext;
+	ProcessChannelContext *ctx = (ProcessChannelContext *)threadContext;
 	DWORD bytesRead, bytesAvail = 0;
 	CHAR buffer[16384];
 	DWORD result = ERROR_SUCCESS;
@@ -1174,10 +1224,16 @@ DWORD process_channel_interact(Channel *channel, Packet *request, LPVOID context
 
 	// If the remote side wants to interact with us, schedule the stdout handle
 	// as a waitable item
-	if (interact)
-		result = scheduler_insert_waitable(ctx->pStdout, channel, (WaitableNotifyRoutine)process_channel_interact_notify);
-	else // Otherwise, remove it
-		result = scheduler_remove_waitable(ctx->pStdout);
+	if (interact) {
+		// try to resume it first, if it's not there, we can create a new entry
+		if( (result = scheduler_signal_waitable( ctx->pStdout, Resume )) == ERROR_NOT_FOUND ) {
+			result = scheduler_insert_waitable( ctx->pStdout, channel, context,
+				(WaitableNotifyRoutine)process_channel_interact_notify,
+				(WaitableDestroyRoutine)process_channel_interact_destroy );
+		}
+	} else { // Otherwise, pause it
+		result = scheduler_signal_waitable( ctx->pStdout, Pause );
+	}
 	return result;
 }
 

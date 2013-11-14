@@ -1,16 +1,18 @@
+/*!
+ * @file xor.c
+ * @brief Definitions of functions that perform XOR encryption.
+ */
 #include "common.h"
 
-#define TLV_TYPE_XOR_KEY         \
-		MAKE_CUSTOM_TLV(           \
-				TLV_META_TYPE_UINT,  \
-				0,                   \
-				1)
+#define TLV_TYPE_XOR_KEY       MAKE_CUSTOM_TLV(TLV_META_TYPE_UINT, 0, 1)
 
 DWORD xor_crypt(CryptoContext *context, PUCHAR inBuffer, ULONG inBufferLength,
 		PUCHAR *outBuffer, PULONG outBufferLength);
 
-/*
- * Populates the crypto context's handlers for XOR
+/*!
+ * @brief Populates the crypto context's handlers for XOR.
+ * @param context Pointer to the crypto context to populate.
+ * @returns Always returns \c ERROR_SUCCESS.
  */
 DWORD xor_populate_handlers(CryptoContext *context)
 {
@@ -22,8 +24,14 @@ DWORD xor_populate_handlers(CryptoContext *context)
 	return ERROR_SUCCESS;
 }
 
-/*
- * Processes a negotiate request that has been sent from the remote endpoint
+/*!
+ * @brief Processes a negotiate request that has been sent from the remote endpoint.
+ * @param context Pointer to the crypto context to use.
+ * @param request Pointer to the request \c Packet.
+ * @returns Indication of success or failure.
+ * @retval ERROR_SUCCESS Operation completed successfully.
+ * @retval ERROR_INVALID_PARAMETER One of the expected TLV parameters was
+ *         missing from the \c request.
  */
 DWORD xor_process_negotiate_request(CryptoContext *context, 
 		Packet *request)
@@ -49,8 +57,16 @@ DWORD xor_process_negotiate_request(CryptoContext *context,
 	return res;
 }
 
-/*
- * Encrypts the supplied buffer
+/*!
+ * @brief Encrypts the supplied buffer using the supplied crypto context.
+ * @param context Pointer to the crypto context to use for encryption.
+ * @param inBuffer Buffer to encrypt.
+ * @param inBufferLength The number of bytes in \c inBuffer to encrypt.
+ * @param outBuffer Pointer that will receive the output buffer.
+ * @param outBufferLength Pointer that will receive the output buffer length.
+ * @remark The memory referenced by \c outBuffer needs to be deallocated using \c free.
+ * @sa xor_crypt
+ * @sa xor_decrypt
  */
 DWORD xor_encrypt(CryptoContext *context, PUCHAR inBuffer, ULONG inBufferLength,
 		PUCHAR *outBuffer, PULONG outBufferLength)
@@ -59,8 +75,17 @@ DWORD xor_encrypt(CryptoContext *context, PUCHAR inBuffer, ULONG inBufferLength,
 			outBufferLength);
 }
 
-/*
- * Decrypts the supplied buffer
+/*!
+ * @brief Decrypts the supplied buffer using the supplied crypto context.
+ * @param context Pointer to the crypto context to use for decryption.
+ * @param inBuffer Buffer to decrypt.
+ * @param inBufferLength The number of bytes in \c inBuffer to encrypt.
+ * @param outBuffer Pointer that will receive the output buffer.
+ * @param outBufferLength Pointer that will receive the output buffer length.
+ * @returns Indication of success or failure.
+ * @remark The memory referenced by \c outBuffer needs to be deallocated using \c free.
+ * @sa xor_crypt
+ * @sa xor_encrypt
  */
 DWORD xor_decrypt(CryptoContext *context, PUCHAR inBuffer, ULONG inBufferLength,
 		PUCHAR *outBuffer, PULONG outBufferLength)
@@ -69,8 +94,19 @@ DWORD xor_decrypt(CryptoContext *context, PUCHAR inBuffer, ULONG inBufferLength,
 			outBufferLength);
 }
 
-/*
- * Performs an XOR operation on every 4 byte block of the supplied buffer
+/*!
+ * @brief Performs an XOR operation on every 4 byte block of the supplied buffer.
+ * @param context Pointer to the crypto context to use for decryption.
+ * @param inBuffer Buffer to decrypt.
+ * @param inBufferLength The number of bytes in \c inBuffer to encrypt.
+ * @param outBuffer Pointer that will receive the output buffer.
+ * @param outBufferLength Pointer that will receive the output buffer length.
+ * @returns Indication of success or failure.
+ * @retval ERROR_SUCCESS Operation completed successfully.
+ * @retval ERROR_NOT_ENOUGH_MEMORY Memory allocation failed.
+ * @remark The memory referenced by \c outBuffer needs to be deallocated using \c free.
+ * @sa xor_decrypt
+ * @sa xor_encrypt
  */
 DWORD xor_crypt(CryptoContext *context, PUCHAR inBuffer, ULONG inBufferLength,
 		PUCHAR *outBuffer, PULONG outBufferLength)

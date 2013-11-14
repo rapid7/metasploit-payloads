@@ -161,7 +161,7 @@ void real_dprintf(char *filename, int line, const char *function, char *format, 
 
 #include <wininet.h>
 
-/*! @brief When defined, debug output is enabled. */
+/*! @brief When defined, debug output is enabled on Windows builds. */
 //#define DEBUGTRACE 1
 
 #ifdef DEBUGTRACE
@@ -171,18 +171,18 @@ void real_dprintf(char *filename, int line, const char *function, char *format, 
 #endif
 
 /*! @brief Sets `dwResult` to the return value of `GetLastError()`, prints debug output, then does `break;` */
-#define BREAK_ON_ERROR( str ) { dwResult = GetLastError(); dprintf( "%s. error=%d", str, dwResult ); break; }
+#define BREAK_ON_ERROR( str ) { dwResult = GetLastError(); dprintf( "%s. error=%d (0x%u)", str, dwResult, (ULONG_PTR)dwResult ); break; }
 /*! @brief Sets `dwResult` to `error`, prints debug output, then `break;` */
-#define BREAK_WITH_ERROR( str, err ) { dwResult = err; dprintf( "%s. error=%d", str, dwResult ); break; }
+#define BREAK_WITH_ERROR( str, err ) { dwResult = err; dprintf( "%s. error=%d (0x%u)", str, dwResult, (ULONG_PTR)dwResult ); break; }
 /*! @brief Sets `dwResult` to the return value of `WASGetLastError()`, prints debug output, then does `break;` */
-#define BREAK_ON_WSAERROR( str ) { dwResult = WSAGetLastError(); dprintf( "%s. error=%d", str, dwResult ); break; }
+#define BREAK_ON_WSAERROR( str ) { dwResult = WSAGetLastError(); dprintf( "%s. error=%d (0x%u)", str, dwResult, (ULONG_PTR)dwResult ); break; }
 /*! @brief Sets `dwResult` to the return value of `GetLastError()`, prints debug output, then does `continue;` */
-#define CONTINUE_ON_ERROR( str ) { dwResult = GetLastError(); dprintf( "%s. error=%d", str, dwResult ); continue; }
+#define CONTINUE_ON_ERROR( str ) { dwResult = GetLastError(); dprintf( "%s. error=%d (0x%u)", str, dwResult, (ULONG_PTR)dwResult ); continue; }
 
 /*! @brief Close a service handle if not already closed and set the handle to NULL. */
-#define CLOSE_SERVICE_HANDLE( h )	if( h ) { CloseServiceHandle( h ); h = NULL; }
+#define CLOSE_SERVICE_HANDLE( h )  if( h ) { CloseServiceHandle( h ); h = NULL; }
 /*! @brief Close a handle if not already closed and set the handle to NULL. */
-#define CLOSE_HANDLE( h )			if( h ) { DWORD dwHandleFlags; if(GetHandleInformation( h , &dwHandleFlags)) CloseHandle( h ); h = NULL; }
+#define CLOSE_HANDLE( h )          if( h ) { DWORD dwHandleFlags; if(GetHandleInformation( h , &dwHandleFlags)) CloseHandle( h ); h = NULL; }
 
 #ifdef DEBUGTRACE
 /*!

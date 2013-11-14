@@ -137,8 +137,11 @@ BOOL event_signal( EVENT * event )
 		return FALSE;
 
 #ifdef _WIN32
-	if( SetEvent( event->handle ) == 0 )
+	dprintf( "Signalling 0x%x", event->handle );
+	if( SetEvent( event->handle ) == 0 ) {
+		dprintf( "Signalling 0x%x failed %u", event->handle, GetLastError() );
 		return FALSE;
+	}
 #else 
 	event->handle = (HANDLE)1;
 	__futex_wake(&(event->handle), 1);
@@ -153,20 +156,25 @@ BOOL event_signal( EVENT * event )
  */
 BOOL event_poll( EVENT * event, DWORD timeout )
 {
+#ifdef _WIN32
 	if( event == NULL )
 		return FALSE;
 
-#ifdef _WIN32
 	if( WaitForSingleObject( event->handle, timeout ) == WAIT_OBJECT_0 )
 		return TRUE;
 
 	return FALSE;
 #else
+	BOOL result = FALSE;
+
 	// DWORD WINAPI WaitForSingleObject(
 	// __in  HANDLE hHandle,
 	// __in  DWORD dwMilliseconds
 	// );
 	// http://msdn.microsoft.com/en-us/library/ms687032(VS.85).aspx
+
+	if( event == NULL )
+		return FALSE;
 
 	if(timeout) {
 		struct timespec ts;
@@ -188,7 +196,12 @@ BOOL event_poll( EVENT * event, DWORD timeout )
 		__futex_wait(&(event->handle), 0, &ts);
 	}
 
-	return event->handle ? TRUE : FALSE;
+	// We should behave like an auto-reset event
+	result = event->handle ? TRUE : FALSE;
+	if( result )
+		event->handle = (HANDLE)0;
+
+	return result;
 #endif
 }
 
@@ -321,7 +334,7 @@ void *__paused_thread(void *req)
 /*
  * Create a new thread in a suspended state.
  */
-THREAD * thread_create( THREADFUNK funk, LPVOID param1, LPVOID param2 )
+THREAD * thread_create( THREADFUNK funk, LPVOID param1, LPVOID param2, LPVOID param3 )
 {
 	THREAD * thread = NULL;
 	
@@ -344,6 +357,7 @@ THREAD * thread_create( THREADFUNK funk, LPVOID param1, LPVOID param2 )
 
 	thread->parameter1 = param1;
 	thread->parameter2 = param2;
+	thread->parameter3 = param3;
 
 #ifdef _WIN32
 	thread->handle = CreateThread( NULL, 0, funk, thread, CREATE_SUSPENDED, &thread->id );
