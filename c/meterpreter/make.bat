@@ -3,8 +3,10 @@ IF "%1"=="clean" GOTO CLEAN
 IF "%1"=="docs" GOTO DOCS
 IF "%VCINSTALLDIR%" == "" GOTO NEED_VS
 
+SET PSSDK_VER=12
+
 SET PREF=
-IF EXIST "..\pssdk\" SET PREF=r7_
+IF EXIST "..\pssdk\PSSDK_VC%PSSDK_VER%_LIB\_Libs\pssdk_vc%PSSDK%_mt.lib" SET PREF=r7_
 
 IF "%1"=="x86" GOTO BUILD_X86
 IF "%1"=="X64" GOTO BUILD_X64
@@ -26,8 +28,24 @@ GOTO RUN
 :RUN
 PUSHD workspace
 msbuild.exe make.msbuild /target:%PREF%%PLAT%
-
 POPD
+
+IF "%ERRORLEVEL%" == "0" (
+  IF NOT EXIST "..\pssdk\" (
+    ECHO Unable to build ext_server_sniffer:
+    ECHO PSSDK directory not found.
+    ECHO This is normal if you do not expect to have access to Rapid7 proprietary
+    ECHO sniffer source. Meterpreter will still function normally without this.
+  ) else (
+    IF NOT EXIST "..\pssdk\PSSDK_VC%PSSDK_VER%_LIB\_Libs\pssdk_vc%PSSDK_VER%_mt.lib" (
+      ECHO Unable to build ext_server_sniffer:
+      ECHO PSSDK lib version 'vc%PSSDK_VER%' not found.
+      ECHO This is normal if you do not expect to have access to Rapid7 proprietary
+      ECHO sniffer source. Meterpreter will still function normally without this.
+    )
+  )
+)
+
 GOTO :END
 
 :CLEAN
