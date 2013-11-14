@@ -8,7 +8,6 @@
 #include "elevator.h"
 #include "namedpipeservice.h"
 #include "tokendup.h"
-#include "kitrap0d.h"
 
 // define this as we are going to be injected via LoadRemoteLibraryR
 #define REFLECTIVEDLLINJECTION_VIA_LOADREMOTELIBRARYR
@@ -48,7 +47,7 @@ DWORD elevator_command_dword( char * cpCommandLine, char * cpCommand )
 
 /*
  * Grab a int value out of the command line.
- * e.g. elevator_command_dword( "/FOO:12345 /BAR:54321", "/FOO:" ) == 12345
+ * e.g. elevator_command_int( "/FOO:12345 /BAR:54321", "/FOO:" ) == 12345
  */
 int elevator_command_int( char * cpCommandLine, char * cpCommand )
 {
@@ -92,24 +91,7 @@ VOID elevator_main( char * cpCommandLine )
 			
 		dprintf( "[ELEVATOR] elevator_main. lpCmdLine=%s", cpCommandLine );
 		
-		if( strstr( cpCommandLine, "/KITRAP0D" ) )
-		{
-			DWORD dwProcessId  = 0;
-			DWORD dwKernelBase = 0;
-			DWORD dwOffset     = 0;
-
-			dwProcessId  = elevator_command_dword( cpCommandLine, "/VDM_TARGET_PID:" );
-			dwKernelBase = elevator_command_dword( cpCommandLine, "/VDM_TARGET_KRN:" );
-			dwOffset     = elevator_command_dword( cpCommandLine, "/VDM_TARGET_OFF:" );
-
-			if( !dwProcessId || !dwKernelBase )
-				break;
-
-			elevator_kitrap0d( dwProcessId, dwKernelBase, dwOffset );
-
-			// ...we should never return here...
-		}
-		else if( strstr( cpCommandLine, "/t:" ) )
+		if( strstr( cpCommandLine, "/t:" ) )
 		{
 			DWORD dwThreadId = 0;
 

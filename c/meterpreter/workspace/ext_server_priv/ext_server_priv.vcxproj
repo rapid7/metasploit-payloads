@@ -639,7 +639,6 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     </ClCompile>
     <ClCompile Include="..\..\source\extensions\priv\server\elevate\elevate.c" />
     <ClCompile Include="..\..\source\extensions\priv\server\elevate\service.c" />
-    <ClCompile Include="..\..\source\extensions\priv\server\elevate\kitrap0d.c" />
     <ClCompile Include="..\..\source\extensions\priv\server\elevate\namedpipe.c" />
     <ClCompile Include="..\..\source\extensions\priv\server\elevate\tokendup.c" />
     <ClCompile Include="..\..\source\extensions\priv\server\fs.c">
@@ -666,7 +665,6 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClInclude Include="..\..\source\extensions\priv\priv.h" />
     <ClInclude Include="..\..\source\extensions\priv\server\elevate\elevate.h" />
     <ClInclude Include="..\..\source\extensions\priv\server\elevate\service.h" />
-    <ClInclude Include="..\..\source\extensions\priv\server\elevate\kitrap0d.h" />
     <ClInclude Include="..\..\source\extensions\priv\server\elevate\namedpipe.h" />
     <ClInclude Include="..\..\source\extensions\priv\server\elevate\tokendup.h" />
     <ClInclude Include="..\..\source\extensions\priv\server\fs.h" />

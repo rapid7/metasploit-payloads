@@ -10,7 +10,6 @@
 #define ELEVATE_TECHNIQUE_SERVICE_NAMEDPIPE		1  ///< Identifier for the Named Pipe service tecnique (#1)
 #define ELEVATE_TECHNIQUE_SERVICE_NAMEDPIPE2	2  ///< Identifier for the Named Pipe service tecnique (#2)
 #define ELEVATE_TECHNIQUE_SERVICE_TOKENDUP		3  ///< Identifier for the Token Duplication service technique.
-#define ELEVATE_TECHNIQUE_EXPLOIT_KITRAP0D		4  ///< Identifier for the Kitrap0d exploit technique.
 
 typedef void (WINAPI * GETNATIVESYSTEMINFO)( LPSYSTEM_INFO lpSystemInfo ); ///< Stolen from ps.h
 

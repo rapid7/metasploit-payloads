@@ -403,13 +403,11 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\source\elevator\elevator.c" />
-    <ClCompile Include="..\..\source\elevator\kitrap0d.c" />
     <ClCompile Include="..\..\source\elevator\namedpipeservice.c" />
     <ClCompile Include="..\..\source\elevator\tokendup.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\source\elevator\elevator.h" />
-    <ClInclude Include="..\..\source\elevator\kitrap0d.h" />
     <ClInclude Include="..\..\source\elevator\namedpipeservice.h" />
     <ClInclude Include="..\..\source\elevator\tokendup.h" />
   </ItemGroup>
