@@ -430,19 +430,9 @@ DWORD request_networkpug_stop(Remote *remote, Packet *packet)
 
 Command customCommands[] = 
 {
-	{ "networkpug_start",
-	  { request_networkpug_start,                            { 0 }, 0 },
-	  { EMPTY_DISPATCH_HANDLER                                        },
-	},
-	{ "networkpug_stop",
-	  { request_networkpug_stop,                             { 0 }, 0 },
-	  { EMPTY_DISPATCH_HANDLER                                        },
-	},
-	// Terminator
-	{ NULL,
-	  { EMPTY_DISPATCH_HANDLER                      },
-	  { EMPTY_DISPATCH_HANDLER                      },
-	}
+	COMMAND_REQ("networkpug_start", request_networkpug_start),
+	COMMAND_REQ("networkpug_stop", request_networkpug_stop),
+	COMMAND_TERMINATOR
 };
 
 /*
@@ -450,7 +440,6 @@ Command customCommands[] =
  */
 DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
 {
-	DWORD index;
 	int peername_len;
 	struct sockaddr peername;
 	struct sockaddr_in *peername4;
@@ -498,10 +487,7 @@ DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
 
 	dprintf("so our filter is '%s'", packet_filter);
 
-	for (index = 0;
-	     customCommands[index].method;
-	     index++)
-		command_register(&customCommands[index]);
+	command_register_all(customCommands);
 
 	pug_lock = lock_create();
 
@@ -513,12 +499,7 @@ DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
  */
 DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
 {
-	int index;
-
-	for (index = 0;
-	     customCommands[index].method;
-	     index++)
-		command_deregister(&customCommands[index]);
+	command_deregister_all(customCommands);
 
 	free(packet_filter);
 	
