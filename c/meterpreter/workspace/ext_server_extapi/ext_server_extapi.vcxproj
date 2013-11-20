@@ -114,6 +114,7 @@
       <PrecompiledHeader>
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
+      <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </ClCompile>
     <Link>
       <AdditionalDependencies>gdiplus.lib;backcompat.lib;Netapi32.lib;ws2_32.lib;Mpr.lib;metsrv.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -142,6 +143,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <PrecompiledHeader>
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
+      <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </ClCompile>
     <Link>
       <AdditionalDependencies>gdiplus.lib;backcompat.lib;Netapi32.lib;ws2_32.lib;ws2_32.lib;Mpr.lib;metsrv.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -174,6 +176,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <AdditionalIncludeDirectories>..\..\source\extensions\extapi;..\..\source\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </ClCompile>
     <Link>
       <AdditionalDependencies>gdiplus.lib;backcompat.lib;Netapi32.lib;ws2_32.lib;Mpr.lib;metsrv.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -207,6 +210,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <AdditionalIncludeDirectories>..\..\source\extensions\extapi;..\..\source\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </ClCompile>
     <Link>
       <AdditionalDependencies>gdiplus.lib;backcompat.lib;Netapi32.lib;ws2_32.lib;Mpr.lib;metsrv.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -245,6 +249,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
+      <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </ClCompile>
     <Link>
       <AdditionalDependencies>gdiplus.lib;backcompat.lib;Netapi32.lib;ws2_32.lib;Mpr.lib;metsrv.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -294,6 +299,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
+      <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </ClCompile>
     <Link>
       <AdditionalDependencies>gdiplus.lib;backcompat.lib;Netapi32.lib;ws2_32.lib;Mpr.lib;metsrv.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -345,6 +351,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <BufferSecurityCheck>false</BufferSecurityCheck>
+      <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </ClCompile>
     <Link>
       <AdditionalDependencies>gdiplus.lib;backcompat.lib;Netapi32.lib;ws2_32.lib;Mpr.lib;metsrv.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -394,6 +401,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <BufferSecurityCheck>false</BufferSecurityCheck>
+      <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </ClCompile>
     <Link>
       <AdditionalDependencies>gdiplus.lib;backcompat.lib;Netapi32.lib;ws2_32.lib;Mpr.lib;metsrv.lib;%(AdditionalDependencies)</AdditionalDependencies>
