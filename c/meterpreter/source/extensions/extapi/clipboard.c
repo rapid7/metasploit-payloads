@@ -444,3 +444,23 @@ DWORD request_clipboard_set_data(Remote *remote, Packet *packet)
 	return ERROR_NOT_SUPPORTED;
 #endif
 }
+
+DWORD request_clipboard_monitor_start(Remote *remote, Packet *packet)
+{
+#ifdef _WIN32
+	DWORD dwResult = ERROR_SUCCESS;
+	return dwResult;
+#else
+	return ERROR_NOT_SUPPORTED;
+#endif
+}
+
+DWORD request_clipboard_monitor_stop(Remote *remote, Packet *packet)
+{
+#ifdef _WIN32
+	DWORD dwResult = ERROR_SUCCESS;
+	return dwResult;
+#else
+	return ERROR_NOT_SUPPORTED;
+#endif
+}

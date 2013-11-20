@@ -7,5 +7,7 @@
 
 DWORD request_clipboard_set_data(Remote *remote, Packet *packet);
 DWORD request_clipboard_get_data(Remote *remote, Packet *packet);
+DWORD request_clipboard_monitor_start(Remote *remote, Packet *packet);
+DWORD request_clipboard_monitor_stop(Remote *remote, Packet *packet);
 
 #endif

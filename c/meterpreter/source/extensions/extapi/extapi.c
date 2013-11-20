@@ -25,6 +25,8 @@ Command customCommands[] =
 	COMMAND_REQ("extapi_service_query", request_service_query),
 	COMMAND_REQ("extapi_clipboard_get_data", request_clipboard_get_data),
 	COMMAND_REQ("extapi_clipboard_set_data", request_clipboard_set_data),
+	COMMAND_REQ("extapi_clipboard_monitor_start", request_clipboard_monitor_start),
+	COMMAND_REQ("extapi_clipboard_monitor_stop", request_clipboard_monitor_stop),
 	COMMAND_TERMINATOR
 };
 
