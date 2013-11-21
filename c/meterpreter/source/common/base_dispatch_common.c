@@ -303,8 +303,8 @@ DWORD remote_request_core_channel_close(Remote *remote, Packet *packet)
 	Packet *response = packet_create_response(packet);
 	DWORD res = ERROR_SUCCESS, channelId;
 	Channel *channel = NULL;
-		
-	dprintf( "[CHANNEL] remote_request_core_channel_close." );
+
+	dprintf("[CHANNEL] remote_request_core_channel_close.");
 
 	do
 	{
@@ -322,7 +322,9 @@ DWORD remote_request_core_channel_close(Remote *remote, Packet *packet)
 		channel_destroy(channel, packet);
 
 		if (response)
+		{
 			packet_add_tlv_uint(response, TLV_TYPE_CHANNEL_ID, channelId);
+		}
 
 	} while (0);
 
