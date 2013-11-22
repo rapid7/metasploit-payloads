@@ -186,12 +186,6 @@ BOOL remote_request_core_migrate( Remote * remote, Packet * packet, DWORD* pResu
 				BREAK_ON_ERROR( "[MIGRATE] inject_via_apcthread failed" )
 		}
 
-
-		//// Wait at most 15 seconds for the event to be set letting us know that it's finished
-		//// Unfortunately, its too late to do anything about a failure at this point
-		//if( WaitForSingleObjectEx( hEvent, 15000, FALSE ) != WAIT_OBJECT_0 )
-		//	dprintf("[MIGRATE] WaitForSingleObjectEx failed with no way to recover");
-
 		dwResult = ERROR_SUCCESS;
 
 	} while( 0 );
@@ -210,7 +204,8 @@ BOOL remote_request_core_migrate( Remote * remote, Packet * packet, DWORD* pResu
 	if( pResult )
 		*pResult = dwResult;
 
-	return dwResult = ERROR_SUCCESS ? TRUE : FALSE;
+	// if migration succeeded, return 'FALSE' to indicate server thread termination.
+	return dwResult = ERROR_SUCCESS ? FALSE : TRUE;
 }
 
 
