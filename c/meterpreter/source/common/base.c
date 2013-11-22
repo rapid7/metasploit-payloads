@@ -247,6 +247,7 @@ BOOL command_process_inline(Command *baseCommand, Command *extensionCommand, Rem
 	Command *commands[2] = { baseCommand, extensionCommand };
 	Command *command = NULL;
 	DWORD dwIndex;
+	LPCSTR lpMethod = NULL;
 
 	__try
 	{
@@ -261,7 +262,8 @@ BOOL command_process_inline(Command *baseCommand, Command *extensionCommand, Rem
 					continue;
 				}
 
-				dprintf("[COMMAND] Executing command %s", command->method);
+				lpMethod = command->method;
+				dprintf("[COMMAND] Executing command %s", lpMethod);
 
 #ifdef _WIN32
 				// Impersonate the thread token if needed (only on Windows)
@@ -269,7 +271,7 @@ BOOL command_process_inline(Command *baseCommand, Command *extensionCommand, Rem
 				{
 					if (!ImpersonateLoggedOnUser(remote->hThreadToken))
 					{
-						dprintf("[COMMAND] Failed to impersonate thread token (%s) (%u)", command->method, GetLastError());
+						dprintf("[COMMAND] Failed to impersonate thread token (%s) (%u)", lpMethod, GetLastError());
 					}
 				}
 #endif
@@ -287,12 +289,12 @@ BOOL command_process_inline(Command *baseCommand, Command *extensionCommand, Rem
 				case PACKET_TLV_TYPE_REQUEST:
 				case PACKET_TLV_TYPE_PLAIN_REQUEST:
 					if (command->request.inline_handler) {
-						dprintf("[DISPATCH] executing inline request handler %s", command->method);
-						serverContinue = command->request.inline_handler(remote, packet, &result);
+						dprintf("[DISPATCH] executing inline request handler %s", lpMethod);
+						serverContinue = command->request.inline_handler(remote, packet, &result) && serverContinue;
 					}
 					else
 					{
-						dprintf("[DISPATCH] executing request handler %s", command->method);
+						dprintf("[DISPATCH] executing request handler %s", lpMethod);
 						result = command->request.handler(remote, packet);
 					}
 					break;
@@ -300,12 +302,12 @@ BOOL command_process_inline(Command *baseCommand, Command *extensionCommand, Rem
 				case PACKET_TLV_TYPE_PLAIN_RESPONSE:
 					if (command->response.inline_handler)
 					{
-						dprintf("[DISPATCH] executing inline response handler %s", command->method);
-						serverContinue = command->response.inline_handler(remote, packet, &result);
+						dprintf("[DISPATCH] executing inline response handler %s", lpMethod);
+						serverContinue = command->response.inline_handler(remote, packet, &result) && serverContinue;
 					}
 					else
 					{
-						dprintf("[DISPATCH] executing response handler %s", command->method);
+						dprintf("[DISPATCH] executing response handler %s", lpMethod);
 						result = command->response.handler(remote, packet);
 					}
 					break;
@@ -325,11 +327,13 @@ BOOL command_process_inline(Command *baseCommand, Command *extensionCommand, Rem
 			{
 				packet_call_completion_handlers(remote, packet, requestId);
 			}
+
+			dprintf("[COMMAND] Completion handlers finished for %s. Returning: %s", lpMethod, (serverContinue ? "TRUE" : "FALSE"));
 		} while (0);
 	}
 	__except (EXCEPTION_EXECUTE_HANDLER)
 	{
-		dprintf("[COMMAND] Exception hit in command %s", command->method);
+		dprintf("[COMMAND] Exception hit in command %s", lpMethod);
 	}
 
 	packet_destroy(packet);

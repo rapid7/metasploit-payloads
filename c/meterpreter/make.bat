@@ -46,6 +46,10 @@ IF "%ERRORLEVEL%" == "0" (
   )
 )
 
+FOR /F "usebackq tokens=1,2 delims==" %%i IN (`wmic os get LocalDateTime /VALUE 2^>NUL`) DO IF '.%%i.'=='.LocalDateTime.' SET LDT=%%j
+SET LDT=%LDT:~0,4%-%LDT:~4,2%-%LDT:~6,2% %LDT:~8,2%:%LDT:~10,2%:%LDT:~12,6%
+echo Finished %ldt%
+
 GOTO :END
 
 :CLEAN
