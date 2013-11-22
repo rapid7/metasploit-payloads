@@ -633,5 +633,6 @@ DWORD remote_request_core_shutdown( Remote *remote, Packet *packet, DWORD* pResu
 
 	*pResult = result;
 
-	return TRUE;
+	// We always return FALSE here to tell the server to terminate.
+	return FALSE;
 }
