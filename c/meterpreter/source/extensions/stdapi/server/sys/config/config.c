@@ -4,6 +4,98 @@
 #include <sys/utsname.h>
 #endif
 
+/*!
+ * @brief Add an environment variable / value pair to a response packet.
+ * @param response The \c Response packet to add the values to.
+ * @param envVar The name of the environment variable to add.
+ * @param envVal The value of the environment.
+ */
+VOID add_env_pair(Packet *response, char * envVar, char *envVal)
+{
+	Tlv entries[2] = { 0 };
+
+	if (envVal)
+	{
+		entries[0].header.type = TLV_TYPE_ENV_VARIABLE;
+		entries[0].header.length = (DWORD)strlen(envVar) + 1;
+		entries[0].buffer = (PUCHAR)envVar;
+
+		entries[1].header.type = TLV_TYPE_ENV_VALUE;
+		entries[1].header.length = (DWORD)strlen(envVal) + 1;
+		entries[1].buffer = (PUCHAR)envVal;
+
+		packet_add_tlv_group(response, TLV_TYPE_ENV_GROUP, entries, 2);
+	}
+	else
+	{
+		dprintf("[ENV] No value found for %s", envVar);
+	}
+}
+
+/*!
+ * @brief Expand a given set of environment variables.
+ * @param remote Pointer to the \c Remote instance making the request.
+ * @param packet Pointer to the \c Request packet.
+ * @remarks This will return a hash of the list of environment variables
+ *          and their values, as requested by the caller.
+ * @returns Indication of success or failure.
+ */
+DWORD request_sys_config_getenv(Remote *remote, Packet *packet)
+{
+	Packet *response = packet_create_response(packet);
+	DWORD dwResult = ERROR_SUCCESS;
+	DWORD dwTlvIndex = 0;
+	Tlv envTlv;
+	char* pEnvVarStart;
+	char* pEnvVarEnd;
+
+	do
+	{
+		while (ERROR_SUCCESS == packet_enum_tlv(packet, dwTlvIndex++, TLV_TYPE_ENV_VARIABLE, &envTlv))
+		{
+			pEnvVarStart = (char*)envTlv.buffer;
+
+			dprintf("[ENV] Processing: %s", pEnvVarStart);
+
+			// skip any '%' or '$' if they were specified.
+			while (*pEnvVarStart != '\0' && (*pEnvVarStart == '$' || *pEnvVarStart == '%'))
+			{
+				++pEnvVarStart;
+			}
+
+			dprintf("[ENV] pEnvStart: %s", pEnvVarStart);
+
+			pEnvVarEnd = pEnvVarStart;
+
+			// if we're on windows, the caller might have passed in '%' at the end, so remove that
+			// if it's there.
+			while (*pEnvVarEnd != '\0')
+			{
+				if (*pEnvVarEnd == '%')
+				{
+					// terminate it here instead
+					*pEnvVarEnd = '\0';
+					break;
+				}
+				++pEnvVarEnd;
+			}
+
+			dprintf("[ENV] Final env var: %s", pEnvVarStart);
+
+			// grab the value of the variable and stick it in the response.
+			add_env_pair(response, pEnvVarStart, getenv(pEnvVarStart));
+
+			dprintf("[ENV] Env var added");
+		}
+	} while (0);
+
+	dprintf("[ENV] Transmitting response.");
+	packet_transmit_response(dwResult, remote, response);
+
+	dprintf("[ENV] done.");
+	return dwResult;
+}
+
 /*
  * sys_getuid
  * ----------
@@ -28,7 +120,9 @@ DWORD request_sys_config_getuid(Remote *remote, Packet *packet)
 	do
 	{
 		if (!OpenThreadToken(GetCurrentThread(), TOKEN_QUERY, FALSE, &token))
+		{
 			OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &token);
+		}
 
 		if (!GetTokenInformation(token, TokenUser, TokenUserInfo, 4096, &returned_tokinfo_length))
 		{
