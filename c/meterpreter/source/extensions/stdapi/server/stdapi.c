@@ -87,6 +87,7 @@ Command customCommands[] =
 	COMMAND_REQ( "stdapi_sys_process_thread_set_regs", request_sys_process_thread_set_regs ),
 
 	// Registry
+	COMMAND_REQ( "stdapi_registry_check_key_exists", request_registry_check_key_exists ),
 	COMMAND_REQ( "stdapi_registry_load_key", request_registry_load_key ),
 	COMMAND_REQ( "stdapi_registry_unload_key", request_registry_unload_key ),
 	COMMAND_REQ( "stdapi_registry_open_key", request_registry_open_key ),
@@ -121,10 +122,7 @@ Command customCommands[] =
 	COMMAND_REQ( "stdapi_net_config_get_netstat", request_net_config_get_netstat ),
 
 #ifdef WIN32
-	{ "stdapi_net_config_get_proxy",
-	  { request_net_config_get_proxy_config,			  { 0 }, 0 },
-	  { EMPTY_DISPATCH_HANDLER                                     },
-	},
+	COMMAND_REQ( "stdapi_net_config_get_proxy", request_net_config_get_proxy_config),
 	// Resolve
 	COMMAND_REQ( "stdapi_net_resolve_host", request_resolve_host ),
 	COMMAND_REQ( "stdapi_net_resolve_hosts", request_resolve_hosts ),
