@@ -305,9 +305,11 @@ DWORD request_net_tcp_server_channel_open(Remote * remote, Packet * packet)
 		if (bind(ctx->fd, (SOCKADDR *)&saddr, sizeof(SOCKADDR_IN)) == SOCKET_ERROR)
 		{
 #ifdef _WIN32
-			if (WSAGetLastError() != WSAEADDRNOTAVAIL)
+			dwResult = WSAGetLastError();
+			if (dwResult != WSAEADDRNOTAVAIL)
 #else
-			if (errno != EADDRNOTAVAIL)
+			dwResult = errno;
+			if (dwResult != EADDRNOTAVAIL)
 #endif
 			{
 				BREAK_ON_WSAERROR("[TCP-SERVER] request_net_tcp_server_channel_open. bind failed");
@@ -322,6 +324,7 @@ DWORD request_net_tcp_server_channel_open(Remote * remote, Packet * packet)
 			{
 				BREAK_ON_WSAERROR("[TCP-SERVER] request_net_tcp_server_channel_open. bind failed");
 			}
+			dwResult = ERROR_SUCCESS;
 		}
 
 		if (listen(ctx->fd, SOMAXCONN) == SOCKET_ERROR)
