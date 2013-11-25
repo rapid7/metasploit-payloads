@@ -250,7 +250,7 @@ DWORD tcp_channel_server_notify(Remote * remote, TcpServerContext * serverCtx)
  * @param remote Pointer to the remote instance.
  * @param packet Pointer to the request packet.
  * @returns Indication of success or failure.
- * @retval ERROR_SUCCESS Notification completed successfully.
+ * @retval ERROR_SUCCESS Opening the server channel completed successfully.
  */
 DWORD request_net_tcp_server_channel_open(Remote * remote, Packet * packet)
 {

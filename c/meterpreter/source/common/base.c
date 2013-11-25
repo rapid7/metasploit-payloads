@@ -187,7 +187,7 @@ DWORD command_deregister(Command *command)
 	return res;
 }
 
-/*! * @brief A list of all command threads currenlty executing. */
+/*! @brief A list of all command threads currenlty executing. */
 LIST * commandThreadList = NULL;
 
 /*!

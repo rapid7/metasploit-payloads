@@ -46,7 +46,7 @@ const unsigned int hAppInstance = 0x504b5320; // 'PKS '
 #define PREPEND_INFO  "### Info : "
 #define PREPEND_WARN  "### Warn : "
 
-/*! * @breif This thread is the main server thread. */
+/*! @brief This thread is the main server thread. */
 static THREAD * serverThread = NULL;
 
 /*! @brief An array of locks for use by OpenSSL. */
