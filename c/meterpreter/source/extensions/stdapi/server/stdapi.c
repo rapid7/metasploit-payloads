@@ -87,6 +87,7 @@ Command customCommands[] =
 	COMMAND_REQ("stdapi_sys_process_thread_set_regs", request_sys_process_thread_set_regs),
 
 	// Registry
+	COMMAND_REQ("stdapi_registry_check_key_exists", request_registry_check_key_exists),
 	COMMAND_REQ("stdapi_registry_load_key", request_registry_load_key),
 	COMMAND_REQ("stdapi_registry_unload_key", request_registry_unload_key),
 	COMMAND_REQ("stdapi_registry_open_key", request_registry_open_key),

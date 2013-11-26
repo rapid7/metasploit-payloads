@@ -17,5 +17,6 @@ DWORD request_registry_enum_value(Remote *remote, Packet *packet);
 DWORD request_registry_delete_value(Remote *remote, Packet *packet);
 DWORD request_registry_load_key(Remote *remote, Packet *packet);
 DWORD request_registry_unload_key(Remote *remote, Packet *packet);
+DWORD request_registry_check_key_exists(Remote *remote, Packet *packet);
 
 #endif

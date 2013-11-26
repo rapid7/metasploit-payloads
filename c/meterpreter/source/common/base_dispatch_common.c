@@ -637,5 +637,6 @@ DWORD remote_request_core_shutdown( Remote *remote, Packet *packet, DWORD* pResu
 	*pResult = result;
 
 	dprintf("[DISPATCH] Telling dispatch loop to finish");
+	// We always return FALSE here to tell the server to terminate.
 	return FALSE;
 }

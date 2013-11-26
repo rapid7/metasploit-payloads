@@ -169,6 +169,11 @@
     </ClCompile>
     <Lib>
       <IgnoreSpecificDefaultLibraries>libcmtd;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+      <OutputFile>$(OutDir)\ReflectiveDllInjection.lib</OutputFile>
+      <AdditionalDependencies>backcompat.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\backcompat\$(Configuration)\</AdditionalLibraryDirectories>
+      <TreatLibWarningAsErrors>true</TreatLibWarningAsErrors>
+      <SubSystem>Windows</SubSystem>
     </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='r7_debug|Win32'">
@@ -184,6 +189,11 @@
     </ClCompile>
     <Lib>
       <IgnoreSpecificDefaultLibraries>libcmtd;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+      <OutputFile>$(OutDir)\ReflectiveDllInjection.lib</OutputFile>
+      <AdditionalDependencies>backcompat.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\backcompat\$(Configuration)\</AdditionalLibraryDirectories>
+      <TreatLibWarningAsErrors>true</TreatLibWarningAsErrors>
+      <SubSystem>Windows</SubSystem>
     </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -203,6 +213,11 @@
     </ClCompile>
     <Lib>
       <IgnoreSpecificDefaultLibraries>libcmtd;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+      <OutputFile>$(OutDir)\ReflectiveDllInjection.lib</OutputFile>
+      <AdditionalDependencies>backcompat.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\backcompat\$(Configuration)\</AdditionalLibraryDirectories>
+      <TreatLibWarningAsErrors>true</TreatLibWarningAsErrors>
+      <SubSystem>Windows</SubSystem>
     </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='r7_debug|x64'">
@@ -222,6 +237,11 @@
     </ClCompile>
     <Lib>
       <IgnoreSpecificDefaultLibraries>libcmtd;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+      <OutputFile>$(OutDir)\ReflectiveDllInjection.lib</OutputFile>
+      <AdditionalDependencies>backcompat.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\backcompat\$(Configuration)\</AdditionalLibraryDirectories>
+      <TreatLibWarningAsErrors>true</TreatLibWarningAsErrors>
+      <SubSystem>Windows</SubSystem>
     </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -247,6 +267,8 @@
       <OutputFile>$(OutDir)\ReflectiveDllInjection.lib</OutputFile>
       <AdditionalDependencies>backcompat.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\backcompat\$(Configuration)\</AdditionalLibraryDirectories>
+      <TreatLibWarningAsErrors>true</TreatLibWarningAsErrors>
+      <SubSystem>Windows</SubSystem>
     </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='r7_release|Win32'">
@@ -272,6 +294,8 @@
       <OutputFile>$(OutDir)\ReflectiveDllInjection.lib</OutputFile>
       <AdditionalDependencies>backcompat.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\backcompat\$(Configuration)\</AdditionalLibraryDirectories>
+      <TreatLibWarningAsErrors>true</TreatLibWarningAsErrors>
+      <SubSystem>Windows</SubSystem>
     </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -294,6 +318,10 @@
     </ClCompile>
     <Lib>
       <OutputFile>$(OutDir)\ReflectiveDllInjection.lib</OutputFile>
+      <AdditionalDependencies>backcompat.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\backcompat\$(Configuration)\</AdditionalLibraryDirectories>
+      <TreatLibWarningAsErrors>true</TreatLibWarningAsErrors>
+      <SubSystem>Windows</SubSystem>
     </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='r7_release|x64'">
@@ -316,6 +344,10 @@
     </ClCompile>
     <Lib>
       <OutputFile>$(OutDir)\ReflectiveDllInjection.lib</OutputFile>
+      <AdditionalDependencies>backcompat.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\backcompat\$(Configuration)\</AdditionalLibraryDirectories>
+      <TreatLibWarningAsErrors>true</TreatLibWarningAsErrors>
+      <SubSystem>Windows</SubSystem>
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
