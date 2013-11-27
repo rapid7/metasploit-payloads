@@ -16,7 +16,7 @@
 #define REFLECTIVEDLLINJECTION_CUSTOM_DLLMAIN
 
 // include the Reflectiveloader() function
-#include "../ReflectiveDLLInjection/ReflectiveLoader.c"
+#include "../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
 
 /*
  * Grab a DWORD value out of the command line.
