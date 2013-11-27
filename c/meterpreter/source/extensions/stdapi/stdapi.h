@@ -308,6 +308,15 @@
 				TLV_META_TYPE_STRING,      \
 				TLV_TYPE_EXTENSION_STDAPI, \
 				1044)
+
+// Environment stuff
+/*! @brief TLV that maps to an environment variable name. */
+#define TLV_TYPE_ENV_VARIABLE    MAKE_CUSTOM_TLV(TLV_META_TYPE_STRING, TLV_TYPE_EXTENSION_STDAPI, 1100)
+/*! @brief TLV that maps to an environment value. */
+#define TLV_TYPE_ENV_VALUE       MAKE_CUSTOM_TLV(TLV_META_TYPE_STRING, TLV_TYPE_EXTENSION_STDAPI, 1101)
+/*! @brief TLV that groups a variable with a value. */
+#define TLV_TYPE_ENV_GROUP       MAKE_CUSTOM_TLV(TLV_META_TYPE_GROUP, TLV_TYPE_EXTENSION_STDAPI, 1102)
+
 // Net
 #define TLV_TYPE_HOST_NAME             \
 		MAKE_CUSTOM_TLV(                 \

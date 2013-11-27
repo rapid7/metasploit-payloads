@@ -108,6 +108,7 @@ Command customCommands[] =
 	COMMAND_REQ( "stdapi_sys_config_sysinfo", request_sys_config_sysinfo ),
 	COMMAND_REQ( "stdapi_sys_config_rev2self", request_sys_config_rev2self ),
 	COMMAND_REQ( "stdapi_sys_config_getprivs", request_sys_config_getprivs ),
+	COMMAND_REQ( "stdapi_sys_config_getenv", request_sys_config_getenv ),
 #ifdef _WIN32
 	COMMAND_REQ( "stdapi_sys_config_steal_token", request_sys_config_steal_token ),
 	COMMAND_REQ( "stdapi_sys_config_drop_token", request_sys_config_drop_token ),
