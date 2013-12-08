@@ -77,8 +77,6 @@ DWORD domain_query(LPCWSTR lpwDomain, LPWSTR lpwFilter, LPWSTR* lpwQueryCols,
 
 				DWORD dwIndex = 0;
 				size_t charsConverted;
-				QWORD qwValue;
-				UINT uiValue;
 				ADS_SEARCH_COLUMN col;
 
 				// iterate through the columns, adding Tlv entries as we go, but only
@@ -98,14 +96,12 @@ DWORD domain_query(LPCWSTR lpwDomain, LPWSTR lpwFilter, LPWSTR* lpwQueryCols,
 						switch (col.dwADsType)
 						{
 						case ADSTYPE_LARGE_INTEGER:
-							qwValue = htonq((QWORD)col.pADsValues->LargeInteger.QuadPart);
-							_i64toa_s(qwValue, valueTarget, VALUE_SIZE, 10);
+							_i64toa_s(col.pADsValues->LargeInteger.QuadPart, valueTarget, VALUE_SIZE, 10);
 							entries[dwIndex].header.length = lstrlenA(valueTarget) + 1;
 							dprintf("[ADSI] Adding large int value %ul", (UINT)col.pADsValues->Integer);
 							break;
 						case ADSTYPE_INTEGER:
-							uiValue = htonl((UINT)col.pADsValues->Integer);
-							_itoa_s(uiValue, valueTarget, VALUE_SIZE, 10);
+							_itoa_s((UINT)col.pADsValues->Integer, valueTarget, VALUE_SIZE, 10);
 							entries[dwIndex].header.length = lstrlenA(valueTarget) + 1;
 							dprintf("[ADSI] Adding int value %u", (UINT)col.pADsValues->Integer);
 							break;
