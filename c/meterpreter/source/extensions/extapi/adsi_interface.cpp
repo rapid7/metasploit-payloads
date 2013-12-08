@@ -15,6 +15,7 @@ extern "C" {
 
 #define VALUE_SIZE 512
 #define PATH_SIZE 256
+#define RESULT_PAGE_SIZE 200
 
 /*! @brief The GUID of the Directory Search COM object. */
 static const IID IID_IDirectorySearch = { 0x109BA8EC, 0x92F0, 0x11D0, { 0xA7, 0x90, 0x00, 0xC0, 0x4F, 0xD8, 0xD5, 0xA8 } };
@@ -25,10 +26,11 @@ static const IID IID_IDirectorySearch = { 0x109BA8EC, 0x92F0, 0x11D0, { 0xA7, 0x
  * @param lpwFilter The filter to use when reading objects (LDAP style).
  * @param lpwQueryCols Array of column names representing fields to extract.
  * @param queryColCount Number of columns in \c lpwQueryCols.
+ * @param pageSize The size of the page of results to return.
  * @param response The response \c Packet to add the results to.
  */
 DWORD domain_query(LPCWSTR lpwDomain, LPWSTR lpwFilter, LPWSTR* lpwQueryCols,
-	UINT queryColCount, Packet* response)
+	UINT queryColCount, DWORD pageSize, Packet* response)
 {
 	HRESULT hResult;
 	WCHAR cbPath[PATH_SIZE];
@@ -49,10 +51,24 @@ DWORD domain_query(LPCWSTR lpwDomain, LPWSTR lpwFilter, LPWSTR* lpwQueryCols,
 				dprintf("[ADSI] Unable to open domain: %x", hResult);
 				break;
 			}
-			dprintf("[ADSI] Domain opened");
 
-			// run the search for the values listed above
-			OutputDebugStringW(lpwFilter);
+			// set the limit of results so that we don't take forever on large domains
+			dprintf("[ADSI] Setting Page size to %u", (ADS_INTEGER)pageSize);
+			ADS_SEARCHPREF_INFO prefInfo[1];
+			prefInfo[0].dwSearchPref = ADS_SEARCHPREF_PAGESIZE;
+			prefInfo[0].vValue.dwType = ADSTYPE_INTEGER;
+			prefInfo[0].vValue.Integer = (ADS_INTEGER)pageSize;
+	        prefInfo[1].dwSearchPref = ADS_SEARCHPREF_SEARCH_SCOPE;
+	        prefInfo[1].vValue.dwType = ADSTYPE_INTEGER;
+	        prefInfo[1].vValue.Integer = ADS_SCOPE_SUBTREE;
+	        prefInfo[2].dwSearchPref = ADS_SEARCHPREF_CACHE_RESULTS;
+	        prefInfo[2].vValue.dwType = ADSTYPE_BOOLEAN;
+	        prefInfo[2].vValue.Boolean = false;
+			if (FAILED(hResult = pDirSearch->SetSearchPreference(prefInfo, 1)))
+			{
+				dprintf("[ADSI] Failed to set search settings %u %x", pageSize, hResult);
+			}
+
 			hResult = pDirSearch->ExecuteSearch(lpwFilter, lpwQueryCols, queryColCount, &hSearch);
 			if (hResult != S_OK)
 			{
