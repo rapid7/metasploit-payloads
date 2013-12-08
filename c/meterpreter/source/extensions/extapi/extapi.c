@@ -26,8 +26,7 @@ Command customCommands[] =
 	COMMAND_REQ("extapi_service_query", request_service_query),
 	COMMAND_REQ("extapi_clipboard_get_data", request_clipboard_get_data),
 	COMMAND_REQ("extapi_clipboard_set_data", request_clipboard_set_data),
-	COMMAND_REQ("extapi_adsi_user_enum", request_adsi_user_enum),
-	COMMAND_REQ("extapi_adsi_computer_enum", request_adsi_computer_enum),
+	COMMAND_REQ("extapi_adsi_domain_query", request_adsi_domain_query),
 	COMMAND_TERMINATOR
 };
 

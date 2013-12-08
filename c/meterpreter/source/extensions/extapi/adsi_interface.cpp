@@ -16,9 +16,19 @@ extern "C" {
 #define VALUE_SIZE 512
 #define PATH_SIZE 256
 
+/*! @brief The GUID of the Directory Search COM object. */
 static const IID IID_IDirectorySearch = { 0x109BA8EC, 0x92F0, 0x11D0, { 0xA7, 0x90, 0x00, 0xC0, 0x4F, 0xD8, 0xD5, 0xA8 } };
 
-DWORD domain_query(LPCWSTR lpwDomain, LPWSTR lpwFilter, LPWSTR* lpwQueryCols, TlvType* tlvIds, UINT queryColCount, TlvType groupTlvId, Packet* response)
+/*!
+ * @brief Perform a domain query via ADSI.
+ * @param lpwDomain Name of the domain that is to be queried.
+ * @param lpwFilter The filter to use when reading objects (LDAP style).
+ * @param lpwQueryCols Array of column names representing fields to extract.
+ * @param queryColCount Number of columns in \c lpwQueryCols.
+ * @param response The response \c Packet to add the results to.
+ */
+DWORD domain_query(LPCWSTR lpwDomain, LPWSTR lpwFilter, LPWSTR* lpwQueryCols,
+	UINT queryColCount, Packet* response)
 {
 	HRESULT hResult;
 	WCHAR cbPath[PATH_SIZE];
@@ -39,8 +49,10 @@ DWORD domain_query(LPCWSTR lpwDomain, LPWSTR lpwFilter, LPWSTR* lpwQueryCols, Tl
 				dprintf("[ADSI] Unable to open domain: %x", hResult);
 				break;
 			}
+			dprintf("[ADSI] Domain opened");
 
 			// run the search for the values listed above
+			OutputDebugStringW(lpwFilter);
 			hResult = pDirSearch->ExecuteSearch(lpwFilter, lpwQueryCols, queryColCount, &hSearch);
 			if (hResult != S_OK)
 			{
@@ -48,9 +60,9 @@ DWORD domain_query(LPCWSTR lpwDomain, LPWSTR lpwFilter, LPWSTR* lpwQueryCols, Tl
 				break;
 			}
 
-			ADS_SEARCH_COLUMN col;
+			// These buffers are used to store the values that we're reading out of AD
 			Tlv* entries = (Tlv*)malloc(queryColCount * sizeof(Tlv));
-			char* values = (char*)malloc(VALUE_SIZE * queryColCount);
+			char* values = (char*)malloc(queryColCount * VALUE_SIZE);
 
 			// now we iterate through the search results
 			while (SUCCEEDED((hResult = pDirSearch->GetNextRow(hSearch))))
@@ -66,29 +78,35 @@ DWORD domain_query(LPCWSTR lpwDomain, LPWSTR lpwFilter, LPWSTR* lpwQueryCols, Tl
 				DWORD dwIndex = 0;
 				size_t charsConverted;
 				QWORD qwValue;
+				UINT uiValue;
+				ADS_SEARCH_COLUMN col;
 
 				// iterate through the columns, adding Tlv entries as we go, but only
 				// if we can get the values out.
 				for (DWORD colIndex = 0; colIndex < queryColCount; ++colIndex)
 				{
+					char* valueTarget = values + dwIndex * VALUE_SIZE;
+
+					entries[dwIndex].buffer = (PUCHAR)valueTarget;
+					entries[dwIndex].header.type = TLV_TYPE_EXT_ADSI_VALUE;
+
+					// try to do something sane based on the type that's being used to store
+					// the value.
 					HRESULT hr = pDirSearch->GetColumn(hSearch, lpwQueryCols[dwIndex], &col);
 					if (SUCCEEDED(hr))
 					{
-						char* valueTarget = values + (dwIndex * VALUE_SIZE);
-						entries[dwIndex].buffer = (PUCHAR)valueTarget;
-						entries[dwIndex].header.type = tlvIds[dwIndex];
-
 						switch (col.dwADsType)
 						{
 						case ADSTYPE_LARGE_INTEGER:
-							qwValue = col.pADsValues->LargeInteger.QuadPart;
-							*((QWORD*)valueTarget) = htonq(qwValue);
-							entries[dwIndex].header.length = sizeof(QWORD);
-							dprintf("[ADSI] Adding large int value %ul", (QWORD)qwValue);
+							qwValue = htonq((QWORD)col.pADsValues->LargeInteger.QuadPart);
+							_i64toa_s(qwValue, valueTarget, VALUE_SIZE, 10);
+							entries[dwIndex].header.length = lstrlenA(valueTarget) + 1;
+							dprintf("[ADSI] Adding large int value %ul", (UINT)col.pADsValues->Integer);
 							break;
 						case ADSTYPE_INTEGER:
-							*((UINT*)valueTarget) = htonl((UINT)col.pADsValues->Integer);
-							entries[dwIndex].header.length = sizeof(UINT);
+							uiValue = htonl((UINT)col.pADsValues->Integer);
+							_itoa_s(uiValue, valueTarget, VALUE_SIZE, 10);
+							entries[dwIndex].header.length = lstrlenA(valueTarget) + 1;
 							dprintf("[ADSI] Adding int value %u", (UINT)col.pADsValues->Integer);
 							break;
 						default:
@@ -97,30 +115,33 @@ DWORD domain_query(LPCWSTR lpwDomain, LPWSTR lpwFilter, LPWSTR* lpwQueryCols, Tl
 								: col.pADsValues->CaseExactString;
 
 							wcstombs_s(&charsConverted, valueTarget, VALUE_SIZE, source, VALUE_SIZE - 1);
-							dprintf("[ADSI] Adding %s", valueTarget);
+							dprintf("[ADSI] Adding string %s", valueTarget);
 							entries[dwIndex].header.length = lstrlenA(valueTarget) + 1;
 							break;
 						}
 
-						dwIndex++;
 						pDirSearch->FreeColumn(&col);
 					}
 					else
 					{
 						dprintf("[ADSI] Col read failed: %x", hr);
+						valueTarget[0] = 0;
+						entries[dwIndex].header.length = 1;
 					}
+
+					dwIndex++;
 				}
 
 				if (dwIndex > 0)
 				{
 					dprintf("[ADSI] Adding group packet of %u values", dwIndex);
 					// Throw the user details together in a group, ready to return.
-					packet_add_tlv_group(response, groupTlvId, entries, dwIndex);
+					packet_add_tlv_group(response, TLV_TYPE_EXT_ADSI_RESULT, entries, dwIndex);
 					dprintf("[ADSI] Added group packet of %u values", dwIndex);
 				}
 				else
 				{
-					dprintf("[ADSI] User found, but no fields extracted.");
+					dprintf("[ADSI] Item found, but no fields extracted.");
 				}
 			}
 
@@ -140,26 +161,10 @@ DWORD domain_query(LPCWSTR lpwDomain, LPWSTR lpwFilter, LPWSTR* lpwQueryCols, Tl
 
 		CoUninitialize();
 	}
+	else
+	{
+		dprintf("[ADSI] Failed to initialize COM");
+	}
 
 	return (DWORD)hResult;
-}
-
-DWORD domain_user_enum(LPCWSTR lpwDomain, Packet* response)
-{
-	LPWSTR lpwFields[] = { L"samAccountName", L"description", L"Name", L"distinguishedname", L"comment" };
-	TlvType tlvIds[] = { TLV_TYPE_EXT_ADSI_USER_SAM, TLV_TYPE_EXT_ADSI_USER_DESC,
-		TLV_TYPE_EXT_ADSI_USER_NAME, TLV_TYPE_EXT_ADSI_USER_DN, TLV_TYPE_EXT_ADSI_USER_COMMENT };
-	DWORD dwCols = sizeof(lpwFields) / sizeof(LPWSTR);
-
-	return domain_query(lpwDomain, L"(objectClass=user)", lpwFields, tlvIds, dwCols, TLV_TYPE_EXT_ADSI_USER, response);
-}
-
-DWORD domain_computer_enum(LPCWSTR lpwDomain, Packet* response)
-{
-	LPWSTR lpwFields[] = { L"description", L"Name", L"distinguishedname", L"comment" };
-	TlvType tlvIds[] = { TLV_TYPE_EXT_ADSI_COMP_DESC, TLV_TYPE_EXT_ADSI_COMP_NAME,
-		TLV_TYPE_EXT_ADSI_COMP_DN, TLV_TYPE_EXT_ADSI_COMP_COMMENT };
-	DWORD dwCols = sizeof(lpwFields) / sizeof(LPWSTR);
-
-	return domain_query(lpwDomain, L"(objectClass=computer)", lpwFields, tlvIds, dwCols, TLV_TYPE_EXT_ADSI_COMP, response);
 }
