@@ -6,8 +6,6 @@
 #include "adsi.h"
 #include "adsi_interface.h"
 
-#define DEFAULT_PAGE_SIZE 100
-
 /*!
  * @brief Helper function that converts an ASCII string to a wide char string.
  * @param lpValue ASCII string to convert.
@@ -60,6 +58,7 @@ DWORD request_adsi_domain_query(Remote *remote, Packet *packet)
 	DWORD fieldIndex = 0;
 	Packet * response = packet_create_response(packet);
 	Tlv fieldTlv;
+	DWORD maxResults;
 	DWORD pageSize;
 
 	do
@@ -87,10 +86,14 @@ DWORD request_adsi_domain_query(Remote *remote, Packet *packet)
 			break;
 		}
 
+		maxResults = packet_get_tlv_value_uint(packet, TLV_TYPE_EXT_ASDI_MAXRESULTS);
+		dprintf("[EXTAPI ADSI] Max results will be %u", maxResults);
+
 		pageSize = packet_get_tlv_value_uint(packet, TLV_TYPE_EXT_ASDI_PAGESIZE);
-		if (pageSize == 0)
+
+		if (maxResults != 0)
 		{
-			pageSize = DEFAULT_PAGE_SIZE;
+			pageSize = min(pageSize, maxResults);
 		}
 		dprintf("[EXTAPI ADSI] Page size will be %u", pageSize);
 
@@ -119,7 +122,7 @@ DWORD request_adsi_domain_query(Remote *remote, Packet *packet)
 		if (dwResult == ERROR_SUCCESS)
 		{
 			dprintf("[EXTAPI ADSI] Beginning user enumeration");
-			dwResult = domain_query(lpwDomain, lpwFilter, lpwFields, fieldCount, pageSize, response);
+			dwResult = domain_query(lpwDomain, lpwFilter, lpwFields, fieldCount, maxResults, pageSize, response);
 		}
 	} while (0);
 

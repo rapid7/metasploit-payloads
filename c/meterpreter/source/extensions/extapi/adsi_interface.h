@@ -7,6 +7,6 @@
 #define _METERPRETER_SOURCE_EXTENSION_EXTAPI_ADSI_INTERFACE_H
 
 DWORD domain_query(LPCWSTR lpwDomain, LPWSTR lpwFilter, LPWSTR* lpwQueryCols,
-	UINT queryColCount, DWORD pageSize, Packet* response);
+	UINT queryColCount, DWORD maxResults, DWORD pageSize, Packet* response);
 
 #endif
