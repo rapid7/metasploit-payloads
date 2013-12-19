@@ -60,12 +60,12 @@ DWORD domain_query(LPCWSTR lpwDomain, LPWSTR lpwFilter, LPWSTR* lpwQueryCols,
 			prefInfo[1].dwSearchPref = ADS_SEARCHPREF_PAGESIZE;
 			prefInfo[1].vValue.dwType = ADSTYPE_INTEGER;
 			prefInfo[1].vValue.Integer = (ADS_INTEGER)pageSize;
-	        prefInfo[2].dwSearchPref = ADS_SEARCHPREF_SEARCH_SCOPE;
-	        prefInfo[2].vValue.dwType = ADSTYPE_INTEGER;
-	        prefInfo[2].vValue.Integer = ADS_SCOPE_SUBTREE;
-	        prefInfo[3].dwSearchPref = ADS_SEARCHPREF_CACHE_RESULTS;
-	        prefInfo[3].vValue.dwType = ADSTYPE_BOOLEAN;
-	        prefInfo[3].vValue.Boolean = false;
+			prefInfo[2].dwSearchPref = ADS_SEARCHPREF_SEARCH_SCOPE;
+			prefInfo[2].vValue.dwType = ADSTYPE_INTEGER;
+			prefInfo[2].vValue.Integer = ADS_SCOPE_SUBTREE;
+			prefInfo[3].dwSearchPref = ADS_SEARCHPREF_CACHE_RESULTS;
+			prefInfo[3].vValue.dwType = ADSTYPE_BOOLEAN;
+			prefInfo[3].vValue.Boolean = false;
 
 			dprintf("[ADSI] Setting Max results to %u", (ADS_INTEGER)maxResults);
 			dprintf("[ADSI] Setting Page size to %u", (ADS_INTEGER)pageSize);
