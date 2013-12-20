@@ -7,9 +7,9 @@
 #include "passwd.h"
 #include "fs.h"
 
-#include "../../../ReflectiveDLLInjection/DelayLoadMetSrv.h"
-#include "../../../ReflectiveDLLInjection/GetProcAddressR.h"
-#include "../../../ReflectiveDLLInjection/ReflectiveLoader.h"
+#include "../../../DelayLoadMetSrv/DelayLoadMetSrv.h"
+#include "../../../ReflectiveDLLInjection/inject/src/GetProcAddressR.h"
+#include "../../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.h"
 
 #define strcasecmp stricmp
 

@@ -1,6 +1,6 @@
 #include "common.h"
 #include "base_inject.h"
-#include "./../../../../ReflectiveDLLInjection/LoadLibraryR.h"
+#include "./../../../../ReflectiveDLLInjection/inject/src/LoadLibraryR.h"
 #include <Tlhelp32.h>
 
 // Simple trick to get the current meterpreters arch
