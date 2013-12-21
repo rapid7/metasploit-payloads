@@ -22,7 +22,7 @@ int global_comm_timeout       = 0xaf79257f;
 // NOTE: _CRT_SECURE_NO_WARNINGS has been added to Configuration->C/C++->Preprocessor->Preprocessor
 
 // include the Reflectiveloader() function
-#include "../ReflectiveDLLInjection/ReflectiveLoader.c"
+#include "../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
 
 int exceptionfilter(unsigned int code, struct _EXCEPTION_POINTERS *ep) 
 {

@@ -24,9 +24,9 @@
 #include "libloader.h"
 
 #ifdef _WIN32
-#include "../ReflectiveDLLInjection/GetProcAddressR.h"
-#include "../ReflectiveDLLInjection/LoadLibraryR.h"
-#include "../ReflectiveDLLInjection/ReflectiveLoader.h"
+#include "../ReflectiveDLLInjection/inject/src/GetProcAddressR.h"
+#include "../ReflectiveDLLInjection/inject/src/LoadLibraryR.h"
+#include "../ReflectiveDLLInjection/dll/src/ReflectiveLoader.h"
 #endif
 
 DWORD server_setup(SOCKET fd);

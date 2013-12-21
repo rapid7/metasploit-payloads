@@ -8,7 +8,7 @@
 #define REFLECTIVEDLLINJECTION_CUSTOM_DLLMAIN
 
 // include the Reflectiveloader() function
-#include "../ReflectiveDLLInjection/ReflectiveLoader.c"
+#include "../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
 
 /*
  * Send a buffer to a named pipe server.

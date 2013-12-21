@@ -1,6 +1,6 @@
 #include "precomp.h"
 #include "tokendup.h"
-#include "../../../../ReflectiveDLLInjection/LoadLibraryR.h"
+#include "../../../../ReflectiveDLLInjection/inject/src/LoadLibraryR.h"
 
 /*
  * Enable or disable a privilege in our processes current token.
