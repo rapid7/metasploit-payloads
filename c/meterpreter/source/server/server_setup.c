@@ -1,3 +1,6 @@
+/*!
+ * @file server_setup.c
+ */
 #include "metsrv.h"
 #include "../../common/common.h"
 
@@ -43,33 +46,37 @@ const unsigned int hAppInstance = 0x504b5320; // 'PKS '
 #define PREPEND_INFO  "### Info : "
 #define PREPEND_WARN  "### Warn : "
 
-/*
- * This thread is the main server thread which we use to syncronize a gracefull 
- * shutdown of the server during process migration.
- */
-THREAD * serverThread = NULL;
+/*! @brief This thread is the main server thread. */
+static THREAD * serverThread = NULL;
 
-/*
- * An array of locks for use by OpenSSL.
- */
+/*! @brief An array of locks for use by OpenSSL. */
 static LOCK ** ssl_locks = NULL;
 
-/*
- * A callback function used by OpenSSL to leverage native system locks.
+/*!
+ * @brief A callback function used by OpenSSL to leverage native system locks.
+ * @param mode The lock mode to set.
+ * @param type The lock type to operate on.
+ * @param file Unused.
+ * @param line Unused.
  */
-static VOID server_locking_callback( int mode, int type, const char * file, int line )
+static VOID server_locking_callback(int mode, int type, const char * file, int line)
 {
-	if( mode & CRYPTO_LOCK )
-		lock_acquire( ssl_locks[type] );
+	if (mode & CRYPTO_LOCK)
+	{
+		lock_acquire(ssl_locks[type]);
+	}
 	else
-		lock_release( ssl_locks[type] );
+	{
+		lock_release(ssl_locks[type]);
+	}
 }
 
-/*
- * A callback function used by OpenSSL to get the current threads id.
- * While not needed on windows this must be used for posix meterpreter.
+/*!
+ * @brief A callback function used by OpenSSL to get the current threads id.
+ * @returns The current thread ID.
+ * @remarks While not needed on windows this must be used for posix meterpreter.
  */
-static DWORD server_threadid_callback( VOID )
+static DWORD server_threadid_callback(VOID)
 {
 #ifdef _WIN32
 	return GetCurrentThreadId();
@@ -81,7 +88,7 @@ static DWORD server_threadid_callback( VOID )
 /*
  * Callback function for dynamic lock creation for OpenSSL.
  */
-static struct CRYPTO_dynlock_value * server_dynamiclock_create( const char * file, int line )
+static struct CRYPTO_dynlock_value * server_dynamiclock_create(const char * file, int line)
 {
 	return (struct CRYPTO_dynlock_value *)lock_create();
 }
@@ -93,10 +100,14 @@ static void server_dynamiclock_lock( int mode, struct CRYPTO_dynlock_value * l, 
 {
 	LOCK * lock = (LOCK *)l;
 
-	if( mode & CRYPTO_LOCK )
-		lock_acquire( lock );
+	if (mode & CRYPTO_LOCK)
+	{
+		lock_acquire(lock);
+	}
 	else
-		lock_release( lock );
+	{
+		lock_release(lock);
+	}
 }
 
 /*
@@ -322,59 +333,62 @@ static BOOL server_negotiate_ssl(Remote *remote)
 	return success;
 }
 
-/*
- * The servers main dispatch loop for incoming requests using SSL over TCP
+/*!
+ * @brief The servers main dispatch loop for incoming requests using SSL over TCP
+ * @param remote Pointer to the remote endpoint for this server connection.
+ * @returns Indication of success or failure.
  */
-static DWORD server_dispatch( Remote * remote )
+static DWORD server_dispatch(Remote * remote)
 {
-	LONG result     = ERROR_SUCCESS;
+	BOOL running = TRUE;
+	LONG result = ERROR_SUCCESS;
 	Packet * packet = NULL;
-	THREAD * cpt    = NULL;
+	THREAD * cpt = NULL;
 
-	dprintf( "[DISPATCH] entering server_dispatch( 0x%08X )", remote );
+	dprintf("[DISPATCH] entering server_dispatch( 0x%08X )", remote);
 
 	// Bring up the scheduler subsystem.
-	result = scheduler_initialize( remote );
-	if( result != ERROR_SUCCESS )
-		return result;
-
-	while( TRUE )
+	result = scheduler_initialize(remote);
+	if (result != ERROR_SUCCESS)
 	{
-		if( event_poll( serverThread->sigterm, 0 ) )
+		return result;
+	}
+
+	while (running)
+	{
+		if (event_poll(serverThread->sigterm, 0))
 		{
-			dprintf( "[DISPATCH] server dispatch thread signaled to terminate..." );
+			dprintf("[DISPATCH] server dispatch thread signaled to terminate...");
 			break;
 		}
 
-		result = server_socket_poll( remote, 100 );
-		if( result > 0 )
+		result = server_socket_poll(remote, 100);
+		if (result > 0)
 		{
-			result = packet_receive( remote, &packet );
-			if( result != ERROR_SUCCESS ) {
-				dprintf( "[DISPATCH] packet_receive returned %d, exiting dispatcher...", result );		
+			result = packet_receive(remote, &packet);
+			if (result != ERROR_SUCCESS)
+			{
+				dprintf("[DISPATCH] packet_receive returned %d, exiting dispatcher...", result);
 				break;
 			}
 
-			if( !command_handle( remote, packet ) )
-			{
-				dprintf( "[DISPATCH] command_process indicated server stop. Exiting." );
-				break;
-			}
+			running = command_handle(remote, packet);
+			dprintf("[DISPATCH] command_process result: %s", (running ? "continue" : "stop"));
 		}
-		else if( result < 0 )
+		else if (result < 0)
 		{
-			dprintf( "[DISPATCH] server_socket_poll returned %d, exiting dispatcher...", result );
+			dprintf("[DISPATCH] server_socket_poll returned %d, exiting dispatcher...", result);
 			break;
 		}
 	}
 
-	dprintf( "[DISPATCH] calling scheduler_destroy..." );
+	dprintf("[DISPATCH] calling scheduler_destroy...");
 	scheduler_destroy();
 
-	dprintf( "[DISPATCH] calling command_join_threads..." );
+	dprintf("[DISPATCH] calling command_join_threads...");
 	command_join_threads();
 
-	dprintf( "[DISPATCH] leaving server_dispatch." );
+	dprintf("[DISPATCH] leaving server_dispatch.");
 
 	return result;
 }
@@ -385,6 +399,7 @@ static DWORD server_dispatch( Remote * remote )
  */
 static DWORD server_dispatch_http_wininet( Remote * remote )
 {
+	BOOL running = TRUE;
 	LONG result     = ERROR_SUCCESS;
 	Packet * packet = NULL;
 	THREAD * cpt    = NULL;
@@ -455,7 +470,7 @@ static DWORD server_dispatch_http_wininet( Remote * remote )
 	if( result != ERROR_SUCCESS )
 		return result;
 
-	while( TRUE )
+	while(running)
 	{
 		if (remote->comm_timeout != 0 && remote->comm_last_packet + remote->comm_timeout < current_unix_timestamp()) {
 			dprintf("[DISPATCH] Shutting down server due to communication timeout");
@@ -501,11 +516,8 @@ static DWORD server_dispatch_http_wininet( Remote * remote )
 
 		dprintf("[DISPATCH] Returned result: %d", result);
 
-		if( !command_handle( remote, packet ) )
-		{
-			dprintf( "[DISPATCH] command_process indicated server stop. Exiting." );
-			break;
-		}
+		running = command_handle(remote, packet);
+		dprintf("[DISPATCH] command_process result: %s", (running ? "continue" : "stop"));
 	}
 
 	// Close WinInet handles
