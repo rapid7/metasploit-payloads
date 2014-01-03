@@ -10,7 +10,7 @@
  * @brief Helper function that converts an ASCII string to a wide char string.
  * @param lpValue ASCII string to convert.
  * @param lpwValue Target memory for the converted string.
- * @remark lpwValue must already have enough memory allocated to hold all the characters.
+ * @remark \c lpwValue must be freed by the caller using `free`.
  * @returns Indication of success or failure.
  */
 DWORD to_wide_string(LPSTR lpValue, LPWSTR* lpwValue)
