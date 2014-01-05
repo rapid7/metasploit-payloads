@@ -21,6 +21,10 @@ tags
 # project config output
 r7_release
 r7_debug
+debug
+release
+Debug
+Release
 
 # temporary files
 *.swp
@@ -39,7 +43,8 @@ workspace/Backup/*
 source/jpeg-8/Backup/*
 
 # other VS garbage
-*.*proj.filters
+*.suo
+*.ncb
 
 # ignore posix temp stuff
 posix-meterp-build-tmp/*

@@ -45,22 +45,11 @@ DWORD ex_remote_request_core_channel_close(Remote *remote, Packet *packet)
  ****************************/
 
 // Dispatch table
-Command custom_commands[] = 
+Command customCommands[] = 
 {
-	{ "core_channel_open",
-	  { EMPTY_DISPATCH_HANDLER                              },
-	  { ex_remote_response_core_channel_open,      { 0 }, 0 },
-	},
-	{ "core_channel_close",
-	  { ex_remote_request_core_channel_close,      { 0 }, 0 },
-	  { EMPTY_DISPATCH_HANDLER                              },
-	},
-
-	// Terminator
-	{ NULL,
-	  { EMPTY_DISPATCH_HANDLER                              },
-	  { EMPTY_DISPATCH_HANDLER                              },
-	},
+	COMMAND_REP("core_channel_open", ex_remote_response_core_channel_open),
+	COMMAND_REP("core_channel_close", ex_remote_response_core_channel_cloase),
+	COMMAND_TERMINATOR
 };
 
 
@@ -69,12 +58,7 @@ Command custom_commands[] =
  */
 VOID remote_register_core_dispatch_routines()
 {
-	DWORD index;
-
-	for (index = 0;
-	     custom_commands[index].method;
-	     index++)
-		command_register(&custom_commands[index]);
+	command_register_all(customCommands);
 }
 
 /*
@@ -82,10 +66,5 @@ VOID remote_register_core_dispatch_routines()
  */
 VOID remote_deregister_core_dispatch_routines()
 {
-	DWORD index;
-
-	for (index = 0;
-	     custom_commands[index].method;
-	     index++)
-		command_deregister(&custom_commands[index]);
+	command_deregister_all(customCommands);
 }

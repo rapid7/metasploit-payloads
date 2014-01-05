@@ -39,16 +39,16 @@
 #define WSAECONNABORTED ECONNABORTED
 
 #define BREAK_WITH_ERROR(format, args...) \
-	do { \
+	{ \
 		dprintf(format, ## args); \
-		exit(0); \
-	} while(0) \
+		break; \
+	} \
 
 #define BREAK_ON_WSAERROR(format, args...) \
-	do { \
+	{ \
 		dprintf(format, ## args); \
-		abort(); \
-	} while(0) \
+		break; \
+	} \
 
 #define Sleep(x) usleep(x * 1000)
 #define WSASocket(a,b,c,d,e,f) socket(a,b,c)

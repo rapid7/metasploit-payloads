@@ -47,7 +47,7 @@ DWORD THREADCALL command_process_thread( THREAD * thread );
 /*!
  * @brief Base RPC dispatch table.
  */
-Command base_commands[] =
+Command baseCommands[] =
 {
 	// Console commands
 	{  "core_console_write",  
@@ -83,7 +83,7 @@ Command base_commands[] =
  * @brief Dynamically registered command extensions.
  * @details A linked list of commands registered on the fly by reflectively-loaded extensions.
  */
-Command *extension_commands = NULL;
+Command *extensionCommands = NULL;
 
 /*!
  * @brief Register a full list of commands with meterpreter.
@@ -94,7 +94,9 @@ void command_register_all(Command commands[])
 	DWORD index;
 
 	for (index = 0; commands[index].method; index++)
-		command_register( &commands[index] );
+	{
+		command_register(&commands[index]);
+	}
 }
 
 /*!
@@ -114,13 +116,15 @@ DWORD command_register(Command *command)
 	memcpy(newCommand, command, sizeof(Command));
 
 	dprintf("Setting new command...");
-	if (extension_commands)
-		extension_commands->prev = newCommand;
+	if (extensionCommands)
+	{
+		extensionCommands->prev = newCommand;
+	}
 
-	dprintf("Fixing next/prev...");
-	newCommand->next    = extension_commands;
-	newCommand->prev    = NULL;
-	extension_commands  = newCommand;
+	dprintf("Fixing next/prev... %p", newCommand);
+	newCommand->next = extensionCommands;
+	newCommand->prev = NULL;
+	extensionCommands = newCommand;
 
 	dprintf("Done...");
 	return ERROR_SUCCESS;
@@ -135,7 +139,9 @@ void command_deregister_all(Command commands[])
 	DWORD index;
 
 	for (index = 0; commands[index].method; index++)
+	{
 		command_deregister(&commands[index]);
+	}
 }
 
 /*!
@@ -149,7 +155,7 @@ DWORD command_deregister(Command *command)
 	DWORD res = ERROR_NOT_FOUND;
 
 	// Search the extension list for the command
-	for (current = extension_commands, prev = NULL;
+	for (current = extensionCommands, prev = NULL;
 		current;
 		prev = current, current = current->next)
 	{
@@ -157,12 +163,18 @@ DWORD command_deregister(Command *command)
 			continue;
 
 		if (prev)
+		{
 			prev->next = current->next;
+		}
 		else
-			extension_commands = current->next;
+		{
+			extensionCommands = current->next;
+		}
 
 		if (current->next)
+		{
 			current->next->prev = prev;
+		}
 
 		// Deallocate it
 		free(current);
@@ -175,19 +187,21 @@ DWORD command_deregister(Command *command)
 	return res;
 }
 
-/*! * @brief A list of all command threads currenlty executing. */
+/*! @brief A list of all command threads currenlty executing. */
 LIST * commandThreadList = NULL;
 
 /*!
  * @brief Block untill all running command threads have finished.
  */
-VOID command_join_threads( VOID )
+VOID command_join_threads(VOID)
 {
-	while( list_count( commandThreadList ) > 0 )
+	while (list_count(commandThreadList) > 0)
 	{
-		THREAD * thread = (THREAD *)list_get( commandThreadList, 0 );
-		if( thread )
-			thread_join( thread );
+		THREAD * thread = (THREAD *)list_get(commandThreadList, 0);
+		if (thread)
+		{
+			thread_join(thread);
+		}
 	}
 }
 
@@ -199,7 +213,8 @@ VOID command_join_threads( VOID )
  */
 VOID reap_zombie_thread(void * param)
 {
-	while(1) {
+	while(1)
+	{
 		waitpid(-1, NULL, __WCLONE);
 		// on 2.6 kernels, don't chew 100% CPU
 		usleep(500000);
@@ -209,7 +224,8 @@ VOID reap_zombie_thread(void * param)
 
 /*!
  * @brief Process a command directly on the current thread.
- * @param command Pointer to the \c Command to be executed.
+ * @param baseCommand Pointer to the \c Command in the base command list to be executed.
+ * @param extensionCommand Pointer to the \c Command in the extension command list to be executed.
  * @param remote Pointer to the \c Remote endpoint for this command.
  * @param packet Pointer to the \c Packet containing the command detail.
  * @returns Boolean value indicating if the server should continue processing.
@@ -217,80 +233,160 @@ VOID reap_zombie_thread(void * param)
  * @retval FALSE The server should stop processing and shut down.
  * @sa command_handle
  * @sa command_process_thread
+ * @remarks The \c baseCommand is always executed first, but if there is an \c extensionCommand
+ *          then the result of the \c baseCommand processing is ignored and the result of
+ *          \c extensionCommand is returned instead.
  */
-BOOL command_process_inline( Command *command, Remote *remote, Packet *packet )
+BOOL command_process_inline(Command *baseCommand, Command *extensionCommand, Remote *remote, Packet *packet)
 {
 	DWORD result;
 	BOOL serverContinue = TRUE;
 	Tlv requestIdTlv;
 	PCHAR requestId;
 	PacketTlvType packetTlvType;
-
-	dprintf( "[COMMAND] Executing command %s", command->method );
+	Command *commands[2] = { baseCommand, extensionCommand };
+	Command *command = NULL;
+	DWORD dwIndex;
+	LPCSTR lpMethod = NULL;
 
 	__try
 	{
 		do
 		{
-#ifdef _WIN32
-			// Impersonate the thread token if needed (only on Windows)
-			if(remote->hServerToken != remote->hThreadToken) {
-				if(! ImpersonateLoggedOnUser(remote->hThreadToken)) {
-					dprintf( "[COMMAND] Failed to impersonate thread token (%s) (%u)", command->method, GetLastError());
+			for (dwIndex = 0; dwIndex < 2; ++dwIndex)
+			{
+				command = commands[dwIndex];
+
+				if (command == NULL)
+				{
+					continue;
 				}
-			}
+
+				lpMethod = command->method;
+				dprintf("[COMMAND] Executing command %s", lpMethod);
+
+#ifdef _WIN32
+				// Impersonate the thread token if needed (only on Windows)
+				if (dwIndex == 0 && remote->hServerToken != remote->hThreadToken)
+				{
+					if (!ImpersonateLoggedOnUser(remote->hThreadToken))
+					{
+						dprintf("[COMMAND] Failed to impersonate thread token (%s) (%u)", lpMethod, GetLastError());
+					}
+				}
 #endif
 
-			// Validate the arguments, if requested.  Always make sure argument 
-			// lengths are sane.
-			if( command_validate_arguments( command, packet ) != ERROR_SUCCESS )
-				break;
+				// Validate the arguments, if requested.  Always make sure argument 
+				// lengths are sane.
+				if (command_validate_arguments(command, packet) != ERROR_SUCCESS)
+				{
+					continue;
+				}
 
-			packetTlvType = packet_get_type( packet );
-			switch ( packetTlvType )
-			{
-			case PACKET_TLV_TYPE_REQUEST:
-			case PACKET_TLV_TYPE_PLAIN_REQUEST:
-				if (command->request.inline_handler) {
-					dprintf( "[DISPATCH] executing inline request handler %s", command->method );
-					serverContinue = command->request.inline_handler( remote, packet, &result );
-				} else {
-					dprintf( "[DISPATCH] executing request handler %s", command->method );
-					result = command->request.handler( remote, packet );
+				packetTlvType = packet_get_type(packet);
+				switch (packetTlvType)
+				{
+				case PACKET_TLV_TYPE_REQUEST:
+				case PACKET_TLV_TYPE_PLAIN_REQUEST:
+					if (command->request.inline_handler) {
+						dprintf("[DISPATCH] executing inline request handler %s", lpMethod);
+						serverContinue = command->request.inline_handler(remote, packet, &result) && serverContinue;
+					}
+					else
+					{
+						dprintf("[DISPATCH] executing request handler %s", lpMethod);
+						result = command->request.handler(remote, packet);
+					}
+					break;
+				case PACKET_TLV_TYPE_RESPONSE:
+				case PACKET_TLV_TYPE_PLAIN_RESPONSE:
+					if (command->response.inline_handler)
+					{
+						dprintf("[DISPATCH] executing inline response handler %s", lpMethod);
+						serverContinue = command->response.inline_handler(remote, packet, &result) && serverContinue;
+					}
+					else
+					{
+						dprintf("[DISPATCH] executing response handler %s", lpMethod);
+						result = command->response.handler(remote, packet);
+					}
+					break;
 				}
-				break;
-			case PACKET_TLV_TYPE_RESPONSE:
-			case PACKET_TLV_TYPE_PLAIN_RESPONSE:
-				if (command->response.inline_handler) {
-					dprintf( "[DISPATCH] executing inline response handler %s", command->method );
-					serverContinue = command->response.inline_handler( remote, packet, &result );
-				} else {
-					dprintf( "[DISPATCH] executing response handler %s", command->method );
-					result = command->response.handler( remote, packet );
-				}
-				break;
 			}
 
 			dprintf("[COMMAND] Calling completion handlers...");
 
 			// Get the request identifier if the packet has one.
-			if ( packet_get_tlv_string( packet, TLV_TYPE_REQUEST_ID, &requestIdTlv ) == ERROR_SUCCESS )
+			if (packet_get_tlv_string(packet, TLV_TYPE_REQUEST_ID, &requestIdTlv) == ERROR_SUCCESS)
+			{
 				requestId = (PCHAR)requestIdTlv.buffer;
+			}
 
 			// Finally, call completion routines for the provided identifier
-			if( ((packetTlvType == PACKET_TLV_TYPE_RESPONSE) || (packetTlvType == PACKET_TLV_TYPE_PLAIN_RESPONSE)) && requestId)
-				packet_call_completion_handlers( remote, packet, requestId );
+			if (((packetTlvType == PACKET_TLV_TYPE_RESPONSE) || (packetTlvType == PACKET_TLV_TYPE_PLAIN_RESPONSE)) && requestId)
+			{
+				packet_call_completion_handlers(remote, packet, requestId);
+			}
 
-		} while( 0 );
+			dprintf("[COMMAND] Completion handlers finished for %s. Returning: %s", lpMethod, (serverContinue ? "TRUE" : "FALSE"));
+		} while (0);
 	}
-	__except( EXCEPTION_EXECUTE_HANDLER )
+	__except (EXCEPTION_EXECUTE_HANDLER)
 	{
-		dprintf("[COMMAND] Exception hit in command %s", command->method );
+		dprintf("[COMMAND] Exception hit in command %s", lpMethod);
 	}
 
-	packet_destroy( packet );
+	packet_destroy(packet);
 
 	return serverContinue;
+}
+
+/*!
+ * @brief Attempt to locate a command in the base command list.
+ * @param method String that identifies the command.
+ * @returns Pointer to the command entry in the base command list.
+ * @retval NULL Indicates that no command was found for the given method.
+ * @retval NON-NULL Pointer to the command that can be executed.
+ */
+Command* command_locate_base(const char* method)
+{
+	DWORD index;
+
+	dprintf("[COMMAND EXEC] Attempting to locate base command %s", method);
+	for (index = 0; baseCommands[index].method; ++index)
+	{
+		if (strcmp(baseCommands[index].method, method) == 0)
+		{
+			return &baseCommands[index];
+		}
+	}
+
+	dprintf("[COMMAND EXEC] Couldn't find base command %s", method);
+	return NULL;
+}
+
+/*!
+ * @brief Attempt to locate a command in the extensions command list.
+ * @param method String that identifies the command.
+ * @returns Pointer to the command entry in the extensions command list.
+ * @retval NULL Indicates that no command was found for the given method.
+ * @retval NON-NULL Pointer to the command that can be executed.
+ */
+Command* command_locate_extension(const char* method)
+{
+	Command* command;
+
+	dprintf("[COMMAND EXEC] Attempting to locate extension command %s (%p)", method, extensionCommands);
+	for (command = extensionCommands; command; command = command->next)
+	{
+		if (strcmp(command->method, method) == 0)
+		{
+			return command;
+		}
+	}
+
+	dprintf("[COMMAND EXEC] Couldn't find extension command %s", method);
+	return NULL;
 }
 
 /*!
@@ -310,40 +406,63 @@ BOOL command_process_inline( Command *command, Remote *remote, Packet *packet )
  * @sa command_process_inline
  * @sa command_process_thread
  */
-BOOL command_handle( Remote *remote, Packet *packet )
+BOOL command_handle(Remote *remote, Packet *packet)
 {
 	BOOL result = TRUE;
 	THREAD* cpt = NULL;
-	Command* command = NULL;
+	Command* baseCommand = NULL;
+	Command* extensionCommand = NULL;
+	Command** commands = NULL;
 	Packet* response = NULL;
+	PCHAR lpMethod = NULL;
+	Tlv methodTlv;
 
 	do
 	{
-		command = command_locate( packet );
-
-		if( command == NULL ) {
-			dprintf( "[DISPATCH] Command not found" );
-			// We have no matching command for this packet, so it won't get handled. We
-			// need to send an empty response and clean up here before exiting out.
-			response = packet_create_response( packet );
-			packet_transmit_response( ERROR_NOT_SUPPORTED, remote, response );
-			packet_destroy( packet );
+		if (packet_get_tlv_string(packet, TLV_TYPE_METHOD, &methodTlv) != ERROR_SUCCESS)
+		{
+			dprintf("[COMMAND] Unable to extract method from packet.");
 			break;
 		}
-		
-		if( command_is_inline( command, packet ) ) {
-			dprintf( "[DISPATCH] Executing inline: %s", command->method );
-			result = command_process_inline( command, remote, packet );
-		} else {
-			dprintf( "[DISPATCH] Executing in thread: %s", command->method );
-			cpt = thread_create( command_process_thread, remote, packet, command );
-			if( cpt )
+
+		lpMethod = (PCHAR)methodTlv.buffer;
+
+		baseCommand = command_locate_base(lpMethod);
+		extensionCommand = command_locate_extension(lpMethod);
+
+		if (baseCommand == NULL && extensionCommand == NULL) {
+			dprintf("[DISPATCH] Command not found: %s", lpMethod);
+			// We have no matching command for this packet, so it won't get handled. We
+			// need to send an empty response and clean up here before exiting out.
+			response = packet_create_response(packet);
+			packet_transmit_response(ERROR_NOT_SUPPORTED, remote, response);
+			packet_destroy(packet);
+			break;
+		}
+
+		// if either command is registered as inline, run them inline
+		if ((baseCommand && command_is_inline(baseCommand, packet))
+			|| (extensionCommand && command_is_inline(extensionCommand, packet)))
+		{
+			dprintf("[DISPATCH] Executing inline: %s", lpMethod);
+			result = command_process_inline(baseCommand, extensionCommand, remote, packet);
+		}
+		else
+		{
+			dprintf("[DISPATCH] Executing in thread: %s", lpMethod);
+
+			commands = (Command**)malloc(sizeof(Command*) * 2);
+			*commands = baseCommand;
+			*(commands + 1) = extensionCommand;
+
+			cpt = thread_create(command_process_thread, remote, packet, commands);
+			if (cpt)
 			{
-				dprintf( "[DISPATCH] created command_process_thread 0x%08X, handle=0x%08X", cpt, cpt->handle );
-				thread_run( cpt );
+				dprintf("[DISPATCH] created command_process_thread 0x%08X, handle=0x%08X", cpt, cpt->handle);
+				thread_run(cpt);
 			}
 		}
-	} while(0);
+	} while (0);
 
 	return result;
 }
@@ -353,34 +472,46 @@ BOOL command_handle( Remote *remote, Packet *packet )
  * @param thread Pointer to the thread to execute.
  * @return Result of thread execution (not the result of the command).
  * @sa command_handle
- * @sa command_process_thread
+ * @sa command_process_inline
  */
-DWORD THREADCALL command_process_thread( THREAD * thread )
+DWORD THREADCALL command_process_thread(THREAD * thread)
 {
-	Command * command = NULL;
-	Remote * remote   = NULL;
-	Packet * packet   = NULL;
+	Command** commands = NULL;
+	Remote * remote = NULL;
+	Packet * packet = NULL;
 
-	if( thread == NULL )
+	dprintf("[COMMAND] executing in thread %p", thread);
+
+	if (thread == NULL)
+	{
 		return ERROR_INVALID_HANDLE;
+	}
 
 	remote = (Remote *)thread->parameter1;
-	if( remote == NULL )
+	if (remote == NULL)
+	{
 		return ERROR_INVALID_HANDLE;
+	}
 
 	packet = (Packet *)thread->parameter2;
-	if( packet == NULL )
+	if (packet == NULL)
+	{
 		return ERROR_INVALID_DATA;
+	}
 
-	command = (Command *)thread->parameter3;
-	if( command == NULL )
+	commands = (Command**)thread->parameter3;
+	if (commands == NULL)
+	{
 		return ERROR_INVALID_DATA;
+	}
 
-	if( commandThreadList == NULL )
+	if (commandThreadList == NULL)
 	{
 		commandThreadList = list_create();
-		if( commandThreadList == NULL )
+		if (commandThreadList == NULL)
+		{
 			return ERROR_INVALID_HANDLE;
+		}
 
 #ifndef _WIN32
 		pthread_t tid;
@@ -389,12 +520,21 @@ DWORD THREADCALL command_process_thread( THREAD * thread )
 #endif
 	}
 
-	list_add( commandThreadList, thread );
+	list_add(commandThreadList, thread);
 
-	command_process_inline( command, remote, packet );
+	// invoke processing inline, passing in both commands
+	dprintf("[COMMAND] About to execute inline -> Commands: %p Command1: %p Command2: %p", commands, *commands, *(commands + 1));
+	command_process_inline(*commands, *(commands + 1), remote, packet);
+	dprintf("[COMMAND] Executed inline -> Commands: %p Command1: %p Command2: %p", commands, *commands, *(commands + 1));
 
-	if( list_remove( commandThreadList, thread ) )
-		thread_destroy( thread );
+	if (list_remove(commandThreadList, thread))
+	{
+		thread_destroy(thread);
+	}
+
+	// free things up now that the command stuff has been finished
+	dprintf("[COMMAND] Cleaning up commands");
+	free(commands);
 
 	return ERROR_SUCCESS;
 }
@@ -422,85 +562,6 @@ BOOL command_is_inline( Command *command, Packet *packet )
 	}
 
 	return FALSE;
-}
-
-/*!
- * @brief Attempt to locate a command in the base command list.
- * @param method String that identifies the command.
- * @returns Pointer to the command entry in the base command list.
- * @retval NULL Indicates that no command was found for the given method.
- * @retval NON-NULL Pointer to the command that can be executed.
- */
-Command* command_locate_base( const char* method )
-{
-	DWORD index;
-
-	dprintf( "[COMMAND EXEC] Attempting to locate base command %s", method );
-	for( index = 0; base_commands[index].method ; ++index )
-		if( strcmp( base_commands[index].method, method ) == 0 )
-			return &base_commands[index];
-
-	dprintf( "[COMMAND EXEC] Couldn't find base command %s", method );
-	return NULL;
-}
-
-/*!
- * @brief Attempt to locate a command in the extensions command list.
- * @param method String that identifies the command.
- * @returns Pointer to the command entry in the extensions command list.
- * @retval NULL Indicates that no command was found for the given method.
- * @retval NON-NULL Pointer to the command that can be executed.
- */
-Command* command_locate_extension( const char* method )
-{
-	Command* command;
-
-	dprintf( "[COMMAND EXEC] Attempting to locate extension command %s", method );
-	for( command = extension_commands; command; command = command->next )
-		if( strcmp( command->method, method ) == 0 )
-			return command;
-
-	dprintf( "[COMMAND EXEC] Couldn't find extension command %s", method );
-	return NULL;
-}
-
-/*!
- * @brief Attempt to locate a command to execute based on the method.
- * @param method String that identifies the command.
- * @returns Pointer to the command entry to execute.
- * @retval NULL Indicates that no command was found for the given method.
- * @retval NON-NULL Pointer to the command that can be executed.
- * @remark This function tries to find an extension command first. If
- *         found it will be returned. If not, the base command list is
- *         queried. This supports the notion of extensions overloading
- *         the base commands.
- * @sa command_locate_extension
- * @sa command_locate_base
- */
-Command* command_locate( Packet *packet )
-{
-	Command* command = NULL;
-	DWORD dwResult;
-	Tlv methodTlv;
-	
-	do
-	{
-		dwResult = packet_get_tlv_string( packet, TLV_TYPE_METHOD, &methodTlv );
-
-		if( dwResult != ERROR_SUCCESS ) {
-			dprintf( "[COMMAND] Unable to extract method from packet." );
-			break;
-		}
-
-		// check for an overload first.
-		command = command_locate_extension( (PCHAR)methodTlv.buffer );
-
-		// if no overload, then fallback on base.
-		if( command == NULL )
-			command = command_locate_base( (PCHAR)methodTlv.buffer );
-	} while(0);
-
-	return command;
 }
 
 /*!
