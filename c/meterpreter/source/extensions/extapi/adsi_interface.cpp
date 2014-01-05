@@ -86,8 +86,10 @@ DWORD domain_query(LPCWSTR lpwDomain, LPWSTR lpwFilter, LPWSTR* lpwQueryCols,
 			Tlv* entries = (Tlv*)malloc(queryColCount * sizeof(Tlv));
 			char* values = (char*)malloc(queryColCount * VALUE_SIZE);
 
+			DWORD rowsProcessed = 0;
+
 			// now we iterate through the search results
-			while (SUCCEEDED((hResult = pDirSearch->GetNextRow(hSearch))))
+			while (SUCCEEDED((hResult = pDirSearch->GetNextRow(hSearch))) && (maxResults == 0 || rowsProcessed < maxResults))
 			{
 				if (hResult == S_ADS_NOMORE_ROWS)
 				{
@@ -161,6 +163,8 @@ DWORD domain_query(LPCWSTR lpwDomain, LPWSTR lpwFilter, LPWSTR* lpwQueryCols,
 				{
 					dprintf("[ADSI] Item found, but no fields extracted.");
 				}
+
+				++rowsProcessed;
 			}
 
 			free(entries);

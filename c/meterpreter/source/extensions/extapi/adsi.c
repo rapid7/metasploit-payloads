@@ -90,8 +90,9 @@ DWORD request_adsi_domain_query(Remote *remote, Packet *packet)
 		dprintf("[EXTAPI ADSI] Max results will be %u", maxResults);
 
 		pageSize = packet_get_tlv_value_uint(packet, TLV_TYPE_EXT_ASDI_PAGESIZE);
+		dprintf("[EXTAPI ADSI] Page size specified as %u", pageSize);
 
-		if (maxResults != 0)
+		if (maxResults != 0 && pageSize != 0)
 		{
 			pageSize = min(pageSize, maxResults);
 		}
