@@ -124,6 +124,7 @@ DWORD request_adsi_domain_query(Remote *remote, Packet *packet)
 		{
 			dprintf("[EXTAPI ADSI] Beginning user enumeration");
 			dwResult = domain_query(lpwDomain, lpwFilter, lpwFields, fieldCount, maxResults, pageSize, response);
+			dprintf("[EXTAPI ADSI] Result of processing: %u (0x%x)", dwResult, dwResult);
 		}
 	} while (0);
 

@@ -167,6 +167,13 @@ DWORD domain_query(LPCWSTR lpwDomain, LPWSTR lpwFilter, LPWSTR* lpwQueryCols,
 				++rowsProcessed;
 			}
 
+			dprintf("[ADSI] Processed %u. Final result: %u (0x%x)", rowsProcessed, hResult, hResult);
+
+			if (SUCCEEDED(hResult))
+			{
+				hResult = S_OK;
+			}
+
 			free(entries);
 			free(values);
 		} while (0);
