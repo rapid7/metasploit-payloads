@@ -2,7 +2,7 @@
 IF "%1"=="clean" GOTO CLEAN
 IF "%1"=="docs" GOTO DOCS
 IF "%VCINSTALLDIR%" == "" GOTO NEED_VS
-IF NOT EXIST "source\ReflectiveDLLInjection" (
+IF NOT EXIST "source\ReflectiveDLLInjection\.git" (
   ECHO Meterpreter's submodule dependencies can't be found.
   ECHO From your git console, please run:
   ECHO   $ git submodule init ^&^& git submodule update
