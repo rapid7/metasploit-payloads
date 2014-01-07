@@ -88,8 +88,7 @@ reason, you cannot access the internet during build, you will need to:
  - wget -O posix-meterp-build-tmp/openssl-0.9.8o.tar.gz https://www.openssl.org/source/openssl-0.9.8o.tar.gz
  - wget -O posix-meterp-build-tmp/libpcap-1.1.1.tar.gz http://www.tcpdump.org/release/libpcap-1.1.1.tar.gz
 
-Note that the 'depclean' and 'really-clean' make targets will *delete*
-these files.
+(Note that 'make clean' will *delete* these files.)
 
 Now you should be able to type `make` in the base directory, go make a
 sandwich, and come back to a working[1] meterpreter for Linux.
