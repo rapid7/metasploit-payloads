@@ -423,6 +423,8 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\source\extensions\extapi\adsi.c" />
+    <ClCompile Include="..\..\source\extensions\extapi\adsi_interface.cpp" />
     <ClCompile Include="..\..\source\extensions\extapi\clipboard.c" />
     <ClCompile Include="..\..\source\extensions\extapi\clipboard_image.cpp" />
     <ClCompile Include="..\..\source\extensions\extapi\extapi.c" />
@@ -430,6 +432,8 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClCompile Include="..\..\source\extensions\extapi\window.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\source\extensions\extapi\adsi.h" />
+    <ClInclude Include="..\..\source\extensions\extapi\adsi_interface.h" />
     <ClInclude Include="..\..\source\extensions\extapi\clipboard.h" />
     <ClInclude Include="..\..\source\extensions\extapi\clipboard_image.h" />
     <ClInclude Include="..\..\source\extensions\extapi\extapi.h" />
