@@ -6,6 +6,9 @@
 #include "adsi.h"
 #include "adsi_interface.h"
 
+/*! @brief The default page size to use when no page size is specified */
+#define DEFAULT_PAGE_SIZE 1000
+
 /*!
  * @brief Helper function that converts an ASCII string to a wide char string.
  * @param lpValue ASCII string to convert.
@@ -92,7 +95,15 @@ DWORD request_adsi_domain_query(Remote *remote, Packet *packet)
 		pageSize = packet_get_tlv_value_uint(packet, TLV_TYPE_EXT_ASDI_PAGESIZE);
 		dprintf("[EXTAPI ADSI] Page size specified as %u", pageSize);
 
-		if (maxResults != 0 && pageSize != 0)
+		// Set the page size to something sensible if not given.
+		if (pageSize == 0)
+		{
+			pageSize = DEFAULT_PAGE_SIZE;
+		}
+
+		// If max results is given, there's no point in having a page size
+		// that's bigger!
+		if (maxResults != 0)
 		{
 			pageSize = min(pageSize, maxResults);
 		}
