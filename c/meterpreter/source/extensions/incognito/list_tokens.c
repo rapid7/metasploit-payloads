@@ -1,31 +1,23 @@
 #define _CRT_SECURE_NO_DEPRECATE 1
-#include <stdio.h>
-#include <assert.h>
-#include <stdlib.h>
-#include <string.h>
-#include <aclapi.h>
-#include <accctrl.h>
-#include <psapi.h>
-#include <tlhelp32.h>
-#include <lm.h>
-#include <wchar.h>
+#include "../../common/common.h"
 #include "list_tokens.h"
 #include "token_info.h"
 #include "incognito.h"
 
-
 typedef LONG   NTSTATUS;
 typedef VOID   *POBJECT;
 
-typedef enum _OBJECT_INFORMATION_CLASS{
-   ObjectBasicInformation,
-      ObjectNameInformation,
-      ObjectTypeInformation,
-      ObjectAllTypesInformation,
-      ObjectHandleInformation
+typedef enum _OBJECT_INFORMATION_CLASS
+{
+	ObjectBasicInformation,
+	ObjectNameInformation,
+	ObjectTypeInformation,
+	ObjectAllTypesInformation,
+	ObjectHandleInformation
 } OBJECT_INFORMATION_CLASS;
 
-typedef struct _SYSTEM_HANDLE {
+typedef struct _SYSTEM_HANDLE
+{
    ULONG           uIdProcess;
    UCHAR           ObjectType;
    UCHAR           Flags;
@@ -34,12 +26,14 @@ typedef struct _SYSTEM_HANDLE {
    ACCESS_MASK     GrantedAccess;
 } SYSTEM_HANDLE, *PSYSTEM_HANDLE;
 
-typedef struct _SYSTEM_HANDLE_INFORMATION {
+typedef struct _SYSTEM_HANDLE_INFORMATION
+{
    ULONG                   uCount;
    SYSTEM_HANDLE   Handles[1];
 } SYSTEM_HANDLE_INFORMATION, *PSYSTEM_HANDLE_INFORMATION;
 
-typedef struct _SYSTEM_PROCESS_INFORMATION {
+typedef struct _SYSTEM_PROCESS_INFORMATION
+{
     ULONG NextEntryOffset;
     BYTE Reserved1[52];
     PVOID Reserved2[3];
@@ -53,7 +47,8 @@ typedef struct _SYSTEM_PROCESS_INFORMATION {
     LARGE_INTEGER Reserved6[6];
 } SYSTEM_PROCESS_INFORMATION, *PSYSTEM_PROCESS_INFORMATION;
 
-typedef struct _UNICODE_STRING {
+typedef struct _UNICODE_STRING
+{
    USHORT Length;
    USHORT MaximumLength;
    PWSTR  Buffer;
@@ -111,44 +106,55 @@ static int compare_token_names(const unique_user_token *a, const unique_user_tok
 
 SavedToken *get_token_list(DWORD *num_tokens_enum, TOKEN_PRIVS *token_privs)
 {
-	DWORD total=0, i, j, num_tokens=0, token_list_size = BUF_SIZE, dwSize = sizeof(SYSTEM_HANDLE_INFORMATION), dwError;
+	DWORD total = 0, i, j, num_tokens = 0, token_list_size = BUF_SIZE, dwSize = sizeof(SYSTEM_HANDLE_INFORMATION), dwError;
 	HANDLE process, hObject;
-	PSYSTEM_PROCESS_INFORMATION pProcessInfo=NULL;
-	PSYSTEM_PROCESS_INFORMATION original_pProcessInfo=NULL;
+	PSYSTEM_PROCESS_INFORMATION pProcessInfo = NULL;
+	PSYSTEM_PROCESS_INFORMATION original_pProcessInfo = NULL;
 	NTSTATUS ntReturn;
 	BOOL bMoreProcesses = TRUE;
-	
+
 	LPVOID TokenPrivilegesInfo[BUF_SIZE];
 	DWORD returned_privileges_length, returned_name_length;
 	char privilege_name[BUF_SIZE];
-	HANDLE hObject2=NULL;
+	HANDLE hObject2 = NULL;
 
-	SavedToken *token_list = (SavedToken*)calloc(token_list_size, sizeof(SavedToken)); 
+	SavedToken *token_list = (SavedToken*)calloc(token_list_size, sizeof(SavedToken));
 	*num_tokens_enum = 0;
 
+	dprintf("[INCOGNITO] Preparing for token enumeration");
 	token_privs->SE_ASSIGNPRIMARYTOKEN_PRIVILEGE = FALSE;
 	token_privs->SE_CREATE_TOKEN_PRIVILEGE = FALSE;
 	token_privs->SE_TCB_PRIVILEGE = FALSE;
-	token_privs->SE_TAKE_OWNERSHIP_PRIVILEGE  = FALSE;
+	token_privs->SE_TAKE_OWNERSHIP_PRIVILEGE = FALSE;
 	token_privs->SE_BACKUP_PRIVILEGE = FALSE;
 	token_privs->SE_RESTORE_PRIVILEGE = FALSE;
 	token_privs->SE_DEBUG_PRIVILEGE = FALSE;
-	token_privs->SE_IMPERSONATE_PRIVILEGE  = FALSE;
+	token_privs->SE_IMPERSONATE_PRIVILEGE = FALSE;
 	token_privs->SE_RELABEL_PRIVILEGE = FALSE;
 	token_privs->SE_LOAD_DRIVER_PRIVILEGE = FALSE;
 
 	// Enable debug privs if possible
-	OpenProcessToken(GetCurrentProcess(), GENERIC_ALL/*MAXIMUM_ALLOWED*/, &hObject);
+	dprintf("[INCOGNITO] Opening current process token");
+	if (!OpenProcessToken(GetCurrentProcess(), GENERIC_ALL/*MAXIMUM_ALLOWED*/, &hObject))
+	{
+		dprintf("[INCOGNITO] Opening current process token failed with %u (%x)", GetLastError(), GetLastError());
+		return NULL;
+	}
+	dprintf("[INCOGNITO] Process opened");
 	has_impersonate_priv(hObject);
 
+	dprintf("[INCOGNITO] Grabbing function handles");
 	NtQuerySystemInformation = (NTQUERYSYSTEMINFORMATION)GetProcAddress(GetModuleHandleA("NTDLL.DLL"), "NtQuerySystemInformation");
-	NtQueryObject= (NTQUERYOBJECT)GetProcAddress(GetModuleHandleA("NTDLL.DLL"), "NtQueryObject");
-	dwSize = 256*1000;
-	
+	NtQueryObject = (NTQUERYOBJECT)GetProcAddress(GetModuleHandleA("NTDLL.DLL"), "NtQueryObject");
+	dwSize = 256 * 1000;
+
 	pProcessInfo = (PSYSTEM_PROCESS_INFORMATION)malloc(dwSize);
+	dprintf("[INCOGNITO] Getting system information");
 	ntReturn = NtQuerySystemInformation(SystemProcessInformation, pProcessInfo, dwSize, &dwSize);
-	
-	while (ntReturn == STATUS_INFO_LENGTH_MISMATCH) {
+
+	while (ntReturn == STATUS_INFO_LENGTH_MISMATCH)
+	{
+		dprintf("[INCOGNITO] Length mismatch, retrying ...");
 		free(pProcessInfo);
 		pProcessInfo = (PSYSTEM_PROCESS_INFORMATION)malloc(dwSize);
 		ntReturn = NtQuerySystemInformation(SystemProcessInformation, pProcessInfo, dwSize, &dwSize);
@@ -156,93 +162,108 @@ SavedToken *get_token_list(DWORD *num_tokens_enum, TOKEN_PRIVS *token_privs)
 
 	original_pProcessInfo = pProcessInfo;
 
-	if(ntReturn == STATUS_SUCCESS)
+	if (ntReturn == STATUS_SUCCESS)
 	{
-		while (bMoreProcesses) 
-		{	
+		dprintf("[INCOGNITO] Looking good, continuing processing...");
+		while (bMoreProcesses)
+		{
+			dprintf("[INCOGNITO] NextEntryoffset: %u", pProcessInfo->NextEntryOffset);
 			if (pProcessInfo->NextEntryOffset == 0)
+			{
 				bMoreProcesses = FALSE;
+			}
 
 			// if has impersonate privs, only needs read access
-			process = OpenProcess(MAXIMUM_ALLOWED,FALSE, (DWORD)pProcessInfo->UniqueProcessId);   
-			
-			for(i = 0; i < pProcessInfo->HandleCount; i++)
-			{    
-				if(process != INVALID_HANDLE_VALUE)
+			dprintf("[INCOGNITO] Looking good, continuing processing...");
+			process = OpenProcess(MAXIMUM_ALLOWED, FALSE, (DWORD)pProcessInfo->UniqueProcessId);
+
+			if (process == NULL)
+			{
+				dprintf("[INCOGNITO] Failed to open process %u (%x)", (DWORD)pProcessInfo->UniqueProcessId, (DWORD)pProcessInfo->UniqueProcessId);
+			}
+			else
+			{
+				dprintf("[INCOGNITO] Iterating %u processes for %u (%x)", pProcessInfo->HandleCount, (DWORD)pProcessInfo->UniqueProcessId, (DWORD)pProcessInfo->UniqueProcessId);
+				for (i = 0; i < pProcessInfo->HandleCount; i++)
 				{
 					hObject = NULL;
-					
-					if(DuplicateHandle(process, (HANDLE)((i+1)*4), 
-						GetCurrentProcess(), &hObject, MAXIMUM_ALLOWED, FALSE, 0x02) != FALSE)                  
+
+					if (DuplicateHandle(process, (HANDLE)((i + 1) * 4),
+						GetCurrentProcess(), &hObject, MAXIMUM_ALLOWED, FALSE, 0x02) != FALSE)
 					{
-						LPWSTR lpwsType=NULL;   
-						lpwsType = GetObjectInfo(hObject, ObjectTypeInformation); 
-						if ((lpwsType!=NULL) && !wcscmp(lpwsType, L"Token") && ImpersonateLoggedOnUser(hObject) != 0)
+						LPWSTR lpwsType = NULL;
+						lpwsType = GetObjectInfo(hObject, ObjectTypeInformation);
+						if ((lpwsType != NULL) && !wcscmp(lpwsType, L"Token") && ImpersonateLoggedOnUser(hObject) != 0)
 						{
 							// ImpersonateLoggedOnUser() always returns true. Need to check whether impersonated token kept impersonate status - failure degrades to identification
 							// also revert to self after getting new token context
 							// only process if it was impersonation or higher
 							OpenThreadToken(GetCurrentThread(), MAXIMUM_ALLOWED, TRUE, &hObject2);
 							RevertToSelf();
-							if (is_impersonation_token(hObject2) )
+							if (is_impersonation_token(hObject2))
 							{
 								// Reallocate space if necessary
-								if(*num_tokens_enum >= token_list_size)
+								if (*num_tokens_enum >= token_list_size)
 								{
 									token_list_size *= 2;
 									token_list = (SavedToken*)realloc(token_list, token_list_size*sizeof(SavedToken));
 									if (!token_list)
+									{
 										goto cleanup;
+									}
 								}
+
 								token_list[*num_tokens_enum].token = hObject;
 								get_domain_username_from_token(hObject, token_list[*num_tokens_enum].username);
-							
+
 								if (GetTokenInformation(hObject, TokenPrivileges, TokenPrivilegesInfo, BUF_SIZE, &returned_privileges_length))
 								{
 									if (((TOKEN_PRIVILEGES*)TokenPrivilegesInfo)->PrivilegeCount > 0)
-									for (j=0;j<((TOKEN_PRIVILEGES*)TokenPrivilegesInfo)->PrivilegeCount;j++)
 									{
-										returned_name_length = BUF_SIZE;
-										LookupPrivilegeNameA(NULL, &(((TOKEN_PRIVILEGES*)TokenPrivilegesInfo)->Privileges[j].Luid), privilege_name, &returned_name_length);
-										if (strcmp(privilege_name, "SeAssignPrimaryTokenPrivilege") == 0)
+										for (j = 0; j < ((TOKEN_PRIVILEGES*)TokenPrivilegesInfo)->PrivilegeCount; j++)
 										{
-											token_privs->SE_ASSIGNPRIMARYTOKEN_PRIVILEGE  = TRUE;
-										}
-										else if (strcmp(privilege_name, "SeCreateTokenPrivilege") == 0)
-										{
-											token_privs->SE_CREATE_TOKEN_PRIVILEGE  = TRUE;
-										}
-										else if (strcmp(privilege_name, "SeTcbPrivilege") == 0)
-										{
-											token_privs->SE_TCB_PRIVILEGE = TRUE;
-										}
-										else if (strcmp(privilege_name, "SeTakeOwnershipPrivilege") == 0)
-										{
-											token_privs->SE_TAKE_OWNERSHIP_PRIVILEGE  = TRUE;
-										}
-										else if (strcmp(privilege_name, "SeBackupPrivilege") == 0)
-										{
-											token_privs->SE_BACKUP_PRIVILEGE  = TRUE;
-										}
-										else if (strcmp(privilege_name, "SeRestorePrivilege") == 0)
-										{
-											token_privs->SE_RESTORE_PRIVILEGE  = TRUE;
-										}
-										else if (strcmp(privilege_name, "SeDebugPrivilege") == 0)
-										{
-											token_privs->SE_DEBUG_PRIVILEGE = TRUE;
-										}
-										else if (strcmp(privilege_name, "SeImpersonatePrivilege") == 0)
-										{
-											token_privs->SE_IMPERSONATE_PRIVILEGE  = TRUE;
-										}
-										else if (strcmp(privilege_name, "SeRelabelPrivilege") == 0)
-										{
-											token_privs->SE_RELABEL_PRIVILEGE = TRUE;
-										}
-										else if (strcmp(privilege_name, "SeLoadDriverPrivilege") == 0)
-										{
-											token_privs->SE_LOAD_DRIVER_PRIVILEGE = TRUE;
+											returned_name_length = BUF_SIZE;
+											LookupPrivilegeNameA(NULL, &(((TOKEN_PRIVILEGES*)TokenPrivilegesInfo)->Privileges[j].Luid), privilege_name, &returned_name_length);
+											if (strcmp(privilege_name, "SeAssignPrimaryTokenPrivilege") == 0)
+											{
+												token_privs->SE_ASSIGNPRIMARYTOKEN_PRIVILEGE = TRUE;
+											}
+											else if (strcmp(privilege_name, "SeCreateTokenPrivilege") == 0)
+											{
+												token_privs->SE_CREATE_TOKEN_PRIVILEGE = TRUE;
+											}
+											else if (strcmp(privilege_name, "SeTcbPrivilege") == 0)
+											{
+												token_privs->SE_TCB_PRIVILEGE = TRUE;
+											}
+											else if (strcmp(privilege_name, "SeTakeOwnershipPrivilege") == 0)
+											{
+												token_privs->SE_TAKE_OWNERSHIP_PRIVILEGE = TRUE;
+											}
+											else if (strcmp(privilege_name, "SeBackupPrivilege") == 0)
+											{
+												token_privs->SE_BACKUP_PRIVILEGE = TRUE;
+											}
+											else if (strcmp(privilege_name, "SeRestorePrivilege") == 0)
+											{
+												token_privs->SE_RESTORE_PRIVILEGE = TRUE;
+											}
+											else if (strcmp(privilege_name, "SeDebugPrivilege") == 0)
+											{
+												token_privs->SE_DEBUG_PRIVILEGE = TRUE;
+											}
+											else if (strcmp(privilege_name, "SeImpersonatePrivilege") == 0)
+											{
+												token_privs->SE_IMPERSONATE_PRIVILEGE = TRUE;
+											}
+											else if (strcmp(privilege_name, "SeRelabelPrivilege") == 0)
+											{
+												token_privs->SE_RELABEL_PRIVILEGE = TRUE;
+											}
+											else if (strcmp(privilege_name, "SeLoadDriverPrivilege") == 0)
+											{
+												token_privs->SE_LOAD_DRIVER_PRIVILEGE = TRUE;
+											}
 										}
 									}
 								}
@@ -252,102 +273,111 @@ SavedToken *get_token_list(DWORD *num_tokens_enum, TOKEN_PRIVS *token_privs)
 							CloseHandle(hObject2);
 						}
 						else
-							CloseHandle(hObject);
-					}
-				}		
-			}
-
-			// Also process primary
-			// if has impersonate privs, only needs read access
-			process = OpenProcess(MAXIMUM_ALLOWED, FALSE, (DWORD)pProcessInfo->UniqueProcessId);   
-			dwError = OpenProcessToken(process, MAXIMUM_ALLOWED, &hObject);
-
-			if (dwError !=0 && ImpersonateLoggedOnUser(hObject) != 0)
-			{
-				// ImpersonateLoggedOnUser() always returns true. Need to check whether impersonated token kept impersonate status - failure degrades to identification
-				// also revert to self after getting new token context
-				// only process if it was impersonation or higher
-				OpenThreadToken(GetCurrentThread(), MAXIMUM_ALLOWED, TRUE, &hObject2);
-				RevertToSelf();
-				if (is_impersonation_token(hObject2))
-				{
-					token_list[*num_tokens_enum].token = hObject;
-					get_domain_username_from_token(hObject, token_list[*num_tokens_enum].username);
-					(*num_tokens_enum)++;
-
-					if (GetTokenInformation(hObject, TokenPrivileges, TokenPrivilegesInfo, BUF_SIZE, &returned_privileges_length))
-					{
-						for (i=0;i<((TOKEN_PRIVILEGES*)TokenPrivilegesInfo)->PrivilegeCount;i++)
 						{
-							returned_name_length = BUF_SIZE;
-							LookupPrivilegeNameA(NULL, &(((TOKEN_PRIVILEGES*)TokenPrivilegesInfo)->Privileges[i].Luid), privilege_name, &returned_name_length);
-							if (strcmp(privilege_name, "SeAssignPrimaryTokenPrivilege") == 0)
-							{
-								token_privs->SE_ASSIGNPRIMARYTOKEN_PRIVILEGE  = TRUE;
-							}
-							else if (strcmp(privilege_name, "SeCreateTokenPrivilege") == 0)
-							{
-								token_privs->SE_CREATE_TOKEN_PRIVILEGE  = TRUE;
-							}
-							else if (strcmp(privilege_name, "SeTcbPrivilege") == 0)
-							{
-								token_privs->SE_TCB_PRIVILEGE = TRUE;
-							}
-							else if (strcmp(privilege_name, "SeTakeOwnershipPrivilege") == 0)
-							{
-								token_privs->SE_TAKE_OWNERSHIP_PRIVILEGE  = TRUE;
-							}
-							else if (strcmp(privilege_name, "SeBackupPrivilege") == 0)
-							{
-								token_privs->SE_BACKUP_PRIVILEGE  = TRUE;
-							}
-							else if (strcmp(privilege_name, "SeRestorePrivilege") == 0)
-							{
-								token_privs->SE_RESTORE_PRIVILEGE  = TRUE;
-							}
-							else if (strcmp(privilege_name, "SeDebugPrivilege") == 0)
-							{
-								token_privs->SE_DEBUG_PRIVILEGE = TRUE;
-							}
-							else if (strcmp(privilege_name, "SeImpersonatePrivilege") == 0)
-							{
-								token_privs->SE_IMPERSONATE_PRIVILEGE  = TRUE;
-							}
-							else if (strcmp(privilege_name, "SeRelabelPrivilege") == 0)
-							{
-								token_privs->SE_RELABEL_PRIVILEGE = TRUE;
-							}
-							else if (strcmp(privilege_name, "SeLoadDriverPrivilege") == 0)
-							{
-								token_privs->SE_LOAD_DRIVER_PRIVILEGE = TRUE;
-							}
+							CloseHandle(hObject);
 						}
 					}
 				}
 
-				CloseHandle(hObject2);
+				// Also process primary
+				// if has impersonate privs, only needs read access
+				if (OpenProcessToken(process, MAXIMUM_ALLOWED, &hObject) && ImpersonateLoggedOnUser(hObject))
+				{
+					// ImpersonateLoggedOnUser() always returns true. Need to check whether impersonated token kept impersonate status - failure degrades to identification
+					// also revert to self after getting new token context
+					// only process if it was impersonation or higher
+					if (OpenThreadToken(GetCurrentThread(), MAXIMUM_ALLOWED, TRUE, &hObject2))
+					{
+						RevertToSelf();
+						if (is_impersonation_token(hObject2))
+						{
+							token_list[*num_tokens_enum].token = hObject;
+							get_domain_username_from_token(hObject, token_list[*num_tokens_enum].username);
+							(*num_tokens_enum)++;
+
+							if (GetTokenInformation(hObject, TokenPrivileges, TokenPrivilegesInfo, BUF_SIZE, &returned_privileges_length))
+							{
+								for (i = 0; i < ((TOKEN_PRIVILEGES*)TokenPrivilegesInfo)->PrivilegeCount; i++)
+								{
+									returned_name_length = BUF_SIZE;
+									LookupPrivilegeNameA(NULL, &(((TOKEN_PRIVILEGES*)TokenPrivilegesInfo)->Privileges[i].Luid), privilege_name, &returned_name_length);
+									if (strcmp(privilege_name, "SeAssignPrimaryTokenPrivilege") == 0)
+									{
+										token_privs->SE_ASSIGNPRIMARYTOKEN_PRIVILEGE = TRUE;
+									}
+									else if (strcmp(privilege_name, "SeCreateTokenPrivilege") == 0)
+									{
+										token_privs->SE_CREATE_TOKEN_PRIVILEGE = TRUE;
+									}
+									else if (strcmp(privilege_name, "SeTcbPrivilege") == 0)
+									{
+										token_privs->SE_TCB_PRIVILEGE = TRUE;
+									}
+									else if (strcmp(privilege_name, "SeTakeOwnershipPrivilege") == 0)
+									{
+										token_privs->SE_TAKE_OWNERSHIP_PRIVILEGE = TRUE;
+									}
+									else if (strcmp(privilege_name, "SeBackupPrivilege") == 0)
+									{
+										token_privs->SE_BACKUP_PRIVILEGE = TRUE;
+									}
+									else if (strcmp(privilege_name, "SeRestorePrivilege") == 0)
+									{
+										token_privs->SE_RESTORE_PRIVILEGE = TRUE;
+									}
+									else if (strcmp(privilege_name, "SeDebugPrivilege") == 0)
+									{
+										token_privs->SE_DEBUG_PRIVILEGE = TRUE;
+									}
+									else if (strcmp(privilege_name, "SeImpersonatePrivilege") == 0)
+									{
+										token_privs->SE_IMPERSONATE_PRIVILEGE = TRUE;
+									}
+									else if (strcmp(privilege_name, "SeRelabelPrivilege") == 0)
+									{
+										token_privs->SE_RELABEL_PRIVILEGE = TRUE;
+									}
+									else if (strcmp(privilege_name, "SeLoadDriverPrivilege") == 0)
+									{
+										token_privs->SE_LOAD_DRIVER_PRIVILEGE = TRUE;
+									}
+								}
+							}
+						}
+
+						CloseHandle(hObject2);
+					}
+				}
+				else
+				{
+					dprintf("[INCOGNITO] Failed next level impersonation with %u (%x)", GetLastError(), GetLastError());
+				}
 			}
 
-			pProcessInfo = (PSYSTEM_PROCESS_INFORMATION)((ULONG)pProcessInfo + (ULONG)pProcessInfo->NextEntryOffset);
-		} 
+			dprintf("[INCOGNITO] Moving to next process from %p", pProcessInfo);
+			pProcessInfo = (PSYSTEM_PROCESS_INFORMATION)((ULONG_PTR)pProcessInfo + (ULONG_PTR)pProcessInfo->NextEntryOffset);
+			dprintf("[INCOGNITO] Process now %p", pProcessInfo);
+		}
 	}
 
 cleanup:
 	free(original_pProcessInfo);
 
+	dprintf("[INCOGNITO] Done with getting token list");
 	return token_list;
-
 }
 
 void process_user_token(HANDLE token, unique_user_token *uniq_tokens, DWORD *num_tokens, TOKEN_ORDER token_order)
 {
-	DWORD i, j, num_groups=0;
+	DWORD i, j, num_groups = 0;
 	char *full_name, **group_name_array = NULL;
 	BOOL user_exists = FALSE;
 
 	// If token is NULL then return
 	if (!token)
+	{
 		return;
+	}
 
 	// Get token user or groups
 	if (token_order == BY_USER)
@@ -355,25 +385,33 @@ void process_user_token(HANDLE token, unique_user_token *uniq_tokens, DWORD *num
 		full_name = calloc(BUF_SIZE, sizeof(char));
 		num_groups = 1;
 		if (!get_domain_username_from_token(token, full_name))
+		{
 			goto cleanup;
+		}
 	}
-	else if (token_order == BY_GROUP)
-		if (!get_domain_groups_from_token(token, &group_name_array, &num_groups))
-			goto cleanup;
-	
-	for (i=0;i<num_groups;i++)
+	else if (token_order == BY_GROUP
+		&& !get_domain_groups_from_token(token, &group_name_array, &num_groups))
+	{
+		goto cleanup;
+	}
+
+	for (i = 0; i < num_groups; i++)
 	{
 		if (token_order == BY_GROUP)
+		{
 			full_name = (char*)group_name_array[i];
+		}
 
 		// Check
 		if (!_stricmp("None", strchr(full_name, '\\') + 1) || !_stricmp("Everyone", strchr(full_name, '\\') + 1)
 			|| !_stricmp("LOCAL", strchr(full_name, '\\') + 1) || !_stricmp("NULL SID", strchr(full_name, '\\') + 1)
 			|| !_stricmp("CONSOLE LOGON", strchr(full_name, '\\') + 1))
+		{
 			continue;
+		}
 
 		// Check to see if username has been seen before
-		for (j=0;j<*num_tokens;j++)
+		for (j = 0; j < *num_tokens; j++)
 		{
 			// If found then increment the number and set delegation flag if appropriate
 			if (!_stricmp(uniq_tokens[j].username, full_name))
@@ -381,9 +419,13 @@ void process_user_token(HANDLE token, unique_user_token *uniq_tokens, DWORD *num
 				uniq_tokens[j].token_num++;
 				user_exists = TRUE;
 				if (is_delegation_token(token))
+				{
 					uniq_tokens[j].delegation_available = TRUE;
+				}
 				if (is_impersonation_token(token))
+				{
 					uniq_tokens[j].impersonation_available = TRUE;
+				}
 				break;
 			}
 		}
@@ -397,24 +439,36 @@ void process_user_token(HANDLE token, unique_user_token *uniq_tokens, DWORD *num
 			uniq_tokens[*num_tokens].impersonation_available = FALSE;
 
 			if (is_delegation_token(token))
+			{
 				uniq_tokens[*num_tokens].delegation_available = TRUE;
+			}
 			if (is_impersonation_token(token))
+			{
 				uniq_tokens[*num_tokens].impersonation_available = TRUE;
+			}
 
 			(*num_tokens)++;
 		}
 		else
+		{
 			user_exists = FALSE;
+		}
 
 		// Cleanup
 		if (token_order == BY_GROUP && group_name_array[i])
+		{
 			free(group_name_array[i]);
+		}
 	}
 
 	// Cleanup
 cleanup:
 	if (token_order == BY_GROUP && group_name_array)
+	{
 		free(group_name_array);
+	}
 	else if (token_order == BY_USER && full_name)
+	{
 		free(full_name);
+	}
 }
