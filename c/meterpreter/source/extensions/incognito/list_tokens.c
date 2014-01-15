@@ -106,7 +106,7 @@ static int compare_token_names(const unique_user_token *a, const unique_user_tok
 
 SavedToken *get_token_list(DWORD *num_tokens_enum, TOKEN_PRIVS *token_privs)
 {
-	DWORD total = 0, i, j, num_tokens = 0, token_list_size = BUF_SIZE, dwSize = sizeof(SYSTEM_HANDLE_INFORMATION), dwError;
+	DWORD total = 0, i, j, num_tokens = 0, token_list_size = BUF_SIZE, dwSize = sizeof(SYSTEM_HANDLE_INFORMATION);
 	HANDLE process, hObject;
 	PSYSTEM_PROCESS_INFORMATION pProcessInfo = NULL;
 	PSYSTEM_PROCESS_INFORMATION original_pProcessInfo = NULL;
