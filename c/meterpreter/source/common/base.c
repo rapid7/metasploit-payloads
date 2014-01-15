@@ -267,7 +267,7 @@ BOOL command_process_inline(Command *baseCommand, Command *extensionCommand, Rem
 
 #ifdef _WIN32
 				// Impersonate the thread token if needed (only on Windows)
-				if (dwIndex == 0 && remote->hServerToken != remote->hThreadToken)
+				if (remote->hServerToken != remote->hThreadToken)
 				{
 					if (!ImpersonateLoggedOnUser(remote->hThreadToken))
 					{
