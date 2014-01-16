@@ -52,7 +52,7 @@ DWORD request_wmi_query(Remote *remote, Packet *packet)
 			break;
 		}
 
-		dprintf("[EXTAPI WMI] Beginning user enumeration");
+		dprintf("[EXTAPI WMI] Beginning WMI query enumeration");
 		dwResult = wmi_query(lpwDomain, lpwQuery, response);
 		dprintf("[EXTAPI WMI] Result of processing: %u (0x%x)", dwResult, dwResult);
 	} while (0);

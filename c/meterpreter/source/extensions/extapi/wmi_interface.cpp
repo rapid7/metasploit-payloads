@@ -15,11 +15,201 @@ extern "C" {
 #pragma comment(lib, "comsuppw.lib")
 
 #define PATH_SIZE 512
-#define FIELD_SIZE 512
+#define FIELD_SIZE 1024
 #define ENUM_TIMEOUT 5000
 
-/*! @brief The GUID of the Directory Search COM object. */
-//static const IID IID_IDirectorySearch = { 0x109BA8EC, 0x92F0, 0x11D0, { 0xA7, 0x90, 0x00, 0xC0, 0x4F, 0xD8, 0xD5, 0xA8 } };
+/*! The number of fields to ignore at the start of the query, which we aren't interested in. */
+#define SYSTEM_FIELD_COUNT 8
+
+/*!
+ * @brief Convert a variant type to a string and write it to the given buffer.
+ * @param v The variant to convert.
+ * @param buffer Pointer to the buffer to write the value to.
+ * @param bufferSize size of the buffer.
+ * @returns Pointer to the next location in the buffer.
+ * @remarks This attempts to "flatten" a variant, including array types. The implementation is
+ *          not 100% complete, but is good enough for the sake of this requirement. Only arrays
+ *          of BSTR are currenty supported, more types can be added later if needed. Arbitrary
+ *          array depth has been attempted, but no tests have yet found a nested array in the
+ *          result set. There's probably bugs in that bit.
+ */
+char* variant_to_string(_variant_t& v, char* buffer, DWORD bufferSize)
+{
+	dprintf("[WMI] preparing to parse variant of type %u (%x), buffer size %u", v.vt, v.vt, bufferSize);
+
+	switch (v.vt)
+	{
+	case VT_EMPTY:
+		strncpy_s(buffer, bufferSize, "(EMPTY)", bufferSize - 1);
+		break;
+	case VT_NULL:
+		strncpy_s(buffer, bufferSize, "(NULL)", bufferSize - 1);
+		break;
+	case VT_BOOL:
+		strncpy_s(buffer, bufferSize, v.boolVal == VARIANT_TRUE ? "true" : "false", bufferSize - 1);
+		break;
+	case VT_I1:
+		_snprintf_s(buffer, bufferSize, bufferSize - 1, "%"PRId8, (CHAR)v);
+		break;
+	case VT_I2:
+		_snprintf_s(buffer, bufferSize, bufferSize - 1, "%"PRId16, (SHORT)v);
+		break;
+	case VT_INT:
+	case VT_I4:
+		_snprintf_s(buffer, bufferSize, bufferSize - 1, "%"PRId32, (INT)v);
+		break;
+	case VT_INT_PTR:
+	case VT_I8:
+		_snprintf_s(buffer, bufferSize, bufferSize - 1, "%"PRId64, (INT_PTR)v);
+		break;
+	case VT_UI1:
+		_snprintf_s(buffer, bufferSize, bufferSize - 1, "%"PRIu8, (BYTE)v);
+		break;
+	case VT_UI2:
+		_snprintf_s(buffer, bufferSize, bufferSize - 1, "%"PRIu16, (SHORT)v);
+		break;
+	case VT_UINT:
+	case VT_UI4:
+		_snprintf_s(buffer, bufferSize, bufferSize - 1, "%"PRIu32, (UINT)v);
+		break;
+	case VT_UINT_PTR:
+	case VT_UI8:
+		_snprintf_s(buffer, bufferSize, bufferSize - 1, "%"PRIu64, (UINT_PTR)v);
+		break;
+	case VT_BSTR:
+	case VT_LPSTR:
+	case VT_LPWSTR:
+		// not sure if this is correct
+		strncpy_s(buffer, bufferSize, (char*)(_bstr_t)v.bstrVal, bufferSize - 1);
+		break;
+		// TODO more types, such as floats, dates, etc.
+	default:
+		if ((v.vt & VT_ARRAY) == VT_ARRAY)
+		{
+			// nested array type, great.
+			dprintf("[WMI] array type found!");
+			LPSAFEARRAY array = v.parray;
+			HRESULT hResult;
+
+			if (FAILED(hResult = SafeArrayLock(array)))
+			{
+				dprintf("[WMI] Failed to get array dimension: %x", hResult);
+				break;
+			}
+			dprintf("[WMI] Field name array locked.");
+
+			LONG* indices = NULL;
+			LONG* bounds = NULL;
+			do
+			{
+				VARTYPE varType;
+				SafeArrayGetVartype(array, &varType);
+				dprintf("[WMI] Array type %u (%x)", (ULONG)varType, (ULONG)varType);
+				dprintf("[WMI] Array dimensions: %u", SafeArrayGetDim(array));
+
+				LONG iterations = 1;
+				LONG dim = SafeArrayGetDim(array);
+				indices = (LONG*)malloc(dim * sizeof(LONG));
+				bounds = (LONG*)malloc(dim * sizeof(LONG) * 2);
+				memset(indices, 0, dim * sizeof(LONG));
+				memset(bounds, 0, dim * sizeof(LONG) * 2);
+
+				for (LONG i = 0; i < dim; ++i)
+				{
+					LONG* lBound = bounds + i * 2;
+					LONG* uBound = lBound + 1;
+					if (FAILED(hResult = SafeArrayGetLBound(array, i + 1, lBound))
+						|| FAILED(hResult = SafeArrayGetUBound(array, i + 1, uBound)))
+					{
+						dprintf("[WMI] Failed to get array dimensions: %x", hResult);
+						break;
+					}
+					dprintf("[WMI] Array bounds: %u to %u", *lBound, *uBound);
+
+					iterations *= *uBound - *lBound;
+					indices[i] = *lBound;
+				}
+				dprintf("[WMI] Array requires %u iterations", iterations);
+
+				// we're going to wrap our array elements in brackets, and separate with pipes
+				// because we need some kind of array visualisation and this is the best I could
+				// come up with at this time of night. Each dimension nests in a new set of brackets
+				while (iterations-- > 0)
+				{
+					for (LONG i = 0; i < dim; ++i)
+					{
+						if (indices[i] == 0)
+						{
+							// save space for the closing bracket as well
+							bufferSize -= 2;
+							*buffer++ = '{';
+							dprintf("[WMI] opening bracket for dimension %u", i);
+						}
+						else if(*(buffer - 1) != '|')
+						{
+							--bufferSize;
+							*buffer++ = '|';
+						}
+					}
+
+					dprintf("[WMI] extracting value for iteration %u", iterations);
+					switch (varType)
+					{
+					case VT_BSTR:
+						BSTR val;
+						if (SUCCEEDED(SafeArrayGetElement(array, indices, (void*)&val)))
+						{
+							dprintf("[WMI] Value extracted for iteration %u", iterations);
+							char* newBuf = variant_to_string(_variant_t(val), buffer, bufferSize);
+							bufferSize -= newBuf - buffer + 1;
+							buffer = newBuf;
+							dprintf("[WMI] Value added", iterations);
+						}
+						break;
+					default:
+						dprintf("[WMI] Unsupported nested array type %u", (LONG)varType);
+						break;
+					}
+
+					++indices[dim - 1];
+					for (LONG i = dim - 1; i >= 0; --i)
+					{
+						if (indices[i] == bounds[i * 2 + 1])
+						{
+							dprintf("[WMI] closing bracket for dimension %u", i);
+							*buffer++ = '}';
+							indices[i] = bounds[i * 2];
+							if (i > 0)
+							{
+								++indices[i - 1];
+							}
+						}
+					}
+				}
+			} while (0);
+
+			if (indices)
+			{
+				free(indices);
+			}
+			if (bounds)
+			{
+				free(bounds);
+			}
+
+			SafeArrayUnlock(array);
+		}
+		else
+		{
+			dprintf("[WMI] Unhandled type: %u (%x)", v.vt, v.vt);
+		}
+		// ignore the buffer for other types
+		break;
+	}
+
+	// return wherever we go to.
+	return buffer + strlen(buffer);
+}
 
 /*!
  * @brief Perform a WMI query.
@@ -34,11 +224,14 @@ DWORD wmi_query(LPCWSTR lpwDomain, LPWSTR lpwQuery, Packet* response)
 
 	swprintf_s(cbPath, PATH_SIZE - 1, L"root\\%s", lpwDomain);
 
+	dprintf("[WMI] Initialising COM");
 	if ((hResult = CoInitializeEx(NULL, COINIT_MULTITHREADED)) == S_OK)
 	{
+		dprintf("[WMI] COM initialised");
 		IWbemLocator* pLocator = NULL;
 		IWbemServices* pServices = NULL;
 		IEnumWbemClassObject* pEnumerator = NULL;
+		IWbemClassObject* pSuperClass = NULL;
 		IWbemClassObject* pObj = NULL;
 		Tlv* valueTlvs = NULL;
 		char* values = NULL;
@@ -51,29 +244,41 @@ DWORD wmi_query(LPCWSTR lpwDomain, LPWSTR lpwQuery, Packet* response)
 				dprintf("[WMI] Failed to initialize security: %x", hResult);
 				break;
 			}
+			dprintf("[WMI] Security initialised");
 
 			if (FAILED(hResult = CoCreateInstance(CLSID_WbemLocator, NULL, CLSCTX_ALL, IID_PPV_ARGS(&pLocator))))
 			{
 				dprintf("[WMI] Failed to create WbemLocator: %x", hResult);
 				break;
 			}
+			dprintf("[WMI] WbemLocator created.");
 
 			if (FAILED(hResult = pLocator->ConnectServer(cbPath, NULL, NULL, NULL, WBEM_FLAG_CONNECT_USE_MAX_WAIT, NULL, NULL, &pServices)))
 			{
 				dprintf("[WMI] Failed to create WbemServices at %S: %x", cbPath, hResult);
 				break;
 			}
+			dprintf("[WMI] WbemServices created.");
 
 			if (FAILED(hResult = pServices->ExecQuery(L"WQL", lpwQuery, WBEM_FLAG_FORWARD_ONLY, NULL, &pEnumerator)))
 			{
 				dprintf("[WMI] Failed to create Enumerator for query %S: %x", lpwQuery, hResult);
 				break;
 			}
+			dprintf("[WMI] Enumerated created.");
 
 			ULONG numFound;
 			if (FAILED(hResult = pEnumerator->Next(ENUM_TIMEOUT, 1, &pObj, &numFound)))
 			{
 				dprintf("[WMI] Failed to get the first query element: %x", lpwQuery, hResult);
+				break;
+			}
+			dprintf("[WMI] First result read. hr=%x p=%p", hResult, pObj);
+
+			if (hResult == WBEM_S_FALSE)
+			{
+				// this is not an error
+				dprintf("[WMI] No results found!");
 				break;
 			}
 
@@ -84,6 +289,7 @@ DWORD wmi_query(LPCWSTR lpwDomain, LPWSTR lpwQuery, Packet* response)
 				dprintf("[WMI] Failed to get field names: %x", hResult);
 				break;
 			}
+			dprintf("[WMI] Field Names extracted. hr=%x p=%p", hResult, pFieldArray);
 
 			// lock the array
 			if (FAILED(hResult = SafeArrayLock(pFieldArray)))
@@ -91,21 +297,23 @@ DWORD wmi_query(LPCWSTR lpwDomain, LPWSTR lpwQuery, Packet* response)
 				dprintf("[WMI] Failed to get array dimension: %x", hResult);
 				break;
 			}
+			dprintf("[WMI] Field name array locked.");
 
 			do
 			{
-				dprintf("[WMI] Array dimensions: %u", SafeArrayGetDim(pFieldArray);
+				dprintf("[WMI] Array dimensions: %u", SafeArrayGetDim(pFieldArray));
 
 				// this array is just one dimension, let's get the bounds of the first dimension
 				LONG lBound, uBound;
 				if (FAILED(hResult = SafeArrayGetLBound(pFieldArray, 1, &lBound))
-					|| FAILED(hResult = SafeArrayGetLBound(pFieldArray, 1, &uBound)))
+					|| FAILED(hResult = SafeArrayGetUBound(pFieldArray, 1, &uBound)))
 				{
 					dprintf("[WMI] Failed to get array dimensions: %x", hResult);
 					break;
 				}
+				dprintf("[WMI] Bounds: %u x %u", lBound, uBound);
 
-				LONG fieldCount = uBound - lBound + 1;
+				LONG fieldCount = uBound - lBound - 1 - SYSTEM_FIELD_COUNT;
 				dprintf("[WMI] Query results in %u fields", fieldCount);
 
 				fields = (VARIANT**)malloc(fieldCount * sizeof(VARIANT**));
@@ -117,10 +325,11 @@ DWORD wmi_query(LPCWSTR lpwDomain, LPWSTR lpwQuery, Packet* response)
 
 				for (LONG i = 0; i < fieldCount; ++i)
 				{
+					LONG indices[1] = { i + SYSTEM_FIELD_COUNT };
 					char* fieldName = values + (i * FIELD_SIZE);
-					LONG indices[2] = { 0, i };
 					SafeArrayPtrOfIndex(pFieldArray, indices, (void**)&fields[i]);
 					_bstr_t bstr(fields[i]->bstrVal);
+
 					strncpy_s(fieldName, FIELD_SIZE, (const char*)bstr, FIELD_SIZE - 1);
 
 					valueTlvs[i].header.type = TLV_TYPE_EXT_WMI_FIELD;
@@ -130,20 +339,24 @@ DWORD wmi_query(LPCWSTR lpwDomain, LPWSTR lpwQuery, Packet* response)
 					dprintf("[WMI] Added header field: %s", fieldName);
 				}
 
+				dprintf("[WMI] added all field headers");
 				// add the field names to the packet
 				packet_add_tlv_group(response, TLV_TYPE_EXT_WMI_FIELDS, valueTlvs, fieldCount);
 
+				dprintf("[WMI] processing values...");
 				// with that horrible pain out of the way, let's actually grab the data
 				do
 				{
 					if (FAILED(hResult))
 					{
+						dprintf("[WMI] Loop exited via %x", hResult);
 						break;
 					}
 
 					memset(valueTlvs, 0, fieldCount * sizeof(Tlv));
 					memset(values, 0, fieldCount * FIELD_SIZE);
 
+					dprintf("[WMI] Going over fields ...");
 					for (LONG i = 0; i < fieldCount; ++i)
 					{
 						char* value = values + (i * FIELD_SIZE);
@@ -154,38 +367,10 @@ DWORD wmi_query(LPCWSTR lpwDomain, LPWSTR lpwQuery, Packet* response)
 						VariantInit(&varValue);
 
 						_bstr_t field(fields[i]->bstrVal);
+						dprintf("[WMI] Extracting value for %s", (char*)field);
 						if (SUCCEEDED(pObj->Get(field, 0, &varValue, NULL, NULL)))
 						{
-							_variant_t v(varValue);
-
-							switch (v.vt)
-							{
-							case VT_BOOL:
-								strncpy_s(value, FIELD_SIZE, v.boolVal == VARIANT_TRUE ? "true" : "false", FIELD_SIZE - 1);
-								break;
-							case VT_INT:
-								_snprintf_s(value, FIELD_SIZE, FIELD_SIZE - 1, "%"PRId32, (INT)v);
-								break;
-							case VT_INT_PTR:
-								_snprintf_s(value, FIELD_SIZE, FIELD_SIZE - 1, "%"PRId64, (INT_PTR)v);
-								break;
-							case VT_UINT:
-								_snprintf_s(value, FIELD_SIZE, FIELD_SIZE - 1, "%"PRIu32, (UINT)v);
-								break;
-							case VT_UINT_PTR:
-								_snprintf_s(value, FIELD_SIZE, FIELD_SIZE - 1, "%"PRIu64, (UINT_PTR)v);
-								break;
-							case VT_BSTR:
-							case VT_LPSTR:
-							case VT_LPWSTR:
-								// not sure if this is correct
-								strncpy_s(value, FIELD_SIZE, (char*)(_bstr_t)v.bstrVal, FIELD_SIZE - 1);
-								break;
-							// TODO more types, such as floats, dates, etc.
-							default:
-								// ignore the value for other types
-								break;
-							}
+							variant_to_string(_variant_t(varValue), value, FIELD_SIZE);
 						}
 
 						valueTlvs[i].header.length = (UINT)strlen(value) + 1;
@@ -202,11 +387,6 @@ DWORD wmi_query(LPCWSTR lpwDomain, LPWSTR lpwQuery, Packet* response)
 			} while (0);
 
 			SafeArrayUnlock(pFieldArray);
-
-			if (SUCCEEDED(hResult))
-			{
-				hResult = S_OK;
-			}
 		} while (0);
 
 		if (fields)
@@ -245,7 +425,15 @@ DWORD wmi_query(LPCWSTR lpwDomain, LPWSTR lpwQuery, Packet* response)
 		}
 		CoUninitialize();
 
-		dprintf("[WMI] Things appeard to go well!");
+		if (SUCCEEDED(hResult))
+		{
+			hResult = S_OK;
+		}
+
+		if (hResult == S_OK)
+		{
+			dprintf("[WMI] Things appeard to go well!");
+		}
 	}
 	else
 	{
