@@ -18,8 +18,13 @@ extern "C" {
 #define FIELD_SIZE 1024
 #define ENUM_TIMEOUT 5000
 
-/*! The number of fields to ignore at the start of the query, which we aren't interested in. */
+/*! The number of fields to ignore at the start of the query, which we aren't interested in.
+ *  For some reason there's one more system field in x64 than there is in x86. */
+#ifdef _WIN64
+#define SYSTEM_FIELD_COUNT 9
+#else
 #define SYSTEM_FIELD_COUNT 8
+#endif
 
 /*!
  * @brief Convert a variant type to a string and write it to the given buffer.
@@ -161,7 +166,7 @@ char* variant_to_string(_variant_t& v, char* buffer, DWORD bufferSize)
 						{
 							dprintf("[WMI] Value extracted for iteration %u", iterations);
 							char* newBuf = variant_to_string(_variant_t(val), buffer, bufferSize);
-							bufferSize -= newBuf - buffer + 1;
+							bufferSize -= (LONG)(newBuf - buffer + 1);
 							buffer = newBuf;
 							dprintf("[WMI] Value added", iterations);
 						}
@@ -311,9 +316,9 @@ DWORD wmi_query(LPCWSTR lpwDomain, LPWSTR lpwQuery, Packet* response)
 					dprintf("[WMI] Failed to get array dimensions: %x", hResult);
 					break;
 				}
-				dprintf("[WMI] Bounds: %u x %u", lBound, uBound);
+				dprintf("[WMI] Bounds: %u to %u", lBound, uBound);
 
-				LONG fieldCount = uBound - lBound - 1 - SYSTEM_FIELD_COUNT;
+				LONG fieldCount = uBound - lBound - SYSTEM_FIELD_COUNT;
 				dprintf("[WMI] Query results in %u fields", fieldCount);
 
 				fields = (VARIANT**)malloc(fieldCount * sizeof(VARIANT**));
@@ -356,7 +361,6 @@ DWORD wmi_query(LPCWSTR lpwDomain, LPWSTR lpwQuery, Packet* response)
 					memset(valueTlvs, 0, fieldCount * sizeof(Tlv));
 					memset(values, 0, fieldCount * FIELD_SIZE);
 
-					dprintf("[WMI] Going over fields ...");
 					for (LONG i = 0; i < fieldCount; ++i)
 					{
 						char* value = values + (i * FIELD_SIZE);
