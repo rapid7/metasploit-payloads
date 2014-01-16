@@ -1,7 +1,7 @@
 /*!
  * @file adsi_interface.h
  * @brief Declarations for functions that deal directly with ADSI
- *        via the COM interfaces (hence the .cpp extension).
+ *        via the COM interfaces.cpp extension).
  */
 #ifndef _METERPRETER_SOURCE_EXTENSION_EXTAPI_ADSI_INTERFACE_H
 #define _METERPRETER_SOURCE_EXTENSION_EXTAPI_ADSI_INTERFACE_H
