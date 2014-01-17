@@ -10,6 +10,7 @@ extern "C" {
 }
 #include <WbemCli.h>
 #include <comutil.h>
+#include <comdef.h>
 
 #pragma comment(lib, "wbemuuid.lib")
 #pragma comment(lib, "comsuppw.lib")
@@ -218,16 +219,13 @@ char* variant_to_string(_variant_t& v, char* buffer, DWORD bufferSize)
 
 /*!
  * @brief Perform a WMI query.
- * @param lpwDomain Name of the domain that is to be queried.
+ * @param lpwRoot Name of the root object that is to be queried against.
  * @param lpwQuery The filter to use when reading objects (LDAP style).
  * @param response The response \c Packet to add the results to.
  */
-DWORD wmi_query(LPCWSTR lpwDomain, LPWSTR lpwQuery, Packet* response)
+DWORD wmi_query(LPCWSTR lpwRoot, LPWSTR lpwQuery, Packet* response)
 {
 	HRESULT hResult;
-	WCHAR cbPath[PATH_SIZE];
-
-	swprintf_s(cbPath, PATH_SIZE - 1, L"root\\%s", lpwDomain);
 
 	dprintf("[WMI] Initialising COM");
 	if ((hResult = CoInitializeEx(NULL, COINIT_MULTITHREADED)) == S_OK)
@@ -258,9 +256,9 @@ DWORD wmi_query(LPCWSTR lpwDomain, LPWSTR lpwQuery, Packet* response)
 			}
 			dprintf("[WMI] WbemLocator created.");
 
-			if (FAILED(hResult = pLocator->ConnectServer(cbPath, NULL, NULL, NULL, WBEM_FLAG_CONNECT_USE_MAX_WAIT, NULL, NULL, &pServices)))
+			if (FAILED(hResult = pLocator->ConnectServer(_bstr_t(lpwRoot), NULL, NULL, NULL, WBEM_FLAG_CONNECT_USE_MAX_WAIT, NULL, NULL, &pServices)))
 			{
-				dprintf("[WMI] Failed to create WbemServices at %S: %x", cbPath, hResult);
+				dprintf("[WMI] Failed to create WbemServices at %S: %x", lpwRoot, hResult);
 				break;
 			}
 			dprintf("[WMI] WbemServices created.");
@@ -432,16 +430,25 @@ DWORD wmi_query(LPCWSTR lpwDomain, LPWSTR lpwQuery, Packet* response)
 		if (SUCCEEDED(hResult))
 		{
 			hResult = S_OK;
-		}
-
-		if (hResult == S_OK)
-		{
 			dprintf("[WMI] Things appeard to go well!");
 		}
 	}
 	else
 	{
 		dprintf("[WMI] Failed to initialize COM");
+	}
+
+	if (FAILED(hResult))
+	{
+		// if we failed, we're going to convert the error to a string, add it and still return success, but we'll
+		// also include the hresult.
+		char errorMessage[1024];
+		memset(errorMessage, 0, 1024);
+		_com_error comError(hResult);
+		_snprintf_s(errorMessage, 1024, 1023, "%s (0x%x)", comError.ErrorMessage(), hResult);
+		dprintf("[WMI] returning error -> %s", errorMessage);
+		packet_add_tlv_string(response, TLV_TYPE_EXT_WMI_ERROR, errorMessage);
+		hResult = S_OK;
 	}
 
 	return (DWORD)hResult;

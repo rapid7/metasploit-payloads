@@ -18,7 +18,7 @@ DWORD request_wmi_query(Remote *remote, Packet *packet)
 {
 	DWORD dwResult = ERROR_SUCCESS;
 	LPSTR lpValue = NULL;
-	LPWSTR lpwDomain = NULL;
+	LPWSTR lpwRoot = NULL;
 	LPWSTR lpwQuery = NULL;
 	Packet * response = packet_create_response(packet);
 
@@ -33,10 +33,10 @@ DWORD request_wmi_query(Remote *remote, Packet *packet)
 
 		if (!lpValue)
 		{
-			lpValue = "CIMV2";
+			lpValue = "root\\CIMV2";
 		}
 		dprintf("[EXTAPI WMI] Domain: %s", lpValue);
-		dwResult = to_wide_string(lpValue, &lpwDomain);
+		dwResult = to_wide_string(lpValue, &lpwRoot);
 		if (dwResult != ERROR_SUCCESS)
 		{
 			dprintf("[EXTAPI WMI] Failed to get Domain");
@@ -53,7 +53,7 @@ DWORD request_wmi_query(Remote *remote, Packet *packet)
 		}
 
 		dprintf("[EXTAPI WMI] Beginning WMI query enumeration");
-		dwResult = wmi_query(lpwDomain, lpwQuery, response);
+		dwResult = wmi_query(lpwRoot, lpwQuery, response);
 		dprintf("[EXTAPI WMI] Result of processing: %u (0x%x)", dwResult, dwResult);
 	} while (0);
 
@@ -62,9 +62,9 @@ DWORD request_wmi_query(Remote *remote, Packet *packet)
 		free(lpwQuery);
 	}
 
-	if (lpwDomain)
+	if (lpwRoot)
 	{
-		free(lpwDomain);
+		free(lpwRoot);
 	}
 
 	dprintf("[EXTAPI WMI] Transmitting response back to caller.");
