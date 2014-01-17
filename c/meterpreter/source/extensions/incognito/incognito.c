@@ -37,59 +37,76 @@ DWORD request_incognito_list_tokens(Remote *remote, Packet *packet)
 	BOOL bTokensAvailable = FALSE;
 	TOKEN_ORDER token_order;
 	TOKEN_PRIVS token_privs;
-	char *delegation_tokens = calloc(sizeof(char), BUF_SIZE), 
+	char *delegation_tokens = calloc(sizeof(char), BUF_SIZE),
 		*impersonation_tokens = calloc(sizeof(char), BUF_SIZE),
 		temp[BUF_SIZE] = "";
-	
+
 	Packet *response = packet_create_response(packet);
 	token_order = packet_get_tlv_value_uint(packet, TLV_TYPE_INCOGNITO_LIST_TOKENS_TOKEN_ORDER);
 
+	dprintf("[INCOGNITO] Enumerating tokens");
 	// Enumerate tokens
 	token_list = get_token_list(&num_tokens, &token_privs);
 
 	if (!token_list)
 	{
+		dprintf("[INCOGNITO] Enumerating tokens failed with %u (%x)", GetLastError(), GetLastError());
 		packet_transmit_response(GetLastError(), remote, response);
 
 		return ERROR_SUCCESS;
 	}
 
+	dprintf("[INCOGNITO] Enumerating tokens succeeded, processing tokens");
 	// Process all tokens to get determinue unique names and delegation abilities
-	for (i=0;i<num_tokens;i++)
-	if (token_list[i].token)
+	for (i = 0; i < num_tokens; i++)
 	{
-		process_user_token(token_list[i].token, uniq_tokens, &num_unique_tokens, token_order);
-		CloseHandle(token_list[i].token);
+		if (token_list[i].token)
+		{
+			dprintf("[INCOGNITO] Processing Token %x %s", token_list[i].token, token_list[i].username);
+			process_user_token(token_list[i].token, uniq_tokens, &num_unique_tokens, token_order);
+			CloseHandle(token_list[i].token);
+			dprintf("[INCOGNITO] Processed Token %x %s", token_list[i].token, token_list[i].username);
+		}
+		else
+		{
+			dprintf("[INCOGNITO] Skipping token %u", i);
+		}
 	}
 
 	// Sort by name and then display all delegation and impersonation tokens
+	dprintf("[INCOGNITO] sorting tokens");
 	qsort(uniq_tokens, num_unique_tokens, sizeof(unique_user_token), compare_token_names);
 
-	for (i=0;i<num_unique_tokens;i++)
+	for (i = 0; i < num_unique_tokens; i++)
 	if (uniq_tokens[i].delegation_available)
 	{
 		bTokensAvailable = TRUE;
-		strncat(delegation_tokens, uniq_tokens[i].username, BUF_SIZE-strlen(delegation_tokens)-1);
-		strncat(delegation_tokens, "\n", BUF_SIZE-strlen(delegation_tokens)-1);
+		strncat(delegation_tokens, uniq_tokens[i].username, BUF_SIZE - strlen(delegation_tokens) - 1);
+		strncat(delegation_tokens, "\n", BUF_SIZE - strlen(delegation_tokens) - 1);
 	}
 
 	if (!bTokensAvailable)
-		strncat(delegation_tokens, "No tokens available\n", BUF_SIZE-strlen(delegation_tokens)-1);
+	{
+		strncat(delegation_tokens, "No tokens available\n", BUF_SIZE - strlen(delegation_tokens) - 1);
+	}
 
 	bTokensAvailable = FALSE;
 
-	for (i=0;i<num_unique_tokens;i++)
-	if (!uniq_tokens[i].delegation_available && uniq_tokens[i].impersonation_available)
+	for (i = 0; i < num_unique_tokens; i++)
 	{
-		bTokensAvailable = TRUE;
-		strncat(impersonation_tokens, uniq_tokens[i].username, BUF_SIZE-strlen(impersonation_tokens)-1);
-		strncat(impersonation_tokens, "\n", BUF_SIZE-strlen(impersonation_tokens)-1);
+		if (!uniq_tokens[i].delegation_available && uniq_tokens[i].impersonation_available)
+		{
+			bTokensAvailable = TRUE;
+			strncat(impersonation_tokens, uniq_tokens[i].username, BUF_SIZE - strlen(impersonation_tokens) - 1);
+			strncat(impersonation_tokens, "\n", BUF_SIZE - strlen(impersonation_tokens) - 1);
+		}
 	}
 
 	if (!bTokensAvailable)
-		strncat(impersonation_tokens, "No tokens available\n", BUF_SIZE-strlen(impersonation_tokens)-1);
+	{
+		strncat(impersonation_tokens, "No tokens available\n", BUF_SIZE - strlen(impersonation_tokens) - 1);
+	}
 
-	
 	packet_add_tlv_string(response, TLV_TYPE_INCOGNITO_LIST_TOKENS_DELEGATION, delegation_tokens);
 	packet_add_tlv_string(response, TLV_TYPE_INCOGNITO_LIST_TOKENS_IMPERSONATION, impersonation_tokens);
 	packet_transmit_response(ERROR_SUCCESS, remote, response);
