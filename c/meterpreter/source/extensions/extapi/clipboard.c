@@ -341,8 +341,8 @@ VOID dump_clipboard_capture(Packet* pResponse, ClipboardCapture* pCapture, BOOL 
 	case CapText:
 		dprintf("[EXTAPI CLIPBOARD] Dumping text %s", pCapture->lpText);
 		entries[1].header.type = TLV_TYPE_EXT_CLIPBOARD_TYPE_TEXT_CONTENT;
-		entries[1].header.length = lstrlenA(pCapture->lpText) + 1;
-		entries[1].buffer = (PUCHAR)pCapture->lpText;
+		entries[1].buffer = (PUCHAR)(pCapture->lpText ? pCapture->lpText : "(null - clipboard was cleared)");
+		entries[1].header.length = lstrlenA((char*)entries[1].buffer) + 1;
 
 		packet_add_tlv_group(pResponse, TLV_TYPE_EXT_CLIPBOARD_TYPE_TEXT, entries, 2);
 		dprintf("[EXTAPI CLIPBOARD] Text added to packet");
