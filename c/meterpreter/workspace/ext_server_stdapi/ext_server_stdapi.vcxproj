@@ -151,7 +151,7 @@
     <ClCompile>
       <Optimization>MinSpace</Optimization>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
-      <AdditionalIncludeDirectories>..\..\source\extensions\stdapi\server;..\..\source\openssl\include;..\..\source\jpeg-8;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\stdapi\server;..\..\source\openssl\include;..\..\source\jpeg-8;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;EXT_SERVER_SYS_EXPORTS;_CRT_SECURE_NO_WARNINGS;CINTERFACE;COBJMACROS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -192,7 +192,7 @@
       <OutputFile>$(OutDir)\ext_server_stdapi.bsc</OutputFile>
     </Bscmake>
     <PostBuildEvent>
-      <Command>editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,4.0 "$(TargetDir)$(TargetFileName)" > NUL
+      <Command>editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,4.0 "$(TargetDir)$(TargetFileName)" &gt; NUL
 IF EXIST "$(ProjectDir)..\..\output\$(PlatformShortName)\Debug\" GOTO COPY
     mkdir "$(ProjectDir)..\..\output\$(PlatformShortName)\Debug\"
 :COPY
@@ -212,7 +212,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClCompile>
       <Optimization>MinSpace</Optimization>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
-      <AdditionalIncludeDirectories>..\..\source\extensions\stdapi\server;..\..\source\openssl\include;..\..\source\jpeg-8;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\stdapi\server;..\..\source\openssl\include;..\..\source\jpeg-8;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;EXT_SERVER_SYS_EXPORTS;_CRT_SECURE_NO_WARNINGS;CINTERFACE;COBJMACROS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -253,7 +253,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <OutputFile>$(OutDir)\ext_server_stdapi.bsc</OutputFile>
     </Bscmake>
     <PostBuildEvent>
-      <Command>editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,4.0 "$(TargetDir)$(TargetFileName)" > NUL
+      <Command>editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,4.0 "$(TargetDir)$(TargetFileName)" &gt; NUL
 IF EXIST "$(ProjectDir)..\..\output\$(PlatformShortName)\Debug\" GOTO COPY
     mkdir "$(ProjectDir)..\..\output\$(PlatformShortName)\Debug\"
 :COPY
@@ -272,7 +272,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     </Midl>
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>..\..\source\extensions\stdapi\server;..\..\source\openssl\include;..\..\source\jpeg-8;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\stdapi\server;..\..\source\openssl\include;..\..\source\jpeg-8;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;EXT_SERVER_SYS_EXPORTS;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MinimalRebuild>true</MinimalRebuild>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -309,7 +309,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <OutputFile>$(OutDir)\ext_server_stdapi.bsc</OutputFile>
     </Bscmake>
     <PostBuildEvent>
-      <Command>editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,5.02 "$(TargetDir)$(TargetFileName)" > NUL
+      <Command>editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,5.02 "$(TargetDir)$(TargetFileName)" &gt; NUL
 IF EXIST "$(ProjectDir)..\..\output\$(PlatformShortName)\Debug\" GOTO COPY
     mkdir "$(ProjectDir)..\..\output\$(PlatformShortName)\Debug\"
 :COPY
@@ -328,7 +328,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     </Midl>
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>..\..\source\extensions\stdapi\server;..\..\source\openssl\include;..\..\source\jpeg-8;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\stdapi\server;..\..\source\openssl\include;..\..\source\jpeg-8;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;EXT_SERVER_SYS_EXPORTS;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MinimalRebuild>true</MinimalRebuild>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -365,7 +365,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <OutputFile>$(OutDir)\ext_server_stdapi.bsc</OutputFile>
     </Bscmake>
     <PostBuildEvent>
-      <Command>editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,5.02 "$(TargetDir)$(TargetFileName)" > NUL
+      <Command>editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,5.02 "$(TargetDir)$(TargetFileName)" &gt; NUL
 IF EXIST "$(ProjectDir)..\..\output\$(PlatformShortName)\Debug\" GOTO COPY
     mkdir "$(ProjectDir)..\..\output\$(PlatformShortName)\Debug\"
 :COPY
@@ -385,7 +385,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClCompile>
       <Optimization>MinSpace</Optimization>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
-      <AdditionalIncludeDirectories>..\..\source\extensions\stdapi\server;..\..\source\openssl\include;..\..\source\jpeg-8;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\stdapi\server;..\..\source\openssl\include;..\..\source\jpeg-8;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_SYS_EXPORTS;_CRT_SECURE_NO_WARNINGS;CINTERFACE;COBJMACROS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -426,7 +426,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <OutputFile>$(OutDir)\ext_server_stdapi.bsc</OutputFile>
     </Bscmake>
     <PostBuildEvent>
-      <Command>editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,4.0 "$(TargetDir)$(TargetFileName)" > NUL
+      <Command>editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,4.0 "$(TargetDir)$(TargetFileName)" &gt; NUL
 IF EXIST "$(ProjectDir)..\..\output\$(PlatformShortName)\" GOTO COPY
     mkdir "$(ProjectDir)..\..\output\$(PlatformShortName)\"
 :COPY
@@ -446,7 +446,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClCompile>
       <Optimization>MinSpace</Optimization>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
-      <AdditionalIncludeDirectories>..\..\source\extensions\stdapi\server;..\..\source\openssl\include;..\..\source\jpeg-8;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\stdapi\server;..\..\source\openssl\include;..\..\source\jpeg-8;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_SYS_EXPORTS;_CRT_SECURE_NO_WARNINGS;CINTERFACE;COBJMACROS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -487,7 +487,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <OutputFile>$(OutDir)\ext_server_stdapi.bsc</OutputFile>
     </Bscmake>
     <PostBuildEvent>
-      <Command>editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,4.0 "$(TargetDir)$(TargetFileName)" > NUL
+      <Command>editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,4.0 "$(TargetDir)$(TargetFileName)" &gt; NUL
 IF EXIST "$(ProjectDir)..\..\output\$(PlatformShortName)\" GOTO COPY
     mkdir "$(ProjectDir)..\..\output\$(PlatformShortName)\"
 :COPY
@@ -507,7 +507,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
-      <AdditionalIncludeDirectories>..\..\source\extensions\stdapi\server;..\..\source\openssl\include;..\..\source\jpeg-8;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\stdapi\server;..\..\source\openssl\include;..\..\source\jpeg-8;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_SYS_EXPORTS;_CRT_SECURE_NO_WARNINGS;CINTERFACE;COBJMACROS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -547,7 +547,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <OutputFile>$(OutDir)\ext_server_stdapi.bsc</OutputFile>
     </Bscmake>
     <PostBuildEvent>
-      <Command>editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,5.02 "$(TargetDir)$(TargetFileName)" > NUL
+      <Command>editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,5.02 "$(TargetDir)$(TargetFileName)" &gt; NUL
 IF EXIST "$(ProjectDir)..\..\output\$(PlatformShortName)\" GOTO COPY
     mkdir "$(ProjectDir)..\..\output\$(PlatformShortName)\"
 :COPY
@@ -567,7 +567,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
-      <AdditionalIncludeDirectories>..\..\source\extensions\stdapi\server;..\..\source\openssl\include;..\..\source\jpeg-8;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\stdapi\server;..\..\source\openssl\include;..\..\source\jpeg-8;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_SYS_EXPORTS;_CRT_SECURE_NO_WARNINGS;CINTERFACE;COBJMACROS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -607,7 +607,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <OutputFile>$(OutDir)\ext_server_stdapi.bsc</OutputFile>
     </Bscmake>
     <PostBuildEvent>
-      <Command>editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,5.02 "$(TargetDir)$(TargetFileName)" > NUL
+      <Command>editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,5.02 "$(TargetDir)$(TargetFileName)" &gt; NUL
 IF EXIST "$(ProjectDir)..\..\output\$(PlatformShortName)\" GOTO COPY
     mkdir "$(ProjectDir)..\..\output\$(PlatformShortName)\"
 :COPY

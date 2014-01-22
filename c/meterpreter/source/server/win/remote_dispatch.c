@@ -6,7 +6,7 @@ extern HINSTANCE hAppInstance;
 // see remote_dispatch_common.c
 extern LIST * extension_list;
 // see common/base.c
-extern Command *extension_commands;
+extern Command *extensionCommands;
 
 DWORD request_core_loadlib(Remote *remote, Packet *packet)
 {
@@ -17,15 +17,13 @@ DWORD request_core_loadlib(Remote *remote, Packet *packet)
 	DWORD flags = 0;
 	BOOL bLibLoadedReflectivly = FALSE;
 
-	Command *first = extension_commands;
+	Command *first = extensionCommands;
 	Command *command;
 
 	do
 	{
-		libraryPath = packet_get_tlv_value_string(packet, 
-				TLV_TYPE_LIBRARY_PATH);
-		flags       = packet_get_tlv_value_uint(packet, 
-				TLV_TYPE_FLAGS);
+		libraryPath = packet_get_tlv_value_string(packet, TLV_TYPE_LIBRARY_PATH);
+		flags = packet_get_tlv_value_uint(packet, TLV_TYPE_FLAGS);
 
 		// Invalid library path?
 		if (!libraryPath)
@@ -42,9 +40,9 @@ DWORD request_core_loadlib(Remote *remote, Packet *packet)
 
 			// Get the library's file contents
 			if ((packet_get_tlv(packet, TLV_TYPE_DATA,
-					&dataTlv) != ERROR_SUCCESS) ||
-			    (!(targetPath = packet_get_tlv_value_string(packet,
-					TLV_TYPE_TARGET_PATH))))
+				&dataTlv) != ERROR_SUCCESS) ||
+				(!(targetPath = packet_get_tlv_value_string(packet,
+				TLV_TYPE_TARGET_PATH))))
 			{
 				res = ERROR_INVALID_PARAMETER;
 				break;
@@ -54,13 +52,13 @@ DWORD request_core_loadlib(Remote *remote, Packet *packet)
 			if (!(flags & LOAD_LIBRARY_FLAG_ON_DISK))
 			{
 				// try to load the library via its reflective loader...
-				library = LoadLibraryR( dataTlv.buffer, dataTlv.header.length );
-				if( library == NULL )
+				library = LoadLibraryR(dataTlv.buffer, dataTlv.header.length);
+				if (library == NULL)
 				{
 					// if that fails, presumably besause the library doesn't support
 					// reflective injection, we default to using libloader...
-					library = libloader_load_library( targetPath, 
-								dataTlv.buffer, dataTlv.header.length );
+					library = libloader_load_library(targetPath,
+						dataTlv.buffer, dataTlv.header.length);
 				}
 				else
 				{
@@ -72,8 +70,8 @@ DWORD request_core_loadlib(Remote *remote, Packet *packet)
 			else
 			{
 				// Otherwise, save the library buffer to disk
-				res = buffer_to_file(targetPath, dataTlv.buffer, 
-						dataTlv.header.length);
+				res = buffer_to_file(targetPath, dataTlv.buffer,
+					dataTlv.header.length);
 			}
 
 			// Override the library path
@@ -94,21 +92,21 @@ DWORD request_core_loadlib(Remote *remote, Packet *packet)
 		// call its Init routine
 		if ((flags & LOAD_LIBRARY_FLAG_EXTENSION) && (library))
 		{
-			EXTENSION * extension = (EXTENSION *)malloc( sizeof(EXTENSION) );
-			if( extension )
+			EXTENSION * extension = (EXTENSION *)malloc(sizeof(EXTENSION));
+			if (extension)
 			{
 				extension->library = library;
 
 				// if the library was loaded via its reflective loader we must use GetProcAddressR()
-				if( bLibLoadedReflectivly )
+				if (bLibLoadedReflectivly)
 				{
-					extension->init   = (PSRVINIT)GetProcAddressR( extension->library, "InitServerExtension" );
-					extension->deinit = (PSRVDEINIT)GetProcAddressR( extension->library, "DeinitServerExtension" );
+					extension->init = (PSRVINIT)GetProcAddressR(extension->library, "InitServerExtension");
+					extension->deinit = (PSRVDEINIT)GetProcAddressR(extension->library, "DeinitServerExtension");
 				}
 				else
 				{
-					extension->init   = (PSRVINIT)GetProcAddress( extension->library, "InitServerExtension" );
-					extension->deinit = (PSRVDEINIT)GetProcAddress( extension->library, "DeinitServerExtension" );
+					extension->init = (PSRVINIT)GetProcAddress(extension->library, "InitServerExtension");
+					extension->deinit = (PSRVDEINIT)GetProcAddress(extension->library, "DeinitServerExtension");
 				}
 
 				// patch in the metsrv.dll's HMODULE handle, used by the server extensions for delay loading
@@ -117,20 +115,26 @@ DWORD request_core_loadlib(Remote *remote, Packet *packet)
 				remote->hMetSrv = hAppInstance;
 
 				// Call the init routine in the library
-				if( extension->init )
+				if (extension->init)
 				{
 					dprintf("[SERVER] Calling init()...");
 
-					res = extension->init( remote );
+					res = extension->init(remote);
 
-					if( res == ERROR_SUCCESS )
-						list_push( extension_list, extension );
+					if (res == ERROR_SUCCESS)
+					{
+						list_push(extension_list, extension);
+					}
 					else
-						free( extension );
+					{
+						free(extension);
+					}
 				}
 				dprintf("[SERVER] Called init()...");
-				if (response) {
-					for (command = extension_commands; command != first; command = command->next) {
+				if (response)
+				{
+					for (command = extensionCommands; command != first; command = command->next)
+					{
 						packet_add_tlv_string(response, TLV_TYPE_METHOD, command->method);
 					}
 				}

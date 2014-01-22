@@ -3,6 +3,51 @@
 
 DWORD request_registry_create_key(Remote *remote, Packet *packet);
 
+/*!
+ * @brief Check to see if a registry key exists.
+ * @param remote Pointer to the \c Remote instance.
+ * @param packet Pointer to the request \c Packet instance.
+ * @returns Always returns \c ERROR_SUCCESS.
+ */
+DWORD request_registry_check_key_exists(Remote *remote, Packet *packet)
+{
+	Packet *response = packet_create_response(packet);
+	LPCTSTR baseKey = NULL;
+	HKEY rootKey = NULL;
+	HKEY resultKey = NULL;
+	BOOL exists = FALSE;
+	DWORD result;
+
+	rootKey = (HKEY)packet_get_tlv_value_uint(packet, TLV_TYPE_ROOT_KEY);
+	baseKey = packet_get_tlv_value_string(packet, TLV_TYPE_BASE_KEY);
+
+	if (rootKey && baseKey)
+	{
+		result = RegOpenKeyA(rootKey, baseKey, &resultKey);
+		if (result == ERROR_SUCCESS)
+		{
+			dprintf("[REG] Key found");
+			RegCloseKey(resultKey);
+			exists = TRUE;
+		}
+
+		dprintf("[REG] Key exists? %s", exists ? "TRUE" : "FALSE");
+		packet_add_tlv_bool(response, TLV_TYPE_BOOL, exists);
+		result = ERROR_SUCCESS;
+	}
+	else
+	{
+		dprintf("[REG] Invalid parameter");
+		result = ERROR_INVALID_PARAMETER;
+	}
+
+	dprintf("[REG] Returning result: %u %x", result, result);
+	packet_transmit_response(result, remote, response);
+
+	dprintf("[REG] done.");
+	return ERROR_SUCCESS;
+}
+
 /*
  * Opens a registry key and returns the associated HKEY to the caller if the
  * operation succeeds.  Right now this is just a wrapper around create_key

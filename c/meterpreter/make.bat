@@ -2,6 +2,12 @@
 IF "%1"=="clean" GOTO CLEAN
 IF "%1"=="docs" GOTO DOCS
 IF "%VCINSTALLDIR%" == "" GOTO NEED_VS
+IF NOT EXIST "source\ReflectiveDLLInjection\.git" (
+  ECHO Meterpreter's submodule dependencies can't be found.
+  ECHO From your git console, please run:
+  ECHO   $ git submodule init ^&^& git submodule update
+  GOTO END
+)
 
 SET PSSDK_VER=12
 
@@ -48,7 +54,11 @@ IF "%ERRORLEVEL%" == "0" (
   )
 )
 
-GOTO :END
+FOR /F "usebackq tokens=1,2 delims==" %%i IN (`wmic os get LocalDateTime /VALUE 2^>NUL`) DO IF '.%%i.'=='.LocalDateTime.' SET LDT=%%j
+SET LDT=%LDT:~0,4%-%LDT:~4,2%-%LDT:~6,2% %LDT:~8,2%:%LDT:~10,2%:%LDT:~12,6%
+echo Finished %ldt%
+
+GOTO END
 
 :CLEAN
 IF EXIST "output\x86\" (
@@ -57,11 +67,11 @@ IF EXIST "output\x86\" (
 IF EXIST "output\x64\" (
   del output\x64\ /S /Q
 )
-GOTO :END
+GOTO END
 
 :DOCS
 tools\doxygen\doxygen.exe doxygen.cnf
-GOTO :END
+GOTO END
 
 :NEED_VS
 ECHO "This command must be executed from within a Visual Studio Command prompt."

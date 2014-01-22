@@ -22,6 +22,22 @@ with Windows XP due to the fact that .NET 4.5 will not run on Windows XP. Howeve
 does not mean that Metepreter itself will not run on Windows XP, it just means that it's
 not possible to _build_ it on Windows XP.
 
+Windows Meterpreter has the following repositories set up as submodule dependencies:
+
+* [Reflective DLL Injection][rdi]
+
+For Meterpreter to build correctly, these submodules must be initialised and updated,
+like so:
+
+``` bash
+$ git clone https://github.com/rapid7/meterpreter
+$ cd meterpreter
+$ git submodule init && git submodule update
+```
+
+At this point the dependencies will be ready to use and Meterpreter should be ready to
+build.
+
 Running the Build
 -----------------
 
@@ -49,6 +65,15 @@ appropriate build configuration for you and hence calling `make` should "Just Wo
 If you are a Rapid7 employee you will need the PSSDK source in order to build the
 extra components using the `r7_*` build configurations.
 
+If submodule dependencies are not found on the file system, the script should display
+an error message like so:
+
+```
+Meterpreter's submodule dependencies can't be found.
+From your git console, please run:
+  $ git submodule init && git submodule update
+```
+
 Building - POSIX
 ================
 You will need:
@@ -60,11 +85,10 @@ You will need:
 Meterpreter requires libpcap-1.1.1 and OpenSSL 0.9.8o sources, which it
 will download automatically during the build process. If for some
 reason, you cannot access the internet during build, you will need to:
- - wget -O posix-meterp-build-tmp/openssl-0.9.8o.tar.gz http://openssl.org/source/openssl-0.9.8o.tar.gz
+ - wget -O posix-meterp-build-tmp/openssl-0.9.8o.tar.gz https://www.openssl.org/source/openssl-0.9.8o.tar.gz
  - wget -O posix-meterp-build-tmp/libpcap-1.1.1.tar.gz http://www.tcpdump.org/release/libpcap-1.1.1.tar.gz
 
-Note that the 'depclean' and 'really-clean' make targets will *delete*
-these files.
+(Note that 'make clean' will *delete* these files.)
 
 Now you should be able to type `make` in the base directory, go make a
 sandwich, and come back to a working[1] meterpreter for Linux.
@@ -161,3 +185,4 @@ Good luck!
   [source]: https://github.com/rapid7/meterpreter
   [framework]: https://github.com/rapid7/metasploit-framework
   [build_icon]: https://ci.metasploit.com/buildStatus/icon?job=MeterpreterWin
+  [rdi]: https://github.com/rapid7/ReflectiveDLLInjection

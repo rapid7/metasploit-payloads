@@ -39,16 +39,16 @@
 #define WSAECONNABORTED ECONNABORTED
 
 #define BREAK_WITH_ERROR(format, args...) \
-	do { \
+	{ \
 		dprintf(format, ## args); \
-		exit(0); \
-	} while(0) \
+		break; \
+	} \
 
 #define BREAK_ON_WSAERROR(format, args...) \
-	do { \
+	{ \
 		dprintf(format, ## args); \
-		abort(); \
-	} while(0) \
+		break; \
+	} \
 
 #define Sleep(x) usleep(x * 1000)
 #define WSASocket(a,b,c,d,e,f) socket(a,b,c)
@@ -69,9 +69,9 @@
 #ifdef _WIN32
  #include "railgun/railgun.h"	// PKS, win32 specific at the moment.
 
- #include "../../../ReflectiveDLLInjection/DelayLoadMetSrv.h"
- #include "../../../ReflectiveDLLInjection/GetProcAddressR.h"
- #include "../../../ReflectiveDLLInjection/ReflectiveLoader.h"
+ #include "../../../DelayLoadMetSrv/DelayLoadMetSrv.h"
+ #include "../../../ReflectiveDLLInjection/inject/src/GetProcAddressR.h"
+ #include "../../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.h"
  // declared in ReflectiveLoader.c and set by DllMain also in ReflectiveLoader.c
  extern HINSTANCE hAppInstance;
 #endif

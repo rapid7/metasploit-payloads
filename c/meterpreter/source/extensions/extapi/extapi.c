@@ -4,15 +4,16 @@
  */
 #include "../../common/common.h"
 
-#include "../../ReflectiveDLLInjection/DelayLoadMetSrv.h"
+#include "../../DelayLoadMetSrv/DelayLoadMetSrv.h"
 // include the Reflectiveloader() function, we end up linking back to the metsrv.dll's Init function
 // but this doesnt matter as we wont ever call DLL_METASPLOIT_ATTACH as that is only used by the 
 // second stage reflective dll inject payload and not the metsrv itself when it loads extensions.
-#include "../../ReflectiveDLLInjection/ReflectiveLoader.c"
+#include "../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
 
 #include "window.h"
 #include "service.h"
 #include "clipboard.h"
+#include "adsi.h"
 
 // this sets the delay load hook function, see DelayLoadMetSrv.h
 EnableDelayLoadMetSrv();
@@ -30,6 +31,7 @@ Command customCommands[] =
 	COMMAND_REQ("extapi_clipboard_monitor_resume", request_clipboard_monitor_resume),
 	COMMAND_REQ("extapi_clipboard_monitor_stop", request_clipboard_monitor_stop),
 	COMMAND_REQ("extapi_clipboard_monitor_dump", request_clipboard_monitor_dump),
+	COMMAND_REQ("extapi_adsi_domain_query", request_adsi_domain_query),
 	COMMAND_TERMINATOR
 };
 

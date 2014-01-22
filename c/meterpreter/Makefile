@@ -114,7 +114,7 @@ $(COMPILED)/libssl.so: $(build_tmp)/openssl-0.9.8o/libssl.so
 
 $(build_tmp)/openssl-0.9.8o/libssl.so:
 	[ -d $(build_tmp) ] || mkdir $(build_tmp)
-	[ -f $(build_tmp)/openssl-0.9.8o.tar.gz ] || wget -O $(build_tmp)/openssl-0.9.8o.tar.gz http://openssl.org/source/openssl-0.9.8o.tar.gz
+	[ -f $(build_tmp)/openssl-0.9.8o.tar.gz ] || wget -O $(build_tmp)/openssl-0.9.8o.tar.gz https://www.openssl.org/source/openssl-0.9.8o.tar.gz
 	[ -d $(build_tmp)/openssl-0.9.8o ] || tar -C $(build_tmp)/ -xzf $(build_tmp)/openssl-0.9.8o.tar.gz
 	(cd $(build_tmp)/openssl-0.9.8o &&                                                       \
 		cat Configure | grep -v 'linux-msf' | \
