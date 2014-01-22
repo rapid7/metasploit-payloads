@@ -308,6 +308,7 @@ DWORD domain_query(LPCWSTR lpwDomain, LPWSTR lpwFilter, LPWSTR* lpwQueryCols,
 							{
 								PADS_NETADDRESS pna = col.pADsValues->pNetAddress;
 								bytes_to_string(pna->Address, pna->AddressLength, valueTarget, VALUE_SIZE, "%u", ".");
+								dprintf("[ADSI] %u network address of %u bytes added", pna->AddressType, pna->AddressLength);
 								break;
 							}
 							case ADSTYPE_EMAIL:
@@ -351,6 +352,7 @@ DWORD domain_query(LPCWSTR lpwDomain, LPWSTR lpwFilter, LPWSTR* lpwQueryCols,
 						if (source != NULL)
 						{
 							wcstombs_s(&charsConverted, valueTarget, VALUE_SIZE, source, VALUE_SIZE - 1);
+							dprintf("[ADSI] Adding string value %s", valueTarget);
 						}
 
 						entries[dwIndex].header.length = lstrlenA(valueTarget) + 1;
