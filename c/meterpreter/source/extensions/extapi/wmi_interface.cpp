@@ -316,7 +316,7 @@ DWORD wmi_query(LPCWSTR lpwRoot, LPWSTR lpwQuery, Packet* response)
 				}
 				dprintf("[WMI] Bounds: %u to %u", lBound, uBound);
 
-				LONG fieldCount = uBound - lBound - SYSTEM_FIELD_COUNT;
+				LONG fieldCount = uBound - lBound - SYSTEM_FIELD_COUNT - 1;
 				dprintf("[WMI] Query results in %u fields", fieldCount);
 
 				fields = (VARIANT**)malloc(fieldCount * sizeof(VARIANT**));
