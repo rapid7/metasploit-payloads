@@ -6,6 +6,7 @@
 #include "./elevate/elevate.h"
 #include "passwd.h"
 #include "fs.h"
+#include "../../../common//arch/win/remote_thread.h"
 
 #include "../../../DelayLoadMetSrv/DelayLoadMetSrv.h"
 #include "../../../ReflectiveDLLInjection/inject/src/GetProcAddressR.h"

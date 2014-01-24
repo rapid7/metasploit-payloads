@@ -162,7 +162,7 @@ void real_dprintf(char *filename, int line, const char *function, char *format, 
 #include <wininet.h>
 
 /*! @brief When defined, debug output is enabled on Windows builds. */
-//#define DEBUGTRACE 1
+#define DEBUGTRACE 1
 
 #ifdef DEBUGTRACE
 #define dprintf(...) real_dprintf(__VA_ARGS__)
