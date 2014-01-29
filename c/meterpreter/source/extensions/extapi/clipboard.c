@@ -7,78 +7,75 @@
 #include "clipboard.h"
 #include "clipboard_image.h"
 
+/*! @brief The different types of captures that the monitor supports. */
 typedef enum _ClipboadrCaptureType
 {
-	CapText, CapFiles, CapImage
+	CapText,                           ///! Capture is just plain text.
+	CapFiles,                          ///! Capture is a list of one or more files.
+	CapImage                           ///! Capture is an image.
 } ClipboardCaptureType;
 
+/*! @brief Container for image capture data. */
 typedef struct _ClipboardImage
 {
-	DWORD dwWidth;
-	DWORD dwHeight;
-	DWORD dwImageSize;
-	LPBYTE lpImageContent;
+	DWORD dwWidth;                     ///! Width of the image.
+	DWORD dwHeight;                    ///! Height of the image.
+	DWORD dwImageSize;                 ///! Size of the image, in bytes.
+	LPBYTE lpImageContent;             ///! Pointer to the image content.
 } ClipboardImage;
 
+/*! @brief Container for file capture data. */
 typedef struct _ClipboardFile
 {
-	LPSTR lpPath;
-	QWORD qwSize;
-	struct _ClipboardFile* pNext;
+	LPSTR lpPath;                      ///! Full path to the file.
+	QWORD qwSize;                      ///! Size of the file in bytes.
+	struct _ClipboardFile* pNext;      ///! Pointer to the next file in the copied batch.
 } ClipboardFile;
 
+/*! @brief Container for file capture data. */
 typedef struct _ClipboardCapture
 {
-	ClipboardCaptureType captureType;
+	ClipboardCaptureType captureType; ///! Indicates the type of capture for this entry.
 	union
 	{
-		LPSTR lpText;
-		ClipboardImage* lpImage;
-		ClipboardFile* lpFiles;
+		LPSTR lpText;                  ///! Set when the captureType is CapText.
+		ClipboardImage* lpImage;       ///! Set when the captureType is CapImage.
+		ClipboardFile* lpFiles;        ///! Set when the captureType is CapFile.
 	};
-	SYSTEMTIME stCaptureTime;
-	DWORD dwSize;
-	struct _ClipboardCapture* pNext;
+	SYSTEMTIME stCaptureTime;          ///! The time that the clipboard entry was captured.
+	DWORD dwSize;                      ///! Size of the clipboard entry.
+	struct _ClipboardCapture* pNext;   ///! Pointer to the next captured clipboard entry.
 } ClipboardCapture;
 
+/*! @brief Container for the list of clipboard capture entries. */
 typedef struct _ClipboardCaptureList
 {
-	ClipboardCapture* pHead;
-	ClipboardCapture* pTail;
-	/*! @brief Lock to handle concurrent access to the clipboard capture list. */
-	LOCK* pClipboardCaptureLock;
-	/*! @brief Indication of how much data we have in memory. */
-	DWORD dwClipboardDataSize;
+	ClipboardCapture* pHead;           ///! Pointer to the head of the capture list.
+	ClipboardCapture* pTail;           ///! Pointer to the tail of the capture list.
+	LOCK* pClipboardCaptureLock;       ///! Lock to handle concurrent access to the clipboard capture list.
+	DWORD dwClipboardDataSize;         ///! Indication of how much data we have in memory.
 } ClipboardCaptureList;
 
+/*! @brief Container for clipboard monitor state. */
 typedef struct _ClipboardState
 {
 #ifdef _WIN32
-	/*! @brief Name to use for the window class when registering the message-only window. */
-	char cbWindowClass[256];
-	/*! @brief Handle to the clipboard monitor window. */
-	HWND hClipboardWindow;
-	/*! @brief Handle to the next window in the clipboard chain. */
-	HWND hNextViewer;
-	/*! @brief List of clipboard captures. */
-	ClipboardCaptureList captureList;
+	char cbWindowClass[256];           ///! Name to use for the window class when registering the message-only window (usually random).
+	HWND hClipboardWindow;             ///! Handle to the clipboard monitor window.
+	HWND hNextViewer;                  ///! Handle to the next window in the clipboard chain.
+	ClipboardCaptureList captureList;  ///! List of clipboard captures.
 #endif
-	/*! @brief Indicates if the thread is running or not. */
-	BOOL bRunning;
-	/*! @brief Handle to the event that signals when the thread has actioned the caller's request. */
-	EVENT* hResponseEvent;
-	/*! @brief Signalled when the caller wants the thread to pause. */
-	EVENT* hPauseEvent;
-	/*! @brief Signalled when the caller wants the thread to resume. */
-	EVENT* hResumeEvent;
-	/*! @brief Capture image data that's found on the clipboard. */
-	BOOL bCaptureImageData;
-	/*! @brief Reference to the clipboard monitor thread. */
-	THREAD* hThread;
+	BOOL bRunning;                     ///! Indicates if the thread is running or not.
+	EVENT* hResponseEvent;             ///! Handle to the event that signals when the thread has actioned the caller's request.
+	EVENT* hPauseEvent;                ///! Signalled when the caller wants the thread to pause.
+	EVENT* hResumeEvent;               ///! Signalled when the caller wants the thread to resume.
+	BOOL bCaptureImageData;            ///! Capture image data that's found on the clipboard.
+	THREAD* hThread;                   ///! Reference to the clipboard monitor thread.
 } ClipboardState;
 
 /*! @brief Pointer to the state for the monitor thread. */
 static ClipboardState* gClipboardState = NULL;
+/*! @brief Flag indicating initialision status of the clipboard state. */
 static BOOL gClipboardInitialised = FALSE;
 
 #ifdef _WIN32
@@ -141,6 +138,11 @@ static PGLOBALUNLOCK pGlobalUnlock = NULL;
 static POPENCLIPBOARD pOpenClipboard = NULL;
 static PSETCLIPBOARDDATA pSetClipboardData = NULL;
 
+/*!
+ * @brief Initialises the clipboard functionality for use.
+ * @remark This function has the job of finding all the clipboard related function pointers.
+ * @returns An indication of success or failure.
+ */
 DWORD initialise_clipboard()
 {
 #ifdef _WIN32
@@ -262,6 +264,13 @@ DWORD initialise_clipboard()
 #endif
 }
 
+/*!
+ * @brief Clean up the list of captures in the given list of captures.
+ * @param pCaptureList Pointer to the list of captures to clean up.
+ * @param bRemoveLock If \c TRUE, remove the list capture lock.
+ * @remark This iterates through the list and correctly frees up all the
+ *         resources used by the list.
+ */
 VOID destroy_clipboard_monitor_capture(ClipboardCaptureList* pCaptureList, BOOL bRemoveLock)
 {
 	ClipboardFile* pFile, *pNextFile;
@@ -307,6 +316,11 @@ VOID destroy_clipboard_monitor_capture(ClipboardCaptureList* pCaptureList, BOOL 
 	pCaptureList->dwClipboardDataSize = 0;
 }
 
+/*!
+ * @brief Convert a timestamp value to a string in the form YYYY-MM-DD HH:mm:ss.ffff
+ * @param pTime Pointer to the \c SYSTEMTIME structure to convert.
+ * @param buffer Pointer to the buffer that will receive the time value.
+ */
 VOID timestamp_to_string(SYSTEMTIME* pTime, char buffer[40])
 {
 	dprintf("[EXTAPI CLIPBOARD] parsing timestamp %p", pTime);
@@ -316,6 +330,12 @@ VOID timestamp_to_string(SYSTEMTIME* pTime, char buffer[40])
 	dprintf("[EXTAPI CLIPBOARD] timestamp parsed");
 }
 
+/*!
+ * @brief Dump all the captured clipboard data to the given packet.
+ * @param pResponse pointer to the response \c Packet that the data needs to be written to.
+ * @param pCapture Pointer to the clipboard capture item to dump.
+ * @param bCaptureImageData Indication of whether to include image data in the capture.
+ */
 VOID dump_clipboard_capture(Packet* pResponse, ClipboardCapture* pCapture, BOOL bCaptureImageData)
 {
 	ClipboardFile* pFile;
@@ -388,6 +408,14 @@ VOID dump_clipboard_capture(Packet* pResponse, ClipboardCapture* pCapture, BOOL 
 	}
 }
 
+/*!
+ * @brief Dump the given clipboard capture list to the specified response.
+ * @param pResponse Pointer to the response \c Packet to write the data to.
+ * @param pCaptureList Pointer to the list of captures to iterate over and write to the packet.
+ * @param bCaptureImageData Indication of whether to include image data in the dump.
+ * @param bPurge Indication of whether to purge the contents of the list once dumped.
+ * @remark if \c bPurge is \c TRUE the list of capture data is cleared and freed after dumping.
+ */
 VOID dump_clipboard_capture_list(Packet* pResponse, ClipboardCaptureList* pCaptureList, BOOL bCaptureImageData, BOOL bPurge)
 {
 	ClipboardCapture* pCapture = NULL;
@@ -407,6 +435,17 @@ VOID dump_clipboard_capture_list(Packet* pResponse, ClipboardCaptureList* pCaptu
 	lock_release(pCaptureList->pClipboardCaptureLock);
 }
 
+/*!
+ * @brief Determine if a capture is a duplicate based on the previously captured element.
+ * @param pNewCapture Pointer to the new capture value.
+ * @param pList Pointer to the capture list of existing captures.
+ * @retval TRUE if the contents of \c pNewCapture are the same as the last element in \c pList.
+ * @retval FALSE if the contents of \c pNewCapture are not the same as the last element in \c pList.
+ * @remark This is quite "dumb" and will only check agains the previous value in the list. The goal
+ *         is to reduce fat-fingering copies and reduce the size of the data coming back. If people
+ *         copy the same data multiple times at different times then we want to capture that in the
+ *         timeline. Comparison is just a byte-for-byte compare.
+ */
 BOOL is_duplicate(ClipboardCapture* pNewCapture, ClipboardCaptureList* pList)
 {
 	ClipboardFile* pTailFiles = NULL;
@@ -490,6 +529,13 @@ BOOL is_duplicate(ClipboardCapture* pNewCapture, ClipboardCaptureList* pList)
 	return bResult;
 }
 
+/*!
+ * @brief Add a new capture to the list of clipboard captures.
+ * @param pNewCapture The newly captured clipboard data to add.
+ * @param pList Pointer to the list of captures to add the item to.
+ * @returns Indcation of whether the value was added.
+ * @retval FALSE Indicates that the value was a duplicate, and not added again.
+ */
 BOOL add_clipboard_capture(ClipboardCapture* pNewCapture, ClipboardCaptureList* pList)
 {
 	if (is_duplicate(pNewCapture, pList))
@@ -514,6 +560,14 @@ BOOL add_clipboard_capture(ClipboardCapture* pNewCapture, ClipboardCaptureList* 
 	return TRUE;
 }
 
+/*!
+ * @brief Capture data that is currently on the clipboard.
+ * @param bCaptureImageData Indication of whether to include image data in the capture.
+ * @param ppCapture Pointer that will receive a pointer to the newly captured data.
+ * @returns Indication of success or failure.
+ * @remark If \c ppCapture contains a value when the function returns, the caller needs
+ *         to call \c free() on that value later when it finished.
+ */
 DWORD capture_clipboard(BOOL bCaptureImageData, ClipboardCapture** ppCapture)
 {
 	DWORD dwResult;
@@ -700,6 +754,15 @@ DWORD capture_clipboard(BOOL bCaptureImageData, ClipboardCapture** ppCapture)
 	return dwResult;
 }
 
+/*!
+ * @brief Message proc function for the hidden clipboard monitor window.
+ * @param hWnd Handle to the window receiving the message.
+ * @param uMsg Message that is being received.
+ * @param lParam First parameter associated with the message.
+ * @param wParam Second parameter associated with the message.
+ * @returns Message-specific result.
+ * @remark This window proc captures the clipboard change events.
+ */
 LRESULT WINAPI clipboard_monitor_window_proc(HWND hWnd, UINT uMsg, LPARAM lParam, WPARAM wParam)
 {
 	DWORD dwResult;
@@ -788,6 +851,12 @@ LRESULT WINAPI clipboard_monitor_window_proc(HWND hWnd, UINT uMsg, LPARAM lParam
 	return (LRESULT)NULL;
 }
 
+/*!
+ * @brief Create a hidden window that will capture clipboard change events.
+ * @param pState Pointer to the state entity for the current clipboard thread.
+ * @returns Indication of success or failure.
+ * @remark This function also registers a random window class.
+ */
 DWORD create_clipboard_monitor_window(ClipboardState* pState)
 {
 	DWORD dwResult;
@@ -831,6 +900,13 @@ DWORD create_clipboard_monitor_window(ClipboardState* pState)
 	return dwResult;
 }
 
+/*!
+ * @brief Destroy the hidden clipboard monitor window.
+ * @param pState Pointer to the state entity for the current clipboard thread which
+ *               contains the window handle.
+ * @returns Indication of success or failure.
+ * @remark This function also unregisters the random window class.
+ */
 DWORD destroy_clipboard_monitor_window(ClipboardState* pState)
 {
 	DWORD dwResult;
@@ -853,8 +929,8 @@ DWORD destroy_clipboard_monitor_window(ClipboardState* pState)
 
 	return dwResult;
 }
-
 #endif
+
 /*!
  * @brief Handle the request to get the data from the clipboard.
  * @details This function currently only supports the following clipboard data formats:
@@ -1002,6 +1078,12 @@ DWORD request_clipboard_set_data(Remote *remote, Packet *packet)
 #endif
 }
 
+/*!
+ * @brief Function which executes the clipboard monitoring.
+ * @param thread Pointer to the thread context.
+ * @remark This function also handles cross-thread synchronisation with
+ *         callers that want to interact with the clipboard data.
+ */
 DWORD THREADCALL clipboard_monitor_thread_func(THREAD * thread)
 {
 #ifdef _WIN32
@@ -1080,6 +1162,10 @@ DWORD THREADCALL clipboard_monitor_thread_func(THREAD * thread)
 #endif
 }
 
+/*!
+ * @brief Clean up all the state associated with a monitor thread.
+ * @param pState Pointer to the state clean up.
+ */
 VOID destroy_clipboard_monitor_state(ClipboardState* pState)
 {
 	dprintf("[EXTAPI CLIPBOARD] Destroying clipboard monitor state");
@@ -1107,6 +1193,12 @@ VOID destroy_clipboard_monitor_state(ClipboardState* pState)
 	}
 }
 
+/*!
+ * @brief Handle the request to start the clipboard monitor.
+ * @param remote Pointer to the \c Remote instance.
+ * @param packet Pointer to the \c Packet containing the request.
+ * @returns Indication of success or failure.
+ */
 DWORD request_clipboard_monitor_start(Remote *remote, Packet *packet)
 {
 #ifdef _WIN32
@@ -1194,6 +1286,11 @@ DWORD request_clipboard_monitor_start(Remote *remote, Packet *packet)
 #endif
 }
 
+/*!
+ * @brief Pause the monitor thread, if it's running.
+ * @param pState Pointer to the clipboard monitor thread state.
+ * @returns Always returns \c ERROR_SUCCESS.
+ */
 DWORD clipboard_monitor_pause(ClipboardState* pState)
 {
 	if (pState->bRunning)
@@ -1205,6 +1302,11 @@ DWORD clipboard_monitor_pause(ClipboardState* pState)
 	return ERROR_SUCCESS;
 }
 
+/*!
+ * @brief Resume the monitor thread.
+ * @param pState Pointer to the clipboard monitor thread state.
+ * @returns Always returns \c ERROR_SUCCESS.
+ */
 DWORD clipboard_monitor_resume(ClipboardState* pState)
 {
 	if (!pState->bRunning)
@@ -1216,6 +1318,12 @@ DWORD clipboard_monitor_resume(ClipboardState* pState)
 	return ERROR_SUCCESS;
 }
 
+/*!
+ * @brief Handle the request to pause the clipboard monitor.
+ * @param remote Pointer to the \c Remote instance.
+ * @param packet Pointer to the \c Packet containing the request.
+ * @returns Indication of success or failure.
+ */
 DWORD request_clipboard_monitor_pause(Remote *remote, Packet *packet)
 {
 #ifdef _WIN32
@@ -1241,6 +1349,12 @@ DWORD request_clipboard_monitor_pause(Remote *remote, Packet *packet)
 #endif
 }
 
+/*!
+ * @brief Handle the request to resume the clipboard monitor.
+ * @param remote Pointer to the \c Remote instance.
+ * @param packet Pointer to the \c Packet containing the request.
+ * @returns Indication of success or failure.
+ */
 DWORD request_clipboard_monitor_resume(Remote *remote, Packet *packet)
 {
 #ifdef _WIN32
@@ -1266,6 +1380,12 @@ DWORD request_clipboard_monitor_resume(Remote *remote, Packet *packet)
 #endif
 }
 
+/*!
+ * @brief Handle the request to stop the clipboard monitor.
+ * @param remote Pointer to the \c Remote instance.
+ * @param packet Pointer to the \c Packet containing the request.
+ * @returns Indication of success or failure.
+ */
 DWORD request_clipboard_monitor_stop(Remote *remote, Packet *packet)
 {
 #ifdef _WIN32
@@ -1314,6 +1434,12 @@ DWORD request_clipboard_monitor_stop(Remote *remote, Packet *packet)
 #endif
 }
 
+/*!
+ * @brief Handle the request to dump the contents of the clipboard monitor.
+ * @param remote Pointer to the \c Remote instance.
+ * @param packet Pointer to the \c Packet containing the request.
+ * @returns Indication of success or failure.
+ */
 DWORD request_clipboard_monitor_dump(Remote *remote, Packet *packet)
 {
 #ifdef _WIN32
@@ -1353,6 +1479,12 @@ DWORD request_clipboard_monitor_dump(Remote *remote, Packet *packet)
 #endif
 }
 
+/*!
+ * @brief Handle the request to purge the contents of the clipboard monitor.
+ * @param remote Pointer to the \c Remote instance.
+ * @param packet Pointer to the \c Packet containing the request.
+ * @returns Indication of success or failure.
+ */
 DWORD request_clipboard_monitor_purge(Remote *remote, Packet *packet)
 {
 #ifdef _WIN32
