@@ -12,6 +12,7 @@ DWORD request_clipboard_monitor_start(Remote *remote, Packet *packet);
 DWORD request_clipboard_monitor_pause(Remote *remote, Packet *packet);
 DWORD request_clipboard_monitor_resume(Remote *remote, Packet *packet);
 DWORD request_clipboard_monitor_stop(Remote *remote, Packet *packet);
+DWORD request_clipboard_monitor_purge(Remote *remote, Packet *packet);
 DWORD request_clipboard_monitor_dump(Remote *remote, Packet *packet);
 
 #endif

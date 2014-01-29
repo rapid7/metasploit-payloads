@@ -29,6 +29,7 @@ Command customCommands[] =
 	COMMAND_REQ("extapi_clipboard_monitor_start", request_clipboard_monitor_start),
 	COMMAND_REQ("extapi_clipboard_monitor_pause", request_clipboard_monitor_pause),
 	COMMAND_REQ("extapi_clipboard_monitor_resume", request_clipboard_monitor_resume),
+	COMMAND_REQ("extapi_clipboard_monitor_purge", request_clipboard_monitor_purge),
 	COMMAND_REQ("extapi_clipboard_monitor_stop", request_clipboard_monitor_stop),
 	COMMAND_REQ("extapi_clipboard_monitor_dump", request_clipboard_monitor_dump),
 	COMMAND_REQ("extapi_adsi_domain_query", request_adsi_domain_query),

