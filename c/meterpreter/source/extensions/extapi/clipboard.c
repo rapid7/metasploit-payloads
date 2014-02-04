@@ -1117,7 +1117,7 @@ DWORD THREADCALL clipboard_monitor_thread_func(THREAD * thread)
 
 		while (!bTerminate)
 		{
-			dwResult = WaitForMultipleObjects(2, waitableHandles, FALSE, 1) - WAIT_OBJECT_0;
+			dwResult = WaitForMultipleObjects(3, waitableHandles, FALSE, 1) - WAIT_OBJECT_0;
 
 			switch (dwResult)
 			{
