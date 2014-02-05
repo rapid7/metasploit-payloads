@@ -758,28 +758,25 @@ DWORD capture_clipboard(BOOL bCaptureImageData, ClipboardCapture** ppCapture)
  * @brief Message proc function for the hidden clipboard monitor window.
  * @param hWnd Handle to the window receiving the message.
  * @param uMsg Message that is being received.
- * @param lParam First parameter associated with the message.
- * @param wParam Second parameter associated with the message.
+ * @param wParam First parameter associated with the message.
+ * @param lParam Second parameter associated with the message.
  * @returns Message-specific result.
  * @remark This window proc captures the clipboard change events.
  */
-LRESULT WINAPI clipboard_monitor_window_proc(HWND hWnd, UINT uMsg, LPARAM lParam, WPARAM wParam)
+LRESULT WINAPI clipboard_monitor_window_proc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	DWORD dwResult;
-	ClipboardState* pState = (ClipboardState*)GetWindowLongPtrA(hWnd, GWLP_USERDATA);
+	ClipboardState* pState = NULL;
 	ClipboardCapture* pNewCapture = NULL;
-
-	if (!pState)
-	{
-		pState = gClipboardState;
-		SetWindowLongPtrA(hWnd, GWLP_USERDATA, (LONG_PTR)pState);
-	}
 
 	switch (uMsg)
 	{
+	case WM_NCCREATE:
+		return TRUE;
+
 	case WM_CREATE:
-		dprintf("[EXTAPI CLIPBOARD] received WM_CREATE %x", hWnd);
-		pState = (ClipboardState*)pState;
+		dprintf("[EXTAPI CLIPBOARD] received WM_CREATE %x (lParam = %p wParam = %p)", hWnd, lParam, wParam);
+		pState = (ClipboardState*)((CREATESTRUCTA*)lParam)->lpCreateParams;
 		SetWindowLongPtrA(hWnd, GWLP_USERDATA, (LONG_PTR)pState);
 		pState->hNextViewer = SetClipboardViewer(hWnd);
 		dprintf("[EXTAPI CLIPBOARD] SetClipboardViewer called, next viewer is %x", pState->hNextViewer);
@@ -788,10 +785,13 @@ LRESULT WINAPI clipboard_monitor_window_proc(HWND hWnd, UINT uMsg, LPARAM lParam
 		{
 			dprintf("[EXTAPI CLIPBOARD] SetClipboardViewer error %u", GetLastError());
 		}
-		break;
+
+		return 0;
 
 	case WM_CHANGECBCHAIN: 
 		dprintf("[EXTAPI CLIPBOARD] received WM_CHANGECBCHAIN %x", hWnd);
+		pState = (ClipboardState*)GetWindowLongPtrA(hWnd, GWLP_USERDATA);
+
 		if ((HWND)wParam == pState->hNextViewer)
 		{
 			pState->hNextViewer = (HWND)lParam;
@@ -801,10 +801,12 @@ LRESULT WINAPI clipboard_monitor_window_proc(HWND hWnd, UINT uMsg, LPARAM lParam
 		{
 			SendMessageA(pState->hNextViewer, uMsg, wParam, lParam);
 		}
-        break;
+
+		return 0;
 
      case WM_DRAWCLIPBOARD:
 		dprintf("[EXTAPI CLIPBOARD] received WM_DRAWCLIPBOARD %x", hWnd);
+		pState = (ClipboardState*)GetWindowLongPtrA(hWnd, GWLP_USERDATA);
 
 		if (pState->bRunning)
 		{
@@ -837,18 +839,20 @@ LRESULT WINAPI clipboard_monitor_window_proc(HWND hWnd, UINT uMsg, LPARAM lParam
 			dprintf("[EXTAPI CLIPBOARD] Passing on to %x", pState->hNextViewer);
 			SendMessageA(pState->hNextViewer, uMsg, wParam, lParam);
 		}
-        break;
+
+		return 0;
 
 	case WM_DESTROY:
 		dprintf("[EXTAPI CLIPBOARD] received WM_DESTROY %x", hWnd);
+		pState = (ClipboardState*)GetWindowLongPtrA(hWnd, GWLP_USERDATA);
 		ChangeClipboardChain(hWnd, pState->hNextViewer); 
-		break;
+
+		return 0;
 
 	default:
+		dprintf("[EXTAPI CLIPBOARD] received %x for window %x", uMsg);
 		return DefWindowProcA(hWnd, uMsg, lParam, wParam);
 	}
-
-	return (LRESULT)NULL;
 }
 
 /*!
@@ -863,6 +867,7 @@ DWORD create_clipboard_monitor_window(ClipboardState* pState)
 	BOOL bRegistered = FALSE;
 	WNDCLASSEXA wndClass = { 0 };
 
+	ZeroMemory(&wndClass, sizeof(wndClass));
 	wndClass.cbSize = sizeof(WNDCLASSEXA);
 	wndClass.lpfnWndProc = (WNDPROC)clipboard_monitor_window_proc;
 	wndClass.hInstance = GetModuleHandleA(NULL);
@@ -880,7 +885,7 @@ DWORD create_clipboard_monitor_window(ClipboardState* pState)
 		dprintf("[EXTAPI CLIPBOARD] Window registered");
 		bRegistered = TRUE;
 
-		pState->hClipboardWindow = CreateWindowExA(0, pState->cbWindowClass, pState->cbWindowClass, 0, 0, 0, 0, 0, HWND_MESSAGE, NULL, NULL, pState);
+		pState->hClipboardWindow = CreateWindowExA(0, pState->cbWindowClass, pState->cbWindowClass, 0, 0, 0, 0, 0, HWND_MESSAGE, NULL, wndClass.hInstance, pState);
 
 		if (pState->hClipboardWindow == NULL)
 		{
@@ -894,7 +899,8 @@ DWORD create_clipboard_monitor_window(ClipboardState* pState)
 
 	if (pState->hClipboardWindow == NULL && bRegistered)
 	{
-		UnregisterClassA(pState->cbWindowClass, GetModuleHandleA(NULL));
+		dprintf("[EXTAPI CLIPBOARD] Unregistering window class due to failure");
+		UnregisterClassA(pState->cbWindowClass, wndClass.hInstance);
 	}
 
 	return dwResult;
@@ -921,7 +927,7 @@ DWORD destroy_clipboard_monitor_window(ClipboardState* pState)
 
 		if (!UnregisterClassA(pState->cbWindowClass, GetModuleHandleA(NULL)))
 		{
-			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Failed to destroy the clipboard window");
+			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Failed to remove the clipboard window class");
 		}
 
 		dwResult = ERROR_SUCCESS;
@@ -1089,7 +1095,7 @@ DWORD THREADCALL clipboard_monitor_thread_func(THREAD * thread)
 #ifdef _WIN32
 	DWORD dwResult;
 	BOOL bTerminate = FALSE;
-	HANDLE waitableHandles[2] = {0};
+	HANDLE waitableHandles[3] = {0};
 	MSG msg;
 	ClipboardState* pState = (ClipboardState*)thread->parameter1;
 
@@ -1114,6 +1120,10 @@ DWORD THREADCALL clipboard_monitor_thread_func(THREAD * thread)
 		waitableHandles[0] = thread->sigterm->handle;
 		waitableHandles[1] = pState->hPauseEvent->handle;
 		waitableHandles[2] = pState->hResumeEvent->handle;
+
+		dprintf("[EXTAPI CLIPBOARD] thread wait handle : %x", waitableHandles[0]);
+		dprintf("[EXTAPI CLIPBOARD] pause wait handle  : %x", waitableHandles[1]);
+		dprintf("[EXTAPI CLIPBOARD] resume wait handle : %x", waitableHandles[2]);
 
 		while (!bTerminate)
 		{
@@ -1141,6 +1151,7 @@ DWORD THREADCALL clipboard_monitor_thread_func(THREAD * thread)
 				// timeout, so pump messages
 				if (pState->hClipboardWindow && PeekMessageA(&msg, pState->hClipboardWindow, 0, 0, PM_REMOVE))
 				{
+					dprintf("[EXTAPI CLIPBOARD] Pumping message");
 					TranslateMessage(&msg);
 					DispatchMessageA(&msg);
 				}
