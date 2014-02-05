@@ -851,7 +851,7 @@ LRESULT WINAPI clipboard_monitor_window_proc(HWND hWnd, UINT uMsg, WPARAM wParam
 
 	default:
 		dprintf("[EXTAPI CLIPBOARD] received %x for window %x", uMsg);
-		return DefWindowProcA(hWnd, uMsg, lParam, wParam);
+		return DefWindowProcA(hWnd, uMsg, wParam, lParam);
 	}
 }
 
