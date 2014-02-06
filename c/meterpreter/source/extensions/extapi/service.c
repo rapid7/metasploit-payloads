@@ -72,7 +72,8 @@ DWORD request_service_enum(Remote *remote, Packet *packet)
 
 	do
 	{
-		if (!response) {
+		if (!response)
+		{
 			dprintf("[EXTAPI SERVICE] Unable to create response packet");
 			dwResult = ERROR_OUTOFMEMORY;
 			break;
@@ -84,7 +85,8 @@ DWORD request_service_enum(Remote *remote, Packet *packet)
 	} while (0);
 
 	dprintf("[EXTAPI SERVICE] Transmitting response back to caller.");
-	if (response) {
+	if (response)
+	{
 		packet_transmit_response(dwResult, remote, response);
 	}
 
@@ -109,14 +111,16 @@ DWORD request_service_query(Remote *remote, Packet *packet)
 
 	do
 	{
-		if (!response) {
+		if (!response)
+		{
 			dprintf("[EXTAPI SERVICE] Unable to create response packet");
 			dwResult = ERROR_OUTOFMEMORY;
 			break;
 		}
 
 		lpServiceName = packet_get_tlv_value_string(packet, TLV_TYPE_EXT_SERVICE_ENUM_NAME);
-		if (!lpServiceName) {
+		if (!lpServiceName)
+		{
 			BREAK_WITH_ERROR("[EXTAPI SERVICE] Missing service name parameter", ERROR_BAD_ARGUMENTS);
 		}
 
@@ -126,7 +130,8 @@ DWORD request_service_query(Remote *remote, Packet *packet)
 	} while (0);
 
 	dprintf("[EXTAPI SERVICE] Transmitting response back to caller.");
-	if (response) {
+	if (response)
+	{
 		packet_transmit_response(dwResult, remote, response);
 	}
 
@@ -156,32 +161,38 @@ DWORD query_service(LPCSTR cpServiceName, Packet *pResponse)
 	do
 	{
 		dprintf("[EXTAPI SERVICE] Loading advapi32.dll");
-		if ((hAdvapi32 = LoadLibraryA("advapi32.dll")) == NULL) {
+		if ((hAdvapi32 = LoadLibraryA("advapi32.dll")) == NULL)
+		{
 			BREAK_ON_ERROR("[EXTAPI SERVICE] Unable to load advapi32.dll");
 		}
 
 		dprintf("[EXTAPI SERVICE] Searching for OpenSCManagerA");
-		if ((pOpenSCManagerA = (POPENSCMANAGERA)GetProcAddress(hAdvapi32, "OpenSCManagerA")) == NULL) {
+		if ((pOpenSCManagerA = (POPENSCMANAGERA)GetProcAddress(hAdvapi32, "OpenSCManagerA")) == NULL)
+		{
 			BREAK_ON_ERROR("[EXTAPI SERVICE] Unable to locate OpenSCManagerA in advapi32.dll");
 		}
 
 		dprintf("[EXTAPI SERVICE] Searching for CloseServiceHandle");
-		if ((pCloseServiceHandle = (PCLOSESERVICEHANDLE)GetProcAddress(hAdvapi32, "CloseServiceHandle")) == NULL) {
+		if ((pCloseServiceHandle = (PCLOSESERVICEHANDLE)GetProcAddress(hAdvapi32, "CloseServiceHandle")) == NULL)
+		{
 			dprintf("[EXTAPI SERVICE] Unable to locate CloseServiceHandle in advapi32.dll. Continuing anyway.");
 		}
 
 		dprintf("[EXTAPI SERVICE] Searching for OpenServiceA");
-		if ((pOpenServiceA = (POPENSERVICEA)GetProcAddress(hAdvapi32, "OpenServiceA")) == NULL) {
+		if ((pOpenServiceA = (POPENSERVICEA)GetProcAddress(hAdvapi32, "OpenServiceA")) == NULL)
+		{
 			BREAK_ON_ERROR("[EXTAPI SERVICE] Unable to locate OpenServiceA in advapi32.dll.");
 		}
 
 		dprintf("[EXTAPI SERVICE] Opening the Service Control manager");
-		if ((scManager = pOpenSCManagerA(NULL, SERVICES_ACTIVE_DATABASEA, SC_MANAGER_CONNECT | GENERIC_READ)) == NULL) {
+		if ((scManager = pOpenSCManagerA(NULL, SERVICES_ACTIVE_DATABASEA, SC_MANAGER_CONNECT | GENERIC_READ)) == NULL)
+		{
 			BREAK_ON_ERROR("[EXTAPI SERVICE] Unable to open the service control manager");
 		}
 
 		dprintf("[EXTAPI SERVICE] Opening the Service: %s", cpServiceName);
-		if ((scService = pOpenServiceA(scManager, cpServiceName, SC_MANAGER_CONNECT | GENERIC_READ)) == NULL) {
+		if ((scService = pOpenServiceA(scManager, cpServiceName, SC_MANAGER_CONNECT | GENERIC_READ)) == NULL)
+		{
 			dwResult = GetLastError();
 			dprintf("[EXTAPI SERVICE] Unable to open the service: %s (%u)", cpServiceName, dwResult);
 			break;
@@ -192,15 +203,18 @@ DWORD query_service(LPCSTR cpServiceName, Packet *pResponse)
 
 	} while (0);
 
-	if (scService && pCloseServiceHandle) {
+	if (scService && pCloseServiceHandle)
+	{
 		pCloseServiceHandle(scService);
 	}
 
-	if (scManager && pCloseServiceHandle) {
+	if (scManager && pCloseServiceHandle)
+	{
 		pCloseServiceHandle(scManager);
 	}
 
-	if (hAdvapi32) {
+	if (hAdvapi32)
+	{
 		FreeLibrary(hAdvapi32);
 	}
 
@@ -237,28 +251,33 @@ DWORD enumerate_services(Packet *pResponse)
 	do
 	{
 		dprintf("[EXTAPI SERVICE] Loading advapi32.dll");
-		if ((hAdvapi32 = LoadLibraryA("advapi32.dll")) == NULL) {
+		if ((hAdvapi32 = LoadLibraryA("advapi32.dll")) == NULL)
+		{
 			BREAK_ON_ERROR("[EXTAPI SERVICE] Unable to load advapi32.dll");
 		}
 
 		dprintf("[EXTAPI SERVICE] Searching for OpenSCManagerA");
-		if ((pOpenSCManagerA = (POPENSCMANAGERA)GetProcAddress(hAdvapi32, "OpenSCManagerA")) == NULL) {
+		if ((pOpenSCManagerA = (POPENSCMANAGERA)GetProcAddress(hAdvapi32, "OpenSCManagerA")) == NULL)
+		{
 			BREAK_ON_ERROR("[EXTAPI SERVICE] Unable to locate OpenSCManagerA in advapi32.dll");
 		}
 
 		dprintf("[EXTAPI SERVICE] Searching for CloseServiceHandle");
-		if ((pCloseServiceHandle = (PCLOSESERVICEHANDLE)GetProcAddress(hAdvapi32, "CloseServiceHandle")) == NULL) {
+		if ((pCloseServiceHandle = (PCLOSESERVICEHANDLE)GetProcAddress(hAdvapi32, "CloseServiceHandle")) == NULL)
+		{
 			dprintf("[EXTAPI SERVICE] Unable to locate CloseServiceHandle in advapi32.dll. Continuing anyway.");
 		}
 
 		dprintf("[EXTAPI SERVICE] Searching for EnumServicesStatusExA");
-		if ((pEnumServicesStatusExA = (PENUMSERVICESSTATUSEXA)GetProcAddress(hAdvapi32, "EnumServicesStatusExA")) == NULL) {
+		if ((pEnumServicesStatusExA = (PENUMSERVICESSTATUSEXA)GetProcAddress(hAdvapi32, "EnumServicesStatusExA")) == NULL)
+		{
 			BREAK_ON_ERROR("[EXTAPI SERVICE] Unable to locate EnumServicesStatusExA in advapi32.dll.");
 		}
 
 		// TODO: add support for other machine names so that this instance can query other machines on the network.
 		dprintf("[EXTAPI SERVICE] Opening the Service Control manager");
-		if ((scManager = pOpenSCManagerA(NULL, SERVICES_ACTIVE_DATABASEA, SC_MANAGER_CONNECT | GENERIC_READ)) == NULL) {
+		if ((scManager = pOpenSCManagerA(NULL, SERVICES_ACTIVE_DATABASEA, SC_MANAGER_CONNECT | GENERIC_READ)) == NULL)
+		{
 			BREAK_ON_ERROR("[EXTAPI SERVICE] Unable to open the service control manager");
 		}
 
@@ -269,7 +288,8 @@ DWORD enumerate_services(Packet *pResponse)
 		{
 			pSsInfo = (ENUM_SERVICE_STATUS_PROCESSA*)malloc(dwBytesNeeded);
 
-			if (!pSsInfo) {
+			if (!pSsInfo)
+			{
 				BREAK_ON_ERROR("[EXTAPI SERVICE] Out of memory");
 			}
 
@@ -277,7 +297,8 @@ DWORD enumerate_services(Packet *pResponse)
 				&dwBytesNeeded, &dwServicesReturned, &dwResumeHandle, NULL);
 		}
 
-		if (!bResult) {
+		if (!bResult)
+		{
 			BREAK_ON_ERROR("[EXTAPI SERVICE] Failed to enumerate services");
 		}
 
@@ -292,15 +313,18 @@ DWORD enumerate_services(Packet *pResponse)
 
 	} while (0);
 
-	if (pSsInfo) {
+	if (pSsInfo)
+	{
 		free(pSsInfo);
 	}
 
-	if (scManager && pCloseServiceHandle) {
+	if (scManager && pCloseServiceHandle)
+	{
 		pCloseServiceHandle(scManager);
 	}
 
-	if (hAdvapi32) {
+	if (hAdvapi32)
+	{
 		FreeLibrary(hAdvapi32);
 	}
 
@@ -373,23 +397,28 @@ DWORD get_service_config(HMODULE hAdvapi32, SC_HANDLE scService, Packet *pRespon
 	do
 	{
 		dprintf("[EXTAPI SERVICE] Searching for QueryServiceConfigA");
-		if ((pQueryServiceConfigA = (PQUERYSERVICECONFIGA)GetProcAddress(hAdvapi32, "QueryServiceConfigA")) == NULL) {
+		if ((pQueryServiceConfigA = (PQUERYSERVICECONFIGA)GetProcAddress(hAdvapi32, "QueryServiceConfigA")) == NULL)
+		{
 			BREAK_ON_ERROR("[EXTAPI SERVICE] Unable to locate QueryServiceConfigA in advapi32.dll.");
 		}
 
-		if (pQueryServiceConfigA(scService, NULL, 0, &cbBytesNeeded)) {
+		if (pQueryServiceConfigA(scService, NULL, 0, &cbBytesNeeded))
+		{
 			BREAK_ON_ERROR("[EXTAPI SERVICE] This query should have failed");
 		}
 
-		if (GetLastError() != ERROR_INSUFFICIENT_BUFFER) {
+		if (GetLastError() != ERROR_INSUFFICIENT_BUFFER)
+		{
 			BREAK_ON_ERROR("[EXTAPI SERVICE] Unexpected error from QueryServiceConfigA");
 		}
 
-		if ((lpServiceConfig = (LPQUERY_SERVICE_CONFIGA)malloc(cbBytesNeeded)) == NULL) {
+		if ((lpServiceConfig = (LPQUERY_SERVICE_CONFIGA)malloc(cbBytesNeeded)) == NULL)
+		{
 			BREAK_ON_ERROR("[EXTAPI SERVICE] Out of memory");
 		}
 
-		if (!pQueryServiceConfigA(scService, lpServiceConfig, cbBytesNeeded, &cbBytesNeeded)) {
+		if (!pQueryServiceConfigA(scService, lpServiceConfig, cbBytesNeeded, &cbBytesNeeded))
+		{
 			BREAK_ON_ERROR("[EXTAPI SERVICE] QueryServiceConfigA failed");
 		}
 
@@ -403,7 +432,8 @@ DWORD get_service_config(HMODULE hAdvapi32, SC_HANDLE scService, Packet *pRespon
 
 	} while (0);
 
-	if (lpServiceConfig) {
+	if (lpServiceConfig)
+	{
 		free(lpServiceConfig);
 	}
 
@@ -431,32 +461,39 @@ DWORD get_service_dacl(HMODULE hAdvapi32, SC_HANDLE scService, Packet *pResponse
 	do
 	{
 		dprintf("[EXTAPI SERVICE] Searching for QueryServiceObjectSecurity");
-		if ((pQueryServiceObjectSecurity = (PQUERYSERVICEOBJECTSECURITY)GetProcAddress(hAdvapi32, "QueryServiceObjectSecurity")) == NULL) {
+		if ((pQueryServiceObjectSecurity = (PQUERYSERVICEOBJECTSECURITY)GetProcAddress(hAdvapi32, "QueryServiceObjectSecurity")) == NULL)
+		{
 			BREAK_ON_ERROR("[EXTAPI SERVICE] Unable to locate QueryServiceObjectSecurity in advapi32.dll.");
 		}
 
 		dprintf("[EXTAPI SERVICE] Searching for ConvertSecurityDescriptorToStringSecurityDescriptorA");
-		if ((pCSDTSSDA = (PCSDTSSDA)GetProcAddress(hAdvapi32, "ConvertSecurityDescriptorToStringSecurityDescriptorA")) == NULL) {
+		if ((pCSDTSSDA = (PCSDTSSDA)GetProcAddress(hAdvapi32, "ConvertSecurityDescriptorToStringSecurityDescriptorA")) == NULL)
+		{
 			BREAK_ON_ERROR("[EXTAPI SERVICE] Unable to locate ConvertSecurityDescriptorToStringSecurityDescriptorA in advapi32.dll.");
 		}
 
-		if (pQueryServiceObjectSecurity(scService, DACL_SECURITY_INFORMATION, (PSECURITY_DESCRIPTOR)&pSecurityDescriptor, 0, &dwBytesNeeded)) {
+		if (pQueryServiceObjectSecurity(scService, DACL_SECURITY_INFORMATION, (PSECURITY_DESCRIPTOR)&pSecurityDescriptor, 0, &dwBytesNeeded))
+		{
 			BREAK_ON_ERROR("[EXTAPI SERVICE] Call should have failed");
 		}
 
-		if (GetLastError() != ERROR_INSUFFICIENT_BUFFER) {
+		if (GetLastError() != ERROR_INSUFFICIENT_BUFFER)
+		{
 			BREAK_ON_ERROR("[EXTAPI SERVICE] Unexpected error getting security");
 		}
 
-		if ((pSecurityDescriptor = (PSECURITY_DESCRIPTOR)malloc(dwBytesNeeded)) == NULL) {
+		if ((pSecurityDescriptor = (PSECURITY_DESCRIPTOR)malloc(dwBytesNeeded)) == NULL)
+		{
 			BREAK_WITH_ERROR("[EXTAPI SERVICE] Out of memory", ERROR_OUTOFMEMORY);
 		}
 
-		if (!pQueryServiceObjectSecurity(scService, DACL_SECURITY_INFORMATION, pSecurityDescriptor, dwBytesNeeded, &dwBytesNeeded)) {
+		if (!pQueryServiceObjectSecurity(scService, DACL_SECURITY_INFORMATION, pSecurityDescriptor, dwBytesNeeded, &dwBytesNeeded))
+		{
 			BREAK_ON_ERROR("[EXTAPI SERVICE] Unable to query security information for DACL_SECURITY_INFORMATION");
 		}
 
-		if (!pCSDTSSDA(pSecurityDescriptor, SDDL_REVISION_1, DACL_SECURITY_INFORMATION, &lpDaclString, NULL)) {
+		if (!pCSDTSSDA(pSecurityDescriptor, SDDL_REVISION_1, DACL_SECURITY_INFORMATION, &lpDaclString, NULL))
+		{
 			BREAK_ON_ERROR("[EXTAPI SERVICE] Unable to get DACL string");
 		}
 
@@ -464,11 +501,13 @@ DWORD get_service_dacl(HMODULE hAdvapi32, SC_HANDLE scService, Packet *pResponse
 
 	} while (0);
 
-	if (lpDaclString) {
+	if (lpDaclString)
+	{
 		LocalFree(lpDaclString);
 	}
 
-	if (pSecurityDescriptor) {
+	if (pSecurityDescriptor)
+	{
 		free(pSecurityDescriptor);
 	}
 
