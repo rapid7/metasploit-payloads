@@ -431,7 +431,7 @@ DWORD inject_via_remotethread(Remote * remote, Packet * response, HANDLE hProces
 	{
 		// Create the thread in the remote process. Create suspended in case the call to CreateRemoteThread
 		// fails, giving us a chance to try an alternative method or fail migration gracefully.
-		hThread = create_remote_thread(hProcess, lpStartAddress, lpParameter, CREATE_SUSPENDED, NULL);
+		hThread = create_remote_thread(hProcess, 1024 * 1024, lpStartAddress, lpParameter, CREATE_SUSPENDED, NULL);
 		if (!hThread)
 		{
 			if (dwMeterpreterArch == PROCESS_ARCH_X86 && dwDestinationArch == PROCESS_ARCH_X64)
@@ -469,7 +469,9 @@ DWORD inject_via_remotethread(Remote * remote, Packet * response, HANDLE hProces
 		dprintf("[INJECT] inject_via_remotethread: Resuming the injected thread...");
 		// Resume the injected thread...
 		if (ResumeThread(hThread) == (DWORD)-1)
+		{
 			BREAK_ON_ERROR("[INJECT] inject_via_remotethread: ResumeThread failed")
+		}
 
 	} while (0);
 

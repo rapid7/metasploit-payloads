@@ -16,7 +16,8 @@ static BOOL pRtlCreateUserThreadAttempted = FALSE;
 
 /*!
  * @brief Helper function for creating a remote thread in a privileged process.
- * @param hProcess Handle to the target processj.
+ * @param hProcess Handle to the target process.
+ * @param sStackSize Size of the stack to use (if unsure, specify 0).
  * @param pvStartAddress Pointer to the function entry point that has been loaded into the target.
  * @param pvStartParam Pointer to the parameter to pass to the thread function.
  * @param dwCreateFlags Creation flags to use when creating the new thread.
@@ -32,11 +33,19 @@ static BOOL pRtlCreateUserThreadAttempted = FALSE;
  *         existing behaviour is kept for when running on XP and earlier, or when the user is already
  *         running within a privileged process.
  */
-HANDLE create_remote_thread(HANDLE hProcess, LPVOID pvStartAddress, LPVOID pvStartParam, DWORD dwCreateFlags, LPDWORD pdwThreadId)
+HANDLE create_remote_thread(HANDLE hProcess, SIZE_T sStackSize, LPVOID pvStartAddress, LPVOID pvStartParam, DWORD dwCreateFlags, LPDWORD pdwThreadId)
 {
 	NTSTATUS ntResult;
 	BOOL bCreateSuspended;
-	HANDLE hThread = CreateRemoteThread(hProcess, NULL, 0, (LPTHREAD_START_ROUTINE)pvStartAddress, pvStartParam, dwCreateFlags, pdwThreadId);
+	DWORD dwThreadId;
+	HANDLE hThread;
+	
+	if (pdwThreadId == NULL)
+	{
+		pdwThreadId = &dwThreadId;
+	}
+
+	hThread = CreateRemoteThread(hProcess, NULL, sStackSize, (LPTHREAD_START_ROUTINE)pvStartAddress, pvStartParam, dwCreateFlags, pdwThreadId);
 
 	// ERROR_NOT_ENOUGH_MEMORY is returned when the function fails due to insufficient privs
 	// on Vista and later.

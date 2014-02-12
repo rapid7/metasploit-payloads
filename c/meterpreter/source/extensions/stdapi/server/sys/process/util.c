@@ -36,7 +36,7 @@ DWORD execute_code_stub_in_process(HANDLE process, PVOID buffer, ULONG length,
 		}
 
 		// Create the thread in the target process
-		if (!(thread = create_remote_thread(process, codeInProcess, paramInProcess, 0, &threadId)))
+		if (!(thread = create_remote_thread(process, 0, codeInProcess, paramInProcess, 0, &threadId)))
 		{
 			result = GetLastError();
 			break;

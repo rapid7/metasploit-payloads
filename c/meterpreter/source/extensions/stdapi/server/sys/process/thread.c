@@ -90,7 +90,7 @@ DWORD request_sys_process_thread_create(Remote *remote, Packet *packet)
 		}
 
 		// Create the thread in the process supplied
-		if (!(thread = create_remote_thread(process, entryPoint, entryParam, createFlags, &threadId)))
+		if (!(thread = create_remote_thread(process, 0, entryPoint, entryParam, createFlags, &threadId)))
 		{
 			result = GetLastError();
 			break;
