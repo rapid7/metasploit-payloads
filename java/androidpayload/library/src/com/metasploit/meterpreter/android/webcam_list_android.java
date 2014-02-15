@@ -17,7 +17,6 @@ public class webcam_list_android extends webcam_audio_record implements Command 
     private static final int TLV_TYPE_WEBCAM_NAME = TLVPacket.TLV_META_TYPE_STRING | (TLV_EXTENSIONS + 4);
 
     public int execute(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws Exception {
-
         try {
             Class<?> cameraClass = Class.forName("android.hardware.Camera");
             Object cameraInfo = null;

