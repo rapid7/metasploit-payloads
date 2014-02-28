@@ -16,8 +16,34 @@ extern "C" {
 #define VALUE_SIZE 1024
 #define PATH_SIZE 256
 
+typedef BOOL (WINAPI *PCONVERTSIDTOSTRINGSID)(PSID pSid, LPSTR* pStr); 
+
 /*! @brief The GUID of the Directory Search COM object. */
 static const IID IID_IDirectorySearch = { 0x109BA8EC, 0x92F0, 0x11D0, { 0xA7, 0x90, 0x00, 0xC0, 0x4F, 0xD8, 0xD5, 0xA8 } };
+
+static PCONVERTSIDTOSTRINGSID pConvertSidToStringSid = NULL;
+static HMODULE hAdvapi32 = NULL;
+
+/*!
+ * @brief Render a SID to a string.
+ * @param pSid Pointer to the SID to render.
+ * @param pStr Pointer to the variable that will receive the string. Free with `LocalFree`.
+ * @returns Indciatin of success or failure.
+ */
+BOOL ConvertSidToStringSid(PSID pSid, LPSTR* pStr)
+{
+	if (pConvertSidToStringSid == NULL)
+	{
+		if (hAdvapi32 == NULL)
+		{
+			hAdvapi32 = LoadLibraryA("Advapi32.dll");
+		}
+
+		pConvertSidToStringSid = hAdvapi32 == NULL ? NULL : (PCONVERTSIDTOSTRINGSID)GetProcAddress(hAdvapi32, "ConvertSidToStringSidA");
+	}
+
+	return pConvertSidToStringSid == NULL ? FALSE : pConvertSidToStringSid(pSid, pStr);
+}
 
 /*!
  * @brief Render a byte array as a GUID string.
@@ -42,29 +68,40 @@ void guid_to_string(LPBYTE bytes, char* buffer, DWORD bufferSize)
  * @param buffer Pointer to the target buffer.
  * @param bufferSize size of the memory available in \c buffer.
  * @param byteFormat optional per-byte format (defaults to \c %02x).
+ * @param byteFormatMaxLen optional per-byte format max length (to make sure we allocated enough memory).
  * @param delim optional delimiter to render between bytes (defaults to \c -).
  * @remark Assumes the caller knows what they're doing, and assumes that there are 16 bytes in the array.
  */
-char* bytes_to_string(LPBYTE bytes, DWORD count, char* buffer, DWORD bufferSize, char* byteFormat = "%02x", char* delim = "-")
+char* bytes_to_string(LPBYTE bytes, DWORD count, char* byteFormat = "%02x", DWORD byteFormatMaxLen = 2, char* delim = "-")
 {
-	DWORD sizeLeft = bufferSize;
+	dprintf("[EXTAPI ADSI] Stringifying a binary of %u bytes", count);
 
-	for (DWORD i = 0; i < count && sizeLeft > 0; ++i)
+	if (bytes == NULL || count == 0)
 	{
-		int printed = 0;
-		if (i != 0)
-		{
-			printed = sprintf_s(buffer, sizeLeft, "%s", delim);
-			sizeLeft -= printed;
-			buffer += printed;
-		}
-
-		printed = sprintf_s(buffer, sizeLeft, byteFormat, bytes[i]);
-		sizeLeft -= printed;
-		buffer += printed;
+		return NULL;
 	}
 
-	return buffer;
+	size_t delimLen = strlen(delim);
+	size_t requiredSize = count * byteFormatMaxLen + (count - 1) * delimLen + 1;
+	char* string = (char*)malloc(requiredSize);
+	char* csr = string;
+
+	if (string)
+	{
+		for (DWORD i = 0; i < count; ++i)
+		{
+			if (i != 0)
+			{
+				csr += sprintf_s(csr, delimLen + 1, "%s", delim);
+			}
+
+			csr += sprintf_s(csr, byteFormatMaxLen + 1, byteFormat, bytes[i]);
+		}
+	}
+
+	dprintf("[EXTAPI ADSI] Stringified a binary of %u bytes to: %s", count, string);
+
+	return string;
 }
 
 /*!
@@ -220,7 +257,12 @@ DWORD domain_query(LPCWSTR lpwDomain, LPWSTR lpwFilter, LPWSTR* lpwQueryCols,
 								}
 								else
 								{
-									bytes_to_string(col.pADsValues->OctetString.lpValue, col.pADsValues->OctetString.dwLength, valueTarget, VALUE_SIZE);
+									char* s = bytes_to_string(col.pADsValues->OctetString.lpValue, col.pADsValues->OctetString.dwLength);
+									if (s)
+									{
+										strncpy_s(valueTarget, VALUE_SIZE, s, VALUE_SIZE - 1);
+										free(s);
+									}
 								}
 								break;
 							}
@@ -233,7 +275,12 @@ DWORD domain_query(LPCWSTR lpwDomain, LPWSTR lpwFilter, LPWSTR* lpwQueryCols,
 							}
 							case ADSTYPE_PROV_SPECIFIC:
 							{
-								bytes_to_string(col.pADsValues->ProviderSpecific.lpValue, col.pADsValues->ProviderSpecific.dwLength, valueTarget, VALUE_SIZE);
+								char* s = bytes_to_string(col.pADsValues->ProviderSpecific.lpValue, col.pADsValues->ProviderSpecific.dwLength);
+								if (s)
+								{
+									strncpy_s(valueTarget, VALUE_SIZE, s, VALUE_SIZE - 1);
+									free(s);
+								}
 								break;
 							}
 							case ADSTYPE_OBJECT_CLASS:
@@ -307,7 +354,13 @@ DWORD domain_query(LPCWSTR lpwDomain, LPWSTR lpwFilter, LPWSTR* lpwQueryCols,
 							case ADSTYPE_NETADDRESS:
 							{
 								PADS_NETADDRESS pna = col.pADsValues->pNetAddress;
-								bytes_to_string(pna->Address, pna->AddressLength, valueTarget, VALUE_SIZE, "%u", ".");
+								// IP address octects won't be bigger than 3 chars (given that we can only have 255 as a max value
+								char* s = bytes_to_string(pna->Address, pna->AddressLength, "%u", 3, ".");
+								if (s)
+								{
+									strncpy_s(valueTarget, VALUE_SIZE, s, VALUE_SIZE - 1);
+									free(s);
+								}
 								dprintf("[ADSI] %u network address of %u bytes added", pna->AddressType, pna->AddressLength);
 								break;
 							}
@@ -319,7 +372,13 @@ DWORD domain_query(LPCWSTR lpwDomain, LPWSTR lpwFilter, LPWSTR* lpwQueryCols,
 							case ADSTYPE_NT_SECURITY_DESCRIPTOR:
 							{
 								ADS_NT_SECURITY_DESCRIPTOR* psd = &col.pADsValues->SecurityDescriptor;
-								bytes_to_string(psd->lpValue, psd->dwLength, valueTarget, VALUE_SIZE);
+								char* s = NULL;
+								if(ConvertSidToStringSid((PSID)psd->lpValue, &s))
+								{
+									dprintf("[EXTAPI ADSI] converted SID: %s", s);
+									strncpy_s(valueTarget, VALUE_SIZE, s, VALUE_SIZE - 1);
+									LocalFree(s);
+								}
 								break;
 							}
 							case ADSTYPE_DN_WITH_BINARY:
@@ -327,7 +386,12 @@ DWORD domain_query(LPCWSTR lpwDomain, LPWSTR lpwFilter, LPWSTR* lpwQueryCols,
 								PADS_DN_WITH_BINARY pdb = col.pADsValues->pDNWithBinary;
 								sprintf_s(valueTarget, VALUE_SIZE, "DN: %S, Value: %S", pdb->pszDNString);
 								size_t charsPrinted = lstrlenA(valueTarget);
-								bytes_to_string(pdb->lpBinaryValue, pdb->dwLength, valueTarget + charsPrinted, VALUE_SIZE - charsPrinted, "%u", ".");
+								char* s = bytes_to_string(pdb->lpBinaryValue, pdb->dwLength, "%u", 3, ".");
+								if (s)
+								{
+									strncpy_s(valueTarget + charsPrinted, VALUE_SIZE, s, VALUE_SIZE - 1);
+									free(s);
+								}
 								break;
 							}
 							case ADSTYPE_DN_WITH_STRING:
