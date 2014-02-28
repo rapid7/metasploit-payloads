@@ -81,7 +81,7 @@ char* bytes_to_string(LPBYTE bytes, DWORD count, char* byteFormat = "%02x", DWOR
 		return NULL;
 	}
 
-	size_t delimLen = strlen(delim);
+	size_t delimLen = delim != NULL ? strlen(delim) : 0;
 	size_t requiredSize = count * byteFormatMaxLen + (count - 1) * delimLen + 1;
 	char* string = (char*)malloc(requiredSize);
 	char* csr = string;
@@ -90,7 +90,7 @@ char* bytes_to_string(LPBYTE bytes, DWORD count, char* byteFormat = "%02x", DWOR
 	{
 		for (DWORD i = 0; i < count; ++i)
 		{
-			if (i != 0)
+			if (i != 0 && delimLen > 0)
 			{
 				csr += sprintf_s(csr, delimLen + 1, "%s", delim);
 			}
@@ -378,6 +378,15 @@ DWORD domain_query(LPCWSTR lpwDomain, LPWSTR lpwFilter, LPWSTR* lpwQueryCols,
 									dprintf("[EXTAPI ADSI] converted SID: %s", s);
 									strncpy_s(valueTarget, VALUE_SIZE, s, VALUE_SIZE - 1);
 									LocalFree(s);
+								}
+								else
+								{
+									s = bytes_to_string(psd->lpValue, psd->dwLength);
+									if (s)
+									{
+										strncpy_s(valueTarget, VALUE_SIZE, s, VALUE_SIZE - 1);
+										free(s);
+									}
 								}
 								break;
 							}

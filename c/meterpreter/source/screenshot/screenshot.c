@@ -72,9 +72,13 @@ DWORD screenshot( int quality, DWORD dwPipeName )
 	// If we use SM_C[X|Y]VIRTUALSCREEN we can screenshot the whole desktop of a multi monitor display.
 	int xmetric               = SM_CXVIRTUALSCREEN;
 	int ymetric               = SM_CYVIRTUALSCREEN;
+	int xposition             = SM_XVIRTUALSCREEN;
+	int yposition             = SM_YVIRTUALSCREEN;
 	DWORD dwJpegSize          = 0;
 	int sx                    = 0;
 	int sy                    = 0;
+	int sxpos                 = 0;
+	int sypos                 = 0;
 
 	do
 	{
@@ -139,6 +143,15 @@ DWORD screenshot( int quality, DWORD dwPipeName )
 		sx = GetSystemMetrics( xmetric );
 		sy = GetSystemMetrics( ymetric );
 
+		// calculate the absolute virtual screen position
+		// prevent breaking functionality on <= NT 4.0
+		if (os.dwMajorVersion >= 4)
+		{
+			sxpos = GetSystemMetrics(xposition);
+			sypos = GetSystemMetrics(yposition);
+		}
+
+
 		// and create a bitmap
 		hbmp = CreateCompatibleBitmap( hdc, sx, sy );
 		if( !hbmp )
@@ -149,7 +162,8 @@ DWORD screenshot( int quality, DWORD dwPipeName )
 			BREAK_ON_ERROR( "[SCREENSHOT] screenshot. SelectObject failed" );
 
 		// BitBlt the screenshot of this sessions default input desktop on WinSta0 onto the memory DC we created 
-		if( !BitBlt( hmemdc, 0, 0, sx, sy, hdc, 0, 0, SRCCOPY ) )
+		// screenshot all available monitors by default
+		if( !BitBlt( hmemdc, 0, 0, sx, sy, hdc, sxpos, sypos, SRCCOPY ) )
 			BREAK_ON_ERROR( "[SCREENSHOT] screenshot. BitBlt failed" );
 
 		// finally convert the BMP we just made into a JPEG...

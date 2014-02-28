@@ -446,6 +446,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\source\common\arch\win\remote_thread.c" />
     <ClCompile Include="..\..\source\common\args.c" />
     <ClCompile Include="..\..\source\common\base.c" />
     <ClCompile Include="..\..\source\common\arch\win\i386\base_dispatch.c" />
@@ -465,6 +466,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClCompile Include="..\..\source\common\zlib\zlib.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\source\common\arch\win\remote_thread.h" />
     <ClInclude Include="..\..\source\common\crypto\xor.h" />
     <ClInclude Include="..\..\source\common\args.h" />
     <ClInclude Include="..\..\source\common\base.h" />
