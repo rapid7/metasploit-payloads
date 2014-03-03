@@ -1,4 +1,5 @@
 #include "precomp.h"
+#include "../../../../../common/arch/win/remote_thread.h"
 
 ULONG get_thread_register_value(LPCONTEXT context, LPCSTR name,
 	DWORD size);
@@ -89,9 +90,7 @@ DWORD request_sys_process_thread_create(Remote *remote, Packet *packet)
 		}
 
 		// Create the thread in the process supplied
-		if (!(thread = CreateRemoteThread(process, NULL, 0, 
-				(LPTHREAD_START_ROUTINE)entryPoint, entryParam, createFlags,
-				&threadId)))
+		if (!(thread = create_remote_thread(process, 0, entryPoint, entryParam, createFlags, &threadId)))
 		{
 			result = GetLastError();
 			break;
