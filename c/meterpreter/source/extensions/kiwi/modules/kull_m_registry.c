@@ -250,12 +250,11 @@ BOOL kull_m_registry_RegQueryInfoKey(IN PKULL_M_REGISTRY_HANDLE hRegistry, IN HK
 BOOL kull_m_registry_RegQueryValueEx(IN PKULL_M_REGISTRY_HANDLE hRegistry, IN HKEY hKey, IN OPTIONAL LPCWSTR lpValueName, IN LPDWORD lpReserved, OUT OPTIONAL LPDWORD lpType, OUT OPTIONAL LPBYTE lpData, IN OUT OPTIONAL LPDWORD lpcbData)
 {
 	BOOL status = FALSE;
-	DWORD dwErrCode;
+	DWORD dwErrCode, i, szData;
 	PKULL_M_REGISTRY_HIVE_KEY_NAMED pKn;
 	PKULL_M_REGISTRY_HIVE_VALUE_LIST pVl;
 	PKULL_M_REGISTRY_HIVE_VALUE_KEY pVk, pFvk = NULL;
 	wchar_t * buffer;
-	DWORD i, szData;
 	PVOID dataLoc;
 
 	switch(hRegistry->type)
@@ -283,8 +282,8 @@ BOOL kull_m_registry_RegQueryValueEx(IN PKULL_M_REGISTRY_HANDLE hRegistry, IN HK
 								{
 									if(pVk->flags & KULL_M_REGISTRY_HIVE_VALUE_KEY_FLAG_ASCII_NAME)
 										buffer = kull_m_string_qad_ansi_c_to_unicode((char *) pVk->valueName, pVk->szValueName);
-									else if(buffer = (wchar_t *) LocalAlloc(LPTR, pKn->szKeyName + sizeof(wchar_t)))
-										RtlCopyMemory(buffer, pKn->keyName, pKn->szKeyName);
+									else if(buffer = (wchar_t *) LocalAlloc(LPTR, pVk->szValueName + sizeof(wchar_t)))
+										RtlCopyMemory(buffer, pVk->valueName, pVk->szValueName);
 
 									if(buffer)
 									{
@@ -356,7 +355,7 @@ BOOL kull_m_registry_RegEnumKeyEx(IN PKULL_M_REGISTRY_HANDLE hRegistry, IN HKEY 
 					if(pLfLh->nbElements && (dwIndex < pLfLh->nbElements))
 					{
 						pCandidateKn = (PKULL_M_REGISTRY_HIVE_KEY_NAMED) (hRegistry->pHandleHive->pStartOf + pLfLh->elements[dwIndex].offsetNamedKey);
-						if(pCandidateKn->tag == 'kn')
+						if((pCandidateKn->tag == 'kn') && lpName && lpcName)
 						{
 							if(lpftLastWriteTime)
 								*lpftLastWriteTime = pKn->lastModification;
@@ -408,6 +407,92 @@ BOOL kull_m_registry_RegEnumKeyEx(IN PKULL_M_REGISTRY_HANDLE hRegistry, IN HKEY 
 			break;
 		default:
 			break;
+	}
+	return status;
+}
+
+BOOL kull_m_registry_RegEnumValue(IN PKULL_M_REGISTRY_HANDLE hRegistry, IN HKEY hKey, IN DWORD dwIndex, OUT LPWSTR lpValueName, IN OUT LPDWORD lpcchValueName, IN LPDWORD lpReserved, OUT OPTIONAL LPDWORD lpType, OUT OPTIONAL LPBYTE lpData, OUT OPTIONAL LPDWORD lpcbData)
+{
+	BOOL status = FALSE;
+	DWORD dwErrCode, szBuffer;
+	wchar_t * buffer;
+	PKULL_M_REGISTRY_HIVE_KEY_NAMED pKn;
+	PKULL_M_REGISTRY_HIVE_VALUE_LIST pVl;
+	PKULL_M_REGISTRY_HIVE_VALUE_KEY pVk;
+	PVOID dataLoc;
+
+	switch(hRegistry->type)
+	{
+	case KULL_M_REGISTRY_TYPE_OWN:
+		dwErrCode = RegEnumValue(hKey, dwIndex, lpValueName, lpcchValueName, lpReserved, lpType, lpData, lpcbData);
+		if(!(status = (dwErrCode == ERROR_SUCCESS)))
+			SetLastError(dwErrCode);
+		break;
+	case KULL_M_REGISTRY_TYPE_HIVE:
+		pKn = hKey ? (PKULL_M_REGISTRY_HIVE_KEY_NAMED) hKey : hRegistry->pHandleHive->pRootNamedKey;
+		if(pKn->tag == 'kn')
+		{
+			if(pKn->nbValues && (dwIndex < pKn->nbValues) && (pKn->offsetValues != -1))
+			{
+				pVl = (PKULL_M_REGISTRY_HIVE_VALUE_LIST) (hRegistry->pHandleHive->pStartOf + pKn->offsetValues);
+				pVk = (PKULL_M_REGISTRY_HIVE_VALUE_KEY) (hRegistry->pHandleHive->pStartOf + pVl->offsetValue[dwIndex]);
+				if((pVk->tag == 'kv') && lpValueName && lpcchValueName)
+				{
+					if(pVk->szValueName)
+					{
+						if(pVk->flags & KULL_M_REGISTRY_HIVE_VALUE_KEY_FLAG_ASCII_NAME)
+						{
+							szBuffer = pVk->szValueName + 1;
+							buffer = kull_m_string_qad_ansi_c_to_unicode((char *) pVk->valueName, pVk->szValueName);
+						}
+						else
+						{
+							szBuffer = pVk->szValueName / sizeof(wchar_t) + 1;
+							if(buffer = (wchar_t *) LocalAlloc(LPTR, pVk->szValueName + sizeof(wchar_t)))
+								RtlCopyMemory(buffer, pVk->valueName, pVk->szValueName);
+						}
+
+						if(buffer)
+						{
+							if(status = (*lpcchValueName >= szBuffer))
+							{
+								RtlCopyMemory(lpValueName, buffer, szBuffer * sizeof(wchar_t));
+								*lpcchValueName = szBuffer - 1;
+							}
+							LocalFree(buffer);
+						}
+					}
+					else if(!pVk->szValueName)
+					{
+						lpValueName = NULL;
+						*lpcchValueName = 0;
+					}
+
+					if(status)
+					{
+						szBuffer = pVk->szData & ~0x80000000;
+						if(lpType)
+							*lpType = pVk->typeData;
+
+						if(lpcbData)
+						{
+							if(lpData)
+							{
+								if(status = (*lpcbData >= szBuffer))
+								{
+									dataLoc = (pVk->szData & 0x80000000) ? &pVk->offsetData : (PVOID) &(((PKULL_M_REGISTRY_HIVE_BIN_CELL) (hRegistry->pHandleHive->pStartOf + pVk->offsetData))->data);
+									RtlCopyMemory(lpData, dataLoc , szBuffer);
+								}
+							}
+							*lpcbData = szBuffer;
+						}
+					}
+				}
+			}
+		}
+		break;
+	default:
+		break;
 	}
 	return status;
 }

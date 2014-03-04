@@ -28,6 +28,8 @@ const KUHL_M kuhl_m_lsadump;
 NTSTATUS kuhl_m_lsadump_sam(int argc, wchar_t * argv[]);
 NTSTATUS kuhl_m_lsadump_samrpc(int argc, wchar_t * argv[]);
 NTSTATUS kuhl_m_lsadump_secrets(int argc, wchar_t * argv[]);
+NTSTATUS kuhl_m_lsadump_cache(int argc, wchar_t * argv[]);
+NTSTATUS kuhl_m_lsadump_secretsOrCache(int argc, wchar_t * argv[], BOOL secretsOrCache);
 
 BOOL kuhl_m_lsadump_getComputerAndSyskey(IN PKULL_M_REGISTRY_HANDLE hRegistry, IN HKEY hSystemBase, OUT LPBYTE sysKey);
 BOOL kuhl_m_lsadump_getUsersAndSamKey(IN PKULL_M_REGISTRY_HANDLE hRegistry, IN HKEY hSAMBase, IN LPBYTE sysKey);
@@ -160,13 +162,20 @@ extern NTSTATUS WINAPI SamEnumerateUsersInDomain(IN SAMPR_HANDLE DomainHandle, I
 extern NTSTATUS WINAPI SamCloseHandle(IN SAMPR_HANDLE SamHandle);
 extern NTSTATUS WINAPI SamFreeMemory(IN PVOID Buffer);
 
-#define AES_256_KEY_SIZE	32
+#define AES_256_KEY_SIZE	(256/8)
+#define AES_128_KEY_SIZE	(128/8)
 #define AES_BLOCK_SIZE		16
 typedef struct _AES_256_KEY_BLOB {
 	BLOBHEADER Header;
 	DWORD keySize;
 	BYTE key[AES_256_KEY_SIZE];
 } AES_256_KEY_BLOB, *PAES_256_KEY_BLOB;
+
+typedef struct _AES_128_KEY_BLOB {
+	BLOBHEADER Header;
+	DWORD keySize;
+	BYTE key[AES_128_KEY_SIZE];
+} AES_128_KEY_BLOB, *PAES_128_KEY_BLOB;
 
 typedef struct _POL_REVISION {
 	USHORT Minor;
@@ -229,9 +238,53 @@ typedef struct _NT5_SYSTEM_KEYS {
 	BYTE lazyiv[LAZY_NT5_IV_SIZE];
 } NT5_SYSTEM_KEYS, *PNT5_SYSTEM_KEYS;
 
-BOOL kuhl_m_lsadump_getLsaKeyAndSecrets(IN PKULL_M_REGISTRY_HANDLE hSecurity, IN HKEY hSecurityBase, IN PKULL_M_REGISTRY_HANDLE hSystem, IN HKEY hSystemBase, IN LPBYTE sysKey);
+typedef struct _MSCACHE_ENTRY {
+	WORD szUserName;
+	WORD szDomainName;
+	WORD szEffectiveName;
+	WORD szfullName;
+	WORD szlogonScript;
+	WORD szprofilePath;
+	WORD szhomeDirectory;
+	WORD szhomeDirectoryDrive;
+	DWORD userId;
+	DWORD primaryGroupId;
+	DWORD groupCount;
+	WORD szlogonDomainName;
+	WORD unk0;
+	FILETIME lastWrite;
+	DWORD revision;
+	DWORD sidCount;
+	DWORD flags;
+	DWORD unk1;
+	DWORD logonPackage;
+	WORD szDnsDomainName;
+	WORD szupn;
+	BYTE iv[32];
+	BYTE enc_data[ANYSIZE_ARRAY];
+} MSCACHE_ENTRY, *PMSCACHE_ENTRY;
+
+typedef struct _MSCACHE_DATA {
+	BYTE mshashdata[LM_NTLM_HASH_LENGTH];
+	BYTE unkhash[LM_NTLM_HASH_LENGTH];
+	DWORD unk0;
+	DWORD unk1;
+	DWORD unkLength;
+	DWORD unk2;
+	DWORD unk3;
+	DWORD unk4;
+	DWORD unk5;
+	DWORD unk6;
+	DWORD unk7;
+	DWORD unk8;
+} MSCACHE_DATA, *PMSCACHE_DATA;
+
+BOOL kuhl_m_lsadump_getLsaKeyAndSecrets(IN PKULL_M_REGISTRY_HANDLE hSecurity, IN HKEY hSecurityBase, IN PKULL_M_REGISTRY_HANDLE hSystem, IN HKEY hSystemBase, IN LPBYTE sysKey, IN BOOL secretsOrCache);
 BOOL kuhl_m_lsadump_getSecrets(IN PKULL_M_REGISTRY_HANDLE hSecurity, IN HKEY hPolicyBase, IN PKULL_M_REGISTRY_HANDLE hSystem, IN HKEY hSystemBase, PNT6_SYSTEM_KEYS lsaKeysStream, PNT5_SYSTEM_KEY lsaKeyUnique);
+BOOL kuhl_m_lsadump_getNLKMSecretAndCache(IN PKULL_M_REGISTRY_HANDLE hSecurity, IN HKEY hPolicyBase, IN HKEY hSecurityBase, PNT6_SYSTEM_KEYS lsaKeysStream, PNT5_SYSTEM_KEY lsaKeyUnique);
+void kuhl_m_lsadump_printMsCache(PMSCACHE_ENTRY entry, CHAR version);
 void kuhl_m_lsadump_getInfosFromServiceName(IN PKULL_M_REGISTRY_HANDLE hSystem, IN HKEY hSystemBase, IN PCWSTR serviceName);
-void kuhl_m_lsadump_decryptSecret(IN PKULL_M_REGISTRY_HANDLE hSecurity, IN HKEY hSecret, IN PCWSTR prefix, IN PNT6_SYSTEM_KEYS lsaKeysStream, IN PNT5_SYSTEM_KEY lsaKeyUnique);
+BOOL kuhl_m_lsadump_decryptSecret(IN PKULL_M_REGISTRY_HANDLE hSecurity, IN HKEY hSecret, IN PNT6_SYSTEM_KEYS lsaKeysStream, IN PNT5_SYSTEM_KEY lsaKeyUnique, IN PVOID * pBufferOut, IN PDWORD pSzBufferOut);
 void kuhl_m_lsadump_candidateSecret(DWORD szBytesSecrets, PVOID bufferSecret, PCWSTR prefix);
 BOOL kuhl_m_lsadump_sec_aes256(PNT6_HARD_SECRET hardSecretBlob, DWORD hardSecretBlobSize, PNT6_SYSTEM_KEYS lsaKeysStream, PBYTE sysKey);
+void kuhl_m_lsadump_hmac_md5(LPCVOID key, DWORD szKey, LPCVOID data, DWORD szData, LPVOID output);

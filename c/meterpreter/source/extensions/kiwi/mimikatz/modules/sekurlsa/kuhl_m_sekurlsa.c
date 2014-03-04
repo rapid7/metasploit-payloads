@@ -407,7 +407,7 @@ VOID kuhl_m_sekurlsa_genericCredsOutput(PKIWI_GENERIC_PRIMARY_CREDENTIAL mesCred
 	PMSV1_0_PRIMARY_CREDENTIAL pPrimaryCreds;
 	PRPCE_CREDENTIAL_KEYCREDENTIAL pRpceCredentialKeyCreds;
 	PVOID base;
-	DWORD type;
+	DWORD type, i;
 	
 	if(mesCreds)
 	{
@@ -440,9 +440,9 @@ VOID kuhl_m_sekurlsa_genericCredsOutput(PKIWI_GENERIC_PRIMARY_CREDENTIAL mesCred
 					break;
 				case KUHL_SEKURLSA_CREDS_DISPLAY_CREDENTIALKEY:
 					pRpceCredentialKeyCreds = (PRPCE_CREDENTIAL_KEYCREDENTIAL) credentials->Buffer;
-					base = (PBYTE) pRpceCredentialKeyCreds + sizeof(RPCE_CREDENTIAL_KEYCREDENTIAL);
-					kuhl_m_sekurlsa_genericKeyOutput(&pRpceCredentialKeyCreds->key1, &base);
-					kuhl_m_sekurlsa_genericKeyOutput(&pRpceCredentialKeyCreds->key2, &base);
+					base = (PBYTE) pRpceCredentialKeyCreds + sizeof(RPCE_CREDENTIAL_KEYCREDENTIAL) + (pRpceCredentialKeyCreds->unk0 - 1) * sizeof(MARSHALL_KEY);
+					for (i = 0; i < pRpceCredentialKeyCreds->unk0; i++)
+						kuhl_m_sekurlsa_genericKeyOutput(&pRpceCredentialKeyCreds->key[i], &base);
 					break;
 				default:
 					kprintf(L"\n\t * Raw data : ");
@@ -508,23 +508,26 @@ VOID kuhl_m_sekurlsa_genericCredsOutput(PKIWI_GENERIC_PRIMARY_CREDENTIAL mesCred
 
 VOID kuhl_m_sekurlsa_genericKeyOutput(PMARSHALL_KEY key, PVOID * dirtyBase)
 {
-	switch(key->unkId)
-	{
-	case 0x00010002:
-		kprintf(L"\n\t * NTLM     : ");
-		break;
-	case 0x00020002:
-		kprintf(L"\n\t * SHA1     : ");
-		break;
-	case 0x00030002:
-		kprintf(L"\n\t * RootKey  : ");
-		break;
-	case 0x00040002:
-		kprintf(L"\n\t * DPAPI    : ");
-		break;
-	default:
-		kprintf(L"\n\t * %08x : ", key->unkId);
+	if(key && key->unkId)
+  {
+		switch(key->unkId)
+		{
+		case 0x00010002:
+			kprintf(L"\n\t * NTLM     : ");
+			break;
+		case 0x00020002:
+			kprintf(L"\n\t * SHA1     : ");
+			break;
+		case 0x00030002:
+			kprintf(L"\n\t * RootKey  : ");
+			break;
+		case 0x00040002:
+			kprintf(L"\n\t * DPAPI    : ");
+			break;
+		default:
+			kprintf(L"\n\t * %08x : ", key->unkId);
+		}
+		kull_m_string_wprintf_hex((PBYTE) *dirtyBase + sizeof(ULONG), key->length, 0);
+		*dirtyBase = (PBYTE) *dirtyBase + sizeof(ULONG) + *(PULONG) *dirtyBase;
 	}
-	kull_m_string_wprintf_hex((PBYTE) *dirtyBase + sizeof(ULONG), key->length, 0);
-	*dirtyBase = (PBYTE) *dirtyBase + sizeof(ULONG) + *(PULONG) *dirtyBase;
 }

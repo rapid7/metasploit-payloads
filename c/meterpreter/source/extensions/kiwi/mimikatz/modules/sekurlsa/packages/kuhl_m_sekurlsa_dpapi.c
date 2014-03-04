@@ -64,7 +64,7 @@ BOOL CALLBACK kuhl_m_sekurlsa_enum_callback_dpapi(IN PKIWI_BASIC_SECURITY_LOGON_
 						{
 							kprintf(L"\t [%08x]\n\t * GUID :\t", monNb++);
 							kull_m_string_displayGUID(&mesCredentials.KeyUid);
-							kprintf(L"\n\t * Time :\t"); kull_m_string_displayFileTime(&mesCredentials.insertTime);
+							kprintf(L"\n\t * Time :\t"); kull_m_string_displayLocalFileTime(&mesCredentials.insertTime);
 
 							if(aKey.address = LocalAlloc(LPTR, mesCredentials.keySize))
 							{
