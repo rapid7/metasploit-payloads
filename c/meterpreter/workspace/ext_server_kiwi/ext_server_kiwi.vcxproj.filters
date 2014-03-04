@@ -143,6 +143,9 @@
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_vault.h">
       <Filter>modules</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_rpce.h">
+      <Filter>common</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz.rc" />

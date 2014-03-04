@@ -7,6 +7,7 @@
 #include "globals.h"
 #include "../modules/kull_m_patch.h"
 #include "../modules/kull_m_process.h"
+#include "../modules/kull_m_rpce.h"
 
 typedef struct _RTL_BALANCED_LINKS {
 	struct _RTL_BALANCED_LINKS *Parent;

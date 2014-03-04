@@ -18,13 +18,22 @@ typedef struct _MSV1_0_PRIMARY_CREDENTIAL {
 	/* buffer */
 } MSV1_0_PRIMARY_CREDENTIAL, *PMSV1_0_PRIMARY_CREDENTIAL; 
 
-typedef struct _CREDENTIAL_KEYCREDENTIAL { 
-	DWORD unkz[13];
-	DWORD szNtlmHash;
-	BYTE NtOwfPassword[LM_NTLM_HASH_LENGTH];
-	DWORD szSha1Hash;
-	BYTE Sha1OwfPassword[SHA_DIGEST_LENGTH];
-} CREDENTIAL_KEYCREDENTIAL, *PCREDENTIAL_KEYCREDENTIAL; 
+typedef struct _MARSHALL_KEY {
+	DWORD unkId;
+	USHORT unk0;
+	USHORT length;
+	RPCEID ElementId;
+} MARSHALL_KEY, *PMARSHALL_KEY;
+
+typedef struct _RPCE_CREDENTIAL_KEYCREDENTIAL {
+	RPCE_COMMON_TYPE_HEADER	typeHeader;
+	RPCE_PRIVATE_HEADER	privateHeader;
+	RPCEID RootElementId;
+	DWORD unk0;
+	DWORD unk1;
+	MARSHALL_KEY key1;
+	MARSHALL_KEY key2;
+} RPCE_CREDENTIAL_KEYCREDENTIAL, *PRPCE_CREDENTIAL_KEYCREDENTIAL;
 
 typedef struct _MSV1_0_PTH_DATA { 
 	PLUID		LogonId;
@@ -59,4 +68,3 @@ BOOL CALLBACK kuhl_m_sekurlsa_msv_enum_cred_callback_std(IN struct _KIWI_MSV1_0_
 BOOL CALLBACK kuhl_m_sekurlsa_msv_enum_cred_callback_pth(IN struct _KIWI_MSV1_0_PRIMARY_CREDENTIALS * pCredentials, IN DWORD AuthenticationPackageId, IN PKULL_M_MEMORY_ADDRESS origBufferAddress, IN OPTIONAL LPVOID pOptionalData);
 
 PWCHAR kuhl_m_sekurlsa_msv_pth_makefakestring(const int argc, const wchar_t * argv[], const wchar_t * name, const wchar_t ** theArgs);
-void kuhl_m_sekurlsa_msv_NlpMakeRelativeOrAbsoluteString(PVOID BaseAddress, PLSA_UNICODE_STRING String, BOOL relative);

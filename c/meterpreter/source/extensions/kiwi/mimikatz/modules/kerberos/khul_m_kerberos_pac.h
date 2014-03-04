@@ -6,6 +6,7 @@
 #pragma once
 #include "../kuhl_m.h"
 #include "../modules/kull_m_crypto_system.h"
+#include "../modules/kull_m_rpce.h"
 
 #define KERB_NON_KERB_SALT					16
 #define KERB_NON_KERB_CKSUM_SALT			17
@@ -97,20 +98,6 @@ typedef struct _PAC_SIGNATURE_DATA {
 	USHORT RODCIdentifier;
 	USHORT  Reserverd;
 } PAC_SIGNATURE_DATA, *PPAC_SIGNATURE_DATA;
-
-typedef struct _RPCE_COMMON_TYPE_HEADER {
-	UCHAR Version;
-	UCHAR Endianness;
-	USHORT CommonHeaderLength;
-	ULONG Filler;
-} RPCE_COMMON_TYPE_HEADER, *PRPCE_COMMON_TYPE_HEADER;
-
-typedef struct _RPCE_PRIVATE_HEADER {
-	ULONG ObjectBufferLength;
-	ULONG Filler;
-} RPCE_PRIVATE_HEADER, *PRPCE_PRIVATE_HEADER;
-
-typedef ULONG32 RPCEID;
 
 #pragma pack(push, 4) 
 typedef struct _MARSHALLED_UNICODE_STRING {

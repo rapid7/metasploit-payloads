@@ -615,6 +615,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_process.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_registry.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_registry_structures.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_rpce.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_service.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_string.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_token.h" />
