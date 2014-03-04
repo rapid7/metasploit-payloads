@@ -56,9 +56,9 @@ NTSTATUS kuhl_m_vault_clean()
 }
 
 const VAULT_SCHEMA_HELPER schemaHelper[] = {
-	{{{0x03e0e35be, 0x1b77, 0x43e7, {0xb8, 0x73, 0xae, 0xd9, 0x01, 0xb6, 0x27, 0x5b}}, L"Domain Password"},	NULL},
+	{{{0x03e0e35be, 0x1b77, 0x43e7, {0xb8, 0x73, 0xae, 0xd9, 0x01, 0xb6, 0x27, 0x5b}}, L"Domain Password"},		NULL},
 	{{{0x0e69d7838, 0x91b5, 0x4fc9, {0x89, 0xd5, 0x23, 0x0d, 0x4d, 0x4c, 0xc2, 0xbc}}, L"Domain Certificate"},	NULL},
-	{{{0x03c886ff3, 0x2669, 0x4aa2, {0xa8, 0xfb, 0x3f, 0x67, 0x59, 0xa7, 0x75, 0x48}}, L"Domain Extended"},	NULL},
+	{{{0x03c886ff3, 0x2669, 0x4aa2, {0xa8, 0xfb, 0x3f, 0x67, 0x59, 0xa7, 0x75, 0x48}}, L"Domain Extended"},		NULL},
 	{{{0x0b2e033f5, 0x5fde, 0x450d, {0xa1, 0xbd, 0x37, 0x91, 0xf4, 0x65, 0x72, 0x0c}}, L"Pin Logon"},			kuhl_m_vault_list_descItem_PINLogonOrPicturePassword},
 	{{{0x0b4b8a12b, 0x183d, 0x4908, {0x95, 0x59, 0xbd, 0x8b, 0xce, 0x72, 0xb5, 0x8a}}, L"Picture Password"},	kuhl_m_vault_list_descItem_PINLogonOrPicturePassword},
 };
@@ -115,13 +115,13 @@ NTSTATUS kuhl_m_vault_list(int argc, wchar_t * argv[])
 								}
 
 								pItem8 = NULL;
-								status = VaultGetItem8(hVault, &items8[j].SchemaId, items8[j].Ressource, items8[j].Identity, items8[j].PackageSid, NULL, items8[j].Flags, &pItem8);
+								status = VaultGetItem8(hVault, &items8[j].SchemaId, items8[j].Ressource, items8[j].Identity, items8[j].PackageSid, NULL, 0, &pItem8);
 
 								kprintf(L"\t\t*Authenticator* : ");
 								if(status == STATUS_SUCCESS)
 									kuhl_m_vault_list_descItemData(pItem8->Authenticator);
 								else
-									kprintf(L"VaultGetItem8 : %08x\n", status);
+									PRINT_ERROR(L"VaultGetItem8 : %08x\n", status);
 								kprintf(L"\n");
 
 								for(l = 0; l < (sizeof(schemaHelper) / sizeof(VAULT_SCHEMA_HELPER)); l++)
@@ -241,6 +241,9 @@ void kuhl_m_vault_list_descItemData(PVAULT_ITEM_DATA pData)
 		{
 		case ElementType_UnsignedShort:
 			kprintf(L"%hu", pData->data.UnsignedShort);
+			break;
+		case ElementType_UnsignedInteger:
+			kprintf(L"%u", pData->data.UnsignedInt);
 			break;
 		case ElementType_String:
 			kprintf(L"%s", pData->data.String);
