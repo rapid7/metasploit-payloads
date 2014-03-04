@@ -20,6 +20,42 @@ void kull_m_string_dprintf_hex(LPCVOID lpData, DWORD cbData, DWORD flags)
 		dprintf(pType, ((LPCBYTE) lpData)[i]);
 }
 
+void kull_m_string_displayFileTime(IN PFILETIME pFileTime)
+{
+	SYSTEMTIME st;
+	char buffer[0xff];
+	if(pFileTime)
+	{
+		if(FileTimeToSystemTime(pFileTime, &st ))
+		{
+			if(GetDateFormatA(LOCALE_USER_DEFAULT, 0, &st, NULL, buffer, sizeof(buffer)))
+			{
+				dprintf("%s ", buffer);
+				if(GetTimeFormatA(LOCALE_USER_DEFAULT, 0, &st, NULL, buffer, sizeof(buffer)))
+					dprintf("%s", buffer);
+			}
+		}
+	}
+}
+
+void kull_m_string_displayLocalFileTime(IN PFILETIME pFileTime)
+{
+	FILETIME ft;
+	if(pFileTime)
+		if(FileTimeToLocalFileTime(pFileTime, &ft))
+			kull_m_string_displayFileTime(&ft);
+}
+
+void kull_m_string_displayGUID(IN LPCGUID pGuid)
+{
+	UNICODE_STRING uString;
+	if(NT_SUCCESS(RtlStringFromGUID(pGuid, &uString)))
+	{
+		dprintf("%wZ", &uString);
+		RtlFreeUnicodeString(&uString);
+	}
+}
+
 BOOL kull_m_string_suspectUnicodeString(IN PUNICODE_STRING pUnicodeString)
 {
 	int unicodeTestFlags = IS_TEXT_UNICODE_ODD_LENGTH | IS_TEXT_UNICODE_STATISTICS;

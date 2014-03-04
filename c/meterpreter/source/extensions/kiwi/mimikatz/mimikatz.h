@@ -13,7 +13,7 @@
 #include "modules/kuhl_m_service.h"
 #include "modules/kuhl_m_privilege.h"
 #include "modules/kuhl_m_process.h"
-#include "modules/khul_m_lsadump.h"
+#include "modules/kuhl_m_lsadump.h"
 #include "modules/kuhl_m_ts.h"
 #include "modules/kuhl_m_event.h"
 #include "modules/kuhl_m_misc.h"

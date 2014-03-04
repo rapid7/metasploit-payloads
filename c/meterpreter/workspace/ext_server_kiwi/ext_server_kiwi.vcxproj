@@ -575,7 +575,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kerberos\khul_m_kerberos.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kerberos\khul_m_kerberos_pac.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kerberos\khul_m_kerberos_ticket.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\khul_m_lsadump.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_lsadump.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_crypto.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_event.h" />
@@ -630,7 +630,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kerberos\khul_m_kerberos.c" />
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kerberos\khul_m_kerberos_pac.c" />
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kerberos\khul_m_kerberos_ticket.c" />
-    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\khul_m_lsadump.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_lsadump.c" />
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_crypto.c" />
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_event.c" />
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_kernel.c" />

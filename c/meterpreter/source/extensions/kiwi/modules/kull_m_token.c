@@ -56,7 +56,7 @@ BOOL kull_m_token_getTokens(PKULL_M_TOKEN_ENUM_CALLBACK callBack, PVOID pvArg)
 	KULL_M_TOKEN_ENUM_DATA data = {callBack, pvArg, TRUE};
 	if(status = NT_SUCCESS(kull_m_process_getProcessInformation(kull_m_token_getTokens_process_callback, &data)))
 		if(data.mustContinue)
-			status = NT_SUCCESS(kull_m_handle_getHandles(kull_m_token_getTokens_handles_callback, &data));
+			status = NT_SUCCESS(kull_m_handle_getHandlesOfType(kull_m_token_getTokens_handles_callback, L"Token", TOKEN_QUERY | TOKEN_DUPLICATE, 0, &data));
 	return status;
 }
 
@@ -74,36 +74,10 @@ BOOL CALLBACK kull_m_token_getTokens_process_callback(PSYSTEM_PROCESS_INFORMATIO
 		}
 		CloseHandle(hProcess);
 	}
-	((PKULL_M_TOKEN_ENUM_DATA) pvArg)->mustContinue = status;
-	return status;
+	return (((PKULL_M_TOKEN_ENUM_DATA) pvArg)->mustContinue = status);
 }
 
-CONST UNICODE_STRING kull_m_token_strToken = {10, 12, L"Token"};
-BOOL CALLBACK kull_m_token_getTokens_handles_callback(PSYSTEM_HANDLE pSystemHandle, PVOID pvArg)
+BOOL CALLBACK kull_m_token_getTokens_handles_callback(HANDLE handle, PSYSTEM_HANDLE pSystemHandle, PVOID pvArg)
 {
-	BOOL status = TRUE;
-	HANDLE hProcess, hRemoteHandle;
-	POBJECT_TYPE_INFORMATION pInfos;
-	ULONG szNeeded;
-
-	if(hProcess = OpenProcess(PROCESS_DUP_HANDLE, FALSE, pSystemHandle->ProcessId))
-	{
-		if(DuplicateHandle(hProcess, (HANDLE) pSystemHandle->Handle, GetCurrentProcess(), &hRemoteHandle, TOKEN_QUERY | TOKEN_DUPLICATE, TRUE, 0))
-		{
-			if(NtQueryObject(hRemoteHandle, ObjectTypeInformation, NULL, 0, &szNeeded) == STATUS_INFO_LENGTH_MISMATCH)
-			{
-				if(pInfos = (POBJECT_TYPE_INFORMATION) LocalAlloc(LPTR, szNeeded))
-				{
-					if(NT_SUCCESS(NtQueryObject(hRemoteHandle, ObjectTypeInformation, pInfos, szNeeded, &szNeeded)))
-						if(RtlEqualUnicodeString(&pInfos->TypeName, &kull_m_token_strToken, TRUE))
-							status = ((PKULL_M_TOKEN_ENUM_DATA) pvArg)->callback(hRemoteHandle, pSystemHandle->ProcessId, ((PKULL_M_TOKEN_ENUM_DATA) pvArg)->pvArg);
-					LocalFree(pInfos);
-				}
-			}
-			CloseHandle(hRemoteHandle);
-		}
-		CloseHandle(hProcess);
-	}
-	((PKULL_M_TOKEN_ENUM_DATA) pvArg)->mustContinue = status;
-	return status;
+	return (((PKULL_M_TOKEN_ENUM_DATA) pvArg)->mustContinue = ((PKULL_M_TOKEN_ENUM_DATA) pvArg)->callback(handle, pSystemHandle->ProcessId, ((PKULL_M_TOKEN_ENUM_DATA) pvArg)->pvArg));
 }

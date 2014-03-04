@@ -154,6 +154,9 @@ typedef struct _KIWI_MSV1_0_LIST_63 {
 
 #define RtlEqualLuid(L1, L2) (((L1)->LowPart == (L2)->LowPart) && ((L1)->HighPart == (L2)->HighPart))
 extern BOOLEAN WINAPI RtlEqualString(IN const STRING *String1, IN const STRING *String2, IN BOOLEAN CaseInSensitive);
+extern VOID WINAPI RtlFreeUnicodeString(IN PUNICODE_STRING UnicodeString);
+extern NTSTATUS WINAPI RtlStringFromGUID(IN LPCGUID Guid, PUNICODE_STRING UnicodeString);
+
 #define LM_NTLM_HASH_LENGTH	16
 #define SHA_DIGEST_LENGTH	20
 
@@ -164,5 +167,8 @@ void kuhl_m_sekurlsa_utils_NlpMakeRelativeOrAbsoluteString(PVOID BaseAddress, PL
 
 BOOL kull_m_string_getDbgUnicodeString(IN PUNICODE_STRING string);
 void kull_m_string_dprintf_hex(LPCVOID lpData, DWORD cbData, DWORD flags);
+void kull_m_string_displayFileTime(IN PFILETIME pFileTime);
+void kull_m_string_displayLocalFileTime(IN PFILETIME pFileTime);
+void kull_m_string_displayGUID(IN LPCGUID pGuid);
 BOOL kull_m_string_suspectUnicodeString(IN PUNICODE_STRING pUnicodeString);
 BOOL kuhl_m_sekurlsa_utils_getSid(IN PSID * pSid);

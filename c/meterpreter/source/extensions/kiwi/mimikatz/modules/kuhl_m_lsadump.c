@@ -3,7 +3,7 @@
 	benjamin@gentilkiwi.com
 	Licence : http://creativecommons.org/licenses/by/3.0/fr/
 */
-#include "khul_m_lsadump.h"
+#include "kuhl_m_lsadump.h"
 
 const KUHL_M_C kuhl_m_c_lsadump[] = {
 	{kuhl_m_lsadump_sam,	L"sam",			L"Get the SysKey to decrypt SAM entries (from registry or hives)"},
@@ -409,13 +409,11 @@ BOOL kuhl_m_lsadump_getLsaKeyAndSecrets(IN PKULL_M_REGISTRY_HANDLE hSecurity, IN
 										if(nt6keysStream = (PNT6_SYSTEM_KEYS) LocalAlloc(LPTR, ((PNT6_HARD_SECRET) buffer)->clearSecret.SecretSize))
 										{
 											RtlCopyMemory(nt6keysStream, ((PNT6_HARD_SECRET) buffer)->clearSecret.Secret, ((PNT6_HARD_SECRET) buffer)->clearSecret.SecretSize);
-											kprintf(L"LSA Key(s) : %u, default {%08x-%04hx-%04hx-%02x%02x-%02x%02x%02x%02x%02x%02x}\n", nt6keysStream->nbKeys, nt6keysStream->CurrentKeyID.Data1, nt6keysStream->CurrentKeyID.Data2, nt6keysStream->CurrentKeyID.Data3, nt6keysStream->CurrentKeyID.Data4[0], nt6keysStream->CurrentKeyID.Data4[1], nt6keysStream->CurrentKeyID.Data4[2], nt6keysStream->CurrentKeyID.Data4[3], nt6keysStream->CurrentKeyID.Data4[4], nt6keysStream->CurrentKeyID.Data4[5], nt6keysStream->CurrentKeyID.Data4[6], nt6keysStream->CurrentKeyID.Data4[7]);
+											kprintf(L"LSA Key(s) : %u, default ", nt6keysStream->nbKeys); kull_m_string_displayGUID(&nt6keysStream->CurrentKeyID); kprintf(L"\n");
 											for(i = 0, offset = 0; i < nt6keysStream->nbKeys; i++, offset += FIELD_OFFSET(NT6_SYSTEM_KEY, Key) + nt6key->KeySize)
 											{
 												nt6key = (PNT6_SYSTEM_KEY) ((PBYTE) nt6keysStream->Keys + offset);
-												kprintf(L"  [%02u] {%08x-%04hx-%04hx-%02x%02x-%02x%02x%02x%02x%02x%02x} ", i, nt6key->KeyId.Data1, nt6key->KeyId.Data2, nt6key->KeyId.Data3, nt6key->KeyId.Data4[0], nt6key->KeyId.Data4[1], nt6key->KeyId.Data4[2], nt6key->KeyId.Data4[3], nt6key->KeyId.Data4[4], nt6key->KeyId.Data4[5], nt6key->KeyId.Data4[6], nt6key->KeyId.Data4[7]);
-												kull_m_string_wprintf_hex(nt6key->Key, nt6key->KeySize, 0);
-												kprintf(L"\n");
+												kprintf(L"  [%02u] ", i); kull_m_string_displayGUID(&nt6key->KeyId); kprintf(L" "); kull_m_string_wprintf_hex(nt6key->Key, nt6key->KeySize, 0); kprintf(L"\n");
 											}
 										}
 									}

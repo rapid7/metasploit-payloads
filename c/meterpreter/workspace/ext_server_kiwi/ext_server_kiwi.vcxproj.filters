@@ -125,9 +125,6 @@
       <Filter>modules</Filter>
     </ClInclude>
     <ClInclude Include="..\..\source\extensions\kiwi\debug.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\khul_m_lsadump.h">
-      <Filter>modules</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kerberos\khul_m_kerberos_ticket.h">
       <Filter>modules\kerberos</Filter>
     </ClInclude>
@@ -145,6 +142,9 @@
     </ClInclude>
     <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_rpce.h">
       <Filter>common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_lsadump.h">
+      <Filter>modules</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -261,9 +261,6 @@
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_process.c">
       <Filter>modules</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\khul_m_lsadump.c">
-      <Filter>modules</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kerberos\khul_m_kerberos.c">
       <Filter>modules\kerberos</Filter>
     </ClCompile>
@@ -281,6 +278,9 @@
     </ClCompile>
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz_interface.c" />
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_vault.c">
+      <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_lsadump.c">
       <Filter>modules</Filter>
     </ClCompile>
   </ItemGroup>
