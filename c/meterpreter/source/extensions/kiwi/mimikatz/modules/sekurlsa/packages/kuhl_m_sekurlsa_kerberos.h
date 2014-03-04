@@ -22,6 +22,7 @@ typedef struct _KERB_INFOS
 	LONG	offsetLuid;
 	LONG	offsetCreds;
 	LONG	offsetTickets[3];
+	LONG	offsetPin;
 	SIZE_T	structSize;
 	LONG	offsetServiceName;
 	LONG	offsetTargetName;
@@ -77,6 +78,7 @@ typedef struct _KIWI_KERBEROS_LOGON_SESSION_51
 	LIST_ENTRY	Tickets_1;
 	LIST_ENTRY	Tickets_2;
 	LIST_ENTRY	Tickets_3;
+	PUNICODE_STRING	pinCode;	// not only PIN (CSP Info)
 } KIWI_KERBEROS_LOGON_SESSION_51, *PKIWI_KERBEROS_LOGON_SESSION_51;
 
 typedef struct _KIWI_KERBEROS_LOGON_SESSION
@@ -117,6 +119,7 @@ typedef struct _KIWI_KERBEROS_LOGON_SESSION
 	FILETIME	unk25;
 	LIST_ENTRY	Tickets_3;
 	FILETIME	unk26;
+	PUNICODE_STRING	pinCode;	// not only PIN (CSP Info)
 } KIWI_KERBEROS_LOGON_SESSION, *PKIWI_KERBEROS_LOGON_SESSION;
 
 typedef struct _KIWI_KERBEROS_BUFFER {
