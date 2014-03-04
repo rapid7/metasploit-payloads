@@ -18,13 +18,13 @@ void kuhl_m_vault_list_descVault(HANDLE hVault);
 void kuhl_m_vault_list_descItemData(struct _VAULT_ITEM_DATA * pData);
 NTSTATUS kuhl_m_vault_cred(int argc, wchar_t * argv[]);
 
-void CALLBACK kuhl_m_vault_list_descItem_PINLogonOrPicturePassword(PVOID enumItem, PVOID getItem, BOOL is8); 
-typedef void (CALLBACK * PSCHEMA_HELPER_FUNC) (PVOID enumItem, PVOID getItem, BOOL is8);
-
 typedef struct _VAULT_GUID_STRING {
 	const GUID guid;
 	const wchar_t * text;
 } VAULT_GUID_STRING, *PVAULT_GUID_STRING;
+
+void CALLBACK kuhl_m_vault_list_descItem_PINLogonOrPicturePasswordOrBiometric(const VAULT_GUID_STRING * pGuidString, PVOID enumItem, PVOID getItem, BOOL is8);
+typedef void (CALLBACK * PSCHEMA_HELPER_FUNC) (const VAULT_GUID_STRING * pGuidString, PVOID enumItem, PVOID getItem, BOOL is8);
 
 typedef struct _VAULT_SCHEMA_HELPER {
 	VAULT_GUID_STRING guidString;
@@ -60,6 +60,13 @@ typedef struct _VAULT_PICTURE_PASSWORD_ELEMENT {
 		VAULT_PICTURE_PASSWORD_CIRCLE circle;
 	};
 } VAULT_PICTURE_PASSWORD_ELEMENT, *PVAULT_PICTURE_PASSWORD_ELEMENT;
+
+typedef struct _VAULT_BIOMETRIC_ELEMENT {
+	ULONG usernameLength;
+	ULONG usernameMaxLength;
+	ULONG unk0;
+	wchar_t username[ANYSIZE_ARRAY];
+} VAULT_BIOMETRIC_ELEMENT, *PVAULT_BIOMETRIC_ELEMENT;
 
 typedef enum _VAULT_INFORMATION_TYPE {
 	VaultInformation_Name		= 1,

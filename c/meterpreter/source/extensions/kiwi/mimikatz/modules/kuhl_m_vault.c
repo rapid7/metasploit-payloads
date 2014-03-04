@@ -59,8 +59,9 @@ const VAULT_SCHEMA_HELPER schemaHelper[] = {
 	{{{0x03e0e35be, 0x1b77, 0x43e7, {0xb8, 0x73, 0xae, 0xd9, 0x01, 0xb6, 0x27, 0x5b}}, L"Domain Password"},		NULL},
 	{{{0x0e69d7838, 0x91b5, 0x4fc9, {0x89, 0xd5, 0x23, 0x0d, 0x4d, 0x4c, 0xc2, 0xbc}}, L"Domain Certificate"},	NULL},
 	{{{0x03c886ff3, 0x2669, 0x4aa2, {0xa8, 0xfb, 0x3f, 0x67, 0x59, 0xa7, 0x75, 0x48}}, L"Domain Extended"},		NULL},
-	{{{0x0b2e033f5, 0x5fde, 0x450d, {0xa1, 0xbd, 0x37, 0x91, 0xf4, 0x65, 0x72, 0x0c}}, L"Pin Logon"},			kuhl_m_vault_list_descItem_PINLogonOrPicturePassword},
-	{{{0x0b4b8a12b, 0x183d, 0x4908, {0x95, 0x59, 0xbd, 0x8b, 0xce, 0x72, 0xb5, 0x8a}}, L"Picture Password"},	kuhl_m_vault_list_descItem_PINLogonOrPicturePassword},
+	{{{0x0b2e033f5, 0x5fde, 0x450d, {0xa1, 0xbd, 0x37, 0x91, 0xf4, 0x65, 0x72, 0x0c}}, L"Pin Logon"},			kuhl_m_vault_list_descItem_PINLogonOrPicturePasswordOrBiometric},
+	{{{0x0b4b8a12b, 0x183d, 0x4908, {0x95, 0x59, 0xbd, 0x8b, 0xce, 0x72, 0xb5, 0x8a}}, L"Picture Password"},	kuhl_m_vault_list_descItem_PINLogonOrPicturePasswordOrBiometric},
+	{{{0x0fec87291, 0x14f6, 0x40b6, {0xbd, 0x98, 0x7f, 0xf2, 0x45, 0x98, 0x6b, 0x26}}, L"Biometric"},	kuhl_m_vault_list_descItem_PINLogonOrPicturePasswordOrBiometric},
 };
 
 NTSTATUS kuhl_m_vault_list(int argc, wchar_t * argv[])
@@ -131,7 +132,7 @@ NTSTATUS kuhl_m_vault_list(int argc, wchar_t * argv[])
 										kprintf(L"\n\t\t*** %s ***\n", schemaHelper[l].guidString.text);
 										if(schemaHelper[l].helper)
 										{
-											schemaHelper[l].helper(&items8[j], ((status == STATUS_SUCCESS) && pItem8) ? pItem8 : NULL, TRUE);
+											schemaHelper[l].helper(&schemaHelper[l].guidString, &items8[j], ((status == STATUS_SUCCESS) && pItem8) ? pItem8 : NULL, TRUE);
 											kprintf(L"\n");
 										}
 										break;
@@ -153,13 +154,15 @@ NTSTATUS kuhl_m_vault_list(int argc, wchar_t * argv[])
 	return STATUS_SUCCESS;
 }
 
-void CALLBACK kuhl_m_vault_list_descItem_PINLogonOrPicturePassword(PVOID enumItem, PVOID getItem, BOOL is8)
+void CALLBACK kuhl_m_vault_list_descItem_PINLogonOrPicturePasswordOrBiometric(const VAULT_GUID_STRING * pGuidString, PVOID enumItem, PVOID getItem, BOOL is8)
 {
 	PVAULT_ITEM_8 enumItem8 = (PVAULT_ITEM_8) enumItem, getItem8 = (PVAULT_ITEM_8) getItem;
-	PWSTR name, domain;
+	PWSTR name, domain, sid, bgPath = NULL;
 	UNICODE_STRING uString;
-	DWORD i;
+	DWORD i, dwError, szNeeded;
 	PVAULT_PICTURE_PASSWORD_ELEMENT pElements;
+	PVAULT_BIOMETRIC_ELEMENT bElements;
+	HKEY hPicturePassword, hUserPicturePassword;
 
 	if(enumItem8->Identity && (enumItem8->Identity->Type == ElementType_ByteArray))
 	{
@@ -169,6 +172,41 @@ void CALLBACK kuhl_m_vault_list_descItem_PINLogonOrPicturePassword(PVOID enumIte
 			LocalFree(name);
 			LocalFree(domain);
 		} else PRINT_ERROR_AUTO(L"kull_m_token_getNameDomainFromSID");
+
+		if(pGuidString->guid.Data1 == 0x0b4b8a12b)
+		{
+			dwError = RegOpenKeyEx(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Authentication\\LogonUI\\PicturePassword", 0, KEY_ENUMERATE_SUB_KEYS, &hPicturePassword);
+			if(dwError == STATUS_SUCCESS)
+			{
+				if(ConvertSidToStringSid((PSID) enumItem8->Identity->data.ByteArray.Value, &sid))
+				{
+					dwError = RegOpenKeyEx(hPicturePassword, sid, 0, KEY_QUERY_VALUE, &hUserPicturePassword);
+					if(dwError == STATUS_SUCCESS)
+					{
+						dwError = RegQueryValueEx(hUserPicturePassword, L"bgPath", NULL, NULL, NULL, &szNeeded);
+						if(dwError == STATUS_SUCCESS)
+						{
+							if(bgPath = (PWSTR) LocalAlloc(LPTR, szNeeded))
+							{
+								dwError = RegQueryValueEx(hUserPicturePassword, L"bgPath", NULL, NULL, (LPBYTE) bgPath, &szNeeded);
+								if(dwError != STATUS_SUCCESS)
+								{
+									PRINT_ERROR(L"RegQueryValueEx 2 : %08x\n", dwError);
+									bgPath = (PWSTR) LocalFree(bgPath);
+								}
+							}
+						}
+						else PRINT_ERROR(L"RegQueryValueEx 1 : %08x\n", dwError);
+						RegCloseKey(hUserPicturePassword);
+					}
+					else PRINT_ERROR(L"RegOpenKeyEx SID : %08x\n", dwError);
+					LocalFree(sid);
+				}
+				else PRINT_ERROR_AUTO(L"ConvertSidToStringSid");
+				RegCloseKey(hPicturePassword);
+			}
+			else PRINT_ERROR(L"RegOpenKeyEx PicturePassword : %08x\n", dwError);
+		}
 	}
 
 	if(getItem8 && getItem8->Authenticator && (getItem8->Authenticator->Type == ElementType_ByteArray))
@@ -185,31 +223,54 @@ void CALLBACK kuhl_m_vault_list_descItem_PINLogonOrPicturePassword(PVOID enumIte
 
 	if(enumItem8->Properties && (enumItem8->cbProperties > 0) && enumItem8->Properties[0])
 	{
-		if(enumItem8->Properties[0]->Type == ElementType_UnsignedShort)
-			kprintf(L"\t\tPIN Code        : %04hu\n", enumItem8->Properties[0]->data.UnsignedShort);
-		else if(enumItem8->Properties[0]->Type == ElementType_ByteArray)
+		switch(pGuidString->guid.Data1)
 		{
-			pElements = (PVAULT_PICTURE_PASSWORD_ELEMENT) enumItem8->Properties[0]->data.ByteArray.Value;
-			kprintf(L"\t\tPicture password (grid is 150*100)\n");
-			for(i = 0; i < 3; i++)
-			{
-				kprintf(L"\t\t [%u] ", i);
-				switch(pElements[i].Type)
+		case 0x0b2e033f5:	// pin
+			if(enumItem8->Properties[0]->Type == ElementType_UnsignedShort)
+				kprintf(L"\t\tPIN Code        : %04hu\n", enumItem8->Properties[0]->data.UnsignedShort);
+			break;
+		case 0x0b4b8a12b:	// picture
+			if(enumItem8->Properties[0]->Type == ElementType_ByteArray)
+      {
+				pElements = (PVAULT_PICTURE_PASSWORD_ELEMENT) enumItem8->Properties[0]->data.ByteArray.Value;
+				if(bgPath)
+ 	     {
+						kprintf(L"\t\tBackground path : %s\n", bgPath);
+						LocalFree(bgPath);
+ 	     }
+				kprintf(L"\t\tPicture password (grid is 150*100)\n");
+
+				for(i = 0; i < 3; i++)
 				{
-					case PP_Point:
-						kprintf(L"point  (x = %3u ; y = %3u)", pElements[i].point.coord.x, pElements[i].point.coord.y);
-						break;
-					case PP_Circle:
-						kprintf(L"circle (x = %3u ; y = %3u ; r = %3u) - %s", pElements[i].circle.coord.x, pElements[i].circle.coord.y, pElements[i].circle.size, (pElements[i].circle.clockwise ? L"clockwise" : L"anticlockwise"));
-						break;
-					case PP_Line:
-						kprintf(L"line   (x = %3u ; y = %3u) -> (x = %3u ; y = %3u)", pElements[i].line.start.x, pElements[i].line.start.y, pElements[i].line.end.x, pElements[i].line.end.y);
-						break;
-					default:
-						kprintf(L"%u\n", pElements[i].Type);
+					kprintf(L"\t\t [%u] ", i);
+					switch(pElements[i].Type)
+					{
+						case PP_Point:
+							kprintf(L"point  (x = %3u ; y = %3u)", pElements[i].point.coord.x, pElements[i].point.coord.y);
+							break;
+						case PP_Circle:
+							kprintf(L"circle (x = %3u ; y = %3u ; r = %3u) - %s", pElements[i].circle.coord.x, pElements[i].circle.coord.y, pElements[i].circle.size, (pElements[i].circle.clockwise ? L"clockwise" : L"anticlockwise"));
+							break;
+						case PP_Line:
+							kprintf(L"line   (x = %3u ; y = %3u) -> (x = %3u ; y = %3u)", pElements[i].line.start.x, pElements[i].line.start.y, pElements[i].line.end.x, pElements[i].line.end.y);
+							break;
+						default:
+							kprintf(L"%u\n", pElements[i].Type);
+					}
+					kprintf(L"\n");
 				}
 				kprintf(L"\n");
 			}
+			break;
+		case 0x0fec87291:	// biometric
+			if(enumItem8->Properties[0]->Type == ElementType_ByteArray)
+			{
+				bElements = (PVAULT_BIOMETRIC_ELEMENT) enumItem8->Properties[0]->data.ByteArray.Value;
+				kprintf(L"\t\tUsername [%2u]   : %.*s\n", bElements->unk0, bElements->usernameLength - 1, bElements->username);
+			}
+			break;
+		default:
+			kprintf(L"todo ?\n");
 		}
 	}
 }
