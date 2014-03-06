@@ -15,7 +15,9 @@ SET PREF=
 IF EXIST "..\pssdk\PSSDK_VC%PSSDK_VER%_LIB\_Libs\pssdk_vc%PSSDK%_mt.lib" SET PREF=r7_
 
 IF "%1"=="x86" GOTO BUILD_X86
+IF "%1"=="X86" GOTO BUILD_X86
 IF "%1"=="x64" GOTO BUILD_X64
+IF "%1"=="X64" GOTO BUILD_X64
 
 ECHO "Building Meterpreter x64 and x86 (Release)"
 SET PLAT=all
