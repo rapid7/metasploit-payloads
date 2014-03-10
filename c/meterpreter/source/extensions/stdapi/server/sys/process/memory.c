@@ -1,13 +1,13 @@
 #include "precomp.h"
 
-/*
- * Allocates memory in the context of the supplied process.
- *
- * req: TLV_TYPE_HANDLE          - The process handle to allocate memory within.
- * req: TLV_TYPE_LENGTH          - The amount of memory to allocate.
- * req: TLV_TYPE_ALLOCATION_TYPE - The type of memory to allocate.
- * req: TLV_TYPE_PROTECTION      - The protection flags to allocate the memory with.
- * opt: TLV_TYPE_BASE_ADDRESS    - The address to allocate the memory at.
+/*!
+ * @brief Allocates memory in the context of the supplied process.
+ * @remark The 
+ *     - TLV_TYPE_HANDLE          - The process handle to allocate memory within.
+ *     - TLV_TYPE_LENGTH          - The amount of memory to allocate.
+ *     - TLV_TYPE_ALLOCATION_TYPE - The type of memory to allocate.
+ *     - TLV_TYPE_PROTECTION      - The protection flags to allocate the memory with.
+ *     - TLV_TYPE_BASE_ADDRESS    - The address to allocate the memory at.
  */
 DWORD request_sys_process_memory_allocate(Remote *remote, Packet *packet)
 {
@@ -20,16 +20,20 @@ DWORD request_sys_process_memory_allocate(Remote *remote, Packet *packet)
 
 	// Snag the TLV values
 	handle = (HANDLE)packet_get_tlv_value_uint(packet, TLV_TYPE_HANDLE);
-	base   = (LPVOID)packet_get_tlv_value_uint(packet, TLV_TYPE_BASE_ADDRESS);
-	size   = (SIZE_T)packet_get_tlv_value_uint(packet, TLV_TYPE_LENGTH);
-	alloc  = packet_get_tlv_value_uint(packet, TLV_TYPE_ALLOCATION_TYPE);
-	prot   = packet_get_tlv_value_uint(packet, TLV_TYPE_PROTECTION);
+	base = (LPVOID)packet_get_tlv_value_uint(packet, TLV_TYPE_BASE_ADDRESS);
+	size = (SIZE_T)packet_get_tlv_value_uint(packet, TLV_TYPE_LENGTH);
+	alloc = packet_get_tlv_value_uint(packet, TLV_TYPE_ALLOCATION_TYPE);
+	prot = packet_get_tlv_value_uint(packet, TLV_TYPE_PROTECTION);
 
 	// Allocate the memory
 	if ((base = VirtualAllocEx(handle, base, size, alloc, prot)))
+	{
 		packet_add_tlv_uint(response, TLV_TYPE_BASE_ADDRESS, (DWORD)base);
+	}
 	else
+	{
 		result = GetLastError();
+	}
 
 	// Transmit the response
 	packet_transmit_response(result, remote, response);

