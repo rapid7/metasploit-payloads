@@ -48,7 +48,10 @@ DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
 
 	command_register_all(customCommands);
 
-	return initialise_clipboard();
+	initialise_clipboard();
+	initialise_service();
+
+	return ERROR_SUCCESS;
 }
 
 /*!
