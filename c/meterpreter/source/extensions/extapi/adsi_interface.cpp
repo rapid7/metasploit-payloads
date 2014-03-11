@@ -28,7 +28,7 @@ static HMODULE hAdvapi32 = NULL;
  * @brief Render a SID to a string.
  * @param pSid Pointer to the SID to render.
  * @param pStr Pointer to the variable that will receive the string. Free with `LocalFree`.
- * @returns Indciatin of success or failure.
+ * @returns Indication of success or failure.
  */
 BOOL ConvertSidToStringSid(PSID pSid, LPSTR* pStr)
 {
@@ -81,7 +81,7 @@ char* bytes_to_string(LPBYTE bytes, DWORD count, char* byteFormat = "%02x", DWOR
 		return NULL;
 	}
 
-	size_t delimLen = delim != NULL ? strlen(delim) : 0;
+	size_t delimLen = delim == NULL ? 0 : strlen(delim);
 	size_t requiredSize = count * byteFormatMaxLen + (count - 1) * delimLen + 1;
 	char* string = (char*)malloc(requiredSize);
 	char* csr = string;
@@ -249,20 +249,11 @@ DWORD domain_query(LPCWSTR lpwDomain, LPWSTR lpwFilter, LPWSTR* lpwQueryCols,
 							}
 							case ADSTYPE_OCTET_STRING:
 							{
-								// We're going to assume that anything that's 16 bytes it's a GUID. This might not be legit, but for the most
-								// part this is going to be true.
-								if (col.pADsValues->OctetString.dwLength == 16)
+								char* s = bytes_to_string(col.pADsValues->OctetString.lpValue, col.pADsValues->OctetString.dwLength);
+								if (s)
 								{
-									guid_to_string(col.pADsValues->OctetString.lpValue, valueTarget, VALUE_SIZE);
-								}
-								else
-								{
-									char* s = bytes_to_string(col.pADsValues->OctetString.lpValue, col.pADsValues->OctetString.dwLength);
-									if (s)
-									{
-										strncpy_s(valueTarget, VALUE_SIZE, s, VALUE_SIZE - 1);
-										free(s);
-									}
+									strncpy_s(valueTarget, VALUE_SIZE, s, VALUE_SIZE - 1);
+									free(s);
 								}
 								break;
 							}
