@@ -24,6 +24,7 @@ Command customCommands[] =
 	COMMAND_REQ("extapi_window_enum", request_window_enum),
 	COMMAND_REQ("extapi_service_enum", request_service_enum),
 	COMMAND_REQ("extapi_service_query", request_service_query),
+	COMMAND_REQ("extapi_service_control", request_service_control),
 	COMMAND_REQ("extapi_clipboard_get_data", request_clipboard_get_data),
 	COMMAND_REQ("extapi_clipboard_set_data", request_clipboard_set_data),
 	COMMAND_REQ("extapi_clipboard_monitor_start", request_clipboard_monitor_start),

@@ -8,6 +8,15 @@
 #ifdef _WIN32
 #include <Sddl.h>
 
+/*! @brief The possible list of operations to perform on a service */
+typedef enum _ServiceOperation
+{
+	ServOpStart = 1,
+	ServOpPause = 2,
+	ServOpResume = 3,
+	ServOpStop = 4,
+	ServOpRestart = 5
+} ServiceOperation;
 
 HMODULE hAdvapi32 = NULL;
 
@@ -18,6 +27,18 @@ static POPENSCMANAGERA pOpenSCManagerA = NULL;
 /*! @brief Typedef for the CloseServiceHandle function. */
 typedef BOOL(WINAPI * PCLOSESERVICEHANDLE)(SC_HANDLE hSCObject);
 static PCLOSESERVICEHANDLE pCloseServiceHandle = NULL;
+
+/*! @brief Typedef for the StartServiceA function. */
+typedef BOOL (WINAPI * PSTARTSERVICEA)(SC_HANDLE hService, DWORD dwNumServiceArgs, LPCTSTR *lpServiceArgVectors);
+static PSTARTSERVICEA pStartServiceA = NULL;
+
+/*! @brief Typedef for the ControlService function. */
+typedef BOOL (WINAPI * PCONTROLSERVICE)(SC_HANDLE hService, DWORD dwControl, LPSERVICE_STATUS lpServiceStatus);
+static PCONTROLSERVICE pControlService = NULL;
+
+/*! @brief Typedef for the QueryServiceStatus function. */
+typedef BOOL (WINAPI * PQUERYSERVICESTATUS)(SC_HANDLE hService, LPSERVICE_STATUS lpServiceStatus);
+static PQUERYSERVICESTATUS pQueryServiceStatus = NULL;
 
 /*! @brief Typedef for the EnumServicesStatusExA function. */
 typedef BOOL(WINAPI * PENUMSERVICESSTATUSEXA)(
@@ -70,11 +91,16 @@ static PCSDTSSDA pCSDTSSDA = NULL;
 VOID add_enumerated_service(Packet *pResponse, LPCSTR cpName, LPCSTR cpDisplayName, DWORD dwProcessId, DWORD dwStatus, BOOL bInteractive);
 DWORD query_service(LPCSTR cpServiceName, Packet *pResponse);
 DWORD get_service_config(SC_HANDLE scService, Packet *pResponse);
+DWORD get_service_status(SC_HANDLE scService, Packet *pResponse);
 DWORD get_service_dacl(SC_HANDLE scService, Packet *pResponse);
 #endif
 
+DWORD execute_service_task(LPCSTR lpServiceName, ServiceOperation eServiceOp, Packet *response);
 DWORD enumerate_services(Packet *response);
 
+/*!
+ * @brief Initialise the service part of the extended api.
+ */
 VOID initialise_service()
 {
 	do
@@ -133,7 +159,73 @@ VOID initialise_service()
 		{
 			dprintf("[EXTAPI SERVICE] Unable to locate ConvertSecurityDescriptorToStringSecurityDescriptorA in advapi32.dll.");
 		}
+
+		dprintf("[EXTAPI SERVICE] Searching for StartServiceA");
+		if ((pStartServiceA = (PSTARTSERVICEA)GetProcAddress(hAdvapi32, "StartServiceA")) == NULL)
+		{
+			dprintf("[EXTAPI SERVICE] Unable to locate StartServiceA in advapi32.dll.");
+		}
+
+		dprintf("[EXTAPI SERVICE] Searching for ControlService");
+		if ((pControlService = (PCONTROLSERVICE)GetProcAddress(hAdvapi32, "ControlService")) == NULL)
+		{
+			dprintf("[EXTAPI SERVICE] Unable to locate ControlService in advapi32.dll.");
+		}
+
+		dprintf("[EXTAPI SERVICE] Searching for QueryServiceStatus");
+		if ((pQueryServiceStatus = (PQUERYSERVICESTATUS)GetProcAddress(hAdvapi32, "QueryServiceStatus")) == NULL)
+		{
+			dprintf("[EXTAPI SERVICE] Unable to locate QueryServiceStatus in advapi32.dll.");
+		}
 	} while (0);
+}
+
+/*!
+ * @brief Handle the request for service control.
+ * @param remote Pointer to the \c Remote making the request.
+ * @param packet Pointer to the request \c Packet.
+ * @returns Indication of sucess or failure.
+ */
+DWORD request_service_control(Remote *remote, Packet *packet)
+{
+	LPSTR lpServiceName = NULL;
+	ServiceOperation eServiceOp = 0;
+	DWORD dwResult = ERROR_SUCCESS;
+	Packet * response = packet_create_response(packet);
+
+	do
+	{
+		if (!response)
+		{
+			dprintf("[EXTAPI SERVICE] Unable to create response packet");
+			dwResult = ERROR_OUTOFMEMORY;
+			break;
+		}
+
+		lpServiceName = packet_get_tlv_value_string(packet, TLV_TYPE_EXT_SERVICE_CTRL_NAME);
+		if (!lpServiceName)
+		{
+			BREAK_WITH_ERROR("[EXTAPI SERVICE] Missing service name parameter", ERROR_INVALID_PARAMETER);
+		}
+
+		eServiceOp = (ServiceOperation)packet_get_tlv_value_uint(packet, TLV_TYPE_EXT_SERVICE_CTRL_OP);
+		if (eServiceOp == 0)
+		{
+			BREAK_WITH_ERROR("[EXTAPI SERVICE] Missing service operation parameter", ERROR_INVALID_PARAMETER);
+		}
+
+		dprintf("[EXTAPI SERVICE] Executing service control task");
+		dwResult = execute_service_task(lpServiceName, eServiceOp, response);
+
+	} while (0);
+
+	dprintf("[EXTAPI SERVICE] Transmitting response back to caller.");
+	if (response)
+	{
+		packet_transmit_response(dwResult, remote, response);
+	}
+
+	return dwResult;
 }
 
 /*!
@@ -198,7 +290,7 @@ DWORD request_service_query(Remote *remote, Packet *packet)
 		lpServiceName = packet_get_tlv_value_string(packet, TLV_TYPE_EXT_SERVICE_ENUM_NAME);
 		if (!lpServiceName)
 		{
-			BREAK_WITH_ERROR("[EXTAPI SERVICE] Missing service name parameter", ERROR_BAD_ARGUMENTS);
+			BREAK_WITH_ERROR("[EXTAPI SERVICE] Missing service name parameter", ERROR_INVALID_PARAMETER);
 		}
 
 		dprintf("[EXTAPI SERVICE] Beginning service enumeration");
@@ -255,6 +347,7 @@ DWORD query_service(LPCSTR cpServiceName, Packet *pResponse)
 		}
 
 		get_service_config(scService, pResponse);
+		get_service_status(scService, pResponse);
 		get_service_dacl(scService, pResponse);
 
 	} while (0);
@@ -267,11 +360,6 @@ DWORD query_service(LPCSTR cpServiceName, Packet *pResponse)
 	if (scManager && pCloseServiceHandle)
 	{
 		pCloseServiceHandle(scManager);
-	}
-
-	if (hAdvapi32)
-	{
-		FreeLibrary(hAdvapi32);
 	}
 
 	return dwResult;
@@ -359,9 +447,163 @@ DWORD enumerate_services(Packet *pResponse)
 		pCloseServiceHandle(scManager);
 	}
 
-	if (hAdvapi32)
+	return dwResult;
+#else
+	return ERROR_NOT_SUPPORTED;
+#endif
+}
+
+/*!
+ * @brief Perform the task/operation on a service.
+ * @param cpServiceName Name of the serivce to perform the query on.
+ * @param eServiceOp The operationg to perform on the service.
+ * @param pRacket Pointer to the response \c Packet.
+ * @returns Indication of sucess or failure.
+ * @retval ERROR_SUCCESS Operation succeeded.
+ */
+DWORD execute_service_task(LPCSTR cpServiceName, ServiceOperation eServiceOp, Packet *pResponse)
+{
+#ifdef _WIN32
+	// currently we only support Windoze
+	DWORD dwResult = ERROR_SUCCESS;
+	DWORD dwOpenFlags = SC_MANAGER_CONNECT | GENERIC_READ | SERVICE_QUERY_STATUS;
+	DWORD dwControlFlag = 0;
+	DWORD dwTargetStatus = 0;
+	SC_HANDLE scManager = NULL;
+	SC_HANDLE scService = NULL;
+	SERVICE_STATUS serviceStatus;
+
+	do
 	{
-		FreeLibrary(hAdvapi32);
+		if (hAdvapi32 == NULL
+			|| pOpenSCManagerA == NULL
+			|| pStartServiceA == NULL
+			|| pCloseServiceHandle == NULL
+			|| pQueryServiceStatus == NULL
+			|| pOpenServiceA == NULL)
+		{
+			BREAK_WITH_ERROR("[EXTAPI SERVICE] Unable to query services, required functions not found", ERROR_INVALID_PARAMETER);
+		}
+
+		dprintf("[EXTAPI SERVICE] Opening the Service Control manager");
+		if ((scManager = pOpenSCManagerA(NULL, SERVICES_ACTIVE_DATABASEA, SC_MANAGER_CONNECT | GENERIC_READ)) == NULL)
+		{
+			BREAK_ON_ERROR("[EXTAPI SERVICE] Unable to open the service control manager");
+		}
+
+		switch (eServiceOp)
+		{
+			case ServOpStart:
+				dwOpenFlags |= SERVICE_START;
+				break;
+			case ServOpStop:
+				dwOpenFlags |= SERVICE_STOP;
+				break;
+			case ServOpPause:
+			case ServOpResume:
+				dwOpenFlags |= SERVICE_PAUSE_CONTINUE;
+				break;
+			case ServOpRestart:
+				dwOpenFlags |= SERVICE_START | SERVICE_STOP;
+		}
+
+		dprintf("[EXTAPI SERVICE] Opening the Service: %s", cpServiceName);
+		if ((scService = pOpenServiceA(scManager, cpServiceName, dwOpenFlags)) == NULL)
+		{
+			dwResult = GetLastError();
+			dprintf("[EXTAPI SERVICE] Unable to open the service: %s (%u)", cpServiceName, dwResult);
+			break;
+		}
+
+		// let's get a clue as to what the service status is before we move on
+		if (!pQueryServiceStatus(scService, &serviceStatus))
+		{
+			dwResult = GetLastError();
+			dprintf("[EXTAPI SERVICE] Unable to query the service status: %s (%u)", cpServiceName, dwResult);
+			break;
+		}
+
+		dwResult = ERROR_SUCCESS;
+		if (eServiceOp == ServOpStart)
+		{
+			// we can't try to start the service if it isn't stopped
+			if (serviceStatus.dwCurrentState == SERVICE_STOPPED)
+			{
+				if (!pStartServiceA(scService, 0, NULL))
+				{
+					dwResult = GetLastError();
+					dprintf("[EXTAPI SERVICE] Unable to start the service: %s (%u)", cpServiceName, dwResult);
+					break;
+				}
+			}
+			else if(serviceStatus.dwCurrentState != SERVICE_RUNNING)
+			{
+				dprintf("[EXTAPI SERVICE] Unable to start the service in its current state: %s %x", cpServiceName, serviceStatus.dwCurrentState);
+				dwResult = ERROR_INVALID_OPERATION;
+				break;
+			}
+		}
+		else
+		{
+			switch (eServiceOp)
+			{
+			case ServOpRestart:
+			case ServOpStop:
+				dwControlFlag = SERVICE_CONTROL_STOP;
+				dwTargetStatus = SERVICE_STOPPED;
+				break;
+			case ServOpPause:
+				dwControlFlag = SERVICE_CONTROL_PAUSE;
+				dwTargetStatus = SERVICE_PAUSED;
+				break;
+			case ServOpResume:
+				dwControlFlag = SERVICE_CONTROL_CONTINUE;
+				dwTargetStatus = SERVICE_RUNNING;
+				break;
+			}
+
+			dwResult = ERROR_SUCCESS;
+
+			if (serviceStatus.dwCurrentState == dwTargetStatus)
+			{
+				dprintf("[EXTAPI SERVICE] Service already in target state: %u on %s (%u)", eServiceOp, cpServiceName, dwResult);
+			}
+			else if (!pControlService(scService, dwControlFlag, &serviceStatus))
+			{
+				dwResult = GetLastError();
+				dprintf("[EXTAPI SERVICE] Unable to control the service: %u on %s (%u)", eServiceOp, cpServiceName, dwResult);
+				break;
+			}
+
+			if (eServiceOp == ServOpRestart)
+			{
+				// At this point the service should either be stopped already or it will be stopping.
+				// We have to wait until the service has stopped before we attempt to restart.
+				do
+				{
+					Sleep(500);
+					pQueryServiceStatus(scService, &serviceStatus);
+				} while (serviceStatus.dwCurrentState != SERVICE_STOPPED);
+
+				// next we try to kick it off again
+				if (!pStartServiceA(scService, 0, NULL))
+				{
+					dwResult = GetLastError();
+					dprintf("[EXTAPI SERVICE] Unable to start the service: %s (%u)", cpServiceName, dwResult);
+				}
+			}
+		}
+
+	} while (0);
+
+	if (scService && pCloseServiceHandle)
+	{
+		pCloseServiceHandle(scService);
+	}
+
+	if (scManager && pCloseServiceHandle)
+	{
+		pCloseServiceHandle(scManager);
 	}
 
 	return dwResult;
@@ -469,6 +711,41 @@ DWORD get_service_config(SC_HANDLE scService, Packet *pResponse)
 	{
 		free(lpServiceConfig);
 	}
+
+	return dwResult;
+}
+
+/*!
+ * @brief Query the status of a given service handle.
+ * @details On successful querying the status is added to the response.
+ * @param scService Service handle referencing the service to query.
+ * @param pResponse Pointer to the response \c Packet to add the result to.
+ * @returns Indication of success or failure.
+ * @retval ERROR_SUCCESS The service status query succeeded.
+ */
+DWORD get_service_status(SC_HANDLE scService, Packet *pResponse)
+{
+	DWORD dwResult = ERROR_SUCCESS;
+	SERVICE_STATUS serviceStatus;
+
+	do
+	{
+		if (pQueryServiceStatus == NULL)
+		{
+			BREAK_WITH_ERROR("[EXTAPI SERVICE] Unable to query service status, required functions not found", ERROR_INVALID_PARAMETER);
+		}
+
+		// let's get a clue as to what the service status is before we move on
+		if (!pQueryServiceStatus(scService, &serviceStatus))
+		{
+			dwResult = GetLastError();
+			dprintf("[EXTAPI SERVICE] Unable to query the service status: %u", dwResult);
+			break;
+		}
+
+		packet_add_tlv_uint(pResponse, TLV_TYPE_EXT_SERVICE_QUERY_STATUS, serviceStatus.dwCurrentState);
+
+	} while (0);
 
 	return dwResult;
 }
