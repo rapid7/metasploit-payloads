@@ -15,7 +15,6 @@ extern "C" {
 #pragma comment(lib, "wbemuuid.lib")
 #pragma comment(lib, "comsuppw.lib")
 
-#define PATH_SIZE 512
 #define FIELD_SIZE 1024
 #define ENUM_TIMEOUT 5000
 
