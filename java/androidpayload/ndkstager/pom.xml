@@ -2,10 +2,9 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.metasploit</groupId>
-  <artifactId>Metasploit-AndroidLibrary</artifactId>
+  <artifactId>Metasploit-AndroidNDKStager</artifactId>
   <version>1-SNAPSHOT</version>
-  <packaging>apk</packaging>
-  <name>Android Meterpreter</name>
+  <name>Android NDK Stager</name>
 
   <properties>
     <deploy.path>../metasploit-framework</deploy.path>
@@ -24,24 +23,48 @@
     <pluginManagement>
       <plugins>
         <plugin>
-          <groupId>com.jayway.maven.plugins.android.generation2</groupId>
-          <artifactId>android-maven-plugin</artifactId>
-          <version>3.5.3</version>
-
-          <extensions>true</extensions>
+          <artifactId>maven-antrun-plugin</artifactId>
+          <version>1.7</version>
+        </plugin>
+        <plugin>
+          <groupId>org.codehaus.mojo</groupId>
+          <artifactId>exec-maven-plugin</artifactId>
+          <version>1.2.1</version>
         </plugin>
       </plugins>
     </pluginManagement>
     <plugins>
+      <!-- Disable the default-jar behavior (phase is nulled) -->
       <plugin>
-        <groupId>com.jayway.maven.plugins.android.generation2</groupId>
-        <artifactId>android-maven-plugin</artifactId>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <version>2.4</version>
+        <executions>
+          <execution>
+            <id>default-jar</id>
+            <phase/>
+          </execution>
+        </executions>
+      </plugin>
+      <!-- Execute the ndk-build command. I had to wrap this -->
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>1.2.1</version>
         <configuration>
-          <sdk>
-            <!-- platform or api level (api level 4 = platform 1.6)-->
-            <platform>3</platform>
-          </sdk>
+          <executable>${android.ndk.path}/ndk-build</executable>
+          <arguments>
+            <argument>APP_ABI=all</argument>
+          </arguments>
         </configuration>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>exec</goal>
+            </goals>
+          </execution>
+        </executions>
       </plugin>
     </plugins>
   </build>
@@ -61,20 +84,11 @@
                   <goal>run</goal>
                 </goals>
                 <configuration>
-                  <target>
-                    <condition property="dx.filename" value="dx.bat">
-                      <os family="windows" />
-                    </condition>
-                    <property name="dx.filename" value="dx" />
-
-                    <echo>Building ndk stager...</echo>
-                    <exec executable="${android.sdk.path}/platform-tools/${dx.filename}" failonerror="true">
-                      <arg value="--verbose" />
-                      <arg value="--dex" />
-                      <arg value="--output=${project.basedir}/../../${deploy.path}/data/android/shell.jar" />
-                      <arg value="${project.basedir}/target/dx/shell" />
-                    </exec>
-                  </target>
+                  <tasks>
+                    <copy todir="${project.basedir}/../../${deploy.path}/data/android/">
+                      <fileset dir="${project.basedir}/libs" />
+                    </copy>
+                  </tasks>
                 </configuration>
               </execution>
             </executions>
