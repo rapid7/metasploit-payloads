@@ -8,7 +8,7 @@
 #include "wmi_interface.h"
 
 /*!
- * @brief Enumerate all the users in AD.
+ * @brief Execute a WMI query.
  * @param remote Pointer to the \c Remote instance.
  * @param packet Pointer to the incoming \c Packet instance.
  * @returns Indication of success or failure.
@@ -35,6 +35,7 @@ DWORD request_wmi_query(Remote *remote, Packet *packet)
 		{
 			lpValue = "root\\CIMV2";
 		}
+
 		dprintf("[EXTAPI WMI] Domain: %s", lpValue);
 		dwResult = to_wide_string(lpValue, &lpwRoot);
 		if (dwResult != ERROR_SUCCESS)
