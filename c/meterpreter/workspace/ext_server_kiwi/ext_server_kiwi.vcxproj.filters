@@ -146,6 +146,9 @@
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_lsadump.h">
       <Filter>modules</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_lsadump_struct.h">
+      <Filter>modules</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz.rc" />

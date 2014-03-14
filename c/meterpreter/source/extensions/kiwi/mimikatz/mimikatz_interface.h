@@ -7,5 +7,6 @@ DWORD mimikatz_initOrClean(BOOL Init);
 DWORD mimikatz_scrape_passwords(DWORD cmdId, Packet* packet);
 DWORD mimikatz_golden_ticket_create(char* user, char* domain, char* sid, char* ntlm, Packet* response);
 DWORD mimikatz_golden_ticket_use(BYTE* buffer, DWORD bufferSize);
+DWORD mimikatz_lsa_dump_secrets(Packet* response);
 
 #endif

