@@ -14,6 +14,7 @@
 #include "service.h"
 #include "clipboard.h"
 #include "adsi.h"
+#include "wmi.h"
 
 // this sets the delay load hook function, see DelayLoadMetSrv.h
 EnableDelayLoadMetSrv();
@@ -24,6 +25,7 @@ Command customCommands[] =
 	COMMAND_REQ("extapi_window_enum", request_window_enum),
 	COMMAND_REQ("extapi_service_enum", request_service_enum),
 	COMMAND_REQ("extapi_service_query", request_service_query),
+	COMMAND_REQ("extapi_service_control", request_service_control),
 	COMMAND_REQ("extapi_clipboard_get_data", request_clipboard_get_data),
 	COMMAND_REQ("extapi_clipboard_set_data", request_clipboard_set_data),
 	COMMAND_REQ("extapi_clipboard_monitor_start", request_clipboard_monitor_start),
@@ -33,6 +35,7 @@ Command customCommands[] =
 	COMMAND_REQ("extapi_clipboard_monitor_stop", request_clipboard_monitor_stop),
 	COMMAND_REQ("extapi_clipboard_monitor_dump", request_clipboard_monitor_dump),
 	COMMAND_REQ("extapi_adsi_domain_query", request_adsi_domain_query),
+	COMMAND_REQ("extapi_wmi_query", request_wmi_query),
 	COMMAND_TERMINATOR
 };
 
@@ -48,7 +51,10 @@ DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
 
 	command_register_all(customCommands);
 
-	return initialise_clipboard();
+	initialise_clipboard();
+	initialise_service();
+
+	return ERROR_SUCCESS;
 }
 
 /*!

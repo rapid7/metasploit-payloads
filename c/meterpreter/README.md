@@ -84,6 +84,7 @@ You will need:
  - gcc-multilib, if you're building on a 64-bit machine
  - jam
  - wget
+ - flex
 
 Meterpreter requires libpcap-1.1.1 and OpenSSL 0.9.8o sources, which it
 will download automatically during the build process. If for some
