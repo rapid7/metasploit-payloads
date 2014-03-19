@@ -7,14 +7,7 @@
 #include "../kuhl_m.h"
 #include "../modules/kull_m_file.h"
 #include "../modules/kull_m_crypto_system.h"
-
-#define USER_NORMAL_ACCOUNT				0x00000010
-#define USER_DONT_EXPIRE_PASSWORD		0x00000200
-
-#define KRB_KEY_USAGE_AS_REP_TGS_REP	2
-
-#define DEFAULT_GROUP_ATTRIBUTES	(SE_GROUP_MANDATORY | SE_GROUP_ENABLED_BY_DEFAULT | SE_GROUP_ENABLED)
-#define KIWI_NEVERTIME(filetime)	(*(PLONGLONG) filetime = MAXLONGLONG)
+#include "khul_m_kerberos_struct.h"
 
 const KUHL_M kuhl_m_kerberos;
 

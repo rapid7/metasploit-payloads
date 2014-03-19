@@ -149,6 +149,9 @@
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_lsadump_struct.h">
       <Filter>modules</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kerberos\khul_m_kerberos_struct.h">
+      <Filter>modules\kerberos</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz.rc" />

