@@ -8,8 +8,8 @@ framework_dir = ../metasploit-framework/
 # Change me if you want to build openssl and libpcap somewhere else
 build_tmp = posix-meterp-build-tmp
 
-
-BIONIC=$(PWD)/source/bionic
+ROOT=$(basename $(CURDIR:%/=%))
+BIONIC=$(ROOT)/source/bionic
 LIBC=$(BIONIC)/libc
 LIBM=$(BIONIC)/libm
 COMPILED=$(BIONIC)/compiled
@@ -94,7 +94,7 @@ $(COMPILED):
 	mkdir $(COMPILED)/
 
 $(COMPILED)/libc.so: $(COMPILED)
-	(cd source/bionic/libc && ARCH=x86 TOP=${PWD} jam)
+	(cd source/bionic/libc && ARCH=x86 TOP=${ROOT} jam)
 	(cd source/bionic/libc/out/x86/ && $(MAKE) -f Makefile.msf && [ -f libbionic.so ])
 	cp source/bionic/libc/out/x86/libbionic.so $(COMPILED)/libc.so
 
