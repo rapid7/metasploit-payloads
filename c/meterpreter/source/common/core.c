@@ -330,29 +330,23 @@ DWORD packet_add_tlv_string( Packet *packet, TlvType type, LPCSTR str )
  * @remark On success, the Tlv will contain a pointer to memory that needs to be
  *         released using \c free().
  */
-DWORD packet_add_tlv_wstring_entry(Tlv* targetTlv, TlvType type, LPCWSTR str, size_t strLength)
+LPSTR packet_add_tlv_wstring_entry(Tlv* targetTlv, TlvType type, LPCWSTR str, size_t strLength)
 {
-        DWORD dwResult;
-        size_t charCount = strLength == 0 ? wcslen(str) : strLength;
-        LPSTR lpStr = (LPSTR)malloc(charCount + 1);
+	size_t charCount = strLength == 0 ? wcslen(str) : strLength;
+	LPSTR lpStr = (LPSTR)malloc(charCount + 1);
 
-        if (lpStr)
-        {
-                memset(lpStr, 0, charCount + 1);
-                wcstombs(lpStr, str, charCount);
-                lpStr[charCount] = 0;
+	if (lpStr)
+	{
+		memset(lpStr, 0, charCount + 1);
+		wcstombs(lpStr, str, charCount);
+		lpStr[charCount] = 0;
 
-                targetTlv->header.length = (DWORD)strlen(lpStr) + 1;
-                targetTlv->header.type = type;
-                targetTlv->buffer = lpStr;
-                dwResult = ERROR_SUCCESS;
-        }
-        else
-        {
-                dwResult = ERROR_NOT_ENOUGH_MEMORY;
-        }
+		targetTlv->header.length = (DWORD)strlen(lpStr) + 1;
+		targetTlv->header.type = type;
+		targetTlv->buffer = lpStr;
+	}
 
-        return dwResult;
+	return lpStr;
 }
 
 /*!
