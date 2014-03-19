@@ -245,7 +245,7 @@ typedef struct _MSCACHE_DATA {
 typedef struct _LSA_CALLBACK_CTX
 {
 	VOID (*pPolicyVersionHandler)(LPVOID lpContext, USHORT usMajor, USHORT usMinor);
-	VOID (*pNt5KeyHandler)(LPVOID lpContext, DWORD dwIndex, PNT5_SYSTEM_KEY pSysKey);
+	VOID (*pNt5KeyHandler)(LPVOID lpContext, PNT5_SYSTEM_KEY pSysKey);
 	VOID (*pNt6KeyHandler)(LPVOID lpContext, DWORD dwIndex, PNT6_SYSTEM_KEY pSysKey);
 	VOID (*pNt6KeyStreamHandler)(LPVOID lpContext, PNT6_SYSTEM_KEYS pSyskeyStream);
 	VOID (*pCompNameHandler)(LPVOID lpContext, wchar_t* lpwComputerName);

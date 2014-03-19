@@ -1,6 +1,6 @@
 #pragma once
 
-#define DEBUGTRACE
+//#define DEBUGTRACE
 
 #ifdef DEBUGTRACE
 #define dprintf(...) real_dprintf(__VA_ARGS__)

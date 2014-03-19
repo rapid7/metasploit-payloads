@@ -90,7 +90,7 @@ NTSTATUS kuhl_m_sekurlsa_nt5_init()
 					}
 				}
 			}
-		} else PRINT_ERROR(L"[MIMIKATZ] failed to load lsasrv");
+		} else PRINT_ERROR(L"[KIWI] failed to load lsasrv");
 	}
 	return kuhl_m_sekurlsa_nt5_KeyInit;
 }

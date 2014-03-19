@@ -631,9 +631,6 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_token.h" />
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz.rc" />
-  </ItemGroup>
-  <ItemGroup>
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\main.c" />
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz.c" />
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz_interface.c" />

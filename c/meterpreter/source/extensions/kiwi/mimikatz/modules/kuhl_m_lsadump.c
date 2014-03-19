@@ -509,7 +509,7 @@ BOOL kuhl_m_lsadump_getLsaKeyAndSecrets(IN PKULL_M_REGISTRY_HANDLE hSecurity, IN
 											kull_m_string_wprintf_hex(nt5key->key, sizeof(NT5_SYSTEM_KEY), 0);
 											kprintf(L"\n");
 											if (callbackCtx && callbackCtx->pNt5KeyHandler)
-												callbackCtx->pNt5KeyHandler(callbackCtx->lpContext, i, nt5key);
+												callbackCtx->pNt5KeyHandler(callbackCtx->lpContext, nt5key);
 										}
 									}
 								}

