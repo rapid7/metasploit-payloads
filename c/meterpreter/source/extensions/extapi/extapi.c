@@ -14,6 +14,7 @@
 #include "service.h"
 #include "clipboard.h"
 #include "adsi.h"
+#include "wmi.h"
 
 // this sets the delay load hook function, see DelayLoadMetSrv.h
 EnableDelayLoadMetSrv();
@@ -33,6 +34,7 @@ Command customCommands[] =
 	COMMAND_REQ("extapi_clipboard_monitor_stop", request_clipboard_monitor_stop),
 	COMMAND_REQ("extapi_clipboard_monitor_dump", request_clipboard_monitor_dump),
 	COMMAND_REQ("extapi_adsi_domain_query", request_adsi_domain_query),
+	COMMAND_REQ("extapi_wmi_query", request_wmi_query),
 	COMMAND_TERMINATOR
 };
 

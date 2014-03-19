@@ -3,6 +3,7 @@
  * @brief Definitions for ADSI functionality.
  */
 #include "extapi.h"
+#include "wshelpers.h"
 #include "adsi.h"
 #include "adsi_interface.h"
 
@@ -10,41 +11,7 @@
 #define DEFAULT_PAGE_SIZE 1000
 
 /*!
- * @brief Helper function that converts an ASCII string to a wide char string.
- * @param lpValue ASCII string to convert.
- * @param lpwValue Target memory for the converted string.
- * @remark \c lpwValue must be freed by the caller using `free`.
- * @returns Indication of success or failure.
- */
-DWORD to_wide_string(LPSTR lpValue, LPWSTR* lpwValue)
-{
-	size_t charsCopied = 0;
-	DWORD valueLength;
-	DWORD dwResult;
-
-	do
-	{
-		if (lpValue == NULL)
-		{
-			BREAK_WITH_ERROR("[EXTAPI ADSI] Value parameter missing", ERROR_INVALID_PARAMETER);
-		}
-
-		valueLength = lstrlenA(lpValue);
-		*lpwValue = (LPWSTR)malloc(sizeof(WCHAR)* (lstrlenA(lpValue) + 1));
-		if (*lpwValue == NULL)
-		{
-			BREAK_WITH_ERROR("[EXTAPI ADSI] Unable to allocate memory", ERROR_OUTOFMEMORY);
-		}
-
-		mbstowcs_s(&charsCopied, *lpwValue, valueLength + 1, lpValue, valueLength);
-		dwResult = ERROR_SUCCESS;
-	} while (0);
-
-	return dwResult;
-}
-
-/*!
- * @brief Enumerate all the users in AD.
+ * @brief Perform an ASDI query against a domain.
  * @param remote Pointer to the \c Remote instance.
  * @param packet Pointer to the incoming \c Packet instance.
  * @returns Indication of success or failure.
