@@ -105,6 +105,10 @@ public interface TLVType {
 	public static final int TLV_TYPE_OS_NAME = TLVPacket.TLV_META_TYPE_STRING | 1041;
 	public static final int TLV_TYPE_USER_NAME = TLVPacket.TLV_META_TYPE_STRING | 1042;
 
+	public static final int TLV_TYPE_ENV_VARIABLE = TLVPacket.TLV_META_TYPE_STRING | 1100;
+	public static final int TLV_TYPE_ENV_VALUE = TLVPacket.TLV_META_TYPE_STRING | 1101;
+	public static final int TLV_TYPE_ENV_GROUP = TLVPacket.TLV_META_TYPE_GROUP | 1102;
+
 	// Process
 	public static final int TLV_TYPE_BASE_ADDRESS = TLVPacket.TLV_META_TYPE_UINT | 2000;
 	public static final int TLV_TYPE_ALLOCATION_TYPE = TLVPacket.TLV_META_TYPE_UINT | 2001;

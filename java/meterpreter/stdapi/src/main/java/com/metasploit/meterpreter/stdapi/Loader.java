@@ -43,6 +43,7 @@ public class Loader implements ExtensionLoader {
 		mgr.registerCommand("stdapi_net_config_get_routes", stdapi_net_config_get_routes.class, V1_4);
 		mgr.registerCommand("stdapi_net_socket_tcp_shutdown", stdapi_net_socket_tcp_shutdown.class, V1_2, V1_3);
 		mgr.registerCommand("stdapi_sys_config_getuid", stdapi_sys_config_getuid.class);
+		mgr.registerCommand("stdapi_sys_config_getenv", stdapi_sys_config_getenv.class);
 		mgr.registerCommand("stdapi_sys_config_sysinfo", stdapi_sys_config_sysinfo.class);
 		mgr.registerCommand("stdapi_sys_process_execute", stdapi_sys_process_execute.class, V1_2, V1_3);
 		mgr.registerCommand("stdapi_sys_process_get_processes", stdapi_sys_process_get_processes.class, V1_2);
