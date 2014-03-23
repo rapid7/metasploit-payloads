@@ -54,7 +54,7 @@
         <configuration>
           <executable>${android.ndk.path}/ndk-build</executable>
           <arguments>
-            <argument>APP_ABI=all</argument>
+            <argument>APP_ABI=armeabi mips x86</argument>
           </arguments>
         </configuration>
         <executions>

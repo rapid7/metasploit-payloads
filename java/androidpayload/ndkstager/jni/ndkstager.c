@@ -29,7 +29,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad( JavaVM *vm, void *pvt )
         if(r < 0) r = 0;
     }
     cmdline[r] = 0;
-    snprintf(stage_file, MAX_PATH, "/data/data/%s/stage.apk", cmdline);
+    snprintf(stage_file, MAX_PATH, "/data/data/%s/PLOAD.apk", cmdline);
     snprintf(file_dir, MAX_PATH, "/data/data/%s/", cmdline);
 
     jstring file_path = (*env)->NewStringUTF(env, file_dir);
