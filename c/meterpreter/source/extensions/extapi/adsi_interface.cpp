@@ -167,9 +167,8 @@ DWORD domain_query(LPCWSTR lpwDomain, LPWSTR lpwFilter, LPWSTR* lpwQueryCols,
 				break;
 			}
 
-			// These buffers are used to store the values that we're reading out of AD
-			Tlv* entries = (Tlv*)malloc(queryColCount * sizeof(Tlv));
-			char* values = (char*)malloc(queryColCount * VALUE_SIZE);
+			// Helper buffer used for conversion from whatever type it is, to int.
+			char value[VALUE_SIZE];
 
 			DWORD rowsProcessed = 0;
 
@@ -185,66 +184,61 @@ DWORD domain_query(LPCWSTR lpwDomain, LPWSTR lpwFilter, LPWSTR* lpwQueryCols,
 				}
 
 				DWORD dwIndex = 0;
-				size_t charsConverted;
 				ADS_SEARCH_COLUMN col;
+
+				Packet* pGroup = packet_create_group();
 
 				// iterate through the columns, adding Tlv entries as we go, but only
 				// if we can get the values out.
 				for (DWORD colIndex = 0; colIndex < queryColCount; ++colIndex)
 				{
-					char* valueTarget = values + dwIndex * VALUE_SIZE;
-
-					entries[dwIndex].buffer = (PUCHAR)valueTarget;
-					entries[dwIndex].header.type = TLV_TYPE_EXT_ADSI_VALUE;
-
 					// try to do something sane based on the type that's being used to store
 					// the value.
 					HRESULT hr = pDirSearch->GetColumn(hSearch, lpwQueryCols[dwIndex], &col);
 					if (SUCCEEDED(hr))
 					{
-						WCHAR* source = NULL;
 						switch (col.dwADsType)
 						{
 							case ADSTYPE_LARGE_INTEGER:
 							{
-								_i64toa_s(col.pADsValues->LargeInteger.QuadPart, valueTarget, VALUE_SIZE, 10);
-								dprintf("[ADSI] Adding large int value %ul", (UINT)col.pADsValues->Integer);
+								packet_add_tlv_qword(pGroup, TLV_TYPE_EXT_ADSI_BIGNUMBER, col.pADsValues->LargeInteger.QuadPart);
+								dprintf("[ADSI] Adding large int value %ull", (UINT)col.pADsValues->LargeInteger.QuadPart);
 								break;
 							}
 							case ADSTYPE_INTEGER:
 							{
-								_itoa_s((UINT)col.pADsValues->Integer, valueTarget, VALUE_SIZE, 10);
+								packet_add_tlv_uint(pGroup, TLV_TYPE_EXT_ADSI_NUMBER, col.pADsValues->Integer);
 								dprintf("[ADSI] Adding int value %u", (UINT)col.pADsValues->Integer);
 								break;
 							}
 							case ADSTYPE_DN_STRING:
 							{
-								source = col.pADsValues->DNString;
+								packet_add_tlv_wstring(pGroup, TLV_TYPE_EXT_ADSI_STRING, col.pADsValues->DNString);
 								break;
 							}
 							case ADSTYPE_PRINTABLE_STRING:
 							{
-								source = col.pADsValues->PrintableString;
+								packet_add_tlv_wstring(pGroup, TLV_TYPE_EXT_ADSI_STRING, col.pADsValues->PrintableString);
 								break;
 							}
 							case ADSTYPE_NUMERIC_STRING:
 							{
-								source = col.pADsValues->NumericString;
+								packet_add_tlv_wstring(pGroup, TLV_TYPE_EXT_ADSI_STRING, col.pADsValues->NumericString);
 								break;
 							}
 							case ADSTYPE_CASE_EXACT_STRING:
 							{
-								source = col.pADsValues->CaseExactString;
+								packet_add_tlv_wstring(pGroup, TLV_TYPE_EXT_ADSI_STRING, col.pADsValues->CaseExactString);
 								break;
 							}
 							case ADSTYPE_CASE_IGNORE_STRING:
 							{
-								source = col.pADsValues->CaseIgnoreString;
+								packet_add_tlv_wstring(pGroup, TLV_TYPE_EXT_ADSI_STRING, col.pADsValues->CaseIgnoreString);
 								break;
 							}
 							case ADSTYPE_BOOLEAN:
 							{
-								source = col.pADsValues->Boolean == 0 ? L"False" : L"True";
+								packet_add_tlv_bool(pGroup, TLV_TYPE_EXT_ADSI_BOOL, col.pADsValues->Boolean == 0 ? FALSE : TRUE);
 								break;
 							}
 							case ADSTYPE_OCTET_STRING:
@@ -252,7 +246,7 @@ DWORD domain_query(LPCWSTR lpwDomain, LPWSTR lpwFilter, LPWSTR* lpwQueryCols,
 								char* s = bytes_to_string(col.pADsValues->OctetString.lpValue, col.pADsValues->OctetString.dwLength);
 								if (s)
 								{
-									strncpy_s(valueTarget, VALUE_SIZE, s, VALUE_SIZE - 1);
+									packet_add_tlv_string(pGroup, TLV_TYPE_EXT_ADSI_STRING, s);
 									free(s);
 								}
 								break;
@@ -260,8 +254,9 @@ DWORD domain_query(LPCWSTR lpwDomain, LPWSTR lpwFilter, LPWSTR* lpwQueryCols,
 							case ADSTYPE_UTC_TIME:
 							{
 								SYSTEMTIME* pt = &col.pADsValues->UTCTime;
-								sprintf_s(valueTarget, VALUE_SIZE, "%4u-%02u-%02u %02u:%02u:%02u.%03u",
+								sprintf_s(value, VALUE_SIZE, "%4u-%02u-%02u %02u:%02u:%02u.%03u",
 									pt->wYear, pt->wMonth, pt->wDay, pt->wHour, pt->wMinute, pt->wSecond, pt->wMilliseconds);
+								packet_add_tlv_string(pGroup, TLV_TYPE_EXT_ADSI_STRING, value);
 								break;
 							}
 							case ADSTYPE_PROV_SPECIFIC:
@@ -269,77 +264,79 @@ DWORD domain_query(LPCWSTR lpwDomain, LPWSTR lpwFilter, LPWSTR* lpwQueryCols,
 								char* s = bytes_to_string(col.pADsValues->ProviderSpecific.lpValue, col.pADsValues->ProviderSpecific.dwLength);
 								if (s)
 								{
-									strncpy_s(valueTarget, VALUE_SIZE, s, VALUE_SIZE - 1);
+									packet_add_tlv_string(pGroup, TLV_TYPE_EXT_ADSI_STRING, s);
 									free(s);
 								}
 								break;
 							}
 							case ADSTYPE_OBJECT_CLASS:
 							{
-								source = col.pADsValues->ClassName;
+								packet_add_tlv_wstring(pGroup, TLV_TYPE_EXT_ADSI_STRING, col.pADsValues->ClassName);
 								break;
 							}
 							case ADSTYPE_CASEIGNORE_LIST:
 							{
 								// list of strings, yay!
-								char* prefix = "";
+								Packet* pStrings = packet_create_group();
 								PADS_CASEIGNORE_LIST list = col.pADsValues->pCaseIgnoreList;
-								char* csr = valueTarget;
-								size_t sizeLeft = VALUE_SIZE;
 
-								while (list != NULL && sizeLeft > 0)
+								while (list != NULL)
 								{
-									int printed = sprintf_s(csr, sizeLeft, "%s%S", prefix, list->String);
-									sizeLeft -= printed;
-									csr += printed;
-									prefix = ", ";
+									packet_add_tlv_wstring(pStrings, TLV_TYPE_EXT_ADSI_STRING, list->String);
+									list = list->Next;
 								}
+
+								packet_add_group(pGroup, TLV_TYPE_EXT_ADSI_ARRAY, pStrings);
 								break;
 							}
 							case ADSTYPE_PATH:
 							{
 								PADS_PATH path = col.pADsValues->pPath;
-								sprintf_s(valueTarget, VALUE_SIZE, "Vol: %S, Path: %S, Type: %u", path->VolumeName, path->Path, path->Type);
+								Packet* pPathGroup = packet_create_group();
+
+								sprintf_s(value, VALUE_SIZE, "Vol: %S, Path: %S, Type: %u", path->VolumeName, path->Path, path->Type);
+
+								packet_add_tlv_wstring(pPathGroup, TLV_TYPE_EXT_ADSI_PATH_VOL, path->VolumeName);
+								packet_add_tlv_wstring(pPathGroup, TLV_TYPE_EXT_ADSI_PATH_PATH, path->Path);
+								packet_add_tlv_uint(pPathGroup, TLV_TYPE_EXT_ADSI_PATH_TYPE, path->Type);
+
+								packet_add_group(pGroup, TLV_TYPE_EXT_ADSI_PATH, pPathGroup);
 								break;
 							}
 							case ADSTYPE_POSTALADDRESS:
 							{
+								Packet* pAddressGroup = packet_create_group();
 								PADS_POSTALADDRESS addr = col.pADsValues->pPostalAddress;
-								char* prefix = "";
-								PADS_CASEIGNORE_LIST list = col.pADsValues->pCaseIgnoreList;
-								char* csr = valueTarget;
-								size_t sizeLeft = VALUE_SIZE;
 
-								for (DWORD i = 0; i < sizeof(addr->PostalAddress) / sizeof(addr->PostalAddress[0]) && sizeLeft > 0; ++i)
+								for (DWORD i = 0; i < sizeof(addr->PostalAddress) / sizeof(addr->PostalAddress[0]); ++i)
 								{
 									if (!addr->PostalAddress[i] || lstrlenW(addr->PostalAddress[i]) == 0)
 									{
 										continue;
 									}
 
-									int printed = sprintf_s(csr, sizeLeft, "%s%S", prefix, addr->PostalAddress[i]);
-									sizeLeft -= printed;
-									csr += printed;
-									prefix = ", ";
+									packet_add_tlv_wstring(pAddressGroup, TLV_TYPE_EXT_ADSI_STRING, addr->PostalAddress[i]);
 								}
+
+								packet_add_group(pGroup, TLV_TYPE_EXT_ADSI_ARRAY, pAddressGroup);
 								break;
 							}
 							case ADSTYPE_TIMESTAMP:
 							{
 								ADS_TIMESTAMP* pts = &col.pADsValues->Timestamp;
-								sprintf_s(valueTarget, VALUE_SIZE, "Event: %S, Sec: %u", pts->EventID, pts->WholeSeconds);
+								packet_add_tlv_uint(pGroup, TLV_TYPE_EXT_ADSI_NUMBER, pts->WholeSeconds);
 								break;
 							}
 							case ADSTYPE_BACKLINK:
 							{
 								ADS_BACKLINK* pbl = &col.pADsValues->BackLink;
-								sprintf_s(valueTarget, VALUE_SIZE, "Name: %S, ID: %u", pbl->ObjectName, pbl->RemoteID);
+								packet_add_tlv_wstring(pGroup, TLV_TYPE_EXT_ADSI_STRING, pbl->ObjectName);
 								break;
 							}
 							case ADSTYPE_TYPEDNAME:
 							{
 								PADS_TYPEDNAME ptn = col.pADsValues->pTypedName;
-								sprintf_s(valueTarget, VALUE_SIZE, "Interval: %u, Level: %u, Name: %S", ptn->Interval, ptn->Level, ptn->ObjectName);
+								packet_add_tlv_wstring(pGroup, TLV_TYPE_EXT_ADSI_STRING, ptn->ObjectName);
 								break;
 							}
 							case ADSTYPE_NETADDRESS:
@@ -349,7 +346,7 @@ DWORD domain_query(LPCWSTR lpwDomain, LPWSTR lpwFilter, LPWSTR* lpwQueryCols,
 								char* s = bytes_to_string(pna->Address, pna->AddressLength, "%u", 3, ".");
 								if (s)
 								{
-									strncpy_s(valueTarget, VALUE_SIZE, s, VALUE_SIZE - 1);
+									packet_add_tlv_string(pGroup, TLV_TYPE_EXT_ADSI_STRING, s);
 									free(s);
 								}
 								dprintf("[ADSI] %u network address of %u bytes added", pna->AddressType, pna->AddressLength);
@@ -357,7 +354,7 @@ DWORD domain_query(LPCWSTR lpwDomain, LPWSTR lpwFilter, LPWSTR* lpwQueryCols,
 							}
 							case ADSTYPE_EMAIL:
 							{
-								source = col.pADsValues->Email.Address;
+								packet_add_tlv_wstring(pGroup, TLV_TYPE_EXT_ADSI_STRING, col.pADsValues->Email.Address);
 								break;
 							}
 							case ADSTYPE_NT_SECURITY_DESCRIPTOR:
@@ -367,7 +364,7 @@ DWORD domain_query(LPCWSTR lpwDomain, LPWSTR lpwFilter, LPWSTR* lpwQueryCols,
 								if(ConvertSidToStringSid((PSID)psd->lpValue, &s))
 								{
 									dprintf("[EXTAPI ADSI] converted SID: %s", s);
-									strncpy_s(valueTarget, VALUE_SIZE, s, VALUE_SIZE - 1);
+									packet_add_tlv_string(pGroup, TLV_TYPE_EXT_ADSI_STRING, s);
 									LocalFree(s);
 								}
 								else
@@ -375,7 +372,7 @@ DWORD domain_query(LPCWSTR lpwDomain, LPWSTR lpwFilter, LPWSTR* lpwQueryCols,
 									s = bytes_to_string(psd->lpValue, psd->dwLength);
 									if (s)
 									{
-										strncpy_s(valueTarget, VALUE_SIZE, s, VALUE_SIZE - 1);
+										packet_add_tlv_string(pGroup, TLV_TYPE_EXT_ADSI_STRING, s);
 										free(s);
 									}
 								}
@@ -383,21 +380,24 @@ DWORD domain_query(LPCWSTR lpwDomain, LPWSTR lpwFilter, LPWSTR* lpwQueryCols,
 							}
 							case ADSTYPE_DN_WITH_BINARY:
 							{
+								Packet* pDnGroup = packet_create_group();
 								PADS_DN_WITH_BINARY pdb = col.pADsValues->pDNWithBinary;
-								sprintf_s(valueTarget, VALUE_SIZE, "DN: %S, Value: %S", pdb->pszDNString);
-								size_t charsPrinted = lstrlenA(valueTarget);
-								char* s = bytes_to_string(pdb->lpBinaryValue, pdb->dwLength, "%u", 3, ".");
-								if (s)
-								{
-									strncpy_s(valueTarget + charsPrinted, VALUE_SIZE, s, VALUE_SIZE - 1);
-									free(s);
-								}
+
+								packet_add_tlv_wstring(pDnGroup, TLV_TYPE_EXT_ADSI_STRING, pdb->pszDNString);
+								packet_add_tlv_raw(pDnGroup, TLV_TYPE_EXT_ADSI_RAW, pdb->lpBinaryValue, pdb->dwLength);
+								packet_add_group(pGroup, TLV_TYPE_EXT_ADSI_DN, pDnGroup);
+
 								break;
 							}
 							case ADSTYPE_DN_WITH_STRING:
 							{
+								Packet* pDnGroup = packet_create_group();
 								PADS_DN_WITH_STRING pds = col.pADsValues->pDNWithString;
-								sprintf_s(valueTarget, VALUE_SIZE, "DN: %S, Value: %S", pds->pszDNString, pds->pszStringValue);
+
+								packet_add_tlv_wstring(pDnGroup, TLV_TYPE_EXT_ADSI_STRING, pds->pszDNString);
+								packet_add_tlv_wstring(pDnGroup, TLV_TYPE_EXT_ADSI_STRING, pds->pszStringValue);
+								packet_add_group(pGroup, TLV_TYPE_EXT_ADSI_DN, pDnGroup);
+
 								break;
 							}
 							case ADSTYPE_FAXNUMBER:
@@ -406,27 +406,18 @@ DWORD domain_query(LPCWSTR lpwDomain, LPWSTR lpwFilter, LPWSTR* lpwQueryCols,
 							{
 								// this is a string of some kind
 								dprintf("[ADSI] Unhandled ADSI type %u (%x), adding unknown", col.dwADsType, col.dwADsType);
-								sprintf_s(valueTarget, VALUE_SIZE, "(unhandled ADSI type %u)", col.dwADsType);
+								sprintf_s(value, VALUE_SIZE, "(unhandled ADSI type %u)", col.dwADsType);
+								packet_add_tlv_string(pGroup, TLV_TYPE_EXT_ADSI_STRING, value);
 								break;
 							}
 						}
 
-						// if source is now non-null it means a value was added to it,
-						// so we can just do a conversion directly into the value target
-						if (source != NULL)
-						{
-							wcstombs_s(&charsConverted, valueTarget, VALUE_SIZE, source, VALUE_SIZE - 1);
-							dprintf("[ADSI] Adding string value %s", valueTarget);
-						}
-
-						entries[dwIndex].header.length = lstrlenA(valueTarget) + 1;
 						pDirSearch->FreeColumn(&col);
 					}
 					else
 					{
 						dprintf("[ADSI] Col read failed: %x", hr);
-						valueTarget[0] = 0;
-						entries[dwIndex].header.length = 1;
+						packet_add_tlv_string(pGroup, TLV_TYPE_EXT_ADSI_STRING, "");
 					}
 
 					dwIndex++;
@@ -436,7 +427,7 @@ DWORD domain_query(LPCWSTR lpwDomain, LPWSTR lpwFilter, LPWSTR* lpwQueryCols,
 				{
 					dprintf("[ADSI] Adding group packet of %u values", dwIndex);
 					// Throw the user details together in a group, ready to return.
-					packet_add_tlv_group(response, TLV_TYPE_EXT_ADSI_RESULT, entries, dwIndex);
+					packet_add_group(response, TLV_TYPE_EXT_ADSI_RESULT, pGroup);
 					dprintf("[ADSI] Added group packet of %u values", dwIndex);
 				}
 				else
@@ -453,9 +444,6 @@ DWORD domain_query(LPCWSTR lpwDomain, LPWSTR lpwFilter, LPWSTR* lpwQueryCols,
 			{
 				hResult = S_OK;
 			}
-
-			free(entries);
-			free(values);
 		} while (0);
 
 		if (hSearch != NULL)
