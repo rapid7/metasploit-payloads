@@ -202,7 +202,7 @@ DWORD domain_query(LPCWSTR lpwDomain, LPWSTR lpwFilter, LPWSTR* lpwQueryCols,
 							case ADSTYPE_LARGE_INTEGER:
 							{
 								packet_add_tlv_qword(pGroup, TLV_TYPE_EXT_ADSI_BIGNUMBER, col.pADsValues->LargeInteger.QuadPart);
-								dprintf("[ADSI] Adding large int value %ull", (UINT)col.pADsValues->LargeInteger.QuadPart);
+								dprintf("[ADSI] Adding large int value %lld", (UINT)col.pADsValues->LargeInteger.QuadPart);
 								break;
 							}
 							case ADSTYPE_INTEGER:
@@ -213,46 +213,49 @@ DWORD domain_query(LPCWSTR lpwDomain, LPWSTR lpwFilter, LPWSTR* lpwQueryCols,
 							}
 							case ADSTYPE_DN_STRING:
 							{
+								dprintf("[EXTAPI ADSI] DN String: %S", col.pADsValues->DNString);
 								packet_add_tlv_wstring(pGroup, TLV_TYPE_EXT_ADSI_STRING, col.pADsValues->DNString);
 								break;
 							}
 							case ADSTYPE_PRINTABLE_STRING:
 							{
+								dprintf("[EXTAPI ADSI] Printable String: %S", col.pADsValues->PrintableString);
 								packet_add_tlv_wstring(pGroup, TLV_TYPE_EXT_ADSI_STRING, col.pADsValues->PrintableString);
 								break;
 							}
 							case ADSTYPE_NUMERIC_STRING:
 							{
+								dprintf("[EXTAPI ADSI] Numeric String: %S", col.pADsValues->NumericString);
 								packet_add_tlv_wstring(pGroup, TLV_TYPE_EXT_ADSI_STRING, col.pADsValues->NumericString);
 								break;
 							}
 							case ADSTYPE_CASE_EXACT_STRING:
 							{
+								dprintf("[EXTAPI ADSI] Case Extact String: %S", col.pADsValues->CaseExactString);
 								packet_add_tlv_wstring(pGroup, TLV_TYPE_EXT_ADSI_STRING, col.pADsValues->CaseExactString);
 								break;
 							}
 							case ADSTYPE_CASE_IGNORE_STRING:
 							{
+								dprintf("[EXTAPI ADSI] Case Ignore String: %S", col.pADsValues->CaseIgnoreString);
 								packet_add_tlv_wstring(pGroup, TLV_TYPE_EXT_ADSI_STRING, col.pADsValues->CaseIgnoreString);
 								break;
 							}
 							case ADSTYPE_BOOLEAN:
 							{
+								dprintf("[EXTAPI ADSI] Boolean");
 								packet_add_tlv_bool(pGroup, TLV_TYPE_EXT_ADSI_BOOL, col.pADsValues->Boolean == 0 ? FALSE : TRUE);
 								break;
 							}
 							case ADSTYPE_OCTET_STRING:
 							{
-								char* s = bytes_to_string(col.pADsValues->OctetString.lpValue, col.pADsValues->OctetString.dwLength);
-								if (s)
-								{
-									packet_add_tlv_string(pGroup, TLV_TYPE_EXT_ADSI_STRING, s);
-									free(s);
-								}
+								dprintf("[EXTAPI ADSI] Octet string");
+								packet_add_tlv_raw(pGroup, TLV_TYPE_EXT_ADSI_RAW, col.pADsValues->OctetString.lpValue, col.pADsValues->OctetString.dwLength);
 								break;
 							}
 							case ADSTYPE_UTC_TIME:
 							{
+								dprintf("[EXTAPI ADSI] UTC time");
 								SYSTEMTIME* pt = &col.pADsValues->UTCTime;
 								sprintf_s(value, VALUE_SIZE, "%4u-%02u-%02u %02u:%02u:%02u.%03u",
 									pt->wYear, pt->wMonth, pt->wDay, pt->wHour, pt->wMinute, pt->wSecond, pt->wMilliseconds);
@@ -261,12 +264,8 @@ DWORD domain_query(LPCWSTR lpwDomain, LPWSTR lpwFilter, LPWSTR* lpwQueryCols,
 							}
 							case ADSTYPE_PROV_SPECIFIC:
 							{
-								char* s = bytes_to_string(col.pADsValues->ProviderSpecific.lpValue, col.pADsValues->ProviderSpecific.dwLength);
-								if (s)
-								{
-									packet_add_tlv_string(pGroup, TLV_TYPE_EXT_ADSI_STRING, s);
-									free(s);
-								}
+								dprintf("[EXTAPI ADSI] Provider specific");
+								packet_add_tlv_raw(pGroup, TLV_TYPE_EXT_ADSI_RAW, col.pADsValues->ProviderSpecific.lpValue, col.pADsValues->ProviderSpecific.dwLength);
 								break;
 							}
 							case ADSTYPE_OBJECT_CLASS:
@@ -279,6 +278,8 @@ DWORD domain_query(LPCWSTR lpwDomain, LPWSTR lpwFilter, LPWSTR* lpwQueryCols,
 								// list of strings, yay!
 								Packet* pStrings = packet_create_group();
 								PADS_CASEIGNORE_LIST list = col.pADsValues->pCaseIgnoreList;
+
+								dprintf("[EXTAPI ADSI] Case Ignore List");
 
 								while (list != NULL)
 								{
@@ -294,7 +295,7 @@ DWORD domain_query(LPCWSTR lpwDomain, LPWSTR lpwFilter, LPWSTR* lpwQueryCols,
 								PADS_PATH path = col.pADsValues->pPath;
 								Packet* pPathGroup = packet_create_group();
 
-								sprintf_s(value, VALUE_SIZE, "Vol: %S, Path: %S, Type: %u", path->VolumeName, path->Path, path->Type);
+								dprintf("[EXTAPI ADSI] PATH");
 
 								packet_add_tlv_wstring(pPathGroup, TLV_TYPE_EXT_ADSI_PATH_VOL, path->VolumeName);
 								packet_add_tlv_wstring(pPathGroup, TLV_TYPE_EXT_ADSI_PATH_PATH, path->Path);
@@ -318,24 +319,29 @@ DWORD domain_query(LPCWSTR lpwDomain, LPWSTR lpwFilter, LPWSTR* lpwQueryCols,
 									packet_add_tlv_wstring(pAddressGroup, TLV_TYPE_EXT_ADSI_STRING, addr->PostalAddress[i]);
 								}
 
+								dprintf("[EXTAPI ADSI] postal address list");
+
 								packet_add_group(pGroup, TLV_TYPE_EXT_ADSI_ARRAY, pAddressGroup);
 								break;
 							}
 							case ADSTYPE_TIMESTAMP:
 							{
 								ADS_TIMESTAMP* pts = &col.pADsValues->Timestamp;
+								dprintf("[EXTAPI ADSI] timestamp");
 								packet_add_tlv_uint(pGroup, TLV_TYPE_EXT_ADSI_NUMBER, pts->WholeSeconds);
 								break;
 							}
 							case ADSTYPE_BACKLINK:
 							{
 								ADS_BACKLINK* pbl = &col.pADsValues->BackLink;
+								dprintf("[EXTAPI ADSI] backlink");
 								packet_add_tlv_wstring(pGroup, TLV_TYPE_EXT_ADSI_STRING, pbl->ObjectName);
 								break;
 							}
 							case ADSTYPE_TYPEDNAME:
 							{
 								PADS_TYPEDNAME ptn = col.pADsValues->pTypedName;
+								dprintf("[EXTAPI ADSI] typed name");
 								packet_add_tlv_wstring(pGroup, TLV_TYPE_EXT_ADSI_STRING, ptn->ObjectName);
 								break;
 							}
@@ -343,17 +349,23 @@ DWORD domain_query(LPCWSTR lpwDomain, LPWSTR lpwFilter, LPWSTR* lpwQueryCols,
 							{
 								PADS_NETADDRESS pna = col.pADsValues->pNetAddress;
 								// IP address octects won't be bigger than 3 chars (given that we can only have 255 as a max value
+								// TODO: handle IPv6?
 								char* s = bytes_to_string(pna->Address, pna->AddressLength, "%u", 3, ".");
 								if (s)
 								{
 									packet_add_tlv_string(pGroup, TLV_TYPE_EXT_ADSI_STRING, s);
 									free(s);
 								}
+								else
+								{
+									packet_add_tlv_raw(pGroup, TLV_TYPE_EXT_ADSI_RAW, pna->Address, pna->AddressLength);
+								}
 								dprintf("[ADSI] %u network address of %u bytes added", pna->AddressType, pna->AddressLength);
 								break;
 							}
 							case ADSTYPE_EMAIL:
 							{
+								dprintf("[EXTAPI ADSI] email");
 								packet_add_tlv_wstring(pGroup, TLV_TYPE_EXT_ADSI_STRING, col.pADsValues->Email.Address);
 								break;
 							}
@@ -369,12 +381,8 @@ DWORD domain_query(LPCWSTR lpwDomain, LPWSTR lpwFilter, LPWSTR* lpwQueryCols,
 								}
 								else
 								{
-									s = bytes_to_string(psd->lpValue, psd->dwLength);
-									if (s)
-									{
-										packet_add_tlv_string(pGroup, TLV_TYPE_EXT_ADSI_STRING, s);
-										free(s);
-									}
+									dprintf("[EXTAPI ADSI] byte SID");
+									packet_add_tlv_raw(pGroup, TLV_TYPE_EXT_ADSI_RAW, psd->lpValue, psd->dwLength);
 								}
 								break;
 							}
@@ -382,6 +390,8 @@ DWORD domain_query(LPCWSTR lpwDomain, LPWSTR lpwFilter, LPWSTR* lpwQueryCols,
 							{
 								Packet* pDnGroup = packet_create_group();
 								PADS_DN_WITH_BINARY pdb = col.pADsValues->pDNWithBinary;
+
+								dprintf("[ADSI] DN with string");
 
 								packet_add_tlv_wstring(pDnGroup, TLV_TYPE_EXT_ADSI_STRING, pdb->pszDNString);
 								packet_add_tlv_raw(pDnGroup, TLV_TYPE_EXT_ADSI_RAW, pdb->lpBinaryValue, pdb->dwLength);
@@ -393,6 +403,8 @@ DWORD domain_query(LPCWSTR lpwDomain, LPWSTR lpwFilter, LPWSTR* lpwQueryCols,
 							{
 								Packet* pDnGroup = packet_create_group();
 								PADS_DN_WITH_STRING pds = col.pADsValues->pDNWithString;
+
+								dprintf("[ADSI] DN with string");
 
 								packet_add_tlv_wstring(pDnGroup, TLV_TYPE_EXT_ADSI_STRING, pds->pszDNString);
 								packet_add_tlv_wstring(pDnGroup, TLV_TYPE_EXT_ADSI_STRING, pds->pszStringValue);
