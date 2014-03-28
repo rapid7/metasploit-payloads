@@ -539,7 +539,7 @@ VOID sam_hash_handler(LPVOID lpContext, DWORD dwRid, wchar_t* lpwUser, DWORD dwU
 	dprintf("[KIWI SAM] Made it here");
 
 	// only add the result if we have one of the hashes and a user name.
-	if ((hasLmHash || hasNtlmHash) && lpwUser)
+	if (lpwUser)
 	{
 		dprintf("[KIWI SAM] Adding %S rid %u (%x)", lpwUser, dwRid, dwRid);
 
@@ -561,7 +561,7 @@ VOID sam_hash_handler(LPVOID lpContext, DWORD dwRid, wchar_t* lpwUser, DWORD dwU
 	}
 	else
 	{
-		dprintf("[KIWI SAM] Ignoring %S, no hashes given");
+		dprintf("[KIWI SAM] Ignoring %u, no user name", dwRid);
 	}
 }
 
