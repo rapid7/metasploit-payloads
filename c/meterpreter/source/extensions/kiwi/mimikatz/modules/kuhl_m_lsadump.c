@@ -336,6 +336,7 @@ BOOL kuhl_m_lsadump_getUsersAndSamKey(IN PKULL_M_REGISTRY_HANDLE hRegistry, IN H
 														kprintf(L"User : %.*s\n", pUAv->Username.lenght / sizeof(wchar_t), (wchar_t *) (pUAv->datas + pUAv->Username.offset));
 														hasLmHash = kuhl_m_lsadump_getHash(&pUAv->LMHash, pUAv->datas, samKey, rid, FALSE, lmHash);
 														hasNtlmHash = kuhl_m_lsadump_getHash(&pUAv->NTLMHash, pUAv->datas, samKey, rid, TRUE, ntlmHash);
+														kprintf(L"\nHas LM? %s\nHas NTLM? %s", hasLmHash ? L"TRUE" : L"FALSE", hasNtlmHash ? L"TRUE" : L"FALSE");
 
 														if (callbackCtx && callbackCtx->pSamHashHandler)
 														{
@@ -396,6 +397,7 @@ BOOL kuhl_m_lsadump_getHash(PSAM_SENTRY pSamHash, LPCBYTE pStartOfData, LPCBYTE 
 			else PRINT_ERROR(L"RtlDecryptDES2blocks1DWORD");
 		} else PRINT_ERROR(L"RtlEncryptDecryptARC4");
 	}
+	else PRINT_ERROR(L"Invalid SAM Hash");
 	kprintf(L"\n");
 	return status;
 }

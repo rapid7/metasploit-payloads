@@ -246,7 +246,7 @@ NTSTATUS kuhl_m_sekurlsa_acquireLSA()
 					}
 					else dprintf(L"[KIWI] Modules informations failed\n");
 				}
-				else dprintf(L"[KIWI] Memory opening\ failedn");
+				else dprintf(L"[KIWI] Memory opening failed\n");
 			}
 			else dprintf(L"[KIWI] Handle of memory : %08x\n", GetLastError());
 

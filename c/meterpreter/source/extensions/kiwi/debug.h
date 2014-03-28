@@ -1,8 +1,8 @@
 #pragma once
 
-//#define DEBUGTRACE
+//#define KIWIDEBUGTRACE
 
-#ifdef DEBUGTRACE
+#ifdef KIWIDEBUGTRACE
 #define dprintf(...) real_dprintf(__VA_ARGS__)
 #else
 #define dprintf(...) do{}while(0);
@@ -22,7 +22,7 @@
 /*! @brief Close a handle if not already closed and set the handle to NULL. */
 #define CLOSE_HANDLE( h )          if( h ) { DWORD dwHandleFlags; if(GetHandleInformation( h , &dwHandleFlags)) CloseHandle( h ); h = NULL; }
 
-#ifdef DEBUGTRACE
+#ifdef KIWIDEBUGTRACE
 static void real_dprintf(wchar_t *format, ...) {
 	va_list args;
 	wchar_t buffer[1024];

@@ -93,32 +93,23 @@ NTSTATUS kuhl_m_pac_signature(PPACTYPE pacType, DWORD pacLenght, LPCVOID key, DW
 				checksumpKdc = pSignatureData->Signature;
 		}
 	}
-	PRINT_ERROR(L"HERE 1");
+
 	if(checksumSrv && checksumpKdc)
 	{
-		PRINT_ERROR(L"HERE 2");
 		status = kullCDLocateCheckSum(KERB_CHECKSUM_HMAC_MD5, &pCheckSum);
 		if(NT_SUCCESS(status))
 		{
-			PRINT_ERROR(L"HERE 3");
 			status = pCheckSum->InitializeEx(key, keySize, KERB_NON_KERB_CKSUM_SALT, &Context);
 			if(NT_SUCCESS(status))
 			{
-				PRINT_ERROR(L"HERE 4");
 				pCheckSum->Sum(Context, pacLenght, pacType);
 				pCheckSum->Finalize(Context, checksumSrv);
 				pCheckSum->Sum(Context, pCheckSum->Size, checksumSrv);
 				pCheckSum->Finalize(Context, checksumpKdc);
 				pCheckSum->Finish(&Context);
 			}
-			else
-				PRINT_ERROR(L"NOT HERE 4");
 		}
-		else
-			PRINT_ERROR(L"NOT HERE 3");
 	}
-	else
-		PRINT_ERROR(L"NOT HERE 2");
 	return status;
 }
 

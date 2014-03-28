@@ -23,7 +23,7 @@ const KUHL_M * mimikatz_modules[] = {
 	&kuhl_m_vault,
 };
 
-#ifdef DEBUGTRACE
+#ifdef KIWIDEBUGTRACE
 static wchar_t* output = NULL;
 static DWORD outputLen = 0;
 static DWORD outputSize = 0;
@@ -91,7 +91,7 @@ DWORD mimikatz_init_or_clean(BOOL Init)
 	{
 		dprintf(L"[KIWI] initorclean - setting up function pointers");
 		setup_function_pointers();
-#ifdef DEBUGTRACE
+#ifdef KIWIDEBUGTRACE
 		dprintf(L"[KIWI] initorclean - set writer");
 		kull_m_output_set_writer(mimikatz_append_output);
 #endif
