@@ -281,16 +281,17 @@ BOOL kuhl_m_misc_generic_nogpo_patch(PCWSTR commandLine, PWSTR disableString, SI
 }
 
 const wchar_t * KUHL_M_MISC_WIFI_STATE[] = {
-	L"not_ready",
-	L"connected",
-	L"ad_hoc_network_formed",
-	L"disconnecting",
-	L"disconnected",
-	L"associating",
-	L"discovering",
-	L"authenticating",
+	L"Not Ready",
+	L"Connected",
+	L"Ad-Hoc Network Formed",
+	L"Disconnecting",
+	L"Disconnected",
+	L"Associating",
+	L"Discovering",
+	L"Authenticating",
 };
-NTSTATUS kuhl_m_misc_wifi(int argc, wchar_t * argv[])
+
+NTSTATUS kuhl_m_misc_wifi_enum(PWIFI_CALLBACK_CTX callbackCtx)
 {
 	PWLAN_INTERFACE_INFO_LIST pInterfaceList;
 	PWLAN_PROFILE_INFO_LIST pProfileList;
@@ -303,6 +304,12 @@ NTSTATUS kuhl_m_misc_wifi(int argc, wchar_t * argv[])
 		{
 			for(pInterfaceList->dwIndex = 0; pInterfaceList->dwIndex < pInterfaceList->dwNumberOfItems; pInterfaceList->dwIndex++)
 			{
+				if (callbackCtx && callbackCtx->pStartInterfaceHandler)
+					callbackCtx->pStartInterfaceHandler(callbackCtx->lpCtx,
+						&pInterfaceList->InterfaceInfo[pInterfaceList->dwIndex].InterfaceGuid,
+						KUHL_M_MISC_WIFI_STATE[pInterfaceList->InterfaceInfo[pInterfaceList->dwIndex].isState],
+						pInterfaceList->InterfaceInfo[pInterfaceList->dwIndex].strInterfaceDescription);
+
 				kprintf(L" * ");
 				kull_m_string_displayGUID(&pInterfaceList->InterfaceInfo[pInterfaceList->dwIndex].InterfaceGuid);
 				kprintf(L" / %s - %s\n", KUHL_M_MISC_WIFI_STATE[pInterfaceList->InterfaceInfo[pInterfaceList->dwIndex].isState], pInterfaceList->InterfaceInfo[pInterfaceList->dwIndex].strInterfaceDescription);
@@ -318,14 +325,26 @@ NTSTATUS kuhl_m_misc_wifi(int argc, wchar_t * argv[])
 						{
 							//kprintf(L"%08x\n", pdwFlags);
 							kprintf(L"%s\n", pstrProfileXml);
+							if (callbackCtx && callbackCtx->pProfileHandler)
+								callbackCtx->pProfileHandler(callbackCtx->lpCtx, pProfileList->ProfileInfo[pProfileList->dwIndex].strProfileName, pstrProfileXml);
 							WlanFreeMemory(pstrProfileXml);
 						}
+						else if (callbackCtx && callbackCtx->pProfileHandler)
+							callbackCtx->pProfileHandler(callbackCtx->lpCtx, pProfileList->ProfileInfo[pProfileList->dwIndex].strProfileName, NULL);
 					}
 					WlanFreeMemory(pProfileList);
 				}
+
+				if (callbackCtx && callbackCtx->pEndInterfaceHandler)
+					callbackCtx->pEndInterfaceHandler(callbackCtx->lpCtx);
 			}
 			WlanFreeMemory(pInterfaceList);
 		}
 	}
 	return STATUS_SUCCESS;
+}
+
+NTSTATUS kuhl_m_misc_wifi(int argc, wchar_t * argv[])
+{
+	return kuhl_m_misc_wifi_enum(NULL);
 }

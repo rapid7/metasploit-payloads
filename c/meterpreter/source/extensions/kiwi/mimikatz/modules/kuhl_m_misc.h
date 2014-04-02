@@ -9,6 +9,7 @@
 #include "../modules/kull_m_memory.h"
 #include "../modules/kull_m_patch.h"
 #include "../modules/kull_m_file.h"
+#include "kuhl_m_misc_struct.h"
 
 const KUHL_M kuhl_m_misc;
 

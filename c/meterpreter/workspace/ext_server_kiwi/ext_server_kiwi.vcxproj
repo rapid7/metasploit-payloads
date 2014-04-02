@@ -591,6 +591,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_kernel.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_lsadump_struct.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_misc.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_misc_struct.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_net.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_privilege.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_process.h" />

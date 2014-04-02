@@ -15,5 +15,6 @@ DWORD mimikatz_kerberos_ticket_use(BYTE* pBuffer, DWORD dwBufferSize);
 DWORD mimikatz_kerberos_ticket_purge();
 DWORD mimikatz_kerberos_ticket_list(BOOL bExport, Packet* pResponse);
 DWORD mimikatz_lsa_dump_secrets(Packet* pResponse);
+DWORD mimikatz_wifi_profile_list(Packet* pResponse);
 
 #endif
