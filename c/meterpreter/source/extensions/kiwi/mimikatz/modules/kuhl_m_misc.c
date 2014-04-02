@@ -57,7 +57,7 @@ NTSTATUS kuhl_m_misc_init()
 			kuhl_m_misc_hWlanLib = NULL;
 		}
 	}
-	return status;
+	return STATUS_SUCCESS;
 }
 
 NTSTATUS kuhl_m_misc_clean()
