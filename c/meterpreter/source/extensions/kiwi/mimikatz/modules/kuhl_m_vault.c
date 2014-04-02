@@ -162,6 +162,7 @@ void CALLBACK kuhl_m_vault_list_descItem_PINLogonOrPicturePasswordOrBiometric(co
 	DWORD i, dwError, szNeeded;
 	PVAULT_PICTURE_PASSWORD_ELEMENT pElements;
 	PVAULT_BIOMETRIC_ELEMENT bElements;
+	PWCHAR bufferStart;
 	HKEY hPicturePassword, hUserPicturePassword;
 
 	if(enumItem8->Identity && (enumItem8->Identity->Type == ElementType_ByteArray))
@@ -231,13 +232,13 @@ void CALLBACK kuhl_m_vault_list_descItem_PINLogonOrPicturePasswordOrBiometric(co
 			break;
 		case 0x0b4b8a12b:	// picture
 			if(enumItem8->Properties[0]->Type == ElementType_ByteArray)
-      {
+			{
 				pElements = (PVAULT_PICTURE_PASSWORD_ELEMENT) enumItem8->Properties[0]->data.ByteArray.Value;
 				if(bgPath)
- 	     {
-						kprintf(L"\t\tBackground path : %s\n", bgPath);
-						LocalFree(bgPath);
- 	     }
+				{
+					kprintf(L"\t\tBackground path : %s\n", bgPath);
+					LocalFree(bgPath);
+				}
 				kprintf(L"\t\tPicture password (grid is 150*100)\n");
 
 				for(i = 0; i < 3; i++)
@@ -245,34 +246,40 @@ void CALLBACK kuhl_m_vault_list_descItem_PINLogonOrPicturePasswordOrBiometric(co
 					kprintf(L"\t\t [%u] ", i);
 					switch(pElements[i].Type)
 					{
-						case PP_Point:
-							kprintf(L"point  (x = %3u ; y = %3u)", pElements[i].point.coord.x, pElements[i].point.coord.y);
-							break;
-						case PP_Circle:
-							kprintf(L"circle (x = %3u ; y = %3u ; r = %3u) - %s", pElements[i].circle.coord.x, pElements[i].circle.coord.y, pElements[i].circle.size, (pElements[i].circle.clockwise ? L"clockwise" : L"anticlockwise"));
-							break;
-						case PP_Line:
-							kprintf(L"line   (x = %3u ; y = %3u) -> (x = %3u ; y = %3u)", pElements[i].line.start.x, pElements[i].line.start.y, pElements[i].line.end.x, pElements[i].line.end.y);
-							break;
-						default:
-							kprintf(L"%u\n", pElements[i].Type);
+					case PP_Point:
+						kprintf(L"point  (x = %3u ; y = %3u)", pElements[i].point.coord.x, pElements[i].point.coord.y);
+						break;
+					case PP_Circle:
+						kprintf(L"circle (x = %3u ; y = %3u ; r = %3u) - %s", pElements[i].circle.coord.x, pElements[i].circle.coord.y, pElements[i].circle.size, (pElements[i].circle.clockwise ? L"clockwise" : L"anticlockwise"));
+						break;
+					case PP_Line:
+						kprintf(L"line   (x = %3u ; y = %3u) -> (x = %3u ; y = %3u)", pElements[i].line.start.x, pElements[i].line.start.y, pElements[i].line.end.x, pElements[i].line.end.y);
+						break;
+					default:
+						kprintf(L"%u\n", pElements[i].Type);
 					}
 					kprintf(L"\n");
 				}
-				kprintf(L"\n");
 			}
 			break;
 		case 0x0fec87291:	// biometric
 			if(enumItem8->Properties[0]->Type == ElementType_ByteArray)
 			{
 				bElements = (PVAULT_BIOMETRIC_ELEMENT) enumItem8->Properties[0]->data.ByteArray.Value;
-				kprintf(L"\t\tUsername [%2u]   : %.*s\n", bElements->unk0, bElements->usernameLength - 1, bElements->username);
+				bufferStart = (PWCHAR) ((PBYTE) bElements + bElements->headersize);
+				kprintf(L"\t\tProperty        : ");
+				if(bElements->domainnameLength > 1)
+					kprintf(L"%.*s\\", bElements->domainnameLength - 1, bufferStart + bElements->usernameLength);
+				if(bElements->usernameLength > 1)
+					kprintf(L"%.*s", bElements->usernameLength - 1, bufferStart);
+				kprintf(L"\n");
 			}
 			break;
 		default:
 			kprintf(L"todo ?\n");
 		}
 	}
+
 }
 
 void kuhl_m_vault_list_descVault(HANDLE hVault)

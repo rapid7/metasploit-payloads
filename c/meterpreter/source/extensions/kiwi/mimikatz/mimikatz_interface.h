@@ -10,7 +10,7 @@ typedef struct _Packet Packet;
 
 DWORD mimikatz_init_or_clean(BOOL bInit);
 DWORD mimikatz_scrape_passwords(DWORD dwCmdId, Packet* pResponse);
-DWORD mimikatz_kerberos_golden_ticket_create(LPSTR lpUser, LPSTR lpDomain, LPSTR lpSid, LPSTR lpNtlm, Packet* pResponse);
+DWORD mimikatz_kerberos_golden_ticket_create(char* lpUser, char* lpDomain, char* lpSid, char* lpTgt, DWORD dwId, DWORD* pdwGroupIds, DWORD dwGroupCount, Packet* pResponse);
 DWORD mimikatz_kerberos_ticket_use(BYTE* pBuffer, DWORD dwBufferSize);
 DWORD mimikatz_kerberos_ticket_purge();
 DWORD mimikatz_kerberos_ticket_list(BOOL bExport, Packet* pResponse);

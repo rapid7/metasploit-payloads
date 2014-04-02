@@ -4,13 +4,18 @@
 	Licence : http://creativecommons.org/licenses/by/3.0/fr/
 */
 #pragma once
+
+#define LSASS_DECRYPT
+
 #include "../kuhl_m.h"
 #include "globals_sekurlsa.h"
 
 #include "kuhl_m_sekurlsa_utils.h"
 #include "crypto/kuhl_m_sekurlsa_nt5.h"
 #include "crypto/kuhl_m_sekurlsa_nt6.h"
+#ifdef LSASS_DECRYPT
 #include "crypto/kuhl_m_sekurlsa_nt63.h"
+#endif
 
 #include "packages/kuhl_m_sekurlsa_kerberos.h"
 #include "packages/kuhl_m_sekurlsa_livessp.h"

@@ -9,6 +9,8 @@ VOID (WINAPI * RtlInitString)(OUT PSTRING DestinationString, IN PCSZ SourceStrin
 VOID (WINAPI * RtlInitUnicodeString)(OUT PUNICODE_STRING DestinationString, IN PCWSTR SourceString);
 NTSTATUS (WINAPI * RtlAnsiStringToUnicodeString)(OUT PUNICODE_STRING DestinationString, IN PCANSI_STRING SourceString, IN BOOLEAN AllocateDestinationString);
 NTSTATUS (WINAPI * RtlUnicodeStringToAnsiString)(OUT PANSI_STRING DestinationString, IN PCUNICODE_STRING SourceString, IN BOOLEAN AllocateDestinationString);
+VOID (WINAPI * RtlUpperString)(OUT PSTRING DestinationString, IN const STRING *SourceString);
+NTSTATUS (WINAPI * RtlDowncaseUnicodeString)(PUNICODE_STRING DestinationString, IN PCUNICODE_STRING SourceString, IN BOOLEAN AllocateDestinationString);
 BOOLEAN (WINAPI * RtlEqualString)(IN const STRING *String1, IN const STRING *String2, IN BOOLEAN CaseInSensitive);
 BOOLEAN (WINAPI * RtlEqualUnicodeString)(IN PCUNICODE_STRING String1, IN PCUNICODE_STRING String2, IN BOOLEAN CaseInSensitive);
 LONG (WINAPI * RtlCompareUnicodeString)(IN PCUNICODE_STRING String1, IN PCUNICODE_STRING String2, IN BOOLEAN CaseInSensitive);
@@ -26,6 +28,8 @@ VOID kull_m_string_initialise()
 	RtlInitUnicodeString = (VOID (WINAPI *)(OUT PUNICODE_STRING DestinationString, IN PCWSTR SourceString))GetProcAddress(ntDll, "RtlInitUnicodeString");
 	RtlAnsiStringToUnicodeString = (NTSTATUS (WINAPI *)(OUT PUNICODE_STRING DestinationString, IN PCANSI_STRING SourceString, IN BOOLEAN AllocateDestinationString))GetProcAddress(ntDll, "RtlAnsiStringToUnicodeString");
 	RtlUnicodeStringToAnsiString = (NTSTATUS (WINAPI *)(OUT PANSI_STRING DestinationString, IN PCUNICODE_STRING SourceString, IN BOOLEAN AllocateDestinationString))GetProcAddress(ntDll, "RtlUnicodeStringToAnsiString");
+	RtlUpperString = (VOID (WINAPI *)(OUT PSTRING DestinationString, IN const STRING *SourceString))GetProcAddress(ntDll, "");
+	RtlDowncaseUnicodeString = (NTSTATUS (WINAPI *)(PUNICODE_STRING DestinationString, IN PCUNICODE_STRING SourceString, IN BOOLEAN AllocateDestinationString))GetProcAddress(ntDll, "");
 	RtlEqualString = (BOOLEAN (WINAPI *)(IN const STRING *String1, IN const STRING *String2, IN BOOLEAN CaseInSensitive))GetProcAddress(ntDll, "RtlEqualString");
 	RtlEqualUnicodeString = (BOOLEAN (WINAPI *)(IN PCUNICODE_STRING String1, IN PCUNICODE_STRING String2, IN BOOLEAN CaseInSensitive))GetProcAddress(ntDll, "RtlEqualUnicodeString");
 	RtlCompareUnicodeString = (LONG (WINAPI *)(IN PCUNICODE_STRING String1, IN PCUNICODE_STRING String2, IN BOOLEAN CaseInSensitive))GetProcAddress(ntDll, "RtlCompareUnicodeString");
@@ -187,6 +191,17 @@ void kull_m_string_displayGUID(IN LPCGUID pGuid)
 		kprintf(L"%wZ", &uString);
 		RtlFreeUnicodeString(&uString);
 	}
+}
+
+void kull_m_string_displaySID(IN PSID pSid)
+{
+	LPWSTR stringSid;
+	if(ConvertSidToStringSid(pSid, &stringSid))
+	{
+		kprintf(L"%s", stringSid);
+		LocalFree(stringSid);
+	}
+	else PRINT_ERROR_AUTO(L"ConvertSidToStringSid");
 }
 
 BOOL kull_m_string_args_byName(const int argc, const wchar_t * argv[], const wchar_t * name, const wchar_t ** theArgs, const wchar_t * defaultValue)

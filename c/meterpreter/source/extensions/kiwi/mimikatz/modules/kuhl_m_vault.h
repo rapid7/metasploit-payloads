@@ -62,10 +62,9 @@ typedef struct _VAULT_PICTURE_PASSWORD_ELEMENT {
 } VAULT_PICTURE_PASSWORD_ELEMENT, *PVAULT_PICTURE_PASSWORD_ELEMENT;
 
 typedef struct _VAULT_BIOMETRIC_ELEMENT {
+	ULONG headersize; //data offset
 	ULONG usernameLength;
-	ULONG usernameMaxLength;
-	ULONG unk0;
-	wchar_t username[ANYSIZE_ARRAY];
+	ULONG domainnameLength;
 } VAULT_BIOMETRIC_ELEMENT, *PVAULT_BIOMETRIC_ELEMENT;
 
 typedef enum _VAULT_INFORMATION_TYPE {

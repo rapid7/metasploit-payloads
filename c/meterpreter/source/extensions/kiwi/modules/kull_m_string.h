@@ -23,6 +23,9 @@ extern VOID (WINAPI * RtlInitUnicodeString)(OUT PUNICODE_STRING DestinationStrin
 extern NTSTATUS (WINAPI * RtlAnsiStringToUnicodeString)(OUT PUNICODE_STRING DestinationString, IN PCANSI_STRING SourceString, IN BOOLEAN AllocateDestinationString);
 extern NTSTATUS (WINAPI * RtlUnicodeStringToAnsiString)(OUT PANSI_STRING DestinationString, IN PCUNICODE_STRING SourceString, IN BOOLEAN AllocateDestinationString);
 
+extern VOID (WINAPI * RtlUpperString)(OUT PSTRING DestinationString, IN const STRING *SourceString);
+extern NTSTATUS (WINAPI * RtlDowncaseUnicodeString)(PUNICODE_STRING DestinationString, IN PCUNICODE_STRING SourceString, IN BOOLEAN AllocateDestinationString);
+
 extern BOOLEAN (WINAPI * RtlEqualString)(IN const STRING *String1, IN const STRING *String2, IN BOOLEAN CaseInSensitive);
 extern BOOLEAN (WINAPI * RtlEqualUnicodeString)(IN PCUNICODE_STRING String1, IN PCUNICODE_STRING String2, IN BOOLEAN CaseInSensitive);
 
@@ -52,5 +55,6 @@ void kull_m_string_wprintf_hex(LPCVOID lpData, DWORD cbData, DWORD flags);
 void kull_m_string_displayFileTime(IN PFILETIME pFileTime);
 void kull_m_string_displayLocalFileTime(IN PFILETIME pFileTime);
 void kull_m_string_displayGUID(IN LPCGUID pGuid);
+void kull_m_string_displaySID(IN PSID pSid);
 
 BOOL kull_m_string_args_byName(const int argc, const wchar_t * argv[], const wchar_t * name, const wchar_t ** theArgs, const wchar_t * defaultValue);

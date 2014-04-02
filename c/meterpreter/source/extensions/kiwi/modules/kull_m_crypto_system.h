@@ -46,15 +46,15 @@ typedef struct _CRYPTO_BUFFER {
 typedef CONST CRYPTO_BUFFER *PCCRYPTO_BUFFER;
 
 extern VOID WINAPI MD4Init(PMD4_CTX pCtx);
-extern VOID WINAPI MD4Update(PMD4_CTX pCtx, LPCBYTE data, DWORD cbData);
+extern VOID WINAPI MD4Update(PMD4_CTX pCtx, LPCVOID data, DWORD cbData);
 extern VOID WINAPI MD4Final(PMD4_CTX pCtx);
 
 extern VOID WINAPI MD5Init(PMD5_CTX pCtx);
-extern VOID WINAPI MD5Update(PMD5_CTX pCtx, LPCBYTE data, DWORD cbData);
+extern VOID WINAPI MD5Update(PMD5_CTX pCtx, LPCVOID data, DWORD cbData);
 extern VOID WINAPI MD5Final(PMD5_CTX pCtx);
 
 extern VOID WINAPI A_SHAInit(PSHA_CTX pCtx);
-extern VOID WINAPI A_SHAUpdate(PSHA_CTX pCtx, LPCBYTE data, DWORD cbData);
+extern VOID WINAPI A_SHAUpdate(PSHA_CTX pCtx, LPCVOID data, DWORD cbData);
 extern VOID WINAPI A_SHAFinal(PSHA_CTX pCtx, PSHA_DIGEST pDigest);
 
 #define RtlEncryptDES1block1key		SystemFunction001

@@ -18,8 +18,10 @@
 #include "modules/kuhl_m_event.h"
 #include "modules/kuhl_m_misc.h"
 #include "modules/kuhl_m_token.h"
-#include "modules/kuhl_m_net.h"
 #include "modules/kuhl_m_vault.h"
+#ifdef NET_MODULE
+#include "modules/kuhl_m_net.h"
+#endif
 
 #include "modules/kuhl_m_kernel.h"
 

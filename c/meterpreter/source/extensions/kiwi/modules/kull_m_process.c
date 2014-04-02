@@ -65,7 +65,7 @@ BOOL kull_m_process_getProcessIdForName(LPCWSTR name, PDWORD processId)
 	RtlInitUnicodeString(&uName, name);
 	if(NT_SUCCESS(kull_m_process_getProcessInformation(kull_m_process_callback_pidForName, &mySearch)))
 		status = mySearch.isFound;
-	return status;;
+	return status;
 }
 
 NTSTATUS kull_m_process_getVeryBasicModuleInformations(PKULL_M_MEMORY_HANDLE memory, PKULL_M_MODULE_ENUM_CALLBACK callBack, PVOID pvArg)

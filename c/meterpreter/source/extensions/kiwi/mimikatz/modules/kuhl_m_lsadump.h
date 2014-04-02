@@ -12,6 +12,7 @@
 #include "../modules/kull_m_registry.h"
 #include "../modules/kull_m_crypto_system.h"
 #include "../modules/kull_m_string.h"
+#include "../modules/kull_m_samlib.h"
 #include "kuhl_m_lsadump_struct.h"
 
 const KUHL_M kuhl_m_lsadump;
@@ -30,13 +31,7 @@ BOOL kuhl_m_lsadump_getSyskey(PKULL_M_REGISTRY_HANDLE hRegistry, HKEY hLSA, LPBY
 BOOL kuhl_m_lsadump_getSamKey(PKULL_M_REGISTRY_HANDLE hRegistry, HKEY hAccount, LPCBYTE sysKey, LPBYTE samKey);
 BOOL kuhl_m_lsadump_getHash(PSAM_SENTRY pSamHash, LPCBYTE pStartOfData, LPCBYTE samKey, DWORD rid, BOOL isNtlm, BYTE hashBuffer[LM_NTLM_HASH_LENGTH]);
 
-extern NTSTATUS WINAPI SamConnect(IN PSAMPR_SERVER_NAME ServerName, OUT SAMPR_HANDLE *ServerHandle, IN ACCESS_MASK DesiredAccess, IN BOOLEAN Trusted);
-extern NTSTATUS WINAPI SamOpenDomain(IN SAMPR_HANDLE SamHandle, IN ACCESS_MASK DesiredAccess, IN PRPC_SID DomainId, OUT SAMPR_HANDLE* DomainHandle);
-extern NTSTATUS WINAPI SamOpenUser(IN SAMPR_HANDLE DomainHandle, IN ACCESS_MASK DesiredAccess, IN DWORD UserId, OUT SAMPR_HANDLE* UserHandle);
-extern NTSTATUS WINAPI SamQueryInformationUser(IN SAMPR_HANDLE UserHandle, IN USER_INFORMATION_CLASS UserInformationClass, PSAMPR_USER_INFO_BUFFER* Buffer);
-extern NTSTATUS WINAPI SamEnumerateUsersInDomain(IN SAMPR_HANDLE DomainHandle, IN OUT PDWORD EnumerationContext, IN DWORD UserAccountControl, OUT PSAMPR_RID_ENUMERATION* Buffer, IN DWORD PreferedMaximumLength, OUT PDWORD CountReturned);
-extern NTSTATUS WINAPI SamCloseHandle(IN SAMPR_HANDLE SamHandle);
-extern NTSTATUS WINAPI SamFreeMemory(IN PVOID Buffer);
+void kuhl_m_lsadump_samrpc_user(SAMPR_HANDLE DomainHandle, DWORD rid, PUNICODE_STRING name);
 
 NTSTATUS kuhl_m_lsadump_full(PLSA_CALLBACK_CTX callbackCtx);
 

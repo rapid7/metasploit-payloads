@@ -95,7 +95,7 @@ BOOL kull_m_memory_copy(OUT PKULL_M_MEMORY_ADDRESS Destination, IN PKULL_M_MEMOR
 			status = kull_m_minidump_copy(Source->hMemory->pHandleProcessDmp->hMinidump, Destination->address, Source->address, Length);
 			break;
 		case KULL_M_MEMORY_TYPE_FILE:
-			if(!Source->address || SetFilePointer(Source->hMemory->pHandleFile->hFile, (LONG) Source->address, NULL, FILE_BEGIN))
+			if(SetFilePointer(Source->hMemory->pHandleFile->hFile, (LONG) Source->address, NULL, FILE_BEGIN) != INVALID_SET_FILE_POINTER)
 				status = ReadFile(Source->hMemory->pHandleFile->hFile, Destination->address, (DWORD) Length, &nbReadWrite, NULL);
 			break;
 		default:
@@ -160,6 +160,7 @@ BOOL kull_m_memory_search(IN PKULL_M_MEMORY_ADDRESS Pattern, IN SIZE_T Length, I
 			CurrentPtr--;
 			break;
 		case KULL_M_MEMORY_TYPE_PROCESS:
+		case KULL_M_MEMORY_TYPE_FILE:
 			if(sBuffer.kull_m_memoryRange.kull_m_memoryAdress.address = LocalAlloc(LPTR, Search->kull_m_memoryRange.size))
 			{
 				if(kull_m_memory_copy(&sBuffer.kull_m_memoryRange.kull_m_memoryAdress, &Search->kull_m_memoryRange.kull_m_memoryAdress, Search->kull_m_memoryRange.size))

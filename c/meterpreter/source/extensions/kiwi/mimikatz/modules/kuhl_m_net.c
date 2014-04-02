@@ -15,6 +15,149 @@ const KUHL_M kuhl_m_net = {
 	sizeof(kuhl_m_c_net) / sizeof(KUHL_M_C), kuhl_m_c_net, NULL, NULL
 };
 
+NTSTATUS kuhl_m_net_user(int argc, wchar_t * argv[])
+{
+	NTSTATUS status, enumDomainStatus, enumUserStatus;
+	UNICODE_STRING /*serverName,*/ *groupName;
+	SAMPR_HANDLE hServerHandle, hBuiltinHandle = NULL, hDomainHandle, hUserHandle;
+	DWORD domainEnumerationContext, domainCountRetourned, userEnumerationContext, userCountRetourned, groupsCountRetourned, i, j, k, *usage, aliasCountRetourned, *alias;
+	PSAMPR_RID_ENUMERATION pEnumDomainBuffer, pEnumUsersBuffer;
+	PSID domainSid, userSid;
+	PGROUP_MEMBERSHIP pGroupMemberShip;
+	SID builtin = {1, 1, {0, 0, 0, 0, 0, 5}, {32}};
+
+	//RtlInitUnicodeString(&serverName, L"");
+	status = SamConnect(NULL/*&serverName*/, &hServerHandle, SAM_SERVER_CONNECT | SAM_SERVER_ENUMERATE_DOMAINS | SAM_SERVER_LOOKUP_DOMAIN, FALSE);
+	if(NT_SUCCESS(status))
+	{
+		status = SamOpenDomain(hServerHandle, DOMAIN_LIST_ACCOUNTS | DOMAIN_LOOKUP, &builtin, &hBuiltinHandle);
+		if(!NT_SUCCESS(status))
+			PRINT_ERROR(L"SamOpenDomain Builtin (?) %08x\n", status);
+		
+		domainEnumerationContext = 0;
+		do
+		{
+			enumDomainStatus = SamEnumerateDomainsInSamServer(hServerHandle, &domainEnumerationContext, &pEnumDomainBuffer, 1, &domainCountRetourned);
+			if(NT_SUCCESS(enumDomainStatus) || enumDomainStatus == STATUS_MORE_ENTRIES)
+			{
+				for(i = 0; i < domainCountRetourned; i++)
+				{
+					kprintf(L"\nDomain name : %wZ", &pEnumDomainBuffer[i].Name);
+					status = SamLookupDomainInSamServer(hServerHandle, &pEnumDomainBuffer[i].Name, &domainSid);
+					if(NT_SUCCESS(status))
+					{
+						kprintf(L"\nDomain SID  : ");
+						kull_m_string_displaySID(domainSid);
+						
+						status = SamOpenDomain(hServerHandle, DOMAIN_LIST_ACCOUNTS | DOMAIN_LOOKUP, domainSid, &hDomainHandle);
+						if(NT_SUCCESS(status))
+						{
+							userEnumerationContext = 0;
+							do
+							{
+								enumUserStatus = SamEnumerateUsersInDomain(hDomainHandle, &userEnumerationContext, UF_NORMAL_ACCOUNT, &pEnumUsersBuffer, 1, &userCountRetourned);
+								if(NT_SUCCESS(enumUserStatus) || enumUserStatus == STATUS_MORE_ENTRIES)
+								{
+									for(j = 0; j < userCountRetourned; j++)
+									{
+										kprintf(L"\n %-5u %wZ", pEnumUsersBuffer[j].RelativeId, &pEnumUsersBuffer[j].Name);
+										status = SamOpenUser(hDomainHandle, USER_READ_GROUP_INFORMATION | USER_LIST_GROUPS | USER_READ_ACCOUNT | USER_READ_LOGON |  USER_READ_PREFERENCES | USER_READ_GENERAL, pEnumUsersBuffer[j].RelativeId, &hUserHandle);
+										if(NT_SUCCESS(status))
+										{
+											status = SamGetGroupsForUser(hUserHandle, &pGroupMemberShip, &groupsCountRetourned);
+											if(NT_SUCCESS(status))
+											{
+												for(k = 0; k < groupsCountRetourned; k++)
+												{
+													kprintf(L"\n | %-5u ", pGroupMemberShip[k].RelativeId);
+													status = SamLookupIdsInDomain(hDomainHandle, 1, &pGroupMemberShip[k].RelativeId, &groupName, &usage);
+													if(NT_SUCCESS(status))
+													{
+														kprintf(L"%wZ", groupName);
+														SamFreeMemory(groupName);
+														SamFreeMemory(usage);
+													} else PRINT_ERROR(L"SamLookupIdsInDomain %08x", status);
+												}
+												SamFreeMemory(pGroupMemberShip);
+											} else PRINT_ERROR(L"SamGetGroupsForUser %08x", status);
+
+											status = SamRidToSid(hUserHandle, pEnumUsersBuffer[j].RelativeId, &userSid);
+											if(NT_SUCCESS(status))
+											{
+												status = SamGetAliasMembership(hDomainHandle, 1, &userSid, &aliasCountRetourned, &alias);
+												if(NT_SUCCESS(status))
+												{
+													for(k = 0; k < aliasCountRetourned; k++)
+													{
+														kprintf(L"\n |`%-5u ", alias[k]);
+														status = SamLookupIdsInDomain(hDomainHandle, 1, &alias[k], &groupName, &usage);
+														if(NT_SUCCESS(status))
+														{
+															kprintf(L"%wZ", groupName);
+															SamFreeMemory(groupName);
+															SamFreeMemory(usage);
+														} else PRINT_ERROR(L"SamLookupIdsInDomain %08x", status);
+													}
+													SamFreeMemory(alias);
+												} else PRINT_ERROR(L"SamGetAliasMembership %08x", status);
+
+												if(hBuiltinHandle)
+												{
+													status = SamGetAliasMembership(hBuiltinHandle, 1, &userSid, &aliasCountRetourned, &alias);
+													if(NT_SUCCESS(status))
+													{
+														for(k = 0; k < aliasCountRetourned; k++)
+														{
+															kprintf(L"\n |´%-5u ", alias[k]);
+															status = SamLookupIdsInDomain(hBuiltinHandle, 1, &alias[k], &groupName, &usage);
+															if(NT_SUCCESS(status))
+															{
+																kprintf(L"%wZ", groupName);
+																SamFreeMemory(groupName);
+																SamFreeMemory(usage);
+															} else PRINT_ERROR(L"SamLookupIdsInDomain %08x", status);
+														}
+														SamFreeMemory(alias);
+													} else PRINT_ERROR(L"SamGetAliasMembership %08x", status);
+												}
+
+
+												SamFreeMemory(userSid);
+											} else PRINT_ERROR(L"SamRidToSid %08x", status);
+										} else PRINT_ERROR(L"SamOpenUser %08x", status);
+									}
+									SamFreeMemory(pEnumUsersBuffer);
+								} else PRINT_ERROR(L"SamEnumerateUsersInDomain %08x", enumUserStatus);
+							} while(enumUserStatus == STATUS_MORE_ENTRIES);
+							SamCloseHandle(hDomainHandle);
+						} else PRINT_ERROR(L"SamOpenDomain %08x", status);
+						SamFreeMemory(domainSid);
+					} else PRINT_ERROR(L"SamLookupDomainInSamServer %08x", status);
+				}
+				SamFreeMemory(pEnumDomainBuffer);
+			} else PRINT_ERROR(L"SamEnumerateDomainsInSamServer %08x\n", enumDomainStatus);
+			kprintf(L"\n");
+		} while(enumDomainStatus == STATUS_MORE_ENTRIES);
+
+		if(hBuiltinHandle)
+			SamCloseHandle(hBuiltinHandle);
+
+		SamCloseHandle(hServerHandle);
+	} else PRINT_ERROR(L"SamConnect %08x\n", status);
+	
+	return ERROR_SUCCESS;
+}
+
+NTSTATUS kuhl_m_net_group(int argc, wchar_t * argv[])
+{
+	return ERROR_SUCCESS;
+}
+
+NTSTATUS kuhl_m_net_localgroup(int argc, wchar_t * argv[])
+{
+	return ERROR_SUCCESS;
+}
+
 /*#include "../modules/kull_m_net.h"
 #include "../modules/kull_m_token.h"
 NTSTATUS kuhl_m_standard_test(int argc, wchar_t * argv[])
@@ -59,154 +202,3 @@ PDOMAIN_CONTROLLER_INFO pDCInfos;
 	}
 	return STATUS_SUCCESS;
 }*/
-
-NTSTATUS kuhl_m_net_user(int argc, wchar_t * argv[])
-{
-	PCWCHAR szServer, szName;
-	PBYTE pBuff;
-	DWORD res;
-	kull_m_string_args_byName(argc, argv, L"server", &szServer, NULL);
-	kull_m_string_args_byName(argc, argv, L"name", &szName, NULL);
-	
-	if(kull_m_string_args_byName(argc, argv, L"view", NULL, NULL))
-	{
-		res = NetUserGetInfo(szServer, szName, 2, &pBuff);
-		if(res == NERR_Success)
-		{
-			kprintf(L"\nname       \t");
-			if(((PUSER_INFO_2) pBuff)->usri2_full_name)
-				kprintf(L"%s", ((PUSER_INFO_2) pBuff)->usri2_full_name);
-
-			kprintf(L"\ncomment    \t");
-			if(((PUSER_INFO_2) pBuff)->usri2_comment)
-				kprintf(L"%s", ((PUSER_INFO_2) pBuff)->usri2_comment);
-
-			kprintf(L"\nusr_comment\t");
-			if(((PUSER_INFO_2) pBuff)->usri2_usr_comment)
-				kprintf(L"%s", ((PUSER_INFO_2) pBuff)->usri2_usr_comment);
-
-			kprintf(L"\nfull_name  \t");
-			if(((PUSER_INFO_2) pBuff)->usri2_full_name)
-				kprintf(L"%s", ((PUSER_INFO_2) pBuff)->usri2_full_name);
-
-			kprintf(L"\npriv       \t");
-			res = ((PUSER_INFO_2) pBuff)->usri2_priv;
-			switch(res)
-			{
-			case USER_PRIV_GUEST:
-				kprintf(L"GUEST");
-				break;
-			case USER_PRIV_USER:
-				kprintf(L"GUEST");
-				break;
-			case USER_PRIV_ADMIN:
-				kprintf(L"ADMIN");
-				break;
-			default:
-				kprintf(L"? (%u)", res);
-			}
-			
-			kprintf(L"\nauth_flags \t");
-			res = ((PUSER_INFO_2) pBuff)->usri2_auth_flags;
-			if(res & AF_OP_PRINT)
-				kprintf(L"PRINT ");
-			if(res & AF_OP_COMM)
-				kprintf(L"COMM ");
-			if(res & AF_OP_SERVER)
-				kprintf(L"SERVER ");
-			if(res & AF_OP_ACCOUNTS)
-				kprintf(L"ACCOUNTS ");
-			kprintf(L"(%08x)", res);
-
-			NetApiBufferFree(pBuff);
-		}
-	}
-	else kuhl_m_net_generic_enum(0, szServer);
-
-
-
-
-
-
-
-
-	return ERROR_SUCCESS;
-
-	/*
-		VIEW
-		CREATE
-		DELETE
-		CHANGE PASS
-		UNLOCK
-		ENABLE
-		DISABLE
-		ALL TIME
-		EXPIRE NEVER
-		DELEGATE
-		WORKSTATION *
-	*/
-}
-
-NTSTATUS kuhl_m_net_group(int argc, wchar_t * argv[])
-{
-	kuhl_m_net_generic_enum(1, NULL);
-	return ERROR_SUCCESS;
-}
-
-NTSTATUS kuhl_m_net_localgroup(int argc, wchar_t * argv[])
-{
-	kuhl_m_net_generic_enum(2, NULL);
-	return ERROR_SUCCESS;
-}
-
-void kuhl_m_net_generic_enum(DWORD type, LPCWSTR server)
-{
-	PBYTE pBuff;
-	DWORD i, res, eRead, eTotal;
-	DWORD resumeIndex = 0;
-	DWORD_PTR resumeHandle = 0;
-	do
-	{
-		switch(type)
-		{
-		case 0:
-			res = NetUserEnum(server, 0, 0, &pBuff, MAX_PREFERRED_LENGTH, &eRead, &eTotal, &resumeIndex);
-			break;
-
-		case 1:
-			res = NetGroupEnum(server, 0, &pBuff, MAX_PREFERRED_LENGTH, &eRead, &eTotal, &resumeHandle);
-			break;
-
-		case 2:
-			res = NetLocalGroupEnum(server, 0, &pBuff, MAX_PREFERRED_LENGTH, &eRead, &eTotal, &resumeHandle);
-			break;
-		}
-		
-		if((res == NERR_Success) || (res == ERROR_MORE_DATA))
-		{
-			for(i = 0; i < eRead; i++)
-				kprintf(L" * %s\n", ((PCWSTR *) pBuff)[i]);
-			NetApiBufferFree(pBuff);
-		}
-		else
-		{
-			switch(res)
-			{
-			case ERROR_ACCESS_DENIED :
-				PRINT_ERROR(L"ERROR_ACCESS_DENIED\n");
-				break;
-			case ERROR_INVALID_LEVEL:
-				PRINT_ERROR(L"ERROR_INVALID_LEVEL\n");
-				break;
-			case NERR_BufTooSmall:
-				PRINT_ERROR(L"NERR_BufTooSmall\n");
-				break;
-			case NERR_InvalidComputer:
-				PRINT_ERROR(L"NERR_InvalidComputer\n");
-				break;
-			default:
-				PRINT_ERROR(L"NetxxxEnum (%u) : %u\n", type, res);
-			}
-		}
-	} while (res == ERROR_MORE_DATA);
-}

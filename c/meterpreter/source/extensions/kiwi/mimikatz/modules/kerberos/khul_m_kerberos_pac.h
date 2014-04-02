@@ -5,8 +5,10 @@
 */
 #pragma once
 #include "../kuhl_m.h"
+#include "../modules/kull_m_file.h"
 #include "../modules/kull_m_crypto_system.h"
 #include "../modules/kull_m_rpce.h"
+#include "../modules/kull_m_samlib.h"
 
 #define KERB_NON_KERB_SALT					16
 #define KERB_NON_KERB_CKSUM_SALT			17
@@ -30,17 +32,12 @@
 
 typedef struct _USER_SESSION_KEY {
 	UCHAR data[16];
-}USER_SESSION_KEY;
+} USER_SESSION_KEY;
 
 typedef struct _KERB_SID_AND_ATTRIBUTES{
 	PISID Sid;
-	ULONG Attributes;
+	DWORD Attributes;
 } KERB_SID_AND_ATTRIBUTES, *PKERB_SID_AND_ATTRIBUTES;
-
-typedef struct _GROUP_MEMBERSHIP {
-	ULONG RelativeId;
-	ULONG Attributes;
-} GROUP_MEMBERSHIP, *PGROUP_MEMBERSHIP;
 
 typedef struct _KERB_VALIDATION_INFO {
 	FILETIME LogonTime;
@@ -57,9 +54,9 @@ typedef struct _KERB_VALIDATION_INFO {
 	LSA_UNICODE_STRING HomeDirectoryDrive;
 	USHORT LogonCount;
 	USHORT BadPasswordCount;
-	ULONG UserId;
-	ULONG PrimaryGroupId;
-	ULONG GroupCount;
+	DWORD UserId;
+	DWORD PrimaryGroupId;
+	DWORD GroupCount;
 	PGROUP_MEMBERSHIP GroupIds;
 	ULONG UserFlags;
 	USER_SESSION_KEY UserSessionKey;
@@ -94,7 +91,7 @@ typedef struct _PACTYPE {
 
 typedef struct _PAC_SIGNATURE_DATA {
 	ULONG  SignatureType;
-	UCHAR  Signature[16];
+	UCHAR  Signature[LM_NTLM_HASH_LENGTH];
 	USHORT RODCIdentifier;
 	USHORT  Reserverd;
 } PAC_SIGNATURE_DATA, *PPAC_SIGNATURE_DATA;
@@ -162,16 +159,22 @@ typedef struct _PAC_CLIENT_INFO {
 	USHORT NameLength;
 	WCHAR Name[ANYSIZE_ARRAY];
 } PAC_CLIENT_INFO, *PPAC_CLIENT_INFO;
-/*
+
+BOOL kuhl_m_pac_validationInfo_to_PAC(PKERB_VALIDATION_INFO validationInfo, PPACTYPE * pacType, DWORD * pacLength);
+BOOL kuhl_m_pac_validationInfo_to_LOGON_INFO(PKERB_VALIDATION_INFO validationInfo, PRPCE_KERB_VALIDATION_INFO * rpceValidationInfo, DWORD * rpceValidationInfoLength);
+BOOL kuhl_m_pac_validationInfo_to_CNAME_TINFO(PKERB_VALIDATION_INFO validationInfo, PPAC_CLIENT_INFO * pacClientInfo, DWORD * pacClientInfoLength);
+NTSTATUS kuhl_m_pac_signature(PPACTYPE pacType, DWORD pacLenght, LPCVOID key, DWORD keySize);
+
+#ifdef KERBEROS_TOOLS
 typedef struct _RPCE_LAZY_ELEMENT_HEADER {
 	RPCEID ElementId;
 	ULONG32 ElementSize;
 	ULONG32 FixedBeginSize;
 	BOOL isBuffer;
 } RPCE_LAZY_ELEMENT_HEADER, PRPCE_LAZY_ELEMENT_HEADER;
-*/
 
-BOOL kuhl_m_pac_validationInfo_to_PAC(PKERB_VALIDATION_INFO validationInfo, PPACTYPE * pacType, DWORD * pacLength);
-BOOL kuhl_m_pac_validationInfo_to_LOGON_INFO(PKERB_VALIDATION_INFO validationInfo, PRPCE_KERB_VALIDATION_INFO * rpceValidationInfo, DWORD * rpceValidationInfoLength);
-BOOL kuhl_m_pac_validationInfo_to_CNAME_TINFO(PKERB_VALIDATION_INFO validationInfo, PPAC_CLIENT_INFO * pacClientInfo, DWORD * pacClientInfoLength);
-NTSTATUS kuhl_m_pac_signature(PPACTYPE pacType, DWORD pacLenght, LPCVOID key, DWORD keySize);
+PVOID kuhl_m_kerberos_pac_giveElementById(RPCEID id, LPCVOID base);
+void kuhl_m_kerberos_pac_ustring(LPCWCHAR prefix, PMARSHALL_UNICODE_STRING pString, PVOID base);
+
+NTSTATUS kuhl_m_kerberos_pac_info(int argc, wchar_t * argv[]);
+#endif

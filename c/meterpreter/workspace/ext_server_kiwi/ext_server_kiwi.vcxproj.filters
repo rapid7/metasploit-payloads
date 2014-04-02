@@ -152,6 +152,9 @@
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kerberos\khul_m_kerberos_struct.h">
       <Filter>modules\kerberos</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_samlib.h">
+      <Filter>common</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\crypto\kuhl_m_sekurlsa_nt5.c">
