@@ -794,7 +794,7 @@ BOOL kuhl_m_lsadump_decryptSecret(IN PKULL_M_REGISTRY_HANDLE hSecurity, IN HKEY 
 	CRYPTO_BUFFER data, output = {0, 0, NULL}, key = {sizeof(NT5_SYSTEM_KEY), sizeof(NT5_SYSTEM_KEY), NULL};
 
 	kprintf(L"Decrypting secret");
-	if(kull_m_registry_RegQueryValueEx(hSecurity, hSecret, NULL, NULL, NULL, NULL, &szSecret))
+	if(kull_m_registry_RegQueryValueEx(hSecurity, hSecret, NULL, NULL, NULL, NULL, &szSecret) && szSecret)
 	{
 		kprintf(L"Secret size value queried");
 		if(secret = (PBYTE) LocalAlloc(LPTR, szSecret))
