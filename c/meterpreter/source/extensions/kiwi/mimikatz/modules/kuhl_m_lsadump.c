@@ -1001,7 +1001,6 @@ NTSTATUS kuhl_m_lsadump_samrpc(int argc, wchar_t * argv[])
 	PCWCHAR szRid = NULL, szName = NULL;
 	PUNICODE_STRING puName = NULL;
 	PDWORD pRid = NULL, pUse = NULL;
-	PWCHAR sid;
 
 	SERVICE_STATUS_PROCESS ServiceStatusProcess;
 	PKULL_M_MEMORY_HANDLE hMemory;
@@ -1053,12 +1052,8 @@ NTSTATUS kuhl_m_lsadump_samrpc(int argc, wchar_t * argv[])
 					status = SamOpenDomain(hSam, 0x705, pPolicyDomainInfo->DomainSid, &hDomain);
 					if(NT_SUCCESS(status))
 					{
-						kprintf(L"Domain : %wZ", &pPolicyDomainInfo->DomainName);
-						if(ConvertSidToStringSid(pPolicyDomainInfo->DomainSid, &sid))
-						{
-							kprintf(L" / %s", sid);
-							LocalFree(sid);
-						}
+						kprintf(L"Domain : %wZ / ", &pPolicyDomainInfo->DomainName);
+						kull_m_string_displaySID(pPolicyDomainInfo->DomainSid);
 						kprintf(L"\n");
 						
 						if(kull_m_string_args_byName(argc, argv, L"id", &szRid, NULL))

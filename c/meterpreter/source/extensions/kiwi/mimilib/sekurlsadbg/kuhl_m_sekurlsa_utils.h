@@ -170,5 +170,6 @@ void kull_m_string_dprintf_hex(LPCVOID lpData, DWORD cbData, DWORD flags);
 void kull_m_string_displayFileTime(IN PFILETIME pFileTime);
 void kull_m_string_displayLocalFileTime(IN PFILETIME pFileTime);
 void kull_m_string_displayGUID(IN LPCGUID pGuid);
+void kull_m_string_displaySID(IN PSID pSid)
 BOOL kull_m_string_suspectUnicodeString(IN PUNICODE_STRING pUnicodeString);
 BOOL kuhl_m_sekurlsa_utils_getSid(IN PSID * pSid);

@@ -394,7 +394,6 @@ BOOL CALLBACK kuhl_m_sekurlsa_enum_callback_logondata(IN PKIWI_BASIC_SECURITY_LO
 
 void kuhl_m_sekurlsa_printinfos_logonData(IN PKIWI_BASIC_SECURITY_LOGON_SESSION_DATA pData)
 {
-	wchar_t * sidStr;
 	kprintf(L"\nAuthentication Id : %u ; %u (%08x:%08x)\n"
 		L"Session           : %s from %u\n"
 		L"User Name         : %wZ\n"
@@ -404,11 +403,7 @@ void kuhl_m_sekurlsa_printinfos_logonData(IN PKIWI_BASIC_SECURITY_LOGON_SESSION_
 
 	if(pData->pSid)
 	{
-		if(ConvertSidToStringSid(pData->pSid, &sidStr))
-		{
-			kprintf(L"%s", sidStr);
-			LocalFree(sidStr);
-		}
+		kull_m_string_displaySID(pData->pSid);
 	}
 	kprintf(L"\n");
 }

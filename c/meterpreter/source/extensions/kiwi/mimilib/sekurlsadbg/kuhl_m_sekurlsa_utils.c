@@ -56,6 +56,16 @@ void kull_m_string_displayGUID(IN LPCGUID pGuid)
 	}
 }
 
+void kull_m_string_displaySID(IN PSID pSid)
+{
+	LPSTR stringSid;
+	if(ConvertSidToStringSidA(pSid, &stringSid))
+	{
+		dprintf("%s", stringSid);
+		LocalFree(stringSid);
+	}
+}
+
 BOOL kull_m_string_suspectUnicodeString(IN PUNICODE_STRING pUnicodeString)
 {
 	int unicodeTestFlags = IS_TEXT_UNICODE_ODD_LENGTH | IS_TEXT_UNICODE_STATISTICS;

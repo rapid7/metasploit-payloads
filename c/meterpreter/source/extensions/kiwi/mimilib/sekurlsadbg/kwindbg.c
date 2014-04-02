@@ -152,11 +152,7 @@ DECLARE_API(mimikatz)
 													
 													if(sessionData.pSid)
 													{
-														if(ConvertSidToStringSidA(sessionData.pSid, &sidStr))
-														{
-															dprintf("%s", sidStr);
-															LocalFree(sidStr);
-														}
+														kull_m_string_displaySID(sessionData.pSid);
 													}
 													dprintf("\n");
 
