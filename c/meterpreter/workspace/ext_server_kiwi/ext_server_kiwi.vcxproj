@@ -606,6 +606,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\globals_sekurlsa.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\kuhl_m_sekurlsa.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\kuhl_m_sekurlsa_utils.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_credman.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_dpapi.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_kerberos.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_livessp.h" />
@@ -657,6 +658,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\crypto\kuhl_m_sekurlsa_nt63.c" />
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\kuhl_m_sekurlsa.c" />
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\kuhl_m_sekurlsa_utils.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_credman.c" />
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_dpapi.c" />
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_kerberos.c" />
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_livessp.c" />
