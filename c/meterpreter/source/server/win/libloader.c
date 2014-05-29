@@ -106,7 +106,7 @@ typedef struct _SHELLCODE_CTX {
 	/* Allocated memory sections */
 	DWORD				file_address;
 	DWORD				mapped_address;
-	DWORD               size_map;
+	DWORD				size_map;
 
 	/* Hook stub functions */
 	unsigned char			s_NtOpenSection[10];
@@ -276,7 +276,7 @@ NTSTATUS NTAPI m_NtMapViewOfSection(
 	if (SectionHandle == (HANDLE)ctx->mapped_address) 
 	{
 		*BaseAddress = (PVOID)ctx->mapped_address;
-		*ViewSize = ctx->mapped_address;
+		*ViewSize = ctx->size_map;
 
 		/* We assume that the image must be relocated */
 		return STATUS_IMAGE_NOT_AT_BASE;
@@ -482,7 +482,7 @@ void remove_hooks(SHELLCODE_CTX *ctx)
 	lNtOpenSection = (f_NtOpenSection)GetProcAddress(ntdll,
 			"NtOpenSection");
 	lNtClose = (f_NtClose)GetProcAddress(ntdll,
-		"NtClose");
+			"NtClose");
 
 	/* NtMapViewOfSection */
 	restore_function(ctx, (DWORD)lNtMapViewOfSection, 
