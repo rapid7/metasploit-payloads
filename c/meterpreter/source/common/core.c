@@ -214,6 +214,61 @@ Packet *packet_create( PacketTlvType type, LPCSTR method )
 }
 
 /*!
+ * @brief Create a packet that is used to contain a subgroup.
+ * @returns An instance of a packet to use as a group container.
+ * @remarks Group packets can be used to arbitrarily nest groupings prior to
+ *          sending the packet to the client.
+ */
+Packet* packet_create_group()
+{
+	Packet* packet = NULL;
+	do
+	{
+		if (!(packet = (Packet*)malloc(sizeof(Packet))))
+		{
+			break;
+		}
+
+		memset(packet, 0, sizeof(Packet));
+
+		// we don't need to worry about the TLV header at this point
+		// so we'll ignore it
+
+		// Initialize the payload to be blank
+		packet->payload = NULL;
+		packet->payloadLength = 0;
+
+		return packet;
+	} while (0);
+
+	if (packet)
+	{
+		free(packet);
+	}
+	return NULL;
+}
+
+/*!
+ * @brief Add a group packet to the parent packet.
+ * @param packet Pointer to the container packet that the group is to be added to.
+ * @param type The type of group packet being added.
+ * @param groupPacket the packet containing the group data (created by `packet_create_group`).
+ * @returns Indication of success or failure.
+ * @remarks The function calls `packet_destroy` on the `groupPacket` if adding the packet succeeds.
+ */
+DWORD packet_add_group(Packet* packet, TlvType type, Packet* groupPacket)
+{
+	DWORD result = packet_add_tlv_raw(packet, type, groupPacket->payload, groupPacket->payloadLength);
+	if (result == ERROR_SUCCESS)
+	{
+		packet_destroy(groupPacket);
+		return ERROR_SUCCESS;
+	}
+
+	return result;
+}
+
+/*!
  * @brief Create a response packet from a request.
  * @details Create a response packet from a request, referencing the requestors 
  * message identifier.
@@ -324,27 +379,43 @@ DWORD packet_add_tlv_string( Packet *packet, TlvType type, LPCSTR str )
  * @param packet Pointer to the packet to add the value to.
  * @param type TLV type for the value.
  * @param str Pointer to the wide-string value to add to the packet.
+ * @param strLength of the string (not including the NULL terminator).
+ * @return Indication of success or failure.
+ * @retval ERROR_SUCCESS The operation completed successfully.
+ * @retval ERROR_NOT_ENOUGH_MEMORY Insufficient memory available.
+ */
+DWORD packet_add_tlv_wstring_len(Packet *packet, TlvType type, LPCWSTR str, size_t strLength)
+{
+	DWORD dwResult;
+	LPSTR lpStr = (LPSTR)malloc(strLength + 1);
+
+	if (lpStr)
+	{
+		wcstombs(lpStr, str, strLength);
+		lpStr[strLength] = 0;
+		dwResult = packet_add_tlv_raw(packet, type, (PUCHAR)lpStr, (DWORD)strLength + 1);
+		free(lpStr);
+	}
+	else
+	{
+		dwResult = ERROR_NOT_ENOUGH_MEMORY;
+	}
+
+	return dwResult;
+}
+
+/*!
+ * @brief Add a wide-string value TLV to a packet, including the \c NULL terminator.
+ * @param packet Pointer to the packet to add the value to.
+ * @param type TLV type for the value.
+ * @param str Pointer to the wide-string value to add to the packet.
  * @return Indication of success or failure.
  * @retval ERROR_SUCCESS The operation completed successfully.
  * @retval ERROR_NOT_ENOUGH_MEMORY Insufficient memory available.
  */
 DWORD packet_add_tlv_wstring(Packet *packet, TlvType type, LPCWSTR str)
 {
-	DWORD dwResult;
-	size_t charCount = wcslen(str);
-	LPSTR lpStr = (LPSTR)malloc(charCount + 1);
-
-	if (lpStr) {
-		wcstombs(lpStr, str, charCount);
-		lpStr[charCount] = 0;
-		dwResult = packet_add_tlv_raw(packet, type, (PUCHAR)lpStr, (DWORD)charCount + 1);
-		free(lpStr);
-	}
-	else {
-		dwResult = ERROR_NOT_ENOUGH_MEMORY;
-	}
-
-	return dwResult;
+	return packet_add_tlv_wstring_len(packet, type, str, wcslen(str));
 }
 
 /*!

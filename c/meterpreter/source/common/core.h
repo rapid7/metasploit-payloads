@@ -206,11 +206,14 @@ typedef struct
  */
 LINKAGE Packet *packet_create(PacketTlvType type, LPCSTR method);
 LINKAGE Packet *packet_create_response(Packet *packet);
+LINKAGE Packet* packet_create_group();
 LINKAGE Packet *packet_duplicate(Packet *packet);
 LINKAGE VOID packet_destroy(Packet *packet);
 
+LINKAGE DWORD packet_add_group(Packet* packet, TlvType type, Packet* groupPacket);
 LINKAGE DWORD packet_add_tlv_string(Packet *packet, TlvType type, LPCSTR str);
 LINKAGE DWORD packet_add_tlv_wstring(Packet *packet, TlvType type, LPCWSTR str);
+LINKAGE DWORD packet_add_tlv_wstring_len(Packet *packet, TlvType type, LPCWSTR str, size_t strLength);
 LINKAGE DWORD packet_add_tlv_uint(Packet *packet, TlvType type, UINT val);
 LINKAGE DWORD packet_add_tlv_qword(Packet *packet, TlvType type, QWORD val );
 LINKAGE DWORD packet_add_tlv_bool(Packet *packet, TlvType type, BOOL val);
