@@ -62,7 +62,7 @@
 
 #define TLV_TYPE_BASE_ADDRESS          \
 		MAKE_CUSTOM_TLV(                 \
-				TLV_META_TYPE_UINT,        \
+				TLV_META_TYPE_QWORD,        \
 				TLV_TYPE_EXTENSION_STDAPI, \
 				2000)
 #define TLV_TYPE_ALLOCATION_TYPE       \
@@ -87,7 +87,7 @@
 				2004)
 #define TLV_TYPE_ALLOC_BASE_ADDRESS    \
 		MAKE_CUSTOM_TLV(                 \
-				TLV_META_TYPE_UINT,        \
+				TLV_META_TYPE_QWORD,        \
 				TLV_TYPE_EXTENSION_STDAPI, \
 				2005)
 #define TLV_TYPE_MEMORY_STATE          \
