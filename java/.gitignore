@@ -12,4 +12,6 @@
 *.orig
 *.rej
 *~
+androidpayload/ndkstager/libs
+androidpayload/ndkstager/obj
 .DS_Store

