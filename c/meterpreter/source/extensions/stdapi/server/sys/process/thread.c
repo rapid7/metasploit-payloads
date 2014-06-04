@@ -64,7 +64,7 @@ DWORD request_sys_process_thread_open(Remote *remote, Packet *packet)
 		}
 
 		// Add the handle to the response packet
-		packet_add_tlv_uint(response, TLV_TYPE_THREAD_HANDLE, (DWORD)handle);
+		packet_add_tlv_qword(response, TLV_TYPE_THREAD_HANDLE, (QWORD)handle);
 
 	} while (0);
 
@@ -95,9 +95,9 @@ DWORD request_sys_process_thread_create(Remote *remote, Packet *packet)
 	DWORD dwThreadId;
 
 	// Snag the parameters
-	hProcess     = (HANDLE)packet_get_tlv_value_uint(packet, TLV_TYPE_PROCESS_HANDLE);
-	lpEntryPoint  = (LPVOID)packet_get_tlv_value_uint(packet, TLV_TYPE_ENTRY_POINT);
-	lpEntryParam  = (LPVOID)packet_get_tlv_value_uint(packet, TLV_TYPE_ENTRY_PARAMETER);
+	hProcess     = (HANDLE)packet_get_tlv_value_qword(packet, TLV_TYPE_PROCESS_HANDLE);
+	lpEntryPoint  = (LPVOID)packet_get_tlv_value_qword(packet, TLV_TYPE_ENTRY_POINT);
+	lpEntryParam  = (LPVOID)packet_get_tlv_value_qword(packet, TLV_TYPE_ENTRY_PARAMETER);
 	dwCreateFlags = packet_get_tlv_value_uint(packet, TLV_TYPE_CREATION_FLAGS);
 
 	do
@@ -149,7 +149,7 @@ DWORD request_sys_process_thread_create(Remote *remote, Packet *packet)
 		dprintf("[THREAD CREATE] Thread creation succeeded");
 		// Set the thread identifier and handle on the response
 		packet_add_tlv_uint(response, TLV_TYPE_THREAD_ID, dwThreadId);
-		packet_add_tlv_uint(response, TLV_TYPE_THREAD_HANDLE, (DWORD)hThread);
+		packet_add_tlv_qword(response, TLV_TYPE_THREAD_HANDLE, (QWORD)hThread);
 
 	} while (0);
 
@@ -169,8 +169,7 @@ DWORD request_sys_process_thread_close(Remote *remote, Packet *packet)
 	HANDLE thread;
 	DWORD result = ERROR_SUCCESS;
 
-	if ((thread = (HANDLE)packet_get_tlv_value_uint(packet, 
-			TLV_TYPE_THREAD_HANDLE)))
+	if ((thread = (HANDLE)packet_get_tlv_value_qword(packet, TLV_TYPE_THREAD_HANDLE)))
 		CloseHandle(thread);
 	else
 		result = ERROR_INVALID_PARAMETER;
@@ -258,8 +257,7 @@ DWORD request_sys_process_thread_suspend(Remote *remote, Packet *packet)
 	HANDLE thread;
 	DWORD result = ERROR_SUCCESS;
 
-	if ((thread = (HANDLE)packet_get_tlv_value_uint(packet, 
-			TLV_TYPE_THREAD_HANDLE)))
+	if ((thread = (HANDLE)packet_get_tlv_value_qword(packet, TLV_TYPE_THREAD_HANDLE)))
 	{
 		if (SuspendThread(thread) == (DWORD)-1)
 			result = GetLastError();
@@ -283,8 +281,7 @@ DWORD request_sys_process_thread_resume(Remote *remote, Packet *packet)
 	HANDLE thread;
 	DWORD result = ERROR_SUCCESS;
 
-	if ((thread = (HANDLE)packet_get_tlv_value_uint(packet, 
-			TLV_TYPE_THREAD_HANDLE)))
+	if ((thread = (HANDLE)packet_get_tlv_value_qword(packet, TLV_TYPE_THREAD_HANDLE)))
 	{
 		if (ResumeThread(thread) == (DWORD)-1)
 			result = GetLastError();
@@ -310,8 +307,7 @@ DWORD request_sys_process_thread_terminate(Remote *remote, Packet *packet)
 	DWORD result = ERROR_SUCCESS;
 	DWORD code;
 
-	if ((thread = (HANDLE)packet_get_tlv_value_uint(packet, 
-			TLV_TYPE_THREAD_HANDLE)))
+	if ((thread = (HANDLE)packet_get_tlv_value_qword(packet, TLV_TYPE_THREAD_HANDLE)))
 	{
 		code = packet_get_tlv_value_uint(packet, TLV_TYPE_EXIT_CODE);
 
@@ -339,8 +335,7 @@ DWORD request_sys_process_thread_query_regs(Remote *remote, Packet *packet)
 
 	do
 	{
-		if ((thread = (HANDLE)packet_get_tlv_value_uint(packet, 
-				TLV_TYPE_THREAD_HANDLE)))
+		if ((thread = (HANDLE)packet_get_tlv_value_qword(packet, TLV_TYPE_THREAD_HANDLE)))
 		{
 			CONTEXT context;
 			DWORD index;
@@ -436,8 +431,7 @@ DWORD request_sys_process_thread_set_regs(Remote *remote, Packet *packet)
 
 	do
 	{
-		if ((thread = (HANDLE)packet_get_tlv_value_uint(packet, 
-				TLV_TYPE_THREAD_HANDLE)))
+		if ((thread = (HANDLE)packet_get_tlv_value_qword(packet, TLV_TYPE_THREAD_HANDLE)))
 		{
 			CONTEXT context;
 			DWORD index = 0;

@@ -28,7 +28,7 @@ DWORD request_sys_eventlog_open(Remote * remote, Packet * packet)
 			result = GetLastError();
 		}
 		else {
-			packet_add_tlv_uint(response, TLV_TYPE_EVENT_HANDLE, (DWORD)hEvent);
+			packet_add_tlv_qword(response, TLV_TYPE_EVENT_HANDLE, (QWORD)hEvent);
 		}
 	}
 
@@ -51,7 +51,7 @@ DWORD request_sys_eventlog_numrecords(Remote * remote, Packet * packet)
 	DWORD numRecords;
 	DWORD result = ERROR_SUCCESS;
 
-	hEvent = (HANDLE)packet_get_tlv_value_uint(packet, TLV_TYPE_EVENT_HANDLE);
+	hEvent = (HANDLE)packet_get_tlv_value_qword(packet, TLV_TYPE_EVENT_HANDLE);
 
 	if(!hEvent) {
 		result = ERROR_INVALID_PARAMETER;
@@ -88,7 +88,7 @@ DWORD request_sys_eventlog_read(Remote * remote, Packet * packet)
 	EVENTLOGRECORD * buf = NULL;
 	BYTE * str = NULL;
 
-	hEvent       = (HANDLE)packet_get_tlv_value_uint(packet, TLV_TYPE_EVENT_HANDLE);
+	hEvent       = (HANDLE)packet_get_tlv_value_qword(packet, TLV_TYPE_EVENT_HANDLE);
 	readFlags    = (DWORD)packet_get_tlv_value_uint(packet, TLV_TYPE_EVENT_READFLAGS);
 	recordOffset = (DWORD)packet_get_tlv_value_uint(packet, TLV_TYPE_EVENT_RECORDOFFSET);
 
@@ -159,7 +159,7 @@ DWORD request_sys_eventlog_oldest(Remote * remote, Packet * packet)
 {
 	Packet * response = packet_create_response(packet);
 	DWORD result = ERROR_SUCCESS;
-	HANDLE hEvent = (HANDLE)packet_get_tlv_value_uint(packet, TLV_TYPE_EVENT_HANDLE);
+	HANDLE hEvent = (HANDLE)packet_get_tlv_value_qword(packet, TLV_TYPE_EVENT_HANDLE);
 	DWORD oldest;
 
 	if(GetOldestEventLogRecord(hEvent, &oldest) == 0) {
@@ -187,7 +187,7 @@ DWORD request_sys_eventlog_clear(Remote * remote, Packet * packet)
 {
 	Packet * response = packet_create_response(packet);
 	DWORD result = ERROR_SUCCESS;
-	HANDLE hEvent = (HANDLE)packet_get_tlv_value_uint(packet, TLV_TYPE_EVENT_HANDLE);
+	HANDLE hEvent = (HANDLE)packet_get_tlv_value_qword(packet, TLV_TYPE_EVENT_HANDLE);
 
 	if(ClearEventLog(hEvent, NULL) == 0) {
 		result = GetLastError();
@@ -209,7 +209,7 @@ DWORD request_sys_eventlog_close(Remote * remote, Packet * packet)
 {
 	Packet * response = packet_create_response(packet);
 	DWORD result = ERROR_SUCCESS;
-	HANDLE hEvent = (HANDLE)packet_get_tlv_value_uint(packet, TLV_TYPE_EVENT_HANDLE);
+	HANDLE hEvent = (HANDLE)packet_get_tlv_value_qword(packet, TLV_TYPE_EVENT_HANDLE);
 
 	if(CloseEventLog(hEvent) == 0) {
 		result = GetLastError();

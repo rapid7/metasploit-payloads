@@ -19,7 +19,7 @@ DWORD request_sys_process_memory_allocate(Remote *remote, Packet *packet)
 	DWORD alloc, prot;
 
 	// Snag the TLV values
-	handle = (HANDLE)packet_get_tlv_value_uint(packet, TLV_TYPE_HANDLE);
+	handle = (HANDLE)packet_get_tlv_value_qword(packet, TLV_TYPE_HANDLE);
 	base = (LPVOID)packet_get_tlv_value_qword(packet, TLV_TYPE_BASE_ADDRESS);
 	size = (SIZE_T)packet_get_tlv_value_uint(packet, TLV_TYPE_LENGTH);
 	alloc = packet_get_tlv_value_uint(packet, TLV_TYPE_ALLOCATION_TYPE);
@@ -56,7 +56,7 @@ DWORD request_sys_process_memory_free(Remote *remote, Packet *packet)
 	LPVOID base;
 	DWORD result = ERROR_SUCCESS;
 
-	handle = (HANDLE)packet_get_tlv_value_uint(packet, TLV_TYPE_HANDLE);
+	handle = (HANDLE)packet_get_tlv_value_qword(packet, TLV_TYPE_HANDLE);
 	base   = (LPVOID)packet_get_tlv_value_qword(packet, TLV_TYPE_BASE_ADDRESS);
 	size   = packet_get_tlv_value_uint(packet, TLV_TYPE_LENGTH);
 
@@ -88,7 +88,7 @@ DWORD request_sys_process_memory_read(Remote *remote, Packet *packet)
 	SIZE_T bytesRead = 0;
 	DWORD result = ERROR_SUCCESS;
 
-	handle = (HANDLE)packet_get_tlv_value_uint(packet, TLV_TYPE_HANDLE);
+	handle = (HANDLE)packet_get_tlv_value_qword(packet, TLV_TYPE_HANDLE);
 	base   = (LPVOID)packet_get_tlv_value_qword(packet, TLV_TYPE_BASE_ADDRESS);
 	size   = packet_get_tlv_value_uint(packet, TLV_TYPE_LENGTH);
 
@@ -151,7 +151,7 @@ DWORD request_sys_process_memory_write(Remote *remote, Packet *packet)
 	size_t written = 0;
 	Tlv data;
 
-	handle = (HANDLE)packet_get_tlv_value_uint(packet, TLV_TYPE_HANDLE);
+	handle = (HANDLE)packet_get_tlv_value_qword(packet, TLV_TYPE_HANDLE);
 	base   = (LPVOID)packet_get_tlv_value_qword(packet, TLV_TYPE_BASE_ADDRESS);
 
 	do
@@ -200,7 +200,7 @@ DWORD request_sys_process_memory_query(Remote *remote, Packet *packet)
 	DWORD result = ERROR_SUCCESS;
 	SIZE_T size = 0;
 
-	handle = (HANDLE)packet_get_tlv_value_uint(packet, TLV_TYPE_HANDLE);
+	handle = (HANDLE)packet_get_tlv_value_qword(packet, TLV_TYPE_HANDLE);
 	base   = (LPVOID)packet_get_tlv_value_qword(packet, TLV_TYPE_BASE_ADDRESS);
 
 	// Zero the info buffer
@@ -256,7 +256,7 @@ DWORD request_sys_process_memory_protect(Remote *remote, Packet *packet)
 	DWORD prot, old;
 	DWORD result = ERROR_SUCCESS;
 
-	handle = (HANDLE)packet_get_tlv_value_uint(packet, TLV_TYPE_HANDLE);
+	handle = (HANDLE)packet_get_tlv_value_qword(packet, TLV_TYPE_HANDLE);
 	base   = (LPVOID)packet_get_tlv_value_qword(packet, TLV_TYPE_BASE_ADDRESS);
 	size   = packet_get_tlv_value_uint(packet, TLV_TYPE_LENGTH);
 	prot   = packet_get_tlv_value_uint(packet, TLV_TYPE_PROTECTION);
