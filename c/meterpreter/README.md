@@ -41,6 +41,17 @@ $ git submodule init && git submodule update
 At this point the dependencies will be ready to use and Meterpreter should be ready to
 build.
 
+* [OpenSSL][openssl]
+
+Occasionally, new versions of OpenSSL are released and need to be
+incorporated into the Meterpreter build. See the README under
+`source/openssl/lib` for build instructions. You will also need to
+refresh the header files from the source tarball as well. TODO: This
+entire process appears automatable given a proper build environment.
+
+An example of updating OpenSSL is detailed in
+[Pull Request #86](https://github.com/rapid7/meterpreter/pull/86).
+
 Running the Build
 -----------------
 
@@ -190,3 +201,4 @@ Good luck!
   [framework]: https://github.com/rapid7/metasploit-framework
   [build_icon]: https://ci.metasploit.com/buildStatus/icon?job=MeterpreterWin
   [rdi]: https://github.com/rapid7/ReflectiveDLLInjection
+  [openssl]: https://github.com/rapid7/meterpreter/tree/master/source/openssl
