@@ -39,17 +39,15 @@ DWORD request_sys_process_attach(Remote *remote, Packet *packet)
 	// Otherwise, attach.
 	else
 	{
-		BOOLEAN inherit = packet_get_tlv_value_bool(packet,
-				TLV_TYPE_INHERIT);
-		DWORD permission = packet_get_tlv_value_uint(packet,
-				TLV_TYPE_PROCESS_PERMS);
+		BOOLEAN inherit = packet_get_tlv_value_bool(packet, TLV_TYPE_INHERIT);
+		DWORD permission = packet_get_tlv_value_uint(packet, TLV_TYPE_PROCESS_PERMS);
 
 		handle = OpenProcess(permission, inherit, pid);
 	}
 
 	// If we have a handle, add it to the response
 	if (handle)
-		packet_add_tlv_uint(response, TLV_TYPE_HANDLE, (DWORD)handle);
+		packet_add_tlv_qword(response, TLV_TYPE_HANDLE, (QWORD)handle);
 	else
 		result = GetLastError();
 #else
@@ -72,7 +70,7 @@ DWORD request_sys_process_close(Remote *remote, Packet *packet)
 	Packet *response = packet_create_response(packet);
 	HANDLE handle;
 	DWORD result = ERROR_SUCCESS;
-	handle = (HANDLE)packet_get_tlv_value_uint(packet, TLV_TYPE_HANDLE);
+	handle = (HANDLE)packet_get_tlv_value_qword(packet, TLV_TYPE_HANDLE);
 
 
 	if (handle)
@@ -572,7 +570,7 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 			// Add the process identifier to the response packet
 			packet_add_tlv_uint(response, TLV_TYPE_PID, pi.dwProcessId);
 
-			packet_add_tlv_uint(response, TLV_TYPE_PROCESS_HANDLE,(DWORD)pi.hProcess);
+			packet_add_tlv_qword(response, TLV_TYPE_PROCESS_HANDLE, (QWORD)pi.hProcess);
 
 			CloseHandle(pi.hThread);
 		}
@@ -794,7 +792,7 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 		default:
 			dprintf("child pid is %d\n", pid);
 			packet_add_tlv_uint(response, TLV_TYPE_PID, (DWORD)pid);
-			packet_add_tlv_uint(response, TLV_TYPE_PROCESS_HANDLE, (DWORD)pid);
+			packet_add_tlv_qword(response, TLV_TYPE_PROCESS_HANDLE, (QWORD)pid);
 			if (flags & PROCESS_EXECUTE_FLAG_CHANNELIZED) {
 				if(have_pty) {
 					dprintf("child channelized\n");
@@ -963,7 +961,7 @@ DWORD request_sys_process_get_info(Remote *remote, Packet *packet)
 	DWORD needed;
 	CHAR path[1024], name[256];
 
-	handle = (HANDLE)packet_get_tlv_value_uint(packet, TLV_TYPE_HANDLE);
+	handle = (HANDLE)packet_get_tlv_value_qword(packet, TLV_TYPE_HANDLE);
 
 	do
 	{
@@ -1244,7 +1242,7 @@ DWORD request_sys_process_wait(Remote *remote, Packet *packet)
 	HANDLE handle     = NULL;
 	DWORD result      = ERROR_INVALID_PARAMETER;
 
-	handle = (HANDLE)packet_get_tlv_value_uint( packet, TLV_TYPE_HANDLE );
+	handle = (HANDLE)packet_get_tlv_value_qword( packet, TLV_TYPE_HANDLE );
 #ifdef _WIN32
 
 	if( handle )

@@ -6,9 +6,9 @@
 
 // Simple trick to get the current meterpreters arch
 #ifdef _WIN64
-	DWORD dwMeterpreterArch = PROCESS_ARCH_X64;
+	const DWORD dwMeterpreterArch = PROCESS_ARCH_X64;
 #else
-	DWORD dwMeterpreterArch = PROCESS_ARCH_X86;
+	const DWORD dwMeterpreterArch = PROCESS_ARCH_X86;
 #endif
 
 // see '/msf3/external/source/shellcode/x86/migrate/executex64.asm'

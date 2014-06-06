@@ -18,7 +18,7 @@ DWORD request_registry_check_key_exists(Remote *remote, Packet *packet)
 	BOOL exists = FALSE;
 	DWORD result;
 
-	rootKey = (HKEY)packet_get_tlv_value_uint(packet, TLV_TYPE_ROOT_KEY);
+	rootKey = (HKEY)packet_get_tlv_value_qword(packet, TLV_TYPE_ROOT_KEY);
 	baseKey = packet_get_tlv_value_string(packet, TLV_TYPE_BASE_KEY);
 
 	if (rootKey && baseKey)
@@ -67,7 +67,7 @@ DWORD request_registry_load_key(Remote *remote, Packet *packet)
 	LPCSTR hiveFile = NULL;
 	DWORD result;
 
-	rootKey    = (HKEY)packet_get_tlv_value_uint(packet, TLV_TYPE_ROOT_KEY);
+	rootKey    = (HKEY)packet_get_tlv_value_qword(packet, TLV_TYPE_ROOT_KEY);
 	baseKey    = packet_get_tlv_value_string(packet, TLV_TYPE_BASE_KEY);
 	hiveFile   = packet_get_tlv_value_string(packet, TLV_TYPE_FILE_PATH);	
 
@@ -89,7 +89,7 @@ DWORD request_registry_unload_key(Remote *remote, Packet *packet)
 	HKEY rootKey = NULL;
 	DWORD result;
 
-	rootKey    = (HKEY)packet_get_tlv_value_uint(packet, TLV_TYPE_ROOT_KEY);
+	rootKey    = (HKEY)packet_get_tlv_value_qword(packet, TLV_TYPE_ROOT_KEY);
 	baseKey    = packet_get_tlv_value_string(packet, TLV_TYPE_BASE_KEY);
 
 	if ((!rootKey) || (!baseKey))
@@ -112,7 +112,7 @@ DWORD request_registry_open_key(Remote *remote, Packet *packet)
 	DWORD permission;
 	DWORD result;
 
-	rootKey    = (HKEY)packet_get_tlv_value_uint(packet, TLV_TYPE_ROOT_KEY);
+	rootKey    = (HKEY)packet_get_tlv_value_qword(packet, TLV_TYPE_ROOT_KEY);
 	baseKey    = packet_get_tlv_value_string(packet, TLV_TYPE_BASE_KEY);
 	permission = packet_get_tlv_value_uint(packet, TLV_TYPE_PERMISSION);
 
@@ -129,7 +129,9 @@ DWORD request_registry_open_key(Remote *remote, Packet *packet)
 
 	// Add the HKEY if we succeeded, but always return a result
 	if (result == ERROR_SUCCESS)
-		packet_add_tlv_uint(response, TLV_TYPE_HKEY, (DWORD)resKey);
+	{
+		packet_add_tlv_qword(response, TLV_TYPE_HKEY, (QWORD)resKey);
+	}
 
 	packet_add_tlv_uint(response, TLV_TYPE_RESULT, result);
 
@@ -156,7 +158,7 @@ DWORD request_registry_open_remote_key(Remote *remote, Packet *packet)
 	DWORD result;
 
 	targetHost = packet_get_tlv_value_string(packet, TLV_TYPE_TARGET_HOST);
-	rootKey    = (HKEY)packet_get_tlv_value_uint(packet, TLV_TYPE_ROOT_KEY);
+	rootKey    = (HKEY)packet_get_tlv_value_qword(packet, TLV_TYPE_ROOT_KEY);
 
 	// Validate the parameters and then attempt to create the key
 	if ((!rootKey) || (!targetHost))
@@ -168,7 +170,9 @@ DWORD request_registry_open_remote_key(Remote *remote, Packet *packet)
 
 	// Add the HKEY if we succeeded, but always return a result
 	if (result == ERROR_SUCCESS)
-		packet_add_tlv_uint(response, TLV_TYPE_HKEY, (DWORD)resKey);
+	{
+		packet_add_tlv_qword(response, TLV_TYPE_HKEY, (QWORD)resKey);
+	}
 
 	packet_add_tlv_uint(response, TLV_TYPE_RESULT, result);
 
@@ -196,7 +200,7 @@ DWORD request_registry_create_key(Remote *remote, Packet *packet)
 	DWORD permission;
 	DWORD result;
 
-	rootKey    = (HKEY)packet_get_tlv_value_uint(packet, TLV_TYPE_ROOT_KEY);
+	rootKey    = (HKEY)packet_get_tlv_value_qword(packet, TLV_TYPE_ROOT_KEY);
 	baseKey    = packet_get_tlv_value_string(packet, TLV_TYPE_BASE_KEY);
 	permission = packet_get_tlv_value_uint(packet, TLV_TYPE_PERMISSION);
 
@@ -214,7 +218,9 @@ DWORD request_registry_create_key(Remote *remote, Packet *packet)
 
 	// Add the HKEY if we succeeded, but always return a result
 	if (result == ERROR_SUCCESS)
-		packet_add_tlv_uint(response, TLV_TYPE_HKEY, (DWORD)resKey);
+	{
+		packet_add_tlv_qword(response, TLV_TYPE_HKEY, (QWORD)resKey);
+	}
 
 	packet_add_tlv_uint(response, TLV_TYPE_RESULT, result);
 
@@ -235,7 +241,7 @@ DWORD request_registry_enum_key(Remote *remote, Packet *packet)
 {
 	Packet *response = packet_create_response(packet);
 	DWORD result;
-	HKEY hkey = (HKEY)packet_get_tlv_value_uint(packet, TLV_TYPE_HKEY);
+	HKEY hkey = (HKEY)packet_get_tlv_value_qword(packet, TLV_TYPE_HKEY);
 
 	if (!hkey)
 		result = ERROR_INVALID_PARAMETER;
@@ -318,7 +324,7 @@ DWORD request_registry_delete_key(Remote *remote, Packet *packet)
 	DWORD flags = 0;
 	HKEY rootKey = NULL;
 
-	rootKey = (HKEY)packet_get_tlv_value_uint(packet, TLV_TYPE_ROOT_KEY);
+	rootKey = (HKEY)packet_get_tlv_value_qword(packet, TLV_TYPE_ROOT_KEY);
 	baseKey = packet_get_tlv_value_string(packet, TLV_TYPE_BASE_KEY);
 	flags   = packet_get_tlv_value_uint(packet, TLV_TYPE_FLAGS);
 
@@ -352,7 +358,7 @@ DWORD request_registry_close_key(Remote *remote, Packet *packet)
 {
 	Packet *response = packet_create_response(packet);
 	DWORD result;
-	HKEY hkey = (HKEY)packet_get_tlv_value_uint(packet, TLV_TYPE_HKEY);
+	HKEY hkey = (HKEY)packet_get_tlv_value_qword(packet, TLV_TYPE_HKEY);
 
 	// No param?  No love.
 	if (!hkey)
@@ -388,7 +394,7 @@ DWORD request_registry_set_value(Remote *remote, Packet *packet)
 	Tlv valueData;
 
 	// Acquire the standard TLVs
-	hkey      = (HKEY)packet_get_tlv_value_uint(packet, TLV_TYPE_HKEY);
+	hkey      = (HKEY)packet_get_tlv_value_qword(packet, TLV_TYPE_HKEY);
 	valueName = packet_get_tlv_value_string(packet, TLV_TYPE_VALUE_NAME);
 	valueType = packet_get_tlv_value_uint(packet, TLV_TYPE_VALUE_TYPE);
 	
@@ -436,7 +442,7 @@ DWORD request_registry_query_value(Remote *remote, Packet *packet)
 	HKEY hkey = NULL;
 
 	// Acquire the standard TLVs
-	hkey      = (HKEY)packet_get_tlv_value_uint(packet, TLV_TYPE_HKEY);
+	hkey      = (HKEY)packet_get_tlv_value_qword(packet, TLV_TYPE_HKEY);
 	valueName = packet_get_tlv_value_string(packet, TLV_TYPE_VALUE_NAME);
 
 	do
@@ -496,7 +502,7 @@ DWORD request_registry_enum_value(Remote *remote, Packet *packet)
 {
 	Packet *response = packet_create_response(packet);
 	DWORD result;
-	HKEY hkey = (HKEY)packet_get_tlv_value_uint(packet, TLV_TYPE_HKEY);
+	HKEY hkey = (HKEY)packet_get_tlv_value_qword(packet, TLV_TYPE_HKEY);
 
 	if (!hkey)
 		result = ERROR_INVALID_PARAMETER;
@@ -580,7 +586,7 @@ DWORD request_registry_delete_value(Remote *remote, Packet *packet)
 	DWORD result = ERROR_SUCCESS;
 	HKEY hkey = NULL;
 
-	hkey      = (HKEY)packet_get_tlv_value_uint(packet, TLV_TYPE_HKEY);
+	hkey      = (HKEY)packet_get_tlv_value_qword(packet, TLV_TYPE_HKEY);
 	valueName = (LPCSTR)packet_get_tlv_value_string(packet, TLV_TYPE_VALUE_NAME);
 
 	// Check for invalid parameters
@@ -616,7 +622,7 @@ DWORD request_registry_query_class(Remote *remote, Packet *packet)
 	HKEY hkey = NULL;
 
 	// Acquire the standard TLVs
-	hkey      = (HKEY)packet_get_tlv_value_uint(packet, TLV_TYPE_HKEY);
+	hkey      = (HKEY)packet_get_tlv_value_qword(packet, TLV_TYPE_HKEY);
 
 	do
 	{

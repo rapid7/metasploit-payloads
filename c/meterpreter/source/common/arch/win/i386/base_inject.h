@@ -14,6 +14,8 @@
 #define MIGRATE_TECHNIQUE_REMOTETHREADWOW64	1
 #define MIGRATE_TECHNIQUE_APCQUEUE			2
 
+extern const DWORD dwMeterpreterArch;
+
 //===============================================================================================//
 
 // Definition of ntdll!NtQueueApcThread
@@ -73,11 +75,13 @@ typedef struct _WOW64CONTEXT
 
 //===============================================================================================//
 
-DWORD inject_via_apcthread( Remote * remote, Packet * response, HANDLE hProcess, DWORD dwProcessID, DWORD dwDestinationArch, LPVOID lpStartAddress, LPVOID lpParameter );
+DWORD inject_via_apcthread(Remote * remote, Packet * response, HANDLE hProcess, DWORD dwProcessID, DWORD dwDestinationArch, LPVOID lpStartAddress, LPVOID lpParameter);
 
-DWORD inject_via_remotethread( Remote * remote, Packet * response, HANDLE hProcess, DWORD dwDestinationArch, LPVOID lpStartAddress, LPVOID lpParameter );
+DWORD inject_via_remotethread(Remote * remote, Packet * response, HANDLE hProcess, DWORD dwDestinationArch, LPVOID lpStartAddress, LPVOID lpParameter);
 
-DWORD inject_dll( DWORD dwPid, LPVOID lpDllBuffer, DWORD dwDllLenght, char * cpCommandLine );
+DWORD inject_via_remotethread_wow64(HANDLE hProcess, LPVOID lpStartAddress, LPVOID lpParameter, HANDLE * pThread);
+
+DWORD inject_dll(DWORD dwPid, LPVOID lpDllBuffer, DWORD dwDllLenght, char * cpCommandLine);
 
 //===============================================================================================//
 #endif
