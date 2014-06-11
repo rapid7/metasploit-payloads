@@ -31,7 +31,7 @@ public class check_root_android implements Command {
 			File file = new File("/system/app/Superuser.apk");
 			if (file.exists()) {
 				return true;
-			}
+            }
 
 		} catch (Exception e1) {
 
