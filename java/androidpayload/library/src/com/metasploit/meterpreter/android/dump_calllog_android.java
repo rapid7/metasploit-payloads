@@ -25,6 +25,10 @@ public class dump_calllog_android implements Command {
 			| (TLV_EXTENSIONS + 9017);
 	private static final int TLV_TYPE_CALLLOG_NUMBER = TLVPacket.TLV_META_TYPE_STRING
 			| (TLV_EXTENSIONS + 9018);
+	private static final String unknown = "Unknown";
+	private static final String outgoing = "OUTGOING";
+	private static final String incoming = "INCOMING";
+	private static final String missed = "MISSED";
 
 	@Override
 	public int execute(Meterpreter meterpreter, TLVPacket request,
@@ -52,20 +56,20 @@ public class dump_calllog_android implements Command {
 			pckt.addOverflow(TLV_TYPE_CALLLOG_DATE, callDayTime.toString());
 
 			String callType = cur.getString(type);
-			String dir = "Unknown";
+			String dir = unknown;
 
 			int dircode = Integer.parseInt(callType);
 			switch (dircode) {
 			case CallLog.Calls.OUTGOING_TYPE:
-				dir = "OUTGOING";
+				dir = outgoing;
 				break;
 
 			case CallLog.Calls.INCOMING_TYPE:
-				dir = "INCOMING";
+				dir = incoming;
 				break;
 
 			case CallLog.Calls.MISSED_TYPE:
-				dir = "MISSED";
+				dir = missed;
 				break;
 			}
 			pckt.addOverflow(TLV_TYPE_CALLLOG_TYPE, dir);

