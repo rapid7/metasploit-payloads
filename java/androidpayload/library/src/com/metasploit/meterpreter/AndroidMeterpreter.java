@@ -36,7 +36,6 @@ import com.metasploit.meterpreter.stdapi.stdapi_sys_config_getuid;
 import com.metasploit.meterpreter.stdapi.stdapi_sys_process_execute_V1_3;
 
 import com.metasploit.meterpreter.android.check_root_android;
-import com.metasploit.meterpreter.android.device_shutdown_android;
 import com.metasploit.meterpreter.android.dump_calllog_android;
 import com.metasploit.meterpreter.android.dump_contacts_android;
 import com.metasploit.meterpreter.android.dump_sms_android;
@@ -96,7 +95,6 @@ public class AndroidMeterpreter extends Meterpreter {
             mgr.registerCommand("geolocate", geolocate_android.class);
             mgr.registerCommand("dump_calllog", dump_calllog_android.class);
             mgr.registerCommand("check_root", check_root_android.class);
-            mgr.registerCommand("device_shutdown", device_shutdown_android.class);
         }
         return getCommandManager().getNewCommands();
     }
