@@ -49,7 +49,7 @@ DWORD request_sys_process_image_load(Remote *remote, Packet *packet)
 		}
 
 		// Add the base address to the result
-		packet_add_tlv_uint(response, TLV_TYPE_IMAGE_BASE, (DWORD)base);
+		packet_add_tlv_qword(response, TLV_TYPE_IMAGE_BASE, (QWORD)base);
 
 	} while (0);
 
@@ -153,7 +153,7 @@ DWORD request_sys_process_image_unload(Remote *remote, Packet *packet)
 	DWORD result = ERROR_SUCCESS;
 
 	handle = (HANDLE)packet_get_tlv_value_qword(packet, TLV_TYPE_HANDLE);
-	base   = (LPVOID)packet_get_tlv_value_uint(packet, TLV_TYPE_IMAGE_BASE);
+	base   = (LPVOID)packet_get_tlv_value_qword(packet, TLV_TYPE_IMAGE_BASE);
 
 	do
 	{
