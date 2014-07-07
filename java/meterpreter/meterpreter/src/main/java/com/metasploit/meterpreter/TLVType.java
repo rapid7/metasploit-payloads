@@ -126,7 +126,7 @@ public interface TLVType {
 	public static final int TLV_TYPE_IMAGE_FILE_PATH = TLVPacket.TLV_META_TYPE_STRING | 2401;
 	public static final int TLV_TYPE_PROCEDURE_NAME = TLVPacket.TLV_META_TYPE_STRING | 2402;
 	public static final int TLV_TYPE_PROCEDURE_ADDRESS = TLVPacket.TLV_META_TYPE_QWORD | 2403;
-	public static final int TLV_TYPE_IMAGE_BASE = TLVPacket.TLV_META_TYPE_UINT | 2404;
+	public static final int TLV_TYPE_IMAGE_BASE = TLVPacket.TLV_META_TYPE_QWORD | 2404;
 	public static final int TLV_TYPE_IMAGE_GROUP = TLVPacket.TLV_META_TYPE_GROUP | 2405;
 	public static final int TLV_TYPE_IMAGE_NAME = TLVPacket.TLV_META_TYPE_STRING | 2406;
 
