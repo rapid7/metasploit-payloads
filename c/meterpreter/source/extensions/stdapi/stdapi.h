@@ -173,7 +173,7 @@
 				2403)
 #define TLV_TYPE_IMAGE_BASE            \
 		MAKE_CUSTOM_TLV(                 \
-				TLV_META_TYPE_UINT,        \
+				TLV_META_TYPE_QWORD,       \
 				TLV_TYPE_EXTENSION_STDAPI, \
 				2404)
 #define TLV_TYPE_IMAGE_GROUP           \
