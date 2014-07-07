@@ -37,7 +37,8 @@ LPSTR fs_expand_path(LPCSTR regular)
 	char *expandedFilePath;
 	DWORD expandedFilePathSize = strlen(regular)+1;
 	expandedFilePath = malloc(expandedFilePathSize);
-	strncpy(expandedFilePath, regular, expandedFilePathSize - 1);
+	strncpy(expandedFilePath, regular, expandedFilePathSize);
+	expandedFilePath[expandedFilePathSize - 1] = '\0';
 	return expandedFilePath;
 #endif
 }
