@@ -5,6 +5,8 @@
 */
 #pragma once
 #include "../kuhl_m_sekurlsa.h"
+#include "../../kerberos/khul_m_kerberos_ticket.h"
+#include "../modules/kull_m_file.h"
 
 KUHL_M_SEKURLSA_PACKAGE kuhl_m_sekurlsa_kerberos_package;
 
@@ -13,9 +15,18 @@ NTSTATUS kuhl_m_sekurlsa_kerberos_tickets(int argc, wchar_t * argv[]);
 void CALLBACK kuhl_m_sekurlsa_enum_logon_callback_kerberos(IN PKIWI_BASIC_SECURITY_LOGON_SESSION_DATA pData, IN OPTIONAL PKUHL_M_SEKURLSA_EXTERNAL externalCallback, IN OPTIONAL LPVOID externalCallbackData);
 BOOL CALLBACK kuhl_m_sekurlsa_enum_callback_kerberos_tickets(IN PKIWI_BASIC_SECURITY_LOGON_SESSION_DATA pData, IN OPTIONAL LPVOID pOptionalData);
 
-void kuhl_m_sekurlsa_kerberos_enum_tickets(IN PKIWI_BASIC_SECURITY_LOGON_SESSION_DATA pData, IN PVOID tickets);
-void kuhl_m_sekurlsa_kerberos_names(IN PKUHL_M_SEKURLSA_CONTEXT cLsass, IN PKERB_EXTERNAL_NAME pName, IN PUNICODE_STRING pDomain);
-void kuhl_m_sekurlsa_kerberos_time(IN PFILETIME pFileTime);
+void kuhl_m_sekurlsa_enum_generic_callback_kerberos(IN PKIWI_BASIC_SECURITY_LOGON_SESSION_DATA pData, IN OPTIONAL LPVOID pOptionalData);
+void kuhl_m_sekurlsa_kerberos_enum_tickets(IN PKIWI_BASIC_SECURITY_LOGON_SESSION_DATA pData, IN DWORD grp, IN PVOID tickets, IN BOOL isFile);
+
+wchar_t * kuhl_m_sekurlsa_kerberos_generateFileName(PLUID LogonId, const DWORD grp, const DWORD index, PKIWI_KERBEROS_TICKET ticket, LPCWSTR ext);
+
+PKIWI_KERBEROS_TICKET kuhl_m_sekurlsa_kerberos_createTicket(PBYTE pTicket, PKULL_M_MEMORY_HANDLE hLSASS);
+void kuhl_m_sekurlsa_kerberos_createExternalName(PKERB_EXTERNAL_NAME *pExternalName, PKULL_M_MEMORY_HANDLE hLSASS);
+void kuhl_m_sekurlsa_kerberos_createKiwiKerberosBuffer(PKIWI_KERBEROS_BUFFER pBuffer, PKULL_M_MEMORY_HANDLE hLSASS);
+
+void kuhl_m_sekurlsa_kerberos_freeTicket(PKIWI_KERBEROS_TICKET ticket);
+void kuhl_m_sekurlsa_kerberos_freeExternalName(PKERB_EXTERNAL_NAME pName);
+void kuhl_m_sekurlsa_kerberos_freeKiwiKerberosBuffer(PKIWI_KERBEROS_BUFFER pBuffer);
 
 typedef struct _KERB_INFOS
 {
@@ -39,6 +50,7 @@ typedef struct _KERB_INFOS
 	LONG	offsetRenewUntil;
 	LONG	offsetTicketEncType;
 	LONG	offsetTicket;
+	LONG	offsetTicketKvno;
 	SIZE_T	structTicketSize;
 } KERB_INFOS, *PKERB_INFOS;
 
@@ -122,11 +134,6 @@ typedef struct _KIWI_KERBEROS_LOGON_SESSION
 	PUNICODE_STRING	pinCode;	// not only PIN (CSP Info)
 } KIWI_KERBEROS_LOGON_SESSION, *PKIWI_KERBEROS_LOGON_SESSION;
 
-typedef struct _KIWI_KERBEROS_BUFFER {
-	ULONG Length;
-	PUCHAR Value;
-} KIWI_KERBEROS_BUFFER, *PKIWI_KERBEROS_BUFFER;
-
 typedef struct _KIWI_KERBEROS_INTERNAL_TICKET_51 {
 	LIST_ENTRY	This;
 	PVOID		unk0;
@@ -158,7 +165,7 @@ typedef struct _KIWI_KERBEROS_INTERNAL_TICKET_51 {
 	PVOID		strangeNames;
 	ULONG		unk12;
 	ULONG		TicketEncType;
-	ULONG		unk13;
+	ULONG		TicketKvno;
 	KIWI_KERBEROS_BUFFER	Ticket;
 } KIWI_KERBEROS_INTERNAL_TICKET_51, *PKIWI_KERBEROS_INTERNAL_TICKET_51;
 
@@ -191,7 +198,7 @@ typedef struct _KIWI_KERBEROS_INTERNAL_TICKET_52 {
 	PVOID		strangeNames;
 	ULONG		unk9;
 	ULONG		TicketEncType;
-	ULONG		unk10;
+	ULONG		TicketKvno;
 	KIWI_KERBEROS_BUFFER	Ticket;
 } KIWI_KERBEROS_INTERNAL_TICKET_52, *PKIWI_KERBEROS_INTERNAL_TICKET_52;
     
@@ -225,6 +232,6 @@ typedef struct _KIWI_KERBEROS_INTERNAL_TICKET_6 {
 	PVOID		strangeNames;
 	ULONG		unk9;
 	ULONG		TicketEncType;
-	ULONG		unk10;
+	ULONG		TicketKvno;
 	KIWI_KERBEROS_BUFFER	Ticket;
 } KIWI_KERBEROS_INTERNAL_TICKET_6, *PKIWI_KERBEROS_INTERNAL_TICKET_6;

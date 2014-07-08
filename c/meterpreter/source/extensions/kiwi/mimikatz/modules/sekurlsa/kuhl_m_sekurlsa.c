@@ -400,6 +400,23 @@ BOOL CALLBACK kuhl_m_sekurlsa_enum_callback_logondata(IN PKIWI_BASIC_SECURITY_LO
 	return TRUE;
 }
 
+const wchar_t * KUHL_M_SEKURLSA_LOGON_TYPE[] = {
+	L"UndefinedLogonType",
+	L"Unknown !",
+	L"Interactive",
+	L"Network",
+	L"Batch",
+	L"Service",
+	L"Proxy",
+	L"Unlock",
+	L"NetworkCleartext",
+	L"NewCredentials",
+	L"RemoteInteractive",
+	L"CachedInteractive",
+	L"CachedRemoteInteractive",
+	L"CachedUnlock",
+};
+
 void kuhl_m_sekurlsa_printinfos_logonData(IN PKIWI_BASIC_SECURITY_LOGON_SESSION_DATA pData)
 {
 	kprintf(L"\nAuthentication Id : %u ; %u (%08x:%08x)\n"
