@@ -175,7 +175,11 @@ DWORD request_fs_file_channel_open(Remote *remote, Packet *packet)
 		// Invalid file?
 		if (!(ctx->fd = fopen(expandedFilePath, mode)))
 		{
+#ifdef _WIN32
 			res = GetLastError();
+#else
+			res = errno;
+#endif
 			break;
 		}
 
