@@ -13,6 +13,8 @@
 
 #define	DES_KEY_LENGTH		7
 #define DES_BLOCK_LENGTH	8
+#define AES_128_KEY_LENGTH	16
+#define AES_256_KEY_LENGTH	32
 
 typedef struct _MD4_CTX {
 	DWORD state[4];
