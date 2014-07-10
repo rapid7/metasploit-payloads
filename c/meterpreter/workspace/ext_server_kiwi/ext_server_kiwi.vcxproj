@@ -588,7 +588,6 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_crypto.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_event.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_kernel.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_lsadump_struct.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_misc.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_misc_struct.h" />
@@ -618,7 +617,6 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_crypto_system.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_file.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_handle.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_kernel.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_memory.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_minidump.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_net.h" />
@@ -643,7 +641,6 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_lsadump.c" />
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_crypto.c" />
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_event.c" />
-    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_kernel.c" />
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_misc.c" />
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_net.c" />
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_privilege.c" />
@@ -670,7 +667,6 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClCompile Include="..\..\source\extensions\kiwi\modules\kull_m_crypto_system.c" />
     <ClCompile Include="..\..\source\extensions\kiwi\modules\kull_m_file.c" />
     <ClCompile Include="..\..\source\extensions\kiwi\modules\kull_m_handle.c" />
-    <ClCompile Include="..\..\source\extensions\kiwi\modules\kull_m_kernel.c" />
     <ClCompile Include="..\..\source\extensions\kiwi\modules\kull_m_memory.c" />
     <ClCompile Include="..\..\source\extensions\kiwi\modules\kull_m_minidump.c" />
     <ClCompile Include="..\..\source\extensions\kiwi\modules\kull_m_net.c" />

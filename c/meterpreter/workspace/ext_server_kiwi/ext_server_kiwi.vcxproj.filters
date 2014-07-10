@@ -45,9 +45,6 @@
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_event.h">
       <Filter>modules</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_kernel.h">
-      <Filter>modules</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_misc.h">
       <Filter>modules</Filter>
     </ClInclude>
@@ -74,9 +71,6 @@
     </ClInclude>
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_crypto.h">
       <Filter>modules</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_kernel.h">
-      <Filter>common</Filter>
     </ClInclude>
     <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_memory.h">
       <Filter>common</Filter>
@@ -202,9 +196,6 @@
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_event.c">
       <Filter>modules</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_kernel.c">
-      <Filter>modules</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_misc.c">
       <Filter>modules</Filter>
     </ClCompile>
@@ -228,9 +219,6 @@
     </ClCompile>
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_crypto.c">
       <Filter>modules</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\source\extensions\kiwi\modules\kull_m_kernel.c">
-      <Filter>common</Filter>
     </ClCompile>
     <ClCompile Include="..\..\source\extensions\kiwi\modules\kull_m_memory.c">
       <Filter>common</Filter>
