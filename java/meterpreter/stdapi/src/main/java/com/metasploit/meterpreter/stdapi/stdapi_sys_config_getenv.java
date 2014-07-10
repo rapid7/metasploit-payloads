@@ -13,12 +13,10 @@ public class stdapi_sys_config_getenv implements Command {
 		for (int i = 0; i < envVars.size(); ++i) {
 			String envVar = (String)envVars.get(i);
 
-			char c = envVar.charAt(0);
-			if (c == '$' || c == '%') {
+			if (envVar.startsWith("$") || envVar.startsWith("%")) {
 				envVar = envVar.substring(1);
 			}
-			c = envVar.charAt(envVar.length() - 1);
-			if (c == '$' || c == '%') {
+			if (envVar.endsWith("$") || envVar.endsWith("%")) {
 				envVar = envVar.substring(0, envVar.length() - 1);
 			}
 

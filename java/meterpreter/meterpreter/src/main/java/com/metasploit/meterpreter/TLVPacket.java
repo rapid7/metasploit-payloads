@@ -63,11 +63,11 @@ public class TLVPacket {
 	 * Read a TLV packet from an input stream.
 	 * 
 	 * @param in
-	 *						Input stream to read from
+	 *	Input stream to read from
 	 * @param remaining
-	 *						length of the packet to read in bytes
+	 *	length of the packet to read in bytes
 	 * @throws IOException
-	 *						 if an error occurs
+	 *	 if an error occurs
 	 */
 	public TLVPacket(DataInputStream in, int remaining) throws IOException {
 		while (remaining > 0) {
