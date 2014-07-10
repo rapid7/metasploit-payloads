@@ -24,7 +24,7 @@ void kprintf(PCWCHAR format, ...)
 	}
 	else
 	{
-		vfwprintf(stdout, format, args);
+		vwprintf(format, args);
 		fflush(stdout);
 	}
 

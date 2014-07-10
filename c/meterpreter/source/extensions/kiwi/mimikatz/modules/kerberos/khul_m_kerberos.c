@@ -208,7 +208,7 @@ NTSTATUS kuhl_m_kerberos_list_tickets(PKERB_CALLBACK_CTX callbackCtx, BOOL bExpo
 		{
 			for(i = 0; i < pKerbCacheResponse->CountOfTickets; i++)
 			{
-				kprintf(L"\n[%08x] - %02x", i, pKerbCacheResponse->Tickets[i].EncryptionType);
+				kprintf(L"\n[%08x] - 0x%08x - %s", i, pKerbCacheResponse->Tickets[i].EncryptionType, kuhl_m_kerberos_ticket_etype(pKerbCacheResponse->Tickets[i].EncryptionType));
 				kprintf(L"\n   Start/End/MaxRenew: ");
 				kull_m_string_displayLocalFileTime((PFILETIME) &pKerbCacheResponse->Tickets[i].StartTime); kprintf(L" ; ");
 				kull_m_string_displayLocalFileTime((PFILETIME) &pKerbCacheResponse->Tickets[i].EndTime); kprintf(L" ; ");
@@ -278,7 +278,7 @@ NTSTATUS kuhl_m_kerberos_list(int argc, wchar_t * argv[])
 		{
 			for(i = 0; i < pKerbCacheResponse->CountOfTickets; i++)
 			{
-				kprintf(L"\n[%08x] - %02x", i, pKerbCacheResponse->Tickets[i].EncryptionType);
+				kprintf(L"\n[%08x] - 0x%08x - %s", i, pKerbCacheResponse->Tickets[i].EncryptionType, kuhl_m_kerberos_ticket_etype(pKerbCacheResponse->Tickets[i].EncryptionType));
 				kprintf(L"\n   Start/End/MaxRenew: ");
 				kull_m_string_displayLocalFileTime((PFILETIME) &pKerbCacheResponse->Tickets[i].StartTime); kprintf(L" ; ");
 				kull_m_string_displayLocalFileTime((PFILETIME) &pKerbCacheResponse->Tickets[i].EndTime); kprintf(L" ; ");
@@ -352,7 +352,7 @@ LONG kuhl_m_kerberos_create_golden_ticket(PCWCHAR szUser, PCWCHAR szDomain, PCWC
 	DWORD dwId, DWORD* pdwGroups, DWORD dwGroupCount, PBYTE* ticketBuffer, DWORD* ticketBufferSize)
 {
 	BYTE ntlm[LM_NTLM_HASH_LENGTH] = {0};
-	DWORD i, j, nbGroups = sizeof(defaultGroups) / sizeof(defaultGroups[0]);
+	DWORD i, nbGroups = sizeof(defaultGroups) / sizeof(defaultGroups[0]);
 	PISID pSid = NULL;
 	PDIRTY_ASN1_SEQUENCE_EASY App_KrbCred;
 	NTSTATUS result = STATUS_UNSUCCESSFUL;
@@ -384,14 +384,8 @@ LONG kuhl_m_kerberos_create_golden_ticket(PCWCHAR szUser, PCWCHAR szDomain, PCWC
 
 	if(ConvertStringSidToSid(szSid, (PSID *) &pSid))
 	{
-		if(wcslen(szNtlm) == (LM_NTLM_HASH_LENGTH * 2))
+		if(kull_m_string_stringToHex(szNtlm, ntlm, sizeof(ntlm)))
 		{
-			for(i = 0; i < LM_NTLM_HASH_LENGTH; i++)
-			{
-				swscanf_s(&szNtlm[i*2], L"%02x", &j);
-				ntlm[i] = (BYTE) j;
-			}
-
 			if(App_KrbCred = kuhl_m_kerberos_golden_data(szUser, szDomain, pSid, ntlm, dwId, pChosenGroups, nbGroups))
 			{
 				*ticketBufferSize = kull_m_asn1_getSize(App_KrbCred);
@@ -479,13 +473,8 @@ NTSTATUS kuhl_m_kerberos_golden(int argc, wchar_t * argv[])
 							nbGroups = sizeof(defaultGroups) / sizeof(GROUP_MEMBERSHIP);
 						}
 																		
-						if(wcslen(szNtlm) == (LM_NTLM_HASH_LENGTH * 2))
+						if(kull_m_string_stringToHex(szNtlm, ntlm, sizeof(ntlm)))
 						{
-							for(i = 0; i < LM_NTLM_HASH_LENGTH; i++)
-							{
-								swscanf_s(&szNtlm[i*2], L"%02x", &j);
-								ntlm[i] = (BYTE) j;
-							}
 							kprintf(
 								L"User      : %s\n"
 								L"Domain    : %s\n"
@@ -519,7 +508,7 @@ NTSTATUS kuhl_m_kerberos_golden(int argc, wchar_t * argv[])
 		}
 		else PRINT_ERROR(L"Missing domain argument\n");
 	}
-	else PRINT_ERROR(L"Missing admin argument\n");
+	else PRINT_ERROR(L"Missing user argument\n");
 
 	if(dynGroups)
 		LocalFree(groups);
