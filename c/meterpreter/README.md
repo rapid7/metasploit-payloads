@@ -9,16 +9,17 @@ This is the new repository for the Meterpreter [source], which was originally in
 Building - Windows
 ==================
 
-As of commit a2888b1b4862819c9aae81bf46d8c92d8164c598, Meterpreter is
-built with [Visual Studio 2013 Express for Desktop][vs_express] or any
-paid version of [Visual Studio 2013][vs_paid]. Earlier toolsets on
-Windows are no longer supported -- this includes Visual Studio 2012.
-Make sure that the version that you download is `Visual Studio Express
-2013 for Windows Desktop` -- dependng on your operating system, if you
-get the wrong version of VS2013, the installer will complain about
-needing "a more recent version of Windows." If you are using a dedicated
-build machine, your best bet is to uninstall Visual Studio 2012 if your
-only project is Meterpreter.
+As of [commit
+a2888b1b4862819c9aae81bf46d8c92d8164c598](https://github.com/rapid7/meterpreter/commit/a2888b1b4862819c9aae81bf46d8c92d8164c598),
+Meterpreter is built with [Visual Studio 2013 Express for
+Desktop][vs_express] or any paid version of [Visual Studio
+2013][vs_paid]. Earlier toolsets on Windows are no longer supported --
+this includes Visual Studio 2012.  Make sure that the version that you
+download is `Visual Studio Express 2013 for Windows Desktop` -- dependng
+on your operating system, if you get the wrong version of VS2013, the
+installer will complain about needing "a more recent version of
+Windows." If you are using a dedicated build machine, your best bet is
+to uninstall Visual Studio 2012 if your only project is Meterpreter.
 
 Visual Studio 2013 requires .NET 4.5.1 in order to run, and as a result isn't compatible
 with Windows XP due to the fact that .NET 4.5 will not run on Windows XP. However, this
@@ -40,6 +41,17 @@ $ git submodule init && git submodule update
 
 At this point the dependencies will be ready to use and Meterpreter should be ready to
 build.
+
+* [OpenSSL][openssl]
+
+Occasionally, new versions of OpenSSL are released and need to be
+incorporated into the Meterpreter build. See the README under
+`source/openssl/lib` for build instructions. You will also need to
+refresh the header files from the source tarball as well. TODO: This
+entire process appears automatable given a proper build environment.
+
+An example of updating OpenSSL is detailed in
+[Pull Request #86](https://github.com/rapid7/meterpreter/pull/86).
 
 Running the Build
 -----------------
@@ -190,3 +202,4 @@ Good luck!
   [framework]: https://github.com/rapid7/metasploit-framework
   [build_icon]: https://ci.metasploit.com/buildStatus/icon?job=MeterpreterWin
   [rdi]: https://github.com/rapid7/ReflectiveDLLInjection
+  [openssl]: https://github.com/rapid7/meterpreter/tree/master/source/openssl

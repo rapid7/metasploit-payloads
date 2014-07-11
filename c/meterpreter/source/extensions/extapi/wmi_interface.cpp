@@ -235,8 +235,6 @@ DWORD wmi_query(LPCWSTR lpwRoot, LPWSTR lpwQuery, Packet* response)
 		IEnumWbemClassObject* pEnumerator = NULL;
 		IWbemClassObject* pSuperClass = NULL;
 		IWbemClassObject* pObj = NULL;
-		Tlv* valueTlvs = NULL;
-		char* values = NULL;
 		VARIANT** fields = NULL;
 
 		do
@@ -315,35 +313,34 @@ DWORD wmi_query(LPCWSTR lpwRoot, LPWSTR lpwQuery, Packet* response)
 				}
 				dprintf("[WMI] Bounds: %u to %u", lBound, uBound);
 
-				LONG fieldCount = uBound - lBound - SYSTEM_FIELD_COUNT - 1;
+				LONG fieldCount = uBound - lBound - SYSTEM_FIELD_COUNT;
+#ifndef _WIN64
+				// on x86 the array bounds behave differently as the uBound is actually EXCLUSIVE
+				// of the last value and not INCLUSIVE
+				fieldCount -= 1;
+#endif
 				dprintf("[WMI] Query results in %u fields", fieldCount);
 
-				fields = (VARIANT**)malloc(fieldCount * sizeof(VARIANT**));
-				valueTlvs = (Tlv*)malloc(fieldCount * sizeof(Tlv));
-				values = (char*)malloc(fieldCount * FIELD_SIZE);
-				memset(fields, 0, fieldCount * sizeof(VARIANT**));
-				memset(valueTlvs, 0, fieldCount * sizeof(Tlv));
-				memset(values, 0, fieldCount * FIELD_SIZE);
+				VARIANT** fields = (VARIANT**)malloc(sizeof(VARIANT*) * fieldCount);
+				char value[FIELD_SIZE];
+				Packet* fieldGroup = packet_create_group();
+
+				memset(fields, 0, sizeof(VARIANT*) * fieldCount);
 
 				for (LONG i = 0; i < fieldCount; ++i)
 				{
 					LONG indices[1] = { i + SYSTEM_FIELD_COUNT };
-					char* fieldName = values + (i * FIELD_SIZE);
 					SafeArrayPtrOfIndex(pFieldArray, indices, (void**)&fields[i]);
 					_bstr_t bstr(fields[i]->bstrVal);
 
-					strncpy_s(fieldName, FIELD_SIZE, (const char*)bstr, FIELD_SIZE - 1);
+					packet_add_tlv_string(fieldGroup, TLV_TYPE_EXT_WMI_FIELD, (const char*)bstr);
 
-					valueTlvs[i].header.type = TLV_TYPE_EXT_WMI_FIELD;
-					valueTlvs[i].header.length = (UINT)strlen(fieldName) + 1;
-					valueTlvs[i].buffer = (PUCHAR)fieldName;
-
-					dprintf("[WMI] Added header field: %s", fieldName);
+					dprintf("[WMI] Added header field: %s", (const char*)bstr);
 				}
 
 				dprintf("[WMI] added all field headers");
 				// add the field names to the packet
-				packet_add_tlv_group(response, TLV_TYPE_EXT_WMI_FIELDS, valueTlvs, fieldCount);
+				packet_add_group(response, TLV_TYPE_EXT_WMI_FIELDS, fieldGroup);
 
 				dprintf("[WMI] processing values...");
 				// with that horrible pain out of the way, let's actually grab the data
@@ -355,31 +352,30 @@ DWORD wmi_query(LPCWSTR lpwRoot, LPWSTR lpwQuery, Packet* response)
 						break;
 					}
 
-					memset(valueTlvs, 0, fieldCount * sizeof(Tlv));
-					memset(values, 0, fieldCount * FIELD_SIZE);
+					Packet* valueGroup = packet_create_group();
 
 					for (LONG i = 0; i < fieldCount; ++i)
 					{
-						char* value = values + (i * FIELD_SIZE);
-						valueTlvs[i].header.type = TLV_TYPE_EXT_WMI_VALUE;
-						valueTlvs[i].buffer = (PUCHAR)value;
+						memset(value, 0, FIELD_SIZE);
 
 						VARIANT varValue;
 						VariantInit(&varValue);
 
 						_bstr_t field(fields[i]->bstrVal);
+
 						dprintf("[WMI] Extracting value for %s", (char*)field);
 						if (SUCCEEDED(pObj->Get(field, 0, &varValue, NULL, NULL)))
 						{
 							variant_to_string(_variant_t(varValue), value, FIELD_SIZE);
 						}
 
-						valueTlvs[i].header.length = (UINT)strlen(value) + 1;
+						packet_add_tlv_string(valueGroup, TLV_TYPE_EXT_WMI_VALUE, value);
+
 						dprintf("[WMI] Added value for %s: %s", (char*)_bstr_t(fields[i]->bstrVal), value);
 					}
 
 					// add the field values to the packet
-					packet_add_tlv_group(response, TLV_TYPE_EXT_WMI_VALUES, valueTlvs, fieldCount);
+					packet_add_group(response, TLV_TYPE_EXT_WMI_VALUES, valueGroup);
 
 					pObj->Release();
 					pObj = NULL;
@@ -393,16 +389,6 @@ DWORD wmi_query(LPCWSTR lpwRoot, LPWSTR lpwQuery, Packet* response)
 		if (fields)
 		{
 			free(fields);
-		}
-
-		if (values)
-		{
-			free(values);
-		}
-
-		if (valueTlvs)
-		{
-			free(valueTlvs);
 		}
 
 		if (pObj)
@@ -429,7 +415,7 @@ DWORD wmi_query(LPCWSTR lpwRoot, LPWSTR lpwQuery, Packet* response)
 		if (SUCCEEDED(hResult))
 		{
 			hResult = S_OK;
-			dprintf("[WMI] Things appeard to go well!");
+			dprintf("[WMI] Things appeared to go well!");
 		}
 	}
 	else

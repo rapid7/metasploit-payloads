@@ -21,7 +21,7 @@ DWORD request_sys_process_image_load(Remote *remote, Packet *packet)
 	LPCSTR image;
 	HMODULE base;
 
-	handle = (HANDLE)packet_get_tlv_value_uint(packet, TLV_TYPE_HANDLE);
+	handle = (HANDLE)packet_get_tlv_value_qword(packet, TLV_TYPE_HANDLE);
 	image  = packet_get_tlv_value_string(packet, TLV_TYPE_IMAGE_FILE_PATH);
 
 	do
@@ -49,7 +49,7 @@ DWORD request_sys_process_image_load(Remote *remote, Packet *packet)
 		}
 
 		// Add the base address to the result
-		packet_add_tlv_uint(response, TLV_TYPE_IMAGE_BASE, (DWORD)base);
+		packet_add_tlv_qword(response, TLV_TYPE_IMAGE_BASE, (QWORD)base);
 
 	} while (0);
 
@@ -77,7 +77,7 @@ DWORD request_sys_process_image_get_proc_address(Remote *remote, Packet *packet)
 	LPCSTR procedure;
 	LPVOID address = NULL;
 
-	process   = (HANDLE)packet_get_tlv_value_uint(packet, TLV_TYPE_HANDLE);
+	process   = (HANDLE)packet_get_tlv_value_qword(packet, TLV_TYPE_HANDLE);
 	image     = packet_get_tlv_value_string(packet, TLV_TYPE_IMAGE_FILE);
 	procedure = packet_get_tlv_value_string(packet, TLV_TYPE_PROCEDURE_NAME);
 
@@ -122,8 +122,7 @@ DWORD request_sys_process_image_get_proc_address(Remote *remote, Packet *packet)
 		}
 
 		// Set the procedure address on the response
-		packet_add_tlv_uint(response, TLV_TYPE_PROCEDURE_ADDRESS, 
-				(DWORD)address);
+		packet_add_tlv_qword(response, TLV_TYPE_PROCEDURE_ADDRESS, (QWORD)address);
 
 	} while (0);
 
@@ -153,8 +152,8 @@ DWORD request_sys_process_image_unload(Remote *remote, Packet *packet)
 	LPVOID base;
 	DWORD result = ERROR_SUCCESS;
 
-	handle = (HANDLE)packet_get_tlv_value_uint(packet, TLV_TYPE_HANDLE);
-	base   = (LPVOID)packet_get_tlv_value_uint(packet, TLV_TYPE_IMAGE_BASE);
+	handle = (HANDLE)packet_get_tlv_value_qword(packet, TLV_TYPE_HANDLE);
+	base   = (LPVOID)packet_get_tlv_value_qword(packet, TLV_TYPE_IMAGE_BASE);
 
 	do
 	{
@@ -205,7 +204,7 @@ DWORD request_sys_process_image_get_images(Remote *remote, Packet *packet)
 	DWORD needed = 0, actual, tries = 0;
 	DWORD index;
 
-	handle = (HANDLE)packet_get_tlv_value_uint(packet, TLV_TYPE_HANDLE);
+	handle = (HANDLE)packet_get_tlv_value_qword(packet, TLV_TYPE_HANDLE);
 
 	do
 	{

@@ -2,8 +2,8 @@
 
 set -e
 
-#OSSL=openssl-0.9.8o
-OSSL=openssl-0.9.8n
+#OSSL=openssl-0.9.8n
+OSSL=openssl-0.9.8za
 
 cd $OSSL
 
