@@ -54,8 +54,8 @@ BOOL kull_m_string_suspectUnicodeStringStructure(IN PUNICODE_STRING pUnicodeStri
 
 BOOL kull_m_string_suspectUnicodeString(IN PUNICODE_STRING pUnicodeString)
 {
-	int unicodeTestFlags = IS_TEXT_UNICODE_ODD_LENGTH | IS_TEXT_UNICODE_STATISTICS;
-	return IsTextUnicode(pUnicodeString->Buffer, pUnicodeString->Length, &unicodeTestFlags);
+	int unicodeTestFlags = IS_TEXT_UNICODE_STATISTICS;
+	return ((pUnicodeString->Length == sizeof(wchar_t)) && IsCharAlphaNumeric(pUnicodeString->Buffer[0])) || IsTextUnicode(pUnicodeString->Buffer, pUnicodeString->Length, &unicodeTestFlags);
 }
 
 BOOL kull_m_string_getUnicodeString(IN PUNICODE_STRING string, IN PKULL_M_MEMORY_HANDLE source)
@@ -82,40 +82,7 @@ void kull_m_string_freeUnicodeStringBuffer(PUNICODE_STRING pString)
 	if(pString->Buffer)
 		LocalFree(pString->Buffer);
 }
-/*
-VOID kull_m_string_outputHighUnicodeString(PLSA_UNICODE_STRING pString)
-{
-	DWORD dwSize;
-	wchar_t * ptr = NULL;
-	if(pString)
-	{
-		ptr = pString->Buffer;
-		dwSize =  pString->Length / sizeof(wchar_t);
-	}
-	kull_m_string_outputHighWideStringWithLen(ptr, dwSize);
-}
 
-VOID kull_m_string_outputHighWideString(wchar_t * pString)
-{
-	DWORD dwSize;
-	if(pString)
-		dwSize =  (DWORD) wcslen(pString);
-	kull_m_string_outputHighWideStringWithLen(pString, dwSize);
-}
-
-VOID kull_m_string_outputHighWideStringWithLen(wchar_t * pString, DWORD dwSize)
-{
-	//DWORD dwhConWritten;
-	//HANDLE hConOut = GetStdHandle(STD_OUTPUT_HANDLE);
-	if(!pString)
-	{
-		pString = L"(null)";
-		dwSize = 6;
-	}
-	kprintf(L"%.*s", dwSize, pString);
-	//WriteConsole(hConOut, pString, dwSize, &dwhConWritten, NULL); 
-}
-*/
 wchar_t * kull_m_string_qad_ansi_to_unicode(const char * ansi)
 {
 	wchar_t * buffer = NULL;
@@ -134,6 +101,21 @@ wchar_t * kull_m_string_qad_ansi_c_to_unicode(const char * ansi, SIZE_T szStr)
 			for(i = 0; i < szStr; i++)
 				buffer[i] = ansi[i];
 	return buffer;
+}
+
+BOOL kull_m_string_stringToHex(IN LPCWCHAR string, IN LPBYTE hex, IN DWORD size)
+{
+	DWORD i, j;
+	BOOL result = (wcslen(string) == (size * 2));
+	if (result)
+	{
+		for (i = 0; i < size; i++)
+		{
+			swscanf_s(&string[i * 2], L"%02x", &j);
+			hex[i] = (BYTE)j;
+		}
+	}
+	return result;
 }
 
 PCWCHAR WPRINTF_TYPES[] =

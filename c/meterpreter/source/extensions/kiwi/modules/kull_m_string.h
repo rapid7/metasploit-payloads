@@ -44,12 +44,10 @@ BOOL kull_m_string_suspectUnicodeStringStructure(IN PUNICODE_STRING pUnicodeStri
 BOOL kull_m_string_getUnicodeString(IN PUNICODE_STRING string, IN PKULL_M_MEMORY_HANDLE source);
 void kull_m_string_freeUnicodeStringBuffer(PUNICODE_STRING pString);
 BOOL kull_m_string_suspectUnicodeString(IN PUNICODE_STRING pUnicodeString);
-/*VOID kull_m_string_outputHighUnicodeString(PLSA_UNICODE_STRING pString);
-VOID kull_m_string_outputHighWideString(wchar_t * pString);
-VOID kull_m_string_outputHighWideStringWithLen(wchar_t * pString, DWORD dwSize);*/
 
 wchar_t * kull_m_string_qad_ansi_to_unicode(const char * ansi);
 wchar_t * kull_m_string_qad_ansi_c_to_unicode(const char * ansi, SIZE_T szStr);
+BOOL kull_m_string_stringToHex(IN LPCWCHAR string, IN LPBYTE hex, IN DWORD size);
 
 void kull_m_string_wprintf_hex(LPCVOID lpData, DWORD cbData, DWORD flags);
 void kull_m_string_displayFileTime(IN PFILETIME pFileTime);

@@ -13,6 +13,8 @@
 
 #define	DES_KEY_LENGTH		7
 #define DES_BLOCK_LENGTH	8
+#define AES_128_KEY_LENGTH	16
+#define AES_256_KEY_LENGTH	32
 
 typedef struct _MD4_CTX {
 	DWORD state[4];
@@ -44,6 +46,24 @@ typedef struct _CRYPTO_BUFFER {
     PBYTE Buffer;
 } CRYPTO_BUFFER, *PCRYPTO_BUFFER;
 typedef CONST CRYPTO_BUFFER *PCCRYPTO_BUFFER;
+
+
+typedef struct _KERB_HASHPASSWORD_GENERIC {
+	DWORD Type;
+	SIZE_T Size;
+	PBYTE Checksump;
+} KERB_HASHPASSWORD_GENERIC, *PKERB_HASHPASSWORD_GENERIC;
+
+typedef struct _KERB_HASHPASSWORD_5 {
+	LSA_UNICODE_STRING salt; // http://tools.ietf.org/html/rfc3962
+	KERB_HASHPASSWORD_GENERIC generic;
+} KERB_HASHPASSWORD_5, *PKERB_HASHPASSWORD_5;
+
+typedef struct _KERB_HASHPASSWORD_6 {
+	LSA_UNICODE_STRING salt; // http://tools.ietf.org/html/rfc3962
+	PVOID stringToKey;
+	KERB_HASHPASSWORD_GENERIC generic;
+} KERB_HASHPASSWORD_6, *PKERB_HASHPASSWORD_6;
 
 extern VOID WINAPI MD4Init(PMD4_CTX pCtx);
 extern VOID WINAPI MD4Update(PMD4_CTX pCtx, LPCVOID data, DWORD cbData);

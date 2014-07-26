@@ -7,6 +7,7 @@
 #include "kuhl_m.h"
 #include "../modules/kull_m_string.h"
 #include "../modules/kull_m_token.h"
+#include "../modules/kull_m_patch.h"
 
 const KUHL_M kuhl_m_vault;
 
@@ -139,7 +140,7 @@ typedef struct _VAULT_ITEM_7 {
 	FILETIME LastWritten;
 	DWORD Flags;
 	DWORD cbProperties;
-	PVAULT_ITEM_DATA Properties[ANYSIZE_ARRAY];
+	PVAULT_ITEM_DATA Properties;
 } VAULT_ITEM_7, *PVAULT_ITEM_7;
 
 typedef struct _VAULT_ITEM_8 {
@@ -152,7 +153,7 @@ typedef struct _VAULT_ITEM_8 {
 	FILETIME LastWritten;
 	DWORD Flags;
 	DWORD cbProperties;
-	PVAULT_ITEM_DATA Properties[ANYSIZE_ARRAY];
+	PVAULT_ITEM_DATA Properties;
 } VAULT_ITEM_8, *PVAULT_ITEM_8;
 
 typedef struct _VAULT_ITEM_TYPE {
@@ -173,4 +174,5 @@ typedef NTSTATUS	(WINAPI * PVAULTGETINFORMATION) (HANDLE vault, DWORD unk0, PVAU
 typedef NTSTATUS	(WINAPI * PVAULTENUMERATEITEMS) (HANDLE vault, DWORD unk0, PDWORD cbItems, PVOID * items);
 typedef NTSTATUS	(WINAPI * PVAULTENUMERATEITEMTYPES) (HANDLE vault, DWORD unk0, PDWORD cbItemTypes, PVAULT_ITEM_TYPE * itemTypes);
 
+typedef NTSTATUS	(WINAPI * PVAULTGETITEM7) (HANDLE vault, LPGUID SchemaId, PVAULT_ITEM_DATA Resource, PVAULT_ITEM_DATA Identity, HWND hWnd, DWORD Flags, PVAULT_ITEM_7 * pItem);
 typedef NTSTATUS	(WINAPI * PVAULTGETITEM8) (HANDLE vault, LPGUID SchemaId, PVAULT_ITEM_DATA Resource, PVAULT_ITEM_DATA Identity, PVAULT_ITEM_DATA PackageSid, HWND hWnd, DWORD Flags, PVAULT_ITEM_8 * pItem);

@@ -23,8 +23,6 @@
 #include "modules/kuhl_m_net.h"
 #endif
 
-#include "modules/kuhl_m_kernel.h"
-
 #include <io.h>
 #include <fcntl.h>
 

