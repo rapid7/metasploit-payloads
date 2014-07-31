@@ -2,12 +2,12 @@
  * @file posix/base_inject.h
  * @brief Declarations for functions which provide meterpreter library injection.
  * @details These functions are used in order to migrate meterpreter, using 
- *					ptrace to debug the new process host, allocate memory for the 
- *					meterpreter stage and a new stack, and give control. If something
- *					fails while migration, it should be able to restore the new host
- *					process and continue execution. Once migration is completed, the
- *					original process code isn't executed anymore, this could be solved,
- *					maybe, using clone to execute the meterpreter stage in a new LWP.
+ *          ptrace to debug the new process host, allocate memory for the 
+ *          meterpreter stage and a new stack, and give control. If something
+ *          fails while migration, it should be able to restore the new host
+ *          process and continue execution. Once migration is completed, the
+ *          original process code isn't executed anymore, this could be solved,
+ *          maybe, using clone to execute the meterpreter stage in a new LWP.
  */
 #include "common.h"
 
