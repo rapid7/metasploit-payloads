@@ -224,7 +224,7 @@ call(LONG pid, struct user_regs_struct *regs, unsigned long addr) {
 	
 	// Fix call stub with entry point
 	addr_ptr[0] = addr;
-	if (debugging_enabled = 1) {
+	if (debugging_enabled == 1) {
 		addr_options_ptr[0] = 5; // Enable Debugging
 	} else {
 		addr_options_ptr[0] = 4; // Enable PASSFD (socket sharing)
