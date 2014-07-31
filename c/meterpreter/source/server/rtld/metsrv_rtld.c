@@ -66,8 +66,8 @@ int dlsocket(void *libc);
 int pass_fd(void *libc); 
 void perform_fd_cleanup(int *fd);
 
-#define OPT_DEBUG_ENABLE	(1 << 0)
-#define OPT_NO_FD_CLEANUP	(1 << 1)
+#define OPT_DEBUG_ENABLE  (1 << 0)
+#define OPT_NO_FD_CLEANUP (1 << 1)
 #define OPT_PASS_FD       (1 << 2)
 
 int global_debug = 0;
@@ -86,15 +86,8 @@ unsigned metsrv_rtld(int fd, int options)
 	struct stat statbuf;
 
 	INFO("[ preparing to link. fd = %d ]\n", fd);
-	INFO("[libs size: %d]\n", sizeof(libs));
-	INFO("[libs location: 0x%x ]\n", libs);
-	unsigned int *libs_ptr;
-	libs_ptr = (unsigned int *)libs;
-	for(i = 0; i < sizeof(libs) / 4; i++) {
-		INFO("libs[%d] = 0x%x\n", i, libs_ptr[i]);	
-	}	
+
 	for(i = 0; i < sizeof(libs) / sizeof(struct libs); i++) {
-		INFO("[ calling dlopen for %s ] \n", libs[i].name);
 		libs[i].handle = (void *) dlopenbuf(libs[i].name, libs[i].buf, libs[i].size);
 		if(! libs[i].handle) {
 			TRACE("[ failed to load %s/%08x/%08x, bailing ]\n", libs[i].name, libs[i].buf, libs[i].size);
@@ -162,7 +155,6 @@ unsigned metsrv_rtld(int fd, int options)
 	}
 
 	if(options & OPT_DEBUG_ENABLE) {
-		TRACE("[ enable debugging... ]\n");
 		void (*enable_debugging)();
 
 		enable_debugging = dlsym(libs[LIBSUPPORT_IDX].handle, "enable_debugging");
@@ -172,15 +164,11 @@ unsigned metsrv_rtld(int fd, int options)
 		}
 		global_debug = 1;
 		enable_debugging();
-	} else {
-		TRACE("[ NOT enable debugging... ]\n");
-		TRACE("[ options: %d ] \n", options);
 	}
 
 	TRACE("[ logging will stop unless OPT_NO_FD_CLEANUP is set ]\n");
 
 	if(!(options & OPT_NO_FD_CLEANUP)) {
-		TRACE("[ perform_fd_cleanup ]\n");
 		perform_fd_cleanup(&fd);
 	}
 
