@@ -42,6 +42,11 @@
 
 #include <sys/atomics.h>
 
+#include <sys/ptrace.h>
+#include <user.h>
+#include <errno.h>
+#include <sys/un.h>
+
 #define FLAGS_LEN 100
 
 typedef struct ___u128 {
