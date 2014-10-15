@@ -281,7 +281,7 @@ static BOOL server_negotiate_ssl(Remote *remote)
 	{
 		fd = remote_get_fd(remote);
 
-		remote->meth = SSLv3_client_method();
+		remote->meth = TLSv1_client_method();
 
 		remote->ctx  = SSL_CTX_new(remote->meth);
 		SSL_CTX_set_mode(remote->ctx, SSL_MODE_AUTO_RETRY);
