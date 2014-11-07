@@ -105,6 +105,7 @@ Command customCommands[] =
 
 	// Sys/config
 	COMMAND_REQ("stdapi_sys_config_getuid", request_sys_config_getuid),
+	COMMAND_REQ("stdapi_sys_config_getsid", request_sys_config_getsid),
 	COMMAND_REQ("stdapi_sys_config_sysinfo", request_sys_config_sysinfo),
 	COMMAND_REQ("stdapi_sys_config_rev2self", request_sys_config_rev2self),
 	COMMAND_REQ("stdapi_sys_config_getprivs", request_sys_config_getprivs),

