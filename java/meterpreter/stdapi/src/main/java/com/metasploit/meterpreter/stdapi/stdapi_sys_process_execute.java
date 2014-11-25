@@ -37,7 +37,7 @@ public class stdapi_sys_process_execute implements Command {
 			synchronized (stdapi_sys_process_execute.class) {
 				pid++;
 				response.add(TLVType.TLV_TYPE_PID, pid);
-				response.add(TLVType.TLV_TYPE_PROCESS_HANDLE, pid);
+				response.add(TLVType.TLV_TYPE_PROCESS_HANDLE, new Long(pid));
 			}
 			response.add(TLVType.TLV_TYPE_CHANNEL_ID, channel.getID());
 		} else {

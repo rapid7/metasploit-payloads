@@ -26,6 +26,7 @@ public class TLVPacket {
 	public static final int TLV_META_TYPE_UINT = (1 << 17);
 	public static final int TLV_META_TYPE_RAW = (1 << 18);
 	public static final int TLV_META_TYPE_BOOL = (1 << 19);
+	public static final int TLV_META_TYPE_QWORD = (1 << 20);
 	public static final int TLV_META_TYPE_COMPRESSED = (1 << 29);
 	public static final int TLV_META_TYPE_GROUP = (1 << 30);
 	public static final int TLV_META_TYPE_COMPLEX = (1 << 31);
@@ -85,6 +86,8 @@ public class TLVPacket {
 				if (string.indexOf('\0') != -1)
 					throw new IOException("Embedded null detected: " + string);
 				value = string;
+			} else if ((type & TLV_META_TYPE_QWORD) != 0 && len == 16) {
+				value = new Long(in.readLong());
 			} else if ((type & TLV_META_TYPE_UINT) != 0 && len == 12) {
 				value = new Integer(in.readInt());
 			} else if ((type & TLV_META_TYPE_BOOL) != 0 && len == 9) {
@@ -127,6 +130,13 @@ public class TLVPacket {
 	public void addOverflow(int type, Object value) throws IOException {
 		overflowList.add(new Integer(type));
 		overflowList.add(value);
+	}
+
+	/**
+	 * Add a TLV value to this object.
+	 */
+	public void add(int type, long value) throws IOException {
+		add(type, new Long(value));
 	}
 
 	/**
@@ -187,6 +197,13 @@ public class TLVPacket {
 	/**
 	 * Get the value associated to a type as an int.
 	 */
+	public long getLongValue(int type) {
+		return ((Long) getValue(type)).longValue();
+	}
+
+	/**
+	 * Get the value associated to a type as an int.
+	 */
 	public int getIntValue(int type) {
 		return ((Integer) getValue(type)).intValue();
 	}
@@ -230,6 +247,11 @@ public class TLVPacket {
 		byte[] data;
 		if ((type & TLV_META_TYPE_STRING) != 0) {
 			data = ((String) value + "\0").getBytes("ISO-8859-1");
+		} else if ((type & TLV_META_TYPE_QWORD) != 0) {
+			out.writeInt(16);
+			out.writeInt(type);
+			out.writeLong(((Long) value).longValue());
+			return;
 		} else if ((type & TLV_META_TYPE_UINT) != 0) {
 			out.writeInt(12);
 			out.writeInt(type);
