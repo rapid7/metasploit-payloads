@@ -92,7 +92,7 @@
 											</fileset>
 											<zipfileset src="${com.metasploit:Metasploit-JavaPayload:jar}" includes="javapayload/stage/StreamForwarder.class" />
 										</copy>
-										<exec executable="${android.sdk.path}/platform-tools/${dx.filename}" failonerror="true">
+										<exec executable="${android.sdk.path}/platforms/android-3/tools/${dx.filename}" failonerror="true">
 											<arg value="--verbose" />
 											<arg value="--dex" />
 											<arg value="--output=${project.basedir}/../../${deploy.path}/data/android/shell.jar" />
@@ -107,7 +107,7 @@
 												<include name="androidpayload/stage/Stage.class" />
 											</fileset>
 										</copy>
-										<exec executable="${android.sdk.path}/platform-tools/${dx.filename}" failonerror="true">
+										<exec executable="${android.sdk.path}/platforms/android-3/tools/${dx.filename}" failonerror="true">
 											<arg value="--verbose" />
 											<arg value="--dex" />
 											<arg value="--output=${project.basedir}/../../${deploy.path}/data/android/metstage.jar" />
@@ -119,7 +119,7 @@
 										<copy todir="${project.basedir}/target/dx/meterpreter">
 											<fileset dir="${project.basedir}/target/classes" includes="com/metasploit/meterpreter/**/*.class" />
 										</copy>
-										<exec executable="${android.sdk.path}/platform-tools/${dx.filename}" failonerror="true">
+										<exec executable="${android.sdk.path}/platforms/android-3/tools/${dx.filename}" failonerror="true">
 											<arg value="--verbose" />
 											<arg value="--dex" />
 											<arg value="--output=${project.basedir}/../../${deploy.path}/data/android/meterpreter.jar" />
