@@ -85,12 +85,10 @@ public class AndroidMeterpreter extends Meterpreter {
     public AndroidMeterpreter(DataInputStream in, OutputStream rawOut, String[] parameters, boolean redirectErrors) throws Exception {
         super(in, rawOut, true, redirectErrors, false);
         writeableDir = parameters[0];
-        Log.e(getClass().getName(), "dir " + writeableDir);
         try {
             findContext();
         } catch (Exception e) {
             e.printStackTrace();
-            Log.e(getClass().getName(), "except " + e.toString());
             startExecuting();
         }
     }
