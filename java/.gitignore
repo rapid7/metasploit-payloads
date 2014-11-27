@@ -8,10 +8,12 @@
 */*/.settings
 */*/bin
 */*/target
+*.iml
 *.swp
 *.orig
 *.rej
 *~
+.idea/
 androidpayload/ndkstager/libs
 androidpayload/ndkstager/obj
 .DS_Store
