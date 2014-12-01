@@ -3,7 +3,6 @@ package com.metasploit.meterpreter;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
-import android.util.Log;
 
 import com.metasploit.meterpreter.android.check_root_android;
 import com.metasploit.meterpreter.android.dump_calllog_android;
@@ -54,7 +53,6 @@ public class AndroidMeterpreter extends Meterpreter {
         final Class<?> activityThreadClass = Class.forName("android.app.ActivityThread");
         final Method currentApplication = activityThreadClass.getMethod("currentApplication");
         context = (Context) currentApplication.invoke(null, (Object[]) null);
-        Log.e(getClass().getName(), "context " + context);
         if (context == null) {
             Handler handler = new Handler(Looper.getMainLooper());
             handler.post(new Runnable() {
@@ -62,7 +60,6 @@ public class AndroidMeterpreter extends Meterpreter {
                 public void run() {
                     try {
                         context = (Context) currentApplication.invoke(null, (Object[]) null);
-                        Log.e(getClass().getName(), "curcontext " + context);
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
