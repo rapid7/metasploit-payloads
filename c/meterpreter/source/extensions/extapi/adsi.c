@@ -11,7 +11,7 @@
 #define DEFAULT_PAGE_SIZE 1000
 
 /*!
- * @brief Perform an ASDI query against a domain.
+ * @brief Perform an ADSI query against a domain.
  * @param remote Pointer to the \c Remote instance.
  * @param packet Pointer to the incoming \c Packet instance.
  * @returns Indication of success or failure.
@@ -56,10 +56,10 @@ DWORD request_adsi_domain_query(Remote *remote, Packet *packet)
 			break;
 		}
 
-		maxResults = packet_get_tlv_value_uint(packet, TLV_TYPE_EXT_ASDI_MAXRESULTS);
+		maxResults = packet_get_tlv_value_uint(packet, TLV_TYPE_EXT_ADSI_MAXRESULTS);
 		dprintf("[EXTAPI ADSI] Max results will be %u", maxResults);
 
-		pageSize = packet_get_tlv_value_uint(packet, TLV_TYPE_EXT_ASDI_PAGESIZE);
+		pageSize = packet_get_tlv_value_uint(packet, TLV_TYPE_EXT_ADSI_PAGESIZE);
 		dprintf("[EXTAPI ADSI] Page size specified as %u", pageSize);
 
 		// Set the page size to something sensible if not given.

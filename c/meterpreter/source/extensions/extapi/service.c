@@ -624,36 +624,15 @@ DWORD execute_service_task(LPCSTR cpServiceName, ServiceOperation eServiceOp, Pa
  */
 VOID add_enumerated_service(Packet *pResponse, LPCSTR cpName, LPCSTR cpDisplayName, DWORD dwProcessId, DWORD dwStatus, BOOL bInteractive)
 {
-	Tlv entries[5] = { 0 };
-	dprintf("[EXTAPI SERVICE] Adding Name: %s", cpName);
-	entries[0].header.type = TLV_TYPE_EXT_SERVICE_ENUM_NAME;
-	entries[0].header.length = (DWORD)strlen(cpName) + 1;
-	entries[0].buffer = (PUCHAR)cpName;
+	Packet* pGroup = packet_create_group();
 
-	dprintf("[EXTAPI SERVICE] Adding Display Name: %s", cpDisplayName);
-	entries[1].header.type = TLV_TYPE_EXT_SERVICE_ENUM_DISPLAYNAME;
-	entries[1].header.length = (DWORD)strlen(cpDisplayName) + 1;
-	entries[1].buffer = (PUCHAR)cpDisplayName;
+	packet_add_tlv_string(pGroup, TLV_TYPE_EXT_SERVICE_ENUM_NAME, cpName);
+	packet_add_tlv_string(pGroup, TLV_TYPE_EXT_SERVICE_ENUM_DISPLAYNAME, cpDisplayName);
+	packet_add_tlv_uint(pGroup, TLV_TYPE_EXT_SERVICE_ENUM_PID, dwProcessId);
+	packet_add_tlv_uint(pGroup, TLV_TYPE_EXT_SERVICE_ENUM_STATUS, dwStatus);
+	packet_add_tlv_bool(pGroup, TLV_TYPE_EXT_SERVICE_ENUM_INTERACTIVE, bInteractive);
 
-	dprintf("[EXTAPI SERVICE] Adding PID: %u", dwProcessId);
-	dwProcessId = htonl(dwProcessId);
-	entries[2].header.type = TLV_TYPE_EXT_SERVICE_ENUM_PID;
-	entries[2].header.length = sizeof(DWORD);
-	entries[2].buffer = (PUCHAR)&dwProcessId;
-
-	dprintf("[EXTAPI SERVICE] Adding Status: %u", dwStatus);
-	dwStatus = htonl(dwStatus);
-	entries[3].header.type = TLV_TYPE_EXT_SERVICE_ENUM_STATUS;
-	entries[3].header.length = sizeof(DWORD);
-	entries[3].buffer = (PUCHAR)&dwStatus;
-
-	dprintf("[EXTAPI SERVICE] Adding Status: %s", (bInteractive ? "TRUE" : "FALSE"));
-	entries[4].header.type = TLV_TYPE_EXT_SERVICE_ENUM_INTERACTIVE;
-	entries[4].header.length = sizeof(BOOL);
-	entries[4].buffer = (PUCHAR)&bInteractive;
-
-	dprintf("[EXTAPI SERVICE] Adding group to response");
-	packet_add_tlv_group(pResponse, TLV_TYPE_EXT_SERVICE_ENUM_GROUP, entries, 5);
+	packet_add_group(pResponse, TLV_TYPE_EXT_SERVICE_ENUM_GROUP, pGroup);
 }
 
 /*!

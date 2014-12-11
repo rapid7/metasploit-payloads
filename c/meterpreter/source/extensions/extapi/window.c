@@ -195,25 +195,11 @@ DWORD request_window_enum(Remote *remote, Packet *packet)
  */
 VOID add_enumerated_window(Packet *pResponse, QWORD qwHandle, const char* cpWindowTitle, DWORD dwProcessId)
 {
-	Tlv entries[4] = { 0 };
+	Packet* pGroup = packet_create_group();
 
-	dprintf("[EXTAPI WINDOW] Adding PID: %u", dwProcessId);
-	dwProcessId = htonl(dwProcessId);
-	entries[0].header.type = TLV_TYPE_EXT_WINDOW_ENUM_PID;
-	entries[0].header.length = sizeof(DWORD);
-	entries[0].buffer = (PUCHAR)&dwProcessId;
+	packet_add_tlv_uint(pGroup, TLV_TYPE_EXT_WINDOW_ENUM_PID, dwProcessId);
+	packet_add_tlv_qword(pGroup, TLV_TYPE_EXT_WINDOW_ENUM_HANDLE, qwHandle);
+	packet_add_tlv_string(pGroup, TLV_TYPE_EXT_WINDOW_ENUM_TITLE, cpWindowTitle);
 
-	dprintf("[EXTAPI WINDOW] Adding Handle: %p", qwHandle);
-	qwHandle = htonq(qwHandle);
-	entries[1].header.type = TLV_TYPE_EXT_WINDOW_ENUM_HANDLE;
-	entries[1].header.length = sizeof(QWORD);
-	entries[1].buffer = (PUCHAR)&qwHandle;
-
-	dprintf("[EXTAPI WINDOW] Adding title: %s", cpWindowTitle);
-	entries[2].header.type = TLV_TYPE_EXT_WINDOW_ENUM_TITLE;
-	entries[2].header.length = (DWORD)strlen(cpWindowTitle) + 1;
-	entries[2].buffer = (PUCHAR)cpWindowTitle;
-
-	dprintf("[EXTAPI WINDOW] Adding group to response");
-	packet_add_tlv_group(pResponse, TLV_TYPE_EXT_WINDOW_ENUM_GROUP, entries, 3);
+	packet_add_group(pResponse, TLV_TYPE_EXT_WINDOW_ENUM_GROUP, pGroup);
 }
