@@ -175,11 +175,7 @@ DWORD request_fs_file_channel_open(Remote *remote, Packet *packet)
 		// Invalid file?
 		if (!(ctx->fd = fopen(expandedFilePath, mode)))
 		{
-#ifdef _WIN32
 			res = GetLastError();
-#else
-			res = errno;
-#endif
 			break;
 		}
 
@@ -312,7 +308,7 @@ DWORD request_fs_delete_file(Remote *remote, Packet *packet)
 #ifdef _WIN32
 	else if (!DeleteFile(path))
 #else
-	else if (!unlink(path))
+	else if (unlink(path))
 #endif
 		result = GetLastError();
 
@@ -510,7 +506,7 @@ DWORD request_fs_file_move(Remote *remote, Packet *packet)
 #ifdef _WIN32
 	else if (!MoveFile(oldpath,newpath))
 #else
-	else if (!rename(oldpath,newpath))
+	else if (rename(oldpath,newpath))
 #endif
 		result = GetLastError();
 
