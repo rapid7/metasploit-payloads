@@ -101,6 +101,10 @@ Command customCommands[] =
 	COMMAND_REQ("stdapi_registry_query_class", request_registry_query_class),
 	COMMAND_REQ("stdapi_registry_enum_value", request_registry_enum_value),
 	COMMAND_REQ("stdapi_registry_delete_value", request_registry_delete_value),
+	COMMAND_REQ("stdapi_registry_enum_key_direct", request_registry_enum_key_direct),
+	COMMAND_REQ("stdapi_registry_enum_value_direct", request_registry_enum_value_direct),
+	COMMAND_REQ("stdapi_registry_query_value_direct", request_registry_query_value_direct),
+	COMMAND_REQ("stdapi_registry_set_value_direct", request_registry_set_value_direct),
 #endif
 
 	// Sys/config

@@ -49,16 +49,15 @@ DWORD request_registry_check_key_exists(Remote *remote, Packet *packet)
 }
 
 /*
- * Opens a registry key and returns the associated HKEY to the caller if the
- * operation succeeds.  Right now this is just a wrapper around create_key
+ * Creates a subkey and loads data from the specified registry hive into that
+ * subkey.
  *
  * TLVs:
  *
  * req: TLV_TYPE_ROOT_KEY   - The root key
  * req: TLV_TYPE_BASE_KEY   - The base key
- * opt: TLV_TYPE_PERMISSION - Permissions with which to open the key
+ * opt: TLV_TYPE_FILE_PATH  - Hive file to load
  */
-
 DWORD request_registry_load_key(Remote *remote, Packet *packet)
 {
 	Packet *response = packet_create_response(packet);
@@ -69,7 +68,7 @@ DWORD request_registry_load_key(Remote *remote, Packet *packet)
 
 	rootKey    = (HKEY)packet_get_tlv_value_qword(packet, TLV_TYPE_ROOT_KEY);
 	baseKey    = packet_get_tlv_value_string(packet, TLV_TYPE_BASE_KEY);
-	hiveFile   = packet_get_tlv_value_string(packet, TLV_TYPE_FILE_PATH);	
+	hiveFile   = packet_get_tlv_value_string(packet, TLV_TYPE_FILE_PATH);
 
 	if ((!rootKey) || (!baseKey) || (!hiveFile))
 		result = ERROR_INVALID_PARAMETER;
@@ -103,29 +102,45 @@ DWORD request_registry_unload_key(Remote *remote, Packet *packet)
 	return ERROR_SUCCESS;
 }
 
-
-DWORD request_registry_open_key(Remote *remote, Packet *packet)
+static DWORD open_key(Packet *packet, HKEY *rootKey, HKEY *resKey)
 {
-	Packet *response = packet_create_response(packet);
 	LPCTSTR baseKey = NULL;
-	HKEY rootKey = NULL, resKey;
+	DWORD result = ERROR_INVALID_PARAMETER;
 	DWORD permission;
-	DWORD result;
 
-	rootKey    = (HKEY)packet_get_tlv_value_qword(packet, TLV_TYPE_ROOT_KEY);
+	*rootKey    = (HKEY)packet_get_tlv_value_qword(packet, TLV_TYPE_ROOT_KEY);
 	baseKey    = packet_get_tlv_value_string(packet, TLV_TYPE_BASE_KEY);
 	permission = packet_get_tlv_value_uint(packet, TLV_TYPE_PERMISSION);
 
 	// Validate the parameters and then attempt to create the key
-	if ((!rootKey) || (!baseKey))
-		result = ERROR_INVALID_PARAMETER;
-	else
+	if (rootKey && baseKey)
 	{
 		if (!permission)
 			permission = KEY_ALL_ACCESS;
-		
-		result = RegOpenKeyEx(rootKey, baseKey, 0, permission, &resKey);
+
+		result = RegOpenKeyEx(*rootKey, baseKey, 0, permission, resKey);
 	}
+
+	return result;
+}
+
+/*
+ * Opens a registry key and returns the associated HKEY to the caller if the
+ * operation succeeds.
+ *
+ * TLVs:
+ *
+ * req: TLV_TYPE_ROOT_KEY   - The root key
+ * req: TLV_TYPE_BASE_KEY   - The base key
+ * opt: TLV_TYPE_PERMISSION - Permissions with which to open the key
+ */
+DWORD request_registry_open_key(Remote *remote, Packet *packet)
+{
+	Packet *response = packet_create_response(packet);
+	DWORD result;
+	HKEY rootKey, resKey;
+
+	result = open_key(packet, &rootKey, &resKey);
 
 	// Add the HKEY if we succeeded, but always return a result
 	if (result == ERROR_SUCCESS)
@@ -139,7 +154,6 @@ DWORD request_registry_open_key(Remote *remote, Packet *packet)
 
 	return ERROR_SUCCESS;
 }
-
 
 /*
  * Opens a remote registry key and returns the associated HKEY to the caller if the
@@ -165,7 +179,7 @@ DWORD request_registry_open_remote_key(Remote *remote, Packet *packet)
 		result = ERROR_INVALID_PARAMETER;
 	else
 	{
-		result = RegConnectRegistry(targetHost, rootKey, &resKey);	
+		result = RegConnectRegistry(targetHost, rootKey, &resKey);
 	}
 
 	// Add the HKEY if we succeeded, but always return a result
@@ -180,7 +194,6 @@ DWORD request_registry_open_remote_key(Remote *remote, Packet *packet)
 
 	return ERROR_SUCCESS;
 }
-
 
 /*
  * Creates a registry key and returns the associated HKEY to the caller if the
@@ -211,7 +224,7 @@ DWORD request_registry_create_key(Remote *remote, Packet *packet)
 	{
 		if (!permission)
 			permission = KEY_ALL_ACCESS;
-		
+
 		result = RegCreateKeyEx(rootKey, baseKey, 0, NULL, 0,
 				permission, NULL, &resKey, NULL);
 	}
@@ -229,19 +242,10 @@ DWORD request_registry_create_key(Remote *remote, Packet *packet)
 	return ERROR_SUCCESS;
 }
 
-/*
- * Enumerates a supplied registry key and returns a list of all the direct
- * sub-keys.
- *
- * TLVs:
- *
- * req: TLV_TYPE_HKEY - The HKEY that is to be enumerated
- */
-DWORD request_registry_enum_key(Remote *remote, Packet *packet)
+static void enum_key(Remote *remote, Packet *packet, HKEY hkey)
 {
 	Packet *response = packet_create_response(packet);
 	DWORD result;
-	HKEY hkey = (HKEY)packet_get_tlv_value_qword(packet, TLV_TYPE_HKEY);
 
 	if (!hkey)
 		result = ERROR_INVALID_PARAMETER;
@@ -270,7 +274,7 @@ DWORD request_registry_enum_key(Remote *remote, Packet *packet)
 				free(name);
 
 				nameSize *= 2;
-				name      = NULL;
+				name = NULL;
 
 				tries++;
 
@@ -291,7 +295,7 @@ DWORD request_registry_enum_key(Remote *remote, Packet *packet)
 
 			// Add the registry key name
 			packet_add_tlv_string(response, TLV_TYPE_KEY_NAME,
-					name);
+				name);
 
 			// Next entry
 			index++;
@@ -302,6 +306,42 @@ DWORD request_registry_enum_key(Remote *remote, Packet *packet)
 	packet_add_tlv_uint(response, TLV_TYPE_RESULT, result);
 
 	packet_transmit(remote, response, NULL);
+}
+
+/*
+ * Enumerates a supplied registry key and returns a list of all the direct
+ * sub-keys.
+ *
+ * TLVs:
+ *
+ * req: TLV_TYPE_HKEY - The HKEY that is to be enumerated
+ */
+DWORD request_registry_enum_key(Remote *remote, Packet *packet)
+{
+	HKEY hkey = (HKEY)packet_get_tlv_value_qword(packet, TLV_TYPE_HKEY);
+	enum_key(remote, packet, hkey);
+
+	return ERROR_SUCCESS;
+}
+
+/*
+ * Enumerates a supplied registry key and returns a list of all the direct
+ * sub-keys.
+ *
+ * TLVs:
+ *
+ * req: TLV_TYPE_ROOT_KEY   - The root key
+ * req: TLV_TYPE_BASE_KEY   - The base key
+ * opt: TLV_TYPE_PERMISSION - Permissions with which to open the key
+ */
+DWORD request_registry_enum_key_direct(Remote *remote, Packet *packet)
+{
+	HKEY rootkey, hkey = NULL;
+
+	open_key(packet, &rootkey, &hkey);
+	enum_key(remote, packet, hkey);
+	if (hkey)
+		RegCloseKey(hkey);
 
 	return ERROR_SUCCESS;
 }
@@ -328,7 +368,7 @@ DWORD request_registry_delete_key(Remote *remote, Packet *packet)
 	baseKey = packet_get_tlv_value_string(packet, TLV_TYPE_BASE_KEY);
 	flags   = packet_get_tlv_value_uint(packet, TLV_TYPE_FLAGS);
 
-	if ((!rootKey) || 
+	if ((!rootKey) ||
 	    (!baseKey))
 		result = ERROR_INVALID_PARAMETER;
 	else
@@ -374,6 +414,41 @@ DWORD request_registry_close_key(Remote *remote, Packet *packet)
 	return ERROR_SUCCESS;
 }
 
+static void set_value(Remote *remote, Packet *packet, HKEY hkey)
+{
+	Packet *response = packet_create_response(packet);
+	LPCSTR valueName = NULL;
+	DWORD valueType = 0;
+	DWORD result = ERROR_SUCCESS;
+	Tlv valueData;
+
+	// Acquire the standard TLVs
+	valueName = packet_get_tlv_value_string(packet, TLV_TYPE_VALUE_NAME);
+	valueType = packet_get_tlv_value_uint(packet, TLV_TYPE_VALUE_TYPE);
+
+	do
+	{
+		// Get the value data TLV
+		if (packet_get_tlv(packet, TLV_TYPE_VALUE_DATA,
+			&valueData) != ERROR_SUCCESS)
+		{
+			result = ERROR_INVALID_PARAMETER;
+			break;
+		}
+
+		// Now let's rock this shit!
+		result = RegSetValueEx(hkey, valueName, 0, valueType,
+			valueData.buffer, valueData.header.length);
+
+	} while (0);
+
+	// Populate the result code
+	packet_add_tlv_uint(response, TLV_TYPE_RESULT, result);
+
+	// Transmit the response
+	packet_transmit(remote, response, NULL);
+}
+
 /*
  * Sets a registry value with the supplied data for a given HKEY.
  *
@@ -386,32 +461,80 @@ DWORD request_registry_close_key(Remote *remote, Packet *packet)
  */
 DWORD request_registry_set_value(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
-	LPCSTR valueName = NULL;
-	DWORD valueType = 0;
-	DWORD result = ERROR_SUCCESS;
-	HKEY hkey = NULL;
-	Tlv valueData;
+	HKEY hkey = (HKEY)packet_get_tlv_value_qword(packet, TLV_TYPE_HKEY);
+	set_value(remote, packet, hkey);
 
-	// Acquire the standard TLVs
-	hkey      = (HKEY)packet_get_tlv_value_qword(packet, TLV_TYPE_HKEY);
+	return ERROR_SUCCESS;
+}
+
+/*
+ * Sets a registry value with the supplied data for a given HKEY.
+ *
+ * TLVs:
+ *
+ * req: TLV_TYPE_ROOT_KEY   - The root key
+ * req: TLV_TYPE_BASE_KEY   - The base key
+ * opt: TLV_TYPE_PERMISSION - Permissions with which to open the key
+ * req: TLV_TYPE_VALUE_NAME - The name of the value to set
+ * req: TLV_TYPE_VALUE_TYPE - The type of the value to set
+ * req: TLV_TYPE_VALUE_DATA - The data to set the value to
+ */
+DWORD request_registry_set_value_direct(Remote *remote, Packet *packet)
+{
+	HKEY rootkey, hkey = NULL;
+
+	open_key(packet, &rootkey, &hkey);
+	set_value(remote, packet, hkey);
+	if (hkey)
+		RegCloseKey(hkey);
+
+	return ERROR_SUCCESS;
+}
+
+static void query_value(Remote *remote, Packet *packet, HKEY hkey)
+{
+	Packet *response = packet_create_response(packet);
+	LPCSTR valueName;
+	LPBYTE valueData = NULL;
+	DWORD valueDataSize = 4096;
+	DWORD result = ERROR_SUCCESS;
+	DWORD valueType = 0;
+
 	valueName = packet_get_tlv_value_string(packet, TLV_TYPE_VALUE_NAME);
-	valueType = packet_get_tlv_value_uint(packet, TLV_TYPE_VALUE_TYPE);
-	
-	do
-	{
-		// Get the value data TLV
-		if (packet_get_tlv(packet, TLV_TYPE_VALUE_DATA, 
-				&valueData) != ERROR_SUCCESS)
+
+	do {
+		// Get the size of the value data
+		if ((result = RegQueryValueEx(hkey, valueName, 0, NULL, NULL,
+			&valueDataSize)) != ERROR_SUCCESS)
+			break;
+
+		// Allocate storage for the value data
+		if (!(valueData = (LPBYTE)malloc(valueDataSize)))
+			continue;
+
+		// Query the value's information
+		if ((result = RegQueryValueEx(hkey, valueName, 0, &valueType, valueData,
+			&valueDataSize)) != ERROR_SUCCESS)
+			break;
+
+		// Add the information about the value to the response
+		packet_add_tlv_uint(response, TLV_TYPE_VALUE_TYPE, valueType);
+
+		switch (valueType)
 		{
-			result = ERROR_INVALID_PARAMETER;
+		case REG_SZ:
+			packet_add_tlv_string(response, TLV_TYPE_VALUE_DATA,
+				(LPCSTR)valueData);
+			break;
+		case REG_DWORD:
+			packet_add_tlv_uint(response, TLV_TYPE_VALUE_DATA,
+				*(LPDWORD)valueData);
+			break;
+		default:
+			packet_add_tlv_raw(response, TLV_TYPE_VALUE_DATA,
+				valueData, valueDataSize);
 			break;
 		}
-
-		// Now let's rock this shit!
-		result = RegSetValueEx(hkey, valueName, 0, valueType, 
-				valueData.buffer, valueData.header.length);
-
 	} while (0);
 
 	// Populate the result code
@@ -419,8 +542,6 @@ DWORD request_registry_set_value(Remote *remote, Packet *packet)
 
 	// Transmit the response
 	packet_transmit(remote, response, NULL);
-
-	return ERROR_SUCCESS;
 }
 
 /*
@@ -433,76 +554,38 @@ DWORD request_registry_set_value(Remote *remote, Packet *packet)
  */
 DWORD request_registry_query_value(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
-	LPCSTR valueName = NULL;
-	LPBYTE valueData = NULL;
-	DWORD valueDataSize = 4096;
-	DWORD result = ERROR_SUCCESS;
-	DWORD valueType = 0;
-	HKEY hkey = NULL;
-
-	// Acquire the standard TLVs
-	hkey      = (HKEY)packet_get_tlv_value_qword(packet, TLV_TYPE_HKEY);
-	valueName = packet_get_tlv_value_string(packet, TLV_TYPE_VALUE_NAME);
-
-	do
-	{
-		// Get the size of the value data
-		if ((result = RegQueryValueEx(hkey, valueName, 0, NULL, NULL, 
-				&valueDataSize)) != ERROR_SUCCESS)
-			break;
-
-		// Allocate storage for the value data
-		if (!(valueData = (LPBYTE)malloc(valueDataSize)))
-			continue;
-
-		// Query the value's information
-		if ((result = RegQueryValueEx(hkey, valueName, 0, &valueType, valueData,
-				&valueDataSize)) != ERROR_SUCCESS)
-			break;
-
-		// Add the information about the value to the response
-		packet_add_tlv_uint(response, TLV_TYPE_VALUE_TYPE, valueType);
-
-		switch (valueType)
-		{
-			case REG_SZ:
-				packet_add_tlv_string(response, TLV_TYPE_VALUE_DATA, 
-						(LPCSTR)valueData);
-				break;
-			case REG_DWORD:
-				packet_add_tlv_uint(response, TLV_TYPE_VALUE_DATA,
-						*(LPDWORD)valueData);
-				break;
-			default:
-				packet_add_tlv_raw(response, TLV_TYPE_VALUE_DATA,
-						valueData, valueDataSize);
-				break;
-		}
-
-	} while (0);
-
-	// Populate the result code
-	packet_add_tlv_uint(response, TLV_TYPE_RESULT, result);
-
-	// Transmit the response
-	packet_transmit(remote, response, NULL);
+	HKEY hkey = (HKEY)packet_get_tlv_value_qword(packet, TLV_TYPE_HKEY);
+	query_value(remote, packet, hkey);
 
 	return ERROR_SUCCESS;
 }
 
 /*
- * Enumerates all of the values at the supplied HKEY.
+ * Queries a registry value's type and data for a given HKEY.
  *
  * TLVs:
  *
- * req: TLV_TYPE_HKEY - The HKEY that will have its values enumerated.
+ * req: TLV_TYPE_ROOT_KEY   - The root key
+ * req: TLV_TYPE_BASE_KEY   - The base key
+ * opt: TLV_TYPE_PERMISSION - Permissions with which to open the key
+ * req: TLV_TYPE_VALUE_NAME - The name of the value to query
  */
-DWORD request_registry_enum_value(Remote *remote, Packet *packet)
+DWORD request_registry_query_value_direct(Remote *remote, Packet *packet)
+{
+	HKEY rootkey, hkey = NULL;
+
+	open_key(packet, &rootkey, &hkey);
+	query_value(remote, packet, hkey);
+	if (hkey)
+		RegCloseKey(hkey);
+
+	return ERROR_SUCCESS;
+}
+
+static void enum_value(Remote *remote, Packet *packet, HKEY hkey)
 {
 	Packet *response = packet_create_response(packet);
 	DWORD result;
-	HKEY hkey = (HKEY)packet_get_tlv_value_qword(packet, TLV_TYPE_HKEY);
 
 	if (!hkey)
 		result = ERROR_INVALID_PARAMETER;
@@ -567,6 +650,41 @@ DWORD request_registry_enum_value(Remote *remote, Packet *packet)
 	packet_add_tlv_uint(response, TLV_TYPE_RESULT, result);
 
 	packet_transmit(remote, response, NULL);
+}
+
+
+/*
+ * Enumerates all of the values at the supplied HKEY.
+ *
+ * TLVs:
+ *
+ * req: TLV_TYPE_HKEY - The HKEY that will have its values enumerated.
+ */
+DWORD request_registry_enum_value(Remote *remote, Packet *packet)
+{
+	HKEY hkey = (HKEY)packet_get_tlv_value_qword(packet, TLV_TYPE_HKEY);
+	enum_value(remote, packet, hkey);
+
+	return ERROR_SUCCESS;
+}
+
+/*
+ * Enumerates all of the values at the supplied HKEY.
+ *
+ * TLVs:
+ *
+ * req: TLV_TYPE_ROOT_KEY   - The root key
+ * req: TLV_TYPE_BASE_KEY   - The base key
+ * opt: TLV_TYPE_PERMISSION - Permissions with which to open the key
+ */
+DWORD request_registry_enum_value_direct(Remote *remote, Packet *packet)
+{
+	HKEY rootkey, hkey = NULL;
+
+	open_key(packet, &rootkey, &hkey);
+	enum_value(remote, packet, hkey);
+	if (hkey)
+		RegCloseKey(hkey);
 
 	return ERROR_SUCCESS;
 }
@@ -590,7 +708,7 @@ DWORD request_registry_delete_value(Remote *remote, Packet *packet)
 	valueName = (LPCSTR)packet_get_tlv_value_string(packet, TLV_TYPE_VALUE_NAME);
 
 	// Check for invalid parameters
-	if ((!hkey) || 
+	if ((!hkey) ||
 	    (!valueName))
 		result = ERROR_INVALID_PARAMETER;
 	else
