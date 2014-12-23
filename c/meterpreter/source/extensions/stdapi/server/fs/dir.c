@@ -296,7 +296,7 @@ DWORD request_fs_chdir(Remote *remote, Packet *packet)
 #ifdef _WIN32
 	else if (!SetCurrentDirectory(directory))
 #else
-	else if (!chdir(directory))
+	else if (chdir(directory))
 #endif
 		result = GetLastError();
 
@@ -327,7 +327,7 @@ DWORD request_fs_mkdir(Remote *remote, Packet *packet)
 #ifdef _WIN32
 	else if (!CreateDirectory(directory, NULL))
 #else
-	else if (!mkdir(directory, 0777))
+	else if (mkdir(directory, 0777))
 #endif
 		result = GetLastError();
 
@@ -358,7 +358,7 @@ DWORD request_fs_delete_dir(Remote *remote, Packet *packet)
 #ifdef _WIN32
 	else if (!RemoveDirectory(directory))
 #else
-	else if (!rmdir(directory))
+	else if (rmdir(directory))
 #endif
 		result = GetLastError();
 
