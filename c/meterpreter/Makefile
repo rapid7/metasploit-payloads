@@ -7,6 +7,7 @@ framework_dir = ../metasploit-framework/
 
 # Change me if you want to build openssl and libpcap somewhere else
 build_tmp = posix-meterp-build-tmp
+cwd=$(shell pwd)
 
 ROOT=$(basename $(CURDIR:%/=%))
 BIONIC=$(ROOT)/source/bionic
@@ -141,8 +142,8 @@ $(build_tmp)/libpcap-1.1.1/libpcap.so.1.1.1:
 	echo '#undef PCAP_SUPPORT_USB' >> $(build_tmp)/libpcap-1.1.1/config.h
 	echo '#undef HAVE_ETHER_HOSTTON'  >> $(build_tmp)/libpcap-1.1.1/config.h
 	echo '#define _STDLIB_H this_works_around_malloc_definition_in_grammar_dot_c' >> $(build_tmp)/libpcap-1.1.1/config.h
-	(cd $(build_tmp)/libpcap-1.1.1 && patch --dry-run -p0 < ../../source/libpcap/pcap_nametoaddr_fix.diff && patch -p0 < ../../source/libpcap/pcap_nametoaddr_fix.diff)
-	(cd $(build_tmp)/libpcap-1.1.1 && patch --dry-run -p0 < ../../source/libpcap/pcap-linux.diff && patch -p0 < ../../source/libpcap/pcap-linux.diff)
+	(cd $(build_tmp)/libpcap-1.1.1 && patch -p0 < $(cwd)/source/libpcap/pcap_nametoaddr_fix.diff)
+	(cd $(build_tmp)/libpcap-1.1.1 && patch -p0 < $(cwd)/source/libpcap/pcap-linux.diff)
 	sed -i -e s/pcap-usb-linux.c//g -e s/fad-getad.c/fad-gifc.c/g $(build_tmp)/libpcap-1.1.1/Makefile
 	sed -i -e s^"CC = gcc"^"CC = gcc $(PCAP_CFLAGS)"^g $(build_tmp)/libpcap-1.1.1/Makefile
 	$(MAKE) -C $(build_tmp)/libpcap-1.1.1
