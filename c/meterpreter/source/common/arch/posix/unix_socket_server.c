@@ -26,10 +26,10 @@ start_server(server_un *s, LPSTR sock_path) {
 	s->timeout.tv_usec = 0;
 
 	dprintf("[UNIX SOCKET SERVER] Setting up the server");
-  if ((s->socket = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
+	if ((s->socket = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
 		dprintf("[UNIX SOCKET SERVER] socket failed");
 		return errno;
-  }
+	}
 
 	// Set up non blocking mode
 	// http://stackoverflow.com/questions/3444729/using-accept-and-select-at-the-same-time
@@ -40,19 +40,19 @@ start_server(server_un *s, LPSTR sock_path) {
 
 	s->local.sun_family = AF_UNIX;
 
-	memset(s->local.sun_path, NULL, UNIX_PATH_MAX); 
+	memset(s->local.sun_path, NULL, UNIX_PATH_MAX);
 	strncpy(s->local.sun_path, sock_path, UNIX_PATH_MAX - 1);
 	unlink(s->local.sun_path);
 
 	if (bind(s->socket, (struct sockaddr *)&(s->local), sizeof(struct sockaddr_un)) == -1) {
 		dprintf("[UNIX SOCKET SERVER] bind failed");
 		return errno;
-  }
+	}
 
 	if (listen(s->socket, 1) == -1) {
 		dprintf("[UNIX SOCKET SERVER] listen failed");
 		return errno;
-  }
+	}
 
 	return 0;
 }
@@ -73,7 +73,7 @@ accept_connection(server_un *s, DWORD timeout) {
 		dprintf("[UNIX SOCKET SERVER] NULL server");
 		return ERROR_INVALID_PARAMETER;
 	}
-	
+
 	c = &(s->client);
 
 	if (c == NULL) {
@@ -99,7 +99,7 @@ accept_connection(server_un *s, DWORD timeout) {
 	if ((c->socket = accept(s->socket, (struct sockaddr *)&(c->remote), &(s->timeout))) == -1) {
 		dprintf("[UNIX SOCKET SERVER] accept failed");
 		return errno;
-  }
+	}
 
 	return 0;
 }
@@ -119,7 +119,7 @@ close_connection(connection_un *c) {
 
 	if (close(c->socket) == -1){
 		dprintf("[UNIX SOCKET SERVER] Close connection failed");
-		return errno;	
+		return errno;
 	}
 
 	return 0;
@@ -142,7 +142,7 @@ stop_server(server_un *s) {
 	close(s->socket);
 	unlink(s->local.sun_path);
 
-	return 0;	
+	return 0;
 }
 
 /*!
@@ -152,35 +152,35 @@ stop_server(server_un *s) {
  * @returns Indication of success or failure.
  * @retval 0 Indicates success.
  */
-LONG 
+LONG
 send_socket(connection_un *c, HANDLE fd) {
 	struct iovec vector;
 	struct msghdr msg;
-	struct cmsghdr * cmsg;		
+	struct cmsghdr * cmsg;
 
 	dprintf("[UNIX SOCKET SERVER] Building message for socket sharing...");
-  vector.iov_base = "METERPRETER";
-  vector.iov_len = strlen("METERPRETER") + 1;
+	vector.iov_base = "METERPRETER";
+	vector.iov_len = strlen("METERPRETER") + 1;
 
-  msg.msg_name = NULL;
-  msg.msg_namelen = 0;
+	msg.msg_name = NULL;
+	msg.msg_namelen = 0;
 	msg.msg_iov = &vector;
-  msg.msg_iovlen = 1;
+	msg.msg_iovlen = 1;
 
-  cmsg = alloca(sizeof(struct cmsghdr) + sizeof(fd));
-  cmsg->cmsg_len = sizeof(struct cmsghdr) + sizeof(fd);
-  cmsg->cmsg_level = SOL_SOCKET;
+	cmsg = alloca(sizeof(struct cmsghdr) + sizeof(fd));
+	cmsg->cmsg_len = sizeof(struct cmsghdr) + sizeof(fd);
+	cmsg->cmsg_level = SOL_SOCKET;
 	cmsg->cmsg_type = SCM_RIGHTS;
 
-  memcpy(CMSG_DATA(cmsg), &fd, sizeof(fd));
+	memcpy(CMSG_DATA(cmsg), &fd, sizeof(fd));
 
 	msg.msg_control = cmsg;
-  msg.msg_controllen = cmsg->cmsg_len;
+	msg.msg_controllen = cmsg->cmsg_len;
 
 	if (sendmsg(c->socket, &msg, 0) != vector.iov_len) {
 		dprintf("[UNIX SOCKET SERVER] sendmsg failed");
 		return errno;
 	}
-	
-	return 0;	
+
+	return 0;
 }
