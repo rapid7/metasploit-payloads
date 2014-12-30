@@ -140,6 +140,9 @@ typedef enum
 	TLV_TYPE_MIGRATE_PAYLOAD     = TLV_VALUE(TLV_META_TYPE_STRING,    404),   ///< Represents a migration payload (string).
 	TLV_TYPE_MIGRATE_ARCH        = TLV_VALUE(TLV_META_TYPE_UINT,      405),   ///< Represents a migration target architecture.
 	TLV_TYPE_MIGRATE_TECHNIQUE   = TLV_VALUE(TLV_META_TYPE_UINT,      406),   ///< Represents a migration technique (unsigned int).
+	TLV_TYPE_MIGRATE_BASE_ADDR   = TLV_VALUE(TLV_META_TYPE_UINT,      407),   ///< Represents a migration payload base address (unsigned int).
+	TLV_TYPE_MIGRATE_ENTRY_POINT = TLV_VALUE(TLV_META_TYPE_UINT,      408),   ///< Represents a migration payload entry point (unsigned int).
+	TLV_TYPE_MIGRATE_SOCKET_PATH = TLV_VALUE(TLV_META_TYPE_STRING,    409),   ///< Represents a unix domain socket path, used to migrate on linux (string)
 
 	// Cryptography
 	TLV_TYPE_CIPHER_NAME         = TLV_VALUE(TLV_META_TYPE_STRING,    500),   ///< Represents the name of a cipher.
