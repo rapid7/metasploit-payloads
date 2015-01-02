@@ -57,3 +57,7 @@ source/server/rtld/rtldtest
 
 # Doxygen output
 docs/*
+
+# ignore CLion files
+.idea/
+CMakeLists.txt
