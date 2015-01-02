@@ -12,7 +12,7 @@
 #include "common.h"
 
 /*! Macro to calculate sizes in order to help when writing and reading memory. */
-#define _SIZE_OF(buf) (buf / sizeof(long)) + (buf % sizeof(long))
+#define _SIZE_OF(buf) (buf / sizeof(long)) + (buf % 4 > 0 ? 1 : 0)
 /*! Length of the mmap code stub. */
 #define MMAP_STUB_LENGTH 35
 /*! ptrace friendly size of the mmap code stub. */
@@ -22,7 +22,7 @@
 /*! Position of the address to mmap in the mmap stub. */
 #define MMAP_ADDR_POS 23
 /*! Length of the call code stub. */
-#define CALL_STUB_LENGTH 27
+#define CALL_STUB_LENGTH 22
 /*! ptrace friendly size of the call code stub. */
 #define CALL_STUB_SIZE _SIZE_OF(CALL_STUB_LENGTH)
 /*! Position of the options flags in the call stub */
