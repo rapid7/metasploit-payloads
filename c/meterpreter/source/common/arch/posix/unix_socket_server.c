@@ -92,7 +92,7 @@ accept_connection(server_un *s, DWORD timeout) {
 		dprintf("[UNIX SOCKET SERVER] select failed");
 		return errno;
 	} else if (rv == 0) {
-		dprintf("[UNIX SOCKET SERVER] timeout")
+		dprintf("[UNIX SOCKET SERVER] timeout");
 		return ETIME;
 	}
 
