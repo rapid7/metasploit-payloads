@@ -31,6 +31,8 @@
 #define ENTRY_POINT_POS 11
 /*! Length of the new stack to allocate */
 #define STACK_SIZE 0x200000
+/*! Length of the new memory to store code stubs */
+#define CODE_SIZE 0x1000
 
 /*! @brief Container struct for a library to inject and execute. */
 typedef struct {
@@ -52,7 +54,7 @@ typedef struct {
 } state;
 	
 LONG save_state(LONG pid, state *s);
-LONG restore_state(LONG pid, state *s);
+LONG restore_state(LONG pid, state *s, int only_memory);
 BOOL wait_trap(LONG pid);
 LONG execute_stub(LONG pid, unsigned long addr, unsigned long *stub, ULONG stub_size);
 LONG allocate(LONG pid, struct user_regs_struct *regs, unsigned long addr, size_t length);
