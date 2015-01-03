@@ -24,7 +24,19 @@
  int    $0x3            ; trap to allow the debugge to control
 */
 /*! @brief mmap code stub */
-UCHAR mmap_stub[] = 
+UCHAR mmap_stub[] =
+"\x90\x90\x90\x90\x90\x90\x90\x90" \
+"\x90\x90\x90\x90\x90\x90\x90\x90" \
+"\x90\x90\x90\x90\x90\x90\x90\x90" \
+"\x90\x90\x90\x90\x90\x90\x90\x90" \
+"\x90\x90\x90\x90\x90\x90\x90\x90" \
+"\x90\x90\x90\x90\x90\x90\x90\x90" \
+"\x90\x90\x90\x90\x90\x90\x90\x90" \
+"\x90\x90\x90\x90\x90\x90\x90\x90" \
+"\x90\x90\x90\x90\x90\x90\x90\x90" \
+"\x90\x90\x90\x90\x90\x90\x90\x90" \
+	"\x90\x90\x90\x90\x90" \
+	"\x90\x90\x90\x90\x90\x90\x90\x90" \
 	"\x31\xed" \
 	"\xbf\xff\xff\xff\xff" \
 	"\xbe\x22\x00\x00\x00" \
@@ -46,6 +58,17 @@ UCHAR mmap_stub[] =
 */
 /*! @brief call code stub */
 UCHAR call_stub[] =
+"\x90\x90\x90\x90\x90\x90\x90\x90" \
+"\x90\x90\x90\x90\x90\x90\x90\x90" \
+"\x90\x90\x90\x90\x90\x90\x90\x90" \
+"\x90\x90\x90\x90\x90\x90\x90\x90" \
+"\x90\x90\x90\x90\x90\x90\x90\x90" \
+"\x90\x90\x90\x90\x90\x90\x90\x90" \
+"\x90\x90\x90\x90\x90\x90\x90\x90" \
+"\x90\x90\x90\x90\x90\x90\x90\x90" \
+"\x90\x90\x90\x90\x90\x90\x90\x90" \
+"\x90\x90\x90\x90\x90\x90\x90\x90" \
+	"\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90" \
 	"\x68\x04\x00\x00\x00" \
 	"\x68\xff\xff\xff\xff" \
 	"\xb8\x5a\x5a\x5a\x5a" \
@@ -152,6 +175,7 @@ LONG
 execute_stub(LONG pid, unsigned long addr, unsigned long *stub, ULONG stub_size) {
 	LONG i = 0;
 	LONG result = 0;
+	struct user_regs_struct my_regs;
 
 	if (stub_size == 0 || stub == NULL)
 		return ERROR_INVALID_PARAMETER;
@@ -159,6 +183,17 @@ execute_stub(LONG pid, unsigned long addr, unsigned long *stub, ULONG stub_size)
 	result = write_memory(pid, addr, stub, stub_size);
 	if (result != 0)
 		return result;
+
+	result = getregs(pid, &my_regs);
+	if (result != 0)
+		return result;
+	dprintf("[EXECUTE_STUB] Was to execute... 0x%x", my_regs.eip);
+
+	my_regs.eip = my_regs.eip + 8;
+	result = setregs(pid, &my_regs);
+	if (result != 0)
+		return result;
+	dprintf("[EXECUTE_STUB] Executing... 0x%x", my_regs.eip);
 
 	result = cont(pid);
 	if (result != 0)
@@ -279,6 +314,7 @@ inject_library(LONG pid, library *l) {
 
 	dprintf("[INJECT] Creating new code memory");
 	result = allocate(pid, &regs, NULL, CODE_SIZE);
+	dprintf("[DEBUG] result: %d", result);
 	if (result != 0)
 		goto restore;
 
