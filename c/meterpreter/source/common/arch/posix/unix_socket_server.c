@@ -97,7 +97,7 @@ accept_connection(server_un *s, DWORD timeout) {
 		return ETIME;
 	}
 
-	len = sizeof(c->remote);
+	len = sizeof(struct sockaddr_un);
 	if ((c->socket = accept(s->socket, (struct sockaddr *)&(c->remote), &len)) == -1) {
 		dprintf("[UNIX SOCKET SERVER] accept failed");
 		return errno;
