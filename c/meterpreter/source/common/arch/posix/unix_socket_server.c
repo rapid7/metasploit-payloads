@@ -25,18 +25,18 @@ start_server(server_un *s, LPSTR sock_path) {
 	s->timeout.tv_sec = DEFAULT_TIMEOUT; // Default timeout
 	s->timeout.tv_usec = 0;
 
-	//dprintf("[UNIX SOCKET SERVER] Setting up the server");
+	dprintf("[UNIX SOCKET SERVER] Setting up the server");
 	if ((s->socket = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
-		//dprintf("[UNIX SOCKET SERVER] socket failed");
+		dprintf("[UNIX SOCKET SERVER] socket failed");
 		return errno;
 	}
 
 	// Set up non blocking mode
 	// http://stackoverflow.com/questions/3444729/using-accept-and-select-at-the-same-time
-	//FD_ZERO(&(s->set));
-	//FD_SET(s->socket, &(s->set));
-	//flags = fcntl(s->socket, F_GETFL, 0);
-	//fcntl(s->socket, F_SETFL, flags | O_NONBLOCK);
+	FD_ZERO(&(s->set));
+	FD_SET(s->socket, &(s->set));
+	flags = fcntl(s->socket, F_GETFL, 0);
+	fcntl(s->socket, F_SETFL, flags | O_NONBLOCK);
 
 	s->local.sun_family = AF_UNIX;
 
@@ -45,12 +45,12 @@ start_server(server_un *s, LPSTR sock_path) {
 	unlink(s->local.sun_path);
 
 	if (bind(s->socket, (struct sockaddr *)&(s->local), sizeof(struct sockaddr_un)) == -1) {
-		//dprintf("[UNIX SOCKET SERVER] bind failed");
+		dprintf("[UNIX SOCKET SERVER] bind failed");
 		return errno;
 	}
 
 	if (listen(s->socket, 1) == -1) {
-		//dprintf("[UNIX SOCKET SERVER] listen failed");
+		dprintf("[UNIX SOCKET SERVER] listen failed");
 		return errno;
 	}
 
@@ -71,14 +71,14 @@ accept_connection(server_un *s, DWORD timeout) {
 	int len;
 
 	if (s == NULL) {
-		//dprintf("[UNIX SOCKET SERVER] NULL server");
+		dprintf("[UNIX SOCKET SERVER] NULL server");
 		return ERROR_INVALID_PARAMETER;
 	}
 
 	c = &(s->client);
 
 	if (c == NULL) {
-		//dprintf("[UNIX SOCKET SERVER] NULL server");
+		dprintf("[UNIX SOCKET SERVER] NULL server");
 		return ERROR_INVALID_PARAMETER;
 	}
 
@@ -86,20 +86,20 @@ accept_connection(server_un *s, DWORD timeout) {
 		s->timeout.tv_sec = timeout;
 	}
 
-	//dprintf("[UNIX SOCKET SERVER] Waiting for a new connection");
-	//rv = select(s->socket + 1, &(s->set), NULL, NULL, &(s->timeout));
+	dprintf("[UNIX SOCKET SERVER] Waiting for a new connection");
+	rv = select(s->socket + 1, &(s->set), NULL, NULL, &(s->timeout));
 
-	//if(rv == -1) {
-		//dprintf("[UNIX SOCKET SERVER] select failed");
-		//return errno;
-	//} else if (rv == 0) {
-		//dprintf("[UNIX SOCKET SERVER] timeout");
-		//return ETIME;
-	//}
+	if(rv == -1) {
+		dprintf("[UNIX SOCKET SERVER] select failed");
+		return errno;
+	} else if (rv == 0) {
+		dprintf("[UNIX SOCKET SERVER] timeout");
+		return ETIME;
+	}
 
 	len = sizeof(c->remote);
 	if ((c->socket = accept(s->socket, (struct sockaddr *)&(c->remote), &len)) == -1) {
-		//dprintf("[UNIX SOCKET SERVER] accept failed");
+		dprintf("[UNIX SOCKET SERVER] accept failed");
 		return errno;
 	}
 
@@ -115,12 +115,12 @@ accept_connection(server_un *s, DWORD timeout) {
 LONG
 close_connection(connection_un *c) {
 	if (c == NULL) {
-		//dprintf("[UNIX SOCKET SERVER] NULL connection");
+		dprintf("[UNIX SOCKET SERVER] NULL connection");
 		return ERROR_INVALID_PARAMETER;
 	}
 
 	if (close(c->socket) == -1){
-		//dprintf("[UNIX SOCKET SERVER] Close connection failed");
+		dprintf("[UNIX SOCKET SERVER] Close connection failed");
 		return errno;
 	}
 
@@ -136,7 +136,7 @@ close_connection(connection_un *c) {
 LONG
 stop_server(server_un *s) {
 	if (s == NULL) {
-		//dprintf("[UNIX SOCKET SERVER] NULL server");
+		dprintf("[UNIX SOCKET SERVER] NULL server");
 		return ERROR_INVALID_PARAMETER;
 	}
 
@@ -160,7 +160,7 @@ send_socket(connection_un *c, HANDLE fd) {
 	struct msghdr msg;
 	struct cmsghdr * cmsg;
 
-	//dprintf("[UNIX SOCKET SERVER] Building message for socket sharing...");
+	dprintf("[UNIX SOCKET SERVER] Building message for socket sharing...");
 	vector.iov_base = "METERPRETER";
 	vector.iov_len = strlen("METERPRETER") + 1;
 
@@ -180,7 +180,7 @@ send_socket(connection_un *c, HANDLE fd) {
 	msg.msg_controllen = cmsg->cmsg_len;
 
 	if (sendmsg(c->socket, &msg, 0) != vector.iov_len) {
-		//dprintf("[UNIX SOCKET SERVER] sendmsg failed");
+		dprintf("[UNIX SOCKET SERVER] sendmsg failed");
 		return errno;
 	}
 

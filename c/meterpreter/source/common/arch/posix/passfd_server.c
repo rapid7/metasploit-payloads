@@ -23,7 +23,7 @@ passfd(SOCKET orig_fd, LPSTR sock_path) {
 
 	result = start_server(&s, sock_path);
 	if (result != 0) {
-		//dprintf("[PASSFD] Starting server failed");
+		dprintf("[PASSFD] Starting server failed");
 		return result;
 	}	
 
