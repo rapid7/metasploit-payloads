@@ -25,16 +25,16 @@
 */
 /*! @brief mmap code stub */
 UCHAR mmap_stub[] =
-"\x90\x90\x90\x90\x90\x90\x90\x90" \
-"\x90\x90\x90\x90\x90\x90\x90\x90" \
-"\x90\x90\x90\x90\x90\x90\x90\x90" \
-"\x90\x90\x90\x90\x90\x90\x90\x90" \
-"\x90\x90\x90\x90\x90\x90\x90\x90" \
-"\x90\x90\x90\x90\x90\x90\x90\x90" \
-"\x90\x90\x90\x90\x90\x90\x90\x90" \
-"\x90\x90\x90\x90\x90\x90\x90\x90" \
-"\x90\x90\x90\x90\x90\x90\x90\x90" \
-"\x90\x90\x90\x90\x90\x90\x90\x90" \
+	"\x90\x90\x90\x90\x90\x90\x90\x90" \
+	"\x90\x90\x90\x90\x90\x90\x90\x90" \
+	"\x90\x90\x90\x90\x90\x90\x90\x90" \
+	"\x90\x90\x90\x90\x90\x90\x90\x90" \
+	"\x90\x90\x90\x90\x90\x90\x90\x90" \
+	"\x90\x90\x90\x90\x90\x90\x90\x90" \
+	"\x90\x90\x90\x90\x90\x90\x90\x90" \
+	"\x90\x90\x90\x90\x90\x90\x90\x90" \
+	"\x90\x90\x90\x90\x90\x90\x90\x90" \
+	"\x90\x90\x90\x90\x90\x90\x90\x90" \
 	"\x90\x90\x90\x90\x90" \
 	"\x90\x90\x90\x90\x90\x90\x90\x90" \
 	"\x31\xed" \
@@ -58,16 +58,16 @@ UCHAR mmap_stub[] =
 */
 /*! @brief call code stub */
 UCHAR call_stub[] =
-"\x90\x90\x90\x90\x90\x90\x90\x90" \
-"\x90\x90\x90\x90\x90\x90\x90\x90" \
-"\x90\x90\x90\x90\x90\x90\x90\x90" \
-"\x90\x90\x90\x90\x90\x90\x90\x90" \
-"\x90\x90\x90\x90\x90\x90\x90\x90" \
-"\x90\x90\x90\x90\x90\x90\x90\x90" \
-"\x90\x90\x90\x90\x90\x90\x90\x90" \
-"\x90\x90\x90\x90\x90\x90\x90\x90" \
-"\x90\x90\x90\x90\x90\x90\x90\x90" \
-"\x90\x90\x90\x90\x90\x90\x90\x90" \
+	"\x90\x90\x90\x90\x90\x90\x90\x90" \
+	"\x90\x90\x90\x90\x90\x90\x90\x90" \
+	"\x90\x90\x90\x90\x90\x90\x90\x90" \
+	"\x90\x90\x90\x90\x90\x90\x90\x90" \
+	"\x90\x90\x90\x90\x90\x90\x90\x90" \
+	"\x90\x90\x90\x90\x90\x90\x90\x90" \
+	"\x90\x90\x90\x90\x90\x90\x90\x90" \
+	"\x90\x90\x90\x90\x90\x90\x90\x90" \
+	"\x90\x90\x90\x90\x90\x90\x90\x90" \
+	"\x90\x90\x90\x90\x90\x90\x90\x90" \
 	"\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90" \
 	"\x68\x04\x00\x00\x00" \
 	"\x68\xff\xff\xff\xff" \
@@ -175,7 +175,7 @@ LONG
 execute_stub(LONG pid, unsigned long addr, unsigned long *stub, ULONG stub_size) {
 	LONG i = 0;
 	LONG result = 0;
-	struct user_regs_struct my_regs;
+	struct user_regs_struct stub_regs;
 
 	if (stub_size == 0 || stub == NULL)
 		return ERROR_INVALID_PARAMETER;
@@ -184,16 +184,18 @@ execute_stub(LONG pid, unsigned long addr, unsigned long *stub, ULONG stub_size)
 	if (result != 0)
 		return result;
 
-	result = getregs(pid, &my_regs);
+	// Jump into the nops stub, makes code modification
+	// more reliable.
+	result = getregs(pid, &stub_regs);
 	if (result != 0)
 		return result;
-	dprintf("[EXECUTE_STUB] Was to execute... 0x%x", my_regs.eip);
+	dprintf("[EXECUTE_STUB] Original EIP 0x%x", stub_regs.eip);
 
-	my_regs.eip = my_regs.eip + 8;
-	result = setregs(pid, &my_regs);
+	stub_regs.eip = stub_regs.eip + 8;
+	result = setregs(pid, &stub_regs);
 	if (result != 0)
 		return result;
-	dprintf("[EXECUTE_STUB] Executing... 0x%x", my_regs.eip);
+	dprintf("[EXECUTE_STUB] Redirecting to 0x%x", stub_regs.eip);
 
 	result = cont(pid);
 	if (result != 0)
@@ -336,8 +338,8 @@ inject_library(LONG pid, library *l) {
 
 	dprintf("[INJECT] New stack on 0x%x, fixing registers", regs.eax);
 	stack_mem = regs.eax + STACK_SIZE;
-	regs.esp = stack_mem;//regs.eax + STACK_SIZE;
-	regs.eip = code_mem;//s.regs.eip;
+	regs.esp = stack_mem;
+	regs.eip = code_mem;
 
 	result = setregs(pid, &regs);
 	if (result != 0)
@@ -360,7 +362,7 @@ inject_library(LONG pid, library *l) {
 
 	dprintf("[INJECT] Fixing registers");
 	regs.esp = stack_mem;
-	regs.eip = code_mem;//s.regs.eip;
+	regs.eip = code_mem;
 	result = setregs(pid, &regs);
 	if (result != 0)
 		goto restore;
