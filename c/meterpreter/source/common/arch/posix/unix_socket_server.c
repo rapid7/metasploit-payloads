@@ -68,6 +68,7 @@ LONG
 accept_connection(server_un *s, DWORD timeout) {
 	connection_un *c;
 	LONG rv;
+	int len;
 
 	if (s == NULL) {
 		dprintf("[UNIX SOCKET SERVER] NULL server");
@@ -92,11 +93,12 @@ accept_connection(server_un *s, DWORD timeout) {
 		dprintf("[UNIX SOCKET SERVER] select failed");
 		return errno;
 	} else if (rv == 0) {
-		dprintf("[UNIX SOCKET SERVER] timeout")
+		dprintf("[UNIX SOCKET SERVER] timeout");
 		return ETIME;
 	}
 
-	if ((c->socket = accept(s->socket, (struct sockaddr *)&(c->remote), &(s->timeout))) == -1) {
+	len = sizeof(struct sockaddr_un);
+	if ((c->socket = accept(s->socket, (struct sockaddr *)&(c->remote), &len)) == -1) {
 		dprintf("[UNIX SOCKET SERVER] accept failed");
 		return errno;
 	}

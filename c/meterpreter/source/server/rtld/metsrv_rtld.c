@@ -299,7 +299,7 @@ int pass_fd(void *libc) {
 	}
 
 	strncpy = dlsym(libc, "strncpy");
-	if (!recvmsg) {
+	if (!strncpy) {
 		TRACE("[	Failed to solve strncpy ]\n");
 		return -1;
 	}
