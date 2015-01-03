@@ -122,7 +122,7 @@ write_memory(LONG pid, unsigned long addr, unsigned long *contents, UINT size) {
 
 	dprintf("[PTRACE] Writing memory");	
 	for (i = 0; i < size; i++) {
-//		dprintf("[PTRACE] Writting %x to %x", contents[i], (addr + (i * sizeof(void *))));
+		//dprintf("[PTRACE] Writting %x to %x", contents[i], (addr + (i * sizeof(void *))));
 		if (ptrace(PTRACE_POKETEXT, pid, (void *)(addr + (i * sizeof(void *))), (void *)contents[i]) == -1) {
 			dprintf("[PTRACE] PTRACE_POKETEXT failed");
 			return errno;

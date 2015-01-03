@@ -24,7 +24,19 @@
  int    $0x3            ; trap to allow the debugge to control
 */
 /*! @brief mmap code stub */
-UCHAR mmap_stub[] = 
+UCHAR mmap_stub[] =
+"\x90\x90\x90\x90\x90\x90\x90\x90" \
+"\x90\x90\x90\x90\x90\x90\x90\x90" \
+"\x90\x90\x90\x90\x90\x90\x90\x90" \
+"\x90\x90\x90\x90\x90\x90\x90\x90" \
+"\x90\x90\x90\x90\x90\x90\x90\x90" \
+"\x90\x90\x90\x90\x90\x90\x90\x90" \
+"\x90\x90\x90\x90\x90\x90\x90\x90" \
+"\x90\x90\x90\x90\x90\x90\x90\x90" \
+"\x90\x90\x90\x90\x90\x90\x90\x90" \
+"\x90\x90\x90\x90\x90\x90\x90\x90" \
+	"\x90\x90\x90\x90\x90" \
+	"\x90\x90\x90\x90\x90\x90\x90\x90" \
 	"\x31\xed" \
 	"\xbf\xff\xff\xff\xff" \
 	"\xbe\x22\x00\x00\x00" \
@@ -46,6 +58,17 @@ UCHAR mmap_stub[] =
 */
 /*! @brief call code stub */
 UCHAR call_stub[] =
+"\x90\x90\x90\x90\x90\x90\x90\x90" \
+"\x90\x90\x90\x90\x90\x90\x90\x90" \
+"\x90\x90\x90\x90\x90\x90\x90\x90" \
+"\x90\x90\x90\x90\x90\x90\x90\x90" \
+"\x90\x90\x90\x90\x90\x90\x90\x90" \
+"\x90\x90\x90\x90\x90\x90\x90\x90" \
+"\x90\x90\x90\x90\x90\x90\x90\x90" \
+"\x90\x90\x90\x90\x90\x90\x90\x90" \
+"\x90\x90\x90\x90\x90\x90\x90\x90" \
+"\x90\x90\x90\x90\x90\x90\x90\x90" \
+	"\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90" \
 	"\x68\x04\x00\x00\x00" \
 	"\x68\xff\xff\xff\xff" \
 	"\xb8\x5a\x5a\x5a\x5a" \
@@ -84,11 +107,12 @@ save_state(LONG pid, state *s) {
  * @brief Restores the process state and detaches.
  * @param pid Process identifier to restore.
  * @param s Pointer to \c state with code and registers.
+ * @param only_memory Idicates if restore only memory at EIP or also registers
  * @returns Indication of success or failure.
  * @retval 0 Indicates success.
  */
 LONG
-restore_state(LONG pid, state *s) {
+restore_state(LONG pid, state *s, int only_memory) {
 	unsigned long *mem_ptr = NULL;
 	LONG i = 0;
 	LONG result = 0;
@@ -104,6 +128,9 @@ restore_state(LONG pid, state *s) {
 	result = write_memory(pid, s->regs.eip, mem_ptr, MMAP_STUB_SIZE);
 	if (result != 0)
 		return result;
+
+	if (only_memory > 0)
+		return 0;
 
 	result = setregs(pid, &(s->regs));
 	if (result != 0)
@@ -148,6 +175,7 @@ LONG
 execute_stub(LONG pid, unsigned long addr, unsigned long *stub, ULONG stub_size) {
 	LONG i = 0;
 	LONG result = 0;
+	struct user_regs_struct my_regs;
 
 	if (stub_size == 0 || stub == NULL)
 		return ERROR_INVALID_PARAMETER;
@@ -155,6 +183,17 @@ execute_stub(LONG pid, unsigned long addr, unsigned long *stub, ULONG stub_size)
 	result = write_memory(pid, addr, stub, stub_size);
 	if (result != 0)
 		return result;
+
+	result = getregs(pid, &my_regs);
+	if (result != 0)
+		return result;
+	dprintf("[EXECUTE_STUB] Was to execute... 0x%x", my_regs.eip);
+
+	my_regs.eip = my_regs.eip + 8;
+	result = setregs(pid, &my_regs);
+	if (result != 0)
+		return result;
+	dprintf("[EXECUTE_STUB] Executing... 0x%x", my_regs.eip);
 
 	result = cont(pid);
 	if (result != 0)
@@ -250,6 +289,8 @@ call(LONG pid, struct user_regs_struct *regs, unsigned long addr) {
 LONG
 inject_library(LONG pid, library *l) {
 	state s;
+	long code_mem;
+	long stack_mem;
 	struct user_regs_struct regs;
 	ULONG library_size = _SIZE_OF(l->length);
 	unsigned long *buf_ptr = (unsigned long *)l->data;
@@ -259,7 +300,6 @@ inject_library(LONG pid, library *l) {
 		result = ERROR_INVALID_PARAMETER;
 		goto end;
 	}
-
 
 	dprintf("[INJECT] Saving state");
 	result = attach(pid);
@@ -272,14 +312,32 @@ inject_library(LONG pid, library *l) {
 
 	memcpy(&regs, &(s.regs), sizeof(struct user_regs_struct));
 
+	dprintf("[INJECT] Creating new code memory");
+	result = allocate(pid, &regs, NULL, CODE_SIZE);
+	dprintf("[DEBUG] result: %d", result);
+	if (result != 0)
+		goto restore;
+
+	dprintf("[INJECT] New code memory on 0x%x, fixing registers", regs.eax);
+	code_mem = regs.eax;
+	regs.eip = code_mem;
+
+	result = setregs(pid, &regs);
+	if (result != 0)
+		goto restore;
+
+	dprintf("[INJECT] Restoring code on original process");
+	restore_state(pid, &s, 1);
+
 	dprintf("[INJECT] Creating new stack");
-  result = allocate(pid, &regs, NULL, STACK_SIZE); 
+  	result = allocate(pid, &regs, NULL, STACK_SIZE);
 	if (result != 0)
 		goto restore;
 
 	dprintf("[INJECT] New stack on 0x%x, fixing registers", regs.eax);
-	regs.esp = regs.eax + STACK_SIZE;
-	regs.eip = s.regs.eip; 
+	stack_mem = regs.eax + STACK_SIZE;
+	regs.esp = stack_mem;//regs.eax + STACK_SIZE;
+	regs.eip = code_mem;//s.regs.eip;
 
 	result = setregs(pid, &regs);
 	if (result != 0)
@@ -301,7 +359,8 @@ inject_library(LONG pid, library *l) {
 		goto restore;	
 
 	dprintf("[INJECT] Fixing registers");
-	regs.eip = s.regs.eip;
+	regs.esp = stack_mem;
+	regs.eip = code_mem;//s.regs.eip;
 	result = setregs(pid, &regs);
 	if (result != 0)
 		goto restore;
@@ -316,7 +375,7 @@ inject_library(LONG pid, library *l) {
 	goto end;	
 
 restore:
-	restore_state(pid, &s);
+	restore_state(pid, &s, 0);
 end:	
 	return result;
 }

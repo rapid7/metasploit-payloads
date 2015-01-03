@@ -14,23 +14,25 @@
 /*! Macro to calculate sizes in order to help when writing and reading memory. */
 #define _SIZE_OF(buf) (buf / sizeof(long)) + (buf % 4 > 0 ? 1 : 0)
 /*! Length of the mmap code stub. */
-#define MMAP_STUB_LENGTH 35
+#define MMAP_STUB_LENGTH 128
 /*! ptrace friendly size of the mmap code stub. */
 #define MMAP_STUB_SIZE _SIZE_OF(MMAP_STUB_LENGTH)
 /*! Position of the length to mmap in the mmap stub. */
-#define MMAP_LENGTH_POS 18 
+#define MMAP_LENGTH_POS 111
 /*! Position of the address to mmap in the mmap stub. */
-#define MMAP_ADDR_POS 23
+#define MMAP_ADDR_POS 116
 /*! Length of the call code stub. */
-#define CALL_STUB_LENGTH 22
+#define CALL_STUB_LENGTH 112
 /*! ptrace friendly size of the call code stub. */
 #define CALL_STUB_SIZE _SIZE_OF(CALL_STUB_LENGTH)
 /*! Position of the options flags in the call stub */
-#define OPTIONS_POS 1
+#define OPTIONS_POS 91
 /*! Position of the library entry point in the call stub */
-#define ENTRY_POINT_POS 11
+#define ENTRY_POINT_POS 101
 /*! Length of the new stack to allocate */
 #define STACK_SIZE 0x200000
+/*! Length of the new memory to store code stubs */
+#define CODE_SIZE 0x1000
 
 /*! @brief Container struct for a library to inject and execute. */
 typedef struct {
@@ -52,7 +54,7 @@ typedef struct {
 } state;
 	
 LONG save_state(LONG pid, state *s);
-LONG restore_state(LONG pid, state *s);
+LONG restore_state(LONG pid, state *s, int only_memory);
 BOOL wait_trap(LONG pid);
 LONG execute_stub(LONG pid, unsigned long addr, unsigned long *stub, ULONG stub_size);
 LONG allocate(LONG pid, struct user_regs_struct *regs, unsigned long addr, size_t length);
