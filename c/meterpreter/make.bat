@@ -12,7 +12,7 @@ IF NOT EXIST "source\ReflectiveDLLInjection\.git" (
 SET PSSDK_VER=12
 
 SET PREF=
-IF EXIST "..\pssdk\PSSDK_VC%PSSDK_VER%_LIB\_Libs\pssdk_vc%PSSDK%_mt.lib" SET PREF=r7_
+IF EXIST "..\pssdk\PSSDK_VC%PSSDK_VER%_LIB\_Libs\pssdk_vc%PSSDK_VER%_mt.lib" SET PREF=r7_
 
 IF "%1"=="x86" GOTO BUILD_X86
 IF "%1"=="X86" GOTO BUILD_X86
