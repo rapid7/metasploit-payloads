@@ -40,7 +40,7 @@ start_server(server_un *s, LPSTR sock_path) {
 
 	s->local.sun_family = AF_UNIX;
 
-	memset(s->local.sun_path, NULL, UNIX_PATH_MAX);
+	memset(s->local.sun_path, 0, UNIX_PATH_MAX);
 	strncpy(s->local.sun_path, sock_path, UNIX_PATH_MAX - 1);
 	unlink(s->local.sun_path);
 

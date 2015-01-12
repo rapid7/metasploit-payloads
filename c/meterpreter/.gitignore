@@ -54,6 +54,7 @@ source/server/rtld/lib*
 source/server/rtld/msflinker
 source/server/rtld/msflinker.bin
 source/server/rtld/rtldtest
+build.log
 
 # Doxygen output
 docs/*

@@ -1,0 +1,30 @@
+OSSL_VERS = 0.9.8za
+
+$(COMPILED)/libcrypto.so: $(build_tmp)/openssl-$(OSSL_VERS)/libssl.so
+	@echo Installing libcrypto
+	@cp $(build_tmp)/openssl-$(OSSL_VERS)/libcrypto.so source/bionic/compiled/libcrypto.so
+
+$(COMPILED)/libssl.so: $(build_tmp)/openssl-$(OSSL_VERS)/libssl.so
+	@echo Installing libssl
+	@cp $(build_tmp)/openssl-$(OSSL_VERS)/libssl.so source/bionic/compiled/libssl.so
+
+$(build_tmp)/openssl-$(OSSL_VERS)/libssl.so:
+	@echo Building OpenSSL
+	@[ -d $(build_tmp) ] || mkdir $(build_tmp)
+	@[ -f $(build_tmp)/openssl-$(OSSL_VERS).tar.gz ] || wget -O $(build_tmp)/openssl-$(OSSL_VERS).tar.gz https://www.openssl.org/source/openssl-$(OSSL_VERS).tar.gz
+	@[ -d $(build_tmp)/openssl-$(OSSL_VERS) ] || tar -C $(build_tmp)/ -xzf $(build_tmp)/openssl-$(OSSL_VERS).tar.gz
+	@(cd $(build_tmp)/openssl-$(OSSL_VERS) &&                                                       \
+		cat Configure | grep -v 'linux-msf' | \
+		sed -e 's#my %table=(#my %table=(     \
+			"linux-msf", "gcc:$(OSSL_CFLAGS) -DL_ENDIAN -DTERMIO -Wall::-D_REENTRANT::$(OSSL_CFLAGS) -ldl:BN_LLONG $${x86_gcc_des} $${x86_gcc_opts}:$${x86_elf_asm}:dlfcn:linux-shared:$(OSSL_CFLAGS) -fPIC::.so.\\$$\\$$(SHLIB_MAJOR).\\$$\\$$(SHLIB_MINOR)",\
+		#;' > Configure-msf;\
+		cp Configure-msf Configure && \
+		chmod +x Configure && \
+		./Configure --prefix=/tmp/out threads shared no-hw no-dlfcn \
+	          no-zlib no-krb5 no-idea 386 linux-msf > config.log 2>&1 \
+	)
+	@(cd $(build_tmp)/openssl-$(OSSL_VERS) && $(MAKE) depend all > build.log 2>&1; \
+	  [ -f libssl.so.0.9.8 -a -f libcrypto.so.0.9.8 ] )
+
+clean-ssl:
+	rm -fr $(build_tmp)/openssl-$(OSSL_VERS) $(COMPILED)/libcrypto.so $(COMPILED)/libssl.so

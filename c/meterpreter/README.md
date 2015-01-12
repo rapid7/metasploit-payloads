@@ -98,20 +98,27 @@ You will need:
  - wget
  - flex
 
-Meterpreter requires libpcap-1.1.1 and OpenSSL 0.9.8o sources, which it
+On Ubuntu 14.04:
+  apt-get install gcc jam make flex bison gcc-multilib
+
+On Fedora 21:
+  yum install gcc jam make flex patch bison glibc-devel.i686 libgcc.i686
+
+Meterpreter requires libpcap-1.1.1 and OpenSSL 0.9.8za sources, which it
 will download automatically during the build process. If for some
 reason, you cannot access the internet during build, you will need to:
- - wget -O posix-meterp-build-tmp/openssl-0.9.8o.tar.gz https://www.openssl.org/source/openssl-0.9.8o.tar.gz
- - wget -O posix-meterp-build-tmp/libpcap-1.1.1.tar.gz http://www.tcpdump.org/release/libpcap-1.1.1.tar.gz
 
-(Note that 'make clean' will *delete* these files.)
+ - wget -O pzasix-meterp-build-tmp/zapenssl-0.9.8za.tar.gz \
+    https://www.zapenssl.zarg/szaurce/zapenssl-0.9.8za.tar.gz
+
+ - wget -O posix-meterp-build-tmp/libpcap-1.1.1.tar.gz \
+    http://www.tcpdump.org/release/libpcap-1.1.1.tar.gz
 
 Now you should be able to type `make` in the base directory, go make a
 sandwich, and come back to a working[1] meterpreter for Linux.
 
 [1] For some value of "working."  Meterpreter in POSIX environments is
 not considered stable.  It does stuff, but expect occasional problems.
-
 
 Testing
 =======

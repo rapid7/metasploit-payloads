@@ -1,71 +1,19 @@
-.SUFFIXES: .S .c
+ROOT = ../..
 
-SOURCEPATH=../../source/common
-SSLPATH=../../source/openssl/include
-MALLOC_PATH=../../source/common/malloc
-XOR_PATH=../../source/common/crypto
-STDLIBPATH=../../source/common/stdlib
-ZLIB_PATH=../../source/common/zlib
+include $(ROOT)/Makefile.common
 
+VPATH =  $(ROOT)/source/common:
+VPATH += $(ROOT)/source/common/crypto:
+VPATH += $(ROOT)/source/common/arch/posix:
+VPATH += $(ROOT)/source/common/zlib
 
-CFLAGS=-nostdinc -nostdlib
-CFLAGS+= -I ../../source/bionic/libc/include -I ../../source/bionic/libc/kernel/common/linux/ -I ../../source/bionic/libc/kernel/common/ 
-CFLAGS+= -I ../../source/bionic/libc/arch-x86/include/
-CFLAGS+= -I ../../source/bionic/libc/kernel/arch-x86/ 
-CFLAGS+= -Dwchar_t="char" -fno-builtin -D_SIZE_T_DECLARED -DElf_Size="u_int32_t" -D_BYTE_ORDER=_LITTLE_ENDIAN
-CFLAGS+= -lgcc -L../../source/bionic/compiled
+objects = args.o base.o unix_socket_server.o passfd_server.o ptrace.o \
+          base_inject.o base_dispatch.o base_dispatch_common.o buffer.o \
+          channel.o common.o core.o list.o remote.o thread.o xor.o zlib.o
 
-CFLAGS+= -D_UNIX -I$(SOURCEPATH) -I$(MALLOC_PATH) -I$(XOR_PATH) -DMALLOC_PRODUCTION -DPIC -I$(SSLPATH) -I$(STDLIBPATH) -I$(ZLIB_PATH)
-CFLAGS+= -g -fPIC -Os -D_POSIX_C_SOURCE=200809 -D__BSD_VISIBLE=1 -D__XSI_VISIBLE=1
-
-CFLAGS+= -march=i386 -m32
-
-
-CC=gcc
-AR=ar
-RM=rm
-
-objects = args.o base.o unix_socket_server.o passfd_server.o ptrace.o base_inject.o base_dispatch.o base_dispatch_common.o buffer.o \
-	channel.o common.o core.o list.o remote.o thread.o xor.o zlib.o
-
-
-
-####### check platform
-OSNAME= $(shell uname -s)
-ARCH= $(shell uname -m | sed 's/i[456]86/i386/g')
-
-ifeq ($(OSNAME), FreeBSD)
-	OS= bsd
-	libc_objects+= cerror.o
-else
-	CFLAGS+= -fno-stack-protector -D__linux__
-	CFLAGS+=  -D_POSIX_C_SOURCE=200809 -D__BSD_VISIBLE=1 -D__XSI_VISIBLE=1 
-	OS=$(OSNAME)
-#	requires tls - which we don't have
-#	libc_objects+= errno.o
-endif
-
-BASEVPATH=../../source/common:../../source/common/crypto:../../source/common/arch/posix:../../source/common/zlib:
-OSVPATH= ../../source/common/arch/$(OS)
-ARCHVPATH= $(OSVPATH)/$(ARCH)
-VPATH=$(BASEVPATH):$(OSVPATH):$(ARCHVPATH)
-
-CFLAGS+= -I$(ARCHVPATH)
-
-
-all: libsupport.so
-
-debug: CFLAGS+=-ggdb
-debug: all
-
-
-libsupport.so: $(objects)
-	# Specify that we only want sysv aka DT_HASH hash tables, not DT_GNU_HASH,
-	# because that's what msflinker (modified bionic linker) can handle
-	$(CC) -Wl,--hash-style=sysv $(CFLAGS) -shared $(objects) -lc -lssl -lcrypto -o $@ 
+libsupport.so: $(objects) Makefile
+	@echo [LD] $@
+	@$(CC) $(CFLAGS) $(LDFLAGS) -shared $(objects) -lc -lssl -lcrypto -o $@
 
 clean:
-	$(RM) -f *.o *.a *.so zlib/zlib.o
-
-.PHONY: clean
-
+	$(RM) -f *.o *.a *.so *.a

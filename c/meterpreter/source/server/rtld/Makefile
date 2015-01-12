@@ -1,25 +1,30 @@
 
-CFLAGS+=-I${PWD}/hack
-CFLAGS+= -I ../../bionic/libc/include -I ../../bionic/libc/kernel/common/linux/ -I ../../bionic/libc/kernel/common/ -I ../../bionic/libc/arch-x86/include/
-CFLAGS+= -I ../../bionic/libc/kernel/arch-x86/ -I../../source/server/elf/headers -I../../bionic/libc/private -fPIC -DPIC
-CFLAGS+= -nostdinc -nostdlib -Dwchar_t="char" -fno-builtin -D_SIZE_T_DECLARED -DElf_Size="u_int32_t" -DANDROID_X86_LINKER
-CFLAGS+= -DMETSRV_RTLD -D_BYTE_ORDER=_LITTLE_ENDIAN
+CFLAGS +=-I${PWD}/hack
+CFLAGS += -I ../../bionic/libc/include
+CFLAGS += -I ../../bionic/libc/kernel/common/linux/
+CFLAGS += -I ../../bionic/libc/kernel/common/
+CFLAGS += -I ../../bionic/libc/arch-x86/include/
+CFLAGS += -I ../../bionic/libc/kernel/arch-x86/
+CFLAGS += -I../../source/server/elf/headers
+CFLAGS += -I../../bionic/libc/private
+CFLAGS += -fPIC -DPIC
+CFLAGS += -nostdinc -nostdlib
+CFLAGS += -Dwchar_t="char" -fno-builtin -D_SIZE_T_DECLARED -DElf_Size="u_int32_t"
+CFLAGS += -DANDROID_X86_LINKER -DMETSRV_RTLD -D_BYTE_ORDER=_LITTLE_ENDIAN
+CFLAGS += -march=i386 -m32
 
-CFLAGS+= -march=i386 -m32
+OBJ = msflinker.o basic_libc.o syscall.o linker_format.o dlfcn.o zlib.o metsrv_rtld.o
 
-OBJ=msflinker.o basic_libc.o syscall.o linker_format.o dlfcn.o zlib.o metsrv_rtld.o
-
-compiled=../../bionic/compiled
+compiled = ../../bionic/compiled
 
 # These are all generated from their .so counterparts below
-HEADERS=libc.h       \
+HEADERS=libc.h           \
 	libm.h           \
 	libcrypto.h      \
 	libssl.h         \
 	libsupport.h     \
 	libmetsrv_main.h \
 	libpcap.h
-
 
 all: msflinker msflinker.bin rtldtest
 
@@ -46,10 +51,12 @@ rtldtest: rtldtest.c msflinker
 	$(CC) -march=i386 -m32 -o rtldtest rtldtest.c -DEP=`objdump -f msflinker | grep start | awk '{ print $$3 }'`
 
 .S.o:
-	$(CC) $(CFLAGS) -c $<
+	@echo [CC] $@
+	@$(CC) $(CFLAGS) -c $<
 
 .c.o:
-	$(CC) $(CFLAGS) -c $<
+	@echo [CC] $@
+	@$(CC) $(CFLAGS) -c $<
 
 clean:
 	rm -f $(HEADERS)

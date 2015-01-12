@@ -4,7 +4,7 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 
-#if defined(__FreeBSD__) 
+#if defined(__FreeBSD__)
 #include <sys/filio.h>
 #elif defined(__linux__)
 #define __va_list  __ptr_t
@@ -234,7 +234,7 @@ int local_error;
 #define WSAGetLastError()	GetLastError()
 #define	GetLastError()		(local_error != -1 ? local_error : errno)
 #define	SetLastError(x)		(local_error = (x))
-#define	__declspec(x) 
+#define	__declspec(x)
 
 #define	__try
 #define	__except(x)	if (0)
