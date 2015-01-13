@@ -35,7 +35,7 @@ LDFLAGS += -Wl,--hash-style=sysv
 
 # Specify the gold linker because newer versions of the BFD linker strip
 # important symbols from the shared libraries.
-GCCGOLD = $(shell (echo "int main(){}" | gcc -fuse-ld=gold -o tmp -xc - && rm -f); echo $$?)
+GCCGOLD = $(shell (echo "int main(){}" | gcc -fuse-ld=gold -o/dev/null -xc -); echo $$?)
 ifeq "$(GCCGOLD)" "0"
     LDFLAGS += -fuse-ld=gold
 endif

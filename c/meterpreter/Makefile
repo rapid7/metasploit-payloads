@@ -40,7 +40,7 @@ STD_CFLAGS += -I$(LIBC)/arch-x86/include/
 STD_CFLAGS += -I$(LIBC)/kernel/arch-x86/
 STD_CFLAGS += -L$(COMPILED)
 
-GCCGOLD = $(shell (echo "int main(){}" | gcc -fuse-ld=gold -o tmp -xc - && rm -f); echo $$?)
+GCCGOLD = $(shell (echo "int main(){}" | gcc -fuse-ld=gold -o/dev/null -xc -); echo $$?)
 ifeq "$(GCCGOLD)" "0"
     STD_CFLAGS += -fuse-ld=gold
 endif
