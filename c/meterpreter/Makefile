@@ -29,8 +29,8 @@ outputs += data/meterpreter/ext_server_sniffer.lso
 outputs += data/meterpreter/ext_server_networkpug.lso
 
 STD_CFLAGS =  -Os -m32 -march=i386 -fno-stack-protector
-STD_CFLAGS += -Wl,--hash-style=sysv -fuse-ld=gold
-STD_CFLAGS += -lc -nostdinc -nostdlib -fno-builtin -fPIC -DPIC
+STD_CFLAGS += -Wl,--hash-style=sysv
+STD_CFLAGS += -lc -lm -nostdinc -nostdlib -fno-builtin -fPIC -DPIC
 STD_CFLAGS += -Dwchar_t='char' -D_SIZE_T_DECLARED -DElf_Size='u_int32_t'
 STD_CFLAGS += -D_BYTE_ORDER=_LITTLE_ENDIAN -D_UNIX -D__linux__ -lgcc
 STD_CFLAGS += -I$(LIBC)/include
@@ -39,6 +39,11 @@ STD_CFLAGS += -I$(LIBC)/kernel/common/
 STD_CFLAGS += -I$(LIBC)/arch-x86/include/
 STD_CFLAGS += -I$(LIBC)/kernel/arch-x86/
 STD_CFLAGS += -L$(COMPILED)
+
+GCCGOLD = $(shell (echo "int main(){}" | gcc -fuse-ld=gold -o tmp -xc - && rm -f); echo $$?)
+ifeq "$(GCCGOLD)" "0"
+    STD_CFLAGS += -fuse-ld=gold
+endif
 
 PCAP_CFLAGS = $(STD_CFLAGS)
 
@@ -143,11 +148,13 @@ depclean:
 	rm -f source/bionic/lib*/*.o
 	find source/bionic/ -name '*.a' -print0 | xargs -0 rm -f 2>/dev/null
 	find source/bionic/ -name '*.so' -print0 | xargs -0 rm -f 2>/dev/null
+	find . -name 'build.log' | xargs rm -f
 	rm -f source/bionic/lib*/*.so
 	rm -rf source/openssl/lib/linux/i386/
 
 really-clean: clean clean-ssl clean-pcap depclean
 
+distclean: really-clean
 
 .PHONY: clean clean-ssl clean-pcap really-clean debug
 
