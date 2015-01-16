@@ -81,8 +81,8 @@ DWORD send_core_console_write( Remote *remote, LPCSTR fmt, ... )
  */
 HANDLE core_update_thread_token( Remote *remote, HANDLE token )
 {
-	HANDLE temp = NULL;
 #ifdef _WIN32
+	HANDLE temp = NULL;
 
 	lock_acquire( remote->lock );
 	do
@@ -138,7 +138,7 @@ VOID core_update_desktop( Remote * remote, DWORD dwSessionID, char * cpStationNa
 			dwSessionID = remote->dwOrigSessionId;
 		// Assign the new session id
 		remote->dwCurrentSessionId = dwSessionID;
-	
+
 		temp_station = remote->cpCurrentStationName;
 		// A NULL station resets the station back to the origional process window station
 		if( !cpStationName )
@@ -148,7 +148,7 @@ VOID core_update_desktop( Remote * remote, DWORD dwSessionID, char * cpStationNa
 		// free the memory for the old station name  if its not one of the two active names
 		if( temp_station && temp_station != remote->cpOrigStationName && temp_station != remote->cpCurrentStationName )
 			free( temp_station );
-		
+
 		temp_desktop = remote->cpCurrentDesktopName;
 		// A NULL station resets the desktop back to the origional process desktop
 		if( !cpDesktopName )
@@ -160,7 +160,7 @@ VOID core_update_desktop( Remote * remote, DWORD dwSessionID, char * cpStationNa
 			free( temp_desktop );
 
 	} while( 0 );
-	
+
 	lock_release( remote->lock );
 #endif
 }
@@ -270,7 +270,7 @@ DWORD packet_add_group(Packet* packet, TlvType type, Packet* groupPacket)
 
 /*!
  * @brief Create a response packet from a request.
- * @details Create a response packet from a request, referencing the requestors 
+ * @details Create a response packet from a request, referencing the requestors
  * message identifier.
  * @param request The request \c Packet to build a response for.
  * @return Pointer to a new \c Packet.
@@ -348,7 +348,7 @@ VOID packet_destroy( Packet * packet )
 				memset( buf->buffer, 0, buf->length );
 				free( buf->buffer );
 			}
-			
+
 			free( buf );
 		}
 
@@ -478,9 +478,9 @@ DWORD packet_add_tlv_bool(Packet *packet, TlvType type, BOOL val)
  */
 DWORD packet_add_tlv_group( Packet *packet, TlvType type, Tlv *entries, DWORD numEntries )
 {
-	DWORD totalSize = 0, 
+	DWORD totalSize = 0,
 		offset = 0,
-		index = 0, 
+		index = 0,
 		res = ERROR_SUCCESS;
 	PCHAR buffer = NULL;
 
@@ -583,13 +583,13 @@ DWORD packet_add_tlv_raw_compressed( Packet *packet, TlvType type, LPVOID buf, D
 
 		realLength       = compressed_length + headerLength;
 		newPayloadLength = packet->payloadLength + realLength;
-		
+
 		// Allocate/Reallocate the packet's payload
 		if( packet->payload )
 			newPayload = (PUCHAR)realloc(packet->payload, newPayloadLength);
 		else
 			newPayload = (PUCHAR)malloc(newPayloadLength);
-	
+
 		if( !newPayload )
 		{
 			result = ERROR_NOT_ENOUGH_MEMORY;
@@ -644,7 +644,7 @@ DWORD packet_add_tlv_raw( Packet *packet, TlvType type, LPVOID buf, DWORD length
 		newPayload = (PUCHAR)realloc( packet->payload, newPayloadLength );
 	else
 		newPayload = (PUCHAR)malloc( newPayloadLength );
-	
+
 	if (!newPayload)
 		return ERROR_NOT_ENOUGH_MEMORY;
 
@@ -855,7 +855,7 @@ BOOL packet_get_tlv_value_bool( Packet *packet, TlvType type )
 
 /*!
  * @brief Add an exception to a packet.
- * @details When adding an exception, both a TLV_EXCEPTION_CODE and TLV_EXCEPTION_STRING 
+ * @details When adding an exception, both a TLV_EXCEPTION_CODE and TLV_EXCEPTION_STRING
  *          are added to the packet.
  * @param packet Pointer to the packet to add the detail to.
  * @param code Exception code.
@@ -950,11 +950,11 @@ DWORD packet_find_tlv_buf( Packet *packet, PUCHAR payload, DWORD payloadLength, 
 			// if the type has been compressed, temporarily remove the compression flag as compression is to be transparent.
 			if( ( current_type & TLV_META_TYPE_COMPRESSED ) == TLV_META_TYPE_COMPRESSED )
 				current_type = (TlvType)(current_type ^ TLV_META_TYPE_COMPRESSED);
-			
+
 			// check if the types match?
 			if( (current_type != type) && (type != TLV_TYPE_ANY) )
 				continue;
-		
+
 			// Matching index?
 			if (currentIndex != index)
 			{
@@ -978,7 +978,7 @@ DWORD packet_find_tlv_buf( Packet *packet, PUCHAR payload, DWORD payloadLength, 
 					decompressed_buf = (DECOMPRESSED_BUFFER *)malloc( sizeof(DECOMPRESSED_BUFFER) );
 					if( !decompressed_buf )
 						break;
-					
+
 					// the first DWORD in a compressed buffer is the decompressed buffer length.
 					decompressed_buf->length = ntohl( *(DWORD *)tlv->buffer );
 					if( !decompressed_buf->length )
@@ -990,17 +990,17 @@ DWORD packet_find_tlv_buf( Packet *packet, PUCHAR payload, DWORD payloadLength, 
 
 					tlv->header.length -= sizeof( DWORD );
 					tlv->buffer += sizeof( DWORD );
-					
+
 					if( uncompress( (Bytef*)decompressed_buf->buffer, &decompressed_buf->length, tlv->buffer, tlv->header.length ) != Z_OK )
 						break;
-					
+
 					tlv->header.type   = tlv->header.type ^ TLV_META_TYPE_COMPRESSED;
 					tlv->header.length = decompressed_buf->length;
 					tlv->buffer        = (PUCHAR)decompressed_buf->buffer;
 
 					if( !packet->decompressed_buffers )
 						packet->decompressed_buffers = list_create();
-					
+
 					if( !packet->decompressed_buffers )
 						break;
 
@@ -1099,7 +1099,7 @@ DWORD packet_call_completion_handlers( Remote *remote, Packet *response, LPCSTR 
 	// Enumerate the completion routine list
 	for (current = packetCompletionRoutineList; current; current = current->next)
 	{
-		// Does the request id of the completion entry match the packet's request 
+		// Does the request id of the completion entry match the packet's request
 		// id?
 		if (strcmp(requestId, current->requestId))
 			continue;
@@ -1142,7 +1142,7 @@ DWORD packet_remove_completion_handler( LPCSTR requestId )
 			prev->next = next;
 		else
 			packetCompletionRoutineList = next;
-	
+
 		// Deallocate it
 		free((PCHAR)current->requestId);
 		free(current);
@@ -1207,7 +1207,7 @@ DWORD packet_transmit_via_ssl( Remote *remote, Packet *packet, PacketRequestComp
 
 	do
 	{
-		// If a completion routine was supplied and the packet has a request 
+		// If a completion routine was supplied and the packet has a request
 		// identifier, insert the completion routine into the list
 		if ((completion) &&
 		    (packet_get_tlv_string(packet, TLV_TYPE_REQUEST_ID,
@@ -1224,8 +1224,8 @@ DWORD packet_transmit_via_ssl( Remote *remote, Packet *packet, PacketRequestComp
 			PUCHAR origPayload = packet->payload;
 
 			// Encrypt
-			if ((res = crypto->handlers.encrypt(crypto, packet->payload, 
-					packet->payloadLength, &packet->payload, 
+			if ((res = crypto->handlers.encrypt(crypto, packet->payload,
+					packet->payloadLength, &packet->payload,
 					&packet->payloadLength)) !=
 					ERROR_SUCCESS)
 			{
@@ -1242,14 +1242,14 @@ DWORD packet_transmit_via_ssl( Remote *remote, Packet *packet, PacketRequestComp
 
 		idx = 0;
 		while( idx < sizeof(packet->header))
-		{ 
+		{
 			// Transmit the packet's header (length, type)
 			res = SSL_write(
-				remote->ssl, 
-				(LPCSTR)(&packet->header) + idx, 
+				remote->ssl,
+				(LPCSTR)(&packet->header) + idx,
 				sizeof(packet->header) - idx
 			);
-			
+
 			if(res <= 0) {
 				dprintf("[PACKET] transmit header failed with return %d at index %d\n", res, idx);
 				break;
@@ -1262,10 +1262,10 @@ DWORD packet_transmit_via_ssl( Remote *remote, Packet *packet, PacketRequestComp
 
 		idx = 0;
 		while( idx < packet->payloadLength)
-		{ 
+		{
 			// Transmit the packet's payload (length, type)
 			res = SSL_write(
-				remote->ssl, 
+				remote->ssl,
 				packet->payload + idx,
 				packet->payloadLength - idx
 			);
@@ -1330,7 +1330,7 @@ DWORD packet_transmit_via_http( Remote *remote, Packet *packet, PacketRequestCom
 
 	do
 	{
-		// If a completion routine was supplied and the packet has a request 
+		// If a completion routine was supplied and the packet has a request
 		// identifier, insert the completion routine into the list
 		if ((completion) &&
 		    (packet_get_tlv_string(packet, TLV_TYPE_REQUEST_ID,
@@ -1347,8 +1347,8 @@ DWORD packet_transmit_via_http( Remote *remote, Packet *packet, PacketRequestCom
 			PUCHAR origPayload = packet->payload;
 
 			// Encrypt
-			if ((res = crypto->handlers.encrypt(crypto, packet->payload, 
-					packet->payloadLength, &packet->payload, 
+			if ((res = crypto->handlers.encrypt(crypto, packet->payload,
+					packet->payloadLength, &packet->payload,
 					&packet->payloadLength)) !=
 					ERROR_SUCCESS)
 			{
@@ -1484,7 +1484,7 @@ DWORD packet_transmit_empty_response( Remote *remote, Packet *packet, DWORD res 
  */
 DWORD packet_receive( Remote *remote, Packet **packet )
 {
-	DWORD headerBytes = 0, payloadBytesLeft = 0, res; 
+	DWORD headerBytes = 0, payloadBytesLeft = 0, res;
 	CryptoContext *crypto = NULL;
 	Packet *localPacket = NULL;
 	TlvHeader header;
@@ -1496,10 +1496,10 @@ DWORD packet_receive( Remote *remote, Packet **packet )
 #ifdef _UNIX
 	int local_error = -1;
 #endif
-	
+
 	if (remote->transport == METERPRETER_TRANSPORT_HTTP || remote->transport == METERPRETER_TRANSPORT_HTTPS)
 		return packet_receive_via_http( remote, packet );
-	
+
 	lock_acquire( remote->lock );
 
 	do
@@ -1521,13 +1521,13 @@ DWORD packet_receive( Remote *remote, Packet **packet )
 			}
 
 			headerBytes += bytesRead;
-	
+
 			if (headerBytes != sizeof(TlvHeader))
 				continue;
 			else
 				inHeader = FALSE;
 		}
-		
+
 		if (headerBytes != sizeof(TlvHeader))
 			break;
 
@@ -1543,7 +1543,7 @@ DWORD packet_receive( Remote *remote, Packet **packet )
 			SetLastError(ERROR_NOT_ENOUGH_MEMORY);
 			break;
 		}
-			
+
 		// Read the payload
 		while (payloadBytesLeft > 0)
 		{
@@ -1566,7 +1566,7 @@ DWORD packet_receive( Remote *remote, Packet **packet )
 
 			payloadBytesLeft -= bytesRead;
 		}
-		
+
 		// Didn't finish?
 		if (payloadBytesLeft)
 			break;
@@ -1638,7 +1638,7 @@ DWORD packet_receive( Remote *remote, Packet **packet )
  */
 DWORD packet_receive_http_via_wininet( Remote *remote, Packet **packet ) {
 
-	DWORD headerBytes = 0, payloadBytesLeft = 0, res; 
+	DWORD headerBytes = 0, payloadBytesLeft = 0, res;
 	CryptoContext *crypto = NULL;
 	Packet *localPacket = NULL;
 	TlvHeader header;
@@ -1652,7 +1652,7 @@ DWORD packet_receive_http_via_wininet( Remote *remote, Packet **packet ) {
 	HINTERNET hReq;
 	BOOL hRes;
 	DWORD retries = 5;
-	
+
 	lock_acquire( remote->lock );
 
 	do {
@@ -1675,7 +1675,7 @@ DWORD packet_receive_http_via_wininet( Remote *remote, Packet **packet ) {
 			flags |= SECURITY_FLAG_IGNORE_UNKNOWN_CA | SECURITY_FLAG_IGNORE_CERT_CN_INVALID | SECURITY_FLAG_IGNORE_UNKNOWN_CA;
 			InternetSetOption(hReq, INTERNET_OPTION_SECURITY_FLAGS, &flags, flen);
 		}
-		
+
 		hRes = HttpSendRequest(hReq, NULL, 0, "RECV", 4 );
 		if (! hRes) {
 			dprintf("[PACKET RECEIVE] Failed HttpSendRequest: %d", GetLastError());
@@ -1695,7 +1695,7 @@ DWORD packet_receive_http_via_wininet( Remote *remote, Packet **packet ) {
 			}
 
 			// If the response contains no data, this is fine, it just means the
-			// remote side had nothing to tell us. Indicate this through a 
+			// remote side had nothing to tell us. Indicate this through a
 			// ERROR_EMPTY response code so we can update the timestamp.
 			if (bytesRead == 0) {
 				SetLastError(ERROR_EMPTY);
@@ -1703,7 +1703,7 @@ DWORD packet_receive_http_via_wininet( Remote *remote, Packet **packet ) {
 			}
 
 			headerBytes += bytesRead;
-	
+
 			if (headerBytes != sizeof(TlvHeader)) {
 				continue;
 			} else {
@@ -1713,7 +1713,7 @@ DWORD packet_receive_http_via_wininet( Remote *remote, Packet **packet ) {
 
 		if (GetLastError() == ERROR_EMPTY)
 			break;
-		
+
 		if (headerBytes != sizeof(TlvHeader)) {
 			SetLastError(ERROR_NOT_FOUND);
 			break;
@@ -1731,7 +1731,7 @@ DWORD packet_receive_http_via_wininet( Remote *remote, Packet **packet ) {
 			SetLastError(ERROR_NOT_ENOUGH_MEMORY);
 			break;
 		}
-			
+
 		// Read the payload
 		retries = payloadBytesLeft;
 		while (payloadBytesLeft > 0 && retries > 0 )
@@ -1750,7 +1750,7 @@ DWORD packet_receive_http_via_wininet( Remote *remote, Packet **packet ) {
 
 			payloadBytesLeft -= bytesRead;
 		}
-		
+
 		// Didn't finish?
 		if (payloadBytesLeft)
 			break;
@@ -1806,7 +1806,7 @@ DWORD packet_receive_http_via_wininet( Remote *remote, Packet **packet ) {
 			free(localPacket);
 	}
 
-	if (hReq) 
+	if (hReq)
 		InternetCloseHandle(hReq);
 
 	lock_release( remote->lock );

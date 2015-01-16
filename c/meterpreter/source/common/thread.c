@@ -11,7 +11,7 @@ int __futex_wake(volatile void *ftx, int count);
 
 #endif
 
-// thread.c contains wrappers for the primitives of locks, events and threads for use in 
+// thread.c contains wrappers for the primitives of locks, events and threads for use in
 // the multithreaded meterpreter. This is the win32/win64 implementation.
 
 /*****************************************************************************************/
@@ -142,7 +142,7 @@ BOOL event_signal( EVENT * event )
 		dprintf( "Signalling 0x%x failed %u", event->handle, GetLastError() );
 		return FALSE;
 	}
-#else 
+#else
 	event->handle = (HANDLE)1;
 	__futex_wake(&(event->handle), 1);
 #endif
@@ -189,8 +189,8 @@ BOOL event_poll( EVENT * event, DWORD timeout )
 			ts.tv_nsec -= 1000000000;
 		}
 
-		// atomically checks if event->handle is 0, if so, 
-		// it sleeps for timeout. if event->handle is 1, it 
+		// atomically checks if event->handle is 0, if so,
+		// it sleeps for timeout. if event->handle is 1, it
 		// returns straight away.
 
 		__futex_wait(&(event->handle), 0, &ts);
@@ -222,7 +222,7 @@ THREAD * thread_open( VOID )
 	if( thread != NULL )
 	{
 		memset( thread, 0, sizeof(THREAD) );
-			
+
 		thread->id      = GetCurrentThreadId();
 		thread->sigterm = event_create();
 
@@ -281,7 +281,7 @@ struct thread_conditional {
 	pthread_mutex_t suspend_mutex;
 	pthread_cond_t suspend_cond;
 	int engine_running;
-	THREADFUNK (*funk)(void *arg);
+	LPVOID (*funk)(void *arg);
 	THREAD *thread;
 };
 
@@ -292,8 +292,8 @@ void __thread_cancelled(int signo)
 }
 
 /*
- * This is the entry point for threads created with thread_create. 
- * 
+ * This is the entry point for threads created with thread_create.
+ *
  * To implement suspended threads, we need to do some messing around with
  * mutexes and conditional broadcasts ;\
  */
@@ -318,7 +318,7 @@ void *__paused_thread(void *req)
 
 	funk = tc->funk;
 	thread = tc->thread;
-	free(tc); 
+	free(tc);
 
 	if(event_poll(thread->sigterm, 0) == TRUE) {
 		/*
@@ -327,7 +327,7 @@ void *__paused_thread(void *req)
 		return NULL;
 	}
 
-	return funk(thread);	
+	return funk(thread);
 }
 #endif
 
@@ -337,7 +337,7 @@ void *__paused_thread(void *req)
 THREAD * thread_create( THREADFUNK funk, LPVOID param1, LPVOID param2, LPVOID param3 )
 {
 	THREAD * thread = NULL;
-	
+
 	if( funk == NULL )
 		return NULL;
 
@@ -371,7 +371,7 @@ THREAD * thread_create( THREADFUNK funk, LPVOID param1, LPVOID param2, LPVOID pa
 
 #else
 	// PKS, this is fucky.
-	// we need to use conditionals to implement this. 
+	// we need to use conditionals to implement this.
 
 	thread->thread_started = FALSE;
 
@@ -386,13 +386,13 @@ THREAD * thread_create( THREADFUNK funk, LPVOID param1, LPVOID param2, LPVOID pa
 			free(thread);
 			return NULL;
 		}
-		
+
 		memset( tc, 0, sizeof(struct thread_conditional));
 
 		pthread_mutex_init(&tc->suspend_mutex, NULL);
 		pthread_cond_init(&tc->suspend_cond, NULL);
 
-		tc->funk = funk;		
+		tc->funk = funk;
 		tc->thread = thread;
 
 		thread->suspend_thread_data = (void *)(tc);
@@ -450,10 +450,10 @@ BOOL thread_sigterm( THREAD * thread )
 	ret = event_signal( thread->sigterm );
 
 #ifndef _WIN32
-	/* 
-	 * If we sig term a thread before it's started execution, we will leak memory / not be 
+	/*
+	 * If we sig term a thread before it's started execution, we will leak memory / not be
 	 * able to join on the thread, etc.
-	 * 
+	 *
 	 * Therefore, we need to start the thread executing before calling thread_join
 	 */
 	if(thread->thread_started != TRUE) {
@@ -509,7 +509,7 @@ BOOL thread_join( THREAD * thread )
 
 	return FALSE;
 #else
-	if(pthread_join(thread->pid, NULL) == 0) 
+	if(pthread_join(thread->pid, NULL) == 0)
 		return TRUE;
 
 	return FALSE;
@@ -524,7 +524,7 @@ BOOL thread_destroy( THREAD * thread )
 {
 	if( thread == NULL )
 		return FALSE;
-	
+
 	event_destroy( thread->sigterm );
 
 #ifdef _WIN32

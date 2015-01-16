@@ -33,7 +33,11 @@ typedef struct capturejob
 	unsigned int cur_bytes;
 	unsigned int mtu;
 	HANDLE adp;
+#ifdef _WIN32
 	HANDLE *pkts;
+#else
+	struct PeterPacket **pkts;
+#endif
 	unsigned char *dbuf;
 	unsigned int dlen;
 	unsigned int didx;
@@ -105,6 +109,6 @@ typedef struct capturejob
 		MAKE_CUSTOM_TLV(					\
 			TLV_META_TYPE_STRING,				\
 			TLV_TYPE_EXTENSION_SNIFFER,			\
-			TLV_EXTENSIONS + 10)	
+			TLV_EXTENSIONS + 10)
 
 #endif

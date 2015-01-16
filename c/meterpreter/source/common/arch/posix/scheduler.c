@@ -5,7 +5,7 @@
 typedef struct _WaitableEntry
 {
 	Remote *               remote;
-	HANDLE                 waitable;
+	int                    waitable;
 	EVENT*                 pause;
 	EVENT*                 resume;
 	LPVOID                 context;
@@ -71,7 +71,7 @@ DWORD scheduler_destroy( VOID )
 		thread = (THREAD *)list_get( schedulerThreadList, index );
 		if( thread == NULL )
 			continue;
-		
+
 		list_push( jlist, thread );
 
 		entry = (WaitableEntry *)thread->parameter1;
@@ -89,7 +89,7 @@ DWORD scheduler_destroy( VOID )
 	while( TRUE )
 	{
 		dprintf( "[SCHEDULER] scheduler_destroy, popping off another item from thread liat..." );
-		
+
 		thread = (THREAD *)list_pop( jlist );
 		if( thread == NULL )
 			break;
@@ -102,7 +102,7 @@ DWORD scheduler_destroy( VOID )
 	dprintf( "[SCHEDULER] scheduler_destroy, destroying lists..." );
 
 	list_destroy( jlist );
-	
+
 	list_destroy( schedulerThreadList );
 
 	schedulerThreadList = NULL;
@@ -128,7 +128,7 @@ DWORD scheduler_insert_waitable( HANDLE waitable, LPVOID entryContext, LPVOID th
 		waitable, entryContext, threadContext, routine, destroy );
 
 	memset( entry, 0, sizeof( WaitableEntry ) );
-	
+
 	entry->remote   = schedulerRemote;
 	entry->waitable = waitable;
 	entry->destroy  = destroy;
@@ -167,7 +167,7 @@ DWORD scheduler_signal_waitable( HANDLE waitable, SchedularSignal signal )
 
 	dprintf( "[SCHEDULER] entering scheduler_signal_waitable( 0x%08X )", waitable );
 
-	if( schedulerThreadList == NULL || waitable == NULL )
+	if( schedulerThreadList == NULL || waitable == 0 )
 		return ERROR_INVALID_HANDLE;
 
 	lock_acquire( schedulerThreadList->lock );
@@ -179,7 +179,7 @@ DWORD scheduler_signal_waitable( HANDLE waitable, SchedularSignal signal )
 		thread = (THREAD *)list_get( schedulerThreadList, index );
 		if( thread == NULL )
 			continue;
-	
+
 		entry = (WaitableEntry *)thread->parameter1;
 		if( entry == NULL )
 			continue;
@@ -224,7 +224,7 @@ DWORD scheduler_signal_waitable( HANDLE waitable, SchedularSignal signal )
 }
 
 /*
- * The schedulers waitable thread. Each scheduled item will have its own thread which 
+ * The schedulers waitable thread. Each scheduled item will have its own thread which
  * waits for either data to process or the threads signal to terminate.
  */
 DWORD THREADCALL scheduler_waitable_thread( THREAD * thread )
@@ -278,8 +278,8 @@ DWORD THREADCALL scheduler_waitable_thread( THREAD * thread )
 	}
 
 	dprintf( "[SCHEDULER] leaving scheduler_waitable_thread( 0x%08X )", thread );
-	
-	// we acquire the lock for this block as we are freeing 'entry' which may be accessed 
+
+	// we acquire the lock for this block as we are freeing 'entry' which may be accessed
 	// in a second call to scheduler_signal_waitable for this thread (unlikely but best practice).
 	dprintf( "[SCHEDULER] attempting to remove thread( 0x%08X )", thread );
 	lock_acquire( schedulerThreadList->lock );

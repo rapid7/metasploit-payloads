@@ -1,5 +1,4 @@
 
-
 # Used by 'install' target. Change this to wherever your framework checkout is.
 # Doesn't have to be development. Should point to the base directory where
 # msfconsole lives.
@@ -29,62 +28,33 @@ outputs += data/meterpreter/ext_server_stdapi.lso
 outputs += data/meterpreter/ext_server_sniffer.lso
 outputs += data/meterpreter/ext_server_networkpug.lso
 
-#PCAP_CFLAGS = -march=i386 -m32 -Wl,--hash-style=sysv -fno-stack-protector -nostdinc -nostdlib -fPIC -DPIC -g -Wall -D_UNIX -D__linux__  -I$(LIBC)/include -I$(LIBC)/kernel/common/linux/ -I$(LIBC)/kernel/common/ -I$(LIBC)/arch-x86/include/ -I$(LIBC)/kernel/arch-x86/ -Dwchar_t="char" -fno-builtin -D_SIZE_T_DECLARED -DElf_Size="u_int32_t" -D_BYTE_ORDER=_LITTLE_ENDIAN -lgcc -L$(COMPILED) -fPIC -Os -lc
-PCAP_CFLAGS = \
- -Os \
- -Wl,--hash-style=sysv \
- -march=i386 \
- -m32 \
- -fno-stack-protector \
- -nostdinc \
- -nostdlib \
- -fno-builtin \
- -fPIC \
- -DPIC \
- -Wall \
- -lc \
- -I$(LIBC)/include \
- -I$(LIBC)/kernel/common/linux/ \
- -I$(LIBC)/kernel/common/ \
- -I$(LIBC)/arch-x86/include/ \
- -I$(LIBC)/kernel/arch-x86/ \
- -L$(COMPILED) \
- -Dwchar_t="char" \
- -D_SIZE_T_DECLARED \
- -DElf_Size="u_int32_t" \
- -D_BYTE_ORDER=_LITTLE_ENDIAN \
- -D_UNIX \
- -D__linux__ \
- -lgcc
+STD_CFLAGS =  -Os -m32 -march=i386 -fno-stack-protector
+STD_CFLAGS += -Wl,--hash-style=sysv
+STD_CFLAGS += -lc -lm -nostdinc -nostdlib -fno-builtin -fPIC -DPIC
+STD_CFLAGS += -Dwchar_t='char' -D_SIZE_T_DECLARED -DElf_Size='u_int32_t'
+STD_CFLAGS += -D_BYTE_ORDER=_LITTLE_ENDIAN -D_UNIX -D__linux__ -lgcc
+STD_CFLAGS += -I$(LIBC)/include
+STD_CFLAGS += -I$(LIBC)/kernel/common/linux/
+STD_CFLAGS += -I$(LIBC)/kernel/common/
+STD_CFLAGS += -I$(LIBC)/arch-x86/include/
+STD_CFLAGS += -I$(LIBC)/kernel/arch-x86/
+STD_CFLAGS += -L$(COMPILED)
 
-#OSSL_CFLAGS = -Os -Wl,--hash-style=sysv -march=i386 -m32 -nostdinc -nostdlib -fno-builtin -fpic -I $(LIBC)/include -I $(LIBC)/kernel/common/linux/ -I $(LIBC)/kernel/common/ -I $(LIBC)/arch-x86/include/ -I $(LIBC)/kernel/arch-x86/  -I$(LIBC)/private -I$(LIBM)/include -DPIC -Dwchar_t='char' -D_SIZE_T_DECLARED -DElf_Size='u_int32_t' -D_BYTE_ORDER=_LITTLE_ENDIAN -L$(COMPILED) -lc
-OSSL_CFLAGS = \
- -Os \
- -Wl,--hash-style=sysv \
- -march=i386 \
- -m32 \
- -nostdinc \
- -nostdlib \
- -fno-builtin \
- -fpic \
- -DPIC \
- -lc \
- -I $(LIBC)/include \
- -I $(LIBC)/kernel/common/linux/ \
- -I $(LIBC)/kernel/common/ \
- -I $(LIBC)/arch-x86/include/ \
- -I $(LIBC)/kernel/arch-x86/ \
- -I$(LIBC)/private \
- -I$(LIBM)/include \
- -L$(COMPILED) \
- -Dwchar_t='char' \
- -D_SIZE_T_DECLARED \
- -DElf_Size='u_int32_t' \
- -D_BYTE_ORDER=_LITTLE_ENDIAN \
+GCCGOLD = $(shell (echo "int main(){}" | gcc -fuse-ld=gold -o/dev/null -xc -); echo $$?)
+ifeq "$(GCCGOLD)" "0"
+    STD_CFLAGS += -fuse-ld=gold
+endif
+
+PCAP_CFLAGS = $(STD_CFLAGS)
+
+OSSL_CFLAGS = $(STD_CFLAGS) -I$(LIBC)/private -I$(LIBM)/include
 
 workspace = workspace
 
 all: $(objects) $(outputs)
+
+include Makefile.ossl
+include Makefile.pcap
 
 debug: DEBUG=true
 # I'm 99% sure this is the wrong way to do this
@@ -95,95 +65,75 @@ $(COMPILED):
 	mkdir $(COMPILED)/
 
 $(COMPILED)/libc.so: $(COMPILED)
-	(cd source/bionic/libc && ARCH=x86 TOP=${ROOT} jam)
-	(cd source/bionic/libc/out/x86/ && $(MAKE) -f Makefile.msf && [ -f libbionic.so ])
-	cp source/bionic/libc/out/x86/libbionic.so $(COMPILED)/libc.so
+	@echo Building libc
+	@(cd source/bionic/libc && ARCH=x86 TOP=${ROOT} jam > build.log 2>&1 )
+	@(cd source/bionic/libc/out/x86/ && $(MAKE) -f Makefile.msf >> build.log 2>&1 && [ -f libbionic.so ])
+	@cp source/bionic/libc/out/x86/libbionic.so $(COMPILED)/libc.so
 
 $(COMPILED)/libm.so:
-	$(MAKE) -C $(LIBM) -f Makefile.msf && [ -f $(LIBM)/libm.so ]
-	cp $(LIBM)/libm.so $(COMPILED)/libm.so
+	@echo Building libm
+	@$(MAKE) -C $(LIBM) -f Makefile.msf > build.log 2>&1 && [ -f $(LIBM)/libm.so ]
+	@cp $(LIBM)/libm.so $(COMPILED)/libm.so
 
 $(COMPILED)/libdl.so:
-	$(MAKE) -C $(BIONIC)/libdl && [ -f $(BIONIC)/libdl/libdl.so ]
-	cp $(BIONIC)/libdl/libdl.so $(COMPILED)/libdl.so
-
-$(COMPILED)/libcrypto.so: $(build_tmp)/openssl-0.9.8za/libssl.so
-	cp $(build_tmp)/openssl-0.9.8za/libcrypto.so source/bionic/compiled/libcrypto.so
-
-$(COMPILED)/libssl.so: $(build_tmp)/openssl-0.9.8za/libssl.so
-	cp $(build_tmp)/openssl-0.9.8za/libssl.so source/bionic/compiled/libssl.so
-
-$(build_tmp)/openssl-0.9.8za/libssl.so:
-	[ -d $(build_tmp) ] || mkdir $(build_tmp)
-	[ -f $(build_tmp)/openssl-0.9.8za.tar.gz ] || wget -O $(build_tmp)/openssl-0.9.8za.tar.gz https://www.openssl.org/source/openssl-0.9.8za.tar.gz
-	[ -d $(build_tmp)/openssl-0.9.8za ] || tar -C $(build_tmp)/ -xzf $(build_tmp)/openssl-0.9.8za.tar.gz
-	(cd $(build_tmp)/openssl-0.9.8za &&                                                       \
-		cat Configure | grep -v 'linux-msf' | \
-		sed -e 's#my %table=(#my %table=(     \
-			"linux-msf", "gcc:$(OSSL_CFLAGS) -DL_ENDIAN -DTERMIO -Wall::-D_REENTRANT::$(OSSL_CFLAGS) -ldl:BN_LLONG $${x86_gcc_des} $${x86_gcc_opts}:$${x86_elf_asm}:dlfcn:linux-shared:$(OSSL_CFLAGS) -fPIC::.so.\\$$\\$$(SHLIB_MAJOR).\\$$\\$$(SHLIB_MINOR)",\
-		#;' > Configure-msf;\
-		cp Configure-msf Configure && chmod +x Configure && \
-		grep linux-msf Configure && \
-		./Configure --prefix=/tmp/out threads shared no-hw no-dlfcn no-zlib no-krb5 no-idea 386 linux-msf \
-	)
-	(cd $(build_tmp)/openssl-0.9.8za && $(MAKE) depend all ; [ -f libssl.so.0.9.8 -a -f libcrypto.so.0.9.8 ] )
-
-$(COMPILED)/libpcap.so: $(build_tmp)/libpcap-1.1.1/libpcap.so.1.1.1
-	cp $(build_tmp)/libpcap-1.1.1/libpcap.so.1.1.1 $(COMPILED)/libpcap.so
-
-$(build_tmp)/libpcap-1.1.1/libpcap.so.1.1.1:
-	[ -d $(build_tmp) ] || mkdir $(build_tmp)
-	[ -f $(build_tmp)/libpcap-1.1.1.tar.gz ] || wget -O $(build_tmp)/libpcap-1.1.1.tar.gz http://www.tcpdump.org/release/libpcap-1.1.1.tar.gz
-	[ -f $(build_tmp)/libpcap-1.1.1/configure ] || tar -C $(build_tmp) -xzf $(build_tmp)/libpcap-1.1.1.tar.gz
-	(cd $(build_tmp)/libpcap-1.1.1 && ./configure --disable-bluetooth --without-bluetooth --without-usb --disable-usb --without-can --disable-can --without-usb-linux --disable-usb-linux --without-libnl)
-	echo '#undef HAVE_DECL_ETHER_HOSTTON' >> $(build_tmp)/libpcap-1.1.1/config.h
-	echo '#undef HAVE_SYS_BITYPES_H' >> $(build_tmp)/libpcap-1.1.1/config.h
-	echo '#undef PCAP_SUPPORT_CAN' >> $(build_tmp)/libpcap-1.1.1/config.h
-	echo '#undef PCAP_SUPPORT_USB' >> $(build_tmp)/libpcap-1.1.1/config.h
-	echo '#undef HAVE_ETHER_HOSTTON'  >> $(build_tmp)/libpcap-1.1.1/config.h
-	echo '#define _STDLIB_H this_works_around_malloc_definition_in_grammar_dot_c' >> $(build_tmp)/libpcap-1.1.1/config.h
-	(cd $(build_tmp)/libpcap-1.1.1 && patch -p0 < $(cwd)/source/libpcap/pcap_nametoaddr_fix.diff)
-	(cd $(build_tmp)/libpcap-1.1.1 && patch -p0 < $(cwd)/source/libpcap/pcap-linux.diff)
-	sed -i -e s/pcap-usb-linux.c//g -e s/fad-getad.c/fad-gifc.c/g $(build_tmp)/libpcap-1.1.1/Makefile
-	sed -i -e s^"CC = gcc"^"CC = gcc $(PCAP_CFLAGS)"^g $(build_tmp)/libpcap-1.1.1/Makefile
-	$(MAKE) -C $(build_tmp)/libpcap-1.1.1
-
+	@echo Building libdl
+	@$(MAKE) -C $(BIONIC)/libdl > build.log && [ -f $(BIONIC)/libdl/libdl.so ]
+	@cp $(BIONIC)/libdl/libdl.so $(COMPILED)/libdl.so
 
 data/meterpreter/msflinker_linux_x86.bin: source/server/rtld/msflinker.bin
 	cp source/server/rtld/msflinker.bin data/meterpreter/msflinker_linux_x86.bin
 
-source/server/rtld/msflinker.bin: $(COMPILED)/libc.so
+source/server/rtld/msflinker.bin: $(COMPILED)/libc.so \
+	$(wildcard source/server/*.h) \
+	$(wildcard source/server/*.c)
 	$(MAKE) -C source/server/rtld
 
-$(workspace)/metsrv/libmetsrv_main.so: $(COMPILED)/libsupport.so
+$(workspace)/metsrv/libmetsrv_main.so: $(COMPILED)/libsupport.so \
+	$(wildcard source/server/*.h) \
+	$(wildcard source/server/*.c)
 	$(MAKE) -C $(workspace)/metsrv
 
 $(COMPILED)/libmetsrv_main.so: $(workspace)/metsrv/libmetsrv_main.so
 	cp $(workspace)/metsrv/libmetsrv_main.so $(COMPILED)/libmetsrv_main.so
 
-$(workspace)/common/libsupport.so:
+$(workspace)/common/libsupport.so: \
+	$(wildcard source/common/*.h) \
+	$(wildcard source/common/*.c)
 	$(MAKE) -C $(workspace)/common
 
 $(COMPILED)/libsupport.so: $(workspace)/common/libsupport.so
 	cp $(workspace)/common/libsupport.so $(COMPILED)/libsupport.so
 
-$(workspace)/ext_server_sniffer/ext_server_sniffer.so: $(COMPILED)/libpcap.so
+$(workspace)/ext_server_sniffer/ext_server_sniffer.so: \
+	$(wildcard source/extensions/sniffer/*.h) \
+	$(wildcard source/extensions/sniffer/*.c) \
+	$(COMPILED)/libpcap.so
 	$(MAKE) -C $(workspace)/ext_server_sniffer
 
-data/meterpreter/ext_server_sniffer.lso: $(workspace)/ext_server_sniffer/ext_server_sniffer.so
-	cp $(workspace)/ext_server_sniffer/ext_server_sniffer.so data/meterpreter/ext_server_sniffer.lso
+data/meterpreter/ext_server_sniffer.lso: \
+	$(workspace)/ext_server_sniffer/ext_server_sniffer.so
+	cp $(workspace)/ext_server_sniffer/ext_server_sniffer.so \
+		data/meterpreter/ext_server_sniffer.lso
 
-$(workspace)/ext_server_stdapi/ext_server_stdapi.so:
+$(workspace)/ext_server_stdapi/ext_server_stdapi.so: \
+	$(wildcard source/extensions/stdapi/*.h) \
+	$(wildcard source/extensions/stdapi/*.c)
 	$(MAKE) -C $(workspace)/ext_server_stdapi
 
-data/meterpreter/ext_server_stdapi.lso: $(workspace)/ext_server_stdapi/ext_server_stdapi.so
-	cp $(workspace)/ext_server_stdapi/ext_server_stdapi.so data/meterpreter/ext_server_stdapi.lso
+data/meterpreter/ext_server_stdapi.lso: \
+	$(workspace)/ext_server_stdapi/ext_server_stdapi.so
+	cp $(workspace)/ext_server_stdapi/ext_server_stdapi.so \
+		data/meterpreter/ext_server_stdapi.lso
 
-$(workspace)/ext_server_networkpug/ext_server_networkpug.so:
+$(workspace)/ext_server_networkpug/ext_server_networkpug.so: \
+	$(wildcard source/extensions/networkpug/*.h) \
+	$(wildcard source/extensions/networkpug/*.c)
 	$(MAKE) -C $(workspace)/ext_server_networkpug
 
-data/meterpreter/ext_server_networkpug.lso: $(workspace)/ext_server_networkpug/ext_server_networkpug.so
-	cp $(workspace)/ext_server_networkpug/ext_server_networkpug.so data/meterpreter/ext_server_networkpug.lso
+data/meterpreter/ext_server_networkpug.lso: \
+    $(workspace)/ext_server_networkpug/ext_server_networkpug.so
+	cp $(workspace)/ext_server_networkpug/ext_server_networkpug.so \
+		data/meterpreter/ext_server_networkpug.lso
 
 
 install: $(outputs)
@@ -198,22 +148,13 @@ depclean:
 	rm -f source/bionic/lib*/*.o
 	find source/bionic/ -name '*.a' -print0 | xargs -0 rm -f 2>/dev/null
 	find source/bionic/ -name '*.so' -print0 | xargs -0 rm -f 2>/dev/null
+	find . -name 'build.log' | xargs rm -f
 	rm -f source/bionic/lib*/*.so
 	rm -rf source/openssl/lib/linux/i386/
-	rm -rf $(build_tmp)
-
-clean-pcap:
-	#(cd $(build_tmp)/libpcap-1.1.1/ && make clean)
-	# This avoids the pcap target trying to patch the same file more than once.
-	# It's a pretty small tar, so untar'ing goes pretty quickly anyway, in
-	# contrast to openssl.
-	rm -r $(build_tmp)/libpcap-1.1.1 || true
-
-clean-ssl:
-	make -C $(build_tmp)/openssl-0.9.8za/ clean
 
 really-clean: clean clean-ssl clean-pcap depclean
 
+distclean: really-clean
 
 .PHONY: clean clean-ssl clean-pcap really-clean debug
 

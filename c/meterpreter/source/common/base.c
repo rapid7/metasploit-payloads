@@ -50,7 +50,7 @@ DWORD THREADCALL command_process_thread( THREAD * thread );
 Command baseCommands[] =
 {
 	// Console commands
-	{  "core_console_write",  
+	{  "core_console_write",
 		{ remote_request_core_console_write,   NULL,   { TLV_META_TYPE_STRING }, 1 | ARGUMENT_FLAG_REPEAT },
 		{ remote_response_core_console_write,  NULL,   EMPTY_TLV },
 	},
@@ -211,7 +211,7 @@ VOID command_join_threads(VOID)
  * @detail Each thread appears as a process and pthread_join don't necessarily reap it
  * threads are created using the clone syscall, so use special __WCLONE flag in waitpid.
  */
-VOID reap_zombie_thread(void * param)
+void * reap_zombie_thread(void * param)
 {
 	while(1)
 	{
@@ -219,6 +219,7 @@ VOID reap_zombie_thread(void * param)
 		// on 2.6 kernels, don't chew 100% CPU
 		usleep(500000);
 	}
+	return NULL;
 }
 #endif
 
@@ -276,7 +277,7 @@ BOOL command_process_inline(Command *baseCommand, Command *extensionCommand, Rem
 				}
 #endif
 
-				// Validate the arguments, if requested.  Always make sure argument 
+				// Validate the arguments, if requested.  Always make sure argument
 				// lengths are sane.
 				if (command_validate_arguments(command, packet) != ERROR_SUCCESS)
 				{
@@ -574,7 +575,7 @@ DWORD command_validate_arguments(Command *command, Packet *packet)
 {
 	PacketDispatcher *dispatcher = NULL;
 	PacketTlvType type = packet_get_type(packet);
-	DWORD res = ERROR_SUCCESS, 
+	DWORD res = ERROR_SUCCESS,
 		packetIndex, commandIndex;
 	Tlv current;
 
@@ -618,7 +619,7 @@ DWORD command_validate_arguments(Command *command, Packet *packet)
 			break;
 		}
 
-		if ((res != ERROR_SUCCESS) && 
+		if ((res != ERROR_SUCCESS) &&
 			(commandIndex < dispatcher->numArgumentTypes))
 			break;
 	}
