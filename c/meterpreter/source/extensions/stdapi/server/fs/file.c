@@ -26,7 +26,7 @@ static DWORD file_channel_write(Channel *channel, Packet *request,
 	DWORD written = 0;
 
 	// Write a chunk
-	if ((written = (DWORD)fwrite(buffer, 1, bufferSize, ctx->fd)) <= 0)
+	if (bufferSize && (written = (DWORD)fwrite(buffer, 1, bufferSize, ctx->fd)) <= 0)
 	{
 		written = 0;
 		result  = GetLastError();
@@ -67,7 +67,7 @@ static DWORD file_channel_read(Channel *channel, Packet *request,
 	DWORD bytes = 0;
 
 	// Read a chunk
-	if ((bytes= (DWORD)fread(buffer, 1, bufferSize, ctx->fd)) <= 0)
+	if (bufferSize && (bytes= (DWORD)fread(buffer, 1, bufferSize, ctx->fd)) <= 0)
 	{
 		bytes = 0;
 		result = GetLastError();
