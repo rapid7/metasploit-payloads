@@ -1162,11 +1162,12 @@ DWORD THREADCALL clipboard_monitor_thread_func(THREAD * thread)
  * @brief Clean up all the state associated with a monitor thread.
  * @param pState Pointer to the state clean up.
  */
-VOID destroy_clipboard_monitor_state(ClipboardState* pState)
+VOID destroy_clipboard_monitor_state(ClipboardState** ppState)
 {
 	dprintf("[EXTAPI CLIPBOARD] Destroying clipboard monitor state");
-	if (pState != NULL)
+	if (ppState != NULL && (*ppState) != NULL)
 	{
+		ClipboardState* pState = *ppState;
 		if (pState->hThread != NULL)
 		{
 			thread_destroy(pState->hThread);
@@ -1186,6 +1187,7 @@ VOID destroy_clipboard_monitor_state(ClipboardState* pState)
 		destroy_clipboard_monitor_capture(&pState->captureList, TRUE);
 
 		free(pState);
+		*ppState = NULL;
 	}
 }
 
@@ -1278,10 +1280,7 @@ DWORD request_clipboard_monitor_start(Remote *remote, Packet *packet)
 	}
 	else if (dwResult != ERROR_SUCCESS)
 	{
-		if (pState != NULL)
-		{
-			destroy_clipboard_monitor_state(pState);
-		}
+		destroy_clipboard_monitor_state(&pState);
 		gClipboardState = NULL;
 	}
 
@@ -1428,8 +1427,7 @@ DWORD request_clipboard_monitor_stop(Remote *remote, Packet *packet)
 			dump_clipboard_capture_list(pResponse, &gClipboardState->captureList, bIncludeImages, TRUE);
 		}
 
-		destroy_clipboard_monitor_state(gClipboardState);
-		gClipboardState = NULL;
+		destroy_clipboard_monitor_state(&gClipboardState);
 		dwResult = ERROR_SUCCESS;
 	} while (0);
 
