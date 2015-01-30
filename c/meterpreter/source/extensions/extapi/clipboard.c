@@ -1268,9 +1268,20 @@ DWORD request_clipboard_monitor_start(Remote *remote, Packet *packet)
 		dwResult = ERROR_SUCCESS;
 	} while (0);
 
-	if (dwResult != ERROR_SUCCESS)
+	if (dwResult == ERROR_ALREADY_INITIALIZED)
 	{
-		destroy_clipboard_monitor_state(pState);
+		// if we've already been initialised, then we don't want to go
+		// resetting gClipboardState back to NULL because that means
+		// the existing monitor will run indefinitely! Instead we will
+		// just simulate success here
+		dwResult = ERROR_SUCCESS;
+	}
+	else if (dwResult != ERROR_SUCCESS)
+	{
+		if (pState != NULL)
+		{
+			destroy_clipboard_monitor_state(pState);
+		}
 		gClipboardState = NULL;
 	}
 
