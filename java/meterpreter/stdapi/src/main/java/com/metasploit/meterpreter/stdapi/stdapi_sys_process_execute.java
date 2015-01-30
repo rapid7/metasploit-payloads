@@ -1,13 +1,12 @@
 package com.metasploit.meterpreter.stdapi;
 
-import java.io.IOException;
-import java.util.StringTokenizer;
-
 import com.metasploit.meterpreter.Meterpreter;
 import com.metasploit.meterpreter.ProcessChannel;
 import com.metasploit.meterpreter.TLVPacket;
 import com.metasploit.meterpreter.TLVType;
 import com.metasploit.meterpreter.command.Command;
+
+import java.io.IOException;
 
 public class stdapi_sys_process_execute implements Command {
 
@@ -37,7 +36,7 @@ public class stdapi_sys_process_execute implements Command {
 			synchronized (stdapi_sys_process_execute.class) {
 				pid++;
 				response.add(TLVType.TLV_TYPE_PID, pid);
-				response.add(TLVType.TLV_TYPE_PROCESS_HANDLE, pid);
+				response.add(TLVType.TLV_TYPE_PROCESS_HANDLE, (long)pid);
 			}
 			response.add(TLVType.TLV_TYPE_CHANNEL_ID, channel.getID());
 		} else {

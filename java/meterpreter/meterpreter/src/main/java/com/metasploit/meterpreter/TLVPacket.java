@@ -26,6 +26,7 @@ public class TLVPacket {
 	public static final int TLV_META_TYPE_UINT = (1 << 17);
 	public static final int TLV_META_TYPE_RAW = (1 << 18);
 	public static final int TLV_META_TYPE_BOOL = (1 << 19);
+	public static final int TLV_META_TYPE_QWORD = (1 << 20);
 	public static final int TLV_META_TYPE_COMPRESSED = (1 << 29);
 	public static final int TLV_META_TYPE_GROUP = (1 << 30);
 	public static final int TLV_META_TYPE_COMPLEX = (1 << 31);
@@ -39,9 +40,14 @@ public class TLVPacket {
 	private List/* <Integer> */typeOrder = new ArrayList();
 
 	/**
-	 * A map, mapping the types (as {@link Integer} objects) to values (different kinds of objects). There are type-safe helper methods to retrieve one of those objects from the map.
+	 * A list of objects that represent the values stored in the package.
 	 */
-	private Map/* <Integer,Object> */valueMap = new HashMap();
+	private List/* <Integer> */valueList = new ArrayList();
+
+	/**
+	 * A map, mapping the types (as {@link Integer} objects) to an {@link ArrayList} of {@link Integer} values that respresent the index into the valueList array.
+	 */
+	private Map/* <Integer,ArrayList> */valueMap = new HashMap();
 
 	/**
 	 * A list of additionals types/values to be added to the end of the packet. Here packet types may appear more than once, but they cannot be read again with this class.
@@ -58,11 +64,11 @@ public class TLVPacket {
 	 * Read a TLV packet from an input stream.
 	 * 
 	 * @param in
-	 *            Input stream to read from
+	 *	Input stream to read from
 	 * @param remaining
-	 *            length of the packet to read in bytes
+	 *	length of the packet to read in bytes
 	 * @throws IOException
-	 *             if an error occurs
+	 *	 if an error occurs
 	 */
 	public TLVPacket(DataInputStream in, int remaining) throws IOException {
 		while (remaining > 0) {
@@ -85,6 +91,8 @@ public class TLVPacket {
 				if (string.indexOf('\0') != -1)
 					throw new IOException("Embedded null detected: " + string);
 				value = string;
+			} else if ((type & TLV_META_TYPE_QWORD) != 0 && len == 16) {
+				value = new Long(in.readLong());
 			} else if ((type & TLV_META_TYPE_UINT) != 0 && len == 12) {
 				value = new Integer(in.readInt());
 			} else if ((type & TLV_META_TYPE_BOOL) != 0 && len == 9) {
@@ -114,11 +122,22 @@ public class TLVPacket {
 	 * Add a TLV value to this object.
 	 */
 	public void add(int type, Object value) throws IOException {
+		ArrayList indices = null;
 		Integer typeObj = new Integer(type);
 		typeOrder.add(typeObj);
-		if (valueMap.containsKey(typeObj))
-			throw new IOException("Duplicate type: " + type);
-		valueMap.put(typeObj, value);
+
+		if (valueMap.containsKey(typeObj)) {
+			indices = (ArrayList)valueMap.get(typeObj);
+		} else {
+			indices = new ArrayList();
+			valueMap.put(typeObj, indices);
+		}
+
+		// add the index of the new element to the list of indices for the object
+		indices.add(new Integer(valueList.size()));
+
+		// add the value to the list of values that make up the object
+		valueList.add(value);
 	}
 
 	/**
@@ -127,6 +146,13 @@ public class TLVPacket {
 	public void addOverflow(int type, Object value) throws IOException {
 		overflowList.add(new Integer(type));
 		overflowList.add(value);
+	}
+
+	/**
+	 * Add a TLV value to this object.
+	 */
+	public void add(int type, long value) throws IOException {
+		add(type, new Long(value));
 	}
 
 	/**
@@ -154,20 +180,39 @@ public class TLVPacket {
 	 * Get the value associated to a type.
 	 */
 	public Object getValue(int type) {
-		Object result = valueMap.get(new Integer(type));
-		if (result == null)
+		ArrayList indices = (ArrayList)valueMap.get(new Integer(type));
+		if (indices == null)
 			throw new IllegalArgumentException("Cannot find type " + type);
-		return result;
+		// the indices variable is an ArrayList so by default return the first to
+		// preserve existing behaviour.
+		return valueList.get(((Integer)indices.get(0)).intValue());
+	}
+
+	/**
+	 * Get the list of values associated to a type.
+	 */
+	public List getValues(int type) {
+		ArrayList values = new ArrayList();
+		ArrayList indices = (ArrayList)valueMap.get(new Integer(type));
+		if (indices == null)
+			throw new IllegalArgumentException("Cannot find type " + type);
+
+		for (int i = 0; i < indices.size(); ++i) {
+			values.add(valueList.get(((Integer)indices.get(i)).intValue()));
+		}
+		return values;
 	}
 
 	/**
 	 * Get the value associated to a type.
 	 */
 	public Object getValue(int type, Object defaultValue) {
-		Object result = valueMap.get(new Integer(type));
-		if (result == null)
-			result = defaultValue;
-		return result;
+		ArrayList indices = (ArrayList)valueMap.get(new Integer(type));
+		if (indices == null)
+			return defaultValue;
+		// the indices variable is an ArrayList so by default return the first to
+		// preserve existing behaviour.
+		return valueList.get(((Integer)indices.get(0)).intValue());
 	}
 
 	/**
@@ -182,6 +227,13 @@ public class TLVPacket {
 	 */
 	public String getStringValue(int type, String defaultValue) {
 		return (String) getValue(type, defaultValue);
+	}
+
+	/**
+	 * Get the value associated to a type as an int.
+	 */
+	public long getLongValue(int type) {
+		return ((Long) getValue(type)).longValue();
 	}
 
 	/**
@@ -212,7 +264,7 @@ public class TLVPacket {
 		for (Iterator it = typeOrder.iterator(); it.hasNext();) {
 			Integer typeKey = (Integer) it.next();
 			int type = typeKey.intValue();
-			Object value = valueMap.get(typeKey);
+			Object value = getValue(type);
 			write(out, type, value);
 		}
 		for (Iterator it = overflowList.iterator(); it.hasNext();) {
@@ -224,12 +276,17 @@ public class TLVPacket {
 	}
 
 	/**
-	 * Write a single vlaue to an output stream.
+	 * Write a single value to an output stream.
 	 */
 	private static void write(DataOutputStream out, int type, Object value) throws IOException {
 		byte[] data;
 		if ((type & TLV_META_TYPE_STRING) != 0) {
 			data = ((String) value + "\0").getBytes("ISO-8859-1");
+		} else if ((type & TLV_META_TYPE_QWORD) != 0) {
+			out.writeInt(16);
+			out.writeInt(type);
+			out.writeLong(((Long) value).longValue());
+			return;
 		} else if ((type & TLV_META_TYPE_UINT) != 0) {
 			out.writeInt(12);
 			out.writeInt(type);

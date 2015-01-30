@@ -47,10 +47,10 @@ public interface TLVType {
 	public static final int TLV_TYPE_CIPHER_PARAMETERS = TLVPacket.TLV_META_TYPE_GROUP | 501;
 
 	// General
-	public static final int TLV_TYPE_HANDLE = TLVPacket.TLV_META_TYPE_UINT | 600;
+	public static final int TLV_TYPE_HANDLE = TLVPacket.TLV_META_TYPE_QWORD | 600;
 	public static final int TLV_TYPE_INHERIT = TLVPacket.TLV_META_TYPE_BOOL | 601;
-	public static final int TLV_TYPE_PROCESS_HANDLE = TLVPacket.TLV_META_TYPE_UINT | 630;
-	public static final int TLV_TYPE_THREAD_HANDLE = TLVPacket.TLV_META_TYPE_UINT | 631;
+	public static final int TLV_TYPE_PROCESS_HANDLE = TLVPacket.TLV_META_TYPE_QWORD | 630;
+	public static final int TLV_TYPE_THREAD_HANDLE = TLVPacket.TLV_META_TYPE_QWORD | 631;
 
 	// Fs
 	public static final int TLV_TYPE_DIRECTORY_PATH = TLVPacket.TLV_META_TYPE_STRING | 1200;
@@ -91,7 +91,7 @@ public interface TLVType {
 	public static final int TLV_TYPE_SHUTDOWN_HOW = TLVPacket.TLV_META_TYPE_UINT | 1530;
 
 	// Registry
-	public static final int TLV_TYPE_HKEY = TLVPacket.TLV_META_TYPE_UINT | 1000;
+	public static final int TLV_TYPE_HKEY = TLVPacket.TLV_META_TYPE_QWORD | 1000;
 	public static final int TLV_TYPE_ROOT_KEY = TLV_TYPE_HKEY;
 	public static final int TLV_TYPE_BASE_KEY = TLVPacket.TLV_META_TYPE_STRING | 1001;
 	public static final int TLV_TYPE_PERMISSION = TLVPacket.TLV_META_TYPE_UINT | 1002;
@@ -105,13 +105,17 @@ public interface TLVType {
 	public static final int TLV_TYPE_OS_NAME = TLVPacket.TLV_META_TYPE_STRING | 1041;
 	public static final int TLV_TYPE_USER_NAME = TLVPacket.TLV_META_TYPE_STRING | 1042;
 
+	public static final int TLV_TYPE_ENV_VARIABLE = TLVPacket.TLV_META_TYPE_STRING | 1100;
+	public static final int TLV_TYPE_ENV_VALUE = TLVPacket.TLV_META_TYPE_STRING | 1101;
+	public static final int TLV_TYPE_ENV_GROUP = TLVPacket.TLV_META_TYPE_GROUP | 1102;
+
 	// Process
-	public static final int TLV_TYPE_BASE_ADDRESS = TLVPacket.TLV_META_TYPE_UINT | 2000;
+	public static final int TLV_TYPE_BASE_ADDRESS = TLVPacket.TLV_META_TYPE_QWORD | 2000;
 	public static final int TLV_TYPE_ALLOCATION_TYPE = TLVPacket.TLV_META_TYPE_UINT | 2001;
 	public static final int TLV_TYPE_PROTECTION = TLVPacket.TLV_META_TYPE_UINT | 2002;
 	public static final int TLV_TYPE_PROCESS_PERMS = TLVPacket.TLV_META_TYPE_UINT | 2003;
 	public static final int TLV_TYPE_PROCESS_MEMORY = TLVPacket.TLV_META_TYPE_RAW | 2004;
-	public static final int TLV_TYPE_ALLOC_BASE_ADDRESS = TLVPacket.TLV_META_TYPE_UINT | 2005;
+	public static final int TLV_TYPE_ALLOC_BASE_ADDRESS = TLVPacket.TLV_META_TYPE_QWORD | 2005;
 	public static final int TLV_TYPE_MEMORY_STATE = TLVPacket.TLV_META_TYPE_UINT | 2006;
 	public static final int TLV_TYPE_MEMORY_TYPE = TLVPacket.TLV_META_TYPE_UINT | 2007;
 	public static final int TLV_TYPE_ALLOC_PROTECTION = TLVPacket.TLV_META_TYPE_UINT | 2008;
@@ -125,16 +129,16 @@ public interface TLVType {
 	public static final int TLV_TYPE_IMAGE_FILE = TLVPacket.TLV_META_TYPE_STRING | 2400;
 	public static final int TLV_TYPE_IMAGE_FILE_PATH = TLVPacket.TLV_META_TYPE_STRING | 2401;
 	public static final int TLV_TYPE_PROCEDURE_NAME = TLVPacket.TLV_META_TYPE_STRING | 2402;
-	public static final int TLV_TYPE_PROCEDURE_ADDRESS = TLVPacket.TLV_META_TYPE_UINT | 2403;
-	public static final int TLV_TYPE_IMAGE_BASE = TLVPacket.TLV_META_TYPE_UINT | 2404;
+	public static final int TLV_TYPE_PROCEDURE_ADDRESS = TLVPacket.TLV_META_TYPE_QWORD | 2403;
+	public static final int TLV_TYPE_IMAGE_BASE = TLVPacket.TLV_META_TYPE_QWORD | 2404;
 	public static final int TLV_TYPE_IMAGE_GROUP = TLVPacket.TLV_META_TYPE_GROUP | 2405;
 	public static final int TLV_TYPE_IMAGE_NAME = TLVPacket.TLV_META_TYPE_STRING | 2406;
 
 	public static final int TLV_TYPE_THREAD_ID = TLVPacket.TLV_META_TYPE_UINT | 2500;
 	public static final int TLV_TYPE_THREAD_PERMS = TLVPacket.TLV_META_TYPE_UINT | 2502;
 	public static final int TLV_TYPE_EXIT_CODE = TLVPacket.TLV_META_TYPE_UINT | 2510;
-	public static final int TLV_TYPE_ENTRY_POINT = TLVPacket.TLV_META_TYPE_UINT | 2511;
-	public static final int TLV_TYPE_ENTRY_PARAMETER = TLVPacket.TLV_META_TYPE_UINT | 2512;
+	public static final int TLV_TYPE_ENTRY_POINT = TLVPacket.TLV_META_TYPE_QWORD | 2511;
+	public static final int TLV_TYPE_ENTRY_PARAMETER = TLVPacket.TLV_META_TYPE_QWORD | 2512;
 	public static final int TLV_TYPE_CREATION_FLAGS = TLVPacket.TLV_META_TYPE_UINT | 2513;
 
 	public static final int TLV_TYPE_REGISTER_NAME = TLVPacket.TLV_META_TYPE_STRING | 2540;
@@ -149,7 +153,7 @@ public interface TLVType {
 
 	// Event Log
 	public static final int TLV_TYPE_EVENT_SOURCENAME = TLVPacket.TLV_META_TYPE_STRING | 4000;
-	public static final int TLV_TYPE_EVENT_HANDLE = TLVPacket.TLV_META_TYPE_UINT | 4001;
+	public static final int TLV_TYPE_EVENT_HANDLE = TLVPacket.TLV_META_TYPE_QWORD | 4001;
 	public static final int TLV_TYPE_EVENT_NUMRECORDS = TLVPacket.TLV_META_TYPE_UINT | 4002;
 
 	public static final int TLV_TYPE_EVENT_READFLAGS = TLVPacket.TLV_META_TYPE_UINT | 4003;
