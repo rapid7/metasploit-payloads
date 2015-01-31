@@ -5,6 +5,15 @@
 		name="Java Meterpreter extension archetype">
 	<requiredProperties>
 		<requiredProperty key="pluginName" />
+		<requiredProperty key="groupId">
+			<defaultValue>com.metasploit</defaultValue>
+		</requiredProperty>
+		<requiredProperty key="artifactId">
+			<defaultValue>Metasploit-Java-Meterpreter-${pluginName}</defaultValue>
+		</requiredProperty>
+		<requiredProperty key="package">
+			<defaultValue>com.metasploit.meterpreter.${pluginName}</defaultValue>
+		</requiredProperty>
 	</requiredProperties>
 	<fileSets>
 	<fileSet filtered="true" packaged="true" encoding="UTF-8">
