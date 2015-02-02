@@ -8,7 +8,7 @@ module Rex
         module ${pluginName.substring(0,1).toUpperCase()}${pluginName.substring(1)}
           TLV_TYPE_GREETEE = TLV_META_TYPE_STRING | (TLV_EXTENSIONS + 1)
 
-          # This module implements a 'Hello World' meterpreter extension
+          # This class implements a 'Hello World' meterpreter extension
           class ${pluginName.substring(0,1).toUpperCase()}${pluginName.substring(1)} < Extension
             def initialize(client)
               super(client, '${pluginName}')
