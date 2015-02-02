@@ -15,5 +15,4 @@
 androidpayload/ndkstager/libs
 androidpayload/ndkstager/obj
 .DS_Store
-.idea/
 *.iml
