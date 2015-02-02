@@ -33,5 +33,6 @@
 		<module>meterpreter</module>
 		<module>stdapi</module>
 		<module>debugloader</module>
+		<module>extension-archetype</module>
 	</modules>
 </project>

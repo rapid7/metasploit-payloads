@@ -1,0 +1,36 @@
+To create a new Java Meterpreter extension, you can use a templating system
+called Maven Archetypes.
+
+In this directory, type
+
+		cd extension-archetype
+		mvn install
+		cd ..
+		mvn -DarchetypeGroupId=com.metasploit -DarchetypeArtifactId=extension-archetype -Dversion=1-SNAPSHOT archetype:generate
+
+and follow the instructions.
+
+You can choose arbitrary groupId, artifactId and package names; the
+default extensions use
+	groupId: com.metasploit
+	artifactId: Metasploit-Java-Meterpreter-${pluginName}
+	package: com.metasploit.meterpreter.${pluginName}
+
+The pluginName must satisfy the constraints for a Meterpreter plugin name:
+only lowercase letters and digits are allowed, and the first character may
+not be a digit.
+
+
+The newly created project will include a <NAME>.rb file in its root directory
+that needs to be moved to
+
+msf3/lib/rex/post/meterpreter/extensions/<NAME>/<NAME>.rb
+
+so that the extension can be loaded from a post module (or interactively
+from irb) like this:
+
+		client = session
+		if client.<NAME> == nil
+			client.core.use('<NAME>')
+		end
+		print_status client.<NAME>.<NAME>_greet_world()
