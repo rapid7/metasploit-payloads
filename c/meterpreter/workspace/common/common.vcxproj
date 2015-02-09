@@ -460,7 +460,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClCompile Include="..\..\source\common\core.c" />
     <ClCompile Include="..\..\source\common\list.c" />
     <ClCompile Include="..\..\source\common\remote.c" />
-    <ClCompile Include="..\..\source\common\arch\win\scheduler.c" />
+    <ClCompile Include="..\..\source\common\scheduler.c" />
     <ClCompile Include="..\..\source\common\thread.c" />
     <ClCompile Include="..\..\source\common\crypto\xor.c" />
     <ClCompile Include="..\..\source\common\zlib\zlib.c" />

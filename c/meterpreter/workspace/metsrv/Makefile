@@ -4,6 +4,7 @@ include $(ROOT)/Makefile.common
 
 VPATH += $(ROOT)/source/server/linux/:
 VPATH += $(ROOT)/source/common/arch/posix/:
+VPATH += $(ROOT)/source/common/:
 VPATH += $(ROOT)/source/server/posix/:
 VPATH += $(ROOT)/source/server/
 
