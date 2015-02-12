@@ -745,6 +745,7 @@ void uid_to_username(struct info_user_list * user_list, int uid, char * username
 DWORD ps_list_linux( Packet * response )
 {
 	DWORD result = ERROR_NOT_SUPPORTED;
+	DWORD arch;
 	DIR * dir;
 	int i;
 	int read;
@@ -829,11 +830,32 @@ DWORD ps_list_linux( Packet * response )
 						if(file_buffer[i] == '\0')
 							file_buffer[i] = ' ';
 				}
-				// don't care about process arch
-				ps_addresult(response, atoi(entry->d_name), info.ppid, process_name, cmdline, username, 0);
+
+				arch = PROCESS_ARCH_UNKNOWN; /* ELFCLASSNONE */
+
+				memset(file_path, 0, sizeof(file_path));
+				snprintf(file_path, sizeof(file_path)-1, "/proc/%s/exe", entry->d_name);
+				fd = fopen(file_path, "rb");
+				if (fd) {
+					memset(file_buffer, 0, sizeof(file_buffer));
+					read_file(fd, file_buffer, sizeof(file_buffer));
+					fclose(fd);
+
+					/* ELFCLASS32 */
+					if (file_buffer[4] == 1) {
+						arch = PROCESS_ARCH_X86;
+					}
+					/* ELFCLASS64 */
+					else if (file_buffer[4] == 2) {
+						arch = PROCESS_ARCH_X64;
+					}
+				}
+
+				ps_addresult(response, atoi(entry->d_name),
+					info.ppid, process_name, cmdline, username, arch);
+
 				// at least 1 process found, return ERROR_SUCCESS;
 				result = ERROR_SUCCESS;
-
 				
 			} // end is_process_dir
 

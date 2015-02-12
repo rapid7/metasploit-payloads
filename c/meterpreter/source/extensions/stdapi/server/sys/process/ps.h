@@ -3,6 +3,11 @@
 #define _METERPRETER_SOURCE_EXTENSION_STDAPI_STDAPI_SERVER_PROCESS_PS_H
 //===============================================================================================//
 
+#define PROCESS_ARCH_UNKNOWN	0
+#define PROCESS_ARCH_X86		1
+#define PROCESS_ARCH_X64		2
+#define PROCESS_ARCH_IA64		3
+
 VOID ps_addresult( Packet * response, DWORD dwPid, DWORD dwParentPid, char * cpExeName, char * cpExePath, char * cpUserName, DWORD dwProcessArch );
 
 #ifdef _WIN32
@@ -22,11 +27,6 @@ typedef NTSTATUS (WINAPI * NTQUERYINFORMATIONPROCESS)( HANDLE ProcessHandle, DWO
 typedef BOOL (WINAPI * ENUMPROCESSES)( DWORD * pProcessIds, DWORD cb, DWORD * pBytesReturned );
 typedef BOOL (WINAPI * ENUMPROCESSMODULES)( HANDLE hProcess, HMODULE *lphModule, DWORD cb, LPDWORD lpcbNeeded );
 typedef DWORD (WINAPI * GETMODULEBASENAMEA)( HANDLE hProcess, HMODULE hModule, LPTSTR lpBaseName, DWORD nSize );
-
-#define PROCESS_ARCH_UNKNOWN	0
-#define PROCESS_ARCH_X86		1
-#define PROCESS_ARCH_X64		2
-#define PROCESS_ARCH_IA64		3
 
 //===============================================================================================//
 
