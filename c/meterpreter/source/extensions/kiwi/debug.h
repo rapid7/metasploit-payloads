@@ -22,8 +22,7 @@
 /*! @brief Close a handle if not already closed and set the handle to NULL. */
 #define CLOSE_HANDLE( h )          if( h ) { DWORD dwHandleFlags; if(GetHandleInformation( h , &dwHandleFlags)) CloseHandle( h ); h = NULL; }
 
-#ifdef KIWIDEBUGTRACE
-static void real_dprintf(wchar_t *format, ...) {
+static _inline void real_dprintf(wchar_t *format, ...) {
 	va_list args;
 	wchar_t buffer[1024];
 	va_start(args,format);
@@ -31,5 +30,3 @@ static void real_dprintf(wchar_t *format, ...) {
 	wcscat_s(buffer, sizeof(buffer), L"\r\n");
 	OutputDebugStringW(buffer);
 }
-
-#endif
