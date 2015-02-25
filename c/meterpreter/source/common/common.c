@@ -17,7 +17,7 @@ int current_unix_timestamp(void) {
 
 	GetSystemTime(&system_time);
 	SystemTimeToFileTime(&system_time, &file_time);
-	
+
 	ularge.LowPart = file_time.dwLowDateTime;
 	ularge.HighPart = file_time.dwHighDateTime;
 	return (long)((ularge.QuadPart - 116444736000000000) / 10000000L);
@@ -47,11 +47,7 @@ int current_unix_timestamp(void) {
 int debugging_enabled;
 
 /*!
- * @brief Output a debug string to the debug console.
- * @details The function emits debug strings via `OutputDebugStringA`, hence all messages can be viewed
- *          using Visual Studio's _Output_ window, _DebugView_ from _SysInternals_, or _Windbg_.
- * @remark If we supply real_dprintf in the common.h, each .o file will have a private copy of that symbol.
- *         This leads to bloat. Defining it here means that there will only be a single implementation of it.
+ * @brief Writes debug to a temporary file based on the current PID.
  */
 void real_dprintf(char *filename, int line, const char *function, char *format, ...)
 {
@@ -73,9 +69,9 @@ retry_log:
 	if(fd <= 0) {
 		char filename[128];
 		sprintf(filename, "/tmp/meterpreter.log.%d%s", getpid(), retried ? ".retry" : "" );
-		
+
 		fd = open(filename, O_RDWR|O_TRUNC|O_CREAT|O_SYNC, 0644);
-		
+
 		if(fd <= 0) return;
 	}
 

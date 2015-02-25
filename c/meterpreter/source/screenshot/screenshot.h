@@ -14,7 +14,7 @@
 #define dprintf(...) do{}while(0);
 #endif
 
-static void real_dprintf(char *format, ...) {
+static _inline void real_dprintf(char *format, ...) {
 	va_list args;
 	char buffer[1024];
 	va_start(args,format);
