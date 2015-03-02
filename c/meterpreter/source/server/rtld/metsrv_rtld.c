@@ -47,8 +47,8 @@ static struct libs libs[] = {
 	{ "libc.so", libc, libc_length, NULL },
 	{ "libm.so", libm, libm_length, NULL },
 	{ "libpcap.so.1", libpcap, libpcap_length, NULL },
-	{ "libcrypto.so.0.9.8", libcrypto, libcrypto_length, NULL },
-	{ "libssl.so.0.9.8", libssl, libssl_length, NULL },
+	{ "libcrypto.so.32", libcrypto, libcrypto_length, NULL },
+	{ "libssl.so.32", libssl, libssl_length, NULL },
 	{ "libsupport.so", libsupport, libsupport_length, NULL },
 	{ "libmetsrv_main.so", libmetsrv_main, libmetsrv_main_length, NULL },
 };

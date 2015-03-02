@@ -41,6 +41,7 @@ int main(int argc, char **argv)
 		exit(EXIT_FAILURE);
 	}
 
+	printf("%p\n", (void *)EP);
 	fp = (void *)EP;
 	printf("entry point ahoy @ %p!\n", fp); fflush(stdout);
 	fp(5, options);
