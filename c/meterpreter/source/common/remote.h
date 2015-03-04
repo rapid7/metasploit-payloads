@@ -23,7 +23,7 @@ typedef struct _Remote
 	HMODULE hMetSrv;              ///< Reference to the Meterpreter server instance.
 	SOCKET fd;                    ///< Remote socket file descriptor.
 	CryptoContext* crypto;        ///< Cryptographic context associated with the connection.
-	SSL_METHOD* meth;             ///< The current SSL method in use.
+	const SSL_METHOD* meth;       ///< The current SSL method in use.
 	SSL_CTX* ctx;                 ///< SSL-specific context information.
 	SSL* ssl;                     ///< Pointer to the SSL detail/version/etc.
 	LOCK* lock;                   ///< OpenSSL usage lock.
