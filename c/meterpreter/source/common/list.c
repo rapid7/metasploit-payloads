@@ -13,23 +13,24 @@
  * @returns A new instance of a linked list.
  * @retval NULL Indicates a memory allocation failure.
  */
-LIST * list_create(VOID)
+PLIST list_create(VOID)
 {
-	LIST * list = (LIST*)malloc(sizeof(LIST));
-	if (list != NULL)
-	{
-		list->start = NULL;
-		list->end = NULL;
-		list->count = 0;
-		list->lock = lock_create();
+	PLIST pList = (PLIST)malloc(sizeof(LIST));
 
-		if (list->lock == NULL)
+	if (pList != NULL)
+	{
+		pList->start = NULL;
+		pList->end = NULL;
+		pList->count = 0;
+		pList->lock = lock_create();
+
+		if (pList->lock == NULL)
 		{
-			list_destroy(list);
+			list_destroy(pList);
 			return NULL;
 		}
 	}
-	return list;
+	return pList;
 }
 
 /*!
@@ -38,16 +39,16 @@ LIST * list_create(VOID)
  *          linked list. This is the responsibility of the caller to destroy.
  * @param list The \c LIST instance to destroy.
  */
-VOID list_destroy(LIST * list)
+VOID list_destroy(PLIST pList)
 {
-	NODE * current_node;
-	NODE * next_node;
+	PNODE current_node;
+	PNODE next_node;
 
-	if (list != NULL)
+	if (pList != NULL)
 	{
-		lock_acquire(list->lock);
+		lock_acquire(pList->lock);
 
-		current_node = list->start;
+		current_node = pList->start;
 
 		while (current_node != NULL)
 		{
@@ -62,34 +63,34 @@ VOID list_destroy(LIST * list)
 			current_node = next_node;
 		}
 
-		list->count = 0;
+		pList->count = 0;
 
-		lock_release(list->lock);
+		lock_release(pList->lock);
 
-		lock_destroy(list->lock);
+		lock_destroy(pList->lock);
 
-		free(list);
+		free(pList);
 	}
 }
 
 /*!
  * @brief Get the number of items in the list.
- * @param list The \c LIST to get a count of.
+ * @param pList The \c LIST to get a count of.
  * @returns The number of elements in the list.
  * @remark If using this coung value to itterate through the list with `list_get`, acquire
  *         the lists lock before the `list_count/list_get` block and release it afterwards.
  */
-DWORD list_count(LIST * list)
+DWORD list_count(PLIST pList)
 {
 	DWORD count = 0;
 
-	if (list != NULL)
+	if (pList != NULL)
 	{
-		lock_acquire(list->lock);
+		lock_acquire(pList->lock);
 
-		count = list->count;
+		count = pList->count;
 
-		lock_release(list->lock);
+		lock_release(pList->lock);
 	}
 
 	return count;
@@ -97,29 +98,29 @@ DWORD list_count(LIST * list)
 
 /*!
  * @brief Get the data value held in the list and a specified index.
- * @param list Pointer to the \c LIST to get the element from.
+ * @param pList Pointer to the \c LIST to get the element from.
  * @param index Index of the element to get;
  * @returns Pointer to the item in the list.
  * @retval NULL Indicates the element doesn't exist in the list.
  * @remark This will perform a linear search from the beginning of the list.
  */
-LPVOID list_get(LIST * list, DWORD index)
+LPVOID list_get(PLIST pList, DWORD index)
 {
 	LPVOID data = NULL;
-	NODE * current_node = NULL;
+	PNODE current_node = NULL;
 
-	if (list == NULL)
+	if (pList == NULL)
 		return NULL;
 
-	lock_acquire(list->lock);
+	lock_acquire(pList->lock);
 
-	if (list->count <= index)
+	if (pList->count <= index)
 	{
-		lock_release(list->lock);
+		lock_release(pList->lock);
 		return NULL;
 	}
 
-	current_node = list->start;
+	current_node = pList->start;
 
 	while (current_node != NULL)
 	{
@@ -138,93 +139,93 @@ LPVOID list_get(LIST * list, DWORD index)
 		data = current_node->data;
 	}
 
-	lock_release(list->lock);
+	lock_release(pList->lock);
 
 	return data;
 }
 
 /*!
  * @brief Add a data item onto the end of the list.
- * @param list Pointer to the \c LIST to add the item to.
+ * @param pList Pointer to the \c LIST to add the item to.
  * @param data The data that is to be added to the list.
  * @returns Indication of success or failure.
  * @sa list_push
  */
-BOOL list_add(LIST * list, LPVOID data)
+BOOL list_add(PLIST pList, LPVOID data)
 {
-	return list_push(list, data);
+	return list_push(pList, data);
 }
 
 /*!
  * @brief Internal function to remove a node from a list.
- * @param list Pointer to the \c LIST containing \c node.
- * @param node Pointer to the \c NOTE to remove.
+ * @param pList Pointer to the \c LIST containing \c node.
+ * @param pNode Pointer to the \c NOTE to remove.
  * @returns Indication of success or failure.
  * @remark Assumes caller has aquired the appropriate lock first.
  */
-BOOL list_remove_node(LIST * list, NODE * node)
+BOOL list_remove_node(PLIST pList, PNODE pNode)
 {
-	if (list == NULL || node == NULL)
+	if (pList == NULL || pNode == NULL)
 	{
 		return FALSE;
 	}
 
-	if (list->count - 1 == 0)
+	if (pList->count - 1 == 0)
 	{
-		list->start = NULL;
-		list->end = NULL;
+		pList->start = NULL;
+		pList->end = NULL;
 	}
 	else
 	{
-		if (list->start == node)
+		if (pList->start == pNode)
 		{
-			list->start = list->start->next;
-			list->start->prev = NULL;
+			pList->start = pList->start->next;
+			pList->start->prev = NULL;
 		}
-		else if (list->end == node)
+		else if (pList->end == pNode)
 		{
-			list->end = list->end->prev;
-			list->end->next = NULL;
+			pList->end = pList->end->prev;
+			pList->end->next = NULL;
 		}
 		else
 		{
-			node->next->prev = node->prev;
-			node->prev->next = node->next;
+			pNode->next->prev = pNode->prev;
+			pNode->prev->next = pNode->next;
 		}
 	}
 
-	list->count -= 1;
+	pList->count -= 1;
 
-	node->next = NULL;
+	pNode->next = NULL;
 
-	node->prev = NULL;
+	pNode->prev = NULL;
 
-	free(node);
+	free(pNode);
 
 	return TRUE;
 }
 
 /*!
  * @brief Remove a given data item from the list.
- * @param list Pointer to the \c LIST to remove the item from.
+ * @param pList Pointer to the \c LIST to remove the item from.
  * @param data The data that is to be removed from the list.
  * @remark Assumes data items are unqique as only the first occurrence is removed. 
  * @returns Indication of success or failure.
  * @sa list_remove_node
  */
-BOOL list_remove(LIST * list, LPVOID data)
+BOOL list_remove(PLIST pList, LPVOID data)
 {
 	BOOL result = FALSE;
-	NODE * current_node = NULL;
+	PNODE current_node = NULL;
 
-	if (list == NULL || data == NULL)
+	if (pList == NULL || data == NULL)
 	{
 		return FALSE;
 	}
 
-	lock_acquire(list->lock);
+	lock_acquire(pList->lock);
 
-	current_node = list->start;
+	current_node = pList->start;
 
 	while (current_node != NULL)
 	{
@@ -236,41 +237,41 @@ BOOL list_remove(LIST * list, LPVOID data)
 		current_node = current_node->next;
 	}
 
-	result = list_remove_node(list, current_node);
+	result = list_remove_node(pList, current_node);
 
-	lock_release(list->lock);
+	lock_release(pList->lock);
 
 	return result;
 }
 
 /*!
  * @brief Remove a list item at the specified index.
- * @param list Pointer to the \c LIST to remove the item from.
+ * @param pList Pointer to the \c LIST to remove the item from.
  * @param index Index of the item to remove.
  * @returns Indication of success or failure.
  */
-BOOL list_delete(LIST * list, DWORD index)
+BOOL list_delete(PLIST pList, DWORD index)
 {
 	BOOL result = FALSE;
 	LPVOID data = NULL;
-	NODE * current_node = NULL;
+	PNODE current_node = NULL;
 
-	if (list == NULL)
+	if (pList == NULL)
 	{
 		return FALSE;
 	}
 
-	lock_acquire(list->lock);
+	lock_acquire(pList->lock);
 
-	if (list->count > index)
+	if (pList->count > index)
 	{
-		current_node = list->start;
+		current_node = pList->start;
 
 		while (current_node != NULL)
 		{
 			if (index == 0)
 			{
-				result = list_remove_node(list, current_node);
+				result = list_remove_node(pList, current_node);
 				break;
 			}
 
@@ -280,111 +281,137 @@ BOOL list_delete(LIST * list, DWORD index)
 		}
 	}
 
-	lock_release(list->lock);
+	lock_release(pList->lock);
 
 	return result;
 }
 
 /*!
  * @brief Push a data item onto the end of the list.
- * @param list Pointer to the \c LIST to append the data to.
+ * @param pList Pointer to the \c LIST to append the data to.
  * @param data Pointer to the data to append.
  * @returns Indication of success or failure.
  */
-BOOL list_push(LIST * list, LPVOID data)
+BOOL list_push(PLIST pList, LPVOID data)
 {
-	NODE * node = NULL;
+	PNODE pNode = NULL;
 
-	if (list == NULL)
+	if (pList == NULL)
 		return FALSE;
 
-	node = (NODE*)malloc(sizeof(NODE));
-	if (node == NULL)
+	pNode = (PNODE)malloc(sizeof(NODE));
+	if (pNode == NULL)
 	{
 		return FALSE;
 	}
 
-	node->data = data;
-	node->next = NULL;
-	node->prev = NULL;
+	pNode->data = data;
+	pNode->next = NULL;
+	pNode->prev = NULL;
 
-	lock_acquire(list->lock);
+	lock_acquire(pList->lock);
 
-	if (list->end != NULL)
+	if (pList->end != NULL)
 	{
-		list->end->next = node;
+		pList->end->next = pNode;
 
-		node->prev = list->end;
+		pNode->prev = pList->end;
 
-		list->end = node;
+		pList->end = pNode;
 	}
 	else
 	{
-		list->start = node;
-		list->end = node;
+		pList->start = pNode;
+		pList->end = pNode;
 	}
 
-	list->count += 1;
+	pList->count += 1;
 
-	lock_release(list->lock);
+	lock_release(pList->lock);
 
 	return TRUE;
 }
 
 /*!
  * @brief Pop a data value off the end of the list.
- * @param list Pointer to the \c LIST to pop the value from.
+ * @param pList Pointer to the \c LIST to pop the value from.
  * @returns The popped value.
  * @retval NULL Indicates no data in the list.
  */
-LPVOID list_pop(LIST * list)
+LPVOID list_pop(PLIST pList)
 {
 	LPVOID data = NULL;
 
-	if (list == NULL)
+	if (pList == NULL)
 	{
 		return NULL;
 	}
 
-	lock_acquire(list->lock);
+	lock_acquire(pList->lock);
 
-	if (list->end != NULL)
+	if (pList->end != NULL)
 	{
-		data = list->end->data;
+		data = pList->end->data;
 
-		list_remove_node(list, list->end);
+		list_remove_node(pList, pList->end);
 	}
 
-	lock_release(list->lock);
+	lock_release(pList->lock);
 
 	return data;
 }
 
 /*!
  * @brief Pop a data value off the start of the list.
- * @param list Pointer to the \c LIST to shift the value from.
+ * @param pList Pointer to the \c LIST to shift the value from.
  * @returns The shifted value.
  * @retval NULL Indicates no data in the list.
  */
-LPVOID list_shift(LIST * list)
+LPVOID list_shift(PLIST pList)
 {
 	LPVOID data = NULL;
 
-	if (list == NULL)
+	if (pList == NULL)
 	{
 		return NULL;
 	}
 
-	lock_acquire(list->lock);
+	lock_acquire(pList->lock);
 
-	if (list->start != NULL)
+	if (pList->start != NULL)
 	{
-		data = list->start->data;
+		data = pList->start->data;
 
-		list_remove_node(list, list->start);
+		list_remove_node(pList, pList->start);
 	}
 
-	lock_release(list->lock);
+	lock_release(pList->lock);
 
 	return data;
+}
+
+/*!
+ * @brief Iterate over the list and call a function callback on each element.
+ * @param pList Pointer to the \c LIST to enumerate.
+ * @param pCallback Callback function to invoke for each element in the list.
+ * @param pState Pointer to the state to pass with each function call.
+ */
+VOID list_enumerate(PLIST pList, PLISTENUMCALLBACK pCallback, LPVOID pState)
+{
+	if (pList == NULL || pCallback == NULL)
+	{
+		return;
+	}
+
+	lock_acquire(pList->lock);
+
+	PNODE pCurrent = pList->start;
+
+	while (pCurrent != NULL)
+	{
+		pCallback(pState, pCurrent->data);
+		pCurrent = pCurrent->next;
+	}
+
+	lock_release(pList->lock);
 }

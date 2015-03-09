@@ -15,9 +15,7 @@
 #ifdef _WIN32
 DWORD __declspec(dllexport) Init(SOCKET fd)
 {
-
 	return server_setup(fd);
-
 }
 #else
 

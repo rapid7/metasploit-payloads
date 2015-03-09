@@ -32,12 +32,15 @@
 DWORD server_setup(SOCKET fd);
 typedef DWORD (*PSRVINIT)(Remote *remote);
 typedef DWORD (*PSRVDEINIT)(Remote *remote);
+typedef DWORD (*PSRVGETNAME)(char* buffer, int bufferSize);
 
 typedef struct _EXTENSION
 {
 	HMODULE library;
 	PSRVINIT init;
 	PSRVDEINIT deinit;
-} EXTENSION;
+	PSRVGETNAME getname;
+	char name[16];
+} EXTENSION, *PEXTENSION;
 
 #endif

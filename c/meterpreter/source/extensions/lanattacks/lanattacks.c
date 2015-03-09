@@ -18,7 +18,8 @@ void* dhcpserver = NULL; //global DHCP server pointer
 void* tftpserver = NULL; //global TFTP server pointer
 
 //Launches the DHCP server
-DWORD request_lanattacks_start_dhcp(Remote *remote, Packet *packet){
+DWORD request_lanattacks_start_dhcp(Remote *remote, Packet *packet)
+{
 	Packet *response = packet_create_response(packet);
 
 	int res = startDHCPServer(dhcpserver);
@@ -29,7 +30,8 @@ DWORD request_lanattacks_start_dhcp(Remote *remote, Packet *packet){
 }
 
 //Reset the DHCP server
-DWORD request_lanattacks_reset_dhcp(Remote *remote, Packet *packet){
+DWORD request_lanattacks_reset_dhcp(Remote *remote, Packet *packet)
+{
 	Packet *response = packet_create_response(packet);
 
 	destroyDHCPServer(dhcpserver);
@@ -39,18 +41,24 @@ DWORD request_lanattacks_reset_dhcp(Remote *remote, Packet *packet){
 	
 	return ERROR_SUCCESS;
 }
+
 //Set a DHCP option based on the name and value specified in the packet
-DWORD request_lanattacks_set_dhcp_option(Remote *remote, Packet *packet){
+DWORD request_lanattacks_set_dhcp_option(Remote *remote, Packet *packet)
+{
 	DWORD retval = ERROR_SUCCESS;
 	char* name = NULL;
 	unsigned int namelen = 0;
 	Packet *response = packet_create_response(packet);
 
-	do{
+	do
+	{
 		//Get option value
 		Tlv tlv;
-		if((retval = packet_get_tlv(packet, TLV_TYPE_LANATTACKS_OPTION, &tlv)) != ERROR_SUCCESS)
+		if ((retval = packet_get_tlv(packet, TLV_TYPE_LANATTACKS_OPTION, &tlv)) != ERROR_SUCCESS)
+		{
 			break;
+		}
+
 		//Get option name
 		name = packet_get_tlv_value_string(packet, TLV_TYPE_LANATTACKS_OPTION_NAME);
 		namelen = (unsigned int)strlen(name);
@@ -62,7 +70,8 @@ DWORD request_lanattacks_set_dhcp_option(Remote *remote, Packet *packet){
 }
 
 //Turns off the DHCP server
-DWORD request_lanattacks_stop_dhcp(Remote *remote, Packet *packet){
+DWORD request_lanattacks_stop_dhcp(Remote *remote, Packet *packet)
+{
 	Packet *response = packet_create_response(packet);
 
 	int res = stopDHCPServer(dhcpserver);
@@ -71,8 +80,10 @@ DWORD request_lanattacks_stop_dhcp(Remote *remote, Packet *packet){
 
 	return ERROR_SUCCESS;
 }
+
 //Gets and resets the DHCP log
-DWORD request_lanattacks_dhcp_log(Remote *remote, Packet *packet){
+DWORD request_lanattacks_dhcp_log(Remote *remote, Packet *packet)
+{
 	Packet *response = packet_create_response(packet);
 
 	unsigned long loglen;
@@ -86,7 +97,8 @@ DWORD request_lanattacks_dhcp_log(Remote *remote, Packet *packet){
 }
 
 //Launches the TFTP server
-DWORD request_lanattacks_start_tftp(Remote *remote, Packet *packet){
+DWORD request_lanattacks_start_tftp(Remote *remote, Packet *packet)
+{
 	Packet *response = packet_create_response(packet);
 
 	int res = startTFTPServer(tftpserver);
@@ -97,7 +109,8 @@ DWORD request_lanattacks_start_tftp(Remote *remote, Packet *packet){
 }
 
 //Reset the TFTP server
-DWORD request_lanattacks_reset_tftp(Remote *remote, Packet *packet){
+DWORD request_lanattacks_reset_tftp(Remote *remote, Packet *packet)
+{
 	Packet *response = packet_create_response(packet);
 
 	destroyTFTPServer(tftpserver);
@@ -109,7 +122,8 @@ DWORD request_lanattacks_reset_tftp(Remote *remote, Packet *packet){
 }
 
 //Adds a file to serve based on the name and value specified in the packet
-DWORD request_lanattacks_add_tftp_file(Remote *remote, Packet *packet){
+DWORD request_lanattacks_add_tftp_file(Remote *remote, Packet *packet)
+{
 	DWORD retval = ERROR_SUCCESS;
 	char* name = NULL;
 	unsigned int namelen = 0;
@@ -118,8 +132,11 @@ DWORD request_lanattacks_add_tftp_file(Remote *remote, Packet *packet){
 	do{
 		Tlv tlv;
 		//Get file contents
-		if((retval = packet_get_tlv(packet, TLV_TYPE_LANATTACKS_RAW, &tlv)) != ERROR_SUCCESS)
+		if ((retval = packet_get_tlv(packet, TLV_TYPE_LANATTACKS_RAW, &tlv)) != ERROR_SUCCESS)
+		{
 			break;
+		}
+
 		//Get file name
 		name = packet_get_tlv_value_string(packet, TLV_TYPE_LANATTACKS_OPTION_NAME);
 		namelen = (unsigned int)strlen(name);
@@ -131,7 +148,8 @@ DWORD request_lanattacks_add_tftp_file(Remote *remote, Packet *packet){
 }
 
 //Turns off the TFTP server
-DWORD request_lanattacks_stop_tftp(Remote *remote, Packet *packet){
+DWORD request_lanattacks_stop_tftp(Remote *remote, Packet *packet)
+{
 	Packet *response = packet_create_response(packet);
 
 	int res = stopTFTPServer(tftpserver);
@@ -140,6 +158,7 @@ DWORD request_lanattacks_stop_tftp(Remote *remote, Packet *packet){
 	
 	return ERROR_SUCCESS;
 }
+
 Command customCommands[] =
 {
 	COMMAND_REQ( "lanattacks_start_dhcp", request_lanattacks_start_dhcp ),
@@ -154,8 +173,10 @@ Command customCommands[] =
 	COMMAND_TERMINATOR
 };
 
-/*
- * Initialize the server extension
+/*!
+ * @brief Initialize the server extension.
+ * @param remote Pointer to the remote instance.
+ * @return Indication of success or failure.
  */
 DWORD __declspec(dllexport) InitServerExtension(Remote *remote) {
 	hMetSrv = remote->hMetSrv;
@@ -165,15 +186,18 @@ DWORD __declspec(dllexport) InitServerExtension(Remote *remote) {
 	dhcpserver = createDHCPServer();
 	tftpserver = createTFTPServer();
 
-	if (tftpserver) {
+	if (tftpserver)
+	{
 		return ERROR_SUCCESS;
 	}
 
 	return ERROR_NOT_ENOUGH_MEMORY;
 }
 
-/*
- * Deinitialize the server extension
+/*!
+ * @brief Deinitialize the server extension.
+ * @param remote Pointer to the remote instance.
+ * @return Indication of success or failure.
  */
 DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
 {
@@ -185,5 +209,17 @@ DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
 
 	command_deregister_all( customCommands );
 
+	return ERROR_SUCCESS;
+}
+
+/*!
+ * @brief Get the name of the extension.
+ * @param buffer Pointer to the buffer to write the name to.
+ * @param bufferSize Size of the \c buffer parameter.
+ * @return Indication of success or failure.
+ */
+DWORD __declspec(dllexport) GetExtensionName(char* buffer, int bufferSize)
+{
+	strncpy_s(buffer, bufferSize, "lanattacks", bufferSize - 1);
 	return ERROR_SUCCESS;
 }

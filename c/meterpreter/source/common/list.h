@@ -11,7 +11,7 @@ typedef struct _NODE
 	struct _NODE * next;  ///< Pointer to the next node in the list.
 	struct _NODE * prev;  ///< Pointer to the previous node in the list.
 	LPVOID data;          ///< Reference to the data in the list node.
-} NODE;
+} NODE, *PNODE;
 
 /*! @brief Container structure for a list instance. */
 typedef struct _LIST
@@ -20,17 +20,20 @@ typedef struct _LIST
 	NODE * end;     ///< Pointer to the last node in the list.
 	DWORD count;    ///< Count of elements in the list.
 	LOCK * lock;    ///< Reference to the list's synchronisation lock.
-} LIST;
+} LIST, *PLIST;
+
+typedef VOID(*PLISTENUMCALLBACK)(LPVOID pState, LPVOID pData);
 
 LIST * list_create(VOID);
-VOID list_destroy(LIST * list);
-DWORD list_count(LIST * list);
-LPVOID list_get(LIST * list, DWORD index);
-BOOL list_add(LIST * list, LPVOID data);
-BOOL list_remove(LIST * list, LPVOID data);
-BOOL list_delete(LIST * list, DWORD index);
-BOOL list_push(LIST * list, LPVOID data);
-LPVOID list_pop(LIST * list);
-LPVOID list_shift(LIST * list);
+VOID list_destroy(PLIST pList);
+DWORD list_count(PLIST pList);
+LPVOID list_get(PLIST pList, DWORD index);
+BOOL list_add(PLIST pList, LPVOID data);
+BOOL list_remove(PLIST pList, LPVOID data);
+BOOL list_delete(PLIST pList, DWORD index);
+BOOL list_push(PLIST pList, LPVOID data);
+LPVOID list_pop(PLIST pList);
+LPVOID list_shift(PLIST pList);
+VOID list_enumerate(PLIST pList, PLISTENUMCALLBACK pCallback, LPVOID pState);
 
 #endif

@@ -207,8 +207,10 @@ Command customCommands[] =
 	COMMAND_TERMINATOR
 };
 
-/*
- * Initialize the server extension
+/*!
+ * @brief Initialize the server extension.
+ * @param remote Pointer to the remote instance.
+ * @return Indication of success or failure.
  */
 DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
 {
@@ -219,12 +221,26 @@ DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
 	return ERROR_SUCCESS;
 }
 
-/*
- * Deinitialize the server extension
+/*!
+ * @brief Deinitialize the server extension.
+ * @param remote Pointer to the remote instance.
+ * @return Indication of success or failure.
  */
 DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
 {
 	command_deregister_all( customCommands );
 
+	return ERROR_SUCCESS;
+}
+
+/*!
+ * @brief Get the name of the extension.
+ * @param buffer Pointer to the buffer to write the name to.
+ * @param bufferSize Size of the \c buffer parameter.
+ * @return Indication of success or failure.
+ */
+DWORD __declspec(dllexport) GetExtensionName(char* buffer, int bufferSize)
+{
+	strncpy_s(buffer, bufferSize, "incognito", bufferSize - 1);
 	return ERROR_SUCCESS;
 }
