@@ -168,7 +168,7 @@ void real_dprintf(char *filename, int line, const char *function, char *format, 
 #include <wininet.h>
 
 /*! @brief When defined, debug output is enabled on Windows builds. */
-//#define DEBUGTRACE 1
+#define DEBUGTRACE 1
 
 #ifdef DEBUGTRACE
 #define dprintf(...) real_dprintf(__VA_ARGS__)
@@ -195,7 +195,8 @@ void real_dprintf(char *filename, int line, const char *function, char *format, 
  * @details The function emits debug strings via `OutputDebugStringA`, hence all messages can be viewed
  *          using Visual Studio's _Output_ window, _DebugView_ from _SysInternals_, or _Windbg_.
  */
-static _inline void real_dprintf(char *format, ...) {
+static _inline void real_dprintf(char *format, ...)
+{
 	va_list args;
 	char buffer[1024];
 	va_start(args,format);
