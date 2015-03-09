@@ -9,7 +9,7 @@ CFLAGS+= -I../../source/extensions/stdapi/server
 objects = \
 	server/fs/dir.o \
 	server/fs/file.o \
-	server/fs/fs_util.o \
+	server/fs/fs_posix.o \
 	server/general.o \
 	server/net/config/interface.o \
 	server/net/config/route.o \

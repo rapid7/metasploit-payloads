@@ -629,7 +629,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     </ClCompile>
     <ClCompile Include="..\..\source\extensions\stdapi\server\fs\dir.c" />
     <ClCompile Include="..\..\source\extensions\stdapi\server\fs\file.c" />
-    <ClCompile Include="..\..\source\extensions\stdapi\server\fs\fs_util.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\fs\fs_win.c" />
     <ClCompile Include="..\..\source\extensions\stdapi\server\fs\search.c" />
     <ClCompile Include="..\..\source\extensions\stdapi\server\net\net.c" />
     <ClCompile Include="..\..\source\extensions\stdapi\server\net\config\interface.c" />
@@ -683,6 +683,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClInclude Include="..\..\source\extensions\stdapi\server\webcam\bmp2jpeg.h" />
     <ClInclude Include="..\..\source\extensions\stdapi\server\webcam\webcam.h" />
     <ClInclude Include="..\..\source\extensions\stdapi\server\fs\fs.h" />
+    <ClInclude Include="..\..\source\extensions\stdapi\server\fs\fs_local.h" />
     <ClInclude Include="..\..\source\extensions\stdapi\server\fs\search.h" />
   </ItemGroup>
   <ItemGroup>
