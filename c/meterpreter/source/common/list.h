@@ -22,7 +22,7 @@ typedef struct _LIST
 	LOCK * lock;    ///< Reference to the list's synchronisation lock.
 } LIST, *PLIST;
 
-typedef VOID(*PLISTENUMCALLBACK)(LPVOID pState, LPVOID pData);
+typedef BOOL (*PLISTENUMCALLBACK)(LPVOID pState, LPVOID pData);
 
 LIST * list_create(VOID);
 VOID list_destroy(PLIST pList);
@@ -34,6 +34,6 @@ BOOL list_delete(PLIST pList, DWORD index);
 BOOL list_push(PLIST pList, LPVOID data);
 LPVOID list_pop(PLIST pList);
 LPVOID list_shift(PLIST pList);
-VOID list_enumerate(PLIST pList, PLISTENUMCALLBACK pCallback, LPVOID pState);
+BOOL list_enumerate(PLIST pList, PLISTENUMCALLBACK pCallback, LPVOID pState);
 
 #endif

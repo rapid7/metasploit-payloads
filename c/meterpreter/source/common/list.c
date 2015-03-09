@@ -396,22 +396,24 @@ LPVOID list_shift(PLIST pList)
  * @param pCallback Callback function to invoke for each element in the list.
  * @param pState Pointer to the state to pass with each function call.
  */
-VOID list_enumerate(PLIST pList, PLISTENUMCALLBACK pCallback, LPVOID pState)
+BOOL list_enumerate(PLIST pList, PLISTENUMCALLBACK pCallback, LPVOID pState)
 {
 	if (pList == NULL || pCallback == NULL)
 	{
-		return;
+		return FALSE;
 	}
 
 	lock_acquire(pList->lock);
 
 	PNODE pCurrent = pList->start;
+	BOOL bResult = FALSE;
 
 	while (pCurrent != NULL)
 	{
-		pCallback(pState, pCurrent->data);
+		bResult = pCallback(pState, pCurrent->data) || bResult;
 		pCurrent = pCurrent->next;
 	}
 
 	lock_release(pList->lock);
+	return bResult;
 }

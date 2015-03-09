@@ -97,6 +97,16 @@ void command_register_all(Command commands[])
 	{
 		command_register(&commands[index]);
 	}
+
+#ifdef DEBUGTRACE
+	Command* command;
+
+	dprintf("[COMMAND LIST] Listing current extension commands");
+	for (command = extensionCommands; command; command = command->next)
+	{
+		dprintf("[COMMAND LIST] Found: %s", command->method);
+	}
+#endif
 }
 
 /*!
@@ -110,7 +120,9 @@ DWORD command_register(Command *command)
 
 	dprintf("Registering a new command (%s)...", command->method);
 	if (!(newCommand = (Command *)malloc(sizeof(Command))))
+	{
 		return ERROR_NOT_ENOUGH_MEMORY;
+	}
 
 	dprintf("Allocated memory...");
 	memcpy(newCommand, command, sizeof(Command));

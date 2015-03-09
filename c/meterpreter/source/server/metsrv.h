@@ -40,6 +40,8 @@ typedef struct _EXTENSION
 	PSRVINIT init;
 	PSRVDEINIT deinit;
 	PSRVGETNAME getname;
+	Command* start;
+	Command* end;
 	char name[16];
 } EXTENSION, *PEXTENSION;
 

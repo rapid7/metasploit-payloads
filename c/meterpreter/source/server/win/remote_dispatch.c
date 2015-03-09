@@ -8,45 +8,125 @@ extern PLIST gExtensionList;
 // see common/base.c
 extern Command *extensionCommands;
 
-VOID extension_list_callback(LPVOID pState, LPVOID pData)
+typedef struct _EnumExtensions
 {
-	Packet* pResponse = (Packet*)pState;
+	Packet* pResponse;
+	char* lpExtensionName;
+} EnumExtensions, * PEnumExtensions;
 
-	if (pResponse != NULL && pData != NULL)
+BOOL ext_cmd_callback(LPVOID pState, LPVOID pData)
+{
+	PEnumExtensions pEnum = (PEnumExtensions)pState;
+
+	if (pEnum != NULL && pEnum->pResponse != NULL && pData != NULL)
 	{
 		PEXTENSION pExt = (PEXTENSION)pData;
-		if (pExt->name[0] != '\0')
+		if (pExt->name[0] != '\0' && pEnum->lpExtensionName != NULL && strcmp(pExt->name, pEnum->lpExtensionName) == 0)
 		{
-			dprintf("[LISTEXT] Adding extension: %s", pExt->name);
-			packet_add_tlv_string(pResponse, TLV_TYPE_STRING, pExt->name);
+			dprintf("[LISTEXT] Found extension: %s", pExt->name);
+			for (Command* command = pExt->start; command != pExt->end; command = command->next)
+			{
+				packet_add_tlv_string(pEnum->pResponse, TLV_TYPE_STRING, command->method);
+			}
+
+			return TRUE;
 		}
 	}
+	return FALSE;
 }
 
-DWORD request_core_listextensions(Remote* pRemote, Packet* pPacket)
+DWORD request_core_enumextcmd(Remote* pRemote, Packet* pPacket)
 {
-	Packet* response = packet_create_response(pPacket);
-	DWORD res = ERROR_SUCCESS;
+	Packet* pResponse = packet_create_response(pPacket);
 
-	if (response)
+	if (pResponse != NULL)
 	{
-		dprintf("[LISTEXT] Listing extensions ...");
+		EnumExtensions enumExt;
+		enumExt.pResponse = pResponse;
+		enumExt.lpExtensionName = packet_get_tlv_value_string(pPacket, TLV_TYPE_STRING);
+
+		dprintf("[LISTEXTCMD] Listing extension commands for %s ...", enumExt.lpExtensionName);
 		// Start by enumerating the names of the extensions
-		list_enumerate(gExtensionList, extension_list_callback, response);
+		BOOL bResult = list_enumerate(gExtensionList, ext_cmd_callback, &enumExt);
 
-		// then iterate through the list of registered commands so that the attacker
-		// knows what is available.
-		for (Command* pCommand = extensionCommands; pCommand != NULL; pCommand = pCommand->next)
-		{
-			dprintf("[LISTEXT] Adding command: %s", pCommand->method);
-			packet_add_tlv_string(response, TLV_TYPE_METHOD, pCommand->method);
-		}
-
-		packet_add_tlv_uint(response, TLV_TYPE_RESULT, res);
-		packet_transmit(pRemote, response, NULL);
+		packet_add_tlv_uint(pResponse, TLV_TYPE_RESULT, ERROR_SUCCESS);
+		packet_transmit(pRemote, pResponse, NULL);
 	}
 
-	return res;
+	return ERROR_SUCCESS;
+}
+
+DWORD initialise_extension(HMODULE hLibrary, BOOL bLibLoadedReflectivly, Remote* pRemote, Packet* pResponse, Command* pFirstCommand)
+{
+	DWORD dwResult = ERROR_OUTOFMEMORY;
+	PEXTENSION pExtension = (PEXTENSION)malloc(sizeof(EXTENSION));
+
+	dprintf("[SERVER] Initialising extension %x", hLibrary);
+	if (pExtension)
+	{
+		memset(pExtension, 0, sizeof(EXTENSION));
+
+		pExtension->library = hLibrary;
+
+		// if the library was loaded via its reflective loader we must use GetProcAddressR()
+		if (bLibLoadedReflectivly)
+		{
+			pExtension->init = (PSRVINIT)GetProcAddressR(pExtension->library, "InitServerExtension");
+			pExtension->deinit = (PSRVDEINIT)GetProcAddressR(pExtension->library, "DeinitServerExtension");
+			pExtension->getname = (PSRVGETNAME)GetProcAddressR(pExtension->library, "GetExtensionName");
+		}
+		else
+		{
+			pExtension->init = (PSRVINIT)GetProcAddress(pExtension->library, "InitServerExtension");
+			pExtension->deinit = (PSRVDEINIT)GetProcAddress(pExtension->library, "DeinitServerExtension");
+			pExtension->getname = (PSRVGETNAME)GetProcAddress(pExtension->library, "GetExtensionName");
+		}
+
+		// patch in the metsrv.dll's HMODULE handle, used by the server extensions for delay loading
+		// functions from the metsrv.dll library. We need to do it this way as LoadLibrary/GetProcAddress
+		// wont work if we have used Reflective DLL Injection as metsrv.dll will be 'invisible' to these functions.
+		if (pRemote)
+		{
+			pRemote->hMetSrv = hAppInstance;
+		}
+
+		dprintf("[SERVER] Calling init on extension, address is 0x%p", pExtension->init);
+
+		// Call the init routine in the library
+		if (pExtension->init)
+		{
+			dprintf("[SERVER] Calling init()...");
+
+			pExtension->end = pFirstCommand;
+			dwResult = pExtension->init(pRemote);
+			pExtension->start = extensionCommands;
+
+			if (dwResult == ERROR_SUCCESS)
+			{
+				if (pExtension->getname)
+				{
+					pExtension->getname(pExtension->name, sizeof(pExtension->name));
+				}
+
+				list_push(gExtensionList, pExtension);
+			}
+			else
+			{
+				free(pExtension);
+			}
+		}
+
+		dprintf("[SERVER] Called init()...");
+		if (pResponse)
+		{
+			for (Command* command = pExtension->start; command != pExtension->end; command = command->next)
+			{
+				packet_add_tlv_string(pResponse, TLV_TYPE_METHOD, command->method);
+			}
+		}
+	}
+
+	return dwResult;
 }
 
 /*
@@ -76,7 +156,6 @@ DWORD request_core_loadlib(Remote *pRemote, Packet *pPacket)
 	BOOL bLibLoadedReflectivly = FALSE;
 
 	Command *first = extensionCommands;
-	Command *command;
 
 	do
 	{
@@ -152,64 +231,7 @@ DWORD request_core_loadlib(Remote *pRemote, Packet *pPacket)
 		// call its Init routine
 		if ((flags & LOAD_LIBRARY_FLAG_EXTENSION) && library)
 		{
-			PEXTENSION extension = (PEXTENSION)malloc(sizeof(EXTENSION));
-
-			if (extension)
-			{
-				memset(extension, 0, sizeof(EXTENSION));
-
-				extension->library = library;
-
-				// if the library was loaded via its reflective loader we must use GetProcAddressR()
-				if (bLibLoadedReflectivly)
-				{
-					extension->init = (PSRVINIT)GetProcAddressR(extension->library, "InitServerExtension");
-					extension->deinit = (PSRVDEINIT)GetProcAddressR(extension->library, "DeinitServerExtension");
-					extension->getname = (PSRVGETNAME)GetProcAddressR(extension->library, "GetExtensionName");
-				}
-				else
-				{
-					extension->init = (PSRVINIT)GetProcAddress(extension->library, "InitServerExtension");
-					extension->deinit = (PSRVDEINIT)GetProcAddress(extension->library, "DeinitServerExtension");
-					extension->getname = (PSRVGETNAME)GetProcAddress(extension->library, "GetExtensionName");
-				}
-
-				// patch in the metsrv.dll's HMODULE handle, used by the server extensions for delay loading
-				// functions from the metsrv.dll library. We need to do it this way as LoadLibrary/GetProcAddress
-				// wont work if we have used Reflective DLL Injection as metsrv.dll will be 'invisible' to these functions.
-				pRemote->hMetSrv = hAppInstance;
-
-				// Call the init routine in the library
-				if (extension->init)
-				{
-					dprintf("[SERVER] Calling init()...");
-
-					res = extension->init(pRemote);
-
-					if (res == ERROR_SUCCESS)
-					{
-						if (extension->getname)
-						{
-							extension->getname(extension->name, sizeof(extension->name));
-						}
-
-						list_push(gExtensionList, extension);
-					}
-					else
-					{
-						free(extension);
-					}
-				}
-
-				dprintf("[SERVER] Called init()...");
-				if (response)
-				{
-					for (command = extensionCommands; command != first; command = command->next)
-					{
-						packet_add_tlv_string(response, TLV_TYPE_METHOD, command->method);
-					}
-				}
-			}
+			res = initialise_extension(library, bLibLoadedReflectivly, pRemote, response, first);
 		}
 
 	} while (0);
