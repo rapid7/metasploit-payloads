@@ -37,7 +37,7 @@
 #undef X509_CERT_PAIR
 #undef X509_NAME
 
-#include "openssl/ssl.h"
+#include <openssl/ssl.h>
 #ifdef _UNIX
 #include "compat_types.h"
 
