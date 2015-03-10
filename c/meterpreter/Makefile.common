@@ -11,11 +11,11 @@ CFLAGS += -I $(ROOT)/source/bionic/libc/kernel/common/
 CFLAGS += -I $(ROOT)/source/bionic/libc/arch-x86/include/
 CFLAGS += -I $(ROOT)/source/bionic/libc/kernel/arch-x86/
 CFLAGS += -I $(ROOT)/source/common
-CFLAGS += -I $(ROOT)/source/openssl/include
 CFLAGS += -I $(ROOT)/source/common/malloc
 CFLAGS += -I $(ROOT)/source/common/crypto
 CFLAGS += -I $(ROOT)/source/common/stdlib
 CFLAGS += -I $(ROOT)/source/common/zlib
+CFLAGS += -I $(ROOT)/deps/libressl/include
 CFLAGS += -I $(ROOT)/deps/libpcap
 CFLAGS += -Dwchar_t='char' -D_SIZE_T_DECLARED -DElf_Size='u_int32_t'
 CFLAGS += -D_BYTE_ORDER=_LITTLE_ENDIAN
