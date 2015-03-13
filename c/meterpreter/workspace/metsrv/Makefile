@@ -10,7 +10,7 @@ VPATH += $(ROOT)/source/server/
 
 CFLAGS += -I$(ROOT)/source/server
 
-objects = metsrv.o scheduler.o server_setup.o remote_dispatch_common.o
+objects = metsrv.o scheduler.o server_setup_posix.o remote_dispatch_common.o
 objects += remote_dispatch.o netlink.o
 
 libmetsrv_main.so: $(objects)
