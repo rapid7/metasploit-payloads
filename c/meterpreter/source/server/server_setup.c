@@ -145,7 +145,7 @@ DWORD reverse_tcp6(const char* host, const char* service, ULONG scopeId, short r
 		{
 			((LPSOCKADDR_IN6)address->ai_addr)->sin6_scope_id = scopeId;
 
-			if (connect(socketHandle, address->ai_addr, address->ai_addrlen) != SOCKET_ERROR)
+			if (connect(socketHandle, address->ai_addr, (int)address->ai_addrlen) != SOCKET_ERROR)
 			{
 				dprintf("[STAGELESS IPV6] Socket successfully connected");
 				*socketBuffer = socketHandle;
