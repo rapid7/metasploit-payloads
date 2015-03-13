@@ -201,7 +201,7 @@ DWORD bind_tcp(u_short port, SOCKET* socketBuffer)
 	return ERROR_SUCCESS;
 }
 
-DWORD estbalish_tcp_connection(char* url, SOCKET* socketBuffer)
+DWORD establish_tcp_connection(char* url, SOCKET* socketBuffer)
 {
 	dprintf("[STAGELESS] Url: %s", url);
 	if (strncmp(url, "tcp", 3) == 0)
@@ -876,7 +876,7 @@ DWORD server_setup(SOCKET fd)
 				dprintf("[SERVER] Using SSL transport on socket %ul...", fd);
 
 				dprintf("[SERVER] setting up stageless comms if required...");
-				res = estbalish_tcp_connection(pRemote->url, &pRemote->fd);
+				res = establish_tcp_connection(pRemote->url, &pRemote->fd);
 				if (res != ERROR_SUCCESS)
 				{
 					dprintf("[SERVER] Failed to get TCP communications running: %u (%x)", res, res);
