@@ -3,9 +3,7 @@
 
 #include "linkage.h"
 
-LINKAGE DWORD buffer_from_file(LPCSTR filePath, PUCHAR *buffer, 
-		PULONG length);
-LINKAGE DWORD buffer_to_file(LPCSTR filePath, PUCHAR buffer, 
-		ULONG length);
+LINKAGE DWORD buffer_from_file(LPCSTR filePath, PUCHAR *buffer, PULONG length);
+LINKAGE DWORD buffer_to_file(LPCSTR filePath, PUCHAR buffer, ULONG length);
 
 #endif

@@ -50,31 +50,31 @@ DWORD THREADCALL command_process_thread( THREAD * thread );
 Command baseCommands[] =
 {
 	// Console commands
-	{  "core_console_write",
-		{ remote_request_core_console_write,   NULL,   { TLV_META_TYPE_STRING }, 1 | ARGUMENT_FLAG_REPEAT },
-		{ remote_response_core_console_write,  NULL,   EMPTY_TLV },
+	{ "core_console_write",
+	{ remote_request_core_console_write, NULL, { TLV_META_TYPE_STRING }, 1 | ARGUMENT_FLAG_REPEAT },
+	{ remote_response_core_console_write, NULL, EMPTY_TLV },
 	},
 
 	// Native Channel commands
 	// this overloads the "core_channel_open" in the base command list
-	COMMAND_REQ_REP( "core_channel_open", remote_request_core_channel_open, remote_response_core_channel_open ),
-	COMMAND_REQ( "core_channel_write", remote_request_core_channel_write ),
-	COMMAND_REQ_REP( "core_channel_close", remote_request_core_channel_close, remote_response_core_channel_close ),
+	COMMAND_REQ_REP("core_channel_open", remote_request_core_channel_open, remote_response_core_channel_open),
+	COMMAND_REQ("core_channel_write", remote_request_core_channel_write),
+	COMMAND_REQ_REP("core_channel_close", remote_request_core_channel_close, remote_response_core_channel_close),
 
 	// Buffered/Pool channel commands
-	COMMAND_REQ( "core_channel_read", remote_request_core_channel_read ),
+	COMMAND_REQ("core_channel_read", remote_request_core_channel_read),
 	// Pool channel commands
-	COMMAND_REQ( "core_channel_seek", remote_request_core_channel_seek ),
-	COMMAND_REQ( "core_channel_eof", remote_request_core_channel_eof ),
-	COMMAND_REQ( "core_channel_tell", remote_request_core_channel_tell ),
+	COMMAND_REQ("core_channel_seek", remote_request_core_channel_seek),
+	COMMAND_REQ("core_channel_eof", remote_request_core_channel_eof),
+	COMMAND_REQ("core_channel_tell", remote_request_core_channel_tell),
 	// Soon to be deprecated
-	COMMAND_REQ( "core_channel_interact", remote_request_core_channel_interact ),
+	COMMAND_REQ("core_channel_interact", remote_request_core_channel_interact),
 	// Crypto
-	COMMAND_REQ( "core_crypto_negotiate", remote_request_core_crypto_negotiate ),
+	COMMAND_REQ("core_crypto_negotiate", remote_request_core_crypto_negotiate),
 	// Migration
-	COMMAND_INLINE_REQ( "core_migrate", remote_request_core_migrate ),
+	COMMAND_INLINE_REQ("core_migrate", remote_request_core_migrate),
 	// Shutdown
-	COMMAND_INLINE_REQ( "core_shutdown", remote_request_core_shutdown ),
+	COMMAND_INLINE_REQ("core_shutdown", remote_request_core_shutdown),
 	// Terminator
 	COMMAND_TERMINATOR
 };
@@ -83,7 +83,7 @@ Command baseCommands[] =
  * @brief Dynamically registered command extensions.
  * @details A linked list of commands registered on the fly by reflectively-loaded extensions.
  */
-Command *extensionCommands = NULL;
+Command* extensionCommands = NULL;
 
 /*!
  * @brief Register a full list of commands with meterpreter.
@@ -97,6 +97,16 @@ void command_register_all(Command commands[])
 	{
 		command_register(&commands[index]);
 	}
+
+#ifdef DEBUGTRACE
+	Command* command;
+
+	dprintf("[COMMAND LIST] Listing current extension commands");
+	for (command = extensionCommands; command; command = command->next)
+	{
+		dprintf("[COMMAND LIST] Found: %s", command->method);
+	}
+#endif
 }
 
 /*!
@@ -110,7 +120,9 @@ DWORD command_register(Command *command)
 
 	dprintf("Registering a new command (%s)...", command->method);
 	if (!(newCommand = (Command *)malloc(sizeof(Command))))
+	{
 		return ERROR_NOT_ENOUGH_MEMORY;
+	}
 
 	dprintf("Allocated memory...");
 	memcpy(newCommand, command, sizeof(Command));

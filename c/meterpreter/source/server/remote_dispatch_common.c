@@ -5,16 +5,13 @@
 extern HINSTANCE hAppInstance;
 #endif
 
-/**************************
- * Core dispatch routines *
- **************************/
-
-LIST * extension_list = NULL;
+PLIST gExtensionList = NULL;
 
 // Dispatch table
 Command customCommands[] = 
 {
-	COMMAND_REQ( "core_loadlib", request_core_loadlib ),
+	COMMAND_REQ("core_loadlib", request_core_loadlib),
+	COMMAND_REQ("core_enumextcmd", request_core_enumextcmd),
 	COMMAND_TERMINATOR
 };
 
@@ -23,28 +20,30 @@ Command customCommands[] =
  */
 VOID register_dispatch_routines()
 {
-	extension_list = list_create();
+	gExtensionList = list_create();
 
-	command_register_all( customCommands );
+	command_register_all(customCommands);
 }
 
 /*
  * Deregisters previously registered custom commands and loaded extensions.
  */
-VOID deregister_dispatch_routines( Remote * remote )
+VOID deregister_dispatch_routines(Remote * remote)
 {
-	while( TRUE )
+	while (TRUE)
 	{
-		EXTENSION * extension = list_pop( extension_list );
-		if( !extension )
+		PEXTENSION extension = list_pop(gExtensionList);
+		if (!extension)
+		{
 			break;
+		}
 
-		extension->deinit( remote );
+		extension->deinit(remote);
 
-		free( extension );
+		free(extension);
 	}
 
-	command_deregister_all( customCommands );
+	command_deregister_all(customCommands);
 
-	list_destroy( extension_list );
+	list_destroy(gExtensionList);
 }

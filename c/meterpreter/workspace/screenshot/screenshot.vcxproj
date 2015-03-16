@@ -139,6 +139,7 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
+      <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
     <Link>
       <AdditionalDependencies>backcompat.lib;jpeg.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -169,6 +170,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
+      <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
     <Link>
       <AdditionalDependencies>backcompat.lib;jpeg.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -206,6 +208,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <CompileAs>CompileAsC</CompileAs>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
+      <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
     <Link>
       <AdditionalDependencies>backcompat.lib;jpeg.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -250,6 +253,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <CompileAs>CompileAsC</CompileAs>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
+      <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
     <Link>
       <AdditionalDependencies>backcompat.lib;jpeg.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -291,6 +295,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
+      <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
     <Link>
       <AdditionalDependencies>jpeg.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -324,6 +329,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
+      <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
     <Link>
       <AdditionalDependencies>jpeg.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -363,6 +369,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <CompileAs>CompileAsC</CompileAs>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
+      <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
     <Link>
       <AdditionalDependencies>jpeg.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -409,6 +416,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <CompileAs>CompileAsC</CompileAs>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
+      <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
     <Link>
       <AdditionalDependencies>jpeg.lib;%(AdditionalDependencies)</AdditionalDependencies>

@@ -206,9 +206,9 @@ DWORD request_wifi_profile_list(Remote *remote, Packet *packet)
 }
 
 /*!
- * @brief Initialises the server extension.
- * @param remote Pointer to the \c Remote instance.
- * @returns \c ERROR_SUCCESS
+ * @brief Initialize the server extension.
+ * @param remote Pointer to the remote instance.
+ * @return Indication of success or failure.
  */
 DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
 {
@@ -226,14 +226,26 @@ DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
 }
 
 /*!
- * @brief Deinitialises the server extension.
- * @param remote Pointer to the \c Remote instance.
- * @returns \c ERROR_SUCCESS
+ * @brief Deinitialize the server extension.
+ * @param remote Pointer to the remote instance.
+ * @return Indication of success or failure.
  */
 DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
 {
 	mimikatz_init_or_clean(FALSE);
 	command_deregister_all(customCommands);
 
+	return ERROR_SUCCESS;
+}
+
+/*!
+ * @brief Get the name of the extension.
+ * @param buffer Pointer to the buffer to write the name to.
+ * @param bufferSize Size of the \c buffer parameter.
+ * @return Indication of success or failure.
+ */
+DWORD __declspec(dllexport) GetExtensionName(char* buffer, int bufferSize)
+{
+	strncpy_s(buffer, bufferSize, "kiwi", bufferSize - 1);
 	return ERROR_SUCCESS;
 }

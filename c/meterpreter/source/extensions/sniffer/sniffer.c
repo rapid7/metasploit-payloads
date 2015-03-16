@@ -1192,8 +1192,10 @@ DWORD request_sniffer_capture_dump(Remote *remote, Packet *packet)
 	return ERROR_SUCCESS;
 }
 
-/*
- * Initialize the server extension
+/*!
+ * @brief Initialize the server extension.
+ * @param remote Pointer to the remote instance.
+ * @return Indication of success or failure.
  */
 DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
 {
@@ -1264,8 +1266,10 @@ DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
 
 }
 
-/*
- * Deinitialize the server extension
+/*!
+ * @brief Deinitialize the server extension.
+ * @param remote Pointer to the remote instance.
+ * @return Indication of success or failure.
  */
 DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
 {
@@ -1281,5 +1285,17 @@ DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
 #endif
 
 	lock_destroy(snifferm);
+	return ERROR_SUCCESS;
+}
+
+/*!
+ * @brief Get the name of the extension.
+ * @param buffer Pointer to the buffer to write the name to.
+ * @param bufferSize Size of the \c buffer parameter.
+ * @return Indication of success or failure.
+ */
+DWORD __declspec(dllexport) GetExtensionName(char* buffer, int bufferSize)
+{
+	strncpy_s(buffer, bufferSize, "sniffer", bufferSize - 1);
 	return ERROR_SUCCESS;
 }

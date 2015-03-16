@@ -4,13 +4,151 @@
 extern HINSTANCE hAppInstance;
 
 // see remote_dispatch_common.c
-extern LIST * extension_list;
+extern PLIST gExtensionList;
 // see common/base.c
 extern Command *extensionCommands;
 
-DWORD request_core_loadlib(Remote *remote, Packet *packet)
+typedef struct _EnumExtensions
 {
-	Packet *response = packet_create_response(packet);
+	Packet* pResponse;
+	char* lpExtensionName;
+} EnumExtensions, * PEnumExtensions;
+
+BOOL ext_cmd_callback(LPVOID pState, LPVOID pData)
+{
+	PEnumExtensions pEnum = (PEnumExtensions)pState;
+
+	if (pEnum != NULL && pEnum->pResponse != NULL && pData != NULL)
+	{
+		PEXTENSION pExt = (PEXTENSION)pData;
+		if (pExt->name[0] != '\0' && pEnum->lpExtensionName != NULL && strcmp(pExt->name, pEnum->lpExtensionName) == 0)
+		{
+			dprintf("[LISTEXT] Found extension: %s", pExt->name);
+			for (Command* command = pExt->start; command != pExt->end; command = command->next)
+			{
+				packet_add_tlv_string(pEnum->pResponse, TLV_TYPE_STRING, command->method);
+			}
+
+			return TRUE;
+		}
+	}
+	return FALSE;
+}
+
+DWORD request_core_enumextcmd(Remote* pRemote, Packet* pPacket)
+{
+	Packet* pResponse = packet_create_response(pPacket);
+
+	if (pResponse != NULL)
+	{
+		EnumExtensions enumExt;
+		enumExt.pResponse = pResponse;
+		enumExt.lpExtensionName = packet_get_tlv_value_string(pPacket, TLV_TYPE_STRING);
+
+		dprintf("[LISTEXTCMD] Listing extension commands for %s ...", enumExt.lpExtensionName);
+		// Start by enumerating the names of the extensions
+		BOOL bResult = list_enumerate(gExtensionList, ext_cmd_callback, &enumExt);
+
+		packet_add_tlv_uint(pResponse, TLV_TYPE_RESULT, ERROR_SUCCESS);
+		packet_transmit(pRemote, pResponse, NULL);
+	}
+
+	return ERROR_SUCCESS;
+}
+
+DWORD initialise_extension(HMODULE hLibrary, BOOL bLibLoadedReflectivly, Remote* pRemote, Packet* pResponse, Command* pFirstCommand)
+{
+	DWORD dwResult = ERROR_OUTOFMEMORY;
+	PEXTENSION pExtension = (PEXTENSION)malloc(sizeof(EXTENSION));
+
+	dprintf("[SERVER] Initialising extension %x", hLibrary);
+	if (pExtension)
+	{
+		memset(pExtension, 0, sizeof(EXTENSION));
+
+		pExtension->library = hLibrary;
+
+		// if the library was loaded via its reflective loader we must use GetProcAddressR()
+		if (bLibLoadedReflectivly)
+		{
+			pExtension->init = (PSRVINIT)GetProcAddressR(pExtension->library, "InitServerExtension");
+			pExtension->deinit = (PSRVDEINIT)GetProcAddressR(pExtension->library, "DeinitServerExtension");
+			pExtension->getname = (PSRVGETNAME)GetProcAddressR(pExtension->library, "GetExtensionName");
+		}
+		else
+		{
+			pExtension->init = (PSRVINIT)GetProcAddress(pExtension->library, "InitServerExtension");
+			pExtension->deinit = (PSRVDEINIT)GetProcAddress(pExtension->library, "DeinitServerExtension");
+			pExtension->getname = (PSRVGETNAME)GetProcAddress(pExtension->library, "GetExtensionName");
+		}
+
+		// patch in the metsrv.dll's HMODULE handle, used by the server extensions for delay loading
+		// functions from the metsrv.dll library. We need to do it this way as LoadLibrary/GetProcAddress
+		// wont work if we have used Reflective DLL Injection as metsrv.dll will be 'invisible' to these functions.
+		if (pRemote)
+		{
+			pRemote->hMetSrv = hAppInstance;
+		}
+
+		dprintf("[SERVER] Calling init on extension, address is 0x%p", pExtension->init);
+
+		// Call the init routine in the library
+		if (pExtension->init)
+		{
+			dprintf("[SERVER] Calling init()...");
+
+			pExtension->end = pFirstCommand;
+			dwResult = pExtension->init(pRemote);
+			pExtension->start = extensionCommands;
+
+			if (dwResult == ERROR_SUCCESS)
+			{
+				if (pExtension->getname)
+				{
+					pExtension->getname(pExtension->name, sizeof(pExtension->name));
+				}
+
+				list_push(gExtensionList, pExtension);
+			}
+			else
+			{
+				free(pExtension);
+			}
+		}
+
+		dprintf("[SERVER] Called init()...");
+		if (pResponse)
+		{
+			for (Command* command = pExtension->start; command != pExtension->end; command = command->next)
+			{
+				packet_add_tlv_string(pResponse, TLV_TYPE_METHOD, command->method);
+			}
+		}
+	}
+
+	return dwResult;
+}
+
+/*
+ * core_loadlib
+ * ------------
+ *
+ * Load a library into the address space of the executing process.
+ *
+ * TLVs:
+ *
+ * req: TLV_TYPE_LIBRARY_PATH -- The path of the library to load.
+ * req: TLV_TYPE_FLAGS        -- Library loading flags.
+ * opt: TLV_TYPE_TARGET_PATH  -- The contents of the library if uploading.
+ * opt: TLV_TYPE_DATA         -- The contents of the library if uploading.
+ *
+ * TODO:
+ *
+ *   - Implement in-memory library loading
+ */
+DWORD request_core_loadlib(Remote *pRemote, Packet *pPacket)
+{
+	Packet *response = packet_create_response(pPacket);
 	DWORD res = ERROR_SUCCESS;
 	HMODULE library;
 	PCHAR libraryPath;
@@ -18,12 +156,11 @@ DWORD request_core_loadlib(Remote *remote, Packet *packet)
 	BOOL bLibLoadedReflectivly = FALSE;
 
 	Command *first = extensionCommands;
-	Command *command;
 
 	do
 	{
-		libraryPath = packet_get_tlv_value_string(packet, TLV_TYPE_LIBRARY_PATH);
-		flags = packet_get_tlv_value_uint(packet, TLV_TYPE_FLAGS);
+		libraryPath = packet_get_tlv_value_string(pPacket, TLV_TYPE_LIBRARY_PATH);
+		flags = packet_get_tlv_value_uint(pPacket, TLV_TYPE_FLAGS);
 
 		// Invalid library path?
 		if (!libraryPath)
@@ -39,9 +176,9 @@ DWORD request_core_loadlib(Remote *remote, Packet *packet)
 			Tlv dataTlv;
 
 			// Get the library's file contents
-			if ((packet_get_tlv(packet, TLV_TYPE_DATA,
+			if ((packet_get_tlv(pPacket, TLV_TYPE_DATA,
 				&dataTlv) != ERROR_SUCCESS) ||
-				(!(targetPath = packet_get_tlv_value_string(packet,
+				(!(targetPath = packet_get_tlv_value_string(pPacket,
 				TLV_TYPE_TARGET_PATH))))
 			{
 				res = ERROR_INVALID_PARAMETER;
@@ -80,65 +217,21 @@ DWORD request_core_loadlib(Remote *remote, Packet *packet)
 
 		// If a previous operation failed, break out.
 		if (res != ERROR_SUCCESS)
+		{
 			break;
+		}
 
 		// Load the library
-		if ((!library) && (!(library = LoadLibrary(libraryPath))))
+		if (!library && !(library = LoadLibrary(libraryPath)))
+		{
 			res = GetLastError();
-		else
-			res = ERROR_SUCCESS;
+		}
 
 		// If this library is supposed to be an extension library, try to
 		// call its Init routine
-		if ((flags & LOAD_LIBRARY_FLAG_EXTENSION) && (library))
+		if ((flags & LOAD_LIBRARY_FLAG_EXTENSION) && library)
 		{
-			EXTENSION * extension = (EXTENSION *)malloc(sizeof(EXTENSION));
-			if (extension)
-			{
-				extension->library = library;
-
-				// if the library was loaded via its reflective loader we must use GetProcAddressR()
-				if (bLibLoadedReflectivly)
-				{
-					extension->init = (PSRVINIT)GetProcAddressR(extension->library, "InitServerExtension");
-					extension->deinit = (PSRVDEINIT)GetProcAddressR(extension->library, "DeinitServerExtension");
-				}
-				else
-				{
-					extension->init = (PSRVINIT)GetProcAddress(extension->library, "InitServerExtension");
-					extension->deinit = (PSRVDEINIT)GetProcAddress(extension->library, "DeinitServerExtension");
-				}
-
-				// patch in the metsrv.dll's HMODULE handle, used by the server extensions for delay loading
-				// functions from the metsrv.dll library. We need to do it this way as LoadLibrary/GetProcAddress
-				// wont work if we have used Reflective DLL Injection as metsrv.dll will be 'invisible' to these functions.
-				remote->hMetSrv = hAppInstance;
-
-				// Call the init routine in the library
-				if (extension->init)
-				{
-					dprintf("[SERVER] Calling init()...");
-
-					res = extension->init(remote);
-
-					if (res == ERROR_SUCCESS)
-					{
-						list_push(extension_list, extension);
-					}
-					else
-					{
-						free(extension);
-					}
-				}
-				dprintf("[SERVER] Called init()...");
-				if (response)
-				{
-					for (command = extensionCommands; command != first; command = command->next)
-					{
-						packet_add_tlv_string(response, TLV_TYPE_METHOD, command->method);
-					}
-				}
-			}
+			res = initialise_extension(library, bLibLoadedReflectivly, pRemote, response, first);
 		}
 
 	} while (0);
@@ -146,7 +239,7 @@ DWORD request_core_loadlib(Remote *remote, Packet *packet)
 	if (response)
 	{
 		packet_add_tlv_uint(response, TLV_TYPE_RESULT, res);
-		packet_transmit(remote, response, NULL);
+		packet_transmit(pRemote, response, NULL);
 	}
 
 	return res;
