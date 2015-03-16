@@ -8,7 +8,7 @@
  *                                   v--- minor major
  *                                     v- minor minor
  */
-#define METSRV_VERSION_NUMBER 0x00000500
+#define METSRV_VERSION_NUMBER 0x00010001
 
 
 #ifdef _WIN32

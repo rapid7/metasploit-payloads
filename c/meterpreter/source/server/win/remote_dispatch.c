@@ -222,7 +222,7 @@ DWORD request_core_loadlib(Remote *pRemote, Packet *pPacket)
 		}
 
 		// Load the library
-		if (!library && !(library = LoadLibrary(libraryPath)))
+		if (!library && !(library = LoadLibraryA(libraryPath)))
 		{
 			res = GetLastError();
 		}

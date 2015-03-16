@@ -5,6 +5,9 @@
 #ifndef _METERPRETER_SOURCE_COMMON_COMMON_H
 #define _METERPRETER_SOURCE_COMMON_COMMON_H
 
+/*! @brief When defined, debug output is enabled on Windows builds. */
+#define DEBUGTRACE 1
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
@@ -12,6 +15,9 @@
 #ifdef _WIN32
 	#include <winsock2.h>
 	#include <windows.h>
+
+	/*! @brief When defined, tells metsrv to use WinHTTP instead of WinInet for HTTP(s) meterrpeter. */
+	#define USE_WINHTTP
 
 	typedef DWORD __u32;
 	typedef struct ___u128 {
@@ -163,12 +169,6 @@ void real_dprintf(char *filename, int line, const char *function, char *format, 
 #define METERPRETER_TRANSPORT_HTTPS 2
 
 #ifdef _WIN32
-
-
-#include <wininet.h>
-
-/*! @brief When defined, debug output is enabled on Windows builds. */
-//#define DEBUGTRACE 1
 
 #ifdef DEBUGTRACE
 #define dprintf(...) real_dprintf(__VA_ARGS__)
