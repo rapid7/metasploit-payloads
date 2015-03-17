@@ -5,8 +5,8 @@
 #ifndef _METERPRETER_SOURCE_COMMON_COMMON_H
 #define _METERPRETER_SOURCE_COMMON_COMMON_H
 
-/*! @brief When defined, debug output is enabled on Windows builds. */
-#define DEBUGTRACE 1
+/*! @brief Set to 0 for "normal", and 1 to "verbose", comment out to disable completely. */
+//#define DEBUGTRACE 0
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -140,6 +140,7 @@ int netlink_get_interfaces(struct ifaces_list **iface_list);
 extern int debugging_enabled;
 
 #define dprintf(...) if(debugging_enabled) { real_dprintf(__FILE__, __LINE__, __FUNCTION__, __VA_ARGS__); }
+#define vdprintf(...) do{}while(0);
 
 void real_dprintf(char *filename, int line, const char *function, char *format, ...);
 
@@ -172,8 +173,14 @@ void real_dprintf(char *filename, int line, const char *function, char *format, 
 
 #ifdef DEBUGTRACE
 #define dprintf(...) real_dprintf(__VA_ARGS__)
+#if DEBUGTRACE == 1
+#define vdprintf dprintf
+#else
+#define vdprintf(...) do{}while(0);
+#endif
 #else
 #define dprintf(...) do{}while(0);
+#define vdprintf(...) do{}while(0);
 #endif
 
 /*! @brief Sets `dwResult` to the return value of `GetLastError()`, prints debug output, then does `break;` */

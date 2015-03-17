@@ -171,7 +171,7 @@
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>backcompat.lib;ws2_32.lib;odbc32.lib;odbccp32.lib;wininet.lib;winhttp.lib;ssleay32.lib;libeay32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>backcompat.lib;ws2_32.lib;odbc32.lib;odbccp32.lib;crypt32.lib;wininet.lib;winhttp.lib;ssleay32.lib;libeay32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\backcompat\$(Configuration);..\common\$(Configuration); ..\..\source\openssl\lib\win\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ModuleDefinitionFile>..\..\source\server\win\metsrv.def</ModuleDefinitionFile>
@@ -232,7 +232,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>backcompat.lib;ws2_32.lib;odbc32.lib;odbccp32.lib;wininet.lib;winhttp.lib;ssleay32.lib;libeay32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>backcompat.lib;ws2_32.lib;odbc32.lib;odbccp32.lib;crypt32.lib;wininet.lib;winhttp.lib;ssleay32.lib;libeay32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\backcompat\$(Configuration);..\common\$(Configuration); ..\..\source\openssl\lib\win\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ModuleDefinitionFile>..\..\source\server\win\metsrv.def</ModuleDefinitionFile>
@@ -294,7 +294,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>ws2_32.lib;odbc32.lib;odbccp32.lib;wininet.lib;winhttp.lib;ssleay32.lib;libeay32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;odbc32.lib;odbccp32.lib;crypt32.lib;wininet.lib;winhttp.lib;ssleay32.lib;libeay32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\common\$(Configuration);..\..\source\openssl\lib\win\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ModuleDefinitionFile>..\..\source\server\win\metsrv.def</ModuleDefinitionFile>
@@ -355,7 +355,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>ws2_32.lib;odbc32.lib;odbccp32.lib;wininet.lib;winhttp.lib;ssleay32.lib;libeay32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;odbc32.lib;odbccp32.lib;crypt32.lib;wininet.lib;winhttp.lib;ssleay32.lib;libeay32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\common\$(Configuration);..\..\source\openssl\lib\win\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ModuleDefinitionFile>..\..\source\server\win\metsrv.def</ModuleDefinitionFile>
@@ -419,7 +419,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>backcompat.lib;ws2_32.lib;odbc32.lib;odbccp32.lib;wininet.lib;winhttp.lib;ssleay32.lib;libeay32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>backcompat.lib;ws2_32.lib;odbc32.lib;odbccp32.lib;crypt32.lib;wininet.lib;winhttp.lib;ssleay32.lib;libeay32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\backcompat\$(Configuration);..\common\$(Configuration); ..\..\source\openssl\lib\win;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ModuleDefinitionFile>..\..\source\server\win\metsrv.def</ModuleDefinitionFile>
@@ -486,7 +486,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>backcompat.lib;ws2_32.lib;odbc32.lib;odbccp32.lib;wininet.lib;winhttp.lib;ssleay32.lib;libeay32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>backcompat.lib;ws2_32.lib;odbc32.lib;odbccp32.lib;crypt32.lib;wininet.lib;winhttp.lib;ssleay32.lib;libeay32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\backcompat\$(Configuration);..\common\$(Configuration); ..\..\source\openssl\lib\win;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ModuleDefinitionFile>..\..\source\server\win\metsrv.def</ModuleDefinitionFile>
@@ -553,7 +553,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>ws2_32.lib;odbc32.lib;odbccp32.lib;wininet.lib;winhttp.lib;ssleay32.lib;libeay32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;odbc32.lib;odbccp32.lib;crypt32.lib;wininet.lib;winhttp.lib;ssleay32.lib;libeay32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\common\$(Configuration);..\..\source\openssl\lib\win\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ModuleDefinitionFile>..\..\source\server\win\metsrv.def</ModuleDefinitionFile>
@@ -619,7 +619,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>ws2_32.lib;odbc32.lib;odbccp32.lib;wininet.lib;winhttp.lib;ssleay32.lib;libeay32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;odbc32.lib;odbccp32.lib;crypt32.lib;wininet.lib;winhttp.lib;ssleay32.lib;libeay32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\common\$(Configuration);..\..\source\openssl\lib\win\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ModuleDefinitionFile>..\..\source\server\win\metsrv.def</ModuleDefinitionFile>

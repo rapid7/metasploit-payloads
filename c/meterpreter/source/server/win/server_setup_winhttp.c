@@ -9,6 +9,9 @@
 
 #ifdef USE_WINHTTP
 
+#define HOSTNAME_LEN 512
+#define URLPATH_LEN 1024
+
 DWORD server_dispatch_http_winhttp(Remote* remote, THREAD* serverThread, int iExpirationTimeout, int iCommTimeout,
 	wchar_t* pMetUA, wchar_t* pMetProxy, wchar_t* pMetProxyUser, wchar_t* pMetProxyPass)
 {
@@ -71,10 +74,10 @@ DWORD server_dispatch_http_winhttp(Remote* remote, THREAD* serverThread, int iEx
 	ZeroMemory(&bits, sizeof(bits));
 	bits.dwStructSize = sizeof(bits);
 
-	bits.dwHostNameLength = sizeof(tmpHostName)-1;
+	bits.dwHostNameLength = HOSTNAME_LEN - 1;
 	bits.lpszHostName = tmpHostName;
 
-	bits.dwUrlPathLength = sizeof(tmpUrlPath)-1;
+	bits.dwUrlPathLength = URLPATH_LEN - 1;
 	bits.lpszUrlPath = tmpUrlPath;
 
 	WinHttpCrackUrl(remote->url, 0, 0, &bits);

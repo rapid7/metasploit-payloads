@@ -43,6 +43,7 @@ typedef struct _Remote
 	wchar_t* uri;                 ///< URI endpoint in use during HTTP or HTTPS transport use.
 	HANDLE hInternet;             ///< Handle to the internet module for use with HTTP and HTTPS.
 	HANDLE hConnection;           ///< Handle to the HTTP or HTTPS connection.
+	PBYTE pCertHash;              ///< Pointer to the 20-byte certificate hash to validate
 
 	int expiration_time;          ///< Unix timestamp for when the server should shut down.
 	int start_time;               ///< Unix timestamp representing the session startup time.
