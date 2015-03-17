@@ -55,7 +55,7 @@ int fs_fopen(const char *path, const char *mode, FILE **f);
 
 int fs_ls(const char *directory, fs_ls_cb_t cb, void *arg);
 
-int fs_getwd(char *directory, size_t len);
+int fs_getwd(char **directory);
 
 int fs_mkdir(const char *directory);
 

@@ -58,12 +58,14 @@ DWORD request_fs_ls(Remote * remote, Packet * packet)
 DWORD request_fs_getwd(Remote * remote, Packet * packet)
 {
 	Packet *response = packet_create_response(packet);
-	char directory[FS_MAX_PATH];
+	char *directory = NULL;
 	DWORD result;
 
-	result = fs_getwd(directory, sizeof(directory));
-
-	packet_add_tlv_string(response, TLV_TYPE_DIRECTORY_PATH, directory);
+	result = fs_getwd(&directory);
+	if (directory != NULL) {
+		packet_add_tlv_string(response, TLV_TYPE_DIRECTORY_PATH, directory);
+		free(directory);
+	}
 
 	packet_add_tlv_uint(response, TLV_TYPE_RESULT, result);
 	return packet_transmit(remote, response, NULL);
@@ -78,7 +80,7 @@ DWORD request_fs_getwd(Remote * remote, Packet * packet)
 DWORD request_fs_chdir(Remote * remote, Packet * packet)
 {
 	Packet *response = packet_create_response(packet);
-	LPCSTR directory;
+	char *directory;
 	DWORD result;
 	directory = packet_get_tlv_value_string(packet, TLV_TYPE_DIRECTORY_PATH);
 
@@ -100,7 +102,7 @@ DWORD request_fs_chdir(Remote * remote, Packet * packet)
 DWORD request_fs_mkdir(Remote * remote, Packet * packet)
 {
 	Packet *response = packet_create_response(packet);
-	LPCSTR directory;
+	char *directory;
 	DWORD result;
 	directory = packet_get_tlv_value_string(packet, TLV_TYPE_DIRECTORY_PATH);
 
@@ -122,7 +124,7 @@ DWORD request_fs_mkdir(Remote * remote, Packet * packet)
 DWORD request_fs_delete_dir(Remote * remote, Packet * packet)
 {
 	Packet *response = packet_create_response(packet);
-	LPCSTR directory;
+	char *directory;
 	DWORD result;
 	directory = packet_get_tlv_value_string(packet, TLV_TYPE_DIRECTORY_PATH);
 

@@ -56,12 +56,14 @@ char * fs_expand_path(const char *regular)
 	return strdup(regular);
 }
 
-int fs_getwd(char *directory, size_t len)
+int fs_getwd(char **directory)
 {
-	if (getcwd(directory, len) == NULL) {
+	char dir[FS_MAX_PATH];
+	if (getcwd(dir, sizeof(dir)) == NULL) {
 		return errno;
 	}
-	return ERROR_SUCCESS;
+	*directory = strdup(dir);
+	return *directory == NULL ? ERROR_NOT_ENOUGH_MEMORY : ERROR_SUCCESS;
 }
 
 int fs_mkdir(const char *directory)

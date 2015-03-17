@@ -201,33 +201,22 @@ out:
 	return rc;
 }
 
-int fs_getwd(char *directory, size_t len)
+int fs_getwd(char **dir)
 {
 	int rc = ERROR_SUCCESS;
-	wchar_t *dir_w;
-	char *dir;
+	wchar_t dir_w[FS_MAX_PATH];
 
-	dir_w = calloc(len, sizeof(wchar_t));
-	if (dir_w == NULL) {
+	if (GetCurrentDirectoryW(FS_MAX_PATH, dir_w) == 0) {
 		rc = GetLastError();
 		goto out;
 	}
 
-	if (GetCurrentDirectoryW(len, dir_w) == 0) {
+	*dir = wchar_to_utf8(dir_w);
+	if (*dir == NULL) {
 		rc = GetLastError();
-		goto out;
 	}
-
-	dir = wchar_to_utf8(dir_w);
-	if (dir == NULL) {
-		rc = GetLastError();
-		goto out;
-	}
-	strncpy(directory, dir, len);
 
 out:
-	free(dir);
-	free(dir_w);
 	return rc;
 }
 
