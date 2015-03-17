@@ -744,7 +744,7 @@ DWORD server_setup(SOCKET fd)
 					hash[0], hash[1], hash[2], hash[3], hash[4], hash[5], hash[6], hash[7], hash[8], hash[9], hash[10],
 					hash[11], hash[12], hash[13], hash[14], hash[15], hash[16], hash[17], hash[18], hash[19]);
 
-				if (strcmp(hash, "METERPETER_SSL_CERT_HASH") != 0)
+				if (strcmp(hash, "METERPRETER_SSL_CERT_HASH") != 0)
 				{
 					pRemote->pCertHash = hash;
 					dprintf("[SERVER] is validating hashes %p", pRemote->pCertHash);

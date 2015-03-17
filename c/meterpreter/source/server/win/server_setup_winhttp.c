@@ -129,11 +129,16 @@ DWORD server_dispatch_http_winhttp(Remote* remote, THREAD* serverThread, int iEx
 		result = packet_receive_via_http(remote, &packet);
 		if (result != ERROR_SUCCESS)
 		{
-
 			// Update the timestamp for empty replies
 			if (result == ERROR_EMPTY)
 			{
 				remote->comm_last_packet = current_unix_timestamp();
+			}
+			else if (result == ERROR_WINHTTP_SECURE_INVALID_CERT)
+			{
+				// This means that the certificate validation failed, and so
+				// we don't trust who we're connecting with. Bail out.
+				break;
 			}
 
 			if (ecount < 10)

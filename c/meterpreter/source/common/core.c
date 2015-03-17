@@ -1842,7 +1842,7 @@ DWORD packet_receive_http_via_winhttp(Remote *remote, Packet **packet)
 			if (!WinHttpQueryOption(hReq, WINHTTP_OPTION_SERVER_CERT_CONTEXT, &pCertContext, &dwCertContextSize))
 			{
 				vdprintf("[PACKET RECEIVE WINHTTPS] Failed to get the certificate context: %u", GetLastError());
-				SetLastError(ERROR_NOT_FOUND);
+				SetLastError(ERROR_WINHTTP_SECURE_INVALID_CERT);
 				break;
 			}
 
@@ -1851,7 +1851,7 @@ DWORD packet_receive_http_via_winhttp(Remote *remote, Packet **packet)
 			if (!CertGetCertificateContextProperty(pCertContext, CERT_SHA1_HASH_PROP_ID, hash, &dwHashSize))
 			{
 				vdprintf("[PACKET RECEIVE WINHTTPS] Failed to get the certificate hash: %u", GetLastError());
-				SetLastError(ERROR_NOT_FOUND);
+				SetLastError(ERROR_WINHTTP_SECURE_INVALID_CERT);
 				break;
 			}
 
@@ -1862,7 +1862,7 @@ DWORD packet_receive_http_via_winhttp(Remote *remote, Packet **packet)
 			if (memcmp(hash, remote->pCertHash, 20) != 0)
 			{
 				vdprintf("[PACKET RECEIVE WINHTTPS] Certificate hash doesn't match, bailing out");
-				SetLastError(ERROR_NOT_FOUND);
+				SetLastError(ERROR_WINHTTP_SECURE_INVALID_CERT);
 				break;
 			}
 		}
