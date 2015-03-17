@@ -3,30 +3,66 @@
 #include "fs_local.h"
 #include "precomp.h"
 
+static wchar_t *utf8_to_wchar(const char *in)
+{
+	wchar_t *out;
+	int len = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, in, -1, NULL, 0);
+	if (len <= 0) {
+		return NULL;
+	}
+
+	out = calloc(len, sizeof(wchar_t));
+	if (out == NULL) {
+		return NULL;
+	}
+
+	if (MultiByteToWideChar(CP_UTF8, 0, in, -1, out, len) == 0) {
+		free(out);
+		out = NULL;
+	}
+
+	return out;
+}
+
+static char *wchar_to_utf8(const wchar_t *in)
+{
+	char *out;
+	int len = WideCharToMultiByte(CP_UTF8, 0, in, -1, NULL, 0, NULL, NULL);
+	if (len <= 0) {
+		return NULL;
+	}
+
+	out = calloc(len, sizeof(char));
+	if (out == NULL) {
+		return NULL;
+	}
+
+	if (WideCharToMultiByte(CP_UTF8, 0, in, -1, out, len, NULL, FALSE) == 0) {
+		free(out);
+		out = NULL;
+	}
+
+	return out;
+}
+
 char * fs_expand_path(const char *regular)
 {
-	DWORD expandedFilePathSize = 32768;
-	LPSTR expandedFilePath;
+	wchar_t expanded_path[FS_MAX_PATH];
+	wchar_t *regular_w;
 
-	/*
-	 * Expand the file path
-	 */
-	expandedFilePath = malloc(expandedFilePathSize);
-	if (expandedFilePath == NULL) {
+	regular_w = utf8_to_wchar(regular);
+	if (regular_w == NULL) {
 		return NULL;
 	}
 
-	/*
-	 * Expand the file path being accessed. ExpandEnvironmentStrings
-	 * NULL-terminates the result;
-	 */
-	if (ExpandEnvironmentStrings(regular, expandedFilePath,
-	    expandedFilePathSize - 2) == 0) {
-		free(expandedFilePath);
+	if (ExpandEnvironmentStringsW(regular_w, expanded_path, FS_MAX_PATH) == 0) {
+		free(regular_w);
 		return NULL;
 	}
 
-	return expandedFilePath;
+	free(regular_w);
+
+	return wchar_to_utf8(expanded_path);
 }
 
 int fs_ls(const char *directory, fs_ls_cb_t cb, void *arg)
@@ -35,8 +71,6 @@ int fs_ls(const char *directory, fs_ls_cb_t cb, void *arg)
 	LPSTR expanded = NULL;
 	LPSTR baseDirectory = NULL;
 	char tempDirectory[FS_MAX_PATH];
-	WIN32_FIND_DATA data;
-	HANDLE ctx = NULL;
 
 	_snprintf(tempDirectory, sizeof(tempDirectory), "%s", directory);
 
@@ -78,19 +112,25 @@ int fs_ls(const char *directory, fs_ls_cb_t cb, void *arg)
 		goto out;
 	}
 
-	/*
-	 * Start the find operation
-	 */
-	ctx = FindFirstFile(expanded, &data);
+	WIN32_FIND_DATAW data;
+	wchar_t *path_w = utf8_to_wchar(expanded);
+	if (path_w == NULL) {
+		result = ERROR_NOT_ENOUGH_MEMORY;
+		goto out;
+	}
+
+	HANDLE ctx = FindFirstFileW(path_w, &data);
 	do {
 		if (ctx == INVALID_HANDLE_VALUE) {
 			result = GetLastError();
 			break;
 		}
 
-		cb(arg, data.cFileName, baseDirectory);
+		char *filename = wchar_to_utf8(data.cFileName);
+		cb(arg, filename, baseDirectory);
+		free(filename);
 
-	} while (FindNextFile(ctx, &data));
+	} while (FindNextFileW(ctx, &data));
 
 	/*
 	 * Clean up resources
@@ -100,55 +140,135 @@ int fs_ls(const char *directory, fs_ls_cb_t cb, void *arg)
 out:
 	free(tempDirectory);
 	free(baseDirectory);
+	free(path_w);
 	return result;
 }
 
 int fs_chdir(const char *directory)
 {
-	if (SetCurrentDirectory(directory) == 0) {
-		return GetLastError();
+	int rc = ERROR_SUCCESS;
+	wchar_t *dir_w = utf8_to_wchar(directory);
+
+	if (dir_w == NULL) {
+		rc = GetLastError();
+		goto out;
 	}
-	return ERROR_SUCCESS;
+
+	if (SetCurrentDirectoryW(dir_w) == 0) {
+		rc = GetLastError();
+	}
+
+out:
+	free(dir_w);
+	return rc;
 }
 
 int fs_delete_dir(const char *directory)
 {
-	if (RemoveDirectory(directory) == 0) {
-		return GetLastError();
+	int rc = ERROR_SUCCESS;
+	wchar_t *dir_w = utf8_to_wchar(directory);
+
+	if (dir_w == NULL) {
+		rc = GetLastError();
+		goto out;
 	}
-	return ERROR_SUCCESS;
+
+	if (RemoveDirectoryW(dir_w) == 0) {
+		rc = GetLastError();
+	}
+
+out:
+	free(dir_w);
+	return rc;
 }
 
 int fs_delete_file(const char *path)
 {
-	if (DeleteFile(path) == 0) {
-		return GetLastError();
+	int rc = ERROR_SUCCESS;
+	wchar_t *path_w = utf8_to_wchar(path);
+
+	if (path_w == NULL) {
+		rc = GetLastError();
+		goto out;
 	}
-	return ERROR_SUCCESS;
+
+	if (DeleteFileW(path_w) == 0) {
+		rc = GetLastError();
+	}
+
+out:
+	free(path_w);
+	return rc;
 }
 
 int fs_getwd(char *directory, size_t len)
 {
-	if (GetCurrentDirectory(len, directory) == 0) {
-		return GetLastError();
+	int rc = ERROR_SUCCESS;
+	wchar_t *dir_w;
+	char *dir;
+
+	dir_w = calloc(len, sizeof(wchar_t));
+	if (dir_w == NULL) {
+		rc = GetLastError();
+		goto out;
 	}
-	return ERROR_SUCCESS;
+
+	if (GetCurrentDirectoryW(len, dir_w) == 0) {
+		rc = GetLastError();
+		goto out;
+	}
+
+	dir = wchar_to_utf8(dir_w);
+	if (dir == NULL) {
+		rc = GetLastError();
+		goto out;
+	}
+	strncpy(directory, dir, len);
+
+out:
+	free(dir);
+	free(dir_w);
+	return rc;
 }
 
 int fs_move(const char *oldpath, const char *newpath)
 {
-	if (MoveFile(oldpath, newpath) == 0) {
-		return GetLastError();
+	int rc = ERROR_SUCCESS;
+	wchar_t *old_w = utf8_to_wchar(oldpath);
+	wchar_t *new_w = utf8_to_wchar(newpath);
+
+	if ((old_w == NULL) || (new_w == NULL)) {
+		rc = GetLastError();
+		goto out;
 	}
-	return ERROR_SUCCESS;
+
+	if (MoveFileW(old_w, new_w) == 0) {
+		rc = GetLastError();
+	}
+
+out:
+	free(old_w);
+	free(new_w);
+	return rc;
 }
 
 int fs_mkdir(const char *directory)
 {
-	if (CreateDirectory(directory, NULL) == 0) {
-		return GetLastError();
+	int rc = ERROR_SUCCESS;
+	wchar_t *dir_w = utf8_to_wchar(directory);
+
+	if (dir_w == NULL) {
+		rc = GetLastError();
+		goto out;
 	}
-	return ERROR_SUCCESS;
+
+	if (CreateDirectoryW(dir_w, NULL) == 0) {
+		rc = GetLastError();
+	}
+
+out:
+	free(dir_w);
+	return rc;
 }
 
 int fs_fopen(const char *path, const char *mode, FILE **f)
@@ -164,22 +284,40 @@ int fs_fopen(const char *path, const char *mode, FILE **f)
 		return ERROR_NOT_ENOUGH_MEMORY;
 	}
 
-	*f = fopen(expanded, mode);
+	wchar_t *path_w = utf8_to_wchar(expanded);
+	wchar_t *mode_w = utf8_to_wchar(mode);
+
+	if ((path_w == NULL) || (mode_w == NULL)) {
+		rc = ERROR_NOT_ENOUGH_MEMORY;
+		goto out;
+	}
+
+	*f = _wfopen(path_w, mode_w);
 	if (*f == NULL) {
 		rc = GetLastError();
 	}
 
+out:
 	free(expanded);
+	free(path_w);
+	free(mode_w);
 	return rc;
 }
 
 int fs_stat(char *filename, struct meterp_stat *buf)
 {
-	struct stat sbuf;
+	struct _stat64i32 sbuf;
 
-	if (stat(filename, &sbuf) == -1) {
+	wchar_t *filename_w = utf8_to_wchar(filename);
+	if (filename_w == NULL) {
+		return -1;
+	}
+
+	if (_wstat(filename_w, &sbuf) == -1) {
 		return GetLastError();
 	}
+
+	free(filename_w);
 
 	buf->st_dev   = sbuf.st_dev;
 	buf->st_ino   = sbuf.st_ino;

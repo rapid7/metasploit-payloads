@@ -7,7 +7,7 @@
 #ifdef _WIN32
 #define FS_SEPARATOR   '\\'
 #define FS_SEPARATOR_S "\\"
-#define FS_MAX_PATH    MAX_PATH
+#define FS_MAX_PATH    32768
 #else
 #define FS_SEPARATOR   '/'
 #define FS_SEPARATOR_S "/"
