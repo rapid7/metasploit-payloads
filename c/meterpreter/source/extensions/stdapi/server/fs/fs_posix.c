@@ -13,6 +13,7 @@ int fs_ls(const char *directory, fs_ls_cb_t cb, void *arg)
 {
 	struct meterp_stat s;
 	struct dirent *data;
+	char path[FS_MAX_PATH];
 
 	DIR *ctx = opendir(directory);
 	if (ctx == NULL) {
@@ -20,7 +21,10 @@ int fs_ls(const char *directory, fs_ls_cb_t cb, void *arg)
 	}
 
 	while ((data = readdir(ctx))) {
-		cb(arg, data->d_name, directory);
+
+		snprintf(path, sizeof(path), "%s/%s", directory, data->d_name);
+
+		cb(arg, data->d_name, path);
 	}
 
 	closedir(ctx);

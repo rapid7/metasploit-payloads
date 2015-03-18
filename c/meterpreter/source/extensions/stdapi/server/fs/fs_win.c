@@ -115,19 +115,35 @@ int fs_ls(const char *directory, fs_ls_cb_t cb, void *arg)
 	WIN32_FIND_DATAW data;
 	wchar_t *path_w = utf8_to_wchar(expanded);
 	if (path_w == NULL) {
-		result = ERROR_NOT_ENOUGH_MEMORY;
+		result = GetLastError();
 		goto out;
 	}
 
 	HANDLE ctx = FindFirstFileW(path_w, &data);
+	if (ctx == NULL) {
+		result = GetLastError();
+		goto out;
+	}
+
 	do {
 		if (ctx == INVALID_HANDLE_VALUE) {
 			result = GetLastError();
 			break;
 		}
 
+		/*
+		 * Build the full path if we have a base directory
+		 */
 		char *filename = wchar_to_utf8(data.cFileName);
-		cb(arg, filename, baseDirectory);
+		char path[FS_MAX_PATH];
+
+		if (baseDirectory) {
+			_snprintf(path, sizeof(path), "%s\\%s", filename, baseDirectory);
+		} else {
+			_snprintf(path, sizeof(path), "%s", data.cFileName);
+		}
+
+		cb(arg, filename, path);
 		free(filename);
 
 	} while (FindNextFileW(ctx, &data));
@@ -138,7 +154,6 @@ int fs_ls(const char *directory, fs_ls_cb_t cb, void *arg)
 	FindClose(ctx);
 	free(expanded);
 out:
-	free(tempDirectory);
 	free(baseDirectory);
 	free(path_w);
 	return result;

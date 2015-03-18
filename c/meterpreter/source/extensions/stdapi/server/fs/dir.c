@@ -2,20 +2,10 @@
 
 #include "fs_local.h"
 
-void request_fs_ls_cb(void *arg, char *name, const char *dir)
+void request_fs_ls_cb(void *arg, char *name, char *path)
 {
 	Packet *response = arg;
-	char path[FS_MAX_PATH];
 	struct meterp_stat s;
-
-	/*
-	 * Build the full path if we have a base directory
-	 */
-	if (dir) {
-		_snprintf(path, sizeof(path), "%s%c%s", dir, FS_SEPARATOR, name);
-	} else {
-		_snprintf(path, sizeof(path), "%s", name);
-	}
 
 	/*
 	 * Add the file name, full path and stat information

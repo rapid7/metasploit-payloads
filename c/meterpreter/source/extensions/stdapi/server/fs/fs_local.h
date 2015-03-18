@@ -5,13 +5,11 @@
 #include <stdio.h>
 
 #ifdef _WIN32
-#define FS_SEPARATOR   '\\'
-#define FS_SEPARATOR_S "\\"
-#define FS_MAX_PATH    32768
+#define FS_SEPARATOR "\\"
+#define FS_MAX_PATH  32768
 #else
-#define FS_SEPARATOR   '/'
-#define FS_SEPARATOR_S "/"
-#define FS_MAX_PATH    PATH_MAX
+#define FS_SEPARATOR "/"
+#define FS_MAX_PATH  PATH_MAX
 #endif
 
 /*
@@ -38,7 +36,7 @@ struct meterp_stat {
     uint64_t st_ctime;
 };
 
-typedef void (* fs_ls_cb_t)(void *arg, char *name, const char *path);
+typedef void (*fs_ls_cb_t)(void *arg, char *name, char *path);
 
 int fs_chdir(const char *directory);
 

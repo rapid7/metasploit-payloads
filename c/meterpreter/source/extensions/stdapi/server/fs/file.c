@@ -207,7 +207,7 @@ DWORD request_fs_separator(Remote *remote, Packet *packet)
 {
 	Packet *response = packet_create_response(packet);
 
-	packet_add_tlv_string(response, TLV_TYPE_STRING, FS_SEPARATOR_S);
+	packet_add_tlv_string(response, TLV_TYPE_STRING, FS_SEPARATOR);
 
 	packet_add_tlv_uint(response, TLV_TYPE_RESULT, ERROR_SUCCESS);
 
