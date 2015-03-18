@@ -2,7 +2,7 @@
 
 #include "fs_local.h"
 
-void request_fs_ls_cb(void *arg, char *name, char *path)
+void request_fs_ls_cb(void *arg, char *name, char *short_name, char *path)
 {
 	Packet *response = arg;
 	struct meterp_stat s;
@@ -12,6 +12,9 @@ void request_fs_ls_cb(void *arg, char *name, char *path)
 	 */
 	packet_add_tlv_string(response, TLV_TYPE_FILE_NAME, name);
 	packet_add_tlv_string(response, TLV_TYPE_FILE_PATH, path);
+	if (short_name) {
+		packet_add_tlv_string(response, TLV_TYPE_FILE_SHORT_NAME, short_name);
+	}
 	if (fs_stat(path, &s) >= 0) {
 		packet_add_tlv_raw(response, TLV_TYPE_STAT_BUF, &s, sizeof(s));
 	}
