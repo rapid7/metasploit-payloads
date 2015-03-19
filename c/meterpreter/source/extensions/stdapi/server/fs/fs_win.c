@@ -131,20 +131,20 @@ int fs_ls(const char *directory, fs_ls_cb_t cb, void *arg)
 			break;
 		}
 
-		/*
-		 * Build the full path if we have a base directory
-		 */
 		char *filename = wchar_to_utf8(data.cFileName);
+		char *short_filename = wchar_to_utf8(data.cAlternateFileName);
 		char path[FS_MAX_PATH];
 
 		if (baseDirectory) {
-			_snprintf(path, sizeof(path), "%s\\%s", filename, baseDirectory);
+			_snprintf(path, sizeof(path), "%s\\%s", baseDirectory, filename);
 		} else {
-			_snprintf(path, sizeof(path), "%s", data.cFileName);
+			_snprintf(path, sizeof(path), "%s", filename);
 		}
 
-		cb(arg, filename, path);
+		cb(arg, filename, short_filename, path);
+
 		free(filename);
+		free(short_filename);
 
 	} while (FindNextFileW(ctx, &data));
 

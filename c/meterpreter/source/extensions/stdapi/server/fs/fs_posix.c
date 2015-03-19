@@ -24,7 +24,7 @@ int fs_ls(const char *directory, fs_ls_cb_t cb, void *arg)
 
 		snprintf(path, sizeof(path), "%s/%s", directory, data->d_name);
 
-		cb(arg, data->d_name, path);
+		cb(arg, data->d_name, NULL, path);
 	}
 
 	closedir(ctx);

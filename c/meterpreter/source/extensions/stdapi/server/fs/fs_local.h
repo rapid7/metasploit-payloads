@@ -36,7 +36,7 @@ struct meterp_stat {
     uint64_t st_ctime;
 };
 
-typedef void (*fs_ls_cb_t)(void *arg, char *name, char *path);
+typedef void (*fs_ls_cb_t)(void *arg, char *name, char *short_name, char *path);
 
 int fs_chdir(const char *directory);
 
