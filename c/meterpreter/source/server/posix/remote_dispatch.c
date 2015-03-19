@@ -2,6 +2,7 @@
 #include "metsrv.h"
 
 extern Command *extensionCommands;
+extern PLIST gExtensionList;
 
 DWORD request_core_loadlib(Remote *remote, Packet *packet)
 {
@@ -61,15 +62,37 @@ DWORD request_core_loadlib(Remote *remote, Packet *packet)
 		// call its Init routine
 		if (flags & LOAD_LIBRARY_FLAG_EXTENSION)
 		{
-			DWORD(*init)(Remote *remote);
+			PEXTENSION pExtension = (PEXTENSION)malloc(sizeof(EXTENSION));
+			if (!pExtension)
+			{
+				res = ERROR_NOT_ENOUGH_MEMORY;
+				break;
+			}
+			//DWORD(*init)(Remote *remote);
 
-			init = dlsym(library, "InitServerExtension");
+			pExtension->init = dlsym(library, "InitServerExtension");
+
 			// Call the init routine in the library
-			if (init)
+			if (pExtension->init)
 			{
 				dprintf("calling InitServerExtension");
-				res = init(remote);
+				res = pExtension->init(remote);
+				pExtension->getname = dlsym(library, "GetExtensionName");
+
+
+				pExtension->deinit = dlsym(library, "DeinitServerExtension");
+
+				if (pExtension->getname)
+				{
+					pExtension->getname(pExtension->name, sizeof(pExtension->name));
+				}
+				list_push(gExtensionList, pExtension);
 			}
+			else
+			{
+				free(pExtension);
+			}
+
 			if (response)
 			{
 				for (command = extensionCommands; command != first; command = command->next)
