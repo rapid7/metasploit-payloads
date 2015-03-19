@@ -216,8 +216,16 @@ DWORD DeinitServerExtension(Remote *remote)
  * @param bufferSize Size of the \c buffer parameter.
  * @return Indication of success or failure.
  */
+#ifdef _WIN32
 DWORD __declspec(dllexport) GetExtensionName(char* buffer, int bufferSize)
+#else
+DWORD GetExtensionName(char* buffer, int bufferSize)
+#endif
 {
+#ifdef _WIN32
 	strncpy_s(buffer, bufferSize, "stdapi", bufferSize - 1);
+#else
+	strncpy(buffer, "stdapi", bufferSize - 1);
+#endif
 	return ERROR_SUCCESS;
 }

@@ -1197,7 +1197,11 @@ DWORD request_sniffer_capture_dump(Remote *remote, Packet *packet)
  * @param remote Pointer to the remote instance.
  * @return Indication of success or failure.
  */
+#ifdef _WIN32
 DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
+#else
+DWORD InitServerExtension(Remote *remote)
+#endif
 {
 #ifdef _WIN32
 	// This handle has to be set before calls to command_register
@@ -1271,7 +1275,11 @@ DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
  * @param remote Pointer to the remote instance.
  * @return Indication of success or failure.
  */
+#ifdef _WIN32
 DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
+#else
+DWORD DeinitServerExtension(Remote *remote)
+#endif
 {
 	command_register_all( customCommands );
 
@@ -1294,8 +1302,16 @@ DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
  * @param bufferSize Size of the \c buffer parameter.
  * @return Indication of success or failure.
  */
+#ifdef _WIN32
 DWORD __declspec(dllexport) GetExtensionName(char* buffer, int bufferSize)
+#else
+DWORD GetExtensionName(char* buffer, int bufferSize)
+#endif
 {
+#ifdef _WIN32
 	strncpy_s(buffer, bufferSize, "sniffer", bufferSize - 1);
+#else
+	strncpy(buffer, "sniffer", bufferSize - 1);
+#endif
 	return ERROR_SUCCESS;
 }
