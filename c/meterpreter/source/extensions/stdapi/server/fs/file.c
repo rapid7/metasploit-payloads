@@ -1,4 +1,6 @@
 #include "precomp.h"
+#include "fs_local.h"
+
 #include <sys/stat.h>
 
 #include <openssl/md5.h>
@@ -23,19 +25,18 @@ static DWORD file_channel_write(Channel *channel, Packet *request,
 {
 	FileContext *ctx = (FileContext *)context;
 	DWORD result= ERROR_SUCCESS;
-	DWORD written = 0;
+	size_t written = 0;
 
 	// Write a chunk
-	if (bufferSize && (written = (DWORD)fwrite(buffer, 1, bufferSize, ctx->fd)) <= 0)
-	{
-		written = 0;
-		result  = GetLastError();
+	if (bufferSize) {
+		written = fwrite(buffer, 1, bufferSize, ctx->fd);
+		if (written < bufferSize) {
+			result  = GetLastError();
+		}
 	}
 
-	// Set bytesWritten
-	if (bytesWritten)
-	{
-		*bytesWritten = written;
+	if (bytesWritten) {
+		*bytesWritten = (DWORD)written;
 	}
 
 	return result;
@@ -64,18 +65,19 @@ static DWORD file_channel_read(Channel *channel, Packet *request,
 {
 	FileContext *ctx = (FileContext *)context;
 	DWORD result = ERROR_SUCCESS;
-	DWORD bytes = 0;
+	size_t bytes = 0;
 
 	// Read a chunk
-	if (bufferSize && (bytes= (DWORD)fread(buffer, 1, bufferSize, ctx->fd)) <= 0)
-	{
-		bytes = 0;
-		result = GetLastError();
+	if (bufferSize) {
+	       	bytes = fread(buffer, 1, bufferSize, ctx->fd);
+		if (bytes < bufferSize) {
+			result = GetLastError();
+		}
 	}
 
-	// Set bytesRead
-	if (bytesRead)
-		*bytesRead = bytes;
+	if (bytesRead) {
+		*bytesRead = (DWORD)bytes;
+	}
 
 	return ERROR_SUCCESS;
 }
@@ -112,8 +114,9 @@ static DWORD file_channel_tell(Channel *channel, Packet *request,
 	DWORD result = ERROR_SUCCESS;
 	LONG pos = 0;
 
-	if ((pos = ftell(ctx->fd)) < 0)
+	if ((pos = ftell(ctx->fd)) < 0) {
 		result = GetLastError();
+	}
 
 	if (offset)
 		*offset = pos;
@@ -136,89 +139,63 @@ DWORD request_fs_file_channel_open(Remote *remote, Packet *packet)
 	FileContext *ctx;
 	LPSTR expandedFilePath = NULL;
 
-	do
-	{
-		// Allocate a response
-		response = packet_create_response(packet);
+	// Allocate a response
+	response = packet_create_response(packet);
 
-		// Get the channel flags
-		flags = packet_get_tlv_value_uint(packet, TLV_TYPE_FLAGS);
+	// Get the channel flags
+	flags = packet_get_tlv_value_uint(packet, TLV_TYPE_FLAGS);
 
-		// Allocate storage for the file context
-		if (!(ctx = (FileContext *)malloc(sizeof(FileContext))))
-		{
-			res = ERROR_NOT_ENOUGH_MEMORY;
-			break;
-		}
+	// Allocate storage for the file context
+	if (!(ctx = calloc(1, sizeof(FileContext)))) {
+		res = ERROR_NOT_ENOUGH_MEMORY;
+		goto out;
+	}
 
-		// Get the file path and the mode
-		filePath = packet_get_tlv_value_string(packet, TLV_TYPE_FILE_PATH);
-		mode     = packet_get_tlv_value_string(packet, TLV_TYPE_FILE_MODE);
+	// Get the file path and the mode
+	filePath = packet_get_tlv_value_string(packet, TLV_TYPE_FILE_PATH);
+	mode     = packet_get_tlv_value_string(packet, TLV_TYPE_FILE_MODE);
 
-		// No file path? bogus.
-		if (!filePath)
-		{
-			res = ERROR_INVALID_PARAMETER;
-			break;
-		}
+	if (mode == NULL) {
+		mode = "rb";
+	}
 
-		// Expand the file path
-		if (!(expandedFilePath = fs_expand_path(filePath)))
-		{
-			res = ERROR_NOT_ENOUGH_MEMORY;
-			break;
-		}
+	res = fs_fopen(filePath, mode, &ctx->fd);
+	if (res != ERROR_SUCCESS) {
+		goto out;
+	}
 
-		if (!mode)
-			mode = "rb";
+	memset(&chops, 0, sizeof(chops));
 
-		// Invalid file?
-		if (!(ctx->fd = fopen(expandedFilePath, mode)))
-		{
-			res = GetLastError();
-			break;
-		}
+	// Initialize the pool operation handlers
+	chops.native.context = ctx;
+	chops.native.write   = file_channel_write;
+	chops.native.close   = file_channel_close;
+	chops.read           = file_channel_read;
+	chops.eof            = file_channel_eof;
+	chops.seek           = file_channel_seek;
+	chops.tell           = file_channel_tell;
 
-		memset(&chops, 0, sizeof(chops));
+	// Check the response allocation & allocate a un-connected
+	// channel
+	if ((!response) || (!(newChannel = channel_create_pool(0, flags, &chops)))) {
+		res = ERROR_NOT_ENOUGH_MEMORY;
+		goto out;
+	}
 
-		// Initialize the pool operation handlers
-		chops.native.context = ctx;
-		chops.native.write   = file_channel_write;
-		chops.native.close   = file_channel_close;
-		chops.read           = file_channel_read;
-		chops.eof            = file_channel_eof;
-		chops.seek           = file_channel_seek;
-		chops.tell           = file_channel_tell;
+	// Add the channel identifier to the response
+	packet_add_tlv_uint(response, TLV_TYPE_CHANNEL_ID, channel_get_id(newChannel));
 
-		// Check the response allocation & allocate a un-connected
-		// channel
-		if ((!response) || (!(newChannel = channel_create_pool(0, flags, &chops))))
-		{
-			res = ERROR_NOT_ENOUGH_MEMORY;
-			break;
-		}
-
-		// Add the channel identifier to the response
-		packet_add_tlv_uint(response, TLV_TYPE_CHANNEL_ID,
-				channel_get_id(newChannel));
-
-	} while (0);
-
+out:
 	// Transmit the packet if it's valid
 	packet_transmit_response(res, remote, response);
 
 	// Clean up on failure
-	if (res != ERROR_SUCCESS)
-	{
-		if (newChannel)
+	if (res != ERROR_SUCCESS) {
+		if (newChannel) {
 			channel_destroy(newChannel, NULL);
-		if (ctx)
-			free(ctx);
+		}
+		free(ctx);
 	}
-
-	// Free the expanded file path if it was allocated
-	if (expandedFilePath)
-		free(expandedFilePath);
 
 	return res;
 }
@@ -229,20 +206,12 @@ DWORD request_fs_file_channel_open(Remote *remote, Packet *packet)
 DWORD request_fs_separator(Remote *remote, Packet *packet)
 {
 	Packet *response = packet_create_response(packet);
-#ifdef _WIN32
-	LPCSTR separator = "\\";
-#else
-	LPCSTR separator = "/";
-#endif
 
-	packet_add_tlv_string(response, TLV_TYPE_STRING, separator);
+	packet_add_tlv_string(response, TLV_TYPE_STRING, FS_SEPARATOR);
 
-	// Set the result and transmit the response
 	packet_add_tlv_uint(response, TLV_TYPE_RESULT, ERROR_SUCCESS);
 
-	packet_transmit(remote, response, NULL);
-
-	return ERROR_SUCCESS;
+	return packet_transmit(remote, response, NULL);
 }
 
 
@@ -250,73 +219,62 @@ DWORD request_fs_separator(Remote *remote, Packet *packet)
  * Gets information about the file path that is supplied and returns it to the
  * requestor
  *
- * TLVs:
- *
  * req: TLV_TYPE_FILE_PATH - The file path that is to be stat'd
  */
 DWORD request_fs_stat(Remote *remote, Packet *packet)
 {
 	Packet *response = packet_create_response(packet);
 	struct meterp_stat buf;
-	LPCSTR filePath;
-	LPSTR expanded = NULL;
+	char *filePath;
+	char *expanded = NULL;
 	DWORD result = ERROR_SUCCESS;
 
 	filePath = packet_get_tlv_value_string(packet, TLV_TYPE_FILE_PATH);
 
-	// Validate parameters
-	if (!filePath)
+	if (!filePath) {
 		result = ERROR_INVALID_PARAMETER;
-	else if (!(expanded = fs_expand_path(filePath)))
-		result = ERROR_NOT_ENOUGH_MEMORY;
-	else
-	{
-		result = fs_stat(expanded, &buf);
-		if (0 == result)
-			packet_add_tlv_raw(response, TLV_TYPE_STAT_BUF, &buf,
-					sizeof(buf));
+		goto out;
 	}
 
-	// Set the result and transmit the response
+	expanded = fs_expand_path(filePath);
+	if (expanded == NULL) {
+		result = ERROR_NOT_ENOUGH_MEMORY;
+		goto out;
+	}
+
+	result = fs_stat(expanded, &buf);
+	if (0 == result) {
+		packet_add_tlv_raw(response, TLV_TYPE_STAT_BUF, &buf, sizeof(buf));
+	}
+
+	free(expanded);
+
+out:
 	packet_add_tlv_uint(response, TLV_TYPE_RESULT, result);
-
-	packet_transmit(remote, response, NULL);
-
-	if (expanded)
-		free(expanded);
-
-	return result;
+	return packet_transmit(remote, response, NULL);
 }
 
 /*
  * Removes the supplied file from disk
- *
- * TLVs:
  *
  * req: TLV_TYPE_FILE_PATH - The file that is to be removed.
  */
 DWORD request_fs_delete_file(Remote *remote, Packet *packet)
 {
 	Packet *response = packet_create_response(packet);
-	LPCSTR path;
+	char *path;
 	DWORD result = ERROR_SUCCESS;
 
 	path = packet_get_tlv_value_string(packet, TLV_TYPE_FILE_PATH);
 
-	if (!path)
+	if (!path) {
 		result = ERROR_INVALID_PARAMETER;
-#ifdef _WIN32
-	else if (!DeleteFile(path))
-#else
-	else if (unlink(path))
-#endif
-		result = GetLastError();
+	} else {
+		result = fs_delete_file(path);
+	}
 
 	packet_add_tlv_uint(response, TLV_TYPE_RESULT, result);
-
-	packet_transmit(remote, response, NULL);
-
-	return ERROR_SUCCESS;
+	return packet_transmit(remote, response, NULL);
 }
 
 /*
@@ -328,163 +286,106 @@ DWORD request_fs_file_expand_path(Remote *remote, Packet *packet)
 {
 	Packet *response = packet_create_response(packet);
 	DWORD result = ERROR_SUCCESS;
-	LPSTR expanded = NULL;
-	LPSTR regular;
+	char *expanded = NULL;
+	char *regular;
 
 	regular = packet_get_tlv_value_string(packet, TLV_TYPE_FILE_PATH);
+	if (regular == NULL) {
+		result = ERROR_INVALID_PARAMETER;
+		goto out;
+	}
 
-	do
-	{
-		// No regular path?
-		if (!regular)
-		{
-			result = ERROR_INVALID_PARAMETER;
-			break;
-		}
+	// Allocate storage for the expanded path
+	expanded = fs_expand_path(regular);
+	if (expanded == NULL) {
+		result = ERROR_NOT_ENOUGH_MEMORY;
+		goto out;
+	}
 
-		// Allocate storage for the expanded path
-		if (!(expanded = fs_expand_path(regular)))
-		{
-			result = ERROR_NOT_ENOUGH_MEMORY;
-			break;
-		}
-
-		packet_add_tlv_string(response, TLV_TYPE_FILE_PATH, expanded);
-
-	} while (0);
-
-	// Transmit the response to the mofo
-	packet_transmit_response(result, remote, response);
-
-	if (expanded)
-		free(expanded);
-
-	return ERROR_SUCCESS;
+	packet_add_tlv_string(response, TLV_TYPE_FILE_PATH, expanded);
+	free(expanded);
+out:
+	packet_add_tlv_uint(response, TLV_TYPE_RESULT, result);
+	return packet_transmit(remote, response, NULL);
 }
 
 
 /*
  * Returns the MD5 hash for a specified file path
  *
- * TLVs:
- *
  * req: TLV_TYPE_FILE_PATH - The file path that is to be stat'd
  */
 DWORD request_fs_md5(Remote *remote, Packet *packet)
 {
 	Packet *response = packet_create_response(packet);
-	LPCSTR filePath;
-	LPSTR expanded = NULL;
+	char *filePath;
 	DWORD result = ERROR_SUCCESS;
 	MD5_CTX context;
+
 	FILE *fd;
 	size_t ret;
 	unsigned char buff[16384];
-	unsigned char hash[128];
+	unsigned char hash[MD5_DIGEST_LENGTH + 1] = {0};
 
 	filePath = packet_get_tlv_value_string(packet, TLV_TYPE_FILE_PATH);
 
-	// Validate parameters
-	if (!filePath)
-		result = ERROR_INVALID_PARAMETER;
-	else if (!(expanded = fs_expand_path(filePath)))
-		result = ERROR_NOT_ENOUGH_MEMORY;
-	else
-	{
-		do {
-			MD5_Init(&context);
-			fd = fopen(expanded, "rb");
-			if (! fd) {
-				result = GetLastError();
-				break;
-			}
+	result = fs_fopen(filePath, "rb", &fd);
+	if (result == ERROR_SUCCESS) {
 
-			while((ret = fread(buff, 1, sizeof(buff), fd)) > 0 ) {
-				MD5_Update(&context, buff, ret);
-			}
+		MD5_Init(&context);
 
-			fclose(fd);
-			MD5_Final(hash, &context);
+		while ((ret = fread(buff, 1, sizeof(buff), fd)) > 0 ) {
+			MD5_Update(&context, buff, ret);
+		}
 
-			// One byte extra for the NULL
-			packet_add_tlv_raw(response, TLV_TYPE_FILE_NAME, hash, 17);
-		} while(0);
+		MD5_Final(hash, &context);
+
+		packet_add_tlv_raw(response, TLV_TYPE_FILE_NAME, hash, sizeof(hash));
+
+		fclose(fd);
 	}
 
-	// Set the result and transmit the response
 	packet_add_tlv_uint(response, TLV_TYPE_RESULT, result);
-
-	packet_transmit(remote, response, NULL);
-
-	if (expanded)
-		free(expanded);
-
-	return ERROR_SUCCESS;
+	return packet_transmit(remote, response, NULL);
 }
-
 
 
 /*
  * Returns the SHA1 hash for a specified file path
- *
- * TLVs:
  *
  * req: TLV_TYPE_FILE_PATH - The file path that is to be stat'd
  */
 DWORD request_fs_sha1(Remote *remote, Packet *packet)
 {
 	Packet *response = packet_create_response(packet);
-	LPCSTR filePath;
-	LPSTR expanded = NULL;
+	char *filePath;
 	DWORD result = ERROR_SUCCESS;
 	SHA_CTX context;
 
 	FILE *fd;
 	size_t ret;
 	unsigned char buff[16384];
-	unsigned char hash[128];
+	unsigned char hash[SHA_DIGEST_LENGTH + 1] = {0};
 
 	filePath = packet_get_tlv_value_string(packet, TLV_TYPE_FILE_PATH);
 
-	// Validate parameters
-	if (!filePath)
-		result = ERROR_INVALID_PARAMETER;
-	else if (!(expanded = fs_expand_path(filePath)))
-		result = ERROR_NOT_ENOUGH_MEMORY;
-	else
-	{
-		do {
-			SHA1_Init(&context);
-			fd = fopen(expanded, "rb");
-			if (! fd) {
-				result = GetLastError();
-				break;
-			}
+	result = fs_fopen(filePath, "rb", &fd);
+	if (result == ERROR_SUCCESS) {
+		SHA1_Init(&context);
 
-			while((ret = fread(buff, 1, sizeof(buff), fd)) > 0 ) {
-				SHA1_Update(&context, buff, ret);
-			}
+		while ((ret = fread(buff, 1, sizeof(buff), fd)) > 0 ) {
+			SHA1_Update(&context, buff, ret);
+		}
 
-			fclose(fd);
-			SHA1_Final(hash, &context);
+		fclose(fd);
+		SHA1_Final(hash, &context);
 
-			// One byte extra for the NULL
-			packet_add_tlv_raw(response, TLV_TYPE_FILE_NAME, hash, 21);
-		} while(0);
+		packet_add_tlv_raw(response, TLV_TYPE_FILE_NAME, hash, sizeof(hash));
 	}
 
-	// Set the result and transmit the response
 	packet_add_tlv_uint(response, TLV_TYPE_RESULT, result);
-
-	packet_transmit(remote, response, NULL);
-
-	if (expanded)
-		free(expanded);
-
-	return ERROR_SUCCESS;
+	return packet_transmit(remote, response, NULL);
 }
-
-
 
 /*
  * Copies source file path to destination
@@ -495,25 +396,19 @@ DWORD request_fs_file_move(Remote *remote, Packet *packet)
 {
 	Packet *response = packet_create_response(packet);
 	DWORD result = ERROR_SUCCESS;
-	LPCSTR oldpath;
-	LPCSTR newpath;
+	char *oldpath;
+	char *newpath;
 
 	oldpath = packet_get_tlv_value_string(packet, TLV_TYPE_FILE_NAME);
 	newpath = packet_get_tlv_value_string(packet, TLV_TYPE_FILE_PATH);
 
-	if (!oldpath)
+	if (!oldpath) {
 		result = ERROR_INVALID_PARAMETER;
-#ifdef _WIN32
-	else if (!MoveFile(oldpath,newpath))
-#else
-	else if (rename(oldpath,newpath))
-#endif
-		result = GetLastError();
+	} else {
+		result = fs_move(oldpath, newpath);
+	}
 
 	packet_add_tlv_uint(response, TLV_TYPE_RESULT, result);
-
-	packet_transmit(remote, response, NULL);
-
-	return ERROR_SUCCESS;
+	return packet_transmit(remote, response, NULL);
 }
 

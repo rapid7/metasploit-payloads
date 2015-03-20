@@ -76,7 +76,7 @@ void packet_handler(u_char *user, const struct pcap_pkthdr *h, const u_char *byt
 	}
 	np->packet_stream = tmp;
 
-	size = (unsigned short int *)(np->packet_stream + np->packet_stream_length);  
+	size = (unsigned short int *)(np->packet_stream + np->packet_stream_length);
 	*size = htons(h->caplen);
 	data = (unsigned char *)(np->packet_stream + np->packet_stream_length + 2);
 
@@ -438,7 +438,11 @@ Command customCommands[] =
 /*
  * Initialize the server extension
  */
+#ifdef _WIN32
 DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
+#else
+DWORD InitServerExtension(Remote *remote)
+#endif
 {
 	int peername_len;
 	struct sockaddr peername;
@@ -497,7 +501,11 @@ DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
 /*
  * Deinitialize the server extension
  */
+#ifdef _WIN32
 DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
+#else
+DWORD DeinitServerExtension(Remote *remote)
+#endif
 {
 	command_deregister_all(customCommands);
 
@@ -505,5 +513,25 @@ DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
 	
 	lock_destroy(pug_lock);
 
+	return ERROR_SUCCESS;
+}
+
+/*!
+ * @brief Get the name of the extension.
+ * @param buffer Pointer to the buffer to write the name to.
+ * @param bufferSize Size of the \c buffer parameter.
+ * @return Indication of success or failure.
+ */
+#ifdef _WIN32
+DWORD __declspec(dllexport) GetExtensionName(char* buffer, int bufferSize)
+#else
+DWORD GetExtensionName(char* buffer, int bufferSize)
+#endif
+{
+#ifdef _WIN32
+	strncpy_s(buffer, bufferSize, "networkpug", bufferSize - 1);
+#else
+	strncpy(buffer, "networkpug", bufferSize - 1);
+#endif
 	return ERROR_SUCCESS;
 }
