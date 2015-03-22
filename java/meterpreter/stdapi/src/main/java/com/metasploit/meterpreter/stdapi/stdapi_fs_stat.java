@@ -31,10 +31,21 @@ public class stdapi_fs_stat implements Command {
 	}
 
 	public byte[] stat(File file) throws IOException {
-		int mode = (file.canRead() ? 0444 : 0) | (file.canWrite() ? 0222 : 0) | (canExecute(file) ? 0110 : 0) | (file.isHidden() ? 1 : 0) | (file.isDirectory() ? 040000 : 0) | (file.isFile() ? 0100000 : 0);
+		int mode = (file.canRead() ? 0444 : 0)
+			| (file.canWrite() ? 0222 : 0)
+			| (canExecute(file) ? 0110 : 0)
+			// File objects have a prefix (which is something like "C:\\" on Windows
+			// and always "/" on Linux) and a name. If we're talking about the root
+			// directory, the name will be an empty string which triggers a bug in gcj
+			// where isHidden() blows up when calling charAt(0) on an empty string.
+			// Work around it by always treating / as unhidden.
+			| (!file.getAbsolutePath().equals("/") && file.isHidden() ? 1 : 0)
+			| (file.isDirectory() ? 040000 : 0)
+			| (file.isFile() ? 0100000 : 0)
+			;
 		return stat(mode, file.length(), file.lastModified());
 	}
-	
+
 	private byte[] stat(int mode, long length, long lastModified) throws IOException {
 		ByteArrayOutputStream statbuf = new ByteArrayOutputStream();
 		DataOutputStream dos = new DataOutputStream(statbuf);
