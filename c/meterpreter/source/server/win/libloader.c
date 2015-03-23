@@ -371,21 +371,17 @@ void install_hooks(SHELLCODE_CTX *ctx)
 	f_NtClose lNtClose;
 	HMODULE ntdll;
 
-	if (!(ntdll = LoadLibrary("ntdll")))
+	if (!(ntdll = LoadLibrary(TEXT("ntdll"))))
+	{
 		return;
+	}
 
-	lNtMapViewOfSection = (f_NtMapViewOfSection)GetProcAddress(ntdll,
-			"NtMapViewOfSection");
-	lNtQueryAttributesFile = (f_NtQueryAttributesFile)GetProcAddress(ntdll,
-			"NtQueryAttributesFile");
-	lNtOpenFile = (f_NtOpenFile)GetProcAddress(ntdll,
-			"NtOpenFile");
-	lNtCreateSection = (f_NtCreateSection)GetProcAddress(ntdll,
-			"NtCreateSection");
-	lNtOpenSection = (f_NtOpenSection)GetProcAddress(ntdll,
-			"NtOpenSection");
-	lNtClose = (f_NtClose)GetProcAddress(ntdll,
-			"NtClose");
+	lNtMapViewOfSection = (f_NtMapViewOfSection)GetProcAddress(ntdll, "NtMapViewOfSection");
+	lNtQueryAttributesFile = (f_NtQueryAttributesFile)GetProcAddress(ntdll, "NtQueryAttributesFile");
+	lNtOpenFile = (f_NtOpenFile)GetProcAddress(ntdll, "NtOpenFile");
+	lNtCreateSection = (f_NtCreateSection)GetProcAddress(ntdll, "NtCreateSection");
+	lNtOpenSection = (f_NtOpenSection)GetProcAddress(ntdll, "NtOpenSection");
+	lNtClose = (f_NtClose)GetProcAddress(ntdll, "NtClose");
 
 	/* NtMapViewOfSection */
 
@@ -468,21 +464,17 @@ void remove_hooks(SHELLCODE_CTX *ctx)
 	f_NtClose lNtClose;
 	HMODULE ntdll;
 
-	if (!(ntdll = LoadLibrary("ntdll")))
+	if (!(ntdll = LoadLibraryA("ntdll")))
+	{
 		return;
+	}
 
-	lNtMapViewOfSection = (f_NtMapViewOfSection)GetProcAddress(ntdll,
-			"NtMapViewOfSection");
-	lNtQueryAttributesFile = (f_NtQueryAttributesFile)GetProcAddress(ntdll,
-			"NtQueryAttributesFile");
-	lNtOpenFile = (f_NtOpenFile)GetProcAddress(ntdll,
-			"NtOpenFile");
-	lNtCreateSection = (f_NtCreateSection)GetProcAddress(ntdll,
-			"NtCreateSection");
-	lNtOpenSection = (f_NtOpenSection)GetProcAddress(ntdll,
-			"NtOpenSection");
-	lNtClose = (f_NtClose)GetProcAddress(ntdll,
-			"NtClose");
+	lNtMapViewOfSection = (f_NtMapViewOfSection)GetProcAddress(ntdll, "NtMapViewOfSection");
+	lNtQueryAttributesFile = (f_NtQueryAttributesFile)GetProcAddress(ntdll, "NtQueryAttributesFile");
+	lNtOpenFile = (f_NtOpenFile)GetProcAddress(ntdll, "NtOpenFile");
+	lNtCreateSection = (f_NtCreateSection)GetProcAddress(ntdll, "NtCreateSection");
+	lNtOpenSection = (f_NtOpenSection)GetProcAddress(ntdll, "NtOpenSection");
+	lNtClose = (f_NtClose)GetProcAddress(ntdll, "NtClose");
 
 	/* NtMapViewOfSection */
 	restore_function(ctx, (DWORD)lNtMapViewOfSection, 
@@ -541,7 +533,7 @@ void map_file(SHELLCODE_CTX *ctx)
 		ULONG (_stdcall *NtLockVirtualMemory)(HANDLE, PVOID *, PULONG, ULONG);
 
 		NtLockVirtualMemory = (ULONG (_stdcall *)(HANDLE, PVOID *, PULONG, ULONG))GetProcAddress(
-				GetModuleHandle("ntdll"),
+				GetModuleHandleA("ntdll"),
 				"NtLockVirtualMemory");
 
 		if (NtLockVirtualMemory)
@@ -607,17 +599,16 @@ HMODULE libloader_load_library(LPCSTR name, PUCHAR buffer, DWORD bufferLength)
 		map_file(ctx);
 
 		// Load the fake library
-		if (!(mod = LoadLibrary(ctx->libname)))
+		if (!(mod = LoadLibraryA(ctx->libname)))
+		{
 			break;
+		}
 
 	} while (0);
 
 	remove_hooks(ctx);
 
-	VirtualFree(
-			ctx,
-			0,
-			MEM_RELEASE);
+	VirtualFree(ctx, 0, MEM_RELEASE);
 
 	return mod;
 }

@@ -22,27 +22,28 @@ typedef struct _Remote
 {
 	HMODULE hMetSrv;              ///< Reference to the Meterpreter server instance.
 	SOCKET fd;                    ///< Remote socket file descriptor.
-	CryptoContext *crypto;        ///< Cryptographic context associated with the connection.
-	SSL_METHOD *meth;             ///< The current SSL method in use.
-	SSL_CTX *ctx;                 ///< SSL-specific context information.
-	SSL *ssl;                     ///< Pointer to the SSL detail/version/etc.
-	LOCK * lock;                  ///< OpenSSL usage lock.
+	CryptoContext* crypto;        ///< Cryptographic context associated with the connection.
+	SSL_METHOD* meth;             ///< The current SSL method in use.
+	SSL_CTX* ctx;                 ///< SSL-specific context information.
+	SSL* ssl;                     ///< Pointer to the SSL detail/version/etc.
+	LOCK* lock;                   ///< OpenSSL usage lock.
 	HANDLE hServerThread;         ///< Handle to the current server thread.
 	HANDLE hServerToken;          ///< Handle to the current server security token.
 	HANDLE hThreadToken;          ///< Handle to the current thread security token.
 
 	DWORD dwOrigSessionId;        ///< ID of the original Meterpreter session.
 	DWORD dwCurrentSessionId;     ///< ID of the currently active session.
-	char * cpOrigStationName;     ///< Original station name.
-	char * cpCurrentStationName;  ///< Name of the current station.
-	char * cpOrigDesktopName;     ///< Original desktop name.
-	char * cpCurrentDesktopName;  ///< Name of the current desktop.
+	char* cpOrigStationName;      ///< Original station name.
+	char* cpCurrentStationName;   ///< Name of the current station.
+	char* cpOrigDesktopName;      ///< Original desktop name.
+	char* cpCurrentDesktopName;   ///< Name of the current desktop.
 
 	DWORD transport;              ///< Indicator of the transport in use for this session.
-	char *url;                    ///< Full URL in use during HTTP or HTTPS transport use.
-	char *uri;                    ///< URI endpoint in use during HTTP or HTTPS transport use.
+	wchar_t* url;                 ///< Full URL in use during HTTP or HTTPS transport use.
+	wchar_t* uri;                 ///< URI endpoint in use during HTTP or HTTPS transport use.
 	HANDLE hInternet;             ///< Handle to the internet module for use with HTTP and HTTPS.
 	HANDLE hConnection;           ///< Handle to the HTTP or HTTPS connection.
+	unsigned char* pCertHash;     ///< Pointer to the 20-byte certificate hash to validate
 
 	int expiration_time;          ///< Unix timestamp for when the server should shut down.
 	int start_time;               ///< Unix timestamp representing the session startup time.
@@ -56,8 +57,7 @@ VOID remote_deallocate(Remote *remote);
 VOID remote_set_fd(Remote *remote, SOCKET fd);
 SOCKET remote_get_fd(Remote *remote);
 
-DWORD remote_set_cipher(Remote *remote, LPCSTR cipher,
-	struct _Packet *initializer);
+DWORD remote_set_cipher(Remote *remote, LPCSTR cipher, struct _Packet *initializer);
 CryptoContext *remote_get_cipher(Remote *remote);
 
 #endif
