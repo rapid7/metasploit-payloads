@@ -6,7 +6,7 @@
 #define HOSTNAME_LEN 512
 #define URLPATH_LEN 1024
 
-DWORD server_dispatch_http_wininet(Remote * remote, THREAD* serverThread, int iExpirationTimeout, int iCommTimeout,
+DWORD server_dispatch_http_wininet(Remote * remote, THREAD* dispatchThread, int iExpirationTimeout, int iCommTimeout,
 	wchar_t* pMetUA, wchar_t* pMetProxy, wchar_t* pMetProxyUser, wchar_t* pMetProxyPass)
 {
 	BOOL running = TRUE;
@@ -105,7 +105,7 @@ DWORD server_dispatch_http_wininet(Remote * remote, THREAD* serverThread, int iE
 			break;
 		}
 
-		if (event_poll(serverThread->sigterm, 0))
+		if (event_poll(dispatchThread->sigterm, 0))
 		{
 			dprintf("[DISPATCH] server dispatch thread signaled to terminate...");
 			break;

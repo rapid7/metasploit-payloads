@@ -130,9 +130,10 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
 			BREAK_ON_ERROR("[MIGRATE] OpenProcess failed")
 		}
 
-		if (remote->transport == METERPRETER_TRANSPORT_SSL) {
+		if (remote->transport->get_socket)
+		{
 			// Duplicate the socket for the target process if we are SSL based
-			if (WSADuplicateSocket(remote_get_fd(remote), dwProcessID, &ctx.info) != NO_ERROR)
+			if (WSADuplicateSocket(remote->transport->get_socket(remote->transport), dwProcessID, &ctx.info) != NO_ERROR)
 			{
 				BREAK_ON_WSAERROR("[MIGRATE] WSADuplicateSocket failed")
 			}

@@ -61,6 +61,7 @@ DWORD request_core_enumextcmd(Remote* pRemote, Packet* pPacket)
 		bResult = list_enumerate(gExtensionList, ext_cmd_callback, &enumExt);
 
 		packet_add_tlv_uint(pResponse, TLV_TYPE_RESULT, ERROR_SUCCESS);
+
 		packet_transmit(pRemote, pResponse, NULL);
 	}
 

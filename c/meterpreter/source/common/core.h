@@ -197,7 +197,7 @@ typedef struct _DECOMPRESSED_BUFFER
 typedef DWORD (*PacketRequestCompletionRoutine)(Remote *remote, 
 		Packet *response, LPVOID context, LPCSTR method, DWORD result);
 
-typedef struct
+typedef struct _PacketRequestCompletion
 {
 	LPVOID                         context;
 	PacketRequestCompletionRoutine routine;
@@ -247,6 +247,7 @@ LINKAGE DWORD packet_get_result(Packet *packet);
 LINKAGE DWORD packet_transmit(Remote *remote, Packet *packet, PacketRequestCompletion *completion);
 LINKAGE DWORD packet_transmit_empty_response(Remote *remote, Packet *packet, DWORD res);
 LINKAGE DWORD packet_receive(Remote *remote, Packet **packet);
+LINKAGE DWORD packet_receive_via_ssl(Remote *remote, Packet **packet);
 LINKAGE DWORD packet_receive_via_http(Remote *remote, Packet **packet);
 LINKAGE DWORD packet_transmit_via_ssl(Remote *remote, Packet *packet, PacketRequestCompletion *completion);
 LINKAGE DWORD packet_transmit_via_http(Remote *remote, Packet *packet, PacketRequestCompletion *completion);

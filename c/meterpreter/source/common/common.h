@@ -206,8 +206,11 @@ static _inline void real_dprintf(char *format, ...)
 {
 	va_list args;
 	char buffer[1024];
-	va_start(args,format);
-	vsnprintf_s(buffer, sizeof(buffer), sizeof(buffer)-3, format,args);
+	int len;
+	_snprintf_s(buffer, sizeof(buffer), sizeof(buffer)-1, "[%x] ", GetCurrentThreadId());
+	len = strlen(buffer);
+	va_start(args, format);
+	vsnprintf_s(buffer + len, sizeof(buffer)-len, sizeof(buffer)-len - 3, format, args);
 	strcat_s(buffer, sizeof(buffer), "\r\n");
 	OutputDebugStringA(buffer);
 }
