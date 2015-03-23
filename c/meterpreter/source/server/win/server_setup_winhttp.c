@@ -42,13 +42,16 @@ DWORD server_dispatch_http_winhttp(Remote* remote, THREAD* dispatchThread)
 	}
 
 	// Proxy auth, if required.
-	if (!(wcscmp(ctx->proxy_user, L"METERPRETER_USERNAME_PROXY") == 0))
+	if (wcscmp(ctx->proxy_user, L"METERPRETER_USERNAME_PROXY") != 0)
 	{
-		if (!WinHttpSetOption(ctx->internet, WINHTTP_OPTION_PROXY_USERNAME, ctx->proxy_user, lstrlen(ctx->proxy_user)))
+		if (!WinHttpSetOption(ctx->internet, WINHTTP_OPTION_PROXY_USERNAME, ctx->proxy_user, lstrlen(ctx->proxy_user) + 1))
 		{
 			dprintf("[DISPATCH] Failed to set proxy username");
 		}
-		if (!WinHttpSetOption(ctx->internet, WINHTTP_OPTION_PROXY_PASSWORD, ctx->proxy_pass, lstrlen(ctx->proxy_pass)))
+	}
+	else if(wcscmp(ctx->proxy_pass, L"METERPRETER_PASSWORD_PROXY") != 0)
+	{
+		if (!WinHttpSetOption(ctx->internet, WINHTTP_OPTION_PROXY_PASSWORD, ctx->proxy_pass, lstrlen(ctx->proxy_pass) + 1))
 		{
 			dprintf("[DISPATCH] Failed to set proxy username");
 		}
