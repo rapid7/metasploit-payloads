@@ -15,22 +15,16 @@
 Remote* remote_allocate()
 {
 	Remote* remote = (Remote*)malloc(sizeof(Remote));
-	Transport* transport = (Transport*)malloc(sizeof(Transport));
 	LOCK* lock = lock_create();
 
 	do
 	{
-		if (remote == NULL
-			|| transport == NULL
-			|| lock == NULL)
+		if (remote == NULL || lock == NULL)
 		{
 			break;
 		}
 
 		memset(remote, 0, sizeof(Remote));
-		memset(transport, 0, sizeof(Transport));
-
-		remote->transport = transport;
 		remote->lock = lock;
 
 		dprintf("[REMOTE] remote created %p", remote);
@@ -40,11 +34,6 @@ Remote* remote_allocate()
 	if (lock)
 	{
 		lock_destroy(lock);
-	}
-
-	if (transport)
-	{
-		free(transport);
 	}
 
 	if (remote)
@@ -65,11 +54,6 @@ VOID remote_deallocate(Remote * remote)
 	if (remote->lock)
 	{
 		lock_destroy(remote->lock);
-	}
-
-	if (remote->transport)
-	{
-		free(remote->transport);
 	}
 
 	// Wipe our structure from memory

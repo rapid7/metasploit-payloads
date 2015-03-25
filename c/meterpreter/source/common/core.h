@@ -99,29 +99,29 @@ typedef DWORD TlvMetaType;
  */
 typedef enum
 {
-	TLV_TYPE_ANY                 = TLV_VALUE(TLV_META_TYPE_NONE,        0),   ///< Represents an undefined/arbitrary value.
-	TLV_TYPE_METHOD              = TLV_VALUE(TLV_META_TYPE_STRING,      1),   ///< Represents a method/function name value.
-	TLV_TYPE_REQUEST_ID          = TLV_VALUE(TLV_META_TYPE_STRING,      2),   ///< Represents a request identifier value.
-	TLV_TYPE_EXCEPTION           = TLV_VALUE(TLV_META_TYPE_GROUP,       3),   ///< Represents an exception value.
-	TLV_TYPE_RESULT              = TLV_VALUE(TLV_META_TYPE_UINT,        4),   ///< Represents a result value.
+	TLV_TYPE_ANY                 = TLV_VALUE(TLV_META_TYPE_NONE,        0),   ///! Represents an undefined/arbitrary value.
+	TLV_TYPE_METHOD              = TLV_VALUE(TLV_META_TYPE_STRING,      1),   ///! Represents a method/function name value.
+	TLV_TYPE_REQUEST_ID          = TLV_VALUE(TLV_META_TYPE_STRING,      2),   ///! Represents a request identifier value.
+	TLV_TYPE_EXCEPTION           = TLV_VALUE(TLV_META_TYPE_GROUP,       3),   ///! Represents an exception value.
+	TLV_TYPE_RESULT              = TLV_VALUE(TLV_META_TYPE_UINT,        4),   ///! Represents a result value.
 
 	// Argument basic types
-	TLV_TYPE_STRING              = TLV_VALUE(TLV_META_TYPE_STRING,     10),   ///< Represents a string value.
-	TLV_TYPE_UINT                = TLV_VALUE(TLV_META_TYPE_UINT,       11),   ///< Represents an unsigned integer value.
-	TLV_TYPE_BOOL                = TLV_VALUE(TLV_META_TYPE_BOOL,       12),   ///< Represents a boolean value.
+	TLV_TYPE_STRING              = TLV_VALUE(TLV_META_TYPE_STRING,     10),   ///! Represents a string value.
+	TLV_TYPE_UINT                = TLV_VALUE(TLV_META_TYPE_UINT,       11),   ///! Represents an unsigned integer value.
+	TLV_TYPE_BOOL                = TLV_VALUE(TLV_META_TYPE_BOOL,       12),   ///! Represents a boolean value.
 
 	// Extended types
-	TLV_TYPE_LENGTH              = TLV_VALUE(TLV_META_TYPE_UINT,       25),   ///< Represents a length (unsigned integer).
-	TLV_TYPE_DATA                = TLV_VALUE(TLV_META_TYPE_RAW,        26),   ///< Represents arbitrary data (raw).
-	TLV_TYPE_FLAGS               = TLV_VALUE(TLV_META_TYPE_UINT,       27),   ///< Represents a set of flags (unsigned integer).
+	TLV_TYPE_LENGTH              = TLV_VALUE(TLV_META_TYPE_UINT,       25),   ///! Represents a length (unsigned integer).
+	TLV_TYPE_DATA                = TLV_VALUE(TLV_META_TYPE_RAW,        26),   ///! Represents arbitrary data (raw).
+	TLV_TYPE_FLAGS               = TLV_VALUE(TLV_META_TYPE_UINT,       27),   ///! Represents a set of flags (unsigned integer).
 
 	// Channel types
-	TLV_TYPE_CHANNEL_ID          = TLV_VALUE(TLV_META_TYPE_UINT,       50),   ///< Represents a channel identifier (unsigned integer).
-	TLV_TYPE_CHANNEL_TYPE        = TLV_VALUE(TLV_META_TYPE_STRING,     51),   ///< Represents a channel type (string).
-	TLV_TYPE_CHANNEL_DATA        = TLV_VALUE(TLV_META_TYPE_RAW,        52),   ///< Represents channel data (raw).
-	TLV_TYPE_CHANNEL_DATA_GROUP  = TLV_VALUE(TLV_META_TYPE_GROUP,      53),   ///< Represents a channel data group (group).
-	TLV_TYPE_CHANNEL_CLASS       = TLV_VALUE(TLV_META_TYPE_UINT,       54),   ///< Represents a channel class (unsigned integer).
-	TLV_TYPE_CHANNEL_PARENTID    = TLV_VALUE(TLV_META_TYPE_UINT,       55),   ///< Represents a channel parent identifier (unsigned integer).
+	TLV_TYPE_CHANNEL_ID          = TLV_VALUE(TLV_META_TYPE_UINT,       50),   ///! Represents a channel identifier (unsigned integer).
+	TLV_TYPE_CHANNEL_TYPE        = TLV_VALUE(TLV_META_TYPE_STRING,     51),   ///! Represents a channel type (string).
+	TLV_TYPE_CHANNEL_DATA        = TLV_VALUE(TLV_META_TYPE_RAW,        52),   ///! Represents channel data (raw).
+	TLV_TYPE_CHANNEL_DATA_GROUP  = TLV_VALUE(TLV_META_TYPE_GROUP,      53),   ///! Represents a channel data group (group).
+	TLV_TYPE_CHANNEL_CLASS       = TLV_VALUE(TLV_META_TYPE_UINT,       54),   ///! Represents a channel class (unsigned integer).
+	TLV_TYPE_CHANNEL_PARENTID    = TLV_VALUE(TLV_META_TYPE_UINT,       55),   ///! Represents a channel parent identifier (unsigned integer).
 
 	// Channel extended types
 	TLV_TYPE_SEEK_WHENCE         = TLV_VALUE(TLV_META_TYPE_UINT,       70),
@@ -129,28 +129,32 @@ typedef enum
 	TLV_TYPE_SEEK_POS            = TLV_VALUE(TLV_META_TYPE_UINT,       72),
 
 	// Grouped identifiers
-	TLV_TYPE_EXCEPTION_CODE      = TLV_VALUE(TLV_META_TYPE_UINT,      300),   ///< Represents an exception code value (unsigned in).
-	TLV_TYPE_EXCEPTION_STRING    = TLV_VALUE(TLV_META_TYPE_STRING,    301),   ///< Represents an exception message value (string).
+	TLV_TYPE_EXCEPTION_CODE      = TLV_VALUE(TLV_META_TYPE_UINT,      300),   ///! Represents an exception code value (unsigned in).
+	TLV_TYPE_EXCEPTION_STRING    = TLV_VALUE(TLV_META_TYPE_STRING,    301),   ///! Represents an exception message value (string).
 
 	// Library loading
-	TLV_TYPE_LIBRARY_PATH        = TLV_VALUE(TLV_META_TYPE_STRING,    400),   ///< Represents a path to the library to be loaded (string).
-	TLV_TYPE_TARGET_PATH         = TLV_VALUE(TLV_META_TYPE_STRING,    401),   ///< Represents a target path (string).
-	TLV_TYPE_MIGRATE_PID         = TLV_VALUE(TLV_META_TYPE_UINT,      402),   ///< Represents a process identifier of the migration target (unsigned integer).
-	TLV_TYPE_MIGRATE_LEN         = TLV_VALUE(TLV_META_TYPE_UINT,      403),   ///< Represents a migration payload size/length in bytes (unsigned integer).
-	TLV_TYPE_MIGRATE_PAYLOAD     = TLV_VALUE(TLV_META_TYPE_STRING,    404),   ///< Represents a migration payload (string).
-	TLV_TYPE_MIGRATE_ARCH        = TLV_VALUE(TLV_META_TYPE_UINT,      405),   ///< Represents a migration target architecture.
-	TLV_TYPE_MIGRATE_TECHNIQUE   = TLV_VALUE(TLV_META_TYPE_UINT,      406),   ///< Represents a migration technique (unsigned int).
-	TLV_TYPE_MIGRATE_BASE_ADDR   = TLV_VALUE(TLV_META_TYPE_UINT,      407),   ///< Represents a migration payload base address (unsigned int).
-	TLV_TYPE_MIGRATE_ENTRY_POINT = TLV_VALUE(TLV_META_TYPE_UINT,      408),   ///< Represents a migration payload entry point (unsigned int).
-	TLV_TYPE_MIGRATE_SOCKET_PATH = TLV_VALUE(TLV_META_TYPE_STRING,    409),   ///< Represents a unix domain socket path, used to migrate on linux (string)
+	TLV_TYPE_LIBRARY_PATH        = TLV_VALUE(TLV_META_TYPE_STRING,    400),   ///! Represents a path to the library to be loaded (string).
+	TLV_TYPE_TARGET_PATH         = TLV_VALUE(TLV_META_TYPE_STRING,    401),   ///! Represents a target path (string).
+	TLV_TYPE_MIGRATE_PID         = TLV_VALUE(TLV_META_TYPE_UINT,      402),   ///! Represents a process identifier of the migration target (unsigned integer).
+	TLV_TYPE_MIGRATE_LEN         = TLV_VALUE(TLV_META_TYPE_UINT,      403),   ///! Represents a migration payload size/length in bytes (unsigned integer).
+	TLV_TYPE_MIGRATE_PAYLOAD     = TLV_VALUE(TLV_META_TYPE_STRING,    404),   ///! Represents a migration payload (string).
+	TLV_TYPE_MIGRATE_ARCH        = TLV_VALUE(TLV_META_TYPE_UINT,      405),   ///! Represents a migration target architecture.
+	TLV_TYPE_MIGRATE_TECHNIQUE   = TLV_VALUE(TLV_META_TYPE_UINT,      406),   ///! Represents a migration technique (unsigned int).
+	TLV_TYPE_MIGRATE_BASE_ADDR   = TLV_VALUE(TLV_META_TYPE_UINT,      407),   ///! Represents a migration payload base address (unsigned int).
+	TLV_TYPE_MIGRATE_ENTRY_POINT = TLV_VALUE(TLV_META_TYPE_UINT,      408),   ///! Represents a migration payload entry point (unsigned int).
+	TLV_TYPE_MIGRATE_SOCKET_PATH = TLV_VALUE(TLV_META_TYPE_STRING,    409),   ///! Represents a unix domain socket path, used to migrate on linux (string)
+
+	// Transport switching
+	TLV_TYPE_TRANSPORT_TYPE      = TLV_VALUE(TLV_META_TYPE_UINT,      430),   ///! Represents the type of transport to switch to.
+	TLV_TYPE_TRANSPORT_URL       = TLV_VALUE(TLV_META_TYPE_STRING,    431),   ///! Represents the new URL of the transport to use.
 
 	// Cryptography
-	TLV_TYPE_CIPHER_NAME         = TLV_VALUE(TLV_META_TYPE_STRING,    500),   ///< Represents the name of a cipher.
-	TLV_TYPE_CIPHER_PARAMETERS   = TLV_VALUE(TLV_META_TYPE_GROUP,     501),   ///< Represents parameters for a cipher.
+	TLV_TYPE_CIPHER_NAME         = TLV_VALUE(TLV_META_TYPE_STRING,    500),   ///! Represents the name of a cipher.
+	TLV_TYPE_CIPHER_PARAMETERS   = TLV_VALUE(TLV_META_TYPE_GROUP,     501),   ///! Represents parameters for a cipher.
 
-	TLV_TYPE_EXTENSIONS          = TLV_VALUE(TLV_META_TYPE_COMPLEX, 20000),   ///< Represents an extension value.
-	TLV_TYPE_USER                = TLV_VALUE(TLV_META_TYPE_COMPLEX, 40000),   ///< Represents a user value.
-	TLV_TYPE_TEMP                = TLV_VALUE(TLV_META_TYPE_COMPLEX, 60000),   ///< Represents a temporary value.
+	TLV_TYPE_EXTENSIONS          = TLV_VALUE(TLV_META_TYPE_COMPLEX, 20000),   ///! Represents an extension value.
+	TLV_TYPE_USER                = TLV_VALUE(TLV_META_TYPE_COMPLEX, 40000),   ///! Represents a user value.
+	TLV_TYPE_TEMP                = TLV_VALUE(TLV_META_TYPE_COMPLEX, 60000),   ///! Represents a temporary value.
 } TlvType;
 
 #ifdef _WIN32

@@ -20,6 +20,7 @@ extern DWORD remote_request_core_crypto_negotiate( Remote *remote, Packet *packe
 
 extern BOOL remote_request_core_shutdown(Remote *remote, Packet *packet, DWORD* pResult);
 
+extern BOOL remote_request_core_change_transport( Remote *remote, Packet *packet, DWORD* pResult );
 extern BOOL remote_request_core_migrate( Remote *remote, Packet *packet, DWORD* pResult );
 
 // Local remote response implementors
@@ -71,6 +72,8 @@ Command baseCommands[] =
 	COMMAND_REQ("core_channel_interact", remote_request_core_channel_interact),
 	// Crypto
 	COMMAND_REQ("core_crypto_negotiate", remote_request_core_crypto_negotiate),
+	// transport switching
+	COMMAND_INLINE_REQ("core_change_transport", remote_request_core_change_transport),
 	// Migration
 	COMMAND_INLINE_REQ("core_migrate", remote_request_core_migrate),
 	// Shutdown

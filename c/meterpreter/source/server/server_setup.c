@@ -8,9 +8,13 @@
 #ifdef USE_WINHTTP
 #include "win/server_setup_winhttp.h"
 #define server_dispatch_http server_dispatch_http_winhttp
+#define server_init_http server_init_http_winhttp
+#define server_deinit_http server_deinit_http_winhttp
 #else
 #include "win/server_setup_wininet.h"
 #define server_dispatch_http server_dispatch_http_wininet
+#define server_init_http NULL
+#define server_deinit_http NULL
 #endif
 
 BOOL configure_tcp_connection(Remote* remote, SOCKET socket);
@@ -634,10 +638,17 @@ SOCKET tcp_transport_get_socket(Transport* transport)
 	return ((TcpTransportContext*)transport->ctx)->fd;
 }
 
-BOOL transport_create(Remote* remote, const wchar_t* transport, wchar_t* url)
+BOOL transport_create(Remote* remote)
 {
+	wchar_t* transport = remote->pNextTransportType;
+	wchar_t* url = remote->pNextTransportUrl;
+
 	dprintf("[TRANSPORT] Type = %S", transport);
 	dprintf("[TRANSPORT] URL = %S", url);
+
+	remote->transport = (Transport*)malloc(sizeof(Transport));
+	memset(remote->transport, 0, sizeof(Transport));
+
 	remote->transport->url = url;
 
 	if (wcscmp(transport, L"TRANSPORT_SSL") == 0)
@@ -678,6 +689,8 @@ BOOL transport_create(Remote* remote, const wchar_t* transport, wchar_t* url)
 		remote->transport->packet_receive = packet_receive_via_http;
 		remote->transport->packet_transmit = packet_transmit_via_http;
 		remote->transport->server_dispatch = server_dispatch_http;
+		remote->transport->transport_init = server_init_http;
+		remote->transport->transport_deinit = server_deinit_http;
 		remote->transport->ctx = ctx;
 
 		if (wcscmp(transport, L"TRANSPORT_HTTPS") == 0)
@@ -746,18 +759,6 @@ DWORD server_setup(SOCKET fd)
 				break;
 			}
 
-			dprintf("[SERVER] creating transport");
-			if (!transport_create(pRemote, global_meterpreter_transport + 12, global_meterpreter_url + (bStageless ? 1 : 0)))
-			{
-				break;
-			}
-
-			dprintf("[SERVER] initialising transport 0x%p", pRemote->transport->transport_init);
-			if (pRemote->transport->transport_init && !pRemote->transport->transport_init(pRemote, fd))
-			{
-				break;
-			}
-
 			// Store our thread handle
 			pRemote->hServerThread = serverThread->handle;
 
@@ -791,17 +792,46 @@ DWORD server_setup(SOCKET fd)
 				load_stageless_extensions(pRemote, (ULONG_PTR)fd);
 			}
 
-			dprintf("[SERVER] Entering the main server dispatch loop for transport %x, context %x", pRemote->transport, pRemote->transport->ctx);
-			pRemote->transport->server_dispatch(pRemote, serverThread);
+			// allocate the "next transport" information
+			pRemote->pNextTransportType = _wcsdup(global_meterpreter_transport + 12);
+			pRemote->pNextTransportUrl = _wcsdup(global_meterpreter_url + (bStageless ? 1 : 0));
+
+			while (pRemote->pNextTransportType && pRemote->pNextTransportUrl)
+			{
+				dprintf("[SERVER] creating transport");
+				if (!transport_create(pRemote))
+				{
+					break;
+				}
+
+				dprintf("[SERVER] initialising transport 0x%p", pRemote->transport->transport_init);
+				if (pRemote->transport->transport_init && !pRemote->transport->transport_init(pRemote, fd))
+				{
+					break;
+				}
+
+				// clear out the transport details, they'll be added elsewhere if the
+				// transport needs to be hotswapped
+				free(pRemote->pNextTransportType);
+				free(pRemote->pNextTransportUrl);
+				pRemote->pNextTransportType = NULL;
+				pRemote->pNextTransportUrl = NULL;
+
+				dprintf("[SERVER] Entering the main server dispatch loop for transport %x, context %x", pRemote->transport, pRemote->transport->ctx);
+				pRemote->transport->server_dispatch(pRemote, serverThread);
+
+				if (pRemote->transport->transport_deinit)
+				{
+					pRemote->transport->transport_deinit(pRemote);
+				}
+
+				free(pRemote->transport);
+				pRemote->transport = NULL;
+			}
 
 			dprintf("[SERVER] Deregistering dispatch routines...");
 			deregister_dispatch_routines(pRemote);
 		} while (0);
-
-		if (pRemote->transport->transport_deinit)
-		{
-			pRemote->transport->transport_deinit(pRemote);
-		}
 
 		remote_deallocate(pRemote);
 	}

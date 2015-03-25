@@ -85,12 +85,15 @@ typedef struct _Remote
 	HANDLE hServerToken;                  ///! Handle to the current server security token.
 	HANDLE hThreadToken;                  ///! Handle to the current thread security token.
 
+	wchar_t* pNextTransportType;          ///! Pointer to the string that contains the next transport to use.
+	wchar_t* pNextTransportUrl;           ///! Pointer to the string that contains the transport URI information.
+
 	DWORD dwOrigSessionId;                ///! ID of the original Meterpreter session.
 	DWORD dwCurrentSessionId;             ///! ID of the currently active session.
-	char * cpOrigStationName;             ///! Original station name.
-	char * cpCurrentStationName;          ///! Name of the current station.
-	char * cpOrigDesktopName;             ///! Original desktop name.
-	char * cpCurrentDesktopName;          ///! Name of the current desktop.
+	char* cpOrigStationName;              ///! Original station name.
+	char* cpCurrentStationName;           ///! Name of the current station.
+	char* cpOrigDesktopName;              ///! Original desktop name.
+	char* cpCurrentDesktopName;           ///! Name of the current desktop.
 } Remote;
 
 Remote* remote_allocate();

