@@ -65,6 +65,7 @@ def copy_files(cnf, meterpreter_dest)
 end
 
 task :create_dir do
+  Dir.mkdir(dest) unless Dir.exist?(dest)
   Dir.mkdir(meterpreter_dest) unless Dir.exist?(meterpreter_dest)
 end
 
