@@ -16,8 +16,7 @@ Gem::Specification.new do |spec|
   spec.license       = '3-clause (or "modified") BSD'
 
   spec.files         = `git ls-files`.split("\n")
-  spec.files        += Dir['meterpreter/**/*']
-  spec.files        += Dir['java/**/*']
+  spec.files        += Dir['data/**/*']
   spec.executables   = []
   spec.require_paths = ['lib']
 
