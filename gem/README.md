@@ -1,4 +1,4 @@
-# Meterpreter Binaries
+# Metasploit Payloads
 
 This gem is a Metasploit-specific gem that contains all of the
 Meterpreter payloads. This is made up of:
@@ -26,7 +26,7 @@ To build the gem:
   - `rake java_prep` to build Java files
   - `rake python_prep` and `rake php_prep` to copy the latest PHP/Python
     meterpreter files into place
-1. Binaries will be built in the `meterpreter` folder.
+1. Binaries will be built in the `data` folder.
 1. Run `rake build` to generate the new gem file using content in
    meterpreter folder.
 1. Run `rake release` to release the binary to RubyGems.

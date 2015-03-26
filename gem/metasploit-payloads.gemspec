@@ -5,7 +5,7 @@ require 'metasploit-payloads/version'
 
 Gem::Specification.new do |spec|
   spec.name          = 'metasploit-payloads'
-  spec.version       = MeterpreterBinaries::VERSION
+  spec.version       = MetasploitPayloads::VERSION
   spec.authors       = ['OJ Reeves', 'Tod Beardsley', 'Chris Doughty', 'Brent Cook']
   spec.email         = ['oj@buffered.io', 'tod_beardsley@rapid7.com', 'chris_doughty@rapid7.com', 'brent_cook@rapid7.com']
   spec.description   = %q{Compiled binaries for Metasploit's Meterpreter}
