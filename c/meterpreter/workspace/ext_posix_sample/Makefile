@@ -1,6 +1,6 @@
 VPATH=../../source/extensions/posix_sample
 
-OPENSSL=../../source/openssl/include
+OPENSSL=../../deps/libressl/include
 COMMON=../../source/common
 SERVER=../../source/server
 
@@ -12,7 +12,7 @@ CFLAGS+= -I ../../source/bionic/libc/kernel/arch-x86/
 CFLAGS+= -Dwchar_t="char" -fno-builtin -D_SIZE_T_DECLARED -DElf_Size="u_int32_t"
 CFLAGS+= -D_BYTE_ORDER=_LITTLE_ENDIAN
 CFLAGS+= -lgcc -L../../source/bionic/compiled
-CFLAGS+= -fPIC -Os 
+CFLAGS+= -fPIC -Os
 CFLAGS+= -I../../source/extensions/stdapi/server -lc -lsupport
 
 CFLAGS+= -march=i386 -m32

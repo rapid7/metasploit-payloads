@@ -53,8 +53,8 @@ workspace = workspace
 
 all: $(objects) $(outputs)
 
-include Makefile.ossl
-include Makefile.pcap
+include deps/libressl/Makefile
+include deps/libpcap/Makefile
 
 debug: DEBUG=true
 # I'm 99% sure this is the wrong way to do this
@@ -150,7 +150,6 @@ depclean:
 	find source/bionic/ -name '*.so' -print0 | xargs -0 rm -f 2>/dev/null
 	find . -name 'build.log' | xargs rm -f
 	rm -f source/bionic/lib*/*.so
-	rm -rf source/openssl/lib/linux/i386/
 
 really-clean: clean clean-ssl clean-pcap depclean
 

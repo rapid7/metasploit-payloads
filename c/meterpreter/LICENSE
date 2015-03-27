@@ -11,7 +11,7 @@ Copyright (c) 2006-2013, Rapid7 Inc
 Redistribution and use in source and binary forms, with or without modification, are
 permitted provided that the following conditions are met:
 
-* Redistributions of source code must retain the above copyright notice, this list of 
+* Redistributions of source code must retain the above copyright notice, this list of
   conditions and the following disclaimer.
 
 * Redistributions in binary form must reproduce the above copyright notice, this list of
@@ -108,9 +108,10 @@ Comment: HD Moore holds a single-seat developer license for the Packet Sniffer
          SDK library embedded into the Meterpreter Sniffer extension.  This
          source code is not distributed with Metasploit Framework.
 
-Files: source/openssl/*
-Copyright: 1998-2002 The OpenSSL Project
+Files: deps/libressl/*
+Copyright: 1998-2012 The OpenSSL Project
 License: OpenSSL and SSLeay
+  portions are ISC or public domain
 
 Files: source/server/posix/sfsyscall.h
 Copyright: 2003  Philippe Biondi <biondi@cartel-securite.fr>
@@ -120,7 +121,7 @@ Files: source/jpeg-8/*
 Copyright: 1991-2010, Thomas G. Lane, Guido Vollbeding
 License: BSD-3-clause
 
-Files: source/libpcap/*
+Files: deps/libpcap/*
 Copyright: 1990, 1991, 1992, 1993, 1994, 1995, 1996, 1997 The Regents of the University of California.
 License: BSD-4-clause
 
