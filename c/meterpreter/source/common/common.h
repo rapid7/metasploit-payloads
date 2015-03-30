@@ -27,7 +27,17 @@
 		__u32 a4;
 	}__u128;
 #endif
-#include "openssl/ssl.h"
+
+/*
+ * Avoid conflicts with Windows crypto API defines
+ */
+#undef OCSP_RESPONSE
+#undef PKCS7_SIGNER_INFO
+#undef X509_EXTENSIONS
+#undef X509_CERT_PAIR
+#undef X509_NAME
+
+#include <openssl/ssl.h>
 #ifdef _UNIX
 #include "compat_types.h"
 
