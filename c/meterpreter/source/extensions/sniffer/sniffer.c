@@ -1233,11 +1233,16 @@ DWORD InitServerExtension(Remote *remote)
 	peername4 = NULL;
 	peername6 = NULL;
 	peername_len = sizeof(peername);
-	getpeername(remote->fd, &peername, &peername_len);
-	if(peername.sa_family == PF_INET)  peername4 = (struct sockaddr_in *)&peername;
+	if (remote->transport->get_socket) {
+		getpeername(remote->transport->get_socket(remote->transport), &peername, &peername_len);
+		if(peername.sa_family == PF_INET)  peername4 = (struct sockaddr_in *)&peername;
 
-	dprintf("[SERVER] Getting the IPv6 peer name of our socket...");
-	if(peername.sa_family == PF_INET6) peername6 = (struct sockaddr_in6 *)&peername;
+		dprintf("[SERVER] Getting the IPv6 peer name of our socket...");
+		if(peername.sa_family == PF_INET6) peername6 = (struct sockaddr_in6 *)&peername;
+	}
+	else {
+	 // TODO: not sure what to do here
+	}
 
 	dprintf("[SERVER] Creating a lock...");
 	snifferm = lock_create();

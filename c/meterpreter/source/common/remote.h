@@ -8,6 +8,12 @@
 #include "crypto.h"
 #include "thread.h"
 
+#ifdef _WIN32
+typedef wchar_t* STRTYPE;
+#else
+typedef char* STRTYPE;
+#endif
+
 // Forward declarations required to keep compilers happy.
 typedef struct _Packet Packet;
 typedef struct _PacketRequestCompletion PacketRequestCompletion;
@@ -32,15 +38,15 @@ typedef struct _TcpTransportContext
 typedef struct _HttpTransportContext
 {
 	BOOL ssl;                             ///! Flag indicating whether the connection uses SSL.
-	wchar_t* uri;                         ///! URI endpoint in use during HTTP or HTTPS transport use.
+	STRTYPE uri;                          ///! URI endpoint in use during HTTP or HTTPS transport use.
 	HANDLE internet;                      ///! Handle to the internet module for use with HTTP and HTTPS.
 	HANDLE connection;                    ///! Handle to the HTTP or HTTPS connection.
 	unsigned char* cert_hash;             ///! Pointer to the 20-byte certificate hash to validate
 
-	wchar_t* ua;                          ///! User agent string.
-	wchar_t* proxy;                       ///! Proxy details.
-	wchar_t* proxy_user;                  ///! Proxy username.
-	wchar_t* proxy_pass;                  ///! Proxy password.
+	STRTYPE ua;                           ///! User agent string.
+	STRTYPE proxy;                        ///! Proxy details.
+	STRTYPE proxy_user;                   ///! Proxy username.
+	STRTYPE proxy_pass;                   ///! Proxy password.
 
 	int expiration_time;                  ///! Unix timestamp for when the server should shut down.
 	int start_time;                       ///! Unix timestamp representing the session startup time.
@@ -50,14 +56,14 @@ typedef struct _HttpTransportContext
 
 typedef struct _Transport
 {
-	DWORD type;
-	PTransportGetSocket get_socket;
-	PTransportInit transport_init;
-	PTransportDeinit transport_deinit;
-	PServerDispatch server_dispatch;
-	PPacketTransmit packet_transmit;
-	PPacketReceive packet_receive;
-	wchar_t* url;                         ///! Full URL describing the comms in use.
+	DWORD type;                           ///! The type of transport in use.
+	PTransportGetSocket get_socket;       ///! Function to get the socket from the transport.
+	PTransportInit transport_init;        ///! Initialises the transport.
+	PTransportDeinit transport_deinit;    ///! Deinitialises the transport.
+	PServerDispatch server_dispatch;      ///! Transport dispatch function.
+	PPacketTransmit packet_transmit;      ///! Transmits a packet over the transport.
+	PPacketReceive packet_receive;        ///! Receives a packet over the transport.
+	STRTYPE url;                          ///! Full URL describing the comms in use.
 	VOID* ctx;
 } Transport;
 

