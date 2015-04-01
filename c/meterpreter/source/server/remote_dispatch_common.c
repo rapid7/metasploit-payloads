@@ -3,6 +3,11 @@
 #ifdef _WIN32
 // see ReflectiveLoader.c...
 extern HINSTANCE hAppInstance;
+#else
+#include <sys/types.h>
+#include <dirent.h>
+#include <sys/utsname.h>
+#define MAX_PATH 256
 #endif
 
 PLIST gExtensionList = NULL;
@@ -72,7 +77,39 @@ DWORD request_core_machine_id(Remote* pRemote, Packet* pPacket)
 			packet_add_tlv_wstring(pResponse, TLV_TYPE_MACHINE_ID, buffer);
 		}
 #else
-		packet_add_tlv_wstring(pResponse, TLV_TYPE_MACHINE_ID, L"Y U NO IMPLEMETATIONZ?");
+		char buffer[MAX_PATH];
+    struct dirent *data;
+    struct utsname utsbuf;
+    char* folder = "/dev/disk/by-id/";
+    DIR *ctx = opendir(folder);
+
+    if (uname(&utsbuf) == -1)
+    {
+      res = GetLastError();
+      goto out;
+    }
+
+    if (ctx == NULL)
+    {
+      res = GetLastError();
+      goto out;
+    }
+
+    while (data = readdir(ctx))
+    {
+      // TODO: make sure that looking for drives prefixed with "ata" is a good
+      // idea. We might need to search for a bunch of prefixes.
+      if (strncmp(data->d_name, "ata-", 4) == 0)
+      {
+        snprintf(buffer, MAX_PATH - 1, "%s:%s", data->d_name + 4, utsbuf.nodename);
+        packet_add_tlv_string(pResponse, TLV_TYPE_MACHINE_ID, buffer);
+        break;
+      }
+    }
+    closedir(ctx);
+
+out:
+
 #endif
 
 		packet_transmit_response(res, pRemote, pResponse);
