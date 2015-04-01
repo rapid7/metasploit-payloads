@@ -1,5 +1,9 @@
 #include <dlfcn.h>
 #include "metsrv.h"
+#include <sys/types.h>
+#include <dirent.h>
+#include <sys/utsname.h>
+#define MAX_PATH 256
 
 extern Command *extensionCommands;
 extern PLIST gExtensionList;
@@ -111,4 +115,44 @@ DWORD request_core_loadlib(Remote *remote, Packet *packet)
 	}
 
 	return (res);
+}
+
+DWORD request_core_machine_id(Remote* pRemote, Packet* pPacket)
+{
+	DWORD res = ERROR_SUCCESS;
+	Packet* pResponse = packet_create_response(pPacket);
+
+	if (pResponse) {
+		char buffer[MAX_PATH];
+		struct dirent *data;
+		struct utsname utsbuf;
+		DIR *ctx = opendir("/dev/disk/by-id/");
+
+		if (uname(&utsbuf) == -1) {
+			res = GetLastError();
+			goto out;
+		}
+
+		if (ctx == NULL) {
+			res = GetLastError();
+			goto out;
+		}
+
+		while (data = readdir(ctx)) {
+			// TODO: make sure that looking for drives prefixed with "ata" is a good
+			// idea. We might need to search for a bunch of prefixes.
+			if (strncmp(data->d_name, "ata-", 4) == 0) {
+				snprintf(buffer, MAX_PATH - 1, "%s:%s", data->d_name + 4, utsbuf.nodename);
+				packet_add_tlv_string(pResponse, TLV_TYPE_MACHINE_ID, buffer);
+				break;
+			}
+		}
+		closedir(ctx);
+
+	out:
+
+		packet_transmit_response(res, pRemote, pResponse);
+	}
+
+	return ERROR_SUCCESS;
 }
