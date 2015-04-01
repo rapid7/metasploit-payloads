@@ -30,7 +30,7 @@ typedef DWORD(*PPacketReceive)(Remote* remote, Packet** packet);
 typedef struct _TcpTransportContext
 {
 	SOCKET fd;                            ///! Remote socket file descriptor.
-	SSL_METHOD* meth;                     ///! The current SSL method in use.
+	const SSL_METHOD* meth;               ///! The current SSL method in use.
 	SSL_CTX* ctx;                         ///! SSL-specific context information.
 	SSL* ssl;                             ///! Pointer to the SSL detail/version/etc.
 } TcpTransportContext;
