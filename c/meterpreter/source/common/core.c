@@ -1335,6 +1335,16 @@ DWORD packet_transmit_via_http_winhttp(Remote *remote, Packet *packet, PacketReq
 
 		dprintf("[PACKET TRANSMIT] Request created: %x", hReq);
 
+		if (remote->proxyUser)
+		{
+			dprintf("[PACKET TRANSMIT] Setting proxy username to %S", remote->proxyUser);
+			dprintf("[PACKET TRANSMIT] Setting proxy password to %S", remote->proxyPass);
+			if (!WinHttpSetCredentials(hReq, WINHTTP_AUTH_TARGET_PROXY, WINHTTP_AUTH_SCHEME_BASIC, remote->proxyUser, remote->proxyPass, NULL))
+			{
+				dprintf("[PACKET TRANSMIT] Failed to set creds %u", GetLastError());
+			}
+		}
+
 		if (remote->transport == METERPRETER_TRANSPORT_HTTPS)
 		{
 			flags = SECURITY_FLAG_IGNORE_UNKNOWN_CA
@@ -1353,7 +1363,7 @@ DWORD packet_transmit_via_http_winhttp(Remote *remote, Packet *packet, PacketReq
 
 		if (!hRes)
 		{
-			dprintf("[PACKET RECEIVE] Failed HttpSendRequest: %d", GetLastError());
+			dprintf("[PACKET TRANSMIT] Failed HttpSendRequest: %d", GetLastError());
 			SetLastError(ERROR_NOT_FOUND);
 			break;
 		}
@@ -1796,6 +1806,16 @@ DWORD packet_receive_http_via_winhttp(Remote *remote, Packet **packet)
 			dprintf("[PACKET RECEIVE] Failed WinHttpOpenRequest: %d", GetLastError());
 			SetLastError(ERROR_NOT_FOUND);
 			break;
+		}
+
+		if (remote->proxyUser)
+		{
+			dprintf("[PACKET RECEIVE] Setting proxy username to %S", remote->proxyUser);
+			dprintf("[PACKET RECEIVE] Setting proxy password to %S", remote->proxyPass);
+			if (!WinHttpSetCredentials(hReq, WINHTTP_AUTH_TARGET_PROXY, WINHTTP_AUTH_SCHEME_BASIC, remote->proxyUser, remote->proxyPass, NULL))
+			{
+				dprintf("[PACKET RECEIVE] Failed to set creds %u", GetLastError());
+			}
 		}
 
 		if (remote->transport == METERPRETER_TRANSPORT_HTTPS)
