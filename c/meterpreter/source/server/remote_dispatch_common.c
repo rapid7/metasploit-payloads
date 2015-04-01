@@ -8,12 +8,14 @@ extern HINSTANCE hAppInstance;
 PLIST gExtensionList = NULL;
 
 DWORD request_core_enumextcmd(Remote* pRemote, Packet* pPacket);
+DWORD request_core_machine_id(Remote* pRemote, Packet* pPacket);
 
 // Dispatch table
 Command customCommands[] = 
 {
 	COMMAND_REQ("core_loadlib", request_core_loadlib),
 	COMMAND_REQ("core_enumextcmd", request_core_enumextcmd),
+	COMMAND_REQ("core_machine_id", request_core_machine_id),
 	COMMAND_TERMINATOR
 };
 
@@ -43,6 +45,40 @@ BOOL ext_cmd_callback(LPVOID pState, LPVOID pData)
 		}
 	}
 	return FALSE;
+}
+
+DWORD request_core_machine_id(Remote* pRemote, Packet* pPacket)
+{
+	DWORD res = ERROR_SUCCESS;
+	Packet* pResponse = packet_create_response(pPacket);
+
+	if (pResponse)
+	{
+#ifdef _WIN32
+		wchar_t buffer[MAX_PATH];
+		if (GetSystemDirectory(buffer, MAX_PATH) != 0)
+		{
+			wchar_t computerName[MAX_PATH];
+			DWORD computerNameSize = MAX_PATH;
+			DWORD serialNumber;
+			wchar_t* backslash = wcschr(buffer, L'\\');
+			*(backslash + 1) = L'\0';
+
+			GetVolumeInformation(buffer, NULL, 0, &serialNumber, NULL, 0, NULL, 0);
+
+			GetComputerName(computerName, &computerNameSize);
+
+			_snwprintf_s(buffer, MAX_PATH, MAX_PATH - 1, L"%04x-%04x:%s", HIWORD(serialNumber), LOWORD(serialNumber), computerName);
+			packet_add_tlv_wstring(pResponse, TLV_TYPE_MACHINE_ID, buffer);
+		}
+#else
+		packet_add_tlv_wstring(pResponse, TLV_TYPE_MACHINE_ID, L"Y U NO IMPLEMETATIONZ?");
+#endif
+
+		packet_transmit_response(res, pRemote, pResponse);
+	}
+
+	return ERROR_SUCCESS;
 }
 
 DWORD request_core_enumextcmd(Remote* pRemote, Packet* pPacket)
