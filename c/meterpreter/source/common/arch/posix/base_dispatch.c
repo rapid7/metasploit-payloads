@@ -87,6 +87,8 @@ remote_request_core_migrate(Remote *remote, Packet *packet)
 	return FALSE;
 }
 
+#if 0
+// TODO: put this back in when the stageless work has been completed for POSIX.
 BOOL
 remote_request_core_change_transport(Remote* remote, Packet* packet, DWORD* pResult) {
 	DWORD result = ERROR_NOT_ENOUGH_MEMORY;
@@ -137,3 +139,4 @@ out:
 
 	return result == ERROR_SUCCESS ? FALSE : TRUE;
 }
+#endif
