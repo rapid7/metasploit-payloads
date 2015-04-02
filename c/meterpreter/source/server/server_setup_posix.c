@@ -564,10 +564,10 @@ Transport* transport_create_tcp(char* url)
 Transport* transport_create(char* transport, char* url)
 {
 	Transport* t = NULL;
-	dprintf("[TRANSPORT] Type = %S", transport);
-	dprintf("[TRANSPORT] URL = %S", url);
+	dprintf("[TRANSPORT] Type = %s", transport);
+	dprintf("[TRANSPORT] URL = %s", url);
 
-	if (wcscmp(transport, L"TRANSPORT_SSL") == 0)
+	if (strcmp(transport, "TRANSPORT_SSL") == 0)
 	{
 		t = transport_create_tcp(url);
 	}
