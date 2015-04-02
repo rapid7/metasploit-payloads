@@ -41,6 +41,8 @@ typedef struct _Remote
 	DWORD transport;              ///< Indicator of the transport in use for this session.
 	wchar_t* url;                 ///< Full URL in use during HTTP or HTTPS transport use.
 	wchar_t* uri;                 ///< URI endpoint in use during HTTP or HTTPS transport use.
+	wchar_t* proxyUser;           ///< Proxy server username (must be set for each request).
+	wchar_t* proxyPass;           ///< Proxy server password (must be set for each request).
 	HANDLE hInternet;             ///< Handle to the internet module for use with HTTP and HTTPS.
 	HANDLE hConnection;           ///< Handle to the HTTP or HTTPS connection.
 	unsigned char* pCertHash;     ///< Pointer to the 20-byte certificate hash to validate

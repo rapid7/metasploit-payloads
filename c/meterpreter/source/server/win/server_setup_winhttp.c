@@ -35,36 +35,21 @@ DWORD server_dispatch_http_winhttp(Remote* remote, THREAD* serverThread, int iEx
 	remote->start_time = current_unix_timestamp();
 	remote->comm_last_packet = current_unix_timestamp();
 
-	// Allocate the top-level handle
-	if (!wcscmp(pMetProxy, L"METERPRETER_PROXY"))
+	// configure proxy
+	if (wcscmp(pMetProxy, L"METERPRETER_PROXY") != 0)
 	{
-		remote->hInternet = WinHttpOpen(pMetUA, WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, NULL, NULL, 0);
+		dprintf("[DISPATCH] Configuring with proxy: %S", pMetProxy);
+		remote->hInternet = WinHttpOpen(pMetUA, WINHTTP_ACCESS_TYPE_NAMED_PROXY, pMetProxy, WINHTTP_NO_PROXY_BYPASS, 0);
 	}
 	else
 	{
-		remote->hInternet = WinHttpOpen(pMetUA, WINHTTP_ACCESS_TYPE_NAMED_PROXY, pMetProxy, NULL, 0);
+		remote->hInternet = WinHttpOpen(pMetUA, WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
 	}
 
 	if (!remote->hInternet)
 	{
 		dprintf("[DISPATCH] Failed WinHttpOpen: %d", GetLastError());
 		return 0;
-	}
-
-	// Proxy auth, if required.
-	if (wcscmp(pMetProxyUser, L"METERPRETER_USERNAME_PROXY") != 0)
-	{
-		if (!WinHttpSetOption(remote->hInternet, WINHTTP_OPTION_PROXY_USERNAME, pMetProxyUser, lstrlen(pMetProxyUser) + 1))
-		{
-			dprintf("[DISPATCH] Failed to set proxy username");
-		}
-	}
-	else if(wcscmp(pMetProxyPass, L"METERPRETER_PASSWORD_PROXY") != 0)
-	{
-		if (!WinHttpSetOption(remote->hInternet, WINHTTP_OPTION_PROXY_PASSWORD, pMetProxyPass, lstrlen(pMetProxyPass) + 1))
-		{
-			dprintf("[DISPATCH] Failed to set proxy username");
-		}
 	}
 
 	dprintf("[DISPATCH] Configured hInternet: 0x%.8x", remote->hInternet);
@@ -98,6 +83,16 @@ DWORD server_dispatch_http_winhttp(Remote* remote, THREAD* serverThread, int iEx
 	}
 
 	dprintf("[DISPATCH] Configured hConnection: 0x%.8x", remote->hConnection);
+
+	dprintf("[PROXY] User: %S Pass: %S", pMetProxyUser, pMetProxyPass);
+	if (wcscmp(pMetProxyUser, L"METERPRETER_USERNAME_PROXY") != 0)
+	{
+		remote->proxyUser = pMetProxyUser;
+	}
+	if(wcscmp(pMetProxyPass, L"METERPRETER_PASSWORD_PROXY") != 0)
+	{
+		remote->proxyPass = pMetProxyPass;
+	}
 
 	// Bring up the scheduler subsystem.
 	result = scheduler_initialize(remote);
