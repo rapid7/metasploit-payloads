@@ -145,8 +145,15 @@ typedef enum
 	TLV_TYPE_MIGRATE_SOCKET_PATH = TLV_VALUE(TLV_META_TYPE_STRING,    409),   ///! Represents a unix domain socket path, used to migrate on linux (string)
 
 	// Transport switching
-	TLV_TYPE_TRANSPORT_TYPE      = TLV_VALUE(TLV_META_TYPE_UINT,      430),   ///! Represents the type of transport to switch to.
-	TLV_TYPE_TRANSPORT_URL       = TLV_VALUE(TLV_META_TYPE_STRING,    431),   ///! Represents the new URL of the transport to use.
+	TLV_TYPE_TRANS_TYPE          = TLV_VALUE(TLV_META_TYPE_UINT,      430),   ///! Represents the type of transport to switch to.
+	TLV_TYPE_TRANS_URL           = TLV_VALUE(TLV_META_TYPE_STRING,    431),   ///! Represents the new URL of the transport to use.
+	TLV_TYPE_TRANS_UA            = TLV_VALUE(TLV_META_TYPE_STRING,    432),   ///! Represents the user agent (for http).
+	TLV_TYPE_TRANS_COMMS_TIMEOUT = TLV_VALUE(TLV_META_TYPE_UINT,      433),   ///! Represents the communications timeout (for http).
+	TLV_TYPE_TRANS_SESSION_EXP   = TLV_VALUE(TLV_META_TYPE_UINT,      434),   ///! Represents the session expiration (for http).
+	TLV_TYPE_TRANS_CERT_HASH     = TLV_VALUE(TLV_META_TYPE_RAW,       435),   ///! Represents the certificate hash (for https).
+	TLV_TYPE_TRANS_PROXY_INFO    = TLV_VALUE(TLV_META_TYPE_STRING,    436),   ///! Represents the proxy info string (for http).
+	TLV_TYPE_TRANS_PROXY_USER    = TLV_VALUE(TLV_META_TYPE_STRING,    437),   ///! Represents the proxy user name (for http).
+	TLV_TYPE_TRANS_PROXY_PASS    = TLV_VALUE(TLV_META_TYPE_STRING,    438),   ///! Represents the proxy password (for http).
 
 	// session/machine identification
 	TLV_TYPE_MACHINE_ID          = TLV_VALUE(TLV_META_TYPE_STRING,    460),   ///! Represents a machine identifier.
@@ -239,6 +246,7 @@ LINKAGE DWORD packet_get_tlv_group_entry(Packet *packet, Tlv *group, TlvType typ
 LINKAGE DWORD packet_enum_tlv(Packet *packet, DWORD index, TlvType type, Tlv *tlv);
 
 LINKAGE PCHAR packet_get_tlv_value_string(Packet *packet, TlvType type); 
+LINKAGE wchar_t* packet_get_tlv_value_wstring(Packet* packet, TlvType type);
 LINKAGE UINT packet_get_tlv_value_uint(Packet *packet, TlvType type);
 LINKAGE BYTE * packet_get_tlv_value_raw( Packet * packet, TlvType type );
 LINKAGE QWORD packet_get_tlv_value_qword(Packet *packet, TlvType type);

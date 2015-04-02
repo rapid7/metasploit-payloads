@@ -787,6 +787,34 @@ PCHAR packet_get_tlv_value_string( Packet *packet, TlvType type )
 }
 
 /*!
+ * @brief Get the string value of a TLV as a wchar_t string.
+ * @param packet Pointer to the packet to get the TLV from.
+ * @param type Type of TLV to get (optional).
+ * @return Pointer to the string value, if found.
+ * @retval NULL The string value was not found in the TLV.
+ * @retval Non-NULL Pointer to the string value (must be released with free()).
+ * @remark This function allocates a new string and therefore must be released
+ *         using free().
+ */
+wchar_t* packet_get_tlv_value_wstring(Packet* packet, TlvType type)
+{
+	size_t size;
+	wchar_t* result = NULL;
+	PCHAR string = packet_get_tlv_value_string(packet, type);
+
+	if (string)
+	{
+		size = mbstowcs(NULL, string, 0) + 1;
+		result = (wchar_t*)calloc(size, sizeof(wchar_t));
+		if (result)
+		{
+			mbstowcs(result, string, size);
+		}
+	}
+	return result;
+}
+
+/*!
  * @brief Get the unsigned int value of a TLV.
  * @param packet Pointer to the packet to get the TLV from.
  * @param type Type of TLV to get (optional).
@@ -1791,7 +1819,7 @@ DWORD packet_receive_http_via_winhttp(Remote *remote, Packet **packet)
 
 			if (!WinHttpQueryOption(hReq, WINHTTP_OPTION_SERVER_CERT_CONTEXT, &pCertContext, &dwCertContextSize))
 			{
-				vdprintf("[PACKET RECEIVE WINHTTP] Failed to get the certificate context: %u", GetLastError());
+				dprintf("[PACKET RECEIVE WINHTTP] Failed to get the certificate context: %u", GetLastError());
 				SetLastError(ERROR_WINHTTP_SECURE_INVALID_CERT);
 				break;
 			}
@@ -1800,18 +1828,18 @@ DWORD packet_receive_http_via_winhttp(Remote *remote, Packet **packet)
 			BYTE hash[20];
 			if (!CertGetCertificateContextProperty(pCertContext, CERT_SHA1_HASH_PROP_ID, hash, &dwHashSize))
 			{
-				vdprintf("[PACKET RECEIVE WINHTTP] Failed to get the certificate hash: %u", GetLastError());
+				dprintf("[PACKET RECEIVE WINHTTP] Failed to get the certificate hash: %u", GetLastError());
 				SetLastError(ERROR_WINHTTP_SECURE_INVALID_CERT);
 				break;
 			}
 
-			vdprintf("[SERVER] Server hash set to: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
-				hash[0], hash[1], hash[2], hash[3], hash[4], hash[5], hash[6], hash[7], hash[8], hash[9], hash[10],
-				hash[11], hash[12], hash[13], hash[14], hash[15], hash[16], hash[17], hash[18], hash[19]);
-
 			if (memcmp(hash, ctx->cert_hash, 20) != 0)
 			{
-				vdprintf("[PACKET RECEIVE WINHTTP] Certificate hash doesn't match, bailing out");
+				dprintf("[SERVER] Server hash set to: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
+					hash[0], hash[1], hash[2], hash[3], hash[4], hash[5], hash[6], hash[7], hash[8], hash[9], hash[10],
+					hash[11], hash[12], hash[13], hash[14], hash[15], hash[16], hash[17], hash[18], hash[19]);
+
+				dprintf("[PACKET RECEIVE WINHTTP] Certificate hash doesn't match, bailing out");
 				SetLastError(ERROR_WINHTTP_SECURE_INVALID_CERT);
 				break;
 			}

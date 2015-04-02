@@ -12,6 +12,8 @@
 #include <stdio.h>
 #include <time.h>
 
+#define SAFE_FREE(x) {if(x){free(x);x=NULL;}}
+
 #ifdef _WIN32
 	#include <winsock2.h>
 	#include <windows.h>

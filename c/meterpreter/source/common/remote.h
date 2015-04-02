@@ -23,6 +23,7 @@ typedef struct _Remote Remote;
 typedef SOCKET(*PTransportGetSocket)(Transport* transport);
 typedef BOOL(*PTransportInit)(Remote* remote, SOCKET fd);
 typedef BOOL(*PTransportDeinit)(Remote* remote);
+typedef void(*PTransportDestroy)(Remote* remote);
 typedef BOOL(*PServerDispatch)(Remote* remote, THREAD* dispatchThread);
 typedef DWORD(*PPacketTransmit)(Remote* remote, Packet* packet, PacketRequestCompletion* completion);
 typedef DWORD(*PPacketReceive)(Remote* remote, Packet** packet);
@@ -60,6 +61,7 @@ typedef struct _Transport
 	PTransportGetSocket get_socket;       ///! Function to get the socket from the transport.
 	PTransportInit transport_init;        ///! Initialises the transport.
 	PTransportDeinit transport_deinit;    ///! Deinitialises the transport.
+	PTransportDestroy transport_destroy;  ///! Destroy the transport.
 	PServerDispatch server_dispatch;      ///! Transport dispatch function.
 	PPacketTransmit packet_transmit;      ///! Transmits a packet over the transport.
 	PPacketReceive packet_receive;        ///! Receives a packet over the transport.
@@ -84,15 +86,13 @@ typedef struct _Remote
 	CryptoContext* crypto;                ///! Cryptographic context associated with the connection.
 
 	Transport* transport;                 ///! Pointer to the currently used transport mechanism.
+	Transport* nextTransport;             ///! Pointer to the next transport to use, if any.
 
 	LOCK* lock;                           ///! General transport usage lock (used by SSL, and desktop stuff too).
 
 	HANDLE hServerThread;                 ///! Handle to the current server thread.
 	HANDLE hServerToken;                  ///! Handle to the current server security token.
 	HANDLE hThreadToken;                  ///! Handle to the current thread security token.
-
-	wchar_t* pNextTransportType;          ///! Pointer to the string that contains the next transport to use.
-	wchar_t* pNextTransportUrl;           ///! Pointer to the string that contains the transport URI information.
 
 	DWORD dwOrigSessionId;                ///! ID of the original Meterpreter session.
 	DWORD dwCurrentSessionId;             ///! ID of the currently active session.

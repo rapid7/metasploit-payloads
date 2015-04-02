@@ -20,9 +20,9 @@ BOOL server_init_http_winhttp(Remote* remote, SOCKET fd)
 	dprintf("[WINHTTP] Initialising ...");
 
 	// configure proxy
-	if (wcscmp(ctx->proxy, L"METERPRETER_PROXY") != 0)
+	if (ctx->proxy && wcscmp(ctx->proxy, L"METERPRETER_PROXY") != 0)
 	{
-		dprintf("[DISPATCH] Configuring with proxy: %S", pMetProxy);
+		dprintf("[DISPATCH] Configuring with proxy: %S", ctx->proxy);
 		ctx->internet = WinHttpOpen(ctx->ua, WINHTTP_ACCESS_TYPE_NAMED_PROXY, ctx->proxy, WINHTTP_NO_PROXY_BYPASS, 0);
 	}
 	else

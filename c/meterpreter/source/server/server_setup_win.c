@@ -628,85 +628,146 @@ SOCKET tcp_transport_get_socket(Transport* transport)
 	return ((TcpTransportContext*)transport->ctx)->fd;
 }
 
-BOOL transport_create(Remote* remote)
+void transport_destroy_tcp(Remote* remote)
 {
-	wchar_t* transport = remote->pNextTransportType;
-	wchar_t* url = remote->pNextTransportUrl;
+	if (remote && remote->transport)
+	{
+		dprintf("[TRANS TCP] Destroying tcp transport for url %S", remote->transport->url);
+		SAFE_FREE(remote->transport->url);
+		SAFE_FREE(remote->transport);
+	}
+}
 
+Transport* transport_create_tcp(wchar_t* url)
+{
+	Transport* transport = (Transport*)malloc(sizeof(Transport));
+	TcpTransportContext* ctx = (TcpTransportContext*)malloc(sizeof(TcpTransportContext));
+
+	dprintf("[TRANS TCP] Creating tcp transport for url %S", url);
+
+	memset(transport, 0, sizeof(Transport));
+	memset(ctx, 0, sizeof(TcpTransportContext));
+
+	transport->url = _wcsdup(url);
+	transport->packet_receive = packet_receive_via_ssl;
+	transport->packet_transmit = packet_transmit_via_ssl;
+	transport->transport_init = configure_tcp_connection;
+	transport->transport_deinit = server_destroy_ssl;
+	transport->transport_destroy = transport_destroy_tcp;
+	transport->server_dispatch = server_dispatch;
+	transport->get_socket = tcp_transport_get_socket;
+	transport->ctx = ctx;
+	transport->type = METERPRETER_TRANSPORT_SSL;
+
+	return transport;
+}
+
+void transport_destroy_http(Remote* remote)
+{
+	if (remote && remote->transport)
+	{
+		HttpTransportContext* ctx = (HttpTransportContext*)remote->transport->ctx;
+
+		dprintf("[TRANS HTTP] Destroying http transport for url %S", remote->transport->url);
+
+		SAFE_FREE(remote->transport->url);
+		SAFE_FREE(ctx->cert_hash);
+		SAFE_FREE(ctx->proxy);
+		SAFE_FREE(ctx->proxy_pass);
+		SAFE_FREE(ctx->proxy_user);
+		SAFE_FREE(ctx->ua);
+		SAFE_FREE(ctx->uri);
+		SAFE_FREE(remote->transport);
+	}
+}
+
+Transport* transport_create_http(BOOL ssl, wchar_t* url, wchar_t* ua, wchar_t* proxy,
+	wchar_t* proxyUser, wchar_t* proxyPass, PBYTE certHash, int expirationTime, int commsTimeout)
+{
+	Transport* transport = (Transport*)malloc(sizeof(Transport));
+	HttpTransportContext* ctx = (HttpTransportContext*)malloc(sizeof(HttpTransportContext));
+
+	dprintf("[TRANS HTTP] Creating http transport for url %S", url);
+
+	memset(transport, 0, sizeof(Transport));
+	memset(ctx, 0, sizeof(HttpTransportContext));
+
+	if (expirationTime > 0)
+	{
+		ctx->expiration_time = current_unix_timestamp() + expirationTime;
+	}
+
+	ctx->comm_timeout = commsTimeout;
+	ctx->start_time = current_unix_timestamp();
+	ctx->comm_last_packet = current_unix_timestamp();
+
+	if (ua)
+	{
+		ctx->ua = _wcsdup(ua);
+	}
+	if (proxy && wcscmp(proxy, L"METERPRETER_PROXY") != 0)
+	{
+		ctx->proxy = _wcsdup(proxy);
+	}
+	if (proxyUser && wcscmp(proxyUser, L"METERPRETER_USERNAME_PROXY") != 0)
+	{
+		ctx->proxy_user = _wcsdup(proxyUser);
+	}
+	if (proxyPass && wcscmp(proxyPass, L"METERPRETER_PASSWORD_PROXY") != 0)
+	{
+		ctx->proxy_pass = _wcsdup(proxyPass);
+	}
+	ctx->ssl = ssl;
+
+	// only apply the cert hash if we're given one and it's not the global value
+	if (certHash && strncmp((char*)certHash, "METERPRETER_SSL_CERT_HASH", 20) != 0)
+	{
+		ctx->cert_hash = (PBYTE)malloc(sizeof(BYTE) * 20);
+		memcpy(ctx->cert_hash, certHash, 20);
+	}
+
+	transport->url = _wcsdup(url);
+	transport->packet_receive = packet_receive_via_http;
+	transport->packet_transmit = packet_transmit_via_http;
+	transport->server_dispatch = server_dispatch_http_winhttp;
+	transport->transport_init = server_init_http_winhttp;
+	transport->transport_deinit = server_deinit_http_winhttp;
+	transport->transport_destroy = transport_destroy_http;
+	transport->ctx = ctx;
+	transport->type = ssl ? METERPRETER_TRANSPORT_HTTPS : METERPRETER_TRANSPORT_HTTP;
+
+#ifdef DEBUGTRACE
+	if (ssl && certHash)
+	{
+		PBYTE hash = certHash;
+		dprintf("[SERVER] Using HTTPS transport: Hash set to: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
+			hash[0], hash[1], hash[2], hash[3], hash[4], hash[5], hash[6], hash[7], hash[8], hash[9], hash[10],
+			hash[11], hash[12], hash[13], hash[14], hash[15], hash[16], hash[17], hash[18], hash[19]);
+		dprintf("[SERVER] is validating hashes %p", hash);
+	}
+#endif
+
+	return transport;
+}
+
+Transport* transport_create(wchar_t* transport, wchar_t* url)
+{
+	Transport* t = NULL;
 	dprintf("[TRANSPORT] Type = %S", transport);
 	dprintf("[TRANSPORT] URL = %S", url);
 
-	remote->transport = (Transport*)malloc(sizeof(Transport));
-	memset(remote->transport, 0, sizeof(Transport));
-
-	remote->transport->url = url;
-
 	if (wcscmp(transport, L"TRANSPORT_SSL") == 0)
 	{
-		TcpTransportContext* ctx = (TcpTransportContext*)malloc(sizeof(TcpTransportContext));
-
-		memset(ctx, 0, sizeof(TcpTransportContext));
-
-		remote->transport->packet_receive = packet_receive_via_ssl;
-		remote->transport->packet_transmit = packet_transmit_via_ssl;
-		remote->transport->transport_init = configure_tcp_connection;
-		remote->transport->transport_deinit = server_destroy_ssl;
-		remote->transport->server_dispatch = server_dispatch;
-		remote->transport->get_socket = tcp_transport_get_socket;
-		remote->transport->ctx = ctx;
-		remote->transport->type = METERPRETER_TRANSPORT_SSL;
+		t = transport_create_tcp(url);
 	}
 	else
 	{
-		HttpTransportContext* ctx = (HttpTransportContext*)malloc(sizeof(HttpTransportContext));
-
-		memset(ctx, 0, sizeof(HttpTransportContext));
-
-		if (global_expiration_timeout > 0)
-		{
-			ctx->expiration_time = current_unix_timestamp() + global_expiration_timeout;
-		}
-
-		ctx->comm_timeout = global_comm_timeout;
-		ctx->start_time = current_unix_timestamp();
-		ctx->comm_last_packet = current_unix_timestamp();
-
-		ctx->ua = global_meterpreter_ua;
-		ctx->proxy = global_meterpreter_proxy;
-		ctx->proxy_user = global_meterpreter_proxy_username;
-		ctx->proxy_pass = global_meterpreter_proxy_password;
-
-		remote->transport->packet_receive = packet_receive_via_http;
-		remote->transport->packet_transmit = packet_transmit_via_http;
-		remote->transport->server_dispatch = server_dispatch_http_winhttp;
-		remote->transport->transport_init = server_init_http_winhttp;
-		remote->transport->transport_deinit = server_deinit_http_winhttp;
-		remote->transport->ctx = ctx;
-
-		if (wcscmp(transport, L"TRANSPORT_HTTPS") == 0)
-		{
-			PBYTE hash = global_meterpreter_ssl_cert_hash;
-			dprintf("[SERVER] Using HTTPS transport: Hash set to: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
-				hash[0], hash[1], hash[2], hash[3], hash[4], hash[5], hash[6], hash[7], hash[8], hash[9], hash[10],
-				hash[11], hash[12], hash[13], hash[14], hash[15], hash[16], hash[17], hash[18], hash[19]);
-
-			if (strcmp(hash, "METERPRETER_SSL_CERT_HASH") != 0)
-			{
-				ctx->cert_hash = hash;
-				dprintf("[SERVER] is validating hashes %p", hash);
-			}
-
-			remote->transport->type = METERPRETER_TRANSPORT_HTTPS;
-			ctx->ssl = TRUE;
-		}
-		else
-		{
-			// must be http
-			remote->transport->type = METERPRETER_TRANSPORT_HTTP;
-		}
+		BOOL ssl = wcscmp(transport, L"TRANSPORT_HTTPS") == 0;
+		t = transport_create_http(ssl, url, global_meterpreter_ua, global_meterpreter_proxy, global_meterpreter_proxy_username,
+			global_meterpreter_proxy_password, global_meterpreter_ssl_cert_hash, global_expiration_timeout, global_comm_timeout);
 	}
 
-	return TRUE;
+	return t;
 }
 
 /*
@@ -783,29 +844,19 @@ DWORD server_setup(SOCKET fd)
 			}
 
 			// allocate the "next transport" information
-			pRemote->pNextTransportType = _wcsdup(global_meterpreter_transport + 12);
-			pRemote->pNextTransportUrl = _wcsdup(global_meterpreter_url + (bStageless ? 1 : 0));
+			dprintf("[SERVER] creating transport");
+			pRemote->nextTransport = transport_create(global_meterpreter_transport + 12, global_meterpreter_url + (bStageless ? 1 : 0));
 
-			while (pRemote->pNextTransportType && pRemote->pNextTransportUrl)
+			while (pRemote->nextTransport)
 			{
-				dprintf("[SERVER] creating transport");
-				if (!transport_create(pRemote))
-				{
-					break;
-				}
+				pRemote->transport = pRemote->nextTransport;
+				pRemote->nextTransport = NULL;
 
 				dprintf("[SERVER] initialising transport 0x%p", pRemote->transport->transport_init);
 				if (pRemote->transport->transport_init && !pRemote->transport->transport_init(pRemote, fd))
 				{
 					break;
 				}
-
-				// clear out the transport details, they'll be added elsewhere if the
-				// transport needs to be hotswapped
-				free(pRemote->pNextTransportType);
-				free(pRemote->pNextTransportUrl);
-				pRemote->pNextTransportType = NULL;
-				pRemote->pNextTransportUrl = NULL;
 
 				dprintf("[SERVER] Entering the main server dispatch loop for transport %x, context %x", pRemote->transport, pRemote->transport->ctx);
 				pRemote->transport->server_dispatch(pRemote, serverThread);
@@ -815,8 +866,7 @@ DWORD server_setup(SOCKET fd)
 					pRemote->transport->transport_deinit(pRemote);
 				}
 
-				free(pRemote->transport);
-				pRemote->transport = NULL;
+				pRemote->transport->transport_destroy(pRemote);
 			}
 
 			dprintf("[SERVER] Deregistering dispatch routines...");
