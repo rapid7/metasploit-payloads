@@ -633,7 +633,7 @@ DWORD server_setup(SOCKET fd)
 			remote->transport->transport_deinit(remote);
 		}
 
-		pRemote->transport->transport_destroy(pRemote);
+		remote->transport->transport_destroy(remote);
 	}
 
 	dprintf("[SERVER] Deregistering dispatch routines...");
