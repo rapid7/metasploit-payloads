@@ -19,36 +19,21 @@ BOOL server_init_http_winhttp(Remote* remote, SOCKET fd)
 
 	dprintf("[WINHTTP] Initialising ...");
 
-	// Allocate the top-level handle
-	if (!wcscmp(ctx->proxy, L"METERPRETER_PROXY"))
+	// configure proxy
+	if (wcscmp(ctx->proxy, L"METERPRETER_PROXY") != 0)
 	{
-		ctx->internet = WinHttpOpen(ctx->ua, WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, NULL, NULL, 0);
+		dprintf("[DISPATCH] Configuring with proxy: %S", pMetProxy);
+		ctx->internet = WinHttpOpen(ctx->ua, WINHTTP_ACCESS_TYPE_NAMED_PROXY, ctx->proxy, WINHTTP_NO_PROXY_BYPASS, 0);
 	}
 	else
 	{
-		ctx->internet = WinHttpOpen(ctx->ua, WINHTTP_ACCESS_TYPE_NAMED_PROXY, ctx->proxy, NULL, 0);
+		ctx->internet = WinHttpOpen(ctx->ua, WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
 	}
 
 	if (!ctx->internet)
 	{
 		dprintf("[DISPATCH] Failed WinHttpOpen: %d", GetLastError());
 		return FALSE;
-	}
-
-	// Proxy auth, if required.
-	if (wcscmp(ctx->proxy_user, L"METERPRETER_USERNAME_PROXY") != 0)
-	{
-		if (!WinHttpSetOption(ctx->internet, WINHTTP_OPTION_PROXY_USERNAME, ctx->proxy_user, lstrlen(ctx->proxy_user) + 1))
-		{
-			dprintf("[DISPATCH] Failed to set proxy username");
-		}
-	}
-	else if (wcscmp(ctx->proxy_pass, L"METERPRETER_PASSWORD_PROXY") != 0)
-	{
-		if (!WinHttpSetOption(ctx->internet, WINHTTP_OPTION_PROXY_PASSWORD, ctx->proxy_pass, lstrlen(ctx->proxy_pass) + 1))
-		{
-			dprintf("[DISPATCH] Failed to set proxy username");
-		}
 	}
 
 	dprintf("[DISPATCH] Configured hInternet: 0x%.8x", ctx->internet);
