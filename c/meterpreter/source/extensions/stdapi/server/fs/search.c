@@ -155,28 +155,17 @@ BOOL wds2_indexed(WDS_INTERFACE * pWDSInterface, char * cpDirectory)
 	DWORD dwCatalogLength                        = MAX_PATH + 1 ;
 	DWORD dwIndex                                = 0;
 
-	do
+	if (!pWDSInterface->bWDS2Available)
+		return FALSE;
+
+	while (pWDSInterface->pLocateCatalogsA(cpDirectory, dwIndex++, cMachine, &dwMachineLength, cCatalog, &dwCatalogLength) == S_OK)
 	{
-		if (!pWDSInterface->bWDS2Available)
-			break;
-
-		while (TRUE)
+		if (strcmp(cMachine, ".") == 0 && _memicmp("system", cCatalog, 6) == 0)
 		{
-			if (pWDSInterface->pLocateCatalogsA(cpDirectory, dwIndex++, cMachine, &dwMachineLength, cCatalog, &dwCatalogLength) != S_OK)
-				break;
-
-			if (strcmp(cMachine, ".") != 0)
-				continue;
-
-			if (_memicmp("system", cCatalog, 6) != 0)
-				continue;
-
 			dprintf("[SEARCH] wds2_indexed: Directory '%s' is indexed.", cpDirectory);
-
 			return TRUE;
 		}
-
-	} while (0);
+	}
 
 	return FALSE;
 }
@@ -187,32 +176,18 @@ BOOL wds2_indexed(WDS_INTERFACE * pWDSInterface, char * cpDirectory)
 BOOL wds3_indexed(WDS_INTERFACE * pWDSInterface, char * cpDirectory)
 {
 	HRESULT hr          = 0;
-	size_t dwLength     = 0;
 	WCHAR * wpDirectory = NULL;
 	BOOL bResult        = FALSE;
 
-	do
-	{
-		if (!pWDSInterface->bWDS3Available)
-			break;
+	if (!pWDSInterface->bWDS3Available)
+		return FALSE;
 
-		dwLength = mbstowcs(NULL, cpDirectory, 0) + 1;
-
-		wpDirectory = malloc(dwLength * sizeof(WCHAR));
-		if (!wpDirectory)
-			break;
-
-		memset(wpDirectory, 0, dwLength * sizeof(WCHAR));
-
-		if (mbstowcs(wpDirectory, cpDirectory, dwLength) == -1)
-			break;
-
-		ISearchCrawlScopeManager_IncludedInCrawlScope(pWDSInterface->pCrawlScopeManager, wpDirectory, &bResult);
-
-	} while (0);
+	wpDirectory = utf8_to_wchar(cpDirectory);
 
 	if (wpDirectory)
-		free(wpDirectory);
+		ISearchCrawlScopeManager_IncludedInCrawlScope(pWDSInterface->pCrawlScopeManager, wpDirectory, &bResult);
+
+	free(wpDirectory);
 
 	return bResult;
 }
@@ -338,6 +313,7 @@ HRESULT wds_execute(ICommand * pCommand, Packet * pResponse)
 			}
 
 			free(path);
+
 			hr = IRowset_ReleaseRows(pRowset, dbCount, pRows, NULL, NULL, NULL);
 			if (FAILED(hr))
 				BREAK_WITH_ERROR("[SEARCH] wds_execute: IRowset_ReleaseRows Failed", hr);
@@ -414,16 +390,8 @@ DWORD wds2_search(WDS_INTERFACE * pWDSInterface, char * cpCurrentDirectory, SEAR
 		else
 			dwDepth[0] = QUERY_SHALLOW | QUERY_PHYSICAL_PATH;
 
-		dwLength = mbstowcs(NULL, cpCurrentDirectory, 0) + 1;
-
-		wpCurrentDirectory = malloc(dwLength * sizeof(WCHAR));
-		if (!wpCurrentDirectory)
-			BREAK_WITH_ERROR("[SEARCH] wds2_search: !wpCurrentDirectory", ERROR_OUTOFMEMORY);
-
-		memset(wpCurrentDirectory, 0, dwLength * sizeof(WCHAR));
-
-		if (mbstowcs(wpCurrentDirectory, cpCurrentDirectory, dwLength) == -1)
-			BREAK_WITH_ERROR("[SEARCH] wds2_search: mbstowcs wpCurrentDirectory failed", ERROR_INVALID_PARAMETER);
+		wpCurrentDirectory = utf8_to_wchar(cpCurrentDirectory);
+			BREAK_WITH_ERROR("[SEARCH] wds2_search: utf8_to_wchar wpCurrentDirectory failed", ERROR_INVALID_PARAMETER);
 
 		wcScope[0]    = wpCurrentDirectory;
 		wcCatalog[0]  = L"System";
@@ -439,21 +407,15 @@ DWORD wds2_search(WDS_INTERFACE * pWDSInterface, char * cpCurrentDirectory, SEAR
 		if (FAILED(hr))
 			BREAK_WITH_ERROR("[SEARCH] wds2_search: ICommand_QueryInterface Failed", hr);
 
-		dwLength = mbstowcs(NULL, pOptions->cpFileGlob, 0) + 1;
-
-		wpFileGlob = malloc(dwLength * sizeof(WCHAR));
+		wpFileGlob = utf8_to_wchar(pOptions->cpFileGlob);
 		if (!wpFileGlob)
 			BREAK_WITH_ERROR("[SEARCH] wds2_search: !wpFileGlob", ERROR_OUTOFMEMORY);
 
-		wpQuery = malloc((dwLength + 128) * sizeof(WCHAR));
+		dwLength = wcslen(wpFileGlob);
+
+		wpQuery = calloc((dwLength + 128), sizeof(WCHAR));
 		if (!wpQuery)
-			BREAK_WITH_ERROR("[SEARCH] wds2_search: !wpQuery", ERROR_OUTOFMEMORY);
-
-		memset(wpFileGlob, 0, dwLength * sizeof(WCHAR));
-		memset(wpQuery, 0, (dwLength + 128) * sizeof(WCHAR));
-
-		if (mbstowcs(wpFileGlob, pOptions->cpFileGlob, dwLength) == -1)
-			BREAK_WITH_ERROR("[SEARCH] wds2_search: mbstowcs wpFileGlob failed", ERROR_INVALID_PARAMETER);
+			BREAK_WITH_ERROR("[SEARCH] wds2_search: calloc wpFileGlob failed", ERROR_INVALID_PARAMETER);
 
 		swprintf_s(wpQuery, (dwLength + 128), L"#filename = %s", wpFileGlob);
 
@@ -477,17 +439,13 @@ DWORD wds2_search(WDS_INTERFACE * pWDSInterface, char * cpCurrentDirectory, SEAR
 	if (pCommand)
 		ICommand_Release(pCommand);
 
-	if (wpFileGlob)
-		free(wpFileGlob);
+	free(wpFileGlob);
 
-	if (wpQuery)
-		free(wpQuery);
+	free(wpQuery);
 
-	if (wpCurrentDirectory)
-		free(wpCurrentDirectory);
+	free(wpCurrentDirectory);
 
-	if (cpNewCurrent)
-		free(cpNewCurrent);
+	free(cpNewCurrent);
 
 	dprintf("[SEARCH] wds2_search: Finished.");
 
@@ -545,20 +503,15 @@ DWORD wds3_search(WDS_INTERFACE * pWDSInterface, WCHAR * wpProtocol, char * cpCu
 
 			do
 			{
-				dwLength = mbstowcs(NULL, cpCurrentDirectory, 0) + 1;
+				wpRootDirectory = utf8_to_wchar(cpCurrentDirectory);
+				if (wpRootDirectory == NULL)
+					BREAK_WITH_ERROR("[SEARCH] wds3_search: utf8_to_wchar wpRootDirectory failed", ERROR_INVALID_PARAMETER);
 
-				wpWhere = malloc((dwLength + 128) * sizeof(WCHAR));
+				dwLength = wcslen(wpRootDirectory);
+
+				wpWhere = calloc((dwLength + 128), sizeof(WCHAR));
 				if (!wpWhere)
 					BREAK_WITH_ERROR("[SEARCH] wds3_search: !wpWhere", ERROR_OUTOFMEMORY);
-
-				wpRootDirectory = malloc(dwLength * sizeof(WCHAR));
-				if (!wpRootDirectory)
-					BREAK_WITH_ERROR("[SEARCH] wds3_search: !wpRootDirectory", ERROR_OUTOFMEMORY);
-
-				memset(wpRootDirectory, 0, dwLength * sizeof(WCHAR));
-
-				if (mbstowcs(wpRootDirectory, cpCurrentDirectory, dwLength) == -1)
-					BREAK_WITH_ERROR("[SEARCH] wds3_search: mbstowcs wpRootDirectory failed", ERROR_INVALID_PARAMETER);
 
 				if (pOptions->bResursive)
 					wsprintfW((LPWSTR)wpWhere, L"AND SCOPE='%s:%s'", wpProtocol, wpRootDirectory);
@@ -571,23 +524,13 @@ DWORD wds3_search(WDS_INTERFACE * pWDSInterface, WCHAR * wpProtocol, char * cpCu
 
 			} while (0);
 
-			if (wpWhere)
-				free(wpWhere);
+			free(wpWhere);
 
-			if (wpRootDirectory)
-				free(wpRootDirectory);
+			free(wpRootDirectory);
 		}
 
-		dwLength = mbstowcs(NULL, pOptions->cpFileGlob, 0) + 1;
-
-		wpQuery = malloc(dwLength * sizeof(WCHAR));
-		if (!wpQuery)
-			BREAK_WITH_ERROR("[SEARCH] wds3_search: !wpQuery", ERROR_OUTOFMEMORY);
-
-		memset(wpQuery, 0, dwLength * sizeof(WCHAR));
-
-		if (mbstowcs(wpQuery, pOptions->cpFileGlob, dwLength) == -1)
-			BREAK_WITH_ERROR("[SEARCH] wds3_search: mbstowcs wpQuery failed", ERROR_INVALID_PARAMETER);
+		wpQuery = utf8_to_wchar(pOptions->cpFileGlob);
+			BREAK_WITH_ERROR("[SEARCH] wds3_search: utf8_to_wchar wpQuery failed", ERROR_INVALID_PARAMETER);
 
 		hr = ISearchQueryHelper_GenerateSQLFromUserQuery(pQueryHelper, wpQuery, &wpSQL);
 		if (FAILED(hr))
@@ -669,8 +612,7 @@ DWORD wds3_search(WDS_INTERFACE * pWDSInterface, WCHAR * wpProtocol, char * cpCu
 	if (pDataInitialize)
 		IDataInitialize_Release(pDataInitialize);
 
-	if (wpQuery)
-		free(wpQuery);
+	free(wpQuery);
 
 	dprintf("[SEARCH] wds3_search: Finished.");
 
@@ -730,8 +672,7 @@ DWORD search_directory(char * cpDirectory, SEARCH_OPTIONS * pOptions, Packet * p
 
 	} while (0);
 
-	if (cpFirstFile)
-		free(cpFirstFile);
+	free(cpFirstFile);
 
 	if (hFile)
 		FindClose(hFile);
@@ -834,11 +775,9 @@ DWORD search(WDS_INTERFACE * pWDSInterface, char * cpCurrentDirectory, SEARCH_OP
 
 	} while (0);
 
-	if (cpFirstFile)
-		free(cpFirstFile);
+	free(cpFirstFile);
 
-	if (hFile)
-		FindClose(hFile);
+	FindClose(hFile);
 
 	return dwResult;
 }
@@ -942,8 +881,7 @@ DWORD request_fs_search(Remote * pRemote, Packet * pPacket)
 
 	wds_shutdown(&WDSInterface);
 
-	if (pOptions)
-		free(pOptions);
+	free(pOptions);
 
 	dprintf("[SEARCH] request_fs_search: Finished. dwResult=0x%08X", dwResult);
 
