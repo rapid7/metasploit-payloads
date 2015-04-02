@@ -87,6 +87,8 @@ remote_request_core_migrate(Remote *remote, Packet *packet)
 	return FALSE;
 }
 
+extern Transport* transport_create_tcp(wchar_t* url);
+
 #if 0
 // TODO: put this back in when the stageless work has been completed for POSIX.
 BOOL
@@ -105,34 +107,15 @@ remote_request_core_change_transport(Remote* remote, Packet* packet, DWORD* pRes
 		goto out;
 	}
 
-	remote->pNextTransportUrl = strdup(transportUrl);
-	if (remote->pNextTransportUrl == NULL) {
-		dprintf("[CHANGE TRANS] Couldn't allocate next transport type");
-		goto out;
-	}
-
 	if (transportType == METERPRETER_TRANSPORT_SSL) {
-		remote->pNextTransportType = strdup("TRANSPORT_SSL");
-	}
-	else if (transportType == METERPRETER_TRANSPORT_HTTPS) {
-		remote->pNextTransportType = strdup("TRANSPORT_HTTPS");
-	}
-	else if (transportType == METERPRETER_TRANSPORT_HTTP) {
-		remote->pNextTransportType = strdup("TRANSPORT_HTTP");
+		remote->nextTransport = transport_create_tcp(transportUrl);
+		result = ERROR_SUCCESS;
 	}
 	else {
-		dprintf("[CHANGE TRANS] Transport type is invalid");
-
-		// fail!
-		free(remote->pNextTransportUrl);
-		remote->pNextTransportUrl = NULL;
-		goto out;
+		dprintf("[CHANGE TRANS] Unsupported");
 	}
 
-	// tell the server dispatch to exit, it should pick up the new transport
-	result = ERROR_SUCCESS;
 out:
-
 	if (packet) {
 		packet_transmit_empty_response(remote, response, result);
 	}

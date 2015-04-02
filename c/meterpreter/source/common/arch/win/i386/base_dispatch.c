@@ -115,6 +115,8 @@ BOOL remote_request_core_change_transport(Remote* remote, Packet* packet, DWORD*
 		packet_transmit_empty_response(remote, response, result);
 	}
 
+	SAFE_FREE(transportUrl);
+
 	return result == ERROR_SUCCESS ? FALSE : TRUE;
 }
 
