@@ -264,10 +264,10 @@ HRESULT wds_execute(ICommand * pCommand, Packet * pResponse)
 		dbBindings[1].cbMaxLen   = MAX_PATH;
 		dbBindings[1].dwFlags    = 0;
 		dbBindings[1].eParamIO   = DBPARAMIO_NOTPARAM;
-		dbBindings[1].wType      = DBTYPE_STR;
+		dbBindings[1].wType      = DBTYPE_WSTR;
 		dbBindings[1].obStatus   = offsetof(SEARCH_ROW, dbPathStatus);
 		dbBindings[1].obLength   = offsetof(SEARCH_ROW, dwPathLength);
-		dbBindings[1].obValue    = offsetof(SEARCH_ROW, cPathValue);
+		dbBindings[1].obValue    = offsetof(SEARCH_ROW, wPathValue);
 
 		hr = IAccessor_CreateAccessor(pAccessor, DBACCESSOR_ROWDATA, 2, (DBBINDING *)&dbBindings, 0, &hAccessor, NULL);
 		if (FAILED(hr))
@@ -288,17 +288,19 @@ HRESULT wds_execute(ICommand * pCommand, Packet * pResponse)
 			if (FAILED(hr))
 				BREAK_WITH_ERROR("[SEARCH] wds_execute: IRowset_GetData Failed", hr);
 
-			if (_memicmp("iehistory:", rowSearchResults.cPathValue, 10) == 0)
+			char *path = wchar_to_utf8(rowSearchResults.wPathValue);
+
+			if (_memicmp("iehistory:", path, 10) == 0)
 			{
 				// "iehistory://{*}/"
-				char * cpHistory = strstr(rowSearchResults.cPathValue, "}");
+				char * cpHistory = strstr(path, "}");
 				if (cpHistory)
 					search_add_result(pResponse, "", cpHistory+2, 0);
 			}
-			else if (_memicmp("mapi:", rowSearchResults.cPathValue, 5) == 0)
+			else if (_memicmp("mapi:", path, 5) == 0)
 			{
 				// "mapi://{*}/"
-				char * cpHistory = strstr(rowSearchResults.cPathValue, "}");
+				char * cpHistory = strstr(path, "}");
 				if (cpHistory)
 					search_add_result(pResponse, "", cpHistory+2, 0);
 			}
@@ -307,7 +309,7 @@ HRESULT wds_execute(ICommand * pCommand, Packet * pResponse)
 				size_t i           = 0;
 				char * cpFileName  = "";
 				char * cpFile      = "";
-				char * cpDirectory = (char *)&rowSearchResults.cPathValue;
+				char * cpDirectory = path;
 
 				if (_memicmp("file:", cpDirectory, strlen("file:")) == 0)
 					cpDirectory = (char *)(cpDirectory + strlen("file:"));
@@ -335,6 +337,7 @@ HRESULT wds_execute(ICommand * pCommand, Packet * pResponse)
 				dprintf("[SEARCH] wds_execute. Found: %s\\%s", cpDirectory, cpFileName);
 			}
 
+			free(path);
 			hr = IRowset_ReleaseRows(pRowset, dbCount, pRows, NULL, NULL, NULL);
 			if (FAILED(hr))
 				BREAK_WITH_ERROR("[SEARCH] wds_execute: IRowset_ReleaseRows Failed", hr);

@@ -21,7 +21,7 @@ typedef struct _WDS_INTERFACE
 	ISearchManager * pSearchManager;
 	ISearchCatalogManager * pSearchCatalogManager;
 	ISearchCrawlScopeManager * pCrawlScopeManager;
-	
+
 	// WDS 2...
 	HMODULE hQuery;
 	LOCATECATALOGSA pLocateCatalogsA;
@@ -50,7 +50,7 @@ typedef struct _SEARCH_ROW
 	DWORD dwPadding4;
 	DWORD dwPathLength;
 	DWORD dwPadding5;
-	CHAR cPathValue[MAX_PATH];
+	WCHAR wPathValue[MAX_PATH];
 } SEARCH_ROW;
 
 // we manually define these ourselves...
