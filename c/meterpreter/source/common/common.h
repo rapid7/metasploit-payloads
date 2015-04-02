@@ -16,9 +16,6 @@
 	#include <winsock2.h>
 	#include <windows.h>
 
-	/*! @brief When defined, tells metsrv to use WinHTTP instead of WinInet for HTTP(s) meterrpeter. */
-	#define USE_WINHTTP
-
 	typedef DWORD __u32;
 	typedef struct ___u128 {
 		__u32 a1;

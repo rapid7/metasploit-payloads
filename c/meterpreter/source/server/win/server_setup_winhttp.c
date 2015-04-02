@@ -7,8 +7,6 @@
 #include "../../common/common.h"
 #include <winhttp.h>
 
-#ifdef USE_WINHTTP
-
 #define HOSTNAME_LEN 512
 #define URLPATH_LEN 1024
 
@@ -96,7 +94,6 @@ DWORD server_deinit_http_winhttp(Remote* remote)
 
 	dprintf("[WINHTTP] Deinitialising ...");
 
-	// Close WinInet handles
 	WinHttpCloseHandle(ctx->connection);
 	WinHttpCloseHandle(ctx->internet);
 
@@ -185,5 +182,3 @@ DWORD server_dispatch_http_winhttp(Remote* remote, THREAD* dispatchThread)
 
 	return result;
 }
-
-#endif

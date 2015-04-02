@@ -698,7 +698,6 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <PrecompiledHeaderOutputFile Condition="'$(Configuration)|$(Platform)'=='r7_release|x64'">
       </PrecompiledHeaderOutputFile>
     </ClCompile>
-    <ClCompile Include="..\..\source\server\win\server_setup_wininet.c" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\source\server\win\metsrv.def" />
@@ -708,7 +707,6 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClInclude Include="..\..\source\server\metsrv.h" />
     <ClInclude Include="..\..\source\server\remote_dispatch.h" />
     <ClInclude Include="..\..\source\server\win\server_setup_winhttp.h" />
-    <ClInclude Include="..\..\source\server\win\server_setup_wininet.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\backcompat\backcompat.vcxproj">

@@ -5,17 +5,7 @@
 #include "../../common/common.h"
 #include <ws2tcpip.h>
 
-#ifdef USE_WINHTTP
 #include "win/server_setup_winhttp.h"
-#define server_dispatch_http server_dispatch_http_winhttp
-#define server_init_http server_init_http_winhttp
-#define server_deinit_http server_deinit_http_winhttp
-#else
-#include "win/server_setup_wininet.h"
-#define server_dispatch_http server_dispatch_http_wininet
-#define server_init_http NULL
-#define server_deinit_http NULL
-#endif
 
 BOOL configure_tcp_connection(Remote* remote, SOCKET socket);
 
@@ -688,9 +678,9 @@ BOOL transport_create(Remote* remote)
 
 		remote->transport->packet_receive = packet_receive_via_http;
 		remote->transport->packet_transmit = packet_transmit_via_http;
-		remote->transport->server_dispatch = server_dispatch_http;
-		remote->transport->transport_init = server_init_http;
-		remote->transport->transport_deinit = server_deinit_http;
+		remote->transport->server_dispatch = server_dispatch_http_winhttp;
+		remote->transport->transport_init = server_init_http_winhttp;
+		remote->transport->transport_deinit = server_deinit_http_winhttp;
 		remote->transport->ctx = ctx;
 
 		if (wcscmp(transport, L"TRANSPORT_HTTPS") == 0)

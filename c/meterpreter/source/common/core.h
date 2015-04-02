@@ -259,11 +259,6 @@ LINKAGE DWORD packet_receive_via_http(Remote *remote, Packet **packet);
 LINKAGE DWORD packet_transmit_via_ssl(Remote *remote, Packet *packet, PacketRequestCompletion *completion);
 LINKAGE DWORD packet_transmit_via_http(Remote *remote, Packet *packet, PacketRequestCompletion *completion);
 
-#ifdef _WIN32
-LINKAGE DWORD packet_receive_via_http_wininet(Remote *remote, Packet **packet);
-LINKAGE DWORD packet_transmit_via_http_wininet(Remote *remote, Packet *packet, PacketRequestCompletion *completion);
-#endif
-
 /*!
  * @brief Transmit a `TLV_TYPE_RESULT` response if `response` is present.
  * @param result The result to be sent.
