@@ -12,30 +12,41 @@
 
 #include "precomp.h"
 #include "fs.h"
+#include "fs_local.h"
 #include "search.h"
 
 /*
  * Helper function to add a search result to the response packet.
  */
-VOID search_add_result(Packet * pResponse, char * cpDirectory, char * cpFileName, DWORD dwFileSize)
+VOID search_add_result(Packet * pResponse, wchar_t *directory, wchar_t *fileName, DWORD dwFileSize)
 {
 	Tlv entry[3] = {0};
 	DWORD dwSize = 0;
 
-	entry[0].header.type   = TLV_TYPE_FILE_PATH;
-	entry[0].header.length = (DWORD)(strlen(cpDirectory) + 1);
-	entry[0].buffer        = cpDirectory;
+	char *dir = wchar_to_utf8(directory);
+	char *file = wchar_to_utf8(fileName);
 
-	entry[1].header.type   = TLV_TYPE_FILE_NAME;
-	entry[1].header.length = (DWORD)(strlen(cpFileName) + 1);
-	entry[1].buffer        = cpFileName;
+	dprintf("[SEARCH] Found: %s\\%s", dir, file);
 
-	dwSize = htonl(dwFileSize);
-	entry[2].header.type   = TLV_TYPE_FILE_SIZE;
-	entry[2].header.length = sizeof(DWORD);
-	entry[2].buffer        = (PUCHAR)&dwSize;
+	if (dir && file) {
+		entry[0].header.type   = TLV_TYPE_FILE_PATH;
+		entry[0].header.length = (DWORD)(strlen(dir) + 1);
+		entry[0].buffer        = dir;
 
-	packet_add_tlv_group(pResponse, TLV_TYPE_SEARCH_RESULTS, entry, 3);
+		entry[1].header.type   = TLV_TYPE_FILE_NAME;
+		entry[1].header.length = (DWORD)(strlen(file) + 1);
+		entry[1].buffer        = file;
+
+		dwSize = htonl(dwFileSize);
+		entry[2].header.type   = TLV_TYPE_FILE_SIZE;
+		entry[2].header.length = sizeof(DWORD);
+		entry[2].buffer        = (PUCHAR)&dwSize;
+
+		packet_add_tlv_group(pResponse, TLV_TYPE_SEARCH_RESULTS, entry, 3);
+	}
+
+	free(dir);
+	free(file);
 }
 
 /*
@@ -63,9 +74,9 @@ VOID wds_startup(WDS_INTERFACE * pWDSInterface)
 			if (!pWDSInterface->hQuery)
 				BREAK_ON_ERROR("[SEARCH] wds_startup:v2: LoadLibraryA query.dll Failed");
 
-			pWDSInterface->pLocateCatalogsA = (LOCATECATALOGSA)GetProcAddress(pWDSInterface->hQuery, "LocateCatalogsA");
-			if (!pWDSInterface->pLocateCatalogsA)
-				BREAK_ON_ERROR("[SEARCH] wds_startup:v2: GetProcAddress LocateCatalogsA Failed");
+			pWDSInterface->pLocateCatalogsW = (LOCATECATALOGSW)GetProcAddress(pWDSInterface->hQuery, "LocateCatalogsW");
+			if (!pWDSInterface->pLocateCatalogsW)
+				BREAK_ON_ERROR("[SEARCH] wds_startup:v2: GetProcAddress LocateCatalogsW Failed");
 
 			pWDSInterface->pCIMakeICommand = (CIMAKEICOMMAND)GetProcAddress(pWDSInterface->hQuery, "CIMakeICommand");
 			if (!pWDSInterface->pCIMakeICommand)
@@ -113,7 +124,7 @@ VOID wds_shutdown(WDS_INTERFACE * pWDSInterface)
 		if (pWDSInterface->hQuery)
 			FreeLibrary(pWDSInterface->hQuery);
 
-		pWDSInterface->pLocateCatalogsA  = NULL;
+		pWDSInterface->pLocateCatalogsW  = NULL;
 		pWDSInterface->pCIMakeICommand   = NULL;
 		pWDSInterface->pCITextToFullTree = NULL;
 
@@ -147,22 +158,22 @@ VOID wds_shutdown(WDS_INTERFACE * pWDSInterface)
 /*
  * Helper function to check if a given directory is indexed in the WDS v2 system catalog on the local machine.
  */
-BOOL wds2_indexed(WDS_INTERFACE * pWDSInterface, char * cpDirectory)
+BOOL wds2_indexed(WDS_INTERFACE * pWDSInterface, wchar_t * directory)
 {
-	char cMachine[ MAX_COMPUTERNAME_LENGTH + 1 ] = {0};
-	char cCatalog[ MAX_PATH + 1 ]                = {0};
-	DWORD dwMachineLength                        = MAX_COMPUTERNAME_LENGTH + 1;
-	DWORD dwCatalogLength                        = MAX_PATH + 1 ;
-	DWORD dwIndex                                = 0;
+	wchar_t machine[MAX_COMPUTERNAME_LENGTH + 1] = {0};
+	wchar_t catalog[MAX_PATH + 1]                = {0};
+	DWORD machineLength                          = MAX_COMPUTERNAME_LENGTH + 1;
+	DWORD catalogLength                          = MAX_PATH + 1 ;
+	DWORD index                                  = 0;
 
 	if (!pWDSInterface->bWDS2Available)
 		return FALSE;
 
-	while (pWDSInterface->pLocateCatalogsA(cpDirectory, dwIndex++, cMachine, &dwMachineLength, cCatalog, &dwCatalogLength) == S_OK)
+	while (pWDSInterface->pLocateCatalogsW(directory, index++, machine,
+	    &machineLength, catalog, &catalogLength) == S_OK)
 	{
-		if (strcmp(cMachine, ".") == 0 && _memicmp("system", cCatalog, 6) == 0)
+		if (wcscmp(machine, L".") == 0 && _wcsicmp(catalog, L"system") == 0)
 		{
-			dprintf("[SEARCH] wds2_indexed: Directory '%s' is indexed.", cpDirectory);
 			return TRUE;
 		}
 	}
@@ -173,21 +184,13 @@ BOOL wds2_indexed(WDS_INTERFACE * pWDSInterface, char * cpDirectory)
 /*
  * Helper function to check if a given directory is indexed in the WDS v3 crawl scope
  */
-BOOL wds3_indexed(WDS_INTERFACE * pWDSInterface, char * cpDirectory)
+BOOL wds3_indexed(WDS_INTERFACE * pWDSInterface, wchar_t * directory)
 {
-	HRESULT hr          = 0;
-	WCHAR * wpDirectory = NULL;
-	BOOL bResult        = FALSE;
+	BOOL bResult         = FALSE;
 
-	if (!pWDSInterface->bWDS3Available)
-		return FALSE;
-
-	wpDirectory = utf8_to_wchar(cpDirectory);
-
-	if (wpDirectory)
-		ISearchCrawlScopeManager_IncludedInCrawlScope(pWDSInterface->pCrawlScopeManager, wpDirectory, &bResult);
-
-	free(wpDirectory);
+	if (pWDSInterface->bWDS3Available)
+		ISearchCrawlScopeManager_IncludedInCrawlScope(
+		    pWDSInterface->pCrawlScopeManager, directory, &bResult);
 
 	return bResult;
 }
@@ -263,56 +266,50 @@ HRESULT wds_execute(ICommand * pCommand, Packet * pResponse)
 			if (FAILED(hr))
 				BREAK_WITH_ERROR("[SEARCH] wds_execute: IRowset_GetData Failed", hr);
 
-			char *path = wchar_to_utf8(rowSearchResults.wPathValue);
-
-			if (_memicmp("iehistory:", path, 10) == 0)
+			if (_memicmp(L"iehistory:", rowSearchResults.wPathValue, sizeof(L"iehistory:")) == 0)
 			{
 				// "iehistory://{*}/"
-				char * cpHistory = strstr(path, "}");
-				if (cpHistory)
-					search_add_result(pResponse, "", cpHistory+2, 0);
+				wchar_t * history = wcsstr(rowSearchResults.wPathValue, L"}");
+				if (history)
+					search_add_result(pResponse, L"", history + 2, 0);
 			}
-			else if (_memicmp("mapi:", path, 5) == 0)
+			else if (_memicmp(L"mapi:", rowSearchResults.wPathValue, sizeof(L"mapi:")) == 0)
 			{
 				// "mapi://{*}/"
-				char * cpHistory = strstr(path, "}");
-				if (cpHistory)
-					search_add_result(pResponse, "", cpHistory+2, 0);
+				wchar_t * history = wcsstr(rowSearchResults.wPathValue, L"}");
+				if (history)
+					search_add_result(pResponse, L"", history + 2, 0);
 			}
-			else if (rowSearchResults.dwSizeValue > 0)
-			{
-				size_t i           = 0;
-				char * cpFileName  = "";
-				char * cpFile      = "";
-				char * cpDirectory = path;
+			else if (rowSearchResults.dwSizeValue > 0) {
 
-				if (_memicmp("file:", cpDirectory, strlen("file:")) == 0)
-					cpDirectory = (char *)(cpDirectory + strlen("file:"));
+				size_t i            = 0;
+				wchar_t * fileName  = L"";
+				wchar_t * file      = L"";
+				wchar_t * directory = rowSearchResults.wPathValue;
 
-				for(i=0 ; i<strlen(cpDirectory) ; i++)
+				if (_memicmp(L"file:", directory, wcslen(L"file:")) == 0)
+					directory = (directory + wcslen(L"file:"));
+
+				for (i = 0; i < wcslen(directory); i++)
 				{
-					if (cpDirectory[i] == '/')
-						cpDirectory[i] = '\\';
+					if (directory[i] == L'/')
+						directory[i] = L'\\';
 				}
 
-				cpFile = strrchr(cpDirectory, '\\');
-				if (cpFile)
+				file = wcsrchr(directory, L'\\');
+				if (file)
 				{
-					*cpFile    = '\x00';
-					cpFileName = cpFile + 1;
+					*file    = L'\x00';
+					fileName = file + 1;
 				}
 				else
 				{
-					cpDirectory = "";
-					cpFileName  = cpDirectory;
+					directory = L"";
+					fileName  = directory;
 				}
 
-				search_add_result(pResponse, cpDirectory, cpFileName, rowSearchResults.dwSizeValue);
-
-				dprintf("[SEARCH] wds_execute. Found: %s\\%s", cpDirectory, cpFileName);
+				search_add_result(pResponse, directory, fileName, rowSearchResults.dwSizeValue);
 			}
-
-			free(path);
 
 			hr = IRowset_ReleaseRows(pRowset, dbCount, pRows, NULL, NULL, NULL);
 			if (FAILED(hr))
@@ -336,20 +333,18 @@ HRESULT wds_execute(ICommand * pCommand, Packet * pResponse)
 /*
  * Search via Windows Desktop Search v2 via COM
  */
-DWORD wds2_search(WDS_INTERFACE * pWDSInterface, char * cpCurrentDirectory, SEARCH_OPTIONS * pOptions, Packet * pResponse)
+DWORD wds2_search(WDS_INTERFACE * pWDSInterface, wchar_t *directory, SEARCH_OPTIONS * pOptions, Packet * pResponse)
 {
 	DWORD dwResult              = ERROR_SUCCESS;
 	ICommand * pCommand         = NULL;
 	DBCOMMANDTREE * pTree       = NULL;
 	ICommandTree * pCommandTree = NULL;
-	WCHAR * wpQuery             = NULL;
-	WCHAR * wpFileGlob          = NULL;
-	WCHAR * wpCurrentDirectory  = NULL;
-	char * cpNewCurrent         = NULL;
+	wchar_t * query               = NULL;
+	wchar_t * newCurrent          = NULL;
 	DWORD dwDepth[1]            = {0};
-	WCHAR * wcScope[1]          = {0};
-	WCHAR * wcCatalog[1]        = {0};
-	WCHAR * wcMachines[1]       = {0};
+	wchar_t * wcScope[1]          = {0};
+	wchar_t * wcCatalog[1]        = {0};
+	wchar_t * wcMachines[1]       = {0};
 	HRESULT hr                  = 0;
 	size_t dwLength             = 0;
 
@@ -358,7 +353,7 @@ DWORD wds2_search(WDS_INTERFACE * pWDSInterface, char * cpCurrentDirectory, SEAR
 
 	do
 	{
-		if (!pWDSInterface )
+		if (!pWDSInterface)
 			BREAK_WITH_ERROR("[SEARCH] wds2_search: !pWDSInterface", ERROR_INVALID_PARAMETER);
 
 		if (!pWDSInterface->bWDS2Available)
@@ -367,22 +362,20 @@ DWORD wds2_search(WDS_INTERFACE * pWDSInterface, char * cpCurrentDirectory, SEAR
 		if (!pResponse || !pOptions)
 			BREAK_WITH_ERROR("[SEARCH] wds2_search: !pResultList || !pOptions", ERROR_INVALID_PARAMETER);
 
-		if (!cpCurrentDirectory)
-			cpCurrentDirectory = pOptions->cpRootDirectory;
+		if (!directory)
+			directory = pOptions->rootDirectory;
 
 		// sf: WDS v2 can bawk if a trailing slash is not present on some paths :/
-		dwLength = strlen(cpCurrentDirectory);
-		if (cpCurrentDirectory[dwLength-1] != '\\')
+		dwLength = wcslen(directory);
+		if (directory[dwLength-1] != L'\\')
 		{
-			cpNewCurrent = malloc(dwLength + 2);
-			if (!cpNewCurrent)
-				BREAK_WITH_ERROR("[SEARCH] wds2_search: !cpNewCurrent", ERROR_OUTOFMEMORY);
+			newCurrent = calloc(dwLength + 2, sizeof(wchar_t));
+			if (!newCurrent)
+				BREAK_WITH_ERROR("[SEARCH] wds2_search: !newCurrent", ERROR_OUTOFMEMORY);
 
-			memset(cpNewCurrent, 0, dwLength + 2);
+			swprintf(newCurrent, dwLength + 2, L"%s\\", directory);
 
-			sprintf(cpNewCurrent, "%s\\", cpCurrentDirectory);
-
-			cpCurrentDirectory = cpNewCurrent;
+			directory = newCurrent;
 		}
 
 		if (pOptions->bResursive)
@@ -390,16 +383,13 @@ DWORD wds2_search(WDS_INTERFACE * pWDSInterface, char * cpCurrentDirectory, SEAR
 		else
 			dwDepth[0] = QUERY_SHALLOW | QUERY_PHYSICAL_PATH;
 
-		wpCurrentDirectory = utf8_to_wchar(cpCurrentDirectory);
-			BREAK_WITH_ERROR("[SEARCH] wds2_search: utf8_to_wchar wpCurrentDirectory failed", ERROR_INVALID_PARAMETER);
-
-		wcScope[0]    = wpCurrentDirectory;
+		wcScope[0]    = pOptions->rootDirectory;
 		wcCatalog[0]  = L"System";
 		wcMachines[0] = L".";
 
 		hr = pWDSInterface->pCIMakeICommand((ICommand**)&pCommand, 1,
-		    (DWORD *)&dwDepth, (WCHAR **)&wcScope, (WCHAR **)&wcCatalog,
-			(WCHAR **)&wcMachines);
+		    (DWORD *)&dwDepth, (wchar_t **)&wcScope, (wchar_t **)&wcCatalog,
+			(wchar_t **)&wcMachines);
 		if (FAILED(hr))
 			BREAK_WITH_ERROR("[SEARCH] wds2_search: CIMakeICommand Failed", hr);
 
@@ -407,19 +397,15 @@ DWORD wds2_search(WDS_INTERFACE * pWDSInterface, char * cpCurrentDirectory, SEAR
 		if (FAILED(hr))
 			BREAK_WITH_ERROR("[SEARCH] wds2_search: ICommand_QueryInterface Failed", hr);
 
-		wpFileGlob = utf8_to_wchar(pOptions->cpFileGlob);
-		if (!wpFileGlob)
-			BREAK_WITH_ERROR("[SEARCH] wds2_search: !wpFileGlob", ERROR_OUTOFMEMORY);
+		dwLength = wcslen(pOptions->glob);
 
-		dwLength = wcslen(wpFileGlob);
+		query = calloc((dwLength + 128), sizeof(wchar_t));
+		if (!query)
+			BREAK_WITH_ERROR("[SEARCH] wds2_search: calloc wQuery failed", ERROR_INVALID_PARAMETER);
 
-		wpQuery = calloc((dwLength + 128), sizeof(WCHAR));
-		if (!wpQuery)
-			BREAK_WITH_ERROR("[SEARCH] wds2_search: calloc wpFileGlob failed", ERROR_INVALID_PARAMETER);
+		swprintf_s(query, (dwLength + 128), L"#filename = %s", pOptions->glob);
 
-		swprintf_s(wpQuery, (dwLength + 128), L"#filename = %s", wpFileGlob);
-
-		hr = pWDSInterface->pCITextToFullTree(wpQuery, L"size,path", NULL, NULL, &pTree, 0, NULL, GetSystemDefaultLCID());
+		hr = pWDSInterface->pCITextToFullTree(query, L"size,path", NULL, NULL, &pTree, 0, NULL, GetSystemDefaultLCID());
 		if (FAILED(hr))
 			BREAK_WITH_ERROR("[SEARCH] wds2_search: CITextToFullTree Failed", hr);
 
@@ -439,13 +425,9 @@ DWORD wds2_search(WDS_INTERFACE * pWDSInterface, char * cpCurrentDirectory, SEAR
 	if (pCommand)
 		ICommand_Release(pCommand);
 
-	free(wpFileGlob);
+	free(query);
 
-	free(wpQuery);
-
-	free(wpCurrentDirectory);
-
-	free(cpNewCurrent);
+	free(newCurrent);
 
 	dprintf("[SEARCH] wds2_search: Finished.");
 
@@ -455,12 +437,12 @@ DWORD wds2_search(WDS_INTERFACE * pWDSInterface, char * cpCurrentDirectory, SEAR
 /*
  * Search via Windows Desktop Search >= 3.0 via COM ...yuk! would a kernel32!FileSearch("*.doc") have killed them!?!?
  */
-DWORD wds3_search(WDS_INTERFACE * pWDSInterface, WCHAR * wpProtocol, char * cpCurrentDirectory, SEARCH_OPTIONS * pOptions, Packet * pResponse)
+DWORD wds3_search(WDS_INTERFACE * pWDSInterface, wchar_t * wpProtocol, wchar_t * directory,
+    SEARCH_OPTIONS * pOptions, Packet * pResponse)
 {
 	DWORD dwResult                    = ERROR_SUCCESS;
-	WCHAR * wpSQL                     = NULL;
-	WCHAR * wpQuery                   = NULL;
-	WCHAR * wpConnectionString        = NULL;
+	wchar_t * wpSQL                   = NULL;
+	wchar_t * wpConnectionString      = NULL;
 	ISearchQueryHelper * pQueryHelper = NULL;
 	IDataInitialize * pDataInitialize = NULL;
 	IDBInitialize * pIDBInitialize    = NULL;
@@ -476,17 +458,17 @@ DWORD wds3_search(WDS_INTERFACE * pWDSInterface, WCHAR * wpProtocol, char * cpCu
 
 	do
 	{
-		if (!pWDSInterface )
+		if (!pWDSInterface)
 			BREAK_WITH_ERROR("[SEARCH] wds3_search: !pWDSInterface", ERROR_INVALID_PARAMETER);
 
 		if (!pWDSInterface->bWDS3Available)
 			break;
 
-		if (!pResponse || !pOptions || !wpProtocol )
+		if (!pResponse || !pOptions || !wpProtocol)
 			BREAK_WITH_ERROR("[SEARCH] wds3_search: !pResultList || !pOptions || !wpProtocol", ERROR_INVALID_PARAMETER);
 
-		if (!cpCurrentDirectory)
-			cpCurrentDirectory = pOptions->cpRootDirectory;
+		if (!directory)
+			directory = pOptions->rootDirectory;
 
 		hr = ISearchCatalogManager_GetQueryHelper(pWDSInterface->pSearchCatalogManager, &pQueryHelper);
 		if (FAILED(hr))
@@ -496,43 +478,23 @@ DWORD wds3_search(WDS_INTERFACE * pWDSInterface, WCHAR * wpProtocol, char * cpCu
 		if (FAILED(hr))
 			BREAK_WITH_ERROR("[SEARCH] wds3_search: ISearchQueryHelper_put_QuerySelectColumns Failed", hr);
 
-		if (cpCurrentDirectory)
+		if (directory)
 		{
-			WCHAR * wpWhere         = NULL;
-			WCHAR * wpRootDirectory = NULL;
-
-			do
-			{
-				wpRootDirectory = utf8_to_wchar(cpCurrentDirectory);
-				if (wpRootDirectory == NULL)
-					BREAK_WITH_ERROR("[SEARCH] wds3_search: utf8_to_wchar wpRootDirectory failed", ERROR_INVALID_PARAMETER);
-
-				dwLength = wcslen(wpRootDirectory);
-
-				wpWhere = calloc((dwLength + 128), sizeof(WCHAR));
-				if (!wpWhere)
-					BREAK_WITH_ERROR("[SEARCH] wds3_search: !wpWhere", ERROR_OUTOFMEMORY);
-
+			size_t len = wcslen(directory) + 128;
+			wchar_t *where = calloc(len, sizeof(wchar_t));
+			if (where) {
 				if (pOptions->bResursive)
-					wsprintfW((LPWSTR)wpWhere, L"AND SCOPE='%s:%s'", wpProtocol, wpRootDirectory);
+					swprintf_s(where, len, L"AND SCOPE='%s:%s'", wpProtocol, directory);
 				else
-					wsprintfW((LPWSTR)wpWhere, L"AND DIRECTORY='%s:%s'", wpProtocol, wpRootDirectory);
-
-				hr = ISearchQueryHelper_put_QueryWhereRestrictions(pQueryHelper, wpWhere);
-				if (FAILED(hr))
-					BREAK_WITH_ERROR("[SEARCH] wds3_search: ISearchQueryHelper_put_QueryWhereRestrictions Failed", hr);
-
-			} while (0);
-
-			free(wpWhere);
-
-			free(wpRootDirectory);
+					swprintf_s(where, len, L"AND DIRECTORY='%s:%s'", wpProtocol, directory);
+				ISearchQueryHelper_put_QueryWhereRestrictions(pQueryHelper, where);
+				free(where);
+			} else {
+				dprintf("[SEARCH] wds3_search: !where", ERROR_OUTOFMEMORY);
+			}
 		}
 
-		wpQuery = utf8_to_wchar(pOptions->cpFileGlob);
-			BREAK_WITH_ERROR("[SEARCH] wds3_search: utf8_to_wchar wpQuery failed", ERROR_INVALID_PARAMETER);
-
-		hr = ISearchQueryHelper_GenerateSQLFromUserQuery(pQueryHelper, wpQuery, &wpSQL);
+		hr = ISearchQueryHelper_GenerateSQLFromUserQuery(pQueryHelper, pOptions->glob, &wpSQL);
 		if (FAILED(hr))
 			BREAK_WITH_ERROR("[SEARCH] wds3_search: ISearchQueryHelper_GenerateSQLFromUserQuery Failed", hr);
 
@@ -612,8 +574,6 @@ DWORD wds3_search(WDS_INTERFACE * pWDSInterface, WCHAR * wpProtocol, char * cpCu
 	if (pDataInitialize)
 		IDataInitialize_Release(pDataInitialize);
 
-	free(wpQuery);
-
 	dprintf("[SEARCH] wds3_search: Finished.");
 
 	return dwResult;
@@ -622,162 +582,108 @@ DWORD wds3_search(WDS_INTERFACE * pWDSInterface, WCHAR * wpProtocol, char * cpCu
 /*
  * Search a directory for files.
  */
-DWORD search_directory(char * cpDirectory, SEARCH_OPTIONS * pOptions, Packet * pResponse)
+DWORD search_files(wchar_t * directory, SEARCH_OPTIONS * pOptions, Packet * pResponse)
 {
-	DWORD dwResult           = ERROR_SUCCESS;
-	HANDLE hFile             = NULL;
-	char * cpFirstFile       = NULL;
-	WIN32_FIND_DATA FindData = {0};
-	size_t dwLength          = 0;
+	wchar_t firstFile[FS_MAX_PATH];
+	swprintf_s(firstFile, FS_MAX_PATH, L"%s\\%s", directory, pOptions->glob);
 
-	do
-	{
-		dwLength    = strlen(cpDirectory) + strlen(pOptions->cpFileGlob) + 32;
-		cpFirstFile = malloc(dwLength);
-		if (!cpFirstFile)
-			BREAK_WITH_ERROR("[SEARCH] search_directory: !cpFirstFile", ERROR_OUTOFMEMORY);
-
-		sprintf_s(cpFirstFile, dwLength, "%s\\%s", cpDirectory, pOptions->cpFileGlob);
-
-		hFile = FindFirstFile(cpFirstFile, &FindData);
-		if (hFile == INVALID_HANDLE_VALUE)
-		{
-			// if not files in this directory matched our pattern, finish with success
-			if (GetLastError() == ERROR_FILE_NOT_FOUND)
-				break;
-			// otherwise we fail with an error
-			BREAK_ON_ERROR("[SEARCH] search_directory: FindFirstFile Failed.");
-		}
-
+	WIN32_FIND_DATAW data;
+	HANDLE hFile = FindFirstFileW(firstFile, &data);
+	if (hFile != INVALID_HANDLE_VALUE) {
 		do
 		{
-			do
+			if (wcscmp(data.cFileName, L".") && wcscmp(data.cFileName, L"..") &&
+				!(data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
 			{
-				if (strcmp(FindData.cFileName, ".") == 0)
-					break;
+				search_add_result(pResponse, directory, data.cFileName, data.nFileSizeLow);
+			}
+		} while (FindNextFileW(hFile, &data) != 0);
 
-				if (strcmp(FindData.cFileName, "..") == 0)
-					break;
-
-				if (FindData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
-					break;
-
-				search_add_result(pResponse, cpDirectory, FindData.cFileName, FindData.nFileSizeLow);
-
-				dprintf("[SEARCH] search_directory. Found: %s\\%s", cpDirectory, FindData.cFileName );
-
-			} while (0);
-
-		} while (FindNextFile(hFile, &FindData) != 0 );
-
-	} while (0);
-
-	free(cpFirstFile);
-
-	if (hFile)
 		FindClose(hFile);
+	} else {
+		if (GetLastError() != ERROR_FILE_NOT_FOUND) {
+			dprintf("[SEARCH] search_files: FindFirstFileW Failed.");
+			return GetLastError();
+		}
+	}
 
-	return dwResult;
+	return ERROR_SUCCESS;
+}
+
+DWORD directory_search(wchar_t *directory, SEARCH_OPTIONS * pOptions, Packet * pResponse)
+{
+	DWORD dwResult            = ERROR_SUCCESS;
+	BOOL bAllreadySearched    = FALSE;
+	WIN32_FIND_DATAW FindData = {0};
+	wchar_t firstFile[FS_MAX_PATH];
+
+	swprintf_s(firstFile, FS_MAX_PATH, L"%s\\*.*", directory);
+
+	HANDLE hFile = FindFirstFileW(firstFile, &FindData);
+	if (hFile != INVALID_HANDLE_VALUE)
+	{
+		do
+		{
+			if (FindData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+			{
+				if (pOptions->bResursive &&
+					wcscmp(FindData.cFileName, L".") && wcscmp(FindData.cFileName, L".."))
+				{
+
+					DWORD len = wcslen(directory) + wcslen(FindData.cFileName) + 32;
+					wchar_t *nextDirectory = calloc(len, sizeof(wchar_t));
+					if (nextDirectory) {
+						swprintf_s(nextDirectory, len, L"%s\\%s", directory, FindData.cFileName);
+
+						dwResult = directory_search(nextDirectory, pOptions, pResponse);
+
+						free(nextDirectory);
+					}
+				}
+			}
+			else if (!bAllreadySearched)
+			{
+				// Call FindFirstFile again to glob specific files in this directory
+				dwResult = search_files(directory, pOptions, pResponse);
+
+				bAllreadySearched = TRUE;
+			}
+		} while (FindNextFileW(hFile, &FindData) != 0);
+
+		FindClose(hFile);
+	} else {
+		if (GetLastError() != ERROR_FILE_NOT_FOUND) {
+			dprintf("[SEARCH] search_files: FindFirstFileW Failed.");
+			return GetLastError();
+		}
+	}
+
+	return ERROR_SUCCESS;
 }
 
 /*
  * Perform a file search using Windows Desktop Search (v2 or v3 depending what's available)
  * and falling back to a FindFirstFile/FindNextFile search technique if not.
  */
-DWORD search(WDS_INTERFACE * pWDSInterface, char * cpCurrentDirectory, SEARCH_OPTIONS * pOptions, Packet * pResponse)
+DWORD search(WDS_INTERFACE * pWDSInterface, wchar_t *directory, SEARCH_OPTIONS * pOptions, Packet * pResponse)
 {
 	DWORD dwResult           = ERROR_ACCESS_DENIED;
-	HANDLE hFile             = NULL;
-	char * cpFirstFile       = NULL;
-	BOOL bAllreadySearched   = FALSE;
-	WIN32_FIND_DATA FindData = {0};
-	size_t dwLength          = 0;
 
-	do
-	{
-		if (!pResponse || !pOptions)
-			BREAK_WITH_ERROR("[SEARCH] search: !pResponse || !pOptions", ERROR_INVALID_PARAMETER);
+	if (!directory)
+		directory = pOptions->rootDirectory;
 
-		if (!cpCurrentDirectory)
-			cpCurrentDirectory = pOptions->cpRootDirectory;
+	if (!directory) {
+		dwResult = ERROR_INVALID_PARAMETER;
+	} else {
+		if (wds3_indexed(pWDSInterface, directory))
+			dwResult = wds3_search(pWDSInterface, L"file", directory, pOptions, pResponse);
 
-		if (wds3_indexed(pWDSInterface, cpCurrentDirectory))
-		{
-			dwResult = wds3_search(pWDSInterface, L"file", cpCurrentDirectory, pOptions, pResponse);
-		}
-
-		if (dwResult != ERROR_SUCCESS && wds2_indexed(pWDSInterface, cpCurrentDirectory))
-		{
-			dwResult = wds2_search(pWDSInterface, cpCurrentDirectory, pOptions, pResponse);
-		}
+		if (dwResult != ERROR_SUCCESS && wds2_indexed(pWDSInterface, directory))
+			dwResult = wds2_search(pWDSInterface, directory, pOptions, pResponse);
 
 		if (dwResult != ERROR_SUCCESS)
-		{
-			dwResult    = ERROR_SUCCESS;
-			dwLength    = strlen(cpCurrentDirectory) + 32;
-			cpFirstFile = malloc(dwLength);
-			if (!cpFirstFile)
-				BREAK_WITH_ERROR("[SEARCH] search: !cpFirstFile", ERROR_OUTOFMEMORY);
-
-			sprintf_s(cpFirstFile, dwLength, "%s\\*.*", cpCurrentDirectory);
-
-			hFile = FindFirstFile(cpFirstFile, &FindData);
-			if (hFile == INVALID_HANDLE_VALUE)
-			{
-				if (GetLastError() == ERROR_ACCESS_DENIED)
-					break;
-				BREAK_ON_ERROR("[SEARCH] search: FindFirstFile Failed.");
-			}
-			do
-			{
-				if (FindData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
-				{
-					do
-					{
-						char * cpNextDirectory = NULL;
-
-						if (!pOptions->bResursive)
-							break;
-
-						if (strcmp(FindData.cFileName, ".") == 0)
-							break;
-
-						if (strcmp(FindData.cFileName, "..") == 0)
-							break;
-
-						dwLength        = strlen(cpCurrentDirectory) + strlen(FindData.cFileName) + 32;
-						cpNextDirectory = malloc(dwLength);
-						if (!cpNextDirectory)
-							break;
-
-						sprintf_s(cpNextDirectory, dwLength, "%s\\%s", cpCurrentDirectory, FindData.cFileName);
-
-						dwResult = search(pWDSInterface, cpNextDirectory, pOptions, pResponse);
-
-						free(cpNextDirectory);
-
-					} while (0);
-				}
-				else
-				{
-					if (!bAllreadySearched)
-					{
-						// we call search_dir_via_api() to avail of glob searching via a second
-						// FindFirstFile() loop (which is available on NT4 and up, unlike PathMatchSpec())
-						dwResult = search_directory(cpCurrentDirectory, pOptions, pResponse);
-
-						bAllreadySearched = TRUE;
-					}
-				}
-
-			} while (FindNextFile(hFile, &FindData) != 0 );
-		}
-
-	} while (0);
-
-	free(cpFirstFile);
-
-	FindClose(hFile);
+			dwResult = directory_search(directory, pOptions, pResponse);
+	}
 
 	return dwResult;
 }
@@ -804,65 +710,61 @@ DWORD request_fs_search(Remote * pRemote, Packet * pPacket)
 		if (!pOptions)
 			BREAK_WITH_ERROR("[SEARCH] search_via_api: !pOptions", ERROR_OUTOFMEMORY);
 
-		pOptions->cpRootDirectory = packet_get_tlv_value_string(pPacket, TLV_TYPE_SEARCH_ROOT);
-		if (!pOptions->cpRootDirectory)
-			pOptions->cpRootDirectory = "";
-
-		if (strlen(pOptions->cpRootDirectory) == 0)
-			pOptions->cpRootDirectory = NULL;
+		pOptions->rootDirectory = utf8_to_wchar(packet_get_tlv_value_string(pPacket, TLV_TYPE_SEARCH_ROOT));
 
 		pOptions->bResursive = packet_get_tlv_value_bool(pPacket, TLV_TYPE_SEARCH_RECURSE);
 
-		pOptions->cpFileGlob = packet_get_tlv_value_string(pPacket, TLV_TYPE_SEARCH_GLOB);
-		if (!pOptions->cpFileGlob)
-			pOptions->cpFileGlob = "*.*";
+		pOptions->glob = utf8_to_wchar(packet_get_tlv_value_string(pPacket, TLV_TYPE_SEARCH_GLOB));
+		if (!pOptions->glob)
+			pOptions->glob = L"*.*";
 
 		wds_startup(&WDSInterface);
 
-		if (!pOptions->cpRootDirectory)
+		if (!pOptions->rootDirectory)
 		{
 			DWORD dwLogicalDrives = 0;
-			char cIndex           = 0;
+			char index            = 0;
 
 			dwLogicalDrives = GetLogicalDrives();
 
-			for(cIndex = 'a'; cIndex <= 'z'; cIndex++)
+			for (index = 'a'; index <= 'z'; index++)
 			{
-				if (dwLogicalDrives & (1 << (cIndex-'a')))
+				if (dwLogicalDrives & (1 << (index-'a')))
 				{
 					DWORD dwType   = 0;
-					char cDrive[4] = {0};
+					wchar_t drive[4] = {0};
 
-					sprintf_s(cDrive, 4, "%c:\\\x00", cIndex);
+					swprintf_s(drive, 4, L"%c:\\\x00", index);
 
-					dwType = GetDriveType(cDrive);
+					dwType = GetDriveTypeW(drive);
 
 					if (dwType == DRIVE_FIXED || dwType == DRIVE_REMOTE)
 					{
-						pOptions->cpRootDirectory = (char *)&cDrive;
+						pOptions->rootDirectory = drive;
 
-						dprintf("[SEARCH] request_fs_search. Searching drive %s (type=%d)...", pOptions->cpRootDirectory, dwType);
+						dprintf("[SEARCH] request_fs_search. Searching drive %s (type=%d)...",
+						    pOptions->rootDirectory, dwType);
 
 						search(&WDSInterface, NULL, pOptions, pResponse);
 					}
 				}
 			}
 
-			pOptions->cpRootDirectory = "";
+			pOptions->rootDirectory = L"";
 
 			wds3_search(&WDSInterface, L"iehistory", NULL, pOptions, pResponse);
 			wds3_search(&WDSInterface, L"mapi", NULL, pOptions, pResponse);
 		}
 		else
 		{
-			if (strcmp(pOptions->cpRootDirectory, "iehistory") == 0)
+			if (wcscmp(pOptions->rootDirectory, L"iehistory") == 0)
 			{
-				pOptions->cpRootDirectory = "";
+				pOptions->rootDirectory = L"";
 				wds3_search(&WDSInterface, L"iehistory", NULL, pOptions, pResponse);
 			}
-			else if (strcmp(pOptions->cpRootDirectory, "mapi") == 0)
+			else if (wcscmp(pOptions->rootDirectory, L"mapi") == 0)
 			{
-				pOptions->cpRootDirectory = "";
+				pOptions->rootDirectory = L"";
 				wds3_search(&WDSInterface, L"mapi", NULL, pOptions, pResponse);
 			}
 			else
