@@ -610,16 +610,25 @@ DWORD search_files(wchar_t * directory, SEARCH_OPTIONS * pOptions, Packet * pRes
 	return ERROR_SUCCESS;
 }
 
-DWORD directory_search(wchar_t *directory, SEARCH_OPTIONS * pOptions, Packet * pResponse)
+DWORD directory_search(wchar_t *directory, SEARCH_OPTIONS * pOptions, Packet * pResponse, int depth)
 {
 	DWORD dwResult            = ERROR_SUCCESS;
 	BOOL bAllreadySearched    = FALSE;
 	WIN32_FIND_DATAW FindData = {0};
-	wchar_t firstFile[FS_MAX_PATH];
+	size_t len                = wcslen(directory) + 5;
 
+	if (depth > 32 || len >= FS_MAX_PATH) {
+		return ERROR_SUCCESS;
+	}
+
+	wchar_t *firstFile = calloc(len, sizeof(wchar_t));
+	if (!firstFile) {
+		return ERROR_SUCCESS;
+	}
 	swprintf_s(firstFile, FS_MAX_PATH, L"%s\\*.*", directory);
 
 	HANDLE hFile = FindFirstFileW(firstFile, &FindData);
+	dprintf("%S", directory);
 	if (hFile != INVALID_HANDLE_VALUE)
 	{
 		do
@@ -635,7 +644,7 @@ DWORD directory_search(wchar_t *directory, SEARCH_OPTIONS * pOptions, Packet * p
 					if (nextDirectory) {
 						swprintf_s(nextDirectory, len, L"%s\\%s", directory, FindData.cFileName);
 
-						dwResult = directory_search(nextDirectory, pOptions, pResponse);
+						dwResult = directory_search(nextDirectory, pOptions, pResponse, depth + 1);
 
 						free(nextDirectory);
 					}
@@ -654,11 +663,13 @@ DWORD directory_search(wchar_t *directory, SEARCH_OPTIONS * pOptions, Packet * p
 	} else {
 		if (GetLastError() != ERROR_FILE_NOT_FOUND) {
 			dprintf("[SEARCH] search_files: FindFirstFileW Failed.");
-			return GetLastError();
+			dwResult = GetLastError();
 		}
 	}
 
-	return ERROR_SUCCESS;
+	free(firstFile);
+
+	return dwResult;
 }
 
 /*
@@ -682,7 +693,7 @@ DWORD search(WDS_INTERFACE * pWDSInterface, wchar_t *directory, SEARCH_OPTIONS *
 			dwResult = wds2_search(pWDSInterface, directory, pOptions, pResponse);
 
 		if (dwResult != ERROR_SUCCESS)
-			dwResult = directory_search(directory, pOptions, pResponse);
+			dwResult = directory_search(directory, pOptions, pResponse, 0);
 	}
 
 	return dwResult;
@@ -695,95 +706,92 @@ DWORD request_fs_search(Remote * pRemote, Packet * pPacket)
 {
 	DWORD dwResult              = ERROR_SUCCESS;
 	Packet * pResponse          = NULL;
-	SEARCH_OPTIONS * pOptions   = NULL;
+	SEARCH_OPTIONS options      = {0};
 	WDS_INTERFACE WDSInterface  = {0};
 
 	dprintf("[SEARCH] request_fs_search. Starting.");
 
-	do
+	pResponse = packet_create_response(pPacket);
+	if (!pResponse) {
+		dprintf("[SEARCH] request_fs_search: pResponse == NULL");
+		return ERROR_INVALID_HANDLE;
+	}
+
+	options.rootDirectory = utf8_to_wchar(
+		packet_get_tlv_value_string(pPacket, TLV_TYPE_SEARCH_ROOT));
+
+	options.glob = utf8_to_wchar(
+		packet_get_tlv_value_string(pPacket, TLV_TYPE_SEARCH_GLOB));
+
+	dprintf("[SEARCH] %S %S", options.rootDirectory, options.glob);
+
+	options.bResursive = packet_get_tlv_value_bool(pPacket, TLV_TYPE_SEARCH_RECURSE);
+
+	if (!options.glob)
+		options.glob = L"*.*";
+
+	wds_startup(&WDSInterface);
+
+	if (!options.rootDirectory)
 	{
-		pResponse = packet_create_response(pPacket);
-		if (!pResponse)
-			BREAK_WITH_ERROR("[SEARCH] request_fs_search: pResponse == NULL", ERROR_INVALID_HANDLE);
+		DWORD dwLogicalDrives = 0;
+		char index            = 0;
 
-		pOptions = malloc(sizeof(SEARCH_OPTIONS));
-		if (!pOptions)
-			BREAK_WITH_ERROR("[SEARCH] search_via_api: !pOptions", ERROR_OUTOFMEMORY);
+		dwLogicalDrives = GetLogicalDrives();
 
-		pOptions->rootDirectory = utf8_to_wchar(packet_get_tlv_value_string(pPacket, TLV_TYPE_SEARCH_ROOT));
-
-		pOptions->bResursive = packet_get_tlv_value_bool(pPacket, TLV_TYPE_SEARCH_RECURSE);
-
-		pOptions->glob = utf8_to_wchar(packet_get_tlv_value_string(pPacket, TLV_TYPE_SEARCH_GLOB));
-		if (!pOptions->glob)
-			pOptions->glob = L"*.*";
-
-		wds_startup(&WDSInterface);
-
-		if (!pOptions->rootDirectory)
+		for (index = 'a'; index <= 'z'; index++)
 		{
-			DWORD dwLogicalDrives = 0;
-			char index            = 0;
-
-			dwLogicalDrives = GetLogicalDrives();
-
-			for (index = 'a'; index <= 'z'; index++)
+			if (dwLogicalDrives & (1 << (index-'a')))
 			{
-				if (dwLogicalDrives & (1 << (index-'a')))
+				DWORD dwType   = 0;
+				wchar_t drive[4] = {0};
+
+				swprintf_s(drive, 4, L"%c:\\", index);
+
+				dwType = GetDriveTypeW(drive);
+
+				if (dwType == DRIVE_FIXED || dwType == DRIVE_REMOTE)
 				{
-					DWORD dwType   = 0;
-					wchar_t drive[4] = {0};
+					options.rootDirectory = drive;
 
-					swprintf_s(drive, 4, L"%c:\\\x00", index);
+					dprintf("[SEARCH] request_fs_search. Searching drive %S (type=%d)...",
+						options.rootDirectory, dwType);
 
-					dwType = GetDriveTypeW(drive);
-
-					if (dwType == DRIVE_FIXED || dwType == DRIVE_REMOTE)
-					{
-						pOptions->rootDirectory = drive;
-
-						dprintf("[SEARCH] request_fs_search. Searching drive %s (type=%d)...",
-						    pOptions->rootDirectory, dwType);
-
-						search(&WDSInterface, NULL, pOptions, pResponse);
-					}
+					search(&WDSInterface, NULL, &options, pResponse);
 				}
 			}
+		}
 
-			pOptions->rootDirectory = L"";
+		options.rootDirectory = L"";
 
-			wds3_search(&WDSInterface, L"iehistory", NULL, pOptions, pResponse);
-			wds3_search(&WDSInterface, L"mapi", NULL, pOptions, pResponse);
+		wds3_search(&WDSInterface, L"iehistory", NULL, &options, pResponse);
+		wds3_search(&WDSInterface, L"mapi", NULL, &options, pResponse);
+	}
+	else
+	{
+		if (wcscmp(options.rootDirectory, L"iehistory") == 0)
+		{
+			options.rootDirectory = L"";
+			wds3_search(&WDSInterface, L"iehistory", NULL, &options, pResponse);
+		}
+		else if (wcscmp(options.rootDirectory, L"mapi") == 0)
+		{
+			options.rootDirectory = L"";
+			wds3_search(&WDSInterface, L"mapi", NULL, &options, pResponse);
 		}
 		else
 		{
-			if (wcscmp(pOptions->rootDirectory, L"iehistory") == 0)
-			{
-				pOptions->rootDirectory = L"";
-				wds3_search(&WDSInterface, L"iehistory", NULL, pOptions, pResponse);
-			}
-			else if (wcscmp(pOptions->rootDirectory, L"mapi") == 0)
-			{
-				pOptions->rootDirectory = L"";
-				wds3_search(&WDSInterface, L"mapi", NULL, pOptions, pResponse);
-			}
-			else
-			{
-				dwResult = search(&WDSInterface, NULL, pOptions, pResponse);
-			}
+			dwResult = search(&WDSInterface, NULL, &options, pResponse);
 		}
-	} while (0);
+	}
 
 	if (pResponse)
 	{
 		packet_add_tlv_uint(pResponse, TLV_TYPE_RESULT, dwResult);
-
 		dwResult = packet_transmit(pRemote, pResponse, NULL);
 	}
 
 	wds_shutdown(&WDSInterface);
-
-	free(pOptions);
 
 	dprintf("[SEARCH] request_fs_search: Finished. dwResult=0x%08X", dwResult);
 
