@@ -655,7 +655,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     </ClCompile>
     <ClCompile Include="..\..\source\server\win\remote_dispatch.c" />
     <ClCompile Include="..\..\source\server\remote_dispatch_common.c" />
-    <ClCompile Include="..\..\source\server\server_setup.c" />
+    <ClCompile Include="..\..\source\server\server_setup_win.c" />
     <ClCompile Include="..\..\source\server\win\server_setup_winhttp.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='r7_debug|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='r7_debug|Win32'">
@@ -698,7 +698,6 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <PrecompiledHeaderOutputFile Condition="'$(Configuration)|$(Platform)'=='r7_release|x64'">
       </PrecompiledHeaderOutputFile>
     </ClCompile>
-    <ClCompile Include="..\..\source\server\win\server_setup_wininet.c" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\source\server\win\metsrv.def" />
@@ -708,7 +707,6 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClInclude Include="..\..\source\server\metsrv.h" />
     <ClInclude Include="..\..\source\server\remote_dispatch.h" />
     <ClInclude Include="..\..\source\server\win\server_setup_winhttp.h" />
-    <ClInclude Include="..\..\source\server\win\server_setup_wininet.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\backcompat\backcompat.vcxproj">

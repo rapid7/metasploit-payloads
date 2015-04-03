@@ -463,7 +463,13 @@ DWORD InitServerExtension(Remote *remote)
 	peername4 = NULL;
 	peername6 = NULL;
 	peername_len = sizeof(peername);
-	getpeername(remote->fd, &peername, &peername_len);
+
+	if (remote->transport->get_socket) {
+		getpeername(remote->transport->get_socket(remote->transport), &peername, &peername_len);
+	}
+	else {
+		// TODO: not sure what to do here.
+	}
 
 	switch(peername.sa_family) {
 		case PF_INET:
