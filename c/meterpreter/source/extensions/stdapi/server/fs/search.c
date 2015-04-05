@@ -59,9 +59,6 @@ VOID wds_startup(WDS_INTERFACE * pWDSInterface)
 
 	do
 	{
-		if (!pWDSInterface)
-			BREAK_WITH_ERROR("[SEARCH] wds_startup: !pWDSInterface", ERROR_INVALID_HANDLE);
-
 		memset(pWDSInterface, 0, sizeof(WDS_INTERFACE));
 
 		hr = CoInitialize(NULL);
@@ -699,6 +696,37 @@ DWORD search(WDS_INTERFACE * pWDSInterface, wchar_t *directory, SEARCH_OPTIONS *
 	return dwResult;
 }
 
+VOID search_all_drives(WDS_INTERFACE *pWDSInterface, SEARCH_OPTIONS *options, Packet *pResponse)
+{
+	DWORD dwLogicalDrives = GetLogicalDrives();
+
+	for (wchar_t index = L'a'; index <= L'z'; index++)
+	{
+		if (dwLogicalDrives & (1 << (index-L'a')))
+		{
+			DWORD dwType   = 0;
+			wchar_t drive[4] = {0};
+
+			swprintf_s(drive, 4, L"%c:\\", index);
+
+			dwType = GetDriveTypeW(drive);
+
+			if (dwType == DRIVE_FIXED || dwType == DRIVE_REMOTE)
+			{
+				options->rootDirectory = drive;
+				real_dprintf("%S", options->rootDirectory);
+
+				dprintf("[SEARCH] request_fs_search. Searching drive %S (type=%d)...",
+					options->rootDirectory, dwType);
+
+				search(pWDSInterface, NULL, options, pResponse);
+			}
+		}
+	}
+
+	options->rootDirectory = NULL;
+}
+
 /*
  * Request routine for performing a file search.
  */
@@ -723,7 +751,12 @@ DWORD request_fs_search(Remote * pRemote, Packet * pPacket)
 	options.glob = utf8_to_wchar(
 		packet_get_tlv_value_string(pPacket, TLV_TYPE_SEARCH_GLOB));
 
-	dprintf("[SEARCH] %S %S", options.rootDirectory, options.glob);
+	if (options.rootDirectory && wcslen(options.rootDirectory) == 0) {
+		free(options.rootDirectory);
+		options.rootDirectory = NULL;
+	}
+
+	dprintf("[SEARCH] root: '%S' glob: '%S'", options.rootDirectory, options.glob);
 
 	options.bResursive = packet_get_tlv_value_bool(pPacket, TLV_TYPE_SEARCH_RECURSE);
 
@@ -734,36 +767,7 @@ DWORD request_fs_search(Remote * pRemote, Packet * pPacket)
 
 	if (!options.rootDirectory)
 	{
-		DWORD dwLogicalDrives = 0;
-		char index            = 0;
-
-		dwLogicalDrives = GetLogicalDrives();
-
-		for (index = 'a'; index <= 'z'; index++)
-		{
-			if (dwLogicalDrives & (1 << (index-'a')))
-			{
-				DWORD dwType   = 0;
-				wchar_t drive[4] = {0};
-
-				swprintf_s(drive, 4, L"%c:\\", index);
-
-				dwType = GetDriveTypeW(drive);
-
-				if (dwType == DRIVE_FIXED || dwType == DRIVE_REMOTE)
-				{
-					options.rootDirectory = drive;
-
-					dprintf("[SEARCH] request_fs_search. Searching drive %S (type=%d)...",
-						options.rootDirectory, dwType);
-
-					search(&WDSInterface, NULL, &options, pResponse);
-				}
-			}
-		}
-
-		options.rootDirectory = L"";
-
+		search_all_drives(&WDSInterface, &options, pResponse);
 		wds3_search(&WDSInterface, L"iehistory", NULL, &options, pResponse);
 		wds3_search(&WDSInterface, L"mapi", NULL, &options, pResponse);
 	}
