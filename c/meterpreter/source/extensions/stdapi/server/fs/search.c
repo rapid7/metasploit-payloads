@@ -636,7 +636,7 @@ DWORD directory_search(wchar_t *directory, SEARCH_OPTIONS * pOptions, Packet * p
 					wcscmp(FindData.cFileName, L".") && wcscmp(FindData.cFileName, L".."))
 				{
 
-					DWORD len = wcslen(directory) + wcslen(FindData.cFileName) + 32;
+					size_t len = wcslen(directory) + wcslen(FindData.cFileName) + 32;
 					wchar_t *nextDirectory = calloc(len, sizeof(wchar_t));
 					if (nextDirectory) {
 						swprintf_s(nextDirectory, len, L"%s\\%s", directory, FindData.cFileName);
