@@ -12,12 +12,11 @@
 #include <stdio.h>
 #include <time.h>
 
+#define SAFE_FREE(x) {if(x){free(x);x=NULL;}}
+
 #ifdef _WIN32
 	#include <winsock2.h>
 	#include <windows.h>
-
-	/*! @brief When defined, tells metsrv to use WinHTTP instead of WinInet for HTTP(s) meterrpeter. */
-	#define USE_WINHTTP
 
 	typedef DWORD __u32;
 	typedef struct ___u128 {
@@ -216,8 +215,11 @@ static _inline void real_dprintf(char *format, ...)
 {
 	va_list args;
 	char buffer[1024];
-	va_start(args,format);
-	vsnprintf_s(buffer, sizeof(buffer), sizeof(buffer)-3, format,args);
+	size_t len;
+	_snprintf_s(buffer, sizeof(buffer), sizeof(buffer)-1, "[%x] ", GetCurrentThreadId());
+	len = strlen(buffer);
+	va_start(args, format);
+	vsnprintf_s(buffer + len, sizeof(buffer)-len, sizeof(buffer)-len - 3, format, args);
 	strcat_s(buffer, sizeof(buffer), "\r\n");
 	OutputDebugStringA(buffer);
 }

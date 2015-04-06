@@ -8,12 +8,14 @@ extern HINSTANCE hAppInstance;
 PLIST gExtensionList = NULL;
 
 DWORD request_core_enumextcmd(Remote* pRemote, Packet* pPacket);
+DWORD request_core_machine_id(Remote* pRemote, Packet* pPacket);
 
 // Dispatch table
 Command customCommands[] = 
 {
 	COMMAND_REQ("core_loadlib", request_core_loadlib),
 	COMMAND_REQ("core_enumextcmd", request_core_enumextcmd),
+	COMMAND_REQ("core_machine_id", request_core_machine_id),
 	COMMAND_TERMINATOR
 };
 
@@ -45,6 +47,7 @@ BOOL ext_cmd_callback(LPVOID pState, LPVOID pData)
 	return FALSE;
 }
 
+
 DWORD request_core_enumextcmd(Remote* pRemote, Packet* pPacket)
 {
 	BOOL bResult = FALSE;
@@ -61,6 +64,7 @@ DWORD request_core_enumextcmd(Remote* pRemote, Packet* pPacket)
 		bResult = list_enumerate(gExtensionList, ext_cmd_callback, &enumExt);
 
 		packet_add_tlv_uint(pResponse, TLV_TYPE_RESULT, ERROR_SUCCESS);
+
 		packet_transmit(pRemote, pResponse, NULL);
 	}
 
