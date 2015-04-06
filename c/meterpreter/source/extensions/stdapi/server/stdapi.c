@@ -187,7 +187,7 @@ DWORD InitServerExtension(Remote *remote)
 #endif
 {
 #ifdef _WIN32
-	hMetSrv = remote->hMetSrv;
+	hMetSrv = remote->met_srv;
 #endif
 	command_register_all(customCommands);
 

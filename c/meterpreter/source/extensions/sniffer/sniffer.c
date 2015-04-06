@@ -1206,7 +1206,7 @@ DWORD InitServerExtension(Remote *remote)
 #ifdef _WIN32
 	// This handle has to be set before calls to command_register
 	// otherwise we get obscure crashes!
-	hMetSrv = remote->hMetSrv;
+	hMetSrv = remote->met_srv;
 #endif
 
 	dprintf("[SERVER] Registering command handlers...");

@@ -161,15 +161,15 @@ DWORD request_lanattacks_stop_tftp(Remote *remote, Packet *packet)
 
 Command customCommands[] =
 {
-	COMMAND_REQ( "lanattacks_start_dhcp", request_lanattacks_start_dhcp ),
-	COMMAND_REQ( "lanattacks_reset_dhcp", request_lanattacks_reset_dhcp ),
-	COMMAND_REQ( "lanattacks_set_dhcp_option", request_lanattacks_set_dhcp_option ),
-	COMMAND_REQ( "lanattacks_stop_dhcp", request_lanattacks_stop_dhcp ),
-	COMMAND_REQ( "lanattacks_dhcp_log", request_lanattacks_dhcp_log ),
-	COMMAND_REQ( "lanattacks_start_tftp", request_lanattacks_start_tftp ),
-	COMMAND_REQ( "lanattacks_reset_tftp", request_lanattacks_stop_tftp ),
-	COMMAND_REQ( "lanattacks_add_tftp_file", request_lanattacks_add_tftp_file ),
-	COMMAND_REQ( "lanattacks_stop_tftp", request_lanattacks_stop_tftp ),
+	COMMAND_REQ("lanattacks_start_dhcp", request_lanattacks_start_dhcp),
+	COMMAND_REQ("lanattacks_reset_dhcp", request_lanattacks_reset_dhcp),
+	COMMAND_REQ("lanattacks_set_dhcp_option", request_lanattacks_set_dhcp_option),
+	COMMAND_REQ("lanattacks_stop_dhcp", request_lanattacks_stop_dhcp),
+	COMMAND_REQ("lanattacks_dhcp_log", request_lanattacks_dhcp_log),
+	COMMAND_REQ("lanattacks_start_tftp", request_lanattacks_start_tftp),
+	COMMAND_REQ("lanattacks_reset_tftp", request_lanattacks_stop_tftp),
+	COMMAND_REQ("lanattacks_add_tftp_file", request_lanattacks_add_tftp_file),
+	COMMAND_REQ("lanattacks_stop_tftp", request_lanattacks_stop_tftp),
 	COMMAND_TERMINATOR
 };
 
@@ -178,10 +178,11 @@ Command customCommands[] =
  * @param remote Pointer to the remote instance.
  * @return Indication of success or failure.
  */
-DWORD __declspec(dllexport) InitServerExtension(Remote *remote) {
-	hMetSrv = remote->hMetSrv;
+DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
+{
+	hMetSrv = remote->met_srv;
 
-	command_register_all( customCommands );
+	command_register_all(customCommands);
 
 	dhcpserver = createDHCPServer();
 	tftpserver = createTFTPServer();
@@ -207,7 +208,7 @@ DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
 	destroyDHCPServer(dhcpserver);
 	dhcpserver = NULL;
 
-	command_deregister_all( customCommands );
+	command_deregister_all(customCommands);
 
 	return ERROR_SUCCESS;
 }
