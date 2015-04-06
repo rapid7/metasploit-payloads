@@ -212,7 +212,7 @@ DWORD request_wifi_profile_list(Remote *remote, Packet *packet)
  */
 DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
 {
-	hMetSrv = remote->hMetSrv;
+	hMetSrv = remote->met_srv;
 
 	dprintf("[KIWI] Init server extension - initorclean");
 	mimikatz_init_or_clean(TRUE);

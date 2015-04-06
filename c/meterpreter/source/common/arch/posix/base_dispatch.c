@@ -92,7 +92,7 @@ extern Transport* transport_create_tcp(wchar_t* url);
 #if 0
 // TODO: put this back in when the stageless work has been completed for POSIX.
 BOOL
-remote_request_core_change_transport(Remote* remote, Packet* packet, DWORD* pResult) {
+remote_request_core_transport_change(Remote* remote, Packet* packet, DWORD* pResult) {
 	DWORD result = ERROR_NOT_ENOUGH_MEMORY;
 	Packet* response = packet_create_response(packet);
 	UINT transportType = packet_get_tlv_value_uint(packet, TLV_TYPE_TRANSPORT_TYPE);

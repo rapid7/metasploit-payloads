@@ -21,8 +21,11 @@ extern DWORD remote_request_core_crypto_negotiate( Remote *remote, Packet *packe
 extern BOOL remote_request_core_shutdown(Remote *remote, Packet *packet, DWORD* pResult);
 
 #ifdef _WIN32
+extern DWORD remote_request_core_transport_getcerthash(Remote* remote, Packet* packet);
+extern DWORD remote_request_core_transport_setcerthash(Remote* remote, Packet* packet);
+
 // POSIX support coming soon
-extern BOOL remote_request_core_change_transport( Remote *remote, Packet *packet, DWORD* pResult );
+extern BOOL remote_request_core_transport_change( Remote *remote, Packet *packet, DWORD* pResult );
 #endif
 extern BOOL remote_request_core_migrate( Remote *remote, Packet *packet, DWORD* pResult );
 
@@ -76,10 +79,12 @@ Command baseCommands[] =
 	// Crypto
 	COMMAND_REQ("core_crypto_negotiate", remote_request_core_crypto_negotiate),
 #ifdef _WIN32
+	COMMAND_REQ("core_transport_getcerthash", remote_request_core_transport_getcerthash),
+	COMMAND_REQ("core_transport_setcerthash", remote_request_core_transport_setcerthash),
 	// TODO: finalise the implementation of stageless POSIX before enabling this for the
 	// POSIX meterpreter.
 	// transport switching
-	COMMAND_INLINE_REQ("core_change_transport", remote_request_core_change_transport),
+	COMMAND_INLINE_REQ("core_transport_change", remote_request_core_transport_change),
 #endif
 	// Migration
 	COMMAND_INLINE_REQ("core_migrate", remote_request_core_migrate),
@@ -290,9 +295,9 @@ BOOL command_process_inline(Command *baseCommand, Command *extensionCommand, Rem
 
 #ifdef _WIN32
 				// Impersonate the thread token if needed (only on Windows)
-				if (remote->hServerToken != remote->hThreadToken)
+				if (remote->server_token != remote->thread_token)
 				{
-					if (!ImpersonateLoggedOnUser(remote->hThreadToken))
+					if (!ImpersonateLoggedOnUser(remote->thread_token))
 					{
 						dprintf("[COMMAND] Failed to impersonate thread token (%s) (%u)", lpMethod, GetLastError());
 					}
