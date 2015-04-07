@@ -20,29 +20,19 @@
  */
 VOID search_add_result(Packet * pResponse, wchar_t *directory, wchar_t *fileName, DWORD dwFileSize)
 {
-	Tlv entry[3] = {0};
-	DWORD dwSize = 0;
-
 	char *dir = wchar_to_utf8(directory);
 	char *file = wchar_to_utf8(fileName);
 
 	dprintf("[SEARCH] Found: %s\\%s", dir, file);
 
 	if (dir && file) {
-		entry[0].header.type   = TLV_TYPE_FILE_PATH;
-		entry[0].header.length = (DWORD)(strlen(dir) + 1);
-		entry[0].buffer        = dir;
+		Packet* group = packet_create_group();
 
-		entry[1].header.type   = TLV_TYPE_FILE_NAME;
-		entry[1].header.length = (DWORD)(strlen(file) + 1);
-		entry[1].buffer        = file;
+		packet_add_tlv_string(group, TLV_TYPE_FILE_PATH, dir);
+		packet_add_tlv_string(group, TLV_TYPE_FILE_NAME, file);
+		packet_add_tlv_uint(group, TLV_TYPE_FILE_SIZE, dwFileSize);
 
-		dwSize = htonl(dwFileSize);
-		entry[2].header.type   = TLV_TYPE_FILE_SIZE;
-		entry[2].header.length = sizeof(DWORD);
-		entry[2].buffer        = (PUCHAR)&dwSize;
-
-		packet_add_tlv_group(pResponse, TLV_TYPE_SEARCH_RESULTS, entry, 3);
+		packet_add_group(pResponse, TLV_TYPE_SEARCH_RESULTS, group);
 	}
 
 	free(dir);
@@ -62,26 +52,31 @@ VOID wds_startup(WDS_INTERFACE * pWDSInterface)
 		memset(pWDSInterface, 0, sizeof(WDS_INTERFACE));
 
 		hr = CoInitialize(NULL);
-		if (FAILED(hr))
+		if (FAILED(hr)) {
 			BREAK_WITH_ERROR("[SEARCH] wds_startup: CoInitializeEx Failed", hr);
+		}
 
 		do
 		{
 			pWDSInterface->hQuery = LoadLibraryA("query.dll");
-			if (!pWDSInterface->hQuery)
+			if (!pWDSInterface->hQuery) {
 				BREAK_ON_ERROR("[SEARCH] wds_startup:v2: LoadLibraryA query.dll Failed");
+			}
 
 			pWDSInterface->pLocateCatalogsW = (LOCATECATALOGSW)GetProcAddress(pWDSInterface->hQuery, "LocateCatalogsW");
-			if (!pWDSInterface->pLocateCatalogsW)
+			if (!pWDSInterface->pLocateCatalogsW) {
 				BREAK_ON_ERROR("[SEARCH] wds_startup:v2: GetProcAddress LocateCatalogsW Failed");
+			}
 
 			pWDSInterface->pCIMakeICommand = (CIMAKEICOMMAND)GetProcAddress(pWDSInterface->hQuery, "CIMakeICommand");
-			if (!pWDSInterface->pCIMakeICommand)
+			if (!pWDSInterface->pCIMakeICommand) {
 				BREAK_ON_ERROR("[SEARCH] wds_startup:v2: GetProcAddress CIMakeICommand Failed");
+			}
 
 			pWDSInterface->pCITextToFullTree = (CITEXTTOFULLTREE)GetProcAddress(pWDSInterface->hQuery, "CITextToFullTree");
-			if (!pWDSInterface->pCITextToFullTree)
+			if (!pWDSInterface->pCITextToFullTree) {
 				BREAK_ON_ERROR("[SEARCH] wds_startup:v2: GetProcAddress CITextToFullTree Failed");
+			}
 
 			pWDSInterface->bWDS2Available = TRUE;
 
@@ -90,16 +85,19 @@ VOID wds_startup(WDS_INTERFACE * pWDSInterface)
 		do
 		{
 			hr = CoCreateInstance(&_CLSID_CSearchManager, NULL, CLSCTX_ALL, &_IID_ISearchManager, (LPVOID *)&pWDSInterface->pSearchManager);
-			if (FAILED(hr))
+			if (FAILED(hr)) {
 				BREAK_WITH_ERROR("[SEARCH] wds_startup:v3: CoCreateInstance _IID_ISearchManager Failed", hr);
+			}
 
 			hr = ISearchManager_GetCatalog(pWDSInterface->pSearchManager, L"SystemIndex", &pWDSInterface->pSearchCatalogManager);
-			if (FAILED(hr))
+			if (FAILED(hr)) {
 				BREAK_WITH_ERROR("[SEARCH] wds_startup:v3: ISearchManager_GetCatalog Failed", hr);
+			}
 
 			hr = ISearchCatalogManager_GetCrawlScopeManager(pWDSInterface->pSearchCatalogManager, &pWDSInterface->pCrawlScopeManager);
-			if (FAILED(hr))
+			if (FAILED(hr)) {
 				BREAK_WITH_ERROR("[SEARCH] wds_startup:v3: ISearchCatalogManager_GetCrawlScopeManager Failed", hr);
+			}
 
 			pWDSInterface->bWDS3Available = TRUE;
 
@@ -116,10 +114,14 @@ VOID wds_shutdown(WDS_INTERFACE * pWDSInterface)
 	do
 	{
 		if (!pWDSInterface)
+		{
 			break;
+		}
 
 		if (pWDSInterface->hQuery)
+		{
 			FreeLibrary(pWDSInterface->hQuery);
+		}
 
 		pWDSInterface->pLocateCatalogsW  = NULL;
 		pWDSInterface->pCIMakeICommand   = NULL;
@@ -163,8 +165,9 @@ BOOL wds2_indexed(WDS_INTERFACE * pWDSInterface, wchar_t * directory)
 	DWORD catalogLength                          = MAX_PATH + 1 ;
 	DWORD index                                  = 0;
 
-	if (!pWDSInterface->bWDS2Available)
+	if (!pWDSInterface->bWDS2Available) {
 		return FALSE;
+	}
 
 	while (pWDSInterface->pLocateCatalogsW(directory, index++, machine,
 	    &machineLength, catalog, &catalogLength) == S_OK)
@@ -183,11 +186,12 @@ BOOL wds2_indexed(WDS_INTERFACE * pWDSInterface, wchar_t * directory)
  */
 BOOL wds3_indexed(WDS_INTERFACE * pWDSInterface, wchar_t * directory)
 {
-	BOOL bResult         = FALSE;
+	BOOL bResult = FALSE;
 
-	if (pWDSInterface->bWDS3Available)
+	if (pWDSInterface->bWDS3Available) {
 		ISearchCrawlScopeManager_IncludedInCrawlScope(
 		    pWDSInterface->pCrawlScopeManager, directory, &bResult);
+	}
 
 	return bResult;
 }
@@ -213,12 +217,14 @@ HRESULT wds_execute(ICommand * pCommand, Packet * pResponse)
 	do
 	{
 		hr = ICommand_Execute(pCommand, NULL, &_IID_IRowset, NULL, NULL, (IUnknown**)&pRowset);
-		if (FAILED(hr))
+		if (FAILED(hr)) {
 			BREAK_WITH_ERROR("[SEARCH] wds_execute: ICommand_Execute Failed", hr);
+		}
 
 		hr = IRowset_QueryInterface(pRowset, &_IID_IAccessor, (LPVOID *)&pAccessor);
-		if (FAILED(hr))
+		if (FAILED(hr)) {
 			BREAK_WITH_ERROR("[SEARCH] wds_execute: IRowset_QueryInterface _IID_IAccessor Failed", hr);
+		}
 
 		memset(&dbBindings, 0, sizeof(DBBINDING)*2);
 
@@ -245,37 +251,43 @@ HRESULT wds_execute(ICommand * pCommand, Packet * pResponse)
 		dbBindings[1].obValue    = offsetof(SEARCH_ROW, wPathValue);
 
 		hr = IAccessor_CreateAccessor(pAccessor, DBACCESSOR_ROWDATA, 2, (DBBINDING *)&dbBindings, 0, &hAccessor, NULL);
-		if (FAILED(hr))
+		if (FAILED(hr)) {
 			BREAK_WITH_ERROR("[SEARCH] wds_execute: IAccessor_CreateAccessor Failed", hr);
+		}
 
 		while (TRUE)
 		{
 			memset(&rowSearchResults, 0, sizeof(SEARCH_ROW));
 
 			hr = IRowset_GetNextRows(pRowset, DB_NULL_HCHAPTER, 0, 1, &dbCount, (HROW **)&pRows);
-			if (FAILED(hr))
+			if (FAILED(hr)) {
 				BREAK_WITH_ERROR("[SEARCH] wds_execute: IRowset_GetNextRows Failed", hr);
+			}
 
-			if (!dbCount)
+			if (!dbCount) {
 				BREAK_WITH_ERROR("[SEARCH] wds_execute: No more rows to get.", ERROR_SUCCESS);
+			}
 
 			hr = IRowset_GetData(pRowset, hRow[0], hAccessor, &rowSearchResults);
-			if (FAILED(hr))
+			if (FAILED(hr)) {
 				BREAK_WITH_ERROR("[SEARCH] wds_execute: IRowset_GetData Failed", hr);
+			}
 
 			if (_memicmp(L"iehistory:", rowSearchResults.wPathValue, sizeof(L"iehistory:")) == 0)
 			{
 				// "iehistory://{*}/"
 				wchar_t * history = wcsstr(rowSearchResults.wPathValue, L"}");
-				if (history)
+				if (history) {
 					search_add_result(pResponse, L"", history + 2, 0);
+				}
 			}
 			else if (_memicmp(L"mapi:", rowSearchResults.wPathValue, sizeof(L"mapi:")) == 0)
 			{
 				// "mapi://{*}/"
 				wchar_t * history = wcsstr(rowSearchResults.wPathValue, L"}");
-				if (history)
+				if (history) {
 					search_add_result(pResponse, L"", history + 2, 0);
+				}
 			}
 			else if (rowSearchResults.dwSizeValue > 0) {
 
@@ -284,13 +296,15 @@ HRESULT wds_execute(ICommand * pCommand, Packet * pResponse)
 				wchar_t * file      = L"";
 				wchar_t * directory = rowSearchResults.wPathValue;
 
-				if (_memicmp(L"file:", directory, wcslen(L"file:")) == 0)
+				if (_memicmp(L"file:", directory, wcslen(L"file:")) == 0) {
 					directory = (directory + wcslen(L"file:"));
+				}
 
 				for (i = 0; i < wcslen(directory); i++)
 				{
-					if (directory[i] == L'/')
+					if (directory[i] == L'/') {
 						directory[i] = L'\\';
+					}
 				}
 
 				file = wcsrchr(directory, L'\\');
@@ -309,8 +323,9 @@ HRESULT wds_execute(ICommand * pCommand, Packet * pResponse)
 			}
 
 			hr = IRowset_ReleaseRows(pRowset, dbCount, pRows, NULL, NULL, NULL);
-			if (FAILED(hr))
+			if (FAILED(hr)) {
 				BREAK_WITH_ERROR("[SEARCH] wds_execute: IRowset_ReleaseRows Failed", hr);
+			}
 		}
 
 	} while (0);
@@ -321,8 +336,9 @@ HRESULT wds_execute(ICommand * pCommand, Packet * pResponse)
 		IAccessor_Release(pAccessor);
 	}
 
-	if (pRowset)
+	if (pRowset) {
 		IRowset_Release(pRowset);
+	}
 
 	return dwResult;
 }
@@ -350,35 +366,42 @@ DWORD wds2_search(WDS_INTERFACE * pWDSInterface, wchar_t *directory, SEARCH_OPTI
 
 	do
 	{
-		if (!pWDSInterface)
+		if (!pWDSInterface) {
 			BREAK_WITH_ERROR("[SEARCH] wds2_search: !pWDSInterface", ERROR_INVALID_PARAMETER);
+		}
 
-		if (!pWDSInterface->bWDS2Available)
+		if (!pWDSInterface->bWDS2Available) {
 			break;
+		}
 
-		if (!pResponse || !pOptions)
+		if (!pResponse || !pOptions) {
 			BREAK_WITH_ERROR("[SEARCH] wds2_search: !pResultList || !pOptions", ERROR_INVALID_PARAMETER);
+		}
 
-		if (!directory)
+		if (!directory) {
 			directory = pOptions->rootDirectory;
+		}
 
 		// sf: WDS v2 can bawk if a trailing slash is not present on some paths :/
 		dwLength = wcslen(directory);
 		if (directory[dwLength-1] != L'\\')
 		{
 			newCurrent = calloc(dwLength + 2, sizeof(wchar_t));
-			if (!newCurrent)
+			if (!newCurrent) {
 				BREAK_WITH_ERROR("[SEARCH] wds2_search: !newCurrent", ERROR_OUTOFMEMORY);
+			}
 
 			swprintf(newCurrent, dwLength + 2, L"%s\\", directory);
 
 			directory = newCurrent;
 		}
 
-		if (pOptions->bResursive)
+		if (pOptions->bResursive) {
 			dwDepth[0] = QUERY_DEEP | QUERY_PHYSICAL_PATH;
-		else
+		}
+		else {
 			dwDepth[0] = QUERY_SHALLOW | QUERY_PHYSICAL_PATH;
+		}
 
 		wcScope[0]    = pOptions->rootDirectory;
 		wcCatalog[0]  = L"System";
@@ -387,43 +410,50 @@ DWORD wds2_search(WDS_INTERFACE * pWDSInterface, wchar_t *directory, SEARCH_OPTI
 		hr = pWDSInterface->pCIMakeICommand((ICommand**)&pCommand, 1,
 		    (DWORD *)&dwDepth, (wchar_t **)&wcScope, (wchar_t **)&wcCatalog,
 			(wchar_t **)&wcMachines);
-		if (FAILED(hr))
+		if (FAILED(hr)) {
 			BREAK_WITH_ERROR("[SEARCH] wds2_search: CIMakeICommand Failed", hr);
+		}
 
 		hr = ICommand_QueryInterface(pCommand, &_IID_ICommandTree, (LPVOID *)&pCommandTree);
-		if (FAILED(hr))
+		if (FAILED(hr)) {
 			BREAK_WITH_ERROR("[SEARCH] wds2_search: ICommand_QueryInterface Failed", hr);
+		}
 
 		dwLength = wcslen(pOptions->glob);
 
 		query = calloc((dwLength + 128), sizeof(wchar_t));
-		if (!query)
+		if (!query) {
 			BREAK_WITH_ERROR("[SEARCH] wds2_search: calloc wQuery failed", ERROR_INVALID_PARAMETER);
+		}
 
 		swprintf_s(query, (dwLength + 128), L"#filename = %s", pOptions->glob);
 
 		hr = pWDSInterface->pCITextToFullTree(query, L"size,path", NULL, NULL, &pTree, 0, NULL, GetSystemDefaultLCID());
-		if (FAILED(hr))
+		if (FAILED(hr)) {
 			BREAK_WITH_ERROR("[SEARCH] wds2_search: CITextToFullTree Failed", hr);
+		}
 
 		hr = ICommandTree_SetCommandTree(pCommandTree, &pTree, DBCOMMANDREUSE_NONE, FALSE);
-		if (FAILED(hr))
+		if (FAILED(hr)) {
 			BREAK_WITH_ERROR("[SEARCH] wds2_search: ICommandTree_SetCommandTree Failed", hr);
+		}
 
 		hr = wds_execute(pCommand, pResponse);
-		if (FAILED(hr))
+		if (FAILED(hr)) {
 			BREAK_WITH_ERROR("[SEARCH] wds2_search: wds_execute Failed", hr);
+		}
 
 	} while (0);
 
-	if (pCommandTree)
+	if (pCommandTree) {
 		ICommandTree_Release(pCommandTree);
+	}
 
-	if (pCommand)
+	if (pCommand) {
 		ICommand_Release(pCommand);
+	}
 
 	free(query);
-
 	free(newCurrent);
 
 	dprintf("[SEARCH] wds2_search: Finished.");
@@ -455,35 +485,43 @@ DWORD wds3_search(WDS_INTERFACE * pWDSInterface, wchar_t * wpProtocol, wchar_t *
 
 	do
 	{
-		if (!pWDSInterface)
+		if (!pWDSInterface) {
 			BREAK_WITH_ERROR("[SEARCH] wds3_search: !pWDSInterface", ERROR_INVALID_PARAMETER);
+		}
 
-		if (!pWDSInterface->bWDS3Available)
+		if (!pWDSInterface->bWDS3Available) {
 			break;
+		}
 
-		if (!pResponse || !pOptions || !wpProtocol)
+		if (!pResponse || !pOptions || !wpProtocol) {
 			BREAK_WITH_ERROR("[SEARCH] wds3_search: !pResultList || !pOptions || !wpProtocol", ERROR_INVALID_PARAMETER);
+		}
 
-		if (!directory)
+		if (!directory) {
 			directory = pOptions->rootDirectory;
+		}
 
 		hr = ISearchCatalogManager_GetQueryHelper(pWDSInterface->pSearchCatalogManager, &pQueryHelper);
-		if (FAILED(hr))
+		if (FAILED(hr)) {
 			BREAK_WITH_ERROR("[SEARCH] wds3_search: ISearchCatalogManager_GetQueryHelper Failed", hr);
+		}
 
 		hr = ISearchQueryHelper_put_QuerySelectColumns(pQueryHelper, L"size,path");
-		if (FAILED(hr))
+		if (FAILED(hr)) {
 			BREAK_WITH_ERROR("[SEARCH] wds3_search: ISearchQueryHelper_put_QuerySelectColumns Failed", hr);
+		}
 
 		if (directory)
 		{
 			size_t len = wcslen(directory) + 128;
 			wchar_t *where = calloc(len, sizeof(wchar_t));
 			if (where) {
-				if (pOptions->bResursive)
+				if (pOptions->bResursive) {
 					swprintf_s(where, len, L"AND SCOPE='%s:%s'", wpProtocol, directory);
-				else
+				}
+				else {
 					swprintf_s(where, len, L"AND DIRECTORY='%s:%s'", wpProtocol, directory);
+				}
 				ISearchQueryHelper_put_QueryWhereRestrictions(pQueryHelper, where);
 				free(where);
 			} else {
@@ -492,84 +530,104 @@ DWORD wds3_search(WDS_INTERFACE * pWDSInterface, wchar_t * wpProtocol, wchar_t *
 		}
 
 		hr = ISearchQueryHelper_GenerateSQLFromUserQuery(pQueryHelper, pOptions->glob, &wpSQL);
-		if (FAILED(hr))
+		if (FAILED(hr)) {
 			BREAK_WITH_ERROR("[SEARCH] wds3_search: ISearchQueryHelper_GenerateSQLFromUserQuery Failed", hr);
+		}
 
 		hr = CoCreateInstance(&_CLSID_MSDAInitialize, NULL, CLSCTX_ALL, &_IID_IDataInitialize, (LPVOID *)&pDataInitialize);
-		if (FAILED(hr))
+		if (FAILED(hr)) {
 			BREAK_WITH_ERROR("[SEARCH] wds3_search: CoCreateInstance _IID_IDataInitialize Failed", hr);
+		}
 
 		hr = ISearchQueryHelper_get_ConnectionString(pQueryHelper, &wpConnectionString);
-		if (FAILED(hr))
+		if (FAILED(hr)) {
 			BREAK_WITH_ERROR("[SEARCH] wds3_search: ISearchQueryHelper_get_ConnectionString _IID_IDataInitialize Failed", hr);
+		}
 
 		hr = IDataInitialize_GetDataSource(pDataInitialize, NULL, CLSCTX_INPROC_SERVER, wpConnectionString, &_IID_IDBInitialize, (IUnknown**)&pIDBInitialize);
-		if (FAILED(hr))
+		if (FAILED(hr)) {
 			BREAK_WITH_ERROR("[SEARCH] wds3_search: IDataInitialize_GetDataSource Failed", hr);
+		}
 
 		hr = IDBInitialize_Initialize(pIDBInitialize);
-		if (FAILED(hr))
+		if (FAILED(hr)) {
 			BREAK_WITH_ERROR("[SEARCH] wds3_search: IDBInitialize_Initialize Failed", hr);
+		}
 
 		hr = IDBInitialize_QueryInterface(pIDBInitialize, &_IID_IDBCreateSession, (LPVOID *)&pSession);
-		if (FAILED(hr))
+		if (FAILED(hr)) {
 			BREAK_WITH_ERROR("[SEARCH] wds3_search: IDBInitialize_QueryInterface Failed", hr);
+		}
 
 		hr = IDBCreateSession_CreateSession(pSession, NULL, &_IID_IOpenRowset, (IUnknown**)&pOpenRowset);
-		if (FAILED(hr))
+		if (FAILED(hr)) {
 			BREAK_WITH_ERROR("[SEARCH] wds3_search: IDBCreateSession_CreateSession Failed", hr);
+		}
 
 		hr = IOpenRowset_QueryInterface(pOpenRowset, &_IID_IDBCreateCommand, (LPVOID *)&pCreateCommand);
-		if (FAILED(hr))
+		if (FAILED(hr)) {
 			BREAK_WITH_ERROR("[SEARCH] wds3_search: IOpenRowset_QueryInterface Failed", hr);
+		}
 
 		hr = IDBCreateCommand_CreateCommand(pCreateCommand, NULL, &_IID_ICommand, (IUnknown**)&pCommand);
-		if (FAILED(hr))
+		if (FAILED(hr)) {
 			BREAK_WITH_ERROR("[SEARCH] wds3_search: IDBCreateCommand_CreateCommand Failed", hr);
+		}
 
 		hr = ICommand_QueryInterface(pCommand, &_IID_ICommandText, (LPVOID *)&pCommandText);
-		if (FAILED(hr))
+		if (FAILED(hr)) {
 			BREAK_WITH_ERROR("[SEARCH] wds3_search: ICommand_QueryInterface Failed", hr);
+		}
 
 #ifdef DEBUGTRACE
 		OutputDebugStringW(wpSQL);
 #endif
 
 		hr = ICommandText_SetCommandText(pCommandText, &DBGUID_DEFAULT, wpSQL);
-		if (FAILED(hr))
+		if (FAILED(hr)) {
 			BREAK_WITH_ERROR("[SEARCH] wds3_search: ICommandText_SetCommandText Failed", hr);
+		}
 
 		hr = wds_execute(pCommand, pResponse);
-		if (FAILED(hr))
+		if (FAILED(hr)) {
 			BREAK_WITH_ERROR("[SEARCH] wds3_search: wds_execute Failed", hr);
+		}
 
 	} while (0);
 
 	dprintf("[SEARCH] wds3_search: Releasing COM objects...");
 
-	if (pCommandText)
+	if (pCommandText) {
 		ICommandText_Release(pCommandText);
+	}
 
-	if (pCreateCommand)
+	if (pCreateCommand) {
 		IDBCreateCommand_Release(pCreateCommand);
+	}
 
-	if (pCommand)
+	if (pCommand) {
 		ICommand_Release(pCommand);
+	}
 
-	if (pOpenRowset)
+	if (pOpenRowset) {
 		IOpenRowset_Release(pOpenRowset);
+	}
 
-	if (pSession)
+	if (pSession) {
 		IDBCreateSession_Release(pSession);
+	}
 
-	if (pQueryHelper)
+	if (pQueryHelper) {
 		ISearchQueryHelper_Release(pQueryHelper);
+	}
 
-	if (pIDBInitialize)
+	if (pIDBInitialize) {
 		IDBInitialize_Release(pIDBInitialize);
+	}
 
-	if (pDataInitialize)
+	if (pDataInitialize) {
 		IDataInitialize_Release(pDataInitialize);
+	}
 
 	dprintf("[SEARCH] wds3_search: Finished.");
 
@@ -683,14 +741,17 @@ DWORD search(WDS_INTERFACE * pWDSInterface, wchar_t *directory, SEARCH_OPTIONS *
 	if (!directory) {
 		dwResult = ERROR_INVALID_PARAMETER;
 	} else {
-		if (wds3_indexed(pWDSInterface, directory))
+		if (wds3_indexed(pWDSInterface, directory)) {
 			dwResult = wds3_search(pWDSInterface, L"file", directory, pOptions, pResponse);
+		}
 
-		if (dwResult != ERROR_SUCCESS && wds2_indexed(pWDSInterface, directory))
+		if (dwResult != ERROR_SUCCESS && wds2_indexed(pWDSInterface, directory)) {
 			dwResult = wds2_search(pWDSInterface, directory, pOptions, pResponse);
+		}
 
-		if (dwResult != ERROR_SUCCESS)
+		if (dwResult != ERROR_SUCCESS) {
 			dwResult = directory_search(directory, pOptions, pResponse, 0);
+		}
 	}
 
 	return dwResult;
@@ -770,8 +831,9 @@ DWORD request_fs_search(Remote * pRemote, Packet * pPacket)
 
 	options.bResursive = packet_get_tlv_value_bool(pPacket, TLV_TYPE_SEARCH_RECURSE);
 
-	if (!options.glob)
+	if (!options.glob) {
 		options.glob = L"*.*";
+	}
 
 	wds_startup(&WDSInterface);
 
