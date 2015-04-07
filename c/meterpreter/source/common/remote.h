@@ -21,6 +21,7 @@ typedef struct _Transport Transport;
 typedef struct _Remote Remote;
 
 typedef SOCKET(*PTransportGetSocket)(Transport* transport);
+typedef void(*PTransportReset)(Transport* transport);
 typedef BOOL(*PTransportInit)(Remote* remote, SOCKET fd);
 typedef BOOL(*PTransportDeinit)(Remote* remote);
 typedef void(*PTransportDestroy)(Remote* remote);
@@ -34,6 +35,9 @@ typedef struct _TcpTransportContext
 	SSL_METHOD* meth;                     ///! The current SSL method in use.
 	SSL_CTX* ctx;                         ///! SSL-specific context information.
 	SSL* ssl;                             ///! Pointer to the SSL detail/version/etc.
+	struct sockaddr_storage sock_desc;    ///! Details of the current socket.
+	int sock_desc_size;                   ///! Details of the current socket.
+	BOOL bound;                           ///! Flag to indicate if the socket was a bound socket.
 } TcpTransportContext;
 
 typedef struct _HttpTransportContext
@@ -59,6 +63,7 @@ typedef struct _Transport
 {
 	DWORD type;                           ///! The type of transport in use.
 	PTransportGetSocket get_socket;       ///! Function to get the socket from the transport.
+	PTransportReset transport_reset;      ///! Function to reset/clean the transport ready for restarting.
 	PTransportInit transport_init;        ///! Initialises the transport.
 	PTransportDeinit transport_deinit;    ///! Deinitialises the transport.
 	PTransportDestroy transport_destroy;  ///! Destroy the transport.

