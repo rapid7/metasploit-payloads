@@ -8,9 +8,12 @@
 #include <cmdtree.h>
 
 // from query.dll for WDS 2 index based searching
-typedef HRESULT (WINAPI * LOCATECATALOGSA)( PCSTR, ULONG, char *, ULONG *, char *, ULONG * );
-typedef HRESULT (WINAPI * CIMAKEICOMMAND)( ICommand **, ULONG, DWORD *  , WCHAR **, WCHAR **, WCHAR ** );
-typedef HRESULT (WINAPI * CITEXTTOFULLTREE)( WCHAR *, WCHAR *, WCHAR *,  WCHAR *, DBCOMMANDTREE **, ULONG , LPVOID *, LCID );
+typedef HRESULT (WINAPI * LOCATECATALOGSW)(wchar_t *, ULONG, wchar_t *,
+    ULONG *, wchar_t *, ULONG *);
+typedef HRESULT (WINAPI * CIMAKEICOMMAND)(ICommand **, ULONG, DWORD *,
+     wchar_t **, wchar_t **, wchar_t **);
+typedef HRESULT (WINAPI * CITEXTTOFULLTREE)(wchar_t *, wchar_t *, wchar_t *,
+    wchar_t *, DBCOMMANDTREE **, ULONG , LPVOID *, LCID);
 
 typedef struct _WDS_INTERFACE
 {
@@ -21,10 +24,10 @@ typedef struct _WDS_INTERFACE
 	ISearchManager * pSearchManager;
 	ISearchCatalogManager * pSearchCatalogManager;
 	ISearchCrawlScopeManager * pCrawlScopeManager;
-	
+
 	// WDS 2...
 	HMODULE hQuery;
-	LOCATECATALOGSA pLocateCatalogsA;
+	LOCATECATALOGSW pLocateCatalogsW;
 	CIMAKEICOMMAND pCIMakeICommand;
 	CITEXTTOFULLTREE pCITextToFullTree;
 
@@ -32,8 +35,8 @@ typedef struct _WDS_INTERFACE
 
 typedef struct _SEARCH_OPTIONS
 {
-	char * cpFileGlob;
-	char * cpRootDirectory;
+	wchar_t *glob;
+	wchar_t *rootDirectory;
 	BOOL bResursive;
 } SEARCH_OPTIONS;
 
@@ -50,7 +53,7 @@ typedef struct _SEARCH_ROW
 	DWORD dwPadding4;
 	DWORD dwPathLength;
 	DWORD dwPadding5;
-	CHAR cPathValue[MAX_PATH];
+	wchar_t wPathValue[MAX_PATH];
 } SEARCH_ROW;
 
 // we manually define these ourselves...

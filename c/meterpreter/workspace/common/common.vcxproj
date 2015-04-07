@@ -462,6 +462,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClCompile Include="..\..\source\common\remote.c" />
     <ClCompile Include="..\..\source\common\scheduler.c" />
     <ClCompile Include="..\..\source\common\thread.c" />
+    <ClCompile Include="..\..\source\common\unicode.c" />
     <ClCompile Include="..\..\source\common\crypto\xor.c" />
     <ClCompile Include="..\..\source\common\zlib\zlib.c" />
   </ItemGroup>
@@ -481,6 +482,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClInclude Include="..\..\source\common\remote.h" />
     <ClInclude Include="..\..\source\common\scheduler.h" />
     <ClInclude Include="..\..\source\common\thread.h" />
+    <ClInclude Include="..\..\source\common\unicode.h" />
     <ClInclude Include="..\..\source\common\zlib\zlib.h" />
   </ItemGroup>
   <ItemGroup>
