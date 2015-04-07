@@ -166,6 +166,7 @@ void real_dprintf(char *filename, int line, const char *function, char *format, 
 #include "channel.h"
 #include "scheduler.h"
 #include "thread.h"
+#include "unicode.h"
 
 #include "list.h"
 
