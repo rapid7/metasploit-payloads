@@ -815,6 +815,8 @@ static BOOL configure_tcp_connection(Remote* remote, SOCKET sock)
 
 	wcstombs_s(&charsConverted, asciiUrl, sizeof(asciiUrl), remote->transport->url, sizeof(asciiUrl)-1);
 
+	dprintf("[TCP CONFIGURE] Url: %S", remote->transport->url);
+
 	if (strncmp(asciiUrl, "tcp", 3) == 0)
 	{
 		const int iRetryAttempts = 30;

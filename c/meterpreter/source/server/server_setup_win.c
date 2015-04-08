@@ -127,12 +127,12 @@ static Transport* transport_create(MetsrvConfigData* config, BOOL stageless)
 	wchar_t* transport = config->transport + TRANSPORT_ID_OFFSET;
 	wchar_t* url = config->url + (stageless ? 1 : 0);
 
-	dprintf("[TRANSPORT] Type = %S", config->transport);
-	dprintf("[TRANSPORT] URL = %S", config->url);
+	dprintf("[TRANSPORT] Type = %S", transport);
+	dprintf("[TRANSPORT] URL = %S", url);
 
 	if (wcscmp(transport, L"SSL") == 0)
 	{
-		t = transport_create_tcp(config->url);
+		t = transport_create_tcp(url);
 	}
 	else
 	{
