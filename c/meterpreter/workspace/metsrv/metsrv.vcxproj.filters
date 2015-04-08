@@ -1,0 +1,35 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="..\..\source\server\win\libloader.c" />
+    <ClCompile Include="..\..\source\server\metsrv.c" />
+    <ClCompile Include="..\..\source\server\win\remote_dispatch.c" />
+    <ClCompile Include="..\..\source\server\remote_dispatch_common.c" />
+    <ClCompile Include="..\..\source\server\server_setup_win.c" />
+    <ClCompile Include="..\..\source\server\win\server_transport_tcp.c">
+      <Filter>transports</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\server\win\server_transport_winhttp.c">
+      <Filter>transports</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\source\server\libloader.h" />
+    <ClInclude Include="..\..\source\server\metsrv.h" />
+    <ClInclude Include="..\..\source\server\remote_dispatch.h" />
+    <ClInclude Include="..\..\source\server\win\server_transport_winhttp.h">
+      <Filter>transports</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\server\win\server_transport_tcp.h">
+      <Filter>transports</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\source\server\win\metsrv.def" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="transports">
+      <UniqueIdentifier>{302976b1-9752-4587-ac91-61595d625665}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
