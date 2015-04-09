@@ -148,12 +148,14 @@ typedef enum
 	TLV_TYPE_TRANS_TYPE          = TLV_VALUE(TLV_META_TYPE_UINT,      430),   ///! Represents the type of transport to switch to.
 	TLV_TYPE_TRANS_URL           = TLV_VALUE(TLV_META_TYPE_STRING,    431),   ///! Represents the new URL of the transport to use.
 	TLV_TYPE_TRANS_UA            = TLV_VALUE(TLV_META_TYPE_STRING,    432),   ///! Represents the user agent (for http).
-	TLV_TYPE_TRANS_COMMS_TIMEOUT = TLV_VALUE(TLV_META_TYPE_UINT,      433),   ///! Represents the communications timeout (for http).
-	TLV_TYPE_TRANS_SESSION_EXP   = TLV_VALUE(TLV_META_TYPE_UINT,      434),   ///! Represents the session expiration (for http).
+	TLV_TYPE_TRANS_COMM_TIMEOUT  = TLV_VALUE(TLV_META_TYPE_UINT,      433),   ///! Represents the communications timeout.
+	TLV_TYPE_TRANS_SESSION_EXP   = TLV_VALUE(TLV_META_TYPE_UINT,      434),   ///! Represents the session expiration.
 	TLV_TYPE_TRANS_CERT_HASH     = TLV_VALUE(TLV_META_TYPE_RAW,       435),   ///! Represents the certificate hash (for https).
 	TLV_TYPE_TRANS_PROXY_INFO    = TLV_VALUE(TLV_META_TYPE_STRING,    436),   ///! Represents the proxy info string (for http).
 	TLV_TYPE_TRANS_PROXY_USER    = TLV_VALUE(TLV_META_TYPE_STRING,    437),   ///! Represents the proxy user name (for http).
 	TLV_TYPE_TRANS_PROXY_PASS    = TLV_VALUE(TLV_META_TYPE_STRING,    438),   ///! Represents the proxy password (for http).
+	TLV_TYPE_TRANS_RETRY_TOTAL   = TLV_VALUE(TLV_META_TYPE_UINT,      439),   ///! Total time (seconds) to continue retrying comms.
+	TLV_TYPE_TRANS_RETRY_WAIT    = TLV_VALUE(TLV_META_TYPE_UINT,      440),   ///! Time (seconds) to wait between reconnect attempts.
 
 	// session/machine identification
 	TLV_TYPE_MACHINE_ID          = TLV_VALUE(TLV_META_TYPE_STRING,    460),   ///! Represents a machine identifier.

@@ -52,11 +52,6 @@ typedef struct _HttpTransportContext
 	STRTYPE proxy;                        ///! Proxy details.
 	STRTYPE proxy_user;                   ///! Proxy username.
 	STRTYPE proxy_pass;                   ///! Proxy password.
-
-	int expiration_time;                  ///! Unix timestamp for when the server should shut down.
-	int start_time;                       ///! Unix timestamp representing the session startup time.
-	int comm_last_packet;                 ///! Unix timestamp of the last packet received.
-	int comm_timeout;                     ///! Unix timestamp for when to shutdown due to comms timeout.
 } HttpTransportContext;
 
 typedef struct _Transport
@@ -71,7 +66,14 @@ typedef struct _Transport
 	PPacketTransmit packet_transmit;      ///! Transmits a packet over the transport.
 	PPacketReceive packet_receive;        ///! Receives a packet over the transport.
 	STRTYPE url;                          ///! Full URL describing the comms in use.
-	VOID* ctx;
+	VOID* ctx;                            ///! Pointer to the type-specific transport context;
+	int expiration_time;                  ///! Number of seconds from starting to when the server should shut down.
+	int expiration_end;                   ///! Unix timestamp for when the server should shut down.
+	int start_time;                       ///! Unix timestamp representing the session startup time.
+	int comms_last_packet;                ///! Unix timestamp of the last packet received.
+	int comms_timeout;                    ///! Number of seconds to wait for a valid packet before timing out.
+	DWORD retry_total;                    ///! Number of seconds to try to reestablish communications on failure.
+	DWORD retry_wait;                     ///! Number of seconds to wait between each retry attempt.
 } Transport;
 
 /*!

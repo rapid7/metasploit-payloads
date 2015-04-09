@@ -60,9 +60,11 @@ typedef struct _MIGRATECONTEXT
 } MIGRATECONTEXT, * LPMIGRATECONTEXT;
 
 
-extern Transport* transport_create_tcp(wchar_t* url);
+extern Transport* transport_create_tcp(wchar_t* url, int expirationTime, int commsTimeout,
+	UINT retryTotal, UINT retryWait);
 extern Transport* transport_create_http(BOOL ssl, wchar_t* url, wchar_t* ua, wchar_t* proxy,
-	wchar_t* proxyUser, wchar_t* proxyPass, PBYTE certHash, int expirationTime, int commsTimeout);
+	wchar_t* proxyUser, wchar_t* proxyPass, PBYTE certHash, int expirationTime, int commsTimeout,
+	UINT retryTotal, UINT retryWait);
 
 BOOL remote_request_core_change_transport(Remote* remote, Packet* packet, DWORD* pResult)
 {
@@ -71,8 +73,34 @@ BOOL remote_request_core_change_transport(Remote* remote, Packet* packet, DWORD*
 	UINT transportType = packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_TYPE);
 	wchar_t* transportUrl = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_URL);
 
+	int expirationTimeout = (int)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_SESSION_EXP);
+	int commsTimeout = (int)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_COMM_TIMEOUT);
+	DWORD retryTotal = (DWORD)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_RETRY_TOTAL);
+	DWORD retryWait = (DWORD)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_RETRY_WAIT);
+
+	if (expirationTimeout == 0)
+	{
+		expirationTimeout = remote->transport->expiration_time;
+	}
+	if (commsTimeout == 0)
+	{
+		commsTimeout = remote->transport->comms_timeout;
+	}
+	if (retryTotal == 0)
+	{
+		retryTotal = remote->transport->retry_total;
+	}
+	if (retryWait == 0)
+	{
+		retryWait = remote->transport->retry_wait;
+	}
+
 	dprintf("[CHANGE TRANS] Type: %u", transportType);
 	dprintf("[CHANGE TRANS] Url: %S", transportUrl);
+	dprintf("[CHANGE TRANS] Expiration: %d", expirationTimeout);
+	dprintf("[CHANGE TRANS] Comms: %d", commsTimeout);
+	dprintf("[CHANGE TRANS] Retry Total: %u", retryTotal);
+	dprintf("[CHANGE TRANS] Retry Wait: %u", retryWait);
 
 	do
 	{
@@ -84,7 +112,8 @@ BOOL remote_request_core_change_transport(Remote* remote, Packet* packet, DWORD*
 
 		if (transportType == METERPRETER_TRANSPORT_SSL)
 		{
-			remote->nextTransport = transport_create_tcp(transportUrl);
+			remote->nextTransport = transport_create_tcp(transportUrl, expirationTimeout, commsTimeout,
+				retryTotal, retryWait);
 		}
 		else
 		{
@@ -94,11 +123,10 @@ BOOL remote_request_core_change_transport(Remote* remote, Packet* packet, DWORD*
 			wchar_t* proxyUser = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_PROXY_USER);
 			wchar_t* proxyPass = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_PROXY_PASS);
 			PBYTE certHash = packet_get_tlv_value_raw(packet, TLV_TYPE_TRANS_CERT_HASH);
-			int expirationTimeout = (int)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_SESSION_EXP);
-			int commsTimeout = (int)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_COMMS_TIMEOUT);
 
 			remote->nextTransport = transport_create_http(ssl, transportUrl, ua, proxy,
-				proxyUser, proxyPass, certHash, expirationTimeout, commsTimeout);
+				proxyUser, proxyPass, certHash, expirationTimeout, commsTimeout,
+				retryTotal, retryWait);
 
 			SAFE_FREE(ua);
 			SAFE_FREE(proxy);

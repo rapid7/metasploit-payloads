@@ -59,7 +59,10 @@ static BOOL server_init_http(Remote* remote, SOCKET fd)
 	dprintf("[DISPATCH] About to crack URL: %S", remote->transport->url);
 	WinHttpCrackUrl(remote->transport->url, 0, 0, &bits);
 
+	SAFE_FREE(ctx->uri);
 	ctx->uri = _wcsdup(tmpUrlPath);
+	remote->transport->start_time = current_unix_timestamp();
+	remote->transport->comms_last_packet = current_unix_timestamp();
 
 	dprintf("[DISPATCH] Configured URI: %S", ctx->uri);
 	dprintf("[DISPATCH] Host: %S Port: %u", tmpHostName, bits.nPort);
@@ -115,20 +118,21 @@ static DWORD server_dispatch_http(Remote* remote, THREAD* dispatchThread)
 	THREAD* cpt = NULL;
 	DWORD ecount = 0;
 	DWORD delay = 0;
+	Transport* transport = remote->transport;
 	HttpTransportContext* ctx = (HttpTransportContext*)remote->transport->ctx;
 
 	while (running)
 	{
-		if (ctx->comm_timeout != 0 && ctx->comm_last_packet + ctx->comm_timeout < current_unix_timestamp())
+		if (transport->comms_timeout != 0 && transport->comms_last_packet + transport->comms_timeout < current_unix_timestamp())
 		{
 			dprintf("[DISPATCH] Shutting down server due to communication timeout");
 			break;
 		}
 
-		if (ctx->expiration_time != 0 && ctx->expiration_time < current_unix_timestamp())
+		if (transport->expiration_end != 0 && transport->expiration_end < current_unix_timestamp())
 		{
 			dprintf("[DISPATCH] Shutting down server due to hardcoded expiration time");
-			dprintf("Timestamp: %u  Expiration: %u", current_unix_timestamp(), ctx->expiration_time);
+			dprintf("Timestamp: %u  Expiration: %u", current_unix_timestamp(), transport->expiration_end);
 			break;
 		}
 
@@ -145,12 +149,14 @@ static DWORD server_dispatch_http(Remote* remote, THREAD* dispatchThread)
 			// Update the timestamp for empty replies
 			if (result == ERROR_EMPTY)
 			{
-				ctx->comm_last_packet = current_unix_timestamp();
+				transport->comms_last_packet = current_unix_timestamp();
 			}
 			else if (result == ERROR_WINHTTP_SECURE_INVALID_CERT)
 			{
 				// This means that the certificate validation failed, and so
-				// we don't trust who we're connecting with. Bail out.
+				// we don't trust who we're connecting with. Bail out, pretending
+				// that it was clean
+				result = ERROR_SUCCESS;
 				break;
 			}
 
@@ -170,7 +176,7 @@ static DWORD server_dispatch_http(Remote* remote, THREAD* dispatchThread)
 			continue;
 		}
 
-		ctx->comm_last_packet = current_unix_timestamp();
+		transport->comms_last_packet = current_unix_timestamp();
 
 		// Reset the empty count when we receive a packet
 		ecount = 0;
@@ -222,10 +228,13 @@ static void transport_destroy_http(Remote* remote)
  * @param certHash Expected SHA1 hash of the MSF server (can be NULL).
  * @param expirationTime The time used for session expiration.
  * @param commsTimeout The timeout used for individual communications.
+ * @param retryTotal The total number of seconds to continue trying to reconnect comms.
+ * @param retryWait The number of seconds to wait between each reconnect attempt.
  * @return Pointer to the newly configured/created HTTP(S) transport instance.
  */
 Transport* transport_create_http(BOOL ssl, wchar_t* url, wchar_t* ua, wchar_t* proxy,
-	wchar_t* proxyUser, wchar_t* proxyPass, PBYTE certHash, int expirationTime, int commsTimeout)
+	wchar_t* proxyUser, wchar_t* proxyPass, PBYTE certHash, int expirationTime, int commsTimeout,
+	UINT retryTotal, UINT retryWait)
 {
 	Transport* transport = (Transport*)malloc(sizeof(Transport));
 	HttpTransportContext* ctx = (HttpTransportContext*)malloc(sizeof(HttpTransportContext));
@@ -235,40 +244,37 @@ Transport* transport_create_http(BOOL ssl, wchar_t* url, wchar_t* ua, wchar_t* p
 	memset(transport, 0, sizeof(Transport));
 	memset(ctx, 0, sizeof(HttpTransportContext));
 
-	if (expirationTime > 0)
-	{
-		ctx->expiration_time = current_unix_timestamp() + expirationTime;
-	}
-
-	ctx->comm_timeout = commsTimeout;
-	ctx->start_time = current_unix_timestamp();
-	ctx->comm_last_packet = current_unix_timestamp();
-
+	SAFE_FREE(ctx->ua);
 	if (ua)
 	{
 		ctx->ua = _wcsdup(ua);
 	}
-	if (proxy && wcscmp(proxy, L"METERPRETER_PROXY") != 0)
+	SAFE_FREE(ctx->proxy);
+	if (proxy && wcscmp(proxy + 12, L"PROXY") != 0)
 	{
 		ctx->proxy = _wcsdup(proxy);
 	}
-	if (proxyUser && wcscmp(proxyUser, L"METERPRETER_USERNAME_PROXY") != 0)
+	SAFE_FREE(ctx->proxy_user);
+	if (proxyUser && wcscmp(proxyUser + 12, L"USERNAME_PROXY") != 0)
 	{
 		ctx->proxy_user = _wcsdup(proxyUser);
 	}
-	if (proxyPass && wcscmp(proxyPass, L"METERPRETER_PASSWORD_PROXY") != 0)
+	SAFE_FREE(ctx->proxy_pass);
+	if (proxyPass && wcscmp(proxyPass + 12, L"PASSWORD_PROXY") != 0)
 	{
 		ctx->proxy_pass = _wcsdup(proxyPass);
 	}
 	ctx->ssl = ssl;
 
 	// only apply the cert hash if we're given one and it's not the global value
-	if (certHash && strncmp((char*)certHash, "METERPRETER_SSL_CERT_HASH", 20) != 0)
+	SAFE_FREE(ctx->cert_hash);
+	if (certHash && strncmp((char*)(certHash + 12), "SSL_CERT_HASH", 20) != 0)
 	{
 		ctx->cert_hash = (PBYTE)malloc(sizeof(BYTE) * 20);
 		memcpy(ctx->cert_hash, certHash, 20);
 	}
 
+	transport->type = ssl ? METERPRETER_TRANSPORT_HTTPS : METERPRETER_TRANSPORT_HTTP;
 	transport->url = _wcsdup(url);
 	transport->packet_receive = packet_receive_via_http;
 	transport->packet_transmit = packet_transmit_via_http;
@@ -277,7 +283,13 @@ Transport* transport_create_http(BOOL ssl, wchar_t* url, wchar_t* ua, wchar_t* p
 	transport->transport_deinit = server_deinit_http;
 	transport->transport_destroy = transport_destroy_http;
 	transport->ctx = ctx;
-	transport->type = ssl ? METERPRETER_TRANSPORT_HTTPS : METERPRETER_TRANSPORT_HTTP;
+	transport->comms_timeout = commsTimeout;
+	transport->expiration_time = expirationTime;
+	transport->expiration_end = current_unix_timestamp() + expirationTime;
+	transport->start_time = current_unix_timestamp();
+	transport->comms_last_packet = current_unix_timestamp();
+	transport->retry_total = retryTotal;
+	transport->retry_wait = retryWait;
 
 #ifdef DEBUGTRACE
 	if (ssl && certHash)
