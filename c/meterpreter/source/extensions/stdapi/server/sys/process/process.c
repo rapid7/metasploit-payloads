@@ -194,12 +194,14 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 	{
 		// No response? We suck.
 		if (!response)
+		{
 			break;
+		}
 
 		// Get the execution arguments
 		arguments = packet_get_tlv_value_string(packet, TLV_TYPE_PROCESS_ARGUMENTS);
-		path      = packet_get_tlv_value_string(packet, TLV_TYPE_PROCESS_PATH);
-		flags     = packet_get_tlv_value_uint(packet, TLV_TYPE_PROCESS_FLAGS);
+		path = packet_get_tlv_value_string(packet, TLV_TYPE_PROCESS_PATH);
+		flags = packet_get_tlv_value_uint(packet, TLV_TYPE_PROCESS_FLAGS);
 
 		if (packet_get_tlv(packet, TLV_TYPE_VALUE_DATA, &inMemoryData) == ERROR_SUCCESS)
 		{
@@ -207,25 +209,25 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 			createFlags |= CREATE_SUSPENDED;
 		}
 
-		if( flags & PROCESS_EXECUTE_FLAG_DESKTOP )
+		if (flags & PROCESS_EXECUTE_FLAG_DESKTOP)
 		{
 			do
 			{
-				cpDesktop = (char *)malloc( 512 );
-				if( !cpDesktop )
+				cpDesktop = (char *)malloc(512);
+				if (!cpDesktop)
 					break;
 
-				memset( cpDesktop, 0, 512 );
+				memset(cpDesktop, 0, 512);
 
-				lock_acquire( remote->lock );
+				lock_acquire(remote->lock);
 
-				_snprintf( cpDesktop, 512, "%s\\%s", remote->cpCurrentStationName, remote->cpCurrentDesktopName );
+				_snprintf(cpDesktop, 512, "%s\\%s", remote->curr_station_name, remote->curr_desktop_name);
 
-				lock_release( remote->lock );
+				lock_release(remote->lock);
 
 				si.lpDesktop = cpDesktop;
 
-			} while( 0 );
+			} while (0);
 		}
 
 		// If the remote endpoint provided arguments, combine them with the
@@ -270,12 +272,12 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 			memset(&chops, 0, sizeof(PoolChannelOps));
 
 			// Initialize the channel operations
-			dprintf( "[PROCESS] context address 0x%p", ctx );
-			chops.native.context  = ctx;
-			chops.native.write    = process_channel_write;
-			chops.native.close    = process_channel_close;
+			dprintf("[PROCESS] context address 0x%p", ctx);
+			chops.native.context = ctx;
+			chops.native.write = process_channel_write;
+			chops.native.close = process_channel_close;
 			chops.native.interact = process_channel_interact;
-			chops.read            = process_channel_read;
+			chops.read = process_channel_read;
 
 			// Allocate the pool channel
 			if (!(newChannel = channel_create_pool(0, CHANNEL_FLAG_SYNCHRONOUS, &chops)))
@@ -301,28 +303,28 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 			}
 
 			// Initialize the startup info to use the pipe handles
-			si.dwFlags   |= STARTF_USESTDHANDLES;
-			si.hStdInput  = in[0];
+			si.dwFlags |= STARTF_USESTDHANDLES;
+			si.hStdInput = in[0];
 			si.hStdOutput = out[1];
-			si.hStdError  = out[1];
-			inherit       = TRUE;
-			createFlags  |= CREATE_NEW_CONSOLE;
+			si.hStdError = out[1];
+			inherit = TRUE;
+			createFlags |= CREATE_NEW_CONSOLE;
 
 			// Set the context to have the write side of stdin and the read side
 			// of stdout
-			ctx->pStdin   = in[1];
-			ctx->pStdout  = out[0];
+			ctx->pStdin = in[1];
+			ctx->pStdout = out[0];
 
 			// Add the channel identifier to the response packet
-			packet_add_tlv_uint(response, TLV_TYPE_CHANNEL_ID,channel_get_id(newChannel));
+			packet_add_tlv_uint(response, TLV_TYPE_CHANNEL_ID, channel_get_id(newChannel));
 		}
 
 		// If the hidden flag is set, create the process hidden
 		if (flags & PROCESS_EXECUTE_FLAG_HIDDEN)
 		{
-			si.dwFlags     |= STARTF_USESHOWWINDOW;
-			si.wShowWindow  = SW_HIDE;
-			createFlags    |= CREATE_NO_WINDOW;
+			si.dwFlags |= STARTF_USESHOWWINDOW;
+			si.wShowWindow = SW_HIDE;
+			createFlags |= CREATE_NO_WINDOW;
 		}
 
 		// Should we create the process suspended?
@@ -333,12 +335,15 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 		{
 			// If there is an impersonated token stored, use that one first, otherwise
 			// try to grab the current thread token, then the process token
-			if (remote->hThreadToken){
-				token = remote->hThreadToken;
+			if (remote->thread_token)
+			{
+				token = remote->thread_token;
 				dprintf("[execute] using thread impersonation token");
 			}
 			else if (!OpenThreadToken(GetCurrentThread(), TOKEN_ALL_ACCESS, TRUE, &token))
+			{
 				OpenProcessToken(GetCurrentProcess(), TOKEN_ALL_ACCESS, &token);
+			}
 
 			dprintf("[execute] token is 0x%.8x", token);
 
@@ -354,14 +359,17 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 			}
 
 			hUserEnvLib = LoadLibrary("userenv.dll");
-			if (NULL != hUserEnvLib) {
+			if (NULL != hUserEnvLib)
+			{
 				lpfnCreateEnvironmentBlock = (LPFNCREATEENVIRONMENTBLOCK)GetProcAddress(hUserEnvLib, "CreateEnvironmentBlock");
 				lpfnDestroyEnvironmentBlock = (LPFNDESTROYENVIRONMENTBLOCK)GetProcAddress(hUserEnvLib, "DestroyEnvironmentBlock");
-				if (lpfnCreateEnvironmentBlock && lpfnCreateEnvironmentBlock(&pEnvironment, pToken, FALSE)) {
+				if (lpfnCreateEnvironmentBlock && lpfnCreateEnvironmentBlock(&pEnvironment, pToken, FALSE))
+				{
 					createFlags |= CREATE_UNICODE_ENVIRONMENT;
 					dprintf("[execute] created a duplicated environment block");
 				}
-				else {
+				else
+				{
 					pEnvironment = NULL;
 				}
 			}
@@ -385,7 +393,9 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 					{
 						hAdvapi32 = LoadLibrary("advapi32.dll");
 						if (!hAdvapi32)
+						{
 							break;
+						}
 
 						pCreateProcessWithTokenW = (LPCREATEPROCESSWITHTOKENW)GetProcAddress(hAdvapi32, "CreateProcessWithTokenW");
 						if (!pCreateProcessWithTokenW)
@@ -430,15 +440,8 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 						FreeLibrary(hAdvapi32);
 					}
 
-					if (wdesktop)
-					{
-						free(wdesktop);
-					}
-
-					if (wcmdline)
-					{
-						free(wcmdline);
-					}
+					SAFE_FREE(wdesktop);
+					SAFE_FREE(wcmdline);
 				}
 				else
 				{
@@ -531,13 +534,14 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 		//
 		// Do up the in memory exe execution if the user requested it
 		//
-		if (doInMemory) {
+		if (doInMemory)
+		{
 
 			//
 			// Unmap the dummy executable and map in the new executable into the
 			// target process
 			//
-			if (!MapNewExecutableRegionInProcess( pi.hProcess, pi.hThread, inMemoryData.buffer))
+			if (!MapNewExecutableRegionInProcess(pi.hProcess, pi.hThread, inMemoryData.buffer))
 			{
 				result = GetLastError();
 				break;
@@ -556,14 +560,14 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 
 		// check for failure here otherwise we can get a case where we
 		// failed but return a process id and this will throw off the ruby side.
-		if( result == ERROR_SUCCESS )
+		if (result == ERROR_SUCCESS)
 		{
 			// if we managed to successfully create a channelized process, we need to retain
 			// a handle to it so that we can shut it down externally if required.
-			if ( flags & PROCESS_EXECUTE_FLAG_CHANNELIZED
-				&& ctx != NULL )
+			if (flags & PROCESS_EXECUTE_FLAG_CHANNELIZED
+				&& ctx != NULL)
 			{
-				dprintf( "[PROCESS] started process 0x%x", pi.hProcess );
+				dprintf("[PROCESS] started process 0x%x", pi.hProcess);
 				ctx->pProcess = pi.hProcess;
 			}
 

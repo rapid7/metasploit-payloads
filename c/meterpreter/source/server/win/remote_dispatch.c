@@ -39,7 +39,7 @@ DWORD initialise_extension(HMODULE hLibrary, BOOL bLibLoadedReflectivly, Remote*
 		// wont work if we have used Reflective DLL Injection as metsrv.dll will be 'invisible' to these functions.
 		if (pRemote)
 		{
-			pRemote->hMetSrv = hAppInstance;
+			pRemote->met_srv = hAppInstance;
 		}
 
 		dprintf("[SERVER] Calling init on extension, address is 0x%p", pExtension->init);
