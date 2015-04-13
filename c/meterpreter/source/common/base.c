@@ -20,6 +20,9 @@ extern DWORD remote_request_core_crypto_negotiate( Remote *remote, Packet *packe
 
 extern BOOL remote_request_core_shutdown(Remote *remote, Packet *packet, DWORD* pResult);
 
+extern DWORD remote_request_transport_get_timeouts(Remote * remote, Packet * packet);
+extern DWORD remote_request_transport_set_timeouts(Remote * remote, Packet * packet);
+
 #ifdef _WIN32
 // POSIX support coming soon
 extern BOOL remote_request_core_change_transport( Remote *remote, Packet *packet, DWORD* pResult );
@@ -75,6 +78,9 @@ Command baseCommands[] =
 	COMMAND_REQ("core_channel_interact", remote_request_core_channel_interact),
 	// Crypto
 	COMMAND_REQ("core_crypto_negotiate", remote_request_core_crypto_negotiate),
+	// timeouts
+	COMMAND_REQ("core_transport_get_timeouts", remote_request_transport_get_timeouts),
+	COMMAND_REQ("core_transport_set_timeouts", remote_request_transport_set_timeouts),
 #ifdef _WIN32
 	// TODO: finalise the implementation of stageless POSIX before enabling this for the
 	// POSIX meterpreter.

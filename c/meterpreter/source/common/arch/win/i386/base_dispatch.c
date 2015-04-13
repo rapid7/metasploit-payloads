@@ -328,3 +328,59 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
 	// if migration succeeded, return 'FALSE' to indicate server thread termination.
 	return ERROR_SUCCESS == dwResult ? FALSE : TRUE;
 }
+
+DWORD remote_request_transport_get_timeouts(Remote * remote, Packet * packet)
+{
+	DWORD result = ERROR_SUCCESS;
+	Packet* response = NULL;
+
+	do
+	{
+		response = packet_create_response(packet);
+		if (!response)
+		{
+			result = ERROR_NOT_ENOUGH_MEMORY;
+			break;
+		}
+
+		// for the session expiry, return how many seconds are left before the session actually expires
+		packet_add_tlv_uint(response, TLV_TYPE_TRANS_SESSION_EXP, remote->transport->expiration_end - current_unix_timestamp());
+		packet_add_tlv_uint(response, TLV_TYPE_TRANS_COMM_TIMEOUT, remote->transport->comms_timeout);
+		packet_add_tlv_uint(response, TLV_TYPE_TRANS_RETRY_TOTAL, remote->transport->retry_total);
+		packet_add_tlv_uint(response, TLV_TYPE_TRANS_RETRY_WAIT, remote->transport->retry_wait);
+
+	} while (0);
+
+	if (response)
+	{
+		packet_transmit_response(result, remote, response);
+	}
+
+	return result;
+}
+
+DWORD remote_request_transport_set_timeouts(Remote * remote, Packet * packet)
+{
+	DWORD result = ERROR_SUCCESS;
+	Packet* response = NULL;
+
+	do
+	{
+		response = packet_create_response(packet);
+		if (!response)
+		{
+			result = ERROR_NOT_ENOUGH_MEMORY;
+			break;
+		}
+
+		// TODO
+
+	} while (0);
+
+	if (response)
+	{
+		packet_transmit_response(result, remote, response);
+	}
+
+	return result;
+}
