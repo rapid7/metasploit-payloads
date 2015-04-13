@@ -329,36 +329,6 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
 	return ERROR_SUCCESS == dwResult ? FALSE : TRUE;
 }
 
-DWORD remote_request_transport_get_timeouts(Remote * remote, Packet * packet)
-{
-	DWORD result = ERROR_SUCCESS;
-	Packet* response = NULL;
-
-	do
-	{
-		response = packet_create_response(packet);
-		if (!response)
-		{
-			result = ERROR_NOT_ENOUGH_MEMORY;
-			break;
-		}
-
-		// for the session expiry, return how many seconds are left before the session actually expires
-		packet_add_tlv_uint(response, TLV_TYPE_TRANS_SESSION_EXP, remote->transport->expiration_end - current_unix_timestamp());
-		packet_add_tlv_uint(response, TLV_TYPE_TRANS_COMM_TIMEOUT, remote->transport->comms_timeout);
-		packet_add_tlv_uint(response, TLV_TYPE_TRANS_RETRY_TOTAL, remote->transport->retry_total);
-		packet_add_tlv_uint(response, TLV_TYPE_TRANS_RETRY_WAIT, remote->transport->retry_wait);
-
-	} while (0);
-
-	if (response)
-	{
-		packet_transmit_response(result, remote, response);
-	}
-
-	return result;
-}
-
 DWORD remote_request_transport_set_timeouts(Remote * remote, Packet * packet)
 {
 	DWORD result = ERROR_SUCCESS;
@@ -373,7 +343,45 @@ DWORD remote_request_transport_set_timeouts(Remote * remote, Packet * packet)
 			break;
 		}
 
-		// TODO
+		int expirationTimeout = (int)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_SESSION_EXP);
+		int commsTimeout = (int)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_COMM_TIMEOUT);
+		DWORD retryTotal = (DWORD)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_RETRY_TOTAL);
+		DWORD retryWait = (DWORD)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_RETRY_WAIT);
+
+		// TODO: put this ina  helper function that can be used everywhere?
+
+		// if it's in the past, that's fine, but 0 implies not set
+		if (expirationTimeout != 0)
+		{
+			dprintf("[DISPATCH TIMEOUT] setting expiration time to %d", expirationTimeout);
+			remote->transport->expiration_time = expirationTimeout;
+			remote->transport->expiration_end = expirationTimeout + current_unix_timestamp();
+		}
+
+		if (commsTimeout != 0)
+		{
+			dprintf("[DISPATCH TIMEOUT] setting comms timeout to %d", commsTimeout);
+			remote->transport->comms_timeout = commsTimeout;
+			remote->transport->comms_last_packet = current_unix_timestamp();
+		}
+
+		if (retryTotal > 0)
+		{
+			dprintf("[DISPATCH TIMEOUT] setting retry total to %u", retryTotal);
+			remote->transport->retry_total = retryTotal;
+		}
+
+		if (retryWait > 0)
+		{
+			dprintf("[DISPATCH TIMEOUT] setting retry wait to %u", retryWait);
+			remote->transport->retry_wait = retryWait;
+		}
+
+		// for the session expiry, return how many seconds are left before the session actually expires
+		packet_add_tlv_uint(response, TLV_TYPE_TRANS_SESSION_EXP, remote->transport->expiration_end - current_unix_timestamp());
+		packet_add_tlv_uint(response, TLV_TYPE_TRANS_COMM_TIMEOUT, remote->transport->comms_timeout);
+		packet_add_tlv_uint(response, TLV_TYPE_TRANS_RETRY_TOTAL, remote->transport->retry_total);
+		packet_add_tlv_uint(response, TLV_TYPE_TRANS_RETRY_WAIT, remote->transport->retry_wait);
 
 	} while (0);
 
