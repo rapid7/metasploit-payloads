@@ -8,6 +8,7 @@
 
 #define HOSTNAME_LEN 512
 #define URLPATH_LEN 1024
+#define METERPRETER_CONST_OFFSET 12
 
 /*!
  * @brief Initialise the HTTP(S) connection.
@@ -250,17 +251,17 @@ Transport* transport_create_http(BOOL ssl, wchar_t* url, wchar_t* ua, wchar_t* p
 		ctx->ua = _wcsdup(ua);
 	}
 	SAFE_FREE(ctx->proxy);
-	if (proxy && wcscmp(proxy + 12, L"PROXY") != 0)
+	if (proxy && wcscmp(proxy + METERPRETER_CONST_OFFSET, L"PROXY") != 0)
 	{
 		ctx->proxy = _wcsdup(proxy);
 	}
 	SAFE_FREE(ctx->proxy_user);
-	if (proxyUser && wcscmp(proxyUser + 12, L"USERNAME_PROXY") != 0)
+	if (proxyUser && wcscmp(proxyUser + METERPRETER_CONST_OFFSET, L"USERNAME_PROXY") != 0)
 	{
 		ctx->proxy_user = _wcsdup(proxyUser);
 	}
 	SAFE_FREE(ctx->proxy_pass);
-	if (proxyPass && wcscmp(proxyPass + 12, L"PASSWORD_PROXY") != 0)
+	if (proxyPass && wcscmp(proxyPass + METERPRETER_CONST_OFFSET, L"PASSWORD_PROXY") != 0)
 	{
 		ctx->proxy_pass = _wcsdup(proxyPass);
 	}
@@ -268,7 +269,7 @@ Transport* transport_create_http(BOOL ssl, wchar_t* url, wchar_t* ua, wchar_t* p
 
 	// only apply the cert hash if we're given one and it's not the global value
 	SAFE_FREE(ctx->cert_hash);
-	if (certHash && strncmp((char*)(certHash + 12), "SSL_CERT_HASH", 20) != 0)
+	if (certHash && strncmp((char*)(certHash + METERPRETER_CONST_OFFSET), "SSL_CERT_HASH", 20) != 0)
 	{
 		ctx->cert_hash = (PBYTE)malloc(sizeof(BYTE) * 20);
 		memcpy(ctx->cert_hash, certHash, 20);
