@@ -83,7 +83,7 @@ end
 
 task :java_compile do
   Dir.chdir(java_source) do
-    system('mvn package -Ddeploy.path=output -Dandroid.release=true -P deploy')
+    system('mvn package -Ddeploy.path=output -Dandroid.release=true -q -P deploy')
   end
 end
 
