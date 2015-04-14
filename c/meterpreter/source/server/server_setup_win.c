@@ -12,18 +12,6 @@
 
 extern Command* extensionCommands;
 
-typedef struct _MetsrvTimeoutSettings
-{
-	/*! @ brief The total number of seconds to wait before killing off the session. */
-	int expiry;
-	/*! @ brief The total number of seconds to wait for a new packet before killing off the session. */
-	int comms;
-	/*! @ brief The total number of seconds to keep retrying for before a new session is established. */
-	UINT retry_total;
-	/*! @ brief The number of seconds to wait between reconnects. */
-	UINT retry_wait;
-} MetsrvTimeoutSettings;
-
 typedef struct _MetsrvConfigData
 {
 	wchar_t transport[28];
@@ -35,8 +23,8 @@ typedef struct _MetsrvConfigData
 	BYTE ssl_cert_hash[28];
 	union
 	{
-		char placeholder[sizeof(MetsrvTimeoutSettings)];
-		MetsrvTimeoutSettings values;
+		char placeholder[sizeof(TimeoutSettings)];
+		TimeoutSettings values;
 	} timeouts;
 } MetsrvConfigData;
 
@@ -146,22 +134,20 @@ static Transport* transport_create(MetsrvConfigData* config, BOOL stageless)
 
 	if (wcscmp(transport, L"SSL") == 0)
 	{
-		t = transport_create_tcp(url, config->timeouts.values.expiry, config->timeouts.values.comms,
-			config->timeouts.values.retry_total, config->timeouts.values.retry_wait);
+		t = transport_create_tcp(url, &config->timeouts.values);
 	}
 	else
 	{
 		BOOL ssl = wcscmp(transport, L"HTTPS") == 0;
 		t = transport_create_http(ssl, url, config->ua, config->proxy, config->proxy_username,
-			config->proxy_password, config->ssl_cert_hash, config->timeouts.values.expiry, config->timeouts.values.comms,
-			config->timeouts.values.retry_total, config->timeouts.values.retry_wait);
+			config->proxy_password, config->ssl_cert_hash, &config->timeouts.values);
 	}
 
-	dprintf("[TRANSPORT] Comms timeout: %u %08x", t->comms_timeout, t->comms_timeout);
-	dprintf("[TRANSPORT] Session timeout: %u %08x", t->expiration_time, t->expiration_time);
+	dprintf("[TRANSPORT] Comms timeout: %u %08x", t->timeouts.comms, t->timeouts.comms);
+	dprintf("[TRANSPORT] Session timeout: %u %08x", t->timeouts.expiry, t->timeouts.expiry);
 	dprintf("[TRANSPORT] Session expires: %u %08x", t->expiration_end, t->expiration_end);
-	dprintf("[TRANSPORT] Retry total: %u %08x", t->retry_total, t->retry_total);
-	dprintf("[TRANSPORT] Retry wait: %u %08x", t->retry_wait, t->retry_wait);
+	dprintf("[TRANSPORT] Retry total: %u %08x", t->timeouts.retry_total, t->timeouts.retry_total);
+	dprintf("[TRANSPORT] Retry wait: %u %08x", t->timeouts.retry_wait, t->timeouts.retry_wait);
 
 	return t;
 }

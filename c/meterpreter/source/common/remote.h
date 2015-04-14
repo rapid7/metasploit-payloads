@@ -29,6 +29,19 @@ typedef BOOL(*PServerDispatch)(Remote* remote, THREAD* dispatchThread);
 typedef DWORD(*PPacketTransmit)(Remote* remote, Packet* packet, PacketRequestCompletion* completion);
 typedef DWORD(*PPacketReceive)(Remote* remote, Packet** packet);
 
+typedef struct _TimeoutSettings
+{
+	/*! @ brief The total number of seconds to wait before killing off the session. */
+	int expiry;
+	/*! @ brief The total number of seconds to wait for a new packet before killing off the session. */
+	int comms;
+	/*! @ brief The total number of seconds to keep retrying for before a new session is established. */
+	UINT retry_total;
+	/*! @ brief The number of seconds to wait between reconnects. */
+	UINT retry_wait;
+} TimeoutSettings;
+
+
 typedef struct _TcpTransportContext
 {
 	SOCKET fd;                            ///! Remote socket file descriptor.
@@ -67,13 +80,10 @@ typedef struct _Transport
 	PPacketReceive packet_receive;        ///! Receives a packet over the transport.
 	STRTYPE url;                          ///! Full URL describing the comms in use.
 	VOID* ctx;                            ///! Pointer to the type-specific transport context;
-	int expiration_time;                  ///! Number of seconds from starting to when the server should shut down.
+	TimeoutSettings timeouts;             ///! Container for the timeout settings.
 	int expiration_end;                   ///! Unix timestamp for when the server should shut down.
 	int start_time;                       ///! Unix timestamp representing the session startup time.
 	int comms_last_packet;                ///! Unix timestamp of the last packet received.
-	int comms_timeout;                    ///! Number of seconds to wait for a valid packet before timing out.
-	DWORD retry_total;                    ///! Number of seconds to try to reestablish communications on failure.
-	DWORD retry_wait;                     ///! Number of seconds to wait between each retry attempt.
 } Transport;
 
 /*!

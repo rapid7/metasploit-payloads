@@ -124,7 +124,7 @@ static DWORD server_dispatch_http(Remote* remote, THREAD* dispatchThread)
 
 	while (running)
 	{
-		if (transport->comms_timeout != 0 && transport->comms_last_packet + transport->comms_timeout < current_unix_timestamp())
+		if (transport->timeouts.comms != 0 && transport->comms_last_packet + transport->timeouts.comms < current_unix_timestamp())
 		{
 			dprintf("[DISPATCH] Shutting down server due to communication timeout");
 			break;
@@ -227,15 +227,11 @@ static void transport_destroy_http(Remote* remote)
  * @param proxyUser Proxy user name (can be NULL).
  * @param proxyPass Proxy password (can be NULL).
  * @param certHash Expected SHA1 hash of the MSF server (can be NULL).
- * @param expirationTime The time used for session expiration.
- * @param commsTimeout The timeout used for individual communications.
- * @param retryTotal The total number of seconds to continue trying to reconnect comms.
- * @param retryWait The number of seconds to wait between each reconnect attempt.
+ * @param timeouts The timeout values to use for this transport.
  * @return Pointer to the newly configured/created HTTP(S) transport instance.
  */
 Transport* transport_create_http(BOOL ssl, wchar_t* url, wchar_t* ua, wchar_t* proxy,
-	wchar_t* proxyUser, wchar_t* proxyPass, PBYTE certHash, int expirationTime, int commsTimeout,
-	UINT retryTotal, UINT retryWait)
+	wchar_t* proxyUser, wchar_t* proxyPass, PBYTE certHash, TimeoutSettings* timeouts)
 {
 	Transport* transport = (Transport*)malloc(sizeof(Transport));
 	HttpTransportContext* ctx = (HttpTransportContext*)malloc(sizeof(HttpTransportContext));
@@ -244,6 +240,8 @@ Transport* transport_create_http(BOOL ssl, wchar_t* url, wchar_t* ua, wchar_t* p
 
 	memset(transport, 0, sizeof(Transport));
 	memset(ctx, 0, sizeof(HttpTransportContext));
+
+	memcpy(&transport->timeouts, timeouts, sizeof(transport->timeouts));
 
 	SAFE_FREE(ctx->ua);
 	if (ua)
@@ -284,13 +282,9 @@ Transport* transport_create_http(BOOL ssl, wchar_t* url, wchar_t* ua, wchar_t* p
 	transport->transport_deinit = server_deinit_http;
 	transport->transport_destroy = transport_destroy_http;
 	transport->ctx = ctx;
-	transport->comms_timeout = commsTimeout;
-	transport->expiration_time = expirationTime;
-	transport->expiration_end = current_unix_timestamp() + expirationTime;
+	transport->expiration_end = current_unix_timestamp() + transport->timeouts.expiry;
 	transport->start_time = current_unix_timestamp();
 	transport->comms_last_packet = current_unix_timestamp();
-	transport->retry_total = retryTotal;
-	transport->retry_wait = retryWait;
 
 #ifdef DEBUGTRACE
 	if (ssl && certHash)

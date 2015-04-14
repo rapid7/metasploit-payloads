@@ -15,12 +15,6 @@
 extern IN6_ADDR in6addr_any;
 #endif
 
-/*!
- * @brief Number of milliseconds to wait before connection retries.
- * @remark This will soon become configurable.
- */
-const DWORD RETRY_TIMEOUT_MS = 5000;
-
 /*! @brief An array of locks for use by OpenSSL. */
 static LOCK ** ssl_locks = NULL;
 
@@ -643,7 +637,7 @@ static DWORD server_dispatch_tcp(Remote* remote, THREAD* dispatchThread)
 		{
 			// check if the communication has timed out, or the session has expired, so we should terminate the session
 			int now = current_unix_timestamp();
-			if (now > transport->expiration_end || (now - lastPacket) > transport->comms_timeout)
+			if (now > transport->expiration_end || (now - lastPacket) > transport->timeouts.comms)
 			{
 				result = ERROR_SUCCESS;
 				dprintf("[DISPATCH] communications has timed out/session has ended");
@@ -879,8 +873,8 @@ static BOOL configure_tcp_connection(Remote* remote, SOCKET sock)
 			*(pScopeId - 1) = '\0';
 			*(pPort - 1) = '\0';
 			dprintf("[STAGELESS] IPv6 host %s port %S scopeid %S", pHost, pPort, pScopeId);
-			result = reverse_tcp6(pHost, pPort, atol(pScopeId), remote->transport->retry_total,
-				remote->transport->retry_wait, remote->transport->expiration_end, &ctx->fd);
+			result = reverse_tcp6(pHost, pPort, atol(pScopeId), remote->transport->timeouts.retry_total,
+				remote->transport->timeouts.retry_wait, remote->transport->expiration_end, &ctx->fd);
 		}
 		else
 		{
@@ -897,7 +891,7 @@ static BOOL configure_tcp_connection(Remote* remote, SOCKET sock)
 			{
 				*(pPort - 1) = '\0';
 				dprintf("[STAGELESS] IPv4 host %s port %s", pHost, pPort);
-				result = reverse_tcp4(pHost, usPort, remote->transport->retry_total, remote->transport->retry_wait,
+				result = reverse_tcp4(pHost, usPort, remote->transport->timeouts.retry_total, remote->transport->timeouts.retry_wait,
 					remote->transport->expiration_end, &ctx->fd);
 			}
 		}
@@ -924,8 +918,9 @@ static BOOL configure_tcp_connection(Remote* remote, SOCKET sock)
 			dprintf("[STAGED] previous connection was a reverse connection");
 			ctx->fd = socket(ctx->sock_desc.ss_family, SOCK_STREAM, IPPROTO_TCP);
 
-			result = reverse_tcp_run(ctx->fd, (SOCKADDR*)&ctx->sock_desc, ctx->sock_desc_size, remote->transport->retry_total,
-				remote->transport->retry_wait, remote->transport->expiration_end);
+			result = reverse_tcp_run(ctx->fd, (SOCKADDR*)&ctx->sock_desc, ctx->sock_desc_size,
+				remote->transport->timeouts.retry_total, remote->transport->timeouts.retry_wait,
+				remote->transport->expiration_end);
 
 			if (result != ERROR_SUCCESS)
 			{
@@ -974,14 +969,10 @@ static BOOL configure_tcp_connection(Remote* remote, SOCKET sock)
 /*!
  * @brief Creates a new TCP transport instance.
  * @param url URL containing the transport details.
- * @param expirationTime The time used for session expiration.
- * @param commsTimeout The timeout used for individual communications.
- * @param retryTotal The total number of seconds to continue trying to reconnect comms.
- * @param retryWait The number of seconds to wait between each reconnect attempt.
+ * @param timeouts The timeout values to use for this transport.
  * @return Pointer to the newly configured/created TCP transport instance.
  */
-Transport* transport_create_tcp(wchar_t* url, int expirationTime, int commsTimeout,
-	UINT retryTotal, UINT retryWait)
+Transport* transport_create_tcp(wchar_t* url, TimeoutSettings* timeouts)
 {
 	Transport* transport = (Transport*)malloc(sizeof(Transport));
 	TcpTransportContext* ctx = (TcpTransportContext*)malloc(sizeof(TcpTransportContext));
@@ -990,6 +981,8 @@ Transport* transport_create_tcp(wchar_t* url, int expirationTime, int commsTimeo
 
 	memset(transport, 0, sizeof(Transport));
 	memset(ctx, 0, sizeof(TcpTransportContext));
+
+	memcpy(&transport->timeouts, timeouts, sizeof(transport->timeouts));
 
 	transport->type = METERPRETER_TRANSPORT_SSL;
 	transport->url = _wcsdup(url);
@@ -1002,13 +995,9 @@ Transport* transport_create_tcp(wchar_t* url, int expirationTime, int commsTimeo
 	transport->server_dispatch = server_dispatch_tcp;
 	transport->get_socket = transport_get_socket_tcp;
 	transport->ctx = ctx;
-	transport->expiration_time = expirationTime;
-	transport->expiration_end = current_unix_timestamp() + expirationTime;
-	transport->comms_timeout = commsTimeout;
+	transport->expiration_end = current_unix_timestamp() + transport->timeouts.expiry;
 	transport->start_time = current_unix_timestamp();
 	transport->comms_last_packet = current_unix_timestamp();
-	transport->retry_total = retryTotal;
-	transport->retry_wait = retryWait;
 
 	return transport;
 }
