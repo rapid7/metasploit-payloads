@@ -777,7 +777,7 @@ Transport* transport_create_http(BOOL ssl, wchar_t* url, wchar_t* ua, wchar_t* p
 	ctx->ssl = ssl;
 
 	// only apply the cert hash if we're given one and it's not the global value
-	if (certHash && strncmp((char*)certHash, "METERPRETER_SSL_CERT_HASH", CERT_HASH_SIZE) != 0)
+	if (certHash && strncmp((char*)certHash + 12, "SSL_CERT_HASH", CERT_HASH_SIZE) != 0)
 	{
 		ctx->cert_hash = (PBYTE)malloc(sizeof(BYTE) * CERT_HASH_SIZE);
 		memcpy(ctx->cert_hash, certHash, CERT_HASH_SIZE);
