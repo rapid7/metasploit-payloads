@@ -430,7 +430,7 @@ static BOOL server_dispatch(Remote * remote, THREAD* dispatchThread)
 			dprintf("[DISPATCH] server dispatch thread signaled to terminate...");
 			break;
 		}
-		result = server_socket_poll(remote, 100);
+		result = server_socket_poll(remote, 500000);
 		if (result > 0) {
 			result = remote->transport->packet_receive(remote, &packet);
 			if (result != ERROR_SUCCESS) {
