@@ -8,6 +8,9 @@
 #include "crypto.h"
 #include "thread.h"
 
+/*! @brief This is the size of the certificate hash that is validated (sha1) */
+#define CERT_HASH_SIZE 20
+
 #ifdef _WIN32
 typedef wchar_t* STRTYPE;
 #else
@@ -98,25 +101,27 @@ typedef struct _Transport
  */
 typedef struct _Remote
 {
-	HMODULE hMetSrv;                      ///! Reference to the Meterpreter server instance.
+	HMODULE met_srv;                      ///! Reference to the Meterpreter server instance.
 
 	CryptoContext* crypto;                ///! Cryptographic context associated with the connection.
 
 	Transport* transport;                 ///! Pointer to the currently used transport mechanism.
-	Transport* nextTransport;             ///! Pointer to the next transport to use, if any.
+	Transport* next_transport;            ///! Pointer to the next transport to use, if any.
 
 	LOCK* lock;                           ///! General transport usage lock (used by SSL, and desktop stuff too).
 
-	HANDLE hServerThread;                 ///! Handle to the current server thread.
-	HANDLE hServerToken;                  ///! Handle to the current server security token.
-	HANDLE hThreadToken;                  ///! Handle to the current thread security token.
+	HANDLE server_thread;                 ///! Handle to the current server thread.
+	HANDLE server_token;                  ///! Handle to the current server security token.
+	HANDLE thread_token;                  ///! Handle to the current thread security token.
 
-	DWORD dwOrigSessionId;                ///! ID of the original Meterpreter session.
-	DWORD dwCurrentSessionId;             ///! ID of the currently active session.
-	char* cpOrigStationName;              ///! Original station name.
-	char* cpCurrentStationName;           ///! Name of the current station.
-	char* cpOrigDesktopName;              ///! Original desktop name.
-	char* cpCurrentDesktopName;           ///! Name of the current desktop.
+	DWORD orig_sess_id;                   ///! ID of the original Meterpreter session.
+	DWORD curr_sess_id;                   ///! ID of the currently active session.
+	char* orig_station_name;              ///! Original station name.
+	char* curr_station_name;              ///! Name of the current station.
+#ifdef _WIN32
+	char* orig_desktop_name;              ///! Original desktop name.
+	char* curr_desktop_name;              ///! Name of the current desktop.
+#endif
 } Remote;
 
 Remote* remote_allocate();

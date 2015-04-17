@@ -9,8 +9,8 @@
 #include "core.h"
 
 /*! @brief Function pointer type that defines the interface for a dispatch handler. */
-typedef DWORD (*DISPATCH_ROUTINE)( Remote *remote, Packet *packet );
-typedef BOOL (*INLINE_DISPATCH_ROUTINE)( Remote *remote, Packet *packet, DWORD* result);
+typedef DWORD(*DISPATCH_ROUTINE)(Remote *remote, Packet *packet);
+typedef BOOL(*INLINE_DISPATCH_ROUTINE)(Remote *remote, Packet *packet, DWORD* result);
 
 /*! @brief Specifies the maximum number of arguments that are checked/handled
  *         in a request/response packet dispatcher.
@@ -49,6 +49,11 @@ typedef BOOL (*INLINE_DISPATCH_ROUTINE)( Remote *remote, Packet *packet, DWORD* 
  * @remarks The request handler will be executed on the server thread.
  */
 #define COMMAND_INLINE_REQ(name, reqHandler) { name, { NULL, reqHandler, EMPTY_TLV }, { EMPTY_DISPATCH_HANDLER } }
+/*!
+ * @brief Helper macro that defines a command instance with an inline response handler only.
+ * @remarks The response handler will be executed on the server thread.
+ */
+#define COMMAND_INLINE_REP(name, reqHandler) { name, { EMPTY_DISPATCH_HANDLER }, { NULL, reqHandler, EMPTY_TLV } }
 
 // Place holders
 /*! @deprecated This entity is not used and may be removed in future. */

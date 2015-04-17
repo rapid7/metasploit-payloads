@@ -430,7 +430,7 @@ static BOOL server_dispatch(Remote * remote, THREAD* dispatchThread)
 			dprintf("[DISPATCH] server dispatch thread signaled to terminate...");
 			break;
 		}
-		result = server_socket_poll(remote, 100);
+		result = server_socket_poll(remote, 500000);
 		if (result > 0) {
 			result = remote->transport->packet_receive(remote, &packet);
 			if (result != ERROR_SUCCESS) {
@@ -608,18 +608,18 @@ DWORD server_setup(SOCKET fd)
 	}
 
 	// Store our thread handle
-	remote->hServerThread = dispatchThread->handle;
+	remote->server_thread = dispatchThread->handle;
 
 	dprintf("[SERVER] Registering dispatch routines...");
 	register_dispatch_routines();
 
 	// allocate the "next transport" information
 	dprintf("[SERVER] creating transport");
-	remote->nextTransport = transport_create(global_meterpreter_transport + 12, global_meterpreter_url);
+	remote->next_transport = transport_create(global_meterpreter_transport + 12, global_meterpreter_url);
 
-	while (remote->nextTransport) {
-		remote->transport = remote->nextTransport;
-		remote->nextTransport = NULL;
+	while (remote->next_transport) {
+		remote->transport = remote->next_transport;
+		remote->next_transport = NULL;
 
 		dprintf("[SERVER] initialising transport 0x%p", remote->transport->transport_init);
 		if (remote->transport->transport_init && !remote->transport->transport_init(remote, fd)) {

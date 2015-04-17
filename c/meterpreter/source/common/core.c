@@ -91,17 +91,17 @@ HANDLE core_update_thread_token( Remote *remote, HANDLE token )
 	lock_acquire( remote->lock );
 	do
 	{
-		temp = remote->hThreadToken;
+		temp = remote->thread_token;
 
 		// A NULL token resets the state back to the server token
 		if(! token)
-			token = remote->hServerToken;
+			token = remote->server_token;
 
 		// Assign the thread token
-		remote->hThreadToken = token;
+		remote->thread_token = token;
 
 		// Close the old token if its not one of the two active tokens
-		if( temp && temp != remote->hServerToken && temp != remote->hThreadToken ) {
+		if( temp && temp != remote->server_token && temp != remote->thread_token ) {
 			CloseHandle(temp);
 		}
 	} while(0);
@@ -136,32 +136,50 @@ VOID core_update_desktop( Remote * remote, DWORD dwSessionID, char * cpStationNa
 
 	do
 	{
-		temp_session = remote->dwCurrentSessionId;
+		temp_session = remote->curr_sess_id;
+
 		// A session id of -1 resets the state back to the servers real session id
-		if( dwSessionID = -1 )
-			dwSessionID = remote->dwOrigSessionId;
+		if (dwSessionID = -1)
+		{
+			dwSessionID = remote->orig_sess_id;
+		}
+
 		// Assign the new session id
-		remote->dwCurrentSessionId = dwSessionID;
+		remote->curr_sess_id = dwSessionID;
 
-		temp_station = remote->cpCurrentStationName;
+		temp_station = remote->curr_station_name;
+
 		// A NULL station resets the station back to the origional process window station
-		if( !cpStationName )
-			cpStationName = remote->cpOrigStationName;
-		// Assign the current window station name to use
-		remote->cpCurrentStationName = _strdup( cpStationName );
-		// free the memory for the old station name  if its not one of the two active names
-		if( temp_station && temp_station != remote->cpOrigStationName && temp_station != remote->cpCurrentStationName )
-			free( temp_station );
+		if (!cpStationName)
+		{
+			cpStationName = remote->orig_station_name;
+		}
 
-		temp_desktop = remote->cpCurrentDesktopName;
+		// Assign the current window station name to use
+		remote->curr_station_name = _strdup( cpStationName );
+
+		// free the memory for the old station name  if its not one of the two active names
+		if (temp_station && temp_station != remote->orig_station_name && temp_station != remote->curr_station_name)
+		{
+			free(temp_station);
+		}
+
+		temp_desktop = remote->curr_desktop_name;
+
 		// A NULL station resets the desktop back to the origional process desktop
-		if( !cpDesktopName )
-			cpDesktopName = remote->cpOrigDesktopName;
+		if (!cpDesktopName)
+		{
+			cpDesktopName = remote->orig_desktop_name;
+		}
+
 		// Assign the current window desktop name to use
-		remote->cpCurrentDesktopName = _strdup( cpDesktopName );
+		remote->curr_desktop_name = _strdup( cpDesktopName );
+
 		// free the memory for the old desktop name if its not one of the two active names
-		if( temp_desktop && temp_desktop != remote->cpOrigDesktopName && temp_desktop != remote->cpCurrentDesktopName )
-			free( temp_desktop );
+		if (temp_desktop && temp_desktop != remote->orig_desktop_name && temp_desktop != remote->curr_desktop_name)
+		{
+			free(temp_desktop);
+		}
 
 	} while( 0 );
 
@@ -1833,7 +1851,7 @@ DWORD packet_receive_http_via_winhttp(Remote *remote, Packet **packet)
 				break;
 			}
 
-			if (memcmp(hash, ctx->cert_hash, 20) != 0)
+			if (memcmp(hash, ctx->cert_hash, CERT_HASH_SIZE) != 0)
 			{
 				dprintf("[SERVER] Server hash set to: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
 					hash[0], hash[1], hash[2], hash[3], hash[4], hash[5], hash[6], hash[7], hash[8], hash[9], hash[10],

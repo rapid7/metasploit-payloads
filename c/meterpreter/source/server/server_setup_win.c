@@ -195,26 +195,26 @@ DWORD server_setup(SOCKET fd)
 			}
 
 			// Store our thread handle
-			remote->hServerThread = serverThread->handle;
+			remote->server_thread = serverThread->handle;
 
 			// Store our process token
-			if (!OpenThreadToken(remote->hServerThread, TOKEN_ALL_ACCESS, TRUE, &remote->hServerToken))
+			if (!OpenThreadToken(remote->server_thread, TOKEN_ALL_ACCESS, TRUE, &remote->server_token))
 			{
-				OpenProcessToken(GetCurrentProcess(), TOKEN_ALL_ACCESS, &remote->hServerToken);
+				OpenProcessToken(GetCurrentProcess(), TOKEN_ALL_ACCESS, &remote->server_token);
 			}
 
 			// Copy it to the thread token
-			remote->hThreadToken = remote->hServerToken;
+			remote->thread_token = remote->server_token;
 
 			// Save the initial session/station/desktop names...
-			remote->dwOrigSessionId = server_sessionid();
-			remote->dwCurrentSessionId = remote->dwOrigSessionId;
+			remote->orig_sess_id = server_sessionid();
+			remote->curr_sess_id = remote->orig_sess_id;
 			GetUserObjectInformation(GetProcessWindowStation(), UOI_NAME, &stationName, 256, NULL);
-			remote->cpOrigStationName = _strdup(stationName);
-			remote->cpCurrentStationName = _strdup(stationName);
+			remote->orig_station_name = _strdup(stationName);
+			remote->curr_station_name = _strdup(stationName);
 			GetUserObjectInformation(GetThreadDesktop(GetCurrentThreadId()), UOI_NAME, &desktopName, 256, NULL);
-			remote->cpOrigDesktopName = _strdup(desktopName);
-			remote->cpCurrentDesktopName = _strdup(desktopName);
+			remote->orig_desktop_name = _strdup(desktopName);
+			remote->curr_desktop_name = _strdup(desktopName);
 
 			dprintf("[SERVER] Registering dispatch routines...");
 			register_dispatch_routines();
@@ -229,12 +229,12 @@ DWORD server_setup(SOCKET fd)
 
 			// allocate the "next transport" information based off the global configuration
 			dprintf("[SERVER] creating transport");
-			remote->nextTransport = transport_create(&global_config, isStageless);
+			remote->next_transport = transport_create(&global_config, isStageless);
 
-			while (remote->nextTransport)
+			while (remote->next_transport)
 			{
 				// Work off the next transport
-				remote->transport = remote->nextTransport;
+				remote->transport = remote->next_transport;
 
 				if (remote->transport->transport_init)
 				{
@@ -251,7 +251,7 @@ DWORD server_setup(SOCKET fd)
 				}
 
 				// once initialised, we'll clean up the next transport so that we don't try again
-				remote->nextTransport = NULL;
+				remote->next_transport = NULL;
 
 				dprintf("[SERVER] Entering the main server dispatch loop for transport %x, context %x", remote->transport, remote->transport->ctx);
 				DWORD dispatchResult = remote->transport->server_dispatch(remote, serverThread);
@@ -276,7 +276,7 @@ DWORD server_setup(SOCKET fd)
 					}
 
 					// when we have a list of transports, we'll iterate to the next one (perhaps?)
-					remote->nextTransport = remote->transport;
+					remote->next_transport = remote->transport;
 				}
 			}
 
