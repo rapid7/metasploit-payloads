@@ -616,7 +616,7 @@ static DWORD server_dispatch_tcp(Remote* remote, THREAD* dispatchThread)
 			break;
 		}
 
-		result = server_socket_poll(remote, 500000);
+		result = server_socket_poll(remote, 50000);
 		if (result > 0)
 		{
 			result = remote->transport->packet_receive(remote, &packet);

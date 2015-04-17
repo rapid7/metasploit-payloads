@@ -37,7 +37,7 @@ typedef DWORD(*PPacketReceive)(Remote* remote, Packet** packet);
 
 typedef Transport*(*PTransCreateTcp)(STRTYPE url, TimeoutSettings* timeouts);
 typedef Transport*(*PTransCreateHttp)(BOOL ssl, STRTYPE url, STRTYPE ua, STRTYPE proxy,
-		STRTYPE proxyUser, STRTYPE proxyPass, STRTYPE certHash, TimeoutSettings* timeouts);
+		STRTYPE proxyUser, STRTYPE proxyPass, BYTE* certHash, TimeoutSettings* timeouts);
 
 typedef struct _TimeoutSettings
 {
