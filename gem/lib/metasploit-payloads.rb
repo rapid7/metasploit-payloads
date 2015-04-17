@@ -90,15 +90,6 @@ module MetasploitPayloads
     extensions
   end
 
-private
-
-  #
-  # Determine if MSF has been installed and is being used.
-  #
-  def self.metasploit_installed?
-    defined? Msf::Config
-  end
-
   #
   # Full path to the local gem folder containing the base data
   #
@@ -138,6 +129,15 @@ private
       end
     end
     exts
+  end
+
+private
+
+  #
+  # Determine if MSF has been installed and is being used.
+  #
+  def self.metasploit_installed?
+    defined? Msf::Config
   end
 
   #
