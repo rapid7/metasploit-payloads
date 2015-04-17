@@ -59,13 +59,6 @@ typedef struct _MIGRATECONTEXT
 
 } MIGRATECONTEXT, * LPMIGRATECONTEXT;
 
-
-// TODO: put these somewhere more sane? Requires some refactoring of core code which doesn't belong
-// in the common.lib
-extern Transport* transport_create_tcp(wchar_t* url, TimeoutSettings* timeouts);
-extern Transport* transport_create_http(BOOL ssl, wchar_t* url, wchar_t* ua, wchar_t* proxy,
-	wchar_t* proxyUser, wchar_t* proxyPass, PBYTE certHash, TimeoutSettings* timeouts);
-
 BOOL remote_request_core_transport_change(Remote* remote, Packet* packet, DWORD* pResult)
 {
 	DWORD result = ERROR_NOT_ENOUGH_MEMORY;
@@ -113,7 +106,7 @@ BOOL remote_request_core_transport_change(Remote* remote, Packet* packet, DWORD*
 
 		if (transportType == METERPRETER_TRANSPORT_SSL)
 		{
-			remote->next_transport = transport_create_tcp(transportUrl, &timeouts);
+			remote->next_transport = remote->trans_create_tcp(transportUrl, &timeouts);
 		}
 		else
 		{
@@ -124,7 +117,7 @@ BOOL remote_request_core_transport_change(Remote* remote, Packet* packet, DWORD*
 			wchar_t* proxyPass = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_PROXY_PASS);
 			PBYTE certHash = packet_get_tlv_value_raw(packet, TLV_TYPE_TRANS_CERT_HASH);
 
-			remote->next_transport = transport_create_http(ssl, transportUrl, ua, proxy,
+			remote->next_transport = remote->trans_create_http(ssl, transportUrl, ua, proxy,
 				proxyUser, proxyPass, certHash, &timeouts);
 
 			SAFE_FREE(ua);
@@ -453,6 +446,14 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
 	return ERROR_SUCCESS == dwResult ? FALSE : TRUE;
 }
 
+/*!
+ * @brief Update the timeouts with the given values
+ * @param remote Pointer to the \c Remote instance.
+ * @param packet Pointer to the request packet.
+ * @returns Indication of success or failure.
+ * @remark If no values are given, no updates are made. The response to
+           this message is the new/current settings.
+ */
 DWORD remote_request_transport_set_timeouts(Remote * remote, Packet * packet)
 {
 	DWORD result = ERROR_SUCCESS;
@@ -472,7 +473,7 @@ DWORD remote_request_transport_set_timeouts(Remote * remote, Packet * packet)
 		DWORD retryTotal = (DWORD)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_RETRY_TOTAL);
 		DWORD retryWait = (DWORD)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_RETRY_WAIT);
 
-		// TODO: put this ina  helper function that can be used everywhere?
+		// TODO: put this in a helper function that can be used everywhere?
 
 		// if it's in the past, that's fine, but 0 implies not set
 		if (expirationTimeout != 0)

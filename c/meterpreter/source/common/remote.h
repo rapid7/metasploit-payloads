@@ -24,6 +24,7 @@ typedef struct _Packet Packet;
 typedef struct _PacketRequestCompletion PacketRequestCompletion;
 typedef struct _Transport Transport;
 typedef struct _Remote Remote;
+typedef struct _TimeoutSettings TimeoutSettings;
 
 typedef SOCKET(*PTransportGetSocket)(Transport* transport);
 typedef void(*PTransportReset)(Transport* transport);
@@ -33,6 +34,10 @@ typedef void(*PTransportDestroy)(Remote* remote);
 typedef BOOL(*PServerDispatch)(Remote* remote, THREAD* dispatchThread);
 typedef DWORD(*PPacketTransmit)(Remote* remote, Packet* packet, PacketRequestCompletion* completion);
 typedef DWORD(*PPacketReceive)(Remote* remote, Packet** packet);
+
+typedef Transport*(*PTransCreateTcp)(STRTYPE url, TimeoutSettings* timeouts);
+typedef Transport*(*PTransCreateHttp)(BOOL ssl, STRTYPE url, STRTYPE ua, STRTYPE proxy,
+		STRTYPE proxyUser, STRTYPE proxyPass, STRTYPE certHash, TimeoutSettings* timeouts);
 
 typedef struct _TimeoutSettings
 {
@@ -139,6 +144,9 @@ typedef struct _Remote
 	char* orig_desktop_name;              ///! Original desktop name.
 	char* curr_desktop_name;              ///! Name of the current desktop.
 #endif
+
+	PTransCreateTcp trans_create_tcp;     ///! Pointer to a function that creates TCP transports.
+	PTransCreateHttp trans_create_http;   ///! Pointer to a function that creates HTTP transports.
 } Remote;
 
 Remote* remote_allocate();

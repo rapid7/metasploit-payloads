@@ -43,7 +43,7 @@ DWORD server_sessionid()
 	typedef BOOL (WINAPI * PROCESSIDTOSESSIONID)( DWORD pid, LPDWORD id );
 
 	static PROCESSIDTOSESSIONID processIdToSessionId = NULL;
-	HMODULE kernel   = NULL;
+	HMODULE kernel	 = NULL;
 	DWORD sessionId = 0;
 
 	do
@@ -177,6 +177,10 @@ DWORD server_setup(SOCKET fd)
 				SetLastError(ERROR_NOT_ENOUGH_MEMORY);
 				break;
 			}
+
+			// Set up the transport creation function pointers.
+			remote->trans_create_tcp = transport_create_tcp;
+			remote->trans_create_http = transport_create_http;
 
 			// Store our thread handle
 			remote->server_thread = serverThread->handle;

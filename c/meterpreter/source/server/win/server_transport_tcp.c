@@ -240,7 +240,6 @@ static DWORD bind_tcp(u_short port, SOCKET* socketBuffer)
 		return WSAGetLastError();
 	}
 
-
 	// prepare a connection listener for the attacker to connect to, and we
 	// attempt to bind to both ipv6 and ipv4 by default, and fallback to ipv4
 	// only if the process fails.
@@ -663,7 +662,7 @@ static DWORD server_dispatch_tcp(Remote* remote, THREAD* dispatchThread)
 }
 
 /*!
- * @brief Destroy the tcp transport.
+ * @brief Get the socket from the transport (if it's TCP).
  * @param transport Pointer to the TCP transport containing the socket.
  * @return The current transport socket FD, if any, or zero.
  */
@@ -898,11 +897,6 @@ static BOOL configure_tcp_connection(Remote* remote, SOCKET sock)
 	}
 	else if (ctx->sock_desc_size > 0)
 	{
-		// if we have a value for the socket description size then we know that the socket
-		// was originally created with a staged connection, and so we need to attempt to
-		// recreate that this time around.
-		int retryAttempts = 30;
-
 		dprintf("[STAGED] Attempted to reconnect based on inference from previous staged connection (size %u)", ctx->sock_desc_size);
 
 		// check if we should do bind() or reverse()
