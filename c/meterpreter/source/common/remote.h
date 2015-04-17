@@ -12,9 +12,11 @@
 #define CERT_HASH_SIZE 20
 
 #ifdef _WIN32
-typedef wchar_t* STRTYPE;
+typedef wchar_t CHARTYPE;
+typedef CHARTYPE* STRTYPE;
 #else
-typedef char* STRTYPE;
+typedef char CHARTYPE;
+typedef CHARTYPE* STRTYPE;
 #endif
 
 // Forward declarations required to keep compilers happy.
@@ -44,6 +46,21 @@ typedef struct _TimeoutSettings
 	UINT retry_wait;
 } TimeoutSettings;
 
+typedef struct _MetsrvConfigData
+{
+	CHARTYPE transport[28];
+	CHARTYPE url[524];
+	CHARTYPE ua[256];
+	CHARTYPE proxy[104];
+	CHARTYPE proxy_username[112];
+	CHARTYPE proxy_password[112];
+	BYTE ssl_cert_hash[28];
+	union
+	{
+		char placeholder[sizeof(TimeoutSettings)];
+		TimeoutSettings values;
+	} timeouts;
+} MetsrvConfigData;
 
 typedef struct _TcpTransportContext
 {

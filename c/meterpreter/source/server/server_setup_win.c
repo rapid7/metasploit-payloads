@@ -12,22 +12,6 @@
 
 extern Command* extensionCommands;
 
-typedef struct _MetsrvConfigData
-{
-	wchar_t transport[28];
-	wchar_t url[524];
-	wchar_t ua[256];
-	wchar_t proxy[104];
-	wchar_t proxy_username[112];
-	wchar_t proxy_password[112];
-	BYTE ssl_cert_hash[28];
-	union
-	{
-		char placeholder[sizeof(TimeoutSettings)];
-		TimeoutSettings values;
-	} timeouts;
-} MetsrvConfigData;
-
 MetsrvConfigData global_config =
 {
 	.transport = L"METERPRETER_TRANSPORT_SSL\x00\x00",
