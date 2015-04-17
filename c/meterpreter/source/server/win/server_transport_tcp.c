@@ -47,11 +47,7 @@ static DWORD reverse_tcp_run(SOCKET reverseSocket, SOCKADDR* sockAddr, int sockA
 		}
 
 		dprintf("[TCP RUN] Connection failed, sleeping for %u s", retryWait);
-		int waited = current_unix_timestamp() - retryStart;
-		if ((DWORD)waited < retryWait)
-		{
-			Sleep((retryWait - (DWORD)waited) * 1000);
-		}
+		Sleep(retryWait * 1000);
 	} while (((DWORD)current_unix_timestamp() - (DWORD)start) < retryTotal);
 
 	if (result == SOCKET_ERROR)
@@ -168,11 +164,7 @@ static DWORD reverse_tcp6(const char* host, const char* service, ULONG scopeId, 
 		}
 
 		dprintf("[TCP RUN] Connection failed, sleeping for %u s", retryWait);
-		int waited = current_unix_timestamp() - retryStart;
-		if ((DWORD)waited < retryWait)
-		{
-			Sleep((retryWait - (DWORD)waited) * 1000);
-		}
+		Sleep(retryWait * 1000);
 	} while (((DWORD)current_unix_timestamp() - (DWORD)start) < retryTotal);
 
 	closesocket(socketHandle);

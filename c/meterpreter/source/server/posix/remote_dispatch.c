@@ -80,10 +80,10 @@ DWORD request_core_loadlib(Remote *remote, Packet *packet)
 			if (pExtension->init)
 			{
 				dprintf("calling InitServerExtension");
+				pExtension->end = first;
 				res = pExtension->init(remote);
+				pExtension->start = extensionCommands;
 				pExtension->getname = dlsym(library, "GetExtensionName");
-
-
 				pExtension->deinit = dlsym(library, "DeinitServerExtension");
 
 				if (pExtension->getname)
@@ -99,7 +99,7 @@ DWORD request_core_loadlib(Remote *remote, Packet *packet)
 
 			if (response)
 			{
-				for (command = extensionCommands; command != first; command = command->next)
+				for (command = pExtension->start; command != pExtension->end; command = command->next)
 				{
 					packet_add_tlv_string(response, TLV_TYPE_METHOD, command->method);
 				}
