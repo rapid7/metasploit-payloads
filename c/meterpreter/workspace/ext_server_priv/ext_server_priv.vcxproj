@@ -623,6 +623,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\source\extensions\priv\server\ntds.c" />
     <ClCompile Include="..\..\source\extensions\priv\server\priv.c">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
@@ -634,6 +635,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClCompile Include="..\..\source\extensions\priv\server\fs.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\source\extensions\priv\server\ntds.h" />
     <ClInclude Include="..\..\source\extensions\priv\server\precomp.h" />
     <ClInclude Include="..\..\source\extensions\priv\priv.h" />
     <ClInclude Include="..\..\source\extensions\priv\server\elevate\elevate.h" />

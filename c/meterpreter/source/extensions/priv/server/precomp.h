@@ -6,6 +6,7 @@
 #include "./elevate/elevate.h"
 #include "passwd.h"
 #include "fs.h"
+#include "ntds.h"
 #include "../../../common//arch/win/remote_thread.h"
 
 #include "../../../DelayLoadMetSrv/DelayLoadMetSrv.h"
