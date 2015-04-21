@@ -1332,6 +1332,52 @@ DWORD packet_transmit_via_ssl(Remote* remote, Packet* packet, PacketRequestCompl
 }
 
 #ifdef _WIN32
+HINTERNET get_winhttp_req(HttpTransportContext *ctx, const char *direction)
+{
+	HINTERNET hReq = NULL;
+	DWORD flags = WINHTTP_FLAG_BYPASS_PROXY_CACHE;
+	if (ctx->ssl)
+	{
+		flags |= WINHTTP_FLAG_SECURE;
+		dprintf("[%s] Setting secure flag..", direction);
+	}
+
+	vdprintf("[%s] opening request on connection %x to %S", direction, ctx->connection, ctx->uri);
+	hReq = WinHttpOpenRequest(ctx->connection, L"POST", ctx->uri, NULL, NULL, NULL, flags);
+
+	if (hReq == NULL)
+	{
+		dprintf("[%s] Failed WinHttpOpenRequest: %d", direction, GetLastError());
+		SetLastError(ERROR_NOT_FOUND);
+		return NULL;
+	}
+
+	if (ctx->proxy_user)
+	{
+		dprintf("[%s] Setting proxy username to %S", direction, ctx->proxy_user);
+		dprintf("[%s] Setting proxy password to %S", direction, ctx->proxy_pass);
+		if (!WinHttpSetCredentials(hReq, WINHTTP_AUTH_TARGET_PROXY, WINHTTP_AUTH_SCHEME_BASIC,
+			ctx->proxy_user, ctx->proxy_pass, NULL))
+		{
+			dprintf("[%s] Failed to set creds %u", direction, GetLastError());
+		}
+	}
+
+	if (ctx->ssl)
+	{
+		flags = SECURITY_FLAG_IGNORE_UNKNOWN_CA
+			| SECURITY_FLAG_IGNORE_CERT_DATE_INVALID
+			| SECURITY_FLAG_IGNORE_CERT_CN_INVALID
+			| SECURITY_FLAG_IGNORE_CERT_WRONG_USAGE;
+		if (!WinHttpSetOption(hReq, WINHTTP_OPTION_SECURITY_FLAGS, &flags, sizeof(flags)))
+		{
+			dprintf("[%s] failed to set the security flags on the request", direction);
+		}
+	}
+
+	return hReq;
+}
+
 /*!
  * @brief Windows-specific function to transmit a packet via HTTP(s) using winhttp _and_ destroy it.
  * @param remote Pointer to the \c Remote instance.
@@ -1346,12 +1392,8 @@ DWORD packet_transmit_via_http_winhttp(Remote *remote, Packet *packet, PacketReq
 	HINTERNET hReq;
 	BOOL hRes;
 	DWORD retries = 5;
-	DWORD flags;
-	DWORD flen;
 	HttpTransportContext* ctx = (HttpTransportContext*)remote->transport->ctx;
 	unsigned char *buffer;
-
-	flen = sizeof(flags);
 
 	buffer = malloc(packet->payloadLength + sizeof(TlvHeader));
 	if (!buffer)
@@ -1365,51 +1407,15 @@ DWORD packet_transmit_via_http_winhttp(Remote *remote, Packet *packet, PacketReq
 
 	do
 	{
-		flags = WINHTTP_FLAG_BYPASS_PROXY_CACHE;
-		if (ctx->ssl)
-		{
-			flags |= WINHTTP_FLAG_SECURE;
-			dprintf("[PACKET TRANSMIT] Setting secure flag");
-		}
-
-		vdprintf("[PACKET TRANSMIT] Attempting WinHttpOpenRequest on %x to %S", ctx->connection, ctx->uri);
-		hReq = WinHttpOpenRequest(ctx->connection, L"POST", ctx->uri, NULL, NULL, NULL, flags);
-
+		hReq = get_winhttp_req(ctx, "PACKET TRANSMIT");
 		if (hReq == NULL)
 		{
-			dprintf("[PACKET TRANSMIT] Failed WinHttpOpenRequest: %d, %d", GetLastError(), WSAGetLastError());
-			SetLastError(ERROR_NOT_FOUND);
 			break;
 		}
 
-		dprintf("[PACKET TRANSMIT] Request created: %x", hReq);
-
-		if (ctx->proxy_user)
-		{
-			dprintf("[PACKET TRANSMIT] Setting proxy username to %S", ctx->proxy_user);
-			dprintf("[PACKET TRANSMIT] Setting proxy password to %S", ctx->proxy_pass);
-			if (!WinHttpSetCredentials(hReq, WINHTTP_AUTH_TARGET_PROXY, WINHTTP_AUTH_SCHEME_BASIC, ctx->proxy_user, ctx->proxy_pass, NULL))
-			{
-				dprintf("[PACKET TRANSMIT] Failed to set creds %u", GetLastError());
-			}
-		}
-
-		if (ctx->ssl)
-		{
-			flags = SECURITY_FLAG_IGNORE_UNKNOWN_CA
-				| SECURITY_FLAG_IGNORE_CERT_DATE_INVALID
-				| SECURITY_FLAG_IGNORE_CERT_CN_INVALID
-				| SECURITY_FLAG_IGNORE_CERT_WRONG_USAGE;
-
-			dprintf("[PACKET TRANSMIT] setting flags to : %x", flags);
-
-			if (!WinHttpSetOption(hReq, WINHTTP_OPTION_SECURITY_FLAGS, &flags, sizeof(flags)))
-			{
-				dprintf("[PACKET TRANSMIT] failed to set security flags");
-			}
-		}
-
-		hRes = WinHttpSendRequest(hReq, NULL, 0, buffer, packet->payloadLength + sizeof(TlvHeader), packet->payloadLength + sizeof(TlvHeader), 0);
+		hRes = WinHttpSendRequest(hReq, NULL, 0, buffer,
+			packet->payloadLength + sizeof(TlvHeader),
+			packet->payloadLength + sizeof(TlvHeader), 0);
 
 		if (!hRes)
 		{
@@ -1741,6 +1747,7 @@ DWORD packet_receive_via_ssl(Remote *remote, Packet **packet)
 }
 
 #ifdef _WIN32
+
 /*!
  * @brief Windows-specific function to receive a new packet via WinHTTP.
  * @param remote Pointer to the \c Remote instance.
@@ -1758,7 +1765,6 @@ DWORD packet_receive_http_via_winhttp(Remote *remote, Packet **packet)
 	BOOL inHeader = TRUE;
 	PUCHAR payload = NULL;
 	ULONG payloadLength;
-	DWORD flags;
 	HttpTransportContext* ctx = (HttpTransportContext*)remote->transport->ctx;
 
 	HINTERNET hReq;
@@ -1769,50 +1775,17 @@ DWORD packet_receive_http_via_winhttp(Remote *remote, Packet **packet)
 
 	do
 	{
-		flags = WINHTTP_FLAG_BYPASS_PROXY_CACHE;
-		if (ctx->ssl)
-		{
-			flags |= WINHTTP_FLAG_SECURE;
-			vdprintf("[PACKET RECEIVE WINHTTP] Setting secure flag..");
-		}
-
-		vdprintf("[PACKET RECEIVE WINHTTP] opening request on connection %x to %S", ctx->connection, ctx->uri);
-		hReq = WinHttpOpenRequest(ctx->connection, L"POST", ctx->uri, NULL, NULL, NULL, flags);
-
+		hReq = get_winhttp_req(ctx, "PACKET RECEIVE");
 		if (hReq == NULL)
 		{
-			dprintf("[PACKET RECEIVE] Failed WinHttpOpenRequest: %d", GetLastError());
-			SetLastError(ERROR_NOT_FOUND);
 			break;
-		}
-
-		if (ctx->proxy_user)
-		{
-			dprintf("[PACKET RECEIVE] Setting proxy username to %S", ctx->proxy_user);
-			dprintf("[PACKET RECEIVE] Setting proxy password to %S", ctx->proxy_pass);
-			if (!WinHttpSetCredentials(hReq, WINHTTP_AUTH_TARGET_PROXY, WINHTTP_AUTH_SCHEME_BASIC, ctx->proxy_user, ctx->proxy_pass, NULL))
-			{
-				dprintf("[PACKET RECEIVE] Failed to set creds %u", GetLastError());
-			}
-		}
-
-		if (ctx->ssl)
-		{
-			vdprintf("[PACKET RECEIVE WINHTTP] transport is SSL, setting up...");
-			flags = SECURITY_FLAG_IGNORE_UNKNOWN_CA
-				| SECURITY_FLAG_IGNORE_CERT_DATE_INVALID
-				| SECURITY_FLAG_IGNORE_CERT_CN_INVALID
-				| SECURITY_FLAG_IGNORE_CERT_WRONG_USAGE;
-			if (!WinHttpSetOption(hReq, WINHTTP_OPTION_SECURITY_FLAGS, &flags, sizeof(flags)))
-			{
-				dprintf("[PACKET RECEIVE WINHTTP] failed to set the security flags on the request");
-			}
 		}
 
 		vdprintf("[PACKET RECEIVE WINHTTP] sending the 'RECV' command...");
 		// TODO: when the MSF side supports it, update this so that it's UTF8
 		char pRecv[] = "RECV";
-		hRes = WinHttpSendRequest(hReq, WINHTTP_NO_ADDITIONAL_HEADERS, 0, pRecv, sizeof(pRecv), sizeof(pRecv), 0);
+		hRes = WinHttpSendRequest(hReq, WINHTTP_NO_ADDITIONAL_HEADERS, 0, pRecv,
+			sizeof(pRecv), sizeof(pRecv), 0);
 
 		if (!hRes)
 		{
