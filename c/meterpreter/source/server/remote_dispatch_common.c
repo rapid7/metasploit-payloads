@@ -46,6 +46,7 @@ BOOL ext_cmd_callback(LPVOID pState, LPVOID pData)
 			{
 				packet_add_tlv_string(pEnum->pResponse, TLV_TYPE_STRING, command->method);
 			}
+			dprintf("[LISTEXT] Finished listing extension: %s", pExt->name);
 
 			return TRUE;
 		}
