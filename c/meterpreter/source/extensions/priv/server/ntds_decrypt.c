@@ -90,7 +90,7 @@ BOOL decrypt_rc4(unsigned char *key1, unsigned char *key2, LPBYTE encrypted, int
 	unsigned char rc4Key[16];
 	HCRYPTKEY rc4KeyFinal;
 
-	cryptOK = CryptAcquireContext(&hProv, 0, MS_ENHANCED_PROV, PROV_RSA_FULL, 0);
+	cryptOK = CryptAcquireContext(&hProv, 0, MS_ENHANCED_PROV, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT);
 	if (!cryptOK){
 		return FALSE;
 	}

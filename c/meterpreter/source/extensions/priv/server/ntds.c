@@ -73,7 +73,7 @@ DWORD ntds_parse(Remote *remote, Packet *packet){
 		goto out;
 	}
 	if (!decrypt_PEK(sysKey, pekEncrypted, pekDecrypted)){
-		res = ERROR_DECRYPTION_FAILED;
+		res = GetLastError();
 		goto out;
 	}
 
