@@ -261,13 +261,8 @@ LINKAGE DWORD packet_get_result(Packet *packet);
 /*
  * Packet transmission
  */
-LINKAGE DWORD packet_transmit(Remote *remote, Packet *packet, PacketRequestCompletion *completion);
 LINKAGE DWORD packet_transmit_empty_response(Remote *remote, Packet *packet, DWORD res);
-LINKAGE DWORD packet_receive(Remote *remote, Packet **packet);
-LINKAGE DWORD packet_receive_via_ssl(Remote *remote, Packet **packet);
-LINKAGE DWORD packet_receive_via_http(Remote *remote, Packet **packet);
-LINKAGE DWORD packet_transmit_via_ssl(Remote *remote, Packet *packet, PacketRequestCompletion *completion);
-LINKAGE DWORD packet_transmit_via_http(Remote *remote, Packet *packet, PacketRequestCompletion *completion);
+#define PACKET_TRANSMIT(remote, packet, completion) (remote->transport->packet_transmit(remote, packet, completion))
 
 /*!
  * @brief Transmit a `TLV_TYPE_RESULT` response if `response` is present.
@@ -278,7 +273,7 @@ LINKAGE DWORD packet_transmit_via_http(Remote *remote, Packet *packet, PacketReq
 #define packet_transmit_response(result, remote, response)    \
 	if (response) {                                            \
 		packet_add_tlv_uint(response, TLV_TYPE_RESULT, result); \
-		packet_transmit(remote, response, NULL);                \
+		PACKET_TRANSMIT(remote, response, NULL);                \
 	}
 
 /*
@@ -291,7 +286,6 @@ LINKAGE DWORD packet_remove_completion_handler(LPCSTR requestId);
 /*
  * Core API
  */
-LINKAGE DWORD send_core_console_write( Remote *remote, LPCSTR fmt, ... );
 LINKAGE HANDLE core_update_thread_token( Remote *remote, HANDLE token );
 LINKAGE VOID core_update_desktop( Remote * remote, DWORD dwSessionID, char * cpStationName, char * cpDesktopName );
 

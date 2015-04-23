@@ -98,7 +98,7 @@ DWORD request_core_enumextcmd(Remote* remote, Packet* packet)
 
 		packet_add_tlv_uint(pResponse, TLV_TYPE_RESULT, ERROR_SUCCESS);
 
-		packet_transmit(remote, pResponse, NULL);
+		PACKET_TRANSMIT(remote, pResponse, NULL);
 	}
 
 	return ERROR_SUCCESS;

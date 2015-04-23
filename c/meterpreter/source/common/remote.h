@@ -33,7 +33,6 @@ typedef BOOL(*PTransportDeinit)(Remote* remote);
 typedef void(*PTransportDestroy)(Remote* remote);
 typedef BOOL(*PServerDispatch)(Remote* remote, THREAD* dispatchThread);
 typedef DWORD(*PPacketTransmit)(Remote* remote, Packet* packet, PacketRequestCompletion* completion);
-typedef DWORD(*PPacketReceive)(Remote* remote, Packet** packet);
 
 typedef Transport*(*PTransCreateTcp)(STRTYPE url, TimeoutSettings* timeouts);
 typedef Transport*(*PTransCreateHttp)(BOOL ssl, STRTYPE url, STRTYPE ua, STRTYPE proxy,
@@ -102,7 +101,6 @@ typedef struct _Transport
 	PTransportDestroy transport_destroy;  ///! Destroy the transport.
 	PServerDispatch server_dispatch;      ///! Transport dispatch function.
 	PPacketTransmit packet_transmit;      ///! Transmits a packet over the transport.
-	PPacketReceive packet_receive;        ///! Receives a packet over the transport.
 	STRTYPE url;                          ///! Full URL describing the comms in use.
 	VOID* ctx;                            ///! Pointer to the type-specific transport context;
 	TimeoutSettings timeouts;             ///! Container for the timeout settings.

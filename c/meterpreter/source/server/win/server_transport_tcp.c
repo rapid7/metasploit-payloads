@@ -577,6 +577,169 @@ static BOOL server_negotiate_ssl(Remote *remote)
 }
 
 /*!
+ * @brief Receive a new packet on the given remote endpoint.
+ * @param remote Pointer to the \c Remote instance.
+ * @param packet Pointer to a pointer that will receive the \c Packet data.
+ * @return An indication of the result of processing the transmission request.
+ */
+static DWORD packet_receive_via_ssl(Remote *remote, Packet **packet)
+{
+	DWORD headerBytes = 0, payloadBytesLeft = 0, res;
+	CryptoContext *crypto = NULL;
+	Packet *localPacket = NULL;
+	TlvHeader header;
+	LONG bytesRead;
+	BOOL inHeader = TRUE;
+	PUCHAR payload = NULL;
+	ULONG payloadLength;
+	TcpTransportContext* ctx = (TcpTransportContext*)remote->transport->ctx;
+
+	lock_acquire(remote->lock);
+
+	do
+	{
+		// Read the packet length
+		while (inHeader)
+		{
+			if ((bytesRead = SSL_read(ctx->ssl, ((PUCHAR)&header + headerBytes), sizeof(TlvHeader)-headerBytes)) <= 0)
+			{
+				if (!bytesRead)
+				{
+					SetLastError(ERROR_NOT_FOUND);
+				}
+
+				if (bytesRead < 0)
+				{
+					dprintf("[PACKET] receive header failed with error code %d. SSLerror=%d, WSALastError=%d\n", bytesRead, SSL_get_error(ctx->ssl, bytesRead), WSAGetLastError());
+					SetLastError(ERROR_NOT_FOUND);
+				}
+
+				break;
+			}
+
+			headerBytes += bytesRead;
+
+			if (headerBytes != sizeof(TlvHeader))
+			{
+				continue;
+			}
+
+			inHeader = FALSE;
+		}
+
+		if (headerBytes != sizeof(TlvHeader))
+		{
+			break;
+		}
+
+		// Initialize the header
+		header.length = header.length;
+		header.type = header.type;
+		payloadLength = ntohl(header.length) - sizeof(TlvHeader);
+		payloadBytesLeft = payloadLength;
+
+		// Allocate the payload
+		if (!(payload = (PUCHAR)malloc(payloadLength)))
+		{
+			SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+			break;
+		}
+
+		// Read the payload
+		while (payloadBytesLeft > 0)
+		{
+			if ((bytesRead = SSL_read(ctx->ssl, payload + payloadLength - payloadBytesLeft, payloadBytesLeft)) <= 0)
+			{
+
+				if (GetLastError() == WSAEWOULDBLOCK)
+				{
+					continue;
+				}
+
+				if (!bytesRead)
+				{
+					SetLastError(ERROR_NOT_FOUND);
+				}
+
+				if (bytesRead < 0)
+				{
+					dprintf("[PACKET] receive payload of length %d failed with error code %d. SSLerror=%d\n", payloadLength, bytesRead, SSL_get_error(ctx->ssl, bytesRead));
+					SetLastError(ERROR_NOT_FOUND);
+				}
+
+				break;
+			}
+
+			payloadBytesLeft -= bytesRead;
+		}
+
+		// Didn't finish?
+		if (payloadBytesLeft)
+		{
+			break;
+		}
+
+		// Allocate a packet structure
+		if (!(localPacket = (Packet *)malloc(sizeof(Packet))))
+		{
+			SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+			break;
+		}
+
+		memset(localPacket, 0, sizeof(Packet));
+
+		// If the connection has an established cipher and this packet is not
+		// plaintext, decrypt
+		if ((crypto = remote_get_cipher(remote)) &&
+			(packet_get_type(localPacket) != PACKET_TLV_TYPE_PLAIN_REQUEST) &&
+			(packet_get_type(localPacket) != PACKET_TLV_TYPE_PLAIN_RESPONSE))
+		{
+			ULONG origPayloadLength = payloadLength;
+			PUCHAR origPayload = payload;
+
+			// Decrypt
+			if ((res = crypto->handlers.decrypt(crypto, payload, payloadLength, &payload, &payloadLength)) != ERROR_SUCCESS)
+			{
+				SetLastError(res);
+				break;
+			}
+
+			// We no longer need the encrypted payload
+			free(origPayload);
+		}
+
+		localPacket->header.length = header.length;
+		localPacket->header.type = header.type;
+		localPacket->payload = payload;
+		localPacket->payloadLength = payloadLength;
+
+		*packet = localPacket;
+
+		SetLastError(ERROR_SUCCESS);
+
+	} while (0);
+
+	res = GetLastError();
+
+	// Cleanup on failure
+	if (res != ERROR_SUCCESS)
+	{
+		if (payload)
+		{
+			free(payload);
+		}
+		if (localPacket)
+		{
+			free(localPacket);
+		}
+	}
+
+	lock_release(remote->lock);
+
+	return res;
+}
+
+/*!
  * @brief The servers main dispatch loop for incoming requests using SSL over TCP
  * @param remote Pointer to the remote endpoint for this server connection.
  * @param dispatchThread Pointer to the main dispatch thread.
@@ -611,7 +774,7 @@ static DWORD server_dispatch_tcp(Remote* remote, THREAD* dispatchThread)
 		result = server_socket_poll(remote, 50000);
 		if (result > 0)
 		{
-			result = remote->transport->packet_receive(remote, &packet);
+			result = packet_receive_via_ssl(remote, &packet);
 			if (result != ERROR_SUCCESS)
 			{
 				dprintf("[DISPATCH] packet_receive returned %d, exiting dispatcher...", result);
@@ -953,6 +1116,137 @@ static BOOL configure_tcp_connection(Remote* remote, SOCKET sock)
 }
 
 /*!
+ * @brief Transmit a packet via SSL _and_ destroy it.
+ * @param remote Pointer to the \c Remote instance.
+ * @param packet Pointer to the \c Packet that is to be sent.
+ * @param completion Pointer to the completion routines to process.
+ * @return An indication of the result of processing the transmission request.
+ * @remark This uses an SSL-encrypted TCP channel, and does not imply the use of HTTPS.
+ */
+DWORD packet_transmit_via_ssl(Remote* remote, Packet* packet, PacketRequestCompletion* completion)
+{
+	CryptoContext* crypto;
+	Tlv requestId;
+	DWORD res;
+	DWORD idx;
+	TcpTransportContext* ctx = (TcpTransportContext*)remote->transport->ctx;
+
+	lock_acquire(remote->lock);
+
+	// If the packet does not already have a request identifier, create one for it
+	if (packet_get_tlv_string(packet, TLV_TYPE_REQUEST_ID, &requestId) != ERROR_SUCCESS)
+	{
+		DWORD index;
+		CHAR rid[32];
+
+		rid[sizeof(rid)-1] = 0;
+
+		for (index = 0; index < sizeof(rid)-1; index++)
+		{
+			rid[index] = (rand() % 0x5e) + 0x21;
+		}
+
+		packet_add_tlv_string(packet, TLV_TYPE_REQUEST_ID, rid);
+	}
+
+	do
+	{
+		// If a completion routine was supplied and the packet has a request
+		// identifier, insert the completion routine into the list
+		if ((completion) &&
+			(packet_get_tlv_string(packet, TLV_TYPE_REQUEST_ID,
+			&requestId) == ERROR_SUCCESS))
+		{
+			packet_add_completion_handler((LPCSTR)requestId.buffer, completion);
+		}
+
+		// If the endpoint has a cipher established and this is not a plaintext
+		// packet, we encrypt
+		if ((crypto = remote_get_cipher(remote)) &&
+			(packet_get_type(packet) != PACKET_TLV_TYPE_PLAIN_REQUEST) &&
+			(packet_get_type(packet) != PACKET_TLV_TYPE_PLAIN_RESPONSE))
+		{
+			ULONG origPayloadLength = packet->payloadLength;
+			PUCHAR origPayload = packet->payload;
+
+			// Encrypt
+			if ((res = crypto->handlers.encrypt(crypto, packet->payload,
+				packet->payloadLength, &packet->payload,
+				&packet->payloadLength)) !=
+				ERROR_SUCCESS)
+			{
+				SetLastError(res);
+				break;
+			}
+
+			// Destroy the original payload as we no longer need it
+			free(origPayload);
+
+			// Update the header length
+			packet->header.length = htonl(packet->payloadLength + sizeof(TlvHeader));
+		}
+
+		idx = 0;
+		while (idx < sizeof(packet->header))
+		{
+			// Transmit the packet's header (length, type)
+			res = SSL_write(
+				ctx->ssl,
+				(LPCSTR)(&packet->header) + idx,
+				sizeof(packet->header) - idx
+				);
+
+			if (res <= 0)
+			{
+				dprintf("[PACKET] transmit header failed with return %d at index %d\n", res, idx);
+				break;
+			}
+			idx += res;
+		}
+
+		if (res < 0)
+		{
+			break;
+		}
+
+		idx = 0;
+		while (idx < packet->payloadLength)
+		{
+			// Transmit the packet's payload (length, type)
+			res = SSL_write(
+				ctx->ssl,
+				packet->payload + idx,
+				packet->payloadLength - idx
+				);
+
+			if (res < 0)
+			{
+				break;
+			}
+
+			idx += res;
+		}
+
+		if (res < 0)
+		{
+			dprintf("[PACKET] transmit header failed with return %d at index %d\n", res, idx);
+			break;
+		}
+
+		SetLastError(ERROR_SUCCESS);
+	} while (0);
+
+	res = GetLastError();
+
+	// Destroy the packet
+	packet_destroy(packet);
+
+	lock_release(remote->lock);
+
+	return res;
+}
+
+/*!
  * @brief Creates a new TCP transport instance.
  * @param url URL containing the transport details.
  * @param timeouts The timeout values to use for this transport.
@@ -972,7 +1266,6 @@ Transport* transport_create_tcp(wchar_t* url, TimeoutSettings* timeouts)
 
 	transport->type = METERPRETER_TRANSPORT_SSL;
 	transport->url = _wcsdup(url);
-	transport->packet_receive = packet_receive_via_ssl;
 	transport->packet_transmit = packet_transmit_via_ssl;
 	transport->transport_init = configure_tcp_connection;
 	transport->transport_deinit = server_destroy_ssl;
