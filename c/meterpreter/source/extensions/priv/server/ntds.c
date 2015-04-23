@@ -67,13 +67,29 @@ DWORD ntds_parse(Remote *remote, Packet *packet){
 	memset(pekEncrypted, 0, sizeof(encryptedPEK));
 	memset(pekDecrypted, 0, sizeof(decryptedPEK));
 
+	// Get and Decrypt the Password Encryption Key (PEK)
 	pekStatus = get_PEK(ntdsState, accountColumns, pekEncrypted);
 	if (pekStatus != JET_errSuccess){
 		res = pekStatus;
+		engine_shutdown(ntdsState);
 		goto out;
 	}
 	if (!decrypt_PEK(sysKey, pekEncrypted, pekDecrypted)){
 		res = GetLastError();
+		engine_shutdown(ntdsState);
+		goto out;
+	}
+	// Set our Cursor on the first User record
+	JET_ERR cursorStatus = find_first(ntdsState);
+	if (cursorStatus != JET_errSuccess){
+		res = cursorStatus;
+		engine_shutdown(ntdsState);
+		goto out;
+	}
+	cursorStatus = next_user(ntdsState, accountColumns);
+	if (cursorStatus != JET_errSuccess){
+		res = cursorStatus;
+		engine_shutdown(ntdsState);
 		goto out;
 	}
 

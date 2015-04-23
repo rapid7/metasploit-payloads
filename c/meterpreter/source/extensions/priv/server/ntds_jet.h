@@ -63,8 +63,10 @@ typedef struct{
 
 JET_ERR engine_shutdown(jetState *ntdsState);
 JET_ERR engine_startup(jetState *ntdsState);
+JET_ERR find_first(jetState *ntdsState);
 JET_ERR get_column_info(jetState *ntdsState, ntdsColumns *accountColumns);
 JET_ERR get_PEK(jetState *ntdsState, ntdsColumns *accountColumns, encryptedPEK *pekEncrypted);
+JET_ERR next_user(jetState *ntdsState, ntdsColumns *accountColumns);
 JET_ERR open_database(jetState *ntdsState);
 JET_ERR read_table(jetState *ntdsState, ntdsColumns *accountColumns, decryptedPEK *pekDecrypted);
 

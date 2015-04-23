@@ -43,6 +43,12 @@ JET_ERR engine_startup(jetState *ntdsState){
 	return JET_errSuccess;
 }
 
+JET_ERR find_first(jetState *ntdsState){
+	JET_ERR cursorStatus;
+	cursorStatus = JetMove(ntdsState->jetSession, ntdsState->jetTable, JET_MoveFirst, (JET_GRBIT)NULL);
+	return cursorStatus;
+}
+
 JET_ERR get_column_info(jetState *ntdsState, ntdsColumns *accountColumns){
 	JET_ERR columnError;
 	const char attributeNames[][25] = {
@@ -107,6 +113,32 @@ JET_ERR get_PEK(jetState *ntdsState, ntdsColumns *accountColumns, encryptedPEK *
 		cursorStatus = JetMove(ntdsState->jetSession, ntdsState->jetTable, JET_MoveNext, (JET_GRBIT)NULL);
 	} while (cursorStatus == JET_errSuccess);
 	return readStatus;
+}
+
+JET_ERR next_user(jetState *ntdsState, ntdsColumns *accountColumns){
+	JET_ERR cursorStatus;
+	JET_ERR readStatus;
+	JET_ERR finalStatus = JET_errSuccess;
+	DWORD accountType = 0;
+	unsigned long columnSize = 0;
+	do{
+		cursorStatus = JetMove(ntdsState->jetSession, ntdsState->jetTable, JET_MoveNext, (JET_GRBIT)NULL);
+		if (cursorStatus != JET_errSuccess){
+			finalStatus = cursorStatus;
+			break;
+		}
+		//Retrieve the account type for this row
+		readStatus = JetRetrieveColumn(ntdsState->jetSession, ntdsState->jetTable, accountColumns->accountType.columnid, &accountType, sizeof(accountType), &columnSize, 0, NULL);
+		// Unless this is a User Account, then we skip it
+		if (readStatus == JET_wrnColumnNull){
+			continue;
+		}
+		else if (readStatus != JET_errSuccess){
+			finalStatus = readStatus;
+			break;
+		}
+	} while (accountType != 0x30000000);
+	return finalStatus;
 }
 
 JET_ERR open_database(jetState *ntdsState){
