@@ -111,7 +111,7 @@ DWORD request_core_loadlib(Remote *remote, Packet *packet)
 	if (response)
 	{
 		packet_add_tlv_uint(response, TLV_TYPE_RESULT, res);
-		packet_transmit(remote, response, NULL);
+		PACKET_TRANSMIT(remote, response, NULL);
 	}
 
 	return (res);
