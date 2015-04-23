@@ -5,7 +5,7 @@ BOOL get_syskey_component(HKEY lsaHandle, char subkeyName[255], unsigned char *t
 	long regStatus;
 	HKEY subkeyHandle;
 	unsigned char tmpVal[16];
-	int byteComponent = 0;
+	intmax_t byteComponent = 0;
 
 	regStatus = RegOpenKeyEx(lsaHandle, subkeyName, 0, KEY_READ, &subkeyHandle);
 	if (regStatus != ERROR_SUCCESS){

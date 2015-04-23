@@ -1,5 +1,11 @@
 #include "precomp.h"
 
+void bytes_to_string(LPBYTE data, int length, LPSTR output){
+	for (int i = 0; i < length; i++){
+		sprintf(output + (i << 1), "%02X", ((LPBYTE)data)[i]);
+	}
+}
+
 BOOL decrypt_hash(encryptedHash *encryptedNTLM, decryptedPEK *pekDecrypted, char *hashString, DWORD rid){
 	BOOL cryptOK = FALSE;
 	BYTE encHashData[17] = { 0 };
@@ -117,6 +123,6 @@ BOOL decrypt_rc4(unsigned char *key1, unsigned char *key2, LPBYTE encrypted, int
 	// Clean up after ourselves
 	CryptDestroyKey(rc4KeyFinal);
 	CryptDestroyHash(hHash);
-	CryptReleaseContext(hProv, NULL);
+	CryptReleaseContext(hProv, (ULONG_PTR)NULL);
 	return TRUE;
 }
