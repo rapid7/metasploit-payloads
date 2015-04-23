@@ -6,6 +6,10 @@
 #include "./elevate/elevate.h"
 #include "passwd.h"
 #include "fs.h"
+#include <WinCrypt.h>
+#include "syskey.h"
+#include "ntds_decrypt.h"
+#include "ntds_jet.h"
 #include "ntds.h"
 #include "../../../common//arch/win/remote_thread.h"
 

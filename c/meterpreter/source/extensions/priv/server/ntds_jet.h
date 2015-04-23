@@ -1,6 +1,5 @@
 #ifndef _METERPRETER_SOURCE_EXTENSION_PRIV_PRIV_SERVER_NTDS_JET_H
 #define _METERPRETER_SOURCE_EXTENSION_PRIV_PRIV_SERVER_NTDS_JET_H
-#include "precomp.h"
 #include <esent.h>
 #pragma comment(lib, "esent")
 

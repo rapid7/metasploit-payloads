@@ -624,6 +624,8 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\source\extensions\priv\server\ntds.c" />
+    <ClCompile Include="..\..\source\extensions\priv\server\ntds_decrypt.c" />
+    <ClCompile Include="..\..\source\extensions\priv\server\ntds_jet.c" />
     <ClCompile Include="..\..\source\extensions\priv\server\priv.c">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
@@ -633,9 +635,12 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClCompile Include="..\..\source\extensions\priv\server\elevate\namedpipe.c" />
     <ClCompile Include="..\..\source\extensions\priv\server\elevate\tokendup.c" />
     <ClCompile Include="..\..\source\extensions\priv\server\fs.c" />
+    <ClCompile Include="..\..\source\extensions\priv\server\syskey.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\source\extensions\priv\server\ntds.h" />
+    <ClInclude Include="..\..\source\extensions\priv\server\ntds_decrypt.h" />
+    <ClInclude Include="..\..\source\extensions\priv\server\ntds_jet.h" />
     <ClInclude Include="..\..\source\extensions\priv\server\precomp.h" />
     <ClInclude Include="..\..\source\extensions\priv\priv.h" />
     <ClInclude Include="..\..\source\extensions\priv\server\elevate\elevate.h" />
@@ -644,6 +649,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClInclude Include="..\..\source\extensions\priv\server\elevate\tokendup.h" />
     <ClInclude Include="..\..\source\extensions\priv\server\fs.h" />
     <ClInclude Include="..\..\source\extensions\priv\server\passwd.h" />
+    <ClInclude Include="..\..\source\extensions\priv\server\syskey.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\backcompat\backcompat.vcxproj">

@@ -1,4 +1,4 @@
-#include "syskey.h"
+#include "precomp.h"
 
 BOOL get_syskey_component(HKEY lsaHandle, char subkeyName[255], unsigned char *tmpSysKey){
 	DWORD sizeData = 9;
