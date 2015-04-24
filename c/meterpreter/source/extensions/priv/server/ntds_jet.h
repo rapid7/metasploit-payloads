@@ -9,7 +9,6 @@ typedef struct {
 	JET_SESID jetSession;
 	JET_DBID jetDatabase;
 	JET_TABLEID jetTable;
-	BOOL eof;
 }jetState;
 
 typedef struct {
@@ -68,6 +67,7 @@ JET_ERR get_column_info(jetState *ntdsState, ntdsColumns *accountColumns);
 JET_ERR get_PEK(jetState *ntdsState, ntdsColumns *accountColumns, encryptedPEK *pekEncrypted);
 JET_ERR next_user(jetState *ntdsState, ntdsColumns *accountColumns);
 JET_ERR open_database(jetState *ntdsState);
+JET_ERR read_user(jetState *ntdsState, ntdsColumns *accountColumns, decryptedPEK *pekDecrypted, ntdsAccount *userAccount);
 JET_ERR read_table(jetState *ntdsState, ntdsColumns *accountColumns, decryptedPEK *pekDecrypted);
 
 #endif

