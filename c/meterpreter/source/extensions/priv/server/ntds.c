@@ -179,17 +179,14 @@ static DWORD ntds_channel_read(Channel *channel, Packet *request,
 	memset(userAccount, 0, sizeof(ntdsAccount));
 
 	readStatus = read_user(ctx->ntdsState, ctx->accountColumns, ctx->pekDecrypted, userAccount);
-	memcpy(buffer, userAccount, bufferSize);
-	*bytesRead = bufferSize;
-	
-	/*if (readStatus != JET_errSuccess){
+	if (readStatus != JET_errSuccess){
 		result = readStatus;
 	}
 	else{
 		memcpy(buffer, userAccount, bufferSize);
 		*bytesRead = bufferSize;
 		next_user(ctx->ntdsState, ctx->accountColumns);
-	}*/
+	}
 	return result;
 }
 
