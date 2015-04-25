@@ -85,6 +85,10 @@ VOID load_stageless_extensions(Remote* remote, MetsrvExtension* stagelessExtensi
 
 static BOOL create_transport(MetsrvTransportCommon* transportCommon, Transport** transport, PDWORD size)
 {
+	dprintf("[TRNS] Transport claims to have URL: %S", transportCommon->url);
+	dprintf("[TRNS] Transport claims to have comms: %d", transportCommon->comms_timeout);
+	dprintf("[TRNS] Transport claims to have retry total: %d", transportCommon->retry_total);
+	dprintf("[TRNS] Transport claims to have retry wait: %d", transportCommon->retry_wait);
 	if (wcsncmp(transportCommon->url, L"tcp", 3) == 0)
 	{
 		*size = sizeof(MetsrvTransportTcp);
@@ -184,41 +188,6 @@ static BOOL create_transports(Remote* remote, MetsrvTransportCommon* transports,
 }
 
 /*!
- * @brief Create a new transport based on the given metsrv configuration.
- * @param config Pointer to the metsrv configuration block.
- * @param stageless Indication of whether the configuration is stageless.
- * @param fd The socket descriptor passed to metsrv during intialisation.
- */
-//static Transport* transport_create(MetsrvConfigData* config, BOOL stageless)
-//{
-//	Transport* t = NULL;
-//	wchar_t* transport = config->transport + TRANSPORT_ID_OFFSET;
-//	wchar_t* url = config->url + (stageless ? 1 : 0);
-//
-//	dprintf("[TRANSPORT] Type = %S", transport);
-//	dprintf("[TRANSPORT] URL = %S", url);
-//
-//	if (wcscmp(transport, L"SSL") == 0)
-//	{
-//		t = transport_create_tcp(url, &config->timeouts.values);
-//	}
-//	else
-//	{
-//		BOOL ssl = wcscmp(transport, L"HTTPS") == 0;
-//		t = transport_create_http(ssl, url, config->ua, config->proxy, config->proxy_username,
-//			config->proxy_password, config->ssl_cert_hash, &config->timeouts.values);
-//	}
-//
-//	dprintf("[TRANSPORT] Comms timeout: %u %08x", t->timeouts.comms, t->timeouts.comms);
-//	dprintf("[TRANSPORT] Session timeout: %u %08x", t->timeouts.expiry, t->timeouts.expiry);
-//	dprintf("[TRANSPORT] Session expires: %u %08x", t->expiration_end, t->expiration_end);
-//	dprintf("[TRANSPORT] Retry total: %u %08x", t->timeouts.retry_total, t->timeouts.retry_total);
-//	dprintf("[TRANSPORT] Retry wait: %u %08x", t->timeouts.retry_wait, t->timeouts.retry_wait);
-//
-//	return t;
-//}
-
-/*!
  * @brief Setup and run the server. This is called from Init via the loader.
  * @param fd The original socket descriptor passed in from the stager, or a pointer to stageless extensions.
  * @return Meterpreter exit code (ignored by the caller).
@@ -232,6 +201,10 @@ DWORD server_setup(MetsrvConfig* config)
 	DWORD res = 0;
 
 	dprintf("[SERVER] Initializing...");
+	dprintf("[SESSION] Comms Fd: %u", config->session.comms_fd);
+	dprintf("[SESSION] Listen Fd: %u", config->session.listen_fd);
+	dprintf("[SESSION] UUID: %S", config->session.uuid);
+	dprintf("[SESSION] Expiry: %u", config->session.expiry);
 
 	// if hAppInstance is still == NULL it means that we havent been
 	// reflectivly loaded so we must patch in the hAppInstance value
@@ -321,7 +294,7 @@ DWORD server_setup(MetsrvConfig* config)
 			{
 				if (remote->transport->transport_init)
 				{
-					dprintf("[SERVER] attempting to initialise transport 0x%p", remote->transport->transport_init);
+					dprintf("[SERVER] attempting to initialise transport 0x%p", remote->transport);
 					// Each transport has its own set of retry settings and each should honour
 					// them individually.
 					if (!remote->transport->transport_init(remote->transport))
@@ -359,6 +332,7 @@ DWORD server_setup(MetsrvConfig* config)
 					}
 
 					// move to the next one in the list
+					dprintf("[TRANS] Moving transport from 0x%p to 0x%p", remote->transport, remote->transport->next_transport);
 					remote->transport = remote->transport->next_transport;
 				}
 			}

@@ -776,10 +776,16 @@ static DWORD server_dispatch_tcp(Remote* remote, THREAD* dispatchThread)
 		{
 			// check if the communication has timed out, or the session has expired, so we should terminate the session
 			int now = current_unix_timestamp();
-			if (now > remote->sess_expiry_end || (now - lastPacket) > transport->timeouts.comms)
+			if (now > remote->sess_expiry_end)
 			{
 				result = ERROR_SUCCESS;
-				dprintf("[DISPATCH] communications has timed out/session has ended");
+				dprintf("[DISPATCH] /session has ended");
+				break;
+			}
+			else if ((now - lastPacket) > transport->timeouts.comms)
+			{
+				result = ERROR_SUCCESS;
+				dprintf("[DISPATCH] communications has timed out");
 				break;
 			}
 		}
@@ -833,12 +839,14 @@ static void transport_reset_tcp(Transport* transport)
 {
 	if (transport && transport->type == METERPRETER_TRANSPORT_SSL)
 	{
-		TcpTransportContext* ctx = (TcpTransportContext*)malloc(sizeof(TcpTransportContext));
+		TcpTransportContext* ctx = (TcpTransportContext*)transport->ctx;
+		dprintf("[TCP] Resetting transport from %u", ctx->fd);
 		if (ctx->fd)
 		{
 			closesocket(ctx->fd);
 		}
 		ctx->fd = 0;
+		dprintf("[TCP] Transport 0x%p is now reset to %u", transport, ctx->fd);
 	}
 }
 
@@ -858,6 +866,7 @@ static BOOL configure_tcp_connection(Transport* transport)
 	// check if comms is already open via a staged payload
 	if (ctx->fd)
 	{
+		dprintf("[TCP] Connection already running on %u", ctx->fd);
 		if (ctx->listen)
 		{
 			// listener socket is present, so it's a bind socket, persist the details.
