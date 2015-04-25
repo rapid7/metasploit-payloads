@@ -28,9 +28,10 @@ typedef struct _TimeoutSettings TimeoutSettings;
 
 typedef SOCKET(*PTransportGetSocket)(Transport* transport);
 typedef void(*PTransportReset)(Transport* transport);
-typedef BOOL(*PTransportInit)(Remote* remote, SOCKET fd);
-typedef BOOL(*PTransportDeinit)(Remote* remote);
-typedef void(*PTransportDestroy)(Remote* remote);
+typedef BOOL(*PTransportInit)(Transport* transport);
+typedef BOOL(*PTransportDeinit)(Transport* transport);
+typedef void(*PTransportDestroy)(Transport* transport);
+
 typedef BOOL(*PServerDispatch)(Remote* remote, THREAD* dispatchThread);
 typedef DWORD(*PPacketTransmit)(Remote* remote, Packet* packet, PacketRequestCompletion* completion);
 
@@ -40,8 +41,6 @@ typedef Transport*(*PTransCreateHttp)(BOOL ssl, STRTYPE url, STRTYPE ua, STRTYPE
 
 typedef struct _TimeoutSettings
 {
-	/*! @ brief The total number of seconds to wait before killing off the session. */
-	int expiry;
 	/*! @ brief The total number of seconds to wait for a new packet before killing off the session. */
 	int comms;
 	/*! @ brief The total number of seconds to keep retrying for before a new session is established. */
@@ -50,42 +49,26 @@ typedef struct _TimeoutSettings
 	UINT retry_wait;
 } TimeoutSettings;
 
-typedef struct _MetsrvConfigData
-{
-	CHARTYPE transport[28];
-	CHARTYPE url[524];
-	CHARTYPE ua[256];
-	CHARTYPE proxy[104];
-	CHARTYPE proxy_username[112];
-	CHARTYPE proxy_password[112];
-	BYTE ssl_cert_hash[28];
-	union
-	{
-		char placeholder[sizeof(TimeoutSettings)];
-		TimeoutSettings values;
-	} timeouts;
-} MetsrvConfigData;
-
 typedef struct _TcpTransportContext
 {
 	SOCKET fd;                            ///! Remote socket file descriptor.
+	SOCKET listen;                        ///! Listen socket descriptor, if any.
 	SSL_METHOD* meth;                     ///! The current SSL method in use.
 	SSL_CTX* ctx;                         ///! SSL-specific context information.
 	SSL* ssl;                             ///! Pointer to the SSL detail/version/etc.
 	struct sockaddr_storage sock_desc;    ///! Details of the current socket.
 	int sock_desc_size;                   ///! Details of the current socket.
-	BOOL bound;                           ///! Flag to indicate if the socket was a bound socket.
 } TcpTransportContext;
 
 typedef struct _HttpTransportContext
 {
 	BOOL ssl;                             ///! Flag indicating whether the connection uses SSL.
-	STRTYPE uri;                          ///! URI endpoint in use during HTTP or HTTPS transport use.
 	HANDLE internet;                      ///! Handle to the internet module for use with HTTP and HTTPS.
 	HANDLE connection;                    ///! Handle to the HTTP or HTTPS connection.
 	unsigned char* cert_hash;             ///! Pointer to the 20-byte certificate hash to validate
 
 	STRTYPE ua;                           ///! User agent string.
+	STRTYPE uri;                          ///! UUID encoded as a URI.
 	STRTYPE proxy;                        ///! Proxy details.
 	STRTYPE proxy_user;                   ///! Proxy username.
 	STRTYPE proxy_pass;                   ///! Proxy password.
@@ -104,9 +87,10 @@ typedef struct _Transport
 	STRTYPE url;                          ///! Full URL describing the comms in use.
 	VOID* ctx;                            ///! Pointer to the type-specific transport context;
 	TimeoutSettings timeouts;             ///! Container for the timeout settings.
-	int expiration_end;                   ///! Unix timestamp for when the server should shut down.
-	int start_time;                       ///! Unix timestamp representing the session startup time.
 	int comms_last_packet;                ///! Unix timestamp of the last packet received.
+	struct _Transport* next_transport;    ///! Pointer to the next transport in the list.
+	struct _Transport* prev_transport;    ///! Pointer to the previous transport in the list.
+	LOCK* lock;                           ///! Shared reference to the lock used in Remote.
 } Transport;
 
 /*!
@@ -125,8 +109,7 @@ typedef struct _Remote
 
 	CryptoContext* crypto;                ///! Cryptographic context associated with the connection.
 
-	Transport* transport;                 ///! Pointer to the currently used transport mechanism.
-	Transport* next_transport;            ///! Pointer to the next transport to use, if any.
+	Transport* transport;                 ///! Pointer to the currently used transport mechanism in a circular list of transports
 
 	LOCK* lock;                           ///! General transport usage lock (used by SSL, and desktop stuff too).
 
@@ -138,6 +121,7 @@ typedef struct _Remote
 	DWORD curr_sess_id;                   ///! ID of the currently active session.
 	char* orig_station_name;              ///! Original station name.
 	char* curr_station_name;              ///! Name of the current station.
+
 #ifdef _WIN32
 	char* orig_desktop_name;              ///! Original desktop name.
 	char* curr_desktop_name;              ///! Name of the current desktop.
@@ -145,6 +129,10 @@ typedef struct _Remote
 
 	PTransCreateTcp trans_create_tcp;     ///! Pointer to a function that creates TCP transports.
 	PTransCreateHttp trans_create_http;   ///! Pointer to a function that creates HTTP transports.
+
+	int sess_expiry_time;                 ///! Number of seconds that the session runs for.
+	int sess_expiry_end;                  ///! Unix timestamp for when the server should shut down.
+	int sess_start_time;                  ///! Unix timestamp representing the session startup time.
 } Remote;
 
 Remote* remote_allocate();

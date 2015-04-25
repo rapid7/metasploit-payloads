@@ -1,4 +1,5 @@
 #include "metsrv.h"
+#include "config.h"
 
 #ifdef _WIN32
 
@@ -13,9 +14,9 @@
  * Entry point for the DLL (or not if compiled as an EXE)
  */
 #ifdef _WIN32
-DWORD __declspec(dllexport) Init(SOCKET fd)
+DWORD __declspec(dllexport) Init(LPVOID config)
 {
-	return server_setup(fd);
+	return server_setup((MetsrvConfig*)config);
 }
 #else
 

@@ -468,6 +468,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\source\common\arch\win\remote_thread.h" />
+    <ClInclude Include="..\..\source\common\config.h" />
     <ClInclude Include="..\..\source\common\crypto\xor.h" />
     <ClInclude Include="..\..\source\common\args.h" />
     <ClInclude Include="..\..\source\common\base.h" />
