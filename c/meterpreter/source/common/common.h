@@ -12,7 +12,7 @@
 #include <stdio.h>
 #include <time.h>
 
-#define SAFE_FREE(x) {if(x){free(x);x=NULL;}}
+#define SAFE_FREE(x) {free(x); x = NULL;}
 
 #ifdef _WIN32
 	#include <winsock2.h>
