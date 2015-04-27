@@ -6,7 +6,7 @@
 #include <netdb.h>
 #include <netinet/in.h>
 
-#define DEBUGTRACE 1
+// #define DEBUGTRACE 1
 
 #define TRANSPORT_ID_OFFSET 22
 
