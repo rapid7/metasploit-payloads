@@ -321,8 +321,8 @@ DWORD server_setup(MetsrvConfig* config)
 					// them individually.
 					if (!remote->transport->transport_init(remote->transport))
 					{
-						dprintf("[SERVER] transport initialisation failed, remove from the list.");
-						remove_transport(remote, remote->transport);
+						dprintf("[SERVER] transport initialisation failed, moving to the next transport");
+						remote->transport = remote->transport->next_transport;
 
 						// when we have a list of transports, we'll iterate to the next one.
 						continue;
