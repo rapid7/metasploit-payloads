@@ -323,6 +323,7 @@ BOOL command_process_inline(Command *baseCommand, Command *extensionCommand, Rem
 					if (command->request.inline_handler) {
 						dprintf("[DISPATCH] executing inline request handler %s", lpMethod);
 						serverContinue = command->request.inline_handler(remote, packet, &result) && serverContinue;
+						dprintf("[DISPATCH] executed %s, continue %s", lpMethod, serverContinue ? "yes" : "no");
 					}
 					else
 					{

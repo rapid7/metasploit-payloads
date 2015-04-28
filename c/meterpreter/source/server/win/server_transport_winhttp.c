@@ -659,12 +659,47 @@ static void transport_destroy_http(Transport* transport)
 	}
 }
 
+void transport_write_http_config(Transport* transport, MetsrvTransportHttp* config)
+{
+	HttpTransportContext* ctx = (HttpTransportContext*)transport->ctx;
+
+	config->common.comms_timeout = transport->timeouts.comms;
+	config->common.retry_total = transport->timeouts.retry_total;
+	config->common.retry_wait = transport->timeouts.retry_wait;
+	wcsncpy(config->common.url, transport->url, URL_SIZE);
+
+	if (ctx->ua)
+	{
+		wcsncpy(config->ua, ctx->ua, UA_SIZE);
+	}
+
+	if (ctx->cert_hash)
+	{
+		memcpy(config->ssl_cert_hash, ctx->cert_hash, CERT_HASH_SIZE);
+	}
+
+	if (ctx->proxy)
+	{
+		wcsncpy(config->proxy.hostname, ctx->proxy, PROXY_HOST_SIZE);
+	}
+
+	if (ctx->proxy_user)
+	{
+		wcsncpy(config->proxy.username, ctx->proxy_user, PROXY_USER_SIZE);
+	}
+
+	if (ctx->proxy_pass)
+	{
+		wcsncpy(config->proxy.password, ctx->proxy_pass, PROXY_PASS_SIZE);
+	}
+}
+
 /*!
  * @brief Create an HTTP(S) transport from the given settings.
  * @param config Pointer to the HTTP configuration block.
  * @return Pointer to the newly configured/created HTTP(S) transport instance.
  */
-Transport* transport_create_http_config(MetsrvTransportHttp* config)
+Transport* transport_create_http(MetsrvTransportHttp* config)
 {
 	Transport* transport = (Transport*)malloc(sizeof(Transport));
 	HttpTransportContext* ctx = (HttpTransportContext*)malloc(sizeof(HttpTransportContext));

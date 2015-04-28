@@ -33,6 +33,7 @@ typedef BOOL(*PTransportInit)(Transport* transport);
 typedef BOOL(*PTransportDeinit)(Transport* transport);
 typedef void(*PTransportDestroy)(Transport* transport);
 typedef Transport*(*PTransportCreate)(Remote* remote, MetsrvTransportCommon* config, PDWORD size);
+typedef void(*PConfigCreate)(Remote* remote, MetsrvConfig** config, PDWORD size);
 
 typedef BOOL(*PServerDispatch)(Remote* remote, THREAD* dispatchThread);
 typedef DWORD(*PPacketTransmit)(Remote* remote, Packet* packet, PacketRequestCompletion* completion);
@@ -105,8 +106,12 @@ typedef struct _Remote
 
 	CryptoContext* crypto;                ///! Cryptographic context associated with the connection.
 
+	PConfigCreate config_create;          ///! Pointer to the function that will create a configuration block from the curren setup.
+
 	Transport* transport;                 ///! Pointer to the currently used transport mechanism in a circular list of transports
 	Transport* next_transport;            ///! Set externally when transports are requested to be changed.
+
+	MetsrvConfig* orig_config;            ///! Pointer to the original configuration.
 
 	LOCK* lock;                           ///! General transport usage lock (used by SSL, and desktop stuff too).
 

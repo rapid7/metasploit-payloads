@@ -70,6 +70,7 @@ typedef struct _MetsrvConfig
 {
 	MetsrvSession session;
 	MetsrvTransportCommon transports[1];  ///! Placeholder for 0 or more transports
+	// Extensions will appear after this
 } MetsrvConfig;
 
 #endif

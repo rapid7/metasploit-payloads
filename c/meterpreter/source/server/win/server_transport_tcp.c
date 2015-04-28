@@ -1077,12 +1077,20 @@ DWORD packet_transmit_via_ssl(Remote* remote, Packet* packet, PacketRequestCompl
 	return res;
 }
 
+void transport_write_tcp_config(Transport* transport, MetsrvTransportTcp* config)
+{
+	config->common.comms_timeout = transport->timeouts.comms;
+	config->common.retry_total = transport->timeouts.retry_total;
+	config->common.retry_wait = transport->timeouts.retry_wait;
+	wcsncpy(config->common.url, transport->url, URL_SIZE);
+}
+
 /*!
  * @brief Creates a new TCP transport instance.
  * @param config The TCP configuration block.
  * @return Pointer to the newly configured/created TCP transport instance.
  */
-Transport* transport_create_tcp_config(MetsrvTransportTcp* config)
+Transport* transport_create_tcp(MetsrvTransportTcp* config)
 {
 	Transport* transport = (Transport*)malloc(sizeof(Transport));
 	TcpTransportContext* ctx = (TcpTransportContext*)malloc(sizeof(TcpTransportContext));
