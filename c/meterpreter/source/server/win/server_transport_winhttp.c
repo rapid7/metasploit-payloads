@@ -725,25 +725,5 @@ Transport* transport_create_http_config(MetsrvTransportHttp* config)
 	transport->ctx = ctx;
 	transport->comms_last_packet = current_unix_timestamp();
 
-#ifdef DEBUGTRACE
-	if (ctx->ssl)
-	{
-		dprintf("[TRANS HTTP] Connection is HTTPS");
-		if (ctx->cert_hash)
-		{
-			PBYTE hash = ctx->cert_hash;
-			dprintf("[SERVER] Using HTTPS transport: Hash set to: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
-				hash[0], hash[1], hash[2], hash[3], hash[4], hash[5], hash[6], hash[7], hash[8], hash[9], hash[10],
-				hash[11], hash[12], hash[13], hash[14], hash[15], hash[16], hash[17], hash[18], hash[19]);
-			dprintf("[SERVER] is validating hashes %p", hash);
-		}
-	}
-	else
-	{
-		dprintf("[TRANS HTTP] Connection is plain HTTP");
-	}
-#endif
-
 	return transport;
-	return NULL;
 }
