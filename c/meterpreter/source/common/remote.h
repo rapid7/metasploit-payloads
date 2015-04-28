@@ -7,6 +7,7 @@
 
 #include "crypto.h"
 #include "thread.h"
+#include "config.h"
 
 /*! @brief This is the size of the certificate hash that is validated (sha1) */
 #define CERT_HASH_SIZE 20
@@ -31,13 +32,10 @@ typedef void(*PTransportReset)(Transport* transport);
 typedef BOOL(*PTransportInit)(Transport* transport);
 typedef BOOL(*PTransportDeinit)(Transport* transport);
 typedef void(*PTransportDestroy)(Transport* transport);
+typedef Transport*(*PTransportCreate)(Remote* remote, MetsrvTransportCommon* config, PDWORD size);
 
 typedef BOOL(*PServerDispatch)(Remote* remote, THREAD* dispatchThread);
 typedef DWORD(*PPacketTransmit)(Remote* remote, Packet* packet, PacketRequestCompletion* completion);
-
-typedef Transport*(*PTransCreateTcp)(STRTYPE url, TimeoutSettings* timeouts);
-typedef Transport*(*PTransCreateHttp)(BOOL ssl, STRTYPE url, STRTYPE ua, STRTYPE proxy,
-		STRTYPE proxyUser, STRTYPE proxyPass, BYTE* certHash, TimeoutSettings* timeouts);
 
 typedef struct _TimeoutSettings
 {
@@ -110,6 +108,7 @@ typedef struct _Remote
 	CryptoContext* crypto;                ///! Cryptographic context associated with the connection.
 
 	Transport* transport;                 ///! Pointer to the currently used transport mechanism in a circular list of transports
+	Transport* next_transport;            ///! Set externally when transports are requested to be changed.
 
 	LOCK* lock;                           ///! General transport usage lock (used by SSL, and desktop stuff too).
 
@@ -127,8 +126,7 @@ typedef struct _Remote
 	char* curr_desktop_name;              ///! Name of the current desktop.
 #endif
 
-	PTransCreateTcp trans_create_tcp;     ///! Pointer to a function that creates TCP transports.
-	PTransCreateHttp trans_create_http;   ///! Pointer to a function that creates HTTP transports.
+	PTransportCreate trans_create;        ///! Helper to create transports from configuration.
 
 	int sess_expiry_time;                 ///! Number of seconds that the session runs for.
 	int sess_expiry_end;                  ///! Unix timestamp for when the server should shut down.

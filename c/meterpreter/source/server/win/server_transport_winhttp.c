@@ -696,6 +696,13 @@ Transport* transport_create_http_config(MetsrvTransportHttp* config)
 	}
 	ctx->ssl = wcsncmp(config->common.url, L"https", 5) == 0;
 
+	dprintf("[SERVER] Received HTTPS Hash: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
+		config->ssl_cert_hash[0], config->ssl_cert_hash[1], config->ssl_cert_hash[2], config->ssl_cert_hash[3],
+		config->ssl_cert_hash[4], config->ssl_cert_hash[5], config->ssl_cert_hash[6], config->ssl_cert_hash[7],
+		config->ssl_cert_hash[8], config->ssl_cert_hash[9], config->ssl_cert_hash[10], config->ssl_cert_hash[11],
+		config->ssl_cert_hash[12], config->ssl_cert_hash[13], config->ssl_cert_hash[14], config->ssl_cert_hash[15],
+		config->ssl_cert_hash[16], config->ssl_cert_hash[17], config->ssl_cert_hash[18], config->ssl_cert_hash[19]);
+
 	// only apply the cert hash if we're given one and it's not the global value
 	SAFE_FREE(ctx->cert_hash);
 	unsigned char emptyHash[CERT_HASH_SIZE] = { 0 };
@@ -719,13 +726,21 @@ Transport* transport_create_http_config(MetsrvTransportHttp* config)
 	transport->comms_last_packet = current_unix_timestamp();
 
 #ifdef DEBUGTRACE
-	if (ctx->ssl && ctx->cert_hash)
+	if (ctx->ssl)
 	{
-		PBYTE hash = ctx->cert_hash;
-		dprintf("[SERVER] Using HTTPS transport: Hash set to: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
-			hash[0], hash[1], hash[2], hash[3], hash[4], hash[5], hash[6], hash[7], hash[8], hash[9], hash[10],
-			hash[11], hash[12], hash[13], hash[14], hash[15], hash[16], hash[17], hash[18], hash[19]);
-		dprintf("[SERVER] is validating hashes %p", hash);
+		dprintf("[TRANS HTTP] Connection is HTTPS");
+		if (ctx->cert_hash)
+		{
+			PBYTE hash = ctx->cert_hash;
+			dprintf("[SERVER] Using HTTPS transport: Hash set to: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
+				hash[0], hash[1], hash[2], hash[3], hash[4], hash[5], hash[6], hash[7], hash[8], hash[9], hash[10],
+				hash[11], hash[12], hash[13], hash[14], hash[15], hash[16], hash[17], hash[18], hash[19]);
+			dprintf("[SERVER] is validating hashes %p", hash);
+		}
+	}
+	else
+	{
+		dprintf("[TRANS HTTP] Connection is plain HTTP");
 	}
 #endif
 

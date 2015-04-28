@@ -28,6 +28,7 @@ typedef struct _MetsrvSession
 {
 	SOCKET comms_fd;                      ///! Socket handle for communications (if there is one).
 	SOCKET listen_fd;                     ///! Socket handler for the listeener (if there is one).
+	DWORD exit_func;                      ///! Exit func identifier for when the session ends.
 	int expiry;                           ///! The total number of seconds to wait before killing off the session.
 	CHARTYPE uuid[UUID_SIZE];             ///! UUID
 } MetsrvSession;

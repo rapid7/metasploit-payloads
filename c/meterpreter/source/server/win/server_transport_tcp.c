@@ -779,7 +779,7 @@ static DWORD server_dispatch_tcp(Remote* remote, THREAD* dispatchThread)
 			if (now > remote->sess_expiry_end)
 			{
 				result = ERROR_SUCCESS;
-				dprintf("[DISPATCH] /session has ended");
+				dprintf("[DISPATCH] session has ended");
 				break;
 			}
 			else if ((now - lastPacket) > transport->timeouts.comms)

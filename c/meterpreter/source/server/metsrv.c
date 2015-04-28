@@ -16,7 +16,26 @@
 #ifdef _WIN32
 DWORD __declspec(dllexport) Init(LPVOID config)
 {
-	return server_setup((MetsrvConfig*)config);
+	MetsrvConfig* metConfig = (MetsrvConfig*)config;
+	DWORD result = server_setup(metConfig);
+
+	dprintf("[METSRV] Exiting with %08x", metConfig->session.exit_func);
+
+	switch(metConfig->session.exit_func)
+	{
+		case EXITFUNC_SEH:
+			SetUnhandledExceptionFilter( NULL );
+			break;
+		case EXITFUNC_THREAD:
+			ExitThread( 0 );
+			break;
+		case EXITFUNC_PROCESS:
+			ExitProcess( 0 );
+			break;
+		default:
+			break;
+	}
+	return result;
 }
 #else
 

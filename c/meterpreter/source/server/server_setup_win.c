@@ -83,23 +83,57 @@ VOID load_stageless_extensions(Remote* remote, MetsrvExtension* stagelessExtensi
 	dprintf("[SERVER] All stageless extensions loaded");
 }
 
-static BOOL create_transport(MetsrvTransportCommon* transportCommon, Transport** transport, PDWORD size)
+static Transport* create_transport(Remote* remote, MetsrvTransportCommon* transportCommon, PDWORD size)
 {
+	Transport* transport = NULL;
 	dprintf("[TRNS] Transport claims to have URL: %S", transportCommon->url);
 	dprintf("[TRNS] Transport claims to have comms: %d", transportCommon->comms_timeout);
 	dprintf("[TRNS] Transport claims to have retry total: %d", transportCommon->retry_total);
 	dprintf("[TRNS] Transport claims to have retry wait: %d", transportCommon->retry_wait);
+
 	if (wcsncmp(transportCommon->url, L"tcp", 3) == 0)
 	{
-		*size = sizeof(MetsrvTransportTcp);
-		*transport = transport_create_tcp_config((MetsrvTransportTcp*)transportCommon);
+		if (size)
+		{
+			*size = sizeof(MetsrvTransportTcp);
+		}
+		transport = transport_create_tcp_config((MetsrvTransportTcp*)transportCommon);
 	}
 	else
 	{
-		*size = sizeof(MetsrvTransportHttp);
-		*transport = transport_create_http_config((MetsrvTransportHttp*)transportCommon);
+		if (size)
+		{
+			*size = sizeof(MetsrvTransportHttp);
+		}
+		transport = transport_create_http_config((MetsrvTransportHttp*)transportCommon);
 	}
-	return TRUE;
+
+	if (transport == NULL)
+	{
+		// something went wrong
+		return NULL;
+	}
+
+	// always insert at the tail. The first transport will be the one that kicked everything off
+	if (remote->transport == NULL)
+	{
+		// point to itself, as this is the first transport.
+		transport->next_transport = transport->prev_transport = transport;
+		remote->transport = transport;
+	}
+	else
+	{
+		transport->prev_transport = remote->transport->prev_transport;
+		transport->next_transport = remote->transport;
+
+		remote->transport->prev_transport->next_transport = transport;
+		remote->transport->prev_transport = transport;
+	}
+
+	// share the lock with the transport
+	transport->lock = remote->lock;
+
+	return transport;
 }
 
 static void append_transport(Transport** list, Transport* newTransport)
@@ -121,24 +155,30 @@ static void append_transport(Transport** list, Transport* newTransport)
 	}
 }
 
-static void remove_transport(Transport** list, Transport* oldTransport)
+static void remove_transport(Remote* remote, Transport* oldTransport)
 {
 	// if we point to ourself, then we're the last one
-	if ((*list)->next_transport == oldTransport)
+	if (remote->transport->next_transport == oldTransport)
 	{
-		*list = NULL;
+		remote->transport = NULL;
 	}
 	else
 	{
-		*list = oldTransport->next_transport;
+		// if we're removing the current one we need to move the pointer to the
+		// next one in the list.
+		if (remote->transport == oldTransport)
+		{
+			remote->transport = remote->transport->next_transport;
+		}
+
 		oldTransport->prev_transport->next_transport = oldTransport->next_transport;
 		oldTransport->next_transport->prev_transport = oldTransport->prev_transport;
 	}
 
-	oldTransport->prev_transport = oldTransport->next_transport = NULL;
+	oldTransport->transport_destroy(oldTransport);
 }
 
-static BOOL create_transports(Remote* remote, MetsrvTransportCommon* transports, PDWORD parsedSize, Transport** currentTransport)
+static BOOL create_transports(Remote* remote, MetsrvTransportCommon* transports, PDWORD parsedSize)
 {
 	DWORD totalSize = 0;
 	MetsrvTransportCommon* current = transports;
@@ -146,30 +186,11 @@ static BOOL create_transports(Remote* remote, MetsrvTransportCommon* transports,
 	// The first part of the transport is always the URL, if it's NULL, we are done.
 	while (current->url[0] != 0)
 	{
-		Transport* transport;
 		DWORD size;
-		if (create_transport(current, &transport, &size))
+		if (create_transport(remote, current, &size) != NULL)
 		{
+			dprintf("[TRANS] transport created of size %u", size);
 			totalSize += size;
-
-			// always insert at the tail. The first transport will be the one that kicked everything off
-			if (*currentTransport == NULL)
-			{
-				// point to itself!
-				transport->next_transport = transport->prev_transport = transport;
-				*currentTransport = transport;
-			}
-			else
-			{
-				transport->prev_transport = (*currentTransport)->prev_transport;
-				transport->next_transport = (*currentTransport);
-
-				(*currentTransport)->prev_transport->next_transport = transport;
-				(*currentTransport)->prev_transport = transport;
-			}
-
-			// share the lock with the transport
-			transport->lock = remote->lock;
 
 			// go to the next transport based on the size of the existing one.
 			current = (MetsrvTransportCommon*)((PBYTE)current + size);
@@ -234,8 +255,10 @@ DWORD server_setup(MetsrvConfig* config)
 			remote->sess_start_time = current_unix_timestamp();
 			remote->sess_expiry_end = remote->sess_start_time + config->session.expiry;
 
+			dprintf("[DISPATCH] Session going for %u seconds from %u to %u", remote->sess_expiry_time, remote->sess_start_time, remote->sess_expiry_end);
+
 			DWORD transportSize = 0;
-			if (!create_transports(remote, config->transports, &transportSize, &remote->transport))
+			if (!create_transports(remote, config->transports, &transportSize))
 			{
 				// not good, bail out!
 				SetLastError(ERROR_BAD_ARGUMENTS);
@@ -252,9 +275,8 @@ DWORD server_setup(MetsrvConfig* config)
 
 			load_stageless_extensions(remote, (MetsrvExtension*)((PBYTE)config->transports + transportSize));
 
-			// Set up the transport creation function pointers.
-			//remote->trans_create_tcp = transport_create_tcp;
-			//remote->trans_create_http = transport_create_http;
+			// Set up the transport creation function pointer
+			remote->trans_create = create_transport;
 
 			// Store our thread handle
 			remote->server_thread = serverThread->handle;
@@ -300,9 +322,7 @@ DWORD server_setup(MetsrvConfig* config)
 					if (!remote->transport->transport_init(remote->transport))
 					{
 						dprintf("[SERVER] transport initialisation failed, remove from the list.");
-						Transport* transToRemove = remote->transport;
-						remove_transport(&remote->transport, transToRemove);
-						transToRemove->transport_destroy(transToRemove);
+						remove_transport(remote, remote->transport);
 
 						// when we have a list of transports, we'll iterate to the next one.
 						continue;
@@ -320,8 +340,21 @@ DWORD server_setup(MetsrvConfig* config)
 				// If the transport mechanism failed, then we should loop until we're able to connect back again.
 				if (dispatchResult == ERROR_SUCCESS)
 				{
+					dprintf("[DISPATCH] Server requested shutdown of dispatch");
 					// But if it was successful, and this is a valid exit, then we should clean up and leave.
-					break;
+					if (remote->next_transport == NULL)
+					{
+						dprintf("[DISPATCH] No next transport specified, leaving");
+						// we weren't asked to switch transports, so we exit.
+						break;
+					}
+
+					// we need to change transports to the one we've been given. We will assume, for now,
+					// that the transport has been created using the appropriate functions and that it is
+					// part of the transport list.
+					dprintf("[TRANS] Moving transport from 0x%p to 0x%p", remote->transport, remote->next_transport);
+					remote->transport = remote->next_transport;
+					remote->next_transport = NULL;
 				}
 				else
 				{
@@ -340,9 +373,7 @@ DWORD server_setup(MetsrvConfig* config)
 			// clean up the transports
 			while (remote->transport)
 			{
-				Transport* t = remote->transport;
-				remove_transport(&remote->transport, t);
-				t->transport_destroy(t);
+				remove_transport(remote, remote->transport);
 			}
 
 			dprintf("[SERVER] Deregistering dispatch routines...");
