@@ -199,6 +199,21 @@ DWORD request_core_loadlib(Remote *pRemote, Packet *pPacket)
 	return res;
 }
 
+DWORD request_core_uuid(Remote* remote, Packet* packet)
+{
+	DWORD res = ERROR_SUCCESS;
+	Packet* response = packet_create_response(packet);
+
+	if (response)
+	{
+		packet_add_tlv_wstring(response, TLV_TYPE_UUID, remote->orig_config->session.uuid);
+
+		packet_transmit_response(ERROR_SUCCESS, remote, response);
+	}
+
+	return res;
+}
+
 DWORD request_core_machine_id(Remote* pRemote, Packet* pPacket)
 {
 	DWORD res = ERROR_SUCCESS;

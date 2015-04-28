@@ -60,10 +60,10 @@ typedef struct _MIGRATECONTEXT
 
 } MIGRATECONTEXT, * LPMIGRATECONTEXT;
 
-BOOL remote_request_core_transport_change(Remote* remote, Packet* packet, DWORD* pResult)
+DWORD create_transport_from_request(Remote* remote, Packet* packet, Transport** transportBufer)
 {
+	DWORD result = ERROR_NOT_ENOUGH_MEMORY;
 	Transport* transport = NULL;
-	Packet* response = packet_create_response(packet);
 	wchar_t* transportUrl = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_URL);
 
 	TimeoutSettings timeouts = { 0 };
@@ -98,11 +98,9 @@ BOOL remote_request_core_transport_change(Remote* remote, Packet* packet, DWORD*
 	dprintf("[CHANGE TRANS] Retry Total: %u", timeouts.retry_total);
 	dprintf("[CHANGE TRANS] Retry Wait: %u", timeouts.retry_wait);
 
-	*pResult = ERROR_NOT_ENOUGH_MEMORY;
-
 	do
 	{
-		if (response == NULL || transportUrl == NULL)
+		if (transportUrl == NULL)
 		{
 			dprintf("[CHANGE TRANS] Something was NULL");
 			break;
@@ -130,35 +128,35 @@ BOOL remote_request_core_transport_change(Remote* remote, Packet* packet, DWORD*
 			config.common.comms_timeout = timeouts.comms;
 			config.common.retry_total = timeouts.retry_total;
 			config.common.retry_wait = timeouts.retry_wait;
-			memcpy(config.common.url, transportUrl, sizeof(config.common.url));
+			wcsncpy(config.common.url, transportUrl, URL_SIZE);
 
 			if (proxy)
 			{
-				memcpy(config.proxy.hostname, proxy, sizeof(config.proxy.hostname));
+				wcsncpy(config.proxy.hostname, proxy, PROXY_HOST_SIZE);
 				free(proxy);
 			}
 
 			if (proxyUser)
 			{
-				memcpy(config.proxy.username, proxyUser, sizeof(config.proxy.username));
+				wcsncpy(config.proxy.username, proxyUser, PROXY_USER_SIZE);
 				free(proxyUser);
 			}
 
 			if (proxyPass)
 			{
-				memcpy(config.proxy.password, proxyPass, sizeof(config.proxy.password));
+				wcsncpy(config.proxy.password, proxyPass, PROXY_PASS_SIZE);
 				free(proxyPass);
 			}
 
 			if (ua)
 			{
-				memcpy(config.ua, ua, sizeof(config.ua));
+				wcsncpy(config.ua, ua, UA_SIZE);
 				free(ua);
 			}
 
 			if (certHash)
 			{
-				memcpy(config.ssl_cert_hash, certHash, sizeof(config.ssl_cert_hash));
+				memcpy(config.ssl_cert_hash, certHash, CERT_HASH_SIZE);
 				// No need to free this up as it's not a wchar_t
 			}
 
@@ -166,17 +164,66 @@ BOOL remote_request_core_transport_change(Remote* remote, Packet* packet, DWORD*
 		}
 
 		// tell the server dispatch to exit, it should pick up the new transport
-		*pResult = ERROR_SUCCESS;
+		result = ERROR_SUCCESS;
 	} while (0);
 
-	if (packet)
+	*transportBufer = transport;
+
+	return result;
+}
+
+BOOL remote_request_core_transport_next(Remote* remote, Packet* packet, DWORD* result)
+{
+	if (remote->next_transport == remote->transport->next_transport)
 	{
-		packet_transmit_empty_response(remote, response, *pResult);
+		// if we're switching to the same thing, don't bother.
+		*result = ERROR_INVALID_FUNCTION;
+	}
+	else
+	{
+		remote->next_transport = remote->transport->next_transport;
+		*result = ERROR_SUCCESS;
 	}
 
-	SAFE_FREE(transportUrl);
+	packet_transmit_empty_response(remote, packet, *result);
+	return *result == ERROR_SUCCESS ? FALSE : TRUE;
 
-	if (*pResult == ERROR_SUCCESS)
+}
+
+BOOL remote_request_core_transport_prev(Remote* remote, Packet* packet, DWORD* result)
+{
+	if (remote->next_transport == remote->transport->prev_transport)
+	{
+		// if we're switching to the same thing, don't bother.
+		*result = ERROR_INVALID_FUNCTION;
+	}
+	else
+	{
+		remote->next_transport = remote->transport->prev_transport;
+		*result = ERROR_SUCCESS;
+	}
+
+	packet_transmit_empty_response(remote, packet, *result);
+	return *result == ERROR_SUCCESS ? FALSE : TRUE;
+}
+
+DWORD remote_request_core_transport_add(Remote* remote, Packet* packet)
+{
+	Transport* transport = NULL;
+	DWORD result = create_transport_from_request(remote, packet, &transport);
+
+	packet_transmit_empty_response(remote, packet, result);
+	return result;
+}
+
+BOOL remote_request_core_transport_change(Remote* remote, Packet* packet, DWORD* pResult)
+{
+	Transport* transport = NULL;
+	DWORD result = create_transport_from_request(remote, packet, &transport);
+
+	packet_transmit_empty_response(remote, packet, result);
+
+	if (result == ERROR_SUCCESS)
 	{
 		remote->next_transport = transport;
 		// exit out of the dispatch loop.

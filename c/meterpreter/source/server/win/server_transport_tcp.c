@@ -784,7 +784,7 @@ static DWORD server_dispatch_tcp(Remote* remote, THREAD* dispatchThread)
 			}
 			else if ((now - lastPacket) > transport->timeouts.comms)
 			{
-				result = ERROR_SUCCESS;
+				result = ERROR_NETWORK_NOT_AVAILABLE;
 				dprintf("[DISPATCH] communications has timed out");
 				break;
 			}
