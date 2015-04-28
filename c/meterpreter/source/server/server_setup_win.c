@@ -202,8 +202,8 @@ static BOOL create_transports(Remote* remote, MetsrvTransportCommon* transports,
 		}
 	}
 
-	// account for the last terminating NULL byte
-	*parsedSize = totalSize + 1;
+	// account for the last terminating NULL wchar
+	*parsedSize = totalSize + sizeof(wchar_t);
 
 	return TRUE;
 }
@@ -223,7 +223,6 @@ DWORD server_setup(MetsrvConfig* config)
 
 	dprintf("[SERVER] Initializing...");
 	dprintf("[SESSION] Comms Fd: %u", config->session.comms_fd);
-	dprintf("[SESSION] Listen Fd: %u", config->session.listen_fd);
 	dprintf("[SESSION] UUID: %S", config->session.uuid);
 	dprintf("[SESSION] Expiry: %u", config->session.expiry);
 
@@ -269,8 +268,7 @@ DWORD server_setup(MetsrvConfig* config)
 			// If it's TCP comms, we need to wire that up.
 			if (config->session.comms_fd)
 			{
-				((TcpTransportContext*)remote->transport->ctx)->fd = config->session.comms_fd;
-				((TcpTransportContext*)remote->transport->ctx)->listen = config->session.listen_fd;
+				((TcpTransportContext*)remote->transport->ctx)->fd = (SOCKET)config->session.comms_fd;
 			}
 
 			load_stageless_extensions(remote, (MetsrvExtension*)((PBYTE)config->transports + transportSize));

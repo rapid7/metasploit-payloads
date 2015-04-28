@@ -867,50 +867,6 @@ static BOOL configure_tcp_connection(Transport* transport)
 	if (ctx->fd)
 	{
 		dprintf("[TCP] Connection already running on %u", ctx->fd);
-		if (ctx->listen)
-		{
-			// listener socket is present, so it's a bind socket, persist the details.
-			ctx->sock_desc_size = sizeof(ctx->sock_desc);
-			getsockname(ctx->listen, (struct sockaddr*)&ctx->sock_desc, &ctx->sock_desc_size);
-
-			// we keep the existing listen socket value around as a "flag" that indicates that
-			// bind sockets were used in the past. But we still close the socket off now.
-			closesocket(ctx->listen);
-		}
-		else
-		{
-			// no listener socket handle, so must be reverse.
-			ctx->sock_desc_size = sizeof(ctx->sock_desc);
-			getpeername(ctx->fd, (struct sockaddr*)&ctx->sock_desc, &ctx->sock_desc_size);
-		}
-	}
-	// have we already connected on this before and we just need to do it again?
-	else if (ctx->sock_desc_size > 0)
-	{
-		dprintf("[STAGED] Attempted to reconnect based on inference from previous staged connection (size %u)", ctx->sock_desc_size);
-
-		// check if we should do bind() or reverse()
-		if (ctx->listen)
-		{
-			dprintf("[STAGED] previous connection was a bind connection");
-			SOCKET listenSocket = socket(ctx->sock_desc.ss_family, SOCK_STREAM, IPPROTO_TCP);
-
-			result = bind_tcp_run(listenSocket, (SOCKADDR*)&ctx->sock_desc, ctx->sock_desc_size, &ctx->fd);
-		}
-		else
-		{
-			dprintf("[STAGED] previous connection was a reverse connection");
-			ctx->fd = socket(ctx->sock_desc.ss_family, SOCK_STREAM, IPPROTO_TCP);
-
-			result = reverse_tcp_run(ctx->fd, (SOCKADDR*)&ctx->sock_desc, ctx->sock_desc_size,
-				transport->timeouts.retry_total, transport->timeouts.retry_wait);
-
-			if (result != ERROR_SUCCESS)
-			{
-				closesocket(ctx->fd);
-				ctx->fd = 0;
-			}
-		}
 	}
 	else
 	{

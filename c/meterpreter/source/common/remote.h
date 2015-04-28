@@ -54,8 +54,6 @@ typedef struct _TcpTransportContext
 	SSL_METHOD* meth;                     ///! The current SSL method in use.
 	SSL_CTX* ctx;                         ///! SSL-specific context information.
 	SSL* ssl;                             ///! Pointer to the SSL detail/version/etc.
-	struct sockaddr_storage sock_desc;    ///! Details of the current socket.
-	int sock_desc_size;                   ///! Details of the current socket.
 } TcpTransportContext;
 
 typedef struct _HttpTransportContext

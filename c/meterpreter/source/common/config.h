@@ -26,8 +26,7 @@ typedef CHARTYPE* STRTYPE;
 
 typedef struct _MetsrvSession
 {
-	SOCKET comms_fd;                      ///! Socket handle for communications (if there is one).
-	SOCKET listen_fd;                     ///! Socket handler for the listeener (if there is one).
+	DWORD comms_fd;                       ///! Socket handle for communications (if there is one).
 	DWORD exit_func;                      ///! Exit func identifier for when the session ends.
 	int expiry;                           ///! The total number of seconds to wait before killing off the session.
 	CHARTYPE uuid[UUID_SIZE];             ///! UUID
@@ -35,10 +34,10 @@ typedef struct _MetsrvSession
 
 typedef struct _MetsrvTransportCommon
 {
+	CHARTYPE url[URL_SIZE];               ///! Transport url:  scheme://host:port/URI
 	int comms_timeout;                    ///! Number of sessions to wait for a new packet.
 	int retry_total;                      ///! Total seconds to retry comms for.
 	int retry_wait;                       ///! Seconds to wait between reconnects.
-	CHARTYPE url[URL_SIZE];               ///! Transport url:  scheme://host:port/URI
 } MetsrvTransportCommon;
 
 typedef struct _MetsrvTransportProxy
