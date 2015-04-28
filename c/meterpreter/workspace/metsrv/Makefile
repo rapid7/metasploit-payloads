@@ -9,6 +9,7 @@ VPATH += $(ROOT)/source/server/posix/:
 VPATH += $(ROOT)/source/server/
 
 CFLAGS += -I$(ROOT)/source/server
+CFLAGS += -std=c99
 
 objects = metsrv.o scheduler.o server_setup_posix.o remote_dispatch_common.o
 objects += remote_dispatch.o netlink.o

@@ -148,12 +148,14 @@ typedef enum
 	TLV_TYPE_TRANS_TYPE          = TLV_VALUE(TLV_META_TYPE_UINT,      430),   ///! Represents the type of transport to switch to.
 	TLV_TYPE_TRANS_URL           = TLV_VALUE(TLV_META_TYPE_STRING,    431),   ///! Represents the new URL of the transport to use.
 	TLV_TYPE_TRANS_UA            = TLV_VALUE(TLV_META_TYPE_STRING,    432),   ///! Represents the user agent (for http).
-	TLV_TYPE_TRANS_COMMS_TIMEOUT = TLV_VALUE(TLV_META_TYPE_UINT,      433),   ///! Represents the communications timeout (for http).
-	TLV_TYPE_TRANS_SESSION_EXP   = TLV_VALUE(TLV_META_TYPE_UINT,      434),   ///! Represents the session expiration (for http).
+	TLV_TYPE_TRANS_COMM_TIMEOUT  = TLV_VALUE(TLV_META_TYPE_UINT,      433),   ///! Represents the communications timeout.
+	TLV_TYPE_TRANS_SESSION_EXP   = TLV_VALUE(TLV_META_TYPE_UINT,      434),   ///! Represents the session expiration.
 	TLV_TYPE_TRANS_CERT_HASH     = TLV_VALUE(TLV_META_TYPE_RAW,       435),   ///! Represents the certificate hash (for https).
 	TLV_TYPE_TRANS_PROXY_INFO    = TLV_VALUE(TLV_META_TYPE_STRING,    436),   ///! Represents the proxy info string (for http).
 	TLV_TYPE_TRANS_PROXY_USER    = TLV_VALUE(TLV_META_TYPE_STRING,    437),   ///! Represents the proxy user name (for http).
 	TLV_TYPE_TRANS_PROXY_PASS    = TLV_VALUE(TLV_META_TYPE_STRING,    438),   ///! Represents the proxy password (for http).
+	TLV_TYPE_TRANS_RETRY_TOTAL   = TLV_VALUE(TLV_META_TYPE_UINT,      439),   ///! Total time (seconds) to continue retrying comms.
+	TLV_TYPE_TRANS_RETRY_WAIT    = TLV_VALUE(TLV_META_TYPE_UINT,      440),   ///! Time (seconds) to wait between reconnect attempts.
 
 	// session/machine identification
 	TLV_TYPE_MACHINE_ID          = TLV_VALUE(TLV_META_TYPE_STRING,    460),   ///! Represents a machine identifier.
@@ -259,13 +261,8 @@ LINKAGE DWORD packet_get_result(Packet *packet);
 /*
  * Packet transmission
  */
-LINKAGE DWORD packet_transmit(Remote *remote, Packet *packet, PacketRequestCompletion *completion);
 LINKAGE DWORD packet_transmit_empty_response(Remote *remote, Packet *packet, DWORD res);
-LINKAGE DWORD packet_receive(Remote *remote, Packet **packet);
-LINKAGE DWORD packet_receive_via_ssl(Remote *remote, Packet **packet);
-LINKAGE DWORD packet_receive_via_http(Remote *remote, Packet **packet);
-LINKAGE DWORD packet_transmit_via_ssl(Remote *remote, Packet *packet, PacketRequestCompletion *completion);
-LINKAGE DWORD packet_transmit_via_http(Remote *remote, Packet *packet, PacketRequestCompletion *completion);
+#define PACKET_TRANSMIT(remote, packet, completion) (remote->transport->packet_transmit(remote, packet, completion))
 
 /*!
  * @brief Transmit a `TLV_TYPE_RESULT` response if `response` is present.
@@ -276,7 +273,7 @@ LINKAGE DWORD packet_transmit_via_http(Remote *remote, Packet *packet, PacketReq
 #define packet_transmit_response(result, remote, response)    \
 	if (response) {                                            \
 		packet_add_tlv_uint(response, TLV_TYPE_RESULT, result); \
-		packet_transmit(remote, response, NULL);                \
+		PACKET_TRANSMIT(remote, response, NULL);                \
 	}
 
 /*
@@ -289,7 +286,6 @@ LINKAGE DWORD packet_remove_completion_handler(LPCSTR requestId);
 /*
  * Core API
  */
-LINKAGE DWORD send_core_console_write( Remote *remote, LPCSTR fmt, ... );
 LINKAGE HANDLE core_update_thread_token( Remote *remote, HANDLE token );
 LINKAGE VOID core_update_desktop( Remote * remote, DWORD dwSessionID, char * cpStationName, char * cpDesktopName );
 
