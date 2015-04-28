@@ -20,6 +20,8 @@ extern DWORD remote_request_core_crypto_negotiate( Remote *remote, Packet *packe
 
 extern BOOL remote_request_core_shutdown(Remote *remote, Packet *packet, DWORD* pResult);
 
+extern DWORD remote_request_transport_set_timeouts(Remote * remote, Packet * packet);
+
 #ifdef _WIN32
 extern DWORD remote_request_core_transport_getcerthash(Remote* remote, Packet* packet);
 extern DWORD remote_request_core_transport_setcerthash(Remote* remote, Packet* packet);
@@ -78,6 +80,8 @@ Command baseCommands[] =
 	COMMAND_REQ("core_channel_interact", remote_request_core_channel_interact),
 	// Crypto
 	COMMAND_REQ("core_crypto_negotiate", remote_request_core_crypto_negotiate),
+	// timeouts
+	COMMAND_REQ("core_transport_set_timeouts", remote_request_transport_set_timeouts),
 #ifdef _WIN32
 	COMMAND_REQ("core_transport_getcerthash", remote_request_core_transport_getcerthash),
 	COMMAND_REQ("core_transport_setcerthash", remote_request_core_transport_setcerthash),

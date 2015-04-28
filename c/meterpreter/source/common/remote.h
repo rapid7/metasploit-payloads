@@ -12,9 +12,11 @@
 #define CERT_HASH_SIZE 20
 
 #ifdef _WIN32
-typedef wchar_t* STRTYPE;
+typedef wchar_t CHARTYPE;
+typedef CHARTYPE* STRTYPE;
 #else
-typedef char* STRTYPE;
+typedef char CHARTYPE;
+typedef CHARTYPE* STRTYPE;
 #endif
 
 // Forward declarations required to keep compilers happy.
@@ -22,14 +24,47 @@ typedef struct _Packet Packet;
 typedef struct _PacketRequestCompletion PacketRequestCompletion;
 typedef struct _Transport Transport;
 typedef struct _Remote Remote;
+typedef struct _TimeoutSettings TimeoutSettings;
 
 typedef SOCKET(*PTransportGetSocket)(Transport* transport);
+typedef void(*PTransportReset)(Transport* transport);
 typedef BOOL(*PTransportInit)(Remote* remote, SOCKET fd);
 typedef BOOL(*PTransportDeinit)(Remote* remote);
 typedef void(*PTransportDestroy)(Remote* remote);
 typedef BOOL(*PServerDispatch)(Remote* remote, THREAD* dispatchThread);
 typedef DWORD(*PPacketTransmit)(Remote* remote, Packet* packet, PacketRequestCompletion* completion);
-typedef DWORD(*PPacketReceive)(Remote* remote, Packet** packet);
+
+typedef Transport*(*PTransCreateTcp)(STRTYPE url, TimeoutSettings* timeouts);
+typedef Transport*(*PTransCreateHttp)(BOOL ssl, STRTYPE url, STRTYPE ua, STRTYPE proxy,
+		STRTYPE proxyUser, STRTYPE proxyPass, BYTE* certHash, TimeoutSettings* timeouts);
+
+typedef struct _TimeoutSettings
+{
+	/*! @ brief The total number of seconds to wait before killing off the session. */
+	int expiry;
+	/*! @ brief The total number of seconds to wait for a new packet before killing off the session. */
+	int comms;
+	/*! @ brief The total number of seconds to keep retrying for before a new session is established. */
+	UINT retry_total;
+	/*! @ brief The number of seconds to wait between reconnects. */
+	UINT retry_wait;
+} TimeoutSettings;
+
+typedef struct _MetsrvConfigData
+{
+	CHARTYPE transport[28];
+	CHARTYPE url[524];
+	CHARTYPE ua[256];
+	CHARTYPE proxy[104];
+	CHARTYPE proxy_username[112];
+	CHARTYPE proxy_password[112];
+	BYTE ssl_cert_hash[28];
+	union
+	{
+		char placeholder[sizeof(TimeoutSettings)];
+		TimeoutSettings values;
+	} timeouts;
+} MetsrvConfigData;
 
 typedef struct _TcpTransportContext
 {
@@ -37,6 +72,9 @@ typedef struct _TcpTransportContext
 	SSL_METHOD* meth;                     ///! The current SSL method in use.
 	SSL_CTX* ctx;                         ///! SSL-specific context information.
 	SSL* ssl;                             ///! Pointer to the SSL detail/version/etc.
+	struct sockaddr_storage sock_desc;    ///! Details of the current socket.
+	int sock_desc_size;                   ///! Details of the current socket.
+	BOOL bound;                           ///! Flag to indicate if the socket was a bound socket.
 } TcpTransportContext;
 
 typedef struct _HttpTransportContext
@@ -51,25 +89,24 @@ typedef struct _HttpTransportContext
 	STRTYPE proxy;                        ///! Proxy details.
 	STRTYPE proxy_user;                   ///! Proxy username.
 	STRTYPE proxy_pass;                   ///! Proxy password.
-
-	int expiration_time;                  ///! Unix timestamp for when the server should shut down.
-	int start_time;                       ///! Unix timestamp representing the session startup time.
-	int comm_last_packet;                 ///! Unix timestamp of the last packet received.
-	int comm_timeout;                     ///! Unix timestamp for when to shutdown due to comms timeout.
 } HttpTransportContext;
 
 typedef struct _Transport
 {
 	DWORD type;                           ///! The type of transport in use.
 	PTransportGetSocket get_socket;       ///! Function to get the socket from the transport.
+	PTransportReset transport_reset;      ///! Function to reset/clean the transport ready for restarting.
 	PTransportInit transport_init;        ///! Initialises the transport.
 	PTransportDeinit transport_deinit;    ///! Deinitialises the transport.
 	PTransportDestroy transport_destroy;  ///! Destroy the transport.
 	PServerDispatch server_dispatch;      ///! Transport dispatch function.
 	PPacketTransmit packet_transmit;      ///! Transmits a packet over the transport.
-	PPacketReceive packet_receive;        ///! Receives a packet over the transport.
 	STRTYPE url;                          ///! Full URL describing the comms in use.
-	VOID* ctx;
+	VOID* ctx;                            ///! Pointer to the type-specific transport context;
+	TimeoutSettings timeouts;             ///! Container for the timeout settings.
+	int expiration_end;                   ///! Unix timestamp for when the server should shut down.
+	int start_time;                       ///! Unix timestamp representing the session startup time.
+	int comms_last_packet;                ///! Unix timestamp of the last packet received.
 } Transport;
 
 /*!
@@ -105,6 +142,9 @@ typedef struct _Remote
 	char* orig_desktop_name;              ///! Original desktop name.
 	char* curr_desktop_name;              ///! Name of the current desktop.
 #endif
+
+	PTransCreateTcp trans_create_tcp;     ///! Pointer to a function that creates TCP transports.
+	PTransCreateHttp trans_create_http;   ///! Pointer to a function that creates HTTP transports.
 } Remote;
 
 Remote* remote_allocate();
