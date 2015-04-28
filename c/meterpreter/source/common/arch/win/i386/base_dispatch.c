@@ -66,10 +66,19 @@ BOOL remote_request_core_transport_change(Remote* remote, Packet* packet, DWORD*
 	Packet* response = packet_create_response(packet);
 	wchar_t* transportUrl = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_URL);
 
-	TimeoutSettings timeouts;
+	TimeoutSettings timeouts = { 0 };
+
+	int sessionExpiry = (int)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_SESSION_EXP);
 	timeouts.comms = (int)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_COMM_TIMEOUT);
 	timeouts.retry_total = (DWORD)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_RETRY_TOTAL);
 	timeouts.retry_wait = (DWORD)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_RETRY_WAIT);
+
+	// special case, will still leave this in here even if it's not transport related
+	if (sessionExpiry != 0)
+	{
+		remote->sess_expiry_time = sessionExpiry;
+		remote->sess_expiry_end = current_unix_timestamp() + remote->sess_expiry_time;
+	}
 
 	if (timeouts.comms == 0)
 	{
