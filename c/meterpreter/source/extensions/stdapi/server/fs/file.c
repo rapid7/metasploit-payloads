@@ -211,7 +211,7 @@ DWORD request_fs_separator(Remote *remote, Packet *packet)
 
 	packet_add_tlv_uint(response, TLV_TYPE_RESULT, ERROR_SUCCESS);
 
-	return PACKET_TRANSMIT(remote, response, NULL);
+	return packet_transmit(remote, response, NULL);
 }
 
 
@@ -251,7 +251,7 @@ DWORD request_fs_stat(Remote *remote, Packet *packet)
 
 out:
 	packet_add_tlv_uint(response, TLV_TYPE_RESULT, result);
-	return PACKET_TRANSMIT(remote, response, NULL);
+	return packet_transmit(remote, response, NULL);
 }
 
 /*
@@ -274,7 +274,7 @@ DWORD request_fs_delete_file(Remote *remote, Packet *packet)
 	}
 
 	packet_add_tlv_uint(response, TLV_TYPE_RESULT, result);
-	return PACKET_TRANSMIT(remote, response, NULL);
+	return packet_transmit(remote, response, NULL);
 }
 
 /*
@@ -306,7 +306,7 @@ DWORD request_fs_file_expand_path(Remote *remote, Packet *packet)
 	free(expanded);
 out:
 	packet_add_tlv_uint(response, TLV_TYPE_RESULT, result);
-	return PACKET_TRANSMIT(remote, response, NULL);
+	return packet_transmit(remote, response, NULL);
 }
 
 
@@ -346,7 +346,7 @@ DWORD request_fs_md5(Remote *remote, Packet *packet)
 	}
 
 	packet_add_tlv_uint(response, TLV_TYPE_RESULT, result);
-	return PACKET_TRANSMIT(remote, response, NULL);
+	return packet_transmit(remote, response, NULL);
 }
 
 
@@ -384,7 +384,7 @@ DWORD request_fs_sha1(Remote *remote, Packet *packet)
 	}
 
 	packet_add_tlv_uint(response, TLV_TYPE_RESULT, result);
-	return PACKET_TRANSMIT(remote, response, NULL);
+	return packet_transmit(remote, response, NULL);
 }
 
 /*
@@ -409,6 +409,6 @@ DWORD request_fs_file_move(Remote *remote, Packet *packet)
 	}
 
 	packet_add_tlv_uint(response, TLV_TYPE_RESULT, result);
-	return PACKET_TRANSMIT(remote, response, NULL);
+	return packet_transmit(remote, response, NULL);
 }
 

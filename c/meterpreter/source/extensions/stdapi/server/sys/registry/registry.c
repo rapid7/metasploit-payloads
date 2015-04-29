@@ -77,7 +77,7 @@ DWORD request_registry_load_key(Remote *remote, Packet *packet)
 		result = RegLoadKey(rootKey,baseKey,hiveFile);
 	}
 	packet_add_tlv_uint(response, TLV_TYPE_RESULT, result);
-	PACKET_TRANSMIT(remote, response, NULL);
+	packet_transmit(remote, response, NULL);
 	return ERROR_SUCCESS;
 }
 
@@ -98,7 +98,7 @@ DWORD request_registry_unload_key(Remote *remote, Packet *packet)
 		result = RegUnLoadKey(rootKey,baseKey);
 	}
 	packet_add_tlv_uint(response, TLV_TYPE_RESULT, result);
-	PACKET_TRANSMIT(remote, response, NULL);
+	packet_transmit(remote, response, NULL);
 	return ERROR_SUCCESS;
 }
 
@@ -150,7 +150,7 @@ DWORD request_registry_open_key(Remote *remote, Packet *packet)
 
 	packet_add_tlv_uint(response, TLV_TYPE_RESULT, result);
 
-	PACKET_TRANSMIT(remote, response, NULL);
+	packet_transmit(remote, response, NULL);
 
 	return ERROR_SUCCESS;
 }
@@ -190,7 +190,7 @@ DWORD request_registry_open_remote_key(Remote *remote, Packet *packet)
 
 	packet_add_tlv_uint(response, TLV_TYPE_RESULT, result);
 
-	PACKET_TRANSMIT(remote, response, NULL);
+	packet_transmit(remote, response, NULL);
 
 	return ERROR_SUCCESS;
 }
@@ -237,7 +237,7 @@ DWORD request_registry_create_key(Remote *remote, Packet *packet)
 
 	packet_add_tlv_uint(response, TLV_TYPE_RESULT, result);
 
-	PACKET_TRANSMIT(remote, response, NULL);
+	packet_transmit(remote, response, NULL);
 
 	return ERROR_SUCCESS;
 }
@@ -305,7 +305,7 @@ static void enum_key(Remote *remote, Packet *packet, HKEY hkey)
 	// Set the result and transmit the response
 	packet_add_tlv_uint(response, TLV_TYPE_RESULT, result);
 
-	PACKET_TRANSMIT(remote, response, NULL);
+	packet_transmit(remote, response, NULL);
 }
 
 /*
@@ -382,7 +382,7 @@ DWORD request_registry_delete_key(Remote *remote, Packet *packet)
 	// Set the result and send the response
 	packet_add_tlv_uint(response, TLV_TYPE_RESULT, result);
 
-	PACKET_TRANSMIT(remote, response, NULL);
+	packet_transmit(remote, response, NULL);
 
 	return ERROR_SUCCESS;
 }
@@ -409,7 +409,7 @@ DWORD request_registry_close_key(Remote *remote, Packet *packet)
 	// Set the result and send the response
 	packet_add_tlv_uint(response, TLV_TYPE_RESULT, result);
 
-	PACKET_TRANSMIT(remote, response, NULL);
+	packet_transmit(remote, response, NULL);
 
 	return ERROR_SUCCESS;
 }
@@ -446,7 +446,7 @@ static void set_value(Remote *remote, Packet *packet, HKEY hkey)
 	packet_add_tlv_uint(response, TLV_TYPE_RESULT, result);
 
 	// Transmit the response
-	PACKET_TRANSMIT(remote, response, NULL);
+	packet_transmit(remote, response, NULL);
 }
 
 /*
@@ -541,7 +541,7 @@ static void query_value(Remote *remote, Packet *packet, HKEY hkey)
 	packet_add_tlv_uint(response, TLV_TYPE_RESULT, result);
 
 	// Transmit the response
-	PACKET_TRANSMIT(remote, response, NULL);
+	packet_transmit(remote, response, NULL);
 }
 
 /*
@@ -649,7 +649,7 @@ static void enum_value(Remote *remote, Packet *packet, HKEY hkey)
 	// Set the result and transmit the response
 	packet_add_tlv_uint(response, TLV_TYPE_RESULT, result);
 
-	PACKET_TRANSMIT(remote, response, NULL);
+	packet_transmit(remote, response, NULL);
 }
 
 
@@ -717,7 +717,7 @@ DWORD request_registry_delete_value(Remote *remote, Packet *packet)
 	// Set the result and send the response
 	packet_add_tlv_uint(response, TLV_TYPE_RESULT, result);
 
-	PACKET_TRANSMIT(remote, response, NULL);
+	packet_transmit(remote, response, NULL);
 
 	return ERROR_SUCCESS;
 }
@@ -756,7 +756,7 @@ DWORD request_registry_query_class(Remote *remote, Packet *packet)
 	packet_add_tlv_uint(response, TLV_TYPE_RESULT, result);
 
 	// Transmit the response
-	PACKET_TRANSMIT(remote, response, NULL);
+	packet_transmit(remote, response, NULL);
 
 	return ERROR_SUCCESS;
 }

@@ -193,7 +193,7 @@ DWORD request_core_loadlib(Remote *pRemote, Packet *pPacket)
 	if (response)
 	{
 		packet_add_tlv_uint(response, TLV_TYPE_RESULT, res);
-		PACKET_TRANSMIT(pRemote, response, NULL);
+		packet_transmit(pRemote, response, NULL);
 	}
 
 	return res;

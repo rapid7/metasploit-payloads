@@ -59,7 +59,7 @@ DWORD remote_request_core_channel_open(Remote *remote, Packet *packet)
 
 		// Transmit the response
 		dprintf( "[CHANNEL] Sending response for %s", channelType  );
-		res = PACKET_TRANSMIT(remote, response, NULL);
+		res = packet_transmit(remote, response, NULL);
 
 		dprintf( "[CHANNEL] Done" );
 
@@ -171,7 +171,7 @@ DWORD remote_request_core_channel_write(Remote *remote, Packet *packet)
 		packet_add_tlv_uint(response, TLV_TYPE_LENGTH, written);
 		packet_add_tlv_uint(response, TLV_TYPE_CHANNEL_ID, channelId);
 
-		res = PACKET_TRANSMIT(remote, response, NULL);
+		res = packet_transmit(remote, response, NULL);
 	}
 
 	return res;
@@ -284,7 +284,7 @@ DWORD remote_request_core_channel_read(Remote *remote, Packet *packet)
 		packet_add_tlv_uint(response, TLV_TYPE_LENGTH, bytesRead);
 		packet_add_tlv_uint(response, TLV_TYPE_CHANNEL_ID, channelId);
 
-		res = PACKET_TRANSMIT(remote, response, NULL);
+		res = packet_transmit(remote, response, NULL);
 	}
 
 	return res;
@@ -333,7 +333,7 @@ DWORD remote_request_core_channel_close(Remote *remote, Packet *packet)
 	{
 		packet_add_tlv_uint(response, TLV_TYPE_RESULT, res);
 
-		res = PACKET_TRANSMIT(remote, response, NULL);
+		res = packet_transmit(remote, response, NULL);
 	}
 
 	return res;
@@ -611,7 +611,7 @@ DWORD remote_request_core_crypto_negotiate(Remote *remote, Packet *packet)
 	{
 		packet_add_tlv_uint(response, TLV_TYPE_RESULT, res);
 
-		PACKET_TRANSMIT(remote, response, NULL);
+		packet_transmit(remote, response, NULL);
 	}
 
 	return ERROR_SUCCESS;
