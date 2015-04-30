@@ -193,5 +193,8 @@ static DWORD ntds_channel_read(Channel *channel, Packet *request,
 
 static DWORD ntds_channel_close(Channel *channel, Packet *request,
 	LPVOID context){
+	NTDSContext *ctx = (NTDSContext *)context;
+	engine_shutdown(ctx->ntdsState);
+	free(ctx);
 	return ERROR_SUCCESS;
 }
