@@ -187,6 +187,7 @@ static DWORD ntds_channel_read(Channel *channel, Packet *request,
 		*bytesRead = bufferSize;
 		next_user(ctx->ntdsState, ctx->accountColumns);
 	}
+	free(userAccount);
 	return result;
 }
 
