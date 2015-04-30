@@ -64,7 +64,8 @@ BOOL decrypt_hash_history(LPBYTE encHashHistory, size_t sizeHistory, decryptedPE
 		writeMarker = writeMarker + 33;
 	}
 	memcpy(accountHistory, decHistoryData, (numHashes * 33));
-	//memcpy(accountHistory, &decHistoryData, 4);
+	free(encHistoryData);
+	free(decHistoryData);
 	return TRUE;
 }
 
