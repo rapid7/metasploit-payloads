@@ -23,7 +23,6 @@ Command customCommands[] =
 	COMMAND_REQ( "priv_fs_set_file_mace_from_file", request_fs_set_file_mace_from_file ),
 	COMMAND_REQ( "priv_fs_blank_file_mace", request_fs_blank_file_mace ),
 	COMMAND_REQ( "priv_fs_blank_directory_mace", request_fs_blank_directory_mace ),
-	COMMAND_REQ( "priv_ntds_test", ntds_test_channel),
 	COMMAND_REQ( "priv_ntds_parse", ntds_parse),
 	COMMAND_TERMINATOR
 };

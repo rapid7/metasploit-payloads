@@ -15,6 +15,7 @@ JET_ERR engine_shutdown(jetState *ntdsState){
 		return shutdownStatus;
 	}
 	shutdownStatus = JetTerm(ntdsState->jetEngine);
+	free(ntdsState);
 	return shutdownStatus;
 }
 
