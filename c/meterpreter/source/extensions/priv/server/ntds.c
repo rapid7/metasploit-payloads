@@ -150,6 +150,7 @@ static DWORD ntds_read_into_batch(NTDSContext *ctx, ntdsAccount *batchedAccount)
 	else{
 		memcpy(batchedAccount, userAccount, sizeof(ntdsAccount));
 	}
+	free(userAccount);
 	return result;
 }
 
