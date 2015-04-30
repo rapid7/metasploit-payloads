@@ -832,10 +832,40 @@ static void transport_destroy_tcp(Transport* transport)
 }
 
 /*!
+ * @brief Handle cleaning up on the client socket when MSF terminates the connection.
+ * @param thread Pointer to the thread instance.
+ * @return EXIT_SUCCESS
+ */
+DWORD THREADCALL cleanup_socket(THREAD* thread)
+{
+	char buf[4];
+	int result;
+	SOCKET fd = (SOCKET)thread->parameter1;
+
+	dprintf("[TCP] waiting for disconnect from remote");
+	// loop until FD_CLOSE comes through.
+	while ((result = recv(fd, buf, sizeof(buf), 0)) != 0)
+	{
+		if (result < 0)
+		{
+			dprintf("[TCP] something went wrong on read.");
+			break;
+		}
+	}
+
+	dprintf("[TCP] disconnect received, cleaning up");
+	closesocket(fd);
+	thread_destroy(thread);
+
+	return EXIT_SUCCESS;
+}
+
+/*!
  * @brief Configure the TCP connnection. If it doesn't exist, go ahead and estbalish it.
  * @param transport Pointer to the TCP transport to reset.
+ * @param shuttingDown Indication that the Metsrv instance is terminating completely.
  */
-static void transport_reset_tcp(Transport* transport)
+static void transport_reset_tcp(Transport* transport, BOOL shuttingDown)
 {
 	if (transport && transport->type == METERPRETER_TRANSPORT_SSL)
 	{
@@ -843,7 +873,25 @@ static void transport_reset_tcp(Transport* transport)
 		dprintf("[TCP] Resetting transport from %u", ctx->fd);
 		if (ctx->fd)
 		{
-			closesocket(ctx->fd);
+			if (shuttingDown)
+			{
+				dprintf("[TCP] Transport is shutting down");
+				// we can terminate right here, given that we're closing up
+				closesocket(ctx->fd);
+			}
+			else
+			{
+				// Thanks to the fact that we know we can't rely on Windows to flush the socket nicely
+				// we can't just call "closesocket" on the socket. If we do, we could lose packets that
+				// cause MSF to be rather unhappy (and it hangs as a result of not getting a response).
+				// Instead of this, we create a new thread which monitors the socket handle. We know that
+				// MSF will terminate that connection when resetting, and so we wait for that termination
+				// before cleaning up the socket. This is done in another thread so that functionality
+				// can continue.
+				dprintf("[TCP] It should now be safe to close the socket.");
+				THREAD* t = thread_create(cleanup_socket, (LPVOID)ctx->fd, NULL, NULL);
+				thread_run(t);
+			}
 		}
 		ctx->fd = 0;
 		dprintf("[TCP] Transport 0x%p is now reset to %u", transport, ctx->fd);
@@ -961,6 +1009,8 @@ DWORD packet_transmit_via_ssl(Remote* remote, Packet* packet, PacketRequestCompl
 	DWORD res;
 	DWORD idx;
 	TcpTransportContext* ctx = (TcpTransportContext*)remote->transport->ctx;
+
+	dprintf("[TRANSMIT] Sending packet to the server");
 
 	lock_acquire(remote->lock);
 

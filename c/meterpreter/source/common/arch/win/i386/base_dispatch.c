@@ -174,13 +174,16 @@ DWORD create_transport_from_request(Remote* remote, Packet* packet, Transport** 
 
 BOOL remote_request_core_transport_next(Remote* remote, Packet* packet, DWORD* result)
 {
-	if (remote->next_transport == remote->transport->next_transport)
+	dprintf("[DISPATCH] Asking to go to next transport (from 0x%p to 0x%p)", remote->transport, remote->transport->next_transport);
+	if (remote->transport == remote->transport->next_transport)
 	{
+		dprintf("[DISPATCH] Transports are the same, don't do anything");
 		// if we're switching to the same thing, don't bother.
 		*result = ERROR_INVALID_FUNCTION;
 	}
 	else
 	{
+		dprintf("[DISPATCH] Transports are different, perform the switch");
 		remote->next_transport = remote->transport->next_transport;
 		*result = ERROR_SUCCESS;
 	}
@@ -192,13 +195,16 @@ BOOL remote_request_core_transport_next(Remote* remote, Packet* packet, DWORD* r
 
 BOOL remote_request_core_transport_prev(Remote* remote, Packet* packet, DWORD* result)
 {
-	if (remote->next_transport == remote->transport->prev_transport)
+	dprintf("[DISPATCH] Asking to go to previous transport (from 0x%p to 0x%p)", remote->transport, remote->transport->prev_transport);
+	if (remote->transport == remote->transport->prev_transport)
 	{
+		dprintf("[DISPATCH] Transports are the same, don't do anything");
 		// if we're switching to the same thing, don't bother.
 		*result = ERROR_INVALID_FUNCTION;
 	}
 	else
 	{
+		dprintf("[DISPATCH] Transports are different, perform the switch");
 		remote->next_transport = remote->transport->prev_transport;
 		*result = ERROR_SUCCESS;
 	}

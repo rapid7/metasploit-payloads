@@ -28,7 +28,7 @@ typedef struct _Remote Remote;
 typedef struct _TimeoutSettings TimeoutSettings;
 
 typedef SOCKET(*PTransportGetSocket)(Transport* transport);
-typedef void(*PTransportReset)(Transport* transport);
+typedef void(*PTransportReset)(Transport* transport, BOOL shuttingDown);
 typedef BOOL(*PTransportInit)(Transport* transport);
 typedef BOOL(*PTransportDeinit)(Transport* transport);
 typedef void(*PTransportDestroy)(Transport* transport);

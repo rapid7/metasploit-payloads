@@ -406,6 +406,12 @@ DWORD server_setup(MetsrvConfig* config)
 					remote->transport->transport_deinit(remote->transport);
 				}
 
+				dprintf("[TRANS] resetting transport");
+				if (remote->transport->transport_reset)
+				{
+					remote->transport->transport_reset(remote->transport, dispatchResult == ERROR_SUCCESS && remote->next_transport == NULL);
+				}
+
 				// If the transport mechanism failed, then we should loop until we're able to connect back again.
 				if (dispatchResult == ERROR_SUCCESS)
 				{
@@ -427,13 +433,6 @@ DWORD server_setup(MetsrvConfig* config)
 				}
 				else
 				{
-					dprintf("[DISPATCH] resetting transport");
-					// try again!
-					if (remote->transport->transport_reset)
-					{
-						remote->transport->transport_reset(remote->transport);
-					}
-
 					// move to the next one in the list
 					dprintf("[TRANS] Moving transport from 0x%p to 0x%p", remote->transport, remote->transport->next_transport);
 					remote->transport = remote->transport->next_transport;
