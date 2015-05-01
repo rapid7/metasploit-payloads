@@ -46,6 +46,7 @@ BOOL ext_cmd_callback(LPVOID pState, LPVOID pData)
 			{
 				packet_add_tlv_string(pEnum->pResponse, TLV_TYPE_STRING, command->method);
 			}
+			dprintf("[LISTEXT] Finished listing extension: %s", pExt->name);
 
 			return TRUE;
 		}
@@ -97,7 +98,7 @@ DWORD request_core_enumextcmd(Remote* remote, Packet* packet)
 
 		packet_add_tlv_uint(pResponse, TLV_TYPE_RESULT, ERROR_SUCCESS);
 
-		packet_transmit(remote, pResponse, NULL);
+		PACKET_TRANSMIT(remote, pResponse, NULL);
 	}
 
 	return ERROR_SUCCESS;
