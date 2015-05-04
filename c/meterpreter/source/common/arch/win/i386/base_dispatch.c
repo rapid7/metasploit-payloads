@@ -119,7 +119,7 @@ DWORD create_transport_from_request(Remote* remote, Packet* packet, Transport** 
 		{
 			BOOL ssl = wcsncmp(transportUrl, L"https", 5) == 0;
 			wchar_t* ua = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_UA);
-			wchar_t* proxy = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_PROXY_INFO);
+			wchar_t* proxy = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_PROXY_HOST);
 			wchar_t* proxyUser = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_PROXY_USER);
 			wchar_t* proxyPass = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_PROXY_PASS);
 			PBYTE certHash = packet_get_tlv_value_raw(packet, TLV_TYPE_TRANS_CERT_HASH);
@@ -168,6 +168,86 @@ DWORD create_transport_from_request(Remote* remote, Packet* packet, Transport** 
 	} while (0);
 
 	*transportBufer = transport;
+
+	return result;
+}
+
+DWORD remote_request_core_transport_list(Remote* remote, Packet* packet)
+{
+	DWORD result = ERROR_SUCCESS;
+	Packet* response = NULL;
+
+	do
+	{
+		response = packet_create_response(packet);
+
+		if (!response)
+		{
+			result = ERROR_NOT_ENOUGH_MEMORY;
+			break;
+		}
+
+		// Add the session timeout to the top level
+		packet_add_tlv_uint(response, TLV_TYPE_TRANS_SESSION_EXP, remote->sess_expiry_end - current_unix_timestamp());
+
+		Transport* current = remote->transport;
+		Transport* first = remote->transport;
+
+		do
+		{
+			Packet* transportGroup = packet_create_group();
+
+			if (!transportGroup)
+			{
+				// bomb out, returning what we have so far.
+				break;
+			}
+
+			dprintf("[DISPATCH] Adding URL %S", current->url);
+			packet_add_tlv_wstring(transportGroup, TLV_TYPE_TRANS_URL, current->url);
+			dprintf("[DISPATCH] Adding Comms timeout %u", current->timeouts.comms);
+			packet_add_tlv_uint(transportGroup, TLV_TYPE_TRANS_COMM_TIMEOUT, current->timeouts.comms);
+			dprintf("[DISPATCH] Adding Retry total %u", current->timeouts.retry_total);
+			packet_add_tlv_uint(transportGroup, TLV_TYPE_TRANS_RETRY_TOTAL, current->timeouts.retry_total);
+			dprintf("[DISPATCH] Adding Retry wait %u", current->timeouts.retry_wait);
+			packet_add_tlv_uint(transportGroup, TLV_TYPE_TRANS_RETRY_WAIT, current->timeouts.retry_wait);
+
+			if (current->type != METERPRETER_TRANSPORT_SSL)
+			{
+				HttpTransportContext* ctx = (HttpTransportContext*)current->ctx;
+				dprintf("[DISPATCH] Transport is HTTP/S");
+				if (ctx->ua)
+				{
+					packet_add_tlv_wstring(transportGroup, TLV_TYPE_TRANS_UA, ctx->ua);
+				}
+				if (ctx->proxy)
+				{
+					packet_add_tlv_wstring(transportGroup, TLV_TYPE_TRANS_PROXY_HOST, ctx->proxy);
+				}
+				if (ctx->proxy_user)
+				{
+					packet_add_tlv_wstring(transportGroup, TLV_TYPE_TRANS_PROXY_USER, ctx->proxy_user);
+				}
+				if (ctx->proxy_pass)
+				{
+					packet_add_tlv_wstring(transportGroup, TLV_TYPE_TRANS_PROXY_PASS, ctx->proxy_pass);
+				}
+				if (ctx->cert_hash)
+				{
+					packet_add_tlv_raw(transportGroup, TLV_TYPE_TRANS_CERT_HASH, ctx->cert_hash, CERT_HASH_SIZE);
+				}
+			}
+
+			packet_add_group(response, TLV_TYPE_TRANS_GROUP, transportGroup);
+
+			current = current->next_transport;
+		} while (first != current);
+	} while (0);
+
+	if (response)
+	{
+		packet_transmit_response(result, remote, response);
+	}
 
 	return result;
 }
@@ -484,7 +564,7 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
 			break;
 		}
 
-		// Allocate memory for the migrate stub, context and payload
+		// Allocate memory for the migrate stub, context, payload and configuration block
 		lpMemory = (LPBYTE)VirtualAllocEx(hProcess, NULL, dwMigrateStubLength + sizeof(MIGRATECONTEXT) + dwPayloadLength + configSize, MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE);
 		if (!lpMemory)
 		{
@@ -578,7 +658,7 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
  * @remark If no values are given, no updates are made. The response to
            this message is the new/current settings.
  */
-DWORD remote_request_transport_set_timeouts(Remote * remote, Packet * packet)
+DWORD remote_request_core_transport_set_timeouts(Remote * remote, Packet * packet)
 {
 	DWORD result = ERROR_SUCCESS;
 	Packet* response = NULL;

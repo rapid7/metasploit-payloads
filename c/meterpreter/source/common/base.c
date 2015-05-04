@@ -20,7 +20,7 @@ extern DWORD remote_request_core_crypto_negotiate(Remote *remote, Packet *packet
 
 extern BOOL remote_request_core_shutdown(Remote *remote, Packet *packet, DWORD* pResult);
 
-extern DWORD remote_request_transport_set_timeouts(Remote * remote, Packet * packet);
+extern DWORD remote_request_core_transport_set_timeouts(Remote * remote, Packet * packet);
 
 #ifdef _WIN32
 extern DWORD remote_request_core_transport_getcerthash(Remote* remote, Packet* packet);
@@ -29,6 +29,7 @@ extern DWORD remote_request_core_transport_setcerthash(Remote* remote, Packet* p
 // POSIX support coming soon
 #endif
 
+extern DWORD remote_request_core_transport_list(Remote* remote, Packet* packet);
 extern BOOL remote_request_core_transport_change(Remote *remote, Packet *packet, DWORD* pResult);
 extern BOOL remote_request_core_transport_next(Remote* remote, Packet* packet, DWORD* result);
 extern BOOL remote_request_core_transport_prev(Remote* remote, Packet* packet, DWORD* result);
@@ -86,11 +87,12 @@ Command baseCommands[] =
 	// Crypto
 	COMMAND_REQ("core_crypto_negotiate", remote_request_core_crypto_negotiate),
 	// timeouts
-	COMMAND_REQ("core_transport_set_timeouts", remote_request_transport_set_timeouts),
+	COMMAND_REQ("core_transport_set_timeouts", remote_request_core_transport_set_timeouts),
 #ifdef _WIN32
 	COMMAND_REQ("core_transport_getcerthash", remote_request_core_transport_getcerthash),
 	COMMAND_REQ("core_transport_setcerthash", remote_request_core_transport_setcerthash),
 #endif
+	COMMAND_REQ("core_transport_list", remote_request_core_transport_list),
 	COMMAND_INLINE_REQ("core_transport_change", remote_request_core_transport_change),
 	COMMAND_INLINE_REQ("core_transport_next", remote_request_core_transport_next),
 	COMMAND_INLINE_REQ("core_transport_prev", remote_request_core_transport_prev),
