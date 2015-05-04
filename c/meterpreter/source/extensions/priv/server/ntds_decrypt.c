@@ -8,11 +8,11 @@ void bytes_to_string(LPBYTE data, int length, LPSTR output){
 
 BOOL decrypt_hash(encryptedHash *encryptedNTLM, decryptedPEK *pekDecrypted, char *hashString, DWORD rid){
 	BOOL cryptOK = FALSE;
-	BYTE encHashData[17] = { 0 };
-	BYTE decHash[17] = { 0 };
+	BYTE encHashData[NULL_TERIMNATED_HASH_LENGTH] = { 0 };
+	BYTE decHash[NULL_TERIMNATED_HASH_LENGTH] = { 0 };
 
-	memcpy(&encHashData, &encryptedNTLM->encryptedHash, 16);
-	cryptOK = decrypt_rc4(pekDecrypted->pekKey, encryptedNTLM->keyMaterial, encHashData, 1, 16);
+	memcpy(&encHashData, &encryptedNTLM->encryptedHash, HASH_LENGTH_BYTES);
+	cryptOK = decrypt_rc4(pekDecrypted->pekKey, encryptedNTLM->keyMaterial, encHashData, 1, HASH_LENGTH_BYTES);
 	if (!cryptOK){
 		return FALSE;
 	}
@@ -20,7 +20,7 @@ BOOL decrypt_hash(encryptedHash *encryptedNTLM, decryptedPEK *pekDecrypted, char
 	if (!cryptOK){
 		return FALSE;
 	}
-	bytes_to_string(decHash, 16, hashString);
+	bytes_to_string(decHash, HASH_LENGTH_BYTES, hashString);
 	return TRUE;
 }
 
@@ -40,7 +40,7 @@ BOOL decrypt_hash_from_rid(LPBYTE encodedHash, LPDWORD rid, LPBYTE decodedHash){
 BOOL decrypt_hash_history(LPBYTE encHashHistory, size_t sizeHistory, decryptedPEK *pekDecrypted, DWORD rid, char *accountHistory, int *historyCount){
 	BOOL cryptOK = FALSE;
 	size_t sizeHistoryData = sizeHistory - 24;
-	int numHashes = (sizeHistoryData / 16);
+	int numHashes = (sizeHistoryData / HASH_LENGTH_BYTES);
 	memcpy(historyCount, &numHashes, sizeof(historyCount));
 	LPBYTE encHistoryData = (LPBYTE)malloc(sizeHistoryData);
 	LPBYTE decHistoryData = (LPBYTE)malloc((sizeHistoryData * 2));
@@ -52,15 +52,15 @@ BOOL decrypt_hash_history(LPBYTE encHashHistory, size_t sizeHistory, decryptedPE
 	LPBYTE historicalHash = encHistoryData;
 	LPBYTE writeMarker = decHistoryData;
 	for (int i = 0; i < numHashes; i++){
-		BYTE decHash[16];
+		BYTE decHash[HASH_LENGTH_BYTES];
 		char hashString[33];
 		cryptOK = decrypt_hash_from_rid(historicalHash, &rid, decHash);
 		if (!cryptOK){
 			return FALSE;
 		}
-		bytes_to_string(decHash, 16, hashString);
+		bytes_to_string(decHash, HASH_LENGTH_BYTES, hashString);
 		strncpy(writeMarker, hashString, 33);
-		historicalHash = historicalHash + 16;
+		historicalHash = historicalHash + HASH_LENGTH_BYTES;
 		writeMarker = writeMarker + 33;
 	}
 	memcpy(accountHistory, decHistoryData, (numHashes * 33));
@@ -88,7 +88,7 @@ BOOL decrypt_rc4(unsigned char *key1, unsigned char *key2, LPBYTE encrypted, int
 	HCRYPTPROV hProv = 0;
 	HCRYPTHASH hHash = 0;
 	DWORD md5Len = 16;
-	unsigned char rc4Key[16];
+	unsigned char rc4Key[HASH_LENGTH_BYTES];
 	HCRYPTKEY rc4KeyFinal;
 
 	cryptOK = CryptAcquireContext(&hProv, 0, MS_ENHANCED_PROV, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT);
@@ -99,12 +99,12 @@ BOOL decrypt_rc4(unsigned char *key1, unsigned char *key2, LPBYTE encrypted, int
 	if (!cryptOK){
 		return FALSE;
 	}
-	cryptOK = CryptHashData(hHash, key1, 16, 0);
+	cryptOK = CryptHashData(hHash, key1, HASH_LENGTH_BYTES, 0);
 	if (!cryptOK){
 		return FALSE;
 	}
 	for (int i = 0; i < hashIterations; i++){
-		cryptOK = CryptHashData(hHash, key2, 16, 0);
+		cryptOK = CryptHashData(hHash, key2, HASH_LENGTH_BYTES, 0);
 		if (!cryptOK){
 			return FALSE;
 		}
