@@ -47,23 +47,25 @@ BOOL decrypt_hash_history(LPBYTE encHashHistory, size_t sizeHistory, decryptedPE
 	memcpy(encHistoryData, encHashHistory + 24, sizeHistoryData);
 	cryptOK = decrypt_rc4(pekDecrypted->pekKey, encHashHistory + 8, encHistoryData, 1, sizeHistoryData);
 	if (!cryptOK){
+		free(encHistoryData);
+		free(decHistoryData);
 		return FALSE;
 	}
 	LPBYTE historicalHash = encHistoryData;
 	LPBYTE writeMarker = decHistoryData;
 	for (int i = 0; i < numHashes; i++){
 		BYTE decHash[HASH_LENGTH_BYTES];
-		char hashString[33];
+		char hashString[NULL_TERIMNATED_HASH_STRING_LENGTH];
 		cryptOK = decrypt_hash_from_rid(historicalHash, &rid, decHash);
 		if (!cryptOK){
 			return FALSE;
 		}
 		bytes_to_string(decHash, HASH_LENGTH_BYTES, hashString);
-		strncpy(writeMarker, hashString, 33);
+		strncpy(writeMarker, hashString, NULL_TERIMNATED_HASH_STRING_LENGTH);
 		historicalHash = historicalHash + HASH_LENGTH_BYTES;
-		writeMarker = writeMarker + 33;
+		writeMarker = writeMarker + NULL_TERIMNATED_HASH_STRING_LENGTH;
 	}
-	memcpy(accountHistory, decHistoryData, (numHashes * 33));
+	memcpy(accountHistory, decHistoryData, (numHashes * NULL_TERIMNATED_HASH_STRING_LENGTH));
 	free(encHistoryData);
 	free(decHistoryData);
 	return TRUE;
@@ -97,28 +99,40 @@ BOOL decrypt_rc4(unsigned char *key1, unsigned char *key2, LPBYTE encrypted, int
 	}
 	cryptOK = CryptCreateHash(hProv, CALG_MD5, 0, 0, &hHash);
 	if (!cryptOK){
+		CryptReleaseContext(hProv, (ULONG_PTR)NULL);
 		return FALSE;
 	}
 	cryptOK = CryptHashData(hHash, key1, HASH_LENGTH_BYTES, 0);
 	if (!cryptOK){
+		CryptDestroyHash(hHash);
+		CryptReleaseContext(hProv, (ULONG_PTR)NULL);
 		return FALSE;
 	}
 	for (int i = 0; i < hashIterations; i++){
 		cryptOK = CryptHashData(hHash, key2, HASH_LENGTH_BYTES, 0);
 		if (!cryptOK){
+			CryptDestroyHash(hHash);
+			CryptReleaseContext(hProv, (ULONG_PTR)NULL);
 			return FALSE;
 		}
 	}
 	cryptOK = CryptGetHashParam(hHash, HP_HASHVAL, rc4Key, &md5Len, 0);
 	if (!cryptOK){
+		CryptDestroyHash(hHash);
+		CryptReleaseContext(hProv, (ULONG_PTR)NULL);
 		return FALSE;
 	}
 	cryptOK = CryptDeriveKey(hProv, CALG_RC4, hHash, 0, &rc4KeyFinal);
 	if (!cryptOK){
+		CryptDestroyHash(hHash);
+		CryptReleaseContext(hProv, (ULONG_PTR)NULL);
 		return FALSE;
 	}
 	cryptOK = CryptEncrypt(rc4KeyFinal, (HCRYPTHASH)NULL, TRUE, 0, encrypted, &lenBuffer, lenBuffer);
 	if (!cryptOK){
+		CryptDestroyKey(rc4KeyFinal);
+		CryptDestroyHash(hHash);
+		CryptReleaseContext(hProv, (ULONG_PTR)NULL);
 		return FALSE;
 	}
 	// Clean up after ourselves

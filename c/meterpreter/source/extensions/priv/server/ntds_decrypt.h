@@ -27,4 +27,5 @@ BOOL decrypt_rc4(unsigned char *key1, unsigned char *key2, LPBYTE encrypted, int
 
 #define HASH_LENGTH_BYTES 16
 #define NULL_TERIMNATED_HASH_LENGTH 17
+#define NULL_TERIMNATED_HASH_STRING_LENGTH 33
 #endif
