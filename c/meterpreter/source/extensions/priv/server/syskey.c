@@ -1,5 +1,7 @@
 #include "precomp.h"
 
+// This function is responsible for getting an indivdual peice of the SYSTEM Key
+// from the Registry
 BOOL get_syskey_component(HKEY lsaHandle, char subkeyName[255], unsigned char *tmpSysKey){
 	DWORD sizeData = 9;
 	long regStatus;
@@ -21,6 +23,8 @@ BOOL get_syskey_component(HKEY lsaHandle, char subkeyName[255], unsigned char *t
 	return TRUE;
 }
 
+// This function collects the peices of the SYSTEM Key and assembles themn
+// to give us a compelte SYSKEY
 BOOL get_syskey(unsigned char *sysKey){
 	unsigned char tmpSysKey[17];
 	unsigned char interimSysKey[17];

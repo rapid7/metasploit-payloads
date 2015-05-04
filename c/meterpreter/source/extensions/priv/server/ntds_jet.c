@@ -1,5 +1,7 @@
 #include "precomp.h"
 
+// This function is responsible for shutting down all the Jet Instance
+// It also frees the memory for the ntdsState struct once it's done.
 JET_ERR engine_shutdown(jetState *ntdsState){
 	JET_ERR shutdownStatus;
 	shutdownStatus = JetCloseDatabase(ntdsState->jetSession, ntdsState->jetDatabase, (JET_GRBIT)NULL);
@@ -19,6 +21,8 @@ JET_ERR engine_shutdown(jetState *ntdsState){
 	return shutdownStatus;
 }
 
+// This function starts up the Jet Instance and initialises it with our
+// starting parameters.
 JET_ERR engine_startup(jetState *ntdsState){
 	JET_ERR jetError;
 	// Set the Page Size to the highest possibile limit
@@ -44,12 +48,16 @@ JET_ERR engine_startup(jetState *ntdsState){
 	return JET_errSuccess;
 }
 
+// This function moves the cursor in our NTDS database to the first
+// record in the 'datatable' table.
 JET_ERR find_first(jetState *ntdsState){
 	JET_ERR cursorStatus;
 	cursorStatus = JetMove(ntdsState->jetSession, ntdsState->jetTable, JET_MoveFirst, (JET_GRBIT)NULL);
 	return cursorStatus;
 }
 
+// This function collects the column definitions for all of the 
+// columns we will be reading from in the 'datatable' table
 JET_ERR get_column_info(jetState *ntdsState, ntdsColumns *accountColumns){
 	JET_ERR columnError;
 	const char attributeNames[][25] = {
@@ -93,6 +101,8 @@ JET_ERR get_column_info(jetState *ntdsState, ntdsColumns *accountColumns){
 	return JET_errSuccess;
 }
 
+// This function reads through the 'datatable' table until we
+// find the password Encryption Key and grabs that.
 JET_ERR get_PEK(jetState *ntdsState, ntdsColumns *accountColumns, encryptedPEK *pekEncrypted){
 	JET_ERR cursorStatus;
 	JET_ERR readStatus;
@@ -116,6 +126,8 @@ JET_ERR get_PEK(jetState *ntdsState, ntdsColumns *accountColumns, encryptedPEK *
 	return readStatus;
 }
 
+// This function moves the database cursor through 'datatable' until
+// we find the next SAM User Object record.
 JET_ERR next_user(jetState *ntdsState, ntdsColumns *accountColumns){
 	JET_ERR cursorStatus;
 	JET_ERR readStatus;
@@ -142,6 +154,8 @@ JET_ERR next_user(jetState *ntdsState, ntdsColumns *accountColumns){
 	return finalStatus;
 }
 
+// This function takes our Jet instance and attaches it to the
+// NTDS.dit database file.
 JET_ERR open_database(jetState *ntdsState){
 	JET_ERR attachStatus = JetAttachDatabase(ntdsState->jetSession, ntdsState->ntdsPath, JET_bitDbReadOnly);
 	if (attachStatus != JET_errSuccess){
@@ -154,6 +168,8 @@ JET_ERR open_database(jetState *ntdsState){
 	return JET_errSuccess;
 }
 
+// This function is responsible for parsing all of the column data out of
+// the current user record we are on.
 JET_ERR read_user(jetState *ntdsState, ntdsColumns *accountColumns, decryptedPEK *pekDecrypted, ntdsAccount *userAccount){
 	JET_ERR readStatus = JET_errSuccess;
 	//Define our temp values here

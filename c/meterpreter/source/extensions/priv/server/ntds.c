@@ -9,7 +9,11 @@ typedef struct
 	BOOL eof;
 } NTDSContext;
 
-
+// This is the raw NTDS command function. When the remote user
+// sends a command request for priv_ntds_parse, this function fires.
+// It calls the setup routines for our Jet Instance, attaches the isntance
+// to the NTDS.dit database the user specified, and creates our channel.
+// The user interacts with the NTDS database through that channel from that point on.
 DWORD ntds_parse(Remote *remote, Packet *packet){
 	Packet *response = packet_create_response(packet);
 	DWORD res = ERROR_SUCCESS;
@@ -133,11 +137,15 @@ out:
 	return res;
 }
 
+// This callback function is just a stub as this channel does
+// not actually support writing.
 static DWORD ntds_channel_write(Channel *channel, Packet *request,
 	LPVOID context, LPVOID buffer, DWORD bufferSize, LPDWORD bytesWritten){
 	return ERROR_SUCCESS;
 }
 
+// This function reads an individual account record from the database and moves
+// the cursor to the next one in the table.
 static DWORD ntds_read_into_batch(NTDSContext *ctx, ntdsAccount *batchedAccount){
 	DWORD result = ERROR_SUCCESS;
 	JET_ERR readStatus = JET_errSuccess;
@@ -154,6 +162,9 @@ static DWORD ntds_read_into_batch(NTDSContext *ctx, ntdsAccount *batchedAccount)
 	return result;
 }
 
+// This callback fires when the remote side requests a read from the channel.
+// It call ntds_read_into_batch up to 20 times and feeds the results into
+// an array which is then written back out into the channel's output buffer
 static DWORD ntds_channel_read(Channel *channel, Packet *request,
 	LPVOID context, LPVOID buffer, DWORD bufferSize, LPDWORD bytesRead){
 	JET_ERR readStatus = JET_errSuccess;
@@ -180,6 +191,9 @@ static DWORD ntds_channel_read(Channel *channel, Packet *request,
 	return result;
 }
 
+// This callback function is responsible for cleaning up when the channel 
+// is closed. It shuts down the Jet Engine, and frees up the memory
+// for all of the context we have been carrying around.
 static DWORD ntds_channel_close(Channel *channel, Packet *request,
 	LPVOID context){
 	NTDSContext *ctx = (NTDSContext *)context;
@@ -190,6 +204,8 @@ static DWORD ntds_channel_close(Channel *channel, Packet *request,
 	return ERROR_SUCCESS;
 }
 
+// This callback is responsible for checking EOF status. 
+// EOF gets set when there are no more User records to parse.
 static DWORD ntds_channel_eof(Channel *channel, Packet *request,
 	LPVOID context, LPBOOL isEof)
 {

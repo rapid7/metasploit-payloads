@@ -1,11 +1,13 @@
 #include "precomp.h"
 
+// Converts bytes into a hex string representation of those bytes
 void bytes_to_string(LPBYTE data, int length, LPSTR output){
 	for (int i = 0; i < length; i++){
 		sprintf(output + (i << 1), "%02X", ((LPBYTE)data)[i]);
 	}
 }
 
+// Takes an encypted NT or LM hash and decrypts it
 BOOL decrypt_hash(encryptedHash *encryptedNTLM, decryptedPEK *pekDecrypted, char *hashString, DWORD rid){
 	BOOL cryptOK = FALSE;
 	BYTE encHashData[NULL_TERIMNATED_HASH_LENGTH] = { 0 };
@@ -24,6 +26,9 @@ BOOL decrypt_hash(encryptedHash *encryptedNTLM, decryptedPEK *pekDecrypted, char
 	return TRUE;
 }
 
+// This function is wrapper around the RunTime Dynamic Linked Function
+// SystemFunction025 which is the secret internal function Windows uses
+// to decrypt an encrypted hash using the Realative ID (RID)
 BOOL decrypt_hash_from_rid(LPBYTE encodedHash, LPDWORD rid, LPBYTE decodedHash){
 	typedef NTSTATUS(__stdcall *PSYS25)(IN LPCBYTE data, IN LPDWORD key, OUT LPBYTE output);
 	HMODULE hAdvapi = LoadLibrary("advapi32.dll");
@@ -37,6 +42,8 @@ BOOL decrypt_hash_from_rid(LPBYTE encodedHash, LPDWORD rid, LPBYTE decodedHash){
 	return TRUE;
 }
 
+// This function splits up an encrypted LM or NT hash history record, and decrypts each
+// hash enclosed in that history.
 BOOL decrypt_hash_history(LPBYTE encHashHistory, size_t sizeHistory, decryptedPEK *pekDecrypted, DWORD rid, char *accountHistory, int *historyCount){
 	BOOL cryptOK = FALSE;
 	size_t sizeHistoryData = sizeHistory - 24;
@@ -71,6 +78,7 @@ BOOL decrypt_hash_history(LPBYTE encHashHistory, size_t sizeHistory, decryptedPE
 	return TRUE;
 }
 
+// This function is responsible for decrypting the Password Encryption Key(PEK)
 BOOL decrypt_PEK(unsigned char *sysKey, encryptedPEK *pekEncrypted, decryptedPEK *pekDecrypted){
 	BOOL cryptOK = FALSE;
 	BYTE pekData[52] = { 0 };
@@ -85,6 +93,9 @@ BOOL decrypt_PEK(unsigned char *sysKey, encryptedPEK *pekEncrypted, decryptedPEK
 	return TRUE;
 }
 
+// This function takes a set of key material and encrypted data
+// It generates an md5 hash out of the key material and then uses that
+// as an rc4 key to decrypt the ciphertext
 BOOL decrypt_rc4(unsigned char *key1, unsigned char *key2, LPBYTE encrypted, int hashIterations, DWORD lenBuffer){
 	BOOL cryptOK = FALSE;
 	HCRYPTPROV hProv = 0;
