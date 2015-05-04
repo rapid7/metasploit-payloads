@@ -414,7 +414,7 @@ static LONG server_socket_poll(Remote* remote, long timeout)
 
 /*!
  * @brief Initialize the OpenSSL subsystem for use in a multi threaded enviroment.
- * @param remote Pointer to the remote instance.
+ * @param transport Pointer to the transport instance.
  * @return Indication of success or failure.
  */
 static BOOL server_initialize_ssl(Transport* transport)
@@ -454,7 +454,7 @@ static BOOL server_initialize_ssl(Transport* transport)
 
 /*!
  * @brief Bring down the OpenSSL subsystem
- * @param remote Pointer to the remote instance.
+ * @param transport Pointer to the transport instance.
  * @return Indication of success or failure.
  */
 static BOOL server_destroy_ssl(Transport* transport)
@@ -490,7 +490,7 @@ static BOOL server_destroy_ssl(Transport* transport)
 
 /*!
  * @brief Negotiate SSL on the socket.
- * @param remote Pointer to the remote instance.
+ * @param transport Pointer to the transport instance.
  * @return Indication of success or failure.
  */
 static BOOL server_negotiate_ssl(Transport* transport)
@@ -818,7 +818,7 @@ static SOCKET transport_get_socket_tcp(Transport* transport)
 
 /*!
  * @brief Destroy the TCP transport.
- * @param transport Pointer to the TCP transport to reset.
+ * @param transport Pointer to the TCP transport to destroy.
  */
 static void transport_destroy_tcp(Transport* transport)
 {
@@ -861,7 +861,7 @@ DWORD THREADCALL cleanup_socket(THREAD* thread)
 }
 
 /*!
- * @brief Configure the TCP connnection. If it doesn't exist, go ahead and estbalish it.
+ * @brief Reset the given TCP connection.
  * @param transport Pointer to the TCP transport to reset.
  * @param shuttingDown Indication that the Metsrv instance is terminating completely.
  */
@@ -1127,12 +1127,20 @@ DWORD packet_transmit_via_ssl(Remote* remote, Packet* packet, PacketRequestCompl
 	return res;
 }
 
+/*!
+ * @brief Create a configuration block from the given transport.
+ * @param transport Transport data to create the configuration from.
+ * @return config Pointer to the config block to write to.
+ */
 void transport_write_tcp_config(Transport* transport, MetsrvTransportTcp* config)
 {
-	config->common.comms_timeout = transport->timeouts.comms;
-	config->common.retry_total = transport->timeouts.retry_total;
-	config->common.retry_wait = transport->timeouts.retry_wait;
-	wcsncpy(config->common.url, transport->url, URL_SIZE);
+	if (transport && config)
+	{
+		config->common.comms_timeout = transport->timeouts.comms;
+		config->common.retry_total = transport->timeouts.retry_total;
+		config->common.retry_wait = transport->timeouts.retry_wait;
+		wcsncpy(config->common.url, transport->url, URL_SIZE);
+	}
 }
 
 /*!

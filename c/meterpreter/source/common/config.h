@@ -5,8 +5,6 @@
 #ifndef _METERPRETER_LIB_CONFIG_H
 #define _METERPRETER_LIB_CONFIG_H
 
-#include "common.h"
-
 /*! @brief This is the size of the certificate hash that is validated (sha1) */
 #define CERT_HASH_SIZE 20
 #define URL_SIZE 512

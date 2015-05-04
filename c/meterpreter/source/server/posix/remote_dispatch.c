@@ -8,8 +8,7 @@
 extern Command *extensionCommands;
 extern PLIST gExtensionList;
 
-DWORD request_core_loadlib(Remote *remote, Packet *packet)
-{
+DWORD request_core_loadlib(Remote *remote, Packet *packet) {
 	Packet *response = packet_create_response(packet);
 	DWORD res = ERROR_SUCCESS;
 	HMODULE library;
@@ -20,22 +19,19 @@ DWORD request_core_loadlib(Remote *remote, Packet *packet)
 	Command *command;
 	Command *first = extensionCommands;
 
-	do
-	{
+	do {
 		Tlv dataTlv;
 
 		libraryPath = packet_get_tlv_value_string(packet, TLV_TYPE_LIBRARY_PATH);
 		flags = packet_get_tlv_value_uint(packet, TLV_TYPE_FLAGS);
 
 		// Invalid library path?
-		if (!libraryPath)
-		{
+		if (!libraryPath) {
 			res = ERROR_INVALID_PARAMETER;
 			break;
 		}
 
-		if (flags & LOAD_LIBRARY_FLAG_LOCAL)
-		{
+		if (flags & LOAD_LIBRARY_FLAG_LOCAL) {
 			// i'd be surprised if we could load 
 			// libraries off the remote system without breaking severely.
 			res = ERROR_NOT_SUPPORTED;
@@ -46,8 +42,7 @@ DWORD request_core_loadlib(Remote *remote, Packet *packet)
 		if ((packet_get_tlv(packet, TLV_TYPE_DATA,
 			&dataTlv) != ERROR_SUCCESS) ||
 			(!(targetPath = packet_get_tlv_value_string(packet,
-			TLV_TYPE_TARGET_PATH))))
-		{
+			TLV_TYPE_TARGET_PATH)))) {
 			res = ERROR_INVALID_PARAMETER;
 			break;
 		}
@@ -56,19 +51,16 @@ DWORD request_core_loadlib(Remote *remote, Packet *packet)
 
 		library = dlopenbuf(targetPath, dataTlv.buffer, dataTlv.header.length);
 		dprintf("dlopenbuf(%s): %08x / %s", targetPath, library, dlerror());
-		if (!library)
-		{
+		if (!library) {
 			res = ERROR_NOT_FOUND;
 			break;
 		}
 
 		// If this library is supposed to be an extension library, try to
 		// call its Init routine
-		if (flags & LOAD_LIBRARY_FLAG_EXTENSION)
-		{
+		if (flags & LOAD_LIBRARY_FLAG_EXTENSION) {
 			PEXTENSION pExtension = (PEXTENSION)malloc(sizeof(EXTENSION));
-			if (!pExtension)
-			{
+			if (!pExtension) {
 				res = ERROR_NOT_ENOUGH_MEMORY;
 				break;
 			}
@@ -77,8 +69,7 @@ DWORD request_core_loadlib(Remote *remote, Packet *packet)
 			pExtension->init = dlsym(library, "InitServerExtension");
 
 			// Call the init routine in the library
-			if (pExtension->init)
-			{
+			if (pExtension->init) {
 				dprintf("calling InitServerExtension");
 				pExtension->end = first;
 				res = pExtension->init(remote);
@@ -86,21 +77,17 @@ DWORD request_core_loadlib(Remote *remote, Packet *packet)
 				pExtension->getname = dlsym(library, "GetExtensionName");
 				pExtension->deinit = dlsym(library, "DeinitServerExtension");
 
-				if (pExtension->getname)
-				{
+				if (pExtension->getname) {
 					pExtension->getname(pExtension->name, sizeof(pExtension->name));
 				}
 				list_push(gExtensionList, pExtension);
 			}
-			else
-			{
+			else {
 				free(pExtension);
 			}
 
-			if (response)
-			{
-				for (command = pExtension->start; command != pExtension->end; command = command->next)
-				{
+			if (response) {
+				for (command = pExtension->start; command != pExtension->end; command = command->next) {
 					packet_add_tlv_string(response, TLV_TYPE_METHOD, command->method);
 				}
 			}
@@ -108,8 +95,7 @@ DWORD request_core_loadlib(Remote *remote, Packet *packet)
 
 	} while (0);
 
-	if (response)
-	{
+	if (response) {
 		packet_add_tlv_uint(response, TLV_TYPE_RESULT, res);
 		PACKET_TRANSMIT(remote, response, NULL);
 	}
@@ -117,8 +103,7 @@ DWORD request_core_loadlib(Remote *remote, Packet *packet)
 	return (res);
 }
 
-DWORD request_core_machine_id(Remote* pRemote, Packet* pPacket)
-{
+DWORD request_core_machine_id(Remote* pRemote, Packet* pPacket) {
 	DWORD res = ERROR_SUCCESS;
 	Packet* pResponse = packet_create_response(pPacket);
 
@@ -156,3 +141,17 @@ DWORD request_core_machine_id(Remote* pRemote, Packet* pPacket)
 
 	return ERROR_SUCCESS;
 }
+
+DWORD request_core_uuid(Remote* remote, Packet* packet) {
+	DWORD res = ERROR_SUCCESS;
+	Packet* response = packet_create_response(packet);
+
+	if (response) {
+		packet_add_tlv_wstring(response, TLV_TYPE_UUID, remote->orig_config->session.uuid);
+
+		packet_transmit_response(ERROR_SUCCESS, remote, response);
+	}
+
+	return res;
+}
+

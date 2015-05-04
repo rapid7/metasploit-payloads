@@ -32,8 +32,8 @@ typedef void(*PTransportReset)(Transport* transport, BOOL shuttingDown);
 typedef BOOL(*PTransportInit)(Transport* transport);
 typedef BOOL(*PTransportDeinit)(Transport* transport);
 typedef void(*PTransportDestroy)(Transport* transport);
-typedef Transport*(*PTransportCreate)(Remote* remote, MetsrvTransportCommon* config, PDWORD size);
-typedef void(*PConfigCreate)(Remote* remote, MetsrvConfig** config, PDWORD size);
+typedef Transport*(*PTransportCreate)(Remote* remote, MetsrvTransportCommon* config, LPDWORD size);
+typedef void(*PConfigCreate)(Remote* remote, MetsrvConfig** config, LPDWORD size);
 
 typedef BOOL(*PServerDispatch)(Remote* remote, THREAD* dispatchThread);
 typedef DWORD(*PPacketTransmit)(Remote* remote, Packet* packet, PacketRequestCompletion* completion);

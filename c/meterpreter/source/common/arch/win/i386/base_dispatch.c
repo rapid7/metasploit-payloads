@@ -656,7 +656,7 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
  * @param packet Pointer to the request packet.
  * @returns Indication of success or failure.
  * @remark If no values are given, no updates are made. The response to
-           this message is the new/current settings.
+ *         this message is the new/current settings.
  */
 DWORD remote_request_core_transport_set_timeouts(Remote * remote, Packet * packet)
 {
@@ -683,7 +683,6 @@ DWORD remote_request_core_transport_set_timeouts(Remote * remote, Packet * packe
 		if (expirationTimeout != 0)
 		{
 			dprintf("[DISPATCH TIMEOUT] setting expiration time to %d", expirationTimeout);
-
 			remote->sess_expiry_time = expirationTimeout;
 			remote->sess_expiry_end = current_unix_timestamp() + expirationTimeout;
 		}

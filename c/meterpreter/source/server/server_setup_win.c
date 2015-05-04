@@ -77,13 +77,13 @@ VOID load_stageless_extensions(Remote* remote, MetsrvExtension* stagelessExtensi
 		dprintf("[SERVER] Extension located at 0x%p: %u bytes", stagelessExtensions->dll, stagelessExtensions->size);
 		HMODULE hLibrary = LoadLibraryR(stagelessExtensions->dll, stagelessExtensions->size);
 		initialise_extension(hLibrary, TRUE, remote, NULL, extensionCommands);
-		stagelessExtensions = (MetsrvExtension*)((PBYTE)stagelessExtensions->dll + stagelessExtensions->size);
+		stagelessExtensions = (MetsrvExtension*)((LPBYTE)stagelessExtensions->dll + stagelessExtensions->size);
 	}
 
 	dprintf("[SERVER] All stageless extensions loaded");
 }
 
-static Transport* create_transport(Remote* remote, MetsrvTransportCommon* transportCommon, PDWORD size)
+static Transport* create_transport(Remote* remote, MetsrvTransportCommon* transportCommon, LPDWORD size)
 {
 	Transport* transport = NULL;
 	dprintf("[TRNS] Transport claims to have URL: %S", transportCommon->url);
@@ -178,7 +178,7 @@ static void remove_transport(Remote* remote, Transport* oldTransport)
 	oldTransport->transport_destroy(oldTransport);
 }
 
-static BOOL create_transports(Remote* remote, MetsrvTransportCommon* transports, PDWORD parsedSize)
+static BOOL create_transports(Remote* remote, MetsrvTransportCommon* transports, LPDWORD parsedSize)
 {
 	DWORD totalSize = 0;
 	MetsrvTransportCommon* current = transports;
@@ -193,7 +193,7 @@ static BOOL create_transports(Remote* remote, MetsrvTransportCommon* transports,
 			totalSize += size;
 
 			// go to the next transport based on the size of the existing one.
-			current = (MetsrvTransportCommon*)((PBYTE)current + size);
+			current = (MetsrvTransportCommon*)((LPBYTE)current + size);
 		}
 		else
 		{
@@ -208,7 +208,7 @@ static BOOL create_transports(Remote* remote, MetsrvTransportCommon* transports,
 	return TRUE;
 }
 
-static void config_create(Remote* remote, MetsrvConfig** config, PDWORD size)
+static void config_create(Remote* remote, MetsrvConfig** config, LPDWORD size)
 {
 	// This function is really only used for migration purposes.
 	DWORD s = sizeof(MetsrvSession);
@@ -338,7 +338,7 @@ DWORD server_setup(MetsrvConfig* config)
 				((TcpTransportContext*)remote->transport->ctx)->fd = (SOCKET)config->session.comms_fd;
 			}
 
-			load_stageless_extensions(remote, (MetsrvExtension*)((PBYTE)config->transports + transportSize));
+			load_stageless_extensions(remote, (MetsrvExtension*)((LPBYTE)config->transports + transportSize));
 
 			// Set up the transport creation function pointer
 			remote->trans_create = create_transport;
