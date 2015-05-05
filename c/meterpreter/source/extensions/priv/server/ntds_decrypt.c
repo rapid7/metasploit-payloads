@@ -1,13 +1,29 @@
+/*!
+* @file ntds_decrypt.c
+* @brief Definitions for NTDS decryption functions
+*/
 #include "precomp.h"
 
-// Converts bytes into a hex string representation of those bytes
+/*!
+* @brief Convert bytes into a Hex string representing those bytes.
+* @param data Pointer to the byte array we are converting
+* @param length Integer representing the length of the byte array
+* @param output Pointer to the string we are outputting the result to
+*/
 void bytes_to_string(LPBYTE data, int length, LPSTR output){
 	for (int i = 0; i < length; i++){
 		sprintf(output + (i << 1), "%02X", ((LPBYTE)data)[i]);
 	}
 }
 
-// Takes an encypted NT or LM hash and decrypts it
+/*!
+* @brief Decrypt an  encrypted LM or NT Hash.
+* @param encryptedNTLM Pointer to an encryptedhash struct for the LM or NT hash we wish to decrypt.
+* @param pekDecrypted Pointer to a decryptedPEK structure that holds our decrypted PEK
+* @param hashString Pointer to the string where we will store the decrypted hash
+* @param rid DWORD representing the Relative ID(RID) of the account
+* @returns Indication of sucess or failure.
+*/
 BOOL decrypt_hash(encryptedHash *encryptedNTLM, decryptedPEK *pekDecrypted, char *hashString, DWORD rid){
 	BOOL cryptOK = FALSE;
 	BYTE encHashData[NULL_TERIMNATED_HASH_LENGTH] = { 0 };
@@ -26,9 +42,13 @@ BOOL decrypt_hash(encryptedHash *encryptedNTLM, decryptedPEK *pekDecrypted, char
 	return TRUE;
 }
 
-// This function is wrapper around the RunTime Dynamic Linked Function
-// SystemFunction025 which is the secret internal function Windows uses
-// to decrypt an encrypted hash using the Realative ID (RID)
+/*!
+* @brief Wraps SystemFunction025 which decrypts a hash using the RID
+* @param encodedHash Pointer to a byte array containing the encrypted hash
+* @param rid Pointer to a DWORD containing the Relative ID(RID)
+* @param decodedHash Pointer to where we store the decrypted hash
+* @returns Indication of sucess or failure.
+*/
 BOOL decrypt_hash_from_rid(LPBYTE encodedHash, LPDWORD rid, LPBYTE decodedHash){
 	typedef NTSTATUS(__stdcall *PSYS25)(IN LPCBYTE data, IN LPDWORD key, OUT LPBYTE output);
 	HMODULE hAdvapi = LoadLibrary("advapi32.dll");
@@ -42,8 +62,16 @@ BOOL decrypt_hash_from_rid(LPBYTE encodedHash, LPDWORD rid, LPBYTE decodedHash){
 	return TRUE;
 }
 
-// This function splits up an encrypted LM or NT hash history record, and decrypts each
-// hash enclosed in that history.
+/*!
+* @brief Splits up an encrypted LM or NT hash history and decrypts each stored hash
+* @param encHashHistory Pointer to the byte array containing the hash history record
+* @param sizeHistory The size of the history record
+* @param pekDecrypted Pointer to a decryptedPEK structure that holds our decrypted PEK
+* @param rid DWORD representing the Relative ID(RID) of the account
+* @param accountHistory Pointer to a string wherewe store all the decrypted historical hashes
+* @param historyCount Pointer to n integer where we store a count of the historical hashes
+* @returns Indication of sucess or failure.
+*/
 BOOL decrypt_hash_history(LPBYTE encHashHistory, size_t sizeHistory, decryptedPEK *pekDecrypted, DWORD rid, char *accountHistory, int *historyCount){
 	BOOL cryptOK = FALSE;
 	size_t sizeHistoryData = sizeHistory - 24;
@@ -78,7 +106,13 @@ BOOL decrypt_hash_history(LPBYTE encHashHistory, size_t sizeHistory, decryptedPE
 	return TRUE;
 }
 
-// This function is responsible for decrypting the Password Encryption Key(PEK)
+/*!
+* @brief Decrypts the Password Encryption Key(PEK)
+* @param sysKey Pointer to the string holding the SYSKEY
+* @param pekEncrypted Pointer to an encryptedPEK struct containing our PEK to be decrypted
+* @param pekDecrypted Pointer to the decryptedPEK struct where we will store our decrypted PEK
+* @returns Indication of sucess or failure.
+*/
 BOOL decrypt_PEK(unsigned char *sysKey, encryptedPEK *pekEncrypted, decryptedPEK *pekDecrypted){
 	BOOL cryptOK = FALSE;
 	BYTE pekData[52] = { 0 };
@@ -93,9 +127,15 @@ BOOL decrypt_PEK(unsigned char *sysKey, encryptedPEK *pekEncrypted, decryptedPEK
 	return TRUE;
 }
 
-// This function takes a set of key material and encrypted data
-// It generates an md5 hash out of the key material and then uses that
-// as an rc4 key to decrypt the ciphertext
+/*!
+* @brief Takes key material and ciphertext and perform an rc4 decryption routine,
+* @param key1 Pointer to a string containing the first set of key material
+* @param key2 Pointer to a string containing the second set of key material
+* @param encrypted Pointer to a byte array containing the ciphertext
+* @param iterations How many times to add key2 to the md5 Hash to generate the rc4 key
+* @param lenBuffer the length of our output buffer
+* @returns Indication of sucess or failure.
+*/
 BOOL decrypt_rc4(unsigned char *key1, unsigned char *key2, LPBYTE encrypted, int hashIterations, DWORD lenBuffer){
 	BOOL cryptOK = FALSE;
 	HCRYPTPROV hProv = 0;

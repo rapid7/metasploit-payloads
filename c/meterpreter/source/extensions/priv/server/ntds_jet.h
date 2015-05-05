@@ -3,6 +3,7 @@
 #include <esent.h>
 #pragma comment(lib, "esent")
 
+/*! @brief Typedef for the jetState struct. */
 typedef struct {
 	TCHAR ntdsPath[255];
 	JET_INSTANCE jetEngine;
@@ -11,6 +12,7 @@ typedef struct {
 	JET_TABLEID jetTable;
 }jetState;
 
+/*! @brief Typedef for the ntdsColumns struct. */
 typedef struct {
 	JET_COLUMNDEF accountName;
 	JET_COLUMNDEF accountType;
@@ -28,6 +30,7 @@ typedef struct {
 	JET_COLUMNDEF accountSID;
 }ntdsColumns;
 
+/*! @brief Typedef for the ntdsAccount struct. */
 typedef struct{
 	wchar_t accountName[20];
 	wchar_t accountDescription[1024];

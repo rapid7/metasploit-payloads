@@ -1,7 +1,14 @@
+/*!
+* @file ntds_jet.c
+* @brief Definitions for NTDS Jet Engine functions
+*/
 #include "precomp.h"
 
-// This function is responsible for shutting down all the Jet Instance
-// It also frees the memory for the ntdsState struct once it's done.
+/*!
+* @brief Shuts down the Jet Instance and frees the jetState struct.
+* @param ntdsState Pointer to a jetsState struct which contains all the state data for the Jet Instance.
+* @returns Indication of sucess or failure.
+*/
 JET_ERR engine_shutdown(jetState *ntdsState){
 	JET_ERR shutdownStatus;
 	shutdownStatus = JetCloseDatabase(ntdsState->jetSession, ntdsState->jetDatabase, (JET_GRBIT)NULL);
@@ -21,8 +28,11 @@ JET_ERR engine_shutdown(jetState *ntdsState){
 	return shutdownStatus;
 }
 
-// This function starts up the Jet Instance and initialises it with our
-// starting parameters.
+/*!
+* @brief Starts up the Jet Instance and initialises it.
+* @param ntdsState Pointer to a jetsState struct which contains all the state data for the Jet Instance.
+* @returns Indication of sucess or failure.
+*/
 JET_ERR engine_startup(jetState *ntdsState){
 	JET_ERR jetError;
 	// Set the Page Size to the highest possibile limit
@@ -48,16 +58,23 @@ JET_ERR engine_startup(jetState *ntdsState){
 	return JET_errSuccess;
 }
 
-// This function moves the cursor in our NTDS database to the first
-// record in the 'datatable' table.
+/*!
+* @brief Moves the database cursor to the first record in the 'datatable' table
+* @param ntdsState Pointer to a jetsState struct which contains all the state data for the Jet Instance.
+* @returns Indication of sucess or failure.
+*/
 JET_ERR find_first(jetState *ntdsState){
 	JET_ERR cursorStatus;
 	cursorStatus = JetMove(ntdsState->jetSession, ntdsState->jetTable, JET_MoveFirst, (JET_GRBIT)NULL);
 	return cursorStatus;
 }
 
-// This function collects the column definitions for all of the 
-// columns we will be reading from in the 'datatable' table
+/*!
+* @brief Collect the Column Definitions for all relevant columns in 'datatable'
+* @param ntdsState Pointer to a jetsState struct which contains all the state data for the Jet Instance.
+* @param accountColumns Pointer to an ntdsState struct which will hold all of our column definitions.
+* @returns Indication of sucess or failure.
+*/
 JET_ERR get_column_info(jetState *ntdsState, ntdsColumns *accountColumns){
 	JET_ERR columnError;
 	const char attributeNames[][25] = {
@@ -101,8 +118,13 @@ JET_ERR get_column_info(jetState *ntdsState, ntdsColumns *accountColumns){
 	return JET_errSuccess;
 }
 
-// This function reads through the 'datatable' table until we
-// find the password Encryption Key and grabs that.
+/*!
+* @brief Finds the Password Encryption Key(PEK) record in 'datatable'
+* @param ntdsState Pointer to a jetsState struct which contains all the state data for the Jet Instance.
+* @param accountColumns Pointer to an ntdsState struct which will hold all of our column definitions.
+* @param pekEncrypted Pointer to an encryptedPEK struct to hold our encrypted PEK
+* @returns Indication of sucess or failure.
+*/
 JET_ERR get_PEK(jetState *ntdsState, ntdsColumns *accountColumns, encryptedPEK *pekEncrypted){
 	JET_ERR cursorStatus;
 	JET_ERR readStatus;
@@ -126,8 +148,12 @@ JET_ERR get_PEK(jetState *ntdsState, ntdsColumns *accountColumns, encryptedPEK *
 	return readStatus;
 }
 
-// This function moves the database cursor through 'datatable' until
-// we find the next SAM User Object record.
+/*!
+* @brief Moves the database cursor to the next User record in 'datatable'
+* @param ntdsState Pointer to a jetsState struct which contains all the state data for the Jet Instance.
+* @param accountColumns Pointer to an ntdsState struct which will hold all of our column definitions.
+* @returns Indication of sucess or failure.
+*/
 JET_ERR next_user(jetState *ntdsState, ntdsColumns *accountColumns){
 	JET_ERR cursorStatus;
 	JET_ERR readStatus;
@@ -154,8 +180,11 @@ JET_ERR next_user(jetState *ntdsState, ntdsColumns *accountColumns){
 	return finalStatus;
 }
 
-// This function takes our Jet instance and attaches it to the
-// NTDS.dit database file.
+/*!
+* @brief Attach our Jet Instance to the ntds.dit file and open the 'datatable' table for reading.
+* @param ntdsState Pointer to a jetsState struct which contains all the state data for the Jet Instance.
+* @returns Indication of sucess or failure.
+*/
 JET_ERR open_database(jetState *ntdsState){
 	JET_ERR attachStatus = JetAttachDatabase(ntdsState->jetSession, ntdsState->ntdsPath, JET_bitDbReadOnly);
 	if (attachStatus != JET_errSuccess){
@@ -168,8 +197,14 @@ JET_ERR open_database(jetState *ntdsState){
 	return JET_errSuccess;
 }
 
-// This function is responsible for parsing all of the column data out of
-// the current user record we are on.
+/*!
+* @brief Read the current user record into an ntdsAccount struct.
+* @param ntdsState Pointer to a jetsState struct which contains all the state data for the Jet Instance.
+* @param accountColumns Pointer to an ntdsState struct which will hold all of our column definitions.
+* @param pekDecrypted Pointer to a decryptedPEK structure that holds our decrypted PEK
+* @param userAccount Pointer to an ntdsAccount struct that will hold all of our User data
+* @returns Indication of sucess or failure.
+*/
 JET_ERR read_user(jetState *ntdsState, ntdsColumns *accountColumns, decryptedPEK *pekDecrypted, ntdsAccount *userAccount){
 	JET_ERR readStatus = JET_errSuccess;
 	//Define our temp values here

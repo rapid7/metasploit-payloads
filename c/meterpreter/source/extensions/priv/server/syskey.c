@@ -1,7 +1,16 @@
+/*!
+* @file syskey.c
+* @brief Definitions for functions to retrieve the SYSKEY from the Registry
+*/
 #include "precomp.h"
 
-// This function is responsible for getting an indivdual peice of the SYSTEM Key
-// from the Registry
+/*!
+* @brief Get individual component of the SysKey from the Registry.
+* @param lsaHandle Handle to the LSA Registry Key
+* @param subkeyName String containing the name of the Subkey to read from.
+* @param tmpSysKey Pointer to the string of the Syskey we are building
+* @returns Indication of sucess or failure.
+*/
 BOOL get_syskey_component(HKEY lsaHandle, char subkeyName[255], unsigned char *tmpSysKey){
 	DWORD sizeData = 9;
 	long regStatus;
@@ -23,8 +32,11 @@ BOOL get_syskey_component(HKEY lsaHandle, char subkeyName[255], unsigned char *t
 	return TRUE;
 }
 
-// This function collects the peices of the SYSTEM Key and assembles themn
-// to give us a compelte SYSKEY
+/*!
+* @brief Retrieves and assembled the SYSKEY from the Registry
+* @param sysKey Pointer to the string of the Syskey we are building
+* @returns Indication of sucess or failure.
+*/
 BOOL get_syskey(unsigned char *sysKey){
 	unsigned char tmpSysKey[17];
 	unsigned char interimSysKey[17];

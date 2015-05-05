@@ -1,6 +1,6 @@
 #include "precomp.h"
 
-
+/*! @brief Typedef for the NTDSContext struct. */
 typedef struct
 {
 	jetState *ntdsState;
