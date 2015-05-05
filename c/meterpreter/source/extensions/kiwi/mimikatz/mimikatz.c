@@ -138,8 +138,5 @@ DWORD mimikatz_init_or_clean(BOOL Init)
 		}
 	}
 
-	if (!Init)
-		kull_m_output_file(NULL);
-
 	return (DWORD)STATUS_SUCCESS;
 }

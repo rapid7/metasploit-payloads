@@ -11,5 +11,4 @@
 typedef void (*output_writer)(const wchar_t* newOutput);
 void kprintf(PCWCHAR format, ...);
 
-BOOL kull_m_output_file(PCWCHAR file);
 VOID kull_m_output_set_writer(output_writer writer);
