@@ -195,16 +195,8 @@ JET_ERR open_database(struct jetState *ntdsState){
 */
 JET_ERR read_user(struct jetState *ntdsState, struct ntdsColumns *accountColumns, struct decryptedPEK *pekDecrypted, struct ntdsAccount *userAccount){
 	JET_ERR readStatus = JET_errSuccess;
-	//Define our temp values here
-	FILETIME accountExpiry;
-	SYSTEMTIME accountExpiry2;
-	FILETIME lastLogon;
-	SYSTEMTIME lastLogon2;
-	FILETIME lastPass;
-	SYSTEMTIME lastPass2;
 	DWORD accountControl = 0;
 	unsigned long columnSize = 0;
-
 	// Grab the SID here
 	readStatus = JetRetrieveColumn(ntdsState->jetSession, ntdsState->jetTable, accountColumns->accountSID.columnid, &userAccount->accountSID, sizeof(userAccount->accountName), &columnSize, 0, NULL);
 	if (readStatus != JET_errSuccess){
@@ -214,12 +206,75 @@ JET_ERR read_user(struct jetState *ntdsState, struct ntdsColumns *accountColumns
 	int ridIndex = columnSize - sizeof(DWORD);
 	DWORD *ridLoc = (DWORD *)&userAccount->accountSID[ridIndex];
 	userAccount->accountRID = htonl(*ridLoc);
-
 	// Grab the samAccountName here
 	readStatus = JetRetrieveColumn(ntdsState->jetSession, ntdsState->jetTable, accountColumns->accountName.columnid, &userAccount->accountName, sizeof(userAccount->accountName), &columnSize, 0, NULL);
 	if (readStatus != JET_errSuccess){
 		return readStatus;
 	}
+	// Grab the Account Description here
+	readStatus = JetRetrieveColumn(ntdsState->jetSession, ntdsState->jetTable, accountColumns->accountDescription.columnid, &userAccount->accountDescription, sizeof(userAccount->accountDescription), &columnSize, 0, NULL);
+	if (readStatus == JET_wrnColumnNull){
+		memset(userAccount->accountDescription, 0, sizeof(userAccount->accountDescription));
+	}
+	else if (readStatus != JET_errSuccess){
+		return readStatus;
+	}
+	// Grab the UserAccountControl flags here
+	readStatus = JetRetrieveColumn(ntdsState->jetSession, ntdsState->jetTable, accountColumns->accountControl.columnid, &accountControl, sizeof(accountControl), &columnSize, 0, NULL);
+	if (readStatus != JET_errSuccess){
+		return readStatus;
+	}
+	userAccount->accountDisabled = !!(accountControl & NTDS_ACCOUNT_DISABLED);
+	userAccount->accountLocked = !!(accountControl & NTDS_ACCOUNT_LOCKED);
+	userAccount->noPassword = !!(accountControl & NTDS_ACCOUNT_NO_PASS);
+	userAccount->passExpired = !!(accountControl & NTDS_ACCOUNT_PASS_EXPIRED);
+	userAccount->passNoExpire = !!(accountControl & NTDS_ACCOUNT_PASS_NO_EXPIRE);
+	// Grab the Logon Count here
+	readStatus = JetRetrieveColumn(ntdsState->jetSession, ntdsState->jetTable, accountColumns->logonCount.columnid, &userAccount->logonCount, sizeof(userAccount->logonCount), &columnSize, 0, NULL);
+	if (readStatus != JET_errSuccess){
+		return readStatus;
+	}
+	// Grab the various Dates and Times
+	readStatus = read_user_dates(ntdsState, accountColumns, pekDecrypted, userAccount);
+	if (readStatus != JET_errSuccess){
+		return readStatus;
+	}
+	// Grab the NT Hash
+	readStatus = read_user_nt_hash(ntdsState, accountColumns, pekDecrypted, userAccount);
+	if (readStatus != JET_errSuccess && readStatus != JET_wrnColumnNull){
+		return readStatus;
+	}
+	// Grab the LM Hash
+	readStatus = read_user_lm_hash(ntdsState, accountColumns, pekDecrypted, userAccount);
+	if (readStatus != JET_errSuccess && readStatus != JET_wrnColumnNull){
+		return readStatus;
+	}
+	// Grab the Hash History
+	readStatus = read_user_hash_history(ntdsState, accountColumns, pekDecrypted, userAccount);
+	if (readStatus != JET_errSuccess && readStatus != JET_wrnColumnNull){
+		return readStatus;
+	}
+	return JET_errSuccess;
+}
+
+
+/*!
+* @brief Read the current user record's various datetime records.
+* @param ntdsState Pointer to a jetsState struct which contains all the state data for the Jet Instance.
+* @param accountColumns Pointer to an ntdsState struct which will hold all of our column definitions.
+* @param pekDecrypted Pointer to a decryptedPEK structure that holds our decrypted PEK
+* @param userAccount Pointer to an ntdsAccount struct that will hold all of our User data
+* @returns Indication of sucess or failure.
+*/
+JET_ERR read_user_dates(struct jetState *ntdsState, struct ntdsColumns *accountColumns, struct decryptedPEK *pekDecrypted, struct ntdsAccount *userAccount){
+	JET_ERR readStatus = JET_errSuccess;
+	unsigned long columnSize = 0;
+	FILETIME accountExpiry;
+	SYSTEMTIME accountExpiry2;
+	FILETIME lastLogon;
+	SYSTEMTIME lastLogon2;
+	FILETIME lastPass;
+	SYSTEMTIME lastPass2;
 	// Grab the account expiration date/time here
 	readStatus = JetRetrieveColumn(ntdsState->jetSession, ntdsState->jetTable, accountColumns->accountExpiry.columnid, &accountExpiry, sizeof(accountExpiry), &columnSize, 0, NULL);
 	if (readStatus != JET_errSuccess){
@@ -263,45 +318,6 @@ JET_ERR read_user(struct jetState *ntdsState, struct ntdsColumns *accountColumns
 	dateResult = GetTimeFormat(LOCALE_SYSTEM_DEFAULT, 0, &lastPass2, NULL, userAccount->passChangeTime, 255);
 	if (dateResult == 0){
 		strncpy(userAccount->passChangeTime, "Never", 6);
-	}
-	// Grab the Account Description here
-	readStatus = JetRetrieveColumn(ntdsState->jetSession, ntdsState->jetTable, accountColumns->accountDescription.columnid, &userAccount->accountDescription, sizeof(userAccount->accountDescription), &columnSize, 0, NULL);
-	if (readStatus == JET_wrnColumnNull){
-		memset(userAccount->accountDescription, 0, sizeof(userAccount->accountDescription));
-	}
-	else if (readStatus != JET_errSuccess){
-		return readStatus;
-	}
-	// Grab the UserAccountControl flags here
-	readStatus = JetRetrieveColumn(ntdsState->jetSession, ntdsState->jetTable, accountColumns->accountControl.columnid, &accountControl, sizeof(accountControl), &columnSize, 0, NULL);
-	if (readStatus != JET_errSuccess){
-		return readStatus;
-	}
-	userAccount->accountDisabled = !!(accountControl & NTDS_ACCOUNT_DISABLED);
-	userAccount->accountLocked = !!(accountControl & NTDS_ACCOUNT_LOCKED);
-	userAccount->noPassword = !!(accountControl & NTDS_ACCOUNT_NO_PASS);
-	userAccount->passExpired = !!(accountControl & NTDS_ACCOUNT_PASS_EXPIRED);
-	userAccount->passNoExpire = !!(accountControl & NTDS_ACCOUNT_PASS_NO_EXPIRE);
-
-	// Grab the Logon Count here
-	readStatus = JetRetrieveColumn(ntdsState->jetSession, ntdsState->jetTable, accountColumns->logonCount.columnid, &userAccount->logonCount, sizeof(userAccount->logonCount), &columnSize, 0, NULL);
-	if (readStatus != JET_errSuccess){
-		return readStatus;
-	}
-	// Grab the NT Hash
-	readStatus = read_user_nt_hash(ntdsState, accountColumns, pekDecrypted, userAccount);
-	if (readStatus != JET_errSuccess && readStatus != JET_wrnColumnNull){
-		return readStatus;
-	}
-	// Grab the LM Hash
-	readStatus = read_user_lm_hash(ntdsState, accountColumns, pekDecrypted, userAccount);
-	if (readStatus != JET_errSuccess && readStatus != JET_wrnColumnNull){
-		return readStatus;
-	}
-	// Grab the Hash History
-	readStatus = read_user_hash_history(ntdsState, accountColumns, pekDecrypted, userAccount);
-	if (readStatus != JET_errSuccess && readStatus != JET_wrnColumnNull){
-		return readStatus;
 	}
 	return JET_errSuccess;
 }
