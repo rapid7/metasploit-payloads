@@ -4,16 +4,16 @@
 #pragma comment(lib, "esent")
 
 /*! @brief Typedef for the jetState struct. */
-typedef struct {
+struct jetState{
 	TCHAR ntdsPath[255];
 	JET_INSTANCE jetEngine;
 	JET_SESID jetSession;
 	JET_DBID jetDatabase;
 	JET_TABLEID jetTable;
-}jetState;
+};
 
 /*! @brief Typedef for the ntdsColumns struct. */
-typedef struct {
+struct ntdsColumns{
 	JET_COLUMNDEF accountName;
 	JET_COLUMNDEF accountType;
 	JET_COLUMNDEF accountExpiry;
@@ -28,10 +28,10 @@ typedef struct {
 	JET_COLUMNDEF ntHash;
 	JET_COLUMNDEF ntHistory;
 	JET_COLUMNDEF accountSID;
-}ntdsColumns;
+};
 
 /*! @brief Typedef for the ntdsAccount struct. */
-typedef struct{
+struct ntdsAccount{
 	wchar_t accountName[20];
 	wchar_t accountDescription[1024];
 	DWORD accountRID;
@@ -53,7 +53,7 @@ typedef struct{
 	char lmHistory[792];
 	char ntHistory[792];
 	unsigned char accountSID[24];
-}ntdsAccount;
+};
 
 
 // UserAccountControl Flags
@@ -63,14 +63,14 @@ typedef struct{
 #define NTDS_ACCOUNT_PASS_NO_EXPIRE   0x00010000
 #define NTDS_ACCOUNT_PASS_EXPIRED     0x00800000
 
-JET_ERR engine_shutdown(jetState *ntdsState);
-JET_ERR engine_startup(jetState *ntdsState);
-JET_ERR find_first(jetState *ntdsState);
-JET_ERR get_column_info(jetState *ntdsState, ntdsColumns *accountColumns);
-JET_ERR get_PEK(jetState *ntdsState, ntdsColumns *accountColumns, encryptedPEK *pekEncrypted);
-JET_ERR next_user(jetState *ntdsState, ntdsColumns *accountColumns);
-JET_ERR open_database(jetState *ntdsState);
-JET_ERR read_user(jetState *ntdsState, ntdsColumns *accountColumns, decryptedPEK *pekDecrypted, ntdsAccount *userAccount);
-JET_ERR read_table(jetState *ntdsState, ntdsColumns *accountColumns, decryptedPEK *pekDecrypted);
+JET_ERR engine_shutdown(struct jetState *ntdsState);
+JET_ERR engine_startup(struct jetState *ntdsState);
+JET_ERR find_first(struct jetState *ntdsState);
+JET_ERR get_column_info(struct jetState *ntdsState, struct ntdsColumns *accountColumns);
+JET_ERR get_PEK(struct jetState *ntdsState, struct ntdsColumns *accountColumns, struct encryptedPEK *pekEncrypted);
+JET_ERR next_user(struct jetState *ntdsState, struct ntdsColumns *accountColumns);
+JET_ERR open_database(struct jetState *ntdsState);
+JET_ERR read_user(struct jetState *ntdsState, struct ntdsColumns *accountColumns, struct decryptedPEK *pekDecrypted, struct ntdsAccount *userAccount);
+JET_ERR read_table(struct jetState *ntdsState, struct ntdsColumns *accountColumns, struct decryptedPEK *pekDecrypted);
 
 #endif

@@ -24,7 +24,7 @@ void bytes_to_string(LPBYTE data, int length, LPSTR output){
 * @param rid DWORD representing the Relative ID(RID) of the account
 * @returns Indication of sucess or failure.
 */
-BOOL decrypt_hash(encryptedHash *encryptedNTLM, decryptedPEK *pekDecrypted, char *hashString, DWORD rid){
+BOOL decrypt_hash(struct encryptedHash *encryptedNTLM, struct decryptedPEK *pekDecrypted, char *hashString, DWORD rid){
 	BOOL cryptOK = FALSE;
 	BYTE encHashData[NULL_TERIMNATED_HASH_LENGTH] = { 0 };
 	BYTE decHash[NULL_TERIMNATED_HASH_LENGTH] = { 0 };
@@ -72,7 +72,7 @@ BOOL decrypt_hash_from_rid(LPBYTE encodedHash, LPDWORD rid, LPBYTE decodedHash){
 * @param historyCount Pointer to n integer where we store a count of the historical hashes
 * @returns Indication of sucess or failure.
 */
-BOOL decrypt_hash_history(LPBYTE encHashHistory, size_t sizeHistory, decryptedPEK *pekDecrypted, DWORD rid, char *accountHistory, int *historyCount){
+BOOL decrypt_hash_history(LPBYTE encHashHistory, size_t sizeHistory, struct decryptedPEK *pekDecrypted, DWORD rid, char *accountHistory, int *historyCount){
 	BOOL cryptOK = FALSE;
 	size_t sizeHistoryData = sizeHistory - 24;
 	int numHashes = (sizeHistoryData / HASH_LENGTH_BYTES);
@@ -113,7 +113,7 @@ BOOL decrypt_hash_history(LPBYTE encHashHistory, size_t sizeHistory, decryptedPE
 * @param pekDecrypted Pointer to the decryptedPEK struct where we will store our decrypted PEK
 * @returns Indication of sucess or failure.
 */
-BOOL decrypt_PEK(unsigned char *sysKey, encryptedPEK *pekEncrypted, decryptedPEK *pekDecrypted){
+BOOL decrypt_PEK(unsigned char *sysKey, struct encryptedPEK *pekEncrypted, struct decryptedPEK *pekDecrypted){
 	BOOL cryptOK = FALSE;
 	BYTE pekData[52] = { 0 };
 	DWORD pekLength = 52;

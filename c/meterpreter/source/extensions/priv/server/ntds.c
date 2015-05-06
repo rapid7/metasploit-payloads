@@ -3,9 +3,9 @@
 /*! @brief Typedef for the NTDSContext struct. */
 typedef struct
 {
-	jetState *ntdsState;
-	ntdsColumns *accountColumns;
-	decryptedPEK *pekDecrypted;
+	struct jetState *ntdsState;
+	struct ntdsColumns *accountColumns;
+	struct decryptedPEK *pekDecrypted;
 	BOOL eof;
 } NTDSContext;
 
@@ -17,7 +17,7 @@ typedef struct
 DWORD ntds_parse(Remote *remote, Packet *packet){
 	Packet *response = packet_create_response(packet);
 	DWORD res = ERROR_SUCCESS;
-	jetState *ntdsState = calloc(1,sizeof(jetState));
+	struct jetState *ntdsState = calloc(1,sizeof(struct jetState));
 	PCHAR filePath = packet_get_tlv_value_string(packet, TLV_TYPE_NTDS_PATH);
 	// Check if the File exists
 	if (0xffffffff == GetFileAttributes(filePath)){
@@ -35,7 +35,7 @@ DWORD ntds_parse(Remote *remote, Packet *packet){
 
 
 	// Create the structure for holding all of the Column Definitions we need
-	ntdsColumns *accountColumns = calloc(1,sizeof(ntdsColumns));
+	struct ntdsColumns *accountColumns = calloc(1,sizeof(struct ntdsColumns));
 
 	JET_ERR startupStatus = engine_startup(ntdsState);
 	if (startupStatus != JET_errSuccess){
@@ -68,8 +68,8 @@ DWORD ntds_parse(Remote *remote, Packet *packet){
 		goto out;
 	}
 	JET_ERR pekStatus;
-	encryptedPEK *pekEncrypted = calloc(1,sizeof(encryptedPEK));
-	decryptedPEK *pekDecrypted = calloc(1,sizeof(decryptedPEK));
+	struct encryptedPEK *pekEncrypted = calloc(1,sizeof(struct encryptedPEK));
+	struct decryptedPEK *pekDecrypted = calloc(1,sizeof(struct decryptedPEK));
 
 	// Get and Decrypt the Password Encryption Key (PEK)
 	pekStatus = get_PEK(ntdsState, accountColumns, pekEncrypted);
@@ -143,16 +143,16 @@ static DWORD ntds_channel_write(Channel *channel, Packet *request,
 
 // This function reads an individual account record from the database and moves
 // the cursor to the next one in the table.
-static DWORD ntds_read_into_batch(NTDSContext *ctx, ntdsAccount *batchedAccount){
+static DWORD ntds_read_into_batch(NTDSContext *ctx, struct ntdsAccount *batchedAccount){
 	DWORD result = ERROR_SUCCESS;
 	JET_ERR readStatus = JET_errSuccess;
-	ntdsAccount *userAccount = calloc(1,sizeof(ntdsAccount));
+	struct ntdsAccount *userAccount = calloc(1,sizeof(struct ntdsAccount));
 	readStatus = read_user(ctx->ntdsState, ctx->accountColumns, ctx->pekDecrypted, userAccount);
 	if (readStatus != JET_errSuccess){
 		result = readStatus;
 	}
 	else{
-		memcpy(batchedAccount, userAccount, sizeof(ntdsAccount));
+		memcpy(batchedAccount, userAccount, sizeof(struct ntdsAccount));
 	}
 	free(userAccount);
 	return result;
@@ -166,7 +166,7 @@ static DWORD ntds_channel_read(Channel *channel, Packet *request,
 	JET_ERR readStatus = JET_errSuccess;
 	DWORD result = ERROR_SUCCESS;
 	NTDSContext *ctx = (NTDSContext *)context;
-	ntdsAccount batchedAccounts[20] = { 0 };
+	struct ntdsAccount batchedAccounts[20] = { 0 };
 
 	for (int i = 0; i < 20; i++){
 		readStatus = ntds_read_into_batch(ctx, &batchedAccounts[i]);
