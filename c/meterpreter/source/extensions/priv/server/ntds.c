@@ -17,7 +17,7 @@ typedef struct
 DWORD ntds_parse(Remote *remote, Packet *packet){
 	Packet *response = packet_create_response(packet);
 	DWORD res = ERROR_SUCCESS;
-	jetState *ntdsState = malloc(sizeof(jetState));
+	jetState *ntdsState = calloc(1,sizeof(jetState));
 	PCHAR filePath = packet_get_tlv_value_string(packet, TLV_TYPE_NTDS_PATH);
 	// Check if the File exists
 	if (0xffffffff == GetFileAttributes(filePath)){
@@ -35,8 +35,7 @@ DWORD ntds_parse(Remote *remote, Packet *packet){
 
 
 	// Create the structure for holding all of the Column Definitions we need
-	ntdsColumns *accountColumns = malloc(sizeof(ntdsColumns));
-	memset(accountColumns, 0, sizeof(ntdsColumns));
+	ntdsColumns *accountColumns = calloc(1,sizeof(ntdsColumns));
 
 	JET_ERR startupStatus = engine_startup(ntdsState);
 	if (startupStatus != JET_errSuccess){
@@ -69,10 +68,8 @@ DWORD ntds_parse(Remote *remote, Packet *packet){
 		goto out;
 	}
 	JET_ERR pekStatus;
-	encryptedPEK *pekEncrypted = malloc(sizeof(encryptedPEK));
-	decryptedPEK *pekDecrypted = malloc(sizeof(decryptedPEK));
-	memset(pekEncrypted, 0, sizeof(encryptedPEK));
-	memset(pekDecrypted, 0, sizeof(decryptedPEK));
+	encryptedPEK *pekEncrypted = calloc(1,sizeof(encryptedPEK));
+	decryptedPEK *pekDecrypted = calloc(1,sizeof(decryptedPEK));
 
 	// Get and Decrypt the Password Encryption Key (PEK)
 	pekStatus = get_PEK(ntdsState, accountColumns, pekEncrypted);
@@ -149,8 +146,7 @@ static DWORD ntds_channel_write(Channel *channel, Packet *request,
 static DWORD ntds_read_into_batch(NTDSContext *ctx, ntdsAccount *batchedAccount){
 	DWORD result = ERROR_SUCCESS;
 	JET_ERR readStatus = JET_errSuccess;
-	ntdsAccount *userAccount = malloc(sizeof(ntdsAccount));
-	memset(userAccount, 0, sizeof(ntdsAccount));
+	ntdsAccount *userAccount = calloc(1,sizeof(ntdsAccount));
 	readStatus = read_user(ctx->ntdsState, ctx->accountColumns, ctx->pekDecrypted, userAccount);
 	if (readStatus != JET_errSuccess){
 		result = readStatus;
@@ -170,8 +166,7 @@ static DWORD ntds_channel_read(Channel *channel, Packet *request,
 	JET_ERR readStatus = JET_errSuccess;
 	DWORD result = ERROR_SUCCESS;
 	NTDSContext *ctx = (NTDSContext *)context;
-	ntdsAccount batchedAccounts[20];
-	memset(batchedAccounts, 0, sizeof(batchedAccounts));
+	ntdsAccount batchedAccounts[20] = { 0 };
 
 	for (int i = 0; i < 20; i++){
 		readStatus = ntds_read_into_batch(ctx, &batchedAccounts[i]);

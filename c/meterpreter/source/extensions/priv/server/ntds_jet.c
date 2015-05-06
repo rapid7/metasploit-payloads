@@ -216,10 +216,8 @@ JET_ERR read_user(jetState *ntdsState, ntdsColumns *accountColumns, decryptedPEK
 	SYSTEMTIME lastPass2;
 	DWORD accountControl = 0;
 	unsigned long columnSize = 0;
-	encryptedHash *encryptedLM = malloc(sizeof(encryptedHash));
-	encryptedHash *encryptedNT = malloc(sizeof(encryptedHash));
-	memset(encryptedLM, 0, sizeof(encryptedHash));
-	memset(encryptedNT, 0, sizeof(encryptedHash));
+	encryptedHash *encryptedLM = calloc(1,sizeof(encryptedHash));
+	encryptedHash *encryptedNT = calloc(1, sizeof(encryptedHash));
 
 	// Grab the SID here
 	readStatus = JetRetrieveColumn(ntdsState->jetSession, ntdsState->jetTable, accountColumns->accountSID.columnid, &userAccount->accountSID, sizeof(userAccount->accountName), &columnSize, 0, NULL);
@@ -342,7 +340,7 @@ JET_ERR read_user(jetState *ntdsState, ntdsColumns *accountColumns, decryptedPEK
 	// Grab the NT Hash History
 	readStatus = JetRetrieveColumn(ntdsState->jetSession, ntdsState->jetTable, accountColumns->ntHistory.columnid, NULL, 0, &columnSize, 0, NULL);
 	if (readStatus == JET_wrnBufferTruncated){
-		LPBYTE encNTHist = (LPBYTE)malloc(columnSize);
+		LPBYTE encNTHist = (LPBYTE)calloc(1,columnSize);
 		readStatus = JetRetrieveColumn(ntdsState->jetSession, ntdsState->jetTable, accountColumns->ntHistory.columnid, encNTHist, columnSize, &columnSize, 0, NULL);
 		decrypt_hash_history(encNTHist, columnSize, pekDecrypted, userAccount->accountRID, userAccount->ntHistory, &userAccount->numNTHistory);
 		free(encNTHist);
@@ -350,7 +348,7 @@ JET_ERR read_user(jetState *ntdsState, ntdsColumns *accountColumns, decryptedPEK
 		// Grab the LM History
 		readStatus = JetRetrieveColumn(ntdsState->jetSession, ntdsState->jetTable, accountColumns->lmHistory.columnid, NULL, 0, &columnSize, 0, NULL);
 		if (readStatus == JET_wrnBufferTruncated){
-			LPBYTE encLMHist = (LPBYTE)malloc(columnSize);
+			LPBYTE encLMHist = (LPBYTE)calloc(1,columnSize);
 			readStatus = JetRetrieveColumn(ntdsState->jetSession, ntdsState->jetTable, accountColumns->lmHistory.columnid, encLMHist, columnSize, &columnSize, 0, NULL);
 			decrypt_hash_history(encLMHist, columnSize, pekDecrypted, userAccount->accountRID, userAccount->lmHistory, &userAccount->numLMHistory);
 			free(encLMHist);

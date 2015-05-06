@@ -77,8 +77,8 @@ BOOL decrypt_hash_history(LPBYTE encHashHistory, size_t sizeHistory, decryptedPE
 	size_t sizeHistoryData = sizeHistory - 24;
 	int numHashes = (sizeHistoryData / HASH_LENGTH_BYTES);
 	memcpy(historyCount, &numHashes, sizeof(historyCount));
-	LPBYTE encHistoryData = (LPBYTE)malloc(sizeHistoryData);
-	LPBYTE decHistoryData = (LPBYTE)malloc((sizeHistoryData * 2));
+	LPBYTE encHistoryData = (LPBYTE)calloc(1,sizeHistoryData);
+	LPBYTE decHistoryData = (LPBYTE)calloc(1,(sizeHistoryData * 2));
 	memcpy(encHistoryData, encHashHistory + 24, sizeHistoryData);
 	cryptOK = decrypt_rc4(pekDecrypted->pekKey, encHashHistory + 8, encHistoryData, 1, sizeHistoryData);
 	if (!cryptOK){
