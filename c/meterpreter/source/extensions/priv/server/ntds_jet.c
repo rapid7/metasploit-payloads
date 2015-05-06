@@ -294,7 +294,7 @@ JET_ERR read_user(jetState *ntdsState, ntdsColumns *accountColumns, decryptedPEK
 	readStatus = JetRetrieveColumn(ntdsState->jetSession, ntdsState->jetTable, accountColumns->ntHash.columnid, encryptedNT, sizeof(encryptedHash), &columnSize, 0, NULL);
 	if (readStatus != JET_errSuccess){
 		if (readStatus == JET_wrnColumnNull){
-			memcpy(&userAccount->ntHash, &BLANK_NT_HASH, 32);
+			memcpy(userAccount->ntHash, BLANK_NT_HASH, 32);
 		}
 		else{
 			return readStatus;
@@ -307,7 +307,7 @@ JET_ERR read_user(jetState *ntdsState, ntdsColumns *accountColumns, decryptedPEK
 	readStatus = JetRetrieveColumn(ntdsState->jetSession, ntdsState->jetTable, accountColumns->lmHash.columnid, encryptedLM, sizeof(encryptedHash), &columnSize, 0, NULL);
 	if (readStatus != JET_errSuccess){
 		if (readStatus == JET_wrnColumnNull){
-			memcpy(&userAccount->lmHash, &BLANK_LM_HASH, 32);
+			memcpy(userAccount->lmHash, BLANK_LM_HASH, 32);
 		}
 		else{
 			return readStatus;

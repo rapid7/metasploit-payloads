@@ -181,8 +181,16 @@ static DWORD ntds_channel_read(Channel *channel, Packet *request,
 		}
 		next_user(ctx->ntdsState, ctx->accountColumns);
 	}
-	memcpy(buffer, batchedAccounts, bufferSize);
-	*bytesRead = bufferSize;
+	unsigned int batchSize = (unsigned int)sizeof(batchedAccounts);
+	if (batchSize < bufferSize){
+		memcpy(buffer, batchedAccounts, batchSize);
+		*bytesRead = batchSize;
+	}
+	else{
+		memcpy(buffer, batchedAccounts, bufferSize);
+		*bytesRead = bufferSize;
+	}
+	
 	return result;
 }
 
