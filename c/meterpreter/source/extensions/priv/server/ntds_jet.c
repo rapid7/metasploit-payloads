@@ -291,21 +291,12 @@ JET_ERR read_user(jetState *ntdsState, ntdsColumns *accountColumns, decryptedPEK
 	if (readStatus != JET_errSuccess){
 		return readStatus;
 	}
-	if (accountControl & NTDS_ACCOUNT_DISABLED){
-		userAccount->accountDisabled = TRUE;
-	}
-	if (accountControl & NTDS_ACCOUNT_LOCKED){
-		userAccount->accountLocked = TRUE;
-	}
-	if (accountControl & NTDS_ACCOUNT_NO_PASS){
-		userAccount->noPassword = TRUE;
-	}
-	if (accountControl & NTDS_ACCOUNT_PASS_EXPIRED){
-		userAccount->passExpired = TRUE;
-	}
-	if (accountControl & NTDS_ACCOUNT_PASS_NO_EXPIRE){
-		userAccount->passNoExpire = TRUE;
-	}
+	userAccount->accountDisabled = !!(accountControl & NTDS_ACCOUNT_DISABLED);
+	userAccount->accountLocked = !!(accountControl & NTDS_ACCOUNT_LOCKED);
+	userAccount->noPassword = !!(accountControl & NTDS_ACCOUNT_NO_PASS);
+	userAccount->passExpired = !!(accountControl & NTDS_ACCOUNT_PASS_EXPIRED);
+	userAccount->passNoExpire = !!(accountControl & NTDS_ACCOUNT_PASS_NO_EXPIRE);
+
 	// Grab the Logon Count here
 	readStatus = JetRetrieveColumn(ntdsState->jetSession, ntdsState->jetTable, accountColumns->logonCount.columnid, &userAccount->logonCount, sizeof(userAccount->logonCount), &columnSize, 0, NULL);
 	if (readStatus != JET_errSuccess){
