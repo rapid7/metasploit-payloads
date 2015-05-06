@@ -317,9 +317,28 @@ JET_ERR read_user(struct jetState *ntdsState, struct ntdsColumns *accountColumns
 		decrypt_hash(encryptedLM, pekDecrypted, userAccount->lmHash, userAccount->accountRID);
 	}
 	// Grab the NT Hash History
+	readStatus = read_user_hash_history(ntdsState, accountColumns, pekDecrypted, userAccount);
+	if (readStatus != JET_errSuccess && readStatus != JET_wrnColumnNull){
+		return readStatus;
+	}
+	return JET_errSuccess;
+}
+
+
+/*!
+* @brief Read the current user record's hash history.
+* @param ntdsState Pointer to a jetsState struct which contains all the state data for the Jet Instance.
+* @param accountColumns Pointer to an ntdsState struct which will hold all of our column definitions.
+* @param pekDecrypted Pointer to a decryptedPEK structure that holds our decrypted PEK
+* @param userAccount Pointer to an ntdsAccount struct that will hold all of our User data
+* @returns Indication of sucess or failure.
+*/
+JET_ERR read_user_hash_history(struct jetState *ntdsState, struct ntdsColumns *accountColumns, struct decryptedPEK *pekDecrypted, struct ntdsAccount *userAccount){
+	JET_ERR readStatus = JET_errSuccess;
+	unsigned long columnSize = 0;
 	readStatus = JetRetrieveColumn(ntdsState->jetSession, ntdsState->jetTable, accountColumns->ntHistory.columnid, NULL, 0, &columnSize, 0, NULL);
 	if (readStatus == JET_wrnBufferTruncated){
-		LPBYTE encNTHist = (LPBYTE)calloc(1,columnSize);
+		LPBYTE encNTHist = (LPBYTE)calloc(1, columnSize);
 		readStatus = JetRetrieveColumn(ntdsState->jetSession, ntdsState->jetTable, accountColumns->ntHistory.columnid, encNTHist, columnSize, &columnSize, 0, NULL);
 		decrypt_hash_history(encNTHist, columnSize, pekDecrypted, userAccount->accountRID, userAccount->ntHistory, &userAccount->numNTHistory);
 		free(encNTHist);
@@ -327,14 +346,17 @@ JET_ERR read_user(struct jetState *ntdsState, struct ntdsColumns *accountColumns
 		// Grab the LM History
 		readStatus = JetRetrieveColumn(ntdsState->jetSession, ntdsState->jetTable, accountColumns->lmHistory.columnid, NULL, 0, &columnSize, 0, NULL);
 		if (readStatus == JET_wrnBufferTruncated){
-			LPBYTE encLMHist = (LPBYTE)calloc(1,columnSize);
+			LPBYTE encLMHist = (LPBYTE)calloc(1, columnSize);
 			readStatus = JetRetrieveColumn(ntdsState->jetSession, ntdsState->jetTable, accountColumns->lmHistory.columnid, encLMHist, columnSize, &columnSize, 0, NULL);
 			decrypt_hash_history(encLMHist, columnSize, pekDecrypted, userAccount->accountRID, userAccount->lmHistory, &userAccount->numLMHistory);
 			free(encLMHist);
 		}
-		else {
+		else{
 			return readStatus;
 		}
+	}
+	else{
+		return readStatus;
 	}
 	return JET_errSuccess;
 }
