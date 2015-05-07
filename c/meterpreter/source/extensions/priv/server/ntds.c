@@ -116,7 +116,7 @@ DWORD ntds_parse(Remote *remote, Packet *packet){
 	chops.native.context = ctx;
 	chops.native.close = ntds_channel_close;
 	chops.read = ntds_channel_read;
-	if (!(newChannel = channel_create_pool(0, CHANNEL_FLAG_SYNCHRONOUS, &chops)))
+	if (!(newChannel = channel_create_pool(0, CHANNEL_FLAG_SYNCHRONOUS | CHANNEL_FLAG_COMPRESS, &chops)))
 	{
 		res = ERROR_NOT_ENOUGH_MEMORY;
 		goto out;
