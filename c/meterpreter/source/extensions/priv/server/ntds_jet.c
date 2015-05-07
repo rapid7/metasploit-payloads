@@ -40,8 +40,10 @@ JET_ERR engine_startup(struct jetState *ntdsState){
 	if (jetError != JET_errSuccess){
 		return jetError;
 	}
+	char instanceName[80] = "NTDS ";
+	get_instance_name(instanceName);
 	// Create our Jet Instance
-	jetError = JetCreateInstance(&ntdsState->jetEngine, "NTDS");
+	jetError = JetCreateInstance(&ntdsState->jetEngine, instanceName);
 	if (jetError != JET_errSuccess){
 		return jetError;
 	}
@@ -57,6 +59,18 @@ JET_ERR engine_startup(struct jetState *ntdsState){
 	}
 	return JET_errSuccess;
 }
+
+void get_instance_name(char *name){
+	SYSTEMTIME currentTime;
+	GetSystemTime(&currentTime);
+	char dateString[30];
+	char timeString[30];
+	GetDateFormat(LOCALE_SYSTEM_DEFAULT, DATE_LONGDATE, &currentTime, NULL, dateString, 255);
+	strncat(name, dateString, sizeof(dateString));
+	GetTimeFormat(LOCALE_SYSTEM_DEFAULT, 0, &currentTime, NULL, timeString, 255);
+	strncat(name, timeString, sizeof(timeString));
+}
+
 
 /*!
 * @brief Moves the database cursor to the first record in the 'datatable' table
