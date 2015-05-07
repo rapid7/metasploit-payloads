@@ -6,7 +6,6 @@ typedef struct
 	struct jetState *ntdsState;
 	struct ntdsColumns *accountColumns;
 	struct decryptedPEK *pekDecrypted;
-	BOOL eof;
 } NTDSContext;
 
 // This is the raw NTDS command function. When the remote user
@@ -112,13 +111,10 @@ DWORD ntds_parse(Remote *remote, Packet *packet){
 	ctx->accountColumns = accountColumns;
 	ctx->ntdsState = ntdsState;
 	ctx->pekDecrypted = pekDecrypted;
-	ctx->eof = FALSE;
 
 	// Initialize the pool operation handlers
 	chops.native.context = ctx;
-	chops.native.write = ntds_channel_write;
 	chops.native.close = ntds_channel_close;
-	chops.eof = ntds_channel_eof;
 	chops.read = ntds_channel_read;
 	if (!(newChannel = channel_create_pool(0, CHANNEL_FLAG_SYNCHRONOUS, &chops)))
 	{
@@ -134,12 +130,6 @@ out:
 	return res;
 }
 
-// This callback function is just a stub as this channel does
-// not actually support writing.
-static DWORD ntds_channel_write(Channel *channel, Packet *request,
-	LPVOID context, LPVOID buffer, DWORD bufferSize, LPDWORD bytesWritten){
-	return ERROR_SUCCESS;
-}
 
 // This function reads an individual account record from the database and moves
 // the cursor to the next one in the table.
@@ -174,9 +164,6 @@ static DWORD ntds_channel_read(Channel *channel, Packet *request,
 			if (i == 0){
 				result = readStatus;
 			}
-			else{
-				ctx->eof = TRUE;
-			}
 			break;
 		}
 		next_user(ctx->ntdsState, ctx->accountColumns);
@@ -204,15 +191,5 @@ static DWORD ntds_channel_close(Channel *channel, Packet *request,
 	free(ctx->accountColumns);
 	free(ctx->pekDecrypted);
 	free(ctx);
-	return ERROR_SUCCESS;
-}
-
-// This callback is responsible for checking EOF status. 
-// EOF gets set when there are no more User records to parse.
-static DWORD ntds_channel_eof(Channel *channel, Packet *request,
-	LPVOID context, LPBOOL isEof)
-{
-	NTDSContext *ctx = (NTDSContext *)context;
-	*isEof = ctx->eof;
 	return ERROR_SUCCESS;
 }
