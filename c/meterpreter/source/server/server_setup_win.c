@@ -333,7 +333,7 @@ DWORD server_setup(MetsrvConfig* config)
 
 			// the first transport should match the transport that we initially connected on.
 			// If it's TCP comms, we need to wire that up.
-			if (config->session.comms_fd)
+			if (remote->transport->type == METERPRETER_TRANSPORT_SSL && config->session.comms_fd)
 			{
 				((TcpTransportContext*)remote->transport->ctx)->fd = (SOCKET)config->session.comms_fd;
 			}

@@ -561,7 +561,6 @@ static DWORD server_dispatch_http(Remote* remote, THREAD* dispatchThread)
 	DWORD ecount = 0;
 	DWORD delay = 0;
 	Transport* transport = remote->transport;
-	HttpTransportContext* ctx = (HttpTransportContext*)remote->transport->ctx;
 
 	while (running)
 	{
