@@ -340,7 +340,7 @@ DWORD request_fs_md5(Remote *remote, Packet *packet)
 
 		MD5_Final(hash, &context);
 
-		packet_add_tlv_raw(response, TLV_TYPE_FILE_NAME, hash, sizeof(hash));
+		packet_add_tlv_raw(response, TLV_TYPE_FILE_HASH, hash, sizeof(hash) - 1);
 
 		fclose(fd);
 	}
@@ -380,7 +380,7 @@ DWORD request_fs_sha1(Remote *remote, Packet *packet)
 		fclose(fd);
 		SHA1_Final(hash, &context);
 
-		packet_add_tlv_raw(response, TLV_TYPE_FILE_NAME, hash, sizeof(hash));
+		packet_add_tlv_raw(response, TLV_TYPE_FILE_HASH, hash, sizeof(hash) - 1);
 	}
 
 	packet_add_tlv_uint(response, TLV_TYPE_RESULT, result);
