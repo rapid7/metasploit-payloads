@@ -259,14 +259,14 @@ DWORD remote_request_core_transport_add(Remote* remote, Packet* packet)
 	return result;
 }
 
-BOOL remote_request_core_transport_change(Remote* remote, Packet* packet, DWORD* pResult)
+BOOL remote_request_core_transport_change(Remote* remote, Packet* packet, DWORD* result)
 {
 	Transport* transport = NULL;
-	DWORD result = create_transport_from_request(remote, packet, &transport);
+	*result = create_transport_from_request(remote, packet, &transport);
 
-	packet_transmit_empty_response(remote, packet, result);
+	packet_transmit_empty_response(remote, packet, *result);
 
-	if (result == ERROR_SUCCESS) {
+	if (*result == ERROR_SUCCESS) {
 		remote->next_transport = transport;
 		// exit out of the dispatch loop.
 		return FALSE;
