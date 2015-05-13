@@ -110,6 +110,7 @@ typedef struct _Remote
 
 	Transport* transport;                 ///! Pointer to the currently used transport mechanism in a circular list of transports
 	Transport* next_transport;            ///! Set externally when transports are requested to be changed.
+	DWORD next_transport_wait;            ///! Number of seconds to wait before going to the next transport (used for sleeping).
 
 	MetsrvConfig* orig_config;            ///! Pointer to the original configuration.
 
