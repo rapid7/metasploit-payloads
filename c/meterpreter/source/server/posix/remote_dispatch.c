@@ -130,10 +130,11 @@ static const char * get_machine_id(void)
 				if (strncmp(data->d_name, prefixes[i], prefix_len) == 0) {
 					strncat(machine_id, drive_serial,
 						sizeof(machine_id) - strlen(drive_serial) - 1);
+					goto out;
 				}
 			}
 		}
-
+out:
 		closedir(ctx);
 	}
 
