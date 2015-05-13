@@ -74,7 +74,7 @@ BOOL decrypt_hash_from_rid(LPBYTE encodedHash, LPDWORD rid, LPBYTE decodedHash){
 */
 BOOL decrypt_hash_history(LPBYTE encHashHistory, size_t sizeHistory, struct decryptedPEK *pekDecrypted, DWORD rid, char *accountHistory, int *historyCount){
 	BOOL cryptOK = FALSE;
-	size_t sizeHistoryData = sizeHistory - 24;
+	int sizeHistoryData = (int)sizeHistory - 24;
 	int numHashes = (sizeHistoryData / HASH_LENGTH_BYTES);
 	memcpy(historyCount, &numHashes, sizeof(historyCount));
 	LPBYTE encHistoryData = (LPBYTE)calloc(1,sizeHistoryData);
