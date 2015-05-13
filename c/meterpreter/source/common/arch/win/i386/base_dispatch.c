@@ -314,6 +314,7 @@ BOOL remote_request_core_transport_sleep(Remote* remote, Packet* packet, DWORD* 
 	remote->next_transport = remote->transport;
 
 	packet_transmit_empty_response(remote, packet, ERROR_SUCCESS);
+	*result = ERROR_SUCCESS;
 
 	// exit out of the dispatch loop
 	return FALSE;
