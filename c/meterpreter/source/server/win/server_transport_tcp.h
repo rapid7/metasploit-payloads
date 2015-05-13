@@ -1,6 +1,7 @@
 #ifndef _METERPRETER_SERVER_SETUP_TCP
 #define _METERPRETER_SERVER_SETUP_TCP
 
-Transport* transport_create_tcp(wchar_t* url, TimeoutSettings* timeouts);
+void transport_write_tcp_config(Transport* transport, MetsrvTransportTcp* config);
+Transport* transport_create_tcp(MetsrvTransportTcp* tcpConfig);
 
 #endif
