@@ -32,7 +32,7 @@ DWORD request_core_loadlib(Remote *remote, Packet *packet) {
 		}
 
 		if (flags & LOAD_LIBRARY_FLAG_LOCAL) {
-			// i'd be surprised if we could load 
+			// i'd be surprised if we could load
 			// libraries off the remote system without breaking severely.
 			res = ERROR_NOT_SUPPORTED;
 			break;
@@ -103,40 +103,51 @@ DWORD request_core_loadlib(Remote *remote, Packet *packet) {
 	return (res);
 }
 
-DWORD request_core_machine_id(Remote* pRemote, Packet* pPacket) {
-	DWORD res = ERROR_SUCCESS;
-	Packet* pResponse = packet_create_response(pPacket);
+static const char * get_machine_id(void)
+{
+	static char machine_id[MAX_PATH] = "";
+	/*
+	 * Only generate the machine ID once
+	 */
+	if (strlen(machine_id)) {
+		return machine_id;
+	}
 
-	if (pResponse) {
-		char buffer[MAX_PATH];
-		struct dirent *data;
-		struct utsname utsbuf;
-		DIR *ctx = opendir("/dev/disk/by-id/");
+	struct utsname utsbuf;
+	if (uname(&utsbuf) == 0) {
+		strncat(machine_id, utsbuf.nodename,
+			sizeof(machine_id) - strlen(utsbuf.nodename) - 1);
+	}
 
-		if (uname(&utsbuf) == -1) {
-			res = GetLastError();
-			goto out;
-		}
-
-		if (ctx == NULL) {
-			res = GetLastError();
-			goto out;
-		}
-
+	struct dirent *data;
+	DIR *ctx = opendir("/dev/disk/by-id/");
+	if (ctx) {
 		while (data = readdir(ctx)) {
-			// TODO: make sure that looking for drives prefixed with "ata" is a good
-			// idea. We might need to search for a bunch of prefixes.
-			if (strncmp(data->d_name, "ata-", 4) == 0) {
-				snprintf(buffer, MAX_PATH - 1, "%s:%s", data->d_name + 4, utsbuf.nodename);
-				packet_add_tlv_string(pResponse, TLV_TYPE_MACHINE_ID, buffer);
-				break;
+			char *prefixes[] = { "ata-", "md-" };
+			for (int i = 0; i < 2; i++) {
+				int prefix_len = strlen(prefixes[i]);
+				const char *drive_serial = data->d_name + prefix_len;
+				if (strncmp(data->d_name, prefixes[i], prefix_len) == 0) {
+					strncat(machine_id, drive_serial,
+						sizeof(machine_id) - strlen(drive_serial) - 1);
+				}
 			}
 		}
+
 		closedir(ctx);
+	}
 
-	out:
+	return machine_id;
+}
 
-		packet_transmit_response(res, pRemote, pResponse);
+DWORD request_core_machine_id(Remote* remote, Packet* packet)
+{
+	DWORD res = ERROR_SUCCESS;
+
+	Packet* response = packet_create_response(packet);
+	if (response) {
+		packet_add_tlv_string(response, TLV_TYPE_MACHINE_ID, get_machine_id());
+		packet_transmit_response(res, remote, response);
 	}
 
 	return ERROR_SUCCESS;
