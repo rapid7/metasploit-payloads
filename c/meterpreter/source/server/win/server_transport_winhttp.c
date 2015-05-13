@@ -475,7 +475,7 @@ static BOOL server_init_http(Transport* transport)
 	dprintf("[WINHTTP] Initialising ...");
 
 	// configure proxy
-	if (ctx->proxy && wcscmp(ctx->proxy, L"METERPRETER_PROXY") != 0)
+	if (ctx->proxy)
 	{
 		dprintf("[DISPATCH] Configuring with proxy: %S", ctx->proxy);
 		ctx->internet = WinHttpOpen(ctx->ua, WINHTTP_ACCESS_TYPE_NAMED_PROXY, ctx->proxy, WINHTTP_NO_PROXY_BYPASS, 0);
@@ -708,22 +708,22 @@ Transport* transport_create_http(MetsrvTransportHttp* config)
 	memset(transport, 0, sizeof(Transport));
 	memset(ctx, 0, sizeof(HttpTransportContext));
 
-	SAFE_FREE(ctx->ua);
-	if (config->ua)
+	dprintf("[TRANS HTTP] Given ua: %S", config->ua);
+	if (config->ua[0])
 	{
 		ctx->ua = _wcsdup(config->ua);
 	}
-	SAFE_FREE(ctx->proxy);
+	dprintf("[TRANS HTTP] Given proxy host: %S", config->proxy.hostname);
 	if (config->proxy.hostname[0])
 	{
 		ctx->proxy = _wcsdup(config->proxy.hostname);
 	}
-	SAFE_FREE(ctx->proxy_user);
+	dprintf("[TRANS HTTP] Given proxy user: %S", config->proxy.username);
 	if (config->proxy.username[0])
 	{
 		ctx->proxy_user = _wcsdup(config->proxy.username);
 	}
-	SAFE_FREE(ctx->proxy_pass);
+	dprintf("[TRANS HTTP] Given proxy pass: %S", config->proxy.password);
 	if (config->proxy.password[0])
 	{
 		ctx->proxy_pass = _wcsdup(config->proxy.password);
