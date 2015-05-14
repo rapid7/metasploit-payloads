@@ -11,7 +11,6 @@ const KUHL_M_C kuhl_m_c_standard[] = {
 	{kuhl_m_standard_cls,		L"cls",		L"Clear screen (doesn\'t work with redirections, like PsExec)"},
 	{kuhl_m_standard_answer,	L"answer",	L"Answer to the Ultimate Question of Life, the Universe, and Everything"},
 	{kuhl_m_standard_sleep,		L"sleep",	L"Sleep an amount of milliseconds"},
-	{kuhl_m_standard_log,		L"log",		L"Log mimikatz input/output to file"},
 	{kuhl_m_standard_base64,	L"base64",	L"Switch file output/base64 output"},
 	{kuhl_m_standard_version,	L"version",	L"Display some version informations"},
 };
@@ -56,13 +55,6 @@ NTSTATUS kuhl_m_standard_sleep(int argc, wchar_t * argv[])
 	kprintf(L"Sleep : %u ms... ", dwMilliseconds);
 	Sleep(dwMilliseconds);
 	kprintf(L"End !\n");
-	return STATUS_SUCCESS;
-}
-
-NTSTATUS kuhl_m_standard_log(int argc, wchar_t * argv[])
-{
-	PCWCHAR filename = (kull_m_string_args_byName(argc, argv, L"stop", NULL, NULL) ? NULL : (argc ? argv[0] : MIMIKATZ_DEFAULT_LOG));
-	kprintf(L"Using \'%s\' for logfile : %s\n", filename, kull_m_output_file(filename) ? L"OK" : L"KO");
 	return STATUS_SUCCESS;
 }
 

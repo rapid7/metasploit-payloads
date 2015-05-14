@@ -57,63 +57,74 @@ DWORD scheduler_initialize( Remote * remote )
  * Destroy the scheduler subsystem. All waitable threads at signaled to terminate.
  * this function blocks untill all waitable threads have terminated.
  */
-DWORD scheduler_destroy( VOID )
+DWORD scheduler_destroy(VOID)
 {
-	DWORD result    = ERROR_SUCCESS;
-	DWORD index     = 0;
-	DWORD count     = 0;
-	LIST * jlist    = list_create();
+	DWORD result = ERROR_SUCCESS;
+	DWORD index = 0;
+	DWORD count = 0;
+	LIST * jlist = list_create();
 	THREAD * thread = NULL;
 	WaitableEntry * entry = NULL;
 
-	dprintf( "[SCHEDULER] entering scheduler_destroy." );
+	dprintf("[SCHEDULER] entering scheduler_destroy.");
 
-	lock_acquire( schedulerThreadList->lock );
-
-	count = list_count( schedulerThreadList );
-
-	for( index=0 ; index < count ; index++ )
+	if (schedulerThreadList == NULL)
 	{
-		thread = (THREAD *)list_get( schedulerThreadList, index );
-		if( thread == NULL )
+		return ERROR_SUCCESS;
+	}
+
+	lock_acquire(schedulerThreadList->lock);
+
+	count = list_count(schedulerThreadList);
+
+	for (index = 0; index < count; index++)
+	{
+		thread = (THREAD *)list_get(schedulerThreadList, index);
+		if (thread == NULL)
+		{
 			continue;
-		
-		list_push( jlist, thread );
+		}
+
+		list_push(jlist, thread);
 
 		entry = (WaitableEntry *)thread->parameter1;
 
-		if( !entry->running )
-			event_signal( entry->resume );
+		if (!entry->running)
+		{
+			event_signal(entry->resume);
+		}
 
-		thread_sigterm( thread );
+		thread_sigterm(thread);
 	}
 
-	lock_release( schedulerThreadList->lock );
+	lock_release(schedulerThreadList->lock);
 
-	dprintf( "[SCHEDULER] scheduler_destroy, joining all waitable threads..." );
+	dprintf("[SCHEDULER] scheduler_destroy, joining all waitable threads...");
 
-	while( TRUE )
+	while (TRUE)
 	{
-		dprintf( "[SCHEDULER] scheduler_destroy, popping off another item from thread list..." );
-		
-		thread = (THREAD *)list_pop( jlist );
-		if( thread == NULL )
+		dprintf("[SCHEDULER] scheduler_destroy, popping off another item from thread list...");
+
+		thread = (THREAD *)list_pop(jlist);
+		if (thread == NULL)
+		{
 			break;
+		}
 
-		dprintf( "[SCHEDULER] scheduler_destroy, joining thread 0x%08X...", thread );
+		dprintf("[SCHEDULER] scheduler_destroy, joining thread 0x%08X...", thread);
 
-		thread_join( thread );
+		thread_join(thread);
 	}
 
-	dprintf( "[SCHEDULER] scheduler_destroy, destroying lists..." );
+	dprintf("[SCHEDULER] scheduler_destroy, destroying lists...");
 
-	list_destroy( jlist );
-	
-	list_destroy( schedulerThreadList );
+	list_destroy(jlist);
+
+	list_destroy(schedulerThreadList);
 
 	schedulerThreadList = NULL;
 
-	dprintf( "[SCHEDULER] leaving scheduler_destroy." );
+	dprintf("[SCHEDULER] leaving scheduler_destroy.");
 
 	return result;
 }

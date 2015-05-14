@@ -168,7 +168,8 @@ typedef	BOOL *		LPBOOL;
 typedef	char		CHAR;
 typedef	CHAR *		PCHAR;
 typedef	void *		LPVOID;
-typedef	char		BYTE;
+typedef	unsigned char		BYTE;
+typedef	BYTE *		LPBYTE;
 
 
 typedef	uint32_t	ULONG;

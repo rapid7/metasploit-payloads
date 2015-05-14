@@ -19,6 +19,7 @@
 #endif
 #define METERPRETER_EXPORTS
 #include "../common/common.h"
+#include "config.h"
 
 #include "remote_dispatch.h"
 #include "libloader.h"
@@ -29,7 +30,7 @@
 #include "../ReflectiveDLLInjection/dll/src/ReflectiveLoader.h"
 #endif
 
-DWORD server_setup(SOCKET fd);
+DWORD server_setup(MetsrvConfig* config);
 typedef DWORD (*PSRVINIT)(Remote *remote);
 typedef DWORD (*PSRVDEINIT)(Remote *remote);
 typedef DWORD (*PSRVGETNAME)(char* buffer, int bufferSize);
