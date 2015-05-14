@@ -4,11 +4,8 @@
  *         of definitions that clash with those found in winhttp.h. Hooray Win32 API. I hate you.
  */
 #include "../../common/common.h"
+#include "../../common/config.h"
 #include <winhttp.h>
-
-#define HOSTNAME_LEN 512
-#define URLPATH_LEN 1024
-#define METERPRETER_CONST_OFFSET 12
 
 /*!
  * @brief Prepare a winHTTP request with the given context.
@@ -468,17 +465,17 @@ static DWORD packet_receive_http_via_winhttp(Remote *remote, Packet **packet)
  * @param sock Reference to the original socket FD passed to metsrv (ignored);
  * @return Indication of success or failure.
  */
-static BOOL server_init_http(Remote* remote, SOCKET fd)
+static BOOL server_init_http(Transport* transport)
 {
 	URL_COMPONENTS bits;
-	wchar_t tmpHostName[512];
-	wchar_t tmpUrlPath[1024];
-	HttpTransportContext* ctx = (HttpTransportContext*)remote->transport->ctx;
+	wchar_t tmpHostName[URL_SIZE];
+	wchar_t tmpUrlPath[URL_SIZE];
+	HttpTransportContext* ctx = (HttpTransportContext*)transport->ctx;
 
 	dprintf("[WINHTTP] Initialising ...");
 
 	// configure proxy
-	if (ctx->proxy && wcscmp(ctx->proxy, L"METERPRETER_PROXY") != 0)
+	if (ctx->proxy)
 	{
 		dprintf("[DISPATCH] Configuring with proxy: %S", ctx->proxy);
 		ctx->internet = WinHttpOpen(ctx->ua, WINHTTP_ACCESS_TYPE_NAMED_PROXY, ctx->proxy, WINHTTP_NO_PROXY_BYPASS, 0);
@@ -503,19 +500,18 @@ static BOOL server_init_http(Remote* remote, SOCKET fd)
 	ZeroMemory(&bits, sizeof(bits));
 	bits.dwStructSize = sizeof(bits);
 
-	bits.dwHostNameLength = HOSTNAME_LEN - 1;
+	bits.dwHostNameLength = URL_SIZE - 1;
 	bits.lpszHostName = tmpHostName;
 
-	bits.dwUrlPathLength = URLPATH_LEN - 1;
+	bits.dwUrlPathLength = URL_SIZE - 1;
 	bits.lpszUrlPath = tmpUrlPath;
 
-	dprintf("[DISPATCH] About to crack URL: %S", remote->transport->url);
-	WinHttpCrackUrl(remote->transport->url, 0, 0, &bits);
+	dprintf("[DISPATCH] About to crack URL: %S", transport->url);
+	WinHttpCrackUrl(transport->url, 0, 0, &bits);
 
 	SAFE_FREE(ctx->uri);
 	ctx->uri = _wcsdup(tmpUrlPath);
-	remote->transport->start_time = current_unix_timestamp();
-	remote->transport->comms_last_packet = current_unix_timestamp();
+	transport->comms_last_packet = current_unix_timestamp();
 
 	dprintf("[DISPATCH] Configured URI: %S", ctx->uri);
 	dprintf("[DISPATCH] Host: %S Port: %u", tmpHostName, bits.nPort);
@@ -530,8 +526,7 @@ static BOOL server_init_http(Remote* remote, SOCKET fd)
 
 	dprintf("[DISPATCH] Configured hConnection: 0x%.8x", ctx->connection);
 
-	// Bring up the scheduler subsystem.
-	return scheduler_initialize(remote) == ERROR_SUCCESS;
+	return TRUE;
 }
 
 /*!
@@ -539,20 +534,14 @@ static BOOL server_init_http(Remote* remote, SOCKET fd)
  * @param remote Pointer to the remote instance with the HTTP(S) transport details wired in.
  * @return Indication of success or failure.
  */
-static DWORD server_deinit_http(Remote* remote)
+static DWORD server_deinit_http(Transport* transport)
 {
-	HttpTransportContext* ctx = (HttpTransportContext*)remote->transport->ctx;
+	HttpTransportContext* ctx = (HttpTransportContext*)transport->ctx;
 
 	dprintf("[WINHTTP] Deinitialising ...");
 
 	WinHttpCloseHandle(ctx->connection);
 	WinHttpCloseHandle(ctx->internet);
-
-	dprintf("[DISPATCH] calling scheduler_destroy...");
-	scheduler_destroy();
-
-	dprintf("[DISPATCH] calling command_join_threads...");
-	command_join_threads();
 
 	return TRUE;
 }
@@ -572,7 +561,6 @@ static DWORD server_dispatch_http(Remote* remote, THREAD* dispatchThread)
 	DWORD ecount = 0;
 	DWORD delay = 0;
 	Transport* transport = remote->transport;
-	HttpTransportContext* ctx = (HttpTransportContext*)remote->transport->ctx;
 
 	while (running)
 	{
@@ -582,10 +570,10 @@ static DWORD server_dispatch_http(Remote* remote, THREAD* dispatchThread)
 			break;
 		}
 
-		if (transport->expiration_end != 0 && transport->expiration_end < current_unix_timestamp())
+		if (remote->sess_expiry_end != 0 && remote->sess_expiry_end < current_unix_timestamp())
 		{
 			dprintf("[DISPATCH] Shutting down server due to hardcoded expiration time");
-			dprintf("Timestamp: %u  Expiration: %u", current_unix_timestamp(), transport->expiration_end);
+			dprintf("Timestamp: %u  Expiration: %u", current_unix_timestamp(), remote->sess_expiry_end);
 			break;
 		}
 
@@ -647,13 +635,13 @@ static DWORD server_dispatch_http(Remote* remote, THREAD* dispatchThread)
  * @brief Destroy the HTTP(S) transport.
  * @param transport Pointer to the HTTP(S) transport to reset.
  */
-static void transport_destroy_http(Remote* remote)
+static void transport_destroy_http(Transport* transport)
 {
-	if (remote && remote->transport && remote->transport->type != METERPRETER_TRANSPORT_SSL)
+	if (transport && transport->type != METERPRETER_TRANSPORT_SSL)
 	{
-		HttpTransportContext* ctx = (HttpTransportContext*)remote->transport->ctx;
+		HttpTransportContext* ctx = (HttpTransportContext*)transport->ctx;
 
-		dprintf("[TRANS HTTP] Destroying http transport for url %S", remote->transport->url);
+		dprintf("[TRANS HTTP] Destroying http transport for url %S", transport->url);
 
 		if (ctx)
 		{
@@ -664,89 +652,112 @@ static void transport_destroy_http(Remote* remote)
 			SAFE_FREE(ctx->ua);
 			SAFE_FREE(ctx->uri);
 		}
-		SAFE_FREE(remote->transport->url);
-		SAFE_FREE(remote->transport->ctx);
-		SAFE_FREE(remote->transport);
+		SAFE_FREE(transport->url);
+		SAFE_FREE(transport->ctx);
+		SAFE_FREE(transport);
+	}
+}
+
+void transport_write_http_config(Transport* transport, MetsrvTransportHttp* config)
+{
+	HttpTransportContext* ctx = (HttpTransportContext*)transport->ctx;
+
+	config->common.comms_timeout = transport->timeouts.comms;
+	config->common.retry_total = transport->timeouts.retry_total;
+	config->common.retry_wait = transport->timeouts.retry_wait;
+	wcsncpy(config->common.url, transport->url, URL_SIZE);
+
+	if (ctx->ua)
+	{
+		wcsncpy(config->ua, ctx->ua, UA_SIZE);
+	}
+
+	if (ctx->cert_hash)
+	{
+		memcpy(config->ssl_cert_hash, ctx->cert_hash, CERT_HASH_SIZE);
+	}
+
+	if (ctx->proxy)
+	{
+		wcsncpy(config->proxy.hostname, ctx->proxy, PROXY_HOST_SIZE);
+	}
+
+	if (ctx->proxy_user)
+	{
+		wcsncpy(config->proxy.username, ctx->proxy_user, PROXY_USER_SIZE);
+	}
+
+	if (ctx->proxy_pass)
+	{
+		wcsncpy(config->proxy.password, ctx->proxy_pass, PROXY_PASS_SIZE);
 	}
 }
 
 /*!
  * @brief Create an HTTP(S) transport from the given settings.
- * @param ssl Indication of whether to use SSL or not.
- * @param url URL for the HTTP(S) session.
- * @param ua User agent to use for requests.
- * @param proxy Proxy server information (can be NULL).
- * @param proxyUser Proxy user name (can be NULL).
- * @param proxyPass Proxy password (can be NULL).
- * @param certHash Expected SHA1 hash of the MSF server (can be NULL).
- * @param timeouts The timeout values to use for this transport.
+ * @param config Pointer to the HTTP configuration block.
  * @return Pointer to the newly configured/created HTTP(S) transport instance.
  */
-Transport* transport_create_http(BOOL ssl, wchar_t* url, wchar_t* ua, wchar_t* proxy,
-	wchar_t* proxyUser, wchar_t* proxyPass, PBYTE certHash, TimeoutSettings* timeouts)
+Transport* transport_create_http(MetsrvTransportHttp* config)
 {
 	Transport* transport = (Transport*)malloc(sizeof(Transport));
 	HttpTransportContext* ctx = (HttpTransportContext*)malloc(sizeof(HttpTransportContext));
 
-	dprintf("[TRANS HTTP] Creating http transport for url %S", url);
+	dprintf("[TRANS HTTP] Creating http transport for url %S", config->common.url);
 
 	memset(transport, 0, sizeof(Transport));
 	memset(ctx, 0, sizeof(HttpTransportContext));
 
-	memcpy(&transport->timeouts, timeouts, sizeof(transport->timeouts));
+	dprintf("[TRANS HTTP] Given ua: %S", config->ua);
+	if (config->ua[0])
+	{
+		ctx->ua = _wcsdup(config->ua);
+	}
+	dprintf("[TRANS HTTP] Given proxy host: %S", config->proxy.hostname);
+	if (config->proxy.hostname[0])
+	{
+		ctx->proxy = _wcsdup(config->proxy.hostname);
+	}
+	dprintf("[TRANS HTTP] Given proxy user: %S", config->proxy.username);
+	if (config->proxy.username[0])
+	{
+		ctx->proxy_user = _wcsdup(config->proxy.username);
+	}
+	dprintf("[TRANS HTTP] Given proxy pass: %S", config->proxy.password);
+	if (config->proxy.password[0])
+	{
+		ctx->proxy_pass = _wcsdup(config->proxy.password);
+	}
+	ctx->ssl = wcsncmp(config->common.url, L"https", 5) == 0;
 
-	SAFE_FREE(ctx->ua);
-	if (ua)
-	{
-		ctx->ua = _wcsdup(ua);
-	}
-	SAFE_FREE(ctx->proxy);
-	if (proxy && wcscmp(proxy + METERPRETER_CONST_OFFSET, L"PROXY") != 0)
-	{
-		ctx->proxy = _wcsdup(proxy);
-	}
-	SAFE_FREE(ctx->proxy_user);
-	if (proxyUser && wcscmp(proxyUser + METERPRETER_CONST_OFFSET, L"USERNAME_PROXY") != 0)
-	{
-		ctx->proxy_user = _wcsdup(proxyUser);
-	}
-	SAFE_FREE(ctx->proxy_pass);
-	if (proxyPass && wcscmp(proxyPass + METERPRETER_CONST_OFFSET, L"PASSWORD_PROXY") != 0)
-	{
-		ctx->proxy_pass = _wcsdup(proxyPass);
-	}
-	ctx->ssl = ssl;
+	dprintf("[SERVER] Received HTTPS Hash: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
+		config->ssl_cert_hash[0], config->ssl_cert_hash[1], config->ssl_cert_hash[2], config->ssl_cert_hash[3],
+		config->ssl_cert_hash[4], config->ssl_cert_hash[5], config->ssl_cert_hash[6], config->ssl_cert_hash[7],
+		config->ssl_cert_hash[8], config->ssl_cert_hash[9], config->ssl_cert_hash[10], config->ssl_cert_hash[11],
+		config->ssl_cert_hash[12], config->ssl_cert_hash[13], config->ssl_cert_hash[14], config->ssl_cert_hash[15],
+		config->ssl_cert_hash[16], config->ssl_cert_hash[17], config->ssl_cert_hash[18], config->ssl_cert_hash[19]);
 
 	// only apply the cert hash if we're given one and it's not the global value
 	SAFE_FREE(ctx->cert_hash);
-	if (certHash && strncmp((char*)(certHash + METERPRETER_CONST_OFFSET), "SSL_CERT_HASH", 20) != 0)
+	unsigned char emptyHash[CERT_HASH_SIZE] = { 0 };
+	if (memcmp(config->ssl_cert_hash, emptyHash, CERT_HASH_SIZE))
 	{
 		ctx->cert_hash = (PBYTE)malloc(sizeof(BYTE) * 20);
-		memcpy(ctx->cert_hash, certHash, 20);
+		memcpy(ctx->cert_hash, config->ssl_cert_hash, 20);
 	}
 
-	transport->type = ssl ? METERPRETER_TRANSPORT_HTTPS : METERPRETER_TRANSPORT_HTTP;
-	transport->url = _wcsdup(url);
+	transport->timeouts.comms = config->common.comms_timeout;
+	transport->timeouts.retry_total = config->common.retry_total;
+	transport->timeouts.retry_wait = config->common.retry_wait;
+	transport->type = ctx->ssl ? METERPRETER_TRANSPORT_HTTPS : METERPRETER_TRANSPORT_HTTP;
+	transport->url = _wcsdup(config->common.url);
 	transport->packet_transmit = packet_transmit_via_http;
 	transport->server_dispatch = server_dispatch_http;
 	transport->transport_init = server_init_http;
 	transport->transport_deinit = server_deinit_http;
 	transport->transport_destroy = transport_destroy_http;
 	transport->ctx = ctx;
-	transport->expiration_end = current_unix_timestamp() + transport->timeouts.expiry;
-	transport->start_time = current_unix_timestamp();
 	transport->comms_last_packet = current_unix_timestamp();
-
-#ifdef DEBUGTRACE
-	if (ssl && certHash)
-	{
-		PBYTE hash = certHash;
-		dprintf("[SERVER] Using HTTPS transport: Hash set to: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
-			hash[0], hash[1], hash[2], hash[3], hash[4], hash[5], hash[6], hash[7], hash[8], hash[9], hash[10],
-			hash[11], hash[12], hash[13], hash[14], hash[15], hash[16], hash[17], hash[18], hash[19]);
-		dprintf("[SERVER] is validating hashes %p", hash);
-	}
-#endif
 
 	return transport;
 }

