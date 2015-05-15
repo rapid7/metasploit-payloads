@@ -24,7 +24,7 @@ Command customCommands[] =
  */
 DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
 {
-	hMetSrv = remote->hMetSrv;
+	hMetSrv = remote->met_srv;
 
 	command_register_all(customCommands);
 
