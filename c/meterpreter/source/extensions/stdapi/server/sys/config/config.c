@@ -5,6 +5,9 @@
 #else
 #include <sys/utsname.h>
 #endif
+#include <Lm.h>
+
+#pragma comment(lib, "netapi32.lib")
 
 /*!
  * @brief Add an environment variable / value pair to a response packet.
@@ -644,6 +647,12 @@ DWORD request_sys_config_sysinfo(Remote *remote, Packet *packet)
 	} while(0);
 
 #endif
+	LPWKSTA_INFO_102 localSysinfo = NULL;
+	if (NetWkstaGetInfo(NULL, 102, (LPBYTE *)&localSysinfo) == NERR_Success){
+		char *domainName = wchar_to_utf8(localSysinfo->wki102_langroup);
+		packet_add_tlv_string(response, TLV_TYPE_DOMAIN, (LPCSTR)domainName);
+		packet_add_tlv_uint(response, TLV_TYPE_LOGGED_ON_USER_COUNT, localSysinfo->wki102_logged_on_users);
+	}
 	// Transmit the response
 	packet_transmit_response(res, remote, response);
 
