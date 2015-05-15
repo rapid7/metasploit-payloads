@@ -2,9 +2,12 @@
 
 #ifdef _WIN32
 #include <Sddl.h>
+#include <Lm.h>
 #else
 #include <sys/utsname.h>
 #endif
+
+#pragma comment(lib, "netapi32.lib")
 
 /*!
  * @brief Add an environment variable / value pair to a response packet.
@@ -621,6 +624,15 @@ DWORD request_sys_config_sysinfo(Remote *remote, Packet *packet)
 				free( langname );
 		}
 
+		LPWKSTA_INFO_102 localSysinfo = NULL;
+
+		if (NetWkstaGetInfo(NULL, 102, (LPBYTE *)&localSysinfo) == NERR_Success) {
+			char *domainName = wchar_to_utf8(localSysinfo->wki102_langroup);
+			packet_add_tlv_string(response, TLV_TYPE_DOMAIN, (LPCSTR)domainName);
+			packet_add_tlv_uint(response, TLV_TYPE_LOGGED_ON_USER_COUNT, localSysinfo->wki102_logged_on_users);
+			free(domainName);
+		}
+
 			
 	} while (0);
 #else
@@ -635,7 +647,9 @@ DWORD request_sys_config_sysinfo(Remote *remote, Packet *packet)
 			break;
 		}
 
-		snprintf(os, sizeof(os)-1, "%s %s %s %s (%s)", utsbuf.sysname, utsbuf.nodename, utsbuf.release, utsbuf.version, utsbuf.machine, utsbuf.domainname);
+		snprintf(os, sizeof(os), "%s %s %s %s (%s)",
+			utsbuf.sysname, utsbuf.nodename, utsbuf.release,
+			utsbuf.version, utsbuf.machine);
 
 		packet_add_tlv_string(response, TLV_TYPE_COMPUTER_NAME, utsbuf.nodename);
 		packet_add_tlv_string(response, TLV_TYPE_OS_NAME, os);
