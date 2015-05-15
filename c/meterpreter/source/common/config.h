@@ -16,11 +16,11 @@
 
 #ifdef _WIN32
 typedef wchar_t CHARTYPE;
-typedef CHARTYPE* STRTYPE;
 #else
 typedef char CHARTYPE;
-typedef CHARTYPE* STRTYPE;
 #endif
+typedef CHARTYPE* STRTYPE;
+typedef CHARTYPE const * CSTRTYPE;
 
 typedef struct _MetsrvSession
 {

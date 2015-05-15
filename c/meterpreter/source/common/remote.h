@@ -64,11 +64,15 @@ typedef struct _HttpTransportContext
 	HANDLE connection;                    ///! Handle to the HTTP or HTTPS connection.
 	unsigned char* cert_hash;             ///! Pointer to the 20-byte certificate hash to validate
 
+	CSTRTYPE url;                         ///! Pointer to the URL stored with the transport.
 	STRTYPE ua;                           ///! User agent string.
 	STRTYPE uri;                          ///! UUID encoded as a URI.
 	STRTYPE proxy;                        ///! Proxy details.
 	STRTYPE proxy_user;                   ///! Proxy username.
 	STRTYPE proxy_pass;                   ///! Proxy password.
+
+	BOOL proxy_configured;                ///! Indication of whether the proxy has been configured.
+	LPVOID proxy_for_url;                 ///! Pointer to the proxy for the current url (if required).
 } HttpTransportContext;
 
 typedef struct _Transport
