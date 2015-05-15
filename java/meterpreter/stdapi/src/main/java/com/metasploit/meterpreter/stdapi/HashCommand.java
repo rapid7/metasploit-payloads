@@ -20,7 +20,7 @@ public abstract class HashCommand implements Command {
 		while ((len = in.read(buf)) != -1) {
 			md.update(buf, 0, len);
 		}
-		response.add(TLVType.TLV_TYPE_FILE_NAME, new String(md.digest(), "ISO-8859-1"));
+		response.add(TLVType.TLV_TYPE_FILE_HASH, md.digest());
 		return ERROR_SUCCESS;
 	}
 }

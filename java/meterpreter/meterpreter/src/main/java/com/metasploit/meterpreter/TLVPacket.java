@@ -14,7 +14,7 @@ import java.util.Map;
 
 /**
  * A packet consisting of multiple TLV values. Having the same type more than once is an error.
- * 
+ *
  * @author mihi
  */
 public class TLVPacket {
@@ -62,7 +62,7 @@ public class TLVPacket {
 
 	/**
 	 * Read a TLV packet from an input stream.
-	 * 
+	 *
 	 * @param in
 	 *	Input stream to read from
 	 * @param remaining
@@ -84,7 +84,7 @@ public class TLVPacket {
 				value = data;
 			} else if ((type & TLV_META_TYPE_STRING) != 0) {
 				in.readFully(data);
-				String string = new String(data, "ISO-8859-1"); // better safe than sorry
+				String string = new String(data, "UTF-8");
 				if (!string.endsWith("\0"))
 					throw new IOException("C string is not 0 terminated: " + string);
 				string = string.substring(0, string.length() - 1);
@@ -281,7 +281,7 @@ public class TLVPacket {
 	private static void write(DataOutputStream out, int type, Object value) throws IOException {
 		byte[] data;
 		if ((type & TLV_META_TYPE_STRING) != 0) {
-			data = ((String) value + "\0").getBytes("ISO-8859-1");
+			data = ((String) value + "\0").getBytes("UTF-8");
 		} else if ((type & TLV_META_TYPE_QWORD) != 0) {
 			out.writeInt(16);
 			out.writeInt(type);
