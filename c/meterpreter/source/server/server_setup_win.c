@@ -289,7 +289,6 @@ DWORD server_setup(MetsrvConfig* config)
 
 	dprintf("[SERVER] Initializing from configuration: 0x%p", config);
 	dprintf("[SESSION] Comms Fd: %u", config->session.comms_fd);
-	dprintf("[SESSION] UUID: %S", config->session.uuid);
 	dprintf("[SESSION] Expiry: %u", config->session.expiry);
 
 	dprintf("[SERVER] UUID: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",

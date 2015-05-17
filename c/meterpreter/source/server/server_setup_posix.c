@@ -1181,7 +1181,7 @@ static void config_create(Remote* remote, MetsrvConfig** config, LPDWORD size) {
 	dprintf("[CONFIG] preparing the configuration");
 
 	// start by preparing the session.
-	memcpy(sess->uuid, remote->orig_config->session.uuid, sizeof(sess->uuid));
+	memcpy(sess->uuid, remote->orig_config->session.uuid, UUID_SIZE);
 	sess->expiry = remote->sess_expiry_end - current_unix_timestamp();
 
 	// TOOD: figure what we should be doing for POSIX here.
@@ -1250,7 +1250,6 @@ DWORD server_setup(MetsrvConfig* config)
 
 	dprintf("[SERVER] Initializing from configuration: 0x%p", config);
 	dprintf("[SESSION] Comms Fd: %u", config->session.comms_fd);
-	dprintf("[SESSION] UUID: %s", config->session.uuid);
 	dprintf("[SESSION] Expiry: %u", config->session.expiry);
 
 	srand(time(NULL));
