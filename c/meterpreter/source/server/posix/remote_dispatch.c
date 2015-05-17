@@ -159,7 +159,7 @@ DWORD request_core_uuid(Remote* remote, Packet* packet) {
 	Packet* response = packet_create_response(packet);
 
 	if (response) {
-		packet_add_tlv_wstring(response, TLV_TYPE_UUID, remote->orig_config->session.uuid);
+		packet_add_tlv_raw(response, TLV_TYPE_UUID, remote->orig_config->session.uuid, UUID_SIZE);
 
 		packet_transmit_response(ERROR_SUCCESS, remote, response);
 	}

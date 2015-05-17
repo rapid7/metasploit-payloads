@@ -218,7 +218,7 @@ static void config_create(Remote* remote, MetsrvConfig** config, LPDWORD size)
 	dprintf("[CONFIG] preparing the configuration");
 
 	// start by preparing the session.
-	memcpy(sess->uuid, remote->orig_config->session.uuid, sizeof(sess->uuid));
+	memcpy(sess->uuid, remote->orig_config->session.uuid, UUID_SIZE);
 	sess->expiry = remote->sess_expiry_end - current_unix_timestamp();
 	sess->exit_func = EXITFUNC_THREAD; // migration we default to this.
 
@@ -291,6 +291,12 @@ DWORD server_setup(MetsrvConfig* config)
 	dprintf("[SESSION] Comms Fd: %u", config->session.comms_fd);
 	dprintf("[SESSION] UUID: %S", config->session.uuid);
 	dprintf("[SESSION] Expiry: %u", config->session.expiry);
+
+	dprintf("[SERVER] UUID: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
+		config->session.uuid[0], config->session.uuid[1], config->session.uuid[2], config->session.uuid[3],
+		config->session.uuid[4], config->session.uuid[5], config->session.uuid[6], config->session.uuid[7],
+		config->session.uuid[8], config->session.uuid[9], config->session.uuid[10], config->session.uuid[11],
+		config->session.uuid[12], config->session.uuid[13], config->session.uuid[14], config->session.uuid[15]);
 
 	// if hAppInstance is still == NULL it means that we havent been
 	// reflectivly loaded so we must patch in the hAppInstance value
