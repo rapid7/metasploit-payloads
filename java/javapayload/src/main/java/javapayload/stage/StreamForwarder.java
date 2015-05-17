@@ -40,60 +40,62 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 
 public class StreamForwarder extends Thread {
-	public static void forward(InputStream in, OutputStream out) throws IOException {
-		forward(in, out, true);
-	}
-	
-	public static void forward(InputStream in, OutputStream out, boolean closeOut) throws IOException {
-		try {
-			final byte[] buf = new byte[4096];
-			int length;
-			while ((length = in.read(buf)) != -1) {
-				if (out != null) {
-					out.write(buf, 0, length);
-					if (in.available() == 0) {
-						out.flush();
-					}
-				}
-			}
-		} finally {
-			in.close();
-			if (closeOut)
-				out.close();
-		}
-	}
+    public static void forward(InputStream in, OutputStream out) throws IOException {
+        forward(in, out, true);
+    }
 
-	private final InputStream in;
-	private final OutputStream out;
+    public static void forward(InputStream in, OutputStream out, boolean closeOut) throws IOException {
+        try {
+            final byte[] buf = new byte[4096];
+            int length;
+            while ((length = in.read(buf)) != -1) {
+                if (out != null) {
+                    out.write(buf, 0, length);
+                    if (in.available() == 0) {
+                        out.flush();
+                    }
+                }
+            }
+        } finally {
+            in.close();
+            if (closeOut)
+                out.close();
+        }
+    }
 
-	private final OutputStream stackTraceOut;
-	private final boolean closeOut;
+    private final InputStream in;
+    private final OutputStream out;
 
-	public StreamForwarder(InputStream in, OutputStream out, OutputStream stackTraceOut) {
-		this(in,out,stackTraceOut,true);
-	}
-	public StreamForwarder(InputStream in, OutputStream out, OutputStream stackTraceOut, boolean closeOut) {
-		this.in = in;
-		this.out = out;
-		this.stackTraceOut = stackTraceOut;
-		this.closeOut = closeOut;
-	}
+    private final OutputStream stackTraceOut;
+    private final boolean closeOut;
 
-	public void run() {
-		try {
-			forward(in, out, closeOut);
-		} catch (final Throwable ex) {
-			if (stackTraceOut == null)
-				throwWrapped(ex);
-			ex.printStackTrace(new PrintStream(stackTraceOut, true));
-		}
-	}
-	
-	private static void throwWrapped(Throwable ex) {
-		/* #JDK1.4 */try {
-			throw new RuntimeException(ex);
-		} catch (NoSuchMethodError ex2) /**/{
-			throw new RuntimeException(ex.toString());
-		}
-	}
+    public StreamForwarder(InputStream in, OutputStream out, OutputStream stackTraceOut) {
+        this(in, out, stackTraceOut, true);
+    }
+
+    public StreamForwarder(InputStream in, OutputStream out, OutputStream stackTraceOut, boolean closeOut) {
+        this.in = in;
+        this.out = out;
+        this.stackTraceOut = stackTraceOut;
+        this.closeOut = closeOut;
+    }
+
+    public void run() {
+        try {
+            forward(in, out, closeOut);
+        } catch (final Throwable ex) {
+            if (stackTraceOut == null)
+                throwWrapped(ex);
+            ex.printStackTrace(new PrintStream(stackTraceOut, true));
+        }
+    }
+
+    private static void throwWrapped(Throwable ex) {
+        /* #JDK1.4 */
+        try {
+            throw new RuntimeException(ex);
+        } catch (NoSuchMethodError ex2) /**/ {
+            throw new RuntimeException(ex.toString());
+        }
+    }
 }

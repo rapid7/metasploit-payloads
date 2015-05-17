@@ -73,7 +73,7 @@ public class webcam_start_android extends webcam_audio_record implements Command
                     }
                 });
                 surfaceHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
-                WindowManager windowManager = (WindowManager)context.getSystemService(Context.WINDOW_SERVICE);
+                WindowManager windowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
                 WindowManager.LayoutParams params = new WindowManager.LayoutParams(1, 1,
                         WindowManager.LayoutParams.TYPE_TOAST,
                         WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN | WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE |

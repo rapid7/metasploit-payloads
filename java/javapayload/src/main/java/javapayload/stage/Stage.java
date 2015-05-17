@@ -38,5 +38,5 @@ import java.io.DataInputStream;
 import java.io.OutputStream;
 
 public interface Stage {
-	public abstract void start(DataInputStream in, OutputStream out, String[] parameters) throws Exception;
+    public abstract void start(DataInputStream in, OutputStream out, String[] parameters) throws Exception;
 }

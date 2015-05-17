@@ -39,7 +39,7 @@ public class Meterpreter implements Stage {
         Class<?> myClass = classLoader.loadClass("com.metasploit.meterpreter.AndroidMeterpreter");
         file.delete();
         new File(dexPath).delete();
-        myClass.getConstructor(new Class[] {
+        myClass.getConstructor(new Class[]{
                 DataInputStream.class, OutputStream.class, String[].class, boolean.class
         }).newInstance(in, out, parameters, false);
     }
