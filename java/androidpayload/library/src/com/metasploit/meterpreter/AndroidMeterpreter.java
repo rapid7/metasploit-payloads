@@ -42,21 +42,23 @@ import com.metasploit.meterpreter.stdapi.stdapi_sys_process_execute_V1_3;
 import java.io.DataInputStream;
 import java.io.File;
 import java.io.OutputStream;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 public class AndroidMeterpreter extends Meterpreter {
 
+    private static final Object contextWaiter = new Object();
+
     private static String writeableDir;
     private static Context context;
-
-    private static Thread executionThread;
 
     private void findContext() throws Exception {
         final Class<?> activityThreadClass = Class.forName("android.app.ActivityThread");
         final Method currentApplication = activityThreadClass.getMethod("currentApplication");
         context = (Context) currentApplication.invoke(null, (Object[]) null);
         if (context == null) {
-            Handler handler = new Handler(Looper.getMainLooper());
+            // Post to the UI/Main thread and try and retrieve the Context
+            final Handler handler = new Handler(Looper.getMainLooper());
             handler.post(new Runnable() {
                 @Override
                 public void run() {
@@ -65,11 +67,14 @@ public class AndroidMeterpreter extends Meterpreter {
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
-                    executionThread.start();
+                    synchronized (contextWaiter) {
+                        contextWaiter.notify();
+                    }
                 }
             });
-        } else {
-            startExecuting();
+            synchronized (contextWaiter) {
+                contextWaiter.wait();
+            }
         }
     }
 
@@ -80,24 +85,13 @@ public class AndroidMeterpreter extends Meterpreter {
     public AndroidMeterpreter(DataInputStream in, OutputStream rawOut, String[] parameters, boolean redirectErrors) throws Exception {
         super(in, rawOut, true, redirectErrors, false);
         writeableDir = parameters[0];
-
-        executionThread = new Thread() {
-            @Override
-            public void run() {
-                try {
-                    startExecuting();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-        };
         try {
             findContext();
-            executionThread.join();
         } catch (Exception e) {
             e.printStackTrace();
-            startExecuting();
+            // No context (running as root?)
         }
+        startExecuting();
     }
 
     @Override
