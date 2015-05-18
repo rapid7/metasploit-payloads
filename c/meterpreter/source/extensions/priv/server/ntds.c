@@ -23,7 +23,7 @@ DWORD ntds_parse(Remote *remote, Packet *packet){
 		res = 2;
 		goto out;
 	}
-	strncpy(ntdsState->ntdsPath, filePath, 255);
+	strncpy(ntdsState->ntdsPath, filePath, 254);
 
 	// Attempt to get the SysKey from the Registry
 	unsigned char sysKey[17];
@@ -31,10 +31,6 @@ DWORD ntds_parse(Remote *remote, Packet *packet){
 		res = GetLastError();
 		goto out;
 	}
-
-
-	// Create the structure for holding all of the Column Definitions we need
-	struct ntdsColumns *accountColumns = calloc(1,sizeof(struct ntdsColumns));
 
 	JET_ERR startupStatus = engine_startup(ntdsState);
 	if (startupStatus != JET_errSuccess){
@@ -60,9 +56,14 @@ DWORD ntds_parse(Remote *remote, Packet *packet){
 		res = tableStatus;
 		goto out;
 	}
+
+	// Create the structure for holding all of the Column Definitions we need
+	struct ntdsColumns *accountColumns = calloc(1, sizeof(struct ntdsColumns));
+
 	JET_ERR columnStatus = get_column_info(ntdsState, accountColumns);
 	if (columnStatus != JET_errSuccess){
 		engine_shutdown(ntdsState);
+		free(accountColumns);
 		res = columnStatus;
 		goto out;
 	}
@@ -74,11 +75,13 @@ DWORD ntds_parse(Remote *remote, Packet *packet){
 	pekStatus = get_PEK(ntdsState, accountColumns, pekEncrypted);
 	if (pekStatus != JET_errSuccess){
 		res = pekStatus;
+		free(accountColumns);
 		engine_shutdown(ntdsState);
 		goto out;
 	}
 	if (!decrypt_PEK(sysKey, pekEncrypted, pekDecrypted)){
-		res = GetLastError();
+		res = GetLastError(); 
+		free(accountColumns);
 		engine_shutdown(ntdsState);
 		goto out;
 	}
@@ -86,12 +89,14 @@ DWORD ntds_parse(Remote *remote, Packet *packet){
 	JET_ERR cursorStatus = find_first(ntdsState);
 	if (cursorStatus != JET_errSuccess){
 		res = cursorStatus;
+		free(accountColumns);
 		engine_shutdown(ntdsState);
 		goto out;
 	}
 	cursorStatus = next_user(ntdsState, accountColumns);
 	if (cursorStatus != JET_errSuccess){
 		res = cursorStatus;
+		free(accountColumns);
 		engine_shutdown(ntdsState);
 		goto out;
 	}
@@ -105,6 +110,8 @@ DWORD ntds_parse(Remote *remote, Packet *packet){
 	// Allocate storage for the NTDS context
 	if (!(ctx = calloc(1, sizeof(NTDSContext)))) {
 		res = ERROR_NOT_ENOUGH_MEMORY;
+		free(accountColumns);
+		engine_shutdown(ntdsState);
 		goto out;
 	}
 
