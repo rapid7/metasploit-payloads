@@ -76,12 +76,16 @@ DWORD ntds_parse(Remote *remote, Packet *packet){
 	if (pekStatus != JET_errSuccess){
 		res = pekStatus;
 		free(accountColumns);
+		free(pekEncrypted);
+		free(pekDecrypted);
 		engine_shutdown(ntdsState);
 		goto out;
 	}
 	if (!decrypt_PEK(sysKey, pekEncrypted, pekDecrypted)){
 		res = GetLastError(); 
 		free(accountColumns);
+		free(pekEncrypted);
+		free(pekDecrypted);
 		engine_shutdown(ntdsState);
 		goto out;
 	}
@@ -90,6 +94,8 @@ DWORD ntds_parse(Remote *remote, Packet *packet){
 	if (cursorStatus != JET_errSuccess){
 		res = cursorStatus;
 		free(accountColumns);
+		free(pekEncrypted);
+		free(pekDecrypted);
 		engine_shutdown(ntdsState);
 		goto out;
 	}
@@ -97,6 +103,8 @@ DWORD ntds_parse(Remote *remote, Packet *packet){
 	if (cursorStatus != JET_errSuccess){
 		res = cursorStatus;
 		free(accountColumns);
+		free(pekEncrypted);
+		free(pekDecrypted);
 		engine_shutdown(ntdsState);
 		goto out;
 	}
@@ -111,6 +119,8 @@ DWORD ntds_parse(Remote *remote, Packet *packet){
 	if (!(ctx = calloc(1, sizeof(NTDSContext)))) {
 		res = ERROR_NOT_ENOUGH_MEMORY;
 		free(accountColumns);
+		free(pekEncrypted);
+		free(pekDecrypted);
 		engine_shutdown(ntdsState);
 		goto out;
 	}
@@ -126,6 +136,10 @@ DWORD ntds_parse(Remote *remote, Packet *packet){
 	if (!(newChannel = channel_create_pool(0, CHANNEL_FLAG_SYNCHRONOUS | CHANNEL_FLAG_COMPRESS, &chops)))
 	{
 		res = ERROR_NOT_ENOUGH_MEMORY;
+		free(accountColumns);
+		free(pekEncrypted);
+		free(pekDecrypted);
+		engine_shutdown(ntdsState);
 		goto out;
 	}
 
