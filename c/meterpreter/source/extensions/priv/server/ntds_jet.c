@@ -65,9 +65,9 @@ void get_instance_name(char *name){
 	GetSystemTime(&currentTime);
 	char dateString[30];
 	char timeString[30];
-	GetDateFormat(LOCALE_SYSTEM_DEFAULT, DATE_LONGDATE, &currentTime, NULL, dateString, 255);
+	GetDateFormat(LOCALE_SYSTEM_DEFAULT, DATE_LONGDATE, &currentTime, NULL, dateString, 30);
 	strncat(name, dateString, sizeof(dateString));
-	GetTimeFormat(LOCALE_SYSTEM_DEFAULT, 0, &currentTime, NULL, timeString, 255);
+	GetTimeFormat(LOCALE_SYSTEM_DEFAULT, 0, &currentTime, NULL, timeString, 30);
 	strncat(name, timeString, sizeof(timeString));
 }
 
@@ -142,7 +142,6 @@ JET_ERR get_PEK(struct jetState *ntdsState, struct ntdsColumns *accountColumns, 
 		readStatus = JetRetrieveColumn(ntdsState->jetSession, ntdsState->jetTable, accountColumns->encryptionKey.columnid, encryptionKey, 76, &columnSize, 0, NULL);
 		if (readStatus == JET_errSuccess){
 			memcpy(pekEncrypted, &encryptionKey, 76);
-			puts("Found the Password Encryption Key");
 			return readStatus;
 		}
 		cursorStatus = JetMove(ntdsState->jetSession, ntdsState->jetTable, JET_MoveNext, (JET_GRBIT)NULL);
@@ -296,7 +295,7 @@ JET_ERR read_user_dates(struct jetState *ntdsState, struct ntdsColumns *accountC
 	}
 	//Convert the FILETIME to a SYSTEMTIME so we can get a human readable date
 	FileTimeToSystemTime(&accountExpiry, &accountExpiry2);
-	int dateResult = GetDateFormat(LOCALE_SYSTEM_DEFAULT, DATE_LONGDATE, &accountExpiry2, NULL, userAccount->expiryDate, 255);
+	int dateResult = GetDateFormat(LOCALE_SYSTEM_DEFAULT, DATE_LONGDATE, &accountExpiry2, NULL, userAccount->expiryDate, 30);
 	// Getting Human Readable will fail if account never expires. Just set the expiryDate string to 'never'
 	if (dateResult == 0){
 		strncpy(userAccount->expiryDate, "Never", 6);
@@ -308,12 +307,12 @@ JET_ERR read_user_dates(struct jetState *ntdsState, struct ntdsColumns *accountC
 	}
 	//Convert the FILETIME to a SYSTEMTIME so we can get a human readable date
 	FileTimeToSystemTime(&lastLogon, &lastLogon2);
-	dateResult = GetDateFormat(LOCALE_SYSTEM_DEFAULT, DATE_LONGDATE, &lastLogon2, NULL, userAccount->logonDate, 255);
+	dateResult = GetDateFormat(LOCALE_SYSTEM_DEFAULT, DATE_LONGDATE, &lastLogon2, NULL, userAccount->logonDate, 30);
 	// Getting Human Readable will fail if account has never logged in, much like the expiry date
 	if (dateResult == 0){
 		strncpy(userAccount->logonDate, "Never", 6);
 	}
-	dateResult = GetTimeFormat(LOCALE_SYSTEM_DEFAULT, 0, &lastLogon2, NULL, userAccount->logonTime, 255);
+	dateResult = GetTimeFormat(LOCALE_SYSTEM_DEFAULT, 0, &lastLogon2, NULL, userAccount->logonTime, 30);
 	if (dateResult == 0){
 		strncpy(userAccount->logonTime, "Never", 6);
 	}
@@ -324,12 +323,12 @@ JET_ERR read_user_dates(struct jetState *ntdsState, struct ntdsColumns *accountC
 	}
 	//Convert the FILETIME to a SYSTEMTIME so we can get a human readable date
 	FileTimeToSystemTime(&lastPass, &lastPass2);
-	dateResult = GetDateFormat(LOCALE_SYSTEM_DEFAULT, DATE_LONGDATE, &lastPass2, NULL, userAccount->passChangeDate, 255);
+	dateResult = GetDateFormat(LOCALE_SYSTEM_DEFAULT, DATE_LONGDATE, &lastPass2, NULL, userAccount->passChangeDate, 30);
 	// Getting Human Readable will fail if account has never logged in, much like the expiry date
 	if (dateResult == 0){
 		strncpy(userAccount->passChangeDate, "Never", 6);
 	}
-	dateResult = GetTimeFormat(LOCALE_SYSTEM_DEFAULT, 0, &lastPass2, NULL, userAccount->passChangeTime, 255);
+	dateResult = GetTimeFormat(LOCALE_SYSTEM_DEFAULT, 0, &lastPass2, NULL, userAccount->passChangeTime, 30);
 	if (dateResult == 0){
 		strncpy(userAccount->passChangeTime, "Never", 6);
 	}

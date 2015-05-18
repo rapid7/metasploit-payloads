@@ -18,12 +18,12 @@ struct decryptedPEK{
 	unsigned char pekKey[16];
 };
 
-void bytes_to_string(LPBYTE data, int length, LPSTR output);
+void bytes_to_string(LPBYTE data, unsigned int length, LPSTR output);
 BOOL decrypt_hash(struct encryptedHash *encryptedNTLM, struct decryptedPEK *pekDecrypted, char *hashString, DWORD rid);
 BOOL decrypt_hash_from_rid(LPBYTE encodedHash, LPDWORD rid, LPBYTE decodedHash);
-BOOL decrypt_hash_history(LPBYTE encHashHistory, size_t sizeHistory, struct decryptedPEK *pekDecrypted, DWORD rid, char *accountHistory, int *historyCount);
+BOOL decrypt_hash_history(LPBYTE encHashHistory, size_t sizeHistory, struct decryptedPEK *pekDecrypted, DWORD rid, char *accountHistory, unsigned int *historyCount);
 BOOL decrypt_PEK(unsigned char *sysKey, struct encryptedPEK *pekEncrypted, struct decryptedPEK *pekDecrypted);
-BOOL decrypt_rc4(unsigned char *key1, unsigned char *key2, LPBYTE encrypted, int hashIterations, DWORD lenBuffer);
+BOOL decrypt_rc4(unsigned char *key1, unsigned char *key2, LPBYTE encrypted, unsigned int hashIterations, DWORD lenBuffer);
 
 #define HASH_LENGTH_BYTES 16
 #define NULL_TERIMNATED_HASH_LENGTH 17

@@ -10,8 +10,8 @@
 * @param length Integer representing the length of the byte array
 * @param output Pointer to the string we are outputting the result to
 */
-void bytes_to_string(LPBYTE data, int length, LPSTR output){
-	for (int i = 0; i < length; i++){
+void bytes_to_string(LPBYTE data, unsigned int length, LPSTR output){
+	for (unsigned int i = 0; i < length; i++){
 		sprintf(output + (i << 1), "%02X", ((LPBYTE)data)[i]);
 	}
 }
@@ -72,10 +72,10 @@ BOOL decrypt_hash_from_rid(LPBYTE encodedHash, LPDWORD rid, LPBYTE decodedHash){
 * @param historyCount Pointer to n integer where we store a count of the historical hashes
 * @returns Indication of sucess or failure.
 */
-BOOL decrypt_hash_history(LPBYTE encHashHistory, size_t sizeHistory, struct decryptedPEK *pekDecrypted, DWORD rid, char *accountHistory, int *historyCount){
+BOOL decrypt_hash_history(LPBYTE encHashHistory, size_t sizeHistory, struct decryptedPEK *pekDecrypted, DWORD rid, char *accountHistory, unsigned int *historyCount){
 	BOOL cryptOK = FALSE;
-	int sizeHistoryData = (int)sizeHistory - 24;
-	int numHashes = (sizeHistoryData / HASH_LENGTH_BYTES);
+	unsigned int sizeHistoryData = (unsigned int)sizeHistory - 24;
+	unsigned int numHashes = (sizeHistoryData / HASH_LENGTH_BYTES);
 	memcpy(historyCount, &numHashes, sizeof(historyCount));
 	LPBYTE encHistoryData = (LPBYTE)calloc(1,sizeHistoryData);
 	LPBYTE decHistoryData = (LPBYTE)calloc(1,(sizeHistoryData * 2));
@@ -88,7 +88,7 @@ BOOL decrypt_hash_history(LPBYTE encHashHistory, size_t sizeHistory, struct decr
 	}
 	LPBYTE historicalHash = encHistoryData;
 	LPBYTE writeMarker = decHistoryData;
-	for (int i = 0; i < numHashes; i++){
+	for (unsigned int i = 0; i < numHashes; i++){
 		BYTE decHash[HASH_LENGTH_BYTES];
 		char hashString[NULL_TERIMNATED_HASH_STRING_LENGTH];
 		cryptOK = decrypt_hash_from_rid(historicalHash, &rid, decHash);
@@ -116,7 +116,7 @@ BOOL decrypt_hash_history(LPBYTE encHashHistory, size_t sizeHistory, struct decr
 BOOL decrypt_PEK(unsigned char *sysKey, struct encryptedPEK *pekEncrypted, struct decryptedPEK *pekDecrypted){
 	BOOL cryptOK = FALSE;
 	BYTE pekData[52] = { 0 };
-	DWORD pekLength = 52;
+	DWORD pekLength = sizeof(struct decryptedPEK);
 	memcpy(&pekData, &pekEncrypted->pekData, pekLength);
 
 	cryptOK = decrypt_rc4(sysKey, pekEncrypted->keyMaterial, pekData, 1000, pekLength);
@@ -136,7 +136,7 @@ BOOL decrypt_PEK(unsigned char *sysKey, struct encryptedPEK *pekEncrypted, struc
 * @param lenBuffer the length of our output buffer
 * @returns Indication of sucess or failure.
 */
-BOOL decrypt_rc4(unsigned char *key1, unsigned char *key2, LPBYTE encrypted, int hashIterations, DWORD lenBuffer){
+BOOL decrypt_rc4(unsigned char *key1, unsigned char *key2, LPBYTE encrypted, unsigned int hashIterations, DWORD lenBuffer){
 	BOOL cryptOK = FALSE;
 	HCRYPTPROV hProv = 0;
 	HCRYPTHASH hHash = 0;
@@ -159,7 +159,7 @@ BOOL decrypt_rc4(unsigned char *key1, unsigned char *key2, LPBYTE encrypted, int
 		CryptReleaseContext(hProv, (ULONG_PTR)NULL);
 		return FALSE;
 	}
-	for (int i = 0; i < hashIterations; i++){
+	for (unsigned int i = 0; i < hashIterations; i++){
 		cryptOK = CryptHashData(hHash, key2, HASH_LENGTH_BYTES, 0);
 		if (!cryptOK){
 			CryptDestroyHash(hHash);
