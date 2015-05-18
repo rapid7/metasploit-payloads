@@ -90,7 +90,7 @@ BOOL decrypt_hash_history(LPBYTE encHashHistory, size_t sizeHistory, struct decr
 	LPBYTE writeMarker = decHistoryData;
 	for (unsigned int i = 0; i < numHashes; i++){
 		BYTE decHash[HASH_LENGTH_BYTES];
-		char hashString[NULL_TERIMNATED_HASH_STRING_LENGTH];
+		char hashString[NULL_TERIMNATED_HASH_STRING_LENGTH] = { 0 };
 		cryptOK = decrypt_hash_from_rid(historicalHash, &rid, decHash);
 		if (!cryptOK){
 			return FALSE;
@@ -116,14 +116,13 @@ BOOL decrypt_hash_history(LPBYTE encHashHistory, size_t sizeHistory, struct decr
 BOOL decrypt_PEK(unsigned char *sysKey, struct encryptedPEK *pekEncrypted, struct decryptedPEK *pekDecrypted){
 	BOOL cryptOK = FALSE;
 	BYTE pekData[52] = { 0 };
-	DWORD pekLength = sizeof(struct decryptedPEK);
-	memcpy(&pekData, &pekEncrypted->pekData, pekLength);
+	memcpy(&pekData, &pekEncrypted->pekData, sizeof(struct decryptedPEK));
 
-	cryptOK = decrypt_rc4(sysKey, pekEncrypted->keyMaterial, pekData, 1000, pekLength);
+	cryptOK = decrypt_rc4(sysKey, pekEncrypted->keyMaterial, pekData, 1000, sizeof(struct decryptedPEK));
 	if (!cryptOK){
 		return FALSE;
 	}
-	memcpy(pekDecrypted, &pekData, pekLength);
+	memcpy(pekDecrypted, &pekData, sizeof(struct decryptedPEK));
 	return TRUE;
 }
 
