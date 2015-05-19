@@ -2,7 +2,7 @@ package com.metasploit.meterpreter;
 
 /**
  * All defined TLV types.
- * <p/>
+ *
  * TLV meta types are defined in the {@link TLVPacket} class.
  *
  * @author mihi

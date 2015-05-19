@@ -13,7 +13,7 @@ import com.metasploit.meterpreter.command.Command;
 
 /**
  * Ported from PHP meterpreter.
- * <p/>
+ *
  * # Works, but not very portable.  There doesn't appear to be a PHP way of
  * # getting a list of processes, so we just shell out to ps/tasklist.exe.  I need
  * # to decide what options to send to ps for portability and for information

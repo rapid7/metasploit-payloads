@@ -23,7 +23,6 @@ public class RMISender {
         UnicastRef2 ref = new UnicastRef2(new LiveRef(new ObjID(ObjID.DGC_ID), endpoint, false));
         DGCImpl_Stub stub = new DGCImpl_Stub(ref);
         Field f = stub.getClass().getDeclaredField("operations");
-        ;
         f.setAccessible(true);
         RemoteCall remotecall = ref.newCall(stub, (Operation[]) f.get(stub), 0, 0xf6b6898d8bf28643L);
         ObjectOutput objectoutput = remotecall.getOutputStream();

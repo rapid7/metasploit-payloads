@@ -48,7 +48,7 @@ public class Channel {
 
     /**
      * Check whether this channel is at end of file.
-     * <p/>
+     *
      * Note that even if this returns false, a subsequent read might return <code>null</code> for EOF, when the channel's state switches from "no data available" to EOF between the two calls.
      */
     public synchronized boolean isEOF() throws IOException {
