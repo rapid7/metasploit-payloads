@@ -102,7 +102,7 @@ public class AndroidMeterpreter extends Meterpreter {
     @Override
     public String[] loadExtension(byte[] data) throws Exception {
         getCommandManager().resetNewCommands();
-        CommandManager mgr =  getCommandManager();
+        CommandManager mgr = getCommandManager();
         Loader.cwd = new File(writeableDir);
         mgr.registerCommand("channel_create_stdapi_fs_file", channel_create_stdapi_fs_file.class);
         mgr.registerCommand("channel_create_stdapi_net_tcp_client", channel_create_stdapi_net_tcp_client.class);

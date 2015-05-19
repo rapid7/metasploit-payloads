@@ -38,19 +38,19 @@ import java.io.DataInputStream;
 import java.io.OutputStream;
 
 public class Shell implements Stage {
-	public void start(DataInputStream in, OutputStream out, String[] parameters) throws Exception {
-		final String[] cmdarray = new String[1];
-		if (System.getProperty("os.name").toLowerCase().indexOf("windows") != -1) {
-			cmdarray[0] = "cmd.exe";
-		} else {
-			cmdarray[0] = "/bin/sh";
-		}
-		final Process proc = Runtime.getRuntime().exec(cmdarray);
-		new StreamForwarder(in, proc.getOutputStream(), out).start();
-		new StreamForwarder(proc.getInputStream(), out, out).start();
-		new StreamForwarder(proc.getErrorStream(), out, out).start();
-		proc.waitFor();
-		in.close();
-		out.close();
-	}
+    public void start(DataInputStream in, OutputStream out, String[] parameters) throws Exception {
+        final String[] cmdarray = new String[1];
+        if (System.getProperty("os.name").toLowerCase().indexOf("windows") != -1) {
+            cmdarray[0] = "cmd.exe";
+        } else {
+            cmdarray[0] = "/bin/sh";
+        }
+        final Process proc = Runtime.getRuntime().exec(cmdarray);
+        new StreamForwarder(in, proc.getOutputStream(), out).start();
+        new StreamForwarder(proc.getInputStream(), out, out).start();
+        new StreamForwarder(proc.getErrorStream(), out, out).start();
+        proc.waitFor();
+        in.close();
+        out.close();
+    }
 }

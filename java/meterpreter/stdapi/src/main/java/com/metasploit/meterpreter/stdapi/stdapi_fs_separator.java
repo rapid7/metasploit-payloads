@@ -9,9 +9,9 @@ import com.metasploit.meterpreter.command.Command;
 
 public class stdapi_fs_separator implements Command {
 
-	public int execute(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws Exception {
-		response.add(TLVType.TLV_TYPE_STRING, File.separator);
-		return ERROR_SUCCESS;
-	}
+    public int execute(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws Exception {
+        response.add(TLVType.TLV_TYPE_STRING, File.separator);
+        return ERROR_SUCCESS;
+    }
 
 }

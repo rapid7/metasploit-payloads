@@ -19,7 +19,7 @@ public class geolocate_android implements Command {
 
     @Override
     public int execute(Meterpreter meterpreter, TLVPacket request,
-            TLVPacket response) throws Exception {
+                       TLVPacket response) throws Exception {
 
         LocationManager locationManager;
         locationManager = (LocationManager) AndroidMeterpreter.getContext()

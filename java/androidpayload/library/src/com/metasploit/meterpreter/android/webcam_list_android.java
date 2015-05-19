@@ -21,7 +21,7 @@ public class webcam_list_android extends webcam_audio_record implements Command 
         int cameraCount = 0;
         try {
             Method getNumberOfCamerasMethod = cameraClass.getMethod("getNumberOfCameras");
-            cameraCount = (Integer)getNumberOfCamerasMethod.invoke(null, (Object[])null);
+            cameraCount = (Integer) getNumberOfCamerasMethod.invoke(null, (Object[]) null);
         } catch (NoSuchMethodException nsme) {
             response.add(TLV_TYPE_WEBCAM_NAME, "Default Camera"); // Pre 2.2 device
             return ERROR_SUCCESS;

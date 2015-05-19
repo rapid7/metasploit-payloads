@@ -14,7 +14,7 @@ public class check_root_android implements Command {
 
     @Override
     public int execute(Meterpreter meterpreter, TLVPacket request,
-            TLVPacket response) throws Exception {
+                       TLVPacket response) throws Exception {
 
         response.addOverflow(TLV_TYPE_CHECK_ROOT_BOOL, isRooted());
 
