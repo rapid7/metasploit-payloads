@@ -53,7 +53,13 @@ public class AndroidMeterpreter extends Meterpreter {
     private static Context context;
 
     private void findContext() throws Exception {
-        final Class<?> activityThreadClass = Class.forName("android.app.ActivityThread");
+        Class<?> activityThreadClass;
+        try {
+            activityThreadClass = Class.forName("android.app.ActivityThread");
+        } catch (ClassNotFoundException e) {
+            // No context (running as root?)
+            return;
+        }
         final Method currentApplication = activityThreadClass.getMethod("currentApplication");
         context = (Context) currentApplication.invoke(null, (Object[]) null);
         if (context == null) {
@@ -89,7 +95,6 @@ public class AndroidMeterpreter extends Meterpreter {
             findContext();
         } catch (Exception e) {
             e.printStackTrace();
-            // No context (running as root?)
         }
         startExecuting();
     }
