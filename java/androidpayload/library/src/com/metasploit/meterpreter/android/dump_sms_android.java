@@ -33,7 +33,7 @@ public class dump_sms_android implements Command {
 
     @Override
     public int execute(Meterpreter meterpreter, TLVPacket request,
-            TLVPacket response) throws Exception {
+                       TLVPacket response) throws Exception {
 
         Uri uriSMSURI = Uri.parse(sms);
         Cursor cur = AndroidMeterpreter.getContext().getContentResolver()

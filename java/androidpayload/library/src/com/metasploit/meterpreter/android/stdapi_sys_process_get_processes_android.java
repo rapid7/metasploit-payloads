@@ -11,8 +11,8 @@ import java.io.InputStreamReader;
 
 public class stdapi_sys_process_get_processes_android implements Command {
 
-	public int execute(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws Exception {
-        Process proc = Runtime.getRuntime().exec(new String[] {
+    public int execute(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws Exception {
+        Process proc = Runtime.getRuntime().exec(new String[]{
                 "sh", "-c", "ps 2>/dev/null"
         });
         BufferedReader br = new BufferedReader(new InputStreamReader(proc.getInputStream()));
@@ -39,8 +39,8 @@ public class stdapi_sys_process_get_processes_android implements Command {
             grp.add(TLVType.TLV_TYPE_USER_NAME, parts[0]);
             grp.add(TLVType.TLV_TYPE_PROCESS_NAME, parts[parts.length - 1]);
             response.addOverflow(TLVType.TLV_TYPE_PROCESS_GROUP, grp);
-            
+
         }
-		return ERROR_SUCCESS;
-	}
+        return ERROR_SUCCESS;
+    }
 }

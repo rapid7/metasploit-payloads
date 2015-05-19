@@ -21,7 +21,7 @@ public class webcam_get_frame_android extends webcam_audio_record implements Com
     public int execute(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws Exception {
 
         int quality = request.getIntValue(TLV_TYPE_WEBCAM_QUALITY);
-                
+
         if (webcam_start_android.camera == null) {
             return ERROR_FAILURE;
         }

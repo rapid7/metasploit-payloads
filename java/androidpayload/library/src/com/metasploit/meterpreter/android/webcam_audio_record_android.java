@@ -44,15 +44,15 @@ public class webcam_audio_record_android extends webcam_audio_record implements 
         short bSamples = (AUDIO_CHANNEL_ENCODING == AudioFormat.ENCODING_PCM_16BIT) ? 16 : 8;
         short nChannels = (AUDIO_CHANNEL_CONFIG == AudioFormat.CHANNEL_CONFIGURATION_MONO) ? 1 : 2;
         da.writeBytes("RIFF");
-        da.writeInt(Integer.reverseBytes(36+fullBuffer));
+        da.writeInt(Integer.reverseBytes(36 + fullBuffer));
         da.writeBytes("WAVE");
         da.writeBytes("fmt ");
         da.writeInt(Integer.reverseBytes(16)); // Sub-chunk size, 16 for PCM
         da.writeShort(Short.reverseBytes((short) 1)); // AudioFormat, 1 for PCM
         da.writeShort(Short.reverseBytes(nChannels));// Number of channels, 1 for mono, 2 for stereo
         da.writeInt(Integer.reverseBytes(AUDIO_SAMPLE_RATE)); // Sample rate
-        da.writeInt(Integer.reverseBytes(AUDIO_SAMPLE_RATE*bSamples*nChannels/8)); // Byte rate, SampleRate*NumberOfChannels*BitsPerSample/8
-        da.writeShort(Short.reverseBytes((short)(nChannels*bSamples/8))); // Block align, NumberOfChannels*BitsPerSample/8
+        da.writeInt(Integer.reverseBytes(AUDIO_SAMPLE_RATE * bSamples * nChannels / 8)); // Byte rate, SampleRate*NumberOfChannels*BitsPerSample/8
+        da.writeShort(Short.reverseBytes((short) (nChannels * bSamples / 8))); // Block align, NumberOfChannels*BitsPerSample/8
         da.writeShort(Short.reverseBytes(bSamples)); // Bits per sample
         da.writeBytes("data");
         da.writeInt(Integer.reverseBytes(fullBuffer));

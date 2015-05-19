@@ -10,13 +10,13 @@ import java.io.OutputStream;
  */
 public class MeterpDummy {
 
-	public MeterpDummy(DataInputStream in, OutputStream rawOut, boolean loadExtensions, boolean redirectErrors) throws Exception {
-		byte[] buffer = new byte[in.readInt()];
-		in.readFully(buffer);
-		DataOutputStream out = new DataOutputStream(rawOut);
-		out.write(buffer);
-		out.writeBoolean(loadExtensions);
-		out.writeBoolean(redirectErrors);
-		out.close();
-	}
+    public MeterpDummy(DataInputStream in, OutputStream rawOut, boolean loadExtensions, boolean redirectErrors) throws Exception {
+        byte[] buffer = new byte[in.readInt()];
+        in.readFully(buffer);
+        DataOutputStream out = new DataOutputStream(rawOut);
+        out.write(buffer);
+        out.writeBoolean(loadExtensions);
+        out.writeBoolean(redirectErrors);
+        out.close();
+    }
 }

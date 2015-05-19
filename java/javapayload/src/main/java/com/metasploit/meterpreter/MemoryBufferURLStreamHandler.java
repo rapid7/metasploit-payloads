@@ -9,18 +9,18 @@ import java.util.List;
 
 /**
  * An {@link URLStreamHandler} for a {@link MemoryBufferURLConnection}
- * 
+ *
  * @author mihi
  */
 public class MemoryBufferURLStreamHandler extends URLStreamHandler {
 
-	private List files = new ArrayList();
+    private List files = new ArrayList();
 
-	protected URLConnection openConnection(URL u) throws IOException {
-		return new MemoryBufferURLConnection(u);
-	}
-	
-	public List getFiles() {
-		return files;
-	}
+    protected URLConnection openConnection(URL u) throws IOException {
+        return new MemoryBufferURLConnection(u);
+    }
+
+    public List getFiles() {
+        return files;
+    }
 }
