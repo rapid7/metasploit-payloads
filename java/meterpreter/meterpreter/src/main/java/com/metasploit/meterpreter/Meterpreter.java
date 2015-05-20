@@ -106,6 +106,10 @@ public class Meterpreter {
         }
     }
 
+    protected String getPayloadTrustManager() {
+        return "com.metasploit.meterpreter.PayloadTrustManager";
+    }
+
     /**
      * Write a TLV packet to this meterpreter's output stream.
      *
@@ -188,7 +192,7 @@ public class Meterpreter {
                     // load the trust manager via reflection, to avoid loading
                     // it when it is not needed (it requires Sun Java 1.4+)
                     try {
-                        Class.forName("com.metasploit.meterpreter.PayloadTrustManager").getMethod("useFor", new Class[]{URLConnection.class}).invoke(null, new Object[]{uc});
+                        Class.forName(getPayloadTrustManager()).getMethod("useFor", new Class[]{URLConnection.class}).invoke(null, new Object[]{uc});
                     } catch (Exception ex) {
                         ex.printStackTrace(getErrorStream());
                     }

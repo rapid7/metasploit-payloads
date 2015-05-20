@@ -67,7 +67,6 @@ public class AndroidMeterpreter extends Meterpreter {
             // Post to the UI/Main thread and try and retrieve the Context
             final Handler handler = new Handler(Looper.getMainLooper());
             handler.post(new Runnable() {
-                @Override
                 public void run() {
                     try {
                         context = (Context) currentApplication.invoke(null, (Object[]) null);
@@ -98,6 +97,11 @@ public class AndroidMeterpreter extends Meterpreter {
             e.printStackTrace();
         }
         startExecuting();
+    }
+
+    @Override
+    protected String getPayloadTrustManager() {
+        return "com.metasploit.stage.PayloadTrustManager";
     }
 
     @Override
