@@ -44,7 +44,12 @@ static HINTERNET get_winhttp_req(HttpTransportContext *ctx, const char *directio
 			if (WinHttpGetIEProxyConfigForCurrentUser(&ieConfig))
 			{
 				dprintf("[PROXY] Got IE configuration");
-				if (ieConfig.fAutoDetect && ieConfig.lpszAutoConfigUrl)
+				dprintf("[PROXY] AutoDetect: %s", ieConfig.fAutoDetect ? "yes" : "no");
+				dprintf("[PROXY] Auto URL: %S", ieConfig.lpszAutoConfigUrl);
+				dprintf("[PROXY] Proxy: %S", ieConfig.lpszProxy);
+				dprintf("[PROXY] Proxy Bypass: %S", ieConfig.lpszProxyBypass);
+
+				if (ieConfig.lpszAutoConfigUrl)
 				{
 					WINHTTP_AUTOPROXY_OPTIONS autoProxyOpts = { 0 };
 					WINHTTP_PROXY_INFO proxyInfo = { 0 };
@@ -103,14 +108,23 @@ static HINTERNET get_winhttp_req(HttpTransportContext *ctx, const char *directio
 			dprintf("[%s] Unable to set proxy options: %u", GetLastError());
 		}
 	}
-	else if (ctx->proxy_user)
+	else
 	{
-		dprintf("[%s] Setting proxy username to %S", direction, ctx->proxy_user);
-		dprintf("[%s] Setting proxy password to %S", direction, ctx->proxy_pass);
-		if (!WinHttpSetCredentials(hReq, WINHTTP_AUTH_TARGET_PROXY, WINHTTP_AUTH_SCHEME_BASIC,
-			ctx->proxy_user, ctx->proxy_pass, NULL))
+		if (ctx->proxy_user)
 		{
-			dprintf("[%s] Failed to set creds %u", direction, GetLastError());
+			dprintf("[%s] Setting proxy username to %S", direction, ctx->proxy_user);
+			if (!WinHttpSetOption(hReq, WINHTTP_OPTION_PROXY_USERNAME, ctx->proxy_user, (DWORD)(wcslen(ctx->proxy_user))));
+			{
+				dprintf("[%s] Failed to set username %u", direction, GetLastError());
+			}
+		}
+		if (ctx->proxy_pass)
+		{
+			dprintf("[%s] Setting proxy password to %S", direction, ctx->proxy_pass);
+			if (!WinHttpSetOption(hReq, WINHTTP_OPTION_PROXY_PASSWORD, ctx->proxy_pass, (DWORD)(wcslen(ctx->proxy_pass))));
+			{
+				dprintf("[%s] Failed to set password %u", direction, GetLastError());
+			}
 		}
 	}
 
