@@ -83,7 +83,7 @@ end
 
 task :java_compile do
   Dir.chdir(java_source) do
-    system('mvn package -Ddeploy.path=output -Dandroid.release=true -q -P deploy')
+    system('mvn package -Ddeploy.path=output -Dandroid.sdk.path=$ANDROID_HOME -Dandroid.ndk.path=$ANDROID_NDK_HOME -Dandroid.release=true -q -P deploy')
   end
 end
 
@@ -98,6 +98,7 @@ end
 task :java_copy do
   copy_files(platform_config[:java], meterpreter_dest)
   FileUtils.remove_entry_secure('./java', :force => true)
+  FileUtils.cp_r('../java/output/data/android', dest)
   FileUtils.cp_r('../java/output/data/java', dest)
 end
 
