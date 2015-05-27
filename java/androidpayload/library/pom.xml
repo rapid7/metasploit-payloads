@@ -32,6 +32,12 @@
 			<artifactId>Metasploit-Java-Meterpreter-stdapi</artifactId>
 			<version>${project.version}</version>
 		</dependency>
+		<dependency>
+			<groupId>com.metasploit</groupId>
+			<artifactId>Metasploit-AndroidPayload</artifactId>
+			<version>${project.version}</version>
+			<scope>provided</scope>
+		</dependency>
 	</dependencies>
 	<build>
 		<finalName>${project.artifactId}</finalName>
