@@ -1,9 +1,13 @@
 # -*- coding:binary -*-
 
-require 'metasploit-payloads/version' unless defined? MetasploitPayloads::VERSION
+unless defined? MetasploitPayloads::VERSION
+  require 'metasploit-payloads/version'
+end
 
+#
+# This module dispenses Metasploit payload binary files
+#
 module MetasploitPayloads
-
   EXTENSION_PREFIX      = 'ext_server_'
   METERPRETER_SUBFOLDER = 'meterpreter'
 
@@ -14,44 +18,40 @@ module MetasploitPayloads
     path("#{EXTENSION_PREFIX}#{ext_name}", binary_suffix)
   end
 
-  #
-  # Get the path to a meterpreter binary by full name.
-  #
-  def self.meterpreter_path(name, binary_suffix)
-    file_name = "#{name}.#{binary_suffix}".downcase
-    root_dirs = [local_meterpreter_dir]
-
+  def self.readable_path(gem_path, msf_path)
     # Try the data folder first to see if the extension exists, as this
     # allows for the MSF data/meterpreter folder to override what is
     # in the gem. This is very helpful for testing/development without
     # having to move the binaries to the gem folder each time. We only
     # do this is MSF is installed.
-    root_dirs.unshift(msf_meterpreter_dir) if metasploit_installed?
-
-    until root_dirs.length.zero?
-      file_path = expand(root_dirs.shift, file_name)
-      return file_path if ::File.readable?(file_path)
+    if ::File.readable? msf_path
+      warn_local_path(msf_path) if ::File.readable? gem_path
+      return msf_path
     end
+    ::File.readable? gem_path ? gem_path : nil
+  end
 
-    nil
+  #
+  # Get the path to a meterpreter binary by full name.
+  #
+  def self.meterpreter_path(name, binary_suffix)
+    file_name = "#{name}.#{binary_suffix}".downcase
+    gem_path = expand(local_meterpreter_dir, file_name)
+    if metasploit_installed?
+      msf_path = expand(msf_meterpreter_dir, file_name)
+    end
+    readable_path(gem_path, msf_path)
   end
 
   #
   # Get the full path to any file packaged in this gem by local path and name.
   #
   def self.path(*path_parts)
-    root_dirs = [data_directory]
-
-    # Same as above, we try the data folder first, the fall back to the local
-    # meterpreter folder
-    root_dirs.unshift(Msf::Config.data_directory) if metasploit_installed?
-
-    until root_dirs.length.zero?
-      file_path = expand(root_dirs.shift, ::File.join(path_parts))
-      return file_path if ::File.readable?(file_path)
+    gem_path = expand(data_directory, ::File.join(path_parts))
+    if metasploit_installed?
+      msf_path = expand(Msf::Config.data_directory, ::File.join(path_parts))
     end
-
-    nil
+    readable_path(gem_path, msf_path)
   end
 
   #
@@ -61,12 +61,10 @@ module MetasploitPayloads
     file_path = path(path_parts)
     if file_path.nil?
       full_path = ::File.join(path_parts)
-      raise RuntimeError, "#{full_path} not found", caller
+      fail RuntimeError, "#{full_path} not found", caller
     end
 
-    ::File.open(file_path, "rb" ) { |f|
-      f.read(f.stat.size)
-    }
+    ::File.binread(file_path)
   end
 
   #
@@ -76,13 +74,14 @@ module MetasploitPayloads
     extensions = []
 
     root_dirs = [local_meterpreter_dir]
+
     # Find the valid extensions in the data folder first, if MSF
     # is installed.
     root_dirs.unshift(msf_meterpreter_dir) if metasploit_installed?
 
-    until root_dirs.length.zero?
+    root_dirs.each do |dir|
       # Merge in any that don't already exist in the collection.
-      meterpreter_enum_ext(root_dirs.shift, binary_suffix).each do |e|
+      meterpreter_enum_ext(dir, binary_suffix).each do |e|
         extensions.push(e) unless extensions.include?(e)
       end
     end
@@ -94,7 +93,7 @@ module MetasploitPayloads
   # Full path to the local gem folder containing the base data
   #
   def self.data_directory
-    ::File.join(::File.dirname(__FILE__), '..', 'data')
+    ::File.realpath(::File.join(::File.dirname(__FILE__), '..', 'data'))
   end
 
   #
@@ -112,26 +111,20 @@ module MetasploitPayloads
   end
 
   #
-  # Full path to the MSF data folder which contains the binaries.
-  #
-  def self.msf_meterpreter_dir
-    ::File.join(Msf::Config.data_directory, METERPRETER_SUBFOLDER)
-  end
-
-  #
   # Enumerate extensions in the given root folder based on the suffix.
   #
   def self.meterpreter_enum_ext(root_dir, binary_suffix)
     exts = []
     ::Dir.entries(root_dir).each do |f|
-      if (::File.readable?(::File.join(root_dir, f)) && f =~ /#{EXTENSION_PREFIX}(.*)\.#{binary_suffix}/)
+      if ::File.readable?(::File.join(root_dir, f)) && \
+         f =~ /#{EXTENSION_PREFIX}(.*)\.#{binary_suffix}/
         exts.push($1)
       end
     end
     exts
   end
 
-private
+  private
 
   #
   # Determine if MSF has been installed and is being used.
@@ -147,5 +140,15 @@ private
     ::File.expand_path(::File.join(root_dir, file_name))
   end
 
-end
+  @local_paths = []
 
+  def self.warn_local_path(path)
+    unless @local_paths.include?(path)
+      STDERR.puts("WARNING: Local file #{path} is being used")
+      if @local_paths.empty?
+        STDERR.puts('WARNING: If you are not a developer, remove this file')
+      end
+      @local_paths << path
+    end
+  end
+end
