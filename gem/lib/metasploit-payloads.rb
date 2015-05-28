@@ -25,7 +25,6 @@ module MetasploitPayloads
     # each time. We only do this is MSF is installed.
     if ::File.readable? msf_path
       warn_local_path(msf_path) if ::File.readable? gem_path
-      puts msf_path
       return msf_path
 
     elsif ::File.readable? gem_path
