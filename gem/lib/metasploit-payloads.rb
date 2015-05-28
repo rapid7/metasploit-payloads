@@ -19,16 +19,20 @@ module MetasploitPayloads
   end
 
   def self.readable_path(gem_path, msf_path)
-    # Try the data folder first to see if the extension exists, as this
-    # allows for the MSF data/meterpreter folder to override what is
-    # in the gem. This is very helpful for testing/development without
-    # having to move the binaries to the gem folder each time. We only
-    # do this is MSF is installed.
+    # Try the MSF path first to see if the file exists, allowing the MSF data
+    # folder to override what is in the gem. This is very helpful for
+    # testing/development without having to move the binaries to the gem folder
+    # each time. We only do this is MSF is installed.
     if ::File.readable? msf_path
       warn_local_path(msf_path) if ::File.readable? gem_path
+      puts msf_path
       return msf_path
+
+    elsif ::File.readable? gem_path
+      return gem_path
     end
-    ::File.readable? gem_path ? gem_path : nil
+
+    nil
   end
 
   #
