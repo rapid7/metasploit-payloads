@@ -146,10 +146,11 @@ module MetasploitPayloads
   @local_paths = []
 
   def self.warn_local_path(path)
+    return if path.include?('.py') || path.include?('.php')
     unless @local_paths.include?(path)
       STDERR.puts("WARNING: Local file #{path} is being used")
       if @local_paths.empty?
-        STDERR.puts('WARNING: If you are not a developer, remove this file')
+        STDERR.puts('WARNING: Local files may be incompatible Metasploit framework')
       end
       @local_paths << path
     end
