@@ -68,18 +68,20 @@ public class AndroidMeterpreter extends Meterpreter {
             final Handler handler = new Handler(Looper.getMainLooper());
             handler.post(new Runnable() {
                 public void run() {
-                    try {
-                        context = (Context) currentApplication.invoke(null, (Object[]) null);
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
                     synchronized (contextWaiter) {
+                        try {
+                            context = (Context) currentApplication.invoke(null, (Object[]) null);
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
                         contextWaiter.notify();
                     }
                 }
             });
             synchronized (contextWaiter) {
-                contextWaiter.wait();
+                if (context == null) {
+                    contextWaiter.wait(100);
+                }
             }
         }
     }
