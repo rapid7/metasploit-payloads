@@ -176,6 +176,7 @@ public class Meterpreter {
         synchronized (this) {
             tlvQueue = new ArrayList();
         }
+        int ecount = 0;
         long deadline = System.currentTimeMillis() + sessionExpirationTimeout * 1000L;
         long commDeadline = System.currentTimeMillis() + sessionCommunicationTimeout * 1000L;
         final byte[] RECV = "RECV".getBytes("ISO-8859-1");
@@ -226,13 +227,21 @@ public class Meterpreter {
                 }
             }
             if (request != null) {
+                ecount = 0;
                 TLVPacket response = executeCommand(request);
                 if (response == null)
                     break;
                 writeTLV(PACKET_TYPE_RESPONSE, response);
             } else if (outPacket == null) {
+                int delay;
+                if (ecount < 10) {
+                    delay = 10 * ecount;
+                } else {
+                    delay = 100 * ecount;
+                }
+                ecount++;
                 try {
-                    Thread.sleep(5000);
+                    Thread.sleep(Math.min(10000, delay));
                 } catch (InterruptedException ex) {
                     // ignore
                 }
