@@ -1,0 +1,310 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\main.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\crypto\kuhl_m_sekurlsa_nt5.h">
+      <Filter>modules\sekurlsa\crypto</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\crypto\kuhl_m_sekurlsa_nt6.h">
+      <Filter>modules\sekurlsa\crypto</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\crypto\kuhl_m_sekurlsa_nt63.h">
+      <Filter>modules\sekurlsa\crypto</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_wdigest.h">
+      <Filter>modules\sekurlsa\packages</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_dpapi.h">
+      <Filter>modules\sekurlsa\packages</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_kerberos.h">
+      <Filter>modules\sekurlsa\packages</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_livessp.h">
+      <Filter>modules\sekurlsa\packages</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_msv1_0.h">
+      <Filter>modules\sekurlsa\packages</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_ssp.h">
+      <Filter>modules\sekurlsa\packages</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_tspkg.h">
+      <Filter>modules\sekurlsa\packages</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\globals_sekurlsa.h">
+      <Filter>modules\sekurlsa</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\kuhl_m_sekurlsa.h">
+      <Filter>modules\sekurlsa</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\kuhl_m_sekurlsa_utils.h">
+      <Filter>modules\sekurlsa</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_event.h">
+      <Filter>modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_misc.h">
+      <Filter>modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_net.h">
+      <Filter>modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_privilege.h">
+      <Filter>modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_service.h">
+      <Filter>modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_standard.h">
+      <Filter>modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_token.h">
+      <Filter>modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_ts.h">
+      <Filter>modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m.h">
+      <Filter>modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_crypto.h">
+      <Filter>modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_memory.h">
+      <Filter>common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_minidump.h">
+      <Filter>common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_net.h">
+      <Filter>common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_output.h">
+      <Filter>common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_patch.h">
+      <Filter>common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_process.h">
+      <Filter>common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_registry.h">
+      <Filter>common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_registry_structures.h">
+      <Filter>common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_service.h">
+      <Filter>common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_string.h">
+      <Filter>common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_token.h">
+      <Filter>common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_crypto_system.h">
+      <Filter>common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_file.h">
+      <Filter>common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_handle.h">
+      <Filter>common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz_interface.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_process.h">
+      <Filter>modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\debug.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kerberos\khul_m_kerberos_ticket.h">
+      <Filter>modules\kerberos</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kerberos\khul_m_kerberos.h">
+      <Filter>modules\kerberos</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kerberos\khul_m_kerberos_pac.h">
+      <Filter>modules\kerberos</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_asn1.h">
+      <Filter>common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_vault.h">
+      <Filter>modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_rpce.h">
+      <Filter>common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_lsadump.h">
+      <Filter>modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_lsadump_struct.h">
+      <Filter>modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kerberos\khul_m_kerberos_struct.h">
+      <Filter>modules\kerberos</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_samlib.h">
+      <Filter>common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_misc_struct.h">
+      <Filter>modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_credman.h">
+      <Filter>modules\sekurlsa\packages</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\crypto\kuhl_m_sekurlsa_nt5.c">
+      <Filter>modules\sekurlsa\crypto</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\crypto\kuhl_m_sekurlsa_nt6.c">
+      <Filter>modules\sekurlsa\crypto</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\crypto\kuhl_m_sekurlsa_nt63.c">
+      <Filter>modules\sekurlsa\crypto</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_dpapi.c">
+      <Filter>modules\sekurlsa\packages</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_kerberos.c">
+      <Filter>modules\sekurlsa\packages</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_livessp.c">
+      <Filter>modules\sekurlsa\packages</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_msv1_0.c">
+      <Filter>modules\sekurlsa\packages</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_ssp.c">
+      <Filter>modules\sekurlsa\packages</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_tspkg.c">
+      <Filter>modules\sekurlsa\packages</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_wdigest.c">
+      <Filter>modules\sekurlsa\packages</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\kuhl_m_sekurlsa.c">
+      <Filter>modules\sekurlsa</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\kuhl_m_sekurlsa_utils.c">
+      <Filter>modules\sekurlsa</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_event.c">
+      <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_misc.c">
+      <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_net.c">
+      <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_privilege.c">
+      <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_service.c">
+      <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_standard.c">
+      <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_token.c">
+      <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_ts.c">
+      <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_crypto.c">
+      <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\modules\kull_m_memory.c">
+      <Filter>common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\modules\kull_m_minidump.c">
+      <Filter>common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\modules\kull_m_net.c">
+      <Filter>common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\modules\kull_m_output.c">
+      <Filter>common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\modules\kull_m_patch.c">
+      <Filter>common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\modules\kull_m_process.c">
+      <Filter>common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\modules\kull_m_registry.c">
+      <Filter>common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\modules\kull_m_service.c">
+      <Filter>common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\modules\kull_m_string.c">
+      <Filter>common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\modules\kull_m_token.c">
+      <Filter>common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\modules\kull_m_file.c">
+      <Filter>common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\modules\kull_m_handle.c">
+      <Filter>common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\main.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_process.c">
+      <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kerberos\khul_m_kerberos.c">
+      <Filter>modules\kerberos</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kerberos\khul_m_kerberos_pac.c">
+      <Filter>modules\kerberos</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kerberos\khul_m_kerberos_ticket.c">
+      <Filter>modules\kerberos</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\modules\kull_m_asn1.c">
+      <Filter>common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\modules\kull_m_crypto_system.c">
+      <Filter>common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz_interface.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_vault.c">
+      <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_lsadump.c">
+      <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_credman.c">
+      <Filter>modules\sekurlsa\packages</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="modules">
+      <UniqueIdentifier>{13ffa92d-8ff8-4c66-a730-5d78e96cb160}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="modules\sekurlsa">
+      <UniqueIdentifier>{eb780ec1-e1b4-4174-8864-9502bebc3560}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="modules\sekurlsa\crypto">
+      <UniqueIdentifier>{fcf23f14-5de4-4230-855a-356084996b8e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="modules\sekurlsa\packages">
+      <UniqueIdentifier>{5a5bd087-7d12-49a2-9874-a5590ab79572}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="common">
+      <UniqueIdentifier>{2e0459a7-4fb1-4ab1-bd0c-19838dd687f5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="modules\kerberos">
+      <UniqueIdentifier>{5374951f-d821-4598-80fa-ad04f61d7000}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

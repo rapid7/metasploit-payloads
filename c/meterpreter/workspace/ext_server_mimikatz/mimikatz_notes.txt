@@ -1,0 +1,19 @@
+Modifying Mimikatz Source to Meterpreter Extension
+--------------------------------------------
+
+Import all mimikatz/ files.
+
+Set project encoding to Unicode.
+
+Add common.h and reflectivedlll imports within extern "C" {}.
+
+Small modification required to reflectivedll to rename hash (because of std:: namespace)
+Small modification to common.h to use OutputDebugStringA due to unicode compilation
+
+Rename some of the mimikatz structures within mod_ntddk.h like PEB due to clashes with RDLL. This also requires rename in mod_process.cpp.
+
+Modification of the getLogonData and genericCredsToStream to strip extra data
+
+Modification of wcout across files to output to our stream buffer.
+
+DLLMain needs removing from kmodel.cpp

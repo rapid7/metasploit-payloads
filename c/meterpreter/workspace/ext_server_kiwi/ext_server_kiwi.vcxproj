@@ -1,0 +1,685 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="r7_debug|Win32">
+      <Configuration>r7_debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="r7_debug|x64">
+      <Configuration>r7_debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="r7_release|Win32">
+      <Configuration>r7_release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="r7_release|x64">
+      <Configuration>r7_release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{1C307A8B-A88E-43EE-8E80-01E6EFE38697}</ProjectGuid>
+    <RootNamespace>ext_server_kiwi</RootNamespace>
+    <Keyword>Win32Proj</Keyword>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <CharacterSet>Unicode</CharacterSet>
+    <WholeProgramOptimization>false</WholeProgramOptimization>
+    <PlatformToolset>v120_xp</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='r7_release|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <CharacterSet>Unicode</CharacterSet>
+    <WholeProgramOptimization>false</WholeProgramOptimization>
+    <PlatformToolset>v120_xp</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v120_xp</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='r7_debug|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v120_xp</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <CharacterSet>Unicode</CharacterSet>
+    <WholeProgramOptimization>false</WholeProgramOptimization>
+    <PlatformToolset>v120_xp</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='r7_release|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <CharacterSet>Unicode</CharacterSet>
+    <WholeProgramOptimization>false</WholeProgramOptimization>
+    <PlatformToolset>v120_xp</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v120_xp</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='r7_debug|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v120_xp</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\masm.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='r7_release|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='r7_debug|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='r7_release|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='r7_debug|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.30319.1</_ProjectFileVersion>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(Configuration)\$(Platform)\</OutDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='r7_debug|Win32'">$(Configuration)\$(Platform)\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(Configuration)\$(Platform)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='r7_debug|Win32'">$(Configuration)\$(Platform)\</IntDir>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</LinkIncremental>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='r7_debug|Win32'">false</LinkIncremental>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(Configuration)\$(Platform)\</OutDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='r7_release|Win32'">$(Configuration)\$(Platform)\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(Configuration)\$(Platform)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='r7_release|Win32'">$(Configuration)\$(Platform)\</IntDir>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</LinkIncremental>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='r7_release|Win32'">false</LinkIncremental>
+    <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</GenerateManifest>
+    <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='r7_release|Win32'">false</GenerateManifest>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(Configuration)\$(Platform)\</OutDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='r7_debug|x64'">$(Configuration)\$(Platform)\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(Configuration)\$(Platform)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='r7_debug|x64'">$(Configuration)\$(Platform)\</IntDir>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkIncremental>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='r7_debug|x64'">false</LinkIncremental>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(Configuration)\$(Platform)\</OutDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='r7_release|x64'">$(Configuration)\$(Platform)\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(Configuration)\$(Platform)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='r7_release|x64'">$(Configuration)\$(Platform)\</IntDir>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkIncremental>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='r7_release|x64'">false</LinkIncremental>
+    <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</GenerateManifest>
+    <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='r7_release|x64'">false</GenerateManifest>
+    <CodeAnalysisRuleSet Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">AllRules.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRuleSet Condition="'$(Configuration)|$(Platform)'=='r7_debug|Win32'">AllRules.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRules Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" />
+    <CodeAnalysisRules Condition="'$(Configuration)|$(Platform)'=='r7_debug|Win32'" />
+    <CodeAnalysisRuleAssemblies Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" />
+    <CodeAnalysisRuleAssemblies Condition="'$(Configuration)|$(Platform)'=='r7_debug|Win32'" />
+    <CodeAnalysisRuleSet Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">AllRules.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRuleSet Condition="'$(Configuration)|$(Platform)'=='r7_debug|x64'">AllRules.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRules Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" />
+    <CodeAnalysisRules Condition="'$(Configuration)|$(Platform)'=='r7_debug|x64'" />
+    <CodeAnalysisRuleAssemblies Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" />
+    <CodeAnalysisRuleAssemblies Condition="'$(Configuration)|$(Platform)'=='r7_debug|x64'" />
+    <CodeAnalysisRuleSet Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">AllRules.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRuleSet Condition="'$(Configuration)|$(Platform)'=='r7_release|Win32'">AllRules.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRules Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" />
+    <CodeAnalysisRules Condition="'$(Configuration)|$(Platform)'=='r7_release|Win32'" />
+    <CodeAnalysisRuleAssemblies Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" />
+    <CodeAnalysisRuleAssemblies Condition="'$(Configuration)|$(Platform)'=='r7_release|Win32'" />
+    <CodeAnalysisRuleSet Condition="'$(Configuration)|$(Platform)'=='Release|x64'">AllRules.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRuleSet Condition="'$(Configuration)|$(Platform)'=='r7_release|x64'">AllRules.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRules Condition="'$(Configuration)|$(Platform)'=='Release|x64'" />
+    <CodeAnalysisRules Condition="'$(Configuration)|$(Platform)'=='r7_release|x64'" />
+    <CodeAnalysisRuleAssemblies Condition="'$(Configuration)|$(Platform)'=='Release|x64'" />
+    <CodeAnalysisRuleAssemblies Condition="'$(Configuration)|$(Platform)'=='r7_release|x64'" />
+    <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</GenerateManifest>
+    <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='r7_debug|Win32'">false</GenerateManifest>
+    <TargetName>$(ProjectName).$(PlatformShortName)</TargetName>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <Optimization>MinSpace</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;EXT_SERVER_KIWI_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MinimalRebuild>false</MinimalRebuild>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <AdditionalIncludeDirectories>..\..\source\extensions\kiwi\inc;..\..\source\ReflectiveDLLInjection\common;..\..\deps\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <IntrinsicFunctions>false</IntrinsicFunctions>
+      <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <StringPooling>true</StringPooling>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <FunctionLevelLinking>false</FunctionLevelLinking>
+      <PrecompiledHeaderFile>precomp.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderOutputFile>$(OutDir)\ext_server_kiwi.pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>$(OutDir)\</AssemblerListingLocation>
+      <ObjectFileName>$(OutDir)\</ObjectFileName>
+      <ProgramDataBaseFileName>$(OutDir)\</ProgramDataBaseFileName>
+      <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
+      <TreatWarningAsError>true</TreatWarningAsError>
+    </ClCompile>
+    <Link>
+      <AdditionalLibraryDirectories>..\..\source\extensions\kiwi\lib\Win32;..\backcompat\$(Configuration);..\metsrv\$(Configuration)\$(Platform);..\..\deps\openssl\lib\win;..\..\source\jpeg-8\lib\win\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <GenerateDebugInformation>
+      </GenerateDebugInformation>
+      <SubSystem>Windows</SubSystem>
+      <TargetMachine>MachineX86</TargetMachine>
+      <AdditionalDependencies>ws2_32.lib;version.lib;samlib.lib;advapi32.hash.lib;backcompat.lib;metsrv.lib;psapi.lib;advapi32.lib;user32.lib;secur32.lib;crypt32.lib;shlwapi.lib;wtsapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <DelayLoadDLLs>metsrv.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
+      <GenerateMapFile>true</GenerateMapFile>
+      <MapFileName>$(OutDir)\ext_server_kiwi.map</MapFileName>
+      <MinimumRequiredVersion>
+      </MinimumRequiredVersion>
+      <RandomizedBaseAddress>false</RandomizedBaseAddress>
+      <DataExecutionPrevention>
+      </DataExecutionPrevention>
+      <ImportLibrary>$(OutDir)\ext_server_kiwi.lib</ImportLibrary>
+    </Link>
+    <PostBuildEvent>
+      <Command>editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,4.0 "$(TargetDir)$(TargetFileName)" &gt; NUL
+IF EXIST "$(ProjectDir)..\..\output\$(PlatformShortName)\Debug\" GOTO COPY
+    mkdir "$(ProjectDir)..\..\output\$(PlatformShortName)\Debug\"
+:COPY
+copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformShortName)\Debug\"</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='r7_debug|Win32'">
+    <ClCompile>
+      <Optimization>MinSpace</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;EXT_SERVER_KIWI_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MinimalRebuild>false</MinimalRebuild>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <AdditionalIncludeDirectories>..\..\source\extensions\kiwi\inc;..\..\source\ReflectiveDLLInjection\common;..\..\deps\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <IntrinsicFunctions>false</IntrinsicFunctions>
+      <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <StringPooling>true</StringPooling>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <FunctionLevelLinking>false</FunctionLevelLinking>
+      <PrecompiledHeaderFile>precomp.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderOutputFile>$(OutDir)\ext_server_kiwi.pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>$(OutDir)\</AssemblerListingLocation>
+      <ObjectFileName>$(OutDir)\</ObjectFileName>
+      <ProgramDataBaseFileName>$(OutDir)\</ProgramDataBaseFileName>
+      <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
+      <TreatWarningAsError>true</TreatWarningAsError>
+    </ClCompile>
+    <Link>
+      <AdditionalLibraryDirectories>..\..\source\extensions\kiwi\lib\Win32;..\backcompat\$(Configuration);..\metsrv\$(Configuration)\$(Platform);..\..\deps\openssl\lib\win;..\..\source\jpeg-8\lib\win\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <GenerateDebugInformation>
+      </GenerateDebugInformation>
+      <SubSystem>Windows</SubSystem>
+      <TargetMachine>MachineX86</TargetMachine>
+      <AdditionalDependencies>ws2_32.lib;version.lib;samlib.lib;advapi32.hash.lib;backcompat.lib;metsrv.lib;psapi.lib;advapi32.lib;user32.lib;secur32.lib;crypt32.lib;shlwapi.lib;wtsapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <DelayLoadDLLs>metsrv.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
+      <GenerateMapFile>true</GenerateMapFile>
+      <MapFileName>$(OutDir)\ext_server_kiwi.map</MapFileName>
+      <MinimumRequiredVersion>
+      </MinimumRequiredVersion>
+      <RandomizedBaseAddress>false</RandomizedBaseAddress>
+      <DataExecutionPrevention>
+      </DataExecutionPrevention>
+      <ImportLibrary>$(OutDir)\ext_server_kiwi.lib</ImportLibrary>
+    </Link>
+    <PostBuildEvent>
+      <Command>editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,4.0 "$(TargetDir)$(TargetFileName)" &gt; NUL
+IF EXIST "$(ProjectDir)..\..\output\$(PlatformShortName)\Debug\" GOTO COPY
+    mkdir "$(ProjectDir)..\..\output\$(PlatformShortName)\Debug\"
+:COPY
+copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformShortName)\Debug\"</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <Optimization>MinSpace</Optimization>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <AdditionalIncludeDirectories>..\..\source\extensions\kiwi\inc;..\..\source\ReflectiveDLLInjection\common;..\..\deps\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_KIWI_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <StringPooling>true</StringPooling>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <FunctionLevelLinking>false</FunctionLevelLinking>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <AssemblerListingLocation>.\Release\</AssemblerListingLocation>
+      <ObjectFileName>.\Release\</ObjectFileName>
+      <ProgramDataBaseFileName>.\Release\</ProgramDataBaseFileName>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
+      <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
+      <TreatWarningAsError>true</TreatWarningAsError>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>ws2_32.lib;version.lib;samlib.lib;advapi32.hash.lib;backcompat.lib;metsrv.lib;psapi.lib;advapi32.lib;user32.lib;secur32.lib;crypt32.lib;shlwapi.lib;wtsapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
+      <AdditionalLibraryDirectories>..\..\source\extensions\kiwi\lib\Win32;..\backcompat\$(Configuration);..\metsrv\$(Configuration)\$(Platform);..\..\deps\openssl\lib\win;..\..\source\jpeg-8\lib\win\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <DelayLoadDLLs>metsrv.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <GenerateMapFile>true</GenerateMapFile>
+      <MapFileName>.\Release\ext_server_kiwi.map</MapFileName>
+      <SubSystem>Windows</SubSystem>
+      <OptimizeReferences>
+      </OptimizeReferences>
+      <EnableCOMDATFolding>
+      </EnableCOMDATFolding>
+      <RandomizedBaseAddress>false</RandomizedBaseAddress>
+      <DataExecutionPrevention>
+      </DataExecutionPrevention>
+      <ImportLibrary>.\Release\ext_server_kiwi.lib</ImportLibrary>
+      <TargetMachine>MachineX86</TargetMachine>
+      <MinimumRequiredVersion>
+      </MinimumRequiredVersion>
+    </Link>
+    <PostBuildEvent>
+      <Command>editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,4.0 "$(TargetDir)$(TargetFileName)" &gt; NUL
+IF EXIST "$(ProjectDir)..\..\output\$(PlatformShortName)\" GOTO COPY
+    mkdir "$(ProjectDir)..\..\output\$(PlatformShortName)\"
+:COPY
+copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformShortName)\"</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='r7_release|Win32'">
+    <ClCompile>
+      <Optimization>MinSpace</Optimization>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <AdditionalIncludeDirectories>..\..\source\extensions\kiwi\inc;..\..\source\ReflectiveDLLInjection\common;..\..\deps\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_KIWI_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <StringPooling>true</StringPooling>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <FunctionLevelLinking>false</FunctionLevelLinking>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <AssemblerListingLocation>.\Release\</AssemblerListingLocation>
+      <ObjectFileName>.\Release\</ObjectFileName>
+      <ProgramDataBaseFileName>.\Release\</ProgramDataBaseFileName>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
+      <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
+      <TreatWarningAsError>true</TreatWarningAsError>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>ws2_32.lib;version.lib;samlib.lib;advapi32.hash.lib;backcompat.lib;metsrv.lib;psapi.lib;advapi32.lib;user32.lib;secur32.lib;crypt32.lib;shlwapi.lib;wtsapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
+      <AdditionalLibraryDirectories>..\..\source\extensions\kiwi\lib\Win32;..\backcompat\$(Configuration);..\metsrv\$(Configuration)\$(Platform);..\..\deps\openssl\lib\win;..\..\source\jpeg-8\lib\win\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <DelayLoadDLLs>metsrv.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <GenerateMapFile>true</GenerateMapFile>
+      <MapFileName>.\Release\ext_server_kiwi.map</MapFileName>
+      <SubSystem>Windows</SubSystem>
+      <OptimizeReferences>
+      </OptimizeReferences>
+      <EnableCOMDATFolding>
+      </EnableCOMDATFolding>
+      <RandomizedBaseAddress>false</RandomizedBaseAddress>
+      <DataExecutionPrevention>
+      </DataExecutionPrevention>
+      <ImportLibrary>.\Release\ext_server_kiwi.lib</ImportLibrary>
+      <TargetMachine>MachineX86</TargetMachine>
+      <MinimumRequiredVersion>
+      </MinimumRequiredVersion>
+    </Link>
+    <PostBuildEvent>
+      <Command>editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,4.0 "$(TargetDir)$(TargetFileName)" &gt; NUL
+IF EXIST "$(ProjectDir)..\..\output\$(PlatformShortName)\" GOTO COPY
+    mkdir "$(ProjectDir)..\..\output\$(PlatformShortName)\"
+:COPY
+copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformShortName)\"</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Midl>
+      <TargetEnvironment>X64</TargetEnvironment>
+    </Midl>
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;EXT_SERVER_KIWI_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MinimalRebuild>true</MinimalRebuild>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <AdditionalIncludeDirectories>..\..\source\extensions\kiwi\inc;..\..\source\ReflectiveDLLInjection\common;..\..\deps\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
+      <TreatWarningAsError>true</TreatWarningAsError>
+    </ClCompile>
+    <Link>
+      <AdditionalLibraryDirectories>..\..\source\extensions\kiwi\lib\x64;..\backcompat\$(Configuration);..\metsrv\$(Configuration)\$(Platform);..\..\deps\openssl\lib\win;..\..\source\jpeg-8\lib\win\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SubSystem>Windows</SubSystem>
+      <TargetMachine>MachineX64</TargetMachine>
+      <AdditionalDependencies>ws2_32.lib;version.lib;samlib.lib;advapi32.hash.lib;metsrv.lib;psapi.lib;advapi32.lib;user32.lib;secur32.lib;crypt32.lib;shlwapi.lib;wtsapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <DelayLoadDLLs>metsrv.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
+      <ImportLibrary>.\Release\ext_server_kiwi.lib</ImportLibrary>
+      <RandomizedBaseAddress>false</RandomizedBaseAddress>
+      <DataExecutionPrevention>
+      </DataExecutionPrevention>
+      <MinimumRequiredVersion />
+    </Link>
+    <PostBuildEvent>
+      <Command>editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,5.02 "$(TargetDir)$(TargetFileName)" &gt; NUL
+IF EXIST "$(ProjectDir)..\..\output\$(PlatformShortName)\Debug\" GOTO COPY
+    mkdir "$(ProjectDir)..\..\output\$(PlatformShortName)\Debug\"
+:COPY
+copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformShortName)\Debug\"</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='r7_debug|x64'">
+    <Midl>
+      <TargetEnvironment>X64</TargetEnvironment>
+    </Midl>
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;EXT_SERVER_KIWI_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MinimalRebuild>true</MinimalRebuild>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <AdditionalIncludeDirectories>..\..\source\extensions\kiwi\inc;..\..\source\ReflectiveDLLInjection\common;..\..\deps\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
+      <TreatWarningAsError>true</TreatWarningAsError>
+    </ClCompile>
+    <Link>
+      <AdditionalLibraryDirectories>..\..\source\extensions\kiwi\lib\x64;..\backcompat\$(Configuration);..\metsrv\$(Configuration)\$(Platform);..\..\deps\openssl\lib\win;..\..\source\jpeg-8\lib\win\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SubSystem>Windows</SubSystem>
+      <TargetMachine>MachineX64</TargetMachine>
+      <AdditionalDependencies>ws2_32.lib;version.lib;samlib.lib;advapi32.hash.lib;metsrv.lib;psapi.lib;advapi32.lib;user32.lib;secur32.lib;crypt32.lib;shlwapi.lib;wtsapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <DelayLoadDLLs>metsrv.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
+      <ImportLibrary>.\Release\ext_server_kiwi.lib</ImportLibrary>
+      <RandomizedBaseAddress>false</RandomizedBaseAddress>
+      <DataExecutionPrevention>
+      </DataExecutionPrevention>
+      <MinimumRequiredVersion />
+    </Link>
+    <PostBuildEvent>
+      <Command>editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,5.02 "$(TargetDir)$(TargetFileName)" &gt; NUL
+IF EXIST "$(ProjectDir)..\..\output\$(PlatformShortName)\Debug\" GOTO COPY
+    mkdir "$(ProjectDir)..\..\output\$(PlatformShortName)\Debug\"
+:COPY
+copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformShortName)\Debug\"</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Midl>
+      <TargetEnvironment>X64</TargetEnvironment>
+    </Midl>
+    <ClCompile>
+      <Optimization>MinSpace</Optimization>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <AdditionalIncludeDirectories>..\..\source\extensions\kiwi\inc;..\..\source\ReflectiveDLLInjection\common;..\..\deps\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_KIWI_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <StringPooling>true</StringPooling>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <FunctionLevelLinking>false</FunctionLevelLinking>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <AssemblerListingLocation>.\Release\</AssemblerListingLocation>
+      <ObjectFileName>.\Release\</ObjectFileName>
+      <ProgramDataBaseFileName>.\Release\</ProgramDataBaseFileName>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
+      <OmitFramePointers>false</OmitFramePointers>
+      <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
+      <TreatWarningAsError>true</TreatWarningAsError>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>ws2_32.lib;version.lib;samlib.lib;advapi32.hash.lib;metsrv.lib;psapi.lib;advapi32.lib;user32.lib;secur32.lib;crypt32.lib;shlwapi.lib;wtsapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
+      <AdditionalLibraryDirectories>..\..\source\extensions\kiwi\lib\x64;..\backcompat\$(Configuration);..\metsrv\$(Configuration)\$(Platform);..\..\deps\openssl\lib\win;..\..\source\jpeg-8\lib\win\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <DelayLoadDLLs>metsrv.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <GenerateMapFile>true</GenerateMapFile>
+      <MapFileName>.\Release\ext_server_kiwi.map</MapFileName>
+      <SubSystem>Windows</SubSystem>
+      <OptimizeReferences>
+      </OptimizeReferences>
+      <EnableCOMDATFolding>
+      </EnableCOMDATFolding>
+      <RandomizedBaseAddress>false</RandomizedBaseAddress>
+      <DataExecutionPrevention>
+      </DataExecutionPrevention>
+      <ImportLibrary>.\Release\ext_server_kiwi.lib</ImportLibrary>
+      <TargetMachine>MachineX64</TargetMachine>
+      <MinimumRequiredVersion>
+      </MinimumRequiredVersion>
+    </Link>
+    <PostBuildEvent>
+      <Command>editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,5.02 "$(TargetDir)$(TargetFileName)" &gt; NUL
+IF EXIST "$(ProjectDir)..\..\output\$(PlatformShortName)\" GOTO COPY
+    mkdir "$(ProjectDir)..\..\output\$(PlatformShortName)\"
+:COPY
+copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformShortName)\"</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='r7_release|x64'">
+    <Midl>
+      <TargetEnvironment>X64</TargetEnvironment>
+    </Midl>
+    <ClCompile>
+      <Optimization>MinSpace</Optimization>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <AdditionalIncludeDirectories>..\..\source\extensions\kiwi\inc;..\..\source\ReflectiveDLLInjection\common;..\..\deps\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_KIWI_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <StringPooling>true</StringPooling>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <FunctionLevelLinking>false</FunctionLevelLinking>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <AssemblerListingLocation>.\Release\</AssemblerListingLocation>
+      <ObjectFileName>.\Release\</ObjectFileName>
+      <ProgramDataBaseFileName>.\Release\</ProgramDataBaseFileName>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
+      <OmitFramePointers>false</OmitFramePointers>
+      <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
+      <TreatWarningAsError>true</TreatWarningAsError>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>ws2_32.lib;version.lib;samlib.lib;advapi32.hash.lib;metsrv.lib;psapi.lib;advapi32.lib;user32.lib;secur32.lib;crypt32.lib;shlwapi.lib;wtsapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
+      <AdditionalLibraryDirectories>..\..\source\extensions\kiwi\lib\x64;..\backcompat\$(Configuration);..\metsrv\$(Configuration)\$(Platform);..\..\deps\openssl\lib\win;..\..\source\jpeg-8\lib\win\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <DelayLoadDLLs>metsrv.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <GenerateMapFile>true</GenerateMapFile>
+      <MapFileName>.\Release\ext_server_kiwi.map</MapFileName>
+      <SubSystem>Windows</SubSystem>
+      <OptimizeReferences>
+      </OptimizeReferences>
+      <EnableCOMDATFolding>
+      </EnableCOMDATFolding>
+      <RandomizedBaseAddress>false</RandomizedBaseAddress>
+      <DataExecutionPrevention>
+      </DataExecutionPrevention>
+      <ImportLibrary>.\Release\ext_server_kiwi.lib</ImportLibrary>
+      <TargetMachine>MachineX64</TargetMachine>
+      <MinimumRequiredVersion>
+      </MinimumRequiredVersion>
+    </Link>
+    <PostBuildEvent>
+      <Command>editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,5.02 "$(TargetDir)$(TargetFileName)" &gt; NUL
+IF EXIST "$(ProjectDir)..\..\output\$(PlatformShortName)\" GOTO COPY
+    mkdir "$(ProjectDir)..\..\output\$(PlatformShortName)\"
+:COPY
+copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformShortName)\"</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\backcompat\backcompat.vcxproj">
+      <Project>{c6fb3275-9067-4bba-9206-0a720d2bc64f}</Project>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+    <ProjectReference Include="..\metsrv\metsrv.vcxproj">
+      <Project>{37e24f8f-1bd9-490b-8cd2-4768b89e5eab}</Project>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+    <ProjectReference Include="..\ReflectiveDLLInjection\ReflectiveDLLInjection.vcxproj">
+      <Project>{72f0246a-a38d-4547-9057-46020e8e503d}</Project>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\source\extensions\kiwi\debug.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\main.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz_interface.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kerberos\khul_m_kerberos.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kerberos\khul_m_kerberos_pac.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kerberos\khul_m_kerberos_struct.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kerberos\khul_m_kerberos_ticket.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_lsadump.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_crypto.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_event.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_lsadump_struct.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_misc.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_misc_struct.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_net.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_privilege.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_process.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_service.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_standard.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_token.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_ts.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_vault.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\crypto\kuhl_m_sekurlsa_nt5.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\crypto\kuhl_m_sekurlsa_nt6.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\crypto\kuhl_m_sekurlsa_nt63.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\globals_sekurlsa.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\kuhl_m_sekurlsa.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\kuhl_m_sekurlsa_utils.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_credman.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_dpapi.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_kerberos.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_livessp.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_msv1_0.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_ssp.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_tspkg.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_wdigest.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_asn1.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_crypto_system.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_file.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_handle.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_memory.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_minidump.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_net.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_output.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_patch.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_process.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_registry.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_registry_structures.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_rpce.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_samlib.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_service.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_string.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_token.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\main.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz_interface.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kerberos\khul_m_kerberos.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kerberos\khul_m_kerberos_pac.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kerberos\khul_m_kerberos_ticket.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_lsadump.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_crypto.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_event.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_misc.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_net.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_privilege.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_process.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_service.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_standard.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_token.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_ts.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_vault.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\crypto\kuhl_m_sekurlsa_nt5.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\crypto\kuhl_m_sekurlsa_nt6.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\crypto\kuhl_m_sekurlsa_nt63.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\kuhl_m_sekurlsa.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\kuhl_m_sekurlsa_utils.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_credman.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_dpapi.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_kerberos.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_livessp.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_msv1_0.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_ssp.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_tspkg.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_wdigest.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\modules\kull_m_asn1.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\modules\kull_m_crypto_system.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\modules\kull_m_file.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\modules\kull_m_handle.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\modules\kull_m_memory.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\modules\kull_m_minidump.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\modules\kull_m_net.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\modules\kull_m_output.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\modules\kull_m_patch.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\modules\kull_m_process.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\modules\kull_m_registry.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\modules\kull_m_service.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\modules\kull_m_string.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\modules\kull_m_token.c" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\masm.targets" />
+  </ImportGroup>
+</Project>
