@@ -211,7 +211,7 @@ JET_ERR read_user(struct jetState *ntdsState, struct ntdsColumns *accountColumns
 	DWORD accountControl = 0;
 	unsigned long columnSize = 0;
 	// Grab the SID here
-	readStatus = JetRetrieveColumn(ntdsState->jetSession, ntdsState->jetTable, accountColumns->accountSID.columnid, &userAccount->accountSID, sizeof(userAccount->accountName), &columnSize, 0, NULL);
+	readStatus = JetRetrieveColumn(ntdsState->jetSession, ntdsState->jetTable, accountColumns->accountSID.columnid, &userAccount->accountSID, sizeof(userAccount->accountSID), &columnSize, 0, NULL);
 	if (readStatus != JET_errSuccess){
 		return readStatus;
 	}
@@ -220,18 +220,22 @@ JET_ERR read_user(struct jetState *ntdsState, struct ntdsColumns *accountColumns
 	DWORD *ridLoc = (DWORD *)&userAccount->accountSID[ridIndex];
 	userAccount->accountRID = htonl(*ridLoc);
 	// Grab the samAccountName here
-	readStatus = JetRetrieveColumn(ntdsState->jetSession, ntdsState->jetTable, accountColumns->accountName.columnid, &userAccount->accountName, sizeof(userAccount->accountName), &columnSize, 0, NULL);
+	wchar_t accountName[20] = { 0x00 };
+	readStatus = JetRetrieveColumn(ntdsState->jetSession, ntdsState->jetTable, accountColumns->accountName.columnid, &accountName, sizeof(accountName), &columnSize, 0, NULL);
 	if (readStatus != JET_errSuccess){
 		return readStatus;
 	}
+	memcpy(&userAccount->accountName, wchar_to_utf8(accountName), 20);
 	// Grab the Account Description here
-	readStatus = JetRetrieveColumn(ntdsState->jetSession, ntdsState->jetTable, accountColumns->accountDescription.columnid, &userAccount->accountDescription, sizeof(userAccount->accountDescription), &columnSize, 0, NULL);
+	wchar_t accountDescription[1024] = { 0x00 };
+	readStatus = JetRetrieveColumn(ntdsState->jetSession, ntdsState->jetTable, accountColumns->accountDescription.columnid, &accountDescription, sizeof(accountDescription), &columnSize, 0, NULL);
 	if (readStatus == JET_wrnColumnNull){
 		memset(userAccount->accountDescription, 0, sizeof(userAccount->accountDescription));
 	}
 	else if (readStatus != JET_errSuccess){
 		return readStatus;
 	}
+	memcpy(&userAccount->accountDescription, wchar_to_utf8(accountDescription), 1024);
 	// Grab the UserAccountControl flags here
 	readStatus = JetRetrieveColumn(ntdsState->jetSession, ntdsState->jetTable, accountColumns->accountControl.columnid, &accountControl, sizeof(accountControl), &columnSize, 0, NULL);
 	if (readStatus != JET_errSuccess){

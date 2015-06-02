@@ -32,8 +32,8 @@ struct ntdsColumns{
 
 /*! @brief Typedef for the ntdsAccount struct. */
 struct ntdsAccount{
-	wchar_t accountName[20];
-	wchar_t accountDescription[1024];
+	char accountName[20];
+	char accountDescription[1024];
 	DWORD accountRID;
 	BOOL accountDisabled;
 	BOOL accountLocked;
@@ -52,7 +52,7 @@ struct ntdsAccount{
 	char ntHash[33];
 	char lmHistory[792];
 	char ntHistory[792];
-	unsigned char accountSID[24];
+	unsigned char accountSID[28];
 };
 
 
