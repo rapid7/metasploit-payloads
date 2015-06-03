@@ -439,7 +439,9 @@ DWORD server_setup(MetsrvConfig* config)
 					if (remote->next_transport_wait > 0)
 					{
 						dprintf("[TRANS] Sleeping for %u seconds ...", remote->next_transport_wait);
-						Sleep(remote->next_transport_wait * 1000);
+
+						sleep(remote->next_transport_wait);
+						
 						// the wait is a once-off thing, needs to be reset each time
 						remote->next_transport_wait = 0;
 					}

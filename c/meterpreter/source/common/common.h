@@ -181,6 +181,8 @@ void real_dprintf(char *filename, int line, const char *function, char *format, 
 
 #ifdef _WIN32
 
+VOID sleep(DWORD seconds);
+
 #ifdef DEBUGTRACE
 #define dprintf(...) real_dprintf(__VA_ARGS__)
 #if DEBUGTRACE == 1
