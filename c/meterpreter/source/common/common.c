@@ -6,7 +6,7 @@
 
 #ifdef _WIN32
 
-typedef NTSTATUS(*PNTDELAYEXECUTION)(BOOL alertable, PLARGE_INTEGER delayInterval);
+#define SLEEP_MAX_SEC (MAXDWORD / 1000)
 
 /*!
  * @brief Returns a unix timestamp in UTC.
@@ -29,34 +29,16 @@ int current_unix_timestamp(void) {
  * @brief Sleep for the given number of seconds.
  * @param seconds DWORD value representing the number of seconds to sleep.
  * @remark This was implemented so that extended sleep times can be used (beyond the
- *         49 day limit imposed by Sleep()). With this implementation it's possible
- *         to wait for up to 3.1415926 metric buttloads of seconds.
- *         NtDelayExecution takes a parameter that is measured in 100-ns units, and
- *         negative values delay the thread relative to the current time. This is
- *         a 63-bit value (1 bit for sign), which means it should be possible to wait
- *         for approximately 29,227 years.
+ *         49 day limit imposed by Sleep()).
  */
 VOID sleep(DWORD seconds)
 {
-	static PNTDELAYEXECUTION pNtDelayExecution = NULL;
-	if (pNtDelayExecution == NULL)
+	while (seconds > SLEEP_MAX_SEC)
 	{
-		pNtDelayExecution = (PNTDELAYEXECUTION)GetProcAddress(GetModuleHandleA("ntdll"), "NtDelayExecution");
-		dprintf("[SLEEP] delay pointer is %p", pNtDelayExecution);
+		Sleep(SLEEP_MAX_SEC * 1000);
+		seconds -= SLEEP_MAX_SEC;
 	}
-
-	// if still null, fallback on sleep
-	if (pNtDelayExecution == NULL)
-	{
-		Sleep(seconds * 1000);
-	}
-	else
-	{
-		LARGE_INTEGER l = { 0 };
-		// negative value sets a relative timeout
-		l.QuadPart = -((LONGLONG)seconds * 10000000);
-		pNtDelayExecution(FALSE, &l);
-	}
+	Sleep(seconds * 1000);
 }
 
 #else
