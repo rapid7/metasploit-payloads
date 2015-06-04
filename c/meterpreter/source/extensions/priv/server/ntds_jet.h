@@ -32,7 +32,7 @@ struct ntdsColumns{
 
 /*! @brief Typedef for the ntdsAccount struct. */
 struct ntdsAccount{
-	char accountName[20];
+	char accountName[128];
 	char accountDescription[1024];
 	DWORD accountRID;
 	BOOL accountDisabled;
