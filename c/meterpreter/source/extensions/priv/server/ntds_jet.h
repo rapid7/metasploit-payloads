@@ -30,10 +30,13 @@ struct ntdsColumns{
 	JET_COLUMNDEF accountSID;
 };
 
+#define ACCOUNT_NAME_SIZE 128
+#define ACCOUNT_DESC_SIZE 1024
+
 /*! @brief Typedef for the ntdsAccount struct. */
 struct ntdsAccount{
-	char accountName[128];
-	char accountDescription[1024];
+	char accountName[ACCOUNT_NAME_SIZE];
+	char accountDescription[ACCOUNT_DESC_SIZE];
 	DWORD accountRID;
 	BOOL accountDisabled;
 	BOOL accountLocked;

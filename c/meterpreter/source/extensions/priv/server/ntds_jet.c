@@ -236,7 +236,15 @@ JET_ERR read_user(struct jetState *ntdsState, struct ntdsColumns *accountColumns
 	if (readStatus != JET_errSuccess) {
 		return readStatus;
 	}
-	strncpy(userAccount->accountName, wchar_to_utf8(accountName), sizeof(userAccount->accountName));
+
+	char *accountNameStr = wchar_to_utf8(accountName);
+	if (accountNameStr) {
+		strncpy(userAccount->accountName, accountNameStr,
+			ACCOUNT_NAME_SIZE - 1);
+		userAccount->accountName[ACCOUNT_NAME_SIZE - 1] = '\0';
+		free(accountNameStr);
+	}
+
 	// Grab the Account Description here
 	wchar_t accountDescription[1024] = { 0x00 };
 	readStatus = JetRetrieveColumn(ntdsState->jetSession, ntdsState->jetTable, accountColumns->accountDescription.columnid, &accountDescription, sizeof(accountDescription), &columnSize, 0, NULL);
@@ -246,7 +254,15 @@ JET_ERR read_user(struct jetState *ntdsState, struct ntdsColumns *accountColumns
 	else if (readStatus != JET_errSuccess) {
 		return readStatus;
 	}
-	strncpy(userAccount->accountDescription, wchar_to_utf8(accountDescription), sizeof(userAccount->accountDescription));
+
+	char *accountDescriptionStr = wchar_to_utf8(accountDescription);
+	if (accountDescriptionStr) {
+		strncpy(userAccount->accountDescription, AccountDescriptionStr,
+			ACCOUNT_DESC_SIZE - 1);
+		userAccount->accountDescription[ACCOUNT_DESC_SIZE - 1] = '\0';
+		free(accountDescriptionStr);
+	}
+
 	// Grab the UserAccountControl flags here
 	readStatus = JetRetrieveColumn(ntdsState->jetSession, ntdsState->jetTable, accountColumns->accountControl.columnid, &accountControl, sizeof(accountControl), &columnSize, 0, NULL);
 	if (readStatus != JET_errSuccess) {
