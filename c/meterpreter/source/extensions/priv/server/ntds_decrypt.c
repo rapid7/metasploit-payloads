@@ -10,8 +10,9 @@
 * @param length Integer representing the length of the byte array
 * @param output Pointer to the string we are outputting the result to
 */
-void bytes_to_string(LPBYTE data, unsigned int length, LPSTR output){
-	for (unsigned int i = 0; i < length; i++){
+void bytes_to_string(LPBYTE data, unsigned int length, LPSTR output)
+{
+	for (unsigned int i = 0; i < length; i++) {
 		sprintf(output + (i << 1), "%02X", ((LPBYTE)data)[i]);
 	}
 }
@@ -24,18 +25,20 @@ void bytes_to_string(LPBYTE data, unsigned int length, LPSTR output){
 * @param rid DWORD representing the Relative ID(RID) of the account
 * @returns Indication of sucess or failure.
 */
-BOOL decrypt_hash(struct encryptedHash *encryptedNTLM, struct decryptedPEK *pekDecrypted, char *hashString, DWORD rid){
+BOOL decrypt_hash(struct encryptedHash *encryptedNTLM,
+	struct decryptedPEK *pekDecrypted, char *hashString, DWORD rid)
+{
 	BOOL cryptOK = FALSE;
 	BYTE encHashData[NULL_TERIMNATED_HASH_LENGTH] = { 0 };
 	BYTE decHash[NULL_TERIMNATED_HASH_LENGTH] = { 0 };
 
 	memcpy(&encHashData, &encryptedNTLM->encryptedHash, HASH_LENGTH_BYTES);
 	cryptOK = decrypt_rc4(pekDecrypted->pekKey, encryptedNTLM->keyMaterial, encHashData, 1, HASH_LENGTH_BYTES);
-	if (!cryptOK){
+	if (!cryptOK) {
 		return FALSE;
 	}
 	cryptOK = decrypt_hash_from_rid(encHashData, &rid, decHash);
-	if (!cryptOK){
+	if (!cryptOK) {
 		return FALSE;
 	}
 	bytes_to_string(decHash, HASH_LENGTH_BYTES, hashString);
@@ -49,14 +52,15 @@ BOOL decrypt_hash(struct encryptedHash *encryptedNTLM, struct decryptedPEK *pekD
 * @param decodedHash Pointer to where we store the decrypted hash
 * @returns Indication of sucess or failure.
 */
-BOOL decrypt_hash_from_rid(LPBYTE encodedHash, LPDWORD rid, LPBYTE decodedHash){
+BOOL decrypt_hash_from_rid(LPBYTE encodedHash, LPDWORD rid, LPBYTE decodedHash)
+{
 	typedef NTSTATUS(__stdcall *PSYS25)(IN LPCBYTE data, IN LPDWORD key, OUT LPBYTE output);
 	HMODULE hAdvapi = LoadLibrary("advapi32.dll");
-	if (hAdvapi == NULL){
+	if (hAdvapi == NULL) {
 		return FALSE;
 	}
 	PSYS25 decryptFromRID = (PSYS25)GetProcAddress(hAdvapi, "SystemFunction025");
-	if (decryptFromRID(encodedHash, rid, decodedHash) != 0){
+	if (decryptFromRID(encodedHash, rid, decodedHash) != 0) {
 		return FALSE;
 	}
 	return TRUE;
@@ -72,7 +76,9 @@ BOOL decrypt_hash_from_rid(LPBYTE encodedHash, LPDWORD rid, LPBYTE decodedHash){
 * @param historyCount Pointer to n integer where we store a count of the historical hashes
 * @returns Indication of sucess or failure.
 */
-BOOL decrypt_hash_history(LPBYTE encHashHistory, size_t sizeHistory, struct decryptedPEK *pekDecrypted, DWORD rid, char *accountHistory, unsigned int *historyCount){
+BOOL decrypt_hash_history(LPBYTE encHashHistory, size_t sizeHistory,
+	struct decryptedPEK *pekDecrypted, DWORD rid, char *accountHistory, unsigned int *historyCount)
+{
 	BOOL cryptOK = FALSE;
 	unsigned int sizeHistoryData = (unsigned int)sizeHistory - 24;
 	unsigned int numHashes = (sizeHistoryData / HASH_LENGTH_BYTES);
@@ -81,18 +87,18 @@ BOOL decrypt_hash_history(LPBYTE encHashHistory, size_t sizeHistory, struct decr
 	LPBYTE decHistoryData = (LPBYTE)calloc(1,(sizeHistoryData * 2));
 	memcpy(encHistoryData, encHashHistory + 24, sizeHistoryData);
 	cryptOK = decrypt_rc4(pekDecrypted->pekKey, encHashHistory + 8, encHistoryData, 1, sizeHistoryData);
-	if (!cryptOK){
+	if (!cryptOK) {
 		free(encHistoryData);
 		free(decHistoryData);
 		return FALSE;
 	}
 	LPBYTE historicalHash = encHistoryData;
 	LPBYTE writeMarker = decHistoryData;
-	for (unsigned int i = 0; i < numHashes; i++){
+	for (unsigned int i = 0; i < numHashes; i++) {
 		BYTE decHash[HASH_LENGTH_BYTES];
 		char hashString[NULL_TERIMNATED_HASH_STRING_LENGTH] = { 0 };
 		cryptOK = decrypt_hash_from_rid(historicalHash, &rid, decHash);
-		if (!cryptOK){
+		if (!cryptOK) {
 			return FALSE;
 		}
 		bytes_to_string(decHash, HASH_LENGTH_BYTES, hashString);
@@ -113,13 +119,14 @@ BOOL decrypt_hash_history(LPBYTE encHashHistory, size_t sizeHistory, struct decr
 * @param pekDecrypted Pointer to the decryptedPEK struct where we will store our decrypted PEK
 * @returns Indication of sucess or failure.
 */
-BOOL decrypt_PEK(unsigned char *sysKey, struct encryptedPEK *pekEncrypted, struct decryptedPEK *pekDecrypted){
+BOOL decrypt_PEK(unsigned char *sysKey, struct encryptedPEK *pekEncrypted, struct decryptedPEK *pekDecrypted)
+{
 	BOOL cryptOK = FALSE;
 	BYTE pekData[52] = { 0 };
 	memcpy(&pekData, &pekEncrypted->pekData, sizeof(struct decryptedPEK));
 
 	cryptOK = decrypt_rc4(sysKey, pekEncrypted->keyMaterial, pekData, 1000, sizeof(struct decryptedPEK));
-	if (!cryptOK){
+	if (!cryptOK) {
 		return FALSE;
 	}
 	memcpy(pekDecrypted, &pekData, sizeof(struct decryptedPEK));
@@ -135,7 +142,9 @@ BOOL decrypt_PEK(unsigned char *sysKey, struct encryptedPEK *pekEncrypted, struc
 * @param lenBuffer the length of our output buffer
 * @returns Indication of sucess or failure.
 */
-BOOL decrypt_rc4(unsigned char *key1, unsigned char *key2, LPBYTE encrypted, unsigned int hashIterations, DWORD lenBuffer){
+BOOL decrypt_rc4(unsigned char *key1, unsigned char *key2, LPBYTE encrypted,
+	unsigned int hashIterations, DWORD lenBuffer)
+{
 	BOOL cryptOK = FALSE;
 	HCRYPTPROV hProv = 0;
 	HCRYPTHASH hHash = 0;
@@ -144,42 +153,42 @@ BOOL decrypt_rc4(unsigned char *key1, unsigned char *key2, LPBYTE encrypted, uns
 	HCRYPTKEY rc4KeyFinal;
 
 	cryptOK = CryptAcquireContext(&hProv, 0, MS_ENHANCED_PROV, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT);
-	if (!cryptOK){
+	if (!cryptOK) {
 		return FALSE;
 	}
 	cryptOK = CryptCreateHash(hProv, CALG_MD5, 0, 0, &hHash);
-	if (!cryptOK){
+	if (!cryptOK) {
 		CryptReleaseContext(hProv, (ULONG_PTR)NULL);
 		return FALSE;
 	}
 	cryptOK = CryptHashData(hHash, key1, HASH_LENGTH_BYTES, 0);
-	if (!cryptOK){
+	if (!cryptOK) {
 		CryptDestroyHash(hHash);
 		CryptReleaseContext(hProv, (ULONG_PTR)NULL);
 		return FALSE;
 	}
-	for (unsigned int i = 0; i < hashIterations; i++){
+	for (unsigned int i = 0; i < hashIterations; i++) {
 		cryptOK = CryptHashData(hHash, key2, HASH_LENGTH_BYTES, 0);
-		if (!cryptOK){
+		if (!cryptOK) {
 			CryptDestroyHash(hHash);
 			CryptReleaseContext(hProv, (ULONG_PTR)NULL);
 			return FALSE;
 		}
 	}
 	cryptOK = CryptGetHashParam(hHash, HP_HASHVAL, rc4Key, &md5Len, 0);
-	if (!cryptOK){
+	if (!cryptOK) {
 		CryptDestroyHash(hHash);
 		CryptReleaseContext(hProv, (ULONG_PTR)NULL);
 		return FALSE;
 	}
 	cryptOK = CryptDeriveKey(hProv, CALG_RC4, hHash, 0, &rc4KeyFinal);
-	if (!cryptOK){
+	if (!cryptOK) {
 		CryptDestroyHash(hHash);
 		CryptReleaseContext(hProv, (ULONG_PTR)NULL);
 		return FALSE;
 	}
 	cryptOK = CryptEncrypt(rc4KeyFinal, (HCRYPTHASH)NULL, TRUE, 0, encrypted, &lenBuffer, lenBuffer);
-	if (!cryptOK){
+	if (!cryptOK) {
 		CryptDestroyKey(rc4KeyFinal);
 		CryptDestroyHash(hHash);
 		CryptReleaseContext(hProv, (ULONG_PTR)NULL);
