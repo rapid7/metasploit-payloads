@@ -64,11 +64,15 @@ typedef struct _HttpTransportContext
 	HANDLE connection;                    ///! Handle to the HTTP or HTTPS connection.
 	unsigned char* cert_hash;             ///! Pointer to the 20-byte certificate hash to validate
 
+	CSTRTYPE url;                         ///! Pointer to the URL stored with the transport.
 	STRTYPE ua;                           ///! User agent string.
 	STRTYPE uri;                          ///! UUID encoded as a URI.
 	STRTYPE proxy;                        ///! Proxy details.
 	STRTYPE proxy_user;                   ///! Proxy username.
 	STRTYPE proxy_pass;                   ///! Proxy password.
+
+	BOOL proxy_configured;                ///! Indication of whether the proxy has been configured.
+	LPVOID proxy_for_url;                 ///! Pointer to the proxy for the current url (if required).
 } HttpTransportContext;
 
 typedef struct _Transport
@@ -110,6 +114,7 @@ typedef struct _Remote
 
 	Transport* transport;                 ///! Pointer to the currently used transport mechanism in a circular list of transports
 	Transport* next_transport;            ///! Set externally when transports are requested to be changed.
+	DWORD next_transport_wait;            ///! Number of seconds to wait before going to the next transport (used for sleeping).
 
 	MetsrvConfig* orig_config;            ///! Pointer to the original configuration.
 

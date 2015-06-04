@@ -29,8 +29,9 @@ extern DWORD remote_request_core_transport_setcerthash(Remote* remote, Packet* p
 // POSIX support coming soon
 #endif
 
+extern BOOL remote_request_core_transport_sleep(Remote* remote, Packet* packet, DWORD* result);
 extern DWORD remote_request_core_transport_list(Remote* remote, Packet* packet);
-extern BOOL remote_request_core_transport_change(Remote *remote, Packet *packet, DWORD* pResult);
+extern BOOL remote_request_core_transport_change(Remote* remote, Packet* packet, DWORD* result);
 extern BOOL remote_request_core_transport_next(Remote* remote, Packet* packet, DWORD* result);
 extern BOOL remote_request_core_transport_prev(Remote* remote, Packet* packet, DWORD* result);
 extern DWORD remote_request_core_transport_add(Remote* remote, Packet* packet);
@@ -93,6 +94,7 @@ Command baseCommands[] =
 	COMMAND_REQ("core_transport_setcerthash", remote_request_core_transport_setcerthash),
 #endif
 	COMMAND_REQ("core_transport_list", remote_request_core_transport_list),
+	COMMAND_INLINE_REQ("core_transport_sleep", remote_request_core_transport_sleep),
 	COMMAND_INLINE_REQ("core_transport_change", remote_request_core_transport_change),
 	COMMAND_INLINE_REQ("core_transport_next", remote_request_core_transport_next),
 	COMMAND_INLINE_REQ("core_transport_prev", remote_request_core_transport_prev),

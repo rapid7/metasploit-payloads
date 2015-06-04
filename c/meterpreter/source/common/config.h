@@ -9,25 +9,25 @@
 #define CERT_HASH_SIZE 20
 #define URL_SIZE 512
 #define UA_SIZE 256
-#define UUID_SIZE 64
+#define UUID_SIZE 16
 #define PROXY_HOST_SIZE 128
 #define PROXY_USER_SIZE 64
 #define PROXY_PASS_SIZE 64
 
 #ifdef _WIN32
 typedef wchar_t CHARTYPE;
-typedef CHARTYPE* STRTYPE;
 #else
 typedef char CHARTYPE;
-typedef CHARTYPE* STRTYPE;
 #endif
+typedef CHARTYPE* STRTYPE;
+typedef CHARTYPE const * CSTRTYPE;
 
 typedef struct _MetsrvSession
 {
 	DWORD comms_fd;                       ///! Socket handle for communications (if there is one).
 	DWORD exit_func;                      ///! Exit func identifier for when the session ends.
 	int expiry;                           ///! The total number of seconds to wait before killing off the session.
-	CHARTYPE uuid[UUID_SIZE];             ///! UUID
+	BYTE uuid[UUID_SIZE];                 ///! UUID
 } MetsrvSession;
 
 typedef struct _MetsrvTransportCommon

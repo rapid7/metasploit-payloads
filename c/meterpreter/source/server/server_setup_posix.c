@@ -1181,7 +1181,7 @@ static void config_create(Remote* remote, MetsrvConfig** config, LPDWORD size) {
 	dprintf("[CONFIG] preparing the configuration");
 
 	// start by preparing the session.
-	memcpy(sess->uuid, remote->orig_config->session.uuid, sizeof(sess->uuid));
+	memcpy(sess->uuid, remote->orig_config->session.uuid, UUID_SIZE);
 	sess->expiry = remote->sess_expiry_end - current_unix_timestamp();
 
 	// TOOD: figure what we should be doing for POSIX here.
@@ -1250,7 +1250,6 @@ DWORD server_setup(MetsrvConfig* config)
 
 	dprintf("[SERVER] Initializing from configuration: 0x%p", config);
 	dprintf("[SESSION] Comms Fd: %u", config->session.comms_fd);
-	dprintf("[SESSION] UUID: %s", config->session.uuid);
 	dprintf("[SESSION] Expiry: %u", config->session.expiry);
 
 	srand(time(NULL));
@@ -1351,6 +1350,13 @@ DWORD server_setup(MetsrvConfig* config)
 			dprintf("[TRANS] Moving transport from 0x%p to 0x%p", remote->transport, remote->next_transport);
 			remote->transport = remote->next_transport;
 			remote->next_transport = NULL;
+
+			if (remote->next_transport_wait > 0) {
+				dprintf("[TRANS] Sleeping for %u seconds ...", remote->next_transport_wait);
+				sleep(remote->next_transport_wait);
+				// the wait is a once-off thing, needs to be reset each time
+				remote->next_transport_wait = 0;
+			}
 		}
 		else {
 			// move to the next one in the list

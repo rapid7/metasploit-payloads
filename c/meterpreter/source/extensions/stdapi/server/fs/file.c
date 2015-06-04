@@ -325,7 +325,7 @@ DWORD request_fs_md5(Remote *remote, Packet *packet)
 	FILE *fd;
 	size_t ret;
 	unsigned char buff[16384];
-	unsigned char hash[MD5_DIGEST_LENGTH + 1] = {0};
+	unsigned char hash[MD5_DIGEST_LENGTH];
 
 	filePath = packet_get_tlv_value_string(packet, TLV_TYPE_FILE_PATH);
 
@@ -340,7 +340,7 @@ DWORD request_fs_md5(Remote *remote, Packet *packet)
 
 		MD5_Final(hash, &context);
 
-		packet_add_tlv_raw(response, TLV_TYPE_FILE_NAME, hash, sizeof(hash));
+		packet_add_tlv_raw(response, TLV_TYPE_FILE_HASH, hash, sizeof(hash));
 
 		fclose(fd);
 	}
@@ -365,7 +365,7 @@ DWORD request_fs_sha1(Remote *remote, Packet *packet)
 	FILE *fd;
 	size_t ret;
 	unsigned char buff[16384];
-	unsigned char hash[SHA_DIGEST_LENGTH + 1] = {0};
+	unsigned char hash[SHA_DIGEST_LENGTH];
 
 	filePath = packet_get_tlv_value_string(packet, TLV_TYPE_FILE_PATH);
 
@@ -380,7 +380,7 @@ DWORD request_fs_sha1(Remote *remote, Packet *packet)
 		fclose(fd);
 		SHA1_Final(hash, &context);
 
-		packet_add_tlv_raw(response, TLV_TYPE_FILE_NAME, hash, sizeof(hash));
+		packet_add_tlv_raw(response, TLV_TYPE_FILE_HASH, hash, sizeof(hash));
 	}
 
 	packet_add_tlv_uint(response, TLV_TYPE_RESULT, result);
