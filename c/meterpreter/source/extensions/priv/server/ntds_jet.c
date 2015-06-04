@@ -257,7 +257,7 @@ JET_ERR read_user(struct jetState *ntdsState, struct ntdsColumns *accountColumns
 
 	char *accountDescriptionStr = wchar_to_utf8(accountDescription);
 	if (accountDescriptionStr) {
-		strncpy(userAccount->accountDescription, AccountDescriptionStr,
+		strncpy(userAccount->accountDescription, accountDescriptionStr,
 			ACCOUNT_DESC_SIZE - 1);
 		userAccount->accountDescription[ACCOUNT_DESC_SIZE - 1] = '\0';
 		free(accountDescriptionStr);
