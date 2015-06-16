@@ -33,6 +33,7 @@ typedef BOOL(*PTransportInit)(Transport* transport);
 typedef BOOL(*PTransportDeinit)(Transport* transport);
 typedef void(*PTransportDestroy)(Transport* transport);
 typedef Transport*(*PTransportCreate)(Remote* remote, MetsrvTransportCommon* config, LPDWORD size);
+typedef void(*PTransportRemove)(Remote* remote, Transport* oldTransport);
 typedef void(*PConfigCreate)(Remote* remote, MetsrvConfig** config, LPDWORD size);
 
 typedef BOOL(*PServerDispatch)(Remote* remote, THREAD* dispatchThread);
@@ -135,6 +136,7 @@ typedef struct _Remote
 #endif
 
 	PTransportCreate trans_create;        ///! Helper to create transports from configuration.
+	PTransportRemove trans_remove;        ///! Helper to remove transports from the current session.
 
 	int sess_expiry_time;                 ///! Number of seconds that the session runs for.
 	int sess_expiry_end;                  ///! Unix timestamp for when the server should shut down.

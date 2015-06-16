@@ -35,6 +35,7 @@ extern BOOL remote_request_core_transport_change(Remote* remote, Packet* packet,
 extern BOOL remote_request_core_transport_next(Remote* remote, Packet* packet, DWORD* result);
 extern BOOL remote_request_core_transport_prev(Remote* remote, Packet* packet, DWORD* result);
 extern DWORD remote_request_core_transport_add(Remote* remote, Packet* packet);
+extern DWORD remote_request_core_transport_remove(Remote* remote, Packet* packet);
 
 extern BOOL remote_request_core_migrate(Remote *remote, Packet *packet, DWORD* pResult);
 
@@ -99,6 +100,7 @@ Command baseCommands[] =
 	COMMAND_INLINE_REQ("core_transport_next", remote_request_core_transport_next),
 	COMMAND_INLINE_REQ("core_transport_prev", remote_request_core_transport_prev),
 	COMMAND_REQ("core_transport_add", remote_request_core_transport_add),
+	COMMAND_REQ("core_transport_remove", remote_request_core_transport_remove),
 	// Migration
 	COMMAND_INLINE_REQ("core_migrate", remote_request_core_migrate),
 	// Shutdown
