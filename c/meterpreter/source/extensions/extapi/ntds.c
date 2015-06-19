@@ -1,4 +1,17 @@
-#include "precomp.h"
+/*!
+* @file ntds.c
+* @brief NTDS channel interface
+*/
+#include "extapi.h"
+
+#define JET_VERSION 0x0501
+
+#include <inttypes.h>
+#include <WinCrypt.h>
+#include "syskey.h"
+#include "ntds_decrypt.h"
+#include "ntds_jet.h"
+#include "ntds.h"
 
 /*! @brief Typedef for the NTDSContext struct. */
 typedef struct
@@ -9,7 +22,7 @@ typedef struct
 } NTDSContext;
 
 // This is the raw NTDS command function. When the remote user
-// sends a command request for priv_ntds_parse, this function fires.
+// sends a command request for extapi_ntds_parse, this function fires.
 // It calls the setup routines for our Jet Instance, attaches the isntance
 // to the NTDS.dit database the user specified, and creates our channel.
 // The user interacts with the NTDS database through that channel from that point on.
@@ -24,7 +37,7 @@ DWORD ntds_parse(Remote *remote, Packet *packet)
 		res = 2;
 		goto out;
 	}
-	strncpy(ntdsState->ntdsPath, filePath, 254);
+	strncpy_s(ntdsState->ntdsPath, 255, filePath, 254);
 
 	// Attempt to get the SysKey from the Registry
 	unsigned char sysKey[17];
@@ -159,7 +172,7 @@ static DWORD ntds_read_into_batch(NTDSContext *ctx, struct ntdsAccount *batchedA
 {
 	DWORD result = ERROR_SUCCESS;
 	JET_ERR readStatus = JET_errSuccess;
-	struct ntdsAccount *userAccount = calloc(1,sizeof(struct ntdsAccount));
+	struct ntdsAccount *userAccount = calloc(1, sizeof(struct ntdsAccount));
 	readStatus = read_user(ctx->ntdsState, ctx->accountColumns, ctx->pekDecrypted, userAccount);
 	if (readStatus != JET_errSuccess) {
 		result = readStatus;

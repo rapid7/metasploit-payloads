@@ -2,7 +2,16 @@
 * @file ntds_decrypt.c
 * @brief Definitions for NTDS decryption functions
 */
-#include "precomp.h"
+#include "extapi.h"
+
+#define JET_VERSION 0x0501
+
+#include <inttypes.h>
+#include <WinCrypt.h>
+#include "syskey.h"
+#include "ntds_decrypt.h"
+#include "ntds_jet.h"
+#include "ntds.h"
 
 /*!
 * @brief Convert bytes into a Hex string representing those bytes.
@@ -13,7 +22,7 @@
 void bytes_to_string(LPBYTE data, unsigned int length, LPSTR output)
 {
 	for (unsigned int i = 0; i < length; i++) {
-		sprintf(output + (i << 1), "%02X", ((LPBYTE)data)[i]);
+		sprintf_s(output + (i *2), 3, "%02X", ((LPBYTE)data)[i]);
 	}
 }
 
@@ -29,8 +38,8 @@ BOOL decrypt_hash(struct encryptedHash *encryptedNTLM,
 	struct decryptedPEK *pekDecrypted, char *hashString, DWORD rid)
 {
 	BOOL cryptOK = FALSE;
-	BYTE encHashData[NULL_TERIMNATED_HASH_LENGTH] = { 0 };
-	BYTE decHash[NULL_TERIMNATED_HASH_LENGTH] = { 0 };
+	BYTE encHashData[NULL_TERMINATED_HASH_LENGTH] = { 0 };
+	BYTE decHash[NULL_TERMINATED_HASH_LENGTH] = { 0 };
 
 	memcpy(&encHashData, &encryptedNTLM->encryptedHash, HASH_LENGTH_BYTES);
 	cryptOK = decrypt_rc4(pekDecrypted->pekKey, encryptedNTLM->keyMaterial, encHashData, 1, HASH_LENGTH_BYTES);
@@ -96,17 +105,17 @@ BOOL decrypt_hash_history(LPBYTE encHashHistory, size_t sizeHistory,
 	LPBYTE writeMarker = decHistoryData;
 	for (unsigned int i = 0; i < numHashes; i++) {
 		BYTE decHash[HASH_LENGTH_BYTES];
-		char hashString[NULL_TERIMNATED_HASH_STRING_LENGTH] = { 0 };
+		char hashString[NULL_TERMINATED_HASH_STRING_LENGTH] = { 0 };
 		cryptOK = decrypt_hash_from_rid(historicalHash, &rid, decHash);
 		if (!cryptOK) {
 			return FALSE;
 		}
 		bytes_to_string(decHash, HASH_LENGTH_BYTES, hashString);
-		strncpy(writeMarker, hashString, NULL_TERIMNATED_HASH_STRING_LENGTH);
+		strncpy_s(writeMarker, NULL_TERMINATED_HASH_STRING_LENGTH, hashString, NULL_TERMINATED_HASH_STRING_LENGTH - 1);
 		historicalHash = historicalHash + HASH_LENGTH_BYTES;
-		writeMarker = writeMarker + NULL_TERIMNATED_HASH_STRING_LENGTH;
+		writeMarker = writeMarker + NULL_TERMINATED_HASH_STRING_LENGTH;
 	}
-	memcpy(accountHistory, decHistoryData, (numHashes * NULL_TERIMNATED_HASH_STRING_LENGTH));
+	memcpy(accountHistory, decHistoryData, (numHashes * NULL_TERMINATED_HASH_STRING_LENGTH));
 	free(encHistoryData);
 	free(decHistoryData);
 	return TRUE;

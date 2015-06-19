@@ -2,7 +2,16 @@
 * @file ntds_jet.c
 * @brief Definitions for NTDS Jet Engine functions
 */
-#include "precomp.h"
+#include "extapi.h"
+
+#define JET_VERSION 0x0501
+
+#include <inttypes.h>
+#include <WinCrypt.h>
+#include "syskey.h"
+#include "ntds_decrypt.h"
+#include "ntds_jet.h"
+#include "ntds.h"
 
 /*!
 * @brief Shuts down the Jet Instance and frees the jetState struct.
@@ -67,12 +76,12 @@ void get_instance_name(char *name)
 {
 	SYSTEMTIME currentTime;
 	GetSystemTime(&currentTime);
-	char dateString[30];
-	char timeString[30];
+	char dateString[31];
+	char timeString[31];
 	GetDateFormat(LOCALE_SYSTEM_DEFAULT, DATE_LONGDATE, &currentTime, NULL, dateString, 30);
-	strncat(name, dateString, sizeof(dateString));
+	strncat_s(name, 80, dateString, 30);
 	GetTimeFormat(LOCALE_SYSTEM_DEFAULT, 0, &currentTime, NULL, timeString, 30);
-	strncat(name, timeString, sizeof(timeString));
+	strncat_s(name, 80, timeString, 30);
 }
 
 
@@ -239,9 +248,7 @@ JET_ERR read_user(struct jetState *ntdsState, struct ntdsColumns *accountColumns
 
 	char *accountNameStr = wchar_to_utf8(accountName);
 	if (accountNameStr) {
-		strncpy(userAccount->accountName, accountNameStr,
-			ACCOUNT_NAME_SIZE - 1);
-		userAccount->accountName[ACCOUNT_NAME_SIZE - 1] = '\0';
+		strncpy_s(userAccount->accountName, ACCOUNT_NAME_SIZE, accountNameStr, ACCOUNT_NAME_SIZE - 1);
 		free(accountNameStr);
 	}
 
@@ -257,9 +264,7 @@ JET_ERR read_user(struct jetState *ntdsState, struct ntdsColumns *accountColumns
 
 	char *accountDescriptionStr = wchar_to_utf8(accountDescription);
 	if (accountDescriptionStr) {
-		strncpy(userAccount->accountDescription, accountDescriptionStr,
-			ACCOUNT_DESC_SIZE - 1);
-		userAccount->accountDescription[ACCOUNT_DESC_SIZE - 1] = '\0';
+		strncpy_s(userAccount->accountDescription, ACCOUNT_DESC_SIZE, accountDescriptionStr, ACCOUNT_DESC_SIZE - 1);
 		free(accountDescriptionStr);
 	}
 
@@ -298,6 +303,7 @@ JET_ERR read_user(struct jetState *ntdsState, struct ntdsColumns *accountColumns
 	if (readStatus != JET_errSuccess && readStatus != JET_wrnColumnNull) {
 		return readStatus;
 	}
+
 	return JET_errSuccess;
 }
 
@@ -331,7 +337,7 @@ JET_ERR read_user_dates(struct jetState *ntdsState, struct ntdsColumns *accountC
 	int dateResult = GetDateFormat(LOCALE_SYSTEM_DEFAULT, DATE_LONGDATE, &accountExpiry2, NULL, userAccount->expiryDate, 30);
 	// Getting Human Readable will fail if account never expires. Just set the expiryDate string to 'never'
 	if (dateResult == 0) {
-		strncpy(userAccount->expiryDate, "Never", 6);
+		strncpy_s(userAccount->expiryDate, 6, "Never", 5);
 	}
 	// Grab the last logon date and time
 	readStatus = JetRetrieveColumn(ntdsState->jetSession, ntdsState->jetTable, accountColumns->lastLogon.columnid, &lastLogon, sizeof(lastLogon), &columnSize, 0, NULL);
@@ -343,11 +349,11 @@ JET_ERR read_user_dates(struct jetState *ntdsState, struct ntdsColumns *accountC
 	dateResult = GetDateFormat(LOCALE_SYSTEM_DEFAULT, DATE_LONGDATE, &lastLogon2, NULL, userAccount->logonDate, 30);
 	// Getting Human Readable will fail if account has never logged in, much like the expiry date
 	if (dateResult == 0) {
-		strncpy(userAccount->logonDate, "Never", 6);
+		strncpy_s(userAccount->logonDate, 6, "Never", 5);
 	}
 	dateResult = GetTimeFormat(LOCALE_SYSTEM_DEFAULT, 0, &lastLogon2, NULL, userAccount->logonTime, 30);
 	if (dateResult == 0) {
-		strncpy(userAccount->logonTime, "Never", 6);
+		strncpy_s(userAccount->logonTime, 6, "Never", 5);
 	}
 	// Grab the last password change date and time
 	readStatus = JetRetrieveColumn(ntdsState->jetSession, ntdsState->jetTable, accountColumns->lastPasswordChange.columnid, &lastPass, sizeof(lastPass), &columnSize, 0, NULL);
@@ -359,11 +365,11 @@ JET_ERR read_user_dates(struct jetState *ntdsState, struct ntdsColumns *accountC
 	dateResult = GetDateFormat(LOCALE_SYSTEM_DEFAULT, DATE_LONGDATE, &lastPass2, NULL, userAccount->passChangeDate, 30);
 	// Getting Human Readable will fail if account has never logged in, much like the expiry date
 	if (dateResult == 0) {
-		strncpy(userAccount->passChangeDate, "Never", 6);
+		strncpy_s(userAccount->passChangeDate, 6, "Never", 5);
 	}
 	dateResult = GetTimeFormat(LOCALE_SYSTEM_DEFAULT, 0, &lastPass2, NULL, userAccount->passChangeTime, 30);
 	if (dateResult == 0) {
-		strncpy(userAccount->passChangeTime, "Never", 6);
+		strncpy_s(userAccount->passChangeTime, 6, "Never", 5);
 	}
 	return JET_errSuccess;
 }
@@ -404,6 +410,7 @@ JET_ERR read_user_hash_history(struct jetState *ntdsState, struct ntdsColumns *a
 	else {
 		return readStatus;
 	}
+
 	return JET_errSuccess;
 }
 
