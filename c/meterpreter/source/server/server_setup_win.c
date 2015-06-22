@@ -158,7 +158,7 @@ static void append_transport(Transport** list, Transport* newTransport)
 static void remove_transport(Remote* remote, Transport* oldTransport)
 {
 	// if we point to ourself, then we're the last one
-	if (remote->transport->next_transport == oldTransport)
+	if (remote->transport->next_transport == remote->transport)
 	{
 		remote->transport = NULL;
 	}
@@ -347,6 +347,8 @@ DWORD server_setup(MetsrvConfig* config)
 
 			// Set up the transport creation function pointer
 			remote->trans_create = create_transport;
+			// Set up the transport removal function pointer
+			remote->trans_remove = remove_transport;
 			// and the config creation pointer
 			remote->config_create = config_create;
 
@@ -439,7 +441,9 @@ DWORD server_setup(MetsrvConfig* config)
 					if (remote->next_transport_wait > 0)
 					{
 						dprintf("[TRANS] Sleeping for %u seconds ...", remote->next_transport_wait);
-						Sleep(remote->next_transport_wait * 1000);
+
+						sleep(remote->next_transport_wait);
+						
 						// the wait is a once-off thing, needs to be reset each time
 						remote->next_transport_wait = 0;
 					}

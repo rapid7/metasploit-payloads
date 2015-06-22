@@ -293,6 +293,54 @@ BOOL remote_request_core_transport_prev(Remote* remote, Packet* packet, DWORD* r
 	return *result == ERROR_SUCCESS ? FALSE : TRUE;
 }
 
+DWORD remote_request_core_transport_remove(Remote* remote, Packet* packet)
+{
+	DWORD result = ERROR_SUCCESS;
+
+	// make sure we are not trying to remove the last transport
+	if (remote->transport == remote->transport->prev_transport)
+	{
+		dprintf("[DISPATCH] Refusing to delete the last transport");
+		result = ERROR_INVALID_FUNCTION;
+	}
+	else
+	{
+		Transport* found = NULL;
+		Transport* transport = remote->transport;
+		wchar_t* transportUrl = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_URL);
+
+		do
+		{
+			if (wcscmp(transportUrl, transport->url) == 0)
+			{
+				found = transport;
+				break;
+			}
+
+			transport = transport->next_transport;
+		} while (transport != remote->transport);
+
+		if (found == NULL || found == remote->transport)
+		{
+			dprintf("[DISPATCH] Transport not found, or attempting to remove current");
+			// if we don't have a valid transport, or they're trying to remove the
+			// existing one, then bomb out (that might come later)
+			result = ERROR_INVALID_PARAMETER;
+		}
+		else
+		{
+			remote->trans_remove(remote, found);
+			dprintf("[DISPATCH] Transport removed");
+		}
+
+		SAFE_FREE(transportUrl);
+	}
+
+	packet_transmit_empty_response(remote, packet, result);
+	dprintf("[DISPATCH] Response sent.");
+	return result;
+}
+
 DWORD remote_request_core_transport_add(Remote* remote, Packet* packet)
 {
 	Transport* transport = NULL;

@@ -4,8 +4,10 @@
  */
 #include "common.h"
 
-
 #ifdef _WIN32
+
+#define SLEEP_MAX_SEC (MAXDWORD / 1000)
+
 /*!
  * @brief Returns a unix timestamp in UTC.
  * @return Integer value representing the UTC Unix timestamp of the current time.
@@ -22,6 +24,23 @@ int current_unix_timestamp(void) {
 	ularge.HighPart = file_time.dwHighDateTime;
 	return (long)((ularge.QuadPart - 116444736000000000) / 10000000L);
 }
+
+/*!
+ * @brief Sleep for the given number of seconds.
+ * @param seconds DWORD value representing the number of seconds to sleep.
+ * @remark This was implemented so that extended sleep times can be used (beyond the
+ *         49 day limit imposed by Sleep()).
+ */
+VOID sleep(DWORD seconds)
+{
+	while (seconds > SLEEP_MAX_SEC)
+	{
+		Sleep(SLEEP_MAX_SEC * 1000);
+		seconds -= SLEEP_MAX_SEC;
+	}
+	Sleep(seconds * 1000);
+}
+
 #else
 
 #include <sys/time.h>

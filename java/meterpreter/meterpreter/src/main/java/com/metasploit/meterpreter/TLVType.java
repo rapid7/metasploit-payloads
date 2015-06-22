@@ -43,18 +43,21 @@ public interface TLVType {
     public static final int TLV_TYPE_MIGRATE_PID = TLVPacket.TLV_META_TYPE_UINT | 402;
     public static final int TLV_TYPE_MIGRATE_LEN = TLVPacket.TLV_META_TYPE_UINT | 403;
 
-    public static final int TLV_TYPE_TRANS_TYPE          = TLVPacket.TLV_META_TYPE_UINT   | 430;
-    public static final int TLV_TYPE_TRANS_URL           = TLVPacket.TLV_META_TYPE_STRING | 431;
-    public static final int TLV_TYPE_TRANS_UA            = TLVPacket.TLV_META_TYPE_STRING | 432;
-    public static final int TLV_TYPE_TRANS_COMM_TIMEOUT  = TLVPacket.TLV_META_TYPE_UINT   | 433;
-    public static final int TLV_TYPE_TRANS_SESSION_EXP   = TLVPacket.TLV_META_TYPE_UINT   | 434;
-    public static final int TLV_TYPE_TRANS_CERT_HASH     = TLVPacket.TLV_META_TYPE_RAW    | 435;
-    public static final int TLV_TYPE_TRANS_PROXY_HOST    = TLVPacket.TLV_META_TYPE_STRING | 436;
-    public static final int TLV_TYPE_TRANS_PROXY_USER    = TLVPacket.TLV_META_TYPE_STRING | 437;
-    public static final int TLV_TYPE_TRANS_PROXY_PASS    = TLVPacket.TLV_META_TYPE_STRING | 438;
-    public static final int TLV_TYPE_TRANS_RETRY_TOTAL   = TLVPacket.TLV_META_TYPE_UINT   | 439;
-    public static final int TLV_TYPE_TRANS_RETRY_WAIT    = TLVPacket.TLV_META_TYPE_UINT   | 440;
-    public static final int TLV_TYPE_TRANS_GROUP         = TLVPacket.TLV_META_TYPE_GROUP  | 441;
+    public static final int TLV_TYPE_TRANS_TYPE = TLVPacket.TLV_META_TYPE_UINT | 430;
+    public static final int TLV_TYPE_TRANS_URL = TLVPacket.TLV_META_TYPE_STRING | 431;
+    public static final int TLV_TYPE_TRANS_UA = TLVPacket.TLV_META_TYPE_STRING | 432;
+    public static final int TLV_TYPE_TRANS_COMM_TIMEOUT = TLVPacket.TLV_META_TYPE_UINT | 433;
+    public static final int TLV_TYPE_TRANS_SESSION_EXP = TLVPacket.TLV_META_TYPE_UINT | 434;
+    public static final int TLV_TYPE_TRANS_CERT_HASH = TLVPacket.TLV_META_TYPE_RAW | 435;
+    public static final int TLV_TYPE_TRANS_PROXY_HOST = TLVPacket.TLV_META_TYPE_STRING | 436;
+    public static final int TLV_TYPE_TRANS_PROXY_USER = TLVPacket.TLV_META_TYPE_STRING | 437;
+    public static final int TLV_TYPE_TRANS_PROXY_PASS = TLVPacket.TLV_META_TYPE_STRING | 438;
+    public static final int TLV_TYPE_TRANS_RETRY_TOTAL = TLVPacket.TLV_META_TYPE_UINT | 439;
+    public static final int TLV_TYPE_TRANS_RETRY_WAIT = TLVPacket.TLV_META_TYPE_UINT | 440;
+    public static final int TLV_TYPE_TRANS_GROUP = TLVPacket.TLV_META_TYPE_GROUP | 441;
+
+    public static final int TLV_TYPE_MACHINE_ID = TLVPacket.TLV_META_TYPE_STRING | 460;
+    public static final int TLV_TYPE_UUID = TLVPacket.TLV_META_TYPE_RAW | 461;
 
     public static final int TLV_TYPE_CIPHER_NAME = TLVPacket.TLV_META_TYPE_STRING | 500;
     public static final int TLV_TYPE_CIPHER_PARAMETERS = TLVPacket.TLV_META_TYPE_GROUP | 501;
