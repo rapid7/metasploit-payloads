@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<archetype-descriptor xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xmlns="http://maven.apache.org/plugins/maven-archetype-plugin/archetype-descriptor/1.0.0"
+		xsi:schemaLocation="http://maven.apache.org/plugins/maven-archetype-plugin/archetype-descriptor/1.0.0 http://maven.apache.org/xsd/archetype-descriptor-1.0.0.xsd"
+		name="Java Meterpreter extension archetype">
+	<requiredProperties>
+		<requiredProperty key="pluginName" />
+		<requiredProperty key="groupId">
+			<defaultValue>com.metasploit</defaultValue>
+		</requiredProperty>
+		<requiredProperty key="artifactId">
+			<defaultValue>Metasploit-Java-Meterpreter-${pluginName}</defaultValue>
+		</requiredProperty>
+		<requiredProperty key="package">
+			<defaultValue>com.metasploit.meterpreter.${pluginName}</defaultValue>
+		</requiredProperty>
+	</requiredProperties>
+	<fileSets>
+	<fileSet filtered="true" packaged="true" encoding="UTF-8">
+		<directory>src/main/java</directory>
+		<includes>
+			<include>**/*.java</include>
+		</includes>
+	</fileSet>
+	<fileSet filtered="true" encoding="UTF-8">
+		<directory></directory>
+		<includes>
+			<include>*.rb</include>
+		</includes>
+	</fileSet>
+	</fileSets>
+</archetype-descriptor>
