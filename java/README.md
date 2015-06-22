@@ -12,11 +12,11 @@ mvn -P deploy package
 ```
 
 to package all the files and copy them into the correct place for Metasploit
-(`../metasploit-framework/data/java`). If you get spurious compilation errors, 
-make sure that there is an exclude rule in your antivirus for the Metasploit 
+(`../metasploit-framework/data/java`). If you get spurious compilation errors,
+make sure that there is an exclude rule in your antivirus for the Metasploit
 directory (or that your antivirus is disabled).
 
-If the path to your metasploit framework repository is not `../metasploit-framework`,
+If the path to your metasploit framework repository is not `../../metasploit-framework`,
 but for example `../msf3`, use
 
 ```
