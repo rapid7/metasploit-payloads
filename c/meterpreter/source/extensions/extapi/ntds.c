@@ -48,8 +48,10 @@ DWORD ntds_parse(Remote *remote, Packet *packet)
 
 	JET_ERR startupStatus = engine_startup(ntdsState);
 	if (startupStatus != JET_errSuccess) {
-		exit(startupStatus);
+		res = startupStatus;
+		goto out;
 	}
+
 	// Start a Session in the Jet Instance
 	JET_ERR sessionStatus = JetBeginSession(ntdsState->jetEngine, &ntdsState->jetSession, NULL, NULL);
 	if (sessionStatus != JET_errSuccess) {
@@ -162,7 +164,7 @@ DWORD ntds_parse(Remote *remote, Packet *packet)
 
 out:
 	packet_transmit_response(res, remote, response);
-	return res;
+	return ERROR_SUCCESS;
 }
 
 
@@ -193,29 +195,22 @@ static DWORD ntds_channel_read(Channel *channel, Packet *request,
 	JET_ERR readStatus = JET_errSuccess;
 	DWORD result = ERROR_SUCCESS;
 	NTDSContext *ctx = (NTDSContext *)context;
-	struct ntdsAccount batchedAccounts[20] = { 0 };
+	struct ntdsAccount batchedAccounts[20];
+	DWORD batchSize = 0;
 
 	for (int i = 0; i < 20; i++) {
 		readStatus = ntds_read_into_batch(ctx, &batchedAccounts[i]);
 		if (readStatus != JET_errSuccess) {
-			if (i == 0) {
-				result = readStatus;
-			}
 			break;
 		}
+		batchSize += sizeof(struct ntdsAccount);
 		next_user(ctx->ntdsState, ctx->accountColumns);
 	}
-	unsigned int batchSize = (unsigned int)sizeof(batchedAccounts);
-	if (batchSize < bufferSize) {
-		memcpy(buffer, batchedAccounts, batchSize);
-		*bytesRead = batchSize;
-	}
-	else {
-		memcpy(buffer, batchedAccounts, bufferSize);
-		*bytesRead = bufferSize;
-	}
 
-	return result;
+	memcpy(buffer, batchedAccounts, batchSize);
+	*bytesRead = batchSize;
+
+	return ERROR_SUCCESS;
 }
 
 // This callback function is responsible for cleaning up when the channel
