@@ -12,7 +12,7 @@ IF NOT EXIST "source\ReflectiveDLLInjection\.git" (
 SET PSSDK_VER=12
 
 SET PREF=
-IF EXIST "..\pssdk\PSSDK_VC%PSSDK_VER%_LIB\_Libs\pssdk_vc%PSSDK_VER%_mt.lib" SET PREF=r7_
+IF EXIST "..\..\..\pssdk\PSSDK_VC%PSSDK_VER%_LIB\_Libs\pssdk_vc%PSSDK_VER%_mt.lib" SET PREF=r7_
 
 IF "%1"=="x86" GOTO BUILD_X86
 IF "%1"=="X86" GOTO BUILD_X86
@@ -39,13 +39,13 @@ msbuild.exe make.msbuild /target:%PREF%%PLAT%
 POPD
 
 IF "%ERRORLEVEL%" == "0" (
-  IF NOT EXIST "..\pssdk\" (
+  IF NOT EXIST "..\..\..\pssdk\" (
     ECHO Unable to build ext_server_sniffer:
     ECHO PSSDK directory not found.
     ECHO This is normal if you do not expect to have access to Rapid7 proprietary
     ECHO sniffer source. Meterpreter will still function normally without this.
   ) else (
-    IF NOT EXIST "..\pssdk\PSSDK_VC%PSSDK_VER%_LIB\_Libs\pssdk_vc%PSSDK_VER%_mt.lib" (
+    IF NOT EXIST "..\..\..\pssdk\PSSDK_VC%PSSDK_VER%_LIB\_Libs\pssdk_vc%PSSDK_VER%_mt.lib" (
       ECHO Unable to build ext_server_sniffer:
       ECHO PSSDK lib version 'vc%PSSDK_VER%' not found.
       ECHO This is normal if you do not expect to have access to Rapid7 proprietary
