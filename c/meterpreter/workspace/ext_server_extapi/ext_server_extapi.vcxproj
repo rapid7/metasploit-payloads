@@ -444,7 +444,11 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClCompile Include="..\..\source\extensions\extapi\clipboard.c" />
     <ClCompile Include="..\..\source\extensions\extapi\clipboard_image.cpp" />
     <ClCompile Include="..\..\source\extensions\extapi\extapi.c" />
+    <ClCompile Include="..\..\source\extensions\extapi\ntds.c" />
+    <ClCompile Include="..\..\source\extensions\extapi\ntds_decrypt.c" />
+    <ClCompile Include="..\..\source\extensions\extapi\ntds_jet.c" />
     <ClCompile Include="..\..\source\extensions\extapi\service.c" />
+    <ClCompile Include="..\..\source\extensions\extapi\syskey.c" />
     <ClCompile Include="..\..\source\extensions\extapi\window.c" />
     <ClCompile Include="..\..\source\extensions\extapi\wmi.c" />
     <ClCompile Include="..\..\source\extensions\extapi\wmi_interface.cpp" />
@@ -456,7 +460,11 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClInclude Include="..\..\source\extensions\extapi\clipboard.h" />
     <ClInclude Include="..\..\source\extensions\extapi\clipboard_image.h" />
     <ClInclude Include="..\..\source\extensions\extapi\extapi.h" />
+    <ClInclude Include="..\..\source\extensions\extapi\ntds.h" />
+    <ClInclude Include="..\..\source\extensions\extapi\ntds_decrypt.h" />
+    <ClInclude Include="..\..\source\extensions\extapi\ntds_jet.h" />
     <ClInclude Include="..\..\source\extensions\extapi\service.h" />
+    <ClInclude Include="..\..\source\extensions\extapi\syskey.h" />
     <ClInclude Include="..\..\source\extensions\extapi\window.h" />
     <ClInclude Include="..\..\source\extensions\extapi\wmi.h" />
     <ClInclude Include="..\..\source\extensions\extapi\wmi_interface.h" />
