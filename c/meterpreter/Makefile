@@ -2,7 +2,7 @@
 # Used by 'install' target. Change this to wherever your framework checkout is.
 # Doesn't have to be development. Should point to the base directory where
 # msfconsole lives.
-framework_dir = ../metasploit-framework/
+framework_dir = ../../../metasploit-framework/
 
 # Change me if you want to build openssl and libpcap somewhere else
 build_tmp = posix-meterp-build-tmp
