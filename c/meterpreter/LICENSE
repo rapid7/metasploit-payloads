@@ -1,0 +1,131 @@
+Meterpreter is available for use under the following license, commonly known as the
+3-clause (or "modified") BSD license:
+
+=========================================================================================
+
+Meterpreter
+-----------
+
+Copyright (c) 2006-2013, Rapid7 Inc
+
+Redistribution and use in source and binary forms, with or without modification, are
+permitted provided that the following conditions are met:
+
+* Redistributions of source code must retain the above copyright notice, this list of
+  conditions and the following disclaimer.
+
+* Redistributions in binary form must reproduce the above copyright notice, this list of
+  conditions and the following disclaimer in the documentation and/or other materials
+  provided with the distribution.
+
+* Neither the name of Rapid7 nor the names of its contributors may be used to endorse or
+  promote products derived from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY
+EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL
+THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR
+TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+=========================================================================================
+
+Portions of Meterpreter are based on works by others. Licenses for those portions are
+detailed below.
+
+
+Files: ReflectiveDLLInjection/*
+Copyright: 2009, Stephen Fewer of Harmony Security (www.harmonysecurity.com)
+License: BSD-3-clause
+
+Files: source/common/queue.h
+Copyright: 1991, 1993 The Regents of the University of California
+License: BSD-3-clause
+
+Files: source/common/zlib/* source/server/zlib/*
+Copyright: 1995-1996 Jean-loup Gailly and Mark Adler
+License: Zlib
+
+Files: source/bionic/libc/*
+Copyright: 2005-2008, The Android Open Source Project
+           2004 by Internet Systems Consortium, Inc. ("ISC")
+           1995,1996,1999 by Internet Software Consortium
+           1995 by International Business Machines, Inc.
+           1997,1998,1999,2004 The NetBSD Foundation, Inc.
+           1993 Christopher G. Demetriou
+           1983,1985,1989,1993 The Regents of the University of California
+           2000 Ben Harris
+           1995,1996,1997,1998 WIDE Project
+           2003 Networks Associates Technology, Inc.
+           1993 by Digital Equipment Corporation
+           1997 Mark Brinicombe
+           1993 Martin Birgmeier
+           1993 by Sun Microsystems, Inc.
+           1997, 2005 Todd C. Miller <Todd.Miller@courtesan.com>
+           1995, 1996 Carnegie-Mellon University
+           2003 Networks Associates Technology, Inc.
+License: BSD-3-clause and BSD-4-clause
+
+Files: source/bionic/libdl/*
+Copyright: 2007 The Android Open Source Project
+License: BSD-3-clause
+
+Files: source/bionic/libm/*
+Copyright: 2003, Steven G. Kargl
+           2003 Mike Barcroft <mike@FreeBSD.org>
+           2002-2005 David Schultz <das@FreeBSD.ORG>
+           2004 Stefan Farfeleder
+           2003 Dag-Erling Coïdan Smørgrav
+           1996 The NetBSD Foundation, Inc.
+           1985,1988,1991,1992,1993 The Regents of the University of California
+           1993,94 Winning Strategies, Inc.
+           1993, 2004 by Sun Microsystems, Inc.
+License: BSD-2-clause and BSD-3-clause and BSD-4-clause
+
+Files: source/extensions/espia/screen.c
+Copyright: 1994-2008, Mark Hammond
+License: BSD-2-clause
+
+Files: source/extensions/priv/server/timestomp.c
+Copyright: 2005 Vincent Liu
+License: GPL-2
+
+Files: source/extensions/stdapi/server/webcam/bmp2jpeg.c source/screenshot/bmp2jpeg.c
+Copyright: 1994-2008, Mark Hammond
+License: BSD-2-clause
+
+Files: source/extensions/stdapi/server/railgun/railgun.c
+Copyright: 2010, patrickHVE@googlemail.com
+License: BSD-2-clause
+
+Files: source/pssdk/*
+Copyright: microOLAP
+License: N/A
+Comment: HD Moore holds a single-seat developer license for the Packet Sniffer
+         SDK library embedded into the Meterpreter Sniffer extension.  This
+         source code is not distributed with Metasploit Framework.
+
+Files: deps/libressl/*
+Copyright: 1998-2012 The OpenSSL Project
+License: OpenSSL and SSLeay
+  portions are ISC or public domain
+
+Files: source/server/posix/sfsyscall.h
+Copyright: 2003  Philippe Biondi <biondi@cartel-securite.fr>
+License: LGPL
+
+Files: source/jpeg-8/*
+Copyright: 1991-2010, Thomas G. Lane, Guido Vollbeding
+License: BSD-3-clause
+
+Files: deps/libpcap/*
+Copyright: 1990, 1991, 1992, 1993, 1994, 1995, 1996, 1997 The Regents of the University of California.
+License: BSD-4-clause
+
+Files: metsvc/*
+Copyright: 2007, Determina Inc.
+License: BSD-3-clause
+

@@ -1,0 +1,64 @@
+# Object files
+*.o
+
+# Libraries
+*.lib
+*.a
+
+# Shared objects (inc. Windows DLLs)
+*.dll
+*.so
+*.so.*
+*.dylib
+
+# Executables
+*.exe
+*.out
+*.app
+
+tags
+
+# project config output
+r7_release
+r7_debug
+debug
+release
+Debug
+Release
+
+# temporary files
+*.swp
+
+# VS local dbs
+*.sdf
+*.opensdf
+
+# VS ipch
+workspace/ipch/*
+
+# VS upgrade junk
+UpgradeLog.*
+_UpgradeReport_Files
+workspace/Backup/*
+source/jpeg-8/Backup/*
+
+# other VS garbage
+*.suo
+*.ncb
+
+# ignore posix temp stuff
+posix-meterp-build-tmp/*
+data/meterpreter/*
+source/server/rtld/elf2bin
+source/server/rtld/lib*
+source/server/rtld/msflinker
+source/server/rtld/msflinker.bin
+source/server/rtld/rtldtest
+build.log
+
+# Doxygen output
+docs/*
+
+# ignore CLion files
+.idea/
+CMakeLists.txt
