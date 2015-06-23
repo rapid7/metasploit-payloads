@@ -65,6 +65,7 @@ public class Meterpreter {
      * @throws Exception
      */
     public Meterpreter(DataInputStream in, OutputStream rawOut, boolean loadExtensions, boolean redirectErrors, boolean beginExecution) throws Exception {
+        System.out.println("msf : Meterpreter constructing");
         this.loadExtensions = loadExtensions;
         this.in = in;
         this.out = new DataOutputStream(rawOut);
