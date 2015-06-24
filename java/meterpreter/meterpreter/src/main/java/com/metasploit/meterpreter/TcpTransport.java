@@ -38,6 +38,11 @@ public class TcpTransport extends Transport {
         return this.parseTimeouts(configuration, offset);
     }
 
+    public boolean switchUri(String uri) {
+        // tcp transports don't support URL switching
+        return false;
+    }
+
     public void disconnect() {
         if (this.inputStream != null) {
             try {

