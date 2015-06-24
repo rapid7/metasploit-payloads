@@ -1,5 +1,6 @@
 package com.metasploit.meterpreter;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Vector;
@@ -40,8 +41,9 @@ public class CommandManager {
         String javaversion = System.getProperty("java.version");
         if (javaversion != null && javaversion.length() > 2) {
             int vmVersion = javaversion.charAt(2) - '2' + ExtensionLoader.V1_2;
-            if (vmVersion >= ExtensionLoader.V1_2 && vmVersion < apiVersion)
+            if (vmVersion >= ExtensionLoader.V1_2 && vmVersion < apiVersion) {
                 apiVersion = vmVersion;
+            }
         }
         this.javaVersion = apiVersion;
 
@@ -101,9 +103,36 @@ public class CommandManager {
      */
     public Command getCommand(String name) {
         Command cmd = (Command) registeredCommands.get(name);
-        if (cmd == null)
+        if (cmd == null) {
             cmd = NotYetImplementedCommand.INSTANCE;
+        }
         return cmd;
+    }
+
+    public int executeCommand(Meterpreter met, TLVPacket request, TLVPacket response) throws IOException {
+        String method = request.getStringValue(TLVType.TLV_TYPE_METHOD);
+        System.out.println("msf : Executing " + method);
+        Command cmd = this.getCommand(method);
+        System.out.println("msf : Method " + (cmd == null ? "not found" : "found"));
+
+        int result;
+        try {
+            result = cmd.execute(met, request, response);
+        } catch (Throwable t) {
+            System.out.println("msf : something went wrong executing the command");
+            t.printStackTrace(met.getErrorStream());
+            result = Command.ERROR_FAILURE;
+        }
+
+        if (result == Command.EXIT_DISPATCH) {
+            System.out.println("msf : dispatch exited");
+            response.add(TLVType.TLV_TYPE_RESULT, Command.ERROR_SUCCESS);
+        } else {
+            System.out.println("msf : dispatch didn't exit");
+            response.add(TLVType.TLV_TYPE_RESULT, result);
+        }
+
+        return result;
     }
 
     /**

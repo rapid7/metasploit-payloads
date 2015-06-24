@@ -56,6 +56,7 @@ public class core_machine_id implements Command {
             }
             machine_id = serial + ":" + getHostname();
         }
+        System.out.println("msf : machine id : " + machine_id);
         response.add(TLVType.TLV_TYPE_MACHINE_ID, machine_id);
         return ERROR_SUCCESS;
     }

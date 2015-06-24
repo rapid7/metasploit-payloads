@@ -254,6 +254,13 @@ public class TLVPacket {
         return (byte[]) getValue(type);
     }
 
+    public TLVPacket createResponse() throws IOException {
+        TLVPacket response = new TLVPacket();
+        response.add(TLVType.TLV_TYPE_METHOD, this.getStringValue(TLVType.TLV_TYPE_METHOD));
+        response.add(TLVType.TLV_TYPE_REQUEST_ID, this.getStringValue(TLVType.TLV_TYPE_REQUEST_ID));
+        return response;
+    }
+
     /**
      * Write all the values to an output stream.
      */
