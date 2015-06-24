@@ -20,6 +20,9 @@ import java.util.Map;
 public class TLVPacket {
 
     // constants
+    public static final int PACKET_TYPE_REQUEST = 0;
+    public static final int PACKET_TYPE_RESPONSE = 1;
+
     public static final int TLV_META_TYPE_NONE = 0;
 
     public static final int TLV_META_TYPE_STRING = (1 << 16);
