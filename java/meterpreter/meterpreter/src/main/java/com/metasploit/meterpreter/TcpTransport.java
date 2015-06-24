@@ -121,6 +121,10 @@ public class TcpTransport extends Transport {
                 System.out.println("msf : Waiting for packet");
                 TLVPacket request = this.readPacket();
 
+                if (request == null) {
+                    continue;
+                }
+
                 System.out.println("msf : Packet received");
 
                 // got a packet, update the timestamp
