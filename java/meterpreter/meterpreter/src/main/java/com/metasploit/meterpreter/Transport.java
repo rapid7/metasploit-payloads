@@ -18,7 +18,7 @@ public abstract class Transport {
     public abstract int parseConfig(byte[] configuration, int offset);
     public abstract void bind(DataInputStream in, OutputStream rawOut);
     public abstract void disconnect();
-    public abstract boolean dispatch(Meterpreter met, CommandManager commandManager);
+    public abstract boolean dispatch(Meterpreter met);
     public abstract void writePacket(TLVPacket packet, int type) throws IOException;
     public abstract TLVPacket readPacket() throws IOException;
 

@@ -112,7 +112,7 @@ public class TcpTransport extends Transport {
         }
     }
 
-    public boolean dispatch(Meterpreter met, CommandManager commandManager) {
+    public boolean dispatch(Meterpreter met) {
         System.out.println("msf : In the dispatch loop");
         long lastPacket = System.currentTimeMillis();
         while (!met.hasSessionExpired() &&
@@ -131,7 +131,7 @@ public class TcpTransport extends Transport {
                 lastPacket = System.currentTimeMillis();
 
                 TLVPacket response = request.createResponse();
-                int result = commandManager.executeCommand(met, request, response);
+                int result = met.getCommandManager().executeCommand(met, request, response);
 
                 this.writePacket(response, TLVPacket.PACKET_TYPE_RESPONSE);
 
