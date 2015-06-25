@@ -50,5 +50,21 @@ public class TransportList {
             this.transport.setPrev(t);
         }
     }
+
+    public void remove(Transport t) {
+        if (this.transport == this.transport.getNext()) {
+            // removing the last one
+            this.transport = null;
+        } else {
+            // move to the next if the current one is being removed
+            if (this.transport == t) {
+                this.transport = this.transport.getNext();
+            }
+
+            // pointer juggle
+            t.getPrev().setNext(t.getNext());
+            t.getNext().setPrev(t.getPrev());
+        }
+    }
 }
 

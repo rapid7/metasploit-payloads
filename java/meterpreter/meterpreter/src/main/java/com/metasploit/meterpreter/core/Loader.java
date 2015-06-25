@@ -27,5 +27,6 @@ public class Loader implements ExtensionLoader {
         mgr.registerCommand("core_transport_sleep", core_transport_sleep.class);
         mgr.registerCommand("core_transport_next", core_transport_next.class);
         mgr.registerCommand("core_transport_prev", core_transport_prev.class);
+        mgr.registerCommand("core_transport_remove", core_transport_remove.class);
     }
 }
