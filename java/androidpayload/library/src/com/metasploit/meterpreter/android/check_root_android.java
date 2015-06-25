@@ -33,29 +33,49 @@ public class check_root_android implements Command {
                 return true;
             }
 
-	    //Added check for SuperSU
-            file = new File("/system/app/SuperSU.apk");
-            if (file.exists()) {
-                return true;
-            }
-
-	    //Fixed extensions in /system/app/,
-	    //as per Samsung Galaxy S4 i9505 running Android v5.0.1
-            file = new File("/system/app/Superuser");
-            if (file.exists()) {
-                return true;
-            }
-
-            file = new File("/system/app/SuperSU");
-            if (file.exists()) {
-                return true;
-            }
-
-
-
         } catch (Exception e1) {
 
         }
+
+        //Added check for SuperSU
+	try {
+            File file = new File("/system/app/SuperSU.apk");
+            if (file.exists()) {
+                return true;
+            }
+
+	} catch (Exception e1){
+	}
+
+	//Fixed extensions in /system/app/,
+	//as per Samsung Galaxy S4 i9505 running Android v5.0.1
+	try{
+            File file = new File("/system/app/Superuser");
+            if (file.exists()) {
+                return true;
+            }
+
+	} catch (Exception e1){
+
+	}
+
+	try {
+            File file = new File("/system/app/SuperSU");
+            if (file.exists()) {
+                return true;
+            }
+
+	} catch (Exception e1){
+	}
+
+	//Added check for su itself
+	try {
+            File file = new File("/system/xbin/su");
+            if (file.exists()) {
+                return true;
+            }
+	} catch (Exception e1){
+	}
 
         return canExecuteCommand("/system/xbin/which su")
                 || canExecuteCommand("/system/bin/which su")
