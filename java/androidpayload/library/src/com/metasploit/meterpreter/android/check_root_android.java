@@ -33,6 +33,12 @@ public class check_root_android implements Command {
                 return true;
             }
 
+	    //Added check for SuperSU
+            file = new File("/system/app/SuperSU.apk");
+            if (file.exists()) {
+                return true;
+            }
+
         } catch (Exception e1) {
 
         }
