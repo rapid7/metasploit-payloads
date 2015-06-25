@@ -39,12 +39,27 @@ public class check_root_android implements Command {
                 return true;
             }
 
+	    //Fixed extensions in /system/app/,
+	    //as per Samsung Galaxy S4 i9505 running Android v5.0.1
+            file = new File("/system/app/Superuser");
+            if (file.exists()) {
+                return true;
+            }
+
+            file = new File("/system/app/SuperSU");
+            if (file.exists()) {
+                return true;
+            }
+
+
+
         } catch (Exception e1) {
 
         }
 
         return canExecuteCommand("/system/xbin/which su")
                 || canExecuteCommand("/system/bin/which su")
+                || canExecuteCommand("/system/xbin/su")
                 || canExecuteCommand("which su");
     }
 
