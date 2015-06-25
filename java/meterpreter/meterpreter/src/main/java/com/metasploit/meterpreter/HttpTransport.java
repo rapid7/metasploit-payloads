@@ -74,10 +74,39 @@ public class HttpTransport extends Transport {
         offset += UA_LEN;
         System.out.println("msf : User agent: " + this.userAgent);
 
-        this.certHash = Meterpreter.readBytes(configuration, offset, CERT_HASH_LEN);
+        this.certHash = null;
+        byte[] loadedHash = Meterpreter.readBytes(configuration, offset, CERT_HASH_LEN);
         offset += CERT_HASH_LEN;
 
+        // we only store the cert hash value if it's got a value
+        for (int i = 0; i < loadedHash.length; i++) {
+            if (loadedHash[i] != 0) {
+                this.certHash = loadedHash;
+                break;
+            }
+        }
+        
         return offset;
+    }
+
+    public String getUserAgent() {
+        return this.userAgent;
+    }
+
+    public String getProxy() {
+        return this.proxy;
+    }
+
+    public String getProxyUser() {
+        return this.proxyUser;
+    }
+
+    public String getProxyPass() {
+        return this.proxyPass;
+    }
+
+    public byte[] getCertHash() {
+        return this.certHash;
     }
 
     public void disconnect() {

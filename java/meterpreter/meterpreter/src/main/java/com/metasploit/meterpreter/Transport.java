@@ -48,6 +48,10 @@ public abstract class Transport {
         return offset;
     }
 
+    public String getUrl() {
+        return this.url;
+    }
+
     public long getCommTimeout() {
         return this.commTimeout / MS;
     }
