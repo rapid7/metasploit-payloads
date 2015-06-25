@@ -22,5 +22,6 @@ public class Loader implements ExtensionLoader {
         mgr.registerCommand("core_shutdown", core_shutdown.class);
         mgr.registerCommand("core_transport_set_timeouts", core_transport_set_timeouts.class);
         mgr.registerCommand("core_transport_list", core_transport_list.class);
+        mgr.registerCommand("core_transport_add", core_transport_add.class);
     }
 }

@@ -93,20 +93,40 @@ public class HttpTransport extends Transport {
         return this.userAgent;
     }
 
+    public void setUserAgent(String userAgent) {
+        this.userAgent = userAgent;
+    }
+
     public String getProxy() {
         return this.proxy;
+    }
+
+    public void setProxy(String proxy) {
+        this.proxy = proxy;
     }
 
     public String getProxyUser() {
         return this.proxyUser;
     }
 
+    public void setProxyUser(String proxyUser) {
+        this.proxyUser = proxyUser;
+    }
+
     public String getProxyPass() {
         return this.proxyPass;
     }
 
+    public void setProxyPass(String proxyPass) {
+        this.proxyPass = proxyPass;
+    }
+
     public byte[] getCertHash() {
         return this.certHash;
+    }
+
+    public void setCertHash(byte[] certHash) {
+        this.certHash = certHash;
     }
 
     public void disconnect() {

@@ -260,6 +260,13 @@ public class TLVPacket {
         return (byte[]) getValue(type);
     }
 
+    /**
+     * Get the value associated to a type as a byte array.
+     */
+    public byte[] getRawValue(int type, byte[] defaultValue) {
+        return (byte[]) getValue(type, defaultValue);
+    }
+
     public TLVPacket createResponse() throws IOException {
         TLVPacket response = new TLVPacket();
         response.add(TLVType.TLV_TYPE_METHOD, this.getStringValue(TLVType.TLV_TYPE_METHOD));

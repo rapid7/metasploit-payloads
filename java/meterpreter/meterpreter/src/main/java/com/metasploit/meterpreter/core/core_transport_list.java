@@ -56,7 +56,6 @@ public class core_transport_list implements Command {
             t = t.getNext();
         } while (t != first);
 
-
         System.out.println("msf : transport list code complete");
         return ERROR_SUCCESS;
     }
