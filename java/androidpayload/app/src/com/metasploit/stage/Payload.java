@@ -189,5 +189,7 @@ public class Payload {
         myClass.getMethod("start",
                 new Class[]{DataInputStream.class, OutputStream.class, String[].class})
                 .invoke(stage, in, out, parameters);
+        Log.d("msf", "Session finished, terminating process");
+        System.exit(0);
     }
 }

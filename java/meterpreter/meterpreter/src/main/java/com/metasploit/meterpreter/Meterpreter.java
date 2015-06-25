@@ -203,6 +203,7 @@ public class Meterpreter {
 
             this.transports.moveNext(this);
         }
+        System.out.println("msf : and we're done, cleaing channels");
         synchronized (this) {
             for (Iterator it = channels.iterator(); it.hasNext(); ) {
                 Channel c = (Channel) it.next();
@@ -210,6 +211,7 @@ public class Meterpreter {
                     c.close();
             }
         }
+        System.out.println("msf : done executing");
     }
 
     protected String getPayloadTrustManager() {

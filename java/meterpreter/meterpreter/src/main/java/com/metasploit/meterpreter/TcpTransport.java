@@ -162,6 +162,7 @@ public class TcpTransport extends Transport {
     public boolean dispatch(Meterpreter met) {
         System.out.println("msf : In the dispatch loop");
         long lastPacket = System.currentTimeMillis();
+        int result = 0;
         while (!met.hasSessionExpired() &&
             System.currentTimeMillis() < lastPacket + this.commTimeout) {
             try {
@@ -178,7 +179,7 @@ public class TcpTransport extends Transport {
                 lastPacket = System.currentTimeMillis();
 
                 TLVPacket response = request.createResponse();
-                int result = met.getCommandManager().executeCommand(met, request, response);
+                result = met.getCommandManager().executeCommand(met, request, response);
                 System.out.println("msf : command executed: " + result);
 
                 this.writePacket(response, TLVPacket.PACKET_TYPE_RESPONSE);
@@ -191,7 +192,15 @@ public class TcpTransport extends Transport {
                 // socket comms timeout, didn't get a packet,
                 // this is ok, so we ignore it
                 System.out.println("msf : Socket timeout (OK)");
-            } catch (Exception ex) {
+            } catch (SocketException ex) {
+                // sometimes we'll have issues where writing a response when we're exiting
+                // the dispatch is intended, so we'll check for that here too
+                if (result == Command.EXIT_DISPATCH) {
+                    System.out.println("msf : Exception in exit of dispatch, indicating intention");
+                    return true;
+                }
+            }
+            catch (Exception ex) {
                 // any other type of exception isn't good.
                 System.out.println("msf : Some other exception: " + ex.getClass().getName());
                 break;
