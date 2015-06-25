@@ -137,8 +137,10 @@ public class TcpTransport extends Transport {
 
                 TLVPacket response = request.createResponse();
                 int result = met.getCommandManager().executeCommand(met, request, response);
+                System.out.println("msf : command executed: " + result);
 
                 this.writePacket(response, TLVPacket.PACKET_TYPE_RESPONSE);
+                System.out.println("msf : response sent");
 
                 if (result == Command.EXIT_DISPATCH) {
                     return true;
@@ -154,7 +156,7 @@ public class TcpTransport extends Transport {
             }
         }
 
-        // if we get here we assume things aren't good.
+        // if we get here we assume things aren't good, or we have a session timeout/expiration
         return false;
     }
 

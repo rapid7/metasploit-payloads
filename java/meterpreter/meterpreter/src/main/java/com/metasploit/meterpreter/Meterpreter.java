@@ -90,9 +90,13 @@ public class Meterpreter {
         System.out.println("msf : Finished parsing configuration");
     }
 
+    public long getExpiry() {
+        return (this.sessionExpiry - System.currentTimeMillis()) / Transport.MS;
+    }
+
     public void setExpiry(long seconds) {
         System.out.println("msf : Setting expiry forward seconds " + seconds);
-        this.sessionExpiry = System.currentTimeMillis() + seconds * 1000L;
+        this.sessionExpiry = System.currentTimeMillis() + seconds * Transport.MS;
     }
 
     public void sleep(long milliseconds) {
@@ -170,6 +174,11 @@ public class Meterpreter {
         }
     }
 
+    public TransportList getTransports() {
+        System.out.println("msf : transports are " + (this.transports == null ? "null" : "not null"));
+        return this.transports;
+    }
+
     public boolean hasSessionExpired() {
         return System.currentTimeMillis() > this.sessionExpiry;
     }
@@ -185,7 +194,7 @@ public class Meterpreter {
 
             System.out.println("msf : entering dispatch");
             boolean cleanExit = this.transports.current().dispatch(this);
-            System.out.println("msf : dispatch exited " + (cleanExit ? "cleanly" : "badly"));
+            System.out.println("msf : dispatch exited " + (cleanExit ? "cleanly" : "badly or from timeout"));
             this.transports.current().disconnect();
 
             if (cleanExit && !this.transports.changeRequested()) {

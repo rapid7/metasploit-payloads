@@ -81,20 +81,30 @@ public class CommandManager {
      * @param secondVersion Minimum Java version for the second implementation
      */
     public void registerCommand(String command, Class commandClass, int version, int secondVersion) throws Exception {
-        if (secondVersion < version)
+        System.out.println("msf : Command class requested " + commandClass.getName());
+        if (secondVersion < version) {
             throw new IllegalArgumentException("secondVersion must be larger than version");
+        }
+
         if (javaVersion < version) {
             registeredCommands.put(command, new UnsupportedJavaVersionCommand(command, version));
             return;
         }
-        if (javaVersion >= secondVersion)
+
+        if (javaVersion >= secondVersion) {
             version = secondVersion;
+        }
 
         if (version != ExtensionLoader.V1_2) {
             commandClass = commandClass.getClassLoader().loadClass(commandClass.getName() + "_V1_" + (version - 10));
         }
+
+        System.out.println("msf : Command class registered " + commandClass.getName());
         Command cmd = (Command) commandClass.newInstance();
         registeredCommands.put(command, cmd);
+        Command x = (Command)registeredCommands.get(command);
+        System.out.println("msf : Command class returned " + x.getClass().getName());
+
         newCommands.add(command);
     }
 
@@ -102,10 +112,12 @@ public class CommandManager {
      * Get a command for the given name.
      */
     public Command getCommand(String name) {
+        System.out.println("msf : Requested command " + name);
         Command cmd = (Command) registeredCommands.get(name);
         if (cmd == null) {
             cmd = NotYetImplementedCommand.INSTANCE;
         }
+        System.out.println("msf : Command class " + cmd.getClass().getName());
         return cmd;
     }
 

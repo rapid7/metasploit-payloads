@@ -181,8 +181,9 @@ public class TLVPacket {
      */
     public Object getValue(int type) {
         ArrayList indices = (ArrayList) valueMap.get(new Integer(type));
-        if (indices == null)
+        if (indices == null) {
             throw new IllegalArgumentException("Cannot find type " + type);
+        }
         // the indices variable is an ArrayList so by default return the first to
         // preserve existing behaviour.
         return valueList.get(((Integer) indices.get(0)).intValue());
@@ -194,8 +195,9 @@ public class TLVPacket {
     public List getValues(int type) {
         ArrayList values = new ArrayList();
         ArrayList indices = (ArrayList) valueMap.get(new Integer(type));
-        if (indices == null)
+        if (indices == null) {
             throw new IllegalArgumentException("Cannot find type " + type);
+        }
 
         for (int i = 0; i < indices.size(); ++i) {
             values.add(valueList.get(((Integer) indices.get(i)).intValue()));
@@ -208,8 +210,9 @@ public class TLVPacket {
      */
     public Object getValue(int type, Object defaultValue) {
         ArrayList indices = (ArrayList) valueMap.get(new Integer(type));
-        if (indices == null)
+        if (indices == null) {
             return defaultValue;
+        }
         // the indices variable is an ArrayList so by default return the first to
         // preserve existing behaviour.
         return valueList.get(((Integer) indices.get(0)).intValue());
