@@ -19,6 +19,66 @@ public class TcpTransport extends Transport {
     private String host;
     private int port;
 
+    // This whole thing exists just so that we can deal with
+    // the fact that MSF thinks we've 'died' (and therefore
+    // it hangs) when we terminate the socket. We need to wait
+    // for MSF to terminate instead.
+    private class SocketDisposer extends Thread {
+        private final Socket sock;
+        private final DataInputStream in;
+        private final DataOutputStream out;
+
+        public SocketDisposer(Socket s, DataInputStream in, DataOutputStream out) {
+            this.sock = s;
+            this.in = in;
+            this.out = out;
+        }
+
+        public void run() {
+            if (this.in != null) {
+                try {
+                    byte[] buffer = new byte[16];
+                    while (true) {
+                        this.in.readFully(buffer);
+                    }
+                }
+                catch (IOException ex) {
+                    try {
+                        this.in.close();
+                    }
+                    catch (IOException ex2) {
+                    }
+                }
+            }
+
+            if (this.out != null) {
+                try {
+                    // keep writing until the socket dies, from there
+                    // we'll know that the other end has actually closed it.
+                    while (true) {
+                        this.out.writeByte((byte)0);
+                    }
+                }
+                catch (IOException ex) {
+                    try {
+                        this.out.flush();
+                        this.out.close();
+                    }
+                    catch (IOException ex2) {
+                    }
+                }
+            }
+
+            if (this.sock != null) {
+                try {
+                    this.sock.close();
+                }
+                catch (IOException ex) {
+                }
+            }
+        }
+    }
+
     public TcpTransport(String url) {
         super(url);
 
@@ -44,30 +104,12 @@ public class TcpTransport extends Transport {
     }
 
     public void disconnect() {
-        if (this.inputStream != null) {
-            try {
-                this.inputStream.close();
-            }
-            catch (IOException ex) {
-            }
-            this.inputStream = null;
-        }
-        if (this.outputStream != null) {
-            try {
-                this.outputStream.close();
-            }
-            catch (IOException ex) {
-            }
-            this.outputStream = null;
-        }
-        if (this.sock != null) {
-            try {
-                this.sock.close();
-            }
-            catch (IOException ex) {
-            }
-            this.sock = null;
-        }
+        SocketDisposer s = new SocketDisposer(this.sock, this.inputStream, this.outputStream);
+        this.sock = null;
+        this.inputStream = null;
+        this.outputStream = null;
+
+        s.start();
     }
 
     protected boolean tryConnect(Meterpreter met) throws IOException {

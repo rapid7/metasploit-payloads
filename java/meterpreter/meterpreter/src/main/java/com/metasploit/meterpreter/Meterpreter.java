@@ -201,7 +201,7 @@ public class Meterpreter {
                 break;
             }
 
-            this.transports.next(this);
+            this.transports.moveNext(this);
         }
         synchronized (this) {
             for (Iterator it = channels.iterator(); it.hasNext(); ) {

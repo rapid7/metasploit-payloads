@@ -17,7 +17,7 @@ public class TransportList {
         return this.nextTransport != null;
     }
 
-    public void next(Meterpreter met) {
+    public void moveNext(Meterpreter met) {
         if (this.wait > 0) {
             met.sleep(this.wait);
             this.wait = 0;
@@ -29,6 +29,11 @@ public class TransportList {
             this.transport = this.nextTransport;
             this.nextTransport = null;
         }
+    }
+
+    public void setNext(Transport t, long wait) {
+        this.wait = wait;
+        this.nextTransport = t;
     }
 
     public void add(Transport t) {
