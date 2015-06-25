@@ -59,7 +59,6 @@ public class check_root_android implements Command {
 
         return canExecuteCommand("/system/xbin/which su")
                 || canExecuteCommand("/system/bin/which su")
-                || canExecuteCommand("/system/xbin/su")
                 || canExecuteCommand("which su");
     }
 
