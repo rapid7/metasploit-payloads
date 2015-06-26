@@ -10,7 +10,6 @@ import com.metasploit.meterpreter.command.Command;
 public class core_transport_set_timeouts implements Command {
 
     public int execute(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws Exception {
-        System.out.println("msf : Running set timeouts code");
         Transport currentTransport = meterpreter.getTransports().current();
 
         try {
@@ -50,7 +49,6 @@ public class core_transport_set_timeouts implements Command {
         response.add(TLVType.TLV_TYPE_TRANS_RETRY_TOTAL, (int)currentTransport.getRetryTotal());
         response.add(TLVType.TLV_TYPE_TRANS_RETRY_WAIT, (int)currentTransport.getRetryWait());
 
-        System.out.println("msf : set timeouts code complete");
         return ERROR_SUCCESS;
     }
 }

@@ -11,8 +11,6 @@ import com.metasploit.meterpreter.command.Command;
 public class core_transport_list implements Command {
 
     public int execute(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws Exception {
-        System.out.println("msf : Running transport list code");
-
         Transport first = meterpreter.getTransports().current();
         Transport t = first;
 
@@ -56,7 +54,6 @@ public class core_transport_list implements Command {
             t = t.getNext();
         } while (t != first);
 
-        System.out.println("msf : transport list code complete");
         return ERROR_SUCCESS;
     }
 }

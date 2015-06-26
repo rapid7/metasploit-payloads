@@ -32,17 +32,14 @@ public abstract class Transport {
     protected int parseTimeouts(byte[] configuration, int offset) {
         // starts with the comms timeout
         this.commTimeout = MS * Meterpreter.unpack32(configuration, offset);
-        System.out.println("msf : Comm timeout ms: " + this.commTimeout);
         offset += 4;
 
         // then we have the retry total
         this.retryTotal = MS * Meterpreter.unpack32(configuration, offset);
-        System.out.println("msf : Retry total ms: " + this.retryTotal);
         offset += 4;
 
         // then we have the retry wait
         this.retryWait = MS * Meterpreter.unpack32(configuration, offset);
-        System.out.println("msf : Retry Wait ms: " + this.retryWait);
         offset += 4;
 
         return offset;

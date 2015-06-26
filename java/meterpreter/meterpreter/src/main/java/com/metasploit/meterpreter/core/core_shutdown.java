@@ -8,7 +8,6 @@ import java.io.IOException;
 
 public class core_shutdown implements Command {
     public int execute(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws Exception {
-        System.out.println("msf : Shutdown requested, exiting dispatch");
         return EXIT_DISPATCH;
     }
 }

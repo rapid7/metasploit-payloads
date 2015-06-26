@@ -12,7 +12,6 @@ import com.metasploit.meterpreter.command.Command;
 public class core_transport_sleep implements Command {
 
     public int execute(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws Exception {
-        System.out.println("msf : Running transport sleep code");
         int result = EXIT_DISPATCH;
 
         try {
@@ -23,7 +22,6 @@ public class core_transport_sleep implements Command {
             result = ERROR_FAILURE;
         }
 
-        System.out.println("msf : transport sleep code complete");
         return result;
     }
 }

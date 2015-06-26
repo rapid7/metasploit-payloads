@@ -12,8 +12,6 @@ import com.metasploit.meterpreter.command.Command;
 public class core_transport_remove implements Command {
 
     public int execute(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws Exception {
-        System.out.println("msf : Running transport remove code");
-
         Transport t = meterpreter.getTransports().current();
 
         // check if this is the last transport
@@ -40,7 +38,6 @@ public class core_transport_remove implements Command {
 
         meterpreter.getTransports().remove(found);
 
-        System.out.println("msf : transport remove code complete");
         return ERROR_SUCCESS;
     }
 }

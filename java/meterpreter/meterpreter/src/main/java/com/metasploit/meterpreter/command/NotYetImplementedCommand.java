@@ -150,7 +150,6 @@ public class NotYetImplementedCommand implements Command {
     }
 
     public int execute(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws Exception {
-        System.out.println("msf : Unknown request detected");
         meterpreter.getErrorStream().println("Unknown request detected:");
         dumpTLV(meterpreter.getErrorStream(), request);
         return ERROR_FAILURE;

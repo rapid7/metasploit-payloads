@@ -81,7 +81,6 @@ public class CommandManager {
      * @param secondVersion Minimum Java version for the second implementation
      */
     public void registerCommand(String command, Class commandClass, int version, int secondVersion) throws Exception {
-        System.out.println("msf : Command class requested " + commandClass.getName());
         if (secondVersion < version) {
             throw new IllegalArgumentException("secondVersion must be larger than version");
         }
@@ -99,11 +98,9 @@ public class CommandManager {
             commandClass = commandClass.getClassLoader().loadClass(commandClass.getName() + "_V1_" + (version - 10));
         }
 
-        System.out.println("msf : Command class registered " + commandClass.getName());
         Command cmd = (Command) commandClass.newInstance();
         registeredCommands.put(command, cmd);
         Command x = (Command)registeredCommands.get(command);
-        System.out.println("msf : Command class returned " + x.getClass().getName());
 
         newCommands.add(command);
     }
@@ -112,35 +109,28 @@ public class CommandManager {
      * Get a command for the given name.
      */
     public Command getCommand(String name) {
-        System.out.println("msf : Requested command " + name);
         Command cmd = (Command) registeredCommands.get(name);
         if (cmd == null) {
             cmd = NotYetImplementedCommand.INSTANCE;
         }
-        System.out.println("msf : Command class " + cmd.getClass().getName());
         return cmd;
     }
 
     public int executeCommand(Meterpreter met, TLVPacket request, TLVPacket response) throws IOException {
         String method = request.getStringValue(TLVType.TLV_TYPE_METHOD);
-        System.out.println("msf : Executing " + method);
         Command cmd = this.getCommand(method);
-        System.out.println("msf : Method " + (cmd == null ? "not found" : "found"));
 
         int result;
         try {
             result = cmd.execute(met, request, response);
         } catch (Throwable t) {
-            System.out.println("msf : something went wrong executing the command");
             t.printStackTrace(met.getErrorStream());
             result = Command.ERROR_FAILURE;
         }
 
         if (result == Command.EXIT_DISPATCH) {
-            System.out.println("msf : dispatch exited");
             response.add(TLVType.TLV_TYPE_RESULT, Command.ERROR_SUCCESS);
         } else {
-            System.out.println("msf : dispatch didn't exit");
             response.add(TLVType.TLV_TYPE_RESULT, result);
         }
 

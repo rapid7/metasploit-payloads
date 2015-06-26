@@ -12,8 +12,6 @@ import com.metasploit.meterpreter.command.Command;
 public class core_transport_add implements Command {
 
     public int execute(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws Exception {
-        System.out.println("msf : Running transport add code");
-
         Transport t = null;
         String transportUrl = request.getStringValue(TLVType.TLV_TYPE_TRANS_URL);
 
@@ -67,7 +65,6 @@ public class core_transport_add implements Command {
 
         meterpreter.getTransports().add(t);
 
-        System.out.println("msf : transport add code complete");
         return ERROR_SUCCESS;
     }
 }

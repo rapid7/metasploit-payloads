@@ -12,7 +12,6 @@ import com.metasploit.meterpreter.command.Command;
 public class core_transport_change extends core_transport_add {
 
     public int execute(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws Exception {
-        System.out.println("msf : Running transport change code");
         int result = super.execute(meterpreter, request, response);
 
         if (result == ERROR_SUCCESS) {
@@ -21,7 +20,6 @@ public class core_transport_change extends core_transport_add {
             result = EXIT_DISPATCH;
         }
 
-        System.out.println("msf : transport change code complete");
         return result;
     }
 }
