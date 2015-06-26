@@ -9,8 +9,8 @@ import com.metasploit.meterpreter.command.Command;
 public class check_root_android implements Command {
 
     private static final int TLV_EXTENSIONS = 20000;
-    private static final int TLV_TYPE_CHECK_ROOT_BOOL = TLVPacket.TLV_META_TYPE_BOOL
-            | (TLV_EXTENSIONS + 9019);
+    private static final int TLV_TYPE_CHECK_ROOT_BOOL =
+		TLVPacket.TLV_META_TYPE_BOOL | (TLV_EXTENSIONS + 9019);
 
     @Override
     public int execute(Meterpreter meterpreter, TLVPacket request,
@@ -27,59 +27,27 @@ public class check_root_android implements Command {
             return true;
         }
 
-        try {
-            File file = new File("/system/app/Superuser.apk");
-            if (file.exists()) {
-                return true;
-            }
-
-        } catch (Exception e1) {
-
-        }
-
-        //Added check for SuperSU
-	try {
-            File file = new File("/system/app/SuperSU.apk");
-            if (file.exists()) {
-                return true;
-            }
-
-	} catch (Exception e1){
-	}
-
-	//Fixed extensions in /system/app/,
-	//as per Samsung Galaxy S4 i9505 running Android v5.0.1
-	try{
-            File file = new File("/system/app/Superuser");
-            if (file.exists()) {
-                return true;
-            }
-
-	} catch (Exception e1){
-
-	}
-
-	try {
-            File file = new File("/system/app/SuperSU");
-            if (file.exists()) {
-                return true;
-            }
-
-	} catch (Exception e1){
-	}
-
-	//Added check for su itself
-	try {
-            File file = new File("/system/xbin/su");
-            if (file.exists()) {
-                return true;
-            }
-	} catch (Exception e1){
-	}
-
-        return canExecuteCommand("/system/xbin/which su")
+        return fileInstalled("/system/app/SuperSU")
+                || fileInstalled("/system/app/SuperSU.apk")
+                || fileInstalled("/system/app/Superuser")
+                || fileInstalled("/system/app/Superuser.apk")
+                || fileInstalled("/system/xbin/su")
+                || fileInstalled("/system/xbin/_su")
+                || canExecuteCommand("/system/xbin/which su")
                 || canExecuteCommand("/system/bin/which su")
                 || canExecuteCommand("which su");
+    }
+
+    private static boolean fileInstalled(String packageName) {
+        boolean installed;
+        try {
+            File file = new File("/system/app/" + packageName);
+            installed = file.exists();
+        } catch (Exception e1){
+            installed = false;
+        }
+
+        return installed;
     }
 
     private static boolean canExecuteCommand(String command) {
