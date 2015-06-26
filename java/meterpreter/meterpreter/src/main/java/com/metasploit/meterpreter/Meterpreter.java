@@ -85,6 +85,10 @@ public class Meterpreter {
         // list of transports we just bomb out.
     }
 
+    public byte[] getUUID() {
+        return this.uuid;
+    }
+
     public long getExpiry() {
         return (this.sessionExpiry - System.currentTimeMillis()) / Transport.MS;
     }
