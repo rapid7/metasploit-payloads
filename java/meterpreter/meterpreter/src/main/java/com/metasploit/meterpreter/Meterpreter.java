@@ -42,6 +42,7 @@ public class Meterpreter {
 
 
     private final TransportList transports = new TransportList();
+    private int ignoreBlocks = 0;
     private byte[] uuid;
     private long sessionExpiry;
 
@@ -92,6 +93,10 @@ public class Meterpreter {
 
     public long getExpiry() {
         return (this.sessionExpiry - System.currentTimeMillis()) / Transport.MS;
+    }
+
+    public int getIgnoreBlocks() {
+        return this.ignoreBlocks;
     }
 
     public void setExpiry(long seconds) {
@@ -158,6 +163,14 @@ public class Meterpreter {
         System.out.println("msf : Meterpreter config length: " + configLen);
 
         loadConfiguration(in, rawOut, configBytes);
+
+        // after the configuration block is a 32 bit integer that tells us
+        // how many stages were wired into the payload. We need to stash this
+        // because in the case of TCP comms, we need to skip this number of
+        // blocks down the track when we reconnect. We have to store this in
+        // the meterpreter class instead of the TCP comms class though
+        this.ignoreBlocks = in.readInt();
+        System.out.println("msf : ignoring blocks on reconnect : " + this.ignoreBlocks);
 
         this.loadExtensions = loadExtensions;
         this.commandManager = new CommandManager();
