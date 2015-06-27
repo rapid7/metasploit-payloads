@@ -67,18 +67,13 @@ BOOL request_core_patch_url(Remote* remote, Packet* packet, DWORD* result)
 	{
 		// This shouldn't happen.
 		*result = ERROR_INVALID_STATE;
-		return TRUE;
 	}
-
-	HttpTransportContext* ctx = (HttpTransportContext*)remote->transport->ctx;
-	SAFE_FREE(ctx->uri);
-
-	// yes, we are reusing the URL in this case
-	ctx->uri = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_URL);
-
-	dprintf("[DISPATCH] Recieved hot-patcheched URL for stageless: %S", ctx->uri);
-
-	*result = ERROR_SUCCESS;
+	else
+	{
+		HttpTransportContext* ctx = (HttpTransportContext*)remote->transport->ctx;
+		ctx->new_uri = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_URL);
+		*result = ERROR_SUCCESS;
+	}
 	return TRUE;
 }
 #endif
