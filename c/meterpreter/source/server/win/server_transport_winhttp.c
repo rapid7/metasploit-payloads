@@ -718,7 +718,7 @@ static DWORD server_dispatch_http(Remote* remote, THREAD* dispatchThread)
 				dprintf("[DISPATCH] Old URL is: %S", transport->url);
 
 				// if the new URI needs more space, let's realloc space for the new URL now
-				int diff = wcslen(ctx->new_uri) - wcslen(ctx->uri);
+				int diff = (int)wcslen(ctx->new_uri) - (int)wcslen(ctx->uri);
 				if (diff > 0)
 				{
 					dprintf("[DISPATCH] New URI is bigger by %d", diff);
