@@ -644,6 +644,7 @@ static DWORD server_dispatch_http(Remote* remote, THREAD* dispatchThread)
 	DWORD ecount = 0;
 	DWORD delay = 0;
 	Transport* transport = remote->transport;
+	HttpTransportContext* ctx = (HttpTransportContext*)transport->ctx;
 
 	while (running)
 	{
@@ -697,18 +698,53 @@ static DWORD server_dispatch_http(Remote* remote, THREAD* dispatchThread)
 
 			dprintf("[DISPATCH] no pending packets, sleeping for %dms...", min(10000, delay));
 			Sleep(min(10000, delay));
-			continue;
 		}
+		else
+		{
+			transport->comms_last_packet = current_unix_timestamp();
 
-		transport->comms_last_packet = current_unix_timestamp();
+			// Reset the empty count when we receive a packet
+			ecount = 0;
 
-		// Reset the empty count when we receive a packet
-		ecount = 0;
+			dprintf("[DISPATCH] Returned result: %d", result);
 
-		dprintf("[DISPATCH] Returned result: %d", result);
+			running = command_handle(remote, packet);
+			dprintf("[DISPATCH] command_process result: %s", (running ? "continue" : "stop"));
 
-		running = command_handle(remote, packet);
-		dprintf("[DISPATCH] command_process result: %s", (running ? "continue" : "stop"));
+			if (ctx->new_uri != NULL)
+			{
+				dprintf("[DISPATCH] Recieved hot-patched URL for stageless: %S", ctx->new_uri);
+				dprintf("[DISPATCH] Old URI is: %S", ctx->uri);
+				dprintf("[DISPATCH] Old URL is: %S", transport->url);
+
+				// if the new URI needs more space, let's realloc space for the new URL now
+				int diff = (int)wcslen(ctx->new_uri) - (int)wcslen(ctx->uri);
+				if (diff > 0)
+				{
+					dprintf("[DISPATCH] New URI is bigger by %d", diff);
+					transport->url = (wchar_t*)realloc(transport->url, (wcslen(transport->url) + diff + 1) * sizeof(wchar_t));
+				}
+
+				// we also need to patch the new URI into the original transport URL, not just the currently
+				// active URI for comms. If we don't, then migration behaves badly.
+				// Start by locating the start of the URI in the current URL, by finding the third slash
+				wchar_t* csr = transport->url + wcslen(transport->url) - 2;
+				while (*csr != L'/')
+				{
+					--csr;
+				}
+				dprintf("[DISPATCH] Pointer is at: %p -> %S", csr, csr);
+
+				// patch in the new URI
+				wcscpy_s(csr, wcslen(diff > 0 ? ctx->new_uri : ctx->uri) + 1, ctx->new_uri);
+				dprintf("[DISPATCH] New URL is: %S", transport->url);
+
+				// clean up
+				SAFE_FREE(ctx->uri);
+				ctx->uri = ctx->new_uri;
+				ctx->new_uri = NULL;
+			}
+		}
 	}
 
 	return result;

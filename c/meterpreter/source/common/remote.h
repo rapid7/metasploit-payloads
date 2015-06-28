@@ -68,6 +68,7 @@ typedef struct _HttpTransportContext
 	CSTRTYPE url;                         ///! Pointer to the URL stored with the transport.
 	STRTYPE ua;                           ///! User agent string.
 	STRTYPE uri;                          ///! UUID encoded as a URI.
+	STRTYPE new_uri;                      ///! New URI for stageless URI switches
 	STRTYPE proxy;                        ///! Proxy details.
 	STRTYPE proxy_user;                   ///! Proxy username.
 	STRTYPE proxy_pass;                   ///! Proxy password.
