@@ -80,7 +80,7 @@ public class HttpTransport extends Transport {
                 break;
             }
         }
-        
+
         return offset;
     }
 
@@ -285,9 +285,8 @@ public class HttpTransport extends Transport {
                 catch (Exception ex) {
                     // perhaps log?
                 }
-
-                conn.setDoOutput(true);
             }
+            conn.setDoOutput(true);
         }
         catch (IOException ex) {
             if (conn != null) {
