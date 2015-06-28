@@ -377,7 +377,7 @@ VOID dump_clipboard_capture(Packet* pResponse, ClipboardCapture* pCapture, BOOL 
 			dprintf("[EXTAPI CLIPBOARD] Adding path %s", pFile->lpPath);
 			packet_add_tlv_string(file, TLV_TYPE_EXT_CLIPBOARD_TYPE_FILE_NAME, pFile->lpPath);
 
-			dprintf("[EXTAPI CLIPBOARD] Adding size %llu", htonq(pFile->qwSize));
+			dprintf("[EXTAPI CLIPBOARD] Adding size %llu", pFile->qwSize);
 			packet_add_tlv_qword(file, TLV_TYPE_EXT_CLIPBOARD_TYPE_FILE_SIZE, pFile->qwSize);
 
 			dprintf("[EXTAPI CLIPBOARD] Adding group");
@@ -709,7 +709,7 @@ DWORD capture_clipboard(BOOL bCaptureImageData, ClipboardCapture** ppCapture)
 							{
 								if (pGetFileSizeEx(hSourceFile, &largeInt))
 								{
-									pFile->qwSize = htonq(largeInt.QuadPart);
+									pFile->qwSize = largeInt.QuadPart;
 								}
 
 								pCloseHandle(hSourceFile);
