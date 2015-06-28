@@ -10,7 +10,7 @@ import dalvik.system.DexClassLoader;
 import javapayload.stage.Stage;
 
 /**
- * Meterpreter Java Payload Proxy
+ * Meterpreter Android Payload Proxy
  */
 public class Meterpreter implements Stage {
 

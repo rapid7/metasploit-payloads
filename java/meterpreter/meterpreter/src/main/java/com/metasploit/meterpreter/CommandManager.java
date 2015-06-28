@@ -1,5 +1,6 @@
 package com.metasploit.meterpreter;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Vector;
@@ -40,8 +41,9 @@ public class CommandManager {
         String javaversion = System.getProperty("java.version");
         if (javaversion != null && javaversion.length() > 2) {
             int vmVersion = javaversion.charAt(2) - '2' + ExtensionLoader.V1_2;
-            if (vmVersion >= ExtensionLoader.V1_2 && vmVersion < apiVersion)
+            if (vmVersion >= ExtensionLoader.V1_2 && vmVersion < apiVersion) {
                 apiVersion = vmVersion;
+            }
         }
         this.javaVersion = apiVersion;
 
@@ -79,20 +81,27 @@ public class CommandManager {
      * @param secondVersion Minimum Java version for the second implementation
      */
     public void registerCommand(String command, Class commandClass, int version, int secondVersion) throws Exception {
-        if (secondVersion < version)
+        if (secondVersion < version) {
             throw new IllegalArgumentException("secondVersion must be larger than version");
+        }
+
         if (javaVersion < version) {
             registeredCommands.put(command, new UnsupportedJavaVersionCommand(command, version));
             return;
         }
-        if (javaVersion >= secondVersion)
+
+        if (javaVersion >= secondVersion) {
             version = secondVersion;
+        }
 
         if (version != ExtensionLoader.V1_2) {
             commandClass = commandClass.getClassLoader().loadClass(commandClass.getName() + "_V1_" + (version - 10));
         }
+
         Command cmd = (Command) commandClass.newInstance();
         registeredCommands.put(command, cmd);
+        Command x = (Command)registeredCommands.get(command);
+
         newCommands.add(command);
     }
 
@@ -101,9 +110,31 @@ public class CommandManager {
      */
     public Command getCommand(String name) {
         Command cmd = (Command) registeredCommands.get(name);
-        if (cmd == null)
+        if (cmd == null) {
             cmd = NotYetImplementedCommand.INSTANCE;
+        }
         return cmd;
+    }
+
+    public int executeCommand(Meterpreter met, TLVPacket request, TLVPacket response) throws IOException {
+        String method = request.getStringValue(TLVType.TLV_TYPE_METHOD);
+        Command cmd = this.getCommand(method);
+
+        int result;
+        try {
+            result = cmd.execute(met, request, response);
+        } catch (Throwable t) {
+            t.printStackTrace(met.getErrorStream());
+            result = Command.ERROR_FAILURE;
+        }
+
+        if (result == Command.EXIT_DISPATCH) {
+            response.add(TLVType.TLV_TYPE_RESULT, Command.ERROR_SUCCESS);
+        } else {
+            response.add(TLVType.TLV_TYPE_RESULT, result);
+        }
+
+        return result;
     }
 
     /**
