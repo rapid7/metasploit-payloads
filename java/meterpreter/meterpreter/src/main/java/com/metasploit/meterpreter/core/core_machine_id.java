@@ -20,9 +20,9 @@ public class core_machine_id implements Command {
 
     private String getSerial() throws IOException {
         StringBuffer stringBuffer = new StringBuffer();
-        stringBuffer.append(Utils.runCommand("getprop ro.serialno"));
-        stringBuffer.append(Utils.runCommand("getprop ro.product.brand"));
-        stringBuffer.append(Utils.runCommand("getprop ro.product.model"));
+        stringBuffer.append(Utils.runCommand("getprop ro.serialno").trim());
+        stringBuffer.append(Utils.runCommand("getprop ro.product.brand").trim());
+        stringBuffer.append(Utils.runCommand("getprop ro.product.model").trim());
         return stringBuffer.toString();
     }
 
@@ -37,7 +37,7 @@ public class core_machine_id implements Command {
             for (int j = 0; j < hdPrefixes.length; j++) {
                 String prefix = hdPrefixes[j];
                 if (hdname.startsWith(prefix)) {
-                    return hdname.substring(prefix.length());
+                    return hdname.substring(prefix.length()).trim();
                 }
             }
         }

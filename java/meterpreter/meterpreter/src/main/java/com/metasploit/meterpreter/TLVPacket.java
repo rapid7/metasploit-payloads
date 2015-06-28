@@ -20,6 +20,9 @@ import java.util.Map;
 public class TLVPacket {
 
     // constants
+    public static final int PACKET_TYPE_REQUEST = 0;
+    public static final int PACKET_TYPE_RESPONSE = 1;
+
     public static final int TLV_META_TYPE_NONE = 0;
 
     public static final int TLV_META_TYPE_STRING = (1 << 16);
@@ -178,8 +181,9 @@ public class TLVPacket {
      */
     public Object getValue(int type) {
         ArrayList indices = (ArrayList) valueMap.get(new Integer(type));
-        if (indices == null)
+        if (indices == null) {
             throw new IllegalArgumentException("Cannot find type " + type);
+        }
         // the indices variable is an ArrayList so by default return the first to
         // preserve existing behaviour.
         return valueList.get(((Integer) indices.get(0)).intValue());
@@ -191,8 +195,9 @@ public class TLVPacket {
     public List getValues(int type) {
         ArrayList values = new ArrayList();
         ArrayList indices = (ArrayList) valueMap.get(new Integer(type));
-        if (indices == null)
+        if (indices == null) {
             throw new IllegalArgumentException("Cannot find type " + type);
+        }
 
         for (int i = 0; i < indices.size(); ++i) {
             values.add(valueList.get(((Integer) indices.get(i)).intValue()));
@@ -205,8 +210,9 @@ public class TLVPacket {
      */
     public Object getValue(int type, Object defaultValue) {
         ArrayList indices = (ArrayList) valueMap.get(new Integer(type));
-        if (indices == null)
+        if (indices == null) {
             return defaultValue;
+        }
         // the indices variable is an ArrayList so by default return the first to
         // preserve existing behaviour.
         return valueList.get(((Integer) indices.get(0)).intValue());
@@ -252,6 +258,20 @@ public class TLVPacket {
      */
     public byte[] getRawValue(int type) {
         return (byte[]) getValue(type);
+    }
+
+    /**
+     * Get the value associated to a type as a byte array.
+     */
+    public byte[] getRawValue(int type, byte[] defaultValue) {
+        return (byte[]) getValue(type, defaultValue);
+    }
+
+    public TLVPacket createResponse() throws IOException {
+        TLVPacket response = new TLVPacket();
+        response.add(TLVType.TLV_TYPE_METHOD, this.getStringValue(TLVType.TLV_TYPE_METHOD));
+        response.add(TLVType.TLV_TYPE_REQUEST_ID, this.getStringValue(TLVType.TLV_TYPE_REQUEST_ID));
+        return response;
     }
 
     /**

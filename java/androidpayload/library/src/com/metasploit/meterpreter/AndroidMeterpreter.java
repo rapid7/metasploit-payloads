@@ -17,7 +17,7 @@ import com.metasploit.meterpreter.android.webcam_get_frame_android;
 import com.metasploit.meterpreter.android.webcam_list_android;
 import com.metasploit.meterpreter.android.webcam_start_android;
 import com.metasploit.meterpreter.android.webcam_stop_android;
-import com.metasploit.meterpreter.core.core_transport_set_timeouts;
+
 import com.metasploit.meterpreter.stdapi.Loader;
 import com.metasploit.meterpreter.stdapi.channel_create_stdapi_fs_file;
 import com.metasploit.meterpreter.stdapi.channel_create_stdapi_net_tcp_client;
@@ -111,7 +111,6 @@ public class AndroidMeterpreter extends Meterpreter {
         getCommandManager().resetNewCommands();
         CommandManager mgr = getCommandManager();
         Loader.cwd = new File(writeableDir);
-        mgr.registerCommand("core_transport_set_timeouts", core_transport_set_timeouts.class);
         mgr.registerCommand("channel_create_stdapi_fs_file", channel_create_stdapi_fs_file.class);
         mgr.registerCommand("channel_create_stdapi_net_tcp_client", channel_create_stdapi_net_tcp_client.class);
         mgr.registerCommand("channel_create_stdapi_net_tcp_server", channel_create_stdapi_net_tcp_server.class);
