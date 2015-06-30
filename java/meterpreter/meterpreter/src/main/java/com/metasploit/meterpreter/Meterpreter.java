@@ -8,6 +8,7 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.io.UnsupportedEncodingException;
 
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -110,7 +111,14 @@ public class Meterpreter {
     }
 
     public static String readString(byte[] bytes, int offset, int size) {
-        return new String(readBytes(bytes, offset, size)).trim();
+        byte[] bytesRead = readBytes(bytes, offset, size);
+        try {
+            return new String(bytes, "ISO-8859-1").trim();
+        }
+        catch (UnsupportedEncodingException ex) {
+            // fallback to no encoding
+            return new String(bytes).trim();
+        }
     }
 
     public static byte[] readBytes(byte[] bytes, int offset, int size) {
