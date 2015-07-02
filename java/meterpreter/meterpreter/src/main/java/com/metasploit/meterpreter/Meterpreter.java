@@ -113,11 +113,11 @@ public class Meterpreter {
     public static String readString(byte[] bytes, int offset, int size) {
         byte[] bytesRead = readBytes(bytes, offset, size);
         try {
-            return new String(bytes, "ISO-8859-1").trim();
+            return new String(bytesRead, "ISO-8859-1").trim();
         }
         catch (UnsupportedEncodingException ex) {
             // fallback to no encoding
-            return new String(bytes).trim();
+            return new String(bytesRead).trim();
         }
     }
 
