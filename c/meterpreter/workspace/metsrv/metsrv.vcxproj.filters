@@ -12,6 +12,9 @@
     <ClCompile Include="..\..\source\server\win\server_transport_winhttp.c">
       <Filter>transports</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\source\server\win\server_transport_wininet.c">
+      <Filter>transports</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\source\server\libloader.h" />
@@ -21,6 +24,9 @@
       <Filter>transports</Filter>
     </ClInclude>
     <ClInclude Include="..\..\source\server\win\server_transport_tcp.h">
+      <Filter>transports</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\server\win\server_transport_wininet.h">
       <Filter>transports</Filter>
     </ClInclude>
   </ItemGroup>

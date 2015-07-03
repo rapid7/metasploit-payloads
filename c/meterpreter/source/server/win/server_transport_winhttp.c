@@ -1,10 +1,11 @@
 /*!
- * @file server_transport_tcp.c
+ * @file server_transport_http.c
  * @remark This file doesn't use precompiled headers because metsrv.h includes a bunch of
  *         of definitions that clash with those found in winhttp.h. Hooray Win32 API. I hate you.
  */
 #include "../../common/common.h"
 #include "../../common/config.h"
+#include "server_transport_wininet.h"
 #include <winhttp.h>
 
 /*!
@@ -340,6 +341,26 @@ static DWORD packet_receive_http_via_winhttp(Remote *remote, Packet **packet)
 			break;
 		}
 
+		DWORD statusCode;
+		DWORD statusCodeSize = sizeof(statusCode);
+		vdprintf("[PACKET RECEIVE WINHTTP] Getting the result code...");
+		if (WinHttpQueryHeaders(hReq, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER, WINHTTP_HEADER_NAME_BY_INDEX, &statusCode, &statusCodeSize, WINHTTP_NO_HEADER_INDEX))
+		{
+			vdprintf("[PACKET RECEIVE WINHTTP] Returned status code is %d", statusCode);
+
+			// did the request succeed?
+			if (statusCode != 200)
+			{
+				// There are a few reasons why this could fail, including proxy related stuff.
+				// If we fail, we're going to fallback to WinINET and see if that works instead.
+				// there could be a number of reasons for failure, but we're only going to try
+				// to handle the case where proxy authentication fails. We'll indicate failure and
+				// let the switchover happen for us.
+				SetLastError(ERROR_WINHTTP_CANNOT_CONNECT);
+				break;
+			}
+		}
+
 		if (ctx->cert_hash != NULL)
 		{
 			vdprintf("[PACKET RECEIVE WINHTTP] validating certificate hash");
@@ -623,8 +644,25 @@ static DWORD server_deinit_http(Transport* transport)
 
 	dprintf("[WINHTTP] Deinitialising ...");
 
-	WinHttpCloseHandle(ctx->connection);
-	WinHttpCloseHandle(ctx->internet);
+	if (ctx->connection)
+	{
+		WinHttpCloseHandle(ctx->connection);
+		ctx->connection = NULL;
+	}
+
+	if (ctx->internet)
+	{
+		WinHttpCloseHandle(ctx->internet);
+		ctx->internet = NULL;
+	}
+
+	// have we had issues that require us to move?
+	if (ctx->move_to_wininet)
+	{
+		// yes, so switch on over.
+		transport_move_to_wininet(transport);
+		ctx->move_to_wininet = FALSE;
+	}
 
 	return TRUE;
 }
@@ -669,12 +707,24 @@ static DWORD server_dispatch_http(Remote* remote, THREAD* dispatchThread)
 
 		dprintf("[DISPATCH] Reading data from the remote side...");
 		result = packet_receive_http_via_winhttp(remote, &packet);
+
 		if (result != ERROR_SUCCESS)
 		{
 			// Update the timestamp for empty replies
 			if (result == ERROR_EMPTY)
 			{
 				transport->comms_last_packet = current_unix_timestamp();
+			}
+			else if (result == ERROR_WINHTTP_CANNOT_CONNECT)
+			{
+				dprintf("[DISPATCH] Failed to work correctly with WinHTTP, moving over to WinINET");
+				// next we need to indicate that we need to do a switch to wininet when we terminate
+				ctx->move_to_wininet = TRUE;
+
+				// and pretend to do a transport switch, to ourselves!
+				remote->next_transport = remote->transport;
+				result = ERROR_SUCCESS;
+				break;
 			}
 			else if (result == ERROR_WINHTTP_SECURE_INVALID_CERT)
 			{
@@ -685,13 +735,10 @@ static DWORD server_dispatch_http(Remote* remote, THREAD* dispatchThread)
 				break;
 			}
 
-			if (ecount < 10)
+			delay = 10 * ecount;
+			if (ecount >= 10)
 			{
-				delay = 10 * ecount;
-			}
-			else
-			{
-				delay = 100 * ecount;
+				delay *= 10;
 			}
 
 			ecount++;

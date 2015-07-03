@@ -75,6 +75,8 @@ typedef struct _HttpTransportContext
 
 	BOOL proxy_configured;                ///! Indication of whether the proxy has been configured.
 	LPVOID proxy_for_url;                 ///! Pointer to the proxy for the current url (if required).
+
+	BOOL move_to_wininet;                 ///! If set, winhttp is busted, and we need to move to wininet.
 } HttpTransportContext;
 
 typedef struct _Transport
