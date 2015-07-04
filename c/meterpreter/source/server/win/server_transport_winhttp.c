@@ -213,7 +213,11 @@ static DWORD validate_response_winhttp(HANDLE hReq, HttpTransportContext* ctx)
 			// there could be a number of reasons for failure, but we're only going to try
 			// to handle the case where proxy authentication fails. We'll indicate failure and
 			// let the switchover happen for us.
-			if (statusCode == 407)
+
+			// However, we won't do this in the case where cert hash verification is turned on,
+			// because we don't want to expose people to MITM if they've explicitly asked us not
+			// to.
+			if (ctx->cert_hash == NULL && statusCode == 407)
 			{
 				return ERROR_WINHTTP_CANNOT_CONNECT;
 			}
