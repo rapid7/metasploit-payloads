@@ -26,6 +26,7 @@ typedef struct _PacketRequestCompletion PacketRequestCompletion;
 typedef struct _Transport Transport;
 typedef struct _Remote Remote;
 typedef struct _TimeoutSettings TimeoutSettings;
+typedef struct _HttpTransportContext HttpTransportContext;
 
 typedef SOCKET(*PTransportGetSocket)(Transport* transport);
 typedef void(*PTransportReset)(Transport* transport, BOOL shuttingDown);
@@ -38,6 +39,13 @@ typedef void(*PConfigCreate)(Remote* remote, MetsrvConfig** config, LPDWORD size
 
 typedef BOOL(*PServerDispatch)(Remote* remote, THREAD* dispatchThread);
 typedef DWORD(*PPacketTransmit)(Remote* remote, Packet* packet, PacketRequestCompletion* completion);
+
+typedef HANDLE(*PCreateHttpRequest)(HttpTransportContext* ctx, const char* direction);
+typedef BOOL(*PSendHttpRequest)(HANDLE hReq, LPVOID buffer, DWORD size);
+typedef BOOL(*PCloseRequest)(HANDLE hReq);
+typedef DWORD(*PValidateResponse)(HANDLE hReq, HttpTransportContext* ctx);
+typedef BOOL(*PReceiveResponse)(HANDLE hReq);
+typedef BOOL(*PReadResponse)(HANDLE hReq, LPVOID buffer, DWORD bytesToRead, LPDWORD bytesRead);
 
 typedef struct _TimeoutSettings
 {
@@ -75,6 +83,15 @@ typedef struct _HttpTransportContext
 
 	BOOL proxy_configured;                ///! Indication of whether the proxy has been configured.
 	LPVOID proxy_for_url;                 ///! Pointer to the proxy for the current url (if required).
+
+	BOOL move_to_wininet;                 ///! If set, winhttp is busted, and we need to move to wininet.
+
+	PCreateHttpRequest create_req;        ///! WinHTTP/WinINET specific request creation.
+	PSendHttpRequest send_req;            ///! WinHTTP/WinINET specifc request sending.
+	PCloseRequest close_req;              ///! WinHTTP/WinINET specifc request closing.
+	PValidateResponse validate_response;  ///! WinHTTP/WinINET specific response validation.
+	PReceiveResponse receive_response;    ///! WinHttp/WinINET specific response data reception.
+	PReadResponse read_response;          ///! WinHttp/WinINET specific response data reading.
 } HttpTransportContext;
 
 typedef struct _Transport
