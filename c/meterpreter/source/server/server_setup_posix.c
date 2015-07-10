@@ -890,7 +890,6 @@ DWORD THREADCALL cleanup_socket(THREAD* thread) {
 	// loop until FD_CLOSE comes through.
 	while ((result = recv(fd, buf, sizeof(buf), 0)) != 0) {
 		if (result <= 0) {
-			dprintf("[TCP] something went wrong on read.");
 			break;
 		}
 	}

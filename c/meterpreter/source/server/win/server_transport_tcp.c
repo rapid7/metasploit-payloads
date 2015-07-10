@@ -848,7 +848,6 @@ DWORD THREADCALL cleanup_socket(THREAD* thread)
 	{
 		if (result <= 0)
 		{
-			dprintf("[TCP] something went wrong on read.");
 			break;
 		}
 	}
