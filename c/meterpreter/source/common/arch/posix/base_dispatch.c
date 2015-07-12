@@ -283,8 +283,6 @@ DWORD remote_request_core_transport_remove(Remote* remote, Packet* packet)
 			remote->trans_remove(remote, found);
 			dprintf("[DISPATCH] Transport removed");
 		}
-
-		SAFE_FREE(transportUrl);
 	}
 
 	packet_transmit_empty_response(remote, packet, result);
