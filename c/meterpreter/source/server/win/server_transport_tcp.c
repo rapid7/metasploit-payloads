@@ -374,7 +374,7 @@ static VOID server_socket_flush(Transport* transport)
 		dprintf("[SERVER] Flushed %d bytes from the buffer", ret);
 
 		// The socket closed while we waited
-		if (ret == 0)
+		if (ret <= 0)
 		{
 			break;
 		}
@@ -846,9 +846,8 @@ DWORD THREADCALL cleanup_socket(THREAD* thread)
 	// loop until FD_CLOSE comes through.
 	while ((result = recv(fd, buf, sizeof(buf), 0)) != 0)
 	{
-		if (result < 0)
+		if (result <= 0)
 		{
-			dprintf("[TCP] something went wrong on read.");
 			break;
 		}
 	}
