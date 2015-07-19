@@ -38,10 +38,10 @@ public class check_root_android implements Command {
                 || canExecuteCommand("which su");
     }
 
-    private static boolean fileInstalled(String packageName) {
+    private static boolean fileInstalled(String fileName) {
         boolean installed;
         try {
-            File file = new File("/system/app/" + packageName);
+            File file = new File(fileName);
             installed = file.exists();
         } catch (Exception e1){
             installed = false;
