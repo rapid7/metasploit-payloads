@@ -75,9 +75,17 @@ public class wlan_geolocate implements Command {
 
 	 wifiList=null;
 	 synchronized (scanready){
+		int n=0;
 		while(wifiList == null) {
 //			Log.i("AAA","Waiting for scan results..");
+
+			//Unsure what happens if there are is no WiFi around,
+			//so this returns an error after 30sec without scan results
+			if (n>30){
+				return ERROR_FAILURE;
+			}
 		       	scanready.wait(1000);
+			n++;
 	 	}
 
 		//If wifi was disabled when process started, turn it off again
@@ -85,7 +93,9 @@ public class wlan_geolocate implements Command {
 		if (WifiStatus == false){
 			mainWifi.setWifiEnabled(false);
 		}
-
+		if (wifiList.size()==0){
+			return ERROR_FAILURE;
+		}
 		for(int i = 0; i < wifiList.size(); i++){
 			TLVPacket pckt=new TLVPacket();
 			pckt.addOverflow(TLV_TYPE_WLAN_SSID,wifiList.get(i).SSID);
