@@ -41,7 +41,6 @@ public class wlan_geolocate implements Command {
 
         class WifiReceiver extends BroadcastReceiver {
 
-            // This method call when number of wifi connections changed
 	    @Override
             public void onReceive(Context c, Intent intent) {
 
