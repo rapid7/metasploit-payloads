@@ -4,7 +4,7 @@ import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
 
-import com.metasploit.meterpreter.wlan_geolocate;
+import com.metasploit.meterpreter.android.wlan_geolocate;
 import com.metasploit.meterpreter.android.send_sms_android;
 import com.metasploit.meterpreter.android.check_root_android;
 import com.metasploit.meterpreter.android.dump_calllog_android;
