@@ -1,6 +1,6 @@
 #### Build Status
 
- * `master` Windows x86 and x64: ![Windows Meterpreter Build Status][build_icon_windows]
+ * `master` Windows x86 and x64: [![Windows Build Status](https://ci.metasploit.com/buildStatus/icon?job=metasploit-payloads-win)](https://ci.metasploit.com/job/metasploit-payloads-win/)
  * `master` POSIX x86: ![POSIX Meterpreter Build Status][build_icon_posix]
 
 metasploit-payloads >

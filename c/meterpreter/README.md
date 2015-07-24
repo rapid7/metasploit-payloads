@@ -1,10 +1,5 @@
-Current `master` branch: ![Meterpreter Build Status][build_icon]
-
-meterpreter >
+Native C meterpreter >
 =============
-
-This is the new repository for the Meterpreter [source], which was originally in the
-[Metasploit Framework][framework] source.
 
 Building - Windows
 ==================
