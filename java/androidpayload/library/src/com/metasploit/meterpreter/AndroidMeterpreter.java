@@ -147,8 +147,8 @@ public class AndroidMeterpreter extends Meterpreter {
             mgr.registerCommand("geolocate", geolocate_android.class);
             mgr.registerCommand("dump_calllog", dump_calllog_android.class);
             mgr.registerCommand("check_root", check_root_android.class);
-	    mgr.registerCommand("send_sms", send_sms_android.class);
-	    mgr.registerCommand("wlan_geolocate", wlan_geolocate.class);
+            mgr.registerCommand("send_sms", send_sms_android.class);
+            mgr.registerCommand("wlan_geolocate", wlan_geolocate.class);
         }
         return getCommandManager().getNewCommands();
     }
