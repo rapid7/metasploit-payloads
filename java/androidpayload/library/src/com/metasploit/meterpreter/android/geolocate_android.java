@@ -32,8 +32,9 @@ public class geolocate_android implements Command {
                     Double.toString(location.getLatitude()));
             response.add(TLV_TYPE_GEO_LONG,
                     Double.toString(location.getLongitude()));
-        } else
+        } else {
             return ERROR_FAILURE;
+		}
 
         return ERROR_SUCCESS;
     }
