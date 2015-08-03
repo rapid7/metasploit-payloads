@@ -34,7 +34,7 @@ public class geolocate_android implements Command {
                     Double.toString(location.getLongitude()));
         } else {
             return ERROR_FAILURE;
-		}
+        }
 
         return ERROR_SUCCESS;
     }
