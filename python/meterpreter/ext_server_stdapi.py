@@ -1027,7 +1027,8 @@ def stdapi_fs_mkdir(request, response):
 @meterpreter.register_function
 def stdapi_fs_search(request, response):
 	search_root = packet_get_tlv(request, TLV_TYPE_SEARCH_ROOT).get('value', '.')
-	search_root = ('' or '.') # sometimes it's an empty string
+	if not search_root: # sometimes it's an empty string
+		search_root = '.'
 	search_root = unicode(search_root)
 	glob = packet_get_tlv(request, TLV_TYPE_SEARCH_GLOB)['value']
 	recurse = packet_get_tlv(request, TLV_TYPE_SEARCH_RECURSE)['value']
