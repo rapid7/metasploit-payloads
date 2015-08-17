@@ -24,13 +24,13 @@ import com.metasploit.meterpreter.command.Command;
 
 public class wlan_geolocate implements Command {
     private static final int TLV_EXTENSIONS = 20000;
-    private static final int TLV_TYPE_WLAN_GROUP = TLVPacket.TLV_META_TYPE_GROUP
+    public static final int TLV_TYPE_WLAN_GROUP = TLVPacket.TLV_META_TYPE_GROUP
             | (TLV_EXTENSIONS + 9022);
-    private static final int TLV_TYPE_WLAN_BSSID = TLVPacket.TLV_META_TYPE_STRING
+    public static final int TLV_TYPE_WLAN_BSSID = TLVPacket.TLV_META_TYPE_STRING
             | (TLV_EXTENSIONS + 9023);
-    private static final int TLV_TYPE_WLAN_SSID = TLVPacket.TLV_META_TYPE_STRING
+    public static final int TLV_TYPE_WLAN_SSID = TLVPacket.TLV_META_TYPE_STRING
             | (TLV_EXTENSIONS + 9024);
-    private static final int TLV_TYPE_WLAN_LEVEL = TLVPacket.TLV_META_TYPE_UINT
+    public static final int TLV_TYPE_WLAN_LEVEL = TLVPacket.TLV_META_TYPE_UINT
             | (TLV_EXTENSIONS + 9025);
 
     WifiManager mainWifi;
