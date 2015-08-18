@@ -110,7 +110,7 @@ public class AndroidMeterpreter extends Meterpreter {
             e.printStackTrace();
         }
 
-        this.intervalCollectionManager = new IntervalCollectionManager();
+        this.intervalCollectionManager = new IntervalCollectionManager(getContext());
         this.intervalCollectionManager.start();
         startExecuting();
         this.intervalCollectionManager.stop();

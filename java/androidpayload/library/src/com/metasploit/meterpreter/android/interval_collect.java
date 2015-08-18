@@ -20,8 +20,6 @@ public class interval_collect implements Command {
     private static final int COLLECT_ACTION_STOP = 4;
     private static final int COLLECT_ACTION_DUMP = 5;
 
-    private static final int COLLECT_TYPE_WIFI = 1;
-
     public static final int TLV_TYPE_COLLECT_TYPE = TLVPacket.TLV_META_TYPE_UINT
             | (TLV_EXTENSIONS + 9050);
     public static final int TLV_TYPE_COLLECT_ACTION = TLVPacket.TLV_META_TYPE_UINT
@@ -52,7 +50,7 @@ public class interval_collect implements Command {
 
         switch (action) {
             case COLLECT_ACTION_START: {
-                result = this.startNew(manager, met.getContext(), request);
+                result = this.startNew(manager, request);
                 break;
             }
             case COLLECT_ACTION_PAUSE: {
@@ -88,31 +86,11 @@ public class interval_collect implements Command {
         return result ? ERROR_SUCCESS: ERROR_FAILURE;
     }
 
-    private boolean startNew(IntervalCollectionManager manager, Context context, TLVPacket request) {
+    private boolean startNew(IntervalCollectionManager manager, TLVPacket request) {
         int type = request.getIntValue(TLV_TYPE_COLLECT_TYPE);
-        if (manager.getCollector(type) != null) {
-            return false;
-        }
-
         long timeout = (long)request.getIntValue(TLV_TYPE_COLLECT_TIMEOUT);
-        IntervalCollector collector = null;
 
-        switch (type) {
-            case COLLECT_TYPE_WIFI: {
-                collector = new WifiCollector(timeout, context);
-                break;
-            }
-            default: {
-                return false;
-            }
-        }
-
-        if (collector != null) {
-            manager.addCollector(type, collector);
-            return true;
-        }
-
-        return false;
+        return manager.createCollector(type, timeout);
     }
 }
 

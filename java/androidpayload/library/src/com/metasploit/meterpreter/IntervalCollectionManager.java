@@ -1,24 +1,64 @@
 package com.metasploit.meterpreter;
 
+import android.content.Context;
+
 import java.util.Enumeration;
 import java.util.Hashtable;
 
 public class IntervalCollectionManager {
+
+    private static final int COLLECT_TYPE_WIFI = 1;
+
+    private final Context context;
     private final Hashtable<Integer, IntervalCollector> collectors;
 
-    public IntervalCollectionManager() {
+    public IntervalCollectionManager(Context context) {
+        this.context = context;
         this.collectors = new Hashtable<Integer, IntervalCollector>();
     }
 
+    public boolean createCollector(int type, long timeout) {
+        IntervalCollector collector = this.getCollector(type);
+
+        if (collector == null) {
+          switch (type) {
+              case COLLECT_TYPE_WIFI: {
+                  collector = new WifiCollector(COLLECT_TYPE_WIFI, this.context, timeout);
+                  break;
+              }
+              default: {
+                  return false;
+              }
+          }
+        }
+
+        if (collector != null) {
+            this.addCollector(type, collector);
+            return true;
+        }
+
+        return false;
+    }
+
     public void start() {
-        // TODO: go through storage and see what is
-        // currently in progress
+        loadExistingCollectors();
 
         Enumeration ids = this.collectors.keys();
 
         while (ids.hasMoreElements()) {
             this.collectors.get(ids.nextElement()).start();
         }
+    }
+
+    private void loadExistingCollectors() {
+        IntervalCollector collector = null;
+
+        collector = new WifiCollector(COLLECT_TYPE_WIFI, this.context);
+        if (collector.loadFromDisk()) {
+            this.collectors.put(COLLECT_TYPE_WIFI, collector);
+        }
+
+        // more collection types will go here.
     }
     
     public void addCollector(int id, IntervalCollector collector) {

