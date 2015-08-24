@@ -51,7 +51,6 @@
 	<modules>
 		<module>java16</module>
 		<module>java15</module>
-		<module>java14</module>
 		<module>android-api10</module>
 	</modules>
 </project>
