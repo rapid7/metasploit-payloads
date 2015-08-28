@@ -425,6 +425,23 @@ function core_loadlib($req, &$pkt) {
 }
 
 
+function core_enumextcmd($req, &$pkt) {
+  my_print("doing core_enumextcmd");
+
+  global $commands;
+
+  $extension_name_tlv = packet_get_tlv($req, TLV_TYPE_STRING);;
+  $expected_ext_name = $extension_name_tlv['value'];
+
+  foreach ($commands as $ext_cmd) {
+    list($ext_name, $cmd) = explode("_", $ext_cmd, 2);
+    if ($ext_name == $expected_ext_name) {
+      packet_add_tlv($pkt, create_tlv(TLV_TYPE_STRING, $cmd));
+    }
+  }
+  return ERROR_SUCCESS;
+}
+
 function core_uuid($req, &$pkt) {
     my_print("doing core_uuid");
     packet_add_tlv($pkt, create_tlv(TLV_TYPE_UUID, PAYLOAD_UUID));
@@ -960,6 +977,10 @@ function read($resource, $len=null) {
         # Unfortunately, selecting on pipes created with proc_open on Windows
         # always returns immediately.  Basically, shell interaction in Windows
         # is hosed until this gets figured out.
+        #
+        # From the documentation:
+        # > Use of stream_select() on file descriptors returned by proc_open()
+        #   will fail and return FALSE under Windows.
         $r = Array($resource);
         my_print("Calling select to see if there's data on $resource");
         while (true) {
@@ -984,7 +1005,7 @@ function read($resource, $len=null) {
             }
 
             $md = stream_get_meta_data($resource);
-            dump_array($md);
+            dump_array($md, "Metadata for {$resource}");
             if ($md['unread_bytes'] > 0) {
                 $buff .= fread($resource, $md['unread_bytes']);
                 break;
