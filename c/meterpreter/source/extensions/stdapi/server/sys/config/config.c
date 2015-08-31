@@ -200,7 +200,7 @@ DWORD populate_uid(Packet* pResponse)
 		{
 			break;
 		}
-		
+
 		if (!LookupAccountSidA(NULL, ((TOKEN_USER*)tokenUserInfo)->User.Sid, cbUserOnly, &dwUserSize, cbDomainOnly, &dwDomainSize, (PSID_NAME_USE)&dwSidType))
 		{
 			BREAK_ON_ERROR("[GETUID] Failed to lookup the account SID data");
@@ -317,33 +317,33 @@ DWORD request_sys_config_getprivs(Remote *remote, Packet *packet)
 		SE_CHANGE_NOTIFY_NAME,
 		SE_REMOTE_SHUTDOWN_NAME,
 		SE_UNDOCK_NAME,
-		SE_SYNC_AGENT_NAME,         
-		SE_ENABLE_DELEGATION_NAME,  
+		SE_SYNC_AGENT_NAME,
+		SE_ENABLE_DELEGATION_NAME,
 		SE_MANAGE_VOLUME_NAME,
 		0
 	};
 
 	do
 	{
-		if( !OpenProcessToken( GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &token ))  {
+		if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &token))  {
 			res = GetLastError();
 			break;
 		}
 
-		for( x = 0; privs[x]; ++x )
+		for (x = 0; privs[x]; ++x)
 		{
 			memset(&priv, 0, sizeof(priv));
-			LookupPrivilegeValue(NULL, privs[x], &priv.Privileges[0].Luid );    
-			priv.PrivilegeCount = 1;    
-			priv.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;    
-			if(AdjustTokenPrivileges(token, FALSE, &priv, 0, 0, 0 )) {
+			LookupPrivilegeValue(NULL, privs[x], &priv.Privileges[0].Luid);
+			priv.PrivilegeCount = 1;
+			priv.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+			if(AdjustTokenPrivileges(token, FALSE, &priv, 0, 0, 0)) {
 				if(GetLastError() == ERROR_SUCCESS) {
 					packet_add_tlv_string(response, TLV_TYPE_PRIVILEGE, privs[x]);
 				}
 			} else {
 				dprintf("[getprivs] Failed to set privilege %s (%u)", privs[x], GetLastError());
 			}
-		}  
+		}
 	} while (0);
 
 	if(token)
@@ -505,55 +505,65 @@ DWORD request_sys_config_sysinfo(Remote *remote, Packet *packet)
 			{
 				if (v.wProductType == VER_NT_WORKSTATION)
 					osName = "Windows Vista";
-				else 
+				else
 					osName = "Windows 2008";
 			}
 			else if (v.dwMinorVersion == 1)
 			{
 				if (v.wProductType == VER_NT_WORKSTATION)
 					osName = "Windows 7";
-				else 
+				else
 					osName = "Windows 2008 R2";
 			}
 			else if (v.dwMinorVersion == 2)
 			{
 				if (v.wProductType == VER_NT_WORKSTATION)
 					osName = "Windows 8";
-				else 
+				else
 					osName = "Windows 2012";
 			}
 			else if (v.dwMinorVersion == 3)
 			{
 				if (v.wProductType == VER_NT_WORKSTATION)
 					osName = "Windows 8.1";
-				else 
+				else
 					osName = "Windows 2012 R2";
 			}
 		}
-		
+		else if (v.dwMajorVersion == 10)
+		{
+			if (v.dwMinorVersion == 0)
+			{
+				if (v.wProductType == VER_NT_WORKSTATION)
+					osName = "Windows 10";
+				else
+					osName = "Windows Server Technical Preview";
+			}
+		}
+
 		if (!osName)
 			osName = "Unknown";
-		
-		if( strlen( v.szCSDVersion ) > 0 )
-			_snprintf(buf, sizeof(buf) - 1, "%s (Build %lu, %s).", osName, v.dwBuildNumber, v.szCSDVersion );
+
+		if (strlen(v.szCSDVersion) > 0)
+			_snprintf(buf, sizeof(buf) - 1, "%s (Build %lu, %s).", osName, v.dwBuildNumber, v.szCSDVersion);
 		else
-			_snprintf(buf, sizeof(buf) - 1, "%s (Build %lu).", osName, v.dwBuildNumber );
+			_snprintf(buf, sizeof(buf) - 1, "%s (Build %lu).", osName, v.dwBuildNumber);
 
 		packet_add_tlv_string(response, TLV_TYPE_OS_NAME, buf);
 
 		// sf: we dynamically retrieve GetNativeSystemInfo & IsWow64Process as NT and 2000 dont support it.
-		hKernel32 = LoadLibraryA( "kernel32.dll" );
-		if( hKernel32 )
+		hKernel32 = LoadLibraryA("kernel32.dll");
+		if (hKernel32)
 		{
-			typedef void (WINAPI * GETNATIVESYSTEMINFO)( LPSYSTEM_INFO lpSystemInfo );
-			typedef BOOL (WINAPI * ISWOW64PROCESS)( HANDLE, PBOOL );
-			GETNATIVESYSTEMINFO pGetNativeSystemInfo = (GETNATIVESYSTEMINFO)GetProcAddress( hKernel32, "GetNativeSystemInfo" );
-			ISWOW64PROCESS pIsWow64Process = (ISWOW64PROCESS)GetProcAddress( hKernel32, "IsWow64Process" );
-			if( pGetNativeSystemInfo )
+			typedef void (WINAPI * GETNATIVESYSTEMINFO)(LPSYSTEM_INFO lpSystemInfo);
+			typedef BOOL (WINAPI * ISWOW64PROCESS)(HANDLE, PBOOL);
+			GETNATIVESYSTEMINFO pGetNativeSystemInfo = (GETNATIVESYSTEMINFO)GetProcAddress(hKernel32, "GetNativeSystemInfo");
+			ISWOW64PROCESS pIsWow64Process = (ISWOW64PROCESS)GetProcAddress(hKernel32, "IsWow64Process");
+			if (pGetNativeSystemInfo)
 			{
 				SYSTEM_INFO SystemInfo;
-				pGetNativeSystemInfo( &SystemInfo );
-				switch( SystemInfo.wProcessorArchitecture )
+				pGetNativeSystemInfo(&SystemInfo);
+				switch(SystemInfo.wProcessorArchitecture)
 				{
 					case PROCESSOR_ARCHITECTURE_AMD64:
 						osArch = "x64";
@@ -568,60 +578,60 @@ DWORD request_sys_config_sysinfo(Remote *remote, Packet *packet)
 						break;
 				}
 			}
-			if( pIsWow64Process )
+			if (pIsWow64Process)
 			{
 				BOOL bIsWow64 = FALSE;
-				pIsWow64Process( GetCurrentProcess(), &bIsWow64 );
-				if( bIsWow64 )
+				pIsWow64Process(GetCurrentProcess(), &bIsWow64);
+				if (bIsWow64)
 					osWow = " (Current Process is WOW64)";
 			}
 		}
 		// if we havnt set the arch it is probably because we are on NT/2000 which is x86
-		if( !osArch )
+		if (!osArch)
 			osArch = "x86";
 
-		if( !osWow )
+		if (!osWow)
 			osWow = "";
 
-		_snprintf( buf, sizeof(buf) - 1, "%s%s", osArch, osWow );
+		_snprintf(buf, sizeof(buf) - 1, "%s%s", osArch, osWow);
 		packet_add_tlv_string(response, TLV_TYPE_ARCHITECTURE, buf);
 
-		if( hKernel32 )
+		if (hKernel32)
 		{
 			char * ctryname = NULL, * langname = NULL;
-			typedef LANGID (WINAPI * GETSYSTEMDEFAULTLANGID)( VOID );
-			GETSYSTEMDEFAULTLANGID pGetSystemDefaultLangID = (GETSYSTEMDEFAULTLANGID)GetProcAddress( hKernel32, "GetSystemDefaultLangID" );
-			if( pGetSystemDefaultLangID )
+			typedef LANGID (WINAPI * GETSYSTEMDEFAULTLANGID)(VOID);
+			GETSYSTEMDEFAULTLANGID pGetSystemDefaultLangID = (GETSYSTEMDEFAULTLANGID)GetProcAddress(hKernel32, "GetSystemDefaultLangID");
+			if (pGetSystemDefaultLangID)
 			{
 				LANGID langId = pGetSystemDefaultLangID();
 
-				int len = GetLocaleInfo( langId, LOCALE_SISO3166CTRYNAME, 0, 0 );
-				if( len > 0 )
+				int len = GetLocaleInfo(langId, LOCALE_SISO3166CTRYNAME, 0, 0);
+				if (len > 0)
 				{
-					ctryname = (char *)malloc( len );
-					GetLocaleInfo( langId, LOCALE_SISO3166CTRYNAME, ctryname, len ); 
+					ctryname = (char *)malloc(len);
+					GetLocaleInfo(langId, LOCALE_SISO3166CTRYNAME, ctryname, len);
 				}
-				
-				len = GetLocaleInfo( langId, LOCALE_SISO639LANGNAME, 0, 0 );
-				if( len > 0 )
+
+				len = GetLocaleInfo(langId, LOCALE_SISO639LANGNAME, 0, 0);
+				if (len > 0)
 				{
-					langname = (char *)malloc( len );
-					GetLocaleInfo( langId, LOCALE_SISO639LANGNAME, langname, len ); 
+					langname = (char *)malloc(len);
+					GetLocaleInfo(langId, LOCALE_SISO639LANGNAME, langname, len);
 				}
 			}
 
-			if( !ctryname || !langname )
-				_snprintf( buf, sizeof(buf) - 1, "Unknown");
+			if (!ctryname || !langname)
+				_snprintf(buf, sizeof(buf) - 1, "Unknown");
 			else
-				_snprintf( buf, sizeof(buf) - 1, "%s_%s", langname, ctryname );
-				
-			packet_add_tlv_string( response, TLV_TYPE_LANG_SYSTEM, buf );
+				_snprintf(buf, sizeof(buf) - 1, "%s_%s", langname, ctryname);
 
-			if( ctryname )
-				free( ctryname );
+			packet_add_tlv_string(response, TLV_TYPE_LANG_SYSTEM, buf);
 
-			if( langname )
-				free( langname );
+			if (ctryname)
+				free(ctryname);
+
+			if (langname)
+				free(langname);
 		}
 
 		LPWKSTA_INFO_102 localSysinfo = NULL;
@@ -633,7 +643,7 @@ DWORD request_sys_config_sysinfo(Remote *remote, Packet *packet)
 			free(domainName);
 		}
 
-			
+
 	} while (0);
 #else
 	CHAR os[512];
@@ -642,7 +652,7 @@ DWORD request_sys_config_sysinfo(Remote *remote, Packet *packet)
 
 	do {
 		struct utsname utsbuf;
-		if( uname( &utsbuf ) == -1) {
+		if (uname(&utsbuf) == -1) {
 			res = GetLastError();
 			break;
 		}
@@ -675,27 +685,27 @@ DWORD request_sys_config_rev2self(Remote *remote, Packet *packet)
 #ifdef _WIN32
 	DWORD dwResult    = ERROR_SUCCESS;
 	Packet * response = NULL;
-	
+
 	do
 	{
-		response = packet_create_response( packet );
-		if( !response )
+		response = packet_create_response(packet);
+		if (!response)
 		{
 			dwResult = ERROR_INVALID_HANDLE;
 			break;
 		}
 
-		core_update_thread_token( remote, NULL );
+		core_update_thread_token(remote, NULL);
 
-		core_update_desktop( remote, -1, NULL, NULL );
+		core_update_desktop(remote, -1, NULL, NULL);
 
-		if( !RevertToSelf() )
+		if (!RevertToSelf())
 			dwResult = GetLastError();
 
-	} while( 0 );
+	} while(0);
 
-	if( response )
-		packet_transmit_response( dwResult, remote, response );
+	if (response)
+		packet_transmit_response(dwResult, remote, response);
 
 #else
 	DWORD dwResult = ERROR_NOT_SUPPORTED;
