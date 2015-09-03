@@ -1,5 +1,5 @@
 # To build the dev environment.
-# docker build -t rapid7/build:meterpreter
+# docker build -t rapid7/build:meterpreter .
 
 FROM ubuntu:14.04.2
 MAINTAINER Brent Cook <bcook@rapid7.com> (@busterbcook)
@@ -24,7 +24,8 @@ RUN apt-get update && \
 # Android NDK
 RUN wget http://dl.google.com/android/ndk/android-ndk-r9d-linux-x86_64.tar.bz2 && \
     tar -xvf android-ndk-r9d-linux-x86_64.tar.bz2 && \
-    mv android-ndk-r9d /usr/local/android-ndk
+    mv android-ndk-r9d /usr/local/android-ndk && \
+	rm android-ndk-r9d-linux-x86_64.tar.bz2
 
 # Android SDK
 RUN wget http://dl.google.com/android/android-sdk_r24-linux.tgz && \
@@ -35,6 +36,11 @@ RUN echo y | /usr/local/android-sdk/tools/android update sdk --filter tools --no
 RUN echo y | /usr/local/android-sdk/tools/android update sdk --filter platform-tools --no-ui -a
 RUN echo y | /usr/local/android-sdk/tools/android update sdk --filter build-tools-23.0.0 --no-ui -a
 RUN echo y | /usr/local/android-sdk/tools/android update sdk --filter android-10 --no-ui -a
+RUN echo y | /usr/local/android-sdk/tools/android update sdk --filter android-3 --no-ui -a
+
+# Pre-cache Maven artifacts
+RUN git clone https://github.com/rapid7/metasploit-payloads.git && \
+	cd metasploit-payloads/java && make && cd .. && rm -fr metasploit-payloads
 
 ENV ANDROID_HOME /usr/local/android-sdk
 ENV ANDROID_NDK_HOME /usr/local/android-ndk
