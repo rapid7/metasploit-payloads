@@ -462,7 +462,12 @@ function get_hdd_label() {
 
 function core_machine_id($req, &$pkt) {
   my_print("doing core_machine_id");
-  $machine_id = gethostname();
+  if (is_callable('gethostname')) {
+    # introduced in 5.3
+    $machine_id = gethostname();
+  } else {
+    $machine_id = php_uname('n');
+  }
   $serial = "";
 
   if (is_windows()) {
