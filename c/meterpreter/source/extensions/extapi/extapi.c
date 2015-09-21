@@ -16,6 +16,7 @@
 #include "adsi.h"
 #include "wmi.h"
 #include "ntds.h"
+#include "pageantjacker.h"
 
 // this sets the delay load hook function, see DelayLoadMetSrv.h
 EnableDelayLoadMetSrv();
@@ -38,6 +39,7 @@ Command customCommands[] =
 	COMMAND_REQ("extapi_adsi_domain_query", request_adsi_domain_query),
 	COMMAND_REQ("extapi_ntds_parse", ntds_parse),
 	COMMAND_REQ("extapi_wmi_query", request_wmi_query),
+	COMMAND_REQ("extapi_pageant_send_query", request_pageant_send_query),
 	COMMAND_TERMINATOR
 };
 

@@ -447,6 +447,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClCompile Include="..\..\source\extensions\extapi\ntds.c" />
     <ClCompile Include="..\..\source\extensions\extapi\ntds_decrypt.c" />
     <ClCompile Include="..\..\source\extensions\extapi\ntds_jet.c" />
+    <ClCompile Include="..\..\source\extensions\extapi\pageantjacker.c" />
     <ClCompile Include="..\..\source\extensions\extapi\service.c" />
     <ClCompile Include="..\..\source\extensions\extapi\syskey.c" />
     <ClCompile Include="..\..\source\extensions\extapi\window.c" />
@@ -463,6 +464,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClInclude Include="..\..\source\extensions\extapi\ntds.h" />
     <ClInclude Include="..\..\source\extensions\extapi\ntds_decrypt.h" />
     <ClInclude Include="..\..\source\extensions\extapi\ntds_jet.h" />
+    <ClInclude Include="..\..\source\extensions\extapi\pageantjacker.h" />
     <ClInclude Include="..\..\source\extensions\extapi\service.h" />
     <ClInclude Include="..\..\source\extensions\extapi\syskey.h" />
     <ClInclude Include="..\..\source\extensions\extapi\window.h" />
