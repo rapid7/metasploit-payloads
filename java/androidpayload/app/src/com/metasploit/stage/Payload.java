@@ -59,26 +59,31 @@ public class Payload {
         long commTimeout;
         long retryTotal;
         long retryWait;
-        String[] timeouts = TIMEOUTS.substring(4).trim().split("-");
-        try {
-            sessionExpiry = Integer.parseInt(timeouts[0]);
-            commTimeout = Integer.parseInt(timeouts[1]);
-            retryTotal = Integer.parseInt(timeouts[2]);
-            retryWait = Integer.parseInt(timeouts[3]);
-        } catch (NumberFormatException e) {
-            return;
-        }
-
+        long currentTime = -1;
         long payloadStart = System.currentTimeMillis();
-        session_expiry = TimeUnit.SECONDS.toMillis(sessionExpiry) + payloadStart;
-        comm_timeout = TimeUnit.SECONDS.toMillis(commTimeout);
-        retry_total = TimeUnit.SECONDS.toMillis(retryTotal);
-        retry_wait = TimeUnit.SECONDS.toMillis(retryWait);
+        String timeoutString = TIMEOUTS.substring(4).trim();
+        if (timeoutString.length() > 3) {
+            String[] timeouts = timeoutString.split("-");
+            try {
+                sessionExpiry = Integer.parseInt(timeouts[0]);
+                commTimeout = Integer.parseInt(timeouts[1]);
+                retryTotal = Integer.parseInt(timeouts[2]);
+                retryWait = Integer.parseInt(timeouts[3]);
+            } catch (NumberFormatException e) {
+                return;
+            }
+
+            session_expiry = TimeUnit.SECONDS.toMillis(sessionExpiry) + payloadStart;
+            comm_timeout = TimeUnit.SECONDS.toMillis(commTimeout);
+            retry_total = TimeUnit.SECONDS.toMillis(retryTotal);
+            retry_wait = TimeUnit.SECONDS.toMillis(retryWait);
+            currentTime = System.currentTimeMillis();
+        }
 
         String url = URL.substring(4).trim();
         // technically we need to check for session expiry here as well.
-        while (System.currentTimeMillis() < payloadStart + retry_total &&
-            System.currentTimeMillis() < session_expiry) {
+        while (currentTime < payloadStart + retry_total &&
+            currentTime < session_expiry) {
             try {
                 if (url.startsWith("tcp")) {
                     runStagefromTCP(url);
@@ -94,6 +99,7 @@ public class Payload {
             } catch (InterruptedException e) {
               break;
             }
+            currentTime = System.currentTimeMillis();
         }
     }
 
