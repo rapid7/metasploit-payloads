@@ -3,6 +3,9 @@
 #ifdef _WIN32
 #include <Sddl.h>
 #include <Lm.h>
+
+typedef NTSTATUS(WINAPI *PRtlGetVersion)(LPOSVERSIONINFOEXW);
+
 #else
 #include <sys/utsname.h>
 #endif
@@ -437,6 +440,135 @@ DWORD request_sys_config_steal_token(Remote *remote, Packet *packet)
 	return dwResult;
 }
 
+#ifdef _WIN32
+DWORD add_windows_os_version(Packet** packet)
+{
+	DWORD dwResult = ERROR_SUCCESS;
+	CHAR buffer[512] = { 0 };
+
+	do
+	{
+		HMODULE hNtdll = GetModuleHandleA("ntdll");
+		if (hNtdll == NULL)
+		{
+			BREAK_ON_ERROR("[SYSINFO] Failed to load ntoskrnl");
+		}
+
+		PRtlGetVersion pRtlGetVersion = (PRtlGetVersion)GetProcAddress(hNtdll, "RtlGetVersion");
+		if (pRtlGetVersion == NULL)
+		{
+			BREAK_ON_ERROR("[SYSINFO] Couldn't find RtlGetVersion in ntoskrnl");
+		}
+
+		OSVERSIONINFOEXW v = { 0 };
+		v.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEXW);
+
+		if (0 != pRtlGetVersion(&v))
+		{
+			dwResult = ERROR_INVALID_DLL;
+			dprintf("[SYSINFO] Unable to get OS version with RtlGetVersion");
+			break;
+		}
+
+		dprintf("[VERSION] Major   : %u", v.dwMajorVersion);
+		dprintf("[VERSION] Minor   : %u", v.dwMinorVersion);
+		dprintf("[VERSION] Build   : %u", v.dwBuildNumber);
+		dprintf("[VERSION] Maint   : %S", v.szCSDVersion);
+		dprintf("[VERSION] Platform: %u", v.dwPlatformId);
+		dprintf("[VERSION] Type    : %hu", v.wProductType);
+		dprintf("[VERSION] SP Major: %hu", v.wServicePackMajor);
+		dprintf("[VERSION] SP Minor: %hu", v.wServicePackMinor);
+		dprintf("[VERSION] Suite   : %hu", v.wSuiteMask);
+
+		CHAR* osName = NULL;
+
+		if (v.dwMajorVersion == 3)
+		{
+			osName = "Windows NT 3.51";
+		}
+		else if (v.dwMajorVersion == 4)
+		{
+			if (v.dwMinorVersion == 0 && v.dwPlatformId == VER_PLATFORM_WIN32_WINDOWS)
+			{
+				osName = "Windows 95";
+			}
+			else if (v.dwMinorVersion == 10)
+			{
+				osName = "Windows 98";
+			}
+			else if (v.dwMinorVersion == 90)
+			{
+				osName = "Windows ME";
+			}
+			else if (v.dwMinorVersion == 0 && v.dwPlatformId == VER_PLATFORM_WIN32_NT)
+			{
+				osName = "Windows NT 4.0";
+			}
+		}
+		else if (v.dwMajorVersion == 5)
+		{
+			if (v.dwMinorVersion == 0)
+			{
+				osName = "Windows 2000";
+			}
+			else if (v.dwMinorVersion == 1)
+			{
+				osName = "Windows XP";
+			}
+			else if (v.dwMinorVersion == 2)
+			{
+				osName = "Windows .NET Server";
+			}
+		}
+		else if (v.dwMajorVersion == 6)
+		{
+			if (v.dwMinorVersion == 0)
+			{
+				osName = v.wProductType == VER_NT_WORKSTATION ? "Windows Vista" : "Windows 2008";
+			}
+			else if (v.dwMinorVersion == 1)
+			{
+				osName = v.wProductType == VER_NT_WORKSTATION ? "Windows 7" : "Windows 2008 R2";
+			}
+			else if (v.dwMinorVersion == 2)
+			{
+				osName = v.wProductType == VER_NT_WORKSTATION ? "Windows 8" : "Windows 2012";
+			}
+			else if (v.dwMinorVersion == 3)
+			{
+				osName = v.wProductType == VER_NT_WORKSTATION ? "Windows 8.1" : "Windows 2012 R2";
+			}
+		}
+		else if (v.dwMajorVersion == 10)
+		{
+			if (v.dwMinorVersion == 0)
+			{
+				osName = v.wProductType == VER_NT_WORKSTATION ? "Windows 10" : "Windows 2016 Tech Preview";
+			}
+		}
+
+		if (!osName)
+		{
+			osName = "Unknown";
+		}
+
+		if (wcslen(v.szCSDVersion) > 0)
+		{
+			_snprintf(buffer, sizeof(buffer)-1, "%s (Build %lu, %S).", osName, v.dwBuildNumber, v.szCSDVersion);
+		}
+		else
+		{
+			_snprintf(buffer, sizeof(buffer)-1, "%s (Build %lu).", osName, v.dwBuildNumber);
+		}
+
+		dprintf("[VERSION] Version set to: %s", buffer);
+		packet_add_tlv_string(*packet, TLV_TYPE_OS_NAME, buffer);
+	} while (0);
+
+	return dwResult;
+}
+#endif
+
 /*
  * sys_sysinfo
  * ----------
@@ -447,17 +579,13 @@ DWORD request_sys_config_sysinfo(Remote *remote, Packet *packet)
 {
 	Packet *response = packet_create_response(packet);
 #ifdef _WIN32
-	CHAR computer[512], buf[512], *osName = NULL, * osArch = NULL, * osWow = NULL;
+	CHAR computer[512], buf[512], * osArch = NULL, * osWow = NULL;
 	DWORD res = ERROR_SUCCESS;
 	DWORD size = sizeof(computer);
-	OSVERSIONINFOEX v;
 	HMODULE hKernel32;
 
-	memset(&v, 0, sizeof(v));
 	memset(computer, 0, sizeof(computer));
 	memset(buf, 0, sizeof(buf));
-
-	v.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
 
 	do
 	{
@@ -469,113 +597,33 @@ DWORD request_sys_config_sysinfo(Remote *remote, Packet *packet)
 		}
 
 		packet_add_tlv_string(response, TLV_TYPE_COMPUTER_NAME, computer);
-
-		// Get the operating system version information
-		if (!GetVersionEx((LPOSVERSIONINFO)&v))
-		{
-			res = GetLastError();
-			break;
-		}
-
-		if (v.dwMajorVersion == 3)
-			osName = "Windows NT 3.51";
-		else if (v.dwMajorVersion == 4)
-		{
-			if (v.dwMinorVersion == 0 && v.dwPlatformId == VER_PLATFORM_WIN32_WINDOWS)
-				osName = "Windows 95";
-			else if (v.dwMinorVersion == 10)
-				osName = "Windows 98";
-			else if (v.dwMinorVersion == 90)
-				osName = "Windows ME";
-			else if (v.dwMinorVersion == 0 && v.dwPlatformId == VER_PLATFORM_WIN32_NT)
-				osName = "Windows NT 4.0";
-		}
-		else if (v.dwMajorVersion == 5)
-		{
-			if (v.dwMinorVersion == 0)
-				osName = "Windows 2000";
-			else if (v.dwMinorVersion == 1)
-				osName = "Windows XP";
-			else if (v.dwMinorVersion == 2)
-				osName = "Windows .NET Server";
-		}
-		else if (v.dwMajorVersion == 6)
-		{
-			if (v.dwMinorVersion == 0)
-			{
-				if (v.wProductType == VER_NT_WORKSTATION)
-					osName = "Windows Vista";
-				else
-					osName = "Windows 2008";
-			}
-			else if (v.dwMinorVersion == 1)
-			{
-				if (v.wProductType == VER_NT_WORKSTATION)
-					osName = "Windows 7";
-				else
-					osName = "Windows 2008 R2";
-			}
-			else if (v.dwMinorVersion == 2)
-			{
-				if (v.wProductType == VER_NT_WORKSTATION)
-					osName = "Windows 8";
-				else
-					osName = "Windows 2012";
-			}
-			else if (v.dwMinorVersion == 3)
-			{
-				if (v.wProductType == VER_NT_WORKSTATION)
-					osName = "Windows 8.1";
-				else
-					osName = "Windows 2012 R2";
-			}
-		}
-		else if (v.dwMajorVersion == 10)
-		{
-			if (v.dwMinorVersion == 0)
-			{
-				if (v.wProductType == VER_NT_WORKSTATION)
-					osName = "Windows 10";
-				else
-					osName = "Windows Server Technical Preview";
-			}
-		}
-
-		if (!osName)
-			osName = "Unknown";
-
-		if (strlen(v.szCSDVersion) > 0)
-			_snprintf(buf, sizeof(buf) - 1, "%s (Build %lu, %s).", osName, v.dwBuildNumber, v.szCSDVersion);
-		else
-			_snprintf(buf, sizeof(buf) - 1, "%s (Build %lu).", osName, v.dwBuildNumber);
-
-		packet_add_tlv_string(response, TLV_TYPE_OS_NAME, buf);
+		add_windows_os_version(&response);
 
 		// sf: we dynamically retrieve GetNativeSystemInfo & IsWow64Process as NT and 2000 dont support it.
 		hKernel32 = LoadLibraryA("kernel32.dll");
 		if (hKernel32)
 		{
 			typedef void (WINAPI * GETNATIVESYSTEMINFO)(LPSYSTEM_INFO lpSystemInfo);
-			typedef BOOL (WINAPI * ISWOW64PROCESS)(HANDLE, PBOOL);
+			typedef BOOL(WINAPI * ISWOW64PROCESS)(HANDLE, PBOOL);
 			GETNATIVESYSTEMINFO pGetNativeSystemInfo = (GETNATIVESYSTEMINFO)GetProcAddress(hKernel32, "GetNativeSystemInfo");
 			ISWOW64PROCESS pIsWow64Process = (ISWOW64PROCESS)GetProcAddress(hKernel32, "IsWow64Process");
 			if (pGetNativeSystemInfo)
 			{
 				SYSTEM_INFO SystemInfo;
 				pGetNativeSystemInfo(&SystemInfo);
-				switch(SystemInfo.wProcessorArchitecture)
+				switch (SystemInfo.wProcessorArchitecture)
 				{
-					case PROCESSOR_ARCHITECTURE_AMD64:
-						osArch = "x64";
-						break;
-					case PROCESSOR_ARCHITECTURE_IA64:
-						osArch = "IA64";
-						break;
-					case PROCESSOR_ARCHITECTURE_INTEL:
-						osArch = "x86";
-						break;
-					default:
-						break;
+				case PROCESSOR_ARCHITECTURE_AMD64:
+					osArch = "x64";
+					break;
+				case PROCESSOR_ARCHITECTURE_IA64:
+					osArch = "IA64";
+					break;
+				case PROCESSOR_ARCHITECTURE_INTEL:
+					osArch = "x86";
+					break;
+				default:
+					break;
 				}
 			}
 			if (pIsWow64Process)
@@ -583,23 +631,30 @@ DWORD request_sys_config_sysinfo(Remote *remote, Packet *packet)
 				BOOL bIsWow64 = FALSE;
 				pIsWow64Process(GetCurrentProcess(), &bIsWow64);
 				if (bIsWow64)
+				{
 					osWow = " (Current Process is WOW64)";
+				}
 			}
 		}
 		// if we havnt set the arch it is probably because we are on NT/2000 which is x86
 		if (!osArch)
+		{
 			osArch = "x86";
+		}
 
 		if (!osWow)
+		{
 			osWow = "";
+		}
 
 		_snprintf(buf, sizeof(buf) - 1, "%s%s", osArch, osWow);
+		dprintf("[SYSINFO] Arch set to: %s", buf);
 		packet_add_tlv_string(response, TLV_TYPE_ARCHITECTURE, buf);
 
 		if (hKernel32)
 		{
-			char * ctryname = NULL, * langname = NULL;
-			typedef LANGID (WINAPI * GETSYSTEMDEFAULTLANGID)(VOID);
+			char * ctryname = NULL, *langname = NULL;
+			typedef LANGID(WINAPI * GETSYSTEMDEFAULTLANGID)(VOID);
 			GETSYSTEMDEFAULTLANGID pGetSystemDefaultLangID = (GETSYSTEMDEFAULTLANGID)GetProcAddress(hKernel32, "GetSystemDefaultLangID");
 			if (pGetSystemDefaultLangID)
 			{
@@ -621,22 +676,31 @@ DWORD request_sys_config_sysinfo(Remote *remote, Packet *packet)
 			}
 
 			if (!ctryname || !langname)
-				_snprintf(buf, sizeof(buf) - 1, "Unknown");
+			{
+				_snprintf(buf, sizeof(buf)-1, "Unknown");
+			}
 			else
-				_snprintf(buf, sizeof(buf) - 1, "%s_%s", langname, ctryname);
+			{
+				_snprintf(buf, sizeof(buf)-1, "%s_%s", langname, ctryname);
+			}
 
 			packet_add_tlv_string(response, TLV_TYPE_LANG_SYSTEM, buf);
 
 			if (ctryname)
+			{
 				free(ctryname);
+			}
 
 			if (langname)
+			{
 				free(langname);
+			}
 		}
 
 		LPWKSTA_INFO_102 localSysinfo = NULL;
 
-		if (NetWkstaGetInfo(NULL, 102, (LPBYTE *)&localSysinfo) == NERR_Success) {
+		if (NetWkstaGetInfo(NULL, 102, (LPBYTE *)&localSysinfo) == NERR_Success)
+		{
 			char *domainName = wchar_to_utf8(localSysinfo->wki102_langroup);
 			packet_add_tlv_string(response, TLV_TYPE_DOMAIN, (LPCSTR)domainName);
 			packet_add_tlv_uint(response, TLV_TYPE_LOGGED_ON_USER_COUNT, localSysinfo->wki102_logged_on_users);
