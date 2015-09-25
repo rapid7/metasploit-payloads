@@ -438,21 +438,23 @@ DWORD server_setup(MetsrvConfig* config)
 					remote->transport = remote->next_transport;
 					remote->next_transport = NULL;
 
-					if (remote->next_transport_wait > 0)
-					{
-						dprintf("[TRANS] Sleeping for %u seconds ...", remote->next_transport_wait);
-
-						sleep(remote->next_transport_wait);
-						
-						// the wait is a once-off thing, needs to be reset each time
-						remote->next_transport_wait = 0;
-					}
 				}
 				else
 				{
 					// move to the next one in the list
 					dprintf("[TRANS] Moving transport from 0x%p to 0x%p", remote->transport, remote->transport->next_transport);
 					remote->transport = remote->transport->next_transport;
+				}
+
+				// transport switching and failover both need to support the waiting functionality.
+				if (remote->next_transport_wait > 0)
+				{
+					dprintf("[TRANS] Sleeping for %u seconds ...", remote->next_transport_wait);
+
+					sleep(remote->next_transport_wait);
+
+					// the wait is a once-off thing, needs to be reset each time
+					remote->next_transport_wait = 0;
 				}
 			}
 
