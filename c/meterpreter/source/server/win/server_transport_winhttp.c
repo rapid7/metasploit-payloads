@@ -785,9 +785,17 @@ static DWORD server_dispatch_http(Remote* remote, THREAD* dispatchThread)
 			else if (result == ERROR_WINHTTP_SECURE_INVALID_CERT)
 			{
 				// This means that the certificate validation failed, and so
-				// we don't trust who we're connecting with. Bail out, pretending
-				// that it was clean
-				result = ERROR_SUCCESS;
+				// we don't trust who we're connecting with, so we need to move
+				// on to another transport.
+				// If we're the only transport, then we should wait for the allotted
+				// time before trying again. Otherwise, we can just switch immediately.
+				// This avoids spinning the process and making way too many requests
+				// in a short period of time (ie. avoiding noise).
+				if (remote->transport == remote->transport->next_transport)
+				{
+					remote->next_transport_wait = remote->transport->timeouts.retry_wait;
+				}
+
 				break;
 			}
 			else if (result == ERROR_BAD_CONFIGURATION)
