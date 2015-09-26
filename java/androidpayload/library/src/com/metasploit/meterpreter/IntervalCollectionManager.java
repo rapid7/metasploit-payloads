@@ -51,6 +51,9 @@ public class IntervalCollectionManager {
     }
 
     private void loadExistingCollectors() {
+        if (context == null) {
+            return;
+        }
         IntervalCollector collector = null;
 
         collector = new WifiCollector(COLLECT_TYPE_WIFI, this.context);
