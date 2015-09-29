@@ -6,7 +6,7 @@
 #define _METERPRETER_SOURCE_COMMON_COMMON_H
 
 /*! @brief Set to 0 for "normal", and 1 to "verbose", comment out to disable completely. */
-//#define DEBUGTRACE 0
+#define DEBUGTRACE 0
 
 #include <stdlib.h>
 #include <stdio.h>
