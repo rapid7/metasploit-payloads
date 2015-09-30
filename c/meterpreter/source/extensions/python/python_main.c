@@ -23,6 +23,7 @@ EnableDelayLoadMetSrv();
 /*! @brief List of commands that the extended API extension providers. */
 Command customCommands[] =
 {
+	COMMAND_REQ("python_reset", request_python_reset),
 	COMMAND_REQ("python_execute_string", request_python_execute_string),
 	COMMAND_TERMINATOR
 };
@@ -65,7 +66,7 @@ DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
 	Py_IgnoreEnvironmentFlag = 1;
 	Py_NoSiteFlag = 1;
 	Py_Initialize();
-
+	initialize_hooks();
 	dprintf("[PYTHON] Registering commands");
 	command_register_all(customCommands);
 
