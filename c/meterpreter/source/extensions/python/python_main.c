@@ -11,11 +11,11 @@
 #define REFLECTIVEDLLINJECTION_CUSTOM_DLLMAIN
 #include "../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
 
-#include "Python.h"
 #include "python_commands.h"
 
 // This is the entry point to the python DLL, we proxy to this from our own init
-BOOL WINAPI PythonDllMain(HANDLE hInst, ULONG ul_reason_for_call, LPVOID lpReserved);
+extern BOOL WINAPI PythonDllMain(HANDLE hInst, ULONG ul_reason_for_call, LPVOID lpReserved);
+extern BOOL WINAPI CtypesDllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvRes);
 
 // this sets the delay load hook function, see DelayLoadMetSrv.h
 EnableDelayLoadMetSrv();
@@ -30,8 +30,6 @@ Command customCommands[] =
 
 BOOL WINAPI DllMain( HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpReserved )
 {
-    BOOL bReturnValue = TRUE;
-
 	switch( dwReason ) 
     { 
 		case DLL_QUERY_HMODULE:
@@ -49,7 +47,9 @@ BOOL WINAPI DllMain( HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpReserved )
             break;
     }
 
-	return PythonDllMain(hinstDLL, dwReason, lpReserved);
+	PythonDllMain(hinstDLL, dwReason, lpReserved);
+	CtypesDllMain(hinstDLL, dwReason, lpReserved);
+	return TRUE;
 }
 
 /*!
@@ -63,10 +63,7 @@ DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
 
 	dprintf("[PYTHON] Initialising");
 
-	Py_IgnoreEnvironmentFlag = 1;
-	Py_NoSiteFlag = 1;
-	Py_Initialize();
-	initialize_hooks();
+	python_prepare_session();
 	dprintf("[PYTHON] Registering commands");
 	command_register_all(customCommands);
 
@@ -82,7 +79,7 @@ DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
 {
 	command_deregister_all(customCommands);
 
-	Py_Finalize();
+	python_destroy_session();
 
 	return ERROR_SUCCESS;
 }

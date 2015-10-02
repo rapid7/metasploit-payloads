@@ -31,6 +31,9 @@
     <Filter Include="Resource Files">
       <UniqueIdentifier>{1e26a334-8fbf-470a-a690-ae261dd2dbb4}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Modules\_ctypes">
+      <UniqueIdentifier>{b0e8f834-fe7a-43ec-aef1-50aa4969cd09}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\source\extensions\python\Include\cobject.h">
@@ -414,10 +417,9 @@
     <ClInclude Include="..\..\source\extensions\python\Objects\stringlib\fastsearch.h">
       <Filter>Objects</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\source\extensions\python\PC\pythonnt_rc.h">
-      <Filter>Resource Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\source\extensions\python\python_commands.h" />
+    <ClInclude Include="..\..\source\extensions\python\python_main.h" />
+    <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\source\extensions\python\Modules\_io\_iomodule.c">
@@ -961,10 +963,57 @@
       <Filter>Modules</Filter>
     </ClCompile>
     <ClCompile Include="..\..\source\extensions\python\python_commands.c" />
+    <ClCompile Include="..\..\source\extensions\python\python_main.c" />
+    <ClCompile Include="..\..\source\extensions\python\Modules\socketmodule.c">
+      <Filter>Modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\python\Modules\selectmodule.c">
+      <Filter>Modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\python\Modules\unicodedata.c">
+      <Filter>Modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\python\Modules\_ctypes\callbacks.c">
+      <Filter>Modules\_ctypes</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\python\Modules\_ctypes\callproc.c">
+      <Filter>Modules\_ctypes</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\python\Modules\_ctypes\cfield.c">
+      <Filter>Modules\_ctypes</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\python\Modules\_ctypes\malloc_closure.c">
+      <Filter>Modules\_ctypes</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\python\Modules\_ctypes\stgdict.c">
+      <Filter>Modules\_ctypes</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\python\Modules\_ctypes\_ctypes.c">
+      <Filter>Modules\_ctypes</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\python\Modules\_ctypes\libffi_msvc\prep_cif.c">
+      <Filter>Modules\_ctypes</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\python\Modules\_ctypes\libffi_msvc\win32.c">
+      <Filter>Modules\_ctypes</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\python\Modules\_ctypes\libffi_msvc\ffi.c">
+      <Filter>Modules\_ctypes</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="..\..\source\extensions\python\PC\python_nt.rc">
+    <ResourceCompile Include="..\..\source\extensions\python\Resource Files\python_core.rc">
       <Filter>Resource Files</Filter>
     </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\source\extensions\python\Resource Files\python_core.rh">
+      <Filter>Resource Files</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <MASM Include="..\..\source\extensions\python\Modules\_ctypes\libffi_msvc\win64.asm">
+      <Filter>Modules\_ctypes</Filter>
+    </MASM>
   </ItemGroup>
 </Project>

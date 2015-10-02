@@ -106,7 +106,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\python\include;..\..\source\extensions\python\Modules\zlib;..\..\source\extensions\python\PC;..\..\source\extensions\python\Python;..\..\deps\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\python\include;..\..\source\extensions\python\Modules\_ctypes\libffi_msvc;..\..\source\extensions\python\Modules\zlib;..\..\source\extensions\python\PC;..\..\source\extensions\python\Python;..\..\deps\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;EXT_SERVER_PYTHON_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MinimalRebuild>true</MinimalRebuild>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
@@ -139,7 +139,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='r7_debug|Win32'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\python\include;..\..\source\extensions\python\Modules\zlib;..\..\source\extensions\python\PC;..\..\source\extensions\python\Python;..\..\deps\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\python\include;..\..\source\extensions\python\Modules\_ctypes\libffi_msvc;..\..\source\extensions\python\Modules\zlib;..\..\source\extensions\python\PC;..\..\source\extensions\python\Python;..\..\deps\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;EXT_SERVER_PYTHON_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MinimalRebuild>true</MinimalRebuild>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
@@ -183,7 +183,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\python\include;..\..\source\extensions\python\Modules\zlib;..\..\source\extensions\python\PC;..\..\source\extensions\python\Python;..\..\deps\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\python\include;..\..\source\extensions\python\Modules\_ctypes\libffi_msvc;..\..\source\extensions\python\Modules\zlib;..\..\source\extensions\python\PC;..\..\source\extensions\python\Python;..\..\deps\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>false</TreatWarningAsError>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </ClCompile>
@@ -221,7 +221,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\python\include;..\..\source\extensions\python\Modules\zlib;..\..\source\extensions\python\PC;..\..\source\extensions\python\Python;..\..\deps\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\python\include;..\..\source\extensions\python\Modules\_ctypes\libffi_msvc;..\..\source\extensions\python\Modules\zlib;..\..\source\extensions\python\PC;..\..\source\extensions\python\Python;..\..\deps\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>false</TreatWarningAsError>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </ClCompile>
@@ -251,7 +251,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <Optimization>MinSpace</Optimization>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <IntrinsicFunctions>false</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\python\include;..\..\source\extensions\python\Modules\zlib;..\..\source\extensions\python\PC;..\..\source\extensions\python\Python;..\..\deps\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\python\include;..\..\source\extensions\python\Modules\_ctypes\libffi_msvc;..\..\source\extensions\python\Modules\zlib;..\..\source\extensions\python\PC;..\..\source\extensions\python\Python;..\..\deps\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_PYTHON_EXPORTS;Py_BUILD_CORE;Py_ENABLE_SHARED;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -305,7 +305,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <Optimization>MinSpace</Optimization>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <IntrinsicFunctions>false</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\python\include;..\..\source\extensions\python\Modules\zlib;..\..\source\extensions\python\PC;..\..\source\extensions\python\Python;..\..\deps\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\python\include;..\..\source\extensions\python\Modules\_ctypes\libffi_msvc;..\..\source\extensions\python\Modules\zlib;..\..\source\extensions\python\PC;..\..\source\extensions\python\Python;..\..\deps\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_PYTHON_EXPORTS;Py_BUILD_CORE;Py_ENABLE_SHARED;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -362,7 +362,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <Optimization>MaxSpeed</Optimization>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <IntrinsicFunctions>false</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\python\include;..\..\source\extensions\python\Modules\zlib;..\..\source\extensions\python\PC;..\..\source\extensions\python\Python;..\..\deps\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\python\include;..\..\source\extensions\python\Modules\_ctypes\libffi_msvc;..\..\source\extensions\python\Modules\zlib;..\..\source\extensions\python\PC;..\..\source\extensions\python\Python;..\..\deps\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_PYTHON_EXPORTS;Py_BUILD_CORE;Py_ENABLE_SHARED;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -416,7 +416,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <Optimization>MaxSpeed</Optimization>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <IntrinsicFunctions>false</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\python\include;..\..\source\extensions\python\Modules\zlib;..\..\source\extensions\python\PC;..\..\source\extensions\python\Python;..\..\deps\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\python\include;..\..\source\extensions\python\Modules\_ctypes\libffi_msvc;..\..\source\extensions\python\Modules\zlib;..\..\source\extensions\python\PC;..\..\source\extensions\python\Python;..\..\deps\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_PYTHON_EXPORTS;Py_BUILD_CORE;Py_ENABLE_SHARED;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -510,14 +510,17 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClCompile Include="..\..\source\extensions\python\Modules\parsermodule.c" />
     <ClCompile Include="..\..\source\extensions\python\Modules\posixmodule.c" />
     <ClCompile Include="..\..\source\extensions\python\Modules\rotatingtree.c" />
+    <ClCompile Include="..\..\source\extensions\python\Modules\selectmodule.c" />
     <ClCompile Include="..\..\source\extensions\python\Modules\sha256module.c" />
     <ClCompile Include="..\..\source\extensions\python\Modules\sha512module.c" />
     <ClCompile Include="..\..\source\extensions\python\Modules\shamodule.c" />
     <ClCompile Include="..\..\source\extensions\python\Modules\signalmodule.c" />
+    <ClCompile Include="..\..\source\extensions\python\Modules\socketmodule.c" />
     <ClCompile Include="..\..\source\extensions\python\Modules\stropmodule.c" />
     <ClCompile Include="..\..\source\extensions\python\Modules\symtablemodule.c" />
     <ClCompile Include="..\..\source\extensions\python\Modules\threadmodule.c" />
     <ClCompile Include="..\..\source\extensions\python\Modules\timemodule.c" />
+    <ClCompile Include="..\..\source\extensions\python\Modules\unicodedata.c" />
     <ClCompile Include="..\..\source\extensions\python\Modules\xxsubtype.c" />
     <ClCompile Include="..\..\source\extensions\python\Modules\zipimport.c" />
     <ClCompile Include="..\..\source\extensions\python\Modules\zlibmodule.c" />
@@ -541,6 +544,20 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClCompile Include="..\..\source\extensions\python\Modules\_codecsmodule.c" />
     <ClCompile Include="..\..\source\extensions\python\Modules\_collectionsmodule.c" />
     <ClCompile Include="..\..\source\extensions\python\Modules\_csv.c" />
+    <ClCompile Include="..\..\source\extensions\python\Modules\_ctypes\callbacks.c" />
+    <ClCompile Include="..\..\source\extensions\python\Modules\_ctypes\callproc.c" />
+    <ClCompile Include="..\..\source\extensions\python\Modules\_ctypes\cfield.c" />
+    <ClCompile Include="..\..\source\extensions\python\Modules\_ctypes\libffi_msvc\ffi.c" />
+    <ClCompile Include="..\..\source\extensions\python\Modules\_ctypes\libffi_msvc\prep_cif.c" />
+    <ClCompile Include="..\..\source\extensions\python\Modules\_ctypes\libffi_msvc\win32.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='r7_debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='r7_release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\python\Modules\_ctypes\malloc_closure.c" />
+    <ClCompile Include="..\..\source\extensions\python\Modules\_ctypes\stgdict.c" />
+    <ClCompile Include="..\..\source\extensions\python\Modules\_ctypes\_ctypes.c" />
     <ClCompile Include="..\..\source\extensions\python\Modules\_functoolsmodule.c" />
     <ClCompile Include="..\..\source\extensions\python\Modules\_heapqmodule.c" />
     <ClCompile Include="..\..\source\extensions\python\Modules\_hotshot.c" />
@@ -790,14 +807,25 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClInclude Include="..\..\source\extensions\python\Parser\tokenizer.h" />
     <ClInclude Include="..\..\source\extensions\python\PC\errmap.h" />
     <ClInclude Include="..\..\source\extensions\python\PC\pyconfig.h" />
-    <ClInclude Include="..\..\source\extensions\python\PC\pythonnt_rc.h" />
     <ClInclude Include="..\..\source\extensions\python\Python\importdl.h" />
     <ClInclude Include="..\..\source\extensions\python\Python\thread_nt.h" />
     <ClInclude Include="..\..\source\extensions\python\python_commands.h" />
     <ClInclude Include="..\..\source\extensions\python\python_main.h" />
+    <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="..\..\source\extensions\python\PC\python_nt.rc" />
+    <ResourceCompile Include="..\..\source\extensions\python\Resource Files\python_core.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\source\extensions\python\Resource Files\python_core.rh" />
+  </ItemGroup>
+  <ItemGroup>
+    <MASM Include="..\..\source\extensions\python\Modules\_ctypes\libffi_msvc\win64.asm">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='r7_debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='r7_release|Win32'">true</ExcludedFromBuild>
+    </MASM>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
