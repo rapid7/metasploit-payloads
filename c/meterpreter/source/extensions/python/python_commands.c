@@ -8,6 +8,10 @@
 #include "python_commands.h"
 #include "Resource Files/python_core.rh"
 
+#define PY_CODE_TYPE_STRING   0
+#define PY_CODE_TYPE_PY       1
+#define PY_CODE_TYPE_PYC      2
+
 typedef struct _InitFunc
 {
 #ifdef DEBUGTRACE
@@ -156,6 +160,11 @@ static PyObject* handle_write(LIST* target, PyObject* self, PyObject* args)
 	return Py_BuildValue("");
 }
 
+static PyObject* handle_flush(PyObject* self, PyObject* args)
+{
+	return Py_BuildValue("");
+}
+
 static PyObject* handle_stderr(PyObject* self, PyObject* args)
 {
 	return handle_write(stderrBuffer, self, args);
@@ -169,12 +178,14 @@ static PyObject* handle_stdout(PyObject* self, PyObject* args)
 static PyMethodDef meterpreter_stdout_hooks[] =
 {
 	{ "write", handle_stdout, METH_VARARGS, "Write something to stdout" },
+	{ "flush", handle_flush, METH_NOARGS, "Flush stdout" },
 	{ NULL, NULL, 0, NULL }
 };
 
 static PyMethodDef meterpreter_stderr_hooks[] =
 {
 	{ "write", handle_stderr, METH_VARARGS, "Write something to stderr" },
+	{ "flush", handle_flush, METH_NOARGS, "Flush stderr" },
 	{ NULL, NULL, 0, NULL }
 };
 
@@ -305,69 +316,15 @@ VOID python_prepare_session()
 		PyObject* mainMod = PyImport_AddModule("__main__");
 		PyObject* mainDict = PyModule_GetDict(mainMod);
 		PyModule_AddObject(mainMod, "__modData", modData);
-		PyRun_SimpleString("exec(__modData[0]);sys.meta_path.append(MetFinder(__modData[1]))");
+		// TODO: double-check that we don't need to remove existing finders which might
+		// hit the file system
+		//PyRun_SimpleString("exec(__modData[0]);met_finder=MetFinder(__modData[1]);sys.meta_path.append(met_finder)");
+		PyRun_SimpleString("exec(__modData[0]);met_finder=MetFinder(__modData[1]);sys.meta_path=[met_finder]");
+#ifndef DEBUGTRACE
+		PyRun_SimpleString("del __modData");
+#endif
 
-		// the data should be a list of size '2', it contains:
-		// 1) compiled code which makes up the loader/bootstrapper
-		// 2) a dictionary of (module name, (is package, compiled code))
-		//Py_ssize_t modCount = PySequence_Length(modList);
-		//dprintf("[PYTHON] modCount: %u", modCount);
-
-		//for (Py_ssize_t i = 0; i < modCount; ++i)
-		//{
-		//	PyCodeObject* compiledCode = (PyCodeObject*)PySequence_GetItem(modList, i);
-		//	dprintf("[PYTHON] compiledCode: %p", compiledCode);
-		//	dprintf("[PYTHON] compiledCode type: %s", compiledCode->ob_type->tp_name);
-		//	//CHAR* x; Py_ssize_t s;
-		//	//PyString_AsStringAndSize(compiledCode, &x, &s);
-		//	//dprintf("[PYTHON] compiledCode length: %s", s);
-		//	if (compiledCode != NULL)
-		//	{
-		//		PyObject* codeEvalResult = PyEval_EvalCode(compiledCode, mainDict, mainDict);
-		//		dprintf("[PYTHON] codeEvalResult: %p", codeEvalResult);
-		//		if (codeEvalResult != NULL)
-		//		{
-		//			Py_XDECREF(codeEvalResult);
-		//		}
-		//		Py_XDECREF(compiledCode);
-		//	}
-		//}
-
-		// we now have a reference to a "list of modules", pull it back into C land
-		//PCHAR cursor = NULL;
-		//Py_ssize_t libSize = 0;
-		//PyString_AsStringAndSize(zlibDecompressResult, &cursor, &libSize);
-		//dprintf("[PYTHON] lib: %p %u", cursor, libSize);
-
-		//// get the number of modules, and move the cursor to the start of the module list
-		//DWORD modCount = *(LPDWORD)cursor;
-		//cursor += sizeof(DWORD);
-		//dprintf("[PYTHON] mod count: %u", modCount);
-
-		//// we'll be importing stuff in the context of main, so we need a reference to it.
-		//PyObject* builtinsMod = PyImport_AddModule("__main__");
-
-		//for (DWORD i = 0; i < modCount; ++i)
-		//{
-		//	// extract the module size/length
-		//	DWORD modSize = *(LPDWORD)cursor;
-		//	cursor += sizeof(DWORD);
-		//	dprintf("[PYTHON] including module: %p %u bytes", cursor, modSize);
-
-		//	PyMarshal_ReadObjectFromString(cursor, modSize);
-
-		//	// convert the module to a string in python land
-		//	//PyObject* libString = PyString_FromStringAndSize(cursor, modSize);
-		//	// give it a name
-		//	//PyModule_AddObject(PyImport_AddModule("__main__"), "__metimport", libString);
-		//	// import it
-		//	//PyRun_SimpleString("exec(__metimport)");
-
-		//	// move our cursor along to the next module
-		//	cursor += modSize;
-		//}
-
-		//PyRun_SimpleString("__metimport=None");
+		// TODO: figure out which reference counts need to be reduce to avoid leaking.
 	}
 
 	// now load the baked-in modules
@@ -410,45 +367,75 @@ DWORD request_python_reset(Remote* remote, Packet* packet)
  * @param packet Pointer to the request \c Packet.
  * @returns Indication of success or failure.
  */
-DWORD request_python_execute_string(Remote* remote, Packet* packet)
+DWORD request_python_execute(Remote* remote, Packet* packet)
 {
 	DWORD dwResult = ERROR_SUCCESS;
 	Packet* response = packet_create_response(packet);
-	CHAR* pythonCode = packet_get_tlv_value_string(packet, TLV_TYPE_EXTENSION_PYTHON_CODE);
+	LPBYTE pythonCode = packet_get_tlv_value_raw(packet, TLV_TYPE_EXTENSION_PYTHON_CODE);
+
+	PyObject* mainModule = PyImport_AddModule("__main__");
+	PyObject* mainDict = PyModule_GetDict(mainModule);
 
 	if (pythonCode != NULL)
 	{
-		dprintf("[PYTHON] attempting to run string: %s", pythonCode);
-
 		stderrBuffer = list_create();
 		stdoutBuffer = list_create();
 
-		PyRun_SimpleString(pythonCode);
+		UINT codeType = packet_get_tlv_value_uint(packet, TLV_TYPE_EXTENSION_PYTHON_CODE_TYPE);
+
+		if (codeType == PY_CODE_TYPE_STRING)
+		{
+			dprintf("[PYTHON] attempting to run string: %s", pythonCode);
+
+			PyRun_SimpleString(pythonCode);
+		}
+		else
+		{
+			CHAR* modName = packet_get_tlv_value_string(packet, TLV_TYPE_EXTENSION_PYTHON_NAME);
+			dprintf("[PYTHON] module name: %s", modName);
+			if (modName)
+			{
+				PyObject* pyModName = PyString_FromString(modName);
+				PyModule_AddObject(mainModule, "met_mod_name", pyModName);
+			}
+
+			if (codeType == PY_CODE_TYPE_PY)
+			{
+				dprintf("[PYTHON] importing .py file");
+
+				PyObject* pyModBody = PyString_FromString(pythonCode);
+				PyModule_AddObject(mainModule, "met_mod_body", pyModBody);
+			}
+			else
+			{
+				dprintf("[PYTHON] importing .pyc file");
+				// must be a pyc file
+				UINT pythonCodeLength = packet_get_tlv_value_uint(packet, TLV_TYPE_EXTENSION_PYTHON_CODE_LEN);
+				PyObject* pyModBody = PyString_FromStringAndSize(pythonCode, pythonCodeLength);
+				dprintf("[PYTHON] myModBody %p: %s", pyModBody, pyModBody->ob_type->tp_name);
+				PyModule_AddObject(mainModule, "met_mod_body", pyModBody);
+			}
+
+			dprintf("[PYTHON] executing import, GO GO GO !");
+			PyRun_SimpleString("met_import_code()");
+		}
 
 		CHAR* resultVar = packet_get_tlv_value_string(packet, TLV_TYPE_EXTENSION_PYTHON_RESULT_VAR);
 		if (resultVar)
 		{
-			PyObject* mainModule = PyImport_AddModule("__main__");
-			if (mainModule != NULL)
+			PyObject* result = PyDict_GetItemString(mainDict, resultVar);
+			if (result != NULL)
 			{
-				PyObject* mainDict = PyModule_GetDict(mainModule);
-				if (mainDict != NULL)
+				if (PyString_Check(result))
 				{
-					PyObject* result = PyDict_GetItemString(mainDict, resultVar);
-					if (result != NULL)
-					{
-						if (PyString_Check(result))
-						{
-							// result is already a string
-							packet_add_tlv_string(response, TLV_TYPE_EXTENSION_PYTHON_RESULT, PyString_AsString(result));
-						}
-						else
-						{
-							PyObject* resultStr = PyObject_Str(result);
-							packet_add_tlv_string(response, TLV_TYPE_EXTENSION_PYTHON_RESULT, PyString_AsString(resultStr));
-							Py_DECREF(resultStr);
-						}
-					}
+					// result is already a string
+					packet_add_tlv_string(response, TLV_TYPE_EXTENSION_PYTHON_RESULT, PyString_AsString(result));
+				}
+				else
+				{
+					PyObject* resultStr = PyObject_Str(result);
+					packet_add_tlv_string(response, TLV_TYPE_EXTENSION_PYTHON_RESULT, PyString_AsString(resultStr));
+					Py_DECREF(resultStr);
 				}
 			}
 		}

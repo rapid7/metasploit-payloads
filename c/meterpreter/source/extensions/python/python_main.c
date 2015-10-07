@@ -24,7 +24,7 @@ EnableDelayLoadMetSrv();
 Command customCommands[] =
 {
 	COMMAND_REQ("python_reset", request_python_reset),
-	COMMAND_REQ("python_execute_string", request_python_execute_string),
+	COMMAND_REQ("python_execute", request_python_execute),
 	COMMAND_TERMINATOR
 };
 

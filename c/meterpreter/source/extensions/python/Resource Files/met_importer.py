@@ -1,20 +1,81 @@
 import sys, imp, marshal
 
+met_dbg_trace = False
+met_mod_name = None
+met_mod_body = None
+
+def met_dbg(s):
+  global met_dbg_trace
+  if met_dbg_trace:
+    print s
+
+def met_import_code():
+  global met_mod_body
+  global met_mod_name
+  global met_finder
+  try:
+    if met_mod_body != None:
+      if met_mod_name == None:
+        met_mod_name = 'met_imported_code'
+
+      if met_mod_body[:4] == imp.get_magic():
+        met_mod_body = marshal.loads(met_mod_body[8:])
+      else:
+        met_mod_body = compile(met_mod_body, met_mod_name, 'exec')
+      met_finder.loader.add_module(met_mod_name, met_mod_body)
+    else:
+      raise ValueError("met_mod_body not specified")
+  finally:
+    # always reset these two
+    met_mod_name = None
+    met_mod_body = None
+
 class MetLoader:
   def __init__(self, libs):
     self.libs = libs
-    #print libs.keys()
+    if met_dbg_trace:
+      for l in libs.keys():
+        met_dbg(l)
+      met_dbg('Total libs: {0}'.format(len(libs.keys())))
+
+  def add_module(self, name, code):
+    imp.acquire_lock()
+
+    try:
+      mod = imp.new_module(name)
+      sys.modules[name] = mod
+
+      try:
+        mod.__file__ = name + ".py"
+        exec code in mod.__dict__
+        mod.__loader__ = self
+        met_dbg('Executed code for: {0}'.format(name))
+      except e:
+        del sys.modules[name]
+        mod = None
+    except:
+      mod = None
+    finally:
+      imp.release_lock()
+
+    met_dbg('Result for {0}: {1}'.format(name, mod != None))
 
   def load_module(self, name):
-    print 'Searching for: {0}'.format(name)
+    met_dbg('Searching for: {0}'.format(name))
     if name in sys.modules:
+      met_dbg('Already loaded: {0}'.format(name))
       return sys.modules[name]
 
     if not name in self.libs:
-      print 'No lib: {0}'.format(name)
+      if '.' in name:
+        return self.load_module('.'.join(name.split('.')[1:]))
+
+      met_dbg('No lib: {0}'.format(name))
       return None
+    met_dbg('Lib exists: {0}'.format(name))
 
     filename, package, code = self.libs[name]
+    met_dbg('Lib details: {0} - {1}'.format(filename, package))
 
     imp.acquire_lock()
     mod = None
@@ -29,7 +90,7 @@ class MetLoader:
           mod.__path__ = [name.replace('.', '\\')]
         exec code in mod.__dict__
         mod.__loader__ = self
-        print 'Executed code for: {0}'.format(name)
+        met_dbg('Executed code for: {0}'.format(name))
       except e:
         del sys.modules[name]
         mod = None
@@ -38,7 +99,10 @@ class MetLoader:
     finally:
       imp.release_lock()
 
-    print 'Result for {0}: {1}'.format(name, mod != None)
+    if mod == None and '.' in name:
+      return self.load_module('.'.join(name.split('.')[1:]))
+
+    met_dbg('Result for {0}: {1}'.format(name, mod != None))
     return mod
 
 class MetFinder:
