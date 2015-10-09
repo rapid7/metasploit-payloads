@@ -315,13 +315,13 @@ VOID python_prepare_session()
 
 		PyObject* mainMod = PyImport_AddModule("__main__");
 		PyObject* mainDict = PyModule_GetDict(mainMod);
-		PyModule_AddObject(mainMod, "__modData", modData);
+		PyModule_AddObject(mainMod, "met_lib_data", modData);
 		// TODO: double-check that we don't need to remove existing finders which might
 		// hit the file system
-		//PyRun_SimpleString("exec(__modData[0]);met_finder=MetFinder(__modData[1]);sys.meta_path.append(met_finder)");
-		PyRun_SimpleString("exec(__modData[0]);met_finder=MetFinder(__modData[1]);sys.meta_path=[met_finder]");
-#ifndef DEBUGTRACE
-		PyRun_SimpleString("del __modData");
+#ifdef DEBUGTRACE
+		PyRun_SimpleString("eval(met_lib_data[0]);met_init(True)");
+#else
+		PyRun_SimpleString("eval(met_lib_data[0]);met_init(False)");
 #endif
 
 		// TODO: figure out which reference counts need to be reduce to avoid leaking.

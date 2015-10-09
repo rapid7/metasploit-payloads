@@ -4,6 +4,16 @@ met_dbg_trace = False
 met_mod_name = None
 met_mod_body = None
 
+def met_init(dbg):
+  global met_dbg_trace
+  global met_finder
+  global met_lib_data
+  met_dbg_trace = dbg
+  met_finder = MetFinder(met_lib_data[1])
+  sys.meta_path=[met_finder]
+  if not dbg:
+    del met_lib_data
+
 def met_dbg(s):
   global met_dbg_trace
   if met_dbg_trace:
