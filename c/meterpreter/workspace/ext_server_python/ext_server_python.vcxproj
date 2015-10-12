@@ -680,6 +680,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClCompile Include="..\..\source\extensions\python\Python\_warnings.c" />
     <ClCompile Include="..\..\source\extensions\python\python_commands.c" />
     <ClCompile Include="..\..\source\extensions\python\python_main.c" />
+    <ClCompile Include="..\..\source\extensions\python\python_meterpreter_binding.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\source\extensions\python\Include\abstract.h" />
@@ -811,7 +812,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClInclude Include="..\..\source\extensions\python\Python\thread_nt.h" />
     <ClInclude Include="..\..\source\extensions\python\python_commands.h" />
     <ClInclude Include="..\..\source\extensions\python\python_main.h" />
-    <ClInclude Include="resource.h" />
+    <ClInclude Include="..\..\source\extensions\python\python_meterpreter_binding.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\..\source\extensions\python\Resource Files\python_core.rc" />

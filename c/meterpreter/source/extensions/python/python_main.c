@@ -12,6 +12,7 @@
 #include "../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
 
 #include "python_commands.h"
+#include "python_meterpreter_binding.h"
 
 // This is the entry point to the python DLL, we proxy to this from our own init
 extern BOOL WINAPI PythonDllMain(HANDLE hInst, ULONG ul_reason_for_call, LPVOID lpReserved);
@@ -52,6 +53,16 @@ BOOL WINAPI DllMain( HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpReserved )
 	return TRUE;
 }
 
+
+/*!
+ * @brief Callback for when a command has been added to the meterpreter instance.
+ * @param commandName The name of the command that has been added.
+ */
+VOID __declspec(dllexport) CommandAdded(const char* commandName)
+{
+	binding_add_command(commandName);
+}
+
 /*!
  * @brief Initialize the server extension.
  * @param remote Pointer to the remote instance.
@@ -62,6 +73,7 @@ DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
 	hMetSrv = remote->met_srv;
 
 	dprintf("[PYTHON] Initialising");
+	binding_startup(remote);
 
 	python_prepare_session();
 	dprintf("[PYTHON] Registering commands");
