@@ -8,10 +8,12 @@
 #include "python_commands.h"
 #include "Resource Files/python_core.rh"
 
+///! @brief List of valid python code types for loading
 #define PY_CODE_TYPE_STRING   0
 #define PY_CODE_TYPE_PY       1
 #define PY_CODE_TYPE_PYC      2
 
+///! @brief Struct that contains pointer to init function and name.
 typedef struct _InitFunc
 {
 #ifdef DEBUGTRACE
@@ -26,6 +28,8 @@ typedef struct _InitFunc
 #define DEC_INIT_FUNC(x) { x }
 #endif
 
+// All external python functions we have baked into the runtime which let us deploy
+// it as one chunk rather than dynamically loading libs.
 extern PyMODINIT_FUNC initerrno(void);
 extern PyMODINIT_FUNC init_functools(void);
 extern PyMODINIT_FUNC init_socket(void);
@@ -77,7 +81,7 @@ extern PyMODINIT_FUNC initselect(void);
 extern PyMODINIT_FUNC initunicodedata(void);
 extern PyMODINIT_FUNC init_ctypes(void);
 
-// order of these is actually important
+/// order of these is actually important
 static InitFunc init_funcs[] =
 {
 	// the functions below that are commented out are invoked prior
@@ -175,6 +179,7 @@ static PyObject* handle_stdout(PyObject* self, PyObject* args)
 	return handle_write(stdoutBuffer, self, args);
 }
 
+///! @brief Defines a hook for catching stdout
 static PyMethodDef meterpreter_stdout_hooks[] =
 {
 	{ "write", handle_stdout, METH_VARARGS, "Write something to stdout" },
@@ -182,6 +187,7 @@ static PyMethodDef meterpreter_stdout_hooks[] =
 	{ NULL, NULL, 0, NULL }
 };
 
+///! @brief Defines a hook for catching stderr
 static PyMethodDef meterpreter_stderr_hooks[] =
 {
 	{ "write", handle_stderr, METH_VARARGS, "Write something to stderr" },
@@ -189,7 +195,7 @@ static PyMethodDef meterpreter_stderr_hooks[] =
 	{ NULL, NULL, 0, NULL }
 };
 
-static VOID dump_to_packet_and_destroy(LIST* source, Packet* packet, UINT tlvType)
+static VOID dump_to_packet(LIST* source, Packet* packet, UINT tlvType)
 {
 	lock_acquire(source->lock);
 
@@ -202,11 +208,47 @@ static VOID dump_to_packet_and_destroy(LIST* source, Packet* packet, UINT tlvTyp
 	}
 
 	lock_release(source->lock);
-	list_destroy(source);
 }
 
+VOID clear_std_handler(LIST* source)
+{
+	dprintf("[PYTHON] clearing list %p", source);
+	list_clear(source, free);
+	dprintf("[PYTHON] cleared list %p", source);
+}
+
+VOID initialize_std_handlers()
+{
+	dprintf("[PYTHON] initializing handlers");
+	if (stderrBuffer == NULL)
+	{
+		stderrBuffer = list_create();
+	}
+	if (stdoutBuffer == NULL)
+	{
+		stdoutBuffer = list_create();
+	}
+	dprintf("[PYTHON] initialized handlers");
+}
+
+VOID destroy_std_handlers()
+{
+	dprintf("[PYTHON] destroying handlers");
+	clear_std_handler(stderrBuffer);
+	list_destroy(stderrBuffer);
+	stderrBuffer = NULL;
+	clear_std_handler(stdoutBuffer);
+	list_destroy(stdoutBuffer);
+	stdoutBuffer = NULL;
+	dprintf("[PYTHON] destroyed handlers");
+}
+
+/*!
+ * @brief Destroy the session.
+ */
 VOID python_destroy_session()
 {
+	destroy_std_handlers();
 	Py_Finalize();
 }
 
@@ -276,6 +318,8 @@ VOID python_prepare_session()
 			return;
 		}
 
+		// store these pointers for when we reset the session, saves us from
+		// doing all of this nonsense again.
 		coreLibPointer = (LPBYTE)LockResource(file);
 		coreLibSize = *(LPDWORD)coreLibPointer;
 		coreLibPointer += sizeof(DWORD);
@@ -342,6 +386,8 @@ VOID python_prepare_session()
 			PyErr_Clear();
 		}
 	}
+
+	initialize_std_handlers();
 }
 
 /*!
@@ -353,6 +399,7 @@ VOID python_prepare_session()
 DWORD request_python_reset(Remote* remote, Packet* packet)
 {
 	dprintf("[PYTHON] resetting the interpreter");
+	destroy_std_handlers();
 	Py_Finalize();
 	Py_Initialize();
 	python_prepare_session();
@@ -378,9 +425,6 @@ DWORD request_python_execute(Remote* remote, Packet* packet)
 
 	if (pythonCode != NULL)
 	{
-		stderrBuffer = list_create();
-		stdoutBuffer = list_create();
-
 		UINT codeType = packet_get_tlv_value_uint(packet, TLV_TYPE_EXTENSION_PYTHON_CODE_TYPE);
 
 		if (codeType == PY_CODE_TYPE_STRING)
@@ -440,11 +484,10 @@ DWORD request_python_execute(Remote* remote, Packet* packet)
 			}
 		}
 
-		dump_to_packet_and_destroy(stderrBuffer, response, TLV_TYPE_EXTENSION_PYTHON_STDERR);
-		dump_to_packet_and_destroy(stdoutBuffer, response, TLV_TYPE_EXTENSION_PYTHON_STDOUT);
-
-		stderrBuffer = NULL;
-		stdoutBuffer = NULL;
+		dump_to_packet(stderrBuffer, response, TLV_TYPE_EXTENSION_PYTHON_STDERR);
+		clear_std_handler(stderrBuffer);
+		dump_to_packet(stdoutBuffer, response, TLV_TYPE_EXTENSION_PYTHON_STDOUT);
+		clear_std_handler(stdoutBuffer);
 
 		packet_transmit_response(dwResult, remote, response);
 	}

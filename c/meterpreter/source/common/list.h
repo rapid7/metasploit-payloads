@@ -23,11 +23,13 @@ typedef struct _LIST
 } LIST, *PLIST;
 
 typedef BOOL (*PLISTENUMCALLBACK)(LPVOID pState, LPVOID pData);
+typedef VOID (*PCLEARFUNC)(LPVOID pData);
 
 LIST * list_create(VOID);
 VOID list_destroy(PLIST pList);
 DWORD list_count(PLIST pList);
 LPVOID list_get(PLIST pList, DWORD index);
+BOOL list_clear(PLIST pList, PCLEARFUNC pFunc);
 BOOL list_add(PLIST pList, LPVOID data);
 BOOL list_remove(PLIST pList, LPVOID data);
 BOOL list_delete(PLIST pList, DWORD index);
