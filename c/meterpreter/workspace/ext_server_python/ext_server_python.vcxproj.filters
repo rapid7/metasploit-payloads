@@ -419,7 +419,7 @@
     </ClInclude>
     <ClInclude Include="..\..\source\extensions\python\python_commands.h" />
     <ClInclude Include="..\..\source\extensions\python\python_main.h" />
-    <ClInclude Include="resource.h" />
+    <ClInclude Include="..\..\source\extensions\python\python_meterpreter_binding.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\source\extensions\python\Modules\_io\_iomodule.c">
@@ -1000,6 +1000,7 @@
     <ClCompile Include="..\..\source\extensions\python\Modules\_ctypes\libffi_msvc\ffi.c">
       <Filter>Modules\_ctypes</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\source\extensions\python\python_meterpreter_binding.c" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\..\source\extensions\python\Resource Files\python_core.rc">

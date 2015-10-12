@@ -26,12 +26,14 @@ DWORD initialise_extension(HMODULE hLibrary, BOOL bLibLoadedReflectivly, Remote*
 			pExtension->init = (PSRVINIT)GetProcAddressR(pExtension->library, "InitServerExtension");
 			pExtension->deinit = (PSRVDEINIT)GetProcAddressR(pExtension->library, "DeinitServerExtension");
 			pExtension->getname = (PSRVGETNAME)GetProcAddressR(pExtension->library, "GetExtensionName");
+			pExtension->commandAdded = (PCMDADDED)GetProcAddressR(pExtension->library, "CommandAdded");
 		}
 		else
 		{
 			pExtension->init = (PSRVINIT)GetProcAddress(pExtension->library, "InitServerExtension");
 			pExtension->deinit = (PSRVDEINIT)GetProcAddress(pExtension->library, "DeinitServerExtension");
 			pExtension->getname = (PSRVGETNAME)GetProcAddress(pExtension->library, "GetExtensionName");
+			pExtension->commandAdded = (PCMDADDED)GetProcAddress(pExtension->library, "CommandAdded");
 		}
 
 		// patch in the metsrv.dll's HMODULE handle, used by the server extensions for delay loading
@@ -55,6 +57,15 @@ DWORD initialise_extension(HMODULE hLibrary, BOOL bLibLoadedReflectivly, Remote*
 
 			if (dwResult == ERROR_SUCCESS)
 			{
+				// inform the new extension of the existing commands
+				if (pExtension->commandAdded)
+				{
+					for (Command* command = pExtension->end; command != NULL; command = command->next)
+					{
+						pExtension->commandAdded(command->method);
+					}
+				}
+
 				if (pExtension->getname)
 				{
 					pExtension->getname(pExtension->name, sizeof(pExtension->name));
@@ -74,6 +85,17 @@ DWORD initialise_extension(HMODULE hLibrary, BOOL bLibLoadedReflectivly, Remote*
 			for (Command* command = pExtension->start; command != pExtension->end; command = command->next)
 			{
 				packet_add_tlv_string(pResponse, TLV_TYPE_METHOD, command->method);
+
+				// inform existing extensions of the new commands
+				for (PNODE node = gExtensionList->start; node != NULL; node = node->next)
+				{
+					PEXTENSION ext = (PEXTENSION)node->data;
+					// don't inform the extension of itself
+					if (ext != pExtension && ext->commandAdded)
+					{
+						ext->commandAdded(command->method);
+					}
+				}
 			}
 		}
 	}

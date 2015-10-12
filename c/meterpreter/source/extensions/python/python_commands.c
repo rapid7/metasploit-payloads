@@ -6,6 +6,7 @@
 #include "marshal.h"
 #include "python_main.h"
 #include "python_commands.h"
+#include "python_meterpreter_binding.h"
 #include "Resource Files/python_core.rh"
 
 ///! @brief List of valid python code types for loading
@@ -388,6 +389,7 @@ VOID python_prepare_session()
 	}
 
 	initialize_std_handlers();
+	binding_init();
 }
 
 /*!
