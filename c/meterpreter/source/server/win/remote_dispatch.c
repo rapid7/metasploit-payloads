@@ -214,8 +214,7 @@ DWORD request_core_loadlib(Remote *pRemote, Packet *pPacket)
 
 	if (response)
 	{
-		packet_add_tlv_uint(response, TLV_TYPE_RESULT, res);
-		PACKET_TRANSMIT(pRemote, response, NULL);
+		packet_transmit_response(res, pRemote, response);
 	}
 
 	return res;
@@ -258,6 +257,7 @@ DWORD request_core_machine_id(Remote* pRemote, Packet* pPacket)
 
 			_snwprintf_s(buffer, MAX_PATH, MAX_PATH - 1, L"%04x-%04x:%s", HIWORD(serialNumber), LOWORD(serialNumber), computerName);
 			packet_add_tlv_wstring(pResponse, TLV_TYPE_MACHINE_ID, buffer);
+			dprintf("[CORE] sending machine id: %S", buffer);
 		}
 
 		packet_transmit_response(res, pRemote, pResponse);

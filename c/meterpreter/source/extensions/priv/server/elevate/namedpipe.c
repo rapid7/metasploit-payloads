@@ -165,9 +165,11 @@ DWORD elevate_via_service_namedpipe(Remote * remote, Packet * packet)
 
 		// start the elevator service (if it doesnt start first time we need to create it and then start it).
 		if (service_start(cpServiceName) != ERROR_SUCCESS) {
+			dprintf("[ELEVATE] service starting failed, attempting to create");
 			if (service_create(cpServiceName, cServiceArgs) != ERROR_SUCCESS) {
 				BREAK_ON_ERROR("[ELEVATE] elevate_via_service_namedpipe. service_create failed");
 			}
+			dprintf("[ELEVATE] creation of service succeeded, attempting to start");
 			// we dont check a return value for service_start as we expect it to fail as cmd.exe is not
 			// a valid service and it will never signal to the service manager that is is a running service.
 			service_start(cpServiceName);

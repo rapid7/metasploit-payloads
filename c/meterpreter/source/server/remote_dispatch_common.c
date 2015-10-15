@@ -93,9 +93,7 @@ DWORD request_core_enumextcmd(Remote* remote, Packet* packet)
 		// Start by enumerating the names of the extensions
 		bResult = list_enumerate(gExtensionList, ext_cmd_callback, &enumExt);
 
-		packet_add_tlv_uint(pResponse, TLV_TYPE_RESULT, ERROR_SUCCESS);
-
-		PACKET_TRANSMIT(remote, pResponse, NULL);
+		packet_transmit_response(ERROR_SUCCESS, remote, pResponse);
 	}
 
 	return ERROR_SUCCESS;

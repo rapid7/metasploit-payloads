@@ -1,4 +1,5 @@
-import sys, struct, meterpreter_bindings
+import sys, struct, random, string, meterpreter_bindings
+
 # A stack of this stuff was stolen from the Python Meterpreter. We should look
 # to find a nice way of sharing this across the two without the duplication.
 #
@@ -118,6 +119,13 @@ TLV_TYPE_PEER_PORT             = TLV_META_TYPE_UINT    | 1501
 TLV_TYPE_LOCAL_HOST            = TLV_META_TYPE_STRING  | 1502
 TLV_TYPE_LOCAL_PORT            = TLV_META_TYPE_UINT    | 1503
 
+NULL_BYTE = '\x00'
+
+is_str = lambda obj: issubclass(obj.__class__, str)
+is_bytes = lambda obj: issubclass(obj.__class__, str)
+bytes = lambda *args: str(*args[:1])
+unicode = lambda x: (x.decode('UTF-8') if isinstance(x, str) else x)
+
 def tlv_pack(*args):
 	if len(args) == 2:
 		tlv = {'type':args[0], 'value':args[1]}
@@ -157,3 +165,16 @@ def validate_bindings(required):
   missing = set(required) - set(dir(meterpreter_bindings))
   if len(missing) > 0:
     raise Exception('Missing bindings: {0}'.format(list(missing)))
+
+def invoke_meterpreter(method, is_local, tlv):
+  validate_bindings([method])
+
+  #print "{0} packet is {1} bytes".format(method, len(tlv))
+  header = struct.pack('>I', PACKET_TYPE_REQUEST)
+  header += tlv_pack(TLV_TYPE_METHOD, method)
+  header += tlv_pack(TLV_TYPE_REQUEST_ID, 0)
+  req = struct.pack('>I', len(header) + len(tlv) + 4) + header + tlv
+  return getattr(meterpreter_bindings, method)(is_local, req)
+
+def rnd_string(n):
+  return ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.digits) for _ in range(n))

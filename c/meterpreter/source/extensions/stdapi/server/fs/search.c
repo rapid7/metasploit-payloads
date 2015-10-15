@@ -863,8 +863,7 @@ DWORD request_fs_search(Remote * pRemote, Packet * pPacket)
 
 	if (pResponse)
 	{
-		packet_add_tlv_uint(pResponse, TLV_TYPE_RESULT, dwResult);
-		dwResult = PACKET_TRANSMIT(pRemote, pResponse, NULL);
+		dwResult = packet_transmit_response(dwResult, pRemote, pResponse);
 	}
 
 	wds_shutdown(&WDSInterface);

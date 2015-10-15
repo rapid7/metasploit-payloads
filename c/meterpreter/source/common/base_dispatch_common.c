@@ -167,11 +167,10 @@ DWORD remote_request_core_channel_write(Remote *remote, Packet *packet)
 	// Transmit the acknowledgement
 	if (response)
 	{
-		packet_add_tlv_uint(response, TLV_TYPE_RESULT, res);
 		packet_add_tlv_uint(response, TLV_TYPE_LENGTH, written);
 		packet_add_tlv_uint(response, TLV_TYPE_CHANNEL_ID, channelId);
 
-		res = PACKET_TRANSMIT(remote, response, NULL);
+		res = packet_transmit_response(res, remote, response);
 	}
 
 	return res;
@@ -280,11 +279,10 @@ DWORD remote_request_core_channel_read(Remote *remote, Packet *packet)
 	// Transmit the acknowledgement
 	if (response)
 	{
-		packet_add_tlv_uint(response, TLV_TYPE_RESULT, res);
 		packet_add_tlv_uint(response, TLV_TYPE_LENGTH, bytesRead);
 		packet_add_tlv_uint(response, TLV_TYPE_CHANNEL_ID, channelId);
 
-		res = PACKET_TRANSMIT(remote, response, NULL);
+		res = packet_transmit_response(res, remote, response);
 	}
 
 	return res;
@@ -331,9 +329,7 @@ DWORD remote_request_core_channel_close(Remote *remote, Packet *packet)
 	// Transmit the acknowledgement
 	if (response)
 	{
-		packet_add_tlv_uint(response, TLV_TYPE_RESULT, res);
-
-		res = PACKET_TRANSMIT(remote, response, NULL);
+		res = packet_transmit_response(res, remote, response);
 	}
 
 	return res;
@@ -609,9 +605,7 @@ DWORD remote_request_core_crypto_negotiate(Remote *remote, Packet *packet)
 	// Transmit a response
 	if (response)
 	{
-		packet_add_tlv_uint(response, TLV_TYPE_RESULT, res);
-
-		PACKET_TRANSMIT(remote, response, NULL);
+		res = packet_transmit_response(res, remote, response);
 	}
 
 	return ERROR_SUCCESS;
