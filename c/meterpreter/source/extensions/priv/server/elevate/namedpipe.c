@@ -182,10 +182,12 @@ DWORD elevate_via_service_namedpipe(Remote * remote, Packet * packet)
 		thread_join(pThread);
 
 		// get the exit code for our pthread
+		dprintf("[ELEVATE] dwResult before exit code: %u", dwResult);
 		if (!GetExitCodeThread(pThread->handle, &dwResult)) {
 			BREAK_WITH_ERROR("[ELEVATE] elevate_via_service_namedpipe. GetExitCodeThread failed",
 				ERROR_INVALID_HANDLE);
 		}
+		dprintf("[ELEVATE] dwResult after exit code: %u", dwResult);
 
 	} while (0);
 

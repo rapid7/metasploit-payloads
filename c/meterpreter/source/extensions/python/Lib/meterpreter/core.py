@@ -127,34 +127,61 @@ bytes = lambda *args: str(*args[:1])
 unicode = lambda x: (x.decode('UTF-8') if isinstance(x, str) else x)
 
 def tlv_pack(*args):
-	if len(args) == 2:
-		tlv = {'type':args[0], 'value':args[1]}
-	else:
-		tlv = args[0]
-	data = ''
-	value = tlv['value']
-	if (tlv['type'] & TLV_META_TYPE_UINT) == TLV_META_TYPE_UINT:
-		if isinstance(value, float):
-			value = int(round(value))
-		data = struct.pack('>III', 12, tlv['type'], value)
-	elif (tlv['type'] & TLV_META_TYPE_QWORD) == TLV_META_TYPE_QWORD:
-		data = struct.pack('>IIQ', 16, tlv['type'], value)
-	elif (tlv['type'] & TLV_META_TYPE_BOOL) == TLV_META_TYPE_BOOL:
-		data = struct.pack('>II', 9, tlv['type']) + bytes(chr(int(bool(value))), 'UTF-8')
-	else:
-		if value.__class__.__name__ == 'unicode':
-			value = value.encode('UTF-8')
-		elif not is_bytes(value):
-			value = bytes(value, 'UTF-8')
-		if (tlv['type'] & TLV_META_TYPE_STRING) == TLV_META_TYPE_STRING:
-			data = struct.pack('>II', 8 + len(value) + 1, tlv['type']) + value + NULL_BYTE
-		elif (tlv['type'] & TLV_META_TYPE_RAW) == TLV_META_TYPE_RAW:
-			data = struct.pack('>II', 8 + len(value), tlv['type']) + value
-		elif (tlv['type'] & TLV_META_TYPE_GROUP) == TLV_META_TYPE_GROUP:
-			data = struct.pack('>II', 8 + len(value), tlv['type']) + value
-		elif (tlv['type'] & TLV_META_TYPE_COMPLEX) == TLV_META_TYPE_COMPLEX:
-			data = struct.pack('>II', 8 + len(value), tlv['type']) + value
-	return data
+  if len(args) == 2:
+    tlv = {'type':args[0], 'value':args[1]}
+  else:
+    tlv = args[0]
+  data = ''
+  value = tlv['value']
+  if (tlv['type'] & TLV_META_TYPE_UINT) == TLV_META_TYPE_UINT:
+    if isinstance(value, float):
+      value = int(round(value))
+    data = struct.pack('>III', 12, tlv['type'], value)
+  elif (tlv['type'] & TLV_META_TYPE_QWORD) == TLV_META_TYPE_QWORD:
+    data = struct.pack('>IIQ', 16, tlv['type'], value)
+  elif (tlv['type'] & TLV_META_TYPE_BOOL) == TLV_META_TYPE_BOOL:
+    data = struct.pack('>II', 9, tlv['type']) + bytes(chr(int(bool(value))), 'UTF-8')
+  else:
+    if value.__class__.__name__ == 'unicode':
+      value = value.encode('UTF-8')
+    elif not is_bytes(value):
+      value = bytes(value, 'UTF-8')
+    if (tlv['type'] & TLV_META_TYPE_STRING) == TLV_META_TYPE_STRING:
+      data = struct.pack('>II', 8 + len(value) + 1, tlv['type']) + value + NULL_BYTE
+    elif (tlv['type'] & TLV_META_TYPE_RAW) == TLV_META_TYPE_RAW:
+      data = struct.pack('>II', 8 + len(value), tlv['type']) + value
+    elif (tlv['type'] & TLV_META_TYPE_GROUP) == TLV_META_TYPE_GROUP:
+      data = struct.pack('>II', 8 + len(value), tlv['type']) + value
+    elif (tlv['type'] & TLV_META_TYPE_COMPLEX) == TLV_META_TYPE_COMPLEX:
+      data = struct.pack('>II', 8 + len(value), tlv['type']) + value
+  return data
+
+def packet_enum_tlvs(pkt, tlv_type = None):
+  offset = 0
+  while (offset < len(pkt)):
+    tlv = struct.unpack('>II', pkt[offset:offset+8])
+    if (tlv_type == None) or ((tlv[1] & ~TLV_META_TYPE_COMPRESSED) == tlv_type):
+      val = pkt[offset+8:(offset+8+(tlv[0] - 8))]
+      if (tlv[1] & TLV_META_TYPE_STRING) == TLV_META_TYPE_STRING:
+        val = str(val.split(NULL_BYTE, 1)[0])
+      elif (tlv[1] & TLV_META_TYPE_UINT) == TLV_META_TYPE_UINT:
+        val = struct.unpack('>I', val)[0]
+      elif (tlv[1] & TLV_META_TYPE_QWORD) == TLV_META_TYPE_QWORD:
+        val = struct.unpack('>Q', val)[0]
+      elif (tlv[1] & TLV_META_TYPE_BOOL) == TLV_META_TYPE_BOOL:
+        val = bool(struct.unpack('b', val)[0])
+      elif (tlv[1] & TLV_META_TYPE_RAW) == TLV_META_TYPE_RAW:
+        pass
+      yield {'type':tlv[1], 'length':tlv[0], 'value':val}
+    offset += tlv[0]
+  raise StopIteration()
+
+def packet_get_tlv(pkt, tlv_type):
+  try:
+    tlv = list(packet_enum_tlvs(pkt, tlv_type))[0]
+  except IndexError:
+    return {}
+  return tlv
 
 # END OF COPY PASTE
 
@@ -166,15 +193,16 @@ def validate_bindings(required):
   if len(missing) > 0:
     raise Exception('Missing bindings: {0}'.format(list(missing)))
 
-def invoke_meterpreter(method, is_local, tlv):
+def invoke_meterpreter(method, is_local, tlv = ""):
   validate_bindings([method])
 
-  #print "{0} packet is {1} bytes".format(method, len(tlv))
   header = struct.pack('>I', PACKET_TYPE_REQUEST)
   header += tlv_pack(TLV_TYPE_METHOD, method)
   header += tlv_pack(TLV_TYPE_REQUEST_ID, 0)
   req = struct.pack('>I', len(header) + len(tlv) + 4) + header + tlv
+
   return getattr(meterpreter_bindings, method)(is_local, req)
 
 def rnd_string(n):
   return ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.digits) for _ in range(n))
+
