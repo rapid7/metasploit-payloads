@@ -12,4 +12,14 @@ def getsystem():
   tlv = tlv_pack(TLV_TYPE_ELEVATE_TECHNIQUE, 1)
   tlv = tlv_pack(TLV_TYPE_ELEVATE_SERVICE_NAME, rnd_string(5))
   resp = invoke_meterpreter('priv_elevate_getsystem', True, tlv)
-  return resp
+  if resp == None:
+    return False
+
+  return packet_get_tlv(resp, TLV_TYPE_RESULT)['value'] == 0
+
+def rev2self():
+  resp = invoke_meterpreter('stdapi_sys_config_rev2self', True)
+  if resp == None:
+    return False
+
+  return packet_get_tlv(resp, TLV_TYPE_RESULT)['value'] == 0

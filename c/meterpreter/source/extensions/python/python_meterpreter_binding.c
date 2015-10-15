@@ -26,17 +26,21 @@ static PyObject* binding_invoke(PyObject* self, PyObject* args)
 	packet.payload = (PUCHAR)(packetBytes + sizeof(TlvHeader));
 	packet.payloadLength = (ULONG)packetLength - sizeof(TlvHeader);
 
-
 	// If the functionality doesn't require interaction with MSF, then
 	// make the packet as local so that the packet receives the request
 	// and so that the packet doesn't get sent to Meterpreter
 	packet.local = isLocal;
 
-	DWORD result = command_handle(gRemote, &packet);
+	command_handle(gRemote, &packet);
 
 	// really not sure how to deal with the non-local responses at this point.
+	if (packet.partner == NULL)
+	{
+		// "None"
+		return Py_BuildValue("");
+	}
 
-	return result == ERROR_SUCCESS ? Py_True : Py_False;
+	return PyString_FromStringAndSize(packet.partner->payload, packet.partner->payloadLength);
 }
 
 VOID binding_insert_command(const char* commandName)
