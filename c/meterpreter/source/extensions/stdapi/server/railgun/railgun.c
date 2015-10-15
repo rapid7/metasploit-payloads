@@ -561,8 +561,6 @@ DWORD request_railgun_api( Remote * pRemote, Packet * pPacket )
 
 	if( pResponse )
 	{
-		packet_add_tlv_uint( pResponse, TLV_TYPE_RESULT, dwResult );
-
 		if( dwResult == ERROR_SUCCESS )
 		{
 			packet_add_tlv_uint( pResponse, TLV_TYPE_RAILGUN_BACK_ERR, rOutput.dwLastError );
@@ -585,7 +583,7 @@ DWORD request_railgun_api( Remote * pRemote, Packet * pPacket )
 			packet_add_tlv_string( pResponse, TLV_TYPE_RAILGUN_BACK_MSG, pErrorMsg );
 		}
 
-		dwResult = PACKET_TRANSMIT( pRemote, pResponse, NULL );
+		dwResult = packet_transmit_response(dwResult, pRemote, pResponse);
 	}
 
 	if( rInput.pBufferIN )
@@ -651,12 +649,10 @@ DWORD request_railgun_memread( Remote * pRemote, Packet * pPacket )
 
 	if( pResponse )
 	{
-		packet_add_tlv_uint( pResponse, TLV_TYPE_RESULT, dwResult );
-
 		if( pData )
 			packet_add_tlv_raw( pResponse, TLV_TYPE_RAILGUN_MEM_DATA, pData, dwLength );
 
-		dwResult = PACKET_TRANSMIT( pRemote, pResponse, NULL );
+		dwResult = packet_transmit_response(dwResult, pRemote, pResponse);
 	}
 
 	if( pData )
@@ -711,9 +707,7 @@ DWORD request_railgun_memwrite( Remote * pRemote, Packet * pPacket )
 
 	if( pResponse )
 	{
-		packet_add_tlv_uint( pResponse, TLV_TYPE_RESULT, dwResult );
-
-		dwResult = PACKET_TRANSMIT( pRemote, pResponse, NULL );
+		dwResult = packet_transmit_response(dwResult, pRemote, pResponse);
 	}
 
 	dprintf("[RAILGUN] request_railgun_memwrite: Finished.");

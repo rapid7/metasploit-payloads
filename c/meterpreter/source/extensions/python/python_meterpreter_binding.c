@@ -13,9 +13,30 @@ static PLIST gMeterpreterMethodDefs = NULL;
 
 static PyObject* binding_invoke(PyObject* self, PyObject* args)
 {
-	dprintf("[PYTHON] a function was invoked on %s", self->ob_type->tp_name);
-	//packet_create(PACKET_TLV_TYPE_REQUEST, self->
-	return Py_BuildValue("");
+	dprintf("[PYTHON] a function was invoked on: %s", self->ob_type->tp_name);
+	const char* packetBytes = NULL;
+	BOOL isLocal = FALSE;
+	Py_ssize_t packetLength = 0;
+
+	PyArg_ParseTuple(args, "is#", &isLocal, &packetBytes, &packetLength);
+	dprintf("[PYTHON] packet %p is %u bytes and is %s", packetBytes, packetLength, isLocal ? "local" : "not local");
+
+	Packet packet = { 0 };
+	packet.header = *(TlvHeader*)packetBytes;
+	packet.payload = (PUCHAR)(packetBytes + sizeof(TlvHeader));
+	packet.payloadLength = (ULONG)packetLength - sizeof(TlvHeader);
+
+
+	// If the functionality doesn't require interaction with MSF, then
+	// make the packet as local so that the packet receives the request
+	// and so that the packet doesn't get sent to Meterpreter
+	packet.local = isLocal;
+
+	DWORD result = command_handle(gRemote, &packet);
+
+	// really not sure how to deal with the non-local responses at this point.
+
+	return result == ERROR_SUCCESS ? Py_True : Py_False;
 }
 
 VOID binding_insert_command(const char* commandName)
@@ -37,6 +58,7 @@ VOID binding_startup(Remote* remote)
 	{
 		gBoundCommandList = list_create();
 	}
+
 	gRemote = remote;
 }
 

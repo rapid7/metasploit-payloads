@@ -101,16 +101,18 @@ class MetLoader:
         exec code in mod.__dict__
         mod.__loader__ = self
         met_dbg('Executed code for: {0}'.format(name))
-      except e:
+      except Exception as e:
+        met_dbg('Exception thrown importing module: {0} - {1}'.format(name, e))
         del sys.modules[name]
         mod = None
-    except:
+    except Exception as ex:
+      met_dbg('Exception thrown starting import: {0} - {1}'.format(name, ex))
       mod = None
     finally:
       imp.release_lock()
 
-    if mod == None and '.' in name:
-      return self.load_module('.'.join(name.split('.')[1:]))
+    #if mod == None and '.' in name:
+      #return self.load_module('.'.join(name.split('.')[1:]))
 
     met_dbg('Result for {0}: {1}'.format(name, mod != None))
     return mod
