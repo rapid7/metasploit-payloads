@@ -40,7 +40,9 @@ static PyObject* binding_invoke(PyObject* self, PyObject* args)
 		return Py_BuildValue("");
 	}
 
-	return PyString_FromStringAndSize(packet.partner->payload, packet.partner->payloadLength);
+	PyObject* result = PyString_FromStringAndSize(packet.partner->payload, packet.partner->payloadLength);
+	packet_destroy(packet.partner);
+	return result;
 }
 
 VOID binding_insert_command(const char* commandName)
