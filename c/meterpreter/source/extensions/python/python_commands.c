@@ -81,6 +81,7 @@ extern PyMODINIT_FUNC init_winreg(void);
 extern PyMODINIT_FUNC initselect(void);
 extern PyMODINIT_FUNC initunicodedata(void);
 extern PyMODINIT_FUNC init_ctypes(void);
+extern PyMODINIT_FUNC initmsvcrt(void);
 
 /// order of these is actually important
 static InitFunc init_funcs[] =
@@ -91,7 +92,7 @@ static InitFunc init_funcs[] =
 	//DEC_INIT_FUNC(initnt),
 	//DEC_INIT_FUNC(init_socket),
 	//DEC_INIT_FUNC(init_functools),
-	DEC_INIT_FUNC(initselect),
+	DEC_INIT_FUNC(initmsvcrt),
 	DEC_INIT_FUNC(initselect),
 	DEC_INIT_FUNC(init_weakref),
 	DEC_INIT_FUNC(initarray),
