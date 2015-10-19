@@ -44,10 +44,10 @@ import weakref
 
 from Queue import Empty, Full
 import _multiprocessing
-from multiprocessing import Pipe
-from multiprocessing.synchronize import Lock, BoundedSemaphore, Semaphore, Condition
-from multiprocessing.util import debug, info, Finalize, register_after_fork
-from multiprocessing.forking import assert_spawning
+from . import Pipe
+from .synchronize import Lock, BoundedSemaphore, Semaphore, Condition
+from .util import debug, info, Finalize, register_after_fork, is_exiting
+from .forking import assert_spawning
 
 #
 # Queue type using a pipe, buffer and thread
@@ -156,9 +156,13 @@ class Queue(object):
 
     def close(self):
         self._closed = True
-        self._reader.close()
-        if self._close:
-            self._close()
+        try:
+            self._reader.close()
+        finally:
+            close = self._close
+            if close:
+                self._close = None
+                close()
 
     def join_thread(self):
         debug('Queue.join_thread()')
@@ -229,8 +233,6 @@ class Queue(object):
     @staticmethod
     def _feed(buffer, notempty, send, writelock, close):
         debug('starting thread to feed data to pipe')
-        from .util import is_exiting
-
         nacquire = notempty.acquire
         nrelease = notempty.release
         nwait = notempty.wait

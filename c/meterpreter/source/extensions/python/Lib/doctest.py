@@ -216,7 +216,7 @@ def _load_testfile(filename, package, module_relative):
                 # get_data() opens files as 'rb', so one must do the equivalent
                 # conversion as universal newlines would do.
                 return file_contents.replace(os.linesep, '\n'), filename
-    with open(filename) as f:
+    with open(filename, 'U') as f:
         return f.read(), filename
 
 # Use sys.stdout encoding for ouput.
@@ -325,6 +325,32 @@ def _comment_line(line):
         return '# '+line
     else:
         return '#'
+
+def _strip_exception_details(msg):
+    # Support for IGNORE_EXCEPTION_DETAIL.
+    # Get rid of everything except the exception name; in particular, drop
+    # the possibly dotted module path (if any) and the exception message (if
+    # any).  We assume that a colon is never part of a dotted name, or of an
+    # exception name.
+    # E.g., given
+    #    "foo.bar.MyError: la di da"
+    # return "MyError"
+    # Or for "abc.def" or "abc.def:\n" return "def".
+
+    start, end = 0, len(msg)
+    # The exception name must appear on the first line.
+    i = msg.find("\n")
+    if i >= 0:
+        end = i
+    # retain up to the first colon (if any)
+    i = msg.find(':', 0, end)
+    if i >= 0:
+        end = i
+    # retain just the exception name
+    i = msg.rfind('.', 0, end)
+    if i >= 0:
+        start = i+1
+    return msg[start: end]
 
 class _OutputRedirectingPdb(pdb.Pdb):
     """
@@ -1323,10 +1349,9 @@ class DocTestRunner:
 
                 # Another chance if they didn't care about the detail.
                 elif self.optionflags & IGNORE_EXCEPTION_DETAIL:
-                    m1 = re.match(r'(?:[^:]*\.)?([^:]*:)', example.exc_msg)
-                    m2 = re.match(r'(?:[^:]*\.)?([^:]*:)', exc_msg)
-                    if m1 and m2 and check(m1.group(1), m2.group(1),
-                                           self.optionflags):
+                    if check(_strip_exception_details(example.exc_msg),
+                             _strip_exception_details(exc_msg),
+                             self.optionflags):
                         outcome = SUCCESS
 
             # Report the outcome.

@@ -136,7 +136,6 @@ __all__ = [
 
 __version__ = '1.70'    # Highest version of the spec this complies with
 
-import copy as _copy
 import math as _math
 import numbers as _numbers
 
@@ -3665,6 +3664,8 @@ class Decimal(object):
         if self._is_special:
             sign = _format_sign(self._sign, spec)
             body = str(self.copy_abs())
+            if spec['type'] == '%':
+                body += '%'
             return _format_align(sign, body, spec)
 
         # a type of None defaults to 'g' or 'G', depending on context
@@ -6033,7 +6034,10 @@ def _parse_format_specifier(format_spec, _localeconv=None):
         format_dict['decimal_point'] = '.'
 
     # record whether return type should be str or unicode
-    format_dict['unicode'] = isinstance(format_spec, unicode)
+    try:
+        format_dict['unicode'] = isinstance(format_spec, unicode)
+    except NameError:
+        format_dict['unicode'] = False
 
     return format_dict
 

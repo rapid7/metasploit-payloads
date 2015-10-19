@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-#
-
 ####
 # Copyright 2000 by Timothy O'Malley <timo@alum.mit.edu>
 #
@@ -59,7 +56,7 @@ more on that later.
    >>> C = Cookie.SmartCookie()
 
 [Note: Long-time users of Cookie.py will remember using
-Cookie.Cookie() to create an Cookie object.  Although deprecated, it
+Cookie.Cookie() to create a Cookie object.  Although deprecated, it
 is still supported by the code.  See the Backward Compatibility notes
 for more information.]
 
@@ -429,6 +426,8 @@ class Morsel(dict):
                    "version" : "Version",
                    }
 
+    _flags = {'secure', 'httponly'}
+
     def __init__(self):
         # Set defaults
         self.key = self.value = self.coded_value = None
@@ -529,21 +528,26 @@ class Morsel(dict):
 # result, the parsing rules here are less strict.
 #
 
-_LegalCharsPatt  = r"[\w\d!#%&'~_`><@,:/\$\*\+\-\.\^\|\)\(\?\}\{\=]"
+_LegalKeyChars  = r"\w\d!#%&'~_`><@,:/\$\*\+\-\.\^\|\)\(\?\}\{\="
+_LegalValueChars = _LegalKeyChars + r"\[\]"
 _CookiePattern = re.compile(
     r"(?x)"                       # This is a Verbose pattern
+    r"\s*"                        # Optional whitespace at start of cookie
     r"(?P<key>"                   # Start of group 'key'
-    ""+ _LegalCharsPatt +"+?"     # Any word of at least one letter, nongreedy
+    "["+ _LegalKeyChars +"]+?"     # Any word of at least one letter, nongreedy
     r")"                          # End of group 'key'
+    r"("                          # Optional group: there may not be a value.
     r"\s*=\s*"                    # Equal Sign
     r"(?P<val>"                   # Start of group 'val'
     r'"(?:[^\\"]|\\.)*"'            # Any doublequoted string
     r"|"                            # or
     r"\w{3},\s[\s\w\d-]{9,11}\s[\d:]{8}\sGMT" # Special case for "expires" attr
     r"|"                            # or
-    ""+ _LegalCharsPatt +"*"        # Any word or empty string
+    "["+ _LegalValueChars +"]*"        # Any word or empty string
     r")"                          # End of group 'val'
-    r"\s*;?"                      # Probably ending in a semi-colon
+    r")?"                         # End of optional value group
+    r"\s*"                        # Any number of spaces.
+    r"(\s+|;|$)"                  # Ending either at space, semicolon, or EOS.
     )
 
 
@@ -588,8 +592,12 @@ class BaseCookie(dict):
 
     def __setitem__(self, key, value):
         """Dictionary style assignment."""
-        rval, cval = self.value_encode(value)
-        self.__set(key, rval, cval)
+        if isinstance(value, Morsel):
+            # allow assignment of constructed Morsels (e.g. for pickling)
+            dict.__setitem__(self, key, value)
+        else:
+            rval, cval = self.value_encode(value)
+            self.__set(key, rval, cval)
     # end __setitem__
 
     def output(self, attrs=None, header="Set-Cookie:", sep="\015\012"):
@@ -644,7 +652,7 @@ class BaseCookie(dict):
 
         while 0 <= i < n:
             # Start looking for a cookie
-            match = patt.search(str, i)
+            match = patt.match(str, i)
             if not match: break          # No more cookies
 
             K,V = match.group("key"), match.group("val")
@@ -659,8 +667,12 @@ class BaseCookie(dict):
                     M[ K[1:] ] = V
             elif K.lower() in Morsel._reserved:
                 if M:
-                    M[ K ] = _unquote(V)
-            else:
+                    if V is None:
+                        if K.lower() in Morsel._flags:
+                            M[K] = True
+                    else:
+                        M[K] = _unquote(V)
+            elif V is not None:
                 rval, cval = self.value_decode(V)
                 self.__set(K, rval, cval)
                 M = self[K]

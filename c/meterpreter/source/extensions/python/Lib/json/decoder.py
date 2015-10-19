@@ -15,10 +15,8 @@ __all__ = ['JSONDecoder']
 FLAGS = re.VERBOSE | re.MULTILINE | re.DOTALL
 
 def _floatconstants():
-    _BYTES = '7FF80000000000007FF0000000000000'.decode('hex')
-    if sys.byteorder != 'big':
-        _BYTES = _BYTES[:8][::-1] + _BYTES[8:][::-1]
-    nan, inf = struct.unpack('dd', _BYTES)
+    nan, = struct.unpack('>d', b'\x7f\xf8\x00\x00\x00\x00\x00\x00')
+    inf, = struct.unpack('>d', b'\x7f\xf0\x00\x00\x00\x00\x00\x00')
     return nan, inf, -inf
 
 NaN, PosInf, NegInf = _floatconstants()
@@ -61,6 +59,16 @@ BACKSLASH = {
 }
 
 DEFAULT_ENCODING = "utf-8"
+
+def _decode_uXXXX(s, pos):
+    esc = s[pos + 1:pos + 5]
+    if len(esc) == 4 and esc[1] not in 'xX':
+        try:
+            return int(esc, 16)
+        except ValueError:
+            pass
+    msg = "Invalid \\uXXXX escape"
+    raise ValueError(errmsg(msg, s, pos))
 
 def py_scanstring(s, end, encoding=None, strict=True,
         _b=BACKSLASH, _m=STRINGCHUNK.match):
@@ -116,25 +124,16 @@ def py_scanstring(s, end, encoding=None, strict=True,
             end += 1
         else:
             # Unicode escape sequence
-            esc = s[end + 1:end + 5]
-            next_end = end + 5
-            if len(esc) != 4:
-                msg = "Invalid \\uXXXX escape"
-                raise ValueError(errmsg(msg, s, end))
-            uni = int(esc, 16)
+            uni = _decode_uXXXX(s, end)
+            end += 5
             # Check for surrogate pair on UCS-4 systems
-            if 0xd800 <= uni <= 0xdbff and sys.maxunicode > 65535:
-                msg = "Invalid \\uXXXX\\uXXXX surrogate pair"
-                if not s[end + 5:end + 7] == '\\u':
-                    raise ValueError(errmsg(msg, s, end))
-                esc2 = s[end + 7:end + 11]
-                if len(esc2) != 4:
-                    raise ValueError(errmsg(msg, s, end))
-                uni2 = int(esc2, 16)
-                uni = 0x10000 + (((uni - 0xd800) << 10) | (uni2 - 0xdc00))
-                next_end += 6
+            if sys.maxunicode > 65535 and \
+               0xd800 <= uni <= 0xdbff and s[end:end + 2] == '\\u':
+                uni2 = _decode_uXXXX(s, end + 1)
+                if 0xdc00 <= uni2 <= 0xdfff:
+                    uni = 0x10000 + (((uni - 0xd800) << 10) | (uni2 - 0xdc00))
+                    end += 6
             char = unichr(uni)
-            end = next_end
         # Append the unescaped character
         _append(char)
     return u''.join(chunks), end

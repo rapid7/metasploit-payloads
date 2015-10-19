@@ -93,6 +93,10 @@ class DictReader:
         self.line_num = self.reader.line_num
         return self._fieldnames
 
+    # Issue 20004: Because DictReader is a classic class, this setter is
+    # ignored.  At this point in 2.7's lifecycle, it is too late to change the
+    # base class for fear of breaking working code.  If you want to change
+    # fieldnames without overwriting the getter, set _fieldnames directly.
     @fieldnames.setter
     def fieldnames(self, value):
         self._fieldnames = value
@@ -140,8 +144,8 @@ class DictWriter:
         if self.extrasaction == "raise":
             wrong_fields = [k for k in rowdict if k not in self.fieldnames]
             if wrong_fields:
-                raise ValueError("dict contains fields not in fieldnames: " +
-                                 ", ".join(wrong_fields))
+                raise ValueError("dict contains fields not in fieldnames: "
+                                 + ", ".join([repr(x) for x in wrong_fields]))
         return [rowdict.get(key, self.restval) for key in self.fieldnames]
 
     def writerow(self, rowdict):

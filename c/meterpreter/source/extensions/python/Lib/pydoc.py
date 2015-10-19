@@ -17,7 +17,8 @@ Run "pydoc -k <keyword>" to search for a keyword in the synopsis lines
 of all available modules.
 
 Run "pydoc -p <port>" to start an HTTP server on a given port on the
-local machine to generate documentation web pages.
+local machine to generate documentation web pages.  Port number 0 can be
+used to get an arbitrary unused port.
 
 For platforms without a command line, "pydoc -g" starts the HTTP server
 and also pops up a little window for controlling it.
@@ -81,6 +82,7 @@ def pathdirs():
 def getdoc(object):
     """Get the doc string or comments for an object."""
     result = inspect.getdoc(object) or inspect.getcomments(object)
+    result = _encode(result)
     return result and re.sub('^ *\n', '', rstrip(result)) or ''
 
 def splitdoc(doc):
@@ -182,6 +184,36 @@ def classify_class_attrs(object):
         return name, kind, cls, value
     return map(fixup, inspect.classify_class_attrs(object))
 
+# ----------------------------------------------------- Unicode support helpers
+
+try:
+    _unicode = unicode
+except NameError:
+    # If Python is built without Unicode support, the unicode type
+    # will not exist. Fake one that nothing will match, and make
+    # the _encode function that do nothing.
+    class _unicode(object):
+        pass
+    _encoding = 'ascii'
+    def _encode(text, encoding='ascii'):
+        return text
+else:
+    import locale
+    _encoding = locale.getpreferredencoding()
+
+    def _encode(text, encoding=None):
+        if isinstance(text, unicode):
+            return text.encode(encoding or _encoding, 'xmlcharrefreplace')
+        else:
+            return text
+
+def _binstr(obj):
+    # Ensure that we have an encoded (binary) string representation of obj,
+    # even if it is a unicode string.
+    if isinstance(obj, _unicode):
+        return obj.encode(_encoding, 'xmlcharrefreplace')
+    return str(obj)
+
 # ----------------------------------------------------- module manipulation
 
 def ispackage(path):
@@ -223,7 +255,7 @@ def synopsis(filename, cache={}):
         if info and 'b' in info[2]: # binary modules have to be imported
             try: module = imp.load_module('__temp__', file, filename, info[1:])
             except: return None
-            result = (module.__doc__ or '').splitlines()[0]
+            result = module.__doc__.splitlines()[0] if module.__doc__ else None
             del sys.modules['__temp__']
         else: # text modules can be directly examined
             result = source_synopsis(file)
@@ -424,12 +456,13 @@ class HTMLDoc(Doc):
 
     def page(self, title, contents):
         """Format an HTML page."""
-        return '''
+        return _encode('''
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
 <html><head><title>Python: %s</title>
+<meta charset="utf-8">
 </head><body bgcolor="#f0f0f8">
 %s
-</body></html>''' % (title, contents)
+</body></html>''' % (title, contents), 'ascii')
 
     def heading(self, title, fgcol, bgcol, extras=''):
         """Format a page heading."""
@@ -549,10 +582,15 @@ class HTMLDoc(Doc):
             elif pep:
                 url = 'http://www.python.org/dev/peps/pep-%04d/' % int(pep)
                 results.append('<a href="%s">%s</a>' % (url, escape(all)))
+            elif selfdot:
+                # Create a link for methods like 'self.method(...)'
+                # and use <strong> for attributes like 'self.attr'
+                if text[end:end+1] == '(':
+                    results.append('self.' + self.namelink(name, methods))
+                else:
+                    results.append('self.<strong>%s</strong>' % name)
             elif text[end:end+1] == '(':
                 results.append(self.namelink(name, methods, funcs, classes))
-            elif selfdot:
-                results.append('self.<strong>%s</strong>' % name)
             else:
                 results.append(self.namelink(name, classes))
             here = end
@@ -606,12 +644,12 @@ class HTMLDoc(Doc):
             filelink = '(built-in)'
         info = []
         if hasattr(object, '__version__'):
-            version = str(object.__version__)
+            version = _binstr(object.__version__)
             if version[:11] == '$' + 'Revision: ' and version[-1:] == '$':
                 version = strip(version[11:-1])
             info.append('version %s' % self.escape(version))
         if hasattr(object, '__date__'):
-            info.append(self.escape(str(object.__date__)))
+            info.append(self.escape(_binstr(object.__date__)))
         if info:
             head = head + ' (%s)' % join(info, ', ')
         docloc = self.getdocloc(object)
@@ -694,11 +732,11 @@ class HTMLDoc(Doc):
             result = result + self.bigsection(
                 'Data', '#ffffff', '#55aa55', join(contents, '<br>\n'))
         if hasattr(object, '__author__'):
-            contents = self.markup(str(object.__author__), self.preformat)
+            contents = self.markup(_binstr(object.__author__), self.preformat)
             result = result + self.bigsection(
                 'Author', '#ffffff', '#7799ee', contents)
         if hasattr(object, '__credits__'):
-            contents = self.markup(str(object.__credits__), self.preformat)
+            contents = self.markup(_binstr(object.__credits__), self.preformat)
             result = result + self.bigsection(
                 'Credits', '#ffffff', '#7799ee', contents)
 
@@ -1116,16 +1154,16 @@ class TextDoc(Doc):
             result = result + self.section('DATA', join(contents, '\n'))
 
         if hasattr(object, '__version__'):
-            version = str(object.__version__)
+            version = _binstr(object.__version__)
             if version[:11] == '$' + 'Revision: ' and version[-1:] == '$':
                 version = strip(version[11:-1])
             result = result + self.section('VERSION', version)
         if hasattr(object, '__date__'):
-            result = result + self.section('DATE', str(object.__date__))
+            result = result + self.section('DATE', _binstr(object.__date__))
         if hasattr(object, '__author__'):
-            result = result + self.section('AUTHOR', str(object.__author__))
+            result = result + self.section('AUTHOR', _binstr(object.__author__))
         if hasattr(object, '__credits__'):
-            result = result + self.section('CREDITS', str(object.__credits__))
+            result = result + self.section('CREDITS', _binstr(object.__credits__))
         return result
 
     def docclass(self, object, name=None, mod=None, *ignored):
@@ -1340,6 +1378,8 @@ def getpager():
     """Decide what method to use for paging through text."""
     if type(sys.stdout) is not types.FileType:
         return plainpager
+    if not hasattr(sys.stdin, "isatty"):
+        return plainpager
     if not sys.stdin.isatty() or not sys.stdout.isatty():
         return plainpager
     if 'PAGER' in os.environ:
@@ -1375,7 +1415,7 @@ def pipepager(text, cmd):
     """Page through text by feeding it to another program."""
     pipe = os.popen(cmd, 'w')
     try:
-        pipe.write(text)
+        pipe.write(_encode(text))
         pipe.close()
     except IOError:
         pass # Ignore broken pipes caused by quitting the pager program.
@@ -1385,7 +1425,7 @@ def tempfilepager(text, cmd):
     import tempfile
     filename = tempfile.mktemp()
     file = open(filename, 'w')
-    file.write(text)
+    file.write(_encode(text))
     file.close()
     try:
         os.system(cmd + ' "' + filename + '"')
@@ -1394,7 +1434,7 @@ def tempfilepager(text, cmd):
 
 def ttypager(text):
     """Page through text on a text terminal."""
-    lines = split(plain(text), '\n')
+    lines = plain(_encode(plain(text), getattr(sys.stdout, 'encoding', _encoding))).split('\n')
     try:
         import tty
         fd = sys.stdin.fileno()
@@ -1406,7 +1446,13 @@ def ttypager(text):
         getchar = lambda: sys.stdin.readline()[:-1][:1]
 
     try:
-        r = inc = os.environ.get('LINES', 25) - 1
+        try:
+            h = int(os.environ.get('LINES', 0))
+        except ValueError:
+            h = 0
+        if h <= 1:
+            h = 25
+        r = inc = h - 1
         sys.stdout.write(join(lines[:inc], '\n') + '\n')
         while lines[r:]:
             sys.stdout.write('-- more --')
@@ -1432,7 +1478,7 @@ def ttypager(text):
 
 def plainpager(text):
     """Simply print unformatted text.  This is the ultimate fallback."""
-    sys.stdout.write(plain(text))
+    sys.stdout.write(_encode(plain(text), getattr(sys.stdout, 'encoding', _encoding)))
 
 def describe(thing):
     """Produce a short description of the given thing."""
@@ -1494,7 +1540,7 @@ def resolve(thing, forceload=0):
     """Given an object or a path to an object, get the object and its name."""
     if isinstance(thing, str):
         object = locate(thing, forceload)
-        if not object:
+        if object is None:
             raise ImportError, 'no Python documentation found for %r' % thing
         return object, thing
     else:
@@ -1560,7 +1606,7 @@ class Helper:
     # in pydoc_data/topics.py.
     #
     # CAUTION: if you change one of these dictionaries, be sure to adapt the
-    #          list of needed labels in Doc/tools/sphinxext/pyspecific.py and
+    #          list of needed labels in Doc/tools/pyspecific.py and
     #          regenerate the pydoc_data/topics.py file by running
     #              make pydoc-topics
     #          in Doc/ and copying the output file into the Lib/ directory.
@@ -1974,7 +2020,7 @@ class ModuleScanner:
                         path = None
                 else:
                     module = loader.load_module(modname)
-                    desc = (module.__doc__ or '').splitlines()[0]
+                    desc = module.__doc__.splitlines()[0] if module.__doc__ else ''
                     path = getattr(module,'__file__',None)
                 if find(lower(modname + ' - ' + desc), key) >= 0:
                     callback(path, modname, desc)
@@ -2059,7 +2105,6 @@ pydoc</strong> by Ka-Ping Yee &lt;ping@lfw.org&gt;</font>'''
         def __init__(self, port, callback):
             host = 'localhost'
             self.address = (host, port)
-            self.url = 'http://%s:%d/' % (host, port)
             self.callback = callback
             self.base.__init__(self, self.address, self.handler)
 
@@ -2072,6 +2117,7 @@ pydoc</strong> by Ka-Ping Yee &lt;ping@lfw.org&gt;</font>'''
 
         def server_activate(self):
             self.base.server_activate(self)
+            self.url = 'http://%s:%d/' % (self.address[0], self.server_port)
             if self.callback: self.callback(self)
 
     DocServer.base = BaseHTTPServer.HTTPServer
@@ -2345,7 +2391,8 @@ def cli():
     Search for a keyword in the synopsis lines of all available modules.
 
 %s -p <port>
-    Start an HTTP server on the given port on the local machine.
+    Start an HTTP server on the given port on the local machine.  Port
+    number 0 can be used to get an arbitrary unused port.
 
 %s -g
     Pop up a graphical interface for finding and serving documentation.
