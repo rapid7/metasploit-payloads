@@ -34,7 +34,7 @@ def enum_users(domain_name, max_results = None, page_size = None):
   return domain_query(domain_name, query_filter, fields, max_results, page_size)
 
 def enum_groups(domain_name, max_results = None, page_size = None):
-  query_filter = '(objectClass=gruop)'
+  query_filter = '(objectClass=group)'
   fields = ['name', 'distinguishedname', 'description']
   return domain_query(domain_name, query_filter, fields, max_results, page_size)
 
