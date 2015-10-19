@@ -18,6 +18,8 @@
 extern BOOL WINAPI PythonDllMain(HANDLE hInst, ULONG ul_reason_for_call, LPVOID lpReserved);
 extern BOOL WINAPI CtypesDllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvRes);
 
+Remote* gRemote = NULL;
+
 // this sets the delay load hook function, see DelayLoadMetSrv.h
 EnableDelayLoadMetSrv();
 
@@ -71,9 +73,10 @@ VOID __declspec(dllexport) CommandAdded(const char* commandName)
 DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
 {
 	hMetSrv = remote->met_srv;
+	gRemote = remote;
 
 	dprintf("[PYTHON] Initialising");
-	binding_startup(remote);
+	binding_startup();
 
 	python_prepare_session();
 	dprintf("[PYTHON] Registering commands");

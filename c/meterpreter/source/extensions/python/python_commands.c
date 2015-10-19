@@ -82,6 +82,7 @@ extern PyMODINIT_FUNC initselect(void);
 extern PyMODINIT_FUNC initunicodedata(void);
 extern PyMODINIT_FUNC init_ctypes(void);
 extern PyMODINIT_FUNC initmsvcrt(void);
+extern PyMODINIT_FUNC init_ssl(void);
 
 /// order of these is actually important
 static InitFunc init_funcs[] =
@@ -139,6 +140,7 @@ static InitFunc init_funcs[] =
 	DEC_INIT_FUNC(init_subprocess),
 	DEC_INIT_FUNC(init_winreg),
 	DEC_INIT_FUNC(init_ctypes),
+	DEC_INIT_FUNC(init_ssl),
 	DEC_INIT_FUNC(NULL)
 };
 

@@ -420,6 +420,9 @@
     <ClInclude Include="..\..\source\extensions\python\python_commands.h" />
     <ClInclude Include="..\..\source\extensions\python\python_main.h" />
     <ClInclude Include="..\..\source\extensions\python\python_meterpreter_binding.h" />
+    <ClInclude Include="..\..\source\extensions\python\Modules\_ssl_data.h">
+      <Filter>Modules</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\source\extensions\python\Modules\_io\_iomodule.c">
@@ -1001,6 +1004,10 @@
       <Filter>Modules\_ctypes</Filter>
     </ClCompile>
     <ClCompile Include="..\..\source\extensions\python\python_meterpreter_binding.c" />
+    <ClCompile Include="..\..\source\extensions\python\Modules\_ssl.c">
+      <Filter>Modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\python\python_ssl_bridge.c" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\..\source\extensions\python\Resource Files\python_core.rc">

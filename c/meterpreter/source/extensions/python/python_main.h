@@ -7,6 +7,9 @@
 
 #include "../../common/common.h"
 
+
+extern Remote* gRemote;
+
 #define TLV_TYPE_EXTENSION_PYTHON	0
 
 #define TLV_TYPE_EXTENSION_PYTHON_STDOUT              MAKE_CUSTOM_TLV(TLV_META_TYPE_STRING,    TLV_TYPE_EXTENSION_PYTHON, TLV_EXTENSIONS + 1)

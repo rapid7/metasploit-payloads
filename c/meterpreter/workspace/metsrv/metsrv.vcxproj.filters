@@ -15,6 +15,7 @@
     <ClCompile Include="..\..\source\server\win\server_transport_wininet.c">
       <Filter>transports</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\source\server\ssl_lib_setup.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\source\server\libloader.h" />
@@ -29,6 +30,7 @@
     <ClInclude Include="..\..\source\server\win\server_transport_wininet.h">
       <Filter>transports</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\source\server\ssl_lib_setup.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\source\server\win\metsrv.def" />
