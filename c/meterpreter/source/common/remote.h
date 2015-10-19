@@ -63,6 +63,7 @@ typedef struct _TimeoutSettings
 	UINT retry_wait;
 } TimeoutSettings;
 
+#ifdef _WIN32
 typedef struct _SslLib
 {
 	int(*RAND_status)();
@@ -192,6 +193,7 @@ typedef struct _SslLib
 	const char*(*X509_get_default_cert_dir_env)();
 	const char*(*X509_get_default_cert_file_env)();
 } SslLib;
+#endif
 
 typedef struct _TcpTransportContext
 {
@@ -296,7 +298,9 @@ typedef struct _Remote
 	int sess_expiry_end;                  ///! Unix timestamp for when the server should shut down.
 	int sess_start_time;                  ///! Unix timestamp representing the session startup time.
 
+#ifdef _WIN32
 	SslLib ssl;                           ///! Pointer to SSL related functions, for sharing across extensions.
+#endif
 } Remote;
 
 Remote* remote_allocate();
