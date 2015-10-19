@@ -3,9 +3,9 @@
  * @brief Definitions for functions that support meterpreter bindings.
  */
 #include "../../common/common.h"
+#include "python_main.h"
 #include "Python.h"
 
-static Remote* gRemote = NULL;
 static PLIST gBoundCommandList = NULL;
 static PyObject* gMeterpreterModule = NULL;
 static PyMethodDef* gMeterpreterMethods = NULL;
@@ -58,14 +58,12 @@ VOID binding_insert_command(const char* commandName)
 	PyModule_AddObject(gMeterpreterModule, commandName, fun);
 }
 
-VOID binding_startup(Remote* remote)
+VOID binding_startup()
 {
 	if (gBoundCommandList == NULL)
 	{
 		gBoundCommandList = list_create();
 	}
-
-	gRemote = remote;
 }
 
 VOID binding_add_command(const char* commandName)

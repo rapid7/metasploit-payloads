@@ -16,7 +16,7 @@ def p(d):
 modules = {}
 
 here = os.getcwd()
-folder = '..\\Lib'
+folder = '../Lib'
 os.chdir(folder)
 
 for entry in os.listdir('.'):
