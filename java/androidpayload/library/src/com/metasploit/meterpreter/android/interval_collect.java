@@ -40,7 +40,9 @@ public class interval_collect implements Command {
     public static final int TLV_TYPE_COLLECT_RESULT_WIFI_LEVEL = wlan_geolocate.TLV_TYPE_WLAN_LEVEL;
 
   //TLV for Geolocation
-     public static final int TLV_TYPE_GEO_LAT = TLVPacket.TLV_META_TYPE_STRING
+ public static final int TLV_TYPE_COLLECT_RESULT_GEO = TLVPacket.TLV_META_TYPE_GROUP
+            | (TLV_EXTENSIONS + 9022); 
+   public static final int TLV_TYPE_GEO_LAT = TLVPacket.TLV_META_TYPE_STRING
             | (TLV_EXTENSIONS + 9011);
     public static final int TLV_TYPE_GEO_LONG = TLVPacket.TLV_META_TYPE_STRING
             | (TLV_EXTENSIONS + 9012);
