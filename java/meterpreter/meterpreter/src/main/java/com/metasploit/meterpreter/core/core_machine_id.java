@@ -10,8 +10,6 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 
 public class core_machine_id implements Command {
 
@@ -44,17 +42,13 @@ public class core_machine_id implements Command {
         return "";
     }
 
-    private String getHostname() throws UnknownHostException {
-        return InetAddress.getLocalHost().getHostName();
-    }
-
     public int execute(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws Exception {
         if (machine_id == null) {
             String serial = getHDLabel();
             if (serial == null) {
                 serial = getSerial();
             }
-            machine_id = serial + ":" + getHostname();
+            machine_id = serial + ":" + Utils.getHostname();
         }
         response.add(TLVType.TLV_TYPE_MACHINE_ID, machine_id);
         return ERROR_SUCCESS;
