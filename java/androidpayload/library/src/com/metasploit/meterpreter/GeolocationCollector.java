@@ -99,8 +99,9 @@ public class GeolocationCollector extends IntervalCollector  {
             lGeoMod.mLatitude = 0;
             lGeoMod.mLongitude = 0;
         } else {
-            lGeoMod.setLatitudeAndLong(location);
-        }
+            lGeoMod.setmUnixEpoch(); 
+	  lGeoMod.setLatitudeAndLong(location);
+           }
         
         synchronized (this.syncObject) {
             this.collections.put(System.currentTimeMillis(), lGeoMod);
@@ -127,9 +128,10 @@ public class GeolocationCollector extends IntervalCollector  {
             
             for (int j = 0; j < resultCount; ++j) {
                 GeoModel lGeoModObj  = new   GeoModel();
-                lGeoModObj.mGeolatsring   =  input.readUTF();
+                lGeoModObj.mUnixEpoch = input.readLong();
+	       lGeoModObj.mGeolatsring   =  input.readUTF();
                 lGeoModObj.mGeolongstring  =  input.readUTF();
-                this.collections.put(System.currentTimeMillis(), lGeoModObj);
+                this.collections.put(ts, lGeoModObj);
             }
         }
     }
@@ -155,30 +157,30 @@ public class GeolocationCollector extends IntervalCollector  {
                 resultSet.add(interval_collect.TLV_TYPE_COLLECT_RESULT_TIMESTAMP, timestamp / 1000);
             }
             catch (IOException e) {
-                Log.d("Geocollection Interval", Log.getStackTraceString(e.getCause().getCause()));
+                Log.d("Geocollection Interval- in flush funtion", Log.getStackTraceString(e.getCause().getCause()));
             }
             
             
             TLVPacket geolocationSet = new TLVPacket();
-            Log.d("Geocollection Interval", "geolocationSet="+geolocationSet);
+            Log.d("Geocollection Interval--in flush funtion", "geolocationSet="+geolocationSet);
             try {
                 geolocationSet.add(interval_collect.TLV_TYPE_GEO_LAT, geoLoc.mGeolatsring);
                 geolocationSet.add(interval_collect.TLV_TYPE_GEO_LONG, geoLoc.mGeolongstring);
-                Log.d("Geocollection Interval", "In Try block geolocationSet="+geolocationSet);
+                Log.d("Geocollection Interval --in flush funtion", "In Try block geolocationSet="+geolocationSet);
                 resultSet.addOverflow(interval_collect.TLV_TYPE_COLLECT_RESULT_GEO, geolocationSet);
             }
             catch (IOException e) {
-                Log.d("Geocollection Interval", Log.getStackTraceString(e.getCause().getCause()));
+                Log.d("Geocollection Interval--in flush funtion", Log.getStackTraceString(e.getCause().getCause()));
             }
             
             
             try {
-                Log.d("Geocollection Interval", "In  packet Try block result Set="+resultSet);
+                Log.d("Geocollection Interval --in flush funtion", "In  packet Try block result Set="+resultSet);
                 packet.addOverflow(interval_collect.TLV_TYPE_COLLECT_RESULT_GROUP, resultSet);
                 // packet.addOverflow(interval_collect.TLV_TYPE_COLLECT_RESULT_GEO, resultSet);
             }
             catch (IOException e) {
-                Log.d("Geocollection Interval", Log.getStackTraceString(e.getCause().getCause()));
+                Log.d("Geocollection Interval --in flush funtion", Log.getStackTraceString(e.getCause().getCause()));
             }
         }
         
