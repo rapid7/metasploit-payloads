@@ -31,6 +31,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ext_server_sniffer", "ext_s
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ext_server_extapi", "ext_server_extapi\ext_server_extapi.vcxproj", "{42E143CB-6086-4FF1-A4AE-D8545782DD31}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ext_server_python", "ext_server_python\ext_server_python.vcxproj", "{FB776F5E-BF58-478F-94EE-5B69D84DB9ED}"
+EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ext_server_kiwi", "ext_server_kiwi\ext_server_kiwi.vcxproj", "{1C307A8B-A88E-43EE-8E80-01E6EFE38697}"
 EndProject
 Global
@@ -281,6 +283,22 @@ Global
 		{1C307A8B-A88E-43EE-8E80-01E6EFE38697}.Release|Win32.Build.0 = Release|Win32
 		{1C307A8B-A88E-43EE-8E80-01E6EFE38697}.Release|x64.ActiveCfg = Release|x64
 		{1C307A8B-A88E-43EE-8E80-01E6EFE38697}.Release|x64.Build.0 = Release|x64
+		{FB776F5E-BF58-478F-94EE-5B69D84DB9ED}.Debug|Win32.ActiveCfg = Debug|Win32
+		{FB776F5E-BF58-478F-94EE-5B69D84DB9ED}.Debug|Win32.Build.0 = Debug|Win32
+		{FB776F5E-BF58-478F-94EE-5B69D84DB9ED}.Debug|x64.ActiveCfg = Debug|x64
+		{FB776F5E-BF58-478F-94EE-5B69D84DB9ED}.Debug|x64.Build.0 = Debug|x64
+		{FB776F5E-BF58-478F-94EE-5B69D84DB9ED}.r7_debug|Win32.ActiveCfg = r7_debug|Win32
+		{FB776F5E-BF58-478F-94EE-5B69D84DB9ED}.r7_debug|Win32.Build.0 = r7_debug|Win32
+		{FB776F5E-BF58-478F-94EE-5B69D84DB9ED}.r7_debug|x64.ActiveCfg = r7_debug|x64
+		{FB776F5E-BF58-478F-94EE-5B69D84DB9ED}.r7_debug|x64.Build.0 = r7_debug|x64
+		{FB776F5E-BF58-478F-94EE-5B69D84DB9ED}.r7_release|Win32.ActiveCfg = r7_release|Win32
+		{FB776F5E-BF58-478F-94EE-5B69D84DB9ED}.r7_release|Win32.Build.0 = r7_release|Win32
+		{FB776F5E-BF58-478F-94EE-5B69D84DB9ED}.r7_release|x64.ActiveCfg = r7_release|x64
+		{FB776F5E-BF58-478F-94EE-5B69D84DB9ED}.r7_release|x64.Build.0 = r7_release|x64
+		{FB776F5E-BF58-478F-94EE-5B69D84DB9ED}.Release|Win32.ActiveCfg = Release|Win32
+		{FB776F5E-BF58-478F-94EE-5B69D84DB9ED}.Release|Win32.Build.0 = Release|Win32
+		{FB776F5E-BF58-478F-94EE-5B69D84DB9ED}.Release|x64.ActiveCfg = Release|x64
+		{FB776F5E-BF58-478F-94EE-5B69D84DB9ED}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
