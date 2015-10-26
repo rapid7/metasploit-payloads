@@ -38,8 +38,7 @@ DWORD request_fs_ls(Remote * remote, Packet * packet)
 		result = fs_ls(directory, request_fs_ls_cb, response);
 	}
 
-	packet_add_tlv_uint(response, TLV_TYPE_RESULT, result);
-	return PACKET_TRANSMIT(remote, response, NULL);
+	return packet_transmit_response(result, remote, response);
 }
 
 /*
@@ -60,8 +59,7 @@ DWORD request_fs_getwd(Remote * remote, Packet * packet)
 		free(directory);
 	}
 
-	packet_add_tlv_uint(response, TLV_TYPE_RESULT, result);
-	return PACKET_TRANSMIT(remote, response, NULL);
+	return packet_transmit_response(result, remote, response);
 }
 
 /*
@@ -83,8 +81,7 @@ DWORD request_fs_chdir(Remote * remote, Packet * packet)
 		result = fs_chdir(directory);
 	}
 
-	packet_add_tlv_uint(response, TLV_TYPE_RESULT, result);
-	return PACKET_TRANSMIT(remote, response, NULL);
+	return packet_transmit_response(result, remote, response);
 }
 
 /*
@@ -105,8 +102,7 @@ DWORD request_fs_mkdir(Remote * remote, Packet * packet)
 		result = fs_mkdir(directory);
 	}
 
-	packet_add_tlv_uint(response, TLV_TYPE_RESULT, result);
-	return PACKET_TRANSMIT(remote, response, NULL);
+	return packet_transmit_response(result, remote, response);
 }
 
 /*
@@ -127,6 +123,5 @@ DWORD request_fs_delete_dir(Remote * remote, Packet * packet)
 		result = fs_delete_dir(directory);
 	}
 
-	packet_add_tlv_uint(response, TLV_TYPE_RESULT, result);
-	return PACKET_TRANSMIT(remote, response, NULL);
+	return packet_transmit_response(result, remote, response);
 }

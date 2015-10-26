@@ -706,8 +706,10 @@ DWORD request_sys_config_sysinfo(Remote *remote, Packet *packet)
 			packet_add_tlv_uint(response, TLV_TYPE_LOGGED_ON_USER_COUNT, localSysinfo->wki102_logged_on_users);
 			free(domainName);
 		}
-
-
+		else
+		{
+			dprintf("[CONFIG] Failed to get local system info for logged on user count / domain");
+		}
 	} while (0);
 #else
 	CHAR os[512];
