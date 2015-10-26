@@ -287,6 +287,44 @@ BOOL list_delete(PLIST pList, DWORD index)
 }
 
 /*!
+ * @brief Clear the contents of the list
+ * @param pList Pointer to the \c LIST to clear.
+ * @param pFunc Pointer to the function to run on each data node (if any).
+ * @returns Indication of success or failure.
+ */
+BOOL list_clear(PLIST pList, PCLEARFUNC pFunc)
+{
+	PNODE pNode = NULL;
+	PNODE pFree = NULL;
+
+	if (pList == NULL)
+	{
+		return FALSE;
+	}
+
+	lock_acquire(pList->lock);
+
+	pNode = pList->start;
+	while (pNode != NULL)
+	{
+		if (pFunc)
+		{
+			pFunc(pNode->data);
+		}
+
+		pFree = pNode;
+		pNode = pNode->next;
+		free(pFree);
+	}
+
+	pList->start = pList->end = NULL;
+
+	lock_release(pList->lock);
+
+	return TRUE;
+}
+
+/*!
  * @brief Push a data item onto the end of the list.
  * @param pList Pointer to the \c LIST to append the data to.
  * @param data Pointer to the data to append.

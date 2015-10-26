@@ -203,6 +203,11 @@ typedef struct _Packet
 	ULONG     payloadLength;
 
 	LIST *    decompressed_buffers;
+
+	///! @brief Flag indicating if this packet is a local (ie. non-transmittable) packet.
+	BOOL local;
+	///! @brief Pointer to the associated packet (response/request)
+	struct _Packet* partner;
 } Packet;
 
 typedef struct _DECOMPRESSED_BUFFER
@@ -263,20 +268,9 @@ LINKAGE DWORD packet_get_result(Packet *packet);
 /*
  * Packet transmission
  */
+LINKAGE DWORD packet_transmit_response(DWORD result, Remote* remote, Packet* response);
 LINKAGE DWORD packet_transmit_empty_response(Remote *remote, Packet *packet, DWORD res);
-#define PACKET_TRANSMIT(remote, packet, completion) (remote->transport->packet_transmit(remote, packet, completion))
-
-/*!
- * @brief Transmit a `TLV_TYPE_RESULT` response if `response` is present.
- * @param result The result to be sent.
- * @param remote Reference to the remote connection to send the response to.
- * @param response the Response to add the `result` to.
- */
-#define packet_transmit_response(result, remote, response)    \
-	if (response) {                                            \
-		packet_add_tlv_uint(response, TLV_TYPE_RESULT, result); \
-		PACKET_TRANSMIT(remote, response, NULL);                \
-	}
+#define PACKET_TRANSMIT(remote, packet, completion) ((packet->partner==NULL||!packet->partner->local)?(remote->transport->packet_transmit(remote, packet, completion)):(ERROR_SUCCESS))
 
 /*
  * Packet completion notification

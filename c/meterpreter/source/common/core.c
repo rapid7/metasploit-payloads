@@ -288,6 +288,15 @@ Packet *packet_create_response(Packet *request)
 		// Add the request identifier to the packet
 		packet_add_tlv_string(response, TLV_TYPE_REQUEST_ID, (PCHAR)requestId.buffer);
 
+		// If the packet that is being handled is considered local, then we
+		// associate the response with the request so that it can be handled
+		// locally (and vice versa)
+		if (request->local)
+		{
+			request->partner = response;
+			response->partner = request;
+		}
+
 		success = TRUE;
 
 	} while (0);
@@ -1227,9 +1236,21 @@ DWORD packet_transmit_empty_response(Remote *remote, Packet *packet, DWORD res)
 		return ERROR_NOT_ENOUGH_MEMORY;
 	}
 
-	// Add the result code
-	packet_add_tlv_uint(response, TLV_TYPE_RESULT, res);
+	return packet_transmit_response(res, remote, response);
+}
 
-	// Transmit the response
-	return PACKET_TRANSMIT(remote, response, NULL);
+/*!
+ * @brief Transmit a `TLV_TYPE_RESULT` response if `response` is present.
+ * @param result The result to be sent.
+ * @param remote Reference to the remote connection to send the response to.
+ * @param response the Response to add the `result` to.
+ */
+DWORD packet_transmit_response(DWORD result, Remote* remote, Packet* response)
+{
+	if (response)
+	{
+		packet_add_tlv_uint(response, TLV_TYPE_RESULT, result);
+		return PACKET_TRANSMIT(remote, response, NULL);
+	}
+	return ERROR_NOT_ENOUGH_MEMORY;
 }
