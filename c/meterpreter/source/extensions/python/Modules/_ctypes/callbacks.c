@@ -646,7 +646,7 @@ STDAPI DllCanUnloadNow(void)
 }
 
 #ifndef Py_NO_ENABLE_SHARED
-BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvRes)
+BOOL WINAPI CtypesDllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvRes)
 {
     switch(fdwReason) {
     case DLL_PROCESS_ATTACH:

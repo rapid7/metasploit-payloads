@@ -106,6 +106,8 @@ DWORD service_create( char * cpName, char * cpPath )
 	HANDLE hManager = NULL;
 	HANDLE hService = NULL;
 
+	dprintf("[SERVICE] attempting to create service: %s / %s", cpName, cpPath);
+
 	do
 	{
 		if( !cpName || !cpPath )
@@ -119,6 +121,7 @@ DWORD service_create( char * cpName, char * cpPath )
 		if( !hService )
 			BREAK_ON_ERROR( "[SERVICE] service_create. CreateServiceA failed" );
 		
+		dprintf("[SERVICE] service created: %s / %s", cpName, cpPath);
 	} while( 0 );
 
 	if( hService )

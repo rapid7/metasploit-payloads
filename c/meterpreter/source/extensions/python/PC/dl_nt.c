@@ -76,7 +76,7 @@ void _Py_DeactivateActCtx(ULONG_PTR cookie)
             OutputDebugString("Python failed to de-activate the activation context\n");
 }
 
-BOOL    WINAPI  DllMain (HANDLE hInst,
+BOOL    WINAPI  PythonDllMain (HANDLE hInst,
                                                 ULONG ul_reason_for_call,
                                                 LPVOID lpReserved)
 {

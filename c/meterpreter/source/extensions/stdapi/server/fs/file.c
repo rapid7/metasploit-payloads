@@ -209,9 +209,7 @@ DWORD request_fs_separator(Remote *remote, Packet *packet)
 
 	packet_add_tlv_string(response, TLV_TYPE_STRING, FS_SEPARATOR);
 
-	packet_add_tlv_uint(response, TLV_TYPE_RESULT, ERROR_SUCCESS);
-
-	return PACKET_TRANSMIT(remote, response, NULL);
+	return packet_transmit_response(ERROR_SUCCESS, remote, response);
 }
 
 
@@ -250,8 +248,7 @@ DWORD request_fs_stat(Remote *remote, Packet *packet)
 	free(expanded);
 
 out:
-	packet_add_tlv_uint(response, TLV_TYPE_RESULT, result);
-	return PACKET_TRANSMIT(remote, response, NULL);
+	return packet_transmit_response(result, remote, response);
 }
 
 /*
@@ -273,8 +270,7 @@ DWORD request_fs_delete_file(Remote *remote, Packet *packet)
 		result = fs_delete_file(path);
 	}
 
-	packet_add_tlv_uint(response, TLV_TYPE_RESULT, result);
-	return PACKET_TRANSMIT(remote, response, NULL);
+	return packet_transmit_response(result, remote, response);
 }
 
 /*
@@ -305,8 +301,7 @@ DWORD request_fs_file_expand_path(Remote *remote, Packet *packet)
 	packet_add_tlv_string(response, TLV_TYPE_FILE_PATH, expanded);
 	free(expanded);
 out:
-	packet_add_tlv_uint(response, TLV_TYPE_RESULT, result);
-	return PACKET_TRANSMIT(remote, response, NULL);
+	return packet_transmit_response(result, remote, response);
 }
 
 
@@ -345,8 +340,7 @@ DWORD request_fs_md5(Remote *remote, Packet *packet)
 		fclose(fd);
 	}
 
-	packet_add_tlv_uint(response, TLV_TYPE_RESULT, result);
-	return PACKET_TRANSMIT(remote, response, NULL);
+	return packet_transmit_response(result, remote, response);
 }
 
 
@@ -383,8 +377,7 @@ DWORD request_fs_sha1(Remote *remote, Packet *packet)
 		packet_add_tlv_raw(response, TLV_TYPE_FILE_HASH, hash, sizeof(hash));
 	}
 
-	packet_add_tlv_uint(response, TLV_TYPE_RESULT, result);
-	return PACKET_TRANSMIT(remote, response, NULL);
+	return packet_transmit_response(result, remote, response);
 }
 
 /*
@@ -408,7 +401,5 @@ DWORD request_fs_file_move(Remote *remote, Packet *packet)
 		result = fs_move(oldpath, newpath);
 	}
 
-	packet_add_tlv_uint(response, TLV_TYPE_RESULT, result);
-	return PACKET_TRANSMIT(remote, response, NULL);
+	return packet_transmit_response(result, remote, response);
 }
-
