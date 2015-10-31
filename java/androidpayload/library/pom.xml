@@ -12,9 +12,9 @@
 	</properties>
 	<dependencies>
 		<dependency>
-			<groupId>com.google.android</groupId>
+			<groupId>android</groupId>
 			<artifactId>android</artifactId>
-			<version>1.6_r2</version>
+			<version>4.4.2_r4</version>
 			<scope>provided</scope>
 		</dependency>
 		<dependency>
@@ -60,7 +60,7 @@
 				<configuration>
 					<sdk>
 						<!-- platform or api level (api level 10 = platform 2.3)-->
-						<platform>10</platform>
+						<platform>17</platform>
 					</sdk>
 				</configuration>
 			</plugin>
@@ -98,7 +98,7 @@
 											<zipfileset src="${com.metasploit:Metasploit-JavaPayload:jar}" includes="javapayload/stage/StreamForwarder.class" />
 											<zipfileset src="${com.metasploit:Metasploit-JavaPayload:jar}" includes="javapayload/stage/Stage.class" />
 										</copy>
-										<exec executable="${android.sdk.path}/platforms/android-3/tools/${dx.filename}" failonerror="true">
+										<exec executable="${android.sdk.path}/build-tools/19.0.0/${dx.filename}" failonerror="true">
 											<arg value="--verbose" />
 											<arg value="--dex" />
 											<arg value="--output=${project.basedir}/../../${deploy.path}/data/android/shell.jar" />
@@ -113,7 +113,7 @@
 											</fileset>
 											<zipfileset src="${com.metasploit:Metasploit-JavaPayload:jar}" includes="javapayload/stage/Stage.class" />
 										</copy>
-										<exec executable="${android.sdk.path}/platforms/android-3/tools/${dx.filename}" failonerror="true">
+										<exec executable="${android.sdk.path}/build-tools/19.0.0/${dx.filename}" failonerror="true">
 											<arg value="--verbose" />
 											<arg value="--dex" />
 											<arg value="--output=${project.basedir}/../../${deploy.path}/data/android/metstage.jar" />
@@ -127,7 +127,7 @@
 												<include name="com/metasploit/meterpreter/**/*.class" />
 											</fileset>
 										</copy>
-										<exec executable="${android.sdk.path}/platforms/android-3/tools/${dx.filename}" failonerror="true">
+										<exec executable="${android.sdk.path}/build-tools/19.0.0/${dx.filename}" failonerror="true">
 											<arg value="--verbose" />
 											<arg value="--dex" />
 											<arg value="--output=${project.basedir}/../../${deploy.path}/data/android/meterpreter.jar" />
