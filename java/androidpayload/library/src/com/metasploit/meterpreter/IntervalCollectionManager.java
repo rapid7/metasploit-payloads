@@ -9,6 +9,7 @@ public class IntervalCollectionManager {
 
     private static final int COLLECT_TYPE_WIFI = 1;
    private static final int COLLECT_TYPE_GEO = 2;
+   private static final int COLLECT_TYPE_CELL = 3;   
    
     private final Context context;
     private final Hashtable<Integer, IntervalCollector> collectors;
@@ -29,6 +30,10 @@ public class IntervalCollectionManager {
               }
 	   case COLLECT_TYPE_GEO: {
                   collector = new GeolocationCollector(COLLECT_TYPE_GEO, this.context, timeout);
+                  break;
+              }
+	   case COLLECT_TYPE_CELL: {
+                  collector = new CellCollector(COLLECT_TYPE_CELL, this.context, timeout);
                   break;
               }
               default: {
@@ -70,6 +75,10 @@ public class IntervalCollectionManager {
          collector = new GeolocationCollector(COLLECT_TYPE_GEO, this.context);
         if (collector.loadFromDisk()) {
             this.collectors.put(COLLECT_TYPE_GEO, collector);
+        }
+        collector = new CellCollector(COLLECT_TYPE_CELL, this.context);
+        if (collector.loadFromDisk()) {
+            this.collectors.put(COLLECT_TYPE_CELL, collector);
         }
     }
     
