@@ -33,25 +33,24 @@ public class GeolocationCollector extends IntervalCollector  {
 
     private class GeoModel {
 
-        public long mUnixEpoch;
-        public double  mLatitude,mLongitude;
-        public String mGeolatsring,mGeolongstring ;
+        public long mTimestamp;
+        public double mLatitude, mLongitude;
 
-        public void setmUnixEpoch(){
-            mUnixEpoch =  System.currentTimeMillis();
-        }
-
-        public void  setLatitudeAndLong(Location location ){
-            mLatitude = location.getLatitude();
-            mLongitude = location.getLongitude();
-            mGeolatsring = Double.toString(location.getLatitude());
-            mGeolongstring = Double.toString(location.getLongitude());
+        public void setLocation(Location location ){
+            mTimestamp = System.currentTimeMillis();
+            if (location != null) {
+              mLatitude = location.getLatitude();
+              mLongitude = location.getLongitude();
+            } else {
+              mLatitude = 0;
+              mLongitude = 0;
+            }
         }
 
         public void write(DataOutputStream output) throws IOException {
-            output.writeLong(this.mUnixEpoch);
-            output.writeChars(this.mGeolatsring);
-            output.writeChars(this.mGeolongstring);
+            output.writeLong(this.mTimestamp);
+            output.writeChars(Double.toString(this.mLatitude));
+            output.writeChars(Double.toString(this.mLongitude));
         }
     }
 
@@ -77,26 +76,23 @@ public class GeolocationCollector extends IntervalCollector  {
         Location location = mLocationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
         GeoModel lGeoMod = new GeoModel();
 
-        lGeoMod.setmUnixEpoch();
-        if (location == null) {
-            lGeoMod.mLatitude = 0;
-            lGeoMod.mLongitude = 0;
-        }
-        else {
-            lGeoMod.setmUnixEpoch();
-            lGeoMod.setLatitudeAndLong(location);
-        }
+        lGeoMod.setLocation(location);
 
         synchronized (this.syncObject) {
             this.collections.put(System.currentTimeMillis(), lGeoMod);
-            // collect requires the result to be the serialised version of
-            // the collection data so that it can be written to disk
+
+            // serialize and write to storage, formatted as:
+            // Long( configured polling frequency [ timeout ] )
+            // Long( number of snapshots taken )
+            //    -> Long( timestamp )
+            //    -> String( latitude )
+            //    -> String( longitude )
+
             output.writeLong(this.timeout);
             output.writeInt(this.collections.size());
             for (Long ts : this.collections.keySet()) {
                 GeoModel lGeoModObj;
                 lGeoModObj = this.collections.get(ts.longValue());
-                output.writeLong(ts.longValue());
                 lGeoModObj.write(output);
             }
         }
@@ -108,16 +104,11 @@ public class GeolocationCollector extends IntervalCollector  {
         this.timeout = input.readLong();
         int collectionCount = input.readInt();
         for (int i = 0; i < collectionCount; ++i) {
-            long ts = input.readLong();
-            int resultCount = input.readInt();
-
-            for (int j = 0; j < resultCount; ++j) {
-                GeoModel lGeoModObj  = new   GeoModel();
-                lGeoModObj.mUnixEpoch = input.readLong();
-                lGeoModObj.mGeolatsring   =  input.readUTF();
-                lGeoModObj.mGeolongstring  =  input.readUTF();
-                this.collections.put(ts, lGeoModObj);
-            }
+            GeoModel lGeoModObj = new GeoModel();
+            lGeoModObj.mTimestamp = input.readLong();
+            lGeoModObj.mLatitude = Double.parseDouble(input.readUTF());
+            lGeoModObj.mLongitude = Double.parseDouble(input.readUTF());
+            this.collections.put(lGeoModObj.mTimestamp, lGeoModObj);
         }
     }
 
@@ -131,20 +122,25 @@ public class GeolocationCollector extends IntervalCollector  {
         List<Long> sortedKeys = new ArrayList<Long>(collections.keySet());
         Collections.sort(sortedKeys);
 
-        for (Long ts : sortedKeys) {
+        try {
+            for (Long ts : sortedKeys) {
 
-            long timestamp = ts.longValue();
-            GeoModel geoLoc = collections.get(timestamp);
-            TLVPacket resultSet = new TLVPacket();
-            TLVPacket geolocationSet = new TLVPacket();
+                long timestamp = ts.longValue();
+                GeoModel geoLoc = collections.get(timestamp);
+                TLVPacket resultSet = new TLVPacket();
+                TLVPacket geolocationSet = new TLVPacket();
 
-            resultSet.add(interval_collect.TLV_TYPE_COLLECT_RESULT_TIMESTAMP, timestamp / 1000);
+                resultSet.add(interval_collect.TLV_TYPE_COLLECT_RESULT_TIMESTAMP, timestamp / 1000);
 
-            geolocationSet.add(interval_collect.TLV_TYPE_GEO_LAT, geoLoc.mGeolatsring);
-            geolocationSet.add(interval_collect.TLV_TYPE_GEO_LONG, geoLoc.mGeolongstring);
-            resultSet.addOverflow(interval_collect.TLV_TYPE_COLLECT_RESULT_GEO, geolocationSet);
+                geolocationSet.add(interval_collect.TLV_TYPE_GEO_LAT, Double.toString(geoLoc.mLatitude));
+                geolocationSet.add(interval_collect.TLV_TYPE_GEO_LONG, Double.toString(geoLoc.mLongitude));
+                resultSet.addOverflow(interval_collect.TLV_TYPE_COLLECT_RESULT_GEO, geolocationSet);
 
-            packet.addOverflow(interval_collect.TLV_TYPE_COLLECT_RESULT_GROUP, resultSet);
+                packet.addOverflow(interval_collect.TLV_TYPE_COLLECT_RESULT_GROUP, resultSet);
+            }
+        }
+        catch (IOException ex) {
+            // not good, but not much we can do here
         }
 
         return true;
