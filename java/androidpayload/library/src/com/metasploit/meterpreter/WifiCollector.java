@@ -228,16 +228,10 @@ public class WifiCollector extends IntervalCollector {
 
             try {
                 resultSet.add(interval_collect.TLV_TYPE_COLLECT_RESULT_TIMESTAMP, timestamp / 1000);
-            }
-            catch (IOException ex) {
-                // not good, but not much we can do here
-            }
+                for (int i = 0; i < scanResults.size(); ++i) {
+                    WifiResult result = scanResults.get(i);
+                    TLVPacket wifiSet = new TLVPacket();
 
-            for (int i = 0; i < scanResults.size(); ++i) {
-                WifiResult result = scanResults.get(i);
-                TLVPacket wifiSet = new TLVPacket();
-
-                try {
                     wifiSet.add(interval_collect.TLV_TYPE_COLLECT_RESULT_WIFI_SSID, result.getSsid());
                     wifiSet.add(interval_collect.TLV_TYPE_COLLECT_RESULT_WIFI_BSSID, result.getBssid());
                     // level is negative, but it'll be converted to positive on the flip side.
@@ -245,12 +239,6 @@ public class WifiCollector extends IntervalCollector {
 
                     resultSet.addOverflow(interval_collect.TLV_TYPE_COLLECT_RESULT_WIFI, wifiSet);
                 }
-                catch (IOException ex) {
-                    // not good, but not much we can do here
-                }
-            }
-
-            try {
                 packet.addOverflow(interval_collect.TLV_TYPE_COLLECT_RESULT_GROUP, resultSet);
             }
             catch (IOException ex) {
