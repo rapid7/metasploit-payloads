@@ -158,8 +158,14 @@ public class WifiCollector extends IntervalCollector {
             synchronized (this.syncObject) {
                 this.collections.put(System.currentTimeMillis(), results);
 
-                // collect requires the result to be the serialised version of
-                // the collection data so that it can be written to disk
+                // serialize and write to storage, formatted as:
+                // Long( configured polling frequency [ timeout ] )
+                // Long( number of snapshots taken )
+                //    -> Long( collection timestamp key )
+                //    -> Long( number of entries in this snapshot )
+                //          ->  String (bssid)
+                //          ->  String (ssid)
+                //          ->  Short (signal level)
                 output.writeLong(this.timeout);
                 output.writeInt(this.collections.size());
                 for (Long ts : this.collections.keySet()) {

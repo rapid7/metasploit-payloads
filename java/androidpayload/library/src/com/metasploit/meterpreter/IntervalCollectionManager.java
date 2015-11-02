@@ -71,11 +71,11 @@ public class IntervalCollectionManager {
             this.collectors.put(COLLECT_TYPE_WIFI, collector);
         }
 
-        // more collection types will go here.
-         collector = new GeolocationCollector(COLLECT_TYPE_GEO, this.context);
+        collector = new GeolocationCollector(COLLECT_TYPE_GEO, this.context);
         if (collector.loadFromDisk()) {
             this.collectors.put(COLLECT_TYPE_GEO, collector);
         }
+
         collector = new CellCollector(COLLECT_TYPE_CELL, this.context);
         if (collector.loadFromDisk()) {
             this.collectors.put(COLLECT_TYPE_CELL, collector);
