@@ -22,12 +22,10 @@ import java.util.Hashtable;
 
 import android.util.Log;
 
-
 import android.telephony.NeighboringCellInfo;
 import android.telephony.PhoneStateListener;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
-
 import android.telephony.CellLocation;
 import android.telephony.gsm.GsmCellLocation;
 import android.telephony.cdma.CdmaCellLocation;
@@ -46,11 +44,10 @@ public class CellCollector extends IntervalCollector  {
             this.active = cell;
             this.neighbors = new ArrayList<CellNeighbor>();
         }
-         public CellResult() {
+        public CellResult() {
             this.neighbors = new ArrayList<CellNeighbor>();
-         }
+        }
     }
-
 
     private class CellActiveCdma {
         public int mBaseId, mBaseLat, mBaseLong, mNetId, mSystemId;
@@ -194,32 +191,20 @@ public class CellCollector extends IntervalCollector  {
     protected void deinit() { }
 
     protected boolean collect(DataOutputStream output) throws IOException {
-        CellActive active = null;
+        CellLocation loc = mTelephonyManager.getCellLocation();
         CellResult result = null;
 
-        // Identify our attached cell
-        int ptype = mTelephonyManager.getPhoneType();
-        switch(ptype) {
-            case TelephonyManager.PHONE_TYPE_GSM:
-                GsmCellLocation gloc = (GsmCellLocation) mTelephonyManager.getCellLocation();
-                if (gloc == null) {
-                   return false;
-                }
-                active = new CellActive(gloc);
-                break;
-
-            case TelephonyManager.PHONE_TYPE_CDMA:
-                CdmaCellLocation cloc = (CdmaCellLocation) mTelephonyManager.getCellLocation();
-                if (cloc == null) {
-                   return false;
-                }
-                active = new CellActive(cloc);
-                break;
-            default:
-                return false;
+        if (loc == null) {
+            return false;
         }
 
-        result = new CellResult(active);
+        if (loc instanceof GsmCellLocation) {
+            result = new CellResult(new CellActive( (GsmCellLocation) loc));
+        } else if (loc instanceof CdmaCellLocation) {
+            result = new CellResult(new CellActive( (CdmaCellLocation) loc));
+        } else {
+            return false;
+        }
 
         // Build a list of neighbors
         List<NeighboringCellInfo> neighbors = mTelephonyManager.getNeighboringCellInfo();
