@@ -230,7 +230,6 @@ public class CellCollector extends IntervalCollector  {
             //                -> Short( psc )
             //                -> Short( rssi )
 
-
             output.writeLong(this.timeout);
             output.writeInt(this.collections.size());
             for (Long ts : this.collections.keySet()) {
@@ -277,18 +276,47 @@ public class CellCollector extends IntervalCollector  {
 
                 long timestamp = ts.longValue();
                 CellResult result = collections.get(timestamp);
-                TLVPacket resultSet = new TLVPacket();
-                TLVPacket CellSet = new TLVPacket();
 
+                TLVPacket activeCell = new TLVPacket();
+                TLVPacket neighbors = new TLVPacket();
+                TLVPacket cellSet = new TLVPacket();
+                TLVPacket resultSet = new TLVPacket();
 
                 resultSet.add(interval_collect.TLV_TYPE_COLLECT_RESULT_TIMESTAMP, timestamp / 1000);
-  /*
-                CellSet.add(interval_collect.TLV_TYPE_GEO_LAT, Double.toString(geoLoc.mLatitude));
-                CellSet.add(interval_collect.TLV_TYPE_GEO_LONG, Double.toString(geoLoc.mLongitude));
-                resultSet.addOverflow(interval_collect.TLV_TYPE_COLLECT_RESULT_GEO, CellSet);
 
+                switch(result.active.ptype) {
+                    case TelephonyManager.PHONE_TYPE_GSM:
+                        activeCell.add(interval_collect.TLV_TYPE_CELL_CID, result.active.gsm.mCid);
+                        activeCell.add(interval_collect.TLV_TYPE_CELL_LAC, result.active.gsm.mLac);
+                        activeCell.add(interval_collect.TLV_TYPE_CELL_PSC, result.active.gsm.mPsc);
+                        cellSet.addOverflow(interval_collect.TLV_TYPE_CELL_ACTIVE_GSM, activeCell);
+                        break;
+
+                    case TelephonyManager.PHONE_TYPE_CDMA:
+                        activeCell.add(interval_collect.TLV_TYPE_CELL_BASE_ID, result.active.cdma.mBaseId);
+                        activeCell.add(interval_collect.TLV_TYPE_CELL_BASE_LAT, result.active.cdma.mBaseLat);
+                        activeCell.add(interval_collect.TLV_TYPE_CELL_BASE_LONG, result.active.cdma.mBaseLong);
+                        activeCell.add(interval_collect.TLV_TYPE_CELL_NET_ID, result.active.cdma.mNetId);
+                        activeCell.add(interval_collect.TLV_TYPE_CELL_SYSTEM_ID, result.active.cdma.mSystemId);
+                        cellSet.addOverflow(interval_collect.TLV_TYPE_CELL_ACTIVE_CDMA, activeCell);
+                        break;
+                }
+
+                for (int i=0; i < result.neighbors.size(); i++) {
+                    TLVPacket neighbor = new TLVPacket();
+                    CellNeighbor cellNeighbor = result.neighbors.get(i);
+
+                    neighbor.add(interval_collect.TLV_TYPE_CELL_NET_TYPE, cellNeighbor.mType);
+                    neighbor.add(interval_collect.TLV_TYPE_CELL_CID, cellNeighbor.mCid);
+                    neighbor.add(interval_collect.TLV_TYPE_CELL_LAC, cellNeighbor.mLac);
+                    neighbor.add(interval_collect.TLV_TYPE_CELL_PSC, cellNeighbor.mPsc);
+                    // Convert signal strength back to negative dBm on the other side
+                    neighbor.add(interval_collect.TLV_TYPE_CELL_RSSI, Math.abs(cellNeighbor.mRssi));
+                    cellSet.addOverflow(interval_collect.TLV_TYPE_CELL_NEIGHBOR, neighbor);
+                }
+
+                resultSet.addOverflow(interval_collect.TLV_TYPE_COLLECT_RESULT_CELL, cellSet);
                 packet.addOverflow(interval_collect.TLV_TYPE_COLLECT_RESULT_GROUP, resultSet);
-                */
             }
         }
         catch (IOException ex) {
@@ -298,4 +326,6 @@ public class CellCollector extends IntervalCollector  {
         return true;
     }
 }
+
+
 

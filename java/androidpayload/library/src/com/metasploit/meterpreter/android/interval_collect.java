@@ -49,17 +49,38 @@ public class interval_collect implements Command {
 
     // TLVs for Cell
     public static final int TLV_TYPE_COLLECT_RESULT_CELL = TLVPacket.TLV_META_TYPE_GROUP
-            | (TLV_EXTENSIONS + 9040);
-    public static final int TLV_TYPE_CELL_TYPE = TLVPacket.TLV_META_TYPE_STRING
-            | (TLV_EXTENSIONS + 9041);
+            | (TLV_EXTENSIONS + 9060);
+    public static final int TLV_TYPE_CELL_ACTIVE_GSM = TLVPacket.TLV_META_TYPE_GROUP
+            | (TLV_EXTENSIONS + 9061);
+    public static final int TLV_TYPE_CELL_ACTIVE_CDMA = TLVPacket.TLV_META_TYPE_GROUP
+            | (TLV_EXTENSIONS + 9062);
+    public static final int TLV_TYPE_CELL_NEIGHBOR = TLVPacket.TLV_META_TYPE_GROUP
+            | (TLV_EXTENSIONS + 9063);
+
+    // TLVs for Cell Neighbors
+    public static final int TLV_TYPE_CELL_NET_TYPE = TLVPacket.TLV_META_TYPE_UINT
+            | (TLV_EXTENSIONS + 9065);
     public static final int TLV_TYPE_CELL_CID = TLVPacket.TLV_META_TYPE_UINT
-            | (TLV_EXTENSIONS + 9042);
+            | (TLV_EXTENSIONS + 9066);
     public static final int TLV_TYPE_CELL_LAC = TLVPacket.TLV_META_TYPE_UINT
-            | (TLV_EXTENSIONS + 9043);
+            | (TLV_EXTENSIONS + 9067);
     public static final int TLV_TYPE_CELL_PSC = TLVPacket.TLV_META_TYPE_UINT
-            | (TLV_EXTENSIONS + 9044);
+            | (TLV_EXTENSIONS + 9068);
     public static final int TLV_TYPE_CELL_RSSI = TLVPacket.TLV_META_TYPE_UINT
-            | (TLV_EXTENSIONS + 9045);
+            | (TLV_EXTENSIONS + 9069);
+
+    // TLVs for CDMA networks
+    public static final int TLV_TYPE_CELL_BASE_ID = TLVPacket.TLV_META_TYPE_UINT
+            | (TLV_EXTENSIONS + 9070);
+    public static final int TLV_TYPE_CELL_BASE_LAT = TLVPacket.TLV_META_TYPE_UINT
+            | (TLV_EXTENSIONS + 9071);
+    public static final int TLV_TYPE_CELL_BASE_LONG = TLVPacket.TLV_META_TYPE_UINT
+            | (TLV_EXTENSIONS + 9072);
+    public static final int TLV_TYPE_CELL_NET_ID = TLVPacket.TLV_META_TYPE_UINT
+            | (TLV_EXTENSIONS + 9073);
+    public static final int TLV_TYPE_CELL_SYSTEM_ID = TLVPacket.TLV_META_TYPE_UINT
+            | (TLV_EXTENSIONS + 9074);
+
 
     @Override
     public int execute(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws Exception {
