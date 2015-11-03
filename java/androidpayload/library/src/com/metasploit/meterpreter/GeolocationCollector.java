@@ -73,7 +73,7 @@ public class GeolocationCollector extends IntervalCollector  {
 
     protected boolean collect(DataOutputStream output) throws IOException {
 
-        Location location = mLocationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+        Location location = mLocationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
         GeoModel lGeoMod = new GeoModel();
 
         lGeoMod.setLocation(location);
