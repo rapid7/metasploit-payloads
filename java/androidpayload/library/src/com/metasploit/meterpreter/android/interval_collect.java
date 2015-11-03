@@ -43,9 +43,9 @@ public class interval_collect implements Command {
     public static final int TLV_TYPE_COLLECT_RESULT_GEO = TLVPacket.TLV_META_TYPE_GROUP
             | (TLV_EXTENSIONS + 9030);
     public static final int TLV_TYPE_GEO_LAT = TLVPacket.TLV_META_TYPE_STRING
-            | (TLV_EXTENSIONS + 9031);
+            | (TLV_EXTENSIONS + 9011);
     public static final int TLV_TYPE_GEO_LONG = TLVPacket.TLV_META_TYPE_STRING
-            | (TLV_EXTENSIONS + 9032);
+            | (TLV_EXTENSIONS + 9012);
 
     // TLVs for Cell
     public static final int TLV_TYPE_COLLECT_RESULT_CELL = TLVPacket.TLV_META_TYPE_GROUP
