@@ -1,6 +1,6 @@
 /*!
  * @file tcp_server.c
- * @brief 
+ * @brief
  */
 #include "precomp.h"
 #include "tcp.h"
@@ -306,24 +306,10 @@ DWORD request_net_tcp_server_channel_open(Remote * remote, Packet * packet)
 		{
 #ifdef _WIN32
 			dwResult = WSAGetLastError();
-			if (dwResult != WSAEADDRNOTAVAIL)
 #else
 			dwResult = errno;
-			if (dwResult != EADDRNOTAVAIL)
 #endif
-			{
-				BREAK_ON_WSAERROR("[TCP-SERVER] request_net_tcp_server_channel_open. bind failed");
-			}
-
-			dprintf("[TCP-SERVER] Failed to bind to %s, trying 0.0.0.0 ...", lhost);
-
-			// try again, but this time bind to any/all interfaces.
-			lhost = "0.0.0.0";
-			saddr.sin_addr.s_addr = inet_addr(lhost);
-			if (bind(ctx->fd, (SOCKADDR *)&saddr, sizeof(SOCKADDR_IN)) == SOCKET_ERROR)
-			{
-				BREAK_ON_WSAERROR("[TCP-SERVER] request_net_tcp_server_channel_open. bind failed");
-			}
+			BREAK_ON_WSAERROR("[TCP-SERVER] request_net_tcp_server_channel_open. bind failed");
 			dwResult = ERROR_SUCCESS;
 		}
 

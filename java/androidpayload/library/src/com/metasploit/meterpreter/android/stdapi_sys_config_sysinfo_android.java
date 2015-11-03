@@ -1,7 +1,5 @@
 package com.metasploit.meterpreter.android;
 
-import java.net.InetAddress;
-
 import com.metasploit.meterpreter.Meterpreter;
 import com.metasploit.meterpreter.TLVPacket;
 import com.metasploit.meterpreter.TLVType;
@@ -17,7 +15,7 @@ public class stdapi_sys_config_sysinfo_android extends
     public int execute(Meterpreter meterpreter, TLVPacket request,
                        TLVPacket response) throws Exception {
         String androidOS = Utils.runCommand("getprop ro.build.version.release").replace("\n", "");
-        response.add(TLVType.TLV_TYPE_COMPUTER_NAME, InetAddress.getLocalHost().getHostName());
+        response.add(TLVType.TLV_TYPE_COMPUTER_NAME, Utils.getHostname());
         response.add(TLVType.TLV_TYPE_OS_NAME, "Android " + androidOS
                 + " - " + System.getProperty("os.name")
                 + " " + System.getProperty("os.version") + " (" + System.getProperty("os.arch") + ")");

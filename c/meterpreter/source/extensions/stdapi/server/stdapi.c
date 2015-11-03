@@ -46,6 +46,7 @@ Command customCommands[] =
 	COMMAND_REQ("stdapi_fs_sha1", request_fs_sha1),
 #ifdef _WIN32
 	COMMAND_REQ("stdapi_fs_search", request_fs_search),
+	COMMAND_REQ("stdapi_fs_mount_show", request_fs_mount_show),
 #endif
 
 	// Process

