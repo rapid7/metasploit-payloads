@@ -183,6 +183,13 @@ def packet_get_tlv(pkt, tlv_type):
     return {}
   return tlv
 
+def packet_get_tlv_default(pkt, tlv_type, default):
+  try:
+    tlv = list(packet_enum_tlvs(pkt, tlv_type))[0]
+  except IndexError:
+    return {'value': default}
+  return tlv
+
 # END OF COPY PASTE
 
 def validate_bindings(required):
