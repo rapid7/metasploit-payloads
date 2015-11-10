@@ -35,6 +35,7 @@ typedef DWORD (*PSRVINIT)(Remote *remote);
 typedef DWORD (*PSRVDEINIT)(Remote *remote);
 typedef DWORD (*PSRVGETNAME)(char* buffer, int bufferSize);
 typedef VOID (*PCMDADDED)(const char* commandName);
+typedef DWORD (*PSTAGELESSINIT)(LPBYTE data, DWORD dataSize);
 
 typedef struct _EXTENSION
 {
@@ -43,6 +44,7 @@ typedef struct _EXTENSION
 	PSRVDEINIT deinit;
 	PSRVGETNAME getname;
 	PCMDADDED commandAdded;
+	PSTAGELESSINIT stagelessInit;
 	Command* start;
 	Command* end;
 	char name[16];
