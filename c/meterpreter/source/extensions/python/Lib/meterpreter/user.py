@@ -1,11 +1,7 @@
 import meterpreter_bindings
 
 from meterpreter.core import *
-
-TLV_STDAPI_EXTENSION = 0
-
-TLV_TYPE_USER_NAME    = TLV_META_TYPE_STRING | (TLV_STDAPI_EXTENSION + 1042)
-TLV_TYPE_SID          = TLV_META_TYPE_STRING | (TLV_STDAPI_EXTENSION + 1045)
+from meterpreter.tlv import *
 
 SYSTEM_SID = "S-1-5-18"
 

@@ -201,6 +201,7 @@ DWORD populate_uid(Packet* pResponse)
 	{
 		if ((dwResult = get_user_token(tokenUserInfo, sizeof(tokenUserInfo))) != ERROR_SUCCESS)
 		{
+			dprintf("[POPUID] unable to get user token");
 			break;
 		}
 
@@ -383,6 +384,7 @@ DWORD request_sys_config_steal_token(Remote *remote, Packet *packet)
 
 		if (!dwPid)
 		{
+			dprintf("[STEAL-TOKEN] invalid pid");
 			dwResult = -1;
 			break;
 		}
@@ -417,8 +419,10 @@ DWORD request_sys_config_steal_token(Remote *remote, Packet *packet)
 			break;
 		}
 
+		dprintf("[STEAL-TOKEN] so far so good, updating thread token");
 		core_update_thread_token(remote, hDupToken);
 
+		dprintf("[STEAL-TOKEN] populating UID");
 		dwResult = populate_uid(response);
 	} while (0);
 

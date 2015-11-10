@@ -183,25 +183,38 @@ def packet_get_tlv(pkt, tlv_type):
     return {}
   return tlv
 
+def packet_get_tlv_default(pkt, tlv_type, default):
+  try:
+    tlv = list(packet_enum_tlvs(pkt, tlv_type))[0]
+  except IndexError:
+    return {'value': default}
+  return tlv
+
 # END OF COPY PASTE
 
-def validate_bindings(required):
-  """Use to make sure that the current set of bindings that is available
-  in Meterpreter's bindings list contains all those that are required by
-  the caller."""
-  missing = set(required) - set(dir(meterpreter_bindings))
-  if len(missing) > 0:
+def validate_binding(required):
+  """Makes sure that the current set of bindings that is available
+  in Meterpreter's bindings list contains that required by the caller.
+  This function returns the correct binding name to call."""
+
+  # assume all core commands are valid
+  if required[:5] == 'core_':
+    required = 'meterpreter_core'
+
+  if not required in set(dir(meterpreter_bindings)):
     raise Exception('Missing bindings: {0}'.format(list(missing)))
 
+  return required
+
 def invoke_meterpreter(method, is_local, tlv = ""):
-  validate_bindings([method])
+  binding = validate_binding(method)
 
   header = struct.pack('>I', PACKET_TYPE_REQUEST)
   header += tlv_pack(TLV_TYPE_METHOD, method)
   header += tlv_pack(TLV_TYPE_REQUEST_ID, 0)
   req = struct.pack('>I', len(header) + len(tlv) + 4) + header + tlv
 
-  return getattr(meterpreter_bindings, method)(is_local, req)
+  return getattr(meterpreter_bindings, binding)(is_local, req)
 
 def rnd_string(n):
   return ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.digits) for _ in range(n))
