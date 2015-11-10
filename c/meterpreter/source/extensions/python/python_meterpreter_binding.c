@@ -69,8 +69,13 @@ VOID binding_startup()
 VOID binding_add_command(const char* commandName)
 {
 	dprintf("[PYTHON] Adding command %s", (char*)commandName);
-	list_add(gBoundCommandList, (char*)commandName);
-	binding_insert_command(commandName);
+
+	// only add non-core commands
+	if (_strnicmp("core_", commandName, 5) != 0)
+	{
+		list_add(gBoundCommandList, (char*)commandName);
+		binding_insert_command(commandName);
+	}
 }
 
 VOID binding_init()
@@ -78,6 +83,12 @@ VOID binding_init()
 	dprintf("[PYTHON] Initialising binding...");
 	gMeterpreterModule = Py_InitModule("meterpreter_bindings", NULL);
 
+	// we have a hard-coded core command binding for all core commands. This allows us to use
+	// the one function for all base core commands that aren't included as part of the "normal"
+	// mechanisms for extension loading. Without this, we'd have to manually wire in each of the
+	// base commands, which doesn't make sense. Instead we can match against core command names
+	// and funnel through this binding knowing that they'll be there regardless of the wiring.
+	binding_insert_command("meterpreter_core");
 	for (PNODE node = gBoundCommandList->start; node != NULL; node = node->next)
 	{
 		binding_insert_command((const char*)node->data);
