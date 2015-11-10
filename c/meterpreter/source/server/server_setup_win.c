@@ -81,6 +81,8 @@ VOID load_stageless_extensions(Remote* remote, MetsrvExtension* stagelessExtensi
 		stagelessExtensions = (MetsrvExtension*)((LPBYTE)stagelessExtensions->dll + stagelessExtensions->size);
 	}
 
+	dprintf("[SERVER] All stageless extensions loaded");
+
 	// once we have reached the end, we may have extension initializers
 	LPBYTE initData = (LPBYTE)(&stagelessExtensions->size) + sizeof(stagelessExtensions->size);
 
@@ -94,7 +96,7 @@ VOID load_stageless_extensions(Remote* remote, MetsrvExtension* stagelessExtensi
 		initData = data + dataSize;
 	}
 
-	dprintf("[SERVER] All stageless extensions loaded");
+	dprintf("[SERVER] All stageless extensions initialised");
 }
 
 static Transport* create_transport(Remote* remote, MetsrvTransportCommon* transportCommon, LPDWORD size)
@@ -369,6 +371,12 @@ DWORD server_setup(MetsrvConfig* config)
 			// Store our thread handle
 			remote->server_thread = serverThread->handle;
 
+			dprintf("[SERVER] Registering dispatch routines...");
+			register_dispatch_routines();
+
+			// this has to be done after dispatch routine are registered
+			load_stageless_extensions(remote, (MetsrvExtension*)((LPBYTE)config->transports + transportSize));
+
 			// Store our process token
 			if (!OpenThreadToken(remote->server_thread, TOKEN_ALL_ACCESS, TRUE, &remote->server_token))
 			{
@@ -393,12 +401,6 @@ DWORD server_setup(MetsrvConfig* config)
 			GetUserObjectInformation(GetThreadDesktop(GetCurrentThreadId()), UOI_NAME, &desktopName, 256, NULL);
 			remote->orig_desktop_name = _strdup(desktopName);
 			remote->curr_desktop_name = _strdup(desktopName);
-
-			dprintf("[SERVER] Registering dispatch routines...");
-			register_dispatch_routines();
-
-			// this has to be done after dispatch routine are registered
-			load_stageless_extensions(remote, (MetsrvExtension*)((LPBYTE)config->transports + transportSize));
 
 			remote->sess_start_time = current_unix_timestamp();
 

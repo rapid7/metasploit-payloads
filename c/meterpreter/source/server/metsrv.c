@@ -16,6 +16,7 @@ DWORD __declspec(dllexport) Init(SOCKET fd)
 	// In the case of metsrv payloads, the parameter passed to init is NOT a socket, it's actually
 	// a pointer to the metserv configuration, so do a nasty cast and move on.
 	MetsrvConfig* metConfig = (MetsrvConfig*)fd;
+	dprintf("[METSRV] Getting ready to init with config %p", metConfig);
 	DWORD result = server_setup(metConfig);
 
 	dprintf("[METSRV] Exiting with %08x", metConfig->session.exit_func);
