@@ -3,18 +3,12 @@ package com.metasploit.meterpreter.android;
 import com.metasploit.meterpreter.Meterpreter;
 import com.metasploit.meterpreter.TLVPacket;
 import com.metasploit.meterpreter.TLVType;
+import com.metasploit.meterpreter.Utils;
 import com.metasploit.meterpreter.command.Command;
-
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
 
 public class stdapi_sys_config_getuid implements Command {
     public int execute(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws Exception {
-        Process proc = Runtime.getRuntime().exec(new String[]{
-                "sh", "-c", "id 2>/dev/null"
-        });
-        BufferedReader br = new BufferedReader(new InputStreamReader(proc.getInputStream()));
-        String line = br.readLine();
+        String line = Utils.runCommand("id");
         if (line == null) {
             return ERROR_FAILURE;
         }
