@@ -9,11 +9,6 @@
 #include "python_meterpreter_binding.h"
 #include "Resource Files/python_core.rh"
 
-///! @brief List of valid python code types for loading
-#define PY_CODE_TYPE_STRING   0
-#define PY_CODE_TYPE_PY       1
-#define PY_CODE_TYPE_PYC      2
-
 ///! @brief Struct that contains pointer to init function and name.
 typedef struct _InitFunc
 {
@@ -413,25 +408,13 @@ DWORD request_python_reset(Remote* remote, Packet* packet)
 	return ERROR_SUCCESS;
 }
 
-/*!
- * @brief Execute a block of python given in a string and return the result/output.
- * @param remote Pointer to the \c Remote making the request.
- * @param packet Pointer to the request \c Packet.
- * @returns Indication of success or failure.
- */
-DWORD request_python_execute(Remote* remote, Packet* packet)
+VOID python_execute(CHAR* modName, LPBYTE pythonCode, DWORD codeLength, UINT codeType, CHAR* resultVar, Packet* responsePacket)
 {
-	DWORD dwResult = ERROR_SUCCESS;
-	Packet* response = packet_create_response(packet);
-	LPBYTE pythonCode = packet_get_tlv_value_raw(packet, TLV_TYPE_EXTENSION_PYTHON_CODE);
-
 	PyObject* mainModule = PyImport_AddModule("__main__");
 	PyObject* mainDict = PyModule_GetDict(mainModule);
 
 	if (pythonCode != NULL)
 	{
-		UINT codeType = packet_get_tlv_value_uint(packet, TLV_TYPE_EXTENSION_PYTHON_CODE_TYPE);
-
 		if (codeType == PY_CODE_TYPE_STRING)
 		{
 			dprintf("[PYTHON] attempting to run string: %s", pythonCode);
@@ -440,7 +423,6 @@ DWORD request_python_execute(Remote* remote, Packet* packet)
 		}
 		else
 		{
-			CHAR* modName = packet_get_tlv_value_string(packet, TLV_TYPE_EXTENSION_PYTHON_NAME);
 			dprintf("[PYTHON] module name: %s", modName);
 			if (modName)
 			{
@@ -459,8 +441,7 @@ DWORD request_python_execute(Remote* remote, Packet* packet)
 			{
 				dprintf("[PYTHON] importing .pyc file");
 				// must be a pyc file
-				UINT pythonCodeLength = packet_get_tlv_value_uint(packet, TLV_TYPE_EXTENSION_PYTHON_CODE_LEN);
-				PyObject* pyModBody = PyString_FromStringAndSize(pythonCode, pythonCodeLength);
+				PyObject* pyModBody = PyString_FromStringAndSize(pythonCode, codeLength);
 				dprintf("[PYTHON] myModBody %p: %s", pyModBody, pyModBody->ob_type->tp_name);
 				PyModule_AddObject(mainModule, "met_mod_body", pyModBody);
 			}
@@ -469,8 +450,7 @@ DWORD request_python_execute(Remote* remote, Packet* packet)
 			PyRun_SimpleString("met_import_code()");
 		}
 
-		CHAR* resultVar = packet_get_tlv_value_string(packet, TLV_TYPE_EXTENSION_PYTHON_RESULT_VAR);
-		if (resultVar)
+		if (resultVar && responsePacket)
 		{
 			PyObject* result = PyDict_GetItemString(mainDict, resultVar);
 			if (result != NULL)
@@ -478,16 +458,41 @@ DWORD request_python_execute(Remote* remote, Packet* packet)
 				if (PyString_Check(result))
 				{
 					// result is already a string
-					packet_add_tlv_string(response, TLV_TYPE_EXTENSION_PYTHON_RESULT, PyString_AsString(result));
+					packet_add_tlv_string(responsePacket, TLV_TYPE_EXTENSION_PYTHON_RESULT, PyString_AsString(result));
 				}
 				else
 				{
 					PyObject* resultStr = PyObject_Str(result);
-					packet_add_tlv_string(response, TLV_TYPE_EXTENSION_PYTHON_RESULT, PyString_AsString(resultStr));
+					packet_add_tlv_string(responsePacket, TLV_TYPE_EXTENSION_PYTHON_RESULT, PyString_AsString(resultStr));
 					Py_DECREF(resultStr);
 				}
 			}
 		}
+	}
+}
+
+/*!
+ * @brief Execute a block of python given in a string and return the result/output.
+ * @param remote Pointer to the \c Remote making the request.
+ * @param packet Pointer to the request \c Packet.
+ * @returns Indication of success or failure.
+ */
+DWORD request_python_execute(Remote* remote, Packet* packet)
+{
+	DWORD dwResult = ERROR_SUCCESS;
+	Packet* response = packet_create_response(packet);
+	LPBYTE pythonCode = packet_get_tlv_value_raw(packet, TLV_TYPE_EXTENSION_PYTHON_CODE);
+
+	PyObject* mainModule = PyImport_AddModule("__main__");
+	PyObject* mainDict = PyModule_GetDict(mainModule);
+
+	if (pythonCode != NULL)
+	{
+		UINT codeType = packet_get_tlv_value_uint(packet, TLV_TYPE_EXTENSION_PYTHON_CODE_TYPE);
+		CHAR* modName = packet_get_tlv_value_string(packet, TLV_TYPE_EXTENSION_PYTHON_NAME);
+		UINT pythonCodeLength = packet_get_tlv_value_uint(packet, TLV_TYPE_EXTENSION_PYTHON_CODE_LEN);
+		CHAR* resultVar = packet_get_tlv_value_string(packet, TLV_TYPE_EXTENSION_PYTHON_RESULT_VAR);
+		python_execute(modName, pythonCode, pythonCodeLength, codeType, resultVar, response);
 
 		dump_to_packet(stderrBuffer, response, TLV_TYPE_EXTENSION_PYTHON_STDERR);
 		clear_std_handler(stderrBuffer);

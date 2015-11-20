@@ -119,6 +119,7 @@ DWORD __declspec(dllexport) GetExtensionName(char* buffer, int bufferSize)
  */
 DWORD __declspec(dllexport) StagelessInit(const LPBYTE buffer, DWORD bufferSize)
 {
-	PyRun_SimpleString((LPCSTR)buffer);
+	dprintf("[PYTHON] Executing stagless script:\n%s", (LPCSTR)buffer);
+	python_execute(NULL, (LPSTR)buffer, bufferSize, PY_CODE_TYPE_PY, NULL, NULL);
 	return ERROR_SUCCESS;
 }
