@@ -13,6 +13,7 @@ import com.metasploit.meterpreter.android.interval_collect;
 import com.metasploit.meterpreter.android.send_sms_android;
 import com.metasploit.meterpreter.android.stdapi_fs_file_expand_path_android;
 import com.metasploit.meterpreter.android.stdapi_sys_config_sysinfo_android;
+import com.metasploit.meterpreter.android.stdapi_sys_config_getuid;
 import com.metasploit.meterpreter.android.stdapi_sys_process_get_processes_android;
 import com.metasploit.meterpreter.android.webcam_audio_record_android;
 import com.metasploit.meterpreter.android.webcam_get_frame_android;
@@ -42,7 +43,6 @@ import com.metasploit.meterpreter.stdapi.stdapi_fs_stat;
 import com.metasploit.meterpreter.stdapi.stdapi_net_config_get_interfaces_V1_4;
 import com.metasploit.meterpreter.stdapi.stdapi_net_config_get_routes_V1_4;
 import com.metasploit.meterpreter.stdapi.stdapi_net_socket_tcp_shutdown_V1_3;
-import com.metasploit.meterpreter.stdapi.stdapi_sys_config_getuid;
 import com.metasploit.meterpreter.stdapi.stdapi_sys_process_execute_V1_3;
 
 import java.io.DataInputStream;
