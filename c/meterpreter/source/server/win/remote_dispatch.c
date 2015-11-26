@@ -8,7 +8,24 @@ extern PLIST gExtensionList;
 // see common/base.c
 extern Command *extensionCommands;
 
-DWORD initialise_extension(HMODULE hLibrary, BOOL bLibLoadedReflectivly, Remote* pRemote, Packet* pResponse, Command* pFirstCommand)
+DWORD stagelessinit_extension(const char* extensionName, LPBYTE data, DWORD dataSize)
+{
+	dprintf("[STAGELESSINIT] searching for extension init for %s in %p", extensionName, gExtensionList);
+	dprintf("[STAGELESSINIT] extension list start is %p", gExtensionList->start);
+	for (PNODE node = gExtensionList->start; node != NULL; node = node->next)
+	{
+		PEXTENSION ext = (PEXTENSION)node->data;
+		dprintf("[STAGELESSINIT] comparing to %s (init is %p)", ext->name, ext->stagelessInit);
+		if (strcmp(ext->name, extensionName) == 0 && ext->stagelessInit != NULL)
+		{
+			dprintf("[STAGELESSINIT] found for %s", extensionName);
+			return ext->stagelessInit(data, dataSize);
+		}
+	}
+	return ERROR_NOT_FOUND;
+}
+
+DWORD load_extension(HMODULE hLibrary, BOOL bLibLoadedReflectivly, Remote* pRemote, Packet* pResponse, Command* pFirstCommand)
 {
 	DWORD dwResult = ERROR_OUTOFMEMORY;
 	PEXTENSION pExtension = (PEXTENSION)malloc(sizeof(EXTENSION));
@@ -27,6 +44,7 @@ DWORD initialise_extension(HMODULE hLibrary, BOOL bLibLoadedReflectivly, Remote*
 			pExtension->deinit = (PSRVDEINIT)GetProcAddressR(pExtension->library, "DeinitServerExtension");
 			pExtension->getname = (PSRVGETNAME)GetProcAddressR(pExtension->library, "GetExtensionName");
 			pExtension->commandAdded = (PCMDADDED)GetProcAddressR(pExtension->library, "CommandAdded");
+			pExtension->stagelessInit = (PSTAGELESSINIT)GetProcAddressR(pExtension->library, "StagelessInit");
 		}
 		else
 		{
@@ -34,6 +52,7 @@ DWORD initialise_extension(HMODULE hLibrary, BOOL bLibLoadedReflectivly, Remote*
 			pExtension->deinit = (PSRVDEINIT)GetProcAddress(pExtension->library, "DeinitServerExtension");
 			pExtension->getname = (PSRVGETNAME)GetProcAddress(pExtension->library, "GetExtensionName");
 			pExtension->commandAdded = (PCMDADDED)GetProcAddress(pExtension->library, "CommandAdded");
+			pExtension->stagelessInit = (PSTAGELESSINIT)GetProcAddress(pExtension->library, "StagelessInit");
 		}
 
 		// patch in the metsrv.dll's HMODULE handle, used by the server extensions for delay loading
@@ -207,7 +226,7 @@ DWORD request_core_loadlib(Remote *pRemote, Packet *pPacket)
 		// call its Init routine
 		if ((flags & LOAD_LIBRARY_FLAG_EXTENSION) && library)
 		{
-			res = initialise_extension(library, bLibLoadedReflectivly, pRemote, response, first);
+			res = load_extension(library, bLibLoadedReflectivly, pRemote, response, first);
 		}
 
 	} while (0);

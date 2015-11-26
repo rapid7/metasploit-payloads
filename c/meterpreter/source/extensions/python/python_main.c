@@ -110,3 +110,16 @@ DWORD __declspec(dllexport) GetExtensionName(char* buffer, int bufferSize)
 	strncpy_s(buffer, bufferSize, "python", bufferSize - 1);
 	return ERROR_SUCCESS;
 }
+
+/*!
+ * @brief Do a stageless initialisation of the extension.
+ * @param buffer Pointer to the buffer that contains the init data.
+ * @param bufferSize Size of the \c buffer parameter.
+ * @return Indication of success or failure.
+ */
+DWORD __declspec(dllexport) StagelessInit(const LPBYTE buffer, DWORD bufferSize)
+{
+	dprintf("[PYTHON] Executing stagless script:\n%s", (LPCSTR)buffer);
+	python_execute(NULL, (LPSTR)buffer, bufferSize, PY_CODE_TYPE_PY, NULL, NULL);
+	return ERROR_SUCCESS;
+}

@@ -77,11 +77,26 @@ VOID load_stageless_extensions(Remote* remote, MetsrvExtension* stagelessExtensi
 	{
 		dprintf("[SERVER] Extension located at 0x%p: %u bytes", stagelessExtensions->dll, stagelessExtensions->size);
 		HMODULE hLibrary = LoadLibraryR(stagelessExtensions->dll, stagelessExtensions->size);
-		initialise_extension(hLibrary, TRUE, remote, NULL, extensionCommands);
+		load_extension(hLibrary, TRUE, remote, NULL, extensionCommands);
 		stagelessExtensions = (MetsrvExtension*)((LPBYTE)stagelessExtensions->dll + stagelessExtensions->size);
 	}
 
 	dprintf("[SERVER] All stageless extensions loaded");
+
+	// once we have reached the end, we may have extension initializers
+	LPBYTE initData = (LPBYTE)(&stagelessExtensions->size) + sizeof(stagelessExtensions->size);
+
+	while (initData != NULL && *initData != '\0')
+	{
+		const char* extensionName = (const char*)initData;
+		LPBYTE data = initData + strlen(extensionName) + 1 + sizeof(DWORD);
+		DWORD dataSize = *(DWORD*)(data - sizeof(DWORD));
+		dprintf("[STAGELESS] init data at %p, name %s, size is %d", extensionName, extensionName, dataSize);
+		stagelessinit_extension(extensionName, data, dataSize);
+		initData = data + dataSize;
+	}
+
+	dprintf("[SERVER] All stageless extensions initialised");
 }
 
 static Transport* create_transport(Remote* remote, MetsrvTransportCommon* transportCommon, LPDWORD size)
@@ -346,8 +361,6 @@ DWORD server_setup(MetsrvConfig* config)
 				((TcpTransportContext*)remote->transport->ctx)->fd = (SOCKET)config->session.comms_fd;
 			}
 
-			load_stageless_extensions(remote, (MetsrvExtension*)((LPBYTE)config->transports + transportSize));
-
 			// Set up the transport creation function pointer
 			remote->trans_create = create_transport;
 			// Set up the transport removal function pointer
@@ -357,6 +370,12 @@ DWORD server_setup(MetsrvConfig* config)
 
 			// Store our thread handle
 			remote->server_thread = serverThread->handle;
+
+			dprintf("[SERVER] Registering dispatch routines...");
+			register_dispatch_routines();
+
+			// this has to be done after dispatch routine are registered
+			load_stageless_extensions(remote, (MetsrvExtension*)((LPBYTE)config->transports + transportSize));
 
 			// Store our process token
 			if (!OpenThreadToken(remote->server_thread, TOKEN_ALL_ACCESS, TRUE, &remote->server_token))
@@ -382,9 +401,6 @@ DWORD server_setup(MetsrvConfig* config)
 			GetUserObjectInformation(GetThreadDesktop(GetCurrentThreadId()), UOI_NAME, &desktopName, 256, NULL);
 			remote->orig_desktop_name = _strdup(desktopName);
 			remote->curr_desktop_name = _strdup(desktopName);
-
-			dprintf("[SERVER] Registering dispatch routines...");
-			register_dispatch_routines();
 
 			remote->sess_start_time = current_unix_timestamp();
 

@@ -69,6 +69,10 @@ typedef struct _MetsrvConfig
 	MetsrvSession session;
 	MetsrvTransportCommon transports[1];  ///! Placeholder for 0 or more transports
 	// Extensions will appear after this
+	// After extensions, we get a list of extension initialisers
+	// <name of extension>\x00<datasize><data>
+	// <name of extension>\x00<datasize><data>
+	// \x00
 } MetsrvConfig;
 
 #endif
