@@ -194,10 +194,17 @@ typedef struct
 	PUCHAR    buffer;
 } Tlv;
 
+typedef struct
+{
+	DWORD xor_key;
+	DWORD length;
+	DWORD type;
+} PacketHeader;
+
 /*! @brief Packet definition. */
 typedef struct _Packet
 {
-	TlvHeader header;
+	PacketHeader header;
 
 	PUCHAR    payload;
 	ULONG     payloadLength;

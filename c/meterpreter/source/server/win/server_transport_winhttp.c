@@ -278,15 +278,17 @@ static DWORD packet_transmit_http(Remote *remote, Packet *packet, PacketRequestC
 	HttpTransportContext* ctx = (HttpTransportContext*)remote->transport->ctx;
 	unsigned char *buffer;
 
-	buffer = malloc(packet->payloadLength + sizeof(TlvHeader));
+	DWORD totalLength = packet->payloadLength + sizeof(PacketHeader);
+
+	buffer = malloc(totalLength);
 	if (!buffer)
 	{
 		SetLastError(ERROR_NOT_FOUND);
 		return 0;
 	}
 
-	memcpy(buffer, &packet->header, sizeof(TlvHeader));
-	memcpy(buffer + sizeof(TlvHeader), packet->payload, packet->payloadLength);
+	memcpy(buffer, &packet->header, sizeof(PacketHeader));
+	memcpy(buffer + sizeof(PacketHeader), packet->payload, packet->payloadLength);
 
 	do
 	{
@@ -296,7 +298,7 @@ static DWORD packet_transmit_http(Remote *remote, Packet *packet, PacketRequestC
 			break;
 		}
 
-		result = ctx->send_req(hReq, buffer, packet->payloadLength + sizeof(TlvHeader));
+		result = ctx->send_req(hReq, buffer, totalLength);
 
 		if (!result)
 		{
@@ -308,7 +310,7 @@ static DWORD packet_transmit_http(Remote *remote, Packet *packet, PacketRequestC
 		dprintf("[PACKET TRANSMIT] request sent.. apparently");
 	} while(0);
 
-	memset(buffer, 0, packet->payloadLength + sizeof(TlvHeader));
+	memset(buffer, 0, totalLength);
 	ctx->close_req(hReq);
 	return res;
 }
@@ -381,6 +383,17 @@ static DWORD packet_transmit_via_http(Remote *remote, Packet *packet, PacketRequ
 			packet->header.length = htonl(packet->payloadLength + sizeof(TlvHeader));
 		}
 
+		dprintf("[PACKET] New xor key for sending");
+		packet->header.xor_key = rand_xor_key();
+		dprintf("[PACKET] XOR Encoding payload");
+		// before transmission, xor the whole lot, starting with the body
+		xor_bytes(packet->header.xor_key, (LPBYTE)packet->payload, packet->payloadLength);
+		dprintf("[PACKET] XOR Encoding header");
+		// then the header
+		xor_bytes(packet->header.xor_key, (LPBYTE)&packet->header.length, 8);
+		// be sure to switch the xor header before writing
+		packet->header.xor_key = htonl(packet->header.xor_key);
+
 		dprintf("[PACKET] Transmitting packet of length %d to remote", packet->payloadLength);
 		res = packet_transmit_http(remote, packet, completion);
 		if (res < 0)
@@ -414,7 +427,7 @@ static DWORD packet_receive_http(Remote *remote, Packet **packet)
 	DWORD headerBytes = 0, payloadBytesLeft = 0, res;
 	CryptoContext *crypto = NULL;
 	Packet *localPacket = NULL;
-	TlvHeader header;
+	PacketHeader header;
 	LONG bytesRead;
 	BOOL inHeader = TRUE;
 	PUCHAR payload = NULL;
@@ -469,7 +482,7 @@ static DWORD packet_receive_http(Remote *remote, Packet **packet)
 		while (inHeader && retries > 0)
 		{
 			retries--;
-			if (!ctx->read_response(hReq, (PUCHAR)&header + headerBytes, sizeof(TlvHeader)-headerBytes, &bytesRead))
+			if (!ctx->read_response(hReq, (PUCHAR)&header + headerBytes, sizeof(PacketHeader)-headerBytes, &bytesRead))
 			{
 				dprintf("[PACKET RECEIVE HTTP] Failed HEADER read_response: %d", GetLastError());
 				SetLastError(ERROR_NOT_FOUND);
@@ -489,7 +502,7 @@ static DWORD packet_receive_http(Remote *remote, Packet **packet)
 
 			headerBytes += bytesRead;
 
-			if (headerBytes != sizeof(TlvHeader))
+			if (headerBytes != sizeof(PacketHeader))
 			{
 				continue;
 			}
@@ -502,18 +515,22 @@ static DWORD packet_receive_http(Remote *remote, Packet **packet)
 			break;
 		}
 
-		if (headerBytes != sizeof(TlvHeader))
+		if (headerBytes != sizeof(PacketHeader))
 		{
 			dprintf("[PACKET RECEIVE HTTP] headerBytes no valid");
 			SetLastError(ERROR_NOT_FOUND);
 			break;
 		}
 
+		dprintf("[PACKET RECEIVE HTTP] decoding header");
+		header.xor_key = ntohl(header.xor_key);
+		xor_bytes(header.xor_key, (LPBYTE)&header.length, 8);
+		header.length = ntohl(header.length);
+
 		// Initialize the header
 		vdprintf("[PACKET RECEIVE HTTP] initialising header");
-		header.length = header.length;
-		header.type = header.type;
-		payloadLength = ntohl(header.length) - sizeof(TlvHeader);
+		// use TlvHeader size here, because the length doesn't include the xor byte
+		payloadLength = header.length - sizeof(TlvHeader);
 		payloadBytesLeft = payloadLength;
 
 		// Allocate the payload
@@ -552,6 +569,9 @@ static DWORD packet_receive_http(Remote *remote, Packet **packet)
 		{
 			break;
 		}
+
+		dprintf("[PACKET RECEIVE HTTP] decoding payload");
+		xor_bytes(header.xor_key, payload, payloadLength);
 
 		// Allocate a packet structure
 		if (!(localPacket = (Packet *)malloc(sizeof(Packet))))

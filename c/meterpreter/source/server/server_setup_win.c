@@ -320,6 +320,23 @@ DWORD server_setup(MetsrvConfig* config)
 
 	srand((unsigned int)time(NULL));
 
+	dprintf("[OJ] Key: %x", rand_xor_key());
+	dprintf("[OJ] Key: %x", rand_xor_key());
+	dprintf("[OJ] Key: %x", rand_xor_key());
+	dprintf("[OJ] Key: %x", rand_xor_key());
+	dprintf("[OJ] Key: %x", rand_xor_key());
+	dprintf("[OJ] Key: %x", rand_xor_key());
+	dprintf("[OJ] Key: %x", rand_xor_key());
+	dprintf("[OJ] Key: %x", rand_xor_key());
+	dprintf("[OJ] Key: %x", rand_xor_key());
+	dprintf("[OJ] Key: %x", rand_xor_key());
+	dprintf("[OJ] Key: %x", rand_xor_key());
+	dprintf("[OJ] Key: %x", rand_xor_key());
+	dprintf("[OJ] Key: %x", rand_xor_key());
+	dprintf("[OJ] Key: %x", rand_xor_key());
+	dprintf("[OJ] Key: %x", rand_xor_key());
+	dprintf("[OJ] Key: %x", rand_xor_key());
+
 	__try
 	{
 		do

@@ -107,3 +107,16 @@ void enable_debugging()
 }
 
 #endif
+
+VOID xor_bytes(DWORD xorKey, LPBYTE buffer, DWORD bufferSize)
+{
+	dprintf("[OJ] Key       : %x", xorKey);
+	dprintf("[OJ] Length    : %x", bufferSize);
+
+	LPBYTE xor = (LPBYTE)&xorKey;
+
+	for (DWORD i = 0; i < bufferSize; ++i)
+	{
+		buffer[i] ^= xor[i % sizeof(DWORD)];
+	}
+}
