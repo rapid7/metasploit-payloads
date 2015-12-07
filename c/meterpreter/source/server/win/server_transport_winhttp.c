@@ -11,10 +11,11 @@
 /*!
  * @brief Prepare a winHTTP request with the given context.
  * @param ctx Pointer to the HTTP transport context to prepare the request from.
+ * @param isGet Indication of whether this request is a GET request, otherwise POST is used.
  * @param direction String representing the direction of the communications (for debug).
  * @return An Internet request handle.
  */
-static HINTERNET get_request_winhttp(HttpTransportContext *ctx, const char *direction)
+static HINTERNET get_request_winhttp(HttpTransportContext *ctx, BOOL isGet, const char *direction)
 {
 	HINTERNET hReq = NULL;
 	DWORD flags = WINHTTP_FLAG_BYPASS_PROXY_CACHE;
@@ -26,7 +27,7 @@ static HINTERNET get_request_winhttp(HttpTransportContext *ctx, const char *dire
 	}
 
 	vdprintf("[%s] opening request on connection %x to %S", direction, ctx->connection, ctx->uri);
-	hReq = WinHttpOpenRequest(ctx->connection, L"POST", ctx->uri, NULL, NULL, NULL, flags);
+	hReq = WinHttpOpenRequest(ctx->connection, isGet ? L"GET" : L"POST", ctx->uri, NULL, NULL, NULL, flags);
 
 	if (hReq == NULL)
 	{
@@ -292,7 +293,7 @@ static DWORD packet_transmit_http(Remote *remote, Packet *packet, PacketRequestC
 
 	do
 	{
-		hReq = ctx->create_req(ctx, "PACKET TRANSMIT");
+		hReq = ctx->create_req(ctx, FALSE, "PACKET TRANSMIT");
 		if (hReq == NULL)
 		{
 			break;
@@ -442,16 +443,14 @@ static DWORD packet_receive_http(Remote *remote, Packet **packet)
 
 	do
 	{
-		hReq = ctx->create_req(ctx, "PACKET RECEIVE");
+		hReq = ctx->create_req(ctx, TRUE, "PACKET RECEIVE");
 		if (hReq == NULL)
 		{
 			break;
 		}
 
-		vdprintf("[PACKET RECEIVE HTTP] sending the 'RECV' command...");
-		// TODO: when the MSF side supports it, update this so that it's UTF8
-		DWORD recv = 'VCER';
-		hRes = ctx->send_req(hReq, &recv, sizeof(recv));
+		vdprintf("[PACKET RECEIVE HTTP] sending GET");
+		hRes = ctx->send_req(hReq, NULL, 0);
 
 		if (!hRes)
 		{

@@ -46,7 +46,7 @@ typedef void(*PConfigCreate)(Remote* remote, MetsrvConfig** config, LPDWORD size
 typedef BOOL(*PServerDispatch)(Remote* remote, THREAD* dispatchThread);
 typedef DWORD(*PPacketTransmit)(Remote* remote, Packet* packet, PacketRequestCompletion* completion);
 
-typedef HANDLE(*PCreateHttpRequest)(HttpTransportContext* ctx, const char* direction);
+typedef HANDLE(*PCreateHttpRequest)(HttpTransportContext* ctx, BOOL isGet, const char* direction);
 typedef BOOL(*PSendHttpRequest)(HANDLE hReq, LPVOID buffer, DWORD size);
 typedef BOOL(*PCloseRequest)(HANDLE hReq);
 typedef DWORD(*PValidateResponse)(HANDLE hReq, HttpTransportContext* ctx);
