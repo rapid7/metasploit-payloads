@@ -12,6 +12,7 @@ DWORD request_registry_create_key(Remote *remote, Packet *packet);
 DWORD request_registry_check_key_exists(Remote *remote, Packet *packet)
 {
 	Packet *response = packet_create_response(packet);
+	char *tmp;
 	wchar_t *baseKey = NULL;
 	HKEY rootKey = NULL;
 	HKEY resultKey = NULL;
@@ -19,7 +20,8 @@ DWORD request_registry_check_key_exists(Remote *remote, Packet *packet)
 	DWORD result;
 
 	rootKey = (HKEY)packet_get_tlv_value_qword(packet, TLV_TYPE_ROOT_KEY);
-	baseKey = utf8_to_wchar(packet_get_tlv_value_string(packet, TLV_TYPE_BASE_KEY));
+	tmp = packet_get_tlv_value_string(packet, TLV_TYPE_BASE_KEY);
+	baseKey = utf8_to_wchar(tmp);
 
 	if (rootKey && baseKey)
 	{
@@ -254,7 +256,6 @@ static void enum_key(Remote *remote, Packet *packet, HKEY hkey)
 	if (result != ERROR_SUCCESS) {
 		goto err;
 	}
-	nameSize *= sizeof(wchar_t);
 
 	DWORD index = 0;
 	wchar_t *name = malloc(nameSize);
@@ -693,16 +694,12 @@ DWORD request_registry_delete_value(Remote *remote, Packet *packet)
 DWORD request_registry_query_class(Remote *remote, Packet *packet)
 {
 	Packet *response = packet_create_response(packet);
-	wchar_t *valueData;
-	DWORD valueDataSize = 0;
+	wchar_t valueData[4096];
+	DWORD valueDataSize = sizeof(valueData);
 	DWORD result = ERROR_SUCCESS;
 
 	// Acquire the standard TLVs
 	HKEY hkey = (HKEY)packet_get_tlv_value_qword(packet, TLV_TYPE_HKEY);
-
-	RegQueryInfoKeyW(hkey, NULL, &valueDataSize,
-		NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-	valueData = malloc(valueDataSize * sizeof(wchar_t));
 
 	// Get the size of the value data
 	if ((result = RegQueryInfoKeyW(hkey, valueData, &valueDataSize,
@@ -712,7 +709,6 @@ DWORD request_registry_query_class(Remote *remote, Packet *packet)
 		free(tmp);
 	}
 
-	free(valueData);
 	packet_transmit_response(result, remote, response);
 
 	return ERROR_SUCCESS;
