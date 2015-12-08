@@ -609,7 +609,23 @@ function channel_read($chan_id, $len) {
     }
 }
 
+function rand_xor_byte() {
+    return chr(mt_rand(1, 255));
+}
 
+function rand_xor_key() {
+  return rand_xor_byte() . rand_xor_byte() . rand_xor_byte() . rand_xor_byte();
+}
+
+function xor_bytes($key, $data) {
+    $result = '';
+
+    for ($i = 0; $i < strlen($data); ++$i) {
+        $result .= $data{$i} ^ $key{$i % 4};
+    }
+
+    return $result;
+}
 
 
 ##
@@ -625,6 +641,11 @@ function generate_req_id() {
     }
 
     return $rid;
+}
+
+function write_tlv_to_socket($resource, $raw) {
+    $xor = rand_xor_key();
+    write($resource, strrev($xor) . xor_bytes($xor, $raw));
 }
 
 function handle_dead_resource_channel($resource) {
@@ -655,10 +676,8 @@ function handle_dead_resource_channel($resource) {
         packet_add_tlv($pkt, create_tlv(TLV_TYPE_CHANNEL_ID, $cid));
         # Add the length to the beginning of the packet
         $pkt = pack("N", strlen($pkt) + 4) . $pkt;
-        write($msgsock, $pkt);
+        write_tlv_to_socket($msgsock, $pkt);
     }
-
-    return;
 }
 
 function handle_resource_read_channel($resource, $data) {
@@ -684,7 +703,8 @@ function handle_resource_read_channel($resource, $data) {
     return $pkt;
 }
 
-function create_response($req) {
+function create_response($xor, $req) {
+    $req = xor_bytes($xor, $req);
     $pkt = pack("N", PACKET_TYPE_RESPONSE);
 
     $method_tlv = packet_get_tlv($req, TLV_TYPE_METHOD);
@@ -1233,26 +1253,26 @@ while (false !== ($cnt = select($r, $w, $e, $t))) {
     for ($i = 0; $i < $cnt; $i++) {
         $ready = $r[$i];
         if ($ready == $msgsock) {
-            $request = read($msgsock, 8);
+            $header = read($msgsock, 12);
             #my_print(sprintf("Read returned %s bytes", strlen($request)));
-            if (false==$request) {
+            if (false==$header) {
                 #my_print("Read failed on main socket, bailing");
                 # We failed on the main socket.  There's no way to continue, so
                 # break all the way out.
                 break 2;
             }
-            $a = unpack("Nlen/Ntype", $request);
+            $xor = strrev(substr($header, 0, 4));
+            $request = substr($header, 4);
+            $len = unpack("Nlen", xor_bytes($xor, substr($request, 0, 4)))['len'];
             # length of the whole packet, including header
-            $len = $a['len'];
             # packet type should always be 0, i.e. PACKET_TYPE_REQUEST
-            $ptype = $a['type'];
-            while (strlen($request) < $a['len']) {
+            while (strlen($request) < $len) {
                 $request .= read($msgsock, $len-strlen($request));
             }
             #my_print("creating response");
-            $response = create_response($request);
+            $response = create_response($xor, $request);
 
-            write($msgsock, $response);
+            write_tlv_to_socket($msgsock, $response);
         } else {
             #my_print("not Msgsock: $ready");
             $data = read($ready);
@@ -1262,7 +1282,7 @@ while (false !== ($cnt = select($r, $w, $e, $t))) {
                 my_print(sprintf("Read returned %s bytes", strlen($data)));
                 $request = handle_resource_read_channel($ready, $data);
                 if ($request) {
-                    write($msgsock, $request);
+                    write_tlv_to_socket($msgsock, $request);
                 }
             }
         }
