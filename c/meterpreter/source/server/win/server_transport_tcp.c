@@ -586,7 +586,6 @@ static DWORD packet_receive_via_ssl(Remote *remote, Packet **packet)
 		// Read the packet length
 		while (inHeader)
 		{
-			dprintf("[OJ] trying to read header (%u so far)", headerBytes);
 			if ((bytesRead = SSL_read(ctx->ssl, ((PUCHAR)&header + headerBytes), sizeof(PacketHeader)-headerBytes)) <= 0)
 			{
 				if (!bytesRead)
@@ -600,8 +599,6 @@ static DWORD packet_receive_via_ssl(Remote *remote, Packet **packet)
 					SetLastError(ERROR_NOT_FOUND);
 				}
 
-				dprintf("[OJ] failed with %u 0x%x ", GetLastError(), GetLastError());
-
 				break;
 			}
 
@@ -609,7 +606,6 @@ static DWORD packet_receive_via_ssl(Remote *remote, Packet **packet)
 
 			if (headerBytes != sizeof(PacketHeader))
 			{
-				dprintf("[OJ] need more bytes ...");
 				continue;
 			}
 
@@ -624,23 +620,7 @@ static DWORD packet_receive_via_ssl(Remote *remote, Packet **packet)
 		header.xor_key = ntohl(header.xor_key);
 
 		// xor the header data
-		LPBYTE csr = (LPBYTE)&header;
-
-		dprintf("[OJ] header bytes have been read");
-		dprintf("[OJ] Before: 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x", csr[0],
-			csr[1], csr[2], csr[3], csr[4],
-			csr[5], csr[6], csr[7], csr[8],
-			csr[9], csr[10], csr[11], csr[12]);
-
 		xor_bytes(header.xor_key, (LPBYTE)&header.length, 8);
-
-		dprintf("[OJ] After: 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x", csr[0],
-			csr[1], csr[2], csr[3], csr[4],
-			csr[5], csr[6], csr[7], csr[8],
-			csr[9], csr[10], csr[11], csr[12]);
-
-		dprintf("[OJ] xor key address: 0x%p", &header.xor_key);
-		dprintf("[OJ] Length  address: 0x%p", &header.length);
 
 		// Initialize the header
 		header.length = ntohl(header.length);
@@ -648,8 +628,6 @@ static DWORD packet_receive_via_ssl(Remote *remote, Packet **packet)
 		// use TlvHeader size here, because the length doesn't include the xor byte
 		payloadLength = header.length - sizeof(TlvHeader);
 		payloadBytesLeft = payloadLength;
-
-		dprintf("[OJ] total length is: %u", payloadLength);
 
 		// Allocate the payload
 		if (!(payload = (PUCHAR)malloc(payloadLength)))
@@ -692,25 +670,7 @@ static DWORD packet_receive_via_ssl(Remote *remote, Packet **packet)
 			break;
 		}
 
-		dprintf("[OJ] Payload start Before: 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x", payload[0],
-			payload[1], payload[2], payload[3], payload[4],
-			payload[5], payload[6], payload[7], payload[8],
-			payload[9], payload[10], payload[11], payload[12]);
-		dprintf("[OJ] Payload end   Before: 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x", payload[payloadLength - 13 + 0],
-			payload[payloadLength - 13 + 1], payload[payloadLength - 13 + 2], payload[payloadLength - 13 + 3], payload[payloadLength - 13 + 4],
-			payload[payloadLength - 13 + 5], payload[payloadLength - 13 + 6], payload[payloadLength - 13 + 7], payload[payloadLength - 12 + 8],
-			payload[payloadLength - 13 + 9], payload[payloadLength - 13 + 10], payload[payloadLength - 13 + 11], payload[payloadLength - 13 + 12]);
-
 		xor_bytes(header.xor_key, payload, payloadLength);
-
-		dprintf("[OJ] Payload start After : 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x", payload[0],
-			payload[1], payload[2], payload[3], payload[4],
-			payload[5], payload[6], payload[7], payload[8],
-			payload[9], payload[10], payload[11], payload[12]);
-		dprintf("[OJ] Payload end   After : 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x", payload[payloadLength - 13 + 0],
-			payload[payloadLength - 13 + 1], payload[payloadLength - 13 + 2], payload[payloadLength - 13 + 3], payload[payloadLength - 13 + 4],
-			payload[payloadLength - 13 + 5], payload[payloadLength - 13 + 6], payload[payloadLength - 13 + 7], payload[payloadLength - 12 + 8],
-			payload[payloadLength - 13 + 9], payload[payloadLength - 13 + 10], payload[payloadLength - 13 + 11], payload[payloadLength - 13 + 12]);
 
 		// Allocate a packet structure
 		if (!(localPacket = (Packet *)malloc(sizeof(Packet))))
@@ -1145,8 +1105,6 @@ DWORD packet_transmit_via_ssl(Remote* remote, Packet* packet, PacketRequestCompl
 		{
 			break;
 		}
-
-		dprintf("[OJ] packet header sent");
 
 		idx = 0;
 		while (idx < packet->payloadLength)

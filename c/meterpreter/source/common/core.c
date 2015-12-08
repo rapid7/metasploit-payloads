@@ -155,7 +155,6 @@ Packet *packet_create(PacketTlvType type, LPCSTR method)
 	{
 		if (!(packet = (Packet *)malloc(sizeof(Packet))))
 		{
-			dprintf("[OJ] Packet create failed to malloc");
 			break;
 		}
 
@@ -172,7 +171,6 @@ Packet *packet_create(PacketTlvType type, LPCSTR method)
 		// Add the method TLV if provided
 		if (method && packet_add_tlv_string(packet, TLV_TYPE_METHOD, method) != ERROR_SUCCESS)
 		{
-			dprintf("[OJ] packet create failed to add string for method");
 			break;
 		}
 
@@ -260,12 +258,10 @@ Packet *packet_create_response(Packet *request)
 
 	if (packet_get_type(request) == PACKET_TLV_TYPE_PLAIN_REQUEST)
 	{
-		dprintf("[OJ] packet is a request");
 		responseType = PACKET_TLV_TYPE_PLAIN_RESPONSE;
 	}
 	else
 	{
-		dprintf("[OJ] packet is a response");
 		responseType = PACKET_TLV_TYPE_RESPONSE;
 	}
 
@@ -274,21 +270,18 @@ Packet *packet_create_response(Packet *request)
 		// Get the request TLV's method
 		if (packet_get_tlv_string(request, TLV_TYPE_METHOD, &method) != ERROR_SUCCESS)
 		{
-			dprintf("[OJ] couldn't get method");
 			break;
 		}
 
 		// Try to allocate a response packet
 		if (!(response = packet_create(responseType, (PCHAR)method.buffer)))
 		{
-			dprintf("[OJ] failed to create the packet");
 			break;
 		}
 
 		// Get the request TLV's request identifier
 		if (packet_get_tlv_string(request, TLV_TYPE_REQUEST_ID, &requestId) != ERROR_SUCCESS)
 		{
-			dprintf("[OJ] Failed to get the request ID");
 			break;
 		}
 

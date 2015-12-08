@@ -110,8 +110,12 @@ void enable_debugging()
 
 VOID xor_bytes(DWORD xorKey, LPBYTE buffer, DWORD bufferSize)
 {
-	dprintf("[OJ] Key       : %x", xorKey);
-	dprintf("[OJ] Length    : %x", bufferSize);
+	static BOOL initialised = FALSE;
+	if (!initialised)
+	{
+		srand((unsigned int)time(NULL));
+		initialised = TRUE;
+	}
 
 	LPBYTE xor = (LPBYTE)&xorKey;
 
