@@ -211,6 +211,7 @@ public class CellCollector extends IntervalCollector  {
         if (neighbors != null) {
             for (int i=0; i < neighbors.size(); i++){
                 result.neighbors.add(new CellNeighbor(neighbors.get(i)));
+                // TODO: Skip neighbors with network_type=0 or missing location
             }
         }
 
