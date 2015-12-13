@@ -202,7 +202,7 @@ def validate_binding(required):
     required = 'meterpreter_core'
 
   if not required in set(dir(meterpreter_bindings)):
-    raise Exception('Missing bindings: {0}'.format(list(missing)))
+    raise Exception('Missing bindings: {0}'.format(required))
 
   return required
 
