@@ -78,7 +78,11 @@ class MetLoader:
 
     if not name in self.libs:
       if '.' in name:
-        return self.load_module('.'.join(name.split('.')[1:]))
+        parts = name.split('.')
+        result = self.load_module('.'.join(parts[1:]))
+        if result == None and len(parts) >= 3:
+          result = self.load_module('.'.join(parts[0:-2] + [parts[-1]]))
+        return result
 
       met_dbg('No lib: {0}'.format(name))
       return None
@@ -122,5 +126,6 @@ class MetFinder:
     self.loader = MetLoader(libs)
 
   def find_module(self, name, path = None):
+    met_dbg('find_module: {0} {1}'.format(name, path))
     return self.loader
 

@@ -34,6 +34,9 @@
     <Filter Include="Modules\_ctypes">
       <UniqueIdentifier>{b0e8f834-fe7a-43ec-aef1-50aa4969cd09}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Modules\_multiprocessing">
+      <UniqueIdentifier>{5787d091-f9e7-4901-8add-95bff126fe28}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\source\extensions\python\Include\cobject.h">
@@ -422,6 +425,12 @@
     <ClInclude Include="..\..\source\extensions\python\python_meterpreter_binding.h" />
     <ClInclude Include="..\..\source\extensions\python\Modules\_ssl_data.h">
       <Filter>Modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\python\Modules\_multiprocessing\connection.h">
+      <Filter>Modules\_multiprocessing</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\python\Modules\_multiprocessing\multiprocessing.h">
+      <Filter>Modules\_multiprocessing</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -1008,6 +1017,21 @@
       <Filter>Modules</Filter>
     </ClCompile>
     <ClCompile Include="..\..\source\extensions\python\python_ssl_bridge.c" />
+    <ClCompile Include="..\..\source\extensions\python\Modules\_multiprocessing\multiprocessing.c">
+      <Filter>Modules\_multiprocessing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\python\Modules\_multiprocessing\pipe_connection.c">
+      <Filter>Modules\_multiprocessing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\python\Modules\_multiprocessing\semaphore.c">
+      <Filter>Modules\_multiprocessing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\python\Modules\_multiprocessing\socket_connection.c">
+      <Filter>Modules\_multiprocessing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\python\Modules\_multiprocessing\win32_functions.c">
+      <Filter>Modules\_multiprocessing</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\..\source\extensions\python\Resource Files\python_core.rc">
