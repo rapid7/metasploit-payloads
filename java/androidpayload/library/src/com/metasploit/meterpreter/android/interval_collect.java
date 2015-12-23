@@ -34,10 +34,53 @@ public class interval_collect implements Command {
             | (TLV_EXTENSIONS + 9054);
 
     // TLVs for wifi (reusing the ones for wlan geolocate)
-    public static final int TLV_TYPE_COLLECT_RESULT_WIFI = wlan_geolocate.TLV_TYPE_WLAN_GROUP;
-    public static final int TLV_TYPE_COLLECT_RESULT_WIFI_SSID = wlan_geolocate.TLV_TYPE_WLAN_SSID;
-    public static final int TLV_TYPE_COLLECT_RESULT_WIFI_BSSID = wlan_geolocate.TLV_TYPE_WLAN_BSSID;
-    public static final int TLV_TYPE_COLLECT_RESULT_WIFI_LEVEL = wlan_geolocate.TLV_TYPE_WLAN_LEVEL;
+    public static final int TLV_TYPE_COLLECT_RESULT_WIFI = wlan_geolocate.TLV_TYPE_WLAN_GROUP;       // 9022
+    public static final int TLV_TYPE_COLLECT_RESULT_WIFI_BSSID = wlan_geolocate.TLV_TYPE_WLAN_BSSID; // 9023
+    public static final int TLV_TYPE_COLLECT_RESULT_WIFI_SSID = wlan_geolocate.TLV_TYPE_WLAN_SSID;   // 9024
+    public static final int TLV_TYPE_COLLECT_RESULT_WIFI_LEVEL = wlan_geolocate.TLV_TYPE_WLAN_LEVEL; // 9025
+
+    // TLV for Geolocation
+    public static final int TLV_TYPE_COLLECT_RESULT_GEO = TLVPacket.TLV_META_TYPE_GROUP
+            | (TLV_EXTENSIONS + 9030);
+    public static final int TLV_TYPE_GEO_LAT = TLVPacket.TLV_META_TYPE_STRING
+            | (TLV_EXTENSIONS + 9011);
+    public static final int TLV_TYPE_GEO_LONG = TLVPacket.TLV_META_TYPE_STRING
+            | (TLV_EXTENSIONS + 9012);
+
+    // TLVs for Cell
+    public static final int TLV_TYPE_COLLECT_RESULT_CELL = TLVPacket.TLV_META_TYPE_GROUP
+            | (TLV_EXTENSIONS + 9060);
+    public static final int TLV_TYPE_CELL_ACTIVE_GSM = TLVPacket.TLV_META_TYPE_GROUP
+            | (TLV_EXTENSIONS + 9061);
+    public static final int TLV_TYPE_CELL_ACTIVE_CDMA = TLVPacket.TLV_META_TYPE_GROUP
+            | (TLV_EXTENSIONS + 9062);
+    public static final int TLV_TYPE_CELL_NEIGHBOR = TLVPacket.TLV_META_TYPE_GROUP
+            | (TLV_EXTENSIONS + 9063);
+
+    // TLVs for Cell Neighbors
+    public static final int TLV_TYPE_CELL_NET_TYPE = TLVPacket.TLV_META_TYPE_UINT
+            | (TLV_EXTENSIONS + 9065);
+    public static final int TLV_TYPE_CELL_CID = TLVPacket.TLV_META_TYPE_UINT
+            | (TLV_EXTENSIONS + 9066);
+    public static final int TLV_TYPE_CELL_LAC = TLVPacket.TLV_META_TYPE_UINT
+            | (TLV_EXTENSIONS + 9067);
+    public static final int TLV_TYPE_CELL_PSC = TLVPacket.TLV_META_TYPE_UINT
+            | (TLV_EXTENSIONS + 9068);
+    public static final int TLV_TYPE_CELL_RSSI = TLVPacket.TLV_META_TYPE_UINT
+            | (TLV_EXTENSIONS + 9069);
+
+    // TLVs for CDMA networks
+    public static final int TLV_TYPE_CELL_BASE_ID = TLVPacket.TLV_META_TYPE_UINT
+            | (TLV_EXTENSIONS + 9070);
+    public static final int TLV_TYPE_CELL_BASE_LAT = TLVPacket.TLV_META_TYPE_UINT
+            | (TLV_EXTENSIONS + 9071);
+    public static final int TLV_TYPE_CELL_BASE_LONG = TLVPacket.TLV_META_TYPE_UINT
+            | (TLV_EXTENSIONS + 9072);
+    public static final int TLV_TYPE_CELL_NET_ID = TLVPacket.TLV_META_TYPE_UINT
+            | (TLV_EXTENSIONS + 9073);
+    public static final int TLV_TYPE_CELL_SYSTEM_ID = TLVPacket.TLV_META_TYPE_UINT
+            | (TLV_EXTENSIONS + 9074);
+
 
     @Override
     public int execute(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws Exception {
