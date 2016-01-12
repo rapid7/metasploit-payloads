@@ -391,6 +391,11 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClCompile Include="..\..\source\extensions\python\Modules\_localemodule.c" />
     <ClCompile Include="..\..\source\extensions\python\Modules\_lsprof.c" />
     <ClCompile Include="..\..\source\extensions\python\Modules\_math.c" />
+    <ClCompile Include="..\..\source\extensions\python\Modules\_multiprocessing\multiprocessing.c" />
+    <ClCompile Include="..\..\source\extensions\python\Modules\_multiprocessing\pipe_connection.c" />
+    <ClCompile Include="..\..\source\extensions\python\Modules\_multiprocessing\semaphore.c" />
+    <ClCompile Include="..\..\source\extensions\python\Modules\_multiprocessing\socket_connection.c" />
+    <ClCompile Include="..\..\source\extensions\python\Modules\_multiprocessing\win32_functions.c" />
     <ClCompile Include="..\..\source\extensions\python\Modules\_randommodule.c" />
     <ClCompile Include="..\..\source\extensions\python\Modules\_sre.c" />
     <ClCompile Include="..\..\source\extensions\python\Modules\_ssl.c" />
@@ -619,6 +624,8 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClInclude Include="..\..\source\extensions\python\Modules\zlib\zutil.h" />
     <ClInclude Include="..\..\source\extensions\python\Modules\_io\_iomodule.h" />
     <ClInclude Include="..\..\source\extensions\python\Modules\_math.h" />
+    <ClInclude Include="..\..\source\extensions\python\Modules\_multiprocessing\connection.h" />
+    <ClInclude Include="..\..\source\extensions\python\Modules\_multiprocessing\multiprocessing.h" />
     <ClInclude Include="..\..\source\extensions\python\Modules\_ssl_data.h" />
     <ClInclude Include="..\..\source\extensions\python\Objects\stringlib\count.h" />
     <ClInclude Include="..\..\source\extensions\python\Objects\stringlib\fastsearch.h" />

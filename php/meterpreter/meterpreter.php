@@ -530,7 +530,7 @@ function get_channel_id_from_resource($resource) {
     return false;
 }
 
-function get_channel_by_id($chan_id) {
+function &get_channel_by_id($chan_id) {
     global $channels;
     my_print("Looking up channel id $chan_id");
     #dump_channels("in get_channel_by_id");
@@ -555,7 +555,7 @@ function channel_write($chan_id, $data) {
 
 # Read from the channel's stdout
 function channel_read($chan_id, $len) {
-    $c = get_channel_by_id($chan_id);
+    $c = &get_channel_by_id($chan_id);
     if ($c) {
         # First get any pending unread data from a previous read
         $ret = substr($c['data'], 0, $len);

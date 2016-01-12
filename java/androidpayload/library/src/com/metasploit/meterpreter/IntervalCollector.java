@@ -17,6 +17,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.List;
 import java.util.Random;
 
+import android.util.Log;
+
 public abstract class IntervalCollector {
     protected final int collectorId;
     protected final Context context;
@@ -102,7 +104,12 @@ public abstract class IntervalCollector {
             byte[] content = memStream.toByteArray();
 
             DataInputStream inputStream = new DataInputStream(new ByteArrayInputStream(content));
-            this.loadFromMemory(inputStream);
+            try {
+                this.loadFromMemory(inputStream);
+            } catch(Exception ex) {
+                // Something crashed loading from the save file, keep on trucking
+                Log.d("loadFromDisk", "Corrupted storage data", ex);
+            }
             inputStream.close();
             return true;
         }
@@ -187,7 +194,7 @@ public abstract class IntervalCollector {
     private String fileName() {
         return "" + this.collectorId;
     }
-    
+
     protected abstract boolean collect(DataOutputStream output) throws IOException;
     protected abstract void init();
     protected abstract void deinit();

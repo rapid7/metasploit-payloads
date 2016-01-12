@@ -878,6 +878,7 @@ DWORD request_sniffer_capture_release(Remote *remote, Packet *packet)
 	unsigned int ifid, i;
 	CaptureJob *j;
 	DWORD result;
+	BOOL test_parameters;
 
 	check_pssdk();
 	dprintf("sniffer>> release_capture()");
@@ -900,10 +901,11 @@ DWORD request_sniffer_capture_release(Remote *remote, Packet *packet)
 
 		// the interface is not being captured
 #ifdef _WIN32
-		if (!j->adp || j->active == 1)
+		test_parameters = !j->adp || j->active == 1;
 #else
-		if (!j->pcap || j->active == 1)
+		test_parameters = !j->pcap || j->active == 1;
 #endif
+		if (test_parameters)
 		{
 			result = ERROR_INVALID_PARAMETER;
 			break;
