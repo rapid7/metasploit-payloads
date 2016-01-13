@@ -748,13 +748,6 @@ static DWORD server_dispatch_tcp(Remote* remote, THREAD* dispatchThread)
 
 	dprintf("[DISPATCH] entering server_dispatch( 0x%08X )", remote);
 
-	// Bring up the scheduler subsystem.
-	result = scheduler_initialize(remote);
-	if (result != ERROR_SUCCESS)
-	{
-		return result;
-	}
-
 	int lastPacket = current_unix_timestamp();
 	while (running)
 	{
