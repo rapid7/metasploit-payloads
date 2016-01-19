@@ -25,6 +25,7 @@ CFLAGS += -fno-stack-protector -fno-builtin
 CFLAGS += -march=i386 -m32
 CFLAGS += -g -Os
 CFLAGS += -DPIC -fPIC
+CFLAGS += -std=gnu99
 
 LDFLAGS = -lgcc -lc
 LDFLAGS += -L$(ROOT)/source/bionic/compiled
