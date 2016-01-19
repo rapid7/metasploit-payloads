@@ -1,16 +1,15 @@
 package com.metasploit.meterpreter;
 
+import com.metasploit.meterpreter.command.Command;
+
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
-import java.io.OutputStream;
 import java.io.EOFException;
 import java.io.IOException;
-
+import java.io.OutputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
-
-import com.metasploit.meterpreter.command.Command;
 
 public class HttpTransport extends Transport {
     private static final int UA_LEN = 256;
@@ -185,6 +184,7 @@ public class HttpTransport extends Transport {
             return;
         }
 
+        conn.setDoOutput(true);
         DataOutputStream outputStream = new DataOutputStream(conn.getOutputStream());
         this.encodePacketAndWrite(packet, type, outputStream);
         outputStream.close();
@@ -267,7 +267,6 @@ public class HttpTransport extends Transport {
                     // perhaps log?
                 }
             }
-            conn.setDoOutput(true);
         }
         catch (IOException ex) {
             if (conn != null) {

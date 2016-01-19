@@ -49,9 +49,7 @@ public abstract class Transport {
 
     protected TLVPacket readAndDecodePacket(DataInputStream in) throws IOException {
         int xorKey = in.readInt();
-        System.out.format("XOR key is 0x%x\n", xorKey);
-        int len = in.readInt() ^ xorKey - 8;
-        System.out.format("Length is %u\n", len);
+        int len = (in.readInt() ^ Integer.reverseBytes(xorKey)) - 8;
         int type = in.readInt();
         byte[] body = new byte[len];
         in.readFully(body);
@@ -72,8 +70,8 @@ public abstract class Transport {
         this.xorBytes(xorKey, data);
         synchronized (out) {
             out.writeInt(xorKey);
-            out.writeInt((data.length + 8) ^ xorKey);
-            out.writeInt(type ^ xorKey);
+            out.writeInt((data.length + 8) ^ Integer.reverseBytes(xorKey));
+            out.writeInt(type ^ Integer.reverseBytes(xorKey));
             out.write(data);
             out.flush();
         }
