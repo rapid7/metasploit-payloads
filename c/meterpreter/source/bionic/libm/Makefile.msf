@@ -11,6 +11,7 @@ CFLAGS+=-D_BYTE_ORDER=_LITTLE_ENDIAN -Ihack/ -I${TARGET_FPU} -I../libc/arch-${TA
 CFLAGS+=-fPIC -DPIC
 CFLAGS+=-Wl,--hash-style=sysv
 CFLAGS+=-march=i386 -m32
+CFLAGS+=-Wl,--allow-multiple-definition
 
 libm_common_src_files= \
 	isinf.c  \

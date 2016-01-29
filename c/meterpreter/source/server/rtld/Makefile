@@ -48,7 +48,7 @@ msflinker.bin: msflinker elf2bin.c
 metsrv_rtld.o: $(HEADERS)
 
 rtldtest: rtldtest.c msflinker
-	$(CC) -march=i386 -m32 -o rtldtest rtldtest.c -DEP=`objdump -f msflinker | grep start | awk '{ print $$3 }'`
+	$(CC) -march=i386 -m32 -o rtldtest rtldtest.c -DEP=`LANG=en_US objdump -f msflinker | grep start | awk '{ print $$3 }'`
 
 .S.o:
 	@echo [CC] $@
