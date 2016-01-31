@@ -133,7 +133,6 @@ public class Payload {
         }
 
         if (sock != null) {
-            sock.setSoTimeout(500);
             DataInputStream in = new DataInputStream(sock.getInputStream());
             OutputStream out = new DataOutputStream(sock.getOutputStream());
             readAndRunStage(in, out, parameters);
