@@ -1,6 +1,7 @@
 package com.metasploit.meterpreter.stdapi;
 
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.util.ArrayList;
@@ -48,6 +49,13 @@ public class stdapi_net_config_get_interfaces_V1_4 extends stdapi_net_config_get
     }
 
     protected byte[] getMacAddress(NetworkInterface iface) throws IOException {
+		try {
+			Method getMac = iface.getClass().getMethod("getHardwareAddress");
+			if (getMac != null) {
+				return (byte[]) getMac.invoke(iface);
+			}
+		} catch (Exception e) {
+		}
         return null;
     }
 
