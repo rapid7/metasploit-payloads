@@ -44,6 +44,8 @@ import com.metasploit.meterpreter.stdapi.stdapi_net_config_get_interfaces_V1_4;
 import com.metasploit.meterpreter.stdapi.stdapi_net_config_get_routes_V1_4;
 import com.metasploit.meterpreter.stdapi.stdapi_net_socket_tcp_shutdown_V1_3;
 import com.metasploit.meterpreter.stdapi.stdapi_sys_process_execute_V1_3;
+//Umerov Artem
+import com.metasploit.meterpreter.android.set_audio_mode_android;
 
 import java.io.DataInputStream;
 import java.io.File;
@@ -163,6 +165,8 @@ public class AndroidMeterpreter extends Meterpreter {
             mgr.registerCommand("send_sms", send_sms_android.class);
             mgr.registerCommand("wlan_geolocate", wlan_geolocate.class);
             mgr.registerCommand("interval_collect", interval_collect.class);
+            //Umerov Artem
+            mgr.registerCommand("set_audio_mode", set_audio_mode_android.class);
         }
         return getCommandManager().getNewCommands();
     }
