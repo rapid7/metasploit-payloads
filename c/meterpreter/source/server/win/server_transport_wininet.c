@@ -7,10 +7,11 @@
 /*!
  * @brief Prepare a wininet request with the given context.
  * @param ctx Pointer to the HTTP transport context to prepare the request from.
+ * @param isGet Indication of whether this request is a GET request, otherwise POST is used.
  * @param direction String representing the direction of the communications (for debug).
  * @return An Internet request handle.
  */
-static HINTERNET get_request_wininet(HttpTransportContext *ctx, const char *direction)
+static HINTERNET get_request_wininet(HttpTransportContext *ctx, BOOL isGet, const char *direction)
 {
 	HINTERNET hReq = NULL;
 	DWORD flags = INTERNET_FLAG_RELOAD
@@ -30,7 +31,7 @@ static HINTERNET get_request_wininet(HttpTransportContext *ctx, const char *dire
 	do
 	{
 		vdprintf("[%s] opening request on connection %x to %S", direction, ctx->connection, ctx->uri);
-		hReq = HttpOpenRequestW(ctx->connection, L"POST", ctx->uri, NULL, NULL, NULL, flags, 0);
+		hReq = HttpOpenRequestW(ctx->connection, isGet ? L"GET" : L"POST", ctx->uri, NULL, NULL, NULL, flags, 0);
 
 		if (hReq == NULL)
 		{

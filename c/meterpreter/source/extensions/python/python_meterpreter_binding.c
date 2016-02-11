@@ -22,8 +22,8 @@ static PyObject* binding_invoke(PyObject* self, PyObject* args)
 	dprintf("[PYTHON] packet %p is %u bytes and is %s", packetBytes, packetLength, isLocal ? "local" : "not local");
 
 	Packet packet = { 0 };
-	packet.header = *(TlvHeader*)packetBytes;
-	packet.payload = (PUCHAR)(packetBytes + sizeof(TlvHeader));
+	packet.header = *(PacketHeader*)packetBytes;
+	packet.payload = (PUCHAR)(packetBytes + sizeof(PacketHeader));
 	packet.payloadLength = (ULONG)packetLength - sizeof(TlvHeader);
 
 	// If the functionality doesn't require interaction with MSF, then

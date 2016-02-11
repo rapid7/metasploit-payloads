@@ -257,7 +257,9 @@ DWORD request_core_uuid(Remote* remote, Packet* packet)
 DWORD request_core_machine_id(Remote* pRemote, Packet* pPacket)
 {
 	DWORD res = ERROR_SUCCESS;
+	dprintf("[CORE] Running request_core_machine_id");
 	Packet* pResponse = packet_create_response(pPacket);
+	dprintf("[CORE] pResponse is %p", pResponse);
 
 	if (pResponse)
 	{

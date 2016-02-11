@@ -59,6 +59,9 @@ else:
 	long = int
 	unicode = lambda x: (x.decode('UTF-8') if isinstance(x, bytes) else x)
 
+# reseed the random generator.
+random.seed()
+
 #
 # Constants
 #
@@ -175,6 +178,15 @@ TLV_TYPE_LOCAL_PORT            = TLV_META_TYPE_UINT    | 1503
 
 EXPORTED_SYMBOLS = {}
 EXPORTED_SYMBOLS['DEBUGGING'] = DEBUGGING
+
+def rand_byte():
+	return chr(random.randint(1, 255))
+
+def rand_xor_key():
+	return ''.join(rand_byte() for _ in range(4))
+
+def xor_bytes(key, data):
+	return ''.join(chr(ord(data[i]) ^ ord(key[i % len(key)])) for i in range(len(data)))
 
 def export(symbol):
 	EXPORTED_SYMBOLS[symbol.__name__] = symbol
@@ -480,7 +492,9 @@ class Transport(object):
 	def send_packet(self, pkt):
 		self.request_retire = False
 		try:
-			self._send_packet(pkt)
+			xor_key = rand_xor_key()
+			raw = xor_key[::-1] + xor_bytes(xor_key, pkt)
+			self._send_packet(raw)
 		except:
 			return False
 		self.communication_last = time.time()
@@ -536,17 +550,20 @@ class HttpTransport(Transport):
 			self._first_packet = None
 			return packet
 		packet = None
-		request = urllib.Request(self.url, bytes('RECV', 'UTF-8'), self._http_request_headers)
+		xor_key = None
+		request = urllib.Request(self.url, None, self._http_request_headers)
 		url_h = urllib.urlopen(request, timeout=self.communication_timeout)
 		packet = url_h.read()
 		for _ in range(1):
 			if packet == '':
 				break
-			if len(packet) < 8:
+			if len(packet) < 12:
 				packet = None  # looks corrupt
 				break
-			pkt_length, _ = struct.unpack('>II', packet[:8])
-			if len(packet) != pkt_length:
+			xor_key = packet[:4][::-1]
+			header = xor_bytes(xor_key, packet[4:12])
+			pkt_length, _ = struct.unpack('>II', header)
+			if len(packet) - 4 != pkt_length:
 				packet = None  # looks corrupt
 		if not packet:
 			delay = 10 * self._empty_cnt
@@ -556,7 +573,7 @@ class HttpTransport(Transport):
 			time.sleep(float(min(10000, delay)) / 1000)
 			return packet
 		self._empty_cnt = 0
-		return packet[8:]
+		return xor_bytes(xor_key, packet[12:])
 
 	def _send_packet(self, packet):
 		request = urllib.Request(self.url, packet, self._http_request_headers)
@@ -635,26 +652,31 @@ class TcpTransport(Transport):
 		self._first_packet = False
 		if not select.select([self.socket], [], [], 0.5)[0]:
 			return ''
-		packet = self.socket.recv(8)
+		packet = self.socket.recv(12)
 		if packet == '':  # remote is closed
 			self.request_retire = True
 			return None
-		if len(packet) != 8:
-			if first and len(packet) == 4:
+		if len(packet) != 12:
+			if first and len(packet) == 8:
 				received = 0
-				pkt_length = struct.unpack('>I', packet)[0]
+				xor_key = packet[:4][::-1]
+				header = xor_bytes(xor_key, packet[4:8])
+				pkt_length = struct.unpack('>I', header)[0]
 				self.socket.settimeout(max(self.communication_timeout, 30))
 				while received < pkt_length:
 					received += len(self.socket.recv(pkt_length - received))
 				self.socket.settimeout(None)
 				return self._get_packet()
 			return None
-		pkt_length, pkt_type = struct.unpack('>II', packet)
+
+		xor_key = packet[:4][::-1]
+		header = xor_bytes(xor_key, packet[4:12])
+		pkt_length, pkt_type = struct.unpack('>II', header)
 		pkt_length -= 8
 		packet = bytes()
 		while len(packet) < pkt_length:
 			packet += self.socket.recv(pkt_length - len(packet))
-		return packet
+		return xor_bytes(xor_key, packet)
 
 	def _send_packet(self, packet):
 		self.socket.send(packet)

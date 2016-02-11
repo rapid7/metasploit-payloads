@@ -1,6 +1,8 @@
 package com.metasploit.meterpreter;
 
+import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.OutputStream;
 import java.io.IOException;
 
@@ -43,6 +45,60 @@ public abstract class Transport {
         offset += 4;
 
         return offset;
+    }
+
+    protected TLVPacket readAndDecodePacket(DataInputStream in) throws IOException {
+        int xorKey = in.readInt();
+        int len = (in.readInt() ^ Integer.reverseBytes(xorKey)) - 8;
+        int type = in.readInt();
+        byte[] body = new byte[len];
+        in.readFully(body);
+
+        this.xorBytes(xorKey, body);
+
+        ByteArrayInputStream byteStream = new ByteArrayInputStream(body);
+        DataInputStream inputStream = new DataInputStream(byteStream);
+        TLVPacket packet = new TLVPacket(inputStream, len);
+        inputStream.close();
+
+        return packet;
+    }
+
+    protected void encodePacketAndWrite(TLVPacket packet, int type, DataOutputStream out) throws IOException {
+        int xorKey = randXorKey();
+        byte[] data = packet.toByteArray();
+        this.xorBytes(xorKey, data);
+        synchronized (out) {
+            out.writeInt(xorKey);
+            out.writeInt((data.length + 8) ^ Integer.reverseBytes(xorKey));
+            out.writeInt(type ^ Integer.reverseBytes(xorKey));
+            out.write(data);
+            out.flush();
+        }
+    }
+
+    private int randXorKey() {
+        return randByte()
+            | randByte() << 8
+            | randByte() << 16
+            | randByte() << 24;
+    }
+
+    private int randByte() {
+        // Forces a random number between 1 and 255 _inclusive_
+        return 0xFF & (int)((Math.random() * 255) + 1);
+    }
+
+    private void xorBytes(int xorKey, byte[] bytes) {
+        byte[] x = new byte[4];
+        x[0] = (byte)(xorKey & 0xFF);
+        x[1] = (byte)((xorKey >> 8) & 0xFF);
+        x[2] = (byte)((xorKey >> 16) & 0xFF);
+        x[3] = (byte)((xorKey >> 24) & 0xFF);
+
+        for (int i = 0; i < bytes.length; ++i) {
+            bytes[i] ^= x[i % x.length];
+        }
     }
 
     public String getUrl() {

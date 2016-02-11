@@ -10,6 +10,7 @@ CFLAGS+=-I../libc/kernel/common/ -I../libc/arch-${TARGET_ARCH}/include/ -I../lib
 CFLAGS+=-D_BYTE_ORDER=_LITTLE_ENDIAN -Ihack/ -I${TARGET_FPU} -I../libc/arch-${TARGET_ARCH}/include
 CFLAGS+=-fPIC -DPIC
 CFLAGS+=-Wl,--hash-style=sysv
+CFLAGS+=-Wl,--allow-multiple-definition
 CFLAGS+=-march=i386 -m32
 CFLAGS+=-Wl,--allow-multiple-definition
 

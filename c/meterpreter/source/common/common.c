@@ -107,3 +107,20 @@ void enable_debugging()
 }
 
 #endif
+
+VOID xor_bytes(DWORD xorKey, LPBYTE buffer, DWORD bufferSize)
+{
+	static BOOL initialised = FALSE;
+	if (!initialised)
+	{
+		srand((unsigned int)time(NULL));
+		initialised = TRUE;
+	}
+
+	LPBYTE xor = (LPBYTE)&xorKey;
+
+	for (DWORD i = 0; i < bufferSize; ++i)
+	{
+		buffer[i] ^= xor[i % sizeof(DWORD)];
+	}
+}

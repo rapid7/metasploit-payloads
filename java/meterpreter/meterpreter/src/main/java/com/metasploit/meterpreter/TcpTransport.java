@@ -140,19 +140,11 @@ public class TcpTransport extends Transport {
     }
 
     public TLVPacket readPacket() throws IOException {
-        int len = this.inputStream.readInt();
-        int type = this.inputStream.readInt();
-        return new TLVPacket(this.inputStream, len - 8);
+        return this.readAndDecodePacket(this.inputStream);
     }
 
     public void writePacket(TLVPacket packet, int type) throws IOException {
-        byte[] data = packet.toByteArray();
-        synchronized (this.outputStream) {
-            this.outputStream.writeInt(data.length + 8);
-            this.outputStream.writeInt(type);
-            this.outputStream.write(data);
-            this.outputStream.flush();
-        }
+        this.encodePacketAndWrite(packet, type, this.outputStream);
     }
 
     public boolean dispatch(Meterpreter met) {

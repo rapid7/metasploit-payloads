@@ -590,6 +590,15 @@ DWORD packet_transmit_via_ssl(Remote* remote, Packet* packet, PacketRequestCompl
 			packet->header.length = htonl(packet->payloadLength + sizeof(TlvHeader));
 		}
 
+		dprintf("[PACKET] New xor key for sending");
+		packet->header.xor_key = rand_xor_key();
+		// before transmission, xor the whole lot, starting with the body
+		xor_bytes(packet->header.xor_key, (LPBYTE)packet->payload, packet->payloadLength);
+		// then the header
+		xor_bytes(packet->header.xor_key, (LPBYTE)&packet->header.length, 8);
+		// be sure to switch the xor header before writing
+		packet->header.xor_key = htonl(packet->header.xor_key);
+
 		idx = 0;
 		while (idx < sizeof(packet->header))
 		{
@@ -661,7 +670,7 @@ static DWORD packet_receive_via_ssl(Remote *remote, Packet **packet)
 	DWORD headerBytes = 0, payloadBytesLeft = 0, res;
 	CryptoContext *crypto = NULL;
 	Packet *localPacket = NULL;
-	TlvHeader header;
+	PacketHeader header;
 	LONG bytesRead;
 	BOOL inHeader = TRUE;
 	PUCHAR payload = NULL;
@@ -675,7 +684,7 @@ static DWORD packet_receive_via_ssl(Remote *remote, Packet **packet)
 		// Read the packet length
 		while (inHeader)
 		{
-			if ((bytesRead = SSL_read(ctx->ssl, ((PUCHAR)&header + headerBytes), sizeof(TlvHeader)-headerBytes)) <= 0)
+			if ((bytesRead = SSL_read(ctx->ssl, ((PUCHAR)&header + headerBytes), sizeof(PacketHeader)-headerBytes)) <= 0)
 			{
 				if (!bytesRead)
 				{
@@ -693,7 +702,7 @@ static DWORD packet_receive_via_ssl(Remote *remote, Packet **packet)
 
 			headerBytes += bytesRead;
 
-			if (headerBytes != sizeof(TlvHeader))
+			if (headerBytes != sizeof(PacketHeader))
 			{
 				continue;
 			}
@@ -701,15 +710,21 @@ static DWORD packet_receive_via_ssl(Remote *remote, Packet **packet)
 			inHeader = FALSE;
 		}
 
-		if (headerBytes != sizeof(TlvHeader))
+		if (headerBytes != sizeof(PacketHeader))
 		{
 			break;
 		}
 
+		header.xor_key = ntohl(header.xor_key);
+
+		// xor the header data
+		xor_bytes(header.xor_key, &header.length, 8);
+
 		// Initialize the header
-		header.length = header.length;
-		header.type = header.type;
-		payloadLength = ntohl(header.length) - sizeof(TlvHeader);
+		header.length = ntohl(header.length);
+
+		// use TlvHeader size here, because the length doesn't include the xor byte
+		payloadLength = header.length - sizeof(TlvHeader);
 		payloadBytesLeft = payloadLength;
 
 		// Allocate the payload
@@ -752,6 +767,8 @@ static DWORD packet_receive_via_ssl(Remote *remote, Packet **packet)
 		{
 			break;
 		}
+
+		xor_bytes(header.xor_key, payload, payloadLength);
 
 		// Allocate a packet structure
 		if (!(localPacket = (Packet *)malloc(sizeof(Packet))))
@@ -831,6 +848,7 @@ static BOOL server_dispatch_tcp(Remote * remote, THREAD* dispatchThread)
 	if (result != ERROR_SUCCESS) {
 		return result;
 	}
+
 	while (running) {
 		if (event_poll(dispatchThread->sigterm, 0)) {
 			dprintf("[DISPATCH] server dispatch thread signaled to terminate...");

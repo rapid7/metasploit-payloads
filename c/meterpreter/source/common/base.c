@@ -323,6 +323,7 @@ BOOL command_process_inline(Command *baseCommand, Command *extensionCommand, Rem
 				// lengths are sane.
 				if (command_validate_arguments(command, packet) != ERROR_SUCCESS)
 				{
+					dprintf("[COMMAND] Command arguments failed to validate");
 					continue;
 				}
 
@@ -660,7 +661,10 @@ DWORD command_validate_arguments(Command *command, Packet *packet)
 		{
 		case TLV_META_TYPE_STRING:
 			if (packet_is_tlv_null_terminated(&current) != ERROR_SUCCESS)
+			{
+				dprintf("[COMMAND] string is not null terminated");
 				res = ERROR_INVALID_PARAMETER;
+			}
 			break;
 		default:
 			break;
