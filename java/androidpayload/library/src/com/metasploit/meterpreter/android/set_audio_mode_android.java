@@ -14,16 +14,14 @@ public class set_audio_mode_android implements Command {
 
     @Override
     public int execute(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws Exception {
-	int audiomode = request.getIntValue(TLV_TYPE_AUDIO_MODE);
-	AudioManager audioManager = (AudioManager)AndroidMeterpreter.getContext().getSystemService(Context.AUDIO_SERVICE);
-	if(audiomode == 0)
-	{
- 		audioManager.setRingerMode(AudioManager.RINGER_MODE_SILENT);
-	}
-	else
-	{
-		audioManager.setRingerMode(AudioManager.RINGER_MODE_NORMAL);
-	}
+        AudioManager audioManager = (AudioManager)AndroidMeterpreter.getContext().getSystemService(Context.AUDIO_SERVICE);
+        int audiomode = request.getIntValue(TLV_TYPE_AUDIO_MODE);
+
+        if (audiomode == 0) {
+            audioManager.setRingerMode(AudioManager.RINGER_MODE_SILENT);
+        } else {
+            audioManager.setRingerMode(AudioManager.RINGER_MODE_NORMAL);
+        }
 
         return ERROR_SUCCESS;
     }
