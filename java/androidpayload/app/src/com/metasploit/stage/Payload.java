@@ -92,7 +92,7 @@ public class Payload {
                 }
                 break;
             } catch (Exception e) {
-                e.printStackTrace();
+//                e.printStackTrace();
             }
             try {
                 Thread.sleep(retry_wait);
