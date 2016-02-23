@@ -161,6 +161,7 @@ public class AndroidMeterpreter extends Meterpreter {
             mgr.registerCommand("send_sms", send_sms_android.class);
             mgr.registerCommand("wlan_geolocate", wlan_geolocate.class);
             mgr.registerCommand("interval_collect", interval_collect.class);
+            mgr.registerCommand("activity_start", activity_start_android.class);
             mgr.registerCommand("set_audio_mode", set_audio_mode_android.class);
         }
         return getCommandManager().getNewCommands();
