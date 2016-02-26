@@ -13,8 +13,6 @@ public class toast_android implements Command {
   private static final int TLV_EXTENSIONS = 20000;
   private static final int TLV_TYPE_TOAST_STRING = TLVPacket.TLV_META_TYPE_STRING
             | (TLV_EXTENSIONS + 9001);
-  private static final int TLV_TYPE_TOAST_SR = TLVPacket.TLV_META_TYPE_STRING
-            | (TLV_EXTENSIONS + 9021);
   
    @Override
     public int execute(Meterpreter meterpreter, TLVPacket request,
