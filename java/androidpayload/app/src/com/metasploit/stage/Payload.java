@@ -92,7 +92,10 @@ public class Payload {
                 }
                 break;
             } catch (Exception e) {
-                e.printStackTrace();
+                // Avoid printing extensive backtraces when we are trying to be
+                // stealty. An optional runtime or staging-time switch would be
+                // good to have here, like Python Meterpreter's debug option.
+                // e.printStackTrace();
             }
             try {
                 Thread.sleep(retry_wait);
