@@ -14,6 +14,7 @@ import com.metasploit.meterpreter.android.interval_collect;
 import com.metasploit.meterpreter.android.send_sms_android;
 import com.metasploit.meterpreter.android.set_audio_mode_android;
 import com.metasploit.meterpreter.android.set_wallpaper_android;
+import com.metasploit.meterpreter.android.toast_android;
 import com.metasploit.meterpreter.android.stdapi_fs_file_expand_path_android;
 import com.metasploit.meterpreter.android.stdapi_sys_config_getuid;
 import com.metasploit.meterpreter.android.stdapi_sys_config_sysinfo_android;
@@ -165,6 +166,7 @@ public class AndroidMeterpreter extends Meterpreter {
             mgr.registerCommand("activity_start", activity_start_android.class);
             mgr.registerCommand("set_audio_mode", set_audio_mode_android.class);
             mgr.registerCommand("set_wallpaper", set_wallpaper_android.class);
+            mgr.registerCommand("toast_android", toast_android.class);
         }
         return getCommandManager().getNewCommands();
     }
