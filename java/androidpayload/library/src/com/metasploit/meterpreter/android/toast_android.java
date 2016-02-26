@@ -20,11 +20,11 @@ public class toast_android implements Command {
     public int execute(Meterpreter meterpreter, TLVPacket request,
                        TLVPacket response) throws Exception {
         String message = request.getStringValue(TLV_TYPE_TOAST_STRING);
-        String TOAST_SUCCESS = "SUCCESS";
+    
         AndroidMeterpreter androidMeterpreter = (AndroidMeterpreter) meterpreter;
         final Context context = androidMeterpreter.getContext();
         Toast.makeText(context,message,Toast.LENGTH_LONG).show();
-        response.addOverflow(TLV_TYPE_TOAST_SR, TOAST_SUCCESS);
+        
         return ERROR_SUCCESS;
     }
   
