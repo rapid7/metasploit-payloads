@@ -38,35 +38,28 @@ public class sqlite_read_android implements Command {
             return ERROR_SUCCESS;
         }
 
-        if (c.getCount() == 0) {
-            c.close();
-            return ERROR_SUCCESS;
-        }
-
-        String []columns = c.getColumnNames();
-
-        c.moveToFirst();
-
-        TLVPacket grp = new TLVPacket();
-        TLVPacket cols = new TLVPacket();
-        for (int i=0; i <= columns.length; i++){
-            cols.add(TLV_TYPE_SQLITE_VALUE, columns[i]);
-        }
-        grp.addOverflow(TLV_TYPE_SQLITE_RESULT_COLS, cols);
-
-        do {
-            TLVPacket row = new TLVPacket();
-            for (int i=0; i <= columns.length; i++){
-                row.add(TLV_TYPE_SQLITE_VALUE, c.getString(i));
+        if (c.getCount() > 0) {
+            String[] columns = c.getColumnNames();
+            TLVPacket grp = new TLVPacket();
+            TLVPacket cols = new TLVPacket();
+            for (int i=0; i < columns.length; i++){
+                cols.addOverflow(TLV_TYPE_SQLITE_VALUE, columns[i]);
             }
-            grp.addOverflow(TLV_TYPE_SQLITE_RESULT_ROW, row);
-        } while (c.moveToNext());
+            grp.addOverflow(TLV_TYPE_SQLITE_RESULT_COLS, cols);
 
-        response.addOverflow(TLV_TYPE_SQLITE_RESULT_GROUP, grp);
+            c.moveToFirst();
+            do {
+                TLVPacket row = new TLVPacket();
+                for (int i=0; i < columns.length; i++){
+                    row.addOverflow(TLV_TYPE_SQLITE_VALUE, c.getString(i));
+                }
+                grp.addOverflow(TLV_TYPE_SQLITE_RESULT_ROW, row);
+            } while (c.moveToNext());
 
+            response.addOverflow(TLV_TYPE_SQLITE_RESULT_GROUP, grp);
+        }
         c.close();
         db.close();
-
         return ERROR_SUCCESS;
     }
 

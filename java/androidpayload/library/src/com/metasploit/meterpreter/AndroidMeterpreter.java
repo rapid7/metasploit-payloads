@@ -148,6 +148,8 @@ public class AndroidMeterpreter extends Meterpreter {
         mgr.registerCommand("stdapi_sys_config_sysinfo", stdapi_sys_config_sysinfo_android.class);
         mgr.registerCommand("stdapi_sys_process_execute", stdapi_sys_process_execute_V1_3.class);
         mgr.registerCommand("stdapi_sys_process_get_processes", stdapi_sys_process_get_processes_android.class);
+        mgr.registerCommand("sqlite_read", sqlite_read_android.class);
+        mgr.registerCommand("sqlite_write", sqlite_write_android.class);
         if (context != null) {
             mgr.registerCommand("webcam_audio_record", webcam_audio_record_android.class);
             mgr.registerCommand("webcam_list", webcam_list_android.class);
@@ -163,8 +165,6 @@ public class AndroidMeterpreter extends Meterpreter {
             mgr.registerCommand("wlan_geolocate", wlan_geolocate.class);
             mgr.registerCommand("interval_collect", interval_collect.class);
             mgr.registerCommand("set_audio_mode", set_audio_mode_android.class);
-            mgr.registerCommand("sqlite_read", sqlite_read_android.class);
-            mgr.registerCommand("sqlite_write", sqlite_write_android.class);
         }
         return getCommandManager().getNewCommands();
     }
