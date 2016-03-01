@@ -698,8 +698,10 @@ class PythonMeterpreter(object):
 		self.last_registered_extension = None
 		self.extension_functions = {}
 		self.channels = {}
+		self.next_channel_id = 1
 		self.interact_channels = []
 		self.processes = {}
+		self.next_process_id = 1
 		self.transports = [self.transport]
 		self.session_expiry_time = SESSION_EXPIRATION_TIMEOUT
 		self.session_expiry_end = time.time() + self.session_expiry_time
@@ -726,17 +728,17 @@ class PythonMeterpreter(object):
 
 	def add_channel(self, channel):
 		assert(isinstance(channel, (subprocess.Popen, MeterpreterFile, MeterpreterSocket)))
-		idx = 0
-		while idx in self.channels:
-			idx += 1
+		idx = self.next_channel_id
 		self.channels[idx] = channel
+		self.debug_print('[*] added channel id: ' + str(idx) + ' type: ' + channel.__class__.__name__)
+		self.next_channel_id += 1
 		return idx
 
 	def add_process(self, process):
-		idx = 0
-		while idx in self.processes:
-			idx += 1
+		idx = self.next_process_id
 		self.processes[idx] = process
+		self.debug_print('[*] added process id: ' + str(idx))
+		self.next_process_id += 1
 		return idx
 
 	def get_packet(self):
@@ -1032,6 +1034,7 @@ class PythonMeterpreter(object):
 		del self.channels[channel_id]
 		if channel_id in self.interact_channels:
 			self.interact_channels.remove(channel_id)
+		self.debug_print('[*] closed and removed channel id: ' + str(channel_id))
 		return ERROR_SUCCESS, response
 
 	def _core_channel_eof(self, request, response):
@@ -1127,6 +1130,9 @@ class PythonMeterpreter(object):
 				if DEBUGGING:
 					traceback.print_exc(file=sys.stderr)
 				result = error_result()
+			else:
+				if result != ERROR_SUCCESS:
+					self.debug_print('[-] method ' + handler_name + ' resulted in error: #' + str(result))
 		else:
 			self.debug_print('[-] method ' + handler_name + ' was requested but does not exist')
 			result = error_result(NotImplementedError)
