@@ -49,10 +49,10 @@ module MetasploitPayloads
   def self.path(*path_parts)
     gem_path = expand(data_directory, ::File.join(path_parts))
     if metasploit_installed?
-      msf_path = expand(Msf::Config.data_directory, ::File.join(path_parts))
       user_path = expand(Msf::Config.config_directory, ::File.join(USER_DATA_SUBFOLDER, path_parts))
+      msf_path = expand(Msf::Config.data_directory, ::File.join(path_parts))
     end
-    readable_path(gem_path, msf_path, user_path)
+    readable_path(gem_path, user_path, msf_path)
   end
 
   #
@@ -79,8 +79,8 @@ module MetasploitPayloads
     # Find the valid extensions in the data folder first, if MSF
     # is installed.
     if metasploit_installed?
-      root_dirs.unshift(user_meterpreter_dir)
       root_dirs.unshift(msf_meterpreter_dir)
+      root_dirs.unshift(user_meterpreter_dir)
     end
 
     root_dirs.each do |dir|
