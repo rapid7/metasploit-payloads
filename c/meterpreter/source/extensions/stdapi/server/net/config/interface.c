@@ -18,7 +18,7 @@ DWORD get_interfaces_windows_mib(Remote *remote, Packet *response)
 		return ERROR_OUTOFMEMORY;
 	}
 
-	// attempt with an insufficient buffer
+	// attempt with an insufficient buffer size
 	DWORD result = GetIpAddrTable(table, &tableSize, TRUE);
 	if (result == ERROR_INSUFFICIENT_BUFFER)
 	{
