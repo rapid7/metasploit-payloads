@@ -8,14 +8,37 @@
 #ifdef _WIN32
 DWORD get_interfaces_windows_mib(Remote *remote, Packet *response)
 {
-	DWORD tableSize = sizeof(MIB_IPADDRROW) * 100;
-	MIB_IPADDRTABLE table[100];
+	DWORD tableSize = sizeof(MIB_IPADDRROW);
 	DWORD index;
 	MIB_IFROW iface;
 
-	// Get the IP address table
-	if (GetIpAddrTable(table, &tableSize, TRUE) != NO_ERROR)
+	PMIB_IPADDRTABLE table = (PMIB_IPADDRTABLE)malloc(sizeof(PMIB_IPADDRTABLE));
+	if (table == NULL)
 	{
+		return ERROR_OUTOFMEMORY;
+	}
+
+	// attempt with an insufficient buffer
+	DWORD result = GetIpAddrTable(table, &tableSize, TRUE);
+	if (result == ERROR_INSUFFICIENT_BUFFER)
+	{
+		table = (PMIB_IPADDRTABLE)realloc(table, tableSize);
+
+		if (table == NULL)
+		{
+			return ERROR_OUTOFMEMORY;
+		}
+
+		if (GetIpAddrTable(table, &tableSize, TRUE) != NO_ERROR)
+		{
+			free(table);
+			return GetLastError();
+		}
+	}
+	// it might have worked with a single row!
+	else if (result != NO_ERROR)
+	{
+		free(table);
 		return GetLastError();
 	}
 
@@ -46,6 +69,7 @@ DWORD get_interfaces_windows_mib(Remote *remote, Packet *response)
 		packet_add_group(response, TLV_TYPE_NETWORK_INTERFACE, group);
 	}
 
+	free(table);
 	return ERROR_SUCCESS;
 }
 
