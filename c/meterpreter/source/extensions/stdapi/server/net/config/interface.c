@@ -8,71 +8,50 @@
 #ifdef _WIN32
 DWORD get_interfaces_windows_mib(Remote *remote, Packet *response)
 {
-	DWORD result = ERROR_SUCCESS;
-
-	PMIB_IPADDRTABLE table = NULL;
-	DWORD tableSize = sizeof(MIB_IPADDRROW) * 33;
+	DWORD tableSize = sizeof(MIB_IPADDRROW) * 100;
+	MIB_IPADDRTABLE table[100];
 	DWORD index;
 	MIB_IFROW iface;
 
-	do
+	// Get the IP address table
+	if (GetIpAddrTable(table, &tableSize, TRUE) != NO_ERROR)
 	{
-		// Allocate memory for reading addresses into
-		if (!(table = (PMIB_IPADDRTABLE)malloc(tableSize)))
-		{
-			result = ERROR_NOT_ENOUGH_MEMORY;
-			break;
-		}
-
-		// Get the IP address table
-		if (GetIpAddrTable(table, &tableSize, TRUE) != NO_ERROR)
-		{
-			result = GetLastError();
-			break;
-		}
-
-		// Enumerate the entries
-		for (index = 0; index < table->dwNumEntries; index++)
-		{
-			Packet* group = packet_create_group();
-
-			packet_add_tlv_uint(group, TLV_TYPE_INTERFACE_INDEX, table->table[index].dwIndex);
-			packet_add_tlv_raw(group, TLV_TYPE_IP, (PUCHAR)&table->table[index].dwAddr, sizeof(DWORD));
-			packet_add_tlv_raw(group, TLV_TYPE_NETMASK, (PUCHAR)&table->table[index].dwMask, sizeof(DWORD));
-
-			iface.dwIndex = table->table[index].dwIndex;
-
-			// If interface information can get gotten, use it.
-			if (GetIfEntry(&iface) == NO_ERROR)
-			{
-				packet_add_tlv_raw(group, TLV_TYPE_MAC_ADDR, (PUCHAR)iface.bPhysAddr, iface.dwPhysAddrLen);
-				packet_add_tlv_uint(group, TLV_TYPE_INTERFACE_MTU, iface.dwMtu);
-
-				if (iface.bDescr)
-				{
-					packet_add_tlv_string(group, TLV_TYPE_MAC_NAME, iface.bDescr);
-				}
-			}
-
-			// Add the interface group
-			packet_add_group(response, TLV_TYPE_NETWORK_INTERFACE, group);
-		}
-
-	} while (0);
-
-	if (table)
-	{
-		free(table);
+		return GetLastError();
 	}
 
-	return result;
+	// Enumerate the entries
+	for (index = 0; index < table->dwNumEntries; index++)
+	{
+		Packet* group = packet_create_group();
+
+		packet_add_tlv_uint(group, TLV_TYPE_INTERFACE_INDEX, table->table[index].dwIndex);
+		packet_add_tlv_raw(group, TLV_TYPE_IP, (PUCHAR)&table->table[index].dwAddr, sizeof(DWORD));
+		packet_add_tlv_raw(group, TLV_TYPE_NETMASK, (PUCHAR)&table->table[index].dwMask, sizeof(DWORD));
+
+		iface.dwIndex = table->table[index].dwIndex;
+
+		// If interface information can get gotten, use it.
+		if (GetIfEntry(&iface) == NO_ERROR)
+		{
+			packet_add_tlv_raw(group, TLV_TYPE_MAC_ADDR, (PUCHAR)iface.bPhysAddr, iface.dwPhysAddrLen);
+			packet_add_tlv_uint(group, TLV_TYPE_INTERFACE_MTU, iface.dwMtu);
+
+			if (iface.bDescr)
+			{
+				packet_add_tlv_string(group, TLV_TYPE_MAC_NAME, iface.bDescr);
+			}
+		}
+
+		// Add the interface group
+		packet_add_group(response, TLV_TYPE_NETWORK_INTERFACE, group);
+	}
+
+	return ERROR_SUCCESS;
 }
 
 DWORD get_interfaces_windows(Remote *remote, Packet *response)
 {
 	DWORD result = ERROR_SUCCESS;
-	int prefixes[30];
-	int prefixCount = 0;
 
 	ULONG flags = GAA_FLAG_INCLUDE_PREFIX
 		| GAA_FLAG_SKIP_DNS_SERVER
@@ -102,123 +81,118 @@ DWORD get_interfaces_windows(Remote *remote, Packet *response)
 	// so we have to check the version manually.
 	OSVERSIONINFOEX v;
 
-	do
+	gaa = (DWORD(WINAPI *)(DWORD, DWORD, void*, void*, void*))GetProcAddress(
+		GetModuleHandle("iphlpapi"), "GetAdaptersAddresses");
+	if (!gaa)
 	{
-		gaa = (DWORD(WINAPI *)(DWORD, DWORD, void*, void*, void*))GetProcAddress(
-			GetModuleHandle("iphlpapi"), "GetAdaptersAddresses");
-		if (!gaa)
-		{
-			dprintf("[INTERFACE] No 'GetAdaptersAddresses'. Falling back on get_interfaces_windows_mib");
-			result = get_interfaces_windows_mib(remote, response);
-			break;
-		}
-
-		gaa(family, flags, NULL, pAdapters, &outBufLen);
-		if (!(pAdapters = (IP_ADAPTER_ADDRESSES *)malloc(outBufLen)))
-		{
-			result = ERROR_NOT_ENOUGH_MEMORY;
-			break;
-		}
-		if (gaa(family, flags, NULL, pAdapters, &outBufLen))
-		{
-			result = GetLastError();
-			break;
-		}
-
-		dprintf("[INTERFACE] pAdapters->Length = %d", pAdapters->Length);
-		// According to http://msdn.microsoft.com/en-us/library/windows/desktop/aa366058(v=vs.85).aspx
-		// the PIP_ADAPTER_PREFIX doesn't exist prior to XP SP1. We check for this via the `Length`
-		// value, which is 72 in XP without an SP, but 144 in later versions.
-		if (pAdapters->Length <= 72)
-		{
-			dprintf("[INTERFACE] PIP_ADAPTER_PREFIX is missing");
-			result = get_interfaces_windows_mib(remote, response);
-			break;
-		}
-
-		// we'll need to know the version later on
-		memset(&v, 0, sizeof(v));
-		v.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
-		GetVersionEx((LPOSVERSIONINFO)&v);
-
-		// Enumerate the entries
-		for (pCurr = pAdapters; pCurr; pCurr = pCurr->Next)
-		{
-			// Save the first prefix for later in case we don't have an OnLinkPrefixLength
-			pPrefix = pCurr->FirstPrefix;
-
-			Packet* group = packet_create_group();
-
-			dprintf("[INTERFACE] Adding index: %u", pCurr->IfIndex);
-			packet_add_tlv_uint(group, TLV_TYPE_INTERFACE_INDEX, pCurr->IfIndex);
-
-			dprintf("[INTERFACE] Adding MAC");
-			packet_add_tlv_raw(group, TLV_TYPE_MAC_ADDR, (PUCHAR)pCurr->PhysicalAddress, pCurr->PhysicalAddressLength);
-
-			dprintf("[INTERFACE] Adding Description");
-			packet_add_tlv_wstring(group, TLV_TYPE_MAC_NAME, pCurr->Description);
-
-			dprintf("[INTERFACE] Adding MTU: %u", pCurr->Mtu);
-			packet_add_tlv_uint(group, TLV_TYPE_INTERFACE_MTU, pCurr->Mtu);
-
-			for (pAddr = (IP_ADAPTER_UNICAST_ADDRESS_LH*)pCurr->FirstUnicastAddress;
-				pAddr; pAddr = pAddr->Next)
-			{
-				sockaddr = pAddr->Address.lpSockaddr;
-				if (AF_INET != sockaddr->sa_family && AF_INET6 != sockaddr->sa_family)
-				{
-					// Skip interfaces that aren't IP
-					continue;
-				}
-
-				if (v.dwMajorVersion >= 6) {
-					// Then this is Vista+ and the OnLinkPrefixLength member
-					// will be populated
-					dprintf("[INTERFACES] >= Vista, using prefix: %x", pAddr->OnLinkPrefixLength);
-					prefixes[prefixCount] = htonl(pAddr->OnLinkPrefixLength);
-				}
-				else if (pPrefix)
-				{
-					dprintf("[INTERFACES] < Vista, using prefix: %x", pPrefix->PrefixLength);
-					prefixes[prefixCount] = htonl(pPrefix->PrefixLength);
-				}
-				else
-				{
-					dprintf("[INTERFACES] < Vista, no prefix");
-					prefixes[prefixCount] = 0;
-				}
-
-				if (prefixes[prefixCount])
-				{
-					dprintf("[INTERFACE] Adding Prefix: %x", prefixes[prefixCount]);
-					// the UINT value is already byte-swapped, so we add it as a raw instead of
-					// swizzling the bytes twice.
-					packet_add_tlv_raw(group, TLV_TYPE_IP_PREFIX, (PUCHAR)&prefixes[prefixCount], sizeof(DWORD));
-					prefixCount++;
-				}
-
-				if (sockaddr->sa_family == AF_INET)
-				{
-					dprintf("[INTERFACE] Adding IPv4 Address: %x", ((struct sockaddr_in *)sockaddr)->sin_addr);
-					packet_add_tlv_raw(group, TLV_TYPE_IP, (PUCHAR)&(((struct sockaddr_in *)sockaddr)->sin_addr), 4);
-				}
-				else
-				{
-					dprintf("[INTERFACE] Adding IPv6 Address");
-					packet_add_tlv_raw(group, TLV_TYPE_IP, (PUCHAR)&(((struct sockaddr_in6 *)sockaddr)->sin6_addr), 16);
-					packet_add_tlv_raw(group, TLV_TYPE_IP6_SCOPE, (PUCHAR)&(((struct sockaddr_in6 *)sockaddr)->sin6_scope_id), sizeof(DWORD));
-				}
-
-			}
-			// Add the interface group
-			packet_add_group(response, TLV_TYPE_NETWORK_INTERFACE, group);
-		}
-	} while (0);
-
-	if (pAdapters)
-	{
-		free(pAdapters);
+		dprintf("[INTERFACE] No 'GetAdaptersAddresses'. Falling back on get_interfaces_windows_mib");
+		return get_interfaces_windows_mib(remote, response);
 	}
+
+	gaa(family, flags, NULL, pAdapters, &outBufLen);
+	if (!(pAdapters = malloc(outBufLen)))
+	{
+		return ERROR_NOT_ENOUGH_MEMORY;
+	}
+
+	if (gaa(family, flags, NULL, pAdapters, &outBufLen))
+	{
+		result = GetLastError();
+		goto out;
+	}
+
+	dprintf("[INTERFACE] pAdapters->Length = %d", pAdapters->Length);
+	// According to http://msdn.microsoft.com/en-us/library/windows/desktop/aa366058(v=vs.85).aspx
+	// the PIP_ADAPTER_PREFIX doesn't exist prior to XP SP1. We check for this via the `Length`
+	// value, which is 72 in XP without an SP, but 144 in later versions.
+	if (pAdapters->Length <= 72)
+	{
+		dprintf("[INTERFACE] PIP_ADAPTER_PREFIX is missing");
+		result = get_interfaces_windows_mib(remote, response);
+		goto out;
+	}
+
+	// we'll need to know the version later on
+	memset(&v, 0, sizeof(v));
+	v.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
+	GetVersionEx((LPOSVERSIONINFO)&v);
+
+	// Enumerate the entries
+	for (pCurr = pAdapters; pCurr; pCurr = pCurr->Next)
+	{
+		// Save the first prefix for later in case we don't have an OnLinkPrefixLength
+		pPrefix = pCurr->FirstPrefix;
+
+		Packet* group = packet_create_group();
+
+		dprintf("[INTERFACE] Adding index: %u", pCurr->IfIndex);
+		packet_add_tlv_uint(group, TLV_TYPE_INTERFACE_INDEX, pCurr->IfIndex);
+
+		dprintf("[INTERFACE] Adding MAC");
+		packet_add_tlv_raw(group, TLV_TYPE_MAC_ADDR, (PUCHAR)pCurr->PhysicalAddress, pCurr->PhysicalAddressLength);
+
+		dprintf("[INTERFACE] Adding Description");
+		packet_add_tlv_wstring(group, TLV_TYPE_MAC_NAME, pCurr->Description);
+
+		dprintf("[INTERFACE] Adding MTU: %u", pCurr->Mtu);
+		packet_add_tlv_uint(group, TLV_TYPE_INTERFACE_MTU, pCurr->Mtu);
+
+		for (pAddr = (IP_ADAPTER_UNICAST_ADDRESS_LH*)pCurr->FirstUnicastAddress;
+			pAddr; pAddr = pAddr->Next)
+		{
+			sockaddr = pAddr->Address.lpSockaddr;
+			if (AF_INET != sockaddr->sa_family && AF_INET6 != sockaddr->sa_family)
+			{
+				// Skip interfaces that aren't IP
+				continue;
+			}
+
+			DWORD prefix = 0;
+			if (v.dwMajorVersion >= 6) {
+				// Then this is Vista+ and the OnLinkPrefixLength member
+				// will be populated
+				dprintf("[INTERFACES] >= Vista, using prefix: %x", pAddr->OnLinkPrefixLength);
+				prefix = htonl(pAddr->OnLinkPrefixLength);
+			}
+			else if (pPrefix)
+			{
+				dprintf("[INTERFACES] < Vista, using prefix: %x", pPrefix->PrefixLength);
+				prefix = htonl(pPrefix->PrefixLength);
+			}
+			else
+			{
+				dprintf("[INTERFACES] < Vista, no prefix");
+				prefix = 0;
+			}
+
+			if (prefix)
+			{
+				dprintf("[INTERFACE] Adding Prefix: %x", prefix);
+				// the UINT value is already byte-swapped, so we add it as a raw instead of
+				// swizzling the bytes twice.
+				packet_add_tlv_raw(group, TLV_TYPE_IP_PREFIX, (PUCHAR)&prefix, sizeof(prefix));
+			}
+
+			if (sockaddr->sa_family == AF_INET)
+			{
+				dprintf("[INTERFACE] Adding IPv4 Address: %x", ((struct sockaddr_in *)sockaddr)->sin_addr);
+				packet_add_tlv_raw(group, TLV_TYPE_IP, (PUCHAR)&(((struct sockaddr_in *)sockaddr)->sin_addr), 4);
+			}
+			else
+			{
+				dprintf("[INTERFACE] Adding IPv6 Address");
+				packet_add_tlv_raw(group, TLV_TYPE_IP, (PUCHAR)&(((struct sockaddr_in6 *)sockaddr)->sin6_addr), 16);
+				packet_add_tlv_raw(group, TLV_TYPE_IP6_SCOPE, (PUCHAR)&(((struct sockaddr_in6 *)sockaddr)->sin6_scope_id), sizeof(DWORD));
+			}
+
+		}
+		// Add the interface group
+		packet_add_group(response, TLV_TYPE_NETWORK_INTERFACE, group);
+	}
+
+out:
+	free(pAdapters);
+
 	return result;
 }
 
@@ -266,9 +240,7 @@ int get_interfaces_linux(Remote *remote, Packet *response)
 		}
 	}
 
-	if (ifaces) {
-		free(ifaces);
-	}
+	free(ifaces);
 
 	return result;
 }
