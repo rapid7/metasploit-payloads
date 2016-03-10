@@ -72,14 +72,14 @@ public class sqlite_query_android implements Command {
         } catch (SQLiteException e) {
             response.addOverflow(TLV_TYPE_SQLITE_ERROR, e.getMessage());
         } finally {
+            if (c != null) {
+                c.close();
+            }
             if (db != null) {
                 if (writeable) {
                     db.endTransaction();
                 }
                 db.close();
-            }
-            if (c != null) {
-                c.close();
             }
         }
         return ERROR_SUCCESS;
