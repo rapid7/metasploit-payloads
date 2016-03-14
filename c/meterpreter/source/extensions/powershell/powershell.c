@@ -21,6 +21,7 @@ static BOOL gSuccessfullyLoaded = FALSE;
 Command customCommands[] =
 {
 	COMMAND_REQ("powershell_execute", request_powershell_execute),
+	COMMAND_REQ("powershell_shell", request_powershell_shell),
 	COMMAND_TERMINATOR
 };
 

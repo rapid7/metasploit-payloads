@@ -8,6 +8,7 @@
 DWORD initialize_dotnet_host();
 VOID deinitialize_dotnet_host();
 DWORD request_powershell_execute(Remote *remote, Packet *packet);
+DWORD request_powershell_shell(Remote *remote, Packet *packet);
 
 #endif
 
