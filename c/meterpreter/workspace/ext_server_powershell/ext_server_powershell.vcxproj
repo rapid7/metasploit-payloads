@@ -90,7 +90,7 @@
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>backcompat.lib;Netapi32.lib;ws2_32.lib;Mpr.lib;metsrv.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>mscoree.lib;backcompat.lib;Netapi32.lib;ws2_32.lib;Mpr.lib;metsrv.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\backcompat\$(Configuration);..\metsrv\$(Configuration)\$(Platform);..\..\deps\openssl\lib\win;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
@@ -141,7 +141,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>backcompat.lib;Netapi32.lib;ws2_32.lib;Mpr.lib;metsrv.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>mscoree.lib;backcompat.lib;Netapi32.lib;ws2_32.lib;Mpr.lib;metsrv.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\backcompat\$(Configuration);..\metsrv\$(Configuration)\$(Platform);..\..\deps\openssl\lib\win;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
@@ -194,7 +194,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>backcompat.lib;Netapi32.lib;ws2_32.lib;Mpr.lib;metsrv.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>mscoree.lib;backcompat.lib;Netapi32.lib;ws2_32.lib;Mpr.lib;metsrv.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\backcompat\$(Configuration);..\metsrv\$(Configuration)\$(Platform);..\..\deps\openssl\lib\win;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <DelayLoadDLLs>metsrv.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
       <GenerateDebugInformation>false</GenerateDebugInformation>
@@ -245,7 +245,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>backcompat.lib;Netapi32.lib;ws2_32.lib;Mpr.lib;metsrv.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>mscoree.lib;backcompat.lib;Netapi32.lib;ws2_32.lib;Mpr.lib;metsrv.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\backcompat\$(Configuration);..\metsrv\$(Configuration)\$(Platform);..\..\deps\openssl\lib\win;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <DelayLoadDLLs>metsrv.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
       <GenerateDebugInformation>false</GenerateDebugInformation>
@@ -274,10 +274,12 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
   <ItemGroup>
     <ClCompile Include="..\..\source\extensions\powershell\powershell.c" />
     <ClCompile Include="..\..\source\extensions\powershell\powershell_bridge.cpp" />
+    <ClCompile Include="..\..\source\extensions\powershell\powershell_runner.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\source\extensions\powershell\powershell.h" />
     <ClInclude Include="..\..\source\extensions\powershell\powershell_bridge.h" />
+    <ClInclude Include="..\..\source\extensions\powershell\powershell_runner.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\backcompat\backcompat.vcxproj">

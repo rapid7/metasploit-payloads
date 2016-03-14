@@ -15,6 +15,8 @@
 // this sets the delay load hook function, see DelayLoadMetSrv.h
 EnableDelayLoadMetSrv();
 
+static BOOL gSuccessfullyLoaded = FALSE;
+
 /*! @brief List of commands that the powershell extension provides. */
 Command customCommands[] =
 {
@@ -31,9 +33,14 @@ DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
 {
 	hMetSrv = remote->met_srv;
 
-	command_register_all(customCommands);
+	DWORD result = initialize_dotnet_host();
 
-	return ERROR_SUCCESS;
+	if (result == ERROR_SUCCESS)
+	{
+		command_register_all(customCommands);
+	}
+
+	return result;
 }
 
 /*!
@@ -44,6 +51,7 @@ DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
 DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
 {
 	command_deregister_all(customCommands);
+	deinitialize_dotnet_host();
 
 	return ERROR_SUCCESS;
 }
