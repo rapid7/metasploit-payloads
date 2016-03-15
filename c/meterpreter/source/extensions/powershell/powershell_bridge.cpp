@@ -239,6 +239,7 @@ DWORD powershell_channel_interact_notify(Remote *remote, LPVOID entryContext, LP
 	{
 		DWORD result = channel_write(channel, remote, NULL, 0, (PUCHAR)(char*)shell->output, byteCount, NULL);
 		shell->output = "";
+		ResetEvent(shell->wait_handle);
 	}
 
 	return ERROR_SUCCESS;
@@ -265,7 +266,7 @@ DWORD powershell_channel_interact(Channel *channel, Packet *request, LPVOID cont
 		if (shell->wait_handle == NULL)
 		{
 			dprintf("[PSH SHELL] beginning interaction");
-			shell->wait_handle = CreateEventA(NULL, TRUE, FALSE, NULL);
+			shell->wait_handle = CreateEventA(NULL, FALSE, FALSE, NULL);
 
 			result = scheduler_insert_waitable(shell->wait_handle, channel, context,
 				powershell_channel_interact_notify, powershell_channel_interact_destroy);
