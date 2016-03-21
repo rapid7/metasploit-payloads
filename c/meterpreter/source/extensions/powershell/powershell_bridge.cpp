@@ -168,8 +168,12 @@ DWORD initialize_dotnet_host()
 		dprintf("[PSH] Getting a reference to the .NET runtime");
 		if (FAILED(hr = clrMetaHost->GetRuntime(L"v2.0.50727", IID_PPV_ARGS(&clrRuntimeInfo))))
 		{
-			dprintf("[PSH] Failed to get runtime instance 0x%x", hr);
-			break;
+			dprintf("[PSH] Failed to get runtime v2.0.50727 instance 0x%x", hr);
+			if (FAILED(hr = clrMetaHost->GetRuntime(L"v4.0.30319", IID_PPV_ARGS(&clrRuntimeInfo))))
+			{
+				dprintf("[PSH] Failed to get runtime v4.0.30319 instance 0x%x", hr);
+				break;
+			}
 		}
 
 		dprintf("[PSH] Determining loadablility");
