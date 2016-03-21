@@ -296,7 +296,7 @@ DWORD powershell_channel_interact_notify(Remote *remote, LPVOID entryContext, LP
 	InteractiveShell* shell = (InteractiveShell*)threadContext;
 	DWORD byteCount = shell->output.length() + 1;
 
-	if (shell->output.length() > 1)
+	if (shell->output.length() > 1 && shell->wait_handle != NULL)
 	{
 		DWORD result = channel_write(channel, remote, NULL, 0, (PUCHAR)(char*)shell->output, byteCount, NULL);
 		shell->output = "";
@@ -312,8 +312,9 @@ DWORD powershell_channel_interact_destroy(HANDLE waitable, LPVOID entryContext, 
 	InteractiveShell* shell = (InteractiveShell*)threadContext;
 	if (shell->wait_handle)
 	{
-		CloseHandle(shell->wait_handle);
+		HANDLE h = shell->wait_handle;
 		shell->wait_handle = NULL;
+		CloseHandle(h);
 	}
 	return ERROR_SUCCESS;
 }
@@ -334,17 +335,11 @@ DWORD powershell_channel_interact(Channel *channel, Packet *request, LPVOID cont
 
 			SetEvent(shell->wait_handle);
 		}
-		else
-		{
-			dprintf("[PSH SHELL] resuming interaction");
-			result = scheduler_signal_waitable(shell->wait_handle, Resume);
-			SetEvent(shell->wait_handle);
-		}
 	}
-	else
+	else if (shell->wait_handle != NULL)
 	{
-		dprintf("[PSH SHELL] pausing interaction");
-		result = scheduler_signal_waitable(shell->wait_handle, Pause);
+		dprintf("[PSH SHELL] stopping interaction");
+		result = scheduler_signal_waitable(shell->wait_handle, Stop);
 	}
 
 	return result;
@@ -361,7 +356,7 @@ DWORD powershell_channel_write(Channel* channel, Packet* request, LPVOID context
 	_bstr_t output;
 
 	DWORD result = InvokePSCommand(shell->session_id, codeMarshall, output);
-	if (result == ERROR_SUCCESS)
+	if (result == ERROR_SUCCESS && shell->wait_handle)
 	{
 		shell->output += output + "PS > ";
 		SetEvent(shell->wait_handle);
@@ -378,7 +373,9 @@ DWORD powershell_channel_close(Channel* channel, Packet* request, LPVOID context
 	{
 		if (shell->wait_handle != NULL)
 		{
-			CloseHandle(shell->wait_handle);
+			HANDLE h = shell->wait_handle;
+			shell->wait_handle = NULL;
+			CloseHandle(h);
 		}
 
 		SAFE_FREE(shell->session_id);
@@ -414,6 +411,15 @@ DWORD request_powershell_shell(Remote *remote, Packet *packet)
 				break;
 			}
 			shell->session_id = packet_get_tlv_value_wstring(packet, TLV_TYPE_POWERSHELL_SESSIONID);
+
+			if (shell->session_id != NULL)
+			{
+				dprintf("[PSH] Session ID set to %S", shell->session_id);
+			}
+			else
+			{
+				dprintf("[PSH] Session ID not set");
+			}
 
 			chanOps.native.context = shell;
 			chanOps.native.close = powershell_channel_close;
