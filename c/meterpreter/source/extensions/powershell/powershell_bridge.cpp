@@ -27,6 +27,8 @@ typedef struct _InteractiveShell
     rename("ReportEvent", "InteropServices_ReportEvent")
 using namespace mscorlib;
 
+typedef HRESULT(WINAPI* pClrCreateInstance)(REFCLSID, REFIID, LPVOID*);
+typedef HRESULT(WINAPI* pCorBindToRuntime)(LPCWSTR, LPCWSTR, REFCLSID, REFIID, LPVOID*);
 
 static ICLRMetaHost* gClrMetaHost = NULL;
 static ICLRRuntimeInfo* gClrRuntimeInfo = NULL;
@@ -155,47 +157,79 @@ DWORD initialize_dotnet_host()
 	_AssemblyPtr clrPowershellAssembly = NULL;
 	_TypePtr clrPowershellType = NULL;
 	SAFEARRAY* clrByteArray = NULL;
+	HMODULE hMsCoree = NULL;
 
 	do
 	{
-		dprintf("[PSH] Creating the metahost instance");
-		if (FAILED(hr = CLRCreateInstance(CLSID_CLRMetaHost, IID_PPV_ARGS(&clrMetaHost))))
+		dprintf("[PSH] Locating CLR instance ...");
+		hMsCoree = LoadLibraryA("mscoree.dll");
+		if (hMsCoree == NULL)
 		{
-			dprintf("[PSH] Failed to create instace of the CLR metahost 0x%x", hr);
+			hr = (HRESULT)GetLastError();
+			dprintf("[PSH] Failed to load mscoree, .NET probably isn't installed. 0x%x", hr);
 			break;
 		}
 
-		dprintf("[PSH] Getting a reference to the .NET runtime");
-		if (FAILED(hr = clrMetaHost->GetRuntime(L"v2.0.50727", IID_PPV_ARGS(&clrRuntimeInfo))))
+		pClrCreateInstance clrCreateInstance = (pClrCreateInstance)GetProcAddress(hMsCoree, "CLRCreateInstance");
+		if (clrCreateInstance != NULL)
 		{
-			dprintf("[PSH] Failed to get runtime v2.0.50727 instance 0x%x", hr);
-			if (FAILED(hr = clrMetaHost->GetRuntime(L"v4.0.30319", IID_PPV_ARGS(&clrRuntimeInfo))))
+			dprintf("[PSH] .NET 4 method in use");
+
+			if (FAILED(hr = clrCreateInstance(CLSID_CLRMetaHost, IID_PPV_ARGS(&clrMetaHost))))
 			{
-				dprintf("[PSH] Failed to get runtime v4.0.30319 instance 0x%x", hr);
+				dprintf("[PSH] Failed to create instace of the CLR metahost 0x%x", hr);
+				break;
+			}
+
+			dprintf("[PSH] Getting a reference to the .NET runtime");
+			if (FAILED(hr = clrMetaHost->GetRuntime(L"v2.0.50727", IID_PPV_ARGS(&clrRuntimeInfo))))
+			{
+				dprintf("[PSH] Failed to get runtime v2.0.50727 instance 0x%x", hr);
+				if (FAILED(hr = clrMetaHost->GetRuntime(L"v4.0.30319", IID_PPV_ARGS(&clrRuntimeInfo))))
+				{
+					dprintf("[PSH] Failed to get runtime v4.0.30319 instance 0x%x", hr);
+					break;
+				}
+			}
+
+			dprintf("[PSH] Determining loadablility");
+			BOOL loadable = FALSE;
+			if (FAILED(hr = clrRuntimeInfo->IsLoadable(&loadable)))
+			{
+				dprintf("[PSH] Unable to determine of runtime is loadable 0x%x", hr);
+				break;
+			}
+
+			if (!loadable)
+			{
+				dprintf("[PSH] Chosen runtime isn't loadable, exiting.");
+				break;
+			}
+
+			dprintf("[PSH] Instantiating the COR runtime host");
+			hr = clrRuntimeInfo->GetInterface(CLSID_CorRuntimeHost, IID_PPV_ARGS(&clrCorRuntimeHost));
+			if (FAILED(hr))
+			{
+				dprintf("[PSH] Unable to get a reference to the COR runtime host 0x%x", hr);
 				break;
 			}
 		}
-
-		dprintf("[PSH] Determining loadablility");
-		BOOL loadable = FALSE;
-		if (FAILED(hr = clrRuntimeInfo->IsLoadable(&loadable)))
+		else
 		{
-			dprintf("[PSH] Unable to determine of runtime is loadable 0x%x", hr);
-			break;
-		}
+			dprintf("[PSH] .NET 4 method is missing, attempting to locate .NEt 2 method");
+			pCorBindToRuntime corBindToRuntime = (pCorBindToRuntime)GetProcAddress(hMsCoree, "CorBindToRuntime");
+			if (corBindToRuntime == NULL)
+			{
+				dprintf("[PSH] Unable to find .NET clr instance loader");
+				hr = E_NOTIMPL;
+				break;
+			}
 
-		if (!loadable)
-		{
-			dprintf("[PSH] Chosen runtime isn't loadable, exiting.");
-			break;
-		}
-
-		dprintf("[PSH] Instantiating the COR runtime host");
-		hr = clrRuntimeInfo->GetInterface(CLSID_CorRuntimeHost, IID_PPV_ARGS(&clrCorRuntimeHost));
-		if (FAILED(hr))
-		{
-			dprintf("[PSH] Unable to get a reference to the COR runtime host 0x%x", hr);
-			break;
+			if (FAILED(hr = corBindToRuntime(L"v2.0.50727", L"wks", CLSID_CorRuntimeHost, IID_PPV_ARGS(&clrCorRuntimeHost))))
+			{
+				dprintf("[PSH] Unable to bind to .NET 2 runtime host: 0x%x", hr);
+				break;
+			}
 		}
 
 		dprintf("[PSH] Starting the COR runtime host");
