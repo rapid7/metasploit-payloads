@@ -6,7 +6,7 @@ from meterpreter.tlv import *
 # We only support technique 1 (as it's the only one that doesn't require DLLs)
 def getsystem():
   tlv = tlv_pack(TLV_TYPE_ELEVATE_TECHNIQUE, 1)
-  tlv = tlv_pack(TLV_TYPE_ELEVATE_SERVICE_NAME, rnd_string(5))
+  tlv += tlv_pack(TLV_TYPE_ELEVATE_SERVICE_NAME, rnd_string(5))
   resp = invoke_meterpreter('priv_elevate_getsystem', True, tlv)
   if resp == None:
     return False
