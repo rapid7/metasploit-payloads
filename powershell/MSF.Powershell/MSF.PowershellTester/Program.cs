@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MSF.Powershell;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -8,10 +9,17 @@ namespace MSF.PowershellTester
     {
         static void Main(string[] args)
         {
-            var x = MSF.Powershell.Runner.Get("Default");
-            System.Console.Write(x.Execute("$x = $(whoami)"));
-            System.Console.Write(x.Execute("$x"));
-            MSF.Powershell.Runner.Remove("Default");
+            //var x = MSF.Powershell.Runner.Get("Default");
+            //System.Console.Write(x.Execute("$x = $(whoami)"));
+            //System.Console.Write(x.Execute("$x"));
+            //MSF.Powershell.Runner.Remove("Default");
+
+            Tlv t = new Tlv();
+            t.Pack(TlvType.ElevateTechnique, 1);
+            t.Pack(TlvType.ElevateServiceName, "abcd1234");
+
+            var x = t.Bytes;
+            var y = 0;
         }
     }
 }

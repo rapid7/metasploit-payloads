@@ -1,5 +1,5 @@
 /*!
- * @file powershell_bridge.c
+ * @file powershell_bridge.cpp
  * @brief Wrapper functions for bridging native meterp calls to powershell
  */
 extern "C" {

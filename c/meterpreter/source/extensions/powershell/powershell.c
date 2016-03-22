@@ -11,6 +11,7 @@
 #include "../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
 
 #include "powershell_bridge.h"
+#include "powershell_bindings.h"
 
 // this sets the delay load hook function, see DelayLoadMetSrv.h
 EnableDelayLoadMetSrv();
@@ -34,6 +35,7 @@ Command customCommands[] =
 DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
 {
 	hMetSrv = remote->met_srv;
+	gRemote = remote;
 
 	DWORD result = initialize_dotnet_host();
 
