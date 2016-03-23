@@ -22,7 +22,9 @@ namespace MSF.Powershell.Meterpreter
         Compressed = 1 << 21,
 
         Group = 1 << 30,
-        Complex = 1 << 31
+        Complex = 1 << 31,
+
+        All = String | Uint | Raw | Bool | Qword | Compressed | Group | Complex
     };
 
     public enum ExtensionBase

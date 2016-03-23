@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Text;
@@ -41,6 +42,66 @@ namespace MSF.Powershell.Meterpreter
 
                 return packetStream.ToArray();
             }
+        }
+
+        public static Dictionary<TlvType, List<object>> FromResponse(byte[] response, int length = 0)
+        {
+            var dict = new Dictionary<TlvType, List<object>>();
+
+            var offset = 0;
+
+            if (length == 0)
+            {
+                length = response.Length;
+            }
+
+            while (offset < length)
+            {
+                var size = BytesToInt(response, offset);
+                var tlvType = BytesToTlvType(response, offset + 4);
+                System.Diagnostics.Debug.Write(string.Format("Type {0} found that's {1} bytes", tlvType, size));
+
+                if (!dict.ContainsKey(tlvType))
+                {
+                    dict.Add(tlvType, new List<object>());
+                }
+
+                switch (TlvTypeToMetaType(tlvType))
+                {
+                    case MetaType.String:
+                        {
+                            var value = BytesToString(response, size - 8, offset + 8);
+                            System.Diagnostics.Debug.Write(string.Format("Type {0} value is: {1}", tlvType, value));
+                            dict[tlvType].Add(value);
+                            break;
+                        }
+                    case MetaType.Uint:
+                        {
+                            var value = BytesToInt(response, offset + 8);
+                            System.Diagnostics.Debug.Write(string.Format("Type {0} value is: {1}", tlvType, value));
+                            dict[tlvType].Add(value);
+                            break;
+                        }
+                    case MetaType.Qword:
+                        {
+                            var value = BytesToQword(response, offset + 8);
+                            System.Diagnostics.Debug.Write(string.Format("Type {0} value is: {1}", tlvType, value));
+                            dict[tlvType].Add(value);
+                            break;
+                        }
+                    case MetaType.Bool:
+                        {
+                            var value = BytesToBool(response, offset + 8);
+                            System.Diagnostics.Debug.Write(string.Format("Type {0} value is: {1}", tlvType, value));
+                            dict[tlvType].Add(value);
+                            break;
+                        }
+                }
+
+                offset += size;
+            }
+
+            return dict;
         }
 
         public byte[] Bytes
@@ -138,6 +199,37 @@ namespace MSF.Powershell.Meterpreter
             }
         }
 
+        private static PacketType BytesToPacketType(byte[] bytes, int offset = 0)
+        {
+            return (PacketType)BytesToInt(bytes, offset);
+        }
+
+        private static TlvType BytesToTlvType(byte[] bytes, int offset = 0)
+        {
+            return (TlvType)BytesToInt(bytes, offset);
+        }
+
+        private static bool BytesToBool(byte[] bytes, int offset = 0)
+        {
+            return bytes[offset] == 1;
+        }
+
+        private static int BytesToInt(byte[] bytes, int offset = 0)
+        {
+            return IPAddress.NetworkToHostOrder(BitConverter.ToInt32(bytes, offset));
+        }
+
+        private static Int64 BytesToQword(byte[] bytes, int offset = 0)
+        {
+            return IPAddress.NetworkToHostOrder(BitConverter.ToInt64(bytes, offset));
+        }
+
+        private static string BytesToString(byte[] bytes, int length, int offset = 0)
+        {
+            // discard the trailing null byte
+            return Encoding.UTF8.GetString(bytes, offset, length - 1);
+        }
+
         private static byte[] ToBytes(Int64 i)
         {
             return BitConverter.GetBytes(IPAddress.HostToNetworkOrder(i));
@@ -156,6 +248,11 @@ namespace MSF.Powershell.Meterpreter
         private static byte[] ToBytes(string s)
         {
             return Encoding.UTF8.GetBytes(s + "\x00");
+        }
+
+        private static MetaType TlvTypeToMetaType(TlvType tlvType)
+        {
+            return (MetaType)((int)MetaType.All & (int)tlvType);
         }
     }
 }
