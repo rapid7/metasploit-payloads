@@ -212,34 +212,34 @@ namespace MSF.Powershell
 
             public override void Write(ConsoleColor foregroundColor, ConsoleColor backgroundColor, string value)
             {
-                _buffer.Append(value);
+                _buffer.Append(value.TrimEnd());
             }
 
             public override void Write(string value)
             {
-                _buffer.Append(value);
+                _buffer.Append(value.TrimEnd());
             }
 
             public override void WriteDebugLine(string message)
             {
                 _buffer.Append("DEBUG: ");
-                _buffer.AppendLine(message);
+                _buffer.AppendLine(message.TrimEnd());
             }
 
             public override void WriteErrorLine(string value)
             {
                 _buffer.Append("ERROR: ");
-                _buffer.AppendLine(value);
+                _buffer.AppendLine(value.TrimEnd());
             }
 
             public override void WriteLine(ConsoleColor foregroundColor, ConsoleColor backgroundColor, string value)
             {
-                _buffer.AppendLine(value);
+                _buffer.AppendLine(value.TrimEnd());
             }
 
             public override void WriteLine(string value)
             {
-                _buffer.AppendLine(value);
+                _buffer.AppendLine(value.TrimEnd());
             }
 
             public override void WriteLine()
@@ -254,13 +254,13 @@ namespace MSF.Powershell
             public override void WriteVerboseLine(string message)
             {
                 _buffer.Append("VERBOSE: ");
-                _buffer.AppendLine(message);
+                _buffer.AppendLine(message.TrimEnd());
             }
 
             public override void WriteWarningLine(string message)
             {
                 _buffer.Append("WARNING: ");
-                _buffer.AppendLine(message);
+                _buffer.AppendLine(message.TrimEnd());
             }
         }
 
