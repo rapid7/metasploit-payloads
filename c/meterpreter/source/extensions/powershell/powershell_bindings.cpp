@@ -12,36 +12,33 @@ Remote* gRemote = NULL;
 VOID MeterpreterInvoke(unsigned int isLocal, unsigned char* input, unsigned int inputLength, unsigned char** output, unsigned int* outputLength)
 {
 	dprintf("[PSH BINDING] Input %p of %d bytes received", input, inputLength);
-	/*
-	dprintf("[PYTHON] a function was invoked on: %s", self->ob_type->tp_name);
-	const char* packetBytes = NULL;
-	BOOL isLocal = FALSE;
-	Py_ssize_t packetLength = 0;
-
-	PyArg_ParseTuple(args, "is#", &isLocal, &packetBytes, &packetLength);
-	dprintf("[PYTHON] packet %p is %u bytes and is %s", packetBytes, packetLength, isLocal ? "local" : "not local");
 
 	Packet packet = { 0 };
-	packet.header = *(PacketHeader*)packetBytes;
-	packet.payload = (PUCHAR)(packetBytes + sizeof(PacketHeader));
-	packet.payloadLength = (ULONG)packetLength - sizeof(TlvHeader);
+	packet.header = *(PacketHeader*)input;
+	packet.header.length = ntohl(packet.header.length);
+	packet.payload = (PUCHAR)(input + sizeof(PacketHeader));
+	packet.payloadLength = (ULONG)inputLength - sizeof(TlvHeader);
+	packet.local = isLocal == 1;
 
-	// If the functionality doesn't require interaction with MSF, then
-	// make the packet as local so that the packet receives the request
-	// and so that the packet doesn't get sent to Meterpreter
-	packet.local = isLocal;
+	dprintf("[PSH BINDING] Packet header length:  %u", packet.header.length);
+	dprintf("[PSH BINDING] Packet header type:    %u", packet.header.type);
+	dprintf("[PSH BINDING] Packet payload length: %u", packet.payloadLength);
+	dprintf("[PSH BINDING] Packet local flag:     %u", isLocal);
 
 	command_handle(gRemote, &packet);
 
-	// really not sure how to deal with the non-local responses at this point.
-	if (packet.partner == NULL)
+	if (packet.partner != NULL)
 	{
-		// "None"
-		return Py_BuildValue("");
+		dprintf("[PSH BINDING] Response packet generated");
+		*output = (unsigned char*)LocalAlloc(LHND, packet.partner->payloadLength);
+		*outputLength = packet.partner->payloadLength;
+		memcpy(*output, packet.partner->payload, packet.partner->payloadLength);
+		packet_destroy(packet.partner);
 	}
-
-	PyObject* result = PyString_FromStringAndSize(packet.partner->payload, packet.partner->payloadLength);
-	packet_destroy(packet.partner);
-	return result;
-*/
+	else
+	{
+		dprintf("[PSH BINDING] Response packet not generated");
+		*output = NULL;
+		*outputLength = 0;
+	}
 }

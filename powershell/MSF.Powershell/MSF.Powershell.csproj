@@ -38,11 +38,12 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Enumerations.cs" />
-    <Compile Include="Meterpreter.cs" />
+    <Compile Include="Meterpreter\Elevate.cs" />
+    <Compile Include="Meterpreter\Enumerations.cs" />
+    <Compile Include="Meterpreter\Core.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Runner.cs" />
-    <Compile Include="Tlv.cs" />
+    <Compile Include="Meterpreter\Tlv.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

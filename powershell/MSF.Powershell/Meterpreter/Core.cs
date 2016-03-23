@@ -2,9 +2,9 @@
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace MSF.Powershell
+namespace MSF.Powershell.Meterpreter
 {
-    public static class Meterpreter
+    public static class Core
     {
         private delegate void MeterpreterInvoke(uint isLocal, byte[] input, uint inputSize, ref IntPtr output, ref uint outputSize);
 
@@ -12,7 +12,9 @@ namespace MSF.Powershell
 
         public static void SetInvocationPointer(Int64 callbackPointer)
         {
+            System.Diagnostics.Debug.Write(string.Format("[PSH BINDING] Callback pointer being set to 0x{0:X}", callbackPointer));
             _callback = (MeterpreterInvoke)Marshal.GetDelegateForFunctionPointer(new IntPtr(callbackPointer), typeof(MeterpreterInvoke));
+            System.Diagnostics.Debug.Write(string.Format("[PSH BINDING] _callback is {0}null", _callback == null ? "" : "not "));
         }
 
         public static string RandomString(int length)
@@ -39,10 +41,13 @@ namespace MSF.Powershell
                     uint outputLength = 0;
                     _callback(isLocal ? 1U : 0U, input, (uint)input.Length, ref output, ref outputLength);
 
-                    var result = new byte[outputLength];
-                    Marshal.Copy(output, result, 0, result.Length);
+                    if (output != IntPtr.Zero && outputLength > 0)
+                    {
+                        var result = new byte[outputLength];
+                        Marshal.Copy(output, result, 0, result.Length);
 
-                    return result;
+                        return result;
+                    }
                 }
                 finally
                 {

@@ -6,11 +6,13 @@ extern "C" {
 #include "../../common/common.h"
 #include "powershell.h"
 #include "powershell_bridge.h"
+#include "powershell_bindings.h"
 }
 
 #include <comdef.h>
 #include <mscoree.h>
 #include <metahost.h>
+
 #include "powershell_runner.h"
 
 typedef struct _InteractiveShell
@@ -314,6 +316,13 @@ DWORD initialize_dotnet_host()
 	gClrAppDomain = clrAppDomain;
 	gClrPowershellAssembly = clrPowershellAssembly;
 	gClrPowershellType = clrPowershellType;
+
+	wchar_t callbackCmd[256];
+	swprintf_s(callbackCmd, 255, L"[MSF.Powershell.Meterpreter.Core]::SetInvocationPointer(0x%p)", MeterpreterInvoke);
+	_bstr_t output;
+	dprintf("[PSH] Setting the binding callback pointer:  %S", callbackCmd);
+	InvokePSCommand(NULL, callbackCmd, output);
+
 	return ERROR_SUCCESS;
 }
 

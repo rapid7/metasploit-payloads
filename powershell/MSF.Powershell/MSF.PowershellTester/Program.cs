@@ -1,4 +1,5 @@
 ﻿using MSF.Powershell;
+using MSF.Powershell.Meterpreter;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -18,7 +19,7 @@ namespace MSF.PowershellTester
             t.Pack(TlvType.ElevateTechnique, 1);
             t.Pack(TlvType.ElevateServiceName, "abcd1234");
 
-            var x = t.Bytes;
+            var x = t.ToRequest("priv_elevate_getsystem");
             var y = 0;
         }
     }

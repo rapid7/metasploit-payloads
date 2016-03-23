@@ -18,13 +18,13 @@ namespace MSF.Powershell
 
         static Runner()
         {
-            System.Diagnostics.Debug.Write("Static constructor called");
+            System.Diagnostics.Debug.Write("[PSH RUNNER] Static constructor called");
             _runners = new Dictionary<string, Runner>();
         }
 
         public static string Execute(string id, string ps)
         {
-            System.Diagnostics.Debug.Write(string.Format("Executing command on session {0}", id));
+            System.Diagnostics.Debug.Write(string.Format("[PSH RUNNER] Executing command on session {0}", id));
             if (!_runners.ContainsKey(id))
             {
                 _runners.Add(id, new Runner(id));

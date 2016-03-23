@@ -7,7 +7,6 @@
 
 extern Remote* gRemote;
 
-VOID MeterpreterInvoke(unsigned char* input, unsigned int inputLength, unsigned char** output, unsigned int* outputLength);
+VOID MeterpreterInvoke(unsigned int isLocal, unsigned char* input, unsigned int inputLength, unsigned char** output, unsigned int* outputLength);
 
 #endif
-

@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace MSF.Powershell
+namespace MSF.Powershell.Meterpreter
 {
     public enum PacketType
     {
