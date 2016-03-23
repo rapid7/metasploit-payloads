@@ -55,57 +55,68 @@ namespace MSF.Powershell.Meterpreter
                 length = response.Length;
             }
 
-            while (offset < length)
+            System.Diagnostics.Debug.Write(string.Format("[PSH BINDING] Parsing from {0} to {1} of {2}", start, start + length, response.Length));
+
+            while (offset < start + length)
             {
                 var size = BytesToInt(response, offset);
                 var tlvType = BytesToTlvType(response, offset + 4);
-                System.Diagnostics.Debug.Write(string.Format("Type {0} found that's {1} bytes", tlvType, size));
+                System.Diagnostics.Debug.Write(string.Format("[PSH BINDING] Type {0} found that's {1} bytes", tlvType, size));
 
                 if (!dict.ContainsKey(tlvType))
                 {
                     dict.Add(tlvType, new List<object>());
                 }
 
-                switch (TlvTypeToMetaType(tlvType))
+                var metaType = TlvTypeToMetaType(tlvType);
+                System.Diagnostics.Debug.Write(string.Format("[PSH BINDING] Type {0} detected as meta type {1}", tlvType, metaType));
+                switch (metaType)
                 {
                     case MetaType.String:
                         {
                             var value = BytesToString(response, size - 8, offset + 8);
-                            System.Diagnostics.Debug.Write(string.Format("Type {0} value is: {1}", tlvType, value));
+                            System.Diagnostics.Debug.Write(string.Format("[PSH BINDING] Type {0} value is: {1}", tlvType, value));
                             dict[tlvType].Add(value);
                             break;
                         }
                     case MetaType.Uint:
                         {
                             var value = BytesToInt(response, offset + 8);
-                            System.Diagnostics.Debug.Write(string.Format("Type {0} value is: {1}", tlvType, value));
+                            System.Diagnostics.Debug.Write(string.Format("[PSH BINDING] Type {0} value is: {1}", tlvType, value));
                             dict[tlvType].Add(value);
                             break;
                         }
                     case MetaType.Qword:
                         {
                             var value = BytesToQword(response, offset + 8);
-                            System.Diagnostics.Debug.Write(string.Format("Type {0} value is: {1}", tlvType, value));
+                            System.Diagnostics.Debug.Write(string.Format("[PSH BINDING] Type {0} value is: {1}", tlvType, value));
                             dict[tlvType].Add(value);
                             break;
                         }
                     case MetaType.Bool:
                         {
                             var value = BytesToBool(response, offset + 8);
-                            System.Diagnostics.Debug.Write(string.Format("Type {0} value is: {1}", tlvType, value));
+                            System.Diagnostics.Debug.Write(string.Format("[PSH BINDING] Type {0} value is: {1}", tlvType, value));
                             dict[tlvType].Add(value);
                             break;
                         }
                     case MetaType.Group:
                         {
+                            System.Diagnostics.Debug.Write(string.Format("[PSH BINDING] Type {0} is a group, parsing...", tlvType));
                             var value = FromResponse(response, offset + 8, size);
-                            System.Diagnostics.Debug.Write(string.Format("Type {0} value is a dictionary of {1} elements", tlvType, value.Count));
+                            System.Diagnostics.Debug.Write(string.Format("[PSH BINDING] Type {0} parsed, value is a dictionary of {1} elements", tlvType, value.Count));
                             dict[tlvType].Add(value);
+                            break;
+                        }
+                    default:
+                        {
+                            System.Diagnostics.Debug.Write(string.Format("[PSH BINDING] Unexpected type {0}", tlvType));
                             break;
                         }
                 }
 
                 offset += size;
+                System.Diagnostics.Debug.Write(string.Format("[PSH BINDING] Offset updated to {0}", offset));
             }
 
             return dict;
@@ -259,7 +270,7 @@ namespace MSF.Powershell.Meterpreter
 
         private static MetaType TlvTypeToMetaType(TlvType tlvType)
         {
-            return (MetaType)((int)MetaType.All & (int)tlvType);
+            return (MetaType)((int)tlvType & (int)MetaType.All);
         }
     }
 }

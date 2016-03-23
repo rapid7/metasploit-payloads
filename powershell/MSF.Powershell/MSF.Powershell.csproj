@@ -41,6 +41,7 @@
     <Compile Include="Meterpreter\Elevate.cs" />
     <Compile Include="Meterpreter\Enumerations.cs" />
     <Compile Include="Meterpreter\Core.cs" />
+    <Compile Include="Meterpreter\Kiwi.cs" />
     <Compile Include="Meterpreter\User.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Runner.cs" />
