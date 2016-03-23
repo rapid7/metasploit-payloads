@@ -44,11 +44,11 @@ namespace MSF.Powershell.Meterpreter
             }
         }
 
-        public static Dictionary<TlvType, List<object>> FromResponse(byte[] response, int length = 0)
+        public static Dictionary<TlvType, List<object>> FromResponse(byte[] response, int start = 0, int length = 0)
         {
             var dict = new Dictionary<TlvType, List<object>>();
 
-            var offset = 0;
+            var offset = start;
 
             if (length == 0)
             {
@@ -93,6 +93,13 @@ namespace MSF.Powershell.Meterpreter
                         {
                             var value = BytesToBool(response, offset + 8);
                             System.Diagnostics.Debug.Write(string.Format("Type {0} value is: {1}", tlvType, value));
+                            dict[tlvType].Add(value);
+                            break;
+                        }
+                    case MetaType.Group:
+                        {
+                            var value = FromResponse(response, offset + 8, size);
+                            System.Diagnostics.Debug.Write(string.Format("Type {0} value is a dictionary of {1} elements", tlvType, value.Count));
                             dict[tlvType].Add(value);
                             break;
                         }

@@ -53,6 +53,7 @@ namespace MSF.Powershell.Meterpreter
                 {
                     if (output != IntPtr.Zero)
                     {
+                        System.Diagnostics.Debug.Write(string.Format("[PSH BINDINGS] Freeing up memory allocated from the C++ Binding: {0:X}", output));
                         Marshal.FreeCoTaskMem(output);
                     }
                 }

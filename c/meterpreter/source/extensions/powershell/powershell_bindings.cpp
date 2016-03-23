@@ -30,7 +30,8 @@ VOID MeterpreterInvoke(unsigned int isLocal, unsigned char* input, unsigned int 
 	if (packet.partner != NULL)
 	{
 		dprintf("[PSH BINDING] Response packet generated");
-		*output = (unsigned char*)LocalAlloc(LHND, packet.partner->payloadLength);
+		// This memory is deliberately left allocated, because the .NET side will clean it up
+		*output = (unsigned char*)LocalAlloc(LPTR, packet.partner->payloadLength);
 		*outputLength = packet.partner->payloadLength;
 		memcpy(*output, packet.partner->payload, packet.partner->payloadLength);
 		packet_destroy(packet.partner);
