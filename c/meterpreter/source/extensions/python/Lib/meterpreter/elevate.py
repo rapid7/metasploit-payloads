@@ -26,7 +26,6 @@ def steal_token(pid):
   if resp == None:
     return False
 
-  print packet_get_tlv(resp, TLV_TYPE_RESULT)['value']
   return packet_get_tlv(resp, TLV_TYPE_RESULT)['value'] == 0
 
 def drop_token():
@@ -34,6 +33,5 @@ def drop_token():
   if resp == None:
     return False
 
-  print packet_get_tlv(resp, TLV_TYPE_RESULT)['value']
   return packet_get_tlv(resp, TLV_TYPE_RESULT)['value'] == 0
 
