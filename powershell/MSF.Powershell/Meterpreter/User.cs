@@ -24,5 +24,34 @@
 
             return null;
         }
+
+        public static string GetSid()
+        {
+            System.Diagnostics.Debug.Write("[PSH BINDING] Invoking binding call GetSid");
+
+            Tlv tlv = new Tlv();
+
+            var result = Core.InvokeMeterpreterBinding(true, tlv.ToRequest("stdapi_sys_config_getsid"));
+
+            if (result != null)
+            {
+                var responseTlv = Tlv.FromResponse(result);
+                if (responseTlv[TlvType.Result].Count > 0 &&
+                    (int)responseTlv[TlvType.Result][0] == 0)
+                {
+                    return (string)responseTlv[TlvType.Sid][0];
+                }
+            }
+
+            return null;
+
+        }
+
+        public static bool IsSystem()
+        {
+            System.Diagnostics.Debug.Write("[PSH BINDING] Invoking binding call IsSystem");
+
+            return SystemSID == GetSid();
+        }
     }
 }
