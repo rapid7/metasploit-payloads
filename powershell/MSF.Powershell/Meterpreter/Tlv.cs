@@ -122,6 +122,16 @@ namespace MSF.Powershell.Meterpreter
             return dict;
         }
 
+        public static T GetValue<T>(Dictionary<TlvType, List<object>> tlvDict, TlvType tlvType, T defaultVal = default(T))
+        {
+            if (tlvDict.ContainsKey(tlvType) && tlvDict[tlvType].Count > 0)
+            {
+                return (T)tlvDict[tlvType][0];
+            }
+
+            return defaultVal;
+        }
+
         public byte[] Bytes
         {
             get

@@ -18,7 +18,7 @@
                 if (responseTlv[TlvType.Result].Count > 0 &&
                     (int)responseTlv[TlvType.Result][0] == 0)
                 {
-                    return (string)responseTlv[TlvType.UserName][0];
+                    return Tlv.GetValue<string>(responseTlv, TlvType.UserName);
                 }
             }
 
@@ -39,7 +39,7 @@
                 if (responseTlv[TlvType.Result].Count > 0 &&
                     (int)responseTlv[TlvType.Result][0] == 0)
                 {
-                    return (string)responseTlv[TlvType.Sid][0];
+                    return Tlv.GetValue<string>(responseTlv, TlvType.Sid);
                 }
             }
 

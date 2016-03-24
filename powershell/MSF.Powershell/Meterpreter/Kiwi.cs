@@ -49,9 +49,9 @@ namespace MSF.Powershell.Meterpreter
                     foreach (var credObj in responseTlv[TlvType.KiwiPwdResult])
                     {
                         var credDict = (Dictionary<TlvType, List<object>>)credObj;
-                        var domain = credDict.ContainsKey(TlvType.KiwiPwdDomain) ? (string)credDict[TlvType.KiwiPwdDomain][0] : "";
-                        var username = credDict.ContainsKey(TlvType.KiwiPwdUserName) ? (string)credDict[TlvType.KiwiPwdUserName][0] : "";
-                        var password = credDict.ContainsKey(TlvType.KiwiPwdPassword) ? (string)credDict[TlvType.KiwiPwdPassword][0] : "";
+                        var domain = Tlv.GetValue<string>(credDict, TlvType.KiwiPwdDomain, string.Empty);
+                        var username = Tlv.GetValue<string>(credDict, TlvType.KiwiPwdUserName, string.Empty);
+                        var password = Tlv.GetValue<string>(credDict, TlvType.KiwiPwdPassword, string.Empty);
                         var credential = new Credential(domain, username, password);
 
                         if (!ids.ContainsKey(credential.ToString()))

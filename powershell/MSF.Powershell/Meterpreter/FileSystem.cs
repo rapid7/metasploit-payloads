@@ -56,12 +56,12 @@ namespace MSF.Powershell.Meterpreter
                     {
                         System.Diagnostics.Debug.Write("[PSH BINDING] ShowMount succeeded");
                         var mountDict = (Dictionary<TlvType, List<object>>)mountObj;
-                        var name = mountDict.ContainsKey(TlvType.MountName) ? (string)mountDict[TlvType.MountName][0] : "";
-                        var type = mountDict.ContainsKey(TlvType.MountType) ? (MountType)mountDict[TlvType.MountType][0] : MountType.Unknown;
-                        var spaceUser = mountDict.ContainsKey(TlvType.MountSpaceUser) ? (Int64)mountDict[TlvType.MountSpaceUser][0] : 0L;
-                        var spaceTotal = mountDict.ContainsKey(TlvType.MountSpaceTotal) ? (Int64)mountDict[TlvType.MountSpaceTotal][0] : 0L;
-                        var spaceFree = mountDict.ContainsKey(TlvType.MountSpaceFree) ? (Int64)mountDict[TlvType.MountSpaceFree][0] : 0L;
-                        var uncPath = mountDict.ContainsKey(TlvType.MountUncPath) ? (string)mountDict[TlvType.MountUncPath][0] : "";
+                        var name = Tlv.GetValue<string>(mountDict, TlvType.MountName, string.Empty);
+                        var type = Tlv.GetValue<MountType>(mountDict, TlvType.MountType, MountType.Unknown);
+                        var spaceUser = Tlv.GetValue<Int64>(mountDict, TlvType.MountSpaceUser);
+                        var spaceTotal = Tlv.GetValue<Int64>(mountDict, TlvType.MountSpaceTotal);
+                        var spaceFree = Tlv.GetValue<Int64>(mountDict, TlvType.MountSpaceFree);
+                        var uncPath = Tlv.GetValue<string>(mountDict, TlvType.MountUncPath, string.Empty);
                         mounts.Add(new Mount(name, type, spaceUser, spaceTotal, spaceFree, uncPath));
                     }
 
