@@ -100,6 +100,14 @@ namespace MSF.Powershell.Meterpreter
                             dict[tlvType].Add(value);
                             break;
                         }
+                    case MetaType.Raw:
+                        {
+                            var value = new byte[size - 8];
+                            Array.Copy(response, offset + 8, value, 0, value.Length);
+                            System.Diagnostics.Debug.Write(string.Format("[PSH BINDING] Type {0} value is: {1} bytes long", tlvType, value.Length));
+                            dict[tlvType].Add(value);
+                            break;
+                        }
                     case MetaType.Group:
                         {
                             System.Diagnostics.Debug.Write(string.Format("[PSH BINDING] Type {0} is a group, parsing...", tlvType));

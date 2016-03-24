@@ -6,46 +6,23 @@ namespace MSF.Powershell.Meterpreter
     {
         public class ProcessInfo
         {
-            public string Architecture { get; private set; }
-            public int Pid { get; private set; }
-            public int ParentPid { get; private set; }
-            public string Name { get; private set; }
-            public string Path { get; private set; }
-            public int Session { get; private set; }
-            public string Username { get; private set; }
-
-            public ProcessInfo(string architcutre, int pid, int parentPid, string name,
-                string path, int session, string username)
-            {
-                Architecture = architcutre;
-                Pid = pid;
-                ParentPid = parentPid;
-                Name = name;
-                Path = path;
-                Session = session;
-                Username = username;
-            }
+            public string Architecture { get; set; }
+            public int Pid { get; set; }
+            public int ParentPid { get; set; }
+            public string Name { get; set; }
+            public string Path { get; set; }
+            public int Session { get; set; }
+            public string Username { get; set; }
         }
 
         public class SysInfo
         {
-            public string Host { get; private set; }
-            public string OperatingSystem { get; private set; }
-            public string Architecture { get; private set; }
-            public string Language { get; private set; }
-            public string Domain { get; private set; }
-            public int LoggedOnUsers { get; private set; }
-
-            public SysInfo(string host, string operatingSystem, string architecture, string language,
-                string domain, int loggedOnUsers)
-            {
-                Host = host;
-                OperatingSystem = operatingSystem;
-                Architecture = architecture;
-                Language = language;
-                Domain = domain;
-                LoggedOnUsers = loggedOnUsers;
-            }
+            public string Host { get; set; }
+            public string OperatingSystem { get; set; }
+            public string Architecture { get; set; }
+            public string Language { get; set; }
+            public string Domain { get; set; }
+            public int LoggedOnUsers { get; set; }
         }
 
         public static SysInfo Info()
@@ -63,14 +40,15 @@ namespace MSF.Powershell.Meterpreter
                 {
                     System.Diagnostics.Debug.Write("[PSH BINDING] Info succeeded");
 
-                    var host = Tlv.GetValue<string>(responseTlv, TlvType.ComputerName, string.Empty);
-                    var os = Tlv.GetValue<string>(responseTlv, TlvType.OsName, string.Empty);
-                    var arch = Tlv.GetValue<string>(responseTlv, TlvType.Architecture, string.Empty);
-                    var lang = Tlv.GetValue<string>(responseTlv, TlvType.LangSystem, string.Empty);
-                    var domain = Tlv.GetValue<string>(responseTlv, TlvType.Domain, string.Empty);
-                    var loggedOn = Tlv.GetValue<int>(responseTlv, TlvType.LoggedOnUserCount);
-
-                    return new SysInfo(host, os, arch, lang, domain, loggedOn);
+                    return new SysInfo
+                    {
+                        Host = Tlv.GetValue<string>(responseTlv, TlvType.ComputerName, string.Empty),
+                        OperatingSystem = Tlv.GetValue<string>(responseTlv, TlvType.OsName, string.Empty),
+                        Architecture = Tlv.GetValue<string>(responseTlv, TlvType.Architecture, string.Empty),
+                        Language = Tlv.GetValue<string>(responseTlv, TlvType.LangSystem, string.Empty),
+                        Domain = Tlv.GetValue<string>(responseTlv, TlvType.Domain, string.Empty),
+                        LoggedOnUsers = Tlv.GetValue<int>(responseTlv, TlvType.LoggedOnUserCount)
+                    };
                 }
                 System.Diagnostics.Debug.Write("[PSH BINDING] ShowMount failed");
             }
@@ -101,14 +79,17 @@ namespace MSF.Powershell.Meterpreter
                     foreach (var processObj in responseTlv[TlvType.ProcessGroup])
                     {
                         var processDict = (Dictionary<TlvType, List<object>>)processObj;
-                        var arch = Tlv.GetValue<int>(processDict, TlvType.ProcessArch) == 1 ? "x86" : "x86_64";
-                        var name = Tlv.GetValue<string>(processDict, TlvType.ProcessName, string.Empty);
-                        var user = Tlv.GetValue<string>(processDict, TlvType.UserName, string.Empty);
-                        var pid = Tlv.GetValue<int>(processDict, TlvType.Pid);
-                        var parentPid = Tlv.GetValue<int>(processDict, TlvType.ParentPid);
-                        var path = Tlv.GetValue<string>(processDict, TlvType.ProcessPath, string.Empty);
-                        var session = Tlv.GetValue<int>(processDict, TlvType.ProcessSession);
-                        processes.Add(new ProcessInfo(arch, pid, parentPid, name, path, session, user));
+                        var process = new ProcessInfo
+                        {
+                            Architecture = Tlv.GetValue<int>(processDict, TlvType.ProcessArch) == 1 ? "x86" : "x86_64",
+                            Name = Tlv.GetValue<string>(processDict, TlvType.ProcessName, string.Empty),
+                            Username = Tlv.GetValue<string>(processDict, TlvType.UserName, string.Empty),
+                            Pid = Tlv.GetValue<int>(processDict, TlvType.Pid),
+                            ParentPid = Tlv.GetValue<int>(processDict, TlvType.ParentPid),
+                            Path = Tlv.GetValue<string>(processDict, TlvType.ProcessPath, string.Empty),
+                            Session = Tlv.GetValue<int>(processDict, TlvType.ProcessSession)
+                        };
+                        processes.Add(process);
                     }
 
                     return processes;

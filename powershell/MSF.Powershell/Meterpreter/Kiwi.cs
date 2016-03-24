@@ -6,16 +6,9 @@ namespace MSF.Powershell.Meterpreter
     {
         public class Credential
         {
-            public string Domain { get; private set; }
-            public string Username { get; private set; }
-            public string Password { get; private set; }
-
-            public Credential(string domain, string username, string password)
-            {
-                Domain = domain;
-                Username = username;
-                Password = password;
-            }
+            public string Domain { get; set; }
+            public string Username { get; set; }
+            public string Password { get; set; }
 
             public override string ToString()
             {
@@ -49,10 +42,12 @@ namespace MSF.Powershell.Meterpreter
                     foreach (var credObj in responseTlv[TlvType.KiwiPwdResult])
                     {
                         var credDict = (Dictionary<TlvType, List<object>>)credObj;
-                        var domain = Tlv.GetValue<string>(credDict, TlvType.KiwiPwdDomain, string.Empty);
-                        var username = Tlv.GetValue<string>(credDict, TlvType.KiwiPwdUserName, string.Empty);
-                        var password = Tlv.GetValue<string>(credDict, TlvType.KiwiPwdPassword, string.Empty);
-                        var credential = new Credential(domain, username, password);
+                        var credential = new Credential
+                        {
+                            Domain = Tlv.GetValue<string>(credDict, TlvType.KiwiPwdDomain, string.Empty),
+                            Username = Tlv.GetValue<string>(credDict, TlvType.KiwiPwdUserName, string.Empty),
+                            Password = Tlv.GetValue<string>(credDict, TlvType.KiwiPwdPassword, string.Empty)
+                        };
 
                         if (!ids.ContainsKey(credential.ToString()))
                         {

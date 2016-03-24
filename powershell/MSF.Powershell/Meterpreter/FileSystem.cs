@@ -18,22 +18,12 @@ namespace MSF.Powershell.Meterpreter
 
         public class Mount
         {
-            public string Name { get; private set; }
-            public MountType Type { get; private set; }
-            public Int64 SpaceUser { get; private set; }
-            public Int64 SpaceTotal { get; private set; }
-            public Int64 SpaceFree { get; private set; }
-            public string UncPath { get; private set; }
-
-            public Mount(string name, MountType type, Int64 spaceUser, Int64 spaceTotal, Int64 spaceFree, string uncPath)
-            {
-                Name = name;
-                Type = type;
-                SpaceUser = spaceUser;
-                SpaceTotal = spaceTotal;
-                SpaceFree = spaceFree;
-                UncPath = uncPath;
-            }
+            public string Name { get; set; }
+            public MountType Type { get; set; }
+            public Int64 SpaceUser { get; set; }
+            public Int64 SpaceTotal { get; set; }
+            public Int64 SpaceFree { get; set; }
+            public string UncPath { get; set; }
         }
 
         public static List<Mount> ShowMount()
@@ -55,13 +45,16 @@ namespace MSF.Powershell.Meterpreter
                     foreach (var mountObj in responseTlv[TlvType.Mount])
                     {
                         var mountDict = (Dictionary<TlvType, List<object>>)mountObj;
-                        var name = Tlv.GetValue<string>(mountDict, TlvType.MountName, string.Empty);
-                        var type = Tlv.GetValue<MountType>(mountDict, TlvType.MountType, MountType.Unknown);
-                        var spaceUser = Tlv.GetValue<Int64>(mountDict, TlvType.MountSpaceUser);
-                        var spaceTotal = Tlv.GetValue<Int64>(mountDict, TlvType.MountSpaceTotal);
-                        var spaceFree = Tlv.GetValue<Int64>(mountDict, TlvType.MountSpaceFree);
-                        var uncPath = Tlv.GetValue<string>(mountDict, TlvType.MountUncPath, string.Empty);
-                        mounts.Add(new Mount(name, type, spaceUser, spaceTotal, spaceFree, uncPath));
+                        var mount = new Mount
+                        {
+                            Name = Tlv.GetValue<string>(mountDict, TlvType.MountName, string.Empty),
+                            Type = Tlv.GetValue<MountType>(mountDict, TlvType.MountType, MountType.Unknown),
+                            SpaceUser = Tlv.GetValue<Int64>(mountDict, TlvType.MountSpaceUser),
+                            SpaceTotal = Tlv.GetValue<Int64>(mountDict, TlvType.MountSpaceTotal),
+                            SpaceFree = Tlv.GetValue<Int64>(mountDict, TlvType.MountSpaceFree),
+                            UncPath = Tlv.GetValue<string>(mountDict, TlvType.MountUncPath, string.Empty)
+                        };
+                        mounts.Add(mount);
                     }
 
                     return mounts;

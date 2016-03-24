@@ -45,6 +45,7 @@
     <Compile Include="Meterpreter\Incognito.cs" />
     <Compile Include="Meterpreter\Kiwi.cs" />
     <Compile Include="Meterpreter\Sys.cs" />
+    <Compile Include="Meterpreter\Transport.cs" />
     <Compile Include="Meterpreter\User.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Runner.cs" />
