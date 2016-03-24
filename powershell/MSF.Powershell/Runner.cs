@@ -65,6 +65,7 @@ namespace MSF.Powershell
 
         public string Execute(string ps)
         {
+            ps = string.Join("; ", ps.Trim().Split('\n'));
             using (Pipeline pipeline = _runspace.CreatePipeline())
             {
                 pipeline.Commands.AddScript(ps);
