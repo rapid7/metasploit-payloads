@@ -42,6 +42,7 @@
     <Compile Include="Meterpreter\Enumerations.cs" />
     <Compile Include="Meterpreter\Core.cs" />
     <Compile Include="Meterpreter\FileSystem.cs" />
+    <Compile Include="Meterpreter\Incognito.cs" />
     <Compile Include="Meterpreter\Kiwi.cs" />
     <Compile Include="Meterpreter\Sys.cs" />
     <Compile Include="Meterpreter\User.cs" />
