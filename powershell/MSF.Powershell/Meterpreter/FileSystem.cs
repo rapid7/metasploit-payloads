@@ -54,7 +54,6 @@ namespace MSF.Powershell.Meterpreter
 
                     foreach (var mountObj in responseTlv[TlvType.Mount])
                     {
-                        System.Diagnostics.Debug.Write("[PSH BINDING] ShowMount succeeded");
                         var mountDict = (Dictionary<TlvType, List<object>>)mountObj;
                         var name = Tlv.GetValue<string>(mountDict, TlvType.MountName, string.Empty);
                         var type = Tlv.GetValue<MountType>(mountDict, TlvType.MountType, MountType.Unknown);

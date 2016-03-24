@@ -1,4 +1,6 @@
-﻿namespace MSF.Powershell.Meterpreter
+﻿using System.Collections.Generic;
+
+namespace MSF.Powershell.Meterpreter
 {
     public static class Sys
     {
@@ -10,10 +12,10 @@
             public string Name { get; private set; }
             public string Path { get; private set; }
             public int Session { get; private set; }
-            public string User { get; private set; }
+            public string Username { get; private set; }
 
             public ProcessInfo(string architcutre, int pid, int parentPid, string name,
-                string path, int session, string user)
+                string path, int session, string username)
             {
                 Architecture = architcutre;
                 Pid = pid;
@@ -21,7 +23,7 @@
                 Name = name;
                 Path = path;
                 Session = session;
-                User = user;
+                Username = username;
             }
         }
 
@@ -75,6 +77,47 @@
             else
             {
                 System.Diagnostics.Debug.Write("[PSH BINDING] ShowMount result was null");
+            }
+
+            return null;
+        }
+
+        public static List<ProcessInfo> ProcessList()
+        {
+            Tlv tlv = new Tlv();
+
+            var result = Core.InvokeMeterpreterBinding(true, tlv.ToRequest("stdapi_sys_process_get_processes"));
+
+            if (result != null)
+            {
+                System.Diagnostics.Debug.Write("[PSH BINDING] ProcessList result returned");
+                var responseTlv = Tlv.FromResponse(result);
+                if (responseTlv[TlvType.Result].Count > 0 &&
+                    (int)responseTlv[TlvType.Result][0] == 0)
+                {
+                    System.Diagnostics.Debug.Write("[PSH BINDING] ProcessList succeeded");
+                    var processes = new List<ProcessInfo>();
+
+                    foreach (var processObj in responseTlv[TlvType.ProcessGroup])
+                    {
+                        var processDict = (Dictionary<TlvType, List<object>>)processObj;
+                        var arch = Tlv.GetValue<int>(processDict, TlvType.ProcessArch) == 1 ? "x86" : "x86_64";
+                        var name = Tlv.GetValue<string>(processDict, TlvType.ProcessName, string.Empty);
+                        var user = Tlv.GetValue<string>(processDict, TlvType.UserName, string.Empty);
+                        var pid = Tlv.GetValue<int>(processDict, TlvType.Pid);
+                        var parentPid = Tlv.GetValue<int>(processDict, TlvType.ParentPid);
+                        var path = Tlv.GetValue<string>(processDict, TlvType.ProcessPath, string.Empty);
+                        var session = Tlv.GetValue<int>(processDict, TlvType.ProcessSession);
+                        processes.Add(new ProcessInfo(arch, pid, parentPid, name, path, session, user));
+                    }
+
+                    return processes;
+                }
+                System.Diagnostics.Debug.Write("[PSH BINDING] ProcessList failed");
+            }
+            else
+            {
+                System.Diagnostics.Debug.Write("[PSH BINDING] ProcessList result was null");
             }
 
             return null;
