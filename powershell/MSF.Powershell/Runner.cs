@@ -65,7 +65,8 @@ namespace MSF.Powershell
 
         public string Execute(string ps)
         {
-            ps = string.Join("; ", ps.Trim().Split('\n'));
+            ps = "IEX ([System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String(\"" + Convert.ToBase64String(Encoding.UTF8.GetBytes(ps), Base64FormattingOptions.None) + "\")))";
+            System.Diagnostics.Debug.Write(string.Format("[PSH RUNNER] Executing PS: {0}", ps));
             using (Pipeline pipeline = _runspace.CreatePipeline())
             {
                 pipeline.Commands.AddScript(ps);
