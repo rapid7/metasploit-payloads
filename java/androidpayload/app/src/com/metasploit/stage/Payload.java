@@ -177,6 +177,7 @@ public class Payload {
         myClass.getMethod("start",
                 new Class[]{DataInputStream.class, OutputStream.class, String[].class})
                 .invoke(stage, in, out, parameters);
-        System.exit(0);
+
+        session_expiry = -1;
     }
 }
