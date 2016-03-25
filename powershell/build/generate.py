@@ -2,8 +2,7 @@
 
 import os
 
-#bin_path = os.path.join('..', 'MSF.Powershell', 'bin', 'Release', 'MSF.Powershell.dll')
-bin_path = os.path.join('..', 'MSF.Powershell', 'bin', 'Debug', 'MSF.Powershell.dll')
+bin_path = os.path.join('..', 'MSF.Powershell', 'bin', 'Release', 'MSF.Powershell.dll')
 target_path = os.path.join('..', '..', 'c', 'meterpreter', 'source', 'extensions', 'powershell')
 size_var = 'PSHRUNNER_DLL_LEN'
 

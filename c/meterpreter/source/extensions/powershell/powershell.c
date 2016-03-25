@@ -23,6 +23,7 @@ Command customCommands[] =
 {
 	COMMAND_REQ("powershell_execute", request_powershell_execute),
 	COMMAND_REQ("powershell_shell", request_powershell_shell),
+	COMMAND_REQ("powershell_assembly_load", request_powershell_assembly_load),
 	COMMAND_REQ("powershell_session_remove", request_powershell_session_remove),
 	COMMAND_TERMINATOR
 };
