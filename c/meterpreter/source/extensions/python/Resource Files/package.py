@@ -29,7 +29,8 @@ for entry in os.listdir('.'):
     for root, _, files in os.walk(entry):
       for f in [x for x in files if x.endswith('.py')]:
         path = os.path.join(root, f)
-        modname = path.split('.')[0].replace('\\', '.').replace('.__init__', '')
+        print path
+        modname = path.split('.')[0].replace(os.path.sep, '.').replace('.__init__', '')
         print modname
         modules[modname] = (path, True, compile(r(path), path, 'exec'))
 
