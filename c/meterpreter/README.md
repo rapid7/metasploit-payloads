@@ -29,8 +29,8 @@ For Meterpreter to build correctly, these submodules must be initialised and upd
 like so:
 
 ``` bash
-$ git clone https://github.com/rapid7/meterpreter
-$ cd meterpreter
+$ git clone https://github.com/rapid7/metasploit-payloads
+$ cd metasploit-payloads
 $ git submodule init && git submodule update
 ```
 
