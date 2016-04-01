@@ -26,9 +26,14 @@
  THE SOFTWARE.
 */
 
+#define _CRT_SECURE_NO_WARNINGS
+
 #include "../../common/common.h"
+#ifdef _WIN32
 #include "../../DelayLoadMetSrv/DelayLoadMetSrv.h"
 #include "../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
+EnableDelayLoadMetSrv();
+#endif
 
 #define TLV_TYPE_EXTENSION_BF	0
 
@@ -36,7 +41,6 @@
 #define TLV_TYPE_BF_RESULT     MAKE_CUSTOM_TLV(TLV_META_TYPE_STRING, TLV_TYPE_EXTENSION_BF, TLV_EXTENSIONS + 2)
 
 // this sets the delay load hook function, see DelayLoadMetSrv.h
-EnableDelayLoadMetSrv();
 
 static BOOL gSuccessfullyLoaded = FALSE;
 
@@ -175,7 +179,9 @@ Command customCommands[] =
  */
 DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
 {
+#ifdef _WIN32
 	hMetSrv = remote->met_srv;
+#endif
 
 	command_register_all(customCommands);
 
@@ -202,6 +208,6 @@ DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
  */
 DWORD __declspec(dllexport) GetExtensionName(char* buffer, int bufferSize)
 {
-	strncpy_s(buffer, bufferSize, "bf", bufferSize - 1);
+	strncpy(buffer, "bf", bufferSize - 1);
 	return ERROR_SUCCESS;
 }
