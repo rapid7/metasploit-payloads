@@ -37,6 +37,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ext_server_kiwi", "ext_serv
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ext_server_powershell", "ext_server_powershell\ext_server_powershell.vcxproj", "{28D39E90-259B-4DCE-88A7-7D2B568809DC}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ext_server_bf", "ext_server_bf\ext_server_bf.vcxproj", "{682A6725-A06C-42D7-8B88-90288F454B51}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
