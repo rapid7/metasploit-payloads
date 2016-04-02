@@ -18,13 +18,13 @@ namespace MSF.Powershell
 
         static Runner()
         {
-            System.Diagnostics.Debug.Write("Static constructor called");
+            System.Diagnostics.Debug.Write("[PSH RUNNER] Static constructor called");
             _runners = new Dictionary<string, Runner>();
         }
 
         public static string Execute(string id, string ps)
         {
-            System.Diagnostics.Debug.Write(string.Format("Executing command on session {0}", id));
+            System.Diagnostics.Debug.Write(string.Format("[PSH RUNNER] Executing command on session {0}", id));
             if (!_runners.ContainsKey(id))
             {
                 _runners.Add(id, new Runner(id));
@@ -65,6 +65,8 @@ namespace MSF.Powershell
 
         public string Execute(string ps)
         {
+            ps = "IEX ([System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String(\"" + Convert.ToBase64String(Encoding.UTF8.GetBytes(ps), Base64FormattingOptions.None) + "\")))";
+            System.Diagnostics.Debug.Write(string.Format("[PSH RUNNER] Executing PS: {0}", ps));
             using (Pipeline pipeline = _runspace.CreatePipeline())
             {
                 pipeline.Commands.AddScript(ps);
@@ -212,34 +214,34 @@ namespace MSF.Powershell
 
             public override void Write(ConsoleColor foregroundColor, ConsoleColor backgroundColor, string value)
             {
-                _buffer.Append(value);
+                _buffer.Append(value.TrimEnd());
             }
 
             public override void Write(string value)
             {
-                _buffer.Append(value);
+                _buffer.Append(value.TrimEnd());
             }
 
             public override void WriteDebugLine(string message)
             {
                 _buffer.Append("DEBUG: ");
-                _buffer.AppendLine(message);
+                _buffer.AppendLine(message.TrimEnd());
             }
 
             public override void WriteErrorLine(string value)
             {
                 _buffer.Append("ERROR: ");
-                _buffer.AppendLine(value);
+                _buffer.AppendLine(value.TrimEnd());
             }
 
             public override void WriteLine(ConsoleColor foregroundColor, ConsoleColor backgroundColor, string value)
             {
-                _buffer.AppendLine(value);
+                _buffer.AppendLine(value.TrimEnd());
             }
 
             public override void WriteLine(string value)
             {
-                _buffer.AppendLine(value);
+                _buffer.AppendLine(value.TrimEnd());
             }
 
             public override void WriteLine()
@@ -254,13 +256,13 @@ namespace MSF.Powershell
             public override void WriteVerboseLine(string message)
             {
                 _buffer.Append("VERBOSE: ");
-                _buffer.AppendLine(message);
+                _buffer.AppendLine(message.TrimEnd());
             }
 
             public override void WriteWarningLine(string message)
             {
                 _buffer.Append("WARNING: ");
-                _buffer.AppendLine(message);
+                _buffer.AppendLine(message.TrimEnd());
             }
         }
 

@@ -10,6 +10,7 @@ VOID deinitialize_dotnet_host();
 DWORD request_powershell_execute(Remote *remote, Packet *packet);
 DWORD request_powershell_shell(Remote *remote, Packet *packet);
 DWORD request_powershell_session_remove(Remote *remote, Packet *packet);
+DWORD request_powershell_assembly_load(Remote *remote, Packet *packet);
+DWORD invoke_startup_script(LPCSTR script);
 
 #endif
-

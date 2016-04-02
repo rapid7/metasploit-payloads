@@ -273,11 +273,13 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\source\extensions\powershell\powershell.c" />
+    <ClCompile Include="..\..\source\extensions\powershell\powershell_bindings.cpp" />
     <ClCompile Include="..\..\source\extensions\powershell\powershell_bridge.cpp" />
     <ClCompile Include="..\..\source\extensions\powershell\powershell_runner.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\source\extensions\powershell\powershell.h" />
+    <ClInclude Include="..\..\source\extensions\powershell\powershell_bindings.h" />
     <ClInclude Include="..\..\source\extensions\powershell\powershell_bridge.h" />
     <ClInclude Include="..\..\source\extensions\powershell\powershell_runner.h" />
   </ItemGroup>

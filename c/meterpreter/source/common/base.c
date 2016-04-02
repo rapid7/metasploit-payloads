@@ -483,8 +483,15 @@ BOOL command_handle(Remote *remote, Packet *packet)
 			// We have no matching command for this packet, so it won't get handled. We
 			// need to send an empty response and clean up here before exiting out.
 			response = packet_create_response(packet);
-			packet_transmit_response(ERROR_NOT_SUPPORTED, remote, response);
-			packet_destroy(packet);
+			if (packet->local)
+			{
+				packet_add_tlv_uint(response, TLV_TYPE_RESULT, ERROR_NOT_SUPPORTED);
+			}
+			else
+			{
+				packet_transmit_response(ERROR_NOT_SUPPORTED, remote, response);
+				packet_destroy(packet);
+			}
 			break;
 		}
 
