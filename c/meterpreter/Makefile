@@ -26,6 +26,7 @@ objects += $(COMPILED)/libpcap.so
 outputs  = data/meterpreter/msflinker_linux_x86.bin
 outputs += data/meterpreter/ext_server_stdapi.lso
 outputs += data/meterpreter/ext_server_sniffer.lso
+outputs += data/meterpreter/ext_server_bf.lso
 outputs += data/meterpreter/ext_server_networkpug.lso
 
 STD_CFLAGS =  -Os -m32 -march=i386 -fno-stack-protector
@@ -103,6 +104,17 @@ $(workspace)/common/libsupport.so: \
 
 $(COMPILED)/libsupport.so: $(workspace)/common/libsupport.so
 	cp $(workspace)/common/libsupport.so $(COMPILED)/libsupport.so
+
+$(workspace)/ext_server_bf/ext_server_bf.so: \
+	$(wildcard source/extensions/bf/*.h) \
+	$(wildcard source/extensions/bf/*.c) \
+	$(COMPILED)/libpcap.so
+	$(MAKE) -C $(workspace)/ext_server_bf
+
+data/meterpreter/ext_server_bf.lso: \
+	$(workspace)/ext_server_bf/ext_server_bf.so
+	cp $(workspace)/ext_server_bf/ext_server_bf.so \
+		data/meterpreter/ext_server_bf.lso
 
 $(workspace)/ext_server_sniffer/ext_server_sniffer.so: \
 	$(wildcard source/extensions/sniffer/*.h) \
