@@ -14,6 +14,7 @@ typedef struct _SocketContext
 	int notify;
 #endif
 	SOCKET   fd;
+	BOOL     ipv6;
 } SocketContext;
 
 /*
