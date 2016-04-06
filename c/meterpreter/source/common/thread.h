@@ -44,7 +44,7 @@ typedef struct _LOCK
 #ifdef _WIN32
 	HANDLE handle;
 #else
-	pthread_mutex_t *handle;
+	pthread_mutex_t handle;
 #endif // _WIN32
 } LOCK, * LPLOCK;
 
