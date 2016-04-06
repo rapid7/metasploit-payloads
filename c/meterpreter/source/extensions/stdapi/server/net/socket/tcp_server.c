@@ -17,6 +17,9 @@
 #ifndef in6addr_any
 extern IN6_ADDR in6addr_any;
 #endif
+
+#else
+typedef struct sockaddr_in6 SOCKADDR_IN6;
 #endif
 
 /*!
