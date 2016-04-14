@@ -212,7 +212,7 @@ DWORD remote_request_core_transport_list(Remote* remote, Packet* packet)
 			dprintf("[DISPATCH] Adding Retry wait %u", current->timeouts.retry_wait);
 			packet_add_tlv_uint(transportGroup, TLV_TYPE_TRANS_RETRY_WAIT, current->timeouts.retry_wait);
 
-			if (current->type != METERPRETER_TRANSPORT_SSL)
+			if (current->type == METERPRETER_TRANSPORT_HTTP || current->type == METERPRETER_TRANSPORT_HTTPS)
 			{
 				HttpTransportContext* ctx = (HttpTransportContext*)current->ctx;
 				dprintf("[DISPATCH] Transport is HTTP/S");
@@ -589,10 +589,10 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
 		remote->config_create(remote, &config, &configSize);
 		dprintf("[MIGRATE] Config of %u bytes stashed at 0x%p", configSize, config);
 
-		if (config->session.comms_fd)
+		if (config->session.comms_handle)
 		{
 			// Duplicate the socket for the target process if we are SSL based
-			if (WSADuplicateSocket(config->session.comms_fd, dwProcessID, &ctx.info) != NO_ERROR)
+			if (WSADuplicateSocket(config->session.comms_handle, dwProcessID, &ctx.info) != NO_ERROR)
 			{
 				BREAK_ON_WSAERROR("[MIGRATE] WSADuplicateSocket failed")
 			}

@@ -355,6 +355,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClCompile Include="..\..\source\server\win\remote_dispatch.c" />
     <ClCompile Include="..\..\source\server\remote_dispatch_common.c" />
     <ClCompile Include="..\..\source\server\server_setup_win.c" />
+    <ClCompile Include="..\..\source\server\win\server_transport_named_pipe.c" />
     <ClCompile Include="..\..\source\server\win\server_transport_tcp.c" />
     <ClCompile Include="..\..\source\server\win\server_transport_winhttp.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
@@ -388,6 +389,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClInclude Include="..\..\source\server\metsrv.h" />
     <ClInclude Include="..\..\source\server\remote_dispatch.h" />
     <ClInclude Include="..\..\source\server\ssl_lib_setup.h" />
+    <ClInclude Include="..\..\source\server\win\server_transport_named_pipe.h" />
     <ClInclude Include="..\..\source\server\win\server_transport_tcp.h" />
     <ClInclude Include="..\..\source\server\win\server_transport_winhttp.h" />
     <ClInclude Include="..\..\source\server\win\server_transport_wininet.h" />

@@ -21,6 +21,9 @@ typedef struct _NamedPipeContext
 	BOOL       established;
 } NamedPipeContext;
 
+static DWORD server_close(Channel* channel, Packet* request, LPVOID context);
+static DWORD server_notify(Remote* remote, NamedPipeContext* serverCtx);
+
 DWORD create_pipe_server_instance(NamedPipeContext* ctx)
 {
 	DWORD dwResult = ERROR_SUCCESS;
@@ -29,6 +32,9 @@ DWORD create_pipe_server_instance(NamedPipeContext* ctx)
 	do
 	{
 		dprintf("[NP-SERVER] Creating new server instance of %s", ctx->name);
+		dprintf("[NP-SERVER]   - open mode: 0x%x", ctx->openMode);
+		dprintf("[NP-SERVER]   - pipe mode: 0x%x", ctx->pipeMode);
+		dprintf("[NP-SERVER]   - pipe cnt : %d", ctx->pipeCount ? ctx->pipeCount : PIPE_UNLIMITED_INSTANCES);
 		ctx->pipe = CreateNamedPipeA(ctx->name, ctx->openMode, ctx->pipeMode, ctx->pipeCount ? ctx->pipeCount : PIPE_UNLIMITED_INSTANCES, PIPE_BUFFER_SIZE, PIPE_BUFFER_SIZE, 0, NULL);
 
 		if (ctx->pipe == INVALID_HANDLE_VALUE)
@@ -36,30 +42,36 @@ DWORD create_pipe_server_instance(NamedPipeContext* ctx)
 			BREAK_ON_ERROR("[NP-SERVER] Failed to create named pipe.");
 		}
 
+		dprintf("[NP-SERVER] Creating the handler event");
 		ctx->overlapped.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
 		if (ctx->overlapped.hEvent == NULL)
 		{
 			BREAK_ON_ERROR("[NP-SERVER] Failed to create connect event.");
 		}
 
+		dprintf("[NP-SERVER] Connecting to the named pipe async");
 		if (!ConnectNamedPipe(ctx->pipe, &ctx->overlapped))
 		{
+			dprintf("[NP-SERVER] connect failed, making sure the result is valid...");
 			dwResult = GetLastError();
 			if (dwResult != ERROR_IO_PENDING && dwResult != ERROR_PIPE_LISTENING)
 			{
 				BREAK_WITH_ERROR("[NP-SERVER] Failed to connect to the named pipe", dwResult);
 			}
+			dwResult = ERROR_SUCCESS;
 		}
 
 		chops.native.context = ctx;
 		chops.native.close = server_close;
 
+		dprintf("[NP-SERVER] Creating the named pipe channel");
 		ctx->channel = channel_create_stream(0, CHANNEL_FLAG_SYNCHRONOUS, &chops);
 		if (!ctx->channel)
 		{
 			BREAK_WITH_ERROR("[NP-SERVER] channel_create_stream failed", ERROR_INVALID_HANDLE);
 		}
 
+		dprintf("[NP-SERVER] Inserting the named pipe schedule entry");
 		scheduler_insert_waitable(ctx->overlapped.hEvent, ctx, NULL, (WaitableNotifyRoutine)server_notify, NULL);
 	} while (0);
 
@@ -212,7 +224,7 @@ static DWORD server_close(Channel* channel, Packet* request, LPVOID context)
  * @returns Indication of success or failure.
  * @retval ERROR_SUCCESS Notification completed successfully.
  */
-DWORD server_notify(Remote* remote, NamedPipeContext* serverCtx)
+static DWORD server_notify(Remote* remote, NamedPipeContext* serverCtx)
 {
 	char dataBuffer[PIPE_BUFFER_SIZE];
 	DWORD dwResult = ERROR_SUCCESS;
@@ -359,6 +371,8 @@ DWORD request_net_named_pipe_server_channel_open(Remote* remote, Packet* packet)
 		_snprintf_s(ctx->name, PIPE_NAME_SIZE, PIPE_NAME_SIZE - 1, "\\\\%s\\pipe\\%s", namedPipeServer, namedPipeName);
 
 		dwResult = create_pipe_server_instance(ctx);
+
+		dprintf("[NP-SERVER] creation of the named pipe returned: %d 0x%x", dwResult, dwResult);
 
 		if (dwResult == ERROR_SUCCESS)
 		{

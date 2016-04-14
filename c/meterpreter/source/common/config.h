@@ -24,7 +24,7 @@ typedef CHARTYPE const * CSTRTYPE;
 
 typedef struct _MetsrvSession
 {
-	DWORD comms_fd;                       ///! Socket handle for communications (if there is one).
+	DWORD comms_handle;                   ///! Handle for communications (eg. socket or pipe handle. Optional).
 	DWORD exit_func;                      ///! Exit func identifier for when the session ends.
 	int expiry;                           ///! The total number of seconds to wait before killing off the session.
 	BYTE uuid[UUID_SIZE];                 ///! UUID
@@ -57,6 +57,11 @@ typedef struct _MetsrvTransportTcp
 {
 	MetsrvTransportCommon common;
 } MetsrvTransportTcp;
+
+typedef struct _MetsrvTransportNamedPipe
+{
+	MetsrvTransportCommon common;
+} MetsrvTransportNamedPipe;
 
 typedef struct _MetsrvExtension
 {

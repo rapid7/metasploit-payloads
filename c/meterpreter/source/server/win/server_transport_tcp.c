@@ -33,7 +33,6 @@ static DWORD reverse_tcp_run(SOCKET reverseSocket, SOCKADDR* sockAddr, int sockA
 	int start = current_unix_timestamp();
 	do
 	{
-		int retryStart = current_unix_timestamp();
 		if ((result = connect(reverseSocket, sockAddr, sockAddrSize)) != SOCKET_ERROR)
 		{
 			break;
@@ -807,11 +806,11 @@ static DWORD server_dispatch_tcp(Remote* remote, THREAD* dispatchThread)
  * @param transport Pointer to the TCP transport containing the socket.
  * @return The current transport socket FD, if any, or zero.
  */
-static SOCKET transport_get_socket_tcp(Transport* transport)
+static DWORD transport_get_socket_tcp(Transport* transport)
 {
 	if (transport && transport->type == METERPRETER_TRANSPORT_SSL)
 	{
-		return ((TcpTransportContext*)transport->ctx)->fd;
+		return (DWORD)((TcpTransportContext*)transport->ctx)->fd;
 	}
 
 	return 0;
@@ -1178,7 +1177,7 @@ Transport* transport_create_tcp(MetsrvTransportTcp* config)
 	transport->transport_destroy = transport_destroy_tcp;
 	transport->transport_reset = transport_reset_tcp;
 	transport->server_dispatch = server_dispatch_tcp;
-	transport->get_socket = transport_get_socket_tcp;
+	transport->get_handle = transport_get_socket_tcp;
 	transport->ctx = ctx;
 	transport->comms_last_packet = current_unix_timestamp();
 
