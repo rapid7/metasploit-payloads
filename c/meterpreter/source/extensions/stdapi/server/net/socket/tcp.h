@@ -3,6 +3,6 @@
 
 DWORD tcp_channel_client_write( Channel *channel, Packet *request, LPVOID context, LPVOID buffer, DWORD bufferSize, LPDWORD bytesWritten);
 DWORD tcp_channel_client_close(Channel *channel, Packet *request, LPVOID context);
-DWORD tcp_channel_client_local_notify(Remote *remote, TcpClientContext *ctx);
+DWORD tcp_channel_client_local_notify(Remote *remote, LPVOID entryContext, LPVOID threadContext, BOOL timedOut);
 
 #endif

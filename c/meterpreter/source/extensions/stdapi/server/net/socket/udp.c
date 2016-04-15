@@ -140,8 +140,9 @@ VOID free_udp_context( UdpSocketContext * ctx )
 /*
  * The notify routine for all FD_READ events on the UDP socket.
  */
-DWORD udp_channel_notify( Remote * remote, UdpClientContext * ctx )
+DWORD udp_channel_notify( Remote * remote, LPVOID entryContext, LPVOID threadContext, BOOL timedOut )
 {
+	UdpClientContext* ctx = (UdpClientContext*)entryContext;
 	DWORD dwResult     = ERROR_SUCCESS;
 	SOCKADDR_IN from   = {0};
 	DWORD dwFromLength = 0;
@@ -323,7 +324,7 @@ DWORD request_net_udp_channel_open( Remote * remote, Packet * packet )
 		if( !ctx->sock.channel )
 			BREAK_WITH_ERROR( "[UDP] request_net_udp_channel_open. channel_create_stream failed", ERROR_INVALID_HANDLE );
 
-		scheduler_insert_waitable( ctx->sock.notify, ctx, NULL, (WaitableNotifyRoutine)udp_channel_notify, NULL );
+		scheduler_insert_waitable( ctx->sock.notify, ctx, NULL, udp_channel_notify, NULL );
 
 		packet_add_tlv_uint( response, TLV_TYPE_CHANNEL_ID, channel_get_id(ctx->sock.channel) );
 

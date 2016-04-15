@@ -417,7 +417,7 @@ VOID deinitialize_dotnet_host()
 	SAFE_RELEASE(gClrMetaHost);
 }
 
-DWORD powershell_channel_interact_notify(Remote *remote, LPVOID entryContext, LPVOID threadContext)
+DWORD powershell_channel_interact_notify(Remote *remote, LPVOID entryContext, LPVOID threadContext, BOOL timedOut)
 {
 	Channel *channel = (Channel*)entryContext;
 	InteractiveShell* shell = (InteractiveShell*)threadContext;
