@@ -11,19 +11,55 @@
 typedef struct _NamedPipeContext
 {
 	char       name[PIPE_NAME_SIZE];
-	DWORD      openMode;
-	DWORD      pipeMode;
-	DWORD      pipeCount;
+	DWORD      open_mode;
+	DWORD      pipe_mode;
+	DWORD      pipe_count;
 	Remote*    remote;
 	Channel*   channel;
 	HANDLE     pipe;
 	OVERLAPPED overlapped;
 	BOOL       established;
 	BOOL       client_connected;
+	BOOL       repeat;
 } NamedPipeContext;
 
 static DWORD server_close(Channel* channel, Packet* request, LPVOID context);
 static DWORD server_notify(Remote* remote, LPVOID entryContext, LPVOID threadContext, BOOL timedOut);
+
+/*!
+ * @brief Writes data from the remote half of the channel to the established connection.
+ * @param channel Pointer to the channel to write to.
+ * @param request Pointer to the request packet.
+ * @param context Pointer to the channel's context.
+ * @param buffer Buffer containing the data to write to the channel.
+ * @param bufferSize Size of the buffer indicating how many bytes to write.
+ * @param bytesWritten Pointer that receives the number of bytes written to the \c channel.
+ * @returns Indication of success or failure.
+ * @retval ERROR_SUCCESS writing the data completed successfully.
+ */
+static DWORD server_write(Channel *channel, Packet *request, LPVOID context, LPVOID buffer, DWORD bufferSize, LPDWORD bytesWritten)
+{
+	DWORD dwResult = ERROR_SUCCESS;
+	NamedPipeContext* ctx = (NamedPipeContext*)context;
+	DWORD written = 0;
+
+	*bytesWritten = 0;
+
+	do
+	{
+		OVERLAPPED ovl = { 0 };
+		if (!WriteFile(ctx->pipe, buffer, bufferSize, &written, &ovl))
+		{
+			BREAK_ON_ERROR("[NP-SERVER] unable to write");
+		}
+		dprintf("[NP-SERVER] wrote to named pipe: %u", written);
+		*bytesWritten += written;
+	} while (*bytesWritten < bufferSize);
+
+	dprintf("[NP SERVER] server write. finished. dwResult=%d, written=%d", dwResult, written);
+
+	return dwResult;
+}
 
 DWORD create_pipe_server_instance(NamedPipeContext* ctx)
 {
@@ -33,10 +69,10 @@ DWORD create_pipe_server_instance(NamedPipeContext* ctx)
 	do
 	{
 		dprintf("[NP-SERVER] Creating new server instance of %s", ctx->name);
-		dprintf("[NP-SERVER]   - open mode: 0x%x", ctx->openMode);
-		dprintf("[NP-SERVER]   - pipe mode: 0x%x", ctx->pipeMode);
-		dprintf("[NP-SERVER]   - pipe cnt : %d", ctx->pipeCount ? ctx->pipeCount : PIPE_UNLIMITED_INSTANCES);
-		ctx->pipe = CreateNamedPipeA(ctx->name, ctx->openMode, ctx->pipeMode, ctx->pipeCount ? ctx->pipeCount : PIPE_UNLIMITED_INSTANCES, PIPE_BUFFER_SIZE, PIPE_BUFFER_SIZE, 0, NULL);
+		dprintf("[NP-SERVER]   - open mode: 0x%x", ctx->open_mode);
+		dprintf("[NP-SERVER]   - pipe mode: 0x%x", ctx->pipe_mode);
+		dprintf("[NP-SERVER]   - pipe cnt : %d", ctx->pipe_count ? ctx->pipe_count : PIPE_UNLIMITED_INSTANCES);
+		ctx->pipe = CreateNamedPipeA(ctx->name, ctx->open_mode, ctx->pipe_mode, ctx->pipe_count ? ctx->pipe_count : PIPE_UNLIMITED_INSTANCES, PIPE_BUFFER_SIZE, PIPE_BUFFER_SIZE, 0, NULL);
 
 		if (ctx->pipe == INVALID_HANDLE_VALUE)
 		{
@@ -44,7 +80,7 @@ DWORD create_pipe_server_instance(NamedPipeContext* ctx)
 		}
 
 		dprintf("[NP-SERVER] Creating the handler event");
-		ctx->overlapped.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+		ctx->overlapped.hEvent = CreateEvent(NULL, TRUE, TRUE, NULL);
 		if (ctx->overlapped.hEvent == NULL)
 		{
 			BREAK_ON_ERROR("[NP-SERVER] Failed to create connect event.");
@@ -73,6 +109,7 @@ DWORD create_pipe_server_instance(NamedPipeContext* ctx)
 
 		chops.native.context = ctx;
 		chops.native.close = server_close;
+		chops.native.write = server_write;
 
 		dprintf("[NP-SERVER] Creating the named pipe channel");
 		ctx->channel = channel_create_stream(0, CHANNEL_FLAG_SYNCHRONOUS, &chops);
@@ -82,7 +119,6 @@ DWORD create_pipe_server_instance(NamedPipeContext* ctx)
 		}
 
 		dprintf("[NP-SERVER] Inserting the named pipe schedule entry");
-		//scheduler_insert_waitable_with_timeout(ctx->overlapped.hEvent, ctx, NULL, server_notify, NULL, 5000);
 		scheduler_insert_waitable(ctx->overlapped.hEvent, ctx, NULL, server_notify, NULL);
 	} while (0);
 
@@ -102,7 +138,7 @@ static VOID free_server_context(NamedPipeContext* ctx)
 			break;
 		}
 
-		dprintf("[NP-SERVER] server_context. ctx=0x%08X", ctx);
+		dprintf("[NP-SERVER] free_server_context. ctx=0x%08X", ctx);
 
 		if (ctx->pipe != NULL && ctx->pipe != INVALID_HANDLE_VALUE)
 		{
@@ -118,6 +154,7 @@ static VOID free_server_context(NamedPipeContext* ctx)
 
 		if (ctx->overlapped.hEvent != NULL)
 		{
+			dprintf("[NP-SERVER] free_server_context. signaling the thread to stop");
 			scheduler_signal_waitable(ctx->overlapped.hEvent, Stop);
 			ctx->overlapped.hEvent = NULL;
 		}
@@ -163,71 +200,6 @@ static DWORD server_close(Channel* channel, Packet* request, LPVOID context)
 	return ERROR_SUCCESS;
 }
 
-///*!
-// * @brief Create a Named Pipe client channel from a socket.
-// * @param serverCtx Pointer to the Named Pipe server context.
-// * @param sock The socket handle.
-// * @returns Pointer to the newly created client context.
-// */
-//static NamedPipeClientContext* create_client(NamedPipeServerContext* serverCtx, SOCKET sock)
-//{
-//	DWORD dwResult = ERROR_SUCCESS;
-//	NamedPipeClientContext * clientctx = NULL;
-//	StreamChannelOps chops = { 0 };
-//
-//	do
-//	{
-//		if (!serverCtx)
-//		{
-//			BREAK_WITH_ERROR("[NP-SERVER] create_client. serverCtx == NULL", ERROR_INVALID_HANDLE);
-//		}
-//
-//		clientctx = (NamedPipeClientContext*)calloc(1, sizeof(NamedPipeClientContext));
-//		if (!clientctx)
-//		{
-//			BREAK_WITH_ERROR("[NP-SERVER] create_client. clientctx == NULL", ERROR_NOT_ENOUGH_MEMORY);
-//		}
-//
-//		clientctx->remote = serverCtx->remote;
-//		clientctx->fd = sock;
-//
-//		clientctx->notify = WSACreateEvent();
-//		if (clientctx->notify == WSA_INVALID_EVENT)
-//		{
-//			BREAK_ON_WSAERROR("[NP-SERVER] create_client. WSACreateEvent failed");
-//		}
-//
-//		if (WSAEventSelect(clientctx->fd, clientctx->notify, FD_READ | FD_CLOSE) == SOCKET_ERROR)
-//		{
-//			BREAK_ON_WSAERROR("[NP-SERVER] create_client. WSAEventSelect failed");
-//		}
-//
-//		chops.native.context = clientctx;
-//		//chops.native.write = client_write;
-//		//chops.native.close = client_close;
-//
-//		clientctx->channel = channel_create_stream(0, 0, &chops);
-//		if (!clientctx->channel)
-//		{
-//			BREAK_WITH_ERROR("[NP-SERVER] create_client. clientctx->channel == NULL", ERROR_INVALID_HANDLE);
-//		}
-//
-//		dwResult = scheduler_insert_waitable(clientctx->notify, clientctx, NULL, (WaitableNotifyRoutine)client_local_notify, NULL);
-//
-//	} while (0);
-//
-//	if (dwResult != ERROR_SUCCESS)
-//	{
-//		if (clientctx)
-//		{
-//			free(clientctx);
-//			clientctx = NULL;
-//		}
-//	}
-//
-//	return clientctx;
-//}
-
 /*!
  * @brief Notify routine for a named pipe server channel to pick up its new client connections..
  * @param remote Pointer to the remote instance.
@@ -249,9 +221,13 @@ static DWORD server_notify(Remote* remote, LPVOID entryContext, LPVOID threadCon
 			BREAK_WITH_ERROR("[NP-SERVER] server_notify. serverCtx == NULL", ERROR_INVALID_HANDLE);
 		}
 
+		if (serverCtx->pipe == NULL || serverCtx->pipe == INVALID_HANDLE_VALUE)
+		{
+			BREAK_WITH_ERROR("[NP-SERVER] pipe isn't present, we might be shutting down.", ERROR_INVALID_HANDLE);
+		}
+
 		DWORD bytesRead = 0;
 		dprintf("[NP-SERVER] Checking the overlapped result");
-		//if (!GetOverlappedResult(serverCtx->pipe, &serverCtx->overlapped, &bytesRead, TRUE))
 		if (!GetOverlappedResult(serverCtx->pipe, &serverCtx->overlapped, &bytesRead, FALSE))
 		{
 			dwResult = GetLastError();
@@ -282,41 +258,45 @@ static DWORD server_notify(Remote* remote, LPVOID entryContext, LPVOID threadCon
 		dprintf("[NP-SERVER] Apparently we have a result! With %u bytes", bytesRead);
 		if (!serverCtx->established)
 		{
-			dprintf("[NP-SERVER] This appears to be a new connection, setting up context.");
-			// connection received, here we're going to create a new named pipe handle so that
-			// other connections can come in on it. We'll assume that it if worked once, it
-			// will work again this time
-			NamedPipeContext* nextCtx = (NamedPipeContext*)calloc(1, sizeof(NamedPipeContext));
-
-			// copy the relevant content over.
-			nextCtx->openMode = serverCtx->openMode;
-			nextCtx->pipeMode = serverCtx->pipeMode;
-			nextCtx->pipeCount = serverCtx->pipeCount;
-			nextCtx->remote = serverCtx->remote;
-			memcpy_s(&nextCtx->name, PIPE_NAME_SIZE, &serverCtx->name, PIPE_NAME_SIZE);
-
 			request = packet_create(PACKET_TLV_TYPE_REQUEST, "named_pipe_channel_open");
 			if (!request)
 			{
 				BREAK_WITH_ERROR("[NP-SERVER] request_net_tcp_server_channel_open. packet_create failed", ERROR_INVALID_HANDLE);
 			}
 
-			// create a new pipe for the next connection
-			if (create_pipe_server_instance(nextCtx) != ERROR_SUCCESS)
+			if (serverCtx->repeat)
 			{
-				free_server_context(nextCtx);
-				dprintf("[NP-SERVER] failed to create the pipe server instance");
+				dprintf("[NP-SERVER] This appears to be a new connection, setting up context.");
+				// connection received, here we're going to create a new named pipe handle so that
+				// other connections can come in on it. We'll assume that it if worked once, it
+				// will work again this time
+				NamedPipeContext* nextCtx = (NamedPipeContext*)calloc(1, sizeof(NamedPipeContext));
+
+				// copy the relevant content over.
+				nextCtx->open_mode = serverCtx->open_mode;
+				nextCtx->pipe_mode = serverCtx->pipe_mode;
+				nextCtx->pipe_count = serverCtx->pipe_count;
+				nextCtx->remote = serverCtx->remote;
+				memcpy_s(&nextCtx->name, PIPE_NAME_SIZE, &serverCtx->name, PIPE_NAME_SIZE);
+
+				// create a new pipe for the next connection
+				if (create_pipe_server_instance(nextCtx) != ERROR_SUCCESS)
+				{
+					free_server_context(nextCtx);
+					dprintf("[NP-SERVER] failed to create the pipe server instance");
+				}
+				else
+				{
+					dprintf("[NP-SERVER] Creation of the new pipe succeeded");
+					// indicate that there's a new server channel ready and waiting for the next connection
+					packet_add_tlv_uint(request, TLV_TYPE_CHANNEL_ID, channel_get_id(nextCtx->channel));
+				}
 			}
-			else
-			{
-				dprintf("[NP-SERVER] Creation of the new pipe succeeded");
-				// indicate that there's a new server channel ready and waiting for the next connection
-				packet_add_tlv_uint(request, TLV_TYPE_CHANNEL_ID, channel_get_id(nextCtx->channel));
-			}
+
+			packet_add_tlv_uint(request, TLV_TYPE_CHANNEL_PARENTID, channel_get_id(serverCtx->channel));
 
 			// send back the generated pipe name for MSF-side tracking.
 			packet_add_tlv_string(request, TLV_TYPE_NAMED_PIPE_NAME, serverCtx->name);
-			packet_add_tlv_uint(request, TLV_TYPE_CHANNEL_PARENTID, channel_get_id(serverCtx->channel));
 
 			dwResult = PACKET_TRANSMIT(serverCtx->remote, request, NULL);
 
@@ -330,9 +310,9 @@ static DWORD server_notify(Remote* remote, LPVOID entryContext, LPVOID threadCon
 			serverCtx->overlapped.OffsetHigh = 0;
 
 			// read the data from the pipe
-			if (ReadFile(serverCtx->pipe, dataBuffer, bytesRead == 0 ? PIPE_BUFFER_SIZE : bytesRead, &bytesRead, &serverCtx->overlapped))
+			if (!ReadFile(serverCtx->pipe, dataBuffer, bytesRead == 0 ? PIPE_BUFFER_SIZE : bytesRead, &bytesRead, &serverCtx->overlapped))
 			{
-				BREAK_ON_ERROR("[NP-SERVER] request_net_tcp_server_channel_open. failed to read data from the pipe.");
+				BREAK_ON_ERROR("[NP-SERVER] failed to read data from the pipe.");
 			}
 
 			// write data to the other end of the channel
@@ -342,8 +322,11 @@ static DWORD server_notify(Remote* remote, LPVOID entryContext, LPVOID threadCon
 		// now 
 	} while (0);
 
-	dprintf("[NP-SERVER] Resetting the event handle");
-	ResetEvent(serverCtx->overlapped.hEvent);
+	if (serverCtx->overlapped.hEvent != NULL)
+	{
+		dprintf("[NP-SERVER] Resetting the event handle");
+		ResetEvent(serverCtx->overlapped.hEvent);
+	}
 
 	return dwResult;
 }
@@ -397,20 +380,21 @@ DWORD request_net_named_pipe_server_channel_open(Remote* remote, Packet* packet)
 		}
 
 		// Both of these can be zero, let's hope that the user doesn't forget to set them if required!
-		ctx->openMode = packet_get_tlv_value_uint(packet, TLV_TYPE_NAMED_PIPE_OPEN_MODE);
-		ctx->pipeMode = packet_get_tlv_value_uint(packet, TLV_TYPE_NAMED_PIPE_PIPE_MODE);
-		ctx->pipeCount = packet_get_tlv_value_uint(packet, TLV_TYPE_NAMED_PIPE_COUNT);
+		ctx->open_mode = packet_get_tlv_value_uint(packet, TLV_TYPE_NAMED_PIPE_OPEN_MODE);
+		ctx->pipe_mode = packet_get_tlv_value_uint(packet, TLV_TYPE_NAMED_PIPE_PIPE_MODE);
+		ctx->pipe_count = packet_get_tlv_value_uint(packet, TLV_TYPE_NAMED_PIPE_COUNT);
+		ctx->repeat = packet_get_tlv_value_bool(packet, TLV_TYPE_NAMED_PIPE_REPEAT);
 
 		// we always need overlapped mode
-		ctx->openMode |= FILE_FLAG_OVERLAPPED;
+		ctx->open_mode |= FILE_FLAG_OVERLAPPED;
 
 		// never allow PIPE_NOWAIT
-		ctx->pipeMode &= ~PIPE_NOWAIT;
+		ctx->pipe_mode &= ~PIPE_NOWAIT;
 
 		// set a sane value for the count
-		if (ctx->pipeCount == 0)
+		if (ctx->pipe_count == 0)
 		{
-			ctx->pipeCount = PIPE_UNLIMITED_INSTANCES;
+			ctx->pipe_count = PIPE_UNLIMITED_INSTANCES;
 		}
 
 		_snprintf_s(ctx->name, PIPE_NAME_SIZE, PIPE_NAME_SIZE - 1, "\\\\%s\\pipe\\%s", namedPipeServer, namedPipeName);

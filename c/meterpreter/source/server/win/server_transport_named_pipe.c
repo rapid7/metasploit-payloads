@@ -203,7 +203,7 @@ static DWORD server_dispatch_named_pipe(Remote* remote, THREAD* dispatchThread)
 			break;
 		}
 
-		result = server_socket_poll(remote, 50000);
+		result = server_socket_poll(remote, 500);
 		if (result > 0)
 		{
 			result = packet_receive_named_pipe(remote, &packet);
@@ -296,7 +296,9 @@ static void transport_reset_named_pipe(Transport* transport, BOOL shuttingDown)
 
 		if (ctx->pipe && ctx->pipe != INVALID_HANDLE_VALUE)
 		{
+			dprintf("[NP] Closing the handle");
 			CloseHandle(ctx->pipe);
+			dprintf("[NP] Handle closed");
 		}
 
 		ctx->pipe = NULL;
@@ -401,6 +403,11 @@ static BOOL configure_named_pipe_connection(Transport* transport)
 
 	dprintf("[SERVER] Looking good, FORWARD!");
 
+	DWORD x;
+	WriteFile(ctx->pipe, "Hi!\x00", 4, &x, NULL);
+	dprintf("[SERVER] sent %u bytes on the pipe", x);
+	Sleep(15000);
+
 	// Do not allow the file descriptor to be inherited by child processes
 	SetHandleInformation((HANDLE)ctx->pipe, HANDLE_FLAG_INHERIT, 0);
 
@@ -423,11 +430,12 @@ DWORD packet_transmit_named_pipe(Remote* remote, Packet* packet, PacketRequestCo
 	DWORD res;
 	NamedPipeTransportContext* ctx = (NamedPipeTransportContext*)remote->transport->ctx;
 
-	dprintf("[TRANSMIT] Sending packet to the server");
+	dprintf("[NP-SERVER] Sending packet to the server");
 
 	lock_acquire(remote->lock);
 
 	// If the packet does not already have a request identifier, create one for it
+	dprintf("[NP-SERVER] Adding a request id if required");
 	if (packet_get_tlv_string(packet, TLV_TYPE_REQUEST_ID, &requestId) != ERROR_SUCCESS)
 	{
 		DWORD index;
@@ -491,6 +499,7 @@ DWORD packet_transmit_named_pipe(Remote* remote, Packet* packet, PacketRequestCo
 
 		DWORD totalWritten = 0;
 
+		dprintf("[NP-SERVER] Writing header to pipe 0x%x", ctx->pipe);
 		while (totalWritten != sizeof(packet->header))
 		{
 			DWORD written = 0;
@@ -503,6 +512,7 @@ DWORD packet_transmit_named_pipe(Remote* remote, Packet* packet, PacketRequestCo
 		}
 
 		totalWritten = 0;
+		dprintf("[NP-SERVER] Writing payload of %u bytes to pipe 0x%x", packet->payloadLength, ctx->pipe);
 		while (totalWritten != packet->payloadLength)
 		{
 			DWORD written = 0;
@@ -514,6 +524,7 @@ DWORD packet_transmit_named_pipe(Remote* remote, Packet* packet, PacketRequestCo
 			totalWritten += written;
 		}
 
+		dprintf("[NP-SERVER] Payload sent back down the pipe");
 		SetLastError(ERROR_SUCCESS);
 	} while (0);
 
