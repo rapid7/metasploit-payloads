@@ -175,9 +175,8 @@ DWORD create_pipe_server_instance(NamedPipeContext* ctx)
 		dprintf("[NP-SERVER]   - pipe mode: 0x%x", ctx->pipe_mode);
 		dprintf("[NP-SERVER]   - pipe cnt : %d", ctx->pipe_count ? ctx->pipe_count : PIPE_UNLIMITED_INSTANCES);
 
-		// set up NULL session
+		// set up a session that let's anyone with SMB access connect
 		SECURITY_ATTRIBUTES sa = { 0 };
-
 		create_pipe_security_attributes(&sa);
 
 		ctx->pipe = CreateNamedPipeA(ctx->name, ctx->open_mode, ctx->pipe_mode, ctx->pipe_count ? ctx->pipe_count : PIPE_UNLIMITED_INSTANCES, PIPE_BUFFER_SIZE, PIPE_BUFFER_SIZE, 0, &sa);

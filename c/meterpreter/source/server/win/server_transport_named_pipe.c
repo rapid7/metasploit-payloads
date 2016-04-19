@@ -372,19 +372,12 @@ static BOOL configure_named_pipe_connection(Transport* transport)
 
 		if (ctx->pipe_name != NULL)
 		{
-			// set up NULL session
-			SECURITY_ATTRIBUTES sa = { 0 };
-			SECURITY_DESCRIPTOR sd = { 0 };
-
-			InitializeSecurityDescriptor(&sd, SECURITY_DESCRIPTOR_REVISION);
-			SetSecurityDescriptorDacl(&sd, TRUE, NULL, FALSE);
-
 			int start = current_unix_timestamp();
 
 			do
 			{
 				dprintf("[NP CONFIGURE] pipe name is %S, attempting to create", ctx->pipe_name);
-				ctx->pipe = CreateFileW(ctx->pipe_name, GENERIC_READ | GENERIC_WRITE, 0, &sa, OPEN_EXISTING, 0, NULL);
+				ctx->pipe = CreateFileW(ctx->pipe_name, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
 				if (ctx->pipe != INVALID_HANDLE_VALUE)
 				{
 					break;
