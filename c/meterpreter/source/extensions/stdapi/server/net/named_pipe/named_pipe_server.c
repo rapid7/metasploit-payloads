@@ -4,6 +4,8 @@
  */
 
 #include "precomp.h"
+#include <AccCtrl.h>
+#include <AclApi.h>
 
 #define PIPE_NAME_SIZE 256
 #define PIPE_BUFFER_SIZE 0x1000
@@ -25,6 +27,32 @@ typedef struct _NamedPipeContext
 
 static DWORD server_close(Channel* channel, Packet* request, LPVOID context);
 static DWORD server_notify(Remote* remote, LPVOID entryContext, LPVOID threadContext, BOOL timedOut);
+
+typedef BOOL (WINAPI *PAddMandatoryAce)(PACL pAcl, DWORD dwAceRevision, DWORD dwAceFlags, DWORD dwMandatoryPolicy, PSID pLabelSid);
+static BOOL WINAPI AddMandatoryAce(PACL pAcl, DWORD dwAceRevision, DWORD dwAceFlags, DWORD dwMandatoryPolicy, PSID pLabelSid)
+{
+	static BOOL attempted = FALSE;
+	static PAddMandatoryAce pAddMandatoryAce = NULL;
+
+	if (attempted)
+	{
+		attempted = TRUE;
+
+		HMODULE lib = LoadLibraryA("advapi32.dll");
+		if (lib != NULL)
+		{
+			pAddMandatoryAce = (PAddMandatoryAce)GetProcAddress(lib, "AddMandatoryAce");
+			dprintf("[NP-SERVER] AddMandatoryAce: %p", pAddMandatoryAce);
+		}
+	}
+
+	if (pAddMandatoryAce != NULL)
+	{
+		pAddMandatoryAce(pAcl, dwAceRevision, dwAceFlags, dwMandatoryPolicy, pLabelSid);
+	}
+
+	return TRUE;
+}
 
 /*!
  * @brief Writes data from the remote half of the channel to the established connection.
@@ -61,6 +89,80 @@ static DWORD server_write(Channel *channel, Packet *request, LPVOID context, LPV
 	return dwResult;
 }
 
+VOID create_pipe_security_attributes(PSECURITY_ATTRIBUTES psa)
+{
+	// Start with the DACL (perhaps try the NULL sid if it doesn't work?)
+	SID_IDENTIFIER_AUTHORITY sidWorld = SECURITY_WORLD_SID_AUTHORITY;
+	PSID sidEveryone = NULL;
+	if (!AllocateAndInitializeSid(&sidWorld, 1, SECURITY_WORLD_RID, 0, 0, 0, 0, 0, 0, 0, &sidEveryone))
+	{
+		dprintf("[NP-SERVER] AllocateAndInitializeSid failed: %u", GetLastError());
+		return;
+	}
+
+	dprintf("[NP-SERVER] sidEveryone: %p", sidEveryone);
+
+	EXPLICIT_ACCESSW ea = { 0 };
+	ea.grfAccessPermissions = SPECIFIC_RIGHTS_ALL | STANDARD_RIGHTS_ALL;
+	ea.grfAccessMode = SET_ACCESS;
+	ea.grfInheritance = NO_INHERITANCE;
+	ea.Trustee.TrusteeForm = TRUSTEE_IS_SID;
+	ea.Trustee.TrusteeType = TRUSTEE_IS_WELL_KNOWN_GROUP;
+	ea.Trustee.ptstrName = (LPWSTR)sidEveryone;
+
+	//PACL dacl = (PACL)LocalAlloc(LPTR, 256);
+	PACL dacl = NULL;
+	DWORD result = SetEntriesInAclW(1, &ea, NULL, &dacl);
+	if (result != ERROR_SUCCESS)
+	{
+		dprintf("[NP-SERVER] SetEntriesInAclW failed: %u", result);
+	}
+	dprintf("[NP-SERVER] DACL: %p", dacl);
+
+	// set up the sacl
+	SID_IDENTIFIER_AUTHORITY sidLabel = SECURITY_MANDATORY_LABEL_AUTHORITY;
+	PSID sidLow = NULL;
+	if (!AllocateAndInitializeSid(&sidLabel, 1, SECURITY_MANDATORY_LOW_RID, 0, 0, 0, 0, 0, 0, 0, &sidLow))
+	{
+		dprintf("[NP-SERVER] AllocateAndInitializeSid failed: %u", GetLastError());
+	}
+	dprintf("[NP-SERVER] sidLow: %p", dacl);
+
+	PACL sacl = (PACL)LocalAlloc(LPTR, 256);
+	if (!InitializeAcl(sacl, 256, ACL_REVISION_DS))
+	{
+		dprintf("[NP-SERVER] InitializeAcl failed: %u", GetLastError());
+	}
+
+	if (!AddMandatoryAce(sacl, ACL_REVISION_DS, NO_PROPAGATE_INHERIT_ACE, 0, sidLow))
+	{
+		dprintf("[NP-SERVER] AddMandatoryAce failed: %u", GetLastError());
+	}
+
+	// now build the descriptor
+	PSECURITY_DESCRIPTOR sd = (PSECURITY_DESCRIPTOR)LocalAlloc(LPTR, SECURITY_DESCRIPTOR_MIN_LENGTH);
+	if (!InitializeSecurityDescriptor(sd, SECURITY_DESCRIPTOR_REVISION))
+	{
+		dprintf("[NP-SERVER] InitializeSecurityDescriptor failed: %u", GetLastError());
+	}
+
+	// add the dacl
+	if (!SetSecurityDescriptorDacl(sd, TRUE, dacl, FALSE))
+	{
+		dprintf("[NP-SERVER] SetSecurityDescriptorDacl failed: %u", GetLastError());
+	}
+
+	// now the sacl
+	if (!SetSecurityDescriptorSacl(sd, TRUE, sacl, FALSE))
+	{
+		dprintf("[NP-SERVER] SetSecurityDescriptorSacl failed: %u", GetLastError());
+	}
+
+	psa->nLength = sizeof(SECURITY_ATTRIBUTES);
+	psa->bInheritHandle = FALSE;
+	psa->lpSecurityDescriptor = sd;
+}
+
 DWORD create_pipe_server_instance(NamedPipeContext* ctx)
 {
 	DWORD dwResult = ERROR_SUCCESS;
@@ -72,7 +174,13 @@ DWORD create_pipe_server_instance(NamedPipeContext* ctx)
 		dprintf("[NP-SERVER]   - open mode: 0x%x", ctx->open_mode);
 		dprintf("[NP-SERVER]   - pipe mode: 0x%x", ctx->pipe_mode);
 		dprintf("[NP-SERVER]   - pipe cnt : %d", ctx->pipe_count ? ctx->pipe_count : PIPE_UNLIMITED_INSTANCES);
-		ctx->pipe = CreateNamedPipeA(ctx->name, ctx->open_mode, ctx->pipe_mode, ctx->pipe_count ? ctx->pipe_count : PIPE_UNLIMITED_INSTANCES, PIPE_BUFFER_SIZE, PIPE_BUFFER_SIZE, 0, NULL);
+
+		// set up NULL session
+		SECURITY_ATTRIBUTES sa = { 0 };
+
+		create_pipe_security_attributes(&sa);
+
+		ctx->pipe = CreateNamedPipeA(ctx->name, ctx->open_mode, ctx->pipe_mode, ctx->pipe_count ? ctx->pipe_count : PIPE_UNLIMITED_INSTANCES, PIPE_BUFFER_SIZE, PIPE_BUFFER_SIZE, 0, &sa);
 
 		if (ctx->pipe == INVALID_HANDLE_VALUE)
 		{

@@ -10,9 +10,9 @@
  * @param timeout Amount of time to wait before the poll times out (in milliseconds).
  * @return Indication of success or failure.
  */
-static BOOL server_socket_poll(Remote* remote, long timeout)
+static DWORD server_socket_poll(Remote* remote, long timeout)
 {
-	DWORD result = FALSE;
+	DWORD result = ERROR_SUCCESS;
 	DWORD bytesAvailable = 0;
 	NamedPipeTransportContext* ctx = (NamedPipeTransportContext*)remote->transport->ctx;
 
@@ -22,13 +22,17 @@ static BOOL server_socket_poll(Remote* remote, long timeout)
 	if (PeekNamedPipe(ctx->pipe, NULL, 0, NULL, &bytesAvailable, NULL) && bytesAvailable > 0)
 	{
 		dprintf("[DISPATH] pipe data found %u bytes", bytesAvailable);
-		result = TRUE;
 	}
 	else
 	{
-		// simulate a wait so that we don't bash the crap out of the CPU?
-		dprintf("[DISPATH] pipe data not found, sleeping");
-		Sleep(timeout);
+		result = GetLastError();
+
+		if (result != ERROR_BROKEN_PIPE)
+		{
+			// simulate a wait so that we don't bash the crap out of the CPU?
+			dprintf("[DISPATH] pipe data not found, sleeping (error %u)", GetLastError());
+			Sleep(timeout);
+		}
 	}
 
 	lock_release(remote->lock);
@@ -204,7 +208,7 @@ static DWORD server_dispatch_named_pipe(Remote* remote, THREAD* dispatchThread)
 		}
 
 		result = server_socket_poll(remote, 500);
-		if (result > 0)
+		if (result == ERROR_SUCCESS)
 		{
 			result = packet_receive_named_pipe(remote, &packet);
 			if (result != ERROR_SUCCESS)
@@ -219,7 +223,7 @@ static DWORD server_dispatch_named_pipe(Remote* remote, THREAD* dispatchThread)
 			// packet received, reset the timer
 			lastPacket = current_unix_timestamp();
 		}
-		else if (result == 0)
+		else if (result != ERROR_BROKEN_PIPE)
 		{
 			// check if the communication has timed out, or the session has expired, so we should terminate the session
 			int now = current_unix_timestamp();
@@ -368,12 +372,19 @@ static BOOL configure_named_pipe_connection(Transport* transport)
 
 		if (ctx->pipe_name != NULL)
 		{
+			// set up NULL session
+			SECURITY_ATTRIBUTES sa = { 0 };
+			SECURITY_DESCRIPTOR sd = { 0 };
+
+			InitializeSecurityDescriptor(&sd, SECURITY_DESCRIPTOR_REVISION);
+			SetSecurityDescriptorDacl(&sd, TRUE, NULL, FALSE);
+
 			int start = current_unix_timestamp();
 
 			do
 			{
 				dprintf("[NP CONFIGURE] pipe name is %S, attempting to create", ctx->pipe_name);
-				ctx->pipe = CreateFileW(ctx->pipe_name, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
+				ctx->pipe = CreateFileW(ctx->pipe_name, GENERIC_READ | GENERIC_WRITE, 0, &sa, OPEN_EXISTING, 0, NULL);
 				if (ctx->pipe != INVALID_HANDLE_VALUE)
 				{
 					break;
@@ -402,11 +413,6 @@ static BOOL configure_named_pipe_connection(Transport* transport)
 	}
 
 	dprintf("[SERVER] Looking good, FORWARD!");
-
-	DWORD x;
-	WriteFile(ctx->pipe, "Hi!\x00", 4, &x, NULL);
-	dprintf("[SERVER] sent %u bytes on the pipe", x);
-	Sleep(15000);
 
 	// Do not allow the file descriptor to be inherited by child processes
 	SetHandleInformation((HANDLE)ctx->pipe, HANDLE_FLAG_INHERIT, 0);
