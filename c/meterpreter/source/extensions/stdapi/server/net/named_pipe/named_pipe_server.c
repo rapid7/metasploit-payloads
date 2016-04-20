@@ -14,7 +14,8 @@ typedef struct _NamedPipeContext
 {
 	// make sure we leave this as the first element, so that it can be cast
 	// to an OVERLAPPED pointer for various operations.
-	OVERLAPPED overlapped;
+	OVERLAPPED read_overlap;
+	OVERLAPPED write_overlap;
 	char       name[PIPE_NAME_SIZE];
 	DWORD      open_mode;
 	DWORD      pipe_mode;
@@ -26,8 +27,6 @@ typedef struct _NamedPipeContext
 	BOOL       established;
 	BOOL       repeat;
 	BYTE       read_buffer[PIPE_BUFFER_SIZE];
-	BYTE*      write_buffer;
-	DWORD      write_buffer_size;
 } NamedPipeContext;
 
 static DWORD server_close(Channel* channel, Packet* request, LPVOID context);
@@ -74,28 +73,45 @@ static DWORD server_write(Channel *channel, Packet *request, LPVOID context, LPV
 {
 	DWORD dwResult = ERROR_SUCCESS;
 	NamedPipeContext* ctx = (NamedPipeContext*)context;
-	DWORD written = 0;
 
 	*bytesWritten = 0;
+
+	dprintf("[NP-SERVER] Writing a total of %u", bufferSize);
+	while (*bytesWritten < bufferSize)
+	{
+		DWORD byteCount = 0;
+		WriteFile(ctx->pipe, buffer, bufferSize - *bytesWritten, NULL, &ctx->write_overlap);
+		// blocking here is just fine, it's the reads we care about
+		if (GetOverlappedResult(ctx->pipe, &ctx->write_overlap, &byteCount, TRUE))
+		{
+			dprintf("[NP-SERVER] Wrote %u", byteCount);
+			*bytesWritten += byteCount;
+		}
+		else
+		{
+			dprintf("[NP-SERVER] failed to do the write: %u", GetLastError());
+		}
+		dprintf("[NP-SERVER] left to go: %u", bufferSize - *bytesWritten);
+	}
 
 	//do
 	//{
 		// copy data over to the context for the async write to happen, we can't rely
 		// on the buffer being here at the time of writing.
-		if (bufferSize > ctx->write_buffer_size || ctx->write_buffer == NULL)
-		{
-			dprintf("[NP-SERVER] reallocating %p for %u bytes", ctx->write_buffer, bufferSize);
-			ctx->write_buffer_size = bufferSize;
-			ctx->write_buffer = (BYTE*)realloc(ctx->write_buffer, ctx->write_buffer_size);
-		}
+		//if (bufferSize > ctx->write_buffer_size || ctx->write_buffer == NULL)
+		//{
+		//	dprintf("[NP-SERVER] reallocating %p for %u bytes", ctx->write_buffer, bufferSize);
+		//	ctx->write_buffer_size = bufferSize;
+		//	ctx->write_buffer = (BYTE*)realloc(ctx->write_buffer, ctx->write_buffer_size);
+		//}
 
-		dprintf("[NP-SERVER] writing to %p total of %u bytes", ctx->write_buffer, bufferSize);
-		memcpy_s(ctx->write_buffer, ctx->write_buffer_size, buffer, bufferSize);
+		//dprintf("[NP-SERVER] writing to %p total of %u bytes", ctx->write_buffer, bufferSize);
+		//memcpy_s(ctx->write_buffer, ctx->write_buffer_size, buffer, bufferSize);
 
-		OVERLAPPED ovl = { 0 };
+		//WriteFile(ctx->pipe, buffer, bufferSize, NULL, &ovl);
 		//WriteFile(ctx->pipe, ctx->write_buffer, bufferSize, NULL, &ovl);
-		WriteFile(ctx->pipe, ctx->write_buffer, bufferSize, NULL, &ctx->overlapped);
-		//if (!WriteFile(ctx->pipe, ctx->write_buffer, bufferSize, NULL, &ctx->overlapped));
+		//WriteFile(ctx->pipe, ctx->write_buffer, bufferSize, NULL, &ctx->read_overlap);
+		//if (!WriteFile(ctx->pipe, ctx->write_buffer, bufferSize, NULL, &ctx->read_overlap));
 		//{
 			//BREAK_ON_ERROR("[NP-SERVER] unable to write");
 		//}
@@ -103,7 +119,7 @@ static DWORD server_write(Channel *channel, Packet *request, LPVOID context, LPV
 		//*bytesWritten += written;
 	//} while (*bytesWritten < bufferSize);
 
-	dprintf("[NP SERVER] server write. finished. dwResult=%d, written=%d", dwResult, written);
+	dprintf("[NP SERVER] server write. finished. dwResult=%d, written=%d", dwResult, *bytesWritten);
 
 	return dwResult;
 }
@@ -219,10 +235,17 @@ DWORD create_pipe_server_instance(NamedPipeContext* ctx)
 
 		dprintf("[NP-SERVER] Creating the handler event");
 		// This must be signalled, so that the connect event kicks off on the new thread.
-		ctx->overlapped.hEvent = CreateEvent(NULL, TRUE, TRUE, NULL);
-		if (ctx->overlapped.hEvent == NULL)
+		ctx->read_overlap.hEvent = CreateEvent(NULL, TRUE, TRUE, NULL);
+		if (ctx->read_overlap.hEvent == NULL)
 		{
-			BREAK_ON_ERROR("[NP-SERVER] Failed to create connect event.");
+			BREAK_ON_ERROR("[NP-SERVER] Failed to create connect event for read overlap.");
+		}
+
+		// this should not be signalled as it's just for handling named pipe writes.
+		ctx->write_overlap.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+		if (ctx->write_overlap.hEvent == NULL)
+		{
+			BREAK_ON_ERROR("[NP-SERVER] Failed to create connect event for read overlap.");
 		}
 
 		chops.native.context = ctx;
@@ -237,7 +260,7 @@ DWORD create_pipe_server_instance(NamedPipeContext* ctx)
 		}
 
 		dprintf("[NP-SERVER] Inserting the named pipe schedule entry");
-		scheduler_insert_waitable(ctx->overlapped.hEvent, ctx, NULL, server_notify, NULL);
+		scheduler_insert_waitable(ctx->read_overlap.hEvent, ctx, NULL, server_notify, NULL);
 	} while (0);
 
 	return dwResult;
@@ -270,11 +293,17 @@ static VOID free_server_context(NamedPipeContext* ctx)
 			ctx->channel = NULL;
 		}
 
-		if (ctx->overlapped.hEvent != NULL)
+		if (ctx->read_overlap.hEvent != NULL)
 		{
 			dprintf("[NP-SERVER] free_server_context. signaling the thread to stop");
-			scheduler_signal_waitable(ctx->overlapped.hEvent, Stop);
-			ctx->overlapped.hEvent = NULL;
+			scheduler_signal_waitable(ctx->read_overlap.hEvent, Stop);
+			ctx->read_overlap.hEvent = NULL;
+		}
+
+		if (ctx->write_overlap.hEvent != NULL)
+		{
+			CloseHandle(ctx->write_overlap.hEvent);
+			ctx->write_overlap.hEvent = NULL;
 		}
 
 		free(ctx);
@@ -348,7 +377,7 @@ static DWORD server_notify(Remote* remote, LPVOID entryContext, LPVOID threadCon
 		{
 			serverCtx->connecting = TRUE;
 			dprintf("[NP-SERVER] Connecting to the named pipe async");
-			ConnectNamedPipe(serverCtx->pipe, &serverCtx->overlapped);
+			ConnectNamedPipe(serverCtx->pipe, &serverCtx->read_overlap);
 
 			dwResult = GetLastError();
 			dprintf("[NP-SERVER] checking the result of connect %u 0x%x", dwResult, dwResult);
@@ -372,7 +401,7 @@ static DWORD server_notify(Remote* remote, LPVOID entryContext, LPVOID threadCon
 
 		DWORD bytesProcessed = 0;
 		dprintf("[NP-SERVER] Checking the overlapped result");
-		if (!GetOverlappedResult(serverCtx->pipe, &serverCtx->overlapped, &bytesProcessed, FALSE))
+		if (!GetOverlappedResult(serverCtx->pipe, &serverCtx->read_overlap, &bytesProcessed, FALSE))
 		{
 			dwResult = GetLastError();
 			dprintf("[NP-SERVER] server_notify. unable to get the connect result, %u", dwResult);
@@ -451,22 +480,22 @@ static DWORD server_notify(Remote* remote, LPVOID entryContext, LPVOID threadCon
 		performRead = TRUE;
 	} while (0);
 
-	if (serverCtx->overlapped.hEvent != NULL)
+	if (serverCtx->read_overlap.hEvent != NULL)
 	{
 		dprintf("[NP-SERVER] Resetting the event handle");
-		ResetEvent(serverCtx->overlapped.hEvent);
+		ResetEvent(serverCtx->read_overlap.hEvent);
 	}
 
 	// this has to be done after the signal is reset, otherwise ... STRANGE THINGS HAPPEN!
 	if (performRead)
 	{
 		// prepare for reading
-		serverCtx->overlapped.Offset = 0;
-		serverCtx->overlapped.OffsetHigh = 0;
+		serverCtx->read_overlap.Offset = 0;
+		serverCtx->read_overlap.OffsetHigh = 0;
 
 		// read the data from the pipe, we're async, so the return value of the function is meaningless.
 		dprintf("[NP-SERVER] kicking off another read operation...");
-		ReadFile(serverCtx->pipe, serverCtx->read_buffer, PIPE_BUFFER_SIZE, NULL, &serverCtx->overlapped);
+		ReadFile(serverCtx->pipe, serverCtx->read_buffer, PIPE_BUFFER_SIZE, NULL, &serverCtx->read_overlap);
 		// TODO: error checking?
 	}
 
@@ -560,10 +589,10 @@ DWORD request_net_named_pipe_server_channel_open(Remote* remote, Packet* packet)
 			break;
 		}
 
-		if (ctx->overlapped.hEvent != NULL)
+		if (ctx->read_overlap.hEvent != NULL)
 		{
 			dprintf("[NP-SERVER] Destroying wait handle");
-			CloseHandle(ctx->overlapped.hEvent);
+			CloseHandle(ctx->read_overlap.hEvent);
 		}
 
 		if (ctx->pipe != NULL && ctx->pipe != INVALID_HANDLE_VALUE)
