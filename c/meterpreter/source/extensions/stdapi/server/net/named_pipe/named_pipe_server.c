@@ -22,9 +22,12 @@ typedef struct _NamedPipeContext
 	Remote*    remote;
 	Channel*   channel;
 	HANDLE     pipe;
+	BOOL       connecting;
 	BOOL       established;
-	BOOL       client_connected;
 	BOOL       repeat;
+	BYTE       read_buffer[PIPE_BUFFER_SIZE];
+	BYTE*      write_buffer;
+	DWORD      write_buffer_size;
 } NamedPipeContext;
 
 static DWORD server_close(Channel* channel, Packet* request, LPVOID context);
@@ -75,17 +78,30 @@ static DWORD server_write(Channel *channel, Packet *request, LPVOID context, LPV
 
 	*bytesWritten = 0;
 
-	do
-	{
-		OVERLAPPED ovl = { 0 };
-		//if (!WriteFile(ctx->pipe, buffer, bufferSize, &written, &ovl))
-		if (!WriteFile(ctx->pipe, buffer, bufferSize, &written, &ctx->overlapped))
+	//do
+	//{
+		// copy data over to the context for the async write to happen, we can't rely
+		// on the buffer being here at the time of writing.
+		if (bufferSize > ctx->write_buffer_size || ctx->write_buffer == NULL)
 		{
-			BREAK_ON_ERROR("[NP-SERVER] unable to write");
+			dprintf("[NP-SERVER] reallocating %p for %u bytes", ctx->write_buffer, bufferSize);
+			ctx->write_buffer_size = bufferSize;
+			ctx->write_buffer = (BYTE*)realloc(ctx->write_buffer, ctx->write_buffer_size);
 		}
-		dprintf("[NP-SERVER] wrote to named pipe: %u", written);
-		*bytesWritten += written;
-	} while (*bytesWritten < bufferSize);
+
+		dprintf("[NP-SERVER] writing to %p total of %u bytes", ctx->write_buffer, bufferSize);
+		memcpy_s(ctx->write_buffer, ctx->write_buffer_size, buffer, bufferSize);
+
+		OVERLAPPED ovl = { 0 };
+		//WriteFile(ctx->pipe, ctx->write_buffer, bufferSize, NULL, &ovl);
+		WriteFile(ctx->pipe, ctx->write_buffer, bufferSize, NULL, &ctx->overlapped);
+		//if (!WriteFile(ctx->pipe, ctx->write_buffer, bufferSize, NULL, &ctx->overlapped));
+		//{
+			//BREAK_ON_ERROR("[NP-SERVER] unable to write");
+		//}
+		//dprintf("[NP-SERVER] wrote to named pipe: %u", written);
+		//*bytesWritten += written;
+	//} while (*bytesWritten < bufferSize);
 
 	dprintf("[NP SERVER] server write. finished. dwResult=%d, written=%d", dwResult, written);
 
@@ -202,31 +218,11 @@ DWORD create_pipe_server_instance(NamedPipeContext* ctx)
 		}
 
 		dprintf("[NP-SERVER] Creating the handler event");
+		// This must be signalled, so that the connect event kicks off on the new thread.
 		ctx->overlapped.hEvent = CreateEvent(NULL, TRUE, TRUE, NULL);
 		if (ctx->overlapped.hEvent == NULL)
 		{
 			BREAK_ON_ERROR("[NP-SERVER] Failed to create connect event.");
-		}
-
-		dprintf("[NP-SERVER] Connecting to the named pipe async");
-		if (ConnectNamedPipe(ctx->pipe, &ctx->overlapped) == 0)
-		{
-			dwResult = GetLastError();
-			dprintf("[NP-SERVER] connect failed, making sure the result is valid... %u 0x%x", dwResult, dwResult);
-			if (dwResult == ERROR_IO_PENDING)
-			{
-				dprintf("[NP-SERVER] still waiting for an overlapped connection");
-			}
-			else if (dwResult == ERROR_PIPE_LISTENING)
-			{
-				dprintf("[NP-SERVER] client has connected apparently");
-				ctx->client_connected = TRUE;
-			}
-			else
-			{
-				BREAK_WITH_ERROR("[NP-SERVER] Failed to connect to the named pipe", dwResult);
-			}
-			dwResult = ERROR_SUCCESS;
 		}
 
 		chops.native.context = ctx;
@@ -242,7 +238,6 @@ DWORD create_pipe_server_instance(NamedPipeContext* ctx)
 
 		dprintf("[NP-SERVER] Inserting the named pipe schedule entry");
 		scheduler_insert_waitable(ctx->overlapped.hEvent, ctx, NULL, server_notify, NULL);
-		//scheduler_insert_waitable_with_timeout(ctx->overlapped.hEvent, ctx, NULL, server_notify, NULL, 250);
 	} while (0);
 
 	return dwResult;
@@ -332,10 +327,10 @@ static DWORD server_close(Channel* channel, Packet* request, LPVOID context)
  */
 static DWORD server_notify(Remote* remote, LPVOID entryContext, LPVOID threadContext, BOOL timedOut)
 {
-	char dataBuffer[PIPE_BUFFER_SIZE];
 	DWORD dwResult = ERROR_SUCCESS;
 	Packet* request = NULL;
 	NamedPipeContext* serverCtx = (NamedPipeContext*)entryContext;
+	BOOL performRead = FALSE;
 
 	do
 	{
@@ -349,63 +344,54 @@ static DWORD server_notify(Remote* remote, LPVOID entryContext, LPVOID threadCon
 			BREAK_WITH_ERROR("[NP-SERVER] pipe isn't present, we might be shutting down.", ERROR_INVALID_HANDLE);
 		}
 
-		if (timedOut)
+		if (!serverCtx->connecting)
 		{
-			DWORD total = 0;
-			if (PeekNamedPipe(serverCtx->pipe, NULL, 0, NULL, &total, NULL) && total > 0)
+			serverCtx->connecting = TRUE;
+			dprintf("[NP-SERVER] Connecting to the named pipe async");
+			ConnectNamedPipe(serverCtx->pipe, &serverCtx->overlapped);
+
+			dwResult = GetLastError();
+			dprintf("[NP-SERVER] checking the result of connect %u 0x%x", dwResult, dwResult);
+			if (dwResult == ERROR_IO_PENDING)
 			{
-				// we have data, so force a read!
-				dprintf("[NP-SERVER] Data found on the pipe, force async read with overlapped result: %u", total);
-				char buffer[1024];
-				DWORD b;
-				ReadFile(serverCtx->pipe, buffer, sizeof(buffer), &b, &serverCtx->overlapped);
-				dprintf("[NP-SERVER] ************ read a total of %u, error: %u", b, GetLastError());
-				//SetEvent(serverCtx->overlapped.hEvent);
-				return ERROR_SUCCESS;
+				dprintf("[NP-SERVER] still waiting for an overlapped connection");
+				break;
 			}
+			else if (dwResult == ERROR_PIPE_LISTENING)
+			{
+				dprintf("[NP-SERVER] client has connected apparently");
+				serverCtx->established = TRUE;
+				// no break here, we want to continue
+			}
+			else
+			{
+				BREAK_WITH_ERROR("[NP-SERVER] Failed to connect to the named pipe", dwResult);
+			}
+			dwResult = ERROR_SUCCESS;
 		}
 
-		DWORD bytesWaiting = 0;
+		DWORD bytesProcessed = 0;
 		dprintf("[NP-SERVER] Checking the overlapped result");
-		if (!GetOverlappedResult(serverCtx->pipe, &serverCtx->overlapped, &bytesWaiting, FALSE))
+		if (!GetOverlappedResult(serverCtx->pipe, &serverCtx->overlapped, &bytesProcessed, FALSE))
 		{
 			dwResult = GetLastError();
 			dprintf("[NP-SERVER] server_notify. unable to get the connect result, %u", dwResult);
 
 			if (dwResult == ERROR_IO_INCOMPLETE)
 			{
-				dprintf("[NP-SERVER] still waiting for data on the pipe..");
-				break;
+				dprintf("[NP-SERVER] still waiting for something to happen on the pipe");
 			}
-
-			dprintf("[NP-SERVER] server_notify. unable to get the connect result, so disconnecting and reconnecting");
-			if(DisconnectNamedPipe(serverCtx->pipe))
-			{
-				dprintf("[NP-SERVER] disconnect worked");
-			}
-			else
-			{
-				dprintf("[NP-SERVER] disconnect didn't work: %u", GetLastError());
-			}
-
-			if (ConnectNamedPipe(serverCtx->pipe, &serverCtx->overlapped) == 0)
-			{
-				dprintf("[NP-SERVER] Connect was 0 resulted in %u", GetLastError());
-			}
-			else
-			{
-				dprintf("[NP-SERVER] Connect was not 0 resulted in %u", GetLastError());
-			}
-
-			serverCtx->established = FALSE;
+			// TODO: add more cases, such as when the pipe dies
 			break;
 		}
 
 		// spin up a new named pipe server instance to handle the next connection if this
 		// connection is new.
-		dprintf("[NP-SERVER] Apparently we have a result! With %u bytes", bytesWaiting);
+		dprintf("[NP-SERVER] Apparently we have a result! With %u bytes", bytesProcessed);
 		if (!serverCtx->established)
 		{
+			// this is a connect, so tell MSF about it.
+			dprintf("[NP-SERVER] This appears to be a new connection, setting up context.");
 			request = packet_create(PACKET_TLV_TYPE_REQUEST, "named_pipe_channel_open");
 			if (!request)
 			{
@@ -414,8 +400,7 @@ static DWORD server_notify(Remote* remote, LPVOID entryContext, LPVOID threadCon
 
 			if (serverCtx->repeat)
 			{
-				dprintf("[NP-SERVER] This appears to be a new connection, setting up context.");
-				// connection received, here we're going to create a new named pipe handle so that
+				// Connection received, here we're going to create a new named pipe handle so that
 				// other connections can come in on it. We'll assume that it if worked once, it
 				// will work again this time
 				NamedPipeContext* nextCtx = (NamedPipeContext*)calloc(1, sizeof(NamedPipeContext));
@@ -451,37 +436,38 @@ static DWORD server_notify(Remote* remote, LPVOID entryContext, LPVOID threadCon
 			serverCtx->established = TRUE;
 		}
 
-		if (bytesWaiting > 0)
+		if (bytesProcessed > 0)
 		{
-			dprintf("[NP-SERVER] processing bytes: %u", bytesWaiting);
-			// prepare for reading
-			serverCtx->overlapped.Offset = 0;
-			serverCtx->overlapped.OffsetHigh = 0;
+			dprintf("[NP-SERVER] read & sending bytes %u", bytesProcessed);
+			dprintf("[NP-SERVER] First 12 bytes: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
+				serverCtx->read_buffer[0], serverCtx->read_buffer[1], serverCtx->read_buffer[2], serverCtx->read_buffer[3],
+				serverCtx->read_buffer[4], serverCtx->read_buffer[5], serverCtx->read_buffer[6], serverCtx->read_buffer[7],
+				serverCtx->read_buffer[8], serverCtx->read_buffer[9], serverCtx->read_buffer[10], serverCtx->read_buffer[11]);
 
-			DWORD bytesRead = 0;
-			// read the data from the pipe
-			if (!ReadFile(serverCtx->pipe, dataBuffer, bytesWaiting == 0 ? PIPE_BUFFER_SIZE : bytesWaiting, &bytesRead, &serverCtx->overlapped))
-			{
-				if (GetLastError() == ERROR_IO_PENDING)
-				{
-					BREAK_ON_ERROR("[NP-SERVER] No data in the pipe for reading, this could be the result of a write. Should be ok to ignore.");
-				}
-				BREAK_ON_ERROR("[NP-SERVER] failed to read data from the pipe.");
-			}
-
-			dprintf("[NP-SERVER] reading bytes resulted in: %u", GetLastError());
-
-			// write data to the other end of the channel
-			channel_write(serverCtx->channel, serverCtx->remote, NULL, 0, dataBuffer, bytesRead, 0);
+			// back ya go!
+			channel_write(serverCtx->channel, serverCtx->remote, NULL, 0, serverCtx->read_buffer, bytesProcessed, 0);
 		}
 
-		// now 
+		performRead = TRUE;
 	} while (0);
 
 	if (serverCtx->overlapped.hEvent != NULL)
 	{
 		dprintf("[NP-SERVER] Resetting the event handle");
 		ResetEvent(serverCtx->overlapped.hEvent);
+	}
+
+	// this has to be done after the signal is reset, otherwise ... STRANGE THINGS HAPPEN!
+	if (performRead)
+	{
+		// prepare for reading
+		serverCtx->overlapped.Offset = 0;
+		serverCtx->overlapped.OffsetHigh = 0;
+
+		// read the data from the pipe, we're async, so the return value of the function is meaningless.
+		dprintf("[NP-SERVER] kicking off another read operation...");
+		ReadFile(serverCtx->pipe, serverCtx->read_buffer, PIPE_BUFFER_SIZE, NULL, &serverCtx->overlapped);
+		// TODO: error checking?
 	}
 
 	return dwResult;
