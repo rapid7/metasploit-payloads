@@ -429,12 +429,12 @@ DWORD packet_transmit_named_pipe(Remote* remote, Packet* packet, PacketRequestCo
 	DWORD res;
 	NamedPipeTransportContext* ctx = (NamedPipeTransportContext*)remote->transport->ctx;
 
-	dprintf("[NP-SERVER] Sending packet to the server");
+	dprintf("[NP-TRANS] Sending packet to the server");
 
 	lock_acquire(remote->lock);
 
 	// If the packet does not already have a request identifier, create one for it
-	dprintf("[NP-SERVER] Adding a request id if required");
+	dprintf("[NP-TRANS] Adding a request id if required");
 	if (packet_get_tlv_string(packet, TLV_TYPE_REQUEST_ID, &requestId) != ERROR_SUCCESS)
 	{
 		DWORD index;
@@ -498,7 +498,7 @@ DWORD packet_transmit_named_pipe(Remote* remote, Packet* packet, PacketRequestCo
 
 		DWORD totalWritten = 0;
 
-		dprintf("[NP-SERVER] Writing header to pipe 0x%x", ctx->pipe);
+		dprintf("[NP-TRANS] Writing header to pipe 0x%x", ctx->pipe);
 		while (totalWritten != sizeof(packet->header))
 		{
 			DWORD written = 0;
@@ -511,7 +511,7 @@ DWORD packet_transmit_named_pipe(Remote* remote, Packet* packet, PacketRequestCo
 		}
 
 		totalWritten = 0;
-		dprintf("[NP-SERVER] Writing payload of %u bytes to pipe 0x%x", packet->payloadLength, ctx->pipe);
+		dprintf("[NP-TRANS] Writing payload of %u bytes to pipe 0x%x", packet->payloadLength, ctx->pipe);
 		while (totalWritten != packet->payloadLength)
 		{
 			DWORD written = 0;
@@ -523,7 +523,7 @@ DWORD packet_transmit_named_pipe(Remote* remote, Packet* packet, PacketRequestCo
 			totalWritten += written;
 		}
 
-		dprintf("[NP-SERVER] Payload sent back down the pipe");
+		dprintf("[NP-TRANS] Payload sent back down the pipe");
 		SetLastError(ERROR_SUCCESS);
 	} while (0);
 
