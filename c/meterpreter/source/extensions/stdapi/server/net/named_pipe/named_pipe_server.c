@@ -221,6 +221,7 @@ DWORD create_pipe_server_instance(NamedPipeContext* ctx)
 		dprintf("[NP-SERVER]   - open mode: 0x%x", ctx->open_mode);
 		dprintf("[NP-SERVER]   - pipe mode: 0x%x", ctx->pipe_mode);
 		dprintf("[NP-SERVER]   - pipe cnt : %d", ctx->pipe_count ? ctx->pipe_count : PIPE_UNLIMITED_INSTANCES);
+		dprintf("[NP-SERVER]   - repeat?  : %s", ctx->repeat ? "Yes" : "No");
 
 		// set up a session that let's anyone with SMB access connect
 		SECURITY_ATTRIBUTES sa = { 0 };
@@ -281,6 +282,7 @@ static VOID free_server_context(NamedPipeContext* ctx)
 
 		dprintf("[NP-SERVER] free_server_context. ctx=0x%08X", ctx);
 
+		dprintf("[NP-SERVER] freeing up pipe handle 0x%x", ctx->pipe);
 		if (ctx->pipe != NULL && ctx->pipe != INVALID_HANDLE_VALUE)
 		{
 			CloseHandle(ctx->pipe);
@@ -404,13 +406,20 @@ static DWORD server_notify(Remote* remote, LPVOID entryContext, LPVOID threadCon
 		if (!GetOverlappedResult(serverCtx->pipe, &serverCtx->read_overlap, &bytesProcessed, FALSE))
 		{
 			dwResult = GetLastError();
-			dprintf("[NP-SERVER] server_notify. unable to get the connect result, %u", dwResult);
+			dprintf("[NP-SERVER] server_notify. unable to get the result, %u", dwResult);
 
 			if (dwResult == ERROR_IO_INCOMPLETE)
 			{
 				dprintf("[NP-SERVER] still waiting for something to happen on the pipe");
 			}
-			// TODO: add more cases, such as when the pipe dies
+			else if (dwResult == ERROR_BROKEN_PIPE)
+			{
+				dprintf("[NP-SERVER] the client appears to have bailed out, disconnecting...");
+				channel_close(serverCtx->channel, serverCtx->remote, NULL, 0, NULL);
+				ResetEvent(serverCtx->read_overlap.hEvent);
+				//scheduler_signal_waitable(serverCtx->read_overlap.hEvent, Stop);
+				return ERROR_BROKEN_PIPE;
+			}
 			break;
 		}
 
@@ -438,14 +447,16 @@ static DWORD server_notify(Remote* remote, LPVOID entryContext, LPVOID threadCon
 				nextCtx->open_mode = serverCtx->open_mode;
 				nextCtx->pipe_mode = serverCtx->pipe_mode;
 				nextCtx->pipe_count = serverCtx->pipe_count;
+				nextCtx->repeat = serverCtx->repeat;
 				nextCtx->remote = serverCtx->remote;
 				memcpy_s(&nextCtx->name, PIPE_NAME_SIZE, &serverCtx->name, PIPE_NAME_SIZE);
 
 				// create a new pipe for the next connection
-				if (create_pipe_server_instance(nextCtx) != ERROR_SUCCESS)
+				DWORD result = create_pipe_server_instance(nextCtx);
+				if (result != ERROR_SUCCESS)
 				{
+					dprintf("[NP-SERVER] failed to create the pipe server instance: %u", result);
 					free_server_context(nextCtx);
-					dprintf("[NP-SERVER] failed to create the pipe server instance");
 				}
 				else
 				{
@@ -468,10 +479,6 @@ static DWORD server_notify(Remote* remote, LPVOID entryContext, LPVOID threadCon
 		if (bytesProcessed > 0)
 		{
 			dprintf("[NP-SERVER] read & sending bytes %u", bytesProcessed);
-			dprintf("[NP-SERVER] First 12 bytes: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
-				serverCtx->read_buffer[0], serverCtx->read_buffer[1], serverCtx->read_buffer[2], serverCtx->read_buffer[3],
-				serverCtx->read_buffer[4], serverCtx->read_buffer[5], serverCtx->read_buffer[6], serverCtx->read_buffer[7],
-				serverCtx->read_buffer[8], serverCtx->read_buffer[9], serverCtx->read_buffer[10], serverCtx->read_buffer[11]);
 
 			// back ya go!
 			channel_write(serverCtx->channel, serverCtx->remote, NULL, 0, serverCtx->read_buffer, bytesProcessed, 0);
