@@ -382,11 +382,17 @@ DWORD server_setup(MetsrvConfig* config)
 				break;
 			}
 
-			// the first transport should match the transport that we initially connected on.
-			// If it's TCP comms, we need to wire that up.
-			if (remote->transport->type == METERPRETER_TRANSPORT_SSL && config->session.comms_handle)
+			// pass stuff through based on session type. this should go elsewhere I'd say.
+			if (config->session.comms_handle)
 			{
-				((TcpTransportContext*)remote->transport->ctx)->fd = (SOCKET)config->session.comms_handle;
+				if (remote->transport->type == METERPRETER_TRANSPORT_SSL)
+				{
+					((TcpTransportContext*)remote->transport->ctx)->fd = (SOCKET)config->session.comms_handle;
+				}
+				else if (remote->transport->type == METERPRETER_TRANSPORT_PIPE)
+				{
+					((NamedPipeTransportContext*)remote->transport->ctx)->pipe = (HANDLE)config->session.comms_handle;
+				}
 			}
 
 			// Set up the transport creation function pointer

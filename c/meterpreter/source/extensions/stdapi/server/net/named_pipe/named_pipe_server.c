@@ -417,7 +417,6 @@ static DWORD server_notify(Remote* remote, LPVOID entryContext, LPVOID threadCon
 				dprintf("[NP-SERVER] the client appears to have bailed out, disconnecting...");
 				channel_close(serverCtx->channel, serverCtx->remote, NULL, 0, NULL);
 				ResetEvent(serverCtx->read_overlap.hEvent);
-				//scheduler_signal_waitable(serverCtx->read_overlap.hEvent, Stop);
 				return ERROR_BROKEN_PIPE;
 			}
 			break;
@@ -468,6 +467,7 @@ static DWORD server_notify(Remote* remote, LPVOID entryContext, LPVOID threadCon
 
 			packet_add_tlv_uint(request, TLV_TYPE_CHANNEL_PARENTID, channel_get_id(serverCtx->channel));
 
+			dprintf("[NP-SERVER] telling MSF we have a connection");
 			// send back the generated pipe name for MSF-side tracking.
 			packet_add_tlv_string(request, TLV_TYPE_NAMED_PIPE_NAME, serverCtx->name);
 

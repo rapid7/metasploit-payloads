@@ -71,11 +71,17 @@ static DWORD packet_receive_named_pipe(Remote *remote, Packet **packet)
 
 			if (!bytesRead)
 			{
-				SetLastError(ERROR_NOT_FOUND);
 				break;
 			}
 
 			headerBytes += bytesRead;
+		}
+
+		if (headerBytes != sizeof(PacketHeader))
+		{
+			// the read failed.
+			SetLastError(ERROR_NOT_FOUND);
+			break;
 		}
 
 		header.xor_key = ntohl(header.xor_key);
@@ -322,6 +328,46 @@ static BOOL configure_named_pipe_connection(Transport* transport)
 	wchar_t tempUrl[512];
 	NamedPipeTransportContext* ctx = (NamedPipeTransportContext*)transport->ctx;
 
+	if (ctx->pipe_name == NULL)
+	{
+		dprintf("[NP CONFIGURE] Url: %S", transport->url);
+		wcscpy_s(tempUrl, 512, transport->url);
+		dprintf("[NP CONFIGURE] Copied: %S", tempUrl);
+
+		transport->comms_last_packet = current_unix_timestamp();
+
+		dprintf("[NP CONFIGURE] Making sure it's a pipe ...");
+		if (wcsncmp(tempUrl, L"pipe", 4) == 0)
+		{
+			dprintf("[NP CONFIGURE] Yup, it is, parsing");
+			wchar_t* pServer = wcsstr(tempUrl, L"//") + 2;
+			dprintf("[NP CONFIGURE] pServer is %p", pServer);
+			dprintf("[NP CONFIGURE] pServer is %S", pServer);
+			wchar_t* pName = wcschr(pServer, L'/') + 1;
+			dprintf("[NP CONFIGURE] pName is %p", pName);
+			dprintf("[NP CONFIGURE] pName is %S", pName);
+			wchar_t* pSlash = wcschr(pName, L'/');
+			dprintf("[NP CONFIGURE] pName is %p", pName);
+
+			// Kill off a trailing slash if there is one
+			if (pSlash != NULL)
+			{
+				*pSlash = '\0';
+			}
+
+			*(pName - 1) = '\0';
+
+			dprintf("[NP CONFIGURE] Server: %S", pServer);
+			dprintf("[NP CONFIGURE] Name: %S", pName);
+
+			size_t requiredSize = wcslen(pServer) + wcslen(pName) + 9;
+			ctx->pipe_name = (STRTYPE)calloc(requiredSize, sizeof(CHARTYPE));
+			_snwprintf_s(ctx->pipe_name, requiredSize, requiredSize - 1, L"\\\\%s\\pipe\\%s", pServer, pName);
+			dprintf("[NP CONFIGURE] Full pipe name: %S", ctx->pipe_name);
+		}
+	}
+
+
 	// check if comms is already open via a staged payload
 	if (ctx->pipe != NULL && ctx->pipe != INVALID_HANDLE_VALUE)
 	{
@@ -329,45 +375,6 @@ static BOOL configure_named_pipe_connection(Transport* transport)
 	}
 	else
 	{
-		if (ctx->pipe_name == NULL)
-		{
-			dprintf("[NP CONFIGURE] Url: %S", transport->url);
-			wcscpy_s(tempUrl, 512, transport->url);
-			dprintf("[NP CONFIGURE] Copied: %S", tempUrl);
-
-			transport->comms_last_packet = current_unix_timestamp();
-
-			dprintf("[NP CONFIGURE] Making sure it's a pipe ...");
-			if (wcsncmp(tempUrl, L"pipe", 4) == 0)
-			{
-				dprintf("[NP CONFIGURE] Yup, it is, parsing");
-				wchar_t* pServer = wcsstr(tempUrl, L"//") + 2;
-				dprintf("[NP CONFIGURE] pServer is %p", pServer);
-				dprintf("[NP CONFIGURE] pServer is %S", pServer);
-				wchar_t* pName = wcschr(pServer, L'/') + 1;
-				dprintf("[NP CONFIGURE] pName is %p", pName);
-				dprintf("[NP CONFIGURE] pName is %S", pName);
-				wchar_t* pSlash = wcschr(pName, L'/');
-				dprintf("[NP CONFIGURE] pName is %p", pName);
-
-				// Kill off a trailing slash if there is one
-				if (pSlash != NULL)
-				{
-					*pSlash = '\0';
-				}
-
-				*(pName - 1) = '\0';
-
-				dprintf("[NP CONFIGURE] Server: %S", pServer);
-				dprintf("[NP CONFIGURE] Name: %S", pName);
-
-				size_t requiredSize = wcslen(pServer) + wcslen(pName) + 9;
-				ctx->pipe_name = (STRTYPE)calloc(requiredSize, sizeof(CHARTYPE));
-				_snwprintf_s(ctx->pipe_name, requiredSize, requiredSize - 1, L"\\\\%s\\pipe\\%s", pServer, pName);
-				dprintf("[NP CONFIGURE] Full pipe name: %S", ctx->pipe_name);
-			}
-		}
-
 		dprintf("[NP CONFIGURE] pipe name is %p", ctx->pipe_name);
 
 		if (ctx->pipe_name != NULL)
