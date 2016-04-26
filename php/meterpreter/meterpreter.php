@@ -1264,7 +1264,7 @@ while (false !== ($cnt = select($r, $w, $e, $t))) {
             $xor = strrev(substr($header, 0, 4));
             $request = substr($header, 4);
             $len_array = unpack("Nlen", xor_bytes($xor, substr($request, 0, 4)));
-            $len = $len_array['len']
+            $len = $len_array['len'];
             # length of the whole packet, including header
             # packet type should always be 0, i.e. PACKET_TYPE_REQUEST
             while (strlen($request) < $len) {
