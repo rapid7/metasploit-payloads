@@ -353,13 +353,7 @@ DWORD request_net_tcp_server_channel_open(Remote * remote, Packet * packet)
 
 		if (bind(ctx->fd, (SOCKADDR *)&sockAddr, sockAddrSize) == SOCKET_ERROR)
 		{
-#ifdef _WIN32
-			dwResult = WSAGetLastError();
-#else
-			dwResult = errno;
-#endif
 			BREAK_ON_WSAERROR("[TCP-SERVER] request_net_tcp_server_channel_open. bind failed");
-			dwResult = ERROR_SUCCESS;
 		}
 
 		if (listen(ctx->fd, SOMAXCONN) == SOCKET_ERROR)

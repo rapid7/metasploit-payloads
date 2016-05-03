@@ -313,10 +313,12 @@ DWORD remote_request_core_channel_close(Remote *remote, Packet *packet)
 		if (!(channel = channel_find_by_id(channelId)))
 		{
 			res = ERROR_NOT_FOUND;
+			dprintf("[CHANNEL] unable to find channel of id %d", channelId);
 			break;
 		}
 
 		// Destroy the channel
+		dprintf("[CHANNEL] closing channel of id %d", channelId);
 		channel_destroy(channel, packet);
 
 		if (response)
