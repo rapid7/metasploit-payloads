@@ -716,8 +716,8 @@ DWORD request_registry_query_class(Remote *remote, Packet *packet)
 	 * RegQueryInfoKeyW returns the length in chars minus the NULL terminator
 	 */
 	DWORD classNameLen = 0;
-	result = RegQueryInfoKeyW(hkey, NULL, &classNameLen,
-		NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	result = RegQueryInfoKeyW(hkey, NULL, NULL,
+		NULL, NULL, NULL, &classNameLen, NULL, NULL, NULL, NULL, NULL);
 	if (result != ERROR_SUCCESS) {
 		goto err;
 	}
