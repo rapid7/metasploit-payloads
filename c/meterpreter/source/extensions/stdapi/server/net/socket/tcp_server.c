@@ -5,6 +5,23 @@
 #include "precomp.h"
 #include "tcp.h"
 
+#ifdef _WIN32
+#include <ws2tcpip.h>
+
+// These fields aren't defined unless the SDK version is set to something old enough.
+// So we define them here instead of dancing with SDK versions, allowing us to move on
+// and still support older versions of Windows.
+#ifndef IPPROTO_IPV6
+#define IPPROTO_IPV6 41
+#endif
+#ifndef in6addr_any
+extern IN6_ADDR in6addr_any;
+#endif
+
+#else
+typedef struct sockaddr_in6 SOCKADDR_IN6;
+#endif
+
 /*!
  * @brief Deallocates and cleans up the attributes of a tcp server socket context.
  * @param ctx Pointer to the context to free.
@@ -158,14 +175,14 @@ TcpClientContext * tcp_channel_server_create_client(TcpServerContext * serverCtx
 DWORD tcp_channel_server_notify(Remote * remote, TcpServerContext * serverCtx)
 {
 	DWORD dwResult = ERROR_SUCCESS;
-	TcpClientContext * clientctx = NULL;
-	Packet * request = NULL;
-	SOCKADDR_IN clientaddr = { 0 };
-	SOCKADDR_IN serveraddr = { 0 };
+	TcpClientContext* clientctx = NULL;
+	Packet* request = NULL;
+	SOCKADDR_IN6 clientaddr = { 0 };
+	SOCKADDR_IN6 serveraddr = { 0 };
 	SOCKET sock = 0;
 	DWORD size = 0;
-	char * localhost = NULL;
-	char * peerhost = NULL;
+	char* localhost = NULL;
+	char* peerhost = NULL;
 	int localport = 0;
 	int peerport = 0;
 
@@ -178,9 +195,9 @@ DWORD tcp_channel_server_notify(Remote * remote, TcpServerContext * serverCtx)
 
 		ResetEvent(serverCtx->notify);
 
-		size = sizeof(SOCKADDR_IN);
+		size = sizeof(SOCKADDR_IN6);
 
-		sock = accept(serverCtx->fd, (SOCKADDR *)&clientaddr, &size);
+		sock = accept(serverCtx->fd, (SOCKADDR*)&clientaddr, &size);
 		if (sock == INVALID_SOCKET)
 		{
 			if (WSAGetLastError() == WSAEWOULDBLOCK)
@@ -200,28 +217,36 @@ DWORD tcp_channel_server_notify(Remote * remote, TcpServerContext * serverCtx)
 			BREAK_WITH_ERROR("[TCP-SERVER] tcp_channel_server_notify. clientctx == NULL", ERROR_INVALID_HANDLE);
 		}
 
-		size = sizeof(SOCKADDR);
+		size = sizeof(SOCKADDR_IN6);
 
 		if (getsockname(serverCtx->fd, (SOCKADDR *)&serveraddr, &size) == SOCKET_ERROR)
 		{
 			BREAK_ON_WSAERROR("[TCP-SERVER] request_net_tcp_server_channel_open. getsockname failed");
 		}
 
-		localhost = inet_ntoa(serveraddr.sin_addr);
+		if (!serverCtx->ipv6)
+		{
+			localhost = inet_ntoa(((SOCKADDR_IN*)&serveraddr)->sin_addr);
+		}
+
 		if (!localhost)
 		{
 			localhost = "";
 		}
 
-		localport = ntohs(serveraddr.sin_port);
+		localport = ntohs(serverCtx->ipv6 ? serveraddr.sin6_port : ((SOCKADDR_IN*)&serveraddr)->sin_port);
 
-		peerhost = inet_ntoa(clientaddr.sin_addr);
+		if (!serverCtx->ipv6)
+		{
+			peerhost = inet_ntoa(((SOCKADDR_IN*)&clientaddr)->sin_addr);
+		}
+
 		if (!peerhost)
 		{
 			peerhost = "";
 		}
 
-		peerport = ntohs(clientaddr.sin_port);
+		peerport = ntohs(serverCtx->ipv6 ? clientaddr.sin6_port : ((SOCKADDR_IN*)&clientaddr)->sin_port);
 
 		dprintf("[TCP-SERVER] tcp_channel_server_notify. New connection %s:%d <- %s:%d", localhost, localport, peerhost, peerport);
 
@@ -257,10 +282,10 @@ DWORD request_net_tcp_server_channel_open(Remote * remote, Packet * packet)
 	DWORD dwResult = ERROR_SUCCESS;
 	TcpServerContext * ctx = NULL;
 	Packet * response = NULL;
-	char * lhost = NULL;
-	SOCKADDR_IN saddr = { 0 };
+	char * localHost = NULL;
 	StreamChannelOps chops = { 0 };
-	USHORT lport = 0;
+	USHORT localPort = 0;
+	BOOL v4Fallback = FALSE;
 
 	do
 	{
@@ -280,37 +305,55 @@ DWORD request_net_tcp_server_channel_open(Remote * remote, Packet * packet)
 
 		ctx->remote = remote;
 
-		lport = (USHORT)(packet_get_tlv_value_uint(packet, TLV_TYPE_LOCAL_PORT) & 0xFFFF);
-		if (!lport)
+		localPort = (USHORT)(packet_get_tlv_value_uint(packet, TLV_TYPE_LOCAL_PORT) & 0xFFFF);
+		if (!localPort)
 		{
-			BREAK_WITH_ERROR("[TCP-SERVER] request_net_tcp_server_channel_open. lport == NULL", ERROR_INVALID_HANDLE);
+			BREAK_WITH_ERROR("[TCP-SERVER] request_net_tcp_server_channel_open. localPort == NULL", ERROR_INVALID_HANDLE);
 		}
 
-		lhost = packet_get_tlv_value_string(packet, TLV_TYPE_LOCAL_HOST);
-		if (!lhost)
-		{
-			lhost = "0.0.0.0";
-		}
+		localHost = packet_get_tlv_value_string(packet, TLV_TYPE_LOCAL_HOST);
 
-		ctx->fd = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, 0, 0, 0);
+		ctx->fd = WSASocket(AF_INET6, SOCK_STREAM, IPPROTO_TCP, 0, 0, 0);
 		if (ctx->fd == INVALID_SOCKET)
 		{
-			BREAK_ON_WSAERROR("[TCP-SERVER] request_net_tcp_server_channel_open. WSASocket failed");
+			v4Fallback = TRUE;
+		}
+		else
+		{
+			int no = 0;
+			if (setsockopt(ctx->fd, IPPROTO_IPV6, IPV6_V6ONLY, (char*)&no, sizeof(no)) == SOCKET_ERROR)
+			{
+				// fallback to ipv4 - we're probably running on Windows XP or earlier here, which means that to
+				// support IPv4 and IPv6 we'd need to create two separate sockets. IPv6 on XP isn't that common
+				// so instead, we'll just revert back to v4 and listen on that one address instead.
+				closesocket(ctx->fd);
+				v4Fallback = TRUE;
+			}
 		}
 
-		saddr.sin_family = AF_INET;
-		saddr.sin_port = htons(lport);
-		saddr.sin_addr.s_addr = inet_addr(lhost);
+		struct sockaddr_in6 sockAddr = { 0 };
+		DWORD sockAddrSize = 0;
 
-		if (bind(ctx->fd, (SOCKADDR *)&saddr, sizeof(SOCKADDR_IN)) == SOCKET_ERROR)
+		if (v4Fallback)
 		{
-#ifdef _WIN32
-			dwResult = WSAGetLastError();
-#else
-			dwResult = errno;
-#endif
+			struct sockaddr_in* v4Addr = (struct sockaddr_in*)&sockAddr;
+			v4Addr->sin_addr.s_addr = localHost == NULL ? htons(INADDR_ANY) : inet_addr(localHost);
+			v4Addr->sin_family = AF_INET;
+			v4Addr->sin_port = htons(localPort);
+			sockAddrSize = sizeof(struct sockaddr_in);
+		}
+		else
+		{
+			// TODO: add IPv6 address binding support
+			sockAddr.sin6_addr = in6addr_any;
+			sockAddr.sin6_family = AF_INET6;
+			sockAddr.sin6_port = htons(localPort);
+			sockAddrSize = sizeof(struct sockaddr_in6);
+		}
+
+		if (bind(ctx->fd, (SOCKADDR *)&sockAddr, sockAddrSize) == SOCKET_ERROR)
+		{
 			BREAK_ON_WSAERROR("[TCP-SERVER] request_net_tcp_server_channel_open. bind failed");
-			dwResult = ERROR_SUCCESS;
 		}
 
 		if (listen(ctx->fd, SOMAXCONN) == SOCKET_ERROR)
@@ -329,6 +372,8 @@ DWORD request_net_tcp_server_channel_open(Remote * remote, Packet * packet)
 			BREAK_ON_WSAERROR("[TCP-SERVER] request_net_tcp_server_channel_open. WSAEventSelect failed");
 		}
 
+		ctx->ipv6 = !v4Fallback;
+
 		memset(&chops, 0, sizeof(StreamChannelOps));
 		chops.native.context = ctx;
 		chops.native.close = tcp_channel_server_close;
@@ -343,7 +388,7 @@ DWORD request_net_tcp_server_channel_open(Remote * remote, Packet * packet)
 
 		packet_add_tlv_uint(response, TLV_TYPE_CHANNEL_ID, channel_get_id(ctx->channel));
 
-		dprintf("[TCP-SERVER] request_net_tcp_server_channel_open. tcp server %s:%d on channel %d", lhost, lport, channel_get_id(ctx->channel));
+		dprintf("[TCP-SERVER] request_net_tcp_server_channel_open. tcp server %s:%d on channel %d", localHost, localPort, channel_get_id(ctx->channel));
 
 	} while (0);
 
