@@ -2,6 +2,13 @@
 #include "base_inject.h"
 #include "../../../config.h"
 
+DWORD get_migrate_context(LPDWORD contextSize, LPCOMMONMIGRATECONTEXT* contextBuffer)
+{
+	*contextBuffer = (LPCOMMONMIGRATECONTEXT)calloc(1, sizeof(COMMONMIGRATECONTEXT));
+	*contextSize = sizeof(COMMONMIGRATECONTEXT);
+	return ERROR_SUCCESS;
+}
+
 DWORD create_transport_from_request(Remote* remote, Packet* packet, Transport** transportBufer)
 {
 	DWORD result = ERROR_NOT_ENOUGH_MEMORY;
@@ -545,7 +552,16 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
 		remote->config_create(remote, &config, &configSize);
 		dprintf("[MIGRATE] Config of %u bytes stashed at 0x%p", configSize, config);
 
-		dwResult = remote->transport->get_migrate_context(remote->transport, dwProcessID, &ctxSize, (PBYTE*)&ctx);
+		// get a transport-specific context if required, otherwise fallback on the default
+		if (remote->transport->get_migrate_context)
+		{
+			dwResult = remote->transport->get_migrate_context(remote->transport, dwProcessID, hProcess, &ctxSize, (PBYTE*)&ctx);
+		}
+		else
+		{
+			dwResult = get_migrate_context(&ctxSize, &ctx);
+		}
+
 		if (dwResult != ERROR_SUCCESS)
 		{
 			dprintf("[MIGRATE] Failed to create migrate context: %u", dwResult);

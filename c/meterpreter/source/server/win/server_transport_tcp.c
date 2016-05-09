@@ -5,15 +5,12 @@
 #include "../../common/common.h"
 #include <ws2tcpip.h>
 
-// We force 64bit algnment for HANDLES and POINTERS in order 
-// to be cross compatable between x86 and x64 migration.
 typedef struct _TCPMIGRATECONTEXT
 {
 	COMMONMIGRATECONTEXT common;
 	WSAPROTOCOL_INFO info;
 
 } TCPMIGRATECONTEXT, * LPTCPMIGRATECONTEXT;
-
 
 // These fields aren't defined unless the SDK version is set to something old enough.
 // So we define them here instead of dancing with SDK versions, allowing us to move on
@@ -1148,7 +1145,7 @@ DWORD packet_transmit_via_ssl(Remote* remote, Packet* packet, PacketRequestCompl
 /*!
  * @brief Create a configuration block from the given transport.
  * @param transport Transport data to create the configuration from.
- * @return config Pointer to the config block to write to.
+ * @param config Pointer to the config block to write to.
  */
 void transport_write_tcp_config(Transport* transport, MetsrvTransportTcp* config)
 {
@@ -1161,7 +1158,15 @@ void transport_write_tcp_config(Transport* transport, MetsrvTransportTcp* config
 	}
 }
 
-static DWORD get_migrate_context_tcp(Transport* transport, DWORD targetProcessId, LPDWORD contextSize, PBYTE* contextBuffer)
+/*!
+ * @brief Create a migration context that works for TCP transports.
+ * @param transport Pointer to the transport in question.
+ * @param targetProcessId ID of the process we'll be migrating into.
+ * @param contextSize Pointer to a buffer that receives the context size.
+ * @param contextBuffer Pointer to a buffer that receives the context data.
+ * @return Indication of success or failure.
+ */
+static DWORD get_migrate_context_tcp(Transport* transport, DWORD targetProcessId, HANDLE targetProcessHandle, LPDWORD contextSize, PBYTE* contextBuffer)
 {
 	LPTCPMIGRATECONTEXT ctx = (LPTCPMIGRATECONTEXT)calloc(1, sizeof(TCPMIGRATECONTEXT));
 

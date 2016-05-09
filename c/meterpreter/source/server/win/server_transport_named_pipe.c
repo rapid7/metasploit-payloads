@@ -4,6 +4,20 @@
 #include "metsrv.h"
 #include "../../common/common.h"
 
+typedef struct _PIPEMIGRATECONTEXT
+{
+	COMMONMIGRATECONTEXT common;
+
+	// We force 64bit algnment for HANDLES and POINTERS in order 
+	// to be cross compatable between x86 and x64 migration.
+	union
+	{
+		HANDLE pipeHandle;
+		BYTE padding[8];
+	} h;
+
+} PIPEMIGRATECONTEXT, * LPPIPEMIGRATECONTEXT;
+
 /*!
  * @brief Poll a named pipe for data to recv and block when none available.
  * @param remote Pointer to the remote instance.
@@ -557,7 +571,7 @@ static DWORD transport_get_pipe_handle(Transport* transport)
 /*!
  * @brief Create a configuration block from the given transport.
  * @param transport Transport data to create the configuration from.
- * @return config Pointer to the config block to write to.
+ * @param config Pointer to the config block to write to.
  */
 void transport_write_named_pipe_config(Transport* transport, MetsrvTransportNamedPipe* config)
 {
@@ -568,6 +582,33 @@ void transport_write_named_pipe_config(Transport* transport, MetsrvTransportName
 		config->common.retry_wait = transport->timeouts.retry_wait;
 		wcsncpy(config->common.url, transport->url, URL_SIZE);
 	}
+}
+
+/*!
+ * @brief Create a migration context that works for named pipe transports.
+ * @param transport Pointer to the transport in question.
+ * @param targetProcessId ID of the process we'll be migrating into.
+ * @param targetProcessHandle Handle of the process we'll be migrating into.
+ * @param contextSize Pointer to a buffer that receives the context size.
+ * @param contextBuffer Pointer to a buffer that receives the context data.
+ * @return Indication of success or failure.
+ */
+static DWORD get_migrate_context_named_pipe(Transport* transport, DWORD targetProcessId, HANDLE targetProcessHandle, LPDWORD contextSize, PBYTE* contextBuffer)
+{
+	LPPIPEMIGRATECONTEXT ctx = (LPPIPEMIGRATECONTEXT)calloc(1, sizeof(PIPEMIGRATECONTEXT));
+
+	// Duplicate the handle for the pipe
+	dprintf("[NP-MIGRATE] pipe handle: %p", ((NamedPipeTransportContext*)transport->ctx)->pipe);
+	dprintf("[NP-MIGRATE] targetprocess handle: %p", targetProcessHandle);
+	if (!DuplicateHandle(GetCurrentProcess(), ((NamedPipeTransportContext*)transport->ctx)->pipe, targetProcessHandle, &ctx->h.pipeHandle, 0, TRUE, DUPLICATE_SAME_ACCESS))
+	{
+		free(ctx);
+		return GetLastError();
+	}
+
+	*contextSize = sizeof(PIPEMIGRATECONTEXT);
+	*contextBuffer = (PBYTE)ctx;
+	return ERROR_SUCCESS;
 }
 
 /*!
@@ -595,6 +636,7 @@ Transport* transport_create_named_pipe(MetsrvTransportNamedPipe* config)
 	transport->get_handle = transport_get_pipe_handle;
 	transport->ctx = ctx;
 	transport->comms_last_packet = current_unix_timestamp();
+	transport->get_migrate_context = get_migrate_context_named_pipe;
 
 	return transport;
 }
