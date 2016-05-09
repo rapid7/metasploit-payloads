@@ -18,7 +18,7 @@ typedef struct _WaitableEntry
         BOOL                   running;
         WaitableNotifyRoutine  routine;
         WaitableDestroyRoutine destroy;
-		DWORD                  timeout;
+        DWORD                  timeout;
 } WaitableEntry;
 
 /*
