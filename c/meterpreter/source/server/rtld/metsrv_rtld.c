@@ -88,7 +88,7 @@ unsigned metsrv_rtld(MetsrvConfig* config, int options)
 	int (*server_setup)();
 	struct stat statbuf;
 
-	INFO("[ preparing to link. config = 0x%08x, fd = %d ]\n", (unsigned int)config, config->session.comms_fd);
+	INFO("[ preparing to link. config = 0x%08x, fd = %d ]\n", (unsigned int)config, (SOCKET)config->session.comms_handle);
 
 	for(i = 0; i < sizeof(libs) / sizeof(struct libs); i++) {
 		libs[i].handle = (void *) dlopenbuf(libs[i].name, libs[i].buf, libs[i].size);
@@ -138,20 +138,20 @@ unsigned metsrv_rtld(MetsrvConfig* config, int options)
 			exit(-1);
 		}
 
-		config->session.comms_fd = pass_fd(libs[LIBC_IDX].handle);
-		if (config->session.comms_fd == -1) {
+		config->session.comms_handle = pass_fd(libs[LIBC_IDX].handle);
+		if (config->session.comms_handle == -1) {
 			exit(-1);
 		} else {
 			TRACE("[ Warning the migrating process and give to the server time to catch up... ]\n");
 			raise(SIGTRAP);
 			sleep(4);
 		}
-	} else if(fstat(config->session.comms_fd, &statbuf) == -1) {
+	} else if(fstat(config->session.comms_handle, &statbuf) == -1) {
 		options = OPT_DEBUG_ENABLE;
 
 		TRACE("[ supplied fd fails fstat() check, using dlsocket() ]\n");
-		config->session.comms_fd = dlsocket(libs[LIBC_IDX].handle);
-		if(config->session.comms_fd == -1) {
+		config->session.comms_handle = dlsocket(libs[LIBC_IDX].handle);
+		if(config->session.comms_handle == -1) {
 			TRACE("[ failed to dlsocket() a connection. exit()ing ]\n");
 			exit(-1);
 		}
@@ -172,7 +172,7 @@ unsigned metsrv_rtld(MetsrvConfig* config, int options)
 	TRACE("[ logging will stop unless OPT_NO_FD_CLEANUP is set ]\n");
 
 	if(!(options & OPT_NO_FD_CLEANUP)) {
-		perform_fd_cleanup((int*)&config->session.comms_fd);
+		perform_fd_cleanup((int*)&config->session.comms_handle);
 	}
 
 	server_setup = dlsym(libs[METSRV_IDX].handle, "server_setup");

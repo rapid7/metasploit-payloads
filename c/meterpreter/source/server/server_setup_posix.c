@@ -1039,9 +1039,9 @@ static BOOL configure_tcp_connection(Transport* transport) {
  * @param transport Pointer to the TCP transport containing the socket.
  * @return The current transport socket FD, if any, or zero.
  */
-static SOCKET transport_get_socket_tcp(Transport* transport) {
+static HANDLE transport_get_socket_tcp(Transport* transport) {
 	if (transport && transport->type == METERPRETER_TRANSPORT_SSL) {
-		return ((TcpTransportContext*)transport->ctx)->fd;
+		return (HANDLE)((TcpTransportContext*)transport->ctx)->fd;
 	}
 
 	return 0;
@@ -1073,7 +1073,7 @@ static Transport* transport_create_tcp(MetsrvTransportTcp* config) {
 	transport->transport_destroy = transport_destroy_tcp;
 	transport->transport_reset = transport_reset_tcp;
 	transport->server_dispatch = server_dispatch_tcp;
-	transport->get_socket = transport_get_socket_tcp;
+	transport->get_handle = transport_get_socket_tcp;
 	transport->ctx = ctx;
 	transport->comms_last_packet = current_unix_timestamp();
 
@@ -1235,7 +1235,7 @@ static void config_create(Remote* remote, MetsrvConfig** config, LPDWORD size) {
 
 			// if the current transport is TCP, copy the socket fd over so that migration can use it.
 			if (t == current) {
-				sess->comms_fd = (DWORD)t->get_socket(t);
+				sess->comms_handle = t->get_handle(t);
 			}
 		}
 
@@ -1272,7 +1272,7 @@ DWORD server_setup(MetsrvConfig* config)
 	int local_error = 0;
 
 	dprintf("[SERVER] Initializing from configuration: 0x%p", config);
-	dprintf("[SESSION] Comms Fd: %u", config->session.comms_fd);
+	dprintf("[SESSION] Comms Handle: %u", config->session.comms_handle);
 	dprintf("[SESSION] Expiry: %u", config->session.expiry);
 
 	srand(time(NULL));
@@ -1308,8 +1308,8 @@ DWORD server_setup(MetsrvConfig* config)
 
 	// the first transport should match the transport that we initially connected on.
 	// If it's TCP comms, we need to wire that up.
-	if (config->session.comms_fd) {
-		((TcpTransportContext*)remote->transport->ctx)->fd = (SOCKET)config->session.comms_fd;
+	if (config->session.comms_handle) {
+		((TcpTransportContext*)remote->transport->ctx)->fd = (SOCKET)config->session.comms_handle;
 	}
 
 	// TODO: need to implement this when we have the valid approach done for stageless.

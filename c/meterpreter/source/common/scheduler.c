@@ -2,6 +2,7 @@
 
 #ifndef _WIN32
 #include <poll.h>
+#define INFINITE 0xFFFFFFFF
 #endif
 
 typedef struct _WaitableEntry
@@ -343,7 +344,7 @@ DWORD THREADCALL scheduler_waitable_thread( THREAD * thread )
 		}
 		else if( poll( &pollDetail, 1, 100 ) == POLLIN ) {
 			//dprintf( "[SCHEDULER] scheduler_waitable_thread( 0x%08X ), signaled on waitable...", thread );
-			entry->routine( entry->remote, entry->context, (LPVOID)thread->parameter2 );
+			entry->routine( entry->remote, entry->context, (LPVOID)thread->parameter2, FALSE );
 		}
 #endif
 	}

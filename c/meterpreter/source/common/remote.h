@@ -39,7 +39,7 @@ typedef void(*PTransportReset)(Transport* transport, BOOL shuttingDown);
 typedef BOOL(*PTransportInit)(Transport* transport);
 typedef BOOL(*PTransportDeinit)(Transport* transport);
 typedef void(*PTransportDestroy)(Transport* transport);
-typedef DWORD(*PTransportGetMigrateContext)(Transport* transport, DWORD targetProcessId, HANDLE targetProcessHandle, LPDWORD contextSize, PBYTE* contextBuffer);
+typedef DWORD(*PTransportGetMigrateContext)(Transport* transport, DWORD targetProcessId, HANDLE targetProcessHandle, LPDWORD contextSize, BYTE** contextBuffer);
 typedef Transport*(*PTransportCreate)(Remote* remote, MetsrvTransportCommon* config, LPDWORD size);
 typedef void(*PTransportRemove)(Remote* remote, Transport* oldTransport);
 typedef void(*PConfigCreate)(Remote* remote, MetsrvConfig** config, LPDWORD size);
