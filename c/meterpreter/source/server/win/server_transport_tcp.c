@@ -5,6 +5,16 @@
 #include "../../common/common.h"
 #include <ws2tcpip.h>
 
+// We force 64bit algnment for HANDLES and POINTERS in order 
+// to be cross compatable between x86 and x64 migration.
+typedef struct _TCPMIGRATECONTEXT
+{
+	COMMONMIGRATECONTEXT common;
+	WSAPROTOCOL_INFO info;
+
+} TCPMIGRATECONTEXT, * LPTCPMIGRATECONTEXT;
+
+
 // These fields aren't defined unless the SDK version is set to something old enough.
 // So we define them here instead of dancing with SDK versions, allowing us to move on
 // and still support older versions of Windows.
@@ -1151,6 +1161,22 @@ void transport_write_tcp_config(Transport* transport, MetsrvTransportTcp* config
 	}
 }
 
+static DWORD get_migrate_context_tcp(Transport* transport, DWORD targetProcessId, LPDWORD contextSize, PBYTE* contextBuffer)
+{
+	LPTCPMIGRATECONTEXT ctx = (LPTCPMIGRATECONTEXT)calloc(1, sizeof(TCPMIGRATECONTEXT));
+
+	// Duplicate the socket for the target process if we are SSL based
+	if (WSADuplicateSocket(((TcpTransportContext*)transport->ctx)->fd, targetProcessId, &ctx->info) != NO_ERROR)
+	{
+		free(ctx);
+		return WSAGetLastError();
+	}
+
+	*contextSize = sizeof(TCPMIGRATECONTEXT);
+	*contextBuffer = (PBYTE)ctx;
+	return ERROR_SUCCESS;
+}
+
 /*!
  * @brief Creates a new TCP transport instance.
  * @param config The TCP configuration block.
@@ -1180,6 +1206,7 @@ Transport* transport_create_tcp(MetsrvTransportTcp* config)
 	transport->get_handle = transport_get_socket_tcp;
 	transport->ctx = ctx;
 	transport->comms_last_packet = current_unix_timestamp();
+	transport->get_migrate_context = get_migrate_context_tcp;
 
 	return transport;
 }

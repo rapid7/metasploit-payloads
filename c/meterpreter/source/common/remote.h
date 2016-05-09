@@ -39,6 +39,7 @@ typedef void(*PTransportReset)(Transport* transport, BOOL shuttingDown);
 typedef BOOL(*PTransportInit)(Transport* transport);
 typedef BOOL(*PTransportDeinit)(Transport* transport);
 typedef void(*PTransportDestroy)(Transport* transport);
+typedef DWORD(*PTransportGetMigrateContext)(Transport* transport, DWORD targetProcessId, LPDWORD contextSize, PBYTE* contextBuffer);
 typedef Transport*(*PTransportCreate)(Remote* remote, MetsrvTransportCommon* config, LPDWORD size);
 typedef void(*PTransportRemove)(Remote* remote, Transport* oldTransport);
 typedef void(*PConfigCreate)(Remote* remote, MetsrvConfig** config, LPDWORD size);
@@ -248,6 +249,7 @@ typedef struct _Transport
 	PTransportDestroy transport_destroy;  ///! Destroy the transport.
 	PServerDispatch server_dispatch;      ///! Transport dispatch function.
 	PPacketTransmit packet_transmit;      ///! Transmits a packet over the transport.
+	PTransportGetMigrateContext get_migrate_context; ///! Creates a migrate context that is transport-specific.
 	STRTYPE url;                          ///! Full URL describing the comms in use.
 	VOID* ctx;                            ///! Pointer to the type-specific transport context;
 	TimeoutSettings timeouts;             ///! Container for the timeout settings.
