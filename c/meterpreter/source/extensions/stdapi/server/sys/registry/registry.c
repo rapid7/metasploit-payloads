@@ -712,42 +712,16 @@ DWORD request_registry_query_class(Remote *remote, Packet *packet)
 		goto err;
 	}
 
-	/*
-	 * RegQueryInfoKeyW returns the length in chars minus the NULL terminator
-	 */
-	DWORD classNameLen = 0;
-	result = RegQueryInfoKeyW(hkey, NULL, &classNameLen,
+	DWORD classNameLen = 4096;
+	char className[4096];
+
+	result = RegQueryInfoKeyA(hkey, className, &classNameLen,
 		NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-	if (result != ERROR_SUCCESS) {
-		goto err;
+	if (result == ERROR_SUCCESS) {
+		packet_add_tlv_raw(response, TLV_TYPE_VALUE_DATA,
+			className, classNameLen);
 	}
 
-	classNameLen++;
-	wchar_t *className = calloc(classNameLen, sizeof(wchar_t));
-	if (className == NULL) {
-		result = ERROR_NOT_ENOUGH_MEMORY;
-		goto err;
-	}
-
-	if (className) {
-		result = RegQueryInfoKeyW(hkey, className, &classNameLen,
-		    NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-		if (result == ERROR_SUCCESS) {
-			char *tmp = wchar_to_utf8(className);
-			if (tmp) {
-				packet_add_tlv_string(response, TLV_TYPE_VALUE_DATA, tmp);
-				free(tmp);
-			} else {
-				packet_add_tlv_raw(response,
-						TLV_TYPE_VALUE_DATA, className,
-						classNameLen * sizeof(wchar_t));
-			}
-		}
-	} else {
-		result = ERROR_NOT_ENOUGH_MEMORY;
-	}
-
-	free(className);
 err:
 	packet_transmit_response(result, remote, response);
 out:

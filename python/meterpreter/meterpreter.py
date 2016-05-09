@@ -657,10 +657,9 @@ class TcpTransport(Transport):
 			self.request_retire = True
 			return None
 		if len(packet) != 12:
-			if first and len(packet) == 8:
+			if first and len(packet) == 4:
 				received = 0
-				xor_key = packet[:4][::-1]
-				header = xor_bytes(xor_key, packet[4:8])
+				header = packet[:4]
 				pkt_length = struct.unpack('>I', header)[0]
 				self.socket.settimeout(max(self.communication_timeout, 30))
 				while received < pkt_length:
