@@ -1168,6 +1168,7 @@ DWORD process_channel_interact_notify(Remote *remote, LPVOID entryContext, LPVOI
 			{
 				return channel_write( channel, remote, NULL, 0, buffer, bytesRead, NULL );
 			}
+			result = GetLastError();
 		}
 		else
 		{
@@ -1175,6 +1176,10 @@ DWORD process_channel_interact_notify(Remote *remote, LPVOID entryContext, LPVOI
 			// in this thread, as anonymous pipes won't block for data to arrive.
 			Sleep( 100 );
 		}
+	}
+	else
+	{
+		result = GetLastError();
 	}
 #else
 	bytesRead = read ( ctx->pStdout, buffer, sizeof(buffer) - 1);
@@ -1200,9 +1205,9 @@ DWORD process_channel_interact_notify(Remote *remote, LPVOID entryContext, LPVOI
 	if(bytesRead <= 0) result = errno;
 
 #endif
-	if( GetLastError() != ERROR_SUCCESS )
+	if( result != ERROR_SUCCESS )
 	{
-		dprintf("Closing down socket: errno: %d\n", errno);
+		dprintf("Closing down socket: result: %d\n", result);
 		process_channel_close( channel, NULL, ctx );
 		channel_close( channel, remote, NULL, 0, NULL );
 	}
