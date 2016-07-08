@@ -212,5 +212,6 @@ LINKAGE DWORD channel_interact(Channel *channel, Remote *remote, Tlv *addend,
  * Channel searching
  */
 LINKAGE Channel *channel_find_by_id(DWORD id);
+LINKAGE BOOL channel_exists(Channel *channel);
 
 #endif

@@ -1052,6 +1052,10 @@ DWORD process_channel_read(Channel *channel, Packet *request,
 
 	dprintf("[PROCESS] process_channel_read. channel=0x%08X, ctx=0x%08X", channel, ctx);
 
+	if (ctx == NULL)
+	{
+		return result;
+	}
 #ifdef _WIN32
 	if (!ReadFile(ctx->pStdout, buffer, bufferSize, bytesRead, NULL))
 		result = GetLastError();
@@ -1076,6 +1080,11 @@ DWORD process_channel_write( Channel *channel, Packet *request,
 	DWORD result = ERROR_SUCCESS;
 
 	dprintf( "[PROCESS] process_channel_write. channel=0x%08X, ctx=0x%08X", channel, ctx );
+
+	if (ctx == NULL)
+	{
+		return result;
+	}
 #ifdef _WIN32
 	if ( !WriteFile( ctx->pStdin, buffer, bufferSize, bytesWritten, NULL ) )
 		result = GetLastError();
@@ -1098,6 +1107,10 @@ DWORD process_channel_close( Channel *channel, Packet *request, LPVOID context )
 
 	dprintf( "[PROCESS] process_channel_close. channel=0x%08X, ctx=0x%08X", channel, ctx );
 
+	if (ctx == NULL)
+	{
+		return result;
+	}
 	if ( ctx->pProcess != NULL ) {
 		dprintf( "[PROCESS] channel has an attached process, closing via scheduler signal. channel=0x%08X, ctx=0x%08X", channel, ctx );
 		scheduler_signal_waitable( ctx->pStdout, Stop );
@@ -1119,9 +1132,14 @@ DWORD process_channel_interact_destroy( HANDLE waitable, LPVOID entryContext, LP
 {
 	ProcessChannelContext *ctx = (ProcessChannelContext *)threadContext;
 	DWORD dwResult = ERROR_SUCCESS;
+	Channel *channel = (Channel *)entryContext;
 
 	dprintf( "[PROCESS] terminating context 0x%p", ctx );
 
+	if (ctx == NULL)
+	{
+		return dwResult;
+	}
 #ifdef _WIN32
 
 	CloseHandle( ctx->pStdin );
@@ -1143,6 +1161,10 @@ DWORD process_channel_interact_destroy( HANDLE waitable, LPVOID entryContext, LP
 #endif
 
 	free( ctx );
+	if (channel_exists(channel))
+	{
+		channel->ops.pool.native.context = NULL;
+	}
 
 	return dwResult;
 }
@@ -1159,6 +1181,10 @@ DWORD process_channel_interact_notify(Remote *remote, LPVOID entryContext, LPVOI
 	CHAR buffer[16384];
 	DWORD result = ERROR_SUCCESS;
 
+	if (!channel_exists(channel) || ctx == NULL)
+	{
+		return result;
+	}
 #ifdef _WIN32
 	if( PeekNamedPipe( ctx->pStdout, NULL, 0, NULL, &bytesAvail, NULL ) )
 	{
@@ -1225,6 +1251,10 @@ DWORD process_channel_interact(Channel *channel, Packet *request, LPVOID context
 
 	dprintf( "[PROCESS] process_channel_interact. channel=0x%08X, ctx=0x%08X, interact=%d", channel, ctx, interact );
 
+	if (!channel_exists(channel) || ctx == NULL)
+	{
+		return result;
+	}
 	// If the remote side wants to interact with us, schedule the stdout handle
 	// as a waitable item
 	if (interact) {
