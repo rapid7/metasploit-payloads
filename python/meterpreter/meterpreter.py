@@ -22,14 +22,6 @@ except ImportError:
 else:
 	has_windll = hasattr(ctypes, 'windll')
 
-# this MUST be imported for urllib to work on OSX
-try:
-	import SystemConfiguration as osxsc
-	osxsc.SCNetworkInterfaceCopyAll()
-	has_osxsc = True
-except ImportError:
-	has_osxsc = False
-
 try:
 	urllib_imports = ['ProxyHandler', 'Request', 'build_opener', 'install_opener', 'urlopen']
 	if sys.version_info[0] < 3:
