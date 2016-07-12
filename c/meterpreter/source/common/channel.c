@@ -800,6 +800,24 @@ VOID channel_remove_list_entry(Channel *channel)
 	}
 }
 
+/*
+* Determines whether the specified channel exists
+*/
+BOOL channel_exists(Channel *channel)
+{
+	Channel *current;
+
+	for (current = channelList; current; current = current->next)
+	{
+		if (current == channel)
+		{
+			return TRUE;
+		}
+	}
+
+	return FALSE;
+}
+
 /**************
  * Default IO *
  **************/
