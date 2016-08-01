@@ -597,10 +597,18 @@ DWORD request_sys_config_localtime(Remote* remote, Packet* packet)
 		localTime.wHour, localTime.wMinute, localTime.wSecond, localTime.wMilliseconds,
 		tziResult == TIME_ZONE_ID_DAYLIGHT ? tzi.DaylightName : tzi.StandardName,
 		tzi.Bias > 0 ? "-" : "+", abs(tzi.Bias / 60));
+#else
+  time_t t = time(NULL);
+  struct tm lt = { 0 };
+  localtime_r(&t, &lt);
+  // TODO: bug?
+  // For some reason I don't see the correct TZ name/offset coming through. Bionic issue?
+  // Or tied just to my setup (FC24)?
+  strftime(dateTime, sizeof(dateTime) - 1, "%Y-%m-%d %H:%M:%S %Z (UTC%z)", &lt);
+#endif
 
 	dprintf("[SYSINFO] Local Date/Time: %s", dateTime);
 	packet_add_tlv_string(response, TLV_TYPE_LOCAL_DATETIME, dateTime);
-#endif
 
 	// Transmit the response
 	packet_transmit_response(result, remote, response);
