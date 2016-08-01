@@ -150,8 +150,8 @@ project going by doing the following:
 
 1. Create a new folder called `workspace/ext_server_splat`.
 1. Copy `workspace/ext_server_bare/ext_server_bare.vcxproj` to
-   `workspace/ext_server_bare/ext_server_splat.vcxproj`
-1. Open `workspace/ext_server_bare/ext_server_splat.vcxproj` with a text
+   `workspace/ext_server_splat/ext_server_splat.vcxproj`
+1. Open `workspace/ext_server_splat/ext_server_splat.vcxproj` with a text
    editor and..
     * Replace all instances of `BARE` with `SPLAT`.
     * Replace all instances of `bare` with `splat`.
