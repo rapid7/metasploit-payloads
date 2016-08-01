@@ -574,6 +574,41 @@ DWORD add_windows_os_version(Packet** packet)
 #endif
 
 /*
+ * @brief Handle the request to get local date/time information.
+ * @param remote Pointer to the remote instance.
+ * @param packet Pointer to the request packet.
+ * @return Indication of success or failure.
+ */
+DWORD request_sys_config_localtime(Remote* remote, Packet* packet)
+{
+	Packet *response = packet_create_response(packet);
+	DWORD result = ERROR_SUCCESS;
+	char dateTime[128] = { 0 };
+
+#ifdef _WIN32
+	TIME_ZONE_INFORMATION tzi = { 0 };
+	SYSTEMTIME localTime = { 0 };
+
+	DWORD tziResult = GetTimeZoneInformation(&tzi);
+	GetLocalTime(&localTime);
+
+	_snprintf_s(dateTime, sizeof(dateTime), sizeof(dateTime) - 1, "%d-%02d-%02d %02d:%02d:%02d.%d %S (UTC%s%d)",
+		localTime.wYear, localTime.wMonth, localTime.wDay,
+		localTime.wHour, localTime.wMinute, localTime.wSecond, localTime.wMilliseconds,
+		tziResult == TIME_ZONE_ID_DAYLIGHT ? tzi.DaylightName : tzi.StandardName,
+		tzi.Bias > 0 ? "-" : "+", abs(tzi.Bias / 60));
+
+	dprintf("[SYSINFO] Local Date/Time: %s", dateTime);
+	packet_add_tlv_string(response, TLV_TYPE_LOCAL_DATETIME, dateTime);
+#endif
+
+	// Transmit the response
+	packet_transmit_response(result, remote, response);
+
+	return result;
+}
+
+/*
  * sys_sysinfo
  * ----------
  *
