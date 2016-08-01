@@ -596,15 +596,15 @@ DWORD request_sys_config_localtime(Remote* remote, Packet* packet)
 		localTime.wYear, localTime.wMonth, localTime.wDay,
 		localTime.wHour, localTime.wMinute, localTime.wSecond, localTime.wMilliseconds,
 		tziResult == TIME_ZONE_ID_DAYLIGHT ? tzi.DaylightName : tzi.StandardName,
-		tzi.Bias > 0 ? "-" : "+", abs(tzi.Bias / 60));
+		tzi.Bias > 0 ? "-" : "+", abs(tzi.Bias / 60 * 100));
 #else
-  time_t t = time(NULL);
-  struct tm lt = { 0 };
-  localtime_r(&t, &lt);
-  // TODO: bug?
-  // For some reason I don't see the correct TZ name/offset coming through. Bionic issue?
-  // Or tied just to my setup (FC24)?
-  strftime(dateTime, sizeof(dateTime) - 1, "%Y-%m-%d %H:%M:%S %Z (UTC%z)", &lt);
+	time_t t = time(NULL);
+	struct tm lt = { 0 };
+	localtime_r(&t, &lt);
+	// TODO: bug?
+	// For some reason I don't see the correct TZ name/offset coming through. Bionic issue?
+	// Or tied just to my setup (FC24)?
+	strftime(dateTime, sizeof(dateTime) - 1, "%Y-%m-%d %H:%M:%S %Z (UTC%z)", &lt);
 #endif
 
 	dprintf("[SYSINFO] Local Date/Time: %s", dateTime);

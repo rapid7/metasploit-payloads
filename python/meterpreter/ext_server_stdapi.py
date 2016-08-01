@@ -723,7 +723,7 @@ def stdapi_sys_config_getuid(request, response):
 def stdapi_sys_config_localtime(request, response):
 	localtime = time.strftime("%Y-%m-%d %H:%M:%S %Z", time.localtime())
 	direction = "-" if time.timezone > 0 else "+"
-	localtime += " (UTC{0}{1})".format(direction, int(abs(time.timezone / 3600)))
+	localtime += " (UTC{0}{1})".format(direction, int(abs(time.timezone / 36)))
 	response += tlv_pack(TLV_TYPE_LOCAL_DATETIME, localtime)
 	return ERROR_SUCCESS, response
 
