@@ -466,8 +466,10 @@ static BOOL server_destroy_ssl(Transport* transport)
 
 	lock_acquire(transport->lock);
 
+	dprintf("[SERVER] Freeing ssl %p", ctx->ssl);
 	SSL_free(ctx->ssl);
 
+	dprintf("[SERVER] Freeing context %p", ctx->ctx);
 	SSL_CTX_free(ctx->ctx);
 
 	CRYPTO_set_locking_callback(NULL);
@@ -476,14 +478,18 @@ static BOOL server_destroy_ssl(Transport* transport)
 	CRYPTO_set_dynlock_lock_callback(NULL);
 	CRYPTO_set_dynlock_destroy_callback(NULL);
 
+	dprintf("[SERVER] Destroying locks");
 	for (i = 0; i < CRYPTO_num_locks(); i++)
 	{
 		lock_destroy(ssl_locks[i]);
 	}
 
+	dprintf("[SERVER] Freeing locks %p", ssl_locks);
 	free(ssl_locks);
 
 	lock_release(transport->lock);
+
+	dprintf("[SERVER] Finished destroying SSL");
 
 	return TRUE;
 }
@@ -511,6 +517,7 @@ static BOOL server_negotiate_ssl(Transport* transport)
 		SSL_CTX_set_mode(ctx->ctx, SSL_MODE_AUTO_RETRY);
 
 		ctx->ssl = SSL_new(ctx->ctx);
+		dprintf("[SERVER] SSL = %p", ctx->ssl);
 		SSL_set_verify(ctx->ssl, SSL_VERIFY_NONE, NULL);
 
 		if (SSL_set_fd(ctx->ssl, (int)ctx->fd) == 0)
