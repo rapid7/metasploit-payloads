@@ -1007,7 +1007,7 @@ DWORD request_clipboard_set_data(Remote *remote, Packet *packet)
 			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Clipboard failed to initialise, unable to get data");
 		}
 
-		if ((lpClipString = packet_get_tlv_value_string(packet, TLV_TYPE_EXT_CLIPBOARD_TYPE_TEXT)) == NULL)
+		if ((lpClipString = packet_get_tlv_value_string(packet, TLV_TYPE_EXT_CLIPBOARD_TYPE_TEXT_CONTENT)) == NULL)
 		{
 			BREAK_WITH_ERROR("[EXTAPI CLIPBOARD] No string data specified", ERROR_INVALID_PARAMETER);
 		}
