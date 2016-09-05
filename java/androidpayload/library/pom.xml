@@ -59,7 +59,7 @@
 				<artifactId>android-maven-plugin</artifactId>
 				<configuration>
 					<sdk>
-						<!-- platform or api level (api level 10 = platform 2.3)-->
+						<!-- platform or api level (api level 19 = platform 4.4 (kitkat))-->
 						<platform>19</platform>
 					</sdk>
 				</configuration>
