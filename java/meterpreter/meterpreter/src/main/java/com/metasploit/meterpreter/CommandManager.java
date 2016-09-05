@@ -150,4 +150,11 @@ public class CommandManager {
     public String[] getNewCommands() {
         return (String[]) newCommands.toArray(new String[newCommands.size()]);
     }
+
+    /**
+     * Retrieves the list of commands
+     */
+    public String[] getCommands() {
+        return (String[]) registeredCommands.keySet().toArray(new String[registeredCommands.size()]);
+    }
 }
