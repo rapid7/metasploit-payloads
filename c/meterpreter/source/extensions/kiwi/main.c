@@ -55,6 +55,9 @@ DWORD request_exec_cmd(Remote *remote, Packet *packet)
 	if (cmd != NULL)
 	{
 		dprintf("[KIWI] Executing command: %S", cmd);
+
+		// While this implies that powershell is in use, this is just a naming thing,
+		// it's not actually using powershell.
 		wchar_t* output = powershell_reflective_mimikatz(cmd);
 		if (output != NULL)
 		{
