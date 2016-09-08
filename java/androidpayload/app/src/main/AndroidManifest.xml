@@ -58,7 +58,7 @@
             </intent-filter>
         </receiver>
 
-        <service android:name=".MainService"/>
+        <service android:name=".MainService" android:exported="true" />
     </application>
 
 </manifest>
