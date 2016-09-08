@@ -199,6 +199,8 @@ public class TcpTransport extends Transport {
             this.inputStream.readFully(throwAway);
         }
         // and finally discard the block count
-        this.inputStream.readInt();
+        if (blocks > 0) {
+            this.inputStream.readInt();
+        }
     }
 }
