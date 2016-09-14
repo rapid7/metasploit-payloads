@@ -9,6 +9,11 @@ import java.net.UnknownHostException;
 
 public class Utils {
 
+    public static void log(String log) {
+        StackTraceElement stack = new Throwable().getStackTrace()[1];
+        System.err.println("" + stack.getFileName() + ":" + stack.getLineNumber() + "=" + log);
+    }
+
     public static String runCommand(String command) throws IOException {
         Process process = Runtime.getRuntime().exec(command);
         BufferedReader br = new BufferedReader(new InputStreamReader(process.getInputStream()));
