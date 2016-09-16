@@ -56,7 +56,7 @@ http://maven.apache.org/plugins/maven-idea-plugin/
 
 1. Download the [Android SDK](https://developer.android.com/sdk/index.html), and the [Android NDK](https://developer.android.com/tools/sdk/ndk/index.html) somewhere
 2. Launch the `sdk/tool/android` program
-3. Install API version 10, and update the "Android SDK Tools" and "Android SDK Platform-tools"
+3. Install API version 10 and 19, and update the "Android SDK Tools" and "Android SDK Platform-tools"
 4. Compile android meterpreter:
 
 ```

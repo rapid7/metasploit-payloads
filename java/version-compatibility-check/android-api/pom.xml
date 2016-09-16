@@ -2,20 +2,20 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.metasploit</groupId>
-	<artifactId>Metasploit-JavaPayload-Compatibility-android-api10</artifactId>
+	<artifactId>Metasploit-JavaPayload-Compatibility-android-api</artifactId>
 	<parent>
 		<groupId>com.metasploit</groupId>
 		<artifactId>Metasploit-JavaPayload-Compatibility-parent</artifactId>
 		<version>1-SNAPSHOT</version>
 	</parent>
 	<packaging>jar</packaging>
-	<name>JavaPayload Compatibility Checks (Android API 10)</name>
+	<name>JavaPayload Compatibility Checks (Android API)</name>
 	<url>http://www.metasploit.com/</url>
 	<dependencies>
 		<dependency>
 			<groupId>com.google.android</groupId>
 			<artifactId>android</artifactId>
-			<version>2.3.3</version>
+			<version>4.1.1.4</version>
 		</dependency>
 	</dependencies>
 	<build>
@@ -72,8 +72,8 @@
 						<configuration>
 							<signature>
 								<groupId>net.sf.androidscents.signature</groupId>
-								<artifactId>android-api-level-10</artifactId>
-								<version>2.3.3_r2</version>
+								<artifactId>android-api-level-L</artifactId>
+								<version>L_r1</version>
 							</signature>
 						</configuration>
 					</execution>
