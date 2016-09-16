@@ -1,7 +1,7 @@
 # To build the dev environment.
 # docker build -t rapid7/build:meterpreter .
 
-FROM ubuntu:14.04.2
+FROM ubuntu:14.04.5
 MAINTAINER Brent Cook <bcook@rapid7.com> (@busterbcook)
 
 ENV DEBIAN_FRONTEND noninteractive
