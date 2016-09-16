@@ -53,8 +53,8 @@ public class check_root_android implements Command {
     private static boolean canExecuteCommand(String command) {
         boolean executedSuccesfully;
         try {
-            Runtime.getRuntime().exec(command);
-            executedSuccesfully = true;
+            Process process = Runtime.getRuntime().exec(command);
+            executedSuccesfully = process.waitFor() == 0;
         } catch (Exception e) {
             executedSuccesfully = false;
         }
