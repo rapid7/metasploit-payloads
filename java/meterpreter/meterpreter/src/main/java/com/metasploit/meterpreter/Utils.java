@@ -9,6 +9,11 @@ import java.net.UnknownHostException;
 
 public class Utils {
 
+    public static void log(String log) {
+        StackTraceElement stack = new Throwable().getStackTrace()[1];
+        System.err.println("" + stack.getFileName() + ":" + stack.getLineNumber() + "=" + log);
+    }
+
     public static String runCommand(String command) throws IOException {
         Process process = Runtime.getRuntime().exec(command);
         BufferedReader br = new BufferedReader(new InputStreamReader(process.getInputStream()));
@@ -38,4 +43,26 @@ public class Utils {
 
         return "unknown";
     }
+
+
+    public static String bytesToHex(byte bytes[]) {
+        char[] hexDigits = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
+        StringBuilder buf = new StringBuilder(bytes.length * 2);
+        for (byte aByte : bytes) {
+            buf.append(hexDigits[(aByte & 0xf0) >> 4]);
+            buf.append(hexDigits[aByte & 0x0f]);
+        }
+        return buf.toString();
+    }
+
+    public static byte[] hexStringToByteArray(String s) {
+        int len = s.length();
+        byte[] data = new byte[len / 2];
+        for (int i = 0; i < len; i += 2) {
+            data[i / 2] = (byte) ((Character.digit(s.charAt(i), 16) << 4)
+                    + Character.digit(s.charAt(i+1), 16));
+        }
+        return data;
+    }
+
 }

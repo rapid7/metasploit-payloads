@@ -145,6 +145,19 @@
 											<arg value="${com.metasploit:Metasploit-Java-Meterpreter-stdapi:jar}" />
 											<arg value="${com.metasploit:Metasploit-JavaPayload:jar}" />
 										</exec>
+
+										<echo>Building stageless meterpreter</echo>
+										<exec executable="${android.sdk.path}/platforms/android-3/tools/${dx.filename}" failonerror="true">
+											<arg value="--verbose" />
+											<arg value="--dex" />
+											<arg value="--output=${project.basedir}/../../${deploy.path}/data/android/meterpreter.dex" />
+											<arg value="${project.basedir}/../app/target/classes" />
+											<arg value="${project.basedir}/target/dx/meterpreter" />
+											<arg value="${com.metasploit:Metasploit-Java-Meterpreter:jar}" />
+											<arg value="${com.metasploit:Metasploit-Java-Meterpreter-stdapi:jar}" />
+											<arg value="${com.metasploit:Metasploit-JavaPayload:jar}" />
+										</exec>
+
 									</target>
 								</configuration>
 							</execution>

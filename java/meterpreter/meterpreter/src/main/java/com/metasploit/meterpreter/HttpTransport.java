@@ -142,6 +142,9 @@ public class HttpTransport extends Transport {
             // is the situation that happens on initial connect (not reconnect)
             TLVPacket response = request.createResponse();
             int result = met.getCommandManager().executeCommand(met, request, response);
+            if (result == Command.EXIT_DISPATCH) {
+                return true;
+            }
             this.writePacket(response, TLVPacket.PACKET_TYPE_RESPONSE);
 
             return true;
@@ -209,6 +212,7 @@ public class HttpTransport extends Transport {
         while (!met.hasSessionExpired() &&
             System.currentTimeMillis() < lastPacket + this.commTimeout) {
             try {
+                useNextUrl();
                 TLVPacket request = this.readPacket();
 
                 if (request != null) {
@@ -237,19 +241,19 @@ public class HttpTransport extends Transport {
                 break;
             }
 
-            // see if we switched URLs along the way, and if we did, move it on over.
-            // This is really only used for stageless payloads (not yet implemented in
-            // msf for this, but we're getting there). The command for this hasn't yet
-            // been wired in.
-            if (this.nextUrl != null) {
-                this.url = this.nextUrl.toString();
-                this.targetUrl = this.nextUrl;
-                this.nextUrl = null;
-            }
         }
 
         // if we get here we assume things aren't good.
         return false;
+    }
+
+    private void useNextUrl() {
+        // see if we switched URLs along the way, and if we did, move it on over.
+        if (this.nextUrl != null) {
+            this.url = this.nextUrl.toString();
+            this.targetUrl = this.nextUrl;
+            this.nextUrl = null;
+        }
     }
 
     private URLConnection createConnection() {

