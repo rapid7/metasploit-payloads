@@ -21,7 +21,6 @@
 			<groupId>com.metasploit</groupId>
 			<artifactId>Metasploit-Java-Shared</artifactId>
 			<version>${project.version}</version>
-			<scope>provided</scope>
 		</dependency>
 	</dependencies>
 	<build>

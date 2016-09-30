@@ -12,11 +12,6 @@ import java.net.URL;
 import java.net.URLConnection;
 
 public class HttpTransport extends Transport {
-    private static final int UA_LEN = 256;
-    private static final int PROXY_HOST_LEN = 128;
-    private static final int PROXY_USER_LEN = 64;
-    private static final int PROXY_PASS_LEN = 64;
-    private static final int CERT_HASH_LEN = 20;
 
     private URL targetUrl = null;
     private URL nextUrl = null;
@@ -54,21 +49,21 @@ public class HttpTransport extends Transport {
     public int parseConfig(byte[] configuration, int offset) {
         offset = this.parseTimeouts(configuration, offset);
 
-        this.proxy = Meterpreter.readString(configuration, offset, PROXY_HOST_LEN);
-        offset += PROXY_HOST_LEN;
+        this.proxy = ConfigParser.readString(configuration, offset, ConfigParser.PROXY_HOST_LEN);
+        offset += ConfigParser.PROXY_HOST_LEN;
 
-        this.proxyUser = Meterpreter.readString(configuration, offset, PROXY_USER_LEN);
-        offset += PROXY_USER_LEN;
+        this.proxyUser = ConfigParser.readString(configuration, offset, ConfigParser.PROXY_USER_LEN);
+        offset += ConfigParser.PROXY_USER_LEN;
 
-        this.proxyPass = Meterpreter.readString(configuration, offset, PROXY_PASS_LEN);
-        offset += PROXY_PASS_LEN;
+        this.proxyPass = ConfigParser.readString(configuration, offset, ConfigParser.PROXY_PASS_LEN);
+        offset += ConfigParser.PROXY_PASS_LEN;
 
-        this.userAgent = Meterpreter.readString(configuration, offset, UA_LEN);
-        offset += UA_LEN;
+        this.userAgent = ConfigParser.readString(configuration, offset, ConfigParser.UA_LEN);
+        offset += ConfigParser.UA_LEN;
 
         this.certHash = null;
-        byte[] loadedHash = Meterpreter.readBytes(configuration, offset, CERT_HASH_LEN);
-        offset += CERT_HASH_LEN;
+        byte[] loadedHash = ConfigParser.readBytes(configuration, offset, ConfigParser.CERT_HASH_LEN);
+        offset += ConfigParser.CERT_HASH_LEN;
 
         // we only store the cert hash value if it's got a value
         for (int i = 0; i < loadedHash.length; i++) {
@@ -263,11 +258,7 @@ public class HttpTransport extends Transport {
 
             if (this.targetUrl.getProtocol().equals("https")) {
                 try {
-                    String certHashHex = null;
-                    if (certHash != null) {
-                        certHashHex = PayloadTrustManager.bytesToHex(certHash);
-                    }
-                    PayloadTrustManager.useFor(conn, certHashHex);
+                    PayloadTrustManager.useFor(conn, certHash);
                 } catch (Exception ex) {
                     // perhaps log?
                 }

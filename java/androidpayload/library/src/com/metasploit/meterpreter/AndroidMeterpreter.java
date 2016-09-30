@@ -54,6 +54,7 @@ import com.metasploit.meterpreter.stdapi.stdapi_net_config_get_routes_V1_4;
 import com.metasploit.meterpreter.stdapi.stdapi_sys_config_localtime;
 import com.metasploit.meterpreter.stdapi.stdapi_net_socket_tcp_shutdown_V1_3;
 import com.metasploit.meterpreter.stdapi.stdapi_sys_process_execute_V1_3;
+import com.metasploit.stage.Payload;
 
 import java.io.DataInputStream;
 import java.io.File;
@@ -126,9 +127,8 @@ public class AndroidMeterpreter extends Meterpreter {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        if (parameters.length > 1 && parameters[1].charAt(0) != ' ') {
-            byte[] configBytes = Utils.hexStringToByteArray(parameters[1]);
-            loadConfiguration(in, rawOut, configBytes);
+        if (Payload.configBytes[0] != 0) {
+            loadConfiguration(in, rawOut, Payload.configBytes);
         } else {
             int configLen = in.readInt();
             byte[] configBytes = new byte[configLen];
