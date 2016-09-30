@@ -144,11 +144,6 @@ public class AndroidMeterpreter extends Meterpreter {
     }
 
     @Override
-    protected String getPayloadTrustManager() {
-        return "com.metasploit.stage.PayloadTrustManager";
-    }
-
-    @Override
     public String[] loadExtension(byte[] data) throws Exception {
         getCommandManager().resetNewCommands();
         CommandManager mgr = getCommandManager();

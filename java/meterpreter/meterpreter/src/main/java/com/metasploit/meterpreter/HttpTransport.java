@@ -17,7 +17,6 @@ public class HttpTransport extends Transport {
     private static final int PROXY_USER_LEN = 64;
     private static final int PROXY_PASS_LEN = 64;
     private static final int CERT_HASH_LEN = 20;
-    private static final String TRUST_MANAGER = "com.metasploit.meterpreter.PayloadTrustManager";
 
     private URL targetUrl = null;
     private URL nextUrl = null;
@@ -264,10 +263,12 @@ public class HttpTransport extends Transport {
 
             if (this.targetUrl.getProtocol().equals("https")) {
                 try {
-                    Class.forName(TRUST_MANAGER).getMethod("useFor", new Class[]{URLConnection.class})
-                      .invoke(null, new Object[]{conn});
-                }
-                catch (Exception ex) {
+                    String certHashHex = null;
+                    if (certHash != null) {
+                        certHashHex = PayloadTrustManager.bytesToHex(certHash);
+                    }
+                    PayloadTrustManager.useFor(conn, certHashHex);
+                } catch (Exception ex) {
                     // perhaps log?
                 }
             }

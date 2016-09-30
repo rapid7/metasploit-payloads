@@ -220,10 +220,6 @@ public class Meterpreter {
         }
     }
 
-    protected String getPayloadTrustManager() {
-        return "com.metasploit.meterpreter.PayloadTrustManager";
-    }
-
     /**
      * Get the command manager, used to register or lookup commands.
      */

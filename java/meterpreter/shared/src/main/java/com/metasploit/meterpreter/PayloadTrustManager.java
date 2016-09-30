@@ -31,7 +31,7 @@
  * TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
  * USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.metasploit.stage;
+package com.metasploit.meterpreter;
 
 import java.net.URLConnection;
 
@@ -51,10 +51,16 @@ import java.security.cert.X509Certificate;
 /**
  * Trust manager used for HTTPS stagers. This is in its own class because it
  * depends on classes only present on Sun JRE 1.4+, and incorporating it into
- * the main {@link Payload} class would have made it impossible for other/older
+ * the main Payload class would have made it impossible for other/older
  * JREs to load it.
  */
 public class PayloadTrustManager implements X509TrustManager, HostnameVerifier {
+
+    private String certHash;
+
+    private PayloadTrustManager(String certHash) {
+        this.certHash = certHash;
+    }
 
     public X509Certificate[] getAcceptedIssuers() {
         // no preferred issuers
@@ -86,7 +92,11 @@ public class PayloadTrustManager implements X509TrustManager, HostnameVerifier {
     public void checkServerTrusted(java.security.cert.X509Certificate[] certs,
                                    String authType) throws CertificateException {
 
-        String payloadHash = Payload.CERT_HASH.substring(4).trim();
+        if (certHash == null) {
+            // No HandlerSSLCert set on payload, trust everyone
+            return;
+        }
+        String payloadHash = certHash.substring(4).trim();
         if (payloadHash.length() == 0) {
             // No HandlerSSLCert set on payload, trust everyone
             return;
@@ -112,13 +122,13 @@ public class PayloadTrustManager implements X509TrustManager, HostnameVerifier {
     }
 
     /**
-     * Called by the {@link Payload} class to modify the given
+     * Called by the Payload class to modify the given
      * {@link URLConnection} so that it uses this trust manager.
      */
-    public static void useFor(URLConnection uc) throws Exception {
+    public static void useFor(URLConnection uc, String certHash) throws Exception {
         if (uc instanceof HttpsURLConnection) {
             HttpsURLConnection huc = ((HttpsURLConnection) uc);
-            PayloadTrustManager ptm = new PayloadTrustManager();
+            PayloadTrustManager ptm = new PayloadTrustManager(certHash);
             SSLContext sc = SSLContext.getInstance("SSL");
             sc.init(null, new TrustManager[]{ptm},
                     new java.security.SecureRandom());
