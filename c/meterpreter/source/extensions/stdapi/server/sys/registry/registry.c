@@ -459,12 +459,16 @@ static void set_value(Remote *remote, Packet *packet, HKEY hkey)
 	} else {
 		// Now let's rock this shit!
 		void *buf;
-		size_t len = valueData.header.length;
-		if (valueType == REG_SZ) {
-			buf = utf8_to_wchar(valueData.buffer);
-			len = (wcslen(buf) + 1) * sizeof(wchar_t);
-		} else {
-			buf = valueData.buffer;
+		size_t len;
+		switch (valueType) {
+			case REG_SZ:
+			case REG_EXPAND_SZ:
+				buf = utf8_to_wchar(valueData.buffer);
+				len = (wcslen(buf) + 1) * sizeof(wchar_t);
+				break;
+			default:
+				len = valueData.header.length;
+				buf = valueData.buffer;
 		}
 		result = RegSetValueExW(hkey, valueName, 0, valueType, buf, (DWORD)len);
 		if (buf != valueData.buffer) {
@@ -561,6 +565,7 @@ static void query_value(Remote *remote, Packet *packet, HKEY hkey)
 
 	switch (valueType) {
 		case REG_SZ:
+		case REG_EXPAND_SZ:
 			tmp = wchar_to_utf8((wchar_t *)valueData);
 			if (tmp) {
 				packet_add_tlv_string(response, TLV_TYPE_VALUE_DATA, tmp);
