@@ -8,16 +8,10 @@
 #include <sstream>
 using namespace std;
 
-#ifdef WIN32
 #include <winsock2.h>
 #include <windows.h>
 #pragma comment(lib,"wininet.lib")
 #pragma comment(lib,"Ws2_32.lib")
-#else
-#include <sys/socket.h>
-#include <unistd.h>
-#include <arpa/inet.h>
-#endif
 
 //C interface for these functions
 extern "C" {

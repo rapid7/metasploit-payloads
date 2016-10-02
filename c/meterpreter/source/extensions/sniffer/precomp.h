@@ -5,8 +5,6 @@
 
 #include "sniffer.h"
 
-#ifdef _WIN32
-
 #include "../../DelayLoadMetSrv/DelayLoadMetSrv.h"
 #include "../../ReflectiveDLLInjection/inject/src/GetProcAddressR.h"
 #include "../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.h"
@@ -14,10 +12,6 @@
 // declared in ReflectiveLoader.c and set by DllMain also in ReflectiveLoader.c
 extern HINSTANCE hAppInstance;
 
-#endif
-
 #define strcasecmp stricmp
-
-
 
 #endif

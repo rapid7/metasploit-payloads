@@ -24,7 +24,7 @@
 /*!
  * @brief Enumeration of allowed Packet TLV types.
  */
-typedef enum 
+typedef enum
 {
 	PACKET_TLV_TYPE_REQUEST        = 0,   ///< Indicates a request packet.
 	PACKET_TLV_TYPE_RESPONSE       = 1,   ///< Indicates a response packet.
@@ -173,16 +173,12 @@ typedef enum
 	TLV_TYPE_TEMP                = TLV_VALUE(TLV_META_TYPE_COMPLEX, 60000),   ///! Represents a temporary value.
 } TlvType;
 
-#ifdef _WIN32
-
 #ifndef QWORD
 typedef unsigned __int64	QWORD;
 #endif
 
 #define ntohq( qword )		( (QWORD)ntohl( qword & 0xFFFFFFFF ) << 32 ) | ntohl( qword >> 32 )
 #define htonq( qword )		ntohq( qword )
-
-#endif
 
 typedef struct
 {
@@ -226,7 +222,7 @@ typedef struct _DECOMPRESSED_BUFFER
 } DECOMPRESSED_BUFFER;
 
 /*! * @brief Packet request completion notification handler function pointer type. */
-typedef DWORD (*PacketRequestCompletionRoutine)(Remote *remote, 
+typedef DWORD (*PacketRequestCompletionRoutine)(Remote *remote,
 		Packet *response, LPVOID context, LPCSTR method, DWORD result);
 
 typedef struct _PacketRequestCompletion
@@ -263,12 +259,12 @@ LINKAGE DWORD packet_get_tlv_string(Packet *packet, TlvType type, Tlv *tlv);
 LINKAGE DWORD packet_get_tlv_group_entry(Packet *packet, Tlv *group, TlvType type,Tlv *entry);
 LINKAGE DWORD packet_enum_tlv(Packet *packet, DWORD index, TlvType type, Tlv *tlv);
 
-LINKAGE PCHAR packet_get_tlv_value_string(Packet *packet, TlvType type); 
+LINKAGE PCHAR packet_get_tlv_value_string(Packet *packet, TlvType type);
 LINKAGE wchar_t* packet_get_tlv_value_wstring(Packet* packet, TlvType type);
 LINKAGE UINT packet_get_tlv_value_uint(Packet *packet, TlvType type);
 LINKAGE BYTE * packet_get_tlv_value_raw( Packet * packet, TlvType type );
 LINKAGE QWORD packet_get_tlv_value_qword(Packet *packet, TlvType type);
-LINKAGE BOOL packet_get_tlv_value_bool(Packet *packet, TlvType type); 
+LINKAGE BOOL packet_get_tlv_value_bool(Packet *packet, TlvType type);
 
 LINKAGE DWORD packet_add_exception(Packet *packet, DWORD code,PCHAR string, ...);
 

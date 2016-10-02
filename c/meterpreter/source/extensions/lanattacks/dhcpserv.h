@@ -64,11 +64,6 @@ private:
 	void stringOptionCheck(string * defaultOption, char * option);
 };
 
-
-#ifdef WIN32
 DWORD WINAPI runDHCPServer(void * keepRunningPtr);
-#else
-int runDHCPServer(void *keepRunningPtr);
-#endif
 
 #endif

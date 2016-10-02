@@ -1,22 +1,15 @@
 
-#ifdef WIN32
 #include <winsock2.h>
 #pragma comment(lib,"wininet.lib")
 #pragma comment(lib,"Ws2_32.lib")
-#else
-#include <sys/socket.h>
-#include <unistd.h>
-#include <arpa/inet.h>
-#endif
+
 #include <string>
 #include <set>
 #include <sstream>
 using namespace std;
 #include "dhcpserv.h"
 
-#ifdef WIN32
 typedef int socklen_t;
-#endif
 
 extern "C" {
 int startDHCPServer(void * server){
@@ -58,7 +51,7 @@ unsigned int getLocalIp(){
 	{
 		return 0;
 	}
-	
+
 	//Se up server socket address
 	struct sockaddr_in server;
 	server.sin_family = AF_INET;
@@ -68,11 +61,7 @@ unsigned int getLocalIp(){
 	struct sockaddr_in myaddr;
 	socklen_t size = sizeof(myaddr);
 	getsockname(smellySock, (struct sockaddr*)&myaddr, &size);
-#ifdef WIN32
 	closesocket(smellySock);
-#else
-	close(smellySock);
-#endif
 	return ntohl(*((unsigned int*) & myaddr.sin_addr));
 }
 
@@ -331,7 +320,7 @@ int DHCPserv::run()
 		char type = receivedPacket.at(0);
 		//char hwtype = receivedPacket.at(1);
 		char hwlen = receivedPacket.at(2);
-		//char hops = receivedPacket.at(3); 
+		//char hops = receivedPacket.at(3);
 		string txid = receivedPacket.substr(4,4); //like buf[4..7]
 		string elapsed = receivedPacket.substr(8,2);
 		string flags = receivedPacket.substr(10,2);
@@ -343,7 +332,7 @@ int DHCPserv::run()
 		string servhostname = receivedPacket.substr(44,64);
 		string filename = receivedPacket.substr(108,128);
 		string magic = receivedPacket.substr(236,4);
-		
+
 		if (type != Request || magic.compare(DHCPMagic) != 0)
 		{
 			continue; //Verify DHCP request
@@ -375,7 +364,7 @@ int DHCPserv::run()
 				pxeclient = true;
 			}
 		}
-		
+
 		if (pxeclient == false && servePXE == true)
 		{
 			continue;//No tftp server request; ignoring (probably not PXE client)
@@ -386,7 +375,7 @@ int DHCPserv::run()
 		pkt << Response;
 		pkt << receivedPacket.substr(1,7); //hwtype, hwlen, hops, txid
 		string elaspedFlags("\x00\x00\x00\x00",4); //elapsed, flags
-		pkt << elaspedFlags; 
+		pkt << elaspedFlags;
 		pkt << clientip;
 		if (messageType == DHCPDiscover)
 		{
@@ -397,7 +386,7 @@ int DHCPserv::run()
 				currentIp = startIp;
 			}
 		}
-		
+
 		pkt << iton(currentIp);
 		pkt << ipString; //next server ip
 		pkt << iton(relayIp);
@@ -466,7 +455,7 @@ int DHCPserv::run()
 		pkt << dhcpoption(OpEnd);
 		string sendPacket = pkt.str();
 
-		// now mark as served. We will then ignore their discovers 
+		// now mark as served. We will then ignore their discovers
 		//(but we'll respond to requests in case a packet was lost)
 		if (messageType == DHCPRequest)
 		{
@@ -481,10 +470,6 @@ int DHCPserv::run()
 			break; //Error
 		}
 	}
-#ifdef WIN32
 	closesocket(smellySock);
-#else
-	close(smellySock);
-#endif
 	return 0;
 }

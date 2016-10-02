@@ -49,42 +49,6 @@ Files: source/common/zlib/* source/server/zlib/*
 Copyright: 1995-1996 Jean-loup Gailly and Mark Adler
 License: Zlib
 
-Files: source/bionic/libc/*
-Copyright: 2005-2008, The Android Open Source Project
-           2004 by Internet Systems Consortium, Inc. ("ISC")
-           1995,1996,1999 by Internet Software Consortium
-           1995 by International Business Machines, Inc.
-           1997,1998,1999,2004 The NetBSD Foundation, Inc.
-           1993 Christopher G. Demetriou
-           1983,1985,1989,1993 The Regents of the University of California
-           2000 Ben Harris
-           1995,1996,1997,1998 WIDE Project
-           2003 Networks Associates Technology, Inc.
-           1993 by Digital Equipment Corporation
-           1997 Mark Brinicombe
-           1993 Martin Birgmeier
-           1993 by Sun Microsystems, Inc.
-           1997, 2005 Todd C. Miller <Todd.Miller@courtesan.com>
-           1995, 1996 Carnegie-Mellon University
-           2003 Networks Associates Technology, Inc.
-License: BSD-3-clause and BSD-4-clause
-
-Files: source/bionic/libdl/*
-Copyright: 2007 The Android Open Source Project
-License: BSD-3-clause
-
-Files: source/bionic/libm/*
-Copyright: 2003, Steven G. Kargl
-           2003 Mike Barcroft <mike@FreeBSD.org>
-           2002-2005 David Schultz <das@FreeBSD.ORG>
-           2004 Stefan Farfeleder
-           2003 Dag-Erling Coïdan Smørgrav
-           1996 The NetBSD Foundation, Inc.
-           1985,1988,1991,1992,1993 The Regents of the University of California
-           1993,94 Winning Strategies, Inc.
-           1993, 2004 by Sun Microsystems, Inc.
-License: BSD-2-clause and BSD-3-clause and BSD-4-clause
-
 Files: source/extensions/espia/screen.c
 Copyright: 1994-2008, Mark Hammond
 License: BSD-2-clause
@@ -103,15 +67,6 @@ License: N/A
 Comment: HD Moore holds a single-seat developer license for the Packet Sniffer
          SDK library embedded into the Meterpreter Sniffer extension.  This
          source code is not distributed with Metasploit Framework.
-
-Files: deps/libressl/*
-Copyright: 1998-2012 The OpenSSL Project
-License: OpenSSL and SSLeay
-  portions are ISC or public domain
-
-Files: source/server/posix/sfsyscall.h
-Copyright: 2003  Philippe Biondi <biondi@cartel-securite.fr>
-License: LGPL
 
 Files: source/jpeg-8/*
 Copyright: 1991-2010, Thomas G. Lane, Guido Vollbeding

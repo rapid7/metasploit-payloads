@@ -222,15 +222,6 @@ typedef uint64_t	QWORD;
 #define	ERROR_SUCCESS		(0)
 #define	NO_ERROR		(0)
 
-#ifndef __WIN32__
- #define INVALID_HANDLE_VALUE    (0)
- #define WSAEWOULDBLOCK          EWOULDBLOCK
-
-/* SOCKET */
- #define SOCKET_ERROR (-1)
- #define INVALID_SOCKET (-1)
-#endif /* __WIN32__  */
-
 int local_error;
 
 #define WSAGetLastError()	GetLastError()

@@ -4,8 +4,6 @@ This gem is a Metasploit-specific gem that contains all of the
 Meterpreter payloads. This is made up of:
 
 * Windows DLLs
-* POSIX LSOs
-* POSIX BIN
 * Java Classes
 * PHP/Python Scripts
 
@@ -22,7 +20,6 @@ To build the gem:
 1. Update the version number in `lib/metasploit-payloads/version.rb`
 1. Run:
   - `rake win_prep` to build on Windows
-  - `rake posix_prep` to build on Linux
   - `rake java_prep` to build Java files
   - `rake python_prep` and `rake php_prep` to copy the latest PHP/Python
     meterpreter files into place

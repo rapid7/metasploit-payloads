@@ -1,19 +1,11 @@
 DATADIR:=../metasploit-framework/data
 METERPDIR:=$(DATADIR)/meterpreter
 
-install: install-c-posix \
-    install-c-windows \
+install: \
+	install-c-windows \
     install-java \
     install-php \
     install-python
-
-install-c-posix:
-	@echo "Installing Linux payloads"
-	@if [ `uname -s` = "Linux" -a -e c/meterpreter/data/meterpreter/msflinker_linux_x86.bin ]; then \
-		cd c/meterpreter; make install; \
-	else \
-		echo "Note: Linux not built, or not on a Linux OS, skipping"; \
-	fi
 
 install-c-windows:
 	@echo "Installing Windows payloads"

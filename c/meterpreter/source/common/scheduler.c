@@ -7,11 +7,7 @@
 typedef struct _WaitableEntry
 {
         Remote *               remote;
-#ifdef _WIN32
         HANDLE                 waitable;
-#else
-        int                    waitable;
-#endif
         EVENT*                 pause;
         EVENT*                 resume;
         LPVOID                 context;
@@ -145,7 +141,7 @@ DWORD scheduler_insert_waitable( HANDLE waitable, LPVOID entryContext, LPVOID th
 		waitable, entryContext, threadContext, routine, destroy );
 
 	memset( entry, 0, sizeof( WaitableEntry ) );
-	
+
 	entry->remote   = schedulerRemote;
 	entry->waitable = waitable;
 	entry->destroy  = destroy;
@@ -196,7 +192,7 @@ DWORD scheduler_signal_waitable( HANDLE waitable, SchedularSignal signal )
 		thread = (THREAD *)list_get( schedulerThreadList, index );
 		if( thread == NULL )
 			continue;
-	
+
 		entry = (WaitableEntry *)thread->parameter1;
 		if( entry == NULL )
 			continue;
@@ -241,16 +237,12 @@ DWORD scheduler_signal_waitable( HANDLE waitable, SchedularSignal signal )
 }
 
 /*
- * The schedulers waitable thread. Each scheduled item will have its own thread which 
+ * The schedulers waitable thread. Each scheduled item will have its own thread which
  * waits for either data to process or the threads signal to terminate.
  */
 DWORD THREADCALL scheduler_waitable_thread( THREAD * thread )
 {
-#ifdef _WIN32
 	HANDLE waitableHandles[3] = {0};
-#else
-	struct pollfd pollDetail = {0};
-#endif
 
 	WaitableEntry * entry     = NULL;
 	DWORD result              = 0;
@@ -272,22 +264,15 @@ DWORD THREADCALL scheduler_waitable_thread( THREAD * thread )
 
 	list_add( schedulerThreadList, thread );
 
-#ifdef _WIN32
 	waitableHandles[0] = thread->sigterm->handle;
 	waitableHandles[1] = entry->pause->handle;
 	waitableHandles[2] = entry->waitable;
-#else
-	pollDetail.fd      = entry->waitable;
-	pollDetail.events  = POLLRDNORM;
-	pollDetail.revents = 0;
-#endif
 
 	dprintf( "[SCHEDULER] entering scheduler_waitable_thread( 0x%08X )", thread );
 
 	entry->running = TRUE;
 	while( !terminate )
 	{
-#ifdef _WIN32
 		dprintf( "[SCHEDULER] About to wait ( 0x%08X )", thread );
 		result = WaitForMultipleObjects( 3, waitableHandles, FALSE, INFINITE );
 		dprintf( "[SCHEDULER] Wait returned ( 0x%08X )", thread );
@@ -311,28 +296,11 @@ DWORD THREADCALL scheduler_waitable_thread( THREAD * thread )
 			default:
 				break;
 		}
-#else
-		if( event_poll( thread->sigterm, 0 ) ) {
-			dprintf( "[SCHEDULER] scheduler_waitable_thread( 0x%08X ), signaled to terminate...", thread );
-			terminate = TRUE;
-		}
-		else if( event_poll( entry->pause, 0 ) ) {
-			dprintf( "[SCHEDULER] scheduler_waitable_thread( 0x%08X ), signaled to pause...", thread );
-			entry->running = FALSE;
-			while( !event_poll( entry->resume, 1000 ) );
-			entry->running = TRUE;
-			dprintf( "[SCHEDULER] scheduler_waitable_thread( 0x%08X ), signaled to resume...", thread );
-		}
-		else if( poll( &pollDetail, 1, 100 ) == POLLIN ) {
-			//dprintf( "[SCHEDULER] scheduler_waitable_thread( 0x%08X ), signaled on waitable...", thread );
-			entry->routine( entry->remote, entry->context, (LPVOID)thread->parameter2 );
-		}
-#endif
 	}
 
 	dprintf( "[SCHEDULER] leaving scheduler_waitable_thread( 0x%08X )", thread );
-	
-	// we acquire the lock for this block as we are freeing 'entry' which may be accessed 
+
+	// we acquire the lock for this block as we are freeing 'entry' which may be accessed
 	// in a second call to scheduler_signal_waitable for this thread (unlikely but best practice).
 	lock_acquire( schedulerThreadList->lock );
 	if( list_remove( schedulerThreadList, thread ) )
@@ -342,11 +310,7 @@ DWORD THREADCALL scheduler_waitable_thread( THREAD * thread )
 		}
 		else if( entry->waitable ) {
 			dprintf( "[SCHEDULER] scheduler_waitable_thread( 0x%08X ) closing handle 0x%08X", thread, entry->waitable);
-#ifdef _WIN32
 			CloseHandle( entry->waitable );
-#else
-			close( entry->waitable );
-#endif
 		}
 
 		event_destroy( entry->resume );

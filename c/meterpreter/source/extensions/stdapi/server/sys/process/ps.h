@@ -10,9 +10,6 @@
 
 VOID ps_addresult( Packet * response, DWORD dwPid, DWORD dwParentPid, char * cpExeName, char * cpExePath, char * cpUserName, DWORD dwProcessArch );
 
-#ifdef _WIN32
-
-
 typedef DWORD (WINAPI * GETMODULEFILENAMEEXA)( HANDLE hProcess, HMODULE hModule, LPTSTR lpExeName, DWORD dwSize );
 typedef DWORD (WINAPI * GETPROCESSIMAGEFILENAMEA)( HANDLE hProcess, LPTSTR lpExeName, DWORD dwSize );
 typedef BOOL (WINAPI * QUERYFULLPROCESSIMAGENAMEA)( HANDLE hProcess, DWORD dwFlags, LPTSTR lpExeName, PDWORD lpdwSize );
@@ -80,11 +77,4 @@ DWORD ps_list_via_psapi( Packet * response );
 
 DWORD ps_list_via_brute( Packet * response );
 
-
-
-//===============================================================================================//
-#else // linux
-DWORD ps_list_linux( Packet * response );
-#endif // _WIN32
 #endif
-//===============================================================================================//

@@ -8,8 +8,6 @@
 VOID add_enumerated_window(Packet *pResponse, QWORD qwHandle, const char* cpWindowTitle, DWORD dwProcessId);
 DWORD enumerate_windows(Packet *response, BOOL bIncludeUnknown, QWORD parentWindow);
 
-#ifdef _WIN32
-
 /*! @brief The maximum number of characters extracted from a window title. */
 #define MAX_WINDOW_TITLE 256
 
@@ -70,7 +68,6 @@ BOOL CALLBACK enumerate_windows_callback(HWND hWnd, LPARAM lParam)
 
 	return TRUE;
 }
-#endif
 
 /*!
  * @brief Perform enumeration of windows.
@@ -79,13 +76,9 @@ BOOL CALLBACK enumerate_windows_callback(HWND hWnd, LPARAM lParam)
  * @param parentWindow Handle to the parent window to use for enumeration.
  *        Set this value to \c NULL to enumerate top-level windows.
  * @returns Indication success or failure.
- * @remark This function is currently only supported in Windows (not POSIX).
  */
 DWORD enumerate_windows(Packet *response, BOOL bIncludeUnknown, QWORD parentWindow)
 {
-#ifdef _WIN32
-	// currently we only support Windoze
-
 	DWORD dwResult;
 	HMODULE hUser32 = NULL;
 	PENUMCHILDWINDOWS pEnumChildWindows;
@@ -138,9 +131,6 @@ DWORD enumerate_windows(Packet *response, BOOL bIncludeUnknown, QWORD parentWind
 	}
 
 	return dwResult;
-#else
-	return ERROR_NOT_SUPPORTED;
-#endif
 }
 
 /*!

@@ -4,13 +4,8 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#ifdef _WIN32
 #define FS_SEPARATOR "\\"
 #define FS_MAX_PATH  32768
-#else
-#define FS_SEPARATOR "/"
-#define FS_MAX_PATH  PATH_MAX
-#endif
 
 /*
  * Stat structures on Windows and various Unixes are all slightly different.

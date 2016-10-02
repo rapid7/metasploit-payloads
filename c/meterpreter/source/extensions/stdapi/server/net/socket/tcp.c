@@ -320,11 +320,7 @@ DWORD create_tcp_client_channel(Remote *remote, LPCSTR remoteHost, USHORT remote
 		// Try to connect to the host/port
 		if (connect(clientFd, (struct sockaddr *)&s, sizeof(s)) == SOCKET_ERROR)
 		{
-#ifdef _WIN32
 			result = WSAGetLastError();
-#else
-			result = errno;
-#endif
 			dprintf("[TCP] create client failed host=%s, port=%d error=%u 0x%x", remoteHost, remotePort, result, result);
 			break;
 		}
@@ -361,7 +357,7 @@ DWORD create_tcp_client_channel(Remote *remote, LPCSTR remoteHost, USHORT remote
 		// Save the channel context association
 		ctx->channel = channel;
 
-		// Finally, create a waitable event and insert it into the scheduler's 
+		// Finally, create a waitable event and insert it into the scheduler's
 		// waitable list
 		dprintf("[TCP] create_tcp_client_channel. host=%s, port=%d creating the notify", remoteHost, remotePort);
 		if ((ctx->notify = WSACreateEvent()))
@@ -482,8 +478,8 @@ DWORD request_net_socket_tcp_shutdown(Remote *remote, Packet *packet)
 			BREAK_ON_WSAERROR("[TCP] request_net_socket_tcp_shutdown. shutdown failed");
 		}
 
-		// sf: we dont seem to need to call this here, as the channels tcp_channel_client_local_notify() will 
-		// catch the socket closure and call free_socket_context() for us, due the the FD_READ|FD_CLOSE flags 
+		// sf: we dont seem to need to call this here, as the channels tcp_channel_client_local_notify() will
+		// catch the socket closure and call free_socket_context() for us, due the the FD_READ|FD_CLOSE flags
 		// being passed to WSAEventSelect for the notify event in create_tcp_client_channel().
 		// This avoids a double call (from two different threads) and subsequent access violation in some edge cases.
 		//free_socket_context( ctx );

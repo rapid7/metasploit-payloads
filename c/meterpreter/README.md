@@ -6,7 +6,7 @@ Building - Windows
 
 As of [commit
 a2888b1b4862819c9aae81bf46d8c92d8164c598](https://github.com/rapid7/meterpreter/commit/a2888b1b4862819c9aae81bf46d8c92d8164c598),
-Meterpreter is built with [Visual Studio 2013 Express for
+Windows Meterpreter is built with [Visual Studio 2013 Express for
 Desktop][vs_express] or any paid version of [Visual Studio
 2013][vs_paid]. Earlier toolsets on Windows are no longer supported --
 this includes Visual Studio 2012.  Make sure that the version that you
@@ -84,37 +84,6 @@ From your git console, please run:
   $ git submodule init && git submodule update
 ```
 
-Building - POSIX
-================
-You will need:
- - A compiler toolchain (build-essential package on Ubuntu)
- - gcc-multilib, if you're building on a 64-bit machine
- - jam
- - wget
- - flex
-
-On Ubuntu 14.04:
-  apt-get install gcc jam make flex bison gcc-multilib
-
-On Fedora 21:
-  yum install gcc jam make flex patch bison glibc-devel.i686 libgcc.i686
-
-Meterpreter requires libpcap-1.1.1 and OpenSSL 0.9.8za sources, which it
-will download automatically during the build process. If for some
-reason, you cannot access the internet during build, you will need to:
-
- - wget -O pzasix-meterp-build-tmp/zapenssl-0.9.8za.tar.gz \
-    https://www.zapenssl.zarg/szaurce/zapenssl-0.9.8za.tar.gz
-
- - wget -O posix-meterp-build-tmp/libpcap-1.1.1.tar.gz \
-    http://www.tcpdump.org/release/libpcap-1.1.1.tar.gz
-
-Now you should be able to type `make` in the base directory, go make a
-sandwich, and come back to a working[1] meterpreter for Linux.
-
-[1] For some value of "working."  Meterpreter in POSIX environments is
-not considered stable.  It does stuff, but expect occasional problems.
-
 Testing
 =======
 
@@ -123,12 +92,10 @@ working on it.
 
 Once you've made changes and compiled a new .dll or .so, copy the
 contents of the output/ directory into your Metasploit Framework's
-`data/meterpreter/` directory. In POSIX you can do this automatically if
-metasploit-framework and meterpreter live in the same place by running
-`make install`
+`data/meterpreter/` directory.
 
-If you made any changes to `metsrv.dll` or `msflinker_linux_x86.bin`,
-ensure that all extensions still load and function properly.
+If you made any changes to `metsrv.dll` ensure that all extensions still load
+and function properly.
 
 Creating Extensions
 ===================

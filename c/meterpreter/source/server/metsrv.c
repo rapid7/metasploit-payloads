@@ -1,16 +1,11 @@
 #include "metsrv.h"
 #include "config.h"
 
-#ifdef _WIN32
-
-#include <windows.h> // for EXCEPTION_ACCESS_VIOLATION 
-#include <excpt.h> 
+#include <windows.h> // for EXCEPTION_ACCESS_VIOLATION
+#include <excpt.h>
 
 #define	UnpackAndLinkLibs(p, s)
 
-#endif
-
-#ifdef _WIN32
 DWORD __declspec(dllexport) Init(SOCKET fd)
 {
 	// In the case of metsrv payloads, the parameter passed to init is NOT a socket, it's actually
@@ -39,9 +34,3 @@ DWORD __declspec(dllexport) Init(SOCKET fd)
 	}
 	return result;
 }
-#else
-
-// rtld dynamically links libc/libm/libcrypto/libssl/metsrv_main
-// then calls server_setup for us ;D
-
-#endif

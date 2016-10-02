@@ -277,7 +277,6 @@ static DWORD validate_response_winhttp(HANDLE hReq, HttpTransportContext* ctx)
  * @param packet Pointer to the \c Packet that is to be sent.
  * @param completion Pointer to the completion routines to process.
  * @return An indication of the result of processing the transmission request.
- * @remark This function is not available on POSIX.
  */
 static DWORD packet_transmit_http(Remote *remote, Packet *packet, PacketRequestCompletion *completion)
 {
@@ -433,7 +432,6 @@ static DWORD packet_transmit_via_http(Remote *remote, Packet *packet, PacketRequ
  * @param remote Pointer to the \c Remote instance.
  * @param packet Pointer to a pointer that will receive the \c Packet data.
  * @return An indication of the result of processing the transmission request.
- * @remark This function is not available in POSIX.
  */
 static DWORD packet_receive_http(Remote *remote, Packet **packet)
 {
