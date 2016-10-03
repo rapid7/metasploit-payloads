@@ -54,7 +54,6 @@ import com.metasploit.meterpreter.stdapi.stdapi_net_config_get_routes_V1_4;
 import com.metasploit.meterpreter.stdapi.stdapi_sys_config_localtime;
 import com.metasploit.meterpreter.stdapi.stdapi_net_socket_tcp_shutdown_V1_3;
 import com.metasploit.meterpreter.stdapi.stdapi_sys_process_execute_V1_3;
-import com.metasploit.stage.Payload;
 
 import java.io.DataInputStream;
 import java.io.File;
@@ -119,16 +118,17 @@ public class AndroidMeterpreter extends Meterpreter {
         return context;
     }
 
-    public AndroidMeterpreter(DataInputStream in, OutputStream rawOut, String[] parameters, boolean redirectErrors) throws Exception {
+    public AndroidMeterpreter(DataInputStream in, OutputStream rawOut, Object[] parameters, boolean redirectErrors) throws Exception {
         super(in, rawOut, true, redirectErrors, false);
-        writeableDir = parameters[0];
+        writeableDir = (String)parameters[0];
+        byte[] config = (byte[]) parameters[1];
         try {
             findContext();
         } catch (Exception e) {
             e.printStackTrace();
         }
-        if (Payload.configBytes[0] != 0) {
-            loadConfiguration(in, rawOut, Payload.configBytes);
+        if (config != null && config[0] != 0) {
+            loadConfiguration(in, rawOut, config);
         } else {
             int configLen = in.readInt();
             byte[] configBytes = new byte[configLen];
