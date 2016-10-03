@@ -1,4 +1,4 @@
-package com.metasploit.meterpreter;
+package com.metasploit.stage;
 
 import java.io.UnsupportedEncodingException;
 

@@ -1,5 +1,7 @@
 package com.metasploit.meterpreter;
 
+import com.metasploit.stage.ConfigParser;
+
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;

@@ -15,8 +15,8 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.util.concurrent.TimeUnit;
 
-import com.metasploit.meterpreter.PayloadTrustManager;
-import com.metasploit.meterpreter.ConfigParser;
+import com.metasploit.stage.PayloadTrustManager;
+import com.metasploit.stage.ConfigParser;
 import dalvik.system.DexClassLoader;
 
 public class Payload {

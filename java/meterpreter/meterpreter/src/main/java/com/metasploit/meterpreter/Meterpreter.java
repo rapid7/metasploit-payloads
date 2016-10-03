@@ -22,6 +22,7 @@ import java.util.jar.JarInputStream;
 
 import com.metasploit.meterpreter.command.Command;
 import com.metasploit.meterpreter.core.core_loadlib;
+import com.metasploit.stage.ConfigParser;
 
 /**
  * Main meterpreter class. Responsible for keeping all the stuff together and for managing channels.
@@ -43,7 +44,6 @@ public class Meterpreter {
     protected int ignoreBlocks = 0;
     private byte[] uuid;
     private long sessionExpiry;
-    private ConfigParser configParser;
 
     protected void loadConfiguration(DataInputStream in, OutputStream rawOut, byte[] configuration) throws MalformedURLException {
 
