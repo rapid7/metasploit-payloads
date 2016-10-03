@@ -601,9 +601,8 @@ DWORD request_sys_config_localtime(Remote* remote, Packet* packet)
 	time_t t = time(NULL);
 	struct tm lt = { 0 };
 	localtime_r(&t, &lt);
-	// TODO: bug?
+	// TODO: bug? Ping @bcook-r7
 	// For some reason I don't see the correct TZ name/offset coming through. Bionic issue?
-	// Or tied just to my setup (FC24)?
 	strftime(dateTime, sizeof(dateTime) - 1, "%Y-%m-%d %H:%M:%S %Z (UTC%z)", &lt);
 #endif
 
