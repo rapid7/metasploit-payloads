@@ -809,8 +809,8 @@ DWORD request_sys_config_driver_list(Remote *remote, Packet *packet)
 		{
 			if (EnumDeviceDrivers(driverList, sizeNeeded, &sizeNeeded))
 			{
-				CHAR baseName[MAX_PATH];
-				CHAR fileName[MAX_PATH];
+				wchar_t baseName[MAX_PATH];
+				wchar_t fileName[MAX_PATH];
 				DWORD driverCount = sizeNeeded / sizeof(LPVOID);
 				dprintf("[CONFIG] Total driver handles: %u", driverCount);
 
@@ -818,37 +818,44 @@ DWORD request_sys_config_driver_list(Remote *remote, Packet *packet)
 				{
 					BOOL valid = TRUE;
 
-					if (!GetDeviceDriverBaseNameA(driverList[i], baseName, MAX_PATH))
+					if (!GetDeviceDriverBaseNameW(driverList[i], baseName, MAX_PATH))
 					{
 						dprintf("[CONFIG] %d Driver base name read failed: %u 0x%x", i, GetLastError(), GetLastError());
 						// null terminate the string at the start, indicating that it's invalid
-						baseName[0] = '\x00';
+						baseName[0] = L'\x00';
 					}
 					else
 					{
-						dprintf("[CONFIG] %d Driver basename: %s", i, baseName);
+						dprintf("[CONFIG] %d Driver basename: %S", i, baseName);
 					}
 
-					if (!GetDeviceDriverFileNameA(driverList[i], fileName, MAX_PATH))
+					if (!GetDeviceDriverFileNameW(driverList[i], fileName, MAX_PATH))
 					{
 						dprintf("[CONFIG] %d Driver file name read failed: %u 0x%x", i, GetLastError(), GetLastError());
 
 						// null terminate the string at the start, indicating that it's invalid
-						fileName[0] = '\x00';
+						fileName[0] = L'\x00';
 
 						// we'll mark the entry as invalid if both calls failed.
-						valid = baseName[0] != '\x00';
+						valid = baseName[0] != L'\x00';
 					}
 					else
 					{
-						dprintf("[CONFIG] %d Driver filename: %s", i, fileName);
+						dprintf("[CONFIG] %d Driver filename: %S", i, fileName);
 					}
 
 					if (valid)
 					{
 						Packet* entry = packet_create_group();
-						packet_add_tlv_string(entry, TLV_TYPE_DRIVER_BASENAME, baseName);
-						packet_add_tlv_string(entry, TLV_TYPE_DRIVER_FILENAME, fileName);
+
+						char* bn = wchar_to_utf8(baseName);
+						packet_add_tlv_string(entry, TLV_TYPE_DRIVER_BASENAME, bn);
+						free(bn);
+
+						char* fn = wchar_to_utf8(fileName);
+						packet_add_tlv_string(entry, TLV_TYPE_DRIVER_FILENAME, fn);
+						free(fn);
+
 						packet_add_group(response, TLV_TYPE_DRIVER_ENTRY, entry);
 					}
 				}
