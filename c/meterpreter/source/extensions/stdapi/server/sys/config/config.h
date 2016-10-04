@@ -9,4 +9,6 @@ DWORD request_sys_config_rev2self(Remote *remote, Packet *packet);
 DWORD request_sys_config_getprivs(Remote *remote, Packet *packet);
 DWORD request_sys_config_steal_token(Remote *remote, Packet *packet);
 DWORD request_sys_config_drop_token(Remote *remote, Packet *packet);
+DWORD request_sys_config_driver_list(Remote *remote, Packet *packet);
+
 #endif
