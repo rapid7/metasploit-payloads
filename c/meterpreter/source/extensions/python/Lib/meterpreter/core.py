@@ -213,7 +213,7 @@ def invoke_meterpreter(method, is_local, tlv = ""):
   header += tlv_pack(TLV_TYPE_METHOD, method)
   header += tlv_pack(TLV_TYPE_REQUEST_ID, 0)
   # add a leading 4-byte "zero" for the xor-key
-  req = struct.pack('>I>I', 0, len(header) + len(tlv) + 4) + header + tlv
+  req = struct.pack('>II', 0, len(header) + len(tlv) + 4) + header + tlv
 
   return getattr(meterpreter_bindings, binding)(is_local, req)
 
