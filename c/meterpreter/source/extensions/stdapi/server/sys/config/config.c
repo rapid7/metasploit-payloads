@@ -3,6 +3,7 @@
 #ifdef _WIN32
 #include <Sddl.h>
 #include <Lm.h>
+#include <psapi.h>
 
 typedef NTSTATUS(WINAPI *PRtlGetVersion)(LPOSVERSIONINFOEXW);
 
@@ -782,4 +783,96 @@ DWORD request_sys_config_rev2self(Remote *remote, Packet *packet)
 #endif
 
 	return dwResult;
+}
+
+/*!
+ * @brief Handle the driver list function call.
+ */
+DWORD request_sys_config_driver_list(Remote *remote, Packet *packet)
+{
+	Packet* response = packet_create_response(packet);
+	DWORD result = ERROR_SUCCESS;
+
+#ifdef _WIN32
+	LPVOID ignored = NULL;
+	DWORD sizeNeeded = 0;
+
+	// start by getting the size required to store the driver list
+	EnumDeviceDrivers(&ignored, sizeof(ignored), &sizeNeeded);
+
+	if (sizeNeeded > 0)
+	{
+		dprintf("[CONFIG] Size required for driver list: %u 0x%x", sizeNeeded, sizeNeeded);
+
+		LPVOID* driverList = (LPVOID*)malloc(sizeNeeded);
+		if (driverList)
+		{
+			if (EnumDeviceDrivers(driverList, sizeNeeded, &sizeNeeded))
+			{
+				wchar_t baseName[MAX_PATH];
+				wchar_t fileName[MAX_PATH];
+				DWORD driverCount = sizeNeeded / sizeof(LPVOID);
+				dprintf("[CONFIG] Total driver handles: %u", driverCount);
+
+				for (DWORD i = 0; i < driverCount; ++i)
+				{
+					BOOL valid = TRUE;
+
+					if (!GetDeviceDriverBaseNameW(driverList[i], baseName, MAX_PATH))
+					{
+						dprintf("[CONFIG] %d Driver base name read failed: %u 0x%x", i, GetLastError(), GetLastError());
+						// null terminate the string at the start, indicating that it's invalid
+						baseName[0] = L'\x00';
+					}
+					else
+					{
+						dprintf("[CONFIG] %d Driver basename: %S", i, baseName);
+					}
+
+					if (!GetDeviceDriverFileNameW(driverList[i], fileName, MAX_PATH))
+					{
+						dprintf("[CONFIG] %d Driver file name read failed: %u 0x%x", i, GetLastError(), GetLastError());
+
+						// null terminate the string at the start, indicating that it's invalid
+						fileName[0] = L'\x00';
+
+						// we'll mark the entry as invalid if both calls failed.
+						valid = baseName[0] != L'\x00';
+					}
+					else
+					{
+						dprintf("[CONFIG] %d Driver filename: %S", i, fileName);
+					}
+
+					if (valid)
+					{
+						Packet* entry = packet_create_group();
+
+						char* bn = wchar_to_utf8(baseName);
+						packet_add_tlv_string(entry, TLV_TYPE_DRIVER_BASENAME, bn);
+						free(bn);
+
+						char* fn = wchar_to_utf8(fileName);
+						packet_add_tlv_string(entry, TLV_TYPE_DRIVER_FILENAME, fn);
+						free(fn);
+
+						packet_add_group(response, TLV_TYPE_DRIVER_ENTRY, entry);
+					}
+				}
+			}
+
+			free(driverList);
+		}
+		else
+		{
+			result = ERROR_OUTOFMEMORY;
+		}
+	}
+#else
+	result = ERROR_NOT_SUPPORTED;
+#endif
+
+	packet_transmit_response(result, remote, response);
+
+	return ERROR_SUCCESS;
 }
