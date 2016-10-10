@@ -118,9 +118,10 @@ public interface TLVType {
     public static final int TLV_TYPE_VALUE_DATA = TLVPacket.TLV_META_TYPE_RAW    | 1012;
 
     // Config
-    public static final int TLV_TYPE_COMPUTER_NAME = TLVPacket.TLV_META_TYPE_STRING | 1040;
-    public static final int TLV_TYPE_OS_NAME       = TLVPacket.TLV_META_TYPE_STRING | 1041;
-    public static final int TLV_TYPE_USER_NAME     = TLVPacket.TLV_META_TYPE_STRING | 1042;
+    public static final int TLV_TYPE_COMPUTER_NAME  = TLVPacket.TLV_META_TYPE_STRING | 1040;
+    public static final int TLV_TYPE_OS_NAME        = TLVPacket.TLV_META_TYPE_STRING | 1041;
+    public static final int TLV_TYPE_USER_NAME      = TLVPacket.TLV_META_TYPE_STRING | 1042;
+    public static final int TLV_TYPE_LOCAL_DATETIME = TLVPacket.TLV_META_TYPE_STRING | 1048;
 
     public static final int TLV_TYPE_ENV_VARIABLE = TLVPacket.TLV_META_TYPE_STRING | 1100;
     public static final int TLV_TYPE_ENV_VALUE    = TLVPacket.TLV_META_TYPE_STRING | 1101;
