@@ -51,6 +51,7 @@ import com.metasploit.meterpreter.stdapi.stdapi_fs_sha1;
 import com.metasploit.meterpreter.stdapi.stdapi_fs_stat;
 import com.metasploit.meterpreter.stdapi.stdapi_net_config_get_interfaces_V1_4;
 import com.metasploit.meterpreter.stdapi.stdapi_net_config_get_routes_V1_4;
+import com.metasploit.meterpreter.stdapi.stdapi_sys_config_localtime;
 import com.metasploit.meterpreter.stdapi.stdapi_net_socket_tcp_shutdown_V1_3;
 import com.metasploit.meterpreter.stdapi.stdapi_sys_process_execute_V1_3;
 
@@ -173,6 +174,7 @@ public class AndroidMeterpreter extends Meterpreter {
         mgr.registerCommand("stdapi_net_socket_tcp_shutdown", stdapi_net_socket_tcp_shutdown_V1_3.class);
         mgr.registerCommand("stdapi_sys_config_getuid", stdapi_sys_config_getuid.class);
         mgr.registerCommand("stdapi_sys_config_sysinfo", stdapi_sys_config_sysinfo_android.class);
+        mgr.registerCommand("stdapi_sys_config_localtime", stdapi_sys_config_localtime.class);
         mgr.registerCommand("stdapi_sys_process_execute", stdapi_sys_process_execute_V1_3.class);
         mgr.registerCommand("stdapi_sys_process_get_processes", stdapi_sys_process_get_processes_android.class);
         if (context != null) {
