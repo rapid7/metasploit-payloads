@@ -141,6 +141,100 @@ VOID core_update_desktop(Remote * remote, DWORD dwSessionID, char * cpStationNam
 }
 
 /*!
+ * @brief Serialize a packet to a byte stream, and destroy the packet.
+ * @param remote Pointer to the remote instance.
+ * @param packet Pointer to the packet to serialize.
+ * @param buffer Pointer that will receive a pointer to the serialized packet buffer.
+ * @param bufferSize Pointer that will receive the resulting serialized packet buffer size.
+ * @return Indication of success or failure.
+ */
+DWORD packet_serialize_and_destroy(Remote* remote, Packet* packet, BYTE** buffer, size_t* bufferSize)
+{
+	CryptoContext* crypto;
+	Tlv requestId;
+	DWORD res = ERROR_SUCCESS;
+
+	lock_acquire(remote->lock);
+
+	// If the packet does not already have a request identifier, create one for it
+	if (packet_get_tlv_string(packet, TLV_TYPE_REQUEST_ID, &requestId) != ERROR_SUCCESS)
+	{
+		DWORD index;
+		CHAR rid[32];
+
+		rid[sizeof(rid)-1] = 0;
+
+		for (index = 0; index < sizeof(rid)-1; index++)
+		{
+			rid[index] = (rand() % 0x5e) + 0x21;
+		}
+
+		packet_add_tlv_string(packet, TLV_TYPE_REQUEST_ID, rid);
+	}
+
+	do
+	{
+		// If the endpoint has a cipher established and this is not a plaintext
+		// packet, we encrypt
+		if ((crypto = remote_get_cipher(remote)) &&
+			(packet_get_type(packet) != PACKET_TLV_TYPE_PLAIN_REQUEST) &&
+			(packet_get_type(packet) != PACKET_TLV_TYPE_PLAIN_RESPONSE))
+		{
+			ULONG origPayloadLength = packet->payloadLength;
+			PUCHAR origPayload = packet->payload;
+
+			// Encrypt
+			if ((res = crypto->handlers.encrypt(crypto, packet->payload,
+				packet->payloadLength, &packet->payload,
+				&packet->payloadLength)) !=
+				ERROR_SUCCESS)
+			{
+				SetLastError(res);
+				break;
+			}
+
+			// Destroy the original payload as we no longer need it
+			free(origPayload);
+
+			// Update the header length
+			packet->header.length = htonl(packet->payloadLength + sizeof(TlvHeader));
+		}
+
+		// create a buffer for the serialized packet
+		*bufferSize = sizeof(packet->header) + packet->payloadLength;
+		*buffer = (BYTE*)calloc(1, *bufferSize);
+
+		if (buffer == NULL)
+		{
+			res = ERROR_NOT_ENOUGH_MEMORY;
+			break;
+		}
+
+		// generate a new XOR key
+		DWORD xorKey = rand_xor_key();
+
+		// make sure the existing XOR key it set to zero, we'll be overwriting
+		// it shortly
+		memset(packet->header.xor_key, 0, sizeof(packet->header.xor_key));
+
+		// copy the header & payload over to the buffer
+		memcpy(*buffer, &packet->header, sizeof(packet->header));
+		memcpy(*buffer + sizeof(packet->header), packet->payload, packet->payloadLength);
+
+		// XOR the entire buffer, with they key (results in the xor key being written
+		// to the first 4 bytes because they're currently zero anyway
+		xor_bytes((BYTE*)&xorKey, *buffer, (DWORD)*bufferSize);
+	} while (0);
+
+	// Destroy the packet
+	packet_destroy(packet);
+
+	lock_release(remote->lock);
+
+	return res;
+}
+
+/*!
  * @brief Create a packet of a given type (request/response) and method.
  * @param type The TLV type that this packet represents.
  * @param method TLV method type (can be \c NULL).
