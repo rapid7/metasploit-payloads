@@ -376,6 +376,7 @@ TLV_TYPE_OS_NAME               = TLV_META_TYPE_STRING  | 1041
 TLV_TYPE_USER_NAME             = TLV_META_TYPE_STRING  | 1042
 TLV_TYPE_ARCHITECTURE          = TLV_META_TYPE_STRING  | 1043
 TLV_TYPE_SID                   = TLV_META_TYPE_STRING  | 1045
+TLV_TYPE_LOCAL_DATETIME        = TLV_META_TYPE_STRING  | 1048
 
 ##
 # Environment
@@ -716,6 +717,14 @@ def stdapi_sys_config_getuid(request, response):
 	else:
 		username = getpass.getuser()
 	response += tlv_pack(TLV_TYPE_USER_NAME, username)
+	return ERROR_SUCCESS, response
+
+@meterpreter.register_function
+def stdapi_sys_config_localtime(request, response):
+	localtime = time.strftime("%Y-%m-%d %H:%M:%S %Z", time.localtime())
+	direction = "-" if time.timezone > 0 else "+"
+	localtime += " (UTC{0}{1})".format(direction, int(abs(time.timezone / 36)))
+	response += tlv_pack(TLV_TYPE_LOCAL_DATETIME, localtime)
 	return ERROR_SUCCESS, response
 
 @meterpreter.register_function
