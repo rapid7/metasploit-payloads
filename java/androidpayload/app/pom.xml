@@ -17,11 +17,6 @@
 			<version>2.3.3</version>
 			<scope>provided</scope>
 		</dependency>
-		<dependency>
-			<groupId>com.metasploit</groupId>
-			<artifactId>Metasploit-Java-Shared</artifactId>
-			<version>${project.version}</version>
-		</dependency>
 	</dependencies>
 	<build>
 		<finalName>${project.artifactId}</finalName>

@@ -141,7 +141,6 @@
 											<arg value="--dex" />
 											<arg value="--output=${project.basedir}/../../${deploy.path}/data/android/meterpreter.jar" />
 											<arg value="${project.basedir}/target/dx/meterpreter" />
-											<arg value="${com.metasploit:Metasploit-Java-Shared:jar}" />
 											<arg value="${com.metasploit:Metasploit-Java-Meterpreter:jar}" />
 											<arg value="${com.metasploit:Metasploit-Java-Meterpreter-stdapi:jar}" />
 											<arg value="${com.metasploit:Metasploit-JavaPayload:jar}" />
@@ -154,7 +153,6 @@
 											<arg value="--output=${project.basedir}/../../${deploy.path}/data/android/meterpreter.dex" />
 											<arg value="${project.basedir}/../app/target/classes" />
 											<arg value="${project.basedir}/target/dx/meterpreter" />
-											<arg value="${com.metasploit:Metasploit-Java-Shared:jar}" />
 											<arg value="${com.metasploit:Metasploit-Java-Meterpreter:jar}" />
 											<arg value="${com.metasploit:Metasploit-Java-Meterpreter-stdapi:jar}" />
 											<arg value="${com.metasploit:Metasploit-JavaPayload:jar}" />

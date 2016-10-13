@@ -7,6 +7,7 @@ import com.metasploit.meterpreter.Meterpreter;
 import com.metasploit.meterpreter.TLVPacket;
 import com.metasploit.meterpreter.TLVType;
 import com.metasploit.meterpreter.command.Command;
+import com.metasploit.stage.PayloadTrustManager;
 
 public class clipboard_set_data implements Command {
 

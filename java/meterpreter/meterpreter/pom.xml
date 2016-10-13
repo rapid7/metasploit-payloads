@@ -17,11 +17,6 @@
 			<artifactId>Metasploit-JavaPayload</artifactId>
 			<version>${project.version}</version>
 		</dependency>
-		<dependency>
-			<groupId>com.metasploit</groupId>
-			<artifactId>Metasploit-Java-Shared</artifactId>
-			<version>${project.version}</version>
-		</dependency>
 	</dependencies>
 	<build>
 		<finalName>meterpreter</finalName>

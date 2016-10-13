@@ -22,7 +22,6 @@ import java.util.jar.JarInputStream;
 
 import com.metasploit.meterpreter.command.Command;
 import com.metasploit.meterpreter.core.core_loadlib;
-import com.metasploit.stage.ConfigParser;
 
 /**
  * Main meterpreter class. Responsible for keeping all the stuff together and for managing channels.
@@ -30,6 +29,9 @@ import com.metasploit.stage.ConfigParser;
  * @author mihi
  */
 public class Meterpreter {
+
+    public static final int UUID_LEN = 16;
+    public static final int URL_LEN = 512;
 
     private List/* <Channel> */channels = new ArrayList();
     private final CommandManager commandManager;
@@ -45,26 +47,26 @@ public class Meterpreter {
     private byte[] uuid;
     private long sessionExpiry;
 
-    protected void loadConfiguration(DataInputStream in, OutputStream rawOut, byte[] configuration) throws MalformedURLException {
 
+    protected void loadConfiguration(DataInputStream in, OutputStream rawOut, byte[] configuration) throws MalformedURLException {
         // socket handle is 4 bytes, followed by exit func, both of
         // which we ignore.
         int csr = 8;
 
         // We start with the expiry, which is a 32 bit int
-        setExpiry(ConfigParser.unpack32(configuration, csr));
+        setExpiry(unpack32(configuration, csr));
         csr += 4;
 
         // this is followed with the UUID
-        this.uuid = ConfigParser.readBytes(configuration, csr, ConfigParser.UUID_LEN);
-        csr += ConfigParser.UUID_LEN;
+        this.uuid = readBytes(configuration, csr, UUID_LEN);
+        csr += UUID_LEN;
 
         // here we need to loop through all the given transports, we know that we're
         // going to get at least one.
         while (configuration[csr] != '\0') {
             // read the transport URL
-            String url = ConfigParser.readString(configuration, csr, ConfigParser.URL_LEN);
-            csr += ConfigParser.URL_LEN;
+            String url = readString(configuration, csr, URL_LEN);
+            csr += URL_LEN;
 
             Transport t = null;
             if (url.startsWith("tcp")) {
@@ -106,6 +108,31 @@ public class Meterpreter {
         } catch (InterruptedException ex) {
             // ignore
         }
+    }
+
+    public static String readString(byte[] bytes, int offset, int size) {
+        byte[] bytesRead = readBytes(bytes, offset, size);
+        try {
+            return new String(bytesRead, "ISO-8859-1").trim();
+        }
+        catch (UnsupportedEncodingException ex) {
+            // fallback to no encoding
+            return new String(bytesRead).trim();
+        }
+    }
+
+    public static byte[] readBytes(byte[] bytes, int offset, int size) {
+        byte[] buf = new byte[size];
+        System.arraycopy(bytes, offset, buf, 0, size);
+        return buf;
+    }
+
+    public static int unpack32(byte[] bytes, int offset) {
+        int res = 0;
+        for (int i = 0; i < 4; i++) {
+          res = res | (((int)bytes[i + offset]) & 0xFF) << (i * 8);
+        }
+        return res;
     }
 
     /**
@@ -191,6 +218,10 @@ public class Meterpreter {
                     c.close();
             }
         }
+    }
+
+    protected String getPayloadTrustManager() {
+        return "com.metasploit.meterpreter.PayloadTrustManager";
     }
 
     /**
