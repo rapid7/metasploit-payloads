@@ -29,6 +29,7 @@
 								<copy todir="${project.basedir}/target/generated-sources/copy">
 									<fileset dir="${project.basedir}/../../javapayload/src/main/java" includes="**/*.java" excludes="rmi/**" />
 									<fileset dir="${project.basedir}/../../meterpreter/meterpreter/src/main/java" includes="**/*.java"/>
+									<fileset dir="${project.basedir}/../../meterpreter/shared/src/main/java" includes="**/*.java"/>
 									<!-- Webcam_audio_record_V1_4 depends on Sun proprietary API -->
 									<fileset dir="${project.basedir}/../../meterpreter/meterpreter/target/extension-src" includes="**/*.java" excludes="**/webcam_audio_record_V1_4.java" />
 								</copy>
