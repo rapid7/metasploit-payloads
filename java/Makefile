@@ -2,7 +2,7 @@ ADB=${ANDROID_HOME}/platform-tools/adb
 ANDROID=${ANDROID_HOME}/tools/android
 PACKAGE=com.metasploit.stage
 
-all: android java
+all: android
 
 android:
 		mvn package -Dandroid.sdk.path=${ANDROID_HOME} -Dandroid.ndk.path=${ANDROID_NDK_HOME} -Dandroid.release=true -P deploy
@@ -11,7 +11,7 @@ java:
 		mvn package
 
 clean:
-		mvn clean
+		mvn clean -Dandroid.sdk.path=/ -Dandroid.ndk.path=/
 
 android-api:
 		${ANDROID}
