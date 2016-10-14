@@ -674,6 +674,12 @@ function handle_dead_resource_channel($resource) {
         packet_add_tlv($pkt, create_tlv(TLV_TYPE_METHOD, 'core_channel_close'));
         packet_add_tlv($pkt, create_tlv(TLV_TYPE_REQUEST_ID, generate_req_id()));
         packet_add_tlv($pkt, create_tlv(TLV_TYPE_CHANNEL_ID, $cid));
+
+        # Make sure the UUID is included in each packet
+        if (packet_get_tlv($pkt, TLV_TYPE_UUID) == null) {
+            packet_add_tlv($pkt, create_tlv(TLV_TYPE_UUID, PAYLOAD_UUID));
+        }
+
         # Add the length to the beginning of the packet
         $pkt = pack("N", strlen($pkt) + 4) . $pkt;
         write_tlv_to_socket($msgsock, $pkt);
@@ -697,6 +703,11 @@ function handle_resource_read_channel($resource, $data) {
     packet_add_tlv($pkt, create_tlv(TLV_TYPE_CHANNEL_DATA, $data));
     packet_add_tlv($pkt, create_tlv(TLV_TYPE_LENGTH, strlen($data)));
     packet_add_tlv($pkt, create_tlv(TLV_TYPE_REQUEST_ID, generate_req_id()));
+
+    # Make sure the UUID is included in each packet
+    if (packet_get_tlv($pkt, TLV_TYPE_UUID) == null) {
+        packet_add_tlv($pkt, create_tlv(TLV_TYPE_UUID, PAYLOAD_UUID));
+    }
 
     # Add the length to the beginning of the packet
     $pkt = pack("N", strlen($pkt) + 4) . $pkt;
@@ -722,6 +733,12 @@ function create_response($xor, $req) {
     }
 
     packet_add_tlv($pkt, create_tlv(TLV_TYPE_RESULT, $result));
+
+    # Make sure the UUID is included in each packet
+    if (packet_get_tlv($pkt, TLV_TYPE_UUID) == null) {
+        packet_add_tlv($pkt, create_tlv(TLV_TYPE_UUID, PAYLOAD_UUID));
+    }
+
     # Add the length to the beginning of the packet
     $pkt = pack("N", strlen($pkt) + 4) . $pkt;
     return $pkt;
@@ -816,7 +833,10 @@ function packet_get_tlv($pkt, $type) {
         $offset += $tlv['len'];
     }
     #my_print("Didn't find one, wtf");
-    return false;
+    # We should return null instead of false, because false is actually
+    # a valid value for a TLV and hence it's not possible to determine
+    # a missing BOOL tlv value.
+    return null;
 }
 
 
