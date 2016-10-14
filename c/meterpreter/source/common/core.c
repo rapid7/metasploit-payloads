@@ -151,13 +151,13 @@ VOID core_update_desktop(Remote * remote, DWORD dwSessionID, char * cpStationNam
 DWORD packet_serialize_and_destroy(Remote* remote, Packet* packet, BYTE** buffer, size_t* bufferSize)
 {
 	CryptoContext* crypto;
-	Tlv requestId;
+	Tlv tempTlv;
 	DWORD res = ERROR_SUCCESS;
 
 	lock_acquire(remote->lock);
 
 	// If the packet does not already have a request identifier, create one for it
-	if (packet_get_tlv_string(packet, TLV_TYPE_REQUEST_ID, &requestId) != ERROR_SUCCESS)
+	if (packet_get_tlv_string(packet, TLV_TYPE_REQUEST_ID, &tempTlv) != ERROR_SUCCESS)
 	{
 		DWORD index;
 		CHAR rid[32];
@@ -170,6 +170,12 @@ DWORD packet_serialize_and_destroy(Remote* remote, Packet* packet, BYTE** buffer
 		}
 
 		packet_add_tlv_string(packet, TLV_TYPE_REQUEST_ID, rid);
+	}
+
+	// Always add the UUID to the packet as well, so that MSF knows who and what we are
+	if (packet_get_tlv(packet, TLV_TYPE_UUID, &tempTlv) != ERROR_SUCCESS)
+	{
+		packet_add_tlv_raw(packet, TLV_TYPE_UUID, remote->orig_config->session.uuid, UUID_SIZE);
 	}
 
 	do

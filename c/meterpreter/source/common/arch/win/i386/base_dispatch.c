@@ -526,6 +526,7 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
 	BYTE * lpPayloadBuffer = NULL;
 	LPVOID lpMigrateStub = NULL;
 	LPBYTE lpMemory = NULL;
+	LPBYTE lpUuid = NULL;
 	MIGRATECONTEXT ctx = { 0 };
 	DWORD dwMigrateStubLength = 0;
 	DWORD dwPayloadLength = 0;
@@ -555,6 +556,9 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
 
 		// Receive the actual migration payload buffer
 		lpPayloadBuffer = packet_get_tlv_value_string(packet, TLV_TYPE_MIGRATE_PAYLOAD);
+
+		// Get handles to the updated UUIDs if they're there
+		lpUuid = packet_get_tlv_value_raw(packet, TLV_TYPE_UUID);
 
 		dprintf("[MIGRATE] Attempting to migrate. ProcessID=%d, Arch=%s, PayloadLength=%d", dwProcessID, (dwDestinationArch == 2 ? "x64" : "x86"), dwPayloadLength);
 
@@ -586,7 +590,7 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
 
 		// get the existing configuration
 		dprintf("[MIGRATE] creating the configuration block");
-		remote->config_create(remote, &config, &configSize);
+		remote->config_create(remote, lpUuid, &config, &configSize);
 		dprintf("[MIGRATE] Config of %u bytes stashed at 0x%p", configSize, config);
 
 		if (config->session.comms_fd)
