@@ -444,7 +444,7 @@ function core_enumextcmd($req, &$pkt) {
 
 function core_uuid($req, &$pkt) {
     my_print("doing core_uuid");
-    packet_add_tlv($pkt, create_tlv(TLV_TYPE_UUID, PAYLOAD_UUID));
+    # this is always added, so we don't need to add it ourselves
     return ERROR_SUCCESS;
 }
 
@@ -674,11 +674,7 @@ function handle_dead_resource_channel($resource) {
         packet_add_tlv($pkt, create_tlv(TLV_TYPE_METHOD, 'core_channel_close'));
         packet_add_tlv($pkt, create_tlv(TLV_TYPE_REQUEST_ID, generate_req_id()));
         packet_add_tlv($pkt, create_tlv(TLV_TYPE_CHANNEL_ID, $cid));
-
-        # Make sure the UUID is included in each packet
-        if (packet_get_tlv($pkt, TLV_TYPE_UUID) == null) {
-            packet_add_tlv($pkt, create_tlv(TLV_TYPE_UUID, PAYLOAD_UUID));
-        }
+        packet_add_tlv($pkt, create_tlv(TLV_TYPE_UUID, PAYLOAD_UUID));
 
         # Add the length to the beginning of the packet
         $pkt = pack("N", strlen($pkt) + 4) . $pkt;
@@ -703,11 +699,7 @@ function handle_resource_read_channel($resource, $data) {
     packet_add_tlv($pkt, create_tlv(TLV_TYPE_CHANNEL_DATA, $data));
     packet_add_tlv($pkt, create_tlv(TLV_TYPE_LENGTH, strlen($data)));
     packet_add_tlv($pkt, create_tlv(TLV_TYPE_REQUEST_ID, generate_req_id()));
-
-    # Make sure the UUID is included in each packet
-    if (packet_get_tlv($pkt, TLV_TYPE_UUID) == null) {
-        packet_add_tlv($pkt, create_tlv(TLV_TYPE_UUID, PAYLOAD_UUID));
-    }
+    packet_add_tlv($pkt, create_tlv(TLV_TYPE_UUID, PAYLOAD_UUID));
 
     # Add the length to the beginning of the packet
     $pkt = pack("N", strlen($pkt) + 4) . $pkt;
@@ -733,11 +725,7 @@ function create_response($xor, $req) {
     }
 
     packet_add_tlv($pkt, create_tlv(TLV_TYPE_RESULT, $result));
-
-    # Make sure the UUID is included in each packet
-    if (packet_get_tlv($pkt, TLV_TYPE_UUID) == null) {
-        packet_add_tlv($pkt, create_tlv(TLV_TYPE_UUID, PAYLOAD_UUID));
-    }
+    packet_add_tlv($pkt, create_tlv(TLV_TYPE_UUID, PAYLOAD_UUID));
 
     # Add the length to the beginning of the packet
     $pkt = pack("N", strlen($pkt) + 4) . $pkt;
