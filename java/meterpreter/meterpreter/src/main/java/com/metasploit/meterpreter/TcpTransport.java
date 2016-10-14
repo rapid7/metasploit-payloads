@@ -165,6 +165,11 @@ public class TcpTransport extends Transport {
                 TLVPacket response = request.createResponse();
                 result = met.getCommandManager().executeCommand(met, request, response);
 
+                // Make sure the UUID is baked into each response.
+                if (response.getRawValue(TLVType.TLV_TYPE_UUID, null) == null) {
+                    response.add(TLVType.TLV_TYPE_UUID, met.getUUID());
+                }
+
                 this.writePacket(response, TLVPacket.PACKET_TYPE_RESPONSE);
 
                 if (result == Command.EXIT_DISPATCH) {
