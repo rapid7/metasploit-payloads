@@ -739,6 +739,7 @@ class PythonMeterpreter(object):
 		return pkt
 
 	def send_packet(self, packet):
+		packet += tlv_pack(TLV_TYPE_UUID, binascii.a2b_hex(PAYLOAD_UUID))
 		send_succeeded = self.transport.send_packet(packet)
 		if not send_succeeded and self.transport.should_retire:
 			self.transport_change()
@@ -849,7 +850,7 @@ class PythonMeterpreter(object):
 		self.send_packet(pkt)
 
 	def _core_uuid(self, request, response):
-		response += tlv_pack(TLV_TYPE_UUID, binascii.a2b_hex(PAYLOAD_UUID))
+		# UUID is now always included, so we don't need to add it here.
 		return ERROR_SUCCESS, response
 
 	def _core_enumextcmd(self, request, response):
