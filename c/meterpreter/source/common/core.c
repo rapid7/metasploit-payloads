@@ -173,10 +173,7 @@ DWORD packet_serialize_and_destroy(Remote* remote, Packet* packet, BYTE** buffer
 	}
 
 	// Always add the UUID to the packet as well, so that MSF knows who and what we are
-	if (packet_get_tlv(packet, TLV_TYPE_UUID, &tempTlv) != ERROR_SUCCESS)
-	{
-		packet_add_tlv_raw(packet, TLV_TYPE_UUID, remote->orig_config->session.uuid, UUID_SIZE);
-	}
+	packet_add_tlv_raw(packet, TLV_TYPE_UUID, remote->orig_config->session.uuid, UUID_SIZE);
 
 	do
 	{

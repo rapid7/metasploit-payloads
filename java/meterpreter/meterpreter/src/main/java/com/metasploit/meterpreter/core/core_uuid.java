@@ -10,7 +10,7 @@ import java.io.IOException;
 
 public class core_uuid implements Command {
     public int execute(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws Exception {
-        response.add(TLVType.TLV_TYPE_UUID, meterpreter.getUUID());
+        // UUID is added to every packet, so we don't need it here.
         return ERROR_SUCCESS;
     }
 }

@@ -255,7 +255,7 @@ DWORD request_core_uuid(Remote* remote, Packet* packet)
 			uuid[12], uuid[13], uuid[14], uuid[15]
 			);
 #endif
-		packet_add_tlv_raw(response, TLV_TYPE_UUID, remote->orig_config->session.uuid, UUID_SIZE);
+		// This is always added to every packet, so we don't need to add it here.
 
 		packet_transmit_response(ERROR_SUCCESS, remote, response);
 	}
