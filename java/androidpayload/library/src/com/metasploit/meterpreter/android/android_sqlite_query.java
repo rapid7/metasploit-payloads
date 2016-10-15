@@ -9,7 +9,7 @@ import com.metasploit.meterpreter.Meterpreter;
 import com.metasploit.meterpreter.TLVPacket;
 import com.metasploit.meterpreter.command.Command;
 
-public class sqlite_query_android implements Command {
+public class android_sqlite_query implements Command {
 
     private static final int TLV_EXTENSIONS = 20000;
     public static final int TLV_TYPE_SQLITE_RESULT_GROUP = TLVPacket.TLV_META_TYPE_GROUP
