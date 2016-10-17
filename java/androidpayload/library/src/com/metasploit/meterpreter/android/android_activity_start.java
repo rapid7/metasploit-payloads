@@ -16,7 +16,7 @@ import java.net.URISyntaxException;
 import java.util.List;
 
 
-public class activity_start_android implements Command {
+public class android_activity_start implements Command {
 
     private static final int TLV_EXTENSIONS = 20000;
     private static final int TLV_TYPE_URI_STRING = TLVPacket.TLV_META_TYPE_STRING | (TLV_EXTENSIONS + 9101);

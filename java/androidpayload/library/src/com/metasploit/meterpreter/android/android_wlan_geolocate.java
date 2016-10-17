@@ -22,7 +22,7 @@ import com.metasploit.meterpreter.Meterpreter;
 import com.metasploit.meterpreter.TLVPacket;
 import com.metasploit.meterpreter.command.Command;
 
-public class wlan_geolocate implements Command {
+public class android_wlan_geolocate implements Command {
     private static final int TLV_EXTENSIONS = 20000;
     public static final int TLV_TYPE_WLAN_GROUP = TLVPacket.TLV_META_TYPE_GROUP
             | (TLV_EXTENSIONS + 9022);

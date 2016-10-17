@@ -11,7 +11,7 @@ import com.metasploit.meterpreter.command.Command;
 import java.io.ByteArrayInputStream;
 
 
-public class set_wallpaper_android implements Command {
+public class android_set_wallpaper implements Command {
 
     private static final int TLV_EXTENSIONS = 20000;
     private static final int TLV_TYPE_WALLPAPER_DATA = TLVPacket.TLV_META_TYPE_RAW | (TLV_EXTENSIONS + 9201);

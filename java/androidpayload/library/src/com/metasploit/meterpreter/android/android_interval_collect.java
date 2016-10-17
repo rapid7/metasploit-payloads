@@ -1,17 +1,14 @@
 package com.metasploit.meterpreter.android;
 
-import android.content.Context;
-
 import com.metasploit.meterpreter.AndroidMeterpreter;
 import com.metasploit.meterpreter.IntervalCollectionManager;
 import com.metasploit.meterpreter.IntervalCollector;
 import com.metasploit.meterpreter.Meterpreter;
 import com.metasploit.meterpreter.TLVPacket;
-import com.metasploit.meterpreter.WifiCollector;
 
 import com.metasploit.meterpreter.command.Command;
 
-public class interval_collect implements Command {
+public class android_interval_collect implements Command {
     private static final int TLV_EXTENSIONS = 20000;
 
     private static final int COLLECT_ACTION_START = 1;
@@ -34,10 +31,10 @@ public class interval_collect implements Command {
             | (TLV_EXTENSIONS + 9054);
 
     // TLVs for wifi (reusing the ones for wlan geolocate)
-    public static final int TLV_TYPE_COLLECT_RESULT_WIFI = wlan_geolocate.TLV_TYPE_WLAN_GROUP;       // 9022
-    public static final int TLV_TYPE_COLLECT_RESULT_WIFI_BSSID = wlan_geolocate.TLV_TYPE_WLAN_BSSID; // 9023
-    public static final int TLV_TYPE_COLLECT_RESULT_WIFI_SSID = wlan_geolocate.TLV_TYPE_WLAN_SSID;   // 9024
-    public static final int TLV_TYPE_COLLECT_RESULT_WIFI_LEVEL = wlan_geolocate.TLV_TYPE_WLAN_LEVEL; // 9025
+    public static final int TLV_TYPE_COLLECT_RESULT_WIFI = android_wlan_geolocate.TLV_TYPE_WLAN_GROUP;       // 9022
+    public static final int TLV_TYPE_COLLECT_RESULT_WIFI_BSSID = android_wlan_geolocate.TLV_TYPE_WLAN_BSSID; // 9023
+    public static final int TLV_TYPE_COLLECT_RESULT_WIFI_SSID = android_wlan_geolocate.TLV_TYPE_WLAN_SSID;   // 9024
+    public static final int TLV_TYPE_COLLECT_RESULT_WIFI_LEVEL = android_wlan_geolocate.TLV_TYPE_WLAN_LEVEL; // 9025
 
     // TLV for Geolocation
     public static final int TLV_TYPE_COLLECT_RESULT_GEO = TLVPacket.TLV_META_TYPE_GROUP
