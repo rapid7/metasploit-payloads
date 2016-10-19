@@ -13,6 +13,14 @@ import dalvik.system.DexClassLoader;
  */
 public class Meterpreter {
 
+    // This is for backwards compatiblity with older (pre #136) payloads
+    public void start(DataInputStream in, OutputStream out, String[] parameters) throws Exception {
+        Object[] newParams = new Object[2];
+        newParams[0] = parameters[0];
+        newParams[1] = null;
+        start(in, out, newParams);
+    }
+
     public void start(DataInputStream in, OutputStream out, Object[] parameters) throws Exception {
         String path = (String) parameters[0];
         String filePath = path + File.separatorChar + "met.jar";
