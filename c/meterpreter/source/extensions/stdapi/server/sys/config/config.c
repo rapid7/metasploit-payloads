@@ -584,7 +584,7 @@ DWORD request_sys_config_sysinfo(Remote *remote, Packet *packet)
 {
 	Packet *response = packet_create_response(packet);
 #ifdef _WIN32
-	CHAR computer[512], buf[512], * osArch = NULL, * osWow = NULL;
+	CHAR computer[512], buf[512], * osArch = NULL;
 	DWORD res = ERROR_SUCCESS;
 	DWORD size = sizeof(computer);
 	HMODULE hKernel32;
@@ -631,15 +631,6 @@ DWORD request_sys_config_sysinfo(Remote *remote, Packet *packet)
 					break;
 				}
 			}
-			if (pIsWow64Process)
-			{
-				BOOL bIsWow64 = FALSE;
-				pIsWow64Process(GetCurrentProcess(), &bIsWow64);
-				if (bIsWow64)
-				{
-					osWow = " (Current Process is WOW64)";
-				}
-			}
 		}
 		// if we havnt set the arch it is probably because we are on NT/2000 which is x86
 		if (!osArch)
@@ -647,14 +638,8 @@ DWORD request_sys_config_sysinfo(Remote *remote, Packet *packet)
 			osArch = "x86";
 		}
 
-		if (!osWow)
-		{
-			osWow = "";
-		}
-
-		_snprintf(buf, sizeof(buf) - 1, "%s%s", osArch, osWow);
-		dprintf("[SYSINFO] Arch set to: %s", buf);
-		packet_add_tlv_string(response, TLV_TYPE_ARCHITECTURE, buf);
+		dprintf("[SYSINFO] Arch set to: %s", osArch);
+		packet_add_tlv_string(response, TLV_TYPE_ARCHITECTURE, osArch);
 
 		if (hKernel32)
 		{
