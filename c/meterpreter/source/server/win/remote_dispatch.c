@@ -239,28 +239,22 @@ DWORD request_core_loadlib(Remote *pRemote, Packet *pPacket)
 	return res;
 }
 
-DWORD request_core_uuid(Remote* remote, Packet* packet)
+DWORD request_core_set_uuid(Remote* remote, Packet* packet)
 {
-	DWORD res = ERROR_SUCCESS;
 	Packet* response = packet_create_response(packet);
+	PBYTE newUuid = packet_get_tlv_value_raw(packet, TLV_TYPE_UUID);
+
+	if (newUuid != NULL)
+	{
+		memcpy(remote->orig_config->session.uuid, newUuid, UUID_SIZE);
+	}
 
 	if (response)
 	{
-#ifdef DEBUGTRACE
-		LPBYTE uuid = remote->orig_config->session.uuid;
-		dprintf("[request_core_uuid] returning: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
-			uuid[0], uuid[1], uuid[2], uuid[3],
-			uuid[4], uuid[5], uuid[6], uuid[7],
-			uuid[8], uuid[9], uuid[10], uuid[11],
-			uuid[12], uuid[13], uuid[14], uuid[15]
-			);
-#endif
-		// This is always added to every packet, so we don't need to add it here.
-
 		packet_transmit_response(ERROR_SUCCESS, remote, response);
 	}
 
-	return res;
+	return ERROR_SUCCESS;
 }
 
 DWORD request_core_machine_id(Remote* pRemote, Packet* pPacket)

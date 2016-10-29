@@ -19,7 +19,7 @@ public class Loader implements ExtensionLoader {
         mgr.registerCommand("core_channel_write", core_channel_write.class);
         mgr.registerCommand("core_enumextcmd", core_enumextcmd.class);
         mgr.registerCommand("core_loadlib", core_loadlib.class);
-        mgr.registerCommand("core_uuid", core_uuid.class);
+        mgr.registerCommand("core_set_uuid", core_set_uuid.class);
         mgr.registerCommand("core_machine_id", core_machine_id.class);
         mgr.registerCommand("core_patch_url", core_patch_url.class);
         mgr.registerCommand("core_shutdown", core_shutdown.class);

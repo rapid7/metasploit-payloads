@@ -8,10 +8,12 @@ import com.metasploit.meterpreter.command.Command;
 
 import java.io.IOException;
 
-public class core_uuid implements Command {
+public class core_set_uuid implements Command {
     public int execute(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws Exception {
-        // UUID is added to every packet, so we don't need it here.
+        byte[] newUuid = request.getRawValue(TLVType.TLV_TYPE_UUID, null);
+        if (newUuid != null) {
+            meterpreter.setUUID(newUuid);
+        }
         return ERROR_SUCCESS;
     }
 }
-

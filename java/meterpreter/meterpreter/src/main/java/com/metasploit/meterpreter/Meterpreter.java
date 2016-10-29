@@ -90,6 +90,10 @@ public class Meterpreter {
         return this.uuid;
     }
 
+    public void setUUID(byte[] newUuid) {
+        this.uuid = newUuid;
+    }
+
     public long getExpiry() {
         return (this.sessionExpiry - System.currentTimeMillis()) / Transport.MS;
     }

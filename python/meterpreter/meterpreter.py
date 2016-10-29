@@ -851,8 +851,10 @@ class PythonMeterpreter(object):
 		pkt  = struct.pack('>I', len(pkt) + 4) + pkt
 		self.send_packet(pkt)
 
-	def _core_uuid(self, request, response):
-		# UUID is now always included, so we don't need to add it here.
+	def _core_set_uuid(self, request, response):
+		new_uuid = packet_get_tlv(request, TLV_TYPE_UUID)
+		if new_uuid:
+			PAYLOAD_UUID = binascii.b2a_hex(new_uuid['value'])
 		return ERROR_SUCCESS, response
 
 	def _core_enumextcmd(self, request, response):
