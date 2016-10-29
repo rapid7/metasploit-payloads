@@ -10,7 +10,7 @@ import com.metasploit.meterpreter.Meterpreter;
 import com.metasploit.meterpreter.TLVPacket;
 import com.metasploit.meterpreter.command.Command;
 
-public class dump_calllog_android implements Command {
+public class android_dump_calllog implements Command {
 
     private static final int TLV_EXTENSIONS = 20000;
     private static final int TLV_TYPE_CALLLOG_NAME = TLVPacket.TLV_META_TYPE_STRING

