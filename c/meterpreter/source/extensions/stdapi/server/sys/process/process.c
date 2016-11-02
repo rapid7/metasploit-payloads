@@ -1173,7 +1173,7 @@ DWORD process_channel_interact_destroy( HANDLE waitable, LPVOID entryContext, LP
  * Callback for when data is available on the standard output handle of
  * a process channel that is interactive mode
  */
-DWORD process_channel_interact_notify(Remote *remote, LPVOID entryContext, LPVOID threadContext)
+DWORD process_channel_interact_notify(Remote *remote, LPVOID entryContext, LPVOID threadContext, BOOL timedOut)
 {
 	Channel *channel = (Channel*)entryContext;
 	ProcessChannelContext *ctx = (ProcessChannelContext *)threadContext;
@@ -1261,8 +1261,8 @@ DWORD process_channel_interact(Channel *channel, Packet *request, LPVOID context
 		// try to resume it first, if it's not there, we can create a new entry
 		if( (result = scheduler_signal_waitable( ctx->pStdout, Resume )) == ERROR_NOT_FOUND ) {
 			result = scheduler_insert_waitable( ctx->pStdout, channel, context,
-				(WaitableNotifyRoutine)process_channel_interact_notify,
-				(WaitableDestroyRoutine)process_channel_interact_destroy );
+				process_channel_interact_notify,
+				process_channel_interact_destroy );
 		}
 	} else { // Otherwise, pause it
 		result = scheduler_signal_waitable( ctx->pStdout, Pause );

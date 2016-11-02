@@ -1235,8 +1235,8 @@ DWORD InitServerExtension(Remote *remote)
 	peername4 = NULL;
 	peername6 = NULL;
 	peername_len = sizeof(peername);
-	if (remote->transport->get_socket) {
-		getpeername(remote->transport->get_socket(remote->transport), &peername, &peername_len);
+	if (remote->transport->type == METERPRETER_TRANSPORT_SSL && remote->transport->get_handle) {
+		getpeername((SOCKET)remote->transport->get_handle(remote->transport), &peername, &peername_len);
 		if(peername.sa_family == PF_INET)  peername4 = (struct sockaddr_in *)&peername;
 
 		dprintf("[SERVER] Getting the IPv6 peer name of our socket...");

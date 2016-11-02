@@ -4,6 +4,10 @@ extern DWORD request_net_tcp_client_channel_open(Remote *remote, Packet *packet)
 extern DWORD request_net_tcp_server_channel_open(Remote *remote, Packet *packet);
 extern DWORD request_net_udp_channel_open(Remote *remote, Packet *packet);
 
+#ifdef _WIN32
+extern DWORD request_net_named_pipe_server_channel_open(Remote* remote, Packet* packet);
+#endif
+
 // Channel type dispatch table
 struct
 {
@@ -15,6 +19,10 @@ struct
 	{ "stdapi_net_tcp_client", request_net_tcp_client_channel_open },
 	{ "stdapi_net_tcp_server", request_net_tcp_server_channel_open },
 	{ "stdapi_net_udp_client", request_net_udp_channel_open        },
+#ifdef _WIN32
+	//{ "stdapi_net_named_pipe_client", request_net_named_pipe_client_channel_open },
+	{ "stdapi_net_named_pipe_server", request_net_named_pipe_server_channel_open },
+#endif
 	{ NULL,                    NULL                                },
 };
 

@@ -2,6 +2,7 @@
 
 #ifndef _WIN32
 #include <poll.h>
+#define INFINITE 0xFFFFFFFF
 #endif
 
 typedef struct _WaitableEntry
@@ -18,6 +19,7 @@ typedef struct _WaitableEntry
         BOOL                   running;
         WaitableNotifyRoutine  routine;
         WaitableDestroyRoutine destroy;
+        DWORD                  timeout;
 } WaitableEntry;
 
 /*
@@ -132,14 +134,23 @@ DWORD scheduler_destroy(VOID)
 /*
  * Insert a new waitable thread for checking and processing.
  */
-DWORD scheduler_insert_waitable( HANDLE waitable, LPVOID entryContext, LPVOID threadContext, WaitableNotifyRoutine routine, WaitableDestroyRoutine destroy )
+DWORD scheduler_insert_waitable(HANDLE waitable, LPVOID entryContext, LPVOID threadContext, WaitableNotifyRoutine routine, WaitableDestroyRoutine destroy)
+{
+	return scheduler_insert_waitable_with_timeout(waitable, entryContext, threadContext, routine, destroy, INFINITE);
+}
+/*
+ * Insert a new waitable thread for checking and processing.
+ */
+DWORD scheduler_insert_waitable_with_timeout( HANDLE waitable, LPVOID entryContext, LPVOID threadContext, WaitableNotifyRoutine routine, WaitableDestroyRoutine destroy, DWORD timeout )
 {
 	DWORD result = ERROR_SUCCESS;
 	THREAD * swt = NULL;
 
 	WaitableEntry * entry = (WaitableEntry *)malloc( sizeof( WaitableEntry ) );
-	if( entry == NULL )
+	if (entry == NULL)
+	{
 		return ERROR_NOT_ENOUGH_MEMORY;
+	}
 
 	dprintf( "[SCHEDULER] entering scheduler_insert_waitable( 0x%08X, 0x%08X, 0x%08X, 0x%08X, 0x%08X )",
 		waitable, entryContext, threadContext, routine, destroy );
@@ -153,6 +164,7 @@ DWORD scheduler_insert_waitable( HANDLE waitable, LPVOID entryContext, LPVOID th
 	entry->routine  = routine;
 	entry->pause    = event_create();
 	entry->resume   = event_create();
+	entry->timeout  = timeout;
 
 	swt = thread_create( scheduler_waitable_thread, entry, threadContext, NULL );
 	if( swt != NULL )
@@ -289,27 +301,34 @@ DWORD THREADCALL scheduler_waitable_thread( THREAD * thread )
 	{
 #ifdef _WIN32
 		dprintf( "[SCHEDULER] About to wait ( 0x%08X )", thread );
-		result = WaitForMultipleObjects( 3, waitableHandles, FALSE, INFINITE );
+		result = WaitForMultipleObjects(3, waitableHandles, FALSE, entry->timeout);
 		dprintf( "[SCHEDULER] Wait returned ( 0x%08X )", thread );
-		signalIndex = result - WAIT_OBJECT_0;
-		switch( signalIndex )
+		if (result == WAIT_TIMEOUT)
 		{
+			entry->routine(entry->remote, entry->context, thread->parameter2, TRUE);
+		}
+		else
+		{
+			signalIndex = result - WAIT_OBJECT_0;
+			switch (signalIndex)
+			{
 			case 0:
-				dprintf( "[SCHEDULER] scheduler_waitable_thread( 0x%08X ), signaled to terminate...", thread );
+				dprintf("[SCHEDULER] scheduler_waitable_thread( 0x%08X ), signaled to terminate...", thread);
 				terminate = TRUE;
 				break;
 			case 1:
-				dprintf( "[SCHEDULER] scheduler_waitable_thread( 0x%08X ), signaled to pause...", thread );
+				dprintf("[SCHEDULER] scheduler_waitable_thread( 0x%08X ), signaled to pause...", thread);
 				entry->running = FALSE;
-				event_poll( entry->resume, INFINITE );
+				event_poll(entry->resume, INFINITE);
 				entry->running = TRUE;
-				dprintf( "[SCHEDULER] scheduler_waitable_thread( 0x%08X ), signaled to resume...", thread );
+				dprintf("[SCHEDULER] scheduler_waitable_thread( 0x%08X ), signaled to resume...", thread);
 			case 2:
 				//dprintf( "[SCHEDULER] scheduler_waitable_thread( 0x%08X ), signaled on waitable...", thread );
-				entry->routine( entry->remote, entry->context, thread->parameter2 );
+				entry->routine(entry->remote, entry->context, thread->parameter2, FALSE);
 				break;
 			default:
 				break;
+			}
 		}
 #else
 		if( event_poll( thread->sigterm, 0 ) ) {
@@ -325,7 +344,7 @@ DWORD THREADCALL scheduler_waitable_thread( THREAD * thread )
 		}
 		else if( poll( &pollDetail, 1, 100 ) == POLLIN ) {
 			//dprintf( "[SCHEDULER] scheduler_waitable_thread( 0x%08X ), signaled on waitable...", thread );
-			entry->routine( entry->remote, entry->context, (LPVOID)thread->parameter2 );
+			entry->routine( entry->remote, entry->context, (LPVOID)thread->parameter2, FALSE );
 		}
 #endif
 	}

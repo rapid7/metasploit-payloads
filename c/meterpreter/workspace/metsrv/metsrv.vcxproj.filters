@@ -16,6 +16,9 @@
       <Filter>transports</Filter>
     </ClCompile>
     <ClCompile Include="..\..\source\server\ssl_lib_setup.c" />
+    <ClCompile Include="..\..\source\server\win\server_transport_named_pipe.c">
+      <Filter>transports</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\source\server\libloader.h" />
@@ -31,6 +34,9 @@
       <Filter>transports</Filter>
     </ClInclude>
     <ClInclude Include="..\..\source\server\ssl_lib_setup.h" />
+    <ClInclude Include="..\..\source\server\win\server_transport_named_pipe.h">
+      <Filter>transports</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\source\server\win\metsrv.def" />

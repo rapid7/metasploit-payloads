@@ -132,12 +132,13 @@ DWORD tcp_channel_client_close(Channel *channel, Packet *request, LPVOID context
  * @returns Indication of success or failure.
  * @retval ERROR_SUCCESS This value is always returned.
  */
-DWORD tcp_channel_client_local_notify(Remote * remote, TcpClientContext * ctx)
+DWORD tcp_channel_client_local_notify(Remote * remote, LPVOID entryContext, LPVOID threadContext, BOOL timedOut)
 {
 	struct timeval tv = { 0 };
 	fd_set set = { 0 };
 	UCHAR  buf[16384] = { 0 };
 	LONG   dwBytesRead = 0;
+	TcpClientContext* ctx = (TcpClientContext*)entryContext;
 
 	// We select in a loop with a zero second timeout because it's possible
 	// that we could get a recv notification and a close notification at once,
@@ -369,7 +370,7 @@ DWORD create_tcp_client_channel(Remote *remote, LPCSTR remoteHost, USHORT remote
 			WSAEventSelect(ctx->fd, ctx->notify, FD_READ | FD_CLOSE);
 			dprintf("[TCP] create_tcp_client_channel. host=%s, port=%d created the notify %.8x", remoteHost, remotePort, ctx->notify);
 
-			scheduler_insert_waitable(ctx->notify, ctx, NULL, (WaitableNotifyRoutine)tcp_channel_client_local_notify, NULL);
+			scheduler_insert_waitable(ctx->notify, ctx, NULL, tcp_channel_client_local_notify, NULL);
 		}
 
 	} while (0);

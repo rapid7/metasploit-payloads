@@ -11,13 +11,14 @@ typedef enum
 	Stop   = 3
 } SchedularSignal;
 
-typedef DWORD (*WaitableNotifyRoutine)(Remote *remote, LPVOID entryContext, LPVOID threadContext);
+typedef DWORD (*WaitableNotifyRoutine)(Remote *remote, LPVOID entryContext, LPVOID threadContext, BOOL timedOut);
 typedef DWORD (*WaitableDestroyRoutine)(HANDLE waitable, LPVOID entryContext, LPVOID threadContext);
 
-LINKAGE DWORD scheduler_initialize( Remote * remote );
-LINKAGE DWORD scheduler_destroy( VOID );
-LINKAGE DWORD scheduler_insert_waitable( HANDLE waitable, LPVOID entryContext, LPVOID threadContext, WaitableNotifyRoutine routine, WaitableDestroyRoutine destroy );
-LINKAGE DWORD scheduler_signal_waitable( HANDLE waitable, SchedularSignal signal );
-LINKAGE DWORD THREADCALL scheduler_waitable_thread( THREAD * thread );
+LINKAGE DWORD scheduler_initialize(Remote * remote);
+LINKAGE DWORD scheduler_destroy(VOID);
+LINKAGE DWORD scheduler_insert_waitable(HANDLE waitable, LPVOID entryContext, LPVOID threadContext, WaitableNotifyRoutine routine, WaitableDestroyRoutine destroy);
+LINKAGE DWORD scheduler_insert_waitable_with_timeout(HANDLE waitable, LPVOID entryContext, LPVOID threadContext, WaitableNotifyRoutine routine, WaitableDestroyRoutine destroy, DWORD timeout);
+LINKAGE DWORD scheduler_signal_waitable(HANDLE waitable, SchedularSignal signal);
+LINKAGE DWORD THREADCALL scheduler_waitable_thread(THREAD * thread);
 
 #endif

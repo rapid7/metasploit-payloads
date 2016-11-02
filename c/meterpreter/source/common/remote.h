@@ -34,11 +34,12 @@ typedef struct _Remote Remote;
 typedef struct _TimeoutSettings TimeoutSettings;
 typedef struct _HttpTransportContext HttpTransportContext;
 
-typedef SOCKET(*PTransportGetSocket)(Transport* transport);
+typedef DWORD(*PTransportGetHandle)(Transport* transport);
 typedef void(*PTransportReset)(Transport* transport, BOOL shuttingDown);
 typedef BOOL(*PTransportInit)(Transport* transport);
 typedef BOOL(*PTransportDeinit)(Transport* transport);
 typedef void(*PTransportDestroy)(Transport* transport);
+typedef DWORD(*PTransportGetMigrateContext)(Transport* transport, DWORD targetProcessId, HANDLE targetProcessHandle, LPDWORD contextSize, BYTE** contextBuffer);
 typedef Transport*(*PTransportCreate)(Remote* remote, MetsrvTransportCommon* config, LPDWORD size);
 typedef void(*PTransportRemove)(Remote* remote, Transport* oldTransport);
 typedef void(*PConfigCreate)(Remote* remote, MetsrvConfig** config, LPDWORD size);
@@ -204,6 +205,12 @@ typedef struct _TcpTransportContext
 	SSL* ssl;                             ///! Pointer to the SSL detail/version/etc.
 } TcpTransportContext;
 
+typedef struct _NamedPipeTransportContext
+{
+	STRTYPE pipe_name;                   ///! Name of the pipe in \\<server>\<name> format
+	HANDLE pipe;                          ///! Handle to the open pipe.
+} NamedPipeTransportContext;
+
 typedef struct _HttpTransportContext
 {
 	BOOL ssl;                             ///! Flag indicating whether the connection uses SSL.
@@ -235,13 +242,14 @@ typedef struct _HttpTransportContext
 typedef struct _Transport
 {
 	DWORD type;                           ///! The type of transport in use.
-	PTransportGetSocket get_socket;       ///! Function to get the socket from the transport.
+	PTransportGetHandle get_handle;       ///! Function to get the comms handle (if there is one) from the transport.
 	PTransportReset transport_reset;      ///! Function to reset/clean the transport ready for restarting.
 	PTransportInit transport_init;        ///! Initialises the transport.
 	PTransportDeinit transport_deinit;    ///! Deinitialises the transport.
 	PTransportDestroy transport_destroy;  ///! Destroy the transport.
 	PServerDispatch server_dispatch;      ///! Transport dispatch function.
 	PPacketTransmit packet_transmit;      ///! Transmits a packet over the transport.
+	PTransportGetMigrateContext get_migrate_context; ///! Creates a migrate context that is transport-specific.
 	STRTYPE url;                          ///! Full URL describing the comms in use.
 	VOID* ctx;                            ///! Pointer to the type-specific transport context;
 	TimeoutSettings timeouts;             ///! Container for the timeout settings.

