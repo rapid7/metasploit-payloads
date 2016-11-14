@@ -31,6 +31,7 @@ public class Loader implements ExtensionLoader {
         mgr.registerCommand("stdapi_fs_delete_dir", stdapi_fs_delete_dir.class);
         mgr.registerCommand("stdapi_fs_delete_file", stdapi_fs_delete_file.class);
         mgr.registerCommand("stdapi_fs_file_expand_path", stdapi_fs_file_expand_path.class, V1_2, V1_5); // %COMSPEC% only
+        mgr.registerCommand("stdapi_fs_file_move", stdapi_fs_file_move.class);
         mgr.registerCommand("stdapi_fs_getwd", stdapi_fs_getwd.class);
         mgr.registerCommand("stdapi_fs_ls", stdapi_fs_ls.class);
         mgr.registerCommand("stdapi_fs_mkdir", stdapi_fs_mkdir.class);
