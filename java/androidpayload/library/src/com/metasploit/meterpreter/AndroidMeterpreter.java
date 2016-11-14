@@ -4,28 +4,9 @@ import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
 
+import com.metasploit.meterpreter.android.stdapi_sys_config_getuid;
 import com.metasploit.meterpreter.android.*;
-import com.metasploit.meterpreter.stdapi.Loader;
-import com.metasploit.meterpreter.stdapi.channel_create_stdapi_fs_file;
-import com.metasploit.meterpreter.stdapi.channel_create_stdapi_net_tcp_client;
-import com.metasploit.meterpreter.stdapi.channel_create_stdapi_net_tcp_server;
-import com.metasploit.meterpreter.stdapi.channel_create_stdapi_net_udp_client;
-import com.metasploit.meterpreter.stdapi.stdapi_fs_chdir;
-import com.metasploit.meterpreter.stdapi.stdapi_fs_delete_dir;
-import com.metasploit.meterpreter.stdapi.stdapi_fs_delete_file;
-import com.metasploit.meterpreter.stdapi.stdapi_fs_getwd;
-import com.metasploit.meterpreter.stdapi.stdapi_fs_ls;
-import com.metasploit.meterpreter.stdapi.stdapi_fs_md5;
-import com.metasploit.meterpreter.stdapi.stdapi_fs_mkdir;
-import com.metasploit.meterpreter.stdapi.stdapi_fs_search;
-import com.metasploit.meterpreter.stdapi.stdapi_fs_separator;
-import com.metasploit.meterpreter.stdapi.stdapi_fs_sha1;
-import com.metasploit.meterpreter.stdapi.stdapi_fs_stat;
-import com.metasploit.meterpreter.stdapi.stdapi_net_config_get_interfaces_V1_4;
-import com.metasploit.meterpreter.stdapi.stdapi_net_config_get_routes_V1_4;
-import com.metasploit.meterpreter.stdapi.stdapi_sys_config_localtime;
-import com.metasploit.meterpreter.stdapi.stdapi_net_socket_tcp_shutdown_V1_3;
-import com.metasploit.meterpreter.stdapi.stdapi_sys_process_execute_V1_3;
+import com.metasploit.meterpreter.stdapi.*;
 
 import java.io.DataInputStream;
 import java.io.File;
@@ -128,6 +109,7 @@ public class AndroidMeterpreter extends Meterpreter {
         mgr.registerCommand("stdapi_fs_delete_dir", stdapi_fs_delete_dir.class);
         mgr.registerCommand("stdapi_fs_delete_file", stdapi_fs_delete_file.class);
         mgr.registerCommand("stdapi_fs_file_expand_path", stdapi_fs_file_expand_path_android.class);
+        mgr.registerCommand("stdapi_fs_file_move", stdapi_fs_file_move.class);
         mgr.registerCommand("stdapi_fs_getwd", stdapi_fs_getwd.class);
         mgr.registerCommand("stdapi_fs_ls", stdapi_fs_ls.class);
         mgr.registerCommand("stdapi_fs_mkdir", stdapi_fs_mkdir.class);

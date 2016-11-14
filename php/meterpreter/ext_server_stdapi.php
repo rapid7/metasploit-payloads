@@ -374,6 +374,20 @@ function stdapi_fs_delete($req, &$pkt) {
 }
 
 # works
+if (!function_exists('stdapi_fs_file_move')) {
+register_command('stdapi_fs_file_move');
+function stdapi_fs_file_move($req, &$pkt) {
+    my_print("doing mv");
+    $old_file_tlv = packet_get_tlv($req, TLV_TYPE_FILE_NAME);
+    $new_file_tlv = packet_get_tlv($req, TLV_TYPE_FILE_PATH);
+    $old_file = cononicalize_path($old_file_tlv['value']);
+    $new_file = cononicalize_path($new_file_tlv['value']);
+    $ret = @rename($old_file, $new_file);
+    return $ret ? ERROR_SUCCESS : ERROR_FAILURE;
+}
+}
+
+# works
 if (!function_exists('stdapi_fs_getwd')) {
 register_command('stdapi_fs_getwd');
 function stdapi_fs_getwd($req, &$pkt) {
