@@ -157,7 +157,7 @@ DWORD request_core_machine_id(Remote* remote, Packet* packet)
 DWORD request_core_set_uuid(Remote* remote, Packet* packet)
 {
 	Packet* response = packet_create_response(packet);
-	PBYTE newUuid = packet_get_tlv_value_raw(packet, TLV_TYPE_UUID);
+	BYTE *newUuid = packet_get_tlv_value_raw(packet, TLV_TYPE_UUID);
 
 	if (newUuid != NULL) {
 		memcpy(remote->orig_config->session.uuid, newUuid, UUID_SIZE);
