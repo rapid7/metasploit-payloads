@@ -154,16 +154,18 @@ DWORD request_core_machine_id(Remote* remote, Packet* packet)
 	return ERROR_SUCCESS;
 }
 
-DWORD request_core_uuid(Remote* remote, Packet* packet) {
-	DWORD res = ERROR_SUCCESS;
+DWORD request_core_set_uuid(Remote* remote, Packet* packet)
+{
 	Packet* response = packet_create_response(packet);
+	BYTE *newUuid = packet_get_tlv_value_raw(packet, TLV_TYPE_UUID);
+
+	if (newUuid != NULL) {
+		memcpy(remote->orig_config->session.uuid, newUuid, UUID_SIZE);
+	}
 
 	if (response) {
-		packet_add_tlv_raw(response, TLV_TYPE_UUID, remote->orig_config->session.uuid, UUID_SIZE);
-
 		packet_transmit_response(ERROR_SUCCESS, remote, response);
 	}
 
-	return res;
+	return ERROR_SUCCESS;
 }
-

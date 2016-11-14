@@ -50,12 +50,24 @@ public abstract class Transport {
     }
 
     protected TLVPacket readAndDecodePacket(DataInputStream in) throws IOException {
-        int xorKey = in.readInt();
-        int len = (in.readInt() ^ Integer.reverseBytes(xorKey)) - 8;
+        // XOR key is first
+        byte[] xorKey = new byte[4];
+        in.readFully(xorKey);
+        // the length value comes next
+        byte[] lenBytes = new byte[4];
+        in.readFully(lenBytes);
+        // length is xor'd
+        this.xorBytes(xorKey, lenBytes);
+        int len = this.bytesToInt(lenBytes) - 8;
+
+        // skype the type
         int type = in.readInt();
+
+        // read in the rest of the packet
         byte[] body = new byte[len];
         in.readFully(body);
 
+        // decode the packet
         this.xorBytes(xorKey, body);
 
         ByteArrayInputStream byteStream = new ByteArrayInputStream(body);
@@ -67,40 +79,61 @@ public abstract class Transport {
     }
 
     protected void encodePacketAndWrite(TLVPacket packet, int type, DataOutputStream out) throws IOException {
-        int xorKey = randXorKey();
+        byte[] xorKey = randXorKey();
         byte[] data = packet.toByteArray();
+        byte[] lengthBytes = intToBytes(data.length + 8);
+        byte[] typeBytes = intToBytes(type);
+
+        this.xorBytes(xorKey, lengthBytes);
+        this.xorBytes(xorKey, typeBytes);
         this.xorBytes(xorKey, data);
+
         synchronized (out) {
-            out.writeInt(xorKey);
-            out.writeInt((data.length + 8) ^ Integer.reverseBytes(xorKey));
-            out.writeInt(type ^ Integer.reverseBytes(xorKey));
+            out.write(xorKey);
+            out.write(lengthBytes);
+            out.write(typeBytes);
             out.write(data);
             out.flush();
         }
     }
 
-    private int randXorKey() {
-        return randByte()
-            | randByte() << 8
-            | randByte() << 16
-            | randByte() << 24;
+    private byte[] randXorKey() {
+        byte[] result = new byte[4];
+        result[0] = randByte();
+        result[1] = randByte();
+        result[2] = randByte();
+        result[3] = randByte();
+        return result;
     }
 
-    private int randByte() {
+    private byte randByte() {
         // Forces a random number between 1 and 255 _inclusive_
-        return 0xFF & (int)((Math.random() * 255) + 1);
+        return (byte)(0xFF & (int)((Math.random() * 255) + 1));
     }
 
-    private void xorBytes(int xorKey, byte[] bytes) {
-        byte[] x = new byte[4];
-        x[0] = (byte)(xorKey & 0xFF);
-        x[1] = (byte)((xorKey >> 8) & 0xFF);
-        x[2] = (byte)((xorKey >> 16) & 0xFF);
-        x[3] = (byte)((xorKey >> 24) & 0xFF);
-
+    private void xorBytes(byte[] xorKey, byte[] bytes) {
         for (int i = 0; i < bytes.length; ++i) {
-            bytes[i] ^= x[i % x.length];
+            bytes[i] ^= xorKey[i % xorKey.length];
         }
+    }
+
+    private int bytesToInt(byte[] value) {
+        // we need to mask this thanks to potential
+        // sign extension issues (Y U NO UNSIGNED INT?!)
+        int v0 = ((int)value[0]) << 24 & 0xFF000000;
+        int v1 = ((int)value[1]) << 16 & 0x00FF0000;
+        int v2 = ((int)value[2]) << 8  & 0x0000FF00;
+        int v3 = ((int)value[3]) << 0  & 0x000000FF;
+        return v0 | v1 | v2 | v3;
+    }
+
+    private byte[] intToBytes(int value) {
+        byte[] result = new byte[4];
+        result[0] = (byte)((value >> 24) & 0xFF);
+        result[1] = (byte)((value >> 16) & 0xFF);
+        result[2] = (byte)((value >> 8) & 0xFF);
+        result[3] = (byte)(value & 0xFF);
+        return result;
     }
 
     public String getUrl() {

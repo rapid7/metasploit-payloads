@@ -263,60 +263,6 @@ static DWORD validate_response_winhttp(HANDLE hReq, HttpTransportContext* ctx)
 }
 
 /*!
- * @brief Windows-specific function to transmit a packet via HTTP(s) using winhttp _and_ destroy it.
- * @param remote Pointer to the \c Remote instance.
- * @param packet Pointer to the \c Packet that is to be sent.
- * @param completion Pointer to the completion routines to process.
- * @return An indication of the result of processing the transmission request.
- * @remark This function is not available on POSIX.
- */
-static DWORD packet_transmit_http(Remote *remote, Packet *packet, PacketRequestCompletion *completion)
-{
-	DWORD res = 0;
-	HINTERNET hReq;
-	BOOL result;
-	DWORD retries = 5;
-	HttpTransportContext* ctx = (HttpTransportContext*)remote->transport->ctx;
-	unsigned char *buffer;
-
-	DWORD totalLength = packet->payloadLength + sizeof(PacketHeader);
-
-	buffer = malloc(totalLength);
-	if (!buffer)
-	{
-		SetLastError(ERROR_NOT_FOUND);
-		return 0;
-	}
-
-	memcpy(buffer, &packet->header, sizeof(PacketHeader));
-	memcpy(buffer + sizeof(PacketHeader), packet->payload, packet->payloadLength);
-
-	do
-	{
-		hReq = ctx->create_req(ctx, FALSE, "PACKET TRANSMIT");
-		if (hReq == NULL)
-		{
-			break;
-		}
-
-		result = ctx->send_req(hReq, buffer, totalLength);
-
-		if (!result)
-		{
-			dprintf("[PACKET TRANSMIT] Failed HttpSendRequest: %d", GetLastError());
-			SetLastError(ERROR_NOT_FOUND);
-			break;
-		}
-
-		dprintf("[PACKET TRANSMIT] request sent.. apparently");
-	} while(0);
-
-	memset(buffer, 0, totalLength);
-	ctx->close_req(hReq);
-	return res;
-}
-
-/*!
  * @brief Transmit a packet via HTTP(s) _and_ destroy it.
  * @param remote Pointer to the \c Remote instance.
  * @param packet Pointer to the \c Packet that is to be sent.
@@ -325,93 +271,59 @@ static DWORD packet_transmit_http(Remote *remote, Packet *packet, PacketRequestC
  */
 static DWORD packet_transmit_via_http(Remote *remote, Packet *packet, PacketRequestCompletion *completion)
 {
-	CryptoContext *crypto;
-	Tlv requestId;
 	DWORD res;
+	BYTE* buffer = NULL;
+	size_t bufferSize = 0;
+	Tlv requestId;
+	HINTERNET hReq = NULL;
+	HttpTransportContext* ctx = (HttpTransportContext*)remote->transport->ctx;
+
+	// If a completion routine was supplied and the packet has a request
+	// identifier, insert the completion routine into the list
+	if ((completion) &&
+		(packet_get_tlv_string(packet, TLV_TYPE_REQUEST_ID,
+		&requestId) == ERROR_SUCCESS))
+	{
+		packet_add_completion_handler((LPCSTR)requestId.buffer, completion);
+	}
+
+	dprintf("[TRANSMIT] Serializing the packet");
+	res = packet_serialize_and_destroy(remote, packet, &buffer, &bufferSize);
 
 	lock_acquire(remote->lock);
 
-	// If the packet does not already have a request identifier, create one for it
-	if (packet_get_tlv_string(packet, TLV_TYPE_REQUEST_ID, &requestId) != ERROR_SUCCESS)
-	{
-		DWORD index;
-		CHAR rid[32];
-
-		rid[sizeof(rid)-1] = 0;
-
-		for (index = 0; index < sizeof(rid)-1; index++)
-		{
-			rid[index] = (rand() % 0x5e) + 0x21;
-		}
-
-		packet_add_tlv_string(packet, TLV_TYPE_REQUEST_ID, rid);
-	}
-
 	do
 	{
-		// If a completion routine was supplied and the packet has a request
-		// identifier, insert the completion routine into the list
-		if ((completion) &&
-			(packet_get_tlv_string(packet, TLV_TYPE_REQUEST_ID,
-			&requestId) == ERROR_SUCCESS))
+		if (res != ERROR_SUCCESS)
 		{
-			packet_add_completion_handler((LPCSTR)requestId.buffer, completion);
-		}
-
-		// If the endpoint has a cipher established and this is not a plaintext
-		// packet, we encrypt
-		if ((crypto = remote_get_cipher(remote)) &&
-			(packet_get_type(packet) != PACKET_TLV_TYPE_PLAIN_REQUEST) &&
-			(packet_get_type(packet) != PACKET_TLV_TYPE_PLAIN_RESPONSE))
-		{
-			ULONG origPayloadLength = packet->payloadLength;
-			PUCHAR origPayload = packet->payload;
-
-			// Encrypt
-			if ((res = crypto->handlers.encrypt(crypto, packet->payload,
-				packet->payloadLength, &packet->payload,
-				&packet->payloadLength)) !=
-				ERROR_SUCCESS)
-			{
-				SetLastError(res);
-				break;
-			}
-
-			// Destroy the original payload as we no longer need it
-			free(origPayload);
-
-			// Update the header length
-			packet->header.length = htonl(packet->payloadLength + sizeof(TlvHeader));
-		}
-
-		dprintf("[PACKET] New xor key for sending");
-		packet->header.xor_key = rand_xor_key();
-		dprintf("[PACKET] XOR Encoding payload");
-		// before transmission, xor the whole lot, starting with the body
-		xor_bytes(packet->header.xor_key, (LPBYTE)packet->payload, packet->payloadLength);
-		dprintf("[PACKET] XOR Encoding header");
-		// then the header
-		xor_bytes(packet->header.xor_key, (LPBYTE)&packet->header.length, 8);
-		// be sure to switch the xor header before writing
-		packet->header.xor_key = htonl(packet->header.xor_key);
-
-		dprintf("[PACKET] Transmitting packet of length %d to remote", packet->payloadLength);
-		res = packet_transmit_http(remote, packet, completion);
-		if (res < 0)
-		{
-			dprintf("[PACKET] transmit failed with return %d\n", res);
 			break;
 		}
 
-		SetLastError(ERROR_SUCCESS);
+		hReq = ctx->create_req(ctx, FALSE, "PACKET TRANSMIT");
+		if (hReq == NULL)
+		{
+			res = GetLastError();
+			break;
+		}
+
+		if (!ctx->send_req(hReq, buffer, (DWORD)bufferSize))
+		{
+			res = GetLastError();
+			dprintf("[PACKET TRANSMIT] Failed HttpSendRequest: %d", res);
+			break;
+		}
+
+		dprintf("[PACKET TRANSMIT] request sent.. apparently");
 	} while (0);
 
-	res = GetLastError();
-
-	// Destroy the packet
-	packet_destroy(packet);
+	ctx->close_req(hReq);
 
 	lock_release(remote->lock);
+
+	if (buffer != NULL)
+	{
+		free(buffer);
+	}
 
 	return res;
 }
@@ -522,7 +434,6 @@ static DWORD packet_receive_http(Remote *remote, Packet **packet)
 		}
 
 		dprintf("[PACKET RECEIVE HTTP] decoding header");
-		header.xor_key = ntohl(header.xor_key);
 		xor_bytes(header.xor_key, (LPBYTE)&header.length, 8);
 		header.length = ntohl(header.length);
 

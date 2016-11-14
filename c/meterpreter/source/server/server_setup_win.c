@@ -224,7 +224,7 @@ static BOOL create_transports(Remote* remote, MetsrvTransportCommon* transports,
 	return TRUE;
 }
 
-static void config_create(Remote* remote, MetsrvConfig** config, LPDWORD size)
+static void config_create(Remote* remote, LPBYTE uuid, MetsrvConfig** config, LPDWORD size)
 {
 	// This function is really only used for migration purposes.
 	DWORD s = sizeof(MetsrvSession);
@@ -233,8 +233,9 @@ static void config_create(Remote* remote, MetsrvConfig** config, LPDWORD size)
 
 	dprintf("[CONFIG] preparing the configuration");
 
-	// start by preparing the session.
-	memcpy(sess->uuid, remote->orig_config->session.uuid, UUID_SIZE);
+	// start by preparing the session, using the given UUID if specified, otherwise using
+	// the existing session UUID
+	memcpy(sess->uuid, uuid == NULL ? remote->orig_config->session.uuid : uuid, UUID_SIZE);
 	sess->expiry = remote->sess_expiry_end - current_unix_timestamp();
 	sess->exit_func = EXITFUNC_THREAD; // migration we default to this.
 
