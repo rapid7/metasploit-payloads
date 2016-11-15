@@ -3,6 +3,7 @@ import fnmatch
 import getpass
 import os
 import platform
+import re
 import shlex
 import shutil
 import socket
@@ -1088,6 +1089,8 @@ def stdapi_fs_stat(request, response):
 def stdapi_net_config_get_interfaces(request, response):
 	if hasattr(socket, 'AF_NETLINK') and hasattr(socket, 'NETLINK_ROUTE'):
 		interfaces = stdapi_net_config_get_interfaces_via_netlink()
+	elif sys.platform == 'darwin':
+		interfaces = stdapi_net_config_get_interfaces_via_osx_ifconfig()
 	elif has_osxsc:
 		interfaces = stdapi_net_config_get_interfaces_via_osxsc()
 	elif has_windll:
@@ -1232,6 +1235,45 @@ def stdapi_net_config_get_interfaces_via_osxsc():
 	for iface_name, iface_info in interfaces.items():
 		iface_info['index'] = ifnames.index(iface_name)
 	return interfaces.values()
+
+def stdapi_net_config_get_interfaces_via_osx_ifconfig():
+	proc_h = subprocess.Popen('ifconfig', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+	if proc_h.wait():
+		raise Exception('ifconfig exited with non-zero status')
+	output = proc_h.stdout.read()
+
+	interfaces = []
+	iface = {}
+	for line in output.split('\n'):
+		match = re.match(r'^([a-z0-9]+): flags=(\d+)<[A-Z,]*> mtu (\d+)$', line)
+		if match is not None:
+			if iface:
+				interfaces.append(iface)
+			iface = {}
+			iface['name'] = match.group(1)
+			iface['flags'] = int(match.group(2))
+			iface['mtu'] = int(match.group(3))
+			iface['index'] = len(interfaces)
+			continue
+		match = re.match(r'^    ether (([a-f0-9]{2}:){5}[a-f0-9]{2})$', line)
+		if match is not None:
+			iface['hw_addr'] = ''.join(list(chr(int(b, 16)) for b in match.group(1).split(':')))
+			continue
+		match = re.match(r'^    inet ((\d+\.){3}\d+) netmask 0x([a-f0-9]{8})( broadcast ((\d+\.){3}\d+))?$', line)
+		if match is not None:
+			addrs = iface.get('addrs', [])
+			addrs.append((socket.AF_INET, inet_pton(socket.AF_INET, match.group(1)), int(match.group(3), 16)))
+			iface['addrs'] = addrs
+			continue
+		match = re.match(r'^    inet6 ([a-f0-9:]+)(%[a-z0-9]+)? prefixlen (\d+)( secured)?( scopeid 0x[a-f0-9]+)?$', line)
+		if match is not None:
+			addrs = iface.get('addrs', [])
+			addrs.append((socket.AF_INET6, inet_pton(socket.AF_INET6, match.group(1)), int(match.group(3))))
+			iface['addrs'] = addrs
+			continue
+	if iface:
+		interfaces.append(iface)
+	return interfaces
 
 def stdapi_net_config_get_interfaces_via_windll():
 	iphlpapi = ctypes.windll.iphlpapi
