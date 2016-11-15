@@ -509,8 +509,23 @@ meterpreter.register_extension('stdapi')
 
 def calculate_32bit_netmask(bits):
 	if bits == 32:
-		return 0xffffffff
-	return ((0xffffffff << (32-(bits%32))) & 0xffffffff)
+		netmask = 0xffffffff
+	else:
+		netmask = ((0xffffffff << (32 - (bits % 32))) & 0xffffffff)
+	return struct.pack('!I', netmask)
+
+def calculate_128bit_netmask(bits):
+	part = calculate_32bit_netmask(bits)
+	part = struct.unpack('!I', part)[0]
+	if bits >= 96:
+		netmask = struct.pack('!iiiI', -1, -1, -1, part)
+	elif bits >= 64:
+		netmask = struct.pack('!iiII', -1, -1, part, 0)
+	elif bits >= 32:
+		netmask = struct.pack('!iIII', -1, part, 0, 0)
+	else:
+		netmask = struct.pack('!IIII', part, 0, 0, 0)
+	return netmask
 
 def cstruct_unpack(structure, raw_data):
 	if not isinstance(structure, ctypes.Structure):
@@ -1163,16 +1178,9 @@ def stdapi_net_config_get_interfaces_via_netlink():
 			if attribute.type == IFA_ADDRESS:
 				nm_bits = iface.prefixlen
 				if iface.family == socket.AF_INET:
-					netmask = struct.pack('!I', calculate_32bit_netmask(nm_bits))
+					netmask = calculate_32bit_netmask(nm_bits)
 				else:
-					if nm_bits >= 96:
-						netmask = struct.pack('!iiiI', -1, -1, -1, calculate_32bit_netmask(nm_bits))
-					elif nm_bits >= 64:
-						netmask = struct.pack('!iiII', -1, -1, calculate_32bit_netmask(nm_bits), 0)
-					elif nm_bits >= 32:
-						netmask = struct.pack('!iIII', -1, calculate_32bit_netmask(nm_bits), 0, 0)
-					else:
-						netmask = struct.pack('!IIII', calculate_32bit_netmask(nm_bits), 0, 0, 0)
+					netmask = calculate_128bit_netmask(nm_bits)
 				addr_list = iface_info.get('addrs', [])
 				addr_list.append((iface.family, attr_data, netmask))
 				iface_info['addrs'] = addr_list
@@ -1207,13 +1215,15 @@ def stdapi_net_config_get_interfaces_via_osx_ifconfig():
 		match = re.match(r'^\s+inet ((\d+\.){3}\d+) netmask 0x([a-f0-9]{8})( broadcast ((\d+\.){3}\d+))?\s*$', line)
 		if match is not None:
 			addrs = iface.get('addrs', [])
-			addrs.append((socket.AF_INET, inet_pton(socket.AF_INET, match.group(1)), int(match.group(3), 16)))
+			netmask = struct.pack('!I', int(match.group(3), 16))
+			addrs.append((socket.AF_INET, inet_pton(socket.AF_INET, match.group(1)), netmask))
 			iface['addrs'] = addrs
 			continue
 		match = re.match(r'^\s+inet6 ([a-f0-9:]+)(%[a-z0-9]+)? prefixlen (\d+)( secured)?( scopeid 0x[a-f0-9]+)?\s*$', line)
 		if match is not None:
 			addrs = iface.get('addrs', [])
-			addrs.append((socket.AF_INET6, inet_pton(socket.AF_INET6, match.group(1)), int(match.group(3))))
+			netmask = calculate_128bit_netmask(int(match.group(3)))
+			addrs.append((socket.AF_INET6, inet_pton(socket.AF_INET6, match.group(1)), netmask))
 			iface['addrs'] = addrs
 			continue
 	if iface:
