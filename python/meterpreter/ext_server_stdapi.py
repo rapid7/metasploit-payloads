@@ -33,12 +33,6 @@ except ImportError:
 	has_pwd = False
 
 try:
-	import SystemConfiguration as osxsc
-	has_osxsc = True
-except ImportError:
-	has_osxsc = False
-
-try:
 	import termios
 	has_termios = True
 except ImportError:
@@ -1091,8 +1085,6 @@ def stdapi_net_config_get_interfaces(request, response):
 		interfaces = stdapi_net_config_get_interfaces_via_netlink()
 	elif sys.platform == 'darwin':
 		interfaces = stdapi_net_config_get_interfaces_via_osx_ifconfig()
-	elif has_osxsc:
-		interfaces = stdapi_net_config_get_interfaces_via_osxsc()
 	elif has_windll:
 		interfaces = stdapi_net_config_get_interfaces_via_windll()
 	else:
@@ -1189,55 +1181,8 @@ def stdapi_net_config_get_interfaces_via_netlink():
 		interfaces[iface.index] = iface_info
 	return interfaces.values()
 
-def stdapi_net_config_get_interfaces_via_osxsc():
-	ds = osxsc.SCDynamicStoreCreate(None, 'GetInterfaceInformation', None, None)
-	entities = []
-	entities.append(osxsc.SCDynamicStoreKeyCreateNetworkInterfaceEntity(None, osxsc.kSCDynamicStoreDomainState, osxsc.kSCCompAnyRegex, osxsc.kSCEntNetIPv4))
-	entities.append(osxsc.SCDynamicStoreKeyCreateNetworkInterfaceEntity(None, osxsc.kSCDynamicStoreDomainState, osxsc.kSCCompAnyRegex, osxsc.kSCEntNetIPv6))
-	patterns = osxsc.CFArrayCreate(None, entities, len(entities), osxsc.kCFTypeArrayCallBacks)
-	values = osxsc.SCDynamicStoreCopyMultiple(ds, None, patterns)
-	interfaces = {}
-	for key, value in values.items():
-		iface_name = key.split('/')[3]
-		iface_info = interfaces.get(iface_name, {})
-		iface_info['name'] = str(iface_name)
-		if key.endswith('IPv4'):
-			family = socket.AF_INET
-		elif key.endswith('IPv6'):
-			family = socket.AF_INET6
-		else:
-			continue
-		iface_addresses = iface_info.get('addrs', [])
-		for idx in range(len(value['Addresses'])):
-			if family == socket.AF_INET:
-				iface_addresses.append((family, inet_pton(family, value['Addresses'][idx]), inet_pton(family, value['SubnetMasks'][idx])))
-			else:
-				iface_addresses.append((family, inet_pton(family, value['Addresses'][idx]), value['PrefixLength'][idx]))
-		iface_info['addrs'] = iface_addresses
-		interfaces[iface_name] = iface_info
-	for iface_ref in osxsc.SCNetworkInterfaceCopyAll():
-		iface_name = osxsc.SCNetworkInterfaceGetBSDName(iface_ref)
-		if not iface_name in interfaces:
-			iface_type = osxsc.SCNetworkInterfaceGetInterfaceType(iface_ref)
-			if not iface_type in ['Ethernet', 'IEEE80211']:
-				continue
-			interfaces[iface_name] = {'name': str(iface_name)}
-		iface_info = interfaces[iface_name]
-		mtu = osxsc.SCNetworkInterfaceCopyMTU(iface_ref, None, None, None)[1]
-		iface_info['mtu'] = mtu
-		hw_addr = osxsc.SCNetworkInterfaceGetHardwareAddressString(iface_ref)
-		if hw_addr:
-			hw_addr = hw_addr.replace(':', '')
-			hw_addr = hw_addr.decode('hex')
-			iface_info['hw_addr'] = hw_addr
-	ifnames = list(interfaces.keys())
-	ifnames.sort()
-	for iface_name, iface_info in interfaces.items():
-		iface_info['index'] = ifnames.index(iface_name)
-	return interfaces.values()
-
 def stdapi_net_config_get_interfaces_via_osx_ifconfig():
-	proc_h = subprocess.Popen('ifconfig', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+	proc_h = subprocess.Popen('/sbin/ifconfig', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 	if proc_h.wait():
 		raise Exception('ifconfig exited with non-zero status')
 	output = proc_h.stdout.read()
@@ -1245,7 +1190,7 @@ def stdapi_net_config_get_interfaces_via_osx_ifconfig():
 	interfaces = []
 	iface = {}
 	for line in output.split('\n'):
-		match = re.match(r'^([a-z0-9]+): flags=(\d+)<[A-Z,]*> mtu (\d+)$', line)
+		match = re.match(r'^([a-z0-9]+): flags=(\d+)<[A-Z,]*> mtu (\d+)\s*$', line)
 		if match is not None:
 			if iface:
 				interfaces.append(iface)
@@ -1255,17 +1200,17 @@ def stdapi_net_config_get_interfaces_via_osx_ifconfig():
 			iface['mtu'] = int(match.group(3))
 			iface['index'] = len(interfaces)
 			continue
-		match = re.match(r'^    ether (([a-f0-9]{2}:){5}[a-f0-9]{2})$', line)
+		match = re.match(r'^\s+ether (([a-f0-9]{2}:){5}[a-f0-9]{2})\s*$', line)
 		if match is not None:
 			iface['hw_addr'] = ''.join(list(chr(int(b, 16)) for b in match.group(1).split(':')))
 			continue
-		match = re.match(r'^    inet ((\d+\.){3}\d+) netmask 0x([a-f0-9]{8})( broadcast ((\d+\.){3}\d+))?$', line)
+		match = re.match(r'^\s+inet ((\d+\.){3}\d+) netmask 0x([a-f0-9]{8})( broadcast ((\d+\.){3}\d+))?\s*$', line)
 		if match is not None:
 			addrs = iface.get('addrs', [])
 			addrs.append((socket.AF_INET, inet_pton(socket.AF_INET, match.group(1)), int(match.group(3), 16)))
 			iface['addrs'] = addrs
 			continue
-		match = re.match(r'^    inet6 ([a-f0-9:]+)(%[a-z0-9]+)? prefixlen (\d+)( secured)?( scopeid 0x[a-f0-9]+)?$', line)
+		match = re.match(r'^\s+inet6 ([a-f0-9:]+)(%[a-z0-9]+)? prefixlen (\d+)( secured)?( scopeid 0x[a-f0-9]+)?\s*$', line)
 		if match is not None:
 			addrs = iface.get('addrs', [])
 			addrs.append((socket.AF_INET6, inet_pton(socket.AF_INET6, match.group(1)), int(match.group(3))))
