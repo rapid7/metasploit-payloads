@@ -649,7 +649,7 @@ function generate_req_id() {
 
 function write_tlv_to_socket($resource, $raw) {
     $xor = rand_xor_key();
-    write($resource, $xor . xor_bytes($xor, $raw));
+    write($resource, strrev($xor) . xor_bytes($xor, $raw));
 }
 
 function handle_dead_resource_channel($resource) {
@@ -1276,7 +1276,7 @@ while (false !== ($cnt = select($r, $w, $e, $t))) {
                 # break all the way out.
                 break 2;
             }
-            $xor = substr($header, 0, 4);
+            $xor = strrev(substr($header, 0, 4));
             $request = substr($header, 4);
             $len_array = unpack("Nlen", xor_bytes($xor, substr($request, 0, 4)));
             $len = $len_array['len'];
