@@ -485,7 +485,7 @@ class Transport(object):
 		self.request_retire = False
 		try:
 			xor_key = rand_xor_key()
-			raw = xor_key + xor_bytes(xor_key, pkt)
+			raw = xor_key[::-1] + xor_bytes(xor_key, pkt)
 			self._send_packet(raw)
 		except:
 			return False
@@ -552,7 +552,7 @@ class HttpTransport(Transport):
 			if len(packet) < 12:
 				packet = None  # looks corrupt
 				break
-			xor_key = packet[:4]
+			xor_key = packet[:4][::-1]
 			header = xor_bytes(xor_key, packet[4:12])
 			pkt_length, _ = struct.unpack('>II', header)
 			if len(packet) - 4 != pkt_length:
@@ -660,7 +660,7 @@ class TcpTransport(Transport):
 				return self._get_packet()
 			return None
 
-		xor_key = packet[:4]
+		xor_key = packet[:4][::-1]
 		header = xor_bytes(xor_key, packet[4:12])
 		pkt_length, pkt_type = struct.unpack('>II', header)
 		pkt_length -= 8

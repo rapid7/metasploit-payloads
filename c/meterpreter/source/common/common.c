@@ -108,7 +108,7 @@ void enable_debugging()
 
 #endif
 
-VOID xor_bytes(BYTE xorKey[sizeof(DWORD)], LPBYTE buffer, DWORD bufferSize)
+VOID xor_bytes(DWORD xorKey, LPBYTE buffer, DWORD bufferSize)
 {
 	static BOOL initialised = FALSE;
 	if (!initialised)
@@ -117,8 +117,10 @@ VOID xor_bytes(BYTE xorKey[sizeof(DWORD)], LPBYTE buffer, DWORD bufferSize)
 		initialised = TRUE;
 	}
 
+	LPBYTE xor = (LPBYTE)&xorKey;
+
 	for (DWORD i = 0; i < bufferSize; ++i)
 	{
-		buffer[i] ^= xorKey[i % sizeof(DWORD)];
+		buffer[i] ^= xor[i % sizeof(DWORD)];
 	}
 }

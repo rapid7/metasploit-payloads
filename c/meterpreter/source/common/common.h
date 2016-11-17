@@ -233,4 +233,4 @@ static _inline void real_dprintf(char *format, ...)
 #endif
 
 int current_unix_timestamp(void);
-VOID xor_bytes(BYTE xorKey[sizeof(DWORD)], LPBYTE buffer, DWORD bufferSize);
+VOID xor_bytes(DWORD xorKey, LPBYTE buffer, DWORD bufferSize);

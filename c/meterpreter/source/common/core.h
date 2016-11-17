@@ -196,7 +196,7 @@ typedef struct
 
 typedef struct
 {
-	BYTE xor_key[sizeof(DWORD)];
+	DWORD xor_key;
 	DWORD length;
 	DWORD type;
 } PacketHeader;
@@ -237,7 +237,6 @@ typedef struct _PacketRequestCompletion
 /*
  * Packet manipulation
  */
-LINKAGE DWORD packet_serialize_and_destroy(Remote* remote, Packet* packet, BYTE** buffer, size_t* bufferSize);
 LINKAGE Packet *packet_create(PacketTlvType type, LPCSTR method);
 LINKAGE Packet *packet_create_response(Packet *packet);
 LINKAGE Packet* packet_create_group();
