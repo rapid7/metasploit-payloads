@@ -529,61 +529,133 @@ out:
  */
 DWORD packet_transmit_via_ssl(Remote* remote, Packet* packet, PacketRequestCompletion* completion)
 {
-	BYTE* buffer = NULL;
-	size_t bufferSize = 0;
+	CryptoContext* crypto;
 	Tlv requestId;
+	DWORD res;
+	DWORD idx;
 	TcpTransportContext* ctx = (TcpTransportContext*)remote->transport->ctx;
-
-	// If a completion routine was supplied and the packet has a request
-	// identifier, insert the completion routine into the list
-	if ((completion) &&
-		(packet_get_tlv_string(packet, TLV_TYPE_REQUEST_ID,
-		&requestId) == ERROR_SUCCESS))
-	{
-		packet_add_completion_handler((LPCSTR)requestId.buffer, completion);
-	}
-
-	dprintf("[TRANSMIT] Serializing the packet");
-	DWORD res = packet_serialize_and_destroy(remote, packet, &buffer, &bufferSize);
-	dprintf("[TRANSMIT] Packet serialised with result: %d 0x%x, buffer: %p, size: %u", res, res, buffer, bufferSize);
 
 	lock_acquire(remote->lock);
 
+	// If the packet does not already have a request identifier, create one for it
+	if (packet_get_tlv_string(packet, TLV_TYPE_REQUEST_ID, &requestId) != ERROR_SUCCESS)
+	{
+		DWORD index;
+		CHAR rid[32];
+
+		rid[sizeof(rid)-1] = 0;
+
+		for (index = 0; index < sizeof(rid)-1; index++)
+		{
+			rid[index] = (rand() % 0x5e) + 0x21;
+		}
+
+		packet_add_tlv_string(packet, TLV_TYPE_REQUEST_ID, rid);
+	}
+
 	do
 	{
-		if (res != ERROR_SUCCESS || buffer == NULL)
+		// If a completion routine was supplied and the packet has a request
+		// identifier, insert the completion routine into the list
+		if ((completion) &&
+			(packet_get_tlv_string(packet, TLV_TYPE_REQUEST_ID,
+			&requestId) == ERROR_SUCCESS))
 		{
-			dprintf("[PACKET] Error during serialization");
+			packet_add_completion_handler((LPCSTR)requestId.buffer, completion);
+		}
+
+		// If the endpoint has a cipher established and this is not a plaintext
+		// packet, we encrypt
+		if ((crypto = remote_get_cipher(remote)) &&
+			(packet_get_type(packet) != PACKET_TLV_TYPE_PLAIN_REQUEST) &&
+			(packet_get_type(packet) != PACKET_TLV_TYPE_PLAIN_RESPONSE))
+		{
+			ULONG origPayloadLength = packet->payloadLength;
+			PUCHAR origPayload = packet->payload;
+
+			// Encrypt
+			if ((res = crypto->handlers.encrypt(crypto, packet->payload,
+				packet->payloadLength, &packet->payload,
+				&packet->payloadLength)) !=
+				ERROR_SUCCESS)
+			{
+				SetLastError(res);
+				break;
+			}
+
+			// Destroy the original payload as we no longer need it
+			free(origPayload);
+
+			// Update the header length
+			packet->header.length = htonl(packet->payloadLength + sizeof(TlvHeader));
+		}
+
+		dprintf("[PACKET] New xor key for sending");
+		packet->header.xor_key = rand_xor_key();
+		// before transmission, xor the whole lot, starting with the body
+		xor_bytes(packet->header.xor_key, (LPBYTE)packet->payload, packet->payloadLength);
+		// then the header
+		xor_bytes(packet->header.xor_key, (LPBYTE)&packet->header.length, 8);
+		// be sure to switch the xor header before writing
+		packet->header.xor_key = htonl(packet->header.xor_key);
+
+		idx = 0;
+		while (idx < sizeof(packet->header))
+		{
+			// Transmit the packet's header (length, type)
+			res = SSL_write(
+				ctx->ssl,
+				(LPCSTR)(&packet->header) + idx,
+				sizeof(packet->header) - idx
+				);
+
+			if (res <= 0)
+			{
+				dprintf("[PACKET] transmit header failed with return %d at index %d\n", res, idx);
+				break;
+			}
+			idx += res;
+		}
+
+		if (res < 0)
+		{
 			break;
 		}
 
-		size_t index = 0;
-		int written = 0;
-		vdprintf("[TRANSMIT] sent %u of %u", index, bufferSize);
-		while (index < bufferSize)
+		idx = 0;
+		while (idx < packet->payloadLength)
 		{
-			// Transmit the packet's header (length, type)
-			written = SSL_write(ctx->ssl, buffer + index, (int)(bufferSize - index));
+			// Transmit the packet's payload (length, type)
+			res = SSL_write(
+				ctx->ssl,
+				packet->payload + idx,
+				packet->payloadLength - idx
+				);
 
-			if (written <= 0)
+			if (res < 0)
 			{
-				dprintf("[PACKET] transmit header failed with return %d at index %d\n", written, index);
-				res = GetLastError();
 				break;
 			}
-			index += written;
-			vdprintf("[TRANSMIT] sent %u of %u", index, bufferSize);
+
+			idx += res;
 		}
+
+		if (res < 0)
+		{
+			dprintf("[PACKET] transmit header failed with return %d at index %d\n", res, idx);
+			break;
+		}
+
+		SetLastError(ERROR_SUCCESS);
 	} while (0);
+
+	res = GetLastError();
+
+	// Destroy the packet
+	packet_destroy(packet);
 
 	lock_release(remote->lock);
 
-	if (buffer != NULL)
-	{
-		free(buffer);
-	}
-
-	dprintf("[TRANSMIT] result of packet sending: %d 0x%x", res, res);
 	return res;
 }
 
@@ -643,8 +715,10 @@ static DWORD packet_receive_via_ssl(Remote *remote, Packet **packet)
 			break;
 		}
 
+		header.xor_key = ntohl(header.xor_key);
+
 		// xor the header data
-		xor_bytes(header.xor_key, (PUCHAR)&header.length, 8);
+		xor_bytes(header.xor_key, &header.length, 8);
 
 		// Initialize the header
 		header.length = ntohl(header.length);
