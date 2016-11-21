@@ -381,7 +381,7 @@ DWORD request_fs_sha1(Remote *remote, Packet *packet)
 }
 
 /*
- * Copies source file path to destination
+ * Moves source file path to destination
  *
  * req: TLV_TYPE_FILE_PATH - The file path to expand
  */
@@ -399,6 +399,30 @@ DWORD request_fs_file_move(Remote *remote, Packet *packet)
 		result = ERROR_INVALID_PARAMETER;
 	} else {
 		result = fs_move(oldpath, newpath);
+	}
+
+	return packet_transmit_response(result, remote, response);
+}
+
+/*
+ * Copies source file path to destination
+ *
+ * req: TLV_TYPE_FILE_PATH - The file path to expand
+ */
+DWORD request_fs_file_copy(Remote *remote, Packet *packet)
+{
+	Packet *response = packet_create_response(packet);
+	DWORD result = ERROR_SUCCESS;
+	char *oldpath;
+	char *newpath;
+
+	oldpath = packet_get_tlv_value_string(packet, TLV_TYPE_FILE_NAME);
+	newpath = packet_get_tlv_value_string(packet, TLV_TYPE_FILE_PATH);
+
+	if (!oldpath) {
+		result = ERROR_INVALID_PARAMETER;
+	} else {
+		result = fs_copy(oldpath, newpath);
 	}
 
 	return packet_transmit_response(result, remote, response);

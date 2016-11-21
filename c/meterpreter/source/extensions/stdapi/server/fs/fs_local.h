@@ -59,6 +59,8 @@ int fs_mkdir(const char *directory);
 
 int fs_move(const char *oldpath, const char *newpath);
 
+int fs_copy(const char *oldpath, const char *newpath);
+
 /*
  * Fills the platform-independent meterp_stat buf with data from the
  * platform-dependent stat()

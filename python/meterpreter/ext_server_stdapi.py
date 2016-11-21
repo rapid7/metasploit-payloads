@@ -1000,6 +1000,13 @@ def stdapi_fs_file_move(request, response):
 	return ERROR_SUCCESS, response
 
 @meterpreter.register_function
+def stdapi_fs_file_copy(request, response):
+	oldname = packet_get_tlv(request, TLV_TYPE_FILE_NAME)['value']
+	newname = packet_get_tlv(request, TLV_TYPE_FILE_PATH)['value']
+	shutil.copy(unicode(oldname), unicode(newname))
+	return ERROR_SUCCESS, response
+
+@meterpreter.register_function
 def stdapi_fs_getwd(request, response):
 	if hasattr(os, 'getcwdu'):
 		wd = os.getcwdu()

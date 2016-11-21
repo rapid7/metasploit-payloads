@@ -214,6 +214,27 @@ out:
 	return rc;
 }
 
+int fs_copy(const char *oldpath, const char *newpath)
+{
+	int rc = ERROR_SUCCESS;
+	wchar_t *old_w = utf8_to_wchar(oldpath);
+	wchar_t *new_w = utf8_to_wchar(newpath);
+
+	if ((old_w == NULL) || (new_w == NULL)) {
+		rc = GetLastError();
+		goto out;
+	}
+
+	if (CopyFileW(old_w, new_w, 0) == 0) {
+		rc = GetLastError();
+	}
+
+out:
+	free(old_w);
+	free(new_w);
+	return rc;
+}
+
 int fs_mkdir(const char *directory)
 {
 	int rc = ERROR_SUCCESS;

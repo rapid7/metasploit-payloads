@@ -42,6 +42,7 @@ Command customCommands[] =
 	COMMAND_REQ("stdapi_fs_stat", request_fs_stat),
 	COMMAND_REQ("stdapi_fs_file_expand_path", request_fs_file_expand_path),
 	COMMAND_REQ("stdapi_fs_file_move", request_fs_file_move),
+	COMMAND_REQ("stdapi_fs_file_copy", request_fs_file_copy),
 	COMMAND_REQ("stdapi_fs_md5", request_fs_md5),
 	COMMAND_REQ("stdapi_fs_sha1", request_fs_sha1),
 #ifdef _WIN32

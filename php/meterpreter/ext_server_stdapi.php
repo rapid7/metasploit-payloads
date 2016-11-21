@@ -388,6 +388,20 @@ function stdapi_fs_file_move($req, &$pkt) {
 }
 
 # works
+if (!function_exists('stdapi_fs_file_copy')) {
+register_command('stdapi_fs_file_copy');
+function stdapi_fs_file_copy($req, &$pkt) {
+    my_print("doing cp");
+    $old_file_tlv = packet_get_tlv($req, TLV_TYPE_FILE_NAME);
+    $new_file_tlv = packet_get_tlv($req, TLV_TYPE_FILE_PATH);
+    $old_file = cononicalize_path($old_file_tlv['value']);
+    $new_file = cononicalize_path($new_file_tlv['value']);
+    $ret = @copy($old_file, $new_file);
+    return $ret ? ERROR_SUCCESS : ERROR_FAILURE;
+}
+}
+
+# works
 if (!function_exists('stdapi_fs_getwd')) {
 register_command('stdapi_fs_getwd');
 function stdapi_fs_getwd($req, &$pkt) {
