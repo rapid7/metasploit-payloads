@@ -902,7 +902,7 @@ class PythonMeterpreter(object):
 	def _core_loadlib(self, request, response):
 		data_tlv = packet_get_tlv(request, TLV_TYPE_DATA)
 		if (data_tlv['type'] & TLV_META_TYPE_COMPRESSED) == TLV_META_TYPE_COMPRESSED:
-			return ERROR_FAILURE
+			return ERROR_FAILURE, response
 
 		self.last_registered_extension = None
 		symbols_for_extensions = {'meterpreter':self}
