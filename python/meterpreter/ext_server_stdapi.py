@@ -1003,7 +1003,7 @@ def stdapi_fs_file_move(request, response):
 def stdapi_fs_file_copy(request, response):
 	oldname = packet_get_tlv(request, TLV_TYPE_FILE_NAME)['value']
 	newname = packet_get_tlv(request, TLV_TYPE_FILE_PATH)['value']
-	shutil.copy(unicode(oldname), unicode(newname))
+	shutil.copyfile(unicode(oldname), unicode(newname))
 	return ERROR_SUCCESS, response
 
 @meterpreter.register_function
