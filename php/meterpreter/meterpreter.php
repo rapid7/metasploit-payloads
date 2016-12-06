@@ -1,4 +1,4 @@
-//<?php
+/*<?php /**/
 
 # Everything that needs to be global has to be made so explicitly so we can run
 # inside a call to create_user_func($user_input);
