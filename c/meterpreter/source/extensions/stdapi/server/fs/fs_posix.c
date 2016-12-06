@@ -102,6 +102,35 @@ int fs_move(const char *oldpath, const char *newpath)
 	return ERROR_SUCCESS;
 }
 
+int fs_copy(const char *oldpath, const char *newpath)
+{
+	FILE* f1 = fopen(oldpath, "rb");
+	if (f1 == NULL) {
+		return ERROR_INVALID_PARAMETER;
+	}
+
+	FILE* f2 = fopen(newpath, "wb");
+	if (f2 == NULL) {
+		fclose(f1);
+		return ERROR_INVALID_PARAMETER;
+	}
+
+	char buffer[4096];
+	size_t n;
+	while ((n = fread(buffer, sizeof(char), sizeof(buffer), f1)) > 0)
+	{
+		if (fwrite(buffer, sizeof(char), n, f2) != n) {
+			fclose(f1);
+			fclose(f2);
+			return -1;
+		}
+	}
+
+	fclose(f1);
+	fclose(f2);
+	return ERROR_SUCCESS;
+}
+
 int fs_stat(char *filename, struct meterp_stat *buf)
 {
 	struct stat sbuf;
