@@ -222,6 +222,12 @@
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_bkrp.c">
       <Filter>common modules\rpc</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kerberos\kuhl_m_kerberos_claims.c">
+      <Filter>local modules\kerberos</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_ms-claims.c">
+      <Filter>common modules\rpc</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\source\extensions\kiwi\main.h" />
@@ -461,6 +467,12 @@
       <Filter>common modules\rpc</Filter>
     </ClInclude>
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc.h">
+      <Filter>common modules\rpc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kerberos\kuhl_m_kerberos_claims.h">
+      <Filter>local modules\kerberos</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_ms-claims.h">
       <Filter>common modules\rpc</Filter>
     </ClInclude>
   </ItemGroup>
