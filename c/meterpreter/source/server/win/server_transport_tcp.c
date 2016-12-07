@@ -1030,6 +1030,9 @@ DWORD packet_transmit_via_ssl(Remote* remote, Packet* packet, PacketRequestCompl
 		packet_add_tlv_string(packet, TLV_TYPE_REQUEST_ID, rid);
 	}
 
+	// Always add the UUID to the packet as well, so that MSF knows who and what we are
+  	packet_add_tlv_raw(packet, TLV_TYPE_UUID, remote->orig_config->session.uuid, UUID_SIZE);
+
 	do
 	{
 		// If a completion routine was supplied and the packet has a request
