@@ -31,7 +31,7 @@ remote_request_core_migrate(Remote *remote, Packet *packet)
 	// Get the target process architecture to inject into
 	l.arch = packet_get_tlv_value_uint(packet, TLV_TYPE_MIGRATE_ARCH);
 	// Get the length of the library buffer
-	l.length = packet_get_tlv_value_uint(packet, TLV_TYPE_MIGRATE_LEN);
+	l.length = packet_get_tlv_value_uint(packet, TLV_TYPE_MIGRATE_PAYLOAD_LEN);
 	// Receive the actual migration library buffer
 	l.data = packet_get_tlv_value_string(packet, TLV_TYPE_MIGRATE_PAYLOAD);
 	// Get the library entry point
