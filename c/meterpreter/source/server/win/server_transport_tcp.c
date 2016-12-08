@@ -1171,7 +1171,7 @@ void transport_write_tcp_config(Transport* transport, MetsrvTransportTcp* config
  * @param contextBufer Buffer that will receive the generated context.
  * @return Indication of success or failure.
  */
-static DWORD get_migrate_context_tcp(Transport* transport, DWORD targetProcessId, HANDLE targetProcessHandle, LPDWORD contextSize, PBYTE* contextBuffer)
+static DWORD get_migrate_context_tcp(Transport* transport, DWORD targetProcessId, HANDLE targetProcessHandle, LPDWORD contextSize, LPBYTE* contextBuffer)
 {
 	LPTCPMIGRATECONTEXT ctx = (LPTCPMIGRATECONTEXT)calloc(1, sizeof(TCPMIGRATECONTEXT));
 

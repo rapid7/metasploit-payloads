@@ -556,7 +556,7 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
 
 		if (remote->transport->get_migrate_context != NULL)
 		{
-			dwResult = remote->transport->get_migrate_context(remote->transport, dwProcessID, hProcess, &ctxSize, (PBYTE*)&ctx);
+			dwResult = remote->transport->get_migrate_context(remote->transport, dwProcessID, hProcess, &ctxSize, (LPBYTE*)&ctx);
 		}
 		else
 		{
