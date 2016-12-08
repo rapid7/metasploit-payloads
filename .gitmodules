@@ -6,4 +6,4 @@
 	url = https://github.com/rapid7/meterpreter-deps
 [submodule "c/meterpreter/source/extensions/kiwi/mimikatz"]
 	path = c/meterpreter/source/extensions/kiwi/mimikatz
-	url = https://github.com/OJ/mimikatz
+	url = https://github.com/rapid7/mimikatz
