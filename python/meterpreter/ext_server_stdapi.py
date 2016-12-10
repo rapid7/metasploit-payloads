@@ -383,6 +383,7 @@ TLV_TYPE_COMPUTER_NAME         = TLV_META_TYPE_STRING  | 1040
 TLV_TYPE_OS_NAME               = TLV_META_TYPE_STRING  | 1041
 TLV_TYPE_USER_NAME             = TLV_META_TYPE_STRING  | 1042
 TLV_TYPE_ARCHITECTURE          = TLV_META_TYPE_STRING  | 1043
+TLV_TYPE_LANG_SYSTEM           = TLV_META_TYPE_STRING  | 1044
 TLV_TYPE_SID                   = TLV_META_TYPE_STRING  | 1045
 TLV_TYPE_LOCAL_DATETIME        = TLV_META_TYPE_STRING  | 1048
 
@@ -497,6 +498,8 @@ GAA_FLAG_SKIP_ANYCAST             = 0x0002
 GAA_FLAG_SKIP_MULTICAST           = 0x0004
 GAA_FLAG_INCLUDE_PREFIX           = 0x0010
 GAA_FLAG_SKIP_DNS_SERVER          = 0x0080
+LOCALE_SISO639LANGNAME            = 0x0059
+LOCALE_SISO3166CTRYNAME           = 0x005A
 PROCESS_TERMINATE                 = 0x0001
 PROCESS_VM_READ                   = 0x0010
 PROCESS_QUERY_INFORMATION         = 0x0400
@@ -598,6 +601,23 @@ def get_username_from_token(token_user):
 	if not ctypes.windll.advapi32.LookupAccountSidA(None, token_user.User.Sid, user, ctypes.byref(user_len), domain, ctypes.byref(domain_len), ctypes.byref(use)):
 		return None
 	return str(ctypes.string_at(domain)) + '\\' + str(ctypes.string_at(user))
+
+def get_windll_lang():
+	if not hasattr(ctypes.windll.kernel32, 'GetSystemDefaultLangID'):
+		return None
+	lang_id = ctypes.windll.kernel32.GetSystemDefaultLangID()
+
+	size = ctypes.windll.kernel32.GetLocaleInfoW(lang_id, LOCALE_SISO3166CTRYNAME, 0, 0)
+	ctry_name = (ctypes.c_wchar * size)()
+	ctypes.windll.kernel32.GetLocaleInfoW(lang_id, LOCALE_SISO3166CTRYNAME, ctry_name, size)
+
+	size = ctypes.windll.kernel32.GetLocaleInfoW(lang_id, LOCALE_SISO639LANGNAME, 0, 0)
+	lang_name = (ctypes.c_wchar * size)()
+	ctypes.windll.kernel32.GetLocaleInfoW(lang_id, LOCALE_SISO639LANGNAME, lang_name, size)
+
+	if not (len(ctry_name.value) and len(lang_name)):
+		return 'Unknown'
+	return lang_name.value + '_' + ctry_name.value
 
 def get_windll_os_name():
 	os_info = windll_RtlGetVersion()
@@ -828,6 +848,9 @@ def stdapi_sys_config_sysinfo(request, response):
 		else:
 			arch = uname_info[4]
 		os_name = get_windll_os_name() or os_name
+		lang = get_windll_lang()
+		if lang:
+			response += tlv_pack(TLV_TYPE_LANG_SYSTEM, lang)
 	response += tlv_pack(TLV_TYPE_OS_NAME, os_name)
 	response += tlv_pack(TLV_TYPE_ARCHITECTURE, arch)
 	return ERROR_SUCCESS, response
