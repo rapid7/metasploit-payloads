@@ -605,15 +605,17 @@ def get_username_from_token(token_user):
 def get_windll_lang():
 	if not hasattr(ctypes.windll.kernel32, 'GetSystemDefaultLangID'):
 		return None
-	lang_id = ctypes.windll.kernel32.GetSystemDefaultLangID()
+	kernel32 = ctypes.windll.kernel32
+	kernel32.GetSystemDefaultLangID.restype = ctypes.c_uint16
+	lang_id = kernel32.GetSystemDefaultLangID()
 
-	size = ctypes.windll.kernel32.GetLocaleInfoW(lang_id, LOCALE_SISO3166CTRYNAME, 0, 0)
+	size = kernel32.GetLocaleInfoW(lang_id, LOCALE_SISO3166CTRYNAME, 0, 0)
 	ctry_name = (ctypes.c_wchar * size)()
-	ctypes.windll.kernel32.GetLocaleInfoW(lang_id, LOCALE_SISO3166CTRYNAME, ctry_name, size)
+	kernel32.GetLocaleInfoW(lang_id, LOCALE_SISO3166CTRYNAME, ctry_name, size)
 
-	size = ctypes.windll.kernel32.GetLocaleInfoW(lang_id, LOCALE_SISO639LANGNAME, 0, 0)
+	size = kernel32.GetLocaleInfoW(lang_id, LOCALE_SISO639LANGNAME, 0, 0)
 	lang_name = (ctypes.c_wchar * size)()
-	ctypes.windll.kernel32.GetLocaleInfoW(lang_id, LOCALE_SISO639LANGNAME, lang_name, size)
+	kernel32.GetLocaleInfoW(lang_id, LOCALE_SISO639LANGNAME, lang_name, size)
 
 	if not (len(ctry_name.value) and len(lang_name)):
 		return 'Unknown'
@@ -710,7 +712,7 @@ def windll_RtlGetVersion():
 		return None
 	os_info = OSVERSIONINFOEXW()
 	os_info.dwOSVersionInfoSize = ctypes.sizeof(OSVERSIONINFOEXW)
-	if ctypes.windll.ntdll.RtlGetVersion(os_info) != 0:
+	if ctypes.windll.ntdll.RtlGetVersion(ctypes.byref(os_info)) != 0:
 		return None
 	return os_info
 
