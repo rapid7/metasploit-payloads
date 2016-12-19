@@ -75,4 +75,21 @@ typedef struct _MetsrvConfig
 	// \x00
 } MetsrvConfig;
 
+// We force 64bit alignment for HANDLES and POINTERS in order
+// to be cross compatible between x86 and x64 migration.
+typedef struct _COMMONMIGRATECONTEXT
+{
+	union
+	{
+		HANDLE hEvent;
+		BYTE bPadding1[8];
+	} e;
+
+	union
+	{
+		LPBYTE lpPayload;
+		BYTE bPadding2[8];
+	} p;
+} COMMONMIGRATCONTEXT, * LPCOMMONMIGRATECONTEXT;
+
 #endif

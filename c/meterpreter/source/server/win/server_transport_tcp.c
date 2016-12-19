@@ -5,6 +5,13 @@
 #include "../../common/common.h"
 #include <ws2tcpip.h>
 
+// TCP-transport specific migration stub.
+typedef struct _TCPMIGRATECONTEXT
+{
+	COMMONMIGRATCONTEXT common;
+	WSAPROTOCOL_INFOA info;
+} TCPMIGRATECONTEXT, * LPTCPMIGRATECONTEXT;
+
 // These fields aren't defined unless the SDK version is set to something old enough.
 // So we define them here instead of dancing with SDK versions, allowing us to move on
 // and still support older versions of Windows.
@@ -1156,6 +1163,37 @@ void transport_write_tcp_config(Transport* transport, MetsrvTransportTcp* config
 }
 
 /*!
+ * @brief Create a migration context that is specific to this transport type.
+ * @param transport Transport data to create the configuration from.
+ * @param targetProcessId ID of the process that we will be migrating into.
+ * @param targetProcessHandle Handle to the target process.
+ * @param contextSize Buffer that will receive the size of the generated context.
+ * @param contextBufer Buffer that will receive the generated context.
+ * @return Indication of success or failure.
+ */
+static DWORD get_migrate_context_tcp(Transport* transport, DWORD targetProcessId, HANDLE targetProcessHandle, LPDWORD contextSize, LPBYTE* contextBuffer)
+{
+	LPTCPMIGRATECONTEXT ctx = (LPTCPMIGRATECONTEXT)calloc(1, sizeof(TCPMIGRATECONTEXT));
+
+	if (ctx == NULL)
+	{
+		return ERROR_OUTOFMEMORY;
+	}
+
+	// Duplicate the socket for the target process if we are SSL based
+	if (WSADuplicateSocketA(((TcpTransportContext*)transport->ctx)->fd, targetProcessId, &ctx->info) != NO_ERROR)
+	{
+		free(ctx);
+		return WSAGetLastError();
+	}
+
+	*contextSize = sizeof(TCPMIGRATECONTEXT);
+	*contextBuffer = (PBYTE)ctx;
+
+	return ERROR_SUCCESS;
+}
+
+/*!
  * @brief Creates a new TCP transport instance.
  * @param config The TCP configuration block.
  * @return Pointer to the newly configured/created TCP transport instance.
@@ -1184,6 +1222,7 @@ Transport* transport_create_tcp(MetsrvTransportTcp* config)
 	transport->get_socket = transport_get_socket_tcp;
 	transport->ctx = ctx;
 	transport->comms_last_packet = current_unix_timestamp();
+	transport->get_migrate_context = get_migrate_context_tcp;
 
 	return transport;
 }
