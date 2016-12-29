@@ -1,0 +1,15 @@
+/*!
+ * @file main.h
+ * @brief TLV related bits for the KIWI extension.
+ */
+#ifndef _METERPRETER_SOURCE_EXTENSION_KIWI_KIWI_H
+#define _METERPRETER_SOURCE_EXTENSION_KIWI_KIWI_H
+
+#include "../../common/common.h"
+
+#define TLV_TYPE_EXTENSION_KIWI 0
+
+#define TLV_TYPE_KIWI_CMD                   MAKE_CUSTOM_TLV(TLV_META_TYPE_STRING, TLV_TYPE_EXTENSION_KIWI, TLV_EXTENSIONS + 100)
+#define TLV_TYPE_KIWI_CMD_RESULT            MAKE_CUSTOM_TLV(TLV_META_TYPE_STRING, TLV_TYPE_EXTENSION_KIWI, TLV_EXTENSIONS + 101)
+
+#endif

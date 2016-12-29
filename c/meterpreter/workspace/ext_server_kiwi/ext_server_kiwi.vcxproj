@@ -101,7 +101,7 @@
     <ClCompile>
       <Optimization>MinSpace</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>..\..\source\extensions\kiwi\inc;..\..\source\ReflectiveDLLInjection\common;..\..\deps\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\source\extensions\kiwi\mimikatz\inc;..\..\source\ReflectiveDLLInjection\common;..\..\deps\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_KIWI_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -120,9 +120,9 @@
       <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>ws2_32.lib;version.lib;samlib.lib;advapi32.hash.lib;backcompat.lib;metsrv.lib;psapi.lib;advapi32.lib;user32.lib;secur32.lib;crypt32.lib;shlwapi.lib;wtsapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Winscard.lib;advapi32.lib;crypt32.lib;cryptdll.lib;dnsapi.lib;msxml2.lib;netapi32.lib;ntdsapi.lib;ole32.lib;oleaut32.lib;rpcrt4.lib;shlwapi.lib;samlib.lib;secur32.lib;shell32.lib;user32.lib;hid.lib;setupapi.lib;wldap32.lib;advapi32.hash.lib;ntdll.min.lib;netapi32.min.lib;backcompat.lib;metsrv.lib;psapi.lib;advapi32.lib;user32.lib;secur32.lib;crypt32.lib;shlwapi.lib;wtsapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
-      <AdditionalLibraryDirectories>..\..\source\extensions\kiwi\lib\Win32;..\backcompat\$(Configuration);..\metsrv\$(Configuration)\$(Platform);..\..\deps\openssl\lib\win;..\..\source\jpeg-8\lib\win\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\..\source\extensions\kiwi\mimikatz\lib\Win32;..\backcompat\$(Configuration);..\metsrv\$(Configuration)\$(Platform);..\..\deps\openssl\lib\win;..\..\source\jpeg-8\lib\win\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <DelayLoadDLLs>metsrv.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <GenerateMapFile>true</GenerateMapFile>
@@ -152,7 +152,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClCompile>
       <Optimization>MinSpace</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>..\..\source\extensions\kiwi\inc;..\..\source\ReflectiveDLLInjection\common;..\..\deps\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\source\extensions\kiwi\mimikatz\inc;..\..\source\ReflectiveDLLInjection\common;..\..\deps\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_KIWI_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -171,9 +171,9 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>ws2_32.lib;version.lib;samlib.lib;advapi32.hash.lib;backcompat.lib;metsrv.lib;psapi.lib;advapi32.lib;user32.lib;secur32.lib;crypt32.lib;shlwapi.lib;wtsapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Winscard.lib;advapi32.lib;crypt32.lib;cryptdll.lib;dnsapi.lib;msxml2.lib;netapi32.lib;ntdsapi.lib;ole32.lib;oleaut32.lib;rpcrt4.lib;shlwapi.lib;samlib.lib;secur32.lib;shell32.lib;user32.lib;hid.lib;setupapi.lib;wldap32.lib;advapi32.hash.lib;ntdll.min.lib;netapi32.min.lib;backcompat.lib;metsrv.lib;psapi.lib;advapi32.lib;user32.lib;secur32.lib;crypt32.lib;shlwapi.lib;wtsapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
-      <AdditionalLibraryDirectories>..\..\source\extensions\kiwi\lib\Win32;..\backcompat\$(Configuration);..\metsrv\$(Configuration)\$(Platform);..\..\deps\openssl\lib\win;..\..\source\jpeg-8\lib\win\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\..\source\extensions\kiwi\mimikatz\lib\Win32;..\backcompat\$(Configuration);..\metsrv\$(Configuration)\$(Platform);..\..\deps\openssl\lib\win;..\..\source\jpeg-8\lib\win\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <DelayLoadDLLs>metsrv.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <GenerateMapFile>true</GenerateMapFile>
@@ -206,7 +206,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClCompile>
       <Optimization>MinSpace</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>..\..\source\extensions\kiwi\inc;..\..\source\ReflectiveDLLInjection\common;..\..\deps\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\source\extensions\kiwi\mimikatz\inc;..\..\source\ReflectiveDLLInjection\common;..\..\deps\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_KIWI_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -226,9 +226,9 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>ws2_32.lib;version.lib;samlib.lib;advapi32.hash.lib;metsrv.lib;psapi.lib;advapi32.lib;user32.lib;secur32.lib;crypt32.lib;shlwapi.lib;wtsapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Winscard.lib;advapi32.lib;crypt32.lib;cryptdll.lib;dnsapi.lib;msxml2.lib;netapi32.lib;ntdsapi.lib;ole32.lib;oleaut32.lib;rpcrt4.lib;shlwapi.lib;samlib.lib;secur32.lib;shell32.lib;user32.lib;hid.lib;setupapi.lib;wldap32.lib;advapi32.hash.lib;ntdll.min.lib;netapi32.min.lib;metsrv.lib;psapi.lib;advapi32.lib;user32.lib;secur32.lib;crypt32.lib;shlwapi.lib;wtsapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
-      <AdditionalLibraryDirectories>..\..\source\extensions\kiwi\lib\x64;..\backcompat\$(Configuration);..\metsrv\$(Configuration)\$(Platform);..\..\deps\openssl\lib\win;..\..\source\jpeg-8\lib\win\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\..\source\extensions\kiwi\mimikatz\lib\x64;..\backcompat\$(Configuration);..\metsrv\$(Configuration)\$(Platform);..\..\deps\openssl\lib\win;..\..\source\jpeg-8\lib\win\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <DelayLoadDLLs>metsrv.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <GenerateMapFile>true</GenerateMapFile>
@@ -261,7 +261,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClCompile>
       <Optimization>MinSpace</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>..\..\source\extensions\kiwi\inc;..\..\source\ReflectiveDLLInjection\common;..\..\deps\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\source\extensions\kiwi\mimikatz\inc;..\..\source\ReflectiveDLLInjection\common;..\..\deps\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_KIWI_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -281,9 +281,9 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>ws2_32.lib;version.lib;samlib.lib;advapi32.hash.lib;metsrv.lib;psapi.lib;advapi32.lib;user32.lib;secur32.lib;crypt32.lib;shlwapi.lib;wtsapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Winscard.lib;advapi32.lib;crypt32.lib;cryptdll.lib;dnsapi.lib;msxml2.lib;netapi32.lib;ntdsapi.lib;ole32.lib;oleaut32.lib;rpcrt4.lib;shlwapi.lib;samlib.lib;secur32.lib;shell32.lib;user32.lib;hid.lib;setupapi.lib;wldap32.lib;advapi32.hash.lib;ntdll.min.lib;netapi32.min.lib;metsrv.lib;psapi.lib;advapi32.lib;user32.lib;secur32.lib;crypt32.lib;shlwapi.lib;wtsapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
-      <AdditionalLibraryDirectories>..\..\source\extensions\kiwi\lib\x64;..\backcompat\$(Configuration);..\metsrv\$(Configuration)\$(Platform);..\..\deps\openssl\lib\win;..\..\source\jpeg-8\lib\win\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\..\source\extensions\kiwi\mimikatz\lib\x64;..\backcompat\$(Configuration);..\metsrv\$(Configuration)\$(Platform);..\..\deps\openssl\lib\win;..\..\source\jpeg-8\lib\win\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <DelayLoadDLLs>metsrv.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <GenerateMapFile>true</GenerateMapFile>
@@ -324,107 +324,181 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\source\extensions\kiwi\debug.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\main.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz_interface.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kerberos\khul_m_kerberos.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kerberos\khul_m_kerberos_pac.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kerberos\khul_m_kerberos_struct.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kerberos\khul_m_kerberos_ticket.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_lsadump.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_crypto.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_event.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_lsadump_struct.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_misc.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_misc_struct.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_net.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_privilege.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_process.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_service.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_standard.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_token.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_ts.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_vault.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\crypto\kuhl_m_sekurlsa_nt5.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\crypto\kuhl_m_sekurlsa_nt6.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\crypto\kuhl_m_sekurlsa_nt63.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\globals_sekurlsa.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\kuhl_m_sekurlsa.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\kuhl_m_sekurlsa_utils.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_credman.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_dpapi.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_kerberos.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_livessp.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_msv1_0.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_ssp.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_tspkg.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_wdigest.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_asn1.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_crypto_system.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_file.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_handle.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_memory.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_minidump.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_net.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_output.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_patch.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_process.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_registry.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_registry_structures.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_rpce.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_samlib.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_service.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_string.h" />
-    <ClInclude Include="..\..\source\extensions\kiwi\modules\kull_m_token.h" />
+    <ClCompile Include="..\..\source\extensions\kiwi\main.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\mimikatz.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\dpapi\kuhl_m_dpapi.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\dpapi\kuhl_m_dpapi_oe.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\dpapi\packages\kuhl_m_dpapi_chrome.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\dpapi\packages\kuhl_m_dpapi_creds.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\dpapi\packages\kuhl_m_dpapi_keys.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\dpapi\packages\kuhl_m_dpapi_wlan.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kerberos\kuhl_m_kerberos.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kerberos\kuhl_m_kerberos_ccache.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kerberos\kuhl_m_kerberos_claims.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kerberos\kuhl_m_kerberos_pac.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kerberos\kuhl_m_kerberos_ticket.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_busylight.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_crypto.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_event.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_iis.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_kernel.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_lsadump.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_lsadump_remote.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_minesweeper.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_misc.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_net.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_privilege.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_process.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_service.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_service_remote.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_sid.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_standard.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_sysenvvalue.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_token.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_ts.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_vault.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\sekurlsa\crypto\kuhl_m_sekurlsa_nt5.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\sekurlsa\crypto\kuhl_m_sekurlsa_nt6.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\sekurlsa\crypto\kuhl_m_sekurlsa_nt63.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\sekurlsa\kuhl_m_sekurlsa.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\sekurlsa\kuhl_m_sekurlsa_utils.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_credman.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_dpapi.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_kerberos.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_livessp.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_msv1_0.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_ssp.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_tspkg.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_wdigest.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_asn1.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_busylight.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_cred.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_crypto.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_dpapi.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_file.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_handle.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_kernel.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_key.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_memory.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_minidump.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_net.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_output.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_patch.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_process.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_registry.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_remotelib.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_service.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_string.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_token.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_xml.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_bkrp.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_dpapi-entries.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_drsr.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_ms-bkrp_c.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_ms-claims.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_ms-credentialkeys.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_ms-drsr_c.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_ms-pac.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\sqlite3_omit.c">
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='r7_release|Win32'">_CRT_SECURE_NO_WARNINGS;SQLITE_TEMP_STORE=3;SQLITE_DISABLE_INTRINSIC;SQLITE_DISABLE_LFS;SQLITE_DISABLE_DIRSYNC;SQLITE_DISABLE_FTS3_UNICODE;SQLITE_DISABLE_FTS4_DEFERRED;SQLITE_DISABLE_PAGECACHE_OVERFLOW_STATS;SQLITE_OMIT_TRIGGER;SQLITE_OMIT_WAL;SQLITE_OMIT_FLOATING_POINT;SQLITE_OMIT_VIRTUALTABLE;SQLITE_OMIT_PRAGMA;SQLITE_OMIT_FOREIGN_KEY;SQLITE_OMIT_AUTOVACUUM;SQLITE_OMIT_SUBQUERY;SQLITE_OMIT_COMPOUND_SELECT;SQLITE_OMIT_EXPLAIN;SQLITE_OMIT_DATETIME_FUNCS;SQLITE_OMIT_INTEGRITY_CHECK;SQLITE_OMIT_ATTACH;SQLITE_OMIT_ALTERTABLE;SQLITE_OMIT_UTF16;SQLITE_OMIT_SHARED_CACHE;SQLITE_OMIT_INCRBLOB;SQLITE_OMIT_ANALYZE;SQLITE_OMIT_AUTHORIZATION;SQLITE_OMIT_VACUUM;SQLITE_OMIT_PAGER_PRAGMAS;SQLITE_OMIT_OR_OPTIMIZATION;SQLITE_OMIT_VIEW;SQLITE_OMIT_BUILTIN_TEST;SQLITE_OMIT_XFER_OPT;SQLITE_OMIT_AUTOINCREMENT;SQLITE_OMIT_SCHEMA_PRAGMAS;SQLITE_OMIT_TRACE;SQLITE_OMIT_LOAD_EXTENSION;SQLITE_OMIT_AUTOMATIC_INDEX;SQLITE_OMIT_LIKE_OPTIMIZATION;SQLITE_OMIT_REINDEX;SQLITE_OMIT_GET_TABLE;SQLITE_OMIT_COMPLETE;SQLITE_OMIT_TEMPDB;SQLITE_OMIT_BTREECOUNT;SQLITE_OMIT_LOCALTIME;SQLITE_OMIT_COMPILEOPTION_DIAGS;SQLITE_OMIT_FLAG_PRAGMAS;SQLITE_OMIT_QUICKBALANCE;SQLITE_OMIT_CAST;SQLITE_OMIT_CHECK;SQLITE_OMIT_MEMORYDB;SQLITE_OMIT_BLOB_LITERAL;SQLITE_OMIT_SCHEMA_VERSION_PRAGMAS;SQLITE_OMIT_LOOKASIDE;SQLITE_OMIT_AUTOINIT;SQLITE_OMIT_DECLTYPE;SQLITE_OMIT_DEPRECATED;SQLITE_OMIT_BETWEEN_OPTIMIZATION;SQLITE_OMIT_PROGRESS_CALLBACK;SQLITE_OMIT_TRUNCATE_OPTIMIZATION;SQLITE_OMIT_TCL_VARIABLE;WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_KIWI_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">_CRT_SECURE_NO_WARNINGS;SQLITE_TEMP_STORE=3;SQLITE_DISABLE_INTRINSIC;SQLITE_DISABLE_LFS;SQLITE_DISABLE_DIRSYNC;SQLITE_DISABLE_FTS3_UNICODE;SQLITE_DISABLE_FTS4_DEFERRED;SQLITE_DISABLE_PAGECACHE_OVERFLOW_STATS;SQLITE_OMIT_TRIGGER;SQLITE_OMIT_WAL;SQLITE_OMIT_FLOATING_POINT;SQLITE_OMIT_VIRTUALTABLE;SQLITE_OMIT_PRAGMA;SQLITE_OMIT_FOREIGN_KEY;SQLITE_OMIT_AUTOVACUUM;SQLITE_OMIT_SUBQUERY;SQLITE_OMIT_COMPOUND_SELECT;SQLITE_OMIT_EXPLAIN;SQLITE_OMIT_DATETIME_FUNCS;SQLITE_OMIT_INTEGRITY_CHECK;SQLITE_OMIT_ATTACH;SQLITE_OMIT_ALTERTABLE;SQLITE_OMIT_UTF16;SQLITE_OMIT_SHARED_CACHE;SQLITE_OMIT_INCRBLOB;SQLITE_OMIT_ANALYZE;SQLITE_OMIT_AUTHORIZATION;SQLITE_OMIT_VACUUM;SQLITE_OMIT_PAGER_PRAGMAS;SQLITE_OMIT_OR_OPTIMIZATION;SQLITE_OMIT_VIEW;SQLITE_OMIT_BUILTIN_TEST;SQLITE_OMIT_XFER_OPT;SQLITE_OMIT_AUTOINCREMENT;SQLITE_OMIT_SCHEMA_PRAGMAS;SQLITE_OMIT_TRACE;SQLITE_OMIT_LOAD_EXTENSION;SQLITE_OMIT_AUTOMATIC_INDEX;SQLITE_OMIT_LIKE_OPTIMIZATION;SQLITE_OMIT_REINDEX;SQLITE_OMIT_GET_TABLE;SQLITE_OMIT_COMPLETE;SQLITE_OMIT_TEMPDB;SQLITE_OMIT_BTREECOUNT;SQLITE_OMIT_LOCALTIME;SQLITE_OMIT_COMPILEOPTION_DIAGS;SQLITE_OMIT_FLAG_PRAGMAS;SQLITE_OMIT_QUICKBALANCE;SQLITE_OMIT_CAST;SQLITE_OMIT_CHECK;SQLITE_OMIT_MEMORYDB;SQLITE_OMIT_BLOB_LITERAL;SQLITE_OMIT_SCHEMA_VERSION_PRAGMAS;SQLITE_OMIT_LOOKASIDE;SQLITE_OMIT_AUTOINIT;SQLITE_OMIT_DECLTYPE;SQLITE_OMIT_DEPRECATED;SQLITE_OMIT_BETWEEN_OPTIMIZATION;SQLITE_OMIT_PROGRESS_CALLBACK;SQLITE_OMIT_TRUNCATE_OPTIMIZATION;SQLITE_OMIT_TCL_VARIABLE;WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_KIWI_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='r7_release|x64'">_CRT_SECURE_NO_WARNINGS;SQLITE_TEMP_STORE=3;SQLITE_DISABLE_INTRINSIC;SQLITE_DISABLE_LFS;SQLITE_DISABLE_DIRSYNC;SQLITE_DISABLE_FTS3_UNICODE;SQLITE_DISABLE_FTS4_DEFERRED;SQLITE_DISABLE_PAGECACHE_OVERFLOW_STATS;SQLITE_OMIT_TRIGGER;SQLITE_OMIT_WAL;SQLITE_OMIT_FLOATING_POINT;SQLITE_OMIT_VIRTUALTABLE;SQLITE_OMIT_PRAGMA;SQLITE_OMIT_FOREIGN_KEY;SQLITE_OMIT_AUTOVACUUM;SQLITE_OMIT_SUBQUERY;SQLITE_OMIT_COMPOUND_SELECT;SQLITE_OMIT_EXPLAIN;SQLITE_OMIT_DATETIME_FUNCS;SQLITE_OMIT_INTEGRITY_CHECK;SQLITE_OMIT_ATTACH;SQLITE_OMIT_ALTERTABLE;SQLITE_OMIT_UTF16;SQLITE_OMIT_SHARED_CACHE;SQLITE_OMIT_INCRBLOB;SQLITE_OMIT_ANALYZE;SQLITE_OMIT_AUTHORIZATION;SQLITE_OMIT_VACUUM;SQLITE_OMIT_PAGER_PRAGMAS;SQLITE_OMIT_OR_OPTIMIZATION;SQLITE_OMIT_VIEW;SQLITE_OMIT_BUILTIN_TEST;SQLITE_OMIT_XFER_OPT;SQLITE_OMIT_AUTOINCREMENT;SQLITE_OMIT_SCHEMA_PRAGMAS;SQLITE_OMIT_TRACE;SQLITE_OMIT_LOAD_EXTENSION;SQLITE_OMIT_AUTOMATIC_INDEX;SQLITE_OMIT_LIKE_OPTIMIZATION;SQLITE_OMIT_REINDEX;SQLITE_OMIT_GET_TABLE;SQLITE_OMIT_COMPLETE;SQLITE_OMIT_TEMPDB;SQLITE_OMIT_BTREECOUNT;SQLITE_OMIT_LOCALTIME;SQLITE_OMIT_COMPILEOPTION_DIAGS;SQLITE_OMIT_FLAG_PRAGMAS;SQLITE_OMIT_QUICKBALANCE;SQLITE_OMIT_CAST;SQLITE_OMIT_CHECK;SQLITE_OMIT_MEMORYDB;SQLITE_OMIT_BLOB_LITERAL;SQLITE_OMIT_SCHEMA_VERSION_PRAGMAS;SQLITE_OMIT_LOOKASIDE;SQLITE_OMIT_AUTOINIT;SQLITE_OMIT_DECLTYPE;SQLITE_OMIT_DEPRECATED;SQLITE_OMIT_BETWEEN_OPTIMIZATION;SQLITE_OMIT_PROGRESS_CALLBACK;SQLITE_OMIT_TRUNCATE_OPTIMIZATION;SQLITE_OMIT_TCL_VARIABLE;WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_KIWI_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|x64'">_CRT_SECURE_NO_WARNINGS;SQLITE_TEMP_STORE=3;SQLITE_DISABLE_INTRINSIC;SQLITE_DISABLE_LFS;SQLITE_DISABLE_DIRSYNC;SQLITE_DISABLE_FTS3_UNICODE;SQLITE_DISABLE_FTS4_DEFERRED;SQLITE_DISABLE_PAGECACHE_OVERFLOW_STATS;SQLITE_OMIT_TRIGGER;SQLITE_OMIT_WAL;SQLITE_OMIT_FLOATING_POINT;SQLITE_OMIT_VIRTUALTABLE;SQLITE_OMIT_PRAGMA;SQLITE_OMIT_FOREIGN_KEY;SQLITE_OMIT_AUTOVACUUM;SQLITE_OMIT_SUBQUERY;SQLITE_OMIT_COMPOUND_SELECT;SQLITE_OMIT_EXPLAIN;SQLITE_OMIT_DATETIME_FUNCS;SQLITE_OMIT_INTEGRITY_CHECK;SQLITE_OMIT_ATTACH;SQLITE_OMIT_ALTERTABLE;SQLITE_OMIT_UTF16;SQLITE_OMIT_SHARED_CACHE;SQLITE_OMIT_INCRBLOB;SQLITE_OMIT_ANALYZE;SQLITE_OMIT_AUTHORIZATION;SQLITE_OMIT_VACUUM;SQLITE_OMIT_PAGER_PRAGMAS;SQLITE_OMIT_OR_OPTIMIZATION;SQLITE_OMIT_VIEW;SQLITE_OMIT_BUILTIN_TEST;SQLITE_OMIT_XFER_OPT;SQLITE_OMIT_AUTOINCREMENT;SQLITE_OMIT_SCHEMA_PRAGMAS;SQLITE_OMIT_TRACE;SQLITE_OMIT_LOAD_EXTENSION;SQLITE_OMIT_AUTOMATIC_INDEX;SQLITE_OMIT_LIKE_OPTIMIZATION;SQLITE_OMIT_REINDEX;SQLITE_OMIT_GET_TABLE;SQLITE_OMIT_COMPLETE;SQLITE_OMIT_TEMPDB;SQLITE_OMIT_BTREECOUNT;SQLITE_OMIT_LOCALTIME;SQLITE_OMIT_COMPILEOPTION_DIAGS;SQLITE_OMIT_FLAG_PRAGMAS;SQLITE_OMIT_QUICKBALANCE;SQLITE_OMIT_CAST;SQLITE_OMIT_CHECK;SQLITE_OMIT_MEMORYDB;SQLITE_OMIT_BLOB_LITERAL;SQLITE_OMIT_SCHEMA_VERSION_PRAGMAS;SQLITE_OMIT_LOOKASIDE;SQLITE_OMIT_AUTOINIT;SQLITE_OMIT_DECLTYPE;SQLITE_OMIT_DEPRECATED;SQLITE_OMIT_BETWEEN_OPTIMIZATION;SQLITE_OMIT_PROGRESS_CALLBACK;SQLITE_OMIT_TRUNCATE_OPTIMIZATION;SQLITE_OMIT_TCL_VARIABLE;WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_KIWI_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <WarningLevel Condition="'$(Configuration)|$(Platform)'=='r7_release|Win32'">Level2</WarningLevel>
+      <TreatWarningAsError Condition="'$(Configuration)|$(Platform)'=='r7_release|Win32'">false</TreatWarningAsError>
+      <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Level2</WarningLevel>
+      <TreatWarningAsError Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</TreatWarningAsError>
+      <WarningLevel Condition="'$(Configuration)|$(Platform)'=='r7_release|x64'">Level2</WarningLevel>
+      <TreatWarningAsError Condition="'$(Configuration)|$(Platform)'=='r7_release|x64'">false</TreatWarningAsError>
+      <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Level2</WarningLevel>
+      <TreatWarningAsError Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</TreatWarningAsError>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\main.c" />
-    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz.c" />
-    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz_interface.c" />
-    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kerberos\khul_m_kerberos.c" />
-    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kerberos\khul_m_kerberos_pac.c" />
-    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kerberos\khul_m_kerberos_ticket.c" />
-    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_lsadump.c" />
-    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_crypto.c" />
-    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_event.c" />
-    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_misc.c" />
-    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_net.c" />
-    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_privilege.c" />
-    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_process.c" />
-    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_service.c" />
-    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_standard.c" />
-    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_token.c" />
-    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_ts.c" />
-    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kuhl_m_vault.c" />
-    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\crypto\kuhl_m_sekurlsa_nt5.c" />
-    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\crypto\kuhl_m_sekurlsa_nt6.c" />
-    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\crypto\kuhl_m_sekurlsa_nt63.c" />
-    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\kuhl_m_sekurlsa.c" />
-    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\kuhl_m_sekurlsa_utils.c" />
-    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_credman.c" />
-    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_dpapi.c" />
-    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_kerberos.c" />
-    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_livessp.c" />
-    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_msv1_0.c" />
-    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_ssp.c" />
-    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_tspkg.c" />
-    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_wdigest.c" />
-    <ClCompile Include="..\..\source\extensions\kiwi\modules\kull_m_asn1.c" />
-    <ClCompile Include="..\..\source\extensions\kiwi\modules\kull_m_crypto_system.c" />
-    <ClCompile Include="..\..\source\extensions\kiwi\modules\kull_m_file.c" />
-    <ClCompile Include="..\..\source\extensions\kiwi\modules\kull_m_handle.c" />
-    <ClCompile Include="..\..\source\extensions\kiwi\modules\kull_m_memory.c" />
-    <ClCompile Include="..\..\source\extensions\kiwi\modules\kull_m_minidump.c" />
-    <ClCompile Include="..\..\source\extensions\kiwi\modules\kull_m_net.c" />
-    <ClCompile Include="..\..\source\extensions\kiwi\modules\kull_m_output.c" />
-    <ClCompile Include="..\..\source\extensions\kiwi\modules\kull_m_patch.c" />
-    <ClCompile Include="..\..\source\extensions\kiwi\modules\kull_m_process.c" />
-    <ClCompile Include="..\..\source\extensions\kiwi\modules\kull_m_registry.c" />
-    <ClCompile Include="..\..\source\extensions\kiwi\modules\kull_m_service.c" />
-    <ClCompile Include="..\..\source\extensions\kiwi\modules\kull_m_string.c" />
-    <ClCompile Include="..\..\source\extensions\kiwi\modules\kull_m_token.c" />
+    <ClInclude Include="..\..\source\extensions\kiwi\main.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\mimikatz.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\dpapi\kuhl_m_dpapi.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\dpapi\kuhl_m_dpapi_oe.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\dpapi\packages\kuhl_m_dpapi_chrome.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\dpapi\packages\kuhl_m_dpapi_creds.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\dpapi\packages\kuhl_m_dpapi_keys.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\dpapi\packages\kuhl_m_dpapi_wlan.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kerberos\kuhl_m_kerberos.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kerberos\kuhl_m_kerberos_ccache.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kerberos\kuhl_m_kerberos_claims.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kerberos\kuhl_m_kerberos_pac.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kerberos\kuhl_m_kerberos_ticket.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_busylight.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_crypto.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_event.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_iis.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_kernel.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_lsadump.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_lsadump_remote.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_minesweeper.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_misc.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_net.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_privilege.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_process.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_service.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_service_remote.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_sid.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_standard.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_sysenvvalue.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_token.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_ts.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_vault.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\sekurlsa\crypto\kuhl_m_sekurlsa_nt5.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\sekurlsa\crypto\kuhl_m_sekurlsa_nt6.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\sekurlsa\crypto\kuhl_m_sekurlsa_nt63.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\sekurlsa\globals_sekurlsa.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\sekurlsa\kuhl_m_sekurlsa.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\sekurlsa\kuhl_m_sekurlsa_utils.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_credman.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_dpapi.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_kerberos.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_livessp.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_msv1_0.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_ssp.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_tspkg.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_wdigest.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_asn1.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_busylight.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_busylight_hid.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_cred.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_crypto.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_crypto_system.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_dpapi.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_file.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_handle.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_kernel.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_key.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_memory.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_minidump.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_net.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_output.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_patch.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_process.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_registry.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_registry_structures.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_remotelib.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_samlib.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_service.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_string.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_token.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_xml.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_bkrp.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_dpapi-entries.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_drsr.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_ms-bkrp.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_ms-claims.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_ms-credentialkeys.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_ms-drsr.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_ms-pac.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\sqlite3_omit.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
