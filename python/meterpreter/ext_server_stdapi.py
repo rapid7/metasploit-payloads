@@ -188,6 +188,19 @@ if has_ctypes:
 			("unused1", ctypes.c_uint16),
 			("wType", ctypes.c_uint16)]
 
+	class OSVERSIONINFOEXW(ctypes.Structure):
+		_fields_ = [("dwOSVersionInfoSize", ctypes.c_uint32),
+			("dwMajorVersion", ctypes.c_uint32),
+			("dwMinorVersion", ctypes.c_uint32),
+			("dwBuildNumber", ctypes.c_uint32),
+			("dwPlatformId", ctypes.c_uint32),
+			("szCSDVersion", (ctypes.c_wchar * 128)),
+			("wServicePackMajor", ctypes.c_uint16),
+			("wServicePackMinor", ctypes.c_uint16),
+			("wSuiteMask", ctypes.c_uint16),
+			("wProductType", ctypes.c_uint8),
+			("wReserved", ctypes.c_uint8)]
+
 	class PROCESSENTRY32(ctypes.Structure):
 		_fields_ = [("dwSize", ctypes.c_uint32),
 			("cntUsage", ctypes.c_uint32),
@@ -370,6 +383,7 @@ TLV_TYPE_COMPUTER_NAME         = TLV_META_TYPE_STRING  | 1040
 TLV_TYPE_OS_NAME               = TLV_META_TYPE_STRING  | 1041
 TLV_TYPE_USER_NAME             = TLV_META_TYPE_STRING  | 1042
 TLV_TYPE_ARCHITECTURE          = TLV_META_TYPE_STRING  | 1043
+TLV_TYPE_LANG_SYSTEM           = TLV_META_TYPE_STRING  | 1044
 TLV_TYPE_SID                   = TLV_META_TYPE_STRING  | 1045
 TLV_TYPE_LOCAL_DATETIME        = TLV_META_TYPE_STRING  | 1048
 
@@ -484,10 +498,18 @@ GAA_FLAG_SKIP_ANYCAST             = 0x0002
 GAA_FLAG_SKIP_MULTICAST           = 0x0004
 GAA_FLAG_INCLUDE_PREFIX           = 0x0010
 GAA_FLAG_SKIP_DNS_SERVER          = 0x0080
+LOCALE_SISO639LANGNAME            = 0x0059
+LOCALE_SISO3166CTRYNAME           = 0x005A
 PROCESS_TERMINATE                 = 0x0001
 PROCESS_VM_READ                   = 0x0010
 PROCESS_QUERY_INFORMATION         = 0x0400
 PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+VER_NT_WORKSTATION                = 0x0001
+VER_NT_DOMAIN_CONTROLLER          = 0x0002
+VER_NT_SERVER                     = 0x0003
+VER_PLATFORM_WIN32s               = 0x0000
+VER_PLATFORM_WIN32_WINDOWS        = 0x0001
+VER_PLATFORM_WIN32_NT             = 0x0002
 
 WIN_AF_INET  = 2
 WIN_AF_INET6 = 23
@@ -580,6 +602,71 @@ def get_username_from_token(token_user):
 		return None
 	return str(ctypes.string_at(domain)) + '\\' + str(ctypes.string_at(user))
 
+def get_windll_lang():
+	if not hasattr(ctypes.windll.kernel32, 'GetSystemDefaultLangID'):
+		return None
+	kernel32 = ctypes.windll.kernel32
+	kernel32.GetSystemDefaultLangID.restype = ctypes.c_uint16
+	lang_id = kernel32.GetSystemDefaultLangID()
+
+	size = kernel32.GetLocaleInfoW(lang_id, LOCALE_SISO3166CTRYNAME, 0, 0)
+	ctry_name = (ctypes.c_wchar * size)()
+	kernel32.GetLocaleInfoW(lang_id, LOCALE_SISO3166CTRYNAME, ctry_name, size)
+
+	size = kernel32.GetLocaleInfoW(lang_id, LOCALE_SISO639LANGNAME, 0, 0)
+	lang_name = (ctypes.c_wchar * size)()
+	kernel32.GetLocaleInfoW(lang_id, LOCALE_SISO639LANGNAME, lang_name, size)
+
+	if not (len(ctry_name.value) and len(lang_name)):
+		return 'Unknown'
+	return lang_name.value + '_' + ctry_name.value
+
+def get_windll_os_name():
+	os_info = windll_RtlGetVersion()
+	if not os_info:
+		return None
+	is_workstation = os_info.wProductType == VER_NT_WORKSTATION
+	os_name = None
+	if os_info.dwMajorVersion == 3:
+		os_name = 'NT 3.51'
+	elif os_info.dwMajorVersion == 4:
+		if os_info.dwMinorVersion == 0 and os_info.dwPlatformId == VER_PLATFORM_WIN32_WINDOWS:
+			os_name = '95'
+		elif os_info.dwMinorVersion == 10:
+			os_name = '98'
+		elif os_info.dwMinorVersion == 90:
+			os_name = 'ME'
+		elif os_info.dwMinorVersion == 0 and os_info.dwPlatformId == VER_PLATFORM_WIN32_NT:
+			os_name = 'NT 4.0'
+	elif os_info.dwMajorVersion == 5:
+		if os_info.dwMinorVersion == 0:
+			os_name = '2000'
+		elif os_info.dwMinorVersion == 1:
+			os_name = 'XP'
+		elif os_info.dwMinorVersion == 2:
+			os_name = '.NET Server'
+	elif os_info.dwMajorVersion == 6:
+		if os_info.dwMinorVersion == 0:
+			os_name = ('Vista' if is_workstation else '2008')
+		elif os_info.dwMinorVersion == 1:
+			os_name = ('7' if is_workstation else '2008 R2')
+		elif os_info.dwMinorVersion == 2:
+			os_name = ('8' if is_workstation else '2012')
+		elif os_info.dwMinorVersion == 3:
+			os_name = ('8.1' if is_workstation else '2012 R2')
+	elif os_info.dwMajorVersion == 10:
+		if os_info.dwMinorVersion == 0:
+			os_name = ('10' if is_workstation else '2016')
+
+	if not os_name:
+		os_name = 'Unknown'
+	os_name = 'Windows ' + os_name
+	if os_info.szCSDVersion:
+		os_name += ' (Build ' + str(os_info.dwBuildNumber) + ', ' + os_info.szCSDVersion + ')'
+	else:
+		os_name += ' (Build ' + str(os_info.dwBuildNumber) + ')'
+	return os_name
+
 def netlink_request(req_type):
 	import select
 	# See RFC 3549
@@ -619,6 +706,15 @@ def resolve_host(hostname, family):
 	family = address_info[0]
 	address = address_info[4][0]
 	return {'family':family, 'address':address, 'packed_address':inet_pton(family, address)}
+
+def windll_RtlGetVersion():
+	if not has_windll:
+		return None
+	os_info = OSVERSIONINFOEXW()
+	os_info.dwOSVersionInfoSize = ctypes.sizeof(OSVERSIONINFOEXW)
+	if ctypes.windll.ntdll.RtlGetVersion(ctypes.byref(os_info)) != 0:
+		return None
+	return os_info
 
 def windll_GetNativeSystemInfo():
 	if not has_windll:
@@ -741,8 +837,8 @@ def stdapi_sys_config_localtime(request, response):
 def stdapi_sys_config_sysinfo(request, response):
 	uname_info = platform.uname()
 	response += tlv_pack(TLV_TYPE_COMPUTER_NAME, uname_info[1])
-	response += tlv_pack(TLV_TYPE_OS_NAME, uname_info[0] + ' ' + uname_info[2] + ' ' + uname_info[3])
 	arch = uname_info[4]
+	os_name = uname_info[0] + ' ' + uname_info[2] + ' ' + uname_info[3]
 	if has_windll:
 		arch = windll_GetNativeSystemInfo()
 		if arch == PROCESS_ARCH_IA64:
@@ -753,6 +849,11 @@ def stdapi_sys_config_sysinfo(request, response):
 			arch = 'x86'
 		else:
 			arch = uname_info[4]
+		os_name = get_windll_os_name() or os_name
+		lang = get_windll_lang()
+		if lang:
+			response += tlv_pack(TLV_TYPE_LANG_SYSTEM, lang)
+	response += tlv_pack(TLV_TYPE_OS_NAME, os_name)
 	response += tlv_pack(TLV_TYPE_ARCHITECTURE, arch)
 	return ERROR_SUCCESS, response
 
