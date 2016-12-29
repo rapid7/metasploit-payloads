@@ -656,7 +656,7 @@ def get_windll_os_name():
 			os_name = ('8.1' if is_workstation else '2012 R2')
 	elif os_info.dwMajorVersion == 10:
 		if os_info.dwMinorVersion == 0:
-			os_name = ('10' if is_workstation else '2016 Tech Preview')
+			os_name = ('10' if is_workstation else '2016')
 
 	if not os_name:
 		os_name = 'Unknown'

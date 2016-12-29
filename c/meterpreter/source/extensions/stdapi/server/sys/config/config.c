@@ -548,7 +548,7 @@ DWORD add_windows_os_version(Packet** packet)
 		{
 			if (v.dwMinorVersion == 0)
 			{
-				osName = v.wProductType == VER_NT_WORKSTATION ? "Windows 10" : "Windows 2016 Tech Preview";
+				osName = v.wProductType == VER_NT_WORKSTATION ? "Windows 10" : "Windows 2016";
 			}
 		}
 
