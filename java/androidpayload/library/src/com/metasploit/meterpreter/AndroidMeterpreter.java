@@ -145,6 +145,7 @@ public class AndroidMeterpreter extends Meterpreter {
             mgr.registerCommand("android_hide_app_icon", android_hide_app_icon.class);
             mgr.registerCommand("android_set_audio_mode", android_set_audio_mode.class);
             mgr.registerCommand("android_sqlite_query", android_sqlite_query.class);
+            mgr.registerCommand("android_wakelock", android_wakelock.class);
             mgr.registerCommand("android_set_wallpaper", android_set_wallpaper.class);
             mgr.registerCommand("extapi_clipboard_get_data", clipboard_get_data.class);
             mgr.registerCommand("extapi_clipboard_set_data", clipboard_set_data.class);
