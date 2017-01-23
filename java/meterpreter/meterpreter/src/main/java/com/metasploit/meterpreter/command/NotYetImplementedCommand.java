@@ -45,7 +45,15 @@ public class NotYetImplementedCommand implements Command {
         typeNames.put(new Integer(TLVType.TLV_TYPE_LIBRARY_PATH), "TLV_TYPE_LIBRARY_PATH");
         typeNames.put(new Integer(TLVType.TLV_TYPE_TARGET_PATH), "TLV_TYPE_TARGET_PATH");
         typeNames.put(new Integer(TLVType.TLV_TYPE_MIGRATE_PID), "TLV_TYPE_MIGRATE_PID");
-        typeNames.put(new Integer(TLVType.TLV_TYPE_MIGRATE_LEN), "TLV_TYPE_MIGRATE_LEN");
+        typeNames.put(new Integer(TLVType.TLV_TYPE_MIGRATE_PAYLOAD_LEN), "TLV_TYPE_MIGRATE_PAYLOAD_LEN");
+        typeNames.put(new Integer(TLVType.TLV_TYPE_MIGRATE_PAYLOAD), "TLV_TYPE_MIGRATE_PAYLOAD");
+        typeNames.put(new Integer(TLVType.TLV_TYPE_MIGRATE_ARCH), "TLV_TYPE_MIGRATE_ARCH");
+        typeNames.put(new Integer(TLVType.TLV_TYPE_MIGRATE_TECHNIQUE), "TLV_TYPE_MIGRATE_TECHNIQUE");
+        typeNames.put(new Integer(TLVType.TLV_TYPE_MIGRATE_BASE_ADDR), "TLV_TYPE_MIGRATE_BASE_ADDR");
+        typeNames.put(new Integer(TLVType.TLV_TYPE_MIGRATE_ENTRY_POINT), "TLV_TYPE_MIGRATE_ENTRY_POINT");
+        typeNames.put(new Integer(TLVType.TLV_TYPE_MIGRATE_SOCKET_PATH), "TLV_TYPE_MIGRATE_SOCKET_PATH");
+        typeNames.put(new Integer(TLVType.TLV_TYPE_MIGRATE_STUB_LEN), "TLV_TYPE_MIGRATE_STUB_LEN");
+        typeNames.put(new Integer(TLVType.TLV_TYPE_MIGRATE_STUB), "TLV_TYPE_MIGRATE_STUB");
         typeNames.put(new Integer(TLVType.TLV_TYPE_CIPHER_NAME), "TLV_TYPE_CIPHER_NAME");
         typeNames.put(new Integer(TLVType.TLV_TYPE_CIPHER_PARAMETERS), "TLV_TYPE_CIPHER_PARAMETERS");
         typeNames.put(new Integer(TLVType.TLV_TYPE_HANDLE), "TLV_TYPE_HANDLE");
