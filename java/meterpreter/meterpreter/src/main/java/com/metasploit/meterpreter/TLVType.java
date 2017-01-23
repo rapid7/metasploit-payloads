@@ -38,10 +38,18 @@ public interface TLVType {
     public static final int TLV_TYPE_EXCEPTION_CODE   = TLVPacket.TLV_META_TYPE_UINT   | 300;
     public static final int TLV_TYPE_EXCEPTION_STRING = TLVPacket.TLV_META_TYPE_STRING | 301;
 
-    public static final int TLV_TYPE_LIBRARY_PATH = TLVPacket.TLV_META_TYPE_STRING | 400;
-    public static final int TLV_TYPE_TARGET_PATH  = TLVPacket.TLV_META_TYPE_STRING | 401;
-    public static final int TLV_TYPE_MIGRATE_PID  = TLVPacket.TLV_META_TYPE_UINT   | 402;
-    public static final int TLV_TYPE_MIGRATE_LEN  = TLVPacket.TLV_META_TYPE_UINT   | 403;
+    public static final int TLV_TYPE_LIBRARY_PATH        = TLVPacket.TLV_META_TYPE_STRING | 400;
+    public static final int TLV_TYPE_TARGET_PATH         = TLVPacket.TLV_META_TYPE_STRING | 401;
+    public static final int TLV_TYPE_MIGRATE_PID         = TLVPacket.TLV_META_TYPE_UINT   | 402;
+    public static final int TLV_TYPE_MIGRATE_PAYLOAD_LEN = TLVPacket.TLV_META_TYPE_UINT   | 403;
+    public static final int TLV_TYPE_MIGRATE_PAYLOAD     = TLVPacket.TLV_META_TYPE_STRING | 404;
+    public static final int TLV_TYPE_MIGRATE_ARCH        = TLVPacket.TLV_META_TYPE_STRING | 405;
+    public static final int TLV_TYPE_MIGRATE_TECHNIQUE   = TLVPacket.TLV_META_TYPE_UINT   | 406;
+    public static final int TLV_TYPE_MIGRATE_BASE_ADDR   = TLVPacket.TLV_META_TYPE_UINT   | 407;
+    public static final int TLV_TYPE_MIGRATE_ENTRY_POINT = TLVPacket.TLV_META_TYPE_UINT   | 408;
+    public static final int TLV_TYPE_MIGRATE_SOCKET_PATH = TLVPacket.TLV_META_TYPE_STRING | 409;
+    public static final int TLV_TYPE_MIGRATE_STUB_LEN    = TLVPacket.TLV_META_TYPE_UINT   | 410;
+    public static final int TLV_TYPE_MIGRATE_STUB        = TLVPacket.TLV_META_TYPE_STRING | 411;
 
     public static final int TLV_TYPE_TRANS_TYPE         = TLVPacket.TLV_META_TYPE_UINT   | 430;
     public static final int TLV_TYPE_TRANS_URL          = TLVPacket.TLV_META_TYPE_STRING | 431;
