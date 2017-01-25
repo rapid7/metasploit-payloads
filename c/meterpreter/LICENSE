@@ -89,10 +89,6 @@ Files: source/extensions/espia/screen.c
 Copyright: 1994-2008, Mark Hammond
 License: BSD-2-clause
 
-Files: source/extensions/priv/server/timestomp.c
-Copyright: 2005 Vincent Liu
-License: GPL-2
-
 Files: source/extensions/stdapi/server/webcam/bmp2jpeg.c source/screenshot/bmp2jpeg.c
 Copyright: 1994-2008, Mark Hammond
 License: BSD-2-clause
