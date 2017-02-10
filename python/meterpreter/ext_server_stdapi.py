@@ -839,6 +839,9 @@ def stdapi_sys_config_sysinfo(request, response):
 	response += tlv_pack(TLV_TYPE_COMPUTER_NAME, uname_info[1])
 	arch = uname_info[4]
 	os_name = uname_info[0] + ' ' + uname_info[2] + ' ' + uname_info[3]
+	lang = None
+	if 'LANG' in os.environ:
+		lang = os.environ['LANG'].split('.', 1)[0]
 	if has_windll:
 		arch = windll_GetNativeSystemInfo()
 		if arch == PROCESS_ARCH_IA64:
@@ -850,9 +853,9 @@ def stdapi_sys_config_sysinfo(request, response):
 		else:
 			arch = uname_info[4]
 		os_name = get_windll_os_name() or os_name
-		lang = get_windll_lang()
-		if lang:
-			response += tlv_pack(TLV_TYPE_LANG_SYSTEM, lang)
+		lang = (get_windll_lang() or lang)
+	if lang:
+		response += tlv_pack(TLV_TYPE_LANG_SYSTEM, lang)
 	response += tlv_pack(TLV_TYPE_OS_NAME, os_name)
 	response += tlv_pack(TLV_TYPE_ARCHITECTURE, arch)
 	return ERROR_SUCCESS, response
