@@ -72,6 +72,7 @@ if has_ctypes:
 	#
 	# Windows Structures
 	#
+	size_t = getattr(ctypes, 'c_uint' + str(ctypes.sizeof(ctypes.c_void_p) * 8))
 	class SOCKADDR(ctypes.Structure):
 		_fields_ = [("sa_family", ctypes.c_ushort),
 			("sa_data", (ctypes.c_uint8 * 14))]
@@ -262,6 +263,7 @@ if has_ctypes:
 		_fields_ = [("len", ctypes.c_uint16),
 			("type", ctypes.c_uint16)]
 
+TLV_EXTENSIONS           = 20000
 #
 # TLV Meta Types
 #
@@ -362,6 +364,27 @@ TLV_TYPE_LOCAL_PORT            = TLV_META_TYPE_UINT    | 1503
 TLV_TYPE_CONNECT_RETRIES       = TLV_META_TYPE_UINT    | 1504
 
 TLV_TYPE_SHUTDOWN_HOW          = TLV_META_TYPE_UINT    | 1530
+
+##
+# Railgun
+##
+TLV_TYPE_EXTENSION_RAILGUN             = 0
+TLV_TYPE_RAILGUN_SIZE_OUT              = TLV_META_TYPE_UINT   | (TLV_TYPE_EXTENSION_RAILGUN + TLV_EXTENSIONS + 1)
+TLV_TYPE_RAILGUN_STACKBLOB             = TLV_META_TYPE_RAW    | (TLV_TYPE_EXTENSION_RAILGUN + TLV_EXTENSIONS + 2)
+TLV_TYPE_RAILGUN_BUFFERBLOB_IN         = TLV_META_TYPE_RAW    | (TLV_TYPE_EXTENSION_RAILGUN + TLV_EXTENSIONS + 3)
+TLV_TYPE_RAILGUN_BUFFERBLOB_INOUT      = TLV_META_TYPE_RAW    | (TLV_TYPE_EXTENSION_RAILGUN + TLV_EXTENSIONS + 4)
+TLV_TYPE_RAILGUN_BACK_BUFFERBLOB_OUT   = TLV_META_TYPE_RAW    | (TLV_TYPE_EXTENSION_RAILGUN + TLV_EXTENSIONS + 5)
+TLV_TYPE_RAILGUN_BACK_BUFFERBLOB_INOUT = TLV_META_TYPE_RAW    | (TLV_TYPE_EXTENSION_RAILGUN + TLV_EXTENSIONS + 6)
+TLV_TYPE_RAILGUN_BACK_RET              = TLV_META_TYPE_QWORD  | (TLV_TYPE_EXTENSION_RAILGUN + TLV_EXTENSIONS + 7)
+TLV_TYPE_RAILGUN_BACK_ERR              = TLV_META_TYPE_UINT   | (TLV_TYPE_EXTENSION_RAILGUN + TLV_EXTENSIONS + 8)
+TLV_TYPE_RAILGUN_DLLNAME               = TLV_META_TYPE_STRING | (TLV_TYPE_EXTENSION_RAILGUN + TLV_EXTENSIONS + 9)
+TLV_TYPE_RAILGUN_FUNCNAME              = TLV_META_TYPE_STRING | (TLV_TYPE_EXTENSION_RAILGUN + TLV_EXTENSIONS + 10)
+TLV_TYPE_RAILGUN_MULTI_GROUP           = TLV_META_TYPE_GROUP  | (TLV_TYPE_EXTENSION_RAILGUN + TLV_EXTENSIONS + 11)
+TLV_TYPE_RAILGUN_MEM_ADDRESS           = TLV_META_TYPE_QWORD  | (TLV_TYPE_EXTENSION_RAILGUN + TLV_EXTENSIONS + 12)
+TLV_TYPE_RAILGUN_MEM_DATA              = TLV_META_TYPE_RAW    | (TLV_TYPE_EXTENSION_RAILGUN + TLV_EXTENSIONS + 13)
+TLV_TYPE_RAILGUN_MEM_LENGTH            = TLV_META_TYPE_UINT   | (TLV_TYPE_EXTENSION_RAILGUN + TLV_EXTENSIONS + 14)
+TLV_TYPE_RAILGUN_CALLCONV              = TLV_META_TYPE_STRING | (TLV_TYPE_EXTENSION_RAILGUN + TLV_EXTENSIONS + 15)
+TLV_TYPE_RAILGUN_BACK_MSG              = TLV_META_TYPE_STRING | (TLV_TYPE_EXTENSION_RAILGUN + TLV_EXTENSIONS + 16)
 
 ##
 # Registry
@@ -1458,6 +1481,52 @@ def stdapi_net_socket_tcp_shutdown(request, response):
 	how = packet_get_tlv(request, TLV_TYPE_SHUTDOWN_HOW).get('value', socket.SHUT_RDWR)
 	channel = meterpreter.channels[channel_id]
 	channel.shutdown(how)
+	return ERROR_SUCCESS, response
+
+def _win_memread(address, size, handle=-1):
+	ReadProcessMemory = ctypes.windll.kernel32.ReadProcessMemory
+	ReadProcessMemory.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, size_t, ctypes.POINTER(size_t)]
+	buff = (ctypes.c_byte * size)()
+	read = size_t()
+	result = ReadProcessMemory(handle, address, ctypes.byref(buff), size, ctypes.byref(read))
+	if not result:
+		return None
+	if sys.version_info[0] < 3:
+		buff = buffer(buff)[:]
+	else:
+		buff = bytes(buff)
+	return buff
+
+def _win_memwrite(address, data, handle=-1):
+	WriteProcessMemory = ctypes.windll.kernel32.WriteProcessMemory
+	WriteProcessMemory.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, size_t, ctypes.POINTER(size_t)]
+	size = len(data)
+	buff = (ctypes.c_byte * size)()
+	ctypes.memmove(buff, data, size)
+	written = size_t()
+	result = WriteProcessMemory(handle, address, ctypes.byref(buff), size, ctypes.byref(written))
+	if not result:
+		return None
+	return written.value
+
+@meterpreter.register_function_windll
+def stdapi_railgun_memread(request, response):
+	address = packet_get_tlv(request, TLV_TYPE_RAILGUN_MEM_ADDRESS)['value']
+	length = packet_get_tlv(request, TLV_TYPE_RAILGUN_MEM_LENGTH)['value']
+	result = _win_memread(address, length)
+	if result is None:
+		return error_result_windows(), response
+	response += tlv_pack(TLV_TYPE_RAILGUN_MEM_DATA, result)
+	return ERROR_SUCCESS, response
+
+@meterpreter.register_function_windll
+def stdapi_railgun_memwrite(request, response):
+	address = packet_get_tlv(request, TLV_TYPE_RAILGUN_MEM_ADDRESS)['value']
+	data = packet_get_tlv(request, TLV_TYPE_RAILGUN_MEM_DATA)['value']
+	length = packet_get_tlv(request, TLV_TYPE_RAILGUN_MEM_LENGTH)['value']
+	result = _win_memwrite(address, data)
+	if result is None:
+		return error_result_windows(), response
 	return ERROR_SUCCESS, response
 
 def _wreg_close_key(hkey):
