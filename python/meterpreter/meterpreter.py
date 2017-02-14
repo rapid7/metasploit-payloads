@@ -169,14 +169,15 @@ TLV_TYPE_LOCAL_PORT            = TLV_META_TYPE_UINT    | 1503
 EXPORTED_SYMBOLS = {}
 EXPORTED_SYMBOLS['DEBUGGING'] = DEBUGGING
 
-def rand_byte():
-	return chr(random.randint(1, 255))
-
 def rand_xor_key():
-	return ''.join(rand_byte() for _ in range(4))
+	return tuple(random.randint(1, 255) for _ in range(4))
 
 def xor_bytes(key, data):
-	return ''.join(chr(ord(data[i]) ^ ord(key[i % len(key)])) for i in range(len(data)))
+	if sys.version_info[0] < 3:
+		dexored = ''.join(chr(ord(data[i]) ^ key[i % len(key)]) for i in range(len(data)))
+	else:
+		dexored = bytes(data[i] ^ key[i % len(key)] for i in range(len(data)))
+	return dexored
 
 def export(symbol):
 	EXPORTED_SYMBOLS[symbol.__name__] = symbol
@@ -256,12 +257,12 @@ def inet_pton(family, address):
 	raise Exception('no suitable inet_pton functionality is available')
 
 @export
-def packet_enum_tlvs(pkt, tlv_type = None):
+def packet_enum_tlvs(pkt, tlv_type=None):
 	offset = 0
-	while (offset < len(pkt)):
-		tlv = struct.unpack('>II', pkt[offset:offset+8])
-		if (tlv_type == None) or ((tlv[1] & ~TLV_META_TYPE_COMPRESSED) == tlv_type):
-			val = pkt[offset+8:(offset+8+(tlv[0] - 8))]
+	while offset < len(pkt):
+		tlv = struct.unpack('>II', pkt[offset:offset + 8])
+		if tlv_type is None or (tlv[1] & ~TLV_META_TYPE_COMPRESSED) == tlv_type:
+			val = pkt[offset + 8:(offset + 8 + (tlv[0] - 8))]
 			if (tlv[1] & TLV_META_TYPE_STRING) == TLV_META_TYPE_STRING:
 				val = str(val.split(NULL_BYTE, 1)[0])
 			elif (tlv[1] & TLV_META_TYPE_UINT) == TLV_META_TYPE_UINT:
@@ -272,7 +273,7 @@ def packet_enum_tlvs(pkt, tlv_type = None):
 				val = bool(struct.unpack('b', val)[0])
 			elif (tlv[1] & TLV_META_TYPE_RAW) == TLV_META_TYPE_RAW:
 				pass
-			yield {'type':tlv[1], 'length':tlv[0], 'value':val}
+			yield {'type': tlv[1], 'length': tlv[0], 'value': val}
 		offset += tlv[0]
 	raise StopIteration()
 
@@ -483,7 +484,7 @@ class Transport(object):
 		self.request_retire = False
 		try:
 			xor_key = rand_xor_key()
-			raw = xor_key[::-1] + xor_bytes(xor_key, pkt)
+			raw = struct.pack('BBBB', *xor_key[::-1]) + xor_bytes(xor_key, pkt)
 			self._send_packet(raw)
 		except:
 			return False
@@ -550,7 +551,7 @@ class HttpTransport(Transport):
 			if len(packet) < 12:
 				packet = None  # looks corrupt
 				break
-			xor_key = packet[:4][::-1]
+			xor_key = struct.unpack('BBBB', packet[:4][::-1])
 			header = xor_bytes(xor_key, packet[4:12])
 			pkt_length, _ = struct.unpack('>II', header)
 			if len(packet) - 4 != pkt_length:
@@ -658,7 +659,7 @@ class TcpTransport(Transport):
 				return self._get_packet()
 			return None
 
-		xor_key = packet[:4][::-1]
+		xor_key = struct.unpack('BBBB', packet[:4][::-1])
 		header = xor_bytes(xor_key, packet[4:12])
 		pkt_length, pkt_type = struct.unpack('>II', header)
 		pkt_length -= 8
