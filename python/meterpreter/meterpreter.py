@@ -1139,7 +1139,7 @@ class PythonMeterpreter(object):
 		resp += tlv_pack(reqid_tlv)
 		return tlv_pack_response(result, resp)
 
-if not hasattr(os, 'fork') or (hasattr(os, 'fork') ):#and os.fork() == 0):
+if not hasattr(os, 'fork') or (hasattr(os, 'fork') and os.fork() == 0):
 	if hasattr(os, 'setsid'):
 		try:
 			os.setsid()
