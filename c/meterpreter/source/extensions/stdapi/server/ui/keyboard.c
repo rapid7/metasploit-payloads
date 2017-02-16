@@ -5,6 +5,8 @@
 extern HMODULE hookLibrary;
 extern HINSTANCE hAppInstance;
 
+LRESULT CALLBACK ui_keyscan_wndproc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
 /*
  * Enables or disables keyboard input
  */
