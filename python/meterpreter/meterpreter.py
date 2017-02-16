@@ -883,7 +883,7 @@ class PythonMeterpreter(object):
 					None, fs_buf, ctypes.sizeof(fs_buf)):
 				return ERROR_FAILURE_WINDOWS
 			serial_num = serial_num.value
-			serial = "{0:04x}-{1:04x}".format((serial_num >> 16) & 0xFFFF, serial_num & 0xFFFF)
+			serial = "%04x" % ((serial_num >> 16) & 0xffff) + '-' "%04x" % (serial_num & 0xffff)
 		else:
 			serial = get_hdd_label()
 
