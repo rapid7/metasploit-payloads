@@ -1502,10 +1502,15 @@ def _win_format_message(source, msg_id):
 	FormatMessage = ctypes.windll.kernel32.FormatMessageA
 	FormatMessage.argtypes = [ctypes.c_uint32, ctypes.c_void_p, ctypes.c_uint32, ctypes.c_uint32, ctypes.c_void_p, ctypes.c_uint32, ctypes.c_void_p]
 	FormatMessage.restype = ctypes.c_uint32
+	LocalFree = ctypes.windll.kernel32.LocalFree
+	LocalFree.argtypes = [ctypes.c_void_p]
+
 	buff = ctypes.c_char_p()
 	if not FormatMessage(msg_flags, source, msg_id, EN_US, ctypes.byref(buff), 0, None):
 		return None
-	return buff.value.decode('utf-8').rstrip()
+	message = buff.value.decode('utf-8').rstrip()
+	LocalFree(buff)
+	return message
 
 def _win_memread(address, size, handle=-1):
 	ReadProcessMemory = ctypes.windll.kernel32.ReadProcessMemory
