@@ -1492,6 +1492,21 @@ def stdapi_net_socket_tcp_shutdown(request, response):
 	channel.shutdown(how)
 	return ERROR_SUCCESS, response
 
+def _win_format_message(source, msg_id):
+	EN_US = 0
+	msg_flags = 0
+	msg_flags |= 0x00000100  # FORMAT_MESSAGE_ALLOCATE_BUFFER
+	msg_flags |= 0x00000200  # FORMAT_MESSAGE_IGNORE_INSERTS
+	msg_flags |= 0x00000800  # FORMAT_MESSAGE_FROM_HMODULE
+	msg_flags |= 0x00001000  # FORMAT_MESSAGE_FROM_SYSTEM
+	FormatMessage = ctypes.windll.kernel32.FormatMessageA
+	FormatMessage.argtypes = [ctypes.c_uint32, ctypes.c_void_p, ctypes.c_uint32, ctypes.c_uint32, ctypes.c_void_p, ctypes.c_uint32, ctypes.c_void_p]
+	FormatMessage.restype = ctypes.c_uint32
+	buff = ctypes.c_char_p()
+	if not FormatMessage(msg_flags, source, msg_id, EN_US, ctypes.byref(buff), 0, None):
+		return None
+	return buff.value.decode('utf-8').rstrip()
+
 def _win_memread(address, size, handle=-1):
 	ReadProcessMemory = ctypes.windll.kernel32.ReadProcessMemory
 	ReadProcessMemory.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, size_t, ctypes.POINTER(size_t)]
@@ -1562,11 +1577,25 @@ def stdapi_railgun_api(request, response):
 		else:
 			raise ValueError('unknown argument type: ' + str(arg_type))
 
+	GetModuleHandle = ctypes.windll.kernel32.GetModuleHandleA
+	GetModuleHandle.argtypes = [ctypes.c_char_p]
+	GetModuleHandle.restype = ctypes.c_void_p
+	dll_handle = GetModuleHandle(dll_name)
+
 	prototype = func_type(native, *func_args)
 	func = prototype((func_name, ctypes.WinDLL(dll_name)))
 	result = func(*call_args)
 
-	response += tlv_pack(TLV_TYPE_RAILGUN_BACK_ERR, ctypes.windll.kernel32.GetLastError())
+	last_error = ctypes.windll.kernel32.GetLastError()
+	error_message = _win_format_message(dll_handle, last_error)
+	if error_message is None:
+		if last_error == ERROR_SUCCESS:
+			error_message = 'The operation completed successfully.'
+		else:
+			error_message = 'FormatMessage failed to retrieve the error.'
+
+	response += tlv_pack(TLV_TYPE_RAILGUN_BACK_ERR, last_error)
+	response += tlv_pack(TLV_TYPE_RAILGUN_BACK_MSG, error_message)
 	response += tlv_pack(TLV_TYPE_RAILGUN_BACK_RET, result)
 	response += tlv_pack(TLV_TYPE_RAILGUN_BACK_BUFFERBLOB_OUT, ctarray_to_bytes(buff_blob_out))
 	response += tlv_pack(TLV_TYPE_RAILGUN_BACK_BUFFERBLOB_INOUT, ctarray_to_bytes(buff_blob_inout))
