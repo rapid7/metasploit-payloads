@@ -59,10 +59,10 @@ if sys.version_info[0] < 3:
 else:
 	if isinstance(__builtins__, dict):
 		is_str = lambda obj: issubclass(obj.__class__, __builtins__['str'])
-		str = lambda x: __builtins__['str'](x, 'UTF-8')
+		str = lambda x: __builtins__['str'](x, *(() if isinstance(x, (float, int)) else ('UTF-8',)))
 	else:
 		is_str = lambda obj: issubclass(obj.__class__, __builtins__.str)
-		str = lambda x: __builtins__.str(x, 'UTF-8')
+		str = lambda x: __builtins__.str(x, *(() if isinstance(x, (float, int)) else ('UTF-8',)))
 	is_bytes = lambda obj: issubclass(obj.__class__, bytes)
 	NULL_BYTE = bytes('\x00', 'UTF-8')
 	long = int
@@ -598,7 +598,9 @@ def get_username_from_token(token_user):
 	domain_len.value = ctypes.sizeof(domain)
 	use = ctypes.c_ulong()
 	use.value = 0
-	if not ctypes.windll.advapi32.LookupAccountSidA(None, token_user.User.Sid, user, ctypes.byref(user_len), domain, ctypes.byref(domain_len), ctypes.byref(use)):
+	LookupAccountSid = ctypes.windll.advapi32.LookupAccountSidA
+	LookupAccountSid.argtypes = [ctypes.c_void_p] * 7
+	if not LookupAccountSid(None, token_user.User.Sid, user, ctypes.byref(user_len), domain, ctypes.byref(domain_len), ctypes.byref(use)):
 		return None
 	return str(ctypes.string_at(domain)) + '\\' + str(ctypes.string_at(user))
 
