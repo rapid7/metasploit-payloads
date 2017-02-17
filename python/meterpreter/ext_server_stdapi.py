@@ -839,27 +839,17 @@ def stdapi_sys_config_localtime(request, response):
 def stdapi_sys_config_sysinfo(request, response):
 	uname_info = platform.uname()
 	response += tlv_pack(TLV_TYPE_COMPUTER_NAME, uname_info[1])
-	arch = uname_info[4]
 	os_name = uname_info[0] + ' ' + uname_info[2] + ' ' + uname_info[3]
 	lang = None
 	if 'LANG' in os.environ:
 		lang = os.environ['LANG'].split('.', 1)[0]
 	if has_windll:
-		arch = windll_GetNativeSystemInfo()
-		if arch == PROCESS_ARCH_IA64:
-			arch = 'IA64'
-		elif arch == PROCESS_ARCH_X64:
-			arch = 'x86_64'
-		elif arch == PROCESS_ARCH_X86:
-			arch = 'x86'
-		else:
-			arch = uname_info[4]
 		os_name = get_windll_os_name() or os_name
 		lang = (get_windll_lang() or lang)
 	if lang:
 		response += tlv_pack(TLV_TYPE_LANG_SYSTEM, lang)
 	response += tlv_pack(TLV_TYPE_OS_NAME, os_name)
-	response += tlv_pack(TLV_TYPE_ARCHITECTURE, arch)
+	response += tlv_pack(TLV_TYPE_ARCHITECTURE, get_system_arch())
 	return ERROR_SUCCESS, response
 
 @meterpreter.register_function

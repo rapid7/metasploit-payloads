@@ -169,6 +169,19 @@ TLV_TYPE_LOCAL_PORT            = TLV_META_TYPE_UINT    | 1503
 EXPORTED_SYMBOLS = {}
 EXPORTED_SYMBOLS['DEBUGGING'] = DEBUGGING
 
+class SYSTEM_INFO(ctypes.Structure):
+	_fields_ = [("wProcessorArchitecture", ctypes.c_uint16),
+		("wReserved", ctypes.c_uint16),
+		("dwPageSize", ctypes.c_uint32),
+		("lpMinimumApplicationAddress", ctypes.c_void_p),
+		("lpMaximumApplicationAddress", ctypes.c_void_p),
+		("dwActiveProcessorMask", ctypes.c_uint32),
+		("dwNumberOfProcessors", ctypes.c_uint32),
+		("dwProcessorType", ctypes.c_uint32),
+		("dwAllocationGranularity", ctypes.c_uint32),
+		("wProcessorLevel", ctypes.c_uint16),
+		("wProcessorRevision", ctypes.c_uint16)]
+
 def rand_xor_key():
 	return tuple(random.randint(1, 255) for _ in range(4))
 
@@ -239,6 +252,26 @@ def get_hdd_label():
 				if f[:len(p)] == p:
 					return f[len(p):]
 	return ''
+
+@export
+def get_native_arch():
+	arch = get_system_arch()
+	if arch == 'x64' and ctypes.sizeof(ctypes.c_void_p) == 4:
+		arch = 'x86'
+	return arch
+
+@export
+def get_system_arch():
+	uname_info = platform.uname()
+	arch = uname_info[4]
+	if has_windll:
+		sysinfo = SYSTEM_INFO()
+		ctypes.windll.kernel32.GetNativeSystemInfo(ctypes.byref(sysinfo))
+		values = {0:'x86', 5:'armle', 6:'IA64', 9:'x64'}
+		arch = values.get(sysinfo.wProcessorArchitecture, uname_info[4])
+	if arch == 'x86_64':
+		arch = 'x64'
+	return arch
 
 @export
 def inet_pton(family, address):
