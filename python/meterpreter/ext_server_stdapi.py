@@ -566,7 +566,7 @@ def get_stat_buffer(path):
 	blocks = 0
 	if hasattr(si, 'st_blocks'):
 		blocks = si.st_blocks
-	st_buf = struct.pack('<IHHH', si.st_dev, min(0xffff, si.st_ino), si.st_mode, si.st_nlink)
+	st_buf = struct.pack('<IHHH', si.st_dev, max(min(0xffff, si.st_ino), 0), si.st_mode, si.st_nlink)
 	st_buf += struct.pack('<HHHI', si.st_uid & 0xffff, si.st_gid & 0xffff, 0, rdev)
 	st_buf += struct.pack('<IIII', si.st_size, long(si.st_atime), long(si.st_mtime), long(si.st_ctime))
 	st_buf += struct.pack('<II', blksize, blocks)
@@ -805,7 +805,9 @@ def stdapi_sys_config_getsid(request, response):
 	if not token:
 		return error_result_windows(), response
 	sid_str = ctypes.c_char_p()
-	if not ctypes.windll.advapi32.ConvertSidToStringSidA(token.User.Sid, ctypes.byref(sid_str)):
+	ConvertSidToStringSid = ctypes.windll.advapi32.ConvertSidToStringSidA
+	ConvertSidToStringSid.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+	if not ConvertSidToStringSid(token.User.Sid, ctypes.byref(sid_str)):
 		return error_result_windows(), response
 	sid_str = str(ctypes.string_at(sid_str))
 	response += tlv_pack(TLV_TYPE_SID, sid_str)
