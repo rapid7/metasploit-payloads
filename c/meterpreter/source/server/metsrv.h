@@ -28,6 +28,7 @@
 #include "../ReflectiveDLLInjection/inject/src/GetProcAddressR.h"
 #include "../ReflectiveDLLInjection/inject/src/LoadLibraryR.h"
 #include "../ReflectiveDLLInjection/dll/src/ReflectiveLoader.h"
+#include "../universal_unhooking/universal_unhooking.h"
 #endif
 
 DWORD server_setup(MetsrvConfig* config);

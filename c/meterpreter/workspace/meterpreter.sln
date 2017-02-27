@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Express 2013 for Windows Desktop
-VisualStudioVersion = 12.0.31101.0
+# Visual Studio 2013
+VisualStudioVersion = 12.0.40629.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "common", "common\common.vcxproj", "{9E4DE963-873F-4525-A7D0-CE34EDBBDCCA}"
 EndProject
@@ -10,6 +10,9 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ext_server_stdapi", "ext_server_stdapi\ext_server_stdapi.vcxproj", "{405245AB-0071-4CB9-BFBE-ED4E2A987EFF}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "metsrv", "metsrv\metsrv.vcxproj", "{37E24F8F-1BD9-490B-8CD2-4768B89E5EAB}"
+	ProjectSection(ProjectDependencies) = postProject
+		{ADCF32A5-F2FC-41D0-BC25-8B3B81D02CBF} = {ADCF32A5-F2FC-41D0-BC25-8B3B81D02CBF}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ReflectiveDLLInjection", "ReflectiveDLLInjection\ReflectiveDLLInjection.vcxproj", "{72F0246A-A38D-4547-9057-46020E8E503D}"
 EndProject
@@ -38,6 +41,8 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ext_server_powershell", "ext_server_powershell\ext_server_powershell.vcxproj", "{28D39E90-259B-4DCE-88A7-7D2B568809DC}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ext_server_winpmem", "ext_server_winpmem\ext_server_winpmem.vcxproj", "{A29BE1E5-5122-4BD4-82CE-25418D29648E}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "universal_unhooking", "universal_unhooking\universal_unhooking.vcxproj", "{ADCF32A5-F2FC-41D0-BC25-8B3B81D02CBF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -335,6 +340,22 @@ Global
 		{A29BE1E5-5122-4BD4-82CE-25418D29648E}.Release|Win32.Build.0 = Release|Win32
 		{A29BE1E5-5122-4BD4-82CE-25418D29648E}.Release|x64.ActiveCfg = Release|x64
 		{A29BE1E5-5122-4BD4-82CE-25418D29648E}.Release|x64.Build.0 = Release|x64
+		{ADCF32A5-F2FC-41D0-BC25-8B3B81D02CBF}.Debug|Win32.ActiveCfg = Release|Win32
+		{ADCF32A5-F2FC-41D0-BC25-8B3B81D02CBF}.Debug|Win32.Build.0 = Release|Win32
+		{ADCF32A5-F2FC-41D0-BC25-8B3B81D02CBF}.Debug|x64.ActiveCfg = Release|x64
+		{ADCF32A5-F2FC-41D0-BC25-8B3B81D02CBF}.Debug|x64.Build.0 = Release|x64
+		{ADCF32A5-F2FC-41D0-BC25-8B3B81D02CBF}.r7_debug|Win32.ActiveCfg = r7_release|Win32
+		{ADCF32A5-F2FC-41D0-BC25-8B3B81D02CBF}.r7_debug|Win32.Build.0 = r7_release|Win32
+		{ADCF32A5-F2FC-41D0-BC25-8B3B81D02CBF}.r7_debug|x64.ActiveCfg = r7_release|x64
+		{ADCF32A5-F2FC-41D0-BC25-8B3B81D02CBF}.r7_debug|x64.Build.0 = r7_release|x64
+		{ADCF32A5-F2FC-41D0-BC25-8B3B81D02CBF}.r7_release|Win32.ActiveCfg = r7_release|Win32
+		{ADCF32A5-F2FC-41D0-BC25-8B3B81D02CBF}.r7_release|Win32.Build.0 = r7_release|Win32
+		{ADCF32A5-F2FC-41D0-BC25-8B3B81D02CBF}.r7_release|x64.ActiveCfg = r7_release|x64
+		{ADCF32A5-F2FC-41D0-BC25-8B3B81D02CBF}.r7_release|x64.Build.0 = r7_release|x64
+		{ADCF32A5-F2FC-41D0-BC25-8B3B81D02CBF}.Release|Win32.ActiveCfg = Release|Win32
+		{ADCF32A5-F2FC-41D0-BC25-8B3B81D02CBF}.Release|Win32.Build.0 = Release|Win32
+		{ADCF32A5-F2FC-41D0-BC25-8B3B81D02CBF}.Release|x64.ActiveCfg = Release|x64
+		{ADCF32A5-F2FC-41D0-BC25-8B3B81D02CBF}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
