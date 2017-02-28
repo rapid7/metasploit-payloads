@@ -923,6 +923,10 @@ class PythonMeterpreter(object):
 		response += tlv_pack(TLV_TYPE_MACHINE_ID, "%s:%s" % (serial, machine_name))
 		return ERROR_SUCCESS, response
 
+	def _core_native_arch(self, request, response):
+		response += tlv_pack(TLV_TYPE_STRING, get_native_arch())
+		return ERROR_SUCCESS, response
+
 	def _core_patch_url(self, request, response):
 		if not isinstance(self.transport, HttpTransport):
 			return ERROR_FAILURE, response
