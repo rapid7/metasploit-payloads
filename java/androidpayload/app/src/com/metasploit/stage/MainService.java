@@ -11,9 +11,6 @@ import java.lang.reflect.Method;
 
 public class MainService extends Service {
 
-    private static final Object contextWaiter = new Object();
-    private static Context context;
-
     private static void findContext() throws Exception {
         Class<?> activityThreadClass;
         try {
@@ -23,27 +20,23 @@ public class MainService extends Service {
             return;
         }
         final Method currentApplication = activityThreadClass.getMethod("currentApplication");
-        context = (Context) currentApplication.invoke(null, (Object[]) null);
+        final Context context = (Context) currentApplication.invoke(null, (Object[]) null);
         if (context == null) {
             // Post to the UI/Main thread and try and retrieve the Context
             final Handler handler = new Handler(Looper.getMainLooper());
             handler.post(new Runnable() {
                 public void run() {
-                    synchronized (contextWaiter) {
-                        try {
-                            context = (Context) currentApplication.invoke(null, (Object[]) null);
-                        } catch (Exception e) {
-                            e.printStackTrace();
+                    try {
+                        Context context = (Context) currentApplication.invoke(null, (Object[]) null);
+                        if (context != null) {
+                            startService(context);
                         }
-                        contextWaiter.notify();
+                    } catch (Exception e) {
                     }
                 }
             });
-            synchronized (contextWaiter) {
-                if (context == null) {
-                    contextWaiter.wait(100);
-                }
-            }
+        } else {
+            startService(context);
         }
     }
 
@@ -52,10 +45,6 @@ public class MainService extends Service {
         try {
             findContext();
         } catch (Exception e) {
-
-        }
-        if (context != null) {
-            startService(context);
         }
     }
 
