@@ -1585,7 +1585,7 @@ def stdapi_railgun_api(request, response):
 	GetModuleHandle = ctypes.windll.kernel32.GetModuleHandleA
 	GetModuleHandle.argtypes = [ctypes.c_char_p]
 	GetModuleHandle.restype = ctypes.c_void_p
-	dll_handle = GetModuleHandle(dll_name)
+	dll_handle = GetModuleHandle(bytes(dll_name, 'UTF-8'))
 
 	prototype = func_type(native, *func_args)
 	func = prototype((func_name, ctypes.WinDLL(dll_name)))
@@ -1609,7 +1609,7 @@ def stdapi_railgun_api(request, response):
 @meterpreter.register_function_windll
 def stdapi_railgun_api_multi(request, response):
 	for group_tlv in packet_enum_tlvs(request, tlv_type=TLV_TYPE_RAILGUN_MULTI_GROUP):
-		group_result = stdapi_railgun_api(group_tlv['value'], '')[1]
+		group_result = stdapi_railgun_api(group_tlv['value'], bytes())[1]
 		response += tlv_pack(TLV_TYPE_RAILGUN_MULTI_GROUP, group_result)
 	return ERROR_SUCCESS, response
 
