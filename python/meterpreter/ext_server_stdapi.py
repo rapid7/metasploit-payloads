@@ -1541,7 +1541,7 @@ def stdapi_railgun_api(request, response):
 	buff_blob_inout = packet_get_tlv(request, TLV_TYPE_RAILGUN_BUFFERBLOB_INOUT)['value']
 	dll_name = packet_get_tlv(request, TLV_TYPE_RAILGUN_DLLNAME)['value']
 	func_name = packet_get_tlv(request, TLV_TYPE_RAILGUN_FUNCNAME)['value']
-	call_conv = packet_get_tlv(request, TLV_TYPE_RAILGUN_CALLCONV)['value']
+	call_conv = packet_get_tlv(request, TLV_TYPE_RAILGUN_CALLCONV).get('value', ('stdcall' if has_windll else 'cdecl'))
 
 	buff_blob_in = bytes_to_ctarray(buff_blob_in)
 	buff_blob_out = (ctypes.c_byte * size_out)()
@@ -1604,6 +1604,13 @@ def stdapi_railgun_api(request, response):
 	response += tlv_pack(TLV_TYPE_RAILGUN_BACK_RET, result)
 	response += tlv_pack(TLV_TYPE_RAILGUN_BACK_BUFFERBLOB_OUT, ctarray_to_bytes(buff_blob_out))
 	response += tlv_pack(TLV_TYPE_RAILGUN_BACK_BUFFERBLOB_INOUT, ctarray_to_bytes(buff_blob_inout))
+	return ERROR_SUCCESS, response
+
+@meterpreter.register_function_windll
+def stdapi_railgun_api_multi(request, response):
+	for group_tlv in packet_enum_tlvs(request, tlv_type=TLV_TYPE_RAILGUN_MULTI_GROUP):
+		group_result = stdapi_railgun_api(group_tlv['value'], '')[1]
+		response += tlv_pack(TLV_TYPE_RAILGUN_MULTI_GROUP, group_result)
 	return ERROR_SUCCESS, response
 
 @meterpreter.register_function_windll
