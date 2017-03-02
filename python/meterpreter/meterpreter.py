@@ -223,6 +223,11 @@ def crc16(data):
 	return reg
 
 @export
+def debug_print(msg):
+	if DEBUGGING:
+		print(msg)
+
+@export
 def error_result(exception=None):
 	if not exception:
 		_, exception, _ = sys.exc_info()
@@ -420,6 +425,7 @@ class STDProcessBuffer(threading.Thread):
 #@export
 class STDProcess(subprocess.Popen):
 	def __init__(self, *args, **kwargs):
+		debug_print('[*] starting process: ' + repr(args[0]))
 		subprocess.Popen.__init__(self, *args, **kwargs)
 		self.echo_protection = False
 
@@ -732,10 +738,6 @@ class PythonMeterpreter(object):
 			self.extension_functions[func[1:]] = getattr(self, func)
 		self.running = True
 
-	def debug_print(self, msg):
-		if DEBUGGING:
-			print(msg)
-
 	def register_extension(self, extension_name):
 		self.last_registered_extension = extension_name
 		return self.last_registered_extension
@@ -753,14 +755,14 @@ class PythonMeterpreter(object):
 		assert(isinstance(channel, (subprocess.Popen, MeterpreterFile, MeterpreterSocket)))
 		idx = self.next_channel_id
 		self.channels[idx] = channel
-		self.debug_print('[*] added channel id: ' + str(idx) + ' type: ' + channel.__class__.__name__)
+		debug_print('[*] added channel id: ' + str(idx) + ' type: ' + channel.__class__.__name__)
 		self.next_channel_id += 1
 		return idx
 
 	def add_process(self, process):
 		idx = self.next_process_id
 		self.processes[idx] = process
-		self.debug_print('[*] added process id: ' + str(idx))
+		debug_print('[*] added process id: ' + str(idx))
 		self.next_process_id += 1
 		return idx
 
@@ -790,10 +792,10 @@ class PythonMeterpreter(object):
 		if new_transport is None:
 			new_transport = self.transport_next()
 		self.transport.deactivate()
-		self.debug_print('[*] changing transport to: ' + new_transport.url)
+		debug_print('[*] changing transport to: ' + new_transport.url)
 		while not new_transport.activate():
 			new_transport = self.transport_next(new_transport)
-			self.debug_print('[*] changing transport to: ' + new_transport.url)
+			debug_print('[*] changing transport to: ' + new_transport.url)
 		self.transport = new_transport
 
 	def transport_next(self, current_transport=None):
@@ -1066,7 +1068,7 @@ class PythonMeterpreter(object):
 		del self.channels[channel_id]
 		if channel_id in self.interact_channels:
 			self.interact_channels.remove(channel_id)
-		self.debug_print('[*] closed and removed channel id: ' + str(channel_id))
+		debug_print('[*] closed and removed channel id: ' + str(channel_id))
 		return ERROR_SUCCESS, response
 
 	def _core_channel_eof(self, request, response):
@@ -1153,21 +1155,21 @@ class PythonMeterpreter(object):
 		if handler_name in self.extension_functions:
 			handler = self.extension_functions[handler_name]
 			try:
-				self.debug_print('[*] running method ' + handler_name)
+				debug_print('[*] running method ' + handler_name)
 				result = handler(request, resp)
 				if result is None:
 					return
 				result, resp = result
 			except Exception:
-				self.debug_print('[-] method ' + handler_name + ' resulted in an error')
+				debug_print('[-] method ' + handler_name + ' resulted in an error')
 				if DEBUGGING:
 					traceback.print_exc(file=sys.stderr)
 				result = error_result()
 			else:
 				if result != ERROR_SUCCESS:
-					self.debug_print('[-] method ' + handler_name + ' resulted in error: #' + str(result))
+					debug_print('[-] method ' + handler_name + ' resulted in error: #' + str(result))
 		else:
-			self.debug_print('[-] method ' + handler_name + ' was requested but does not exist')
+			debug_print('[-] method ' + handler_name + ' was requested but does not exist')
 			result = error_result(NotImplementedError)
 
 		reqid_tlv = packet_get_tlv(request, TLV_TYPE_REQUEST_ID)

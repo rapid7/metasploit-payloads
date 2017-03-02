@@ -1582,6 +1582,7 @@ def stdapi_railgun_api(request, response):
 		else:
 			raise ValueError('unknown argument type: ' + str(arg_type))
 
+	debug_print('[*] railgun calling: ' + dll_name + '.' + func_name)
 	GetModuleHandle = ctypes.windll.kernel32.GetModuleHandleA
 	GetModuleHandle.argtypes = [ctypes.c_char_p]
 	GetModuleHandle.restype = ctypes.c_void_p
