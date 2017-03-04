@@ -153,6 +153,10 @@ if has_ctypes:
 			("Dhcpv6Iaid", ctypes.c_ulong),
 			("FirstDnsSuffix", ctypes.c_void_p)]
 
+	class LASTINPUTINFO(ctypes.Structure):
+		_fields_ = [("cbSize", ctypes.c_uint32),
+			("dwTime", ctypes.c_uint32)]
+
 	class MIB_IFROW(ctypes.Structure):
 		_fields_ = [("wszName", (ctypes.c_wchar * 256)),
 			("dwIndex", ctypes.c_uint32),
@@ -1693,3 +1697,18 @@ def stdapi_registry_unload_key(request, response):
 	base_key = packet_get_tlv(request, TLV_TYPE_BASE_KEY)['value']
 	result = ctypes.windll.advapi32.RegUnLoadKeyA(root_key, base_key)
 	return result, response
+
+@meterpreter.register_function_windll
+def stdapi_ui_get_idle_time(request, response):
+	GetLastInputInfo = ctypes.windll.user32.GetLastInputInfo
+	GetLastInputInfo.argtypes = [ctypes.c_void_p]
+	GetLastInputInfo.restype = ctypes.c_bool
+	info = LASTINPUTINFO()
+	info.cbSize = ctypes.sizeof(LASTINPUTINFO)
+	if not GetLastInputInfo(ctypes.byref(info)):
+		return error_result_windows(), response
+	GetTickCount = ctypes.windll.kernel32.GetTickCount
+	GetTickCount.restype = ctypes.c_uint32
+	idle_time = (GetTickCount() - info.dwTime) / 1000
+	response += tlv_pack(TLV_TYPE_IDLE_TIME, idle_time)
+	return ERROR_SUCCESS, response
