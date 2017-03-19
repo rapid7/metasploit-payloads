@@ -238,6 +238,9 @@ if has_ctypes:
 	class TOKEN_USER(ctypes.Structure):
 		_fields_ = [("User", SID_AND_ATTRIBUTES)]
 
+	class UNIVERSAL_NAME_INFO(ctypes.Structure):
+		_fields_ = [("lpUniversalName", ctypes.c_char_p)]
+
 	#
 	# Linux Structures
 	#
@@ -323,6 +326,14 @@ TLV_TYPE_FILE_PATH             = TLV_META_TYPE_STRING  | 1202
 TLV_TYPE_FILE_MODE             = TLV_META_TYPE_STRING  | 1203
 TLV_TYPE_FILE_SIZE             = TLV_META_TYPE_UINT    | 1204
 TLV_TYPE_FILE_HASH             = TLV_META_TYPE_RAW     | 1206
+
+TLV_TYPE_MOUNT_GROUP           = TLV_META_TYPE_GROUP   | 1207
+TLV_TYPE_MOUNT_NAME            = TLV_META_TYPE_STRING  | 1208
+TLV_TYPE_MOUNT_TYPE            = TLV_META_TYPE_UINT    | 1209
+TLV_TYPE_MOUNT_SPACE_USER      = TLV_META_TYPE_QWORD   | 1210
+TLV_TYPE_MOUNT_SPACE_TOTAL     = TLV_META_TYPE_QWORD   | 1211
+TLV_TYPE_MOUNT_SPACE_FREE      = TLV_META_TYPE_QWORD   | 1212
+TLV_TYPE_MOUNT_UNCPATH         = TLV_META_TYPE_STRING  | 1213
 
 TLV_TYPE_STAT_BUF              = TLV_META_TYPE_COMPLEX | 1220
 
@@ -540,6 +551,10 @@ VER_PLATFORM_WIN32_NT             = 0x0002
 
 WIN_AF_INET  = 2
 WIN_AF_INET6 = 23
+
+UNIVERSAL_NAME_INFO_LEVEL = 1
+
+DRIVE_REMOTE = 4
 
 # Linux Constants
 RTM_GETLINK   = 18
@@ -1233,6 +1248,47 @@ def stdapi_fs_stat(request, response):
 	path = packet_get_tlv(request, TLV_TYPE_FILE_PATH)['value']
 	st_buf = get_stat_buffer(unicode(path))
 	response += tlv_pack(TLV_TYPE_STAT_BUF, st_buf)
+	return ERROR_SUCCESS, response
+
+@meterpreter.register_function
+def stdapi_fs_mount_show(request, response):
+	try:
+		from string import uppercase as letters
+	except ImportError:
+		letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+	k32 = ctypes.windll.kernel32
+	mpr = ctypes.windll.mpr
+	# Retrieves a bitmask representing the currently available disk drives
+	bitmask = k32.GetLogicalDrives()
+	# List of currently available disk drives
+	drives = []
+	for drive_letter in letters:
+		# Check if drive is present
+		if bitmask & 1:
+			drives.append('{drive}:'.format(drive=drive_letter))
+		# Move to next drive letter
+		bitmask >>= 1
+	for drive in drives:
+		drive_type = k32.GetDriveTypeA(drive)
+		mount = bytes()
+		mount += tlv_pack(TLV_TYPE_MOUNT_NAME, drive)
+		mount += tlv_pack(TLV_TYPE_MOUNT_TYPE, drive_type)
+		# Get UNC path for network drives
+		if drive_type == DRIVE_REMOTE:
+			buf = ctypes.create_string_buffer(1024)
+			bufsize = ctypes.c_ulong(1024)
+			if mpr.WNetGetUniversalNameA(drive, UNIVERSAL_NAME_INFO_LEVEL, ctypes.byref(buf), ctypes.byref(bufsize)) == 0:
+				pUniversalNameInfo = cstruct_unpack(UNIVERSAL_NAME_INFO, buf)
+				mount += tlv_pack(TLV_TYPE_MOUNT_UNCPATH, pUniversalNameInfo.lpUniversalName)
+		# Retrieve information about the amount of space that is available on a disk volume
+		user_free_bytes = ctypes.c_ulonglong(0)
+		total_bytes = ctypes.c_ulonglong(0)
+		total_free_bytes = ctypes.c_ulonglong(0)
+		if k32.GetDiskFreeSpaceExA(drive, ctypes.byref(user_free_bytes), ctypes.byref(total_bytes), ctypes.byref(total_free_bytes)):
+			mount += tlv_pack(TLV_TYPE_MOUNT_SPACE_USER, user_free_bytes.value)
+			mount += tlv_pack(TLV_TYPE_MOUNT_SPACE_TOTAL, total_bytes.value)
+			mount += tlv_pack(TLV_TYPE_MOUNT_SPACE_FREE, total_free_bytes.value)
+		response += tlv_pack(TLV_TYPE_MOUNT_GROUP, mount)
 	return ERROR_SUCCESS, response
 
 @meterpreter.register_function
