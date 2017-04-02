@@ -148,3 +148,6 @@ typedef BOOL (WINAPI *f_RegisterRawInputDevices)(
     __in_ecount(uiNumDevices) PCRAWINPUTDEVICE pRawInputDevices,
     __in UINT uiNumDevices,
     __in UINT cbSize);
+
+typedef DWORD (WINAPI *f_QueryFullProcessImageNameW) (HANDLE, DWORD, LPTSTR, PDWORD);
+typedef DWORD (WINAPI *f_GetProcessImageFileNameW) (HANDLE, LPTSTR, DWORD);

