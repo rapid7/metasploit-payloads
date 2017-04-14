@@ -150,6 +150,7 @@ Command customCommands[] =
 	COMMAND_REQ("stdapi_ui_start_keyscan", request_ui_start_keyscan),
 	COMMAND_REQ("stdapi_ui_stop_keyscan", request_ui_stop_keyscan),
 	COMMAND_REQ("stdapi_ui_get_keys", request_ui_get_keys),
+	COMMAND_REQ("stdapi_ui_get_keys_utf8", request_ui_get_keys_utf8),
 	COMMAND_REQ("stdapi_ui_desktop_enum", request_ui_desktop_enum),
 	COMMAND_REQ("stdapi_ui_desktop_get", request_ui_desktop_get),
 	COMMAND_REQ("stdapi_ui_desktop_set", request_ui_desktop_set),
