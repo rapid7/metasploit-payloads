@@ -259,6 +259,12 @@ if has_ctypes:
 			("DataLength", ctypes.c_uint32),
 			("DataOffset", ctypes.c_uint32)]
 
+	class WINHTTP_CURRENT_USER_IE_PROXY_CONFIG(ctypes.Structure):
+		_fields_ = [("fAutoDetect", ctypes.c_bool),
+			("lpszAutoConfigUrl", ctypes.c_wchar_p),
+			("lpszProxy", ctypes.c_wchar_p),
+			("lpszProxyBypass", ctypes.c_wchar_p)]
+
 	#
 	# Linux Structures
 	#
@@ -386,6 +392,14 @@ TLV_TYPE_NETMASK_STRING        = TLV_META_TYPE_STRING  | 1441
 TLV_TYPE_GATEWAY_STRING        = TLV_META_TYPE_STRING  | 1442
 TLV_TYPE_ROUTE_METRIC          = TLV_META_TYPE_UINT    | 1443
 TLV_TYPE_ADDR_TYPE             = TLV_META_TYPE_UINT    | 1444
+
+##
+# Proxy configuration
+##
+TLV_TYPE_PROXY_CFG_AUTODETECT    = TLV_META_TYPE_BOOL    | 1445
+TLV_TYPE_PROXY_CFG_AUTOCONFIGURL = TLV_META_TYPE_STRING  | 1446
+TLV_TYPE_PROXY_CFG_PROXY         = TLV_META_TYPE_STRING  | 1447
+TLV_TYPE_PROXY_CFG_PROXYBYPASS   = TLV_META_TYPE_STRING  | 1448
 
 ##
 # Socket
@@ -1594,6 +1608,21 @@ def stdapi_net_config_get_interfaces_via_windll_mib():
 		iface_info['mtu'] = ifrow.dwMtu
 		interfaces.append(iface_info)
 	return interfaces
+
+@meterpreter.register_function_windll
+def stdapi_net_config_get_proxy(request, response):
+	winhttp = ctypes.windll.winhttp
+	proxyConfig = WINHTTP_CURRENT_USER_IE_PROXY_CONFIG()
+	if not winhttp.WinHttpGetIEProxyConfigForCurrentUser(ctypes.byref(proxyConfig)):
+		return error_result_windows(), response
+	response += tlv_pack(TLV_TYPE_PROXY_CFG_AUTODETECT, proxyConfig.fAutoDetect)
+	if proxyConfig.lpszAutoConfigUrl:
+		response += tlv_pack(TLV_TYPE_PROXY_CFG_AUTOCONFIGURL, proxyConfig.lpszAutoConfigUrl)
+	if proxyConfig.lpszProxy:
+		response += tlv_pack(TLV_TYPE_PROXY_CFG_PROXY, proxyConfig.lpszProxy)
+	if proxyConfig.lpszProxyBypass:
+		response += tlv_pack(TLV_TYPE_PROXY_CFG_PROXYBYPASS, proxyConfig.lpszProxyBypass)
+	return ERROR_SUCCESS, response
 
 @meterpreter.register_function
 def stdapi_net_resolve_host(request, response):
