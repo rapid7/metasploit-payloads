@@ -6,7 +6,7 @@
 metasploit-payloads >
 =====================
 
-This is a new unified repository for different Metasploit Framework payloads, which merges these repositories:
+This is a unified repository for different Metasploit Framework payloads, which merges these repositories:
 
  * [C Windows/Linux Meterpreters][csource]
  * [Java/Android Meterpreters and Payloads][javasource]
@@ -16,8 +16,6 @@ See the individual directories for meterpreter-specific README, build instructio
 
  * [C Windows/Linux Meterpreters][creadme]
  * [Java/Android Meterpreters and Payloads][javareadme]
- * ... more to come ...
-
 
   [csource]: https://github.com/rapid7/meterpreter
   [creadme]: https://github.com/rapid7/metasploit-payloads/tree/master/c/meterpreter
