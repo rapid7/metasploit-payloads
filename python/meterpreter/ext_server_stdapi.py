@@ -241,24 +241,23 @@ if has_ctypes:
 	class UNIVERSAL_NAME_INFO(ctypes.Structure):
 		_fields_ = [("lpUniversalName", ctypes.c_char_p)]
 
-        class EVENTLOGRECORD(ctypes.Structure):
-                _fields_ = [
-                    ("Length", ctypes.c_uint32),
-                    ("Reserved", ctypes.c_uint32),
-                    ("RecordNumber", ctypes.c_uint32),
-                    ("TimeGenerated", ctypes.c_uint32),
-                    ("TimeWritten", ctypes.c_uint32),
-                    ("EventID", ctypes.c_uint32),
-                    ("EventType", ctypes.c_uint16),
-                    ("NumStrings", ctypes.c_uint16),
-                    ("EventCategory", ctypes.c_uint16),
-                    ("ReservedFlags", ctypes.c_uint16),
-                    ("ClosingRecordNumber", ctypes.c_uint32),
-                    ("StringOffset", ctypes.c_uint32),
-                    ("UserSidLength", ctypes.c_uint32),
-                    ("UserSidOffset", ctypes.c_uint32),
-                    ("DataLength", ctypes.c_uint32),
-                    ("DataOffset", ctypes.c_uint32)]
+    class EVENTLOGRECORD(ctypes.Structure):
+        _fields_ = [("Length", ctypes.c_uint32),
+            ("Reserved", ctypes.c_uint32),
+            ("RecordNumber", ctypes.c_uint32),
+            ("TimeGenerated", ctypes.c_uint32),
+            ("TimeWritten", ctypes.c_uint32),
+            ("EventID", ctypes.c_uint32),
+            ("EventType", ctypes.c_uint16),
+            ("NumStrings", ctypes.c_uint16),
+            ("EventCategory", ctypes.c_uint16),
+            ("ReservedFlags", ctypes.c_uint16),
+            ("ClosingRecordNumber", ctypes.c_uint32),
+            ("StringOffset", ctypes.c_uint32),
+            ("UserSidLength", ctypes.c_uint32),
+            ("UserSidOffset", ctypes.c_uint32),
+            ("DataLength", ctypes.c_uint32),
+            ("DataOffset", ctypes.c_uint32)]
 
 	#
 	# Linux Structures
@@ -1131,7 +1130,7 @@ def stdapi_sys_eventlog_read(request, response):
     bytes_needed = ctypes.c_ulong(0)
     if adv32.ReadEventLogW(handle, flags, offset, ctypes.byref(bytes_read), 0, ctypes.byref(bytes_read), ctypes.byref(bytes_needed)):
         return error_result_windows(), response
-    buf = ctypes.create_string_buffer(bytes_needed.value)
+    buf = ctypes.create_unicode_buffer(bytes_needed.value)
     if not adv32.ReadEventLogW(handle, flags, offset, buf, bytes_needed, ctypes.byref(bytes_read), ctypes.byref(bytes_needed)):
         return error_result_windows(), response
     record = cstruct_unpack(EVENTLOGRECORD, buf)
@@ -1361,7 +1360,7 @@ def stdapi_fs_mount_show(request, response):
 		mount += tlv_pack(TLV_TYPE_MOUNT_TYPE, drive_type)
 		# Get UNC path for network drives
 		if drive_type == DRIVE_REMOTE:
-			buf = ctypes.create_string_buffer(1024)
+			buf = ctypes.create_unicode_buffer(1024)
 			bufsize = ctypes.c_ulong(1024)
 			if mpr.WNetGetUniversalNameW(drive, UNIVERSAL_NAME_INFO_LEVEL, ctypes.byref(buf), ctypes.byref(bufsize)) == 0:
 				pUniversalNameInfo = cstruct_unpack(UNIVERSAL_NAME_INFO, buf)
