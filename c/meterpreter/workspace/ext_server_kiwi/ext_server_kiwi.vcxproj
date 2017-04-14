@@ -120,7 +120,7 @@
       <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>Winscard.lib;advapi32.lib;crypt32.lib;cryptdll.lib;dnsapi.lib;msxml2.lib;netapi32.lib;ntdsapi.lib;ole32.lib;oleaut32.lib;rpcrt4.lib;shlwapi.lib;samlib.lib;secur32.lib;shell32.lib;user32.lib;hid.lib;setupapi.lib;wldap32.lib;advapi32.hash.lib;ntdll.min.lib;netapi32.min.lib;backcompat.lib;metsrv.lib;psapi.lib;advapi32.lib;user32.lib;secur32.lib;crypt32.lib;shlwapi.lib;wtsapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>userenv.lib;Winscard.lib;advapi32.lib;crypt32.lib;cryptdll.lib;dnsapi.lib;msxml2.lib;netapi32.lib;ntdsapi.lib;ole32.lib;oleaut32.lib;rpcrt4.lib;shlwapi.lib;samlib.lib;secur32.lib;shell32.lib;user32.lib;hid.lib;setupapi.lib;wldap32.lib;advapi32.hash.lib;ntdll.min.lib;msasn1.min.lib;netapi32.min.lib;winsta.lib;backcompat.lib;metsrv.lib;psapi.lib;advapi32.lib;user32.lib;secur32.lib;crypt32.lib;shlwapi.lib;wtsapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <AdditionalLibraryDirectories>..\..\source\extensions\kiwi\mimikatz\lib\Win32;..\backcompat\$(Configuration);..\metsrv\$(Configuration)\$(Platform);..\..\deps\openssl\lib\win;..\..\source\jpeg-8\lib\win\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <DelayLoadDLLs>metsrv.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
@@ -171,7 +171,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>Winscard.lib;advapi32.lib;crypt32.lib;cryptdll.lib;dnsapi.lib;msxml2.lib;netapi32.lib;ntdsapi.lib;ole32.lib;oleaut32.lib;rpcrt4.lib;shlwapi.lib;samlib.lib;secur32.lib;shell32.lib;user32.lib;hid.lib;setupapi.lib;wldap32.lib;advapi32.hash.lib;ntdll.min.lib;netapi32.min.lib;backcompat.lib;metsrv.lib;psapi.lib;advapi32.lib;user32.lib;secur32.lib;crypt32.lib;shlwapi.lib;wtsapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>userenv.lib;Winscard.lib;advapi32.lib;crypt32.lib;cryptdll.lib;dnsapi.lib;msxml2.lib;netapi32.lib;ntdsapi.lib;ole32.lib;oleaut32.lib;rpcrt4.lib;shlwapi.lib;samlib.lib;secur32.lib;shell32.lib;user32.lib;hid.lib;setupapi.lib;wldap32.lib;advapi32.hash.lib;ntdll.min.lib;msasn1.min.lib;netapi32.min.lib;winsta.lib;backcompat.lib;metsrv.lib;psapi.lib;advapi32.lib;user32.lib;secur32.lib;crypt32.lib;shlwapi.lib;wtsapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <AdditionalLibraryDirectories>..\..\source\extensions\kiwi\mimikatz\lib\Win32;..\backcompat\$(Configuration);..\metsrv\$(Configuration)\$(Platform);..\..\deps\openssl\lib\win;..\..\source\jpeg-8\lib\win\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <DelayLoadDLLs>metsrv.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
@@ -226,7 +226,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>Winscard.lib;advapi32.lib;crypt32.lib;cryptdll.lib;dnsapi.lib;msxml2.lib;netapi32.lib;ntdsapi.lib;ole32.lib;oleaut32.lib;rpcrt4.lib;shlwapi.lib;samlib.lib;secur32.lib;shell32.lib;user32.lib;hid.lib;setupapi.lib;wldap32.lib;advapi32.hash.lib;ntdll.min.lib;netapi32.min.lib;metsrv.lib;psapi.lib;advapi32.lib;user32.lib;secur32.lib;crypt32.lib;shlwapi.lib;wtsapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>userenv.lib;Winscard.lib;advapi32.lib;crypt32.lib;cryptdll.lib;dnsapi.lib;msxml2.lib;netapi32.lib;ntdsapi.lib;ole32.lib;oleaut32.lib;rpcrt4.lib;shlwapi.lib;samlib.lib;secur32.lib;shell32.lib;user32.lib;hid.lib;setupapi.lib;wldap32.lib;advapi32.hash.lib;ntdll.min.lib;msasn1.min.lib;netapi32.min.lib;winsta.lib;metsrv.lib;psapi.lib;advapi32.lib;user32.lib;secur32.lib;crypt32.lib;shlwapi.lib;wtsapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <AdditionalLibraryDirectories>..\..\source\extensions\kiwi\mimikatz\lib\x64;..\backcompat\$(Configuration);..\metsrv\$(Configuration)\$(Platform);..\..\deps\openssl\lib\win;..\..\source\jpeg-8\lib\win\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <DelayLoadDLLs>metsrv.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
@@ -281,7 +281,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>Winscard.lib;advapi32.lib;crypt32.lib;cryptdll.lib;dnsapi.lib;msxml2.lib;netapi32.lib;ntdsapi.lib;ole32.lib;oleaut32.lib;rpcrt4.lib;shlwapi.lib;samlib.lib;secur32.lib;shell32.lib;user32.lib;hid.lib;setupapi.lib;wldap32.lib;advapi32.hash.lib;ntdll.min.lib;netapi32.min.lib;metsrv.lib;psapi.lib;advapi32.lib;user32.lib;secur32.lib;crypt32.lib;shlwapi.lib;wtsapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>userenv.lib;Winscard.lib;advapi32.lib;crypt32.lib;cryptdll.lib;dnsapi.lib;msxml2.lib;netapi32.lib;ntdsapi.lib;ole32.lib;oleaut32.lib;rpcrt4.lib;shlwapi.lib;samlib.lib;secur32.lib;shell32.lib;user32.lib;hid.lib;setupapi.lib;wldap32.lib;advapi32.hash.lib;ntdll.min.lib;msasn1.min.lib;netapi32.min.lib;winsta.lib;metsrv.lib;psapi.lib;advapi32.lib;user32.lib;secur32.lib;crypt32.lib;shlwapi.lib;wtsapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <AdditionalLibraryDirectories>..\..\source\extensions\kiwi\mimikatz\lib\x64;..\backcompat\$(Configuration);..\metsrv\$(Configuration)\$(Platform);..\..\deps\openssl\lib\win;..\..\source\jpeg-8\lib\win\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <DelayLoadDLLs>metsrv.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
@@ -349,6 +349,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_net.c" />
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_privilege.c" />
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_process.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_rpc.c" />
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_service.c" />
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_service_remote.c" />
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_sid.c" />
@@ -395,6 +396,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_bkrp.c" />
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_dpapi-entries.c" />
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_drsr.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_mimicom.c" />
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_ms-bkrp_c.c" />
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_ms-claims.c" />
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_ms-credentialkeys.c" />
@@ -442,6 +444,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_net.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_privilege.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_process.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_rpc.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_service.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_service_remote.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_sid.h" />
@@ -493,6 +496,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_bkrp.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_dpapi-entries.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_drsr.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_mimicom.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_ms-bkrp.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_ms-claims.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_ms-credentialkeys.h" />
