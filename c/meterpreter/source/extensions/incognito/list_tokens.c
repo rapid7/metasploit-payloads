@@ -60,19 +60,19 @@ typedef struct _UNICODE_STRING
 #define SystemHandleInformation                 16
 #define SystemProcessInformation				5
 
-typedef NTSTATUS (WINAPI *NTQUERYSYSTEMINFORMATION)(DWORD SystemInformationClass, 
+typedef NTSTATUS (WINAPI *NTQUERYSYSTEMINFORMATION)(DWORD SystemInformationClass,
                                                     PVOID SystemInformation,
-                                                    DWORD SystemInformationLength, 
+                                                    DWORD SystemInformationLength,
                                                     PDWORD ReturnLength);
 
-typedef NTSTATUS (WINAPI *NTQUERYOBJECT)(HANDLE ObjectHandle, 
-                                         OBJECT_INFORMATION_CLASS ObjectInformationClass, 
+typedef NTSTATUS (WINAPI *NTQUERYOBJECT)(HANDLE ObjectHandle,
+                                         OBJECT_INFORMATION_CLASS ObjectInformationClass,
                                          PVOID ObjectInformation,
-                                         DWORD Length, 
+                                         DWORD Length,
                                          PDWORD ResultLength);
 
 NTQUERYOBJECT              NtQueryObject ;
-NTQUERYSYSTEMINFORMATION   NtQuerySystemInformation; 
+NTQUERYSYSTEMINFORMATION   NtQuerySystemInformation;
 
 LPWSTR         GetObjectInfo(HANDLE hObject, OBJECT_INFORMATION_CLASS objInfoClass);
 
@@ -84,8 +84,8 @@ LPWSTR GetObjectInfo(HANDLE hObject, OBJECT_INFORMATION_CLASS objInfoClass)
    LPWSTR data = NULL;
    DWORD dwSize = sizeof(OBJECT_NAME_INFORMATION);
    POBJECT_NAME_INFORMATION pObjectInfo = (POBJECT_NAME_INFORMATION) malloc(dwSize);
-   
-   NTSTATUS ntReturn = NtQueryObject(hObject, objInfoClass, pObjectInfo, dwSize, &dwSize);   
+
+   NTSTATUS ntReturn = NtQueryObject(hObject, objInfoClass, pObjectInfo, dwSize, &dwSize);
    if((ntReturn == STATUS_BUFFER_OVERFLOW) || (ntReturn == STATUS_INFO_LENGTH_MISMATCH)){
       pObjectInfo =realloc(pObjectInfo ,dwSize);
       ntReturn = NtQueryObject(hObject, objInfoClass, pObjectInfo, dwSize, &dwSize);
@@ -99,9 +99,9 @@ LPWSTR GetObjectInfo(HANDLE hObject, OBJECT_INFORMATION_CLASS objInfoClass)
    return data;
 }
 
-static int compare_token_names(const unique_user_token *a, const unique_user_token *b)
+int compare_token_names(const unique_user_token *a, const unique_user_token *b)
 {
-	return _stricmp(a->username, b->username);
+	return _wcsicmp(a->username, b->username);
 }
 
 SavedToken *get_token_list(DWORD *num_tokens_enum, TOKEN_PRIVS *token_privs)
@@ -115,7 +115,7 @@ SavedToken *get_token_list(DWORD *num_tokens_enum, TOKEN_PRIVS *token_privs)
 
 	LPVOID TokenPrivilegesInfo[BUF_SIZE];
 	DWORD returned_privileges_length, returned_name_length;
-	char privilege_name[BUF_SIZE];
+	wchar_t privilege_name[BUF_SIZE];
 	HANDLE hObject2 = NULL;
 
 	SavedToken *token_list = (SavedToken*)calloc(token_list_size, sizeof(SavedToken));
@@ -223,44 +223,44 @@ SavedToken *get_token_list(DWORD *num_tokens_enum, TOKEN_PRIVS *token_privs)
 										for (j = 0; j < ((TOKEN_PRIVILEGES*)TokenPrivilegesInfo)->PrivilegeCount; j++)
 										{
 											returned_name_length = BUF_SIZE;
-											LookupPrivilegeNameA(NULL, &(((TOKEN_PRIVILEGES*)TokenPrivilegesInfo)->Privileges[j].Luid), privilege_name, &returned_name_length);
-											if (strcmp(privilege_name, "SeAssignPrimaryTokenPrivilege") == 0)
+											LookupPrivilegeNameW(NULL, &(((TOKEN_PRIVILEGES*)TokenPrivilegesInfo)->Privileges[j].Luid), privilege_name, &returned_name_length);
+											if (wcscmp(privilege_name, L"SeAssignPrimaryTokenPrivilege") == 0)
 											{
 												token_privs->SE_ASSIGNPRIMARYTOKEN_PRIVILEGE = TRUE;
 											}
-											else if (strcmp(privilege_name, "SeCreateTokenPrivilege") == 0)
+											else if (wcscmp(privilege_name, L"SeCreateTokenPrivilege") == 0)
 											{
 												token_privs->SE_CREATE_TOKEN_PRIVILEGE = TRUE;
 											}
-											else if (strcmp(privilege_name, "SeTcbPrivilege") == 0)
+											else if (wcscmp(privilege_name, L"SeTcbPrivilege") == 0)
 											{
 												token_privs->SE_TCB_PRIVILEGE = TRUE;
 											}
-											else if (strcmp(privilege_name, "SeTakeOwnershipPrivilege") == 0)
+											else if (wcscmp(privilege_name, L"SeTakeOwnershipPrivilege") == 0)
 											{
 												token_privs->SE_TAKE_OWNERSHIP_PRIVILEGE = TRUE;
 											}
-											else if (strcmp(privilege_name, "SeBackupPrivilege") == 0)
+											else if (wcscmp(privilege_name, L"SeBackupPrivilege") == 0)
 											{
 												token_privs->SE_BACKUP_PRIVILEGE = TRUE;
 											}
-											else if (strcmp(privilege_name, "SeRestorePrivilege") == 0)
+											else if (wcscmp(privilege_name, L"SeRestorePrivilege") == 0)
 											{
 												token_privs->SE_RESTORE_PRIVILEGE = TRUE;
 											}
-											else if (strcmp(privilege_name, "SeDebugPrivilege") == 0)
+											else if (wcscmp(privilege_name, L"SeDebugPrivilege") == 0)
 											{
 												token_privs->SE_DEBUG_PRIVILEGE = TRUE;
 											}
-											else if (strcmp(privilege_name, "SeImpersonatePrivilege") == 0)
+											else if (wcscmp(privilege_name, L"SeImpersonatePrivilege") == 0)
 											{
 												token_privs->SE_IMPERSONATE_PRIVILEGE = TRUE;
 											}
-											else if (strcmp(privilege_name, "SeRelabelPrivilege") == 0)
+											else if (wcscmp(privilege_name, L"SeRelabelPrivilege") == 0)
 											{
 												token_privs->SE_RELABEL_PRIVILEGE = TRUE;
 											}
-											else if (strcmp(privilege_name, "SeLoadDriverPrivilege") == 0)
+											else if (wcscmp(privilege_name, L"SeLoadDriverPrivilege") == 0)
 											{
 												token_privs->SE_LOAD_DRIVER_PRIVILEGE = TRUE;
 											}
@@ -300,44 +300,44 @@ SavedToken *get_token_list(DWORD *num_tokens_enum, TOKEN_PRIVS *token_privs)
 								for (i = 0; i < ((TOKEN_PRIVILEGES*)TokenPrivilegesInfo)->PrivilegeCount; i++)
 								{
 									returned_name_length = BUF_SIZE;
-									LookupPrivilegeNameA(NULL, &(((TOKEN_PRIVILEGES*)TokenPrivilegesInfo)->Privileges[i].Luid), privilege_name, &returned_name_length);
-									if (strcmp(privilege_name, "SeAssignPrimaryTokenPrivilege") == 0)
+									LookupPrivilegeNameW(NULL, &(((TOKEN_PRIVILEGES*)TokenPrivilegesInfo)->Privileges[i].Luid), privilege_name, &returned_name_length);
+									if (wcscmp(privilege_name, L"SeAssignPrimaryTokenPrivilege") == 0)
 									{
 										token_privs->SE_ASSIGNPRIMARYTOKEN_PRIVILEGE = TRUE;
 									}
-									else if (strcmp(privilege_name, "SeCreateTokenPrivilege") == 0)
+									else if (wcscmp(privilege_name, L"SeCreateTokenPrivilege") == 0)
 									{
 										token_privs->SE_CREATE_TOKEN_PRIVILEGE = TRUE;
 									}
-									else if (strcmp(privilege_name, "SeTcbPrivilege") == 0)
+									else if (wcscmp(privilege_name, L"SeTcbPrivilege") == 0)
 									{
 										token_privs->SE_TCB_PRIVILEGE = TRUE;
 									}
-									else if (strcmp(privilege_name, "SeTakeOwnershipPrivilege") == 0)
+									else if (wcscmp(privilege_name, L"SeTakeOwnershipPrivilege") == 0)
 									{
 										token_privs->SE_TAKE_OWNERSHIP_PRIVILEGE = TRUE;
 									}
-									else if (strcmp(privilege_name, "SeBackupPrivilege") == 0)
+									else if (wcscmp(privilege_name, L"SeBackupPrivilege") == 0)
 									{
 										token_privs->SE_BACKUP_PRIVILEGE = TRUE;
 									}
-									else if (strcmp(privilege_name, "SeRestorePrivilege") == 0)
+									else if (wcscmp(privilege_name, L"SeRestorePrivilege") == 0)
 									{
 										token_privs->SE_RESTORE_PRIVILEGE = TRUE;
 									}
-									else if (strcmp(privilege_name, "SeDebugPrivilege") == 0)
+									else if (wcscmp(privilege_name, L"SeDebugPrivilege") == 0)
 									{
 										token_privs->SE_DEBUG_PRIVILEGE = TRUE;
 									}
-									else if (strcmp(privilege_name, "SeImpersonatePrivilege") == 0)
+									else if (wcscmp(privilege_name, L"SeImpersonatePrivilege") == 0)
 									{
 										token_privs->SE_IMPERSONATE_PRIVILEGE = TRUE;
 									}
-									else if (strcmp(privilege_name, "SeRelabelPrivilege") == 0)
+									else if (wcscmp(privilege_name, L"SeRelabelPrivilege") == 0)
 									{
 										token_privs->SE_RELABEL_PRIVILEGE = TRUE;
 									}
-									else if (strcmp(privilege_name, "SeLoadDriverPrivilege") == 0)
+									else if (wcscmp(privilege_name, L"SeLoadDriverPrivilege") == 0)
 									{
 										token_privs->SE_LOAD_DRIVER_PRIVILEGE = TRUE;
 									}
@@ -370,7 +370,7 @@ cleanup:
 void process_user_token(HANDLE token, unique_user_token *uniq_tokens, DWORD *num_tokens, TOKEN_ORDER token_order)
 {
 	DWORD i, j, num_groups = 0;
-	char *full_name, **group_name_array = NULL;
+	wchar_t *full_name, **group_name_array = NULL;
 	BOOL user_exists = FALSE;
 
 	// If token is NULL then return
@@ -382,7 +382,7 @@ void process_user_token(HANDLE token, unique_user_token *uniq_tokens, DWORD *num
 	// Get token user or groups
 	if (token_order == BY_USER)
 	{
-		full_name = calloc(BUF_SIZE, sizeof(char));
+		full_name = calloc(BUF_SIZE, sizeof(wchar_t));
 		num_groups = 1;
 		if (!get_domain_username_from_token(token, full_name))
 		{
@@ -399,13 +399,16 @@ void process_user_token(HANDLE token, unique_user_token *uniq_tokens, DWORD *num
 	{
 		if (token_order == BY_GROUP)
 		{
-			full_name = (char*)group_name_array[i];
+			full_name = group_name_array[i];
 		}
 
 		// Check
-		if (!_stricmp("None", strchr(full_name, '\\') + 1) || !_stricmp("Everyone", strchr(full_name, '\\') + 1)
-			|| !_stricmp("LOCAL", strchr(full_name, '\\') + 1) || !_stricmp("NULL SID", strchr(full_name, '\\') + 1)
-			|| !_stricmp("CONSOLE LOGON", strchr(full_name, '\\') + 1))
+		wchar_t *name = wcschr(full_name, L'\\') + 1;
+		if (!_wcsicmp(L"None", name) ||
+			!_wcsicmp(L"Everyone", name) ||
+			!_wcsicmp(L"LOCAL", name) ||
+			!_wcsicmp(L"NULL SID", name) ||
+			!_wcsicmp(L"CONSOLE LOGON", name))
 		{
 			continue;
 		}
@@ -414,7 +417,7 @@ void process_user_token(HANDLE token, unique_user_token *uniq_tokens, DWORD *num
 		for (j = 0; j < *num_tokens; j++)
 		{
 			// If found then increment the number and set delegation flag if appropriate
-			if (!_stricmp(uniq_tokens[j].username, full_name))
+			if (!_wcsicmp(uniq_tokens[j].username, full_name))
 			{
 				uniq_tokens[j].token_num++;
 				user_exists = TRUE;
@@ -433,7 +436,7 @@ void process_user_token(HANDLE token, unique_user_token *uniq_tokens, DWORD *num
 		// If token user has not been seen yet then create new entry
 		if (!user_exists)
 		{
-			strcpy_s(uniq_tokens[*num_tokens].username, MAX_USERNAME, full_name);
+			wcscpy_s(uniq_tokens[*num_tokens].username, MAX_USERNAME, full_name);
 			uniq_tokens[*num_tokens].token_num = 1;
 			uniq_tokens[*num_tokens].delegation_available = FALSE;
 			uniq_tokens[*num_tokens].impersonation_available = FALSE;
