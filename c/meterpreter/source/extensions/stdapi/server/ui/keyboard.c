@@ -291,7 +291,8 @@ DWORD request_ui_get_keys_utf8(Remote *remote, Packet *request)
 
 	if (tKeyScan) {
 		utf8_keyscan_buf = wchar_to_utf8(g_keyscan_buf);
-		packet_add_tlv_raw(response, TLV_TYPE_KEYS_DUMP, (LPVOID)utf8_keyscan_buf, strlen(utf8_keyscan_buf) + 1);
+		packet_add_tlv_raw(response, TLV_TYPE_KEYS_DUMP, (LPVOID)utf8_keyscan_buf,
+			(DWORD)strlen(utf8_keyscan_buf) + 1);
 		memset(g_keyscan_buf, 0, KEYBUFSIZE);
 
 		// reset index and zero active window string so the current one
