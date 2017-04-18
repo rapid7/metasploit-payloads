@@ -239,7 +239,7 @@ if has_ctypes:
 		_fields_ = [("User", SID_AND_ATTRIBUTES)]
 
 	class UNIVERSAL_NAME_INFO(ctypes.Structure):
-		_fields_ = [("lpUniversalName", ctypes.c_char_p)]
+		_fields_ = [("lpUniversalName", ctypes.c_wchar_p)]
 
 	class EVENTLOGRECORD(ctypes.Structure):
 		_fields_ = [("Length", ctypes.c_uint32),
