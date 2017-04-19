@@ -746,6 +746,12 @@ class PythonMeterpreter(object):
 		self.extension_functions[func.__name__] = func
 		return func
 
+	def register_function_if(self, condition):
+		if condition:
+			return self.register_function
+		else:
+			return lambda function: function
+
 	def register_function_windll(self, func):
 		if has_windll:
 			self.register_function(func)
