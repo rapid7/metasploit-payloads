@@ -1807,13 +1807,13 @@ def _win_memwrite(address, data, handle=-1):
 		return None
 	return written.value
 
-@register_function_if(has_windll)
+@register_function_if(sys.platform.startswith('linux') or has_windll)
 def stdapi_railgun_api(request, response):
 	size_out = packet_get_tlv(request, TLV_TYPE_RAILGUN_SIZE_OUT)['value']
 	stack_blob = packet_get_tlv(request, TLV_TYPE_RAILGUN_STACKBLOB)['value']
 	buff_blob_in = packet_get_tlv(request, TLV_TYPE_RAILGUN_BUFFERBLOB_IN)['value']
 	buff_blob_inout = packet_get_tlv(request, TLV_TYPE_RAILGUN_BUFFERBLOB_INOUT)['value']
-	dll_name = packet_get_tlv(request, TLV_TYPE_RAILGUN_DLLNAME)['value']
+	lib_name = packet_get_tlv(request, TLV_TYPE_RAILGUN_DLLNAME)['value']
 	func_name = packet_get_tlv(request, TLV_TYPE_RAILGUN_FUNCNAME)['value']
 	call_conv = packet_get_tlv(request, TLV_TYPE_RAILGUN_CALLCONV).get('value', ('stdcall' if has_windll else 'cdecl'))
 
@@ -1829,18 +1829,19 @@ def stdapi_railgun_api(request, response):
 		fmt = 'QQ'
 	else:
 		raise RuntimeError('unknown sizeof(void *)')
+	fmt_size = struct.calcsize(fmt)
 
 	if call_conv.lower() == 'cdecl':
 		func_type = ctypes.CFUNCTYPE
-	elif call_conv.lower() == 'stdcall':
+	elif call_conv.lower() == 'stdcall' and hasattr(ctypes, 'WINFUNCTYPE'):
 		func_type = ctypes.WINFUNCTYPE
 	else:
 		raise ValueError('unknown calling convention')
 
 	call_args = []
 	func_args = []
-	for pos in range(0, len(stack_blob), struct.calcsize(fmt)):
-		arg_type, arg = struct.unpack(fmt, stack_blob[pos:pos + struct.calcsize(fmt)])
+	for pos in range(0, len(stack_blob), fmt_size):
+		arg_type, arg = struct.unpack(fmt, stack_blob[pos:pos + fmt_size])
 		if arg_type == 0:    # literal
 			call_args.append(arg)
 			func_args.append(native)
@@ -1856,23 +1857,38 @@ def stdapi_railgun_api(request, response):
 		else:
 			raise ValueError('unknown argument type: ' + str(arg_type))
 
-	debug_print('[*] railgun calling: ' + dll_name + '.' + func_name)
-	GetModuleHandle = ctypes.windll.kernel32.GetModuleHandleA
-	GetModuleHandle.argtypes = [ctypes.c_char_p]
-	GetModuleHandle.restype = ctypes.c_void_p
-	dll_handle = GetModuleHandle(bytes(dll_name, 'UTF-8'))
+	debug_print('[*] railgun calling: ' + lib_name + '!' + func_name)
 
 	prototype = func_type(native, *func_args)
-	func = prototype((func_name, ctypes.WinDLL(dll_name)))
-	result = func(*call_args)
-
-	last_error = ctypes.windll.kernel32.GetLastError()
-	error_message = _win_format_message(dll_handle, last_error)
-	if error_message is None:
-		if last_error == ERROR_SUCCESS:
-			error_message = 'The operation completed successfully.'
-		else:
-			error_message = 'FormatMessage failed to retrieve the error.'
+	if sys.platform.startswith('linux'):
+		libc = ctypes.cdll.LoadLibrary('libc.so.6')
+		p_errno = ctypes.cast(libc.errno, ctypes.POINTER(ctypes.c_int))
+		errno = p_errno.contents
+		last_error = ctypes.c_int(0)
+		p_errno.contents = last_error
+		func = prototype((func_name, ctypes.CDLL(lib_name)))
+		result = func(*call_args)
+		p_errno.contents = errno
+		last_error = last_error.value
+		libc.strerror.argtypes = [ctypes.c_int]
+		libc.strerror.restype = ctypes.c_char_p
+		error_message = libc.strerror(last_error)
+	elif has_windll:
+		func = prototype((func_name, ctypes.WinDLL(lib_name)))
+		result = func(*call_args)
+		GetModuleHandle = ctypes.windll.kernel32.GetModuleHandleA
+		GetModuleHandle.argtypes = [ctypes.c_char_p]
+		GetModuleHandle.restype = ctypes.c_void_p
+		lib_handle = GetModuleHandle(bytes(lib_name, 'UTF-8'))
+		last_error = ctypes.windll.kernel32.GetLastError()
+		error_message = _win_format_message(lib_handle, last_error)
+		if error_message is None:
+			if last_error == ERROR_SUCCESS:
+				error_message = 'The operation completed successfully.'
+			else:
+				error_message = 'FormatMessage failed to retrieve the error.'
+	else:
+		raise RuntimeError('unknown platform')
 
 	response += tlv_pack(TLV_TYPE_RAILGUN_BACK_ERR, last_error)
 	response += tlv_pack(TLV_TYPE_RAILGUN_BACK_MSG, error_message)
@@ -1881,7 +1897,7 @@ def stdapi_railgun_api(request, response):
 	response += tlv_pack(TLV_TYPE_RAILGUN_BACK_BUFFERBLOB_INOUT, ctarray_to_bytes(buff_blob_inout))
 	return ERROR_SUCCESS, response
 
-@register_function_if(has_windll)
+@register_function_if(sys.platform.startswith('linux') or has_windll)
 def stdapi_railgun_api_multi(request, response):
 	for group_tlv in packet_enum_tlvs(request, tlv_type=TLV_TYPE_RAILGUN_MULTI_GROUP):
 		group_result = stdapi_railgun_api(group_tlv['value'], bytes())[1]
@@ -1892,6 +1908,7 @@ def stdapi_railgun_api_multi(request, response):
 def stdapi_railgun_memread(request, response):
 	address = packet_get_tlv(request, TLV_TYPE_RAILGUN_MEM_ADDRESS)['value']
 	length = packet_get_tlv(request, TLV_TYPE_RAILGUN_MEM_LENGTH)['value']
+	debug_print('[*] railgun reading ' + str(length) + ' bytes from 0x' + hex(address))
 	if sys.platform.startswith('linux'):
 		result = _linux_memread(address, length)
 	elif has_windll:
@@ -1908,6 +1925,7 @@ def stdapi_railgun_memwrite(request, response):
 	address = packet_get_tlv(request, TLV_TYPE_RAILGUN_MEM_ADDRESS)['value']
 	data = packet_get_tlv(request, TLV_TYPE_RAILGUN_MEM_DATA)['value']
 	length = packet_get_tlv(request, TLV_TYPE_RAILGUN_MEM_LENGTH)['value']
+	debug_print('[*] railgun writing ' + str(len(data)) + ' bytes to 0x' + hex(address))
 	if sys.platform.startswith('linux'):
 		result = _linux_memwrite(address, data)
 	elif has_windll:
