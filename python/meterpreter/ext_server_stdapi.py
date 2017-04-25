@@ -260,7 +260,7 @@ if has_ctypes:
 		_fields_ = [("lpUniversalName", ctypes.c_wchar_p)]
 
 	class WINHTTP_CURRENT_USER_IE_PROXY_CONFIG(ctypes.Structure):
-		_fields_ = [("fAutoDetect", ctypes.c_bool),
+		_fields_ = [("fAutoDetect", ctypes.c_int8),
 			("lpszAutoConfigUrl", ctypes.c_wchar_p),
 			("lpszProxy", ctypes.c_wchar_p),
 			("lpszProxyBypass", ctypes.c_wchar_p)]
@@ -615,12 +615,19 @@ def register_function_if(condition):
 	else:
 		return lambda function: function
 
+def byref_at(obj, offset=0):
+	address = ctypes.addressof(obj) + offset
+	return ctypes.pointer(type(obj).from_address(address))
+
 def bytes_to_ctarray(bytes_):
 	ctarray = (ctypes.c_byte * len(bytes_))()
 	ctypes.memmove(ctypes.byref(ctarray), bytes_, len(bytes_))
 	return ctarray
 
 def ctarray_to_bytes(ctarray):
+	if not len(ctarray):
+		# work around a bug in v3.1 & v3.2 that results in a segfault when len(ctarray) == 0
+		return bytes()
 	bytes_ = buffer(ctarray) if sys.version_info[0] < 3 else bytes(ctarray)
 	return bytes_[:]
 
@@ -1363,10 +1370,7 @@ def stdapi_fs_stat(request, response):
 
 @register_function_if(has_windll)
 def stdapi_fs_mount_show(request, response):
-	try:
-		from string import uppercase as letters
-	except ImportError:
-		letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+	letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 	k32 = ctypes.windll.kernel32
 	mpr = ctypes.windll.mpr
 	# Retrieves a bitmask representing the currently available disk drives
@@ -1376,7 +1380,7 @@ def stdapi_fs_mount_show(request, response):
 	for drive_letter in letters:
 		# Check if drive is present
 		if bitmask & 1:
-			drives.append(u'{drive}:'.format(drive=drive_letter))
+			drives.append(drive_letter + ':')
 		# Move to next drive letter
 		bitmask >>= 1
 	for drive in drives:
@@ -1624,16 +1628,16 @@ def stdapi_net_config_get_interfaces_via_windll_mib():
 @register_function_if(has_windll)
 def stdapi_net_config_get_proxy(request, response):
 	winhttp = ctypes.windll.winhttp
-	proxyConfig = WINHTTP_CURRENT_USER_IE_PROXY_CONFIG()
-	if not winhttp.WinHttpGetIEProxyConfigForCurrentUser(ctypes.byref(proxyConfig)):
+	proxy_config = WINHTTP_CURRENT_USER_IE_PROXY_CONFIG()
+	if not winhttp.WinHttpGetIEproxy_configForCurrentUser(ctypes.byref(proxy_config)):
 		return error_result_windows(), response
-	response += tlv_pack(TLV_TYPE_PROXY_CFG_AUTODETECT, proxyConfig.fAutoDetect)
-	if proxyConfig.lpszAutoConfigUrl:
-		response += tlv_pack(TLV_TYPE_PROXY_CFG_AUTOCONFIGURL, proxyConfig.lpszAutoConfigUrl)
-	if proxyConfig.lpszProxy:
-		response += tlv_pack(TLV_TYPE_PROXY_CFG_PROXY, proxyConfig.lpszProxy)
-	if proxyConfig.lpszProxyBypass:
-		response += tlv_pack(TLV_TYPE_PROXY_CFG_PROXYBYPASS, proxyConfig.lpszProxyBypass)
+	response += tlv_pack(TLV_TYPE_PROXY_CFG_AUTODETECT, proxy_config.fAutoDetect)
+	if proxy_config.lpszAutoConfigUrl:
+		response += tlv_pack(TLV_TYPE_PROXY_CFG_AUTOCONFIGURL, proxy_config.lpszAutoConfigUrl)
+	if proxy_config.lpszProxy:
+		response += tlv_pack(TLV_TYPE_PROXY_CFG_PROXY, proxy_config.lpszProxy)
+	if proxy_config.lpszProxyBypass:
+		response += tlv_pack(TLV_TYPE_PROXY_CFG_PROXYBYPASS, proxy_config.lpszProxyBypass)
 	return ERROR_SUCCESS, response
 
 @register_function
@@ -1846,19 +1850,18 @@ def stdapi_railgun_api(request, response):
 			call_args.append(arg)
 			func_args.append(native)
 		elif arg_type == 1:  # relative to in
-			call_args.append(ctypes.byref(buff_blob_in, arg))
+			call_args.append(byref_at(buff_blob_in, arg))
 			func_args.append(ctypes.c_void_p)
 		elif arg_type == 2:  # relative to out
-			call_args.append(ctypes.byref(buff_blob_out, arg))
+			call_args.append(byref_at(buff_blob_out, arg))
 			func_args.append(ctypes.c_void_p)
 		elif arg_type == 3:  # relative to inout
-			call_args.append(ctypes.byref(buff_blob_inout, arg))
+			call_args.append(byref_at(buff_blob_inout, arg))
 			func_args.append(ctypes.c_void_p)
 		else:
 			raise ValueError('unknown argument type: ' + str(arg_type))
 
 	debug_print('[*] railgun calling: ' + lib_name + '!' + func_name)
-
 	prototype = func_type(native, *func_args)
 	if sys.platform.startswith('linux'):
 		libc = ctypes.cdll.LoadLibrary('libc.so.6')
@@ -2174,7 +2177,7 @@ def stdapi_registry_unload_key(request, response):
 def stdapi_ui_get_idle_time(request, response):
 	GetLastInputInfo = ctypes.windll.user32.GetLastInputInfo
 	GetLastInputInfo.argtypes = [ctypes.c_void_p]
-	GetLastInputInfo.restype = ctypes.c_bool
+	GetLastInputInfo.restype = ctypes.c_int8
 	info = LASTINPUTINFO()
 	info.cbSize = ctypes.sizeof(LASTINPUTINFO)
 	if not GetLastInputInfo(ctypes.byref(info)):

