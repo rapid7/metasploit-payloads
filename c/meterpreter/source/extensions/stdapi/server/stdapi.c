@@ -196,10 +196,10 @@ DWORD InitServerExtension(Remote *remote)
 	if (KernelHandleM)
 	{
 		typedef DWORD(WINAPI * ThreadErrorMSG)(DWORD, DWORD *);
-		typedef DWORD(WINAPI * ThreadMSG)(DWORD);
+		typedef DWORD(WINAPI * ErrorMSG)(DWORD);
 		ThreadErrorMSG SetThreadErrorModeReal;
-		ThreadMSG SetErrorModeReal;
-		SetErrorModeReal = (ThreadMSG)GetProcAddress(KernelHandleM, "SetErrorMode");
+		ErrorMSG SetErrorModeReal;
+		SetErrorModeReal = (ErrorMSG)GetProcAddress(KernelHandleM, "SetErrorMode");
 		SetThreadErrorModeReal = (ThreadErrorMSG)GetProcAddress(KernelHandleM, "SetThreadErrorMode");
 		if (SetErrorModeReal)
 		{
