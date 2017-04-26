@@ -192,20 +192,22 @@ DWORD InitServerExtension(Remote *remote)
 #endif
 {
 #ifdef _WIN32
-	HANDLE KernelHandleM = GetModuleHandle("kernel32.dll");
+	HMODULE KernelHandleM = GetModuleHandleW(L"kernel32.dll");
 	if (KernelHandleM)
 	{
-		FARPROC(WINAPI*SetThreadErrorModeReal)(DWORD, DWORD *);
-		FARPROC(WINAPI*SetErrorModeReal)(DWORD, DWORD *);
-		SetThreadErrorModeReal = GetProcAddress(KernelHandleM, "SetThreadErrorMode");
-		if (SetThreadErrorModeReal)
-		{
-			SetThreadErrorMode(SEM_FAILCRITICALERRORS, NULL);
-		}
-		SetErrorModeReal = GetProcAddress(KernelHandleM, "SetErrorMode");
+		typedef DWORD(WINAPI * ThreadErrorMSG)(DWORD, DWORD *);
+		typedef DWORD(WINAPI * ThreadMSG)(DWORD);
+		ThreadErrorMSG SetThreadErrorModeReal;
+		ThreadMSG SetErrorModeReal;
+		SetErrorModeReal = (ThreadMSG)GetProcAddress(KernelHandleM, "SetErrorMode");
+		SetThreadErrorModeReal = (ThreadErrorMSG)GetProcAddress(KernelHandleM, "SetThreadErrorMode");
 		if (SetErrorModeReal)
 		{
-			SetErrorMode(SEM_FAILCRITICALERRORS);
+			SetErrorModeReal(SEM_FAILCRITICALERRORS);
+		}
+		if (SetThreadErrorModeReal)
+		{
+			SetThreadErrorModeReal(SEM_FAILCRITICALERRORS, NULL);
 		}
 	}
 	hMetSrv = remote->met_srv;
