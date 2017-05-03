@@ -865,12 +865,33 @@ static DWORD server_dispatch_http(Remote* remote, THREAD* dispatchThread)
 
 				// we also need to patch the new URI into the original transport URL, not just the currently
 				// active URI for comms. If we don't, then migration behaves badly.
-				// Start by locating the start of the URI in the current URL, by finding the third slash
-				wchar_t* csr = transport->url + wcslen(transport->url) - 2;
-				while (*csr != L'/')
+				// The URL looks like this:  http(s)://<domain-or-ip>:port/lurivalue/UUIDJUNK/
+				// Start by locating the start of the URI in the current URL, by finding the third slash,
+				// as this value includes the LURI
+				wchar_t* csr = transport->url;
+				for (int i = 0; i < 3; ++i)
 				{
-					--csr;
+					// We need to move to the next character first in case
+					// we are currently pointing at the previously found /
+					// we know we're safe skipping the first character in the whole
+					// URL because that'll be part of the scheme (ie. 'h' in http)
+					++csr;
+
+					while (*csr != L'\0' && *csr != L'/')
+					{
+						++csr;
+					}
+
+					dprintf("[DISPATCH] %d csr: %p -> %S", i, csr, csr);
+
+					// this shouldn't happen!
+					if (*csr == L'\0')
+					{
+						break;
+					}
 				}
+
+				// the pointer that we have will be 
 				dprintf("[DISPATCH] Pointer is at: %p -> %S", csr, csr);
 
 				// patch in the new URI
