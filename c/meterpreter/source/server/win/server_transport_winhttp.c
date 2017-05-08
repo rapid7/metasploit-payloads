@@ -51,18 +51,27 @@ static HINTERNET get_request_winhttp(HttpTransportContext *ctx, BOOL isGet, cons
 				dprintf("[PROXY] Proxy: %S", ieConfig.lpszProxy);
 				dprintf("[PROXY] Proxy Bypass: %S", ieConfig.lpszProxyBypass);
 
-				if (ieConfig.lpszAutoConfigUrl)
+				if (ieConfig.lpszAutoConfigUrl || ieConfig.fAutoDetect)
 				{
 					WINHTTP_AUTOPROXY_OPTIONS autoProxyOpts = { 0 };
 					WINHTTP_PROXY_INFO proxyInfo = { 0 };
 
-					dprintf("[PROXY] IE config set to autodetect with URL %S", ieConfig.lpszAutoConfigUrl);
+					if (ieConfig.fAutoDetect)
+					{
+						dprintf("[PROXY] IE config set to autodetect with DNS or DHCP");
 
-					autoProxyOpts.dwFlags = WINHTTP_AUTOPROXY_AUTO_DETECT | WINHTTP_AUTOPROXY_CONFIG_URL;
-					autoProxyOpts.dwAutoDetectFlags = WINHTTP_AUTO_DETECT_TYPE_DHCP | WINHTTP_AUTO_DETECT_TYPE_DNS_A;
+						autoProxyOpts.dwFlags = WINHTTP_AUTOPROXY_AUTO_DETECT;
+						autoProxyOpts.dwAutoDetectFlags = WINHTTP_AUTO_DETECT_TYPE_DHCP | WINHTTP_AUTO_DETECT_TYPE_DNS_A;
+					}
+					else
+					{
+						dprintf("[PROXY] IE config set to autodetect with URL %S", ieConfig.lpszAutoConfigUrl);
+
+						autoProxyOpts.dwFlags = WINHTTP_AUTOPROXY_CONFIG_URL;
+						autoProxyOpts.lpszAutoConfigUrl = ieConfig.lpszAutoConfigUrl;
+					}
+
 					autoProxyOpts.fAutoLogonIfChallenged = TRUE;
-					autoProxyOpts.lpszAutoConfigUrl = ieConfig.lpszAutoConfigUrl;
-
 					if (WinHttpGetProxyForUrl(ctx->internet, ctx->url, &autoProxyOpts, &proxyInfo))
 					{
 						ctx->proxy_for_url = malloc(sizeof(WINHTTP_PROXY_INFO));
