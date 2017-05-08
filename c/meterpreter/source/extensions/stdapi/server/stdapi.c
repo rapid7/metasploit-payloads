@@ -192,6 +192,7 @@ DWORD InitServerExtension(Remote *remote)
 #endif
 {
 #ifdef _WIN32
+	SetErrorMode(SEM_FAILCRITICALERRORS);
 	hMetSrv = remote->met_srv;
 #endif
 	command_register_all(customCommands);
