@@ -20,6 +20,8 @@ Gem::Specification.new do |spec|
   spec.executables   = []
   spec.require_paths = ['lib']
 
+  spec.required_ruby_version = '>= 2.2.0'
+
   # NOTE: I had to comment out all the metadata sections because, for some reason,
   # my local installation of ruby/rake seems to think that metadata isn't valid.
   # I get the following error:
