@@ -1,11 +1,14 @@
 # Metasploit Payloads
 
 This gem is a Metasploit-specific gem that contains all of the
-Meterpreter payloads. This is made up of:
+Meterpreter payloads (except for Mettle). This is made up of:
 
 * Windows DLLs
 * Java Classes
 * PHP/Python Scripts
+
+Mettle, the Native Linux / Posix payload, currently is developed at
+https://github.com/rapid7/mettle (to be moved here at some point?)
 
 ## Installation
 
