@@ -59,12 +59,10 @@ typedef struct _ClipboardCaptureList
 /*! @brief Container for clipboard monitor state. */
 typedef struct _ClipboardState
 {
-#ifdef _WIN32
 	char cbWindowClass[256];           ///! Name to use for the window class when registering the message-only window (usually random).
 	HWND hClipboardWindow;             ///! Handle to the clipboard monitor window.
 	HWND hNextViewer;                  ///! Handle to the next window in the clipboard chain.
 	ClipboardCaptureList captureList;  ///! List of clipboard captures.
-#endif
 	BOOL bRunning;                     ///! Indicates if the thread is running or not.
 	EVENT* hResponseEvent;             ///! Handle to the event that signals when the thread has actioned the caller's request.
 	EVENT* hPauseEvent;                ///! Signalled when the caller wants the thread to pause.
@@ -77,8 +75,6 @@ typedef struct _ClipboardState
 static ClipboardState* gClipboardState = NULL;
 /*! @brief Flag indicating initialision status of the clipboard state. */
 static BOOL gClipboardInitialised = FALSE;
-
-#ifdef _WIN32
 
 /*! @brief GlobalAlloc function pointer type. */
 typedef HGLOBAL(WINAPI * PGLOBALALLOC)(UINT uFlags, SIZE_T dwBytes);
@@ -145,7 +141,6 @@ static PSETCLIPBOARDDATA pSetClipboardData = NULL;
  */
 DWORD initialise_clipboard()
 {
-#ifdef _WIN32
 	DWORD dwResult;
 	HMODULE hKernel32 = NULL;
 	HMODULE hUser32 = NULL;
@@ -259,9 +254,6 @@ DWORD initialise_clipboard()
 	} while (0);
 
 	return dwResult;
-#else
-	return ERROR_NOT_SUPPORTED;
-#endif
 }
 
 /*!
@@ -773,7 +765,7 @@ LRESULT WINAPI clipboard_monitor_window_proc(HWND hWnd, UINT uMsg, WPARAM wParam
 
 		return 0;
 
-	case WM_CHANGECBCHAIN: 
+	case WM_CHANGECBCHAIN:
 		dprintf("[EXTAPI CLIPBOARD] received WM_CHANGECBCHAIN %x", hWnd);
 		pState = (ClipboardState*)GetWindowLongPtrA(hWnd, GWLP_USERDATA);
 
@@ -830,7 +822,7 @@ LRESULT WINAPI clipboard_monitor_window_proc(HWND hWnd, UINT uMsg, WPARAM wParam
 	case WM_DESTROY:
 		dprintf("[EXTAPI CLIPBOARD] received WM_DESTROY %x", hWnd);
 		pState = (ClipboardState*)GetWindowLongPtrA(hWnd, GWLP_USERDATA);
-		ChangeClipboardChain(hWnd, pState->hNextViewer); 
+		ChangeClipboardChain(hWnd, pState->hNextViewer);
 
 		return 0;
 
@@ -920,7 +912,6 @@ DWORD destroy_clipboard_monitor_window(ClipboardState* pState)
 
 	return dwResult;
 }
-#endif
 
 /*!
  * @brief Handle the request to get the data from the clipboard.
@@ -937,7 +928,6 @@ DWORD destroy_clipboard_monitor_window(ClipboardState* pState)
  */
 DWORD request_clipboard_get_data(Remote *remote, Packet *packet)
 {
-#ifdef _WIN32
 	DWORD dwResult;
 	ClipboardCapture* pCapture = NULL;
 	BOOL bDownload = FALSE;
@@ -974,9 +964,6 @@ DWORD request_clipboard_get_data(Remote *remote, Packet *packet)
 	}
 
 	return dwResult;
-#else
-	return ERROR_NOT_SUPPORTED;
-#endif
 }
 
 /*!
@@ -992,7 +979,6 @@ DWORD request_clipboard_get_data(Remote *remote, Packet *packet)
  */
 DWORD request_clipboard_set_data(Remote *remote, Packet *packet)
 {
-#ifdef _WIN32
 	DWORD dwResult;
 	PCHAR lpClipString;
 	HGLOBAL hClipboardData;
@@ -1064,9 +1050,6 @@ DWORD request_clipboard_set_data(Remote *remote, Packet *packet)
 	packet_transmit_empty_response(remote, packet, dwResult);
 
 	return dwResult;
-#else
-	return ERROR_NOT_SUPPORTED;
-#endif
 }
 
 /*!
@@ -1077,7 +1060,6 @@ DWORD request_clipboard_set_data(Remote *remote, Packet *packet)
  */
 DWORD THREADCALL clipboard_monitor_thread_func(THREAD * thread)
 {
-#ifdef _WIN32
 	DWORD dwResult;
 	BOOL bTerminate = FALSE;
 	HANDLE waitableHandles[3] = {0};
@@ -1153,9 +1135,6 @@ DWORD THREADCALL clipboard_monitor_thread_func(THREAD * thread)
 	} while (0);
 
 	return dwResult;
-#else
-	return ERROR_NOT_SUPPORTED;
-#endif
 }
 
 /*!
@@ -1199,7 +1178,6 @@ VOID destroy_clipboard_monitor_state(ClipboardState** ppState)
  */
 DWORD request_clipboard_monitor_start(Remote *remote, Packet *packet)
 {
-#ifdef _WIN32
 	DWORD dwResult = ERROR_SUCCESS;
 	ClipboardState* pState = NULL;
 	char* lpClassName = NULL;
@@ -1287,9 +1265,6 @@ DWORD request_clipboard_monitor_start(Remote *remote, Packet *packet)
 	packet_transmit_empty_response(remote, packet, dwResult);
 
 	return dwResult;
-#else
-	return ERROR_NOT_SUPPORTED;
-#endif
 }
 
 /*!
@@ -1332,7 +1307,6 @@ DWORD clipboard_monitor_resume(ClipboardState* pState)
  */
 DWORD request_clipboard_monitor_pause(Remote *remote, Packet *packet)
 {
-#ifdef _WIN32
 	DWORD dwResult = ERROR_SUCCESS;
 
 	do
@@ -1350,9 +1324,6 @@ DWORD request_clipboard_monitor_pause(Remote *remote, Packet *packet)
 	packet_transmit_empty_response(remote, packet, dwResult);
 
 	return dwResult;
-#else
-	return ERROR_NOT_SUPPORTED;
-#endif
 }
 
 /*!
@@ -1363,7 +1334,6 @@ DWORD request_clipboard_monitor_pause(Remote *remote, Packet *packet)
  */
 DWORD request_clipboard_monitor_resume(Remote *remote, Packet *packet)
 {
-#ifdef _WIN32
 	DWORD dwResult = ERROR_SUCCESS;
 
 	do
@@ -1381,9 +1351,6 @@ DWORD request_clipboard_monitor_resume(Remote *remote, Packet *packet)
 	packet_transmit_empty_response(remote, packet, dwResult);
 
 	return dwResult;
-#else
-	return ERROR_NOT_SUPPORTED;
-#endif
 }
 
 /*!
@@ -1394,7 +1361,6 @@ DWORD request_clipboard_monitor_resume(Remote *remote, Packet *packet)
  */
 DWORD request_clipboard_monitor_stop(Remote *remote, Packet *packet)
 {
-#ifdef _WIN32
 	DWORD dwResult = ERROR_SUCCESS;
 	BOOL bDump = TRUE;
 	BOOL bIncludeImages = TRUE;
@@ -1421,7 +1387,7 @@ DWORD request_clipboard_monitor_stop(Remote *remote, Packet *packet)
 			dprintf("[EXTAPI CLIPBOARD] Brutally terminating the thread for not responding fast enough");
 			thread_kill(gClipboardState->hThread);
 		}
-		
+
 		if (bDump)
 		{
 			dump_clipboard_capture_list(pResponse, &gClipboardState->captureList, bIncludeImages, TRUE);
@@ -1434,9 +1400,6 @@ DWORD request_clipboard_monitor_stop(Remote *remote, Packet *packet)
 	packet_transmit_response(dwResult, remote, pResponse);
 
 	return dwResult;
-#else
-	return ERROR_NOT_SUPPORTED;
-#endif
 }
 
 /*!
@@ -1447,7 +1410,6 @@ DWORD request_clipboard_monitor_stop(Remote *remote, Packet *packet)
  */
 DWORD request_clipboard_monitor_dump(Remote *remote, Packet *packet)
 {
-#ifdef _WIN32
 	DWORD dwResult = ERROR_SUCCESS;
 	BOOL bIncludeImages = TRUE;
 	BOOL bPurge = TRUE;
@@ -1479,9 +1441,6 @@ DWORD request_clipboard_monitor_dump(Remote *remote, Packet *packet)
 	packet_transmit_response(dwResult, remote, pResponse);
 
 	return dwResult;
-#else
-	return ERROR_NOT_SUPPORTED;
-#endif
 }
 
 /*!
@@ -1492,7 +1451,6 @@ DWORD request_clipboard_monitor_dump(Remote *remote, Packet *packet)
  */
 DWORD request_clipboard_monitor_purge(Remote *remote, Packet *packet)
 {
-#ifdef _WIN32
 	DWORD dwResult = ERROR_SUCCESS;
 	BOOL bIncludeImages = TRUE;
 	BOOL bPurge = TRUE;
@@ -1515,7 +1473,4 @@ DWORD request_clipboard_monitor_purge(Remote *remote, Packet *packet)
 	packet_transmit_response(dwResult, remote, pResponse);
 
 	return dwResult;
-#else
-	return ERROR_NOT_SUPPORTED;
-#endif
 }

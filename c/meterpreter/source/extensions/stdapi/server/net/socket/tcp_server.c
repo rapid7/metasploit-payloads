@@ -5,7 +5,6 @@
 #include "precomp.h"
 #include "tcp.h"
 
-#ifdef _WIN32
 #include <ws2tcpip.h>
 
 // These fields aren't defined unless the SDK version is set to something old enough.
@@ -16,10 +15,6 @@
 #endif
 #ifndef in6addr_any
 extern IN6_ADDR in6addr_any;
-#endif
-
-#else
-typedef struct sockaddr_in6 SOCKADDR_IN6;
 #endif
 
 /*!

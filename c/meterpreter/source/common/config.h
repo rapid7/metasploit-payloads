@@ -14,11 +14,8 @@
 #define PROXY_USER_SIZE 64
 #define PROXY_PASS_SIZE 64
 
-#ifdef _WIN32
 typedef wchar_t CHARTYPE;
-#else
-typedef char CHARTYPE;
-#endif
+
 typedef CHARTYPE* STRTYPE;
 typedef CHARTYPE const * CSTRTYPE;
 

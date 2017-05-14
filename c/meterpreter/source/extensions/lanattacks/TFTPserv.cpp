@@ -121,7 +121,7 @@ void TFTPserv::dispatchRequest(sockaddr_in &from, string buf)
 			(*transfer)["timeout"] = 3;
 			(*transfer)["lastSent"] = 0;
 			(*transfer)["retries"] = 0;
-			
+
 			//process_options
 			processOptions((struct sockaddr *)&from, sizeof(sockaddr_in), buf, *transfer, (unsigned int)(newSpot + 1));
 
@@ -395,10 +395,6 @@ int TFTPserv::run()
 		}
 	}
 
-#ifdef WIN32
 	closesocket(smellySock);
-#else
-	close(smellySock);
-#endif
 	return 0;
 }

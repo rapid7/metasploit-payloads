@@ -1,8 +1,3 @@
-#### Build Status
-
- * `master` Windows x86 and x64: [![Windows Meterpreter Build Status](https://ci.metasploit.com/buildStatus/icon?job=metasploit-payloads-win)](https://ci.metasploit.com/job/metasploit-payloads-win/)
- * `master` Linux x86: [![Linux Meterpreter Build Status](https://travis-ci.org/rapid7/metasploit-payloads.svg)](https://travis-ci.org/rapid7/metasploit-payloads)
-
 metasploit-payloads >
 =====================
 
@@ -11,6 +6,9 @@ This is a unified repository for different Metasploit Framework payloads, which 
  * [C Windows/Linux Meterpreters][csource]
  * [Java/Android Meterpreters and Payloads][javasource]
  * [Python/PHP Meterpreters][frameworksource]
+
+The Native Linux / Posix payload, Mettle, currently is developed at
+https://github.com/rapid7/mettle (to be moved here at some point?)
 
 See the individual directories for meterpreter-specific README, build instructions and license details:
 

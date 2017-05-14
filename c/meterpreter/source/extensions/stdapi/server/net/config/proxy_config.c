@@ -1,6 +1,5 @@
 #include "precomp.h"
 
-#ifdef _WIN32
 typedef struct
 {
     BOOL    fAutoDetect;
@@ -12,7 +11,6 @@ typedef struct
 typedef BOOL (WINAPI * PWINHTTPGETIEPROXYCONFIGFORCURRENTUSER)(
 	WINHTTP_CURRENT_USER_IE_PROXY_CONFIG *pProxyConfig
 );
-#endif
 
 /*!
  * @brief Get the current Internet Explorer proxy configuration.
@@ -30,7 +28,6 @@ DWORD request_net_config_get_proxy_config(Remote *remote, Packet *packet)
 	DWORD dwResult = ERROR_NOT_SUPPORTED;
 	Packet *response = packet_create_response(packet);
 
-#ifdef _WIN32
 	HMODULE hWinHttp = NULL;
 	PWINHTTPGETIEPROXYCONFIGFORCURRENTUSER pProxyFun = NULL;
 	WINHTTP_CURRENT_USER_IE_PROXY_CONFIG proxyConfig;
@@ -76,9 +73,6 @@ DWORD request_net_config_get_proxy_config(Remote *remote, Packet *packet)
 	if (hWinHttp != NULL) {
 		FreeLibrary(hWinHttp);
 	}
-#else
-	// no support for this on "nix"
-#endif
 
 	packet_transmit_response(dwResult, remote, response);
 

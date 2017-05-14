@@ -10,21 +10,21 @@ typedef struct networkpug {
 	char *interface;
 
 	// is this pug active
-	volatile int active;		
+	volatile int active;
 
 	// pcap structure
-	// from a quick look at pcap-linux.c, pcap_inject_linux, we do not need 
+	// from a quick look at pcap-linux.c, pcap_inject_linux, we do not need
 	// any locking to serialize access.
-	pcap_t *pcap;		
+	pcap_t *pcap;
 
 	// thread for handling recieving packets / sending to server
-	THREAD *thread;		
+	THREAD *thread;
 
 	// XXX, do something with this. Stats on close?
 	volatile int pkts_seen, pkts_injected;
 
 	Channel *channel;
-	Remote *remote;	
+	Remote *remote;
 
 	unsigned char *packet_stream;
 	size_t packet_stream_length;
@@ -67,7 +67,7 @@ void packet_handler(u_char *user, const struct pcap_pkthdr *h, const u_char *byt
 	// based stream, but that's a lot more work, plus would probably require significant
 	// changes on the ruby side.
 
-	tmp = realloc(np->packet_stream, np->packet_stream_length + plussize + 4); // +4 - padding 
+	tmp = realloc(np->packet_stream, np->packet_stream_length + plussize + 4); // +4 - padding
 	if(tmp == NULL) {
 		// memory issues? we could revert to stack, but let's drop it on the floor
 		// for now.
@@ -163,20 +163,20 @@ void free_networkpug(NetworkPug *np, int close_channel, int destroy_channel)
 	}
 
 	dprintf("np: %p is %sactive, thread: %p, channel: %p, interface: %p, pcap: %p",
-		np, np->active ? "" : "non-", np->thread, np->channel, np->interface, 
+		np, np->active ? "" : "non-", np->thread, np->channel, np->interface,
 		np->pcap);
 
 	/*
 	 * There are probably some possible race conditions present here.
 	 * If another thread is in write/pcap inject, etc.
-	 * 
+	 *
 	 * Hopefully setting np->active = 0 early on and handling recieve thread
 	 * first will prevent any possible issues. No guarantees, however
 	 */
 
 
 	cont = __atomic_swap(0, &np->active);
-	
+
 	if(! cont) {
 		dprintf("Seems the pug at %p was already set free", &np);
 		return;
@@ -196,7 +196,7 @@ void free_networkpug(NetworkPug *np, int close_channel, int destroy_channel)
 		if(close_channel == TRUE) {
 			// Tell the remote side we've shut down for now.
 			channel_close(np->channel, np->remote, NULL, 0, NULL);
-		} 
+		}
 
 		if(destroy_channel == TRUE) {
 			// the channel handler code will destroy it.
@@ -204,7 +204,7 @@ void free_networkpug(NetworkPug *np, int close_channel, int destroy_channel)
 			// and calling abort :~(
 			channel_destroy(np->channel, NULL);
 		}
-	}	
+	}
 
 	if(np->interface) {
 		free(np->interface);
@@ -214,10 +214,10 @@ void free_networkpug(NetworkPug *np, int close_channel, int destroy_channel)
 		pcap_close(np->pcap);
 	}
 
-	memset(np, 0, sizeof(NetworkPug));	
+	memset(np, 0, sizeof(NetworkPug));
 
 	dprintf("after memset ;\\ np: %p is %sactive, thread: %p, channel: %p, interface: %p, pcap: %p",
-		np, np->active ? "" : "non-", np->thread, np->channel, np->interface, 
+		np, np->active ? "" : "non-", np->thread, np->channel, np->interface,
 		np->pcap);
 
 }
@@ -229,8 +229,8 @@ NetworkPug *find_networkpug(char *interface)
 	dprintf("Looking for %s", interface);
 
 	for(idx = 0; idx < MAX_PUGS; idx++) {
-		if(pugs[idx].active) 
-			if(! strcmp(pugs[idx].interface, interface)) 
+		if(pugs[idx].active)
+			if(! strcmp(pugs[idx].interface, interface))
 				return &pugs[idx];
 	}
 
@@ -253,7 +253,7 @@ DWORD networkpug_channel_write(Channel *channel, Packet *request,
 	*bytesWritten = bufferSize; // XXX, can't do anything if it fails really
 
 	__atomic_inc(&(np->pkts_injected));
-	
+
 	return ERROR_SUCCESS;
 }
 
@@ -310,7 +310,7 @@ DWORD request_networkpug_start(Remote *remote, Packet *packet)
 		if(! interface) {
 			dprintf("No interface specified, bailing");
 			break;
-		
+
 		}
 
 		np = find_networkpug(interface);
@@ -325,7 +325,7 @@ DWORD request_networkpug_start(Remote *remote, Packet *packet)
 		np->pcap = pcap_open_live(interface, MAX_MTU, 1, 1000, errbuf);
 		// xxx, add in filter support
 		np->thread = thread_create((THREADFUNK) networkpug_thread, np, remote, NULL);
-		
+
 		chops.native.context = np;
 		chops.native.write = networkpug_channel_write;
 		chops.native.close = networkpug_channel_close;
@@ -366,7 +366,7 @@ DWORD request_networkpug_start(Remote *remote, Packet *packet)
 
 			break;
 		}
-	
+
 		channel_set_type(np->channel, "networkpug");
 		packet_add_tlv_uint(response, TLV_TYPE_CHANNEL_ID, channel_get_id(np->channel));
 		np->active = 1;
@@ -403,12 +403,12 @@ DWORD request_networkpug_stop(Remote *remote, Packet *packet)
 
 		if(! interface) {
 			dprintf("No interface specified, bailing");
-			break;	
+			break;
 		}
 
 		dprintf("Shutting down %s", interface);
 
-		np = find_networkpug(interface);	// if close is called, it will fail. 
+		np = find_networkpug(interface);	// if close is called, it will fail.
 
 		if(np == NULL) {
 			dprintf("[%s] Unable to find interface", interface);
@@ -420,15 +420,15 @@ DWORD request_networkpug_stop(Remote *remote, Packet *packet)
 
 		result = ERROR_SUCCESS;
 	} while(0);
-	
+
 	lock_release(pug_lock);
 
 	packet_transmit_response(result, remote, response);
 
-	return ERROR_SUCCESS;	
+	return ERROR_SUCCESS;
 }
 
-Command customCommands[] = 
+Command customCommands[] =
 {
 	COMMAND_REQ("networkpug_start", request_networkpug_start),
 	COMMAND_REQ("networkpug_stop", request_networkpug_stop),
@@ -438,11 +438,7 @@ Command customCommands[] =
 /*
  * Initialize the server extension
  */
-#ifdef _WIN32
 DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
-#else
-DWORD InitServerExtension(Remote *remote)
-#endif
 {
 	int peername_len;
 	struct sockaddr peername;
@@ -489,9 +485,9 @@ DWORD InitServerExtension(Remote *remote)
 			return ERROR_INVALID_PARAMETER;
 	}
 
-	asprintf(&packet_filter, "not (ip%s host %s and tcp port %d)", 
-			peername4 ? "" : "6", 
-			buf, 
+	asprintf(&packet_filter, "not (ip%s host %s and tcp port %d)",
+			peername4 ? "" : "6",
+			buf,
 			port
 	);
 
@@ -507,16 +503,12 @@ DWORD InitServerExtension(Remote *remote)
 /*
  * Deinitialize the server extension
  */
-#ifdef _WIN32
 DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
-#else
-DWORD DeinitServerExtension(Remote *remote)
-#endif
 {
 	command_deregister_all(customCommands);
 
 	free(packet_filter);
-	
+
 	lock_destroy(pug_lock);
 
 	return ERROR_SUCCESS;
@@ -528,16 +520,8 @@ DWORD DeinitServerExtension(Remote *remote)
  * @param bufferSize Size of the \c buffer parameter.
  * @return Indication of success or failure.
  */
-#ifdef _WIN32
 DWORD __declspec(dllexport) GetExtensionName(char* buffer, int bufferSize)
-#else
-DWORD GetExtensionName(char* buffer, int bufferSize)
-#endif
 {
-#ifdef _WIN32
 	strncpy_s(buffer, bufferSize, "networkpug", bufferSize - 1);
-#else
-	strncpy(buffer, "networkpug", bufferSize - 1);
-#endif
 	return ERROR_SUCCESS;
 }

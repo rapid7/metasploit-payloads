@@ -31,8 +31,6 @@ struct connection_table {
 	struct connection_entry table[0];
 };
 
-#ifdef _WIN32
-
 /*
  * check if there is enough place for another connection entry and allocate some more
  * memory if necessary
@@ -150,7 +148,7 @@ ULONG Reserved);
 /*
  * retrieve tcp table for win 2000 and NT4 ?
  */
-DWORD windows_get_tcp_table_win2000_down(struct connection_table **table_connection)
+DWORD get_tcp_table_win2000_down(struct connection_table **table_connection)
 {
 	PMIB_TCPTABLE pTcpTable = NULL;
 	struct connection_entry * current_connection;
@@ -215,7 +213,7 @@ DWORD windows_get_tcp_table_win2000_down(struct connection_table **table_connect
 /*
  * retrieve tcp table for win xp and up
  */
-DWORD windows_get_tcp_table(struct connection_table **table_connection)
+DWORD get_tcp_table(struct connection_table **table_connection)
 {
 	DWORD result = ERROR_SUCCESS;
 	struct connection_entry * current_connection = NULL;
@@ -232,7 +230,7 @@ DWORD windows_get_tcp_table(struct connection_table **table_connection)
 
 	// systems that don't support GetExtendedTcpTable
 	if (gett == NULL) {
-		return windows_get_tcp_table_win2000_down(table_connection);
+		return get_tcp_table_win2000_down(table_connection);
 	}
 	do {
 		// IPv4 part
@@ -335,7 +333,7 @@ DWORD windows_get_tcp_table(struct connection_table **table_connection)
 /*
  * retrieve udp table for win 2000 and NT4 ?
  */
-DWORD windows_get_udp_table_win2000_down(struct connection_table **table_connection)
+DWORD get_udp_table_win2000_down(struct connection_table **table_connection)
 {
 	PMIB_UDPTABLE pUdpTable = NULL;
 	struct connection_entry * current_connection;
@@ -396,7 +394,7 @@ DWORD windows_get_udp_table_win2000_down(struct connection_table **table_connect
 /*
  * retrieve udp table for win xp and up
  */
-DWORD windows_get_udp_table(struct connection_table **table_connection)
+DWORD get_udp_table(struct connection_table **table_connection)
 {
 	DWORD result = ERROR_SUCCESS;
 	struct connection_entry * current_connection = NULL;
@@ -412,7 +410,7 @@ DWORD windows_get_udp_table(struct connection_table **table_connection)
 
 	// systems that don't support GetExtendedUdpTable
 	if (geut == NULL) {
-		return windows_get_udp_table_win2000_down(table_connection);
+		return get_udp_table_win2000_down(table_connection);
 	}
 	do {
 		// IPv4 part
@@ -502,7 +500,7 @@ DWORD windows_get_udp_table(struct connection_table **table_connection)
 
 
 
-DWORD windows_get_connection_table(Remote *remote, Packet *response)
+DWORD get_connection_table(Remote *remote, Packet *response)
 {
 	struct connection_table *table_connection = NULL;
 	struct connection_entry * current_connection;
@@ -513,11 +511,11 @@ DWORD windows_get_connection_table(Remote *remote, Packet *response)
 	table_connection = (struct connection_table *)calloc(sizeof(struct connection_table) + 10 * sizeof(struct connection_entry), 1);
 	table_connection->max_entries = 10;
 
-	dwRetVal = windows_get_tcp_table(&table_connection);
+	dwRetVal = get_tcp_table(&table_connection);
 	if (dwRetVal == ERROR_NOT_ENOUGH_MEMORY)
 		return ERROR_NOT_ENOUGH_MEMORY;
 
-	dwRetVal = windows_get_udp_table(&table_connection);
+	dwRetVal = get_udp_table(&table_connection);
 	if (dwRetVal == ERROR_NOT_ENOUGH_MEMORY)
 		return ERROR_NOT_ENOUGH_MEMORY;
 
@@ -576,303 +574,6 @@ DWORD windows_get_connection_table(Remote *remote, Packet *response)
 	return ERROR_SUCCESS;
 }
 
-#else
-
-#include <sys/types.h>
-#include <dirent.h>
-
-char *tcp_connection_states[] = {
-   "", "ESTABLISHED", "SYN_SENT", "SYN_RECV", "FIN_WAIT1", "FIN_WAIT2", "TIME_WAIT",
-   "CLOSED", "CLOSE_WAIT", "LAST_ACK", "LISTEN", "CLOSING", "UNKNOWN"
-};
-char *udp_connection_states[] = {
-   "", "ESTABLISHED", "", "", "", "", "", "", "", "", "", "", "UNKNOWN"
-};
-
-
-DWORD linux_parse_proc_net_file(char * filename, struct connection_table ** table_connection, char type, char * protocol, char tableidx )
-{
-	struct connection_table * tmp_table;
-	struct connection_entry * current_connection;
-	char ** connection_states;
-	FILE * fd;
-	char buffer[300], buffer_junk[100];
-	__u32 local_addr, remote_addr;
-	__u128 local_addr6, remote_addr6;
-	__u32 local_port, remote_port;
-	__u32 state, uid, inode;
-	__u32 newsize;
-
-	fd = fopen(filename, "r");
-	if (fd == NULL)
-		return -1;
-
-	if (tableidx == 0) // TCP states
-		connection_states = tcp_connection_states;
-	else // UDP states
-		connection_states = udp_connection_states;
-
-	 /*
-         * read first line that we don't need
-	 * sl  local_address  remote_address   st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode
-         */
-        while (!feof(fd) && fgetc(fd) != '\n');
-	while (!feof(fd) && (fgets(buffer, sizeof(buffer), fd) != NULL)) {
-		if ((*table_connection)->entries >= (*table_connection)->max_entries) {
-			newsize = sizeof(struct connection_table);
-			newsize += ((*table_connection)->entries + 10) * sizeof(struct connection_entry);
-			tmp_table = realloc(*table_connection, newsize);
-			*table_connection = tmp_table;
-			memset(&(*table_connection)->table[(*table_connection)->entries], 0, 10 * sizeof(struct connection_entry));
-			(*table_connection)->max_entries += 10;
-		}
-
-		current_connection = &(*table_connection)->table[(*table_connection)->entries];
-
-		if (type == AF_INET) {
-			if (sscanf(buffer, " %*u: %lX:%x %lX:%x %x %*X:%*X %*x:%*X %*x %u %*u %u %[^\n] ", &local_addr, &local_port,
-				&remote_addr, &remote_port, &state, &uid, &inode, buffer_junk) == 8) {
-
-				current_connection->local_addr.addr  = local_addr;
-				current_connection->remote_addr.addr = remote_addr;
-			}
-			else
-				continue;
-		}
-		else { // AF_INET6
-			if (sscanf(buffer, " %*u: %08X%08X%08X%08X:%x %08X%08x%08X%08X:%x %x %*X:%*X %*x:%*X %*x %u %*u %u %[^\n] ", &local_addr6.a1,
-				&local_addr6.a2,&local_addr6.a3, &local_addr6.a4, &local_port, &remote_addr6.a1, &remote_addr6.a2, &remote_addr6.a3,
-				&remote_addr6.a4,&remote_port, &state, &uid, &inode, buffer_junk) == 14) {
-				memcpy(&current_connection->local_addr.addr6,  &local_addr6, sizeof(__u128));
-				memcpy(&current_connection->remote_addr.addr6, &remote_addr6, sizeof(__u128));
-			}
-			else
-				continue;
-		}
-
-		current_connection->type        = type;
-		current_connection->local_port  = local_port;
-		current_connection->remote_port = remote_port;
-		current_connection->uid         = uid;
-		current_connection->inode       = inode;
-		// protocol such as tcp/tcp6/udp/udp6
-		strncpy((char*)current_connection->protocol, protocol,	sizeof(current_connection->protocol) - 1);
-		if ((state < 0) && (state > 11))
-			state = 12; // points to UNKNOWN in the table
-
-		// state, number to string : 0x0A --> LISTEN
-		strncpy((char*)current_connection->state, connection_states[state], sizeof(current_connection->state) - 1);
-
-		// initialize every program_name to "-", will be changed if we find the good info in /proc
-		strncpy((char*)current_connection->program_name, "-", sizeof(current_connection->program_name) - 1);
-
-		(*table_connection)->entries++;
-	}
-	fclose(fd);
-	return 0;
-}
-
-DWORD linux_proc_get_program_name(struct connection_entry * connection, unsigned char * pid)
-{
-	FILE *fd;
-	char buffer[30], buffer_file[256], name[256];
-	char * bname;
-	int do_status = 0;
-
-	do {
-		// try /proc/PID/cmdline first
-		snprintf(buffer, sizeof(buffer)-1, "/proc/%s/cmdline", pid);
-		fd = fopen(buffer, "r");
-
-		// will try /proc/PID/status
-		if (fd == NULL) {
-			do_status = 1;
-			break;
-		}
-		if (fgets(buffer_file, sizeof(buffer_file), fd) == NULL) {
-			do_status = 1;
-			break;
-		}
-		// each entry in cmdline is seperated by '\0' so buffer_file contains first the path of the executable launched
-		if ((bname = basename(buffer_file)) == NULL) {
-			do_status = 1;
-			break;
-		}
-		// copy basename into name to be consistent at the end
-		strncpy(name, bname, sizeof(name)-1);
-		name[sizeof(name)-1] = '\0';
-
-	} while (0);
-
-	if (fd != NULL)
-		fclose(fd);
-
-
-	// /proc/PID/cmdline failed, try /proc/PID/status
-	if (do_status == 1) {
-		snprintf(buffer, sizeof(buffer)-1, "/proc/%s/status", pid);
-		fd = fopen(buffer, "r");
-
-		// will try /proc/PID/status
-		if (fd == NULL) 
-			return -1;
-
-		if (fgets(buffer_file, sizeof(buffer_file), fd) == NULL) {
-      			fclose(fd);
-			return -1;
-		}
-
-		if (sscanf(buffer_file, "Name: %200s\n", name) != 1) {
-	      		fclose(fd);
-			return -1;
-		}
-		fclose(fd);
-	
-	} 
-
-	snprintf(connection->program_name, sizeof(connection->program_name), "%s/%s", pid, name);
-	return 0;
-}
-
-struct connection_entry * find_connection(struct connection_table * table_connection, __u32 inode)
-{
-	__u32 i;
-	for( i = 0 ; i < table_connection->entries ; i++) {
-		if (table_connection->table[i].inode == inode)
-			return &table_connection->table[i];
-	}
-	return NULL;
-}
-
-DWORD linux_proc_fill_program_name(struct connection_table * table_connection)
-{
-	char buffer[60];
-	struct dirent *procent, *fdent;
-	DIR * procfd, * pidfd;
-	struct stat stat_buf;
-	struct connection_entry * connection;
-
-	procfd = opendir("/proc");
-	if (procfd == NULL)
-		return -1;
-	while ((procent = readdir(procfd)) != NULL) {
-		// not a pid directory
-		if (!isdigit(*(procent->d_name)))
-			continue;
-
-		snprintf(buffer, sizeof(buffer), "/proc/%s/fd/", procent->d_name);
-		if ((pidfd = opendir(buffer)) == NULL)
-			continue;
-
-		while((fdent = readdir(pidfd)) != NULL) {
-
-			snprintf(buffer, sizeof(buffer), "/proc/%s/fd/%s", procent->d_name, fdent->d_name);
-			if (stat(buffer, &stat_buf) < 0)
-            			continue;
-			if (!S_ISSOCK(stat_buf.st_mode))
-				continue;
-			// ok, FD is a socket, search if we have it in our list
-			if ((connection = find_connection(table_connection, stat_buf.st_ino)) != NULL)
-				linux_proc_get_program_name(connection, procent->d_name);
-		}
-		closedir(pidfd);
-	}
-	closedir(procfd);
-	return 0;
-}
-
-
-DWORD linux_proc_get_connection_table(struct connection_table ** table_connection)
-{
-	*table_connection = calloc(sizeof(struct connection_table) + 10 * sizeof(struct connection_entry), 1);
-	(*table_connection)->max_entries = 10;
-
-	linux_parse_proc_net_file("/proc/net/tcp" , table_connection, AF_INET , "tcp",  0);
-	linux_parse_proc_net_file("/proc/net/tcp6", table_connection, AF_INET6, "tcp6", 0);
-	linux_parse_proc_net_file("/proc/net/udp" , table_connection, AF_INET , "udp",  1);
-	linux_parse_proc_net_file("/proc/net/udp6", table_connection, AF_INET6, "udp6", 1);
-
-	// fill the PID/program_name part
-	linux_proc_fill_program_name(*table_connection);
-
-	return ERROR_SUCCESS;
-}
-
-DWORD linux_get_connection_table(Remote *remote, Packet *response)
-{
-	struct connection_table *table_connection = NULL;
-	__u32 local_port_be, remote_port_be, uid_be, inode_be;
-	__u32 index;
-	DWORD result;
-
-	dprintf("getting connection list through /proc/net");
-	result = linux_proc_get_connection_table(&table_connection);
-	dprintf("result = %d, table_connection = 0x%p , entries : %d", result, table_connection, table_connection->entries);
-
-	for(index = 0; index < table_connection->entries; index++) {
-		Tlv connection[9];
-		if (table_connection->table[index].type == AF_INET) {
-			connection[0].header.type      = TLV_TYPE_LOCAL_HOST_RAW;
-			connection[0].header.length    = sizeof(__u32);
-			connection[0].buffer           = (PUCHAR)&table_connection->table[index].local_addr.addr;
-
-			connection[1].header.type      = TLV_TYPE_PEER_HOST_RAW;
-			connection[1].header.length    = sizeof(__u32);
-			connection[1].buffer           = (PUCHAR)&table_connection->table[index].remote_addr.addr;
-		}
-		else {
-			connection[0].header.type      = TLV_TYPE_LOCAL_HOST_RAW;
-			connection[0].header.length    = sizeof(__u128);
-			connection[0].buffer           = (PUCHAR)&table_connection->table[index].local_addr.addr6;
-
-			connection[1].header.type      = TLV_TYPE_PEER_HOST_RAW;
-			connection[1].header.length    = sizeof(__u128);
-			connection[1].buffer           = (PUCHAR)&table_connection->table[index].remote_addr.addr6;
-		}
-
-		local_port_be = htonl(table_connection->table[index].local_port & 0x0000ffff);
-		connection[2].header.type      = TLV_TYPE_LOCAL_PORT;
-		connection[2].header.length    = sizeof(__u32);
-		connection[2].buffer           = (PUCHAR)&local_port_be;
-
-		remote_port_be = htonl(table_connection->table[index].remote_port & 0x0000ffff);
-		connection[3].header.type      = TLV_TYPE_PEER_PORT;
-		connection[3].header.length    = sizeof(__u32);
-		connection[3].buffer           = (PUCHAR)&remote_port_be;
-
-		connection[4].header.type      = TLV_TYPE_MAC_NAME;
-		connection[4].header.length    = strlen(table_connection->table[index].protocol) + 1;
-		connection[4].buffer           = (PUCHAR)(table_connection->table[index].protocol);
-
-		connection[5].header.type      = TLV_TYPE_SUBNET_STRING;
-		connection[5].header.length    = strlen(table_connection->table[index].state) + 1;
-		connection[5].buffer           = (PUCHAR)(table_connection->table[index].state);
-
-		uid_be = htonl(table_connection->table[index].uid);
-		connection[6].header.type      = TLV_TYPE_PID;
-		connection[6].header.length    = sizeof(__u32);
-		connection[6].buffer           = (PUCHAR)&uid_be;
-
-		inode_be = htonl(table_connection->table[index].inode);
-		connection[7].header.type      = TLV_TYPE_ROUTE_METRIC;
-		connection[7].header.length    = sizeof(__u32);
-		connection[7].buffer           = (PUCHAR)&inode_be;
-
-		connection[8].header.type      = TLV_TYPE_PROCESS_NAME;
-		connection[8].header.length    = strlen(table_connection->table[index].program_name) + 1;
-		connection[8].buffer           = (PUCHAR)(table_connection->table[index].program_name);
-
-		packet_add_tlv_group(response, TLV_TYPE_NETSTAT_ENTRY, connection, 9);
-	}
-	dprintf("sent %d connections", table_connection->entries);
-
-	if (table_connection)
-		free(table_connection);
-
-}
-
-#endif
-
 /*
  * Returns zero or more connection entries to the requestor from the connection list
  */
@@ -881,11 +582,7 @@ DWORD request_net_config_get_netstat(Remote *remote, Packet *packet)
 	Packet *response = packet_create_response(packet);
 	DWORD result;
 
-#ifdef _WIN32
-	result = windows_get_connection_table(remote, response);
-#else
-	result = linux_get_connection_table(remote, response);
-#endif
+	result = get_connection_table(remote, response);
 
 	packet_transmit_response(result, remote, response);
 

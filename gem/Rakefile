@@ -18,14 +18,6 @@ platform_config = {
       "dll"
     ]
   },
-  :posix => {
-    :sources => [
-      "../c/meterpreter/data/meterpreter"
-    ],
-    :extensions => [
-      "lso", "bin"
-    ]
-  },
   :java => {
     :sources => [
       "../java/output/data/meterpreter"
@@ -75,12 +67,6 @@ task :win_compile do
   end
 end
 
-task :posix_compile do
-  Dir.chdir(c_source) do
-    system('make clean && make')
-  end
-end
-
 task :java_compile do
   Dir.chdir(java_source) do
     system('mvn package -Ddeploy.path=output -Dandroid.sdk.path=$ANDROID_HOME -Dandroid.ndk.path=$ANDROID_NDK_HOME -Dandroid.release=true -q -P deploy')
@@ -89,10 +75,6 @@ end
 
 task :win_copy do
   copy_files(platform_config[:windows], meterpreter_dest)
-end
-
-task :posix_copy do
-  copy_files(platform_config[:posix], meterpreter_dest)
 end
 
 task :java_copy do
@@ -113,9 +95,6 @@ end
 task :win_prep => [:create_dir, :win_compile, :win_copy] do
 end
 
-task :posix_prep => [:create_dir, :posix_compile, :posix_copy] do
-end
-
 task :java_prep => [:create_dir, :java_compile, :java_copy] do
 end
 
@@ -125,7 +104,7 @@ end
 task :python_prep => [:create_dir, :python_copy] do
 end
 
-task :default => [:python_prep, :php_prep, :java_prep, :posix_prep] do
+task :default => [:python_prep, :php_prep, :java_prep] do
 end
 
 # Override tag_version in bundler-#.#.#/lib/bundler/gem_helper.rb to force signed tags

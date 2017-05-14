@@ -5,7 +5,6 @@
 #include "extapi.h"
 #include "service.h"
 
-#ifdef _WIN32
 #include <Sddl.h>
 
 /*! @brief The possible list of operations to perform on a service */
@@ -93,7 +92,6 @@ DWORD query_service(LPCSTR cpServiceName, Packet *pResponse);
 DWORD get_service_config(SC_HANDLE scService, Packet *pResponse);
 DWORD get_service_status(SC_HANDLE scService, Packet *pResponse);
 DWORD get_service_dacl(SC_HANDLE scService, Packet *pResponse);
-#endif
 
 DWORD execute_service_task(LPCSTR lpServiceName, ServiceOperation eServiceOp, Packet *response);
 DWORD enumerate_services(Packet *response);
@@ -316,8 +314,6 @@ DWORD request_service_query(Remote *remote, Packet *packet)
  */
 DWORD query_service(LPCSTR cpServiceName, Packet *pResponse)
 {
-#ifdef _WIN32
-	// currently we only support Windoze
 	DWORD dwResult = ERROR_SUCCESS;
 	SC_HANDLE scManager = NULL;
 	SC_HANDLE scService = NULL;
@@ -363,9 +359,6 @@ DWORD query_service(LPCSTR cpServiceName, Packet *pResponse)
 	}
 
 	return dwResult;
-#else
-	return ERROR_NOT_SUPPORTED;
-#endif
 }
 
 /*!
@@ -376,9 +369,6 @@ DWORD query_service(LPCSTR cpServiceName, Packet *pResponse)
  */
 DWORD enumerate_services(Packet *pResponse)
 {
-#ifdef _WIN32
-	// currently we only support Windoze
-
 	DWORD dwResult = ERROR_SUCCESS;
 	SC_HANDLE scManager = NULL;
 	ENUM_SERVICE_STATUS_PROCESSA* pSsInfo = NULL;
@@ -448,9 +438,6 @@ DWORD enumerate_services(Packet *pResponse)
 	}
 
 	return dwResult;
-#else
-	return ERROR_NOT_SUPPORTED;
-#endif
 }
 
 /*!
@@ -463,8 +450,6 @@ DWORD enumerate_services(Packet *pResponse)
  */
 DWORD execute_service_task(LPCSTR cpServiceName, ServiceOperation eServiceOp, Packet *pResponse)
 {
-#ifdef _WIN32
-	// currently we only support Windoze
 	DWORD dwResult = ERROR_SUCCESS;
 	DWORD dwOpenFlags = SC_MANAGER_CONNECT | GENERIC_READ | SERVICE_QUERY_STATUS;
 	DWORD dwControlFlag = 0;
@@ -607,12 +592,8 @@ DWORD execute_service_task(LPCSTR cpServiceName, ServiceOperation eServiceOp, Pa
 	}
 
 	return dwResult;
-#else
-	return ERROR_NOT_SUPPORTED;
-#endif
 }
 
-#ifdef _WIN32
 /*!
  * @brief Add an enumeration result to the given response packet.
  * @param pRacket Pointer to the response \c Packet.
@@ -792,4 +773,3 @@ DWORD get_service_dacl(SC_HANDLE scService, Packet *pResponse)
 
 	return dwResult;
 }
-#endif

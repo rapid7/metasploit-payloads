@@ -46,8 +46,6 @@ PCHAR inputBuffer                    = NULL;
 ULONG inputBufferLength              = 0;
 HANDLE consoleReadThread             = NULL;
 
-#ifdef _WIN32
-
 /*
  * Enable command history on the console and create the interactive console
  * for future use.
@@ -65,15 +63,15 @@ VOID console_initialize(Remote *remote)
 	{
 		// Locate the SetConsoleInputExeNameA routine for use with custom
 		// history tracking
-		if (!((LPVOID)setConsoleInputExeName = 
-				(LPVOID)GetProcAddress(GetModuleHandle("kernel32"), 
+		if (!((LPVOID)setConsoleInputExeName =
+				(LPVOID)GetProcAddress(GetModuleHandle("kernel32"),
 					"SetConsoleInputExeNameA")))
 			break;
 
 		memset(name, 0, sizeof(name));
 
 		if (!GetModuleFileName(
-				GetModuleHandle(0), 
+				GetModuleHandle(0),
 				name,
 				sizeof(name) - 1))
 			break;
@@ -86,11 +84,11 @@ VOID console_initialize(Remote *remote)
 
 		// Set the console window's title
 		SetConsoleTitle("meterpreter");
-	
-		consoleReadThread = CreateThread(NULL, 0, 
+
+		consoleReadThread = CreateThread(NULL, 0,
 				(LPTHREAD_START_ROUTINE)console_read_thread_func, remote,
 				0, &tid);
-	
+
 	} while (0);
 }
 
@@ -141,7 +139,7 @@ DWORD console_generic_response_output(Remote *remote, Packet *packet,
 	else
 		console_write_output(
 				"\n"
-				INBOUND_PREFIX " %s: %s failed, result %lu.\n", 
+				INBOUND_PREFIX " %s: %s failed, result %lu.\n",
 				subsys, cmd, packet_get_result(packet));
 
 	console_write_prompt();
@@ -180,8 +178,6 @@ BOOL console_check_escape_sent()
 
 	return escapeSent;
 }
-
-#endif
 
 /*
  * Set the interactive channel for input/output overriding
@@ -281,7 +277,7 @@ VOID console_read_thread_func(Remote *remote)
 }
 
 /*
- * Reads in data from the input device, potentially calling the 
+ * Reads in data from the input device, potentially calling the
  * command processing function if a complete command has been read.
  */
 VOID console_read_buffer(Remote *remote)
@@ -300,7 +296,7 @@ VOID console_read_buffer(Remote *remote)
 	do
 	{
 		// Is there data available?
-		if (WaitForSingleObject(GetStdHandle(STD_INPUT_HANDLE), INFINITE) 
+		if (WaitForSingleObject(GetStdHandle(STD_INPUT_HANDLE), INFINITE)
 				!= WAIT_OBJECT_0)
 			break;
 
@@ -328,7 +324,7 @@ VOID console_read_buffer(Remote *remote)
 		// If an interactive channel is in use, write directly to it.
 		if ((interactiveChannel = console_get_interactive_channel()))
 		{
-			channel_write(interactiveChannel, remote, NULL, 0, buf, 
+			channel_write(interactiveChannel, remote, NULL, 0, buf,
 					bytesRead, NULL);
 			break;
 		}
@@ -349,7 +345,7 @@ VOID console_read_buffer(Remote *remote)
 		newInputBufferLength = inputBufferLength + stringLength;
 
 		if (inputBuffer)
-			newInputBuffer = (PCHAR)realloc(inputBuffer, 
+			newInputBuffer = (PCHAR)realloc(inputBuffer,
 					newInputBufferLength);
 		else
 			newInputBuffer = (PCHAR)malloc(++newInputBufferLength);
@@ -391,7 +387,7 @@ VOID console_read_buffer(Remote *remote)
 /*
  * Parse the local command into an argument vector
  *
- * TODO: 
+ * TODO:
  *
  *   - Add character unescaping (\x01)
  */
@@ -477,8 +473,8 @@ VOID console_process_command(Remote *remote)
 	// Cleanup argv
 	if (argv)
 	{
-		for (index = 0; 
-		     index < argc; 
+		for (index = 0;
+		     index < argc;
 		     index++)
 			free(argv[index]);
 
@@ -504,7 +500,7 @@ DWORD console_register_command(ConsoleCommand *command)
 	newConsoleCommand->prev = extendedCommandsTail;
 	newConsoleCommand->next = NULL;
 	extendedCommandsTail    = newConsoleCommand;
-			
+
 	if (!extendedCommandsHead)
 		extendedCommandsHead = newConsoleCommand;
 
@@ -518,7 +514,7 @@ DWORD console_deregister_command(ConsoleCommand *command)
 {
 	ConsoleCommand *current, *prev;
 	DWORD res = ERROR_NOT_FOUND;
-	
+
 	// Search the extension list for the command
 	for (current = extendedCommandsHead, prev = NULL;
 	     current;
@@ -540,7 +536,7 @@ DWORD console_deregister_command(ConsoleCommand *command)
 
 		// Deallocate it
 		free(current);
-		
+
 		res = ERROR_SUCCESS;
 
 		break;

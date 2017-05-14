@@ -1,12 +1,9 @@
 #include "precomp.h"
 
-#ifdef _WIN32
 #include <iptypes.h>
 #include <ws2ipdef.h>
-#endif
 
-#ifdef _WIN32
-DWORD get_interfaces_windows_mib(Remote *remote, Packet *response)
+DWORD get_interfaces_mib(Remote *remote, Packet *response)
 {
 	DWORD tableSize = sizeof(MIB_IPADDRROW);
 	DWORD index;
@@ -73,7 +70,7 @@ DWORD get_interfaces_windows_mib(Remote *remote, Packet *response)
 	return ERROR_SUCCESS;
 }
 
-DWORD get_interfaces_windows(Remote *remote, Packet *response)
+DWORD get_interfaces(Remote *remote, Packet *response)
 {
 	DWORD result = ERROR_SUCCESS;
 
@@ -109,8 +106,8 @@ DWORD get_interfaces_windows(Remote *remote, Packet *response)
 		GetModuleHandle("iphlpapi"), "GetAdaptersAddresses");
 	if (!gaa)
 	{
-		dprintf("[INTERFACE] No 'GetAdaptersAddresses'. Falling back on get_interfaces_windows_mib");
-		return get_interfaces_windows_mib(remote, response);
+		dprintf("[INTERFACE] No 'GetAdaptersAddresses'. Falling back on get_interfaces_mib");
+		return get_interfaces_mib(remote, response);
 	}
 
 	gaa(family, flags, NULL, pAdapters, &outBufLen);
@@ -132,7 +129,7 @@ DWORD get_interfaces_windows(Remote *remote, Packet *response)
 	if (pAdapters->Length <= 72)
 	{
 		dprintf("[INTERFACE] PIP_ADAPTER_PREFIX is missing");
-		result = get_interfaces_windows_mib(remote, response);
+		result = get_interfaces_mib(remote, response);
 		goto out;
 	}
 
@@ -220,57 +217,6 @@ out:
 	return result;
 }
 
-#else /* _WIN32 */
-int get_interfaces_linux(Remote *remote, Packet *response)
-{
-	struct ifaces_list *ifaces = NULL;
-	int i;
-	int result;
-	uint32_t interface_index_bigendian, mtu_bigendian;
-	DWORD allocd_entries = 10;
-
-	dprintf("Grabbing interfaces");
-	result = netlink_get_interfaces(&ifaces);
-	dprintf("Got 'em");
-
-	if (!result) {
-		for (i = 0; i < ifaces->entries; i++) {
-			Packet* group = packet_create_group();
-			int tlv_cnt = 0;
-			int j = 0;
-			dprintf("Building TLV for iface %d", i);
-
-			packet_add_tlv_string(group, TLV_TYPE_MAC_NAME, ifaces->ifaces[i].name);
-			packet_add_tlv_raw(group, TLV_TYPE_MAC_ADDR, ifaces->ifaces[i].hwaddr, 6);
-			packet_add_tlv_uint(group, TLV_TYPE_INTERFACE_MTU, ifaces->ifaces[i].mtu);
-			packet_add_tlv_string(group, TLV_TYPE_INTERFACE_FLAGS, ifaces->ifaces[i].flags);
-			packet_add_tlv_uint(group, TLV_TYPE_INTERFACE_INDEX, ifaces->ifaces[i].index);
-
-			for (j = 0; j < ifaces->ifaces[i].addr_count; j++) {
-				if (ifaces->ifaces[i].addr_list[j].family == AF_INET) {
-					dprintf("ip addr for %s", ifaces->ifaces[i].name);
-					packet_add_tlv_raw(group, TLV_TYPE_IP, (PUCHAR)&ifaces->ifaces[i].addr_list[j].ip.addr, sizeof(__u32));
-					packet_add_tlv_raw(group, TLV_TYPE_NETMASK, (PUCHAR)&ifaces->ifaces[i].addr_list[j].nm.netmask, sizeof(__u32));
-				} else {
-					dprintf("-- ip six addr for %s", ifaces->ifaces[i].name);
-					packet_add_tlv_raw(group, TLV_TYPE_IP, (PUCHAR)&ifaces->ifaces[i].addr_list[j].ip.addr6, sizeof(__u128));
-					packet_add_tlv_raw(group, TLV_TYPE_NETMASK, (PUCHAR)&ifaces->ifaces[i].addr_list[j].nm.netmask6, sizeof(__u128));
-				}
-			}
-
-			dprintf("Adding TLV to group");
-			packet_add_group(response, TLV_TYPE_NETWORK_INTERFACE, group);
-			dprintf("done Adding TLV to group");
-		}
-	}
-
-	free(ifaces);
-
-	return result;
-}
-#endif
-
-
 /*
  * Returns zero or more local interfaces to the requestor
  */
@@ -279,11 +225,7 @@ DWORD request_net_config_get_interfaces(Remote *remote, Packet *packet)
 	Packet *response = packet_create_response(packet);
 	DWORD result = ERROR_SUCCESS;
 
-#ifdef _WIN32
-	result = get_interfaces_windows(remote, response);
-#else
-	result = get_interfaces_linux(remote, response);
-#endif
+	result = get_interfaces(remote, response);
 
 	// Transmit the response if valid
 	packet_transmit_response(result, remote, response);

@@ -22,12 +22,8 @@ extern BOOL remote_request_core_shutdown(Remote *remote, Packet *packet, DWORD* 
 
 extern DWORD remote_request_core_transport_set_timeouts(Remote * remote, Packet * packet);
 
-#ifdef _WIN32
 extern DWORD remote_request_core_transport_getcerthash(Remote* remote, Packet* packet);
 extern DWORD remote_request_core_transport_setcerthash(Remote* remote, Packet* packet);
-
-// POSIX support coming soon
-#endif
 
 extern BOOL remote_request_core_transport_sleep(Remote* remote, Packet* packet, DWORD* result);
 extern DWORD remote_request_core_transport_list(Remote* remote, Packet* packet);
@@ -90,10 +86,10 @@ Command baseCommands[] =
 	COMMAND_REQ("core_crypto_negotiate", remote_request_core_crypto_negotiate),
 	// timeouts
 	COMMAND_REQ("core_transport_set_timeouts", remote_request_core_transport_set_timeouts),
-#ifdef _WIN32
+
 	COMMAND_REQ("core_transport_getcerthash", remote_request_core_transport_getcerthash),
 	COMMAND_REQ("core_transport_setcerthash", remote_request_core_transport_setcerthash),
-#endif
+
 	COMMAND_REQ("core_transport_list", remote_request_core_transport_list),
 	COMMAND_INLINE_REQ("core_transport_sleep", remote_request_core_transport_sleep),
 	COMMAND_INLINE_REQ("core_transport_change", remote_request_core_transport_change),
@@ -247,24 +243,6 @@ VOID command_join_threads(VOID)
 	}
 }
 
-#ifndef _WIN32
-/*!
- * @brief Reap child zombie threads on linux 2.4 (before NPTL).
- * @detail Each thread appears as a process and pthread_join don't necessarily reap it
- * threads are created using the clone syscall, so use special __WCLONE flag in waitpid.
- */
-void * reap_zombie_thread(void * param)
-{
-	while(1)
-	{
-		waitpid(-1, NULL, __WCLONE);
-		// on 2.6 kernels, don't chew 100% CPU
-		usleep(500000);
-	}
-	return NULL;
-}
-#endif
-
 /*!
  * @brief Process a command directly on the current thread.
  * @param baseCommand Pointer to the \c Command in the base command list to be executed.
@@ -308,7 +286,6 @@ BOOL command_process_inline(Command *baseCommand, Command *extensionCommand, Rem
 				lpMethod = command->method;
 				dprintf("[COMMAND] Executing command %s", lpMethod);
 
-#ifdef _WIN32
 				// Impersonate the thread token if needed (only on Windows)
 				if (remote->server_token != remote->thread_token)
 				{
@@ -317,7 +294,6 @@ BOOL command_process_inline(Command *baseCommand, Command *extensionCommand, Rem
 						dprintf("[COMMAND] Failed to impersonate thread token (%s) (%u)", lpMethod, GetLastError());
 					}
 				}
-#endif
 
 				// Validate the arguments, if requested.  Always make sure argument
 				// lengths are sane.
@@ -568,12 +544,6 @@ DWORD THREADCALL command_process_thread(THREAD * thread)
 		{
 			return ERROR_INVALID_HANDLE;
 		}
-
-#ifndef _WIN32
-		pthread_t tid;
-		pthread_create(&tid, NULL, reap_zombie_thread, NULL);
-		dprintf("reap_zombie_thread created, thread_id : 0x%x",tid);
-#endif
 	}
 
 	list_add(commandThreadList, thread);
