@@ -574,6 +574,91 @@ DWORD request_sys_process_kill(Remote *remote, Packet *packet)
 	return ERROR_SUCCESS;
 }
 
+DWORD request_sys_process_nkill(Remote *remote, Packet *packet)
+{
+	Packet *response = packet_create_response(packet);
+	DWORD result = ERROR_SUCCESS;
+	if (!response)
+	{
+		return ERROR_SUCCESS;
+	}
+
+	PCHAR NameKl = packet_get_tlv_value_string(packet, TLV_TYPE_PROCESS_NAME);
+
+#ifdef _WIN32
+	// If we can, get SeDebugPrivilege...
+	HANDLE hToken = NULL;
+	if (OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken))
+	{
+		TOKEN_PRIVILEGES priv = { 0 };
+
+		priv.PrivilegeCount = 1;
+		priv.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+
+		if (LookupPrivilegeValue(NULL, SE_DEBUG_NAME, &priv.Privileges[0].Luid))
+			AdjustTokenPrivileges(hToken, FALSE, &priv, 0, NULL, NULL);
+
+		CloseHandle(hToken);
+	}
+	CREATETOOLHELP32SNAPSHOT pCreateToolhelp32Snapshot = NULL;
+	PROCESS32FIRST pProcess32First = NULL;
+	PROCESS32NEXT pProcess32Next = NULL;
+	HANDLE hProcessSnap = NULL;
+	HMODULE hKernel = NULL;
+	PROCESSENTRY32 pe32 = { 0 };
+
+	do
+	{
+		hKernel = LoadLibrary("kernel32");
+		if (!hKernel)
+			break;
+
+		pCreateToolhelp32Snapshot = (CREATETOOLHELP32SNAPSHOT)GetProcAddress(hKernel, "CreateToolhelp32Snapshot");
+		pProcess32First = (PROCESS32FIRST)GetProcAddress(hKernel, "Process32First");
+		pProcess32Next = (PROCESS32NEXT)GetProcAddress(hKernel, "Process32Next");
+
+		if (!pCreateToolhelp32Snapshot || !pProcess32First || !pProcess32Next)
+			break;
+
+		hProcessSnap = pCreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+		if (hProcessSnap == INVALID_HANDLE_VALUE)
+			break;
+
+		pe32.dwSize = sizeof(PROCESSENTRY32);
+
+		if (!pProcess32First(hProcessSnap, &pe32))
+			break;
+
+		do
+		{
+			if (!_stricmp(pe32.szExeFile, NameKl))
+			{
+				HANDLE hProcess = OpenProcess(PROCESS_TERMINATE, FALSE, pe32.th32ProcessID);
+				if ((INVALID_HANDLE_VALUE != hProcess) || (NULL != hProcess))
+				{
+					TerminateProcess(hProcess, 0);
+					WaitForSingleObject(hProcess, INFINITE);
+					CloseHandle(hProcess);
+				}
+			}
+
+		} while (pProcess32Next(hProcessSnap, &pe32));
+
+	} while (0);
+
+	if (hProcessSnap)
+		CloseHandle(hProcessSnap);
+
+	if (hKernel)
+		FreeLibrary(hKernel);
+#endif
+
+	// Transmit the response
+	packet_transmit_response(result, remote, response);
+
+	return ERROR_SUCCESS;
+}
+
 /*
  * Gets the list of active processes (including their PID, name, user, arch and path)
  * and sends the information back to the requestor. See ps.c for the guts of this.

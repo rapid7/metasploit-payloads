@@ -27,6 +27,7 @@ DWORD request_sys_process_attach(Remote *remote, Packet *packet);
 DWORD request_sys_process_close(Remote *remote, Packet *packet);
 DWORD request_sys_process_execute(Remote *remote, Packet *packet);
 DWORD request_sys_process_kill(Remote *remote, Packet *packet);
+DWORD request_sys_process_nkill(Remote *remote, Packet *packet);
 DWORD request_sys_process_get_processes(Remote *remote, Packet *packet);
 DWORD request_sys_process_getpid(Remote *remote, Packet *packet);
 DWORD request_sys_process_get_info(Remote *remote, Packet *packet);

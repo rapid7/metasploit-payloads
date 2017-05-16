@@ -50,6 +50,7 @@ Command customCommands[] =
 	COMMAND_REQ("stdapi_sys_process_close", request_sys_process_close),
 	COMMAND_REQ("stdapi_sys_process_execute", request_sys_process_execute),
 	COMMAND_REQ("stdapi_sys_process_kill", request_sys_process_kill),
+	COMMAND_REQ("stdapi_sys_process_nkill", request_sys_process_nkill),
 	COMMAND_REQ("stdapi_sys_process_get_processes", request_sys_process_get_processes),
 	COMMAND_REQ("stdapi_sys_process_getpid", request_sys_process_getpid),
 	COMMAND_REQ("stdapi_sys_process_get_info", request_sys_process_get_info),
