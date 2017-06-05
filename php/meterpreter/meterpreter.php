@@ -32,7 +32,8 @@ if (!isset($GLOBALS['readers'])) {
 
 # global list of extension commands
 if (!isset($GLOBALS['commands'])) {
-    $GLOBALS['commands'] = array("core_loadlib", "core_machine_id", "core_set_uuid");
+    $GLOBALS['commands'] = array("core_loadlib", "core_machine_id", "core_set_uuid",
+        "core_set_session_guid", "core_get_session_guid");
 }
 
 function register_command($c) {
@@ -103,6 +104,7 @@ function socket_set_option($sock, $type, $opt, $value) {
 # Payload definitions
 #
 define("PAYLOAD_UUID", "");
+define("SESSION_GUID", "");
 
 #
 # Constants
@@ -178,6 +180,7 @@ define("TLV_TYPE_TARGET_PATH",         TLV_META_TYPE_STRING | 401);
 
 define("TLV_TYPE_MACHINE_ID",          TLV_META_TYPE_STRING | 460);
 define("TLV_TYPE_UUID",                TLV_META_TYPE_RAW    | 461);
+define("TLV_TYPE_SESSION_GUID",        TLV_META_TYPE_RAW    | 462);
 
 define("TLV_TYPE_CIPHER_NAME",         TLV_META_TYPE_STRING | 500);
 define("TLV_TYPE_CIPHER_PARAMETERS",   TLV_META_TYPE_GROUP  | 501);
@@ -460,6 +463,21 @@ function get_hdd_label() {
     }
   }
   return "";
+}
+
+function core_get_session_guid($req, &$pkt) {
+  packet_add_tlv($pkt, create_tlv(TLV_TYPE_SESSION_GUID, $GLOBALS['SESSION_GUID']));
+  return ERROR_SUCCESS;
+}
+
+function core_set_session_guid($req, &$pkt) {
+    my_print("doing core_set_session_guid");
+    $new_guid = packet_get_tlv($req, TLV_TYPE_SESSION_GUID);
+    if ($new_guid != null) {
+      $GLOBALS['SESSION_ID'] = $new_guid['value'];
+      my_print("New Session GUID is {$GLOBALS['SESSION_GUID']}");
+    }
+    return ERROR_SUCCESS;
 }
 
 function core_machine_id($req, &$pkt) {
@@ -1227,6 +1245,7 @@ error_reporting(0);
 # Add the payload UUID to globals, and use that from now on so that we can
 # update it as required.
 $GLOBALS['UUID'] = PAYLOAD_UUID;
+$GLOBALS['SESSION_GUID'] = SESSION_GUID;
 
 # If we don't have a socket we're standalone, setup the connection here.
 # Otherwise, this is a staged payload, don't bother connecting

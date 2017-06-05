@@ -163,6 +163,7 @@ typedef enum
 	// session/machine identification
 	TLV_TYPE_MACHINE_ID          = TLV_VALUE(TLV_META_TYPE_STRING,    460),   ///! Represents a machine identifier.
 	TLV_TYPE_UUID                = TLV_VALUE(TLV_META_TYPE_RAW,       461),   ///! Represents a UUID.
+	TLV_TYPE_SESSION_GUID        = TLV_VALUE(TLV_META_TYPE_RAW,       462),   ///! Represents a Session GUID.
 
 	// Cryptography
 	TLV_TYPE_CIPHER_NAME         = TLV_VALUE(TLV_META_TYPE_STRING,    500),   ///! Represents the name of a cipher.

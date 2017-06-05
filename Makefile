@@ -1,13 +1,13 @@
 DATADIR:=../metasploit-framework/data
 METERPDIR:=$(DATADIR)/meterpreter
 
-install: \
-	install-c-windows \
+install-all: \
+	install-windows \
     install-java \
     install-php \
     install-python
 
-install-c-windows:
+install-windows:
 	@echo "Installing Windows payloads"
 	@if [ -d c/meterpreter/output/x86 ]; then \
 		cp -a c/meterpreter/output/x86/*.dll $(METERPDIR); \

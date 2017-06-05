@@ -64,8 +64,9 @@ public interface TLVType {
     public static final int TLV_TYPE_TRANS_RETRY_WAIT   = TLVPacket.TLV_META_TYPE_UINT   | 440;
     public static final int TLV_TYPE_TRANS_GROUP        = TLVPacket.TLV_META_TYPE_GROUP  | 441;
 
-    public static final int TLV_TYPE_MACHINE_ID = TLVPacket.TLV_META_TYPE_STRING | 460;
-    public static final int TLV_TYPE_UUID       = TLVPacket.TLV_META_TYPE_RAW    | 461;
+    public static final int TLV_TYPE_MACHINE_ID   = TLVPacket.TLV_META_TYPE_STRING | 460;
+    public static final int TLV_TYPE_UUID         = TLVPacket.TLV_META_TYPE_RAW    | 461;
+    public static final int TLV_TYPE_SESSION_GUID = TLVPacket.TLV_META_TYPE_RAW    | 462;
 
     public static final int TLV_TYPE_CIPHER_NAME = TLVPacket.TLV_META_TYPE_STRING | 500;
     public static final int TLV_TYPE_CIPHER_PARAMETERS = TLVPacket.TLV_META_TYPE_GROUP | 501;
