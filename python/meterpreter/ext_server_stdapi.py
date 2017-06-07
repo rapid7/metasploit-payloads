@@ -657,6 +657,18 @@ def cstruct_unpack(structure, raw_data):
 	ctypes.memmove(ctypes.byref(structure), raw_data, ctypes.sizeof(structure))
 	return structure
 
+def get_system_arch():
+	uname_info = platform.uname()
+	arch = uname_info[4]
+	if has_windll:
+		sysinfo = SYSTEM_INFO()
+		ctypes.windll.kernel32.GetNativeSystemInfo(ctypes.byref(sysinfo))
+		values = {0:'x86', 5:'armle', 6:'IA64', 9:'x64'}
+		arch = values.get(sysinfo.wProcessorArchitecture, uname_info[4])
+	if arch == 'x86_64':
+		arch = 'x64'
+	return arch
+
 def get_stat_buffer(path):
 	si = os.stat(path)
 	rdev = 0
