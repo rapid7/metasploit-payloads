@@ -236,6 +236,8 @@ static void config_create(Remote* remote, LPBYTE uuid, MetsrvConfig** config, LP
 	// start by preparing the session, using the given UUID if specified, otherwise using
 	// the existing session UUID
 	memcpy(sess->uuid, uuid == NULL ? remote->orig_config->session.uuid : uuid, UUID_SIZE);
+	// session GUID should persist across migration
+	memcpy(sess->session_guid, remote->orig_config->session.session_guid, sizeof(GUID));
 	sess->expiry = remote->sess_expiry_end - current_unix_timestamp();
 	sess->exit_func = EXITFUNC_THREAD; // migration we default to this.
 
@@ -313,6 +315,12 @@ DWORD server_setup(MetsrvConfig* config)
 		config->session.uuid[4], config->session.uuid[5], config->session.uuid[6], config->session.uuid[7],
 		config->session.uuid[8], config->session.uuid[9], config->session.uuid[10], config->session.uuid[11],
 		config->session.uuid[12], config->session.uuid[13], config->session.uuid[14], config->session.uuid[15]);
+
+	dprintf("[SERVER] Session GUID: %02X%02X%02X%02X-%02X%02X-%02X%02X-%02X%02X-%02X%02X%02X%02X%02X%02X",
+		config->session.session_guid[0], config->session.session_guid[1], config->session.session_guid[2], config->session.session_guid[3],
+		config->session.session_guid[4], config->session.session_guid[5], config->session.session_guid[6], config->session.session_guid[7],
+		config->session.session_guid[8], config->session.session_guid[9], config->session.session_guid[10], config->session.session_guid[11],
+		config->session.session_guid[12], config->session.session_guid[13], config->session.session_guid[14], config->session.session_guid[15]);
 
 	// if hAppInstance is still == NULL it means that we havent been
 	// reflectivly loaded so we must patch in the hAppInstance value

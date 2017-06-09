@@ -43,6 +43,7 @@ public class Meterpreter {
     private final TransportList transports = new TransportList();
     protected int ignoreBlocks = 0;
     private byte[] uuid;
+    private byte[] sessionGUID;
     private long sessionExpiry;
 
     protected void loadConfiguration(DataInputStream in, OutputStream rawOut, byte[] configuration) throws MalformedURLException {
@@ -58,6 +59,9 @@ public class Meterpreter {
         // this is followed with the UUID
         this.uuid = ConfigParser.readBytes(configuration, csr, ConfigParser.UUID_LEN);
         csr += ConfigParser.UUID_LEN;
+
+        this.sessionGUID = ConfigParser.readBytes(configuration, csr, ConfigParser.GUID_LEN);
+        csr += ConfigParser.GUID_LEN;
 
         // here we need to loop through all the given transports, we know that we're
         // going to get at least one.
@@ -90,6 +94,14 @@ public class Meterpreter {
 
     public void setUUID(byte[] newUuid) {
         this.uuid = newUuid;
+    }
+
+    public byte[] getSessionGUID() {
+        return this.sessionGUID;
+    }
+
+    public void setSessionGUID(byte[] guid) {
+        this.sessionGUID = guid;
     }
 
     public long getExpiry() {
@@ -139,6 +151,7 @@ public class Meterpreter {
         this.loadExtensions = loadExtensions;
         this.commandManager = new CommandManager();
         this.channels.add(null); // main communication channel?
+
         if (redirectErrors) {
             errBuffer = new ByteArrayOutputStream();
             err = new PrintStream(errBuffer);

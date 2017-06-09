@@ -8,6 +8,13 @@ extern PLIST gExtensionList;
 // see common/base.c
 extern Command *extensionCommands;
 
+/*
+ * @brief Perform the initialisation of stageless extensions, if rquired.
+ * @param extensionName The name of the extension to initialise.
+ * @param data Pointer to the data containing the initialisation data.
+ * @param dataSize Size of the data referenced by \c data.
+ * @returns Indication of success or failure.
+ */
 DWORD stagelessinit_extension(const char* extensionName, LPBYTE data, DWORD dataSize)
 {
 	dprintf("[STAGELESSINIT] searching for extension init for %s in %p", extensionName, gExtensionList);
@@ -25,7 +32,16 @@ DWORD stagelessinit_extension(const char* extensionName, LPBYTE data, DWORD data
 	return ERROR_NOT_FOUND;
 }
 
-DWORD load_extension(HMODULE hLibrary, BOOL bLibLoadedReflectivly, Remote* pRemote, Packet* pResponse, Command* pFirstCommand)
+/*
+ * @brief Load an extension from the given library handle.
+ * @param hLibrary handle to the library to load/init.
+ * @param bLibLoadedReflectivly Indication of whether the library was loaded using RDI.
+ * @param remote Pointer to the \c Remote instance.
+ * @param response Pointer to the \c Response packet.
+ * @param pFirstCommand Pointer to the head of the loaded command list.
+ * @returns Indication of success or failure.
+ */
+DWORD load_extension(HMODULE hLibrary, BOOL bLibLoadedReflectivly, Remote* remote, Packet* response, Command* pFirstCommand)
 {
 	DWORD dwResult = ERROR_OUTOFMEMORY;
 	PEXTENSION pExtension = (PEXTENSION)malloc(sizeof(EXTENSION));
@@ -58,9 +74,9 @@ DWORD load_extension(HMODULE hLibrary, BOOL bLibLoadedReflectivly, Remote* pRemo
 		// patch in the metsrv.dll's HMODULE handle, used by the server extensions for delay loading
 		// functions from the metsrv.dll library. We need to do it this way as LoadLibrary/GetProcAddress
 		// wont work if we have used Reflective DLL Injection as metsrv.dll will be 'invisible' to these functions.
-		if (pRemote)
+		if (remote)
 		{
-			pRemote->met_srv = hAppInstance;
+			remote->met_srv = hAppInstance;
 		}
 
 		dprintf("[SERVER] Calling init on extension, address is 0x%p", pExtension->init);
@@ -71,7 +87,7 @@ DWORD load_extension(HMODULE hLibrary, BOOL bLibLoadedReflectivly, Remote* pRemo
 			dprintf("[SERVER] Calling init()...");
 
 			pExtension->end = pFirstCommand;
-			dwResult = pExtension->init(pRemote);
+			dwResult = pExtension->init(remote);
 			pExtension->start = extensionCommands;
 
 			if (dwResult == ERROR_SUCCESS)
@@ -99,11 +115,11 @@ DWORD load_extension(HMODULE hLibrary, BOOL bLibLoadedReflectivly, Remote* pRemo
 		}
 
 		dprintf("[SERVER] Called init()...");
-		if (pResponse)
+		if (response)
 		{
 			for (Command* command = pExtension->start; command != pExtension->end; command = command->next)
 			{
-				packet_add_tlv_string(pResponse, TLV_TYPE_METHOD, command->method);
+				packet_add_tlv_string(response, TLV_TYPE_METHOD, command->method);
 
 				// inform existing extensions of the new commands
 				for (PNODE node = gExtensionList->start; node != NULL; node = node->next)
@@ -122,28 +138,15 @@ DWORD load_extension(HMODULE hLibrary, BOOL bLibLoadedReflectivly, Remote* pRemo
 	return dwResult;
 }
 
-
-
 /*
- * core_loadlib
- * ------------
- *
- * Load a library into the address space of the executing process.
- *
- * TLVs:
- *
- * req: TLV_TYPE_LIBRARY_PATH -- The path of the library to load.
- * req: TLV_TYPE_FLAGS        -- Library loading flags.
- * opt: TLV_TYPE_TARGET_PATH  -- The contents of the library if uploading.
- * opt: TLV_TYPE_DATA         -- The contents of the library if uploading.
- *
- * TODO:
- *
- *   - Implement in-memory library loading
+ * @brief Load a library from the request packet.
+ * @param remote Pointer to the \c Remote instance.
+ * @param packet Pointer to the incoming request \c Packet.
+ * @returns Indication of success or failure.
  */
-DWORD request_core_loadlib(Remote *pRemote, Packet *pPacket)
+DWORD request_core_loadlib(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(pPacket);
+	Packet *response = packet_create_response(packet);
 	DWORD res = ERROR_SUCCESS;
 	HMODULE library;
 	PCHAR libraryPath;
@@ -154,8 +157,8 @@ DWORD request_core_loadlib(Remote *pRemote, Packet *pPacket)
 
 	do
 	{
-		libraryPath = packet_get_tlv_value_string(pPacket, TLV_TYPE_LIBRARY_PATH);
-		flags = packet_get_tlv_value_uint(pPacket, TLV_TYPE_FLAGS);
+		libraryPath = packet_get_tlv_value_string(packet, TLV_TYPE_LIBRARY_PATH);
+		flags = packet_get_tlv_value_uint(packet, TLV_TYPE_FLAGS);
 
 		// Invalid library path?
 		if (!libraryPath)
@@ -171,9 +174,9 @@ DWORD request_core_loadlib(Remote *pRemote, Packet *pPacket)
 			Tlv dataTlv;
 
 			// Get the library's file contents
-			if ((packet_get_tlv(pPacket, TLV_TYPE_DATA,
+			if ((packet_get_tlv(packet, TLV_TYPE_DATA,
 				&dataTlv) != ERROR_SUCCESS) ||
-				(!(targetPath = packet_get_tlv_value_string(pPacket,
+				(!(targetPath = packet_get_tlv_value_string(packet,
 				TLV_TYPE_TARGET_PATH))))
 			{
 				res = ERROR_INVALID_PARAMETER;
@@ -226,19 +229,25 @@ DWORD request_core_loadlib(Remote *pRemote, Packet *pPacket)
 		// call its Init routine
 		if ((flags & LOAD_LIBRARY_FLAG_EXTENSION) && library)
 		{
-			res = load_extension(library, bLibLoadedReflectivly, pRemote, response, first);
+			res = load_extension(library, bLibLoadedReflectivly, remote, response, first);
 		}
 
 	} while (0);
 
 	if (response)
 	{
-		packet_transmit_response(res, pRemote, response);
+		packet_transmit_response(res, remote, response);
 	}
 
 	return res;
 }
 
+/*
+ * @brief Set/update the current UUID for the session.
+ * @param remote Pointer to the \c Remote instance.
+ * @param packet Pointer to the incoming request \c Packet.
+ * @returns Indication of success or failure.
+ */
 DWORD request_core_set_uuid(Remote* remote, Packet* packet)
 {
 	Packet* response = packet_create_response(packet);
@@ -257,14 +266,62 @@ DWORD request_core_set_uuid(Remote* remote, Packet* packet)
 	return ERROR_SUCCESS;
 }
 
-DWORD request_core_machine_id(Remote* pRemote, Packet* pPacket)
+/*
+ * @brief Get the current session GUID.
+ * @param remote Pointer to the \c Remote instance.
+ * @param packet Pointer to the incoming request \c Packet.
+ * @returns Indication of success or failure.
+ */
+DWORD request_core_get_session_guid(Remote* remote, Packet* packet)
+{
+	Packet* response = packet_create_response(packet);
+	if (response)
+	{
+		packet_add_tlv_raw(response, TLV_TYPE_SESSION_GUID, &remote->orig_config->session.session_guid, sizeof(GUID));
+		packet_transmit_response(ERROR_SUCCESS, remote, response);
+	}
+	return ERROR_SUCCESS;
+}
+
+/*
+ * @brief Set the current session GUID.
+ * @param remote Pointer to the \c Remote instance.
+ * @param packet Pointer to the incoming request \c Packet.
+ * @returns Indication of success or failure.
+ */
+DWORD request_core_set_session_guid(Remote* remote, Packet* packet)
+{
+	DWORD result = ERROR_SUCCESS;
+	LPBYTE sessionGuid = packet_get_tlv_value_raw(packet, TLV_TYPE_SESSION_GUID);
+
+	if (sessionGuid != NULL)
+	{
+		memcpy(&remote->orig_config->session.session_guid, sessionGuid, sizeof(GUID));
+	}
+	else
+	{
+		result = ERROR_BAD_ARGUMENTS;
+	}
+
+	packet_transmit_empty_response(remote, packet, result);
+
+	return ERROR_SUCCESS;
+}
+
+/*
+ * @brief Get the current machine identifier.
+ * @param remote Pointer to the \c Remote instance.
+ * @param packet Pointer to the incoming request \c Packet.
+ * @returns Indication of success or failure.
+ */
+DWORD request_core_machine_id(Remote* remote, Packet* packet)
 {
 	DWORD res = ERROR_SUCCESS;
 	dprintf("[CORE] Running request_core_machine_id");
-	Packet* pResponse = packet_create_response(pPacket);
-	dprintf("[CORE] pResponse is %p", pResponse);
+	Packet* response = packet_create_response(packet);
+	dprintf("[CORE] response is %p", response);
 
-	if (pResponse)
+	if (response)
 	{
 		wchar_t buffer[MAX_PATH];
 		if (GetSystemDirectory(buffer, MAX_PATH) != 0)
@@ -280,11 +337,11 @@ DWORD request_core_machine_id(Remote* pRemote, Packet* pPacket)
 			GetComputerName(computerName, &computerNameSize);
 
 			_snwprintf_s(buffer, MAX_PATH, MAX_PATH - 1, L"%04x-%04x:%s", HIWORD(serialNumber), LOWORD(serialNumber), computerName);
-			packet_add_tlv_wstring(pResponse, TLV_TYPE_MACHINE_ID, buffer);
+			packet_add_tlv_wstring(response, TLV_TYPE_MACHINE_ID, buffer);
 			dprintf("[CORE] sending machine id: %S", buffer);
 		}
 
-		packet_transmit_response(res, pRemote, pResponse);
+		packet_transmit_response(res, remote, response);
 	}
 
 	return ERROR_SUCCESS;

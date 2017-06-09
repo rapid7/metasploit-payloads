@@ -5,6 +5,7 @@ import java.io.UnsupportedEncodingException;
 public class ConfigParser  {
 
     public static final int UUID_LEN = 16;
+    public static final int GUID_LEN = 16;
     public static final int URL_LEN = 512;
 
     public static final int UA_LEN = 256;

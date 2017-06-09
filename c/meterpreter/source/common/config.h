@@ -25,6 +25,7 @@ typedef struct _MetsrvSession
 	DWORD exit_func;                      ///! Exit func identifier for when the session ends.
 	int expiry;                           ///! The total number of seconds to wait before killing off the session.
 	BYTE uuid[UUID_SIZE];                 ///! UUID
+	BYTE session_guid[sizeof(GUID)];      ///! Current session GUID
 } MetsrvSession;
 
 typedef struct _MetsrvTransportCommon

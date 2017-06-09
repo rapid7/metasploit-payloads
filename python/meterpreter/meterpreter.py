@@ -64,6 +64,7 @@ HTTP_CONNECTION_URL = None
 HTTP_PROXY = None
 HTTP_USER_AGENT = None
 PAYLOAD_UUID = ''
+SESSION_GUID = ''
 SESSION_COMMUNICATION_TIMEOUT = 300
 SESSION_EXPIRATION_TIMEOUT = 604800
 SESSION_RETRY_TOTAL = 3600
@@ -157,6 +158,7 @@ TLV_TYPE_TRANS_GROUP           = TLV_META_TYPE_GROUP   | 441
 
 TLV_TYPE_MACHINE_ID            = TLV_META_TYPE_STRING  | 460
 TLV_TYPE_UUID                  = TLV_META_TYPE_RAW     | 461
+TLV_TYPE_SESSION_GUID          = TLV_META_TYPE_RAW     | 462
 
 TLV_TYPE_CIPHER_NAME           = TLV_META_TYPE_STRING  | 500
 TLV_TYPE_CIPHER_PARAMETERS     = TLV_META_TYPE_GROUP   | 501
@@ -902,6 +904,16 @@ class PythonMeterpreter(object):
 		for func_name in self.extension_functions.keys():
 			if func_name.split('_', 1)[0] == extension_name:
 				response += tlv_pack(TLV_TYPE_STRING, func_name)
+		return ERROR_SUCCESS, response
+
+	def _core_get_session_guid(self, request, response):
+		response += tlv_pack(TLV_TYPE_SESSION_GUID, SESSION_GUID)
+		return ERROR_SUCCESS, response
+
+	def _core_set_session_guid(self, request, response):
+		new_guid = packet_get_tlv(request, TLV_TYPE_SESSION_GUID)
+		if new_guid:
+			SESSION_GUID = new_guid['value']
 		return ERROR_SUCCESS, response
 
 	def _core_machine_id(self, request, response):
