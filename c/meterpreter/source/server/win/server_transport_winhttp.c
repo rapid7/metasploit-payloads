@@ -898,7 +898,7 @@ static DWORD server_dispatch_http(Remote* remote, THREAD* dispatchThread)
 					}
 				}
 
-				// the pointer that we have will be 
+				// the pointer that we have will be
 				dprintf("[DISPATCH] Pointer is at: %p -> %S", csr, csr);
 
 				// patch in the new URI
@@ -922,7 +922,7 @@ static DWORD server_dispatch_http(Remote* remote, THREAD* dispatchThread)
  */
 static void transport_destroy_http(Transport* transport)
 {
-	if (transport && transport->type != METERPRETER_TRANSPORT_SSL)
+	if (transport && transport->type != METERPRETER_TRANSPORT_TCP)
 	{
 		HttpTransportContext* ctx = (HttpTransportContext*)transport->ctx;
 
