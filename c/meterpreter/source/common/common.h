@@ -54,8 +54,8 @@ typedef struct ___u128 {
 
 #include "zlib/zlib.h"
 
-/*! @brief Indication that the Meterpreter transport is using SSL. */
-#define METERPRETER_TRANSPORT_SSL   0
+/*! @brief Indication that the Meterpreter transport is using TCP. */
+#define METERPRETER_TRANSPORT_TCP   0
 /*! @brief Indication that the Meterpreter transport is using HTTP. */
 #define METERPRETER_TRANSPORT_HTTP  1
 /*! @brief Indication that the Meterpreter transport is using HTTPS. */
