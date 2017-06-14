@@ -7,7 +7,6 @@
 
 #include "win/server_transport_winhttp.h"
 #include "win/server_transport_tcp.h"
-#include "ssl_lib_setup.h"
 
 #define TRANSPORT_ID_OFFSET 22
 
@@ -345,8 +344,6 @@ DWORD server_setup(MetsrvConfig* config)
 				SetLastError(ERROR_NOT_ENOUGH_MEMORY);
 				break;
 			}
-
-			setup_ssl_lib(&remote->ssl);
 
 			remote->orig_config = config;
 			remote->sess_expiry_time = config->session.expiry;
