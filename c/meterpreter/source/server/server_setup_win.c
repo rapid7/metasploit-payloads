@@ -247,7 +247,7 @@ static void config_create(Remote* remote, LPBYTE uuid, MetsrvConfig** config, LP
 		// extend memory appropriately
 		DWORD neededSize = t->type == METERPRETER_TRANSPORT_TCP ? sizeof(MetsrvTransportTcp) : sizeof(MetsrvTransportHttp);
 
-		dprintf("[CONFIG] Allocating %u bytes for %s transport, total of %u bytes", neededSize, t->type == METERPRETER_TRANSPORT_TCP ? "ssl" : "http/s", s);
+		dprintf("[CONFIG] Allocating %u bytes for %s transport, total of %u bytes", neededSize, t->type == METERPRETER_TRANSPORT_TCP ? "TCP" : "HTTP/S", s);
 
 		sess = (MetsrvSession*)realloc(sess, s + neededSize);
 

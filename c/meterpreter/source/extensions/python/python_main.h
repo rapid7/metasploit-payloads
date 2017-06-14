@@ -7,7 +7,6 @@
 
 #include "../../common/common.h"
 
-
 extern Remote* gRemote;
 
 #define TLV_TYPE_EXTENSION_PYTHON	0

@@ -35,8 +35,6 @@ typedef struct ___u128 {
 #undef X509_CERT_PAIR
 #undef X509_NAME
 
-#include <openssl/ssl.h>
-
 #include "linkage.h"
 
 #include "args.h"
