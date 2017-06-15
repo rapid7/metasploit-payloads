@@ -136,6 +136,7 @@ Command customCommands[] =
 	COMMAND_REQ("stdapi_ui_enable_keyboard", request_ui_enable_keyboard),
 	COMMAND_REQ("stdapi_ui_get_idle_time", request_ui_get_idle_time),
 	COMMAND_REQ("stdapi_ui_start_keyscan", request_ui_start_keyscan),
+	COMMAND_REQ("stdapi_ui_start_keyscan_actwin", request_ui_start_keyscan_actwin),
 	COMMAND_REQ("stdapi_ui_stop_keyscan", request_ui_stop_keyscan),
 	COMMAND_REQ("stdapi_ui_get_keys", request_ui_get_keys),
 	COMMAND_REQ("stdapi_ui_get_keys_utf8", request_ui_get_keys_utf8),
