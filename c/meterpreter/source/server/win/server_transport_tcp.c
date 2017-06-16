@@ -394,92 +394,138 @@ static DWORD packet_receive(Remote *remote, Packet **packet)
 			break;
 		}
 
-		header.xor_key = ntohl(header.xor_key);
+		dprintf("[TCP] the XOR key is: %08x", header.xor_key);
 
-		// xor the header data
-		xor_bytes(header.xor_key, (LPBYTE)&header.length, 8);
-
-		// Initialize the header
-		header.length = ntohl(header.length);
-
-		// use TlvHeader size here, because the length doesn't include the xor byte
-		payloadLength = header.length - sizeof(TlvHeader);
-		payloadBytesLeft = payloadLength;
-
-		// Allocate the payload
-		if (!(payload = (PUCHAR)malloc(payloadLength)))
+		// At this point, we might have read in a valid TLV packet, or we might have read in the first chunk of data
+		// from a staged listener after a reconnect. We can figure this out rather lazily by assuming the following:
+		// XOR keys are always 4 bytes that are non-zero. If the higher order byte of the xor key is zero, then it
+		// isn't an XOR Key, instead it's the 4-byte length of the metsrv binary (because metsrv isn't THAT big).
+		if ((header.xor_key >> 24) == 0)
 		{
-			SetLastError(ERROR_NOT_ENOUGH_MEMORY);
-			break;
-		}
+			// looks like we have a metsrv instance, time to ignore it.
+			int length = (int)header.xor_key;
+			dprintf("[TCP] discovered a length header, assuming it's metsrv of length %d", length);
 
-		// Read the payload
-		while (payloadBytesLeft > 0)
-		{
-			if ((bytesRead = recv(ctx->fd, payload + payloadLength - payloadBytesLeft, payloadBytesLeft, 0)) <= 0)
+			int bytesToRead = length - sizeof(PacketHeader) + sizeof(DWORD);
+			char buffer[65535];
+
+			while (bytesToRead > 0)
 			{
-
-				if (GetLastError() == WSAEWOULDBLOCK)
-				{
-					continue;
-				}
+				int bytesRead = recv(ctx->fd, buffer, min(sizeof(buffer), bytesToRead), 0);
 
 				if (bytesRead < 0)
 				{
+					if (GetLastError() == WSAEWOULDBLOCK)
+					{
+						continue;
+					}
 					SetLastError(ERROR_NOT_FOUND);
+					break;
 				}
 
-				break;
+				bytesToRead -= bytesRead;
 			}
 
-			payloadBytesLeft -= bytesRead;
-		}
-
-		// Didn't finish?
-		if (payloadBytesLeft)
-		{
-			break;
-		}
-
-		xor_bytes(header.xor_key, payload, payloadLength);
-
-		// Allocate a packet structure
-		if (!(localPacket = (Packet *)malloc(sizeof(Packet))))
-		{
-			SetLastError(ERROR_NOT_ENOUGH_MEMORY);
-			break;
-		}
-
-		memset(localPacket, 0, sizeof(Packet));
-
-		// If the connection has an established cipher and this packet is not
-		// plaintext, decrypt
-		if ((crypto = remote_get_cipher(remote)) &&
-			(packet_get_type(localPacket) != PACKET_TLV_TYPE_PLAIN_REQUEST) &&
-			(packet_get_type(localPacket) != PACKET_TLV_TYPE_PLAIN_RESPONSE))
-		{
-			ULONG origPayloadLength = payloadLength;
-			PUCHAR origPayload = payload;
-
-			// Decrypt
-			if ((res = crypto->handlers.decrypt(crypto, payload, payloadLength, &payload, &payloadLength)) != ERROR_SUCCESS)
+			// did something go wrong.
+			if (bytesToRead > 0)
 			{
-				SetLastError(res);
 				break;
 			}
 
-			// We no longer need the encrypted payload
-			free(origPayload);
+			// indicate success, but don't return a packet for processing
+			SetLastError(ERROR_SUCCESS);
+			*packet = NULL;
 		}
+		else
+		{
+			dprintf("[TCP] XOR key looks fine, moving on");
+			header.xor_key = ntohl(header.xor_key);
 
-		localPacket->header.length = header.length;
-		localPacket->header.type = header.type;
-		localPacket->payload = payload;
-		localPacket->payloadLength = payloadLength;
+			// xor the header data
+			xor_bytes(header.xor_key, (LPBYTE)&header.length, 8);
 
-		*packet = localPacket;
+			// Initialize the header
+			header.length = ntohl(header.length);
 
-		SetLastError(ERROR_SUCCESS);
+			// use TlvHeader size here, because the length doesn't include the xor byte
+			payloadLength = header.length - sizeof(TlvHeader);
+			payloadBytesLeft = payloadLength;
+
+			// Allocate the payload
+			if (!(payload = (PUCHAR)malloc(payloadLength)))
+			{
+				SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+				break;
+			}
+
+			// Read the payload
+			while (payloadBytesLeft > 0)
+			{
+				if ((bytesRead = recv(ctx->fd, payload + payloadLength - payloadBytesLeft, payloadBytesLeft, 0)) <= 0)
+				{
+
+					if (GetLastError() == WSAEWOULDBLOCK)
+					{
+						continue;
+					}
+
+					if (bytesRead < 0)
+					{
+						SetLastError(ERROR_NOT_FOUND);
+					}
+
+					break;
+				}
+
+				payloadBytesLeft -= bytesRead;
+			}
+
+			// Didn't finish?
+			if (payloadBytesLeft)
+			{
+				break;
+			}
+
+			xor_bytes(header.xor_key, payload, payloadLength);
+
+			// Allocate a packet structure
+			if (!(localPacket = (Packet *)malloc(sizeof(Packet))))
+			{
+				SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+				break;
+			}
+
+			memset(localPacket, 0, sizeof(Packet));
+
+			// If the connection has an established cipher and this packet is not
+			// plaintext, decrypt
+			if ((crypto = remote_get_cipher(remote)) &&
+				(packet_get_type(localPacket) != PACKET_TLV_TYPE_PLAIN_REQUEST) &&
+				(packet_get_type(localPacket) != PACKET_TLV_TYPE_PLAIN_RESPONSE))
+			{
+				ULONG origPayloadLength = payloadLength;
+				PUCHAR origPayload = payload;
+
+				// Decrypt
+				if ((res = crypto->handlers.decrypt(crypto, payload, payloadLength, &payload, &payloadLength)) != ERROR_SUCCESS)
+				{
+					SetLastError(res);
+					break;
+				}
+
+				// We no longer need the encrypted payload
+				free(origPayload);
+			}
+
+			localPacket->header.length = header.length;
+			localPacket->header.type = header.type;
+			localPacket->payload = payload;
+			localPacket->payloadLength = payloadLength;
+
+			*packet = localPacket;
+
+			SetLastError(ERROR_SUCCESS);
+		}
 
 	} while (0);
 
@@ -538,8 +584,15 @@ static DWORD server_dispatch_tcp(Remote* remote, THREAD* dispatchThread)
 				break;
 			}
 
-			running = command_handle(remote, packet);
-			dprintf("[DISPATCH] command_process result: %s", (running ? "continue" : "stop"));
+			if (packet == NULL)
+			{
+				dprintf("[DISPATCH] No packet received, probably just metsrv being ignored");
+			}
+			else
+			{
+				running = command_handle(remote, packet);
+				dprintf("[DISPATCH] command_process result: %s", (running ? "continue" : "stop"));
+			}
 
 			// packet received, reset the timer
 			lastPacket = current_unix_timestamp();
