@@ -68,9 +68,6 @@ public interface TLVType {
     public static final int TLV_TYPE_UUID         = TLVPacket.TLV_META_TYPE_RAW    | 461;
     public static final int TLV_TYPE_SESSION_GUID = TLVPacket.TLV_META_TYPE_RAW    | 462;
 
-    public static final int TLV_TYPE_CIPHER_NAME = TLVPacket.TLV_META_TYPE_STRING | 500;
-    public static final int TLV_TYPE_CIPHER_PARAMETERS = TLVPacket.TLV_META_TYPE_GROUP | 501;
-
     // General
     public static final int TLV_TYPE_HANDLE         = TLVPacket.TLV_META_TYPE_QWORD | 600;
     public static final int TLV_TYPE_INHERIT        = TLVPacket.TLV_META_TYPE_BOOL  | 601;

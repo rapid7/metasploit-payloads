@@ -333,7 +333,6 @@ static DWORD packet_transmit_http(Remote *remote, Packet *packet, PacketRequestC
  */
 static DWORD packet_transmit_via_http(Remote *remote, Packet *packet, PacketRequestCompletion *completion)
 {
-	CryptoContext *crypto;
 	Tlv requestId;
 	DWORD res;
 
@@ -367,32 +366,6 @@ static DWORD packet_transmit_via_http(Remote *remote, Packet *packet, PacketRequ
 			&requestId) == ERROR_SUCCESS))
 		{
 			packet_add_completion_handler((LPCSTR)requestId.buffer, completion);
-		}
-
-		// If the endpoint has a cipher established and this is not a plaintext
-		// packet, we encrypt
-		if ((crypto = remote_get_cipher(remote)) &&
-			(packet_get_type(packet) != PACKET_TLV_TYPE_PLAIN_REQUEST) &&
-			(packet_get_type(packet) != PACKET_TLV_TYPE_PLAIN_RESPONSE))
-		{
-			ULONG origPayloadLength = packet->payloadLength;
-			PUCHAR origPayload = packet->payload;
-
-			// Encrypt
-			if ((res = crypto->handlers.encrypt(crypto, packet->payload,
-				packet->payloadLength, &packet->payload,
-				&packet->payloadLength)) !=
-				ERROR_SUCCESS)
-			{
-				SetLastError(res);
-				break;
-			}
-
-			// Destroy the original payload as we no longer need it
-			free(origPayload);
-
-			// Update the header length
-			packet->header.length = htonl(packet->payloadLength + sizeof(TlvHeader));
 		}
 
 		dprintf("[PACKET] New xor key for sending");
@@ -436,7 +409,6 @@ static DWORD packet_transmit_via_http(Remote *remote, Packet *packet, PacketRequ
 static DWORD packet_receive_http(Remote *remote, Packet **packet)
 {
 	DWORD headerBytes = 0, payloadBytesLeft = 0, res;
-	CryptoContext *crypto = NULL;
 	Packet *localPacket = NULL;
 	PacketHeader header;
 	LONG bytesRead;
@@ -590,26 +562,6 @@ static DWORD packet_receive_http(Remote *remote, Packet **packet)
 		}
 
 		memset(localPacket, 0, sizeof(Packet));
-
-		// If the connection has an established cipher and this packet is not
-		// plaintext, decrypt
-		if ((crypto = remote_get_cipher(remote)) &&
-			(packet_get_type(localPacket) != PACKET_TLV_TYPE_PLAIN_REQUEST) &&
-			(packet_get_type(localPacket) != PACKET_TLV_TYPE_PLAIN_RESPONSE))
-		{
-			ULONG origPayloadLength = payloadLength;
-			PUCHAR origPayload = payload;
-
-			// Decrypt
-			if ((res = crypto->handlers.decrypt(crypto, payload, payloadLength, &payload, &payloadLength)) != ERROR_SUCCESS)
-			{
-				SetLastError(res);
-				break;
-			}
-
-			// We no longer need the encrypted payload
-			free(origPayload);
-		}
 
 		localPacket->header.length = header.length;
 		localPacket->header.type = header.type;
