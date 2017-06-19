@@ -251,13 +251,11 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClCompile Include="..\..\source\common\scheduler.c" />
     <ClCompile Include="..\..\source\common\thread.c" />
     <ClCompile Include="..\..\source\common\unicode.c" />
-    <ClCompile Include="..\..\source\common\crypto\xor.c" />
     <ClCompile Include="..\..\source\common\zlib\zlib.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\source\common\arch\win\remote_thread.h" />
     <ClInclude Include="..\..\source\common\config.h" />
-    <ClInclude Include="..\..\source\common\crypto\xor.h" />
     <ClInclude Include="..\..\source\common\args.h" />
     <ClInclude Include="..\..\source\common\base.h" />
     <ClInclude Include="..\..\source\common\arch\win\i386\base_inject.h" />
@@ -265,7 +263,6 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClInclude Include="..\..\source\common\channel.h" />
     <ClInclude Include="..\..\source\common\common.h" />
     <ClInclude Include="..\..\source\common\core.h" />
-    <ClInclude Include="..\..\source\common\crypto.h" />
     <ClInclude Include="..\..\source\common\linkage.h" />
     <ClInclude Include="..\..\source\common\list.h" />
     <ClInclude Include="..\..\source\common\remote.h" />

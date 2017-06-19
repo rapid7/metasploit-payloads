@@ -182,9 +182,6 @@ define("TLV_TYPE_MACHINE_ID",          TLV_META_TYPE_STRING | 460);
 define("TLV_TYPE_UUID",                TLV_META_TYPE_RAW    | 461);
 define("TLV_TYPE_SESSION_GUID",        TLV_META_TYPE_RAW    | 462);
 
-define("TLV_TYPE_CIPHER_NAME",         TLV_META_TYPE_STRING | 500);
-define("TLV_TYPE_CIPHER_PARAMETERS",   TLV_META_TYPE_GROUP  | 501);
-
 function my_cmd($cmd) {
     return shell_exec($cmd);
 }

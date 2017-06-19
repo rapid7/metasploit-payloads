@@ -16,8 +16,6 @@ extern DWORD remote_request_core_channel_eof(Remote *remote, Packet *packet);
 extern DWORD remote_request_core_channel_tell(Remote *remote, Packet *packet);
 extern DWORD remote_request_core_channel_interact(Remote *remote, Packet *packet);
 
-extern DWORD remote_request_core_crypto_negotiate(Remote *remote, Packet *packet);
-
 extern BOOL remote_request_core_shutdown(Remote *remote, Packet *packet, DWORD* pResult);
 
 extern DWORD remote_request_core_transport_set_timeouts(Remote * remote, Packet * packet);
@@ -82,8 +80,6 @@ Command baseCommands[] =
 	COMMAND_REQ("core_channel_tell", remote_request_core_channel_tell),
 	// Soon to be deprecated
 	COMMAND_REQ("core_channel_interact", remote_request_core_channel_interact),
-	// Crypto
-	COMMAND_REQ("core_crypto_negotiate", remote_request_core_crypto_negotiate),
 	// timeouts
 	COMMAND_REQ("core_transport_set_timeouts", remote_request_core_transport_set_timeouts),
 

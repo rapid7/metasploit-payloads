@@ -584,36 +584,6 @@ DWORD remote_request_core_channel_interact(Remote *remote, Packet *packet)
 }
 
 /*
- * core_crypto_negotiate
- * ---------------------
- *
- * Negotiates a cryptographic session with the remote host
- *
- * req: TLV_TYPE_CIPHER_NAME       -- The cipher being selected.
- * opt: TLV_TYPE_CIPHER_PARAMETERS -- The paramters passed to the cipher for
- *                                    initialization
- */
-DWORD remote_request_core_crypto_negotiate(Remote *remote, Packet *packet)
-{
-	LPCSTR cipherName = packet_get_tlv_value_string(packet,
-			TLV_TYPE_CIPHER_NAME);
-	DWORD res = ERROR_INVALID_PARAMETER;
-	Packet *response = packet_create_response(packet);
-
-	// If a cipher name was supplied, set it
-	if (cipherName)
-		res = remote_set_cipher(remote, cipherName, packet);
-
-	// Transmit a response
-	if (response)
-	{
-		res = packet_transmit_response(res, remote, response);
-	}
-
-	return ERROR_SUCCESS;
-}
-
-/*
  * core_shutdown
  * -----------------
  */
