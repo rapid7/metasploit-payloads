@@ -1839,7 +1839,7 @@ def _win_memwrite(address, data, handle=-1):
 		return None
 	return written.value
 
-@register_function_if(sys.platform.startswith('linux') or has_windll)
+@register_function_if(sys.platform == 'darwin' or sys.platform.startswith('linux') or has_windll)
 def stdapi_railgun_api(request, response):
 	size_out = packet_get_tlv(request, TLV_TYPE_RAILGUN_SIZE_OUT)['value']
 	stack_blob = packet_get_tlv(request, TLV_TYPE_RAILGUN_STACKBLOB)['value']
@@ -1891,8 +1891,11 @@ def stdapi_railgun_api(request, response):
 
 	debug_print('[*] railgun calling: ' + lib_name + '!' + func_name)
 	prototype = func_type(native, *func_args)
-	if sys.platform.startswith('linux'):
-		libc = ctypes.cdll.LoadLibrary('libc.so.6')
+	if sys.platform == 'darwin' or sys.platform.startswith('linux'):
+		if sys.platform == 'darwin':
+			libc = ctypes.CDLL(ctypes.util.find_library('c'))
+		else:
+			libc = ctypes.cdll.LoadLibrary('libc.so.6')
 		p_errno = ctypes.cast(libc.errno, ctypes.POINTER(ctypes.c_int))
 		errno = p_errno.contents
 		last_error = ctypes.c_int(0)
@@ -1928,7 +1931,7 @@ def stdapi_railgun_api(request, response):
 	response += tlv_pack(TLV_TYPE_RAILGUN_BACK_BUFFERBLOB_INOUT, ctarray_to_bytes(buff_blob_inout))
 	return ERROR_SUCCESS, response
 
-@register_function_if(sys.platform.startswith('linux') or has_windll)
+@register_function_if(sys.platform == 'darwin' or sys.platform.startswith('linux') or has_windll)
 def stdapi_railgun_api_multi(request, response):
 	for group_tlv in packet_enum_tlvs(request, tlv_type=TLV_TYPE_RAILGUN_MULTI_GROUP):
 		group_result = stdapi_railgun_api(group_tlv['value'], bytes())[1]
