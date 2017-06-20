@@ -7,6 +7,7 @@
 
 #include "win/server_transport_winhttp.h"
 #include "win/server_transport_tcp.h"
+#include "../../common/packet_encryption.h"
 
 #define TRANSPORT_ID_OFFSET 22
 
@@ -462,7 +463,6 @@ DWORD server_setup(MetsrvConfig* config)
 					dprintf("[TRANS] Moving transport from 0x%p to 0x%p", remote->transport, remote->next_transport);
 					remote->transport = remote->next_transport;
 					remote->next_transport = NULL;
-
 				}
 				else
 				{
@@ -481,6 +481,9 @@ DWORD server_setup(MetsrvConfig* config)
 					// the wait is a once-off thing, needs to be reset each time
 					remote->next_transport_wait = 0;
 				}
+
+				// if we had an encryption context we should clear it up.
+				free_encryption_context(remote);
 			}
 
 			// clean up the transports

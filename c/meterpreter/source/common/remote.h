@@ -23,6 +23,7 @@ typedef struct _SslLib SslLib;
 typedef struct _Remote Remote;
 typedef struct _TimeoutSettings TimeoutSettings;
 typedef struct _HttpTransportContext HttpTransportContext;
+typedef struct _PacketEncryptionContext PacketEncryptionContext;
 
 typedef SOCKET(*PTransportGetSocket)(Transport* transport);
 typedef void(*PTransportReset)(Transport* transport, BOOL shuttingDown);
@@ -152,6 +153,8 @@ typedef struct _Remote
 	int sess_expiry_time;                 ///! Number of seconds that the session runs for.
 	int sess_expiry_end;                  ///! Unix timestamp for when the server should shut down.
 	int sess_start_time;                  ///! Unix timestamp representing the session startup time.
+
+	PacketEncryptionContext* enc_ctx;     ///! Reference to the packet encryption context.
 } Remote;
 
 Remote* remote_allocate();

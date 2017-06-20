@@ -7,6 +7,7 @@
 #include "../../common/config.h"
 #include "server_transport_wininet.h"
 #include <winhttp.h>
+#include "../../common/packet_encryption.h"
 
 /*!
  * @brief Prepare a winHTTP request with the given context.
@@ -278,26 +279,13 @@ static DWORD validate_response_winhttp(HANDLE hReq, HttpTransportContext* ctx)
  * @param completion Pointer to the completion routines to process.
  * @return An indication of the result of processing the transmission request.
  */
-static DWORD packet_transmit_http(Remote *remote, Packet *packet, PacketRequestCompletion *completion)
+static DWORD packet_transmit_http(Remote *remote, LPBYTE content, DWORD contentLength)
 {
 	DWORD res = 0;
 	HINTERNET hReq;
 	BOOL result;
 	DWORD retries = 5;
 	HttpTransportContext* ctx = (HttpTransportContext*)remote->transport->ctx;
-	unsigned char *buffer;
-
-	DWORD totalLength = packet->payloadLength + sizeof(PacketHeader);
-
-	buffer = malloc(totalLength);
-	if (!buffer)
-	{
-		SetLastError(ERROR_NOT_FOUND);
-		return 0;
-	}
-
-	memcpy(buffer, &packet->header, sizeof(PacketHeader));
-	memcpy(buffer + sizeof(PacketHeader), packet->payload, packet->payloadLength);
 
 	do
 	{
@@ -307,7 +295,7 @@ static DWORD packet_transmit_http(Remote *remote, Packet *packet, PacketRequestC
 			break;
 		}
 
-		result = ctx->send_req(hReq, buffer, totalLength);
+		result = ctx->send_req(hReq, content, contentLength);
 
 		if (!result)
 		{
@@ -319,7 +307,6 @@ static DWORD packet_transmit_http(Remote *remote, Packet *packet, PacketRequestC
 		dprintf("[PACKET TRANSMIT] request sent.. apparently");
 	} while(0);
 
-	memset(buffer, 0, totalLength);
 	ctx->close_req(hReq);
 	return res;
 }
@@ -336,6 +323,8 @@ static DWORD packet_transmit_via_http(Remote *remote, Packet *packet, PacketRequ
 	CryptoContext *crypto;
 	Tlv requestId;
 	DWORD res;
+	BYTE* encryptedPacket = NULL;
+	DWORD encryptedPacketLength = 0;
 
 	lock_acquire(remote->lock);
 
@@ -395,19 +384,10 @@ static DWORD packet_transmit_via_http(Remote *remote, Packet *packet, PacketRequ
 			packet->header.length = htonl(packet->payloadLength + sizeof(TlvHeader));
 		}
 
-		dprintf("[PACKET] New xor key for sending");
-		packet->header.xor_key = rand_xor_key();
-		dprintf("[PACKET] XOR Encoding payload");
-		// before transmission, xor the whole lot, starting with the body
-		xor_bytes(packet->header.xor_key, (LPBYTE)packet->payload, packet->payloadLength);
-		dprintf("[PACKET] XOR Encoding header");
-		// then the header
-		xor_bytes(packet->header.xor_key, (LPBYTE)&packet->header.length, 8);
-		// be sure to switch the xor header before writing
-		packet->header.xor_key = htonl(packet->header.xor_key);
+		encrypt_packet(remote, packet, &encryptedPacket, &encryptedPacketLength);
 
 		dprintf("[PACKET] Transmitting packet of length %d to remote", packet->payloadLength);
-		res = packet_transmit_http(remote, packet, completion);
+		res = packet_transmit_http(remote, encryptedPacket, encryptedPacketLength);
 		if (res < 0)
 		{
 			dprintf("[PACKET] transmit failed with return %d\n", res);
@@ -418,6 +398,11 @@ static DWORD packet_transmit_via_http(Remote *remote, Packet *packet, PacketRequ
 	} while (0);
 
 	res = GetLastError();
+
+	if (encryptedPacket != NULL)
+	{
+		free(encryptedPacket);
+	}
 
 	// Destroy the packet
 	packet_destroy(packet);

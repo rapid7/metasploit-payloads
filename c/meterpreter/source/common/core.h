@@ -169,6 +169,9 @@ typedef enum
 	TLV_TYPE_CIPHER_NAME         = TLV_VALUE(TLV_META_TYPE_STRING,    500),   ///! Represents the name of a cipher.
 	TLV_TYPE_CIPHER_PARAMETERS   = TLV_VALUE(TLV_META_TYPE_GROUP,     501),   ///! Represents parameters for a cipher.
 
+	// Packet encryption
+	TLV_TYPE_AES_KEY             = TLV_VALUE(TLV_META_TYPE_RAW,       550),   ///! Represents the AES key
+
 	TLV_TYPE_EXTENSIONS          = TLV_VALUE(TLV_META_TYPE_COMPLEX, 20000),   ///! Represents an extension value.
 	TLV_TYPE_USER                = TLV_VALUE(TLV_META_TYPE_COMPLEX, 40000),   ///! Represents a user value.
 	TLV_TYPE_TEMP                = TLV_VALUE(TLV_META_TYPE_COMPLEX, 60000),   ///! Represents a temporary value.

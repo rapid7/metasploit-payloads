@@ -4,6 +4,7 @@
 #include "metsrv.h"
 #include "../../common/common.h"
 #include <ws2tcpip.h>
+#include "../../common/packet_encryption.h"
 
 // TCP-transport specific migration stub.
 typedef struct _TCPMIGRATECONTEXT
@@ -821,6 +822,8 @@ DWORD packet_transmit(Remote* remote, Packet* packet, PacketRequestCompletion* c
 	DWORD res;
 	DWORD idx;
 	TcpTransportContext* ctx = (TcpTransportContext*)remote->transport->ctx;
+	BYTE* encryptedPacket = NULL;
+	DWORD encryptedPacketLength = 0;
 
 	dprintf("[TRANSMIT] Sending packet to the server");
 
@@ -882,38 +885,12 @@ DWORD packet_transmit(Remote* remote, Packet* packet, PacketRequestCompletion* c
 			packet->header.length = htonl(packet->payloadLength + sizeof(TlvHeader));
 		}
 
-		dprintf("[PACKET] New xor key for sending");
-		packet->header.xor_key = rand_xor_key();
-		// before transmission, xor the whole lot, starting with the body
-		xor_bytes(packet->header.xor_key, (LPBYTE)packet->payload, packet->payloadLength);
-		// then the header
-		xor_bytes(packet->header.xor_key, (LPBYTE)&packet->header.length, 8);
-		// be sure to switch the xor header before writing
-		packet->header.xor_key = htonl(packet->header.xor_key);
+		encrypt_packet(remote, packet, &encryptedPacket, &encryptedPacketLength);
 
 		idx = 0;
-		while (idx < sizeof(packet->header))
+		while (idx < encryptedPacketLength)
 		{
-			// Transmit the packet's header (length, type)
-			res = send(ctx->fd, (LPCSTR)(&packet->header) + idx, sizeof(packet->header) - idx, 0);
-
-			if (res <= 0)
-			{
-				break;
-			}
-			idx += res;
-		}
-
-		if (res < 0)
-		{
-			break;
-		}
-
-		idx = 0;
-		while (idx < packet->payloadLength)
-		{
-			// Transmit the packet's payload (length, type)
-			res = send(ctx->fd, packet->payload + idx, packet->payloadLength - idx, 0);
+			res = send(ctx->fd, encryptedPacket + idx, encryptedPacketLength - idx, 0);
 
 			if (res < 0)
 			{
@@ -925,7 +902,7 @@ DWORD packet_transmit(Remote* remote, Packet* packet, PacketRequestCompletion* c
 
 		if (res < 0)
 		{
-			dprintf("[PACKET] transmit header failed with return %d at index %d\n", res, idx);
+			dprintf("[PACKET] transmit packet failed with return %d at index %d\n", res, idx);
 			break;
 		}
 
@@ -933,6 +910,11 @@ DWORD packet_transmit(Remote* remote, Packet* packet, PacketRequestCompletion* c
 	} while (0);
 
 	res = GetLastError();
+
+	if (encryptedPacket != NULL)
+	{
+		free(encryptedPacket);
+	}
 
 	// Destroy the packet
 	packet_destroy(packet);

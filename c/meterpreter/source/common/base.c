@@ -35,6 +35,8 @@ extern DWORD remote_request_core_transport_remove(Remote* remote, Packet* packet
 
 extern BOOL remote_request_core_migrate(Remote *remote, Packet *packet, DWORD* pResult);
 
+extern DWORD request_negotiate_aes_key(Remote* remote, Packet* packet);
+
 // Local remote response implementors
 extern DWORD remote_response_core_console_write(Remote *remote, Packet *packet);
 
@@ -84,6 +86,8 @@ Command baseCommands[] =
 	COMMAND_REQ("core_channel_interact", remote_request_core_channel_interact),
 	// Crypto
 	COMMAND_REQ("core_crypto_negotiate", remote_request_core_crypto_negotiate),
+	// Packet Encryption
+	COMMAND_REQ("core_negotiate_aes", request_negotiate_aes_key),
 	// timeouts
 	COMMAND_REQ("core_transport_set_timeouts", remote_request_core_transport_set_timeouts),
 
