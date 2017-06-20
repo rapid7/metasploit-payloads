@@ -13,7 +13,6 @@
 #include <time.h>
 
 #define SAFE_FREE(x) {free(x); x = NULL;}
-#define rand_xor_key() ((((rand() % 254) + 1) << 0) | (((rand() % 254) + 1) << 8) | (((rand() % 254) + 1) << 16) | (((rand() % 254) + 1) << 24))
 
 #include <winsock2.h>
 #include <windows.h>
@@ -108,4 +107,5 @@ static _inline void real_dprintf(char *format, ...)
 #endif
 
 int current_unix_timestamp(void);
-VOID xor_bytes(DWORD xorKey, LPBYTE buffer, DWORD bufferSize);
+VOID xor_bytes(BYTE xorKey[4], LPBYTE buffer, DWORD bufferSize);
+VOID rand_xor_key(BYTE buffer[4]);

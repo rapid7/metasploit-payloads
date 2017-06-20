@@ -401,10 +401,10 @@ static DWORD packet_receive(Remote *remote, Packet **packet)
 		// from a staged listener after a reconnect. We can figure this out rather lazily by assuming the following:
 		// XOR keys are always 4 bytes that are non-zero. If the higher order byte of the xor key is zero, then it
 		// isn't an XOR Key, instead it's the 4-byte length of the metsrv binary (because metsrv isn't THAT big).
-		if ((header.xor_key >> 24) == 0)
+		if (header.xor_key[0] == 0)
 		{
 			// looks like we have a metsrv instance, time to ignore it.
-			int length = (int)header.xor_key;
+			int length = *(int*)&header.xor_key[0];
 			dprintf("[TCP] discovered a length header, assuming it's metsrv of length %d", length);
 
 			int bytesToRead = length - sizeof(PacketHeader) + sizeof(DWORD);
@@ -440,8 +440,6 @@ static DWORD packet_receive(Remote *remote, Packet **packet)
 		else
 		{
 			dprintf("[TCP] XOR key looks fine, moving on");
-			header.xor_key = ntohl(header.xor_key);
-
 			// xor the header data
 			xor_bytes(header.xor_key, (LPBYTE)&header.length, 8);
 

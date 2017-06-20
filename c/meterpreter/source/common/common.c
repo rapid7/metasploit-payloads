@@ -39,7 +39,7 @@ VOID sleep(DWORD seconds)
 	Sleep(seconds * 1000);
 }
 
-VOID xor_bytes(DWORD xorKey, LPBYTE buffer, DWORD bufferSize)
+VOID xor_bytes(BYTE xorKey[4], LPBYTE buffer, DWORD bufferSize)
 {
 	static BOOL initialised = FALSE;
 	if (!initialised)
@@ -48,10 +48,16 @@ VOID xor_bytes(DWORD xorKey, LPBYTE buffer, DWORD bufferSize)
 		initialised = TRUE;
 	}
 
-	LPBYTE xor = (LPBYTE)&xorKey;
-
 	for (DWORD i = 0; i < bufferSize; ++i)
 	{
-		buffer[i] ^= xor[i % sizeof(DWORD)];
+		buffer[i] ^= xorKey[i % sizeof(DWORD)];
 	}
+}
+
+VOID rand_xor_key(BYTE buffer[4])
+{
+	buffer[0] = (rand() % 254) + 1;
+	buffer[1] = (rand() % 254) + 1;
+	buffer[2] = (rand() % 254) + 1;
+	buffer[3] = (rand() % 254) + 1;
 }

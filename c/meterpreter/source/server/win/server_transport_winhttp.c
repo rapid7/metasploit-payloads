@@ -517,7 +517,6 @@ static DWORD packet_receive_http(Remote *remote, Packet **packet)
 		}
 
 		dprintf("[PACKET RECEIVE HTTP] decoding header");
-		header.xor_key = ntohl(header.xor_key);
 		xor_bytes(header.xor_key, (LPBYTE)&header.length, 8);
 		header.length = ntohl(header.length);
 

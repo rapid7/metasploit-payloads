@@ -198,9 +198,10 @@ typedef struct
 
 typedef struct
 {
-	DWORD xor_key;
+	BYTE xor_key[4];
 	DWORD length;
 	DWORD type;
+	//BYTE session_guid[sizeof(GUID)];
 } PacketHeader;
 
 /*! @brief Packet definition. */

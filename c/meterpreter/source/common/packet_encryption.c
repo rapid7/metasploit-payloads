@@ -24,9 +24,15 @@ DWORD encrypt_packet(Remote* remote, Packet* packet, LPBYTE* buffer, LPDWORD buf
 	DWORD result = ERROR_SUCCESS;
 
 	vdprintf("[ENC] Preparing for encryption ...");
+
 	// create a new XOR key here, because the content will be copied into the final
 	// payload as part of the prepration process
-	DWORD xor_key = rand_xor_key();
+	rand_xor_key(packet->header.xor_key);
+
+	// copy the session ID to the header as this will be used later to identify the packet's destination session
+	//memcpy_s(packet->header.session_guid, sizeof(packet->header.session_guid), remote->orig_config->session.session_guid, sizeof(remote->orig_config->session.session_guid));
+
+	// TODO: probably add the UUID here at some point as well.
 
 	// Only encrypt if the context was set up correctly
 	if (remote->enc_ctx != NULL && remote->enc_ctx->valid)
@@ -106,10 +112,7 @@ DWORD encrypt_packet(Remote* remote, Packet* packet, LPBYTE* buffer, LPDWORD buf
 	}
 
 	// finally XOR obfuscate like we always did before, skippig the xor key itself.
-	xor_bytes(xor_key, *buffer + sizeof(packet->header.xor_key), *bufferSize - sizeof(packet->header.xor_key));
-	// and make sure we do the byte swap thing like we did before, for some stupid reason
-	xor_key = htonl(xor_key);
-	memcpy_s(*buffer, sizeof(xor_key), (BYTE*)&xor_key, sizeof(xor_key));
+	xor_bytes(packet->header.xor_key, *buffer + sizeof(packet->header.xor_key), *bufferSize - sizeof(packet->header.xor_key));
 
 	return result;
 }
