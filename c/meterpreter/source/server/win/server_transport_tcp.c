@@ -356,9 +356,10 @@ static DWORD packet_receive(Remote *remote, Packet **packet)
 	CryptoContext* crypto;
 	DWORD headerBytes = 0, payloadBytesLeft = 0, res;
 	Packet *localPacket = NULL;
-	PacketHeader header;
+	PacketHeader header = { 0 };
 	LONG bytesRead;
 	BOOL inHeader = TRUE;
+	PUCHAR packetBuffer = NULL;
 	PUCHAR payload = NULL;
 	ULONG payloadLength;
 	TcpTransportContext* ctx = (TcpTransportContext*)remote->transport->ctx;
@@ -377,6 +378,7 @@ static DWORD packet_receive(Remote *remote, Packet **packet)
 					SetLastError(ERROR_NOT_FOUND);
 				}
 
+				dprintf("[TCP] Socket error");
 				break;
 			}
 
@@ -392,10 +394,17 @@ static DWORD packet_receive(Remote *remote, Packet **packet)
 
 		if (headerBytes != sizeof(PacketHeader))
 		{
+			dprintf("[TCP] we didn't get enough header bytes");
 			break;
 		}
 
-		dprintf("[TCP] the XOR key is: %08x", header.xor_key);
+		vdprintf("[TCP] the XOR key is: %02x%02x%02x%02x", header.xor_key[0], header.xor_key[1], header.xor_key[2], header.xor_key[3]);
+
+#ifdef DEBUGTRACE
+		PUCHAR h = (PUCHAR)&header;
+		vdprintf("[TCP] Packet header: [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X]",
+			h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15], h[16], h[17], h[18], h[19], h[20], h[21], h[22], h[23], h[24], h[25], h[26], h[27], h[28]);
+#endif
 
 		// At this point, we might have read in a valid TLV packet, or we might have read in the first chunk of data
 		// from a staged listener after a reconnect. We can figure this out rather lazily by assuming the following:
@@ -439,23 +448,37 @@ static DWORD packet_receive(Remote *remote, Packet **packet)
 		}
 		else
 		{
-			dprintf("[TCP] XOR key looks fine, moving on");
+			vdprintf("[TCP] XOR key looks fine, moving on");
 			// xor the header data
-			xor_bytes(header.xor_key, (LPBYTE)&header.length, 8);
-
-			// Initialize the header
-			header.length = ntohl(header.length);
-
-			// use TlvHeader size here, because the length doesn't include the xor byte
-			payloadLength = header.length - sizeof(TlvHeader);
+			xor_bytes(header.xor_key, (PUCHAR)&header + sizeof(header.xor_key), sizeof(PacketHeader) - sizeof(header.xor_key));
+#ifdef DEBUGTRACE
+			PUCHAR h = (PUCHAR)&header;
+			vdprintf("[TCP] Packet header decoded: [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X]",
+				h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15], h[16], h[17], h[18], h[19], h[20], h[21], h[22], h[23], h[24], h[25], h[26], h[27], h[28]);
+#endif
+			
+			payloadLength = ntohl(header.length) - sizeof(TlvHeader);
+			vdprintf("[TCP] Payload length is %d", payloadLength);
+			DWORD packetSize = sizeof(PacketHeader) + payloadLength + sizeof(TlvHeader);
+			vdprintf("[TCP] total buffer size for the packet is %d", packetSize);
 			payloadBytesLeft = payloadLength;
 
 			// Allocate the payload
-			if (!(payload = (PUCHAR)malloc(payloadLength)))
+			if (!(packetBuffer = (PUCHAR)malloc(packetSize)))
 			{
+				dprintf("[TCP] Failed to create the packet buffer");
 				SetLastError(ERROR_NOT_ENOUGH_MEMORY);
 				break;
 			}
+			dprintf("[TCP] Allocated packet buffer at %p", packetBuffer);
+
+			// we're done with the header data, so we need to re-encode it, as the packet decryptor is going to
+			// handle the extraction for us.
+			xor_bytes(header.xor_key, (LPBYTE)&header.session_guid[0], sizeof(PacketHeader) - sizeof(header.xor_key));
+			// Copy the packet header stuff over to the packet
+			memcpy_s(packetBuffer, sizeof(PacketHeader), (LPBYTE)&header, sizeof(PacketHeader));
+
+			payload = packetBuffer + sizeof(PacketHeader);
 
 			// Read the payload
 			while (payloadBytesLeft > 0)
@@ -482,19 +505,19 @@ static DWORD packet_receive(Remote *remote, Packet **packet)
 			// Didn't finish?
 			if (payloadBytesLeft)
 			{
+				dprintf("[TCP] Failed to get all the payload bytes");
 				break;
 			}
 
-			xor_bytes(header.xor_key, payload, payloadLength);
+			vdprintf("[TCP] decrypting packet");
+			SetLastError(decrypt_packet(remote, packet, packetBuffer, packetSize));
 
-			// Allocate a packet structure
-			if (!(localPacket = (Packet *)malloc(sizeof(Packet))))
+			free(packetBuffer);
+
+			if (GetLastError() != ERROR_SUCCESS)
 			{
-				SetLastError(ERROR_NOT_ENOUGH_MEMORY);
 				break;
 			}
-
-			memset(localPacket, 0, sizeof(Packet));
 
 			// If the connection has an established cipher and this packet is not
 			// plaintext, decrypt
@@ -515,13 +538,6 @@ static DWORD packet_receive(Remote *remote, Packet **packet)
 				// We no longer need the encrypted payload
 				free(origPayload);
 			}
-
-			localPacket->header.length = header.length;
-			localPacket->header.type = header.type;
-			localPacket->payload = payload;
-			localPacket->payloadLength = payloadLength;
-
-			*packet = localPacket;
 
 			SetLastError(ERROR_SUCCESS);
 		}
@@ -797,9 +813,6 @@ static BOOL configure_tcp_connection(Transport* transport)
 	// Do not allow the file descriptor to be inherited by child processes
 	SetHandleInformation((HANDLE)ctx->fd, HANDLE_FLAG_INHERIT, 0);
 
-	dprintf("[SERVER] Flushing the socket handle...");
-	//server_socket_flush(transport);
-
 	transport->comms_last_packet = current_unix_timestamp();
 
 	return TRUE;
@@ -884,6 +897,7 @@ DWORD packet_transmit(Remote* remote, Packet* packet, PacketRequestCompletion* c
 		}
 
 		encrypt_packet(remote, packet, &encryptedPacket, &encryptedPacketLength);
+		dprintf("[PACKET] Sending packet to remote, length: %u", encryptedPacketLength);
 
 		idx = 0;
 		while (idx < encryptedPacketLength)
@@ -904,6 +918,7 @@ DWORD packet_transmit(Remote* remote, Packet* packet, PacketRequestCompletion* c
 			break;
 		}
 
+		dprintf("[PACKET] Packet sent!");
 		SetLastError(ERROR_SUCCESS);
 	} while (0);
 

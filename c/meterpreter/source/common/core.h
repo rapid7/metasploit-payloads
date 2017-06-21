@@ -196,13 +196,16 @@ typedef struct
 	PUCHAR    buffer;
 } Tlv;
 
+#pragma pack(push, 1)
 typedef struct
 {
 	BYTE xor_key[4];
+	BYTE session_guid[sizeof(GUID)];
+	BYTE encrypted;
 	DWORD length;
 	DWORD type;
-	//BYTE session_guid[sizeof(GUID)];
 } PacketHeader;
+#pragma pack(pop)
 
 /*! @brief Packet definition. */
 typedef struct _Packet

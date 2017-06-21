@@ -23,6 +23,7 @@ typedef struct _PacketEncryptionContext
 typedef struct _Remote Remote;
 typedef struct _Packet Packet;
 
+DWORD decrypt_packet(Remote* remote, Packet** packet, LPBYTE buffer, DWORD bufferSize);
 DWORD encrypt_packet(Remote* remote, Packet* packet, LPBYTE* buffer, LPDWORD bufferSize);
 DWORD request_negotiate_aes_key(Remote* remote, Packet* packet);
 DWORD free_encryption_context(Remote* remote);
