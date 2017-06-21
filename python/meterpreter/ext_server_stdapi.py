@@ -1900,7 +1900,7 @@ def stdapi_railgun_api(request, response):
 		errno = p_errno.contents
 		last_error = ctypes.c_int(0)
 		p_errno.contents = last_error
-		func = prototype((func_name, ctypes.CDLL(lib_name)))
+		func = prototype((func_name, ctypes.CDLL(ctypes.util.find_library(lib_name) or lib_name)))
 		result = func(*call_args)
 		p_errno.contents = errno
 		last_error = last_error.value
