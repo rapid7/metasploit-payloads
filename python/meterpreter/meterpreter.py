@@ -60,6 +60,7 @@ random.seed()
 
 # these values will be patched, DO NOT CHANGE THEM
 DEBUGGING = False
+TRY_TO_FORK = True
 HTTP_CONNECTION_URL = None
 HTTP_PROXY = None
 HTTP_USER_AGENT = None
@@ -1196,7 +1197,8 @@ class PythonMeterpreter(object):
 		resp += tlv_pack(reqid_tlv)
 		return tlv_pack_response(result, resp)
 
-if not hasattr(os, 'fork') or (hasattr(os, 'fork') and os.fork() == 0):
+_try_to_fork = TRY_TO_FORK and hasattr(os, 'fork')
+if not _try_to_fork or (_try_to_fork and os.fork() == 0):
 	if hasattr(os, 'setsid'):
 		try:
 			os.setsid()
