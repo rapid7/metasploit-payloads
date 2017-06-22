@@ -910,12 +910,27 @@ function connect($ipaddr, $port, $proto='tcp') {
     # unnecessarily, but fall back to socket_create if they aren't available.
     if (is_callable('stream_socket_client')) {
         my_print("stream_socket_client({$proto}://{$ipaddr}:{$port})");
-        $sock = stream_socket_client("{$proto}://{$ipaddr}:{$port}");
-        my_print("Got a sock: $sock");
-        if (!$sock) { return false; }
-        if ($proto == 'tcp') {
+        if ($proto == 'ssl') {
+            $sock = stream_socket_client(
+                "{$proto}://{$ipaddr}:{$port}",
+                $errno,
+                $errstr,
+                5,
+                STREAM_CLIENT_ASYNC_CONNECT
+            );
+            if (!$sock) { return false; }
+            my_print("Got a sock: $sock");
+            register_stream($sock);
+            stream_set_blocking($sock,0);
+        } elseif ($proto == 'tcp') {
+            $sock = stream_socket_client("{$proto}://{$ipaddr}:{$port}");
+            if (!$sock) { return false; }
+            my_print("Got a sock: $sock");
             register_stream($sock);
         } elseif ($proto == 'udp') {
+            $sock = stream_socket_client("{$proto}://{$ipaddr}:{$port}");
+            if (!$sock) { return false; }
+            my_print("Got a sock: $sock");
             register_stream($sock, $ipaddr, $port);
         } else {
             my_print("WTF proto is this: '$proto'");
@@ -923,7 +938,11 @@ function connect($ipaddr, $port, $proto='tcp') {
     } else
     if (is_callable('fsockopen')) {
         my_print("fsockopen");
-        if ($proto == 'tcp') {
+        if ($proto == 'ssl') {
+            $sock = fsockopen("{$proto}://{$ipaddr}:{$port}");
+            register_stream($sock);
+            stream_set_blocking($sock,0);
+        } elseif ($proto == 'tcp') {
             $sock = fsockopen($ipaddr,$port);
             if (!$sock) { return false; }
             if (is_callable('socket_set_timeout')) {
