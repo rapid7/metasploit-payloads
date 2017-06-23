@@ -226,7 +226,7 @@ DWORD request_ui_start_keyscan(Remote *remote, Packet *request)
 	DWORD result = ERROR_SUCCESS;
 
   bool track_active_window = packet_get_tlv_value_bool(request, TLV_TYPE_KEYSCAN_TRACK_ACTIVE_WINDOW);
-  
+
   // set appropriate logging function
   if (track_active_window) {
     f_logkey = &ui_log_key_actwin;
