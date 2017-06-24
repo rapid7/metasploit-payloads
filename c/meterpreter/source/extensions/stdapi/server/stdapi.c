@@ -174,24 +174,6 @@ Command customCommands[] =
  */
 DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
 {
-	HANDLE KernelHandleM = GetModuleHandle("kernel32.dll");
-	if (KernelHandleM)
-	{
-		typedef DWORD(WINAPI * ThreadErrorMSG)(DWORD, DWORD *);
-		typedef DWORD(WINAPI * ErrorMSG)(DWORD);
-		ThreadErrorMSG SetThreadErrorModeReal;
-		ErrorMSG SetErrorModeReal;
-		SetErrorModeReal = (ErrorMSG)GetProcAddress(KernelHandleM, "SetErrorMode");
-		SetThreadErrorModeReal = (ThreadErrorMSG)GetProcAddress(KernelHandleM, "SetThreadErrorMode");
-		if (SetErrorModeReal)
-		{
-			SetErrorModeReal(SEM_FAILCRITICALERRORS);
-		}
-		if (SetThreadErrorModeReal)
-		{
-			SetThreadErrorModeReal(SEM_FAILCRITICALERRORS, NULL);
-		}
-	}
 	hMetSrv = remote->met_srv;
 
 	command_register_all(customCommands);
