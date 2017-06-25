@@ -353,7 +353,6 @@ static LONG server_socket_poll(Remote* remote, long timeout)
  */
 static DWORD packet_receive(Remote *remote, Packet **packet)
 {
-	CryptoContext* crypto;
 	DWORD headerBytes = 0, payloadBytesLeft = 0, res;
 	Packet *localPacket = NULL;
 	PacketHeader header = { 0 };
@@ -513,33 +512,6 @@ static DWORD packet_receive(Remote *remote, Packet **packet)
 			SetLastError(decrypt_packet(remote, packet, packetBuffer, packetSize));
 
 			free(packetBuffer);
-
-			if (GetLastError() != ERROR_SUCCESS)
-			{
-				break;
-			}
-
-			// If the connection has an established cipher and this packet is not
-			// plaintext, decrypt
-			if ((crypto = remote_get_cipher(remote)) &&
-				(packet_get_type(localPacket) != PACKET_TLV_TYPE_PLAIN_REQUEST) &&
-				(packet_get_type(localPacket) != PACKET_TLV_TYPE_PLAIN_RESPONSE))
-			{
-				ULONG origPayloadLength = payloadLength;
-				PUCHAR origPayload = payload;
-
-				// Decrypt
-				if ((res = crypto->handlers.decrypt(crypto, payload, payloadLength, &payload, &payloadLength)) != ERROR_SUCCESS)
-				{
-					SetLastError(res);
-					break;
-				}
-
-				// We no longer need the encrypted payload
-				free(origPayload);
-			}
-
-			SetLastError(ERROR_SUCCESS);
 		}
 
 	} while (0);
@@ -828,7 +800,6 @@ static BOOL configure_tcp_connection(Transport* transport)
  */
 DWORD packet_transmit(Remote* remote, Packet* packet, PacketRequestCompletion* completion)
 {
-	CryptoContext* crypto;
 	Tlv requestId;
 	DWORD res;
 	DWORD idx;
@@ -868,32 +839,6 @@ DWORD packet_transmit(Remote* remote, Packet* packet, PacketRequestCompletion* c
 			&requestId) == ERROR_SUCCESS))
 		{
 			packet_add_completion_handler((LPCSTR)requestId.buffer, completion);
-		}
-
-		// If the endpoint has a cipher established and this is not a plaintext
-		// packet, we encrypt
-		if ((crypto = remote_get_cipher(remote)) &&
-			(packet_get_type(packet) != PACKET_TLV_TYPE_PLAIN_REQUEST) &&
-			(packet_get_type(packet) != PACKET_TLV_TYPE_PLAIN_RESPONSE))
-		{
-			ULONG origPayloadLength = packet->payloadLength;
-			PUCHAR origPayload = packet->payload;
-
-			// Encrypt
-			if ((res = crypto->handlers.encrypt(crypto, packet->payload,
-				packet->payloadLength, &packet->payload,
-				&packet->payloadLength)) !=
-				ERROR_SUCCESS)
-			{
-				SetLastError(res);
-				break;
-			}
-
-			// Destroy the original payload as we no longer need it
-			free(origPayload);
-
-			// Update the header length
-			packet->header.length = htonl(packet->payloadLength + sizeof(TlvHeader));
 		}
 
 		encrypt_packet(remote, packet, &encryptedPacket, &encryptedPacketLength);

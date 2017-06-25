@@ -54,8 +54,6 @@ public class NotYetImplementedCommand implements Command {
         typeNames.put(new Integer(TLVType.TLV_TYPE_MIGRATE_SOCKET_PATH), "TLV_TYPE_MIGRATE_SOCKET_PATH");
         typeNames.put(new Integer(TLVType.TLV_TYPE_MIGRATE_STUB_LEN), "TLV_TYPE_MIGRATE_STUB_LEN");
         typeNames.put(new Integer(TLVType.TLV_TYPE_MIGRATE_STUB), "TLV_TYPE_MIGRATE_STUB");
-        typeNames.put(new Integer(TLVType.TLV_TYPE_CIPHER_NAME), "TLV_TYPE_CIPHER_NAME");
-        typeNames.put(new Integer(TLVType.TLV_TYPE_CIPHER_PARAMETERS), "TLV_TYPE_CIPHER_PARAMETERS");
         typeNames.put(new Integer(TLVType.TLV_TYPE_HANDLE), "TLV_TYPE_HANDLE");
         typeNames.put(new Integer(TLVType.TLV_TYPE_INHERIT), "TLV_TYPE_INHERIT");
         typeNames.put(new Integer(TLVType.TLV_TYPE_PROCESS_HANDLE), "TLV_TYPE_PROCESS_HANDLE");

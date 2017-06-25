@@ -165,10 +165,6 @@ typedef enum
 	TLV_TYPE_UUID                = TLV_VALUE(TLV_META_TYPE_RAW,       461),   ///! Represents a UUID.
 	TLV_TYPE_SESSION_GUID        = TLV_VALUE(TLV_META_TYPE_RAW,       462),   ///! Represents a Session GUID.
 
-	// Cryptography
-	TLV_TYPE_CIPHER_NAME         = TLV_VALUE(TLV_META_TYPE_STRING,    500),   ///! Represents the name of a cipher.
-	TLV_TYPE_CIPHER_PARAMETERS   = TLV_VALUE(TLV_META_TYPE_GROUP,     501),   ///! Represents parameters for a cipher.
-
 	// Packet encryption
 	TLV_TYPE_AES_KEY             = TLV_VALUE(TLV_META_TYPE_RAW,       550),   ///! Represents an AES key
 	TLV_TYPE_ENC_AES_KEY         = TLV_VALUE(TLV_META_TYPE_RAW,       551),   ///! Represents an encrypted AES key

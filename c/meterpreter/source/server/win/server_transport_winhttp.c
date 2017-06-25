@@ -320,7 +320,6 @@ static DWORD packet_transmit_http(Remote *remote, LPBYTE content, DWORD contentL
  */
 static DWORD packet_transmit_via_http(Remote *remote, Packet *packet, PacketRequestCompletion *completion)
 {
-	CryptoContext *crypto;
 	Tlv requestId;
 	DWORD res;
 	BYTE* encryptedPacket = NULL;
@@ -356,32 +355,6 @@ static DWORD packet_transmit_via_http(Remote *remote, Packet *packet, PacketRequ
 			&requestId) == ERROR_SUCCESS))
 		{
 			packet_add_completion_handler((LPCSTR)requestId.buffer, completion);
-		}
-
-		// If the endpoint has a cipher established and this is not a plaintext
-		// packet, we encrypt
-		if ((crypto = remote_get_cipher(remote)) &&
-			(packet_get_type(packet) != PACKET_TLV_TYPE_PLAIN_REQUEST) &&
-			(packet_get_type(packet) != PACKET_TLV_TYPE_PLAIN_RESPONSE))
-		{
-			ULONG origPayloadLength = packet->payloadLength;
-			PUCHAR origPayload = packet->payload;
-
-			// Encrypt
-			if ((res = crypto->handlers.encrypt(crypto, packet->payload,
-				packet->payloadLength, &packet->payload,
-				&packet->payloadLength)) !=
-				ERROR_SUCCESS)
-			{
-				SetLastError(res);
-				break;
-			}
-
-			// Destroy the original payload as we no longer need it
-			free(origPayload);
-
-			// Update the header length
-			packet->header.length = htonl(packet->payloadLength + sizeof(TlvHeader));
 		}
 
 		encrypt_packet(remote, packet, &encryptedPacket, &encryptedPacketLength);
@@ -421,11 +394,11 @@ static DWORD packet_transmit_via_http(Remote *remote, Packet *packet, PacketRequ
 static DWORD packet_receive_http(Remote *remote, Packet **packet)
 {
 	DWORD headerBytes = 0, payloadBytesLeft = 0, res;
-	CryptoContext *crypto = NULL;
 	Packet *localPacket = NULL;
 	PacketHeader header;
 	LONG bytesRead;
 	BOOL inHeader = TRUE;
+	PUCHAR packetBuffer = NULL;
 	PUCHAR payload = NULL;
 	ULONG payloadLength;
 	HttpTransportContext* ctx = (HttpTransportContext*)remote->transport->ctx;
@@ -517,21 +490,35 @@ static DWORD packet_receive_http(Remote *remote, Packet **packet)
 		}
 
 		dprintf("[PACKET RECEIVE HTTP] decoding header");
-		xor_bytes(header.xor_key, (LPBYTE)&header.length, 8);
-		header.length = ntohl(header.length);
-
-		// Initialize the header
-		vdprintf("[PACKET RECEIVE HTTP] initialising header");
-		// use TlvHeader size here, because the length doesn't include the xor byte
-		payloadLength = header.length - sizeof(TlvHeader);
+		xor_bytes(header.xor_key, (PUCHAR)&header + sizeof(header.xor_key), sizeof(PacketHeader) - sizeof(header.xor_key));
+#ifdef DEBUGTRACE
+		PUCHAR h = (PUCHAR)&header;
+		vdprintf("[REC HTTP] Packet header decoded: [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X]",
+			h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15], h[16], h[17], h[18], h[19], h[20], h[21], h[22], h[23], h[24], h[25], h[26], h[27], h[28]);
+#endif
+		
+		payloadLength = ntohl(header.length) - sizeof(TlvHeader);
+		vdprintf("[REC HTTP] Payload length is %d", payloadLength);
+		DWORD packetSize = sizeof(PacketHeader) + payloadLength + sizeof(TlvHeader);
+		vdprintf("[REC HTTP] total buffer size for the packet is %d", packetSize);
 		payloadBytesLeft = payloadLength;
 
 		// Allocate the payload
-		if (!(payload = (PUCHAR)malloc(payloadLength)))
+		if (!(packetBuffer = (PUCHAR)malloc(packetSize)))
 		{
+			dprintf("[REC HTTP] Failed to create the packet buffer");
 			SetLastError(ERROR_NOT_ENOUGH_MEMORY);
 			break;
 		}
+		dprintf("[REC HTTP] Allocated packet buffer at %p", packetBuffer);
+
+		// we're done with the header data, so we need to re-encode it, as the packet decryptor is going to
+		// handle the extraction for us.
+		xor_bytes(header.xor_key, (LPBYTE)&header.session_guid[0], sizeof(PacketHeader) - sizeof(header.xor_key));
+		// Copy the packet header stuff over to the packet
+		memcpy_s(packetBuffer, sizeof(PacketHeader), (LPBYTE)&header, sizeof(PacketHeader));
+
+		payload = packetBuffer + sizeof(PacketHeader);
 
 		// Read the payload
 		retries = payloadBytesLeft;
@@ -564,46 +551,9 @@ static DWORD packet_receive_http(Remote *remote, Packet **packet)
 		}
 
 		dprintf("[PACKET RECEIVE HTTP] decoding payload");
-		xor_bytes(header.xor_key, payload, payloadLength);
+		SetLastError(decrypt_packet(remote, packet, packetBuffer, packetSize));
 
-		// Allocate a packet structure
-		if (!(localPacket = (Packet *)malloc(sizeof(Packet))))
-		{
-			SetLastError(ERROR_NOT_ENOUGH_MEMORY);
-			break;
-		}
-
-		memset(localPacket, 0, sizeof(Packet));
-
-		// If the connection has an established cipher and this packet is not
-		// plaintext, decrypt
-		if ((crypto = remote_get_cipher(remote)) &&
-			(packet_get_type(localPacket) != PACKET_TLV_TYPE_PLAIN_REQUEST) &&
-			(packet_get_type(localPacket) != PACKET_TLV_TYPE_PLAIN_RESPONSE))
-		{
-			ULONG origPayloadLength = payloadLength;
-			PUCHAR origPayload = payload;
-
-			// Decrypt
-			if ((res = crypto->handlers.decrypt(crypto, payload, payloadLength, &payload, &payloadLength)) != ERROR_SUCCESS)
-			{
-				SetLastError(res);
-				break;
-			}
-
-			// We no longer need the encrypted payload
-			free(origPayload);
-		}
-
-		localPacket->header.length = header.length;
-		localPacket->header.type = header.type;
-		localPacket->payload = payload;
-		localPacket->payloadLength = payloadLength;
-
-		*packet = localPacket;
-
-		SetLastError(ERROR_SUCCESS);
-
+		free(packetBuffer);
 	} while (0);
 
 	res = GetLastError();
