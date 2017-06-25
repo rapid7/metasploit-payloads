@@ -11,6 +11,14 @@ typedef struct _CryptProviderParams
 	const DWORD flags;
 } CryptProviderParams;
 
+typedef struct _RsaKey
+{
+	BLOBHEADER header;
+	DWORD length;
+	BYTE key[1];
+} RsaKey;
+
+
 const CryptProviderParams AesProviders[] =
 {
 	{MS_ENH_RSA_AES_PROV, PROV_RSA_AES, 0},
@@ -310,25 +318,25 @@ DWORD free_encryption_context(Remote* remote)
 	DWORD result = ERROR_SUCCESS;
 
 	dprintf("[ENC] Freeing encryption context %p", remote->enc_ctx);
-	if (remote->enc_ctx != NULL);
+if (remote->enc_ctx != NULL);
+{
+	dprintf("[ENC] Encryption context not null, so ditching AES key");
+	if (remote->enc_ctx->aes_key != 0)
 	{
-		dprintf("[ENC] Encryption context not null, so ditching AES key");
-		if (remote->enc_ctx->aes_key != 0)
-		{
-			CryptDestroyKey(remote->enc_ctx->aes_key);
-		}
-
-		dprintf("[ENC] Encryption context not null, so ditching provider");
-		if (remote->enc_ctx->provider != 0)
-		{
-			CryptReleaseContext(remote->enc_ctx->provider, 0);
-		}
-
-		dprintf("[ENC] Encryption context not null, so freeing the context");
-		free(remote->enc_ctx);
-		remote->enc_ctx = NULL;
+		CryptDestroyKey(remote->enc_ctx->aes_key);
 	}
-	return result;
+
+	dprintf("[ENC] Encryption context not null, so ditching provider");
+	if (remote->enc_ctx->provider != 0)
+	{
+		CryptReleaseContext(remote->enc_ctx->provider, 0);
+	}
+
+	dprintf("[ENC] Encryption context not null, so freeing the context");
+	free(remote->enc_ctx);
+	remote->enc_ctx = NULL;
+}
+return result;
 }
 
 DWORD request_negotiate_aes_key(Remote* remote, Packet* packet)
@@ -396,14 +404,104 @@ DWORD request_negotiate_aes_key(Remote* remote, Packet* packet)
 			break;
 		}
 
+		// now we need to encrypt this key data using the public key given
+		CHAR* pubKeyPem = packet_get_tlv_value_string(packet, TLV_TYPE_RSA_PUB_KEY);
+
+		if (pubKeyPem != NULL)
+		{
+			DWORD binaryRequiredSize = 0;
+			CryptStringToBinaryA(pubKeyPem, 0, CRYPT_STRING_BASE64HEADER, NULL, &binaryRequiredSize, NULL, NULL);
+			dprintf("[ENC] Required size for the binary key is: %u (%x)", binaryRequiredSize, binaryRequiredSize);
+			BYTE* pubKeyBin = (BYTE*)malloc(binaryRequiredSize);
+			if (!CryptStringToBinaryA(pubKeyPem, 0, CRYPT_STRING_BASE64HEADER, pubKeyBin, &binaryRequiredSize, NULL, NULL))
+			{
+				result = GetLastError();
+				dprintf("[ENC] Failed to convert the given base64 encoded key into bytes: %u (%x)", result, result);
+				break;
+			}
+
+			DWORD keyRequiredSize = 0;
+			CERT_PUBLIC_KEY_INFO* pubKeyInfo = NULL;
+			if (!CryptDecodeObjectEx(X509_ASN_ENCODING, X509_PUBLIC_KEY_INFO, pubKeyBin, binaryRequiredSize, CRYPT_ENCODE_ALLOC_FLAG, 0, &pubKeyInfo, &keyRequiredSize))
+			{
+				result = GetLastError();
+				dprintf("[ENC] Failed to decode: %u (%x)", result, result);
+				break;
+			}
+
+			dprintf("[ENC] Key algo: %s", pubKeyInfo->Algorithm.pszObjId);
+
+			HCRYPTPROV rsaProv = 0;
+			if (!CryptAcquireContext(&rsaProv, NULL, MS_ENHANCED_PROV, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT))
+			{
+				dprintf("[ENC] Failed to create the RSA provider with CRYPT_VERIFYCONTEXT");
+				if (!CryptAcquireContext(&rsaProv, NULL, MS_ENHANCED_PROV, PROV_RSA_FULL, CRYPT_NEWKEYSET))
+				{
+					result = GetLastError();
+					dprintf("[ENC] Failed to create the RSA provider with CRYPT_NEWKEYSET: %u (%x)", result, result);
+					break;
+				}
+				else
+				{
+					dprintf("[ENC] Created the RSA provider with CRYPT_NEWKEYSET");
+				}
+			}
+			else
+			{
+					dprintf("[ENC] Created the RSA provider with CRYPT_VERIFYCONTEXT");
+			}
+
+			HCRYPTKEY pubCryptKey = 0;
+			if (!CryptImportPublicKeyInfo(rsaProv, X509_ASN_ENCODING, pubKeyInfo, &pubCryptKey))
+			{
+				result = GetLastError();
+				dprintf("[ENC] Failed to import the key: %u (%x)", result, result);
+				break;
+			}
+
+			DWORD requiredEncSize = remote->enc_ctx->key_data.length;
+			CryptEncrypt(pubCryptKey, 0, TRUE, 0, NULL, &requiredEncSize, requiredEncSize);
+			dprintf("[ENC] Encrypted data length: %u (%x)", requiredEncSize, requiredEncSize);
+
+			LPBYTE cipherText = (LPBYTE)calloc(1, requiredEncSize);
+			DWORD aesKeySize = remote->enc_ctx->key_data.length;
+			memcpy_s(cipherText, requiredEncSize, remote->enc_ctx->key_data.key, remote->enc_ctx->key_data.length);
+
+			if (!CryptEncrypt(pubCryptKey, 0, TRUE, 0, cipherText, &aesKeySize, requiredEncSize))
+			{
+				result = GetLastError();
+				dprintf("[ENC] Failed to encrypt: %u (%x)", result, result);
+
+				// encryption failed, so pass on the raw AES key instead
+				packet_add_tlv_raw(response, TLV_TYPE_AES_KEY, remote->enc_ctx->key_data.key, remote->enc_ctx->key_data.length);
+			}
+			else
+			{
+				dprintf("[ENC] Encryption witih RSA succeded, byteswapping because MS is stupid and does stuff in little endian.");
+				// Given that we are encrypting such a small amount of data, we're going to assume that the size
+				// of the key matches the size of the block of data we've decrypted.
+				for (DWORD i = 0; i < requiredEncSize / 2; ++i)
+				{
+					BYTE b = cipherText[i];
+					cipherText[i] = cipherText[requiredEncSize - i - 1];
+					cipherText[requiredEncSize - i - 1] = b;
+				}
+				// encryption succeeded, pass this key back to the call in encrypted form
+				packet_add_tlv_raw(response, TLV_TYPE_ENC_AES_KEY, cipherText, requiredEncSize);
+			}
+			free(cipherText);
+			LocalFree(pubKeyInfo);
+			CryptDestroyKey(pubCryptKey);
+			CryptReleaseContext(rsaProv, 0);
+		}
+		else
+		{
+			// no public key was given, so send it back in the raw
+			packet_add_tlv_raw(response, TLV_TYPE_AES_KEY, remote->enc_ctx->key_data.key, remote->enc_ctx->key_data.length);
+		}
+
 		ctx->valid = TRUE;
 	} while (0);
-
-
-	if (remote->enc_ctx->valid)
-	{
-		packet_add_tlv_raw(response, TLV_TYPE_AES_KEY, remote->enc_ctx->key_data.key, remote->enc_ctx->key_data.length);
-	}
 
 	packet_transmit_response(result, remote, response);
 
