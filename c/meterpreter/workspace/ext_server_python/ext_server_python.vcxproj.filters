@@ -1016,7 +1016,6 @@
     <ClCompile Include="..\..\source\extensions\python\Modules\_ssl.c">
       <Filter>Modules</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\source\extensions\python\python_ssl_bridge.c" />
     <ClCompile Include="..\..\source\extensions\python\Modules\_multiprocessing\multiprocessing.c">
       <Filter>Modules\_multiprocessing</Filter>
     </ClCompile>

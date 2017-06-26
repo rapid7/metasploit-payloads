@@ -168,7 +168,7 @@ DWORD remote_request_core_transport_list(Remote* remote, Packet* packet)
 			dprintf("[DISPATCH] Adding Retry wait %u", current->timeouts.retry_wait);
 			packet_add_tlv_uint(transportGroup, TLV_TYPE_TRANS_RETRY_WAIT, current->timeouts.retry_wait);
 
-			if (current->type != METERPRETER_TRANSPORT_SSL)
+			if (current->type != METERPRETER_TRANSPORT_TCP)
 			{
 				HttpTransportContext* ctx = (HttpTransportContext*)current->ctx;
 				dprintf("[DISPATCH] Transport is HTTP/S");
@@ -569,7 +569,7 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
 			break;
 		}
 
-		// Create a notification event that we'll use to know when it's safe to exit 
+		// Create a notification event that we'll use to know when it's safe to exit
 		// (once the socket has been referenced in the other process)
 		hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
 		if (!hEvent)
