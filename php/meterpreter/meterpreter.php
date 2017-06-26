@@ -662,7 +662,9 @@ function generate_req_id() {
 
 function write_tlv_to_socket($resource, $raw) {
     $xor = rand_xor_key();
-    write($resource, strrev($xor) . xor_bytes($xor, $raw));
+    # default to unecrypted traffic
+    $raw = $GLOBALS['SESSION_GUID'] . "\x00" . $raw;
+    write($resource, $xor . xor_bytes($xor, $raw));
 }
 
 function handle_dead_resource_channel($resource) {
@@ -723,8 +725,7 @@ function handle_resource_read_channel($resource, $data) {
     return $pkt;
 }
 
-function create_response($xor, $req) {
-    $req = xor_bytes($xor, $req);
+function create_response($req) {
     $pkt = pack("N", PACKET_TYPE_RESPONSE);
 
     $method_tlv = packet_get_tlv($req, TLV_TYPE_METHOD);
@@ -1282,25 +1283,25 @@ while (false !== ($cnt = select($r, $w, $e, $t))) {
     for ($i = 0; $i < $cnt; $i++) {
         $ready = $r[$i];
         if ($ready == $msgsock) {
-            $header = read($msgsock, 12);
+            $packet = read($msgsock, 29);
             #my_print(sprintf("Read returned %s bytes", strlen($request)));
-            if (false==$header) {
-                #my_print("Read failed on main socket, bailing");
+            if (false==$packet) {
+                my_print("Read failed on main socket, bailing");
                 # We failed on the main socket.  There's no way to continue, so
                 # break all the way out.
                 break 2;
             }
-            $xor = strrev(substr($header, 0, 4));
-            $request = substr($header, 4);
-            $len_array = unpack("Nlen", xor_bytes($xor, substr($request, 0, 4)));
-            $len = $len_array['len'];
-            # length of the whole packet, including header
+            $xor = substr($packet, 0, 4);
+            $header = xor_bytes($xor, substr($packet, 4, 25));
+            $len_array = unpack("Nlen", substr($header, 17, 4));
+            # length of the packet should be the packet header size 
+            # minus 8 for the tlv length + the required data length
+            $len = $len_array['len'] + 29 - 8;
             # packet type should always be 0, i.e. PACKET_TYPE_REQUEST
-            while (strlen($request) < $len) {
-                $request .= read($msgsock, $len-strlen($request));
+            while (strlen($packet) < $len) {
+                $packet .= read($msgsock, $len-strlen($packet));
             }
-            #my_print("creating response");
-            $response = create_response($xor, $request);
+            $response = create_response(substr(xor_bytes($xor, $packet), 21));
 
             write_tlv_to_socket($msgsock, $response);
         } else {
