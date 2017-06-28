@@ -231,6 +231,13 @@ def debug_print(msg):
 		print(msg)
 
 @export
+def debug_traceback(msg=None):
+	if DEBUGGING:
+		if msg:
+			print(msg)
+		traceback.print_exc(file=sys.stderr)
+
+@export
 def error_result(exception=None):
 	if not exception:
 		_, exception, _ = sys.exc_info()
@@ -516,8 +523,7 @@ class Transport(object):
 		try:
 			pkt = self._get_packet()
 		except:
-			if DEBUGGING:
-				traceback.print_exc(file=sys.stderr)
+			debug_traceback()
 			return None
 		if pkt is None:
 			return None
@@ -531,8 +537,7 @@ class Transport(object):
 			raw = struct.pack('BBBB', *xor_key[::-1]) + xor_bytes(xor_key, pkt)
 			self._send_packet(raw)
 		except:
-			if DEBUGGING:
-				traceback.print_exc(file=sys.stderr)
+			debug_traceback()
 			return False
 		self.communication_last = time.time()
 		return True
@@ -1184,9 +1189,7 @@ class PythonMeterpreter(object):
 					return
 				result, resp = result
 			except Exception:
-				debug_print('[-] method ' + handler_name + ' resulted in an error')
-				if DEBUGGING:
-					traceback.print_exc(file=sys.stderr)
+				debug_traceback('[-] method ' + handler_name + ' resulted in an error')
 				result = error_result()
 			else:
 				if result != ERROR_SUCCESS:
