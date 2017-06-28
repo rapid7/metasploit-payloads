@@ -313,6 +313,138 @@ DWORD encrypt_packet(Remote* remote, Packet* packet, LPBYTE* buffer, LPDWORD buf
 	return result;
 }
 
+DWORD public_key_encrypt(CHAR* publicKeyPem, unsigned char* data, DWORD dataLength, unsigned char** encryptedData, DWORD* encryptedDataLength)
+{
+	DWORD result = ERROR_SUCCESS;
+	LPBYTE pubKeyBin = NULL;
+	CERT_PUBLIC_KEY_INFO* pubKeyInfo = NULL;
+	HCRYPTPROV rsaProv = 0;
+	HCRYPTKEY pubCryptKey = 0;
+	LPBYTE cipherText = NULL;
+
+	do
+	{
+		if (publicKeyPem == NULL)
+		{
+			result = ERROR_BAD_ARGUMENTS;
+			break;
+		}
+
+		DWORD binaryRequiredSize = 0;
+		CryptStringToBinaryA(publicKeyPem, 0, CRYPT_STRING_BASE64HEADER, NULL, &binaryRequiredSize, NULL, NULL);
+		dprintf("[ENC] Required size for the binary key is: %u (%x)", binaryRequiredSize, binaryRequiredSize);
+
+		pubKeyBin = (LPBYTE)malloc(binaryRequiredSize);
+		if (pubKeyBin == NULL)
+		{
+			result = ERROR_OUTOFMEMORY;
+			break;
+		}
+
+		if (!CryptStringToBinaryA(publicKeyPem, 0, CRYPT_STRING_BASE64HEADER, pubKeyBin, &binaryRequiredSize, NULL, NULL))
+		{
+			result = GetLastError();
+			dprintf("[ENC] Failed to convert the given base64 encoded key into bytes: %u (%x)", result, result);
+			break;
+		}
+
+		DWORD keyRequiredSize = 0;
+		if (!CryptDecodeObjectEx(X509_ASN_ENCODING, X509_PUBLIC_KEY_INFO, pubKeyBin, binaryRequiredSize, CRYPT_ENCODE_ALLOC_FLAG, 0, &pubKeyInfo, &keyRequiredSize))
+		{
+			result = GetLastError();
+			dprintf("[ENC] Failed to decode: %u (%x)", result, result);
+			break;
+		}
+
+		dprintf("[ENC] Key algo: %s", pubKeyInfo->Algorithm.pszObjId);
+
+		if (!CryptAcquireContext(&rsaProv, NULL, MS_ENHANCED_PROV, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT))
+		{
+			dprintf("[ENC] Failed to create the RSA provider with CRYPT_VERIFYCONTEXT");
+			if (!CryptAcquireContext(&rsaProv, NULL, MS_ENHANCED_PROV, PROV_RSA_FULL, CRYPT_NEWKEYSET))
+			{
+				result = GetLastError();
+				dprintf("[ENC] Failed to create the RSA provider with CRYPT_NEWKEYSET: %u (%x)", result, result);
+				break;
+			}
+			else
+			{
+				dprintf("[ENC] Created the RSA provider with CRYPT_NEWKEYSET");
+			}
+		}
+		else
+		{
+			dprintf("[ENC] Created the RSA provider with CRYPT_VERIFYCONTEXT");
+		}
+
+		if (!CryptImportPublicKeyInfo(rsaProv, X509_ASN_ENCODING, pubKeyInfo, &pubCryptKey))
+		{
+			result = GetLastError();
+			dprintf("[ENC] Failed to import the key: %u (%x)", result, result);
+			break;
+		}
+
+		DWORD requiredEncSize = dataLength;
+		CryptEncrypt(pubCryptKey, 0, TRUE, 0, NULL, &requiredEncSize, requiredEncSize);
+		dprintf("[ENC] Encrypted data length: %u (%x)", requiredEncSize, requiredEncSize);
+
+		cipherText = (LPBYTE)calloc(1, requiredEncSize);
+		if (cipherText == NULL)
+		{
+			result = ERROR_OUTOFMEMORY;
+			break;
+		}
+
+		memcpy_s(cipherText, requiredEncSize, data, dataLength);
+
+		if (!CryptEncrypt(pubCryptKey, 0, TRUE, 0, cipherText, &dataLength, requiredEncSize))
+		{
+			result = GetLastError();
+			dprintf("[ENC] Failed to encrypt: %u (%x)", result, result);
+		}
+		else
+		{
+			dprintf("[ENC] Encryption witih RSA succeded, byteswapping because MS is stupid and does stuff in little endian.");
+			// Given that we are encrypting such a small amount of data, we're going to assume that the size
+			// of the key matches the size of the block of data we've decrypted.
+			for (DWORD i = 0; i < requiredEncSize / 2; ++i)
+			{
+				BYTE b = cipherText[i];
+				cipherText[i] = cipherText[requiredEncSize - i - 1];
+				cipherText[requiredEncSize - i - 1] = b;
+			}
+
+			*encryptedData = cipherText;
+			*encryptedDataLength = requiredEncSize;
+		}
+	} while (0);
+
+	if (result != ERROR_SUCCESS)
+	{
+		if (cipherText != NULL)
+		{
+			free(cipherText);
+		}
+	}
+
+	if (pubKeyInfo != NULL)
+	{
+		LocalFree(pubKeyInfo);
+	}
+
+	if (pubCryptKey != 0)
+	{
+		CryptDestroyKey(pubCryptKey);
+	}
+
+	if (rsaProv != 0)
+	{
+		CryptReleaseContext(rsaProv, 0);
+	}
+
+	return result;
+}
+
 DWORD free_encryption_context(Remote* remote)
 {
 	DWORD result = ERROR_SUCCESS;
@@ -406,93 +538,15 @@ DWORD request_negotiate_aes_key(Remote* remote, Packet* packet)
 
 		// now we need to encrypt this key data using the public key given
 		CHAR* pubKeyPem = packet_get_tlv_value_string(packet, TLV_TYPE_RSA_PUB_KEY);
+		unsigned char* cipherText = NULL;
+		DWORD cipherTextLength = 0;
+		DWORD pubEncryptResult = public_key_encrypt(pubKeyPem, remote->enc_ctx->key_data.key, remote->enc_ctx->key_data.length, &cipherText, &cipherTextLength);
 
-		if (pubKeyPem != NULL)
+		if (pubEncryptResult == ERROR_SUCCESS && cipherText != NULL)
 		{
-			DWORD binaryRequiredSize = 0;
-			CryptStringToBinaryA(pubKeyPem, 0, CRYPT_STRING_BASE64HEADER, NULL, &binaryRequiredSize, NULL, NULL);
-			dprintf("[ENC] Required size for the binary key is: %u (%x)", binaryRequiredSize, binaryRequiredSize);
-			BYTE* pubKeyBin = (BYTE*)malloc(binaryRequiredSize);
-			if (!CryptStringToBinaryA(pubKeyPem, 0, CRYPT_STRING_BASE64HEADER, pubKeyBin, &binaryRequiredSize, NULL, NULL))
-			{
-				result = GetLastError();
-				dprintf("[ENC] Failed to convert the given base64 encoded key into bytes: %u (%x)", result, result);
-				break;
-			}
-
-			DWORD keyRequiredSize = 0;
-			CERT_PUBLIC_KEY_INFO* pubKeyInfo = NULL;
-			if (!CryptDecodeObjectEx(X509_ASN_ENCODING, X509_PUBLIC_KEY_INFO, pubKeyBin, binaryRequiredSize, CRYPT_ENCODE_ALLOC_FLAG, 0, &pubKeyInfo, &keyRequiredSize))
-			{
-				result = GetLastError();
-				dprintf("[ENC] Failed to decode: %u (%x)", result, result);
-				break;
-			}
-
-			dprintf("[ENC] Key algo: %s", pubKeyInfo->Algorithm.pszObjId);
-
-			HCRYPTPROV rsaProv = 0;
-			if (!CryptAcquireContext(&rsaProv, NULL, MS_ENHANCED_PROV, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT))
-			{
-				dprintf("[ENC] Failed to create the RSA provider with CRYPT_VERIFYCONTEXT");
-				if (!CryptAcquireContext(&rsaProv, NULL, MS_ENHANCED_PROV, PROV_RSA_FULL, CRYPT_NEWKEYSET))
-				{
-					result = GetLastError();
-					dprintf("[ENC] Failed to create the RSA provider with CRYPT_NEWKEYSET: %u (%x)", result, result);
-					break;
-				}
-				else
-				{
-					dprintf("[ENC] Created the RSA provider with CRYPT_NEWKEYSET");
-				}
-			}
-			else
-			{
-					dprintf("[ENC] Created the RSA provider with CRYPT_VERIFYCONTEXT");
-			}
-
-			HCRYPTKEY pubCryptKey = 0;
-			if (!CryptImportPublicKeyInfo(rsaProv, X509_ASN_ENCODING, pubKeyInfo, &pubCryptKey))
-			{
-				result = GetLastError();
-				dprintf("[ENC] Failed to import the key: %u (%x)", result, result);
-				break;
-			}
-
-			DWORD requiredEncSize = remote->enc_ctx->key_data.length;
-			CryptEncrypt(pubCryptKey, 0, TRUE, 0, NULL, &requiredEncSize, requiredEncSize);
-			dprintf("[ENC] Encrypted data length: %u (%x)", requiredEncSize, requiredEncSize);
-
-			LPBYTE cipherText = (LPBYTE)calloc(1, requiredEncSize);
-			DWORD aesKeySize = remote->enc_ctx->key_data.length;
-			memcpy_s(cipherText, requiredEncSize, remote->enc_ctx->key_data.key, remote->enc_ctx->key_data.length);
-
-			if (!CryptEncrypt(pubCryptKey, 0, TRUE, 0, cipherText, &aesKeySize, requiredEncSize))
-			{
-				result = GetLastError();
-				dprintf("[ENC] Failed to encrypt: %u (%x)", result, result);
-
-				// encryption failed, so pass on the raw AES key instead
-				packet_add_tlv_raw(response, TLV_TYPE_AES_KEY, remote->enc_ctx->key_data.key, remote->enc_ctx->key_data.length);
-			}
-			else
-			{
-				dprintf("[ENC] Encryption witih RSA succeded, byteswapping because MS is stupid and does stuff in little endian.");
-				// Given that we are encrypting such a small amount of data, we're going to assume that the size
-				// of the key matches the size of the block of data we've decrypted.
-				for (DWORD i = 0; i < requiredEncSize / 2; ++i)
-				{
-					BYTE b = cipherText[i];
-					cipherText[i] = cipherText[requiredEncSize - i - 1];
-					cipherText[requiredEncSize - i - 1] = b;
-				}
-				// encryption succeeded, pass this key back to the call in encrypted form
-				packet_add_tlv_raw(response, TLV_TYPE_ENC_AES_KEY, cipherText, requiredEncSize);
-			}
+			// encryption succeeded, pass this key back to the call in encrypted form
+			packet_add_tlv_raw(response, TLV_TYPE_ENC_AES_KEY, cipherText, cipherTextLength);
 			free(cipherText);
-			LocalFree(pubKeyInfo);
-			CryptDestroyKey(pubCryptKey);
-			CryptReleaseContext(rsaProv, 0);
 		}
 		else
 		{
@@ -506,16 +560,6 @@ DWORD request_negotiate_aes_key(Remote* remote, Packet* packet)
 	packet_transmit_response(result, remote, response);
 
 	remote->enc_ctx->enabled = TRUE;
-
-	//BYTE* buffer;
-	//DWORD bufferSize;
-	//Packet* p;
-	//encrypt_packet(remote, response, &buffer, &bufferSize);
-	//dprintf("[ENC] TEST BEGINS HERE ============================");
-	//decrypt_packet(remote, &p, buffer, bufferSize);
-	//dprintf("[ENC] TEST ENDS HERE ============================");
-	//free(buffer);
-	//packet_destroy(p);
 
 	return ERROR_SUCCESS;
 }
