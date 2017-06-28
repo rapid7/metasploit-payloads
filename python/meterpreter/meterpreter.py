@@ -516,6 +516,8 @@ class Transport(object):
 		try:
 			pkt = self._get_packet()
 		except:
+			if DEBUGGING:
+				traceback.print_exc(file=sys.stderr)
 			return None
 		if pkt is None:
 			return None
@@ -529,6 +531,8 @@ class Transport(object):
 			raw = struct.pack('BBBB', *xor_key[::-1]) + xor_bytes(xor_key, pkt)
 			self._send_packet(raw)
 		except:
+			if DEBUGGING:
+				traceback.print_exc(file=sys.stderr)
 			return False
 		self.communication_last = time.time()
 		return True
@@ -684,7 +688,7 @@ class TcpTransport(Transport):
 		first = self._first_packet
 		self._first_packet = False
 		if not select.select([self.socket], [], [], 0.5)[0]:
-			return ''
+			return bytes()
 		packet = self.socket.recv(12)
 		if packet == '':  # remote is closed
 			self.request_retire = True
