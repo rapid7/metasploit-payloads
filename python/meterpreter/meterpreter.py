@@ -545,7 +545,7 @@ class Transport(object):
 		# always return the session guid and the encryption flag set to 0
 		# TODO: we'll add encryption soon!
 		xor_key = rand_xor_key()
-		raw = SESSION_GUID + '\x00' + pkt
+		raw = bytes(SESSION_GUID, 'UTF-8') + NULL_BYTE + pkt
 		result = struct.pack('BBBB', *xor_key) + xor_bytes(xor_key, raw)
 		return result
 
