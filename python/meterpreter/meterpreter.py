@@ -545,7 +545,7 @@ class Transport(object):
 		# always return the session guid and the encryption flag set to 0
 		# TODO: we'll add encryption soon!
 		xor_key = rand_xor_key()
-		raw = bytes(SESSION_GUID, 'UTF-8') + NULL_BYTE + pkt
+		raw = binascii.a2b_hex(bytes(SESSION_GUID, 'UTF-8')) + NULL_BYTE + pkt
 		result = struct.pack('BBBB', *xor_key) + xor_bytes(xor_key, raw)
 		return result
 
@@ -937,13 +937,13 @@ class PythonMeterpreter(object):
 		return ERROR_SUCCESS, response
 
 	def _core_get_session_guid(self, request, response):
-		response += tlv_pack(TLV_TYPE_SESSION_GUID, SESSION_GUID)
+		response += tlv_pack(TLV_TYPE_SESSION_GUID, binascii.a2b_hex(bytes(SESSION_GUID, 'UTF-8')))
 		return ERROR_SUCCESS, response
 
 	def _core_set_session_guid(self, request, response):
 		new_guid = packet_get_tlv(request, TLV_TYPE_SESSION_GUID)
 		if new_guid:
-			SESSION_GUID = new_guid['value']
+			SESSION_GUID = binascii.b2a_hex(new_guid['value'])
 		return ERROR_SUCCESS, response
 
 	def _core_machine_id(self, request, response):
