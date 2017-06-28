@@ -473,7 +473,16 @@ function core_negotiate_aes($req, &$pkt) {
     if (supports_aes()) {
         my_print("AES functionality is supported");
         $GLOBALS['AES_KEY'] = rand_bytes(32);
-        packet_add_tlv($pkt, create_tlv(TLV_TYPE_AES_KEY, $GLOBALS['AES_KEY']));
+        if (function_exists('openssl_pkey_get_public') && function_exists('openssl_public_encrypt')) {
+            my_print("Encryption via public key is supported");
+            $pub_key = packet_get_tlv($req, TLV_TYPE_RSA_PUB_KEY)['value'];
+            $key = openssl_pkey_get_public($pub_key);
+            $enc = '';
+            openssl_public_encrypt($GLOBALS['AES_KEY'], $enc, $key, OPENSSL_PKCS1_PADDING);
+            packet_add_tlv($pkt, create_tlv(TLV_TYPE_ENC_AES_KEY, $enc));
+        } else {
+            packet_add_tlv($pkt, create_tlv(TLV_TYPE_AES_KEY, $GLOBALS['AES_KEY']));
+        }
     }
     return ERROR_SUCCESS;
 }
