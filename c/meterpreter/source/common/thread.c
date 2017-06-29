@@ -140,7 +140,6 @@ THREAD * thread_open( VOID )
 	OPENTHREAD pOpenThread = NULL;
 	HMODULE hKernel32      = NULL;
 
-
 	thread = (THREAD *)malloc( sizeof( THREAD ) );
 	if( thread != NULL )
 	{
@@ -166,7 +165,7 @@ THREAD * thread_open( VOID )
 			// If we can't use OpenThread, we try the older NtOpenThread function as found on NT4 machines.
 			HMODULE hNtDll = LoadLibrary( "ntdll.dll" );
 			pNtOpenThread = (NTOPENTHREAD)GetProcAddress( hNtDll, "NtOpenThread" );
-			if( pNtOpenThread )
+			if (pNtOpenThread)
 			{
 				_OBJECT_ATTRIBUTES oa = {0};
 				_CLIENT_ID cid        = {0};
@@ -185,6 +184,22 @@ THREAD * thread_open( VOID )
 	return thread;
 }
 
+void disable_thread_error_reporting(void)
+{
+	HMODULE hKernel32 = LoadLibrary("kernel32.dll");
+	DWORD(WINAPI * pSetThreadErrorMode)(DWORD, DWORD *);
+	pSetThreadErrorMode = (void *)GetProcAddress(hKernel32, "SetThreadErrorMode");
+	if (pSetThreadErrorMode) {
+		pSetThreadErrorMode(SEM_FAILCRITICALERRORS, NULL);
+	}
+}
+
+static DWORD THREADCALL thread_preamble(THREAD *thread)
+{
+	disable_thread_error_reporting();
+	return thread->funk(thread);
+}
+
 /*
  * Create a new thread in a suspended state.
  */
@@ -192,33 +207,33 @@ THREAD * thread_create( THREADFUNK funk, LPVOID param1, LPVOID param2, LPVOID pa
 {
 	THREAD * thread = NULL;
 
-	if( funk == NULL )
+	if (funk == NULL )
 		return NULL;
 
-	thread = (THREAD *)malloc( sizeof( THREAD ) );
-	if( thread == NULL )
+	thread = malloc(sizeof(THREAD));
+	if (thread == NULL)
 		return NULL;
 
-	memset( thread, 0, sizeof( THREAD ) );
+	memset(thread, 0, sizeof(THREAD));
 
 	thread->sigterm = event_create();
-	if( thread->sigterm == NULL )
+	if (thread->sigterm == NULL)
 	{
-		free( thread );
+		free(thread);
 		return NULL;
 	}
-
 
 	thread->parameter1 = param1;
 	thread->parameter2 = param2;
 	thread->parameter3 = param3;
+	thread->funk = funk;
 
-	thread->handle = CreateThread( NULL, 0, funk, thread, CREATE_SUSPENDED, &thread->id );
+	thread->handle = CreateThread(NULL, 0, thread_preamble, thread, CREATE_SUSPENDED, &thread->id);
 
-	if( thread->handle == NULL )
+	if (thread->handle == NULL)
 	{
-		event_destroy( thread->sigterm );
-		free( thread );
+		event_destroy(thread->sigterm);
+		free(thread);
 		return NULL;
 	}
 

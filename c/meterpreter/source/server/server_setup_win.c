@@ -322,6 +322,8 @@ DWORD server_setup(MetsrvConfig* config)
 		config->session.session_guid[8], config->session.session_guid[9], config->session.session_guid[10], config->session.session_guid[11],
 		config->session.session_guid[12], config->session.session_guid[13], config->session.session_guid[14], config->session.session_guid[15]);
 
+	disable_thread_error_reporting();
+
 	// if hAppInstance is still == NULL it means that we havent been
 	// reflectivly loaded so we must patch in the hAppInstance value
 	// for use with loading server extensions later.
