@@ -86,6 +86,8 @@ THREAD * thread_open( VOID );
 
 THREAD * thread_create( THREADFUNK funk, LPVOID param1, LPVOID param2, LPVOID param3 );
 
+void disable_thread_error_reporting(void);
+
 BOOL thread_run( THREAD * thread );
 
 BOOL thread_sigterm( THREAD * thread );

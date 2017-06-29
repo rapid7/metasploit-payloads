@@ -184,7 +184,7 @@ THREAD * thread_open( VOID )
 	return thread;
 }
 
-static DWORD THREADCALL thread_preamble(THREAD *thread)
+void disable_thread_error_reporting(void)
 {
 	HMODULE hKernel32 = LoadLibrary("kernel32.dll");
 	DWORD(WINAPI * pSetThreadErrorMode)(DWORD, DWORD *);
@@ -192,6 +192,11 @@ static DWORD THREADCALL thread_preamble(THREAD *thread)
 	if (pSetThreadErrorMode) {
 		pSetThreadErrorMode(SEM_FAILCRITICALERRORS, NULL);
 	}
+}
+
+static DWORD THREADCALL thread_preamble(THREAD *thread)
+{
+	disable_thread_error_reporting();
 	return thread->funk(thread);
 }
 
