@@ -10,6 +10,7 @@ import java.io.IOException;
 
 public abstract class Transport {
     public static final long MS = 1000L;
+    public static final int ENC_NONE = 0;
 
     private Transport prev;
     private Transport next;
@@ -72,7 +73,7 @@ public abstract class Transport {
     }
 
     protected TLVPacket readAndDecodePacket(DataInputStream in) throws IOException {
-        byte[] header = new byte[29];
+        byte[] header = new byte[32];
         in.readFully(header);
         byte[] clonedHeader = header.clone();
 
@@ -83,7 +84,7 @@ public abstract class Transport {
         this.xorBytes(xorKey, header);
 
         // extract the length
-        int bodyLen = this.readInt(header, 21) - 8;
+        int bodyLen = this.readInt(header, 24) - 8;
 
         byte[] body = new byte[bodyLen];
         in.readFully(body);
@@ -109,7 +110,7 @@ public abstract class Transport {
 
     protected void encodePacketAndWrite(TLVPacket tlvPacket, int type, DataOutputStream out) throws IOException {
         byte[] data = tlvPacket.toByteArray();
-        byte[] packet = new byte[29 + data.length];
+        byte[] packet = new byte[32 + data.length];
         randXorKey(packet, 0);
 
         // TODO: add encryption support here
@@ -119,14 +120,14 @@ public abstract class Transport {
         this.arrayCopy(sessionGUID, 0, packet, 4, sessionGUID.length);
 
         // We don't currently support encryption
-        packet[20] = 0;
+        this.writeInt(packet, 20, ENC_NONE);
 
         // Write the length/type
-        this.writeInt(packet, 21, data.length + 8);
-        this.writeInt(packet, 25, type);
+        this.writeInt(packet, 24, data.length + 8);
+        this.writeInt(packet, 28, type);
 
         // finally write the data
-        this.arrayCopy(data, 0, packet, 29, data.length);
+        this.arrayCopy(data, 0, packet, 32, data.length);
 
         // Xor the packet bytes
         this.xorBytes(packet, packet, 4);
