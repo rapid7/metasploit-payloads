@@ -33,7 +33,7 @@ if (!isset($GLOBALS['readers'])) {
 # global list of extension commands
 if (!isset($GLOBALS['commands'])) {
     $GLOBALS['commands'] = array("core_loadlib", "core_machine_id", "core_set_uuid",
-        "core_set_session_guid", "core_get_session_guid", "core_negotiate_aes");
+        "core_set_session_guid", "core_get_session_guid", "core_negotiate_tlv_encryption");
 }
 
 function register_command($c) {
@@ -110,6 +110,8 @@ define("SESSION_GUID", "");
 # Constants
 #
 define("AES_256_CBC", 'aes-256-cbc');
+define("ENC_NONE", 0);
+define("ENC_AES256", 1);
 
 define("PACKET_TYPE_REQUEST",         0);
 define("PACKET_TYPE_RESPONSE",        1);
@@ -185,9 +187,10 @@ define("TLV_TYPE_UUID",                TLV_META_TYPE_RAW    | 461);
 define("TLV_TYPE_SESSION_GUID",        TLV_META_TYPE_RAW    | 462);
 
 # Packet encryption
-define("TLV_TYPE_AES_KEY",             TLV_META_TYPE_RAW    | 550);
-define("TLV_TYPE_ENC_AES_KEY",         TLV_META_TYPE_RAW    | 551);
-define("TLV_TYPE_RSA_PUB_KEY",         TLV_META_TYPE_STRING | 552);
+define("TLV_TYPE_RSA_PUB_KEY",         TLV_META_TYPE_STRING | 550);
+define("TLV_TYPE_SYM_KEY_TYPE",        TLV_META_TYPE_UINT   | 551);
+define("TLV_TYPE_SYM_KEY",             TLV_META_TYPE_RAW    | 552);
+define("TLV_TYPE_ENC_SYM_KEY",         TLV_META_TYPE_RAW    | 553);
 
 function my_cmd($cmd) {
     return shell_exec($cmd);
@@ -469,20 +472,25 @@ function get_hdd_label() {
   return "";
 }
 
-function core_negotiate_aes($req, &$pkt) {
+function core_negotiate_tlv_encryption($req, &$pkt) {
     if (supports_aes()) {
         my_print("AES functionality is supported");
+        packet_add_tlv($pkt, create_tlv(TLV_TYPE_SYM_KEY_TYPE, ENC_AES256));
         $GLOBALS['AES_KEY'] = rand_bytes(32);
         if (function_exists('openssl_pkey_get_public') && function_exists('openssl_public_encrypt')) {
             my_print("Encryption via public key is supported");
-            $pub_key = packet_get_tlv($req, TLV_TYPE_RSA_PUB_KEY)['value'];
-            $key = openssl_pkey_get_public($pub_key);
-            $enc = '';
-            openssl_public_encrypt($GLOBALS['AES_KEY'], $enc, $key, OPENSSL_PKCS1_PADDING);
-            packet_add_tlv($pkt, create_tlv(TLV_TYPE_ENC_AES_KEY, $enc));
-        } else {
-            packet_add_tlv($pkt, create_tlv(TLV_TYPE_AES_KEY, $GLOBALS['AES_KEY']));
+            $pub_key_tlv = packet_get_tlv($req, TLV_TYPE_RSA_PUB_KEY);
+            if ($pub_key_tlv != null) {
+              $key = openssl_pkey_get_public($pub_key_tlv['value']);
+              $enc = '';
+              openssl_public_encrypt($GLOBALS['AES_KEY'], $enc, $key, OPENSSL_PKCS1_PADDING);
+              packet_add_tlv($pkt, create_tlv(TLV_TYPE_ENC_SYM_KEY, $enc));
+              return ERROR_SUCCESS;
+            }
         }
+
+        # add the raw aes key at this point as it means the encrypt version didn't go out.
+        packet_add_tlv($pkt, create_tlv(TLV_TYPE_SYM_KEY, $GLOBALS['AES_KEY']));
     }
     return ERROR_SUCCESS;
 }
@@ -698,13 +706,13 @@ function supports_aes() {
 }
 
 function decrypt_packet($raw) {
-    $encrypted = $raw[20] === "\x01";
-    if ($encrypted && supports_aes() && $GLOBALS['AES_KEY'] != null) {
-        $tlv = substr($raw, 21);
+    $encrypt_flags = unpack("Nlen", substr($raw, 20, 4))['len'];
+    if ($encrypt_flags == ENC_AES256 && supports_aes() && $GLOBALS['AES_KEY'] != null) {
+        $tlv = substr($raw, 24);
         $dec = openssl_decrypt(substr($tlv, 24), AES_256_CBC, $GLOBALS['AES_KEY'], OPENSSL_RAW_DATA, substr($tlv, 8, 16));
         return pack("N", strlen($dec) + 8) . substr($tlv, 4, 4) . $dec;
     }
-    return substr($raw, 21);
+    return substr($raw, 24);
 }
 
 function encrypt_packet($raw) {
@@ -713,12 +721,12 @@ function encrypt_packet($raw) {
             $iv = rand_bytes(16);
             $enc = $iv . openssl_encrypt(substr($raw, 8), AES_256_CBC, $GLOBALS['AES_KEY'], OPENSSL_RAW_DATA, $iv);
             $hdr = pack("N", strlen($enc) + 8) . substr($raw, 4, 4);
-            return $GLOBALS['SESSION_GUID'] . "\x01" . $hdr . $enc;
+            return $GLOBALS['SESSION_GUID'] . pack("N", ENC_AES256) . $hdr . $enc;
         }
         $GLOBALS['AES_ENABLED'] = true;
     }
 
-    return $GLOBALS['SESSION_GUID'] . "\x00" . $raw;
+    return $GLOBALS['SESSION_GUID'] . pack("N", ENC_NONE) . $raw;
 }
 
 function write_tlv_to_socket($resource, $raw) {
@@ -1345,7 +1353,7 @@ while (false !== ($cnt = select($r, $w, $e, $t))) {
     for ($i = 0; $i < $cnt; $i++) {
         $ready = $r[$i];
         if ($ready == $msgsock) {
-            $packet = read($msgsock, 29);
+            $packet = read($msgsock, 32);
             #my_print(sprintf("Read returned %s bytes", strlen($request)));
             if (false==$packet) {
                 my_print("Read failed on main socket, bailing");
@@ -1354,11 +1362,11 @@ while (false !== ($cnt = select($r, $w, $e, $t))) {
                 break 2;
             }
             $xor = substr($packet, 0, 4);
-            $header = xor_bytes($xor, substr($packet, 4, 25));
-            $len_array = unpack("Nlen", substr($header, 17, 4));
+            $header = xor_bytes($xor, substr($packet, 4, 28));
+            $len_array = unpack("Nlen", substr($header, 20, 4));
             # length of the packet should be the packet header size 
             # minus 8 for the tlv length + the required data length
-            $len = $len_array['len'] + 29 - 8;
+            $len = $len_array['len'] + 32 - 8;
             # packet type should always be 0, i.e. PACKET_TYPE_REQUEST
             while (strlen($packet) < $len) {
                 $packet .= read($msgsock, $len-strlen($packet));
