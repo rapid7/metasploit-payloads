@@ -168,17 +168,17 @@ TLV_TYPE_LOCAL_PORT            = TLV_META_TYPE_UINT    | 1503
 EXPORTED_SYMBOLS = {}
 EXPORTED_SYMBOLS['DEBUGGING'] = DEBUGGING
 
-# Packet header offsets and sizes
+# Packet header sizes
+ENC_NONE = 0
 PACKET_XOR_KEY_SIZE = 4
-PACKET_SESSION_GUID_OFF = 4
 PACKET_SESSION_GUID_SIZE = 16
-PACKET_ENCRYPT_FLAG_OFF = PACKET_SESSION_GUID_OFF + PACKET_SESSION_GUID_SIZE
-PACKET_ENCRYPT_FLAG_SIZE = 1
-PACKET_LENGTH_OFF = PACKET_ENCRYPT_FLAG_OFF + PACKET_ENCRYPT_FLAG_SIZE
+PACKET_ENCRYPT_FLAG_SIZE = 4
 PACKET_LENGTH_SIZE = 4
-PACKET_TYPE_OFF = PACKET_LENGTH_OFF + PACKET_LENGTH_SIZE
 PACKET_TYPE_SIZE = 4
-PACKET_HEADER_SIZE = PACKET_TYPE_OFF + PACKET_TYPE_SIZE
+PACKET_LENGTH_OFF = (PACKET_XOR_KEY_SIZE + PACKET_SESSION_GUID_SIZE +
+		PACKET_ENCRYPT_FLAG_SIZE)
+PACKET_HEADER_SIZE = (PACKET_XOR_KEY_SIZE + PACKET_SESSION_GUID_SIZE +
+		PACKET_ENCRYPT_FLAG_SIZE + PACKET_LENGTH_SIZE + PACKET_TYPE_SIZE)
 
 class SYSTEM_INFO(ctypes.Structure):
 	_fields_ = [("wProcessorArchitecture", ctypes.c_uint16),
@@ -545,7 +545,7 @@ class Transport(object):
 		# always return the session guid and the encryption flag set to 0
 		# TODO: we'll add encryption soon!
 		xor_key = rand_xor_key()
-		raw = binascii.a2b_hex(bytes(SESSION_GUID, 'UTF-8')) + NULL_BYTE + pkt
+		raw = binascii.a2b_hex(bytes(SESSION_GUID, 'UTF-8')) + struct.pack('>I', ENC_NONE) + pkt
 		result = struct.pack('BBBB', *xor_key) + xor_bytes(xor_key, raw)
 		return result
 
