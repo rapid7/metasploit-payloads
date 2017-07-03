@@ -2,7 +2,9 @@
 #include "remote.h"
 #include "packet_encryption.h"
 
-#define BLOCKSIZE 16
+#define AES256_BLOCKSIZE 16
+#define ENC_FLAG_NONE 0x0
+#define ENC_FLAG_AES256 0x1
 
 typedef struct _CryptProviderParams
 {
@@ -62,8 +64,11 @@ DWORD decrypt_packet(Remote* remote, Packet** packet, LPBYTE buffer, DWORD buffe
 			break;
 		}
 
+		DWORD encFlags = ntohl(header->enc_flags);
+		vdprintf("[DEC] Encryption flags set to %x", encFlags);
+
 		// Only decrypt if the context was set up correctly
-		if (remote->enc_ctx != NULL && remote->enc_ctx->valid && header->encrypted)
+		if (remote->enc_ctx != NULL && remote->enc_ctx->valid && encFlags != ENC_FLAG_NONE)
 		{
 			vdprintf("[DEC] Context is valid, moving on ... ");
 			LPBYTE payload = buffer + sizeof(PacketHeader);
@@ -75,11 +80,11 @@ DWORD decrypt_packet(Remote* remote, Packet** packet, LPBYTE buffer, DWORD buffe
 				iv[0], iv[1], iv[2], iv[3], iv[4], iv[5], iv[6], iv[7], iv[8], iv[9], iv[10], iv[11], iv[12], iv[13], iv[14], iv[15]);
 
 			// the rest of the payload bytes contains the actual encrypted data
-			DWORD encryptedSize = ntohl(header->length) - sizeof(TlvHeader) - BLOCKSIZE;
-			LPBYTE encryptedData = payload + BLOCKSIZE;
+			DWORD encryptedSize = ntohl(header->length) - sizeof(TlvHeader) - AES256_BLOCKSIZE;
+			LPBYTE encryptedData = payload + AES256_BLOCKSIZE;
 
 			vdprintf("[DEC] Encrypted Size: %u (%x)", encryptedSize, encryptedSize);
-			vdprintf("[DEC] Encrypted Size mod BLOCKSIZE: %u", encryptedSize % BLOCKSIZE);
+			vdprintf("[DEC] Encrypted Size mod AES256_BLOCKSIZE: %u", encryptedSize % AES256_BLOCKSIZE);
 
 			if (!CryptDuplicateKey(remote->enc_ctx->aes_key, NULL, 0, &dupKey))
 			{
@@ -205,7 +210,7 @@ DWORD encrypt_packet(Remote* remote, Packet* packet, LPBYTE* buffer, LPDWORD buf
 					break;
 				}
 
-				BYTE iv[BLOCKSIZE];
+				BYTE iv[AES256_BLOCKSIZE];
 				if (!CryptGenRandom(remote->enc_ctx->provider, sizeof(iv), iv))
 				{
 					result = GetLastError();
@@ -225,11 +230,11 @@ DWORD encrypt_packet(Remote* remote, Packet* packet, LPBYTE* buffer, LPDWORD buf
 
 				vdprintf("[ENC] IV Set successfully");
 				// mark this packet as an encrypted packet
-				packet->header.encrypted = 1;
+				packet->header.enc_flags = htonl(ENC_FLAG_AES256);
 
 
 				// Round up
-				DWORD maxEncryptSize = ((packet->payloadLength / BLOCKSIZE) + 1) * BLOCKSIZE;
+				DWORD maxEncryptSize = ((packet->payloadLength / AES256_BLOCKSIZE) + 1) * AES256_BLOCKSIZE;
 				// Need to have space for the IV at the start, as well as the packet Header
 				DWORD memSize = maxEncryptSize + sizeof(iv) + sizeof(packet->header);
 
@@ -288,21 +293,25 @@ DWORD encrypt_packet(Remote* remote, Packet* packet, LPBYTE* buffer, LPDWORD buf
 		BYTE* payloadPos = headerPos + sizeof(packet->header);
 
 		// mark this packet as a non-encrypted packet
-		packet->header.encrypted = 0;
+		packet->header.enc_flags = htonl(ENC_FLAG_NONE);
 
 		memcpy_s(headerPos, sizeof(packet->header), &packet->header, sizeof(packet->header));
 		memcpy_s(payloadPos, packet->payloadLength, packet->payload, packet->payloadLength);
 	}
 	vdprintf("[ENC] Packet buffer size is: %u", *bufferSize);
 
+#ifdef DEBUGTRACE
+	LPBYTE h = *buffer;
+	vdprintf("[TCP] Sending header (before XOR): [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X]",
+		h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15], h[16], h[17], h[18], h[19], h[20], h[21], h[22], h[23], h[24], h[25], h[26], h[27], h[28], h[29], h[30], h[31]);
+#endif
 	// finally XOR obfuscate like we always did before, skippig the xor key itself.
 	xor_bytes(packet->header.xor_key, *buffer + sizeof(packet->header.xor_key), *bufferSize - sizeof(packet->header.xor_key));
 
 	vdprintf("[ENC] Packet encoded and ready for transmission");
 #ifdef DEBUGTRACE
-	LPBYTE h = *buffer;
-	vdprintf("[ENC] Sending header: [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X]",
-		h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15], h[16], h[17], h[18], h[19], h[20], h[21], h[22], h[23], h[24], h[25], h[26], h[27], h[28]);
+	vdprintf("[TCP] Sending header (after XOR): [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X]",
+		h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15], h[16], h[17], h[18], h[19], h[20], h[21], h[22], h[23], h[24], h[25], h[26], h[27], h[28], h[29], h[30], h[31]);
 #endif
 
 	if (dupKey != 0)
@@ -542,16 +551,17 @@ DWORD request_negotiate_aes_key(Remote* remote, Packet* packet)
 		DWORD cipherTextLength = 0;
 		DWORD pubEncryptResult = public_key_encrypt(pubKeyPem, remote->enc_ctx->key_data.key, remote->enc_ctx->key_data.length, &cipherText, &cipherTextLength);
 
+		packet_add_tlv_uint(response, TLV_TYPE_SYM_KEY_TYPE, ENC_FLAG_AES256);
 		if (pubEncryptResult == ERROR_SUCCESS && cipherText != NULL)
 		{
 			// encryption succeeded, pass this key back to the call in encrypted form
-			packet_add_tlv_raw(response, TLV_TYPE_ENC_AES_KEY, cipherText, cipherTextLength);
+			packet_add_tlv_raw(response, TLV_TYPE_ENC_SYM_KEY, cipherText, cipherTextLength);
 			free(cipherText);
 		}
 		else
 		{
 			// no public key was given, so send it back in the raw
-			packet_add_tlv_raw(response, TLV_TYPE_AES_KEY, remote->enc_ctx->key_data.key, remote->enc_ctx->key_data.length);
+			packet_add_tlv_raw(response, TLV_TYPE_SYM_KEY, remote->enc_ctx->key_data.key, remote->enc_ctx->key_data.length);
 		}
 
 		ctx->valid = TRUE;

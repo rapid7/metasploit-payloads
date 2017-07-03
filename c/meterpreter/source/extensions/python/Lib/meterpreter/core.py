@@ -210,8 +210,10 @@ def invoke_meterpreter(method, is_local, tlv = ""):
   header = struct.pack('>I', PACKET_TYPE_REQUEST)
   header += tlv_pack(TLV_TYPE_METHOD, method)
   header += tlv_pack(TLV_TYPE_REQUEST_ID, 0)
-  # add a leading 4-byte "zero" for the xor-key
-  req = struct.pack('>II', 0, len(header) + len(tlv) + 4) + header + tlv
+  # add a leading 4-byte "zero" for the xor-key, 16 byte null guid, 4 byte encryption flag
+  req = '\x00' * 24
+  req += struct.pack('>I', len(header) + len(tlv) + 4)
+  req += header + tlv
 
   return getattr(meterpreter_bindings, binding)(is_local, req)
 

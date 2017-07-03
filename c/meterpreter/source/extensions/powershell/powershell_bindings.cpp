@@ -17,7 +17,7 @@ VOID MeterpreterInvoke(unsigned int isLocal, unsigned char* input, unsigned int 
 	packet.header = *(PacketHeader*)input;
 	packet.header.length = ntohl(packet.header.length);
 	packet.payload = (PUCHAR)(input + sizeof(PacketHeader));
-	packet.payloadLength = (ULONG)inputLength - sizeof(TlvHeader);
+	packet.payloadLength = (ULONG)inputLength - sizeof(PacketHeader);
 	packet.local = isLocal == 1;
 
 	dprintf("[PSH BINDING] Packet header length:  %u", packet.header.length);

@@ -32,11 +32,13 @@ namespace MSF.Powershell.Meterpreter
 
             using (var packetStream = new MemoryStream())
             {
-                var xorKey = ToBytes(0);
-                var size = ToBytes(header.Length + tlvBytes.Length + 4);
+                var blankHeader = new byte[24];
+                var size = header.Length + tlvBytes.Length + 4;
+                var sizeBytes = ToBytes(size);
 
-                packetStream.Write(xorKey, 0, xorKey.Length);
-                packetStream.Write(size, 0, size.Length);
+                System.Diagnostics.Debug.Write(string.Format("[PSH BINDING] Size value will be set to {0}", size));
+                packetStream.Write(blankHeader, 0, blankHeader.Length);
+                packetStream.Write(sizeBytes, 0, sizeBytes.Length);
                 packetStream.Write(header, 0, header.Length);
                 packetStream.Write(tlvBytes, 0, tlvBytes.Length);
 

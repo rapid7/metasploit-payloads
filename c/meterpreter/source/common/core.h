@@ -166,9 +166,10 @@ typedef enum
 	TLV_TYPE_SESSION_GUID        = TLV_VALUE(TLV_META_TYPE_RAW,       462),   ///! Represents a Session GUID.
 
 	// Packet encryption
-	TLV_TYPE_AES_KEY             = TLV_VALUE(TLV_META_TYPE_RAW,       550),   ///! Represents an AES key
-	TLV_TYPE_ENC_AES_KEY         = TLV_VALUE(TLV_META_TYPE_RAW,       551),   ///! Represents an encrypted AES key
-	TLV_TYPE_RSA_PUB_KEY         = TLV_VALUE(TLV_META_TYPE_STRING,    552),   ///! Represents PEM-formatted RSA public key
+	TLV_TYPE_RSA_PUB_KEY         = TLV_VALUE(TLV_META_TYPE_STRING,    550),   ///! Represents PEM-formatter RSA public key
+	TLV_TYPE_SYM_KEY_TYPE        = TLV_VALUE(TLV_META_TYPE_UINT,      551),   ///! Represents the type of symmetric key
+	TLV_TYPE_SYM_KEY             = TLV_VALUE(TLV_META_TYPE_RAW,       552),   ///! Represents the symmetric key
+	TLV_TYPE_ENC_SYM_KEY         = TLV_VALUE(TLV_META_TYPE_RAW,       553),   ///! Represents and RSA-encrypted symmetric key
 
 	TLV_TYPE_EXTENSIONS          = TLV_VALUE(TLV_META_TYPE_COMPLEX, 20000),   ///! Represents an extension value.
 	TLV_TYPE_USER                = TLV_VALUE(TLV_META_TYPE_COMPLEX, 40000),   ///! Represents a user value.
@@ -194,16 +195,14 @@ typedef struct
 	PUCHAR    buffer;
 } Tlv;
 
-#pragma pack(push, 1)
 typedef struct
 {
 	BYTE xor_key[4];
 	BYTE session_guid[sizeof(GUID)];
-	BYTE encrypted;
+	DWORD enc_flags;
 	DWORD length;
 	DWORD type;
 } PacketHeader;
-#pragma pack(pop)
 
 /*! @brief Packet definition. */
 typedef struct _Packet
