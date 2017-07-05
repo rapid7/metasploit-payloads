@@ -24,7 +24,8 @@ typedef struct _TimeoutSettings TimeoutSettings;
 typedef struct _HttpTransportContext HttpTransportContext;
 typedef struct _PacketEncryptionContext PacketEncryptionContext;
 
-typedef SOCKET(*PTransportGetSocket)(Transport* transport);
+typedef UINT_PTR(*PTransportGetHandle)(Transport* transport);
+typedef void(*PTransportSetHandle)(Transport* transport, UINT_PTR handle);
 typedef void(*PTransportReset)(Transport* transport, BOOL shuttingDown);
 typedef BOOL(*PTransportInit)(Transport* transport);
 typedef BOOL(*PTransportDeinit)(Transport* transport);
@@ -60,6 +61,12 @@ typedef struct _TcpTransportContext
 	SOCKET listen;                        ///! Listen socket descriptor, if any.
 } TcpTransportContext;
 
+typedef struct _NamedPipeTransportContext
+{
+	STRTYPE pipe_name;                    ///! Name of the pipe in '\\<server>\<name>' format
+	HANDLE pipe;                          ///! Reference to the named pipe handle.
+} NamedPipeTransportContext;
+
 typedef struct _HttpTransportContext
 {
 	BOOL ssl;                             ///! Flag indicating whether the connection uses SSL.
@@ -91,7 +98,8 @@ typedef struct _HttpTransportContext
 typedef struct _Transport
 {
 	DWORD type;                           ///! The type of transport in use.
-	PTransportGetSocket get_socket;       ///! Function to get the socket from the transport.
+	PTransportGetHandle get_handle;       ///! Function to get the socket/handle from the transport.
+	PTransportSetHandle set_handle;       ///! Function to set the socket/handle on the transport.
 	PTransportReset transport_reset;      ///! Function to reset/clean the transport ready for restarting.
 	PTransportInit transport_init;        ///! Initialises the transport.
 	PTransportDeinit transport_deinit;    ///! Deinitialises the transport.

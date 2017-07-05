@@ -57,6 +57,8 @@ typedef struct ___u128 {
 #define METERPRETER_TRANSPORT_HTTP  1
 /*! @brief Indication that the Meterpreter transport is using HTTPS. */
 #define METERPRETER_TRANSPORT_HTTPS 2
+/*! @brief Indication that the Meterpreter transport is using  named pipes. */
+#define METERPRETER_TRANSPORT_PIPE 3
 
 VOID sleep(DWORD seconds);
 

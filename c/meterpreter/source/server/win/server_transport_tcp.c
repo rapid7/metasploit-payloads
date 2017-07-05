@@ -9,7 +9,7 @@
 // TCP-transport specific migration stub.
 typedef struct _TCPMIGRATECONTEXT
 {
-	COMMONMIGRATCONTEXT common;
+	COMMONMIGRATECONTEXT common;
 	WSAPROTOCOL_INFOA info;
 } TCPMIGRATECONTEXT, * LPTCPMIGRATECONTEXT;
 
@@ -619,14 +619,27 @@ static DWORD server_dispatch_tcp(Remote* remote, THREAD* dispatchThread)
  * @param transport Pointer to the TCP transport containing the socket.
  * @return The current transport socket FD, if any, or zero.
  */
-static SOCKET transport_get_socket_tcp(Transport* transport)
+static UINT_PTR transport_get_handle_tcp(Transport* transport)
 {
 	if (transport && transport->type == METERPRETER_TRANSPORT_TCP)
 	{
-		return ((TcpTransportContext*)transport->ctx)->fd;
+		return (UINT_PTR)((TcpTransportContext*)transport->ctx)->fd;
 	}
 
 	return 0;
+}
+
+/*!
+ * @brief Set the socket from the transport (if it's TCP).
+ * @param transport Pointer to the TCP transport containing the socket.
+ * @param handle The current transport socket FD, if any.
+ */
+static void transport_set_handle_tcp(Transport* transport, UINT_PTR handle)
+{
+	if (transport && transport->type == METERPRETER_TRANSPORT_TCP)
+	{
+		((TcpTransportContext*)transport->ctx)->fd = (SOCKET)handle;
+	}
 }
 
 /*!
@@ -955,7 +968,8 @@ Transport* transport_create_tcp(MetsrvTransportTcp* config)
 	transport->transport_destroy = transport_destroy_tcp;
 	transport->transport_reset = transport_reset_tcp;
 	transport->server_dispatch = server_dispatch_tcp;
-	transport->get_socket = transport_get_socket_tcp;
+	transport->get_handle = transport_get_handle_tcp;
+	transport->set_handle = transport_set_handle_tcp;
 	transport->ctx = ctx;
 	transport->comms_last_packet = current_unix_timestamp();
 	transport->get_migrate_context = get_migrate_context_tcp;

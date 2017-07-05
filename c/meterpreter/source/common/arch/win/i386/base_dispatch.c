@@ -4,14 +4,14 @@
 
 DWORD get_migrate_context(LPDWORD contextSize, LPCOMMONMIGRATECONTEXT* contextBuffer)
 {
-	*contextBuffer = (LPCOMMONMIGRATECONTEXT)calloc(1, sizeof(COMMONMIGRATCONTEXT));
+	*contextBuffer = (LPCOMMONMIGRATECONTEXT)calloc(1, sizeof(COMMONMIGRATECONTEXT));
 
 	if (*contextBuffer == NULL)
 	{
 		return ERROR_OUTOFMEMORY;
 	}
 
-	*contextSize = sizeof(COMMONMIGRATCONTEXT);
+	*contextSize = sizeof(COMMONMIGRATECONTEXT);
 
 	return ERROR_SUCCESS;
 }
@@ -65,6 +65,15 @@ DWORD create_transport_from_request(Remote* remote, Packet* packet, Transport** 
 		if (wcsncmp(transportUrl, L"tcp", 3) == 0)
 		{
 			MetsrvTransportTcp config = { 0 };
+			config.common.comms_timeout = timeouts.comms;
+			config.common.retry_total = timeouts.retry_total;
+			config.common.retry_wait = timeouts.retry_wait;
+			memcpy(config.common.url, transportUrl, sizeof(config.common.url));
+			transport = remote->trans_create(remote, &config.common, NULL);
+		}
+		else if (wcsncmp(transportUrl, L"pipe", 4) == 0)
+		{
+			MetsrvTransportNamedPipe config = { 0 };
 			config.common.comms_timeout = timeouts.comms;
 			config.common.retry_total = timeouts.retry_total;
 			config.common.retry_wait = timeouts.retry_wait;

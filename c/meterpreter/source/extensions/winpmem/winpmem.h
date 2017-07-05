@@ -10,8 +10,6 @@
 #define PMEM_DEVICE_NAME "pmem"
 #define PMEM_SERVICE_NAME TEXT("pmem")
 
-static TCHAR version[] = TEXT(PMEM_VERSION) TEXT(" ") TEXT(__DATE__);
-
 // These numbers are set in the resource editor for the FILE resource.
 #define WINPMEM_64BIT_DRIVER 104
 #define WINPMEM_32BIT_DRIVER 105
