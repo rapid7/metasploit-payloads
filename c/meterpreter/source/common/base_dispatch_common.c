@@ -59,7 +59,7 @@ DWORD remote_request_core_channel_open(Remote *remote, Packet *packet)
 
 		// Transmit the response
 		dprintf( "[CHANNEL] Sending response for %s", channelType  );
-		res = PACKET_TRANSMIT(remote, response, NULL);
+		res = packet_transmit(remote, response, NULL);
 
 		dprintf( "[CHANNEL] Done" );
 

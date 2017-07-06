@@ -1,6 +1,7 @@
 #include "metsrv.h"
 #include "../../common/common.h"
 #include "server_pivot.h"
+#include "server_pivot_named_pipe.h"
 
 /*!
  * @brief Add a pivot point to the current meterpreter session
@@ -12,5 +13,6 @@
  */
 DWORD request_core_pivot_add(Remote* remote, Packet* packet)
 {
-	return 0;
+	// Right now we only support named pipe pivotes, so just go straight there
+	return request_core_pivot_add_named_pipe(remote, packet);
 }

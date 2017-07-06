@@ -114,7 +114,7 @@ static Transport* create_transport(Remote* remote, MetsrvTransportCommon* transp
 		}
 		transport = transport_create_tcp((MetsrvTransportTcp*)transportCommon);
 	}
-	if (wcsncmp(transportCommon->url, L"tcp", 3) == 0)
+	else if (wcsncmp(transportCommon->url, L"pipe", 4) == 0)
 	{
 		if (size)
 		{

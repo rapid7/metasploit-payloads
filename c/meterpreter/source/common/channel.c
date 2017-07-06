@@ -299,7 +299,7 @@ DWORD channel_write_to_remote(Remote *remote, Channel *channel, PUCHAR chunk,
 			break;
 
 		// Transmit the packet
-		res = PACKET_TRANSMIT(remote, request, NULL);
+		res = packet_transmit(remote, request, NULL);
 
 	} while (0);
 
@@ -504,7 +504,7 @@ DWORD channel_open(Remote *remote, Tlv *addend, DWORD addendLength, ChannelCompl
 		}
 
 		// Transmit the packet with the supplied completion routine, if any.
-		res = PACKET_TRANSMIT(remote, request, realRequestCompletion);
+		res = packet_transmit(remote, request, realRequestCompletion);
 
 	} while (0);
 
@@ -559,7 +559,7 @@ DWORD channel_read(Channel *channel, Remote *remote, Tlv *addend,
 		}
 
 		// Transmit the packet with the supplied completion routine, if any.
-		res = PACKET_TRANSMIT(remote, request, realRequestCompletion);
+		res = packet_transmit(remote, request, realRequestCompletion);
 
 	} while (0);
 
@@ -625,7 +625,7 @@ DWORD channel_write(Channel *channel, Remote *remote, Tlv *addend,
 		}
 
 		// Transmit the packet with the supplied completion routine, if any.
-		res = PACKET_TRANSMIT(remote, request, realRequestCompletion);
+		res = packet_transmit(remote, request, realRequestCompletion);
 
 	} while (0);
 
@@ -679,7 +679,7 @@ DWORD channel_close(Channel *channel, Remote *remote, Tlv *addend,
 		dprintf("[CHANNEL] channel_close. channel=0x%08X completion=0x%.8x", channel, completionRoutine);
 
 		// Transmit the packet with the supplied completion routine, if any.
-		res = PACKET_TRANSMIT(remote, request, realRequestCompletion);
+		res = packet_transmit(remote, request, realRequestCompletion);
 
 	} while (0);
 
@@ -736,7 +736,7 @@ DWORD channel_interact(Channel *channel, Remote *remote, Tlv *addend,
 		}
 
 		// Transmit the packet with the supplied completion routine, if any.
-		res = PACKET_TRANSMIT(remote, request, realRequestCompletion);
+		res = packet_transmit(remote, request, realRequestCompletion);
 
 	} while (0);
 

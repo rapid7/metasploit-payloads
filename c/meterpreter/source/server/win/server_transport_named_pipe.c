@@ -464,94 +464,46 @@ static BOOL configure_named_pipe_connection(Transport* transport)
 }
 
 /*!
- * @brief Transmit a packet via named pipe _and_ destroy it.
+ * @brief Transmit a packet via named pipe.
  * @param remote Pointer to the \c Remote instance.
- * @param packet Pointer to the \c Packet that is to be sent.
- * @param completion Pointer to the completion routines to process.
+ * @param rawPacket Pointer to the raw packet bytes to send.
+ * @param rawPacketLength Length of the raw packet data.
  * @return An indication of the result of processing the transmission request.
  */
-DWORD packet_transmit_named_pipe(Remote* remote, Packet* packet, PacketRequestCompletion* completion)
+DWORD packet_transmit_named_pipe(Remote* remote, LPBYTE rawPacket, DWORD rawPacketLength)
 {
-	Tlv requestId;
-	DWORD res;
 	NamedPipeTransportContext* ctx = (NamedPipeTransportContext*)remote->transport->ctx;
-	BYTE* encryptedPacket = NULL;
-	DWORD encryptedPacketLength = 0;
-
-	dprintf("[TRANSMIT PIPE] Sending packet to the server");
+	DWORD totalWritten = 0;
+	DWORD written = 0;
+	DWORD result = ERROR_SUCCESS;
 
 	lock_acquire(remote->lock);
 
-	// If the packet does not already have a request identifier, create one for it
-	if (packet_get_tlv_string(packet, TLV_TYPE_REQUEST_ID, &requestId) != ERROR_SUCCESS)
+	while (totalWritten < rawPacketLength)
 	{
-		DWORD index;
-		CHAR rid[32];
-
-		rid[sizeof(rid)-1] = 0;
-
-		for (index = 0; index < sizeof(rid)-1; index++)
+		if (!WriteFile(ctx->pipe, rawPacket + totalWritten, rawPacketLength - totalWritten, &written, NULL))
 		{
-			rid[index] = (rand() % 0x5e) + 0x21;
-		}
-
-		packet_add_tlv_string(packet, TLV_TYPE_REQUEST_ID, rid);
-	}
-
-	// Always add the UUID to the packet as well, so that MSF knows who and what we are
-  	packet_add_tlv_raw(packet, TLV_TYPE_UUID, remote->orig_config->session.uuid, UUID_SIZE);
-
-	do
-	{
-		// If a completion routine was supplied and the packet has a request
-		// identifier, insert the completion routine into the list
-		if ((completion) &&
-			(packet_get_tlv_string(packet, TLV_TYPE_REQUEST_ID,
-			&requestId) == ERROR_SUCCESS))
-		{
-			packet_add_completion_handler((LPCSTR)requestId.buffer, completion);
-		}
-
-		encrypt_packet(remote, packet, &encryptedPacket, &encryptedPacketLength);
-		dprintf("[TRANSMIT PIPE] Sending packet to remote, length: %u", encryptedPacketLength);
-
-		DWORD totalWritten = 0;
-		DWORD written = 0;
-		while (totalWritten < encryptedPacketLength)
-		{
-			if (!WriteFile(ctx->pipe, &packet->header + totalWritten, sizeof(packet->header) - totalWritten, &written, NULL))
-			{
-				break;
-			}
-
-			totalWritten += written;
-		}
-
-		res = GetLastError();
-
-		if (res != ERROR_SUCCESS)
-		{
-			dprintf("[TRANSMIT PIPE] transmit packet failed with return %d at index %d\n", res, totalWritten);
 			break;
 		}
 
-		dprintf("[TRANSMIT PIPE] Packet sent!");
-		SetLastError(ERROR_SUCCESS);
-	} while (0);
-
-	res = GetLastError();
-
-	if (encryptedPacket != NULL)
-	{
-		free(encryptedPacket);
+		totalWritten += written;
 	}
 
-	// Destroy the packet
-	packet_destroy(packet);
+	result = GetLastError();
+
+	if (result != ERROR_SUCCESS)
+	{
+		dprintf("[TRANSMIT PIPE] transmit packet failed with return %d at index %d\n", result, totalWritten);
+	}
+	else
+	{
+		dprintf("[TRANSMIT PIPE] Packet sent!");
+	}
+
 
 	lock_release(remote->lock);
 
-	return res;
+	return result;
 }
 
 /*!
@@ -633,9 +585,9 @@ static DWORD get_migrate_context_named_pipe(Transport* transport, DWORD targetPr
 Transport* transport_create_named_pipe(MetsrvTransportNamedPipe* config)
 {
 	Transport* transport = (Transport*)calloc(1, sizeof(Transport));
-	TcpTransportContext* ctx = (TcpTransportContext*)calloc(1, sizeof(TcpTransportContext));
+	NamedPipeTransportContext* ctx = (NamedPipeTransportContext*)calloc(1, sizeof(NamedPipeTransportContext));
 
-	dprintf("[TRANS NP] Creating tcp transport for url %S", config->common.url);
+	dprintf("[TRANS NP] Creating pipe transport for url %S", config->common.url);
 
 	transport->type = METERPRETER_TRANSPORT_PIPE;
 	transport->timeouts.comms = config->common.comms_timeout;

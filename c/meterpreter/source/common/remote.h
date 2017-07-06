@@ -7,6 +7,7 @@
 
 #include "thread.h"
 #include "config.h"
+#include "pivot_tree.h"
 
 /*! @brief This is the size of the certificate hash that is validated (sha1) */
 #define CERT_HASH_SIZE 20
@@ -36,7 +37,7 @@ typedef void(*PTransportRemove)(Remote* remote, Transport* oldTransport);
 typedef void(*PConfigCreate)(Remote* remote, LPBYTE uuid, MetsrvConfig** config, LPDWORD size);
 
 typedef BOOL(*PServerDispatch)(Remote* remote, THREAD* dispatchThread);
-typedef DWORD(*PPacketTransmit)(Remote* remote, Packet* packet, PacketRequestCompletion* completion);
+typedef DWORD(*PPacketTransmit)(Remote* remote, LPBYTE rawPacket, DWORD rawPacketLength);
 
 typedef HANDLE(*PCreateHttpRequest)(HttpTransportContext* ctx, BOOL isGet, const char* direction);
 typedef BOOL(*PSendHttpRequest)(HANDLE hReq, LPVOID buffer, DWORD size);
@@ -158,6 +159,8 @@ typedef struct _Remote
 	int sess_expiry_time;                 ///! Number of seconds that the session runs for.
 	int sess_expiry_end;                  ///! Unix timestamp for when the server should shut down.
 	int sess_start_time;                  ///! Unix timestamp representing the session startup time.
+
+	PivotTree* pivots;                    ///! Collection of active Meterpreter session pivots.
 
 	PacketEncryptionContext* enc_ctx;     ///! Reference to the packet encryption context.
 } Remote;

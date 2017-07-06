@@ -356,6 +356,7 @@ static DWORD packet_receive(Remote *remote, Packet **packet)
 	DWORD headerBytes = 0, payloadBytesLeft = 0, res;
 	Packet *localPacket = NULL;
 	PacketHeader header = { 0 };
+	BYTE packetGuid[sizeof(GUID)];
 	LONG bytesRead;
 	BOOL inHeader = TRUE;
 	PUCHAR packetBuffer = NULL;
@@ -456,6 +457,9 @@ static DWORD packet_receive(Remote *remote, Packet **packet)
 			vdprintf("[TCP] Packet header: [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X]",
 				h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15], h[16], h[17], h[18], h[19], h[20], h[21], h[22], h[23], h[24], h[25], h[26], h[27], h[28], h[29], h[30], h[31]);
 #endif
+
+			// take a copy of the packet session GUID so that we can do pivot handling later
+			memcpy(packetGuid, header.session_guid, sizeof(packetGuid));
 			
 			payloadLength = ntohl(header.length) - sizeof(TlvHeader);
 			vdprintf("[TCP] Payload length is %d", payloadLength);
@@ -509,8 +513,26 @@ static DWORD packet_receive(Remote *remote, Packet **packet)
 				break;
 			}
 
-			vdprintf("[TCP] decrypting packet");
-			SetLastError(decrypt_packet(remote, packet, packetBuffer, packetSize));
+#ifdef DEBUGTRACE
+			h = (PUCHAR)&packetGuid[0];
+			dprintf("[TCP] Packet Session GUID: 0x%02X0x%02X0x%02X0x%02X 0x%02X0x%02X0x%02X0x%02X 0x%02X0x%02X0x%02X0x%02X 0x%02X0x%02X0x%02X0x%02X",
+				h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15]);
+#endif
+			if (is_null_guid(packetGuid) || memcmp(remote->orig_config->session.session_guid, packetGuid, sizeof(packetGuid)) == 0)
+			{
+				dprintf("[TCP] Session GUIDs match (or packet guid is null), decrypting packet");
+				SetLastError(decrypt_packet(remote, packet, packetBuffer, packetSize));
+			}
+			else
+			{
+				dprintf("[TCP] Session GUIDs don't match, looking for a pivot");
+				PivotContext* pivotCtx = pivot_tree_find(remote->pivots, header.session_guid);
+				if (pivotCtx != NULL)
+				{
+					dprintf("[TCP] Pivot found, dispatching packet");
+					res = pivotCtx->packet_write(pivotCtx->state, packetBuffer, packetSize);
+				}
+			}
 
 			free(packetBuffer);
 		}
@@ -805,95 +827,46 @@ static BOOL configure_tcp_connection(Transport* transport)
 }
 
 /*!
- * @brief Transmit a packet via TCP _and_ destroy it.
+ * @brief Transmit a packet via TCP.
  * @param remote Pointer to the \c Remote instance.
- * @param packet Pointer to the \c Packet that is to be sent.
- * @param completion Pointer to the completion routines to process.
+ * @param rawPacket Pointer to the raw packet bytes to send.
+ * @param rawPacketLength Length of the raw packet data.
  * @return An indication of the result of processing the transmission request.
- * @remark This uses a TCP channel.
  */
-DWORD packet_transmit(Remote* remote, Packet* packet, PacketRequestCompletion* completion)
+DWORD packet_transmit_tcp(Remote* remote, LPBYTE rawPacket, DWORD rawPacketLength)
 {
-	Tlv requestId;
-	DWORD res;
-	DWORD idx;
 	TcpTransportContext* ctx = (TcpTransportContext*)remote->transport->ctx;
-	BYTE* encryptedPacket = NULL;
-	DWORD encryptedPacketLength = 0;
-
-	dprintf("[TRANSMIT] Sending packet to the server");
+	DWORD result = ERROR_SUCCESS;
+	DWORD idx = 0;
 
 	lock_acquire(remote->lock);
 
-	// If the packet does not already have a request identifier, create one for it
-	if (packet_get_tlv_string(packet, TLV_TYPE_REQUEST_ID, &requestId) != ERROR_SUCCESS)
+	while (idx < rawPacketLength)
 	{
-		DWORD index;
-		CHAR rid[32];
+		result = send(ctx->fd, rawPacket + idx, rawPacketLength - idx, 0);
 
-		rid[sizeof(rid)-1] = 0;
-
-		for (index = 0; index < sizeof(rid)-1; index++)
+		if (result < 0)
 		{
-			rid[index] = (rand() % 0x5e) + 0x21;
-		}
-
-		packet_add_tlv_string(packet, TLV_TYPE_REQUEST_ID, rid);
-	}
-
-	// Always add the UUID to the packet as well, so that MSF knows who and what we are
-  	packet_add_tlv_raw(packet, TLV_TYPE_UUID, remote->orig_config->session.uuid, UUID_SIZE);
-
-	do
-	{
-		// If a completion routine was supplied and the packet has a request
-		// identifier, insert the completion routine into the list
-		if ((completion) &&
-			(packet_get_tlv_string(packet, TLV_TYPE_REQUEST_ID,
-			&requestId) == ERROR_SUCCESS))
-		{
-			packet_add_completion_handler((LPCSTR)requestId.buffer, completion);
-		}
-
-		encrypt_packet(remote, packet, &encryptedPacket, &encryptedPacketLength);
-		dprintf("[PACKET] Sending packet to remote, length: %u", encryptedPacketLength);
-
-		idx = 0;
-		while (idx < encryptedPacketLength)
-		{
-			res = send(ctx->fd, encryptedPacket + idx, encryptedPacketLength - idx, 0);
-
-			if (res < 0)
-			{
-				break;
-			}
-
-			idx += res;
-		}
-
-		if (res < 0)
-		{
-			dprintf("[PACKET] transmit packet failed with return %d at index %d\n", res, idx);
 			break;
 		}
 
-		dprintf("[PACKET] Packet sent!");
-		SetLastError(ERROR_SUCCESS);
-	} while (0);
-
-	res = GetLastError();
-
-	if (encryptedPacket != NULL)
-	{
-		free(encryptedPacket);
+		idx += result;
 	}
 
-	// Destroy the packet
-	packet_destroy(packet);
+	result = GetLastError();
+
+	if (result != ERROR_SUCCESS)
+	{
+		dprintf("[PACKET] transmit packet failed with return %d at index %d\n", result, idx);
+	}
+	else
+	{
+		dprintf("[PACKET] Packet sent!");
+	}
 
 	lock_release(remote->lock);
 
-	return res;
+	return result;
 }
 
 /*!
@@ -963,7 +936,7 @@ Transport* transport_create_tcp(MetsrvTransportTcp* config)
 	transport->timeouts.retry_total = config->common.retry_total;
 	transport->timeouts.retry_wait = config->common.retry_wait;
 	transport->url = _wcsdup(config->common.url);
-	transport->packet_transmit = packet_transmit;
+	transport->packet_transmit = packet_transmit_tcp;
 	transport->transport_init = configure_tcp_connection;
 	transport->transport_destroy = transport_destroy_tcp;
 	transport->transport_reset = transport_reset_tcp;

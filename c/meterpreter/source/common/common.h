@@ -6,7 +6,7 @@
 #define _METERPRETER_SOURCE_COMMON_COMMON_H
 
 /*! @brief Set to 0 for "normal", and 1 to "verbose", comment out to disable completely. */
-//#define DEBUGTRACE 0
+#define DEBUGTRACE 0
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -110,4 +110,5 @@ static _inline void real_dprintf(char *format, ...)
 
 int current_unix_timestamp(void);
 VOID xor_bytes(BYTE xorKey[4], LPBYTE buffer, DWORD bufferSize);
+BOOL is_null_guid(BYTE guid[sizeof(GUID)]);
 VOID rand_xor_key(BYTE buffer[4]);
