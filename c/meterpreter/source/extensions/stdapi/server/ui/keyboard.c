@@ -303,8 +303,8 @@ DWORD request_ui_get_keys(Remote *remote, Packet *request)
 {
 	Packet *response = packet_create_response(request);
 	DWORD result = ERROR_SUCCESS;
-	DebugBreak();
-	if (tKeyScan) {
+
+  if (tKeyScan) {
 		// This works because NULL defines the end of data (or if its wrapped, the whole buffer)
 		packet_add_tlv_string(response, TLV_TYPE_KEYS_DUMP, (LPCSTR)g_keyscan_buf);
 		memset(g_keyscan_buf, 0, KEYBUFSIZE);
