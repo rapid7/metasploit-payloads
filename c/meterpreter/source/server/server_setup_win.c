@@ -375,6 +375,7 @@ DWORD server_setup(MetsrvConfig* config)
 				break;
 			}
 
+			dprintf("[DISPATCH] Transport handle is %p", (LPVOID)config->session.comms_handle.handle);
 			if (remote->transport->set_handle)
 			{
 				remote->transport->set_handle(remote->transport, config->session.comms_handle.handle);

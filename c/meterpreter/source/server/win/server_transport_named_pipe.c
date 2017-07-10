@@ -94,7 +94,7 @@ static DWORD packet_receive_named_pipe(Remote *remote, Packet **packet)
 					SetLastError(ERROR_NOT_FOUND);
 				}
 
-				dprintf("[PIPE] Socket error");
+				dprintf("[PIPE] ReadFile error");
 				break;
 			}
 
