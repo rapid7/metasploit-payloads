@@ -172,9 +172,10 @@ typedef enum
 	TLV_TYPE_ENC_SYM_KEY         = TLV_VALUE(TLV_META_TYPE_RAW,       553),   ///! Represents and RSA-encrypted symmetric key
 
 	// Pivots
-	TLV_TYPE_PIVOT_STAGE_DATA      = TLV_VALUE(TLV_META_TYPE_RAW,     650),   ///! Represents the data to be staged on new connections.
-	TLV_TYPE_PIVOT_STAGE_DATA_SIZE = TLV_VALUE(TLV_META_TYPE_UINT,    651),   ///! Represents the size of the data to be staged on new connections.
-	TLV_TYPE_PIVOT_NAMED_PIPE_NAME = TLV_VALUE(TLV_META_TYPE_STRING,  652),   ///! Represents named pipe name.
+	TLV_TYPE_PIVOT_ID              = TLV_VALUE(TLV_META_TYPE_RAW,     650),   ///! Represents the id of the pivot listener
+	TLV_TYPE_PIVOT_STAGE_DATA      = TLV_VALUE(TLV_META_TYPE_RAW,     651),   ///! Represents the data to be staged on new connections.
+	TLV_TYPE_PIVOT_STAGE_DATA_SIZE = TLV_VALUE(TLV_META_TYPE_UINT,    652),   ///! Represents the size of the data to be staged on new connections.
+	TLV_TYPE_PIVOT_NAMED_PIPE_NAME = TLV_VALUE(TLV_META_TYPE_STRING,  653),   ///! Represents named pipe name.
 
 	TLV_TYPE_EXTENSIONS          = TLV_VALUE(TLV_META_TYPE_COMPLEX, 20000),   ///! Represents an extension value.
 	TLV_TYPE_USER                = TLV_VALUE(TLV_META_TYPE_COMPLEX, 40000),   ///! Represents a user value.

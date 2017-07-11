@@ -15,6 +15,7 @@ typedef struct _NamedPipeContext
 	OVERLAPPED read_overlap;
 	OVERLAPPED write_overlap;
 	char       name[PIPE_NAME_SIZE];
+	GUID       pivot_id;
 	Remote*    remote;
 	HANDLE     pipe;
 	BOOL       connecting;
@@ -466,8 +467,9 @@ static DWORD server_notify(Remote* remote, LPVOID entryContext, LPVOID threadCon
 			guid.Data2 = htons(guid.Data2);
 			guid.Data3 = htons(guid.Data3);
 
-			Packet* notification = packet_create(PACKET_TLV_TYPE_REQUEST, "core_pivot_new");
-			packet_add_tlv_raw(notification, TLV_TYPE_SESSION_GUID, (LPVOID)&guid, sizeof(GUID));
+			Packet* notification = packet_create(PACKET_TLV_TYPE_REQUEST, "core_pivot_session_new");
+			packet_add_tlv_raw(notification, TLV_TYPE_SESSION_GUID, (LPVOID)&guid, sizeof(guid));
+			packet_add_tlv_raw(notification, TLV_TYPE_PIVOT_ID, (LPVOID)&serverCtx->pivot_id, sizeof(serverCtx->pivot_id));
 			packet_transmit(serverCtx->remote, notification, NULL);
 
 			PivotContext* pivotContext = (PivotContext*)calloc(1, sizeof(PivotContext));
@@ -552,6 +554,12 @@ DWORD request_core_pivot_add_named_pipe(Remote* remote, Packet* packet)
 		if (namedPipeServer == NULL)
 		{
 			namedPipeServer = ".";
+		}
+
+		LPBYTE pivotId = packet_get_tlv_value_raw(packet, TLV_TYPE_PIVOT_ID);
+		if (pivotId != NULL)
+		{
+			memcpy(&ctx->pivot_id, pivotId, sizeof(ctx->pivot_id));
 		}
 
 		LPVOID stageData = packet_get_tlv_value_raw(packet, TLV_TYPE_PIVOT_STAGE_DATA);
