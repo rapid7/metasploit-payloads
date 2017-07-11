@@ -722,6 +722,7 @@ class TcpTransport(Transport):
 class PythonMeterpreter(object):
 	def __init__(self, transport):
 		self.transport = transport
+		self._transport_sleep = None
 		self.running = False
 		self.last_registered_extension = None
 		self.extension_functions = {}
@@ -826,6 +827,12 @@ class PythonMeterpreter(object):
 				response = self.create_response(request)
 				if response:
 					self.send_packet(response)
+				if self._transport_sleep:
+					self.transport.deactivate()
+					time.sleep(self._transport_sleep)
+					self._transport_sleep = None
+					if not self.transport.activate():
+						self.transport_change()
 				continue
 			# iterate over the keys because self.channels could be modified if one is closed
 			channel_ids = list(self.channels.keys())
@@ -1053,11 +1060,8 @@ class PythonMeterpreter(object):
 		seconds = packet_get_tlv(request, TLV_TYPE_TRANS_COMM_TIMEOUT)['value']
 		self.send_packet(tlv_pack_response(ERROR_SUCCESS, response))
 		if seconds:
-			self.transport.deactivate()
-			time.sleep(seconds)
-			if not self.transport.activate():
-				self.transport_change()
-		return None
+			self._transport_sleep = seconds
+		return ERROR_SUCCESS, response
 
 	def _core_channel_open(self, request, response):
 		channel_type = packet_get_tlv(request, TLV_TYPE_CHANNEL_TYPE)
