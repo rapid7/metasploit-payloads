@@ -10,9 +10,11 @@
 // second stage reflective dll inject payload and not the metsrv itself when it loads extensions.
 #include "../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
 
-DWORD request_driver_send_vuln();
-DWORD request_driver_set_vuln_loc();
-DWORD request_driver_do_work();
+#include "drivertools.h"
+
+DWORD request_drivertools_send_vuln();
+DWORD request_drivertools_set_vuln_loc();
+DWORD request_drivertools_do_work(Remote *remote, Packet *request);
 
 // this sets the delay load hook function, see DelayLoadMetSrv.h
 EnableDelayLoadMetSrv();
@@ -25,9 +27,9 @@ EnableDelayLoadMetSrv();
 Command customCommands[] =
 {
 	// custom commands go here
-	COMMAND_REQ("driver_send_vuln", request_driver_send_vuln),
-	COMMAND_REQ("driver_set_vuln_loc", request_driver_set_vuln_loc),
-	COMMAND_REQ("driver_do_work", request_driver_do_work),
+	COMMAND_REQ("drivertools_send_vuln", request_drivertools_send_vuln),
+	COMMAND_REQ("drivertools_set_vuln_loc", request_drivertools_set_vuln_loc),
+	COMMAND_REQ("drivertools_do_work", request_drivertools_do_work),
 	COMMAND_TERMINATOR
 };
 
@@ -59,12 +61,12 @@ DWORD __declspec(dllexport) GetExtensionName(char* buffer, int bufferSize)
 	return ERROR_SUCCESS;
 }
 
-DWORD request_driver_send_vuln()
+DWORD request_drivertools_send_vuln()
 {
 	return 4;
 }
 
-DWORD request_driver_set_vuln_loc()
+DWORD request_drivertools_set_vuln_loc()
 {
 	return 3;
 }

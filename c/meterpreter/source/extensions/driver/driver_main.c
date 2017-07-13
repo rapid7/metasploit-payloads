@@ -21,6 +21,7 @@
 #include <process.h>
 #include "vbox.h"
 #include "shellcode.h"
+#include "drivertools.h"
 
 #pragma data_seg("shrd")
 volatile LONG g_lApplicationInstances = 0;
@@ -757,7 +758,17 @@ UINT TDLProcessCommandLine(
 * Loader main.
 *
 */
-void request_driver_do_work()
+
+void request_drivertools_do_work(Remote *remote, Packet *request)
+{
+	Packet *response = packet_create_response(request);
+	DWORD result = 1337;
+
+	// Transmit the response
+	packet_transmit_response(result, remote, response);
+}
+
+void request_drivertools_do_work_disabled()
 {
 
 	BOOL            cond = FALSE;
