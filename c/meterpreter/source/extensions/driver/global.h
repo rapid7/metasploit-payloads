@@ -26,6 +26,7 @@
 #pragma warning(disable: 6102) // Using %s from failed function call at line %u
 #pragma warning(disable: 6320) //exception-filter expression is the constant EXCEPTION_EXECUTE_HANDLER
 
+#define _WINSOCKAPI_
 #include <Windows.h>
 #include <ntstatus.h>
 #include "ntos.h"
