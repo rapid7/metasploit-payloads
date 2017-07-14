@@ -38,6 +38,7 @@
     <ProjectGuid>{65ac1db3-893f-4e63-8f9f-98fcaf1ca015}</ProjectGuid>
     <RootNamespace>ext_server_driver</RootNamespace>
     <Keyword>Win32Proj</Keyword>
+    <ProjectName>ext_server_drivertools</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
@@ -451,8 +452,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\source\extensions\driver\driver.c" />
-    <ClCompile Include="..\..\source\extensions\driver\cui.c" />
+    <ClCompile Include="..\..\source\extensions\driver\drivertools.c" />
     <ClCompile Include="..\..\source\extensions\driver\instdrv.c" />
     <ClCompile Include="..\..\source\extensions\driver\driver_main.c" />
     <ClCompile Include="..\..\source\extensions\driver\minirtl\cmdline.c" />
@@ -467,10 +467,10 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClCompile Include="..\..\source\extensions\driver\minirtl\_strlen.c" />
     <ClCompile Include="..\..\source\extensions\driver\minirtl\_strncmpi.c" />
     <ClCompile Include="..\..\source\extensions\driver\sup.c" />
+    <ClCompile Include="..\..\source\extensions\driver\tdl_error.c" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\source\extensions\driver\driver.h" />
-    <ClInclude Include="..\..\source\extensions\driver\cui.h" />
+    <ClInclude Include="..\..\source\extensions\driver\drivertools.h" />
     <ClInclude Include="..\..\source\extensions\driver\global.h" />
     <ClInclude Include="..\..\source\extensions\driver\instdrv.h" />
     <ClInclude Include="..\..\source\extensions\driver\minirtl\cmdline.h" />
@@ -480,6 +480,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClInclude Include="..\..\source\extensions\driver\resource.h" />
     <ClInclude Include="..\..\source\extensions\driver\shellcode.h" />
     <ClInclude Include="..\..\source\extensions\driver\sup.h" />
+    <ClInclude Include="..\..\source\extensions\driver\tdl_error.h" />
     <ClInclude Include="..\..\source\extensions\driver\vbox.h" />
     <ClInclude Include="unresolved.h" />
   </ItemGroup>

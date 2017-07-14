@@ -29,6 +29,7 @@
 #define _WINSOCKAPI_
 #include <Windows.h>
 #include <ntstatus.h>
+#include "drivertools.h"
 #include "ntos.h"
 #include "minirtl\minirtl.h"
 #include "minirtl\rtltypes.h"
@@ -36,7 +37,7 @@
 #include "sup.h"
 #include "cui.h"
 #include "instdrv.h"
-
+#include "tdl_error.h"
 #define UNICODE
 #if !defined UNICODE
 #error ANSI build is not supported
