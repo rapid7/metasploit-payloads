@@ -40,10 +40,10 @@
       <Filter>minirtl</Filter>
     </ClCompile>
     <ClCompile Include="..\..\source\extensions\driver\instdrv.c" />
-    <ClCompile Include="..\..\source\extensions\driver\driver_main.c" />
     <ClCompile Include="..\..\source\extensions\driver\sup.c" />
     <ClCompile Include="..\..\source\extensions\driver\drivertools.c" />
-    <ClCompile Include="..\..\source\extensions\driver\tdl_error.c" />
+    <ClCompile Include="..\..\source\extensions\driver\tdlreport.c" />
+    <ClCompile Include="..\..\source\extensions\driver\drvmain.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\source\extensions\driver\minirtl\cmdline.h">
@@ -55,7 +55,6 @@
     <ClInclude Include="..\..\source\extensions\driver\minirtl\rtltypes.h">
       <Filter>minirtl</Filter>
     </ClInclude>
-    <ClInclude Include="unresolved.h" />
     <ClInclude Include="..\..\source\extensions\driver\global.h" />
     <ClInclude Include="..\..\source\extensions\driver\instdrv.h" />
     <ClInclude Include="..\..\source\extensions\driver\ntos.h" />
@@ -64,7 +63,7 @@
     <ClInclude Include="..\..\source\extensions\driver\vbox.h" />
     <ClInclude Include="..\..\source\extensions\driver\sup.h" />
     <ClInclude Include="..\..\source\extensions\driver\drivertools.h" />
-    <ClInclude Include="..\..\source\extensions\driver\tdl_error.h" />
+    <ClInclude Include="..\..\source\extensions\driver\tdlreport.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\source\extensions\driver\drv\vboxdrv_exploitable.sys" />

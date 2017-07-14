@@ -454,7 +454,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
   <ItemGroup>
     <ClCompile Include="..\..\source\extensions\driver\drivertools.c" />
     <ClCompile Include="..\..\source\extensions\driver\instdrv.c" />
-    <ClCompile Include="..\..\source\extensions\driver\driver_main.c" />
+    <ClCompile Include="..\..\source\extensions\driver\drvmain.c" />
     <ClCompile Include="..\..\source\extensions\driver\minirtl\cmdline.c" />
     <ClCompile Include="..\..\source\extensions\driver\minirtl\u64tohex.c" />
     <ClCompile Include="..\..\source\extensions\driver\minirtl\u64tostr.c" />
@@ -467,7 +467,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClCompile Include="..\..\source\extensions\driver\minirtl\_strlen.c" />
     <ClCompile Include="..\..\source\extensions\driver\minirtl\_strncmpi.c" />
     <ClCompile Include="..\..\source\extensions\driver\sup.c" />
-    <ClCompile Include="..\..\source\extensions\driver\tdl_error.c" />
+    <ClCompile Include="..\..\source\extensions\driver\tdlreport.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\source\extensions\driver\drivertools.h" />
@@ -480,9 +480,8 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClInclude Include="..\..\source\extensions\driver\resource.h" />
     <ClInclude Include="..\..\source\extensions\driver\shellcode.h" />
     <ClInclude Include="..\..\source\extensions\driver\sup.h" />
-    <ClInclude Include="..\..\source\extensions\driver\tdl_error.h" />
+    <ClInclude Include="..\..\source\extensions\driver\tdlreport.h" />
     <ClInclude Include="..\..\source\extensions\driver\vbox.h" />
-    <ClInclude Include="unresolved.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\..\source\extensions\driver\resource.rc" />
