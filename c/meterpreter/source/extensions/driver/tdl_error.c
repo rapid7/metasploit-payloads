@@ -47,11 +47,10 @@ VOID tdlReportError(
 	if (errbuf) {
 		packet_add_tlv_raw(response, TLV_TYPE_TDL_ERROR_MSG, (LPVOID)errbuf, (DWORD)strlen(errbuf) + 1);
 		packet_transmit_response(result, remote, response);
-		RtlFreeHeap(RtlGetCurrentPeb()->ProcessHeap, 0, errbuf);
+		free(errbuf);
 	}
 	else {
-		packet_add_tlv_string(response, TLV_TYPE_TDL_ERROR_MSG, "Error allocating memory for errors :/ !!");
+		packet_add_tlv_string(response, TLV_TYPE_TDL_ERROR_MSG, "wtf !!");
 		packet_transmit_response(result, remote, response);
 	}
-	free(errbuf);
 }
