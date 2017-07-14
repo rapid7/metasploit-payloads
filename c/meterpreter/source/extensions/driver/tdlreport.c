@@ -30,12 +30,10 @@
 */
 
 VOID tdlError(
-	_In_ Remote *remote,
-	_In_ Packet *request,
+	_In_ CONNECTIONCTX *ctx,
 	_In_ LPWSTR lpText
 	)
 {
-	Packet *response = packet_create_response(request);
 	DWORD   result = ERROR_SUCCESS;
 	CHAR   *errbuf = NULL;
 
@@ -44,13 +42,13 @@ VOID tdlError(
 
 	errbuf = wchar_to_utf8(lpText);
 	if (errbuf) {
-		packet_add_tlv_raw(response, TLV_TYPE_tdlreport_MSG, (LPVOID)errbuf, (DWORD)strlen(errbuf) + 1);
-		free(errbuf);
+		packet_add_tlv_raw(ctx->response, TLV_TYPE_TDL_ERROR_MSG, (LPVOID)errbuf, (DWORD)strlen(errbuf) + 1);
+		//free(errbuf);
 	}
 	else {
-		packet_add_tlv_string(response, TLV_TYPE_tdlreport_MSG, "wtf !!");
+		packet_add_tlv_string(ctx->response, TLV_TYPE_TDL_ERROR_MSG, "wtf !!");
 	}
-	packet_transmit_response(result, remote, response);
+	packet_transmit_response(result, ctx->remote, ctx->response);
 }
 
 VOID tdlWarning(
@@ -70,7 +68,7 @@ VOID tdlWarning(
 	if (errbuf) {
 		_strcat_a(errbuf, "\r\n");
 		packet_add_tlv_raw(response, TLV_TYPE_TDL_WARNING, (LPVOID)errbuf, (DWORD)strlen(errbuf) + 1);
-		free(errbuf);
+		//free(errbuf);
 	}
 	else {
 		packet_add_tlv_string(response, TLV_TYPE_TDL_WARNING, "wtf !!");
@@ -96,7 +94,7 @@ VOID tdlSuccess(
 	_strcat_a(errbuf, "\r\n");
 	if (errbuf) {
 		packet_add_tlv_raw(response, TLV_TYPE_TDL_SUCCESS, (LPVOID)errbuf, (DWORD)strlen(errbuf) + 1);
-		free(errbuf);
+		//free(errbuf);
 	}
 	else {
 		packet_add_tlv_string(response, TLV_TYPE_TDL_SUCCESS, "wtf !!");
@@ -105,12 +103,11 @@ VOID tdlSuccess(
 }
 
 VOID tdlPrintClient(
-	_In_ Remote *remote,
-	_In_ Packet *request,
+	_In_ CONNECTIONCTX *ctx,
 	_In_ LPWSTR lpText
 	)
 {
-	Packet *response = packet_create_response(request);
+	//Packet *response = packet_create_response(request);
 	DWORD   result = ERROR_SUCCESS;
 	CHAR   *buf = NULL;
 
@@ -120,11 +117,11 @@ VOID tdlPrintClient(
 	buf = wchar_to_utf8(lpText);
 	_strcat_a(buf, "\r\n");
 	if (buf) {
-		packet_add_tlv_raw(response, TLV_TYPE_TDL_PCLIENT, (LPVOID)buf, (DWORD)strlen(buf) + 1);
-		free(buf);
+		packet_add_tlv_raw(ctx->response, TLV_TYPE_TDL_PCLIENT, (LPVOID)buf, (DWORD)strlen(buf) + 1);
+		//free(buf);
 	}
 	else {
-		packet_add_tlv_string(response, TLV_TYPE_TDL_PCLIENT, "wtf !!");
+		packet_add_tlv_string(ctx->response, TLV_TYPE_TDL_PCLIENT, "wtf !!");
 	}
 	// We don't necessarily want to transmit just yet
 	//packet_transmit_response(result, remote, response);

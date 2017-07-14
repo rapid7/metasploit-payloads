@@ -20,9 +20,14 @@
 
 #include "drivertools.h"
 
+typedef struct _CONNECTIONCTX {
+	Remote *remote;
+	Packet *request;
+	Packet *response;
+} CONNECTIONCTX, *PCONNECTIONCTX;
+
 VOID tdlError(
-	_In_ Remote *remote,
-	_In_ Packet *request,
+	_In_ CONNECTIONCTX *ctx,
 	_In_ LPWSTR lpText
 	);
 
@@ -39,7 +44,6 @@ VOID tdlSuccess(
 	);
 
 VOID tdlPrintClient(
-	_In_ Remote *remote,
-	_In_ Packet *request,
+	_In_ CONNECTIONCTX *ctx,
 	_In_ LPWSTR lpText
 	);
