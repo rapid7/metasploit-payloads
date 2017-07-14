@@ -4,9 +4,6 @@
     <Filter Include="minirtl">
       <UniqueIdentifier>{d3a51124-4e85-4f80-93d4-1b6820b52a18}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Header Files">
-      <UniqueIdentifier>{f8fab839-9b02-495c-9fc3-c3457ff2df15}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\source\extensions\driver\minirtl\_strcat.c">
@@ -42,11 +39,11 @@
     <ClCompile Include="..\..\source\extensions\driver\minirtl\ultostr.c">
       <Filter>minirtl</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\source\extensions\driver\driver.c" />
-    <ClCompile Include="..\..\source\extensions\driver\cui.c" />
     <ClCompile Include="..\..\source\extensions\driver\instdrv.c" />
     <ClCompile Include="..\..\source\extensions\driver\driver_main.c" />
     <ClCompile Include="..\..\source\extensions\driver\sup.c" />
+    <ClCompile Include="..\..\source\extensions\driver\drivertools.c" />
+    <ClCompile Include="..\..\source\extensions\driver\tdl_error.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\source\extensions\driver\minirtl\cmdline.h">
@@ -58,41 +55,21 @@
     <ClInclude Include="..\..\source\extensions\driver\minirtl\rtltypes.h">
       <Filter>minirtl</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\source\extensions\driver\driver.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\source\extensions\driver\global.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\source\extensions\driver\cui.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\source\extensions\driver\instdrv.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\source\extensions\driver\ntos.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\source\extensions\driver\resource.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\source\extensions\driver\shellcode.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\source\extensions\driver\sup.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\source\extensions\driver\vbox.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="unresolved.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="..\..\source\extensions\driver\resource.rc">
-      <Filter>Header Files</Filter>
-    </ResourceCompile>
+    <ClInclude Include="..\..\source\extensions\driver\global.h" />
+    <ClInclude Include="..\..\source\extensions\driver\instdrv.h" />
+    <ClInclude Include="..\..\source\extensions\driver\ntos.h" />
+    <ClInclude Include="..\..\source\extensions\driver\resource.h" />
+    <ClInclude Include="..\..\source\extensions\driver\shellcode.h" />
+    <ClInclude Include="..\..\source\extensions\driver\vbox.h" />
+    <ClInclude Include="..\..\source\extensions\driver\sup.h" />
+    <ClInclude Include="..\..\source\extensions\driver\drivertools.h" />
+    <ClInclude Include="..\..\source\extensions\driver\tdl_error.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\source\extensions\driver\drv\vboxdrv_exploitable.sys" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="..\..\source\extensions\driver\resource.rc" />
   </ItemGroup>
 </Project>

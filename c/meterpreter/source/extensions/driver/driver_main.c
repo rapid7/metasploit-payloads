@@ -21,7 +21,6 @@
 #include <process.h>
 #include "vbox.h"
 #include "shellcode.h"
-#include "drivertools.h"
 
 #pragma data_seg("shrd")
 volatile LONG g_lApplicationInstances = 0;
@@ -47,7 +46,8 @@ WCHAR      BE = 0xFEFF;
 #define T_LOADERUSAGE   TEXT("Usage: loader drivertoload\n\re.g. loader mydrv.sys\r\n")
 #define T_LOADERINTRO   TEXT("Turla Driver Loader v1.0.0 started\r\n(c) 2016 TDL Project\r\nSupported x64 OS : 7 and above\r\n")
 
-void request_driver_do_work();
+void request_drivertools_do_work(Remote *remote, Packet *request);
+void request_drivertools_tdl_do_nothing(Remote *remote, Packet *request);
 /*
 * TDLVBoxInstalled
 *
@@ -750,6 +750,23 @@ UINT TDLProcessCommandLine(
 	return retVal;
 }
 
+
+
+void request_drivertools_do_work(Remote *remote, Packet *request)
+{
+	Packet *response = packet_create_response(request);
+	DWORD result = 73313;
+
+	// Transmit the response
+	packet_transmit_response(result, remote, response);
+}
+
+void request_drivertools_tdl_do_nothing(Remote *remote, Packet *request)
+{
+	Packet *response = packet_create_response(request);
+	tdlReportError(remote, request, "Everything is strung together correctly so far ....");
+}
+
 /*
 * TDLMain
 *
@@ -759,16 +776,7 @@ UINT TDLProcessCommandLine(
 *
 */
 
-void request_drivertools_do_work(Remote *remote, Packet *request)
-{
-	Packet *response = packet_create_response(request);
-	DWORD result = 1337;
-
-	// Transmit the response
-	packet_transmit_response(result, remote, response);
-}
-
-void request_drivertools_do_work_disabled()
+VOID request_drivertools_do_work_disabled()
 {
 
 	BOOL            cond = FALSE;

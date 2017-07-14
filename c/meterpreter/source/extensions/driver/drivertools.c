@@ -15,6 +15,7 @@
 DWORD request_drivertools_send_vuln();
 DWORD request_drivertools_set_vuln_loc();
 DWORD request_drivertools_do_work(Remote *remote, Packet *request);
+DWORD request_drivertools_tdl_do_nothing(Remote *remote, Packet *request);
 
 // this sets the delay load hook function, see DelayLoadMetSrv.h
 EnableDelayLoadMetSrv();
@@ -30,6 +31,7 @@ Command customCommands[] =
 	COMMAND_REQ("drivertools_send_vuln", request_drivertools_send_vuln),
 	COMMAND_REQ("drivertools_set_vuln_loc", request_drivertools_set_vuln_loc),
 	COMMAND_REQ("drivertools_do_work", request_drivertools_do_work),
+	COMMAND_REQ("drivertools_tdl_do_nothing", request_drivertools_tdl_do_nothing),
 	COMMAND_TERMINATOR
 };
 
