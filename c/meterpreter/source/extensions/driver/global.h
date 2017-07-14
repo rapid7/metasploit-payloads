@@ -37,10 +37,15 @@
 #include "sup.h"
 #include "cui.h"
 #include "instdrv.h"
-#include "tdl_error.h"
+#include "tdlreport.h"
 #define UNICODE
 #if !defined UNICODE
 #error ANSI build is not supported
+#endif
+
+#if !defined bool
+typedef enum { false = 0, true = 1 } bool;
+
 #endif
 
 #if (_MSC_VER >= 1900) 

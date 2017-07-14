@@ -12,8 +12,6 @@
 
 #include "drivertools.h"
 
-DWORD request_drivertools_send_vuln();
-DWORD request_drivertools_set_vuln_loc();
 DWORD request_drivertools_do_work(Remote *remote, Packet *request);
 DWORD request_drivertools_tdl_do_nothing(Remote *remote, Packet *request);
 
@@ -21,15 +19,12 @@ DWORD request_drivertools_tdl_do_nothing(Remote *remote, Packet *request);
 EnableDelayLoadMetSrv();
 
 // need commands for:
-// - uploading the vulnerable vbox driver
-// - setting the remote path to save it to
+// - setting path to target driver
 // - executing the tool
 
 Command customCommands[] =
 {
 	// custom commands go here
-	COMMAND_REQ("drivertools_send_vuln", request_drivertools_send_vuln),
-	COMMAND_REQ("drivertools_set_vuln_loc", request_drivertools_set_vuln_loc),
 	COMMAND_REQ("drivertools_do_work", request_drivertools_do_work),
 	COMMAND_REQ("drivertools_tdl_do_nothing", request_drivertools_tdl_do_nothing),
 	COMMAND_TERMINATOR
@@ -61,14 +56,4 @@ DWORD __declspec(dllexport) GetExtensionName(char* buffer, int bufferSize)
 {
 	strncpy_s(buffer, bufferSize, "driver", bufferSize - 1);
 	return ERROR_SUCCESS;
-}
-
-DWORD request_drivertools_send_vuln()
-{
-	return 4;
-}
-
-DWORD request_drivertools_set_vuln_loc()
-{
-	return 3;
 }

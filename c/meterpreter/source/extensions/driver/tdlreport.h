@@ -20,7 +20,25 @@
 
 #include "drivertools.h"
 
-VOID tdlReportError(
+VOID tdlError(
+	_In_ Remote *remote,
+	_In_ Packet *request,
+	_In_ LPWSTR lpText
+	);
+
+VOID tdlWarning(
+	_In_ Remote *remote,
+	_In_ Packet *request,
+	_In_ LPWSTR lpText
+	);
+
+VOID tdlSuccess(
+	_In_ Remote *remote,
+	_In_ Packet *request,
+	_In_ LPWSTR lpText
+	);
+
+VOID tdlPrintClient(
 	_In_ Remote *remote,
 	_In_ Packet *request,
 	_In_ LPWSTR lpText
