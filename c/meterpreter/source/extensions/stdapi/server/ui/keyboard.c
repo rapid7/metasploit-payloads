@@ -346,6 +346,7 @@ DWORD request_ui_get_keys_utf8(Remote *remote, Packet *request)
 
 	// Transmit the response
 	packet_transmit_response(result, remote, response);
+  free(utf8_keyscan_buf);
 	return ERROR_SUCCESS;
 }
 
