@@ -889,7 +889,7 @@ VOID request_drivertools_do_work_disabled(Remote *remote, Packet *request)
 			//cuiPrintText(g_ConOut, 
 			//	TEXT("Ldr: Warning VirtualBox software installed, conficts possible"), 
 			//	g_ConsoleOutput, TRUE);
-			tdlPrintClient(remote, request, TEXT("Ldr: Warning VirtualBox software installed, conficts possible"));
+			tdlPrintClient(remote, request, TEXT("Ldr: Warning VirtualBox software installed, conflicts possible"));
 		}
 
 		uResult = TDLProcessCommandLine(remote, request, GetCommandLine());
