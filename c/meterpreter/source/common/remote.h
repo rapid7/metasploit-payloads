@@ -66,6 +66,7 @@ typedef struct _NamedPipeTransportContext
 {
 	STRTYPE pipe_name;                    ///! Name of the pipe in '\\<server>\<name>' format
 	HANDLE pipe;                          ///! Reference to the named pipe handle.
+	LOCK* write_lock;                     ///! Reference to the thread write lock.
 } NamedPipeTransportContext;
 
 typedef struct _HttpTransportContext
@@ -114,7 +115,6 @@ typedef struct _Transport
 	int comms_last_packet;                ///! Unix timestamp of the last packet received.
 	struct _Transport* next_transport;    ///! Pointer to the next transport in the list.
 	struct _Transport* prev_transport;    ///! Pointer to the previous transport in the list.
-	LOCK* lock;                           ///! Shared reference to the lock used in Remote.
 } Transport;
 
 /*!

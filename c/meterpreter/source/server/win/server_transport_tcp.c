@@ -273,51 +273,6 @@ static DWORD bind_tcp(u_short port, SOCKET* socketBuffer)
 }
 
 /*!
- * @brief Flush all pending data on the connected socket
- * @param remote Pointer to the remote instance.
- */
-static VOID server_socket_flush(Transport* transport)
-{
-	TcpTransportContext* ctx = (TcpTransportContext*)transport->ctx;
-	fd_set fdread;
-	DWORD ret;
-	char buff[4096];
-
-	lock_acquire(transport->lock);
-
-	while (1)
-	{
-		struct timeval tv;
-		LONG data;
-
-		FD_ZERO(&fdread);
-		FD_SET(ctx->fd, &fdread);
-
-		// Wait for up to one second for any errant socket data to appear
-		tv.tv_sec = 1;
-		tv.tv_usec = 0;
-
-		data = select((int)ctx->fd + 1, &fdread, NULL, NULL, &tv);
-		if (data == 0)
-		{
-			break;
-		}
-
-		ret = recv(ctx->fd, buff, sizeof(buff), 0);
-		dprintf("[SERVER] Flushed %d bytes from the buffer", ret);
-
-		// The socket closed while we waited
-		if (ret <= 0)
-		{
-			break;
-		}
-		continue;
-	}
-
-	lock_release(transport->lock);
-}
-
-/*!
  * @brief Poll a socket for data to recv and block when none available.
  * @param remote Pointer to the remote instance.
  * @param timeout Amount of time to wait before the poll times out (in milliseconds).
@@ -356,7 +311,6 @@ static DWORD packet_receive(Remote *remote, Packet **packet)
 	DWORD headerBytes = 0, payloadBytesLeft = 0, res;
 	Packet *localPacket = NULL;
 	PacketHeader header = { 0 };
-	BYTE packetGuid[sizeof(GUID)];
 	LONG bytesRead;
 	BOOL inHeader = TRUE;
 	PUCHAR packetBuffer = NULL;
@@ -450,6 +404,8 @@ static DWORD packet_receive(Remote *remote, Packet **packet)
 		else
 		{
 			vdprintf("[TCP] XOR key looks fine, moving on");
+			PacketHeader encodedHeader;
+			memcpy(&encodedHeader, &header, sizeof(PacketHeader));
 			// xor the header data
 			xor_bytes(header.xor_key, (PUCHAR)&header + sizeof(header.xor_key), sizeof(PacketHeader) - sizeof(header.xor_key));
 #ifdef DEBUGTRACE
@@ -457,13 +413,9 @@ static DWORD packet_receive(Remote *remote, Packet **packet)
 			vdprintf("[TCP] Packet header: [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X]",
 				h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15], h[16], h[17], h[18], h[19], h[20], h[21], h[22], h[23], h[24], h[25], h[26], h[27], h[28], h[29], h[30], h[31]);
 #endif
-
-			// take a copy of the packet session GUID so that we can do pivot handling later
-			memcpy(packetGuid, header.session_guid, sizeof(packetGuid));
-			
 			payloadLength = ntohl(header.length) - sizeof(TlvHeader);
 			vdprintf("[TCP] Payload length is %d", payloadLength);
-			DWORD packetSize = sizeof(PacketHeader) + payloadLength + sizeof(TlvHeader);
+			DWORD packetSize = sizeof(PacketHeader) + payloadLength;
 			vdprintf("[TCP] total buffer size for the packet is %d", packetSize);
 			payloadBytesLeft = payloadLength;
 
@@ -476,11 +428,8 @@ static DWORD packet_receive(Remote *remote, Packet **packet)
 			}
 			dprintf("[TCP] Allocated packet buffer at %p", packetBuffer);
 
-			// we're done with the header data, so we need to re-encode it, as the packet decryptor is going to
-			// handle the extraction for us.
-			xor_bytes(header.xor_key, (LPBYTE)&header.session_guid[0], sizeof(PacketHeader) - sizeof(header.xor_key));
 			// Copy the packet header stuff over to the packet
-			memcpy_s(packetBuffer, sizeof(PacketHeader), (LPBYTE)&header, sizeof(PacketHeader));
+			memcpy_s(packetBuffer, sizeof(PacketHeader), (LPBYTE)&encodedHeader, sizeof(PacketHeader));
 
 			payload = packetBuffer + sizeof(PacketHeader);
 
@@ -514,11 +463,11 @@ static DWORD packet_receive(Remote *remote, Packet **packet)
 			}
 
 #ifdef DEBUGTRACE
-			h = (PUCHAR)&packetGuid[0];
+			h = (PUCHAR)&header.session_guid[0];
 			dprintf("[TCP] Packet Session GUID: 0x%02X0x%02X0x%02X0x%02X 0x%02X0x%02X0x%02X0x%02X 0x%02X0x%02X0x%02X0x%02X 0x%02X0x%02X0x%02X0x%02X",
 				h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15]);
 #endif
-			if (is_null_guid(packetGuid) || memcmp(remote->orig_config->session.session_guid, packetGuid, sizeof(packetGuid)) == 0)
+			if (is_null_guid(header.session_guid) || memcmp(remote->orig_config->session.session_guid, header.session_guid, sizeof(header.session_guid)) == 0)
 			{
 				dprintf("[TCP] Session GUIDs match (or packet guid is null), decrypting packet");
 				SetLastError(decrypt_packet(remote, packet, packetBuffer, packetSize));
@@ -530,7 +479,12 @@ static DWORD packet_receive(Remote *remote, Packet **packet)
 				if (pivotCtx != NULL)
 				{
 					dprintf("[TCP] Pivot found, dispatching packet");
-					res = pivotCtx->packet_write(pivotCtx->state, packetBuffer, packetSize);
+					SetLastError(pivotCtx->packet_write(pivotCtx->state, packetBuffer, packetSize));
+					*packet = NULL;
+				}
+				else
+				{
+					dprintf("[TCP] Session GUIDs don't match, can't find pivot!");
 				}
 			}
 
@@ -847,6 +801,7 @@ DWORD packet_transmit_tcp(Remote* remote, LPBYTE rawPacket, DWORD rawPacketLengt
 
 		if (result < 0)
 		{
+			dprintf("[PACKET] send failed: %d", result);
 			break;
 		}
 

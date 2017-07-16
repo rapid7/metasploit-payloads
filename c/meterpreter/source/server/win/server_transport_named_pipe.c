@@ -25,32 +25,34 @@ typedef struct _PIPEMIGRATECONTEXT
  * @param timeout Amount of time to wait before the poll times out (in milliseconds).
  * @return Indication of success or failure.
  */
-static DWORD server_socket_poll(Remote* remote, long timeout)
+static DWORD server_pipe_poll(Remote* remote, long timeout)
 {
-	DWORD result = ERROR_SUCCESS;
 	DWORD bytesAvailable = 0;
 	NamedPipeTransportContext* ctx = (NamedPipeTransportContext*)remote->transport->ctx;
 
 	lock_acquire(remote->lock);
 
-	dprintf("[DISPATH] testing for data on the pipe");
-	if (PeekNamedPipe(ctx->pipe, NULL, 0, NULL, &bytesAvailable, NULL) && bytesAvailable > 0)
+	dprintf("[NP DISPATCH] testing for data on the pipe, making sure there's enough for a packet header");
+	BOOL ready = PeekNamedPipe(ctx->pipe, NULL, 0, NULL, &bytesAvailable, NULL) && bytesAvailable >= sizeof(PacketHeader);
+	DWORD result = GetLastError();
+
+	lock_release(remote->lock);
+
+	if (ready)
 	{
-		dprintf("[DISPATH] pipe data found %u bytes", bytesAvailable);
+		dprintf("[NP DISPATCH] pipe data found %u bytes", bytesAvailable);
+		result = ERROR_SUCCESS;
 	}
 	else
 	{
-		result = GetLastError();
-
 		if (result != ERROR_BROKEN_PIPE)
 		{
 			// simulate a wait so that we don't bash the crap out of the CPU?
-			dprintf("[DISPATH] pipe data not found, sleeping (error %u)", GetLastError());
+			dprintf("[NP DISPATCH] pipe data not found, sleeping (error %u)", GetLastError());
 			Sleep(timeout);
+			result = ERROR_NO_DATA;
 		}
 	}
-
-	lock_release(remote->lock);
 
 	return result;
 }
@@ -63,12 +65,6 @@ static DWORD server_socket_poll(Remote* remote, long timeout)
  */
 static DWORD packet_receive_named_pipe(Remote *remote, Packet **packet)
 {
-#ifdef JFDKLDFSJL
-	NamedPipeTransportContext* ctx = (NamedPipeTransportContext*)remote->transport->ctx;
-
-			if (!ReadFile(ctx->pipe, ((PUCHAR)&header + headerBytes), sizeof(PacketHeader)-headerBytes, &bytesRead, NULL))
-			if (!ReadFile(ctx->pipe, payload + payloadLength - payloadBytesLeft, payloadBytesLeft, &bytesRead, NULL))
-#endif
 	DWORD headerBytes = 0, payloadBytesLeft = 0, res;
 	Packet *localPacket = NULL;
 	PacketHeader header = { 0 };
@@ -83,7 +79,7 @@ static DWORD packet_receive_named_pipe(Remote *remote, Packet **packet)
 
 	do
 	{
-		dprintf("[PIPE PACKET RECEIVE] reading in the header");
+		dprintf("[PIPE PACKET RECEIVE] reading in the header from pipe handle: %p", ctx->pipe);
 		// Read the packet length
 		while (inHeader)
 		{
@@ -102,6 +98,7 @@ static DWORD packet_receive_named_pipe(Remote *remote, Packet **packet)
 
 			if (headerBytes != sizeof(PacketHeader))
 			{
+				vdprintf("[PIPE] More bytes required");
 				continue;
 			}
 
@@ -118,7 +115,7 @@ static DWORD packet_receive_named_pipe(Remote *remote, Packet **packet)
 
 #ifdef DEBUGTRACE
 		PUCHAR h = (PUCHAR)&header;
-		vdprintf("[PIPE] Packet header: [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X]",
+		dprintf("[PIPE] Packet header: [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X]",
 			h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15], h[16], h[17], h[18], h[19], h[20], h[21], h[22], h[23], h[24], h[25], h[26], h[27], h[28], h[29], h[30], h[31]);
 #endif
 
@@ -137,6 +134,7 @@ static DWORD packet_receive_named_pipe(Remote *remote, Packet **packet)
 
 			while (bytesToRead > 0)
 			{
+
 				if (!ReadFile(ctx->pipe, buffer, min(sizeof(buffer), bytesToRead), &bytesRead, NULL))
 				{
 					if (bytesRead < 0)
@@ -166,13 +164,19 @@ static DWORD packet_receive_named_pipe(Remote *remote, Packet **packet)
 			xor_bytes(header.xor_key, (PUCHAR)&header + sizeof(header.xor_key), sizeof(PacketHeader) - sizeof(header.xor_key));
 #ifdef DEBUGTRACE
 			PUCHAR h = (PUCHAR)&header;
-			vdprintf("[PIPE] Packet header: [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X]",
+			dprintf("[PIPE] Packet header: [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X]",
 				h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15], h[16], h[17], h[18], h[19], h[20], h[21], h[22], h[23], h[24], h[25], h[26], h[27], h[28], h[29], h[30], h[31]);
 #endif
+
+			// if we don't have a GUID yet, we need to take the one given in the packet
+			if (is_null_guid(remote->orig_config->session.session_guid))
+			{
+				memcpy(remote->orig_config->session.session_guid, header.session_guid, sizeof(remote->orig_config->session.session_guid));
+			}
 			
 			payloadLength = ntohl(header.length) - sizeof(TlvHeader);
 			vdprintf("[PIPE] Payload length is %d", payloadLength);
-			DWORD packetSize = sizeof(PacketHeader) + payloadLength + sizeof(TlvHeader);
+			DWORD packetSize = sizeof(PacketHeader) + payloadLength;
 			vdprintf("[PIPE] total buffer size for the packet is %d", packetSize);
 			payloadBytesLeft = payloadLength;
 
@@ -194,9 +198,12 @@ static DWORD packet_receive_named_pipe(Remote *remote, Packet **packet)
 			payload = packetBuffer + sizeof(PacketHeader);
 
 			// Read the payload
+			DWORD bytesAvailable = 0;
 			while (payloadBytesLeft > 0)
 			{
-				if (!ReadFile(ctx->pipe, payload + payloadLength - payloadBytesLeft, payloadBytesLeft, &bytesRead, NULL))
+				dprintf("[PIPE] Trying to read %u (0x%x) bytes", payloadBytesLeft, payloadBytesLeft);
+				PeekNamedPipe(ctx->pipe, payload + payloadLength - payloadBytesLeft, payloadBytesLeft, &bytesRead, &bytesAvailable, NULL);
+				if (!ReadFile(ctx->pipe, payload + payloadLength - payloadBytesLeft, payloadBytesLeft, &bytesAvailable, NULL))
 				{
 					if (bytesRead < 0)
 					{
@@ -205,6 +212,7 @@ static DWORD packet_receive_named_pipe(Remote *remote, Packet **packet)
 
 					break;
 				}
+				dprintf("[PIPE] ReadFile claims to have read %u (0x%x) bytes (Error: %u)", bytesRead, bytesRead, GetLastError());
 
 				payloadBytesLeft -= bytesRead;
 			}
@@ -245,9 +253,9 @@ static DWORD packet_receive_named_pipe(Remote *remote, Packet **packet)
 }
 
 /*!
- * @brief The servers main dispatch loop for incoming requests using SSL over named pipes.
+ * @brief The servers main NP DISPATCH loop for incoming requests using SSL over named pipes.
  * @param remote Pointer to the remote endpoint for this server connection.
- * @param dispatchThread Pointer to the main dispatch thread.
+ * @param dispatchThread Pointer to the main NP DISPATCH thread.
  * @returns Indication of success or failure.
  */
 static DWORD server_dispatch_named_pipe(Remote* remote, THREAD* dispatchThread)
@@ -258,29 +266,29 @@ static DWORD server_dispatch_named_pipe(Remote* remote, THREAD* dispatchThread)
 	Packet * packet = NULL;
 	THREAD * cpt = NULL;
 
-	dprintf("[DISPATCH] entering server_dispatch( 0x%08X )", remote);
+	dprintf("[NP DISPATCH] entering server_dispatch( 0x%08X )", remote);
 
 	int lastPacket = current_unix_timestamp();
 	while (running)
 	{
 		if (event_poll(dispatchThread->sigterm, 0))
 		{
-			dprintf("[DISPATCH] server dispatch thread signaled to terminate...");
+			dprintf("[NP DISPATCH] server dispatch thread signaled to terminate...");
 			break;
 		}
 
-		result = server_socket_poll(remote, 500);
+		result = server_pipe_poll(remote, 500);
 		if (result == ERROR_SUCCESS)
 		{
 			result = packet_receive_named_pipe(remote, &packet);
 			if (result != ERROR_SUCCESS)
 			{
-				dprintf("[DISPATCH] packet_receive returned %d, exiting dispatcher...", result);
+				dprintf("[NP DISPATCH] packet_receive returned %d, exiting dispatcher...", result);
 				break;
 			}
 
 			running = command_handle(remote, packet);
-			dprintf("[DISPATCH] command_process result: %s", (running ? "continue" : "stop"));
+			dprintf("[NP DISPATCH] command_process result: %s", (running ? "continue" : "stop"));
 
 			// packet received, reset the timer
 			lastPacket = current_unix_timestamp();
@@ -292,24 +300,24 @@ static DWORD server_dispatch_named_pipe(Remote* remote, THREAD* dispatchThread)
 			if (now > remote->sess_expiry_end)
 			{
 				result = ERROR_SUCCESS;
-				dprintf("[DISPATCH] session has ended");
+				dprintf("[NP DISPATCH] session has ended");
 				break;
 			}
 			else if ((now - lastPacket) > transport->timeouts.comms)
 			{
 				result = ERROR_NETWORK_NOT_AVAILABLE;
-				dprintf("[DISPATCH] communications has timed out");
+				dprintf("[NP DISPATCH] communications has timed out");
 				break;
 			}
 		}
 		else
 		{
-			dprintf("[DISPATCH] server_socket_poll returned %d, exiting dispatcher...", result);
+			dprintf("[NP DISPATCH] server_pipe_poll returned %d, exiting dispatcher...", result);
 			break;
 		}
 	}
 
-	dprintf("[DISPATCH] leaving server_dispatch.");
+	dprintf("[NP DISPATCH] leaving server_dispatch.");
 
 	return result;
 }
@@ -472,36 +480,40 @@ static BOOL configure_named_pipe_connection(Transport* transport)
  */
 DWORD packet_transmit_named_pipe(Remote* remote, LPBYTE rawPacket, DWORD rawPacketLength)
 {
+	dprintf("[TRANSMIT PIPE] In packet_transmit_named_pipe");
 	NamedPipeTransportContext* ctx = (NamedPipeTransportContext*)remote->transport->ctx;
 	DWORD totalWritten = 0;
 	DWORD written = 0;
 	DWORD result = ERROR_SUCCESS;
 
-	lock_acquire(remote->lock);
+	lock_acquire(ctx->write_lock);
+	vdprintf("[TRANSMIT PIPE] Sending packet of %u bytes", rawPacketLength);
 
 	while (totalWritten < rawPacketLength)
 	{
+		vdprintf("[TRANSMIT PIPE] Calling WriteFile");
 		if (!WriteFile(ctx->pipe, rawPacket + totalWritten, rawPacketLength - totalWritten, &written, NULL))
 		{
+			vdprintf("[TRANSMIT PIPE] WriteFile failed: %u (%x)", GetLastError(), GetLastError());
+			result = GetLastError();
 			break;
 		}
+		dprintf("[TRANSMIT PIPE] WriteFile succeeded, wrote %u bytes", written);
 
 		totalWritten += written;
 	}
 
-	result = GetLastError();
-
 	if (result != ERROR_SUCCESS)
 	{
-		dprintf("[TRANSMIT PIPE] transmit packet failed with return %d at index %d\n", result, totalWritten);
+		dprintf("[TRANSMIT PIPE] transmit packet failed with return %d at index %d", result, totalWritten);
 	}
 	else
 	{
-		dprintf("[TRANSMIT PIPE] Packet sent!");
+		vdprintf("[TRANSMIT PIPE] Packet sent!");
 	}
 
 
-	lock_release(remote->lock);
+	lock_release(ctx->write_lock);
 
 	return result;
 }
@@ -586,6 +598,9 @@ Transport* transport_create_named_pipe(MetsrvTransportNamedPipe* config)
 {
 	Transport* transport = (Transport*)calloc(1, sizeof(Transport));
 	NamedPipeTransportContext* ctx = (NamedPipeTransportContext*)calloc(1, sizeof(NamedPipeTransportContext));
+
+	// Lock used to synchronise writes
+	ctx->write_lock = lock_create();
 
 	dprintf("[TRANS NP] Creating pipe transport for url %S", config->common.url);
 

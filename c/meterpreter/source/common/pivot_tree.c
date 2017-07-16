@@ -42,6 +42,11 @@ DWORD pivot_tree_add_node(PivotNode* parent, PivotNode* node)
 DWORD pivot_tree_add(PivotTree* tree, LPBYTE guid, PivotContext* ctx)
 {
 	PivotNode* node = (PivotNode*)calloc(1, sizeof(PivotNode));
+#ifdef DEBUGTRACE
+	PUCHAR h = (PUCHAR)&guid[0];
+	dprintf("[PIVOTTREE] Adding Session GUID: %02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
+		h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15]);
+#endif
 
 	memcpy(node->guid, guid, sizeof(node->guid));
 	node->ctx = ctx;
@@ -163,8 +168,18 @@ PivotContext* pivot_tree_find_node(PivotNode* node, LPBYTE guid)
 {
 	if (node == NULL)
 	{
+		dprintf("[PIVOTTREE] Current pivot node is null, bailing out");
 		return NULL;
 	}
+
+#ifdef DEBUGTRACE
+	PUCHAR h = (PUCHAR)&guid[0];
+	dprintf("[PIVOTTREE] Session GUID: %02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
+		h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15]);
+	h = node->guid;
+	dprintf("[PIVOTTREE] Node    GUID: %02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
+		h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15]);
+#endif
 
 	int cmp = memcmp(guid, node->guid, sizeof(guid));
 	if (cmp == 0)
@@ -182,6 +197,7 @@ PivotContext* pivot_tree_find_node(PivotNode* node, LPBYTE guid)
 
 PivotContext* pivot_tree_find(PivotTree* tree, LPBYTE guid)
 {
+	dprintf("[PIVOTTREE] search tree %p, head node %p", tree, tree->head);
 	return pivot_tree_find_node(tree->head, guid);
 }
 

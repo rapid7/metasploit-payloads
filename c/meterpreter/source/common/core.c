@@ -31,11 +31,11 @@ PacketCompletionRoutineEntry *packetCompletionRoutineList = NULL;
 /*!
  * @todo I have no idea why this is here, need someone else to explain.
  */
-HANDLE core_update_thread_token( Remote *remote, HANDLE token )
+HANDLE core_update_thread_token(Remote *remote, HANDLE token)
 {
 	HANDLE temp = NULL;
 
-	lock_acquire( remote->lock );
+	lock_acquire(remote->lock);
 	do
 	{
 		temp = remote->thread_token;
@@ -50,13 +50,13 @@ HANDLE core_update_thread_token( Remote *remote, HANDLE token )
 		remote->thread_token = token;
 
 		// Close the old token if its not one of the two active tokens
-		if( temp && temp != remote->server_token && temp != remote->thread_token )
+		if (temp && temp != remote->server_token && temp != remote->thread_token)
 		{
 			CloseHandle(temp);
 		}
-	} while(0);
+	} while (0);
 
-	lock_release( remote->lock );
+	lock_release(remote->lock);
 	return(token);
 }
 
@@ -1312,6 +1312,9 @@ DWORD packet_transmit(Remote* remote, Packet* packet, PacketRequestCompletion* c
 		encrypt_packet(remote, packet, &encryptedPacket, &encryptedPacketLength);
 		dprintf("[PACKET] Sending packet to remote, length: %u", encryptedPacketLength);
 
+		dprintf("[PACKET] Remote: %p", remote);
+		dprintf("[PACKET] Transport: %p", remote->transport);
+		dprintf("[PACKET] Packet Transmit: %p", remote->transport->packet_transmit);
 		SetLastError(remote->transport->packet_transmit(remote, encryptedPacket, encryptedPacketLength));
 	} while (0);
 

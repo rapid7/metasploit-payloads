@@ -153,9 +153,6 @@ static Transport* create_transport(Remote* remote, MetsrvTransportCommon* transp
 		remote->transport->prev_transport = transport;
 	}
 
-	// share the lock with the transport
-	transport->lock = remote->lock;
-
 	return transport;
 }
 

@@ -63,6 +63,7 @@ static DWORD read_pipe_to_packet(NamedPipeContext* ctx, LPBYTE source, DWORD sou
 	if (ctx->packet_buffer_size < sourceSize + ctx->packet_buffer_offset)
 	{
 		ctx->packet_buffer_size = sourceSize + ctx->packet_buffer_offset;
+		dprintf("[PIVOT] Allocating space: %u bytes", ctx->packet_buffer_size);
 		ctx->packet_buffer = (LPBYTE)realloc(ctx->packet_buffer, ctx->packet_buffer_size);
 	}
 
@@ -73,12 +74,26 @@ static DWORD read_pipe_to_packet(NamedPipeContext* ctx, LPBYTE source, DWORD sou
 	// check if the packet is complete
 	if (ctx->packet_required_size == 0)
 	{
+		dprintf("[PIVOT] Size not yet calculated");
 		if (ctx->packet_buffer_offset >= sizeof(PacketHeader))
 		{
+			dprintf("[PIVOT] header bytes received, calculating buffer offset");
 			// get a copy of the header data and XOR it out so we can read the length
-			PacketHeader header = *(PacketHeader*)ctx->packet_buffer;
-			xor_bytes(header.xor_key, (LPBYTE)&header, sizeof(PacketHeader));
-			ctx->packet_required_size = ntohl(header.length);
+			PacketHeader* header = (PacketHeader*)ctx->packet_buffer;
+#ifdef DEBUGTRACE
+			PUCHAR h = (PUCHAR)ctx->packet_buffer;
+			dprintf("[PIVOT] Packet header before XOR: [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X]",
+				h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15], h[16], h[17], h[18], h[19], h[20], h[21], h[22], h[23], h[24], h[25], h[26], h[27], h[28], h[29], h[30], h[31]);
+#endif
+			xor_bytes(header->xor_key, (LPBYTE)&header->length, sizeof(header->length));
+#ifdef DEBUGTRACE
+			h = (PUCHAR)ctx->packet_buffer;
+			dprintf("[PIVOT] Packet header after XOR: [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X]",
+				h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15], h[16], h[17], h[18], h[19], h[20], h[21], h[22], h[23], h[24], h[25], h[26], h[27], h[28], h[29], h[30], h[31]);
+#endif
+			ctx->packet_required_size = ntohl(header->length) + sizeof(PacketHeader) - sizeof(TlvHeader);
+			xor_bytes(header->xor_key, (LPBYTE)&header->length, sizeof(header->length));
+			dprintf("[PIVOT] Required size is %u bytes", ctx->packet_required_size);
 		}
 	}
 
@@ -86,16 +101,19 @@ static DWORD read_pipe_to_packet(NamedPipeContext* ctx, LPBYTE source, DWORD sou
 	{
 		// whole packet is ready for transmission to the other side! Pivot straight through the existing
 		// transport by sending the raw packet to the transmitter.
+		dprintf("[PIVOT] Entire packet is ready, size is %u, offset is %u", ctx->packet_required_size, ctx->packet_buffer_offset);
 		ctx->remote->transport->packet_transmit(ctx->remote, ctx->packet_buffer, ctx->packet_required_size);
 		// TODO: error check?
 
 		// with the packet sent, we need to rejig a bit here so that the next block of data
 		// results in a new packet.
-		DWORD diff = ctx->packet_required_size - ctx->packet_buffer_size;
+		DWORD diff = ctx->packet_buffer_offset - ctx->packet_required_size;
 		if (diff > 0)
 		{
+			dprintf("[PIVOT] Extra %u bytes found, shuffling data", diff);
 			memmove(ctx->packet_buffer, ctx->packet_buffer + ctx->packet_required_size, diff);
 		};
+		dprintf("[PIVOT] Packet buffer reset");
 		ctx->packet_buffer_offset = diff;
 		ctx->packet_required_size = 0;
 	}
