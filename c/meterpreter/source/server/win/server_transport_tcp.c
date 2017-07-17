@@ -459,7 +459,7 @@ static DWORD packet_receive(Remote *remote, Packet **packet)
 			
 			payloadLength = ntohl(header.length) - sizeof(TlvHeader);
 			vdprintf("[TCP] Payload length is %d", payloadLength);
-			DWORD packetSize = sizeof(PacketHeader) + payloadLength + sizeof(TlvHeader);
+			DWORD packetSize = sizeof(PacketHeader) + payloadLength;
 			vdprintf("[TCP] total buffer size for the packet is %d", packetSize);
 			payloadBytesLeft = payloadLength;
 

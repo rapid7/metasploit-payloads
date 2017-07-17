@@ -499,7 +499,7 @@ static DWORD packet_receive_http(Remote *remote, Packet **packet)
 		
 		payloadLength = ntohl(header.length) - sizeof(TlvHeader);
 		vdprintf("[REC HTTP] Payload length is %d", payloadLength);
-		DWORD packetSize = sizeof(PacketHeader) + payloadLength + sizeof(TlvHeader);
+		DWORD packetSize = sizeof(PacketHeader) + payloadLength;
 		vdprintf("[REC HTTP] total buffer size for the packet is %d", packetSize);
 		payloadBytesLeft = payloadLength;
 
