@@ -177,29 +177,34 @@ DWORD remote_request_core_transport_list(Remote* remote, Packet* packet)
 			dprintf("[DISPATCH] Adding Retry wait %u", current->timeouts.retry_wait);
 			packet_add_tlv_uint(transportGroup, TLV_TYPE_TRANS_RETRY_WAIT, current->timeouts.retry_wait);
 
-			if (current->type != METERPRETER_TRANSPORT_TCP)
+			switch (current->type)
 			{
-				HttpTransportContext* ctx = (HttpTransportContext*)current->ctx;
-				dprintf("[DISPATCH] Transport is HTTP/S");
-				if (ctx->ua)
+				case METERPRETER_TRANSPORT_HTTP:
+				case METERPRETER_TRANSPORT_HTTPS:
 				{
-					packet_add_tlv_wstring(transportGroup, TLV_TYPE_TRANS_UA, ctx->ua);
-				}
-				if (ctx->proxy)
-				{
-					packet_add_tlv_wstring(transportGroup, TLV_TYPE_TRANS_PROXY_HOST, ctx->proxy);
-				}
-				if (ctx->proxy_user)
-				{
-					packet_add_tlv_wstring(transportGroup, TLV_TYPE_TRANS_PROXY_USER, ctx->proxy_user);
-				}
-				if (ctx->proxy_pass)
-				{
-					packet_add_tlv_wstring(transportGroup, TLV_TYPE_TRANS_PROXY_PASS, ctx->proxy_pass);
-				}
-				if (ctx->cert_hash)
-				{
-					packet_add_tlv_raw(transportGroup, TLV_TYPE_TRANS_CERT_HASH, ctx->cert_hash, CERT_HASH_SIZE);
+					HttpTransportContext* ctx = (HttpTransportContext*)current->ctx;
+					dprintf("[DISPATCH] Transport is HTTP/S");
+					if (ctx->ua)
+					{
+						packet_add_tlv_wstring(transportGroup, TLV_TYPE_TRANS_UA, ctx->ua);
+					}
+					if (ctx->proxy)
+					{
+						packet_add_tlv_wstring(transportGroup, TLV_TYPE_TRANS_PROXY_HOST, ctx->proxy);
+					}
+					if (ctx->proxy_user)
+					{
+						packet_add_tlv_wstring(transportGroup, TLV_TYPE_TRANS_PROXY_USER, ctx->proxy_user);
+					}
+					if (ctx->proxy_pass)
+					{
+						packet_add_tlv_wstring(transportGroup, TLV_TYPE_TRANS_PROXY_PASS, ctx->proxy_pass);
+					}
+					if (ctx->cert_hash)
+					{
+						packet_add_tlv_raw(transportGroup, TLV_TYPE_TRANS_CERT_HASH, ctx->cert_hash, CERT_HASH_SIZE);
+					}
+					break;
 				}
 			}
 
