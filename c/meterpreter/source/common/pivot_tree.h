@@ -2,10 +2,12 @@
 #define _METERPRETER_PIVOT_TREE
 
 typedef DWORD(*PivotWritePacket)(LPVOID state, LPBYTE rawPacket, DWORD rawPacketLength);
+typedef DWORD(*PivotRemove)(LPVOID state);
 
 typedef struct _PivotContext
 {
 	PivotWritePacket packet_write;
+	PivotRemove remove;
 	LPVOID state;
 } PivotContext;
 
@@ -20,7 +22,7 @@ typedef void(*PivotTreeTraverseCallback)(LPBYTE guid, PivotContext* ctx, LPVOID 
 
 PivotTree* pivot_tree_create();
 DWORD pivot_tree_add(PivotTree* tree, LPBYTE guid, PivotContext* ctx);
-DWORD pivot_tree_remove(PivotTree* tree, LPBYTE guid);
+PivotContext* pivot_tree_remove(PivotTree* tree, LPBYTE guid);
 PivotContext* pivot_tree_find(PivotTree* tree, LPBYTE guid);
 void pivot_tree_traverse(PivotTree* tree, PivotTreeTraverseCallback callback, LPVOID state);
 void pivot_tree_destroy(PivotTree* tree);

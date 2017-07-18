@@ -16,6 +16,7 @@ typedef struct _NamedPipeContext
 	OVERLAPPED write_overlap;
 	char       name[PIPE_NAME_SIZE];
 	GUID       pivot_id;
+	GUID       pivot_session_guid;
 	Remote*    remote;
 	HANDLE     pipe;
 	BOOL       connecting;
@@ -30,6 +31,7 @@ typedef struct _NamedPipeContext
 } NamedPipeContext;
 
 static DWORD server_notify(Remote* remote, LPVOID entryContext, LPVOID threadContext);
+static DWORD server_destroy(HANDLE waitable, LPVOID entryContext, LPVOID threadContext);
 
 typedef BOOL (WINAPI *PAddMandatoryAce)(PACL pAcl, DWORD dwAceRevision, DWORD dwAceFlags, DWORD dwMandatoryPolicy, PSID pLabelSid);
 static BOOL WINAPI AddMandatoryAce(PACL pAcl, DWORD dwAceRevision, DWORD dwAceFlags, DWORD dwMandatoryPolicy, PSID pLabelSid)
@@ -55,6 +57,38 @@ static BOOL WINAPI AddMandatoryAce(PACL pAcl, DWORD dwAceRevision, DWORD dwAceFl
 	}
 
 	return TRUE;
+}
+
+static DWORD server_destroy(HANDLE waitable, LPVOID entryContext, LPVOID threadContext)
+{
+	NamedPipeContext* ctx = (NamedPipeContext*)entryContext;
+	if (ctx != NULL)
+	{
+		dprintf("[PIVOT] Cleaning up the pipe pivot context");
+		lock_acquire(ctx->remote->lock);
+		CloseHandle(ctx->pipe);
+		CloseHandle(ctx->read_overlap.hEvent);
+		CloseHandle(ctx->write_overlap.hEvent);
+		SAFE_FREE(ctx->stage_data);
+		lock_release(ctx->remote->lock);
+		dprintf("[PIVOT] Cleaned up the pipe pivot context");
+	}
+	return ERROR_SUCCESS;
+}
+
+static void terminate_pipe(NamedPipeContext* ctx)
+{
+	if (ctx != NULL)
+	{
+		scheduler_signal_waitable(ctx->read_overlap.hEvent, Stop);
+	}
+}
+
+static DWORD remove_listener(LPVOID state)
+{
+	dprintf("[PIVOT] removing named pipe listener");
+	terminate_pipe((NamedPipeContext*)state);
+	return ERROR_SUCCESS;
 }
 
 static DWORD read_pipe_to_packet(NamedPipeContext* ctx, LPBYTE source, DWORD sourceSize)
@@ -315,7 +349,8 @@ DWORD create_pipe_server_instance(NamedPipeContext* ctx)
 		}
 
 		dprintf("[NP-SERVER] Inserting the named pipe schedule entry");
-		scheduler_insert_waitable(ctx->read_overlap.hEvent, ctx, NULL, server_notify, NULL);
+		scheduler_insert_waitable(ctx->read_overlap.hEvent, ctx, NULL, server_notify, server_destroy);
+		//scheduler_insert_waitable(ctx->read_overlap.hEvent, ctx, NULL, server_notify, NULL);
 	} while (0);
 
 	return dwResult;
@@ -429,8 +464,23 @@ static DWORD server_notify(Remote* remote, LPVOID entryContext, LPVOID threadCon
 			else if (dwResult == ERROR_BROKEN_PIPE)
 			{
 				dprintf("[NP-SERVER] the client appears to have bailed out, disconnecting...");
+				// Reset the read event so that our schedular loop witll exit properly
 				ResetEvent(serverCtx->read_overlap.hEvent);
-				// TODO: do some clean up of stuf here.
+
+				// Prepare the notification packet for dispatching
+				Packet* notification = packet_create(PACKET_TLV_TYPE_REQUEST, "core_pivot_session_died");
+				packet_add_tlv_raw(notification, TLV_TYPE_SESSION_GUID, (LPVOID)&serverCtx->pivot_session_guid, sizeof(serverCtx->pivot_session_guid));
+
+				// Clean up the pivot context
+				PivotContext* pivotCtx = pivot_tree_remove(remote->pivot_sessions, (LPBYTE)&serverCtx->pivot_session_guid);
+				SAFE_FREE(pivotCtx);
+
+				// Clean up all the named pipe context stuff.
+				terminate_pipe(serverCtx);
+
+				// Inform MSF of the dead session
+				packet_transmit(serverCtx->remote, notification, NULL);
+
 				return ERROR_BROKEN_PIPE;
 			}
 			break;
@@ -454,6 +504,7 @@ static DWORD server_notify(Remote* remote, LPVOID entryContext, LPVOID threadCon
 			nextCtx->remote = serverCtx->remote;
 			nextCtx->stage_data = serverCtx->stage_data;
 			nextCtx->stage_data_size = serverCtx->stage_data_size;
+			memcpy_s(&nextCtx->pivot_id, sizeof(nextCtx->pivot_id), &serverCtx->pivot_id, sizeof(nextCtx->pivot_id));
 			memcpy_s(&nextCtx->name, PIPE_NAME_SIZE, &serverCtx->name, PIPE_NAME_SIZE);
 
 			// create a new pipe for the next connection
@@ -466,6 +517,16 @@ static DWORD server_notify(Remote* remote, LPVOID entryContext, LPVOID threadCon
 
 			serverCtx->established = TRUE;
 
+			// The current listener cotnext in the listeners tree points to the server instance that has now
+			// become a client instance due to the new connection. Therefore we need to update the pivot tree context
+			// to point to the new listener on the named pipe.
+			PivotContext* listenerCtx = pivot_tree_find(remote->pivot_listeners, (LPBYTE)&serverCtx->pivot_id);
+			if (listenerCtx != NULL)
+			{
+				dprintf("[NP-SERVER] Updating the listener context in the pivot tree");
+				listenerCtx->state = nextCtx;
+			}
+
 			// Time to stage the data
 			if (serverCtx->stage_data && serverCtx->stage_data_size > 0)
 			{
@@ -475,25 +536,29 @@ static DWORD server_notify(Remote* remote, LPVOID entryContext, LPVOID threadCon
 
 				// send the stage
 				named_pipe_write_raw(serverCtx, serverCtx->stage_data, serverCtx->stage_data_size);
+
+				// to "hand over" the stage data, set the existing pointer to NULL so that things don't get freed
+				// when they shouldn't be.
+				serverCtx->stage_data = NULL;
 			}
 
 			// We need to generate a new session GUID and inform metasploit of the new session
-			GUID guid;
-			CoCreateGuid(&guid);
+			CoCreateGuid(&serverCtx->pivot_session_guid);
+
 			// swizzle the values around so that endianness isn't an issue before casting to a block of bytes
-			guid.Data1 = htonl(guid.Data1);
-			guid.Data2 = htons(guid.Data2);
-			guid.Data3 = htons(guid.Data3);
+			serverCtx->pivot_session_guid.Data1 = htonl(serverCtx->pivot_session_guid.Data1);
+			serverCtx->pivot_session_guid.Data2 = htons(serverCtx->pivot_session_guid.Data2);
+			serverCtx->pivot_session_guid.Data3 = htons(serverCtx->pivot_session_guid.Data3);
 
 			Packet* notification = packet_create(PACKET_TLV_TYPE_REQUEST, "core_pivot_session_new");
-			packet_add_tlv_raw(notification, TLV_TYPE_SESSION_GUID, (LPVOID)&guid, sizeof(guid));
+			packet_add_tlv_raw(notification, TLV_TYPE_SESSION_GUID, (LPVOID)&serverCtx->pivot_session_guid, sizeof(serverCtx->pivot_session_guid));
 			packet_add_tlv_raw(notification, TLV_TYPE_PIVOT_ID, (LPVOID)&serverCtx->pivot_id, sizeof(serverCtx->pivot_id));
 			packet_transmit(serverCtx->remote, notification, NULL);
 
 			PivotContext* pivotContext = (PivotContext*)calloc(1, sizeof(PivotContext));
 			pivotContext->state = serverCtx;
 			pivotContext->packet_write = named_pipe_write_raw;
-			pivot_tree_add(serverCtx->remote->pivots, (LPBYTE)&guid, pivotContext);
+			pivot_tree_add(remote->pivot_sessions, (LPBYTE)&serverCtx->pivot_session_guid, pivotContext);
 		}
 
 		if (bytesProcessed > 0)
@@ -602,6 +667,10 @@ DWORD request_core_pivot_add_named_pipe(Remote* remote, Packet* packet)
 		if (dwResult == ERROR_SUCCESS)
 		{
 			dprintf("[NP-SERVER] request_net_named_pipe_server_channel_open. named pipe server %s", namedPipeName);
+			PivotContext* pivotCtx = (PivotContext*)calloc(1, sizeof(PivotContext));
+			pivotCtx->state = ctx;
+			pivotCtx->remove = remove_listener;
+			pivot_tree_add(remote->pivot_listeners, pivotId, pivotCtx);
 		}
 
 	} while (0);

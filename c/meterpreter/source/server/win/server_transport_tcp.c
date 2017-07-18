@@ -475,7 +475,7 @@ static DWORD packet_receive(Remote *remote, Packet **packet)
 			else
 			{
 				dprintf("[TCP] Session GUIDs don't match, looking for a pivot");
-				PivotContext* pivotCtx = pivot_tree_find(remote->pivots, header.session_guid);
+				PivotContext* pivotCtx = pivot_tree_find(remote->pivot_sessions, header.session_guid);
 				if (pivotCtx != NULL)
 				{
 					dprintf("[TCP] Pivot found, dispatching packet");

@@ -32,7 +32,7 @@ static DWORD server_pipe_poll(Remote* remote, long timeout)
 
 	lock_acquire(remote->lock);
 
-	dprintf("[NP DISPATCH] testing for data on the pipe, making sure there's enough for a packet header");
+	vdprintf("[NP DISPATCH] testing for data on the pipe, making sure there's enough for a packet header");
 	BOOL ready = PeekNamedPipe(ctx->pipe, NULL, 0, NULL, &bytesAvailable, NULL) && bytesAvailable >= sizeof(PacketHeader);
 	DWORD result = GetLastError();
 
@@ -40,7 +40,7 @@ static DWORD server_pipe_poll(Remote* remote, long timeout)
 
 	if (ready)
 	{
-		dprintf("[NP DISPATCH] pipe data found %u bytes", bytesAvailable);
+		vdprintf("[NP DISPATCH] pipe data found %u bytes", bytesAvailable);
 		result = ERROR_SUCCESS;
 	}
 	else
@@ -48,7 +48,7 @@ static DWORD server_pipe_poll(Remote* remote, long timeout)
 		if (result != ERROR_BROKEN_PIPE)
 		{
 			// simulate a wait so that we don't bash the crap out of the CPU?
-			dprintf("[NP DISPATCH] pipe data not found, sleeping (error %u)", GetLastError());
+			vdprintf("[NP DISPATCH] pipe data not found, sleeping (error %u)", GetLastError());
 			Sleep(timeout);
 			result = ERROR_NO_DATA;
 		}
@@ -175,9 +175,9 @@ static DWORD packet_receive_named_pipe(Remote *remote, Packet **packet)
 			}
 			
 			payloadLength = ntohl(header.length) - sizeof(TlvHeader);
-			vdprintf("[PIPE] Payload length is %d", payloadLength);
+			dprintf("[PIPE] Payload length is %d", payloadLength);
 			DWORD packetSize = sizeof(PacketHeader) + payloadLength;
-			vdprintf("[PIPE] total buffer size for the packet is %d", packetSize);
+			dprintf("[PIPE] total buffer size for the packet is %d", packetSize);
 			payloadBytesLeft = payloadLength;
 
 			// Allocate the payload
@@ -199,6 +199,7 @@ static DWORD packet_receive_named_pipe(Remote *remote, Packet **packet)
 
 			// Read the payload
 			DWORD bytesAvailable = 0;
+			dprintf("[PIPE] Beginning read loop for a total of %u", payloadBytesLeft);
 			while (payloadBytesLeft > 0)
 			{
 				dprintf("[PIPE] Trying to read %u (0x%x) bytes", payloadBytesLeft, payloadBytesLeft);

@@ -160,7 +160,8 @@ typedef struct _Remote
 	int sess_expiry_end;                  ///! Unix timestamp for when the server should shut down.
 	int sess_start_time;                  ///! Unix timestamp representing the session startup time.
 
-	PivotTree* pivots;                    ///! Collection of active Meterpreter session pivots.
+	PivotTree* pivot_sessions;            ///! Collection of active Meterpreter session pivots.
+	PivotTree* pivot_listeners;           ///! Collection of active Meterpreter pivot listeners.
 
 	PacketEncryptionContext* enc_ctx;     ///! Reference to the packet encryption context.
 } Remote;

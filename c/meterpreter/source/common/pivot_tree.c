@@ -23,19 +23,23 @@ DWORD pivot_tree_add_node(PivotNode* parent, PivotNode* node)
 	{
 		if (parent->left == NULL)
 		{
+			dprintf("[PIVOTTREE] Adding node to left");
 			parent->left = node;
 			return ERROR_SUCCESS;
 		}
 
+		dprintf("[PIVOTTREE] Adding node to left subtree");
 		return pivot_tree_add_node(parent->left, node);
 	}
 
 	if (parent->right == NULL)
 	{
+		dprintf("[PIVOTTREE] Adding node to right");
 		parent->right = node;
 		return ERROR_SUCCESS;
 	}
 
+	dprintf("[PIVOTTREE] Adding node to right subtree");
 	return pivot_tree_add_node(parent->right, node);
 }
 
@@ -44,7 +48,7 @@ DWORD pivot_tree_add(PivotTree* tree, LPBYTE guid, PivotContext* ctx)
 	PivotNode* node = (PivotNode*)calloc(1, sizeof(PivotNode));
 #ifdef DEBUGTRACE
 	PUCHAR h = (PUCHAR)&guid[0];
-	dprintf("[PIVOTTREE] Adding Session GUID: %02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
+	dprintf("[PIVOTTREE] Adding GUID: %02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
 		h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15]);
 #endif
 
@@ -74,14 +78,16 @@ PivotNode* pivot_tree_largest_node(PivotNode* node)
 	return pivot_tree_largest_node(node->right);
 }
 
-DWORD pivot_tree_remove_node(PivotNode* parent, LPBYTE guid)
+PivotContext* pivot_tree_remove_node(PivotNode* parent, LPBYTE guid)
 {
 	int cmp = memcmp(parent->guid, guid, sizeof(parent->guid));
 	if (cmp < 0 && parent->left != NULL)
 	{
+		dprintf("[PIVOTTREE] Removing from left subtree");
 		int cmp = memcmp(parent->left->guid, guid, sizeof(parent->guid));
 		if (cmp == 0)
 		{
+			dprintf("[PIVOTTREE] Removing right child");
 			PivotNode* remove = parent->left;
 			PivotNode* left = remove->left;
 			PivotNode* largest = pivot_tree_largest_node(left);
@@ -96,8 +102,9 @@ DWORD pivot_tree_remove_node(PivotNode* parent, LPBYTE guid)
 				parent->left = remove->right;
 			}
 
+			PivotContext* context = remove->ctx;
 			free(remove);
-			return ERROR_SUCCESS;
+			return context;
 		}
 
 		return pivot_tree_remove_node(parent->left, guid);
@@ -105,9 +112,11 @@ DWORD pivot_tree_remove_node(PivotNode* parent, LPBYTE guid)
 
 	if (cmp > 0 && parent->right != NULL)
 	{
+		dprintf("[PIVOTTREE] Removing from right subtree");
 		int cmp = memcmp(parent->right->guid, guid, sizeof(parent->guid));
 		if (cmp == 0)
 		{
+			dprintf("[PIVOTTREE] Removing right child");
 			PivotNode* remove = parent->right;
 			PivotNode* left = remove->left;
 			PivotNode* largest = pivot_tree_largest_node(left);
@@ -122,27 +131,35 @@ DWORD pivot_tree_remove_node(PivotNode* parent, LPBYTE guid)
 				parent->right = remove->right;
 			}
 
+			PivotContext* context = remove->ctx;
 			free(remove);
-			return ERROR_SUCCESS;
+			return context;
 		}
 
 		return pivot_tree_remove_node(parent->left, guid);
 	}
 
-	return ERROR_SUCCESS;
+	return NULL;
 }
 
-DWORD pivot_tree_remove(PivotTree* tree, LPBYTE guid)
+PivotContext* pivot_tree_remove(PivotTree* tree, LPBYTE guid)
 {
+#ifdef DEBUGTRACE
+	PUCHAR h = (PUCHAR)&guid[0];
+	dprintf("[PIVOTTREE] Removing GUID: %02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
+		h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15]);
+#endif
+
 	if (tree->head == NULL)
 	{
-		return ERROR_SUCCESS;
+		return NULL;
 	}
 
 	int cmp = memcmp(tree->head->guid, guid, sizeof(tree->head->guid));
 
 	if (cmp == 0)
 	{
+		dprintf("[PIVOTTREE] Removing head node");
 		PivotNode* remove = tree->head;
 		PivotNode* left = tree->head->left;
 		PivotNode* largest = pivot_tree_largest_node(left);
@@ -157,10 +174,12 @@ DWORD pivot_tree_remove(PivotTree* tree, LPBYTE guid)
 			tree->head = tree->head->right;
 		}
 
+		PivotContext* context = remove->ctx;
 		free(remove);
-		return ERROR_SUCCESS;
+		return context;
 	}
 
+	dprintf("[PIVOTTREE] Removing non-head node");
 	return pivot_tree_remove_node(tree->head, guid);
 }
 
@@ -174,24 +193,27 @@ PivotContext* pivot_tree_find_node(PivotNode* node, LPBYTE guid)
 
 #ifdef DEBUGTRACE
 	PUCHAR h = (PUCHAR)&guid[0];
-	dprintf("[PIVOTTREE] Session GUID: %02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
+	dprintf("[PIVOTTREE] Saerch GUID: %02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
 		h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15]);
 	h = node->guid;
-	dprintf("[PIVOTTREE] Node    GUID: %02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
+	dprintf("[PIVOTTREE] Node   GUID: %02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
 		h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15]);
 #endif
 
-	int cmp = memcmp(guid, node->guid, sizeof(guid));
+	int cmp = memcmp(node->guid, guid, sizeof(node->guid));
 	if (cmp == 0)
 	{
+		dprintf("[PIVOTTREE] node found");
 		return node->ctx;
 	}
 
 	if (cmp < 0)
 	{
+		dprintf("[PIVOTTREE] Searching left subtree");
 		return pivot_tree_find_node(node->left, guid);
 	}
 
+	dprintf("[PIVOTTREE] Searching right subtree");
 	return pivot_tree_find_node(node->right, guid);
 }
 
