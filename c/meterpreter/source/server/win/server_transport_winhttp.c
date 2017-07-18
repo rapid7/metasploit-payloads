@@ -421,7 +421,10 @@ static DWORD packet_receive_http(Remote *remote, Packet **packet)
 		}
 
 		dprintf("[PACKET RECEIVE HTTP] decoding header");
+		PacketHeader encodedHeader;
+		memcpy(&encodedHeader, &header, sizeof(PacketHeader));
 		xor_bytes(header.xor_key, (PUCHAR)&header + sizeof(header.xor_key), sizeof(PacketHeader) - sizeof(header.xor_key));
+
 #ifdef DEBUGTRACE
 		PUCHAR h = (PUCHAR)&header;
 		vdprintf("[TCP] Packet header: [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X]",
@@ -443,11 +446,8 @@ static DWORD packet_receive_http(Remote *remote, Packet **packet)
 		}
 		dprintf("[REC HTTP] Allocated packet buffer at %p", packetBuffer);
 
-		// we're done with the header data, so we need to re-encode it, as the packet decryptor is going to
-		// handle the extraction for us.
-		xor_bytes(header.xor_key, (LPBYTE)&header.session_guid[0], sizeof(PacketHeader) - sizeof(header.xor_key));
 		// Copy the packet header stuff over to the packet
-		memcpy_s(packetBuffer, sizeof(PacketHeader), (LPBYTE)&header, sizeof(PacketHeader));
+		memcpy_s(packetBuffer, sizeof(PacketHeader), (LPBYTE)&encodedHeader, sizeof(PacketHeader));
 
 		payload = packetBuffer + sizeof(PacketHeader);
 
@@ -481,8 +481,32 @@ static DWORD packet_receive_http(Remote *remote, Packet **packet)
 			break;
 		}
 
-		dprintf("[PACKET RECEIVE HTTP] decoding payload");
-		SetLastError(decrypt_packet(remote, packet, packetBuffer, packetSize));
+#ifdef DEBUGTRACE
+		PUCHAR h = (PUCHAR)&header.session_guid[0];
+		dprintf("[TCP] Packet Session GUID: %02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
+			h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15]);
+#endif
+
+		if (is_null_guid(header.session_guid) || memcmp(remote->orig_config->session.session_guid, header.session_guid, sizeof(header.session_guid)) == 0)
+		{
+			dprintf("[TCP] Session GUIDs match (or packet guid is null), decrypting packet");
+			SetLastError(decrypt_packet(remote, packet, packetBuffer, packetSize));
+		}
+		else
+		{
+			dprintf("[TCP] Session GUIDs don't match, looking for a pivot");
+			PivotContext* pivotCtx = pivot_tree_find(remote->pivot_sessions, header.session_guid);
+			if (pivotCtx != NULL)
+			{
+				dprintf("[TCP] Pivot found, dispatching packet");
+				SetLastError(pivotCtx->packet_write(pivotCtx->state, packetBuffer, packetSize));
+				*packet = NULL;
+			}
+			else
+			{
+				dprintf("[TCP] Session GUIDs don't match, can't find pivot!");
+			}
+		}
 
 		free(packetBuffer);
 	} while (0);

@@ -350,7 +350,6 @@ DWORD create_pipe_server_instance(NamedPipeContext* ctx)
 
 		dprintf("[NP-SERVER] Inserting the named pipe schedule entry");
 		scheduler_insert_waitable(ctx->read_overlap.hEvent, ctx, NULL, server_notify, server_destroy);
-		//scheduler_insert_waitable(ctx->read_overlap.hEvent, ctx, NULL, server_notify, NULL);
 	} while (0);
 
 	return dwResult;
