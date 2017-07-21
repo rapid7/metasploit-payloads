@@ -69,7 +69,7 @@ BOOL scmStartDriver(
 {
 	SC_HANDLE  schService;
 	BOOL       ret;
-
+	DbgPrint("[+] scmStartDriver DriverName: %s\n", DriverName);
 	schService = OpenService(SchSCManager,
 		DriverName,
 		SERVICE_ALL_ACCESS
@@ -81,7 +81,12 @@ BOOL scmStartDriver(
 		|| GetLastError() == ERROR_SERVICE_ALREADY_RUNNING;
 
 	CloseServiceHandle(schService);
-
+	if (ret) {
+		DbgPrint("[+] scmStartDriver ret is true ....\n");
+	}
+	else {
+		DbgPrint("[+] scmStartDriver is FALSE :( - GLE: %d ....\n", GetLastError());
+	}
 	return ret;
 }
 

@@ -13,7 +13,6 @@
 #include "drivertools.h"
 
 DWORD request_drivertools_do_work(Remote *remote, Packet *request);
-DWORD request_drivertools_tdl_do_nothing(Remote *remote, Packet *request);
 
 // this sets the delay load hook function, see DelayLoadMetSrv.h
 EnableDelayLoadMetSrv();
@@ -26,7 +25,7 @@ Command customCommands[] =
 {
 	// custom commands go here
 	COMMAND_REQ("drivertools_do_work", request_drivertools_do_work),
-	COMMAND_REQ("drivertools_tdl_do_nothing", request_drivertools_tdl_do_nothing),
+//	COMMAND_REQ("drivertools_tdl_do_nothing", request_drivertools_tdl_do_nothing),
 	COMMAND_TERMINATOR
 };
 
