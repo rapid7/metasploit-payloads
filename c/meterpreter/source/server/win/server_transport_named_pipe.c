@@ -57,6 +57,36 @@ static DWORD server_pipe_poll(Remote* remote, long timeout)
 	return result;
 }
 
+DWORD read_raw_bytes_to_buffer(NamedPipeTransportContext* ctx, LPBYTE buffer, DWORD bytesToRead, LPDWORD bytesRead)
+{
+	DWORD bytesReadThisIteration = 0;
+	DWORD temp = 0;
+	*bytesRead = 0;
+
+	dprintf("[PIPE] Beginning read loop for a total of %u", bytesToRead);
+	while (bytesToRead > 0)
+	{
+		dprintf("[PIPE] Trying to read %u (0x%x) bytes", bytesToRead, bytesToRead);
+		// figure out the total bytes available for reading on the pipe
+		PeekNamedPipe(ctx->pipe, buffer + *bytesRead, bytesToRead, &bytesReadThisIteration, NULL, NULL);
+		temp = bytesReadThisIteration;
+
+		// read the bytes fromi there.
+		if (!ReadFile(ctx->pipe, buffer + *bytesRead, bytesReadThisIteration, &temp, NULL))
+		{
+			break;
+		}
+
+		dprintf("[PIPE] ReadFile claims to have read %u (0x%x) bytes", bytesReadThisIteration, bytesReadThisIteration);
+
+		bytesToRead -= bytesReadThisIteration;
+		*bytesRead += bytesReadThisIteration;
+	}
+
+	dprintf("[PIPE] Done reading bytes");
+	return GetLastError();
+}
+
 /*!
  * @brief Receive a new packet on the given remote endpoint.
  * @param remote Pointer to the \c Remote instance.
@@ -123,7 +153,6 @@ static DWORD packet_receive_named_pipe(Remote *remote, Packet **packet)
 		// from a staged listener after a reconnect. We can figure this out rather lazily by assuming the following:
 		// XOR keys are always 4 bytes that are non-zero. If the higher order byte of the xor key is zero, then it
 		// isn't an XOR Key, instead it's the 4-byte length of the metsrv binary (because metsrv isn't THAT big).
-		dprintf("[PIPE] xor key bytes [0->3]: 0x02x 0x02x 0x02x 0x02x", header.xor_key[0], header.xor_key[1], header.xor_key[2], header.xor_key[3]);
 		if (header.xor_key[3] == 0)
 		{
 			// looks like we have a metsrv instance, time to ignore it.
@@ -131,26 +160,14 @@ static DWORD packet_receive_named_pipe(Remote *remote, Packet **packet)
 			dprintf("[PIPE] discovered a length header, assuming it's metsrv of length %d", length);
 
 			int bytesToRead = length - sizeof(PacketHeader) + sizeof(DWORD);
-			char buffer[65535];
-
-			while (bytesToRead > 0)
-			{
-
-				if (!ReadFile(ctx->pipe, buffer, min(sizeof(buffer), bytesToRead), &bytesRead, NULL))
-				{
-					if (bytesRead < 0)
-					{
-						SetLastError(ERROR_NOT_FOUND);
-					}
-					break;
-				}
-
-				bytesToRead -= bytesRead;
-			}
+			char* buffer = (char*)malloc(bytesToRead);
+			read_raw_bytes_to_buffer(ctx, buffer, bytesToRead, &bytesRead);
+			free(buffer);
 
 			// did something go wrong.
-			if (bytesToRead > 0)
+			if (bytesToRead != bytesRead)
 			{
+				dprintf("[PIPE] Failed to read all bytes when flushing the buffer: %u vs %u", bytesToRead, bytesRead);
 				break;
 			}
 
@@ -199,28 +216,11 @@ static DWORD packet_receive_named_pipe(Remote *remote, Packet **packet)
 			payload = packetBuffer + sizeof(PacketHeader);
 
 			// Read the payload
-			DWORD bytesAvailable = 0;
-			dprintf("[PIPE] Beginning read loop for a total of %u", payloadBytesLeft);
-			while (payloadBytesLeft > 0)
-			{
-				dprintf("[PIPE] Trying to read %u (0x%x) bytes", payloadBytesLeft, payloadBytesLeft);
-				PeekNamedPipe(ctx->pipe, payload + payloadLength - payloadBytesLeft, payloadBytesLeft, &bytesRead, &bytesAvailable, NULL);
-				if (!ReadFile(ctx->pipe, payload + payloadLength - payloadBytesLeft, payloadBytesLeft, &bytesAvailable, NULL))
-				{
-					if (bytesRead < 0)
-					{
-						SetLastError(ERROR_NOT_FOUND);
-					}
-
-					break;
-				}
-				dprintf("[PIPE] ReadFile claims to have read %u (0x%x) bytes (Error: %u)", bytesRead, bytesRead, GetLastError());
-
-				payloadBytesLeft -= bytesRead;
-			}
+			read_raw_bytes_to_buffer(ctx, payload, payloadLength, &bytesRead);
+			dprintf("[PIPE] wanted %u read %u", payloadLength, bytesRead);
 
 			// Didn't finish?
-			if (payloadBytesLeft)
+			if (bytesRead != payloadLength)
 			{
 				dprintf("[PIPE] Failed to get all the payload bytes");
 				break;
@@ -289,8 +289,15 @@ static DWORD server_dispatch_named_pipe(Remote* remote, THREAD* dispatchThread)
 				break;
 			}
 
-			running = command_handle(remote, packet);
-			dprintf("[NP DISPATCH] command_process result: %s", (running ? "continue" : "stop"));
+			if (packet)
+			{
+				running = command_handle(remote, packet);
+				dprintf("[NP DISPATCH] command_process result: %s", (running ? "continue" : "stop"));
+			}
+			else
+			{
+				dprintf("[NP DISPATCH] Received NULL packet, could be metsrv being ignored");
+			}
 
 			// packet received, reset the timer
 			lastPacket = current_unix_timestamp();

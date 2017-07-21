@@ -543,8 +543,6 @@ static DWORD server_notify(Remote* remote, LPVOID entryContext, LPVOID threadCon
 				dprintf("[NP-SERVER] Sending stage on new connection");
 				// send the stage length
 				named_pipe_write_raw(serverCtx, (LPBYTE)&serverCtx->stage_data_size, sizeof(serverCtx->stage_data_size));
-				//DWORD size = htonl(serverCtx->stage_data_size);
-				//named_pipe_write_raw(serverCtx, (LPBYTE)&size, sizeof(size));
 
 				// send the stage
 				named_pipe_write_raw(serverCtx, serverCtx->stage_data, serverCtx->stage_data_size);

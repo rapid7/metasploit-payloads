@@ -120,11 +120,13 @@ PivotNode* pivot_tree_largest_node(PivotNode* node)
 
 PivotContext* pivot_tree_remove_node(PivotNode* parent, LPBYTE guid)
 {
+	dprintf("[PIVOTTREE] Trying to remove from %p (%p) (%p)", parent, parent->left, parent->right);
 	int cmp = memcmp(guid, parent->guid, sizeof(parent->guid));
 	if (cmp < 0 && parent->left != NULL)
 	{
 		dprintf("[PIVOTTREE] Removing from left subtree");
 		int cmp = memcmp(guid, parent->left->guid, sizeof(parent->guid));
+		dprintf("[PIVOTTREE] Right left compare: %d", cmp);
 		if (cmp == 0)
 		{
 			dprintf("[PIVOTTREE] Removing right child");
@@ -154,6 +156,7 @@ PivotContext* pivot_tree_remove_node(PivotNode* parent, LPBYTE guid)
 	{
 		dprintf("[PIVOTTREE] Removing from right subtree");
 		int cmp = memcmp(guid, parent->right->guid, sizeof(parent->guid));
+		dprintf("[PIVOTTREE] Right subtree compare: %d", cmp);
 		if (cmp == 0)
 		{
 			dprintf("[PIVOTTREE] Removing right child");
@@ -176,7 +179,7 @@ PivotContext* pivot_tree_remove_node(PivotNode* parent, LPBYTE guid)
 			return context;
 		}
 
-		return pivot_tree_remove_node(parent->left, guid);
+		return pivot_tree_remove_node(parent->right, guid);
 	}
 
 	return NULL;
