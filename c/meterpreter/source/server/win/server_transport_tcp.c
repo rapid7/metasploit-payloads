@@ -398,7 +398,7 @@ static DWORD packet_receive(Remote *remote, Packet **packet)
 			break;
 		}
 
-		vdprintf("[TCP] the XOR key is: %02x%02x%02x%02x", header.xor_key[0], header.xor_key[1], header.xor_key[2], header.xor_key[3]);
+		dprintf("[TCP] the XOR key is: %02x%02x%02x%02x", header.xor_key[0], header.xor_key[1], header.xor_key[2], header.xor_key[3]);
 
 #ifdef DEBUGTRACE
 		PUCHAR h = (PUCHAR)&header;
@@ -410,7 +410,7 @@ static DWORD packet_receive(Remote *remote, Packet **packet)
 		// from a staged listener after a reconnect. We can figure this out rather lazily by assuming the following:
 		// XOR keys are always 4 bytes that are non-zero. If the higher order byte of the xor key is zero, then it
 		// isn't an XOR Key, instead it's the 4-byte length of the metsrv binary (because metsrv isn't THAT big).
-		if (header.xor_key[0] == 0)
+		if (header.xor_key[3] == 0)
 		{
 			// looks like we have a metsrv instance, time to ignore it.
 			int length = *(int*)&header.xor_key[0];
