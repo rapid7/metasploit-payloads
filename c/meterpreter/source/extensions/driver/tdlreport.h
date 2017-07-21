@@ -20,6 +20,7 @@
 
 #include "drivertools.h"
 
+
 typedef struct _CONNECTIONCTX {
 	Remote *remote;
 	Packet *request;

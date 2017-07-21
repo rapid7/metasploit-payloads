@@ -56,4 +56,4 @@ BOOL supIsObjectExists(
 	_In_ LPWSTR ObjectName
 	);
 
-#define PathFileExists(lpszPath) (GetFileAttributes(lpszPath) != (DWORD)-1)
+#define PathFileExists(lpszPath) (GetFileAttributesW(lpszPath) != (DWORD)-1)

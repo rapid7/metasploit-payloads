@@ -109,13 +109,13 @@ VOID tdlPrintClient(
 {
 	//Packet *response = packet_create_response(request);
 	DWORD   result = ERROR_SUCCESS;
-	CHAR   *buf = NULL;
+	CHAR    *buf = NULL;
 
 	if (lpText == NULL)
 		return;
 
 	buf = wchar_to_utf8(lpText);
-	_strcat_a(buf, "\r\n");
+	//_strcat_a(buf, "\r\n");
 	if (buf) {
 		packet_add_tlv_raw(ctx->response, TLV_TYPE_TDL_PCLIENT, (LPVOID)buf, (DWORD)strlen(buf) + 1);
 		//free(buf);
