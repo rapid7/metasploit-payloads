@@ -28,6 +28,7 @@ typedef struct _NamedPipeContext
 	DWORD      packet_required_size;
 	LPVOID     stage_data;
 	DWORD      stage_data_size;
+	LOCK*      write_lock;
 } NamedPipeContext;
 
 static DWORD server_notify(Remote* remote, LPVOID entryContext, LPVOID threadContext);
@@ -70,6 +71,7 @@ static DWORD server_destroy(HANDLE waitable, LPVOID entryContext, LPVOID threadC
 		CloseHandle(ctx->read_overlap.hEvent);
 		CloseHandle(ctx->write_overlap.hEvent);
 		SAFE_FREE(ctx->stage_data);
+		lock_destroy(ctx->write_lock);
 		lock_release(ctx->remote->lock);
 		dprintf("[PIVOT] Cleaned up the pipe pivot context");
 	}
@@ -161,6 +163,8 @@ DWORD named_pipe_write_raw(LPVOID state, LPBYTE raw, DWORD rawLength)
 	DWORD dwResult = ERROR_SUCCESS;
 	DWORD bytesWritten = 0;
 
+	lock_acquire(ctx->write_lock);
+
 	dprintf("[NP-SERVER] Writing a total of %u", rawLength);
 	while (bytesWritten < rawLength)
 	{
@@ -182,6 +186,8 @@ DWORD named_pipe_write_raw(LPVOID state, LPBYTE raw, DWORD rawLength)
 	}
 
 	dprintf("[NP SERVER] server write. finished. dwResult=%d, written=%d", dwResult, bytesWritten);
+
+	lock_release(ctx->write_lock);
 
 	return dwResult;
 }
@@ -472,6 +478,10 @@ static DWORD server_notify(Remote* remote, LPVOID entryContext, LPVOID threadCon
 
 				// Clean up the pivot context
 				PivotContext* pivotCtx = pivot_tree_remove(remote->pivot_sessions, (LPBYTE)&serverCtx->pivot_session_guid);
+#ifdef DEBUGTRACE
+				dprintf("[PIVOTTREE] Pivot sessions (after one removed)");
+				dbgprint_pivot_tree(remote->pivot_sessions);
+#endif
 				SAFE_FREE(pivotCtx);
 
 				// Clean up all the named pipe context stuff.
@@ -503,6 +513,7 @@ static DWORD server_notify(Remote* remote, LPVOID entryContext, LPVOID threadCon
 			nextCtx->remote = serverCtx->remote;
 			nextCtx->stage_data = serverCtx->stage_data;
 			nextCtx->stage_data_size = serverCtx->stage_data_size;
+			nextCtx->write_lock = lock_create();
 			memcpy_s(&nextCtx->pivot_id, sizeof(nextCtx->pivot_id), &serverCtx->pivot_id, sizeof(nextCtx->pivot_id));
 			memcpy_s(&nextCtx->name, PIPE_NAME_SIZE, &serverCtx->name, PIPE_NAME_SIZE);
 
@@ -532,6 +543,8 @@ static DWORD server_notify(Remote* remote, LPVOID entryContext, LPVOID threadCon
 				dprintf("[NP-SERVER] Sending stage on new connection");
 				// send the stage length
 				named_pipe_write_raw(serverCtx, (LPBYTE)&serverCtx->stage_data_size, sizeof(serverCtx->stage_data_size));
+				//DWORD size = htonl(serverCtx->stage_data_size);
+				//named_pipe_write_raw(serverCtx, (LPBYTE)&size, sizeof(size));
 
 				// send the stage
 				named_pipe_write_raw(serverCtx, serverCtx->stage_data, serverCtx->stage_data_size);
@@ -558,6 +571,10 @@ static DWORD server_notify(Remote* remote, LPVOID entryContext, LPVOID threadCon
 			pivotContext->state = serverCtx;
 			pivotContext->packet_write = named_pipe_write_raw;
 			pivot_tree_add(remote->pivot_sessions, (LPBYTE)&serverCtx->pivot_session_guid, pivotContext);
+#ifdef DEBUGTRACE
+			dprintf("[PIVOTTREE] Pivot sessions (after new one added)");
+			dbgprint_pivot_tree(remote->pivot_sessions);
+#endif
 		}
 
 		if (bytesProcessed > 0)
@@ -620,6 +637,7 @@ DWORD request_core_pivot_add_named_pipe(Remote* remote, Packet* packet)
 		}
 
 		ctx->remote = remote;
+		ctx->write_lock = lock_create();
 
 		namedPipeName = packet_get_tlv_value_string(packet, TLV_TYPE_PIVOT_NAMED_PIPE_NAME);
 		if (!namedPipeName)
@@ -670,6 +688,10 @@ DWORD request_core_pivot_add_named_pipe(Remote* remote, Packet* packet)
 			pivotCtx->state = ctx;
 			pivotCtx->remove = remove_listener;
 			pivot_tree_add(remote->pivot_listeners, pivotId, pivotCtx);
+#ifdef DEBUGTRACE
+			dprintf("[PIVOTTREE] Pivot listeners (after new one added)");
+			dbgprint_pivot_tree(remote->pivot_listeners);
+#endif
 		}
 
 	} while (0);
@@ -688,6 +710,11 @@ DWORD request_core_pivot_add_named_pipe(Remote* remote, Packet* packet)
 		if (!ctx)
 		{
 			break;
+		}
+
+		if (ctx->write_lock != NULL)
+		{
+			lock_destroy(ctx->write_lock);
 		}
 
 		if (ctx->read_overlap.hEvent != NULL)

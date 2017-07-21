@@ -10,6 +10,46 @@ typedef struct _PivotNode
 	struct _PivotNode* right;
 } PivotNode;
 
+#ifdef DEBUGTRACE
+void pivot_tree_to_string(char** buffer, PivotNode* node, char* prefix)
+{
+	// each line is the prefix size, plus the guid size plus a null and a \n and the two pointers
+	int curLen = *buffer ? strlen(*buffer) : 0;
+	int newLen = strlen(prefix) + 32 + 2 + (sizeof(LPVOID) * 2 + 8) * 2;
+	*buffer = (char*)realloc(*buffer, curLen + 1 + newLen);
+	if (node != NULL)
+	{
+		PUCHAR h = node->guid;
+		sprintf(*buffer + curLen, "%s%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X (%p) (%p)\n\x00",
+			prefix,
+			h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15],
+			node->left, node->right);
+		char p[512];
+		char f[512];
+		sprintf(f, "%%%ds  | ", strlen(prefix));
+		sprintf(p, f, " ");
+		// print the right hand side first, as it seems to make sense when viewing the content
+		pivot_tree_to_string(buffer, node->right, p);
+		pivot_tree_to_string(buffer, node->left, p);
+	}
+	else
+	{
+		sprintf(*buffer + strlen(*buffer), "%sNULL\n", prefix);
+	}
+}
+
+void dbgprint_pivot_tree(PivotTree* tree)
+{
+	char* buffer = NULL;
+	pivot_tree_to_string(&buffer, tree->head, "  ");
+	if (buffer)
+	{
+		dprintf("[PIVOTTREE] contents:\n%s", buffer);
+		free(buffer);
+	}
+}
+#endif
+
 PivotTree* pivot_tree_create()
 {
 	return (PivotTree*)calloc(1, sizeof(PivotTree));
@@ -17,7 +57,7 @@ PivotTree* pivot_tree_create()
 
 DWORD pivot_tree_add_node(PivotNode* parent, PivotNode* node)
 {
-	int cmp = memcmp(parent->guid, node->guid, sizeof(parent->guid));
+	int cmp = memcmp(node->guid, parent->guid, sizeof(parent->guid));
 
 	if (cmp < 0)
 	{
@@ -80,11 +120,11 @@ PivotNode* pivot_tree_largest_node(PivotNode* node)
 
 PivotContext* pivot_tree_remove_node(PivotNode* parent, LPBYTE guid)
 {
-	int cmp = memcmp(parent->guid, guid, sizeof(parent->guid));
+	int cmp = memcmp(guid, parent->guid, sizeof(parent->guid));
 	if (cmp < 0 && parent->left != NULL)
 	{
 		dprintf("[PIVOTTREE] Removing from left subtree");
-		int cmp = memcmp(parent->left->guid, guid, sizeof(parent->guid));
+		int cmp = memcmp(guid, parent->left->guid, sizeof(parent->guid));
 		if (cmp == 0)
 		{
 			dprintf("[PIVOTTREE] Removing right child");
@@ -113,7 +153,7 @@ PivotContext* pivot_tree_remove_node(PivotNode* parent, LPBYTE guid)
 	if (cmp > 0 && parent->right != NULL)
 	{
 		dprintf("[PIVOTTREE] Removing from right subtree");
-		int cmp = memcmp(parent->right->guid, guid, sizeof(parent->guid));
+		int cmp = memcmp(guid, parent->right->guid, sizeof(parent->guid));
 		if (cmp == 0)
 		{
 			dprintf("[PIVOTTREE] Removing right child");
@@ -155,7 +195,7 @@ PivotContext* pivot_tree_remove(PivotTree* tree, LPBYTE guid)
 		return NULL;
 	}
 
-	int cmp = memcmp(tree->head->guid, guid, sizeof(tree->head->guid));
+	int cmp = memcmp(guid, tree->head->guid, sizeof(tree->head->guid));
 
 	if (cmp == 0)
 	{
@@ -200,7 +240,7 @@ PivotContext* pivot_tree_find_node(PivotNode* node, LPBYTE guid)
 		h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15]);
 #endif
 
-	int cmp = memcmp(node->guid, guid, sizeof(node->guid));
+	int cmp = memcmp(guid, node->guid, sizeof(node->guid));
 	if (cmp == 0)
 	{
 		dprintf("[PIVOTTREE] node found");

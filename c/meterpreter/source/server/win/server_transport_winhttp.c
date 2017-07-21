@@ -8,6 +8,7 @@
 #include "server_transport_wininet.h"
 #include <winhttp.h>
 #include "../../common/packet_encryption.h"
+#include "../../common/pivot_packet_dispatch.h"
 
 /*!
  * @brief Prepare a winHTTP request with the given context.
@@ -330,7 +331,6 @@ static DWORD packet_receive_http(Remote *remote, Packet **packet)
 	LONG bytesRead;
 	BOOL inHeader = TRUE;
 	PUCHAR packetBuffer = NULL;
-	PUCHAR payload = NULL;
 	ULONG payloadLength;
 	HttpTransportContext* ctx = (HttpTransportContext*)remote->transport->ctx;
 
@@ -449,7 +449,7 @@ static DWORD packet_receive_http(Remote *remote, Packet **packet)
 		// Copy the packet header stuff over to the packet
 		memcpy_s(packetBuffer, sizeof(PacketHeader), (LPBYTE)&encodedHeader, sizeof(PacketHeader));
 
-		payload = packetBuffer + sizeof(PacketHeader);
+		LPBYTE payload = packetBuffer + sizeof(PacketHeader);
 
 		// Read the payload
 		retries = payloadBytesLeft;
@@ -482,29 +482,32 @@ static DWORD packet_receive_http(Remote *remote, Packet **packet)
 		}
 
 #ifdef DEBUGTRACE
-		PUCHAR h = (PUCHAR)&header.session_guid[0];
-		dprintf("[TCP] Packet Session GUID: %02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
+		h = (PUCHAR)&header.session_guid[0];
+		dprintf("[HTTP] Packet Session GUID: %02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
 			h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15]);
 #endif
 
 		if (is_null_guid(header.session_guid) || memcmp(remote->orig_config->session.session_guid, header.session_guid, sizeof(header.session_guid)) == 0)
 		{
-			dprintf("[TCP] Session GUIDs match (or packet guid is null), decrypting packet");
+			dprintf("[HTTP] Session GUIDs match (or packet guid is null), decrypting packet");
 			SetLastError(decrypt_packet(remote, packet, packetBuffer, packetSize));
 		}
 		else
 		{
-			dprintf("[TCP] Session GUIDs don't match, looking for a pivot");
+			dprintf("[HTTP] Session GUIDs don't match, looking for a pivot");
 			PivotContext* pivotCtx = pivot_tree_find(remote->pivot_sessions, header.session_guid);
 			if (pivotCtx != NULL)
 			{
-				dprintf("[TCP] Pivot found, dispatching packet");
-				SetLastError(pivotCtx->packet_write(pivotCtx->state, packetBuffer, packetSize));
+				dprintf("[HTTP] Pivot found, dispatching packet on a thread (to avoid main thread blocking)");
+				SetLastError(pivot_packet_dispatch(pivotCtx, packetBuffer, packetSize));
+
+				// mark this packet buffer as NULL as the thread will clean it up
+				packetBuffer = NULL;
 				*packet = NULL;
 			}
 			else
 			{
-				dprintf("[TCP] Session GUIDs don't match, can't find pivot!");
+				dprintf("[HTTP] Session GUIDs don't match, can't find pivot!");
 			}
 		}
 
@@ -513,17 +516,13 @@ static DWORD packet_receive_http(Remote *remote, Packet **packet)
 
 	res = GetLastError();
 
+	dprintf("[HTTP] Cleaning up");
+	SAFE_FREE(packetBuffer);
+
 	// Cleanup on failure
 	if (res != ERROR_SUCCESS)
 	{
-		if (payload)
-		{
-			free(payload);
-		}
-		if (localPacket)
-		{
-			free(localPacket);
-		}
+		SAFE_FREE(localPacket);
 	}
 
 	if (hReq)
@@ -532,6 +531,8 @@ static DWORD packet_receive_http(Remote *remote, Packet **packet)
 	}
 
 	lock_release(remote->lock);
+
+	dprintf("[HTTP] Packet receive finished");
 
 	return res;
 }
@@ -811,7 +812,7 @@ static DWORD server_dispatch_http(Remote* remote, THREAD* dispatchThread)
  */
 static void transport_destroy_http(Transport* transport)
 {
-	if (transport && transport->type != METERPRETER_TRANSPORT_TCP)
+	if (transport && (transport->type & METERPRETER_TRANSPORT_HTTP))
 	{
 		HttpTransportContext* ctx = (HttpTransportContext*)transport->ctx;
 

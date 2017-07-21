@@ -459,25 +459,25 @@ DWORD free_encryption_context(Remote* remote)
 	DWORD result = ERROR_SUCCESS;
 
 	dprintf("[ENC] Freeing encryption context %p", remote->enc_ctx);
-if (remote->enc_ctx != NULL);
-{
-	dprintf("[ENC] Encryption context not null, so ditching AES key");
-	if (remote->enc_ctx->aes_key != 0)
+	if (remote->enc_ctx != NULL);
 	{
-		CryptDestroyKey(remote->enc_ctx->aes_key);
-	}
+		dprintf("[ENC] Encryption context not null, so ditching AES key %ul", remote->enc_ctx->aes_key);
+		if (remote->enc_ctx->aes_key != 0)
+		{
+			CryptDestroyKey(remote->enc_ctx->aes_key);
+		}
 
-	dprintf("[ENC] Encryption context not null, so ditching provider");
-	if (remote->enc_ctx->provider != 0)
-	{
-		CryptReleaseContext(remote->enc_ctx->provider, 0);
-	}
+		dprintf("[ENC] Encryption context not null, so ditching provider");
+		if (remote->enc_ctx->provider != 0)
+		{
+			CryptReleaseContext(remote->enc_ctx->provider, 0);
+		}
 
-	dprintf("[ENC] Encryption context not null, so freeing the context");
-	free(remote->enc_ctx);
-	remote->enc_ctx = NULL;
-}
-return result;
+		dprintf("[ENC] Encryption context not null, so freeing the context");
+		free(remote->enc_ctx);
+		remote->enc_ctx = NULL;
+	}
+	return result;
 }
 
 DWORD request_negotiate_aes_key(Remote* remote, Packet* packet)

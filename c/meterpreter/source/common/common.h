@@ -52,13 +52,13 @@ typedef struct ___u128 {
 #include "zlib/zlib.h"
 
 /*! @brief Indication that the Meterpreter transport is using TCP. */
-#define METERPRETER_TRANSPORT_TCP   0
+#define METERPRETER_TRANSPORT_TCP    0x1
 /*! @brief Indication that the Meterpreter transport is using HTTP. */
-#define METERPRETER_TRANSPORT_HTTP  1
+#define METERPRETER_TRANSPORT_HTTP   0x2
 /*! @brief Indication that the Meterpreter transport is using HTTPS. */
-#define METERPRETER_TRANSPORT_HTTPS 2
+#define METERPRETER_TRANSPORT_HTTPS  (0x4 | METERPRETER_TRANSPORT_HTTP)
 /*! @brief Indication that the Meterpreter transport is using  named pipes. */
-#define METERPRETER_TRANSPORT_PIPE 3
+#define METERPRETER_TRANSPORT_PIPE   0x8
 
 VOID sleep(DWORD seconds);
 

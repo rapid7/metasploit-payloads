@@ -27,4 +27,9 @@ PivotContext* pivot_tree_find(PivotTree* tree, LPBYTE guid);
 void pivot_tree_traverse(PivotTree* tree, PivotTreeTraverseCallback callback, LPVOID state);
 void pivot_tree_destroy(PivotTree* tree);
 
+
+#ifdef DEBUGTRACE
+void dbgprint_pivot_tree(PivotTree* tree);
+#endif
+
 #endif

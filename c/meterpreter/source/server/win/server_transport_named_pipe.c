@@ -123,7 +123,8 @@ static DWORD packet_receive_named_pipe(Remote *remote, Packet **packet)
 		// from a staged listener after a reconnect. We can figure this out rather lazily by assuming the following:
 		// XOR keys are always 4 bytes that are non-zero. If the higher order byte of the xor key is zero, then it
 		// isn't an XOR Key, instead it's the 4-byte length of the metsrv binary (because metsrv isn't THAT big).
-		if (header.xor_key[0] == 0)
+		dprintf("[PIPE] xor key bytes [0->3]: 0x02x 0x02x 0x02x 0x02x", header.xor_key[0], header.xor_key[1], header.xor_key[2], header.xor_key[3]);
+		if (header.xor_key[3] == 0)
 		{
 			// looks like we have a metsrv instance, time to ignore it.
 			int length = *(int*)&header.xor_key[0];

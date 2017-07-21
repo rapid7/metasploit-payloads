@@ -31,6 +31,10 @@ DWORD request_core_pivot_remove(Remote* remote, Packet* packet)
 	if (pivotId != NULL)
 	{
 		PivotContext* ctx = pivot_tree_remove(remote->pivot_listeners, pivotId);
+#ifdef DEBUGTRACE
+			dprintf("[PIVOTTREE] Pivot listeners (after one removed)");
+			dbgprint_pivot_tree(remote->pivot_listeners);
+#endif
 		if (ctx != NULL)
 		{
 			ctx->remove(ctx->state);

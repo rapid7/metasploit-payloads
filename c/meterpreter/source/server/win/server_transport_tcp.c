@@ -5,6 +5,7 @@
 #include "../../common/common.h"
 #include <ws2tcpip.h>
 #include "../../common/packet_encryption.h"
+#include "../../common/pivot_packet_dispatch.h"
 
 // TCP-transport specific migration stub.
 typedef struct _TCPMIGRATECONTEXT
@@ -314,7 +315,6 @@ static DWORD packet_receive(Remote *remote, Packet **packet)
 	LONG bytesRead;
 	BOOL inHeader = TRUE;
 	PUCHAR packetBuffer = NULL;
-	PUCHAR payload = NULL;
 	ULONG payloadLength;
 	TcpTransportContext* ctx = (TcpTransportContext*)remote->transport->ctx;
 
@@ -353,7 +353,7 @@ static DWORD packet_receive(Remote *remote, Packet **packet)
 			break;
 		}
 
-		vdprintf("[TCP] the XOR key is: %02x%02x%02x%02x", header.xor_key[0], header.xor_key[1], header.xor_key[2], header.xor_key[3]);
+		dprintf("[TCP] the XOR key is: %02x%02x%02x%02x", header.xor_key[0], header.xor_key[1], header.xor_key[2], header.xor_key[3]);
 
 #ifdef DEBUGTRACE
 		PUCHAR h = (PUCHAR)&header;
@@ -365,7 +365,7 @@ static DWORD packet_receive(Remote *remote, Packet **packet)
 		// from a staged listener after a reconnect. We can figure this out rather lazily by assuming the following:
 		// XOR keys are always 4 bytes that are non-zero. If the higher order byte of the xor key is zero, then it
 		// isn't an XOR Key, instead it's the 4-byte length of the metsrv binary (because metsrv isn't THAT big).
-		if (header.xor_key[0] == 0)
+		if (header.xor_key[3] == 0)
 		{
 			// looks like we have a metsrv instance, time to ignore it.
 			int length = *(int*)&header.xor_key[0];
@@ -431,7 +431,7 @@ static DWORD packet_receive(Remote *remote, Packet **packet)
 			// Copy the packet header stuff over to the packet
 			memcpy_s(packetBuffer, sizeof(PacketHeader), (LPBYTE)&encodedHeader, sizeof(PacketHeader));
 
-			payload = packetBuffer + sizeof(PacketHeader);
+			LPBYTE payload = packetBuffer + sizeof(PacketHeader);
 
 			// Read the payload
 			while (payloadBytesLeft > 0)
@@ -464,7 +464,7 @@ static DWORD packet_receive(Remote *remote, Packet **packet)
 
 #ifdef DEBUGTRACE
 			h = (PUCHAR)&header.session_guid[0];
-			dprintf("[TCP] Packet Session GUID: 0x%02X0x%02X0x%02X0x%02X 0x%02X0x%02X0x%02X0x%02X 0x%02X0x%02X0x%02X0x%02X 0x%02X0x%02X0x%02X0x%02X",
+			dprintf("[TCP] Packet Session GUID: %02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
 				h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15]);
 #endif
 			if (is_null_guid(header.session_guid) || memcmp(remote->orig_config->session.session_guid, header.session_guid, sizeof(header.session_guid)) == 0)
@@ -478,8 +478,11 @@ static DWORD packet_receive(Remote *remote, Packet **packet)
 				PivotContext* pivotCtx = pivot_tree_find(remote->pivot_sessions, header.session_guid);
 				if (pivotCtx != NULL)
 				{
-					dprintf("[TCP] Pivot found, dispatching packet");
-					SetLastError(pivotCtx->packet_write(pivotCtx->state, packetBuffer, packetSize));
+					dprintf("[TCP] Pivot found, dispatching packet on a thread (to avoid main thread blocking)");
+					SetLastError(pivot_packet_dispatch(pivotCtx, packetBuffer, packetSize));
+
+					// mark this packet buffer as NULL as the thread will clean it up
+					packetBuffer = NULL;
 					*packet = NULL;
 				}
 				else
@@ -487,28 +490,23 @@ static DWORD packet_receive(Remote *remote, Packet **packet)
 					dprintf("[TCP] Session GUIDs don't match, can't find pivot!");
 				}
 			}
-
-			free(packetBuffer);
 		}
 
 	} while (0);
 
 	res = GetLastError();
 
+	dprintf("[TCP] Freeing stuff up");
+	SAFE_FREE(packetBuffer);
+
 	// Cleanup on failure
 	if (res != ERROR_SUCCESS)
 	{
-		if (payload)
-		{
-			free(payload);
-		}
-		if (localPacket)
-		{
-			free(localPacket);
-		}
+		SAFE_FREE(localPacket);
 	}
 
 	lock_release(remote->lock);
+	dprintf("[TCP] Packet receive finished");
 
 	return res;
 }
