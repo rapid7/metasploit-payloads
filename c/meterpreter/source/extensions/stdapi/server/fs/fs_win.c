@@ -287,33 +287,32 @@ out:
 	return rc;
 }
 
-#define Py_SAFE_DOWNCASTM(VALUE, WIDE, NARROW) (NARROW)(VALUE)
-
 static int
 attributes_to_mode(DWORD attr)
 {
 	int m = 0;
-	if (attr & FILE_ATTRIBUTE_DIRECTORY)
+	if (attr & FILE_ATTRIBUTE_DIRECTORY) {
 		m |= _S_IFDIR | 0111; /* IFEXEC for user,group,other */
-	else
+	} else {
 		m |= _S_IFREG;
-	if (attr & FILE_ATTRIBUTE_READONLY)
+	}
+	if (attr & FILE_ATTRIBUTE_READONLY) {
 		m |= 0444;
-	else
+	} else {
 		m |= 0666;
+	}
 	return m;
 }
 
-static __int64 secs_between_epochs = 11644473600;
-
-static BOOL
+static int
 attributes_from_dir_w(LPCWSTR pszFile, LPWIN32_FILE_ATTRIBUTE_DATA pfad)
 {
 	HANDLE hFindFile;
 	WIN32_FIND_DATAW FileData;
 	hFindFile = FindFirstFileW(pszFile, &FileData);
-	if (hFindFile == INVALID_HANDLE_VALUE)
-		return FALSE;
+	if (hFindFile == INVALID_HANDLE_VALUE) {
+		return -1;
+	}
 	FindClose(hFindFile);
 	pfad->dwFileAttributes = FileData.dwFileAttributes;
 	pfad->ftCreationTime = FileData.ftCreationTime;
@@ -321,30 +320,33 @@ attributes_from_dir_w(LPCWSTR pszFile, LPWIN32_FILE_ATTRIBUTE_DATA pfad)
 	pfad->ftLastWriteTime = FileData.ftLastWriteTime;
 	pfad->nFileSizeHigh = FileData.nFileSizeHigh;
 	pfad->nFileSizeLow = FileData.nFileSizeLow;
-	return TRUE;
+	return 0;
 }
 
 static void
-FILE_TIME_to_time_t_nsec(FILETIME *in_ptr, time_t *time_out)
+FILE_TIME_to_nsec(FILETIME *in_ptr, uint64_t *time_out)
 {
-	__int64 in;
+	int64_t in;
+	const int64_t secs_between_epochs = 11644473600;
 	memcpy(&in, in_ptr, sizeof(in));
-	*time_out = Py_SAFE_DOWNCASTM((in / 10000000) - secs_between_epochs, __int64, time_t);
+	*time_out = (in / 10000000) - secs_between_epochs;
 }
 
-static int attribute_data_to_stat(WIN32_FILE_ATTRIBUTE_DATA *info, struct meterp_stat *result)
+static int
+attribute_data_to_stat(WIN32_FILE_ATTRIBUTE_DATA *info, struct meterp_stat *result)
 {
 	memset(result, 0, sizeof(*result));
 	result->st_mode = attributes_to_mode(info->dwFileAttributes);
 	result->st_size = (((__int64)info->nFileSizeHigh) << 32) + info->nFileSizeLow;
-	FILE_TIME_to_time_t_nsec(&info->ftCreationTime, &result->st_ctime);
-	FILE_TIME_to_time_t_nsec(&info->ftLastWriteTime, &result->st_mtime);
-	FILE_TIME_to_time_t_nsec(&info->ftLastAccessTime, &result->st_atime);
+	FILE_TIME_to_nsec(&info->ftCreationTime, &result->st_ctime);
+	FILE_TIME_to_nsec(&info->ftLastWriteTime, &result->st_mtime);
+	FILE_TIME_to_nsec(&info->ftLastAccessTime, &result->st_atime);
 
 	return 0;
 }
 
-static int win32_wstatM(const wchar_t* path, struct meterp_stat *result)
+static int
+win32_wstat(const wchar_t* path, struct meterp_stat *result)
 {
 	int code;
 	const wchar_t *dot;
@@ -360,8 +362,9 @@ static int win32_wstatM(const wchar_t* path, struct meterp_stat *result)
 		}
 	}
 	code = attribute_data_to_stat(&info, result);
-	if (code < 0)
+	if (code < 0) {
 		return code;
+	}
 	/* Set IFEXEC if it is an .exe, .bat, ... */
 	dot = wcsrchr(path, '.');
 	if (dot) {
@@ -376,30 +379,16 @@ static int win32_wstatM(const wchar_t* path, struct meterp_stat *result)
 
 int fs_stat(char *filename, struct meterp_stat *buf)
 {
-	struct meterp_stat sbuf;
-
 	wchar_t *filename_w = utf8_to_wchar(filename);
 	if (filename_w == NULL) {
 		return -1;
 	}
 
-	if (win32_wstatM(filename_w, &sbuf) == -1) {
+	if (win32_wstat(filename_w, buf) == -1) {
 		return GetLastError();
 	}
 
 	free(filename_w);
-
-	buf->st_dev   = sbuf.st_dev;
-	buf->st_ino   = sbuf.st_ino;
-	buf->st_mode  = sbuf.st_mode;
-	buf->st_nlink = sbuf.st_nlink;
-	buf->st_uid   = sbuf.st_uid;
-	buf->st_gid   = sbuf.st_gid;
-	buf->st_rdev  = sbuf.st_rdev;
-	buf->st_size  = sbuf.st_size;
-	buf->st_atime = sbuf.st_atime;
-	buf->st_mtime = sbuf.st_mtime;
-	buf->st_ctime = sbuf.st_ctime;
 
 	return ERROR_SUCCESS;
 }
