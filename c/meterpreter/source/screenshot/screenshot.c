@@ -25,10 +25,10 @@ DWORD screenshot_send( char * cpNamedPipe, BYTE * pJpegBuffer, DWORD dwJpegSize 
 		hPipe = CreateFileA( cpNamedPipe, GENERIC_ALL, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL );
 		if( !hPipe )
 			BREAK_ON_ERROR( "[SCREENSHOT] screenshot_send. CreateFileA failed" );
-		
+
 		if( !WriteFile( hPipe, (LPCVOID)&dwJpegSize, sizeof(DWORD), &dwWritten, NULL ) )
 			BREAK_ON_ERROR( "[SCREENSHOT] screenshot_send. WriteFile JPEG length failed" );
-		
+
 		if( !dwJpegSize || !pJpegBuffer )
 			BREAK_WITH_ERROR( "[SCREENSHOT] screenshot_send. No JPEG to transmit.", ERROR_BAD_LENGTH );
 
@@ -62,7 +62,7 @@ DWORD screenshot( int quality, DWORD dwPipeName )
 	HWINSTA hOrigWindowStation = NULL;
 	HDESK hInputDesktop        = NULL;
 	HDESK hOrigDesktop         = NULL;
-	HWND hDesktopWnd           = NULL;	
+	HWND hDesktopWnd           = NULL;
 	HDC hdc                    = NULL;
 	HDC hmemdc                 = NULL;
 	HBITMAP hbmp               = NULL;
@@ -88,14 +88,14 @@ DWORD screenshot( int quality, DWORD dwPipeName )
 
 		if( !GetVersionEx( &os ) )
 			BREAK_ON_ERROR( "[SCREENSHOT] screenshot: GetVersionEx failed" )
-		
+
 		// On NT we cant use SM_CXVIRTUALSCREEN/SM_CYVIRTUALSCREEN.
 		if( os.dwMajorVersion <= 4 )
 		{
 			xmetric = SM_CXSCREEN;
 			ymetric = SM_CYSCREEN;
 		}
-		
+
 		// open the WinSta0 as some services are attached to a different window station.
 		hWindowStation = OpenWindowStationA( "WinSta0", FALSE, WINSTA_ALL_ACCESS );
 		if( !hWindowStation )
@@ -103,14 +103,14 @@ DWORD screenshot( int quality, DWORD dwPipeName )
 			if( RevertToSelf() )
 				hWindowStation = OpenWindowStationA( "WinSta0", FALSE, WINSTA_ALL_ACCESS );
 		}
-		
+
 		// if we cant open the defaut input station we wont be able to take a screenshot
 		if( !hWindowStation )
 			BREAK_WITH_ERROR( "[SCREENSHOT] screenshot: Couldnt get the WinSta0 Window Station", ERROR_INVALID_HANDLE );
-		
+
 		// get the current process's window station so we can restore it later on.
 		hOrigWindowStation = GetProcessWindowStation();
-		
+
 		// set the host process's window station to this sessions default input station we opened
 		if( !SetProcessWindowStation( hWindowStation ) )
 			BREAK_ON_ERROR( "[SCREENSHOT] screenshot: SetProcessWindowStation failed" );
@@ -147,8 +147,8 @@ DWORD screenshot( int quality, DWORD dwPipeName )
 		// prevent breaking functionality on <= NT 4.0
 		if (os.dwMajorVersion >= 4)
 		{
-			sxpos = GetSystemMetrics(xposition);
-			sypos = GetSystemMetrics(yposition);
+			sxpos = GetSystemMetrics(SM_XVIRTUALSCREEN);
+			sypos = GetSystemMetrics(SM_YVIRTUALSCREEN);
 		}
 
 
@@ -156,15 +156,17 @@ DWORD screenshot( int quality, DWORD dwPipeName )
 		hbmp = CreateCompatibleBitmap( hdc, sx, sy );
 		if( !hbmp )
 			BREAK_ON_ERROR( "[SCREENSHOT] screenshot. CreateCompatibleBitmap failed" );
-		
+
 		// this bitmap is backed by the memory DC
 		if( !SelectObject( hmemdc, hbmp ) )
 			BREAK_ON_ERROR( "[SCREENSHOT] screenshot. SelectObject failed" );
 
-		// BitBlt the screenshot of this sessions default input desktop on WinSta0 onto the memory DC we created 
+		// BitBlt the screenshot of this sessions default input desktop on WinSta0 onto the memory DC we created
 		// screenshot all available monitors by default
-		if( !BitBlt( hmemdc, 0, 0, sx, sy, hdc, sxpos, sypos, SRCCOPY ) )
-			BREAK_ON_ERROR( "[SCREENSHOT] screenshot. BitBlt failed" );
+
+		SetProcessDPIAware();
+		if (!StretchBlt(hmemdc, 0, 0, sx, sy, hdc, sxpos, sypos, GetSystemMetrics(SM_CXVIRTUALSCREEN), GetSystemMetrics(SM_CYVIRTUALSCREEN), SRCCOPY))
+			BREAK_ON_ERROR("[SCREENSHOT] screenshot. StretchBlt failed");
 
 		// finally convert the BMP we just made into a JPEG...
 		if( bmp2jpeg( hbmp, hmemdc, quality, &pJpegBuffer, &dwJpegSize ) != 1 )
@@ -172,7 +174,7 @@ DWORD screenshot( int quality, DWORD dwPipeName )
 
 		// we have succeded
 		dwResult = ERROR_SUCCESS;
-		
+
 	} while( 0 );
 
 	// if we have successfully taken a screenshot we send it back via the named pipe
@@ -227,7 +229,7 @@ DWORD screenshot_command_dword( char * cpCommandLine, char * cpCommand )
 	{
 		if( !cpCommandLine || !cpCommand )
 			break;
-		
+
 		cpString = strstr( cpCommandLine, cpCommand );
 		if( !cpString )
 			break;
@@ -254,7 +256,7 @@ int screenshot_command_int( char * cpCommandLine, char * cpCommand )
 	{
 		if( !cpCommandLine || !cpCommand )
 			break;
-		
+
 		cpString = strstr( cpCommandLine, cpCommand );
 		if( !cpString )
 			break;
@@ -284,9 +286,9 @@ VOID screenshot_main( char * cpCommandLine )
 
 		if( strlen( cpCommandLine ) == 0 )
 			break;
-			
+
 		dprintf( "[SCREENSHOT] screenshot_main. lpCmdLine=%s", cpCommandLine );
-		
+
 		if( strstr( cpCommandLine, "/s" ) )
 		{
 			DWORD dwPipeName = 0;
@@ -313,8 +315,8 @@ BOOL WINAPI DllMain( HINSTANCE hInstance, DWORD dwReason, LPVOID lpReserved )
 {
     BOOL bReturnValue = TRUE;
 
-	switch( dwReason ) 
-    { 
+	switch( dwReason )
+    {
 		case DLL_PROCESS_ATTACH:
 			hAppInstance = hInstance;
 			if( lpReserved != NULL )
