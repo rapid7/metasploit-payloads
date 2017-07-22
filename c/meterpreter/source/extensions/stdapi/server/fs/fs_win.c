@@ -345,6 +345,16 @@ attribute_data_to_stat(WIN32_FILE_ATTRIBUTE_DATA *info, struct meterp_stat *resu
 	return 0;
 }
 
+/*
+ * The CRT of Windows has a number of flaws wrt. its stat() implementation:
+ * - time stamps are restricted to second resolution
+ * - file modification times suffer from forth-and-back conversions between
+ *    UTC and local time
+ * Therefore, we implement our own stat, based on the Win32 API directly.
+ *
+ * This is based on the Python 2 implementation from:
+ * https://github.com/python/cpython/commit/14694662d530d0d1823e1d86f2e5b2e4ec600e86#diff-a6f29e907cbb5fffd44d453bcd7b77d5R741
+ */
 static int
 win32_wstat(const wchar_t* path, struct meterp_stat *result)
 {
