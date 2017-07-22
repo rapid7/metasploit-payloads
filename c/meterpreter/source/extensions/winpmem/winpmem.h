@@ -58,8 +58,8 @@ protected:
 	int extract_file_(__int64 resource_id, TCHAR *filename);
 	virtual __int64 write_coredump_header_(struct PmemMemoryInfo *info);
 
-	int pad(SIZE_T length);
-	int copy_memory(SIZE_T start, SIZE_T end);
+	int pad(uint64_t length);
+	int copy_memory(uint64_t start, uint64_t end);
 
 	// The file handle to the pmem device.
 	HANDLE fd_;
@@ -73,7 +73,7 @@ protected:
 	bool driver_is_tempfile_;
 
 	// This is the maximum size of memory calculated.
-	SIZE_T max_physical_memory_;
+	uint64_t max_physical_memory_;
 
 	// Current offset in output file (Total bytes written so far).
 	unsigned __int64 out_offset;

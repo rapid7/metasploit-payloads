@@ -1,3 +1,4 @@
+#define DEBUGTRACE 1
 extern "C"{
 	/*!
 	 * @file WINPMEM.cpp
@@ -100,7 +101,7 @@ HANDLE WinPmem_meterpreter::get_fd() {
 	return fd_;
 }
 
-SIZE_T WinPmem_meterpreter::get_max_physical_memory() {
+uint64_t WinPmem_meterpreter::get_max_physical_memory() {
 	return max_physical_memory_;
 }
 
@@ -216,7 +217,7 @@ DWORD dump_ram(Remote *remote, Packet *packet)
 		goto end;
 	};
 
-	//Initialize max_physical_memory_ when calling print_memory_info !!!!
+	// Initialize max_physical_memory_ when calling print_memory_info !!!!
 	pmem_handle->print_memory_info();
 
 	Channel *newChannel;
@@ -326,8 +327,8 @@ static DWORD winpmem_channel_read(Channel *channel, Packet *request,
 		dprintf("[WINPMEM] Memory end reached.");
 		return ERROR_SUCCESS;
 	}
+
 	if (ctx->pmem_info.Run[ctx->index].start > ctx->offset) {
-		//PADDING
 		uint64_t padding_size = ctx->pmem_info.Run[ctx->index].start - ctx->offset;
 		DWORD padding_size_max = (DWORD)min(padding_size, bufferSize);
 		ZeroMemory(buffer, padding_size_max);
