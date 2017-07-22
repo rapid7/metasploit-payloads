@@ -287,32 +287,118 @@ out:
 	return rc;
 }
 
+static int
+attributes_to_mode(DWORD attr)
+{
+	int m = 0;
+	if (attr & FILE_ATTRIBUTE_DIRECTORY) {
+		m |= _S_IFDIR | 0111; /* IFEXEC for user,group,other */
+	} else {
+		m |= _S_IFREG;
+	}
+	if (attr & FILE_ATTRIBUTE_READONLY) {
+		m |= 0444;
+	} else {
+		m |= 0666;
+	}
+	return m;
+}
+
+static int
+attributes_from_dir_w(LPCWSTR pszFile, LPWIN32_FILE_ATTRIBUTE_DATA pfad)
+{
+	HANDLE hFindFile;
+	WIN32_FIND_DATAW FileData;
+	hFindFile = FindFirstFileW(pszFile, &FileData);
+	if (hFindFile == INVALID_HANDLE_VALUE) {
+		return -1;
+	}
+	FindClose(hFindFile);
+	pfad->dwFileAttributes = FileData.dwFileAttributes;
+	pfad->ftCreationTime = FileData.ftCreationTime;
+	pfad->ftLastAccessTime = FileData.ftLastAccessTime;
+	pfad->ftLastWriteTime = FileData.ftLastWriteTime;
+	pfad->nFileSizeHigh = FileData.nFileSizeHigh;
+	pfad->nFileSizeLow = FileData.nFileSizeLow;
+	return 0;
+}
+
+static void
+FILE_TIME_to_nsec(FILETIME *in_ptr, uint64_t *time_out)
+{
+	int64_t in;
+	const int64_t secs_between_epochs = 11644473600;
+	memcpy(&in, in_ptr, sizeof(in));
+	*time_out = (in / 10000000) - secs_between_epochs;
+}
+
+static int
+attribute_data_to_stat(WIN32_FILE_ATTRIBUTE_DATA *info, struct meterp_stat *result)
+{
+	memset(result, 0, sizeof(*result));
+	result->st_mode = attributes_to_mode(info->dwFileAttributes);
+	result->st_size = (((__int64)info->nFileSizeHigh) << 32) + info->nFileSizeLow;
+	FILE_TIME_to_nsec(&info->ftCreationTime, &result->st_ctime);
+	FILE_TIME_to_nsec(&info->ftLastWriteTime, &result->st_mtime);
+	FILE_TIME_to_nsec(&info->ftLastAccessTime, &result->st_atime);
+
+	return 0;
+}
+
+/*
+ * The CRT of Windows has a number of flaws wrt. its stat() implementation:
+ * - time stamps are restricted to second resolution
+ * - file modification times suffer from forth-and-back conversions between
+ *    UTC and local time
+ * Therefore, we implement our own stat, based on the Win32 API directly.
+ *
+ * This is based on the Python 2 implementation from:
+ * https://github.com/python/cpython/commit/14694662d530d0d1823e1d86f2e5b2e4ec600e86#diff-a6f29e907cbb5fffd44d453bcd7b77d5R741
+ */
+static int
+win32_wstat(const wchar_t* path, struct meterp_stat *result)
+{
+	int code;
+	const wchar_t *dot;
+	WIN32_FILE_ATTRIBUTE_DATA info;
+	if (!GetFileAttributesExW(path, GetFileExInfoStandard, &info)) {
+		if (GetLastError() != ERROR_SHARING_VIOLATION) {
+			return -1;
+		}
+		else {
+			if (!attributes_from_dir_w(path, &info)) {
+				return -1;
+			}
+		}
+	}
+	code = attribute_data_to_stat(&info, result);
+	if (code < 0) {
+		return code;
+	}
+	/* Set IFEXEC if it is an .exe, .bat, ... */
+	dot = wcsrchr(path, '.');
+	if (dot) {
+		if (_wcsicmp(dot, L".bat") == 0 ||
+			_wcsicmp(dot, L".cmd") == 0 ||
+			_wcsicmp(dot, L".exe") == 0 ||
+			_wcsicmp(dot, L".com") == 0)
+			result->st_mode |= 0111;
+	}
+	return code;
+}
+
 int fs_stat(char *filename, struct meterp_stat *buf)
 {
-	struct _stat64i32 sbuf;
-
 	wchar_t *filename_w = utf8_to_wchar(filename);
 	if (filename_w == NULL) {
 		return -1;
 	}
 
-	if (_wstat(filename_w, &sbuf) == -1) {
+	if (win32_wstat(filename_w, buf) == -1) {
 		return GetLastError();
 	}
 
 	free(filename_w);
-
-	buf->st_dev   = sbuf.st_dev;
-	buf->st_ino   = sbuf.st_ino;
-	buf->st_mode  = sbuf.st_mode;
-	buf->st_nlink = sbuf.st_nlink;
-	buf->st_uid   = sbuf.st_uid;
-	buf->st_gid   = sbuf.st_gid;
-	buf->st_rdev  = sbuf.st_rdev;
-	buf->st_size  = sbuf.st_size;
-	buf->st_atime = sbuf.st_atime;
-	buf->st_mtime = sbuf.st_mtime;
-	buf->st_ctime = sbuf.st_ctime;
 
 	return ERROR_SUCCESS;
 }
