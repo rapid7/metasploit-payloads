@@ -25,9 +25,9 @@
 #include <stdio.h>
 #include <time.h>
 
-int WinPmem::pad(SIZE_T length)
+int WinPmem::pad(uint64_t length)
 {
-	SIZE_T start = 0;
+	uint64_t start = 0;
 
 	ZeroMemory(buffer_, buffer_size_);
 
@@ -38,7 +38,7 @@ int WinPmem::pad(SIZE_T length)
 		if (!WriteFile(out_fd_, buffer_,
 			to_write, &bytes_written, NULL) ||
 			bytes_written != to_write) {
-			dprintf("Failed to write padding");
+			dprintf("[WINPMEM] Failed to write padding");
 			goto error;
 		};
 
@@ -53,7 +53,7 @@ error:
 	return 0;
 };
 
-int WinPmem::copy_memory(SIZE_T start, SIZE_T end)
+int WinPmem::copy_memory(uint64_t start, uint64_t end)
 {
 	LARGE_INTEGER large_start;
 
@@ -75,20 +75,20 @@ int WinPmem::copy_memory(SIZE_T start, SIZE_T end)
 
 		if (0xFFFFFFFF == SetFilePointerEx(
 			fd_, large_start, NULL, FILE_BEGIN)) {
-			dprintf("Failed to seek in the pmem device.");
+			dprintf("[WINPMEM] Failed to seek in the pmem device.");
 			goto error;
 		};
 
 		if (!ReadFile(fd_, buffer_, to_write, &bytes_read, NULL) ||
 			bytes_read != to_write) {
-			dprintf("Failed to Read memory.");
+			dprintf("[WINPMEM] Failed to Read memory.");
 			goto error;
 		};
 
 		if (!WriteFile(out_fd_, buffer_, bytes_read,
 			&bytes_written, NULL) ||
 			bytes_written != bytes_read) {
-			dprintf("Failed to write image file");
+			dprintf("[WINPMEM] Failed to write image file");
 			goto error;
 		};
 
@@ -112,11 +112,11 @@ int WinPmem::set_write_enabled(void)
 
 	if (!DeviceIoControl(fd_, PMEM_WRITE_ENABLE, &mode, 4, NULL, 0,
 		&size, NULL)) {
-		dprintf("Failed to set write mode. Maybe these drivers do not support this mode?");
+		dprintf("[WINPMEM] Failed to set write mode. Maybe these drivers do not support this mode?");
 		return -1;
 	};
 
-	dprintf("Write mode enabled! Hope you know what you are doing.");
+	dprintf("[WINPMEM] Write mode enabled! Hope you know what you are doing.");
 	return 1;
 };
 
@@ -125,23 +125,23 @@ void WinPmem::print_mode_(unsigned __int32 mode)
 {
 	switch (mode) {
 	case PMEM_MODE_IOSPACE:
-		dprintf("MMMapIoSpace");
+		dprintf("[WINPMEM] MMMapIoSpace");
 		break;
 
 	case PMEM_MODE_PHYSICAL:
-		dprintf("\\\\.\\PhysicalMemory");
+		dprintf("[WINPMEM] \\\\.\\PhysicalMemory");
 		break;
 
 	case PMEM_MODE_PTE:
-		dprintf("PTE Remapping");
+		dprintf("[WINPMEM] PTE Remapping");
 		break;
 
 	case PMEM_MODE_PTE_PCI:
-		dprintf("PTE Remapping with PCI introspection");
+		dprintf("[WINPMEM] PTE Remapping with PCI introspection");
 		break;
 
 	default:
-		dprintf("Unknown");
+		dprintf("[WINPMEM] Unknown");
 	};
 };
 
@@ -155,23 +155,25 @@ void WinPmem::print_memory_info()
 	// Get the memory ranges.
 	if (!DeviceIoControl(fd_, PMEM_INFO_IOCTRL, NULL, 0, (char *)&info,
 		sizeof(info), &size, NULL)) {
-		dprintf("Failed to get memory geometry,");
+		dprintf("[WINPMEM] Failed to get memory geometry,");
 		goto error;
 	};
 
 
-	dprintf("CR3: 0x%010llX\n %d memory ranges:",
+	dprintf("[WINPMEM] CR3: 0x%010llX\n %d memory ranges:",
 			info.CR3.QuadPart, info.NumberOfRuns);
 
+	max_physical_memory_ = 0;
+
 	for (int64_t i = 0; i < info.NumberOfRuns.QuadPart; i++) {
-		dprintf("Start 0x%08llX - Length 0x%08llX",
+		dprintf("[WINPMEM] Start 0x%08llX - Length 0x%08llX",
 				info.Run[i].start, info.Run[i].length);
-		max_physical_memory_ = (SIZE_T)(info.Run[i].start + info.Run[i].length);
+		max_physical_memory_ = info.Run[i].start + info.Run[i].length;
 	};
 
 	// When using the pci introspection we dont know the maximum physical memory,
 	// we therefore make a guess based on the total ram in the system.
-	dprintf("Acquitision mode ");
+	dprintf("[WINPMEM] Acquisition mode ");
 	print_mode_(mode_);
 
 	if (mode_ == PMEM_MODE_PTE_PCI) {
@@ -182,12 +184,12 @@ void WinPmem::print_memory_info()
 
 		if (GlobalMemoryStatusEx(&statusx)) {
 			max_physical_memory_ = (size_t)(statusx.ullTotalPhys * 3 / 2);
-			dprintf("Max physical memory guessed at 0x%08llX",
+			dprintf("[WINPMEM] Max physical memory guessed at 0x%08llX",
 				max_physical_memory_);
 
 		}
 		else {
-			dprintf("Unable to guess max physical memory. Just Ctrl-C when done.");
+			dprintf("[WINPMEM] Unable to guess max physical memory. Just Ctrl-C when done.");
 		};
 	};
 
@@ -206,7 +208,7 @@ int WinPmem::set_acquisition_mode(unsigned __int32 mode)
 	// Set the acquisition mode.
 	if (!DeviceIoControl(fd_, PMEM_CTRL_IOCTRL, &mode, 4, NULL, 0,
 		&size, NULL)) {
-		dprintf("Failed to set acquisition mode %lu ", mode);
+		dprintf("[WINPMEM] Failed to set acquisition mode %lu ", mode);
 		print_mode_(mode);
 		return -1;
 	};
@@ -236,7 +238,7 @@ int WinPmem::create_output_file(TCHAR *output_filename)
 		NULL);
 
 	if (out_fd_ == INVALID_HANDLE_VALUE) {
-		dprintf("Unable to create output file.");
+		dprintf("[WINPMEM] Unable to create output file.");
 		status = -1;
 		goto exit;
 	};
@@ -253,7 +255,7 @@ int WinPmem::write_coredump()
 	int status = -1;
 
 	if (out_fd_ == INVALID_HANDLE_VALUE) {
-		dprintf("Must open an output file first.");
+		dprintf("[WINPMEM] Must open an output file first.");
 		goto exit;
 	};
 
@@ -262,12 +264,12 @@ int WinPmem::write_coredump()
 	// Get the memory ranges.
 	if (!DeviceIoControl(fd_, PMEM_INFO_IOCTRL, NULL, 0, (char *)&info,
 		sizeof(info), &size, NULL)) {
-		dprintf("Failed to get memory geometry,");
+		dprintf("[WINPMEM] Failed to get memory geometry,");
 		status = -1;
 		goto exit;
 	};
 
-	dprintf("Will write an elf coredump.");
+	dprintf("[WINPMEM] Will write an elf coredump.");
 	print_memory_info();
 
 	if (!write_coredump_header_(&info)) {
@@ -282,7 +284,7 @@ int WinPmem::write_coredump()
 	last_header_offset_ = out_offset;
 
 	if (!WriteFile(out_fd_, metadata_, metadata_len_, &metadata_len_, NULL)) {
-		dprintf("Can not write metadata.");
+		dprintf("[WINPMEM] Can not write metadata.");
 	}
 
 	out_offset += metadata_len_;
@@ -316,7 +318,7 @@ void WinPmem::CreateChildProcess(TCHAR *command, HANDLE stdout_wr)
 	siStartInfo.hStdError = stdout_wr;
 	siStartInfo.dwFlags |= STARTF_USESTDHANDLES;
 
-	dprintf("Launching %s", command);
+	dprintf("[WINPMEM] Launching %s", command);
 
 	// Create the child process.
 	bSuccess = CreateProcess(NULL,
@@ -332,7 +334,7 @@ void WinPmem::CreateChildProcess(TCHAR *command, HANDLE stdout_wr)
 
 	// If an error occurs, exit the application.
 	if (!bSuccess) {
-		dprintf(L"Unable to launch process.");
+		dprintf("[WINPMEM] Unable to launch process.");
 		return;
 	}
 
@@ -353,14 +355,14 @@ void WinPmem::write_page_file()
 	TCHAR filename[MAX_PATH + 1];
 
 	if (!GetTempPath(MAX_PATH, path)) {
-		dprintf("Unable to determine temporary path.");
+		dprintf("[WINPMEM] Unable to determine temporary path.");
 		goto error;
 	}
 
 	// filename is now the random path.
 	GetTempFileName(path, L"fls", 0, filename);
 
-	dprintf("Extracting fcat to %s", filename);
+	dprintf("[WINPMEM] Extracting fcat to %s", filename);
 	if (extract_file_(WINPMEM_FCAT_EXECUTABLE, filename) < 0) {
 		goto error;
 	};
@@ -375,7 +377,7 @@ void WinPmem::write_page_file()
 
 	// Create a pipe for the child process's STDOUT.
 	if (!CreatePipe(&stdout_rd, &stdout_wr, &saAttr, 0)) {
-		dprintf(L"StdoutRd CreatePipe");
+		dprintf("[WINPMEM] StdoutRd CreatePipe");
 		goto error;
 	};
 
@@ -386,7 +388,7 @@ void WinPmem::write_page_file()
 			filename, &pagefile_path_[3], pagefile_path_);
 
 	CreateChildProcess(command_line, stdout_wr);
-	dprintf("Preparing to read pagefile.");
+	dprintf("[WINPMEM] Preparing to read pagefile.");
 	while (1) {
 		DWORD bytes_read = buffer_size_;
 		DWORD bytes_written = 0;
@@ -397,7 +399,7 @@ void WinPmem::write_page_file()
 
 		if (!WriteFile(out_fd_, buffer_, bytes_read, &bytes_written, NULL) ||
 			bytes_written != bytes_read) {
-			dprintf(L"Failed to write image file");
+			dprintf("[WINPMEM] Failed to write image file");
 			goto error;
 		};
 
@@ -425,7 +427,7 @@ error:
 
 		if (!WriteFile(out_fd_, metadata, metadata_len, &bytes_written, NULL) ||
 			bytes_written != metadata_len) {
-			dprintf(L"Failed to write image file");
+			dprintf("[WINPMEM] Failed to write image file");
 		};
 
 		out_offset += bytes_written;
@@ -443,7 +445,7 @@ int WinPmem::write_raw_image() {
 	int status = -1;
 
 	if (out_fd_ == INVALID_HANDLE_VALUE) {
-		dprintf("Must open an output file first.");
+		dprintf("[WINPMEM] Must open an output file first.");
 		goto exit;
 	};
 
@@ -452,18 +454,18 @@ int WinPmem::write_raw_image() {
 	// Get the memory ranges.
 	if (!DeviceIoControl(fd_, PMEM_INFO_IOCTRL, NULL, 0, (char *)&info,
 		sizeof(info), &size, NULL)) {
-		dprintf("Failed to get memory geometry,");
+		dprintf("[WINPMEM] Failed to get memory geometry,");
 		status = -1;
 		goto exit;
 	};
 
-	dprintf("Will generate a RAW image");
+	dprintf("[WINPMEM] Will generate a RAW image");
 	print_memory_info();
 
 	int64_t offset = 0;
 	for (int64_t i = 0; i < info.NumberOfRuns.QuadPart; i++) {
 		if (info.Run[i].start > offset) {
-			dprintf("Padding from 0x%08llX to 0x%08llX", offset, info.Run[i].start);
+			dprintf("[WINPMEM] Padding from 0x%08llX to 0x%08llX", offset, info.Run[i].start);
 			if (!pad((size_t)(info.Run[i].start - offset))) {
 				goto exit;
 			}
@@ -519,19 +521,19 @@ int WinPmem::extract_file_(__int64 resource_id, TCHAR *filename)
 	// Locate the driver resource in the .EXE file.
 	HRSRC hRes = FindResource(NULL, MAKEINTRESOURCE(resource_id), L"FILE");
 	if (hRes == NULL) {
-		dprintf("Could not locate driver resource.");
+		dprintf("[WINPMEM] Could not locate driver resource.");
 		goto error;
 	}
 
 	HGLOBAL hResLoad = LoadResource(NULL, hRes);
 	if (hResLoad == NULL) {
-		dprintf("Could not load driver resource.");
+		dprintf("[WINPMEM] Could not load driver resource.");
 		goto error;
 	}
 
 	VOID *lpResLock = LockResource(hResLoad);
 	if (lpResLock == NULL) {
-		dprintf("Could not lock driver resource.");
+		dprintf("[WINPMEM] Could not lock driver resource.");
 		goto error;
 	}
 
@@ -542,12 +544,12 @@ int WinPmem::extract_file_(__int64 resource_id, TCHAR *filename)
 		CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 
 	if (out_fd == INVALID_HANDLE_VALUE) {
-		dprintf("Can not create temporary file.");
+		dprintf("[WINPMEM] Can not create temporary file.");
 		goto error_resource;
 	};
 
 	if (!WriteFile(out_fd, lpResLock, size, &size, NULL)) {
-		dprintf("Can not write to temporary file.");
+		dprintf("[WINPMEM] Can not write to temporary file.");
 		goto error_file;
 	}
 	CloseHandle(out_fd);
@@ -614,7 +616,7 @@ int WinPmem::install_driver() {
 
 	scm = OpenSCManager(NULL, NULL, SC_MANAGER_CREATE_SERVICE);
 	if (!scm) {
-		dprintf("Can not open SCM. Are you administrator?\n");
+		dprintf("[WINPMEM] Can not open SCM. Are you administrator?\n");
 		goto error;
 	}
 
@@ -641,12 +643,12 @@ int WinPmem::install_driver() {
 	};
 	if (!StartService(service, 0, NULL)) {
 		if (GetLastError() != ERROR_SERVICE_ALREADY_RUNNING) {
-			dprintf("Error: StartService(), Cannot start the driver.\n");
+			dprintf("[WINPMEM] Error: StartService(), Cannot start the driver.\n");
 			goto service_error;
 		}
 	}
 
-	dprintf("Loaded Driver %s.\n", driver_filename_);
+	dprintf("[WINPMEM] Loaded Driver %s.\n", driver_filename_);
 
 	fd_ = CreateFile(TEXT("\\\\.\\") TEXT(PMEM_DEVICE_NAME),
 		// Write is needed for IOCTL.
@@ -658,7 +660,7 @@ int WinPmem::install_driver() {
 		NULL);
 
 	if (fd_ == INVALID_HANDLE_VALUE) {
-		dprintf("Can not open raw device.");
+		dprintf("[WINPMEM] Can not open raw device.");
 		status = -1;
 	};
 
@@ -671,7 +673,7 @@ service_error:
 error:
 	// Only remove the driver file if it was a temporary file.
 	if (driver_is_tempfile_) {
-		dprintf("Deleting %S", driver_filename_);
+		dprintf("[WINPMEM] Deleting %S", driver_filename_);
 		DeleteFile(driver_filename_);
 	};
 
@@ -695,7 +697,7 @@ int WinPmem::uninstall_driver()
 
 	DeleteService(service);
 	CloseServiceHandle(service);
-	dprintf("Driver Unloaded.");
+	dprintf("[WINPMEM] Driver Unloaded.");
 
 	return 1;
 
@@ -814,7 +816,7 @@ __int64 WinPmem::write_coredump_header_(struct PmemMemoryInfo *info)
 
 	header_size = sizeof(header);
 	if (!WriteFile(out_fd_, &header, header_size, &header_size, NULL)) {
-		dprintf("Failed to write header");
+		dprintf("[WINPMEM] Failed to write header");
 		goto error;
 	};
 
@@ -838,7 +840,7 @@ __int64 WinPmem::write_coredump_header_(struct PmemMemoryInfo *info)
 
 		header_size = sizeof(pheader);
 		if (!WriteFile(out_fd_, &pheader, header_size, &header_size, NULL)) {
-			dprintf("Failed to write header");
+			dprintf("[WINPMEM] Failed to write header");
 			goto error;
 		};
 
@@ -856,7 +858,7 @@ __int64 WinPmem::write_coredump_header_(struct PmemMemoryInfo *info)
 
 	header_size = sizeof(pheader);
 	if (!WriteFile(out_fd_, &pheader, header_size, &header_size, NULL)) {
-		dprintf("Failed to write header");
+		dprintf("[WINPMEM] Failed to write header");
 		goto error;
 	};
 
@@ -885,7 +887,7 @@ int WinPmem64::extract_driver()
 
 		// Gets the temp path env string (no guarantee it's a valid path).
 		if (!GetTempPath(MAX_PATH, path)) {
-			dprintf("Unable to determine temporary path.");
+			dprintf("[WINPMEM] Unable to determine temporary path.");
 			goto error;
 		}
 
@@ -895,7 +897,7 @@ int WinPmem64::extract_driver()
 		driver_is_tempfile_ = true;
 	};
 
-	dprintf("Extracting driver to %S", driver_filename_);
+	dprintf("[WINPMEM] Extracting driver to %S", driver_filename_);
 
 	return extract_file_(WINPMEM_64BIT_DRIVER, driver_filename_);
 
@@ -914,7 +916,7 @@ int WinPmem32::extract_driver()
 
 		// Gets the temp path env string (no guarantee it's a valid path).
 		if (!GetTempPath(MAX_PATH, path)) {
-			dprintf("Unable to determine temporary path.");
+			dprintf("[WINPMEM] Unable to determine temporary path.");
 			goto error;
 		}
 
@@ -924,7 +926,7 @@ int WinPmem32::extract_driver()
 		driver_is_tempfile_ = true;
 	};
 
-	dprintf("Extracting driver to %S", driver_filename_);
+	dprintf("[WINPMEM] Extracting driver to %S", driver_filename_);
 
 	return extract_file_(WINPMEM_32BIT_DRIVER, driver_filename_);
 
