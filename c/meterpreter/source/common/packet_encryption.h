@@ -3,6 +3,10 @@
 
 #include <Windows.h>
 
+#define AES256_BLOCKSIZE 16
+#define ENC_FLAG_NONE   0x0
+#define ENC_FLAG_AES256 0x1
+
 typedef struct _Aes256Key
 {
 	BLOBHEADER header;

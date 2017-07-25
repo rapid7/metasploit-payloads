@@ -1264,20 +1264,9 @@ DWORD packet_transmit_response(DWORD result, Remote* remote, Packet* response)
 	return ERROR_NOT_ENOUGH_MEMORY;
 }
 
-DWORD packet_transmit(Remote* remote, Packet* packet, PacketRequestCompletion* completion)
+DWORD packet_add_request_id(Packet* packet)
 {
-	if (packet->partner != NULL && packet->partner->local)
-	{
-		dprintf("[TRANSMIT] Ignoring local packet");
-		return ERROR_SUCCESS;
-	}
-
-	Tlv requestId;
-	DWORD res;
-	BYTE* encryptedPacket = NULL;
-	DWORD encryptedPacketLength = 0;
-
-	dprintf("[TRANSMIT] Sending packet to the server");
+	Tlv requestId = { 0 };
 
 	// If the packet does not already have a request identifier, create one for it
 	if (packet_get_tlv_string(packet, TLV_TYPE_REQUEST_ID, &requestId) != ERROR_SUCCESS)
@@ -1294,6 +1283,24 @@ DWORD packet_transmit(Remote* remote, Packet* packet, PacketRequestCompletion* c
 
 		packet_add_tlv_string(packet, TLV_TYPE_REQUEST_ID, rid);
 	}
+	return ERROR_SUCCESS;
+}
+
+DWORD packet_transmit(Remote* remote, Packet* packet, PacketRequestCompletion* completion)
+{
+	if (packet->partner != NULL && packet->partner->local)
+	{
+		dprintf("[TRANSMIT] Ignoring local packet");
+		return ERROR_SUCCESS;
+	}
+
+	Tlv requestId;
+	DWORD res;
+	BYTE* encryptedPacket = NULL;
+	DWORD encryptedPacketLength = 0;
+
+	dprintf("[TRANSMIT] Sending packet to the server");
+	packet_add_request_id(packet);
 
 	// Always add the UUID to the packet as well, so that MSF knows who and what we are
   	packet_add_tlv_raw(packet, TLV_TYPE_UUID, remote->orig_config->session.uuid, UUID_SIZE);

@@ -287,6 +287,7 @@ LINKAGE DWORD packet_get_result(Packet *packet);
 LINKAGE DWORD packet_transmit_response(DWORD result, Remote* remote, Packet* response);
 LINKAGE DWORD packet_transmit(Remote* remote, Packet* packet, PacketRequestCompletion* completion);
 LINKAGE DWORD packet_transmit_empty_response(Remote *remote, Packet *packet, DWORD res);
+LINKAGE DWORD packet_add_request_id(Packet* packet);
 
 /*
  * Packet completion notification
