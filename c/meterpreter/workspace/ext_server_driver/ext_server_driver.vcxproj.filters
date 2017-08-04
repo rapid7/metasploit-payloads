@@ -1,0 +1,74 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="minirtl">
+      <UniqueIdentifier>{d3a51124-4e85-4f80-93d4-1b6820b52a18}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\source\extensions\driver\minirtl\_strcat.c">
+      <Filter>minirtl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\driver\minirtl\_strcmpi.c">
+      <Filter>minirtl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\driver\minirtl\_strcpy.c">
+      <Filter>minirtl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\driver\minirtl\_strend.c">
+      <Filter>minirtl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\driver\minirtl\_strlen.c">
+      <Filter>minirtl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\driver\minirtl\_strncmpi.c">
+      <Filter>minirtl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\driver\minirtl\cmdline.c">
+      <Filter>minirtl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\driver\minirtl\u64tohex.c">
+      <Filter>minirtl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\driver\minirtl\u64tostr.c">
+      <Filter>minirtl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\driver\minirtl\ultohex.c">
+      <Filter>minirtl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\driver\minirtl\ultostr.c">
+      <Filter>minirtl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\driver\instdrv.c" />
+    <ClCompile Include="..\..\source\extensions\driver\sup.c" />
+    <ClCompile Include="..\..\source\extensions\driver\drivertools.c" />
+    <ClCompile Include="..\..\source\extensions\driver\tdlreport.c" />
+    <ClCompile Include="..\..\source\extensions\driver\drvmain.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\source\extensions\driver\minirtl\cmdline.h">
+      <Filter>minirtl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\driver\minirtl\minirtl.h">
+      <Filter>minirtl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\driver\minirtl\rtltypes.h">
+      <Filter>minirtl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\driver\global.h" />
+    <ClInclude Include="..\..\source\extensions\driver\instdrv.h" />
+    <ClInclude Include="..\..\source\extensions\driver\ntos.h" />
+    <ClInclude Include="..\..\source\extensions\driver\resource.h" />
+    <ClInclude Include="..\..\source\extensions\driver\shellcode.h" />
+    <ClInclude Include="..\..\source\extensions\driver\vbox.h" />
+    <ClInclude Include="..\..\source\extensions\driver\sup.h" />
+    <ClInclude Include="..\..\source\extensions\driver\drivertools.h" />
+    <ClInclude Include="..\..\source\extensions\driver\tdlreport.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\source\extensions\driver\drv\vboxdrv_exploitable.sys" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="..\..\source\extensions\driver\resource.rc" />
+  </ItemGroup>
+</Project>
