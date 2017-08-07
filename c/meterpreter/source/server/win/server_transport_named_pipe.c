@@ -5,6 +5,8 @@
 #include "../../common/common.h"
 #include "../../common/packet_encryption.h"
 
+#define STUPID_PIPE_BUFFER_LIMIT 0x10000
+
 typedef struct _PIPEMIGRATECONTEXT
 {
 	COMMONMIGRATECONTEXT common;
@@ -64,22 +66,17 @@ DWORD read_raw_bytes_to_buffer(NamedPipeTransportContext* ctx, LPBYTE buffer, DW
 	*bytesRead = 0;
 
 	dprintf("[PIPE] Beginning read loop for a total of %u", bytesToRead);
-	while (bytesToRead > 0)
+	while (*bytesRead < bytesToRead)
 	{
-		dprintf("[PIPE] Trying to read %u (0x%x) bytes", bytesToRead, bytesToRead);
-		// figure out the total bytes available for reading on the pipe
-		PeekNamedPipe(ctx->pipe, buffer + *bytesRead, bytesToRead, &bytesReadThisIteration, NULL, NULL);
-		temp = bytesReadThisIteration;
-
+		dprintf("[PIPE] Trying to read %u (0x%x) bytes", min(STUPID_PIPE_BUFFER_LIMIT, bytesToRead - *bytesRead), min(STUPID_PIPE_BUFFER_LIMIT, bytesToRead - *bytesRead));
 		// read the bytes fromi there.
-		if (!ReadFile(ctx->pipe, buffer + *bytesRead, bytesReadThisIteration, &temp, NULL))
+		if (!ReadFile(ctx->pipe, buffer + *bytesRead, min(STUPID_PIPE_BUFFER_LIMIT, bytesToRead - *bytesRead), &bytesReadThisIteration, NULL))
 		{
 			break;
 		}
 
 		dprintf("[PIPE] ReadFile claims to have read %u (0x%x) bytes", bytesReadThisIteration, bytesReadThisIteration);
 
-		bytesToRead -= bytesReadThisIteration;
 		*bytesRead += bytesReadThisIteration;
 	}
 
@@ -193,9 +190,9 @@ static DWORD packet_receive_named_pipe(Remote *remote, Packet **packet)
 			}
 			
 			payloadLength = ntohl(header.length) - sizeof(TlvHeader);
-			dprintf("[PIPE] Payload length is %d", payloadLength);
+			dprintf("[PIPE] Payload length is %u 0x%08x", payloadLength, payloadLength);
 			DWORD packetSize = sizeof(PacketHeader) + payloadLength;
-			dprintf("[PIPE] total buffer size for the packet is %d", packetSize);
+			dprintf("[PIPE] total buffer size for the packet is %u 0x%08x", packetSize, packetSize);
 			payloadBytesLeft = payloadLength;
 
 			// Allocate the payload

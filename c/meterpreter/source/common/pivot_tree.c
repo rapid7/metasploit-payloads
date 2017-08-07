@@ -14,8 +14,8 @@ typedef struct _PivotNode
 void pivot_tree_to_string(char** buffer, PivotNode* node, char* prefix)
 {
 	// each line is the prefix size, plus the guid size plus a null and a \n and the two pointers
-	int curLen = *buffer ? strlen(*buffer) : 0;
-	int newLen = strlen(prefix) + 32 + 2 + (sizeof(LPVOID) * 2 + 8) * 2;
+	int curLen = *buffer ? (int)strlen(*buffer) : 0;
+	int newLen = (int)strlen(prefix) + 32 + 2 + (sizeof(LPVOID) * 2 + 8) * 2;
 	*buffer = (char*)realloc(*buffer, curLen + 1 + newLen);
 	if (node != NULL)
 	{
