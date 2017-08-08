@@ -74,6 +74,10 @@ public class Payload {
         csr += 4;
         byte[] uuid = ConfigParser.readBytes(configBytes, csr, ConfigParser.UUID_LEN);
         csr += ConfigParser.UUID_LEN;
+
+        byte[] sessionGUID = ConfigParser.readBytes(configBytes, csr, ConfigParser.GUID_LEN);
+        csr += ConfigParser.GUID_LEN;
+
         String url = ConfigParser.readString(configBytes, csr, ConfigParser.URL_LEN);
         csr += ConfigParser.URL_LEN;
         commTimeout = ConfigParser.unpack32(configBytes, csr);

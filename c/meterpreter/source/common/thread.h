@@ -43,19 +43,22 @@ typedef struct _EVENT
 	HANDLE handle;
 } EVENT, * LPEVENT;
 
-typedef struct _THREAD
+#define THREADCALL __stdcall
+
+typedef DWORD (THREADCALL * THREADFUNK)(struct _THREAD * thread);
+
+struct _THREAD
 {
 	DWORD id;
 	HANDLE handle;
 	EVENT * sigterm;
+	THREADFUNK funk;
 	LPVOID parameter1;
 	LPVOID parameter2;
 	LPVOID parameter3;
-} THREAD, * LPTHREAD;
+};
 
-#define THREADCALL __stdcall
-
-typedef DWORD (THREADCALL * THREADFUNK)( THREAD * thread );
+typedef struct _THREAD THREAD, * LPTHREAD;
 
 /*****************************************************************************************/
 
@@ -82,6 +85,8 @@ BOOL event_poll( EVENT * event, DWORD timeout );
 THREAD * thread_open( VOID );
 
 THREAD * thread_create( THREADFUNK funk, LPVOID param1, LPVOID param2, LPVOID param3 );
+
+void disable_thread_error_reporting(void);
 
 BOOL thread_run( THREAD * thread );
 
