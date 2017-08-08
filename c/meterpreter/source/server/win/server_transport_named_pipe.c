@@ -362,8 +362,14 @@ static void transport_reset_named_pipe(Transport* transport, BOOL shuttingDown)
 		if (ctx->pipe && ctx->pipe != INVALID_HANDLE_VALUE)
 		{
 			dprintf("[NP] Closing the handle");
-			CloseHandle(ctx->pipe);
-			dprintf("[NP] Handle closed");
+			if (!CloseHandle(ctx->pipe))
+			{
+				dprintf("[NP] Handle close failed: %u", GetLastError());
+			}
+			else
+			{
+				dprintf("[NP] Handle closed");
+			}
 		}
 
 		ctx->pipe = NULL;

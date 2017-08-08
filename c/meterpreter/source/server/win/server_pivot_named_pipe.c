@@ -37,6 +37,7 @@ typedef struct _NamedPipeContext
 static DWORD server_notify(Remote* remote, LPVOID entryContext, LPVOID threadContext);
 static DWORD server_destroy(HANDLE waitable, LPVOID entryContext, LPVOID threadContext);
 static DWORD named_pipe_write_raw(LPVOID state, LPBYTE raw, DWORD rawLength);
+static VOID free_server_context(NamedPipeContext* ctx);
 
 typedef BOOL (WINAPI *PAddMandatoryAce)(PACL pAcl, DWORD dwAceRevision, DWORD dwAceFlags, DWORD dwMandatoryPolicy, PSID pLabelSid);
 static BOOL WINAPI AddMandatoryAce(PACL pAcl, DWORD dwAceRevision, DWORD dwAceFlags, DWORD dwMandatoryPolicy, PSID pLabelSid)
@@ -176,6 +177,14 @@ static DWORD read_pipe_to_packet(NamedPipeContext* ctx, LPBYTE source, DWORD sou
 					{
 						dprintf("[PIPE] Session guid returned, looks like the session is a reconnect");
 						memcpy(&ctx->pivot_session_guid, sessionGuid, sizeof(ctx->pivot_session_guid));
+
+						PivotContext* pc = pivot_tree_remove(ctx->remote->pivot_sessions, (LPBYTE)&ctx->pivot_session_guid);
+						if (pc != NULL)
+						{
+							dprintf("[PIPE] We seem to have acquired a new instance of a pivot we didnt know was dead. Killing!");
+							free_server_context((NamedPipeContext*)pc->state);
+							free(pc);
+						}
 					}
 					else
 					{
@@ -192,13 +201,6 @@ static DWORD read_pipe_to_packet(NamedPipeContext* ctx, LPBYTE source, DWORD sou
 
 					ctx->session_established = TRUE;
 
-					// with the session now established, we need to inform metasploit of the new connection
-					dprintf("[PIPE] Informing MSF of the new named pipe pivot");
-					Packet* notification = packet_create(PACKET_TLV_TYPE_REQUEST, "core_pivot_session_new");
-					packet_add_tlv_raw(notification, TLV_TYPE_SESSION_GUID, (LPVOID)&ctx->pivot_session_guid, sizeof(ctx->pivot_session_guid));
-					packet_add_tlv_raw(notification, TLV_TYPE_PIVOT_ID, (LPVOID)&ctx->pivot_id, sizeof(ctx->pivot_id));
-					packet_transmit(ctx->remote, notification, NULL);
-
 					PivotContext* pivotContext = (PivotContext*)calloc(1, sizeof(PivotContext));
 					pivotContext->state = ctx;
 					pivotContext->packet_write = named_pipe_write_raw;
@@ -207,6 +209,14 @@ static DWORD read_pipe_to_packet(NamedPipeContext* ctx, LPBYTE source, DWORD sou
 					dprintf("[PIVOTTREE] Pivot sessions (after new one added)");
 					dbgprint_pivot_tree(ctx->remote->pivot_sessions);
 #endif
+
+					// with the session now established, we need to inform metasploit of the new connection
+					dprintf("[PIPE] Informing MSF of the new named pipe pivot");
+					Packet* notification = packet_create(PACKET_TLV_TYPE_REQUEST, "core_pivot_session_new");
+					packet_add_tlv_raw(notification, TLV_TYPE_SESSION_GUID, (LPVOID)&ctx->pivot_session_guid, sizeof(ctx->pivot_session_guid));
+					packet_add_tlv_raw(notification, TLV_TYPE_PIVOT_ID, (LPVOID)&ctx->pivot_id, sizeof(ctx->pivot_id));
+					packet_transmit(ctx->remote, notification, NULL);
+
 					relayPacket = FALSE;
 				}
 
