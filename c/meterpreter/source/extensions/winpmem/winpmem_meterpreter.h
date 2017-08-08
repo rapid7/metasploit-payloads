@@ -36,7 +36,7 @@ class WinPmem_meterpreter : public WinPmem {
 public:
 	virtual int extract_file_(__int64 resource_id, TCHAR *filename);
 	virtual HANDLE get_fd();
-	virtual SIZE_T get_max_physical_memory();
+	virtual uint64_t get_max_physical_memory();
 };
 
 class WinPmem_meterpreter32 : public WinPmem_meterpreter {

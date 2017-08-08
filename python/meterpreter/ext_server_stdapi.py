@@ -14,6 +14,7 @@ import time
 
 try:
 	import ctypes
+	import ctypes.util
 	has_ctypes = True
 	has_windll = hasattr(ctypes, 'windll')
 except ImportError:
@@ -69,10 +70,10 @@ else:
 	unicode = lambda x: (x.decode('UTF-8') if isinstance(x, bytes) else x)
 
 if has_ctypes:
+	size_t = getattr(ctypes, 'c_uint' + str(ctypes.sizeof(ctypes.c_void_p) * 8))
 	#
 	# Windows Structures
 	#
-	size_t = getattr(ctypes, 'c_uint' + str(ctypes.sizeof(ctypes.c_void_p) * 8))
 	class EVENTLOGRECORD(ctypes.Structure):
 		_fields_ = [("Length", ctypes.c_uint32),
 			("Reserved", ctypes.c_uint32),
@@ -1770,6 +1771,33 @@ def _linux_memwrite(address, data):
 		raise RuntimeError('operation failed')
 	return size
 
+def _osx_memread(address, size):
+	libc = ctypes.CDLL(ctypes.util.find_library('c'))
+	task = libc.mach_task_self()
+	libc.mach_vm_read.argtypes = [ctypes.c_uint32, size_t, size_t, ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(ctypes.c_uint32)]
+	libc.mach_vm_read.restype = ctypes.c_uint32
+	pointer = ctypes.c_void_p()
+	out_size = ctypes.c_uint32()
+	result = libc.mach_vm_read(task, address, size, ctypes.byref(pointer), ctypes.byref(out_size))
+	if result == 1:  # KERN_INVALID_ADDRESS
+		raise RuntimeError('invalid address')
+	elif result == 2:  # KERN_PROTECTION_FAILURE
+		raise RuntimeError('invalid permissions')
+	if result != 0 or size != out_size.value:
+		raise RuntimeError('operation failed')
+	buff = ctypes.cast(pointer, ctypes.POINTER(ctypes.c_byte * out_size.value))
+	return ctarray_to_bytes(buff.contents)
+
+def _osx_memwrite(address, data):
+	libc = ctypes.CDLL(ctypes.util.find_library('c'))
+	task = libc.mach_task_self()
+	libc.mach_vm_write.argtypes = [ctypes.c_uint32, size_t, ctypes.c_void_p, ctypes.c_uint32]
+	libc.mach_vm_write.restype = ctypes.c_uint32
+	buff = bytes_to_ctarray(data)
+	if libc.mach_vm_write(task, address, buff, len(buff)) != 0:
+		raise RuntimeError('operation failed')
+	return len(buff)
+
 def _win_format_message(source, msg_id):
 	EN_US = 0
 	msg_flags = 0
@@ -1811,7 +1839,7 @@ def _win_memwrite(address, data, handle=-1):
 		return None
 	return written.value
 
-@register_function_if(sys.platform.startswith('linux') or has_windll)
+@register_function_if(sys.platform == 'darwin' or sys.platform.startswith('linux') or has_windll)
 def stdapi_railgun_api(request, response):
 	size_out = packet_get_tlv(request, TLV_TYPE_RAILGUN_SIZE_OUT)['value']
 	stack_blob = packet_get_tlv(request, TLV_TYPE_RAILGUN_STACKBLOB)['value']
@@ -1863,13 +1891,16 @@ def stdapi_railgun_api(request, response):
 
 	debug_print('[*] railgun calling: ' + lib_name + '!' + func_name)
 	prototype = func_type(native, *func_args)
-	if sys.platform.startswith('linux'):
-		libc = ctypes.cdll.LoadLibrary('libc.so.6')
+	if sys.platform == 'darwin' or sys.platform.startswith('linux'):
+		if sys.platform == 'darwin':
+			libc = ctypes.CDLL(ctypes.util.find_library('c'))
+		else:
+			libc = ctypes.cdll.LoadLibrary('libc.so.6')
 		p_errno = ctypes.cast(libc.errno, ctypes.POINTER(ctypes.c_int))
 		errno = p_errno.contents
 		last_error = ctypes.c_int(0)
 		p_errno.contents = last_error
-		func = prototype((func_name, ctypes.CDLL(lib_name)))
+		func = prototype((func_name, ctypes.CDLL(ctypes.util.find_library(lib_name) or lib_name)))
 		result = func(*call_args)
 		p_errno.contents = errno
 		last_error = last_error.value
@@ -1900,19 +1931,21 @@ def stdapi_railgun_api(request, response):
 	response += tlv_pack(TLV_TYPE_RAILGUN_BACK_BUFFERBLOB_INOUT, ctarray_to_bytes(buff_blob_inout))
 	return ERROR_SUCCESS, response
 
-@register_function_if(sys.platform.startswith('linux') or has_windll)
+@register_function_if(sys.platform == 'darwin' or sys.platform.startswith('linux') or has_windll)
 def stdapi_railgun_api_multi(request, response):
 	for group_tlv in packet_enum_tlvs(request, tlv_type=TLV_TYPE_RAILGUN_MULTI_GROUP):
 		group_result = stdapi_railgun_api(group_tlv['value'], bytes())[1]
 		response += tlv_pack(TLV_TYPE_RAILGUN_MULTI_GROUP, group_result)
 	return ERROR_SUCCESS, response
 
-@register_function_if(sys.platform.startswith('linux') or has_windll)
+@register_function_if(sys.platform == 'darwin' or sys.platform.startswith('linux') or has_windll)
 def stdapi_railgun_memread(request, response):
 	address = packet_get_tlv(request, TLV_TYPE_RAILGUN_MEM_ADDRESS)['value']
 	length = packet_get_tlv(request, TLV_TYPE_RAILGUN_MEM_LENGTH)['value']
 	debug_print('[*] railgun reading ' + str(length) + ' bytes from 0x' + hex(address))
-	if sys.platform.startswith('linux'):
+	if sys.platform.startswith('darwin'):
+		result = _osx_memread(address, length)
+	elif sys.platform.startswith('linux'):
 		result = _linux_memread(address, length)
 	elif has_windll:
 		result = _win_memread(address, length)
@@ -1923,13 +1956,15 @@ def stdapi_railgun_memread(request, response):
 	response += tlv_pack(TLV_TYPE_RAILGUN_MEM_DATA, result)
 	return ERROR_SUCCESS, response
 
-@register_function_if(sys.platform.startswith('linux') or has_windll)
+@register_function_if(sys.platform == 'darwin' or sys.platform.startswith('linux') or has_windll)
 def stdapi_railgun_memwrite(request, response):
 	address = packet_get_tlv(request, TLV_TYPE_RAILGUN_MEM_ADDRESS)['value']
 	data = packet_get_tlv(request, TLV_TYPE_RAILGUN_MEM_DATA)['value']
 	length = packet_get_tlv(request, TLV_TYPE_RAILGUN_MEM_LENGTH)['value']
 	debug_print('[*] railgun writing ' + str(len(data)) + ' bytes to 0x' + hex(address))
-	if sys.platform.startswith('linux'):
+	if sys.platform.startswith('darwin'):
+		result = _osx_memwrite(address, data)
+	elif sys.platform.startswith('linux'):
 		result = _linux_memwrite(address, data)
 	elif has_windll:
 		result = _win_memwrite(address, data)

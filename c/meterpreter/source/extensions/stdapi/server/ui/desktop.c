@@ -279,7 +279,7 @@ DWORD request_ui_desktop_set(Remote * remote, Packet * request)
 }
 
 /*
- * Worker thread for desktop screenshot. Creates a named pipe and reads in the 
+ * Worker thread for desktop screenshot. Creates a named pipe and reads in the
  * screenshot for the first client which connects to it.
  */
 DWORD THREADCALL desktop_screenshot_thread(THREAD * thread)
