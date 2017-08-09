@@ -270,8 +270,6 @@ DWORD request_sys_config_getprivs(Remote *remote, Packet *packet)
 	HANDLE token = NULL;
 	int x;
 	TOKEN_PRIVILEGES priv = {0};
-	TOKEN_PRIVILEGES existingPriv = {0};
-	DWORD existingPrivSize = 0;
 	LPCTSTR privs[] = {
 		SE_ASSIGNPRIMARYTOKEN_NAME,
 		SE_AUDIT_NAME,
@@ -313,8 +311,7 @@ DWORD request_sys_config_getprivs(Remote *remote, Packet *packet)
 
 	do
 	{
-		if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &token))
-		{
+		if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &token))  {
 			res = GetLastError();
 			break;
 		}
@@ -323,32 +320,13 @@ DWORD request_sys_config_getprivs(Remote *remote, Packet *packet)
 		{
 			memset(&priv, 0, sizeof(priv));
 			LookupPrivilegeValue(NULL, privs[x], &priv.Privileges[0].Luid);
-
 			priv.PrivilegeCount = 1;
 			priv.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
-			if (AdjustTokenPrivileges(token, FALSE, &priv, sizeof(priv), &existingPriv, &existingPrivSize))
-			{
-				if (GetLastError() == ERROR_SUCCESS)
-				{
-					Packet* group = packet_create_group();
-					packet_add_tlv_string(group, TLV_TYPE_PRIVILEGE_NAME, privs[x]);
-					packet_add_tlv_bool(group, TLV_TYPE_PRIVILEGE_ENABLED, (existingPriv.Privileges[0].Attributes & SE_PRIVILEGE_ENABLED) == SE_PRIVILEGE_ENABLED);
-					packet_add_group(response, TLV_TYPE_PRIVILEGE, group);
-
-					// make sure we set the priv back to what it was before if it changed, because querying privs
-					// should not result in them changing!
-					if (existingPriv.Privileges[0].Attributes != priv.Privileges[0].Attributes)
-					{
-						AdjustTokenPrivileges(token, FALSE, &existingPriv, existingPrivSize, NULL, 0);
-					}
+			if(AdjustTokenPrivileges(token, FALSE, &priv, 0, 0, 0)) {
+				if(GetLastError() == ERROR_SUCCESS) {
+					packet_add_tlv_string(response, TLV_TYPE_PRIVILEGE, privs[x]);
 				}
-				else
-				{
-					dprintf("[getprivs] Unexpected error %s (%u)", privs[x], GetLastError());
-				}
-			}
-			else
-			{
+			} else {
 				dprintf("[getprivs] Failed to set privilege %s (%u)", privs[x], GetLastError());
 			}
 		}
