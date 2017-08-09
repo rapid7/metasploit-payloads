@@ -266,6 +266,7 @@ static void config_create(Remote* remote, LPBYTE uuid, MetsrvConfig** config, LP
 		if (t == current && t->get_handle != NULL)
 		{
 			sess->comms_handle.handle = t->get_handle(t);
+			dprintf("[CONFIG] Comms handle set to %p", (UINT_PTR)sess->comms_handle.handle);
 		}
 
 		switch (t->type)
