@@ -124,6 +124,7 @@ PBYTE supQueryResourceData(
 			}
 		}
 	}
+	DbgPrint("[+] Exiting scmQueryResourceData SizeOfData: %d\n", SizeOfData);
 	return Data;
 }
 

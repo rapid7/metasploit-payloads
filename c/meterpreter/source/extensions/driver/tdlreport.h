@@ -20,6 +20,7 @@
 
 #include "drivertools.h"
 
+
 typedef struct _CONNECTIONCTX {
 	Remote *remote;
 	Packet *request;
@@ -38,8 +39,7 @@ VOID tdlWarning(
 	);
 
 VOID tdlSuccess(
-	_In_ Remote *remote,
-	_In_ Packet *request,
+	_In_ CONNECTIONCTX *ctx,
 	_In_ LPWSTR lpText
 	);
 
