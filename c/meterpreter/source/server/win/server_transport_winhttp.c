@@ -510,8 +510,6 @@ static DWORD packet_receive_http(Remote *remote, Packet **packet)
 				dprintf("[HTTP] Session GUIDs don't match, can't find pivot!");
 			}
 		}
-
-		free(packetBuffer);
 	} while (0);
 
 	res = GetLastError();
