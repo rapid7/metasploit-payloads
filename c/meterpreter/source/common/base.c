@@ -33,6 +33,8 @@ extern DWORD remote_request_core_transport_remove(Remote* remote, Packet* packet
 
 extern BOOL remote_request_core_migrate(Remote *remote, Packet *packet, DWORD* pResult);
 
+extern DWORD request_negotiate_aes_key(Remote* remote, Packet* packet);
+
 // Local remote response implementors
 extern DWORD remote_response_core_console_write(Remote *remote, Packet *packet);
 
@@ -80,6 +82,8 @@ Command baseCommands[] =
 	COMMAND_REQ("core_channel_tell", remote_request_core_channel_tell),
 	// Soon to be deprecated
 	COMMAND_REQ("core_channel_interact", remote_request_core_channel_interact),
+	// Packet Encryption
+	COMMAND_REQ("core_negotiate_tlv_encryption", request_negotiate_aes_key),
 	// timeouts
 	COMMAND_REQ("core_transport_set_timeouts", remote_request_core_transport_set_timeouts),
 
@@ -300,6 +304,7 @@ BOOL command_process_inline(Command *baseCommand, Command *extensionCommand, Rem
 				}
 
 				packetTlvType = packet_get_type(packet);
+				dprintf("[DISPATCH] Packet type for %s is %u", lpMethod, packetTlvType);
 				switch (packetTlvType)
 				{
 				case PACKET_TLV_TYPE_REQUEST:
@@ -474,6 +479,7 @@ BOOL command_handle(Remote *remote, Packet *packet)
 		{
 			dprintf("[DISPATCH] Executing inline: %s", lpMethod);
 			result = command_process_inline(baseCommand, extensionCommand, remote, packet);
+			dprintf("[DISPATCH] Executed inline: %s, result %u (%x)", lpMethod, result, result);
 		}
 		else
 		{

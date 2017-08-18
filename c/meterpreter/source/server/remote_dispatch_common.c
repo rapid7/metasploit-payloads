@@ -60,7 +60,7 @@ BOOL request_core_patch_url(Remote* remote, Packet* packet, DWORD* result)
 	// response to this. This is a brutal switch without any
 	// other forms of comms, and this is because of stageless
 	// payloads
-	if (remote->transport->type == METERPRETER_TRANSPORT_SSL)
+	if (remote->transport->type == METERPRETER_TRANSPORT_TCP)
 	{
 		// This shouldn't happen.
 		*result = ERROR_INVALID_STATE;

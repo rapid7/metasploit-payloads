@@ -80,8 +80,8 @@ public class TcpTransport extends Transport {
         }
     }
 
-    public TcpTransport(String url) {
-        super(url);
+    public TcpTransport(Meterpreter met, String url) {
+        super(met, url);
 
         int portStart = url.lastIndexOf(":");
         this.port = Integer.parseInt(url.substring(portStart + 1));

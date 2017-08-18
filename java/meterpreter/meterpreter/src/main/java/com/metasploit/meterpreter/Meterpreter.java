@@ -72,9 +72,9 @@ public class Meterpreter {
 
             Transport t = null;
             if (url.startsWith("tcp")) {
-                t = new TcpTransport(url);
+                t = new TcpTransport(this, url);
             } else {
-                t = new HttpTransport(url);
+                t = new HttpTransport(this, url);
             }
 
             csr = t.parseConfig(configuration, csr);

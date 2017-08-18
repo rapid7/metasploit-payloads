@@ -81,7 +81,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
-      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\deps\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
       <FunctionLevelLinking>false</FunctionLevelLinking>
@@ -119,7 +119,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='r7_release|Win32'">
     <ClCompile>
-      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\deps\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
       <FunctionLevelLinking>false</FunctionLevelLinking>
@@ -160,7 +160,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <TargetEnvironment>X64</TargetEnvironment>
     </Midl>
     <ClCompile>
-      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\deps\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
       <FunctionLevelLinking>false</FunctionLevelLinking>
@@ -199,7 +199,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <TargetEnvironment>X64</TargetEnvironment>
     </Midl>
     <ClCompile>
-      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\deps\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
       <FunctionLevelLinking>false</FunctionLevelLinking>
@@ -247,6 +247,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     </ClCompile>
     <ClCompile Include="..\..\source\common\core.c" />
     <ClCompile Include="..\..\source\common\list.c" />
+    <ClCompile Include="..\..\source\common\packet_encryption.c" />
     <ClCompile Include="..\..\source\common\remote.c" />
     <ClCompile Include="..\..\source\common\scheduler.c" />
     <ClCompile Include="..\..\source\common\thread.c" />
@@ -265,6 +266,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClInclude Include="..\..\source\common\core.h" />
     <ClInclude Include="..\..\source\common\linkage.h" />
     <ClInclude Include="..\..\source\common\list.h" />
+    <ClInclude Include="..\..\source\common\packet_encryption.h" />
     <ClInclude Include="..\..\source\common\remote.h" />
     <ClInclude Include="..\..\source\common\scheduler.h" />
     <ClInclude Include="..\..\source\common\thread.h" />

@@ -16,9 +16,9 @@ public class core_transport_add implements Command {
         String transportUrl = request.getStringValue(TLVType.TLV_TYPE_TRANS_URL);
 
         if (transportUrl.startsWith("tcp")) {
-            t = new TcpTransport(transportUrl);
+            t = new TcpTransport(meterpreter, transportUrl);
         } else {
-            HttpTransport h = new HttpTransport(transportUrl);
+            HttpTransport h = new HttpTransport(meterpreter, transportUrl);
 
             // do the HTTP specific stuff here, since we know what we are
             h.setUserAgent(request.getStringValue(TLVType.TLV_TYPE_TRANS_UA, new String()));

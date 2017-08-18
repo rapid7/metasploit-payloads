@@ -1,8 +1,13 @@
 #!/usr/bin/env python
 
-import os
+import os, sys
 
-bin_path = os.path.join('..', 'MSF.Powershell', 'bin', 'Release', 'MSF.Powershell.dll')
+rel = 'Release'
+if len(sys.argv) == 2 and sys.argv[1] == 'debug':
+  print '[*] Using debug library ...'
+  rel = 'Debug'
+
+bin_path = os.path.join('..', 'MSF.Powershell', 'bin', rel, 'MSF.Powershell.dll')
 target_path = os.path.join('..', '..', 'c', 'meterpreter', 'source', 'extensions', 'powershell')
 size_var = 'PSHRUNNER_DLL_LEN'
 
@@ -55,4 +60,4 @@ source_path = os.path.join(target_path, 'powershell_runner.cpp')
 write_all(header_path, header)
 write_all(source_path, source)
 
-print "[!] Content written. .NET Binary is {0} bytes".format(len(binary))
+print "[+] Content written. .NET Binary is {0} bytes".format(len(binary))

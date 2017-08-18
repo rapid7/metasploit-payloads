@@ -23,8 +23,8 @@ public class HttpTransport extends Transport {
     private String proxyPass;
     private byte[] certHash;
 
-    public HttpTransport(String url) throws MalformedURLException {
-        super(url);
+    public HttpTransport(Meterpreter met, String url) throws MalformedURLException {
+        super(met, url);
 
         this.targetUrl = new URL(url);
     }

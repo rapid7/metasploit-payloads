@@ -267,7 +267,7 @@ DWORD inject_via_apcthread( Remote * remote, Packet * response, HANDLE hProcess,
 			dprintf("[INJECT] inject_via_apcthread: Trying to inject into thread %d", t.th32ThreadID );
 
 			// Only inject into threads we can suspend to avoid synchronization issue whereby the new metsrv will attempt 
-			// an ssl connection back but the client side will not be ready to accept it and we loose the session.
+			// a connection back but the client side will not be ready to accept it and we loose the session.
 			if( SuspendThread( hThread ) != (DWORD)-1 )
 			{
 				list_push( thread_list, hThread );
@@ -312,7 +312,7 @@ DWORD inject_via_apcthread( Remote * remote, Packet * response, HANDLE hProcess,
 	if( thread_list )
 	{
 		// Resume all the threads which we queued our apc into as the remote
-		// client side will now be ready to handle the new ssl conenction.
+		// client side will now be ready to handle the new conenction.
 		while( TRUE )
 		{
 			HANDLE t = (HANDLE)list_pop( thread_list );

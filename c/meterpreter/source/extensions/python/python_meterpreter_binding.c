@@ -24,7 +24,7 @@ static PyObject* binding_invoke(PyObject* self, PyObject* args)
 	Packet packet = { 0 };
 	packet.header = *(PacketHeader*)packetBytes;
 	packet.payload = (PUCHAR)(packetBytes + sizeof(PacketHeader));
-	packet.payloadLength = (ULONG)packetLength - sizeof(TlvHeader);
+	packet.payloadLength = (ULONG)packetLength - sizeof(PacketHeader);
 
 	// If the functionality doesn't require interaction with MSF, then
 	// make the packet as local so that the packet receives the request

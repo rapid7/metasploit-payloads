@@ -3,9 +3,6 @@
 
 #include <sys/stat.h>
 
-#include <openssl/md5.h>
-#include <openssl/sha.h>
-
 /***************************
  * File Channel Operations *
  ***************************/
@@ -304,6 +301,102 @@ out:
 	return packet_transmit_response(result, remote, response);
 }
 
+DWORD request_fs_file_hash(Remote* remote, Packet* packet, ALG_ID hashType)
+{
+	Packet *response = packet_create_response(packet);
+	char *filePath;
+	DWORD result = ERROR_SUCCESS;
+	HCRYPTPROV cryptProv = 0;
+	HCRYPTHASH hashInstance = 0;
+
+	FILE *fd = NULL;
+	size_t ret;
+	unsigned char buff[16384];
+
+	filePath = packet_get_tlv_value_string(packet, TLV_TYPE_FILE_PATH);
+
+	do
+	{
+		result = fs_fopen(filePath, "rb", &fd);
+		if (result != ERROR_SUCCESS)
+		{
+			dprintf("[FILE HASH] Failed to open file: %s", filePath);
+			result = GetLastError();
+			break;
+		}
+
+		if (!CryptAcquireContext(&cryptProv, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT))
+		{
+			result = GetLastError();
+			dprintf("[FILE HASH] Failed to get the Crypt context: %d (%x)", result, result);
+			break;
+		}
+
+		if (!CryptCreateHash(cryptProv, hashType, 0, 0, &hashInstance))
+		{
+			result = GetLastError();
+			dprintf("[FILE HASH] Failed to get the hash instance: %d (%x)", result, result);
+			break;
+		}
+
+		BOOL failed = FALSE;
+		while ((ret = fread(buff, 1, sizeof(buff), fd)) > 0) {
+			if (!CryptHashData(hashInstance, buff, (DWORD)ret, 0))
+			{
+				result = GetLastError();
+				dprintf("[FILE HASH] Failed to hash a chunk of data", result, result);
+				failed = TRUE;
+				break;
+			}
+		}
+
+		if (failed)
+		{
+			break;
+		}
+
+		DWORD hashSize = 0;
+		DWORD hashBufferSize = sizeof(hashSize);
+		if (!CryptGetHashParam(hashInstance, HP_HASHSIZE, (BYTE*)&hashSize, &hashBufferSize, 0) || hashSize == 0)
+		{
+			result = GetLastError();
+			dprintf("[FILE HASH] Failed to get the hash size: %d (%x)", result, result);
+		}
+
+		dprintf("[FILE HASH] The given hash is %d bytes in size", hashSize);
+
+		// We'll reuse the buff var here because it's more than big enough for the
+		// size of any hash that'll be calculated
+		if (!CryptGetHashParam(hashInstance, HP_HASHVAL, buff, &hashSize, 0))
+		{
+			result = GetLastError();
+			dprintf("[FILE HASH] Failed to get the hash value: %d (%x)", result, result);
+			break;
+		}
+
+		dprintf("[FILE HASH] Successfully generated hash");
+
+		packet_add_tlv_raw(response, TLV_TYPE_FILE_HASH, buff, hashSize);
+
+	} while (0);
+
+	if (hashInstance != 0)
+	{
+		CryptDestroyHash(hashInstance);
+	}
+
+	if (cryptProv != 0)
+	{
+		CryptReleaseContext(cryptProv, 0);
+	}
+
+	if (fd != NULL)
+	{
+		fclose(fd);
+	}
+
+	return packet_transmit_response(result, remote, response);}
+
 
 /*
  * Returns the MD5 hash for a specified file path
@@ -312,35 +405,7 @@ out:
  */
 DWORD request_fs_md5(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
-	char *filePath;
-	DWORD result = ERROR_SUCCESS;
-	MD5_CTX context;
-
-	FILE *fd;
-	size_t ret;
-	unsigned char buff[16384];
-	unsigned char hash[MD5_DIGEST_LENGTH];
-
-	filePath = packet_get_tlv_value_string(packet, TLV_TYPE_FILE_PATH);
-
-	result = fs_fopen(filePath, "rb", &fd);
-	if (result == ERROR_SUCCESS) {
-
-		MD5_Init(&context);
-
-		while ((ret = fread(buff, 1, sizeof(buff), fd)) > 0 ) {
-			MD5_Update(&context, buff, ret);
-		}
-
-		MD5_Final(hash, &context);
-
-		packet_add_tlv_raw(response, TLV_TYPE_FILE_HASH, hash, sizeof(hash));
-
-		fclose(fd);
-	}
-
-	return packet_transmit_response(result, remote, response);
+	return request_fs_file_hash(remote, packet, CALG_MD5);
 }
 
 
@@ -351,33 +416,7 @@ DWORD request_fs_md5(Remote *remote, Packet *packet)
  */
 DWORD request_fs_sha1(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
-	char *filePath;
-	DWORD result = ERROR_SUCCESS;
-	SHA_CTX context;
-
-	FILE *fd;
-	size_t ret;
-	unsigned char buff[16384];
-	unsigned char hash[SHA_DIGEST_LENGTH];
-
-	filePath = packet_get_tlv_value_string(packet, TLV_TYPE_FILE_PATH);
-
-	result = fs_fopen(filePath, "rb", &fd);
-	if (result == ERROR_SUCCESS) {
-		SHA1_Init(&context);
-
-		while ((ret = fread(buff, 1, sizeof(buff), fd)) > 0 ) {
-			SHA1_Update(&context, buff, ret);
-		}
-
-		fclose(fd);
-		SHA1_Final(hash, &context);
-
-		packet_add_tlv_raw(response, TLV_TYPE_FILE_HASH, hash, sizeof(hash));
-	}
-
-	return packet_transmit_response(result, remote, response);
+	return request_fs_file_hash(remote, packet, CALG_SHA1);
 }
 
 /*

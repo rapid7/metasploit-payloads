@@ -260,18 +260,21 @@ Packet *packet_create_response(Packet *request)
 		// Get the request TLV's method
 		if (packet_get_tlv_string(request, TLV_TYPE_METHOD, &method) != ERROR_SUCCESS)
 		{
+			vdprintf("[PKT] Can't find method");
 			break;
 		}
 
 		// Try to allocate a response packet
 		if (!(response = packet_create(responseType, (PCHAR)method.buffer)))
 		{
+			vdprintf("[PKT] Can't create response");
 			break;
 		}
 
 		// Get the request TLV's request identifier
 		if (packet_get_tlv_string(request, TLV_TYPE_REQUEST_ID, &requestId) != ERROR_SUCCESS)
 		{
+			vdprintf("[PKT] Can't find request ID");
 			break;
 		}
 
@@ -959,6 +962,8 @@ DWORD packet_find_tlv_buf(Packet *packet, PUCHAR payload, DWORD payloadLength, D
 	BOOL found = FALSE;
 	PUCHAR current;
 
+	vdprintf("[PKT FIND] Looking for type %u", type);
+
 	memset(tlv, 0, sizeof(Tlv));
 
 	do
@@ -971,14 +976,17 @@ DWORD packet_find_tlv_buf(Packet *packet, PUCHAR payload, DWORD payloadLength, D
 
 			if ((current + sizeof(TlvHeader) > payload + payloadLength) || (current < payload))
 			{
+				vdprintf("[PKT FIND] Reached end of packet buffer");
 				break;
 			}
 
 			// TLV's length
 			length = ntohl(header->length);
+			vdprintf("[PKT FIND] TLV header length: %u", length);
 
 			// Matching type?
 			current_type = (TlvType)ntohl(header->type);
+			vdprintf("[PKT FIND] TLV header type: %u", current_type);
 
 			// if the type has been compressed, temporarily remove the compression flag as compression is to be transparent.
 			if ((current_type & TLV_META_TYPE_COMPRESSED) == TLV_META_TYPE_COMPRESSED)
@@ -989,24 +997,35 @@ DWORD packet_find_tlv_buf(Packet *packet, PUCHAR payload, DWORD payloadLength, D
 			// check if the types match?
 			if ((current_type != type) && (type != TLV_TYPE_ANY))
 			{
+				vdprintf("[PKT FIND] Types don't match, skipping.");
 				continue;
 			}
 
 			// Matching index?
 			if (currentIndex != index)
 			{
+				vdprintf("[PKT FIND] wrong index, skipping.");
 				currentIndex++;
 				continue;
 			}
 
 			if ((current + length > payload + payloadLength) || (current < payload))
 			{
+				vdprintf("[PKT FIND] if ((current + length > payload + payloadLength) || (current < payload))");
+				vdprintf("[PKT FIND] Current: %p", current);
+				vdprintf("[PKT FIND] length: %x", length);
+				vdprintf("[PKT FIND] Current + length: %p", current + length);
+				vdprintf("[PKT FIND] payload: %p", payload);
+				vdprintf("[PKT FIND] payloadLength: %x", payloadLength);
+				vdprintf("[PKT FIND] payload + payloadLength: %p", payload + payloadLength);
+				vdprintf("[PKT FIND] diff: %x", current + length - (payload + payloadLength));
 				break;
 			}
 
 			tlv->header.type = ntohl(header->type);
 			tlv->header.length = ntohl(header->length) - sizeof(TlvHeader);
 			tlv->buffer = payload + offset + sizeof(TlvHeader);
+			vdprintf("[PKT FIND] Found!");
 
 			if ((tlv->header.type & TLV_META_TYPE_COMPRESSED) == TLV_META_TYPE_COMPRESSED)
 			{
