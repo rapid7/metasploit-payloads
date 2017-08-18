@@ -33,7 +33,7 @@ static HINTERNET get_request_winhttp(HttpTransportContext *ctx, BOOL isGet, cons
 
 	if (hReq == NULL)
 	{
-		dprintf("[%s] Failed WinHttpOpenRequest: %d", direction, GetLastError());
+		dprintf("[%s] Failed WinHttpOpenRequest: %u", direction, GetLastError());
 		SetLastError(ERROR_NOT_FOUND);
 		return NULL;
 	}
@@ -182,13 +182,20 @@ static BOOL read_response_winhttp(HANDLE hReq, LPVOID buffer, DWORD bytesToRead,
 
 /*!
  * @brief Wrapper around WinHTTP-specific sending functionality.
+ * @param ctx Pointer to the current HTTP transport context.
  * @param hReq HTTP request handle.
  * @param buffer Pointer to the buffer to receive the data.
  * @param size Buffer size.
  * @return An indication of the result of sending the request.
  */
-static BOOL send_request_winhttp(HANDLE hReq, LPVOID buffer, DWORD size)
+static BOOL send_request_winhttp(HttpTransportContext* ctx, HANDLE hReq, LPVOID buffer, DWORD size)
 {
+	if (ctx->custom_headers)
+	{
+		dprintf("[WINHTTP] Sending with custom headers: %S", ctx->custom_headers);
+		return WinHttpSendRequest(hReq, ctx->custom_headers, -1L, buffer, size, size, 0);
+	}
+
 	return WinHttpSendRequest(hReq, NULL, 0, buffer, size, size, 0);
 }
 
@@ -298,7 +305,7 @@ static DWORD packet_transmit_http(Remote *remote, LPBYTE rawPacket, DWORD rawPac
 			break;
 		}
 
-		result = ctx->send_req(hReq, rawPacket, rawPacketLength);
+		result = ctx->send_req(ctx, hReq, rawPacket, rawPacketLength);
 
 		if (!result)
 		{
@@ -349,7 +356,7 @@ static DWORD packet_receive_http(Remote *remote, Packet **packet)
 		}
 
 		vdprintf("[PACKET RECEIVE HTTP] sending GET");
-		hRes = ctx->send_req(hReq, NULL, 0);
+		hRes = ctx->send_req(ctx, hReq, NULL, 0);
 
 		if (!hRes)
 		{
@@ -538,8 +545,7 @@ static DWORD packet_receive_http(Remote *remote, Packet **packet)
 
 /*!
  * @brief Initialise the HTTP(S) connection.
- * @param remote Pointer to the remote instance with the HTTP(S) transport details wired in.
- * @param sock Reference to the original socket FD passed to metsrv (ignored);
+ * @param transport Pointer to the transport instance.
  * @return Indication of success or failure.
  */
 static BOOL server_init_winhttp(Transport* transport)
@@ -824,6 +830,7 @@ static void transport_destroy_http(Transport* transport)
 			SAFE_FREE(ctx->proxy_user);
 			SAFE_FREE(ctx->ua);
 			SAFE_FREE(ctx->uri);
+			SAFE_FREE(ctx->custom_headers);
 			if (ctx->proxy_for_url)
 			{
 				WINHTTP_PROXY_INFO* proxyInfo = (WINHTTP_PROXY_INFO*)ctx->proxy_for_url;
@@ -877,17 +884,50 @@ void transport_write_http_config(Transport* transport, MetsrvTransportHttp* conf
 	{
 		wcsncpy(config->proxy.password, ctx->proxy_pass, PROXY_PASS_SIZE);
 	}
+
+	if (ctx->custom_headers)
+	{
+		// let's hope they've allocated the right amount of space based on what we told them
+		// in transport_get_config_size_http
+		wcscpy(config->custom_headers, ctx->custom_headers);
+	}
 }
+
+/*!
+ * @brief Gets the size of the memory space required to store the configuration for this transport.
+ * @param t Pointer to the transport.
+ * @return Size, in bytes of the required memory block.
+ */
+static DWORD transport_get_config_size_http(Transport* t)
+{
+	DWORD size = sizeof(MetsrvTransportNamedPipe);
+
+	// Make sure we account for the custom headers, if there are any, which aren't
+	// of a predetermined size.
+	HttpTransportContext* ctx = (HttpTransportContext*)t->ctx;
+	if (ctx->custom_headers)
+	{
+		size += (DWORD)wcslen(ctx->custom_headers) * sizeof(ctx->custom_headers[0]);
+	}
+	return size;
+}
+
 
 /*!
  * @brief Create an HTTP(S) transport from the given settings.
  * @param config Pointer to the HTTP configuration block.
+ * @param size Pointer to the size of the parsed config block.
  * @return Pointer to the newly configured/created HTTP(S) transport instance.
  */
-Transport* transport_create_http(MetsrvTransportHttp* config)
+Transport* transport_create_http(MetsrvTransportHttp* config, LPDWORD size)
 {
 	Transport* transport = (Transport*)malloc(sizeof(Transport));
 	HttpTransportContext* ctx = (HttpTransportContext*)malloc(sizeof(HttpTransportContext));
+
+	if (size)
+	{
+		*size = sizeof(MetsrvTransportHttp);
+	}
 
 	dprintf("[TRANS HTTP] Creating http transport for url %S", config->common.url);
 
@@ -915,6 +955,15 @@ Transport* transport_create_http(MetsrvTransportHttp* config)
 		ctx->proxy_pass = _wcsdup(config->proxy.password);
 	}
 	ctx->ssl = wcsncmp(config->common.url, L"https", 5) == 0;
+
+	if (config->custom_headers[0])
+	{
+		ctx->custom_headers = _wcsdup(config->custom_headers);
+		if (size)
+		{
+			*size += (DWORD)wcslen(ctx->custom_headers) * sizeof(ctx->custom_headers[0]);
+		}
+	}
 
 	dprintf("[SERVER] Received HTTPS Hash: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
 		config->ssl_cert_hash[0], config->ssl_cert_hash[1], config->ssl_cert_hash[2], config->ssl_cert_hash[3],
@@ -951,6 +1000,7 @@ Transport* transport_create_http(MetsrvTransportHttp* config)
 	transport->transport_destroy = transport_destroy_http;
 	transport->ctx = ctx;
 	transport->comms_last_packet = current_unix_timestamp();
+	transport->get_config_size = transport_get_config_size_http;
 
 	return transport;
 }

@@ -19,6 +19,9 @@ typedef wchar_t CHARTYPE;
 typedef CHARTYPE* STRTYPE;
 typedef CHARTYPE const * CSTRTYPE;
 
+// Make sure we byte-align based on what we're given in the structure definitions
+#pragma pack(push, 1)
+
 typedef struct _MetsrvSession
 {
 	union
@@ -53,6 +56,7 @@ typedef struct _MetsrvTransportHttp
 	MetsrvTransportProxy proxy;
 	CHARTYPE ua[256];                     ///! User agent string.
 	BYTE ssl_cert_hash[CERT_HASH_SIZE];   ///! Expected SSL certificate hash.
+	CHARTYPE custom_headers[1];           ///! Custom headers to add to outbound requests (arb length, NULL terminated).
 } MetsrvTransportHttp;
 
 typedef struct _MetsrvTransportTcp
@@ -98,5 +102,7 @@ typedef struct _COMMONMIGRATECONTEXT
 		BYTE bPadding2[8];
 	} p;
 } COMMONMIGRATECONTEXT, * LPCOMMONMIGRATECONTEXT;
+
+#pragma pack(pop)
 
 #endif

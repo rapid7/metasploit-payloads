@@ -699,8 +699,7 @@ static void transport_reset_tcp(Transport* transport, BOOL shuttingDown)
 
 /*!
  * @brief Configure the TCP connnection. If it doesn't exist, go ahead and estbalish it.
- * @param remote Pointer to the remote instance with the TCP transport details wired in.
- * @param sock Reference to the original socket FD passed to metsrv.
+ * @param transport Pointer to the transport instance.
  * @return Indication of success or failure.
  */
 static BOOL configure_tcp_connection(Transport* transport)
@@ -870,14 +869,30 @@ static DWORD get_migrate_context_tcp(Transport* transport, DWORD targetProcessId
 }
 
 /*!
+ * @brief Gets the size of the memory space required to store the configuration for this transport.
+ * @param t Pointer to the transport.
+ * @return Size, in bytes of the required memory block.
+ */
+static DWORD transport_get_config_size_tcp(Transport* t)
+{
+	return sizeof(MetsrvTransportTcp);
+}
+
+/*!
  * @brief Creates a new TCP transport instance.
  * @param config The TCP configuration block.
+ * @param size Pointer to the size of the parsed config block.
  * @return Pointer to the newly configured/created TCP transport instance.
  */
-Transport* transport_create_tcp(MetsrvTransportTcp* config)
+Transport* transport_create_tcp(MetsrvTransportTcp* config, LPDWORD size)
 {
 	Transport* transport = (Transport*)malloc(sizeof(Transport));
 	TcpTransportContext* ctx = (TcpTransportContext*)malloc(sizeof(TcpTransportContext));
+
+	if (size)
+	{
+		*size = sizeof(MetsrvTransportTcp);
+	}
 
 	dprintf("[TRANS TCP] Creating tcp transport for url %S", config->common.url);
 
@@ -899,6 +914,7 @@ Transport* transport_create_tcp(MetsrvTransportTcp* config)
 	transport->ctx = ctx;
 	transport->comms_last_packet = current_unix_timestamp();
 	transport->get_migrate_context = get_migrate_context_tcp;
+	transport->get_config_size = transport_get_config_size_tcp;
 
 	return transport;
 }

@@ -93,13 +93,20 @@ static BOOL read_response_wininet(HANDLE hReq, LPVOID buffer, DWORD bytesToRead,
 
 /*!
  * @brief Wrapper around WinINET-specific sending functionality.
+ * @param ctx Pointer to the current HTTP transport context.
  * @param hReq HTTP request handle.
  * @param buffer Pointer to the buffer to receive the data.
  * @param size Buffer size.
  * @return An indication of the result of sending the request.
  */
-static BOOL send_request_wininet(HANDLE hReq, LPVOID buffer, DWORD size)
+static BOOL send_request_wininet(HttpTransportContext* ctx, HANDLE hReq, LPVOID buffer, DWORD size)
 {
+	if (ctx->custom_headers)
+	{
+		dprintf("[WINHTTP] Sending with custom headers: %S", ctx->custom_headers);
+		return HttpSendRequestW(hReq, ctx->custom_headers, -1L, buffer, size);
+	}
+
 	return HttpSendRequestW(hReq, NULL, 0, buffer, size);
 }
 
@@ -131,8 +138,7 @@ static DWORD validate_response_wininet(HANDLE hReq, HttpTransportContext* ctx)
 
 /*!
  * @brief Initialise the HTTP(S) connection.
- * @param remote Pointer to the remote instance with the HTTP(S) transport details wired in.
- * @param sock Reference to the original socket FD passed to metsrv (ignored);
+ * @param transport Pointer to the transport instance.
  * @return Indication of success or failure.
  */
 static BOOL server_init_wininet(Transport* transport)

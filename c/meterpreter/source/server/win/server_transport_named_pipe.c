@@ -379,8 +379,7 @@ static void transport_reset_named_pipe(Transport* transport, BOOL shuttingDown)
 
 /*!
  * @brief Configure the named pipe connnection. If it doesn't exist, go ahead and estbalish it.
- * @param remote Pointer to the remote instance with the named pipe transport details wired in.
- * @param sock Reference to the original socket FD passed to metsrv.
+ * @param transport Pointer to the transport instance.
  * @return Indication of success or failure.
  */
 static BOOL configure_named_pipe_connection(Transport* transport)
@@ -602,14 +601,30 @@ static DWORD get_migrate_context_named_pipe(Transport* transport, DWORD targetPr
 }
 
 /*!
+ * @brief Gets the size of the memory space required to store the configuration for this transport.
+ * @param t Pointer to the transport.
+ * @return Size, in bytes of the required memory block.
+ */
+static DWORD transport_get_config_size_named_pipe(Transport* t)
+{
+	return sizeof(MetsrvTransportNamedPipe);
+}
+
+/*!
  * @brief Creates a new named pipe transport instance.
  * @param config The Named Pipe configuration block.
+ * @param size Pointer to the size of the parsed config block.
  * @return Pointer to the newly configured/created Named Pipe transport instance.
  */
-Transport* transport_create_named_pipe(MetsrvTransportNamedPipe* config)
+Transport* transport_create_named_pipe(MetsrvTransportNamedPipe* config, LPDWORD size)
 {
 	Transport* transport = (Transport*)calloc(1, sizeof(Transport));
 	NamedPipeTransportContext* ctx = (NamedPipeTransportContext*)calloc(1, sizeof(NamedPipeTransportContext));
+
+	if (size)
+	{
+		*size = sizeof(MetsrvTransportNamedPipe);
+	}
 
 	// Lock used to synchronise writes
 	ctx->write_lock = lock_create();
@@ -631,6 +646,7 @@ Transport* transport_create_named_pipe(MetsrvTransportNamedPipe* config)
 	transport->ctx = ctx;
 	transport->comms_last_packet = current_unix_timestamp();
 	transport->get_migrate_context = get_migrate_context_named_pipe;
+	transport->get_config_size = transport_get_config_size_named_pipe;
 
 	return transport;
 }
