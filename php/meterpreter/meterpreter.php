@@ -428,7 +428,8 @@ function core_loadlib($req, &$pkt) {
     # but since this function is deprecated since php 7.2+, we're not using it
     # when we can avoid it, since it might leave some traces in the log files.
     if (extension_loaded('suhosin') && ini_get('suhosin.executor.disable_eval')) {
-        create_function('', $data_tlv['value'])();
+        $suhosin_bypass=create_function('', $data_tlv['value']);
+        $suhosin_bypass();
     } else {
         eval($data_tlv['value']);
     }
