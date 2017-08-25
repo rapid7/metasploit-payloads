@@ -1,32 +1,69 @@
-To compile JavaPayload for Metasploit (including Java Meterpreter), you need
-Maven 3.0 or above. Just run
+## Compiling JavaPayload and Java Meterpreter
+
+To compile JavaPayload (a Java stager / code loader) and Java Meterpreter for
+Metasploit, you need Maven 3.1 or above (Maven 3.5 works at the time of this
+writing), and a copy of JDK 8.0 or later. Ensure that `mvn` and `javac` are in
+your path and work. Then run
 
 ```
 mvn package
 ```
 
-to package all the files, or
+to package all the files needed for Java meterpreter. The two files that you will be generated are:
+
+```
+meterpreter/meterpreter/target/meterpreter.jar
+meterpreter/stdapi/target/ext_server_stdapi.jar
+```
+
+To get Metasploit to use these files, you need to place them in a place where
+it can find them. To automatically build and install these files into
+Metasploit Framework for testing, run:
 
 ```
 mvn -P deploy package
 ```
 
-to package all the files and copy them into the correct place for Metasploit
-(`../metasploit-framework/data/java`). If you get spurious compilation errors,
-make sure that there is an exclude rule in your antivirus for the Metasploit
-directory (or that your antivirus is disabled).
+This will package all the files and copy them into the correct place for
+Metasploit, assuming that the metasploit-framework repository is checked out in
+an adjacent directory to this one. (`../../metasploit-framework/data/java`). If
+you get spurious compilation errors, make sure that there is an exclude rule in
+your antivirus for the Metasploit directory (or that your antivirus is
+disabled).
 
-If the path to your metasploit framework repository is not `../../metasploit-framework`,
-but for example `../msf3`, use
+If the path to your metasploit framework repository is not
+`../../metasploit-framework`, but for example
+`/opt/metasploit-framework/framework`, set the deploy.path directive like so:
 
 ```
-mvn -D deploy.path=../msf3 -P deploy package
+mvn -D deploy.path=/opt/metasploit-framework/framework -P deploy package
 ```
 
-In case you want to edit/debug JavaPayload for Metasploit or Java Meterpreter,
-Maven provides plugins to auto-generate project files for your favourite IDE
-(at least for Eclipse, Netbeans or IntelliJ). I use Eclipse, so to generate
-project files I use
+When you are editing this or any other Meterpreter, you will want to make sure
+that your copy of metasploit-framework is also up-to-date. We occasionally
+update the network protocol between Metasploit and its Payloads, and if the two
+do not match, things will probably not work. Metasploit will warn you the first
+time it stages a development payload that it is doing so, and that the payload
+and Metasploit framework may be incompatible.
+
+Each time you make a change to your code, you must build and deploy the files
+into metasploit-framework for it to see the updates. It is not necessary to
+restart msfconsole when updating payloads however, as they are read from disk
+each time. So, a reasonable strategy when debugging is to leave msfconsole
+running with `exploit/multi/handler`, and just install and restage payloads as
+needed.
+
+When you are done editing and want to revert Metasploit to use the builtin
+payloads, simply delete `data/meterpreter/*.jar` from your metasploit framework
+directory.
+
+# IDE Support
+
+In case you want to edit/debug JavaPayload for Metasploit or Java Meterpreter
+with an IDE, Maven provides plugins to auto-generate project files for your
+favourite environment (at least for Eclipse, Netbeans or IntelliJ).
+
+I use Eclipse, so to generate project files I use
 
 ```
 mvn eclipse:eclipse
