@@ -54,8 +54,9 @@ running with `exploit/multi/handler`, and just install and restage payloads as
 needed.
 
 When you are done editing and want to revert Metasploit to use the builtin
-payloads, simply delete `data/meterpreter/*.jar` from your metasploit framework
-directory.
+payloads, simply delete `data/meterpreter/*.jar` and `data/meterpreter/java`
+from your Metasploit framework directory. It will then fall back to the
+versions bundled with the metasploit-payloads Ruby gem.
 
 # IDE Support
 
