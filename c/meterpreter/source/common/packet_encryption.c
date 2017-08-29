@@ -2,10 +2,6 @@
 #include "remote.h"
 #include "packet_encryption.h"
 
-#define AES256_BLOCKSIZE 16
-#define ENC_FLAG_NONE 0x0
-#define ENC_FLAG_AES256 0x1
-
 typedef struct _CryptProviderParams
 {
 	const TCHAR* provider;
@@ -37,8 +33,8 @@ DWORD decrypt_packet(Remote* remote, Packet** packet, LPBYTE buffer, DWORD buffe
 
 #ifdef DEBUGTRACE
 	PUCHAR h = buffer;
-	vdprintf("[DEC] given header of: [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X]",
-		h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15], h[16], h[17], h[18], h[19], h[20], h[21], h[22], h[23], h[24], h[25], h[26], h[27], h[28]);
+	vdprintf("[DEC] Packet header: [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X]",
+		h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15], h[16], h[17], h[18], h[19], h[20], h[21], h[22], h[23], h[24], h[25], h[26], h[27], h[28], h[29], h[30], h[31]);
 #endif
 
 	vdprintf("[DEC] Packet buffer size is: %u", bufferSize);
@@ -52,8 +48,8 @@ DWORD decrypt_packet(Remote* remote, Packet** packet, LPBYTE buffer, DWORD buffe
 
 #ifdef DEBUGTRACE
 		h = buffer;
-		vdprintf("[DEC] Decoded header: [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X]",
-			h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15], h[16], h[17], h[18], h[19], h[20], h[21], h[22], h[23], h[24], h[25], h[26], h[27], h[28]);
+		vdprintf("[DEC] Packet header: [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X]",
+			h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15], h[16], h[17], h[18], h[19], h[20], h[21], h[22], h[23], h[24], h[25], h[26], h[27], h[28], h[29], h[30], h[31]);
 #endif
 
 
@@ -302,7 +298,7 @@ DWORD encrypt_packet(Remote* remote, Packet* packet, LPBYTE* buffer, LPDWORD buf
 
 #ifdef DEBUGTRACE
 	LPBYTE h = *buffer;
-	vdprintf("[TCP] Sending header (before XOR): [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X]",
+	vdprintf("[ENC] Sending header (before XOR): [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X]",
 		h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15], h[16], h[17], h[18], h[19], h[20], h[21], h[22], h[23], h[24], h[25], h[26], h[27], h[28], h[29], h[30], h[31]);
 #endif
 	// finally XOR obfuscate like we always did before, skippig the xor key itself.
@@ -310,7 +306,7 @@ DWORD encrypt_packet(Remote* remote, Packet* packet, LPBYTE* buffer, LPDWORD buf
 
 	vdprintf("[ENC] Packet encoded and ready for transmission");
 #ifdef DEBUGTRACE
-	vdprintf("[TCP] Sending header (after XOR): [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X]",
+	vdprintf("[ENC] Sending header (after XOR): [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X]",
 		h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15], h[16], h[17], h[18], h[19], h[20], h[21], h[22], h[23], h[24], h[25], h[26], h[27], h[28], h[29], h[30], h[31]);
 #endif
 
@@ -459,25 +455,25 @@ DWORD free_encryption_context(Remote* remote)
 	DWORD result = ERROR_SUCCESS;
 
 	dprintf("[ENC] Freeing encryption context %p", remote->enc_ctx);
-if (remote->enc_ctx != NULL);
-{
-	dprintf("[ENC] Encryption context not null, so ditching AES key");
-	if (remote->enc_ctx->aes_key != 0)
+	if (remote->enc_ctx != NULL);
 	{
-		CryptDestroyKey(remote->enc_ctx->aes_key);
-	}
+		dprintf("[ENC] Encryption context not null, so ditching AES key %ul", remote->enc_ctx->aes_key);
+		if (remote->enc_ctx->aes_key != 0)
+		{
+			CryptDestroyKey(remote->enc_ctx->aes_key);
+		}
 
-	dprintf("[ENC] Encryption context not null, so ditching provider");
-	if (remote->enc_ctx->provider != 0)
-	{
-		CryptReleaseContext(remote->enc_ctx->provider, 0);
-	}
+		dprintf("[ENC] Encryption context not null, so ditching provider");
+		if (remote->enc_ctx->provider != 0)
+		{
+			CryptReleaseContext(remote->enc_ctx->provider, 0);
+		}
 
-	dprintf("[ENC] Encryption context not null, so freeing the context");
-	free(remote->enc_ctx);
-	remote->enc_ctx = NULL;
-}
-return result;
+		dprintf("[ENC] Encryption context not null, so freeing the context");
+		free(remote->enc_ctx);
+		remote->enc_ctx = NULL;
+	}
+	return result;
 }
 
 DWORD request_negotiate_aes_key(Remote* remote, Packet* packet)

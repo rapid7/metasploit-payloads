@@ -258,7 +258,7 @@ DWORD tcp_channel_server_notify(Remote * remote, TcpServerContext * serverCtx)
 		packet_add_tlv_string(request, TLV_TYPE_PEER_HOST, peerhost);
 		packet_add_tlv_uint(request, TLV_TYPE_PEER_PORT, peerport);
 
-		dwResult = PACKET_TRANSMIT(serverCtx->remote, request, NULL);
+		dwResult = packet_transmit(serverCtx->remote, request, NULL);
 
 	} while (0);
 

@@ -7,6 +7,7 @@
 
 #include "thread.h"
 #include "config.h"
+#include "pivot_tree.h"
 
 /*! @brief This is the size of the certificate hash that is validated (sha1) */
 #define CERT_HASH_SIZE 20
@@ -24,7 +25,8 @@ typedef struct _TimeoutSettings TimeoutSettings;
 typedef struct _HttpTransportContext HttpTransportContext;
 typedef struct _PacketEncryptionContext PacketEncryptionContext;
 
-typedef SOCKET(*PTransportGetSocket)(Transport* transport);
+typedef UINT_PTR(*PTransportGetHandle)(Transport* transport);
+typedef void(*PTransportSetHandle)(Transport* transport, UINT_PTR handle);
 typedef void(*PTransportReset)(Transport* transport, BOOL shuttingDown);
 typedef BOOL(*PTransportInit)(Transport* transport);
 typedef BOOL(*PTransportDeinit)(Transport* transport);
@@ -35,7 +37,7 @@ typedef void(*PTransportRemove)(Remote* remote, Transport* oldTransport);
 typedef void(*PConfigCreate)(Remote* remote, LPBYTE uuid, MetsrvConfig** config, LPDWORD size);
 
 typedef BOOL(*PServerDispatch)(Remote* remote, THREAD* dispatchThread);
-typedef DWORD(*PPacketTransmit)(Remote* remote, Packet* packet, PacketRequestCompletion* completion);
+typedef DWORD(*PPacketTransmit)(Remote* remote, LPBYTE rawPacket, DWORD rawPacketLength);
 
 typedef HANDLE(*PCreateHttpRequest)(HttpTransportContext* ctx, BOOL isGet, const char* direction);
 typedef BOOL(*PSendHttpRequest)(HANDLE hReq, LPVOID buffer, DWORD size);
@@ -59,6 +61,13 @@ typedef struct _TcpTransportContext
 	SOCKET fd;                            ///! Remote socket file descriptor.
 	SOCKET listen;                        ///! Listen socket descriptor, if any.
 } TcpTransportContext;
+
+typedef struct _NamedPipeTransportContext
+{
+	STRTYPE pipe_name;                    ///! Name of the pipe in '\\<server>\<name>' format
+	HANDLE pipe;                          ///! Reference to the named pipe handle.
+	LOCK* write_lock;                     ///! Reference to the thread write lock.
+} NamedPipeTransportContext;
 
 typedef struct _HttpTransportContext
 {
@@ -91,7 +100,8 @@ typedef struct _HttpTransportContext
 typedef struct _Transport
 {
 	DWORD type;                           ///! The type of transport in use.
-	PTransportGetSocket get_socket;       ///! Function to get the socket from the transport.
+	PTransportGetHandle get_handle;       ///! Function to get the socket/handle from the transport.
+	PTransportSetHandle set_handle;       ///! Function to set the socket/handle on the transport.
 	PTransportReset transport_reset;      ///! Function to reset/clean the transport ready for restarting.
 	PTransportInit transport_init;        ///! Initialises the transport.
 	PTransportDeinit transport_deinit;    ///! Deinitialises the transport.
@@ -105,7 +115,6 @@ typedef struct _Transport
 	int comms_last_packet;                ///! Unix timestamp of the last packet received.
 	struct _Transport* next_transport;    ///! Pointer to the next transport in the list.
 	struct _Transport* prev_transport;    ///! Pointer to the previous transport in the list.
-	LOCK* lock;                           ///! Shared reference to the lock used in Remote.
 } Transport;
 
 /*!
@@ -150,6 +159,9 @@ typedef struct _Remote
 	int sess_expiry_time;                 ///! Number of seconds that the session runs for.
 	int sess_expiry_end;                  ///! Unix timestamp for when the server should shut down.
 	int sess_start_time;                  ///! Unix timestamp representing the session startup time.
+
+	PivotTree* pivot_sessions;            ///! Collection of active Meterpreter session pivots.
+	PivotTree* pivot_listeners;           ///! Collection of active Meterpreter pivot listeners.
 
 	PacketEncryptionContext* enc_ctx;     ///! Reference to the packet encryption context.
 } Remote;

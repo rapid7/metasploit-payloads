@@ -12,7 +12,7 @@
 #include <stdio.h>
 #include <time.h>
 
-#define SAFE_FREE(x) {free(x); x = NULL;}
+#define SAFE_FREE(x) if(x){free(x);x=NULL;}
 
 #include <winsock2.h>
 #include <windows.h>
@@ -52,11 +52,13 @@ typedef struct ___u128 {
 #include "zlib/zlib.h"
 
 /*! @brief Indication that the Meterpreter transport is using TCP. */
-#define METERPRETER_TRANSPORT_TCP   0
+#define METERPRETER_TRANSPORT_TCP    0x1
 /*! @brief Indication that the Meterpreter transport is using HTTP. */
-#define METERPRETER_TRANSPORT_HTTP  1
+#define METERPRETER_TRANSPORT_HTTP   0x2
 /*! @brief Indication that the Meterpreter transport is using HTTPS. */
-#define METERPRETER_TRANSPORT_HTTPS 2
+#define METERPRETER_TRANSPORT_HTTPS  (0x4 | METERPRETER_TRANSPORT_HTTP)
+/*! @brief Indication that the Meterpreter transport is using  named pipes. */
+#define METERPRETER_TRANSPORT_PIPE   0x8
 
 VOID sleep(DWORD seconds);
 
@@ -108,4 +110,5 @@ static _inline void real_dprintf(char *format, ...)
 
 int current_unix_timestamp(void);
 VOID xor_bytes(BYTE xorKey[4], LPBYTE buffer, DWORD bufferSize);
+BOOL is_null_guid(BYTE guid[sizeof(GUID)]);
 VOID rand_xor_key(BYTE buffer[4]);

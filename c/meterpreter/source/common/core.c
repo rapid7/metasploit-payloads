@@ -6,7 +6,7 @@
  *          change this stuff unless you know what you're doing!
  */
 #include "common.h"
-
+#include "packet_encryption.h"
 #include <winhttp.h>
 
 DWORD packet_find_tlv_buf(Packet *packet, PUCHAR payload, DWORD payloadLength, DWORD index,
@@ -31,11 +31,11 @@ PacketCompletionRoutineEntry *packetCompletionRoutineList = NULL;
 /*!
  * @todo I have no idea why this is here, need someone else to explain.
  */
-HANDLE core_update_thread_token( Remote *remote, HANDLE token )
+HANDLE core_update_thread_token(Remote *remote, HANDLE token)
 {
 	HANDLE temp = NULL;
 
-	lock_acquire( remote->lock );
+	lock_acquire(remote->lock);
 	do
 	{
 		temp = remote->thread_token;
@@ -50,13 +50,13 @@ HANDLE core_update_thread_token( Remote *remote, HANDLE token )
 		remote->thread_token = token;
 
 		// Close the old token if its not one of the two active tokens
-		if( temp && temp != remote->server_token && temp != remote->thread_token )
+		if (temp && temp != remote->server_token && temp != remote->thread_token)
 		{
 			CloseHandle(temp);
 		}
-	} while(0);
+	} while (0);
 
-	lock_release( remote->lock );
+	lock_release(remote->lock);
 	return(token);
 }
 
@@ -1165,29 +1165,29 @@ DWORD packet_call_completion_handlers( Remote *remote, Packet *response, LPCSTR 
 		method = (LPCSTR)methodTlv.buffer;
 	}
 
-	// Enumerate the completion routine list
-	for (current = packetCompletionRoutineList; current; current = current->next)
+// Enumerate the completion routine list
+for (current = packetCompletionRoutineList; current; current = current->next)
+{
+	// Does the request id of the completion entry match the packet's request
+	// id?
+	if (strcmp(requestId, current->requestId))
 	{
-		// Does the request id of the completion entry match the packet's request
-		// id?
-		if (strcmp(requestId, current->requestId))
-		{
-			continue;
-		}
-
-		// Call the completion routine
-		current->handler.routine(remote, response, current->handler.context, method, result);
-
-		// Increment the number of matched handlers
-		matches++;
+		continue;
 	}
 
-	if (matches)
-	{
-		packet_remove_completion_handler(requestId);
-	}
+	// Call the completion routine
+	current->handler.routine(remote, response, current->handler.context, method, result);
 
-	return (matches > 0) ? ERROR_SUCCESS : ERROR_NOT_FOUND;
+	// Increment the number of matched handlers
+	matches++;
+}
+
+if (matches)
+{
+	packet_remove_completion_handler(requestId);
+}
+
+return (matches > 0) ? ERROR_SUCCESS : ERROR_NOT_FOUND;
 }
 
 /*!
@@ -1195,14 +1195,14 @@ DWORD packet_call_completion_handlers( Remote *remote, Packet *response, LPCSTR 
  * @param requestId ID of the request.
  * @return \c ERROR_SUCCESS is always returned.
  */
-DWORD packet_remove_completion_handler( LPCSTR requestId )
+DWORD packet_remove_completion_handler(LPCSTR requestId)
 {
 	PacketCompletionRoutineEntry *current, *next, *prev;
 
 	// Enumerate the list, removing entries that match
 	for (current = packetCompletionRoutineList, next = NULL, prev = NULL;
-	     current;
-		  prev = current, current = next)
+		current;
+		prev = current, current = next)
 	{
 		next = current->next;
 
@@ -1259,7 +1259,81 @@ DWORD packet_transmit_response(DWORD result, Remote* remote, Packet* response)
 	if (response)
 	{
 		packet_add_tlv_uint(response, TLV_TYPE_RESULT, result);
-		return PACKET_TRANSMIT(remote, response, NULL);
+		return packet_transmit(remote, response, NULL);
 	}
 	return ERROR_NOT_ENOUGH_MEMORY;
+}
+
+DWORD packet_add_request_id(Packet* packet)
+{
+	Tlv requestId = { 0 };
+
+	// If the packet does not already have a request identifier, create one for it
+	if (packet_get_tlv_string(packet, TLV_TYPE_REQUEST_ID, &requestId) != ERROR_SUCCESS)
+	{
+		DWORD index;
+		CHAR rid[32];
+
+		rid[sizeof(rid)-1] = 0;
+
+		for (index = 0; index < sizeof(rid)-1; index++)
+		{
+			rid[index] = (rand() % 0x5e) + 0x21;
+		}
+
+		packet_add_tlv_string(packet, TLV_TYPE_REQUEST_ID, rid);
+	}
+	return ERROR_SUCCESS;
+}
+
+DWORD packet_transmit(Remote* remote, Packet* packet, PacketRequestCompletion* completion)
+{
+	if (packet->partner != NULL && packet->partner->local)
+	{
+		dprintf("[TRANSMIT] Ignoring local packet");
+		return ERROR_SUCCESS;
+	}
+
+	Tlv requestId;
+	DWORD res;
+	BYTE* encryptedPacket = NULL;
+	DWORD encryptedPacketLength = 0;
+
+	dprintf("[TRANSMIT] Sending packet to the server");
+	packet_add_request_id(packet);
+
+	// Always add the UUID to the packet as well, so that MSF knows who and what we are
+  	packet_add_tlv_raw(packet, TLV_TYPE_UUID, remote->orig_config->session.uuid, UUID_SIZE);
+
+	do
+	{
+		// If a completion routine was supplied and the packet has a request
+		// identifier, insert the completion routine into the list
+		if ((completion) &&
+			(packet_get_tlv_string(packet, TLV_TYPE_REQUEST_ID,
+			&requestId) == ERROR_SUCCESS))
+		{
+			packet_add_completion_handler((LPCSTR)requestId.buffer, completion);
+		}
+
+		encrypt_packet(remote, packet, &encryptedPacket, &encryptedPacketLength);
+		dprintf("[PACKET] Sending packet to remote, length: %u", encryptedPacketLength);
+
+		dprintf("[PACKET] Remote: %p", remote);
+		dprintf("[PACKET] Transport: %p", remote->transport);
+		dprintf("[PACKET] Packet Transmit: %p", remote->transport->packet_transmit);
+		SetLastError(remote->transport->packet_transmit(remote, encryptedPacket, encryptedPacketLength));
+	} while (0);
+
+	res = GetLastError();
+
+	if (encryptedPacket != NULL)
+	{
+		free(encryptedPacket);
+	}
+
+	// Destroy the packet
+	packet_destroy(packet);
+
+	return res;
 }

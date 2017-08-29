@@ -171,6 +171,12 @@ typedef enum
 	TLV_TYPE_SYM_KEY             = TLV_VALUE(TLV_META_TYPE_RAW,       552),   ///! Represents the symmetric key
 	TLV_TYPE_ENC_SYM_KEY         = TLV_VALUE(TLV_META_TYPE_RAW,       553),   ///! Represents and RSA-encrypted symmetric key
 
+	// Pivots
+	TLV_TYPE_PIVOT_ID              = TLV_VALUE(TLV_META_TYPE_RAW,     650),   ///! Represents the id of the pivot listener
+	TLV_TYPE_PIVOT_STAGE_DATA      = TLV_VALUE(TLV_META_TYPE_RAW,     651),   ///! Represents the data to be staged on new connections.
+	TLV_TYPE_PIVOT_STAGE_DATA_SIZE = TLV_VALUE(TLV_META_TYPE_UINT,    652),   ///! Represents the size of the data to be staged on new connections.
+	TLV_TYPE_PIVOT_NAMED_PIPE_NAME = TLV_VALUE(TLV_META_TYPE_STRING,  653),   ///! Represents named pipe name.
+
 	TLV_TYPE_EXTENSIONS          = TLV_VALUE(TLV_META_TYPE_COMPLEX, 20000),   ///! Represents an extension value.
 	TLV_TYPE_USER                = TLV_VALUE(TLV_META_TYPE_COMPLEX, 40000),   ///! Represents a user value.
 	TLV_TYPE_TEMP                = TLV_VALUE(TLV_META_TYPE_COMPLEX, 60000),   ///! Represents a temporary value.
@@ -279,8 +285,9 @@ LINKAGE DWORD packet_get_result(Packet *packet);
  * Packet transmission
  */
 LINKAGE DWORD packet_transmit_response(DWORD result, Remote* remote, Packet* response);
+LINKAGE DWORD packet_transmit(Remote* remote, Packet* packet, PacketRequestCompletion* completion);
 LINKAGE DWORD packet_transmit_empty_response(Remote *remote, Packet *packet, DWORD res);
-#define PACKET_TRANSMIT(remote, packet, completion) ((packet->partner==NULL||!packet->partner->local)?(remote->transport->packet_transmit(remote, packet, completion)):(ERROR_SUCCESS))
+LINKAGE DWORD packet_add_request_id(Packet* packet);
 
 /*
  * Packet completion notification

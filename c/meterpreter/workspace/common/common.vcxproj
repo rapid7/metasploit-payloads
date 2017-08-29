@@ -248,6 +248,8 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClCompile Include="..\..\source\common\core.c" />
     <ClCompile Include="..\..\source\common\list.c" />
     <ClCompile Include="..\..\source\common\packet_encryption.c" />
+    <ClCompile Include="..\..\source\common\pivot_packet_dispatch.c" />
+    <ClCompile Include="..\..\source\common\pivot_tree.c" />
     <ClCompile Include="..\..\source\common\remote.c" />
     <ClCompile Include="..\..\source\common\scheduler.c" />
     <ClCompile Include="..\..\source\common\thread.c" />
@@ -267,6 +269,8 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClInclude Include="..\..\source\common\linkage.h" />
     <ClInclude Include="..\..\source\common\list.h" />
     <ClInclude Include="..\..\source\common\packet_encryption.h" />
+    <ClInclude Include="..\..\source\common\pivot_packet_dispatch.h" />
+    <ClInclude Include="..\..\source\common\pivot_tree.h" />
     <ClInclude Include="..\..\source\common\remote.h" />
     <ClInclude Include="..\..\source\common\scheduler.h" />
     <ClInclude Include="..\..\source\common\thread.h" />

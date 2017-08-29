@@ -27,6 +27,8 @@ Remote* remote_allocate()
 
 		remote->lock = lock;
 		remote->enc_ctx = NULL;
+		remote->pivot_sessions = pivot_tree_create();
+		remote->pivot_listeners = pivot_tree_create();
 
 		dprintf("[REMOTE] remote created %p", remote);
 		return remote;
@@ -35,6 +37,16 @@ Remote* remote_allocate()
 	if (lock)
 	{
 		lock_destroy(lock);
+	}
+
+	if (remote->pivot_sessions)
+	{
+		pivot_tree_destroy(remote->pivot_sessions);
+	}
+
+	if (remote->pivot_listeners)
+	{
+		pivot_tree_destroy(remote->pivot_listeners);
 	}
 
 	if (remote)
@@ -53,6 +65,8 @@ Remote* remote_allocate()
 VOID remote_deallocate(Remote * remote)
 {
 	free_encryption_context(remote);
+	pivot_tree_destroy(remote->pivot_sessions);
+	pivot_tree_destroy(remote->pivot_listeners);
 
 	if (remote->lock)
 	{

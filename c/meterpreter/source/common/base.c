@@ -350,7 +350,7 @@ BOOL command_process_inline(Command *baseCommand, Command *extensionCommand, Rem
 				packet_call_completion_handlers(remote, packet, requestId);
 			}
 
-			dprintf("[COMMAND] Completion handlers finished for %s. Returning: %s", lpMethod, (serverContinue ? "TRUE" : "FALSE"));
+			dprintf("[COMMAND] Completion handlers finished for %s.", lpMethod);
 		} while (0);
 	}
 	__except (EXCEPTION_EXECUTE_HANDLER)
@@ -360,9 +360,12 @@ BOOL command_process_inline(Command *baseCommand, Command *extensionCommand, Rem
 
 	if (!packet->local)
 	{
+		dprintf("[COMMAND] Packet is not local, destroying");
 		packet_destroy(packet);
+		dprintf("[COMMAND] Packet destroyed");
 	}
 
+	dprintf("[COMMAND] Command processing finishing. Returning: %s", (serverContinue ? "TRUE" : "FALSE"));
 	return serverContinue;
 }
 
@@ -479,7 +482,7 @@ BOOL command_handle(Remote *remote, Packet *packet)
 		{
 			dprintf("[DISPATCH] Executing inline: %s", lpMethod);
 			result = command_process_inline(baseCommand, extensionCommand, remote, packet);
-			dprintf("[DISPATCH] Executed inline: %s, result %u (%x)", lpMethod, result, result);
+			dprintf("[DISPATCH] Executed inline: result %u (%x)", result, result);
 		}
 		else
 		{

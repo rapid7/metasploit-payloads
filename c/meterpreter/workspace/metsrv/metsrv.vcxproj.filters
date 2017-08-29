@@ -15,6 +15,15 @@
     <ClCompile Include="..\..\source\server\win\server_transport_wininet.c">
       <Filter>transports</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\source\server\win\server_pivot.c">
+      <Filter>pivots</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\server\win\server_pivot_named_pipe.c">
+      <Filter>pivots</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\server\win\server_transport_named_pipe.c">
+      <Filter>transports</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\source\server\libloader.h" />
@@ -29,6 +38,15 @@
     <ClInclude Include="..\..\source\server\win\server_transport_wininet.h">
       <Filter>transports</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\source\server\win\server_pivot.h">
+      <Filter>pivots</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\server\win\server_pivot_named_pipe.h">
+      <Filter>pivots</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\server\win\server_transport_named_pipe.h">
+      <Filter>transports</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\source\server\win\metsrv.def" />
@@ -36,6 +54,9 @@
   <ItemGroup>
     <Filter Include="transports">
       <UniqueIdentifier>{302976b1-9752-4587-ac91-61595d625665}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="pivots">
+      <UniqueIdentifier>{71e24bf2-1e97-4a69-8092-d9606d341e80}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>
