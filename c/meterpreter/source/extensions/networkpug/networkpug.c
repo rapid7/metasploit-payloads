@@ -460,8 +460,8 @@ DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
 	peername6 = NULL;
 	peername_len = sizeof(peername);
 
-	if (remote->transport->get_socket) {
-		getpeername(remote->transport->get_socket(remote->transport), &peername, &peername_len);
+	if (remote->transport->get_handle) {
+		getpeername(remote->transport->get_handle(remote->transport), &peername, &peername_len);
 	}
 	else {
 		// TODO: not sure what to do here.
