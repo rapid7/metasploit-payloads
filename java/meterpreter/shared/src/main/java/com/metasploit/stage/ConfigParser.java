@@ -39,4 +39,11 @@ public class ConfigParser  {
         return res;
     }
 
+    public static long unpack64(byte[] bytes, int offset) {
+        long res = 0;
+        for (int i = 0; i < 8; i++) {
+          res = res | (((long)bytes[i + offset]) & 0xFF) << (i * 8);
+        }
+        return res;
+    }
 }
