@@ -69,7 +69,7 @@ public class Payload {
             stageless_class = ConfigParser.readString(configBytes, 8000, 100);
         }
 
-        int csr = 8;
+        int csr = ConfigParser.SESSION_EXPIRY_START_LEN;
         sessionExpiry = ConfigParser.unpack32(configBytes, csr);
         csr += 4;
         byte[] uuid = ConfigParser.readBytes(configBytes, csr, ConfigParser.UUID_LEN);

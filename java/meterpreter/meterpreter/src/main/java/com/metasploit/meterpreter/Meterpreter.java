@@ -50,7 +50,7 @@ public class Meterpreter {
 
         // socket handle is 8 bytes, followed by exit func, both of
         // which we ignore.
-        int csr = 12;
+        int csr = ConfigParser.SESSION_EXPIRY_START_LEN;
 
         // We start with the expiry, which is a 32 bit int
         setExpiry(ConfigParser.unpack32(configuration, csr));
