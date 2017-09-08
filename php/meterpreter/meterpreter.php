@@ -998,18 +998,15 @@ function connect($ipaddr, $port, $proto='tcp') {
                 STREAM_CLIENT_ASYNC_CONNECT
             );
             if (!$sock) { return false; }
-            my_print("Got a sock: $sock");
             register_stream($sock);
-            stream_set_blocking($sock,0);
+            stream_set_blocking($sock, 0);
         } elseif ($proto == 'tcp') {
             $sock = stream_socket_client("{$proto}://{$ipaddr}:{$port}");
             if (!$sock) { return false; }
-            my_print("Got a sock: $sock");
             register_stream($sock);
         } elseif ($proto == 'udp') {
             $sock = stream_socket_client("{$proto}://{$ipaddr}:{$port}");
             if (!$sock) { return false; }
-            my_print("Got a sock: $sock");
             register_stream($sock, $ipaddr, $port);
         } else {
             my_print("WTF proto is this: '$proto'");
@@ -1393,7 +1390,7 @@ while (false !== ($cnt = select($r, $w, $e, $t))) {
             $xor = substr($packet, 0, 4);
             $header = xor_bytes($xor, substr($packet, 4, 28));
             $len_array = unpack("Nlen", substr($header, 20, 4));
-            # length of the packet should be the packet header size 
+            # length of the packet should be the packet header size
             # minus 8 for the tlv length + the required data length
             $len = $len_array['len'] + 32 - 8;
             # packet type should always be 0, i.e. PACKET_TYPE_REQUEST
