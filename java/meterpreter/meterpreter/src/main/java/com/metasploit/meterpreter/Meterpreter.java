@@ -48,9 +48,9 @@ public class Meterpreter {
 
     protected void loadConfiguration(DataInputStream in, OutputStream rawOut, byte[] configuration) throws MalformedURLException {
 
-        // socket handle is 4 bytes, followed by exit func, both of
+        // socket handle is 8 bytes, followed by exit func, both of
         // which we ignore.
-        int csr = 8;
+        int csr = 12;
 
         // We start with the expiry, which is a 32 bit int
         setExpiry(ConfigParser.unpack32(configuration, csr));
@@ -83,7 +83,7 @@ public class Meterpreter {
             }
             this.transports.add(t);
         }
-        
+
         // we don't currently support extensions, so when we reach the end of the
         // list of transports we just bomb out.
     }
