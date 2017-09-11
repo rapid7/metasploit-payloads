@@ -88,44 +88,59 @@ DWORD create_transport_from_request(Remote* remote, Packet* packet, Transport** 
 			wchar_t* proxyUser = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_PROXY_USER);
 			wchar_t* proxyPass = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_PROXY_PASS);
 			PBYTE certHash = packet_get_tlv_value_raw(packet, TLV_TYPE_TRANS_CERT_HASH);
+			wchar_t* headers = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_HEADERS);
 
-			MetsrvTransportHttp config = { 0 };
-			config.common.comms_timeout = timeouts.comms;
-			config.common.retry_total = timeouts.retry_total;
-			config.common.retry_wait = timeouts.retry_wait;
-			wcsncpy(config.common.url, transportUrl, URL_SIZE);
+			size_t configSize = sizeof(MetsrvTransportHttp);
+			if (headers)
+			{
+				// this already caters for the null byte because it's included in the structure.
+				configSize += wcslen(headers);
+			}
+
+			MetsrvTransportHttp* config = (MetsrvTransportHttp*)calloc(1, configSize);
+			config->common.comms_timeout = timeouts.comms;
+			config->common.retry_total = timeouts.retry_total;
+			config->common.retry_wait = timeouts.retry_wait;
+			wcsncpy(config->common.url, transportUrl, URL_SIZE);
 
 			if (proxy)
 			{
-				wcsncpy(config.proxy.hostname, proxy, PROXY_HOST_SIZE);
+				wcsncpy(config->proxy.hostname, proxy, PROXY_HOST_SIZE);
 				free(proxy);
 			}
 
 			if (proxyUser)
 			{
-				wcsncpy(config.proxy.username, proxyUser, PROXY_USER_SIZE);
+				wcsncpy(config->proxy.username, proxyUser, PROXY_USER_SIZE);
 				free(proxyUser);
 			}
 
 			if (proxyPass)
 			{
-				wcsncpy(config.proxy.password, proxyPass, PROXY_PASS_SIZE);
+				wcsncpy(config->proxy.password, proxyPass, PROXY_PASS_SIZE);
 				free(proxyPass);
 			}
 
 			if (ua)
 			{
-				wcsncpy(config.ua, ua, UA_SIZE);
+				wcsncpy(config->ua, ua, UA_SIZE);
 				free(ua);
 			}
 
 			if (certHash)
 			{
-				memcpy(config.ssl_cert_hash, certHash, CERT_HASH_SIZE);
+				memcpy(config->ssl_cert_hash, certHash, CERT_HASH_SIZE);
 				// No need to free this up as it's not a wchar_t
 			}
 
-			transport = remote->trans_create(remote, &config.common, NULL);
+			if (headers)
+			{
+				wcscpy(config->custom_headers, headers);
+			}
+
+			transport = remote->trans_create(remote, &config->common, NULL);
+
+			free(config);
 		}
 
 		// tell the server dispatch to exit, it should pick up the new transport
@@ -203,6 +218,10 @@ DWORD remote_request_core_transport_list(Remote* remote, Packet* packet)
 					if (ctx->cert_hash)
 					{
 						packet_add_tlv_raw(transportGroup, TLV_TYPE_TRANS_CERT_HASH, ctx->cert_hash, CERT_HASH_SIZE);
+					}
+					if (ctx->custom_headers[0])
+					{
+						packet_add_tlv_wstring(transportGroup, TLV_TYPE_TRANS_HEADERS, ctx->custom_headers);
 					}
 					break;
 				}
