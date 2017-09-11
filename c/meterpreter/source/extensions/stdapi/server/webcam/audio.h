@@ -7,13 +7,13 @@
 		MAKE_CUSTOM_TLV(					\
 				TLV_META_TYPE_UINT,			\
 				TLV_TYPE_EXTENSION_AUDIO,	\
-				TLV_EXTENSIONS + 1)
+				TLV_EXTENSIONS + 10)
 
 #define TLV_TYPE_AUDIO_DATA					\
 		MAKE_CUSTOM_TLV(					\
 				TLV_META_TYPE_RAW,			\
 				TLV_TYPE_EXTENSION_AUDIO,	\
-				TLV_EXTENSIONS + 2)
+				TLV_EXTENSIONS + 11)
 
 DWORD request_ui_record_mic(Remote *remote, Packet *request);
 

