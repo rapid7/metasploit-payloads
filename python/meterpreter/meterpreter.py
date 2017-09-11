@@ -612,16 +612,16 @@ class HttpTransport(Transport):
 		opener.addheaders = []
 		if user_agent:
 			opener.addheaders.append(('User-Agent', user_agent))
-		if http_host:
-			opener.addheaders.append(('Host', http_host))
+		if http_cookie:
+			opener.addheaders.append(('Cookie', http_cookie))
 		if http_referer:
 			opener.addheaders.append(('Referer', http_referer))
 		self.user_agent = user_agent
 		urllib.install_opener(opener)
 		self.url = url
 		self._http_request_headers = {'Content-Type': 'application/octet-stream'}
-		if http_cookie:
-			self._http_request_headers['Cookie': http_cookie]
+		if http_host:
+			self._http_request_headers['Host'] = http_host
 		self._first_packet = None
 		self._empty_cnt = 0
 
