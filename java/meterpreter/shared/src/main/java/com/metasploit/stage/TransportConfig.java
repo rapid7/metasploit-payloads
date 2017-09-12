@@ -13,5 +13,6 @@ public class TransportConfig {
     public String proxy_pass;
     public String user_agent;
     public byte[] cert_hash;
+    public String custom_headers;
 
 }

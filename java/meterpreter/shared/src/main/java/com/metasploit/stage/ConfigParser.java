@@ -69,10 +69,27 @@ public class ConfigParser  {
                         break;
                     }
                 }
+
+                String customHeaders = ConfigParser.readString(configBytes, csr);
+                transportConfig.custom_headers = customHeaders;
+                csr += customHeaders.length();
             }
             config.transportConfigList.add(transportConfig);
         }
         return config;
+    }
+
+    public static String readString(byte[] bytes, int offset) {
+        StringBuilder stringBuffer = new StringBuilder();
+        int byteEnd = bytes.length;
+        for (int a=offset;a<byteEnd;a++) {
+            byte byteChar = bytes[a];
+            if (byteChar == 0) {
+                break;
+            }
+            stringBuffer.append((char) (byteChar & 0xff));
+        }
+        return stringBuffer.toString();
     }
 
     public static String readString(byte[] bytes, int offset, int size) {
