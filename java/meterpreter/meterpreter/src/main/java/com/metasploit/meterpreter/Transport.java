@@ -1,6 +1,7 @@
 package com.metasploit.meterpreter;
 
 import com.metasploit.stage.ConfigParser;
+import com.metasploit.stage.TransportConfig;
 
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
@@ -23,7 +24,6 @@ public abstract class Transport {
 
     protected abstract boolean tryConnect(Meterpreter met) throws IOException;
 
-    public abstract int parseConfig(byte[] configuration, int offset);
     public abstract void bind(DataInputStream in, OutputStream rawOut);
     public abstract void disconnect();
     public abstract boolean dispatch(Meterpreter met);
@@ -36,20 +36,10 @@ public abstract class Transport {
         this.url = url;
     }
 
-    protected int parseTimeouts(byte[] configuration, int offset) {
-        // starts with the comms timeout
-        this.commTimeout = MS * ConfigParser.unpack32(configuration, offset);
-        offset += 4;
-
-        // then we have the retry total
-        this.retryTotal = MS * ConfigParser.unpack32(configuration, offset);
-        offset += 4;
-
-        // then we have the retry wait
-        this.retryWait = MS * ConfigParser.unpack32(configuration, offset);
-        offset += 4;
-
-        return offset;
+    protected void setTimeouts(TransportConfig transportConfig) {
+        this.commTimeout = transportConfig.comm_timeout;
+        this.retryTotal = transportConfig.retry_total;
+        this.retryWait = transportConfig.retry_wait;
     }
 
     protected void arrayCopy(byte[] src, int srcOffset, byte[] dest, int destOffset, int count) {

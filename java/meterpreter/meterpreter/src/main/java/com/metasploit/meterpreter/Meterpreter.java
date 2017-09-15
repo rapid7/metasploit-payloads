@@ -22,7 +22,9 @@ import java.util.jar.JarInputStream;
 
 import com.metasploit.meterpreter.command.Command;
 import com.metasploit.meterpreter.core.core_loadlib;
+import com.metasploit.stage.Config;
 import com.metasploit.stage.ConfigParser;
+import com.metasploit.stage.TransportConfig;
 
 /**
  * Main meterpreter class. Responsible for keeping all the stuff together and for managing channels.
@@ -47,37 +49,20 @@ public class Meterpreter {
     private long sessionExpiry;
 
     protected void loadConfiguration(DataInputStream in, OutputStream rawOut, byte[] configuration) throws MalformedURLException {
-
-        // socket handle is 8 bytes, followed by exit func, both of
-        // which we ignore.
-        int csr = ConfigParser.SESSION_EXPIRY_START_LEN;
-
-        // We start with the expiry, which is a 32 bit int
-        setExpiry(ConfigParser.unpack32(configuration, csr));
-        csr += 4;
-
-        // this is followed with the UUID
-        this.uuid = ConfigParser.readBytes(configuration, csr, ConfigParser.UUID_LEN);
-        csr += ConfigParser.UUID_LEN;
-
-        this.sessionGUID = ConfigParser.readBytes(configuration, csr, ConfigParser.GUID_LEN);
-        csr += ConfigParser.GUID_LEN;
+        Config config = ConfigParser.parseConfig(configuration);
+        this.sessionExpiry = config.session_expiry + System.currentTimeMillis();
+        this.uuid = config.uuid;
+        this.sessionGUID = config.session_guid;
 
         // here we need to loop through all the given transports, we know that we're
         // going to get at least one.
-        while (configuration[csr] != '\0') {
-            // read the transport URL
-            String url = ConfigParser.readString(configuration, csr, ConfigParser.URL_LEN);
-            csr += ConfigParser.URL_LEN;
-
-            Transport t = null;
-            if (url.startsWith("tcp")) {
-                t = new TcpTransport(this, url);
+        for (TransportConfig transportConfig : config.transportConfigList) {
+            Transport t;
+            if (transportConfig.url.startsWith("tcp")) {
+                t = new TcpTransport(this, transportConfig.url, transportConfig);
             } else {
-                t = new HttpTransport(this, url);
+                t = new HttpTransport(this, transportConfig.url, transportConfig);
             }
-
-            csr = t.parseConfig(configuration, csr);
             if (this.transports.isEmpty()) {
                 t.bind(in, rawOut);
             }
@@ -218,7 +203,7 @@ public class Meterpreter {
     }
 
     /**
-     * Register a new channel in this meterpreter. Used only by {@link Channel#Channel(Meterpreter, java.io.InputStream, OutputStream, java.io.InputStream)}.
+     * Register a new channel in this meterpreter. Used only by {@link Channel#(Meterpreter, java.io.InputStream, OutputStream, java.io.InputStream)}.
      *
      * @param channel The channel to register
      * @return The channel's ID.
@@ -289,8 +274,8 @@ public class Meterpreter {
     /**
      * Send a request packet over this meterpreter.
      *
-     * @param packet Packet parameters
      * @param method Method to invoke
+     * @param tlv Packet parameters
      */
     public void writeRequestPacket(String method, TLVPacket tlv) throws IOException {
         tlv.add(TLVType.TLV_TYPE_METHOD, method);
