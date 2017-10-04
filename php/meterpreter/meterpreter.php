@@ -715,7 +715,8 @@ function supports_aes() {
 }
 
 function decrypt_packet($raw) {
-    $encrypt_flags = unpack("Nlen", substr($raw, 20, 4))['len'];
+    $unpacked = unpack("Nlen", substr($raw, 20, 4));
+    $encrypt_flags = $unpacked['len'];
     if ($encrypt_flags == ENC_AES256 && supports_aes() && $GLOBALS['AES_KEY'] != null) {
         $tlv = substr($raw, 24);
         $dec = openssl_decrypt(substr($tlv, 24), AES_256_CBC, $GLOBALS['AES_KEY'], OPENSSL_RAW_DATA, substr($tlv, 8, 16));
