@@ -240,7 +240,7 @@ static void config_create(Remote* remote, LPBYTE uuid, MetsrvConfig** config, LP
 		// extend memory appropriately
 		DWORD neededSize = t->get_config_size(t);
 
-		dprintf("[CONFIG] Allocating %u bytes for transport, total of %u bytes", neededSize, s);
+		dprintf("[CONFIG] Allocating %u bytes for transport, total of %u bytes", neededSize, s + neededSize);
 
 		sess = (MetsrvSession*)realloc(sess, s + neededSize);
 

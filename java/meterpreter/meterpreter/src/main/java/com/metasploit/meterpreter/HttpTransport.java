@@ -101,6 +101,10 @@ public class HttpTransport extends Transport {
         this.certHash = certHash;
     }
 
+    public String getCustomHeaders() {
+        return this.customHeaders;
+    }
+
     public void disconnect() {
     }
 

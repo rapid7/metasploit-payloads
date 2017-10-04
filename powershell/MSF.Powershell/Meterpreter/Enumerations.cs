@@ -82,7 +82,8 @@ namespace MSF.Powershell.Meterpreter
         TransProxyPass = MetaType.String | 438,
         TransRetryTotal = MetaType.Uint | 439,
         TransRetryWait = MetaType.Uint | 440,
-        TransGroup = MetaType.Group | 441,
+        TransHeaders = MetaType.String | 441,
+        TransGroup = MetaType.Group | 442,
 
         MachineId = MetaType.String | 460,
         Uuid = MetaType.Raw | 461,

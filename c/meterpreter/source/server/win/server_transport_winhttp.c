@@ -855,6 +855,7 @@ void transport_write_http_config(Transport* transport, MetsrvTransportHttp* conf
 {
 	HttpTransportContext* ctx = (HttpTransportContext*)transport->ctx;
 
+	dprintf("[HTTP CONF] Writing timeouts");
 	config->common.comms_timeout = transport->timeouts.comms;
 	config->common.retry_total = transport->timeouts.retry_total;
 	config->common.retry_wait = transport->timeouts.retry_wait;
@@ -862,35 +863,43 @@ void transport_write_http_config(Transport* transport, MetsrvTransportHttp* conf
 
 	if (ctx->ua)
 	{
+		dprintf("[HTTP CONF] Writing UA");
 		wcsncpy(config->ua, ctx->ua, UA_SIZE);
 	}
 
 	if (ctx->cert_hash)
 	{
+		dprintf("[HTTP CONF] Writing cert hash");
 		memcpy(config->ssl_cert_hash, ctx->cert_hash, CERT_HASH_SIZE);
 	}
 
 	if (ctx->proxy)
 	{
+		dprintf("[HTTP CONF] Writing proxy");
 		wcsncpy(config->proxy.hostname, ctx->proxy, PROXY_HOST_SIZE);
 	}
 
 	if (ctx->proxy_user)
 	{
+		dprintf("[HTTP CONF] Writing user");
 		wcsncpy(config->proxy.username, ctx->proxy_user, PROXY_USER_SIZE);
 	}
 
 	if (ctx->proxy_pass)
 	{
+		dprintf("[HTTP CONF] Writing pass");
 		wcsncpy(config->proxy.password, ctx->proxy_pass, PROXY_PASS_SIZE);
 	}
 
 	if (ctx->custom_headers)
 	{
+		dprintf("[HTTP CONF] Writing custom headers");
 		// let's hope they've allocated the right amount of space based on what we told them
 		// in transport_get_config_size_http
 		wcscpy(config->custom_headers, ctx->custom_headers);
 	}
+
+	dprintf("[HTTP CONF] Done.");
 }
 
 /*!
@@ -900,7 +909,7 @@ void transport_write_http_config(Transport* transport, MetsrvTransportHttp* conf
  */
 static DWORD transport_get_config_size_http(Transport* t)
 {
-	DWORD size = sizeof(MetsrvTransportNamedPipe);
+	DWORD size = sizeof(MetsrvTransportHttp);
 
 	// Make sure we account for the custom headers, if there are any, which aren't
 	// of a predetermined size.
