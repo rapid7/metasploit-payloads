@@ -612,8 +612,8 @@ uint16_t get_file_architecture(char * target_executable_path) {
 	PEFILE_READ_OPTIONS read_options;
 	read_options.header_only = true;
 	
-	if (pefile_read_file(target_executable_path, &read_options, &mype)) {
+	if (pefile_read_file(target_executable_path, &read_options, &mype))
 		return mype.pe_header.Machine;
-	}
-
+	else
+		return 0;
 }
