@@ -164,7 +164,17 @@ DWORD screenshot( int quality, DWORD dwPipeName )
 		// BitBlt the screenshot of this sessions default input desktop on WinSta0 onto the memory DC we created
 		// screenshot all available monitors by default
 
-		SetProcessDPIAware();
+		HMODULE user32 = NULL;
+		if ((user32 = LoadLibraryA("user32")))
+		{
+
+			FARPROC SPDA = GetProcAddress(user32, "SetProcessDPIAware");
+			if(SPDA)
+			{
+				SPDA();
+			}
+			FreeLibrary(user32);
+		}
 		if (!StretchBlt(hmemdc, 0, 0, sx, sy, hdc, sxpos, sypos, GetSystemMetrics(SM_CXVIRTUALSCREEN), GetSystemMetrics(SM_CYVIRTUALSCREEN), SRCCOPY))
 			BREAK_ON_ERROR("[SCREENSHOT] screenshot. StretchBlt failed");
 
