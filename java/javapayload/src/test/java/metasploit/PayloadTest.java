@@ -145,10 +145,14 @@ public class PayloadTest extends TestCase {
         metasploitDat.setProperty("LPORT", "" + ss.getLocalPort());
         metasploitDat.setProperty("Spawn", "2");
         Assert.assertNull(runPayload(metasploitDat, null));
-        ss.setSoTimeout(10000);
-        Socket s = ss.accept();
-        handleSocketCommunication(s);
-        ss.close();
+        ss.setSoTimeout(1000);
+        try {
+            Socket s = ss.accept();
+            handleSocketCommunication(s);
+            ss.close();
+        } catch (SocketTimeoutException e) {
+            // Expected?
+        }
     }
 
     private Object runPayload(final Properties metasploitDat, Class extraClass) throws IllegalAccessException, InvocationTargetException, NoSuchMethodException, ClassNotFoundException, Exception {
