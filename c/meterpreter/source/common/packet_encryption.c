@@ -455,7 +455,7 @@ DWORD free_encryption_context(Remote* remote)
 	DWORD result = ERROR_SUCCESS;
 
 	dprintf("[ENC] Freeing encryption context %p", remote->enc_ctx);
-	if (remote->enc_ctx != NULL);
+	if (remote->enc_ctx != NULL)
 	{
 		dprintf("[ENC] Encryption context not null, so ditching AES key %ul", remote->enc_ctx->aes_key);
 		if (remote->enc_ctx->aes_key != 0)
