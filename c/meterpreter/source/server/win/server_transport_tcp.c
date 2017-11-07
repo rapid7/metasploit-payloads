@@ -320,180 +320,171 @@ static DWORD packet_receive(Remote *remote, Packet **packet)
 
 	lock_acquire(remote->lock);
 
-	do
+	dprintf("[TCP PACKET RECEIVE] reading in the header");
+	// Read the packet length
+	while (inHeader)
 	{
-		dprintf("[TCP PACKET RECEIVE] reading in the header");
-		// Read the packet length
-		while (inHeader)
+		if ((bytesRead = recv(ctx->fd, ((PUCHAR)&header + headerBytes), sizeof(PacketHeader)-headerBytes, 0)) <= 0)
 		{
-			if ((bytesRead = recv(ctx->fd, ((PUCHAR)&header + headerBytes), sizeof(PacketHeader)-headerBytes, 0)) <= 0)
-			{
-				if (bytesRead < 0)
-				{
-					SetLastError(ERROR_NOT_FOUND);
-				}
-
-				dprintf("[TCP] Socket error");
-				break;
-			}
-
-			headerBytes += bytesRead;
-
-			if (headerBytes != sizeof(PacketHeader))
-			{
-				continue;
-			}
-
-			inHeader = FALSE;
+			SetLastError(ERROR_NOT_FOUND);
+			goto out;
 		}
+
+		headerBytes += bytesRead;
 
 		if (headerBytes != sizeof(PacketHeader))
 		{
-			dprintf("[TCP] we didn't get enough header bytes");
-			break;
+			continue;
 		}
 
-		dprintf("[TCP] the XOR key is: %02x%02x%02x%02x", header.xor_key[0], header.xor_key[1], header.xor_key[2], header.xor_key[3]);
+		inHeader = FALSE;
+	}
 
+	if (headerBytes != sizeof(PacketHeader))
+	{
+		dprintf("[TCP] we didn't get enough header bytes");
+		goto out;
+	}
+
+	dprintf("[TCP] the XOR key is: %02x%02x%02x%02x", header.xor_key[0], header.xor_key[1], header.xor_key[2], header.xor_key[3]);
+
+#ifdef DEBUGTRACE
+	PUCHAR h = (PUCHAR)&header;
+	vdprintf("[TCP] Packet header: [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X]",
+		h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15], h[16], h[17], h[18], h[19], h[20], h[21], h[22], h[23], h[24], h[25], h[26], h[27], h[28], h[29], h[30], h[31]);
+#endif
+
+	// At this point, we might have read in a valid TLV packet, or we might have read in the first chunk of data
+	// from a staged listener after a reconnect. We can figure this out rather lazily by assuming the following:
+	// XOR keys are always 4 bytes that are non-zero. If the higher order byte of the xor key is zero, then it
+	// isn't an XOR Key, instead it's the 4-byte length of the metsrv binary (because metsrv isn't THAT big).
+	if (header.xor_key[3] == 0)
+	{
+		// looks like we have a metsrv instance, time to ignore it.
+		int length = *(int*)&header.xor_key[0];
+		dprintf("[TCP] discovered a length header, assuming it's metsrv of length %d", length);
+
+		int bytesToRead = length - sizeof(PacketHeader) + sizeof(DWORD);
+		char buffer[65535];
+
+		while (bytesToRead > 0)
+		{
+			int bytesRead = recv(ctx->fd, buffer, min(sizeof(buffer), bytesToRead), 0);
+
+			if (bytesRead < 0)
+			{
+				if (GetLastError() == WSAEWOULDBLOCK)
+				{
+					continue;
+				}
+				SetLastError(ERROR_NOT_FOUND);
+				break;
+			}
+
+			bytesToRead -= bytesRead;
+		}
+
+		// did something go wrong.
+		if (bytesToRead > 0)
+		{
+			goto out;
+		}
+
+		// indicate success, but don't return a packet for processing
+		SetLastError(ERROR_SUCCESS);
+		*packet = NULL;
+	}
+	else
+	{
+		vdprintf("[TCP] XOR key looks fine, moving on");
+		PacketHeader encodedHeader;
+		memcpy(&encodedHeader, &header, sizeof(PacketHeader));
+		// xor the header data
+		xor_bytes(header.xor_key, (PUCHAR)&header + sizeof(header.xor_key), sizeof(PacketHeader) - sizeof(header.xor_key));
 #ifdef DEBUGTRACE
 		PUCHAR h = (PUCHAR)&header;
 		vdprintf("[TCP] Packet header: [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X]",
 			h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15], h[16], h[17], h[18], h[19], h[20], h[21], h[22], h[23], h[24], h[25], h[26], h[27], h[28], h[29], h[30], h[31]);
 #endif
+		payloadLength = ntohl(header.length) - sizeof(TlvHeader);
+		vdprintf("[TCP] Payload length is %d", payloadLength);
+		DWORD packetSize = sizeof(PacketHeader) + payloadLength;
+		vdprintf("[TCP] total buffer size for the packet is %d", packetSize);
+		payloadBytesLeft = payloadLength;
 
-		// At this point, we might have read in a valid TLV packet, or we might have read in the first chunk of data
-		// from a staged listener after a reconnect. We can figure this out rather lazily by assuming the following:
-		// XOR keys are always 4 bytes that are non-zero. If the higher order byte of the xor key is zero, then it
-		// isn't an XOR Key, instead it's the 4-byte length of the metsrv binary (because metsrv isn't THAT big).
-		if (header.xor_key[3] == 0)
+		// Allocate the payload
+		if (!(packetBuffer = (PUCHAR)malloc(packetSize)))
 		{
-			// looks like we have a metsrv instance, time to ignore it.
-			int length = *(int*)&header.xor_key[0];
-			dprintf("[TCP] discovered a length header, assuming it's metsrv of length %d", length);
+			dprintf("[TCP] Failed to create the packet buffer");
+			SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+			goto out;
+		}
+		dprintf("[TCP] Allocated packet buffer at %p", packetBuffer);
 
-			int bytesToRead = length - sizeof(PacketHeader) + sizeof(DWORD);
-			char buffer[65535];
+		// Copy the packet header stuff over to the packet
+		memcpy_s(packetBuffer, sizeof(PacketHeader), (LPBYTE)&encodedHeader, sizeof(PacketHeader));
 
-			while (bytesToRead > 0)
+		LPBYTE payload = packetBuffer + sizeof(PacketHeader);
+
+		// Read the payload
+		while (payloadBytesLeft > 0)
+		{
+			if ((bytesRead = recv(ctx->fd, payload + payloadLength - payloadBytesLeft, payloadBytesLeft, 0)) <= 0)
 			{
-				int bytesRead = recv(ctx->fd, buffer, min(sizeof(buffer), bytesToRead), 0);
+
+				if (GetLastError() == WSAEWOULDBLOCK)
+				{
+					continue;
+				}
 
 				if (bytesRead < 0)
 				{
-					if (GetLastError() == WSAEWOULDBLOCK)
-					{
-						continue;
-					}
 					SetLastError(ERROR_NOT_FOUND);
-					break;
 				}
-
-				bytesToRead -= bytesRead;
+				goto out;
 			}
 
-			// did something go wrong.
-			if (bytesToRead > 0)
-			{
-				break;
-			}
+			payloadBytesLeft -= bytesRead;
+		}
 
-			// indicate success, but don't return a packet for processing
-			SetLastError(ERROR_SUCCESS);
-			*packet = NULL;
+		// Didn't finish?
+		if (payloadBytesLeft)
+		{
+			dprintf("[TCP] Failed to get all the payload bytes");
+			goto out;
+		}
+
+#ifdef DEBUGTRACE
+		h = (PUCHAR)&header.session_guid[0];
+		dprintf("[TCP] Packet Session GUID: %02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
+			h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15]);
+#endif
+		if (is_null_guid(header.session_guid) || memcmp(remote->orig_config->session.session_guid, header.session_guid, sizeof(header.session_guid)) == 0)
+		{
+			dprintf("[TCP] Session GUIDs match (or packet guid is null), decrypting packet");
+			SetLastError(decrypt_packet(remote, packet, packetBuffer, packetSize));
 		}
 		else
 		{
-			vdprintf("[TCP] XOR key looks fine, moving on");
-			PacketHeader encodedHeader;
-			memcpy(&encodedHeader, &header, sizeof(PacketHeader));
-			// xor the header data
-			xor_bytes(header.xor_key, (PUCHAR)&header + sizeof(header.xor_key), sizeof(PacketHeader) - sizeof(header.xor_key));
-#ifdef DEBUGTRACE
-			PUCHAR h = (PUCHAR)&header;
-			vdprintf("[TCP] Packet header: [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X]",
-				h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15], h[16], h[17], h[18], h[19], h[20], h[21], h[22], h[23], h[24], h[25], h[26], h[27], h[28], h[29], h[30], h[31]);
-#endif
-			payloadLength = ntohl(header.length) - sizeof(TlvHeader);
-			vdprintf("[TCP] Payload length is %d", payloadLength);
-			DWORD packetSize = sizeof(PacketHeader) + payloadLength;
-			vdprintf("[TCP] total buffer size for the packet is %d", packetSize);
-			payloadBytesLeft = payloadLength;
-
-			// Allocate the payload
-			if (!(packetBuffer = (PUCHAR)malloc(packetSize)))
+			dprintf("[TCP] Session GUIDs don't match, looking for a pivot");
+			PivotContext* pivotCtx = pivot_tree_find(remote->pivot_sessions, header.session_guid);
+			if (pivotCtx != NULL)
 			{
-				dprintf("[TCP] Failed to create the packet buffer");
-				SetLastError(ERROR_NOT_ENOUGH_MEMORY);
-				break;
-			}
-			dprintf("[TCP] Allocated packet buffer at %p", packetBuffer);
+				dprintf("[TCP] Pivot found, dispatching packet on a thread (to avoid main thread blocking)");
+				SetLastError(pivot_packet_dispatch(pivotCtx, packetBuffer, packetSize));
 
-			// Copy the packet header stuff over to the packet
-			memcpy_s(packetBuffer, sizeof(PacketHeader), (LPBYTE)&encodedHeader, sizeof(PacketHeader));
-
-			LPBYTE payload = packetBuffer + sizeof(PacketHeader);
-
-			// Read the payload
-			while (payloadBytesLeft > 0)
-			{
-				if ((bytesRead = recv(ctx->fd, payload + payloadLength - payloadBytesLeft, payloadBytesLeft, 0)) <= 0)
-				{
-
-					if (GetLastError() == WSAEWOULDBLOCK)
-					{
-						continue;
-					}
-
-					if (bytesRead < 0)
-					{
-						SetLastError(ERROR_NOT_FOUND);
-					}
-
-					break;
-				}
-
-				payloadBytesLeft -= bytesRead;
-			}
-
-			// Didn't finish?
-			if (payloadBytesLeft)
-			{
-				dprintf("[TCP] Failed to get all the payload bytes");
-				break;
-			}
-
-#ifdef DEBUGTRACE
-			h = (PUCHAR)&header.session_guid[0];
-			dprintf("[TCP] Packet Session GUID: %02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
-				h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15]);
-#endif
-			if (is_null_guid(header.session_guid) || memcmp(remote->orig_config->session.session_guid, header.session_guid, sizeof(header.session_guid)) == 0)
-			{
-				dprintf("[TCP] Session GUIDs match (or packet guid is null), decrypting packet");
-				SetLastError(decrypt_packet(remote, packet, packetBuffer, packetSize));
+				// mark this packet buffer as NULL as the thread will clean it up
+				packetBuffer = NULL;
+				*packet = NULL;
 			}
 			else
 			{
-				dprintf("[TCP] Session GUIDs don't match, looking for a pivot");
-				PivotContext* pivotCtx = pivot_tree_find(remote->pivot_sessions, header.session_guid);
-				if (pivotCtx != NULL)
-				{
-					dprintf("[TCP] Pivot found, dispatching packet on a thread (to avoid main thread blocking)");
-					SetLastError(pivot_packet_dispatch(pivotCtx, packetBuffer, packetSize));
-
-					// mark this packet buffer as NULL as the thread will clean it up
-					packetBuffer = NULL;
-					*packet = NULL;
-				}
-				else
-				{
-					dprintf("[TCP] Session GUIDs don't match, can't find pivot!");
-				}
+				dprintf("[TCP] Session GUIDs don't match, can't find pivot!");
 			}
 		}
+	}
 
-	} while (0);
-
+out:
 	res = GetLastError();
 
 	dprintf("[TCP] Freeing stuff up");
