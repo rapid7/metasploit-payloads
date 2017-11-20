@@ -1,4 +1,32 @@
-## Compiling JavaPayload and Java Meterpreter
+# Building the Java and Android Meterpreter
+
+1. Install Maven and Java, this will depend on your OS
+1. Download the [Android SDK](https://developer.android.com/sdk/index.html), and the [Android NDK](https://developer.android.com/tools/sdk/ndk/index.html)
+1. Install Android SDK Platforms 3, 10 and 19, and update the "Android SDK Tools" and "Android SDK Platform-tools"
+1. Compile the Android and Java Meterpreter, which deploys to the ../metasploit-frameworks folder
+```
+mvn package -Dandroid.sdk.path=/path/to/android-sdk -Dandroid.ndk.path=/path/to/android-ndk -Dandroid.release=true -P deploy
+```
+Next time you run `msfconsole`, you should see: `WARNING: Local files may be incompatible with the Metasploit Framework`.
+This means that msfconsole is now using your newly built version of the Java and Android Meterpreter :)
+
+
+## Building on OSX
+```
+brew cask install caskroom/versions/java8
+brew cask install android-sdk
+brew install maven
+sdkmanager --licenses
+sdkmanager "platforms;android-3"
+sdkmanager "platforms;android-10"
+sdkmanager "platforms;android-19"
+sdkmanager "ndk-bundle"
+
+#cd metasploit-payloads/java
+mvn package -Dandroid.sdk.path=/usr/local/share/android-sdk -Dandroid.ndk.path=/usr/local/share/android-sdk/ndk-bundle/ -Dandroid.release=true -P deploy
+```
+
+## Compiling JavaPayload and Java Meterpreter manually
 
 To compile JavaPayload (a Java stager / code loader) and Java Meterpreter for
 Metasploit, you need Maven 3.1 or above (Maven 3.5 works at the time of this
@@ -89,17 +117,6 @@ For NetBeans or IntelliJ IDEA, refer to the documentation at
 
 http://maven.apache.org/netbeans-module.html
 http://maven.apache.org/plugins/maven-idea-plugin/
-
-## Android
-
-1. Download the [Android SDK](https://developer.android.com/sdk/index.html), and the [Android NDK](https://developer.android.com/tools/sdk/ndk/index.html) somewhere
-2. Launch the `sdk/tool/android` program
-3. Install API version 10 and 19, and update the "Android SDK Tools" and "Android SDK Platform-tools"
-4. Compile android meterpreter:
-
-```
-mvn package -Dandroid.sdk.path=/path/to/android-sdk -Dandroid.ndk.path=/path/to/android-ndk -Dandroid.release=true -P deploy
-```
 
 
 
