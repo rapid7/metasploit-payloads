@@ -347,178 +347,170 @@ static DWORD packet_receive_http(Remote *remote, Packet **packet)
 
 	lock_acquire(remote->lock);
 
-	do
+	hReq = ctx->create_req(ctx, TRUE, "PACKET RECEIVE");
+	if (hReq == NULL)
 	{
-		hReq = ctx->create_req(ctx, TRUE, "PACKET RECEIVE");
-		if (hReq == NULL)
-		{
-			break;
-		}
+		goto out;
+	}
 
-		vdprintf("[PACKET RECEIVE HTTP] sending GET");
-		hRes = ctx->send_req(ctx, hReq, NULL, 0);
+	vdprintf("[PACKET RECEIVE HTTP] sending GET");
+	hRes = ctx->send_req(ctx, hReq, NULL, 0);
 
-		if (!hRes)
+	if (!hRes)
+	{
+		dprintf("[PACKET RECEIVE HTTP] Failed send_req: %d %d", GetLastError(), WSAGetLastError());
+		SetLastError(ERROR_NOT_FOUND);
+		goto out;
+	}
+
+	vdprintf("[PACKET RECEIVE HTTP] Waiting to see the response ...");
+	if (ctx->receive_response && !ctx->receive_response(hReq))
+	{
+		vdprintf("[PACKET RECEIVE] Failed receive: %d", GetLastError());
+		SetLastError(ERROR_NOT_FOUND);
+		goto out;
+	}
+
+	SetLastError(ctx->validate_response(hReq, ctx));
+
+	if (GetLastError() != ERROR_SUCCESS)
+	{
+		goto out;
+	}
+
+	// Read the packet length
+	retries = 3;
+	vdprintf("[PACKET RECEIVE HTTP] Start looping through the receive calls");
+	while (inHeader && retries > 0)
+	{
+		retries--;
+		if (!ctx->read_response(hReq, (PUCHAR)&header + headerBytes, sizeof(PacketHeader)-headerBytes, &bytesRead))
 		{
-			dprintf("[PACKET RECEIVE HTTP] Failed send_req: %d %d", GetLastError(), WSAGetLastError());
+			dprintf("[PACKET RECEIVE HTTP] Failed HEADER read_response: %d", GetLastError());
 			SetLastError(ERROR_NOT_FOUND);
-			break;
+			goto out;
 		}
 
-		vdprintf("[PACKET RECEIVE HTTP] Waiting to see the response ...");
-		if (ctx->receive_response && !ctx->receive_response(hReq))
+		vdprintf("[PACKET RECEIVE NHTTP] Data received: %u bytes", bytesRead);
+
+		// If the response contains no data, this is fine, it just means the
+		// remote side had nothing to tell us. Indicate this through a
+		// ERROR_EMPTY response code so we can update the timestamp.
+		if (bytesRead == 0)
 		{
-			vdprintf("[PACKET RECEIVE] Failed receive: %d", GetLastError());
-			SetLastError(ERROR_NOT_FOUND);
-			break;
+			SetLastError(ERROR_EMPTY);
+			goto out;
 		}
 
-		SetLastError(ctx->validate_response(hReq, ctx));
-
-		if (GetLastError() != ERROR_SUCCESS)
-		{
-			// something went wrong, so break
-			break;
-		}
-
-		// Read the packet length
-		retries = 3;
-		vdprintf("[PACKET RECEIVE HTTP] Start looping through the receive calls");
-		while (inHeader && retries > 0)
-		{
-			retries--;
-			if (!ctx->read_response(hReq, (PUCHAR)&header + headerBytes, sizeof(PacketHeader)-headerBytes, &bytesRead))
-			{
-				dprintf("[PACKET RECEIVE HTTP] Failed HEADER read_response: %d", GetLastError());
-				SetLastError(ERROR_NOT_FOUND);
-				break;
-			}
-
-			vdprintf("[PACKET RECEIVE NHTTP] Data received: %u bytes", bytesRead);
-
-			// If the response contains no data, this is fine, it just means the
-			// remote side had nothing to tell us. Indicate this through a
-			// ERROR_EMPTY response code so we can update the timestamp.
-			if (bytesRead == 0)
-			{
-				SetLastError(ERROR_EMPTY);
-				break;
-			}
-
-			headerBytes += bytesRead;
-
-			if (headerBytes != sizeof(PacketHeader))
-			{
-				continue;
-			}
-
-			inHeader = FALSE;
-		}
-
-		if (GetLastError() == ERROR_EMPTY)
-		{
-			break;
-		}
+		headerBytes += bytesRead;
 
 		if (headerBytes != sizeof(PacketHeader))
 		{
-			dprintf("[PACKET RECEIVE HTTP] headerBytes no valid");
+			continue;
+		}
+
+		inHeader = FALSE;
+	}
+
+	if (headerBytes != sizeof(PacketHeader))
+	{
+		dprintf("[PACKET RECEIVE HTTP] headerBytes not valid");
+		SetLastError(ERROR_NOT_FOUND);
+		goto out;
+	}
+
+	dprintf("[PACKET RECEIVE HTTP] decoding header");
+	PacketHeader encodedHeader;
+	memcpy(&encodedHeader, &header, sizeof(PacketHeader));
+	xor_bytes(header.xor_key, (PUCHAR)&header + sizeof(header.xor_key), sizeof(PacketHeader) - sizeof(header.xor_key));
+
+#ifdef DEBUGTRACE
+	PUCHAR h = (PUCHAR)&header;
+	vdprintf("[HTTP] Packet header: [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X]",
+		   h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15], h[16], h[17], h[18], h[19], h[20], h[21], h[22], h[23], h[24], h[25], h[26], h[27], h[28], h[29], h[30], h[31]);
+#endif
+
+	payloadLength = ntohl(header.length) - sizeof(TlvHeader);
+	vdprintf("[REC HTTP] Payload length is %d", payloadLength);
+	DWORD packetSize = sizeof(PacketHeader) + payloadLength;
+	vdprintf("[REC HTTP] total buffer size for the packet is %d", packetSize);
+	payloadBytesLeft = payloadLength;
+
+	// Allocate the payload
+	if (!(packetBuffer = (PUCHAR)malloc(packetSize)))
+	{
+		dprintf("[REC HTTP] Failed to create the packet buffer");
+		SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+		goto out;
+	}
+	dprintf("[REC HTTP] Allocated packet buffer at %p", packetBuffer);
+
+	// Copy the packet header stuff over to the packet
+	memcpy_s(packetBuffer, sizeof(PacketHeader), (LPBYTE)&encodedHeader, sizeof(PacketHeader));
+
+	LPBYTE payload = packetBuffer + sizeof(PacketHeader);
+
+	// Read the payload
+	retries = payloadBytesLeft;
+	while (payloadBytesLeft > 0 && retries > 0)
+	{
+		vdprintf("[PACKET RECEIVE HTTP] reading more data from the body...");
+		retries--;
+		if (!ctx->read_response(hReq, payload + payloadLength - payloadBytesLeft, payloadBytesLeft, &bytesRead))
+		{
+			dprintf("[PACKET RECEIVE] Failed BODY read_response: %d", GetLastError());
 			SetLastError(ERROR_NOT_FOUND);
-			break;
+			goto out;
 		}
 
-		dprintf("[PACKET RECEIVE HTTP] decoding header");
-		PacketHeader encodedHeader;
-		memcpy(&encodedHeader, &header, sizeof(PacketHeader));
-		xor_bytes(header.xor_key, (PUCHAR)&header + sizeof(header.xor_key), sizeof(PacketHeader) - sizeof(header.xor_key));
+		if (!bytesRead)
+		{
+			vdprintf("[PACKET RECEIVE HTTP] no bytes read, bailing out");
+			SetLastError(ERROR_NOT_FOUND);
+			goto out;
+		}
+
+		vdprintf("[PACKET RECEIVE HTTP] bytes read: %u", bytesRead);
+		payloadBytesLeft -= bytesRead;
+	}
+
+	// Didn't finish?
+	if (payloadBytesLeft)
+	{
+		goto out;
+	}
 
 #ifdef DEBUGTRACE
-		PUCHAR h = (PUCHAR)&header;
-		vdprintf("[TCP] Packet header: [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X]",
-			h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15], h[16], h[17], h[18], h[19], h[20], h[21], h[22], h[23], h[24], h[25], h[26], h[27], h[28], h[29], h[30], h[31]);
-#endif
-		
-		payloadLength = ntohl(header.length) - sizeof(TlvHeader);
-		vdprintf("[REC HTTP] Payload length is %d", payloadLength);
-		DWORD packetSize = sizeof(PacketHeader) + payloadLength;
-		vdprintf("[REC HTTP] total buffer size for the packet is %d", packetSize);
-		payloadBytesLeft = payloadLength;
-
-		// Allocate the payload
-		if (!(packetBuffer = (PUCHAR)malloc(packetSize)))
-		{
-			dprintf("[REC HTTP] Failed to create the packet buffer");
-			SetLastError(ERROR_NOT_ENOUGH_MEMORY);
-			break;
-		}
-		dprintf("[REC HTTP] Allocated packet buffer at %p", packetBuffer);
-
-		// Copy the packet header stuff over to the packet
-		memcpy_s(packetBuffer, sizeof(PacketHeader), (LPBYTE)&encodedHeader, sizeof(PacketHeader));
-
-		LPBYTE payload = packetBuffer + sizeof(PacketHeader);
-
-		// Read the payload
-		retries = payloadBytesLeft;
-		while (payloadBytesLeft > 0 && retries > 0)
-		{
-			vdprintf("[PACKET RECEIVE HTTP] reading more data from the body...");
-			retries--;
-			if (!ctx->read_response(hReq, payload + payloadLength - payloadBytesLeft, payloadBytesLeft, &bytesRead))
-			{
-				dprintf("[PACKET RECEIVE] Failed BODY read_response: %d", GetLastError());
-				SetLastError(ERROR_NOT_FOUND);
-				break;
-			}
-
-			if (!bytesRead)
-			{
-				vdprintf("[PACKET RECEIVE HTTP] no bytes read, bailing out");
-				SetLastError(ERROR_NOT_FOUND);
-				break;
-			}
-
-			vdprintf("[PACKET RECEIVE HTTP] bytes read: %u", bytesRead);
-			payloadBytesLeft -= bytesRead;
-		}
-
-		// Didn't finish?
-		if (payloadBytesLeft)
-		{
-			break;
-		}
-
-#ifdef DEBUGTRACE
-		h = (PUCHAR)&header.session_guid[0];
-		dprintf("[HTTP] Packet Session GUID: %02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
-			h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15]);
+	h = (PUCHAR)&header.session_guid[0];
+	dprintf("[HTTP] Packet Session GUID: %02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
+		h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15]);
 #endif
 
-		if (is_null_guid(header.session_guid) || memcmp(remote->orig_config->session.session_guid, header.session_guid, sizeof(header.session_guid)) == 0)
+	if (is_null_guid(header.session_guid) || memcmp(remote->orig_config->session.session_guid, header.session_guid, sizeof(header.session_guid)) == 0)
+	{
+		dprintf("[HTTP] Session GUIDs match (or packet guid is null), decrypting packet");
+		SetLastError(decrypt_packet(remote, packet, packetBuffer, packetSize));
+	}
+	else
+	{
+		dprintf("[HTTP] Session GUIDs don't match, looking for a pivot");
+		PivotContext* pivotCtx = pivot_tree_find(remote->pivot_sessions, header.session_guid);
+		if (pivotCtx != NULL)
 		{
-			dprintf("[HTTP] Session GUIDs match (or packet guid is null), decrypting packet");
-			SetLastError(decrypt_packet(remote, packet, packetBuffer, packetSize));
+			dprintf("[HTTP] Pivot found, dispatching packet on a thread (to avoid main thread blocking)");
+			SetLastError(pivot_packet_dispatch(pivotCtx, packetBuffer, packetSize));
+
+			// mark this packet buffer as NULL as the thread will clean it up
+			packetBuffer = NULL;
+			*packet = NULL;
 		}
 		else
 		{
-			dprintf("[HTTP] Session GUIDs don't match, looking for a pivot");
-			PivotContext* pivotCtx = pivot_tree_find(remote->pivot_sessions, header.session_guid);
-			if (pivotCtx != NULL)
-			{
-				dprintf("[HTTP] Pivot found, dispatching packet on a thread (to avoid main thread blocking)");
-				SetLastError(pivot_packet_dispatch(pivotCtx, packetBuffer, packetSize));
-
-				// mark this packet buffer as NULL as the thread will clean it up
-				packetBuffer = NULL;
-				*packet = NULL;
-			}
-			else
-			{
-				dprintf("[HTTP] Session GUIDs don't match, can't find pivot!");
-			}
+			dprintf("[HTTP] Session GUIDs don't match, can't find pivot!");
 		}
-	} while (0);
+	}
 
+out:
 	res = GetLastError();
 
 	dprintf("[HTTP] Cleaning up");
@@ -891,6 +883,7 @@ void transport_write_http_config(Transport* transport, MetsrvTransportHttp* conf
 		wcsncpy(config->proxy.password, ctx->proxy_pass, PROXY_PASS_SIZE);
 	}
 
+
 	if (ctx->custom_headers)
 	{
 		dprintf("[HTTP CONF] Writing custom headers");
@@ -926,6 +919,7 @@ static DWORD transport_get_config_size_http(Transport* t)
  * @brief Create an HTTP(S) transport from the given settings.
  * @param config Pointer to the HTTP configuration block.
  * @param size Pointer to the size of the parsed config block.
+ * @param config Pointer to the HTTP configuration block.
  * @return Pointer to the newly configured/created HTTP(S) transport instance.
  */
 Transport* transport_create_http(MetsrvTransportHttp* config, LPDWORD size)
@@ -933,10 +927,10 @@ Transport* transport_create_http(MetsrvTransportHttp* config, LPDWORD size)
 	Transport* transport = (Transport*)malloc(sizeof(Transport));
 	HttpTransportContext* ctx = (HttpTransportContext*)malloc(sizeof(HttpTransportContext));
 
-	if (size)
-	{
-		*size = sizeof(MetsrvTransportHttp);
-	}
+ 	if (size)
+ 	{
+ 		*size = sizeof(MetsrvTransportHttp);
+ 	}
 
 	dprintf("[TRANS HTTP] Creating http transport for url %S", config->common.url);
 

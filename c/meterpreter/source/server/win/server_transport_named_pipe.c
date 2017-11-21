@@ -11,7 +11,7 @@ typedef struct _PIPEMIGRATECONTEXT
 {
 	COMMONMIGRATECONTEXT common;
 
-	// We force 64bit algnment for HANDLES and POINTERS in order 
+	// We force 64bit algnment for HANDLES and POINTERS in order
 	// to be cross compatable between x86 and x64 migration.
 	union
 	{
@@ -104,133 +104,124 @@ static DWORD packet_receive_named_pipe(Remote *remote, Packet **packet)
 
 	lock_acquire(remote->lock);
 
-	do
+	dprintf("[PIPE PACKET RECEIVE] reading in the header from pipe handle: %p", ctx->pipe);
+	// Read the packet length
+	while (inHeader)
 	{
-		dprintf("[PIPE PACKET RECEIVE] reading in the header from pipe handle: %p", ctx->pipe);
-		// Read the packet length
-		while (inHeader)
+		if (!ReadFile(ctx->pipe, ((PUCHAR)&header + headerBytes), sizeof(PacketHeader)-headerBytes, &bytesRead, NULL))
 		{
-			if (!ReadFile(ctx->pipe, ((PUCHAR)&header + headerBytes), sizeof(PacketHeader)-headerBytes, &bytesRead, NULL))
-			{
-				if (bytesRead < 0)
-				{
-					SetLastError(ERROR_NOT_FOUND);
-				}
-
-				dprintf("[PIPE] ReadFile error");
-				break;
-			}
-
-			headerBytes += bytesRead;
-
-			if (headerBytes != sizeof(PacketHeader))
-			{
-				vdprintf("[PIPE] More bytes required");
-				continue;
-			}
-
-			inHeader = FALSE;
+			SetLastError(ERROR_NOT_FOUND);
+			goto out;
 		}
+
+		headerBytes += bytesRead;
 
 		if (headerBytes != sizeof(PacketHeader))
 		{
-			dprintf("[PIPE] we didn't get enough header bytes");
-			break;
+			vdprintf("[PIPE] More bytes required");
+			continue;
 		}
 
-		vdprintf("[PIPE] the XOR key is: %02x%02x%02x%02x", header.xor_key[0], header.xor_key[1], header.xor_key[2], header.xor_key[3]);
+		inHeader = FALSE;
+	}
 
+	if (headerBytes != sizeof(PacketHeader))
+	{
+		dprintf("[PIPE] we didn't get enough header bytes");
+		goto out;
+	}
+
+	vdprintf("[PIPE] the XOR key is: %02x%02x%02x%02x", header.xor_key[0], header.xor_key[1], header.xor_key[2], header.xor_key[3]);
+
+#ifdef DEBUGTRACE
+	PUCHAR h = (PUCHAR)&header;
+	dprintf("[PIPE] Packet header: [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X]",
+		h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15], h[16], h[17], h[18], h[19], h[20], h[21], h[22], h[23], h[24], h[25], h[26], h[27], h[28], h[29], h[30], h[31]);
+#endif
+
+	// At this point, we might have read in a valid TLV packet, or we might have read in the first chunk of data
+	// from a staged listener after a reconnect. We can figure this out rather lazily by assuming the following:
+	// XOR keys are always 4 bytes that are non-zero. If the higher order byte of the xor key is zero, then it
+	// isn't an XOR Key, instead it's the 4-byte length of the metsrv binary (because metsrv isn't THAT big).
+	if (header.xor_key[3] == 0)
+	{
+		// looks like we have a metsrv instance, time to ignore it.
+		int length = *(int*)&header.xor_key[0];
+		dprintf("[PIPE] discovered a length header, assuming it's metsrv of length %d", length);
+
+		int bytesToRead = length - sizeof(PacketHeader) + sizeof(DWORD);
+		char* buffer = (char*)malloc(bytesToRead);
+		read_raw_bytes_to_buffer(ctx, buffer, bytesToRead, &bytesRead);
+		free(buffer);
+
+		// did something go wrong.
+		if (bytesToRead != bytesRead)
+		{
+			dprintf("[PIPE] Failed to read all bytes when flushing the buffer: %u vs %u", bytesToRead, bytesRead);
+			goto out;
+		}
+
+		// indicate success, but don't return a packet for processing
+		SetLastError(ERROR_SUCCESS);
+		*packet = NULL;
+	}
+	else
+	{
+		vdprintf("[PIPE] XOR key looks fine, moving on");
+		// xor the header data
+		xor_bytes(header.xor_key, (PUCHAR)&header + sizeof(header.xor_key), sizeof(PacketHeader) - sizeof(header.xor_key));
 #ifdef DEBUGTRACE
 		PUCHAR h = (PUCHAR)&header;
 		dprintf("[PIPE] Packet header: [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X]",
 			h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15], h[16], h[17], h[18], h[19], h[20], h[21], h[22], h[23], h[24], h[25], h[26], h[27], h[28], h[29], h[30], h[31]);
 #endif
 
-		// At this point, we might have read in a valid TLV packet, or we might have read in the first chunk of data
-		// from a staged listener after a reconnect. We can figure this out rather lazily by assuming the following:
-		// XOR keys are always 4 bytes that are non-zero. If the higher order byte of the xor key is zero, then it
-		// isn't an XOR Key, instead it's the 4-byte length of the metsrv binary (because metsrv isn't THAT big).
-		if (header.xor_key[3] == 0)
+		// if we don't have a GUID yet, we need to take the one given in the packet
+		if (is_null_guid(remote->orig_config->session.session_guid))
 		{
-			// looks like we have a metsrv instance, time to ignore it.
-			int length = *(int*)&header.xor_key[0];
-			dprintf("[PIPE] discovered a length header, assuming it's metsrv of length %d", length);
-
-			int bytesToRead = length - sizeof(PacketHeader) + sizeof(DWORD);
-			char* buffer = (char*)malloc(bytesToRead);
-			read_raw_bytes_to_buffer(ctx, buffer, bytesToRead, &bytesRead);
-			free(buffer);
-
-			// did something go wrong.
-			if (bytesToRead != bytesRead)
-			{
-				dprintf("[PIPE] Failed to read all bytes when flushing the buffer: %u vs %u", bytesToRead, bytesRead);
-				break;
-			}
-
-			// indicate success, but don't return a packet for processing
-			SetLastError(ERROR_SUCCESS);
-			*packet = NULL;
-		}
-		else
-		{
-			vdprintf("[PIPE] XOR key looks fine, moving on");
-			// xor the header data
-			xor_bytes(header.xor_key, (PUCHAR)&header + sizeof(header.xor_key), sizeof(PacketHeader) - sizeof(header.xor_key));
-#ifdef DEBUGTRACE
-			PUCHAR h = (PUCHAR)&header;
-			dprintf("[PIPE] Packet header: [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X]",
-				h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15], h[16], h[17], h[18], h[19], h[20], h[21], h[22], h[23], h[24], h[25], h[26], h[27], h[28], h[29], h[30], h[31]);
-#endif
-
-			// if we don't have a GUID yet, we need to take the one given in the packet
-			if (is_null_guid(remote->orig_config->session.session_guid))
-			{
-				memcpy(remote->orig_config->session.session_guid, header.session_guid, sizeof(remote->orig_config->session.session_guid));
-			}
-			
-			payloadLength = ntohl(header.length) - sizeof(TlvHeader);
-			dprintf("[PIPE] Payload length is %u 0x%08x", payloadLength, payloadLength);
-			DWORD packetSize = sizeof(PacketHeader) + payloadLength;
-			dprintf("[PIPE] total buffer size for the packet is %u 0x%08x", packetSize, packetSize);
-			payloadBytesLeft = payloadLength;
-
-			// Allocate the payload
-			if (!(packetBuffer = (PUCHAR)malloc(packetSize)))
-			{
-				dprintf("[PIPE] Failed to create the packet buffer");
-				SetLastError(ERROR_NOT_ENOUGH_MEMORY);
-				break;
-			}
-			dprintf("[PIPE] Allocated packet buffer at %p", packetBuffer);
-
-			// we're done with the header data, so we need to re-encode it, as the packet decryptor is going to
-			// handle the extraction for us.
-			xor_bytes(header.xor_key, (LPBYTE)&header.session_guid[0], sizeof(PacketHeader) - sizeof(header.xor_key));
-			// Copy the packet header stuff over to the packet
-			memcpy_s(packetBuffer, sizeof(PacketHeader), (LPBYTE)&header, sizeof(PacketHeader));
-
-			payload = packetBuffer + sizeof(PacketHeader);
-
-			// Read the payload
-			read_raw_bytes_to_buffer(ctx, payload, payloadLength, &bytesRead);
-			dprintf("[PIPE] wanted %u read %u", payloadLength, bytesRead);
-
-			// Didn't finish?
-			if (bytesRead != payloadLength)
-			{
-				dprintf("[PIPE] Failed to get all the payload bytes");
-				break;
-			}
-
-			vdprintf("[PIPE] decrypting packet");
-			SetLastError(decrypt_packet(remote, packet, packetBuffer, packetSize));
-
-			free(packetBuffer);
+			memcpy(remote->orig_config->session.session_guid, header.session_guid, sizeof(remote->orig_config->session.session_guid));
 		}
 
-	} while (0);
+		payloadLength = ntohl(header.length) - sizeof(TlvHeader);
+		dprintf("[PIPE] Payload length is %u 0x%08x", payloadLength, payloadLength);
+		DWORD packetSize = sizeof(PacketHeader) + payloadLength;
+		dprintf("[PIPE] total buffer size for the packet is %u 0x%08x", packetSize, packetSize);
+		payloadBytesLeft = payloadLength;
 
+		// Allocate the payload
+		if (!(packetBuffer = (PUCHAR)malloc(packetSize)))
+		{
+			dprintf("[PIPE] Failed to create the packet buffer");
+			SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+			goto out;
+		}
+		dprintf("[PIPE] Allocated packet buffer at %p", packetBuffer);
+
+		// we're done with the header data, so we need to re-encode it, as the packet decryptor is going to
+		// handle the extraction for us.
+		xor_bytes(header.xor_key, (LPBYTE)&header.session_guid[0], sizeof(PacketHeader) - sizeof(header.xor_key));
+		// Copy the packet header stuff over to the packet
+		memcpy_s(packetBuffer, sizeof(PacketHeader), (LPBYTE)&header, sizeof(PacketHeader));
+
+		payload = packetBuffer + sizeof(PacketHeader);
+
+		// Read the payload
+		read_raw_bytes_to_buffer(ctx, payload, payloadLength, &bytesRead);
+		dprintf("[PIPE] wanted %u read %u", payloadLength, bytesRead);
+
+		// Didn't finish?
+		if (bytesRead != payloadLength)
+		{
+			dprintf("[PIPE] Failed to get all the payload bytes");
+			goto out;
+		}
+
+		vdprintf("[PIPE] decrypting packet");
+		SetLastError(decrypt_packet(remote, packet, packetBuffer, packetSize));
+
+		free(packetBuffer);
+	}
+out:
 	res = GetLastError();
 
 	// Cleanup on failure

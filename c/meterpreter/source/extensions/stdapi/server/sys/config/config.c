@@ -269,7 +269,7 @@ DWORD request_sys_config_getprivs(Remote *remote, Packet *packet)
 	DWORD res = ERROR_SUCCESS;
 	HANDLE token = NULL;
 	int x;
-	TOKEN_PRIVILEGES priv = {0};
+	TOKEN_PRIVILEGES priv = { 0 };
 	LPCTSTR privs[] = {
 		SE_ASSIGNPRIMARYTOKEN_NAME,
 		SE_AUDIT_NAME,
@@ -311,8 +311,10 @@ DWORD request_sys_config_getprivs(Remote *remote, Packet *packet)
 
 	do
 	{
-		if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &token))  {
+		if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &token))
+		{
 			res = GetLastError();
+			dprintf("[GETPRIVS] Failed to open the process token: %u 0x%x", res, res);
 			break;
 		}
 
@@ -322,18 +324,25 @@ DWORD request_sys_config_getprivs(Remote *remote, Packet *packet)
 			LookupPrivilegeValue(NULL, privs[x], &priv.Privileges[0].Luid);
 			priv.PrivilegeCount = 1;
 			priv.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
-			if(AdjustTokenPrivileges(token, FALSE, &priv, 0, 0, 0)) {
-				if(GetLastError() == ERROR_SUCCESS) {
+			if (AdjustTokenPrivileges(token, FALSE, &priv, 0, 0, 0))
+			{
+				if (GetLastError() == ERROR_SUCCESS)
+				{
+					dprintf("[GETPRIVS] Got Priv %s", privs[x]);
 					packet_add_tlv_string(response, TLV_TYPE_PRIVILEGE, privs[x]);
 				}
-			} else {
-				dprintf("[getprivs] Failed to set privilege %s (%u)", privs[x], GetLastError());
+			}
+			else
+			{
+				dprintf("[GETPRIVS] Failed to set privilege %s (%u)", privs[x], GetLastError());
 			}
 		}
 	} while (0);
 
-	if(token)
+	if (token)
+	{
 		CloseHandle(token);
+	}
 
 	// Transmit the response
 	packet_transmit_response(res, remote, response);
