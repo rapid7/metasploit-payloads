@@ -158,7 +158,8 @@ typedef enum
 	TLV_TYPE_TRANS_PROXY_PASS    = TLV_VALUE(TLV_META_TYPE_STRING,    438),   ///! Represents the proxy password (for http/s).
 	TLV_TYPE_TRANS_RETRY_TOTAL   = TLV_VALUE(TLV_META_TYPE_UINT,      439),   ///! Total time (seconds) to continue retrying comms.
 	TLV_TYPE_TRANS_RETRY_WAIT    = TLV_VALUE(TLV_META_TYPE_UINT,      440),   ///! Time (seconds) to wait between reconnect attempts.
-	TLV_TYPE_TRANS_GROUP         = TLV_VALUE(TLV_META_TYPE_GROUP,     441),   ///! A single transport grouping.
+	TLV_TYPE_TRANS_HEADERS       = TLV_VALUE(TLV_META_TYPE_STRING,    441),   ///! List of custom headers to send with the requests.
+	TLV_TYPE_TRANS_GROUP         = TLV_VALUE(TLV_META_TYPE_GROUP,     442),   ///! A single transport grouping.
 
 	// session/machine identification
 	TLV_TYPE_MACHINE_ID          = TLV_VALUE(TLV_META_TYPE_STRING,    460),   ///! Represents a machine identifier.

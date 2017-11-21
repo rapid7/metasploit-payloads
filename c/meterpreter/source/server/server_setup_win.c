@@ -108,27 +108,15 @@ static Transport* create_transport(Remote* remote, MetsrvTransportCommon* transp
 
 	if (wcsncmp(transportCommon->url, L"tcp", 3) == 0)
 	{
-		if (size)
-		{
-			*size = sizeof(MetsrvTransportTcp);
-		}
-		transport = transport_create_tcp((MetsrvTransportTcp*)transportCommon);
+		transport = transport_create_tcp((MetsrvTransportTcp*)transportCommon, size);
 	}
 	else if (wcsncmp(transportCommon->url, L"pipe", 4) == 0)
 	{
-		if (size)
-		{
-			*size = sizeof(MetsrvTransportNamedPipe);
-		}
-		transport = transport_create_named_pipe((MetsrvTransportNamedPipe*)transportCommon);
+		transport = transport_create_named_pipe((MetsrvTransportNamedPipe*)transportCommon, size);
 	}
 	else
 	{
-		if (size)
-		{
-			*size = sizeof(MetsrvTransportHttp);
-		}
-		transport = transport_create_http((MetsrvTransportHttp*)transportCommon);
+		transport = transport_create_http((MetsrvTransportHttp*)transportCommon, size);
 	}
 
 	if (transport == NULL)
@@ -250,10 +238,9 @@ static void config_create(Remote* remote, LPBYTE uuid, MetsrvConfig** config, LP
 	do
 	{
 		// extend memory appropriately
-		DWORD neededSize = t->type == METERPRETER_TRANSPORT_TCP ? sizeof(MetsrvTransportTcp) : 
-			(t->type == METERPRETER_TRANSPORT_PIPE ? sizeof(MetsrvTransportNamedPipe) : sizeof(MetsrvTransportHttp));
+		DWORD neededSize = t->get_config_size(t);
 
-		dprintf("[CONFIG] Allocating %u bytes for transport, total of %u bytes", neededSize, s);
+		dprintf("[CONFIG] Allocating %u bytes for transport, total of %u bytes", neededSize, s + neededSize);
 
 		sess = (MetsrvSession*)realloc(sess, s + neededSize);
 

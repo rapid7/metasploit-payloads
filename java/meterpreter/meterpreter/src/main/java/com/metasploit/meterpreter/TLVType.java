@@ -62,7 +62,8 @@ public interface TLVType {
     public static final int TLV_TYPE_TRANS_PROXY_PASS   = TLVPacket.TLV_META_TYPE_STRING | 438;
     public static final int TLV_TYPE_TRANS_RETRY_TOTAL  = TLVPacket.TLV_META_TYPE_UINT   | 439;
     public static final int TLV_TYPE_TRANS_RETRY_WAIT   = TLVPacket.TLV_META_TYPE_UINT   | 440;
-    public static final int TLV_TYPE_TRANS_GROUP        = TLVPacket.TLV_META_TYPE_GROUP  | 441;
+    public static final int TLV_TYPE_TRANS_HEADERS      = TLVPacket.TLV_META_TYPE_STRING | 441;
+    public static final int TLV_TYPE_TRANS_GROUP        = TLVPacket.TLV_META_TYPE_GROUP  | 442;
 
     public static final int TLV_TYPE_MACHINE_ID   = TLVPacket.TLV_META_TYPE_STRING | 460;
     public static final int TLV_TYPE_UUID         = TLVPacket.TLV_META_TYPE_RAW    | 461;

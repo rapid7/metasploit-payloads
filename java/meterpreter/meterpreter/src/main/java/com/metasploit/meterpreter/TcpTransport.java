@@ -12,6 +12,7 @@ import java.net.SocketException;
 import java.net.SocketTimeoutException;
 
 import com.metasploit.meterpreter.command.Command;
+import com.metasploit.stage.TransportConfig;
 
 public class TcpTransport extends Transport {
     private Socket sock = null;
@@ -19,6 +20,7 @@ public class TcpTransport extends Transport {
     private DataOutputStream outputStream = null;
     private String host;
     private int port;
+
 
     // This whole thing exists just so that we can deal with
     // the fact that MSF thinks we've 'died' (and therefore
@@ -80,6 +82,11 @@ public class TcpTransport extends Transport {
         }
     }
 
+    public TcpTransport(Meterpreter met, String url, TransportConfig transportConfig) {
+        this(met, url);
+        setTimeouts(transportConfig);
+    }
+
     public TcpTransport(Meterpreter met, String url) {
         super(met, url);
 
@@ -91,10 +98,6 @@ public class TcpTransport extends Transport {
     public void bind(DataInputStream in, OutputStream rawOut) {
         this.inputStream = in;
         this.outputStream = new DataOutputStream(rawOut);
-    }
-
-    public int parseConfig(byte[] configuration, int offset) {
-        return this.parseTimeouts(configuration, offset);
     }
 
     public boolean switchUri(String uri) {

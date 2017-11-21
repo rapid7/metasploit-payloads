@@ -47,6 +47,10 @@ public class core_transport_list implements Command {
                 if (h.getCertHash() != null) {
                     transportData.add(TLVType.TLV_TYPE_TRANS_CERT_HASH, h.getCertHash());
                 }
+
+                if (h.getCustomHeaders() != null) {
+                    transportData.add(TLVType.TLV_TYPE_TRANS_HEADERS, h.getCustomHeaders());
+                }
             }
 
             response.addOverflow(TLVType.TLV_TYPE_TRANS_GROUP, transportData);

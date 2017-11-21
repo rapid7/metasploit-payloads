@@ -26,6 +26,7 @@ typedef struct _HttpTransportContext HttpTransportContext;
 typedef struct _PacketEncryptionContext PacketEncryptionContext;
 
 typedef UINT_PTR(*PTransportGetHandle)(Transport* transport);
+typedef DWORD(*PTransportGetConfigSize)(Transport* transport);
 typedef void(*PTransportSetHandle)(Transport* transport, UINT_PTR handle);
 typedef void(*PTransportReset)(Transport* transport, BOOL shuttingDown);
 typedef BOOL(*PTransportInit)(Transport* transport);
@@ -40,7 +41,7 @@ typedef BOOL(*PServerDispatch)(Remote* remote, THREAD* dispatchThread);
 typedef DWORD(*PPacketTransmit)(Remote* remote, LPBYTE rawPacket, DWORD rawPacketLength);
 
 typedef HANDLE(*PCreateHttpRequest)(HttpTransportContext* ctx, BOOL isGet, const char* direction);
-typedef BOOL(*PSendHttpRequest)(HANDLE hReq, LPVOID buffer, DWORD size);
+typedef BOOL(*PSendHttpRequest)(HttpTransportContext* ctx, HANDLE hReq, LPVOID buffer, DWORD size);
 typedef BOOL(*PCloseRequest)(HANDLE hReq);
 typedef DWORD(*PValidateResponse)(HANDLE hReq, HttpTransportContext* ctx);
 typedef BOOL(*PReceiveResponse)(HANDLE hReq);
@@ -83,6 +84,7 @@ typedef struct _HttpTransportContext
 	STRTYPE proxy;                        ///! Proxy details.
 	STRTYPE proxy_user;                   ///! Proxy username.
 	STRTYPE proxy_pass;                   ///! Proxy password.
+	STRTYPE custom_headers;               ///! List of custom headers to add to outgoing requests.
 
 	BOOL proxy_configured;                ///! Indication of whether the proxy has been configured.
 	LPVOID proxy_for_url;                 ///! Pointer to the proxy for the current url (if required).
@@ -102,6 +104,7 @@ typedef struct _Transport
 	DWORD type;                           ///! The type of transport in use.
 	PTransportGetHandle get_handle;       ///! Function to get the socket/handle from the transport.
 	PTransportSetHandle set_handle;       ///! Function to set the socket/handle on the transport.
+	PTransportGetConfigSize get_config_size; ///! Function to get the size of the configuration for the transport.
 	PTransportReset transport_reset;      ///! Function to reset/clean the transport ready for restarting.
 	PTransportInit transport_init;        ///! Initialises the transport.
 	PTransportDeinit transport_deinit;    ///! Deinitialises the transport.

