@@ -87,7 +87,16 @@ DWORD request_sys_config_getenv(Remote *remote, Packet *packet)
 			dprintf("[ENV] Final env var: %s", pEnvVarStart);
 
 			// grab the value of the variable and stick it in the response.
-			add_env_pair(response, pEnvVarStart, getenv(pEnvVarStart));
+			PWCHAR name = utf8_to_wchar(pEnvVarStart);
+			//Ensure we always have > 0 bytes even if env var doesn't exist
+			DWORD envlen = GetEnvironmentVariableW(name, NULL, 0) + 1;
+			PWCHAR wvalue = (PWCHAR)malloc(envlen * sizeof(WCHAR));
+			GetEnvironmentVariableW(name, wvalue, envlen);
+			free(name);
+			char* value = wchar_to_utf8(wvalue);
+			free(wvalue);
+			add_env_pair(response, pEnvVarStart, value);
+			free(value);
 
 			dprintf("[ENV] Env var added");
 		}
