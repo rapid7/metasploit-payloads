@@ -183,7 +183,8 @@ DWORD request_sys_config_getsid(Remote* pRemote, Packet* pRequest)
 DWORD populate_uid(Packet* pResponse)
 {
 	DWORD dwResult;
-	CHAR cbUsername[1024], cbUserOnly[512], cbDomainOnly[512];
+	WCHAR cbUserOnly[512], cbDomainOnly[512];
+	CHAR cbUsername[1024];
 	BYTE tokenUserInfo[4096];
 	DWORD dwUserSize = sizeof(cbUserOnly), dwDomainSize = sizeof(cbDomainOnly);
 	DWORD dwSidType = 0;
@@ -200,13 +201,17 @@ DWORD populate_uid(Packet* pResponse)
 			break;
 		}
 
-		if (!LookupAccountSidA(NULL, ((TOKEN_USER*)tokenUserInfo)->User.Sid, cbUserOnly, &dwUserSize, cbDomainOnly, &dwDomainSize, (PSID_NAME_USE)&dwSidType))
+		if (!LookupAccountSidW(NULL, ((TOKEN_USER*)tokenUserInfo)->User.Sid, cbUserOnly, &dwUserSize, cbDomainOnly, &dwDomainSize, (PSID_NAME_USE)&dwSidType))
 		{
 			BREAK_ON_ERROR("[GETUID] Failed to lookup the account SID data");
 		}
 
+		char *domainName = wchar_to_utf8(cbDomainOnly);
+		char *userName = wchar_to_utf8(cbUserOnly);
  		// Make full name in DOMAIN\USERNAME format
-		_snprintf(cbUsername, 512, "%s\\%s", cbDomainOnly, cbUserOnly);
+		_snprintf(cbUsername, 512, "%s\\%s", domainName, userName);
+		free(domainName);
+		free(userName);
 		cbUsername[511] = '\0';
 
 		packet_add_tlv_string(pResponse, TLV_TYPE_USER_NAME, cbUsername);
