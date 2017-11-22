@@ -485,9 +485,7 @@ DWORD request_negotiate_aes_key(Remote* remote, Packet* packet)
 	{
 		if (remote->enc_ctx != NULL)
 		{
-			dprintf("[ENC] context already created.");
-			// Done this before, so don't do it again.
-			break;
+			free_encryption_context(remote);
 		}
 
 		remote->enc_ctx = (PacketEncryptionContext*)calloc(1, sizeof(PacketEncryptionContext));
