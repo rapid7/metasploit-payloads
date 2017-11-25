@@ -219,7 +219,7 @@ DWORD remote_request_core_transport_list(Remote* remote, Packet* packet)
 					{
 						packet_add_tlv_raw(transportGroup, TLV_TYPE_TRANS_CERT_HASH, ctx->cert_hash, CERT_HASH_SIZE);
 					}
-					if (ctx->custom_headers[0])
+					if (ctx->custom_headers && ctx->custom_headers[0])
 					{
 						packet_add_tlv_wstring(transportGroup, TLV_TYPE_TRANS_HEADERS, ctx->custom_headers);
 					}
