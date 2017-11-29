@@ -3,6 +3,109 @@
 #include "fs_local.h"
 #include "precomp.h"
 
+BOOL DeleteFolderWR(LPCWSTR szPath)
+{
+	WIN32_FIND_DATAW FindFileData;
+	HANDLE hFind = INVALID_HANDLE_VALUE;
+	DWORD dwError, dwAttrs;
+	BOOL bRes;
+	int nLength;
+	wchar_t cPath[MAX_PATH], cCurrentFile[MAX_PATH];
+
+	if (szPath == NULL) {
+		SetLastError(ERROR_INVALID_PARAMETER);
+		return FALSE;
+	}
+
+	if (szPath[0] == L'\\' || szPath[0] == L'\0' || szPath[0] == L'.' || lstrcmpiW(szPath, L"..") == 0) {
+		SetLastError(ERROR_INVALID_PARAMETER);
+		return FALSE;
+	}
+
+	dwAttrs = GetFileAttributesW(szPath);
+	if (dwAttrs == INVALID_FILE_ATTRIBUTES) {
+		return FALSE;
+	}
+
+	if (~dwAttrs & FILE_ATTRIBUTE_DIRECTORY) {
+		SetLastError(ERROR_INVALID_PARAMETER);
+		return FALSE;
+	}
+
+	SetLastError(0);
+
+	bRes = RemoveDirectoryW(szPath);
+	if (bRes == TRUE)
+		return TRUE;
+
+	if (bRes == FALSE  && GetLastError() != ERROR_DIR_NOT_EMPTY)
+		return FALSE;
+
+	nLength = lstrlenW(szPath);
+
+	if (nLength + lstrlenW(L"\\*.*") + 1> MAX_PATH)
+		return FALSE;
+
+	if (szPath[nLength - 1] == L'\\')
+		wsprintfW(cPath, L"%s*.*", szPath);
+	else
+		wsprintfW(cPath, L"%s\\*.*", szPath);
+
+	hFind = FindFirstFileW(cPath, &FindFileData);
+	if (hFind == INVALID_HANDLE_VALUE)
+		return FALSE;
+
+	lstrcpyW(cPath, szPath);
+
+	if (cPath[nLength - 1] == L'\\')
+		cPath[nLength - 1] = L'\0';
+
+	do
+	{
+		if (lstrcmpiW(FindFileData.cFileName, L".") == 0 || lstrcmpiW(FindFileData.cFileName, L"..") == 0)
+			continue;
+
+		if (lstrlenW(cPath) + lstrlenW(L"\\") + lstrlenW(FindFileData.cFileName) + 1 > MAX_PATH)
+			continue;
+
+		wsprintfW(cCurrentFile, L"%s\\%s", cPath, FindFileData.cFileName);
+		if (FindFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+		{
+			if (FindFileData.dwFileAttributes & FILE_ATTRIBUTE_READONLY)
+			{
+				FindFileData.dwFileAttributes &= ~FILE_ATTRIBUTE_READONLY;
+				SetFileAttributesW(cCurrentFile, FindFileData.dwFileAttributes);
+			}
+
+			if (FindFileData.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)
+				bRes = RemoveDirectoryW(cCurrentFile);
+			else
+				bRes = DeleteFolderWR(cCurrentFile);
+		}
+		else
+		{
+
+			if ((FindFileData.dwFileAttributes & FILE_ATTRIBUTE_READONLY) ||
+				(FindFileData.dwFileAttributes & FILE_ATTRIBUTE_SYSTEM))
+				SetFileAttributesW(cCurrentFile, FILE_ATTRIBUTE_NORMAL);
+
+			DeleteFileW(cCurrentFile);
+		}
+	} while (FindNextFileW(hFind, &FindFileData));
+
+	dwError = GetLastError();
+
+	if (hFind != INVALID_HANDLE_VALUE)
+		FindClose(hFind);
+
+	if (dwError != ERROR_NO_MORE_FILES)
+		return FALSE;
+
+	bRes = RemoveDirectoryW(szPath);
+
+	return bRes;
+}
+
 char * fs_expand_path(const char *regular)
 {
 	wchar_t expanded_path[FS_MAX_PATH];
@@ -146,7 +249,7 @@ int fs_delete_dir(const char *directory)
 		goto out;
 	}
 
-	if (RemoveDirectoryW(dir_w) == 0) {
+	if (DeleteFolderWR(dir_w) == 0) {
 		rc = GetLastError();
 	}
 
@@ -274,8 +377,11 @@ int fs_fopen(const char *path, const char *mode, FILE **f)
 		rc = ERROR_NOT_ENOUGH_MEMORY;
 		goto out;
 	}
-
-	*f = _wfopen(path_w, mode_w);
+	wchar_t Mode[5];
+	memset(Mode, 0, sizeof(Mode));
+	Mode[0] = mode_w[0];
+	Mode[1] = L'b';
+	*f = _wfopen(path_w, Mode);
 	if (*f == NULL) {
 		rc = GetLastError();
 	}
