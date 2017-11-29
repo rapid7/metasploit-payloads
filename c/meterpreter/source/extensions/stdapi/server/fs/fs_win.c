@@ -12,18 +12,25 @@ BOOL DeleteFolderWR(LPCWSTR szPath)
 	int nLength;
 	wchar_t cPath[MAX_PATH], cCurrentFile[MAX_PATH];
 
-	if (szPath == NULL)
+	if (szPath == NULL) {
+		SetLastError(ERROR_INVALID_PARAMETER);
 		return FALSE;
+	}
 
-	if (szPath[0] == L'\\' || szPath[0] == L'\0' || szPath[0] == L'.' || lstrcmpiW(szPath, L"..") == 0)
+	if (szPath[0] == L'\\' || szPath[0] == L'\0' || szPath[0] == L'.' || lstrcmpiW(szPath, L"..") == 0) {
+		SetLastError(ERROR_INVALID_PARAMETER);
 		return FALSE;
+	}
 
 	dwAttrs = GetFileAttributesW(szPath);
-	if (dwAttrs == INVALID_FILE_ATTRIBUTES)
-		return TRUE;
-
-	if (~dwAttrs & FILE_ATTRIBUTE_DIRECTORY)
+	if (dwAttrs == INVALID_FILE_ATTRIBUTES) {
 		return FALSE;
+	}
+
+	if (~dwAttrs & FILE_ATTRIBUTE_DIRECTORY) {
+		SetLastError(ERROR_INVALID_PARAMETER);
+		return FALSE;
+	}
 
 	SetLastError(0);
 
