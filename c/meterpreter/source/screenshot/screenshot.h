@@ -21,6 +21,7 @@ static _inline void real_dprintf(char *format, ...) {
 	vsnprintf_s(buffer, sizeof(buffer), sizeof(buffer)-3, format,args);
 	strcat_s(buffer, sizeof(buffer), "\r\n");
 	OutputDebugStringA(buffer);
+	va_end(args);
 }
 
 // Simple macro to close a handle and set the handle to NULL.

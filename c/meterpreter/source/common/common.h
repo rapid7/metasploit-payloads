@@ -104,6 +104,7 @@ static _inline void real_dprintf(char *format, ...)
 	vsnprintf_s(buffer + len, sizeof(buffer)-len, sizeof(buffer)-len - 3, format, args);
 	strcat_s(buffer, sizeof(buffer), "\r\n");
 	OutputDebugStringA(buffer);
+	va_end(args);
 }
 
 #endif
