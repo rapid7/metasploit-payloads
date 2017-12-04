@@ -66,7 +66,7 @@ bool mod_mimikatz_privilege::multiplePrivs(vector<wstring> * privs, DWORD type)
 {
 	bool reussite = false;	
 	vector<pair<wstring, DWORD>> * mesPrivs = new vector<pair<wstring, DWORD>>;
-	for(vector<wstring>::iterator monPrivilege = privs->begin(); monPrivilege != privs->end() ; monPrivilege++)
+	for(vector<wstring>::iterator monPrivilege = privs->begin(); monPrivilege != privs->end() ; ++monPrivilege)
 	{
 		mesPrivs->push_back(make_pair(*monPrivilege, type));
 	}
@@ -89,7 +89,7 @@ bool mod_mimikatz_privilege::list(vector<wstring> * arguments)
 
 	if(mod_privilege::get(mesPrivs))//, INVALID_HANDLE_VALUE))
 	{
-		for(vector<pair<wstring, DWORD>>::iterator monPrivilege = mesPrivs->begin(); (monPrivilege != mesPrivs->end()) ; monPrivilege++)
+		for(vector<pair<wstring, DWORD>>::iterator monPrivilege = mesPrivs->begin(); (monPrivilege != mesPrivs->end()) ; ++monPrivilege)
 		{
 			(*outputStream) << setw(35) << setfill(wchar_t(L' ')) << left << monPrivilege->first << right << L'\t';
 			

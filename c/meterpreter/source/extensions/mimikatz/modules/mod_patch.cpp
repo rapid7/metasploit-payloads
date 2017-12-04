@@ -133,7 +133,7 @@ bool mod_patch::checkVersion(vector<OS> * vectorValid)
 {
 	bool reussite = false;
 	
-	for(vector<OS>::iterator monOs = vectorValid->begin(); monOs != vectorValid->end() && !reussite; monOs++)
+	for(vector<OS>::iterator monOs = vectorValid->begin(); monOs != vectorValid->end() && !reussite; ++monOs)
 	{
 		reussite = checkVersion(*monOs);
 	}	

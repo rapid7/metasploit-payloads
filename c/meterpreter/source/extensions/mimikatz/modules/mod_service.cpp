@@ -46,7 +46,7 @@ bool mod_service::getUniqueForName(KIWI_SERVICE_STATUS_PROCESS * monService, wst
 	vector<KIWI_SERVICE_STATUS_PROCESS> * vectorServices = new vector<KIWI_SERVICE_STATUS_PROCESS>();
 	if(getList(vectorServices, machineName))
 	{
-		for(vector<KIWI_SERVICE_STATUS_PROCESS>::iterator monSvc = vectorServices->begin(); monSvc != vectorServices->end(); monSvc++)
+		for(vector<KIWI_SERVICE_STATUS_PROCESS>::iterator monSvc = vectorServices->begin(); monSvc != vectorServices->end(); ++monSvc)
 		{
 			if(reussite = (_wcsicmp(monSvc->serviceName.c_str(), serviceName->c_str()) == 0))
 			{

@@ -229,7 +229,7 @@ void TFTPserv::processOptions(struct sockaddr * from, unsigned int fromlen, stri
 
 		string val(buf.substr(currentSpot, nextSpot - currentSpot));
 		currentSpot = nextSpot + 1;
-		for (string::iterator it = opt.begin(); it < opt.end(); it++)
+		for (string::iterator it = opt.begin(); it < opt.end(); ++it)
 			*it = tolower(*it);
 		checkIntOption("blksize", 8, 65464, opt, val, transfer, data);
 		checkIntOption("timeout", 1, 255, opt, val, transfer, data);

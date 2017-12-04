@@ -25,7 +25,7 @@ bool mod_mimikatz_crypto::listProviders(vector<wstring> * arguments)
 	/* CryptoAPI */
 	(*outputStream) << L"Providers CryptoAPI :" << endl;
 	if(mod_cryptoapi::getVectorProviders(monVectorProviders))
-		for(vector<wstring>::iterator monProvider = monVectorProviders->begin(); monProvider != monVectorProviders->end(); monProvider++)
+		for(vector<wstring>::iterator monProvider = monVectorProviders->begin(); monProvider != monVectorProviders->end(); ++monProvider)
 			(*outputStream) << L'\t' << *monProvider << endl;
 	else (*outputStream) << L"mod_cryptoapi::getVectorProviders : " << mod_system::getWinError() << endl;
 
@@ -37,7 +37,7 @@ bool mod_mimikatz_crypto::listProviders(vector<wstring> * arguments)
 
 		(*outputStream) << L"Providers CNG :" << endl;
 		if(mod_cryptong::getVectorProviders(monVectorProviders))
-			for(vector<wstring>::iterator monProvider = monVectorProviders->begin(); monProvider != monVectorProviders->end(); monProvider++)
+			for(vector<wstring>::iterator monProvider = monVectorProviders->begin(); monProvider != monVectorProviders->end(); ++monProvider)
 				(*outputStream) << L'\t' << *monProvider << endl;
 		else (*outputStream) << L"mod_cryptong::getVectorProviders : " << mod_system::getWinError() << endl;
 	}
@@ -69,7 +69,7 @@ bool mod_mimikatz_crypto::listStores(vector<wstring> * arguments)
 		(*outputStream) << endl;
 		vector<wstring> * mesStores = new vector<wstring>();
 		if(mod_crypto::getVectorSystemStores(mesStores, systemStore))
-			for(vector<wstring>::iterator monStore = mesStores->begin(); monStore != mesStores->end(); monStore++)
+			for(vector<wstring>::iterator monStore = mesStores->begin(); monStore != mesStores->end(); ++monStore)
 				(*outputStream) << L'\t' << *monStore << endl;
 		else (*outputStream) << L"mod_crypto::getListSystemStores : " << mod_system::getWinError() << endl;
 		delete mesStores;
@@ -125,7 +125,7 @@ void mod_mimikatz_crypto::listAndOrExportKeys(vector<wstring> * arguments, bool 
 	{
 		DWORD i;
 		vector<wstring>::iterator monContainer;
-		for(i = 0, monContainer = monVectorKeys->begin(); monContainer != monVectorKeys->end(); monContainer++, i++)
+		for(i = 0, monContainer = monVectorKeys->begin(); monContainer != monVectorKeys->end(); ++monContainer, ++i)
 		{
 			(*outputStream) << L"\t - " << *monContainer << endl;
 
@@ -195,7 +195,7 @@ void mod_mimikatz_crypto::listAndOrExportKeys(vector<wstring> * arguments, bool 
 		{
 			DWORD i;
 			vector<wstring>::iterator monContainer;
-			for(i = 0, monContainer = monVectorKeys->begin(); monContainer != monVectorKeys->end(); monContainer++, i++)
+			for(i = 0, monContainer = monVectorKeys->begin(); monContainer != monVectorKeys->end(); ++monContainer, ++i)
 			{
 				(*outputStream) << L"\t - " << *monContainer << endl;
 
@@ -579,7 +579,7 @@ bool mod_mimikatz_crypto::patchcng(vector<wstring> * arguments)
 void mod_mimikatz_crypto::sanitizeFileName(wstring * fileName)
 {
 	wchar_t monTab[] = {L'\\', L'/', L':', L'*', L'?', L'\"', L'<', L'>', L'|'};
-	for(wstring::iterator monIterateur = fileName->begin(); monIterateur != fileName->end(); monIterateur++)
+	for(wstring::iterator monIterateur = fileName->begin(); monIterateur != fileName->end(); ++monIterateur)
 	{
 		for(ULONG i = 0; i < sizeof(monTab) / sizeof(wchar_t); i++)
 		{

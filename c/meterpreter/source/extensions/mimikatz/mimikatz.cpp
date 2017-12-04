@@ -116,11 +116,11 @@ bool mimikatz::doCommandeLocale(wstring * fonction, vector<wstring> * arguments)
 		commande = fonction->substr(monIndex + 2);
 	}
 
-	for(vector<KIWI_MIMIKATZ_LOCAL_MODULE>::iterator monModule = mesModules.begin(); monModule != mesModules.end(); monModule++)
+	for(vector<KIWI_MIMIKATZ_LOCAL_MODULE>::iterator monModule = mesModules.begin(); monModule != mesModules.end(); ++monModule)
 	{
 		if(module == monModule->module)
 		{
-			for(vector<KIWI_MIMIKATZ_LOCAL_MODULE_COMMAND>::iterator maCommande = monModule->commandes.begin(); maCommande != monModule->commandes.end(); maCommande++)
+			for(vector<KIWI_MIMIKATZ_LOCAL_MODULE_COMMAND>::iterator maCommande = monModule->commandes.begin(); maCommande != monModule->commandes.end(); ++maCommande)
 			{
 				if(commande == maCommande->commandName)
 				{
@@ -270,7 +270,7 @@ bool mimikatz::doCommandeDistante(std::wstring &commande)
 
 void mimikatz::listModules()
 {
-	for(vector<KIWI_MIMIKATZ_LOCAL_MODULE>::iterator monModule = mesModules.begin(); monModule != mesModules.end(); monModule++)
+	for(vector<KIWI_MIMIKATZ_LOCAL_MODULE>::iterator monModule = mesModules.begin(); monModule != mesModules.end(); ++monModule)
 	{
 		(*outputStream) << setw(12) << setfill(wchar_t(' ')) << monModule->module << L"\t- " << monModule->description << endl;	
 	}
@@ -278,7 +278,7 @@ void mimikatz::listModules()
 
 void mimikatz::listCommandes(vector<KIWI_MIMIKATZ_LOCAL_MODULE>::iterator monModule)
 {
-	for(vector<KIWI_MIMIKATZ_LOCAL_MODULE_COMMAND>::iterator maCommande = monModule->commandes.begin(); maCommande != monModule->commandes.end(); maCommande++)
+	for(vector<KIWI_MIMIKATZ_LOCAL_MODULE_COMMAND>::iterator maCommande = monModule->commandes.begin(); maCommande != monModule->commandes.end(); ++maCommande)
 	{
 		if(maCommande->commandName.front() != L':')
 			(*outputStream) << setw(12) << setfill(wchar_t(' ')) << maCommande->commandName << L"\t- " << maCommande->commandHelp << endl;	

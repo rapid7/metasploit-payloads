@@ -24,7 +24,7 @@ bool mod_mimikatz_terminalserver::sessions(vector<wstring> * arguments)
 	if(mod_ts::getSessions(&mesSessions, (arguments->size() ? &arguments->front() : NULL)))
 	{
 		(*outputStream) << L"SessId\tEtat\tstrEtat" << endl;
-		for(vector<mod_ts::KIWI_WTS_SESSION_INFO>::iterator maSession = mesSessions.begin(); maSession != mesSessions.end(); maSession++)
+		for(vector<mod_ts::KIWI_WTS_SESSION_INFO>::iterator maSession = mesSessions.begin(); maSession != mesSessions.end(); ++maSession)
 		{
 			(*outputStream) <<
 				setw(5) << setfill(wchar_t(' ')) << maSession->id << L'\t' <<
@@ -46,7 +46,7 @@ bool mod_mimikatz_terminalserver::processes(vector<wstring> * arguments)
 	if(mod_ts::getProcesses(&mesProcess, (arguments->size() ? &arguments->front() : NULL)))
 	{
 		(*outputStream) << L"PID\tSessId\tUtilisateur" << endl;
-		for(vector<mod_ts::KIWI_WTS_PROCESS_INFO>::iterator monProcess = mesProcess.begin(); monProcess != mesProcess.end(); monProcess++)
+		for(vector<mod_ts::KIWI_WTS_PROCESS_INFO>::iterator monProcess = mesProcess.begin(); monProcess != mesProcess.end(); ++monProcess)
 		{
 			(*outputStream) << 
 				setw(5) << setfill(wchar_t(' ')) << monProcess->pid << L'\t' <<

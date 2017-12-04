@@ -65,7 +65,7 @@ bool mod_mimikatz_divers::cancelator(vector<wstring> * arguments)
 
 		if(mod_process::getList(mesProcesses, &processName))
 		{
-			for(vector<mod_process::KIWI_PROCESSENTRY32>::iterator leProcess = mesProcesses->begin(); leProcess != mesProcesses->end(); leProcess++)
+			for(vector<mod_process::KIWI_PROCESSENTRY32>::iterator leProcess = mesProcesses->begin(); leProcess != mesProcesses->end(); ++leProcess)
 			{
 				mod_patch::patchModuleOfPID(leProcess->th32ProcessID, L"", patternCMPJMP, sizeof(patternCMPJMP), patternNOP, sizeof(patternNOP), offsetCibleNOP);
 			}
