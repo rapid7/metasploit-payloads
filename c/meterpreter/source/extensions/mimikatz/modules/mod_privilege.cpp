@@ -90,6 +90,6 @@ bool mod_privilege::set(vector<pair<wstring, DWORD>> *maPrivilegesvector, HANDLE
 		}
 	}
 
-	delete monBuffer;
+	delete[] monBuffer;
 	return reussite;
 }
