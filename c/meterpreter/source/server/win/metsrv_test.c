@@ -76,10 +76,6 @@ int main(int argc, char **argv)
 
 	} while (0);
 
-	if (dllPath)
-	{
-		free(dllPath);
-	}
-
+	free(dllPath);
 	return 0;
 }
