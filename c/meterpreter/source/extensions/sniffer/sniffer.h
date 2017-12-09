@@ -1,27 +1,31 @@
 #ifndef _METERPRETER_SOURCE_EXTENSION_SNIFFER_SNIFFER_H
 #define _METERPRETER_SOURCE_EXTENSION_SNIFFER_SNIFFER_H
 
-#ifdef _WIN32
-
 #include "../../common/common.h"
+
+#ifdef _WIN32
 
 #include <winsock2.h>
 #include <ws2tcpip.h>
 
-#include <HNPsSdkUser.h>
 #include "dnet.h"
-
-#else
+#define HAVE_REMOTE
 
 #include <pcap/pcap.h>
+
+#pragma comment(lib , "ws2_32.lib") //For winsock
+#pragma comment(lib , "wpcap.lib") //For winpcap
+
+// #include <errno.h>
+#define lock_acquire(sm) EnterCriticalSection(&sm)
+#define lock_release(sm) LeaveCriticalSection(&sm)
+#define lock_destroy(sm) DeleteCriticalSection(&sm)
+#endif
 
 #ifndef ERROR_ACCESS_DENIED
  #define ERROR_ACCESS_DENIED EACCES
 #endif
 
-#endif
-
-#include "../../common/common.h"
 
 typedef struct capturejob
 {
@@ -32,20 +36,17 @@ typedef struct capturejob
 	unsigned int cur_pkts;
 	unsigned int cur_bytes;
 	unsigned int mtu;
-	HANDLE adp;
-#ifdef _WIN32
-	HANDLE *pkts;
-#else
 	struct PeterPacket **pkts;
-#endif
 	unsigned char *dbuf;
 	unsigned int dlen;
 	unsigned int didx;
 	int capture_linktype; //current capture link type that we want to save, ie. LINKTYPE_ETHERNET
-#ifndef _WIN32
+#ifdef _WIN32
+	HANDLE thread;
+#else
 	THREAD *thread;
-	pcap_t *pcap;
 #endif
+	pcap_t *pcap;
 } CaptureJob;
 
 #define TLV_TYPE_EXTENSION_SNIFFER	0
