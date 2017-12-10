@@ -213,6 +213,83 @@ DWORD invoke_ps_command(wchar_t* sessionId, wchar_t* command, _bstr_t& output)
 	return (DWORD)hr;
 }
 
+DWORD initialize_dotnet_4(HMODULE hMsCoree,
+	ICLRMetaHost** clrMetaHost,
+	ICLRRuntimeInfo** clrRuntimeInfo,
+	ICorRuntimeHost** clrCorRuntimeHost)
+{
+	HRESULT hr;
+
+	pClrCreateInstance clrCreateInstance = (pClrCreateInstance)GetProcAddress(hMsCoree, "CLRCreateInstance");
+	if (clrCreateInstance == NULL) {
+		return GetLastError();
+	}
+
+	dprintf("[PSH] .NET 4 method in use");
+
+	if (FAILED(hr = clrCreateInstance(CLSID_CLRMetaHost, IID_PPV_ARGS(clrMetaHost))))
+	{
+		dprintf("[PSH] Failed to create instance of the CLR metahost 0x%x", hr);
+		return hr;
+	}
+
+	dprintf("[PSH] Getting a reference to the .NET runtime");
+	if (FAILED(hr = (*clrMetaHost)->GetRuntime(L"v2.0.50727", IID_PPV_ARGS(clrRuntimeInfo))))
+	{
+		dprintf("[PSH] Failed to get runtime v2.0.50727 instance 0x%x", hr);
+		if (FAILED(hr = (*clrMetaHost)->GetRuntime(L"v4.0.30319", IID_PPV_ARGS(clrRuntimeInfo))))
+		{
+			dprintf("[PSH] Failed to get runtime v4.0.30319 instance 0x%x", hr);
+			return hr;
+		}
+	}
+
+	dprintf("[PSH] Determining loadablility");
+	BOOL loadable = FALSE;
+	if (FAILED(hr = (*clrRuntimeInfo)->IsLoadable(&loadable)))
+	{
+		dprintf("[PSH] Unable to determine of runtime is loadable 0x%x", hr);
+		return hr;
+	}
+
+	if (!loadable)
+	{
+		dprintf("[PSH] Chosen runtime isn't loadable, exiting.");
+		return E_NOTIMPL;
+	}
+
+	dprintf("[PSH] Instantiating the COR runtime host");
+	hr = (*clrRuntimeInfo)->GetInterface(CLSID_CorRuntimeHost, IID_PPV_ARGS(clrCorRuntimeHost));
+	if (FAILED(hr))
+	{
+		dprintf("[PSH] Unable to get a reference to the COR runtime host 0x%x", hr);
+		return hr;
+	}
+
+	return ERROR_SUCCESS;
+}
+
+DWORD initialize_dotnet_2(HMODULE hMsCoree,
+	ICorRuntimeHost** clrCorRuntimeHost)
+{
+	HRESULT hr;
+
+	pCorBindToRuntime corBindToRuntime = (pCorBindToRuntime)GetProcAddress(hMsCoree, "CorBindToRuntime");
+	if (corBindToRuntime == NULL)
+	{
+		dprintf("[PSH] Unable to find .NET clr instance loader");
+		return E_NOTIMPL;
+	}
+
+	if (FAILED(hr = corBindToRuntime(L"v2.0.50727", L"wks", CLSID_CorRuntimeHost, IID_PPV_ARGS(clrCorRuntimeHost))))
+	{
+		dprintf("[PSH] Unable to bind to .NET 2 runtime host: 0x%x", hr);
+		return E_NOTIMPL;
+	}
+
+	return ERROR_SUCCESS;
+}
+
 DWORD initialize_dotnet_host()
 {
 	HRESULT hr = S_OK;
@@ -237,66 +314,15 @@ DWORD initialize_dotnet_host()
 			break;
 		}
 
-		pClrCreateInstance clrCreateInstance = (pClrCreateInstance)GetProcAddress(hMsCoree, "CLRCreateInstance");
-		if (clrCreateInstance != NULL)
-		{
-			dprintf("[PSH] .NET 4 method in use");
-
-			if (FAILED(hr = clrCreateInstance(CLSID_CLRMetaHost, IID_PPV_ARGS(&clrMetaHost))))
-			{
-				dprintf("[PSH] Failed to create instace of the CLR metahost 0x%x", hr);
-				break;
-			}
-
-			dprintf("[PSH] Getting a reference to the .NET runtime");
-			if (FAILED(hr = clrMetaHost->GetRuntime(L"v2.0.50727", IID_PPV_ARGS(&clrRuntimeInfo))))
-			{
-				dprintf("[PSH] Failed to get runtime v2.0.50727 instance 0x%x", hr);
-				if (FAILED(hr = clrMetaHost->GetRuntime(L"v4.0.30319", IID_PPV_ARGS(&clrRuntimeInfo))))
-				{
-					dprintf("[PSH] Failed to get runtime v4.0.30319 instance 0x%x", hr);
-					break;
-				}
-			}
-
-			dprintf("[PSH] Determining loadablility");
-			BOOL loadable = FALSE;
-			if (FAILED(hr = clrRuntimeInfo->IsLoadable(&loadable)))
-			{
-				dprintf("[PSH] Unable to determine of runtime is loadable 0x%x", hr);
-				break;
-			}
-
-			if (!loadable)
-			{
-				dprintf("[PSH] Chosen runtime isn't loadable, exiting.");
-				break;
-			}
-
-			dprintf("[PSH] Instantiating the COR runtime host");
-			hr = clrRuntimeInfo->GetInterface(CLSID_CorRuntimeHost, IID_PPV_ARGS(&clrCorRuntimeHost));
-			if (FAILED(hr))
-			{
-				dprintf("[PSH] Unable to get a reference to the COR runtime host 0x%x", hr);
-				break;
-			}
+		hr = initialize_dotnet_4(hMsCoree, &clrMetaHost, &clrRuntimeInfo, &clrCorRuntimeHost);
+		if (FAILED(hr)) {
+			dprintf("[PSH] .NET 4 method is missing, attempting to locate .NET 2 method");
+			hr = initialize_dotnet_2(hMsCoree, &clrCorRuntimeHost);
 		}
-		else
-		{
-			dprintf("[PSH] .NET 4 method is missing, attempting to locate .NEt 2 method");
-			pCorBindToRuntime corBindToRuntime = (pCorBindToRuntime)GetProcAddress(hMsCoree, "CorBindToRuntime");
-			if (corBindToRuntime == NULL)
-			{
-				dprintf("[PSH] Unable to find .NET clr instance loader");
-				hr = E_NOTIMPL;
-				break;
-			}
 
-			if (FAILED(hr = corBindToRuntime(L"v2.0.50727", L"wks", CLSID_CorRuntimeHost, IID_PPV_ARGS(&clrCorRuntimeHost))))
-			{
-				dprintf("[PSH] Unable to bind to .NET 2 runtime host: 0x%x", hr);
-				break;
-			}
+		if (FAILED(hr)) {
+			dprintf("[PSH] Failed to initialize .NET 4 or 2, aborting: 0x%x", hr);
+			break;
 		}
 
 		dprintf("[PSH] Starting the COR runtime host");
