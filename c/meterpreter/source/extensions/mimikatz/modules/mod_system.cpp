@@ -79,7 +79,7 @@ bool mod_system::getCurrentDirectory(wstring * monRepertoire)
 		monRepertoire->assign(monBuffer);
 		reussite = true;
 	}
-	delete monBuffer;
+	delete[] monBuffer;
 	return reussite;
 }
 

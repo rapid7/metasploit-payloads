@@ -138,6 +138,7 @@ SavedToken *get_token_list(DWORD *num_tokens_enum, TOKEN_PRIVS *token_privs)
 	if (!OpenProcessToken(GetCurrentProcess(), GENERIC_ALL/*MAXIMUM_ALLOWED*/, &hObject))
 	{
 		dprintf("[INCOGNITO] Opening current process token failed with %u (%x)", GetLastError(), GetLastError());
+		free(token_list);
 		return NULL;
 	}
 	dprintf("[INCOGNITO] Process opened");

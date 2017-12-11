@@ -44,6 +44,10 @@ DWORD request_incognito_list_tokens(Remote *remote, Packet *packet)
 		dprintf("[INCOGNITO] Enumerating tokens failed with %u (%x)", GetLastError(), GetLastError());
 		packet_transmit_response(GetLastError(), remote, response);
 
+		free(uniq_tokens);
+		free(delegation_tokens);
+		free(impersonation_tokens);
+
 		return ERROR_SUCCESS;
 	}
 

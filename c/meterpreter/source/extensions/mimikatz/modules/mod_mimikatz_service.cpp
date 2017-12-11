@@ -65,7 +65,7 @@ bool mod_mimikatz_service::list(vector<wstring> * arguments)
 	vector<mod_service::KIWI_SERVICE_STATUS_PROCESS> * vectorServices = new vector<mod_service::KIWI_SERVICE_STATUS_PROCESS>();
 	if(mod_service::getList(vectorServices, (arguments->empty() ? NULL : &arguments->front())))
 	{
-		for(vector<mod_service::KIWI_SERVICE_STATUS_PROCESS>::iterator monService = vectorServices->begin(); monService != vectorServices->end(); monService++)
+		for(vector<mod_service::KIWI_SERVICE_STATUS_PROCESS>::iterator monService = vectorServices->begin(); monService != vectorServices->end(); ++monService)
 		{
 			if(
 				(

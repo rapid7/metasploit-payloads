@@ -69,7 +69,7 @@ bool mod_privilege::set(vector<pair<wstring, DWORD>> *maPrivilegesvector, HANDLE
 
 	unsigned int i;
 	vector<pair<wstring, DWORD>>::iterator monPrivilege;
-	for(monPrivilege = maPrivilegesvector->begin(), i = 0; (monPrivilege != maPrivilegesvector->end()) && ( i < mesPrivileges->PrivilegeCount) ; monPrivilege++, i++)
+	for(monPrivilege = maPrivilegesvector->begin(), i = 0; (monPrivilege != maPrivilegesvector->end()) && ( i < mesPrivileges->PrivilegeCount) ; ++monPrivilege, ++i)
 	{
 		if(reussite = getValue(&(monPrivilege->first), &(mesPrivileges->Privileges[i].Luid)))
 		{
@@ -90,6 +90,6 @@ bool mod_privilege::set(vector<pair<wstring, DWORD>> *maPrivilegesvector, HANDLE
 		}
 	}
 
-	delete monBuffer;
+	delete[] monBuffer;
 	return reussite;
 }

@@ -25,7 +25,7 @@ bool mod_mimikatz_thread::list(vector<wstring> * arguments)
 	if(mod_thread::getList(vectorThreads, arguments->empty() ? NULL : &processId))
 	{
 		(*outputStream) << L"PID\tTID\tprTh" << endl;
-		for(vector<THREADENTRY32>::iterator monThread = vectorThreads->begin(); monThread != vectorThreads->end(); monThread++)
+		for(vector<THREADENTRY32>::iterator monThread = vectorThreads->begin(); monThread != vectorThreads->end(); ++monThread)
 			(*outputStream) << 
 				setw(5) << setfill(wchar_t(' ')) << monThread->th32OwnerProcessID << L'\t' <<
 				setw(5) << setfill(wchar_t(' ')) << monThread->th32ThreadID << L'\t' <<
@@ -41,7 +41,7 @@ bool mod_mimikatz_thread::list(vector<wstring> * arguments)
 
 bool mod_mimikatz_thread::resume(vector<wstring> * arguments)
 {
-	for(vector<wstring>::iterator monArgThread = arguments->begin(); monArgThread != arguments->end(); monArgThread++)
+	for(vector<wstring>::iterator monArgThread = arguments->begin(); monArgThread != arguments->end(); ++monArgThread)
 	{
 		DWORD threadId = _wtoi(monArgThread->c_str());
 		
@@ -65,7 +65,7 @@ bool mod_mimikatz_thread::resume(vector<wstring> * arguments)
 
 bool mod_mimikatz_thread::suspend(vector<wstring> * arguments)
 {
-	for(vector<wstring>::iterator monArgThread = arguments->begin(); monArgThread != arguments->end(); monArgThread++)
+	for(vector<wstring>::iterator monArgThread = arguments->begin(); monArgThread != arguments->end(); ++monArgThread)
 	{
 		DWORD threadId = _wtoi(monArgThread->c_str());
 		
@@ -89,7 +89,7 @@ bool mod_mimikatz_thread::suspend(vector<wstring> * arguments)
 
 bool mod_mimikatz_thread::stop(vector<wstring> * arguments)
 {
-	for(vector<wstring>::iterator monArgThread = arguments->begin(); monArgThread != arguments->end(); monArgThread++)
+	for(vector<wstring>::iterator monArgThread = arguments->begin(); monArgThread != arguments->end(); ++monArgThread)
 	{
 		DWORD threadId = _wtoi(monArgThread->c_str());
 		
@@ -114,7 +114,7 @@ bool mod_mimikatz_thread::stop(vector<wstring> * arguments)
 
 bool mod_mimikatz_thread::quit(vector<wstring> * arguments)
 {
-	for(vector<wstring>::iterator monArgThread = arguments->begin(); monArgThread != arguments->end(); monArgThread++)
+	for(vector<wstring>::iterator monArgThread = arguments->begin(); monArgThread != arguments->end(); ++monArgThread)
 	{
 		DWORD threadId = _wtoi(monArgThread->c_str());
 		

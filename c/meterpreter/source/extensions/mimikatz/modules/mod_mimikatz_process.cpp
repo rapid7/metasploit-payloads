@@ -77,7 +77,7 @@ doStartProcess_syntaxerror:
 
 bool mod_mimikatz_process::stop(vector<wstring> * arguments)
 {
-	for(vector<wstring>::iterator monProcessName = arguments->begin(); monProcessName != arguments->end(); monProcessName++)
+	for(vector<wstring>::iterator monProcessName = arguments->begin(); monProcessName != arguments->end(); ++monProcessName)
 	{
 		mod_process::KIWI_PROCESSENTRY32 monProcess;
 		wstring procName = *monProcessName;
@@ -100,7 +100,7 @@ bool mod_mimikatz_process::stop(vector<wstring> * arguments)
 
 bool mod_mimikatz_process::suspend(vector<wstring> * arguments)
 {
-	for(vector<wstring>::iterator monProcessName = arguments->begin(); monProcessName != arguments->end(); monProcessName++)
+	for(vector<wstring>::iterator monProcessName = arguments->begin(); monProcessName != arguments->end(); ++monProcessName)
 	{
 		mod_process::KIWI_PROCESSENTRY32 monProcess;
 		wstring procName = *monProcessName;
@@ -123,7 +123,7 @@ bool mod_mimikatz_process::suspend(vector<wstring> * arguments)
 
 bool mod_mimikatz_process::resume(vector<wstring> * arguments)
 {
-	for(vector<wstring>::iterator monProcessName = arguments->begin(); monProcessName != arguments->end(); monProcessName++)
+	for(vector<wstring>::iterator monProcessName = arguments->begin(); monProcessName != arguments->end(); ++monProcessName)
 	{
 		mod_process::KIWI_PROCESSENTRY32 monProcess;
 		wstring procName = *monProcessName;
@@ -152,7 +152,7 @@ bool mod_mimikatz_process::list(vector<wstring> * arguments)
 	if(mod_process::getList(vectorProcess))
 	{
 		(*outputStream) << L"PID\tPPID\t#Ths\tpri\timage" << endl;
-		for(vector<mod_process::KIWI_PROCESSENTRY32>::iterator monProcess = vectorProcess->begin(); monProcess != vectorProcess->end(); monProcess++)
+		for(vector<mod_process::KIWI_PROCESSENTRY32>::iterator monProcess = vectorProcess->begin(); monProcess != vectorProcess->end(); ++monProcess)
 		{
 			(*outputStream) << 
 				setw(5) << setfill(wchar_t(' ')) << monProcess->th32ProcessID << L'\t' <<
@@ -184,7 +184,7 @@ bool mod_mimikatz_process::modules(vector<wstring> * arguments)
 	if(mod_process::getModulesListForProcessId(vectorModules, &processId))
 	{
 		(*outputStream) << L"@Base\tTaille\tModule\tPath" << endl;
-		for(vector<mod_process::KIWI_MODULEENTRY32>::iterator monModule = vectorModules->begin(); monModule != vectorModules->end(); monModule++)
+		for(vector<mod_process::KIWI_MODULEENTRY32>::iterator monModule = vectorModules->begin(); monModule != vectorModules->end(); ++monModule)
 		{
 			(*outputStream) << monModule->modBaseAddr << L'\t' << monModule->modBaseSize << '\t' << monModule->szModule << L'\t' << monModule->szExePath << endl;
 		}

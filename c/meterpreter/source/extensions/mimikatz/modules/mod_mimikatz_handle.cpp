@@ -26,7 +26,7 @@ bool mod_mimikatz_handle::list(vector<wstring> * arguments)
 
 	if(mod_system::getSystemHandles(mesHandles, arguments->empty() ? NULL : &id))
 	{
-		for(vector<SYSTEM_HANDLE>::iterator monHandle = mesHandles->begin(); monHandle != mesHandles->end(); monHandle++)
+		for(vector<SYSTEM_HANDLE>::iterator monHandle = mesHandles->begin(); monHandle != mesHandles->end(); ++monHandle)
 		{
 			HANDLE hProcess;
 			if(hProcess = OpenProcess(PROCESS_DUP_HANDLE, false, monHandle->ProcessId))

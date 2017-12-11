@@ -76,7 +76,7 @@ bool mod_process::getUniqueModuleForName(KIWI_MODULEENTRY32 * monModule, wstring
 		}
 		else
 		{
-			for(vector<KIWI_MODULEENTRY32>::iterator leModule = monVecteurDeModule->begin(); leModule != monVecteurDeModule->end(); leModule++)
+			for(vector<KIWI_MODULEENTRY32>::iterator leModule = monVecteurDeModule->begin(); leModule != monVecteurDeModule->end(); ++leModule)
 			{
 				if(_wcsicmp(leModule->szModule.c_str(), moduleName->c_str()) == 0)
 				{
@@ -390,7 +390,7 @@ bool mod_process::getProcessEntryFromProcessId(DWORD processId, KIWI_PROCESSENTR
 
 	if(mesProcess || tabOk)
 	{
-		for(vector<mod_process::KIWI_PROCESSENTRY32>::iterator monProcess = monTab->begin(); monProcess != monTab->end(); monProcess++)
+		for(vector<mod_process::KIWI_PROCESSENTRY32>::iterator monProcess = monTab->begin(); monProcess != monTab->end(); ++monProcess)
 		{
 			if(reussite = (monProcess->th32ProcessID == processId))
 			{
