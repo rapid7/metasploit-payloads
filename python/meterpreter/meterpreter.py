@@ -642,19 +642,23 @@ class HttpTransport(Transport):
 		packet = None
 		xor_key = None
 		request = urllib.Request(self.url, None, self._http_request_headers)
-		url_h = urllib.urlopen(request, timeout=self.communication_timeout)
-		packet = url_h.read()
-		for _ in range(1):
-			if packet == '':
-				break
-			if len(packet) < PACKET_HEADER_SIZE:
-				packet = None  # looks corrupt
-				break
-			xor_key = struct.unpack('BBBB', packet[:PACKET_XOR_KEY_SIZE])
-			header = xor_bytes(xor_key, packet[:PACKET_HEADER_SIZE])
-			pkt_length = struct.unpack('>I', header[PACKET_LENGTH_OFF:PACKET_LENGTH_OFF+PACKET_LENGTH_SIZE])[0] - 8
-			if len(packet) != (pkt_length + PACKET_HEADER_SIZE):
-				packet = None  # looks corrupt
+                try:
+                    url_h = urllib.urlopen(request, timeout=self.communication_timeout)
+                    packet = url_h.read()
+                    for _ in range(1):
+                            if packet == '':
+                                    break
+                            if len(packet) < PACKET_HEADER_SIZE:
+                                    packet = None  # looks corrupt
+                                    break
+                            xor_key = struct.unpack('BBBB', packet[:PACKET_XOR_KEY_SIZE])
+                            header = xor_bytes(xor_key, packet[:PACKET_HEADER_SIZE])
+                            pkt_length = struct.unpack('>I', header[PACKET_LENGTH_OFF:PACKET_LENGTH_OFF+PACKET_LENGTH_SIZE])[0] - 8
+                            if len(packet) != (pkt_length + PACKET_HEADER_SIZE):
+                                    packet = None  # looks corrupt
+                except:
+			debug_traceback('Failure to receive packet from ' + self.url)
+
 		if not packet:
 			delay = 10 * self._empty_cnt
 			if self._empty_cnt >= 0:
@@ -662,6 +666,7 @@ class HttpTransport(Transport):
 			self._empty_cnt += 1
 			time.sleep(float(min(10000, delay)) / 1000)
 			return packet
+
 		self._empty_cnt = 0
 		return packet
 
