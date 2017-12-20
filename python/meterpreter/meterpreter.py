@@ -499,6 +499,7 @@ class Transport(object):
 			proxy = packet_get_tlv(request, TLV_TYPE_TRANS_PROXY_HOST).get('value')
 			user_agent = packet_get_tlv(request, TLV_TYPE_TRANS_UA).get('value', HTTP_USER_AGENT)
 			http_headers = packet_get_tlv(request, TLV_TYPE_TRANS_HEADERS).get('value', None)
+			transport = HttpTransport(url, proxy=proxy, user_agent=user_agent)
 			if http_headers:
 				headers = {}
 				for h in http_headers.strip().split("\r\n"):
@@ -507,9 +508,8 @@ class Transport(object):
 				http_host = headers.get('HOST')
 				http_cookie = headers.get('COOKIE')
 				http_referer = headers.get('REFERER')
-
-			transport = HttpTransport(url, proxy=proxy, user_agent=user_agent, http_host=http_host,
-					http_cookie=http_cookie, http_referer=http_referer)
+				transport = HttpTransport(url, proxy=proxy, user_agent=user_agent, http_host=http_host,
+						http_cookie=http_cookie, http_referer=http_referer)
 		transport.communication_timeout = packet_get_tlv(request, TLV_TYPE_TRANS_COMM_TIMEOUT).get('value', SESSION_COMMUNICATION_TIMEOUT)
 		transport.retry_total = packet_get_tlv(request, TLV_TYPE_TRANS_RETRY_TOTAL).get('value', SESSION_RETRY_TOTAL)
 		transport.retry_wait = packet_get_tlv(request, TLV_TYPE_TRANS_RETRY_WAIT).get('value', SESSION_RETRY_WAIT)
