@@ -1,6 +1,9 @@
 [submodule "source/ReflectiveDLLInjection"]
 	path = c/meterpreter/source/ReflectiveDLLInjection
 	url = https://github.com/rapid7/ReflectiveDLLInjection.git
+[submodule "deps"]
+	path = c/meterpreter/deps
+	url = https://github.com/rapid7/meterpreter-deps
 [submodule "c/meterpreter/source/extensions/kiwi/mimikatz"]
 	path = c/meterpreter/source/extensions/kiwi/mimikatz
 	url = https://github.com/rapid7/mimikatz
