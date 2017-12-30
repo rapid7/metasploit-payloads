@@ -5,7 +5,7 @@
 
 BOOL DeleteFolderWR(LPCWSTR szPath)
 {
-	WIN32_FIND_DATAW FindFileData;
+	WIN32_FIND_DATAW findFileData;
 	HANDLE hFind = INVALID_HANDLE_VALUE;
 	DWORD dwError, dwAttrs;
 	BOOL bRes;
@@ -51,7 +51,7 @@ BOOL DeleteFolderWR(LPCWSTR szPath)
 	else
 		wsprintfW(cPath, L"%s\\*.*", szPath);
 
-	hFind = FindFirstFileW(cPath, &FindFileData);
+	hFind = FindFirstFileW(cPath, &findFileData);
 	if (hFind == INVALID_HANDLE_VALUE)
 		return FALSE;
 
@@ -62,22 +62,22 @@ BOOL DeleteFolderWR(LPCWSTR szPath)
 
 	do
 	{
-		if (lstrcmpiW(FindFileData.cFileName, L".") == 0 || lstrcmpiW(FindFileData.cFileName, L"..") == 0)
+		if (lstrcmpiW(findFileData.cFileName, L".") == 0 || lstrcmpiW(findFileData.cFileName, L"..") == 0)
 			continue;
 
-		if (lstrlenW(cPath) + lstrlenW(L"\\") + lstrlenW(FindFileData.cFileName) + 1 > MAX_PATH)
+		if (lstrlenW(cPath) + lstrlenW(L"\\") + lstrlenW(findFileData.cFileName) + 1 > MAX_PATH)
 			continue;
 
-		wsprintfW(cCurrentFile, L"%s\\%s", cPath, FindFileData.cFileName);
-		if (FindFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+		wsprintfW(cCurrentFile, L"%s\\%s", cPath, findFileData.cFileName);
+		if (findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 		{
-			if (FindFileData.dwFileAttributes & FILE_ATTRIBUTE_READONLY)
+			if (findFileData.dwFileAttributes & FILE_ATTRIBUTE_READONLY)
 			{
-				FindFileData.dwFileAttributes &= ~FILE_ATTRIBUTE_READONLY;
-				SetFileAttributesW(cCurrentFile, FindFileData.dwFileAttributes);
+				findFileData.dwFileAttributes &= ~FILE_ATTRIBUTE_READONLY;
+				SetFileAttributesW(cCurrentFile, findFileData.dwFileAttributes);
 			}
 
-			if (FindFileData.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)
+			if (findFileData.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)
 				bRes = RemoveDirectoryW(cCurrentFile);
 			else
 				bRes = DeleteFolderWR(cCurrentFile);
@@ -85,13 +85,13 @@ BOOL DeleteFolderWR(LPCWSTR szPath)
 		else
 		{
 
-			if ((FindFileData.dwFileAttributes & FILE_ATTRIBUTE_READONLY) ||
-				(FindFileData.dwFileAttributes & FILE_ATTRIBUTE_SYSTEM))
+			if ((findFileData.dwFileAttributes & FILE_ATTRIBUTE_READONLY) ||
+				(findFileData.dwFileAttributes & FILE_ATTRIBUTE_SYSTEM))
 				SetFileAttributesW(cCurrentFile, FILE_ATTRIBUTE_NORMAL);
 
 			DeleteFileW(cCurrentFile);
 		}
-	} while (FindNextFileW(hFind, &FindFileData));
+	} while (FindNextFileW(hFind, &findFileData));
 
 	dwError = GetLastError();
 
@@ -266,6 +266,12 @@ int fs_delete_file(const char *path)
 	if (path_w == NULL) {
 		rc = GetLastError();
 		goto out;
+	}
+
+	DWORD attrs = GetFileAttributesW(path_w);
+	if ((attrs != INVALID_FILE_ATTRIBUTES) && (attrs & FILE_ATTRIBUTE_READONLY)) {
+		attrs &= ~FILE_ATTRIBUTE_READONLY;
+		SetFileAttributesW(path_w, attrs);
 	}
 
 	if (DeleteFileW(path_w) == 0) {
