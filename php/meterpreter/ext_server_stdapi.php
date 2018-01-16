@@ -368,11 +368,11 @@ register_command('stdapi_fs_delete');
 function stdapi_fs_delete($req, &$pkt) {
     my_print("doing delete");
     $path_tlv = packet_get_tlv($req, TLV_TYPE_FILE_NAME);
-	$path = canonicalize_path($path_tlv['value']);
-	if (is_windows()) {
-		exec("attrib.exe -r ".$path);
-	}
-	$ret = @unlink($path)
+    $path = canonicalize_path($path_tlv['value']);
+    if (is_windows()) {
+        exec("attrib.exe -r ".$path);
+    }
+    $ret = @unlink($path)
     return $ret ? ERROR_SUCCESS : ERROR_FAILURE;
 }
 }
