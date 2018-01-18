@@ -1240,6 +1240,8 @@ def stdapi_fs_delete_dir(request, response):
 @register_function
 def stdapi_fs_delete_file(request, response):
     file_path = packet_get_tlv(request, TLV_TYPE_FILE_PATH)['value']
+    if has_windll:
+        subprocess.call(unicode("attrib.exe -r ") + file_path)
     os.unlink(unicode(file_path))
     return ERROR_SUCCESS, response
 
