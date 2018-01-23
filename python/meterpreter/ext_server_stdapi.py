@@ -1220,8 +1220,10 @@ def stdapi_fs_chdir(request, response):
 
 @register_function
 def stdapi_fs_delete(request, response):
-    file_path = packet_get_tlv(request, TLV_TYPE_FILE_NAME)['value']
-    os.unlink(unicode(file_path))
+    file_path = unicode(packet_get_tlv(request, TLV_TYPE_FILE_NAME)['value'])
+    if has_windll:
+        subprocess.call(unicode("attrib.exe -r ") + file_path)
+    os.unlink(file_path)
     return ERROR_SUCCESS, response
 
 @register_function
@@ -1238,6 +1240,8 @@ def stdapi_fs_delete_dir(request, response):
 @register_function
 def stdapi_fs_delete_file(request, response):
     file_path = packet_get_tlv(request, TLV_TYPE_FILE_PATH)['value']
+    if has_windll:
+        subprocess.call(unicode("attrib.exe -r ") + file_path)
     os.unlink(unicode(file_path))
     return ERROR_SUCCESS, response
 

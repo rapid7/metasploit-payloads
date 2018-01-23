@@ -278,8 +278,8 @@ function array_prepend($array, $string, $deep=false) {
 
 ## END Search Helpers
 
-if (!function_exists('cononicalize_path')) {
-function cononicalize_path($path) {
+if (!function_exists('canonicalize_path')) {
+function canonicalize_path($path) {
     $path = str_replace(array("/", "\\"), DIRECTORY_SEPARATOR, $path);
     return $path;
 }
@@ -288,7 +288,7 @@ function cononicalize_path($path) {
 
 #
 # Need to nail down what this should actually do.  Ruby's File.expand_path is
-# for cononicalizing a path (e.g., removing /./ and ../) and expanding "~" into
+# for canonicalizing a path (e.g., removing /./ and ../) and expanding "~" into
 # a path to the current user's homedir.  In contrast, Meterpreter has
 # traditionally used this to get environment variables from the server.
 #
@@ -336,7 +336,7 @@ register_command('stdapi_fs_delete_dir');
 function stdapi_fs_delete_dir($req, &$pkt) {
     my_print("doing rmdir");
     $path_tlv = packet_get_tlv($req, TLV_TYPE_DIRECTORY_PATH);
-    $ret = @rmdir(cononicalize_path($path_tlv['value']));
+    $ret = @rmdir(canonicalize_path($path_tlv['value']));
     return $ret ? ERROR_SUCCESS : ERROR_FAILURE;
 }
 }
@@ -346,7 +346,7 @@ register_command('stdapi_fs_mkdir');
 function stdapi_fs_mkdir($req, &$pkt) {
     my_print("doing mkdir");
     $path_tlv = packet_get_tlv($req, TLV_TYPE_DIRECTORY_PATH);
-    $ret = @mkdir(cononicalize_path($path_tlv['value']));
+    $ret = @mkdir(canonicalize_path($path_tlv['value']));
     return $ret ? ERROR_SUCCESS : ERROR_FAILURE;
 }
 }
@@ -357,7 +357,7 @@ register_command('stdapi_fs_chdir');
 function stdapi_fs_chdir($req, &$pkt) {
     my_print("doing chdir");
     $path_tlv = packet_get_tlv($req, TLV_TYPE_DIRECTORY_PATH);
-    $ret = @chdir(cononicalize_path($path_tlv['value']));
+    $ret = @chdir(canonicalize_path($path_tlv['value']));
     return $ret ? ERROR_SUCCESS : ERROR_FAILURE;
 }
 }
@@ -368,7 +368,11 @@ register_command('stdapi_fs_delete');
 function stdapi_fs_delete($req, &$pkt) {
     my_print("doing delete");
     $path_tlv = packet_get_tlv($req, TLV_TYPE_FILE_NAME);
-    $ret = @unlink(cononicalize_path($path_tlv['value']));
+    $path = canonicalize_path($path_tlv['value']);
+    if (is_windows()) {
+        exec("attrib.exe -r ".$path);
+    }
+    $ret = @unlink($path)
     return $ret ? ERROR_SUCCESS : ERROR_FAILURE;
 }
 }
@@ -380,8 +384,8 @@ function stdapi_fs_file_move($req, &$pkt) {
     my_print("doing mv");
     $old_file_tlv = packet_get_tlv($req, TLV_TYPE_FILE_NAME);
     $new_file_tlv = packet_get_tlv($req, TLV_TYPE_FILE_PATH);
-    $old_file = cononicalize_path($old_file_tlv['value']);
-    $new_file = cononicalize_path($new_file_tlv['value']);
+    $old_file = canonicalize_path($old_file_tlv['value']);
+    $new_file = canonicalize_path($new_file_tlv['value']);
     $ret = @rename($old_file, $new_file);
     return $ret ? ERROR_SUCCESS : ERROR_FAILURE;
 }
@@ -394,8 +398,8 @@ function stdapi_fs_file_copy($req, &$pkt) {
     my_print("doing cp");
     $old_file_tlv = packet_get_tlv($req, TLV_TYPE_FILE_NAME);
     $new_file_tlv = packet_get_tlv($req, TLV_TYPE_FILE_PATH);
-    $old_file = cononicalize_path($old_file_tlv['value']);
-    $new_file = cononicalize_path($new_file_tlv['value']);
+    $old_file = canonicalize_path($old_file_tlv['value']);
+    $new_file = canonicalize_path($new_file_tlv['value']);
     $ret = @copy($old_file, $new_file);
     return $ret ? ERROR_SUCCESS : ERROR_FAILURE;
 }
@@ -418,7 +422,7 @@ register_command('stdapi_fs_ls');
 function stdapi_fs_ls($req, &$pkt) {
     my_print("doing ls");
     $path_tlv = packet_get_tlv($req, TLV_TYPE_DIRECTORY_PATH);
-    $path = cononicalize_path($path_tlv['value']);
+    $path = canonicalize_path($path_tlv['value']);
     $dir_handle = @opendir($path);
 
     if ($dir_handle) {
@@ -467,7 +471,7 @@ register_command('stdapi_fs_stat');
 function stdapi_fs_stat($req, &$pkt) {
     my_print("doing stat");
     $path_tlv = packet_get_tlv($req, TLV_TYPE_FILE_PATH);
-    $path = cononicalize_path($path_tlv['value']);
+    $path = canonicalize_path($path_tlv['value']);
 
     $st = stat($path);
     if ($st) {
@@ -500,7 +504,7 @@ register_command('stdapi_fs_delete_file');
 function stdapi_fs_delete_file($req, &$pkt) {
     my_print("doing delete");
     $path_tlv = packet_get_tlv($req, TLV_TYPE_FILE_PATH);
-    $path = cononicalize_path($path_tlv['value']);
+    $path = canonicalize_path($path_tlv['value']);
 
     if ($path && is_file($path)) {
         $worked = @unlink($path);
@@ -517,9 +521,9 @@ function stdapi_fs_search($req, &$pkt) {
     my_print("doing search");
 
     $root_tlv = packet_get_tlv($req, TLV_TYPE_SEARCH_ROOT);
-    $root = cononicalize_path($root_tlv['value']);
+    $root = canonicalize_path($root_tlv['value']);
     $glob_tlv = packet_get_tlv($req, TLV_TYPE_SEARCH_GLOB);
-    $glob = cononicalize_path($glob_tlv['value']);
+    $glob = canonicalize_path($glob_tlv['value']);
     $recurse_tlv = packet_get_tlv($req, TLV_TYPE_SEARCH_RECURSE);
     $recurse = $recurse_tlv['value'];
 
@@ -555,7 +559,7 @@ if (!function_exists('stdapi_fs_md5')) {
 register_command("stdapi_fs_md5");
 function stdapi_fs_md5($req, &$pkt) {
     $path_tlv = packet_get_tlv($req, TLV_TYPE_FILE_PATH);
-    $path = cononicalize_path($path_tlv['value']);
+    $path = canonicalize_path($path_tlv['value']);
 
     if (is_callable("md5_file")) {
         $md5 = md5_file($path);
@@ -573,7 +577,7 @@ if (!function_exists('stdapi_fs_sha1')) {
 register_command("stdapi_fs_sha1");
 function stdapi_fs_sha1($req, &$pkt) {
     $path_tlv = packet_get_tlv($req, TLV_TYPE_FILE_PATH);
-    $path = cononicalize_path($path_tlv['value']);
+    $path = canonicalize_path($path_tlv['value']);
 
     if (is_callable("sha1_file")) {
         $sha1 = sha1_file($path);
