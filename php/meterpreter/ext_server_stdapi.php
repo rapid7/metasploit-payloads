@@ -372,7 +372,7 @@ function stdapi_fs_delete($req, &$pkt) {
     if (is_windows()) {
         exec("attrib.exe -r ".$path);
     }
-    $ret = @unlink($path)
+    $ret = @unlink($path);
     return $ret ? ERROR_SUCCESS : ERROR_FAILURE;
 }
 }
