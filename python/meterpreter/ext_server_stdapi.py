@@ -1258,10 +1258,10 @@ def stdapi_fs_file_expand_path(request, response):
     elif path_tlv in ['%TEMP%', '%TMP%']:
         result = '/tmp'
     else:
-        result = os.getenv(path_tlv, path_tlv)
+        result = os.path.expandvars(path_tlv)
     if not result:
         return ERROR_FAILURE, response
-    response += tlv_pack(TLV_TYPE_FILE_PATH, result)
+    response += tlv_pack(TLV_TYPE_FILE_PATH, os.path.abspath(result))
     return ERROR_SUCCESS, response
 
 @register_function

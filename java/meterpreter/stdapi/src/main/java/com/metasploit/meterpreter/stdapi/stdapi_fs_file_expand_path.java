@@ -16,7 +16,12 @@ public class stdapi_fs_file_expand_path implements Command {
             response.add(TLVType.TLV_TYPE_FILE_PATH, getShellPath());
             return ERROR_SUCCESS;
         } else {
-            return NotYetImplementedCommand.INSTANCE.execute(meterpreter, request, response);
+            /*
+             * TODO this should also do shell word expansion
+             */
+            File f = new File(path);
+            response.add(TLVType.TLV_TYPE_FILE_PATH, f.getCanonicalPath());
+            return ERROR_SUCCESS;
         }
     }
 
