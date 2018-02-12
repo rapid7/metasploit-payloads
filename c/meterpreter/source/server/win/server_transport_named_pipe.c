@@ -5,7 +5,12 @@
 #include "../../common/common.h"
 #include "../../common/packet_encryption.h"
 
+// From server_pivot_named_pipe.c
+VOID create_pipe_security_attributes(PSECURITY_ATTRIBUTES psa);
+DWORD toggle_privilege(LPCWSTR privName, BOOL enable, BOOL* wasEnabled);
+
 #define STUPID_PIPE_BUFFER_LIMIT 0x10000
+
 
 typedef struct _PIPEMIGRATECONTEXT
 {
@@ -63,6 +68,7 @@ DWORD read_raw_bytes_to_buffer(NamedPipeTransportContext* ctx, LPBYTE buffer, DW
 {
 	DWORD bytesReadThisIteration = 0;
 	DWORD temp = 0;
+	DWORD result = ERROR_SUCCESS;
 	*bytesRead = 0;
 
 	dprintf("[PIPE] Beginning read loop for a total of %u", bytesToRead);
@@ -72,6 +78,8 @@ DWORD read_raw_bytes_to_buffer(NamedPipeTransportContext* ctx, LPBYTE buffer, DW
 		// read the bytes fromi there.
 		if (!ReadFile(ctx->pipe, buffer + *bytesRead, min(STUPID_PIPE_BUFFER_LIMIT, bytesToRead - *bytesRead), &bytesReadThisIteration, NULL))
 		{
+			result = GetLastError();
+			dprintf("[PIPE] ReadFile returned error %u 0x%x", result, result);
 			break;
 		}
 
@@ -81,7 +89,7 @@ DWORD read_raw_bytes_to_buffer(NamedPipeTransportContext* ctx, LPBYTE buffer, DW
 	}
 
 	dprintf("[PIPE] Done reading bytes");
-	return GetLastError();
+	return result;
 }
 
 /*!
@@ -93,7 +101,6 @@ DWORD read_raw_bytes_to_buffer(NamedPipeTransportContext* ctx, LPBYTE buffer, DW
 static DWORD packet_receive_named_pipe(Remote *remote, Packet **packet)
 {
 	DWORD headerBytes = 0, payloadBytesLeft = 0, res;
-	Packet *localPacket = NULL;
 	PacketHeader header = { 0 };
 	LONG bytesRead;
 	BOOL inHeader = TRUE;
@@ -206,13 +213,14 @@ static DWORD packet_receive_named_pipe(Remote *remote, Packet **packet)
 		payload = packetBuffer + sizeof(PacketHeader);
 
 		// Read the payload
-		read_raw_bytes_to_buffer(ctx, payload, payloadLength, &bytesRead);
+		res = read_raw_bytes_to_buffer(ctx, payload, payloadLength, &bytesRead);
 		dprintf("[PIPE] wanted %u read %u", payloadLength, bytesRead);
 
 		// Didn't finish?
 		if (bytesRead != payloadLength)
 		{
 			dprintf("[PIPE] Failed to get all the payload bytes");
+			SetLastError(res);
 			goto out;
 		}
 
@@ -220,21 +228,15 @@ static DWORD packet_receive_named_pipe(Remote *remote, Packet **packet)
 		SetLastError(decrypt_packet(remote, packet, packetBuffer, packetSize));
 
 		free(packetBuffer);
+		packetBuffer = NULL;
 	}
 out:
 	res = GetLastError();
 
-	// Cleanup on failure
-	if (res != ERROR_SUCCESS)
+	// Cleanup
+	if (packetBuffer)
 	{
-		if (payload)
-		{
-			free(payload);
-		}
-		if (localPacket)
-		{
-			free(localPacket);
-		}
+		free(packetBuffer);
 	}
 
 	lock_release(remote->lock);
@@ -369,6 +371,98 @@ static void transport_reset_named_pipe(Transport* transport, BOOL shuttingDown)
 }
 
 /*!
+ * @brief Configure reverse named pipe connnection.
+ * @param pipe_name to connect to
+ * @param timeouts
+ * @return handle to connected pipe or INVALID_HANDLE_VALUE on error
+ */
+static HANDLE reverse_named_pipe(wchar_t *pipe_name, TimeoutSettings *timeouts)
+{
+	DWORD result = ERROR_SUCCESS;
+	HANDLE hPipe = INVALID_HANDLE_VALUE;
+	int start = current_unix_timestamp();
+	do
+	{
+		dprintf("[NP CONFIGURE] pipe name is %S, attempting to create", pipe_name);
+		hPipe = CreateFileW(pipe_name, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
+		if (hPipe != INVALID_HANDLE_VALUE)
+		{
+			break;
+		}
+
+		hPipe = INVALID_HANDLE_VALUE;
+		result = GetLastError();
+		dprintf("[NP CONFIGURE] failed to create pipe: %u 0x%x", result, result);
+		dprintf("[NP CONFIGURE] Connection failed, sleeping for %u s", timeouts->retry_wait);
+		sleep(timeouts->retry_wait);
+
+	} while (((DWORD)current_unix_timestamp() - (DWORD)start) < timeouts->retry_total);
+	return hPipe;
+}
+
+/*!
+ * @brief Configure bind named pipe connnection.
+ * @param pipe_name to create
+ * @param timeouts
+ * @return handle to connected pipe or INVALID_HANDLE_VALUE on error
+ */
+static HANDLE bind_named_pipe(wchar_t *pipe_name, TimeoutSettings *timeouts)
+{
+	DWORD result = ERROR_SUCCESS;
+	BOOL wasEnabled;
+	HANDLE hPipe = INVALID_HANDLE_VALUE;
+	DWORD toggleResult = toggle_privilege(SE_SECURITY_NAME, TRUE, &wasEnabled);
+	if (toggleResult == ERROR_SUCCESS)
+	{
+		SECURITY_ATTRIBUTES sa = { 0 };
+		create_pipe_security_attributes(&sa); // allow access anyone
+		hPipe = CreateNamedPipeW(pipe_name, PIPE_ACCESS_DUPLEX, PIPE_TYPE_BYTE | PIPE_WAIT, PIPE_UNLIMITED_INSTANCES,
+								 STUPID_PIPE_BUFFER_LIMIT, STUPID_PIPE_BUFFER_LIMIT, 0, &sa);
+		result = GetLastError();
+		if (wasEnabled == FALSE)
+		{
+			toggle_privilege(SE_SECURITY_NAME, FALSE, &wasEnabled);
+		}
+	}
+
+	if (hPipe == INVALID_HANDLE_VALUE)
+	{
+		// Fallback on a pipe with simpler security attributes
+		hPipe = CreateNamedPipeW(pipe_name, PIPE_ACCESS_DUPLEX, PIPE_TYPE_BYTE | PIPE_WAIT, PIPE_UNLIMITED_INSTANCES,
+								 STUPID_PIPE_BUFFER_LIMIT, STUPID_PIPE_BUFFER_LIMIT, 0, NULL);
+		result = GetLastError();
+	}
+
+	if (hPipe == INVALID_HANDLE_VALUE)
+	{
+		dprintf("[NP CONFIGURE] failed to create pipe: %u 0x%x", result, result);
+		return INVALID_HANDLE_VALUE;
+	}
+
+	int start = current_unix_timestamp();
+	do
+	{
+		if (ConnectNamedPipe(hPipe, NULL))
+		{
+			return hPipe;
+		}
+
+		result = GetLastError();
+		if (result == ERROR_PIPE_CONNECTED)
+		{
+			return hPipe;
+		}
+		dprintf("[NP CONFIGURE] Failed to connect pipe: %u 0x%x", result, result);
+		dprintf("[NP CONFIGURE] Trying again in %u s", 1);
+		sleep(1);
+	} while (((DWORD)current_unix_timestamp() - (DWORD)start) < timeouts->retry_total);
+
+	CloseHandle(hPipe);
+	return INVALID_HANDLE_VALUE;
+}
+
+
+/*!
  * @brief Configure the named pipe connnection. If it doesn't exist, go ahead and estbalish it.
  * @param transport Pointer to the transport instance.
  * @return Indication of success or failure.
@@ -422,6 +516,9 @@ static BOOL configure_named_pipe_connection(Transport* transport)
 	// check if comms is already open via a staged payload
 	if (ctx->pipe != NULL && ctx->pipe != INVALID_HANDLE_VALUE)
 	{
+		// Configure PIPE_WAIT. Stager doesn't do this because ConnectNamedPipe may never return.
+		DWORD mode = 0;
+		SetNamedPipeHandleState((HANDLE)ctx->pipe, &mode, NULL, NULL);
 		dprintf("[NP] Connection already running on %u", ctx->pipe);
 	}
 	else
@@ -430,25 +527,14 @@ static BOOL configure_named_pipe_connection(Transport* transport)
 
 		if (ctx->pipe_name != NULL)
 		{
-			int start = current_unix_timestamp();
-
-			do
+			if (wcsncmp(ctx->pipe_name, L"\\\\.\\", 4) == 0)
 			{
-				dprintf("[NP CONFIGURE] pipe name is %S, attempting to create", ctx->pipe_name);
-				ctx->pipe = CreateFileW(ctx->pipe_name, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
-				if (ctx->pipe != INVALID_HANDLE_VALUE)
-				{
-					break;
-				}
-
-				ctx->pipe = NULL;
-				result = GetLastError();
-				dprintf("[NP CONFIGURE] failed to create pipe: %u 0x%x", result, result);
-
-				dprintf("[NP CONFIGURE] Connection failed, sleeping for %u s", transport->timeouts.retry_wait);
-				sleep(transport->timeouts.retry_wait);
-
-			} while (((DWORD)current_unix_timestamp() - (DWORD)start) < transport->timeouts.retry_total);
+				ctx->pipe = bind_named_pipe(ctx->pipe_name, &transport->timeouts);
+			}
+			else
+			{
+				ctx->pipe = reverse_named_pipe(ctx->pipe_name, &transport->timeouts);
+			}
 		}
 		else
 		{
@@ -457,9 +543,9 @@ static BOOL configure_named_pipe_connection(Transport* transport)
 		}
 	}
 
-	if (result != ERROR_SUCCESS)
+	if (ctx->pipe == INVALID_HANDLE_VALUE)
 	{
-		dprintf("[SERVER] Something went wrong %u", result);
+		dprintf("[SERVER] Something went wrong");
 		return FALSE;
 	}
 
