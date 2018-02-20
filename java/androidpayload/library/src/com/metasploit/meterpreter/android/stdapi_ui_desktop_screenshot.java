@@ -19,7 +19,7 @@ public class stdapi_ui_desktop_screenshot implements Command {
         int quality = request.getIntValue(TLVType.TLV_TYPE_DESKTOP_SCREENSHOT_QUALITY);
         Activity activity = getActivity();
         if (activity == null) {
-            return  ERROR_FAILURE;
+            return ERROR_SUCCESS;
         }
         response.add(TLVType.TLV_TYPE_DESKTOP_SCREENSHOT, grabScreen(activity, quality));
         return ERROR_SUCCESS;
