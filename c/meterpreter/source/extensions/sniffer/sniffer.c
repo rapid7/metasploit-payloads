@@ -119,8 +119,6 @@ typedef struct PeterPacket
 	u_char bytes[0];
 } PeterPacket;
 
-char *packet_filter;
-
 #define PktDestroy(x) free((void *)(x))
 #define PktGetPacketSize(x) (((PeterPacket *)(x))->h.caplen)
 
@@ -409,41 +407,26 @@ DWORD request_sniffer_capture_start(Remote *remote, Packet *packet)
 			j->capture_linktype = 1; // force to LINKTYPE_ETHERNET in case of error
 		}
 
+		char *packet_filter;
+		packet_filter = packet_get_tlv_value_string(packet, TLV_TYPE_SNIFFER_ADDITIONAL_FILTER);
 		if(packet_filter)
 		{
 			struct bpf_program bpf;
-			char *add_filter;
-			char *real_filter = NULL;
 			int rc;
 
-			dprintf("handling packet_filter");
+			dprintf("handling packet_filter %s", packet_filter);
 
-			add_filter = packet_get_tlv_value_string(packet, TLV_TYPE_SNIFFER_ADDITIONAL_FILTER);
-
-			dprintf("add_filter = %p (%s)", add_filter, add_filter ? add_filter : "");
-
-			if(add_filter)
-			{
-				dprintf("%s and (%s)", packet_filter, add_filter);
-			}
-			else
-			{
-				real_filter = _strdup(packet_filter);
-			}
-
-			dprintf("the real filter string we'll be using is '%s'", real_filter);
-
-			rc = pcap_compile(j->pcap, &bpf, real_filter, 1, 0);
+			rc = pcap_compile(j->pcap, &bpf, packet_filter, 1, 0);
 
 			if(rc == -1)
 			{
 				dprintf("pcap compile reckons '%s' is a failure because of '%s'",
-					real_filter, pcap_geterr(j->pcap));
+					packet_filter, pcap_geterr(j->pcap));
 
 				result = ERROR_INVALID_PARAMETER;
 				break;
 			}
-			free(real_filter);
+			free(packet_filter);
 
 			dprintf("compiled filter, now setfilter()'ing");
 
@@ -901,11 +884,6 @@ DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
 DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
 {
 	command_register_all( customCommands );
-
-	if(packet_filter) {
-		free(packet_filter);
-		packet_filter = NULL;
-	}
 
 	lock_destroy(snifferm);
 	return ERROR_SUCCESS;
