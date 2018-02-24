@@ -64,7 +64,7 @@ const char* inet_ntop(int af, const void* src, char* dst, int cnt){
 
 struct iface_entry {
 	unsigned char name;
-	unsigned char hwaddr[6];
+	unsigned char hwaddr[ETH_ADDR_LEN];
 	uint32_t mtu;
 	uint32_t index;
 	unsigned char flags[101];
@@ -72,22 +72,15 @@ struct iface_entry {
 	struct iface_address *addr_list;
 };
 
-struct ifaces_list {
-	int entries;
-	struct iface_entry ifaces[0];
-};
-
 char *get_interface_name_by_index(unsigned int fidx)
 {
 	unsigned int idx;
 	char errbuf[PCAP_ERRBUF_SIZE+4];
 	static char device_name[64];				// PKS, probably safe, due to snifferm mutex
-	struct ifaces_list *ifaces;
 	pcap_if_t *interfaces, *int_iter;
 
 
 	interfaces = int_iter = NULL;
-	ifaces = NULL;
 	idx = 1;
 
 	memset(device_name, 0, sizeof(device_name));
@@ -103,16 +96,10 @@ char *get_interface_name_by_index(unsigned int fidx)
 		{
 			if(fidx == idx++)
 			{
-				#
 				strncpy(device_name, int_iter->name, sizeof(device_name)-1);
 				break;
 			}
 		}
-	}
-
-	if (ifaces)
-	{
-		free(ifaces);
 	}
 
 	if (interfaces)
@@ -191,7 +178,6 @@ DWORD request_sniffer_interfaces(Remote *remote, Packet *packet)
 
 	char errbuf[PCAP_ERRBUF_SIZE+4];
 	int aidx = htonl(1);				// :~(
-	struct ifaces_list *ifaces;
 
 	int yes_int = htonl(1);
 	int no_int = 0;
@@ -200,7 +186,6 @@ DWORD request_sniffer_interfaces(Remote *remote, Packet *packet)
 	pcap_if_t *interfaces, *int_iter;
 
 	interfaces = int_iter = NULL;
-	ifaces = NULL;
 
 	do
 	{
@@ -254,10 +239,6 @@ DWORD request_sniffer_interfaces(Remote *remote, Packet *packet)
 
 	} while(0);
 
-	if(ifaces)
-	{
-		free(ifaces);
-	}
 
 	if (interfaces)
 	{
@@ -453,7 +434,6 @@ DWORD request_sniffer_capture_start(Remote *remote, Packet *packet)
 			dprintf("the real filter string we'll be using is '%s'", real_filter);
 
 			rc = pcap_compile(j->pcap, &bpf, real_filter, 1, 0);
-			free(real_filter);
 
 			if(rc == -1)
 			{
@@ -463,6 +443,7 @@ DWORD request_sniffer_capture_start(Remote *remote, Packet *packet)
 				result = ERROR_INVALID_PARAMETER;
 				break;
 			}
+			free(real_filter);
 
 			dprintf("compiled filter, now setfilter()'ing");
 
@@ -813,23 +794,11 @@ DWORD request_sniffer_capture_dump(Remote *remote, Packet *packet)
 			}
 
 			tmp = (unsigned int *)(j->dbuf + rcnt);
-/*#ifdef _WIN64
-			PktGetId(j->pkts[i],&thilo);
-			thi = (DWORD)(thilo >> 32);
-			tlo = (DWORD)(thilo & 0xFFFFFFFF);
-#else*/
 			tlo = PktGetId(j->pkts[i], &thi);
-//#endif
 			*tmp = htonl(thi); tmp++;
 			*tmp = htonl(tlo); tmp++;
 
-/*#ifdef _WIN64
-		    PktGetTimeStamp(j->pkts[i], &thilo);
-			thi = (DWORD)(thilo >> 32);
-			tlo = (DWORD)(thilo & 0xFFFFFFFF);
-#else*/
 			tlo = PktGetTimeStamp(j->pkts[i], &thi);
-//#endif
 			*tmp = htonl(thi); tmp++;
 			*tmp = htonl(tlo); tmp++;
 
@@ -840,7 +809,7 @@ DWORD request_sniffer_capture_dump(Remote *remote, Packet *packet)
 
 			rcnt += 20 + tlo;
 			pcnt++;
-			
+
 			PktDestroy(j->pkts[i]);
 			j->pkts[i] = NULL;
 		}
