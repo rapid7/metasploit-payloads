@@ -26,7 +26,7 @@ module MetasploitPayloads
     # each time. We only do this is MSF is installed.
     extra_paths.each do |extra_path|
       if ::File.readable? extra_path
-        warn_local_path(extra_path) if ::File.readable? gem_path
+        warn_local_path(extra_path)
         return extra_path
       end
     end
