@@ -1112,6 +1112,7 @@ function read($resource, $len=null) {
         #   will fail and return FALSE under Windows.
         $r = Array($resource);
         my_print("Calling select to see if there's data on $resource");
+        $last_requested_len = 0;
         while (true) {
             $w=NULL;$e=NULL;$t=0;
             $cnt = stream_select($r, $w, $e, $t);
@@ -1136,10 +1137,12 @@ function read($resource, $len=null) {
             $md = stream_get_meta_data($resource);
             dump_array($md, "Metadata for {$resource}");
             if ($md['unread_bytes'] > 0) {
-                $buff .= fread($resource, min($len, $md['unread_bytes']));
+                $last_requested_len = min($len, $md['unread_bytes']);
+                $buff .= fread($resource, $last_requested_len);
                 break;
             } else {
                 $tmp = fread($resource, $len);
+                $last_requested_len = $len;
                 $buff .= $tmp;
                 if (strlen($tmp) < $len) {
                     break;
@@ -1149,7 +1152,7 @@ function read($resource, $len=null) {
             if ($resource != $msgsock) { my_print("buff: '$buff'"); }
             $r = Array($resource);
         }
-        my_print(sprintf("Done with the big read loop on $resource, got %d bytes, asked for %d bytes", strlen($buff), $len));
+        my_print(sprintf("Done with the big read loop on $resource, got %d bytes, asked for %d bytes", strlen($buff), $last_requested_len));
         break;
     default:
         # then this is possibly a closed channel resource, see if we have any
