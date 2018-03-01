@@ -1112,6 +1112,7 @@ function read($resource, $len=null) {
         #   will fail and return FALSE under Windows.
         $r = Array($resource);
         my_print("Calling select to see if there's data on $resource");
+        $last_requested_len = 0;
         while (true) {
             $w=NULL;$e=NULL;$t=0;
             $cnt = stream_select($r, $w, $e, $t);
@@ -1136,11 +1137,12 @@ function read($resource, $len=null) {
             $md = stream_get_meta_data($resource);
             dump_array($md, "Metadata for {$resource}");
             if ($md['unread_bytes'] > 0) {
-                $buff .= fread($resource, $md['unread_bytes']);
+                $last_requested_len = min($len, $md['unread_bytes']);
+                $buff .= fread($resource, $last_requested_len);
                 break;
             } else {
-                #$len = 1;
                 $tmp = fread($resource, $len);
+                $last_requested_len = $len;
                 $buff .= $tmp;
                 if (strlen($tmp) < $len) {
                     break;
@@ -1150,7 +1152,7 @@ function read($resource, $len=null) {
             if ($resource != $msgsock) { my_print("buff: '$buff'"); }
             $r = Array($resource);
         }
-        my_print(sprintf("Done with the big read loop on $resource, got %d bytes", strlen($buff)));
+        my_print(sprintf("Done with the big read loop on $resource, got %d bytes, asked for %d bytes", strlen($buff), $last_requested_len));
         break;
     default:
         # then this is possibly a closed channel resource, see if we have any
@@ -1364,7 +1366,7 @@ while (false !== ($cnt = select($r, $w, $e, $t))) {
         $ready = $r[$i];
         if ($ready == $msgsock) {
             $packet = read($msgsock, 32);
-            #my_print(sprintf("Read returned %s bytes", strlen($request)));
+            my_print(sprintf("Read returned %s bytes", strlen($packet)));
             if (false==$packet) {
                 my_print("Read failed on main socket, bailing");
                 # We failed on the main socket.  There's no way to continue, so
@@ -1374,7 +1376,7 @@ while (false !== ($cnt = select($r, $w, $e, $t))) {
             $xor = substr($packet, 0, 4);
             $header = xor_bytes($xor, substr($packet, 4, 28));
             $len_array = unpack("Nlen", substr($header, 20, 4));
-            # length of the packet should be the packet header size 
+            # length of the packet should be the packet header size
             # minus 8 for the tlv length + the required data length
             $len = $len_array['len'] + 32 - 8;
             # packet type should always be 0, i.e. PACKET_TYPE_REQUEST
