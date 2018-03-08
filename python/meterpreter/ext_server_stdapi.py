@@ -987,9 +987,12 @@ def stdapi_sys_process_execute(request, response):
         if has_pty:
             master, slave = pty.openpty()
             if has_termios:
-                settings = termios.tcgetattr(master)
-                settings[3] = settings[3] & ~termios.ECHO
-                termios.tcsetattr(master, termios.TCSADRAIN, settings)
+                try:
+                    settings = termios.tcgetattr(master)
+                    settings[3] = settings[3] & ~termios.ECHO
+                    termios.tcsetattr(master, termios.TCSADRAIN, settings)
+                except:
+                    pass
             proc_h = STDProcess(args, stdin=slave, stdout=slave, stderr=slave, bufsize=0)
             proc_h.stdin = os.fdopen(master, 'wb')
             proc_h.stdout = os.fdopen(master, 'rb')
