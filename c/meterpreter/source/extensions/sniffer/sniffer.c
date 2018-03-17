@@ -7,6 +7,7 @@
 
 #include "precomp.h"
 #include "sniffer.h"
+#include "..\..\..\workspace\ext_server_sniffer\resource.h"
 
 DWORD request_sniffer_interfaces(Remote *remote, Packet *packet);
 DWORD request_sniffer_capture_start(Remote *remote, Packet *packet);
@@ -87,7 +88,7 @@ char *get_interface_name_by_index(unsigned int fidx)
 
 	if(pcap_findalldevs(&interfaces, errbuf) == -1)
 	{
-		dprintf("pcap_findalldevs failed, errbuf was : %s", errbuf);
+		dprintf("[SNIFFER] pcap_findalldevs failed, errbuf was : %s", errbuf);
 		return NULL;
 	}
 	else
@@ -231,7 +232,7 @@ DWORD request_sniffer_interfaces(Remote *remote, Packet *packet)
 		}
 		else
 		{
-			dprintf("pcap_findalldevs() failed, errbuf was %s", errbuf);
+			dprintf("[SNIFFER] pcap_findalldevs() failed, errbuf was %s", errbuf);
 			break;
 		}
 
@@ -251,13 +252,13 @@ DWORD request_sniffer_interfaces(Remote *remote, Packet *packet)
 
 void sniffer_handler(u_char *user, const struct pcap_pkthdr *h, const u_char *bytes)
 {
-	dprintf("sniffer>> sniffer_handler()\n");
+	dprintf("[SNIFFER] sniffer_handler()\n");
 	CaptureJob *j = (CaptureJob *)(user);
 	PeterPacket *pkt;
 
 	if(! j->active)
 	{
-		dprintf("sniffer>> sniffer_handler() calling pcap_breakloop because job is no longer active");
+		dprintf("[SNIFFER] sniffer_handler() calling pcap_breakloop because job is no longer active");
 		pcap_breakloop(j->pcap);
 		return;
 	}
@@ -265,7 +266,7 @@ void sniffer_handler(u_char *user, const struct pcap_pkthdr *h, const u_char *by
 	pkt = calloc(sizeof(PeterPacket) + h->caplen, 1);
 	if(! pkt)
 	{
-		dprintf("sniffer>> sniffer_handler() ho hum, no memory. maybe a pcap_breakloop / stop running?");
+		dprintf("[SNIFFER] sniffer_handler() ho hum, no memory. maybe a pcap_breakloop / stop running?");
 		return;
 	}
 
@@ -296,29 +297,29 @@ void sniffer_handler(u_char *user, const struct pcap_pkthdr *h, const u_char *by
 
 	lock_release(snifferm);
 
-	dprintf("sniffer>> sniffer_handler() new packet inserted. now pkts %d / bytes %d", j->cur_pkts, j->cur_bytes);
+	dprintf("[SNIFFER] sniffer_handler() new packet inserted. now pkts %d / bytes %d", j->cur_pkts, j->cur_bytes);
 
 }
 
 
 DWORD WINAPI sniffer_thread(LPVOID jParam)
 {
-	dprintf("sniffer>> sniffer_thread()\n");
+	dprintf("[SNIFFER] sniffer_thread()\n");
 	int count = 0;
 	CaptureJob *j = (CaptureJob *)(jParam);
 	// PeterPacket *pkt;
 
 	while (j->active)
 	{
-		dprintf("sniffer>> sniffer_thread() job is active, at start of loop\n");
+		dprintf("[SNIFFER] sniffer_thread() job is active, at start of loop\n");
 		//count = pcap_next_ex(j->pcap, &pkt->h, &pkt->bytes);
 		//sniffer_handler((u_char *)(j), &pkt->h, &pkt->bytes);
 		count = pcap_dispatch(j->pcap, 100, sniffer_handler, (u_char *)(j));
-		dprintf("sniffer>> sniffer_thread()  count %d\n", count);
+		dprintf("[SNIFFER] sniffer_thread()  count %d\n", count);
 
 		if (-1 == count)
 		{
-			dprintf("pcap error: %s", pcap_geterr(j->pcap));
+			dprintf("[SNIFFER] pcap error: %s", pcap_geterr(j->pcap));
 		}
 
 		if (count <= 0)
@@ -328,11 +329,11 @@ DWORD WINAPI sniffer_thread(LPVOID jParam)
 
 		if (count)
 		{
-			dprintf("dispatched %d packets", count);
+			dprintf("[SNIFFER] dispatched %d packets", count);
 		}
 	}
 
-	dprintf("and we're done");
+	dprintf("[SNIFFER] and we're done");
 	return 0;
 }
 
@@ -352,7 +353,7 @@ DWORD request_sniffer_capture_start(Remote *remote, Packet *packet)
 
 	char errbuf[PCAP_ERRBUF_SIZE+4];
 	char *name;
-	dprintf("sniffer>> start_capture()");
+	dprintf("[SNIFFER] start_capture()");
 
 	ifid = packet_get_tlv_value_uint(packet, TLV_TYPE_SNIFFER_INTERFACE_ID);
 	maxp = packet_get_tlv_value_uint(packet, TLV_TYPE_SNIFFER_PACKET_COUNT);
@@ -381,7 +382,7 @@ DWORD request_sniffer_capture_start(Remote *remote, Packet *packet)
 		}
 
 		name = get_interface_name_by_index(ifh);
-		dprintf("sniffer>> start_capture() name is %s\n",name);
+		dprintf("[SNIFFER] start_capture() name is %s\n",name);
 
 		if(!name)
 		{
@@ -396,12 +397,12 @@ DWORD request_sniffer_capture_start(Remote *remote, Packet *packet)
 		);
 		if(!j->pcap)
 		{
-			dprintf("sniffer>> start_capture() interface acquisition failed: %s\n", errbuf);
+			dprintf("[SNIFFER] start_capture() interface acquisition failed: %s\n", errbuf);
 			result = ERROR_ACCESS_DENIED;
 			break;
 		}
 		j->capture_linktype = pcap_datalink(j->pcap);
-		dprintf("sniffer>> start_capture() linktype is %d\n", j->capture_linktype);
+		dprintf("[SNIFFER] start_capture() linktype is %d\n", j->capture_linktype);
 		if (-1 == j->capture_linktype)
 		{
 			j->capture_linktype = 1; // force to LINKTYPE_ETHERNET in case of error
@@ -414,13 +415,13 @@ DWORD request_sniffer_capture_start(Remote *remote, Packet *packet)
 			struct bpf_program bpf;
 			int rc;
 
-			dprintf("handling packet_filter %s", packet_filter);
+			dprintf("[SNIFFER] handling packet_filter %s", packet_filter);
 
 			rc = pcap_compile(j->pcap, &bpf, packet_filter, 1, 0);
 
 			if(rc == -1)
 			{
-				dprintf("pcap compile reckons '%s' is a failure because of '%s'",
+				dprintf("[SNIFFER] pcap compile reckons '%s' is a failure because of '%s'",
 					packet_filter, pcap_geterr(j->pcap));
 
 				result = ERROR_INVALID_PARAMETER;
@@ -428,46 +429,46 @@ DWORD request_sniffer_capture_start(Remote *remote, Packet *packet)
 			}
 			free(packet_filter);
 
-			dprintf("compiled filter, now setfilter()'ing");
+			dprintf("[SNIFFER] compiled filter, now setfilter()'ing");
 
 			rc = pcap_setfilter(j->pcap, &bpf);
 			pcap_freecode(&bpf);
 
 			if(rc == -1)
 			{
-				dprintf("can't set filter because '%s'", pcap_geterr(j->pcap));
+				dprintf("[SNIFFER] can't set filter because '%s'", pcap_geterr(j->pcap));
 
 				result = ERROR_INVALID_PARAMETER;
 				break;
 			}
 
-			dprintf("filter applied successfully");
+			dprintf("[SNIFFER] filter applied successfully");
 		}
 		j->thread = CreateThread(NULL, 0, sniffer_thread, (u_char*)j, 4, NULL);
 		if(! j->thread)
 		{
-			dprintf("sniffer>> start_capture() thread creation failed!\n");
+			dprintf("[SNIFFER] start_capture() thread creation failed!\n");
 			pcap_close(j->pcap);
 			break;
 		}
-		dprintf("sniffer>> start_capture() thread creation succeeded\n");
+		dprintf("[SNIFFER] start_capture() thread creation succeeded\n");
 		j->pkts = calloc(maxp, sizeof(*(j->pkts)));
 		if (j->pkts == NULL) {
-			dprintf("sniffer>> start_capture()  pkts allocation failed!\n");
+			dprintf("[SNIFFER] start_capture()  pkts allocation failed!\n");
 			pcap_close(j->pcap);
 			result = ERROR_ACCESS_DENIED;
 			break;
 		}
-		dprintf("sniffer>> start_capture() pkts allocation succeeded\n");
+		dprintf("[SNIFFER] start_capture() pkts allocation succeeded\n");
 		j->active = 1;
 		j->intf = ifid;
 		j->max_pkts = maxp;
 		j->cur_pkts = 0;
 		j->mtu = SnifferCfgGetMaxPacketSize(j->pcap);
 
-		dprintf("sniffer>> start_capture() mtu set: %d\n", j->mtu);
+		dprintf("[SNIFFER] start_capture() mtu set: %d\n", j->mtu);
 		ResumeThread(j->thread);
-		dprintf("sniffer>> start_capture() thread running\n");
+		dprintf("[SNIFFER] start_capture() thread running\n");
 
 	} while (0);
 
@@ -482,10 +483,10 @@ DWORD request_sniffer_capture_stop(Remote *remote, Packet *packet)
 	CaptureJob *j;
 	DWORD result;
 
-	dprintf("sniffer>> stop_capture()");
+	dprintf("[SNIFFER] stop_capture()");
 
 	ifid = packet_get_tlv_value_uint(packet, TLV_TYPE_SNIFFER_INTERFACE_ID);
-	dprintf("sniffer>> stop_capture(0x%.8x)", ifid);
+	dprintf("[SNIFFER] stop_capture(0x%.8x)", ifid);
 
 	result = ERROR_SUCCESS;
 
@@ -518,7 +519,7 @@ DWORD request_sniffer_capture_stop(Remote *remote, Packet *packet)
 
 		lock_release(snifferm);
 
-		dprintf("sniffer>> stop_capture() interface %d processed %d packets/%d bytes", j->intf, j->cur_pkts, j->cur_bytes);
+		dprintf("[SNIFFER] stop_capture() interface %d processed %d packets/%d bytes", j->intf, j->cur_pkts, j->cur_bytes);
 	} while (0);
 
 	packet_transmit_response(result, remote, response);
@@ -533,10 +534,10 @@ DWORD request_sniffer_capture_release(Remote *remote, Packet *packet)
 	DWORD result;
 	BOOL test_parameters;
 
-	dprintf("sniffer>> release_capture()");
+	dprintf("[SNIFFER] release_capture()");
 
 	ifid = packet_get_tlv_value_uint(packet, TLV_TYPE_SNIFFER_INTERFACE_ID);
-	dprintf("sniffer>> release_capture(0x%.8x)", ifid);
+	dprintf("[SNIFFER] release_capture(0x%.8x)", ifid);
 
 	result = ERROR_SUCCESS;
 
@@ -563,7 +564,7 @@ DWORD request_sniffer_capture_release(Remote *remote, Packet *packet)
 
 		packet_add_tlv_uint(response, TLV_TYPE_SNIFFER_PACKET_COUNT, j->cur_pkts);
 		packet_add_tlv_uint(response, TLV_TYPE_SNIFFER_BYTE_COUNT, (unsigned int)j->cur_bytes);
-		dprintf("sniffer>> release_capture() interface %d released %d packets/%d bytes", j->intf, j->cur_pkts, j->cur_bytes);
+		dprintf("[SNIFFER] release_capture() interface %d released %d packets/%d bytes", j->intf, j->cur_pkts, j->cur_bytes);
 
 		for (i = 0; i < j->max_pkts; i++)
 		{
@@ -592,10 +593,10 @@ DWORD request_sniffer_capture_stats(Remote *remote, Packet *packet)
 	CaptureJob *j;
 	DWORD result;
 
-	dprintf("sniffer>> capture_stats()");
+	dprintf("[SNIFFER] capture_stats()");
 
 	ifid = packet_get_tlv_value_uint(packet, TLV_TYPE_SNIFFER_INTERFACE_ID);
-	dprintf("sniffer>> capture_stats(0x%.8x)", ifid);
+	dprintf("[SNIFFER] capture_stats(0x%.8x)", ifid);
 
 	result = ERROR_SUCCESS;
 
@@ -635,13 +636,13 @@ DWORD request_sniffer_capture_dump_read(Remote *remote, Packet *packet)
 	CaptureJob *j;
 	DWORD result;
 
-	dprintf("sniffer>> capture_dump_read()");
+	dprintf("[SNIFFER] capture_dump_read()");
 
 	ifid = packet_get_tlv_value_uint(packet, TLV_TYPE_SNIFFER_INTERFACE_ID);
 	bcnt = packet_get_tlv_value_uint(packet, TLV_TYPE_SNIFFER_BYTE_COUNT);
 	bcnt = min(bcnt, 32 * 1024 * 1024);
 
-	dprintf("sniffer>> capture_dump_read(0x%.8x, %d)", ifid, bcnt);
+	dprintf("[SNIFFER] capture_dump_read(0x%.8x, %d)", ifid, bcnt);
 
 	result = ERROR_SUCCESS;
 
@@ -682,7 +683,7 @@ DWORD request_sniffer_capture_dump_read(Remote *remote, Packet *packet)
 		// if dump occurs when interface is not active, i.e sniff has ended, release info
 		if (j->active == 0)
 		{
-			dprintf("sniffer>> capture_dump_read, release CaptureJob");
+			dprintf("[SNIFFER] capture_dump_read, release CaptureJob");
 			lock_acquire(snifferm);
 			for (i = 0; i < j->max_pkts; i++)
 			{
@@ -714,10 +715,10 @@ DWORD request_sniffer_capture_dump(Remote *remote, Packet *packet)
 	DWORD result, pcnt, rcnt, i;
 	DWORD thi, tlo;
 
-	dprintf("sniffer>> capture_dump()");
+	dprintf("[SNIFFER] capture_dump()");
 
 	ifid = packet_get_tlv_value_uint(packet, TLV_TYPE_SNIFFER_INTERFACE_ID);
-	dprintf("sniffer>> capture_dump(0x%.8x)", ifid);
+	dprintf("[SNIFFER] capture_dump(0x%.8x)", ifid);
 
 	result = ERROR_SUCCESS;
 
@@ -770,7 +771,7 @@ DWORD request_sniffer_capture_dump(Remote *remote, Packet *packet)
 
 				if (!j->dbuf)
 				{
-					dprintf("sniffer>> realloc of %d bytes failed!", rbuf);
+					dprintf("[SNIFFER] realloc of %d bytes failed!", rbuf);
 					result = ERROR_NOT_ENOUGH_MEMORY;
 					break;
 				}
@@ -804,7 +805,7 @@ DWORD request_sniffer_capture_dump(Remote *remote, Packet *packet)
 		// add capture datalink, needed when saving capture file, use TLV_TYPE_SNIFFER_INTERFACE_ID not to create a new TLV type
 		packet_add_tlv_uint(response, TLV_TYPE_SNIFFER_INTERFACE_ID, j->capture_linktype);
 
-		dprintf("sniffer>> finished processing packets");
+		dprintf("[SNIFFER] finished processing packets");
 
 		j->cur_bytes = 0;
 		j->cur_pkts = 0;
@@ -814,6 +815,45 @@ DWORD request_sniffer_capture_dump(Remote *remote, Packet *packet)
 	lock_release(snifferm);
 	packet_transmit_response(result, remote, response);
 	return ERROR_SUCCESS;
+}
+
+/*!
+ *@brief Check for driver presence in memory, load if not present, dropping .sys if missing
+*/
+void driverSetup() {
+	pcap_if_t *alldevs;
+	char driver_path[MAX_PATH];
+	LPWSTR driver_key = L"System\\CurrentControlSet\\Services\\MetSniff";
+	char errbuf[PCAP_ERRBUF_SIZE + 4];
+	// Check if PCAP driver is loaded
+	if (pcap_findalldevs_ex(PCAP_SRC_IF_STRING, NULL, &alldevs, errbuf) == -1) {
+		// No driver loaded, check if the driver file is present
+		GetSystemDirectory(driver_path, sizeof(driver_path));
+		strcat(driver_path, "\\drivers\\npf.sys");
+		if (0xFFFFFFFF == GetFileAttributes(driver_path)) {
+			// Driver file is not present
+			if (dropDriverResource(IDR_RCDATA1, RT_RCDATA, (PCWSTR)driver_path) != ERROR_SUCCESS) {
+				dprintf("[SNIFFER] Cannot write driver file");
+			}
+		}
+		if (driverLoad((PCWSTR)driver_path, (PCWSTR)driver_key) != (NTSTATUS)0) {
+			dprintf("[SNIFFER] Failed to start driver");
+		}
+	}
+}
+
+/*!
+ * @brief Compose registry and path data, pass both to driverUnload
+*/
+void driverCleanup() {
+	char driver_path[MAX_PATH];
+	LPWSTR driver_key = L"System\\CurrentControlSet\\Services\\MetSniff";
+
+	GetSystemDirectory(driver_path, sizeof(driver_path));
+	strcat(driver_path, "\\drivers\\npf.sys");
+	if (driverUnload((PCWSTR)driver_path, driver_key) != (NTSTATUS)0) {
+		dprintf("[SNIFFER] Failed to stop/remove driver");
+	}
 }
 
 /*!
@@ -827,29 +867,30 @@ DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
 	// otherwise we get obscure crashes!
 	hMetSrv = remote->met_srv;
 
-	dprintf("[SERVER] Registering command handlers...");
+	dprintf("[SNIFFER] Registering command handlers...");
 	command_register_all( customCommands );
 
-	dprintf("[SERVER] Memory reset of open_captures...");
+	dprintf("[SNIFFER] Memory reset of open_captures...");
 	memset(open_captures, 0, sizeof(open_captures));
 
-	dprintf("[SERVER] Getting the peer name of our socket...");
+	dprintf("[SNIFFER] Getting the peer name of our socket...");
 	// get the address/port of the connected control socket
 	peername4 = NULL;
 	peername6 = NULL;
 	peername_len = sizeof(peername);
+
 	if (remote->transport->get_handle) {
 		getpeername(remote->transport->get_handle(remote->transport), &peername, &peername_len);
 		if(peername.sa_family == PF_INET)  peername4 = (struct sockaddr_in *)&peername;
 
-		dprintf("[SERVER] Getting the IPv6 peer name of our socket...");
+		dprintf("[SNIFFER] Getting the IPv6 peer name of our socket...");
 		if(peername.sa_family == PF_INET6) peername6 = (struct sockaddr_in6 *)&peername;
 	}
 	else {
 	 // TODO: not sure what to do here
 	}
 
-	dprintf("[SERVER] Creating a lock...");
+	dprintf("[SNIFFER] Creating a lock...");
 	InitializeCriticalSection(&snifferm);
 
 	if(peername4 || peername6) {
@@ -872,6 +913,7 @@ DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
 		dprintf("hold on to your seats. no filter applied :~(");
 	}
 
+	driverSetup();
 	return ERROR_SUCCESS;
 
 }
@@ -886,6 +928,7 @@ DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
 	command_register_all( customCommands );
 
 	lock_destroy(snifferm);
+	driverCleanup();
 	return ERROR_SUCCESS;
 }
 

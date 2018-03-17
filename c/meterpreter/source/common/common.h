@@ -50,6 +50,7 @@ typedef struct ___u128 {
 #include "list.h"
 
 #include "zlib/zlib.h"
+#include "driver.h"
 
 /*! @brief Indication that the Meterpreter transport is using TCP. */
 #define METERPRETER_TRANSPORT_TCP    0x1

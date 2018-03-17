@@ -41,11 +41,7 @@ typedef struct capturejob
 	unsigned int dlen;
 	unsigned int didx;
 	int capture_linktype; //current capture link type that we want to save, ie. LINKTYPE_ETHERNET
-#ifdef _WIN32
 	HANDLE thread;
-#else
-	THREAD *thread;
-#endif
 	pcap_t *pcap;
 } CaptureJob;
 

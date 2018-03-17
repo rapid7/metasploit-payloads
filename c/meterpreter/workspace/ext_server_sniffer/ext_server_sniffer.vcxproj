@@ -183,6 +183,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
   <ItemGroup>
     <ClInclude Include="..\..\source\extensions\sniffer\precomp.h" />
     <ClInclude Include="..\..\source\extensions\sniffer\sniffer.h" />
+    <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\backcompat\backcompat.vcxproj">
@@ -201,6 +202,12 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <Project>{72f0246a-a38d-4547-9057-46020e8e503d}</Project>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="ext_server_sniffer.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\deps\winpcap\driver\npf.x86.sys" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
