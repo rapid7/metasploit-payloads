@@ -401,14 +401,14 @@ class MeterpreterSocket(object):
 export(MeterpreterSocket)
 
 #@export
-class MeterpreterSocketClient(MeterpreterSocket):
+class MeterpreterSocketTCPClient(MeterpreterSocket):
     pass
-export(MeterpreterSocketClient)
+export(MeterpreterSocketTCPClient)
 
 #@export
-class MeterpreterSocketServer(MeterpreterSocket):
+class MeterpreterSocketTCPServer(MeterpreterSocket):
     pass
-export(MeterpreterSocketServer)
+export(MeterpreterSocketTCPServer)
 
 class STDProcessBuffer(threading.Thread):
     def __init__(self, std, is_alive):
@@ -917,7 +917,7 @@ class PythonMeterpreter(object):
                         data = channel.stdout_reader.read()
                     elif channel.poll() != None:
                         self.handle_dead_resource_channel(channel_id)
-                elif isinstance(channel, MeterpreterSocketClient):
+                elif isinstance(channel, MeterpreterSocketTCPClient):
                     while select.select([channel.fileno()], [], [], 0)[0]:
                         try:
                             d = channel.recv(1)
@@ -927,11 +927,11 @@ class PythonMeterpreter(object):
                             self.handle_dead_resource_channel(channel_id)
                             break
                         data += d
-                elif isinstance(channel, MeterpreterSocketServer):
+                elif isinstance(channel, MeterpreterSocketTCPServer):
                     if select.select([channel.fileno()], [], [], 0)[0]:
                         (client_sock, client_addr) = channel.accept()
                         server_addr = channel.getsockname()
-                        client_channel_id = self.add_channel(MeterpreterSocketClient(client_sock))
+                        client_channel_id = self.add_channel(MeterpreterSocketTCPClient(client_sock))
                         pkt  = struct.pack('>I', PACKET_TYPE_REQUEST)
                         pkt += tlv_pack(TLV_TYPE_METHOD, 'tcp_channel_open')
                         pkt += tlv_pack(TLV_TYPE_UUID, binascii.a2b_hex(bytes(PAYLOAD_UUID, 'UTF-8')))

@@ -871,7 +871,7 @@ def channel_open_stdapi_net_tcp_client(request, response):
             pass
     if not connected:
         return ERROR_CONNECTION_ERROR, response
-    channel_id = meterpreter.add_channel(MeterpreterSocketClient(sock))
+    channel_id = meterpreter.add_channel(MeterpreterSocketTCPClient(sock))
     response += tlv_pack(TLV_TYPE_CHANNEL_ID, channel_id)
     return ERROR_SUCCESS, response
 
@@ -883,7 +883,7 @@ def channel_open_stdapi_net_tcp_server(request, response):
     server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server_sock.bind((local_host, local_port))
     server_sock.listen(socket.SOMAXCONN)
-    channel_id = meterpreter.add_channel(MeterpreterSocketServer(server_sock))
+    channel_id = meterpreter.add_channel(MeterpreterSocketTCPServer(server_sock))
     response += tlv_pack(TLV_TYPE_CHANNEL_ID, channel_id)
     return ERROR_SUCCESS, response
 
