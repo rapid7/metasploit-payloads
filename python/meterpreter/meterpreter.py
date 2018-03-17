@@ -1136,7 +1136,9 @@ class PythonMeterpreter(object):
         channel_type = packet_get_tlv(request, TLV_TYPE_CHANNEL_TYPE)
         handler = 'channel_open_' + channel_type['value']
         if handler not in self.extension_functions:
+            debug_print('[-] core_channel_open missing handler: ' + handler)
             return error_result(NotImplementedError), response
+        debug_print('[*] core_channel_open dispatching to handler: ' + handler)
         handler = self.extension_functions[handler]
         return handler(request, response)
 
