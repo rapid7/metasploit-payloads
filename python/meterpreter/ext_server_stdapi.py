@@ -1006,7 +1006,7 @@ def stdapi_sys_process_execute(request, response):
     response += tlv_pack(TLV_TYPE_PID, proc_h.pid)
     response += tlv_pack(TLV_TYPE_PROCESS_HANDLE, proc_h_id)
     if (flags & PROCESS_EXECUTE_FLAG_CHANNELIZED):
-        channel_id = meterpreter.add_channel(proc_h)
+        channel_id = meterpreter.add_channel(MeterpreterProcess(proc_h))
         response += tlv_pack(TLV_TYPE_CHANNEL_ID, channel_id)
     return ERROR_SUCCESS, response
 
