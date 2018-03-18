@@ -1686,7 +1686,7 @@ def stdapi_net_socket_tcp_shutdown(request, response):
     channel_id = packet_get_tlv(request, TLV_TYPE_CHANNEL_ID)['value']
     how = packet_get_tlv(request, TLV_TYPE_SHUTDOWN_HOW).get('value', socket.SHUT_RDWR)
     channel = meterpreter.channels[channel_id]
-    channel.shutdown(how)
+    channel.sock.shutdown(how)
     return ERROR_SUCCESS, response
 
 def _linux_get_maps():

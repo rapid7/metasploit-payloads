@@ -384,16 +384,12 @@ def tlv_pack_response(result, response):
 
 #@export
 class MeterpreterChannel(object):
-    def __init__(self):
-        self.eof = False
-        self.is_alive = True
-
     def core_close(self, request, response):
         self.close()
         return ERROR_SUCCESS, response
 
     def core_eof(self, request, response):
-        response += tlv_pack(TLV_TYPE_BOOL, self.eof)
+        response += tlv_pack(TLV_TYPE_BOOL, self.eof())
         return ERROR_SUCCESS, response
 
     def core_read(self, request, response):
@@ -409,6 +405,12 @@ class MeterpreterChannel(object):
     def close(self):
         raise NotImplementedError()
 
+    def eof(self):
+        return False
+
+    def is_alive(self):
+        return True
+
     def read(self, length):
         raise NotImplementedError()
 
@@ -421,12 +423,17 @@ class MeterpreterFile(MeterpreterChannel):
         self.file_obj = file_obj
         super(MeterpreterFile, self).__init__()
 
-    def __getattr__(self, name):
-        return getattr(self.file_obj, name)
+    def close(self):
+        self.file_obj.close()
 
-    @property
     def eof(self):
         return self.file_obj.tell() >= os.fstat(self.file_obj.fileno()).st_size
+
+    def read(self, length):
+        return self.file_obj.read(length)
+
+    def write(self, data):
+        return self.file_obj.write(data)
 export(MeterpreterFile)
 
 #@export
@@ -438,9 +445,8 @@ class MeterpreterProcess(MeterpreterChannel):
     def close(self):
         self.proc_h.kill()
 
-    @property
     def is_alive(self):
-        return channel.poll() is None
+        return self.proc_h.poll() is None
 
     def read(self, length):
         data = ''
@@ -457,6 +463,7 @@ export(MeterpreterProcess)
 class MeterpreterSocket(MeterpreterChannel):
     def __init__(self, sock):
         self.sock = sock
+        self._is_alive = True
         super(MeterpreterSocket, self).__init__()
 
     def core_write(self, request, response):
@@ -464,7 +471,7 @@ class MeterpreterSocket(MeterpreterChannel):
             status, response = super(MeterpreterSocket, self).core_write(request, response)
         except socket.error:
             self.close()
-            self.is_alive = False
+            self._is_alive = False
             status = ERROR_FAILURE
         return status, response
 
@@ -473,6 +480,9 @@ class MeterpreterSocket(MeterpreterChannel):
 
     def fileno(self):
         return self.sock.fileno()
+
+    def is_alive(self):
+        return self._is_alive
 
     def read(self, length):
         return self.sock.recv(length)
@@ -532,14 +542,17 @@ class STDProcess(subprocess.Popen):
         subprocess.Popen.__init__(self, *args, **kwargs)
         self.echo_protection = False
 
+    def is_alive(self):
+        return self.poll() is None
+
     def start(self):
-        self.stdout_reader = STDProcessBuffer(self.stdout, lambda: self.poll() == None)
+        self.stdout_reader = STDProcessBuffer(self.stdout, self.is_alive)
         self.stdout_reader.start()
-        self.stderr_reader = STDProcessBuffer(self.stderr, lambda: self.poll() == None)
+        self.stderr_reader = STDProcessBuffer(self.stderr, self.is_alive)
         self.stderr_reader.start()
 
     def write(self, channel_data):
-        self.stdin.write(channel_data)
+        length = self.stdin.write(channel_data)
         self.stdin.flush()
         if self.echo_protection:
             end_time = time.time() + 0.5
@@ -549,6 +562,7 @@ class STDProcess(subprocess.Popen):
                     out_data = self.stdout_reader.peek(len(channel_data))
             if out_data == channel_data:
                 self.stdout_reader.read(len(channel_data))
+        return length
 export(STDProcess)
 
 class Transport(object):
@@ -999,7 +1013,7 @@ class PythonMeterpreter(object):
                         data = proc_h.stderr_reader.read()
                     elif proc_h.stdout_reader.is_read_ready():
                         data = proc_h.stdout_reader.read()
-                    elif not channel.is_alive:
+                    elif not channel.is_alive():
                         self.handle_dead_resource_channel(channel_id)
                 elif isinstance(channel, MeterpreterSocketTCPClient):
                     while select.select([channel.fileno()], [], [], 0)[0]:
@@ -1269,7 +1283,7 @@ class PythonMeterpreter(object):
             return ERROR_FAILURE, response
         channel = self.channels[channel_id]
         status, response = channel.core_read(request, response)
-        if not channel.is_alive:
+        if not channel.is_alive():
             self.handle_dead_resource_channel(channel_id)
         return status, response
 
@@ -1279,10 +1293,10 @@ class PythonMeterpreter(object):
             return ERROR_FAILURE, response
         channel = self.channels[channel_id]
         status = ERROR_FAILURE
-        if channel.is_alive:
+        if channel.is_alive():
             status, response = channel.core_write(request, response)
-        # evaluate channel.is_alive twice because it could have changed
-        if not channel.is_alive:
+        # evaluate channel.is_alive() twice because it could have changed
+        if not channel.is_alive():
             self.handle_dead_resource_channel(channel_id)
         return status, response
 
