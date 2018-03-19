@@ -1038,7 +1038,7 @@ class PythonMeterpreter(object):
                     self._transport_sleep = None
                     if not self.transport.activate():
                         self.transport_change()
-                continue
+                    continue
             # iterate over the keys because self.channels could be modified if one is closed
             channel_ids = list(self.channels.keys())
             for channel_id in channel_ids:
