@@ -88,7 +88,7 @@
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>backcompat.lib;ws2_32.lib;metsrv.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>backcompat.lib;ws2_32.lib;shlwapi.lib;metsrv.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\backcompat\$(Configuration);..\metsrv\$(Configuration)\$(Platform);..\..\deps\winpcap\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <DelayLoadDLLs>metsrv.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
@@ -149,7 +149,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>ws2_32.lib;metsrv.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;shlwapi.lib;metsrv.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\metsrv\$(Configuration)\$(Platform);..\..\deps\winpcap\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <DelayLoadDLLs>metsrv.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
@@ -176,11 +176,13 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\source\extensions\sniffer\driver.c" />
     <ClCompile Include="..\..\source\extensions\sniffer\sniffer.c">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\source\extensions\sniffer\driver.h" />
     <ClInclude Include="..\..\source\extensions\sniffer\precomp.h" />
     <ClInclude Include="..\..\source\extensions\sniffer\sniffer.h" />
     <ClInclude Include="resource.h" />
@@ -205,9 +207,6 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="ext_server_sniffer.rc" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="..\..\deps\winpcap\driver\npf.x86.sys" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

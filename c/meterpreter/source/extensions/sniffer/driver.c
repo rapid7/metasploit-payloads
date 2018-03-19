@@ -3,7 +3,9 @@
 * @brief Definitions of driver handler components for the Meterpreter suite.
 * @details Contains routines required to load device drivers for Windows platform
 */
-#include "common.h"
+//#include "common.h"
+#include "precomp.h"
+#include <shlwapi.h>
 
 VOID(NTAPI *RtlInitUnicodeString)(_PUNICODE_STRING, PCWSTR);
 const char ntDll[] = { 0x6e, 0x74, 0x64, 0x6c, 0x6c, 0x2e, 0x64, 0x6c, 0x6c, 0x00 };
@@ -50,7 +52,7 @@ int createRegKey(PCWSTR driverPath, PCWSTR driverKey) {
 int deleteRegKey(PCWSTR driverKey) {
 	HKEY keyHandle;
 	if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, (LPWSTR)driverKey, 0, KEY_ALL_ACCESS, &keyHandle) == ERROR_SUCCESS) {
-		if (RegDeleteTree(keyHandle, NULL) == ERROR_SUCCESS) {
+		if (SHDeleteKey(keyHandle, NULL) == ERROR_SUCCESS) {
 			if (RegCloseKey(keyHandle) == ERROR_SUCCESS) {
 				if (RegDeleteKeyExW(HKEY_LOCAL_MACHINE, (LPWSTR)driverKey, KEY_ALL_ACCESS, 0) == ERROR_SUCCESS) {
 					return 0;

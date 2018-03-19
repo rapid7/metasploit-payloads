@@ -246,7 +246,6 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="..\..\source\common\core.c" />
-    <ClCompile Include="..\..\source\common\driver.c" />
     <ClCompile Include="..\..\source\common\list.c" />
     <ClCompile Include="..\..\source\common\packet_encryption.c" />
     <ClCompile Include="..\..\source\common\pivot_packet_dispatch.c" />
@@ -267,7 +266,6 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClInclude Include="..\..\source\common\channel.h" />
     <ClInclude Include="..\..\source\common\common.h" />
     <ClInclude Include="..\..\source\common\core.h" />
-    <ClInclude Include="..\..\source\common\driver.h" />
     <ClInclude Include="..\..\source\common\linkage.h" />
     <ClInclude Include="..\..\source\common\list.h" />
     <ClInclude Include="..\..\source\common\packet_encryption.h" />

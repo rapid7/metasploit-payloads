@@ -2,8 +2,7 @@
 #define _METERPRETER_SOURCE_EXTENSION_SNIFFER_SNIFFER_H
 
 #include "../../common/common.h"
-
-#ifdef _WIN32
+#include "driver.h"
 
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -20,7 +19,6 @@
 #define lock_acquire(sm) EnterCriticalSection(&sm)
 #define lock_release(sm) LeaveCriticalSection(&sm)
 #define lock_destroy(sm) DeleteCriticalSection(&sm)
-#endif
 
 #ifndef ERROR_ACCESS_DENIED
  #define ERROR_ACCESS_DENIED EACCES
