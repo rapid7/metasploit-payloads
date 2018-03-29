@@ -783,6 +783,23 @@ def getaddrinfo(host, port=0, family=0, socktype=0, proto=0, flags=0):
         })
     return addresses
 
+def getaddrinfo_from_request(request, socktype, proto):
+    peer_host = packet_get_tlv(request, TLV_TYPE_PEER_HOST)['value']
+    peer_port = packet_get_tlv(request, TLV_TYPE_PEER_PORT)['value']
+    peer_address_info = getaddrinfo(peer_host, peer_port, socktype=socktype, proto=proto)
+    if not peer_address_info:
+        return None, None
+    peer_address_info = peer_address_info[0]
+
+    local_host = packet_get_tlv(request, TLV_TYPE_LOCAL_HOST).get('value')
+    local_port = packet_get_tlv(request, TLV_TYPE_LOCAL_PORT).get('value', 0)
+    if not local_host:
+        return peer_address_info, None
+    local_address_info = getaddrinfo(local_host, local_port, socktype=socktype, proto=proto)
+    if not local_address_info:
+        return peer_address_info, None
+    return peer_address_info, local_address_info[0]
+
 def netlink_request(req_type):
     import select
     # See RFC 3549
@@ -863,22 +880,10 @@ def channel_open_stdapi_fs_file(request, response):
 
 @register_function
 def channel_open_stdapi_net_tcp_client(request, response):
-    host = packet_get_tlv(request, TLV_TYPE_PEER_HOST)['value']
-    port = packet_get_tlv(request, TLV_TYPE_PEER_PORT)['value']
-    local_host = packet_get_tlv(request, TLV_TYPE_LOCAL_HOST).get('value')
-    local_port = packet_get_tlv(request, TLV_TYPE_LOCAL_PORT).get('value', 0)
+    peer_address_info, local_address_info = getaddrinfo_from_request(request, socktype=socket.SOCK_STREAM, proto=socket.IPPROTO_TCP)
     retries = packet_get_tlv(request, TLV_TYPE_CONNECT_RETRIES).get('value', 1)
-    peer_address_info = getaddrinfo(host, port, socktype=socket.SOCK_STREAM, proto=socket.IPPROTO_TCP)
     if not peer_address_info:
         return ERROR_CONNECTION_ERROR, response
-    peer_address_info = peer_address_info[0]
-    local_address_info = None
-    if local_host is not None:
-        local_address_info = getaddrinfo(local_host, local_port, socktype=socket.SOCK_STREAM, proto=socket.IPPROTO_TCP)
-        if local_address_info:
-            local_address_info = local_address_info[0]
-        else:
-            local_address_info = None
     connected = False
     for _ in range(retries + 1):
         sock = socket.socket(peer_address_info['family'], peer_address_info['socktype'])
@@ -915,13 +920,12 @@ def channel_open_stdapi_net_tcp_server(request, response):
 
 @register_function
 def channel_open_stdapi_net_udp_client(request, response):
-    local_host = packet_get_tlv(request, TLV_TYPE_LOCAL_HOST).get('value', '0.0.0.0')
-    local_port = packet_get_tlv(request, TLV_TYPE_LOCAL_PORT).get('value', 0)
-    peer_host = packet_get_tlv(request, TLV_TYPE_PEER_HOST)['value']
-    peer_port = packet_get_tlv(request, TLV_TYPE_PEER_PORT).get('value', 0)
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind((local_host, local_port))
-    channel_id = meterpreter.add_channel(MeterpreterSocketUDPClient(sock, (peer_host, peer_port)))
+    peer_address_info, local_address_info = getaddrinfo_from_request(request, socktype=socket.SOCK_DGRAM, proto=socket.IPPROTO_UDP)
+    if not peer_address_info or not local_address_info:
+        return ERROR_FAILURE, response
+    sock = socket.socket(local_address_info['family'], local_address_info['socktype'])
+    sock.bind(local_address_info['sockaddr'])
+    channel_id = meterpreter.add_channel(MeterpreterSocketUDPClient(sock, peer_address_info['sockaddr']))
     response += tlv_pack(TLV_TYPE_CHANNEL_ID, channel_id)
     return ERROR_SUCCESS, response
 

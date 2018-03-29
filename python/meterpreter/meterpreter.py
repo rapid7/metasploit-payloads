@@ -524,7 +524,7 @@ class MeterpreterSocketUDPClient(MeterpreterSocket):
         peer_host = packet_get_tlv(request, TLV_TYPE_PEER_HOST).get('value', self.peer_address[0])
         peer_port = packet_get_tlv(request, TLV_TYPE_PEER_PORT).get('value', self.peer_address[1])
         try:
-            length = self.sock.sendto(channel_data, (peer_host, peer_port))
+            length = self.sock.sendto(channel_data, self.peer_address)
         except socket.error:
             self.close()
             self._is_alive = False
