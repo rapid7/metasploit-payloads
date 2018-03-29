@@ -1073,7 +1073,7 @@ class PythonMeterpreter(object):
                         self.send_packet(tlv_pack_request('tcp_channel_open', [
                             {'type': TLV_TYPE_CHANNEL_ID, 'value': client_channel_id},
                             {'type': TLV_TYPE_CHANNEL_PARENTID, 'value': channel_id},
-                            {'type': TLV_TYPE_LOCAL_HOST, 'value': inet_pton(channel.family, server_addr[0])},
+                            {'type': TLV_TYPE_LOCAL_HOST, 'value': inet_pton(channel.sock.family, server_addr[0])},
                             {'type': TLV_TYPE_LOCAL_PORT, 'value': server_addr[1]},
                             {'type': TLV_TYPE_PEER_HOST, 'value': inet_pton(client_sock.family, client_addr[0])},
                             {'type': TLV_TYPE_PEER_PORT, 'value': client_addr[1]},
