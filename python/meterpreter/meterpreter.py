@@ -302,6 +302,8 @@ def get_system_arch():
 
 @export
 def inet_pton(family, address):
+    if family == socket.AF_INET6 and '%' in address:
+        address = address.split('%', 1)[0]
     if hasattr(socket, 'inet_pton'):
         return socket.inet_pton(family, address)
     elif has_windll:
