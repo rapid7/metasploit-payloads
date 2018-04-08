@@ -3,6 +3,7 @@ import getpass
 import os
 import platform
 import re
+import select
 import shlex
 import shutil
 import socket
@@ -801,7 +802,6 @@ def getaddrinfo_from_request(request, socktype, proto):
     return peer_address_info, local_address_info[0]
 
 def netlink_request(req_type):
-    import select
     # See RFC 3549
     NLM_F_REQUEST    = 0x0001
     NLM_F_ROOT       = 0x0100
@@ -886,7 +886,7 @@ def channel_open_stdapi_net_tcp_client(request, response):
         return ERROR_CONNECTION_ERROR, response
     connected = False
     for _ in range(retries + 1):
-        sock = socket.socket(peer_address_info['family'], peer_address_info['socktype'])
+        sock = socket.socket(peer_address_info['family'], peer_address_info['socktype'], peer_address_info['proto'])
         sock.settimeout(3.0)
         if local_address_info:
             sock.bind(local_address_info['sockaddr'])
@@ -910,8 +910,10 @@ def channel_open_stdapi_net_tcp_server(request, response):
     if not local_address_info:
         return ERROR_FAILURE, response
     local_address_info = local_address_info[0]
-    server_sock = socket.socket(local_address_info['family'], local_address_info['socktype'])
+    server_sock = socket.socket(local_address_info['family'], local_address_info['socktype'], local_address_info['proto'])
     server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    if local_address_info['family'] == socket.AF_INET6 and hasattr(socket, 'IPV6_V6ONLY'):
+        server_sock.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 0)
     server_sock.bind(local_address_info['sockaddr'])
     server_sock.listen(socket.SOMAXCONN)
     channel_id = meterpreter.add_channel(MeterpreterSocketTCPServer(server_sock))
@@ -923,7 +925,7 @@ def channel_open_stdapi_net_udp_client(request, response):
     peer_address_info, local_address_info = getaddrinfo_from_request(request, socktype=socket.SOCK_DGRAM, proto=socket.IPPROTO_UDP)
     if not peer_address_info or not local_address_info:
         return ERROR_FAILURE, response
-    sock = socket.socket(local_address_info['family'], local_address_info['socktype'])
+    sock = socket.socket(local_address_info['family'], local_address_info['socktype'], local_address_info['proto'])
     sock.bind(local_address_info['sockaddr'])
     channel_id = meterpreter.add_channel(MeterpreterSocketUDPClient(sock, peer_address_info['sockaddr']))
     response += tlv_pack(TLV_TYPE_CHANNEL_ID, channel_id)
