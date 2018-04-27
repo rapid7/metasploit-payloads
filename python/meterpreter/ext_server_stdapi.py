@@ -3,6 +3,7 @@ import getpass
 import os
 import platform
 import re
+import select
 import shlex
 import shutil
 import socket
@@ -771,8 +772,37 @@ def get_windll_os_name():
         os_name += ' (Build ' + str(os_info.dwBuildNumber) + ')'
     return os_name
 
+def getaddrinfo(host, port=0, family=0, socktype=0, proto=0, flags=0):
+    addresses = []
+    for info in socket.getaddrinfo(host, port, family, socktype, proto, flags):
+        addresses.append({
+            'family': info[0],
+            'socktype': info[1],
+            'proto': info[2],
+            'cannonname': info[3],
+            'sockaddr': info[4]
+        })
+    return addresses
+
+def getaddrinfo_from_request(request, socktype, proto):
+    peer_host = packet_get_tlv(request, TLV_TYPE_PEER_HOST).get('value')
+    if peer_host:
+        peer_port = packet_get_tlv(request, TLV_TYPE_PEER_PORT).get('value', 0)
+        peer_address_info = getaddrinfo(peer_host, peer_port, socktype=socktype, proto=proto)
+        peer_address_info = peer_address_info[0] if peer_address_info else None
+    else:
+        peer_address_info = None
+
+    local_host = packet_get_tlv(request, TLV_TYPE_LOCAL_HOST).get('value')
+    if local_host:
+        local_port = packet_get_tlv(request, TLV_TYPE_LOCAL_PORT).get('value', 0)
+        local_address_info = getaddrinfo(local_host, local_port, socktype=socktype, proto=proto)
+        local_address_info = local_address_info[0] if local_address_info else None
+    else:
+        local_address_info = None
+    return peer_address_info, local_address_info
+
 def netlink_request(req_type):
-    import select
     # See RFC 3549
     NLM_F_REQUEST    = 0x0001
     NLM_F_ROOT       = 0x0100
@@ -806,10 +836,9 @@ def netlink_request(req_type):
     return responses
 
 def resolve_host(hostname, family):
-    address_info = socket.getaddrinfo(hostname, 0, family, socket.SOCK_DGRAM, socket.IPPROTO_UDP)[0]
-    family = address_info[0]
-    address = address_info[4][0]
-    return {'family':family, 'address':address, 'packed_address':inet_pton(family, address)}
+    address_info = getaddrinfo(hostname, family=family, socktype=socket.SOCK_DGRAM, proto=socket.IPPROTO_UDP)
+    address = address_info['sockaddr'][0]
+    return {'family': family, 'address': address, 'packed_address': inet_pton(family, address)}
 
 def windll_RtlGetVersion():
     if not has_windll:
@@ -852,19 +881,18 @@ def channel_open_stdapi_fs_file(request, response):
 
 @register_function
 def channel_open_stdapi_net_tcp_client(request, response):
-    host = packet_get_tlv(request, TLV_TYPE_PEER_HOST)['value']
-    port = packet_get_tlv(request, TLV_TYPE_PEER_PORT)['value']
-    local_host = packet_get_tlv(request, TLV_TYPE_LOCAL_HOST)
-    local_port = packet_get_tlv(request, TLV_TYPE_LOCAL_PORT)
+    peer_address_info, local_address_info = getaddrinfo_from_request(request, socktype=socket.SOCK_STREAM, proto=socket.IPPROTO_TCP)
     retries = packet_get_tlv(request, TLV_TYPE_CONNECT_RETRIES).get('value', 1)
+    if not peer_address_info:
+        return ERROR_CONNECTION_ERROR, response
     connected = False
-    for i in range(retries + 1):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    for _ in range(retries + 1):
+        sock = socket.socket(peer_address_info['family'], peer_address_info['socktype'], peer_address_info['proto'])
         sock.settimeout(3.0)
-        if local_host.get('value') and local_port.get('value'):
-            sock.bind((local_host['value'], local_port['value']))
+        if local_address_info:
+            sock.bind(local_address_info['sockaddr'])
         try:
-            sock.connect((host, port))
+            sock.connect(peer_address_info['sockaddr'])
             connected = True
             break
         except:
@@ -879,9 +907,15 @@ def channel_open_stdapi_net_tcp_client(request, response):
 def channel_open_stdapi_net_tcp_server(request, response):
     local_host = packet_get_tlv(request, TLV_TYPE_LOCAL_HOST).get('value', '0.0.0.0')
     local_port = packet_get_tlv(request, TLV_TYPE_LOCAL_PORT)['value']
-    server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    local_address_info = getaddrinfo(local_host, local_port, socktype=socket.SOCK_STREAM, proto=socket.IPPROTO_TCP)
+    if not local_address_info:
+        return ERROR_FAILURE, response
+    local_address_info = local_address_info[0]
+    server_sock = socket.socket(local_address_info['family'], local_address_info['socktype'], local_address_info['proto'])
     server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    server_sock.bind((local_host, local_port))
+    if local_address_info['family'] == socket.AF_INET6 and hasattr(socket, 'IPV6_V6ONLY'):
+        server_sock.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 0)
+    server_sock.bind(local_address_info['sockaddr'])
     server_sock.listen(socket.SOMAXCONN)
     channel_id = meterpreter.add_channel(MeterpreterSocketTCPServer(server_sock))
     response += tlv_pack(TLV_TYPE_CHANNEL_ID, channel_id)
@@ -889,13 +923,13 @@ def channel_open_stdapi_net_tcp_server(request, response):
 
 @register_function
 def channel_open_stdapi_net_udp_client(request, response):
-    local_host = packet_get_tlv(request, TLV_TYPE_LOCAL_HOST).get('value', '0.0.0.0')
-    local_port = packet_get_tlv(request, TLV_TYPE_LOCAL_PORT).get('value', 0)
-    peer_host = packet_get_tlv(request, TLV_TYPE_PEER_HOST)['value']
-    peer_port = packet_get_tlv(request, TLV_TYPE_PEER_PORT).get('value', 0)
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind((local_host, local_port))
-    channel_id = meterpreter.add_channel(MeterpreterSocketUDPClient(sock, (peer_host, peer_port)))
+    peer_address_info, local_address_info = getaddrinfo_from_request(request, socktype=socket.SOCK_DGRAM, proto=socket.IPPROTO_UDP)
+    if not local_address_info:
+        return ERROR_FAILURE, response
+    sock = socket.socket(local_address_info['family'], local_address_info['socktype'], local_address_info['proto'])
+    sock.bind(local_address_info['sockaddr'])
+    peer_address = peer_address_info['sockaddr'] if peer_address_info else None
+    channel_id = meterpreter.add_channel(MeterpreterSocketUDPClient(sock, peer_address))
     response += tlv_pack(TLV_TYPE_CHANNEL_ID, channel_id)
     return ERROR_SUCCESS, response
 

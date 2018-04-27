@@ -302,6 +302,8 @@ def get_system_arch():
 
 @export
 def inet_pton(family, address):
+    if family == socket.AF_INET6 and '%' in address:
+        address = address.split('%', 1)[0]
     if hasattr(socket, 'inet_pton'):
         return socket.inet_pton(family, address)
     elif has_windll:
@@ -513,16 +515,22 @@ export(MeterpreterSocketTCPServer)
 
 #@export
 class MeterpreterSocketUDPClient(MeterpreterSocket):
-    def __init__(self, sock, peer_address):
+    def __init__(self, sock, peer_address=None):
         super(MeterpreterSocketUDPClient, self).__init__(sock)
         self.peer_address = peer_address
 
     def core_write(self, request, response):
+        peer_host = packet_get_tlv(request, TLV_TYPE_PEER_HOST).get('value')
+        peer_port = packet_get_tlv(request, TLV_TYPE_PEER_PORT).get('value')
+        if peer_host and peer_port:
+            peer_address = (peer_host, peer_port)
+        elif self.peer_address:
+            peer_address = self.peer_address
+        else:
+            raise RuntimeError('peer_host and peer_port must be specified with an unbound/unconnected UDP channel')
         channel_data = packet_get_tlv(request, TLV_TYPE_CHANNEL_DATA)['value']
-        peer_host = packet_get_tlv(request, TLV_TYPE_PEER_HOST).get('value', self.peer_address[0])
-        peer_port = packet_get_tlv(request, TLV_TYPE_PEER_PORT).get('value', self.peer_address[1])
         try:
-            length = self.sock.sendto(channel_data, (peer_host, peer_port))
+            length = self.sock.sendto(channel_data, peer_address)
         except socket.error:
             self.close()
             self._is_alive = False
