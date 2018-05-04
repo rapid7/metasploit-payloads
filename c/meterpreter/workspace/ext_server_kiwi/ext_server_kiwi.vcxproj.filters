@@ -234,6 +234,24 @@
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_mimicom.c">
       <Filter>common modules\rpc</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\crypto\kuhl_m_crypto_extractor.c">
+      <Filter>local modules\crypto</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\crypto\kuhl_m_crypto_patch.c">
+      <Filter>local modules\crypto</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\lsadump\kuhl_m_lsadump_dc.c">
+      <Filter>local modules\lsadump</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_sr98.c">
+      <Filter>common modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\crypto\kuhl_m_crypto_sc.c">
+      <Filter>local modules\crypto</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_cabinet.c">
+      <Filter>common modules</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\source\extensions\kiwi\main.h" />
@@ -487,6 +505,24 @@
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_mimicom.h">
       <Filter>common modules\rpc</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\crypto\kuhl_m_crypto_patch.h">
+      <Filter>local modules\crypto</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\crypto\kuhl_m_crypto_extractor.h">
+      <Filter>local modules\crypto</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\lsadump\kuhl_m_lsadump_dc.h">
+      <Filter>local modules\lsadump</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_sr98.h">
+      <Filter>common modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\crypto\kuhl_m_crypto_sc.h">
+      <Filter>local modules\crypto</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_cabinet.h">
+      <Filter>common modules</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="local modules">
@@ -515,6 +551,12 @@
     </Filter>
     <Filter Include="common modules\rpc">
       <UniqueIdentifier>{1bdf66f0-7f9d-4c90-969d-0fcb9f388dd7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="local modules\crypto">
+      <UniqueIdentifier>{37a2e9f0-2782-426e-9946-4d5bb259625b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="local modules\lsadump">
+      <UniqueIdentifier>{52295c3c-daf9-4b09-ba68-13f22cece42b}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>
