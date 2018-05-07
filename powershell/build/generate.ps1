@@ -5,19 +5,23 @@ function Generate-MetasploitPowershell {
         Powershell extension. These files contain the body of the MSF.Powershell.Runner
         class in .NET that allow for the extension to interact with the interpreter.
 
-    .PARAMETER Build
-        Specifies which build to use when generating the source. Values are:
-            Release (Default)
-            Debug
-
     .PARAMETER BuildDir
         Specifies the 'build' folder the powershelll project. By default, the current
         folder is used, however if this is invoked outside of the specified folder then
         the location of the folder containing this script has to be specified.
 
+    .PARAMETER Debug
+        Indicates that the debug build should be used instead of the release build (for testing).
+
+    .INPUTS
+        None.
+
+    .OPUTPUTS
+        Writes some content to screen to inform the user of success or failure.
+
     .EXAMPLE
-        PS C:\metasploit-payloads\powershell\build\> Generate-MetasploitPowershell -Build Debug
-        PS C:\> Generate-MetasploitPowershell -Build Release -BuildDir C:\metasploit-payloads\powershell\build\
+        PS C:\metasploit-payloads\powershell\build\> Generate-MetasploitPowershell -Debug
+        PS C:\> Generate-MetasploitPowershell -BuildDir C:\metasploit-payloads\powershell\build\
     #>
 
     param(
@@ -25,10 +29,14 @@ function Generate-MetasploitPowershell {
         [String]
         $BuildDir = $(Get-Location),
 
-        [ValidatePattern('^([Rr]elease|[Dd]ebug)$')]
-        [String]
-        $Build = 'Release'
+        [Switch]
+        $Debug
     )
+
+    $Build = 'Release'
+    If ($Debug) {
+        $Build = 'Debug'
+    }
 
     $SourceAssembly = [System.IO.Path]::Combine($BuildDir, '..', 'MSF.Powershell', 'bin', $Build, 'MSF.Powershell.dll')
     Write-Host [+] Building source using binary at $SourceAssembly ...

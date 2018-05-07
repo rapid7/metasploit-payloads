@@ -20,6 +20,7 @@ typedef struct _InteractiveShell
 	HANDLE wait_handle;
 	_bstr_t output;
 	wchar_t* session_id;
+	LOCK* buffer_lock;
 } InteractiveShell;
 
 #define SAFE_RELEASE(x) if((x) != NULL) { (x)->Release(); x = NULL; }
@@ -40,6 +41,9 @@ static _AppDomainPtr gClrAppDomainInterface = NULL;
 static _AssemblyPtr gClrPowershellAssembly = NULL;
 static _TypePtr gClrPowershellType = NULL;
 static LIST* gLoadedAssemblies = NULL;
+
+DWORD channelise_session(wchar_t* sessionId, Channel* channel, LPVOID context);
+DWORD unchannelise_session(wchar_t* sessionId);
 
 DWORD load_assembly(BYTE* assemblyData, DWORD assemblySize)
 {
@@ -123,7 +127,7 @@ DWORD remove_session(wchar_t* sessionId)
 		// Invoke the method from the Type interface.
 		hr = gClrPowershellType->InvokeMember_3(
 			bstrStaticMethodName,
-			static_cast<BindingFlags>(BindingFlags_InvokeMethod | BindingFlags_Static | BindingFlags_Public),
+			static_cast<BindingFlags>(BindingFlags_InvokeMethod | BindingFlags_Static | BindingFlags_NonPublic),
 			NULL,
 			vtEmpty,
 			psaStaticMethodArgs,
@@ -186,7 +190,7 @@ DWORD invoke_ps_command(wchar_t* sessionId, wchar_t* command, _bstr_t& output)
 		// Invoke the method from the Type interface.
 		hr = gClrPowershellType->InvokeMember_3(
 			bstrStaticMethodName,
-			static_cast<BindingFlags>(BindingFlags_InvokeMethod | BindingFlags_Static | BindingFlags_Public),
+			static_cast<BindingFlags>(BindingFlags_InvokeMethod | BindingFlags_Static | BindingFlags_NonPublic),
 			NULL,
 			vtEmpty,
 			psaStaticMethodArgs,
@@ -451,9 +455,13 @@ DWORD powershell_channel_interact_notify(Remote *remote, LPVOID entryContext, LP
 
 	if (shell->output.length() > 1 && shell->wait_handle != NULL)
 	{
+		lock_acquire(shell->buffer_lock);
+		dprintf("[PSH SHELL] received notification to write");
 		DWORD result = channel_write(channel, remote, NULL, 0, (PUCHAR)(char*)shell->output, byteCount, NULL);
 		shell->output = "";
 		ResetEvent(shell->wait_handle);
+		lock_release(shell->buffer_lock);
+		dprintf("[PSH SHELL] write completed");
 	}
 
 	return ERROR_SUCCESS;
@@ -466,7 +474,11 @@ DWORD powershell_channel_interact_destroy(HANDLE waitable, LPVOID entryContext, 
 	if (shell->wait_handle)
 	{
 		HANDLE h = shell->wait_handle;
+		lock_acquire(shell->buffer_lock);
+		unchannelise_session(shell->session_id);
 		shell->wait_handle = NULL;
+		lock_release(shell->buffer_lock);
+		lock_destroy(shell->buffer_lock);
 		CloseHandle(h);
 	}
 	return ERROR_SUCCESS;
@@ -482,9 +494,12 @@ DWORD powershell_channel_interact(Channel *channel, Packet *request, LPVOID cont
 		{
 			dprintf("[PSH SHELL] beginning interaction");
 			shell->wait_handle = CreateEventA(NULL, FALSE, FALSE, NULL);
+			shell->buffer_lock = lock_create();
 
 			result = scheduler_insert_waitable(shell->wait_handle, channel, context,
 				powershell_channel_interact_notify, powershell_channel_interact_destroy);
+
+			channelise_session(shell->session_id, channel, context);
 
 			SetEvent(shell->wait_handle);
 		}
@@ -511,10 +526,26 @@ DWORD powershell_channel_write(Channel* channel, Packet* request, LPVOID context
 	DWORD result = invoke_ps_command(shell->session_id, codeMarshall, output);
 	if (result == ERROR_SUCCESS && shell->wait_handle)
 	{
-		shell->output += output + "PS > ";
+		lock_acquire(shell->buffer_lock);
+		shell->output += output;
 		SetEvent(shell->wait_handle);
+		lock_release(shell->buffer_lock);
 	}
 	return result;
+}
+
+void powershell_channel_streamwrite(Channel* channel, LPVOID context, char* message)
+{
+	InteractiveShell* shell = (InteractiveShell*)context;
+
+	if (shell->wait_handle)
+	{
+		lock_acquire(shell->buffer_lock);
+		vdprintf("[PSH SHELL] received message: %s", message);
+		shell->output += message;
+		SetEvent(shell->wait_handle);
+		lock_release(shell->buffer_lock);
+	}
 }
 
 DWORD powershell_channel_close(Channel* channel, Packet* request, LPVOID context)
@@ -536,6 +567,151 @@ DWORD powershell_channel_close(Channel* channel, Packet* request, LPVOID context
 	}
 
 	return ERROR_SUCCESS;
+}
+
+DWORD channelise_session(wchar_t* sessionId, Channel* channel, LPVOID context)
+{
+	if (sessionId == NULL)
+	{
+		sessionId = L"Default";
+	}
+
+	HRESULT hr;
+	bstr_t bstrStaticMethodName(L"Channelise");
+	SAFEARRAY *psaStaticMethodArgs = NULL;
+	variant_t vtEmpty;
+	variant_t vtSessionArg(sessionId == NULL ? L"Default" : sessionId);
+	variant_t vtWriterArg((__int64)powershell_channel_streamwrite);
+	variant_t vtChannelArg((__int64)channel);
+	variant_t vtContextArg((__int64)context);
+	LONG index = 0;
+
+	if (gClrPowershellType == NULL)
+	{
+		return ERROR_INVALID_HANDLE;
+	}
+
+	psaStaticMethodArgs = SafeArrayCreateVector(VT_VARIANT, 0, 4);
+	do
+	{
+		hr = SafeArrayPutElement(psaStaticMethodArgs, &index, &vtSessionArg);
+		if (FAILED(hr))
+		{
+			dprintf("[PSH] failed to prepare session argument: 0x%x", hr);
+			break;
+		}
+
+		index++;
+		hr = SafeArrayPutElement(psaStaticMethodArgs, &index, &vtWriterArg);
+		if (FAILED(hr))
+		{
+			dprintf("[PSH] failed to prepare command argument: 0x%x", hr);
+			break;
+		}
+
+		index++;
+		hr = SafeArrayPutElement(psaStaticMethodArgs, &index, &vtChannelArg);
+		if (FAILED(hr))
+		{
+			dprintf("[PSH] failed to prepare command argument: 0x%x", hr);
+			break;
+		}
+
+		index++;
+		hr = SafeArrayPutElement(psaStaticMethodArgs, &index, &vtContextArg);
+		if (FAILED(hr))
+		{
+			dprintf("[PSH] failed to prepare command argument: 0x%x", hr);
+			break;
+		}
+
+		// Invoke the method from the Type interface.
+		hr = gClrPowershellType->InvokeMember_3(
+			bstrStaticMethodName,
+			static_cast<BindingFlags>(BindingFlags_InvokeMethod | BindingFlags_Static | BindingFlags_NonPublic),
+			NULL,
+			vtEmpty,
+			psaStaticMethodArgs,
+			NULL);
+
+		if (FAILED(hr))
+		{
+			dprintf("[PSH] failed to invoke powershell function %s 0x%x", (char*)bstrStaticMethodName, hr);
+			break;
+		}
+	} while (0);
+
+	if (psaStaticMethodArgs != NULL)
+	{
+		SafeArrayDestroy(psaStaticMethodArgs);
+	}
+
+	if (SUCCEEDED(hr))
+	{
+		return ERROR_SUCCESS;
+	}
+
+	return (DWORD)hr;
+}
+
+DWORD unchannelise_session(wchar_t* sessionId)
+{
+	if (sessionId == NULL)
+	{
+		sessionId = L"Default";
+	}
+
+	HRESULT hr;
+	bstr_t bstrStaticMethodName(L"Unchannelise");
+	SAFEARRAY *psaStaticMethodArgs = NULL;
+	variant_t vtSessionArg(sessionId);
+	variant_t vtEmpty;
+	LONG index = 0;
+
+	if (gClrPowershellType == NULL)
+	{
+		return ERROR_INVALID_HANDLE;
+	}
+
+	dprintf("[PSH] Attempting to Unchannelise %S", sessionId);
+
+	psaStaticMethodArgs = SafeArrayCreateVector(VT_VARIANT, 0, 1);
+	do
+	{
+		hr = SafeArrayPutElement(psaStaticMethodArgs, &index, &vtSessionArg);
+		if (FAILED(hr))
+		{
+			dprintf("[PSH] failed to prepare session argument: 0x%x", hr);
+			break;
+		}
+
+		// Invoke the method from the Type interface.
+		hr = gClrPowershellType->InvokeMember_3(
+			bstrStaticMethodName,
+			static_cast<BindingFlags>(BindingFlags_InvokeMethod | BindingFlags_Static | BindingFlags_NonPublic),
+			NULL,
+			vtEmpty,
+			psaStaticMethodArgs,
+			NULL);
+
+		if (FAILED(hr))
+		{
+			dprintf("[PSH] failed to invoke powershell function %s 0x%x", (char*)bstrStaticMethodName, hr);
+			break;
+		}
+	} while (0);
+
+	if (psaStaticMethodArgs != NULL)
+	{
+		SafeArrayDestroy(psaStaticMethodArgs);
+	}
+
+	if (SUCCEEDED(hr))
+	{
+		return ERROR_SUCCESS;
+	}
+
+	return (DWORD)hr;
 }
 
 /*!

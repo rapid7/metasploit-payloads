@@ -47,6 +47,9 @@ function Invoke-DcSyncAll {
     .SYNOPSIS
       Use the DCSync functionality to DCSync every user that's present in the DC.
 
+      It is recommended that this script be invoked inside channelised shell
+      (via powershell_shell) because it can take a while in large domains.
+
     .PARAMETER Domain
       Specifies the domain name to contact for extracting all the users from.
 
@@ -103,6 +106,9 @@ function Invoke-DcSyncHashDump {
       Use the DCSync functionality to dump every user hash from the DC. This is
       basically attempting to be a hashdump function that works remotely and doesn't
       require the need to be on the DC, or to extract NTDS.dit.
+
+      It is recommended that this script be invoked inside channelised shell
+      (via powershell_shell) because it can take a while in large domains.
 
     .PARAMETER Domain
       Specifies the domain name that is the target of the hash dumping.
