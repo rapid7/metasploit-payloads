@@ -61,6 +61,12 @@ namespace MSF.Powershell
 
             _runspace = RunspaceFactory.CreateRunspace(_host, _state);
             _runspace.Open();
+
+            // add support straight up for the existing scripts
+            foreach(var script in Scripts.GetAllScripts())
+            {
+                Execute(script);
+            }
         }
 
         public string Execute(string ps)
