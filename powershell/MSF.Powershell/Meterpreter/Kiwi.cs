@@ -28,7 +28,13 @@ namespace MSF.Powershell.Meterpreter
 
             public string HashString
             {
-                get { return string.Format("{0}:{1}:aad3b435b51404eeaad3b435b51404ee:{2}:::", Account.Split('\\')[1], RID, string.IsNullOrEmpty(NtlmHash) ? "31d6cfe0d16ae931b73c59d7e0c089c0" : NtlmHash); }
+                get
+                {
+                    var lm = string.IsNullOrEmpty(LmHash) ? "aad3b435b51404eeaad3b435b51404ee" : LmHash;
+                    var ntlm = string.IsNullOrEmpty(NtlmHash) ? "31d6cfe0d16ae931b73c59d7e0c089c0" : NtlmHash;
+                    var userParts = Account.Split('\\');
+                    return string.Format("{0}:{1}:{2}:{3}:::", userParts[userParts.Length - 1], RID, lm, ntlm);
+                }
             }
         }
 
