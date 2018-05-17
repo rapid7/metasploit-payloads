@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using System.Management.Automation.Host;
 using System.Management.Automation.Runspaces;
+using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 
 namespace MSF.Powershell
 {
@@ -22,7 +24,21 @@ namespace MSF.Powershell
             _runners = new Dictionary<string, Runner>();
         }
 
-        public static string Execute(string id, string ps)
+        internal static void Channelise(string id, Int64 channelWriter, Int64 channel, Int64 context)
+        {
+            var runner = Get(id);
+            System.Diagnostics.Debug.Write(string.Format("[PSH RUNNER] Channelising {0} with 0x{1:X} - 0x{2:X}", id, channelWriter, context));
+            runner._host.UserInterface.Channelise(channelWriter, channel, context);
+        }
+
+        internal static void Unchannelise(string id)
+        {
+            var runner = Get(id);
+            System.Diagnostics.Debug.Write(string.Format("[PSH RUNNER] Unchannelising {0}", id));
+            runner._host.UserInterface.Unchannelise();
+        }
+
+        internal static string Execute(string id, string ps)
         {
             System.Diagnostics.Debug.Write(string.Format("[PSH RUNNER] Executing command on session {0}", id));
             if (!_runners.ContainsKey(id))
@@ -33,7 +49,7 @@ namespace MSF.Powershell
             return runner.Execute(ps);
         }
 
-        public static Runner Get(string id)
+        internal static Runner Get(string id)
         {
             if (!_runners.ContainsKey(id))
             {
@@ -42,7 +58,7 @@ namespace MSF.Powershell
             return _runners[id];
         }
 
-        public static void Remove(string id)
+        internal static void Remove(string id)
         {
             if (_runners.ContainsKey(id))
             {
@@ -51,7 +67,7 @@ namespace MSF.Powershell
             }
         }
 
-        public Runner(string id)
+        internal Runner(string id)
         {
             _id = id;
             _state = InitialSessionState.CreateDefault();
@@ -61,21 +77,58 @@ namespace MSF.Powershell
 
             _runspace = RunspaceFactory.CreateRunspace(_host, _state);
             _runspace.Open();
+
+            // add support straight up for the existing scripts
+            foreach(var script in Scripts.GetAllScripts())
+            {
+                Execute(script);
+            }
         }
 
-        public string Execute(string ps)
+        private string InvokePipline(string ps)
         {
             ps = "IEX ([System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String(\"" + Convert.ToBase64String(Encoding.UTF8.GetBytes(ps), Base64FormattingOptions.None) + "\")))";
-            System.Diagnostics.Debug.Write(string.Format("[PSH RUNNER] Executing PS: {0}", ps));
+            System.Diagnostics.Debug.Write(string.Format("[PSH RUNNER] Executing PS directly: {0}", ps));
             using (Pipeline pipeline = _runspace.CreatePipeline())
             {
                 pipeline.Commands.AddScript(ps);
                 pipeline.Commands[0].MergeMyResults(PipelineResultTypes.Error, PipelineResultTypes.Output);
                 pipeline.Commands.Add("out-default");
+
                 pipeline.Invoke();
             }
 
             return _host.GetAndFlushOutput();
+        }
+
+        private void ThreadInvokePipeline(object psObj)
+        {
+            // Sneak a prompt string in at the end.
+            var ps = psObj.ToString();
+            ps = "IEX ([System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String(\"" + Convert.ToBase64String(Encoding.UTF8.GetBytes(ps), Base64FormattingOptions.None) + "\")))";
+            System.Diagnostics.Debug.Write(string.Format("[PSH RUNNER] Executing PS on thread: {0}", ps));
+            using (Pipeline pipeline = _runspace.CreatePipeline())
+            {
+                pipeline.Commands.AddScript(ps);
+                pipeline.Commands[0].MergeMyResults(PipelineResultTypes.Error, PipelineResultTypes.Output);
+                pipeline.Commands.Add("out-default");
+
+                pipeline.Invoke();
+                _host.GetAndFlushOutput();
+                _host.UserInterface.WriteRaw("PS > ");
+            }
+        }
+
+        internal string Execute(string ps)
+        {
+            if (_host.UserInterface.IsChannelised)
+            {
+                var t = new Thread(new ParameterizedThreadStart(ThreadInvokePipeline));
+                t.Start(ps);
+                return string.Empty;
+            }
+
+            return InvokePipline(ps);
         }
 
         public void Dispose()
@@ -91,6 +144,11 @@ namespace MSF.Powershell
         {
             private Guid _hostId;
             private CustomPSHostUserInterface _ui = null;
+
+            public CustomPSHostUserInterface UserInterface
+            {
+                get { return _ui; }
+            }
 
             public CustomPSHost()
             {
@@ -161,15 +219,38 @@ namespace MSF.Powershell
             private StringBuilder _buffer;
             private CustomPSHostRawUserInterface _rawUI;
 
+            private delegate void WriteChannel(Int64 channel, Int64 context, byte[] buffer);
+            private WriteChannel _chanWriter = null;
+            private Int64 _channel = 0;
+            private Int64 _context = 0;
+
             public CustomPSHostUserInterface()
             {
                 _buffer = new StringBuilder();
                 _rawUI = new CustomPSHostRawUserInterface();
             }
 
+            public bool IsChannelised
+            {
+                get { return _chanWriter != null; }
+            }
+
             public override string ToString()
             {
                 return _buffer.ToString();
+            }
+
+            public void Channelise(Int64 channelWriter, Int64 channel, Int64 context)
+            {
+                _chanWriter = (WriteChannel)Marshal.GetDelegateForFunctionPointer(new IntPtr(channelWriter), typeof(WriteChannel));
+                _channel = channel;
+                _context = context;
+            }
+
+            public void Unchannelise()
+            {
+                _chanWriter = null;
+                _context = 0;
             }
 
             public void Clear()
@@ -212,41 +293,44 @@ namespace MSF.Powershell
                 return new System.Security.SecureString();
             }
 
-            public override void Write(ConsoleColor foregroundColor, ConsoleColor backgroundColor, string value)
+            public override void Write(ConsoleColor foregroundColor, ConsoleColor backgroundColor, string message)
             {
-                _buffer.Append(value.TrimEnd());
+                WriteTarget(message.TrimEnd());
             }
 
-            public override void Write(string value)
+            public override void Write(string message)
             {
-                _buffer.Append(value.TrimEnd());
+                WriteTarget(message.TrimEnd());
+            }
+
+            public void WriteRaw(string message)
+            {
+                WriteTarget(message);
             }
 
             public override void WriteDebugLine(string message)
             {
-                _buffer.Append("DEBUG: ");
-                _buffer.AppendLine(message.TrimEnd());
+                WriteTarget(string.Format("DEBUG: {0}\n", message.TrimEnd()));
             }
 
-            public override void WriteErrorLine(string value)
+            public override void WriteErrorLine(string message)
             {
-                _buffer.Append("ERROR: ");
-                _buffer.AppendLine(value.TrimEnd());
+                WriteTarget(string.Format("ERROR: {0}\n", message.TrimEnd()));
             }
 
-            public override void WriteLine(ConsoleColor foregroundColor, ConsoleColor backgroundColor, string value)
+            public override void WriteLine(ConsoleColor foregroundColor, ConsoleColor backgroundColor, string message)
             {
-                _buffer.AppendLine(value.TrimEnd());
+                WriteTarget(string.Format("{0}\n", message.TrimEnd()));
             }
 
-            public override void WriteLine(string value)
+            public override void WriteLine(string message)
             {
-                _buffer.AppendLine(value.TrimEnd());
+                WriteTarget(string.Format("{0}\n", message.TrimEnd()));
             }
 
             public override void WriteLine()
             {
-                _buffer.AppendLine();
+                WriteTarget("\n");
             }
 
             public override void WriteProgress(long sourceId, System.Management.Automation.ProgressRecord record)
@@ -255,14 +339,27 @@ namespace MSF.Powershell
 
             public override void WriteVerboseLine(string message)
             {
-                _buffer.Append("VERBOSE: ");
-                _buffer.AppendLine(message.TrimEnd());
+                WriteTarget(string.Format("VERBOSE: {0}\n", message.TrimEnd()));
             }
 
             public override void WriteWarningLine(string message)
             {
-                _buffer.Append("WARNING: ");
-                _buffer.AppendLine(message.TrimEnd());
+                WriteTarget(string.Format("WARNING: {0}\n", message.TrimEnd()));
+            }
+
+            private void WriteTarget(string message)
+            {
+                if (IsChannelised)
+                {
+                    var bytes = System.Text.Encoding.ASCII.GetBytes(message);
+                    //System.Diagnostics.Debug.WriteLine("[PSH BINDING] Writing to channel: " + message);
+                    _chanWriter(_channel, _context, bytes);
+                }
+                else
+                {
+                    //System.Diagnostics.Debug.WriteLine("[PSH BINDING] Writing to buffer: " + message);
+                    _buffer.Append(message);
+                }
             }
         }
 

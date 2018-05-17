@@ -127,15 +127,8 @@ namespace MSF.Powershell.Meterpreter
         ElevateServiceName = MetaType.String | (ExtensionBase.Priv + 201),
 
         // KIWI stuff
-        KiwiPwdId = MetaType.Uint | (ExtensionBase.Kiwi + 1),
-        KiwiPwdResult = MetaType.Group | (ExtensionBase.Kiwi + 2),
-        KiwiPwdUserName = MetaType.String | (ExtensionBase.Kiwi + 3),
-        KiwiPwdDomain = MetaType.String | (ExtensionBase.Kiwi + 4),
-        KiwiPwdPassword = MetaType.String | (ExtensionBase.Kiwi + 5),
-        KiwiPwdAuthHi = MetaType.Uint | (ExtensionBase.Kiwi + 6),
-        KiwiPwdAuthLo = MetaType.Uint | (ExtensionBase.Kiwi + 7),
-        KiwiPwdLmHash = MetaType.String | (ExtensionBase.Kiwi + 8),
-        KiwiPwdNtlmHash = MetaType.String | (ExtensionBase.Kiwi + 9),
+        KiwiCmd = MetaType.String | (ExtensionBase.Kiwi + 100),
+        KiwiCmdResult = MetaType.String | (ExtensionBase.Kiwi + 101),
 
         // INCOGNITO stuff
         IncognitoListTokensDelegation = MetaType.String | (ExtensionBase.Incognito + 2),
