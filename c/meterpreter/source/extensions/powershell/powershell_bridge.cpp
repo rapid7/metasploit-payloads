@@ -534,14 +534,15 @@ DWORD powershell_channel_write(Channel* channel, Packet* request, LPVOID context
 	return result;
 }
 
-void powershell_channel_streamwrite(Channel* channel, LPVOID context, char* message)
+void powershell_channel_streamwrite(__int64 rawContext, __int64 rawMessage)
 {
-	InteractiveShell* shell = (InteractiveShell*)context;
+	InteractiveShell* shell = (InteractiveShell*)(UINT_PTR)rawContext;
+	char* message = (char*)(UINT_PTR)rawMessage;
+	dprintf("[PSH SHELL] streamwrite called with %p - %p - %s", rawContext, message, message);
 
 	if (shell->wait_handle)
 	{
 		lock_acquire(shell->buffer_lock);
-		vdprintf("[PSH SHELL] received message: %s", message);
 		shell->output += message;
 		SetEvent(shell->wait_handle);
 		lock_release(shell->buffer_lock);
@@ -582,7 +583,6 @@ DWORD channelise_session(wchar_t* sessionId, Channel* channel, LPVOID context)
 	variant_t vtEmpty;
 	variant_t vtSessionArg(sessionId == NULL ? L"Default" : sessionId);
 	variant_t vtWriterArg((__int64)powershell_channel_streamwrite);
-	variant_t vtChannelArg((__int64)channel);
 	variant_t vtContextArg((__int64)context);
 	LONG index = 0;
 
@@ -591,7 +591,7 @@ DWORD channelise_session(wchar_t* sessionId, Channel* channel, LPVOID context)
 		return ERROR_INVALID_HANDLE;
 	}
 
-	psaStaticMethodArgs = SafeArrayCreateVector(VT_VARIANT, 0, 4);
+	psaStaticMethodArgs = SafeArrayCreateVector(VT_VARIANT, 0, 3);
 	do
 	{
 		hr = SafeArrayPutElement(psaStaticMethodArgs, &index, &vtSessionArg);
@@ -603,14 +603,6 @@ DWORD channelise_session(wchar_t* sessionId, Channel* channel, LPVOID context)
 
 		index++;
 		hr = SafeArrayPutElement(psaStaticMethodArgs, &index, &vtWriterArg);
-		if (FAILED(hr))
-		{
-			dprintf("[PSH] failed to prepare command argument: 0x%x", hr);
-			break;
-		}
-
-		index++;
-		hr = SafeArrayPutElement(psaStaticMethodArgs, &index, &vtChannelArg);
 		if (FAILED(hr))
 		{
 			dprintf("[PSH] failed to prepare command argument: 0x%x", hr);
@@ -648,6 +640,7 @@ DWORD channelise_session(wchar_t* sessionId, Channel* channel, LPVOID context)
 
 	if (SUCCEEDED(hr))
 	{
+		dprintf("[PSH SHELL] successfully channelised powershell channel");
 		return ERROR_SUCCESS;
 	}
 

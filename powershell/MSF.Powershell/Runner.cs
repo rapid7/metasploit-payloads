@@ -24,11 +24,11 @@ namespace MSF.Powershell
             _runners = new Dictionary<string, Runner>();
         }
 
-        internal static void Channelise(string id, Int64 channelWriter, Int64 channel, Int64 context)
+        internal static void Channelise(string id, Int64 channelWriter, Int64 context)
         {
             var runner = Get(id);
-            System.Diagnostics.Debug.Write(string.Format("[PSH RUNNER] Channelising {0} with 0x{1:X} - 0x{2:X}", id, channelWriter, context));
-            runner._host.UserInterface.Channelise(channelWriter, channel, context);
+            System.Diagnostics.Debug.Write(string.Format("[PSH RUNNER] Channelising {0} with CW 0x{1:X} - CTX 0x{2:X}", id, channelWriter, context));
+            runner._host.UserInterface.Channelise(channelWriter, context);
         }
 
         internal static void Unchannelise(string id)
@@ -114,6 +114,7 @@ namespace MSF.Powershell
                 pipeline.Commands.Add("out-default");
 
                 pipeline.Invoke();
+                System.Diagnostics.Debug.Write(string.Format("[PSH RUNNER] Executed PS on thread. Flushing"));
                 _host.GetAndFlushOutput();
                 _host.UserInterface.WriteRaw("PS > ");
             }
@@ -219,9 +220,8 @@ namespace MSF.Powershell
             private StringBuilder _buffer;
             private CustomPSHostRawUserInterface _rawUI;
 
-            private delegate void WriteChannel(Int64 channel, Int64 context, byte[] buffer);
+            private delegate void WriteChannel(Int64 context, byte[] buffer);
             private WriteChannel _chanWriter = null;
-            private Int64 _channel = 0;
             private Int64 _context = 0;
 
             public CustomPSHostUserInterface()
@@ -240,10 +240,9 @@ namespace MSF.Powershell
                 return _buffer.ToString();
             }
 
-            public void Channelise(Int64 channelWriter, Int64 channel, Int64 context)
+            public void Channelise(Int64 channelWriter, Int64 context)
             {
                 _chanWriter = (WriteChannel)Marshal.GetDelegateForFunctionPointer(new IntPtr(channelWriter), typeof(WriteChannel));
-                _channel = channel;
                 _context = context;
             }
 
@@ -352,8 +351,8 @@ namespace MSF.Powershell
                 if (IsChannelised)
                 {
                     var bytes = System.Text.Encoding.ASCII.GetBytes(message);
-                    //System.Diagnostics.Debug.WriteLine("[PSH BINDING] Writing to channel: " + message);
-                    _chanWriter(_channel, _context, bytes);
+                    System.Diagnostics.Debug.WriteLine(string.Format("[PSH BINDING] Writing to channel {0:X} -{1}", _context, message));
+                    _chanWriter(_context, bytes);
                 }
                 else
                 {
