@@ -108,6 +108,7 @@ public class AndroidMeterpreter extends Meterpreter {
         getCommandManager().resetNewCommands();
         CommandManager mgr = getCommandManager();
         Loader.cwd = new File(writeableDir);
+        mgr.registerCommand("channel_create_audio_output", channel_create_audio_output.class);
         mgr.registerCommand("channel_create_stdapi_fs_file", channel_create_stdapi_fs_file.class);
         mgr.registerCommand("channel_create_stdapi_net_tcp_client", channel_create_stdapi_net_tcp_client.class);
         mgr.registerCommand("channel_create_stdapi_net_tcp_server", channel_create_stdapi_net_tcp_server.class);
