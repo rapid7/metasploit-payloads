@@ -327,6 +327,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\source\extensions\stdapi\server\audio\output.c" />
     <ClCompile Include="..\..\source\extensions\stdapi\server\fs\mount_win.c" />
     <ClCompile Include="..\..\source\extensions\stdapi\server\general.c" />
     <ClCompile Include="..\..\source\extensions\stdapi\server\net\config\arp.c" />
@@ -391,6 +392,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClInclude Include="..\..\source\extensions\stdapi\server\webcam\audio.h" />
     <ClInclude Include="..\..\source\extensions\stdapi\server\webcam\bmp2jpeg.h" />
     <ClInclude Include="..\..\source\extensions\stdapi\server\webcam\webcam.h" />
+    <ClInclude Include="..\..\source\extensions\stdapi\server\audio\audio.h" />
     <ClInclude Include="..\..\source\extensions\stdapi\server\fs\fs.h" />
     <ClInclude Include="..\..\source\extensions\stdapi\server\fs\fs_local.h" />
     <ClInclude Include="..\..\source\extensions\stdapi\server\fs\search.h" />
