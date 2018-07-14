@@ -8,7 +8,7 @@
 
 typedef struct
 {
-	size_t size;
+	size_t offset;
 	void* buffer;
 } AudioContext;
 
@@ -23,13 +23,22 @@ static DWORD audio_channel_write(Channel *channel, Packet *request,
 	DWORD result = ERROR_SUCCESS;
 	size_t written = 0;
 
-	// Write the entire buffer
+	// Write to the buffer
 	if (bufferSize) {
-		if (!(ctx->buffer = calloc(1, bufferSize))) {
-			result = ERROR_NOT_ENOUGH_MEMORY;
+		char* newbuffer = 0;
+		if (ctx->buffer) {
+			newbuffer = realloc(ctx->buffer, ctx->offset + bufferSize);
 		} else {
-			memcpy(ctx->buffer, buffer, bufferSize);
+			newbuffer = malloc(bufferSize);
+		}
+
+		if (newbuffer) {
+			memcpy(newbuffer + ctx->offset, buffer, bufferSize);
+			ctx->buffer = newbuffer;
+			ctx->offset += bufferSize;
 			written = bufferSize;
+		} else {
+			result = ERROR_NOT_ENOUGH_MEMORY;
 		}
 	}
 
@@ -49,7 +58,7 @@ static DWORD audio_channel_close(Channel *channel, Packet *request,
 	AudioContext *ctx = (AudioContext *)context;
 
 	// Play the audio buffer
-	sndPlaySound(ctx->buffer, SND_SYNC | SND_MEMORY);
+	sndPlaySound(ctx->buffer, SND_MEMORY);
 
 	if (ctx->buffer) {
 		free(ctx->buffer);
