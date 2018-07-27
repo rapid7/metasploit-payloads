@@ -165,7 +165,7 @@ public class Channel {
 
         public void run() {
             try {
-                byte[] buffer = new byte[4096];
+                byte[] buffer = new byte[1024*1024];
                 int len;
                 while ((len = stream.read(buffer)) != -1) {
                     if (len == 0)
