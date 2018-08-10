@@ -539,7 +539,7 @@ static DWORD server_dispatch_tcp(Remote* remote, THREAD* dispatchThread)
 
 			if (packet == NULL)
 			{
-				dprintf("[DISPATCH] No packet received, probably just metsrv being ignored");
+				dprintf("[DISPATCH] No packet received, probably just metsrv being ignored or a pivot packet being handled.");
 			}
 			else
 			{

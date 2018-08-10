@@ -739,62 +739,69 @@ static DWORD server_dispatch_http(Remote* remote, THREAD* dispatchThread)
 
 			dprintf("[DISPATCH] Returned result: %d", result);
 
-			running = command_handle(remote, packet);
-			dprintf("[DISPATCH] command_process result: %s", (running ? "continue" : "stop"));
-
-			if (ctx->new_uri != NULL)
+			if (packet != NULL)
 			{
-				dprintf("[DISPATCH] Recieved hot-patched URL for stageless: %S", ctx->new_uri);
-				dprintf("[DISPATCH] Old URI is: %S", ctx->uri);
-				dprintf("[DISPATCH] Old URL is: %S", transport->url);
+				running = command_handle(remote, packet);
+				dprintf("[DISPATCH] command_process result: %s", (running ? "continue" : "stop"));
 
-				// if the new URI needs more space, let's realloc space for the new URL now
-				int diff = (int)wcslen(ctx->new_uri) - (int)wcslen(ctx->uri);
-				if (diff > 0)
+				if (ctx->new_uri != NULL)
 				{
-					dprintf("[DISPATCH] New URI is bigger by %d", diff);
-					transport->url = (wchar_t*)realloc(transport->url, (wcslen(transport->url) + diff + 1) * sizeof(wchar_t));
-				}
+					dprintf("[DISPATCH] Recieved hot-patched URL for stageless: %S", ctx->new_uri);
+					dprintf("[DISPATCH] Old URI is: %S", ctx->uri);
+					dprintf("[DISPATCH] Old URL is: %S", transport->url);
 
-				// we also need to patch the new URI into the original transport URL, not just the currently
-				// active URI for comms. If we don't, then migration behaves badly.
-				// The URL looks like this:  http(s)://<domain-or-ip>:port/lurivalue/UUIDJUNK/
-				// Start by locating the start of the URI in the current URL, by finding the third slash,
-				// as this value includes the LURI
-				wchar_t* csr = transport->url;
-				for (int i = 0; i < 3; ++i)
-				{
-					// We need to move to the next character first in case
-					// we are currently pointing at the previously found /
-					// we know we're safe skipping the first character in the whole
-					// URL because that'll be part of the scheme (ie. 'h' in http)
-					++csr;
-
-					while (*csr != L'\0' && *csr != L'/')
+					// if the new URI needs more space, let's realloc space for the new URL now
+					int diff = (int)wcslen(ctx->new_uri) - (int)wcslen(ctx->uri);
+					if (diff > 0)
 					{
+						dprintf("[DISPATCH] New URI is bigger by %d", diff);
+						transport->url = (wchar_t*)realloc(transport->url, (wcslen(transport->url) + diff + 1) * sizeof(wchar_t));
+					}
+
+					// we also need to patch the new URI into the original transport URL, not just the currently
+					// active URI for comms. If we don't, then migration behaves badly.
+					// The URL looks like this:  http(s)://<domain-or-ip>:port/lurivalue/UUIDJUNK/
+					// Start by locating the start of the URI in the current URL, by finding the third slash,
+					// as this value includes the LURI
+					wchar_t* csr = transport->url;
+					for (int i = 0; i < 3; ++i)
+					{
+						// We need to move to the next character first in case
+						// we are currently pointing at the previously found /
+						// we know we're safe skipping the first character in the whole
+						// URL because that'll be part of the scheme (ie. 'h' in http)
 						++csr;
+
+						while (*csr != L'\0' && *csr != L'/')
+						{
+							++csr;
+						}
+
+						dprintf("[DISPATCH] %d csr: %p -> %S", i, csr, csr);
+
+						// this shouldn't happen!
+						if (*csr == L'\0')
+						{
+							break;
+						}
 					}
 
-					dprintf("[DISPATCH] %d csr: %p -> %S", i, csr, csr);
+					// the pointer that we have will be
+					dprintf("[DISPATCH] Pointer is at: %p -> %S", csr, csr);
 
-					// this shouldn't happen!
-					if (*csr == L'\0')
-					{
-						break;
-					}
+					// patch in the new URI
+					wcscpy_s(csr, wcslen(diff > 0 ? ctx->new_uri : ctx->uri) + 1, ctx->new_uri);
+					dprintf("[DISPATCH] New URL is: %S", transport->url);
+
+					// clean up
+					SAFE_FREE(ctx->uri);
+					ctx->uri = ctx->new_uri;
+					ctx->new_uri = NULL;
 				}
-
-				// the pointer that we have will be
-				dprintf("[DISPATCH] Pointer is at: %p -> %S", csr, csr);
-
-				// patch in the new URI
-				wcscpy_s(csr, wcslen(diff > 0 ? ctx->new_uri : ctx->uri) + 1, ctx->new_uri);
-				dprintf("[DISPATCH] New URL is: %S", transport->url);
-
-				// clean up
-				SAFE_FREE(ctx->uri);
-				ctx->uri = ctx->new_uri;
-				ctx->new_uri = NULL;
+			}
+			else
+			{
+				dprintf("[DISPATCH] Packet was NULL, this indicates that it was a pivot packet");
 			}
 		}
 	}

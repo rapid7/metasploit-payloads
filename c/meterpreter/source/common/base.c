@@ -458,7 +458,8 @@ BOOL command_handle(Remote *remote, Packet *packet)
 		baseCommand = command_locate_base(lpMethod);
 		extensionCommand = command_locate_extension(lpMethod);
 
-		if (baseCommand == NULL && extensionCommand == NULL) {
+		if (baseCommand == NULL && extensionCommand == NULL)
+		{
 			dprintf("[DISPATCH] Command not found: %s", lpMethod);
 			// We have no matching command for this packet, so it won't get handled. We
 			// need to send an empty response and clean up here before exiting out.
