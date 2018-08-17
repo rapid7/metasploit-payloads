@@ -342,6 +342,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\dpapi\packages\kuhl_m_dpapi_chrome.c" />
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\dpapi\packages\kuhl_m_dpapi_creds.c" />
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\dpapi\packages\kuhl_m_dpapi_keys.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\dpapi\packages\kuhl_m_dpapi_ssh.c" />
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\dpapi\packages\kuhl_m_dpapi_wlan.c" />
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kerberos\kuhl_m_kerberos.c" />
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kerberos\kuhl_m_kerberos_ccache.c" />
@@ -442,6 +443,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\dpapi\packages\kuhl_m_dpapi_chrome.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\dpapi\packages\kuhl_m_dpapi_creds.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\dpapi\packages\kuhl_m_dpapi_keys.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\dpapi\packages\kuhl_m_dpapi_ssh.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\dpapi\packages\kuhl_m_dpapi_wlan.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kerberos\kuhl_m_kerberos.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kerberos\kuhl_m_kerberos_ccache.h" />
