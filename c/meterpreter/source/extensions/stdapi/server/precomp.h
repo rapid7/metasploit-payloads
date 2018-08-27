@@ -9,6 +9,7 @@
 #include <iphlpapi.h>
 #include "resource/resource.h"
 
+#include "audio/audio.h"
 #include "fs/fs.h"
 #include "sys/sys.h"
 #include "net/net.h"
