@@ -321,6 +321,8 @@ function stdapi_fs_file_expand_path($req, &$pkt) {
             $path = "cmd.exe";
         }
     }
+    $path = realpath($path);
+
     my_print("Returning with an answer of: '$path'");
 
     if ($path) {

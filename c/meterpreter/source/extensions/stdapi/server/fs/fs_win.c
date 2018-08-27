@@ -109,6 +109,7 @@ BOOL DeleteFolderWR(LPCWSTR szPath)
 char * fs_expand_path(const char *regular)
 {
 	wchar_t expanded_path[FS_MAX_PATH];
+	wchar_t full_path[FS_MAX_PATH];
 	wchar_t *regular_w;
 
 	regular_w = utf8_to_wchar(regular);
@@ -121,9 +122,14 @@ char * fs_expand_path(const char *regular)
 		return NULL;
 	}
 
+	if (GetFullPathNameW(expanded_path, FS_MAX_PATH, full_path, NULL) == 0) {
+		free(regular_w);
+		return NULL;
+	}
+
 	free(regular_w);
 
-	return wchar_to_utf8(expanded_path);
+	return wchar_to_utf8(full_path);
 }
 
 int fs_ls(const char *directory, fs_ls_cb_t cb, void *arg)
