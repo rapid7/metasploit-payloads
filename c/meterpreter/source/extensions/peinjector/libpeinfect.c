@@ -47,7 +47,7 @@ static  bool __peinfect_check_stealth(PEINFECT *in_infect, PEFILE *in_pe) {
 }
 
 /* Clean Header fields (ASLR, Checksum, Signature DataDir, ...)  */
-static  void __peinfect_clean_header(PEINFECT *in, PEFILE *out) {
+static  void __peinfect_clean_header(PEFILE *out) {
 	/* 32 bit */
 	if (out->optional_header_32.Magic == NT_OPTIONAL_32_MAGIC) {
 		out->optional_header_32.CheckSum = 0x00; /* Zero Checksum */
@@ -709,7 +709,7 @@ bool peinfect_infect_full(unsigned char *mem, size_t memsize, PEINFECT *in, PEFI
 
 	/* Clean Header fields (ASLR, Checksum, Signature DataDir, ...) */
 	if (in->remove_integrity) {
-		__peinfect_clean_header(in, out);
+		__peinfect_clean_header(out);
 	}
 
 	/* Stealth checks */
