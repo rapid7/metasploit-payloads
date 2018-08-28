@@ -27,7 +27,7 @@ typedef enum _OPCODE {
 typedef struct _SHELLCODE_ENTRY {
   unsigned char *code;    // Shellcode to insert
   size_t codesize;        // Shellcode size
-  unsigned char *garbage; // Garbage to inert
+  unsigned char *garbage; // Garbage to insert
   size_t garbagesize;     // Garbage size
   size_t index;           // Index of entry
   size_t target;          // Target entry (for jmp types)
