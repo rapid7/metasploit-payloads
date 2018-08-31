@@ -141,7 +141,7 @@ bool petool_resize_section(size_t section_index, size_t new_raw_size, size_t new
   bool shrink = false;
   bool raw_change = false;
   unsigned char *newmem = NULL;
-  int i = 0;
+  uint32_t i = 0;
 
   /* Default values (PE COFF Specification) */
   size_t file_alignment = NT_FILE_ALIGNMENT;
