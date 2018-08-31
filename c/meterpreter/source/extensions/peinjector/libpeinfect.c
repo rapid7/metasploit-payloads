@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include "libpeinfect.h"
 #include "libpeinfect_obfuscator.h"
+#include "../../common/common.h"
 
  /* Min/Max Macros */
 #define MIN(_a, _b) ((_a) < (_b) ? (_a) : (_b))
@@ -251,7 +252,7 @@ static  int __peinfect_infect_alignment(PEINFECT *in, unsigned char *payload, si
 					}
 
 					/* Infect OK */
-					return i + 1;
+					return (int)i + 1;
 				}
 			}
 		}
@@ -317,7 +318,7 @@ static  int __peinfect_infect_alignment_resize(PEINFECT *in, unsigned char *payl
 				old_rawsize = out->section_header[i].SizeOfRawData;
 
 				/* New Space needed */
-				rawsize_delta = payloadsize - (old_rawsize - old_virtsize);
+				rawsize_delta = (uint32_t)(payloadsize - (old_rawsize - old_virtsize));
 
 				/* Save helper data for patch */
 				if (helper != NULL) {
@@ -349,7 +350,7 @@ static  int __peinfect_infect_alignment_resize(PEINFECT *in, unsigned char *payl
 					}
 
 					/* Infect OK */
-					return i + 1;
+					return (int)i + 1;
 				}
 			}
 		}
@@ -523,7 +524,7 @@ void peinfect_init(PEINFECT *out) {
 	memset(out, 0, sizeof(PEINFECT));
 
 	/* For the glory of beelzebub and random section names */
-	srand(time(NULL));
+	srand((uint32_t)time(NULL));
 
 	/* Allow all methods, except METHOD_CROSS_SECTION_JUMP */
 	out->methods = METHOD_NEW_SECTION; //METHOD_ALL & ~METHOD_CROSS_SECTION_JUMP; //VERIFY THIS
@@ -755,9 +756,9 @@ bool peinfect_infect_full_file(char *infile, PEINFECT *in, char *outfile) {
 	PEFILE pefile;
 
 	/* Open file */
-	FILE *fh = fopen(infile, "rb");
-
-	if (fh != NULL) {
+	FILE *fh;
+	wchar_t *file_w = utf8_to_wchar(infile);
+	if (_wfopen_s(&fh, file_w, L"rb") == 0) {
 
 		/* Get file size and allocate buffer */
 		if (!fseek(fh, 0L, SEEK_END)) {
@@ -792,6 +793,7 @@ bool peinfect_infect_full_file(char *infile, PEINFECT *in, char *outfile) {
 			fclose(fh);
 		}
 	}
+	free(file_w);
 
 	return returnVar;
 }

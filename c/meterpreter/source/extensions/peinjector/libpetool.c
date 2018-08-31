@@ -57,7 +57,7 @@ static  void __petool_adjust_optional_header(PEFILE *out) {
   /* Align SizeOfImage to Section Alignment */
   sizeofimage = __petool_align(
       out->section_header[out->pe_header.NumberOfSections - 1].VirtualAddress
-          + out->section_header[out->pe_header.NumberOfSections - 1].Misc.VirtualSize, section_alignment);
+          + out->section_header[out->pe_header.NumberOfSections - 1].Misc.VirtualSize, (uint32_t)section_alignment);
 
   /* Write new values into required fields */
   if (is_32_bit) {
@@ -108,18 +108,18 @@ static  bool __petool_increase_header_padding(size_t size, PEFILE *out) {
   /* Fix SizeOfHeaders */
   if (out->optional_header_32.Magic == NT_OPTIONAL_32_MAGIC) {
     if (out->optional_header_32.SizeOfHeaders < (header_raw_end + out->header_padding.memsize)) {
-      out->optional_header_32.SizeOfHeaders = header_raw_end + out->header_padding.memsize;
+      out->optional_header_32.SizeOfHeaders = (uint32_t)(header_raw_end + out->header_padding.memsize);
     }
   } else if (out->optional_header_64.Magic == NT_OPTIONAL_64_MAGIC) {
     if (out->optional_header_64.SizeOfHeaders < (header_raw_end + out->header_padding.memsize)) {
-      out->optional_header_64.SizeOfHeaders = header_raw_end + out->header_padding.memsize;
+      out->optional_header_64.SizeOfHeaders = (uint32_t)(header_raw_end + out->header_padding.memsize);
     }
   }
 
   /* Fix section positions */
   if ((out->pe_header.NumberOfSections > 0) && (out->section_header != NULL)) {
     for (i = 0; i < out->pe_header.NumberOfSections; ++i) {
-      out->section_header[i].PointerToRawData += size;
+      out->section_header[i].PointerToRawData += (uint32_t)size;
     }
   }
 
@@ -141,7 +141,7 @@ bool petool_resize_section(size_t section_index, size_t new_raw_size, size_t new
   bool shrink = false;
   bool raw_change = false;
   unsigned char *newmem = NULL;
-  int i = 0;
+  uint32_t i = 0;
 
   /* Default values (PE COFF Specification) */
   size_t file_alignment = NT_FILE_ALIGNMENT;
@@ -182,7 +182,7 @@ bool petool_resize_section(size_t section_index, size_t new_raw_size, size_t new
   }
 
   /* New Virtual Size */
-  out->section_header[section_index].Misc.VirtualSize = new_virtual_size;
+  out->section_header[section_index].Misc.VirtualSize = (uint32_t)new_virtual_size;
 
   /* Only needed if RawSize was changed */
   if (raw_change) {
@@ -203,17 +203,17 @@ bool petool_resize_section(size_t section_index, size_t new_raw_size, size_t new
     }
 
     /* Align new raw size */
-    new_raw_size = __petool_align(new_raw_size, file_alignment);
+    new_raw_size = __petool_align((uint32_t)new_raw_size, (uint32_t)file_alignment);
 
     /* Set new RawSize */
-    out->section_header[section_index].SizeOfRawData = new_raw_size;
+    out->section_header[section_index].SizeOfRawData = (uint32_t)new_raw_size;
 
     /* Get Size difference  */
     if (new_raw_size > old_raw_size) {
-      diff = new_raw_size - old_raw_size;
+      diff = (uint32_t)(new_raw_size - old_raw_size);
       shrink = false;
     } else {
-      diff = old_raw_size - new_raw_size;
+      diff = (uint32_t)(old_raw_size - new_raw_size);
       shrink = true;
     }
 
@@ -341,8 +341,8 @@ bool header_only, PEFILE *out) {
   }
 
   /* Calculate padded raw size & relative virtual address */
-  section_memsize = __petool_align(memsize, file_alignment);
-  section_rva = __petool_align(last_section_rva + last_section_virtualsize, section_alignment);
+  section_memsize = __petool_align((uint32_t)memsize, (uint32_t)file_alignment);
+  section_rva = __petool_align((uint32_t)(last_section_rva + last_section_virtualsize), (uint32_t)section_alignment);
 
   /* Header only, don't modify data */
   if (!header_only) {
@@ -369,11 +369,11 @@ bool header_only, PEFILE *out) {
 
   /* New Section Header */
   memset(&out->section_header[out->pe_header.NumberOfSections - 1], 0, sizeof(SECTION_HEADER));
-  out->section_header[out->pe_header.NumberOfSections - 1].PointerToRawData = section_raw_pointer;
-  out->section_header[out->pe_header.NumberOfSections - 1].SizeOfRawData = section_memsize;
-  out->section_header[out->pe_header.NumberOfSections - 1].VirtualAddress = section_rva;
-  out->section_header[out->pe_header.NumberOfSections - 1].Misc.VirtualSize = memsize;
-  out->section_header[out->pe_header.NumberOfSections - 1].Characteristics = characteristics;
+  out->section_header[out->pe_header.NumberOfSections - 1].PointerToRawData = (uint32_t)section_raw_pointer;
+  out->section_header[out->pe_header.NumberOfSections - 1].SizeOfRawData = (uint32_t)section_memsize;
+  out->section_header[out->pe_header.NumberOfSections - 1].VirtualAddress = (uint32_t)section_rva;
+  out->section_header[out->pe_header.NumberOfSections - 1].Misc.VirtualSize = (uint32_t)memsize;
+  out->section_header[out->pe_header.NumberOfSections - 1].Characteristics = (uint32_t)characteristics;
   if (name != NULL) {
     memcpy(out->section_header[out->pe_header.NumberOfSections - 1].Name, name, MIN(NT_SHORT_NAME_LEN, namesize));
   }

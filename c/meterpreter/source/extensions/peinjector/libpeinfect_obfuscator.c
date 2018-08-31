@@ -187,7 +187,7 @@ bool add_garbage) {
   shellcode->entrys++;
 
   /* Return entry index */
-  return shellcode->entrys - 1;
+  return (int)shellcode->entrys - 1;
 }
 
 /* Add shellcode jmp/loop/call */
@@ -221,7 +221,7 @@ static  int __peinfector_obfuscator_shellcode_add_generic_jmp(SHELLCODE *shellco
   shellcode->entrys++;
 
   /* Return entry index */
-  return shellcode->entrys - 1;
+  return (int)shellcode->entrys - 1;
 }
 
 /* Add JMP Entry*/
@@ -262,7 +262,7 @@ static  int __peinfector_obfuscator_shellcode_get_jmp_pos(SHELLCODE *shellcode, 
     }
   }
 
-  return pos;
+  return (int)pos;
 }
 
 /* Calculates delta between 2 entrys (end entry 1 -> start entry 2) */
@@ -299,7 +299,7 @@ static  int __peinfector_obfuscator_shellcode_find_delta(SHELLCODE *shellcode, u
   }
 
   /* Return delta position */
-  return pos_2 - pos_1;
+  return (int)pos_2 - (int)pos_1;
 }
 
 static  void __peinfector_obfuscator_build_relative_jmp(unsigned char *shellcode, uint32_t pos, OPCODE opcode,
@@ -358,7 +358,7 @@ static  unsigned char* __peinfector_obfuscator_shellcode_generate(SHELLCODE *she
   }
 
   /* Jump to 0 entry */
-  jmp_delta = __peinfector_obfuscator_shellcode_find_delta(shellcode, *size, -1, 0);
+  jmp_delta = __peinfector_obfuscator_shellcode_find_delta(shellcode, (uint32_t)*size, -1, 0);
   __peinfector_obfuscator_build_relative_jmp(shellcode_buf, 0, OP_JMP, jmp_delta);
   pos = 2;
 
@@ -369,20 +369,20 @@ static  unsigned char* __peinfector_obfuscator_shellcode_generate(SHELLCODE *she
     if (shellcode->entry[i].garbage != NULL) {
       memcpy(shellcode_buf + pos, shellcode->entry[i].garbage, shellcode->entry[i].garbagesize);
     }
-    pos += shellcode->entry[i].garbagesize;
+    pos += (uint32_t)shellcode->entry[i].garbagesize;
 
     /* Write shellcode data */
     if (shellcode->entry[i].code != NULL) {
       memcpy(shellcode_buf + pos, shellcode->entry[i].code, shellcode->entry[i].codesize);
     }
-    pos += shellcode->entry[i].codesize + 2;
+    pos += (uint32_t)shellcode->entry[i].codesize + 2;
 
     /* Write jmps */
     /* Position of jmp cmd */
-    jmp_pos = __peinfector_obfuscator_shellcode_get_jmp_pos(shellcode, shellcode->entry[i].index);
+    jmp_pos = __peinfector_obfuscator_shellcode_get_jmp_pos(shellcode, (int)shellcode->entry[i].index);
     /* Difference to next entry */
-    jmp_delta = __peinfector_obfuscator_shellcode_find_delta(shellcode, *size, shellcode->entry[i].index,
-        shellcode->entry[i].target);
+    jmp_delta = __peinfector_obfuscator_shellcode_find_delta(shellcode, (uint32_t)*size, (int)shellcode->entry[i].index,
+        (int)shellcode->entry[i].target);
 
     switch (shellcode->entry[i].type) {
       case TYPE_CMD:
@@ -391,8 +391,8 @@ static  unsigned char* __peinfector_obfuscator_shellcode_generate(SHELLCODE *she
         break;
       case TYPE_LOOP:
         __peinfector_obfuscator_build_relative_jmp(shellcode_buf, jmp_pos, OP_LOOP, jmp_delta - 2);
-        jmp_delta = __peinfector_obfuscator_shellcode_find_delta(shellcode, *size, shellcode->entry[i].index,
-            shellcode->entry[i].index + 1);
+        jmp_delta = __peinfector_obfuscator_shellcode_find_delta(shellcode, (uint32_t)*size, (int)shellcode->entry[i].index,
+            (int)shellcode->entry[i].index + 1);
         __peinfector_obfuscator_build_relative_jmp(shellcode_buf, jmp_pos + 2, OP_JMP, jmp_delta);
         break;
       case TYPE_CALL:
