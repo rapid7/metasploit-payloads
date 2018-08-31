@@ -87,6 +87,9 @@
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <MultiProcessorCompilation>
+      </MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <AdditionalDependencies>backcompat.lib;Netapi32.lib;Mpr.lib;metsrv.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -137,6 +140,9 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <MultiProcessorCompilation>
+      </MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <AdditionalDependencies>backcompat.lib;Netapi32.lib;Mpr.lib;metsrv.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -189,6 +195,9 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <MultiProcessorCompilation>
+      </MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <AdditionalDependencies>Netapi32.lib;Mpr.lib;metsrv.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -239,6 +248,9 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <MultiProcessorCompilation>
+      </MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <AdditionalDependencies>Netapi32.lib;Mpr.lib;metsrv.lib;%(AdditionalDependencies)</AdditionalDependencies>

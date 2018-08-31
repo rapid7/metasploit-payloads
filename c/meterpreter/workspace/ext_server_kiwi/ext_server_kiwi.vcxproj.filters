@@ -255,6 +255,9 @@
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\dpapi\packages\kuhl_m_dpapi_ssh.c">
       <Filter>local modules\dpapi\packages</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\dpapi\packages\kuhl_m_dpapi_rdg.c">
+      <Filter>local modules\dpapi\packages</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\source\extensions\kiwi\main.h" />
@@ -527,6 +530,9 @@
       <Filter>common modules</Filter>
     </ClInclude>
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\dpapi\packages\kuhl_m_dpapi_ssh.h">
+      <Filter>local modules\dpapi\packages</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\dpapi\packages\kuhl_m_dpapi_rdg.h">
       <Filter>local modules\dpapi\packages</Filter>
     </ClInclude>
   </ItemGroup>
