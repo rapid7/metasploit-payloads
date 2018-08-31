@@ -7,6 +7,7 @@
 #include <string.h>
 #include <stddef.h>
 #include "libpefile.h"
+#include "../../common/common.h"
 
 /* Min/Max Macros */
 #define MIN(_a, _b) ((_a) < (_b) ? (_a) : (_b))
@@ -354,11 +355,11 @@ void pefile_init(PEFILE *in) {
 bool pefile_read_file(char *file, PEFILE_READ_OPTIONS *options, PEFILE *out) {
   bool returnVar = false;
   unsigned char *file_mem;
+  FILE *fh;
 
   /* Open file */
-  FILE *fh = fopen(file, "rb");
-
-  if (fh != NULL) {
+  wchar_t *file_w = utf8_to_wchar(file);
+  if (_wfopen_s(&fh, file_w, L"rb") == 0) {
 
     /* Get file size and allocate buffer */
     fseek(fh, 0L, SEEK_END);
@@ -387,6 +388,7 @@ bool pefile_read_file(char *file, PEFILE_READ_OPTIONS *options, PEFILE *out) {
       fclose(fh);
     }
   }
+  free(file_w);
 
   return returnVar;
 }
@@ -395,7 +397,7 @@ bool pefile_write_mem(PEFILE *in, PEFILE_WRITE_OPTIONS *options, unsigned char *
   size_t position = 0;
   size_t i = 0;
   uint64_t checksum = 0;
-  uint64_t top = 0xffffffff + 0x01;
+  uint64_t top = 0xffffffffLL + 0x01;
   size_t gap_start = 0;
   size_t gap_size = 0;
 
@@ -523,7 +525,7 @@ bool pefile_write_mem(PEFILE *in, PEFILE_WRITE_OPTIONS *options, unsigned char *
     checksum += *memsize;
 
     /* Write checksum*/
-    *(uint32_t *) (*mem + position) = checksum;
+    *(uint32_t *) (*mem + position) = (uint32_t)checksum;
   }
 
   return true;
@@ -536,9 +538,9 @@ bool pefile_write_file(PEFILE *in, PEFILE_WRITE_OPTIONS *options, char* file) {
   size_t memsize = 0;
 
   /* Open file */
-  FILE *fh = fopen(file, "wb");
-
-  if (fh != NULL) {
+  FILE *fh;
+  wchar_t *file_w = utf8_to_wchar(file);
+  if (_wfopen_s(&fh, file_w, L"wb") == 0) {
 
     /* Generate PE File memory */
     if (pefile_write_mem(in, options, mem_ref, &memsize)) {
@@ -553,6 +555,7 @@ bool pefile_write_file(PEFILE *in, PEFILE_WRITE_OPTIONS *options, char* file) {
     /* Close file */
     fclose(fh);
   }
+  free(file_w);
 
   return returnVar;
 }
