@@ -28,6 +28,8 @@ define("TLV_TYPE_SEARCH_GLOB",         TLV_META_TYPE_STRING  | 1231);
 define("TLV_TYPE_SEARCH_ROOT",         TLV_META_TYPE_STRING  | 1232);
 define("TLV_TYPE_SEARCH_RESULTS",      TLV_META_TYPE_GROUP   | 1233);
 
+define("TLV_TYPE_FILE_MODE_T",         TLV_META_TYPE_UINT    | 1234);
+
 ##
 # Net
 ##
@@ -401,6 +403,20 @@ function stdapi_fs_file_copy($req, &$pkt) {
     $old_file = canonicalize_path($old_file_tlv['value']);
     $new_file = canonicalize_path($new_file_tlv['value']);
     $ret = @copy($old_file, $new_file);
+    return $ret ? ERROR_SUCCESS : ERROR_FAILURE;
+}
+}
+
+# works on Unix systems but probably not on Windows
+if (!function_exists('stdapi_fs_chmod') && !is_windows()) {
+register_command('stdapi_fs_chmod');
+function stdapi_fs_chmod($req, &$pkt) {
+    my_print("doing chmod");
+    $path_tlv = packet_get_tlv($req, TLV_TYPE_FILE_PATH);
+    $mode_tlv = packet_get_tlv($req, TLV_TYPE_FILE_MODE_T);
+    $path = canonicalize_path($path_tlv['value']);
+    $mode = $mode_tlv['value'];
+    $ret = @chmod($path, $mode);
     return $ret ? ERROR_SUCCESS : ERROR_FAILURE;
 }
 }
