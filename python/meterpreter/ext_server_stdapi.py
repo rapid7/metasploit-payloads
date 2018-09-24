@@ -371,6 +371,8 @@ TLV_TYPE_SEARCH_GLOB           = TLV_META_TYPE_STRING  | 1231
 TLV_TYPE_SEARCH_ROOT           = TLV_META_TYPE_STRING  | 1232
 TLV_TYPE_SEARCH_RESULTS        = TLV_META_TYPE_GROUP   | 1233
 
+TLV_TYPE_FILE_MODE_T           = TLV_META_TYPE_UINT    | 1234
+
 ##
 # Net
 ##
@@ -1324,6 +1326,13 @@ def stdapi_fs_file_copy(request, response):
     oldname = packet_get_tlv(request, TLV_TYPE_FILE_NAME)['value']
     newname = packet_get_tlv(request, TLV_TYPE_FILE_PATH)['value']
     shutil.copyfile(unicode(oldname), unicode(newname))
+    return ERROR_SUCCESS, response
+
+@register_function_if(sys.platform == 'darwin' or sys.platform.startswith('linux'))
+def stdapi_fs_chmod(request, response):
+    path = packet_get_tlv(request, TLV_TYPE_FILE_PATH)['value']
+    mode = packet_get_tlv(request, TLV_TYPE_FILE_MODE_T)['value']
+    os.chmod(unicode(path), mode)
     return ERROR_SUCCESS, response
 
 @register_function
