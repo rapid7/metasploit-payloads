@@ -1332,7 +1332,7 @@ def stdapi_fs_file_copy(request, response):
 def stdapi_fs_chmod(request, response):
     path = packet_get_tlv(request, TLV_TYPE_FILE_PATH)['value']
     mode = packet_get_tlv(request, TLV_TYPE_FILE_MODE_T)['value']
-    os.chmod(path, mode)
+    os.chmod(unicode(path), mode)
     return ERROR_SUCCESS, response
 
 @register_function
