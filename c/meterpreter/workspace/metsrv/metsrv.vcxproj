@@ -358,6 +358,28 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClCompile Include="..\..\source\server\win\server_pivot_named_pipe.c" />
     <ClCompile Include="..\..\source\server\win\server_transport_named_pipe.c" />
     <ClCompile Include="..\..\source\server\win\server_transport_tcp.c" />
+    <ClCompile Include="..\..\source\server\win\server_transport_windns.c">
+	 <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+      </PrecompiledHeaderFile>
+      <PrecompiledHeaderOutputFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+      </PrecompiledHeaderOutputFile>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='r7_release|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='r7_release|Win32'">
+      </PrecompiledHeaderFile>
+      <PrecompiledHeaderOutputFile Condition="'$(Configuration)|$(Platform)'=='r7_release|Win32'">
+      </PrecompiledHeaderOutputFile>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+      </PrecompiledHeaderFile>
+      <PrecompiledHeaderOutputFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+      </PrecompiledHeaderOutputFile>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='r7_release|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='r7_release|x64'">
+      </PrecompiledHeaderFile>
+      <PrecompiledHeaderOutputFile Condition="'$(Configuration)|$(Platform)'=='r7_release|x64'">
+      </PrecompiledHeaderOutputFile>
+    </ClCompile>
     <ClCompile Include="..\..\source\server\win\server_transport_winhttp.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -393,6 +415,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClInclude Include="..\..\source\server\win\server_pivot_named_pipe.h" />
     <ClInclude Include="..\..\source\server\win\server_transport_named_pipe.h" />
     <ClInclude Include="..\..\source\server\win\server_transport_tcp.h" />
+    <ClInclude Include="..\..\source\server\win\server_transport_windns.h" />
     <ClInclude Include="..\..\source\server\win\server_transport_winhttp.h" />
     <ClInclude Include="..\..\source\server\win\server_transport_wininet.h" />
   </ItemGroup>

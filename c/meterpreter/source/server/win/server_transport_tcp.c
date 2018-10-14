@@ -909,4 +909,3 @@ Transport* transport_create_tcp(MetsrvTransportTcp* config, LPDWORD size)
 
 	return transport;
 }
-

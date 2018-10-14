@@ -7,12 +7,15 @@
 
 /*! @brief This is the size of the certificate hash that is validated (sha1) */
 #define CERT_HASH_SIZE 20
+#define CLIENT_ID_SIZE 2
 #define URL_SIZE 512
 #define UA_SIZE 256
 #define UUID_SIZE 16
 #define PROXY_HOST_SIZE 128
 #define PROXY_USER_SIZE 64
 #define PROXY_PASS_SIZE 64
+#define DOMAIN_NAME_SIZE 16
+#define NS_NAME_SIZE 128
 
 typedef wchar_t CHARTYPE;
 
@@ -43,6 +46,16 @@ typedef struct _MetsrvTransportCommon
 	int retry_wait;                       ///! Seconds to wait between reconnects.
 } MetsrvTransportCommon;
 
+//typedef struct _MetsrvTransportCommonDns
+//{
+//	char domain[DOMAIN_NAME_SIZE];        ///! Transport DNS: a.dom.com
+//
+//	int comms_timeout;                    ///! Number of sessions to wait for a new packet.
+//	int retry_total;                      ///! Total seconds to retry comms for.
+//	int retry_wait;                       ///! Seconds to wait between reconnects.
+
+//} MetsrvTransportCommonDns;
+
 typedef struct _MetsrvTransportProxy
 {
 	CHARTYPE hostname[PROXY_HOST_SIZE];   ///! Proxy hostname.
@@ -58,6 +71,12 @@ typedef struct _MetsrvTransportHttp
 	BYTE ssl_cert_hash[CERT_HASH_SIZE];   ///! Expected SSL certificate hash.
 	CHARTYPE custom_headers[1];           ///! Custom headers to add to outbound requests (arb length, NULL terminated).
 } MetsrvTransportHttp;
+
+typedef struct _MetsrvTransportDns
+{
+	MetsrvTransportCommon common;
+
+} MetsrvTransportDns;
 
 typedef struct _MetsrvTransportTcp
 {

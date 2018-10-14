@@ -15,6 +15,8 @@
 typedef wchar_t CHARTYPE;
 typedef CHARTYPE* STRTYPE;
 
+typedef struct addrinfo  ADDRINFO, *PADDRINFOA;
+
 // Forward declarations required to keep compilers happy.
 typedef struct _Packet Packet;
 typedef struct _PacketRequestCompletion PacketRequestCompletion;
@@ -23,6 +25,7 @@ typedef struct _SslLib SslLib;
 typedef struct _Remote Remote;
 typedef struct _TimeoutSettings TimeoutSettings;
 typedef struct _HttpTransportContext HttpTransportContext;
+typedef struct _DnsTransportContext DnsTransportContext;
 typedef struct _PacketEncryptionContext PacketEncryptionContext;
 
 typedef UINT_PTR(*PTransportGetHandle)(Transport* transport);
@@ -46,6 +49,7 @@ typedef BOOL(*PCloseRequest)(HANDLE hReq);
 typedef DWORD(*PValidateResponse)(HANDLE hReq, HttpTransportContext* ctx);
 typedef BOOL(*PReceiveResponse)(HANDLE hReq);
 typedef BOOL(*PReadResponse)(HANDLE hReq, LPVOID buffer, DWORD bytesToRead, LPDWORD bytesRead);
+
 
 typedef struct _TimeoutSettings
 {
@@ -98,6 +102,19 @@ typedef struct _HttpTransportContext
 	PReceiveResponse receive_response;    ///! WinHttp/WinINET specific response data reception.
 	PReadResponse read_response;          ///! WinHttp/WinINET specific response data reading.
 } HttpTransportContext;
+
+typedef struct _DnsTransportContext
+{
+	BOOL ready; 
+	WORD request_type;
+	wchar_t *domain;                         ///! Pointer to the DNS domain stored with the transport.
+	wchar_t *ns_server;
+    wchar_t *client_id;
+    wchar_t *server_id;
+	USHORT counter;
+	DWORD type;
+	PVOID pip4;
+} DnsTransportContext;
 
 typedef struct _Transport
 {

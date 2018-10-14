@@ -24,6 +24,9 @@
     <ClCompile Include="..\..\source\server\win\server_transport_named_pipe.c">
       <Filter>transports</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\source\server\win\server_transport_windns.c">
+      <Filter>transports</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\source\server\libloader.h" />
@@ -45,6 +48,9 @@
       <Filter>pivots</Filter>
     </ClInclude>
     <ClInclude Include="..\..\source\server\win\server_transport_named_pipe.h">
+      <Filter>transports</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\server\win\server_transport_windns.h">
       <Filter>transports</Filter>
     </ClInclude>
   </ItemGroup>

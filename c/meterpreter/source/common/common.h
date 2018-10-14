@@ -6,7 +6,7 @@
 #define _METERPRETER_SOURCE_COMMON_COMMON_H
 
 /*! @brief Set to 0 for "normal", and 1 to "verbose", comment out to disable completely. */
-//#define DEBUGTRACE 0
+//#define DEBUGTRACE 1
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -59,6 +59,8 @@ typedef struct ___u128 {
 #define METERPRETER_TRANSPORT_HTTPS  (0x4 | METERPRETER_TRANSPORT_HTTP)
 /*! @brief Indication that the Meterpreter transport is using  named pipes. */
 #define METERPRETER_TRANSPORT_PIPE   0x8
+/*! @brief Indication that the Meterpreter transport is using DNS */
+#define METERPRETER_TRANSPORT_DNS 0x10
 
 VOID sleep(DWORD seconds);
 
