@@ -463,6 +463,7 @@ static void set_value(Remote *remote, Packet *packet, HKEY hkey)
 		switch (valueType) {
 			case REG_SZ:
 			case REG_EXPAND_SZ:
+			case REG_MULTI_SZ:
 				buf = utf8_to_wchar(valueData.buffer);
 				len = (wcslen(buf) + 1) * sizeof(wchar_t);
 				break;
