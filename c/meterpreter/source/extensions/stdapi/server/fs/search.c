@@ -318,7 +318,6 @@ HRESULT wds_execute(ICommand * pCommand, Packet * pResponse)
 					directory = L"";
 					fileName  = directory;
 				}
-
 				search_add_result(pResponse, directory, fileName, rowSearchResults.dwSizeValue);
 			}
 
@@ -757,10 +756,10 @@ DWORD search(WDS_INTERFACE * pWDSInterface, wchar_t *directory, SEARCH_OPTIONS *
 	return dwResult;
 }
 
-VOID search_all_drives(WDS_INTERFACE *pWDSInterface, SEARCH_OPTIONS *options, Packet *pResponse)
+DWORD search_all_drives(WDS_INTERFACE *pWDSInterface, SEARCH_OPTIONS *options, Packet *pResponse) //!!! VOID -> DWORD
 {
 	DWORD dwLogicalDrives = GetLogicalDrives();
-
+	DWORD dwResult;
 	for (wchar_t index = L'a'; index <= L'z'; index++)
 	{
 		if (dwLogicalDrives & (1 << (index-L'a')))
@@ -775,16 +774,17 @@ VOID search_all_drives(WDS_INTERFACE *pWDSInterface, SEARCH_OPTIONS *options, Pa
 			if (dwType == DRIVE_FIXED || dwType == DRIVE_REMOTE)
 			{
 				options->rootDirectory = drive;
-
+				
 				dprintf("[SEARCH] request_fs_search. Searching drive %S (type=%d)...",
 					options->rootDirectory, dwType);
 
-				search(pWDSInterface, NULL, options, pResponse);
+				dwResult = search(pWDSInterface, NULL, options, pResponse);
 			}
 		}
 	}
 
 	options->rootDirectory = NULL;
+	return dwResult;
 }
 
 /*
@@ -839,9 +839,16 @@ DWORD request_fs_search(Remote * pRemote, Packet * pPacket)
 
 	if (!options.rootDirectory)
 	{
-		search_all_drives(&WDSInterface, &options, pResponse);
-		wds3_search(&WDSInterface, L"iehistory", NULL, &options, pResponse);
-		wds3_search(&WDSInterface, L"mapi", NULL, &options, pResponse);
+		DWORD dwResult;
+		dwResult = search_all_drives(&WDSInterface, &options, pResponse);
+		if (dwResult != ERROR_SUCCESS)
+		{
+			dwResult = wds3_search(&WDSInterface, L"iehistory", NULL, &options, pResponse);
+		}
+		if (dwResult != ERROR_SUCCESS)
+		{
+			dwResult = wds3_search(&WDSInterface, L"mapi", NULL, &options, pResponse);
+		}
 	}
 	else
 	{
