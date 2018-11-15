@@ -759,7 +759,7 @@ DWORD search(WDS_INTERFACE * pWDSInterface, wchar_t *directory, SEARCH_OPTIONS *
 DWORD search_all_drives(WDS_INTERFACE *pWDSInterface, SEARCH_OPTIONS *options, Packet *pResponse) //!!! VOID -> DWORD
 {
 	DWORD dwLogicalDrives = GetLogicalDrives();
-	DWORD dwResult = ERROR_ACCESS_DENIED;
+	DWORD dwResult;
 	for (wchar_t index = L'a'; index <= L'z'; index++)
 	{
 		if (dwLogicalDrives & (1 << (index-L'a')))
@@ -839,7 +839,7 @@ DWORD request_fs_search(Remote * pRemote, Packet * pPacket)
 
 	if (!options.rootDirectory)
 	{
-		DWORD dwResult = ERROR_ACCESS_DENIED;
+		DWORD dwResult;
 		dwResult = search_all_drives(&WDSInterface, &options, pResponse);
 		if (dwResult != ERROR_SUCCESS)
 		{
@@ -849,9 +849,6 @@ DWORD request_fs_search(Remote * pRemote, Packet * pPacket)
 		{
 			dwResult = wds3_search(&WDSInterface, L"mapi", NULL, &options, pResponse);
 		}
-		/*search_all_drives(&WDSInterface, &options, pResponse); 
-		wds3_search(&WDSInterface, L"iehistory", NULL, &options, pResponse);
-		wds3_search(&WDSInterface, L"mapi", NULL, &options, pResponse);*/
 	}
 	else
 	{
