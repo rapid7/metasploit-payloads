@@ -229,6 +229,7 @@ HMODULE CustomLoadLibrary(const PWCHAR wszFullDllName, const PWCHAR wszBaseDllNa
                         goto next_import;
 
                     memcpy(wszDllName, wsRedir, stRedirName * sizeof(WCHAR));
+                    dprintf("[REFRESH] Redirected library: %S", wszDllName);
                 }
             }
 

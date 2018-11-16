@@ -123,15 +123,17 @@ PWCHAR GetRedirectedName_V4(const PWSTR wszImportingModule, const PWSTR wszVirtu
     PWSTR wsEntry;
     PWSTR wsName;
     PWSTR wsValue;
-
+    PWSTR wszShortVirtualModule;
 
     pApiSetMap = (PAPI_SET_NAMESPACE_ARRAY_V4)GetProcessEnvironmentBlock()->pFreeList;
+    wszShortVirtualModule = (PWSTR)((PWCHAR)wszVirtualModule + 4);
+
     for (dwEntryCount = 0; dwEntryCount < pApiSetMap->Count; dwEntryCount++)
     {
         pApiEntry = &pApiSetMap->Array[dwEntryCount];
         wsEntry = (PWSTR)((PCHAR)pApiSetMap + pApiEntry->NameOffset);
 
-        if (_wcsnicmp(wsEntry, wszVirtualModule, pApiEntry->NameLength / 2) != 0)
+        if (_wcsnicmp(wsEntry, wszShortVirtualModule, pApiEntry->NameLength / 2) != 0)
             continue;
 
         pApiArray = (PAPI_SET_VALUE_ARRAY_V4)((PCHAR)pApiSetMap + pApiEntry->DataOffset);
@@ -163,16 +165,17 @@ PWCHAR GetRedirectedName_V2(const PWSTR wszImportingModule, const PWSTR wszVirtu
     PWSTR wsEntry;
     PWSTR wsName;
     PWSTR wsValue;
-
+    PWSTR wszShortVirtualModule;
 
     pApiSetMap = (PAPI_SET_NAMESPACE_ARRAY_V2)GetProcessEnvironmentBlock()->pFreeList;
+    wszShortVirtualModule = (PWSTR)((PWCHAR)wszVirtualModule + 4);
 
     for (dwEntryCount = 0; dwEntryCount < pApiSetMap->Count; dwEntryCount++)
     {
         pApiEntry = &pApiSetMap->Array[dwEntryCount];
         wsEntry = (PWSTR)((PCHAR)pApiSetMap + pApiEntry->NameOffset);
 
-        if (_wcsnicmp(wsEntry, wszVirtualModule, pApiEntry->NameLength / 2) != 0)
+        if (_wcsnicmp(wsEntry, wszShortVirtualModule, pApiEntry->NameLength / 2) != 0)
             continue;
 
         pApiArray = (PAPI_SET_VALUE_ARRAY_V2)((PCHAR)pApiSetMap + pApiEntry->DataOffset);
