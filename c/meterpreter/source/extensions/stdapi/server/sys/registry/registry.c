@@ -437,6 +437,39 @@ out:
 	return ERROR_SUCCESS;
 }
 
+/*
+* Parse the REG_MULTI_SZ registry value types.
+* A sequence of null-terminated strings, would be splited by \0 and terminated by \0\0 .
+* 
+* Example:
+*	"String1\0String2\0String3\0LastString\0\0" => "String1 String2 String3 LastString"
+* 
+* Reference: https://docs.microsoft.com/en-us/windows/desktop/sysinfo/registry-value-types
+*
+*/
+static char *reg_multi_sz_parse(char* str)
+{
+	const char *delimter = "\\0";
+	const char *ender = "\\0\\0";
+	char *res = (char *)calloc(strlen(str) + 1, sizeof(char));
+
+	char *trun = strstr(str, ender);  // truncated by '\0\0'
+	if (trun)
+	{
+		str[trun - str] = '\0';
+	}
+
+	char * ch = strtok(str, delimter); // delimter by '\0'
+	while (ch != NULL)
+	{
+		strncat(res, ch, strlen(ch) + 1);
+		strcat(res, " "); // Use blank to delimter instead of '\0'
+		ch = strtok(NULL, delimter);
+	}
+
+	return res;
+}
+
 static void set_value(Remote *remote, Packet *packet, HKEY hkey)
 {
 	Packet *response = packet_create_response(packet);
@@ -463,7 +496,11 @@ static void set_value(Remote *remote, Packet *packet, HKEY hkey)
 		switch (valueType) {
 			case REG_SZ:
 			case REG_EXPAND_SZ:
+				buf = utf8_to_wchar(valueData.buffer);
+				len = (wcslen(buf) + 1) * sizeof(wchar_t);
+				break;
 			case REG_MULTI_SZ:
+				valueData.buffer = reg_multi_sz_parse(valueData.buffer);
 				buf = utf8_to_wchar(valueData.buffer);
 				len = (wcslen(buf) + 1) * sizeof(wchar_t);
 				break;
