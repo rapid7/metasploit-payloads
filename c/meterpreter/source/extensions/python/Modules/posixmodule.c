@@ -1024,7 +1024,7 @@ win32_wchdir(LPCWSTR path)
 #endif
 
 #ifdef MS_WINDOWS
-/* The CRT of Windows has a number of flaws wrt. its stat() implementation:
+/* The CRT of windows.has a number of flaws wrt. its stat() implementation:
    - time stamps are restricted to second resolution
    - file modification times suffer from forth-and-back conversions between
      UTC and local time

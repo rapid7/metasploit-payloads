@@ -33,8 +33,13 @@ int main(int argc, char **argv)
 
 		lib = LoadLibrary(argv[1]);
 
-		if ((!lib) ||
-		    (!((LPVOID)init = (LPVOID)GetProcAddress(lib, "Init"))))
+		if (!lib) 
+		{
+			fprintf(stderr, "could not load metsrv.dll, %lu\n", GetLastError());
+			break;
+		}
+		init = (LPVOID)GetProcAddress(lib, "Init");
+		if (!init) 
 		{
 			fprintf(stderr, "could not load metsrv.dll, %lu\n", GetLastError());
 			break;

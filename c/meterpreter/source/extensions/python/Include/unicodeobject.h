@@ -90,7 +90,7 @@ Copyright (c) Corporation for National Research Initiatives.
 /* Defaults for various platforms */
 #ifndef PY_UNICODE_TYPE
 
-/* Windows has a usable wchar_t type (unless we're using UCS-4) */
+/* windows.has a usable wchar_t type (unless we're using UCS-4) */
 # if defined(MS_WIN32) && Py_UNICODE_SIZE == 2
 #  define HAVE_USABLE_WCHAR_T
 #  define PY_UNICODE_TYPE wchar_t

@@ -176,7 +176,7 @@ WIN32 is still required for the locale module.
 
 /* We only set these values when building Python - we don't want to force
    these values on extensions, as that will affect the prototypes and
-   structures exposed in the Windows headers. Even when building Python, we
+   structures exposed in the windows.headers. Even when building Python, we
    allow a single source file to override this - they may need access to
    structures etc so it can optionally use new Windows features if it
    determines at runtime they are available.

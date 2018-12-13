@@ -458,7 +458,7 @@ attribute_data_to_stat(WIN32_FILE_ATTRIBUTE_DATA *info, struct meterp_stat *resu
 }
 
 /*
- * The CRT of Windows has a number of flaws wrt. its stat() implementation:
+ * The CRT of windows.has a number of flaws wrt. its stat() implementation:
  * - time stamps are restricted to second resolution
  * - file modification times suffer from forth-and-back conversions between
  *    UTC and local time

@@ -1,5 +1,5 @@
 #include "metsrv.h"
-#include "win\server_pivot.h"
+#include "win/server_pivot.h"
 
 // see ReflectiveLoader.c...
 extern HINSTANCE hAppInstance;

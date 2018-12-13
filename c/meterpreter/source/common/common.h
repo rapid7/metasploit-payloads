@@ -8,6 +8,10 @@
 /*! @brief Set to 0 for "normal", and 1 to "verbose", comment out to disable completely. */
 //#define DEBUGTRACE 0
 
+#define ERROR_UNSUPPORTED_COMPRESSION 22
+#define __try
+#define __except if
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>

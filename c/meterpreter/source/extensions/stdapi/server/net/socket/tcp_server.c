@@ -14,7 +14,7 @@
 #define IPPROTO_IPV6 41
 #endif
 #ifndef in6addr_any
-extern IN6_ADDR in6addr_any;
+
 #endif
 
 /*!

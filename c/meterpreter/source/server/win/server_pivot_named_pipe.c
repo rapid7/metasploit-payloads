@@ -3,8 +3,8 @@
 #include "server_pivot_named_pipe.h"
 #include "../../common/packet_encryption.h"
 
-#include <AccCtrl.h>
-#include <AclApi.h>
+#include <accctrl.h>
+#include <aclapi.h>
 
 #define PIPE_NAME_SIZE 256
 #define PIPE_BUFFER_SIZE 0x10000
