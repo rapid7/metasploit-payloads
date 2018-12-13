@@ -455,6 +455,12 @@ class MeterpreterProcess(MeterpreterChannel):
 
     def close(self):
         self.proc_h.kill()
+        if hasattr(self.proc_h.stdin, 'close'):
+            self.proc_h.stdin.close()
+        if hasattr(self.proc_h.stdout, 'close'):
+            self.proc_h.stdout.close()
+        if hasattr(self.proc_h.stderr, 'close'):
+            self.proc_h.stderr.close()
 
     def is_alive(self):
         return self.proc_h.poll() is None
