@@ -15,7 +15,6 @@
 #include "jinclude.h"
 #include "jpeglib.h"
 
-
 /*
  * Quantization table setup routines
  */

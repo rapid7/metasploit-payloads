@@ -21,6 +21,10 @@
 
 #ifdef TARGA_SUPPORTED
 
+#ifdef __MINGW32__
+typedef short UINT8;
+#endif
+
 
 /* Macros to deal with unsigned chars as efficiently as compiler allows */
 

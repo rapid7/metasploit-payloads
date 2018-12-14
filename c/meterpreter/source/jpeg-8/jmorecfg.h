@@ -132,6 +132,7 @@ typedef char JOCTET;
 
 /* UINT8 must hold at least the values 0..255. */
 
+#ifndef __MINGW32__
 #ifdef HAVE_UNSIGNED_CHAR
 typedef unsigned char UINT8;
 #else /* not HAVE_UNSIGNED_CHAR */
@@ -142,6 +143,10 @@ typedef short UINT8;
 #endif /* CHAR_IS_UNSIGNED */
 #endif /* HAVE_UNSIGNED_CHAR */
 
+#else
+typedef unsigned char UINT8;
+#define HAVE_UNSIGNED_SHORT
+#endif
 /* UINT16 must hold at least the values 0..65535. */
 
 #ifdef HAVE_UNSIGNED_SHORT

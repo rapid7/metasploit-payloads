@@ -14,6 +14,11 @@
 #include "jinclude.h"
 #include "jpeglib.h"
 
+#ifdef __MINGW32__
+typedef short UINT8;
+#endif
+
+
 #ifdef QUANT_1PASS_SUPPORTED
 
 
