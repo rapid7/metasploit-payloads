@@ -48,7 +48,7 @@ DWORD ex_remote_request_core_channel_close(Remote *remote, Packet *packet)
 Command customCommands[] = 
 {
 	COMMAND_REP("core_channel_open", ex_remote_response_core_channel_open),
-	COMMAND_REP("core_channel_close", ex_remote_response_core_channel_cloase),
+	COMMAND_REP("core_channel_close", ex_remote_request_core_channel_close),
 	COMMAND_TERMINATOR
 };
 

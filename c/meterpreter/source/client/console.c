@@ -63,9 +63,10 @@ VOID console_initialize(Remote *remote)
 	{
 		// Locate the SetConsoleInputExeNameA routine for use with custom
 		// history tracking
-		if (!((LPVOID)setConsoleInputExeName =
+        setConsoleInputExeName =
 				(LPVOID)GetProcAddress(GetModuleHandle("kernel32"),
-					"SetConsoleInputExeNameA")))
+					"SetConsoleInputExeNameA");
+		if (!setConsoleInputExeName)
 			break;
 
 		memset(name, 0, sizeof(name));
