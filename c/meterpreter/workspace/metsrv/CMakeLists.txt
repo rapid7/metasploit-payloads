@@ -116,7 +116,8 @@ include_directories( ${HEADER_DIR_4} )
 add_library(${PROJECT_NAME} SHARED
    ${SRC_FILES}
 )
-   link_directories(/usr/x86_64-w64-mingw32/lib/)
+   
+link_directories(/usr/x86_64-w64-mingw32/lib/)
 # Link with other dependencies.
 target_link_libraries(${PROJECT_NAME} common ReflectiveDLLInjection ws2_32 ole32 odbc32 odbccp32 crypt32 wininet winhttp )
 if(MSVC)
