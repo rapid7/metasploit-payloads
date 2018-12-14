@@ -361,12 +361,12 @@ PyDoc_STRVAR(PyHKEY_doc,
 
 
 PyDoc_STRVAR(PyHKEY_Close_doc,
-"key.Close() - Closes the underlying windows.handle.\n"
+"key.Close() - Closes the underlying Windows handle.\n"
 "\n"
 "If the handle is already closed, no error is raised.");
 
 PyDoc_STRVAR(PyHKEY_Detach_doc,
-"int = key.Detach() - Detaches the windows.handle from the handle object.\n"
+"int = key.Detach() - Detaches the Windows handle from the handle object.\n"
 "\n"
 "The result is the value of the handle before it is detached.  If the\n"
 "handle is already detached, this will return zero.\n"

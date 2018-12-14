@@ -7,7 +7,7 @@
 #include "intrcheck.h"
 
 #ifdef MS_WINDOWS
-#include <windows.h>
+#include <Windows.h>
 #ifdef HAVE_PROCESS_H
 #include <process.h>
 #endif

@@ -41,6 +41,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ext_server_winpmem", "ext_s
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ext_server_peinjector", "ext_server_peinjector\ext_server_peinjector.vcxproj", "{2A4FDCA0-A620-4E98-AF05-2B2F227F5166}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ext_server_unhook", "ext_server_unhook\ext_server_unhook.vcxproj", "{561E26D9-7E79-4EF4-8AA2-A770F81568A7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		r7_release|Win32 = r7_release|Win32
@@ -199,6 +201,14 @@ Global
 		{2A4FDCA0-A620-4E98-AF05-2B2F227F5166}.Release|Win32.Build.0 = Release|Win32
 		{2A4FDCA0-A620-4E98-AF05-2B2F227F5166}.Release|x64.ActiveCfg = Release|x64
 		{2A4FDCA0-A620-4E98-AF05-2B2F227F5166}.Release|x64.Build.0 = Release|x64
+		{561E26D9-7E79-4EF4-8AA2-A770F81568A7}.r7_release|Win32.ActiveCfg = r7_release|Win32
+		{561E26D9-7E79-4EF4-8AA2-A770F81568A7}.r7_release|Win32.Build.0 = r7_release|Win32
+		{561E26D9-7E79-4EF4-8AA2-A770F81568A7}.r7_release|x64.ActiveCfg = r7_release|x64
+		{561E26D9-7E79-4EF4-8AA2-A770F81568A7}.r7_release|x64.Build.0 = r7_release|x64
+		{561E26D9-7E79-4EF4-8AA2-A770F81568A7}.Release|Win32.ActiveCfg = Release|Win32
+		{561E26D9-7E79-4EF4-8AA2-A770F81568A7}.Release|Win32.Build.0 = Release|Win32
+		{561E26D9-7E79-4EF4-8AA2-A770F81568A7}.Release|x64.ActiveCfg = Release|x64
+		{561E26D9-7E79-4EF4-8AA2-A770F81568A7}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
