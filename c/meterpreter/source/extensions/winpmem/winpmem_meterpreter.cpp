@@ -290,7 +290,11 @@ static int winpmem_meterpreter_copy_memory(uint64_t start, uint64_t end,
 	};
 
 	while (start < end) {
+	    #ifdef __MINGW32__
+   		DWORD to_write = (DWORD)__min(bufferSize - *bytesRead, end - start);
+	    #else
 		DWORD to_write = (DWORD)min(bufferSize - *bytesRead, end - start);
+		#endif
 		DWORD bytes_read = 0;
 
 		large_start.QuadPart = start;
@@ -330,14 +334,22 @@ static DWORD winpmem_channel_read(Channel *channel, Packet *request,
 
 	if (ctx->pmem_info.Run[ctx->index].start > ctx->offset) {
 		uint64_t padding_size = ctx->pmem_info.Run[ctx->index].start - ctx->offset;
+		#ifdef __MINGW32__
+		DWORD padding_size_max = (DWORD)__min(padding_size, bufferSize);
+		#else
 		DWORD padding_size_max = (DWORD)min(padding_size, bufferSize);
+		#endif
 		ZeroMemory(buffer, padding_size_max);
 		*bytesRead += padding_size_max;
 		offset += *bytesRead;
 	}
 
 	if (bufferSize - *bytesRead > 0) {
+		#ifdef __MINGW32__
+		uint64_t end = __min(ctx->pmem_info.Run[ctx->index].length, bufferSize - *bytesRead);
+		#else
 		uint64_t end = min(ctx->pmem_info.Run[ctx->index].length, bufferSize - *bytesRead);
+		#endif
 		end += offset;
 		DWORD status = winpmem_meterpreter_copy_memory(offset, end, ctx, buffer, bufferSize, bytesRead);
 		if (status == 0) {

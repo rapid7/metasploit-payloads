@@ -25,6 +25,7 @@
 #include <stdio.h>
 #include <time.h>
 
+
 int WinPmem::pad(uint64_t length)
 {
 	uint64_t start = 0;
@@ -32,7 +33,11 @@ int WinPmem::pad(uint64_t length)
 	ZeroMemory(buffer_, buffer_size_);
 
 	while (start < length) {
+	    #ifdef __MINGW32__
+	    DWORD to_write = (DWORD)__min(buffer_size_, length - start);
+	    #else
 		DWORD to_write = (DWORD)min(buffer_size_, length - start);
+		#endif
 		DWORD bytes_written;
 
 		if (!WriteFile(out_fd_, buffer_,
@@ -67,7 +72,11 @@ int WinPmem::copy_memory(uint64_t start, uint64_t end)
 	};
 
 	while (start < end) {
+	    #ifdef __MINGW32__
+   		DWORD to_write = (DWORD)__min(buffer_size_, end - start);
+	    #else
 		DWORD to_write = (DWORD)min(buffer_size_, end - start);
+		#endif
 		DWORD bytes_read = 0;
 		DWORD bytes_written = 0;
 
@@ -107,7 +116,7 @@ error:
 // Turn on write support in the driver.
 int WinPmem::set_write_enabled(void)
 {
-	unsigned _int32 mode;
+	uint32_t mode;
 	DWORD size;
 
 	if (!DeviceIoControl(fd_, PMEM_WRITE_ENABLE, &mode, 4, NULL, 0,
