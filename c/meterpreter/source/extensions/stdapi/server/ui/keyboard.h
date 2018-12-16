@@ -17,12 +17,15 @@
 * Raw Input Messages.
 */
 
+#ifndef __MINGW32__
 DECLARE_HANDLE(HRAWINPUT);
+#endif
 
 /*
 * Raw format of the mouse input
 */
 
+#ifndef __MINGW32__
 typedef struct tagRAWMOUSE {
 	/*
 	* Indicator flags.
@@ -137,7 +140,7 @@ typedef struct tagRAWINPUT {
 		RAWHID      hid;
 	} data;
 } RAWINPUT, *PRAWINPUT, *LPRAWINPUT;
-
+#endif
 
 typedef UINT(WINAPI *f_GetRawInputData)(
 	__in HRAWINPUT hRawInput,

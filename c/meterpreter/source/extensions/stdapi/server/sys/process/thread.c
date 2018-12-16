@@ -8,7 +8,8 @@ VOID set_thread_register_value(LPCONTEXT, LPCSTR name, ULONG value);
 typedef BOOL (WINAPI *PISWOW64PROCESS)(HANDLE, PBOOL);
 static PISWOW64PROCESS pIsWow64Process = NULL;
 
-BOOL IsWow64Process(HANDLE hProcess)
+
+BOOL _IsWow64Process(HANDLE hProcess)
 {
 	BOOL result = FALSE;
 
@@ -119,8 +120,8 @@ DWORD request_sys_process_thread_create(Remote *remote, Packet *packet)
 
 			if (dwResult == ERROR_ACCESS_DENIED
 				&& dwMeterpreterArch == PROCESS_ARCH_X86
-				&& IsWow64Process(GetCurrentProcess())
-				&& !IsWow64Process(hProcess))
+				&& _IsWow64Process(GetCurrentProcess())
+				&& !_IsWow64Process(hProcess))
 			{
 				dprintf("[THREAD CREATE] Target is x64, attempting wow64 injection");
 

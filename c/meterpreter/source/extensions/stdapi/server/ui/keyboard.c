@@ -1,7 +1,7 @@
 #include "precomp.h"
 #include "keyboard.h"
 #include <tchar.h>
-#include <Psapi.h>
+#include <psapi.h>
 
 extern HMODULE hookLibrary;
 extern HINSTANCE hAppInstance;

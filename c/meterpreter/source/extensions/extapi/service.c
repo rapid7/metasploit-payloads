@@ -5,7 +5,7 @@
 #include "extapi.h"
 #include "service.h"
 
-#include <Sddl.h>
+#include <sddl.h>
 
 /*! @brief The possible list of operations to perform on a service */
 typedef enum _ServiceOperation
