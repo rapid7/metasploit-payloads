@@ -225,12 +225,13 @@ DWORD request_sys_process_image_get_images(Remote *remote, Packet *packet)
 		// Try to resolve the address of GetModuleBaseNameA
 		getModuleBaseName = 
 				(LPVOID)GetProcAddress(psapi, "GetModuleBaseNameA");
-		if (!GetProcAddress)
+		if (!getModuleBaseName)
 			break;
 
 		// Try to resolve the address of GetModuleFileNameExA
 		getModuleFileNameEx = 
 				(LPVOID)GetProcAddress(psapi, "GetModuleFileNameExA");
+		
 		if (!getModuleFileNameEx)
 			break;
 

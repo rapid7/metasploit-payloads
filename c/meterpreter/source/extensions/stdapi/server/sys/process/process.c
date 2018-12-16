@@ -697,7 +697,7 @@ DWORD request_sys_process_get_info(Remote *remote, Packet *packet)
 		getModuleBaseName =
 				(LPVOID)GetProcAddress(psapi, "GetModuleBaseNameA");
 	
-	    getModuleFileNameEx =
+	        getModuleFileNameEx =
 				(LPVOID)GetProcAddress(psapi, "GetModuleFileNameExA");
 				
 		if ((!enumProcessModules) ||
