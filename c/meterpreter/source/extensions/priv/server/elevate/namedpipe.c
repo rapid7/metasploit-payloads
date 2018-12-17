@@ -6,6 +6,11 @@
  * Worker thread for named pipe impersonation. Creates a named pipe and impersonates
  * the first client which connects to it.
  */
+
+#ifndef ERROR_DBG_TERMINATE_THREAD
+#define ERROR_DBG_TERMINATE_THREAD 691
+#endif
+
 DWORD THREADCALL elevate_namedpipe_thread(THREAD * thread)
 {
 	DWORD dwResult              = ERROR_ACCESS_DENIED;
