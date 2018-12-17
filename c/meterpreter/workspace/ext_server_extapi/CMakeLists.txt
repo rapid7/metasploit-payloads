@@ -6,11 +6,14 @@ cmake_minimum_required(VERSION 3.0.0 FATAL_ERROR)
 
 set(PROJECT_NAME ext_server_extapi)
 # Output Variables
-set(OUTPUT_DEBUG Debug/bin)
-set(OUTPUT_RELEASE Release/bin)
+set(OUTPUT_DEBUG ../../output/Debug/)
+set(OUTPUT_RELEASE ../../output/Release/)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${OUTPUT_RELEASE})
 # Folders files
 set(CPP_DIR_1 ../../source/extensions/extapi)
 set(HEADER_DIR_1 ../../source/extensions/extapi)
+set(HEADER_DIR_2 ../../source/ReflectiveDLLInjection/common)
+
 
 ############## CMake Project ################
 #        The main options of project        #
@@ -28,7 +31,8 @@ endif(NOT CMAKE_BUILD_TYPE)
 add_definitions(
    -DNDEBUG 
    -D_WINDOWS 
-   -D_USRDLL 
+   -D_USRDLL
+   -DWINVER=0x0600
    -DEXT_SERVER_EXTAPI_EXPORTS 
 )
 
@@ -37,13 +41,13 @@ add_definitions(
 #################################################
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-  set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${OUTPUT_DEBUG}")
-  set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${OUTPUT_DEBUG}")
-  set(CMAKE_EXECUTABLE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${OUTPUT_DEBUG}")
+  set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${OUTPUT_DEBUG}")
+  set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${OUTPUT_DEBUG}")
+  set(CMAKE_EXECUTABLE_OUTPUT_DIRECTORY "${OUTPUT_DEBUG}")
 else()
-  set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${OUTPUT_REL}")
-  set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${OUTPUT_REL}")
-  set(CMAKE_EXECUTABLE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${OUTPUT_REL}")
+  set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${OUTPUT_RELEASE}")
+  set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${OUTPUT_RELEASE}")
+  set(CMAKE_EXECUTABLE_OUTPUT_DIRECTORY "${OUTPUT_RELEASE}")
 endif()
 
 ################### Dependencies ##################
@@ -52,34 +56,42 @@ endif()
 
 option(BUILD_DEPENDS 
    "Build other CMake project." 
-   ON 
+   OFF 
 )
 
 # Dependencies : disable BUILD_DEPENDS to link with lib already build.
 if(BUILD_DEPENDS)
-   add_subdirectory(platform/cmake/backcompat ${CMAKE_BINARY_DIR}/backcompat)
-   add_subdirectory(platform/cmake/common ${CMAKE_BINARY_DIR}/common)
-   add_subdirectory(platform/cmake/metsrv ${CMAKE_BINARY_DIR}/metsrv)
-   add_subdirectory(platform/cmake/ReflectiveDLLInjection ${CMAKE_BINARY_DIR}/ReflectiveDLLInjection)
+   add_subdirectory(../backcompat ${OUTPUT_RELEASE})
+   add_subdirectory(../common ${OUTPUT_RELEASE})
+   add_subdirectory(../ReflectiveDLLInjection ${OUTPUT_RELEASE})
+   add_subdirectory(../metsrv ${OUTPUT_RELEASE})
 else()
-   link_directories(dependencies/backcompat/build/)
-   link_directories(dependencies/common/build/)
-   link_directories(dependencies/metsrv/build/)
-   link_directories(dependencies/ReflectiveDLLInjection/build/)
+   add_subdirectory(../metsrv ${OUTPUT_RELEASE})
+   link_directories(${OUTPUT_RELEASE})
 endif()
 
 ################# Flags ################
 # Defines Flags for Windows and Linux. #
 ########################################
+SET(CMAKE_SYSTEM_NAME Windows)
+include(CMakeForceCompiler)
+IF("${GNU_HOST}" STREQUAL "")
+    SET(GNU_HOST x86_64-w64-mingw32)
+ENDIF()
+# Prefix detection only works with compiler id "GNU"
+CMAKE_FORCE_C_COMPILER(${GNU_HOST}-g++ GNU)
+CMAKE_FORCE_CXX_COMPILER(${GNU_HOST}-g++ GNU)
+# CMake doesn't automatically look for prefixed 'windres', do it manually:
+SET(CMAKE_RC_COMPILER ${GNU_HOST}-windres)
 
 if(MSVC)
    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /W3 /EHsc")
    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /W3 /EHsc")
 endif(MSVC)
 if(NOT MSVC)
-   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-   if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-       set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
+   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fpermissive -std=c++11")
+   if ("${CMAKE_C_COMPILER_ID}" STREQUAL "Clang")
+       set (CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -stdlib=libc++")
    endif()
 endif(NOT MSVC)
 
@@ -93,13 +105,18 @@ file(GLOB SRC_FILES
     ${HEADER_DIR_1}/*.h
 )
 
+include_directories( ${HEADER_DIR_1} )
+include_directories( ${HEADER_DIR_2} )
+
 # Add library to build.
 add_library(${PROJECT_NAME} SHARED
    ${SRC_FILES}
 )
 
+set(CMAKE_VERBOSE_MAKEFILE ON)
 # Link with other dependencies.
-target_link_libraries(${PROJECT_NAME} backcompat common metsrv ReflectiveDLLInjection )
+#target_link_libraries(${PROJECT_NAME} backcompat common metsrv ReflectiveDLLInjection )
+target_link_libraries(${PROJECT_NAME} common metsrv ReflectiveDLLInjection esent gdiplus netapi32 ws2_32 mpr)
 if(MSVC)
    target_link_libraries(${PROJECT_NAME} gdiplus.lib backcompat.lib Netapi32.lib ws2_32.lib Mpr.lib metsrv.lib )
 endif(MSVC)

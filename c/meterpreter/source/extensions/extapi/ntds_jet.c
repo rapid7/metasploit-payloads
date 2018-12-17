@@ -7,7 +7,7 @@
 #define JET_VERSION 0x0501
 
 #include <inttypes.h>
-#include <WinCrypt.h>
+#include <wincrypt.h>
 #include "syskey.h"
 #include "ntds_decrypt.h"
 #include "ntds_jet.h"
@@ -127,7 +127,7 @@ JET_ERR get_column_info(struct jetState *ntdsState, struct ntdsColumns *accountC
 	};
 	int countColumns = sizeof(columns) / sizeof(columns[0]);
 	for (int i = 0; i < countColumns; i++) {
-		columnError = JetGetTableColumnInfo(ntdsState->jetSession, ntdsState->jetTable, columns[i].name, columns[i].column, sizeof(JET_COLUMNDEF), JET_ColInfo);
+		columnError = JetGetTableColumnInfoA(ntdsState->jetSession, ntdsState->jetTable, columns[i].name, columns[i].column, sizeof(JET_COLUMNDEF), JET_ColInfo);
 		if (columnError != JET_errSuccess) {
 			return columnError;
 		}

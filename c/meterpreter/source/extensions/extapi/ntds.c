@@ -4,14 +4,20 @@
 */
 #include "extapi.h"
 
+
+#ifndef __MINGW32__
 #define JET_VERSION 0x0501
+#else
+#define JET_VERSION 0x0600
+#endif
 
 #include <inttypes.h>
-#include <WinCrypt.h>
+#include <wincrypt.h>
 #include "syskey.h"
 #include "ntds_decrypt.h"
 #include "ntds_jet.h"
 #include "ntds.h"
+
 
 /*! @brief Typedef for the NTDSContext struct. */
 typedef struct

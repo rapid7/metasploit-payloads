@@ -1,5 +1,8 @@
 #ifndef _METERPRETER_SOURCE_EXTENSION_EXTAPI_PRIV_SERVER_NTDS_JET_H
 #define _METERPRETER_SOURCE_EXTENSION_EXTAPI_PRIV_SERVER_NTDS_JET_H
+#ifdef __MINGW32__
+#define JET_VERSION 0x0600
+#endif
 #include <esent.h>
 #pragma comment(lib, "esent")
 

@@ -7,7 +7,7 @@
 #define JET_VERSION 0x0501
 
 #include <inttypes.h>
-#include <WinCrypt.h>
+#include <wincrypt.h>
 #include "syskey.h"
 #include "ntds_decrypt.h"
 #include "ntds_jet.h"
@@ -111,7 +111,11 @@ BOOL decrypt_hash_history(LPBYTE encHashHistory, size_t sizeHistory,
 			return FALSE;
 		}
 		bytes_to_string(decHash, HASH_LENGTH_BYTES, hashString);
+#ifndef __MINGW32__
 		strncpy_s(writeMarker, NULL_TERMINATED_HASH_STRING_LENGTH, hashString, NULL_TERMINATED_HASH_STRING_LENGTH - 1);
+#else
+		strncpy_s((char*)writeMarker, (size_t)NULL_TERMINATED_HASH_STRING_LENGTH, hashString, (size_t)(NULL_TERMINATED_HASH_STRING_LENGTH - 1));
+#endif		
 		historicalHash = historicalHash + HASH_LENGTH_BYTES;
 		writeMarker = writeMarker + NULL_TERMINATED_HASH_STRING_LENGTH;
 	}

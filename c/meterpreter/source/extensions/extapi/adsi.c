@@ -72,7 +72,11 @@ DWORD request_adsi_domain_query(Remote *remote, Packet *packet)
 		// that's bigger!
 		if (maxResults != 0)
 		{
+#ifndef __MINGW32__
 			pageSize = min(pageSize, maxResults);
+#else
+			pageSize = __min(pageSize, maxResults);
+#endif			
 		}
 		dprintf("[EXTAPI ADSI] Page size will be %u", pageSize);
 

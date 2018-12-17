@@ -7,7 +7,7 @@
 #define JET_VERSION 0x0501
 
 #include <inttypes.h>
-#include <WinCrypt.h>
+#include <wincrypt.h>
 #include "syskey.h"
 #include "ntds_decrypt.h"
 #include "ntds_jet.h"
@@ -50,7 +50,7 @@ BOOL get_syskey_component(HKEY lsaHandle, char subkeyName[255], unsigned char *t
 BOOL get_syskey(unsigned char *sysKey)
 {
 	unsigned char tmpSysKey[17];
-	unsigned char interimSysKey[17];
+	char interimSysKey[17];
 	long regStatus;
 	DWORD disposition = 0;
 	HKEY lsaHandle;
@@ -84,7 +84,7 @@ BOOL get_syskey(unsigned char *sysKey)
 	for (int i = 0; i < 16; i++) {
 		interimSysKey[i] = tmpSysKey[syskeyDescrambler[i]];
 	}
-	strncpy_s(sysKey, 17, interimSysKey, 16);
+	strncpy_s((char*)sysKey, 17, interimSysKey, 16);
 	RegCloseKey(lsaHandle);
 	return TRUE;
 }

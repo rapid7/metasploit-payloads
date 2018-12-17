@@ -7,6 +7,14 @@
 #include "clipboard.h"
 #include "clipboard_image.h"
 
+#ifndef ERROR_NOT_CAPABLE
+#define ERROR_NOT_CAPABLE 775
+#endif
+
+#ifndef ERROR_NOTHING_TO_TERMINATE
+#define ERROR_NOTHING_TO_TERMINATE 758
+#endif
+
 /*! @brief The different types of captures that the monitor supports. */
 typedef enum _ClipboadrCaptureType
 {
