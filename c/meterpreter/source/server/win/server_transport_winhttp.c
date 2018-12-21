@@ -64,16 +64,18 @@ static HINTERNET get_request_winhttp(HttpTransportContext *ctx, BOOL isGet, cons
 
 						autoProxyOpts.dwFlags = WINHTTP_AUTOPROXY_AUTO_DETECT;
 						autoProxyOpts.dwAutoDetectFlags = WINHTTP_AUTO_DETECT_TYPE_DHCP | WINHTTP_AUTO_DETECT_TYPE_DNS_A;
+						autoProxyOpts.lpszAutoConfigUrl = 0;
 					}
-					else
+					else if (ieConfig.lpszAutoConfigUrl)
 					{
 						dprintf("[PROXY] IE config set to autodetect with URL %S", ieConfig.lpszAutoConfigUrl);
 
 						autoProxyOpts.dwFlags = WINHTTP_AUTOPROXY_CONFIG_URL;
+						autoProxyOpts.dwAutoDetectFlags = 0;
 						autoProxyOpts.lpszAutoConfigUrl = ieConfig.lpszAutoConfigUrl;
 					}
-
 					autoProxyOpts.fAutoLogonIfChallenged = TRUE;
+
 					if (WinHttpGetProxyForUrl(ctx->internet, ctx->url, &autoProxyOpts, &proxyInfo))
 					{
 						ctx->proxy_for_url = malloc(sizeof(WINHTTP_PROXY_INFO));
