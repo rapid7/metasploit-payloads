@@ -437,6 +437,71 @@ out:
 	return ERROR_SUCCESS;
 }
 
+/*
+* Parse the REG_MULTI_SZ registry value types.
+* A sequence of null-terminated strings, would be splited by \0 and terminated by \0\0 .
+* 
+* Example:
+*	"String1\0String2\0String3\0LastString\0\0" => "String1 String2 String3 LastString"
+* 
+* Reference: https://docs.microsoft.com/en-us/windows/desktop/sysinfo/registry-value-types
+*
+*/
+static wchar_t *reg_multi_sz_parse(char* str, size_t *length)
+{
+	const char *delimter = "\\0";
+	const char *ender = "\\0\\0";
+	*length = 0;
+
+	wchar_t *res = (wchar_t *)calloc(strlen(str) + 1, sizeof(wchar_t));
+
+	char *trun = strstr(str, ender);  // truncated by '\0\0'
+	if (trun)
+	{
+		str[trun - str] = '\0';
+	}
+	
+	// Count the number of delimter
+	int count = 1;  
+	const char *tmp = str;
+	while (tmp = strstr(tmp, delimter)) 
+	{
+		count++;	
+		tmp++;
+	}
+	free((char*)tmp);
+
+	// Split the strings by '\0'
+	char ** string_arr = (char **)malloc(sizeof(char *) * count); 	// store splited strings. 
+	char * ch = strtok(str, delimter); 	// delimter by '\0'
+	int i = 0;
+	while (ch != NULL)
+	{
+		string_arr[i] = (char *)malloc(sizeof(char) * (strlen(ch) + 1));
+		strncpy(string_arr[i], ch, strlen(ch) + 1);		
+		ch = strtok(NULL, delimter);
+		i++;
+	}
+	count = i;	// count splited strings.
+
+	wchar_t *ptr = res;  // temp pointer point to res
+	for (i = 0; i < count; i++)
+	{
+		wchar_t * tmp_buf = calloc(strlen(string_arr[i]) + 1, sizeof(wchar_t));
+		tmp_buf = utf8_to_wchar(string_arr[i]);
+
+		wcsncpy(ptr, tmp_buf, wcslen(tmp_buf) + 1);		// join the splited strings.
+		ptr += wcslen(tmp_buf) + 1;			// append next string to the end of last string, keep the null-terminater.
+
+		(*length) += wcslen(tmp_buf) + 1;			// count of all strings length
+		free(tmp_buf);
+	}	
+
+	free(string_arr);
+
+	return res;
+}
+
 static void set_value(Remote *remote, Packet *packet, HKEY hkey)
 {
 	Packet *response = packet_create_response(packet);
@@ -465,6 +530,10 @@ static void set_value(Remote *remote, Packet *packet, HKEY hkey)
 			case REG_EXPAND_SZ:
 				buf = utf8_to_wchar(valueData.buffer);
 				len = (wcslen(buf) + 1) * sizeof(wchar_t);
+				break;
+			case REG_MULTI_SZ:
+				buf = reg_multi_sz_parse(valueData.buffer, &len);
+				len = (len + 1) * sizeof(wchar_t);
 				break;
 			default:
 				len = valueData.header.length;
