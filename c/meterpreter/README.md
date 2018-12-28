@@ -165,7 +165,7 @@ Things to Remember
 
 Good luck!
 
-  [vs_express]: https://my.visualstudio.com/Downloads?q=visual%20studio%20express%202013%20for%20windows%20desktop
+  [vs_express]: https://my.visualstudio.com/Downloads?q=visual%20studio%202013%20community
   [vs_paid]: https://my.visualstudio.com/Downloads?q=visual%20studio%202013
   [source]: https://github.com/rapid7/meterpreter
   [framework]: https://github.com/rapid7/metasploit-framework
