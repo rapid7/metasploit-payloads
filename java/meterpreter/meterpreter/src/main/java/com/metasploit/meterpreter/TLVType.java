@@ -81,7 +81,7 @@ public interface TLVType {
     public static final int TLV_TYPE_FILE_PATH      = TLVPacket.TLV_META_TYPE_STRING  | 1202;
     public static final int TLV_TYPE_FILE_MODE      = TLVPacket.TLV_META_TYPE_STRING  | 1203;
     public static final int TLV_TYPE_FILE_HASH      = TLVPacket.TLV_META_TYPE_RAW     | 1206;
-    public static final int TLV_TYPE_STAT_BUF       = TLVPacket.TLV_META_TYPE_COMPLEX | 1220;
+    public static final int TLV_TYPE_STAT_BUF       = TLVPacket.TLV_META_TYPE_COMPLEX | 1221;
 
     // Net
     public static final int TLV_TYPE_HOST_NAME       = TLVPacket.TLV_META_TYPE_STRING | 1400;

@@ -4,6 +4,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
 import com.metasploit.meterpreter.Meterpreter;
 import com.metasploit.meterpreter.TLVPacket;
@@ -56,7 +58,7 @@ public class stdapi_fs_stat implements Command {
         dos.writeShort(short_le(65535)); // gid
         dos.writeShort(short_le(0)); // padding
         dos.writeInt(le(0)); // rdev
-        dos.writeInt(le((int) length)); // size
+        dos.writeLong(long_le(length)); // size
         int mtime = (int) (lastModified / 1000);
         dos.writeInt(le(mtime)); // atime
         dos.writeInt(le(mtime)); // mtime
@@ -85,5 +87,16 @@ public class stdapi_fs_stat implements Command {
      */
     private static int short_le(int value) {
         return ((value & 0xff) << 8) | ((value & 0xff00) >> 8);
+    }
+
+    /**
+     * Convert a long to little endian.
+     */
+    private static long long_le(long value) {
+        ByteBuffer buf = ByteBuffer.allocate(8);
+        buf.order(ByteOrder.BIG_ENDIAN);
+        buf.putLong(value);
+        buf.order(ByteOrder.LITTLE_ENDIAN);
+        return buf.getLong(0);
     }
 }
