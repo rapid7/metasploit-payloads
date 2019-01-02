@@ -165,8 +165,8 @@ Things to Remember
 
 Good luck!
 
-  [vs_express]: http://www.microsoft.com/visualstudio/eng/downloads#d-2013-express
-  [vs_paid]: http://www.microsoft.com/visualstudio/eng/downloads#d-2013-editions
+  [vs_express]: https://my.visualstudio.com/Downloads?q=visual%20studio%202013%20community
+  [vs_paid]: https://my.visualstudio.com/Downloads?q=visual%20studio%202013
   [source]: https://github.com/rapid7/meterpreter
   [framework]: https://github.com/rapid7/metasploit-framework
   [build_icon]: https://ci.metasploit.com/buildStatus/icon?job=MeterpreterWin
