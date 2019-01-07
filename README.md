@@ -1,14 +1,15 @@
 metasploit-payloads >
 =====================
 
+Appveyor build status: [![Build Status](https://ci.appveyor.com/api/projects/status/github/rapid7/metasploit-payloads)](https://ci.appveyor.com/project/appveyor-r7/metasploit-payloads)
+
 This is a unified repository for different Metasploit Framework payloads, which merges these repositories:
 
- * [C Windows/Linux Meterpreters][csource]
- * [Java/Android Meterpreters and Payloads][javasource]
- * [Python/PHP Meterpreters][frameworksource]
+ * [C Windows Meterpreter][csource]
+ * [Java and Android Meterpreter and Payloads][javasource]
+ * [Python and PHP Meterpreter][frameworksource]
 
-The Native Linux / Posix payload, Mettle, currently is developed at
-https://github.com/rapid7/mettle (to be moved here at some point?)
+An alternate cross-platform C Meterpreter, called Mettle, is developed at https://github.com/rapid7/mettle
 
 See the individual directories for meterpreter-specific README, build instructions and license details:
 

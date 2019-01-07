@@ -1,0 +1,16 @@
+environment:
+  PATH: C:\msys64\usr\bin;C:\msys64\mingw64\bin;C:\Windows\System32;C:\Windows;%PATH%
+
+  matrix:
+    - GENERATOR: Visual Studio 12 2013
+      CONFIG: Release
+      SHARED_LIBS: ON
+
+before_build:
+  - cd c/meterpreter
+
+build_script:
+  # - call "C:\Program Files\Microsoft SDKs\Windows\v7.1\Bin\SetEnv.cmd" /x64
+  - git submodule update -i
+  - call "C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\vcvarsall.bat" x86_amd64
+  - make.bat
