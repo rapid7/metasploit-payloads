@@ -1,5 +1,0 @@
-language: c
-script: make
-
-notifications:
-  irc: "irc.freenode.org#msfnotify"
