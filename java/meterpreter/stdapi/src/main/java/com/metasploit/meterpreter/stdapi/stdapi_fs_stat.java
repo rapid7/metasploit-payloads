@@ -51,18 +51,17 @@ public class stdapi_fs_stat implements Command {
         ByteArrayOutputStream statbuf = new ByteArrayOutputStream();
         DataOutputStream dos = new DataOutputStream(statbuf);
         dos.writeInt(le(0)); // dev
-        dos.writeShort(short_le(0)); // ino
-        dos.writeShort(short_le(mode)); // mode
-        dos.writeShort(short_le(1)); // nlink
-        dos.writeShort(short_le(65535)); // uid
-        dos.writeShort(short_le(65535)); // gid
-        dos.writeShort(short_le(0)); // padding
+        dos.writeInt(le(mode)); // mode
+        dos.writeInt(le(1)); // nlink
+        dos.writeInt(le(65535)); // uid
+        dos.writeInt(le(65535)); // gid
         dos.writeInt(le(0)); // rdev
+        dos.writeLong(long_le(0)); // ino
         dos.writeLong(long_le(length)); // size
-        int mtime = (int) (lastModified / 1000);
-        dos.writeInt(le(mtime)); // atime
-        dos.writeInt(le(mtime)); // mtime
-        dos.writeInt(le(mtime)); // ctime
+        long mtime = (long) (lastModified / 1000);
+        dos.writeLong(long_le(mtime)); // atime
+        dos.writeLong(long_le(mtime)); // mtime
+        dos.writeLong(long_le(mtime)); // ctime
         dos.writeInt(le(1024)); // blksize
         dos.writeInt(le((int) ((length + 1023) / 1024))); // blocks
         return statbuf.toByteArray();

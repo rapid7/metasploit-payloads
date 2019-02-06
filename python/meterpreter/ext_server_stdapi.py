@@ -671,10 +671,9 @@ def get_stat_buffer(path):
     blocks = 0
     if hasattr(si, 'st_blocks'):
         blocks = si.st_blocks
-    st_buf = struct.pack('<IHHH', si.st_dev, max(min(0xffff, si.st_ino), 0), si.st_mode, si.st_nlink)
-    st_buf += struct.pack('<HHHI', si.st_uid & 0xffff, si.st_gid & 0xffff, 0, rdev)
-    st_buf += struct.pack('<QIII', si.st_size, long(si.st_atime), long(si.st_mtime), long(si.st_ctime))
-    st_buf += struct.pack('<II', blksize, blocks)
+    st_buf = struct.pack('<III', si.st_dev, si.st_mode, si.st_nlink)
+    st_buf += struct.pack('<IIIQ', si.st_uid, si.st_gid, rdev, si.st_ino)
+    st_buf += struct.pack('<QQQQ', si.st_size, si.st_atime, si.st_mtime, si.st_ctime)
     return st_buf
 
 def get_token_user(handle):
