@@ -4,6 +4,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
 import com.metasploit.meterpreter.Meterpreter;
 import com.metasploit.meterpreter.TLVPacket;
@@ -49,18 +51,17 @@ public class stdapi_fs_stat implements Command {
         ByteArrayOutputStream statbuf = new ByteArrayOutputStream();
         DataOutputStream dos = new DataOutputStream(statbuf);
         dos.writeInt(le(0)); // dev
-        dos.writeShort(short_le(0)); // ino
-        dos.writeShort(short_le(mode)); // mode
-        dos.writeShort(short_le(1)); // nlink
-        dos.writeShort(short_le(65535)); // uid
-        dos.writeShort(short_le(65535)); // gid
-        dos.writeShort(short_le(0)); // padding
+        dos.writeInt(le(mode)); // mode
+        dos.writeInt(le(1)); // nlink
+        dos.writeInt(le(65535)); // uid
+        dos.writeInt(le(65535)); // gid
         dos.writeInt(le(0)); // rdev
-        dos.writeInt(le((int) length)); // size
-        int mtime = (int) (lastModified / 1000);
-        dos.writeInt(le(mtime)); // atime
-        dos.writeInt(le(mtime)); // mtime
-        dos.writeInt(le(mtime)); // ctime
+        dos.writeLong(long_le(0)); // ino
+        dos.writeLong(long_le(length)); // size
+        long mtime = (long) (lastModified / 1000);
+        dos.writeLong(long_le(mtime)); // atime
+        dos.writeLong(long_le(mtime)); // mtime
+        dos.writeLong(long_le(mtime)); // ctime
         dos.writeInt(le(1024)); // blksize
         dos.writeInt(le((int) ((length + 1023) / 1024))); // blocks
         return statbuf.toByteArray();
@@ -85,5 +86,16 @@ public class stdapi_fs_stat implements Command {
      */
     private static int short_le(int value) {
         return ((value & 0xff) << 8) | ((value & 0xff00) >> 8);
+    }
+
+    /**
+     * Convert a long to little endian.
+     */
+    private static long long_le(long value) {
+        ByteBuffer buf = ByteBuffer.allocate(8);
+        buf.order(ByteOrder.BIG_ENDIAN);
+        buf.putLong(value);
+        buf.order(ByteOrder.LITTLE_ENDIAN);
+        return buf.getLong(0);
     }
 }

@@ -7,6 +7,8 @@
 #define FS_SEPARATOR "\\"
 #define FS_MAX_PATH  32768
 
+#pragma pack(push, 1)
+
 /*
  * Stat structures on Windows and various Unixes are all slightly different.
  * Use this as a means of standardization so the client has some hope of
@@ -14,22 +16,19 @@
  */
 struct meterp_stat {
     uint32_t st_dev;
-    uint16_t st_ino;
-    uint16_t st_mode;
-    uint16_t st_nlink;
-    uint16_t st_uid;
-    uint16_t st_gid;
-    uint16_t pad;
+    uint32_t st_mode;
+    uint32_t st_nlink;
+    uint32_t st_uid;
+    uint32_t st_gid;
     uint32_t st_rdev;
-    uint32_t st_size;
-    /*
-     * These are always 64-bits on Windows and usually 32-bits on Linux.  Force
-     * them to be the same size everywhere.
-     */
+    uint64_t st_ino;
+    uint64_t st_size;
     uint64_t st_atime;
     uint64_t st_mtime;
     uint64_t st_ctime;
 };
+
+#pragma pack(pop)
 
 typedef void (*fs_ls_cb_t)(void *arg, char *name, char *short_name, char *path);
 

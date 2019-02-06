@@ -364,7 +364,7 @@ TLV_TYPE_MOUNT_SPACE_TOTAL     = TLV_META_TYPE_QWORD   | 1211
 TLV_TYPE_MOUNT_SPACE_FREE      = TLV_META_TYPE_QWORD   | 1212
 TLV_TYPE_MOUNT_UNCPATH         = TLV_META_TYPE_STRING  | 1213
 
-TLV_TYPE_STAT_BUF              = TLV_META_TYPE_COMPLEX | 1220
+TLV_TYPE_STAT_BUF              = TLV_META_TYPE_COMPLEX | 1221
 
 TLV_TYPE_SEARCH_RECURSE        = TLV_META_TYPE_BOOL    | 1230
 TLV_TYPE_SEARCH_GLOB           = TLV_META_TYPE_STRING  | 1231
@@ -671,10 +671,9 @@ def get_stat_buffer(path):
     blocks = 0
     if hasattr(si, 'st_blocks'):
         blocks = si.st_blocks
-    st_buf = struct.pack('<IHHH', si.st_dev, max(min(0xffff, si.st_ino), 0), si.st_mode, si.st_nlink)
-    st_buf += struct.pack('<HHHI', si.st_uid & 0xffff, si.st_gid & 0xffff, 0, rdev)
-    st_buf += struct.pack('<IIII', si.st_size, long(si.st_atime), long(si.st_mtime), long(si.st_ctime))
-    st_buf += struct.pack('<II', blksize, blocks)
+    st_buf = struct.pack('<III', si.st_dev, si.st_mode, si.st_nlink)
+    st_buf += struct.pack('<IIIQ', si.st_uid, si.st_gid, rdev, si.st_ino)
+    st_buf += struct.pack('<QQQQ', si.st_size, si.st_atime, si.st_mtime, si.st_ctime)
     return st_buf
 
 def get_token_user(handle):
