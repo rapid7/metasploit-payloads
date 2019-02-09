@@ -38,6 +38,7 @@ set(HEADER_DIR_12 ../../source/extensions/kiwi/mimikatz/modules)
 set(HEADER_DIR_13 ../../source/extensions/kiwi/mimikatz/modules/rpc)
 set(HEADER_DIR_14 ../../source/ReflectiveDLLInjection/common)
 set(HEADER_DIR_15 ../../source/extensions/kiwi/mimikatz/inc/)
+set(HEADER_DIR_16 ../../source/extra_includes)
 
 ############## CMake Project ################
 #        The main options of project        #
@@ -53,13 +54,17 @@ endif(NOT CMAKE_BUILD_TYPE)
 
 # Definition of Macros
 add_definitions(
-   -D_POWERKATZ 
-   -DNDEBUG 
-   -D_WINDOWS 
-   -D_USRDLL 
-   -DEXT_SERVER_KIWI_EXPORTS 
+   -D__GNUC__
+   -D_WIN32_WINNT=0x0602
+   -D__format_string=__format_string
+   -D_POWERKATZ
+   -DNDEBUG
+   -D_WINDOWS
+   -D_USRDLL
+   -DEXT_SERVER_KIWI_EXPORTS
    -DUNICODE
    -D_UNICODE
+   -D__try
    -D__in=SAL__in
    -D__in_z=SAL__in_z
    -D__deref_out_bcount_full=SAL__deref_out_bcount_full
@@ -109,9 +114,9 @@ endif()
 # Add Dependencies to project.                    #
 ###################################################
 
-option(BUILD_DEPENDS 
-   "Build other CMake project." 
-   OFF 
+option(BUILD_DEPENDS
+   "Build other CMake project."
+   OFF
 )
 
 # Dependencies : disable BUILD_DEPENDS to link with lib already build.
@@ -120,6 +125,7 @@ if(BUILD_DEPENDS)
    add_subdirectory(../ReflectiveDLLInjection ${OUTPUT_RELEASE})
    add_subdirectory(../metsrv ${OUTPUT_RELEASE})
 else()
+   add_subdirectory(../metsrv ${OUTPUT_RELEASE})
    link_directories(${OUTPUT_RELEASE})
 endif()
 
@@ -132,19 +138,21 @@ IF("${GNU_HOST}" STREQUAL "")
     SET(GNU_HOST x86_64-w64-mingw32)
 ENDIF()
 # Prefix detection only works with compiler id "GNU"
-CMAKE_FORCE_C_COMPILER(${GNU_HOST}-gcc GNU)
+#CMAKE_FORCE_C_COMPILER(clang GNU)
+#CMAKE_FORCE_C_COMPILER(${GNU_HOST}-gcc GNU)
 # CMake doesn't automatically look for prefixed 'windres', do it manually:
-SET(CMAKE_RC_COMPILER ${GNU_HOST}-windres)
-
-
+#SET(CMAKE_RC_COMPILER ${GNU_HOST}-windres)
+ set( _MSC_VER 1910 )
+SET(CMAKE_C_COMPILER clang)
 if(MSVC)
    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /W3 /EHsc")
    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /W3 /Oi /EHsc")
 endif(MSVC)
 if(NOT MSVC)
-   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+ set(CMAKE_LIBRARY_ARCHITECTURE x64 CACHE STRING "" FORCE)
+ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -target x86_64-w64-windows-gnu -I/usr/x86_64-w64-mingw32/include/ -L/usr/lib/gcc/x86_64-w64-mingw32/8.2.0/include/ -L/usr/x86_64-w64-mingw32/lib -Wfatal-errors -fmsc-version=${_MSC_VER} -fms-extensions -fms-compatibility -fdelayed-template-parsing ")
    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-       set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
+       set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -stdlib=libc++")
    endif()
 endif(NOT MSVC)
 
@@ -159,7 +167,8 @@ file(GLOB SRC_FILES
     ${CPP_DIR_4}/*.c
     ${CPP_DIR_5}/*.c
     ${CPP_DIR_6}/*.c
-    ${CPP_DIR_7}/*.c
+    ${CPP_DIR_7}/kuhl_m_rpc.c
+    #${CPP_DIR_7}/kuhl_m_rpc.c
     ${CPP_DIR_8}/*.c
     ${CPP_DIR_9}/*.c
     ${CPP_DIR_10}/*.c
@@ -181,6 +190,8 @@ file(GLOB SRC_FILES
     ${HEADER_DIR_13}/*.h
 )
 
+list(REMOVE_ITEM SRC_FILES "${CPP_DIR_7}/kuhl_m_dpapi.c")
+ set( CMAKE_C_COMPILE_OPTIONS_PIC "" ) # no -fPIC in windows land
 # Add library to build.
 add_library(${PROJECT_NAME} SHARED
    ${SRC_FILES}
@@ -201,12 +212,13 @@ include_directories( ${HEADER_DIR_12} )
 include_directories( ${HEADER_DIR_13} )
 include_directories( ${HEADER_DIR_14} )
 include_directories( ${HEADER_DIR_15} )
+include_directories( ${HEADER_DIR_16} )
 
 
 
 # Link with other dependencies.
 #target_link_libraries(${PROJECT_NAME} backcompat metsrv ReflectiveDLLInjection )
-target_link_libraries(${PROJECT_NAME} metsrv ReflectiveDLLInjection version ncrypt fltlib cabinet userenv Winscard advapi32 crypt32 cryptdll dnsapi msxml2 netapi32 ntdsapi ole32 oleaut32 rpcrt4 shlwapi samlib secur32 shell32 user32 hid setupapi wldap32 advapi32.hash ntdll.min msasn1.min netapi32.min winsta psapi advapi32 user32 secur32 crypt32 shlwapi wtsapi32 )
+target_link_libraries(${PROJECT_NAME} metsrv ReflectiveDLLInjection version ncrypt fltlib cabinet userenv winscard  crypt32 cryptdll dnsapi netapi32 ntdsapi ole32 oleaut32 rpcrt4 shlwapi samlib secur32 shell32 user32 hid setupapi wldap32 winsta psapi wtsapi32 )
 if(MSVC)
    target_link_libraries(${PROJECT_NAME} version.lib ncrypt.lib fltlib.lib cabinet.lib userenv.lib Winscard.lib advapi32.lib crypt32.lib cryptdll.lib dnsapi.lib msxml2.lib netapi32.lib ntdsapi.lib ole32.lib oleaut32.lib rpcrt4.lib shlwapi.lib samlib.lib secur32.lib shell32.lib user32.lib hid.lib setupapi.lib wldap32.lib advapi32.hash.lib ntdll.min.lib msasn1.min.lib netapi32.min.lib winsta.lib backcompat.lib metsrv.lib psapi.lib advapi32.lib user32.lib secur32.lib crypt32.lib shlwapi.lib wtsapi32.lib )
 endif(MSVC)
