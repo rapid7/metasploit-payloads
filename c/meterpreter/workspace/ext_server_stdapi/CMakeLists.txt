@@ -187,7 +187,7 @@ include_directories( ${HEADER_DIR_12} )
 include_directories( ${HEADER_DIR_13} )
 include_directories( ${HEADER_DIR_14} )
 include_directories( ${HEADER_DIR_15} )
-#include_directories( ${HEADER_DIR_16} ) #ReflectiveDLLInjection
+include_directories( ${HEADER_DIR_16} ) #ReflectiveDLLInjection
 include_directories( ${HEADER_DIR_17} )
 include_directories( ${HEADER_DIR_18} )
 
