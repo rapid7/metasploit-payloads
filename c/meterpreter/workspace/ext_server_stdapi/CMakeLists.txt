@@ -7,7 +7,7 @@ cmake_minimum_required(VERSION 3.0.0 FATAL_ERROR)
 set(PROJECT_NAME ext_server_stdapi)
 # Output Variables
 set(OUTPUT_DEBUG ../../output/Debug/)
-set(OUTPUT_RELEASE ../../output/Release/)
+set(OUTPUT_RELEASE ../../../output/Release/)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${OUTPUT_RELEASE})
 
 # Folders files
@@ -60,6 +60,7 @@ endif(NOT CMAKE_BUILD_TYPE)
 
 # Definition of Macros
 add_definitions(
+   -D__GNUC__
    -DNDEBUG 
    -D__in=SAL__in
    -D__inout=SAL__inout
@@ -95,13 +96,14 @@ option(BUILD_DEPENDS
 
 # Dependencies : disable BUILD_DEPENDS to link with lib already build.
 if(BUILD_DEPENDS)
-   add_subdirectory(../backcompat ${OUTPUT_RELEASE})
-   add_subdirectory(../common ${OUTPUT_RELEASE})
-   add_subdirectory(../ReflectiveDLLInjection ${OUTPUT_RELEASE})
-   add_subdirectory(../metsrv ${OUTPUT_RELEASE})
+   #add_subdirectory(../backcompat ${OUTPUT_RELEASE})
+   add_subdirectory(../../common ${OUTPUT_RELEASE})
+   add_subdirectory(../../ReflectiveDLLInjection ${OUTPUT_RELEASE})
+   add_subdirectory(../../metsrv ${OUTPUT_RELEASE})
 else()
-   add_subdirectory(../metsrv ${OUTPUT_RELEASE})
+   #add_subdirectory(../metsrv ${OUTPUT_RELEASE})
    link_directories(${OUTPUT_RELEASE})
+   link_directories(../../output/Release)
 endif()
 
 ################# Flags ################
@@ -113,15 +115,20 @@ IF("${GNU_HOST}" STREQUAL "")
     SET(GNU_HOST x86_64-w64-mingw32)
 ENDIF()
 # Prefix detection only works with compiler id "GNU"
-CMAKE_FORCE_C_COMPILER(${GNU_HOST}-gcc GNU)
+#CMAKE_FORCE_C_COMPILER(${GNU_HOST}-gcc GNU)
 # CMake doesn't automatically look for prefixed 'windres', do it manually:
 SET(CMAKE_RC_COMPILER ${GNU_HOST}-windres)
+set( _MSC_VER 1910 )
+SET(CMAKE_C_COMPILER clang)
 
 if(MSVC)
    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /W3 /EHsc")
    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /W3 /EHsc")
 endif(MSVC)
 if(NOT MSVC)
+set(CMAKE_LIBRARY_ARCHITECTURE x64 CACHE STRING "" FORCE)
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -target x86_64-w64-windows-gnu -I/usr/x86_64-w64-mingw32/include/ -L/usr/lib/gcc/x86_64-w64-mingw32/8.2.0/include/ -L/usr/x86_64-w64-mingw32/lib -Wfatal-errors -fmsc-version=${_MSC_VER} -fms-extensions -fms-compatibility -fdelayed-template-parsing ")
+
    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
        set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
@@ -163,21 +170,6 @@ file(GLOB SRC_FILES
     ${CPP_DIR_14}/*.cpp
     ${CPP_DIR_15}/*.c
     ${CPP_DIR_15}/*.cpp
-    ${HEADER_DIR_1}/*.h
-    ${HEADER_DIR_2}/*.h
-    ${HEADER_DIR_3}/*.h
-    ${HEADER_DIR_4}/*.h
-    ${HEADER_DIR_5}/*.h
-    ${HEADER_DIR_6}/*.h
-    ${HEADER_DIR_7}/*.h
-    ${HEADER_DIR_8}/*.h
-    ${HEADER_DIR_9}/*.h
-    ${HEADER_DIR_10}/*.h
-    ${HEADER_DIR_11}/*.h
-    ${HEADER_DIR_12}/*.h
-    ${HEADER_DIR_13}/*.h
-    ${HEADER_DIR_14}/*.h
-    ${HEADER_DIR_15}/*.h
 )
 
 include_directories( ${HEADER_DIR_1} )
@@ -195,10 +187,11 @@ include_directories( ${HEADER_DIR_12} )
 include_directories( ${HEADER_DIR_13} )
 include_directories( ${HEADER_DIR_14} )
 include_directories( ${HEADER_DIR_15} )
-include_directories( ${HEADER_DIR_16} )
+#include_directories( ${HEADER_DIR_16} ) #ReflectiveDLLInjection
 include_directories( ${HEADER_DIR_17} )
 include_directories( ${HEADER_DIR_18} )
 
+set( CMAKE_C_COMPILE_OPTIONS_PIC "" ) 
 # Add library to build.
 add_library(${PROJECT_NAME} SHARED
    ${SRC_FILES}
@@ -206,7 +199,7 @@ add_library(${PROJECT_NAME} SHARED
 
 # Link with other dependencies.
 #target_link_libraries(${PROJECT_NAME} backcompat common metsrv ReflectiveDLLInjection )
-target_link_libraries(${PROJECT_NAME} common metsrv ReflectiveDLLInjection psapi winmm iphlpapi shlwapi ws2_32 odbc32 odbccp32 jpeg )
+target_link_libraries(${PROJECT_NAME}  metsrv psapi winmm iphlpapi shlwapi ws2_32 odbc32 odbccp32 )
 if(MSVC)
    target_link_libraries(${PROJECT_NAME} psapi.lib winmm.lib backcompat.lib iphlpapi.lib shlwapi.lib ws2_32.lib odbc32.lib odbccp32.lib metsrv.lib jpeg.lib )
 endif(MSVC)

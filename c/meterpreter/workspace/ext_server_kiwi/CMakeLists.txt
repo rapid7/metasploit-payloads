@@ -190,7 +190,18 @@ file(GLOB SRC_FILES
     ${HEADER_DIR_13}/*.h
 )
 
+#CPP_DIR_7 is mimikatz/mimikatz/modules
+#CPP_DIR_12 is mimikatz/modules
 list(REMOVE_ITEM SRC_FILES "${CPP_DIR_7}/kuhl_m_dpapi.c")
+list(REMOVE_ITEM SRC_FILES "${CPP_DIR_7}/kuhl_m_acr.c")
+list(REMOVE_ITEM SRC_FILES "${CPP_DIR_7}/kuhl_m_rdm.c")
+list(REMOVE_ITEM SRC_FILES "${CPP_DIR_7}/kuhl_m_sr98.c")
+list(REMOVE_ITEM SRC_FILES "${CPP_DIR_12}/kull_m_acr.c")
+list(REMOVE_ITEM SRC_FILES "${CPP_DIR_12}/kull_m_hid.c")
+list(REMOVE_ITEM SRC_FILES "${CPP_DIR_12}/kull_m_pipe.c")
+list(REMOVE_ITEM SRC_FILES "${CPP_DIR_12}/kull_m_pn532.c")
+list(REMOVE_ITEM SRC_FILES "${CPP_DIR_12}/kull_m_rdm.c")
+
  set( CMAKE_C_COMPILE_OPTIONS_PIC "" ) # no -fPIC in windows land
 # Add library to build.
 add_library(${PROJECT_NAME} SHARED
@@ -218,7 +229,7 @@ include_directories( ${HEADER_DIR_16} )
 
 # Link with other dependencies.
 #target_link_libraries(${PROJECT_NAME} backcompat metsrv ReflectiveDLLInjection )
-target_link_libraries(${PROJECT_NAME} metsrv ReflectiveDLLInjection version ncrypt fltlib cabinet userenv winscard  crypt32 cryptdll dnsapi netapi32 ntdsapi ole32 oleaut32 rpcrt4 shlwapi samlib secur32 shell32 user32 hid setupapi wldap32 winsta psapi wtsapi32 )
+target_link_libraries(${PROJECT_NAME} common metsrv version ncrypt fltlib cabinet userenv winscard  crypt32 cryptdll dnsapi netapi32 ntdsapi ole32 oleaut32 rpcrt4 shlwapi samlib secur32 shell32 user32 hid setupapi wldap32 winsta psapi wtsapi32 ntdll )
 if(MSVC)
    target_link_libraries(${PROJECT_NAME} version.lib ncrypt.lib fltlib.lib cabinet.lib userenv.lib Winscard.lib advapi32.lib crypt32.lib cryptdll.lib dnsapi.lib msxml2.lib netapi32.lib ntdsapi.lib ole32.lib oleaut32.lib rpcrt4.lib shlwapi.lib samlib.lib secur32.lib shell32.lib user32.lib hid.lib setupapi.lib wldap32.lib advapi32.hash.lib ntdll.min.lib msasn1.min.lib netapi32.min.lib winsta.lib backcompat.lib metsrv.lib psapi.lib advapi32.lib user32.lib secur32.lib crypt32.lib shlwapi.lib wtsapi32.lib )
 endif(MSVC)
