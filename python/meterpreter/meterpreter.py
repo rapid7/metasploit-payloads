@@ -337,7 +337,7 @@ def packet_enum_tlvs(pkt, tlv_type=None):
                 pass
             yield {'type': tlv[1], 'length': tlv[0], 'value': val}
         offset += tlv[0]
-    raise StopIteration()
+    return
 
 @export
 def packet_get_tlv(pkt, tlv_type):
