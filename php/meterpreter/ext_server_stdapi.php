@@ -21,7 +21,7 @@ define("TLV_TYPE_FILE_MODE",           TLV_META_TYPE_STRING  | 1203);
 define("TLV_TYPE_FILE_SIZE",           TLV_META_TYPE_UINT    | 1204);
 define("TLV_TYPE_FILE_HASH",           TLV_META_TYPE_RAW     | 1206);
 
-define("TLV_TYPE_STAT_BUF",            TLV_META_TYPE_COMPLEX | 1220);
+define("TLV_TYPE_STAT_BUF32",          TLV_META_TYPE_COMPLEX | 1220);
 
 define("TLV_TYPE_SEARCH_RECURSE",      TLV_META_TYPE_BOOL    | 1230);
 define("TLV_TYPE_SEARCH_GLOB",         TLV_META_TYPE_STRING  | 1231);
@@ -287,6 +287,30 @@ function canonicalize_path($path) {
 }
 }
 
+if (!function_exists('add_stat_buf')) {
+function add_stat_buf($path) {
+    $st = stat($path);
+    if ($st) {
+        $st_buf = "";
+        $st_buf .= pack("V", $st['dev']);
+        $st_buf .= pack("v", $st['ino']);
+        $st_buf .= pack("v", $st['mode']);
+        $st_buf .= pack("v", 0);
+        $st_buf .= pack("v", $st['nlink']);
+        $st_buf .= pack("v", $st['uid']);
+        $st_buf .= pack("v", $st['gid']);
+        $st_buf .= pack("V", $st['rdev']);
+        $st_buf .= pack("V", $st['size']);
+        $st_buf .= pack("V", $st['ctime']);
+        $st_buf .= pack("V", $st['atime']);
+        $st_buf .= pack("V", $st['mtime']);
+        $st_buf .= pack("V", $st['blksize']);
+        $st_buf .= pack("V", $st['blocks']);
+        return create_tlv(TLV_TYPE_STAT_BUF32, $st_buf);
+    }
+    return false;
+}
+}
 
 #
 # Need to nail down what this should actually do.  Ruby's File.expand_path is
@@ -447,23 +471,9 @@ function stdapi_fs_ls($req, &$pkt) {
                 #my_print("Adding file $file");
                 packet_add_tlv($pkt, create_tlv(TLV_TYPE_FILE_NAME, $file));
                 packet_add_tlv($pkt, create_tlv(TLV_TYPE_FILE_PATH, $path . DIRECTORY_SEPARATOR . $file));
-                $st = stat($path . DIRECTORY_SEPARATOR . $file);
-                $st_buf = "";
-                $st_buf .= pack("V", $st['dev']);
-                $st_buf .= pack("V", $st['ino']);
-                $st_buf .= pack("V", $st['mode']);
-                $st_buf .= pack("V", $st['nlink']);
-                $st_buf .= pack("V", $st['uid']);
-                $st_buf .= pack("V", $st['gid']);
-                $st_buf .= pack("V", $st['rdev']);
-                $st_buf .= pack("V", 0);
-                $st_buf .= pack("V", $st['size']);
-                $st_buf .= pack("V", $st['atime']);
-                $st_buf .= pack("V", $st['mtime']);
-                $st_buf .= pack("V", $st['ctime']);
-                $st_buf .= pack("V", $st['blksize']);
-                $st_buf .= pack("V", $st['blocks']);
-                packet_add_tlv($pkt, create_tlv(TLV_TYPE_STAT_BUF, $st_buf));
+                $st_buf = add_stat_buf($path . DIRECTORY_SEPARATOR . $file);
+                if ($st_buf)
+                    packet_add_tlv($pkt, $st_buf);
             }
         }
         closedir($dir_handle);
@@ -488,22 +498,9 @@ function stdapi_fs_stat($req, &$pkt) {
     my_print("doing stat");
     $path_tlv = packet_get_tlv($req, TLV_TYPE_FILE_PATH);
     $path = canonicalize_path($path_tlv['value']);
-
-    $st = stat($path);
-    if ($st) {
-        $st_buf = "";
-        $st_buf .= pack("V", $st['dev']);
-        $st_buf .= pack("V", $st['mode']);
-        $st_buf .= pack("V", $st['nlink']);
-        $st_buf .= pack("V", $st['uid']);
-        $st_buf .= pack("V", $st['gid']);
-        $st_buf .= pack("V", $st['rdev']);
-        $st_buf .= pack("P", $st['ino']);
-        $st_buf .= pack("P", $st['size']);
-        $st_buf .= pack("P", $st['atime']);
-        $st_buf .= pack("P", $st['mtime']);
-        $st_buf .= pack("P", $st['ctime']);
-        packet_add_tlv($pkt, create_tlv(TLV_TYPE_STAT_BUF, $st_buf));
+    $st_buf = add_stat_buf($path);
+    if ($st_buf) {
+        packet_add_tlv($pkt, $st_buf);
         return ERROR_SUCCESS;
     } else {
         return ERROR_FAILURE;
