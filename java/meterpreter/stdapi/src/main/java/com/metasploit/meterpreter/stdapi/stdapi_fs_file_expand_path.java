@@ -15,6 +15,9 @@ public class stdapi_fs_file_expand_path implements Command {
         if (path.equals("%COMSPEC%")) {
             response.add(TLVType.TLV_TYPE_FILE_PATH, getShellPath());
             return ERROR_SUCCESS;
+        } else if (path.equals("%TEMP%")) {
+            response.add(TLVType.TLV_TYPE_FILE_PATH, System.getenv("TEMP"));
+            return ERROR_SUCCESS;
         } else {
             return NotYetImplementedCommand.INSTANCE.execute(meterpreter, request, response);
         }
