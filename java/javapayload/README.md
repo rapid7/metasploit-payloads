@@ -80,7 +80,7 @@ The number of java processes that should be spawned. `0` will run the
 payload inside the original process, `1` will spawn once (to continue
 running when the original process terminates), and `2` will spawn twice
 (on certain popular operating systems it is impossible to obtain parent
-process informaion if the parent process has already died).
+process information if the parent process has already died).
 
 ### `Executable`(`=`)
 
