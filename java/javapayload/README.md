@@ -38,7 +38,7 @@ Alternatively, the main class can of course be called from other
 classes, like `metasploit.Payload.main(null);`, as the arguments
 parameter is ignored. Note that in a sandboxed environment the caller
 needs to have all permissions, and also the *Payload* class has to be
-loaded with all permissions. In case there is untrusted code on the
+loaded with all permissions. In case there is untrusted code in the
 stack trace (but the direct caller has all permissions), the call has to
 be wrapped in a
 [doPrivileged](http://download.oracle.com/javase/1.4.2/docs/api/java/security/AccessController.html#doPrivileged\(java.security.PrivilegedExceptionAction\))
