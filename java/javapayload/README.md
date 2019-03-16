@@ -7,7 +7,7 @@ net>`*
 
 The [JavaPayload](http://schierlm.users.sourceforge.net/JavaPayload/)s
 contain useful payloads written in pure Java. But they assume that the
-attacker has a Java VM on his machine, as the the builders and stage
+attacker has a Java VM on their machine, as the builders and stage
 handlers are written in Java. In addition, when creating a new payload
 class that should reside in a signed jar, the jar has to be re-signed as
 classes have changed.
@@ -38,7 +38,7 @@ Alternatively, the main class can of course be called from other
 classes, like `metasploit.Payload.main(null);`, as the arguments
 parameter is ignored. Note that in a sandboxed environment the caller
 needs to have all permissions, and also the *Payload* class has to be
-loaded with all permissions. In case there is untrusted code on the
+loaded with all permissions. In case there is untrusted code in the
 stack trace (but the direct caller has all permissions), the call has to
 be wrapped in a
 [doPrivileged](http://download.oracle.com/javase/1.4.2/docs/api/java/security/AccessController.html#doPrivileged\(java.security.PrivilegedExceptionAction\))
@@ -80,7 +80,7 @@ The number of java processes that should be spawned. `0` will run the
 payload inside the original process, `1` will spawn once (to continue
 running when the original process terminates), and `2` will spawn twice
 (on certain popular operating systems it is impossible to obtain parent
-process informaion if the parent process has already died).
+process information if the parent process has already died).
 
 ### `Executable`(`=`)
 
