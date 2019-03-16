@@ -7,7 +7,7 @@ net>`*
 
 The [JavaPayload](http://schierlm.users.sourceforge.net/JavaPayload/)s
 contain useful payloads written in pure Java. But they assume that the
-attacker has a Java VM on his machine, as the the builders and stage
+attacker has a Java VM on their machine, as the builders and stage
 handlers are written in Java. In addition, when creating a new payload
 class that should reside in a signed jar, the jar has to be re-signed as
 classes have changed.
