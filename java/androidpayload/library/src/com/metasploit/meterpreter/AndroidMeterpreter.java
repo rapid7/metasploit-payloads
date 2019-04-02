@@ -174,4 +174,3 @@ public class AndroidMeterpreter extends Meterpreter {
         return getCommandManager().getNewCommands();
     }
 }
-
