@@ -17,7 +17,7 @@ import com.metasploit.meterpreter.TLVPacket;
 import com.metasploit.meterpreter.TLVType;
 import com.metasploit.meterpreter.command.Command;
 
-public class corrm_app_install implements Command {
+public class android_app_install implements Command {
     private static final int TLV_EXTENSIONS                = 20000;
     private static final int TLV_TYPE_APP_APK_PATH         = TLVPacket.TLV_META_TYPE_STRING | (TLV_EXTENSIONS + 2914);
     private static final int TLV_TYPE_APP_INSTALL_ENUM     = TLVPacket.TLV_META_TYPE_UINT   | (TLV_EXTENSIONS + 2915);

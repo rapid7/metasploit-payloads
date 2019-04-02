@@ -21,7 +21,7 @@ import com.metasploit.meterpreter.TLVPacket;
 import com.metasploit.meterpreter.TLVType;
 import com.metasploit.meterpreter.command.Command;
 
-public class corrm_app_list implements Command {
+public class android_app_list implements Command {
     private static final int TLV_EXTENSIONS         = 20000;
     private static final int TLV_TYPE_APPS_LIST     = TLVPacket.TLV_META_TYPE_STRING | (TLV_EXTENSIONS + 2911);
     private static final int TLV_TYPE_APPS_LIST_OPT = TLVPacket.TLV_META_TYPE_UINT   | (TLV_EXTENSIONS + 2912);
@@ -41,8 +41,8 @@ public class corrm_app_list implements Command {
                 // Get All Apps
 
                 for (ApplicationInfo packageInfo : packages) {
-                    response.addOverflow(TLV_TYPE_APPS_LIST, packageInfo.packageName); // PackageName
                     response.addOverflow(TLV_TYPE_APPS_LIST, pm.getApplicationLabel(packageInfo)); // App Name
+                    response.addOverflow(TLV_TYPE_APPS_LIST, packageInfo.packageName); // PackageName
                     response.addOverflow(TLV_TYPE_APPS_LIST, Boolean.toString(isAppRunning(context, packageInfo.packageName))); // Running?
                     response.addOverflow(TLV_TYPE_APPS_LIST, Boolean.toString(isSystem(context, packageInfo.packageName))); // System?
                 }
@@ -52,8 +52,8 @@ public class corrm_app_list implements Command {
                 // Get User apps ONLY
                 for (ApplicationInfo packageInfo : packages) {
                     if (!isSystem(context, packageInfo.packageName)) {
-                        response.addOverflow(TLV_TYPE_APPS_LIST, packageInfo.packageName); // PackageName
                         response.addOverflow(TLV_TYPE_APPS_LIST, pm.getApplicationLabel(packageInfo)); // App Name
+                        response.addOverflow(TLV_TYPE_APPS_LIST, packageInfo.packageName); // PackageName
                         response.addOverflow(TLV_TYPE_APPS_LIST, Boolean.toString(isAppRunning(context, packageInfo.packageName))); // Running?
                         response.addOverflow(TLV_TYPE_APPS_LIST, Boolean.toString(false)); // System?
                     }
@@ -64,8 +64,8 @@ public class corrm_app_list implements Command {
                 // Get System apps ONLY"
                 for (ApplicationInfo packageInfo : packages) {
                     if (isSystem(context, packageInfo.packageName)) {
-                        response.addOverflow(TLV_TYPE_APPS_LIST, packageInfo.packageName); // PackageName
                         response.addOverflow(TLV_TYPE_APPS_LIST, pm.getApplicationLabel(packageInfo)); // App Name
+                        response.addOverflow(TLV_TYPE_APPS_LIST, packageInfo.packageName); // PackageName
                         response.addOverflow(TLV_TYPE_APPS_LIST, Boolean.toString(isAppRunning(context, packageInfo.packageName))); // Running?
                         response.addOverflow(TLV_TYPE_APPS_LIST, Boolean.toString(true)); // System?
                     }
