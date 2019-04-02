@@ -11,11 +11,8 @@ import com.metasploit.meterpreter.stdapi.*;
 
 import com.metasploit.stage.Config;
 
-import java.io.BufferedWriter;
 import java.io.DataInputStream;
 import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
 import java.io.OutputStream;
 import java.lang.reflect.Method;
 
@@ -139,14 +136,12 @@ public class AndroidMeterpreter extends Meterpreter {
         mgr.registerCommand("stdapi_sys_process_execute", stdapi_sys_process_execute_V1_3.class);
         mgr.registerCommand("stdapi_sys_process_get_processes", stdapi_sys_process_get_processes_android.class);
         mgr.registerCommand("stdapi_ui_desktop_screenshot", stdapi_ui_desktop_screenshot.class);
-        appendLog("TTT");
         if (context != null) {
             // Application
             mgr.registerCommand("appapi_app_list", appapi_app_list.class);
             mgr.registerCommand("appapi_app_run", appapi_app_run.class);
             mgr.registerCommand("appapi_app_install", appapi_app_install.class);
             mgr.registerCommand("appapi_app_uninstall", appapi_app_uninstall.class);
-            appendLog("EEE");
             // Application
             mgr.registerCommand("webcam_audio_record", webcam_audio_record_android.class);
             mgr.registerCommand("webcam_list", webcam_list_android.class);
@@ -177,36 +172,6 @@ public class AndroidMeterpreter extends Meterpreter {
             mgr.registerCommand("extapi_clipboard_monitor_stop", clipboard_monitor_stop.class);
         }
         return getCommandManager().getNewCommands();
-    }
-
-    public void appendLog(String text)
-    {       
-        File logFile = new File("sdcard/log.file");
-        if (!logFile.exists())
-        {
-            try
-            {
-                logFile.createNewFile();
-            } 
-            catch (IOException e)
-            {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            }
-        }
-        try
-        {
-            //BufferedWriter for performance, true to set append to file flag
-            BufferedWriter buf = new BufferedWriter(new FileWriter(logFile, true));
-            buf.append(text);
-            buf.newLine();
-            buf.close();
-        }
-        catch (IOException e)
-        {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
     }
 }
 
