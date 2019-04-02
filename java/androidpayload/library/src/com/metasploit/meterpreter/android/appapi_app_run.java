@@ -17,7 +17,7 @@ import com.metasploit.meterpreter.TLVPacket;
 import com.metasploit.meterpreter.TLVType;
 import com.metasploit.meterpreter.command.Command;
 
-public class android_app_run implements Command {
+public class appapi_app_run implements Command {
     private static final int TLV_EXTENSIONS                = 20000;
     private static final int TLV_TYPE_APP_PACKAGE_NAME     = TLVPacket.TLV_META_TYPE_STRING | (TLV_EXTENSIONS + 2913);
     private static final int TLV_TYPE_APP_RUN_ENUM         = TLVPacket.TLV_META_TYPE_UINT   | (TLV_EXTENSIONS + 2916);
