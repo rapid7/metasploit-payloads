@@ -61,10 +61,11 @@ disabled).
 
 If the path to your metasploit framework repository is not
 `../../metasploit-framework`, but for example
-`/opt/metasploit-framework/framework`, set the deploy.path directive like so:
+`/usr/share/metasploit-framework/` (Kali default), set the deploy.path directive like so
+(make sure to include enough "../" as deploy.path is relative and not absolute):
 
 ```
-mvn -D deploy.path=/opt/metasploit-framework/framework -P deploy package
+mvn -D deploy.path=../../../../../../../../../usr/share/metasploit-framework/ -P deploy package
 ```
 
 When you are editing this or any other Meterpreter, you will want to make sure
