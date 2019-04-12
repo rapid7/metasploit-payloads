@@ -137,6 +137,10 @@ public class AndroidMeterpreter extends Meterpreter {
         mgr.registerCommand("stdapi_sys_process_get_processes", stdapi_sys_process_get_processes_android.class);
         mgr.registerCommand("stdapi_ui_desktop_screenshot", stdapi_ui_desktop_screenshot.class);
         if (context != null) {
+            mgr.registerCommand("appapi_app_list", appapi_app_list.class);
+            mgr.registerCommand("appapi_app_run", appapi_app_run.class);
+            mgr.registerCommand("appapi_app_install", appapi_app_install.class);
+            mgr.registerCommand("appapi_app_uninstall", appapi_app_uninstall.class);
             mgr.registerCommand("webcam_audio_record", webcam_audio_record_android.class);
             mgr.registerCommand("webcam_list", webcam_list_android.class);
             mgr.registerCommand("webcam_start", webcam_start_android.class);
@@ -168,4 +172,3 @@ public class AndroidMeterpreter extends Meterpreter {
         return getCommandManager().getNewCommands();
     }
 }
-
