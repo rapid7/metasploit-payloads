@@ -6,8 +6,9 @@
 
 typedef NTSTATUS(WINAPI *PRtlGetVersion)(LPOSVERSIONINFOEXW);
 
+#ifndef __MINGW32__
 #pragma comment(lib, "netapi32.lib")
-
+#endif
 /*!
  * @brief Add an environment variable / value pair to a response packet.
  * @param response The \c Response packet to add the values to.

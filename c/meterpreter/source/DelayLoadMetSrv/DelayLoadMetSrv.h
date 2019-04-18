@@ -32,8 +32,9 @@
 #include <windows.h>
 #include <delayimp.h>
 
+#ifndef __MINGW32__
 #pragma comment (lib,"Delayimp.lib")
-
+#endif 
 // we use this like a macro to set the hook in an server extension that requires it
 #define EnableDelayLoadMetSrv() PfnDliHook __pfnDliNotifyHook2 = delayHook; // set our delay loader hook, see DelayLoadMetSrv.c
 
