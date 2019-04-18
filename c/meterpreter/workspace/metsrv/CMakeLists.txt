@@ -68,6 +68,7 @@ if(BUILD_DEPENDS)
    add_subdirectory(platform/cmake/ReflectiveDLLInjection ${CMAKE_BINARY_DIR}/ReflectiveDLLInjection)
 else()
    link_directories(${OUTPUT_RELEASE})
+   link_directories(../../output/Release)
    link_directories(/usr/x86_64-w64-mingw32/lib/)
 endif()
 
@@ -118,7 +119,10 @@ include_directories( ${HEADER_DIR_3} )
 include_directories( ${HEADER_DIR_4} )
 
 # Add library to build.
-add_library(${PROJECT_NAME} STATIC
+
+set( CMAKE_C_COMPILE_OPTIONS_PIC "" ) 
+
+add_library(${PROJECT_NAME} SHARED
    ${SRC_FILES}
 )
    
