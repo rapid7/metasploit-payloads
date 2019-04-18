@@ -6,8 +6,8 @@ cmake_minimum_required(VERSION 3.0.0 FATAL_ERROR)
 
 set(PROJECT_NAME common)
 # Output Variables
-set(OUTPUT_DEBUG ../../output/Debug/)
-set(OUTPUT_RELEASE ../../output/Release/)
+set(OUTPUT_DEBUG ../../../output/Debug/)
+set(OUTPUT_RELEASE ../../../output/Release/)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${OUTPUT_RELEASE})
 # Folders files
 set(CPP_DIR_1 ../../source/common/arch/win)
