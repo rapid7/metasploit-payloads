@@ -39,7 +39,8 @@ add_definitions(
    -D_LIB 
    -DUSE_DLL 
    -DMETERPRETER_EXPORTS 
-   -D_CRT_SECURE_NO_WARNINGS 
+   -D_CRT_SECURE_NO_WARNINGS
+   -D__GNUC__
 )
 
 ############## Artefacts Output #################
@@ -85,17 +86,23 @@ CMAKE_FORCE_C_COMPILER(${GNU_HOST}-gcc GNU)
 # CMake doesn't automatically look for prefixed 'windres', do it manually:
 SET(CMAKE_RC_COMPILER ${GNU_HOST}-windres)
 
+set( _MSC_VER 1910 )
+SET(CMAKE_C_COMPILER clang)
 
 if(MSVC)
    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /W3 /EHsc")
    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /W3 /EHsc")
 endif(MSVC)
 if(NOT MSVC)
-   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -target x86_64-w64-windows-gnu -I/usr/x86_64-w64-mingw32/include -L/usr/lib/gcc/x86_64-w64-mingw32/7.3-win32/ -L/usr/x86_64-w64-mingw32/lib/ -std=c++11")
+   #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -target x86_64-w64-windows-gnu -I/usr/x86_64-w64-mingw32/include -L/usr/lib/gcc/x86_64-w64-mingw32/7.3-win32/ -L/usr/x86_64-w64-mingw32/lib/ ")
+   set(CMAKE_LIBRARY_ARCHITECTURE x64 CACHE STRING "" FORCE)
+   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -target x86_64-w64-windows-gnu -I/usr/x86_64-w64-mingw32/include/ -L/usr/lib/gcc/x86_64-w64-mingw32/8.2.0/include/ -L/usr/x86_64-w64-mingw32/lib -Wfatal-errors -fmsc-version=${_MSC_VER} -fms-extensions -fms-compatibility -fdelayed-template-parsing ")
    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
        set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
    endif()
 endif(NOT MSVC)
+
 
 ################ Files ################
 #   --   Add files to project.   --   #
