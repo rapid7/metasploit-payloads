@@ -60,12 +60,12 @@ your antivirus for the Metasploit directory (or that your antivirus is
 disabled).
 
 If the path to your metasploit framework repository is not
-`../../metasploit-framework`, but for example
-`/usr/share/metasploit-framework/` (Kali default), set the deploy.path directive like so
-(make sure to include enough "../" as deploy.path is relative and not absolute):
+`../../metasploit-framework`, but for example (with Kali Linux)
+
+`/usr/share/metasploit-framework/`, set the deploy.path directive like so:
 
 ```
-mvn -D deploy.path=../../../../../../../../../usr/share/metasploit-framework/ -P deploy package
+mvn -D deploy.path=/usr/share/metasploit-framework -P deploy package
 ```
 
 When you are editing this or any other Meterpreter, you will want to make sure
