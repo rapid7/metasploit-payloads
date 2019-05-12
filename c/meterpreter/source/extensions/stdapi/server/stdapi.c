@@ -144,6 +144,7 @@ Command customCommands[] =
 	COMMAND_REQ("stdapi_ui_desktop_set", request_ui_desktop_set),
 	COMMAND_REQ("stdapi_ui_desktop_screenshot", request_ui_desktop_screenshot),
 	COMMAND_REQ("stdapi_ui_send_keys", request_ui_send_keys),
+	COMMAND_REQ("stdapi_ui_send_mouse", request_ui_send_mouse),
 
 	// Event Log
 	COMMAND_REQ("stdapi_sys_eventlog_open", request_sys_eventlog_open),
