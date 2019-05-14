@@ -20,8 +20,8 @@ typedef struct _TCPMIGRATECONTEXT
 #ifndef IPPROTO_IPV6
 #define IPPROTO_IPV6 41
 #endif
-#ifndef in6addr_any
-
+#ifndef in6addr_any && !defined __MINGW32__
+extern IN6_ADDR in6addr_any;
 #endif
 
 /*!

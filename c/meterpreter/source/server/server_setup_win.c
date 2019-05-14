@@ -504,7 +504,11 @@ DWORD server_setup(MetsrvConfig* config)
 
 		remote_deallocate(remote);
 	}
-	__except(0)
+	#ifndef __MINGW32__
+	__except (exceptionfilter(GetExceptionCode(), GetExceptionInformation()))
+	#else
+	__except (0)
+	#endif
 	{
 		dprintf("[SERVER] *** exception triggered!");
 
