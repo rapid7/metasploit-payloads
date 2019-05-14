@@ -9,6 +9,10 @@ typedef struct _DESKTOPLIST
 	Packet * response;
 } DESKTOPLIST, *LPDESKTOPLIST;
 
+#ifndef ERROR_DBG_TERMINATE_THREAD
+#define ERROR_DBG_TERMINATE_THREAD 691
+#endif
+
 /*
  * Callback function for EnumDesktops when listing desktops on a station during desktop_list().
  */

@@ -691,12 +691,18 @@ DWORD request_sys_process_get_info(Remote *remote, Packet *packet)
 		}
 
 		// Try to resolve the necessary symbols
-		if ((!((LPVOID)enumProcessModules =
-				(LPVOID)GetProcAddress(psapi, "EnumProcessModules"))) ||
-		    (!((LPVOID)getModuleBaseName =
-				(LPVOID)GetProcAddress(psapi, "GetModuleBaseNameA"))) ||
-		    (!((LPVOID)getModuleFileNameEx =
-				(LPVOID)GetProcAddress(psapi, "GetModuleFileNameExA"))))
+		enumProcessModules =
+				(LPVOID)GetProcAddress(psapi, "EnumProcessModules");
+				
+		getModuleBaseName =
+				(LPVOID)GetProcAddress(psapi, "GetModuleBaseNameA");
+	
+	        getModuleFileNameEx =
+				(LPVOID)GetProcAddress(psapi, "GetModuleFileNameExA");
+				
+		if ((!enumProcessModules) ||
+		    (!getModuleBaseName) ||
+		    (!getModuleFileNameEx))
 		{
 			result = GetLastError();
 			break;

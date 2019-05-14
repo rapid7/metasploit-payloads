@@ -31,6 +31,10 @@
 #include "precomp.h"
 #include "railgun.h"
 
+#ifndef ERROR_UNHANDLED_EXCEPTION
+#define ERROR_UNHANDLED_EXCEPTION 579
+#endif
+
 // Gives me a copy of a data item of type TLV_META_TYPE_RAW
 // caller has to free() it.
 // returns NULL on fail

@@ -18,154 +18,161 @@ EnableDelayLoadMetSrv();
 extern DWORD request_general_channel_open(Remote *remote, Packet *packet);
 
 Command customCommands[] =
-{
-	// General
-	COMMAND_REQ("core_channel_open", request_general_channel_open),
+	{
+		// General
+		COMMAND_REQ("core_channel_open", request_general_channel_open),
 
-	// Railgun
-	COMMAND_REQ("stdapi_railgun_api", request_railgun_api),
-	COMMAND_REQ("stdapi_railgun_api_multi", request_railgun_api_multi),
-	COMMAND_REQ("stdapi_railgun_memread", request_railgun_memread),
-	COMMAND_REQ("stdapi_railgun_memwrite", request_railgun_memwrite),
+		// Railgun
+		COMMAND_REQ("stdapi_railgun_api", request_railgun_api),
+		COMMAND_REQ("stdapi_railgun_api_multi", request_railgun_api_multi),
+		COMMAND_REQ("stdapi_railgun_memread", request_railgun_memread),
+		COMMAND_REQ("stdapi_railgun_memwrite", request_railgun_memwrite),
 
-	// Fs
-	COMMAND_REQ("stdapi_fs_ls", request_fs_ls),
-	COMMAND_REQ("stdapi_fs_getwd", request_fs_getwd),
-	COMMAND_REQ("stdapi_fs_chdir", request_fs_chdir),
-	COMMAND_REQ("stdapi_fs_mkdir", request_fs_mkdir),
-	COMMAND_REQ("stdapi_fs_delete_dir", request_fs_delete_dir),
-	COMMAND_REQ("stdapi_fs_delete_file", request_fs_delete_file),
-	COMMAND_REQ("stdapi_fs_separator", request_fs_separator),
-	COMMAND_REQ("stdapi_fs_stat", request_fs_stat),
-	COMMAND_REQ("stdapi_fs_file_expand_path", request_fs_file_expand_path),
-	COMMAND_REQ("stdapi_fs_file_move", request_fs_file_move),
-	COMMAND_REQ("stdapi_fs_file_copy", request_fs_file_copy),
-	COMMAND_REQ("stdapi_fs_md5", request_fs_md5),
-	COMMAND_REQ("stdapi_fs_sha1", request_fs_sha1),
-	COMMAND_REQ("stdapi_fs_search", request_fs_search),
-	COMMAND_REQ("stdapi_fs_mount_show", request_fs_mount_show),
+		// Fs
+		COMMAND_REQ("stdapi_fs_ls", request_fs_ls),
+		COMMAND_REQ("stdapi_fs_getwd", request_fs_getwd),
+		COMMAND_REQ("stdapi_fs_chdir", request_fs_chdir),
+		COMMAND_REQ("stdapi_fs_mkdir", request_fs_mkdir),
+		COMMAND_REQ("stdapi_fs_delete_dir", request_fs_delete_dir),
+		COMMAND_REQ("stdapi_fs_delete_file", request_fs_delete_file),
+		COMMAND_REQ("stdapi_fs_separator", request_fs_separator),
+		COMMAND_REQ("stdapi_fs_stat", request_fs_stat),
+		COMMAND_REQ("stdapi_fs_file_expand_path", request_fs_file_expand_path),
+		COMMAND_REQ("stdapi_fs_file_move", request_fs_file_move),
+		COMMAND_REQ("stdapi_fs_file_copy", request_fs_file_copy),
+		COMMAND_REQ("stdapi_fs_md5", request_fs_md5),
+		COMMAND_REQ("stdapi_fs_sha1", request_fs_sha1),
+		COMMAND_REQ("stdapi_fs_search", request_fs_search),
+		COMMAND_REQ("stdapi_fs_mount_show", request_fs_mount_show),
 
-	// Process
-	COMMAND_REQ("stdapi_sys_process_attach", request_sys_process_attach),
-	COMMAND_REQ("stdapi_sys_process_close", request_sys_process_close),
-	COMMAND_REQ("stdapi_sys_process_execute", request_sys_process_execute),
-	COMMAND_REQ("stdapi_sys_process_kill", request_sys_process_kill),
-	COMMAND_REQ("stdapi_sys_process_get_processes", request_sys_process_get_processes),
-	COMMAND_REQ("stdapi_sys_process_getpid", request_sys_process_getpid),
-	COMMAND_REQ("stdapi_sys_process_get_info", request_sys_process_get_info),
-	COMMAND_REQ("stdapi_sys_process_wait", request_sys_process_wait),
+		// Process
+		COMMAND_REQ("stdapi_sys_process_attach", request_sys_process_attach),
+		COMMAND_REQ("stdapi_sys_process_close", request_sys_process_close),
+		COMMAND_REQ("stdapi_sys_process_execute", request_sys_process_execute),
+		COMMAND_REQ("stdapi_sys_process_kill", request_sys_process_kill),
+		COMMAND_REQ("stdapi_sys_process_get_processes", request_sys_process_get_processes),
+		COMMAND_REQ("stdapi_sys_process_getpid", request_sys_process_getpid),
+		COMMAND_REQ("stdapi_sys_process_get_info", request_sys_process_get_info),
+		COMMAND_REQ("stdapi_sys_process_wait", request_sys_process_wait),
 
-	// Image
-	COMMAND_REQ("stdapi_sys_process_image_load", request_sys_process_image_load),
-	COMMAND_REQ("stdapi_sys_process_image_get_proc_address", request_sys_process_image_get_proc_address),
-	COMMAND_REQ("stdapi_sys_process_image_unload", request_sys_process_image_unload),
-	COMMAND_REQ("stdapi_sys_process_image_get_images", request_sys_process_image_get_images),
+		// Image
+		COMMAND_REQ("stdapi_sys_process_image_load", request_sys_process_image_load),
+		COMMAND_REQ("stdapi_sys_process_image_get_proc_address", request_sys_process_image_get_proc_address),
+		COMMAND_REQ("stdapi_sys_process_image_unload", request_sys_process_image_unload),
+		COMMAND_REQ("stdapi_sys_process_image_get_images", request_sys_process_image_get_images),
 
-	// Memory
-	COMMAND_REQ("stdapi_sys_process_memory_allocate", request_sys_process_memory_allocate),
-	COMMAND_REQ("stdapi_sys_process_memory_free", request_sys_process_memory_free),
-	COMMAND_REQ("stdapi_sys_process_memory_read", request_sys_process_memory_read),
-	COMMAND_REQ("stdapi_sys_process_memory_write", request_sys_process_memory_write),
-	COMMAND_REQ("stdapi_sys_process_memory_query", request_sys_process_memory_query),
-	COMMAND_REQ("stdapi_sys_process_memory_protect", request_sys_process_memory_protect),
-	COMMAND_REQ("stdapi_sys_process_memory_lock", request_sys_process_memory_lock),
-	COMMAND_REQ("stdapi_sys_process_memory_unlock", request_sys_process_memory_unlock),
+		// Memory
+		COMMAND_REQ("stdapi_sys_process_memory_allocate", request_sys_process_memory_allocate),
+		COMMAND_REQ("stdapi_sys_process_memory_free", request_sys_process_memory_free),
+		COMMAND_REQ("stdapi_sys_process_memory_read", request_sys_process_memory_read),
+		COMMAND_REQ("stdapi_sys_process_memory_write", request_sys_process_memory_write),
+		COMMAND_REQ("stdapi_sys_process_memory_query", request_sys_process_memory_query),
+		COMMAND_REQ("stdapi_sys_process_memory_protect", request_sys_process_memory_protect),
+		COMMAND_REQ("stdapi_sys_process_memory_lock", request_sys_process_memory_lock),
+		COMMAND_REQ("stdapi_sys_process_memory_unlock", request_sys_process_memory_unlock),
 
-	// Thread
-	COMMAND_REQ("stdapi_sys_process_thread_open", request_sys_process_thread_open),
-	COMMAND_REQ("stdapi_sys_process_thread_create", request_sys_process_thread_create),
-	COMMAND_REQ("stdapi_sys_process_thread_close", request_sys_process_thread_close),
-	COMMAND_REQ("stdapi_sys_process_thread_get_threads", request_sys_process_thread_get_threads),
-	COMMAND_REQ("stdapi_sys_process_thread_suspend", request_sys_process_thread_suspend),
-	COMMAND_REQ("stdapi_sys_process_thread_resume", request_sys_process_thread_resume),
-	COMMAND_REQ("stdapi_sys_process_thread_terminate", request_sys_process_thread_terminate),
-	COMMAND_REQ("stdapi_sys_process_thread_query_regs", request_sys_process_thread_query_regs),
-	COMMAND_REQ("stdapi_sys_process_thread_set_regs", request_sys_process_thread_set_regs),
+		// Thread
+		COMMAND_REQ("stdapi_sys_process_thread_open", request_sys_process_thread_open),
+		COMMAND_REQ("stdapi_sys_process_thread_create", request_sys_process_thread_create),
+		COMMAND_REQ("stdapi_sys_process_thread_close", request_sys_process_thread_close),
+		COMMAND_REQ("stdapi_sys_process_thread_get_threads", request_sys_process_thread_get_threads),
+		COMMAND_REQ("stdapi_sys_process_thread_suspend", request_sys_process_thread_suspend),
+		COMMAND_REQ("stdapi_sys_process_thread_resume", request_sys_process_thread_resume),
+		COMMAND_REQ("stdapi_sys_process_thread_terminate", request_sys_process_thread_terminate),
+		COMMAND_REQ("stdapi_sys_process_thread_query_regs", request_sys_process_thread_query_regs),
+		COMMAND_REQ("stdapi_sys_process_thread_set_regs", request_sys_process_thread_set_regs),
 
-	// Registry
-	COMMAND_REQ("stdapi_registry_check_key_exists", request_registry_check_key_exists),
-	COMMAND_REQ("stdapi_registry_load_key", request_registry_load_key),
-	COMMAND_REQ("stdapi_registry_unload_key", request_registry_unload_key),
-	COMMAND_REQ("stdapi_registry_open_key", request_registry_open_key),
-	COMMAND_REQ("stdapi_registry_open_remote_key", request_registry_open_remote_key),
-	COMMAND_REQ("stdapi_registry_create_key", request_registry_create_key),
-	COMMAND_REQ("stdapi_registry_enum_key", request_registry_enum_key),
-	COMMAND_REQ("stdapi_registry_delete_key", request_registry_delete_key),
-	COMMAND_REQ("stdapi_registry_close_key", request_registry_close_key),
-	COMMAND_REQ("stdapi_registry_set_value", request_registry_set_value),
-	COMMAND_REQ("stdapi_registry_query_value", request_registry_query_value),
-	COMMAND_REQ("stdapi_registry_query_class", request_registry_query_class),
-	COMMAND_REQ("stdapi_registry_enum_value", request_registry_enum_value),
-	COMMAND_REQ("stdapi_registry_delete_value", request_registry_delete_value),
-	COMMAND_REQ("stdapi_registry_enum_key_direct", request_registry_enum_key_direct),
-	COMMAND_REQ("stdapi_registry_enum_value_direct", request_registry_enum_value_direct),
-	COMMAND_REQ("stdapi_registry_query_value_direct", request_registry_query_value_direct),
-	COMMAND_REQ("stdapi_registry_set_value_direct", request_registry_set_value_direct),
+		// Registry
+		COMMAND_REQ("stdapi_registry_check_key_exists", request_registry_check_key_exists),
+		COMMAND_REQ("stdapi_registry_load_key", request_registry_load_key),
+		COMMAND_REQ("stdapi_registry_unload_key", request_registry_unload_key),
+		COMMAND_REQ("stdapi_registry_open_key", request_registry_open_key),
+		COMMAND_REQ("stdapi_registry_open_remote_key", request_registry_open_remote_key),
+		COMMAND_REQ("stdapi_registry_create_key", request_registry_create_key),
+		COMMAND_REQ("stdapi_registry_enum_key", request_registry_enum_key),
+		COMMAND_REQ("stdapi_registry_delete_key", request_registry_delete_key),
+		COMMAND_REQ("stdapi_registry_close_key", request_registry_close_key),
+		COMMAND_REQ("stdapi_registry_set_value", request_registry_set_value),
+		COMMAND_REQ("stdapi_registry_query_value", request_registry_query_value),
+		COMMAND_REQ("stdapi_registry_query_class", request_registry_query_class),
+		COMMAND_REQ("stdapi_registry_enum_value", request_registry_enum_value),
+		COMMAND_REQ("stdapi_registry_delete_value", request_registry_delete_value),
+		COMMAND_REQ("stdapi_registry_enum_key_direct", request_registry_enum_key_direct),
+		COMMAND_REQ("stdapi_registry_enum_value_direct", request_registry_enum_value_direct),
+		COMMAND_REQ("stdapi_registry_query_value_direct", request_registry_query_value_direct),
+		COMMAND_REQ("stdapi_registry_set_value_direct", request_registry_set_value_direct),
 
-	// Sys/config
-	COMMAND_REQ("stdapi_sys_config_getuid", request_sys_config_getuid),
-	COMMAND_REQ("stdapi_sys_config_localtime", request_sys_config_localtime),
-	COMMAND_REQ("stdapi_sys_config_sysinfo", request_sys_config_sysinfo),
-	COMMAND_REQ("stdapi_sys_config_rev2self", request_sys_config_rev2self),
-	COMMAND_REQ("stdapi_sys_config_getprivs", request_sys_config_getprivs),
-	COMMAND_REQ("stdapi_sys_config_getenv", request_sys_config_getenv),
-	COMMAND_REQ("stdapi_sys_config_driver_list", request_sys_config_driver_list),
-	COMMAND_REQ("stdapi_sys_config_steal_token", request_sys_config_steal_token),
-	COMMAND_REQ("stdapi_sys_config_drop_token", request_sys_config_drop_token),
-	COMMAND_REQ("stdapi_sys_config_getsid", request_sys_config_getsid),
+		// Sys/config
+		COMMAND_REQ("stdapi_sys_config_getuid", request_sys_config_getuid),
+		COMMAND_REQ("stdapi_sys_config_localtime", request_sys_config_localtime),
+		COMMAND_REQ("stdapi_sys_config_sysinfo", request_sys_config_sysinfo),
+		COMMAND_REQ("stdapi_sys_config_rev2self", request_sys_config_rev2self),
+		COMMAND_REQ("stdapi_sys_config_getprivs", request_sys_config_getprivs),
+		COMMAND_REQ("stdapi_sys_config_getenv", request_sys_config_getenv),
+		COMMAND_REQ("stdapi_sys_config_driver_list", request_sys_config_driver_list),
+		COMMAND_REQ("stdapi_sys_config_steal_token", request_sys_config_steal_token),
+		COMMAND_REQ("stdapi_sys_config_drop_token", request_sys_config_drop_token),
+		COMMAND_REQ("stdapi_sys_config_getsid", request_sys_config_getsid),
 
-	// Net
-	COMMAND_REQ("stdapi_net_config_get_routes", request_net_config_get_routes),
-	COMMAND_REQ("stdapi_net_config_add_route", request_net_config_add_route),
-	COMMAND_REQ("stdapi_net_config_remove_route", request_net_config_remove_route),
-	COMMAND_REQ("stdapi_net_config_get_interfaces", request_net_config_get_interfaces),
-	COMMAND_REQ("stdapi_net_config_get_arp_table", request_net_config_get_arp_table),
-	COMMAND_REQ("stdapi_net_config_get_netstat", request_net_config_get_netstat),
+		// Net
+		COMMAND_REQ("stdapi_net_config_get_routes", request_net_config_get_routes),
+		COMMAND_REQ("stdapi_net_config_add_route", request_net_config_add_route),
+		COMMAND_REQ("stdapi_net_config_remove_route", request_net_config_remove_route),
+		COMMAND_REQ("stdapi_net_config_get_interfaces", request_net_config_get_interfaces),
+		COMMAND_REQ("stdapi_net_config_get_arp_table", request_net_config_get_arp_table),
+		COMMAND_REQ("stdapi_net_config_get_netstat", request_net_config_get_netstat),
 
-	// Proxy
-	COMMAND_REQ("stdapi_net_config_get_proxy", request_net_config_get_proxy_config),
-	// Resolve
-	COMMAND_REQ("stdapi_net_resolve_host", request_resolve_host),
-	COMMAND_REQ("stdapi_net_resolve_hosts", request_resolve_hosts),
+		// Proxy
+		COMMAND_REQ("stdapi_net_config_get_proxy", request_net_config_get_proxy_config),
+		// Resolve
+		COMMAND_REQ("stdapi_net_resolve_host", request_resolve_host),
+		COMMAND_REQ("stdapi_net_resolve_hosts", request_resolve_hosts),
 
-	// Socket
-	COMMAND_REQ("stdapi_net_socket_tcp_shutdown", request_net_socket_tcp_shutdown),
+		// Socket
+		COMMAND_REQ("stdapi_net_socket_tcp_shutdown", request_net_socket_tcp_shutdown),
 
-	// UI
-	COMMAND_REQ("stdapi_ui_enable_mouse", request_ui_enable_mouse),
-	COMMAND_REQ("stdapi_ui_enable_keyboard", request_ui_enable_keyboard),
-	COMMAND_REQ("stdapi_ui_get_idle_time", request_ui_get_idle_time),
-	COMMAND_REQ("stdapi_ui_start_keyscan", request_ui_start_keyscan),
-	COMMAND_REQ("stdapi_ui_stop_keyscan", request_ui_stop_keyscan),
-	COMMAND_REQ("stdapi_ui_get_keys", request_ui_get_keys),
-	COMMAND_REQ("stdapi_ui_get_keys_utf8", request_ui_get_keys_utf8),
-	COMMAND_REQ("stdapi_ui_desktop_enum", request_ui_desktop_enum),
-	COMMAND_REQ("stdapi_ui_desktop_get", request_ui_desktop_get),
-	COMMAND_REQ("stdapi_ui_desktop_set", request_ui_desktop_set),
-	COMMAND_REQ("stdapi_ui_desktop_screenshot", request_ui_desktop_screenshot),
+		// UI
+		COMMAND_REQ("stdapi_ui_enable_mouse", request_ui_enable_mouse),
+		COMMAND_REQ("stdapi_ui_enable_keyboard", request_ui_enable_keyboard),
+		COMMAND_REQ("stdapi_ui_get_idle_time", request_ui_get_idle_time),
+		COMMAND_REQ("stdapi_ui_start_keyscan", request_ui_start_keyscan),
+		COMMAND_REQ("stdapi_ui_stop_keyscan", request_ui_stop_keyscan),
+		COMMAND_REQ("stdapi_ui_get_keys", request_ui_get_keys),
+		COMMAND_REQ("stdapi_ui_get_keys_utf8", request_ui_get_keys_utf8),
+		COMMAND_REQ("stdapi_ui_desktop_enum", request_ui_desktop_enum),
+		COMMAND_REQ("stdapi_ui_desktop_get", request_ui_desktop_get),
+		COMMAND_REQ("stdapi_ui_desktop_set", request_ui_desktop_set),
+		COMMAND_REQ("stdapi_ui_desktop_screenshot", request_ui_desktop_screenshot),
 
-	// Event Log
-	COMMAND_REQ("stdapi_sys_eventlog_open", request_sys_eventlog_open),
-	COMMAND_REQ("stdapi_sys_eventlog_numrecords", request_sys_eventlog_numrecords),
-	COMMAND_REQ("stdapi_sys_eventlog_read", request_sys_eventlog_read),
-	COMMAND_REQ("stdapi_sys_eventlog_oldest", request_sys_eventlog_oldest),
-	COMMAND_REQ("stdapi_sys_eventlog_clear", request_sys_eventlog_clear),
-	COMMAND_REQ("stdapi_sys_eventlog_close", request_sys_eventlog_close),
+		// Event Log
+		COMMAND_REQ("stdapi_sys_eventlog_open", request_sys_eventlog_open),
+		COMMAND_REQ("stdapi_sys_eventlog_numrecords", request_sys_eventlog_numrecords),
+		COMMAND_REQ("stdapi_sys_eventlog_read", request_sys_eventlog_read),
+		COMMAND_REQ("stdapi_sys_eventlog_oldest", request_sys_eventlog_oldest),
+		COMMAND_REQ("stdapi_sys_eventlog_clear", request_sys_eventlog_clear),
+		COMMAND_REQ("stdapi_sys_eventlog_close", request_sys_eventlog_close),
 
-	// Power
-	COMMAND_REQ("stdapi_sys_power_exitwindows", request_sys_power_exitwindows),
+		// Power
+		COMMAND_REQ("stdapi_sys_power_exitwindows", request_sys_power_exitwindows),
 
-	// Webcam
-	COMMAND_REQ("webcam_list", request_webcam_list),
-	COMMAND_REQ("webcam_start", request_webcam_start),
-	COMMAND_REQ("webcam_get_frame", request_webcam_get_frame),
-	COMMAND_REQ("webcam_stop", request_webcam_stop),
+// Webcam
+#ifndef __MINGW32__ // weird linking errors for these functions
 
-	// Audio
-	COMMAND_REQ("webcam_audio_record", request_ui_record_mic),
+		COMMAND_REQ("webcam_list", request_webcam_list),
+		COMMAND_REQ("webcam_start", request_webcam_start),
+		COMMAND_REQ("webcam_get_frame", request_webcam_get_frame),
+		COMMAND_REQ("webcam_stop", request_webcam_stop),
+#endif
+		// Audio
+		COMMAND_REQ("webcam_audio_record", request_ui_record_mic),
 
-	COMMAND_TERMINATOR
-};
+		COMMAND_TERMINATOR};
+
+//---test
+
+#ifdef __MINGW32__
+typedef void( *fn_command_register_all)(Command*);
+#endif
 
 /*!
  * @brief Initialize the server extension.
@@ -176,7 +183,12 @@ DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
 {
 	hMetSrv = remote->met_srv;
 
+	#ifdef __MINGW32__
+	fn_command_register_all cmd_register_all = (fn_command_register_all)GetProcAddressR(hMetSrv, "command_register_all");
+	cmd_register_all(customCommands);
+	#else
 	command_register_all(customCommands);
+	#endif
 
 	return ERROR_SUCCESS;
 }

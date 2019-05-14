@@ -217,18 +217,22 @@ DWORD request_sys_process_image_get_images(Remote *remote, Packet *packet)
 			break;
 
 		// Try to resolve the address of EnumProcessModules
-		if (!((LPVOID)enumProcessModules = 
-				(LPVOID)GetProcAddress(psapi, "EnumProcessModules")))
+		enumProcessModules = 
+				(LPVOID)GetProcAddress(psapi, "EnumProcessModules");
+		if (!enumProcessModules)
 			break;
 
 		// Try to resolve the address of GetModuleBaseNameA
-		if (!((LPVOID)getModuleBaseName = 
-				(LPVOID)GetProcAddress(psapi, "GetModuleBaseNameA")))
+		getModuleBaseName = 
+				(LPVOID)GetProcAddress(psapi, "GetModuleBaseNameA");
+		if (!getModuleBaseName)
 			break;
 
 		// Try to resolve the address of GetModuleFileNameExA
-		if (!((LPVOID)getModuleFileNameEx = 
-				(LPVOID)GetProcAddress(psapi, "GetModuleFileNameExA")))
+		getModuleFileNameEx = 
+				(LPVOID)GetProcAddress(psapi, "GetModuleFileNameExA");
+		
+		if (!getModuleFileNameEx)
 			break;
 
 		// Validate parameters

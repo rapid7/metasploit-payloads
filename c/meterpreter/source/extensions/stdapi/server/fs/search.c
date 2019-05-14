@@ -46,7 +46,7 @@ VOID wds_startup(WDS_INTERFACE * pWDSInterface)
 {
 	DWORD dwResult = ERROR_SUCCESS;
 	HRESULT hr     = 0;
-
+	#ifndef __MINGW32__
 	do
 	{
 		memset(pWDSInterface, 0, sizeof(WDS_INTERFACE));
@@ -104,6 +104,7 @@ VOID wds_startup(WDS_INTERFACE * pWDSInterface)
 		} while (0);
 
 	} while (0);
+	#endif
 }
 
 /*
@@ -111,6 +112,8 @@ VOID wds_startup(WDS_INTERFACE * pWDSInterface)
  */
 VOID wds_shutdown(WDS_INTERFACE * pWDSInterface)
 {
+#ifndef __MINGW32__
+
 	do
 	{
 		if (!pWDSInterface)
@@ -152,6 +155,7 @@ VOID wds_shutdown(WDS_INTERFACE * pWDSInterface)
 		CoUninitialize();
 
 	} while (0);
+	#endif
 }
 
 /*
@@ -159,6 +163,8 @@ VOID wds_shutdown(WDS_INTERFACE * pWDSInterface)
  */
 BOOL wds2_indexed(WDS_INTERFACE * pWDSInterface, wchar_t * directory)
 {
+#ifndef __MINGW32__
+
 	wchar_t machine[MAX_COMPUTERNAME_LENGTH + 1] = {0};
 	wchar_t catalog[MAX_PATH + 1]                = {0};
 	DWORD machineLength                          = MAX_COMPUTERNAME_LENGTH + 1;
@@ -177,6 +183,7 @@ BOOL wds2_indexed(WDS_INTERFACE * pWDSInterface, wchar_t * directory)
 			return TRUE;
 		}
 	}
+#endif
 
 	return FALSE;
 }
@@ -187,12 +194,13 @@ BOOL wds2_indexed(WDS_INTERFACE * pWDSInterface, wchar_t * directory)
 BOOL wds3_indexed(WDS_INTERFACE * pWDSInterface, wchar_t * directory)
 {
 	BOOL bResult = FALSE;
+#ifndef __MINGW32__
 
-	if (pWDSInterface->bWDS3Available) {
+        if (pWDSInterface->bWDS3Available) {
 		ISearchCrawlScopeManager_IncludedInCrawlScope(
 		    pWDSInterface->pCrawlScopeManager, directory, &bResult);
 	}
-
+#endif
 	return bResult;
 }
 
@@ -213,8 +221,9 @@ HRESULT wds_execute(ICommand * pCommand, Packet * pResponse)
 	SEARCH_ROW rowSearchResults = {0};
 	HROW hRow[1]                = {0};
 	HROW * pRows                = &hRow[0];
+#ifndef __MINGW32__
 
-	do
+        do
 	{
 		hr = ICommand_Execute(pCommand, NULL, &_IID_IRowset, NULL, NULL, (IUnknown**)&pRowset);
 		if (FAILED(hr)) {
@@ -457,6 +466,7 @@ DWORD wds2_search(WDS_INTERFACE * pWDSInterface, wchar_t *directory, SEARCH_OPTI
 
 	dprintf("[SEARCH] wds2_search: Finished.");
 
+#endif
 	return dwResult;
 }
 
@@ -481,8 +491,9 @@ DWORD wds3_search(WDS_INTERFACE * pWDSInterface, wchar_t * wpProtocol, wchar_t *
 	size_t dwLength                   = 0;
 
 	dprintf("[SEARCH] wds3_search: Starting...");
+#ifndef __MINGW32__
 
-	do
+        do
 	{
 		if (!pWDSInterface) {
 			BREAK_WITH_ERROR("[SEARCH] wds3_search: !pWDSInterface", ERROR_INVALID_PARAMETER);
@@ -630,6 +641,7 @@ DWORD wds3_search(WDS_INTERFACE * pWDSInterface, wchar_t * wpProtocol, wchar_t *
 
 	dprintf("[SEARCH] wds3_search: Finished.");
 
+#endif
 	return dwResult;
 }
 
@@ -638,6 +650,8 @@ DWORD wds3_search(WDS_INTERFACE * pWDSInterface, wchar_t * wpProtocol, wchar_t *
  */
 DWORD search_files(wchar_t * directory, SEARCH_OPTIONS * pOptions, Packet * pResponse)
 {
+#ifndef __MINGW32__
+
 	wchar_t firstFile[FS_MAX_PATH];
 	swprintf_s(firstFile, FS_MAX_PATH, L"%s\\%s", directory, pOptions->glob);
 
@@ -660,13 +674,15 @@ DWORD search_files(wchar_t * directory, SEARCH_OPTIONS * pOptions, Packet * pRes
 			return GetLastError();
 		}
 	}
-
+#endif
 	return ERROR_SUCCESS;
 }
 
 DWORD directory_search(wchar_t *directory, SEARCH_OPTIONS * pOptions, Packet * pResponse, int depth)
 {
 	DWORD dwResult            = ERROR_SUCCESS;
+#ifndef __MINGW32__
+
 	BOOL bAllreadySearched    = FALSE;
 	WIN32_FIND_DATAW FindData = {0};
 	size_t len                = wcslen(directory) + 5;
@@ -722,7 +738,7 @@ DWORD directory_search(wchar_t *directory, SEARCH_OPTIONS * pOptions, Packet * p
 	}
 
 	free(firstFile);
-
+#endif
 	return dwResult;
 }
 
@@ -733,8 +749,9 @@ DWORD directory_search(wchar_t *directory, SEARCH_OPTIONS * pOptions, Packet * p
 DWORD search(WDS_INTERFACE * pWDSInterface, wchar_t *directory, SEARCH_OPTIONS * pOptions, Packet * pResponse)
 {
 	DWORD dwResult           = ERROR_ACCESS_DENIED;
+#ifndef __MINGW32__
 
-	if (!directory)
+        if (!directory)
 		directory = pOptions->rootDirectory;
 
 	if (!directory) {
@@ -752,7 +769,7 @@ DWORD search(WDS_INTERFACE * pWDSInterface, wchar_t *directory, SEARCH_OPTIONS *
 			dwResult = directory_search(directory, pOptions, pResponse, 0);
 		}
 	}
-
+#endif
 	return dwResult;
 }
 
@@ -760,6 +777,8 @@ DWORD search_all_drives(WDS_INTERFACE *pWDSInterface, SEARCH_OPTIONS *options, P
 {
 	DWORD dwLogicalDrives = GetLogicalDrives();
 	DWORD dwResult;
+#ifndef __MINGW32__
+
 	for (wchar_t index = L'a'; index <= L'z'; index++)
 	{
 		if (dwLogicalDrives & (1 << (index-L'a')))
@@ -784,6 +803,7 @@ DWORD search_all_drives(WDS_INTERFACE *pWDSInterface, SEARCH_OPTIONS *options, P
 	}
 
 	options->rootDirectory = NULL;
+	#endif
 	return dwResult;
 }
 
@@ -793,6 +813,8 @@ DWORD search_all_drives(WDS_INTERFACE *pWDSInterface, SEARCH_OPTIONS *options, P
 DWORD request_fs_search(Remote * pRemote, Packet * pPacket)
 {
 	DWORD dwResult              = ERROR_SUCCESS;
+#ifndef __MINGW32__
+
 	Packet * pResponse          = NULL;
 	SEARCH_OPTIONS options      = {0};
 	WDS_INTERFACE WDSInterface  = {0};
@@ -876,6 +898,6 @@ DWORD request_fs_search(Remote * pRemote, Packet * pPacket)
 	wds_shutdown(&WDSInterface);
 
 	dprintf("[SEARCH] request_fs_search: Finished. dwResult=0x%08X", dwResult);
-
+#endif
 	return dwResult;
 }

@@ -1,7 +1,8 @@
 #include "precomp.h"
 
+#ifndef __MINGW32__
 #pragma comment(lib, "mpr.lib")
-
+#endif
 // each drive is in the form "A:\\\0" (4 chars), plus a NULL terminator at the end
 #define DRIVE_STRINGS_LEN (4 * 26 + 1)
 
