@@ -135,8 +135,9 @@ typedef struct _SHELLCODE_CTX {
 
 SHELLCODE_CTX *ctx = NULL;
 
+#ifndef __MINGW32__
 #pragma comment(lib, "ws2_32.lib")
-
+#endif
 #pragma warning(disable: 4068)
 
 /*
