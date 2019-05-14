@@ -2,7 +2,7 @@
 #include "base_inject.h"
 #include "../remote_thread.h"
 #include "./../../../../ReflectiveDLLInjection/inject/src/LoadLibraryR.h"
-#include <Tlhelp32.h>
+#include <tlhelp32.h>
 
 // Simple trick to get the current meterpreters arch
 #ifdef _WIN64

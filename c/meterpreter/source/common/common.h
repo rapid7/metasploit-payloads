@@ -8,6 +8,12 @@
 /*! @brief Set to 0 for "normal", and 1 to "verbose", comment out to disable completely. */
 //#define DEBUGTRACE 0
 
+#ifdef __MINGW32__
+#define ERROR_UNSUPPORTED_COMPRESSION 22
+#define __try
+#define __except(x) if(0)
+#endif
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>

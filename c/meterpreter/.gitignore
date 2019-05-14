@@ -52,4 +52,10 @@ docs/*
 
 # ignore CLion files
 .idea/
-CMakeLists.txt
+
+# ignore CMake build artifacts
+**/CMakeCache.txt
+**/CMakeFiles/*
+**/cmake_install.cmake
+**/Makefile
+**/CMakeBuild/*
