@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.0.0 FATAL_ERROR)
 # Change if you want modify path or other values. #
 ###################################################
 
-set(PROJECT_NAME metsrv)
+set(PROJECT_NAME metsrv.x64)
 # Output Variables
 set(OUTPUT_DEBUG ../../output/Debug/)
 set(OUTPUT_RELEASE ../../../output/Release/)
@@ -133,6 +133,8 @@ add_library(${PROJECT_NAME} SHARED
    ${SRC_FILES}
 )
 
+set(CMAKE_SHARED_LIBRARY_PREFIX "")
+set(CMAKE_SHARED_LIBRARY_SUFFIX ".dll")
 
 link_directories(/usr/x86_64-w64-mingw32/lib/)
 
