@@ -16,7 +16,7 @@
 #include <dshow.h>
 #ifndef __MINGW32__
 #pragma comment(lib, "strmiids")
-#ifndef __MINGW32__
+#endif
 extern "C" {
 #include "../../common/common.h"
 #include "webcam.h"
