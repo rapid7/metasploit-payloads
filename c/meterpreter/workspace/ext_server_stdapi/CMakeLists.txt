@@ -68,6 +68,7 @@ add_definitions(
    -D__in_ecount=SAL__in_ecount
    -DHAVE_BOOLEAN
    -DMTP_EXTENSION
+   -DREFLECTIVEDLLINJECTION_NO_INIT
    #-DUSE_DLL
 
 
