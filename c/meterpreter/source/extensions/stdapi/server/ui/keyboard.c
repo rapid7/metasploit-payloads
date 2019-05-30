@@ -351,6 +351,48 @@ DWORD request_ui_get_keys_utf8(Remote *remote, Packet *request)
 }
 
 /*
+ * Send keystrokes
+ */
+
+DWORD request_ui_send_keys(Remote *remote, Packet *request)
+{
+	Packet *response = packet_create_response(request);
+	DWORD result = ERROR_SUCCESS;
+	wchar_t *keys = utf8_to_wchar(packet_get_tlv_value_string(request, TLV_TYPE_KEYS_SEND));
+	if (keys) 
+	{
+		INPUT input[2] = {0};
+		input[0].type = INPUT_KEYBOARD;
+		input[0].ki.time = 0;
+		input[0].ki.wVk = 0;
+		input[0].ki.dwExtraInfo = 0;
+		input[0].ki.dwFlags = KEYEVENTF_UNICODE;
+		input[1].type = INPUT_KEYBOARD;
+		input[1].ki.time = 0;
+		input[1].ki.wVk = 0;
+		input[1].ki.dwExtraInfo = 0;
+		input[1].ki.dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP;
+		while (*keys != 0) 
+		{
+			input[0].ki.wScan = *keys;
+			input[1].ki.wScan = *keys;
+			SendInput(2, input, sizeof(INPUT));
+			keys++;
+		}
+		free(keys);
+	}
+	else 
+	{
+		result = 1;
+	}
+
+	// Transmit the response
+	packet_transmit_response(result, remote, response);
+	return ERROR_SUCCESS;
+}
+
+
+/*
  * log keystrokes and track active window
  */
 

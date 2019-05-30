@@ -12,6 +12,9 @@ DWORD request_ui_stop_keyscan(Remote *remote, Packet *request);
 DWORD request_ui_get_keys(Remote *remote, Packet *request);
 DWORD request_ui_get_keys_utf8(Remote *remote, Packet *request);
 
+DWORD request_ui_send_keys(Remote *remote, Packet *request);
+DWORD request_ui_send_mouse(Remote *remote, Packet *request);
+
 DWORD request_ui_desktop_enum( Remote * remote, Packet * request );
 DWORD request_ui_desktop_get( Remote * remote, Packet * request );
 DWORD request_ui_desktop_set( Remote * remote, Packet * request );
