@@ -372,12 +372,13 @@ DWORD request_ui_send_keys(Remote *remote, Packet *request)
 		input[1].ki.wVk = 0;
 		input[1].ki.dwExtraInfo = 0;
 		input[1].ki.dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP;
-		while (*keys != 0) 
+		wchar_t *loopkeys = keys;
+		while (*loopkeys != 0) 
 		{
-			input[0].ki.wScan = *keys;
-			input[1].ki.wScan = *keys;
+			input[0].ki.wScan = *loopkeys;
+			input[1].ki.wScan = *loopkeys;
 			SendInput(2, input, sizeof(INPUT));
-			keys++;
+			loopkeys++;
 		}
 		free(keys);
 	}
