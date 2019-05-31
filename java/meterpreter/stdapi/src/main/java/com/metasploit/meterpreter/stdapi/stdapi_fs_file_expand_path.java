@@ -19,7 +19,18 @@ public class stdapi_fs_file_expand_path implements Command {
             response.add(TLVType.TLV_TYPE_FILE_PATH, System.getenv("TEMP"));
             return ERROR_SUCCESS;
         } else {
-            return NotYetImplementedCommand.INSTANCE.execute(meterpreter, request, response);
+            if (path.startsWith("$") || path.startsWith("%")) {
+                path = path.substring(1);
+            }
+            if (path.endsWith("$") || path.endsWith("%")) {
+                path = path.substring(0, path.length() - 1);
+            }
+            String value = System.getenv(path);
+            if (value == null) {
+                return ERROR_FAILURE;
+            }
+            response.add(TLVType.TLV_TYPE_FILE_PATH, value);
+            return ERROR_SUCCESS;
         }
     }
 
