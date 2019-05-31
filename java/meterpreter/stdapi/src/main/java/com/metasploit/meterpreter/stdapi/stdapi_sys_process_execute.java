@@ -22,6 +22,7 @@ public class stdapi_sys_process_execute implements Command {
 
         cmdbuf.append(cmd);
         if (argsString.length() > 0) {
+            cmdbuf.append(" ");
             cmdbuf.append(argsString);
         }
 

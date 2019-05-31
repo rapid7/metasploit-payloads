@@ -66,13 +66,13 @@ public class Channel {
      * @param maxLength The maximum number of bytes to read.
      * @return The bytes read, or <code>null</code> if the end of the stream has been reached.
      */
-    public synchronized byte[] read(int maxLength) throws IOException, InterruptedException {
+    public synchronized byte[] read(int maxLength) {
         if (closed)
             return null;
         if (active)
             throw new IllegalStateException("Cannot read; currently interacting with this channel");
-        while (!waiting || (toRead != null && toRead.length == 0))
-            wait();
+        if (!waiting || (toRead != null && toRead.length == 0))
+            return new byte[0];
         if (toRead == null)
             return null;
         byte[] result = new byte[Math.min(toRead.length, maxLength)];
