@@ -5,13 +5,13 @@ PACKAGE=com.metasploit.stage
 all: android
 
 android:
-		mvn package -Dandroid.sdk.path=${ANDROID_HOME} -Dandroid.ndk.path=${ANDROID_NDK_HOME} -Dandroid.release=true -P deploy
+		mvn package -Dandroid.sdk.path=${ANDROID_HOME} -Dandroid.release=true -P deploy
 
 java:
 		mvn package
 
 clean:
-		mvn clean -Dandroid.sdk.path=/ -Dandroid.ndk.path=/
+		mvn clean -Dandroid.sdk.path=/
 
 android-api:
 		${ANDROID}
