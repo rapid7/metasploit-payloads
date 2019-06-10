@@ -173,9 +173,13 @@ public interface TLVType {
     public static final int TLV_TYPE_REGISTER          = TLVPacket.TLV_META_TYPE_GROUP  | 2550;
 
     // Ui
-    public static final int TLV_TYPE_IDLE_TIME = TLVPacket.TLV_META_TYPE_UINT   | 3000;
-    public static final int TLV_TYPE_KEYS_DUMP = TLVPacket.TLV_META_TYPE_STRING | 3001;
-    public static final int TLV_TYPE_DESKTOP   = TLVPacket.TLV_META_TYPE_STRING | 3002;
+    public static final int TLV_TYPE_IDLE_TIME = TLVPacket.TLV_META_TYPE_UINT    | 3000;
+    public static final int TLV_TYPE_KEYS_DUMP = TLVPacket.TLV_META_TYPE_STRING  | 3001;
+    public static final int TLV_TYPE_DESKTOP   = TLVPacket.TLV_META_TYPE_STRING  | 3002;
+    public static final int TLV_TYPE_KEYS_SEND = TLVPacket.TLV_META_TYPE_STRING  | 3014;
+    public static final int TLV_TYPE_MOUSE_ACTION = TLVPacket.TLV_META_TYPE_UINT | 3015;
+    public static final int TLV_TYPE_MOUSE_X = TLVPacket.TLV_META_TYPE_UINT      | 3016;
+    public static final int TLV_TYPE_MOUSE_Y = TLVPacket.TLV_META_TYPE_UINT      | 3017;
 
     // Event Log
     public static final int TLV_TYPE_EVENT_SOURCENAME = TLVPacket.TLV_META_TYPE_STRING | 4000;
