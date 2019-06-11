@@ -20,12 +20,11 @@ public class stdapi_ui_send_keys_V1_4 extends stdapi_ui_send_keys implements Com
         return ERROR_SUCCESS;
     }
 
+    /*
     private void pressKeyString(String keyString) throws AWTException {
         Robot robot = new Robot();
-//        for (int i=0;i<keyString.length();i++) {
-//
-//
-//        }
+        for (int i=0;i<keyString.length();i++) {
+        }
     }
 
     private void pressUnicode(Robot r, int key_code)
@@ -41,4 +40,5 @@ public class stdapi_ui_send_keys_V1_4 extends stdapi_ui_send_keys implements Com
         }
         r.keyRelease(KeyEvent.VK_ALT);
     }
+    */
 }
