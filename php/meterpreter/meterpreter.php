@@ -485,6 +485,7 @@ function core_negotiate_tlv_encryption($req, &$pkt) {
     if (supports_aes()) {
         my_print("AES functionality is supported");
         packet_add_tlv($pkt, create_tlv(TLV_TYPE_SYM_KEY_TYPE, ENC_AES256));
+        $GLOBALS['AES_ENABLED'] = false;
         $GLOBALS['AES_KEY'] = rand_bytes(32);
         if (function_exists('openssl_pkey_get_public') && function_exists('openssl_public_encrypt')) {
             my_print("Encryption via public key is supported");
