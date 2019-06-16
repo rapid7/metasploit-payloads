@@ -5,8 +5,8 @@ import com.metasploit.meterpreter.TLVPacket;
 import com.metasploit.meterpreter.TLVType;
 import com.metasploit.meterpreter.command.Command;
 
+import java.awt.Robot;
 import java.awt.event.InputEvent;
-import java.lang.reflect.Method;
 
 public class stdapi_ui_send_mouse_V1_4 extends stdapi_ui_send_mouse implements Command {
 
@@ -15,7 +15,7 @@ public class stdapi_ui_send_mouse_V1_4 extends stdapi_ui_send_mouse implements C
         int x = request.getIntValue(TLVType.TLV_TYPE_MOUSE_X);
         int y = request.getIntValue(TLVType.TLV_TYPE_MOUSE_Y);
 
-        RobotReflect robot = new RobotReflect();
+        Robot robot = new Robot();
         if (x != -1 && y != -1) {
             robot.mouseMove(x, y);
         }
@@ -43,32 +43,5 @@ public class stdapi_ui_send_mouse_V1_4 extends stdapi_ui_send_mouse implements C
         }
 
         return ERROR_SUCCESS;
-    }
-
-    private static class RobotReflect {
-        Object robotObject;
-        Method mouseMove;
-        Method mousePress;
-        Method mouseRelease;
-
-        RobotReflect() throws Exception {
-            Class robotClass = Class.forName("java.awt.Robot");
-            robotObject = robotClass.newInstance();
-            mouseMove = robotClass.getMethod("mouseMove", int.class, int.class);
-            mousePress = robotClass.getMethod("mousePress", int.class);
-            mouseRelease = robotClass.getMethod("mouseRelease", int.class);
-        }
-
-        void mouseMove(int x, int y) throws Exception {
-            mouseMove.invoke(robotObject, x, y);
-        }
-
-        void mousePress(int mouseMask) throws Exception {
-            mousePress.invoke(robotObject, mouseMask);
-        }
-
-        void mouseRelease(int mouseMask) throws Exception {
-            mouseRelease.invoke(robotObject, mouseMask);
-        }
     }
 }

