@@ -88,7 +88,7 @@ DWORD request_ui_send_mouse(Remote *remote, Packet *request)
 		double dy = y*(65535.0f / height);
 		input.mi.dx = (LONG)dx;
 		input.mi.dy = (LONG)dy;
-		input.mi.dwFlags |= MOUSEEVENTF_ABSOLUTE;
+		input.mi.dwFlags |= MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_MOVE;
 	}
 	SendInput(1, &input, sizeof(INPUT));
 	if (action == 1)
