@@ -180,6 +180,7 @@ public interface TLVType {
     public static final int TLV_TYPE_MOUSE_ACTION = TLVPacket.TLV_META_TYPE_UINT | 3015;
     public static final int TLV_TYPE_MOUSE_X = TLVPacket.TLV_META_TYPE_UINT      | 3016;
     public static final int TLV_TYPE_MOUSE_Y = TLVPacket.TLV_META_TYPE_UINT      | 3017;
+    public static final int TLV_TYPE_KEYEVENT_SEND = TLVPacket.TLV_META_TYPE_RAW | 3018;
 
     // Event Log
     public static final int TLV_TYPE_EVENT_SOURCENAME = TLVPacket.TLV_META_TYPE_STRING | 4000;

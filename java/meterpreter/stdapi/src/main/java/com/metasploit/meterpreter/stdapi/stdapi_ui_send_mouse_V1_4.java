@@ -40,6 +40,12 @@ public class stdapi_ui_send_mouse_V1_4 extends stdapi_ui_send_mouse implements C
             case 6:
                 robot.mouseRelease(InputEvent.BUTTON3_MASK);
                 break;
+            case 7:
+                robot.mousePress(InputEvent.BUTTON1_MASK);
+                robot.mouseRelease(InputEvent.BUTTON1_MASK);
+                robot.mousePress(InputEvent.BUTTON1_MASK);
+                robot.mouseRelease(InputEvent.BUTTON1_MASK);
+                break;
         }
 
         return ERROR_SUCCESS;
