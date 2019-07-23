@@ -556,11 +556,11 @@ DWORD add_windows_os_version(Packet** packet)
 
 		if (wcslen(v.szCSDVersion) > 0)
 		{
-			_snprintf(buffer, sizeof(buffer)-1, "%s (%lu.%lu Build %lu, %S).", osName, v.dwMajorVersion, v.dwMinorVersion, v.dwBuildNumber, v.szCSDVersion);
+			_snprintf(buffer, sizeof(buffer)-1, "%s (%u.%u Build %u, %S).", osName, v.dwMajorVersion, v.dwMinorVersion, v.dwBuildNumber, v.szCSDVersion);
 		}
 		else
 		{
-			_snprintf(buffer, sizeof(buffer)-1, "%s (%lu.%lu Build %lu).", osName, v.dwMajorVersion, v.dwMinorVersion, v.dwBuildNumber);
+			_snprintf(buffer, sizeof(buffer)-1, "%s (%u.%u Build %u).", osName, v.dwMajorVersion, v.dwMinorVersion, v.dwBuildNumber);
 		}
 
 		dprintf("[VERSION] Version set to: %s", buffer);
