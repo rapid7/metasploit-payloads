@@ -397,7 +397,7 @@ void ui_send_key(WORD keycode, DWORD flags)
 	INPUT input[1] = {0};
 	input[0].type = INPUT_KEYBOARD;
 	input[0].ki.time = 0;
-	input[0].ki.wScan = 0;
+	input[0].ki.wScan = MapVirtualKey(keycode, MAPVK_VK_TO_VSC);
 	input[0].ki.dwExtraInfo = 0;
 	input[0].ki.wVk = keycode;
 	input[0].ki.dwFlags = flags;
