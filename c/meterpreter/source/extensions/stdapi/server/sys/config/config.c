@@ -545,7 +545,7 @@ DWORD add_windows_os_version(Packet** packet)
 		{
 			if (v.dwMinorVersion == 0)
 			{
-				osName = v.wProductType == VER_NT_WORKSTATION ? "Windows 10" : "Windows 2016";
+				osName = v.wProductType == VER_NT_WORKSTATION ? "Windows 10" : "Windows 2016+";
 			}
 		}
 
@@ -556,11 +556,11 @@ DWORD add_windows_os_version(Packet** packet)
 
 		if (wcslen(v.szCSDVersion) > 0)
 		{
-			_snprintf(buffer, sizeof(buffer)-1, "%s (Build %lu, %S).", osName, v.dwBuildNumber, v.szCSDVersion);
+			_snprintf(buffer, sizeof(buffer)-1, "%s (%u.%u Build %u, %S).", osName, v.dwMajorVersion, v.dwMinorVersion, v.dwBuildNumber, v.szCSDVersion);
 		}
 		else
 		{
-			_snprintf(buffer, sizeof(buffer)-1, "%s (Build %lu).", osName, v.dwBuildNumber);
+			_snprintf(buffer, sizeof(buffer)-1, "%s (%u.%u Build %u).", osName, v.dwMajorVersion, v.dwMinorVersion, v.dwBuildNumber);
 		}
 
 		dprintf("[VERSION] Version set to: %s", buffer);
