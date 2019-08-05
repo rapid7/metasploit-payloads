@@ -1,6 +1,6 @@
 # -*- coding:binary -*-
 module MetasploitPayloads
-  VERSION = '1.3.75'
+  VERSION = '1.3.76'
 
   def self.version
     VERSION
