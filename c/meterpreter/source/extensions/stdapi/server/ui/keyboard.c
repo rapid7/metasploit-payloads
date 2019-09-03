@@ -392,6 +392,58 @@ DWORD request_ui_send_keys(Remote *remote, Packet *request)
 	return ERROR_SUCCESS;
 }
 
+void ui_send_key(WORD keycode, DWORD flags)
+{
+	INPUT input[1] = {0};
+	input[0].type = INPUT_KEYBOARD;
+	input[0].ki.time = 0;
+	input[0].ki.wScan = MapVirtualKey(keycode, MAPVK_VK_TO_VSC);
+	input[0].ki.dwExtraInfo = 0;
+	input[0].ki.wVk = keycode;
+	input[0].ki.dwFlags = flags;
+	SendInput(1, input, sizeof(INPUT));
+}
+
+/*
+ * Send key events
+ */
+
+DWORD request_ui_send_keyevent(Remote *remote, Packet *packet)
+{
+	Packet *response = packet_create_response(packet);
+	DWORD result = ERROR_SUCCESS;
+	Tlv data;
+
+	if ((packet_get_tlv(packet, TLV_TYPE_KEYEVENT_SEND, &data)) == ERROR_SUCCESS)
+	{
+		for (unsigned int i=0;i<data.header.length;i+=8)
+		{
+			UCHAR action = data.buffer[i];
+			WORD keycode = *(WORD*)&data.buffer[i+4];
+			if (action == 1)
+			{
+				ui_send_key(keycode, 0);
+			}
+			else if (action == 2)
+			{
+				ui_send_key(keycode, KEYEVENTF_KEYUP);
+			}
+			else
+			{
+				ui_send_key(keycode, 0);
+				ui_send_key(keycode, KEYEVENTF_KEYUP);
+			}
+		}
+	}
+	else 
+	{
+		result = 1;
+	}
+
+	// Transmit the response
+	packet_transmit_response(result, remote, response);
+	return ERROR_SUCCESS;
+}
 
 /*
  * log keystrokes and track active window

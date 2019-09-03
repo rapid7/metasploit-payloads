@@ -13,6 +13,7 @@ DWORD request_ui_get_keys(Remote *remote, Packet *request);
 DWORD request_ui_get_keys_utf8(Remote *remote, Packet *request);
 
 DWORD request_ui_send_keys(Remote *remote, Packet *request);
+DWORD request_ui_send_keyevent(Remote *remote, Packet *request);
 DWORD request_ui_send_mouse(Remote *remote, Packet *request);
 
 DWORD request_ui_desktop_enum( Remote * remote, Packet * request );

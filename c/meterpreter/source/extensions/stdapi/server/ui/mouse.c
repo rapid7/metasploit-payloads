@@ -80,6 +80,10 @@ DWORD request_ui_send_mouse(Remote *remote, Packet *request)
 	{
 		input.mi.dwFlags = MOUSEEVENTF_RIGHTUP;
 	}
+	else if (action == 7)
+	{
+		input.mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
+	}
 	if (x != -1 || y != -1) 
 	{
 		double width = GetSystemMetrics(SM_CXSCREEN)-1;
@@ -88,7 +92,7 @@ DWORD request_ui_send_mouse(Remote *remote, Packet *request)
 		double dy = y*(65535.0f / height);
 		input.mi.dx = (LONG)dx;
 		input.mi.dy = (LONG)dy;
-		input.mi.dwFlags |= MOUSEEVENTF_ABSOLUTE;
+		input.mi.dwFlags |= MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_MOVE;
 	}
 	SendInput(1, &input, sizeof(INPUT));
 	if (action == 1)
@@ -101,6 +105,18 @@ DWORD request_ui_send_mouse(Remote *remote, Packet *request)
 	{
 		input.mi.dwFlags &= ~(MOUSEEVENTF_RIGHTDOWN);
 		input.mi.dwFlags |= MOUSEEVENTF_RIGHTUP;
+		SendInput(1, &input, sizeof(INPUT));
+	}
+	else if (action == 7)
+	{
+		input.mi.dwFlags &= ~(MOUSEEVENTF_LEFTDOWN);
+		input.mi.dwFlags |= MOUSEEVENTF_LEFTUP;
+		SendInput(1, &input, sizeof(INPUT));
+		input.mi.dwFlags &= ~(MOUSEEVENTF_LEFTUP);
+		input.mi.dwFlags |= MOUSEEVENTF_LEFTDOWN;
+		SendInput(1, &input, sizeof(INPUT));
+		input.mi.dwFlags &= ~(MOUSEEVENTF_LEFTDOWN);
+		input.mi.dwFlags |= MOUSEEVENTF_LEFTUP;
 		SendInput(1, &input, sizeof(INPUT));
 	}
 
