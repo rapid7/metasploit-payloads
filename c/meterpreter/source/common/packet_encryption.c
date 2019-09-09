@@ -98,14 +98,14 @@ DWORD decrypt_packet(Remote* remote, Packet** packet, LPBYTE buffer, DWORD buffe
 			}
 
 			// decrypt!
-			if (!CryptSetKeyParam(remote->enc_ctx->aes_key, KP_IV, iv, 0))
+			if (!CryptSetKeyParam(dupKey, KP_IV, iv, 0))
 			{
 				result = GetLastError();
 				vdprintf("[DEC] Failed to set IV: %d (%x)", result, result);
 				break;
 			}
 
-			if (!CryptDecrypt(remote->enc_ctx->aes_key, 0, TRUE, 0, encryptedData, &encryptedSize))
+			if (!CryptDecrypt(dupKey, 0, TRUE, 0, encryptedData, &encryptedSize))
 			{
 				result = GetLastError();
 				vdprintf("[DEC] Failed to decrypt: %d (%x)", result, result);
@@ -161,6 +161,10 @@ DWORD decrypt_packet(Remote* remote, Packet** packet, LPBYTE buffer, DWORD buffe
 		{
 			packet_destroy(localPacket);
 		}
+	}
+	if (dupKey != 0)
+	{
+		CryptDestroyKey(dupKey);
 	}
 
 	return result;
