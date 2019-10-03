@@ -48,6 +48,8 @@
 										<exclude name="**/stdapi_net_config_get_interfaces_V1_6.java" />
 										<exclude name="**/stdapi_fs_stat_V1_6.java" />
 										<exclude name="**/stdapi_ui_desktop_screenshot_V1_4.java" />
+										<exclude name="**/stdapi_ui_send_mouse_V1_4.java" />
+										<exclude name="**/stdapi_ui_send_keyevent_V1_4.java" />
 										<exclude name="metasploit/PayloadApplet.java" />
 									</fileset>
 									<fileset dir="${project.basedir}/../../androidpayload/app/src" includes="**/*.java" excludes="**/MainActivity.java" />

@@ -52,6 +52,8 @@ public class Loader implements ExtensionLoader {
         mgr.registerCommand("stdapi_sys_process_close", stdapi_sys_process_close.class);
         mgr.registerCommand("stdapi_sys_process_get_processes", stdapi_sys_process_get_processes.class, V1_2);
         mgr.registerCommand("stdapi_ui_desktop_screenshot", stdapi_ui_desktop_screenshot.class, V1_4);
+        mgr.registerCommand("stdapi_ui_send_mouse", stdapi_ui_send_mouse.class, V1_4);
+        mgr.registerCommand("stdapi_ui_send_keyevent", stdapi_ui_send_keyevent.class, V1_4);
         mgr.registerCommand("webcam_audio_record", webcam_audio_record.class, V1_4);
     }
 }
