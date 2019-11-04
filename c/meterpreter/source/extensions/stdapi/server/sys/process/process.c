@@ -1,5 +1,6 @@
 #include "precomp.h"
 #include "ps.h" // include the code for listing proceses
+#include <Windows.h>
 
 #include "./../session.h"
 #include "in-mem-exe.h" /* include skapetastic in-mem exe exec */
@@ -259,6 +260,33 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 		// Should we create the process suspended?
 		if (flags & PROCESS_EXECUTE_FLAG_SUSPENDED)
 			createFlags |= CREATE_SUSPENDED;
+
+		if (TRUE) {
+typedef BOOL (CALLBACK* UpdateProcThreadAttributeType)(LPPROC_THREAD_ATTRIBUTE_LIST, DWORD, DWORD_PTR, PVOID, SIZE_T, PVOID, PSIZE_T);
+#define PROC_THREAD_ATTRIBUTE_NUMBER    0x0000FFFF
+#define PROC_THREAD_ATTRIBUTE_THREAD    0x00010000  // Attribute may be used with thread creation
+#define PROC_THREAD_ATTRIBUTE_INPUT     0x00020000  // Attribute is input only
+#define PROC_THREAD_ATTRIBUTE_ADDITIVE  0x00040000  // Attribute may be "accumulated," e.g. bitmasks, counters, etc.
+#define ProcThreadAttributeValue(Number, Thread, Input, Additive) \
+    (((Number) & PROC_THREAD_ATTRIBUTE_NUMBER) | \
+     ((Thread != FALSE) ? PROC_THREAD_ATTRIBUTE_THREAD : 0) | \
+     ((Input != FALSE) ? PROC_THREAD_ATTRIBUTE_INPUT : 0) | \
+     ((Additive != FALSE) ? PROC_THREAD_ATTRIBUTE_ADDITIVE : 0))
+#define ProcThreadAttributeHandleList 2
+#define _PROCESS_CREATION_MITIGATION_POLICY_BLOCK_NON_MICROSOFT_BINARIES_ALWAYS_ON 0x00000001 << 44
+#define ProcThreadAttributeMitigationPolicy 7
+#define PROC_THREAD_ATTRIBUTE_MITIGATION_POLICY ProcThreadAttributeValue (ProcThreadAttributeMitigationPolicy, FALSE, TRUE, FALSE)
+			DWORD _PROCESS_CREATION_MITIGATION_POLICY_BLOCK_NON_MICROSOFT_BINARIES_ALWAYS_ON = _PROCESS_CREATION_MITIGATION_POLICY_BLOCK_NON_MICROSOFT_BINARIES_ALWAYS_ON;
+			DWORD _PROC_THREAD_ATTRIBUTE_MITIGATION_POLICY = PROC_THREAD_ATTRIBUTE_MITIGATION_POLICY;
+			HMODULE kernel32Handle = GetModuleHandleA("kernel32.dll");
+			if (kernel32Handle) {
+				UpdateProcThreadAttributeType UpdateProcThreadAttributePtr = (UpdateProcThreadAttributeType)GetProcAddress(kernel32Handle, "UpdateProcThreadAttribute");
+				if (UpdateProcThreadAttributePtr) { // apply process mitigations only if available
+					DWORD policy = _PROCESS_CREATION_MITIGATION_POLICY_BLOCK_NON_MICROSOFT_BINARIES_ALWAYS_ON;
+					UpdateProcThreadAttributePtr(si.lpAttributeList, 0, _PROC_THREAD_ATTRIBUTE_MITIGATION_POLICY, &policy, sizeof(policy), NULL, NULL);
+				}
+			}
+		}
 
 		if (flags & PROCESS_EXECUTE_FLAG_USE_THREAD_TOKEN)
 		{
