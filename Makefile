@@ -1,9 +1,11 @@
 DATADIR:=../metasploit-framework/data
 METERPDIR:=$(DATADIR)/meterpreter
+ANDROIDSDKDIR:=/usr/local/share/android-sdk
 
 install-all: \
-	install-windows \
+    install-windows \
     install-java \
+    install-android \
     install-php \
     install-python
 
@@ -32,6 +34,11 @@ install-php: $(METERPDIR)
 install-python: $(METERPDIR)
 	@echo "Installing Python payloads"
 	@cp python/meterpreter/*.py $(METERPDIR)
+
+install-android:
+       @echo "Installing Android payloads"
+       @mvn -v >/dev/null 2>&1 || echo "Note: Maven not found, skipping";
+       @mvn -v >/dev/null 2>&1 && (cd java; mvn package -Dandroid.sdk.path=$(ANDROIDSDKDIR) -Dandroid.release=true -P deploy -q);
 
 uninstall:
 	rm -fr $(METERPDIR)
