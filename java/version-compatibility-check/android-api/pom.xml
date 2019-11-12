@@ -76,6 +76,9 @@
 								<artifactId>android-api-level-L</artifactId>
 								<version>L_r1</version>
 							</signature>
+							<ignores>
+									<ignore>com.sun.org.apache.xalan.internal.xsltc.runtime.AbstractTranslet</ignore>
+							</ignores>
 						</configuration>
 					</execution>
 				</executions>

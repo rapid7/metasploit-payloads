@@ -50,6 +50,9 @@
 								<artifactId>java15</artifactId>
 								<version>1.0</version>
 							</signature>
+							<ignores>
+									<ignore>com.sun.org.apache.xalan.internal.xsltc.runtime.AbstractTranslet</ignore>
+							</ignores>
 						</configuration>
 					</execution>
 				</executions>
