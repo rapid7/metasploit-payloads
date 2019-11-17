@@ -123,9 +123,6 @@
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_livessp.c">
       <Filter>local modules\sekurlsa\packages</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\sekurlsa\crypto\kuhl_m_sekurlsa_nt63.c">
-      <Filter>local modules\sekurlsa\crypto</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\sekurlsa\crypto\kuhl_m_sekurlsa_nt5.c">
       <Filter>local modules\sekurlsa\crypto</Filter>
     </ClCompile>
@@ -258,6 +255,29 @@
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\dpapi\packages\kuhl_m_dpapi_rdg.c">
       <Filter>local modules\dpapi\packages</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_acr.c">
+      <Filter>common modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_rdm.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_hid.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_ldap.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_pipe.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_pn532.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_acr.c">
+      <Filter>local modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_sr98.c">
+      <Filter>local modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_rdm.c">
+      <Filter>local modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\crypto\kuhl_m_crypto_pki.c">
+      <Filter>local modules\crypto</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\dpapi\packages\kuhl_m_dpapi_powershell.c">
+      <Filter>local modules\dpapi\packages</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\source\extensions\kiwi\main.h" />
@@ -387,9 +407,6 @@
     </ClInclude>
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\sekurlsa\packages\kuhl_m_sekurlsa_kerberos.h">
       <Filter>local modules\sekurlsa\packages</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\sekurlsa\crypto\kuhl_m_sekurlsa_nt63.h">
-      <Filter>local modules\sekurlsa\crypto</Filter>
     </ClInclude>
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\sekurlsa\crypto\kuhl_m_sekurlsa_nt5.h">
       <Filter>local modules\sekurlsa\crypto</Filter>
@@ -533,6 +550,30 @@
       <Filter>local modules\dpapi\packages</Filter>
     </ClInclude>
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\dpapi\packages\kuhl_m_dpapi_rdg.h">
+      <Filter>local modules\dpapi\packages</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_acr.h">
+      <Filter>common modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_rdm.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_hid.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_ldap.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_mifare.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_pipe.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\kull_m_pn532.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_acr.h">
+      <Filter>local modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_sr98.h">
+      <Filter>local modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_rdm.h">
+      <Filter>local modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\crypto\kuhl_m_crypto_pki.h">
+      <Filter>local modules\crypto</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\dpapi\packages\kuhl_m_dpapi_powershell.h">
       <Filter>local modules\dpapi\packages</Filter>
     </ClInclude>
   </ItemGroup>
