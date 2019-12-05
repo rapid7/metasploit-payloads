@@ -324,7 +324,7 @@ VOID ScanAndFixModule(PCHAR pKnown, PCHAR pSuspect, PWCHAR wszBaseDllName)
 		if (pSectionHeader[dwIdx].Characteristics & IMAGE_SCN_MEM_WRITE)
 			continue;
 
-		if (wcscmp(wszBaseDllName, L"clr.dll") == 0 && strcmp(pSectionHeader[dwIdx].Name, ".text") == 0)
+		if (!((wcscmp(wszBaseDllName, L"clr.dll") == 0 && strcmp(pSectionHeader[dwIdx].Name, ".text") == 0)))
 		{
 			ScanAndFixSection((PCHAR)pSectionHeader[dwIdx].Name, pKnown + pSectionHeader[dwIdx].VirtualAddress,
 				pSuspect + pSectionHeader[dwIdx].VirtualAddress, pSectionHeader[dwIdx].Misc.VirtualSize);
