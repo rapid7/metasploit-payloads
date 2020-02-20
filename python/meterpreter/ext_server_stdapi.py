@@ -835,6 +835,10 @@ def resolve_host(hostname, family):
     address = address_info['sockaddr'][0]
     return {'family': family, 'address': address, 'packed_address': inet_pton(family, address)}
 
+def tlv_pack_local_addrinfo(sock):
+    local_host, local_port = sock.getsockname()[:2]
+    return tlv_pack(TLV_TYPE_LOCAL_HOST, local_host) + tlv_pack(TLV_TYPE_LOCAL_PORT, local_port)
+
 def windll_RtlGetVersion():
     if not has_windll:
         return None
@@ -896,6 +900,7 @@ def channel_open_stdapi_net_tcp_client(request, response):
         return ERROR_CONNECTION_ERROR, response
     channel_id = meterpreter.add_channel(MeterpreterSocketTCPClient(sock))
     response += tlv_pack(TLV_TYPE_CHANNEL_ID, channel_id)
+    response += tlv_pack_local_addrinfo(sock)
     return ERROR_SUCCESS, response
 
 @register_function
@@ -914,6 +919,7 @@ def channel_open_stdapi_net_tcp_server(request, response):
     server_sock.listen(socket.SOMAXCONN)
     channel_id = meterpreter.add_channel(MeterpreterSocketTCPServer(server_sock))
     response += tlv_pack(TLV_TYPE_CHANNEL_ID, channel_id)
+    response += tlv_pack_local_addrinfo(server_sock)
     return ERROR_SUCCESS, response
 
 @register_function
@@ -926,6 +932,7 @@ def channel_open_stdapi_net_udp_client(request, response):
     peer_address = peer_address_info['sockaddr'] if peer_address_info else None
     channel_id = meterpreter.add_channel(MeterpreterSocketUDPClient(sock, peer_address))
     response += tlv_pack(TLV_TYPE_CHANNEL_ID, channel_id)
+    response += tlv_pack_local_addrinfo(sock)
     return ERROR_SUCCESS, response
 
 @register_function
