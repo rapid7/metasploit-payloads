@@ -326,6 +326,7 @@ DWORD request_net_udp_channel_open( Remote * remote, Packet * packet )
 		scheduler_insert_waitable( ctx->sock.notify, ctx, NULL, (WaitableNotifyRoutine)udp_channel_notify, NULL );
 
 		packet_add_tlv_uint( response, TLV_TYPE_CHANNEL_ID, channel_get_id(ctx->sock.channel) );
+		net_tlv_pack_local_addrinfo( &ctx->sock, response );
 
 		dprintf( "[UDP] request_net_udp_channel_open. UDP socket on channel %d (The local specified was %s:%d ) (The peer specified was %s:%d)",  channel_get_id( ctx->sock.channel ), inet_ntoa( ctx->localhost ), ctx->localport, inet_ntoa( ctx->peerhost ), ctx->peerport );
 

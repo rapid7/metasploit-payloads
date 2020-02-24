@@ -229,6 +229,7 @@ DWORD tcp_channel_client_local_notify(Remote * remote, TcpClientContext * ctx)
 DWORD request_net_tcp_client_channel_open(Remote *remote, Packet *packet)
 {
 	Channel *channel = NULL;
+	TcpClientContext *ctx = NULL;
 	Packet *response = packet_create_response(packet);
 	DWORD result = ERROR_SUCCESS;
 	LPCSTR host;
@@ -247,13 +248,14 @@ DWORD request_net_tcp_client_channel_open(Remote *remote, Packet *packet)
 		port = packet_get_tlv_value_uint(packet, TLV_TYPE_PEER_PORT);
 
 		// Open the TCP channel
-		if ((result = create_tcp_client_channel(remote, host, (USHORT)(port & 0xffff), &channel)) != ERROR_SUCCESS)
+		if ((result = create_tcp_client_channel(remote, host, (USHORT)(port & 0xffff), &channel, &ctx)) != ERROR_SUCCESS)
 		{
 			break;
 		}
 
 		// Set the channel's identifier on the response
 		packet_add_tlv_uint(response, TLV_TYPE_CHANNEL_ID, channel_get_id(channel));
+		net_tlv_pack_local_addrinfo(ctx, response);
 
 	} while (0);
 
@@ -269,10 +271,11 @@ DWORD request_net_tcp_client_channel_open(Remote *remote, Packet *packet)
  * @param remoteHost The remote host to connect to.
  * @param remoteHost The remote port to connect to.
  * @param outChannel Pointer that will receive the newly created channel.
+ * @param outContext Pointer that will receive the newly created tcp client context.
  * @returns Indication of success or failure.
  * @retval ERROR_SUCCESS Creation of the TCP client was successful.
  */
-DWORD create_tcp_client_channel(Remote *remote, LPCSTR remoteHost, USHORT remotePort, Channel **outChannel)
+DWORD create_tcp_client_channel(Remote *remote, LPCSTR remoteHost, USHORT remotePort, Channel **outChannel, TcpClientContext **outContext)
 {
 	StreamChannelOps chops;
 	TcpClientContext *ctx = NULL;
@@ -284,6 +287,10 @@ DWORD create_tcp_client_channel(Remote *remote, LPCSTR remoteHost, USHORT remote
 	if (outChannel)
 	{
 		*outChannel = NULL;
+	}
+	if (outContext)
+	{
+		*outContext = NULL;
 	}
 
 	dprintf("[TCP] create_tcp_client_channel. host=%s, port=%d", remoteHost, remotePort);
@@ -379,6 +386,7 @@ DWORD create_tcp_client_channel(Remote *remote, LPCSTR remoteHost, USHORT remote
 		if (ctx)
 		{
 			free_tcp_client_context(ctx);
+			ctx = NULL;
 		}
 
 		if (clientFd)
@@ -392,6 +400,10 @@ DWORD create_tcp_client_channel(Remote *remote, LPCSTR remoteHost, USHORT remote
 	if (outChannel)
 	{
 		*outChannel = channel;
+	}
+	if (outContext)
+	{
+		*outContext = ctx;
 	}
 
 	return result;
