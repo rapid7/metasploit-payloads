@@ -110,7 +110,7 @@ public class Payload {
             return;
         }
         PowerManager.WakeLock wakeLock = null;
-        if ((config.flags & Config.FLAG_WAKELOCK) != 0) {
+        if ((config.flags & Config.FLAG_WAKELOCK) != 0 && context != null) {
             PowerManager powerManager = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
             wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, Payload.class.getSimpleName());
             wakeLock.acquire();
