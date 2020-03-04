@@ -1,6 +1,9 @@
 #ifndef _METERPRETER_SOURCE_EXTENSION_STDAPI_STDAPI_SERVER_NET_NET_H
 #define _METERPRETER_SOURCE_EXTENSION_STDAPI_STDAPI_SERVER_NET_NET_H
 
+#include <winsock2.h>
+#include <ws2tcpip.h>
+
 /*
  * Generic socket context
  */
@@ -62,8 +65,10 @@ DWORD request_net_socket_tcp_shutdown(Remote *remote, Packet *packet);
 /*
  * Channel creation
  */
-DWORD create_tcp_client_channel(Remote *remote, LPCSTR host,USHORT port, Channel **outChannel);
+DWORD create_tcp_client_channel(Remote *remote, LPCSTR host,USHORT port, Channel **outChannel, TcpClientContext **outContext);
 
 VOID free_socket_context(SocketContext *ctx);
+const char * inet_ntop(int af, const void *src, char *dst, socklen_t size);
+DWORD net_tlv_pack_local_addrinfo(SocketContext *sock_ctx, Packet *packet);
 
 #endif

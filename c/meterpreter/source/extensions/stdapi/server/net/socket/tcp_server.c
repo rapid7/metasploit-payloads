@@ -301,11 +301,6 @@ DWORD request_net_tcp_server_channel_open(Remote * remote, Packet * packet)
 		ctx->remote = remote;
 
 		localPort = (USHORT)(packet_get_tlv_value_uint(packet, TLV_TYPE_LOCAL_PORT) & 0xFFFF);
-		if (!localPort)
-		{
-			BREAK_WITH_ERROR("[TCP-SERVER] request_net_tcp_server_channel_open. localPort == NULL", ERROR_INVALID_HANDLE);
-		}
-
 		localHost = packet_get_tlv_value_string(packet, TLV_TYPE_LOCAL_HOST);
 
 		ctx->fd = WSASocket(AF_INET6, SOCK_STREAM, IPPROTO_TCP, 0, 0, 0);
@@ -382,6 +377,7 @@ DWORD request_net_tcp_server_channel_open(Remote * remote, Packet * packet)
 		scheduler_insert_waitable(ctx->notify, ctx, NULL, (WaitableNotifyRoutine)tcp_channel_server_notify, NULL);
 
 		packet_add_tlv_uint(response, TLV_TYPE_CHANNEL_ID, channel_get_id(ctx->channel));
+		net_tlv_pack_local_addrinfo(ctx, response);
 
 		dprintf("[TCP-SERVER] request_net_tcp_server_channel_open. tcp server %s:%d on channel %d", localHost, localPort, channel_get_id(ctx->channel));
 
