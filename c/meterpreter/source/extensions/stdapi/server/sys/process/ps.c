@@ -186,60 +186,60 @@ DWORD ps_getnativearch( VOID )
 
 /*
  * Attempt to get the processes path and name.
- * First, try psapi!GetModuleFileNameExA (Windows 2000/XP/2003/Vista/2008/7 but cant get x64 process paths from a wow64 process)
- * Secondly, try kernel32!QueryFullProcessImageNameA (Windows Vista/2008/7)
- * Thirdly, try psapi!GetProcessImageFileNameA (Windows XP/2003/Vista/2008/7 - returns native path)
+ * First, try psapi!GetModuleFileNameExW (Windows 2000/XP/2003/Vista/2008/7 but cant get x64 process paths from a wow64 process)
+ * Secondly, try kernel32!QueryFullProcessImageNameW (Windows Vista/2008/7)
+ * Thirdly, try psapi!GetProcessImageFileNameW (Windows XP/2003/Vista/2008/7 - returns native path)
  * If that fails then try to read the path via the process's PEB. (Windows NT4 and above).
- * Note: cpExeName is optional and only retrieved by parsing the PEB as the toolhelp/psapi techniques can get the name easier.
+ * Note: wcpExeName is optional and only retrieved by parsing the PEB as the toolhelp/psapi techniques can get the name easier.
  */
-BOOL ps_getpath( DWORD pid, char * cpExePath, DWORD dwExePathSize, char * cpExeName, DWORD dwExeNameSize )
+BOOL ps_getpath(DWORD pid, wchar_t * wcpExePath, DWORD dwExePathSize, wchar_t * wcpExeName, DWORD dwExeNameSize)
 {
 	BOOL success    = FALSE;
 	HANDLE hProcess = NULL;
 	HMODULE hPsapi  = NULL;
 	HMODULE hNtdll  = NULL;
 	// make these static to avoid some overhead when resolving due to the repeated calls to ps_getpath fo a ps command...
-	static GETMODULEFILENAMEEXA pGetModuleFileNameExA             = NULL;
-	static GETPROCESSIMAGEFILENAMEA pGetProcessImageFileNameA     = NULL;
-	static QUERYFULLPROCESSIMAGENAMEA pQueryFullProcessImageNameA = NULL;
+	static GETMODULEFILENAMEEXW pGetModuleFileNameExW             = NULL;
+	static GETPROCESSIMAGEFILENAMEW pGetProcessImageFileNameW     = NULL;
+	static QUERYFULLPROCESSIMAGENAMEW pQueryFullProcessImageNameW = NULL;
 
 	do
 	{
-		if( !cpExePath || !dwExePathSize )
+		if( !wcpExePath || !dwExePathSize )
 			break;
 
-		memset( cpExePath, 0, dwExePathSize );
+		wmemset( wcpExePath, 0, dwExePathSize );
 
 		hProcess = OpenProcess( PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid );
 		if( !hProcess )
 			break;
 
-		// first, try psapi!GetModuleFileNameExA (Windows 2000/XP/2003/Vista/2008/7 but cant get x64 process paths from a wow64 process)
+		// first, try psapi!GetModuleFileNameExW (Windows 2000/XP/2003/Vista/2008/7 but cant get x64 process paths from a wow64 process)
 		hPsapi = LoadLibrary( "psapi" );
 		if( hPsapi )
 		{
-			if( !pGetModuleFileNameExA )
-				pGetModuleFileNameExA = (GETMODULEFILENAMEEXA)GetProcAddress( hPsapi, "GetModuleFileNameExA" );
+			if( !pGetModuleFileNameExW )
+				pGetModuleFileNameExW = (GETMODULEFILENAMEEXW)GetProcAddress(hPsapi, "GetModuleFileNameExW");
 
-			if( pGetModuleFileNameExA )
+			if( pGetModuleFileNameExW )
 			{
-				if( pGetModuleFileNameExA( hProcess, NULL, cpExePath, dwExePathSize ) )
+				if (pGetModuleFileNameExW(hProcess, NULL, wcpExePath, dwExePathSize))
 					success = TRUE;
 			}
 		}
 
-		// secondly, try kernel32!QueryFullProcessImageNameA (Windows Vista/2008/7)
+		// secondly, try kernel32!QueryFullProcessImageNameW (Windows Vista/2008/7)
 		if( !success )
 		{
 			DWORD dwSize   = dwExePathSize;
 			HANDLE hKernel = LoadLibraryA( "kernel32" );
 
-			if( !pQueryFullProcessImageNameA )
-				pQueryFullProcessImageNameA = (QUERYFULLPROCESSIMAGENAMEA)GetProcAddress( hKernel, "QueryFullProcessImageNameA" );
+			if( !pQueryFullProcessImageNameW )
+				pQueryFullProcessImageNameW = (QUERYFULLPROCESSIMAGENAMEW)GetProcAddress( hKernel, "QueryFullProcessImageNameW" );
 
-			if( pQueryFullProcessImageNameA )
+			if( pQueryFullProcessImageNameW )
 			{
-				if( pQueryFullProcessImageNameA( hProcess, 0, cpExePath, &dwSize ) )
+				if (pQueryFullProcessImageNameW(hProcess, 0, wcpExePath, &dwSize))
 					success = TRUE;
 			}
 
@@ -247,15 +247,15 @@ BOOL ps_getpath( DWORD pid, char * cpExePath, DWORD dwExePathSize, char * cpExeN
 				FreeLibrary( hKernel );
 		}
 
-		// thirdly, try psapi!GetProcessImageFileNameA (Windows XP/2003/Vista/2008/7 - returns a native path not a win32 path)
+		// thirdly, try psapi!GetProcessImageFileNameW (Windows XP/2003/Vista/2008/7 - returns a native path not a win32 path)
 		if( !success && hPsapi )
 		{
-			if( !pGetProcessImageFileNameA )
-				pGetProcessImageFileNameA = (GETPROCESSIMAGEFILENAMEA)GetProcAddress( hPsapi, "GetProcessImageFileNameA" );
+			if( !pGetProcessImageFileNameW )
+				pGetProcessImageFileNameW = (GETPROCESSIMAGEFILENAMEW)GetProcAddress( hPsapi, "GetProcessImageFileNameW" );
 
-			if( pGetProcessImageFileNameA )
+			if( pGetProcessImageFileNameW )
 			{
-				if( pGetProcessImageFileNameA( hProcess, cpExePath, dwExePathSize ) )
+				if (pGetProcessImageFileNameW(hProcess, (LPWSTR)wcpExePath, dwExePathSize))
 					success = TRUE;
 			}
 		}
@@ -263,7 +263,6 @@ BOOL ps_getpath( DWORD pid, char * cpExePath, DWORD dwExePathSize, char * cpExeN
 		// finally if all else has failed, manually pull the exe path/name out of th PEB...
 		if( !success )
 		{
-			WCHAR * wcImagePathName                              = NULL;
 			NTQUERYINFORMATIONPROCESS pNtQueryInformationProcess = NULL;
 			DWORD dwSize                                         = 0;
 			PROCESS_BASIC_INFORMATION BasicInformation           = {0};
@@ -293,24 +292,21 @@ BOOL ps_getpath( DWORD pid, char * cpExePath, DWORD dwExePathSize, char * cpExeN
 			if( !ReadProcessMemory( hProcess, peb.lpProcessParameters, &params, sizeof(params), NULL ) )
 				break;
 
-			wcImagePathName = (WCHAR *)malloc( params.ImagePathName.Length );
-			if( wcImagePathName )
+			if (wcpExePath)
 			{
-				if( ReadProcessMemory( hProcess, params.ImagePathName.Buffer, wcImagePathName, params.ImagePathName.Length, NULL ) )
+				if( ReadProcessMemory( hProcess, params.ImagePathName.Buffer, wcpExePath, params.ImagePathName.Length, NULL ) )
 				{
-					char * name = NULL;
+					wchar_t * name = NULL;
 
-					WideCharToMultiByte( CP_ACP, 0, wcImagePathName, (int)(params.ImagePathName.Length / sizeof(WCHAR)), cpExePath, dwExePathSize, NULL, NULL );
 
-					if( cpExeName )
+					if( wcpExeName )
 					{
-						name = strrchr( cpExePath, '\\' );
+						name = wcsrchr(wcpExePath, L'\\');
 						if( name )
-							strncpy( cpExeName, name+1, dwExeNameSize - 1 );
+							wcsncpy(wcpExeName, name + 1, dwExeNameSize - 1);
 					}
 					success = TRUE;
 				}
-				free( wcImagePathName );
 			}
 		}
 
@@ -325,8 +321,8 @@ BOOL ps_getpath( DWORD pid, char * cpExePath, DWORD dwExePathSize, char * cpExeN
 	if( hProcess )
 		CloseHandle( hProcess );
 
-	if( !success && cpExePath )
-		memset( cpExePath, 0, dwExePathSize );
+	if( !success && wcpExePath )
+		wmemset( wcpExePath, 0, dwExePathSize );
 
 	return success;
 }
@@ -335,7 +331,7 @@ BOOL ps_getpath( DWORD pid, char * cpExePath, DWORD dwExePathSize, char * cpExeN
 /*
  * Attempt to get the username associated with the given pid.
  */
-BOOL ps_getusername( DWORD pid, char * cpUserName, DWORD dwUserNameSize )
+BOOL ps_getusername( DWORD pid, wchar_t * wcpUserName, DWORD dwUserNameSize )
 {
 	BOOL success                = FALSE;
 	HANDLE hProcess             = NULL;
@@ -345,15 +341,15 @@ BOOL ps_getusername( DWORD pid, char * cpUserName, DWORD dwUserNameSize )
 	DWORD dwUserLength          = 0;
 	DWORD dwDomainLength        = 0;
 	DWORD dwLength              = 0;
-	char cUser[512]             = {0};
-	char cDomain[512]           = {0};
+	wchar_t wcUser[512]         = {0};
+	wchar_t wcDomain[512]       = {0};
 
 	do
 	{
-		if( !cpUserName || !dwUserNameSize )
+		if( !wcpUserName || !dwUserNameSize )
 			break;
 
-		memset( cpUserName, 0, dwUserNameSize );
+		wmemset( wcpUserName, 0, dwUserNameSize );
 
 		hProcess = OpenProcess( PROCESS_QUERY_INFORMATION, FALSE, pid );
 		if( !hProcess )
@@ -371,13 +367,13 @@ BOOL ps_getusername( DWORD pid, char * cpUserName, DWORD dwUserNameSize )
 		if( !GetTokenInformation( hToken, TokenUser, pUser, dwLength, &dwLength ) )
 			break;
 
-		dwUserLength   = sizeof( cUser );
-		dwDomainLength = sizeof( cDomain );
+		dwUserLength   = sizeof( wcUser );
+		dwDomainLength = sizeof( wcDomain );
 
-		if( !LookupAccountSid( NULL, pUser->User.Sid, cUser, &dwUserLength, cDomain, &dwDomainLength, &peUse ) )
+		if( !LookupAccountSidW( NULL, pUser->User.Sid, wcUser, &dwUserLength, wcDomain, &dwDomainLength, &peUse ) )
 			break;
 
-		_snprintf( cpUserName, dwUserNameSize-1, "%s\\%s", cDomain, cUser );
+		_snwprintf(wcpUserName, dwUserNameSize - 1, L"%s\\%s", wcDomain, wcUser);
 
 		success = TRUE;
 
@@ -404,11 +400,11 @@ DWORD ps_list_via_toolhelp( Packet * response )
 {
 	DWORD result                                       = ERROR_INVALID_HANDLE;
 	CREATETOOLHELP32SNAPSHOT pCreateToolhelp32Snapshot = NULL;
-	PROCESS32FIRST pProcess32First                     = NULL;
-	PROCESS32NEXT pProcess32Next                       = NULL;
+	PROCESS32FIRSTW pProcess32FirstW                   = NULL;
+	PROCESS32NEXTW pProcess32NextW                     = NULL;
 	HANDLE hProcessSnap                                = NULL;
 	HMODULE hKernel                                    = NULL;
-	PROCESSENTRY32 pe32                                = {0};
+	PROCESSENTRY32W pe32                               = {0};
 
 	do
 	{
@@ -417,19 +413,19 @@ DWORD ps_list_via_toolhelp( Packet * response )
 			break;
 
 		pCreateToolhelp32Snapshot = (CREATETOOLHELP32SNAPSHOT)GetProcAddress( hKernel, "CreateToolhelp32Snapshot" );
-		pProcess32First           = (PROCESS32FIRST)GetProcAddress( hKernel, "Process32First" );
-		pProcess32Next            = (PROCESS32NEXT)GetProcAddress( hKernel, "Process32Next" );
+		pProcess32FirstW          = (PROCESS32FIRSTW)GetProcAddress( hKernel, "Process32FirstW" );
+		pProcess32NextW            = (PROCESS32NEXTW)GetProcAddress( hKernel, "Process32NextW" );
 
-		if( !pCreateToolhelp32Snapshot || !pProcess32First || !pProcess32Next )
+		if( !pCreateToolhelp32Snapshot || !pProcess32FirstW || !pProcess32NextW )
 			break;
 
 		hProcessSnap = pCreateToolhelp32Snapshot( TH32CS_SNAPPROCESS, 0 );
 		if( hProcessSnap == INVALID_HANDLE_VALUE )
 			break;
 
-		pe32.dwSize = sizeof( PROCESSENTRY32 );
+		pe32.dwSize = sizeof( PROCESSENTRY32W );
 
-		if( !pProcess32First( hProcessSnap, &pe32 ) )
+		if( !pProcess32FirstW( hProcessSnap, &pe32 ) )
 			break;
 
 		result = ERROR_SUCCESS;
@@ -437,19 +433,19 @@ DWORD ps_list_via_toolhelp( Packet * response )
 		do
 		{
 			DWORD dwProcessArch  = PROCESS_ARCH_UNKNOWN;
-			char cExePath[1024]  = {0};
-			char cUserName[1024] = {0};
+			wchar_t wcExePath[1024]  = {0};
+			wchar_t wcUserName[1024] = {0};
 			Tlv entries[5]       = {0};
 
-			ps_getpath( pe32.th32ProcessID, (char *)&cExePath, 1024, NULL, 0 );
+			ps_getpath( pe32.th32ProcessID, (wchar_t *)&wcExePath, 1024, NULL, 0 );
 
-			ps_getusername( pe32.th32ProcessID, (char *)&cUserName, 1024 );
+			ps_getusername( pe32.th32ProcessID, (wchar_t *)&wcUserName, 1024 );
 
 			dwProcessArch = ps_getarch( pe32.th32ProcessID );
 
-			ps_addresult( response, pe32.th32ProcessID, pe32.th32ParentProcessID, pe32.szExeFile, cExePath, cUserName, dwProcessArch );
+			ps_addresult(response, pe32.th32ProcessID, pe32.th32ParentProcessID, pe32.szExeFile, wcExePath, wcUserName, dwProcessArch);
 
-		} while( pProcess32Next( hProcessSnap, &pe32 ) );
+		} while( pProcess32NextW( hProcessSnap, &pe32 ) );
 
 	} while(0);
 
@@ -474,7 +470,7 @@ DWORD ps_list_via_psapi( Packet * response )
 	HMODULE hPsapi                         = NULL;
 	ENUMPROCESSES pEnumProcesses           = NULL;
 	ENUMPROCESSMODULES pEnumProcessModules = NULL;
-	GETMODULEBASENAMEA pGetModuleBaseNameA = NULL;
+	GETMODULEBASENAMEW pGetModuleBaseNameW = NULL;
 	DWORD dwProcessIds[1024]               = {0};
 	DWORD dwBytesReturned                  = 0;
 	DWORD index                            = 0;
@@ -487,9 +483,9 @@ DWORD ps_list_via_psapi( Packet * response )
 
 		pEnumProcesses      = (ENUMPROCESSES)GetProcAddress( hPsapi, "EnumProcesses" );
 		pEnumProcessModules = (ENUMPROCESSMODULES)GetProcAddress( hPsapi, "EnumProcessModules" );
-		pGetModuleBaseNameA = (GETMODULEBASENAMEA)GetProcAddress( hPsapi, "GetModuleBaseNameA" );
+		pGetModuleBaseNameW = (GETMODULEBASENAMEW)GetProcAddress( hPsapi, "GetModuleBaseNameW" );
 
-		if( !pEnumProcesses || !pEnumProcessModules || !pGetModuleBaseNameA )
+		if( !pEnumProcesses || !pEnumProcessModules || !pGetModuleBaseNameW )
 			break;
 
 		if( !pEnumProcesses( (DWORD *)&dwProcessIds, sizeof(dwProcessIds), &dwBytesReturned ) )
@@ -502,9 +498,9 @@ DWORD ps_list_via_psapi( Packet * response )
 			HANDLE hProcess      = NULL;
 			HMODULE hModule      = NULL;
 			DWORD dwProcessArch  = PROCESS_ARCH_UNKNOWN;
-			char cExeName[1024]  = {0};
-			char cExePath[1024]  = {0};
-			char cUserName[1024] = {0};
+			wchar_t wcExeName[1024]  = {0};
+			wchar_t wcExePath[1024]  = {0};
+			wchar_t wcUserName[1024] = {0};
 			Tlv entries[5]       = {0};
 			DWORD dwNeeded       = 0;
 
@@ -517,20 +513,20 @@ DWORD ps_list_via_psapi( Packet * response )
 				if( !pEnumProcessModules( hProcess, &hModule, sizeof(hModule), &dwNeeded ) )
 					break;
 
-				pGetModuleBaseNameA( hProcess, hModule, cExeName, 1024 );
+				pGetModuleBaseNameW(hProcess, hModule, (LPWSTR)wcExeName, 1024);
 
 			} while(0);
 
 			if( hProcess )
 				CloseHandle( hProcess );
 
-			ps_getpath( dwProcessIds[index], (char *)&cExePath, 1024, NULL, 0 );
+			ps_getpath( dwProcessIds[index], (wchar_t *)&wcExePath, 1024, NULL, 0 );
 
-			ps_getusername( dwProcessIds[index], (char *)&cUserName, 1024 );
+			ps_getusername( dwProcessIds[index], (wchar_t *)&wcUserName, 1024 );
 
 			dwProcessArch = ps_getarch( dwProcessIds[index] );
 
-			ps_addresult( response, dwProcessIds[index], 0, cExePath, cExePath, cUserName, dwProcessArch );
+			ps_addresult(response, dwProcessIds[index], 0, wcExePath, wcExePath, wcUserName, dwProcessArch);
 		}
 
 	} while(0);
@@ -554,9 +550,9 @@ DWORD ps_list_via_brute( Packet * response )
 	{
 		HANDLE hProcess      = NULL;
 		DWORD dwProcessArch  = PROCESS_ARCH_UNKNOWN;
-		char cExeName[1024]  = {0};
-		char cExePath[1024]  = {0};
-		char cUserName[1024] = {0};
+		wchar_t wcExeName[1024]  = {0};
+		wchar_t wcExePath[1024]  = {0};
+		wchar_t wcUserName[1024] = {0};
 		Tlv entries[5]       = {0};
 
 		hProcess = OpenProcess( PROCESS_QUERY_INFORMATION, FALSE, pid );
@@ -565,13 +561,13 @@ DWORD ps_list_via_brute( Packet * response )
 
 		CloseHandle( hProcess );
 
-		ps_getpath( pid, (char *)&cExePath, 1024, (char *)&cExeName, 1024 );
+		ps_getpath( pid, (wchar_t *)&wcExePath, 1024, (wchar_t *)&wcExeName, 1024 );
 
-		ps_getusername( pid, (char *)&cUserName, 1024 );
+		ps_getusername( pid, (wchar_t *)&wcUserName, 1024 );
 
 		dwProcessArch = ps_getarch( pid );
 
-		ps_addresult( response, pid, 0, cExeName, cExePath, cUserName, dwProcessArch );
+		ps_addresult(response, pid, 0, wcExeName, wcExePath, wcUserName, dwProcessArch);
 	}
 
 	return result;
@@ -580,7 +576,7 @@ DWORD ps_list_via_brute( Packet * response )
 /*
  * Add the details of a process to the response.
  */
-VOID ps_addresult( Packet * response, DWORD dwPid, DWORD dwParentPid, char * cpExeName, char * cpExePath, char * cpUserName, DWORD dwProcessArch )
+VOID ps_addresult(Packet * response, DWORD dwPid, DWORD dwParentPid, wchar_t * wcpExeName, wchar_t * wcpExePath, wchar_t * wcpUserName, DWORD dwProcessArch)
 {
 	Tlv entries[7]    = {0};
 	DWORD dwSessionId = 0;
@@ -597,23 +593,23 @@ VOID ps_addresult( Packet * response, DWORD dwPid, DWORD dwParentPid, char * cpE
 		entries[0].header.length = sizeof( DWORD );
 		entries[0].buffer        = (PUCHAR)&dwPid;
 
-		if( !cpExeName )
-			cpExeName = "";
+		if( !wcpExeName )
+			wcpExeName = L"";
 		entries[1].header.type   = TLV_TYPE_PROCESS_NAME;
-		entries[1].header.length = (DWORD)strlen( cpExeName ) + 1;
-		entries[1].buffer        = cpExeName;
+		entries[1].header.length = (DWORD)strlen(wchar_to_utf8(wcpExeName)) + 1;
+		entries[1].buffer		 = wchar_to_utf8(wcpExeName);
 
-		if( !cpExePath )
-			cpExePath = "";
+		if( !wcpExePath )
+			wcpExePath = L"";
 		entries[2].header.type   = TLV_TYPE_PROCESS_PATH;
-		entries[2].header.length = (DWORD)strlen( cpExePath ) + 1;
-		entries[2].buffer        = cpExePath;
+		entries[2].header.length = (DWORD)strlen(wchar_to_utf8(wcpExePath)) + 1;
+		entries[2].buffer		 = wchar_to_utf8(wcpExePath);
 
-		if( !cpUserName )
-			cpUserName = "";
+		if( !wcpUserName )
+			wcpUserName = L"";
 		entries[3].header.type   = TLV_TYPE_USER_NAME;
-		entries[3].header.length = (DWORD)strlen( cpUserName ) + 1;
-		entries[3].buffer        = cpUserName;
+		entries[3].header.length = (DWORD)strlen(wchar_to_utf8(wcpUserName)) + 1;
+		entries[3].buffer		 = wchar_to_utf8(wcpUserName);
 
 		dwProcessArch            = htonl( dwProcessArch );
 		entries[4].header.type   = TLV_TYPE_PROCESS_ARCH;
