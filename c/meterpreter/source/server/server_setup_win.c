@@ -69,8 +69,9 @@ DWORD server_sessionid()
  * @brief Load any stageless extensions that might be present in the current payload.
  * @param remote Pointer to the remote instance.
  * @param fd The socket descriptor passed to metsrv during intialisation.
+ * @return Pointer to the end of the configuration.
  */
-VOID load_stageless_extensions(Remote* remote, MetsrvExtension* stagelessExtensions)
+LPBYTE load_stageless_extensions(Remote* remote, MetsrvExtension* stagelessExtensions)
 {
 	while (stagelessExtensions->size > 0)
 	{
@@ -85,7 +86,7 @@ VOID load_stageless_extensions(Remote* remote, MetsrvExtension* stagelessExtensi
 	// once we have reached the end, we may have extension initializers
 	LPBYTE initData = (LPBYTE)(&stagelessExtensions->size) + sizeof(stagelessExtensions->size);
 
-	while (initData != NULL && *initData != '\0')
+	while (*initData != '\0')
 	{
 		const char* extensionName = (const char*)initData;
 		LPBYTE data = initData + strlen(extensionName) + 1 + sizeof(DWORD);
@@ -96,6 +97,7 @@ VOID load_stageless_extensions(Remote* remote, MetsrvExtension* stagelessExtensi
 	}
 
 	dprintf("[SERVER] All stageless extensions initialised");
+	return initData;
 }
 
 static Transport* create_transport(Remote* remote, MetsrvTransportCommon* transportCommon, LPDWORD size)
@@ -347,7 +349,6 @@ DWORD server_setup(MetsrvConfig* config)
 				break;
 			}
 
-			remote->orig_config = config;
 			remote->sess_expiry_time = config->session.expiry;
 			remote->sess_start_time = current_unix_timestamp();
 			remote->sess_expiry_end = remote->sess_start_time + config->session.expiry;
@@ -382,7 +383,16 @@ DWORD server_setup(MetsrvConfig* config)
 			register_dispatch_routines();
 
 			// this has to be done after dispatch routine are registered
-			load_stageless_extensions(remote, (MetsrvExtension*)((LPBYTE)config->transports + transportSize));
+			LPBYTE configEnd = load_stageless_extensions(remote, (MetsrvExtension*)((LPBYTE)config->transports + transportSize));
+
+			// the original config can actually be mapped as RX in cases such as when stageless payloads
+			// are baked directly into .NET assemblies. We need to make sure that this area of memory includes
+			// The writable flag as well otherwise we get access violations when we're interacting with the
+			// configuration block down the track. So instead of marking the original configuration as RWX (to cover
+			// all cases) we will instead just muck with a copy of it on the heap.
+			DWORD_PTR configSize = (DWORD_PTR)configEnd - (DWORD_PTR)config;
+			remote->orig_config = (MetsrvConfig*)malloc(configSize);
+			memcpy_s(remote->orig_config, configSize, config, configSize);
 
 			// Store our process token
 			if (!OpenThreadToken(remote->server_thread, TOKEN_ALL_ACCESS, TRUE, &remote->server_token))

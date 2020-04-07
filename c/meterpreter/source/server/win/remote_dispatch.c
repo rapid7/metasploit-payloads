@@ -296,7 +296,7 @@ DWORD request_core_set_session_guid(Remote* remote, Packet* packet)
 
 	if (sessionGuid != NULL)
 	{
-		memcpy(&remote->orig_config->session.session_guid, sessionGuid, sizeof(GUID));
+		memcpy(remote->orig_config->session.session_guid, sessionGuid, sizeof(GUID));
 	}
 	else
 	{

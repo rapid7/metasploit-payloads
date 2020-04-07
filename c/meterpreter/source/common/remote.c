@@ -49,10 +49,7 @@ Remote* remote_allocate()
 		pivot_tree_destroy(remote->pivot_listeners);
 	}
 
-	if (remote)
-	{
-		free(remote);
-	}
+	free(remote);
 
 	vdprintf("[REMOTE] here 3");
 	return NULL;
@@ -72,6 +69,8 @@ VOID remote_deallocate(Remote * remote)
 	{
 		lock_destroy(remote->lock);
 	}
+
+	free(remote->orig_config);
 
 	// Wipe our structure from memory
 	memset(remote, 0, sizeof(Remote));
