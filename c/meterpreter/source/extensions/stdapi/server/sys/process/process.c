@@ -731,9 +731,9 @@ DWORD request_sys_process_get_info(Remote *remote, Packet *packet)
 
 	BOOL (WINAPI *enumProcessModules)(HANDLE p, HMODULE *mod, DWORD cb,
 			LPDWORD needed);
-	DWORD (WINAPI *getModuleBaseName)(HANDLE p, HMODULE mod, LPTSTR base,
+	DWORD (WINAPI *getModuleBaseName)(HANDLE p, HMODULE mod, LPWSTR base,
 			DWORD baseSize);
-	DWORD (WINAPI *getModuleFileNameEx)(HANDLE p, HMODULE mod, LPTSTR path,
+	DWORD (WINAPI *getModuleFileNameEx)(HANDLE p, HMODULE mod, LPWSTR path,
 			DWORD pathSize);
 
 	HMODULE mod;
@@ -741,7 +741,7 @@ DWORD request_sys_process_get_info(Remote *remote, Packet *packet)
 	HANDLE handle;
 	DWORD result = ERROR_SUCCESS;
 	DWORD needed;
-	CHAR path[1024], name[256];
+	wchar_t path[1024], name[512];
 
 	handle = (HANDLE)packet_get_tlv_value_qword(packet, TLV_TYPE_HANDLE);
 
@@ -772,9 +772,9 @@ DWORD request_sys_process_get_info(Remote *remote, Packet *packet)
 		if ((!((LPVOID)enumProcessModules =
 				(LPVOID)GetProcAddress(psapi, "EnumProcessModules"))) ||
 		    (!((LPVOID)getModuleBaseName =
-				(LPVOID)GetProcAddress(psapi, "GetModuleBaseNameA"))) ||
+				(LPVOID)GetProcAddress(psapi, "GetModuleBaseNameW"))) ||
 		    (!((LPVOID)getModuleFileNameEx =
-				(LPVOID)GetProcAddress(psapi, "GetModuleFileNameExA"))))
+				(LPVOID)GetProcAddress(psapi, "GetModuleFileNameExW"))))
 		{
 			result = GetLastError();
 			break;
@@ -795,8 +795,8 @@ DWORD request_sys_process_get_info(Remote *remote, Packet *packet)
 		getModuleFileNameEx(handle, mod, path, sizeof(path) - 1);
 
 		// Set the process' information on the response
-		packet_add_tlv_string(response, TLV_TYPE_PROCESS_NAME, name);
-		packet_add_tlv_string(response, TLV_TYPE_PROCESS_PATH, path);
+		packet_add_tlv_string(response, TLV_TYPE_PROCESS_NAME, wchar_to_utf8(name));
+		packet_add_tlv_string(response, TLV_TYPE_PROCESS_PATH, wchar_to_utf8(path));
 
 	} while (0);
 
