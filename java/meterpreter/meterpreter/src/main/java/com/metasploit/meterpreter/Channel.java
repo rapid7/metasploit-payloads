@@ -15,8 +15,8 @@ public class Channel {
     private final OutputStream out;
     private final int id;
     protected final Meterpreter meterpreter;
-    private boolean active = false, closed = false, waiting = false;
-    private byte[] toRead;
+    protected boolean active = false, closed = false, waiting = false;
+    protected byte[] toRead;
 
     /**
      * Create a new "generic" channel.
@@ -66,13 +66,13 @@ public class Channel {
      * @param maxLength The maximum number of bytes to read.
      * @return The bytes read, or <code>null</code> if the end of the stream has been reached.
      */
-    public synchronized byte[] read(int maxLength) {
+    public synchronized byte[] read(int maxLength) throws IOException, InterruptedException {
         if (closed)
             return null;
         if (active)
             throw new IllegalStateException("Cannot read; currently interacting with this channel");
-        if (!waiting || (toRead != null && toRead.length == 0))
-            return new byte[0];
+        while (!waiting || (toRead != null && toRead.length == 0))
+            wait();
         if (toRead == null)
             return null;
         byte[] result = new byte[Math.min(toRead.length, maxLength)];
