@@ -28,11 +28,12 @@ public class ProcessChannel extends Channel {
 
     /**
      * Read at least one byte, and up to maxLength bytes from this stream.
+     * An empty string (0 length data) is returned if no data is available.
      *
      * @param maxLength The maximum number of bytes to read.
      * @return The bytes read, or <code>null</code> if the end of the stream has been reached.
      */
-    public synchronized byte[] read(int maxLength) {
+    public synchronized byte[] read(int maxLength) throws IOException, InterruptedException {
         if (closed)
             return null;
         if (active)
@@ -41,13 +42,7 @@ public class ProcessChannel extends Channel {
             return new byte[0];
         if (toRead == null)
             return null;
-        byte[] result = new byte[Math.min(toRead.length, maxLength)];
-        System.arraycopy(toRead, 0, result, 0, result.length);
-        byte[] rest = new byte[toRead.length - result.length];
-        System.arraycopy(toRead, result.length, rest, 0, rest.length);
-        toRead = rest;
-        notifyAll();
-        return result;
+        return super.read(maxLength);
     }
 
     public void close() throws IOException {
