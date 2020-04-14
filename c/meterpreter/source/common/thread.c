@@ -134,18 +134,18 @@ BOOL event_poll( EVENT * event, DWORD timeout )
 /*
  * Opens and create a THREAD item for the current/calling thread.
  */
-THREAD * thread_open( VOID )
+THREAD* thread_open(VOID)
 {
-	THREAD * thread        = NULL;
+	THREAD* thread = NULL;
 	OPENTHREAD pOpenThread = NULL;
-	HMODULE hKernel32      = NULL;
+	HMODULE hKernel32 = NULL;
 
-	thread = (THREAD *)malloc( sizeof( THREAD ) );
-	if( thread != NULL )
+	thread = (THREAD*)malloc(sizeof(THREAD));
+	if (thread != NULL)
 	{
-		memset( thread, 0, sizeof(THREAD) );
+		memset(thread, 0, sizeof(THREAD));
 
-		thread->id      = GetCurrentThreadId();
+		thread->id = GetCurrentThreadId();
 		thread->sigterm = event_create();
 
 		// Windows specific process of opening a handle to the current thread which
@@ -153,48 +153,49 @@ THREAD * thread_open( VOID )
 		// for now.
 
 		// First we try to use the normal OpenThread function, available on Windows 2000 and up...
-		hKernel32 = LoadLibrary( "kernel32.dll" );
-		pOpenThread = (OPENTHREAD)GetProcAddress( hKernel32, "OpenThread" );
-		if( pOpenThread )
+		hKernel32 = LoadLibrary("kernel32.dll");
+		pOpenThread = (OPENTHREAD)GetProcAddress(hKernel32, "OpenThread");
+		if (pOpenThread)
 		{
-			thread->handle = pOpenThread( THREAD_TERMINATE|THREAD_SUSPEND_RESUME, FALSE, thread->id );
+			thread->handle = pOpenThread(THREAD_TERMINATE | THREAD_SUSPEND_RESUME, FALSE, thread->id);
 		}
 		else
 		{
 			NTOPENTHREAD pNtOpenThread = NULL;
 			// If we can't use OpenThread, we try the older NtOpenThread function as found on NT4 machines.
-			HMODULE hNtDll = LoadLibrary( "ntdll.dll" );
-			pNtOpenThread = (NTOPENTHREAD)GetProcAddress( hNtDll, "NtOpenThread" );
+			HMODULE hNtDll = LoadLibrary("ntdll.dll");
+			pNtOpenThread = (NTOPENTHREAD)GetProcAddress(hNtDll, "NtOpenThread");
 			if (pNtOpenThread)
 			{
-				_OBJECT_ATTRIBUTES oa = {0};
-				_CLIENT_ID cid        = {0};
+				_OBJECT_ATTRIBUTES oa = { 0 };
+				_CLIENT_ID cid = { 0 };
 
-				cid.UniqueThread = (PVOID)thread->id;
+				cid.UniqueThread = (PVOID)(DWORD_PTR)thread->id;
 
-				pNtOpenThread( &thread->handle, THREAD_TERMINATE|THREAD_SUSPEND_RESUME, &oa, &cid );
+				pNtOpenThread(&thread->handle, THREAD_TERMINATE | THREAD_SUSPEND_RESUME, &oa, &cid);
 			}
 
-			FreeLibrary( hNtDll );
+			FreeLibrary(hNtDll);
 		}
 
-		FreeLibrary( hKernel32 );
+		FreeLibrary(hKernel32);
 	}
 
 	return thread;
 }
 
-void disable_thread_error_reporting(void)
+void disable_thread_error_reporting()
 {
 	HMODULE hKernel32 = LoadLibrary("kernel32.dll");
-	DWORD(WINAPI * pSetThreadErrorMode)(DWORD, DWORD *);
-	pSetThreadErrorMode = (void *)GetProcAddress(hKernel32, "SetThreadErrorMode");
-	if (pSetThreadErrorMode) {
+	DWORD(WINAPI * pSetThreadErrorMode)(DWORD, DWORD*);
+	pSetThreadErrorMode = (void*)GetProcAddress(hKernel32, "SetThreadErrorMode");
+	if (pSetThreadErrorMode)
+	{
 		pSetThreadErrorMode(SEM_FAILCRITICALERRORS, NULL);
 	}
 }
 
-static DWORD THREADCALL thread_preamble(THREAD *thread)
+static DWORD THREADCALL thread_preamble(THREAD* thread)
 {
 	disable_thread_error_reporting();
 	return thread->funk(thread);
@@ -203,16 +204,20 @@ static DWORD THREADCALL thread_preamble(THREAD *thread)
 /*
  * Create a new thread in a suspended state.
  */
-THREAD * thread_create( THREADFUNK funk, LPVOID param1, LPVOID param2, LPVOID param3 )
+THREAD* thread_create(THREADFUNK funk, LPVOID param1, LPVOID param2, LPVOID param3)
 {
-	THREAD * thread = NULL;
+	THREAD* thread = NULL;
 
-	if (funk == NULL )
+	if (funk == NULL)
+	{
 		return NULL;
+	}
 
 	thread = malloc(sizeof(THREAD));
 	if (thread == NULL)
+	{
 		return NULL;
+	}
 
 	memset(thread, 0, sizeof(THREAD));
 
@@ -243,13 +248,17 @@ THREAD * thread_create( THREADFUNK funk, LPVOID param1, LPVOID param2, LPVOID pa
 /*
  * Run a thread.
  */
-BOOL thread_run( THREAD * thread )
+BOOL thread_run(THREAD* thread)
 {
-	if( thread == NULL )
+	if (thread == NULL)
+	{
 		return FALSE;
+	}
 
-	if( ResumeThread( thread->handle ) < 0 )
+	if (ResumeThread(thread->handle) < 0)
+	{
 		return FALSE;
+	}
 
 	return TRUE;
 }
@@ -258,14 +267,16 @@ BOOL thread_run( THREAD * thread )
  * Signals the thread to terminate. It is the responsibility of the thread to wait for and process this signal.
  * Should be used to signal the thread to terminate.
  */
-BOOL thread_sigterm( THREAD * thread )
+BOOL thread_sigterm(THREAD* thread)
 {
 	BOOL ret;
 
-	if( thread == NULL )
+	if (thread == NULL)
+	{
 		return FALSE;
+	}
 
-	ret = event_signal( thread->sigterm );
+	ret = event_signal(thread->sigterm);
 
 	return ret;
 }
@@ -273,28 +284,35 @@ BOOL thread_sigterm( THREAD * thread )
 /*
  * Terminate a thread. Use with caution! better to signal your thread to terminate and wait for it to do so.
  */
-BOOL thread_kill( THREAD * thread )
+BOOL thread_kill(THREAD* thread)
 {
-	if( thread == NULL )
+	if (thread == NULL)
+	{
 		return FALSE;
+	}
 
-	if( TerminateThread( thread->handle, -1 ) == 0 )
+	if (TerminateThread(thread->handle, -1) == 0)
+	{
 		return FALSE;
+	}
 
 	return TRUE;
 }
 
-
 /*
  * Blocks untill the thread has terminated.
  */
-BOOL thread_join( THREAD * thread )
+BOOL thread_join(THREAD* thread)
 {
-	if( thread == NULL )
+	if (thread == NULL)
+	{
 		return FALSE;
+	}
 
-	if( WaitForSingleObject( thread->handle, INFINITE ) == WAIT_OBJECT_0 )
+	if (WaitForSingleObject(thread->handle, INFINITE) == WAIT_OBJECT_0)
+	{
 		return TRUE;
+	}
 
 	return FALSE;
 }
@@ -303,16 +321,18 @@ BOOL thread_join( THREAD * thread )
  * Destroys a previously created thread. Note, this does not terminate the thread. You must signal your
  * thread to terminate and wait for it to do so (via thread_signal/thread_join).
  */
-BOOL thread_destroy( THREAD * thread )
+BOOL thread_destroy(THREAD* thread)
 {
-	if( thread == NULL )
+	if (thread == NULL)
+	{
 		return FALSE;
+	}
 
-	event_destroy( thread->sigterm );
+	event_destroy(thread->sigterm);
 
-	CloseHandle( thread->handle );
+	CloseHandle(thread->handle);
 
-	free( thread );
+	free(thread);
 
 	return TRUE;
 }

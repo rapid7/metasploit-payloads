@@ -25,9 +25,7 @@ void pivot_tree_to_string(char** buffer, PivotNode* node, char* prefix)
 			h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15],
 			node->left, node->right);
 		char p[512];
-		char f[512];
-		sprintf(f, "%%%ds  | ", strlen(prefix));
-		sprintf(p, f, " ");
+		sprintf(p, "%.*s|", (int)(INT_PTR)strlen(prefix), " ");
 		// print the right hand side first, as it seems to make sense when viewing the content
 		pivot_tree_to_string(buffer, node->right, p);
 		pivot_tree_to_string(buffer, node->left, p);

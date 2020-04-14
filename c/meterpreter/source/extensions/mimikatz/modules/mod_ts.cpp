@@ -45,7 +45,7 @@ bool mod_ts::getSessions(vector<KIWI_WTS_SESSION_INFO> * mesSessions, wstring * 
 		{
 			for(DWORD i = 0; i < nbSessions; i++)
 			{
-				KIWI_WTS_SESSION_INFO a = {tabSessions[i].SessionId, tabSessions[i].State, tabSessions[i].pWinStationName};
+				KIWI_WTS_SESSION_INFO a = {tabSessions[i].SessionId, (DWORD)(DWORD_PTR)tabSessions[i].State, tabSessions[i].pWinStationName};
 				mesSessions->push_back(a);
 			}
 			WTSFreeMemory(tabSessions);

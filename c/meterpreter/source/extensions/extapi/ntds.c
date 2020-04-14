@@ -61,7 +61,7 @@ DWORD ntds_parse(Remote *remote, Packet *packet)
 	}
 	JET_ERR openStatus = open_database(ntdsState);
 	if (openStatus != JET_errSuccess) {
-		JetEndSession(ntdsState->jetSession, (JET_GRBIT)NULL);
+		JetEndSession(ntdsState->jetSession, (JET_GRBIT)0);
 		JetTerm(ntdsState->jetEngine);
 		res = openStatus;
 		goto out;
