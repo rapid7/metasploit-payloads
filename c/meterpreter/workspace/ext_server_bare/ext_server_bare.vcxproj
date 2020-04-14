@@ -273,11 +273,19 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
   <ItemGroup>
     <ClInclude Include="..\..\source\extensions\bare\bare.h" />
   </ItemGroup>
+
+  <Choose>
+      <When Condition="'$(Platform)'=='Win32'">
+        <ItemGroup>
+            <ProjectReference Include="..\backcompat\backcompat.vcxproj">
+                <Project>{c6fb3275-9067-4bba-9206-0a720d2bc64f}</Project>
+                <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+            </ProjectReference>
+        </ItemGroup>
+      </When>
+  </Choose>
+
   <ItemGroup>
-    <ProjectReference Include="..\backcompat\backcompat.vcxproj">
-      <Project>{c6fb3275-9067-4bba-9206-0a720d2bc64f}</Project>
-      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
-    </ProjectReference>
     <ProjectReference Include="..\common\common.vcxproj">
       <Project>{9e4de963-873f-4525-a7d0-ce34edbbdcca}</Project>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
