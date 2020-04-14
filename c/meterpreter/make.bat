@@ -9,7 +9,7 @@ IF NOT EXIST "source\ReflectiveDLLInjection\.git" (
   GOTO END
 )
 
-SET PSSDK_VER=12
+SET PSSDK_VER=19
 
 SET PREF=
 IF EXIST "..\..\..\pssdk\PSSDK_VC%PSSDK_VER%_LIB\_Libs\pssdk_vc%PSSDK_VER%_mt.lib" SET PREF=r7_
@@ -75,6 +75,6 @@ GOTO END
 
 :NEED_VS
 ECHO "This command must be executed from within a Visual Studio Command prompt."
-ECHO "This can be found under Microsoft Visual Studio 2013 -> Visual Studio Tools"
+ECHO "This can be found under Microsoft Visual Studio 2019 -> Visual Studio Tools"
 
 :END
