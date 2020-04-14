@@ -266,7 +266,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>legacy_stdio_definitions.lib;ssleay32.lib;libeay32.lib;gdiplus.lib;Netapi32.lib;crypt32.lib;ws2_32.lib;Mpr.lib;metsrv.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ssleay32.lib;libeay32.lib;gdiplus.lib;Netapi32.lib;crypt32.lib;ws2_32.lib;Mpr.lib;metsrv.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\metsrv\$(Configuration)\$(Platform);..\..\deps\openssl\lib\win\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <DelayLoadDLLs>metsrv.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
       <GenerateDebugInformation>false</GenerateDebugInformation>
@@ -500,7 +500,6 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     <ClCompile Include="..\..\source\extensions\python\Python\graminit.c" />
     <ClCompile Include="..\..\source\extensions\python\Python\import.c" />
     <ClCompile Include="..\..\source\extensions\python\Python\importdl.c" />
-    <ClCompile Include="..\..\source\extensions\python\Python\iob_func_hack.c" />
     <ClCompile Include="..\..\source\extensions\python\Python\marshal.c" />
     <ClCompile Include="..\..\source\extensions\python\Python\modsupport.c" />
     <ClCompile Include="..\..\source\extensions\python\Python\mysnprintf.c" />
