@@ -2877,7 +2877,7 @@ _string_tailmatch(PyStringObject *self, PyObject *substr, Py_ssize_t start,
     }
 #ifdef Py_USING_UNICODE
     else if (PyUnicode_Check(substr))
-        return PyUnicode_Tailmatch((PyObject *)self,
+        return (int)PyUnicode_Tailmatch((PyObject *)self,
                                    substr, start, end, direction);
 #endif
     else if (PyObject_AsCharBuffer(substr, &sub, &slen))

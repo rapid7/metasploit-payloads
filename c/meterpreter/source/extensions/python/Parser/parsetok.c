@@ -190,7 +190,7 @@ parsetok(struct tok_state *tok, grammar *g, int start, perrdetail *err_ret,
 #ifdef PY_PARSER_REQUIRES_FUTURE_KEYWORD
 #endif
         if (a >= tok->line_start)
-            col_offset = a - tok->line_start;
+            col_offset = (int)(a - tok->line_start);
         else
             col_offset = -1;
 
@@ -228,7 +228,7 @@ parsetok(struct tok_state *tok, grammar *g, int start, perrdetail *err_ret,
             err_ret->offset = (int)(tok->cur - tok->buf);
             len = tok->inp - tok->buf;
 #ifdef Py_USING_UNICODE
-            text = PyTokenizer_RestoreEncoding(tok, len, &err_ret->offset);
+            text = PyTokenizer_RestoreEncoding(tok, (int)len, &err_ret->offset);
 
 #endif
             if (text == NULL) {

@@ -990,7 +990,7 @@ format_float_internal(PyObject *value,
     /* Cast "type", because if we're in unicode we need to pass a
        8-bit char. This is safe, because we've restricted what "type"
        can be. */
-    buf = PyOS_double_to_string(val, (char)type, precision, flags,
+    buf = PyOS_double_to_string(val, (char)type, (int)precision, flags,
                                 &float_type);
     if (buf == NULL)
         goto done;
@@ -1170,11 +1170,11 @@ format_complex_internal(PyObject *value,
     /* Cast "type", because if we're in unicode we need to pass a
        8-bit char. This is safe, because we've restricted what "type"
        can be. */
-    re_buf = PyOS_double_to_string(re, (char)type, precision, flags,
+    re_buf = PyOS_double_to_string(re, (char)type, (int)precision, flags,
                                    &re_float_type);
     if (re_buf == NULL)
         goto done;
-    im_buf = PyOS_double_to_string(im, (char)type, precision, flags,
+    im_buf = PyOS_double_to_string(im, (char)type, (int)precision, flags,
                                    &im_float_type);
     if (im_buf == NULL)
         goto done;

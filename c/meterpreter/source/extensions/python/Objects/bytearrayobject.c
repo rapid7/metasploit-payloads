@@ -1295,7 +1295,7 @@ bytearray_contains(PyObject *self, PyObject *arg)
         PyErr_Clear();
         if (_getbuffer(arg, &varg) < 0)
             return -1;
-        pos = stringlib_find(PyByteArray_AS_STRING(self), Py_SIZE(self),
+        pos = (int)stringlib_find(PyByteArray_AS_STRING(self), Py_SIZE(self),
                              varg.buf, varg.len, 0);
         PyBuffer_Release(&varg);
         return pos >= 0;
@@ -1305,7 +1305,7 @@ bytearray_contains(PyObject *self, PyObject *arg)
         return -1;
     }
 
-    return memchr(PyByteArray_AS_STRING(self), ival, Py_SIZE(self)) != NULL;
+    return memchr(PyByteArray_AS_STRING(self), (int)ival, Py_SIZE(self)) != NULL;
 }
 
 

@@ -1953,10 +1953,10 @@ pattern_match(PatternObject* self, PyObject* args, PyObject* kw)
     TRACE(("|%p|%p|MATCH\n", PatternObject_GetCode(self), state.ptr));
 
     if (state.charsize == 1) {
-        status = sre_match(&state, PatternObject_GetCode(self));
+        status = (int)sre_match(&state, PatternObject_GetCode(self));
     } else {
 #if defined(HAVE_UNICODE)
-        status = sre_umatch(&state, PatternObject_GetCode(self));
+        status = (int)sre_umatch(&state, PatternObject_GetCode(self));
 #endif
     }
 
@@ -1997,10 +1997,10 @@ pattern_search(PatternObject* self, PyObject* args, PyObject* kw)
     TRACE(("|%p|%p|SEARCH\n", PatternObject_GetCode(self), state.ptr));
 
     if (state.charsize == 1) {
-        status = sre_search(&state, PatternObject_GetCode(self));
+        status = (int)sre_search(&state, PatternObject_GetCode(self));
     } else {
 #if defined(HAVE_UNICODE)
-        status = sre_usearch(&state, PatternObject_GetCode(self));
+        status = (int)sre_usearch(&state, PatternObject_GetCode(self));
 #endif
     }
 
@@ -2151,10 +2151,10 @@ pattern_findall(PatternObject* self, PyObject* args, PyObject* kw)
         state.ptr = state.start;
 
         if (state.charsize == 1) {
-            status = sre_search(&state, PatternObject_GetCode(self));
+            status = (int)sre_search(&state, PatternObject_GetCode(self));
         } else {
 #if defined(HAVE_UNICODE)
-            status = sre_usearch(&state, PatternObject_GetCode(self));
+            status = (int)sre_usearch(&state, PatternObject_GetCode(self));
 #endif
         }
 
@@ -2288,10 +2288,10 @@ pattern_split(PatternObject* self, PyObject* args, PyObject* kw)
         state.ptr = state.start;
 
         if (state.charsize == 1) {
-            status = sre_search(&state, PatternObject_GetCode(self));
+            status = (int)sre_search(&state, PatternObject_GetCode(self));
         } else {
 #if defined(HAVE_UNICODE)
-            status = sre_usearch(&state, PatternObject_GetCode(self));
+            status = (int)sre_usearch(&state, PatternObject_GetCode(self));
 #endif
         }
 
@@ -2440,10 +2440,10 @@ pattern_subx(PatternObject* self, PyObject* ptemplate, PyObject* string,
         state.ptr = state.start;
 
         if (state.charsize == 1) {
-            status = sre_search(&state, PatternObject_GetCode(self));
+            status = (int)sre_search(&state, PatternObject_GetCode(self));
         } else {
 #if defined(HAVE_UNICODE)
-            status = sre_usearch(&state, PatternObject_GetCode(self));
+            status = (int)sre_usearch(&state, PatternObject_GetCode(self));
 #endif
         }
 
@@ -3864,10 +3864,10 @@ scanner_match(ScannerObject* self, PyObject *unused)
     state->ptr = state->start;
 
     if (state->charsize == 1) {
-        status = sre_match(state, PatternObject_GetCode(self->pattern));
+        status = (int)sre_match(state, PatternObject_GetCode(self->pattern));
     } else {
 #if defined(HAVE_UNICODE)
-        status = sre_umatch(state, PatternObject_GetCode(self->pattern));
+        status = (int)sre_umatch(state, PatternObject_GetCode(self->pattern));
 #endif
     }
     if (PyErr_Occurred())
@@ -3904,10 +3904,10 @@ scanner_search(ScannerObject* self, PyObject *unused)
     state->ptr = state->start;
 
     if (state->charsize == 1) {
-        status = sre_search(state, PatternObject_GetCode(self->pattern));
+        status = (int)sre_search(state, PatternObject_GetCode(self->pattern));
     } else {
 #if defined(HAVE_UNICODE)
-        status = sre_usearch(state, PatternObject_GetCode(self->pattern));
+        status = (int)sre_usearch(state, PatternObject_GetCode(self->pattern));
 #endif
     }
     if (PyErr_Occurred())

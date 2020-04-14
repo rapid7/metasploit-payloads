@@ -1175,7 +1175,7 @@ _Py_double_round(double x, int ndigits) {
         /* increment and shift right at the same time. */
         decpt += 1;
         carry = 1;
-        for (i=buflen-1; i-- > 0;) {
+        for (i=(int)buflen-1; i-- > 0;) {
             carry += buf[i] - '0';
             buf[i+1] = carry % 10 + '0';
             carry /= 10;

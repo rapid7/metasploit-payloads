@@ -623,7 +623,7 @@ translate_into_utf8(const char* str, const char* enc) {
 
 static char *
 translate_newlines(const char *s, int exec_input, struct tok_state *tok) {
-    int skip_next_lf = 0, needed_length = strlen(s) + 2, final_length;
+    int skip_next_lf = 0, needed_length = (int)strlen(s) + 2, final_length;
     char *buf, *current;
     char c = '\0';
     buf = PyMem_MALLOC(needed_length);
@@ -654,7 +654,7 @@ translate_newlines(const char *s, int exec_input, struct tok_state *tok) {
         current++;
     }
     *current = '\0';
-    final_length = current - buf + 1;
+    final_length = (int)(current - buf + 1);
     if (final_length < needed_length && final_length)
         /* should never fail */
         buf = PyMem_REALLOC(buf, final_length);
@@ -1716,7 +1716,7 @@ PyTokenizer_RestoreEncoding(struct tok_state* tok, int len, int *offset)
         /* convert source to original encondig */
         PyObject *lineobj = dec_utf8(tok->encoding, tok->buf, len);
         if (lineobj != NULL) {
-            int linelen = PyString_Size(lineobj);
+            int linelen = (int)PyString_Size(lineobj);
             const char *line = PyString_AsString(lineobj);
             text = PyObject_MALLOC(linelen + 1);
             if (text != NULL && line != NULL) {
@@ -1731,7 +1731,7 @@ PyTokenizer_RestoreEncoding(struct tok_state* tok, int len, int *offset)
                 PyObject *offsetobj = dec_utf8(tok->encoding,
                                                tok->buf, *offset-1);
                 if (offsetobj) {
-                    *offset = PyString_Size(offsetobj) + 1;
+                    *offset = (int)PyString_Size(offsetobj) + 1;
                     Py_DECREF(offsetobj);
                 }
             }

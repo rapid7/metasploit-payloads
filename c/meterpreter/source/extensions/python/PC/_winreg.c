@@ -789,7 +789,7 @@ Py2Reg(PyObject *value, DWORD typ, BYTE **retDataBuf, DWORD *retDataSize)
                 }
                 if (!PyString_Check(value))
                     return FALSE;
-                *retDataSize = 1 + strlen(
+                *retDataSize = 1 + (DWORD)strlen(
                     PyString_AS_STRING(
                         (PyStringObject *)value));
             }
@@ -840,7 +840,7 @@ Py2Reg(PyObject *value, DWORD typ, BYTE **retDataBuf, DWORD *retDataSize)
                             goto reg_multi_fail;
                     } else
                         goto reg_multi_fail;
-                    size += 1 + strlen(
+                    size += 1 + (DWORD)strlen(
                         PyString_AS_STRING(
                             (PyStringObject *)obs[j]));
                 }
@@ -897,7 +897,7 @@ Py2Reg(PyObject *value, DWORD typ, BYTE **retDataBuf, DWORD *retDataSize)
                         value->ob_type->tp_name);
                     return FALSE;
                 }
-                *retDataSize = (*pb->bf_getreadbuffer)(value, 0, &src_buf);
+                *retDataSize = (DWORD)(*pb->bf_getreadbuffer)(value, 0, &src_buf);
                 if (*retDataSize < 0) {
                     return FALSE;
                 }
@@ -1067,7 +1067,7 @@ PyCreateKeyEx(PyObject *self, PyObject *args)
     if (!PyHKEY_AsHKEY(obKey, &hKey, FALSE))
         return NULL;
 
-    rc = RegCreateKeyEx(hKey, subKey, res, NULL, (DWORD)NULL,
+    rc = RegCreateKeyEx(hKey, subKey, res, NULL, (DWORD)0,
                                             sam, NULL, &retKey, NULL);
     if (rc != ERROR_SUCCESS)
         return PyErr_SetFromWindowsErrWithFunction(rc, "CreateKeyEx");
@@ -1577,7 +1577,7 @@ PySetValue(PyObject *self, PyObject *args)
     str = PyString_AsString(obStrVal);
     if (str == NULL)
         return NULL;
-    len = PyString_Size(obStrVal);
+    len = (int)PyString_Size(obStrVal);
     if (obSubKey == Py_None)
         subKey = NULL;
     else {

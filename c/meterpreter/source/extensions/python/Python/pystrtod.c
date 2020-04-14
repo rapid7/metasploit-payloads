@@ -950,7 +950,7 @@ format_float_short(double d, char format_code,
     /* _Py_dg_dtoa returns a digit string (no decimal point or exponent).
        Must be matched by a call to _Py_dg_freedtoa. */
     _Py_SET_53BIT_PRECISION_START;
-    digits = _Py_dg_dtoa(d, mode, precision, &decpt_as_int, &sign,
+    digits = _Py_dg_dtoa(d, mode, (int)precision, &decpt_as_int, &sign,
                          &digits_end);
     _Py_SET_53BIT_PRECISION_END;
 
@@ -1071,7 +1071,7 @@ format_float_short(double d, char format_code,
     /* if using an exponent, reset decimal point position to 1 and adjust
        exponent accordingly.*/
     if (use_exp) {
-        exp = decpt - 1;
+        exp = (int)(decpt - 1);
         decpt = 1;
     }
     /* ensure vdigits_start < decpt <= vdigits_end, or vdigits_start <

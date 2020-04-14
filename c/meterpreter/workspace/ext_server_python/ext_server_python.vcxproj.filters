@@ -1031,6 +1031,9 @@
     <ClCompile Include="..\..\source\extensions\python\Modules\_multiprocessing\win32_functions.c">
       <Filter>Modules\_multiprocessing</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\source\extensions\python\Python\iob_func_hack.c">
+      <Filter>Python</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\..\source\extensions\python\Resource Files\python_core.rc">

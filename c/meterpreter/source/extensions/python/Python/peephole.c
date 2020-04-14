@@ -21,6 +21,7 @@
 #define JUMPS_ON_TRUE(op) (op==POP_JUMP_IF_TRUE || op==JUMP_IF_TRUE_OR_POP)
 #define GETJUMPTGT(arr, i) (GETARG(arr,i) + (ABSOLUTE_JUMP(arr[i]) ? 0 : i+3))
 #define SETARG(arr, i, val) arr[i+2] = val>>8; arr[i+1] = val & 255
+#define SETARGT(arr, i, val, T) arr[i+2] = (T)(val>>8); arr[i+1] = (T)(val & 255)
 #define CODESIZE(op)  (HAS_ARG(op) ? 3 : 1)
 #define ISBASICBLOCK(blocks, start, bytes) \
     (blocks[start]==blocks[start+bytes-1])
@@ -70,7 +71,7 @@ tuple_of_constants(unsigned char *codestr, Py_ssize_t n, PyObject *consts)
        add a new LOAD_CONST newconst on top of the BUILD_TUPLE n */
     memset(codestr, NOP, n*3);
     codestr[n*3] = LOAD_CONST;
-    SETARG(codestr, (n*3), len_consts);
+    SETARGT(codestr, (n*3), len_consts, unsigned char);
     return 1;
 }
 
@@ -182,7 +183,7 @@ fold_binops_on_constants(unsigned char *codestr, PyObject *consts)
     /* Write NOP NOP NOP NOP LOAD_CONST newconst */
     memset(codestr, NOP, 4);
     codestr[4] = LOAD_CONST;
-    SETARG(codestr, 4, len_consts);
+    SETARGT(codestr, 4, len_consts, unsigned char);
     return 1;
 }
 
@@ -235,7 +236,7 @@ fold_unaryops_on_constants(unsigned char *codestr, PyObject *consts)
     /* Write NOP LOAD_CONST newconst */
     codestr[0] = NOP;
     codestr[1] = LOAD_CONST;
-    SETARG(codestr, 1, len_consts);
+    SETARGT(codestr, 1, len_consts, unsigned char);
     return 1;
 }
 
@@ -317,7 +318,7 @@ PyCode_Optimize(PyObject *code, PyObject* consts, PyObject *names,
     /* Bypass optimization when the lineno table is too complex */
     assert(PyString_Check(lineno_obj));
     lineno = (unsigned char*)PyString_AS_STRING(lineno_obj);
-    tabsiz = PyString_GET_SIZE(lineno_obj);
+    tabsiz = (int)PyString_GET_SIZE(lineno_obj);
     if (memchr(lineno, 255, tabsiz) != NULL)
         goto exitUnchanged;
 
@@ -370,7 +371,7 @@ PyCode_Optimize(PyObject *code, PyObject* consts, PyObject *names,
                     continue;
                 j = GETARG(codestr, i+1);
                 codestr[i] = POP_JUMP_IF_TRUE;
-                SETARG(codestr, i, j);
+                SETARGT(codestr, i, j, unsigned char);
                 codestr[i+3] = NOP;
                 goto reoptimize_current;
 
@@ -385,7 +386,7 @@ PyCode_Optimize(PyObject *code, PyObject* consts, PyObject *names,
                     codestr[i+3] != UNARY_NOT  ||
                     !ISBASICBLOCK(blocks,i,4))
                     continue;
-                SETARG(codestr, i, (j^1));
+                SETARGT(codestr, i, (j^1), unsigned char);
                 codestr[i+3] = NOP;
                 break;
 
@@ -407,7 +408,7 @@ PyCode_Optimize(PyObject *code, PyObject* consts, PyObject *names,
                 }
                 assert(PyList_GET_ITEM(consts, j) == Py_None);
                 codestr[i] = LOAD_CONST;
-                SETARG(codestr, i, j);
+                SETARGT(codestr, i, j, unsigned char);
                 cumlc = lastlc + 1;
                 break;
 
@@ -433,7 +434,7 @@ PyCode_Optimize(PyObject *code, PyObject* consts, PyObject *names,
             case BUILD_TUPLE:
             case BUILD_LIST:
                 j = GETARG(codestr, i);
-                h = i - 3 * j;
+                h = (int)(i - 3 * j);
                 if (h >= 0 &&
                     j <= lastlc &&
                     ((opcode == BUILD_TUPLE &&
@@ -518,7 +519,7 @@ PyCode_Optimize(PyObject *code, PyObject* consts, PyObject *names,
                 */
             case JUMP_IF_FALSE_OR_POP:
             case JUMP_IF_TRUE_OR_POP:
-                tgt = GETJUMPTGT(codestr, i);
+                tgt = (int)GETJUMPTGT(codestr, i);
                 j = codestr[tgt];
                 if (CONDITIONAL_JUMP(j)) {
                     /* NOTE: all possible jumps here are absolute! */
@@ -528,7 +529,7 @@ PyCode_Optimize(PyObject *code, PyObject* consts, PyObject *names,
                         tgttgt = GETJUMPTGT(codestr, tgt);
                         /* The current opcode inherits
                            its target's stack behaviour */
-                        codestr[i] = j;
+                        codestr[i] = (unsigned char)j;
                         SETARG(codestr, i, tgttgt);
                         goto reoptimize_current;
                     } else {
@@ -557,7 +558,7 @@ PyCode_Optimize(PyObject *code, PyObject* consts, PyObject *names,
             case SETUP_EXCEPT:
             case SETUP_FINALLY:
             case SETUP_WITH:
-                tgt = GETJUMPTGT(codestr, i);
+                tgt = (int)GETJUMPTGT(codestr, i);
                 /* Replace JUMP_* to a RETURN into just a RETURN */
                 if (UNCONDITIONAL_JUMP(opcode) &&
                     codestr[tgt] == RETURN_VALUE) {
@@ -571,7 +572,7 @@ PyCode_Optimize(PyObject *code, PyObject* consts, PyObject *names,
                 if (opcode == JUMP_FORWARD) /* JMP_ABS can go backwards */
                     opcode = JUMP_ABSOLUTE;
                 if (!ABSOLUTE_JUMP(opcode))
-                    tgttgt -= i + 3;        /* Calc relative jump addr */
+                    tgttgt -= (int)(i + 3);        /* Calc relative jump addr */
                 if (tgttgt < 0)             /* No backward relative jumps */
                     continue;
                 codestr[i] = opcode;
@@ -598,7 +599,7 @@ PyCode_Optimize(PyObject *code, PyObject* consts, PyObject *names,
 
     /* Fixup linenotab */
     for (i=0, nops=0 ; i<codelen ; i += CODESIZE(codestr[i])) {
-        addrmap[i] = i - nops;
+        addrmap[i] = (int)(i - nops);
         if (codestr[i] == NOP)
             nops++;
     }
@@ -627,7 +628,7 @@ PyCode_Optimize(PyObject *code, PyObject* consts, PyObject *names,
             case JUMP_IF_FALSE_OR_POP:
             case JUMP_IF_TRUE_OR_POP:
                 j = addrmap[GETARG(codestr, i)];
-                SETARG(codestr, i, j);
+                SETARGT(codestr, i, j, unsigned char);
                 break;
 
             case FOR_ITER:
@@ -637,7 +638,7 @@ PyCode_Optimize(PyObject *code, PyObject* consts, PyObject *names,
             case SETUP_FINALLY:
             case SETUP_WITH:
                 j = addrmap[GETARG(codestr, i) + i + 3] - addrmap[i] - 3;
-                SETARG(codestr, i, j);
+                SETARGT(codestr, i, j, unsigned char);
                 break;
         }
         adj = CODESIZE(opcode);

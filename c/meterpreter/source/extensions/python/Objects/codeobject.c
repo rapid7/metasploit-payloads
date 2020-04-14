@@ -517,7 +517,7 @@ PyTypeObject PyCode_Type = {
 int
 PyCode_Addr2Line(PyCodeObject *co, int addrq)
 {
-    int size = PyString_Size(co->co_lnotab) / 2;
+    int size = (int)PyString_Size(co->co_lnotab) / 2;
     unsigned char *p = (unsigned char*)PyString_AsString(co->co_lnotab);
     int line = co->co_firstlineno;
     int addr = 0;
@@ -539,7 +539,7 @@ _PyCode_CheckLineNumber(PyCodeObject* co, int lasti, PyAddrPair *bounds)
     unsigned char* p;
 
     p = (unsigned char*)PyString_AS_STRING(co->co_lnotab);
-    size = PyString_GET_SIZE(co->co_lnotab) / 2;
+    size = (int)PyString_GET_SIZE(co->co_lnotab) / 2;
 
     addr = 0;
     line = co->co_firstlineno;

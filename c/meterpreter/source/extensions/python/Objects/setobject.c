@@ -755,7 +755,7 @@ set_pop(PySetObject *so)
     Py_INCREF(dummy);
     entry->key = dummy;
     so->used--;
-    so->table[0].hash = i + 1;  /* next place to start */
+    so->table[0].hash = (long)i + 1;  /* next place to start */
     return key;
 }
 
@@ -784,7 +784,7 @@ frozenset_hash(PyObject *self)
     if (so->hash != -1)
         return so->hash;
 
-    hash *= PySet_GET_SIZE(self) + 1;
+    hash *= (long)PySet_GET_SIZE(self) + 1;
     while (set_next(so, &pos, &entry)) {
         /* Work to increase the bit dispersion for closely spaced hash
            values.  The is important because some use cases have many
@@ -831,7 +831,7 @@ setiter_len(setiterobject *si)
     Py_ssize_t len = 0;
     if (si->si_set != NULL && si->si_used == si->si_set->used)
         len = si->len;
-    return PyInt_FromLong(len);
+    return PyInt_FromLong((long)len);
 }
 
 PyDoc_STRVAR(length_hint_doc, "Private method returning an estimate of len(list(it)).");

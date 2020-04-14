@@ -4441,7 +4441,7 @@ fast_function(PyObject *func, PyObject ***pp_stack, int n, int na, int nk)
     }
     if (argdefs != NULL) {
         d = &PyTuple_GET_ITEM(argdefs, 0);
-        nd = Py_SIZE(argdefs);
+        nd = (int)Py_SIZE(argdefs);
     }
     return PyEval_EvalCodeEx(co, globals,
                              (PyObject *)NULL, (*pp_stack)-n, na,
@@ -4629,7 +4629,7 @@ ext_do_call(PyObject *func, PyObject ***pp_stack, int flags, int na, int nk)
             Py_DECREF(stararg);
             stararg = t;
         }
-        nstar = PyTuple_GET_SIZE(stararg);
+        nstar = (int)PyTuple_GET_SIZE(stararg);
     }
     if (nk > 0) {
         kwdict = update_keyword_args(kwdict, nk, pp_stack, func);
@@ -4995,7 +4995,7 @@ exec_statement(PyFrameObject *f, PyObject *prog, PyObject *globals,
     int plain = 0;
 
     if (PyTuple_Check(prog) && globals == Py_None && locals == Py_None &&
-        ((n = PyTuple_Size(prog)) == 2 || n == 3)) {
+        ((n = (int)PyTuple_Size(prog)) == 2 || n == 3)) {
         /* Backward compatibility hack */
         globals = PyTuple_GetItem(prog, 1);
         if (n == 3)

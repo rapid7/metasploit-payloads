@@ -21,7 +21,7 @@ conn_send_string(ConnectionObject *conn, char *string, size_t length)
     BOOL ret;
 
     Py_BEGIN_ALLOW_THREADS
-    ret = WriteFile(conn->handle, string, length, &amount_written, NULL);
+    ret = WriteFile(conn->handle, string, (DWORD)length, &amount_written, NULL);
     Py_END_ALLOW_THREADS
 
     if (ret == 0 && GetLastError() == ERROR_NO_SYSTEM_RESOURCES) {
@@ -47,7 +47,7 @@ conn_recv_string(ConnectionObject *conn, char *buffer,
     *newbuffer = NULL;
 
     Py_BEGIN_ALLOW_THREADS
-    ret = ReadFile(conn->handle, buffer, MIN(buflength, maxlength),
+    ret = ReadFile(conn->handle, buffer, (DWORD)MIN(buflength, maxlength),
                   &length, NULL);
     Py_END_ALLOW_THREADS
     if (ret)

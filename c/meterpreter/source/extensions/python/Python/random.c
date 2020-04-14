@@ -77,7 +77,7 @@ win32_urandom(unsigned char *buffer, Py_ssize_t size, int raise)
     while (size > 0)
     {
         chunk = size > INT_MAX ? INT_MAX : size;
-        if (!pCryptGenRandom(hCryptProv, chunk, buffer))
+        if (!pCryptGenRandom(hCryptProv, (DWORD)chunk, buffer))
         {
             /* CryptGenRandom() failed */
             if (raise)

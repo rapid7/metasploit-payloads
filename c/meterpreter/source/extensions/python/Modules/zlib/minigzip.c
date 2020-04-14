@@ -35,7 +35,7 @@
 #  ifdef UNDER_CE
 #    include <stdlib.h>
 #  endif
-#  define SET_BINARY_MODE(file) setmode(fileno(file), O_BINARY)
+#  define SET_BINARY_MODE(file) _setmode(_fileno(file), O_BINARY)
 #else
 #  define SET_BINARY_MODE(file)
 #endif
@@ -486,7 +486,7 @@ void file_compress(file, mode)
     }
     gz_compress(in, out);
 
-    unlink(file);
+    _unlink(file);
 }
 
 
@@ -539,7 +539,7 @@ void file_uncompress(file)
 
     gz_uncompress(in, out);
 
-    unlink(infile);
+    _unlink(infile);
 }
 
 
@@ -605,11 +605,11 @@ int main(argc, argv)
         SET_BINARY_MODE(stdin);
         SET_BINARY_MODE(stdout);
         if (uncompr) {
-            file = gzdopen(fileno(stdin), "rb");
+            file = gzdopen(_fileno(stdin), "rb");
             if (file == NULL) error("can't gzdopen stdin");
             gz_uncompress(file, stdout);
         } else {
-            file = gzdopen(fileno(stdout), outmode);
+            file = gzdopen(_fileno(stdout), outmode);
             if (file == NULL) error("can't gzdopen stdout");
             gz_compress(stdin, file);
         }
@@ -635,7 +635,7 @@ int main(argc, argv)
                     if (in == NULL) {
                         perror(*argv);
                     } else {
-                        file = gzdopen(fileno(stdout), outmode);
+                        file = gzdopen(_fileno(stdout), outmode);
                         if (file == NULL) error("can't gzdopen stdout");
 
                         gz_compress(in, file);

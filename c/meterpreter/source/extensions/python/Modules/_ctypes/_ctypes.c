@@ -339,7 +339,7 @@ _ctypes_alloc_format_string_with_shape(int ndim, const Py_ssize_t *shape,
 
     prefix_len = 32 * ndim + 3;
     if (prefix)
-        prefix_len += strlen(prefix);
+        prefix_len += (int)strlen(prefix);
     new_prefix = PyMem_Malloc(prefix_len);
     if (new_prefix == NULL)
         return NULL;
@@ -4181,7 +4181,7 @@ _init_pos_args(PyObject *self, PyTypeObject *type,
         if (res == -1)
             return -1;
     }
-    return index + dict->length;
+    return (int)(index + dict->length);
 }
 
 static int
