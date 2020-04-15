@@ -1,6 +1,7 @@
 DATADIR:=../metasploit-framework/data
 METERPDIR:=$(DATADIR)/meterpreter
 ANDROIDSDKDIR:=/usr/local/share/android-sdk
+DXPATH:=platforms/android-3/tools
 
 install-all: \
 	install-windows \
@@ -38,7 +39,7 @@ install-python: $(METERPDIR)
 install-android:
 	@echo "Installing Android payloads"
 	@mvn -v >/dev/null 2>&1 || echo "Note: Maven not found, skipping";
-	@mvn -v >/dev/null 2>&1 && (cd java; mvn package -Dandroid.sdk.path=$(ANDROIDSDKDIR) -Dandroid.release=true -P deploy -q);
+	@mvn -v >/dev/null 2>&1 && (cd java; mvn package -Dandroid.sdk.path=$(ANDROIDSDKDIR) -Ddx.path=$(ANDROIDSDKDIR)/$(DXPATH) -Dandroid.release=true -P deploy -q);
 
 uninstall:
 	rm -fr $(METERPDIR)

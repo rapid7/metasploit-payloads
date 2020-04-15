@@ -8,7 +8,8 @@
 	<name>Android Meterpreter</name>
 
 	<properties>
-		<deploy.path>../../metasploit-framework</deploy.path>
+					<deploy.path>../../metasploit-framework</deploy.path>
+					<dx.path>${android.sdk.path}/platforms/android-3/tools/</dx.path>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -116,7 +117,7 @@
 											<zipfileset src="${com.metasploit:Metasploit-JavaPayload:jar}" includes="javapayload/stage/StreamForwarder.class" />
 											<zipfileset src="${com.metasploit:Metasploit-JavaPayload:jar}" includes="javapayload/stage/Stage.class" />
 										</copy>
-										<exec executable="${android.sdk.path}/platforms/android-3/tools/${dx.filename}" failonerror="true">
+										<exec executable="${dx.path}/${dx.filename}" failonerror="true">
 											<arg value="--verbose" />
 											<arg value="--dex" />
 											<arg value="--output=${project.basedir}/../../${deploy.path}/data/android/shell.jar" />
@@ -131,7 +132,7 @@
 											</fileset>
 											<zipfileset src="${com.metasploit:Metasploit-JavaPayload:jar}" includes="javapayload/stage/Stage.class" />
 										</copy>
-										<exec executable="${android.sdk.path}/platforms/android-3/tools/${dx.filename}" failonerror="true">
+										<exec executable="${dx.path}/${dx.filename}" failonerror="true">
 											<arg value="--verbose" />
 											<arg value="--dex" />
 											<arg value="--output=${project.basedir}/../../${deploy.path}/data/android/metstage.jar" />
@@ -145,7 +146,7 @@
 												<include name="com/metasploit/meterpreter/**/*.class" />
 											</fileset>
 										</copy>
-										<exec executable="${android.sdk.path}/platforms/android-3/tools/${dx.filename}" failonerror="true">
+										<exec executable="${dx.path}/${dx.filename}" failonerror="true">
 											<arg value="--verbose" />
 											<arg value="--dex" />
 											<arg value="--output=${project.basedir}/../../${deploy.path}/data/android/meterpreter.jar" />
@@ -156,7 +157,7 @@
 										</exec>
 
 										<echo>Building stageless meterpreter</echo>
-										<exec executable="${android.sdk.path}/platforms/android-3/tools/${dx.filename}" failonerror="true">
+										<exec executable="${dx.path}/${dx.filename}" failonerror="true">
 											<arg value="--verbose" />
 											<arg value="--dex" />
 											<arg value="--output=${project.basedir}/../../${deploy.path}/data/android/meterpreter.dex" />
