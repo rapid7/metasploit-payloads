@@ -98,6 +98,12 @@ Local naming conventions:
 //#define INVALID_SOCKET (-1)
 //#endif
 
+#ifdef _WIN64
+#define HAVE_INET_PTON
+int inet_pton(int af, const char* src, void* dst);
+const char* inet_ntop(int af, const void* src, char* dst, int size);
+#endif
+
 #undef MAX
 #define MAX(x, y) ((x) < (y) ? (y) : (x))
 
