@@ -77,7 +77,8 @@
 								<version>L_r1</version>
 							</signature>
 							<ignores>
-									<ignore>com.sun.org.apache.xalan.internal.xsltc.runtime.AbstractTranslet</ignore>
+                <ignore>com.sun.org.apache.xalan.internal.xsltc.runtime.AbstractTranslet</ignore>
+                <ignore>java.awt.Robot</ignore>
 							</ignores>
 						</configuration>
 					</execution>
