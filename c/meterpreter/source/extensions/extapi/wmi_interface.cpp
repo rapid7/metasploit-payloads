@@ -5,6 +5,7 @@
  */
 extern "C" {
 #include "extapi.h"
+#include "common_metapi.h"
 #include <inttypes.h>
 #include "wmi_interface.h"
 }
@@ -327,7 +328,7 @@ DWORD wmi_query(LPCWSTR lpwRoot, LPWSTR lpwQuery, Packet* response)
 
 				VARIANT** fields = (VARIANT**)malloc(sizeof(VARIANT*) * fieldCount);
 				char value[FIELD_SIZE];
-				Packet* fieldGroup = packet_create_group();
+				Packet* fieldGroup = met_api->packet.create_group();
 
 				memset(fields, 0, sizeof(VARIANT*) * fieldCount);
 
@@ -337,14 +338,14 @@ DWORD wmi_query(LPCWSTR lpwRoot, LPWSTR lpwQuery, Packet* response)
 					SafeArrayPtrOfIndex(pFieldArray, indices, (void**)&fields[i]);
 					_bstr_t bstr(fields[i]->bstrVal);
 
-					packet_add_tlv_string(fieldGroup, TLV_TYPE_EXT_WMI_FIELD, (const char*)bstr);
+					met_api->packet.add_tlv_string(fieldGroup, TLV_TYPE_EXT_WMI_FIELD, (const char*)bstr);
 
 					dprintf("[WMI] Added header field: %s", (const char*)bstr);
 				}
 
 				dprintf("[WMI] added all field headers");
 				// add the field names to the packet
-				packet_add_group(response, TLV_TYPE_EXT_WMI_FIELDS, fieldGroup);
+				met_api->packet.add_group(response, TLV_TYPE_EXT_WMI_FIELDS, fieldGroup);
 
 				dprintf("[WMI] processing values...");
 				// with that horrible pain out of the way, let's actually grab the data
@@ -356,7 +357,7 @@ DWORD wmi_query(LPCWSTR lpwRoot, LPWSTR lpwQuery, Packet* response)
 						break;
 					}
 
-					Packet* valueGroup = packet_create_group();
+					Packet* valueGroup = met_api->packet.create_group();
 
 					for (LONG i = 0; i < fieldCount; ++i)
 					{
@@ -373,13 +374,13 @@ DWORD wmi_query(LPCWSTR lpwRoot, LPWSTR lpwQuery, Packet* response)
 							variant_to_string(_variant_t(varValue), value, FIELD_SIZE);
 						}
 
-						packet_add_tlv_string(valueGroup, TLV_TYPE_EXT_WMI_VALUE, value);
+						met_api->packet.add_tlv_string(valueGroup, TLV_TYPE_EXT_WMI_VALUE, value);
 
 						dprintf("[WMI] Added value for %s: %s", (char*)_bstr_t(fields[i]->bstrVal), value);
 					}
 
 					// add the field values to the packet
-					packet_add_group(response, TLV_TYPE_EXT_WMI_VALUES, valueGroup);
+					met_api->packet.add_group(response, TLV_TYPE_EXT_WMI_VALUES, valueGroup);
 
 					pObj->Release();
 					pObj = NULL;
@@ -436,7 +437,7 @@ DWORD wmi_query(LPCWSTR lpwRoot, LPWSTR lpwQuery, Packet* response)
 		_com_error comError(hResult);
 		_snprintf_s(errorMessage, 1024, 1023, "%s (0x%x)", comError.ErrorMessage(), hResult);
 		dprintf("[WMI] returning error -> %s", errorMessage);
-		packet_add_tlv_string(response, TLV_TYPE_EXT_WMI_ERROR, errorMessage);
+		met_api->packet.add_tlv_string(response, TLV_TYPE_EXT_WMI_ERROR, errorMessage);
 		hResult = S_OK;
 	}
 

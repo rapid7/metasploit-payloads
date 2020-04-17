@@ -3,6 +3,7 @@
  * @brief Definitions for window management functionality
  */
 #include "extapi.h"
+#include "common_metapi.h"
 #include "window.h"
 
 VOID add_enumerated_window(Packet *pResponse, QWORD qwHandle, const wchar_t* cpWindowTitle_u, const wchar_t* cpClassName_u, DWORD dwProcessId);
@@ -186,7 +187,7 @@ DWORD request_window_enum(Remote *remote, Packet *packet)
 	QWORD parentWindow = 0;
 	DWORD dwResult = ERROR_SUCCESS;
 	BOOL bIncludeUnknown = FALSE;
-	Packet * response = packet_create_response(packet);
+	Packet * response = met_api->packet.create_response(packet);
 
 	do
 	{
@@ -199,10 +200,10 @@ DWORD request_window_enum(Remote *remote, Packet *packet)
 
 		// Extract the specified parent window. If this is NULL, that's ok, as we'll
 		// just enumerate top-level windows.
-		parentWindow = packet_get_tlv_value_qword(packet, TLV_TYPE_EXT_WINDOW_ENUM_HANDLE);
+		parentWindow = met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_EXT_WINDOW_ENUM_HANDLE);
 
 		// Extract the flag that indicates of unknown windows should be included in the output
-		bIncludeUnknown = packet_get_tlv_value_bool(packet, TLV_TYPE_EXT_WINDOW_ENUM_INCLUDEUNKNOWN);
+		bIncludeUnknown = met_api->packet.get_tlv_value_bool(packet, TLV_TYPE_EXT_WINDOW_ENUM_INCLUDEUNKNOWN);
 
 		dprintf("[EXTAPI WINDOW] Beginning window enumeration");
 		dwResult = enumerate_windows(response, bIncludeUnknown, parentWindow);
@@ -212,7 +213,7 @@ DWORD request_window_enum(Remote *remote, Packet *packet)
 	dprintf("[EXTAPI WINDOW] Transmitting response back to caller.");
 	if (response)
 	{
-		packet_transmit_response(dwResult, remote, response);
+		met_api->packet.transmit_response(dwResult, remote, response);
 	}
 
 	return dwResult;
@@ -228,11 +229,11 @@ DWORD request_window_enum(Remote *remote, Packet *packet)
  */
 VOID add_enumerated_window(Packet *pResponse, QWORD qwHandle, const wchar_t* cpWindowTitle, const wchar_t* cpClassName, DWORD dwProcessId)
 {
-	Packet* pGroup = packet_create_group();
+	Packet* pGroup = met_api->packet.create_group();
 
-	packet_add_tlv_uint(pGroup, TLV_TYPE_EXT_WINDOW_ENUM_PID, dwProcessId);
-	packet_add_tlv_qword(pGroup, TLV_TYPE_EXT_WINDOW_ENUM_HANDLE, qwHandle);
-	packet_add_tlv_string(pGroup, TLV_TYPE_EXT_WINDOW_ENUM_TITLE, wchar_to_utf8(cpWindowTitle));
-	packet_add_tlv_string(pGroup, TLV_TYPE_EXT_WINDOW_ENUM_CLASSNAME, wchar_to_utf8(cpClassName));
-	packet_add_group(pResponse, TLV_TYPE_EXT_WINDOW_ENUM_GROUP, pGroup);
+	met_api->packet.add_tlv_uint(pGroup, TLV_TYPE_EXT_WINDOW_ENUM_PID, dwProcessId);
+	met_api->packet.add_tlv_qword(pGroup, TLV_TYPE_EXT_WINDOW_ENUM_HANDLE, qwHandle);
+	met_api->packet.add_tlv_string(pGroup, TLV_TYPE_EXT_WINDOW_ENUM_TITLE, met_api->string.wchar_to_utf8(cpWindowTitle));
+	met_api->packet.add_tlv_string(pGroup, TLV_TYPE_EXT_WINDOW_ENUM_CLASSNAME, met_api->string.wchar_to_utf8(cpClassName));
+	met_api->packet.add_group(pResponse, TLV_TYPE_EXT_WINDOW_ENUM_GROUP, pGroup);
 }

@@ -3,6 +3,7 @@
 * @brief Definitions for NTDS Jet Engine functions
 */
 #include "extapi.h"
+#include "common_metapi.h"
 
 #define JET_VERSION 0x0501
 
@@ -246,7 +247,7 @@ JET_ERR read_user(struct jetState *ntdsState, struct ntdsColumns *accountColumns
 		return readStatus;
 	}
 
-	char *accountNameStr = wchar_to_utf8(accountName);
+	char *accountNameStr = met_api->string.wchar_to_utf8(accountName);
 	if (accountNameStr) {
 		strncpy_s(userAccount->accountName, ACCOUNT_NAME_SIZE, accountNameStr, ACCOUNT_NAME_SIZE - 1);
 		free(accountNameStr);
@@ -262,7 +263,7 @@ JET_ERR read_user(struct jetState *ntdsState, struct ntdsColumns *accountColumns
 		return readStatus;
 	}
 
-	char *accountDescriptionStr = wchar_to_utf8(accountDescription);
+	char *accountDescriptionStr = met_api->string.wchar_to_utf8(accountDescription);
 	if (accountDescriptionStr) {
 		strncpy_s(userAccount->accountDescription, ACCOUNT_DESC_SIZE, accountDescriptionStr, ACCOUNT_DESC_SIZE - 1);
 		free(accountDescriptionStr);

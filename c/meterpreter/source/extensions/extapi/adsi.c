@@ -6,6 +6,7 @@
 #include "wshelpers.h"
 #include "adsi.h"
 #include "adsi_interface.h"
+#include "common_metapi.h"
 
 /*! @brief The default page size to use when no page size is specified */
 #define DEFAULT_PAGE_SIZE 1000
@@ -26,7 +27,7 @@ DWORD request_adsi_domain_query(Remote *remote, Packet *packet)
 	LPWSTR* lpwFields = NULL;
 	DWORD fieldCount = 0;
 	DWORD fieldIndex = 0;
-	Packet * response = packet_create_response(packet);
+	Packet * response = met_api->packet.create_response(packet);
 	Tlv fieldTlv;
 	DWORD maxResults;
 	DWORD pageSize;
@@ -38,7 +39,7 @@ DWORD request_adsi_domain_query(Remote *remote, Packet *packet)
 			BREAK_WITH_ERROR("[EXTAPI ADSI] Unable to create response packet", ERROR_OUTOFMEMORY);
 		}
 
-		lpValue = packet_get_tlv_value_string(packet, TLV_TYPE_EXT_ADSI_DOMAIN);
+		lpValue = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_EXT_ADSI_DOMAIN);
 		dprintf("[EXTAPI ADSI] Domain: %s", lpValue);
 		dwResult = to_wide_string(lpValue, &lpwDomain);
 		if (dwResult != ERROR_SUCCESS)
@@ -47,7 +48,7 @@ DWORD request_adsi_domain_query(Remote *remote, Packet *packet)
 			break;
 		}
 
-		lpValue = packet_get_tlv_value_string(packet, TLV_TYPE_EXT_ADSI_FILTER);
+		lpValue = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_EXT_ADSI_FILTER);
 		dprintf("[EXTAPI ADSI] Filter: %s", lpValue);
 		dwResult = to_wide_string(lpValue, &lpwFilter);
 		if (dwResult != ERROR_SUCCESS)
@@ -56,10 +57,10 @@ DWORD request_adsi_domain_query(Remote *remote, Packet *packet)
 			break;
 		}
 
-		maxResults = packet_get_tlv_value_uint(packet, TLV_TYPE_EXT_ADSI_MAXRESULTS);
+		maxResults = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_EXT_ADSI_MAXRESULTS);
 		dprintf("[EXTAPI ADSI] Max results will be %u", maxResults);
 
-		pageSize = packet_get_tlv_value_uint(packet, TLV_TYPE_EXT_ADSI_PAGESIZE);
+		pageSize = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_EXT_ADSI_PAGESIZE);
 		dprintf("[EXTAPI ADSI] Page size specified as %u", pageSize);
 
 		// Set the page size to something sensible if not given.
@@ -76,7 +77,7 @@ DWORD request_adsi_domain_query(Remote *remote, Packet *packet)
 		}
 		dprintf("[EXTAPI ADSI] Page size will be %u", pageSize);
 
-		while (packet_enum_tlv(packet, fieldCount, TLV_TYPE_EXT_ADSI_FIELD, &fieldTlv) == ERROR_SUCCESS)
+		while (met_api->packet.enum_tlv(packet, fieldCount, TLV_TYPE_EXT_ADSI_FIELD, &fieldTlv) == ERROR_SUCCESS)
 		{
 			lpValue = (char*)fieldTlv.buffer;
 			dprintf("[EXTAPI ADSI] Field %u: %s", fieldCount, lpValue);
@@ -131,7 +132,7 @@ DWORD request_adsi_domain_query(Remote *remote, Packet *packet)
 	dprintf("[EXTAPI ADSI] Transmitting response back to caller.");
 	if (response)
 	{
-		packet_transmit_response(dwResult, remote, response);
+		met_api->packet.transmit_response(dwResult, remote, response);
 	}
 
 	return dwResult;

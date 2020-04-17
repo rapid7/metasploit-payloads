@@ -3,6 +3,7 @@
 * @brief NTDS channel interface
 */
 #include "extapi.h"
+#include "common_metapi.h"
 
 #define JET_VERSION 0x0501
 
@@ -28,10 +29,10 @@ typedef struct
 // The user interacts with the NTDS database through that channel from that point on.
 DWORD ntds_parse(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	DWORD res = ERROR_SUCCESS;
 	struct jetState *ntdsState = calloc(1,sizeof(struct jetState));
-	PCHAR filePath = packet_get_tlv_value_string(packet, TLV_TYPE_NTDS_PATH);
+	PCHAR filePath = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_NTDS_PATH);
 	// Check if the File exists
 	if (0xffffffff == GetFileAttributes(filePath)) {
 		res = 2;
@@ -149,7 +150,7 @@ DWORD ntds_parse(Remote *remote, Packet *packet)
 	chops.native.context = ctx;
 	chops.native.close = ntds_channel_close;
 	chops.read = ntds_channel_read;
-	if (!(newChannel = channel_create_pool(0, CHANNEL_FLAG_SYNCHRONOUS | CHANNEL_FLAG_COMPRESS, &chops)))
+	if (!(newChannel = met_api->channel.create_pool(0, CHANNEL_FLAG_SYNCHRONOUS | CHANNEL_FLAG_COMPRESS, &chops)))
 	{
 		res = ERROR_NOT_ENOUGH_MEMORY;
 		free(accountColumns);
@@ -159,11 +160,11 @@ DWORD ntds_parse(Remote *remote, Packet *packet)
 		goto out;
 	}
 
-	channel_set_type(newChannel, "ntds");
-	packet_add_tlv_uint(response, TLV_TYPE_CHANNEL_ID, channel_get_id(newChannel));
+	met_api->channel.set_type(newChannel, "ntds");
+	met_api->packet.add_tlv_uint(response, TLV_TYPE_CHANNEL_ID, met_api->channel.get_id(newChannel));
 
 out:
-	packet_transmit_response(res, remote, response);
+	met_api->packet.transmit_response(res, remote, response);
 	return ERROR_SUCCESS;
 }
 
