@@ -26,6 +26,25 @@ public class ProcessChannel extends Channel {
         new StderrThread(err).start();
     }
 
+    /**
+     * Read at least one byte, and up to maxLength bytes from this stream.
+     * An empty string (0 length data) is returned if no data is available.
+     *
+     * @param maxLength The maximum number of bytes to read.
+     * @return The bytes read, or <code>null</code> if the end of the stream has been reached.
+     */
+    public synchronized byte[] read(int maxLength) throws IOException, InterruptedException {
+        if (closed)
+            return null;
+        if (active)
+            throw new IllegalStateException("Cannot read; currently interacting with this channel");
+        if (!waiting || (toRead != null && toRead.length == 0))
+            return new byte[0];
+        if (toRead == null)
+            return null;
+        return super.read(maxLength);
+    }
+
     public void close() throws IOException {
         process.destroy();
         err.close();
