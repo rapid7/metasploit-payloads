@@ -3,7 +3,8 @@
  * @brief Wrapper functions for bridging native meterp calls to powershell
  */
 extern "C" {
-#include "../../common/common.h"
+#include "common.h"
+#include "common_metapi.h"
 #include "powershell.h"
 #include "powershell_bridge.h"
 #include "powershell_bindings.h"
@@ -90,7 +91,7 @@ DWORD load_assembly(BYTE* assemblyData, DWORD assemblySize)
 		}
 
 		dprintf("[PSH] Assembly appears to have been loaded successfully");
-		list_add(gLoadedAssemblies, loadedAssembly);
+		met_api->list.add(gLoadedAssemblies, loadedAssembly);
 	} while (0);
 
 	if (SUCCEEDED(hr))
@@ -385,7 +386,7 @@ DWORD initialize_dotnet_host()
 			break;
 		}
 
-		gLoadedAssemblies = list_create();
+		gLoadedAssemblies = met_api->list.create();
 		dprintf("[PSH] Runtime has been initialized successfully");
 
 	} while(0);
@@ -437,8 +438,8 @@ VOID deinitialize_dotnet_host()
 
 	SAFE_RELEASE(gClrPowershellType);
 
-	list_enumerate(gLoadedAssemblies, destroy_loaded_assembly, NULL);
-	list_destroy(gLoadedAssemblies);
+	met_api->list.enumerate(gLoadedAssemblies, destroy_loaded_assembly, NULL);
+	met_api->list.destroy(gLoadedAssemblies);
 
 	SAFE_RELEASE(gClrPowershellAssembly);
 	SAFE_RELEASE(gClrAppDomainInterface);
@@ -455,12 +456,12 @@ DWORD powershell_channel_interact_notify(Remote *remote, LPVOID entryContext, LP
 
 	if (shell->output.length() > 1 && shell->wait_handle != NULL)
 	{
-		lock_acquire(shell->buffer_lock);
+		met_api->lock.acquire(shell->buffer_lock);
 		dprintf("[PSH SHELL] received notification to write");
-		DWORD result = channel_write(channel, remote, NULL, 0, (PUCHAR)(char*)shell->output, byteCount, NULL);
+		DWORD result = met_api->channel.write(channel, remote, NULL, 0, (PUCHAR)(char*)shell->output, byteCount, NULL);
 		shell->output = "";
 		ResetEvent(shell->wait_handle);
-		lock_release(shell->buffer_lock);
+		met_api->lock.release(shell->buffer_lock);
 		dprintf("[PSH SHELL] write completed");
 	}
 
@@ -474,11 +475,11 @@ DWORD powershell_channel_interact_destroy(HANDLE waitable, LPVOID entryContext, 
 	if (shell->wait_handle)
 	{
 		HANDLE h = shell->wait_handle;
-		lock_acquire(shell->buffer_lock);
+		met_api->lock.acquire(shell->buffer_lock);
 		unchannelise_session(shell->session_id);
 		shell->wait_handle = NULL;
-		lock_release(shell->buffer_lock);
-		lock_destroy(shell->buffer_lock);
+		met_api->lock.release(shell->buffer_lock);
+		met_api->lock.destroy(shell->buffer_lock);
 		CloseHandle(h);
 	}
 	return ERROR_SUCCESS;
@@ -494,9 +495,9 @@ DWORD powershell_channel_interact(Channel *channel, Packet *request, LPVOID cont
 		{
 			dprintf("[PSH SHELL] beginning interaction");
 			shell->wait_handle = CreateEventA(NULL, FALSE, FALSE, NULL);
-			shell->buffer_lock = lock_create();
+			shell->buffer_lock = met_api->lock.create();
 
-			result = scheduler_insert_waitable(shell->wait_handle, channel, context,
+			result = met_api->scheduler.insert_waitable(shell->wait_handle, channel, context,
 				powershell_channel_interact_notify, powershell_channel_interact_destroy);
 
 			channelise_session(shell->session_id, channel, context);
@@ -507,7 +508,7 @@ DWORD powershell_channel_interact(Channel *channel, Packet *request, LPVOID cont
 	else if (shell->wait_handle != NULL)
 	{
 		dprintf("[PSH SHELL] stopping interaction");
-		result = scheduler_signal_waitable(shell->wait_handle, Stop);
+		result = met_api->scheduler.signal_waitable(shell->wait_handle, SchedulerStop);
 	}
 
 	return result;
@@ -526,10 +527,10 @@ DWORD powershell_channel_write(Channel* channel, Packet* request, LPVOID context
 	DWORD result = invoke_ps_command(shell->session_id, codeMarshall, output);
 	if (result == ERROR_SUCCESS && shell->wait_handle)
 	{
-		lock_acquire(shell->buffer_lock);
+		met_api->lock.acquire(shell->buffer_lock);
 		shell->output += output;
 		SetEvent(shell->wait_handle);
-		lock_release(shell->buffer_lock);
+		met_api->lock.release(shell->buffer_lock);
 	}
 	return result;
 }
@@ -542,10 +543,10 @@ void powershell_channel_streamwrite(__int64 rawContext, __int64 rawMessage)
 
 	if (shell->wait_handle)
 	{
-		lock_acquire(shell->buffer_lock);
+		met_api->lock.acquire(shell->buffer_lock);
 		shell->output += message;
 		SetEvent(shell->wait_handle);
-		lock_release(shell->buffer_lock);
+		met_api->lock.release(shell->buffer_lock);
 	}
 }
 
@@ -716,7 +717,7 @@ DWORD unchannelise_session(wchar_t* sessionId)
 DWORD request_powershell_shell(Remote *remote, Packet *packet)
 {
 	DWORD dwResult = ERROR_SUCCESS;
-	Packet* response = packet_create_response(packet);
+	Packet* response = met_api->packet.create_response(packet);
 	InteractiveShell* shell = NULL;
 
 	if (response)
@@ -732,7 +733,7 @@ DWORD request_powershell_shell(Remote *remote, Packet *packet)
 				dwResult = ERROR_OUTOFMEMORY;
 				break;
 			}
-			shell->session_id = packet_get_tlv_value_wstring(packet, TLV_TYPE_POWERSHELL_SESSIONID);
+			shell->session_id = met_api->packet.get_tlv_value_wstring(packet, TLV_TYPE_POWERSHELL_SESSIONID);
 
 			if (shell->session_id != NULL)
 			{
@@ -748,13 +749,13 @@ DWORD request_powershell_shell(Remote *remote, Packet *packet)
 			chanOps.native.write = powershell_channel_write;
 			chanOps.native.interact = powershell_channel_interact;
 			shell->output = "PS > ";
-			Channel* newChannel = channel_create_pool(0, CHANNEL_FLAG_SYNCHRONOUS, &chanOps);
+			Channel* newChannel = met_api->channel.create_pool(0, CHANNEL_FLAG_SYNCHRONOUS, &chanOps);
 
-			channel_set_type(newChannel, "psh");
-			packet_add_tlv_uint(response, TLV_TYPE_CHANNEL_ID, channel_get_id(newChannel));
+			met_api->channel.set_type(newChannel, "psh");
+			met_api->packet.add_tlv_uint(response, TLV_TYPE_CHANNEL_ID, met_api->channel.get_id(newChannel));
 		} while (0);
 
-		packet_transmit_response(dwResult, remote, response);
+		met_api->packet.transmit_response(dwResult, remote, response);
 	}
 
 	if (dwResult != ERROR_SUCCESS)
@@ -774,23 +775,23 @@ DWORD request_powershell_shell(Remote *remote, Packet *packet)
 DWORD request_powershell_execute(Remote *remote, Packet *packet)
 {
 	DWORD dwResult = ERROR_SUCCESS;
-	Packet* response = packet_create_response(packet);
+	Packet* response = met_api->packet.create_response(packet);
 	wchar_t* sessionId = NULL;
 
 	if (response)
 	{
-		char* code = packet_get_tlv_value_string(packet, TLV_TYPE_POWERSHELL_CODE);
+		char* code = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_POWERSHELL_CODE);
 		if (code != NULL)
 		{
 			_bstr_t codeMarshall(code);
 			_bstr_t output;
 
-			sessionId = packet_get_tlv_value_wstring(packet, TLV_TYPE_POWERSHELL_SESSIONID);
+			sessionId = met_api->packet.get_tlv_value_wstring(packet, TLV_TYPE_POWERSHELL_SESSIONID);
 
 			dwResult = invoke_ps_command(sessionId, codeMarshall, output);
 			if (dwResult == ERROR_SUCCESS)
 			{
-				packet_add_tlv_string(response, TLV_TYPE_POWERSHELL_RESULT, output);
+				met_api->packet.add_tlv_string(response, TLV_TYPE_POWERSHELL_RESULT, output);
 			}
 		}
 		else
@@ -798,7 +799,7 @@ DWORD request_powershell_execute(Remote *remote, Packet *packet)
 			dprintf("[PSH] Code parameter missing from call");
 			dwResult = ERROR_INVALID_PARAMETER;
 		}
-		packet_transmit_response(dwResult, remote, response);
+		met_api->packet.transmit_response(dwResult, remote, response);
 	}
 
 	SAFE_FREE(sessionId);
@@ -815,15 +816,15 @@ DWORD request_powershell_execute(Remote *remote, Packet *packet)
 DWORD request_powershell_assembly_load(Remote *remote, Packet *packet)
 {
 	DWORD dwResult = ERROR_SUCCESS;
-	Packet* response = packet_create_response(packet);
+	Packet* response = met_api->packet.create_response(packet);
 	wchar_t* sessionId = NULL;
 
 	if (response)
 	{
-		BYTE* binary = packet_get_tlv_value_raw(packet, TLV_TYPE_POWERSHELL_ASSEMBLY);
+		BYTE* binary = met_api->packet.get_tlv_value_raw(packet, TLV_TYPE_POWERSHELL_ASSEMBLY);
 		if (binary != NULL)
 		{
-			DWORD binarySize = packet_get_tlv_value_uint(packet, TLV_TYPE_POWERSHELL_ASSEMBLY_SIZE);
+			DWORD binarySize = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_POWERSHELL_ASSEMBLY_SIZE);
 			dwResult = load_assembly(binary, binarySize);
 		}
 		else
@@ -831,7 +832,7 @@ DWORD request_powershell_assembly_load(Remote *remote, Packet *packet)
 			dprintf("[PSH] Assembly parameter missing from call");
 			dwResult = ERROR_INVALID_PARAMETER;
 		}
-		packet_transmit_response(dwResult, remote, response);
+		met_api->packet.transmit_response(dwResult, remote, response);
 	}
 
 	SAFE_FREE(sessionId);
@@ -848,16 +849,16 @@ DWORD request_powershell_assembly_load(Remote *remote, Packet *packet)
 DWORD request_powershell_session_remove(Remote *remote, Packet *packet)
 {
 	DWORD dwResult = ERROR_SUCCESS;
-	Packet* response = packet_create_response(packet);
+	Packet* response = met_api->packet.create_response(packet);
 	wchar_t* sessionId = NULL;
 
 	if (response)
 	{
-		sessionId = packet_get_tlv_value_wstring(packet, TLV_TYPE_POWERSHELL_SESSIONID);
+		sessionId = met_api->packet.get_tlv_value_wstring(packet, TLV_TYPE_POWERSHELL_SESSIONID);
 
 		dwResult = remove_session(sessionId);
 
-		packet_transmit_response(dwResult, remote, response);
+		met_api->packet.transmit_response(dwResult, remote, response);
 	}
 
 	SAFE_FREE(sessionId);

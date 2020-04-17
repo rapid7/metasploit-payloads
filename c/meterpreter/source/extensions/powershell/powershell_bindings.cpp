@@ -3,7 +3,8 @@
  * @brief Wrapper functions for bridging native meterp calls to powershell
  */
 extern "C" {
-#include "../../common/common.h"
+#include "common.h"
+#include "common_metapi.h"
 #include "powershell_bindings.h"
 }
 
@@ -25,7 +26,7 @@ VOID MeterpreterInvoke(unsigned int isLocal, unsigned char* input, unsigned int 
 	dprintf("[PSH BINDING] Packet payload length: %u", packet.payloadLength);
 	dprintf("[PSH BINDING] Packet local flag:     %u", isLocal);
 
-	command_handle(gRemote, &packet);
+	met_api->command.handle(gRemote, &packet);
 
 	if (packet.partner != NULL)
 	{
@@ -34,7 +35,7 @@ VOID MeterpreterInvoke(unsigned int isLocal, unsigned char* input, unsigned int 
 		*output = (unsigned char*)LocalAlloc(LPTR, packet.partner->payloadLength);
 		*outputLength = packet.partner->payloadLength;
 		memcpy(*output, packet.partner->payload, packet.partner->payloadLength);
-		packet_destroy(packet.partner);
+		met_api->packet.destroy(packet.partner);
 	}
 	else
 	{
