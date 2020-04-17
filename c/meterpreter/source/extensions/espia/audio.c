@@ -1,5 +1,5 @@
 #define _CRT_SECURE_NO_DEPRECATE 1
-#include "../../common/common.h"
+#include "common.h"
 #include <stdio.h>
 #include <windows.h>
 #include <tchar.h>
@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <malloc.h>
 #include "espia.h"
+#include "common_metapi.h"
 
 #pragma comment(lib, "vfw32.lib")
 #pragma comment(lib, "winmm.lib")
@@ -60,6 +61,7 @@ BOOL capmicaudio(char* szFile, int millisecs)
     return (0L);
 }
 
+// TODO: remove this junk?
 int __declspec(dllexport) controlmic(char **waveresults, int msecs) {
 	DWORD dwError = 0;
 	char *wavestring = NULL;
@@ -80,24 +82,24 @@ int __declspec(dllexport) controlmic(char **waveresults, int msecs) {
 /*
  * Grabs the audio from mic.
  */
-DWORD request_audio_get_dev_audio(Remote *remote, Packet *packet)
+DWORD request_audio_get_dev_audio(Remote* remote, Packet* packet)
 {
-	Packet *response = packet_create_response(packet);
-	DWORD res = ERROR_SUCCESS;
-	char *wave = NULL;
+    Packet* response = met_api->packet.create_response(packet);
+    DWORD res = ERROR_SUCCESS;
+    char* wave = NULL;
 
-	if (controlmic(&wave,packet_get_tlv_value_uint(packet, TLV_TYPE_DEV_RECTIME)))
-	{
-		res = GetLastError();
-	}
+    if (controlmic(&wave, met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_DEV_RECTIME)))
+    {
+        res = GetLastError();
+    }
 
-	//packet_add_tlv_string(response, TLV_TYPE_DEV_AUDIO, wave);
+    //met_api->packet.add_tlv_string(response, TLV_TYPE_DEV_AUDIO, wave);
 
 
-	packet_transmit_response(res, remote, response);
+    met_api->packet.transmit_response(res, remote, response);
 
-	if (wave)
-	free(wave);
+    if (wave)
+        free(wave);
 
-	return res;
+    return res;
 }

@@ -1,4 +1,4 @@
-#include "../../common/common.h"
+#include "common.h"
 #include <stdio.h>
 #include <windows.h>
 #include <psapi.h>
@@ -9,6 +9,7 @@
 #include <malloc.h>
 #include <vfw.h>
 #include "espia.h"
+#include "common_metapi.h"
 
 #pragma comment(lib, "vfw32.lib")
 
@@ -73,6 +74,7 @@ char *StringCombine(char *string1, char *string2) {
 	return string1;
 }
 
+// TODO: remove this junk?!
 int __declspec(dllexport) controlcam(char **imageresults) {
 	DWORD dwError = 0;
 	char *imagestring = NULL;
@@ -104,11 +106,11 @@ int __declspec(dllexport) controlcam(char **imageresults) {
 /*
  * Grabs the Webcam Image.
  */
-DWORD request_video_get_dev_image(Remote *remote, Packet *packet)
+DWORD request_video_get_dev_image(Remote* remote, Packet* packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet* response = met_api->packet.create_response(packet);
 	DWORD res = ERROR_SUCCESS;
-	char *image = NULL;
+	char* image = NULL;
 
 	do
 	{
@@ -118,14 +120,14 @@ DWORD request_video_get_dev_image(Remote *remote, Packet *packet)
 			break;
 		}
 
-		//packet_add_tlv_string(response, TLV_TYPE_DEV_IMAGE, image);
+		//met_api->packet.add_tlv_string(response, TLV_TYPE_DEV_IMAGE, image);
 
 	} while (0);
 
-	packet_transmit_response(res, remote, response);
+	met_api->packet.transmit_response(res, remote, response);
 
 	if (image)
-	free(image);
+		free(image);
 
 	return res;
 }

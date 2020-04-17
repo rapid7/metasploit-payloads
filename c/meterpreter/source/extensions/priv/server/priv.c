@@ -2,8 +2,7 @@
  * @brief This module implements privilege escalation features.
  */
 #include "precomp.h"
-#include "common_metapi.h"
-
+#include "common_metapi.h" 
 // Required so that use of the API works.
 MetApi* met_api = NULL;
 
