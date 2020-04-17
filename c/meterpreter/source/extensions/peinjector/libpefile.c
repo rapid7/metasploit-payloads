@@ -7,7 +7,8 @@
 #include <string.h>
 #include <stddef.h>
 #include "libpefile.h"
-#include "../../common/common.h"
+#include "common.h"
+#include "common_metapi.h"
 
 /* Min/Max Macros */
 #define MIN(_a, _b) ((_a) < (_b) ? (_a) : (_b))
@@ -358,7 +359,7 @@ bool pefile_read_file(char *file, PEFILE_READ_OPTIONS *options, PEFILE *out) {
   FILE *fh;
 
   /* Open file */
-  wchar_t *file_w = utf8_to_wchar(file);
+  wchar_t *file_w = met_api->string.utf8_to_wchar(file);
   if (_wfopen_s(&fh, file_w, L"rb") == 0) {
 
     /* Get file size and allocate buffer */
@@ -539,7 +540,7 @@ bool pefile_write_file(PEFILE *in, PEFILE_WRITE_OPTIONS *options, char* file) {
 
   /* Open file */
   FILE *fh;
-  wchar_t *file_w = utf8_to_wchar(file);
+  wchar_t *file_w = met_api->string.utf8_to_wchar(file);
   if (_wfopen_s(&fh, file_w, L"wb") == 0) {
 
     /* Generate PE File memory */

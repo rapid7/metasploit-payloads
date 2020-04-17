@@ -3,7 +3,8 @@
 * @brief Wrapper functions for bridging native meterp calls to peinjector
 */
 
-#include "../../common/common.h"
+#include "common.h"
+#include "common_metapi.h"
 #include "peinjector.h"
 #include "peinjector_bridge.h"
 #include "libpeinfect.h"
@@ -46,15 +47,15 @@ void __load_config(PEINFECT *infect, BYTE* shellcode, UINT shellcode_size, bool 
 DWORD request_peinjector_inject_shellcode(Remote *remote, Packet *packet)
 {
 	DWORD dwResult = ERROR_SUCCESS;
-	Packet* response = packet_create_response(packet);
+	Packet* response = met_api->packet.create_response(packet);
 
 	if (response)
 	{
-		BYTE* shellcode = packet_get_tlv_value_raw(packet, TLV_TYPE_PEINJECTOR_SHELLCODE);
-		UINT size = packet_get_tlv_value_uint(packet, TLV_TYPE_PEINJECTOR_SHELLCODE_SIZE);
-		BOOL is_x64 = packet_get_tlv_value_bool(packet, TLV_TYPE_PEINJECTOR_SHELLCODE_ISX64);
+		BYTE* shellcode = met_api->packet.get_tlv_value_raw(packet, TLV_TYPE_PEINJECTOR_SHELLCODE);
+		UINT size = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_PEINJECTOR_SHELLCODE_SIZE);
+		BOOL is_x64 = met_api->packet.get_tlv_value_bool(packet, TLV_TYPE_PEINJECTOR_SHELLCODE_ISX64);
 
-		char* target_executable_path = packet_get_tlv_value_string(packet, TLV_TYPE_PEINJECTOR_TARGET_EXECUTABLE);
+		char* target_executable_path = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_PEINJECTOR_TARGET_EXECUTABLE);
 		if (shellcode != NULL)
 		{
 			dprintf("[PEINJECTOR] recived path: %s", target_executable_path);
@@ -77,15 +78,15 @@ DWORD request_peinjector_inject_shellcode(Remote *remote, Packet *packet)
 				}
 				else {
 					dprintf("There was an error, shellcode not injected\n");
-					packet_add_tlv_string(response, TLV_TYPE_PEINJECTOR_RESULT, "There was an error, shellcode not injected");
+					met_api->packet.add_tlv_string(response, TLV_TYPE_PEINJECTOR_RESULT, "There was an error, shellcode not injected");
 				}
 			}
 			else {
 				dprintf("The architecture of the file is incompatible with the selected payload\n");
-				packet_add_tlv_string(response, TLV_TYPE_PEINJECTOR_RESULT, "The architecture of the file is incompatible with the selected payload");
+				met_api->packet.add_tlv_string(response, TLV_TYPE_PEINJECTOR_RESULT, "The architecture of the file is incompatible with the selected payload");
 			}
 
-			packet_transmit_response(dwResult, remote, response);
+			met_api->packet.transmit_response(dwResult, remote, response);
 		}
 		else
 		{
