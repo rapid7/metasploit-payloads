@@ -362,10 +362,6 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     </When>
   </Choose>
   <ItemGroup>
-    <ProjectReference Include="..\common\common.vcxproj">
-      <Project>{9e4de963-873f-4525-a7d0-ce34edbbdcca}</Project>
-      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
-    </ProjectReference>
     <ProjectReference Include="..\elevator\elevator.vcxproj">
       <Project>{662afbb3-f64a-4ad1-8956-b9f1b846231c}</Project>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
