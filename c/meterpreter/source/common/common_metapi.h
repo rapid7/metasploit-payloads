@@ -86,7 +86,7 @@ typedef struct _SchedulerApi
 	DWORD(*destroy)();
 	DWORD(*insert_waitable)(HANDLE waitable, LPVOID entryContext, LPVOID threadContext, WaitableNotifyRoutine routine, WaitableDestroyRoutine destroy);
 	DWORD(*signal_waitable)(HANDLE waitable, SchedulerSignal signal);
-	DWORD(*waitable_thread)(THREAD* thread);
+	DWORD(THREADCALL*waitable_thread)(THREAD* thread);
 } SchedulerApi;
 
 typedef struct _PacketApi
