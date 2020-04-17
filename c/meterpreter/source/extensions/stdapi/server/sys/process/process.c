@@ -1,4 +1,5 @@
 #include "precomp.h"
+#include "common_metapi.h"
 #include "ps.h" // include the code for listing proceses
 
 #include "./../session.h"
@@ -41,13 +42,13 @@ const int PROC_THREAD_ATTRIBUTE_PARENT_PROCESS = 0x00020000;
  */
 DWORD request_sys_process_attach(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	HANDLE handle = NULL;
 	DWORD result = ERROR_SUCCESS;
 	DWORD pid;
 
 	// Get the process identifier that we're attaching to, if any.
-	pid = packet_get_tlv_value_uint(packet, TLV_TYPE_PID);
+	pid = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_PID);
 	dprintf("[attach]: pid %d", pid);
 	// No pid? Use current.
 	if (!pid)
@@ -55,8 +56,8 @@ DWORD request_sys_process_attach(Remote *remote, Packet *packet)
 	// Otherwise, attach.
 	else
 	{
-		BOOLEAN inherit = packet_get_tlv_value_bool(packet, TLV_TYPE_INHERIT);
-		DWORD permission = packet_get_tlv_value_uint(packet, TLV_TYPE_PROCESS_PERMS);
+		BOOLEAN inherit = met_api->packet.get_tlv_value_bool(packet, TLV_TYPE_INHERIT);
+		DWORD permission = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_PROCESS_PERMS);
 
 		handle = OpenProcess(permission, inherit, pid);
 		dprintf("[attach] OpenProcess: opened process %d with permission %d: 0x%p [%d]\n", pid, permission, handle, GetLastError());
@@ -64,12 +65,12 @@ DWORD request_sys_process_attach(Remote *remote, Packet *packet)
 
 	// If we have a handle, add it to the response
 	if (handle)
-		packet_add_tlv_qword(response, TLV_TYPE_HANDLE, (QWORD)handle);
+		met_api->packet.add_tlv_qword(response, TLV_TYPE_HANDLE, (QWORD)handle);
 	else
 		result = GetLastError();
 
 	// Send the response packet to the requestor
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 
 	return ERROR_SUCCESS;
 }
@@ -81,10 +82,10 @@ DWORD request_sys_process_attach(Remote *remote, Packet *packet)
  */
 DWORD request_sys_process_close(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	HANDLE handle;
 	DWORD result = ERROR_SUCCESS;
-	handle = (HANDLE)packet_get_tlv_value_qword(packet, TLV_TYPE_HANDLE);
+	handle = (HANDLE)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_HANDLE);
 
 
 	if (handle)
@@ -96,7 +97,7 @@ DWORD request_sys_process_close(Remote *remote, Packet *packet)
 		result = ERROR_INVALID_PARAMETER;
 
 	// Send the response packet to the requestor
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 
 	return ERROR_SUCCESS;
 }
@@ -111,7 +112,7 @@ DWORD request_sys_process_close(Remote *remote, Packet *packet)
  */
 DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	DWORD result = ERROR_SUCCESS;
 	Tlv inMemoryData;
 	BOOL doInMemory = FALSE;
@@ -154,12 +155,12 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 		}
 
 		// Get the execution arguments
-		arguments = packet_get_tlv_value_string(packet, TLV_TYPE_PROCESS_ARGUMENTS);
-		path = packet_get_tlv_value_string(packet, TLV_TYPE_PROCESS_PATH);
-		flags = packet_get_tlv_value_uint(packet, TLV_TYPE_PROCESS_FLAGS);
-		ppid = packet_get_tlv_value_uint(packet, TLV_TYPE_PARENT_PID);
+		arguments = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_PROCESS_ARGUMENTS);
+		path = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_PROCESS_PATH);
+		flags = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_PROCESS_FLAGS);
+		ppid = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_PARENT_PID);
 
-		if (packet_get_tlv(packet, TLV_TYPE_VALUE_DATA, &inMemoryData) == ERROR_SUCCESS)
+		if (met_api->packet.get_tlv(packet, TLV_TYPE_VALUE_DATA, &inMemoryData) == ERROR_SUCCESS)
 		{
 			doInMemory = TRUE;
 			createFlags |= CREATE_SUSPENDED;
@@ -175,11 +176,11 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 
 				memset(cpDesktop, 0, 512);
 
-				lock_acquire(remote->lock);
+				met_api->lock.acquire(remote->lock);
 
 				_snprintf(cpDesktop, 512, "%s\\%s", remote->curr_station_name, remote->curr_desktop_name);
 
-				lock_release(remote->lock);
+				met_api->lock.release(remote->lock);
 
 				si.StartupInfo.lpDesktop = cpDesktop;
 
@@ -236,19 +237,19 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 			chops.read = process_channel_read;
 
 			// Allocate the pool channel
-			if (!(newChannel = channel_create_pool(0, CHANNEL_FLAG_SYNCHRONOUS, &chops)))
+			if (!(newChannel = met_api->channel.create_pool(0, CHANNEL_FLAG_SYNCHRONOUS, &chops)))
 			{
 				result = ERROR_NOT_ENOUGH_MEMORY;
 				break;
 			}
 
 			// Set the channel's type to process
-			channel_set_type(newChannel, "process");
+			met_api->channel.set_type(newChannel, "process");
 
 			// Allocate the stdin and stdout pipes
 			if ((!CreatePipe(&in[0], &in[1], &sa, 0)) || (!CreatePipe(&out[0], &out[1], &sa, 0)))
 			{
-				channel_destroy(newChannel, NULL);
+				met_api->channel.destroy(newChannel, NULL);
 
 				newChannel = NULL;
 
@@ -272,7 +273,7 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 			ctx->pStdout = out[0];
 
 			// Add the channel identifier to the response packet
-			packet_add_tlv_uint(response, TLV_TYPE_CHANNEL_ID, channel_get_id(newChannel));
+			met_api->packet.add_tlv_uint(response, TLV_TYPE_CHANNEL_ID, met_api->channel.get_id(newChannel));
 		}
 
 		// If the hidden flag is set, create the process hidden
@@ -293,8 +294,8 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 			HMODULE hKernel32Lib = LoadLibrary("kernel32.dll");
 			INITIALIZEPROCTHREADATTRIBUTELIST InitializeProcThreadAttributeList = (INITIALIZEPROCTHREADATTRIBUTELIST)GetProcAddress(hKernel32Lib, "InitializeProcThreadAttributeList");
 			UPDATEPROCTHREADATTRIBUTE UpdateProcThreadAttribute = (UPDATEPROCTHREADATTRIBUTE)GetProcAddress(hKernel32Lib, "UpdateProcThreadAttribute");
-			BOOLEAN inherit = packet_get_tlv_value_bool(packet, TLV_TYPE_INHERIT);
-			DWORD permission = packet_get_tlv_value_uint(packet, TLV_TYPE_PROCESS_PERMS);
+			BOOLEAN inherit = met_api->packet.get_tlv_value_bool(packet, TLV_TYPE_INHERIT);
+			DWORD permission = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_PROCESS_PERMS);
 			HANDLE handle = OpenProcess(permission, inherit, ppid);
 			dprintf("[execute] OpenProcess: opened process %d with permission %d: 0x%p [%d]\n", ppid, permission, handle, GetLastError());
 			if (
@@ -476,7 +477,7 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 				// Note: wtsapi32!WTSQueryUserToken is not available on NT4 or 2000 so we dynamically resolve it.
 				hWtsapi32 = LoadLibraryA("wtsapi32.dll");
 
-				session = packet_get_tlv_value_uint(packet, TLV_TYPE_PROCESS_SESSION);
+				session = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_PROCESS_SESSION);
 
 				if (session_id(GetCurrentProcessId()) == session || !hWtsapi32)
 				{
@@ -574,9 +575,9 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 			}
 
 			// Add the process identifier to the response packet
-			packet_add_tlv_uint(response, TLV_TYPE_PID, pi.dwProcessId);
+			met_api->packet.add_tlv_uint(response, TLV_TYPE_PID, pi.dwProcessId);
 
-			packet_add_tlv_qword(response, TLV_TYPE_PROCESS_HANDLE, (QWORD)pi.hProcess);
+			met_api->packet.add_tlv_qword(response, TLV_TYPE_PROCESS_HANDLE, (QWORD)pi.hProcess);
 
 			CloseHandle(pi.hThread);
 		}
@@ -609,7 +610,7 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 		free(si.lpAttributeList);
 	}
 
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 
 	return ERROR_SUCCESS;
 }
@@ -621,12 +622,12 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
  */
 DWORD request_sys_process_kill(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	DWORD result = ERROR_SUCCESS;
 	Tlv pidTlv;
 	DWORD index = 0;
 
-	while ((packet_enum_tlv(packet, index++, TLV_TYPE_PID,
+	while ((met_api->packet.enum_tlv(packet, index++, TLV_TYPE_PID,
 			&pidTlv) == ERROR_SUCCESS) &&
 			(pidTlv.header.length >= sizeof(DWORD)))
 	{
@@ -647,7 +648,7 @@ DWORD request_sys_process_kill(Remote *remote, Packet *packet)
 	}
 
 	// Transmit the response
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 
 	return ERROR_SUCCESS;
 }
@@ -665,7 +666,7 @@ DWORD request_sys_process_get_processes( Remote * remote, Packet * packet )
 
 	do
 	{
-		response = packet_create_response( packet );
+		response = met_api->packet.create_response( packet );
 		if( !response )
 			break;
 
@@ -698,7 +699,7 @@ DWORD request_sys_process_get_processes( Remote * remote, Packet * packet )
 			}
 		}
 
-		packet_transmit_response( result, remote, response );
+		met_api->packet.transmit_response( result, remote, response );
 
 	} while( 0 );
 
@@ -710,11 +711,11 @@ DWORD request_sys_process_get_processes( Remote * remote, Packet * packet )
  */
 DWORD request_sys_process_getpid(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 
-	packet_add_tlv_uint(response, TLV_TYPE_PID, GetCurrentProcessId());
+	met_api->packet.add_tlv_uint(response, TLV_TYPE_PID, GetCurrentProcessId());
 
-	packet_transmit_response(ERROR_SUCCESS, remote, response);
+	met_api->packet.transmit_response(ERROR_SUCCESS, remote, response);
 
 	return ERROR_SUCCESS;
 }
@@ -726,7 +727,7 @@ DWORD request_sys_process_getpid(Remote *remote, Packet *packet)
  */
 DWORD request_sys_process_get_info(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 
 
 	BOOL (WINAPI *enumProcessModules)(HANDLE p, HMODULE *mod, DWORD cb,
@@ -743,7 +744,7 @@ DWORD request_sys_process_get_info(Remote *remote, Packet *packet)
 	DWORD needed;
 	wchar_t path[1024], name[512];
 
-	handle = (HANDLE)packet_get_tlv_value_qword(packet, TLV_TYPE_HANDLE);
+	handle = (HANDLE)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_HANDLE);
 
 	do
 	{
@@ -795,13 +796,13 @@ DWORD request_sys_process_get_info(Remote *remote, Packet *packet)
 		getModuleFileNameEx(handle, mod, path, sizeof(path) - 1);
 
 		// Set the process' information on the response
-		packet_add_tlv_string(response, TLV_TYPE_PROCESS_NAME, wchar_to_utf8(name));
-		packet_add_tlv_string(response, TLV_TYPE_PROCESS_PATH, wchar_to_utf8(path));
+		met_api->packet.add_tlv_string(response, TLV_TYPE_PROCESS_NAME, met_api->string.wchar_to_utf8(name));
+		met_api->packet.add_tlv_string(response, TLV_TYPE_PROCESS_PATH, met_api->string.wchar_to_utf8(path));
 
 	} while (0);
 
 	// Transmit the response
-	packet_transmit_response(ERROR_SUCCESS, remote, response);
+	met_api->packet.transmit_response(ERROR_SUCCESS, remote, response);
 
 	// Close the psapi library and clean up
 	if (psapi)
@@ -873,7 +874,7 @@ DWORD process_channel_close( Channel *channel, Packet *request, LPVOID context )
 	}
 	if ( ctx->pProcess != NULL ) {
 		dprintf( "[PROCESS] channel has an attached process, closing via scheduler signal. channel=0x%08X, ctx=0x%08X", channel, ctx );
-		scheduler_signal_waitable( ctx->pStdout, Stop );
+		met_api->scheduler.signal_waitable( ctx->pStdout, SchedulerStop );
 	} else {
 		CloseHandle( ctx->pStdin );
 		CloseHandle( ctx->pStdout );
@@ -905,7 +906,7 @@ DWORD process_channel_interact_destroy( HANDLE waitable, LPVOID entryContext, LP
 	}
 
 	free( ctx );
-	if (channel_exists(channel))
+	if (met_api->channel.exists(channel))
 	{
 		channel->ops.pool.native.context = NULL;
 	}
@@ -925,7 +926,7 @@ DWORD process_channel_interact_notify(Remote *remote, LPVOID entryContext, LPVOI
 	CHAR buffer[16384];
 	DWORD result = ERROR_SUCCESS;
 
-	if (!channel_exists(channel) || ctx == NULL)
+	if (!met_api->channel.exists(channel) || ctx == NULL)
 	{
 		return result;
 	}
@@ -935,7 +936,7 @@ DWORD process_channel_interact_notify(Remote *remote, LPVOID entryContext, LPVOI
 		{
 			if( ReadFile( ctx->pStdout, buffer, sizeof(buffer) - 1, &bytesRead, NULL ) )
 			{
-				return channel_write( channel, remote, NULL, 0, buffer, bytesRead, NULL );
+				return met_api->channel.write( channel, remote, NULL, 0, buffer, bytesRead, NULL );
 			}
 			result = GetLastError();
 		}
@@ -955,7 +956,7 @@ DWORD process_channel_interact_notify(Remote *remote, LPVOID entryContext, LPVOI
 	{
 		dprintf("Closing down socket: result: %d\n", result);
 		process_channel_close( channel, NULL, ctx );
-		channel_close( channel, remote, NULL, 0, NULL );
+		met_api->channel.close( channel, remote, NULL, 0, NULL );
 	}
 
 	return result;
@@ -971,7 +972,7 @@ DWORD process_channel_interact(Channel *channel, Packet *request, LPVOID context
 
 	dprintf( "[PROCESS] process_channel_interact. channel=0x%08X, ctx=0x%08X, interact=%d", channel, ctx, interact );
 
-	if (!channel_exists(channel) || ctx == NULL)
+	if (!met_api->channel.exists(channel) || ctx == NULL)
 	{
 		return result;
 	}
@@ -979,13 +980,13 @@ DWORD process_channel_interact(Channel *channel, Packet *request, LPVOID context
 	// as a waitable item
 	if (interact) {
 		// try to resume it first, if it's not there, we can create a new entry
-		if( (result = scheduler_signal_waitable( ctx->pStdout, Resume )) == ERROR_NOT_FOUND ) {
-			result = scheduler_insert_waitable( ctx->pStdout, channel, context,
+		if( (result = met_api->scheduler.signal_waitable( ctx->pStdout, SchedulerResume )) == ERROR_NOT_FOUND ) {
+			result = met_api->scheduler.insert_waitable( ctx->pStdout, channel, context,
 				(WaitableNotifyRoutine)process_channel_interact_notify,
 				(WaitableDestroyRoutine)process_channel_interact_destroy );
 		}
 	} else { // Otherwise, pause it
-		result = scheduler_signal_waitable( ctx->pStdout, Pause );
+		result = met_api->scheduler.signal_waitable( ctx->pStdout, SchedulerPause );
 	}
 	return result;
 }
@@ -997,11 +998,11 @@ DWORD process_channel_interact(Channel *channel, Packet *request, LPVOID context
  */
 DWORD request_sys_process_wait(Remote *remote, Packet *packet)
 {
-	Packet * response = packet_create_response( packet );
+	Packet * response = met_api->packet.create_response( packet );
 	HANDLE handle     = NULL;
 	DWORD result      = ERROR_INVALID_PARAMETER;
 
-	handle = (HANDLE)packet_get_tlv_value_qword( packet, TLV_TYPE_HANDLE );
+	handle = (HANDLE)met_api->packet.get_tlv_value_qword( packet, TLV_TYPE_HANDLE );
 
 	if( handle )
 	{
@@ -1009,7 +1010,7 @@ DWORD request_sys_process_wait(Remote *remote, Packet *packet)
 			result = ERROR_SUCCESS;
 	}
 
-	packet_transmit_response( result, remote, response );
+	met_api->packet.transmit_response( result, remote, response );
 
 	return result;
 }

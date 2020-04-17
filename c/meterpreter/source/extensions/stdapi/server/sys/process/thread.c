@@ -1,6 +1,5 @@
 #include "precomp.h"
-#include "../../../../../common/arch/win/remote_thread.h"
-#include "../../../../../common/arch/win/i386/base_inject.h"
+#include "common_metapi.h"
 
 ULONG get_thread_register_value(LPCONTEXT context, LPCSTR name, DWORD size);
 VOID set_thread_register_value(LPCONTEXT, LPCSTR name, ULONG value);
@@ -37,15 +36,15 @@ BOOL IsWow64Process(HANDLE hProcess)
  */
 DWORD request_sys_process_thread_open(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	HANDLE handle = NULL;
 	DWORD result = ERROR_SUCCESS;
 	DWORD threadId;
 	DWORD perms;
 
 	// Get the parameters
-	threadId = packet_get_tlv_value_uint(packet, TLV_TYPE_THREAD_ID);
-	perms    = packet_get_tlv_value_uint(packet, TLV_TYPE_THREAD_PERMS);
+	threadId = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_THREAD_ID);
+	perms    = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_THREAD_PERMS);
 
 	do
 	{
@@ -64,11 +63,11 @@ DWORD request_sys_process_thread_open(Remote *remote, Packet *packet)
 		}
 
 		// Add the handle to the response packet
-		packet_add_tlv_qword(response, TLV_TYPE_THREAD_HANDLE, (QWORD)handle);
+		met_api->packet.add_tlv_qword(response, TLV_TYPE_THREAD_HANDLE, (QWORD)handle);
 
 	} while (0);
 
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 
 	return ERROR_SUCCESS;
 }
@@ -86,7 +85,7 @@ DWORD request_sys_process_thread_open(Remote *remote, Packet *packet)
  */
 DWORD request_sys_process_thread_create(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	HANDLE hProcess, hThread = NULL;
 	LPVOID lpEntryPoint;
 	LPVOID lpEntryParam;
@@ -95,10 +94,10 @@ DWORD request_sys_process_thread_create(Remote *remote, Packet *packet)
 	DWORD dwThreadId;
 
 	// Snag the parameters
-	hProcess     = (HANDLE)packet_get_tlv_value_qword(packet, TLV_TYPE_PROCESS_HANDLE);
-	lpEntryPoint  = (LPVOID)packet_get_tlv_value_qword(packet, TLV_TYPE_ENTRY_POINT);
-	lpEntryParam  = (LPVOID)packet_get_tlv_value_qword(packet, TLV_TYPE_ENTRY_PARAMETER);
-	dwCreateFlags = packet_get_tlv_value_uint(packet, TLV_TYPE_CREATION_FLAGS);
+	hProcess     = (HANDLE)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_PROCESS_HANDLE);
+	lpEntryPoint  = (LPVOID)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_ENTRY_POINT);
+	lpEntryParam  = (LPVOID)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_ENTRY_PARAMETER);
+	dwCreateFlags = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_CREATION_FLAGS);
 
 	do
 	{
@@ -112,7 +111,7 @@ DWORD request_sys_process_thread_create(Remote *remote, Packet *packet)
 		dprintf("[THREAD CREATE] CreateFlags: %x", dwCreateFlags);
 
 		// Create the thread in the process supplied
-		if (!(hThread = create_remote_thread(hProcess, 0, lpEntryPoint, lpEntryParam, dwCreateFlags, &dwThreadId)))
+		if (!(hThread = met_api->thread.create_remote(hProcess, 0, lpEntryPoint, lpEntryParam, dwCreateFlags, &dwThreadId)))
 		{
 			dprintf("[THREAD CREATE] Failed to create remote thread");
 			dwResult = GetLastError();
@@ -125,7 +124,7 @@ DWORD request_sys_process_thread_create(Remote *remote, Packet *packet)
 				dprintf("[THREAD CREATE] Target is x64, attempting wow64 injection");
 
 				// looking good, let's see if we can do the wow64 injection.
-				dwResult = inject_via_remotethread_wow64(hProcess, lpEntryPoint, lpEntryParam, &hThread);
+				dwResult = met_api->inject.via_remotethread_wow64(hProcess, lpEntryPoint, lpEntryParam, &hThread);
 				if (dwResult != ERROR_SUCCESS)
 				{
 					dprintf("[THREAD CREATE] Wow64 injection failed: %u (%x)", dwResult, dwResult);
@@ -148,12 +147,12 @@ DWORD request_sys_process_thread_create(Remote *remote, Packet *packet)
 
 		dprintf("[THREAD CREATE] Thread creation succeeded");
 		// Set the thread identifier and handle on the response
-		packet_add_tlv_uint(response, TLV_TYPE_THREAD_ID, dwThreadId);
-		packet_add_tlv_qword(response, TLV_TYPE_THREAD_HANDLE, (QWORD)hThread);
+		met_api->packet.add_tlv_uint(response, TLV_TYPE_THREAD_ID, dwThreadId);
+		met_api->packet.add_tlv_qword(response, TLV_TYPE_THREAD_HANDLE, (QWORD)hThread);
 
 	} while (0);
 
-	packet_transmit_response(dwResult, remote, response);
+	met_api->packet.transmit_response(dwResult, remote, response);
 
 	return ERROR_SUCCESS;
 }
@@ -165,16 +164,16 @@ DWORD request_sys_process_thread_create(Remote *remote, Packet *packet)
  */
 DWORD request_sys_process_thread_close(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	HANDLE thread;
 	DWORD result = ERROR_SUCCESS;
 
-	if ((thread = (HANDLE)packet_get_tlv_value_qword(packet, TLV_TYPE_THREAD_HANDLE)))
+	if ((thread = (HANDLE)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_THREAD_HANDLE)))
 		CloseHandle(thread);
 	else
 		result = ERROR_INVALID_PARAMETER;
 
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 
 	return ERROR_SUCCESS;
 }
@@ -187,13 +186,13 @@ DWORD request_sys_process_thread_close(Remote *remote, Packet *packet)
  */
 DWORD request_sys_process_thread_get_threads(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	THREADENTRY32 entry;
 	HANDLE th32 = NULL;
 	DWORD result = ERROR_SUCCESS;
 	DWORD processId;
 
-	processId = packet_get_tlv_value_uint(packet, TLV_TYPE_PID);
+	processId = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_PID);
 
 	do
 	{
@@ -222,7 +221,7 @@ DWORD request_sys_process_thread_get_threads(Remote *remote, Packet *packet)
 				if (entry.th32OwnerProcessID != processId)
 					continue;
 
-				packet_add_tlv_uint(response, TLV_TYPE_THREAD_ID, entry.th32ThreadID);
+				met_api->packet.add_tlv_uint(response, TLV_TYPE_THREAD_ID, entry.th32ThreadID);
 
 			} while (Thread32Next(th32, &entry));
 		}
@@ -237,7 +236,7 @@ DWORD request_sys_process_thread_get_threads(Remote *remote, Packet *packet)
 
 	} while (0);
 
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 
 	// Cleanup
 	if (th32)
@@ -253,11 +252,11 @@ DWORD request_sys_process_thread_get_threads(Remote *remote, Packet *packet)
  */
 DWORD request_sys_process_thread_suspend(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	HANDLE thread;
 	DWORD result = ERROR_SUCCESS;
 
-	if ((thread = (HANDLE)packet_get_tlv_value_qword(packet, TLV_TYPE_THREAD_HANDLE)))
+	if ((thread = (HANDLE)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_THREAD_HANDLE)))
 	{
 		if (SuspendThread(thread) == (DWORD)-1)
 			result = GetLastError();
@@ -265,7 +264,7 @@ DWORD request_sys_process_thread_suspend(Remote *remote, Packet *packet)
 	else
 		result = ERROR_INVALID_PARAMETER;
 
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 
 	return ERROR_SUCCESS;
 }
@@ -277,11 +276,11 @@ DWORD request_sys_process_thread_suspend(Remote *remote, Packet *packet)
  */
 DWORD request_sys_process_thread_resume(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	HANDLE thread;
 	DWORD result = ERROR_SUCCESS;
 
-	if ((thread = (HANDLE)packet_get_tlv_value_qword(packet, TLV_TYPE_THREAD_HANDLE)))
+	if ((thread = (HANDLE)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_THREAD_HANDLE)))
 	{
 		if (ResumeThread(thread) == (DWORD)-1)
 			result = GetLastError();
@@ -289,7 +288,7 @@ DWORD request_sys_process_thread_resume(Remote *remote, Packet *packet)
 	else
 		result = ERROR_INVALID_PARAMETER;
 
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 
 	return ERROR_SUCCESS;
 }
@@ -302,14 +301,14 @@ DWORD request_sys_process_thread_resume(Remote *remote, Packet *packet)
  */
 DWORD request_sys_process_thread_terminate(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	HANDLE thread;
 	DWORD result = ERROR_SUCCESS;
 	DWORD code;
 
-	if ((thread = (HANDLE)packet_get_tlv_value_qword(packet, TLV_TYPE_THREAD_HANDLE)))
+	if ((thread = (HANDLE)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_THREAD_HANDLE)))
 	{
-		code = packet_get_tlv_value_uint(packet, TLV_TYPE_EXIT_CODE);
+		code = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_EXIT_CODE);
 
 		if (!TerminateThread(thread, code))
 			result = GetLastError();
@@ -317,7 +316,7 @@ DWORD request_sys_process_thread_terminate(Remote *remote, Packet *packet)
 	else
 		result = ERROR_INVALID_PARAMETER;
 
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 
 	return ERROR_SUCCESS;
 }
@@ -329,13 +328,13 @@ DWORD request_sys_process_thread_terminate(Remote *remote, Packet *packet)
  */
 DWORD request_sys_process_thread_query_regs(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	HANDLE thread;
 	DWORD result = ERROR_SUCCESS;
 
 	do
 	{
-		if ((thread = (HANDLE)packet_get_tlv_value_qword(packet, TLV_TYPE_THREAD_HANDLE)))
+		if ((thread = (HANDLE)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_THREAD_HANDLE)))
 		{
 			CONTEXT context;
 			DWORD index;
@@ -404,7 +403,7 @@ DWORD request_sys_process_thread_query_regs(Remote *remote, Packet *packet)
 				reg[2].buffer        = (PUCHAR)&valNbo;
 
 				// Add the register
-				packet_add_tlv_group(response, TLV_TYPE_REGISTER, reg, 3);
+				met_api->packet.add_tlv_group(response, TLV_TYPE_REGISTER, reg, 3);
 			}
 		}
 		else
@@ -412,7 +411,7 @@ DWORD request_sys_process_thread_query_regs(Remote *remote, Packet *packet)
 
 	} while (0);
 
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 
 	return ERROR_SUCCESS;
 }
@@ -425,13 +424,13 @@ DWORD request_sys_process_thread_query_regs(Remote *remote, Packet *packet)
  */
 DWORD request_sys_process_thread_set_regs(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	HANDLE thread;
 	DWORD result = ERROR_SUCCESS;
 
 	do
 	{
-		if ((thread = (HANDLE)packet_get_tlv_value_qword(packet, TLV_TYPE_THREAD_HANDLE)))
+		if ((thread = (HANDLE)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_THREAD_HANDLE)))
 		{
 			CONTEXT context;
 			DWORD index = 0;
@@ -449,7 +448,7 @@ DWORD request_sys_process_thread_set_regs(Remote *remote, Packet *packet)
 			}
 
 			// Enumerate through all of the register we're setting
-			while (packet_enum_tlv(packet, index++, TLV_TYPE_REGISTER, 
+			while (met_api->packet.enum_tlv(packet, index++, TLV_TYPE_REGISTER, 
 					&reg) == ERROR_SUCCESS)
 			{
 				LPCSTR name;
@@ -457,14 +456,14 @@ DWORD request_sys_process_thread_set_regs(Remote *remote, Packet *packet)
 				Tlv nameTlv, valueTlv;
 
 				// Get the group's entries
-				if ((packet_get_tlv_group_entry(packet, &reg, 
+				if ((met_api->packet.get_tlv_group_entry(packet, &reg, 
 						TLV_TYPE_REGISTER_NAME, &nameTlv) != ERROR_SUCCESS) ||
-				    (packet_get_tlv_group_entry(packet, &reg,
+				    (met_api->packet.get_tlv_group_entry(packet, &reg,
 						TLV_TYPE_REGISTER_VALUE_32, &valueTlv) != ERROR_SUCCESS))
 					continue;
 				
 				// Validate them
-				if ((packet_is_tlv_null_terminated(&nameTlv) != ERROR_SUCCESS)
+				if ((met_api->packet.is_tlv_null_terminated(&nameTlv) != ERROR_SUCCESS)
 					|| (valueTlv.header.length < sizeof(ULONG)))
 					continue;
 				
@@ -488,7 +487,7 @@ DWORD request_sys_process_thread_set_regs(Remote *remote, Packet *packet)
 
 	} while (0);
 
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 
 	return ERROR_SUCCESS;
 }

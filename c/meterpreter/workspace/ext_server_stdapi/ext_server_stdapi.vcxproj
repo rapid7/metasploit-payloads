@@ -97,7 +97,7 @@
     <ClCompile>
       <Optimization>MinSpace</Optimization>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
-      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\stdapi\server;..\..\source\jpeg-8;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\stdapi\server;..\..\source\jpeg-8;..\..\source\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_SYS_EXPORTS;_CRT_SECURE_NO_WARNINGS;CINTERFACE;COBJMACROS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -123,7 +123,9 @@
       <AdditionalDependencies>psapi.lib;winmm.lib;backcompat.lib;iphlpapi.lib;shlwapi.lib;ws2_32.lib;odbc32.lib;odbccp32.lib;metsrv.lib;jpeg.$(PlatformShortName).lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\backcompat\$(Configuration);..\metsrv\$(Configuration)\$(Platform);..\..\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <DelayLoadDLLs>metsrv.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
+      <AdditionalLibraryDirectories>..\backcompat\$(Configuration);..\metsrv\$(Configuration)\$(Platform);..\..\source\jpeg-8\lib\win\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <DelayLoadDLLs>
+      </DelayLoadDLLs>
       <GenerateMapFile>true</GenerateMapFile>
       <MapFileName>$(OutDir)\ext_server_stdapi.map</MapFileName>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
@@ -158,7 +160,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <ClCompile>
       <Optimization>MinSpace</Optimization>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
-      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\stdapi\server;..\..\source\jpeg-8;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\stdapi\server;..\..\source\jpeg-8;..\..\source\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_SYS_EXPORTS;_CRT_SECURE_NO_WARNINGS;CINTERFACE;COBJMACROS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -184,7 +186,8 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <AdditionalDependencies>psapi.lib;winmm.lib;backcompat.lib;iphlpapi.lib;shlwapi.lib;ws2_32.lib;odbc32.lib;odbccp32.lib;metsrv.lib;jpeg.$(PlatformShortName).lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\backcompat\$(Configuration);..\metsrv\$(Configuration)\$(Platform);..\..\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <DelayLoadDLLs>metsrv.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
+      <DelayLoadDLLs>
+      </DelayLoadDLLs>
       <GenerateMapFile>true</GenerateMapFile>
       <MapFileName>$(OutDir)\ext_server_stdapi.map</MapFileName>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
@@ -219,7 +222,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
-      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\stdapi\server;..\..\source\jpeg-8;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\stdapi\server;..\..\source\jpeg-8;..\..\source\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_SYS_EXPORTS;_CRT_SECURE_NO_WARNINGS;CINTERFACE;COBJMACROS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -244,7 +247,8 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <AdditionalDependencies>psapi.lib;winmm.lib;iphlpapi.lib;shlwapi.lib;ws2_32.lib;odbc32.lib;odbccp32.lib;metsrv.lib;jpeg.$(PlatformShortName).lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\..\lib;..\metsrv\$(Configuration)\$(Platform);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <DelayLoadDLLs>metsrv.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
+      <DelayLoadDLLs>
+      </DelayLoadDLLs>
       <GenerateMapFile>true</GenerateMapFile>
       <MapFileName>$(OutDir)\ext_server_stdapi.map</MapFileName>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
@@ -279,7 +283,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
-      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\stdapi\server;..\..\source\jpeg-8;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\stdapi\server;..\..\source\jpeg-8;..\..\source\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_SYS_EXPORTS;_CRT_SECURE_NO_WARNINGS;CINTERFACE;COBJMACROS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -304,7 +308,8 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <AdditionalDependencies>psapi.lib;winmm.lib;iphlpapi.lib;shlwapi.lib;ws2_32.lib;odbc32.lib;odbccp32.lib;metsrv.lib;jpeg.$(PlatformShortName).lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\..\lib;..\metsrv\$(Configuration)\$(Platform);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <DelayLoadDLLs>metsrv.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
+      <DelayLoadDLLs>
+      </DelayLoadDLLs>
       <GenerateMapFile>true</GenerateMapFile>
       <MapFileName>$(OutDir)\ext_server_stdapi.map</MapFileName>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>

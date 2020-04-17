@@ -1,4 +1,5 @@
 #include "precomp.h"
+#include "common_metapi.h"
 
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -64,8 +65,8 @@ DWORD net_tlv_pack_local_addrinfo(SocketContext *sock_ctx, Packet *packet)
 		return ERROR_OUTOFMEMORY;
 	}
 
-	packet_add_tlv_string(packet, TLV_TYPE_LOCAL_HOST, localhost);
-	packet_add_tlv_uint(packet, TLV_TYPE_LOCAL_PORT, localport);
+	met_api->packet.add_tlv_string(packet, TLV_TYPE_LOCAL_HOST, localhost);
+	met_api->packet.add_tlv_uint(packet, TLV_TYPE_LOCAL_PORT, localport);
 	free(localhost);
 	localhost = NULL;
 	return ERROR_SUCCESS;

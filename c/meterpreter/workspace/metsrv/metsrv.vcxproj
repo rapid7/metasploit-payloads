@@ -125,7 +125,8 @@
       <AdditionalDependencies>backcompat.lib;ws2_32.lib;odbc32.lib;odbccp32.lib;crypt32.lib;wininet.lib;winhttp.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\backcompat\$(Configuration);..\common\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <ModuleDefinitionFile>..\..\source\server\win\metsrv.def</ModuleDefinitionFile>
+      <ModuleDefinitionFile>
+      </ModuleDefinitionFile>
       <DelayLoadDLLs>%(DelayLoadDLLs)</DelayLoadDLLs>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <GenerateMapFile>true</GenerateMapFile>
@@ -191,7 +192,8 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <AdditionalDependencies>backcompat.lib;ws2_32.lib;odbc32.lib;odbccp32.lib;crypt32.lib;wininet.lib;winhttp.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\backcompat\$(Configuration);..\common\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <ModuleDefinitionFile>..\..\source\server\win\metsrv.def</ModuleDefinitionFile>
+      <ModuleDefinitionFile>
+      </ModuleDefinitionFile>
       <DelayLoadDLLs>%(DelayLoadDLLs)</DelayLoadDLLs>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <GenerateMapFile>true</GenerateMapFile>
@@ -257,7 +259,8 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <AdditionalDependencies>ws2_32.lib;odbc32.lib;odbccp32.lib;crypt32.lib;wininet.lib;winhttp.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\common\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <ModuleDefinitionFile>..\..\source\server\win\metsrv.def</ModuleDefinitionFile>
+      <ModuleDefinitionFile>
+      </ModuleDefinitionFile>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <GenerateMapFile>true</GenerateMapFile>
       <MapFileName>$(OutDir)\metsrv.map</MapFileName>
@@ -322,7 +325,8 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <AdditionalDependencies>ws2_32.lib;odbc32.lib;odbccp32.lib;crypt32.lib;wininet.lib;winhttp.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\common\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <ModuleDefinitionFile>..\..\source\server\win\metsrv.def</ModuleDefinitionFile>
+      <ModuleDefinitionFile>
+      </ModuleDefinitionFile>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <GenerateMapFile>true</GenerateMapFile>
       <MapFileName>$(OutDir)\metsrv.map</MapFileName>
@@ -346,56 +350,6 @@ IF NOT EXIST "$(ProjectDir)..\..\output\" mkdir "$(ProjectDir)..\..\output\"
 copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <ClCompile Include="..\..\source\server\win\libloader.c" />
-    <ClCompile Include="..\..\source\server\metsrv.c">
-      <PrecompiledHeader>Create</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\source\server\win\remote_dispatch.c" />
-    <ClCompile Include="..\..\source\server\remote_dispatch_common.c" />
-    <ClCompile Include="..\..\source\server\server_setup_win.c" />
-    <ClCompile Include="..\..\source\server\win\server_pivot.c" />
-    <ClCompile Include="..\..\source\server\win\server_pivot_named_pipe.c" />
-    <ClCompile Include="..\..\source\server\win\server_transport_named_pipe.c" />
-    <ClCompile Include="..\..\source\server\win\server_transport_tcp.c" />
-    <ClCompile Include="..\..\source\server\win\server_transport_winhttp.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-      </PrecompiledHeaderFile>
-      <PrecompiledHeaderOutputFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-      </PrecompiledHeaderOutputFile>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='r7_release|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='r7_release|Win32'">
-      </PrecompiledHeaderFile>
-      <PrecompiledHeaderOutputFile Condition="'$(Configuration)|$(Platform)'=='r7_release|Win32'">
-      </PrecompiledHeaderOutputFile>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-      </PrecompiledHeaderFile>
-      <PrecompiledHeaderOutputFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-      </PrecompiledHeaderOutputFile>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='r7_release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='r7_release|x64'">
-      </PrecompiledHeaderFile>
-      <PrecompiledHeaderOutputFile Condition="'$(Configuration)|$(Platform)'=='r7_release|x64'">
-      </PrecompiledHeaderOutputFile>
-    </ClCompile>
-    <ClCompile Include="..\..\source\server\win\server_transport_wininet.c" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="..\..\source\server\win\metsrv.def" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="..\..\source\server\libloader.h" />
-    <ClInclude Include="..\..\source\server\metsrv.h" />
-    <ClInclude Include="..\..\source\server\remote_dispatch.h" />
-    <ClInclude Include="..\..\source\server\win\server_pivot.h" />
-    <ClInclude Include="..\..\source\server\win\server_pivot_named_pipe.h" />
-    <ClInclude Include="..\..\source\server\win\server_transport_named_pipe.h" />
-    <ClInclude Include="..\..\source\server\win\server_transport_tcp.h" />
-    <ClInclude Include="..\..\source\server\win\server_transport_winhttp.h" />
-    <ClInclude Include="..\..\source\server\win\server_transport_wininet.h" />
-  </ItemGroup>
   <Choose>
     <When Condition="'$(Platform)'=='Win32'">
       <ItemGroup>
@@ -407,14 +361,64 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     </When>
   </Choose>
   <ItemGroup>
-    <ProjectReference Include="..\common\common.vcxproj">
-      <Project>{9e4de963-873f-4525-a7d0-ce34edbbdcca}</Project>
-      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
-    </ProjectReference>
     <ProjectReference Include="..\ReflectiveDLLInjection\ReflectiveDLLInjection.vcxproj">
       <Project>{72f0246a-a38d-4547-9057-46020e8e503d}</Project>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\source\metsrv\base.h" />
+    <ClInclude Include="..\..\source\metsrv\base_inject.h" />
+    <ClInclude Include="..\..\source\metsrv\channel.h" />
+    <ClInclude Include="..\..\source\metsrv\core.h" />
+    <ClInclude Include="..\..\source\metsrv\libloader.h" />
+    <ClInclude Include="..\..\source\metsrv\list.h" />
+    <ClInclude Include="..\..\source\metsrv\metsrv.h" />
+    <ClInclude Include="..\..\source\metsrv\metapi.h" />
+    <ClInclude Include="..\..\source\metsrv\packet_encryption.h" />
+    <ClInclude Include="..\..\source\metsrv\pivot_packet_dispatch.h" />
+    <ClInclude Include="..\..\source\metsrv\pivot_tree.h" />
+    <ClInclude Include="..\..\source\metsrv\remote.h" />
+    <ClInclude Include="..\..\source\metsrv\remote_dispatch.h" />
+    <ClInclude Include="..\..\source\metsrv\remote_thread.h" />
+    <ClInclude Include="..\..\source\metsrv\scheduler.h" />
+    <ClInclude Include="..\..\source\metsrv\server_pivot.h" />
+    <ClInclude Include="..\..\source\metsrv\server_pivot_named_pipe.h" />
+    <ClInclude Include="..\..\source\metsrv\server_transport_named_pipe.h" />
+    <ClInclude Include="..\..\source\metsrv\server_transport_tcp.h" />
+    <ClInclude Include="..\..\source\metsrv\server_transport_winhttp.h" />
+    <ClInclude Include="..\..\source\metsrv\server_transport_wininet.h" />
+    <ClInclude Include="..\..\source\metsrv\thread.h" />
+    <ClInclude Include="..\..\source\metsrv\unicode.h" />
+    <ClInclude Include="..\..\source\metsrv\zlib.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\source\metsrv\base.c" />
+    <ClCompile Include="..\..\source\metsrv\base_dispatch.c" />
+    <ClCompile Include="..\..\source\metsrv\base_inject.c" />
+    <ClCompile Include="..\..\source\metsrv\channel.c" />
+    <ClCompile Include="..\..\source\metsrv\core.c" />
+    <ClCompile Include="..\..\source\metsrv\libloader.c" />
+    <ClCompile Include="..\..\source\metsrv\list.c" />
+    <ClCompile Include="..\..\source\metsrv\metsrv.c" />
+    <ClCompile Include="..\..\source\metsrv\metapi.c" />
+    <ClCompile Include="..\..\source\metsrv\packet_encryption.c" />
+    <ClCompile Include="..\..\source\metsrv\pivot_packet_dispatch.c" />
+    <ClCompile Include="..\..\source\metsrv\pivot_tree.c" />
+    <ClCompile Include="..\..\source\metsrv\remote.c" />
+    <ClCompile Include="..\..\source\metsrv\remote_dispatch.c" />
+    <ClCompile Include="..\..\source\metsrv\remote_thread.c" />
+    <ClCompile Include="..\..\source\metsrv\scheduler.c" />
+    <ClCompile Include="..\..\source\metsrv\server_pivot.c" />
+    <ClCompile Include="..\..\source\metsrv\server_pivot_named_pipe.c" />
+    <ClCompile Include="..\..\source\metsrv\server_setup.c" />
+    <ClCompile Include="..\..\source\metsrv\server_transport_named_pipe.c" />
+    <ClCompile Include="..\..\source\metsrv\server_transport_tcp.c" />
+    <ClCompile Include="..\..\source\metsrv\server_transport_winhttp.c" />
+    <ClCompile Include="..\..\source\metsrv\server_transport_wininet.c" />
+    <ClCompile Include="..\..\source\metsrv\thread.c" />
+    <ClCompile Include="..\..\source\metsrv\unicode.c" />
+    <ClCompile Include="..\..\source\metsrv\zlib.c" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

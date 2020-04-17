@@ -1,4 +1,5 @@
 #include "precomp.h"
+#include "common_metapi.h"
 
 extern HMODULE hookLibrary;
 
@@ -7,11 +8,11 @@ extern HMODULE hookLibrary;
  */
 DWORD request_ui_enable_mouse(Remote *remote, Packet *request)
 {
-	Packet *response = packet_create_response(request);
+	Packet *response = met_api->packet.create_response(request);
 	BOOLEAN enable = FALSE;
 	DWORD result = ERROR_SUCCESS;
 
-	enable = packet_get_tlv_value_bool(request, TLV_TYPE_BOOL);
+	enable = met_api->packet.get_tlv_value_bool(request, TLV_TYPE_BOOL);
 
 	// If there's no hook library loaded yet
 	if (!hookLibrary)
@@ -30,7 +31,7 @@ DWORD request_ui_enable_mouse(Remote *remote, Packet *request)
 		result = GetLastError();
 
 	// Transmit the response
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 
 	return ERROR_SUCCESS;
 }
@@ -42,12 +43,12 @@ DWORD request_ui_enable_mouse(Remote *remote, Packet *request)
 
 DWORD request_ui_send_mouse(Remote *remote, Packet *request)
 {
-	Packet *response = packet_create_response(request);
+	Packet *response = met_api->packet.create_response(request);
 	DWORD result = ERROR_SUCCESS;
 
-	DWORD action = packet_get_tlv_value_uint(request, TLV_TYPE_MOUSE_ACTION);
-	DWORD x = packet_get_tlv_value_uint(request, TLV_TYPE_MOUSE_X);
-	DWORD y = packet_get_tlv_value_uint(request, TLV_TYPE_MOUSE_Y);
+	DWORD action = met_api->packet.get_tlv_value_uint(request, TLV_TYPE_MOUSE_ACTION);
+	DWORD x = met_api->packet.get_tlv_value_uint(request, TLV_TYPE_MOUSE_X);
+	DWORD y = met_api->packet.get_tlv_value_uint(request, TLV_TYPE_MOUSE_Y);
 
 	INPUT input = {0};
 	input.type = INPUT_MOUSE;
@@ -121,7 +122,7 @@ DWORD request_ui_send_mouse(Remote *remote, Packet *request)
 	}
 
 	// Transmit the response
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 	return ERROR_SUCCESS;
 }
 

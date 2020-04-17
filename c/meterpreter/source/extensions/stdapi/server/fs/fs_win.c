@@ -2,6 +2,7 @@
 
 #include "fs_local.h"
 #include "precomp.h"
+#include "common_metapi.h"
 
 BOOL DeleteFolderWR(LPCWSTR szPath)
 {
@@ -111,7 +112,7 @@ char * fs_expand_path(const char *regular)
 	wchar_t expanded_path[FS_MAX_PATH];
 	wchar_t *regular_w;
 
-	regular_w = utf8_to_wchar(regular);
+	regular_w = met_api->string.utf8_to_wchar(regular);
 	if (regular_w == NULL) {
 		return NULL;
 	}
@@ -123,7 +124,7 @@ char * fs_expand_path(const char *regular)
 
 	free(regular_w);
 
-	return wchar_to_utf8(expanded_path);
+	return met_api->string.wchar_to_utf8(expanded_path);
 }
 
 int fs_ls(const char *directory, fs_ls_cb_t cb, void *arg)
@@ -174,7 +175,7 @@ int fs_ls(const char *directory, fs_ls_cb_t cb, void *arg)
 	}
 
 	WIN32_FIND_DATAW data;
-	wchar_t *path_w = utf8_to_wchar(expanded);
+	wchar_t *path_w = met_api->string.utf8_to_wchar(expanded);
 	if (path_w == NULL) {
 		result = GetLastError();
 		goto out;
@@ -192,8 +193,8 @@ int fs_ls(const char *directory, fs_ls_cb_t cb, void *arg)
 			break;
 		}
 
-		char *filename = wchar_to_utf8(data.cFileName);
-		char *short_filename = wchar_to_utf8(data.cAlternateFileName);
+		char *filename = met_api->string.wchar_to_utf8(data.cFileName);
+		char *short_filename = met_api->string.wchar_to_utf8(data.cAlternateFileName);
 		char path[FS_MAX_PATH];
 
 		if (baseDirectory) {
@@ -223,7 +224,7 @@ out:
 int fs_chdir(const char *directory)
 {
 	int rc = ERROR_SUCCESS;
-	wchar_t *dir_w = utf8_to_wchar(directory);
+	wchar_t *dir_w = met_api->string.utf8_to_wchar(directory);
 
 	if (dir_w == NULL) {
 		rc = GetLastError();
@@ -242,7 +243,7 @@ out:
 int fs_delete_dir(const char *directory)
 {
 	int rc = ERROR_SUCCESS;
-	wchar_t *dir_w = utf8_to_wchar(directory);
+	wchar_t *dir_w = met_api->string.utf8_to_wchar(directory);
 
 	if (dir_w == NULL) {
 		rc = GetLastError();
@@ -261,7 +262,7 @@ out:
 int fs_delete_file(const char *path)
 {
 	int rc = ERROR_SUCCESS;
-	wchar_t *path_w = utf8_to_wchar(path);
+	wchar_t *path_w = met_api->string.utf8_to_wchar(path);
 
 	if (path_w == NULL) {
 		rc = GetLastError();
@@ -293,7 +294,7 @@ int fs_getwd(char **dir)
 		goto out;
 	}
 
-	*dir = wchar_to_utf8(dir_w);
+	*dir = met_api->string.wchar_to_utf8(dir_w);
 	if (*dir == NULL) {
 		rc = GetLastError();
 	}
@@ -305,8 +306,8 @@ out:
 int fs_move(const char *oldpath, const char *newpath)
 {
 	int rc = ERROR_SUCCESS;
-	wchar_t *old_w = utf8_to_wchar(oldpath);
-	wchar_t *new_w = utf8_to_wchar(newpath);
+	wchar_t *old_w = met_api->string.utf8_to_wchar(oldpath);
+	wchar_t *new_w = met_api->string.utf8_to_wchar(newpath);
 
 	if ((old_w == NULL) || (new_w == NULL)) {
 		rc = GetLastError();
@@ -326,8 +327,8 @@ out:
 int fs_copy(const char *oldpath, const char *newpath)
 {
 	int rc = ERROR_SUCCESS;
-	wchar_t *old_w = utf8_to_wchar(oldpath);
-	wchar_t *new_w = utf8_to_wchar(newpath);
+	wchar_t *old_w = met_api->string.utf8_to_wchar(oldpath);
+	wchar_t *new_w = met_api->string.utf8_to_wchar(newpath);
 
 	if ((old_w == NULL) || (new_w == NULL)) {
 		rc = GetLastError();
@@ -347,7 +348,7 @@ out:
 int fs_mkdir(const char *directory)
 {
 	int rc = ERROR_SUCCESS;
-	wchar_t *dir_w = utf8_to_wchar(directory);
+	wchar_t *dir_w = met_api->string.utf8_to_wchar(directory);
 
 	if (dir_w == NULL) {
 		rc = GetLastError();
@@ -376,8 +377,8 @@ int fs_fopen(const char *path, const char *mode, FILE **f)
 		return ERROR_NOT_ENOUGH_MEMORY;
 	}
 
-	wchar_t *path_w = utf8_to_wchar(expanded);
-	wchar_t *mode_w = utf8_to_wchar(mode);
+	wchar_t *path_w = met_api->string.utf8_to_wchar(expanded);
+	wchar_t *mode_w = met_api->string.utf8_to_wchar(mode);
 
 	if ((path_w == NULL) || (mode_w == NULL)) {
 		rc = ERROR_NOT_ENOUGH_MEMORY;
@@ -501,7 +502,7 @@ win32_wstat(const wchar_t* path, struct meterp_stat *result)
 
 int fs_stat(char *filename, struct meterp_stat *buf)
 {
-	wchar_t *filename_w = utf8_to_wchar(filename);
+	wchar_t *filename_w = met_api->string.utf8_to_wchar(filename);
 	if (filename_w == NULL) {
 		return -1;
 	}

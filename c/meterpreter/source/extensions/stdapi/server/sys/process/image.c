@@ -1,4 +1,5 @@
 #include "precomp.h"
+#include "common_metapi.h"
 
 DWORD remote_load_library(HANDLE process, LPCSTR image,
 		HMODULE *base);
@@ -15,14 +16,14 @@ DWORD remote_unload_library(HANDLE process, HMODULE base);
  */
 DWORD request_sys_process_image_load(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	DWORD result = ERROR_SUCCESS;
 	HANDLE handle;
 	LPCSTR image;
 	HMODULE base;
 
-	handle = (HANDLE)packet_get_tlv_value_qword(packet, TLV_TYPE_HANDLE);
-	image  = packet_get_tlv_value_string(packet, TLV_TYPE_IMAGE_FILE_PATH);
+	handle = (HANDLE)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_HANDLE);
+	image  = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_IMAGE_FILE_PATH);
 
 	do
 	{
@@ -49,12 +50,12 @@ DWORD request_sys_process_image_load(Remote *remote, Packet *packet)
 		}
 
 		// Add the base address to the result
-		packet_add_tlv_qword(response, TLV_TYPE_IMAGE_BASE, (QWORD)base);
+		met_api->packet.add_tlv_qword(response, TLV_TYPE_IMAGE_BASE, (QWORD)base);
 
 	} while (0);
 
 	// Transmit the response
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 
 	return ERROR_SUCCESS;
 }
@@ -68,7 +69,7 @@ DWORD request_sys_process_image_load(Remote *remote, Packet *packet)
  */
 DWORD request_sys_process_image_get_proc_address(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	DWORD result = ERROR_SUCCESS;
 	HMODULE mod = NULL;
 	BOOLEAN unload = FALSE;
@@ -77,9 +78,9 @@ DWORD request_sys_process_image_get_proc_address(Remote *remote, Packet *packet)
 	LPCSTR procedure;
 	LPVOID address = NULL;
 
-	process   = (HANDLE)packet_get_tlv_value_qword(packet, TLV_TYPE_HANDLE);
-	image     = packet_get_tlv_value_string(packet, TLV_TYPE_IMAGE_FILE);
-	procedure = packet_get_tlv_value_string(packet, TLV_TYPE_PROCEDURE_NAME);
+	process   = (HANDLE)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_HANDLE);
+	image     = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_IMAGE_FILE);
+	procedure = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_PROCEDURE_NAME);
 
 	do
 	{
@@ -122,7 +123,7 @@ DWORD request_sys_process_image_get_proc_address(Remote *remote, Packet *packet)
 		}
 
 		// Set the procedure address on the response
-		packet_add_tlv_qword(response, TLV_TYPE_PROCEDURE_ADDRESS, (QWORD)address);
+		met_api->packet.add_tlv_qword(response, TLV_TYPE_PROCEDURE_ADDRESS, (QWORD)address);
 
 	} while (0);
 
@@ -134,7 +135,7 @@ DWORD request_sys_process_image_get_proc_address(Remote *remote, Packet *packet)
 		remote_unload_library(process, mod);
 
 	// Transmit the response
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 
 	return ERROR_SUCCESS;
 }
@@ -147,13 +148,13 @@ DWORD request_sys_process_image_get_proc_address(Remote *remote, Packet *packet)
  */
 DWORD request_sys_process_image_unload(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	HANDLE handle;
 	LPVOID base;
 	DWORD result = ERROR_SUCCESS;
 
-	handle = (HANDLE)packet_get_tlv_value_qword(packet, TLV_TYPE_HANDLE);
-	base   = (LPVOID)packet_get_tlv_value_qword(packet, TLV_TYPE_IMAGE_BASE);
+	handle = (HANDLE)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_HANDLE);
+	base   = (LPVOID)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_IMAGE_BASE);
 
 	do
 	{
@@ -177,7 +178,7 @@ DWORD request_sys_process_image_unload(Remote *remote, Packet *packet)
 	} while (0);
 
 	// Transmit the response
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 
 	return ERROR_SUCCESS;
 }
@@ -195,7 +196,7 @@ DWORD request_sys_process_image_get_images(Remote *remote, Packet *packet)
 			DWORD baseSize);
 	DWORD (WINAPI *getModuleFileNameEx)(HANDLE p, HMODULE mod, LPTSTR path,
 			DWORD pathSize);
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	HMODULE *modules = NULL;
 	BOOLEAN valid = FALSE;
 	HMODULE psapi = NULL;
@@ -204,7 +205,7 @@ DWORD request_sys_process_image_get_images(Remote *remote, Packet *packet)
 	DWORD needed = 0, actual, tries = 0;
 	DWORD index;
 
-	handle = (HANDLE)packet_get_tlv_value_qword(packet, TLV_TYPE_HANDLE);
+	handle = (HANDLE)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_HANDLE);
 
 	do
 	{
@@ -301,13 +302,13 @@ DWORD request_sys_process_image_get_images(Remote *remote, Packet *packet)
 			tlvs[2].header.type   = TLV_TYPE_IMAGE_NAME;
 			tlvs[2].buffer        = (PUCHAR)name;
 
-			packet_add_tlv_group(response, TLV_TYPE_IMAGE_GROUP, tlvs, 3);
+			met_api->packet.add_tlv_group(response, TLV_TYPE_IMAGE_GROUP, tlvs, 3);
 		}
 
 	} while (0);
 
 	// Transmit the response
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 
 	// Cleanup
 	if (modules)

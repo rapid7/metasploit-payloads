@@ -2,14 +2,15 @@
  * @brief This module implements privilege escalation features.
  */
 #include "precomp.h"
+#include "common_metapi.h"
+
+// Required so that use of the API works.
+MetApi* met_api = NULL;
 
 // include the Reflectiveloader() function, we end up linking back to the metsrv.dll's Init function
 // but this doesnt matter as we wont ever call DLL_METASPLOIT_ATTACH as that is only used by the
 // second stage reflective dll inject payload and not the metsrv itself when it loads extensions.
 #include "../../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
-
-// this sets the delay load hook function, see DelayLoadMetSrv.h
-EnableDelayLoadMetSrv();
 
 /*!
  * @brief `priv` extension dispatch table.
@@ -31,11 +32,11 @@ Command customCommands[] =
  * @param remote Pointer to the remote instance.
  * @return Indication of success or failure.
  */
-DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
+DWORD __declspec(dllexport) InitServerExtension(MetApi* api, Remote *remote)
 {
-	hMetSrv = remote->met_srv;
+    met_api = api;
 
-	command_register_all(customCommands);
+	met_api->command.register_all(customCommands);
 
 	return ERROR_SUCCESS;
 }
@@ -47,7 +48,7 @@ DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
  */
 DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
 {
-	command_deregister_all(customCommands);
+	met_api->command.deregister_all(customCommands);
 
 	return ERROR_SUCCESS;
 }

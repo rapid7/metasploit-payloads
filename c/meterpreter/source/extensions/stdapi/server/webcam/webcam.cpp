@@ -19,6 +19,7 @@ extern "C" {
 #include "../../common/common.h"
 #include "webcam.h"
 #include "bmp2jpeg.h"
+#include "common_metapi.h"
 }
 
 //Required interface stuff - bad hack for qedit.h not being present/compatible with later windows versions
@@ -435,7 +436,7 @@ DWORD webcam_get_frame(WebcamThreadState* state)
 		bmp2jpeg(bmpdata, quality, &jpgarray, &jpgsize);
 
 		//And send
-		packet_add_tlv_raw(state->pResponse, TLV_TYPE_WEBCAM_IMAGE, jpgarray, jpgsize);
+		met_api->packet.add_tlv_raw(state->pResponse, TLV_TYPE_WEBCAM_IMAGE, jpgarray, jpgsize);
 	} while (0);
 
 	PBYTE tmparray = jpgarray;
@@ -473,14 +474,14 @@ DWORD THREADCALL webcam_control_thread(THREAD * thread)
 
 		// let the caller know that we've initialised
 		state->dwResult = dwResult;
-		event_signal(state->pResultEvent);
+		met_api->event.signal(state->pResultEvent);
 
 		do
 		{
 			dprintf("[WEBCAM] Thread now running, waiting for a signal");
 
 			// wait for the next call
-			if (!event_poll(state->pCallEvent, -1)) {
+			if (!met_api->event.poll(state->pCallEvent, -1)) {
 				BREAK_WITH_ERROR("[WEBCAM] Failed to receive a signal from the caller", ERROR_TIMEOUT);
 			}
 
@@ -494,7 +495,7 @@ DWORD THREADCALL webcam_control_thread(THREAD * thread)
 			case GetCameraFrame:
 				dprintf("[WEBCAM] GetCameraFrame called.");
 				dwResult = webcam_get_frame(state);
-				event_signal(state->pResultEvent);
+				met_api->event.signal(state->pResultEvent);
 				break;
 			default:
 				dprintf("[WEBCAM] Unexpected action %u", (DWORD)state->controlAction);
@@ -542,7 +543,7 @@ DWORD THREADCALL webcam_control_thread(THREAD * thread)
 	state->dwResult = dwResult;
 
 	// signal that the thread is finishing
-	event_signal(state->pResultEvent);
+	met_api->event.signal(state->pResultEvent);
 
 	dprintf("[WEBCAM] Exit.");
 
@@ -551,264 +552,264 @@ DWORD THREADCALL webcam_control_thread(THREAD * thread)
 
 extern "C" {
 
-/*!
- * @brief Handle the request for a list of available webcams.
- * @param remote Pointer to the \c Remote making the request.
- * @param packet Pointer to the request \c Packet.
- * @returns Indication of success or failure.
- * @retval ERROR_SUCCESS Operation completed as expected.
- * @todo Make this use `packet_add_tlv_wstring` when it has been merged.
- */
-DWORD request_webcam_list(Remote *remote, Packet *packet) {
-	Packet *response = packet_create_response(packet);
-	DWORD dwResult = ERROR_SUCCESS;
+	/*!
+	 * @brief Handle the request for a list of available webcams.
+	 * @param remote Pointer to the \c Remote making the request.
+	 * @param packet Pointer to the request \c Packet.
+	 * @returns Indication of success or failure.
+	 * @retval ERROR_SUCCESS Operation completed as expected.
+	 * @todo Make this use `packet_add_tlv_wstring` when it has been merged.
+	 */
+	DWORD request_webcam_list(Remote* remote, Packet* packet) {
+		Packet* response = met_api->packet.create_response(packet);
+		DWORD dwResult = ERROR_SUCCESS;
 
-	do{
-		IEnumMoniker* pclassEnum = NULL;
-		ICreateDevEnum* pdevEnum = NULL;
+		do {
+			IEnumMoniker* pclassEnum = NULL;
+			ICreateDevEnum* pdevEnum = NULL;
 
-		CoInitialize(NULL);
-		HRESULT hr = CoCreateInstance(CLSID_SystemDeviceEnum,
-			NULL,
-			CLSCTX_INPROC,
-			IID_ICreateDevEnum,
-			(LPVOID*)&pdevEnum);
-
-		if (SUCCEEDED(hr)) {
-			hr = pdevEnum->CreateClassEnumerator(CLSID_VideoInputDeviceCategory, &pclassEnum, 0);
-		}
-
-		if (pdevEnum != NULL) {
-			pdevEnum->Release();
-			pdevEnum = NULL;
-		}
-
-		int nCount = 0;
-		if (pclassEnum == NULL) {
-			break;// Error!
-		}
-
-		IMoniker* apIMoniker[1];
-		ULONG ulCount = 0;
-		while (SUCCEEDED(hr) && nCount < MAX_CAMERAS && pclassEnum->Next(1, apIMoniker, &ulCount) == S_OK) {
-			IPropertyBag *pPropBag;
-			hr = apIMoniker[0]->BindToStorage(0, 0, IID_IPropertyBag, (void **)&pPropBag);
+			CoInitialize(NULL);
+			HRESULT hr = CoCreateInstance(CLSID_SystemDeviceEnum,
+				NULL,
+				CLSCTX_INPROC,
+				IID_ICreateDevEnum,
+				(LPVOID*)&pdevEnum);
 
 			if (SUCCEEDED(hr)) {
-				// To retrieve the filter's friendly name, do the following:
-				VARIANT varName;
-				VariantInit(&varName);
-				hr = pPropBag->Read(L"FriendlyName", &varName, 0);
-
-				if (SUCCEEDED(hr) && varName.vt == VT_BSTR) {
-					//TODO: make this use the new `packet_add_tlv_wstring` when it has been merged.
-					//get chars from wchars
-					size_t converted;
-					char charbuf[512];
-					wcstombs_s(&converted, charbuf, sizeof(charbuf), varName.bstrVal, sizeof(charbuf));
-					packet_add_tlv_string(response, TLV_TYPE_WEBCAM_NAME, charbuf);
-				}
-
-				VariantClear(&varName);
-				pPropBag->Release();
-
-				nCount++;
+				hr = pdevEnum->CreateClassEnumerator(CLSID_VideoInputDeviceCategory, &pclassEnum, 0);
 			}
-		}
 
-		pclassEnum->Release();
-	} while (0);
-
-	dwResult = GetLastError();
-
-	packet_transmit_response(dwResult, remote, response);
-
-	CoUninitialize();
-	return dwResult;
-}
-
-/*!
- * @brief Handle the request to start a given webcam.
- * @param remote Pointer to the \c Remote making the request.
- * @param packet Pointer to the request \c Packet.
- * @returns Indication of success or failure.
- * @retval ERROR_SUCCESS Operation completed as expected.
- * @remark This will start a webcam controller thread. From there the
- *         lifetime of the webcam is managed.
- * @sa webcam_control_thread
- */
-DWORD request_webcam_start(Remote *remote, Packet *packet)
-{
-	Packet *response = packet_create_response(packet);
-	DWORD dwResult = ERROR_SUCCESS;
-	UINT index = packet_get_tlv_value_uint(packet, TLV_TYPE_WEBCAM_INTERFACE_ID);
-
-	dprintf("[WEBCAM] Entry.");
-
-	do
-	{
-		// If we have a thread running, then this means the webcam capture is already running too.
-		if (g_pWorkerThread != NULL) {
-			BREAK_WITH_ERROR("[WEBCAM] Already running!", ERROR_SERVICE_ALREADY_RUNNING);
-		}
-
-		g_pThreadState = (WebcamThreadState*)malloc(sizeof(WebcamThreadState));
-
-		if (g_pThreadState == NULL) {
-			BREAK_WITH_ERROR("[WEBCAM] Out of memory", ERROR_OUTOFMEMORY);
-		}
-
-		ZeroMemory(g_pThreadState, sizeof(WebcamThreadState));
-
-		// create a wait event and indicate we're expecting a response from the call
-		g_pThreadState->pCallEvent = event_create();
-		g_pThreadState->pResultEvent = event_create();
-		g_pThreadState->index = index;
-
-		// kick off the worker thread that will do all the cam handling on one thread to avoid
-		// cross-threaded COM problems.
-		g_pWorkerThread = thread_create(webcam_control_thread, g_pThreadState, NULL, NULL);
-
-		if (g_pWorkerThread == NULL) {
-			BREAK_WITH_ERROR("[WEBCAM] Failed to create thread.", ERROR_THREAD_1_INACTIVE);
-		}
-
-		if (thread_run(g_pWorkerThread) == FALSE) {
-			BREAK_WITH_ERROR("[WEBCAM] Failed to run worker thread", ERROR_CAN_NOT_COMPLETE);
-		}
-
-		// now wait for a signal to say that we've got things running
-		if (event_poll(g_pThreadState->pResultEvent, 4000) == FALSE) {
-			BREAK_WITH_ERROR("[WEBCAM] Failed to initialise worker thread", ERROR_WAIT_1);
-		}
-
-		dprintf("[WEBCAM] Webcam thread has been initialised");
-		dwResult = g_pThreadState->dwResult;
-	} while (0);
-
-	packet_transmit_response(dwResult, remote, response);
-
-	if (dwResult != ERROR_SUCCESS) {
-		dprintf("[WEBCAM] Failure found, cleaning up");
-		if (g_pWorkerThread != NULL) {
-			if (g_pThreadState != NULL) {
-				if (g_pThreadState->bRunning) {
-					thread_kill(g_pWorkerThread);
-				}
-
-				thread_destroy(g_pWorkerThread);
-				g_pWorkerThread = NULL;
-
-				if (g_pThreadState->pCallEvent != NULL) {
-					event_destroy(g_pThreadState->pCallEvent);
-				}
-				if (g_pThreadState->pResultEvent != NULL) {
-					event_destroy(g_pThreadState->pResultEvent);
-				}
-
-				free(g_pThreadState);
-				g_pThreadState = NULL;
+			if (pdevEnum != NULL) {
+				pdevEnum->Release();
+				pdevEnum = NULL;
 			}
-		}
+
+			int nCount = 0;
+			if (pclassEnum == NULL) {
+				break;// Error!
+			}
+
+			IMoniker* apIMoniker[1];
+			ULONG ulCount = 0;
+			while (SUCCEEDED(hr) && nCount < MAX_CAMERAS && pclassEnum->Next(1, apIMoniker, &ulCount) == S_OK) {
+				IPropertyBag* pPropBag;
+				hr = apIMoniker[0]->BindToStorage(0, 0, IID_IPropertyBag, (void**)&pPropBag);
+
+				if (SUCCEEDED(hr)) {
+					// To retrieve the filter's friendly name, do the following:
+					VARIANT varName;
+					VariantInit(&varName);
+					hr = pPropBag->Read(L"FriendlyName", &varName, 0);
+
+					if (SUCCEEDED(hr) && varName.vt == VT_BSTR) {
+						//TODO: make this use the new `packet_add_tlv_wstring` when it has been merged.
+						//get chars from wchars
+						size_t converted;
+						char charbuf[512];
+						wcstombs_s(&converted, charbuf, sizeof(charbuf), varName.bstrVal, sizeof(charbuf));
+						met_api->packet.add_tlv_string(response, TLV_TYPE_WEBCAM_NAME, charbuf);
+					}
+
+					VariantClear(&varName);
+					pPropBag->Release();
+
+					nCount++;
+				}
+			}
+
+			pclassEnum->Release();
+		} while (0);
+
+		dwResult = GetLastError();
+
+		met_api->packet.transmit_response(dwResult, remote, response);
+
+		CoUninitialize();
+		return dwResult;
 	}
 
-	dprintf("[WEBCAM] Exit.");
-
-	return dwResult;
-}
-
-/*!
- * @brief Handle the request to grab a frame from the running webcam.
- * @param remote Pointer to the \c Remote making the request.
- * @param packet Pointer to the request \c Packet.
- * @returns Indication of success or failure.
- * @retval ERROR_SUCCESS Operation completed as expected.
- * @remark This will interact with the control thread to grab a frame
- *         from the current running camera.
- * @sa webcam_control_thread
- */
-DWORD request_webcam_get_frame(Remote *remote, Packet *packet)
-{
-	Packet *response = packet_create_response(packet);
-	UINT quality = packet_get_tlv_value_uint(packet, TLV_TYPE_WEBCAM_QUALITY);
-	DWORD dwResult = ERROR_SUCCESS;
-
-	dprintf("[WEBCAM] Entry.");
-
-	do
+	/*!
+	 * @brief Handle the request to start a given webcam.
+	 * @param remote Pointer to the \c Remote making the request.
+	 * @param packet Pointer to the request \c Packet.
+	 * @returns Indication of success or failure.
+	 * @retval ERROR_SUCCESS Operation completed as expected.
+	 * @remark This will start a webcam controller thread. From there the
+	 *         lifetime of the webcam is managed.
+	 * @sa webcam_control_thread
+	 */
+	DWORD request_webcam_start(Remote* remote, Packet* packet)
 	{
-		if (g_pWorkerThread == NULL) {
-			BREAK_WITH_ERROR("[WEBCAM] Webcam is not running", ERROR_NOT_READY);
+		Packet* response = met_api->packet.create_response(packet);
+		DWORD dwResult = ERROR_SUCCESS;
+		UINT index = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_WEBCAM_INTERFACE_ID);
+
+		dprintf("[WEBCAM] Entry.");
+
+		do
+		{
+			// If we have a thread running, then this means the webcam capture is already running too.
+			if (g_pWorkerThread != NULL) {
+				BREAK_WITH_ERROR("[WEBCAM] Already running!", ERROR_SERVICE_ALREADY_RUNNING);
+			}
+
+			g_pThreadState = (WebcamThreadState*)malloc(sizeof(WebcamThreadState));
+
+			if (g_pThreadState == NULL) {
+				BREAK_WITH_ERROR("[WEBCAM] Out of memory", ERROR_OUTOFMEMORY);
+			}
+
+			ZeroMemory(g_pThreadState, sizeof(WebcamThreadState));
+
+			// create a wait event and indicate we're expecting a response from the call
+			g_pThreadState->pCallEvent = met_api->event.create();
+			g_pThreadState->pResultEvent = met_api->event.create();
+			g_pThreadState->index = index;
+
+			// kick off the worker thread that will do all the cam handling on one thread to avoid
+			// cross-threaded COM problems.
+			g_pWorkerThread = met_api->thread.create(webcam_control_thread, g_pThreadState, NULL, NULL);
+
+			if (g_pWorkerThread == NULL) {
+				BREAK_WITH_ERROR("[WEBCAM] Failed to create thread.", ERROR_THREAD_1_INACTIVE);
+			}
+
+			if (met_api->thread.run(g_pWorkerThread) == FALSE) {
+				BREAK_WITH_ERROR("[WEBCAM] Failed to run worker thread", ERROR_CAN_NOT_COMPLETE);
+			}
+
+			// now wait for a signal to say that we've got things running
+			if (met_api->event.poll(g_pThreadState->pResultEvent, 4000) == FALSE) {
+				BREAK_WITH_ERROR("[WEBCAM] Failed to initialise worker thread", ERROR_WAIT_1);
+			}
+
+			dprintf("[WEBCAM] Webcam thread has been initialised");
+			dwResult = g_pThreadState->dwResult;
+		} while (0);
+
+		met_api->packet.transmit_response(dwResult, remote, response);
+
+		if (dwResult != ERROR_SUCCESS) {
+			dprintf("[WEBCAM] Failure found, cleaning up");
+			if (g_pWorkerThread != NULL) {
+				if (g_pThreadState != NULL) {
+					if (g_pThreadState->bRunning) {
+						met_api->thread.kill(g_pWorkerThread);
+					}
+
+					met_api->thread.destroy(g_pWorkerThread);
+					g_pWorkerThread = NULL;
+
+					if (g_pThreadState->pCallEvent != NULL) {
+						met_api->event.destroy(g_pThreadState->pCallEvent);
+					}
+					if (g_pThreadState->pResultEvent != NULL) {
+						met_api->event.destroy(g_pThreadState->pResultEvent);
+					}
+
+					free(g_pThreadState);
+					g_pThreadState = NULL;
+				}
+			}
 		}
 
-		// set up the thread call
-		g_pThreadState->pResponse = response;
-		g_pThreadState->frameQuality = quality;
-		g_pThreadState->controlAction = GetCameraFrame;
+		dprintf("[WEBCAM] Exit.");
 
-		// invoke and wait
-		event_signal(g_pThreadState->pCallEvent);
+		return dwResult;
+	}
 
-		if (event_poll(g_pThreadState->pResultEvent, 5000) == FALSE) {
-			BREAK_WITH_ERROR("[WEBCAM] Failed to receive result in time", ERROR_WAIT_1);
-		}
-
-		// the handler thread should have added data to the packet to return to the caller, so off we go!
-		dwResult = g_pThreadState->dwResult;
-	} while (0);
-
-	packet_transmit_response(dwResult, remote, response);
-
-	dprintf("[WEBCAM] Exit.");
-	return dwResult;
-}
-
-/*!
- * @brief Handle the request to stop the webcam.
- * @param remote Pointer to the \c Remote making the request.
- * @param packet Pointer to the request \c Packet.
- * @returns Indication of success or failure.
- * @retval ERROR_SUCCESS Operation completed as expected.
- * @remark This will interact with the control thread and tell it
- *         to terminate after turning off the camera.
- * @sa webcam_control_thread
- */
-DWORD request_webcam_stop(Remote *remote, Packet *packet) {
-	Packet *response = packet_create_response(packet);
-	DWORD dwResult = ERROR_SUCCESS;
-
-	dprintf("[WEBCAM] Entry.");
-	do
+	/*!
+	 * @brief Handle the request to grab a frame from the running webcam.
+	 * @param remote Pointer to the \c Remote making the request.
+	 * @param packet Pointer to the request \c Packet.
+	 * @returns Indication of success or failure.
+	 * @retval ERROR_SUCCESS Operation completed as expected.
+	 * @remark This will interact with the control thread to grab a frame
+	 *         from the current running camera.
+	 * @sa webcam_control_thread
+	 */
+	DWORD request_webcam_get_frame(Remote* remote, Packet* packet)
 	{
-		if (g_pWorkerThread == NULL) {
-			BREAK_WITH_ERROR("[WEBCAM] Webcam is not running", ERROR_NOT_READY);
-		}
+		Packet* response = met_api->packet.create_response(packet);
+		UINT quality = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_WEBCAM_QUALITY);
+		DWORD dwResult = ERROR_SUCCESS;
 
-		// set up the thread call
-		g_pThreadState->controlAction = StopCamera;
+		dprintf("[WEBCAM] Entry.");
 
-		// invoke and wait
-		event_signal(g_pThreadState->pCallEvent);
+		do
+		{
+			if (g_pWorkerThread == NULL) {
+				BREAK_WITH_ERROR("[WEBCAM] Webcam is not running", ERROR_NOT_READY);
+			}
 
-		if (event_poll(g_pThreadState->pResultEvent, 5000) == FALSE) {
-			BREAK_WITH_ERROR("[WEBCAM] Failed to receive result in time", ERROR_WAIT_1);
-		}
+			// set up the thread call
+			g_pThreadState->pResponse = response;
+			g_pThreadState->frameQuality = quality;
+			g_pThreadState->controlAction = GetCameraFrame;
 
-		// the handler thread should have added data to the packet to return to the caller, so off we go!
-		dwResult = g_pThreadState->dwResult;
-	} while (0);
+			// invoke and wait
+			met_api->event.signal(g_pThreadState->pCallEvent);
 
-	packet_transmit_response(dwResult, remote, response);
+			if (met_api->event.poll(g_pThreadState->pResultEvent, 5000) == FALSE) {
+				BREAK_WITH_ERROR("[WEBCAM] Failed to receive result in time", ERROR_WAIT_1);
+			}
 
-	event_destroy(g_pThreadState->pCallEvent);
-	event_destroy(g_pThreadState->pResultEvent);
-	free(g_pThreadState);
-	g_pThreadState = NULL;
+			// the handler thread should have added data to the packet to return to the caller, so off we go!
+			dwResult = g_pThreadState->dwResult;
+		} while (0);
 
-	thread_destroy(g_pWorkerThread);
-	g_pWorkerThread = NULL;
+		met_api->packet.transmit_response(dwResult, remote, response);
 
-	dprintf("[WEBCAM] Exit.");
-	return dwResult;
-}
+		dprintf("[WEBCAM] Exit.");
+		return dwResult;
+	}
+
+	/*!
+	 * @brief Handle the request to stop the webcam.
+	 * @param remote Pointer to the \c Remote making the request.
+	 * @param packet Pointer to the request \c Packet.
+	 * @returns Indication of success or failure.
+	 * @retval ERROR_SUCCESS Operation completed as expected.
+	 * @remark This will interact with the control thread and tell it
+	 *         to terminate after turning off the camera.
+	 * @sa webcam_control_thread
+	 */
+	DWORD request_webcam_stop(Remote* remote, Packet* packet) {
+		Packet* response = met_api->packet.create_response(packet);
+		DWORD dwResult = ERROR_SUCCESS;
+
+		dprintf("[WEBCAM] Entry.");
+		do
+		{
+			if (g_pWorkerThread == NULL) {
+				BREAK_WITH_ERROR("[WEBCAM] Webcam is not running", ERROR_NOT_READY);
+			}
+
+			// set up the thread call
+			g_pThreadState->controlAction = StopCamera;
+
+			// invoke and wait
+			met_api->event.signal(g_pThreadState->pCallEvent);
+
+			if (met_api->event.poll(g_pThreadState->pResultEvent, 5000) == FALSE) {
+				BREAK_WITH_ERROR("[WEBCAM] Failed to receive result in time", ERROR_WAIT_1);
+			}
+
+			// the handler thread should have added data to the packet to return to the caller, so off we go!
+			dwResult = g_pThreadState->dwResult;
+		} while (0);
+
+		met_api->packet.transmit_response(dwResult, remote, response);
+
+		met_api->event.destroy(g_pThreadState->pCallEvent);
+		met_api->event.destroy(g_pThreadState->pResultEvent);
+		free(g_pThreadState);
+		g_pThreadState = NULL;
+
+		met_api->thread.destroy(g_pWorkerThread);
+		g_pWorkerThread = NULL;
+
+		dprintf("[WEBCAM] Exit.");
+		return dwResult;
+	}
 }

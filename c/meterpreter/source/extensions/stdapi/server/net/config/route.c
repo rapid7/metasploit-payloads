@@ -1,4 +1,5 @@
 #include "precomp.h"
+#include "common_metapi.h"
 
 DWORD add_remove_route(Packet *request, BOOLEAN add);
 
@@ -7,7 +8,7 @@ DWORD add_remove_route(Packet *request, BOOLEAN add);
  */
 DWORD request_net_config_get_routes(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	DWORD result = ERROR_SUCCESS;
 	DWORD index;
 	DWORD metric_bigendian;
@@ -62,7 +63,7 @@ DWORD request_net_config_get_routes(Remote *remote, Packet *packet)
 			route[4].header.length = sizeof(DWORD);
 			route[4].buffer        = (PUCHAR)&metric_bigendian;
 
-			packet_add_tlv_group(response, TLV_TYPE_NETWORK_ROUTE,
+			met_api->packet.add_tlv_group(response, TLV_TYPE_NETWORK_ROUTE,
 					route, 5);
 		}
 
@@ -73,7 +74,7 @@ DWORD request_net_config_get_routes(Remote *remote, Packet *packet)
 	if(table_ipv6)
 		free(table_ipv6);
 
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 
 	return ERROR_SUCCESS;
 }
@@ -83,13 +84,13 @@ DWORD request_net_config_get_routes(Remote *remote, Packet *packet)
  */
 DWORD request_net_config_add_route(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	DWORD result = ERROR_SUCCESS;
 
 	result = add_remove_route(packet, TRUE);
 
 	// Transmit the response packet
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 
 	return ERROR_SUCCESS;
 }
@@ -99,13 +100,13 @@ DWORD request_net_config_add_route(Remote *remote, Packet *packet)
  */
 DWORD request_net_config_remove_route(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	DWORD result;
 
 	result = add_remove_route(packet, FALSE);
 
 	// Transmit the response packet
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 
 	return ERROR_SUCCESS;
 }
@@ -121,9 +122,9 @@ DWORD add_remove_route(Packet *packet, BOOLEAN add)
 	LPCSTR netmask;
 	LPCSTR gateway;
 
-	subnet  = packet_get_tlv_value_string(packet, TLV_TYPE_SUBNET_STRING);
-	netmask = packet_get_tlv_value_string(packet, TLV_TYPE_NETMASK_STRING);
-	gateway = packet_get_tlv_value_string(packet, TLV_TYPE_GATEWAY_STRING);
+	subnet  = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_SUBNET_STRING);
+	netmask = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_NETMASK_STRING);
+	gateway = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_GATEWAY_STRING);
 
 	memset(&route, 0, sizeof(route));
 

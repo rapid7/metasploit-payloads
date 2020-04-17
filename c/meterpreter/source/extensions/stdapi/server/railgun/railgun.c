@@ -29,6 +29,7 @@
  */
 
 #include "precomp.h"
+#include "common_metapi.h"
 #include "railgun.h"
 
 // Gives me a copy of a data item of type TLV_META_TYPE_RAW
@@ -37,8 +38,8 @@
 BYTE * getRawDataCopy(Packet *packet,TlvType type, DWORD * size){
 	Tlv tlv;
 	BYTE * bufferCopy;
-	if (packet_get_tlv(packet, type, &tlv) != ERROR_SUCCESS){
-		dprintf("getRawDataCopy: packet_get_tlv failed");
+	if (met_api->packet.get_tlv(packet, type, &tlv) != ERROR_SUCCESS){
+		dprintf("getRawDataCopy: met_api->packet.get_tlv failed");
 		*size = 0;
 		return NULL;
 	}
@@ -56,8 +57,8 @@ BYTE * getRawDataCopyFromGroup(Packet *packet, Tlv *group, TlvType type, DWORD *
 	Tlv tlv;
 	BYTE * bufferCopy;
 
-	if( packet_get_tlv_group_entry(packet, group, type, &tlv) != ERROR_SUCCESS ) {
-		dprintf("getRawDataCopyFromGroup: packet_get_tlv failed");
+	if( met_api->packet.get_tlv_group_entry(packet, group, type, &tlv) != ERROR_SUCCESS ) {
+		dprintf("getRawDataCopyFromGroup: met_api->packet.get_tlv failed");
 		*size = 0;
 		return NULL;
 	}
@@ -361,7 +362,7 @@ DWORD railgun_call( RAILGUN_INPUT * pInput, RAILGUN_OUTPUT * pOutput )
 // Multi-request railgun API
 DWORD request_railgun_api_multi( Remote * remote, Packet * packet )
 {
-	Packet * response      = packet_create_response(packet);
+	Packet * response      = met_api->packet.create_response(packet);
 	DWORD dwResult         = ERROR_SUCCESS;
 	DWORD index            = 0;
 	Tlv reqTlv             = {0};
@@ -374,7 +375,7 @@ DWORD request_railgun_api_multi( Remote * remote, Packet * packet )
 
 	dprintf( "[RAILGUN] request_railgun_api_multi: processing %d elements (%d | %d)", TLV_TYPE_RAILGUN_MULTI_GROUP, packet->header.type, packet->header.length);
 
-	while( packet_enum_tlv( packet, index++, TLV_TYPE_RAILGUN_MULTI_GROUP, &reqTlv ) == ERROR_SUCCESS )
+	while( met_api->packet.enum_tlv( packet, index++, TLV_TYPE_RAILGUN_MULTI_GROUP, &reqTlv ) == ERROR_SUCCESS )
 	{
 		dprintf( "[RAILGUN] request_railgun_api_multi: index=%d", index );
 
@@ -384,7 +385,7 @@ DWORD request_railgun_api_multi( Remote * remote, Packet * packet )
 		do
 		{
 			// get ths inputs for this call...
-			if( packet_get_tlv_group_entry( packet, &reqTlv, TLV_TYPE_RAILGUN_SIZE_OUT, &tmpTlv ) != ERROR_SUCCESS )
+			if( met_api->packet.get_tlv_group_entry( packet, &reqTlv, TLV_TYPE_RAILGUN_SIZE_OUT, &tmpTlv ) != ERROR_SUCCESS )
 			{
 				dprintf( "[RAILGUN] request_railgun_api_multi: Could not get TLV_TYPE_RAILGUN_SIZE_OUT" );
 				break;
@@ -406,7 +407,7 @@ DWORD request_railgun_api_multi( Remote * remote, Packet * packet )
 				break;
 			}
 
-			if( packet_get_tlv_group_entry( packet, &reqTlv, TLV_TYPE_RAILGUN_DLLNAME, &tmpTlv ) != ERROR_SUCCESS )
+			if( met_api->packet.get_tlv_group_entry( packet, &reqTlv, TLV_TYPE_RAILGUN_DLLNAME, &tmpTlv ) != ERROR_SUCCESS )
 			{
 				dprintf( "[RAILGUN] request_railgun_api_multi: Could not get TLV_TYPE_RAILGUN_DLLNAME" );
 				break;
@@ -419,7 +420,7 @@ DWORD request_railgun_api_multi( Remote * remote, Packet * packet )
 				break;
 			}
 
-			if( packet_get_tlv_group_entry( packet, &reqTlv, TLV_TYPE_RAILGUN_FUNCNAME, &tmpTlv ) != ERROR_SUCCESS )
+			if( met_api->packet.get_tlv_group_entry( packet, &reqTlv, TLV_TYPE_RAILGUN_FUNCNAME, &tmpTlv ) != ERROR_SUCCESS )
 			{
 				dprintf( "[RAILGUN] request_railgun_api_multi: Could not get TLV_TYPE_RAILGUN_FUNCNAME" );
 				break;
@@ -433,7 +434,7 @@ DWORD request_railgun_api_multi( Remote * remote, Packet * packet )
 			}
 
 			rInput.cpCallConv = "stdcall";
-			if( packet_get_tlv_group_entry( packet, &reqTlv, TLV_TYPE_RAILGUN_CALLCONV, &tmpTlv ) != ERROR_SUCCESS )
+			if( met_api->packet.get_tlv_group_entry( packet, &reqTlv, TLV_TYPE_RAILGUN_CALLCONV, &tmpTlv ) != ERROR_SUCCESS )
 			{
 				dprintf( "[RAILGUN] request_railgun_api_multi: Could not get TLV_TYPE_RAILGUN_CALLCONV, defaulting to stdcall" );
 			}
@@ -442,9 +443,9 @@ DWORD request_railgun_api_multi( Remote * remote, Packet * packet )
 				rInput.cpCallConv = (PCHAR)tmpTlv.buffer;
 			}
 
-			if( packet_get_tlv_group_entry( packet, &reqTlv, TLV_TYPE_RAILGUN_STACKBLOB, &rInput.pStackDescriptorTlv ) != ERROR_SUCCESS )
+			if( met_api->packet.get_tlv_group_entry( packet, &reqTlv, TLV_TYPE_RAILGUN_STACKBLOB, &rInput.pStackDescriptorTlv ) != ERROR_SUCCESS )
 			{
-				dprintf( "[RAILGUN] request_railgun_api_multi: packet_get_tlv_group_entry failed" );
+				dprintf( "[RAILGUN] request_railgun_api_multi: met_api->packet.get_tlv_group_entry failed" );
 				break;
 			}
 
@@ -477,7 +478,7 @@ DWORD request_railgun_api_multi( Remote * remote, Packet * packet )
 				tlvs[5].buffer        = (PUCHAR)rOutput.pErrMsg;
 			}
 
-			packet_add_tlv_group( response, TLV_TYPE_RAILGUN_MULTI_GROUP, tlvs, dwResult == ERROR_SUCCESS ? sizeof(tlvs) / sizeof(tlvs[0]) : 1 );
+			met_api->packet.add_tlv_group( response, TLV_TYPE_RAILGUN_MULTI_GROUP, tlvs, dwResult == ERROR_SUCCESS ? sizeof(tlvs) / sizeof(tlvs[0]) : 1 );
 
 		} while(0);
 
@@ -496,7 +497,7 @@ DWORD request_railgun_api_multi( Remote * remote, Packet * packet )
 			LocalFree( (HLOCAL)rOutput.pErrMsg );
 	}
 
-	packet_transmit_response( ERROR_SUCCESS, remote, response );
+	met_api->packet.transmit_response( ERROR_SUCCESS, remote, response );
 
 	dprintf( "[RAILGUN] request_railgun_api_multi: Finished." );
 
@@ -516,7 +517,7 @@ DWORD request_railgun_api( Remote * pRemote, Packet * pPacket )
 
 	do
 	{
-		pResponse = packet_create_response( pPacket );
+		pResponse = met_api->packet.create_response( pPacket );
 		if( !pResponse )
 			BREAK_WITH_ERROR( "[RAILGUN] request_railgun_api: !pResponse", ERROR_INVALID_HANDLE );
 
@@ -524,7 +525,7 @@ DWORD request_railgun_api( Remote * pRemote, Packet * pPacket )
 		memset( &rOutput, 0, sizeof(RAILGUN_OUTPUT) );
 
 		// Prepare the OUT-Buffer (undefined content)
-		rInput.dwBufferSizeOUT = packet_get_tlv_value_uint( pPacket, TLV_TYPE_RAILGUN_SIZE_OUT );
+		rInput.dwBufferSizeOUT = met_api->packet.get_tlv_value_uint( pPacket, TLV_TYPE_RAILGUN_SIZE_OUT );
 
 		// get the IN-Buffer
 		rInput.pBufferIN = getRawDataCopy( pPacket,TLV_TYPE_RAILGUN_BUFFERBLOB_IN, (DWORD *)&rInput.dwBufferSizeIN);
@@ -537,22 +538,22 @@ DWORD request_railgun_api( Remote * pRemote, Packet * pPacket )
 			BREAK_WITH_ERROR( "[RAILGUN] request_railgun_api: Could not get TLV_TYPE_RAILGUN_BUFFERBLOB_INOUT", ERROR_INVALID_PARAMETER );
 
 		// Get cpDllName
-		rInput.cpDllName = packet_get_tlv_value_string( pPacket, TLV_TYPE_RAILGUN_DLLNAME );
+		rInput.cpDllName = met_api->packet.get_tlv_value_string( pPacket, TLV_TYPE_RAILGUN_DLLNAME );
 		if( !rInput.cpDllName )
 			BREAK_WITH_ERROR( "[RAILGUN] request_railgun_api: Could not get TLV_TYPE_RAILGUN_DLLNAME", ERROR_INVALID_PARAMETER );
 
 		// Get cpFuncName
-		rInput.cpFuncName = packet_get_tlv_value_string( pPacket, TLV_TYPE_RAILGUN_FUNCNAME );
+		rInput.cpFuncName = met_api->packet.get_tlv_value_string( pPacket, TLV_TYPE_RAILGUN_FUNCNAME );
 		if( !rInput.cpFuncName )
 			BREAK_WITH_ERROR( "[RAILGUN] request_railgun_api: Could not get TLV_TYPE_RAILGUN_FUNCNAME", ERROR_INVALID_PARAMETER );
 
 		// Get cpCallConv
-		rInput.cpCallConv = packet_get_tlv_value_string( pPacket, TLV_TYPE_RAILGUN_CALLCONV );
+		rInput.cpCallConv = met_api->packet.get_tlv_value_string( pPacket, TLV_TYPE_RAILGUN_CALLCONV );
 		if( !rInput.cpCallConv )
 			rInput.cpCallConv = "stdcall";
 
 		// get the pStack-description (1 ULONG_PTR description, 1 ULONG_PTR data)
-		if( packet_get_tlv( pPacket, TLV_TYPE_RAILGUN_STACKBLOB, &rInput.pStackDescriptorTlv ) != ERROR_SUCCESS)
+		if( met_api->packet.get_tlv( pPacket, TLV_TYPE_RAILGUN_STACKBLOB, &rInput.pStackDescriptorTlv ) != ERROR_SUCCESS)
 			BREAK_WITH_ERROR( "[RAILGUN] request_railgun_api: Could not get TLV_TYPE_RAILGUN_STACKBLOB", ERROR_INVALID_PARAMETER );
 
 		dwResult = railgun_call( &rInput, &rOutput );
@@ -563,10 +564,10 @@ DWORD request_railgun_api( Remote * pRemote, Packet * pPacket )
 	{
 		if( dwResult == ERROR_SUCCESS )
 		{
-			packet_add_tlv_uint( pResponse, TLV_TYPE_RAILGUN_BACK_ERR, rOutput.dwLastError );
-			packet_add_tlv_qword( pResponse, TLV_TYPE_RAILGUN_BACK_RET, rOutput.qwReturnValue );
-			packet_add_tlv_raw( pResponse, TLV_TYPE_RAILGUN_BACK_BUFFERBLOB_OUT, rOutput.pBufferOUT, (DWORD)rOutput.dwBufferSizeOUT );
-			packet_add_tlv_raw( pResponse, TLV_TYPE_RAILGUN_BACK_BUFFERBLOB_INOUT, rOutput.pBufferINOUT, (DWORD)rOutput.dwBufferSizeINOUT );
+			met_api->packet.add_tlv_uint( pResponse, TLV_TYPE_RAILGUN_BACK_ERR, rOutput.dwLastError );
+			met_api->packet.add_tlv_qword( pResponse, TLV_TYPE_RAILGUN_BACK_RET, rOutput.qwReturnValue );
+			met_api->packet.add_tlv_raw( pResponse, TLV_TYPE_RAILGUN_BACK_BUFFERBLOB_OUT, rOutput.pBufferOUT, (DWORD)rOutput.dwBufferSizeOUT );
+			met_api->packet.add_tlv_raw( pResponse, TLV_TYPE_RAILGUN_BACK_BUFFERBLOB_INOUT, rOutput.pBufferINOUT, (DWORD)rOutput.dwBufferSizeINOUT );
 
 			// There are cases where FormatMessage is failing for various functions on various platforms.
 			// eg. inet_addr() on Windows XP SP3 x86 and NetGetJoinInformation() on Windows 8 x64
@@ -580,10 +581,10 @@ DWORD request_railgun_api( Remote * pRemote, Packet * pPacket )
 				pErrorMsg = "FormatMessage failed to retrieve the error.";
 			}
 
-			packet_add_tlv_string( pResponse, TLV_TYPE_RAILGUN_BACK_MSG, pErrorMsg );
+			met_api->packet.add_tlv_string( pResponse, TLV_TYPE_RAILGUN_BACK_MSG, pErrorMsg );
 		}
 
-		dwResult = packet_transmit_response(dwResult, pRemote, pResponse);
+		dwResult = met_api->packet.transmit_response(dwResult, pRemote, pResponse);
 	}
 
 	if( rInput.pBufferIN )
@@ -620,15 +621,15 @@ DWORD request_railgun_memread( Remote * pRemote, Packet * pPacket )
 
 	do
 	{
-		pResponse = packet_create_response( pPacket );
+		pResponse = met_api->packet.create_response( pPacket );
 		if( !pResponse )
 			BREAK_WITH_ERROR( "[RAILGUN] request_railgun_memread: !pResponse", ERROR_INVALID_HANDLE );
 
-		lpAddress = (LPVOID)packet_get_tlv_value_qword( pPacket, TLV_TYPE_RAILGUN_MEM_ADDRESS );
+		lpAddress = (LPVOID)met_api->packet.get_tlv_value_qword( pPacket, TLV_TYPE_RAILGUN_MEM_ADDRESS );
 		if( !lpAddress )
 			BREAK_WITH_ERROR( "[RAILGUN] request_railgun_memread: !lpAddress", ERROR_INVALID_PARAMETER );
 
-		dwLength = packet_get_tlv_value_uint( pPacket, TLV_TYPE_RAILGUN_MEM_LENGTH );
+		dwLength = met_api->packet.get_tlv_value_uint( pPacket, TLV_TYPE_RAILGUN_MEM_LENGTH );
 		if( !dwLength )
 			BREAK_WITH_ERROR( "[RAILGUN] request_railgun_memread: !dwLength", ERROR_INVALID_PARAMETER );
 
@@ -650,9 +651,9 @@ DWORD request_railgun_memread( Remote * pRemote, Packet * pPacket )
 	if( pResponse )
 	{
 		if( pData )
-			packet_add_tlv_raw( pResponse, TLV_TYPE_RAILGUN_MEM_DATA, pData, dwLength );
+			met_api->packet.add_tlv_raw( pResponse, TLV_TYPE_RAILGUN_MEM_DATA, pData, dwLength );
 
-		dwResult = packet_transmit_response(dwResult, pRemote, pResponse);
+		dwResult = met_api->packet.transmit_response(dwResult, pRemote, pResponse);
 	}
 
 	if( pData )
@@ -678,19 +679,19 @@ DWORD request_railgun_memwrite( Remote * pRemote, Packet * pPacket )
 
 	do
 	{
-		pResponse = packet_create_response( pPacket );
+		pResponse = met_api->packet.create_response( pPacket );
 		if( !pResponse )
 			BREAK_WITH_ERROR( "[RAILGUN] request_railgun_memwrite: !pResponse", ERROR_INVALID_HANDLE );
 
-		lpAddress = (LPVOID)packet_get_tlv_value_qword( pPacket, TLV_TYPE_RAILGUN_MEM_ADDRESS );
+		lpAddress = (LPVOID)met_api->packet.get_tlv_value_qword( pPacket, TLV_TYPE_RAILGUN_MEM_ADDRESS );
 		if( !lpAddress )
 			BREAK_WITH_ERROR( "[RAILGUN] request_railgun_memwrite: !lpAddress", ERROR_INVALID_PARAMETER );
 
-		pData = packet_get_tlv_value_raw( pPacket, TLV_TYPE_RAILGUN_MEM_DATA );
+		pData = met_api->packet.get_tlv_value_raw( pPacket, TLV_TYPE_RAILGUN_MEM_DATA );
 		if( !pData )
 			BREAK_WITH_ERROR( "[RAILGUN] request_railgun_memwrite: !pData", ERROR_INVALID_PARAMETER );
 
-		dwLength = packet_get_tlv_value_uint( pPacket, TLV_TYPE_RAILGUN_MEM_LENGTH );
+		dwLength = met_api->packet.get_tlv_value_uint( pPacket, TLV_TYPE_RAILGUN_MEM_LENGTH );
 		if( !dwLength )
 			BREAK_WITH_ERROR( "[RAILGUN] request_railgun_memwrite: !dwLength", ERROR_INVALID_PARAMETER );
 
@@ -707,7 +708,7 @@ DWORD request_railgun_memwrite( Remote * pRemote, Packet * pPacket )
 
 	if( pResponse )
 	{
-		dwResult = packet_transmit_response(dwResult, pRemote, pResponse);
+		dwResult = met_api->packet.transmit_response(dwResult, pRemote, pResponse);
 	}
 
 	dprintf("[RAILGUN] request_railgun_memwrite: Finished.");

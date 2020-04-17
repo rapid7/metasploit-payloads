@@ -106,7 +106,8 @@
     <Link>
       <AdditionalDependencies>backcompat.lib;Netapi32.lib;Mpr.lib;metsrv.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\backcompat\$(Configuration);..\metsrv\$(Configuration)\$(Platform);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <DelayLoadDLLs>metsrv.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
+      <DelayLoadDLLs>
+      </DelayLoadDLLs>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <GenerateMapFile>true</GenerateMapFile>
       <MapFileName>$(OutDir)\ext_server_incognito.map</MapFileName>
@@ -155,7 +156,8 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <Link>
       <AdditionalDependencies>backcompat.lib;Netapi32.lib;Mpr.lib;metsrv.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\backcompat\$(Configuration);..\metsrv\$(Configuration)\$(Platform);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <DelayLoadDLLs>metsrv.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
+      <DelayLoadDLLs>
+      </DelayLoadDLLs>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <GenerateMapFile>true</GenerateMapFile>
       <MapFileName>$(OutDir)\ext_server_incognito.map</MapFileName>
@@ -207,7 +209,8 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <Link>
       <AdditionalDependencies>Netapi32.lib;Mpr.lib;metsrv.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\metsrv\$(Configuration)\$(Platform);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <DelayLoadDLLs>metsrv.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
+      <DelayLoadDLLs>
+      </DelayLoadDLLs>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <GenerateMapFile>true</GenerateMapFile>
       <MapFileName>$(OutDir)\ext_server_incognito.map</MapFileName>
@@ -259,7 +262,8 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <Link>
       <AdditionalDependencies>Netapi32.lib;Mpr.lib;metsrv.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\metsrv\$(Configuration)\$(Platform);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <DelayLoadDLLs>metsrv.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
+      <DelayLoadDLLs>
+      </DelayLoadDLLs>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <GenerateMapFile>true</GenerateMapFile>
       <MapFileName>$(OutDir)\ext_server_incognito.map</MapFileName>

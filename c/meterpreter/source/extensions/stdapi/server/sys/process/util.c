@@ -1,5 +1,5 @@
 #include "precomp.h"
-#include "../../../../../common/arch/win/remote_thread.h"
+#include "common_metapi.h"
 
 DWORD copy_memory_to_process(HANDLE process, BOOLEAN allocate,
 	LPVOID *buffer, DWORD length, DWORD prot);
@@ -36,7 +36,7 @@ DWORD execute_code_stub_in_process(HANDLE process, PVOID buffer, ULONG length,
 		}
 
 		// Create the thread in the target process
-		if (!(thread = create_remote_thread(process, 0, codeInProcess, paramInProcess, 0, &threadId)))
+		if (!(thread = met_api->thread.create_remote(process, 0, codeInProcess, paramInProcess, 0, &threadId)))
 		{
 			result = GetLastError();
 			break;

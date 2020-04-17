@@ -1,5 +1,6 @@
 #pragma comment(lib, "Winmm.lib")
 #include "precomp.h"
+#include "common_metapi.h"
 #include <windows.h>
 #include "../../common/common.h"
 #include "audio.h"
@@ -40,10 +41,10 @@ DWORD request_ui_record_mic(Remote * remote, Packet * request)
 	HWAVEIN hWavIn;
 	WAVEHDR wh;
 
-	response = packet_create_response(request);
+	response = met_api->packet.create_response(request);
 
 	if (!response) {
-		dprintf("request_ui_record_mic: packet_create_response failed");
+		dprintf("request_ui_record_mic: met_api->packet.create_response failed");
 		dwResult = ERROR_INVALID_HANDLE;
 		goto out;
 	}
@@ -51,7 +52,7 @@ DWORD request_ui_record_mic(Remote * remote, Packet * request)
 	/*
 	 * Get duration to record, and reallocate if necessary
 	 */
-	seconds = packet_get_tlv_value_uint(request, TLV_TYPE_AUDIO_DURATION);
+	seconds = met_api->packet.get_tlv_value_uint(request, TLV_TYPE_AUDIO_DURATION);
 	if (buffersize == 0 || buffersize != 11025 * seconds) {
 		buffersize = 11025 * seconds;
 		riffsize = buffersize + 44;
@@ -144,9 +145,9 @@ DWORD request_ui_record_mic(Remote * remote, Packet * request)
 		goto out;
 	}
 
-	packet_add_tlv_raw(response,
+	met_api->packet.add_tlv_raw(response,
 		(TLV_TYPE_AUDIO_DATA | TLV_META_TYPE_COMPRESSED), sendBuffer, riffsize);
 out:
-	packet_transmit_response(dwResult, remote, response);
+	met_api->packet.transmit_response(dwResult, remote, response);
 	return ERROR_SUCCESS;
 }

@@ -127,7 +127,8 @@
       <AdditionalDependencies>backcompat.lib;metsrv.lib;psapi.lib;advapi32.lib;user32.lib;secur32.lib;crypt32.lib;shlwapi.lib;wtsapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <AdditionalLibraryDirectories>..\backcompat\$(Configuration);..\metsrv\$(Configuration)\$(Platform);..\..\source\jpeg-8\lib\win\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <DelayLoadDLLs>metsrv.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
+      <DelayLoadDLLs>
+      </DelayLoadDLLs>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <GenerateMapFile>true</GenerateMapFile>
       <MapFileName>.\Release\ext_server_mimikatz.map</MapFileName>
@@ -176,7 +177,8 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <AdditionalDependencies>backcompat.lib;metsrv.lib;psapi.lib;advapi32.lib;user32.lib;secur32.lib;crypt32.lib;shlwapi.lib;wtsapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <AdditionalLibraryDirectories>..\backcompat\$(Configuration);..\metsrv\$(Configuration)\$(Platform);..\..\source\jpeg-8\lib\win\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <DelayLoadDLLs>metsrv.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
+      <DelayLoadDLLs>
+      </DelayLoadDLLs>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <GenerateMapFile>true</GenerateMapFile>
       <MapFileName>.\Release\ext_server_mimikatz.map</MapFileName>
@@ -229,7 +231,8 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <AdditionalDependencies>metsrv.lib;psapi.lib;advapi32.lib;user32.lib;secur32.lib;crypt32.lib;shlwapi.lib;wtsapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <AdditionalLibraryDirectories>..\metsrv\$(Configuration)\$(Platform);..\..\source\jpeg-8\lib\win\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <DelayLoadDLLs>metsrv.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
+      <DelayLoadDLLs>
+      </DelayLoadDLLs>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <GenerateMapFile>true</GenerateMapFile>
       <MapFileName>.\Release\ext_server_mimikatz.map</MapFileName>
@@ -282,7 +285,8 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <AdditionalDependencies>metsrv.lib;psapi.lib;advapi32.lib;user32.lib;secur32.lib;crypt32.lib;shlwapi.lib;wtsapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <AdditionalLibraryDirectories>..\metsrv\$(Configuration)\$(Platform);..\..\source\jpeg-8\lib\win\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <DelayLoadDLLs>metsrv.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
+      <DelayLoadDLLs>
+      </DelayLoadDLLs>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <GenerateMapFile>true</GenerateMapFile>
       <MapFileName>.\Release\ext_server_mimikatz.map</MapFileName>

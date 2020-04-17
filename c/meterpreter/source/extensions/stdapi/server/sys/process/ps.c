@@ -1,8 +1,9 @@
 #include "precomp.h"
+#include "common_metapi.h"
 #include "ps.h"
+#include <wchar.h>
 
 #include "./../session.h"
-#include "./../../../../../common/arch/win/i386/base_inject.h"
 
 /*
  * Get the arch type (either x86 or x64) for a given PE (either PE32 or PE64) DLL image.
@@ -70,7 +71,7 @@ DWORD ps_inject( DWORD dwPid, DLL_BUFFER * pDllBuffer, char * cpCommandLine )
 		if( dwDllArch != dwPidArch )
 			BREAK_WITH_ERROR( "[PS] ps_inject_dll. pid/dll architecture mixup", ERROR_BAD_ENVIRONMENT );
 
-		dwResult = inject_dll( dwPid, lpDllBuffer, dwDllLenght, cpCommandLine );
+		dwResult = met_api->inject.dll( dwPid, lpDllBuffer, dwDllLenght, cpCommandLine );
 
 	} while( 0 );
 
@@ -596,20 +597,20 @@ VOID ps_addresult(Packet * response, DWORD dwPid, DWORD dwParentPid, wchar_t * w
 		if( !wcpExeName )
 			wcpExeName = L"";
 		entries[1].header.type   = TLV_TYPE_PROCESS_NAME;
-		entries[1].header.length = (DWORD)strlen(wchar_to_utf8(wcpExeName)) + 1;
-		entries[1].buffer		 = wchar_to_utf8(wcpExeName);
+		entries[1].header.length = (DWORD)strlen(met_api->string.wchar_to_utf8(wcpExeName)) + 1;
+		entries[1].buffer		 = met_api->string.wchar_to_utf8(wcpExeName);
 
 		if( !wcpExePath )
 			wcpExePath = L"";
 		entries[2].header.type   = TLV_TYPE_PROCESS_PATH;
-		entries[2].header.length = (DWORD)strlen(wchar_to_utf8(wcpExePath)) + 1;
-		entries[2].buffer		 = wchar_to_utf8(wcpExePath);
+		entries[2].header.length = (DWORD)strlen(met_api->string.wchar_to_utf8(wcpExePath)) + 1;
+		entries[2].buffer		 = met_api->string.wchar_to_utf8(wcpExePath);
 
 		if( !wcpUserName )
 			wcpUserName = L"";
 		entries[3].header.type   = TLV_TYPE_USER_NAME;
-		entries[3].header.length = (DWORD)strlen(wchar_to_utf8(wcpUserName)) + 1;
-		entries[3].buffer		 = wchar_to_utf8(wcpUserName);
+		entries[3].header.length = (DWORD)strlen(met_api->string.wchar_to_utf8(wcpUserName)) + 1;
+		entries[3].buffer		 = met_api->string.wchar_to_utf8(wcpUserName);
 
 		dwProcessArch            = htonl( dwProcessArch );
 		entries[4].header.type   = TLV_TYPE_PROCESS_ARCH;
@@ -626,7 +627,7 @@ VOID ps_addresult(Packet * response, DWORD dwPid, DWORD dwParentPid, wchar_t * w
 		entries[6].header.length = sizeof( DWORD );
 		entries[6].buffer        = (PUCHAR)&dwSessionId;
 
-		packet_add_tlv_group( response, TLV_TYPE_PROCESS_GROUP, entries, 7 );
+		met_api->packet.add_tlv_group( response, TLV_TYPE_PROCESS_GROUP, entries, 7 );
 
 	} while(0);
 }

@@ -90,10 +90,11 @@
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>backcompat.lib;pssdk_$(PssdkVersion)_mt.lib;ws2_32.lib;metsrv.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>backcompat.lib;pssdk_$(PssdkVersion)_mt.lib;ws2_32.lib;commonapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\backcompat\$(Configuration);..\metsrv\$(Configuration)\$(Platform);..\..\..\..\..\pssdk\PSSDK_$(PssdkVersion)_LIB\_Libs;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <DelayLoadDLLs>metsrv.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
+      <DelayLoadDLLs>
+      </DelayLoadDLLs>
       <ProgramDatabaseFile>$(OutDir)\ext_server_sniffer.pdb</ProgramDatabaseFile>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention>
@@ -150,10 +151,11 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>pssdk_$(PssdkVersion)_mt.lib;ws2_32.lib;metsrv.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>pssdk_$(PssdkVersion)_mt.lib;ws2_32.lib;commonapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\metsrv\$(Configuration)\$(Platform);..\..\..\..\..\pssdk\PSSDK_$(PssdkVersion)_LIB\_Libs64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <DelayLoadDLLs>metsrv.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
+      <DelayLoadDLLs>
+      </DelayLoadDLLs>
       <ProgramDatabaseFile>$(OutDir)\ext_server_sniffer.pdb</ProgramDatabaseFile>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention>

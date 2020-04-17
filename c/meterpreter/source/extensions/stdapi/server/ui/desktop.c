@@ -1,4 +1,5 @@
 #include "precomp.h"
+#include "common_metapi.h"
 #include "./../sys/session.h"
 #include "./../sys/process/ps.h"
 
@@ -45,7 +46,7 @@ BOOL CALLBACK desktop_enumdesktops_callback(LPTSTR cpDesktopName, LPARAM lpParam
 		entry[2].header.length = (DWORD)(strlen(cpDesktopName) + 1);
 		entry[2].buffer = (PUCHAR)cpDesktopName;
 
-		packet_add_tlv_group(dl->response, TLV_TYPE_DESKTOP, entry, 3);
+		met_api->packet.add_tlv_group(dl->response, TLV_TYPE_DESKTOP, entry, 3);
 
 	} while (0);
 
@@ -94,10 +95,10 @@ DWORD request_ui_desktop_enum(Remote * remote, Packet * request)
 
 	do
 	{
-		response = packet_create_response(request);
+		response = met_api->packet.create_response(request);
 		if (!response)
 		{
-			BREAK_WITH_ERROR("[UI] desktop_enum. packet_create_response failed", ERROR_INVALID_HANDLE);
+			BREAK_WITH_ERROR("[UI] desktop_enum. met_api->packet.create_response failed", ERROR_INVALID_HANDLE);
 		}
 
 		EnumWindowStations(desktop_enumstations_callback, (LPARAM)response);
@@ -106,7 +107,7 @@ DWORD request_ui_desktop_enum(Remote * remote, Packet * request)
 
 	if (response)
 	{
-		packet_transmit_response(dwResult, remote, response);
+		met_api->packet.transmit_response(dwResult, remote, response);
 	}
 
 	return ERROR_SUCCESS;
@@ -122,25 +123,25 @@ DWORD request_ui_desktop_get(Remote * remote, Packet * request)
 
 	do
 	{
-		response = packet_create_response(request);
+		response = met_api->packet.create_response(request);
 		if (!response)
 		{
-			BREAK_WITH_ERROR("[UI] desktop_get. packet_create_response failed", ERROR_INVALID_HANDLE);
+			BREAK_WITH_ERROR("[UI] desktop_get. met_api->packet.create_response failed", ERROR_INVALID_HANDLE);
 		}
 
-		lock_acquire(remote->lock);
+		met_api->lock.acquire(remote->lock);
 
-		packet_add_tlv_uint(response, TLV_TYPE_DESKTOP_SESSION, remote->curr_sess_id);
-		packet_add_tlv_string(response, TLV_TYPE_DESKTOP_STATION, remote->curr_station_name);
-		packet_add_tlv_string(response, TLV_TYPE_DESKTOP_NAME, remote->curr_desktop_name);
+		met_api->packet.add_tlv_uint(response, TLV_TYPE_DESKTOP_SESSION, remote->curr_sess_id);
+		met_api->packet.add_tlv_string(response, TLV_TYPE_DESKTOP_STATION, remote->curr_station_name);
+		met_api->packet.add_tlv_string(response, TLV_TYPE_DESKTOP_NAME, remote->curr_desktop_name);
 
-		lock_release(remote->lock);
+		met_api->lock.release(remote->lock);
 
 	} while (0);
 
 	if (response)
 	{
-		packet_transmit_response(dwResult, remote, response);
+		met_api->packet.transmit_response(dwResult, remote, response);
 	}
 
 	return ERROR_SUCCESS;
@@ -164,13 +165,13 @@ DWORD request_ui_desktop_set(Remote * remote, Packet * request)
 
 	do
 	{
-		response = packet_create_response(request);
+		response = met_api->packet.create_response(request);
 		if (!response)
 		{
-			BREAK_WITH_ERROR("[UI] desktop_set. packet_create_response failed", ERROR_INVALID_HANDLE);
+			BREAK_WITH_ERROR("[UI] desktop_set. met_api->packet.create_response failed", ERROR_INVALID_HANDLE);
 		}
 
-		dwSessionId = packet_get_tlv_value_uint(request, TLV_TYPE_DESKTOP_SESSION);
+		dwSessionId = met_api->packet.get_tlv_value_uint(request, TLV_TYPE_DESKTOP_SESSION);
 		if (!dwSessionId)
 		{
 			BREAK_WITH_ERROR("[UI] desktop_set. no TLV_TYPE_DESKTOP_SESSION provided", ERROR_INVALID_PARAMETER);
@@ -181,19 +182,19 @@ DWORD request_ui_desktop_set(Remote * remote, Packet * request)
 			dwSessionId = session_id(GetCurrentProcessId());
 		}
 
-		cpStationName = packet_get_tlv_value_string(request, TLV_TYPE_DESKTOP_STATION);
+		cpStationName = met_api->packet.get_tlv_value_string(request, TLV_TYPE_DESKTOP_STATION);
 		if (!cpStationName)
 		{
 			BREAK_WITH_ERROR("[UI] desktop_set. no TLV_TYPE_DESKTOP_STATION provided", ERROR_INVALID_PARAMETER);
 		}
 
-		cpDesktopName = packet_get_tlv_value_string(request, TLV_TYPE_DESKTOP_NAME);
+		cpDesktopName = met_api->packet.get_tlv_value_string(request, TLV_TYPE_DESKTOP_NAME);
 		if (!cpDesktopName)
 		{
 			BREAK_WITH_ERROR("[UI] desktop_set. no TLV_TYPE_DESKTOP_NAME provided", ERROR_INVALID_PARAMETER);
 		}
 
-		bSwitch = packet_get_tlv_value_bool(request, TLV_TYPE_DESKTOP_SWITCH);
+		bSwitch = met_api->packet.get_tlv_value_bool(request, TLV_TYPE_DESKTOP_SWITCH);
 
 		dprintf("[UI] desktop_set: Session %d\\%s\\%s (bSwitch=%d)", dwSessionId, cpStationName, cpDesktopName, bSwitch);
 
@@ -240,7 +241,7 @@ DWORD request_ui_desktop_set(Remote * remote, Packet * request)
 				}
 			}
 
-			core_update_desktop(remote, dwSessionId, cpStationName, cpDesktopName);
+			met_api->desktop.update(remote, dwSessionId, cpStationName, cpDesktopName);
 		}
 		else
 		{
@@ -252,7 +253,7 @@ DWORD request_ui_desktop_set(Remote * remote, Packet * request)
 
 	if (response)
 	{
-		packet_transmit_response(dwResult, remote, response);
+		met_api->packet.transmit_response(dwResult, remote, response);
 	}
 
 	if (hDesktop)
@@ -272,7 +273,7 @@ DWORD request_ui_desktop_set(Remote * remote, Packet * request)
 
 	if (dwResult != ERROR_SUCCESS)
 	{
-		core_update_desktop(remote, -1, NULL, NULL);
+		met_api->desktop.update(remote, -1, NULL, NULL);
 	}
 
 	return ERROR_SUCCESS;
@@ -320,7 +321,7 @@ DWORD THREADCALL desktop_screenshot_thread(THREAD * thread)
 
 		while (TRUE)
 		{
-			if (event_poll(thread->sigterm, 0))
+			if (met_api->event.poll(thread->sigterm, 0))
 			{
 				BREAK_WITH_ERROR("[UI] desktop_screenshot_thread. thread->sigterm received", ERROR_DBG_TERMINATE_THREAD);
 			}
@@ -373,7 +374,7 @@ DWORD THREADCALL desktop_screenshot_thread(THREAD * thread)
 				dwTotal += dwRead;
 			}
 
-			dwResult = packet_add_tlv_raw(response, TLV_TYPE_DESKTOP_SCREENSHOT, pBuffer, dwTotal);
+			dwResult = met_api->packet.add_tlv_raw(response, TLV_TYPE_DESKTOP_SCREENSHOT, pBuffer, dwTotal);
 
 			break;
 		}
@@ -413,13 +414,13 @@ DWORD request_ui_desktop_screenshot(Remote * remote, Packet * request)
 
 	do
 	{
-		response = packet_create_response(request);
+		response = met_api->packet.create_response(request);
 		if (!response)
 		{
-			BREAK_WITH_ERROR("[UI] desktop_screenshot. packet_create_response failed", ERROR_INVALID_HANDLE);
+			BREAK_WITH_ERROR("[UI] desktop_screenshot. met_api->packet.create_response failed", ERROR_INVALID_HANDLE);
 		}
 
-		quality = packet_get_tlv_value_uint(request, TLV_TYPE_DESKTOP_SCREENSHOT_QUALITY);
+		quality = met_api->packet.get_tlv_value_uint(request, TLV_TYPE_DESKTOP_SCREENSHOT_QUALITY);
 		if (quality < 1 || quality > 100)
 		{
 			quality = 50;
@@ -428,11 +429,11 @@ DWORD request_ui_desktop_screenshot(Remote * remote, Packet * request)
 		// get the x86 and x64 screenshot dll's. we are not obliged to send both but we reduce the number of processes
 		// we can inject into (wow64 and x64) if we only send one type on an x64 system. If we are on an x86 system
 		// we dont need to send the x64 screenshot dll as there will be no x64 processes to inject it into.
-		DllBuffer.dwPE32DllLenght = packet_get_tlv_value_uint(request, TLV_TYPE_DESKTOP_SCREENSHOT_PE32DLL_LENGTH);
-		DllBuffer.lpPE32DllBuffer = packet_get_tlv_value_string(request, TLV_TYPE_DESKTOP_SCREENSHOT_PE32DLL_BUFFER);
+		DllBuffer.dwPE32DllLenght = met_api->packet.get_tlv_value_uint(request, TLV_TYPE_DESKTOP_SCREENSHOT_PE32DLL_LENGTH);
+		DllBuffer.lpPE32DllBuffer = met_api->packet.get_tlv_value_string(request, TLV_TYPE_DESKTOP_SCREENSHOT_PE32DLL_BUFFER);
 
-		DllBuffer.dwPE64DllLenght = packet_get_tlv_value_uint(request, TLV_TYPE_DESKTOP_SCREENSHOT_PE64DLL_LENGTH);
-		DllBuffer.lpPE64DllBuffer = packet_get_tlv_value_string(request, TLV_TYPE_DESKTOP_SCREENSHOT_PE64DLL_BUFFER);
+		DllBuffer.dwPE64DllLenght = met_api->packet.get_tlv_value_uint(request, TLV_TYPE_DESKTOP_SCREENSHOT_PE64DLL_LENGTH);
+		DllBuffer.lpPE64DllBuffer = met_api->packet.get_tlv_value_string(request, TLV_TYPE_DESKTOP_SCREENSHOT_PE64DLL_BUFFER);
 
 		if (!DllBuffer.lpPE32DllBuffer && !DllBuffer.lpPE64DllBuffer)
 		{
@@ -456,15 +457,15 @@ DWORD request_ui_desktop_screenshot(Remote * remote, Packet * request)
 		dprintf("[UI] desktop_screenshot. dwCurrentSessionId=%d, dwActiveSessionId=%d, cCommandLine=%s\n", dwCurrentSessionId, dwActiveSessionId, cCommandLine);
 
 		// start a thread to create a named pipe server and wait for a client to connect an send back the JPEG screenshot.
-		pPipeThread = thread_create(desktop_screenshot_thread, &cNamedPipe, response, NULL);
+		pPipeThread = met_api->thread.create(desktop_screenshot_thread, &cNamedPipe, response, NULL);
 		if (!pPipeThread)
 		{
-			BREAK_WITH_ERROR("[UI] desktop_screenshot. thread_create failed", ERROR_INVALID_HANDLE);
+			BREAK_WITH_ERROR("[UI] desktop_screenshot. met_api->thread.create failed", ERROR_INVALID_HANDLE);
 		}
 
-		if (!thread_run(pPipeThread))
+		if (!met_api->thread.run(pPipeThread))
 		{
-			BREAK_WITH_ERROR("[UI] desktop_screenshot. thread_run failed", ERROR_ACCESS_DENIED);
+			BREAK_WITH_ERROR("[UI] desktop_screenshot. met_api->thread.run failed", ERROR_ACCESS_DENIED);
 		}
 
 		Sleep(500);
@@ -493,10 +494,10 @@ DWORD request_ui_desktop_screenshot(Remote * remote, Packet * request)
 		WaitForSingleObject(pPipeThread->handle, 30000);
 
 		// signal our thread to terminate if it is still running.
-		thread_sigterm(pPipeThread);
+		met_api->thread.sigterm(pPipeThread);
 
 		// and wait for it to terminate...
-		thread_join(pPipeThread);
+		met_api->thread.join(pPipeThread);
 
 		// get the exit code for our pthread
 		if (!GetExitCodeThread(pPipeThread->handle, &dwResult))
@@ -508,14 +509,14 @@ DWORD request_ui_desktop_screenshot(Remote * remote, Packet * request)
 
 	if (response)
 	{
-		packet_transmit_response(dwResult, remote, response);
+		met_api->packet.transmit_response(dwResult, remote, response);
 	}
 
 	if (pPipeThread)
 	{
-		thread_sigterm(pPipeThread);
-		thread_join(pPipeThread);
-		thread_destroy(pPipeThread);
+		met_api->thread.sigterm(pPipeThread);
+		met_api->thread.join(pPipeThread);
+		met_api->thread.destroy(pPipeThread);
 	}
 
 	return dwResult;

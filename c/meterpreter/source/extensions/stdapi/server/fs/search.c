@@ -11,6 +11,7 @@
  */
 
 #include "precomp.h"
+#include "common_metapi.h"
 #include "fs.h"
 #include "fs_local.h"
 #include "search.h"
@@ -20,19 +21,19 @@
  */
 VOID search_add_result(Packet * pResponse, wchar_t *directory, wchar_t *fileName, DWORD dwFileSize)
 {
-	char *dir = wchar_to_utf8(directory);
-	char *file = wchar_to_utf8(fileName);
+	char *dir = met_api->string.wchar_to_utf8(directory);
+	char *file = met_api->string.wchar_to_utf8(fileName);
 
 	dprintf("[SEARCH] Found: %s\\%s", dir, file);
 
 	if (dir && file) {
-		Packet* group = packet_create_group();
+		Packet* group = met_api->packet.create_group();
 
-		packet_add_tlv_string(group, TLV_TYPE_FILE_PATH, dir);
-		packet_add_tlv_string(group, TLV_TYPE_FILE_NAME, file);
-		packet_add_tlv_uint(group, TLV_TYPE_FILE_SIZE, dwFileSize);
+		met_api->packet.add_tlv_string(group, TLV_TYPE_FILE_PATH, dir);
+		met_api->packet.add_tlv_string(group, TLV_TYPE_FILE_NAME, file);
+		met_api->packet.add_tlv_uint(group, TLV_TYPE_FILE_SIZE, dwFileSize);
 
-		packet_add_group(pResponse, TLV_TYPE_SEARCH_RESULTS, group);
+		met_api->packet.add_group(pResponse, TLV_TYPE_SEARCH_RESULTS, group);
 	}
 
 	free(dir);
@@ -799,17 +800,17 @@ DWORD request_fs_search(Remote * pRemote, Packet * pPacket)
 
 	dprintf("[SEARCH] request_fs_search. Starting.");
 
-	pResponse = packet_create_response(pPacket);
+	pResponse = met_api->packet.create_response(pPacket);
 	if (!pResponse) {
 		dprintf("[SEARCH] request_fs_search: pResponse == NULL");
 		return ERROR_INVALID_HANDLE;
 	}
 
-	options.rootDirectory = utf8_to_wchar(
-		packet_get_tlv_value_string(pPacket, TLV_TYPE_SEARCH_ROOT));
+	options.rootDirectory = met_api->string.utf8_to_wchar(
+		met_api->packet.get_tlv_value_string(pPacket, TLV_TYPE_SEARCH_ROOT));
 
-	options.glob = utf8_to_wchar(
-		packet_get_tlv_value_string(pPacket, TLV_TYPE_SEARCH_GLOB));
+	options.glob = met_api->string.utf8_to_wchar(
+		met_api->packet.get_tlv_value_string(pPacket, TLV_TYPE_SEARCH_GLOB));
 
 	if (options.rootDirectory && wcslen(options.rootDirectory) == 0) {
 		free(options.rootDirectory);
@@ -829,7 +830,7 @@ DWORD request_fs_search(Remote * pRemote, Packet * pPacket)
 
 	dprintf("[SEARCH] root: '%S' glob: '%S'", options.rootDirectory, options.glob);
 
-	options.bResursive = packet_get_tlv_value_bool(pPacket, TLV_TYPE_SEARCH_RECURSE);
+	options.bResursive = met_api->packet.get_tlv_value_bool(pPacket, TLV_TYPE_SEARCH_RECURSE);
 
 	if (!options.glob) {
 		options.glob = L"*.*";
@@ -870,7 +871,7 @@ DWORD request_fs_search(Remote * pRemote, Packet * pPacket)
 
 	if (pResponse)
 	{
-		dwResult = packet_transmit_response(dwResult, pRemote, pResponse);
+		dwResult = met_api->packet.transmit_response(dwResult, pRemote, pResponse);
 	}
 
 	wds_shutdown(&WDSInterface);
