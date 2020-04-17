@@ -27,6 +27,7 @@ Command customCommands[] =
 
 /*!
  * @brief Initialize the server extension.
+ * @param api Pointer to the Meterpreter API structure.
  * @param remote Pointer to the remote instance.
  * @return Indication of success or failure.
  */

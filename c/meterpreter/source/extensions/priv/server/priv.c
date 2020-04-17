@@ -28,6 +28,7 @@ Command customCommands[] =
 
 /*!
  * @brief Initialize the server extension.
+ * @param api Pointer to the Meterpreter API structure.
  * @param remote Pointer to the remote instance.
  * @return Indication of success or failure.
  */
@@ -35,7 +36,7 @@ DWORD __declspec(dllexport) InitServerExtension(MetApi* api, Remote *remote)
 {
     met_api = api;
 
-	met_api->command.register_all(customCommands);
+	met_api->command.register_all( customCommands );
 
 	return ERROR_SUCCESS;
 }
@@ -47,10 +48,11 @@ DWORD __declspec(dllexport) InitServerExtension(MetApi* api, Remote *remote)
  */
 DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
 {
-	met_api->command.deregister_all(customCommands);
+	met_api->command.deregister_all( customCommands );
 
 	return ERROR_SUCCESS;
 }
+
 
 /*!
  * @brief Get the name of the extension.
