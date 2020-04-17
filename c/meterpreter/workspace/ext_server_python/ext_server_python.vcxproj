@@ -84,7 +84,7 @@
       <Optimization>MinSpace</Optimization>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <IntrinsicFunctions>false</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\python\include;..\..\source\extensions\python\Modules\_ctypes\libffi_msvc;..\..\source\extensions\python\Modules\zlib;..\..\source\extensions\python\PC;..\..\source\extensions\python\Python;..\..\deps\libressl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\python\include;..\..\source\extensions\python\Modules\_ctypes\libffi_msvc;..\..\source\extensions\python\Modules\zlib;..\..\source\extensions\python\PC;..\..\source\extensions\python\Python;..\..\deps\libressl\include;..\..\source\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_PYTHON_EXPORTS;Py_BUILD_CORE;Py_ENABLE_SHARED;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -137,7 +137,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <Optimization>MinSpace</Optimization>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <IntrinsicFunctions>false</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\python\include;..\..\source\extensions\python\Modules\_ctypes\libffi_msvc;..\..\source\extensions\python\Modules\zlib;..\..\source\extensions\python\PC;..\..\source\extensions\python\Python;..\..\deps\libressl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\python\include;..\..\source\extensions\python\Modules\_ctypes\libffi_msvc;..\..\source\extensions\python\Modules\zlib;..\..\source\extensions\python\PC;..\..\source\extensions\python\Python;..\..\deps\libressl\include;..\..\source\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_PYTHON_EXPORTS;Py_BUILD_CORE;Py_ENABLE_SHARED;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -193,7 +193,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <Optimization>MaxSpeed</Optimization>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <IntrinsicFunctions>false</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\python\include;..\..\source\extensions\python\Modules\_ctypes\libffi_msvc;..\..\source\extensions\python\Modules\zlib;..\..\source\extensions\python\PC;..\..\source\extensions\python\Python;..\..\deps\libressl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\python\include;..\..\source\extensions\python\Modules\_ctypes\libffi_msvc;..\..\source\extensions\python\Modules\zlib;..\..\source\extensions\python\PC;..\..\source\extensions\python\Python;..\..\deps\libressl\include;..\..\source\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_PYTHON_EXPORTS;Py_BUILD_CORE;Py_ENABLE_SHARED;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -246,7 +246,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <Optimization>MaxSpeed</Optimization>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <IntrinsicFunctions>false</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\python\include;..\..\source\extensions\python\Modules\_ctypes\libffi_msvc;..\..\source\extensions\python\Modules\zlib;..\..\source\extensions\python\PC;..\..\source\extensions\python\Python;..\..\deps\libressl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\python\include;..\..\source\extensions\python\Modules\_ctypes\libffi_msvc;..\..\source\extensions\python\Modules\zlib;..\..\source\extensions\python\PC;..\..\source\extensions\python\Python;..\..\deps\libressl\include;..\..\source\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_PYTHON_EXPORTS;Py_BUILD_CORE;Py_ENABLE_SHARED;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>

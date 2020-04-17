@@ -14,7 +14,7 @@ LPVOID list_get(PLIST pList, DWORD index);
 BOOL list_clear(PLIST pList, PCLEARFUNC pFunc);
 BOOL list_add(PLIST pList, LPVOID data);
 BOOL list_remove(PLIST pList, LPVOID data);
-BOOL list_delete(PLIST pList, DWORD index);
+BOOL list_remove_at(PLIST pList, DWORD index);
 BOOL list_push(PLIST pList, LPVOID data);
 LPVOID list_pop(PLIST pList);
 LPVOID list_shift(PLIST pList);

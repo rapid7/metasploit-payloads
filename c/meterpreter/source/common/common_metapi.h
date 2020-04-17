@@ -132,6 +132,7 @@ typedef struct _CommandApi
 {
 	void(*deregister_all)(Command commands[]);
 	void(*register_all)(Command commands[]);
+	BOOL(*handle)(Remote* remote, Packet* packet);
 } CommandApi;
 
 typedef struct _StringApi
@@ -139,6 +140,22 @@ typedef struct _StringApi
 	wchar_t*(*utf8_to_wchar)(const char* in);
 	char*(*wchar_to_utf8)(const wchar_t* in);
 } StringApi;
+
+typedef struct _ListApi
+{
+	BOOL(*add)(PLIST pList, LPVOID data);
+	BOOL(*clear)(PLIST pList, PCLEARFUNC pFunc);
+	BOOL(*enumerate)(PLIST pList, PLISTENUMCALLBACK pCallback, LPVOID pState);
+	BOOL(*push)(PLIST pList, LPVOID data);
+	BOOL(*remove)(PLIST pList, LPVOID data);
+	BOOL(*remove_at)(PLIST pList, DWORD index);
+	DWORD(*count)(PLIST pList);
+	LIST*(*create)(VOID);
+	LPVOID(*get)(PLIST pList, DWORD index);
+	LPVOID(*pop)(PLIST pList);
+	LPVOID(*shift)(PLIST pList);
+	VOID(*destroy)(PLIST pList);
+} ListApi;
 
 typedef struct _MetApi
 {
@@ -152,6 +169,7 @@ typedef struct _MetApi
 	StringApi string;
 	InjectApi inject;
 	DesktopApi desktop;
+	ListApi list;
 } MetApi;
 
 extern MetApi* met_api;

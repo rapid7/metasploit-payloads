@@ -2,12 +2,12 @@
  * @file python_main.c
  * @brief Entry point and intialisation definitions for the python extension.
  */
-#include "../../common/common.h"
+#include "common.h"
+#include "common_metapi.h"
 
-#include "../../DelayLoadMetSrv/DelayLoadMetSrv.h"
-// include the Reflectiveloader() function, we end up linking back to the metsrv.dll's Init function
-// but this doesnt matter as we wont ever call DLL_METASPLOIT_ATTACH as that is only used by the
-// second stage reflective dll inject payload and not the metsrv itself when it loads extensions.
+// Required so that use of the API works.
+MetApi* met_api = NULL;
+
 #define REFLECTIVEDLLINJECTION_CUSTOM_DLLMAIN
 #include "../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
 
@@ -19,9 +19,6 @@ extern BOOL WINAPI PythonDllMain(HANDLE hInst, ULONG ul_reason_for_call, LPVOID 
 extern BOOL WINAPI CtypesDllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvRes);
 
 Remote* gRemote = NULL;
-
-// this sets the delay load hook function, see DelayLoadMetSrv.h
-EnableDelayLoadMetSrv();
 
 /*! @brief List of commands that the extended API extension providers. */
 Command customCommands[] =
@@ -67,12 +64,15 @@ VOID __declspec(dllexport) CommandAdded(const char* commandName)
 
 /*!
  * @brief Initialize the server extension.
+ * @param api Pointer to the Meterpreter API structure.
  * @param remote Pointer to the remote instance.
  * @return Indication of success or failure.
  */
-DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
+DWORD __declspec(dllexport) InitServerExtension(MetApi* api, Remote* remote)
 {
-	hMetSrv = remote->met_srv;
+    met_api = api;
+
+    met_api->command.register_all(customCommands);
 	gRemote = remote;
 
 	dprintf("[PYTHON] Initialising");
@@ -80,7 +80,7 @@ DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
 
 	python_prepare_session();
 	dprintf("[PYTHON] Registering commands");
-	command_register_all(customCommands);
+    met_api->command.register_all(customCommands);
 
 	return ERROR_SUCCESS;
 }
@@ -92,7 +92,7 @@ DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
  */
 DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
 {
-	command_deregister_all(customCommands);
+	met_api->command.deregister_all(customCommands);
 
 	python_destroy_session();
 

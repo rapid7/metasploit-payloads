@@ -250,7 +250,7 @@ BOOL list_remove(PLIST pList, LPVOID data)
  * @param index Index of the item to remove.
  * @returns Indication of success or failure.
  */
-BOOL list_delete(PLIST pList, DWORD index)
+BOOL list_remove_at(PLIST pList, DWORD index)
 {
 	BOOL result = FALSE;
 	LPVOID data = NULL;

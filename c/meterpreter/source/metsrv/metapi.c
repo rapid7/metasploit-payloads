@@ -46,6 +46,7 @@ MetApi api_instance = {
 	{
 		command_deregister_all,
 		command_register_all,
+		command_handle,
 	},
 	// ThreadApi
 	{
@@ -128,6 +129,21 @@ MetApi api_instance = {
 	// DesktopApi
 	{
 		core_update_desktop,
+	},
+	// ListApi
+	{
+		list_add,
+		list_clear,
+		list_enumerate,
+		list_push,
+		list_remove,
+		list_remove_at,
+		list_count,
+		list_create,
+		list_get,
+		list_pop,
+		list_shift,
+		list_destroy,
 	},
 };
 

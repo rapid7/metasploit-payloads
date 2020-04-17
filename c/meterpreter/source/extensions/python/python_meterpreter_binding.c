@@ -2,7 +2,8 @@
  * @file python_meterpreter_binding.c
  * @brief Definitions for functions that support meterpreter bindings.
  */
-#include "../../common/common.h"
+#include "common.h"
+#include "common_metapi.h"
 #include "python_main.h"
 #include "Python.h"
 
@@ -31,7 +32,7 @@ static PyObject* binding_invoke(PyObject* self, PyObject* args)
 	// and so that the packet doesn't get sent to Meterpreter
 	packet.local = isLocal;
 
-	command_handle(gRemote, &packet);
+	met_api->command.handle(gRemote, &packet);
 
 	// really not sure how to deal with the non-local responses at this point.
 	if (packet.partner == NULL)
@@ -41,7 +42,7 @@ static PyObject* binding_invoke(PyObject* self, PyObject* args)
 	}
 
 	PyObject* result = PyString_FromStringAndSize(packet.partner->payload, packet.partner->payloadLength);
-	packet_destroy(packet.partner);
+	met_api->packet.destroy(packet.partner);
 	return result;
 }
 
@@ -62,7 +63,7 @@ VOID binding_startup()
 {
 	if (gBoundCommandList == NULL)
 	{
-		gBoundCommandList = list_create();
+		gBoundCommandList = met_api->list.create();
 	}
 }
 
@@ -73,7 +74,7 @@ VOID binding_add_command(const char* commandName)
 	// only add non-core commands
 	if (_strnicmp("core_", commandName, 5) != 0)
 	{
-		list_add(gBoundCommandList, (char*)commandName);
+		met_api->list.add(gBoundCommandList, (char*)commandName);
 		binding_insert_command(commandName);
 	}
 }
