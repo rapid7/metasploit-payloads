@@ -5,9 +5,6 @@
 #include "common.h"
 #include "common_metapi.h"
 
-// include the Reflectiveloader() function, we end up linking back to the metsrv.dll's Init function
-// but this doesnt matter as we wont ever call DLL_METASPLOIT_ATTACH as that is only used by the 
-// second stage reflective dll inject payload and not the metsrv itself when it loads extensions.
 #include "../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
 
 #include "unhook.h"
@@ -67,4 +64,16 @@ DWORD unhook_pe(Remote *remote, Packet *packet)
 
 	return ERROR_SUCCESS;
 
+}
+
+/*!
+ * @brief Get the name of the extension.
+ * @param buffer Pointer to the buffer to write the name to.
+ * @param bufferSize Size of the \c buffer parameter.
+ * @return Indication of success or failure.
+ */
+DWORD __declspec(dllexport) GetExtensionName(char* buffer, int bufferSize)
+{
+	strncpy_s(buffer, bufferSize, "unhook", bufferSize - 1);
+	return ERROR_SUCCESS;
 }

