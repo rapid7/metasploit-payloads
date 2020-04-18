@@ -5,8 +5,6 @@
 #include "common.h"
 #include "common_metapi.h"
 #include "espia.h"
-#include "audio.h"
-#include "video.h"
 #include "screen.h"
 
 // Required so that use of the API works.
@@ -16,8 +14,6 @@ MetApi* met_api = NULL;
 
 Command customCommands[] =
 {
-	COMMAND_REQ( "espia_video_get_dev_image", request_video_get_dev_image ),
-	COMMAND_REQ( "espia_audio_get_dev_audio", request_audio_get_dev_audio ),
 	COMMAND_REQ( "espia_image_get_dev_screen", request_image_get_dev_screen ),
 	COMMAND_TERMINATOR
 };

@@ -290,21 +290,12 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\source\extensions\espia\audio.c" />
     <ClCompile Include="..\..\source\extensions\espia\espia.c" />
     <ClCompile Include="..\..\source\extensions\espia\screen.c" />
-    <ClCompile Include="..\..\source\extensions\espia\video.c" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\source\extensions\espia\audio.h" />
     <ClInclude Include="..\..\source\extensions\espia\espia.h" />
     <ClInclude Include="..\..\source\extensions\espia\screen.h" />
-    <ClInclude Include="..\..\source\extensions\espia\video.h" />
-    <ClInclude Include="..\..\source\extensions\incognito\hash_stealer.h" />
-    <ClInclude Include="..\..\source\extensions\incognito\incognito.h" />
-    <ClInclude Include="..\..\source\extensions\incognito\list_tokens.h" />
-    <ClInclude Include="..\..\source\extensions\incognito\token_info.h" />
-    <ClInclude Include="..\..\source\extensions\incognito\user_management.h" />
   </ItemGroup>
   <Choose>
     <When Condition="'$(Platform)'=='Win32'">
