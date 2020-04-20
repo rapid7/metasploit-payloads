@@ -91,7 +91,7 @@
     </ResourceCompile>
     <Link>
       <AdditionalDependencies>backcompat.lib;pssdk_$(PssdkVersion)_mt.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\backcompat\$(Configuration);..\metsrv\$(Configuration)\$(Platform);..\..\..\..\..\pssdk\PSSDK_$(PssdkVersion)_LIB\_Libs;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\backcompat\$(Configuration);..\..\..\..\..\pssdk\PSSDK_$(PssdkVersion)_LIB\_Libs;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <DelayLoadDLLs>
       </DelayLoadDLLs>
@@ -153,7 +153,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <Link>
       <AdditionalDependencies>pssdk_$(PssdkVersion)_mt.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <AdditionalLibraryDirectories>..\metsrv\$(Configuration)\$(Platform);..\..\..\..\..\pssdk\PSSDK_$(PssdkVersion)_LIB\_Libs64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\..\..\..\..\pssdk\PSSDK_$(PssdkVersion)_LIB\_Libs64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <DelayLoadDLLs>
       </DelayLoadDLLs>
       <ProgramDatabaseFile>$(OutDir)\ext_server_sniffer.pdb</ProgramDatabaseFile>
@@ -196,10 +196,6 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     </When>
   </Choose>
   <ItemGroup>
-    <ProjectReference Include="..\metsrv\metsrv.vcxproj">
-      <Project>{37e24f8f-1bd9-490b-8cd2-4768b89e5eab}</Project>
-      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
-    </ProjectReference>
     <ProjectReference Include="..\ReflectiveDLLInjection\ReflectiveDLLInjection.vcxproj">
       <Project>{72f0246a-a38d-4547-9057-46020e8e503d}</Project>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>

@@ -11,15 +11,10 @@
 
 extern Command* extensionCommands;
 
-// include the Reflectiveloader() function
-#include "../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
-
 int exceptionfilter(unsigned int code, struct _EXCEPTION_POINTERS *ep)
 {
 	return EXCEPTION_EXECUTE_HANDLER;
 }
-
-#define InitAppInstance() { if( hAppInstance == NULL ) hAppInstance = GetModuleHandle( NULL ); }
 
 /*!
  * @brief Get the session id that this meterpreter server is running in.
@@ -323,11 +318,6 @@ DWORD server_setup(MetsrvConfig* config)
 		config->session.session_guid[12], config->session.session_guid[13], config->session.session_guid[14], config->session.session_guid[15]);
 
 	disable_thread_error_reporting();
-
-	// if hAppInstance is still == NULL it means that we havent been
-	// reflectivly loaded so we must patch in the hAppInstance value
-	// for use with loading server extensions later.
-	InitAppInstance();
 
 	srand((unsigned int)time(NULL));
 

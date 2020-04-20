@@ -126,9 +126,9 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>version.lib;ncrypt.lib;fltlib.lib;cabinet.lib;userenv.lib;Winscard.lib;advapi32.lib;crypt32.lib;cryptdll.lib;dnsapi.lib;msxml2.lib;netapi32.lib;ntdsapi.lib;ole32.lib;oleaut32.lib;rpcrt4.lib;shlwapi.lib;samlib.lib;secur32.lib;shell32.lib;user32.lib;hid.lib;setupapi.lib;wldap32.lib;advapi32.hash.lib;ntdll.min.lib;msasn1.min.lib;netapi32.min.lib;winsta.lib;backcompat.lib;metsrv.lib;psapi.lib;advapi32.lib;user32.lib;secur32.lib;crypt32.lib;shlwapi.lib;wtsapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>version.lib;ncrypt.lib;fltlib.lib;cabinet.lib;userenv.lib;Winscard.lib;advapi32.lib;crypt32.lib;cryptdll.lib;dnsapi.lib;msxml2.lib;netapi32.lib;ntdsapi.lib;ole32.lib;oleaut32.lib;rpcrt4.lib;shlwapi.lib;samlib.lib;secur32.lib;shell32.lib;user32.lib;hid.lib;setupapi.lib;wldap32.lib;advapi32.hash.lib;ntdll.min.lib;msasn1.min.lib;netapi32.min.lib;winsta.lib;backcompat.lib;psapi.lib;advapi32.lib;user32.lib;secur32.lib;crypt32.lib;shlwapi.lib;wtsapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
-      <AdditionalLibraryDirectories>..\..\source\extensions\kiwi\mimikatz\lib\Win32;..\backcompat\$(Configuration);..\metsrv\$(Configuration)\$(Platform);..\..\source\jpeg-8\lib\win\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\..\source\extensions\kiwi\mimikatz\lib\Win32;..\backcompat\$(Configuration);..\..\source\jpeg-8\lib\win\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <DelayLoadDLLs>
       </DelayLoadDLLs>
       <GenerateDebugInformation>false</GenerateDebugInformation>
@@ -178,9 +178,9 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>version.lib;ncrypt.lib;fltlib.lib;cabinet.lib;userenv.lib;Winscard.lib;advapi32.lib;crypt32.lib;cryptdll.lib;dnsapi.lib;msxml2.lib;netapi32.lib;ntdsapi.lib;ole32.lib;oleaut32.lib;rpcrt4.lib;shlwapi.lib;samlib.lib;secur32.lib;shell32.lib;user32.lib;hid.lib;setupapi.lib;wldap32.lib;advapi32.hash.lib;ntdll.min.lib;msasn1.min.lib;netapi32.min.lib;winsta.lib;backcompat.lib;metsrv.lib;psapi.lib;advapi32.lib;user32.lib;secur32.lib;crypt32.lib;shlwapi.lib;wtsapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>version.lib;ncrypt.lib;fltlib.lib;cabinet.lib;userenv.lib;Winscard.lib;advapi32.lib;crypt32.lib;cryptdll.lib;dnsapi.lib;msxml2.lib;netapi32.lib;ntdsapi.lib;ole32.lib;oleaut32.lib;rpcrt4.lib;shlwapi.lib;samlib.lib;secur32.lib;shell32.lib;user32.lib;hid.lib;setupapi.lib;wldap32.lib;advapi32.hash.lib;ntdll.min.lib;msasn1.min.lib;netapi32.min.lib;winsta.lib;backcompat.lib;psapi.lib;advapi32.lib;user32.lib;secur32.lib;crypt32.lib;shlwapi.lib;wtsapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
-      <AdditionalLibraryDirectories>..\..\source\extensions\kiwi\mimikatz\lib\Win32;..\backcompat\$(Configuration);..\metsrv\$(Configuration)\$(Platform);..\..\source\jpeg-8\lib\win\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\..\source\extensions\kiwi\mimikatz\lib\Win32;..\backcompat\$(Configuration);..\..\source\jpeg-8\lib\win\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <DelayLoadDLLs>
       </DelayLoadDLLs>
       <GenerateDebugInformation>false</GenerateDebugInformation>
@@ -234,9 +234,9 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>version.lib;ncrypt.lib;fltlib.lib;cabinet.lib;userenv.lib;Winscard.lib;advapi32.lib;crypt32.lib;cryptdll.lib;dnsapi.lib;msxml2.lib;netapi32.lib;ntdsapi.lib;ole32.lib;oleaut32.lib;rpcrt4.lib;shlwapi.lib;samlib.lib;secur32.lib;shell32.lib;user32.lib;hid.lib;setupapi.lib;wldap32.lib;advapi32.hash.lib;ntdll.min.lib;msasn1.min.lib;netapi32.min.lib;winsta.lib;metsrv.lib;psapi.lib;advapi32.lib;user32.lib;secur32.lib;crypt32.lib;shlwapi.lib;wtsapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>version.lib;ncrypt.lib;fltlib.lib;cabinet.lib;userenv.lib;Winscard.lib;advapi32.lib;crypt32.lib;cryptdll.lib;dnsapi.lib;msxml2.lib;netapi32.lib;ntdsapi.lib;ole32.lib;oleaut32.lib;rpcrt4.lib;shlwapi.lib;samlib.lib;secur32.lib;shell32.lib;user32.lib;hid.lib;setupapi.lib;wldap32.lib;advapi32.hash.lib;ntdll.min.lib;msasn1.min.lib;netapi32.min.lib;winsta.lib;psapi.lib;advapi32.lib;user32.lib;secur32.lib;crypt32.lib;shlwapi.lib;wtsapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
-      <AdditionalLibraryDirectories>..\..\source\extensions\kiwi\mimikatz\lib\x64;..\metsrv\$(Configuration)\$(Platform);..\..\source\jpeg-8\lib\win\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\..\source\extensions\kiwi\mimikatz\lib\x64;..\..\source\jpeg-8\lib\win\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <DelayLoadDLLs>
       </DelayLoadDLLs>
       <GenerateDebugInformation>false</GenerateDebugInformation>
@@ -290,9 +290,9 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>version.lib;ncrypt.lib;fltlib.lib;cabinet.lib;userenv.lib;Winscard.lib;advapi32.lib;crypt32.lib;cryptdll.lib;dnsapi.lib;msxml2.lib;netapi32.lib;ntdsapi.lib;ole32.lib;oleaut32.lib;rpcrt4.lib;shlwapi.lib;samlib.lib;secur32.lib;shell32.lib;user32.lib;hid.lib;setupapi.lib;wldap32.lib;advapi32.hash.lib;ntdll.min.lib;msasn1.min.lib;netapi32.min.lib;winsta.lib;metsrv.lib;psapi.lib;advapi32.lib;user32.lib;secur32.lib;crypt32.lib;shlwapi.lib;wtsapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>version.lib;ncrypt.lib;fltlib.lib;cabinet.lib;userenv.lib;Winscard.lib;advapi32.lib;crypt32.lib;cryptdll.lib;dnsapi.lib;msxml2.lib;netapi32.lib;ntdsapi.lib;ole32.lib;oleaut32.lib;rpcrt4.lib;shlwapi.lib;samlib.lib;secur32.lib;shell32.lib;user32.lib;hid.lib;setupapi.lib;wldap32.lib;advapi32.hash.lib;ntdll.min.lib;msasn1.min.lib;netapi32.min.lib;winsta.lib;psapi.lib;advapi32.lib;user32.lib;secur32.lib;crypt32.lib;shlwapi.lib;wtsapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
-      <AdditionalLibraryDirectories>..\..\source\extensions\kiwi\mimikatz\lib\x64;..\metsrv\$(Configuration)\$(Platform);..\..\source\jpeg-8\lib\win\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\..\source\extensions\kiwi\mimikatz\lib\x64;..\..\source\jpeg-8\lib\win\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <DelayLoadDLLs>
       </DelayLoadDLLs>
       <GenerateDebugInformation>false</GenerateDebugInformation>
@@ -328,10 +328,6 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     </When>
   </Choose>
   <ItemGroup>
-    <ProjectReference Include="..\metsrv\metsrv.vcxproj">
-      <Project>{37e24f8f-1bd9-490b-8cd2-4768b89e5eab}</Project>
-      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
-    </ProjectReference>
     <ProjectReference Include="..\ReflectiveDLLInjection\ReflectiveDLLInjection.vcxproj">
       <Project>{72f0246a-a38d-4547-9057-46020e8e503d}</Project>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>

