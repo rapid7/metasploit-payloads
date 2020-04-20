@@ -13,7 +13,6 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{BF0C0D6E-9119-4518-A3BC-2CF99C0E27D9}</ProjectGuid>
     <RootNamespace>ext_server_sniffer</RootNamespace>
-    <PssdkVersion>vc19</PssdkVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='r7_release|Win32'" Label="Configuration">

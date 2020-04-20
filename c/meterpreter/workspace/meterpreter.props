@@ -5,6 +5,15 @@
   <PropertyGroup>
       <XPDeprecationWarning>false</XPDeprecationWarning>
   </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(VisualStudioVersion)'=='12.0'">
+      <PlatformToolset>v120_xp</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Label="Globals" Condition="'$(PlatformToolset)'=='v120_xp'">
+    <PssdkVersion>vc12</PssdkVersion>
+  </PropertyGroup>
+  <PropertyGroup Label="Globals" Condition="'$(PlatformToolset)'!='v120_xp'">
+    <PssdkVersion>vc19</PssdkVersion>
+  </PropertyGroup>
   <ItemDefinitionGroup />
   <ItemGroup />
 </Project>

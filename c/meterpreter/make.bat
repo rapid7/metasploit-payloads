@@ -10,6 +10,16 @@ IF NOT EXIST "source\ReflectiveDLLInjection\.git" (
 )
 
 SET PSSDK_VER=19
+SET PTS_VER=v141_xp
+
+IF "%1"=="v120_xp" SET PTS_VER=%1
+IF "%2"=="v120_xp" SET PTS_VER=%2
+IF "%3"=="v120_xp" SET PTS_VER=%3
+
+IF "%VisualStudioVersion%" == "12.0" (
+    SET PSSDK_VER=12
+    SET PTS_VER=v120_xp
+)
 
 SET PREF=
 IF EXIST "..\..\..\pssdk\PSSDK_VC%PSSDK_VER%_LIB\_Libs\pssdk_vc%PSSDK_VER%_mt.lib" SET PREF=r7_
@@ -35,7 +45,7 @@ GOTO RUN
 
 :RUN
 PUSHD workspace
-msbuild.exe make.msbuild /target:%PREF%%PLAT%
+msbuild.exe make.msbuild /target:%PREF%%PLAT% /p:PlatformToolset=%PTS_VER%
 POPD
 
 IF "%ERRORLEVEL%" == "0" (
@@ -75,6 +85,6 @@ GOTO END
 
 :NEED_VS
 ECHO "This command must be executed from within a Visual Studio Command prompt."
-ECHO "This can be found under Microsoft Visual Studio 2019 -> Visual Studio Tools"
+ECHO "This can be found under Microsoft Visual Studio (2013|2019) -> Visual Studio Tools"
 
 :END
