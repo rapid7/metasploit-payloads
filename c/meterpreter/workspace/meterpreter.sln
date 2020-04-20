@@ -52,7 +52,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ext_server_peinjector", "ex
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ext_server_unhook", "ext_server_unhook\ext_server_unhook.vcxproj", "{561E26D9-7E79-4EF4-8AA2-A770F81568A7}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "jpeg", "..\source\jpeg-8\jpeg.vcxproj", "{E61592E1-28F4-4AFC-9EE1-9BE833A061C1}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "jpeg", "jpeg\jpeg.vcxproj", "{E61592E1-28F4-4AFC-9EE1-9BE833A061C1}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

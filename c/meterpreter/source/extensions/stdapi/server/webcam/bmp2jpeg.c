@@ -2,7 +2,6 @@
 #include <windows.h>
 #include "precomp.h"
 #include "bmp2jpeg.h"
-#pragma comment(lib, "jpeg.lib")
 
 /*
  * Please Note: bmp2jpeg.c and bmp2jpeg.h have been coppied over from screen.c

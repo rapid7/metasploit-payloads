@@ -146,10 +146,8 @@
     </Bscmake>
     <PostBuildEvent>
       <Command>editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,4.0 "$(TargetDir)$(TargetFileName)" &gt; NUL
-IF EXIST "$(ProjectDir)..\..\output\$(PlatformShortName)\" GOTO COPY
-    mkdir "$(ProjectDir)..\..\output\$(PlatformShortName)\"
-:COPY
-copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformShortName)\"</Command>
+IF NOT EXIST "$(ProjectDir)..\..\output\" mkdir "$(ProjectDir)..\..\output\"
+copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='r7_release|Win32'">
@@ -214,10 +212,8 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     </Bscmake>
     <PostBuildEvent>
       <Command>editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,4.0 "$(TargetDir)$(TargetFileName)" &gt; NUL
-IF EXIST "$(ProjectDir)..\..\output\$(PlatformShortName)\" GOTO COPY
-    mkdir "$(ProjectDir)..\..\output\$(PlatformShortName)\"
-:COPY
-copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformShortName)\"</Command>
+IF NOT EXIST "$(ProjectDir)..\..\output\" mkdir "$(ProjectDir)..\..\output\"
+copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -281,10 +277,8 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     </Bscmake>
     <PostBuildEvent>
       <Command>editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,5.02 "$(TargetDir)$(TargetFileName)" &gt; NUL
-IF EXIST "$(ProjectDir)..\..\output\$(PlatformShortName)\" GOTO COPY
-    mkdir "$(ProjectDir)..\..\output\$(PlatformShortName)\"
-:COPY
-copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformShortName)\"</Command>
+IF NOT EXIST "$(ProjectDir)..\..\output\" mkdir "$(ProjectDir)..\..\output\"
+copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='r7_release|x64'">
@@ -348,10 +342,8 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformSho
     </Bscmake>
     <PostBuildEvent>
       <Command>editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,5.02 "$(TargetDir)$(TargetFileName)" &gt; NUL
-IF EXIST "$(ProjectDir)..\..\output\$(PlatformShortName)\" GOTO COPY
-    mkdir "$(ProjectDir)..\..\output\$(PlatformShortName)\"
-:COPY
-copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(PlatformShortName)\"</Command>
+IF NOT EXIST "$(ProjectDir)..\..\output\" mkdir "$(ProjectDir)..\..\output\"
+copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>

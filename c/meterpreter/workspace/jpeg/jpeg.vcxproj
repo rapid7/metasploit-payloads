@@ -14,6 +14,7 @@
     <ProjectGuid>{E61592E1-28F4-4AFC-9EE1-9BE833A061C1}</ProjectGuid>
     <RootNamespace>jpeg</RootNamespace>
     <Keyword>Win32Proj</Keyword>
+    <WindowsTargetPlatformVersion>7.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
@@ -33,23 +34,25 @@
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    <Import Project="..\..\workspace\meterpreter.props" />
+    <Import Project="..\meterpreter.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    <Import Project="..\..\workspace\meterpreter.props" />
+    <Import Project="..\meterpreter.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
     <_ProjectFileVersion>11.0.60610.1</_ProjectFileVersion>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <OutDir>$(SolutionDir)$(Configuration)\</OutDir>
-    <IntDir>$(Configuration)\</IntDir>
+    <OutDir>.\$(Configuration)\$(Platform)\</OutDir>
+    <IntDir>.\$(Configuration)\$(Platform)\</IntDir>
+    <TargetName>$(ProjectName).$(PlatformShortName)</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <OutDir>$(SolutionDir)$(Platform)\$(Configuration)\</OutDir>
-    <IntDir>$(Platform)\$(Configuration)\</IntDir>
+    <OutDir>.\$(Configuration)\$(Platform)\</OutDir>
+    <IntDir>.\$(Configuration)\$(Platform)\</IntDir>
+    <TargetName>$(ProjectName).$(PlatformShortName)</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -71,7 +74,9 @@
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
     </Lib>
     <PostBuildEvent>
-      <Command>copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)\lib\win\x86\"</Command>
+      <Command>editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,4.0 "$(TargetDir)$(TargetFileName)" &gt; NUL
+IF NOT EXIST "$(ProjectDir)..\..\lib\" mkdir "$(ProjectDir)..\..\lib\"
+copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\lib\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -97,67 +102,69 @@
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
     </Lib>
     <PostBuildEvent>
-      <Command>copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)\lib\win\x64\"</Command>
+      <Command>editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,5.02 "$(TargetDir)$(TargetFileName)" &gt; NUL
+IF NOT EXIST "$(ProjectDir)..\..\lib\" mkdir "$(ProjectDir)..\..\lib\"
+copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\lib\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="jaricom.c" />
-    <ClCompile Include="jcapimin.c" />
-    <ClCompile Include="jcapistd.c" />
-    <ClCompile Include="jcarith.c" />
-    <ClCompile Include="jccoefct.c" />
-    <ClCompile Include="jccolor.c" />
-    <ClCompile Include="jcdctmgr.c" />
-    <ClCompile Include="jchuff.c" />
-    <ClCompile Include="jcinit.c" />
-    <ClCompile Include="jcmainct.c" />
-    <ClCompile Include="jcmarker.c" />
-    <ClCompile Include="jcmaster.c" />
-    <ClCompile Include="jcomapi.c" />
-    <ClCompile Include="jcparam.c" />
-    <ClCompile Include="jcprepct.c" />
-    <ClCompile Include="jcsample.c" />
-    <ClCompile Include="jctrans.c" />
-    <ClCompile Include="jdapimin.c" />
-    <ClCompile Include="jdapistd.c" />
-    <ClCompile Include="jdarith.c" />
-    <ClCompile Include="jdatadst.c" />
-    <ClCompile Include="jdatasrc.c" />
-    <ClCompile Include="jdcoefct.c" />
-    <ClCompile Include="jdcolor.c" />
-    <ClCompile Include="jddctmgr.c" />
-    <ClCompile Include="jdhuff.c" />
-    <ClCompile Include="jdinput.c" />
-    <ClCompile Include="jdmainct.c" />
-    <ClCompile Include="jdmarker.c" />
-    <ClCompile Include="jdmaster.c" />
-    <ClCompile Include="jdmerge.c" />
-    <ClCompile Include="jdpostct.c" />
-    <ClCompile Include="jdsample.c" />
-    <ClCompile Include="jdtrans.c" />
-    <ClCompile Include="jerror.c" />
-    <ClCompile Include="jfdctflt.c" />
-    <ClCompile Include="jfdctfst.c" />
-    <ClCompile Include="jfdctint.c" />
-    <ClCompile Include="jidctflt.c" />
-    <ClCompile Include="jidctfst.c" />
-    <ClCompile Include="jidctint.c" />
-    <ClCompile Include="jmemmgr.c" />
-    <ClCompile Include="jmemnobs.c" />
-    <ClCompile Include="jquant1.c" />
-    <ClCompile Include="jquant2.c" />
-    <ClCompile Include="jutils.c" />
+    <ClCompile Include="..\..\source\jpeg-8\jaricom.c" />
+    <ClCompile Include="..\..\source\jpeg-8\jcapimin.c" />
+    <ClCompile Include="..\..\source\jpeg-8\jcapistd.c" />
+    <ClCompile Include="..\..\source\jpeg-8\jcarith.c" />
+    <ClCompile Include="..\..\source\jpeg-8\jccoefct.c" />
+    <ClCompile Include="..\..\source\jpeg-8\jccolor.c" />
+    <ClCompile Include="..\..\source\jpeg-8\jcdctmgr.c" />
+    <ClCompile Include="..\..\source\jpeg-8\jchuff.c" />
+    <ClCompile Include="..\..\source\jpeg-8\jcinit.c" />
+    <ClCompile Include="..\..\source\jpeg-8\jcmainct.c" />
+    <ClCompile Include="..\..\source\jpeg-8\jcmarker.c" />
+    <ClCompile Include="..\..\source\jpeg-8\jcmaster.c" />
+    <ClCompile Include="..\..\source\jpeg-8\jcomapi.c" />
+    <ClCompile Include="..\..\source\jpeg-8\jcparam.c" />
+    <ClCompile Include="..\..\source\jpeg-8\jcprepct.c" />
+    <ClCompile Include="..\..\source\jpeg-8\jcsample.c" />
+    <ClCompile Include="..\..\source\jpeg-8\jctrans.c" />
+    <ClCompile Include="..\..\source\jpeg-8\jdapimin.c" />
+    <ClCompile Include="..\..\source\jpeg-8\jdapistd.c" />
+    <ClCompile Include="..\..\source\jpeg-8\jdarith.c" />
+    <ClCompile Include="..\..\source\jpeg-8\jdatadst.c" />
+    <ClCompile Include="..\..\source\jpeg-8\jdatasrc.c" />
+    <ClCompile Include="..\..\source\jpeg-8\jdcoefct.c" />
+    <ClCompile Include="..\..\source\jpeg-8\jdcolor.c" />
+    <ClCompile Include="..\..\source\jpeg-8\jddctmgr.c" />
+    <ClCompile Include="..\..\source\jpeg-8\jdhuff.c" />
+    <ClCompile Include="..\..\source\jpeg-8\jdinput.c" />
+    <ClCompile Include="..\..\source\jpeg-8\jdmainct.c" />
+    <ClCompile Include="..\..\source\jpeg-8\jdmarker.c" />
+    <ClCompile Include="..\..\source\jpeg-8\jdmaster.c" />
+    <ClCompile Include="..\..\source\jpeg-8\jdmerge.c" />
+    <ClCompile Include="..\..\source\jpeg-8\jdpostct.c" />
+    <ClCompile Include="..\..\source\jpeg-8\jdsample.c" />
+    <ClCompile Include="..\..\source\jpeg-8\jdtrans.c" />
+    <ClCompile Include="..\..\source\jpeg-8\jerror.c" />
+    <ClCompile Include="..\..\source\jpeg-8\jfdctflt.c" />
+    <ClCompile Include="..\..\source\jpeg-8\jfdctfst.c" />
+    <ClCompile Include="..\..\source\jpeg-8\jfdctint.c" />
+    <ClCompile Include="..\..\source\jpeg-8\jidctflt.c" />
+    <ClCompile Include="..\..\source\jpeg-8\jidctfst.c" />
+    <ClCompile Include="..\..\source\jpeg-8\jidctint.c" />
+    <ClCompile Include="..\..\source\jpeg-8\jmemmgr.c" />
+    <ClCompile Include="..\..\source\jpeg-8\jmemnobs.c" />
+    <ClCompile Include="..\..\source\jpeg-8\jquant1.c" />
+    <ClCompile Include="..\..\source\jpeg-8\jquant2.c" />
+    <ClCompile Include="..\..\source\jpeg-8\jutils.c" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="jconfig.h" />
-    <ClInclude Include="jdct.h" />
-    <ClInclude Include="jerror.h" />
-    <ClInclude Include="jinclude.h" />
-    <ClInclude Include="jmemsys.h" />
-    <ClInclude Include="jmorecfg.h" />
-    <ClInclude Include="jpegint.h" />
-    <ClInclude Include="jpeglib.h" />
-    <ClInclude Include="jversion.h" />
+    <ClInclude Include="..\..\source\jpeg-8\jconfig.h" />
+    <ClInclude Include="..\..\source\jpeg-8\dct.h" />
+    <ClInclude Include="..\..\source\jpeg-8\error.h" />
+    <ClInclude Include="..\..\source\jpeg-8\include.h" />
+    <ClInclude Include="..\..\source\jpeg-8\memsys.h" />
+    <ClInclude Include="..\..\source\jpeg-8\morecfg.h" />
+    <ClInclude Include="..\..\source\jpeg-8\pegint.h" />
+    <ClInclude Include="..\..\source\jpeg-8\peglib.h" />
+    <ClInclude Include="..\..\source\jpeg-8\version.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

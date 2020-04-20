@@ -85,6 +85,6 @@ GOTO END
 
 :NEED_VS
 ECHO "This command must be executed from within a Visual Studio Command prompt."
-ECHO "This can be found under Microsoft Visual Studio (2013|2019) -> Visual Studio Tools"
+ECHO "This can be found under Microsoft Visual Studio (2013|2017|2019) -> Visual Studio Tools"
 
 :END
