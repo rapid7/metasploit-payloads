@@ -48,6 +48,8 @@ If you don't have an installation ready, follow these steps:
 choco install visualstudio2019community -y --package-parameters "--config Path\To\Your\.vsconfig"
   ```
 
+Note: A copy of this file is located in this repository under `c/meterpreter/vs-config/vs2019.vsconfig`.
+
 ### VS 2017
 Building with VS2017 works with any version, including community. If you have an installation already, just make sure you have the following extra bits installed:
 
@@ -77,6 +79,8 @@ If you don't have an installation ready, follow these steps:
   ```
 choco install visualstudio2017community -y --package-parameters "--config Path\To\Your\.vsconfig"
   ```
+
+Note: A copy of this file is located in this repository under `c/meterpreter/vs-config/vs2017.vsconfig`.
 
 ### VS 2013
 Download and install the `Visual Studio Express 2013 for Windows Desktop` edition. It is important that you use _this exact version_. To do this with Chocolatey, run the following:
