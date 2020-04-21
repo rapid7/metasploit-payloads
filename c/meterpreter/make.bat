@@ -71,11 +71,8 @@ echo Finished %ldt%
 GOTO END
 
 :CLEAN
-IF EXIST "output\x86\" (
-  del output\x86\ /S /Q
-)
-IF EXIST "output\x64\" (
-  del output\x64\ /S /Q
+IF EXIST "output\" (
+  del output\ /S /Q
 )
 GOTO END
 
