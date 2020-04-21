@@ -86,7 +86,7 @@ Note: A copy of this file is located in this repository under `c/meterpreter/vs-
 Download and install the `Visual Studio Express 2013 for Windows Desktop` edition. It is important that you use _this exact version_. To do this with Chocolatey, run the following:
 
 ```
-choco install vs2013expressdesktop5 -y
+choco install visualstudioexpress2013windowsdesktop -y
 ```
 
 Nothing extra needs to be done.
