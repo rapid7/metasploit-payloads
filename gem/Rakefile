@@ -11,8 +11,7 @@ meterpreter_dest = "./data/meterpreter"
 platform_config = {
   :windows => {
     :sources => [
-      "../c/meterpreter/output/x64",
-      "../c/meterpreter/output/x86"
+      "../c/meterpreter/output"
     ],
     :extensions => [
       "dll"
