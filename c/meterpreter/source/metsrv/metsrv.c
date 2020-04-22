@@ -11,7 +11,7 @@
 #define REFLECTIVEDLLINJECTION_CUSTOM_DLLMAIN
 #include "../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
 
-DWORD __declspec(dllexport) Init(MetsrvConfig* metConfig)
+DWORD Init(MetsrvConfig* metConfig)
 {
 	// if hAppInstance is still == NULL it means that we havent been
 	// reflectivly loaded so we must patch in the hAppInstance value
