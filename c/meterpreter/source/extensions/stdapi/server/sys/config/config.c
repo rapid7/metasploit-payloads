@@ -7,8 +7,6 @@
 
 typedef NTSTATUS(WINAPI *PRtlGetVersion)(LPOSVERSIONINFOEXW);
 
-#pragma comment(lib, "netapi32.lib")
-
 /*!
  * @brief Add an environment variable / value pair to a response packet.
  * @param response The \c Response packet to add the values to.

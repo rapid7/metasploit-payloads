@@ -5,9 +5,7 @@
 
 #include <sys/types.h>
 
-#ifdef __VMS
 #include <openssl/des.h>
-#endif
 
 /* Module crypt */
 
@@ -15,16 +13,13 @@
 static PyObject *crypt_crypt(PyObject *self, PyObject *args)
 {
     char *word, *salt;
-#ifndef __VMS
-    extern char * crypt(const char *, const char *);
-#endif
 
     if (!PyArg_ParseTuple(args, "ss:crypt", &word, &salt)) {
         return NULL;
     }
     /* On some platforms (AtheOS) crypt returns NULL for an invalid
        salt. Return None in that case. XXX Maybe raise an exception?  */
-    return Py_BuildValue("s", crypt(word, salt));
+    return Py_BuildValue("s", DES_crypt(word, salt));
 
 }
 

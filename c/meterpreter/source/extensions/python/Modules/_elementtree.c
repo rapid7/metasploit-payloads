@@ -55,7 +55,7 @@
 /* configuration */
 
 /* Leave defined to include the expat-based XMLParser type */
-#define USE_EXPAT
+//#define USE_EXPAT
 
 /* Define to do all expat calls via pyexpat's embedded expat library */
 /* #define USE_PYEXPAT_CAPI */

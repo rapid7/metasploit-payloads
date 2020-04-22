@@ -1,4 +1,3 @@
-#pragma comment(lib, "Winmm.lib")
 #include "precomp.h"
 #include "common_metapi.h"
 #include <windows.h>

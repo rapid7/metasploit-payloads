@@ -971,9 +971,6 @@
     <ClCompile Include="..\..\source\extensions\python\Python\dtoa.c">
       <Filter>Python</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\source\extensions\python\Modules\getbuildinfo.c">
-      <Filter>Modules</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\source\extensions\python\python_commands.c" />
     <ClCompile Include="..\..\source\extensions\python\python_main.c" />
     <ClCompile Include="..\..\source\extensions\python\Modules\socketmodule.c">
@@ -1030,6 +1027,21 @@
     </ClCompile>
     <ClCompile Include="..\..\source\extensions\python\Modules\_multiprocessing\win32_functions.c">
       <Filter>Modules\_multiprocessing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\python\Modules\_elementtree.c">
+      <Filter>Modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\python\Modules\_hashopenssl.c">
+      <Filter>Modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\python\Modules\cryptmodule.c">
+      <Filter>Modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\python\Modules\fpectlmodule.c">
+      <Filter>Modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\python\Modules\getbuildinfo.c">
+      <Filter>Modules</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

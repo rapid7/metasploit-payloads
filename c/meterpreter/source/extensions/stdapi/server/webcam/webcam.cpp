@@ -16,7 +16,7 @@
 #include <dshow.h>
 #pragma comment(lib, "strmiids")
 extern "C" {
-#include "../../common/common.h"
+#include "common.h"
 #include "webcam.h"
 #include "bmp2jpeg.h"
 #include "common_metapi.h"

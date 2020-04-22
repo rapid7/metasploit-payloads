@@ -1,7 +1,7 @@
 #ifndef _METERPRETER_SOURCE_EXTENSION_PRIV_PRIV_H
 #define _METERPRETER_SOURCE_EXTENSION_PRIV_PRIV_H
 
-#include "../../common/common.h"
+#include "common.h"
 
 #define TLV_TYPE_EXTENSION_PRIV 0
 #define TLV_EXTENSIONS                 20000
