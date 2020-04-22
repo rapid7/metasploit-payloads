@@ -313,7 +313,7 @@ PyLocale_strcoll(PyObject* self, PyObject* args)
         rel2 = 1;
     }
     /* Convert the unicode strings to wchar[]. */
-    len1 = PyUnicode_GET_SIZE(os1) + 1;
+    len1 = (int)PyUnicode_GET_SIZE(os1) + 1;
     ws1 = PyMem_NEW(wchar_t, len1);
     if (!ws1) {
         PyErr_NoMemory();
@@ -322,7 +322,7 @@ PyLocale_strcoll(PyObject* self, PyObject* args)
     if (PyUnicode_AsWideChar((PyUnicodeObject*)os1, ws1, len1) == -1)
         goto done;
     ws1[len1 - 1] = 0;
-    len2 = PyUnicode_GET_SIZE(os2) + 1;
+    len2 = (int)PyUnicode_GET_SIZE(os2) + 1;
     ws2 = PyMem_NEW(wchar_t, len2);
     if (!ws2) {
         PyErr_NoMemory();

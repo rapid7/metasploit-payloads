@@ -346,7 +346,7 @@ vgetargs1(PyObject *args, const char *format, va_list *p_va, int flags)
                           flags, levels, msgbuf,
                           sizeof(msgbuf), &freelist);
         if (msg) {
-            seterror(i+1, msg, levels, fname, msg);
+            seterror((int)i+1, msg, levels, fname, msg);
             return cleanreturn(0, freelist);
         }
     }
@@ -458,7 +458,7 @@ converttuple(PyObject *arg, const char **p_format, va_list *p_va, int flags,
         return msgbuf;
     }
 
-    if ((i = PySequence_Size(arg)) != n) {
+    if ((i = (int)PySequence_Size(arg)) != n) {
         levels[0] = 0;
         PyOS_snprintf(msgbuf, bufsize,
                       toplevel ? "expected %d arguments, not %d" :
@@ -866,7 +866,7 @@ convertsimple(PyObject *arg, const char **p_format, va_list *p_va, int flags,
 
             if (PyString_Check(arg)) {
                 *p = PyString_AS_STRING(arg);
-                STORE_SIZE(PyString_GET_SIZE(arg));
+                STORE_SIZE((int)PyString_GET_SIZE(arg));
             }
 #ifdef Py_USING_UNICODE
             else if (PyUnicode_Check(arg)) {
@@ -875,7 +875,7 @@ convertsimple(PyObject *arg, const char **p_format, va_list *p_va, int flags,
                     return converterr(CONV_UNICODE,
                                       arg, msgbuf, bufsize);
                 *p = PyString_AS_STRING(uarg);
-                STORE_SIZE(PyString_GET_SIZE(uarg));
+                STORE_SIZE((int)PyString_GET_SIZE(uarg));
             }
 #endif
             else { /* any buffer-like object */
@@ -883,7 +883,7 @@ convertsimple(PyObject *arg, const char **p_format, va_list *p_va, int flags,
                 Py_ssize_t count = convertbuffer(arg, p, &buf);
                 if (count < 0)
                     return converterr(buf, arg, msgbuf, bufsize);
-                STORE_SIZE(count);
+                STORE_SIZE((int)count);
             }
             format++;
         } else {
@@ -952,7 +952,7 @@ convertsimple(PyObject *arg, const char **p_format, va_list *p_va, int flags,
             }
             else if (PyString_Check(arg)) {
                 *p = PyString_AS_STRING(arg);
-                STORE_SIZE(PyString_GET_SIZE(arg));
+                STORE_SIZE((int)PyString_GET_SIZE(arg));
             }
 #ifdef Py_USING_UNICODE
             else if (PyUnicode_Check(arg)) {
@@ -961,7 +961,7 @@ convertsimple(PyObject *arg, const char **p_format, va_list *p_va, int flags,
                     return converterr(CONV_UNICODE,
                                       arg, msgbuf, bufsize);
                 *p = PyString_AS_STRING(uarg);
-                STORE_SIZE(PyString_GET_SIZE(uarg));
+                STORE_SIZE((int)PyString_GET_SIZE(uarg));
             }
 #endif
             else { /* any buffer-like object */
@@ -969,7 +969,7 @@ convertsimple(PyObject *arg, const char **p_format, va_list *p_va, int flags,
                 Py_ssize_t count = convertbuffer(arg, p, &buf);
                 if (count < 0)
                     return converterr(buf, arg, msgbuf, bufsize);
-                STORE_SIZE(count);
+                STORE_SIZE((int)count);
             }
             format++;
         } else {
@@ -997,7 +997,7 @@ convertsimple(PyObject *arg, const char **p_format, va_list *p_va, int flags,
                 if (arg == Py_None) {
                     STORE_SIZE(0);
                 } else {
-                    STORE_SIZE(PyString_Size(arg));
+                    STORE_SIZE((int)PyString_Size(arg));
                 }
                 format++;
             }
@@ -1135,7 +1135,7 @@ convertsimple(PyObject *arg, const char **p_format, va_list *p_va, int flags,
             memcpy(*buffer,
                    PyString_AS_STRING(s),
                    size + 1);
-            STORE_SIZE(size);
+            STORE_SIZE((int)size);
         } else {
             /* Using a 0-terminated buffer:
 
@@ -1183,7 +1183,7 @@ convertsimple(PyObject *arg, const char **p_format, va_list *p_va, int flags,
             FETCH_SIZE;
             if (PyUnicode_Check(arg)) {
                 *p = PyUnicode_AS_UNICODE(arg);
-                STORE_SIZE(PyUnicode_GET_SIZE(arg));
+                STORE_SIZE((int)PyUnicode_GET_SIZE(arg));
             }
             else {
                 return converterr("cannot convert raw buffers",
@@ -1308,7 +1308,7 @@ convertsimple(PyObject *arg, const char **p_format, va_list *p_va, int flags,
             *p = res;
             if (*format == '#') {
                 FETCH_SIZE;
-                STORE_SIZE(count);
+                STORE_SIZE((int)count);
                 format++;
             }
         }
@@ -1347,7 +1347,7 @@ convertsimple(PyObject *arg, const char **p_format, va_list *p_va, int flags,
             return converterr("(unspecified)", arg, msgbuf, bufsize);
         {
             FETCH_SIZE;
-            STORE_SIZE(count);
+            STORE_SIZE((int)count);
         }
         break;
     }
@@ -1408,7 +1408,7 @@ getbuffer(PyObject *arg, Py_buffer *view, char **errmsg)
     count = convertbuffer(arg, &buf, errmsg);
     if (count < 0) {
         *errmsg = "convertible to a buffer";
-        return count;
+        return (int)count;
     }
     PyBuffer_FillInfo(view, arg, buf, count, 1, 0);
     return 0;
@@ -1568,8 +1568,8 @@ vgetargskeywords(PyObject *args, PyObject *keywords, const char *format,
     for (len=0; kwlist[len]; len++)
         continue;
 
-    nargs = PyTuple_GET_SIZE(args);
-    nkeywords = (keywords == NULL) ? 0 : PyDict_Size(keywords);
+    nargs = (int)PyTuple_GET_SIZE(args);
+    nkeywords = (keywords == NULL) ? 0 : (int)PyDict_Size(keywords);
     if (nargs + nkeywords > len) {
         PyErr_Format(PyExc_TypeError, "%s%s takes at most %d "
                      "argument%s (%d given)",

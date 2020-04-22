@@ -485,7 +485,7 @@ SHA256_update(SHAobject *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "s*:update", &buf))
         return NULL;
 
-    sha_update(self, buf.buf, buf.len);
+    sha_update(self, buf.buf, (int)buf.len);
 
     PyBuffer_Release(&buf);
     Py_RETURN_NONE;
@@ -633,7 +633,7 @@ SHA256_new(PyObject *self, PyObject *args, PyObject *kwdict)
         return NULL;
     }
     if (buf.len > 0) {
-        sha_update(new, buf.buf, buf.len);
+        sha_update(new, buf.buf, (int)buf.len);
     }
     PyBuffer_Release(&buf);
 
@@ -668,7 +668,7 @@ SHA224_new(PyObject *self, PyObject *args, PyObject *kwdict)
         return NULL;
     }
     if (buf.len > 0) {
-        sha_update(new, buf.buf, buf.len);
+        sha_update(new, buf.buf, (int)buf.len);
     }
     PyBuffer_Release(&buf);
 

@@ -8,28 +8,27 @@
 #include <malloc.h>
 #include "espia.h"
 
-
 #pragma comment(lib, "vfw32.lib")
 #pragma comment(lib, "winmm.lib")
 
 #define capSendMessage(hWnd, uMsg, wParm, lParam) ((IsWindow(hWnd)) ? SendMessage(hWnd, uMsg, (WPARAM)(wParm), (LPARAM)(lParam)) : 0)
 
-BOOL capmicaudio(char *szFile, int millisecs) 
+BOOL capmicaudio(char* szFile, int millisecs)
 {
-	UINT wDeviceID;
+    UINT wDeviceID;
     DWORD dwReturn;
     MCI_OPEN_PARMSA mciOpenParms;
     MCI_RECORD_PARMS mciRecordParms;
     MCI_SAVE_PARMSA mciSaveParms;
     MCI_PLAY_PARMS mciPlayParms;
-	DWORD dwMilliSeconds;
+    DWORD dwMilliSeconds;
 
-	dwMilliSeconds = millisecs;
+    dwMilliSeconds = millisecs;
 
     // Open a waveform-audio device with a new file for recording.
     mciOpenParms.lpstrDeviceType = "waveaudio";
     mciOpenParms.lpstrElementName = "";
-    if (dwReturn = mciSendCommand(0, MCI_OPEN,MCI_OPEN_ELEMENT | MCI_OPEN_TYPE, (DWORD_PTR)(LPVOID) &mciOpenParms))
+    if (dwReturn = mciSendCommand(0, MCI_OPEN, MCI_OPEN_ELEMENT | MCI_OPEN_TYPE, (DWORD_PTR)(LPVOID)&mciOpenParms))
     {
         // Failed to open device; don't close it, just return error.
         return (dwReturn);
@@ -39,30 +38,27 @@ BOOL capmicaudio(char *szFile, int millisecs)
     wDeviceID = mciOpenParms.wDeviceID;
 
     mciRecordParms.dwTo = dwMilliSeconds;
-    if (dwReturn = mciSendCommand(wDeviceID, MCI_RECORD, 
-        MCI_TO | MCI_WAIT, (DWORD)(LPVOID) &mciRecordParms))
+    if (dwReturn = mciSendCommand(wDeviceID, MCI_RECORD,
+        MCI_TO | MCI_WAIT, (DWORD)(DWORD_PTR)&mciRecordParms))
     {
-        mciSendCommand(wDeviceID, MCI_CLOSE, 0, (DWORD_PTR)0 );
+        mciSendCommand(wDeviceID, MCI_CLOSE, 0, (DWORD_PTR)0);
         return (dwReturn);
     }
 
     // Play the recording and query user to save the file.
     mciPlayParms.dwFrom = 0L;
-    
+
     // Save the recording to a file. Wait for
     // the operation to complete before continuing.
-	mciSaveParms.lpfilename = szFile;
-    if (dwReturn = mciSendCommandA(wDeviceID, MCI_SAVE, MCI_SAVE_FILE | MCI_WAIT, (DWORD_PTR)(LPVOID) &mciSaveParms))
+    mciSaveParms.lpfilename = szFile;
+    if (dwReturn = mciSendCommandA(wDeviceID, MCI_SAVE, MCI_SAVE_FILE | MCI_WAIT, (DWORD_PTR)(LPVOID)&mciSaveParms))
     {
-        mciSendCommand(wDeviceID, MCI_CLOSE, 0, (DWORD_PTR)0 );
+        mciSendCommand(wDeviceID, MCI_CLOSE, 0, (DWORD_PTR)0);
         return (dwReturn);
     }
 
     return (0L);
 }
-
-
-
 
 int __declspec(dllexport) controlmic(char **waveresults, int msecs) {
 	DWORD dwError = 0;

@@ -443,7 +443,7 @@ unicodedata_decomposition(PyObject *self, PyObject *args)
     assert(prefix_index < (sizeof(decomp_prefix)/sizeof(*decomp_prefix)));
 
     /* copy prefix */
-    i = strlen(decomp_prefix[prefix_index]);
+    i = (int)strlen(decomp_prefix[prefix_index]);
     memcpy(decomp, decomp_prefix[prefix_index], i);
 
     while (count-- > 0) {
@@ -452,7 +452,7 @@ unicodedata_decomposition(PyObject *self, PyObject *args)
         assert((size_t)i < sizeof(decomp));
         PyOS_snprintf(decomp + i, sizeof(decomp) - i, "%04X",
                       decomp_data[++index]);
-        i += strlen(decomp + i);
+        i += (int)strlen(decomp + i);
     }
 
     decomp[i] = '\0';
@@ -998,7 +998,7 @@ find_syllable(const char *str, int *len, int *pos, int count, int column)
     *len = -1;
     for (i = 0; i < count; i++) {
         char *s = hangul_syllables[i][column];
-        len1 = strlen(s);
+        len1 = (int)strlen(s);
         if (len1 <= *len)
             continue;
         if (strncmp(str, s, len1) == 0) {

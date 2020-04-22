@@ -930,7 +930,7 @@ PyRun_SimpleFileExFlags(FILE *fp, const char *filename, int closeit,
         set_file_name = 1;
         Py_DECREF(f);
     }
-    len = strlen(filename);
+    len = (int)strlen(filename);
     ext = filename + len - (len > 4 ? 4 : 0);
     if (maybe_pyc_file(fp, filename, ext, closeit)) {
         /* Try to run a pyc file. First, re-open in binary */

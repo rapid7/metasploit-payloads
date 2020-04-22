@@ -506,7 +506,7 @@ frame_traverse(PyFrameObject *f, visitproc visit, void *arg)
     Py_VISIT(f->f_exc_traceback);
 
     /* locals */
-    slots = f->f_code->co_nlocals + PyTuple_GET_SIZE(f->f_code->co_cellvars) + PyTuple_GET_SIZE(f->f_code->co_freevars);
+    slots = f->f_code->co_nlocals + (int)PyTuple_GET_SIZE(f->f_code->co_cellvars) + (int)PyTuple_GET_SIZE(f->f_code->co_freevars);
     fastlocals = f->f_localsplus;
     for (i = slots; --i >= 0; ++fastlocals)
         Py_VISIT(*fastlocals);
@@ -539,7 +539,7 @@ frame_clear(PyFrameObject *f)
     Py_CLEAR(f->f_trace);
 
     /* locals */
-    slots = f->f_code->co_nlocals + PyTuple_GET_SIZE(f->f_code->co_cellvars) + PyTuple_GET_SIZE(f->f_code->co_freevars);
+    slots = f->f_code->co_nlocals + (int)PyTuple_GET_SIZE(f->f_code->co_cellvars) + (int)PyTuple_GET_SIZE(f->f_code->co_freevars);
     fastlocals = f->f_localsplus;
     for (i = slots; --i >= 0; ++fastlocals)
         Py_CLEAR(*fastlocals);
@@ -897,8 +897,8 @@ PyFrame_FastToLocals(PyFrameObject *f)
         j = co->co_nlocals;
     if (co->co_nlocals)
         map_to_dict(map, j, locals, fast, 0);
-    ncells = PyTuple_GET_SIZE(co->co_cellvars);
-    nfreevars = PyTuple_GET_SIZE(co->co_freevars);
+    ncells = (int)PyTuple_GET_SIZE(co->co_cellvars);
+    nfreevars = (int)PyTuple_GET_SIZE(co->co_freevars);
     if (ncells || nfreevars) {
         map_to_dict(co->co_cellvars, ncells,
                     locals, fast + co->co_nlocals, 1);
@@ -944,8 +944,8 @@ PyFrame_LocalsToFast(PyFrameObject *f, int clear)
         j = co->co_nlocals;
     if (co->co_nlocals)
         dict_to_map(co->co_varnames, j, locals, fast, 0, clear);
-    ncells = PyTuple_GET_SIZE(co->co_cellvars);
-    nfreevars = PyTuple_GET_SIZE(co->co_freevars);
+    ncells = (int)PyTuple_GET_SIZE(co->co_cellvars);
+    nfreevars = (int)PyTuple_GET_SIZE(co->co_freevars);
     if (ncells || nfreevars) {
         dict_to_map(co->co_cellvars, ncells,
                     locals, fast + co->co_nlocals, 1, clear);

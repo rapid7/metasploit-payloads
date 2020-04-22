@@ -558,7 +558,7 @@ typedef struct {
     char osfile;
 } my_ioinfo;
 
-extern __declspec(dllimport) char * __pioinfo[];
+extern char * __pioinfo[];
 #define IOINFO_L2E 5
 #define IOINFO_ARRAY_ELTS   (1 << IOINFO_L2E)
 #define IOINFO_ARRAYS 64
@@ -579,7 +579,7 @@ _PyVerify_fd(int fd)
      * as used by the CRT loaded in memory
      */
     if (sizeof_ioinfo == 0 && __pioinfo[0] != NULL) {
-        sizeof_ioinfo = _msize(__pioinfo[0]) / IOINFO_ARRAY_ELTS;
+        sizeof_ioinfo = (int)_msize(__pioinfo[0]) / IOINFO_ARRAY_ELTS;
     }
     if (sizeof_ioinfo == 0) {
         /* This should not happen... */
@@ -4440,7 +4440,6 @@ PyDoc_STRVAR(posix__isdir__doc__,
 static PyObject *
 posix__isdir(PyObject *self, PyObject *args)
 {
-    PyObject *opath;
     char *path;
     PyUnicodeObject *po;
     DWORD attributes;
@@ -6288,7 +6287,7 @@ posix_waitpid(PyObject *self, PyObject *args)
         return posix_error();
 
     /* shift the status left a byte so this is more like the POSIX waitpid */
-    return Py_BuildValue("Ni", PyLong_FromPid(pid), status << 8);
+    return Py_BuildValue("Ni", PyLong_FromPid((long)(LONG_PTR)pid), status << 8);
 }
 #endif /* HAVE_WAITPID || HAVE_CWAIT */
 

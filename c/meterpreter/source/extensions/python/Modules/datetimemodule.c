@@ -4236,7 +4236,7 @@ datetime_isoformat(PyDateTime_DateTime *self, PyObject *args, PyObject *kw)
     cp = isoformat_date((PyDateTime_Date *)self, buffer, sizeof(buffer));
     assert(cp != NULL);
     *cp++ = sep;
-    cp = isoformat_time(self, cp, sizeof(buffer) - (cp - buffer));
+    cp = isoformat_time(self, cp, (int)(sizeof(buffer) - (cp - buffer)));
     result = PyString_FromStringAndSize(buffer, cp - buffer);
     if (result == NULL || ! HASTZINFO(self))
         return result;

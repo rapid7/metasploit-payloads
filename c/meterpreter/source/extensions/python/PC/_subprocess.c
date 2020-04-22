@@ -338,7 +338,7 @@ getenvironment(PyObject* environment)
         return NULL;
     }
 
-    envsize = PyMapping_Length(environment);
+    envsize = (int)PyMapping_Length(environment);
 
     keys = PyMapping_Keys(environment);
     values = PyMapping_Values(environment);
@@ -361,12 +361,12 @@ getenvironment(PyObject* environment)
                 "environment can only contain strings");
             goto error;
         }
-        ksize = PyString_GET_SIZE(key);
-        vsize = PyString_GET_SIZE(value);
-        totalsize = (p - PyString_AS_STRING(out)) + ksize + 1 +
-                                                     vsize + 1 + 1;
-        if (totalsize > PyString_GET_SIZE(out)) {
-            int offset = p - PyString_AS_STRING(out);
+        ksize = (int)PyString_GET_SIZE(key);
+        vsize = (int)PyString_GET_SIZE(value);
+        totalsize = (int)((p - PyString_AS_STRING(out)) + ksize + 1 +
+                                                     vsize + 1 + 1);
+        if (totalsize > (int)PyString_GET_SIZE(out)) {
+            int offset = (int)(p - PyString_AS_STRING(out));
             if (_PyString_Resize(&out, totalsize + 1024))
                 goto exit;
             p = PyString_AS_STRING(out) + offset;

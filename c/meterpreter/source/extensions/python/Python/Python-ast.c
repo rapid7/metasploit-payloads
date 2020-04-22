@@ -3345,7 +3345,7 @@ obj2ast_mod(PyObject* obj, mod_ty* out, PyArena* arena)
                                 goto failed;
                         }
                         len = PyList_GET_SIZE(tmp);
-                        body = asdl_seq_new(len, arena);
+                        body = asdl_seq_new((int)len, arena);
                         if (body == NULL) goto failed;
                         for (i = 0; i < len; i++) {
                                 stmt_ty value;
@@ -3381,7 +3381,7 @@ obj2ast_mod(PyObject* obj, mod_ty* out, PyArena* arena)
                                 goto failed;
                         }
                         len = PyList_GET_SIZE(tmp);
-                        body = asdl_seq_new(len, arena);
+                        body = asdl_seq_new((int)len, arena);
                         if (body == NULL) goto failed;
                         for (i = 0; i < len; i++) {
                                 stmt_ty value;
@@ -3440,7 +3440,7 @@ obj2ast_mod(PyObject* obj, mod_ty* out, PyArena* arena)
                                 goto failed;
                         }
                         len = PyList_GET_SIZE(tmp);
-                        body = asdl_seq_new(len, arena);
+                        body = asdl_seq_new((int)len, arena);
                         if (body == NULL) goto failed;
                         for (i = 0; i < len; i++) {
                                 stmt_ty value;
@@ -3549,7 +3549,7 @@ obj2ast_stmt(PyObject* obj, stmt_ty* out, PyArena* arena)
                                 goto failed;
                         }
                         len = PyList_GET_SIZE(tmp);
-                        body = asdl_seq_new(len, arena);
+                        body = asdl_seq_new((int)len, arena);
                         if (body == NULL) goto failed;
                         for (i = 0; i < len; i++) {
                                 stmt_ty value;
@@ -3574,7 +3574,7 @@ obj2ast_stmt(PyObject* obj, stmt_ty* out, PyArena* arena)
                                 goto failed;
                         }
                         len = PyList_GET_SIZE(tmp);
-                        decorator_list = asdl_seq_new(len, arena);
+                        decorator_list = asdl_seq_new((int)len, arena);
                         if (decorator_list == NULL) goto failed;
                         for (i = 0; i < len; i++) {
                                 expr_ty value;
@@ -3626,7 +3626,7 @@ obj2ast_stmt(PyObject* obj, stmt_ty* out, PyArena* arena)
                                 goto failed;
                         }
                         len = PyList_GET_SIZE(tmp);
-                        bases = asdl_seq_new(len, arena);
+                        bases = asdl_seq_new((int)len, arena);
                         if (bases == NULL) goto failed;
                         for (i = 0; i < len; i++) {
                                 expr_ty value;
@@ -3651,7 +3651,7 @@ obj2ast_stmt(PyObject* obj, stmt_ty* out, PyArena* arena)
                                 goto failed;
                         }
                         len = PyList_GET_SIZE(tmp);
-                        body = asdl_seq_new(len, arena);
+                        body = asdl_seq_new((int)len, arena);
                         if (body == NULL) goto failed;
                         for (i = 0; i < len; i++) {
                                 stmt_ty value;
@@ -3676,7 +3676,7 @@ obj2ast_stmt(PyObject* obj, stmt_ty* out, PyArena* arena)
                                 goto failed;
                         }
                         len = PyList_GET_SIZE(tmp);
-                        decorator_list = asdl_seq_new(len, arena);
+                        decorator_list = asdl_seq_new((int)len, arena);
                         if (decorator_list == NULL) goto failed;
                         for (i = 0; i < len; i++) {
                                 expr_ty value;
@@ -3735,7 +3735,7 @@ obj2ast_stmt(PyObject* obj, stmt_ty* out, PyArena* arena)
                                 goto failed;
                         }
                         len = PyList_GET_SIZE(tmp);
-                        targets = asdl_seq_new(len, arena);
+                        targets = asdl_seq_new((int)len, arena);
                         if (targets == NULL) goto failed;
                         for (i = 0; i < len; i++) {
                                 expr_ty value;
@@ -3772,7 +3772,7 @@ obj2ast_stmt(PyObject* obj, stmt_ty* out, PyArena* arena)
                                 goto failed;
                         }
                         len = PyList_GET_SIZE(tmp);
-                        targets = asdl_seq_new(len, arena);
+                        targets = asdl_seq_new((int)len, arena);
                         if (targets == NULL) goto failed;
                         for (i = 0; i < len; i++) {
                                 expr_ty value;
@@ -3882,7 +3882,7 @@ obj2ast_stmt(PyObject* obj, stmt_ty* out, PyArena* arena)
                                 goto failed;
                         }
                         len = PyList_GET_SIZE(tmp);
-                        values = asdl_seq_new(len, arena);
+                        values = asdl_seq_new((int)len, arena);
                         if (values == NULL) goto failed;
                         for (i = 0; i < len; i++) {
                                 expr_ty value;
@@ -3957,7 +3957,7 @@ obj2ast_stmt(PyObject* obj, stmt_ty* out, PyArena* arena)
                                 goto failed;
                         }
                         len = PyList_GET_SIZE(tmp);
-                        body = asdl_seq_new(len, arena);
+                        body = asdl_seq_new((int)len, arena);
                         if (body == NULL) goto failed;
                         for (i = 0; i < len; i++) {
                                 stmt_ty value;
@@ -3982,7 +3982,7 @@ obj2ast_stmt(PyObject* obj, stmt_ty* out, PyArena* arena)
                                 goto failed;
                         }
                         len = PyList_GET_SIZE(tmp);
-                        orelse = asdl_seq_new(len, arena);
+                        orelse = asdl_seq_new((int)len, arena);
                         if (orelse == NULL) goto failed;
                         for (i = 0; i < len; i++) {
                                 stmt_ty value;
@@ -4033,7 +4033,7 @@ obj2ast_stmt(PyObject* obj, stmt_ty* out, PyArena* arena)
                                 goto failed;
                         }
                         len = PyList_GET_SIZE(tmp);
-                        body = asdl_seq_new(len, arena);
+                        body = asdl_seq_new((int)len, arena);
                         if (body == NULL) goto failed;
                         for (i = 0; i < len; i++) {
                                 stmt_ty value;
@@ -4058,7 +4058,7 @@ obj2ast_stmt(PyObject* obj, stmt_ty* out, PyArena* arena)
                                 goto failed;
                         }
                         len = PyList_GET_SIZE(tmp);
-                        orelse = asdl_seq_new(len, arena);
+                        orelse = asdl_seq_new((int)len, arena);
                         if (orelse == NULL) goto failed;
                         for (i = 0; i < len; i++) {
                                 stmt_ty value;
@@ -4108,7 +4108,7 @@ obj2ast_stmt(PyObject* obj, stmt_ty* out, PyArena* arena)
                                 goto failed;
                         }
                         len = PyList_GET_SIZE(tmp);
-                        body = asdl_seq_new(len, arena);
+                        body = asdl_seq_new((int)len, arena);
                         if (body == NULL) goto failed;
                         for (i = 0; i < len; i++) {
                                 stmt_ty value;
@@ -4133,7 +4133,7 @@ obj2ast_stmt(PyObject* obj, stmt_ty* out, PyArena* arena)
                                 goto failed;
                         }
                         len = PyList_GET_SIZE(tmp);
-                        orelse = asdl_seq_new(len, arena);
+                        orelse = asdl_seq_new((int)len, arena);
                         if (orelse == NULL) goto failed;
                         for (i = 0; i < len; i++) {
                                 stmt_ty value;
@@ -4194,7 +4194,7 @@ obj2ast_stmt(PyObject* obj, stmt_ty* out, PyArena* arena)
                                 goto failed;
                         }
                         len = PyList_GET_SIZE(tmp);
-                        body = asdl_seq_new(len, arena);
+                        body = asdl_seq_new((int)len, arena);
                         if (body == NULL) goto failed;
                         for (i = 0; i < len; i++) {
                                 stmt_ty value;
@@ -4279,7 +4279,7 @@ obj2ast_stmt(PyObject* obj, stmt_ty* out, PyArena* arena)
                                 goto failed;
                         }
                         len = PyList_GET_SIZE(tmp);
-                        body = asdl_seq_new(len, arena);
+                        body = asdl_seq_new((int)len, arena);
                         if (body == NULL) goto failed;
                         for (i = 0; i < len; i++) {
                                 stmt_ty value;
@@ -4304,7 +4304,7 @@ obj2ast_stmt(PyObject* obj, stmt_ty* out, PyArena* arena)
                                 goto failed;
                         }
                         len = PyList_GET_SIZE(tmp);
-                        handlers = asdl_seq_new(len, arena);
+                        handlers = asdl_seq_new((int)len, arena);
                         if (handlers == NULL) goto failed;
                         for (i = 0; i < len; i++) {
                                 excepthandler_ty value;
@@ -4329,7 +4329,7 @@ obj2ast_stmt(PyObject* obj, stmt_ty* out, PyArena* arena)
                                 goto failed;
                         }
                         len = PyList_GET_SIZE(tmp);
-                        orelse = asdl_seq_new(len, arena);
+                        orelse = asdl_seq_new((int)len, arena);
                         if (orelse == NULL) goto failed;
                         for (i = 0; i < len; i++) {
                                 stmt_ty value;
@@ -4367,7 +4367,7 @@ obj2ast_stmt(PyObject* obj, stmt_ty* out, PyArena* arena)
                                 goto failed;
                         }
                         len = PyList_GET_SIZE(tmp);
-                        body = asdl_seq_new(len, arena);
+                        body = asdl_seq_new((int)len, arena);
                         if (body == NULL) goto failed;
                         for (i = 0; i < len; i++) {
                                 stmt_ty value;
@@ -4392,7 +4392,7 @@ obj2ast_stmt(PyObject* obj, stmt_ty* out, PyArena* arena)
                                 goto failed;
                         }
                         len = PyList_GET_SIZE(tmp);
-                        finalbody = asdl_seq_new(len, arena);
+                        finalbody = asdl_seq_new((int)len, arena);
                         if (finalbody == NULL) goto failed;
                         for (i = 0; i < len; i++) {
                                 stmt_ty value;
@@ -4463,7 +4463,7 @@ obj2ast_stmt(PyObject* obj, stmt_ty* out, PyArena* arena)
                                 goto failed;
                         }
                         len = PyList_GET_SIZE(tmp);
-                        names = asdl_seq_new(len, arena);
+                        names = asdl_seq_new((int)len, arena);
                         if (names == NULL) goto failed;
                         for (i = 0; i < len; i++) {
                                 alias_ty value;
@@ -4512,7 +4512,7 @@ obj2ast_stmt(PyObject* obj, stmt_ty* out, PyArena* arena)
                                 goto failed;
                         }
                         len = PyList_GET_SIZE(tmp);
-                        names = asdl_seq_new(len, arena);
+                        names = asdl_seq_new((int)len, arena);
                         if (names == NULL) goto failed;
                         for (i = 0; i < len; i++) {
                                 alias_ty value;
@@ -4607,7 +4607,7 @@ obj2ast_stmt(PyObject* obj, stmt_ty* out, PyArena* arena)
                                 goto failed;
                         }
                         len = PyList_GET_SIZE(tmp);
-                        names = asdl_seq_new(len, arena);
+                        names = asdl_seq_new((int)len, arena);
                         if (names == NULL) goto failed;
                         for (i = 0; i < len; i++) {
                                 identifier value;
@@ -4755,7 +4755,7 @@ obj2ast_expr(PyObject* obj, expr_ty* out, PyArena* arena)
                                 goto failed;
                         }
                         len = PyList_GET_SIZE(tmp);
-                        values = asdl_seq_new(len, arena);
+                        values = asdl_seq_new((int)len, arena);
                         if (values == NULL) goto failed;
                         for (i = 0; i < len; i++) {
                                 expr_ty value;
@@ -4962,7 +4962,7 @@ obj2ast_expr(PyObject* obj, expr_ty* out, PyArena* arena)
                                 goto failed;
                         }
                         len = PyList_GET_SIZE(tmp);
-                        keys = asdl_seq_new(len, arena);
+                        keys = asdl_seq_new((int)len, arena);
                         if (keys == NULL) goto failed;
                         for (i = 0; i < len; i++) {
                                 expr_ty value;
@@ -4987,7 +4987,7 @@ obj2ast_expr(PyObject* obj, expr_ty* out, PyArena* arena)
                                 goto failed;
                         }
                         len = PyList_GET_SIZE(tmp);
-                        values = asdl_seq_new(len, arena);
+                        values = asdl_seq_new((int)len, arena);
                         if (values == NULL) goto failed;
                         for (i = 0; i < len; i++) {
                                 expr_ty value;
@@ -5023,7 +5023,7 @@ obj2ast_expr(PyObject* obj, expr_ty* out, PyArena* arena)
                                 goto failed;
                         }
                         len = PyList_GET_SIZE(tmp);
-                        elts = asdl_seq_new(len, arena);
+                        elts = asdl_seq_new((int)len, arena);
                         if (elts == NULL) goto failed;
                         for (i = 0; i < len; i++) {
                                 expr_ty value;
@@ -5072,7 +5072,7 @@ obj2ast_expr(PyObject* obj, expr_ty* out, PyArena* arena)
                                 goto failed;
                         }
                         len = PyList_GET_SIZE(tmp);
-                        generators = asdl_seq_new(len, arena);
+                        generators = asdl_seq_new((int)len, arena);
                         if (generators == NULL) goto failed;
                         for (i = 0; i < len; i++) {
                                 comprehension_ty value;
@@ -5121,7 +5121,7 @@ obj2ast_expr(PyObject* obj, expr_ty* out, PyArena* arena)
                                 goto failed;
                         }
                         len = PyList_GET_SIZE(tmp);
-                        generators = asdl_seq_new(len, arena);
+                        generators = asdl_seq_new((int)len, arena);
                         if (generators == NULL) goto failed;
                         for (i = 0; i < len; i++) {
                                 comprehension_ty value;
@@ -5183,7 +5183,7 @@ obj2ast_expr(PyObject* obj, expr_ty* out, PyArena* arena)
                                 goto failed;
                         }
                         len = PyList_GET_SIZE(tmp);
-                        generators = asdl_seq_new(len, arena);
+                        generators = asdl_seq_new((int)len, arena);
                         if (generators == NULL) goto failed;
                         for (i = 0; i < len; i++) {
                                 comprehension_ty value;
@@ -5233,7 +5233,7 @@ obj2ast_expr(PyObject* obj, expr_ty* out, PyArena* arena)
                                 goto failed;
                         }
                         len = PyList_GET_SIZE(tmp);
-                        generators = asdl_seq_new(len, arena);
+                        generators = asdl_seq_new((int)len, arena);
                         if (generators == NULL) goto failed;
                         for (i = 0; i < len; i++) {
                                 comprehension_ty value;
@@ -5305,7 +5305,7 @@ obj2ast_expr(PyObject* obj, expr_ty* out, PyArena* arena)
                                 goto failed;
                         }
                         len = PyList_GET_SIZE(tmp);
-                        ops = asdl_int_seq_new(len, arena);
+                        ops = asdl_int_seq_new((int)len, arena);
                         if (ops == NULL) goto failed;
                         for (i = 0; i < len; i++) {
                                 cmpop_ty value;
@@ -5330,7 +5330,7 @@ obj2ast_expr(PyObject* obj, expr_ty* out, PyArena* arena)
                                 goto failed;
                         }
                         len = PyList_GET_SIZE(tmp);
-                        comparators = asdl_seq_new(len, arena);
+                        comparators = asdl_seq_new((int)len, arena);
                         if (comparators == NULL) goto failed;
                         for (i = 0; i < len; i++) {
                                 expr_ty value;
@@ -5383,7 +5383,7 @@ obj2ast_expr(PyObject* obj, expr_ty* out, PyArena* arena)
                                 goto failed;
                         }
                         len = PyList_GET_SIZE(tmp);
-                        args = asdl_seq_new(len, arena);
+                        args = asdl_seq_new((int)len, arena);
                         if (args == NULL) goto failed;
                         for (i = 0; i < len; i++) {
                                 expr_ty value;
@@ -5408,7 +5408,7 @@ obj2ast_expr(PyObject* obj, expr_ty* out, PyArena* arena)
                                 goto failed;
                         }
                         len = PyList_GET_SIZE(tmp);
-                        keywords = asdl_seq_new(len, arena);
+                        keywords = asdl_seq_new((int)len, arena);
                         if (keywords == NULL) goto failed;
                         for (i = 0; i < len; i++) {
                                 keyword_ty value;
@@ -5671,7 +5671,7 @@ obj2ast_expr(PyObject* obj, expr_ty* out, PyArena* arena)
                                 goto failed;
                         }
                         len = PyList_GET_SIZE(tmp);
-                        elts = asdl_seq_new(len, arena);
+                        elts = asdl_seq_new((int)len, arena);
                         if (elts == NULL) goto failed;
                         for (i = 0; i < len; i++) {
                                 expr_ty value;
@@ -5720,7 +5720,7 @@ obj2ast_expr(PyObject* obj, expr_ty* out, PyArena* arena)
                                 goto failed;
                         }
                         len = PyList_GET_SIZE(tmp);
-                        elts = asdl_seq_new(len, arena);
+                        elts = asdl_seq_new((int)len, arena);
                         if (elts == NULL) goto failed;
                         for (i = 0; i < len; i++) {
                                 expr_ty value;
@@ -5907,7 +5907,7 @@ obj2ast_slice(PyObject* obj, slice_ty* out, PyArena* arena)
                                 goto failed;
                         }
                         len = PyList_GET_SIZE(tmp);
-                        dims = asdl_seq_new(len, arena);
+                        dims = asdl_seq_new((int)len, arena);
                         if (dims == NULL) goto failed;
                         for (i = 0; i < len; i++) {
                                 slice_ty value;
@@ -6284,7 +6284,7 @@ obj2ast_comprehension(PyObject* obj, comprehension_ty* out, PyArena* arena)
                         goto failed;
                 }
                 len = PyList_GET_SIZE(tmp);
-                ifs = asdl_seq_new(len, arena);
+                ifs = asdl_seq_new((int)len, arena);
                 if (ifs == NULL) goto failed;
                 for (i = 0; i < len; i++) {
                         expr_ty value;
@@ -6384,7 +6384,7 @@ obj2ast_excepthandler(PyObject* obj, excepthandler_ty* out, PyArena* arena)
                                 goto failed;
                         }
                         len = PyList_GET_SIZE(tmp);
-                        body = asdl_seq_new(len, arena);
+                        body = asdl_seq_new((int)len, arena);
                         if (body == NULL) goto failed;
                         for (i = 0; i < len; i++) {
                                 stmt_ty value;
@@ -6432,7 +6432,7 @@ obj2ast_arguments(PyObject* obj, arguments_ty* out, PyArena* arena)
                         goto failed;
                 }
                 len = PyList_GET_SIZE(tmp);
-                args = asdl_seq_new(len, arena);
+                args = asdl_seq_new((int)len, arena);
                 if (args == NULL) goto failed;
                 for (i = 0; i < len; i++) {
                         expr_ty value;
@@ -6479,7 +6479,7 @@ obj2ast_arguments(PyObject* obj, arguments_ty* out, PyArena* arena)
                         goto failed;
                 }
                 len = PyList_GET_SIZE(tmp);
-                defaults = asdl_seq_new(len, arena);
+                defaults = asdl_seq_new((int)len, arena);
                 if (defaults == NULL) goto failed;
                 for (i = 0; i < len; i++) {
                         expr_ty value;

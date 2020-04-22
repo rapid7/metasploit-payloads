@@ -129,7 +129,7 @@ connection_sendbytes(ConnectionObject *self, PyObject *args)
         }
     }
 
-    res = conn_send_string(self, buffer + offset, size);
+    res = (int)conn_send_string(self, buffer + (int)offset, (int)size);
 
     if (res < 0) {
         if (PyErr_Occurred())
@@ -172,7 +172,7 @@ connection_recvbytes(ConnectionObject *self, PyObject *args)
                 self->flags = WRITABLE;
             }
         }
-        mp_SetError(PyExc_IOError, res);
+        mp_SetError(PyExc_IOError, (int)res);
     } else {
         if (freeme == NULL) {
             result = PyString_FromStringAndSize(self->buffer, res);
@@ -226,7 +226,7 @@ connection_recvbytes_into(ConnectionObject *self, PyObject *args)
                 self->flags = WRITABLE;
             }
         }
-        mp_SetError(PyExc_IOError, res);
+        mp_SetError(PyExc_IOError, (int)res);
     } else {
         if (freeme == NULL) {
             result = PyInt_FromSsize_t(res);
@@ -274,7 +274,7 @@ connection_send_obj(ConnectionObject *self, PyObject *obj)
     if (PyString_AsStringAndSize(pickled_string, &buffer, &length) < 0)
         goto failure;
 
-    res = conn_send_string(self, buffer, (int)length);
+    res = (int)conn_send_string(self, buffer, (int)length);
 
     if (res < 0) {
         mp_SetError(PyExc_IOError, res);
@@ -312,7 +312,7 @@ connection_recv_obj(ConnectionObject *self)
                 self->flags = WRITABLE;
             }
         }
-        mp_SetError(PyExc_IOError, res);
+        mp_SetError(PyExc_IOError, (int)res);
     } else {
         if (freeme == NULL) {
             temp = PyString_FromStringAndSize(self->buffer, res);
@@ -378,7 +378,7 @@ connection_fileno(ConnectionObject* self)
         PyErr_SetString(PyExc_IOError, "handle is invalid");
         return NULL;
     }
-    return PyInt_FromLong((long)self->handle);
+    return PyInt_FromLong((long)(LONG_PTR)self->handle);
 }
 
 static PyObject *

@@ -806,7 +806,7 @@ Reader_iternext(ReaderObj *self)
         ++self->line_num;
 
         line = PyString_AsString(lineobj);
-        linelen = PyString_Size(lineobj);
+        linelen = (int)PyString_Size(lineobj);
 
         if (line == NULL || linelen < 0) {
             Py_DECREF(lineobj);
@@ -1125,7 +1125,7 @@ join_append_lineterminator(WriterObj *self)
     int terminator_len;
     char *terminator;
 
-    terminator_len = PyString_Size(self->dialect->lineterminator);
+    terminator_len = (int)PyString_Size(self->dialect->lineterminator);
     if (terminator_len == -1)
         return 0;
 
@@ -1157,7 +1157,7 @@ csv_writerow(WriterObj *self, PyObject *seq)
     if (!PySequence_Check(seq))
         return PyErr_Format(error_obj, "sequence expected");
 
-    len = PySequence_Length(seq);
+    len = (int)PySequence_Length(seq);
     if (len < 0)
         return NULL;
 

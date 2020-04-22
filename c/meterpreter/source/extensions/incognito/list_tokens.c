@@ -176,20 +176,20 @@ SavedToken *get_token_list(DWORD *num_tokens_enum, TOKEN_PRIVS *token_privs)
 
 			// if has impersonate privs, only needs read access
 			dprintf("[INCOGNITO] Looking good, continuing processing...");
-			process = OpenProcess(MAXIMUM_ALLOWED, FALSE, (DWORD)pProcessInfo->UniqueProcessId);
+			process = OpenProcess(MAXIMUM_ALLOWED, FALSE, (DWORD)(DWORD_PTR)pProcessInfo->UniqueProcessId);
 
 			if (process == NULL)
 			{
-				dprintf("[INCOGNITO] Failed to open process %u (%x)", (DWORD)pProcessInfo->UniqueProcessId, (DWORD)pProcessInfo->UniqueProcessId);
+				dprintf("[INCOGNITO] Failed to open process %u (%x)", (DWORD)(DWORD_PTR)pProcessInfo->UniqueProcessId, (DWORD)(DWORD_PTR)pProcessInfo->UniqueProcessId);
 			}
 			else
 			{
-				dprintf("[INCOGNITO] Iterating %u processes for %u (%x)", pProcessInfo->HandleCount, (DWORD)pProcessInfo->UniqueProcessId, (DWORD)pProcessInfo->UniqueProcessId);
+				dprintf("[INCOGNITO] Iterating %u processes for %u (%x)", pProcessInfo->HandleCount, (DWORD)(DWORD_PTR)pProcessInfo->UniqueProcessId, (DWORD)(DWORD_PTR)pProcessInfo->UniqueProcessId);
 				for (i = 0; i < pProcessInfo->HandleCount; i++)
 				{
 					hObject = NULL;
 
-					if (DuplicateHandle(process, (HANDLE)((i + 1) * 4),
+					if (DuplicateHandle(process, (HANDLE)(DWORD_PTR)((i + 1) * 4),
 						GetCurrentProcess(), &hObject, MAXIMUM_ALLOWED, FALSE, 0x02) != FALSE)
 					{
 						LPWSTR lpwsType = NULL;

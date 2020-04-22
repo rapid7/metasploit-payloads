@@ -832,7 +832,7 @@ put2(Picklerobject *self, PyObject *ob)
     if (!( py_ob_id = PyLong_FromVoidPtr(ob)))
         goto finally;
 
-    if (!( memo_len = PyInt_FromLong(p)))
+    if (!( memo_len = PyInt_FromLong((long)p)))
         goto finally;
 
     if (!( t = PyTuple_New(2)))
@@ -869,7 +869,7 @@ put2(Picklerobject *self, PyObject *ob)
         }
         else {
             c_str[0] = BINPUT;
-            c_str[1] = p;
+            c_str[1] = (char)p;
             len = 2;
         }
     }
@@ -1093,7 +1093,7 @@ save_long(Picklerobject *self, PyObject *args)
             /* It's 0 -- an empty bytestring. */
             c_str[0] = LONG1;
             c_str[1] = 0;
-            i = self->write_func(self, c_str, 2);
+            i = (int)self->write_func(self, c_str, 2);
             if (i < 0) goto finally;
             res = 0;
             goto finally;
@@ -1150,9 +1150,9 @@ save_long(Picklerobject *self, PyObject *args)
             }
             size = 5;
         }
-        i = self->write_func(self, c_str, size);
+        i = (int)self->write_func(self, c_str, size);
         if (i < 0) goto finally;
-        i = self->write_func(self, (char *)pdata, (int)nbytes);
+        i = (int)self->write_func(self, (char *)pdata, (int)nbytes);
         if (i < 0) goto finally;
         res = 0;
         goto finally;
@@ -1267,7 +1267,7 @@ save_string(Picklerobject *self, PyObject *args, int doput)
 
         if (size < 256) {
             c_str[0] = SHORT_BINSTRING;
-            c_str[1] = size;
+            c_str[1] = (char)size;
             len = 2;
         }
         else if (size <= INT_MAX) {
@@ -1550,7 +1550,7 @@ save_tuple(Picklerobject *self, PyObject *args)
 
     if (len <= 3 && self->proto >= 2) {
         /* Use TUPLE{1,2,3} opcodes. */
-        if (store_tuple_elements(self, args, len) < 0)
+        if (store_tuple_elements(self, args, (int)len) < 0)
             goto finally;
         if (PyDict_GetItem(self->memo, py_tuple_id)) {
             /* pop the len elements */
@@ -1575,7 +1575,7 @@ save_tuple(Picklerobject *self, PyObject *args)
     if (self->write_func(self, &MARKv, 1) < 0)
         goto finally;
 
-    if (store_tuple_elements(self, args, len) < 0)
+    if (store_tuple_elements(self, args, (int)len) < 0)
         goto finally;
 
     if (PyDict_GetItem(self->memo, py_tuple_id)) {
@@ -2096,8 +2096,8 @@ save_inst(Picklerobject *self, PyObject *args)
             goto finally;
 
 
-        if ((module_size = PyString_Size(module)) < 0 ||
-            (name_size = PyString_Size(name)) < 0)
+        if ((module_size = (int)PyString_Size(module)) < 0 ||
+            (name_size = (int)PyString_Size(name)) < 0)
             goto finally;
 
         module_str = PyString_AS_STRING((PyStringObject *)module);
@@ -2196,8 +2196,8 @@ save_global(Picklerobject *self, PyObject *args, PyObject *name)
     if (!( module = whichmodule(args, global_name)))
         goto finally;
 
-    if ((module_size = PyString_Size(module)) < 0 ||
-        (name_size = PyString_Size(global_name)) < 0)
+    if ((module_size = (int)PyString_Size(module)) < 0 ||
+        (name_size = (int)PyString_Size(global_name)) < 0)
         goto finally;
 
     module_str = PyString_AS_STRING((PyStringObject *)module);
@@ -3873,7 +3873,7 @@ Instance_New(PyObject *cls, PyObject *args)
     if (PyClass_Check(cls)) {
         int l;
 
-        if ((l=PyObject_Size(args)) < 0) goto err;
+        if ((l=(int)PyObject_Size(args)) < 0) goto err;
         if (!( l ))  {
             PyObject *__getinitargs__;
 
@@ -4362,7 +4362,7 @@ load_put(Unpicklerobject *self)
     value=self->stack->data[len-1];
     l=PyDict_SetItem(self->memo, py_str, value);
     Py_DECREF(py_str);
-    return l;
+    return (int)l;
 }
 
 
@@ -4383,7 +4383,7 @@ load_binput(Unpicklerobject *self)
     value=self->stack->data[len-1];
     len=PyDict_SetItem(self->memo, py_key, value);
     Py_DECREF(py_key);
-    return len;
+    return (int)len;
 }
 
 
@@ -4408,11 +4408,11 @@ load_long_binput(Unpicklerobject *self)
     c = (unsigned char)s[3];
     key |= (long)c << 24;
 
-    if (!( py_key = PyInt_FromLong(key)))  return -1;
+    if (!( py_key = PyInt_FromLong((long)key)))  return -1;
     value=self->stack->data[len-1];
     len=PyDict_SetItem(self->memo, py_key, value);
     Py_DECREF(py_key);
-    return len;
+    return (int)len;
 }
 
 
@@ -4435,10 +4435,10 @@ do_append(Unpicklerobject *self, Py_ssize_t  x)
 
         slice=Pdata_popList(self->stack, x);
         if (! slice) return -1;
-        list_len = PyList_GET_SIZE(list);
+        list_len = (int)PyList_GET_SIZE(list);
         i=PyList_SetSlice(list, list_len, list_len, slice);
         Py_DECREF(slice);
-        return i;
+        return (int)i;
     }
     else {
 
@@ -4515,13 +4515,13 @@ do_setitems(Unpicklerobject *self, Py_ssize_t x)
 static int
 load_setitem(Unpicklerobject *self)
 {
-    return do_setitems(self, self->stack->length - 2);
+    return (int)do_setitems(self, self->stack->length - 2);
 }
 
 static int
 load_setitems(Unpicklerobject *self)
 {
-    return do_setitems(self, marker(self));
+    return (int)do_setitems(self, marker(self));
 }
 
 
@@ -4689,7 +4689,7 @@ load_proto(Unpicklerobject *self)
     int i;
     char *protobyte;
 
-    i = self->read_func(self, &protobyte, 1);
+    i = (int)self->read_func(self, &protobyte, 1);
     if (i < 0)
         return -1;
 

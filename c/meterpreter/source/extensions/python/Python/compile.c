@@ -332,7 +332,7 @@ list2dict(PyObject *list)
 
     n = PyList_Size(list);
     for (i = 0; i < n; i++) {
-        v = PyInt_FromLong(i);
+        v = PyInt_FromLong((long)i);
         if (!v) {
             Py_DECREF(dict);
             return NULL;
@@ -392,7 +392,7 @@ dictbytype(PyObject *src, int scope_type, int flag, int offset)
         scope = (PyInt_AS_LONG(v) >> SCOPE_OFF) & SCOPE_MASK;
 
         if (scope == scope_type || PyInt_AS_LONG(v) & flag) {
-            PyObject *tuple, *item = PyInt_FromLong(i);
+            PyObject *tuple, *item = PyInt_FromLong((long)i);
             if (item == NULL) {
                 Py_DECREF(sorted_keys);
                 Py_DECREF(dest);
@@ -489,7 +489,7 @@ compiler_enter_scope(struct compiler *c, identifier name, void *key,
     }
 
     u->u_freevars = dictbytype(u->u_ste->ste_symbols, FREE, DEF_FREE_CLASS,
-                               PyDict_Size(u->u_cellvars));
+                               (int)PyDict_Size(u->u_cellvars));
     if (!u->u_freevars) {
         compiler_unit_free(u);
         return 0;
@@ -543,7 +543,7 @@ compiler_exit_scope(struct compiler *c)
     c->c_nestlevel--;
     compiler_unit_free(c->u);
     /* Restore c->u to the parent unit. */
-    n = PyList_GET_SIZE(c->c_stack) - 1;
+    n = (int)PyList_GET_SIZE(c->c_stack) - 1;
     if (n >= 0) {
         capsule = PyList_GET_ITEM(c->c_stack, n);
         c->u = (struct compiler_unit *)PyCapsule_GetPointer(capsule, COMPILER_CAPSULE_NAME_COMPILER_UNIT);
@@ -993,7 +993,7 @@ compiler_add_o(struct compiler *c, PyObject *dict, PyObject *o)
     v = PyDict_GetItem(dict, t);
     if (!v) {
         arg = PyDict_Size(dict);
-        v = PyInt_FromLong(arg);
+        v = PyInt_FromLong((long)arg);
         if (!v) {
             Py_DECREF(t);
             return -1;
@@ -1008,7 +1008,7 @@ compiler_add_o(struct compiler *c, PyObject *dict, PyObject *o)
     else
         arg = PyInt_AsLong(v);
     Py_DECREF(t);
-    return arg;
+    return (int)arg;
 }
 
 static int
@@ -1300,7 +1300,7 @@ compiler_lookup_arg(PyObject *dict, PyObject *name)
 static int
 compiler_make_closure(struct compiler *c, PyCodeObject *co, int args)
 {
-    int i, free = PyCode_GetNumFree(co);
+    int i, free = (int)PyCode_GetNumFree(co);
     if (free == 0) {
         ADDOP_O(c, LOAD_CONST, (PyObject*)co, consts);
         ADDOP_I(c, MAKE_FUNCTION, args);
@@ -3607,7 +3607,7 @@ assemble_lnotab(struct assembler *a, struct instr *i)
     if (d_bytecode > 255) {
         int j, nbytes, ncodes = d_bytecode / 255;
         nbytes = a->a_lnotab_off + 2 * ncodes;
-        len = PyString_GET_SIZE(a->a_lnotab);
+        len = (int)PyString_GET_SIZE(a->a_lnotab);
         if (nbytes >= len) {
             if ((len <= INT_MAX / 2) && (len * 2 < nbytes))
                 len = nbytes;
@@ -3633,7 +3633,7 @@ assemble_lnotab(struct assembler *a, struct instr *i)
     if (d_lineno > 255) {
         int j, nbytes, ncodes = d_lineno / 255;
         nbytes = a->a_lnotab_off + 2 * ncodes;
-        len = PyString_GET_SIZE(a->a_lnotab);
+        len = (int)PyString_GET_SIZE(a->a_lnotab);
         if (nbytes >= len) {
             if ((len <= INT_MAX / 2) && len * 2 < nbytes)
                 len = nbytes;
@@ -3659,7 +3659,7 @@ assemble_lnotab(struct assembler *a, struct instr *i)
         a->a_lnotab_off += ncodes * 2;
     }
 
-    len = PyString_GET_SIZE(a->a_lnotab);
+    len = (int)PyString_GET_SIZE(a->a_lnotab);
     if (a->a_lnotab_off + 2 >= len) {
         if (_PyString_Resize(&a->a_lnotab, len * 2) < 0)
             return 0;
@@ -3827,15 +3827,18 @@ compute_code_flags(struct compiler *c)
     /* (Only) inherit compilerflags in PyCF_MASK */
     flags |= (c->c_flags->cf_flags & PyCF_MASK);
 
-    n = PyDict_Size(c->u->u_freevars);
+    n = (int)PyDict_Size(c->u->u_freevars);
     if (n < 0)
         return -1;
     if (n == 0) {
-        n = PyDict_Size(c->u->u_cellvars);
+        n = (int)PyDict_Size(c->u->u_cellvars);
         if (n < 0)
-        return -1;
-        if (n == 0) {
-        flags |= CO_NOFREE;
+        {
+            return -1;
+        }
+        if (n == 0)
+        {
+			flags |= CO_NOFREE;
         }
     }
 
@@ -3871,14 +3874,14 @@ makecode(struct compiler *c, struct assembler *a)
     cellvars = dict_keys_inorder(c->u->u_cellvars, 0);
     if (!cellvars)
         goto error;
-    freevars = dict_keys_inorder(c->u->u_freevars, PyTuple_Size(cellvars));
+    freevars = dict_keys_inorder(c->u->u_freevars, (int)PyTuple_Size(cellvars));
     if (!freevars)
         goto error;
     filename = PyString_FromString(c->c_filename);
     if (!filename)
         goto error;
 
-    nlocals = PyDict_Size(c->u->u_varnames);
+    nlocals = (int)PyDict_Size(c->u->u_varnames);
     flags = compute_code_flags(c);
     if (flags < 0)
         goto error;

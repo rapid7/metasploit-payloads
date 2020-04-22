@@ -229,7 +229,7 @@ PyZlib_decompress(PyObject *self, PyObject *args)
         r_strlen = 1;
 
     zst.avail_in = length;
-    zst.avail_out = r_strlen;
+    zst.avail_out = (int)r_strlen;
 
     if (!(result_str = PyString_FromStringAndSize(NULL, r_strlen)))
         return NULL;
@@ -281,7 +281,7 @@ PyZlib_decompress(PyObject *self, PyObject *args)
             }
             zst.next_out = (unsigned char *)PyString_AS_STRING(result_str) \
                 + r_strlen;
-            zst.avail_out = r_strlen;
+            zst.avail_out = (int)r_strlen;
             r_strlen = r_strlen << 1;
             break;
         default:
@@ -428,7 +428,7 @@ PyZlib_objcompress(compobject *self, PyObject *args)
     start_total_out = self->zst.total_out;
     self->zst.avail_in = inplen;
     self->zst.next_in = input;
-    self->zst.avail_out = length;
+    self->zst.avail_out = (int)length;
     self->zst.next_out = (unsigned char *)PyString_AS_STRING(RetVal);
 
     Py_BEGIN_ALLOW_THREADS
@@ -442,7 +442,7 @@ PyZlib_objcompress(compobject *self, PyObject *args)
             goto error;
         self->zst.next_out = (unsigned char *)PyString_AS_STRING(RetVal) \
             + length;
-        self->zst.avail_out = length;
+        self->zst.avail_out = (int)length;
         length = length << 1;
 
         Py_BEGIN_ALLOW_THREADS
@@ -479,7 +479,7 @@ save_unconsumed_input(compobject *self, int err)
             Py_ssize_t old_size = PyString_GET_SIZE(self->unused_data);
             Py_ssize_t new_size;
             PyObject *new_data;
-            if (self->zst.avail_in > PY_SSIZE_T_MAX - old_size) {
+            if (self->zst.avail_in > (uInt)(PY_SSIZE_T_MAX - old_size)) {
                 PyErr_NoMemory();
                 return -1;
             }
@@ -550,7 +550,7 @@ PyZlib_objdecompress(compobject *self, PyObject *args)
     start_total_out = self->zst.total_out;
     self->zst.avail_in = inplen;
     self->zst.next_in = input;
-    self->zst.avail_out = length;
+    self->zst.avail_out = (int)length;
     self->zst.next_out = (unsigned char *)PyString_AS_STRING(RetVal);
 
     Py_BEGIN_ALLOW_THREADS
@@ -577,7 +577,7 @@ PyZlib_objdecompress(compobject *self, PyObject *args)
             goto error;
         self->zst.next_out = (unsigned char *)PyString_AS_STRING(RetVal) \
             + old_length;
-        self->zst.avail_out = length - old_length;
+        self->zst.avail_out = (int)(length - old_length);
 
         Py_BEGIN_ALLOW_THREADS
         err = inflate(&(self->zst), Z_SYNC_FLUSH);
@@ -830,7 +830,7 @@ PyZlib_unflush(compobject *self, PyObject *args)
     ENTER_ZLIB
 
     start_total_out = self->zst.total_out;
-    self->zst.avail_in = PyString_GET_SIZE(self->unconsumed_tail);
+    self->zst.avail_in = (int)PyString_GET_SIZE(self->unconsumed_tail);
     self->zst.next_in = (Byte *)PyString_AS_STRING(self->unconsumed_tail);
     self->zst.avail_out = length;
     self->zst.next_out = (Byte *)PyString_AS_STRING(retval);

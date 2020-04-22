@@ -1,13 +1,16 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 14
-VisualStudioVersion = 14.0.25420.1
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30002.166
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "common", "common\common.vcxproj", "{9E4DE963-873F-4525-A7D0-CE34EDBBDCCA}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ext_server_priv", "ext_server_priv\ext_server_priv.vcxproj", "{87C64204-C82F-415D-AF45-D0B33BDFE39A}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ext_server_stdapi", "ext_server_stdapi\ext_server_stdapi.vcxproj", "{405245AB-0071-4CB9-BFBE-ED4E2A987EFF}"
+	ProjectSection(ProjectDependencies) = postProject
+		{E61592E1-28F4-4AFC-9EE1-9BE833A061C1} = {E61592E1-28F4-4AFC-9EE1-9BE833A061C1}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "metsrv", "metsrv\metsrv.vcxproj", "{37E24F8F-1BD9-490B-8CD2-4768B89E5EAB}"
 EndProject
@@ -16,10 +19,16 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ext_server_incognito", "ext_server_incognito\ext_server_incognito.vcxproj", "{C427F6B9-C287-4BDA-A5BB-401FC19E207C}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ext_server_espia", "ext_server_espia\ext_server_espia.vcxproj", "{CF56DDCC-505F-4D5C-AC2E-9787C7EF1504}"
+	ProjectSection(ProjectDependencies) = postProject
+		{E61592E1-28F4-4AFC-9EE1-9BE833A061C1} = {E61592E1-28F4-4AFC-9EE1-9BE833A061C1}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "elevator", "elevator\elevator.vcxproj", "{662AFBB3-F64A-4AD1-8956-B9F1B846231C}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "screenshot", "screenshot\screenshot.vcxproj", "{09DF8FBC-EDFB-44E6-ACE6-9C0F5A60AB1C}"
+	ProjectSection(ProjectDependencies) = postProject
+		{E61592E1-28F4-4AFC-9EE1-9BE833A061C1} = {E61592E1-28F4-4AFC-9EE1-9BE833A061C1}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ext_server_lanattacks", "ext_server_lanattacks\ext_server_lanattacks.vcxproj", "{2FCCCE33-77E9-43F3-928E-DBF6B9340A62}"
 EndProject
@@ -42,6 +51,8 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ext_server_peinjector", "ext_server_peinjector\ext_server_peinjector.vcxproj", "{2A4FDCA0-A620-4E98-AF05-2B2F227F5166}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ext_server_unhook", "ext_server_unhook\ext_server_unhook.vcxproj", "{561E26D9-7E79-4EF4-8AA2-A770F81568A7}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "jpeg", "jpeg\jpeg.vcxproj", "{E61592E1-28F4-4AFC-9EE1-9BE833A061C1}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -134,11 +145,9 @@ Global
 		{C6FB3275-9067-4BBA-9206-0A720D2BC64F}.r7_release|Win32.ActiveCfg = r7_release|Win32
 		{C6FB3275-9067-4BBA-9206-0A720D2BC64F}.r7_release|Win32.Build.0 = r7_release|Win32
 		{C6FB3275-9067-4BBA-9206-0A720D2BC64F}.r7_release|x64.ActiveCfg = r7_release|Win32
-		{C6FB3275-9067-4BBA-9206-0A720D2BC64F}.r7_release|x64.Build.0 = r7_release|Win32
 		{C6FB3275-9067-4BBA-9206-0A720D2BC64F}.Release|Win32.ActiveCfg = Release|Win32
 		{C6FB3275-9067-4BBA-9206-0A720D2BC64F}.Release|Win32.Build.0 = Release|Win32
 		{C6FB3275-9067-4BBA-9206-0A720D2BC64F}.Release|x64.ActiveCfg = Release|Win32
-		{C6FB3275-9067-4BBA-9206-0A720D2BC64F}.Release|x64.Build.0 = Release|Win32
 		{5104C280-92CA-4317-922C-1EF73DE1C6C1}.r7_release|Win32.ActiveCfg = r7_release|Win32
 		{5104C280-92CA-4317-922C-1EF73DE1C6C1}.r7_release|Win32.Build.0 = r7_release|Win32
 		{5104C280-92CA-4317-922C-1EF73DE1C6C1}.r7_release|x64.ActiveCfg = r7_release|x64
@@ -209,8 +218,19 @@ Global
 		{561E26D9-7E79-4EF4-8AA2-A770F81568A7}.Release|Win32.Build.0 = Release|Win32
 		{561E26D9-7E79-4EF4-8AA2-A770F81568A7}.Release|x64.ActiveCfg = Release|x64
 		{561E26D9-7E79-4EF4-8AA2-A770F81568A7}.Release|x64.Build.0 = Release|x64
+		{E61592E1-28F4-4AFC-9EE1-9BE833A061C1}.r7_release|Win32.ActiveCfg = Release|Win32
+		{E61592E1-28F4-4AFC-9EE1-9BE833A061C1}.r7_release|Win32.Build.0 = Release|Win32
+		{E61592E1-28F4-4AFC-9EE1-9BE833A061C1}.r7_release|x64.ActiveCfg = Release|x64
+		{E61592E1-28F4-4AFC-9EE1-9BE833A061C1}.r7_release|x64.Build.0 = Release|x64
+		{E61592E1-28F4-4AFC-9EE1-9BE833A061C1}.Release|Win32.ActiveCfg = Release|Win32
+		{E61592E1-28F4-4AFC-9EE1-9BE833A061C1}.Release|Win32.Build.0 = Release|Win32
+		{E61592E1-28F4-4AFC-9EE1-9BE833A061C1}.Release|x64.ActiveCfg = Release|x64
+		{E61592E1-28F4-4AFC-9EE1-9BE833A061C1}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {DD7DF887-F7BC-40F0-AD7C-18171F134D14}
 	EndGlobalSection
 EndGlobal

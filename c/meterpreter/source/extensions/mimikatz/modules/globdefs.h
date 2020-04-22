@@ -4,7 +4,7 @@
 	Licence : http://creativecommons.org/licenses/by/3.0/fr/
 */
 #pragma once
-#pragma warning(disable:4530)
+#pragma warning(disable:4530 4091)
 #include <stdio.h>
 #include <windows.h>
 #include <ntsecapi.h>

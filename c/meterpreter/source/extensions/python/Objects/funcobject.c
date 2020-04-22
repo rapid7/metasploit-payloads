@@ -526,8 +526,8 @@ function_call(PyObject *func, PyObject *arg, PyObject *kw)
     result = PyEval_EvalCodeEx(
         (PyCodeObject *)PyFunction_GET_CODE(func),
         PyFunction_GET_GLOBALS(func), (PyObject *)NULL,
-        &PyTuple_GET_ITEM(arg, 0), PyTuple_GET_SIZE(arg),
-        k, nk, d, nd,
+        &PyTuple_GET_ITEM(arg, 0), (int)PyTuple_GET_SIZE(arg),
+        k, (int)nk, d, (int)nd,
         PyFunction_GET_CLOSURE(func));
 
     Py_XDECREF(kwtuple);

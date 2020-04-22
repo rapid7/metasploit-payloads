@@ -1557,9 +1557,9 @@ check_socket_and_wait_for_timeout(PySocketSockObject *s, int writing)
     /* See if the socket is ready */
     PySSL_BEGIN_ALLOW_THREADS
     if (writing)
-        rc = select(s->sock_fd+1, NULL, &fds, NULL, &tv);
+        rc = select((int)s->sock_fd+1, NULL, &fds, NULL, &tv);
     else
-        rc = select(s->sock_fd+1, &fds, NULL, NULL, &tv);
+        rc = select((int)s->sock_fd+1, &fds, NULL, NULL, &tv);
     PySSL_END_ALLOW_THREADS
 
 #ifdef HAVE_POLL

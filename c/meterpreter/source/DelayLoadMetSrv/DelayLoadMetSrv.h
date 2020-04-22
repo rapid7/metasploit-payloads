@@ -30,6 +30,8 @@
 //===============================================================================================//
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+
+#define DELAYIMP_INSECURE_WRITABLE_HOOKS
 #include <Delayimp.h>
 
 #pragma comment (lib,"Delayimp.lib")

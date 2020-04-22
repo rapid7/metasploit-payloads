@@ -48,7 +48,7 @@ _conn_sendall(HANDLE h, char *string, size_t length)
     Py_ssize_t res;
 
     while (length > 0) {
-        res = WRITE(h, p, length);
+        res = WRITE(h, p, (int)length);
         if (res < 0) {
             if (errno == EINTR) {
                 if (check_signals() < 0)
@@ -76,7 +76,7 @@ _conn_recvall(HANDLE h, char *buffer, size_t length)
     char *p = buffer;
 
     while (remaining > 0) {
-        temp = READ(h, p, remaining);
+        temp = READ(h, p, (int)remaining);
         if (temp < 0) {
             if (errno == EINTR) {
                 if (check_signals() < 0)
@@ -242,13 +242,13 @@ conn_poll(ConnectionObject *conn, double timeout, PyThreadState *_save)
 
     if (timeout < 0.0) {
         do {
-            res = select((int)conn->handle+1, &rfds, NULL, NULL, NULL);
+            res = select((int)(INT_PTR)conn->handle+1, &rfds, NULL, NULL, NULL);
         } while (res < 0 && errno == EINTR);
     } else {
         struct timeval tv;
         tv.tv_sec = (long)timeout;
         tv.tv_usec = (long)((timeout - tv.tv_sec) * 1e6 + 0.5);
-        res = select((int)conn->handle+1, &rfds, NULL, NULL, &tv);
+        res = select((int)(INT_PTR)conn->handle+1, &rfds, NULL, NULL, &tv);
         if (res < 0 && errno == EINTR) {
             /* We were interrupted by a signal.  Just indicate a
                timeout even though we are early. */

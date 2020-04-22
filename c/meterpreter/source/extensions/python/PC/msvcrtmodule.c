@@ -397,7 +397,6 @@ static struct PyMethodDef msvcrt_functions[] = {
 PyMODINIT_FUNC
 initmsvcrt(void)
 {
-    int st;
     PyObject *d;
     PyObject *m = Py_InitModule("msvcrt", msvcrt_functions);
     if (m == NULL)

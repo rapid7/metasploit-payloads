@@ -54,32 +54,36 @@ char* variant_to_string(_variant_t& v, char* buffer, DWORD bufferSize)
 		strncpy_s(buffer, bufferSize, v.boolVal == VARIANT_TRUE ? "true" : "false", bufferSize - 1);
 		break;
 	case VT_I1:
-		_snprintf_s(buffer, bufferSize, bufferSize - 1, "%"PRId8, (CHAR)v);
+		_snprintf_s(buffer, bufferSize, bufferSize - 1, "%" PRId8, (CHAR)v);
 		break;
 	case VT_I2:
-		_snprintf_s(buffer, bufferSize, bufferSize - 1, "%"PRId16, (SHORT)v);
+		_snprintf_s(buffer, bufferSize, bufferSize - 1, "%" PRId16, (SHORT)v);
 		break;
 	case VT_INT:
 	case VT_I4:
-		_snprintf_s(buffer, bufferSize, bufferSize - 1, "%"PRId32, (INT)v);
+		_snprintf_s(buffer, bufferSize, bufferSize - 1, "%" PRId32, (INT)v);
 		break;
 	case VT_INT_PTR:
+		_snprintf_s(buffer, bufferSize, bufferSize - 1, "%" PRIdPTR, (INT_PTR)v);
+		break;
 	case VT_I8:
-		_snprintf_s(buffer, bufferSize, bufferSize - 1, "%"PRId64, (INT_PTR)v);
+		_snprintf_s(buffer, bufferSize, bufferSize - 1, "%" PRId64, (__int64)v);
 		break;
 	case VT_UI1:
-		_snprintf_s(buffer, bufferSize, bufferSize - 1, "%"PRIu8, (BYTE)v);
+		_snprintf_s(buffer, bufferSize, bufferSize - 1, "%" PRIu8, (BYTE)v);
 		break;
 	case VT_UI2:
-		_snprintf_s(buffer, bufferSize, bufferSize - 1, "%"PRIu16, (SHORT)v);
+		_snprintf_s(buffer, bufferSize, bufferSize - 1, "%" PRIu16, (SHORT)v);
 		break;
 	case VT_UINT:
 	case VT_UI4:
-		_snprintf_s(buffer, bufferSize, bufferSize - 1, "%"PRIu32, (UINT)v);
+		_snprintf_s(buffer, bufferSize, bufferSize - 1, "%" PRIu32, (UINT)v);
 		break;
 	case VT_UINT_PTR:
+		_snprintf_s(buffer, bufferSize, bufferSize - 1, "%" PRIuPTR, (UINT_PTR)v);
+		break;
 	case VT_UI8:
-		_snprintf_s(buffer, bufferSize, bufferSize - 1, "%"PRIu64, (UINT_PTR)v);
+		_snprintf_s(buffer, bufferSize, bufferSize - 1, "%" PRIu64, (unsigned __int64)v);
 		break;
 	case VT_BSTR:
 	case VT_LPSTR:

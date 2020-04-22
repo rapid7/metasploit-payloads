@@ -29,7 +29,7 @@ DWORD request_incognito_snarf_hashes(Remote *remote, Packet *packet)
 	char *smb_sniffer_ip = packet_get_tlv_value_string(packet, TLV_TYPE_INCOGNITO_SERVERNAME);
 
 	// Initialise net_resource structure (essentially just set ip to that of smb_sniffer)
-	if (_snwprintf(conn_string, BUF_SIZE, L"\\\\%s", smb_sniffer_ip) == -1)
+	if (_snwprintf(conn_string, BUF_SIZE, L"\\\\%S", smb_sniffer_ip) == -1)
 	{
 		conn_string[BUF_SIZE - 1] = '\0';
 	}

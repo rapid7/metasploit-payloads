@@ -129,7 +129,7 @@ int ReadOK(bmp_source_ptr sinfo, char* buffer,int len)
  */
 int read_byte (bmp_source_ptr sinfo)
 {
-	return (int)sinfo->pub.input_buf + sinfo->pub.read_offset++;
+	return (int)(INT_PTR)(sinfo->pub.input_buf + sinfo->pub.read_offset++);
 }
 
 /*
