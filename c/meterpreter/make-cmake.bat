@@ -80,12 +80,12 @@ IF "%BUILD_64%" == "Y" (
     @ECHO ====================================================================================
     @ECHO == Generating "%VS_TITLE%" w/ %PTS_VER% on x64 ^(Trace: %TRACE_MSG%^)
     @ECHO ====================================================================================
-    cmake -G "%VS_TITLE%" -A x64 -T %PTS_VER% -S workspace -B workspace\build\%VS_VER%\x64 -Wno-dev -DBUILD_SNIFFER=%SNIFFER% -DDBGTRACE=%DBGTRACE% -DDBGTRACE_VERBOSE=%DBGTRACE_VERBOSE%
+    cmake -G "%VS_TITLE%" -A x64 -T %PTS_VER% -S workspace -B workspace\build\%VS_VER%_%PTS_VER%\x64 -Wno-dev -DBUILD_SNIFFER=%SNIFFER% -DDBGTRACE=%DBGTRACE% -DDBGTRACE_VERBOSE=%DBGTRACE_VERBOSE%
     if "%DO_BUILD%" == "Y" (
         @ECHO ====================================================================================
         @ECHO == Building "%VS_TITLE%" w/ %PTS_VER% on x64
         @ECHO ====================================================================================
-        cmake --build workspace\build\%VS_VER%\x64 --config Release --clean-first -- /p:XPDeprecationWarning=false
+        cmake --build workspace\build\%VS_VER%_%PTS_VER%\x64 --config Release --clean-first -- /p:XPDeprecationWarning=false
     )
 )
 
@@ -93,12 +93,12 @@ IF "%BUILD_86%" == "Y" (
     @ECHO ====================================================================================
     @ECHO == Generating "%VS_TITLE%" w/ %PTS_VER% on x86 ^(Trace: %TRACE_MSG%^)
     @ECHO ====================================================================================
-    cmake -G "%VS_TITLE%" -A Win32 -T %PTS_VER% -S workspace -B workspace\build\%VS_VER%\Win32 -Wno-dev -DBUILD_SNIFFER=%SNIFFER% -DDBGTRACE=%DBGTRACE% -DDBGTRACE_VERBOSE=%DBGTRACE_VERBOSE%
+    cmake -G "%VS_TITLE%" -A Win32 -T %PTS_VER% -S workspace -B workspace\build\%VS_VER%_%PTS_VER%\Win32 -Wno-dev -DBUILD_SNIFFER=%SNIFFER% -DDBGTRACE=%DBGTRACE% -DDBGTRACE_VERBOSE=%DBGTRACE_VERBOSE%
     if "%DO_BUILD%" == "Y" (
         @ECHO ====================================================================================
         @ECHO == Building "%VS_TITLE%" w/ %PTS_VER% on x86
         @ECHO ====================================================================================
-        cmake --build workspace\build\%VS_VER%\Win32 --config Release --clean-first -- /p:XPDeprecationWarning=false
+        cmake --build workspace\build\%VS_VER%_%PTS_VER%\Win32 --config Release --clean-first -- /p:XPDeprecationWarning=false
     )
 )
 

@@ -83,9 +83,7 @@ DWORD screenshot(int quality, DWORD dwPipeName)
 
 	do
 	{
-		dprintf("[SCREENSHOT] Debug 1");
 		_snprintf_s(cNamedPipe, sizeof(cNamedPipe), MAX_PATH, "\\\\.\\pipe\\%08X", dwPipeName);
-		dprintf("[SCREENSHOT] Debug 2");
 
 		os.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
 
@@ -93,7 +91,6 @@ DWORD screenshot(int quality, DWORD dwPipeName)
 		{
 			BREAK_ON_ERROR("[SCREENSHOT] screenshot: GetVersionEx failed")
 		}
-		dprintf("[SCREENSHOT] Debug 3");
 
 		// On NT we cant use SM_CXVIRTUALSCREEN/SM_CYVIRTUALSCREEN.
 		if (os.dwMajorVersion <= 4)
@@ -102,15 +99,12 @@ DWORD screenshot(int quality, DWORD dwPipeName)
 			ymetric = SM_CYSCREEN;
 		}
 
-		dprintf("[SCREENSHOT] Debug 4");
 		// open the WinSta0 as some services are attached to a different window station.
 		hWindowStation = OpenWindowStationA("WinSta0", FALSE, WINSTA_ALL_ACCESS);
-		dprintf("[SCREENSHOT] Debug 5");
 		if (!hWindowStation)
 		{
 			if (RevertToSelf())
 			{
-				dprintf("[SCREENSHOT] Debug 6");
 				hWindowStation = OpenWindowStationA("WinSta0", FALSE, WINSTA_ALL_ACCESS);
 			}
 		}
@@ -123,44 +117,36 @@ DWORD screenshot(int quality, DWORD dwPipeName)
 
 		// get the current process's window station so we can restore it later on.
 		hOrigWindowStation = GetProcessWindowStation();
-		dprintf("[SCREENSHOT] Debug 7");
 
 		// set the host process's window station to this sessions default input station we opened
 		if (!SetProcessWindowStation(hWindowStation))
 			BREAK_ON_ERROR("[SCREENSHOT] screenshot: SetProcessWindowStation failed");
 
 		// grab a handle to the default input desktop (e.g. Default or WinLogon)
-		dprintf("[SCREENSHOT] Debug 8");
 		hInputDesktop = OpenInputDesktop(0, FALSE, MAXIMUM_ALLOWED);
 		if (!hInputDesktop)
 			BREAK_ON_ERROR("[SCREENSHOT] screenshot: OpenInputDesktop failed");
 
 		// get the threads current desktop so we can restore it later on
-		dprintf("[SCREENSHOT] Debug 9");
 		hOrigDesktop = GetThreadDesktop(GetCurrentThreadId());
 
 		// set this threads desktop to that of this sessions default input desktop on WinSta0
-		dprintf("[SCREENSHOT] Debug 10");
 		SetThreadDesktop(hInputDesktop);
 
 		// and now we can grab a handle to this input desktop
-		dprintf("[SCREENSHOT] Debug 11");
 		hDesktopWnd = GetDesktopWindow();
 
 		// and get a DC from it so we can read its pixels!
-		dprintf("[SCREENSHOT] Debug 12");
 		hdc = GetDC(hDesktopWnd);
 		if (!hdc)
 			BREAK_ON_ERROR("[SCREENSHOT] screenshot. GetDC failed");
 
 		// back up this DC with a memory DC
-		dprintf("[SCREENSHOT] Debug 13");
 		hmemdc = CreateCompatibleDC(hdc);
 		if (!hmemdc)
 			BREAK_ON_ERROR("[SCREENSHOT] screenshot. CreateCompatibleDC failed");
 
 		// calculate the width and height
-		dprintf("[SCREENSHOT] Debug 14");
 		sx = GetSystemMetrics(xmetric);
 		sy = GetSystemMetrics(ymetric);
 
@@ -168,20 +154,17 @@ DWORD screenshot(int quality, DWORD dwPipeName)
 		// prevent breaking functionality on <= NT 4.0
 		if (os.dwMajorVersion >= 4)
 		{
-			dprintf("[SCREENSHOT] Debug 14");
 			sxpos = GetSystemMetrics(SM_XVIRTUALSCREEN);
 			sypos = GetSystemMetrics(SM_YVIRTUALSCREEN);
 		}
 
 
 		// and create a bitmap
-		dprintf("[SCREENSHOT] Debug 15");
 		hbmp = CreateCompatibleBitmap(hdc, sx, sy);
 		if (!hbmp)
 			BREAK_ON_ERROR("[SCREENSHOT] screenshot. CreateCompatibleBitmap failed");
 
 		// this bitmap is backed by the memory DC
-		dprintf("[SCREENSHOT] Debug 16");
 		if (!SelectObject(hmemdc, hbmp))
 			BREAK_ON_ERROR("[SCREENSHOT] screenshot. SelectObject failed");
 
@@ -189,11 +172,9 @@ DWORD screenshot(int quality, DWORD dwPipeName)
 		// screenshot all available monitors by default
 
 		HMODULE user32 = NULL;
-		dprintf("[SCREENSHOT] Debug 17");
 		if ((user32 = LoadLibraryA("user32")))
 		{
 
-			dprintf("[SCREENSHOT] Debug 18");
 			FARPROC SPDA = GetProcAddress(user32, "SetProcessDPIAware");
 			if (SPDA)
 			{
@@ -201,16 +182,13 @@ DWORD screenshot(int quality, DWORD dwPipeName)
 			}
 			FreeLibrary(user32);
 		}
-		dprintf("[SCREENSHOT] Debug 19");
 		if (!StretchBlt(hmemdc, 0, 0, sx, sy, hdc, sxpos, sypos, GetSystemMetrics(SM_CXVIRTUALSCREEN), GetSystemMetrics(SM_CYVIRTUALSCREEN), SRCCOPY))
 			BREAK_ON_ERROR("[SCREENSHOT] screenshot. StretchBlt failed");
 
 		// finally convert the BMP we just made into a JPEG...
-		dprintf("[SCREENSHOT] Debug 20");
 		if (bmp2jpeg(hbmp, hmemdc, quality, &pJpegBuffer, &dwJpegSize) != 1)
 			BREAK_WITH_ERROR("[SCREENSHOT] screenshot. bmp2jpeg failed", ERROR_INVALID_HANDLE);
 
-		dprintf("[SCREENSHOT] Debug 21");
 		// we have succeded
 		dwResult = ERROR_SUCCESS;
 
