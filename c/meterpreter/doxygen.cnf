@@ -768,7 +768,7 @@ RECURSIVE              = YES
 # Note that relative paths are relative to the directory from which doxygen is
 # run.
 
-EXCLUDE                =
+EXCLUDE                = 
 
 # The EXCLUDE_SYMLINKS tag can be used to select whether or not files or
 # directories that are symbolic links (a Unix file system feature) are excluded
@@ -784,7 +784,7 @@ EXCLUDE_SYMLINKS       = NO
 # Note that the wildcards are matched against the file with absolute path, so to
 # exclude all test directories for example use the pattern */test/*
 
-EXCLUDE_PATTERNS       = */bionic/* */jpeg-8/* */deps/* */zlib/* */rtld/lib*.h
+EXCLUDE_PATTERNS       = */bionic/* */jpeg-8/* */deps/* */zlib/* */rtld/lib*.h */python/Include* */python/Lib/* */python/Modules/* */python/Objects/* */python/PC/* */python/Python/* */kiwi/mimikatz/*
 
 # The EXCLUDE_SYMBOLS tag can be used to specify one or more symbol names
 # (namespaces, classes, functions, etc.) that should be excluded from the
