@@ -6,9 +6,9 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/../CMakeListsFuncs.txt)
 
 add_definitions(
     -D_USRDLL
-    -DUNICODE
-    -D_UNICODE
 )
+
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /MP /Gy- /Oy-")
 
 include_directories(../../source/common)
 include_directories(../../source/jpeg-8)

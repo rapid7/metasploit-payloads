@@ -325,8 +325,6 @@ DWORD server_setup(MetsrvConfig* config)
 	{
 		do
 		{
-			dprintf("[SERVER] module loaded at 0x%08X", hAppInstance);
-
 			// Open a THREAD item for the servers main thread, we use this to manage migration later.
 			serverThread = thread_open();
 

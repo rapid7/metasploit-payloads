@@ -10,6 +10,8 @@ add_definitions(
     -D_UNICODE
 )
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
+
 include_directories(../../source/common)
 include_directories(../../source/ReflectiveDllInjection/common)
 

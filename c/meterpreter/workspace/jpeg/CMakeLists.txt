@@ -4,9 +4,10 @@ project(${PROJECT_NAME} C)
 
 add_definitions(
     -D_LIB
-    -DUNICODE
-    -D_UNICODE
+    -D_CRT_SECURE_NO_WARNINGS
 )
+
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /GF /Gy /TP /MP")
 
 set(SRC_DIR ../../source/jpeg-8)
 set(

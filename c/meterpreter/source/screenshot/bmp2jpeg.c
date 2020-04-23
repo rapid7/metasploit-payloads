@@ -1,5 +1,6 @@
 #include "screenshot.h"
 #include "bmp2jpeg.h"
+#include "common.h"
 
 /* 
  * Please Note: bmp2jpeg.c and bmp2jpeg.h have been coppied over from screen.c
@@ -743,6 +744,8 @@ int bmp2jpeg(HBITMAP hBmp, HDC hDC, int quality, BYTE ** buf_jpeg, DWORD * buf_j
     else if (cClrBits <= 24) 
       cClrBits = 24; 
     else cClrBits = 32; 
+
+    dprintf("[SCREENSHOT bmptojpeg] Debug 1");
     
     // Allocate memory for the BITMAPINFO structure. (This structure 
     // contains a BITMAPINFOHEADER structure and an array of RGBQUAD 
@@ -797,6 +800,7 @@ int bmp2jpeg(HBITMAP hBmp, HDC hDC, int quality, BYTE ** buf_jpeg, DWORD * buf_j
         return 0;
     }
 
+    dprintf("[SCREENSHOT bmptojpeg] Debug 2");
     hdr.bfType = 0x4d42;        // 0x42 = "B" 0x4d = "M" 
     // Compute the size of the entire file. 
     hdr.bfSize = (DWORD) (sizeof(BITMAPFILEHEADER) + 
@@ -833,6 +837,7 @@ int bmp2jpeg(HBITMAP hBmp, HDC hDC, int quality, BYTE ** buf_jpeg, DWORD * buf_j
      * We need to provide some value for jpeg_set_defaults() to work.
      */
 
+    dprintf("[SCREENSHOT bmptojpeg] Debug 3");
 	cinfo.err = jpeg_std_error(&jerr);
 	jpeg_create_compress(&cinfo);
     cinfo.in_color_space = JCS_RGB; /* arbitrary guess */
@@ -845,6 +850,7 @@ int bmp2jpeg(HBITMAP hBmp, HDC hDC, int quality, BYTE ** buf_jpeg, DWORD * buf_j
     /* Read the input file header to obtain file size & colorspace. */
 
 	start_input_bmp(&cinfo, src_mgr);
+    dprintf("[SCREENSHOT bmptojpeg] Debug 4");
 
     jpeg_default_colorspace(&cinfo);
 	
@@ -852,14 +858,18 @@ int bmp2jpeg(HBITMAP hBmp, HDC hDC, int quality, BYTE ** buf_jpeg, DWORD * buf_j
 	/* Go GRAYSCALE */
 	//jpeg_set_colorspace(&cinfo, JCS_GRAYSCALE);
 	/* Quality */
+    dprintf("[SCREENSHOT bmptojpeg] Debug 4A");
 	jpeg_set_quality(&cinfo, quality, FALSE);
 
 	// Write the compressed JPEG to memory: bug_jpeg
+    dprintf("[SCREENSHOT bmptojpeg] Debug 4B");
 	jpeg_mem_dest(&cinfo, buf_jpeg, buf_jpeg_size);
 
     /* Start compressor */
+    dprintf("[SCREENSHOT bmptojpeg] Debug 4C");
     jpeg_start_compress(&cinfo, TRUE);
 
+    dprintf("[SCREENSHOT bmptojpeg] Debug 5");
 	/* Process data */
 	while (cinfo.next_scanline < cinfo.image_height) {
 		num_scanlines = (*src_mgr->get_pixel_rows) (&cinfo, src_mgr);
@@ -867,9 +877,13 @@ int bmp2jpeg(HBITMAP hBmp, HDC hDC, int quality, BYTE ** buf_jpeg, DWORD * buf_j
 	}
 	
 	/* Finish compression and release memory */
+    dprintf("[SCREENSHOT bmptojpeg] Debug 6");
 	(*src_mgr->finish_input) (&cinfo, src_mgr);
+    dprintf("[SCREENSHOT bmptojpeg] Debug 7");
 	jpeg_finish_compress(&cinfo);
+    dprintf("[SCREENSHOT bmptojpeg] Debug 8");
 	jpeg_destroy_compress(&cinfo);
+    dprintf("[SCREENSHOT bmptojpeg] Debug 9");
 
     // Free memory. 
     GlobalFree((HGLOBAL)lpBits);

@@ -1,5 +1,6 @@
 #include "elevator.h"
 #include "namedpipeservice.h"
+#include "common.h"
 
 LPSTR lpServiceName           = NULL;
 SERVICE_STATUS_HANDLE hStatus = NULL; 

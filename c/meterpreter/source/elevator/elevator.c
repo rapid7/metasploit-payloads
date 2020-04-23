@@ -8,6 +8,7 @@
 #include "elevator.h"
 #include "namedpipeservice.h"
 #include "tokendup.h"
+#include "common.h"
 
 // define this as we are going to be injected via LoadRemoteLibraryR
 #define REFLECTIVEDLLINJECTION_VIA_LOADREMOTELIBRARYR

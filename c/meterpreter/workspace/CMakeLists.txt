@@ -5,6 +5,8 @@ set(PROJECT_NAME meterpreter)
 cmake_policy(SET CMP0091 NEW)
 project(${PROJECT_NAME} C CXX)
 
+option(DBGTRACE "Enable debug tracing" OFF)
+option(DBGTRACE_VERBOSE "Enable verbose debug tracing" OFF)
 option(BUILD_SNIFFER "Build the sniffer extension (requires PSSDK)" OFF)
 option(USE_STATIC_MSVC_RUNTIMES "Use /MT instead of /MD in MSVC" ON)
 if( USE_STATIC_MSVC_RUNTIMES )
@@ -29,12 +31,20 @@ endif()
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release")
-    message(STATUS "Build Type not speicified, defaulting to 'Release'.")
+    message(STATUS "Build Type not specified, defaulting to 'Release'.")
 endif()
 
 set(IS_RELEASE true)
 set(IS_DEBUG false)
-if(NOT CMAKE_BUILD_TYPE MATCHES "Release")
+
+if(CMAKE_BUILD_TYPE MATCHES "Release")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /W3 /WX")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W3 /WX /EHsc")
+    string(REPLACE "O2" "O1" CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
+    string(REPLACE "Ob2" "Ob1" CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
+    string(REPLACE "O2" "O1" CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}")
+    string(REPLACE "Ob2" "Ob1" CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}")
+else()
     # We only support "Release" or "Debug"
     set(CMAKE_BUILD_TYPE "Debug")
     set(IS_RELEASE false)
@@ -47,6 +57,12 @@ add_definitions(
     -DWIN32
     -DWINVER=0x0501
 )
+
+if(DBGTRACE_VERBOSE)
+    add_definitions(-DDEBUGTRACE=1)
+elseif(DBGTRACE)
+    add_definitions(-DDEBUGTRACE=0)
+endif()
 
 if(IS_X64)
     add_definitions(

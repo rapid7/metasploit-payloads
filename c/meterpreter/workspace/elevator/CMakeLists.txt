@@ -6,7 +6,10 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/../CMakeListsFuncs.txt)
 
 add_definitions(
     -D_USRDLL
+    -D_CRT_SECURE_NO_WARNINGS
 )
+
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /MP")
 
 include_directories(../../source/common)
 include_directories(../../source/ReflectiveDllInjection/common)

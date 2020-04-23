@@ -1,5 +1,10 @@
 #include "elevator.h"
 #include "tokendup.h"
+#include "common.h"
+
+typedef BOOL (WINAPI * CHECKTOKENMEMBERSHIP)( HANDLE TokenHandle, PSID SidToCheck, PBOOL IsMember );
+typedef HANDLE (WINAPI * OPENTHREAD)( DWORD dwDesiredAccess, BOOL bInheritHandle, DWORD dwThreadId );
+
 
 /*
  * Elevate the given thread with our current token if we are running under the required user.
