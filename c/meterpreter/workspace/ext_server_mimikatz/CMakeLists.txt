@@ -22,7 +22,7 @@ file(GLOB_RECURSE SRC_FILES
 add_library(${PROJECT_NAME} SHARED ${SRC_FILES})
 set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME ${PROJECT_NAME}.${TARGET_ARCH})
 
-set(LINK_LIBS psapi crypt32 Shlwapi Secur32 Wtsapi32)
+set(LINK_LIBS psapi crypt32 Shlwapi Secur32 Wtsapi32 comsuppw)
 if(IS_X86)
     set(LINK_LIBS ${LINK_LIBS} backcompat)
 endif()
