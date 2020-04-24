@@ -7,7 +7,8 @@
 #include <stdlib.h>
 #include "libpeinfect.h"
 #include "libpeinfect_obfuscator.h"
-#include "../../common/common.h"
+#include "common.h"
+#include "common_metapi.h"
 
  /* Min/Max Macros */
 #define MIN(_a, _b) ((_a) < (_b) ? (_a) : (_b))
@@ -757,7 +758,7 @@ bool peinfect_infect_full_file(char *infile, PEINFECT *in, char *outfile) {
 
 	/* Open file */
 	FILE *fh;
-	wchar_t *file_w = utf8_to_wchar(infile);
+	wchar_t *file_w = met_api->string.utf8_to_wchar(infile);
 	if (_wfopen_s(&fh, file_w, L"rb") == 0) {
 
 		/* Get file size and allocate buffer */

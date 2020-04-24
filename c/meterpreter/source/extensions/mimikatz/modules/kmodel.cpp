@@ -4,6 +4,7 @@
 	Licence : http://creativecommons.org/licenses/by/3.0/fr/
 */
 #include "kmodel.h"
+#include <comutil.h>
 
 HMODULE g_hModule = NULL;
 
@@ -56,9 +57,9 @@ DWORD WINAPI ThreadProc(LPVOID lpParameter)
 						fonction = fonction.substr(0, monIndex);
 					}
 
-					string procDll(fonction.begin(), fonction.end());
+					_bstr_t procDll(wstring(fonction.begin(), fonction.end()).c_str());
 					
-					ptrFunction maFonction = reinterpret_cast<ptrFunction>(GetProcAddress(g_hModule, procDll.c_str()));
+					ptrFunction maFonction = reinterpret_cast<ptrFunction>(GetProcAddress(g_hModule, (const char*)procDll));
 
 					if(maFonction)
 					{

@@ -6,6 +6,10 @@
 #define _CRT_SECURE_NO_DEPRECATE 1
 
 #include "precomp.h"
+#include "common_metapi.h"
+
+// Required so that use of the API works.
+MetApi* met_api = NULL;
 
 DWORD request_sniffer_interfaces(Remote *remote, Packet *packet);
 DWORD request_sniffer_capture_start(Remote *remote, Packet *packet);
@@ -33,13 +37,7 @@ Command customCommands[] =
 // second stage reflective dll inject payload and not the metsrv itself when it loads extensions.
 #include "../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
 
-// NOTE: _CRT_SECURE_NO_WARNINGS has been added to Configuration->C/C++->Preprocessor->Preprocessor
-
-// this sets the delay load hook function, see DelayLoadMetSrv.h
-EnableDelayLoadMetSrv();
-
-
-#define check_pssdk(); if(!hMgr && pktsdk_initialize()!=0){packet_transmit_response(hErr, remote, response);return(hErr);}
+#define check_pssdk(); if(!hMgr && pktsdk_initialize()!=0){ met_api->packet.transmit_response(hErr, remote, response);return(hErr); }
 
 HANDLE hMgr;
 DWORD hErr;
@@ -114,7 +112,7 @@ DWORD pktsdk_initialize(void);
 
 DWORD request_sniffer_interfaces(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	Tlv entries[8];
 
 	/*
@@ -185,13 +183,13 @@ DWORD request_sniffer_interfaces(Remote *remote, Packet *packet)
 		entries[7].header.length = sizeof(BOOL);
 		entries[7].buffer = (PUCHAR)&adhcp;
 
-		packet_add_tlv_group(response, TLV_TYPE_SNIFFER_INTERFACES, entries, 8);
+		met_api->packet.add_tlv_group(response, TLV_TYPE_SNIFFER_INTERFACES, entries, 8);
 
 		idx++;
 	} while ((hCfg = MgrGetNextAdapterCfg(hMgr, hCfg)) != NULL);
 
 
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 	return ERROR_SUCCESS;
 }
 
@@ -272,7 +270,7 @@ void __stdcall sniffer_receive(DWORD_PTR Param, DWORD_PTR ThParam, HANDLE hPacke
 	//    -- PKS, per job locking would be finer grained.
 	//       however, it probably doesn't matter.
 
-	lock_acquire(snifferm);
+	met_api->lock.acquire(snifferm);
 
 	if (j->idx_pkts >= j->max_pkts) j->idx_pkts = 0;
 	j->cur_pkts++;
@@ -289,12 +287,12 @@ void __stdcall sniffer_receive(DWORD_PTR Param, DWORD_PTR ThParam, HANDLE hPacke
 	j->pkts[j->idx_pkts] = pkt;
 	j->idx_pkts++;
 
-	lock_release(snifferm);
+	met_api->lock.release(snifferm);
 }
 
 DWORD request_sniffer_capture_start(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	unsigned int ifid;
 	unsigned int maxp;
 	CaptureJob *j;
@@ -304,8 +302,8 @@ DWORD request_sniffer_capture_start(Remote *remote, Packet *packet)
 	check_pssdk();
 	dprintf("sniffer>> start_capture()");
 
-	ifid = packet_get_tlv_value_uint(packet, TLV_TYPE_SNIFFER_INTERFACE_ID);
-	maxp = packet_get_tlv_value_uint(packet, TLV_TYPE_SNIFFER_PACKET_COUNT);
+	ifid = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_SNIFFER_INTERFACE_ID);
+	maxp = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_SNIFFER_PACKET_COUNT);
 	maxp = min(maxp, SNIFFER_MAX_QUEUE);
 	maxp = max(maxp, 1);
 
@@ -370,13 +368,13 @@ DWORD request_sniffer_capture_start(Remote *remote, Packet *packet)
 		AdpSetMacFilter(j->adp, mfAll);
 	} while (0);
 
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 	return ERROR_SUCCESS;
 }
 
 DWORD request_sniffer_capture_stop(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	unsigned int ifid;
 	CaptureJob *j;
 	DWORD result;
@@ -384,7 +382,7 @@ DWORD request_sniffer_capture_stop(Remote *remote, Packet *packet)
 	check_pssdk();
 	dprintf("sniffer>> stop_capture()");
 
-	ifid = packet_get_tlv_value_uint(packet, TLV_TYPE_SNIFFER_INTERFACE_ID);
+	ifid = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_SNIFFER_INTERFACE_ID);
 	dprintf("sniffer>> stop_capture(0x%.8x)", ifid);
 
 	result = ERROR_SUCCESS;
@@ -407,28 +405,28 @@ DWORD request_sniffer_capture_stop(Remote *remote, Packet *packet)
 			break;
 		}
 
-		lock_acquire(snifferm);
+		met_api->lock.acquire(snifferm);
 
 		j->active = 0;
 		AdpSetMacFilter(j->adp, 0);
 		AdpCloseAdapter(j->adp);
 		AdpDestroy(j->adp);
 
-		packet_add_tlv_uint(response, TLV_TYPE_SNIFFER_PACKET_COUNT, j->cur_pkts);
-		packet_add_tlv_uint(response, TLV_TYPE_SNIFFER_BYTE_COUNT, (unsigned int)j->cur_bytes);
+		met_api->packet.add_tlv_uint(response, TLV_TYPE_SNIFFER_PACKET_COUNT, j->cur_pkts);
+		met_api->packet.add_tlv_uint(response, TLV_TYPE_SNIFFER_BYTE_COUNT, (unsigned int)j->cur_bytes);
 
-		lock_release(snifferm);
+		met_api->lock.release(snifferm);
 
 		dprintf("sniffer>> stop_capture() interface %d processed %d packets/%d bytes", j->intf, j->cur_pkts, j->cur_bytes);
 	} while (0);
 
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 	return ERROR_SUCCESS;
 }
 
 DWORD request_sniffer_capture_release(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	unsigned int ifid, i;
 	CaptureJob *j;
 	DWORD result;
@@ -437,7 +435,7 @@ DWORD request_sniffer_capture_release(Remote *remote, Packet *packet)
 	check_pssdk();
 	dprintf("sniffer>> release_capture()");
 
-	ifid = packet_get_tlv_value_uint(packet, TLV_TYPE_SNIFFER_INTERFACE_ID);
+	ifid = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_SNIFFER_INTERFACE_ID);
 	dprintf("sniffer>> release_capture(0x%.8x)", ifid);
 
 	result = ERROR_SUCCESS;
@@ -461,10 +459,10 @@ DWORD request_sniffer_capture_release(Remote *remote, Packet *packet)
 			break;
 		}
 
-		lock_acquire(snifferm);
+		met_api->lock.acquire(snifferm);
 
-		packet_add_tlv_uint(response, TLV_TYPE_SNIFFER_PACKET_COUNT, j->cur_pkts);
-		packet_add_tlv_uint(response, TLV_TYPE_SNIFFER_BYTE_COUNT, (unsigned int)j->cur_bytes);
+		met_api->packet.add_tlv_uint(response, TLV_TYPE_SNIFFER_PACKET_COUNT, j->cur_pkts);
+		met_api->packet.add_tlv_uint(response, TLV_TYPE_SNIFFER_BYTE_COUNT, (unsigned int)j->cur_bytes);
 		dprintf("sniffer>> release_capture() interface %d released %d packets/%d bytes", j->intf, j->cur_pkts, j->cur_bytes);
 
 		for (i = 0; i < j->max_pkts; i++)
@@ -478,18 +476,18 @@ DWORD request_sniffer_capture_release(Remote *remote, Packet *packet)
 		free(j->pkts);
 		memset(j, 0, sizeof(CaptureJob));
 
-		lock_release(snifferm);
+		met_api->lock.release(snifferm);
 
 
 	} while (0);
 
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 	return ERROR_SUCCESS;
 }
 
 DWORD request_sniffer_capture_stats(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	unsigned int ifid;
 	CaptureJob *j;
 	DWORD result;
@@ -497,7 +495,7 @@ DWORD request_sniffer_capture_stats(Remote *remote, Packet *packet)
 	check_pssdk();
 	dprintf("sniffer>> capture_stats()");
 
-	ifid = packet_get_tlv_value_uint(packet, TLV_TYPE_SNIFFER_INTERFACE_ID);
+	ifid = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_SNIFFER_INTERFACE_ID);
 	dprintf("sniffer>> capture_stats(0x%.8x)", ifid);
 
 	result = ERROR_SUCCESS;
@@ -520,19 +518,19 @@ DWORD request_sniffer_capture_stats(Remote *remote, Packet *packet)
 			break;
 		}
 
-		lock_acquire(snifferm);
-		packet_add_tlv_uint(response, TLV_TYPE_SNIFFER_PACKET_COUNT, j->cur_pkts);
-		packet_add_tlv_uint(response, TLV_TYPE_SNIFFER_BYTE_COUNT, (unsigned int)j->cur_bytes);
-		lock_release(snifferm);
+		met_api->lock.acquire(snifferm);
+		met_api->packet.add_tlv_uint(response, TLV_TYPE_SNIFFER_PACKET_COUNT, j->cur_pkts);
+		met_api->packet.add_tlv_uint(response, TLV_TYPE_SNIFFER_BYTE_COUNT, (unsigned int)j->cur_bytes);
+		met_api->lock.release(snifferm);
 	} while (0);
 
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 	return ERROR_SUCCESS;
 }
 
 DWORD request_sniffer_capture_dump_read(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	unsigned int ifid, i;
 	unsigned int bcnt;
 	CaptureJob *j;
@@ -541,8 +539,8 @@ DWORD request_sniffer_capture_dump_read(Remote *remote, Packet *packet)
 	check_pssdk();
 	dprintf("sniffer>> capture_dump_read()");
 
-	ifid = packet_get_tlv_value_uint(packet, TLV_TYPE_SNIFFER_INTERFACE_ID);
-	bcnt = packet_get_tlv_value_uint(packet, TLV_TYPE_SNIFFER_BYTE_COUNT);
+	ifid = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_SNIFFER_INTERFACE_ID);
+	bcnt = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_SNIFFER_BYTE_COUNT);
 	bcnt = min(bcnt, 32 * 1024 * 1024);
 
 	dprintf("sniffer>> capture_dump_read(0x%.8x, %d)", ifid, bcnt);
@@ -554,7 +552,7 @@ DWORD request_sniffer_capture_dump_read(Remote *remote, Packet *packet)
 		// the interface is invalid
 		if (ifid == 0 || ifid >= SNIFFER_MAX_INTERFACES)
 		{
-			packet_add_tlv_uint(response, TLV_TYPE_SNIFFER_BYTE_COUNT, 0);
+			met_api->packet.add_tlv_uint(response, TLV_TYPE_SNIFFER_BYTE_COUNT, 0);
 			goto fail;
 		}
 
@@ -562,7 +560,7 @@ DWORD request_sniffer_capture_dump_read(Remote *remote, Packet *packet)
 
 		if (!j->dbuf)
 		{
-			packet_add_tlv_uint(response, TLV_TYPE_SNIFFER_BYTE_COUNT, 0);
+			met_api->packet.add_tlv_uint(response, TLV_TYPE_SNIFFER_BYTE_COUNT, 0);
 			goto fail;
 		}
 
@@ -571,8 +569,8 @@ DWORD request_sniffer_capture_dump_read(Remote *remote, Packet *packet)
 			bcnt = j->dlen - j->didx;
 		}
 
-		packet_add_tlv_uint(response, TLV_TYPE_SNIFFER_BYTE_COUNT, bcnt);
-		packet_add_tlv_raw(response, TLV_TYPE_SNIFFER_PACKET, (unsigned char *)j->dbuf + j->didx, bcnt);
+		met_api->packet.add_tlv_uint(response, TLV_TYPE_SNIFFER_BYTE_COUNT, bcnt);
+		met_api->packet.add_tlv_raw(response, TLV_TYPE_SNIFFER_PACKET, (unsigned char *)j->dbuf + j->didx, bcnt);
 		j->didx += bcnt;
 	} while (0);
 
@@ -587,7 +585,7 @@ DWORD request_sniffer_capture_dump_read(Remote *remote, Packet *packet)
 		if (j->active == 0)
 		{
 			dprintf("sniffer>> capture_dump_read, release CaptureJob");
-			lock_acquire(snifferm);
+			met_api->lock.acquire(snifferm);
 			for (i = 0; i < j->max_pkts; i++)
 			{
 				if (!j->pkts[i]) break;
@@ -597,19 +595,19 @@ DWORD request_sniffer_capture_dump_read(Remote *remote, Packet *packet)
 
 			free(j->pkts);
 			memset(j, 0, sizeof(CaptureJob));
-			lock_release(snifferm);
+			met_api->lock.release(snifferm);
 		}
 	}
 
 fail:
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 	return ERROR_SUCCESS;
 }
 
 
 DWORD request_sniffer_capture_dump(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	unsigned int ifid;
 	unsigned int rbuf, mbuf;
 	unsigned int *tmp;
@@ -624,12 +622,12 @@ DWORD request_sniffer_capture_dump(Remote *remote, Packet *packet)
 	check_pssdk();
 	dprintf("sniffer>> capture_dump()");
 
-	ifid = packet_get_tlv_value_uint(packet, TLV_TYPE_SNIFFER_INTERFACE_ID);
+	ifid = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_SNIFFER_INTERFACE_ID);
 	dprintf("sniffer>> capture_dump(0x%.8x)", ifid);
 
 	result = ERROR_SUCCESS;
 
-	lock_acquire(snifferm);
+	met_api->lock.acquire(snifferm);
 
 	do
 	{
@@ -719,10 +717,10 @@ DWORD request_sniffer_capture_dump(Remote *remote, Packet *packet)
 
 		j->dlen = rcnt;
 
-		packet_add_tlv_uint(response, TLV_TYPE_SNIFFER_PACKET_COUNT, pcnt);
-		packet_add_tlv_uint(response, TLV_TYPE_SNIFFER_BYTE_COUNT, rcnt);
+		met_api->packet.add_tlv_uint(response, TLV_TYPE_SNIFFER_PACKET_COUNT, pcnt);
+		met_api->packet.add_tlv_uint(response, TLV_TYPE_SNIFFER_BYTE_COUNT, rcnt);
 		// add capture datalink, needed when saving capture file, use TLV_TYPE_SNIFFER_INTERFACE_ID not to create a new TLV type
-		packet_add_tlv_uint(response, TLV_TYPE_SNIFFER_INTERFACE_ID, j->capture_linktype);
+		met_api->packet.add_tlv_uint(response, TLV_TYPE_SNIFFER_INTERFACE_ID, j->capture_linktype);
 
 		dprintf("sniffer>> finished processing packets");
 
@@ -731,24 +729,23 @@ DWORD request_sniffer_capture_dump(Remote *remote, Packet *packet)
 		j->idx_pkts = 0;
 	} while (0);
 
-	lock_release(snifferm);
-	packet_transmit_response(result, remote, response);
+	met_api->lock.release(snifferm);
+	met_api->packet.transmit_response(result, remote, response);
 	return ERROR_SUCCESS;
 }
 
 /*!
  * @brief Initialize the server extension.
+ * @param api Pointer to the Meterpreter API structure.
  * @param remote Pointer to the remote instance.
  * @return Indication of success or failure.
  */
-DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
+DWORD __declspec(dllexport) InitServerExtension(MetApi* api, Remote* remote)
 {
-	// This handle has to be set before calls to command_register
-	// otherwise we get obscure crashes!
-	hMetSrv = remote->met_srv;
+    met_api = api;
 
 	dprintf("[SERVER] Registering command handlers...");
-	command_register_all( customCommands );
+    met_api->command.register_all(customCommands);
 
 	dprintf("[SERVER] Memory reset of open_captures...");
 	memset(open_captures, 0, sizeof(open_captures));
@@ -781,7 +778,7 @@ DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
 	}
 
 	dprintf("[SERVER] Creating a lock...");
-	snifferm = lock_create();
+	snifferm = met_api->lock.create();
 
 	return hErr;
 }
@@ -793,9 +790,10 @@ DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
  */
 DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
 {
-	command_register_all( customCommands );
+    met_api->command.deregister_all(customCommands);
+
 	MgrDestroy(hMgr);
-	lock_destroy(snifferm);
+	met_api->lock.destroy(snifferm);
 	return ERROR_SUCCESS;
 }
 

@@ -3,6 +3,7 @@
  * @brief
  */
 #include "precomp.h"
+#include "common_metapi.h"
 #include "tcp.h"
 
 #include <ws2tcpip.h>
@@ -40,13 +41,13 @@ VOID free_tcp_server_context(TcpServerContext * ctx)
 
 		if (ctx->channel)
 		{
-			channel_close(ctx->channel, ctx->remote, NULL, 0, NULL);
+			met_api->channel.close(ctx->channel, ctx->remote, NULL, 0, NULL);
 			ctx->channel = NULL;
 		}
 
 		if (ctx->notify)
 		{
-			scheduler_signal_waitable(ctx->notify, Stop);
+			met_api->scheduler.signal_waitable(ctx->notify, SchedulerStop);
 			ctx->notify = NULL;
 		}
 
@@ -84,7 +85,7 @@ DWORD tcp_channel_server_close(Channel * channel, Packet * request, LPVOID conte
 		free_tcp_server_context(ctx);
 
 		// Set the native channel operations context to NULL
-		channel_set_native_io_context(channel, NULL);
+		met_api->channel.set_native_io_context(channel, NULL);
 
 	} while (0);
 
@@ -138,13 +139,13 @@ TcpClientContext * tcp_channel_server_create_client(TcpServerContext * serverCtx
 		chops.native.write = tcp_channel_client_write;
 		chops.native.close = tcp_channel_client_close;
 
-		clientctx->channel = channel_create_stream(0, 0, &chops);
+		clientctx->channel = met_api->channel.create_stream(0, 0, &chops);
 		if (!clientctx->channel)
 		{
 			BREAK_WITH_ERROR("[TCP-SERVER] tcp_channel_server_create_client. clientctx->channel == NULL", ERROR_INVALID_HANDLE);
 		}
 
-		dwResult = scheduler_insert_waitable(clientctx->notify, clientctx, NULL, (WaitableNotifyRoutine)tcp_channel_client_local_notify, NULL);
+		dwResult = met_api->scheduler.insert_waitable(clientctx->notify, clientctx, NULL, (WaitableNotifyRoutine)tcp_channel_client_local_notify, NULL);
 
 	} while (0);
 
@@ -204,7 +205,7 @@ DWORD tcp_channel_server_notify(Remote * remote, TcpServerContext * serverCtx)
 			BREAK_ON_WSAERROR("[TCP-SERVER] tcp_channel_server_notify. accept failed");
 		}
 
-		dprintf("[TCP-SERVER] tcp_channel_server_notify. Got new client connection on channel %d. sock=%d", channel_get_id(serverCtx->channel), sock);
+		dprintf("[TCP-SERVER] tcp_channel_server_notify. Got new client connection on channel %d. sock=%d", met_api->channel.get_id(serverCtx->channel), sock);
 
 		clientctx = tcp_channel_server_create_client(serverCtx, sock);
 		if (!clientctx)
@@ -245,20 +246,20 @@ DWORD tcp_channel_server_notify(Remote * remote, TcpServerContext * serverCtx)
 
 		dprintf("[TCP-SERVER] tcp_channel_server_notify. New connection %s:%d <- %s:%d", localhost, localport, peerhost, peerport);
 
-		request = packet_create(PACKET_TLV_TYPE_REQUEST, "tcp_channel_open");
+		request = met_api->packet.create(PACKET_TLV_TYPE_REQUEST, "tcp_channel_open");
 		if (!request)
 		{
-			BREAK_WITH_ERROR("[TCP-SERVER] request_net_tcp_server_channel_open. packet_create failed", ERROR_INVALID_HANDLE);
+			BREAK_WITH_ERROR("[TCP-SERVER] request_net_tcp_server_channel_open. met_api->packet.create failed", ERROR_INVALID_HANDLE);
 		}
 
-		packet_add_tlv_uint(request, TLV_TYPE_CHANNEL_ID, channel_get_id(clientctx->channel));
-		packet_add_tlv_uint(request, TLV_TYPE_CHANNEL_PARENTID, channel_get_id(serverCtx->channel));
-		packet_add_tlv_string(request, TLV_TYPE_LOCAL_HOST, localhost);
-		packet_add_tlv_uint(request, TLV_TYPE_LOCAL_PORT, localport);
-		packet_add_tlv_string(request, TLV_TYPE_PEER_HOST, peerhost);
-		packet_add_tlv_uint(request, TLV_TYPE_PEER_PORT, peerport);
+		met_api->packet.add_tlv_uint(request, TLV_TYPE_CHANNEL_ID, met_api->channel.get_id(clientctx->channel));
+		met_api->packet.add_tlv_uint(request, TLV_TYPE_CHANNEL_PARENTID, met_api->channel.get_id(serverCtx->channel));
+		met_api->packet.add_tlv_string(request, TLV_TYPE_LOCAL_HOST, localhost);
+		met_api->packet.add_tlv_uint(request, TLV_TYPE_LOCAL_PORT, localport);
+		met_api->packet.add_tlv_string(request, TLV_TYPE_PEER_HOST, peerhost);
+		met_api->packet.add_tlv_uint(request, TLV_TYPE_PEER_PORT, peerport);
 
-		dwResult = packet_transmit(serverCtx->remote, request, NULL);
+		dwResult = met_api->packet.transmit(serverCtx->remote, request, NULL);
 
 	} while (0);
 
@@ -284,7 +285,7 @@ DWORD request_net_tcp_server_channel_open(Remote * remote, Packet * packet)
 
 	do
 	{
-		response = packet_create_response(packet);
+		response = met_api->packet.create_response(packet);
 		if (!response)
 		{
 			BREAK_WITH_ERROR("[TCP-SERVER] request_net_tcp_server_channel_open. response == NULL", ERROR_NOT_ENOUGH_MEMORY);
@@ -300,8 +301,8 @@ DWORD request_net_tcp_server_channel_open(Remote * remote, Packet * packet)
 
 		ctx->remote = remote;
 
-		localPort = (USHORT)(packet_get_tlv_value_uint(packet, TLV_TYPE_LOCAL_PORT) & 0xFFFF);
-		localHost = packet_get_tlv_value_string(packet, TLV_TYPE_LOCAL_HOST);
+		localPort = (USHORT)(met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_LOCAL_PORT) & 0xFFFF);
+		localHost = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_LOCAL_HOST);
 
 		ctx->fd = WSASocket(AF_INET6, SOCK_STREAM, IPPROTO_TCP, 0, 0, 0);
 		if (ctx->fd == INVALID_SOCKET)
@@ -368,22 +369,22 @@ DWORD request_net_tcp_server_channel_open(Remote * remote, Packet * packet)
 		chops.native.context = ctx;
 		chops.native.close = tcp_channel_server_close;
 
-		ctx->channel = channel_create_stream(0, CHANNEL_FLAG_SYNCHRONOUS, &chops);
+		ctx->channel = met_api->channel.create_stream(0, CHANNEL_FLAG_SYNCHRONOUS, &chops);
 		if (!ctx->channel)
 		{
 			BREAK_WITH_ERROR("[TCP-SERVER] request_net_tcp_server_channel_open. channel_create_stream failed", ERROR_INVALID_HANDLE);
 		}
 
-		scheduler_insert_waitable(ctx->notify, ctx, NULL, (WaitableNotifyRoutine)tcp_channel_server_notify, NULL);
+		met_api->scheduler.insert_waitable(ctx->notify, ctx, NULL, (WaitableNotifyRoutine)tcp_channel_server_notify, NULL);
 
-		packet_add_tlv_uint(response, TLV_TYPE_CHANNEL_ID, channel_get_id(ctx->channel));
+		met_api->packet.add_tlv_uint(response, TLV_TYPE_CHANNEL_ID, met_api->channel.get_id(ctx->channel));
 		net_tlv_pack_local_addrinfo(ctx, response);
 
-		dprintf("[TCP-SERVER] request_net_tcp_server_channel_open. tcp server %s:%d on channel %d", localHost, localPort, channel_get_id(ctx->channel));
+		dprintf("[TCP-SERVER] request_net_tcp_server_channel_open. tcp server %s:%d on channel %d", localHost, localPort, met_api->channel.get_id(ctx->channel));
 
 	} while (0);
 
-	packet_transmit_response(dwResult, remote, response);
+	met_api->packet.transmit_response(dwResult, remote, response);
 
 	do
 	{
@@ -408,7 +409,7 @@ DWORD request_net_tcp_server_channel_open(Remote * remote, Packet * packet)
 		if (ctx->channel)
 		{
 			dprintf("[TCP-SERVER] Destroying channel");
-			channel_destroy(ctx->channel, packet);
+			met_api->channel.destroy(ctx->channel, packet);
 		}
 
 		free(ctx);

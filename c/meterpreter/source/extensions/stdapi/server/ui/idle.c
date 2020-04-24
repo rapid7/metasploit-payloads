@@ -1,4 +1,5 @@
 #include "precomp.h"
+#include "common_metapi.h"
 
 /*
 #ifdef _WIN64
@@ -18,7 +19,7 @@ DWORD request_ui_get_idle_time(Remote *remote, Packet *request)
 {
 	LASTINPUTINFO info;
 	HMODULE user32 = NULL;
-	Packet *response = packet_create_response(request);
+	Packet *response = met_api->packet.create_response(request);
 	DWORD result = ERROR_SUCCESS;
 	BOOL (WINAPI *getLastInputInfo)(PLASTINPUTINFO) = NULL;
 
@@ -42,7 +43,7 @@ DWORD request_ui_get_idle_time(Remote *remote, Packet *request)
 		info.cbSize = sizeof(info);
 
 		if (getLastInputInfo(&info))
-			packet_add_tlv_uint(response, TLV_TYPE_IDLE_TIME,
+			met_api->packet.add_tlv_uint(response, TLV_TYPE_IDLE_TIME,
 					(GetTickCount() - info.dwTime) / 1000);
 		else
 			result = GetLastError();
@@ -54,7 +55,7 @@ DWORD request_ui_get_idle_time(Remote *remote, Packet *request)
 		FreeLibrary(user32);
 
 	// Transmit the response packet
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 
 	return ERROR_SUCCESS;
 }

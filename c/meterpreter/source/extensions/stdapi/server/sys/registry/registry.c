@@ -1,4 +1,5 @@
 #include "precomp.h"
+#include "common_metapi.h"
 #include <shlwapi.h>
 
 /*!
@@ -9,13 +10,13 @@
  */
 DWORD request_registry_check_key_exists(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	if (response == NULL) {
 		goto out;
 	}
 
-	HKEY rootKey = (HKEY)packet_get_tlv_value_qword(packet, TLV_TYPE_ROOT_KEY);
-	wchar_t *baseKey = utf8_to_wchar(packet_get_tlv_value_string(packet, TLV_TYPE_BASE_KEY));
+	HKEY rootKey = (HKEY)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_ROOT_KEY);
+	wchar_t *baseKey = met_api->string.utf8_to_wchar(met_api->packet.get_tlv_value_string(packet, TLV_TYPE_BASE_KEY));
 
 	DWORD result = ERROR_INVALID_PARAMETER;
 	if (rootKey && baseKey) {
@@ -28,13 +29,13 @@ DWORD request_registry_check_key_exists(Remote *remote, Packet *packet)
 		}
 
 		dprintf("[REG] Key exists? %s", exists ? "TRUE" : "FALSE");
-		packet_add_tlv_bool(response, TLV_TYPE_BOOL, exists);
+		met_api->packet.add_tlv_bool(response, TLV_TYPE_BOOL, exists);
 		result = ERROR_SUCCESS;
 	}
 
 	free(baseKey);
 
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 out:
 	return ERROR_SUCCESS;
 }
@@ -51,14 +52,14 @@ out:
  */
 DWORD request_registry_load_key(Remote *remote, Packet *packet)
 {
-	Packet *response   = packet_create_response(packet);
+	Packet *response   = met_api->packet.create_response(packet);
 	if (response == NULL) {
 		goto out;
 	}
 
-	HKEY rootKey       = (HKEY)packet_get_tlv_value_qword(packet, TLV_TYPE_ROOT_KEY);
-	wchar_t *baseKey   = utf8_to_wchar(packet_get_tlv_value_string(packet, TLV_TYPE_BASE_KEY));
-	wchar_t *hiveFile  = utf8_to_wchar(packet_get_tlv_value_string(packet, TLV_TYPE_FILE_PATH));
+	HKEY rootKey       = (HKEY)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_ROOT_KEY);
+	wchar_t *baseKey   = met_api->string.utf8_to_wchar(met_api->packet.get_tlv_value_string(packet, TLV_TYPE_BASE_KEY));
+	wchar_t *hiveFile  = met_api->string.utf8_to_wchar(met_api->packet.get_tlv_value_string(packet, TLV_TYPE_FILE_PATH));
 
 	DWORD result = ERROR_INVALID_PARAMETER;
 	if (rootKey && baseKey && hiveFile) {
@@ -67,20 +68,20 @@ DWORD request_registry_load_key(Remote *remote, Packet *packet)
 
 	free(baseKey);
 	free(hiveFile);
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 out:
 	return ERROR_SUCCESS;
 }
 
 DWORD request_registry_unload_key(Remote *remote, Packet *packet)
 {
-	Packet *response   = packet_create_response(packet);
+	Packet *response   = met_api->packet.create_response(packet);
 	if (response == NULL) {
 		goto out;
 	}
 
-	HKEY rootKey       = (HKEY)packet_get_tlv_value_qword(packet, TLV_TYPE_ROOT_KEY);
-	wchar_t *baseKey   = utf8_to_wchar(packet_get_tlv_value_string(packet, TLV_TYPE_BASE_KEY));
+	HKEY rootKey       = (HKEY)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_ROOT_KEY);
+	wchar_t *baseKey   = met_api->string.utf8_to_wchar(met_api->packet.get_tlv_value_string(packet, TLV_TYPE_BASE_KEY));
 
 	DWORD result = ERROR_INVALID_PARAMETER;
 	if (rootKey && baseKey) {
@@ -88,16 +89,16 @@ DWORD request_registry_unload_key(Remote *remote, Packet *packet)
 	}
 
 	free(baseKey);
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 out:
 	return ERROR_SUCCESS;
 }
 
 static DWORD open_key(Packet *packet, HKEY *rootKey, HKEY *resKey)
 {
-	*rootKey          = (HKEY)packet_get_tlv_value_qword(packet, TLV_TYPE_ROOT_KEY);
-	wchar_t *baseKey  = utf8_to_wchar(packet_get_tlv_value_string(packet, TLV_TYPE_BASE_KEY));
-	DWORD permission  = packet_get_tlv_value_uint(packet, TLV_TYPE_PERMISSION);
+	*rootKey          = (HKEY)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_ROOT_KEY);
+	wchar_t *baseKey  = met_api->string.utf8_to_wchar(met_api->packet.get_tlv_value_string(packet, TLV_TYPE_BASE_KEY));
+	DWORD permission  = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_PERMISSION);
 
 	// Validate the parameters and then attempt to create the key
 	DWORD result = ERROR_INVALID_PARAMETER;
@@ -126,7 +127,7 @@ static DWORD open_key(Packet *packet, HKEY *rootKey, HKEY *resKey)
  */
 DWORD request_registry_open_key(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	if (response == NULL) {
 		goto out;
 	}
@@ -137,10 +138,10 @@ DWORD request_registry_open_key(Remote *remote, Packet *packet)
 
 	// Add the HKEY if we succeeded, but always return a result
 	if (result == ERROR_SUCCESS) {
-		packet_add_tlv_qword(response, TLV_TYPE_HKEY, (QWORD)resKey);
+		met_api->packet.add_tlv_qword(response, TLV_TYPE_HKEY, (QWORD)resKey);
 	}
 
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 out:
 	return ERROR_SUCCESS;
 }
@@ -156,15 +157,15 @@ out:
  */
 DWORD request_registry_open_remote_key(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	if (response == NULL) {
 		goto out;
 	}
 
 
 	HKEY resKey         = NULL;
-	HKEY rootKey        = (HKEY)packet_get_tlv_value_qword(packet, TLV_TYPE_ROOT_KEY);
-	wchar_t *targetHost = utf8_to_wchar(packet_get_tlv_value_string(packet, TLV_TYPE_TARGET_HOST));
+	HKEY rootKey        = (HKEY)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_ROOT_KEY);
+	wchar_t *targetHost = met_api->string.utf8_to_wchar(met_api->packet.get_tlv_value_string(packet, TLV_TYPE_TARGET_HOST));
 
 	// Validate the parameters and then attempt to create the key
 	DWORD result = ERROR_INVALID_PARAMETER;
@@ -174,11 +175,11 @@ DWORD request_registry_open_remote_key(Remote *remote, Packet *packet)
 
 	// Add the HKEY if we succeeded, but always return a result
 	if (result == ERROR_SUCCESS) {
-		packet_add_tlv_qword(response, TLV_TYPE_HKEY, (QWORD)resKey);
+		met_api->packet.add_tlv_qword(response, TLV_TYPE_HKEY, (QWORD)resKey);
 	}
 
 	free(targetHost);
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 out:
 	return ERROR_SUCCESS;
 }
@@ -195,15 +196,15 @@ out:
  */
 DWORD request_registry_create_key(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	if (response == NULL) {
 		goto out;
 	}
 
 	HKEY resKey      = NULL;
-	HKEY rootKey     = (HKEY)packet_get_tlv_value_qword(packet, TLV_TYPE_ROOT_KEY);
-	wchar_t *baseKey = utf8_to_wchar(packet_get_tlv_value_string(packet, TLV_TYPE_BASE_KEY));
-	DWORD permission = packet_get_tlv_value_uint(packet, TLV_TYPE_PERMISSION);
+	HKEY rootKey     = (HKEY)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_ROOT_KEY);
+	wchar_t *baseKey = met_api->string.utf8_to_wchar(met_api->packet.get_tlv_value_string(packet, TLV_TYPE_BASE_KEY));
+	DWORD permission = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_PERMISSION);
 
 	// Validate the parameters and then attempt to create the key
 	DWORD result = ERROR_INVALID_PARAMETER;
@@ -218,18 +219,18 @@ DWORD request_registry_create_key(Remote *remote, Packet *packet)
 
 	// Add the HKEY if we succeeded, but always return a result
 	if (result == ERROR_SUCCESS) {
-		packet_add_tlv_qword(response, TLV_TYPE_HKEY, (QWORD)resKey);
+		met_api->packet.add_tlv_qword(response, TLV_TYPE_HKEY, (QWORD)resKey);
 	}
 
 	free(baseKey);
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 out:
 	return ERROR_SUCCESS;
 }
 
 static void enum_key(Remote *remote, Packet *packet, HKEY hkey)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	if (response == NULL) {
 		return;
 	}
@@ -259,9 +260,9 @@ static void enum_key(Remote *remote, Packet *packet, HKEY hkey)
 		result = RegEnumKeyW(hkey, index, name, maxSubKeyLen);
 
 		if (result == ERROR_SUCCESS) {
-			char *tmp = wchar_to_utf8(name);
+			char *tmp = met_api->string.wchar_to_utf8(name);
 			if (tmp) {
-				packet_add_tlv_string(response, TLV_TYPE_KEY_NAME, tmp);
+				met_api->packet.add_tlv_string(response, TLV_TYPE_KEY_NAME, tmp);
 				free(tmp);
 			}
 		} else {
@@ -276,12 +277,12 @@ static void enum_key(Remote *remote, Packet *packet, HKEY hkey)
 
 	free(name);
 err:
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 }
 
 static void enum_value(Remote *remote, Packet *packet, HKEY hkey)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	if (response == NULL) {
 		return;
 	}
@@ -313,9 +314,9 @@ static void enum_value(Remote *remote, Packet *packet, HKEY hkey)
 				NULL, NULL, NULL, NULL);
 
 		if (result == ERROR_SUCCESS) {
-			char *tmp = wchar_to_utf8(name);
+			char *tmp = met_api->string.wchar_to_utf8(name);
 			if (tmp) {
-				packet_add_tlv_string(response, TLV_TYPE_VALUE_NAME, tmp);
+				met_api->packet.add_tlv_string(response, TLV_TYPE_VALUE_NAME, tmp);
 				free(tmp);
 			}
 		} else {
@@ -330,7 +331,7 @@ static void enum_value(Remote *remote, Packet *packet, HKEY hkey)
 
 	free(name);
 err:
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 }
 
 
@@ -345,7 +346,7 @@ err:
  */
 DWORD request_registry_enum_key(Remote *remote, Packet *packet)
 {
-	HKEY hkey = (HKEY)packet_get_tlv_value_qword(packet, TLV_TYPE_HKEY);
+	HKEY hkey = (HKEY)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_HKEY);
 	enum_key(remote, packet, hkey);
 
 	return ERROR_SUCCESS;
@@ -386,14 +387,14 @@ DWORD request_registry_enum_key_direct(Remote *remote, Packet *packet)
  */
 DWORD request_registry_delete_key(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	if (response == NULL) {
 		goto out;
 	}
 
-	HKEY rootKey     = (HKEY)packet_get_tlv_value_qword(packet, TLV_TYPE_ROOT_KEY);
-	wchar_t *baseKey = utf8_to_wchar(packet_get_tlv_value_string(packet, TLV_TYPE_BASE_KEY));
-	DWORD flags      = packet_get_tlv_value_uint(packet, TLV_TYPE_FLAGS);
+	HKEY rootKey     = (HKEY)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_ROOT_KEY);
+	wchar_t *baseKey = met_api->string.utf8_to_wchar(met_api->packet.get_tlv_value_string(packet, TLV_TYPE_BASE_KEY));
+	DWORD flags      = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_FLAGS);
 
 	DWORD result = ERROR_INVALID_PARAMETER;
 	if (rootKey && baseKey) {
@@ -405,7 +406,7 @@ DWORD request_registry_delete_key(Remote *remote, Packet *packet)
 	}
 
 	free(baseKey);
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 out:
 	return ERROR_SUCCESS;
 }
@@ -419,12 +420,12 @@ out:
  */
 DWORD request_registry_close_key(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	if (response == NULL) {
 		goto out;
 	}
 
-	HKEY hkey = (HKEY)packet_get_tlv_value_qword(packet, TLV_TYPE_HKEY);
+	HKEY hkey = (HKEY)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_HKEY);
 
 	DWORD result = ERROR_INVALID_PARAMETER;
 	if (hkey) {
@@ -432,7 +433,7 @@ DWORD request_registry_close_key(Remote *remote, Packet *packet)
 	}
 
 	// Set the result and send the response
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 out:
 	return ERROR_SUCCESS;
 }
@@ -488,7 +489,7 @@ static wchar_t *reg_multi_sz_parse(char* str, size_t *length)
 	for (i = 0; i < count; i++)
 	{
 		wchar_t * tmp_buf = calloc(strlen(string_arr[i]) + 1, sizeof(wchar_t));
-		tmp_buf = utf8_to_wchar(string_arr[i]);
+		tmp_buf = met_api->string.utf8_to_wchar(string_arr[i]);
 
 		wcsncpy(ptr, tmp_buf, wcslen(tmp_buf) + 1);		// join the splited strings.
 		ptr += wcslen(tmp_buf) + 1;			// append next string to the end of last string, keep the null-terminater.
@@ -504,7 +505,7 @@ static wchar_t *reg_multi_sz_parse(char* str, size_t *length)
 
 static void set_value(Remote *remote, Packet *packet, HKEY hkey)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	if (response == NULL) {
 		return;
 	}
@@ -515,11 +516,11 @@ static void set_value(Remote *remote, Packet *packet, HKEY hkey)
 	Tlv valueData;
 
 	// Acquire the standard TLVs
-	valueName = utf8_to_wchar(packet_get_tlv_value_string(packet, TLV_TYPE_VALUE_NAME));
-	valueType = packet_get_tlv_value_uint(packet, TLV_TYPE_VALUE_TYPE);
+	valueName = met_api->string.utf8_to_wchar(met_api->packet.get_tlv_value_string(packet, TLV_TYPE_VALUE_NAME));
+	valueType = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_VALUE_TYPE);
 
 	// Get the value data TLV
-	if (packet_get_tlv(packet, TLV_TYPE_VALUE_DATA, &valueData) != ERROR_SUCCESS) {
+	if (met_api->packet.get_tlv(packet, TLV_TYPE_VALUE_DATA, &valueData) != ERROR_SUCCESS) {
 		result = ERROR_INVALID_PARAMETER;
 	} else {
 		// Now let's rock this shit!
@@ -528,7 +529,7 @@ static void set_value(Remote *remote, Packet *packet, HKEY hkey)
 		switch (valueType) {
 			case REG_SZ:
 			case REG_EXPAND_SZ:
-				buf = utf8_to_wchar(valueData.buffer);
+				buf = met_api->string.utf8_to_wchar(valueData.buffer);
 				len = (wcslen(buf) + 1) * sizeof(wchar_t);
 				break;
 			case REG_MULTI_SZ:
@@ -548,7 +549,7 @@ static void set_value(Remote *remote, Packet *packet, HKEY hkey)
 	free(valueName);
 
 	// Populate the result code
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 }
 
 /*
@@ -563,7 +564,7 @@ static void set_value(Remote *remote, Packet *packet, HKEY hkey)
  */
 DWORD request_registry_set_value(Remote *remote, Packet *packet)
 {
-	HKEY hkey = (HKEY)packet_get_tlv_value_qword(packet, TLV_TYPE_HKEY);
+	HKEY hkey = (HKEY)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_HKEY);
 	set_value(remote, packet, hkey);
 
 	return ERROR_SUCCESS;
@@ -596,7 +597,7 @@ DWORD request_registry_set_value_direct(Remote *remote, Packet *packet)
 
 static void query_value(Remote *remote, Packet *packet, HKEY hkey)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	if (response == NULL) {
 		return;
 	}
@@ -608,7 +609,7 @@ static void query_value(Remote *remote, Packet *packet, HKEY hkey)
 	DWORD result = ERROR_SUCCESS;
 	DWORD valueType = 0;
 
-	valueName = utf8_to_wchar(packet_get_tlv_value_string(packet, TLV_TYPE_VALUE_NAME));
+	valueName = met_api->string.utf8_to_wchar(met_api->packet.get_tlv_value_string(packet, TLV_TYPE_VALUE_NAME));
 
 	// Get the size of the value data
 	if ((result = RegQueryValueExW(hkey, valueName, 0, NULL, NULL,
@@ -630,26 +631,26 @@ static void query_value(Remote *remote, Packet *packet, HKEY hkey)
 	}
 
 	// Add the information about the value to the response
-	packet_add_tlv_uint(response, TLV_TYPE_VALUE_TYPE, valueType);
+	met_api->packet.add_tlv_uint(response, TLV_TYPE_VALUE_TYPE, valueType);
 
 	switch (valueType) {
 		case REG_SZ:
 		case REG_EXPAND_SZ:
-			tmp = wchar_to_utf8((wchar_t *)valueData);
+			tmp = met_api->string.wchar_to_utf8((wchar_t *)valueData);
 			if (tmp) {
-				packet_add_tlv_string(response, TLV_TYPE_VALUE_DATA, tmp);
+				met_api->packet.add_tlv_string(response, TLV_TYPE_VALUE_DATA, tmp);
 				free(tmp);
 			} else {
-				packet_add_tlv_raw(response, TLV_TYPE_VALUE_DATA,
+				met_api->packet.add_tlv_raw(response, TLV_TYPE_VALUE_DATA,
 					valueData, valueDataSize);
 			}
 			break;
 		case REG_DWORD:
-			packet_add_tlv_uint(response, TLV_TYPE_VALUE_DATA,
+			met_api->packet.add_tlv_uint(response, TLV_TYPE_VALUE_DATA,
 				*(LPDWORD)valueData);
 			break;
 		default:
-			packet_add_tlv_raw(response, TLV_TYPE_VALUE_DATA,
+			met_api->packet.add_tlv_raw(response, TLV_TYPE_VALUE_DATA,
 				valueData, valueDataSize);
 			break;
 	}
@@ -657,7 +658,7 @@ static void query_value(Remote *remote, Packet *packet, HKEY hkey)
 err:
 	free(valueName);
 	// Populate the result code
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 }
 
 /*
@@ -670,7 +671,7 @@ err:
  */
 DWORD request_registry_query_value(Remote *remote, Packet *packet)
 {
-	HKEY hkey = (HKEY)packet_get_tlv_value_qword(packet, TLV_TYPE_HKEY);
+	HKEY hkey = (HKEY)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_HKEY);
 	query_value(remote, packet, hkey);
 
 	return ERROR_SUCCESS;
@@ -708,7 +709,7 @@ DWORD request_registry_query_value_direct(Remote *remote, Packet *packet)
  */
 DWORD request_registry_enum_value(Remote *remote, Packet *packet)
 {
-	HKEY hkey = (HKEY)packet_get_tlv_value_qword(packet, TLV_TYPE_HKEY);
+	HKEY hkey = (HKEY)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_HKEY);
 	enum_value(remote, packet, hkey);
 
 	return ERROR_SUCCESS;
@@ -746,13 +747,13 @@ DWORD request_registry_enum_value_direct(Remote *remote, Packet *packet)
  */
 DWORD request_registry_delete_value(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	if (response == NULL) {
 		goto out;
 	}
 
-	HKEY hkey          = (HKEY)packet_get_tlv_value_qword(packet, TLV_TYPE_HKEY);
-	wchar_t *valueName = utf8_to_wchar(packet_get_tlv_value_string(packet, TLV_TYPE_VALUE_NAME));
+	HKEY hkey          = (HKEY)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_HKEY);
+	wchar_t *valueName = met_api->string.utf8_to_wchar(met_api->packet.get_tlv_value_string(packet, TLV_TYPE_VALUE_NAME));
 
 	DWORD result = ERROR_INVALID_PARAMETER;
 	if (hkey && valueName) {
@@ -760,7 +761,7 @@ DWORD request_registry_delete_value(Remote *remote, Packet *packet)
 	}
 
 	free(valueName);
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 out:
 	return ERROR_SUCCESS;
 }
@@ -774,12 +775,12 @@ out:
  */
 DWORD request_registry_query_class(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	if (response == NULL) {
 		goto out;
 	}
 
-	HKEY hkey = (HKEY)packet_get_tlv_value_qword(packet, TLV_TYPE_HKEY);
+	HKEY hkey = (HKEY)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_HKEY);
 
 	DWORD result = ERROR_INVALID_PARAMETER;
 	if (!hkey) {
@@ -792,12 +793,12 @@ DWORD request_registry_query_class(Remote *remote, Packet *packet)
 	result = RegQueryInfoKeyA(hkey, className, &classNameLen,
 		NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	if (result == ERROR_SUCCESS) {
-		packet_add_tlv_raw(response, TLV_TYPE_VALUE_DATA,
+		met_api->packet.add_tlv_raw(response, TLV_TYPE_VALUE_DATA,
 			className, classNameLen);
 	}
 
 err:
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 out:
 	return ERROR_SUCCESS;
 }

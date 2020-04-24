@@ -3,6 +3,7 @@
  * @brief Definitions for WMI request handling functionality.
  */
 #include "extapi.h"
+#include "common_metapi.h"
 #include "wshelpers.h"
 #include "wmi.h"
 #include "wmi_interface.h"
@@ -20,7 +21,7 @@ DWORD request_wmi_query(Remote *remote, Packet *packet)
 	LPSTR lpValue = NULL;
 	LPWSTR lpwRoot = NULL;
 	LPWSTR lpwQuery = NULL;
-	Packet * response = packet_create_response(packet);
+	Packet * response = met_api->packet.create_response(packet);
 
 	do
 	{
@@ -29,7 +30,7 @@ DWORD request_wmi_query(Remote *remote, Packet *packet)
 			BREAK_WITH_ERROR("[EXTAPI WMI] Unable to create response packet", ERROR_OUTOFMEMORY);
 		}
 
-		lpValue = packet_get_tlv_value_string(packet, TLV_TYPE_EXT_WMI_DOMAIN);
+		lpValue = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_EXT_WMI_DOMAIN);
 
 		if (!lpValue)
 		{
@@ -44,7 +45,7 @@ DWORD request_wmi_query(Remote *remote, Packet *packet)
 			break;
 		}
 
-		lpValue = packet_get_tlv_value_string(packet, TLV_TYPE_EXT_WMI_QUERY);
+		lpValue = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_EXT_WMI_QUERY);
 		dprintf("[EXTAPI WMI] Query: %s", lpValue);
 		dwResult = to_wide_string(lpValue, &lpwQuery);
 		if (dwResult != ERROR_SUCCESS)
@@ -71,7 +72,7 @@ DWORD request_wmi_query(Remote *remote, Packet *packet)
 	dprintf("[EXTAPI WMI] Transmitting response back to caller.");
 	if (response)
 	{
-		packet_transmit_response(dwResult, remote, response);
+		met_api->packet.transmit_response(dwResult, remote, response);
 	}
 
 	return dwResult;

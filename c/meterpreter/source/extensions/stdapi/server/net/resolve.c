@@ -1,4 +1,5 @@
 #include "precomp.h"
+#include "common_metapi.h"
 #include <stdio.h>
 
 #include <winsock2.h>
@@ -59,14 +60,14 @@ DWORD resolve_host(LPCSTR hostname, u_short ai_family, struct in_addr *result, s
 
 DWORD request_resolve_host(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	LPCSTR hostname = NULL;
 	struct in_addr addr;
 	struct in6_addr addr6;
 	u_short ai_family = AF_INET;
 	int iResult;
 
-	hostname = packet_get_tlv_value_string(packet, TLV_TYPE_HOST_NAME);
+	hostname = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_HOST_NAME);
 
 	if (!hostname)
 	{
@@ -75,17 +76,17 @@ DWORD request_resolve_host(Remote *remote, Packet *packet)
 	}
 	else
 	{
-		ai_family = packet_get_tlv_value_uint(packet, TLV_TYPE_ADDR_TYPE);
+		ai_family = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_ADDR_TYPE);
 		iResult = resolve_host(hostname, ai_family, &addr, &addr6);
 		if (iResult == NO_ERROR)
 		{
 			if (ai_family == AF_INET)
 			{
-				packet_add_tlv_raw(response, TLV_TYPE_IP, &addr, sizeof(struct in_addr));
+				met_api->packet.add_tlv_raw(response, TLV_TYPE_IP, &addr, sizeof(struct in_addr));
 			} else {
-				packet_add_tlv_raw(response, TLV_TYPE_IP, &addr6, sizeof(struct in_addr6));
+				met_api->packet.add_tlv_raw(response, TLV_TYPE_IP, &addr6, sizeof(struct in_addr6));
 			}
-			packet_add_tlv_uint(response, TLV_TYPE_ADDR_TYPE, ai_family);
+			met_api->packet.add_tlv_uint(response, TLV_TYPE_ADDR_TYPE, ai_family);
 		}
 		else
 		{
@@ -93,19 +94,19 @@ DWORD request_resolve_host(Remote *remote, Packet *packet)
 		}
 	}
 
-	packet_transmit_response(iResult, remote, response);
+	met_api->packet.transmit_response(iResult, remote, response);
 	return ERROR_SUCCESS;
 }
 
 DWORD request_resolve_hosts(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	Tlv hostname = {0};
 	int index = 0;
 	int iResult;
-	u_short ai_family = packet_get_tlv_value_uint(packet, TLV_TYPE_ADDR_TYPE);
+	u_short ai_family = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_ADDR_TYPE);
 
-	while( packet_enum_tlv( packet, index++, TLV_TYPE_HOST_NAME, &hostname ) == ERROR_SUCCESS )
+	while( met_api->packet.enum_tlv( packet, index++, TLV_TYPE_HOST_NAME, &hostname ) == ERROR_SUCCESS )
 	{
 		struct in_addr addr = {0};
 		struct in6_addr addr6 = {0};
@@ -116,19 +117,19 @@ DWORD request_resolve_hosts(Remote *remote, Packet *packet)
 		{
 			if (ai_family == AF_INET)
 			{
-				packet_add_tlv_raw(response, TLV_TYPE_IP, &addr, sizeof(struct in_addr));
+				met_api->packet.add_tlv_raw(response, TLV_TYPE_IP, &addr, sizeof(struct in_addr));
 			} else {
-				packet_add_tlv_raw(response, TLV_TYPE_IP, &addr6, sizeof(struct in_addr6));
+				met_api->packet.add_tlv_raw(response, TLV_TYPE_IP, &addr6, sizeof(struct in_addr6));
 			}
 		}
 		else
 		{
 			dprintf("Unable to resolve_host %s error: %x", hostname.buffer, iResult);
-			packet_add_tlv_raw(response, TLV_TYPE_IP, NULL, 0);
+			met_api->packet.add_tlv_raw(response, TLV_TYPE_IP, NULL, 0);
 		}
-		packet_add_tlv_uint(response, TLV_TYPE_ADDR_TYPE, ai_family);
+		met_api->packet.add_tlv_uint(response, TLV_TYPE_ADDR_TYPE, ai_family);
 	}
 
-	packet_transmit_response(NO_ERROR, remote, response);
+	met_api->packet.transmit_response(NO_ERROR, remote, response);
 	return ERROR_SUCCESS;
 }

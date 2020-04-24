@@ -1,4 +1,5 @@
 #include "precomp.h"
+#include "common_metapi.h"
 #include "udp.h"
 
 /*
@@ -22,7 +23,7 @@ DWORD udp_channel_write( Channel * channel, Packet * request, LPVOID context, LP
 		if( !ctx )
 			BREAK_WITH_ERROR( "[UDP] udp_channel_write. ctx == NULL", ERROR_INVALID_HANDLE );
 		
-		rport = (USHORT)( packet_get_tlv_value_uint( request, TLV_TYPE_PEER_PORT ) & 0xFFFF );
+		rport = (USHORT)( met_api->packet.get_tlv_value_uint( request, TLV_TYPE_PEER_PORT ) & 0xFFFF );
 		if( !rport )
 		{
 			rport = ctx->peerport;
@@ -30,7 +31,7 @@ DWORD udp_channel_write( Channel * channel, Packet * request, LPVOID context, LP
 				BREAK_WITH_ERROR( "[UDP] udp_channel_write. A peer port must be specified", ERROR_INVALID_PARAMETER );
 		}
 
-		host = packet_get_tlv_value_string( request, TLV_TYPE_PEER_HOST );
+		host = met_api->packet.get_tlv_value_string( request, TLV_TYPE_PEER_HOST );
 		if( !host )
 		{
 			rhost = ctx->peerhost.s_addr;
@@ -121,7 +122,7 @@ VOID free_udp_context( UdpSocketContext * ctx )
 	
 	if( ctx->sock.channel )
 	{
-		channel_close( ctx->sock.channel, ctx->sock.remote, NULL, 0, NULL );
+		met_api->channel.close( ctx->sock.channel, ctx->sock.remote, NULL, 0, NULL );
 		ctx->sock.channel = NULL;
 	}
 
@@ -129,7 +130,7 @@ VOID free_udp_context( UdpSocketContext * ctx )
 	{
 		dprintf( "[UDP] free_udp_context. remove_waitable ctx=0x%08X notify=0x%08X", ctx, ctx->sock.notify );
 		// The scheduler calls CloseHandle on our WSACreateEvent() for us
-		scheduler_signal_waitable( ctx->sock.notify, Stop );
+		met_api->scheduler.signal_waitable( ctx->sock.notify, SchedulerStop );
 		ctx->sock.notify = NULL;
 	}
 
@@ -177,7 +178,7 @@ DWORD udp_channel_notify( Remote * remote, UdpClientContext * ctx )
 		{
 			dprintf( "[UDP] udp_channel_notify. channel=0x%08X is being gracefully closed...", ctx->sock.channel );
 
-			channel_set_native_io_context( ctx->sock.channel, NULL );
+			met_api->channel.set_native_io_context( ctx->sock.channel, NULL );
 			
 			Sleep( 250 );
 
@@ -210,7 +211,7 @@ DWORD udp_channel_notify( Remote * remote, UdpClientContext * ctx )
 
 			dprintf( "[UDP] udp_channel_notify. Data on channel=0x%08X, read %d bytes from %s:%d", ctx->sock.channel, dwBytesRead, cpPeerHost, ntohs( from.sin_port ) );
 
-			channel_write( ctx->sock.channel, ctx->sock.remote, addend, 2, bBuffer, dwBytesRead, NULL );
+			met_api->channel.write( ctx->sock.channel, ctx->sock.remote, addend, 2, bBuffer, dwBytesRead, NULL );
 		}
 
 	} while( 0 );
@@ -240,7 +241,7 @@ DWORD udp_channel_close( Channel * channel, Packet * request, LPVOID context )
 		free_udp_context( ctx );
 
 		// Set the native channel operations context to NULL
-		channel_set_native_io_context( channel, NULL );
+		met_api->channel.set_native_io_context( channel, NULL );
 
 	} while( 0 );
 
@@ -263,7 +264,7 @@ DWORD request_net_udp_channel_open( Remote * remote, Packet * packet )
 
 	do
 	{
-		response = packet_create_response( packet );
+		response = met_api->packet.create_response( packet );
 		if( !response )
 			BREAK_WITH_ERROR( "[UDP] request_net_udp_channel_open. response == NULL", ERROR_NOT_ENOUGH_MEMORY );
 		
@@ -275,21 +276,21 @@ DWORD request_net_udp_channel_open( Remote * remote, Packet * packet )
 		
 		ctx->sock.remote = remote;
 
-		ctx->localport = (USHORT)( packet_get_tlv_value_uint( packet, TLV_TYPE_LOCAL_PORT ) & 0xFFFF );
+		ctx->localport = (USHORT)( met_api->packet.get_tlv_value_uint( packet, TLV_TYPE_LOCAL_PORT ) & 0xFFFF );
 		if( !ctx->localport )
 			ctx->localport = 0;
 
-		ctx->peerport = (USHORT)( packet_get_tlv_value_uint( packet, TLV_TYPE_PEER_PORT ) & 0xFFFF );
+		ctx->peerport = (USHORT)( met_api->packet.get_tlv_value_uint( packet, TLV_TYPE_PEER_PORT ) & 0xFFFF );
 		if( !ctx->peerport )
 			ctx->peerport = 0;
 
-		lhost = packet_get_tlv_value_string( packet, TLV_TYPE_LOCAL_HOST );
+		lhost = met_api->packet.get_tlv_value_string( packet, TLV_TYPE_LOCAL_HOST );
 		if( lhost )
 			ctx->localhost.s_addr = inet_addr( lhost );
 		else
 			ctx->localhost.s_addr = INADDR_ANY;
 
-		phost = packet_get_tlv_value_string( packet, TLV_TYPE_PEER_HOST );
+		phost = met_api->packet.get_tlv_value_string( packet, TLV_TYPE_PEER_HOST );
 		if( phost )
 		{
 			dprintf( "[UDP] request_net_udp_channel_open. phost=%s", phost );
@@ -319,20 +320,20 @@ DWORD request_net_udp_channel_open( Remote * remote, Packet * packet )
 		chops.native.write   = udp_channel_write;
 		chops.native.close   = udp_channel_close;
 
-		ctx->sock.channel = channel_create_datagram( 0, 0, &chops );
+		ctx->sock.channel = met_api->channel.create_datagram( 0, 0, &chops );
 		if( !ctx->sock.channel )
 			BREAK_WITH_ERROR( "[UDP] request_net_udp_channel_open. channel_create_stream failed", ERROR_INVALID_HANDLE );
 
-		scheduler_insert_waitable( ctx->sock.notify, ctx, NULL, (WaitableNotifyRoutine)udp_channel_notify, NULL );
+		met_api->scheduler.insert_waitable( ctx->sock.notify, ctx, NULL, (WaitableNotifyRoutine)udp_channel_notify, NULL );
 
-		packet_add_tlv_uint( response, TLV_TYPE_CHANNEL_ID, channel_get_id(ctx->sock.channel) );
+		met_api->packet.add_tlv_uint( response, TLV_TYPE_CHANNEL_ID, met_api->channel.get_id(ctx->sock.channel) );
 		net_tlv_pack_local_addrinfo( &ctx->sock, response );
 
-		dprintf( "[UDP] request_net_udp_channel_open. UDP socket on channel %d (The local specified was %s:%d ) (The peer specified was %s:%d)",  channel_get_id( ctx->sock.channel ), inet_ntoa( ctx->localhost ), ctx->localport, inet_ntoa( ctx->peerhost ), ctx->peerport );
+		dprintf( "[UDP] request_net_udp_channel_open. UDP socket on channel %d (The local specified was %s:%d ) (The peer specified was %s:%d)",  met_api->channel.get_id( ctx->sock.channel ), inet_ntoa( ctx->localhost ), ctx->localport, inet_ntoa( ctx->peerhost ), ctx->peerport );
 
 	} while( 0 );
 
-	packet_transmit_response( dwResult, remote, response );
+	met_api->packet.transmit_response( dwResult, remote, response );
 
 	do
 	{
@@ -346,7 +347,7 @@ DWORD request_net_udp_channel_open( Remote * remote, Packet * packet )
 			closesocket( ctx->sock.fd );
 			
 		if( ctx->sock.channel )
-			channel_destroy( ctx->sock.channel, packet );
+			met_api->channel.destroy( ctx->sock.channel, packet );
 
 		free( ctx );
 

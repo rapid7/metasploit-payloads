@@ -19,7 +19,6 @@
 
 #include "railgun/railgun.h"	// PKS, win32 specific at the moment.
 
-#include "../../../DelayLoadMetSrv/DelayLoadMetSrv.h"
 #include "../../../ReflectiveDLLInjection/inject/src/GetProcAddressR.h"
 #include "../../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.h"
 // declared in ReflectiveLoader.c and set by DllMain also in ReflectiveLoader.c

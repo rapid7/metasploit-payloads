@@ -8,6 +8,7 @@
 #include "python_commands.h"
 #include "python_meterpreter_binding.h"
 #include "Resource Files/python_core.rh"
+#include "common_metapi.h"
 
 ///! @brief Struct that contains pointer to init function and name.
 typedef struct _InitFunc
@@ -155,7 +156,7 @@ static PyObject* handle_write(LIST* target, PyObject* self, PyObject* args)
 		dprintf("[PYTHON] something written to %p: %s", target, written);
 		if (target != NULL)
 		{
-			list_add(target, strdup(written));
+			met_api->list.add(target, strdup(written));
 		}
 	}
 	else
@@ -198,23 +199,23 @@ static PyMethodDef meterpreter_stderr_hooks[] =
 
 static VOID dump_to_packet(LIST* source, Packet* packet, UINT tlvType)
 {
-	lock_acquire(source->lock);
+	met_api->lock.acquire(source->lock);
 
 	PNODE current = source->start;
 
 	while (current != NULL)
 	{
-		packet_add_tlv_string(packet, tlvType, (LPCSTR)current->data);
+		met_api->packet.add_tlv_string(packet, tlvType, (LPCSTR)current->data);
 		current = current->next;
 	}
 
-	lock_release(source->lock);
+	met_api->lock.release(source->lock);
 }
 
 VOID clear_std_handler(LIST* source)
 {
 	dprintf("[PYTHON] clearing list %p", source);
-	list_clear(source, free);
+	met_api->list.clear(source, free);
 	dprintf("[PYTHON] cleared list %p", source);
 }
 
@@ -223,11 +224,11 @@ VOID initialize_std_handlers()
 	dprintf("[PYTHON] initializing handlers");
 	if (stderrBuffer == NULL)
 	{
-		stderrBuffer = list_create();
+		stderrBuffer = met_api->list.create();
 	}
 	if (stdoutBuffer == NULL)
 	{
-		stdoutBuffer = list_create();
+		stdoutBuffer = met_api->list.create();
 	}
 	dprintf("[PYTHON] initialized handlers");
 }
@@ -236,10 +237,10 @@ VOID destroy_std_handlers()
 {
 	dprintf("[PYTHON] destroying handlers");
 	clear_std_handler(stderrBuffer);
-	list_destroy(stderrBuffer);
+	met_api->list.destroy(stderrBuffer);
 	stderrBuffer = NULL;
 	clear_std_handler(stdoutBuffer);
-	list_destroy(stdoutBuffer);
+	met_api->list.destroy(stdoutBuffer);
 	stdoutBuffer = NULL;
 	dprintf("[PYTHON] destroyed handlers");
 }
@@ -405,7 +406,7 @@ DWORD request_python_reset(Remote* remote, Packet* packet)
 	Py_Finalize();
 	Py_Initialize();
 	python_prepare_session();
-	packet_transmit_empty_response(remote, packet, ERROR_SUCCESS);
+	met_api->packet.transmit_empty_response(remote, packet, ERROR_SUCCESS);
 
 	return ERROR_SUCCESS;
 }
@@ -460,12 +461,12 @@ VOID python_execute(CHAR* modName, LPBYTE pythonCode, DWORD codeLength, UINT cod
 				if (PyString_Check(result))
 				{
 					// result is already a string
-					packet_add_tlv_string(responsePacket, TLV_TYPE_EXTENSION_PYTHON_RESULT, PyString_AsString(result));
+					met_api->packet.add_tlv_string(responsePacket, TLV_TYPE_EXTENSION_PYTHON_RESULT, PyString_AsString(result));
 				}
 				else
 				{
 					PyObject* resultStr = PyObject_Str(result);
-					packet_add_tlv_string(responsePacket, TLV_TYPE_EXTENSION_PYTHON_RESULT, PyString_AsString(resultStr));
+					met_api->packet.add_tlv_string(responsePacket, TLV_TYPE_EXTENSION_PYTHON_RESULT, PyString_AsString(resultStr));
 					Py_DECREF(resultStr);
 				}
 			}
@@ -482,18 +483,18 @@ VOID python_execute(CHAR* modName, LPBYTE pythonCode, DWORD codeLength, UINT cod
 DWORD request_python_execute(Remote* remote, Packet* packet)
 {
 	DWORD dwResult = ERROR_SUCCESS;
-	Packet* response = packet_create_response(packet);
-	LPBYTE pythonCode = packet_get_tlv_value_raw(packet, TLV_TYPE_EXTENSION_PYTHON_CODE);
+	Packet* response = met_api->packet.create_response(packet);
+	LPBYTE pythonCode = met_api->packet.get_tlv_value_raw(packet, TLV_TYPE_EXTENSION_PYTHON_CODE);
 
 	PyObject* mainModule = PyImport_AddModule("__main__");
 	PyObject* mainDict = PyModule_GetDict(mainModule);
 
 	if (pythonCode != NULL)
 	{
-		UINT codeType = packet_get_tlv_value_uint(packet, TLV_TYPE_EXTENSION_PYTHON_CODE_TYPE);
-		CHAR* modName = packet_get_tlv_value_string(packet, TLV_TYPE_EXTENSION_PYTHON_NAME);
-		UINT pythonCodeLength = packet_get_tlv_value_uint(packet, TLV_TYPE_EXTENSION_PYTHON_CODE_LEN);
-		CHAR* resultVar = packet_get_tlv_value_string(packet, TLV_TYPE_EXTENSION_PYTHON_RESULT_VAR);
+		UINT codeType = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_EXTENSION_PYTHON_CODE_TYPE);
+		CHAR* modName = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_EXTENSION_PYTHON_NAME);
+		UINT pythonCodeLength = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_EXTENSION_PYTHON_CODE_LEN);
+		CHAR* resultVar = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_EXTENSION_PYTHON_RESULT_VAR);
 		python_execute(modName, pythonCode, pythonCodeLength, codeType, resultVar, response);
 
 		dump_to_packet(stderrBuffer, response, TLV_TYPE_EXTENSION_PYTHON_STDERR);
@@ -501,7 +502,7 @@ DWORD request_python_execute(Remote* remote, Packet* packet)
 		dump_to_packet(stdoutBuffer, response, TLV_TYPE_EXTENSION_PYTHON_STDOUT);
 		clear_std_handler(stdoutBuffer);
 
-		packet_transmit_response(dwResult, remote, response);
+		met_api->packet.transmit_response(dwResult, remote, response);
 	}
 
 	return dwResult;

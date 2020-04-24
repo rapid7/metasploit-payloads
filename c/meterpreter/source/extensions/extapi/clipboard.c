@@ -3,7 +3,8 @@
  * @brief Definitions for clipboard interaction functionality.
  */
 #include "extapi.h"
-#include "../../common/thread.h"
+#include "common.h"
+#include "common_metapi.h"
 #include "clipboard.h"
 #include "clipboard_image.h"
 
@@ -300,7 +301,7 @@ VOID destroy_clipboard_monitor_capture(ClipboardCaptureList* pCaptureList, BOOL 
 
 	if (bRemoveLock && pCaptureList->pClipboardCaptureLock)
 	{
-		lock_destroy(pCaptureList->pClipboardCaptureLock);
+		met_api->lock.destroy(pCaptureList->pClipboardCaptureLock);
 		pCaptureList->pClipboardCaptureLock = NULL;
 	}
 
@@ -331,7 +332,7 @@ VOID timestamp_to_string(SYSTEMTIME* pTime, char buffer[40])
 VOID dump_clipboard_capture(Packet* pResponse, ClipboardCapture* pCapture, BOOL bCaptureImageData)
 {
 	ClipboardFile* pFile;
-	Packet* group = packet_create_group();
+	Packet* group = met_api->packet.create_group();
 	TlvType groupType;
 	Packet* file = NULL;
 	char timestamp[40];
@@ -341,21 +342,21 @@ VOID dump_clipboard_capture(Packet* pResponse, ClipboardCapture* pCapture, BOOL 
 	memset(timestamp, 0, sizeof(timestamp));
 
 	timestamp_to_string(&pCapture->stCaptureTime, timestamp);
-	packet_add_tlv_string(group, TLV_TYPE_EXT_CLIPBOARD_TYPE_TIMESTAMP, timestamp);
+	met_api->packet.add_tlv_string(group, TLV_TYPE_EXT_CLIPBOARD_TYPE_TIMESTAMP, timestamp);
 	dprintf("[EXTAPI CLIPBOARD] Timestamp added: %s", timestamp);
 
 	switch (pCapture->captureType)
 	{
 	case CapText:
 		dprintf("[EXTAPI CLIPBOARD] Dumping text %s", pCapture->lpText);
-		packet_add_tlv_string(group, TLV_TYPE_EXT_CLIPBOARD_TYPE_TEXT_CONTENT, (PUCHAR)(pCapture->lpText ? pCapture->lpText : "(null - clipboard was cleared)"));
+		met_api->packet.add_tlv_string(group, TLV_TYPE_EXT_CLIPBOARD_TYPE_TEXT_CONTENT, (PUCHAR)(pCapture->lpText ? pCapture->lpText : "(null - clipboard was cleared)"));
 		groupType = TLV_TYPE_EXT_CLIPBOARD_TYPE_TEXT;
 		break;
 	case CapImage:
 		dprintf("[EXTAPI CLIPBOARD] Dumping image %ux%x", pCapture->lpImage->dwWidth, pCapture->lpImage->dwHeight);
-		packet_add_tlv_uint(group, TLV_TYPE_EXT_CLIPBOARD_TYPE_IMAGE_JPG_DIMX, pCapture->lpImage->dwWidth);
-		packet_add_tlv_uint(group, TLV_TYPE_EXT_CLIPBOARD_TYPE_IMAGE_JPG_DIMY, pCapture->lpImage->dwHeight);
-		packet_add_tlv_raw(group, TLV_TYPE_EXT_CLIPBOARD_TYPE_IMAGE_JPG_DATA, pCapture->lpImage->lpImageContent, pCapture->lpImage->dwImageSize);
+		met_api->packet.add_tlv_uint(group, TLV_TYPE_EXT_CLIPBOARD_TYPE_IMAGE_JPG_DIMX, pCapture->lpImage->dwWidth);
+		met_api->packet.add_tlv_uint(group, TLV_TYPE_EXT_CLIPBOARD_TYPE_IMAGE_JPG_DIMY, pCapture->lpImage->dwHeight);
+		met_api->packet.add_tlv_raw(group, TLV_TYPE_EXT_CLIPBOARD_TYPE_IMAGE_JPG_DATA, pCapture->lpImage->lpImageContent, pCapture->lpImage->dwImageSize);
 		groupType = TLV_TYPE_EXT_CLIPBOARD_TYPE_IMAGE_JPG;
 		break;
 	case CapFiles:
@@ -364,16 +365,16 @@ VOID dump_clipboard_capture(Packet* pResponse, ClipboardCapture* pCapture, BOOL 
 		while (pFile)
 		{
 			dprintf("[EXTAPI CLIPBOARD] Dumping file %p", pFile);
-			file = packet_create_group();
+			file = met_api->packet.create_group();
 
 			dprintf("[EXTAPI CLIPBOARD] Adding path %s", pFile->lpPath);
-			packet_add_tlv_string(file, TLV_TYPE_EXT_CLIPBOARD_TYPE_FILE_NAME, pFile->lpPath);
+			met_api->packet.add_tlv_string(file, TLV_TYPE_EXT_CLIPBOARD_TYPE_FILE_NAME, pFile->lpPath);
 
 			dprintf("[EXTAPI CLIPBOARD] Adding size %llu", pFile->qwSize);
-			packet_add_tlv_qword(file, TLV_TYPE_EXT_CLIPBOARD_TYPE_FILE_SIZE, pFile->qwSize);
+			met_api->packet.add_tlv_qword(file, TLV_TYPE_EXT_CLIPBOARD_TYPE_FILE_SIZE, pFile->qwSize);
 
 			dprintf("[EXTAPI CLIPBOARD] Adding group");
-			packet_add_group(group, TLV_TYPE_EXT_CLIPBOARD_TYPE_FILE, file);
+			met_api->packet.add_group(group, TLV_TYPE_EXT_CLIPBOARD_TYPE_FILE, file);
 
 			pFile = pFile->pNext;
 			dprintf("[EXTAPI CLIPBOARD] Moving to next");
@@ -382,7 +383,7 @@ VOID dump_clipboard_capture(Packet* pResponse, ClipboardCapture* pCapture, BOOL 
 		break;
 	}
 
-	packet_add_group(pResponse, groupType, group);
+	met_api->packet.add_group(pResponse, groupType, group);
 }
 
 /*!
@@ -397,7 +398,7 @@ VOID dump_clipboard_capture_list(Packet* pResponse, ClipboardCaptureList* pCaptu
 {
 	ClipboardCapture* pCapture = NULL;
 
-	lock_acquire(pCaptureList->pClipboardCaptureLock);
+	met_api->lock.acquire(pCaptureList->pClipboardCaptureLock);
 	pCapture = pCaptureList->pHead;
 	while (pCapture)
 	{
@@ -409,7 +410,7 @@ VOID dump_clipboard_capture_list(Packet* pResponse, ClipboardCaptureList* pCaptu
 	{
 		destroy_clipboard_monitor_capture(pCaptureList, FALSE);
 	}
-	lock_release(pCaptureList->pClipboardCaptureLock);
+	met_api->lock.release(pCaptureList->pClipboardCaptureLock);
 }
 
 /*!
@@ -429,7 +430,7 @@ BOOL is_duplicate(ClipboardCapture* pNewCapture, ClipboardCaptureList* pList)
 	ClipboardFile* pNewFiles = NULL;
 	BOOL bResult = FALSE;
 
-	lock_acquire(pList->pClipboardCaptureLock);
+	met_api->lock.acquire(pList->pClipboardCaptureLock);
 
 	do
 	{
@@ -501,7 +502,7 @@ BOOL is_duplicate(ClipboardCapture* pNewCapture, ClipboardCaptureList* pList)
 		}
 	} while (0);
 
-	lock_release(pList->pClipboardCaptureLock);
+	met_api->lock.release(pList->pClipboardCaptureLock);
 
 	return bResult;
 }
@@ -520,7 +521,7 @@ BOOL add_clipboard_capture(ClipboardCapture* pNewCapture, ClipboardCaptureList* 
 		return FALSE;
 	}
 
-	lock_acquire(pList->pClipboardCaptureLock);
+	met_api->lock.acquire(pList->pClipboardCaptureLock);
 
 	pNewCapture->pNext = NULL;
 	if (pList->pTail == NULL)
@@ -533,7 +534,7 @@ BOOL add_clipboard_capture(ClipboardCapture* pNewCapture, ClipboardCaptureList* 
 		pList->pTail = pList->pTail->pNext = pNewCapture;
 	}
 	pList->dwClipboardDataSize += pNewCapture->dwSize;
-	lock_release(pList->pClipboardCaptureLock);
+	met_api->lock.release(pList->pClipboardCaptureLock);
 	return TRUE;
 }
 
@@ -931,7 +932,7 @@ DWORD request_clipboard_get_data(Remote *remote, Packet *packet)
 	DWORD dwResult;
 	ClipboardCapture* pCapture = NULL;
 	BOOL bDownload = FALSE;
-	Packet *pResponse = packet_create_response(packet);
+	Packet *pResponse = met_api->packet.create_response(packet);
 
 	do
 	{
@@ -941,7 +942,7 @@ DWORD request_clipboard_get_data(Remote *remote, Packet *packet)
 			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Clipboard failed to initialise, unable to get data");
 		}
 
-		bDownload = packet_get_tlv_value_bool(packet, TLV_TYPE_EXT_CLIPBOARD_DOWNLOAD);
+		bDownload = met_api->packet.get_tlv_value_bool(packet, TLV_TYPE_EXT_CLIPBOARD_DOWNLOAD);
 
 		if ((dwResult = capture_clipboard(bDownload, &pCapture)) != ERROR_SUCCESS)
 		{
@@ -960,7 +961,7 @@ DWORD request_clipboard_get_data(Remote *remote, Packet *packet)
 	if (pResponse)
 	{
 		dprintf("[EXTAPI CLIPBOARD] sending response");
-		packet_transmit_response(dwResult, remote, pResponse);
+		met_api->packet.transmit_response(dwResult, remote, pResponse);
 	}
 
 	return dwResult;
@@ -993,7 +994,7 @@ DWORD request_clipboard_set_data(Remote *remote, Packet *packet)
 			BREAK_ON_ERROR("[EXTAPI CLIPBOARD] Clipboard failed to initialise, unable to get data");
 		}
 
-		if ((lpClipString = packet_get_tlv_value_string(packet, TLV_TYPE_EXT_CLIPBOARD_TYPE_TEXT_CONTENT)) == NULL)
+		if ((lpClipString = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_EXT_CLIPBOARD_TYPE_TEXT_CONTENT)) == NULL)
 		{
 			BREAK_WITH_ERROR("[EXTAPI CLIPBOARD] No string data specified", ERROR_INVALID_PARAMETER);
 		}
@@ -1047,7 +1048,7 @@ DWORD request_clipboard_set_data(Remote *remote, Packet *packet)
 		pGlobalFree(hClipboardData);
 	}
 
-	packet_transmit_empty_response(remote, packet, dwResult);
+	met_api->packet.transmit_empty_response(remote, packet, dwResult);
 
 	return dwResult;
 }
@@ -1082,7 +1083,7 @@ DWORD THREADCALL clipboard_monitor_thread_func(THREAD * thread)
 		// signal to the caller that our thread has started
 		dprintf("[EXTAPI CLIPBOARD] Thread started");
 		pState->bRunning = TRUE;
-		event_signal(pState->hResponseEvent);
+		met_api->event.signal(pState->hResponseEvent);
 
 		waitableHandles[0] = thread->sigterm->handle;
 		waitableHandles[1] = pState->hPauseEvent->handle;
@@ -1106,13 +1107,13 @@ DWORD THREADCALL clipboard_monitor_thread_func(THREAD * thread)
 				dprintf("[EXTAPI CLIPBOARD] Thread paused");
 				pState->bRunning = FALSE;
 				// indicate that we've paused
-				event_signal(pState->hResponseEvent);
+				met_api->event.signal(pState->hResponseEvent);
 				break;
 			case 2: // resume the thread
 				dprintf("[EXTAPI CLIPBOARD] Thread resumed");
 				pState->bRunning = TRUE;
 				// indicate that we've resumed
-				event_signal(pState->hResponseEvent);
+				met_api->event.signal(pState->hResponseEvent);
 				break;
 			default:
 				// timeout, so pump messages
@@ -1129,7 +1130,7 @@ DWORD THREADCALL clipboard_monitor_thread_func(THREAD * thread)
 		// and we're done, switch off, and tell the caller we're done
 		pState->bRunning = FALSE;
 		destroy_clipboard_monitor_window(pState);
-		event_signal(pState->hResponseEvent);
+		met_api->event.signal(pState->hResponseEvent);
 		dprintf("[EXTAPI CLIPBOARD] Thread stopped");
 
 	} while (0);
@@ -1149,19 +1150,19 @@ VOID destroy_clipboard_monitor_state(ClipboardState** ppState)
 		ClipboardState* pState = *ppState;
 		if (pState->hThread != NULL)
 		{
-			thread_destroy(pState->hThread);
+			met_api->thread.destroy(pState->hThread);
 		}
 		if (pState->hPauseEvent != NULL)
 		{
-			event_destroy(pState->hPauseEvent);
+			met_api->event.destroy(pState->hPauseEvent);
 		}
 		if (pState->hResumeEvent != NULL)
 		{
-			event_destroy(pState->hResumeEvent);
+			met_api->event.destroy(pState->hResumeEvent);
 		}
 		if (pState->hResponseEvent != NULL)
 		{
-			event_destroy(pState->hResponseEvent);
+			met_api->event.destroy(pState->hResponseEvent);
 		}
 		destroy_clipboard_monitor_capture(&pState->captureList, TRUE);
 
@@ -1206,7 +1207,7 @@ DWORD request_clipboard_monitor_start(Remote *remote, Packet *packet)
 		dprintf("[EXTAPI CLIPBOARD] pState %p", pState);
 		memset(pState, 0, sizeof(ClipboardState));
 
-		lpClassName = packet_get_tlv_value_string(packet, TLV_TYPE_EXT_CLIPBOARD_MON_WIN_CLASS);
+		lpClassName = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_EXT_CLIPBOARD_MON_WIN_CLASS);
 		if (lpClassName == NULL || strlen(lpClassName) == 0)
 		{
 			BREAK_WITH_ERROR("[EXTAPI CLIPBOARD] Window class name is missing", ERROR_INVALID_PARAMETER);
@@ -1215,12 +1216,12 @@ DWORD request_clipboard_monitor_start(Remote *remote, Packet *packet)
 		strncpy_s(pState->cbWindowClass, sizeof(pState->cbWindowClass), lpClassName, sizeof(pState->cbWindowClass) - 1);
 		dprintf("[EXTAPI CLIPBOARD] Class Name set to %s", pState->cbWindowClass);
 
-		pState->bCaptureImageData = packet_get_tlv_value_bool(packet, TLV_TYPE_EXT_CLIPBOARD_MON_CAP_IMG_DATA);
+		pState->bCaptureImageData = met_api->packet.get_tlv_value_bool(packet, TLV_TYPE_EXT_CLIPBOARD_MON_CAP_IMG_DATA);
 
-		pState->hPauseEvent = event_create();
-		pState->hResumeEvent = event_create();
-		pState->hResponseEvent = event_create();
-		pState->captureList.pClipboardCaptureLock = lock_create();
+		pState->hPauseEvent = met_api->event.create();
+		pState->hResumeEvent = met_api->event.create();
+		pState->hResponseEvent = met_api->event.create();
+		pState->captureList.pClipboardCaptureLock = met_api->lock.create();
 
 		if (pState->hPauseEvent == NULL
 			|| pState->hResumeEvent == NULL
@@ -1229,7 +1230,7 @@ DWORD request_clipboard_monitor_start(Remote *remote, Packet *packet)
 			BREAK_WITH_ERROR("[EXTAPI CLIPBOARD] Unable to allocate memory for clipboard events", ERROR_NOT_ENOUGH_MEMORY);
 		}
 
-		pState->hThread = thread_create((THREADFUNK)clipboard_monitor_thread_func, pState, NULL, NULL);
+		pState->hThread = met_api->thread.create((THREADFUNK)clipboard_monitor_thread_func, pState, NULL, NULL);
 
 		if (pState->hThread == NULL)
 		{
@@ -1237,10 +1238,10 @@ DWORD request_clipboard_monitor_start(Remote *remote, Packet *packet)
 		}
 
 		gClipboardState = pState;
-		thread_run(pState->hThread);
+		met_api->thread.run(pState->hThread);
 
 		// 4 seconds should be long enough for the thread to indicate it's started, if not, bomb out
-		if (!event_poll(pState->hResponseEvent, 4000))
+		if (!met_api->event.poll(pState->hResponseEvent, 4000))
 		{
 			BREAK_WITH_ERROR("[EXTAPI CLIPBOARD] Thread failed to start correctly", ERROR_ABANDONED_WAIT_0);
 		}
@@ -1262,7 +1263,7 @@ DWORD request_clipboard_monitor_start(Remote *remote, Packet *packet)
 		gClipboardState = NULL;
 	}
 
-	packet_transmit_empty_response(remote, packet, dwResult);
+	met_api->packet.transmit_empty_response(remote, packet, dwResult);
 
 	return dwResult;
 }
@@ -1276,8 +1277,8 @@ DWORD clipboard_monitor_pause(ClipboardState* pState)
 {
 	if (pState->bRunning)
 	{
-		event_signal(pState->hPauseEvent);
-		event_poll(pState->hResponseEvent, INFINITE);
+		met_api->event.signal(pState->hPauseEvent);
+		met_api->event.poll(pState->hResponseEvent, INFINITE);
 	}
 
 	return ERROR_SUCCESS;
@@ -1292,8 +1293,8 @@ DWORD clipboard_monitor_resume(ClipboardState* pState)
 {
 	if (!pState->bRunning)
 	{
-		event_signal(pState->hResumeEvent);
-		event_poll(pState->hResponseEvent, INFINITE);
+		met_api->event.signal(pState->hResumeEvent);
+		met_api->event.poll(pState->hResponseEvent, INFINITE);
 	}
 
 	return ERROR_SUCCESS;
@@ -1321,7 +1322,7 @@ DWORD request_clipboard_monitor_pause(Remote *remote, Packet *packet)
 		dwResult = clipboard_monitor_pause(gClipboardState);
 	} while (0);
 
-	packet_transmit_empty_response(remote, packet, dwResult);
+	met_api->packet.transmit_empty_response(remote, packet, dwResult);
 
 	return dwResult;
 }
@@ -1348,7 +1349,7 @@ DWORD request_clipboard_monitor_resume(Remote *remote, Packet *packet)
 		dwResult = clipboard_monitor_resume(gClipboardState);
 	} while (0);
 
-	packet_transmit_empty_response(remote, packet, dwResult);
+	met_api->packet.transmit_empty_response(remote, packet, dwResult);
 
 	return dwResult;
 }
@@ -1364,7 +1365,7 @@ DWORD request_clipboard_monitor_stop(Remote *remote, Packet *packet)
 	DWORD dwResult = ERROR_SUCCESS;
 	BOOL bDump = TRUE;
 	BOOL bIncludeImages = TRUE;
-	Packet *pResponse = packet_create_response(packet);
+	Packet *pResponse = met_api->packet.create_response(packet);
 
 	do
 	{
@@ -1374,18 +1375,18 @@ DWORD request_clipboard_monitor_stop(Remote *remote, Packet *packet)
 		}
 
 		dprintf("[EXTAPI CLIPBOARD] Stopping clipboard monitor");
-		bDump = packet_get_tlv_value_bool(packet, TLV_TYPE_EXT_CLIPBOARD_MON_DUMP);
-		bIncludeImages = packet_get_tlv_value_bool(packet, TLV_TYPE_EXT_CLIPBOARD_MON_CAP_IMG_DATA);
+		bDump = met_api->packet.get_tlv_value_bool(packet, TLV_TYPE_EXT_CLIPBOARD_MON_DUMP);
+		bIncludeImages = met_api->packet.get_tlv_value_bool(packet, TLV_TYPE_EXT_CLIPBOARD_MON_CAP_IMG_DATA);
 
 		// now stop the show
-		event_signal(gClipboardState->hThread->sigterm);
+		met_api->event.signal(gClipboardState->hThread->sigterm);
 
 		// if they don't terminate in a reasonable period of time...
-		if (!event_poll(gClipboardState->hResponseEvent, 10000))
+		if (!met_api->event.poll(gClipboardState->hResponseEvent, 10000))
 		{
 			// ... FINISH HIM!
 			dprintf("[EXTAPI CLIPBOARD] Brutally terminating the thread for not responding fast enough");
-			thread_kill(gClipboardState->hThread);
+			met_api->thread.kill(gClipboardState->hThread);
 		}
 
 		if (bDump)
@@ -1397,7 +1398,7 @@ DWORD request_clipboard_monitor_stop(Remote *remote, Packet *packet)
 		dwResult = ERROR_SUCCESS;
 	} while (0);
 
-	packet_transmit_response(dwResult, remote, pResponse);
+	met_api->packet.transmit_response(dwResult, remote, pResponse);
 
 	return dwResult;
 }
@@ -1413,7 +1414,7 @@ DWORD request_clipboard_monitor_dump(Remote *remote, Packet *packet)
 	DWORD dwResult = ERROR_SUCCESS;
 	BOOL bIncludeImages = TRUE;
 	BOOL bPurge = TRUE;
-	Packet *pResponse = packet_create_response(packet);
+	Packet *pResponse = met_api->packet.create_response(packet);
 
 	do
 	{
@@ -1421,8 +1422,8 @@ DWORD request_clipboard_monitor_dump(Remote *remote, Packet *packet)
 		{
 			BREAK_WITH_ERROR("[EXTAPI CLIPBOARD] Monitor thread isn't running", ERROR_NOT_CAPABLE);
 		}
-		bIncludeImages = packet_get_tlv_value_bool(packet, TLV_TYPE_EXT_CLIPBOARD_MON_CAP_IMG_DATA);
-		bPurge = packet_get_tlv_value_bool(packet, TLV_TYPE_EXT_CLIPBOARD_MON_PURGE);
+		bIncludeImages = met_api->packet.get_tlv_value_bool(packet, TLV_TYPE_EXT_CLIPBOARD_MON_CAP_IMG_DATA);
+		bPurge = met_api->packet.get_tlv_value_bool(packet, TLV_TYPE_EXT_CLIPBOARD_MON_PURGE);
 
 		dprintf("[EXTAPI CLIPBOARD] Purging? %s", bPurge ? "TRUE" : "FALSE");
 
@@ -1430,15 +1431,15 @@ DWORD request_clipboard_monitor_dump(Remote *remote, Packet *packet)
 
 		if (bPurge)
 		{
-			lock_acquire(gClipboardState->captureList.pClipboardCaptureLock);
+			met_api->lock.acquire(gClipboardState->captureList.pClipboardCaptureLock);
 			destroy_clipboard_monitor_capture(&gClipboardState->captureList, FALSE);
-			lock_release(gClipboardState->captureList.pClipboardCaptureLock);
+			met_api->lock.release(gClipboardState->captureList.pClipboardCaptureLock);
 		}
 
 		dwResult = ERROR_SUCCESS;
 	} while (0);
 
-	packet_transmit_response(dwResult, remote, pResponse);
+	met_api->packet.transmit_response(dwResult, remote, pResponse);
 
 	return dwResult;
 }
@@ -1454,7 +1455,7 @@ DWORD request_clipboard_monitor_purge(Remote *remote, Packet *packet)
 	DWORD dwResult = ERROR_SUCCESS;
 	BOOL bIncludeImages = TRUE;
 	BOOL bPurge = TRUE;
-	Packet *pResponse = packet_create_response(packet);
+	Packet *pResponse = met_api->packet.create_response(packet);
 
 	do
 	{
@@ -1463,14 +1464,14 @@ DWORD request_clipboard_monitor_purge(Remote *remote, Packet *packet)
 			BREAK_WITH_ERROR("[EXTAPI CLIPBOARD] Monitor thread isn't running", ERROR_NOT_CAPABLE);
 		}
 
-		lock_acquire(gClipboardState->captureList.pClipboardCaptureLock);
+		met_api->lock.acquire(gClipboardState->captureList.pClipboardCaptureLock);
 		destroy_clipboard_monitor_capture(&gClipboardState->captureList, FALSE);
-		lock_release(gClipboardState->captureList.pClipboardCaptureLock);
+		met_api->lock.release(gClipboardState->captureList.pClipboardCaptureLock);
 
 		dwResult = ERROR_SUCCESS;
 	} while (0);
 
-	packet_transmit_response(dwResult, remote, pResponse);
+	met_api->packet.transmit_response(dwResult, remote, pResponse);
 
 	return dwResult;
 }

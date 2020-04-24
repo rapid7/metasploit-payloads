@@ -1,4 +1,5 @@
 #include "precomp.h"
+#include "common_metapi.h"
 
 #include "fs_local.h"
 
@@ -10,13 +11,13 @@ void request_fs_ls_cb(void *arg, char *name, char *short_name, char *path)
 	/*
 	 * Add the file name, full path and stat information
 	 */
-	packet_add_tlv_string(response, TLV_TYPE_FILE_NAME, name);
-	packet_add_tlv_string(response, TLV_TYPE_FILE_PATH, path);
+	met_api->packet.add_tlv_string(response, TLV_TYPE_FILE_NAME, name);
+	met_api->packet.add_tlv_string(response, TLV_TYPE_FILE_PATH, path);
 	if (short_name) {
-		packet_add_tlv_string(response, TLV_TYPE_FILE_SHORT_NAME, short_name);
+		met_api->packet.add_tlv_string(response, TLV_TYPE_FILE_SHORT_NAME, short_name);
 	}
 	if (fs_stat(path, &s) >= 0) {
-		packet_add_tlv_raw(response, TLV_TYPE_STAT_BUF, &s, sizeof(s));
+		met_api->packet.add_tlv_raw(response, TLV_TYPE_STAT_BUF, &s, sizeof(s));
 	}
 }
 
@@ -28,8 +29,8 @@ void request_fs_ls_cb(void *arg, char *name, char *short_name, char *path)
  */
 DWORD request_fs_ls(Remote * remote, Packet * packet)
 {
-	Packet *response = packet_create_response(packet);
-	LPCSTR directory = packet_get_tlv_value_string(packet, TLV_TYPE_DIRECTORY_PATH);
+	Packet *response = met_api->packet.create_response(packet);
+	LPCSTR directory = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_DIRECTORY_PATH);
 	DWORD result;
 
 	if (!directory) {
@@ -38,7 +39,7 @@ DWORD request_fs_ls(Remote * remote, Packet * packet)
 		result = fs_ls(directory, request_fs_ls_cb, response);
 	}
 
-	return packet_transmit_response(result, remote, response);
+	return met_api->packet.transmit_response(result, remote, response);
 }
 
 /*
@@ -49,17 +50,17 @@ DWORD request_fs_ls(Remote * remote, Packet * packet)
  */
 DWORD request_fs_getwd(Remote * remote, Packet * packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	char *directory = NULL;
 	DWORD result;
 
 	result = fs_getwd(&directory);
 	if (directory != NULL) {
-		packet_add_tlv_string(response, TLV_TYPE_DIRECTORY_PATH, directory);
+		met_api->packet.add_tlv_string(response, TLV_TYPE_DIRECTORY_PATH, directory);
 		free(directory);
 	}
 
-	return packet_transmit_response(result, remote, response);
+	return met_api->packet.transmit_response(result, remote, response);
 }
 
 /*
@@ -70,10 +71,10 @@ DWORD request_fs_getwd(Remote * remote, Packet * packet)
  */
 DWORD request_fs_chdir(Remote * remote, Packet * packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	char *directory;
 	DWORD result;
-	directory = packet_get_tlv_value_string(packet, TLV_TYPE_DIRECTORY_PATH);
+	directory = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_DIRECTORY_PATH);
 
 	if (directory == NULL) {
 		result = ERROR_INVALID_PARAMETER;
@@ -81,7 +82,7 @@ DWORD request_fs_chdir(Remote * remote, Packet * packet)
 		result = fs_chdir(directory);
 	}
 
-	return packet_transmit_response(result, remote, response);
+	return met_api->packet.transmit_response(result, remote, response);
 }
 
 /*
@@ -91,10 +92,10 @@ DWORD request_fs_chdir(Remote * remote, Packet * packet)
  */
 DWORD request_fs_mkdir(Remote * remote, Packet * packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	char *directory;
 	DWORD result;
-	directory = packet_get_tlv_value_string(packet, TLV_TYPE_DIRECTORY_PATH);
+	directory = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_DIRECTORY_PATH);
 
 	if (directory == NULL) {
 		result = ERROR_INVALID_PARAMETER;
@@ -102,7 +103,7 @@ DWORD request_fs_mkdir(Remote * remote, Packet * packet)
 		result = fs_mkdir(directory);
 	}
 
-	return packet_transmit_response(result, remote, response);
+	return met_api->packet.transmit_response(result, remote, response);
 }
 
 /*
@@ -112,10 +113,10 @@ DWORD request_fs_mkdir(Remote * remote, Packet * packet)
  */
 DWORD request_fs_delete_dir(Remote * remote, Packet * packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	char *directory;
 	DWORD result;
-	directory = packet_get_tlv_value_string(packet, TLV_TYPE_DIRECTORY_PATH);
+	directory = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_DIRECTORY_PATH);
 
 	if (directory == NULL) {
 		result = ERROR_INVALID_PARAMETER;
@@ -123,5 +124,5 @@ DWORD request_fs_delete_dir(Remote * remote, Packet * packet)
 		result = fs_delete_dir(directory);
 	}
 
-	return packet_transmit_response(result, remote, response);
+	return met_api->packet.transmit_response(result, remote, response);
 }

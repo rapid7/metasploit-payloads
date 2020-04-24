@@ -1,4 +1,5 @@
 #include "precomp.h"
+#include "common_metapi.h"
 
 /*!
  * @brief Allocates memory in the context of the supplied process.
@@ -11,7 +12,7 @@
  */
 DWORD request_sys_process_memory_allocate(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	HANDLE handle;
 	LPVOID base;
 	SIZE_T size;
@@ -19,16 +20,16 @@ DWORD request_sys_process_memory_allocate(Remote *remote, Packet *packet)
 	DWORD alloc, prot;
 
 	// Snag the TLV values
-	handle = (HANDLE)packet_get_tlv_value_qword(packet, TLV_TYPE_HANDLE);
-	base = (LPVOID)packet_get_tlv_value_qword(packet, TLV_TYPE_BASE_ADDRESS);
-	size = (SIZE_T)packet_get_tlv_value_uint(packet, TLV_TYPE_LENGTH);
-	alloc = packet_get_tlv_value_uint(packet, TLV_TYPE_ALLOCATION_TYPE);
-	prot = packet_get_tlv_value_uint(packet, TLV_TYPE_PROTECTION);
+	handle = (HANDLE)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_HANDLE);
+	base = (LPVOID)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_BASE_ADDRESS);
+	size = (SIZE_T)met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_LENGTH);
+	alloc = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_ALLOCATION_TYPE);
+	prot = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_PROTECTION);
 
 	// Allocate the memory
 	if ((base = VirtualAllocEx(handle, base, size, alloc, prot)))
 	{
-		packet_add_tlv_qword(response, TLV_TYPE_BASE_ADDRESS, (QWORD)base);
+		met_api->packet.add_tlv_qword(response, TLV_TYPE_BASE_ADDRESS, (QWORD)base);
 	}
 	else
 	{
@@ -36,7 +37,7 @@ DWORD request_sys_process_memory_allocate(Remote *remote, Packet *packet)
 	}
 
 	// Transmit the response
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 
 	return ERROR_SUCCESS;
 }
@@ -50,22 +51,22 @@ DWORD request_sys_process_memory_allocate(Remote *remote, Packet *packet)
  */
 DWORD request_sys_process_memory_free(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	HANDLE handle;
 	SIZE_T size;
 	LPVOID base;
 	DWORD result = ERROR_SUCCESS;
 
-	handle = (HANDLE)packet_get_tlv_value_qword(packet, TLV_TYPE_HANDLE);
-	base   = (LPVOID)packet_get_tlv_value_qword(packet, TLV_TYPE_BASE_ADDRESS);
-	size   = packet_get_tlv_value_uint(packet, TLV_TYPE_LENGTH);
+	handle = (HANDLE)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_HANDLE);
+	base   = (LPVOID)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_BASE_ADDRESS);
+	size   = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_LENGTH);
 
 	// Free the memory
 	if (!VirtualFreeEx(handle, base, size, MEM_RELEASE))
 		result = GetLastError();
 
 	// Transmit the response
-	packet_transmit_response(result, remote, packet);
+	met_api->packet.transmit_response(result, remote, packet);
 
 	return ERROR_SUCCESS;
 }
@@ -80,7 +81,7 @@ DWORD request_sys_process_memory_free(Remote *remote, Packet *packet)
  */
 DWORD request_sys_process_memory_read(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	LPVOID buffer = NULL;
 	HANDLE handle;
 	SIZE_T size;
@@ -88,9 +89,9 @@ DWORD request_sys_process_memory_read(Remote *remote, Packet *packet)
 	SIZE_T bytesRead = 0;
 	DWORD result = ERROR_SUCCESS;
 
-	handle = (HANDLE)packet_get_tlv_value_qword(packet, TLV_TYPE_HANDLE);
-	base   = (LPVOID)packet_get_tlv_value_qword(packet, TLV_TYPE_BASE_ADDRESS);
-	size   = packet_get_tlv_value_uint(packet, TLV_TYPE_LENGTH);
+	handle = (HANDLE)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_HANDLE);
+	base   = (LPVOID)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_BASE_ADDRESS);
+	size   = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_LENGTH);
 
 	do
 	{
@@ -119,13 +120,13 @@ DWORD request_sys_process_memory_read(Remote *remote, Packet *packet)
 		}
 
 		// Add the raw buffer to the response
-		packet_add_tlv_raw(response, TLV_TYPE_PROCESS_MEMORY, buffer,
+		met_api->packet.add_tlv_raw(response, TLV_TYPE_PROCESS_MEMORY, buffer,
 				(DWORD)bytesRead);
 
 	} while (0);
 
 	// Transmit the response
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 
 	// Free the temporary storage
 	if (buffer)
@@ -144,22 +145,22 @@ DWORD request_sys_process_memory_read(Remote *remote, Packet *packet)
  */
 DWORD request_sys_process_memory_write(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	HANDLE handle;
 	LPVOID base;
 	DWORD result = ERROR_SUCCESS;
 	size_t written = 0;
 	Tlv data;
 
-	handle = (HANDLE)packet_get_tlv_value_qword(packet, TLV_TYPE_HANDLE);
-	base   = (LPVOID)packet_get_tlv_value_qword(packet, TLV_TYPE_BASE_ADDRESS);
+	handle = (HANDLE)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_HANDLE);
+	base   = (LPVOID)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_BASE_ADDRESS);
 
 	do
 	{
 		// Invalid handle, base, or data?
 		if ((!handle) ||
 		    (!base) ||
-		    (packet_get_tlv(packet, TLV_TYPE_PROCESS_MEMORY, &data)) != ERROR_SUCCESS)
+		    (met_api->packet.get_tlv(packet, TLV_TYPE_PROCESS_MEMORY, &data)) != ERROR_SUCCESS)
 		{
 			result = ERROR_INVALID_PARAMETER;
 			break;
@@ -175,12 +176,12 @@ DWORD request_sys_process_memory_write(Remote *remote, Packet *packet)
 		}
 
 		// Set the number of bytes actually written on the response
-		packet_add_tlv_uint(response, TLV_TYPE_LENGTH, (DWORD)written);
+		met_api->packet.add_tlv_uint(response, TLV_TYPE_LENGTH, (DWORD)written);
 
 	} while (0);
 
 	// Transmit the response
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 
 	return ERROR_SUCCESS;
 }
@@ -194,14 +195,14 @@ DWORD request_sys_process_memory_write(Remote *remote, Packet *packet)
 DWORD request_sys_process_memory_query(Remote *remote, Packet *packet)
 {
 	MEMORY_BASIC_INFORMATION info;
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	HANDLE handle;
 	LPVOID base;
 	DWORD result = ERROR_SUCCESS;
 	SIZE_T size = 0;
 
-	handle = (HANDLE)packet_get_tlv_value_qword(packet, TLV_TYPE_HANDLE);
-	base   = (LPVOID)packet_get_tlv_value_qword(packet, TLV_TYPE_BASE_ADDRESS);
+	handle = (HANDLE)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_HANDLE);
+	base   = (LPVOID)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_BASE_ADDRESS);
 
 	// Zero the info buffer
 	memset(&info, 0, sizeof(info));
@@ -223,18 +224,18 @@ DWORD request_sys_process_memory_query(Remote *remote, Packet *packet)
 		}
 
 		// Pass the parameters back to the requestor
-		packet_add_tlv_qword(response, TLV_TYPE_BASE_ADDRESS,	(QWORD)info.BaseAddress);
-		packet_add_tlv_qword(response, TLV_TYPE_ALLOC_BASE_ADDRESS, (QWORD)info.AllocationBase);
-		packet_add_tlv_uint(response, TLV_TYPE_ALLOC_PROTECTION, info.AllocationProtect);
-		packet_add_tlv_uint(response, TLV_TYPE_LENGTH, (DWORD)info.RegionSize);
-		packet_add_tlv_uint(response, TLV_TYPE_MEMORY_STATE, (DWORD)info.State);
-		packet_add_tlv_uint(response, TLV_TYPE_PROTECTION, info.Protect);
-		packet_add_tlv_uint(response, TLV_TYPE_MEMORY_TYPE, info.Type);
+		met_api->packet.add_tlv_qword(response, TLV_TYPE_BASE_ADDRESS,	(QWORD)info.BaseAddress);
+		met_api->packet.add_tlv_qword(response, TLV_TYPE_ALLOC_BASE_ADDRESS, (QWORD)info.AllocationBase);
+		met_api->packet.add_tlv_uint(response, TLV_TYPE_ALLOC_PROTECTION, info.AllocationProtect);
+		met_api->packet.add_tlv_uint(response, TLV_TYPE_LENGTH, (DWORD)info.RegionSize);
+		met_api->packet.add_tlv_uint(response, TLV_TYPE_MEMORY_STATE, (DWORD)info.State);
+		met_api->packet.add_tlv_uint(response, TLV_TYPE_PROTECTION, info.Protect);
+		met_api->packet.add_tlv_uint(response, TLV_TYPE_MEMORY_TYPE, info.Type);
 
 	} while (0);
 
 	// Transmit the response
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 
 	return ERROR_SUCCESS;
 }
@@ -249,17 +250,17 @@ DWORD request_sys_process_memory_query(Remote *remote, Packet *packet)
  */
 DWORD request_sys_process_memory_protect(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	HANDLE handle;
 	LPVOID base;
 	SIZE_T size;
 	DWORD prot, old;
 	DWORD result = ERROR_SUCCESS;
 
-	handle = (HANDLE)packet_get_tlv_value_qword(packet, TLV_TYPE_HANDLE);
-	base   = (LPVOID)packet_get_tlv_value_qword(packet, TLV_TYPE_BASE_ADDRESS);
-	size   = packet_get_tlv_value_uint(packet, TLV_TYPE_LENGTH);
-	prot   = packet_get_tlv_value_uint(packet, TLV_TYPE_PROTECTION);
+	handle = (HANDLE)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_HANDLE);
+	base   = (LPVOID)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_BASE_ADDRESS);
+	size   = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_LENGTH);
+	prot   = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_PROTECTION);
 
 	do
 	{
@@ -280,12 +281,12 @@ DWORD request_sys_process_memory_protect(Remote *remote, Packet *packet)
 		}
 
 		// Return the old protection mask to the requestor
-		packet_add_tlv_uint(response, TLV_TYPE_PROTECTION, old);
+		met_api->packet.add_tlv_uint(response, TLV_TYPE_PROTECTION, old);
 
 	} while (0);
 
 	// Transmit the response
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 
 	return ERROR_SUCCESS;
 }
@@ -299,19 +300,19 @@ DWORD request_sys_process_memory_protect(Remote *remote, Packet *packet)
  */
 DWORD request_sys_process_memory_lock(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	LPVOID base;
 	SIZE_T size;
 	DWORD result = ERROR_SUCCESS;
 
-	base = (LPVOID)packet_get_tlv_value_qword(packet, TLV_TYPE_BASE_ADDRESS);
-	size = packet_get_tlv_value_uint(packet, TLV_TYPE_LENGTH);
+	base = (LPVOID)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_BASE_ADDRESS);
+	size = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_LENGTH);
 
 	if (!VirtualLock(base, size))
 		result = GetLastError();
 
 	// Transmit the response
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 
 	return ERROR_SUCCESS;
 }
@@ -324,19 +325,19 @@ DWORD request_sys_process_memory_lock(Remote *remote, Packet *packet)
  */
 DWORD request_sys_process_memory_unlock(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	LPVOID base;
 	SIZE_T size;
 	DWORD result = ERROR_SUCCESS;
 
-	base = (LPVOID)packet_get_tlv_value_qword(packet, TLV_TYPE_BASE_ADDRESS);
-	size = packet_get_tlv_value_uint(packet, TLV_TYPE_LENGTH);
+	base = (LPVOID)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_BASE_ADDRESS);
+	size = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_LENGTH);
 
 	if (!VirtualUnlock(base, size))
 		result = GetLastError();
 
 	// Transmit the response
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 
 	return ERROR_SUCCESS;
 }

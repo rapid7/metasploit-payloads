@@ -1,5 +1,7 @@
 #include "precomp.h"
 
+#include "common_metapi.h"
+
 extern DWORD request_audio_output_channel_open(Remote *remote, Packet *packet);
 extern DWORD request_net_tcp_client_channel_open(Remote *remote, Packet *packet);
 extern DWORD request_net_tcp_server_channel_open(Remote *remote, Packet *packet);
@@ -34,17 +36,16 @@ DWORD request_general_channel_open(Remote *remote, Packet *packet)
 	do
 	{
 		// Get the requested channel type
-		channelType = packet_get_tlv_value_string(packet, 
-				TLV_TYPE_CHANNEL_TYPE);
+		channelType = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_CHANNEL_TYPE);
 
 		// No channel?  Lame.
 		if (!channelType)
+		{
 			break;
+		}
 
 		// Enumerate the channel type dispatch table searching for a match
-		for (index = 0;
-		     channel_open_handlers[index].type;
-		     index++)
+		for (index = 0; channel_open_handlers[index].type; index++)
 		{
 			if (!strcmp(channel_open_handlers[index].type, channelType))
 			{

@@ -1,5 +1,5 @@
 #include "precomp.h"
-
+#include "common_metapi.h"
 #include <windows.h>
 #include <stdio.h>
 #include "defs.h"
@@ -72,7 +72,7 @@ HANDLE FileOpen(char *filename)
 		return NULL;
 	}
 
-	wchar_t *name = utf8_to_wchar(filename);
+	wchar_t *name = met_api->string.utf8_to_wchar(filename);
 	if (name == NULL) {
 		return NULL;
 	}
@@ -235,8 +235,8 @@ int SetDirectoryTimesRecursive(wchar_t *directory, SYSTEMTIME time, int depth)
 DWORD request_fs_get_file_mace(Remote *remote, Packet *packet)
 {
 	SYSTEMTIME lt;
-	Packet *response = packet_create_response(packet);
-	HANDLE file = FileOpen(packet_get_tlv_value_string(packet, TLV_TYPE_FS_FILE_PATH));
+	Packet *response = met_api->packet.create_response(packet);
+	HANDLE file = FileOpen(met_api->packet.get_tlv_value_string(packet, TLV_TYPE_FS_FILE_PATH));
 
 	if (file == NULL) {
 		SetLastError(ERROR_INVALID_PARAMETER);
@@ -263,7 +263,7 @@ DWORD request_fs_get_file_mace(Remote *remote, Packet *packet)
 
 		if (LargeIntegerToSystemTime(&lt, *fields[i].ft) == 0) {
 			SystemTimeToEpochTime(&lt, &epoch);
-			packet_add_tlv_uint(response, fields[i].tlv, (UINT)epoch);
+			met_api->packet.add_tlv_uint(response, fields[i].tlv, (UINT)epoch);
 		}
 	}
 
@@ -271,15 +271,15 @@ DWORD request_fs_get_file_mace(Remote *remote, Packet *packet)
 
 err:
 	FileClose(file);
-	packet_transmit_response(GetLastError(), remote, response);
+	met_api->packet.transmit_response(GetLastError(), remote, response);
 	return ERROR_SUCCESS;
 }
 
 DWORD request_fs_set_file_mace(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 
-	HANDLE file = FileOpen(packet_get_tlv_value_string(packet, TLV_TYPE_FS_FILE_PATH));
+	HANDLE file = FileOpen(met_api->packet.get_tlv_value_string(packet, TLV_TYPE_FS_FILE_PATH));
 	if (!file) {
 		SetLastError(ERROR_INVALID_PARAMETER);
 		goto out;
@@ -300,7 +300,7 @@ DWORD request_fs_set_file_mace(Remote *remote, Packet *packet)
 		{ &fbi.ChangeTime,     TLV_TYPE_FS_FILE_EMODIFIED },
 	};
 	for (int i = 0; i < 4; i++) {
-		time_t epoch = packet_get_tlv_value_uint(packet, (TlvType)fields[i].tlv);
+		time_t epoch = met_api->packet.get_tlv_value_uint(packet, (TlvType)fields[i].tlv);
 		if (epoch) {
 			SYSTEMTIME st;
 			EpochTimeToSystemTime(epoch, &st);
@@ -316,16 +316,16 @@ DWORD request_fs_set_file_mace(Remote *remote, Packet *packet)
 
 out:
 	FileClose(file);
-	packet_transmit_response(GetLastError(), remote, response);
+	met_api->packet.transmit_response(GetLastError(), remote, response);
 	return ERROR_SUCCESS;
 }
 
 DWORD request_fs_set_file_mace_from_file(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 
-	HANDLE tgtFile = FileOpen(packet_get_tlv_value_string(packet, TLV_TYPE_FS_FILE_PATH));
-	HANDLE srcFile = FileOpen(packet_get_tlv_value_string(packet, TLV_TYPE_FS_SRC_FILE_PATH));
+	HANDLE tgtFile = FileOpen(met_api->packet.get_tlv_value_string(packet, TLV_TYPE_FS_FILE_PATH));
+	HANDLE srcFile = FileOpen(met_api->packet.get_tlv_value_string(packet, TLV_TYPE_FS_SRC_FILE_PATH));
 	if (tgtFile == NULL || srcFile == NULL) {
 		goto out;
 	}
@@ -353,7 +353,7 @@ out:
 	FileClose(srcFile);
 	FileClose(tgtFile);
 
-	packet_transmit_response(GetLastError(), remote, response);
+	met_api->packet.transmit_response(GetLastError(), remote, response);
 	return ERROR_SUCCESS;
 }
 
@@ -370,9 +370,9 @@ static SYSTEMTIME epoch = {
 
 DWORD request_fs_blank_file_mace(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 
-	HANDLE file = FileOpen(packet_get_tlv_value_string(packet, TLV_TYPE_FS_FILE_PATH));
+	HANDLE file = FileOpen(met_api->packet.get_tlv_value_string(packet, TLV_TYPE_FS_FILE_PATH));
 	if (!file) {
 		SetLastError(ERROR_INVALID_PARAMETER);
 		goto out;
@@ -386,14 +386,14 @@ DWORD request_fs_blank_file_mace(Remote *remote, Packet *packet)
 
 out:
 	FileClose(file);
-	packet_transmit_response(GetLastError(), remote, response);
+	met_api->packet.transmit_response(GetLastError(), remote, response);
 	return ERROR_SUCCESS;
 }
 
 DWORD request_fs_blank_directory_mace(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
-	wchar_t *filePath = utf8_to_wchar(packet_get_tlv_value_string(packet, TLV_TYPE_FS_FILE_PATH));
+	Packet *response = met_api->packet.create_response(packet);
+	wchar_t *filePath = met_api->string.utf8_to_wchar(met_api->packet.get_tlv_value_string(packet, TLV_TYPE_FS_FILE_PATH));
 
 	if (filePath == NULL) {
 		SetLastError(ERROR_INVALID_PARAMETER);
@@ -408,6 +408,6 @@ DWORD request_fs_blank_directory_mace(Remote *remote, Packet *packet)
 
 out:
 	free(filePath);
-	packet_transmit_response(GetLastError(), remote, response);
+	met_api->packet.transmit_response(GetLastError(), remote, response);
 	return ERROR_SUCCESS;
 }

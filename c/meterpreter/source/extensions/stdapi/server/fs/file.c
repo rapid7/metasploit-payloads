@@ -1,5 +1,6 @@
 #include "precomp.h"
 #include "fs_local.h"
+#include "common_metapi.h"
 
 #include <sys/stat.h>
 
@@ -137,10 +138,10 @@ DWORD request_fs_file_channel_open(Remote *remote, Packet *packet)
 	LPSTR expandedFilePath = NULL;
 
 	// Allocate a response
-	response = packet_create_response(packet);
+	response = met_api->packet.create_response(packet);
 
 	// Get the channel flags
-	flags = packet_get_tlv_value_uint(packet, TLV_TYPE_FLAGS);
+	flags = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_FLAGS);
 
 	// Allocate storage for the file context
 	if (!(ctx = calloc(1, sizeof(FileContext)))) {
@@ -149,8 +150,8 @@ DWORD request_fs_file_channel_open(Remote *remote, Packet *packet)
 	}
 
 	// Get the file path and the mode
-	filePath = packet_get_tlv_value_string(packet, TLV_TYPE_FILE_PATH);
-	mode     = packet_get_tlv_value_string(packet, TLV_TYPE_FILE_MODE);
+	filePath = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_FILE_PATH);
+	mode     = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_FILE_MODE);
 
 	if (mode == NULL) {
 		mode = "rb";
@@ -174,22 +175,22 @@ DWORD request_fs_file_channel_open(Remote *remote, Packet *packet)
 
 	// Check the response allocation & allocate a un-connected
 	// channel
-	if ((!response) || (!(newChannel = channel_create_pool(0, flags, &chops)))) {
+	if ((!response) || (!(newChannel = met_api->channel.create_pool(0, flags, &chops)))) {
 		res = ERROR_NOT_ENOUGH_MEMORY;
 		goto out;
 	}
 
 	// Add the channel identifier to the response
-	packet_add_tlv_uint(response, TLV_TYPE_CHANNEL_ID, channel_get_id(newChannel));
+	met_api->packet.add_tlv_uint(response, TLV_TYPE_CHANNEL_ID, met_api->channel.get_id(newChannel));
 
 out:
 	// Transmit the packet if it's valid
-	packet_transmit_response(res, remote, response);
+	met_api->packet.transmit_response(res, remote, response);
 
 	// Clean up on failure
 	if (res != ERROR_SUCCESS) {
 		if (newChannel) {
-			channel_destroy(newChannel, NULL);
+			met_api->channel.destroy(newChannel, NULL);
 		}
 		free(ctx);
 	}
@@ -202,11 +203,11 @@ out:
  */
 DWORD request_fs_separator(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 
-	packet_add_tlv_string(response, TLV_TYPE_STRING, FS_SEPARATOR);
+	met_api->packet.add_tlv_string(response, TLV_TYPE_STRING, FS_SEPARATOR);
 
-	return packet_transmit_response(ERROR_SUCCESS, remote, response);
+	return met_api->packet.transmit_response(ERROR_SUCCESS, remote, response);
 }
 
 
@@ -218,13 +219,13 @@ DWORD request_fs_separator(Remote *remote, Packet *packet)
  */
 DWORD request_fs_stat(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	struct meterp_stat buf;
 	char *filePath;
 	char *expanded = NULL;
 	DWORD result = ERROR_SUCCESS;
 
-	filePath = packet_get_tlv_value_string(packet, TLV_TYPE_FILE_PATH);
+	filePath = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_FILE_PATH);
 
 	if (!filePath) {
 		result = ERROR_INVALID_PARAMETER;
@@ -239,13 +240,13 @@ DWORD request_fs_stat(Remote *remote, Packet *packet)
 
 	result = fs_stat(expanded, &buf);
 	if (0 == result) {
-		packet_add_tlv_raw(response, TLV_TYPE_STAT_BUF, &buf, sizeof(buf));
+		met_api->packet.add_tlv_raw(response, TLV_TYPE_STAT_BUF, &buf, sizeof(buf));
 	}
 
 	free(expanded);
 
 out:
-	return packet_transmit_response(result, remote, response);
+	return met_api->packet.transmit_response(result, remote, response);
 }
 
 /*
@@ -255,11 +256,11 @@ out:
  */
 DWORD request_fs_delete_file(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	char *path;
 	DWORD result = ERROR_SUCCESS;
 
-	path = packet_get_tlv_value_string(packet, TLV_TYPE_FILE_PATH);
+	path = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_FILE_PATH);
 
 	if (!path) {
 		result = ERROR_INVALID_PARAMETER;
@@ -267,7 +268,7 @@ DWORD request_fs_delete_file(Remote *remote, Packet *packet)
 		result = fs_delete_file(path);
 	}
 
-	return packet_transmit_response(result, remote, response);
+	return met_api->packet.transmit_response(result, remote, response);
 }
 
 /*
@@ -277,12 +278,12 @@ DWORD request_fs_delete_file(Remote *remote, Packet *packet)
  */
 DWORD request_fs_file_expand_path(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	DWORD result = ERROR_SUCCESS;
 	char *expanded = NULL;
 	char *regular;
 
-	regular = packet_get_tlv_value_string(packet, TLV_TYPE_FILE_PATH);
+	regular = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_FILE_PATH);
 	if (regular == NULL) {
 		result = ERROR_INVALID_PARAMETER;
 		goto out;
@@ -295,15 +296,15 @@ DWORD request_fs_file_expand_path(Remote *remote, Packet *packet)
 		goto out;
 	}
 
-	packet_add_tlv_string(response, TLV_TYPE_FILE_PATH, expanded);
+	met_api->packet.add_tlv_string(response, TLV_TYPE_FILE_PATH, expanded);
 	free(expanded);
 out:
-	return packet_transmit_response(result, remote, response);
+	return met_api->packet.transmit_response(result, remote, response);
 }
 
 DWORD request_fs_file_hash(Remote* remote, Packet* packet, ALG_ID hashType)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	char *filePath;
 	DWORD result = ERROR_SUCCESS;
 	HCRYPTPROV cryptProv = 0;
@@ -313,7 +314,7 @@ DWORD request_fs_file_hash(Remote* remote, Packet* packet, ALG_ID hashType)
 	size_t ret;
 	unsigned char buff[16384];
 
-	filePath = packet_get_tlv_value_string(packet, TLV_TYPE_FILE_PATH);
+	filePath = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_FILE_PATH);
 
 	do
 	{
@@ -376,7 +377,7 @@ DWORD request_fs_file_hash(Remote* remote, Packet* packet, ALG_ID hashType)
 
 		dprintf("[FILE HASH] Successfully generated hash");
 
-		packet_add_tlv_raw(response, TLV_TYPE_FILE_HASH, buff, hashSize);
+		met_api->packet.add_tlv_raw(response, TLV_TYPE_FILE_HASH, buff, hashSize);
 
 	} while (0);
 
@@ -395,7 +396,7 @@ DWORD request_fs_file_hash(Remote* remote, Packet* packet, ALG_ID hashType)
 		fclose(fd);
 	}
 
-	return packet_transmit_response(result, remote, response);}
+	return met_api->packet.transmit_response(result, remote, response);}
 
 
 /*
@@ -426,13 +427,13 @@ DWORD request_fs_sha1(Remote *remote, Packet *packet)
  */
 DWORD request_fs_file_move(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	DWORD result = ERROR_SUCCESS;
 	char *oldpath;
 	char *newpath;
 
-	oldpath = packet_get_tlv_value_string(packet, TLV_TYPE_FILE_NAME);
-	newpath = packet_get_tlv_value_string(packet, TLV_TYPE_FILE_PATH);
+	oldpath = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_FILE_NAME);
+	newpath = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_FILE_PATH);
 
 	if (!oldpath) {
 		result = ERROR_INVALID_PARAMETER;
@@ -440,7 +441,7 @@ DWORD request_fs_file_move(Remote *remote, Packet *packet)
 		result = fs_move(oldpath, newpath);
 	}
 
-	return packet_transmit_response(result, remote, response);
+	return met_api->packet.transmit_response(result, remote, response);
 }
 
 /*
@@ -450,13 +451,13 @@ DWORD request_fs_file_move(Remote *remote, Packet *packet)
  */
 DWORD request_fs_file_copy(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	DWORD result = ERROR_SUCCESS;
 	char *oldpath;
 	char *newpath;
 
-	oldpath = packet_get_tlv_value_string(packet, TLV_TYPE_FILE_NAME);
-	newpath = packet_get_tlv_value_string(packet, TLV_TYPE_FILE_PATH);
+	oldpath = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_FILE_NAME);
+	newpath = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_FILE_PATH);
 
 	if (!oldpath) {
 		result = ERROR_INVALID_PARAMETER;
@@ -464,5 +465,5 @@ DWORD request_fs_file_copy(Remote *remote, Packet *packet)
 		result = fs_copy(oldpath, newpath);
 	}
 
-	return packet_transmit_response(result, remote, response);
+	return met_api->packet.transmit_response(result, remote, response);
 }

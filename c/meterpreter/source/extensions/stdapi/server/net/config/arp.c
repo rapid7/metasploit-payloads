@@ -1,5 +1,7 @@
 #include "precomp.h"
 
+#include "common_metapi.h"
+
 DWORD get_arp_table(Remote *remote, Packet *response)
 {
 	PMIB_IPNETTABLE pIpNetTable = NULL;
@@ -49,7 +51,7 @@ DWORD get_arp_table(Remote *remote, Packet *response)
 					arp[2].header.length = (DWORD)strlen(interface_index) + 1;
 					arp[2].buffer        = (PUCHAR)interface_index;
 
-					packet_add_tlv_group(response, TLV_TYPE_ARP_ENTRY, arp, 3);
+					met_api->packet.add_tlv_group(response, TLV_TYPE_ARP_ENTRY, arp, 3);
 				}
 			}
 			free(pIpNetTable);
@@ -68,12 +70,12 @@ DWORD get_arp_table(Remote *remote, Packet *response)
  */
 DWORD request_net_config_get_arp_table(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	DWORD result;
 
 	result = get_arp_table(remote, response);
 
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 
 	return ERROR_SUCCESS;
 }

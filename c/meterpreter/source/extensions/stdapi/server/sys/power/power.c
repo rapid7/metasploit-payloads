@@ -1,4 +1,5 @@
 #include "precomp.h"
+#include "common_metapi.h"
 
 /*
  * Shutdowns, restarts, etc the remote machine.  Calls ExitWindowsEx
@@ -10,14 +11,14 @@
  */
 DWORD request_sys_power_exitwindows(Remote * remote, Packet * packet)
 {
-	Packet * response = packet_create_response(packet);
+	Packet * response = met_api->packet.create_response(packet);
 
 	HANDLE           token = NULL;
 	TOKEN_PRIVILEGES tkp;
 
 	DWORD result = ERROR_SUCCESS;
-	DWORD flags  = packet_get_tlv_value_uint(packet, TLV_TYPE_POWER_FLAGS);
-	DWORD reason = packet_get_tlv_value_uint(packet, TLV_TYPE_POWER_REASON);
+	DWORD flags  = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_POWER_FLAGS);
+	DWORD reason = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_POWER_REASON);
 
 // 		result = ERROR_INVALID_PARAMETER;
 
@@ -46,7 +47,7 @@ DWORD request_sys_power_exitwindows(Remote * remote, Packet * packet)
 		}
 	} while(0);
 
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 
 	if(token)
 		CloseHandle(token);

@@ -5,7 +5,6 @@
 
 #include "sniffer.h"
 
-#include "../../DelayLoadMetSrv/DelayLoadMetSrv.h"
 #include "../../ReflectiveDLLInjection/inject/src/GetProcAddressR.h"
 #include "../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.h"
 

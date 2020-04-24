@@ -1,5 +1,7 @@
 #include "precomp.h"
 
+#include "common_metapi.h"
+
 // Note: both connection_entry and connection_table were moved from
 // common.h into here because:
 // 1) connection_table contains a zero-length array which causes all C++
@@ -564,12 +566,14 @@ DWORD get_connection_table(Remote *remote, Packet *response)
 		connection[6].header.length    = (DWORD)strlen((char*)current_connection->program_name) + 1;
 		connection[6].buffer           = (PUCHAR)(current_connection->program_name);
 
-		packet_add_tlv_group(response, TLV_TYPE_NETSTAT_ENTRY, connection, 7);
+		met_api->packet.add_tlv_group(response, TLV_TYPE_NETSTAT_ENTRY, connection, 7);
 	}
 	dprintf("sent %d connections", table_connection->entries);
 
 	if (table_connection)
+	{
 		free(table_connection);
+	}
 
 	return ERROR_SUCCESS;
 }
@@ -579,12 +583,12 @@ DWORD get_connection_table(Remote *remote, Packet *response)
  */
 DWORD request_net_config_get_netstat(Remote *remote, Packet *packet)
 {
-	Packet *response = packet_create_response(packet);
+	Packet *response = met_api->packet.create_response(packet);
 	DWORD result;
 
 	result = get_connection_table(remote, response);
 
-	packet_transmit_response(result, remote, response);
+	met_api->packet.transmit_response(result, remote, response);
 
 	return ERROR_SUCCESS;
 }

@@ -183,13 +183,11 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\source\DelayLoadMetSrv\DelayLoadMetSrv.c" />
     <ClCompile Include="..\..\source\ReflectiveDLLInjection\inject\src\GetProcAddressR.c" />
     <ClCompile Include="..\..\source\ReflectiveDLLInjection\inject\src\LoadLibraryR.c" />
     <ClCompile Include="..\..\source\ReflectiveDLLInjection\dll\src\ReflectiveLoader.c" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\source\DelayLoadMetSrv\DelayLoadMetSrv.h" />
     <ClInclude Include="..\..\source\ReflectiveDLLInjection\inject\src\GetProcAddressR.h" />
     <ClInclude Include="..\..\source\ReflectiveDLLInjection\inject\src\LoadLibraryR.h" />
     <ClInclude Include="..\..\source\ReflectiveDLLInjection\common\ReflectiveDLLInjection.h" />
