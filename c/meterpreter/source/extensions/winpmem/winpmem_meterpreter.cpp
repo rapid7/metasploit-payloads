@@ -1,4 +1,3 @@
-#define DEBUGTRACE 1
 extern "C" {
 	/*!
 	 * @file WINPMEM.cpp

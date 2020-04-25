@@ -1,5 +1,6 @@
 #include "screenshot.h"
 #include "bmp2jpeg.h"
+#include "common.h"
 
 /* 
  * Please Note: bmp2jpeg.c and bmp2jpeg.h have been coppied over from screen.c
@@ -743,7 +744,7 @@ int bmp2jpeg(HBITMAP hBmp, HDC hDC, int quality, BYTE ** buf_jpeg, DWORD * buf_j
     else if (cClrBits <= 24) 
       cClrBits = 24; 
     else cClrBits = 32; 
-    
+
     // Allocate memory for the BITMAPINFO structure. (This structure 
     // contains a BITMAPINFOHEADER structure and an array of RGBQUAD 
     // data structures.) 

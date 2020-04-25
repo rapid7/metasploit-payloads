@@ -320,9 +320,11 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <ClCompile Include="..\..\source\extensions\python\Modules\cjkcodecs\_codecs_tw.c" />
     <ClCompile Include="..\..\source\extensions\python\Modules\cmathmodule.c" />
     <ClCompile Include="..\..\source\extensions\python\Modules\cPickle.c" />
+    <ClCompile Include="..\..\source\extensions\python\Modules\cryptmodule.c" />
     <ClCompile Include="..\..\source\extensions\python\Modules\cStringIO.c" />
     <ClCompile Include="..\..\source\extensions\python\Modules\datetimemodule.c" />
     <ClCompile Include="..\..\source\extensions\python\Modules\errnomodule.c" />
+    <ClCompile Include="..\..\source\extensions\python\Modules\fpectlmodule.c" />
     <ClCompile Include="..\..\source\extensions\python\Modules\future_builtins.c" />
     <ClCompile Include="..\..\source\extensions\python\Modules\gcmodule.c" />
     <ClCompile Include="..\..\source\extensions\python\Modules\getbuildinfo.c" />
@@ -383,7 +385,9 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <ClCompile Include="..\..\source\extensions\python\Modules\_ctypes\malloc_closure.c" />
     <ClCompile Include="..\..\source\extensions\python\Modules\_ctypes\stgdict.c" />
     <ClCompile Include="..\..\source\extensions\python\Modules\_ctypes\_ctypes.c" />
+    <ClCompile Include="..\..\source\extensions\python\Modules\_elementtree.c" />
     <ClCompile Include="..\..\source\extensions\python\Modules\_functoolsmodule.c" />
+    <ClCompile Include="..\..\source\extensions\python\Modules\_hashopenssl.c" />
     <ClCompile Include="..\..\source\extensions\python\Modules\_heapqmodule.c" />
     <ClCompile Include="..\..\source\extensions\python\Modules\_hotshot.c" />
     <ClCompile Include="..\..\source\extensions\python\Modules\_io\bufferedio.c" />

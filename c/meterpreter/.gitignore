@@ -52,4 +52,4 @@ docs/*
 
 # ignore CLion files
 .idea/
-CMakeLists.txt
+build

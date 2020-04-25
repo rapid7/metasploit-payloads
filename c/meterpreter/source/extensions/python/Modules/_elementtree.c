@@ -55,7 +55,7 @@
 /* configuration */
 
 /* Leave defined to include the expat-based XMLParser type */
-#define USE_EXPAT
+//#define USE_EXPAT
 
 /* Define to do all expat calls via pyexpat's embedded expat library */
 /* #define USE_PYEXPAT_CAPI */
@@ -693,7 +693,7 @@ element_deepcopy(ElementObject* self, PyObject* args)
     }
 
     /* add object to memo dictionary (so deepcopy won't visit it again) */
-    id = PyInt_FromLong((Py_uintptr_t) self);
+    id = PyInt_FromLong((long)(Py_uintptr_t) self);
     if (!id)
         goto error;
 
@@ -1273,7 +1273,7 @@ element_setitem(PyObject* self_, Py_ssize_t index, PyObject* item)
         self->extra->children[index] = item;
     } else {
         self->extra->length--;
-        for (i = index; i < self->extra->length; i++)
+        for (i = (int)(INT_PTR)index; i < self->extra->length; i++)
             self->extra->children[i] = self->extra->children[i+1];
     }
 
@@ -1406,7 +1406,7 @@ element_ass_subscr(PyObject* self_, PyObject* item, PyObject* value)
 
         /* Resize before creating the recycle bin, to prevent refleaks. */
         if (newlen > slicelen) {
-            if (element_resize(self, newlen - slicelen) < 0) {
+            if (element_resize(self, (int)(INT_PTR)(newlen - slicelen)) < 0) {
                 if (seq) {
                     Py_DECREF(seq);
                 }
@@ -1448,7 +1448,7 @@ element_ass_subscr(PyObject* self_, PyObject* item, PyObject* value)
             self->extra->children[cur] = element;
         }
 
-        self->extra->length += newlen - slicelen;
+        self->extra->length += (int)(INT_PTR)(newlen - slicelen);
 
         if (seq) {
             Py_DECREF(seq);

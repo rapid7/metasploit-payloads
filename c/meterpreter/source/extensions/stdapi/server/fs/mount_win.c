@@ -1,8 +1,6 @@
 #include "precomp.h"
 #include "common_metapi.h"
 
-#pragma comment(lib, "mpr.lib")
-
 // each drive is in the form "A:\\\0" (4 chars), plus a NULL terminator at the end
 #define DRIVE_STRINGS_LEN (4 * 26 + 1)
 

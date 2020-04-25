@@ -246,7 +246,8 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <Link>
       <AdditionalDependencies>psapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <AdditionalLibraryDirectories></AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>
+      </AdditionalLibraryDirectories>
       <DelayLoadDLLs>
       </DelayLoadDLLs>
       <ProgramDatabaseFile>$(OutDir)\ext_server_priv.pdb</ProgramDatabaseFile>
@@ -307,7 +308,8 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <Link>
       <AdditionalDependencies>psapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <AdditionalLibraryDirectories></AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>
+      </AdditionalLibraryDirectories>
       <DelayLoadDLLs>
       </DelayLoadDLLs>
       <ProgramDatabaseFile>$(OutDir)\ext_server_priv.pdb</ProgramDatabaseFile>
@@ -330,27 +332,6 @@ IF NOT EXIST "$(ProjectDir)..\..\output\" mkdir "$(ProjectDir)..\..\output\"
 copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <ClCompile Include="..\..\source\extensions\priv\server\priv.c">
-      <PrecompiledHeader>Create</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\source\extensions\priv\server\passwd.c" />
-    <ClCompile Include="..\..\source\extensions\priv\server\elevate\elevate.c" />
-    <ClCompile Include="..\..\source\extensions\priv\server\elevate\service.c" />
-    <ClCompile Include="..\..\source\extensions\priv\server\elevate\namedpipe.c" />
-    <ClCompile Include="..\..\source\extensions\priv\server\elevate\tokendup.c" />
-    <ClCompile Include="..\..\source\extensions\priv\server\fs.c" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="..\..\source\extensions\priv\server\precomp.h" />
-    <ClInclude Include="..\..\source\extensions\priv\priv.h" />
-    <ClInclude Include="..\..\source\extensions\priv\server\elevate\elevate.h" />
-    <ClInclude Include="..\..\source\extensions\priv\server\elevate\service.h" />
-    <ClInclude Include="..\..\source\extensions\priv\server\elevate\namedpipe.h" />
-    <ClInclude Include="..\..\source\extensions\priv\server\elevate\tokendup.h" />
-    <ClInclude Include="..\..\source\extensions\priv\server\fs.h" />
-    <ClInclude Include="..\..\source\extensions\priv\server\passwd.h" />
-  </ItemGroup>
   <Choose>
     <When Condition="'$(Platform)'=='Win32'">
       <ItemGroup>
@@ -370,6 +351,26 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <Project>{72f0246a-a38d-4547-9057-46020e8e503d}</Project>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\source\extensions\priv\defs.h" />
+    <ClInclude Include="..\..\source\extensions\priv\elevate.h" />
+    <ClInclude Include="..\..\source\extensions\priv\fs.h" />
+    <ClInclude Include="..\..\source\extensions\priv\namedpipe.h" />
+    <ClInclude Include="..\..\source\extensions\priv\passwd.h" />
+    <ClInclude Include="..\..\source\extensions\priv\precomp.h" />
+    <ClInclude Include="..\..\source\extensions\priv\priv.h" />
+    <ClInclude Include="..\..\source\extensions\priv\service.h" />
+    <ClInclude Include="..\..\source\extensions\priv\tokendup.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\source\extensions\priv\elevate.c" />
+    <ClCompile Include="..\..\source\extensions\priv\fs.c" />
+    <ClCompile Include="..\..\source\extensions\priv\namedpipe.c" />
+    <ClCompile Include="..\..\source\extensions\priv\passwd.c" />
+    <ClCompile Include="..\..\source\extensions\priv\priv.c" />
+    <ClCompile Include="..\..\source\extensions\priv\service.c" />
+    <ClCompile Include="..\..\source\extensions\priv\tokendup.c" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
