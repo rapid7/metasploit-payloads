@@ -3,9 +3,10 @@ import datetime
 
 from meterpreter.core import *
 from meterpreter.tlv import *
+from meterpreter.command import *
 
 def list():
-  resp = invoke_meterpreter('core_transport_list', True)
+  resp = invoke_meterpreter(COMMAND_ID_CORE_TRANSPORT_LIST, True)
   if resp == None:
       return []
 
@@ -59,7 +60,7 @@ def add(url, session_expiry=None, comm_timeout=None, retry_total=None,
   if cert_hash:
     tlv += tlv_pack(TLV_TYPE_TRANS_CERT_HASH, cert_hash)
 
-  resp = invoke_meterpreter('core_transport_add', True, tlv)
+  resp = invoke_meterpreter(COMMAND_ID_CORE_TRANSPORT_ADD, True, tlv)
   if resp == None:
     return False
 

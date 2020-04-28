@@ -14,8 +14,8 @@ MetApi* met_api = NULL;
 
 Command customCommands[] =
 {
-	COMMAND_REQ( "espia_image_get_dev_screen", request_image_get_dev_screen ),
-	COMMAND_TERMINATOR
+    COMMAND_REQ(COMMAND_ID_ESPIA_IMAGE_GET_DEV_SCREEN, request_image_get_dev_screen),
+    COMMAND_TERMINATOR
 };
 
 /*!

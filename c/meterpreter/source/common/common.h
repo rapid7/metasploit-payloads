@@ -107,5 +107,6 @@ static _inline void real_dprintf(char *format, ...)
 #include "common_pivot_tree.h"
 #include "common_thread.h"
 #include "common_scheduler.h"
+#include "common_command_ids.h"
 
 #endif

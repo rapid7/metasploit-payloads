@@ -14,7 +14,7 @@ extern "C" {
 
 	Command customCommands[] =
 	{
-		COMMAND_REQ("dump_ram", dump_ram),
+		COMMAND_REQ(COMMAND_ID_WINPMEM_DUMP_RAM, dump_ram),
 		COMMAND_TERMINATOR
 	};
 

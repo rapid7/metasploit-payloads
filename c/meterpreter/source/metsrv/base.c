@@ -56,44 +56,44 @@ DWORD THREADCALL command_process_thread(THREAD * thread);
 Command baseCommands[] =
 {
 	// Console commands
-	{ "core_console_write",
+	{ COMMAND_ID_CORE_CONSOLE_WRITE,
 		{ remote_request_core_console_write, NULL, { TLV_META_TYPE_STRING }, 1 | ARGUMENT_FLAG_REPEAT },
 		{ remote_response_core_console_write, NULL, EMPTY_TLV },
 	},
 
 	// Native Channel commands
-	// this overloads the "core_channel_open" in the base command list
-	COMMAND_REQ_REP("core_channel_open", remote_request_core_channel_open, remote_response_core_channel_open),
-	COMMAND_REQ("core_channel_write", remote_request_core_channel_write),
-	COMMAND_REQ_REP("core_channel_close", remote_request_core_channel_close, remote_response_core_channel_close),
+	// this overloads the COMMAND_ID_CORE_CHANNEL_OPEN in the base command list
+	COMMAND_REQ_REP(COMMAND_ID_CORE_CHANNEL_OPEN, remote_request_core_channel_open, remote_response_core_channel_open),
+	COMMAND_REQ(COMMAND_ID_CORE_CHANNEL_WRITE, remote_request_core_channel_write),
+	COMMAND_REQ_REP(COMMAND_ID_CORE_CHANNEL_CLOSE, remote_request_core_channel_close, remote_response_core_channel_close),
 
 	// Buffered/Pool channel commands
-	COMMAND_REQ("core_channel_read", remote_request_core_channel_read),
+	COMMAND_REQ(COMMAND_ID_CORE_CHANNEL_READ, remote_request_core_channel_read),
 	// Pool channel commands
-	COMMAND_REQ("core_channel_seek", remote_request_core_channel_seek),
-	COMMAND_REQ("core_channel_eof", remote_request_core_channel_eof),
-	COMMAND_REQ("core_channel_tell", remote_request_core_channel_tell),
+	COMMAND_REQ(COMMAND_ID_CORE_CHANNEL_SEEK, remote_request_core_channel_seek),
+	COMMAND_REQ(COMMAND_ID_CORE_CHANNEL_EOF, remote_request_core_channel_eof),
+	COMMAND_REQ(COMMAND_ID_CORE_CHANNEL_TELL, remote_request_core_channel_tell),
 	// Soon to be deprecated
-	COMMAND_REQ("core_channel_interact", remote_request_core_channel_interact),
+	COMMAND_REQ(COMMAND_ID_CORE_CHANNEL_INTERACT, remote_request_core_channel_interact),
 	// Packet Encryption
-	COMMAND_REQ("core_negotiate_tlv_encryption", request_negotiate_aes_key),
+	COMMAND_REQ(COMMAND_ID_CORE_NEGOTIATE_TLV_ENCRYPTION, request_negotiate_aes_key),
 	// timeouts
-	COMMAND_REQ("core_transport_set_timeouts", remote_request_core_transport_set_timeouts),
+	COMMAND_REQ(COMMAND_ID_CORE_TRANSPORT_SET_TIMEOUTS, remote_request_core_transport_set_timeouts),
 
-	COMMAND_REQ("core_transport_getcerthash", remote_request_core_transport_getcerthash),
-	COMMAND_REQ("core_transport_setcerthash", remote_request_core_transport_setcerthash),
+	COMMAND_REQ(COMMAND_ID_CORE_TRANSPORT_GETCERTHASH, remote_request_core_transport_getcerthash),
+	COMMAND_REQ(COMMAND_ID_CORE_TRANSPORT_SETCERTHASH, remote_request_core_transport_setcerthash),
 
-	COMMAND_REQ("core_transport_list", remote_request_core_transport_list),
-	COMMAND_INLINE_REQ("core_transport_sleep", remote_request_core_transport_sleep),
-	COMMAND_INLINE_REQ("core_transport_change", remote_request_core_transport_change),
-	COMMAND_INLINE_REQ("core_transport_next", remote_request_core_transport_next),
-	COMMAND_INLINE_REQ("core_transport_prev", remote_request_core_transport_prev),
-	COMMAND_REQ("core_transport_add", remote_request_core_transport_add),
-	COMMAND_REQ("core_transport_remove", remote_request_core_transport_remove),
+	COMMAND_REQ(COMMAND_ID_CORE_TRANSPORT_LIST, remote_request_core_transport_list),
+	COMMAND_INLINE_REQ(COMMAND_ID_CORE_TRANSPORT_SLEEP, remote_request_core_transport_sleep),
+	COMMAND_INLINE_REQ(COMMAND_ID_CORE_TRANSPORT_CHANGE, remote_request_core_transport_change),
+	COMMAND_INLINE_REQ(COMMAND_ID_CORE_TRANSPORT_NEXT, remote_request_core_transport_next),
+	COMMAND_INLINE_REQ(COMMAND_ID_CORE_TRANSPORT_PREV, remote_request_core_transport_prev),
+	COMMAND_REQ(COMMAND_ID_CORE_TRANSPORT_ADD, remote_request_core_transport_add),
+	COMMAND_REQ(COMMAND_ID_CORE_TRANSPORT_REMOVE, remote_request_core_transport_remove),
 	// Migration
-	COMMAND_INLINE_REQ("core_migrate", remote_request_core_migrate),
+	COMMAND_INLINE_REQ(COMMAND_ID_CORE_MIGRATE, remote_request_core_migrate),
 	// Shutdown
-	COMMAND_INLINE_REQ("core_shutdown", remote_request_core_shutdown),
+	COMMAND_INLINE_REQ(COMMAND_ID_CORE_SHUTDOWN, remote_request_core_shutdown),
 	// Terminator
 	COMMAND_TERMINATOR
 };
@@ -112,7 +112,8 @@ void command_register_all(Command commands[])
 {
 	DWORD index;
 
-	for (index = 0; commands[index].method; index++)
+	// Zero indicates the end of the command list
+	for (index = 0; commands[index].command_id > 0; index++)
 	{
 		command_register(&commands[index]);
 	}
@@ -123,7 +124,7 @@ void command_register_all(Command commands[])
 	dprintf("[COMMAND LIST] Listing current extension commands");
 	for (command = extensionCommands; command; command = command->next)
 	{
-		dprintf("[COMMAND LIST] Found: %s", command->method);
+		dprintf("[COMMAND LIST] Found: %u", command->command_id);
 	}
 #endif
 }
@@ -137,7 +138,7 @@ DWORD command_register(Command *command)
 {
 	Command *newCommand;
 
-	dprintf("Registering a new command (%s)...", command->method);
+	dprintf("Registering a new command (%u)...", command->command_id);
 	if (!(newCommand = (Command *)malloc(sizeof(Command))))
 	{
 		return ERROR_NOT_ENOUGH_MEMORY;
@@ -169,7 +170,7 @@ void command_deregister_all(Command commands[])
 {
 	DWORD index;
 
-	for (index = 0; commands[index].method; index++)
+	for (index = 0; commands[index].command_id > 0; index++)
 	{
 		command_deregister(&commands[index]);
 	}
@@ -190,8 +191,10 @@ DWORD command_deregister(Command *command)
 		current;
 		prev = current, current = current->next)
 	{
-		if (strcmp(command->method, current->method))
+		if (command->command_id == current->command_id)
+		{
 			continue;
+		}
 
 		if (prev)
 		{
@@ -261,7 +264,7 @@ BOOL command_process_inline(Command *baseCommand, Command *extensionCommand, Rem
 	Command *commands[2] = { baseCommand, extensionCommand };
 	Command *command = NULL;
 	DWORD dwIndex;
-	LPCSTR lpMethod = NULL;
+	UINT commandId = 0;
 
 	__try
 	{
@@ -276,15 +279,15 @@ BOOL command_process_inline(Command *baseCommand, Command *extensionCommand, Rem
 					continue;
 				}
 
-				lpMethod = command->method;
-				dprintf("[COMMAND] Executing command %s", lpMethod);
+				commandId = command->command_id;
+				dprintf("[COMMAND] Executing command %u", commandId);
 
 				// Impersonate the thread token if needed (only on Windows)
 				if (remote->server_token != remote->thread_token)
 				{
 					if (!ImpersonateLoggedOnUser(remote->thread_token))
 					{
-						dprintf("[COMMAND] Failed to impersonate thread token (%s) (%u)", lpMethod, GetLastError());
+						dprintf("[COMMAND] Failed to impersonate thread token (%u) (%u)", commandId, GetLastError());
 					}
 				}
 
@@ -297,19 +300,19 @@ BOOL command_process_inline(Command *baseCommand, Command *extensionCommand, Rem
 				}
 
 				packetTlvType = packet_get_type(packet);
-				dprintf("[DISPATCH] Packet type for %s is %u", lpMethod, packetTlvType);
+				dprintf("[DISPATCH] Packet type for %u is %u", commandId, packetTlvType);
 				switch (packetTlvType)
 				{
 				case PACKET_TLV_TYPE_REQUEST:
 				case PACKET_TLV_TYPE_PLAIN_REQUEST:
 					if (command->request.inline_handler) {
-						dprintf("[DISPATCH] executing inline request handler %s", lpMethod);
+						dprintf("[DISPATCH] executing inline request handler %u", commandId);
 						serverContinue = command->request.inline_handler(remote, packet, &result) && serverContinue;
-						dprintf("[DISPATCH] executed %s, continue %s", lpMethod, serverContinue ? "yes" : "no");
+						dprintf("[DISPATCH] executed %u, continue %s", commandId, serverContinue ? "yes" : "no");
 					}
 					else
 					{
-						dprintf("[DISPATCH] executing request handler %s", lpMethod);
+						dprintf("[DISPATCH] executing request handler %u", commandId);
 						result = command->request.handler(remote, packet);
 					}
 					break;
@@ -317,12 +320,12 @@ BOOL command_process_inline(Command *baseCommand, Command *extensionCommand, Rem
 				case PACKET_TLV_TYPE_PLAIN_RESPONSE:
 					if (command->response.inline_handler)
 					{
-						dprintf("[DISPATCH] executing inline response handler %s", lpMethod);
+						dprintf("[DISPATCH] executing inline response handler %u", commandId);
 						serverContinue = command->response.inline_handler(remote, packet, &result) && serverContinue;
 					}
 					else
 					{
-						dprintf("[DISPATCH] executing response handler %s", lpMethod);
+						dprintf("[DISPATCH] executing response handler %u", commandId);
 						result = command->response.handler(remote, packet);
 					}
 					break;
@@ -343,12 +346,12 @@ BOOL command_process_inline(Command *baseCommand, Command *extensionCommand, Rem
 				packet_call_completion_handlers(remote, packet, requestId);
 			}
 
-			dprintf("[COMMAND] Completion handlers finished for %s.", lpMethod);
+			dprintf("[COMMAND] Completion handlers finished for %u.", commandId);
 		} while (0);
 	}
 	__except (EXCEPTION_EXECUTE_HANDLER)
 	{
-		dprintf("[COMMAND] Exception hit in command %s", lpMethod);
+		dprintf("[COMMAND] Exception hit in command %u", commandId);
 	}
 
 	if (!packet->local)
@@ -364,49 +367,49 @@ BOOL command_process_inline(Command *baseCommand, Command *extensionCommand, Rem
 
 /*!
  * @brief Attempt to locate a command in the base command list.
- * @param method String that identifies the command.
+ * @param commandId String that identifies the command.
  * @returns Pointer to the command entry in the base command list.
- * @retval NULL Indicates that no command was found for the given method.
+ * @retval NULL Indicates that no command was found for the given commandId.
  * @retval NON-NULL Pointer to the command that can be executed.
  */
-Command* command_locate_base(const char* method)
+Command* command_locate_base(UINT commandId)
 {
 	DWORD index;
 
-	dprintf("[COMMAND EXEC] Attempting to locate base command %s", method);
-	for (index = 0; baseCommands[index].method; ++index)
+	dprintf("[COMMAND EXEC] Attempting to locate base command %u", commandId);
+	for (index = 0; baseCommands[index].command_id; ++index)
 	{
-		if (strcmp(baseCommands[index].method, method) == 0)
+		if (baseCommands[index].command_id == commandId)
 		{
 			return &baseCommands[index];
 		}
 	}
 
-	dprintf("[COMMAND EXEC] Couldn't find base command %s", method);
+	dprintf("[COMMAND EXEC] Couldn't find base command %u", commandId);
 	return NULL;
 }
 
 /*!
  * @brief Attempt to locate a command in the extensions command list.
- * @param method String that identifies the command.
+ * @param commandId ID of the command to locate the associatd extension for.
  * @returns Pointer to the command entry in the extensions command list.
- * @retval NULL Indicates that no command was found for the given method.
+ * @retval NULL Indicates that no command was found for the given commandId.
  * @retval NON-NULL Pointer to the command that can be executed.
  */
-Command* command_locate_extension(const char* method)
+Command* command_locate_extension(UINT commandId)
 {
 	Command* command;
 
-	dprintf("[COMMAND EXEC] Attempting to locate extension command %s (%p)", method, extensionCommands);
+	dprintf("[COMMAND EXEC] Attempting to locate extension command %u (%p)", commandId, extensionCommands);
 	for (command = extensionCommands; command; command = command->next)
 	{
-		if (strcmp(command->method, method) == 0)
+		if (command->command_id == commandId)
 		{
 			return command;
 		}
 	}
 
-	dprintf("[COMMAND EXEC] Couldn't find extension command %s", method);
+	dprintf("[COMMAND EXEC] Couldn't find extension command %u", commandId);
 	return NULL;
 }
 
@@ -435,25 +438,24 @@ BOOL command_handle(Remote *remote, Packet *packet)
 	Command* extensionCommand = NULL;
 	Command** commands = NULL;
 	Packet* response = NULL;
-	PCHAR lpMethod = NULL;
-	Tlv methodTlv;
+
+	UINT commandId = packet_get_tlv_value_uint(packet, TLV_TYPE_COMMAND_ID);
 
 	do
 	{
-		if (packet_get_tlv_string(packet, TLV_TYPE_METHOD, &methodTlv) != ERROR_SUCCESS)
+
+		if (commandId == 0)
 		{
-			dprintf("[COMMAND] Unable to extract method from packet.");
+			dprintf("[COMMAND] Unable to extract commandId from packet.");
 			break;
 		}
 
-		lpMethod = (PCHAR)methodTlv.buffer;
-
-		baseCommand = command_locate_base(lpMethod);
-		extensionCommand = command_locate_extension(lpMethod);
+		baseCommand = command_locate_base(commandId);
+		extensionCommand = command_locate_extension(commandId);
 
 		if (baseCommand == NULL && extensionCommand == NULL)
 		{
-			dprintf("[DISPATCH] Command not found: %s", lpMethod);
+			dprintf("[DISPATCH] Command not found: %u", commandId);
 			// We have no matching command for this packet, so it won't get handled. We
 			// need to send an empty response and clean up here before exiting out.
 			response = packet_create_response(packet);
@@ -474,13 +476,13 @@ BOOL command_handle(Remote *remote, Packet *packet)
 			|| (extensionCommand && command_is_inline(extensionCommand, packet))
 			|| packet->local)
 		{
-			dprintf("[DISPATCH] Executing inline: %s", lpMethod);
+			dprintf("[DISPATCH] Executing inline: %u", commandId);
 			result = command_process_inline(baseCommand, extensionCommand, remote, packet);
 			dprintf("[DISPATCH] Executed inline: result %u (%x)", result, result);
 		}
 		else
 		{
-			dprintf("[DISPATCH] Executing in thread: %s", lpMethod);
+			dprintf("[DISPATCH] Executing in thread: %u", commandId);
 
 			commands = (Command**)malloc(sizeof(Command*) * 2);
 			*commands = baseCommand;

@@ -34,7 +34,7 @@ namespace MSF.Powershell.Meterpreter
         {
             Tlv tlv = new Tlv();
 
-            var result = Core.InvokeMeterpreterBinding(true, tlv.ToRequest("core_transport_list"));
+            var result = Core.InvokeMeterpreterBinding(true, tlv.ToRequest(CommandId.CoreTransportList));
 
             if (result != null)
             {
@@ -195,7 +195,7 @@ namespace MSF.Powershell.Meterpreter
                 tlv.Pack(TlvType.TransCertHash, hash);
             }
 
-            var result = Core.InvokeMeterpreterBinding(true, tlv.ToRequest("core_transport_add"));
+            var result = Core.InvokeMeterpreterBinding(true, tlv.ToRequest(CommandId.CoreTransportAdd));
 
             if (result != null)
             {

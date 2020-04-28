@@ -99,7 +99,7 @@ typedef DWORD TlvMetaType;
 typedef enum
 {
 	TLV_TYPE_ANY                 = TLV_VALUE(TLV_META_TYPE_NONE,        0),   ///! Represents an undefined/arbitrary value.
-	TLV_TYPE_METHOD              = TLV_VALUE(TLV_META_TYPE_STRING,      1),   ///! Represents a method/function name value.
+	TLV_TYPE_COMMAND_ID          = TLV_VALUE(TLV_META_TYPE_UINT,        1),   ///! Represents a command identifier.
 	TLV_TYPE_REQUEST_ID          = TLV_VALUE(TLV_META_TYPE_STRING,      2),   ///! Represents a request identifier value.
 	TLV_TYPE_EXCEPTION           = TLV_VALUE(TLV_META_TYPE_GROUP,       3),   ///! Represents an exception value.
 	TLV_TYPE_RESULT              = TLV_VALUE(TLV_META_TYPE_UINT,        4),   ///! Represents a result value.
@@ -234,7 +234,7 @@ typedef struct _DECOMPRESSED_BUFFER
 
 /*! * @brief Packet request completion notification handler function pointer type. */
 typedef DWORD (*PacketRequestCompletionRoutine)(Remote *remote,
-		Packet *response, LPVOID context, LPCSTR method, DWORD result);
+		Packet *response, LPVOID context, UINT commandId, DWORD result);
 
 typedef struct _PacketRequestCompletion
 {

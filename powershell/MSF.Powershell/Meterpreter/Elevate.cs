@@ -14,7 +14,7 @@ namespace MSF.Powershell.Meterpreter
             tlv.Pack(TlvType.ElevateTechnique, 1);
             tlv.Pack(TlvType.ElevateServiceName, "abcd1234");
 
-            var result = Core.InvokeMeterpreterBinding(true, tlv.ToRequest("priv_elevate_getsystem"));
+            var result = Core.InvokeMeterpreterBinding(true, tlv.ToRequest(CommandId.PrivElevateGetsystem));
 
             if (result != null)
             {
@@ -32,7 +32,7 @@ namespace MSF.Powershell.Meterpreter
 
             Tlv tlv = new Tlv();
 
-            var result = Core.InvokeMeterpreterBinding(true, tlv.ToRequest("stdapi_sys_config_rev2self"));
+            var result = Core.InvokeMeterpreterBinding(true, tlv.ToRequest(CommandId.StdapiSysConfigRev2self));
 
             if (result != null)
             {
@@ -51,7 +51,7 @@ namespace MSF.Powershell.Meterpreter
             Tlv tlv = new Tlv();
             tlv.Pack(TlvType.Pid, pid);
 
-            var result = Core.InvokeMeterpreterBinding(true, tlv.ToRequest("stdapi_sys_config_steal_token"));
+            var result = Core.InvokeMeterpreterBinding(true, tlv.ToRequest(CommandId.StdapiSysConfigStealToken));
 
             if (result != null)
             {
@@ -69,7 +69,7 @@ namespace MSF.Powershell.Meterpreter
 
             Tlv tlv = new Tlv();
 
-            var result = Core.InvokeMeterpreterBinding(true, tlv.ToRequest("stdapi_sys_config_drop_token"));
+            var result = Core.InvokeMeterpreterBinding(true, tlv.ToRequest(CommandId.StdapiSysConfigDropToken));
 
             if (result != null)
             {

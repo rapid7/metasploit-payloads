@@ -2,9 +2,10 @@ import meterpreter_bindings
 
 from meterpreter.core import *
 from meterpreter.tlv import *
+from meterpreter.command import *
 
 def show_mount():
-  resp = invoke_meterpreter('stdapi_fs_mount_show', True)
+  resp = invoke_meterpreter(COMMAND_ID_STDAPI_FS_MOUNT_SHOW, True)
   if resp == None:
       return False
 

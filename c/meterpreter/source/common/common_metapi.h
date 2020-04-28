@@ -117,7 +117,7 @@ typedef struct _PacketApi
 	DWORD(*transmit_empty_response)(Remote* remote, Packet* packet, DWORD res);
 	DWORD(*transmit_response)(DWORD result, Remote* remote, Packet* response);
 	PCHAR(*get_tlv_value_string)(Packet* packet, TlvType type);
-	Packet*(*create)(PacketTlvType type, LPCSTR method);
+	Packet*(*create)(PacketTlvType type, UINT commandId);
 	Packet*(*create_group)();
 	Packet*(*create_response)(Packet* request);
 	PacketTlvType(*get_type)(Packet* packet);

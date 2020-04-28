@@ -14,14 +14,14 @@ MetApi* met_api = NULL;
  */
 Command customCommands[] =
 {
-	COMMAND_REQ( "priv_elevate_getsystem", elevate_getsystem ),
-	COMMAND_REQ( "priv_passwd_get_sam_hashes", request_passwd_get_sam_hashes ),
-	COMMAND_REQ( "priv_fs_get_file_mace", request_fs_get_file_mace ),
-	COMMAND_REQ( "priv_fs_set_file_mace", request_fs_set_file_mace ),
-	COMMAND_REQ( "priv_fs_set_file_mace_from_file", request_fs_set_file_mace_from_file ),
-	COMMAND_REQ( "priv_fs_blank_file_mace", request_fs_blank_file_mace ),
-	COMMAND_REQ( "priv_fs_blank_directory_mace", request_fs_blank_directory_mace ),
-	COMMAND_TERMINATOR
+    COMMAND_REQ(COMMAND_ID_PRIV_ELEVATE_GETSYSTEM, elevate_getsystem),
+    COMMAND_REQ(COMMAND_ID_PRIV_PASSWD_GET_SAM_HASHES, request_passwd_get_sam_hashes),
+    COMMAND_REQ(COMMAND_ID_PRIV_FS_GET_FILE_MACE, request_fs_get_file_mace),
+    COMMAND_REQ(COMMAND_ID_PRIV_FS_SET_FILE_MACE, request_fs_set_file_mace),
+    COMMAND_REQ(COMMAND_ID_PRIV_FS_SET_FILE_MACE_FROM_FILE, request_fs_set_file_mace_from_file),
+    COMMAND_REQ(COMMAND_ID_PRIV_FS_BLANK_FILE_MACE, request_fs_blank_file_mace),
+    COMMAND_REQ(COMMAND_ID_PRIV_FS_BLANK_DIRECTORY_MACE, request_fs_blank_directory_mace),
+    COMMAND_TERMINATOR
 };
 
 /*!

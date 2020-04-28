@@ -18,10 +18,10 @@ static BOOL gSuccessfullyLoaded = FALSE;
 /*! @brief List of commands that the powershell extension provides. */
 Command customCommands[] =
 {
-	COMMAND_REQ("powershell_execute", request_powershell_execute),
-	COMMAND_REQ("powershell_shell", request_powershell_shell),
-	COMMAND_REQ("powershell_assembly_load", request_powershell_assembly_load),
-	COMMAND_REQ("powershell_session_remove", request_powershell_session_remove),
+	COMMAND_REQ(COMMAND_ID_POWERSHELL_EXECUTE, request_powershell_execute),
+	COMMAND_REQ(COMMAND_ID_POWERSHELL_SHELL, request_powershell_shell),
+	COMMAND_REQ(COMMAND_ID_POWERSHELL_ASSEMBLY_LOAD, request_powershell_assembly_load),
+	COMMAND_REQ(COMMAND_ID_POWERSHELL_SESSION_REMOVE, request_powershell_session_remove),
 	COMMAND_TERMINATOR
 };
 

@@ -1,2 +1,2 @@
-__all__ = ['core', 'elevate', 'fs', 'tlv', 'kiwi', 'user', 'sys', 'extapi', 'incognito', 'transport']
+__all__ = ['core', 'command', 'elevate', 'fs', 'tlv', 'kiwi', 'user', 'sys', 'extapi', 'incognito', 'transport']
 

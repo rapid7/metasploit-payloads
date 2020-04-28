@@ -23,8 +23,8 @@ Remote* gRemote = NULL;
 /*! @brief List of commands that the extended API extension providers. */
 Command customCommands[] =
 {
-	COMMAND_REQ("python_reset", request_python_reset),
-	COMMAND_REQ("python_execute", request_python_execute),
+	COMMAND_REQ(COMMAND_ID_PYTHON_RESET, request_python_reset),
+	COMMAND_REQ(COMMAND_ID_PYTHON_EXECUTE, request_python_execute),
 	COMMAND_TERMINATOR
 };
 
@@ -55,11 +55,11 @@ BOOL WINAPI DllMain( HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpReserved )
 
 /*!
  * @brief Callback for when a command has been added to the meterpreter instance.
- * @param commandName The name of the command that has been added.
+ * @param commandId The ID of the command that has been added.
  */
-VOID __declspec(dllexport) CommandAdded(const char* commandName)
+VOID __declspec(dllexport) CommandAdded(UINT commandId)
 {
-	binding_add_command(commandName);
+	binding_add_command(commandId);
 }
 
 /*!

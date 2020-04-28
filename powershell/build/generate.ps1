@@ -58,7 +58,7 @@ function Generate-MetasploitPowershell {
     $HeaderContent = New-Object System.Collections.ArrayList
     [void] $HeaderContent.Add("/*!`n")
     [void] $HeaderContent.Add(" * @file powershell_runner.h`n")
-    [void] $HeaderContent.Add(" * @brief This file is generated, do not modify directly.`n")
+    [void] $HeaderContent.Add(" * @brief This file was generated at $([DateTime]::UtcNow) UTC, do not modify directly.`n")
     [void] $HeaderContent.Add(" */`n`n")
     [void] $HeaderContent.Add("#ifndef _METERPRETER_SOURCE_EXTENSION_POWERSHELL_RUNNER_H`n")
     [void] $HeaderContent.Add("#define _METERPRETER_SOURCE_EXTENSION_POWERSHELL_RUNNER_H`n`n")

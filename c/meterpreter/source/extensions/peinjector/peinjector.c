@@ -14,7 +14,7 @@ MetApi* met_api = NULL;
 
 Command customCommands[] =
 {
-	COMMAND_REQ("peinjector_inject_shellcode", request_peinjector_inject_shellcode),
+	COMMAND_REQ(COMMAND_ID_PEINJECTOR_INJECT_SHELLCODE, request_peinjector_inject_shellcode),
 	COMMAND_TERMINATOR
 };
 

@@ -452,13 +452,13 @@ DWORD powershell_channel_interact_notify(Remote *remote, LPVOID entryContext, LP
 {
 	Channel *channel = (Channel*)entryContext;
 	InteractiveShell* shell = (InteractiveShell*)threadContext;
-	DWORD byteCount = shell->output.length() + 1;
+	DWORD byteCount = (shell->output.length() + 1) * sizeof(wchar_t);
 
 	if (shell->output.length() > 1 && shell->wait_handle != NULL)
 	{
 		met_api->lock.acquire(shell->buffer_lock);
-		dprintf("[PSH SHELL] received notification to write");
-		DWORD result = met_api->channel.write(channel, remote, NULL, 0, (PUCHAR)(char*)shell->output, byteCount, NULL);
+		dprintf("[PSH SHELL] received notification to write %S", (wchar_t*)shell->output);
+		DWORD result = met_api->channel.write(channel, remote, NULL, 0, (PUCHAR)(wchar_t*)shell->output, byteCount, NULL);
 		shell->output = "";
 		ResetEvent(shell->wait_handle);
 		met_api->lock.release(shell->buffer_lock);

@@ -19,8 +19,9 @@ namespace MSF.PowershellTester
             t.Pack(TlvType.ElevateTechnique, 1);
             t.Pack(TlvType.ElevateServiceName, "abcd1234");
 
-            var x = t.ToRequest("priv_elevate_getsystem");
+            var x = t.ToRequest(CommandId.PrivElevateGetsystem);
             var y = 0;
+            y++;
         }
     }
 }

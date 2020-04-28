@@ -10,7 +10,7 @@ namespace MSF.Powershell.Meterpreter
     {
         private MemoryStream _stream = null;
 
-        public byte[] ToRequest(string methodName)
+        public byte[] ToRequest(CommandId commandId)
         {
             var tlvBytes = this.Bytes;
             if (tlvBytes == null)
@@ -24,8 +24,9 @@ namespace MSF.Powershell.Meterpreter
                 var packetType = ToBytes((int)PacketType.Request);
 
                 headerStream.Write(packetType, 0, packetType.Length);
-                Append(headerStream, TlvType.Method, ToBytes(methodName));
-                Append(headerStream, TlvType.RequestId, ToBytes(Core.RandomString(8)));
+                Append(headerStream, TlvType.CommandId, commandId);
+                var requestId = Core.RandomString(8);
+                Append(headerStream, TlvType.RequestId, ToBytes(requestId));
 
                 header = headerStream.ToArray();
             }
@@ -219,6 +220,17 @@ namespace MSF.Powershell.Meterpreter
             Append(_stream, t, value);
         }
 
+        private static void Append(MemoryStream stream, TlvType t, CommandId commandId)
+        {
+            System.Diagnostics.Debug.Write(string.Format("[PSH BINDING] Adding type {0} ({1}) of {2} ({3})", t, (uint)t, commandId, (uint)commandId));
+            var type = ToBytes((int)t);
+            var value = ToBytes((uint)commandId);
+            var length = ToBytes(value.Length + type.Length + 4);
+            stream.Write(length, 0, length.Length);
+            stream.Write(type, 0, type.Length);
+            stream.Write(value, 0, value.Length);
+        }
+
         private static void Append(MemoryStream stream, TlvType t, byte[] value)
         {
             System.Diagnostics.Debug.Write(string.Format("[PSH BINDING] Adding type {0} of {1} bytes", t, value.Length));
@@ -280,7 +292,7 @@ namespace MSF.Powershell.Meterpreter
 
         private static byte[] ToBytes(uint i)
         {
-            return BitConverter.GetBytes(IPAddress.HostToNetworkOrder(i));
+            return BitConverter.GetBytes(IPAddress.HostToNetworkOrder((int)i));
         }
 
         private static byte[] ToBytes(string s)

@@ -25,6 +25,8 @@ VOID MeterpreterInvoke(unsigned int isLocal, unsigned char* input, unsigned int 
 	dprintf("[PSH BINDING] Packet header type:    %u", packet.header.type);
 	dprintf("[PSH BINDING] Packet payload length: %u", packet.payloadLength);
 	dprintf("[PSH BINDING] Packet local flag:     %u", isLocal);
+	dprintf("[PSH BINDING] Request ID:            %s", met_api->packet.get_tlv_value_string(&packet, TLV_TYPE_REQUEST_ID));
+	dprintf("[PSH BINDING] Command ID:            %u", met_api->packet.get_tlv_value_uint(&packet, TLV_TYPE_COMMAND_ID));
 
 	met_api->command.handle(gRemote, &packet);
 
