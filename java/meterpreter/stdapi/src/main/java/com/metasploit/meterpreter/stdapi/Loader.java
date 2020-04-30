@@ -13,9 +13,9 @@ import com.metasploit.meterpreter.ExtensionLoader;
  */
 public class Loader implements ExtensionLoader {
 
-    public static File cwd;
+    private static File cwd;
 
-    public static File expand(String path) {
+    public static File getCWD() {
         if (null == cwd) {
             try {
                 cwd = new File(".").getCanonicalFile();
@@ -24,11 +24,19 @@ public class Loader implements ExtensionLoader {
                 cwd = null;
             }
         }
+        return cwd;
+    }
+
+    public static File expand(String path) {
         File result = new File(path);
         if (!result.isAbsolute()) {
-            result = new File(cwd, path);
+            result = new File(getCWD(), path);
         }
         return result;
+    }
+
+    public static void setCWD(File newCWD) {
+        cwd = newCWD;
     }
 
     public void load(CommandManager mgr) throws Exception {
