@@ -22,7 +22,7 @@ public class NotYetImplementedCommand implements Command {
 
     private NotYetImplementedCommand() {
         typeNames.put(new Integer(TLVType.TLV_TYPE_ANY), "TLV_TYPE_ANY");
-        typeNames.put(new Integer(TLVType.TLV_TYPE_METHOD), "TLV_TYPE_METHOD");
+        typeNames.put(new Integer(TLVType.TLV_TYPE_COMMAND_ID), "TLV_TYPE_COMMAND_ID");
         typeNames.put(new Integer(TLVType.TLV_TYPE_REQUEST_ID), "TLV_TYPE_REQUEST_ID");
         typeNames.put(new Integer(TLVType.TLV_TYPE_EXCEPTION), "TLV_TYPE_EXCEPTION");
         typeNames.put(new Integer(TLVType.TLV_TYPE_RESULT), "TLV_TYPE_RESULT");

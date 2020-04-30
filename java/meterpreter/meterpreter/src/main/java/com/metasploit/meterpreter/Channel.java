@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
+import com.metasploit.meterpreter.command.CommandId;
+
 /**
  * A meterpreter channel. Channels are basically a collection of streams to interact with. Specialized subclasses of this class may handle special channels.
  *
@@ -138,16 +140,16 @@ public class Channel {
         if ((toRead == null || toRead.length > 0) && !closed) {
             TLVPacket tlv = new TLVPacket();
             tlv.add(TLVType.TLV_TYPE_CHANNEL_ID, getID());
-            String method;
+            int commandId;
             if (toRead == null) {
-                method = "core_channel_close";
+                commandId = CommandId.CORE_CHANNEL_CLOSE;
                 close();
             } else {
-                method = "core_channel_write";
+                commandId = CommandId.CORE_CHANNEL_WRITE;
                 tlv.add(TLVType.TLV_TYPE_CHANNEL_DATA, toRead);
                 tlv.add(TLVType.TLV_TYPE_LENGTH, toRead.length);
             }
-            meterpreter.writeRequestPacket(method, tlv);
+            meterpreter.writeRequestPacket(commandId, tlv);
         }
         waiting = false;
         notifyAll();
