@@ -1253,7 +1253,7 @@ class PythonMeterpreter(object):
                         (client_sock, client_addr) = channel.sock.accept()
                         server_addr = channel.sock.getsockname()
                         client_channel_id = self.add_channel(MeterpreterSocketTCPClient(client_sock))
-                        self.send_packet(tlv_pack_request('tcp_channel_open', [
+                        self.send_packet(tlv_pack_request('stdapi_net_tcp_channel_open', [
                             {'type': TLV_TYPE_CHANNEL_ID, 'value': client_channel_id},
                             {'type': TLV_TYPE_CHANNEL_PARENTID, 'value': channel_id},
                             {'type': TLV_TYPE_LOCAL_HOST, 'value': inet_pton(channel.sock.family, server_addr[0])},
