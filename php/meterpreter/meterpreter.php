@@ -512,13 +512,13 @@ if (!function_exists('core_enumextcmd')) {
 
     global $id2f;
 
-    $extension_name_tlv = packet_get_tlv($req, TLV_TYPE_STRING);;
-    $expected_ext_name = $extension_name_tlv['value'];
+    $id_start = packet_get_tlv($req, TLV_TYPE_UINT)['value'];
+    $id_end = packet_get_tlv($req, TLV_TYPE_LENGTH)['value'] + id_start;
 
     foreach ($id2f as $id => $ext_cmd) {
       my_print("core_enumextcmd - checking " . $ext_cmd . " as " . $id);
       list($ext_name, $cmd) = explode("_", $ext_cmd, 2);
-      if ($ext_name == $expected_ext_name) {
+      if ($id_start < $id && $id < $id_end) {
         my_print("core_enumextcmd - adding " . $ext_cmd . " as " . $id);
         packet_add_tlv($pkt, create_tlv(TLV_TYPE_UINT, $id));
       }

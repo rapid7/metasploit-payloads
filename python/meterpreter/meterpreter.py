@@ -1300,10 +1300,12 @@ class PythonMeterpreter(object):
         return ERROR_SUCCESS, response
 
     def _core_enumextcmd(self, request, response):
-        extension_name = packet_get_tlv(request, TLV_TYPE_STRING)['value']
+        id_start = packet_get_tlv(request, TLV_TYPE_UINT)['value']
+        id_end = packet_get_tlv(request, TLV_TYPE_LENGTH)['value'] + start
         for func_name in self.extension_functions.keys():
-            if func_name.split('_', 1)[0] == extension_name:
-                response += tlv_pack(TLV_TYPE_UINT, cmd_string_to_id(func_name))
+            command_id = cmd_string_to_id(func_name)
+            if id_start < command_id and command_id < id_end:
+                response += tlv_pack(TLV_TYPE_UINT, command_id)
         return ERROR_SUCCESS, response
 
     def _core_get_session_guid(self, request, response):

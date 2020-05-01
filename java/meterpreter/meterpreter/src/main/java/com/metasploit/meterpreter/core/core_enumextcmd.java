@@ -9,9 +9,10 @@ import com.metasploit.meterpreter.command.Command;
 public class core_enumextcmd implements Command {
 
     public int execute(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws Exception {
-        String extension = request.getStringValue(TLVType.TLV_TYPE_STRING);
+        Integer start = request.getIntValue(TLVType.TLV_TYPE_UINT);
+        Integer end = request.getIntValue(TLVType.TLV_TYPE_LENGTH) + start;
         CommandManager commandManager = meterpreter.getCommandManager();
-        Integer[] commands = commandManager.getCommandsForExtension(extension);
+        Integer[] commands = commandManager.getCommandsInRange(start, end);
         for (Integer commandId : commands) {
             response.addOverflow(TLVType.TLV_TYPE_UINT, commandId);
         }

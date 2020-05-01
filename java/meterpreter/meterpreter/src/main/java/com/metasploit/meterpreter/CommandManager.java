@@ -119,13 +119,11 @@ public class CommandManager {
     /**
      * Get a list of commands registered against a specific extension
      */
-    public Integer[] getCommandsForExtension(String extension) {
+    public Integer[] getCommandsInRange(Integer start, Integer end) {
         Vector commandIds = new Vector();
         for (Object key : registeredCommands.keySet()) {
             Integer commandId = (Integer)key;
-            String className = registeredCommands.get(commandId).getClass().getName();
-            String prefix = className.split("_")[0];
-            if (prefix.equals(extension)) {
+            if (start < commandId && commandId < end) {
                 commandIds.add(commandId);
             }
         }
