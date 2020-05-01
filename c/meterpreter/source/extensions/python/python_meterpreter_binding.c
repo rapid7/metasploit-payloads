@@ -88,7 +88,7 @@ VOID binding_add_command(UINT commandId)
 	// Only add non-core commands
 	if (commandId >= 1000)
 	{
-		met_api->list.add(gBoundCommandList, (LPVOID)commandId);
+		met_api->list.add(gBoundCommandList, (LPVOID)(UINT_PTR)commandId);
 		binding_insert_command(commandId);
 	}
 }
@@ -106,6 +106,6 @@ VOID binding_init()
 	binding_insert_command(0);
 	for (PNODE node = gBoundCommandList->start; node != NULL; node = node->next)
 	{
-		binding_insert_command((UINT)node->data);
+		binding_insert_command((UINT)(UINT_PTR)node->data);
 	}
 }

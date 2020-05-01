@@ -212,15 +212,3 @@ DWORD __declspec(dllexport) DeinitServerExtension(Remote* remote)
 
 	return ERROR_SUCCESS;
 }
-
-/*!
- * @brief Get the name of the extension.
- * @param buffer Pointer to the buffer to write the name to.
- * @param bufferSize Size of the \c buffer parameter.
- * @return Indication of success or failure.
- */
-DWORD __declspec(dllexport) GetExtensionName(char* buffer, int bufferSize)
-{
-	strncpy_s(buffer, bufferSize, "lanattacks", bufferSize - 1);
-	return ERROR_SUCCESS;
-}

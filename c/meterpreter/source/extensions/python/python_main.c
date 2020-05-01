@@ -100,26 +100,18 @@ DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
 }
 
 /*!
- * @brief Get the name of the extension.
- * @param buffer Pointer to the buffer to write the name to.
- * @param bufferSize Size of the \c buffer parameter.
- * @return Indication of success or failure.
- */
-DWORD __declspec(dllexport) GetExtensionName(char* buffer, int bufferSize)
-{
-	strncpy_s(buffer, bufferSize, "python", bufferSize - 1);
-	return ERROR_SUCCESS;
-}
-
-/*!
  * @brief Do a stageless initialisation of the extension.
+ * @param extensionId ID of the extension that the init was intended for.
  * @param buffer Pointer to the buffer that contains the init data.
  * @param bufferSize Size of the \c buffer parameter.
  * @return Indication of success or failure.
  */
-DWORD __declspec(dllexport) StagelessInit(const LPBYTE buffer, DWORD bufferSize)
+DWORD __declspec(dllexport) StagelessInit(UINT extensionId, const LPBYTE buffer, DWORD bufferSize)
 {
-	dprintf("[PYTHON] Executing stagless script:\n%s", (LPCSTR)buffer);
-	python_execute(NULL, (LPSTR)buffer, bufferSize, PY_CODE_TYPE_PY, NULL, NULL);
-	return ERROR_SUCCESS;
+    if (extensionId == EXTENSION_ID_PYTHON)
+    {
+        dprintf("[PSH] Executing stagless script:\n%s", (LPCSTR)buffer);
+		python_execute(NULL, (LPSTR)buffer, bufferSize, PY_CODE_TYPE_PY, NULL, NULL);
+    }
+    return ERROR_SUCCESS;
 }

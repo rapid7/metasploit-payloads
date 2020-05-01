@@ -37,7 +37,9 @@ VOID MeterpreterInvoke(unsigned int isLocal, unsigned char* input, unsigned int 
 		*output = (unsigned char*)LocalAlloc(LPTR, packet.partner->payloadLength);
 		*outputLength = packet.partner->payloadLength;
 		memcpy(*output, packet.partner->payload, packet.partner->payloadLength);
+		dprintf("[PSH BINDING] Partner packet copied");
 		met_api->packet.destroy(packet.partner);
+		dprintf("[PSH BINDING] Partner packet destroyed");
 	}
 	else
 	{
@@ -45,4 +47,5 @@ VOID MeterpreterInvoke(unsigned int isLocal, unsigned char* input, unsigned int 
 		*output = NULL;
 		*outputLength = 0;
 	}
+	dprintf("[PSH BINDING] MeterpreterInvoke done.");
 }

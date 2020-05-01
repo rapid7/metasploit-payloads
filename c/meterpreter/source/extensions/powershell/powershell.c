@@ -61,25 +61,19 @@ DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
 }
 
 /*!
- * @brief Get the name of the extension.
- * @param buffer Pointer to the buffer to write the name to.
- * @param bufferSize Size of the \c buffer parameter.
- * @return Indication of success or failure.
- */
-DWORD __declspec(dllexport) GetExtensionName(char* buffer, int bufferSize)
-{
-	strncpy_s(buffer, bufferSize, "powershell", bufferSize - 1);
-	return ERROR_SUCCESS;
-}
-
-/*!
  * @brief Do a stageless initialisation of the extension.
+ * @param extensionId ID of the extension that the init was intended for.
  * @param buffer Pointer to the buffer that contains the init data.
  * @param bufferSize Size of the \c buffer parameter.
  * @return Indication of success or failure.
  */
-DWORD __declspec(dllexport) StagelessInit(const LPBYTE buffer, DWORD bufferSize)
+DWORD __declspec(dllexport) StagelessInit(UINT extensionId, const LPBYTE buffer, DWORD bufferSize)
 {
-	dprintf("[PSH] Executing stagless script:\n%s", (LPCSTR)buffer);
-	return invoke_startup_script((LPCSTR)buffer);
+    if (extensionId == EXTENSION_ID_POWERSHELL)
+    {
+        dprintf("[PSH] Executing stagless script:\n%s", (LPCSTR)buffer);
+        invoke_startup_script((LPCSTR)buffer);
+        dprintf("[PSH] Execution of scrip complete");
+    }
+    return ERROR_SUCCESS;
 }

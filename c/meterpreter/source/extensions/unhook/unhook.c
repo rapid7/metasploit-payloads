@@ -65,15 +65,3 @@ DWORD unhook_pe(Remote *remote, Packet *packet)
 	return ERROR_SUCCESS;
 
 }
-
-/*!
- * @brief Get the name of the extension.
- * @param buffer Pointer to the buffer to write the name to.
- * @param bufferSize Size of the \c buffer parameter.
- * @return Indication of success or failure.
- */
-DWORD __declspec(dllexport) GetExtensionName(char* buffer, int bufferSize)
-{
-	strncpy_s(buffer, bufferSize, "unhook", bufferSize - 1);
-	return ERROR_SUCCESS;
-}

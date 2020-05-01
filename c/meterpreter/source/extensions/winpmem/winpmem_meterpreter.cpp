@@ -44,18 +44,6 @@ extern "C" {
 
 		return ERROR_SUCCESS;
 	}
-
-	/*!
-	 * @brief Get the name of the extension.
-	 * @param buffer Pointer to the buffer to write the name to.
-	 * @param bufferSize Size of the \c buffer parameter.
-	 * @return Indication of success or failure.
-	 */
-	DWORD __declspec(dllexport) GetExtensionName(char* buffer, int bufferSize)
-	{
-		strncpy_s(buffer, bufferSize, "winpmem", bufferSize - 1);
-		return ERROR_SUCCESS;
-	}
 }
 
 #include "winpmem_meterpreter.h"
