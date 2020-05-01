@@ -6,6 +6,8 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 
+import com.metasploit.meterpreter.command.CommandId;
+
 /**
  * A channel for a {@link ServerSocket}.
  *
@@ -52,7 +54,7 @@ public class ServerSocketChannel extends Channel {
                     packet.add(TLVType.TLV_TYPE_LOCAL_PORT, s.getLocalPort());
                     packet.add(TLVType.TLV_TYPE_PEER_HOST, s.getInetAddress().getHostAddress());
                     packet.add(TLVType.TLV_TYPE_PEER_PORT, s.getPort());
-                    getMeterpreter().writeRequestPacket("tcp_channel_open", packet);
+                    getMeterpreter().writeRequestPacket(CommandId.STDAPI_NET_TCP_CHANNEL_OPEN, packet);
                     ch.startInteract();
                 }
             } catch (SocketException t) {

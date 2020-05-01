@@ -1,5 +1,5 @@
 package com.metasploit.meterpreter.stdapi;
 
 //Dummy class
-public class webcam_audio_record {
+public class stdapi_webcam_audio_record {
 }

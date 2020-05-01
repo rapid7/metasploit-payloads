@@ -16,7 +16,7 @@ public class stdapi_fs_chdir implements Command {
         if (!f.exists() || !f.isDirectory()) {
             throw new IOException("Path not found: " + path);
         }
-        Loader.cwd = f.getCanonicalFile();
+        Loader.setCWD(f.getCanonicalFile());
         return ERROR_SUCCESS;
     }
 }

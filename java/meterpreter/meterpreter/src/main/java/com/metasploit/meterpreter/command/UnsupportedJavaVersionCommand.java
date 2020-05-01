@@ -11,16 +11,16 @@ import com.metasploit.meterpreter.TLVPacket;
  */
 public class UnsupportedJavaVersionCommand implements Command {
 
-    private final String command;
+    private final int command;
     private final int version;
 
     /**
      * Create a new instance of that command.
      *
-     * @param command Name of the command
+     * @param command ID of the command
      * @param version Version required
      */
-    public UnsupportedJavaVersionCommand(String command, int version) {
+    public UnsupportedJavaVersionCommand(int command, int version) {
         this.command = command;
         this.version = version;
     }

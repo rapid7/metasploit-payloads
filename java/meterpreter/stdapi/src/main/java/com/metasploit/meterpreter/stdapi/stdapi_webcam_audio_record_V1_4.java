@@ -17,7 +17,7 @@ import com.metasploit.meterpreter.TLVPacket;
 import com.metasploit.meterpreter.command.Command;
 import com.sun.media.sound.WaveFileWriter;
 
-public class webcam_audio_record_V1_4 extends webcam_audio_record implements Command {
+public class stdapi_webcam_audio_record_V1_4 extends stdapi_webcam_audio_record implements Command {
 
     private static final int TLV_EXTENSIONS = 20000;
     private static final int TLV_TYPE_AUDIO_DURATION = TLVPacket.TLV_META_TYPE_UINT | (TLV_EXTENSIONS + 1);

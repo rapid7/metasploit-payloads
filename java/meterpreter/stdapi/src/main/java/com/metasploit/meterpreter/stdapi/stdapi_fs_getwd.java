@@ -8,7 +8,7 @@ import com.metasploit.meterpreter.command.Command;
 public class stdapi_fs_getwd implements Command {
 
     public int execute(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws Exception {
-        response.add(TLVType.TLV_TYPE_DIRECTORY_PATH, Loader.cwd.getAbsolutePath());
+        response.add(TLVType.TLV_TYPE_DIRECTORY_PATH, Loader.getCWD().getAbsolutePath());
         return ERROR_SUCCESS;
     }
 }
