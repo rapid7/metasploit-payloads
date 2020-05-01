@@ -3,7 +3,7 @@ package com.metasploit.meterpreter.command;
 /**
  * All supported Command Identifiers
  *
- * @author Genereated by a tool @ 2020-04-30 01:29:36 UTC
+ * @author Genereated by a tool @ 2020-05-01 05:25:30 UTC
  */
 public interface CommandId {
     public static final int CORE_CHANNEL_CLOSE = 1;
@@ -153,5 +153,9 @@ public interface CommandId {
     public static final int STDAPI_WEBCAM_LIST = 1112;
     public static final int STDAPI_WEBCAM_START = 1113;
     public static final int STDAPI_WEBCAM_STOP = 1114;
+    public static final int STDAPI_AUDIO_MIC_START = 1115;
+    public static final int STDAPI_AUDIO_MIC_STOP = 1116;
+    public static final int STDAPI_AUDIO_MIC_LIST = 1117;
 }
+  
 
