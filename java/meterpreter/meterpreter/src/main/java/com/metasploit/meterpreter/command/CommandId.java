@@ -168,6 +168,20 @@ public interface CommandId {
     public static final int EXTAPI_CLIPBOARD_MONITOR_START = 3007;
     public static final int EXTAPI_CLIPBOARD_MONITOR_STOP = 3008;
     public static final int EXTAPI_CLIPBOARD_SET_DATA = 3009;
+    public static final int ANDROID_ACTIVITY_START = 5001;
+    public static final int ANDROID_CHECK_ROOT = 5002;
+    public static final int ANDROID_DEVICE_SHUTDOWN = 5003;
+    public static final int ANDROID_DUMP_CALLLOG = 5004;
+    public static final int ANDROID_DUMP_CONTACTS = 5005;
+    public static final int ANDROID_DUMP_SMS = 5006;
+    public static final int ANDROID_GEOLOCATE = 5007;
+    public static final int ANDROID_HIDE_APP_ICON = 5008;
+    public static final int ANDROID_INTERVAL_COLLECT = 5009;
+    public static final int ANDROID_SEND_SMS = 5010;
+    public static final int ANDROID_SET_AUDIO_MODE = 5011;
+    public static final int ANDROID_SET_WALLPAPER = 5012;
+    public static final int ANDROID_SQLITE_QUERY = 5013;
+    public static final int ANDROID_WAKELOCK = 5014;
+    public static final int ANDROID_WLAN_GEOLOCATE = 5015;
 }
-  
 
