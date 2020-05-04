@@ -8,9 +8,9 @@ import android.hardware.Camera.PictureCallback;
 import com.metasploit.meterpreter.Meterpreter;
 import com.metasploit.meterpreter.TLVPacket;
 import com.metasploit.meterpreter.command.Command;
-import com.metasploit.meterpreter.stdapi.webcam_audio_record;
+import com.metasploit.meterpreter.stdapi.stdapi_webcam_audio_record;
 
-public class webcam_get_frame_android extends webcam_audio_record implements Command {
+public class webcam_get_frame_android extends stdapi_webcam_audio_record implements Command {
 
     private static final int TLV_EXTENSIONS = 20000;
     private static final int TLV_TYPE_WEBCAM_IMAGE = TLVPacket.TLV_META_TYPE_RAW | (TLV_EXTENSIONS + 1);

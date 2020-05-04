@@ -8,7 +8,7 @@ import android.media.MediaRecorder.AudioSource;
 import com.metasploit.meterpreter.Meterpreter;
 import com.metasploit.meterpreter.TLVPacket;
 import com.metasploit.meterpreter.command.Command;
-import com.metasploit.meterpreter.stdapi.webcam_audio_record;
+import com.metasploit.meterpreter.stdapi.stdapi_webcam_audio_record;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
