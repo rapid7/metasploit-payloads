@@ -166,10 +166,11 @@ typedef enum
 	TLV_TYPE_SESSION_GUID        = TLV_VALUE(TLV_META_TYPE_RAW,       462),   ///! Represents a Session GUID.
 
 	// Packet encryption
-	TLV_TYPE_RSA_PUB_KEY         = TLV_VALUE(TLV_META_TYPE_STRING,    550),   ///! Represents PEM-formatter RSA public key
+	TLV_TYPE_RSA_PUB_KEY         = TLV_VALUE(TLV_META_TYPE_RAW,       550),   ///! Represents DER-encoded RSA public key
 	TLV_TYPE_SYM_KEY_TYPE        = TLV_VALUE(TLV_META_TYPE_UINT,      551),   ///! Represents the type of symmetric key
 	TLV_TYPE_SYM_KEY             = TLV_VALUE(TLV_META_TYPE_RAW,       552),   ///! Represents the symmetric key
 	TLV_TYPE_ENC_SYM_KEY         = TLV_VALUE(TLV_META_TYPE_RAW,       553),   ///! Represents and RSA-encrypted symmetric key
+	TLV_TYPE_RSA_PUB_KEY_LEN     = TLV_VALUE(TLV_META_TYPE_UINT,      554),   ///! Represents the length of the DER-encoded RSA public key
 
 	// Pivots
 	TLV_TYPE_PIVOT_ID              = TLV_VALUE(TLV_META_TYPE_RAW,     650),   ///! Represents the id of the pivot listener
