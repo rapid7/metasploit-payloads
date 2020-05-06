@@ -25,7 +25,7 @@ DWORD request_core_pivot_add(Remote* remote, Packet* packet)
 DWORD request_core_pivot_remove(Remote* remote, Packet* packet)
 {
 	DWORD result = ERROR_NOT_FOUND;
-	UINT pivotIdLen = 0;
+	DWORD pivotIdLen = 0;
 	LPBYTE pivotId = packet_get_tlv_value_raw(packet, TLV_TYPE_PIVOT_ID, &pivotIdLen);
 
 	if (pivotId != NULL)

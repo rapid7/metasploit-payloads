@@ -92,7 +92,7 @@ typedef struct _SchedulerApi
 typedef struct _PacketApi
 {
 	BOOL(*get_tlv_value_bool)(Packet* packet, TlvType type);
-	BYTE*(*get_tlv_value_raw)(Packet* packet, TlvType type, UINT* length);
+	BYTE*(*get_tlv_value_raw)(Packet* packet, TlvType type, DWORD* length);
 	DWORD(*add_completion_handler)(LPCSTR requestId, PacketRequestCompletion* completion);
 	DWORD(*add_exception)(Packet* packet, DWORD code, PCHAR fmt, ...);
 	DWORD(*add_group)(Packet* packet, TlvType type, Packet* groupPacket);

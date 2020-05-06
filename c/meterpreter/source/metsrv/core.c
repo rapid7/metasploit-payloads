@@ -856,7 +856,7 @@ BYTE * packet_get_tlv_value_raw(Packet * packet, TlvType type, DWORD* length)
 		return NULL;
 	}
 
-	*length = tlv->header.length;
+	*length = tlv.header.length;
 	return tlv.buffer;
 }
 

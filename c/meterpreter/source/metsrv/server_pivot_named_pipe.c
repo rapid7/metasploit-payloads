@@ -162,7 +162,7 @@ static DWORD read_pipe_to_packet(NamedPipeContext* ctx, LPBYTE source, DWORD sou
 				{
 					dprintf("[PIPE] Request ID found and matches expected value");
 					// we have a response to our session guid request
-					UINT sessionGuidLen = 0;
+					DWORD sessionGuidLen = 0;
 					LPBYTE sessionGuid = packet_get_tlv_value_raw(packet, TLV_TYPE_SESSION_GUID, 0);
 #ifdef DEBUGTRACE
 					PUCHAR h = (PUCHAR)&sessionGuid[0];
