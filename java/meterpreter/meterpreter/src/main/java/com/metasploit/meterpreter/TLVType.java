@@ -204,12 +204,10 @@ public interface TLVType {
     public static final int TLV_TYPE_POWER_REASON = TLVPacket.TLV_META_TYPE_UINT | 4101;
 
     // Screenshot
-    public static final int TLV_TYPE_DESKTOP_SCREENSHOT                = TLVPacket.TLV_META_TYPE_RAW    | 3002;
-    public static final int TLV_TYPE_DESKTOP_SCREENSHOT_QUALITY        = TLVPacket.TLV_META_TYPE_UINT   | 3008;
-    public static final int TLV_TYPE_DESKTOP_SCREENSHOT_PE32DLL_LENGTH = TLVPacket.TLV_META_TYPE_UINT   | 3009;
-    public static final int TLV_TYPE_DESKTOP_SCREENSHOT_PE32DLL_BUFFER = TLVPacket.TLV_META_TYPE_STRING | 3010;
-    public static final int TLV_TYPE_DESKTOP_SCREENSHOT_PE64DLL_LENGTH = TLVPacket.TLV_META_TYPE_UINT   | 3011;
-    public static final int TLV_TYPE_DESKTOP_SCREENSHOT_PE64DLL_BUFFER = TLVPacket.TLV_META_TYPE_STRING | 3012;
+    public static final int TLV_TYPE_DESKTOP_SCREENSHOT                = TLVPacket.TLV_META_TYPE_RAW  | 3002;
+    public static final int TLV_TYPE_DESKTOP_SCREENSHOT_QUALITY        = TLVPacket.TLV_META_TYPE_UINT | 3008;
+    public static final int TLV_TYPE_DESKTOP_SCREENSHOT_PE32DLL_BUFFER = TLVPacket.TLV_META_TYPE_RAW  | 3010;
+    public static final int TLV_TYPE_DESKTOP_SCREENSHOT_PE64DLL_BUFFER = TLVPacket.TLV_META_TYPE_RAW  | 3012;
 
     int TLV_TYPE_EXTENSION_EXTAPI = 0;
     int TLV_EXTENSIONS = 20000;
