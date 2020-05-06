@@ -180,8 +180,7 @@ DWORD request_pageant_send_query(Remote *remote, Packet *packet)
 	PAGEANTQUERYRESULTS results = { 0 };
 
 	// Retrieve from metasploit
-	rawDataSizeIn = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_EXT_PAGEANT_SIZE_IN);
-	rawDataIn = met_api->packet.get_tlv_value_raw(packet, TLV_TYPE_EXT_PAGEANT_BLOB_IN);
+	rawDataIn = met_api->packet.get_tlv_value_raw(packet, TLV_TYPE_EXT_PAGEANT_BLOB_IN, &rawDataSizeIn);
 
 	dprintf("[PJ(request_pageant_send_query)] Size in: %d. Data is at 0x%p", rawDataSizeIn, rawDataIn);
 

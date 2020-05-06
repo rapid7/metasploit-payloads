@@ -86,7 +86,8 @@ DWORD create_transport_from_request(Remote* remote, Packet* packet, Transport** 
 			wchar_t* proxy = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_PROXY_HOST);
 			wchar_t* proxyUser = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_PROXY_USER);
 			wchar_t* proxyPass = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_PROXY_PASS);
-			PBYTE certHash = packet_get_tlv_value_raw(packet, TLV_TYPE_TRANS_CERT_HASH);
+			UINT certHashLen = 0;
+			PBYTE certHash = packet_get_tlv_value_raw(packet, TLV_TYPE_TRANS_CERT_HASH, &certHashLen);
 			wchar_t* headers = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_HEADERS);
 
 			size_t configSize = sizeof(MetsrvTransportHttp);
@@ -400,7 +401,8 @@ DWORD remote_request_core_transport_setcerthash(Remote* remote, Packet* packet)
 			break;
 		}
 
-		unsigned char* certHash = packet_get_tlv_value_raw(packet, TLV_TYPE_TRANS_CERT_HASH);
+		UINT certHashLen = 0;
+		unsigned char* certHash = packet_get_tlv_value_raw(packet, TLV_TYPE_TRANS_CERT_HASH, &certHashLen);
 		HttpTransportContext* ctx = (HttpTransportContext*)remote->transport->ctx;
 
 		// Support adding a new cert hash if one doesn't exist
@@ -547,11 +549,11 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
 		lpPayloadBuffer = packet_get_tlv_value_string(packet, TLV_TYPE_MIGRATE_PAYLOAD);
 
 		// Get handles to the updated UUIDs if they're there
-		lpUuid = packet_get_tlv_value_raw(packet, TLV_TYPE_UUID);
+		UINT uuidLen = 0;
+		lpUuid = packet_get_tlv_value_raw(packet, TLV_TYPE_UUID, &uuidLen);
 
 		// Get the migrate stub information
-		dwMigrateStubLength = packet_get_tlv_value_uint(packet, TLV_TYPE_MIGRATE_STUB_LEN);
-		lpMigrateStub = packet_get_tlv_value_raw(packet, TLV_TYPE_MIGRATE_STUB);
+		lpMigrateStub = packet_get_tlv_value_raw(packet, TLV_TYPE_MIGRATE_STUB, dwMigrateStubLength);
 
 		dprintf("[MIGRATE] Attempting to migrate. ProcessID=%d, Arch=%s, PayloadLength=%d", dwProcessID, (dwDestinationArch == 2 ? "x64" : "x86"), dwPayloadLength);
 

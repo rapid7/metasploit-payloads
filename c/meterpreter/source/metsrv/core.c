@@ -844,9 +844,10 @@ UINT packet_get_tlv_value_uint(Packet *packet, TlvType type)
  * @brief Get the raw value of a TLV.
  * @param packet Pointer to the packet to get the TLV from.
  * @param type Type of TLV to get (optional).
+ * @param length Variable that will receive the length of the raw data.
  * @return The value found in the TLV.
  */
-BYTE * packet_get_tlv_value_raw(Packet * packet, TlvType type)
+BYTE * packet_get_tlv_value_raw(Packet * packet, TlvType type, DWORD* length)
 {
 	Tlv tlv;
 
@@ -855,6 +856,7 @@ BYTE * packet_get_tlv_value_raw(Packet * packet, TlvType type)
 		return NULL;
 	}
 
+	*length = tlv->header.length;
 	return tlv.buffer;
 }
 

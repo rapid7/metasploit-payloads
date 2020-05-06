@@ -526,8 +526,8 @@ DWORD request_negotiate_aes_key(Remote* remote, Packet* packet)
 		}
 
 		// now we need to encrypt this key data using the public key given
-		BYTE* pubKeyDer = packet_get_tlv_value_raw(packet, TLV_TYPE_RSA_PUB_KEY);
-		UINT pubKeyDerLen = packet_get_tlv_value_uint(packet, TLV_TYPE_RSA_PUB_KEY_LEN);
+		UINT pubKeyDerLen = 0;
+		BYTE* pubKeyDer = packet_get_tlv_value_raw_len(packet, TLV_TYPE_RSA_PUB_KEY, &pubKeyDerLen);
 		unsigned char* cipherText = NULL;
 		DWORD cipherTextLength = 0;
 		DWORD pubEncryptResult = public_key_encrypt(pubKeyDer, pubKeyDerLen, remote->enc_ctx->key_data.key, remote->enc_ctx->key_data.length, &cipherText, &cipherTextLength);

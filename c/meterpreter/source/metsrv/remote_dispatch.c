@@ -407,7 +407,8 @@ DWORD request_core_loadlib(Remote *remote, Packet *packet)
 DWORD request_core_set_uuid(Remote* remote, Packet* packet)
 {
 	Packet* response = packet_create_response(packet);
-	PBYTE newUuid = packet_get_tlv_value_raw(packet, TLV_TYPE_UUID);
+  UINT newUuidLen = 0;
+	PBYTE newUuid = packet_get_tlv_value_raw(packet, TLV_TYPE_UUID, &newUuidLen);
 
 	if (newUuid != NULL)
 	{
@@ -448,7 +449,8 @@ DWORD request_core_get_session_guid(Remote* remote, Packet* packet)
 DWORD request_core_set_session_guid(Remote* remote, Packet* packet)
 {
 	DWORD result = ERROR_SUCCESS;
-	LPBYTE sessionGuid = packet_get_tlv_value_raw(packet, TLV_TYPE_SESSION_GUID);
+	UINT sessionGuidLen = 0;
+	LPBYTE sessionGuid = packet_get_tlv_value_raw(packet, TLV_TYPE_SESSION_GUID, &sessionGuidLen);
 
 	if (sessionGuid != NULL)
 	{
