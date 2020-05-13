@@ -33,5 +33,6 @@ public class Loader implements ExtensionLoader {
         mgr.registerCommand(CommandId.CORE_TRANSPORT_NEXT, core_transport_next.class);
         mgr.registerCommand(CommandId.CORE_TRANSPORT_PREV, core_transport_prev.class);
         mgr.registerCommand(CommandId.CORE_TRANSPORT_REMOVE, core_transport_remove.class);
+        mgr.registerCommand(CommandId.CORE_NEGOTIATE_TLV_ENCRYPTION, core_negotiate_tlv_encryption.class);
     }
 }
