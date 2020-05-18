@@ -35,6 +35,7 @@ file(GLOB SRC_FILES
     ${SRC_DIR}/mimikatz/mimikatz/modules/sekurlsa/*.c
     ${SRC_DIR}/mimikatz/mimikatz/modules/sekurlsa/crypto/*.c
     ${SRC_DIR}/mimikatz/mimikatz/modules/sekurlsa/packages/*.c
+    ${MOD_DEF_DIR}/extension.def
 )
 
 # Ditch some old stuff that shouldn't even be here in the mimikatz repo!
@@ -42,6 +43,8 @@ list(REMOVE_ITEM SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/${SRC_DIR}/mimikatz/mimik
 
 add_library(${PROJECT_NAME} SHARED ${SRC_FILES})
 set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME ${PROJECT_NAME}.${TARGET_ARCH})
+set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS "/DEF:\"${MOD_DEF_DIR}/extension.def\"")
+set_source_files_properties(${MOD_DEF_DIR}/extension.def PROPERTIES HEADER_FILE_ONLY TRUE)
 
 if(IS_X86)
     set(KIWI_LIB_DIR ${WORKSPACE_ROOT_DIR}/../source/extensions/kiwi/mimikatz/lib/Win32)
@@ -81,10 +84,10 @@ set(LINK_LIBS
     ${KIWI_LIB_DIR}/winsta.lib
 )
 
-if(IS_X86)
-    set(LINK_LIBS ${LINK_LIBS} backcompat)
-endif()
 target_link_libraries(${PROJECT_NAME} ${LINK_LIBS})
+if(MSVC)
+    target_link_options(${PROJECT_NAME} PUBLIC "/ignore:4070")
+endif()
 
 # Post processing (required for all Meterpreter DLLs)
 editbin(${PROJECT_NAME} ${BIN_SUBSYSTEM})

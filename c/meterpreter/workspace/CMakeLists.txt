@@ -14,6 +14,7 @@ if( USE_STATIC_MSVC_RUNTIMES )
 endif()
 
 set(WORKSPACE_ROOT_DIR ${PROJECT_SOURCE_DIR})
+set(MOD_DEF_DIR ${PROJECT_SOURCE_DIR}/../source/def)
 set(BIN_OUTPUT_DIR ${PROJECT_SOURCE_DIR}/../output)
 set(PSSDK_DIR ${PROJECT_SOURCE_DIR}/../../../../pssdk)
 
@@ -74,19 +75,9 @@ if(IS_X64)
 endif()
 
 set(MET_LIBS jpeg)
-if(IS_X86)
-    set(MET_LIBS backcompat ${MET_LIBS})
-endif()
-
-foreach(MET_LIB ${MET_LIBS})
-    add_subdirectory(${MET_LIB})
-endforeach()
 
 set(
-    MET_DLLS
-    metsrv
-    elevator
-    screenshot
+    MET_EXTENSIONS
     ext_server_espia
     ext_server_priv
     ext_server_extapi
@@ -102,9 +93,33 @@ set(
 )
 
 if(BUILD_SNIFFER)
-    set(MET_DLLS ${MET_DLLS} ext_server_sniffer)
+    set(MET_EXTENSIONS ${MET_EXTENSIONS} ext_server_sniffer)
 endif()
 
-foreach(MET_DLL ${MET_DLLS})
-    add_subdirectory(${MET_DLL})
+set(
+    MET_PLUGINS
+    screenshot
+    elevator
+)
+
+set(
+    MET_SERVERS
+    metsrv
+)
+
+set(
+    MET_DLLS
+    ${MET_SERVERS}
+    ${MET_PLUGINS}
+    ${MET_EXTENSIONS}
+)
+
+set(
+    MET_PROJECTS
+    ${MET_LIBS}
+    ${MET_DLLS}
+)
+
+foreach(MET_PROJECT ${MET_PROJECTS})
+    add_subdirectory(${MET_PROJECT})
 endforeach()

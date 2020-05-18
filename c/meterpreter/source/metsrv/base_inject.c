@@ -494,7 +494,7 @@ DWORD inject_via_remotethread(Remote * remote, Packet * response, HANDLE hProces
  *
  * Note: This function largely depreciates LoadRemoteLibraryR().
  */
-DWORD inject_dll( DWORD dwPid, LPVOID lpDllBuffer, DWORD dwDllLenght, char * cpCommandLine )
+DWORD inject_dll( DWORD dwPid, LPVOID lpDllBuffer, DWORD dwDllLength, LPCSTR reflectiveLoader, char * cpCommandLine )
 {
 	DWORD dwResult                 = ERROR_ACCESS_DENIED;
 	DWORD dwNativeArch             = PROCESS_ARCH_UNKNOWN;
@@ -506,11 +506,11 @@ DWORD inject_dll( DWORD dwPid, LPVOID lpDllBuffer, DWORD dwDllLenght, char * cpC
 
 	do
 	{
-		if( !lpDllBuffer || !dwDllLenght )
+		if( !lpDllBuffer || !dwDllLength )
 			BREAK_WITH_ERROR( "[INJECT] inject_dll.  No Dll buffer supplied.", ERROR_INVALID_PARAMETER );
 
 		// check if the library has a ReflectiveLoader...
-		dwReflectiveLoaderOffset = GetReflectiveLoaderOffset( lpDllBuffer );
+		dwReflectiveLoaderOffset = GetReflectiveLoaderOffset( lpDllBuffer, reflectiveLoader );
 		if( !dwReflectiveLoaderOffset )
 			BREAK_WITH_ERROR( "[INJECT] inject_dll. GetReflectiveLoaderOffset failed.", ERROR_INVALID_FUNCTION );
 
@@ -530,12 +530,12 @@ DWORD inject_dll( DWORD dwPid, LPVOID lpDllBuffer, DWORD dwDllLenght, char * cpC
 		}
 
 		// alloc memory (RWX) in the host process for the image...
-		lpRemoteLibraryBuffer = VirtualAllocEx( hProcess, NULL, dwDllLenght, MEM_RESERVE|MEM_COMMIT, PAGE_EXECUTE_READWRITE ); 
+		lpRemoteLibraryBuffer = VirtualAllocEx( hProcess, NULL, dwDllLength, MEM_RESERVE|MEM_COMMIT, PAGE_EXECUTE_READWRITE ); 
 		if( !lpRemoteLibraryBuffer )
 			BREAK_ON_ERROR( "[INJECT] inject_dll. VirtualAllocEx 2 failed" ); 
 
 		// write the image into the host process...
-		if( !WriteProcessMemory( hProcess, lpRemoteLibraryBuffer, lpDllBuffer, dwDllLenght, NULL ) )
+		if( !WriteProcessMemory( hProcess, lpRemoteLibraryBuffer, lpDllBuffer, dwDllLength, NULL ) )
 			BREAK_ON_ERROR( "[INJECT] inject_dll. WriteProcessMemory 2 failed" ); 
 
 		// add the offset to ReflectiveLoader() to the remote library address...

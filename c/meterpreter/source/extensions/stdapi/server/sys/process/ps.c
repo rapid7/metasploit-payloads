@@ -34,7 +34,7 @@ DWORD ps_getarch_dll( LPVOID lpDllBuffer )
 /*
  * Inject a DLL into another process via Reflective DLL Injection.
  */
-DWORD ps_inject( DWORD dwPid, DLL_BUFFER * pDllBuffer, char * cpCommandLine )
+DWORD ps_inject( DWORD dwPid, DLL_BUFFER * pDllBuffer, LPCSTR reflectiveLoader, char * cpCommandLine )
 {
 	DWORD dwResult     = ERROR_ACCESS_DENIED;
 	DWORD dwPidArch    = PROCESS_ARCH_UNKNOWN;
@@ -71,8 +71,7 @@ DWORD ps_inject( DWORD dwPid, DLL_BUFFER * pDllBuffer, char * cpCommandLine )
 		if( dwDllArch != dwPidArch )
 			BREAK_WITH_ERROR( "[PS] ps_inject_dll. pid/dll architecture mixup", ERROR_BAD_ENVIRONMENT );
 
-		dwResult = met_api->inject.dll( dwPid, lpDllBuffer, dwDllLength, cpCommandLine );
-
+		dwResult = met_api->inject.dll( dwPid, lpDllBuffer, dwDllLength, reflectiveLoader, cpCommandLine );
 	} while( 0 );
 
 	return dwResult;

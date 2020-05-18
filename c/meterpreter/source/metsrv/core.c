@@ -6,6 +6,7 @@
  *          change this stuff unless you know what you're doing!
  */
 #include "metsrv.h"
+#include "common_exports.h"
 #include "packet_encryption.h"
 #include <winhttp.h>
 
@@ -790,6 +791,24 @@ PCHAR packet_get_tlv_value_string( Packet *packet, TlvType type )
 	}
 
 	return string;
+}
+
+/*!
+ * @brief Helper function to extract the Reflective Loader name or ordinal, and fallback to a sane default.
+ * @param packet Pointer to the packet to get the TLV from.
+ * @retval Pointer to the name, or ordinal representation of provided value or default;
+ */
+LPCSTR packet_get_tlv_value_reflective_loader(Packet* packet)
+{
+	LPCSTR reflectiveLoader = packet_get_tlv_value_string(packet, TLV_TYPE_LIB_LOADER_NAME);
+	if (reflectiveLoader == NULL)
+	{
+		// No loader specified, check for ordinal
+		DWORD reflectiveLoaderOrdinal = packet_get_tlv_value_uint(packet, TLV_TYPE_LIB_LOADER_ORDINAL);
+		// If no ordinal, default to our own sane/known value
+		reflectiveLoader = MAKEINTRESOURCEA(reflectiveLoaderOrdinal == 0 ? EXPORT_REFLECTIVELOADER : reflectiveLoaderOrdinal);
+	}
+	return reflectiveLoader;
 }
 
 /*!

@@ -3,6 +3,7 @@
  */
 #include "metsrv.h"
 #include <ws2tcpip.h>
+#include "common_exports.h"
 
 #include "server_transport_winhttp.h"
 #include "server_transport_tcp.h"
@@ -70,7 +71,7 @@ LPBYTE load_stageless_extensions(Remote* remote, MetsrvExtension* stagelessExten
 	while (stagelessExtensions->size > 0)
 	{
 		dprintf("[SERVER] Extension located at 0x%p: %u bytes", stagelessExtensions->dll, stagelessExtensions->size);
-		HMODULE hLibrary = LoadLibraryR(stagelessExtensions->dll, stagelessExtensions->size);
+		HMODULE hLibrary = LoadLibraryR(stagelessExtensions->dll, stagelessExtensions->size, MAKEINTRESOURCEA(EXPORT_REFLECTIVELOADER));
 		load_extension(hLibrary, TRUE, remote, NULL, extensionCommands);
 		stagelessExtensions = (MetsrvExtension*)((LPBYTE)stagelessExtensions->dll + stagelessExtensions->size);
 	}

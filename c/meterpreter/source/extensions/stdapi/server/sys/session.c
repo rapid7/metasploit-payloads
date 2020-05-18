@@ -74,7 +74,7 @@ DWORD session_activeid()
 /*
  * On NT4 its we bruteforce the process list as kernel32!CreateToolhelp32Snapshot is not available.
  */
-DWORD _session_inject_bruteforce( DWORD dwSessionId, DLL_BUFFER * pDllBuffer, char * cpCommandLine )
+DWORD _session_inject_bruteforce( DWORD dwSessionId, DLL_BUFFER * pDllBuffer, LPCSTR reflectiveLoader, char * cpCommandLine )
 {
 	DWORD dwResult = ERROR_INVALID_HANDLE;
 	DWORD pid      = 0;
@@ -93,7 +93,7 @@ DWORD _session_inject_bruteforce( DWORD dwSessionId, DLL_BUFFER * pDllBuffer, ch
 
 			if( dwSessionId == session_id( pid ) )
 			{
-				dwResult = ps_inject( pid, pDllBuffer, cpCommandLine );
+				dwResult = ps_inject( pid, pDllBuffer, reflectiveLoader, cpCommandLine );
 				if( dwResult == ERROR_SUCCESS )
 				{
 					dprintf( "[SESSION] _session_inject_bruteforce. Injected into process %d", pid );
@@ -110,7 +110,7 @@ DWORD _session_inject_bruteforce( DWORD dwSessionId, DLL_BUFFER * pDllBuffer, ch
 /*
  * Inject an arbitrary DLL into a process running in specific Windows session.
  */
-DWORD session_inject( DWORD dwSessionId, DLL_BUFFER * pDllBuffer, char * cpCommandLine )
+DWORD session_inject( DWORD dwSessionId, DLL_BUFFER * pDllBuffer, LPCSTR reflectiveLoader, char * cpCommandLine )
 {
 	DWORD dwResult                                     = ERROR_INVALID_HANDLE;
 	CREATETOOLHELP32SNAPSHOT pCreateToolhelp32Snapshot = NULL;
@@ -172,7 +172,7 @@ DWORD session_inject( DWORD dwSessionId, DLL_BUFFER * pDllBuffer, char * cpComma
 				if (wcsstr(pe32.szExeFile, L"csrss.exe"))
 					continue;
 
-				dwResult = ps_inject( pe32.th32ProcessID, pDllBuffer, cpCommandLine );
+				dwResult = ps_inject( pe32.th32ProcessID, pDllBuffer, reflectiveLoader, cpCommandLine );
 				if( dwResult == ERROR_SUCCESS )
 				{
 					dprintf( "[SESSION] session_inject. Injected into process %d (%s)", pe32.th32ProcessID, pe32.szExeFile );
@@ -191,7 +191,7 @@ DWORD session_inject( DWORD dwSessionId, DLL_BUFFER * pDllBuffer, char * cpComma
 
 	// On NT4 we must brute force the process list...
 	if( bUseBruteForce )
-		dwResult = _session_inject_bruteforce( dwSessionId, pDllBuffer, cpCommandLine );
+		dwResult = _session_inject_bruteforce( dwSessionId, pDllBuffer, reflectiveLoader, cpCommandLine );
 
 	return dwResult;
 }

