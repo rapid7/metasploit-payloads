@@ -24,13 +24,13 @@ public class stdapi_channel_open implements Command {
 
     public int execute(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws Exception {
         String channelType = request.getStringValue(TLVType.TLV_TYPE_CHANNEL_TYPE);
-        if (channelType == "stdapi_fs_file") {
+        if (channelType.equals("stdapi_fs_file")) {
             return executeFsFile(meterpreter, request, response);
         }
-        if (channelType == "stdapi_net_tcp_client") {
+        if (channelType.equals("stdapi_net_tcp_client")) {
             return executeTcpClient(meterpreter, request, response);
         }
-        if (channelType == "stdapi_net_tcp_server") {
+        if (channelType.equals("stdapi_net_tcp_server")) {
             return executeTcpServer(meterpreter, request, response);
         }
         return ERROR_FAILURE;
