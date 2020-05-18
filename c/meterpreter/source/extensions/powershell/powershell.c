@@ -87,4 +87,3 @@ DWORD StagelessInit(UINT extensionId, const LPBYTE buffer, DWORD bufferSize)
 VOID CommandAdded(UINT commandId)
 {
 }
-
