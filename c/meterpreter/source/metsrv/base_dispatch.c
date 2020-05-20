@@ -565,7 +565,7 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
 
 			if (LookupPrivilegeValue(NULL, SE_DEBUG_NAME, &priv.Privileges[0].Luid))
 			{
-				if (AdjustTokenPrivileges(hToken, FALSE, &priv, 0, NULL, NULL));
+				if (AdjustTokenPrivileges(hToken, FALSE, &priv, 0, NULL, NULL))
 				{
 					dprintf("[MIGRATE] Got SeDebugPrivilege!");
 				}

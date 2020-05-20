@@ -1,7 +1,7 @@
 #ifndef _METERPRETER_METSRV_PACKET_ENCRYPTION_H
 #define _METERPRETER_METSRV_PACKET_ENCRYPTION_H
 
-#include <Windows.h>
+#include <windows.h>
 
 #define AES256_BLOCKSIZE 16
 #define ENC_FLAG_NONE   0x0

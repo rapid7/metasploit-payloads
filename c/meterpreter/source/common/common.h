@@ -29,6 +29,18 @@
 #define dwMeterpreterArch PROCESS_ARCH_X86
 #endif
 
+#ifdef __MINGW32__
+#define ERROR_UNSUPPORTED_COMPRESSION    618L
+#define __try
+#define __except(x) if(0)
+
+#undef GetExceptionCode
+#define GetExceptionCode() 0
+
+#undef GetExceptionInformation
+#define GetExceptionInformation() NULL
+#endif
+
 typedef struct __UNICODE_STRING
 {
 	USHORT Length;

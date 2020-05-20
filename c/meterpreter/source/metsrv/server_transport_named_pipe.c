@@ -101,7 +101,7 @@ static DWORD packet_receive_named_pipe(Remote *remote, Packet **packet)
 {
 	DWORD headerBytes = 0, payloadBytesLeft = 0, res;
 	PacketHeader header = { 0 };
-	LONG bytesRead;
+	DWORD bytesRead;
 	BOOL inHeader = TRUE;
 	PUCHAR packetBuffer = NULL;
 	PUCHAR payload = NULL;
@@ -156,7 +156,7 @@ static DWORD packet_receive_named_pipe(Remote *remote, Packet **packet)
 		dprintf("[PIPE] discovered a length header, assuming it's metsrv of length %d", length);
 
 		int bytesToRead = length - sizeof(PacketHeader) + sizeof(DWORD);
-		char* buffer = (char*)malloc(bytesToRead);
+		BYTE* buffer = (BYTE*)malloc(bytesToRead);
 		read_raw_bytes_to_buffer(ctx, buffer, bytesToRead, &bytesRead);
 		free(buffer);
 
@@ -466,7 +466,7 @@ static HANDLE bind_named_pipe(wchar_t *pipe_name, TimeoutSettings *timeouts)
  * @param transport Pointer to the transport instance.
  * @return Indication of success or failure.
  */
-static BOOL configure_named_pipe_connection(Transport* transport)
+static DWORD configure_named_pipe_connection(Transport* transport)
 {
 	DWORD result = ERROR_SUCCESS;
 	wchar_t tempUrl[512];
@@ -545,7 +545,7 @@ static BOOL configure_named_pipe_connection(Transport* transport)
 	if (ctx->pipe == INVALID_HANDLE_VALUE)
 	{
 		dprintf("[SERVER] Something went wrong");
-		return FALSE;
+		return ERROR_INVALID_PARAMETER;
 	}
 
 	dprintf("[SERVER] Looking good, FORWARD!");
@@ -555,7 +555,7 @@ static BOOL configure_named_pipe_connection(Transport* transport)
 
 	transport->comms_last_packet = current_unix_timestamp();
 
-	return TRUE;
+	return result;
 }
 
 /*!

@@ -308,7 +308,7 @@ static DWORD packet_receive(Remote *remote, Packet **packet)
 	DWORD headerBytes = 0, payloadBytesLeft = 0, res;
 	Packet *localPacket = NULL;
 	PacketHeader header = { 0 };
-	LONG bytesRead;
+	DWORD bytesRead;
 	BOOL inHeader = TRUE;
 	PUCHAR packetBuffer = NULL;
 	ULONG payloadLength;
@@ -320,7 +320,7 @@ static DWORD packet_receive(Remote *remote, Packet **packet)
 	// Read the packet length
 	while (inHeader)
 	{
-		if ((bytesRead = recv(ctx->fd, ((PUCHAR)&header + headerBytes), sizeof(PacketHeader)-headerBytes, 0)) <= 0)
+		if ((bytesRead = recv(ctx->fd, ((PCHAR)&header + headerBytes), sizeof(PacketHeader)-headerBytes, 0)) <= 0)
 		{
 			SetLastError(ERROR_NOT_FOUND);
 			goto out;
@@ -425,7 +425,7 @@ static DWORD packet_receive(Remote *remote, Packet **packet)
 		// Read the payload
 		while (payloadBytesLeft > 0)
 		{
-			if ((bytesRead = recv(ctx->fd, payload + payloadLength - payloadBytesLeft, payloadBytesLeft, 0)) <= 0)
+			if ((bytesRead = recv(ctx->fd, (PCHAR)(payload + payloadLength - payloadBytesLeft), payloadBytesLeft, 0)) <= 0)
 			{
 
 				if (GetLastError() == WSAEWOULDBLOCK)
@@ -689,7 +689,7 @@ static void transport_reset_tcp(Transport* transport, BOOL shuttingDown)
  * @param transport Pointer to the transport instance.
  * @return Indication of success or failure.
  */
-static BOOL configure_tcp_connection(Transport* transport)
+static DWORD configure_tcp_connection(Transport* transport)
 {
 	DWORD result = ERROR_SUCCESS;
 	size_t charsConverted;
@@ -751,17 +751,18 @@ static BOOL configure_tcp_connection(Transport* transport)
 	if (result != ERROR_SUCCESS)
 	{
 		dprintf("[SERVER] Something went wrong %u", result);
-		return FALSE;
+	}
+  else
+  {
+		dprintf("[SERVER] Looking good, FORWARD!");
+
+		// Do not allow the file descriptor to be inherited by child processes
+		SetHandleInformation((HANDLE)ctx->fd, HANDLE_FLAG_INHERIT, 0);
+
+		transport->comms_last_packet = current_unix_timestamp();
 	}
 
-	dprintf("[SERVER] Looking good, FORWARD!");
-
-	// Do not allow the file descriptor to be inherited by child processes
-	SetHandleInformation((HANDLE)ctx->fd, HANDLE_FLAG_INHERIT, 0);
-
-	transport->comms_last_packet = current_unix_timestamp();
-
-	return TRUE;
+	return result;
 }
 
 /*!
@@ -781,7 +782,7 @@ DWORD packet_transmit_tcp(Remote* remote, LPBYTE rawPacket, DWORD rawPacketLengt
 
 	while (idx < rawPacketLength)
 	{
-		result = send(ctx->fd, rawPacket + idx, rawPacketLength - idx, 0);
+		result = send(ctx->fd, (PCHAR)(rawPacket + idx), rawPacketLength - idx, 0);
 
 		if (result < 0)
 		{

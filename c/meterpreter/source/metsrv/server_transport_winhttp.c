@@ -127,7 +127,7 @@ static HINTERNET get_request_winhttp(HttpTransportContext *ctx, BOOL isGet, cons
 		if (ctx->proxy_user)
 		{
 			dprintf("[%s] Setting proxy username to %S", direction, ctx->proxy_user);
-			if (!WinHttpSetOption(hReq, WINHTTP_OPTION_PROXY_USERNAME, ctx->proxy_user, (DWORD)(wcslen(ctx->proxy_user))));
+			if (!WinHttpSetOption(hReq, WINHTTP_OPTION_PROXY_USERNAME, ctx->proxy_user, (DWORD)(wcslen(ctx->proxy_user))))
 			{
 				dprintf("[%s] Failed to set username %u", direction, GetLastError());
 			}
@@ -135,7 +135,7 @@ static HINTERNET get_request_winhttp(HttpTransportContext *ctx, BOOL isGet, cons
 		if (ctx->proxy_pass)
 		{
 			dprintf("[%s] Setting proxy password to %S", direction, ctx->proxy_pass);
-			if (!WinHttpSetOption(hReq, WINHTTP_OPTION_PROXY_PASSWORD, ctx->proxy_pass, (DWORD)(wcslen(ctx->proxy_pass))));
+			if (!WinHttpSetOption(hReq, WINHTTP_OPTION_PROXY_PASSWORD, ctx->proxy_pass, (DWORD)(wcslen(ctx->proxy_pass))))
 			{
 				dprintf("[%s] Failed to set password %u", direction, GetLastError());
 			}
@@ -336,7 +336,7 @@ static DWORD packet_receive_http(Remote *remote, Packet **packet)
 	DWORD headerBytes = 0, payloadBytesLeft = 0, res;
 	Packet *localPacket = NULL;
 	PacketHeader header;
-	LONG bytesRead;
+	DWORD bytesRead;
 	BOOL inHeader = TRUE;
 	PUCHAR packetBuffer = NULL;
 	ULONG payloadLength;
@@ -541,7 +541,7 @@ out:
  * @param transport Pointer to the transport instance.
  * @return Indication of success or failure.
  */
-static BOOL server_init_winhttp(Transport* transport)
+static DWORD server_init_winhttp(Transport* transport)
 {
 	URL_COMPONENTS bits;
 	wchar_t tmpHostName[URL_SIZE];
@@ -564,7 +564,7 @@ static BOOL server_init_winhttp(Transport* transport)
 	if (!ctx->internet)
 	{
 		dprintf("[DISPATCH] Failed WinHttpOpen: %d", GetLastError());
-		return FALSE;
+		return GetLastError();
 	}
 
 	dprintf("[DISPATCH] Configured hInternet: 0x%.8x", ctx->internet);
@@ -597,12 +597,12 @@ static BOOL server_init_winhttp(Transport* transport)
 	if (!ctx->connection)
 	{
 		dprintf("[DISPATCH] Failed WinHttpConnect: %d", GetLastError());
-		return FALSE;
+		return GetLastError();
 	}
 
 	dprintf("[DISPATCH] Configured hConnection: 0x%.8x", ctx->connection);
 
-	return TRUE;
+	return ERROR_SUCCESS;
 }
 
 /*!

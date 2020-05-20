@@ -141,7 +141,7 @@ static DWORD validate_response_wininet(HANDLE hReq, HttpTransportContext* ctx)
  * @param transport Pointer to the transport instance.
  * @return Indication of success or failure.
  */
-static BOOL server_init_wininet(Transport* transport)
+static DWORD server_init_wininet(Transport* transport)
 {
 	URL_COMPONENTS bits;
 	wchar_t tmpHostName[URL_SIZE];
@@ -164,7 +164,7 @@ static BOOL server_init_wininet(Transport* transport)
 	if (!ctx->internet)
 	{
 		dprintf("[DISPATCH] Failed InternetOpenW: %d", GetLastError());
-		return FALSE;
+		return GetLastError();
 	}
 
 	dprintf("[DISPATCH] Configured hInternet: 0x%.8x", ctx->internet);
@@ -197,7 +197,7 @@ static BOOL server_init_wininet(Transport* transport)
 	if (!ctx->connection)
 	{
 		dprintf("[DISPATCH] Failed InternetConnect: %d", GetLastError());
-		return FALSE;
+		return GetLastError();
 	}
 
 	if (ctx->proxy)
@@ -214,7 +214,7 @@ static BOOL server_init_wininet(Transport* transport)
 
 	dprintf("[DISPATCH] Configured hConnection: 0x%.8x", ctx->connection);
 
-	return TRUE;
+	return ERROR_SUCCESS;
 }
 
 /*!

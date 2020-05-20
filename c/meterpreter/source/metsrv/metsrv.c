@@ -132,5 +132,5 @@ VOID rand_xor_key(BYTE buffer[4])
 
 BOOL is_null_guid(BYTE guid[sizeof(GUID)])
 {
-	return memcmp(guid, "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", sizeof(guid)) == 0 ? TRUE : FALSE;
+	return memcmp(guid, "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", sizeof(GUID)) == 0 ? TRUE : FALSE;
 }

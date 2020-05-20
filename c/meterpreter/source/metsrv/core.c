@@ -83,7 +83,7 @@ VOID core_update_desktop(Remote * remote, DWORD dwSessionID, char * cpStationNam
 		temp_session = remote->curr_sess_id;
 
 		// A session id of -1 resets the state back to the servers real session id
-		if (dwSessionID = -1)
+		if (-1 == dwSessionID)
 		{
 			dwSessionID = remote->orig_sess_id;
 		}
