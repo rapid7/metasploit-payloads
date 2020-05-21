@@ -11,10 +11,10 @@ import java.io.OutputStream;
  */
 public class Channel {
 
+    public final Meterpreter meterpreter;
     private final InputStream in;
     private final OutputStream out;
     private final int id;
-    protected final Meterpreter meterpreter;
     protected boolean active = false, closed = false, waiting = false;
     protected byte[] toRead;
 
@@ -126,7 +126,7 @@ public class Channel {
      *
      * @param data The new data available, or <code>null</code> if EOF has been reached.
      */
-    protected synchronized void handleInteract(byte[] data) throws IOException, InterruptedException {
+    public synchronized void handleInteract(byte[] data) throws IOException, InterruptedException {
         while (waiting) {
             wait();
         }
