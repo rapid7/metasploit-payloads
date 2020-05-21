@@ -348,7 +348,7 @@ void patch_function(SHELLCODE_CTX *ctx, UINT_PTR address, unsigned char *stub,
 
 	/* Insert jump */
 	*(PBYTE)address = 0xE9;
-	*(DWORD *)(address + 1) = (DWORD_PTR)hook - ((DWORD_PTR)address + 5);
+	*(DWORD *)(address + 1) = (DWORD)((DWORD_PTR)hook - ((DWORD_PTR)address + 5));
 
 
 	/* Restore protection */
