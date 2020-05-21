@@ -336,8 +336,7 @@ void patch_function(SHELLCODE_CTX *ctx, UINT_PTR address, unsigned char *stub,
 	WriteProcessMemory((HANDLE)-1, stub, (LPVOID)address,
 		bytes, &written);
 	*(PBYTE)(stub + bytes) = 0xE9;
-	*(DWORD *)(stub + bytes + 1) = (DWORD)address - ((DWORD)stub + 5);
-
+	*(DWORD *)(stub + bytes + 1) = (DWORD)((DWORD_PTR)address - ((DWORD_PTR)stub + 5));
 
 	/* Patch original function */
 
@@ -349,7 +348,7 @@ void patch_function(SHELLCODE_CTX *ctx, UINT_PTR address, unsigned char *stub,
 
 	/* Insert jump */
 	*(PBYTE)address = 0xE9;
-	*(DWORD *)(address + 1) = (DWORD)hook - ((DWORD)address + 5);
+	*(DWORD *)(address + 1) = (DWORD_PTR)hook - ((DWORD_PTR)address + 5);
 
 
 	/* Restore protection */
@@ -513,14 +512,14 @@ void map_file(SHELLCODE_CTX *ctx)
 	 * First, try to map the file at ImageBase
 	 *
 	 */
-	ctx->mapped_address = (DWORD)VirtualAlloc((PVOID)nt->OptionalHeader.ImageBase,
+	ctx->mapped_address = (DWORD_PTR)VirtualAlloc((PVOID)nt->OptionalHeader.ImageBase,
 		nt->OptionalHeader.SizeOfImage,
 		MEM_RESERVE|MEM_COMMIT, PAGE_EXECUTE_READWRITE);
 
 
 	/* No success, let the system decide..  */
 	if (ctx->mapped_address == 0) {
-		ctx->mapped_address = (DWORD)VirtualAlloc((PVOID)NULL,
+		ctx->mapped_address = (DWORD_PTR)VirtualAlloc((PVOID)NULL,
 			nt->OptionalHeader.SizeOfImage,
 			MEM_RESERVE|MEM_COMMIT, PAGE_EXECUTE_READWRITE);
 

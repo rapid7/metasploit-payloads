@@ -36,7 +36,6 @@ if(MSVC)
     target_link_options(${PROJECT_NAME} PUBLIC "/ignore:4070")
 else()
   set(LINK_LIBS ${LINK_LIBS} ws2_32)
-  target_link_options(${PROJECT_NAME} PUBLIC -v)
 endif()
 
 target_link_libraries(${PROJECT_NAME} ${LINK_LIBS})

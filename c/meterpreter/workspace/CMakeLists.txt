@@ -4,9 +4,6 @@ set(PROJECT_NAME meterpreter)
 
 if(MSVC)
     cmake_policy(SET CMP0091 NEW)
-else()
-    set(_MSC_VER 1910)
-    include("x86_64-w64-mingw32-clang.cmake")
 endif()
 
 project(${PROJECT_NAME} C CXX)
@@ -29,6 +26,10 @@ set(PSSDK_DIR ${PROJECT_SOURCE_DIR}/../../../../pssdk/)
 
 if(MSVC)
     set(BUILD_ARCH ${CMAKE_GENERATOR_PLATFORM})
+else()
+    set(CMAKE_C_COMPILE_OPTIONS_PIC "")
+    set(CMAKE_SHARED_LIBRARY_PREFIX "")
+    set(CMAKE_SHARED_LIBRARY_SUFFIX ".dll")
 endif()
 
 if(BUILD_ARCH MATCHES "Win32")
@@ -42,6 +43,8 @@ else()
     set(IS_X64 true)
     set(BIN_SUBSYSTEM "5.01")
 endif()
+
+set(CMAKE_LIBRARY_ARCHITECTURE ${TARGET_ARCH} CACHE STRING "" FORCE)
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release")
@@ -66,10 +69,6 @@ else()
     set(IS_RELEASE false)
     set(IS_DEBUG true)
 endif()
-
-set(CMAKE_C_COMPILE_OPTIONS_PIC "")
-set(CMAKE_SHARED_LIBRARY_PREFIX "")
-set(CMAKE_SHARED_LIBRARY_SUFFIX ".dll")
 
 add_definitions(
     -DNDEBUG
@@ -129,15 +128,24 @@ set(
 set(
     MET_DLLS
     ${MET_SERVERS}
-    #${MET_PLUGINS}
-    #${MET_EXTENSIONS}
+    ${MET_PLUGINS}
+    ${MET_EXTENSIONS}
 )
 
-set(
-    MET_PROJECTS
-    #${MET_LIBS}
-    ${MET_DLLS}
-)
+if(MSVC)
+    set(
+        MET_PROJECTS
+        ${MET_LIBS}
+        ${MET_DLLS}
+    )
+else()
+    # Still working slowly on non-MSVC builds
+    set(
+        MET_PROJECTS
+        ${MET_LIBS}
+        ${MET_SERVERS}
+    )
+endif()
 
 foreach(MET_PROJECT ${MET_PROJECTS})
     add_subdirectory(${MET_PROJECT})
