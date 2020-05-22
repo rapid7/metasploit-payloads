@@ -9,6 +9,10 @@ extern "C" {
 #define RDIDLL_NOEXPORT
 #include "../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
 
+#ifndef min
+#define min(x,y) ((x)<(y)?(x):(y))
+#endif
+
 	// Required so that use of the API works.
 	MetApi* met_api = NULL;
 
@@ -138,7 +142,7 @@ int WinPmem_meterpreter64::extract_driver() {
 		// Gets the temp path env string (no guarantee it's a valid path).
 		if (!GetTempPath(MAX_PATH, path)) {
 			dprintf("[WINPMEM] Unable to determine temporary path.");
-			goto error;
+			return -1;
 		}
 
 		GetTempFileName(path, service_name, 0, filename);
@@ -150,9 +154,6 @@ int WinPmem_meterpreter64::extract_driver() {
 	dprintf("[WINPMEM] Extracting driver to %s", driver_filename_);
 
 	return extract_file_(WINPMEM_64BIT_DRIVER, driver_filename_);
-
-error:
-	return -1;
 }
 
 int WinPmem_meterpreter32::extract_driver() {
@@ -166,7 +167,7 @@ int WinPmem_meterpreter32::extract_driver() {
 		// Gets the temp path env string (no guarantee it's a valid path).
 		if (!GetTempPath(MAX_PATH, path)) {
 			dprintf("[WINPMEM] Unable to determine temporary path.");
-			goto error;
+			return -1;
 		}
 
 		GetTempFileName(path, service_name, 0, filename);
@@ -178,9 +179,6 @@ int WinPmem_meterpreter32::extract_driver() {
 	dprintf("[WINPMEM] Extracting driver to %s", driver_filename_);
 
 	return extract_file_(WINPMEM_32BIT_DRIVER, driver_filename_);
-
-error:
-	return -1;
 }
 
 WinPmem_meterpreter *WinPmemFactory()
@@ -320,13 +318,13 @@ static int winpmem_meterpreter_copy_memory(uint64_t start, uint64_t end,
 		if (0xFFFFFFFF == SetFilePointerEx(
 			ctx->winpmem->get_fd(), large_start, NULL, FILE_BEGIN)) {
 			dprintf("[WINPMEM] Failed to seek in the pmem device.");
-			goto error;
+			return 0;
 		};
 
 		if (!ReadFile(ctx->winpmem->get_fd(), reinterpret_cast<char*>(buffer)+*bytesRead, to_write, &bytes_read, NULL) ||
 			bytes_read != to_write) {
 			dprintf("[WINPMEM] Failed to Read memory.");
-			goto error;
+			return 0;
 		};
 
 		*bytesRead += bytes_read;
@@ -334,9 +332,6 @@ static int winpmem_meterpreter_copy_memory(uint64_t start, uint64_t end,
 		start += bytes_read;
 	};
 	return 1;
-
-error:
-	return 0;
 };
 
 static DWORD winpmem_channel_read(Channel *channel, Packet *request,

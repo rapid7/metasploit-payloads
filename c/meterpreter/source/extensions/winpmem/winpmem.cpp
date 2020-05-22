@@ -25,6 +25,10 @@
 #include <stdio.h>
 #include <time.h>
 
+#ifndef min
+#define min(x,y) ((x)<(y)?(x):(y))
+#endif
+
 int WinPmem::pad(uint64_t length)
 {
 	uint64_t start = 0;
@@ -111,7 +115,7 @@ int WinPmem::copy_memory(uint64_t start, uint64_t end)
 // Turn on write support in the driver.
 int WinPmem::set_write_enabled(void)
 {
-	unsigned _int32 mode;
+	UINT mode;
 	DWORD size;
 
 	if (!DeviceIoControl(fd_, PMEM_WRITE_ENABLE, &mode, 4, NULL, 0,
