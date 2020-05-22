@@ -113,7 +113,6 @@ if(MSVC)
         MET_EXTENSIONS
         ${MET_EXTENSIONS}
         ext_server_extapi
-        ext_server_incognito
         ext_server_lanattacks
         ext_server_peinjector
         ext_server_mimikatz
