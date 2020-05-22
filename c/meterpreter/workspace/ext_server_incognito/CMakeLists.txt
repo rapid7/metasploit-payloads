@@ -10,10 +10,12 @@ add_definitions(
     -D_UNICODE
 )
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /MP")
+if(MSVC)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /MP")
+endif()
 
 include_directories(../../source/common)
-include_directories(../../source/ReflectiveDllInjection/common)
+include_directories(../../source/ReflectiveDLLInjection/common)
 
 set(SRC_DIR ../../source/extensions/incognito)
 file(GLOB SRC_FILES
@@ -22,8 +24,10 @@ file(GLOB SRC_FILES
 )
 add_library(${PROJECT_NAME} SHARED ${SRC_FILES})
 set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME ${PROJECT_NAME}.${TARGET_ARCH})
-set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS "/DEF:\"${MOD_DEF_DIR}/extension.def\"")
-set_source_files_properties(${MOD_DEF_DIR}/extension.def PROPERTIES HEADER_FILE_ONLY TRUE)
+if(MSVC)
+    set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS "/DEF:\"${MOD_DEF_DIR}/extension.def\"")
+    set_source_files_properties(${MOD_DEF_DIR}/extension.def PROPERTIES HEADER_FILE_ONLY TRUE)
+endif()
 
 set(LINK_LIBS netapi32 mpr)
 target_link_libraries(${PROJECT_NAME} ${LINK_LIBS})

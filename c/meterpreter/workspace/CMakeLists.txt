@@ -17,8 +17,9 @@ if(USE_STATIC_MSVC_RUNTIMES)
     if(MSVC)
         set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
     else()
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -static-libgcc -mwindows -fms-extensions")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static-libgcc -static-libstdc++ -Wl,--enable-stdcall-fixup -mwindows -fms-extensions -std=c++11 -v")
+        set(CMAKE_MINGW_FLAGS_COMMON "-static-libgcc -mwindows -fms-extensions -Wl,--enable-stdcall-fixup")
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_MINGW_FLAGS_COMMON}")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_MINGW_FLAGS_COMMON} -static-libstdc++ -std=c++11")
     endif()
 endif()
 
@@ -100,20 +101,21 @@ set(MET_LIBS jpeg)
 set(
     MET_EXTENSIONS
     ext_server_stdapi
+    ext_server_priv
+    ext_server_espia
+    ext_server_incognito
+    ext_server_unhook
+    ext_server_winpmem
 )
 
 if(MSVC)
     set(
         MET_EXTENSIONS
         ${MET_EXTENSIONS}
-        ext_server_espia
-        ext_server_priv
         ext_server_extapi
         ext_server_incognito
         ext_server_lanattacks
         ext_server_peinjector
-        ext_server_winpmem
-        ext_server_unhook
         ext_server_mimikatz
         ext_server_powershell
         ext_server_kiwi
