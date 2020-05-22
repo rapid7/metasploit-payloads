@@ -136,7 +136,7 @@
       <MinimumRequiredVersion>
       </MinimumRequiredVersion>
       <SubSystem>Windows</SubSystem>
-      <ModuleDefinitionFile>$(ProjectDir)..\..\source\def\$(ProjectName).def</ModuleDefinitionFile>
+      <ModuleDefinitionFile>$(ProjectDir)..\..\source\def\extension.def</ModuleDefinitionFile>
       <AdditionalOptions>/ignore:4070 %(AdditionalOptions)</AdditionalOptions>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <ProgramDatabaseFile />
@@ -269,7 +269,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <MinimumRequiredVersion>
       </MinimumRequiredVersion>
       <SubSystem>Windows</SubSystem>
-      <ModuleDefinitionFile>$(ProjectDir)..\..\source\def\$(ProjectName).def</ModuleDefinitionFile>
+      <ModuleDefinitionFile>$(ProjectDir)..\..\source\def\extension.def</ModuleDefinitionFile>
       <AdditionalOptions>/ignore:4070 %(AdditionalOptions)</AdditionalOptions>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <ProgramDatabaseFile />

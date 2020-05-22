@@ -125,7 +125,7 @@
       <Profile>false</Profile>
       <MinimumRequiredVersion>
       </MinimumRequiredVersion>
-      <ModuleDefinitionFile>$(ProjectDir)..\..\source\def\$(ProjectName).def</ModuleDefinitionFile>
+      <ModuleDefinitionFile>$(ProjectDir)..\..\source\def\extension.def</ModuleDefinitionFile>
       <AdditionalOptions>/ignore:4070 %(AdditionalOptions)</AdditionalOptions>
       <ProgramDatabaseFile />
     </Link>
@@ -237,7 +237,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <Profile>false</Profile>
       <MinimumRequiredVersion>
       </MinimumRequiredVersion>
-      <ModuleDefinitionFile>$(ProjectDir)..\..\source\def\$(ProjectName).def</ModuleDefinitionFile>
+      <ModuleDefinitionFile>$(ProjectDir)..\..\source\def\extension.def</ModuleDefinitionFile>
       <AdditionalOptions>/ignore:4070 %(AdditionalOptions)</AdditionalOptions>
       <ProgramDatabaseFile />
     </Link>

@@ -123,7 +123,7 @@
       <ImportLibrary>$(OutDir)\ext_server_peinjector.lib</ImportLibrary>
       <TargetMachine>MachineX86</TargetMachine>
       <Profile>false</Profile>
-      <ModuleDefinitionFile>$(ProjectDir)..\..\source\def\$(ProjectName).def</ModuleDefinitionFile>
+      <ModuleDefinitionFile>$(ProjectDir)..\..\source\def\extension.def</ModuleDefinitionFile>
       <AdditionalOptions>/ignore:4070 %(AdditionalOptions)</AdditionalOptions>
       <ProgramDatabaseFile />
     </Link>
@@ -232,7 +232,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <ImportLibrary>$(OutDir)\ext_server_peinjector.lib</ImportLibrary>
       <TargetMachine>MachineX64</TargetMachine>
       <Profile>false</Profile>
-      <ModuleDefinitionFile>$(ProjectDir)..\..\source\def\$(ProjectName).def</ModuleDefinitionFile>
+      <ModuleDefinitionFile>$(ProjectDir)..\..\source\def\extension.def</ModuleDefinitionFile>
       <AdditionalOptions>/ignore:4070 %(AdditionalOptions)</AdditionalOptions>
       <ProgramDatabaseFile />
     </Link>
