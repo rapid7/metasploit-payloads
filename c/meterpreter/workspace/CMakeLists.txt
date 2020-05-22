@@ -16,6 +16,9 @@ option(USE_STATIC_MSVC_RUNTIMES "Use /MT instead of /MD in MSVC" ON)
 if(USE_STATIC_MSVC_RUNTIMES)
     if(MSVC)
         set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    else()
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -static-libgcc -mwindows -fms-extensions")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static-libgcc -static-libstdc++ -Wl,--enable-stdcall-fixup -mwindows -fms-extensions -std=c++11 -v")
     endif()
 endif()
 
@@ -96,29 +99,39 @@ set(MET_LIBS jpeg)
 
 set(
     MET_EXTENSIONS
-    ext_server_espia
-    ext_server_priv
-    ext_server_extapi
-    ext_server_incognito
-    ext_server_lanattacks
-    ext_server_peinjector
-    ext_server_winpmem
-    ext_server_unhook
-    ext_server_powershell
-    ext_server_kiwi
-    ext_server_python
     ext_server_stdapi
 )
+
+if(MSVC)
+    set(
+        MET_EXTENSIONS
+        ${MET_EXTENSIONS}
+        ext_server_espia
+        ext_server_priv
+        ext_server_extapi
+        ext_server_incognito
+        ext_server_lanattacks
+        ext_server_peinjector
+        ext_server_winpmem
+        ext_server_unhook
+        ext_server_mimikatz
+        ext_server_powershell
+        ext_server_kiwi
+        ext_server_python
+    )
+endif()
 
 if(BUILD_SNIFFER)
     set(MET_EXTENSIONS ${MET_EXTENSIONS} ext_server_sniffer)
 endif()
 
-set(
-    MET_PLUGINS
-    screenshot
-    elevator
-)
+if(MSVC)
+    set(
+        MET_PLUGINS
+        screenshot
+        elevator
+    )
+endif()
 
 set(
     MET_SERVERS
@@ -132,20 +145,11 @@ set(
     ${MET_EXTENSIONS}
 )
 
-if(MSVC)
-    set(
-        MET_PROJECTS
-        ${MET_LIBS}
-        ${MET_DLLS}
-    )
-else()
-    # Still working slowly on non-MSVC builds
-    set(
-        MET_PROJECTS
-        ${MET_LIBS}
-        ${MET_SERVERS}
-    )
-endif()
+set(
+    MET_PROJECTS
+    ${MET_LIBS}
+    ${MET_DLLS}
+)
 
 foreach(MET_PROJECT ${MET_PROJECTS})
     add_subdirectory(${MET_PROJECT})

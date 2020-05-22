@@ -2,7 +2,7 @@
 #define _METERPRETER_SOURCE_EXTENSION_STDAPI_STDAPI_SERVER_FS_SEARCH_H
 
 #include <shlwapi.h>
-#include <Searchapi.h>
+#include <searchapi.h>
 #include <msdasc.h>
 #include <ntquery.h>
 #include <cmdtree.h>

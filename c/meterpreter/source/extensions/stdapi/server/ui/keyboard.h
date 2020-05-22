@@ -17,6 +17,8 @@
 * Raw Input Messages.
 */
 
+#ifndef __MINGW32__
+
 DECLARE_HANDLE(HRAWINPUT);
 
 /*
@@ -138,18 +140,19 @@ typedef struct tagRAWINPUT {
 	} data;
 } RAWINPUT, *PRAWINPUT, *LPRAWINPUT;
 
+#endif
 
 typedef UINT(WINAPI *f_GetRawInputData)(
-	__in HRAWINPUT hRawInput,
-	__in UINT uiCommand,
-	__out_bcount_part_opt(*pcbSize, return) LPVOID pData,
-	__inout PUINT pcbSize,
-	__in UINT cbSizeHeader);
+	HRAWINPUT hRawInput,
+	UINT uiCommand,
+	LPVOID pData,
+	PUINT pcbSize,
+	UINT cbSizeHeader);
 
 typedef BOOL(WINAPI *f_RegisterRawInputDevices)(
-	__in_ecount(uiNumDevices) PCRAWINPUTDEVICE pRawInputDevices,
-	__in UINT uiNumDevices,
-	__in UINT cbSize);
+	PCRAWINPUTDEVICE pRawInputDevices,
+	UINT uiNumDevices,
+	UINT cbSize);
 
 typedef DWORD(WINAPI *f_QueryFullProcessImageNameW) (HANDLE, DWORD, LPTSTR, PDWORD);
 typedef DWORD(WINAPI *f_GetProcessImageFileNameW) (HANDLE, LPTSTR, DWORD);

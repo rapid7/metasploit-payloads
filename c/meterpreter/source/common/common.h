@@ -30,6 +30,8 @@
 #endif
 
 #ifdef __MINGW32__
+#define ERROR_DBG_TERMINATE_THREAD       691L
+#define ERROR_UNHANDLED_EXCEPTION        574L
 #define ERROR_UNSUPPORTED_COMPRESSION    618L
 #define __try
 #define __except(x) if(0)

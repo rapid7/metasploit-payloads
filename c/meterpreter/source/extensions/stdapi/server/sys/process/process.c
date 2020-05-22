@@ -5,6 +5,9 @@
 #include "./../session.h"
 #include "in-mem-exe.h" /* include skapetastic in-mem exe exec */
 
+typedef BOOL (WINAPI *PEnumProcessModules)(HANDLE p, HMODULE *mod, DWORD cb, LPDWORD needed);
+typedef DWORD (WINAPI *PGetModuleBaseName)(HANDLE p, HMODULE mod, LPTSTR base, DWORD baseSize);
+typedef DWORD (WINAPI *PGetModuleFileNameEx)(HANDLE p, HMODULE mod, LPTSTR path, DWORD pathSize);
 
 typedef BOOL (STDMETHODCALLTYPE FAR * LPFNCREATEENVIRONMENTBLOCK)( LPVOID  *lpEnvironment, HANDLE  hToken, BOOL bInherit );
 typedef BOOL (STDMETHODCALLTYPE FAR * LPFNDESTROYENVIRONMENTBLOCK) ( LPVOID lpEnvironment );
@@ -729,13 +732,9 @@ DWORD request_sys_process_get_info(Remote *remote, Packet *packet)
 {
 	Packet *response = met_api->packet.create_response(packet);
 
-
-	BOOL (WINAPI *enumProcessModules)(HANDLE p, HMODULE *mod, DWORD cb,
-			LPDWORD needed);
-	DWORD (WINAPI *getModuleBaseName)(HANDLE p, HMODULE mod, LPWSTR base,
-			DWORD baseSize);
-	DWORD (WINAPI *getModuleFileNameEx)(HANDLE p, HMODULE mod, LPWSTR path,
-			DWORD pathSize);
+	PEnumProcessModules enumProcessModules = NULL;
+	PGetModuleBaseName getModuleBaseName = NULL;
+	PGetModuleFileNameEx getModuleFileNameEx = NULL;
 
 	HMODULE mod;
 	HANDLE psapi = NULL;
@@ -769,13 +768,21 @@ DWORD request_sys_process_get_info(Remote *remote, Packet *packet)
 			break;
 		}
 
-		// Try to resolve the necessary symbols
-		if ((!((LPVOID)enumProcessModules =
-				(LPVOID)GetProcAddress(psapi, "EnumProcessModules"))) ||
-		    (!((LPVOID)getModuleBaseName =
-				(LPVOID)GetProcAddress(psapi, "GetModuleBaseNameW"))) ||
-		    (!((LPVOID)getModuleFileNameEx =
-				(LPVOID)GetProcAddress(psapi, "GetModuleFileNameExW"))))
+		if (!(enumProcessModules = (PEnumProcessModules)GetProcAddress(psapi, "EnumProcessModules")))
+		{
+			result = GetLastError();
+			break;
+		}
+
+		// Try to resolve the address of GetModuleBaseNameA
+		if (!(getModuleBaseName = (PGetModuleBaseName)GetProcAddress(psapi, "GetModuleBaseNameA")))
+		{
+			result = GetLastError();
+			break;
+		}
+
+		// Try to resolve the address of GetModuleFileNameExA
+		if (!(getModuleFileNameEx = (PGetModuleFileNameEx)GetProcAddress(psapi, "GetModuleFileNameExA")))
 		{
 			result = GetLastError();
 			break;
