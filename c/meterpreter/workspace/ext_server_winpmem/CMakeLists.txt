@@ -11,6 +11,7 @@ add_definitions(
 )
 
 if(MSVC)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /MP")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
 endif()
 
@@ -20,7 +21,7 @@ include_directories(../../source/ReflectiveDLLInjection/common)
 set(SRC_DIR ../../source/extensions/winpmem)
 file(GLOB SRC_FILES
     ${SRC_DIR}/*.cpp
-    ${SRC_DIR}/extension.def
+    ${MOD_DEF_DIR}/extension.def
 )
 
 if(MSVC)
@@ -34,9 +35,13 @@ set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME ${PROJECT_NAME}.${T
 if(MSVC)
     set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS "/DEF:\"${MOD_DEF_DIR}/extension.def\"")
     set_source_files_properties(${MOD_DEF_DIR}/extension.def PROPERTIES HEADER_FILE_ONLY TRUE)
-else()
-    set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_LANGUAGE "CXX")
 endif()
+
+set(LINK_LIBS
+    netapi32
+    mpr
+    ws2_32
+)
 
 target_link_libraries(${PROJECT_NAME} ${LINK_LIBS})
 if(MSVC)

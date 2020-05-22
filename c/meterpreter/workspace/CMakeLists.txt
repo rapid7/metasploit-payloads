@@ -6,7 +6,7 @@ if(MSVC)
     cmake_policy(SET CMP0091 NEW)
 endif()
 
-project(${PROJECT_NAME} C CXX)
+project(${PROJECT_NAME} C)
 
 option(DBGTRACE "Enable debug tracing" OFF)
 option(DBGTRACE_VERBOSE "Enable verbose debug tracing" OFF)
@@ -106,6 +106,7 @@ set(
     ext_server_incognito
     ext_server_unhook
     ext_server_winpmem
+    ext_server_lanattacks
 )
 
 if(MSVC)
@@ -113,7 +114,6 @@ if(MSVC)
         MET_EXTENSIONS
         ${MET_EXTENSIONS}
         ext_server_extapi
-        ext_server_lanattacks
         ext_server_peinjector
         ext_server_mimikatz
         ext_server_powershell

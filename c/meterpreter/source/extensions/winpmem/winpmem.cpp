@@ -781,22 +781,9 @@ int WinPmem::uninstall_driver()
 char *store_metadata_(struct PmemMemoryInfo *info)
 {
 	SYSTEM_INFO sys_info;
-	struct tm newtime;
-	__time32_t aclock;
 
-	char time_buffer[32];
 	errno_t errNum;
 	char *arch = NULL;
-
-	_time32(&aclock);   // Get time in seconds.
-	_gmtime32_s(&newtime, &aclock);   // Convert time to struct tm form.
-
-	// Print local time as a string.
-	errNum = asctime_s(time_buffer, 32, &newtime);
-	if (errNum)
-	{
-		time_buffer[0] = 0;
-	}
 
 	// Get basic architecture information (Note that we always write ELF64 core
 	// dumps - even on 32 bit platforms).
@@ -823,14 +810,12 @@ char *store_metadata_(struct PmemMemoryInfo *info)
 		"# PMEM\n"
 		"---\n"   // The start of the YAML file.
 		"acquisition_tool: 'WinPMEM " PMEM_VERSION "'\n"
-		"acquisition_timestamp: %s\n"
 		"CR3: %#llx\n"
 		"NtBuildNumber: %#llx\n"
 		"NtBuildNumberAddr: %#llx\n"
 		"KernBase: %#llx\n"
 		"Arch: %s\n"
 		"...\n",  // This is the end of a YAML file.
-		time_buffer,
 		info->CR3.QuadPart,
 		info->NtBuildNumber.QuadPart,
 		info->NtBuildNumberAddr.QuadPart,
