@@ -49,12 +49,11 @@ set(LINK_LIBS
     iphlpapi
     shlwapi
     ws2_32
+    strmiids
 )
 
 if(MSVC)
     target_link_options(${PROJECT_NAME} PUBLIC "/ignore:4070")
-else()
-    set(LINK_LIBS ${LINK_LIBS} strmiids)
 endif()
 
 target_link_libraries(${PROJECT_NAME} ${LINK_LIBS})

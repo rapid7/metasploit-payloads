@@ -6,8 +6,8 @@
 #include "in-mem-exe.h" /* include skapetastic in-mem exe exec */
 
 typedef BOOL (WINAPI *PEnumProcessModules)(HANDLE p, HMODULE *mod, DWORD cb, LPDWORD needed);
-typedef DWORD (WINAPI *PGetModuleBaseName)(HANDLE p, HMODULE mod, LPTSTR base, DWORD baseSize);
-typedef DWORD (WINAPI *PGetModuleFileNameEx)(HANDLE p, HMODULE mod, LPTSTR path, DWORD pathSize);
+typedef DWORD (WINAPI *PGetModuleBaseName)(HANDLE p, HMODULE mod, LPWSTR base, DWORD baseSize);
+typedef DWORD (WINAPI *PGetModuleFileNameEx)(HANDLE p, HMODULE mod, LPWSTR path, DWORD pathSize);
 
 typedef BOOL (STDMETHODCALLTYPE FAR * LPFNCREATEENVIRONMENTBLOCK)( LPVOID  *lpEnvironment, HANDLE  hToken, BOOL bInherit );
 typedef BOOL (STDMETHODCALLTYPE FAR * LPFNDESTROYENVIRONMENTBLOCK) ( LPVOID lpEnvironment );
@@ -775,14 +775,14 @@ DWORD request_sys_process_get_info(Remote *remote, Packet *packet)
 		}
 
 		// Try to resolve the address of GetModuleBaseNameA
-		if (!(getModuleBaseName = (PGetModuleBaseName)GetProcAddress(psapi, "GetModuleBaseNameA")))
+		if (!(getModuleBaseName = (PGetModuleBaseName)GetProcAddress(psapi, "GetModuleBaseNameW")))
 		{
 			result = GetLastError();
 			break;
 		}
 
 		// Try to resolve the address of GetModuleFileNameExA
-		if (!(getModuleFileNameEx = (PGetModuleFileNameEx)GetProcAddress(psapi, "GetModuleFileNameExA")))
+		if (!(getModuleFileNameEx = (PGetModuleFileNameEx)GetProcAddress(psapi, "GetModuleFileNameExW")))
 		{
 			result = GetLastError();
 			break;

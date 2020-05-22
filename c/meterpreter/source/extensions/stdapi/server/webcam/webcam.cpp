@@ -14,7 +14,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <dshow.h>
-#pragma comment(lib, "strmiids")
+
 extern "C" {
 #include "common.h"
 #include "webcam.h"

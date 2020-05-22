@@ -222,21 +222,18 @@ DWORD request_sys_process_image_get_images(Remote *remote, Packet *packet)
 			break;
 		}
 
-		// Try to resolve the address of EnumProcessModules
 		if (!(enumProcessModules = (PEnumProcessModules)GetProcAddress(psapi, "EnumProcessModules")))
 		{
 			result = GetLastError();
 			break;
 		}
 
-		// Try to resolve the address of GetModuleBaseNameA
 		if (!(getModuleBaseName = (PGetModuleBaseName)GetProcAddress(psapi, "GetModuleBaseNameA")))
 		{
 			result = GetLastError();
 			break;
 		}
 
-		// Try to resolve the address of GetModuleFileNameExA
 		if (!(getModuleFileNameEx = (PGetModuleFileNameEx)GetProcAddress(psapi, "GetModuleFileNameExA")))
 		{
 			result = GetLastError();

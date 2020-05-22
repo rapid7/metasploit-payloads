@@ -120,7 +120,7 @@
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>mpr.lib;netapi32.lib;psapi.lib;winmm.lib;iphlpapi.lib;shlwapi.lib;ws2_32.lib;odbc32.lib;odbccp32.lib;jpeg.$(PlatformShortName).lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>strmiids.lib;mpr.lib;netapi32.lib;psapi.lib;winmm.lib;iphlpapi.lib;shlwapi.lib;ws2_32.lib;odbc32.lib;odbccp32.lib;jpeg.$(PlatformShortName).lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\backcompat\$(Configuration);..\..\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <DelayLoadDLLs>
@@ -187,7 +187,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>mpr.lib;netapi32.lib;psapi.lib;winmm.lib;iphlpapi.lib;shlwapi.lib;ws2_32.lib;odbc32.lib;odbccp32.lib;jpeg.$(PlatformShortName).lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>strmiids.lib;mpr.lib;netapi32.lib;psapi.lib;winmm.lib;iphlpapi.lib;shlwapi.lib;ws2_32.lib;odbc32.lib;odbccp32.lib;jpeg.$(PlatformShortName).lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\backcompat\$(Configuration);..\..\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <DelayLoadDLLs>
@@ -253,7 +253,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>mpr.lib;netapi32.lib;psapi.lib;winmm.lib;iphlpapi.lib;shlwapi.lib;ws2_32.lib;odbc32.lib;odbccp32.lib;jpeg.$(PlatformShortName).lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>strmiids.lib;mpr.lib;netapi32.lib;psapi.lib;winmm.lib;iphlpapi.lib;shlwapi.lib;ws2_32.lib;odbc32.lib;odbccp32.lib;jpeg.$(PlatformShortName).lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\..\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <DelayLoadDLLs>
@@ -319,7 +319,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>mpr.lib;netapi32.lib;psapi.lib;winmm.lib;iphlpapi.lib;shlwapi.lib;ws2_32.lib;odbc32.lib;odbccp32.lib;jpeg.$(PlatformShortName).lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>strmiids.lib;mpr.lib;netapi32.lib;psapi.lib;winmm.lib;iphlpapi.lib;shlwapi.lib;ws2_32.lib;odbc32.lib;odbccp32.lib;jpeg.$(PlatformShortName).lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\..\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <DelayLoadDLLs>
