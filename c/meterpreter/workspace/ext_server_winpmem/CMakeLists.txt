@@ -1,6 +1,6 @@
 set(PROJECT_NAME ext_server_winpmem)
 
-project(${PROJECT_NAME} C)
+project(${PROJECT_NAME} C CXX)
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/../CMakeListsFuncs.txt)
 
@@ -24,9 +24,9 @@ file(GLOB SRC_FILES
 )
 
 if(MSVC)
-    set(SRC_FILES ${SRC_FILE} ${SRC_DIR}/winpmem.rc)
+    set(SRC_FILES ${SRC_FILES} ${SRC_DIR}/winpmem.rc)
 else()
-    set(SRC_FILES ${SRC_FILE} ${SRC_DIR}/winpmem-mingw.rc)
+    set(SRC_FILES ${SRC_FILES} ${SRC_DIR}/winpmem-mingw.rc)
 endif()
 
 add_library(${PROJECT_NAME} SHARED ${SRC_FILES})
