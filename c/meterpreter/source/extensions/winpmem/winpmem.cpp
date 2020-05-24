@@ -782,7 +782,6 @@ char *store_metadata_(struct PmemMemoryInfo *info)
 {
 	SYSTEM_INFO sys_info;
 
-	errno_t errNum;
 	char *arch = NULL;
 
 	// Get basic architecture information (Note that we always write ELF64 core
