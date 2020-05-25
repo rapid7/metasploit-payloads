@@ -33,6 +33,8 @@
 #define ERROR_DBG_TERMINATE_THREAD       691L
 #define ERROR_UNHANDLED_EXCEPTION        574L
 #define ERROR_UNSUPPORTED_COMPRESSION    618L
+#define ERROR_NOT_CAPABLE                775L
+#define ERROR_NOTHING_TO_TERMINATE       778L
 #define __try
 #define __except(x) if(0)
 

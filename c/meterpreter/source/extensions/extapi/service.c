@@ -6,7 +6,7 @@
 #include "service.h"
 #include "common_metapi.h"
 
-#include <Sddl.h>
+#include <sddl.h>
 
 /*! @brief The possible list of operations to perform on a service */
 typedef enum _ServiceOperation

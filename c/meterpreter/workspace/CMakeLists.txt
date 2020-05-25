@@ -107,13 +107,13 @@ set(
     ext_server_unhook
     ext_server_winpmem
     ext_server_lanattacks
+    ext_server_extapi
 )
 
 if(MSVC)
     set(
         MET_EXTENSIONS
         ${MET_EXTENSIONS}
-        ext_server_extapi
         ext_server_peinjector
         ext_server_mimikatz
         ext_server_powershell

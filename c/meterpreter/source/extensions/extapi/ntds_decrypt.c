@@ -4,10 +4,8 @@
 */
 #include "extapi.h"
 
-#define JET_VERSION 0x0501
-
 #include <inttypes.h>
-#include <WinCrypt.h>
+#include <wincrypt.h>
 #include "syskey.h"
 #include "ntds_decrypt.h"
 #include "ntds_jet.h"

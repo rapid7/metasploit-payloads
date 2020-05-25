@@ -7,6 +7,8 @@
 
 #include "../../common/common.h"
 
+#define JET_VERSION 0x0600
+
 #define TLV_TYPE_EXTENSION_EXTAPI	0
 
 #define TLV_TYPE_EXT_WINDOW_ENUM_GROUP              MAKE_CUSTOM_TLV(TLV_META_TYPE_GROUP,     TLV_TYPE_EXTENSION_EXTAPI, TLV_EXTENSIONS + 1)

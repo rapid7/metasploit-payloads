@@ -9,12 +9,9 @@ extern "C" {
 #include <inttypes.h>
 #include "wmi_interface.h"
 }
-#include <WbemCli.h>
+#include <wbemcli.h>
 #include <comutil.h>
 #include <comdef.h>
-
-#pragma comment(lib, "wbemuuid.lib")
-#pragma comment(lib, "comsuppw.lib")
 
 #define FIELD_SIZE 1024
 #define ENUM_TIMEOUT 5000
@@ -25,6 +22,76 @@ extern "C" {
 #define SYSTEM_FIELD_COUNT 9
 #else
 #define SYSTEM_FIELD_COUNT 8
+#endif
+
+#ifdef __MINGW32__
+// Provide custom implmentations of the BSTR conversion
+// functions because comsuppw.lib is a proprietary lib
+// that comes with Vis Studio
+namespace _com_util
+{
+	inline BSTR ConvertStringToBSTR(const char* pSrc)
+	{
+		if(!pSrc)
+		{
+			return NULL;
+		}
+
+		DWORD cwch;
+		BSTR wsOut(NULL);
+
+		if(cwch = ::MultiByteToWideChar(CP_ACP, 0, pSrc, -1, NULL, 0))
+		{
+			cwch--;
+			wsOut = ::SysAllocStringLen(NULL, cwch);
+
+			if(wsOut)
+			{
+				if(!::MultiByteToWideChar(CP_ACP, 0, pSrc, -1, wsOut, cwch))
+				{
+					if(ERROR_INSUFFICIENT_BUFFER == ::GetLastError())
+					{
+						return wsOut;
+					}
+					::SysFreeString(wsOut);//must clean up
+					wsOut = NULL;
+				}
+			}
+		}
+
+		return wsOut;
+	}
+
+	inline char* ConvertBSTRToString(BSTR pSrc)
+	{
+		if(!pSrc)
+		{
+			return NULL;
+		}
+
+		//convert even embeded NULL
+		DWORD cb,cwch = ::SysStringLen(pSrc);
+
+		char *szOut = NULL;
+
+		if(cb = ::WideCharToMultiByte(CP_ACP, 0, pSrc, cwch + 1, NULL, 0, 0, 0))
+		{
+			szOut = new char[cb];
+			if(szOut)
+			{
+				szOut[cb - 1]  = '\0';
+
+				if(!::WideCharToMultiByte(CP_ACP, 0, pSrc, cwch + 1, szOut, cb, 0, 0))
+				{
+					delete []szOut;//clean up if failed;
+					szOut = NULL;
+				}
+			}
+		}
+
+		return szOut;
+	}
+}
 #endif
 
 /*!
@@ -39,7 +106,7 @@ extern "C" {
  *          array depth has been attempted, but no tests have yet found a nested array in the
  *          result set. There's probably bugs in that bit.
  */
-char* variant_to_string(_variant_t& v, char* buffer, DWORD bufferSize)
+char* variant_to_string(const _variant_t& v, char* buffer, DWORD bufferSize)
 {
 	dprintf("[WMI] preparing to parse variant of type %u (%x), buffer size %u", v.vt, v.vt, bufferSize);
 
