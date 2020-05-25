@@ -102,7 +102,7 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>gdiplus.lib;Netapi32.lib;ws2_32.lib;Mpr.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>activeds.lib;wbemuuid.lib;esent.lib;gdiplus.lib;Netapi32.lib;ws2_32.lib;Mpr.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
@@ -156,7 +156,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>gdiplus.lib;Netapi32.lib;ws2_32.lib;Mpr.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>activeds.lib;wbemuuid.lib;esent.lib;gdiplus.lib;Netapi32.lib;ws2_32.lib;Mpr.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
@@ -212,7 +212,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>gdiplus.lib;Netapi32.lib;ws2_32.lib;Mpr.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>activeds.lib;wbemuuid.lib;esent.lib;gdiplus.lib;Netapi32.lib;ws2_32.lib;Mpr.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>
       </AdditionalLibraryDirectories>
       <DelayLoadDLLs>
@@ -267,7 +267,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>gdiplus.lib;Netapi32.lib;ws2_32.lib;Mpr.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>activeds.lib;wbemuuid.lib;esent.lib;gdiplus.lib;Netapi32.lib;ws2_32.lib;Mpr.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>
       </AdditionalLibraryDirectories>
       <DelayLoadDLLs>
