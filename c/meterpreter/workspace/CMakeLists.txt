@@ -108,6 +108,7 @@ set(
     ext_server_winpmem
     ext_server_lanattacks
     ext_server_extapi
+    ext_server_kiwi
 )
 
 if(MSVC)
@@ -117,7 +118,6 @@ if(MSVC)
         ext_server_peinjector
         ext_server_mimikatz
         ext_server_powershell
-        ext_server_kiwi
         ext_server_python
     )
 endif()
