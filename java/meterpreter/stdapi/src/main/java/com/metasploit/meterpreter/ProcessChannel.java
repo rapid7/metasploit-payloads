@@ -20,10 +20,10 @@ public class ProcessChannel extends Channel {
      * @param process     Process of the channel
      */
     public ProcessChannel(Meterpreter meterpreter, Process process) {
-        super(meterpreter, process.getInputStream(), process.getOutputStream());
-        this.process = process;
+        super(meterpreter, process.getInputStream(), process.getOutputStream(), true);
         this.err = process.getErrorStream();
-        new StderrThread(err).start();
+        this.process = process;
+        new StdoutStderrThread(this.in, this.err).start();
     }
 
     /**
@@ -51,27 +51,43 @@ public class ProcessChannel extends Channel {
         super.close();
     }
 
-    class StderrThread extends Thread {
-        private final InputStream stream;
+    class StdoutStderrThread extends Thread {
+        private final InputStream in;
+        private final InputStream err;
 
-        public StderrThread(InputStream stream) {
-            this.stream = stream;
+        public StdoutStderrThread(InputStream in, InputStream err) {
+            this.in = in;
+            this.err = err;
         }
 
         public void run() {
             try {
                 byte[] buffer = new byte[1024*1024];
-                int len;
-                while ((len = stream.read(buffer)) != -1) {
-                    if (len == 0)
-                        continue;
-                    byte[] data = new byte[len];
-                    System.arraycopy(buffer, 0, data, 0, len);
-                    handleInteract(data);
+                int inlen;
+                int errlen;
+                while (true) {
+                    if ((inlen = in.read(buffer)) != -1) {
+                        if (inlen > 0)
+                            writeBuf(buffer, inlen);
+                    }
+                    if ((errlen = err.read(buffer)) != -1) {
+                        if (errlen > 0)
+                            writeBuf(buffer, errlen);
+                    }
+                    if (inlen == -1 && errlen == -1) {
+                        break;
+                    }
                 }
+                handleInteract(null);
             } catch (Throwable t) {
                 t.printStackTrace(meterpreter.getErrorStream());
             }
+        }
+
+        private void writeBuf(byte[] buffer, int len) throws IOException, InterruptedException {
+            byte[] data = new byte[len];
+            System.arraycopy(buffer, 0, data, 0, len);
+            handleInteract(data);
         }
     }
 

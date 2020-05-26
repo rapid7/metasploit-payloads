@@ -12,7 +12,7 @@ import java.io.OutputStream;
 public class Channel {
 
     public final Meterpreter meterpreter;
-    private final InputStream in;
+    protected final InputStream in;
     private final OutputStream out;
     private final int id;
     protected boolean active = false, closed = false, waiting = false;
@@ -26,11 +26,25 @@ public class Channel {
      * @param out         Output stream of the channel, if any
      */
     public Channel(Meterpreter meterpreter, InputStream in, OutputStream out) {
+        this(meterpreter, in, out, false);
+    }
+
+    /**
+     * Create a new "generic" channel.
+     *
+     * @param meterpreter The meterpreter this channel should be assigned to.
+     * @param in          Input stream of the channel
+     * @param out         Output stream of the channel, if any
+     * @param hasStderr   True if the channel has stderr output
+     */
+    public Channel(Meterpreter meterpreter, InputStream in, OutputStream out, boolean hasStderr) {
         this.meterpreter = meterpreter;
         this.id = meterpreter.registerChannel(this);
         this.in = in;
         this.out = out;
-        new InteractThread(in).start();
+        if (!hasStderr) {
+            new InteractThread(in).start();
+        }
     }
 
     /**
