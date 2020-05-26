@@ -10,8 +10,58 @@ project(${PROJECT_NAME} C)
 
 option(DBGTRACE "Enable debug tracing" OFF)
 option(DBGTRACE_VERBOSE "Enable verbose debug tracing" OFF)
-option(BUILD_SNIFFER "Build the sniffer extension (requires PSSDK)" OFF)
 option(USE_STATIC_MSVC_RUNTIMES "Use /MT instead of /MD in MSVC" ON)
+
+option(BUILD_ALL "Build everything" ON)
+option(BUILD_LIB_JPEG "Build JPEG lib" OFF)
+option(BUILD_METSRV "Build METSRV" OFF)
+
+option(BUILD_EXT_ALL "Build all extensions" OFF)
+option(BUILD_EXT_SNIFFER "Build the SNIFFER extension (requires PSSDK)" OFF)
+option(BUILD_EXT_STDAPI "Build the STDAPI extension" OFF)
+option(BUILD_EXT_PRIV "Build the PRIV extension" OFF)
+option(BUILD_EXT_EXTAPI "Build the EXTAPI extension" OFF)
+option(BUILD_EXT_KIWI "Build the KIWI extension" OFF)
+option(BUILD_EXT_ESPIA "Build the ESPIA extension" OFF)
+option(BUILD_EXT_WINPMEM "Build the WINPMEM extension" OFF)
+option(BUILD_EXT_UNHOOK "Build the UNHOOK extension" OFF)
+option(BUILD_EXT_INCOGNITO "Build the INCOGNITO extension" OFF)
+option(BUILD_EXT_MIMIKATZ "Build the MIMIKATZ extension" OFF)
+option(BUILD_EXT_LANATTACKS "Build the LANATTACKS extension" OFF)
+option(BUILD_EXT_PYTHON "Build the PYTHON extension" OFF)
+option(BUILD_EXT_POWERSHELL "Build the POWERSHELL extension" OFF)
+option(BUILD_EXT_PEINJECTOR "Build the PEINJECTOR extension" OFF)
+
+if(BUILD_ALL)
+    set(BUILD_LIB_JPEG ON)
+    set(BUILD_METSRV ON)
+    set(BUILD_EXT_ALL ON)
+    # TODO: plugins
+endif()
+
+if(BUILD_EXT_ALL)
+    set(BUILD_EXT_STDAPI ON)
+    set(BUILD_EXT_PRIV ON)
+    set(BUILD_EXT_EXTAPI ON)
+    set(BUILD_EXT_KIWI ON)
+    set(BUILD_EXT_ESPIA ON)
+    set(BUILD_EXT_WINPMEM ON)
+    set(BUILD_EXT_UNHOOK ON)
+    set(BUILD_EXT_INCOGNITO ON)
+    set(BUILD_EXT_MIMIKATZ ON)
+    set(BUILD_EXT_LANATTACKS ON)
+    set(BUILD_EXT_PYTHON ON)
+    set(BUILD_EXT_POWERSHELL ON)
+    set(BUILD_EXT_PEINJECTOR ON)
+endif()
+
+if(BUILD_EXT_ESPIA)
+    set(BUILD_LIB_JPEG ON)
+endif()
+
+if(BUILD_EXT_STDAPI)
+    set(BUILD_LIB_JPEG ON)
+endif()
 
 if(USE_STATIC_MSVC_RUNTIMES)
     if(MSVC)
@@ -96,34 +146,63 @@ if(IS_X64)
     )
 endif()
 
-set(MET_LIBS jpeg)
-
-set(
-    MET_EXTENSIONS
-    ext_server_stdapi
-    ext_server_priv
-    ext_server_espia
-    ext_server_incognito
-    ext_server_unhook
-    ext_server_winpmem
-    ext_server_lanattacks
-    ext_server_extapi
-    ext_server_kiwi
-)
-
-if(MSVC)
-    set(
-        MET_EXTENSIONS
-        ${MET_EXTENSIONS}
-        ext_server_peinjector
-        ext_server_mimikatz
-        ext_server_powershell
-        ext_server_python
-    )
+if(BUILD_LIB_JPEG)
+    set(MET_LIBS jpeg)
 endif()
 
-if(BUILD_SNIFFER)
-    set(MET_EXTENSIONS ${MET_EXTENSIONS} ext_server_sniffer)
+if(BUILD_EXT_STDAPI)
+    set(MET_EXTENSIONS ${MET_EXTENSIONS} ext_server_stdapi)
+endif()
+if(BUILD_EXT_PRIV)
+    set(MET_EXTENSIONS ${MET_EXTENSIONS} ext_server_priv)
+endif()
+if(BUILD_EXT_ESPIA)
+    set(MET_EXTENSIONS ${MET_EXTENSIONS} ext_server_espia)
+endif()
+if(BUILD_EXT_INCOGNITO)
+    set(MET_EXTENSIONS ${MET_EXTENSIONS} ext_server_incognito)
+endif()
+if(BUILD_EXT_UNHOOK)
+    set(MET_EXTENSIONS ${MET_EXTENSIONS} ext_server_unhook)
+endif()
+if(BUILD_EXT_WINPMEM)
+    set(MET_EXTENSIONS ${MET_EXTENSIONS} ext_server_winpmem)
+endif()
+if(BUILD_EXT_LANATTACKS)
+    set(MET_EXTENSIONS ${MET_EXTENSIONS} ext_server_lanattacks)
+endif()
+if(BUILD_EXT_EXTAPI)
+    set(MET_EXTENSIONS ${MET_EXTENSIONS} ext_server_extapi)
+endif()
+if(BUILD_EXT_KIWI)
+    set(MET_EXTENSIONS ${MET_EXTENSIONS} ext_server_kiwi)
+endif()
+
+if(BUILD_EXT_SNIFFER)
+    if(MSVC)
+        if(EXISTS "${PSSDK_DIR}")
+            set(MET_EXTENSIONS ${MET_EXTENSIONS} ext_server_sniffer)
+        else()
+            message(STATUS "[!] Unable to build SNIFFER: PSSDK is missing.")
+        endif()
+    else()
+        message(STATUS "[!] Unable to build SNIFFER: not supported on Linux.")
+    endif()
+endif()
+
+if(MSVC)
+    if(BUILD_EXT_PEINJECTOR)
+        set(MET_EXTENSIONS ${MET_EXTENSIONS} ext_server_peinjector)
+    endif()
+    if(BUILD_EXT_MIMIKATZ)
+        set(MET_EXTENSIONS ${MET_EXTENSIONS} ext_server_mimikatz)
+    endif()
+    if(BUILD_EXT_POWERSHELL)
+        set(MET_EXTENSIONS ${MET_EXTENSIONS} ext_server_powershell)
+    endif()
+    if(BUILD_EXT_PYTHON)
+        set(MET_EXTENSIONS ${MET_EXTENSIONS} ext_server_python)
+    endif()
 endif()
 
 if(MSVC)
@@ -134,10 +213,9 @@ if(MSVC)
     )
 endif()
 
-set(
-    MET_SERVERS
-    metsrv
-)
+if(BUILD_METSRV)
+    set(MET_SERVERS metsrv)
+endif()
 
 set(
     MET_DLLS

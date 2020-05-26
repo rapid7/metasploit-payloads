@@ -118,7 +118,6 @@ endif()
 # Add all the custom libs that come with the mimikatz source
 set(LINK_LIBS
     ${LINK_LIBS}
-    ${KIWI_LIB_DIR}/advapi32.hash.lib
     ${KIWI_LIB_DIR}/cryptdll.lib
     ${KIWI_LIB_DIR}/fltlib.lib
     ${KIWI_LIB_DIR}/hid.lib
@@ -128,6 +127,7 @@ set(LINK_LIBS
     ${KIWI_LIB_DIR}/ntdll.min.lib
     ${KIWI_LIB_DIR}/samlib.lib
     ${KIWI_LIB_DIR}/winsta.lib
+    ${KIWI_LIB_DIR}/advapi32.hash.lib
 )
 
 target_link_libraries(${PROJECT_NAME} ${LINK_LIBS})
