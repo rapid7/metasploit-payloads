@@ -244,6 +244,26 @@ meterpreter-ext-kiwi-x64-gen:
 meterpreter-ext-kiwi-x64-build:
 	@cmake --build workspace/build/mingw-x64-ext-kiwi $(COMMON_BUILD)
 
+### PeInjector
+
+meterpreter-ext-peinjector: meterpreter-ext-peinjector-x86 meterpreter-ext-peinjector-x64
+
+meterpreter-ext-peinjector-x86: meterpreter-ext-peinjector-x86-gen meterpreter-ext-peinjector-x86-build
+
+meterpreter-ext-peinjector-x86-gen:
+	@cmake -S workspace -B workspace/build/mingw-x86-ext-peinjector -DBUILD_ALL=OFF -DBUILD_EXT_PEINJECTOR=ON $(COMMON_GEN_X86)
+
+meterpreter-ext-peinjector-x86-build:
+	@cmake --build workspace/build/mingw-x86-ext-peinjector $(COMMON_BUILD)
+
+meterpreter-ext-peinjector-x64: meterpreter-ext-peinjector-x64-gen meterpreter-ext-peinjector-x64-build
+
+meterpreter-ext-peinjector-x64-gen:
+	@cmake -S workspace -B workspace/build/mingw-x64-ext-peinjector -DBUILD_ALL=OFF -DBUILD_EXT_PEINJECTOR=ON $(COMMON_GEN_X64)
+
+meterpreter-ext-peinjector-x64-build:
+	@cmake --build workspace/build/mingw-x64-ext-peinjector $(COMMON_BUILD)
+
 ##########################################################################################
 ### Container-based Builds
 ##########################################################################################
@@ -352,3 +372,12 @@ docker-ext-kiwi-x86:
 
 docker-ext-kiwi-x64:
 	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-kiwi-x64
+
+docker-ext-peinjector:
+	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-peinjector
+
+docker-ext-peinjector-x86:
+	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-peinjector-x86
+
+docker-ext-peinjector-x64:
+	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-peinjector-x64
