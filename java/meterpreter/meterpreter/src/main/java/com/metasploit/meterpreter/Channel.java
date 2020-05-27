@@ -12,7 +12,7 @@ import java.io.OutputStream;
 public class Channel {
 
     public final Meterpreter meterpreter;
-    protected final InputStream in;
+    private final InputStream in;
     private final OutputStream out;
     private final int id;
     protected boolean active = false, closed = false, waiting = false;
@@ -26,24 +26,12 @@ public class Channel {
      * @param out         Output stream of the channel, if any
      */
     public Channel(Meterpreter meterpreter, InputStream in, OutputStream out) {
-        this(meterpreter, in, out, false);
-    }
-
-    /**
-     * Create a new "generic" channel.
-     *
-     * @param meterpreter The meterpreter this channel should be assigned to.
-     * @param in          Input stream of the channel
-     * @param out         Output stream of the channel, if any
-     * @param hasStderr   True if the channel has stderr output
-     */
-    public Channel(Meterpreter meterpreter, InputStream in, OutputStream out, boolean hasStderr) {
         this.meterpreter = meterpreter;
         this.id = meterpreter.registerChannel(this);
         this.in = in;
         this.out = out;
-        if (!hasStderr) {
-            new InteractThread(in).start();
+        if (in != null) {
+            new InteractThread(in, true).start();
         }
     }
 
@@ -51,9 +39,12 @@ public class Channel {
      * Close this channel and deregister it from the meterpreter.
      */
     public synchronized void close() throws IOException {
-        in.close();
-        if (out != null)
+        if (in != null) {
+            in.close();
+        }
+        if (out != null) {
             out.close();
+        }
         meterpreter.channelClosed(id);
         active = false;
         closed = true;
@@ -172,9 +163,11 @@ public class Channel {
      */
     protected class InteractThread extends Thread {
         private final InputStream stream;
+        private final boolean handleClose;
 
-        public InteractThread(InputStream stream) {
+        public InteractThread(InputStream stream, boolean handleClose) {
             this.stream = stream;
+            this.handleClose = handleClose;
         }
 
         public void run() {
@@ -188,7 +181,9 @@ public class Channel {
                     System.arraycopy(buffer, 0, data, 0, len);
                     handleInteract(data);
                 }
-                handleInteract(null);
+                if (handleClose) {
+                    handleInteract(null);
+                }
             } catch (Throwable t) {
                 t.printStackTrace(meterpreter.getErrorStream());
             }

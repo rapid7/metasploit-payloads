@@ -11,6 +11,7 @@ import java.io.InputStream;
 public class ProcessChannel extends Channel {
 
     private final Process process;
+    private final InputStream inputStream;
     private final InputStream err;
 
     /**
@@ -20,10 +21,13 @@ public class ProcessChannel extends Channel {
      * @param process     Process of the channel
      */
     public ProcessChannel(Meterpreter meterpreter, Process process) {
-        super(meterpreter, process.getInputStream(), process.getOutputStream(), true);
+        super(meterpreter, null, process.getOutputStream());
+        this.inputStream = process.getInputStream();
         this.err = process.getErrorStream();
         this.process = process;
-        new StdoutStderrThread(this.in, this.err).start();
+        Thread stdinThread = new InteractThread(this.inputStream, false);
+        Thread stderrThread = new InteractThread(this.err, false);
+        new CloseThread(stdinThread, stderrThread).start();
     }
 
     /**
@@ -47,47 +51,30 @@ public class ProcessChannel extends Channel {
 
     public void close() throws IOException {
         process.destroy();
+        inputStream.close();
         err.close();
         super.close();
     }
 
-    class StdoutStderrThread extends Thread {
-        private final InputStream in;
-        private final InputStream err;
+    class CloseThread extends Thread {
+        private final Thread stdinThread;
+        private final Thread stderrThread;
 
-        public StdoutStderrThread(InputStream in, InputStream err) {
-            this.in = in;
-            this.err = err;
+        public CloseThread(Thread stdinThread, Thread stderrThread) {
+            this.stdinThread = stdinThread;
+            this.stderrThread = stderrThread;
         }
 
         public void run() {
             try {
-                byte[] buffer = new byte[1024*1024];
-                int inlen;
-                int errlen;
-                while (true) {
-                    if ((inlen = in.read(buffer)) != -1) {
-                        if (inlen > 0)
-                            writeBuf(buffer, inlen);
-                    }
-                    if ((errlen = err.read(buffer)) != -1) {
-                        if (errlen > 0)
-                            writeBuf(buffer, errlen);
-                    }
-                    if (inlen == -1 && errlen == -1) {
-                        break;
-                    }
-                }
+                stdinThread.start();
+                stderrThread.start();
+                stdinThread.join();
+                stderrThread.join();
                 handleInteract(null);
             } catch (Throwable t) {
                 t.printStackTrace(meterpreter.getErrorStream());
             }
-        }
-
-        private void writeBuf(byte[] buffer, int len) throws IOException, InterruptedException {
-            byte[] data = new byte[len];
-            System.arraycopy(buffer, 0, data, 0, len);
-            handleInteract(data);
         }
     }
 
