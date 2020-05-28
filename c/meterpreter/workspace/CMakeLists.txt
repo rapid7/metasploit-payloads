@@ -95,7 +95,6 @@ set(
     ext_server_peinjector
     ext_server_winpmem
     ext_server_unhook
-    ext_server_mimikatz
     ext_server_powershell
     ext_server_kiwi
     ext_server_python
