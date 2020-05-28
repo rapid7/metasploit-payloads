@@ -63,7 +63,7 @@ TLV_TEMP       = 60000
 # TLV Specific Types
 #
 TLV_TYPE_ANY                   = TLV_META_TYPE_NONE    | 0
-TLV_TYPE_METHOD                = TLV_META_TYPE_STRING  | 1
+TLV_TYPE_COMMAND_ID            = TLV_META_TYPE_UINT    | 1
 TLV_TYPE_REQUEST_ID            = TLV_META_TYPE_STRING  | 2
 TLV_TYPE_EXCEPTION             = TLV_META_TYPE_GROUP   | 3
 TLV_TYPE_RESULT                = TLV_META_TYPE_UINT    | 4
@@ -197,19 +197,21 @@ def validate_binding(required):
   This function returns the correct binding name to call."""
 
   # assume all core commands are valid
-  if required[:5] == 'core_':
+  if required < 1000:
     required = 'meterpreter_core'
+  else:
+    required = 'command_{0}'.format(required)
 
   if not required in set(dir(meterpreter_bindings)):
-    raise Exception('Missing bindings: {0}'.format(required))
+    raise Exception('Missing bindings: {0} (is a dependent extension not yet loaded?)'.format(required))
 
   return required
 
-def invoke_meterpreter(method, is_local, tlv = ""):
-  binding = validate_binding(method)
+def invoke_meterpreter(command_id, is_local, tlv = ""):
+  binding = validate_binding(command_id)
 
   header = struct.pack('>I', PACKET_TYPE_REQUEST)
-  header += tlv_pack(TLV_TYPE_METHOD, method)
+  header += tlv_pack(TLV_TYPE_COMMAND_ID, command_id)
   header += tlv_pack(TLV_TYPE_REQUEST_ID, 0)
   # add a leading 4-byte "zero" for the xor-key, 16 byte null guid, 4 byte encryption flag
   req = '\x00' * 24

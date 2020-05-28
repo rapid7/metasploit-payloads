@@ -19,7 +19,7 @@ DWORD unhook_pe(Remote *remote, Packet *packet);
 Command customCommands[] =
 {
 	// custom commands go here
-	COMMAND_REQ("unhook_pe", unhook_pe),
+	COMMAND_REQ(COMMAND_ID_UNHOOK_PE, unhook_pe),
 
 	COMMAND_TERMINATOR
 };
@@ -30,13 +30,13 @@ Command customCommands[] =
  * @param remote Pointer to the remote instance.
  * @return Indication of success or failure.
  */
-DWORD __declspec(dllexport) InitServerExtension(MetApi* api, Remote *remote)
+DWORD __declspec(dllexport) InitServerExtension(MetApi* api, Remote* remote)
 {
     met_api = api;
 
-	met_api->command.register_all( customCommands );
+    met_api->command.register_all(customCommands);
 
-	return ERROR_SUCCESS;
+    return ERROR_SUCCESS;
 }
 
 /*!
@@ -44,11 +44,11 @@ DWORD __declspec(dllexport) InitServerExtension(MetApi* api, Remote *remote)
  * @param remote Pointer to the remote instance.
  * @return Indication of success or failure.
  */
-DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
+DWORD __declspec(dllexport) DeinitServerExtension(Remote* remote)
 {
-	met_api->command.deregister_all( customCommands );
+    met_api->command.deregister_all(customCommands);
 
-	return ERROR_SUCCESS;
+    return ERROR_SUCCESS;
 }
 
 
@@ -64,16 +64,4 @@ DWORD unhook_pe(Remote *remote, Packet *packet)
 
 	return ERROR_SUCCESS;
 
-}
-
-/*!
- * @brief Get the name of the extension.
- * @param buffer Pointer to the buffer to write the name to.
- * @param bufferSize Size of the \c buffer parameter.
- * @return Indication of success or failure.
- */
-DWORD __declspec(dllexport) GetExtensionName(char* buffer, int bufferSize)
-{
-	strncpy_s(buffer, bufferSize, "unhook", bufferSize - 1);
-	return ERROR_SUCCESS;
 }

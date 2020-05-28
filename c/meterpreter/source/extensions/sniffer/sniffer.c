@@ -22,13 +22,13 @@ DWORD request_sniffer_capture_dump_read(Remote *remote, Packet *packet);
 /*! @brief List of custom commands provided by the sniffer extension. */
 Command customCommands[] =
 {
-	COMMAND_REQ("sniffer_interfaces", request_sniffer_interfaces),
-	COMMAND_REQ("sniffer_capture_start", request_sniffer_capture_start),
-	COMMAND_REQ("sniffer_capture_stop", request_sniffer_capture_stop),
-	COMMAND_REQ("sniffer_capture_stats", request_sniffer_capture_stats),
-	COMMAND_REQ("sniffer_capture_release", request_sniffer_capture_release),
-	COMMAND_REQ("sniffer_capture_dump", request_sniffer_capture_dump),
-	COMMAND_REQ("sniffer_capture_dump_read", request_sniffer_capture_dump_read),
+	COMMAND_REQ(COMMAND_ID_SNIFFER_INTERFACES, request_sniffer_interfaces),
+	COMMAND_REQ(COMMAND_ID_SNIFFER_CAPTURE_START, request_sniffer_capture_start),
+	COMMAND_REQ(COMMAND_ID_SNIFFER_CAPTURE_STOP, request_sniffer_capture_stop),
+	COMMAND_REQ(COMMAND_ID_SNIFFER_CAPTURE_STATS, request_sniffer_capture_stats),
+	COMMAND_REQ(COMMAND_ID_SNIFFER_CAPTURE_RELEASE, request_sniffer_capture_release),
+	COMMAND_REQ(COMMAND_ID_SNIFFER_CAPTURE_DUMP, request_sniffer_capture_dump),
+	COMMAND_REQ(COMMAND_ID_SNIFFER_CAPTURE_DUMP_READ, request_sniffer_capture_dump_read),
 	COMMAND_TERMINATOR
 };
 
@@ -794,17 +794,5 @@ DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
 
 	MgrDestroy(hMgr);
 	met_api->lock.destroy(snifferm);
-	return ERROR_SUCCESS;
-}
-
-/*!
- * @brief Get the name of the extension.
- * @param buffer Pointer to the buffer to write the name to.
- * @param bufferSize Size of the \c buffer parameter.
- * @return Indication of success or failure.
- */
-DWORD __declspec(dllexport) GetExtensionName(char* buffer, int bufferSize)
-{
-	strncpy_s(buffer, bufferSize, "sniffer", bufferSize - 1);
 	return ERROR_SUCCESS;
 }

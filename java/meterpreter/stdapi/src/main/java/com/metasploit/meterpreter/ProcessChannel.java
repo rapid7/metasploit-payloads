@@ -2,6 +2,7 @@ package com.metasploit.meterpreter;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.PrintStream;
 
 /**
  * A channel for a started {@link Process}.
@@ -23,7 +24,7 @@ public class ProcessChannel extends Channel {
         super(meterpreter, process.getInputStream(), process.getOutputStream());
         this.process = process;
         this.err = process.getErrorStream();
-        new StderrThread(err).start();
+        new StderrThread(err, meterpreter.getErrorStream()).start();
     }
 
     /**
@@ -52,17 +53,19 @@ public class ProcessChannel extends Channel {
     }
 
     class StderrThread extends Thread {
-        private final InputStream stream;
+        private final InputStream inputStream;
+        private final PrintStream outputStream;
 
-        public StderrThread(InputStream stream) {
-            this.stream = stream;
+        public StderrThread(InputStream inputStream, PrintStream outputStream) {
+            this.inputStream = inputStream;
+            this.outputStream = outputStream;
         }
 
         public void run() {
             try {
                 byte[] buffer = new byte[1024*1024];
                 int len;
-                while ((len = stream.read(buffer)) != -1) {
+                while ((len = inputStream.read(buffer)) != -1) {
                     if (len == 0)
                         continue;
                     byte[] data = new byte[len];
@@ -70,7 +73,7 @@ public class ProcessChannel extends Channel {
                     handleInteract(data);
                 }
             } catch (Throwable t) {
-                t.printStackTrace(meterpreter.getErrorStream());
+                t.printStackTrace(this.outputStream);
             }
         }
     }

@@ -8,12 +8,12 @@ import android.media.MediaRecorder.AudioSource;
 import com.metasploit.meterpreter.Meterpreter;
 import com.metasploit.meterpreter.TLVPacket;
 import com.metasploit.meterpreter.command.Command;
-import com.metasploit.meterpreter.stdapi.webcam_audio_record;
+import com.metasploit.meterpreter.stdapi.stdapi_webcam_audio_record;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 
-public class webcam_audio_record_android extends webcam_audio_record implements Command {
+public class stdapi_webcam_audio_record_android extends stdapi_webcam_audio_record implements Command {
 
     private static final int AUDIO_SAMPLE_RATE = 8000;
     private static final int AUDIO_CHANNEL_CONFIG = AudioFormat.CHANNEL_CONFIGURATION_MONO;

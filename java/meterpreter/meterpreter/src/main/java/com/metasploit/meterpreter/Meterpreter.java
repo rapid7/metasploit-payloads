@@ -274,11 +274,11 @@ public class Meterpreter {
     /**
      * Send a request packet over this meterpreter.
      *
-     * @param method Method to invoke
+     * @param commandId ID of the associated command
      * @param tlv Packet parameters
      */
-    public void writeRequestPacket(String method, TLVPacket tlv) throws IOException {
-        tlv.add(TLVType.TLV_TYPE_METHOD, method);
+    public void writeRequestPacket(int commandId, TLVPacket tlv) throws IOException {
+        tlv.add(TLVType.TLV_TYPE_COMMAND_ID, commandId);
         char[] requestID = new char[32];
         for (int i = 0; i < requestID.length; i++) {
             requestID[i] = (char) ('A' + rnd.nextInt(26));
@@ -292,7 +292,7 @@ public class Meterpreter {
      *
      * @param data The extension jar's content as a byte array
      */
-    public String[] loadExtension(byte[] data) throws Exception {
+    public Integer[] loadExtension(byte[] data) throws Exception {
         ClassLoader classLoader = getClass().getClassLoader();
         if (loadExtensions) {
             URL url = MemoryBufferURLConnection.createURL(data, "application/jar");
@@ -303,6 +303,6 @@ public class Meterpreter {
         ExtensionLoader loader = (ExtensionLoader) classLoader.loadClass(loaderName).newInstance();
         commandManager.resetNewCommands();
         loader.load(commandManager);
-        return commandManager.getNewCommands();
+        return commandManager.getNewCommandIds();
     }
 }

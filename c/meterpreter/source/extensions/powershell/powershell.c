@@ -18,10 +18,10 @@ static BOOL gSuccessfullyLoaded = FALSE;
 /*! @brief List of commands that the powershell extension provides. */
 Command customCommands[] =
 {
-	COMMAND_REQ("powershell_execute", request_powershell_execute),
-	COMMAND_REQ("powershell_shell", request_powershell_shell),
-	COMMAND_REQ("powershell_assembly_load", request_powershell_assembly_load),
-	COMMAND_REQ("powershell_session_remove", request_powershell_session_remove),
+	COMMAND_REQ(COMMAND_ID_POWERSHELL_EXECUTE, request_powershell_execute),
+	COMMAND_REQ(COMMAND_ID_POWERSHELL_SHELL, request_powershell_shell),
+	COMMAND_REQ(COMMAND_ID_POWERSHELL_ASSEMBLY_LOAD, request_powershell_assembly_load),
+	COMMAND_REQ(COMMAND_ID_POWERSHELL_SESSION_REMOVE, request_powershell_session_remove),
 	COMMAND_TERMINATOR
 };
 
@@ -61,25 +61,19 @@ DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
 }
 
 /*!
- * @brief Get the name of the extension.
- * @param buffer Pointer to the buffer to write the name to.
- * @param bufferSize Size of the \c buffer parameter.
- * @return Indication of success or failure.
- */
-DWORD __declspec(dllexport) GetExtensionName(char* buffer, int bufferSize)
-{
-	strncpy_s(buffer, bufferSize, "powershell", bufferSize - 1);
-	return ERROR_SUCCESS;
-}
-
-/*!
  * @brief Do a stageless initialisation of the extension.
+ * @param extensionId ID of the extension that the init was intended for.
  * @param buffer Pointer to the buffer that contains the init data.
  * @param bufferSize Size of the \c buffer parameter.
  * @return Indication of success or failure.
  */
-DWORD __declspec(dllexport) StagelessInit(const LPBYTE buffer, DWORD bufferSize)
+DWORD __declspec(dllexport) StagelessInit(UINT extensionId, const LPBYTE buffer, DWORD bufferSize)
 {
-	dprintf("[PSH] Executing stagless script:\n%s", (LPCSTR)buffer);
-	return invoke_startup_script((LPCSTR)buffer);
+    if (extensionId == EXTENSION_ID_POWERSHELL)
+    {
+        dprintf("[PSH] Executing stagless script:\n%s", (LPCSTR)buffer);
+        invoke_startup_script((LPCSTR)buffer);
+        dprintf("[PSH] Execution of scrip complete");
+    }
+    return ERROR_SUCCESS;
 }

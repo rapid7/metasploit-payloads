@@ -13,12 +13,12 @@ import com.metasploit.meterpreter.AndroidMeterpreter;
 import com.metasploit.meterpreter.Meterpreter;
 import com.metasploit.meterpreter.TLVPacket;
 import com.metasploit.meterpreter.command.Command;
-import com.metasploit.meterpreter.stdapi.webcam_audio_record;
+import com.metasploit.meterpreter.stdapi.stdapi_webcam_audio_record;
 
 import java.io.IOException;
 import java.lang.reflect.Method;
 
-public class webcam_start_android extends webcam_audio_record implements Command {
+public class webcam_start_android extends stdapi_webcam_audio_record implements Command {
 
     private static final int TLV_EXTENSIONS = 20000;
     private static final int TLV_TYPE_WEBCAM_INTERFACE_ID = TLVPacket.TLV_META_TYPE_UINT | (TLV_EXTENSIONS + 2);

@@ -158,7 +158,7 @@ namespace MSF.Powershell.Meterpreter
             tlv.Pack(TlvType.KiwiCmd, command);
 
             System.Diagnostics.Debug.Write("[PSH BINDING - DCSYNC] Invoking kiwi_exec_cmd");
-            var result = Core.InvokeMeterpreterBinding(true, tlv.ToRequest("kiwi_exec_cmd"));
+            var result = Core.InvokeMeterpreterBinding(true, tlv.ToRequest(CommandId.KiwiExecCmd));
             System.Diagnostics.Debug.Write("[PSH BINDING - DCSYNC] Invoked kiwi_exec_cmd");
             if (result != null)
             {

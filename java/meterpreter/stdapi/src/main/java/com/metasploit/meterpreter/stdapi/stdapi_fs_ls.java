@@ -7,11 +7,12 @@ import com.metasploit.meterpreter.Meterpreter;
 import com.metasploit.meterpreter.TLVPacket;
 import com.metasploit.meterpreter.TLVType;
 import com.metasploit.meterpreter.command.Command;
+import com.metasploit.meterpreter.command.CommandId;
 
 public class stdapi_fs_ls implements Command {
 
     public int execute(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws Exception {
-        stdapi_fs_stat statCommand = (stdapi_fs_stat) meterpreter.getCommandManager().getCommand("stdapi_fs_stat");
+        stdapi_fs_stat statCommand = (stdapi_fs_stat) meterpreter.getCommandManager().getCommand(CommandId.STDAPI_FS_STAT);
         String pathString = request.getStringValue(TLVType.TLV_TYPE_DIRECTORY_PATH);
         File path = Loader.expand(pathString);
         if (pathString.contains("*")) {

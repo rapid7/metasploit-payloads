@@ -840,20 +840,22 @@ DWORD process_channel_read(Channel *channel, Packet *request,
  * Writes data from the remote half of the channel to the process's standard
  * input handle
  */
-DWORD process_channel_write( Channel *channel, Packet *request,
-		LPVOID context, LPVOID buffer, DWORD bufferSize, LPDWORD bytesWritten )
+DWORD process_channel_write(Channel* channel, Packet* request, LPVOID context, LPVOID buffer, DWORD bufferSize, LPDWORD bytesWritten)
 {
-	ProcessChannelContext *ctx = (ProcessChannelContext *)context;
+	ProcessChannelContext* ctx = (ProcessChannelContext*)context;
 	DWORD result = ERROR_SUCCESS;
 
-	dprintf( "[PROCESS] process_channel_write. channel=0x%08X, ctx=0x%08X", channel, ctx );
+	dprintf("[PROCESS] process_channel_write. channel=0x%08X, ctx=0x%08X", channel, ctx);
 
 	if (ctx == NULL)
 	{
 		return result;
 	}
-	if ( !WriteFile( ctx->pStdin, buffer, bufferSize, bytesWritten, NULL ) )
+
+	if (!WriteFile(ctx->pStdin, buffer, bufferSize, bytesWritten, NULL))
+	{
 		result = GetLastError();
+	}
 
 	return result;
 }
@@ -918,25 +920,32 @@ DWORD process_channel_interact_destroy( HANDLE waitable, LPVOID entryContext, LP
  * Callback for when data is available on the standard output handle of
  * a process channel that is interactive mode
  */
-DWORD process_channel_interact_notify(Remote *remote, LPVOID entryContext, LPVOID threadContext)
+DWORD process_channel_interact_notify(Remote* remote, LPVOID entryContext, LPVOID threadContext)
 {
-	Channel *channel = (Channel*)entryContext;
-	ProcessChannelContext *ctx = (ProcessChannelContext *)threadContext;
+	dprintf("[PROCESS] process_channel_interact_notify: START");
+	Channel* channel = (Channel*)entryContext;
+	ProcessChannelContext* ctx = (ProcessChannelContext*)threadContext;
 	DWORD bytesRead, bytesAvail = 0;
 	CHAR buffer[16384];
 	DWORD result = ERROR_SUCCESS;
 
 	if (!met_api->channel.exists(channel) || ctx == NULL)
 	{
+		dprintf("[PROCESS] process_channel_interact_notify: channel not here, or context is NULL");
 		return result;
 	}
-	if( PeekNamedPipe( ctx->pStdout, NULL, 0, NULL, &bytesAvail, NULL ) )
+
+	dprintf("[PROCESS] process_channel_interact_notify: looking for stuff on the stdout pipe");
+	if (PeekNamedPipe(ctx->pStdout, NULL, 0, NULL, &bytesAvail, NULL))
 	{
-		if( bytesAvail )
+		dprintf("[PROCESS] process_channel_interact_notify: named pipe call returned, %u bytes", bytesAvail);
+		if (bytesAvail)
 		{
-			if( ReadFile( ctx->pStdout, buffer, sizeof(buffer) - 1, &bytesRead, NULL ) )
+			dprintf("[PROCESS] process_channel_interact_notify: attempting to read %u bytes", bytesAvail);
+			if (ReadFile(ctx->pStdout, buffer, sizeof(buffer) - 1, &bytesRead, NULL))
 			{
-				return met_api->channel.write( channel, remote, NULL, 0, buffer, bytesRead, NULL );
+				dprintf("[PROCESS] process_channel_interact_notify: read %u bytes, passing to channel write", bytesRead);
+				return met_api->channel.write(channel, remote, NULL, 0, buffer, bytesRead, NULL);
 			}
 			result = GetLastError();
 		}
@@ -944,7 +953,7 @@ DWORD process_channel_interact_notify(Remote *remote, LPVOID entryContext, LPVOI
 		{
 			// sf: if no data is available on the pipe we sleep to avoid running a tight loop
 			// in this thread, as anonymous pipes won't block for data to arrive.
-			Sleep( 100 );
+			Sleep(100);
 		}
 	}
 	else
@@ -952,42 +961,51 @@ DWORD process_channel_interact_notify(Remote *remote, LPVOID entryContext, LPVOI
 		result = GetLastError();
 	}
 
-	if( result != ERROR_SUCCESS )
+	if (result != ERROR_SUCCESS)
 	{
-		dprintf("Closing down socket: result: %d\n", result);
-		process_channel_close( channel, NULL, ctx );
-		met_api->channel.close( channel, remote, NULL, 0, NULL );
+		dprintf("Closing down channel: result: %d\n", result);
+		process_channel_close(channel, NULL, ctx);
+		met_api->channel.close(channel, remote, NULL, 0, NULL);
 	}
 
+	dprintf("[PROCESS] process_channel_interact_notify: END");
 	return result;
 }
 
 /*
  * Enables or disables interactivity with the standard output handle on the channel
  */
-DWORD process_channel_interact(Channel *channel, Packet *request, LPVOID context, BOOLEAN interact)
+DWORD process_channel_interact(Channel* channel, Packet* request, LPVOID context, BOOLEAN interact)
 {
-	ProcessChannelContext *ctx = (ProcessChannelContext *)context;
+	ProcessChannelContext* ctx = (ProcessChannelContext*)context;
 	DWORD result = ERROR_SUCCESS;
 
-	dprintf( "[PROCESS] process_channel_interact. channel=0x%08X, ctx=0x%08X, interact=%d", channel, ctx, interact );
+	dprintf("[PROCESS] process_channel_interact. channel=0x%08X, ctx=0x%08X, interact=%d", channel, ctx, interact);
 
 	if (!met_api->channel.exists(channel) || ctx == NULL)
 	{
+		dprintf("[PROCESS] process_channel_interact: Channel doesn't exist or context is NULL");
 		return result;
 	}
+
 	// If the remote side wants to interact with us, schedule the stdout handle
 	// as a waitable item
-	if (interact) {
+	if (interact)
+	{
 		// try to resume it first, if it's not there, we can create a new entry
-		if( (result = met_api->scheduler.signal_waitable( ctx->pStdout, SchedulerResume )) == ERROR_NOT_FOUND ) {
-			result = met_api->scheduler.insert_waitable( ctx->pStdout, channel, context,
+		if ((result = met_api->scheduler.signal_waitable(ctx->pStdout, SchedulerResume)) == ERROR_NOT_FOUND)
+		{
+			result = met_api->scheduler.insert_waitable(ctx->pStdout, channel, context,
 				(WaitableNotifyRoutine)process_channel_interact_notify,
-				(WaitableDestroyRoutine)process_channel_interact_destroy );
+				(WaitableDestroyRoutine)process_channel_interact_destroy);
 		}
-	} else { // Otherwise, pause it
-		result = met_api->scheduler.signal_waitable( ctx->pStdout, SchedulerPause );
 	}
+	else
+	{
+		// Otherwise, pause it
+		result = met_api->scheduler.signal_waitable(ctx->pStdout, SchedulerPause);
+	}
+	dprintf("[PROCESS] process_channel_interact: done");
 	return result;
 }
 

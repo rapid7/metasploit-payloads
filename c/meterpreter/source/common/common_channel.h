@@ -18,24 +18,15 @@ typedef enum
 
 // Direct I/O handler -- used in place of internal buffering for channels
 // that can do event based forwarding of buffers.
-typedef DWORD (*DirectIoHandler)(struct _Channel *channel, 
-		struct _ChannelBuffer *buffer, LPVOID context, ChannelDioMode mode, 
-		PUCHAR chunk, ULONG length, PULONG bytesXfered);
+typedef DWORD (*DirectIoHandler)(struct _Channel *channel, struct _ChannelBuffer *buffer, LPVOID context, ChannelDioMode mode, PUCHAR chunk, ULONG length, PULONG bytesXfered);
 
 // Asynchronous completion routines -- used with channel_open, channel_read, 
 // etc.
-typedef DWORD (*ChannelOpenCompletionRoutine)(Remote *remote,
-		struct _Channel *channel, LPVOID context, DWORD result);
-typedef DWORD (*ChannelReadCompletionRoutine)(Remote *remote,
-		struct _Channel *channel, LPVOID context, DWORD result, PUCHAR buffer, 
-		ULONG bytesRead);
-typedef DWORD (*ChannelWriteCompletionRoutine)(Remote *remote,
-		struct _Channel *channel, LPVOID context, DWORD result, 
-		ULONG bytesWritten);
-typedef DWORD (*ChannelCloseCompletionRoutine)(Remote *remote,
-		struct _Channel *channel, LPVOID context, DWORD result);
-typedef DWORD (*ChannelInteractCompletionRoutine)(Remote *remote,
-		struct _Channel *channel, LPVOID context, DWORD result);
+typedef DWORD (*ChannelOpenCompletionRoutine)(Remote *remote, struct _Channel *channel, LPVOID context, DWORD result);
+typedef DWORD (*ChannelReadCompletionRoutine)(Remote *remote, struct _Channel *channel, LPVOID context, DWORD result, PUCHAR buffer, ULONG bytesRead);
+typedef DWORD (*ChannelWriteCompletionRoutine)(Remote *remote, struct _Channel *channel, LPVOID context, DWORD result, ULONG bytesWritten);
+typedef DWORD (*ChannelCloseCompletionRoutine)(Remote *remote, struct _Channel *channel, LPVOID context, DWORD result);
+typedef DWORD (*ChannelInteractCompletionRoutine)(Remote *remote, struct _Channel *channel, LPVOID context, DWORD result);
 
 // Completion routine wrapper context
 typedef struct _ChannelCompletionRoutine
@@ -69,13 +60,9 @@ typedef struct _ChannelBuffer
 typedef struct _NativeChannelOps
 {
 	LPVOID context;
-	DWORD (*write)(struct _Channel *channel, Packet *request,
-			LPVOID context, LPVOID buffer, DWORD bufferSize,
-			LPDWORD bytesWritten);
-	DWORD (*close)(struct _Channel *channel, Packet *request,
-			LPVOID context);
-	DWORD (*interact)(struct _Channel *channel, Packet *request,
-			LPVOID context, BOOLEAN interact);
+	DWORD (*write)(struct _Channel *channel, Packet *request, LPVOID context, LPVOID buffer, DWORD bufferSize, LPDWORD bytesWritten);
+	DWORD (*close)(struct _Channel *channel, Packet *request, LPVOID context);
+	DWORD (*interact)(struct _Channel *channel, Packet *request, LPVOID context, BOOLEAN interact);
 } NativeChannelOps;
 
 // Channel operations for a stream-based channel
@@ -94,15 +81,10 @@ typedef struct _DatagramChannelOps
 typedef struct _PoolChannelOps
 {
 	NativeChannelOps native;
-	DWORD (*read)(struct _Channel *channel, Packet *request,
-			LPVOID context, LPVOID buffer, DWORD bufferSize,
-			LPDWORD bytesRead);
-	DWORD (*eof)(struct _Channel *channel, Packet *request,
-			LPVOID context, LPBOOL isEof);
-	DWORD (*seek)(struct _Channel *channel, Packet *request,
-			LPVOID context, LONG offset, DWORD whence);
-	DWORD (*tell)(struct _Channel *channel, Packet *request,
-			LPVOID context, LPLONG offset);
+	DWORD (*read)(struct _Channel *channel, Packet *request, LPVOID context, LPVOID buffer, DWORD bufferSize, LPDWORD bytesRead);
+	DWORD (*eof)(struct _Channel *channel, Packet *request, LPVOID context, LPBOOL isEof);
+	DWORD (*seek)(struct _Channel *channel, Packet *request, LPVOID context, LONG offset, DWORD whence);
+	DWORD (*tell)(struct _Channel *channel, Packet *request, LPVOID context, LPLONG offset);
 } PoolChannelOps;
 
 /*

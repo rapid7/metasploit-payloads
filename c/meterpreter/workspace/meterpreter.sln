@@ -52,6 +52,22 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ext_server_unhook", "ext_se
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "jpeg", "jpeg\jpeg.vcxproj", "{E61592E1-28F4-4AFC-9EE1-9BE833A061C1}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Common", "Common", "{EDE086F4-77A8-452B-A189-708B55F625F4}"
+	ProjectSection(SolutionItems) = preProject
+		..\source\common\common.h = ..\source\common\common.h
+		..\source\common\common_base.h = ..\source\common\common_base.h
+		..\source\common\common_channel.h = ..\source\common\common_channel.h
+		..\source\common\common_command_ids.h = ..\source\common\common_command_ids.h
+		..\source\common\common_config.h = ..\source\common\common_config.h
+		..\source\common\common_core.h = ..\source\common\common_core.h
+		..\source\common\common_list.h = ..\source\common\common_list.h
+		..\source\common\common_metapi.h = ..\source\common\common_metapi.h
+		..\source\common\common_pivot_tree.h = ..\source\common\common_pivot_tree.h
+		..\source\common\common_remote.h = ..\source\common\common_remote.h
+		..\source\common\common_scheduler.h = ..\source\common\common_scheduler.h
+		..\source\common\common_thread.h = ..\source\common\common_thread.h
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		r7_release|Win32 = r7_release|Win32

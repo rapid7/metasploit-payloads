@@ -29,7 +29,7 @@ namespace MSF.Powershell.Meterpreter
         {
             Tlv tlv = new Tlv();
 
-            var result = Core.InvokeMeterpreterBinding(true, tlv.ToRequest("stdapi_sys_config_sysinfo"));
+            var result = Core.InvokeMeterpreterBinding(true, tlv.ToRequest(CommandId.StdapiSysConfigSysinfo));
 
             if (result != null)
             {
@@ -64,7 +64,7 @@ namespace MSF.Powershell.Meterpreter
         {
             Tlv tlv = new Tlv();
 
-            var result = Core.InvokeMeterpreterBinding(true, tlv.ToRequest("stdapi_sys_process_get_processes"));
+            var result = Core.InvokeMeterpreterBinding(true, tlv.ToRequest(CommandId.StdapiSysProcessGetProcesses));
 
             if (result != null)
             {

@@ -48,7 +48,7 @@ namespace MSF.Powershell.Meterpreter
             tlv.Pack(TlvType.IncognitoUserName, username);
             tlv.Pack(TlvType.IncognitoPassword, password);
 
-            var result = Core.InvokeMeterpreterBinding(true, tlv.ToRequest("incognito_add_user"));
+            var result = Core.InvokeMeterpreterBinding(true, tlv.ToRequest(CommandId.IncognitoAddUser));
 
             if (result != null)
             {
@@ -69,15 +69,15 @@ namespace MSF.Powershell.Meterpreter
 
         public static bool AddGroupUser(string server, string group, string username)
         {
-            return AddGroupUserInternal("incognito_add_group_user", server, group, username);
+            return AddGroupUserInternal(CommandId.IncognitoAddGroupUser, server, group, username);
         }
         
         public static bool AddLocalGroupUser(string server, string group, string username)
         {
-            return AddGroupUserInternal("incognito_add_localgroup_user", server, group, username);
+            return AddGroupUserInternal(CommandId.IncognitoAddLocalgroupUser, server, group, username);
         }
         
-        private static bool AddGroupUserInternal(string msg, string server, string group, string username)
+        private static bool AddGroupUserInternal(CommandId commandId, string server, string group, string username)
         {
             System.Diagnostics.Debug.Write("[PSH BINDING] Invoking binding call AddGroupUserInternal");
 
@@ -86,7 +86,7 @@ namespace MSF.Powershell.Meterpreter
             tlv.Pack(TlvType.IncognitoGroupName, group);
             tlv.Pack(TlvType.IncognitoUserName, username);
 
-            var result = Core.InvokeMeterpreterBinding(true, tlv.ToRequest(msg));
+            var result = Core.InvokeMeterpreterBinding(true, tlv.ToRequest(commandId));
 
             if (result != null)
             {
@@ -111,7 +111,7 @@ namespace MSF.Powershell.Meterpreter
 
             Tlv tlv = new Tlv();
 
-            var result = Core.InvokeMeterpreterBinding(true, tlv.ToRequest("incognito_snarf_hashes"));
+            var result = Core.InvokeMeterpreterBinding(true, tlv.ToRequest(CommandId.IncognitoSnarfHashes));
 
             if (result != null)
             {
@@ -137,7 +137,7 @@ namespace MSF.Powershell.Meterpreter
             Tlv tlv = new Tlv();
             tlv.Pack(TlvType.IncognitoImpersonateToken, user);
 
-            var result = Core.InvokeMeterpreterBinding(true, tlv.ToRequest("incognito_impersonate_token"));
+            var result = Core.InvokeMeterpreterBinding(true, tlv.ToRequest(CommandId.IncognitoImpersonateToken));
 
             if (result != null)
             {
@@ -173,7 +173,7 @@ namespace MSF.Powershell.Meterpreter
             Tlv tlv = new Tlv();
             tlv.Pack(TlvType.IncognitoListTokensTokenOrder, (int)type);
 
-            var result = Core.InvokeMeterpreterBinding(true, tlv.ToRequest("incognito_list_tokens"));
+            var result = Core.InvokeMeterpreterBinding(true, tlv.ToRequest(CommandId.IncognitoListTokens));
 
             if (result != null)
             {

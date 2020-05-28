@@ -23,8 +23,8 @@ Remote* gRemote = NULL;
 /*! @brief List of commands that the extended API extension providers. */
 Command customCommands[] =
 {
-	COMMAND_REQ("python_reset", request_python_reset),
-	COMMAND_REQ("python_execute", request_python_execute),
+	COMMAND_REQ(COMMAND_ID_PYTHON_RESET, request_python_reset),
+	COMMAND_REQ(COMMAND_ID_PYTHON_EXECUTE, request_python_execute),
 	COMMAND_TERMINATOR
 };
 
@@ -55,11 +55,11 @@ BOOL WINAPI DllMain( HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpReserved )
 
 /*!
  * @brief Callback for when a command has been added to the meterpreter instance.
- * @param commandName The name of the command that has been added.
+ * @param commandId The ID of the command that has been added.
  */
-VOID __declspec(dllexport) CommandAdded(const char* commandName)
+VOID __declspec(dllexport) CommandAdded(UINT commandId)
 {
-	binding_add_command(commandName);
+	binding_add_command(commandId);
 }
 
 /*!
@@ -100,26 +100,18 @@ DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
 }
 
 /*!
- * @brief Get the name of the extension.
- * @param buffer Pointer to the buffer to write the name to.
- * @param bufferSize Size of the \c buffer parameter.
- * @return Indication of success or failure.
- */
-DWORD __declspec(dllexport) GetExtensionName(char* buffer, int bufferSize)
-{
-	strncpy_s(buffer, bufferSize, "python", bufferSize - 1);
-	return ERROR_SUCCESS;
-}
-
-/*!
  * @brief Do a stageless initialisation of the extension.
+ * @param extensionId ID of the extension that the init was intended for.
  * @param buffer Pointer to the buffer that contains the init data.
  * @param bufferSize Size of the \c buffer parameter.
  * @return Indication of success or failure.
  */
-DWORD __declspec(dllexport) StagelessInit(const LPBYTE buffer, DWORD bufferSize)
+DWORD __declspec(dllexport) StagelessInit(UINT extensionId, const LPBYTE buffer, DWORD bufferSize)
 {
-	dprintf("[PYTHON] Executing stagless script:\n%s", (LPCSTR)buffer);
-	python_execute(NULL, (LPSTR)buffer, bufferSize, PY_CODE_TYPE_PY, NULL, NULL);
-	return ERROR_SUCCESS;
+    if (extensionId == EXTENSION_ID_PYTHON)
+    {
+        dprintf("[PSH] Executing stagless script:\n%s", (LPCSTR)buffer);
+		python_execute(NULL, (LPSTR)buffer, bufferSize, PY_CODE_TYPE_PY, NULL, NULL);
+    }
+    return ERROR_SUCCESS;
 }

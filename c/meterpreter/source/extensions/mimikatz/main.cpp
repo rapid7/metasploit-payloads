@@ -86,7 +86,7 @@ extern "C"
 
 	Command customCommands[] =
 	{
-		COMMAND_REQ("mimikatz_custom_command", request_custom_command),
+		COMMAND_REQ(COMMAND_ID_MIMIKATZ_CUSTOM_COMMAND, request_custom_command),
 		COMMAND_TERMINATOR
 	};
 
@@ -114,18 +114,6 @@ extern "C"
 	{
 		met_api->command.deregister_all(customCommands);
 
-		return ERROR_SUCCESS;
-	}
-
-	/*!
-	 * @brief Get the name of the extension.
-	 * @param buffer Pointer to the buffer to write the name to.
-	 * @param bufferSize Size of the \c buffer parameter.
-	 * @return Indication of success or failure.
-	 */
-	DWORD __declspec(dllexport) GetExtensionName(char* buffer, int bufferSize)
-	{
-		strncpy_s(buffer, bufferSize, "mimikatz", bufferSize - 1);
 		return ERROR_SUCCESS;
 	}
 }

@@ -26,7 +26,7 @@ DWORD request_kerberos_ticket_use(Remote *remote, Packet *packet);
 /*! @brief The enabled commands for this extension. */
 Command customCommands[] =
 {
-    COMMAND_REQ("kiwi_exec_cmd", request_exec_cmd),
+    COMMAND_REQ(COMMAND_ID_KIWI_EXEC_CMD, request_exec_cmd),
     COMMAND_TERMINATOR
 };
 
@@ -102,17 +102,5 @@ DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
 	mimikatz_initOrClean(FALSE);
 	met_api->command.deregister_all(customCommands);
 
-	return ERROR_SUCCESS;
-}
-
-/*!
- * @brief Get the name of the extension.
- * @param buffer Pointer to the buffer to write the name to.
- * @param bufferSize Size of the \c buffer parameter.
- * @return Indication of success or failure.
- */
-DWORD __declspec(dllexport) GetExtensionName(char* buffer, int bufferSize)
-{
-	strncpy_s(buffer, bufferSize, "kiwi", bufferSize - 1);
 	return ERROR_SUCCESS;
 }

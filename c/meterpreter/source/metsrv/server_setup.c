@@ -80,18 +80,22 @@ LPBYTE load_stageless_extensions(Remote* remote, MetsrvExtension* stagelessExten
 	// once we have reached the end, we may have extension initializers
 	LPBYTE initData = (LPBYTE)(&stagelessExtensions->size) + sizeof(stagelessExtensions->size);
 
-	while (*initData != '\0')
+	// Config blog is terminated by a -1
+	while (*(UINT*)initData != 0xFFFFFFFF)
 	{
-		const char* extensionName = (const char*)initData;
-		LPBYTE data = initData + strlen(extensionName) + 1 + sizeof(DWORD);
-		DWORD dataSize = *(DWORD*)(data - sizeof(DWORD));
-		dprintf("[STAGELESS] init data at %p, name %s, size is %d", extensionName, extensionName, dataSize);
-		stagelessinit_extension(extensionName, data, dataSize);
+		UINT extensionId = *(UINT*)initData;
+		DWORD dataSize = *(DWORD*)(initData + sizeof(DWORD));
+		UINT offset = sizeof(UINT) + sizeof(DWORD);
+		LPBYTE data = initData + offset;
+		dprintf("[STAGELESS] init data at %p, ID %u, size is %d", initData, extensionId, dataSize);
+		stagelessinit_extension(extensionId, data, dataSize);
 		initData = data + dataSize;
+		dprintf("[STAGELESS] init done, now pointing to %p", initData);
+		dprintf("[STAGELESS] %p contains %x", *(UINT*)initData);
 	}
 
 	dprintf("[SERVER] All stageless extensions initialised");
-	return initData;
+	return initData + sizeof(UINT);
 }
 
 static Transport* create_transport(Remote* remote, MetsrvTransportCommon* transportCommon, LPDWORD size)
@@ -372,6 +376,7 @@ DWORD server_setup(MetsrvConfig* config)
 			// this has to be done after dispatch routine are registered
 			LPBYTE configEnd = load_stageless_extensions(remote, (MetsrvExtension*)((LPBYTE)config->transports + transportSize));
 
+			dprintf("[SERVER] Copying configuration ..");
 			// the original config can actually be mapped as RX in cases such as when stageless payloads
 			// are baked directly into .NET assemblies. We need to make sure that this area of memory includes
 			// The writable flag as well otherwise we get access violations when we're interacting with the
@@ -380,6 +385,7 @@ DWORD server_setup(MetsrvConfig* config)
 			DWORD_PTR configSize = (DWORD_PTR)configEnd - (DWORD_PTR)config;
 			remote->orig_config = (MetsrvConfig*)malloc(configSize);
 			memcpy_s(remote->orig_config, configSize, config, configSize);
+			dprintf("[SERVER] Config copied..");
 
 			// Store our process token
 			if (!OpenThreadToken(remote->server_thread, TOKEN_ALL_ACCESS, TRUE, &remote->server_token))
@@ -408,6 +414,7 @@ DWORD server_setup(MetsrvConfig* config)
 
 			remote->sess_start_time = current_unix_timestamp();
 
+			dprintf("[SERVER] Time to kick off connectivity to MSF ...");
 			// loop through the transports, reconnecting each time.
 			while (remote->transport)
 			{

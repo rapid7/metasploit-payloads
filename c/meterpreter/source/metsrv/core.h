@@ -14,7 +14,7 @@
 /*
  * Packet manipulation
  */
-Packet *packet_create(PacketTlvType type, LPCSTR method);
+Packet* packet_create(PacketTlvType type, UINT commandId);
 Packet *packet_create_response(Packet *packet);
 Packet* packet_create_group();
 Packet *packet_duplicate(Packet *packet);

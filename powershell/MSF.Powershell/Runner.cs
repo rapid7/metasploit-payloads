@@ -161,6 +161,7 @@ namespace MSF.Powershell
             {
                 var output = _ui.ToString();
                 _ui.Clear();
+                System.Diagnostics.Debug.Write(string.Format("Output: {0}", output));
                 return output;
             }
 

@@ -10,7 +10,7 @@
 
             Tlv tlv = new Tlv();
 
-            var result = Core.InvokeMeterpreterBinding(true, tlv.ToRequest("stdapi_sys_config_getuid"));
+            var result = Core.InvokeMeterpreterBinding(true, tlv.ToRequest(CommandId.StdapiSysConfigGetuid));
 
             if (result != null)
             {
@@ -31,7 +31,7 @@
 
             Tlv tlv = new Tlv();
 
-            var result = Core.InvokeMeterpreterBinding(true, tlv.ToRequest("stdapi_sys_config_getsid"));
+            var result = Core.InvokeMeterpreterBinding(true, tlv.ToRequest(CommandId.StdapiSysConfigGetsid));
 
             if (result != null)
             {

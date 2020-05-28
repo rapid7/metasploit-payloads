@@ -22,22 +22,23 @@ BOOL request_core_patch_url(Remote* remote, Packet* packet, DWORD* result);
 // Dispatch table
 Command customCommands[] =
 {
-	COMMAND_REQ("core_loadlib", request_core_loadlib),
-	COMMAND_REQ("core_enumextcmd", request_core_enumextcmd),
-	COMMAND_REQ("core_machine_id", request_core_machine_id),
-	COMMAND_REQ("core_get_session_guid", request_core_get_session_guid),
-	COMMAND_REQ("core_set_session_guid", request_core_set_session_guid),
-	COMMAND_REQ("core_set_uuid", request_core_set_uuid),
-	COMMAND_REQ("core_pivot_add", request_core_pivot_add),
-	COMMAND_REQ("core_pivot_remove", request_core_pivot_remove),
-	COMMAND_INLINE_REP("core_patch_url", request_core_patch_url),
+	COMMAND_REQ(COMMAND_ID_CORE_LOADLIB, request_core_loadlib),
+	COMMAND_REQ(COMMAND_ID_CORE_ENUMEXTCMD, request_core_enumextcmd),
+	COMMAND_REQ(COMMAND_ID_CORE_MACHINE_ID, request_core_machine_id),
+	COMMAND_REQ(COMMAND_ID_CORE_GET_SESSION_GUID, request_core_get_session_guid),
+	COMMAND_REQ(COMMAND_ID_CORE_SET_SESSION_GUID, request_core_set_session_guid),
+	COMMAND_REQ(COMMAND_ID_CORE_SET_UUID, request_core_set_uuid),
+	COMMAND_REQ(COMMAND_ID_CORE_PIVOT_ADD, request_core_pivot_add),
+	COMMAND_REQ(COMMAND_ID_CORE_PIVOT_REMOVE, request_core_pivot_remove),
+	COMMAND_INLINE_REP(COMMAND_ID_CORE_PATCH_URL, request_core_patch_url),
 	COMMAND_TERMINATOR
 };
 
 typedef struct _EnumExtensions
 {
 	Packet* pResponse;
-	char* lpExtensionName;
+	UINT command_id_start;
+	UINT command_id_end;
 } EnumExtensions, * PEnumExtensions;
 
 
@@ -87,16 +88,13 @@ BOOL ext_cmd_callback(LPVOID pState, LPVOID pData)
 	if (pEnum != NULL && pEnum->pResponse != NULL && pData != NULL)
 	{
 		PEXTENSION pExt = (PEXTENSION)pData;
-		if (pExt->name[0] != '\0' && pEnum->lpExtensionName != NULL && strcmp(pExt->name, pEnum->lpExtensionName) == 0)
+		for (command = pExt->start; command != pExt->end; command = command->next)
 		{
-			dprintf("[LISTEXT] Found extension: %s", pExt->name);
-			for (command = pExt->start; command != pExt->end; command = command->next)
+			if (pEnum->command_id_start < command->command_id && command->command_id < pEnum->command_id_end)
 			{
-				packet_add_tlv_string(pEnum->pResponse, TLV_TYPE_STRING, command->method);
+				dprintf("[DISPATCH] Adding command ID %u", command->command_id);
+				packet_add_tlv_uint(pEnum->pResponse, TLV_TYPE_UINT, command->command_id);
 			}
-			dprintf("[LISTEXT] Finished listing extension: %s", pExt->name);
-
-			return TRUE;
 		}
 	}
 	return FALSE;
@@ -131,9 +129,10 @@ DWORD request_core_enumextcmd(Remote* remote, Packet* packet)
 	{
 		EnumExtensions enumExt;
 		enumExt.pResponse = pResponse;
-		enumExt.lpExtensionName = packet_get_tlv_value_string(packet, TLV_TYPE_STRING);
+		enumExt.command_id_start = packet_get_tlv_value_uint(packet, TLV_TYPE_UINT);
+		enumExt.command_id_end = packet_get_tlv_value_uint(packet, TLV_TYPE_LENGTH) + enumExt.command_id_start;
 
-		dprintf("[LISTEXTCMD] Listing extension commands for %s ...", enumExt.lpExtensionName);
+		dprintf("[LISTEXTCMD] Listing extension commands between %u and %u", enumExt.command_id_start, enumExt.command_id_end);
 		// Start by enumerating the names of the extensions
 		bResult = list_enumerate(gExtensionList, ext_cmd_callback, &enumExt);
 
@@ -182,26 +181,25 @@ VOID deregister_dispatch_routines(Remote * remote)
 
 /*
  * @brief Perform the initialisation of stageless extensions, if rquired.
- * @param extensionName The name of the extension to initialise.
+ * @param extensionId The id of the extension
  * @param data Pointer to the data containing the initialisation data.
  * @param dataSize Size of the data referenced by \c data.
  * @returns Indication of success or failure.
  */
-DWORD stagelessinit_extension(const char* extensionName, LPBYTE data, DWORD dataSize)
+DWORD stagelessinit_extension(UINT extensionId, LPBYTE data, DWORD dataSize)
 {
-	dprintf("[STAGELESSINIT] searching for extension init for %s in %p", extensionName, gExtensionList);
+	dprintf("[STAGELESSINIT] searching for extension init for %u in %p", extensionId, gExtensionList);
 	dprintf("[STAGELESSINIT] extension list start is %p", gExtensionList->start);
 	for (PNODE node = gExtensionList->start; node != NULL; node = node->next)
 	{
 		PEXTENSION ext = (PEXTENSION)node->data;
-		dprintf("[STAGELESSINIT] comparing to %s (init is %p)", ext->name, ext->stagelessInit);
-		if (strcmp(ext->name, extensionName) == 0 && ext->stagelessInit != NULL)
+		if (ext->stagelessInit != NULL)
 		{
-			dprintf("[STAGELESSINIT] found for %s", extensionName);
-			return ext->stagelessInit(data, dataSize);
+			dprintf("[STAGELESSINIT] passing stageless init");
+			ext->stagelessInit(extensionId, data, dataSize);
 		}
 	}
-	return ERROR_NOT_FOUND;
+	return ERROR_SUCCESS;
 }
 
 /*
@@ -230,7 +228,6 @@ DWORD load_extension(HMODULE hLibrary, BOOL bLibLoadedReflectivly, Remote* remot
 		{
 			pExtension->init = (PSRVINIT)GetProcAddressR(pExtension->library, "InitServerExtension");
 			pExtension->deinit = (PSRVDEINIT)GetProcAddressR(pExtension->library, "DeinitServerExtension");
-			pExtension->getname = (PSRVGETNAME)GetProcAddressR(pExtension->library, "GetExtensionName");
 			pExtension->commandAdded = (PCMDADDED)GetProcAddressR(pExtension->library, "CommandAdded");
 			pExtension->stagelessInit = (PSTAGELESSINIT)GetProcAddressR(pExtension->library, "StagelessInit");
 		}
@@ -238,7 +235,6 @@ DWORD load_extension(HMODULE hLibrary, BOOL bLibLoadedReflectivly, Remote* remot
 		{
 			pExtension->init = (PSRVINIT)GetProcAddress(pExtension->library, "InitServerExtension");
 			pExtension->deinit = (PSRVDEINIT)GetProcAddress(pExtension->library, "DeinitServerExtension");
-			pExtension->getname = (PSRVGETNAME)GetProcAddress(pExtension->library, "GetExtensionName");
 			pExtension->commandAdded = (PCMDADDED)GetProcAddress(pExtension->library, "CommandAdded");
 			pExtension->stagelessInit = (PSTAGELESSINIT)GetProcAddress(pExtension->library, "StagelessInit");
 		}
@@ -261,13 +257,8 @@ DWORD load_extension(HMODULE hLibrary, BOOL bLibLoadedReflectivly, Remote* remot
 				{
 					for (Command* command = pExtension->end; command != NULL; command = command->next)
 					{
-						pExtension->commandAdded(command->method);
+						pExtension->commandAdded(command->command_id);
 					}
-				}
-
-				if (pExtension->getname)
-				{
-					pExtension->getname(pExtension->name, sizeof(pExtension->name));
 				}
 
 				list_push(gExtensionList, pExtension);
@@ -283,7 +274,8 @@ DWORD load_extension(HMODULE hLibrary, BOOL bLibLoadedReflectivly, Remote* remot
 		{
 			for (Command* command = pExtension->start; command != pExtension->end; command = command->next)
 			{
-				packet_add_tlv_string(response, TLV_TYPE_METHOD, command->method);
+				dprintf("[LOAD EXTENSION] Adding command ID to response: %u", command->command_id);
+				packet_add_tlv_uint(response, TLV_TYPE_UINT, command->command_id);
 
 				// inform existing extensions of the new commands
 				for (PNODE node = gExtensionList->start; node != NULL; node = node->next)
@@ -292,7 +284,7 @@ DWORD load_extension(HMODULE hLibrary, BOOL bLibLoadedReflectivly, Remote* remot
 					// don't inform the extension of itself
 					if (ext != pExtension && ext->commandAdded)
 					{
-						ext->commandAdded(command->method);
+						ext->commandAdded(command->command_id);
 					}
 				}
 			}

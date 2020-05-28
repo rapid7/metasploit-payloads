@@ -1269,14 +1269,6 @@ def stdapi_fs_chdir(request, response):
     return ERROR_SUCCESS, response
 
 @register_function
-def stdapi_fs_delete(request, response):
-    file_path = unicode(packet_get_tlv(request, TLV_TYPE_FILE_NAME)['value'])
-    if has_windll:
-        subprocess.call(unicode("attrib.exe -r ") + file_path)
-    os.unlink(file_path)
-    return ERROR_SUCCESS, response
-
-@register_function
 def stdapi_fs_delete_dir(request, response):
     dir_path = packet_get_tlv(request, TLV_TYPE_DIRECTORY_PATH)['value']
     dir_path = unicode(dir_path)

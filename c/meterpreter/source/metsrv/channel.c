@@ -260,8 +260,7 @@ PVOID channel_get_buffered_io_context(Channel *channel)
 DWORD channel_write_to_remote(Remote *remote, Channel *channel, PUCHAR chunk, 
 		ULONG chunkLength, PULONG bytesWritten)
 {
-	Packet *request = packet_create(PACKET_TLV_TYPE_REQUEST, 
-			"core_channel_write");
+	Packet *request = packet_create(PACKET_TLV_TYPE_REQUEST, COMMAND_ID_CORE_CHANNEL_WRITE);
 	DWORD res = ERROR_SUCCESS;
 	Tlv entries[2];
 	DWORD idNbo;
@@ -386,7 +385,7 @@ ChannelCompletionRoutine *channel_duplicate_completion_routine(
  * Channel completion routine dispatcher
  */
 DWORD _channel_packet_completion_routine(Remote *remote, Packet *packet, 
-		LPVOID context, LPCSTR method, DWORD result)
+		LPVOID context, UINT commandId, DWORD result)
 {
 	ChannelCompletionRoutine *comp = (ChannelCompletionRoutine *)context;
 	DWORD channelId = packet_get_tlv_value_uint(packet, TLV_TYPE_CHANNEL_ID);
@@ -394,17 +393,19 @@ DWORD _channel_packet_completion_routine(Remote *remote, Packet *packet,
 	DWORD res = ERROR_NOT_FOUND;
 
 
-	dprintf( "[CHANNEL] _channel_packet_completion_routine. channel=0x%08X method=%s", channel, method );
+	dprintf( "[CHANNEL] _channel_packet_completion_routine. channel=0x%08X commandId=%u", channel, commandId );
 
 	// If the channel was not found and it isn't an open request, return failure
-	if (!channel && strcmp(method, "core_channel_open"))
+	if (!channel && COMMAND_ID_CORE_CHANNEL_OPEN != commandId)
+	{
 		return ERROR_NOT_FOUND;
+	}
 
-	if ((!strcmp(method, "core_channel_open")) &&
-	    (comp->routine.open))
+	if (COMMAND_ID_CORE_CHANNEL_OPEN == commandId && comp->routine.open)
+	{
 		res = comp->routine.open(remote, channel, comp->context, result);
-	else if ((!strcmp(method, "core_channel_read")) &&
-	         (comp->routine.read))
+	}
+	else if (COMMAND_ID_CORE_CHANNEL_READ == commandId && comp->routine.read)
 	{
 		ULONG length = 0, realLength = 0;
 		PUCHAR buffer = NULL;
@@ -413,42 +414,42 @@ DWORD _channel_packet_completion_routine(Remote *remote, Packet *packet,
 		length = packet_get_tlv_value_uint(packet, TLV_TYPE_LENGTH);
 
 		// Allocate storage for it
-		if ((length) && (buffer = (PUCHAR)malloc(length)))
+		if (length && (buffer = (PUCHAR)malloc(length)))
 		{
 			memset(buffer, 0, length);
 
 			channel_read_from_buffered(channel, buffer, length, &realLength);
 		}
 
-		res = comp->routine.read(remote, channel, comp->context, result,
-				buffer, realLength);
+		res = comp->routine.read(remote, channel, comp->context, result, buffer, realLength);
 
 		if (buffer)
+		{
 			free(buffer);
+		}
 	}
-	else if ((!strcmp(method, "core_channel_write")) &&
-	         (comp->routine.write))
+	else if (COMMAND_ID_CORE_CHANNEL_WRITE == commandId && comp->routine.write)
 	{
 		Tlv lengthTlv;
 		ULONG length = 0;
 
 		// Get the number of bytes written to the channel
-		if ((packet_get_tlv(packet, TLV_TYPE_LENGTH, &lengthTlv)
-				== ERROR_SUCCESS) &&
-		    (lengthTlv.header.length >= sizeof(DWORD)))
+		if ((packet_get_tlv(packet, TLV_TYPE_LENGTH, &lengthTlv) == ERROR_SUCCESS) && (lengthTlv.header.length >= sizeof(DWORD)))
+		{
 			length = ntohl(*(LPDWORD)lengthTlv.buffer);
+		}
 
-		res = comp->routine.write(remote, channel, comp->context, result,
-				length);
+		res = comp->routine.write(remote, channel, comp->context, result, length);
 	}
-	else if ((!strcmp(method, "core_channel_close")) &&
-	         (comp->routine.close)) {
+	else if (COMMAND_ID_CORE_CHANNEL_CLOSE == commandId && comp->routine.close)
+	{
 		dprintf( "[CHANNEL] freeing up the completion context" );
 		res = comp->routine.close(remote, channel, comp->context, result);
 	}
-	else if ((!strcmp(method, "core_channel_interact")) &&
-	         (comp->routine.interact))
+	else if (COMMAND_ID_CORE_CHANNEL_INTERACT == commandId && comp->routine.interact)
+	{
 		res = comp->routine.interact(remote, channel, comp->context, result);
+	}
 
 	// Deallocate the completion context
 	dprintf( "[CHANNEL] freeing up the completion context" );
@@ -464,16 +465,13 @@ DWORD _channel_packet_completion_routine(Remote *remote, Packet *packet,
 DWORD channel_open(Remote *remote, Tlv *addend, DWORD addendLength, ChannelCompletionRoutine *completionRoutine)
 {
 	PacketRequestCompletion requestCompletion, *realRequestCompletion = NULL;
-	ChannelCompletionRoutine *dupe = NULL;
 	DWORD res = ERROR_SUCCESS;
-	PCHAR method = "core_channel_open";
-	Packet *request;
-	Tlv methodTlv;
+	Tlv commandIdTlv;
 
 	do
 	{
-		// Allocate the request
-		if (!(request = packet_create(PACKET_TLV_TYPE_REQUEST, NULL)))
+		Packet* request = packet_create(PACKET_TLV_TYPE_REQUEST, 0);
+		if (request == NULL)
 		{
 			res = ERROR_NOT_ENOUGH_MEMORY;
 			break;
@@ -483,18 +481,16 @@ DWORD channel_open(Remote *remote, Tlv *addend, DWORD addendLength, ChannelCompl
 		packet_add_tlvs(request, addend, addendLength);
 
 		// If no method TLV as added, add the default one.
-		if (packet_get_tlv(request, TLV_TYPE_METHOD, &methodTlv) != ERROR_SUCCESS)
+		if (packet_get_tlv(request, TLV_TYPE_COMMAND_ID, &commandIdTlv) != ERROR_SUCCESS)
 		{
-			packet_add_tlv_string(request, TLV_TYPE_METHOD, method);
+			packet_add_tlv_uint(request, TLV_TYPE_COMMAND_ID, COMMAND_ID_CORE_CHANNEL_OPEN);
 		}
 
 		// Initialize the packet completion routine
 		if (completionRoutine)
 		{
 			// Duplicate the completion routine
-			dupe = channel_duplicate_completion_routine(completionRoutine);
-
-			requestCompletion.context = dupe;
+			requestCompletion.context = channel_duplicate_completion_routine(completionRoutine);
 			requestCompletion.routine = _channel_packet_completion_routine;
 			realRequestCompletion = &requestCompletion;
 		}
@@ -511,20 +507,16 @@ DWORD channel_open(Remote *remote, Tlv *addend, DWORD addendLength, ChannelCompl
  * Read data from the remote end of the channel.
  */
 DWORD channel_read(Channel *channel, Remote *remote, Tlv *addend,
-	DWORD addendLength, ULONG length,
-	ChannelCompletionRoutine *completionRoutine)
+	DWORD addendLength, ULONG length, ChannelCompletionRoutine *completionRoutine)
 {
 	PacketRequestCompletion requestCompletion, *realRequestCompletion = NULL;
-	ChannelCompletionRoutine *dupe = NULL;
-	Packet *request;
 	DWORD res = ERROR_SUCCESS;
-	PCHAR method = "core_channel_read";
-	Tlv methodTlv;
+	Tlv commandIdTlv;
 
 	do
 	{
-		// Allocate an empty request
-		if (!(request = packet_create(PACKET_TLV_TYPE_REQUEST, NULL)))
+		Packet* request= packet_create(PACKET_TLV_TYPE_REQUEST, 0);
+		if (request == NULL)
 		{
 			res = ERROR_NOT_ENOUGH_MEMORY;
 			break;
@@ -534,9 +526,9 @@ DWORD channel_read(Channel *channel, Remote *remote, Tlv *addend,
 		packet_add_tlvs(request, addend, addendLength);
 
 		// If no method TLV as added, add the default one.
-		if (packet_get_tlv(request, TLV_TYPE_METHOD, &methodTlv) != ERROR_SUCCESS)
+		if (packet_get_tlv(request, TLV_TYPE_COMMAND_ID, &commandIdTlv) != ERROR_SUCCESS)
 		{
-			packet_add_tlv_string(request, TLV_TYPE_METHOD, method);
+			packet_add_tlv_uint(request, TLV_TYPE_COMMAND_ID, COMMAND_ID_CORE_CHANNEL_READ);
 		}
 
 		// Add the channel identifier and the length to read
@@ -547,9 +539,7 @@ DWORD channel_read(Channel *channel, Remote *remote, Tlv *addend,
 		if (completionRoutine)
 		{
 			// Duplicate the completion routine
-			dupe = channel_duplicate_completion_routine(completionRoutine);
-
-			requestCompletion.context = dupe;
+			requestCompletion.context = channel_duplicate_completion_routine(completionRoutine);
 			requestCompletion.routine = _channel_packet_completion_routine;
 			realRequestCompletion = &requestCompletion;
 		}
@@ -565,33 +555,35 @@ DWORD channel_read(Channel *channel, Remote *remote, Tlv *addend,
 /*
  * Write to the remote end of the channel
  */
-DWORD channel_write(Channel *channel, Remote *remote, Tlv *addend,
-	DWORD addendLength, PUCHAR buffer, ULONG length,
-	ChannelCompletionRoutine *completionRoutine)
+DWORD channel_write(Channel *channel, Remote *remote, Tlv *addend, DWORD addendLength, PUCHAR buffer, ULONG length, ChannelCompletionRoutine *completionRoutine)
 {
 	PacketRequestCompletion requestCompletion, *realRequestCompletion = NULL;
-	ChannelCompletionRoutine *dupe = NULL;
 	DWORD res = ERROR_SUCCESS;
-	LPCSTR method = "core_channel_write";
-	Packet *request;
-	Tlv methodTlv;
+	Tlv commandIdTlv;
 
 	do
 	{
-		// Allocate a request packet
-		if (!(request = packet_create(PACKET_TLV_TYPE_REQUEST, NULL)))
+		Packet *request = packet_create(PACKET_TLV_TYPE_REQUEST, 0);
+		if (request == NULL)
 		{
 			res = ERROR_NOT_ENOUGH_MEMORY;
 			break;
 		}
 
+		dprintf("[CHANNEL] channel_write: adding TLVs");
+
 		// Add the supplied TLVs
 		packet_add_tlvs(request, addend, addendLength);
 
 		// If no method TLV as added, add the default one.
-		if (packet_get_tlv(request, TLV_TYPE_METHOD, &methodTlv) != ERROR_SUCCESS)
+		if (packet_get_tlv(request, TLV_TYPE_COMMAND_ID, &commandIdTlv) != ERROR_SUCCESS)
 		{
-			packet_add_tlv_string(request, TLV_TYPE_METHOD, method);
+			dprintf("[CHANNEL] channel_write: adding command id of %u", COMMAND_ID_CORE_CHANNEL_WRITE);
+			packet_add_tlv_uint(request, TLV_TYPE_COMMAND_ID, COMMAND_ID_CORE_CHANNEL_WRITE);
+		}
+		else
+		{
+			dprintf("[CHANNEL] channel_write: apparently already have a command ID of %u", packet_get_tlv_value_uint(request, TLV_TYPE_COMMAND_ID));
 		}
 
 		// Add the channel identifier and the length to write
@@ -613,9 +605,7 @@ DWORD channel_write(Channel *channel, Remote *remote, Tlv *addend,
 		if (completionRoutine)
 		{
 			// Duplicate the completion routine
-			dupe = channel_duplicate_completion_routine(completionRoutine);
-
-			requestCompletion.context = dupe;
+			requestCompletion.context = channel_duplicate_completion_routine(completionRoutine);
 			requestCompletion.routine = _channel_packet_completion_routine;
 			realRequestCompletion = &requestCompletion;
 		}
@@ -635,15 +625,13 @@ DWORD channel_close(Channel *channel, Remote *remote, Tlv *addend,
 	DWORD addendLength, ChannelCompletionRoutine *completionRoutine)
 {
 	PacketRequestCompletion requestCompletion, *realRequestCompletion = NULL;
-	ChannelCompletionRoutine *dupe = NULL;
-	LPCSTR method = "core_channel_close";
 	DWORD res = ERROR_SUCCESS;
-	Packet *request;
-	Tlv methodTlv;
+	Tlv commandIdTlv;
 
 	do
 	{
-		if (!(request = packet_create(PACKET_TLV_TYPE_REQUEST, NULL)))
+		Packet *request = packet_create(PACKET_TLV_TYPE_REQUEST, 0);
+		if (request == NULL)
 		{
 			res = ERROR_NOT_ENOUGH_MEMORY;
 			break;
@@ -653,9 +641,9 @@ DWORD channel_close(Channel *channel, Remote *remote, Tlv *addend,
 		packet_add_tlvs(request, addend, addendLength);
 
 		// If no method TLV as added, add the default one.
-		if (packet_get_tlv(request, TLV_TYPE_METHOD, &methodTlv) != ERROR_SUCCESS)
+		if (packet_get_tlv(request, TLV_TYPE_COMMAND_ID, &commandIdTlv) != ERROR_SUCCESS)
 		{
-			packet_add_tlv_string(request, TLV_TYPE_METHOD, method);
+			packet_add_tlv_uint(request, TLV_TYPE_COMMAND_ID, COMMAND_ID_CORE_CHANNEL_CLOSE);
 		}
 
 		// Add the channel identifier
@@ -665,9 +653,7 @@ DWORD channel_close(Channel *channel, Remote *remote, Tlv *addend,
 		if (completionRoutine)
 		{
 			// Duplicate the completion routine
-			dupe = channel_duplicate_completion_routine(completionRoutine);
-
-			requestCompletion.context = dupe;
+			requestCompletion.context = channel_duplicate_completion_routine(completionRoutine);
 			requestCompletion.routine = _channel_packet_completion_routine;
 			realRequestCompletion = &requestCompletion;
 		}
@@ -687,19 +673,16 @@ DWORD channel_close(Channel *channel, Remote *remote, Tlv *addend,
  * forwarded in real time rather than being polled.
  */
 DWORD channel_interact(Channel *channel, Remote *remote, Tlv *addend,
-	DWORD addendLength, BOOL enable,
-	ChannelCompletionRoutine *completionRoutine)
+	DWORD addendLength, BOOL enable, ChannelCompletionRoutine *completionRoutine)
 {
 	PacketRequestCompletion requestCompletion, *realRequestCompletion = NULL;
-	ChannelCompletionRoutine *dupe = NULL;
-	LPCSTR method = "core_channel_interact";
 	DWORD res = ERROR_SUCCESS;
-	Packet *request;
-	Tlv methodTlv;
+	Tlv commandIdTlv;
 
 	do
 	{
-		if (!(request = packet_create(PACKET_TLV_TYPE_REQUEST, NULL)))
+		Packet* request = packet_create(PACKET_TLV_TYPE_REQUEST, 0);
+		if (request == NULL)
 		{
 			res = ERROR_NOT_ENOUGH_MEMORY;
 			break;
@@ -709,9 +692,9 @@ DWORD channel_interact(Channel *channel, Remote *remote, Tlv *addend,
 		packet_add_tlvs(request, addend, addendLength);
 
 		// If no method TLV as added, add the default one.
-		if (packet_get_tlv(request, TLV_TYPE_METHOD, &methodTlv) != ERROR_SUCCESS)
+		if (packet_get_tlv(request, TLV_TYPE_COMMAND_ID, &commandIdTlv) != ERROR_SUCCESS)
 		{
-			packet_add_tlv_string(request, TLV_TYPE_METHOD, method);
+			packet_add_tlv_uint(request, TLV_TYPE_COMMAND_ID, COMMAND_ID_CORE_CHANNEL_INTERACT);
 		}
 
 		// Add the channel identifier
@@ -724,9 +707,7 @@ DWORD channel_interact(Channel *channel, Remote *remote, Tlv *addend,
 		if (completionRoutine)
 		{
 			// Duplicate the completion routine
-			dupe = channel_duplicate_completion_routine(completionRoutine);
-
-			requestCompletion.context = dupe;
+			requestCompletion.context = channel_duplicate_completion_routine(completionRoutine);
 			requestCompletion.routine = _channel_packet_completion_routine;
 			realRequestCompletion = &requestCompletion;
 		}

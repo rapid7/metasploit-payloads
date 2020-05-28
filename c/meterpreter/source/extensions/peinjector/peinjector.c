@@ -14,7 +14,7 @@ MetApi* met_api = NULL;
 
 Command customCommands[] =
 {
-	COMMAND_REQ("peinjector_inject_shellcode", request_peinjector_inject_shellcode),
+	COMMAND_REQ(COMMAND_ID_PEINJECTOR_INJECT_SHELLCODE, request_peinjector_inject_shellcode),
 	COMMAND_TERMINATOR
 };
 
@@ -42,18 +42,5 @@ DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
 {
 	met_api->command.deregister_all( customCommands );
 
-	return ERROR_SUCCESS;
-}
-
-
-/*!
- * @brief Get the name of the extension.
- * @param buffer Pointer to the buffer to write the name to.
- * @param bufferSize Size of the \c buffer parameter.
- * @return Indication of success or failure.
- */
-DWORD __declspec(dllexport) GetExtensionName(char* buffer, int bufferSize)
-{
-	strncpy_s(buffer, bufferSize, "peinjector", bufferSize - 1);
 	return ERROR_SUCCESS;
 }

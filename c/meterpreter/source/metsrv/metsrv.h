@@ -53,21 +53,18 @@ VOID rand_xor_key(BYTE buffer[4]);
 DWORD server_setup(MetsrvConfig* config);
 typedef DWORD (*PSRVINIT)(MetApi* api, Remote *remote);
 typedef DWORD (*PSRVDEINIT)(Remote *remote);
-typedef DWORD (*PSRVGETNAME)(char* buffer, int bufferSize);
-typedef VOID (*PCMDADDED)(const char* commandName);
-typedef DWORD (*PSTAGELESSINIT)(LPBYTE data, DWORD dataSize);
+typedef VOID (*PCMDADDED)(UINT command_id);
+typedef DWORD (*PSTAGELESSINIT)(UINT extensionId, LPBYTE data, DWORD dataSize);
 
 typedef struct _EXTENSION
 {
 	HMODULE library;
 	PSRVINIT init;
 	PSRVDEINIT deinit;
-	PSRVGETNAME getname;
 	PCMDADDED commandAdded;
 	PSTAGELESSINIT stagelessInit;
 	Command* start;
 	Command* end;
-	char name[16];
 } EXTENSION, *PEXTENSION;
 
 #endif

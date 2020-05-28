@@ -22,9 +22,9 @@ public class core_loadlib implements Command {
             return ERROR_SUCCESS;
         }
 
-        String[] commands = meterpreter.loadExtension(data);
+        Integer[] commands = meterpreter.loadExtension(data);
         for (int i = 0; i < commands.length; i++) {
-            response.addOverflow(TLVType.TLV_TYPE_METHOD, commands[i]);
+            response.addOverflow(TLVType.TLV_TYPE_UINT, commands[i]);
         }
         return ERROR_SUCCESS;
     }

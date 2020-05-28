@@ -2,9 +2,10 @@ import meterpreter_bindings
 
 from meterpreter.core import *
 from meterpreter.tlv import *
+from meterpreter.command import *
 
 def info():
-  resp = invoke_meterpreter('stdapi_sys_config_sysinfo', True)
+  resp = invoke_meterpreter(COMMAND_ID_STDAPI_SYS_CONFIG_SYSINFO, True)
   if resp == None:
     return False
 
@@ -18,7 +19,7 @@ def info():
   }
 
 def ps_list():
-  resp = invoke_meterpreter('stdapi_sys_process_get_processes', True)
+  resp = invoke_meterpreter(COMMAND_ID_STDAPI_SYS_PROCESS_GET_PROCESSES, True)
   if resp == None:
       return False
 

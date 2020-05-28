@@ -246,7 +246,7 @@ DWORD tcp_channel_server_notify(Remote * remote, TcpServerContext * serverCtx)
 
 		dprintf("[TCP-SERVER] tcp_channel_server_notify. New connection %s:%d <- %s:%d", localhost, localport, peerhost, peerport);
 
-		request = met_api->packet.create(PACKET_TLV_TYPE_REQUEST, "tcp_channel_open");
+		request = met_api->packet.create(PACKET_TLV_TYPE_REQUEST, COMMAND_ID_STDAPI_NET_TCP_CHANNEL_OPEN);
 		if (!request)
 		{
 			BREAK_WITH_ERROR("[TCP-SERVER] request_net_tcp_server_channel_open. met_api->packet.create failed", ERROR_INVALID_HANDLE);

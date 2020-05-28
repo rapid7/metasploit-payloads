@@ -203,12 +203,12 @@ cleanup:
 
 Command customCommands[] =
 {
-	COMMAND_REQ( "incognito_list_tokens", request_incognito_list_tokens ),
-	COMMAND_REQ( "incognito_impersonate_token", request_incognito_impersonate_token ),
-	COMMAND_REQ( "incognito_add_user", request_incognito_add_user ),
-	COMMAND_REQ( "incognito_add_group_user", request_incognito_add_group_user ),
-	COMMAND_REQ( "incognito_add_localgroup_user", request_incognito_add_localgroup_user ),
-	COMMAND_REQ( "incognito_snarf_hashes", request_incognito_snarf_hashes ),
+	COMMAND_REQ( COMMAND_ID_INCOGNITO_LIST_TOKENS, request_incognito_list_tokens ),
+	COMMAND_REQ( COMMAND_ID_INCOGNITO_IMPERSONATE_TOKEN, request_incognito_impersonate_token ),
+	COMMAND_REQ( COMMAND_ID_INCOGNITO_ADD_USER, request_incognito_add_user ),
+	COMMAND_REQ( COMMAND_ID_INCOGNITO_ADD_GROUP_USER, request_incognito_add_group_user ),
+	COMMAND_REQ( COMMAND_ID_INCOGNITO_ADD_LOCALGROUP_USER, request_incognito_add_localgroup_user ),
+	COMMAND_REQ( COMMAND_ID_INCOGNITO_SNARF_HASHES, request_incognito_snarf_hashes ),
 	COMMAND_TERMINATOR
 };
 
@@ -236,17 +236,5 @@ DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
 {
 	met_api->command.deregister_all( customCommands );
 
-	return ERROR_SUCCESS;
-}
-
-/*!
- * @brief Get the name of the extension.
- * @param buffer Pointer to the buffer to write the name to.
- * @param bufferSize Size of the \c buffer parameter.
- * @return Indication of success or failure.
- */
-DWORD __declspec(dllexport) GetExtensionName(char* buffer, int bufferSize)
-{
-	strncpy_s(buffer, bufferSize, "incognito", bufferSize - 1);
 	return ERROR_SUCCESS;
 }
