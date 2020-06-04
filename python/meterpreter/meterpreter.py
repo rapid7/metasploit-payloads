@@ -735,15 +735,24 @@ class Transport(object):
         # always return the session guid and the encryption flag set to 0
         enc_type = ENC_NONE
         if self.aes_key:
-            # We've got a key, but only encrypt if it's enabled
+            # The encryption key is present, but we should only used the key
+            # when it is enabled. If we use it before it's enabled, then we
+            # end up encrypting the packet that contains the key before
+            # sending it back to MSF, and it won't be able to decrypt it yet.
             if self.aes_enabled:
                 iv = rand_bytes(16)
                 enc = iv + met_aes_encrypt(self.aes_key, iv, pkt[8:])
                 hdr = struct.pack('>I', len(enc) + 8) + pkt[4:8]
                 pkt = hdr + enc
+                # We change the packet encryption type to tell MSF that
+                # the packet is encrypted.
                 enc_type = ENC_AES256
             else:
-                # We enable it here.
+                # If we get here, it means that the AES encryption key
+                # is ready to use from this point onwards as the last
+                # plain text packet has been sent back to MSF containing
+                # the key, and so MSF will be able to handle encrypted
+                # communications from here.
                 self.aes_enabled = True
 
         xor_key = rand_xor_key()
