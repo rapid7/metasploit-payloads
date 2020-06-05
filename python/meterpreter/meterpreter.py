@@ -1221,10 +1221,10 @@ class PythonMeterpreter(object):
         # TODO: adjust this when we've moved from PEM to DER
         pem = packet_get_tlv(request, TLV_TYPE_RSA_PUB_KEY)['value'].strip()
         debug_print('[*] PEM is: ' + pem)
-        der = base64.b64decode(''.join(pem.split("\n")[1:-1]))
-        debug_print('[*] AES Key: {0:x}'.format(met_rsa.b2i(self.transport.aes_key)))
+        der = base64.b64decode(bytes(''.join(pem.split("\n")[1:-1]), 'UTF-8'))
+        debug_print('[*] AES Key: ' + hex(met_rsa.b2i(self.transport.aes_key)))
         enc_key = met_rsa_encrypt(der, self.transport.aes_key)
-        debug_print('[*] Encrypted AES Key: {0:x}'.format(met_rsa.b2i(enc_key)))
+        debug_print('[*] Encrypted AES key: ' + hex(met_rsa.b2i(enc_key)))
         response += tlv_pack(TLV_TYPE_ENC_SYM_KEY, enc_key)
         debug_print('[*] TLV encryption sorted')
         return ERROR_SUCCESS, response
