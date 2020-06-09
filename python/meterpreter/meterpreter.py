@@ -1301,7 +1301,7 @@ class PythonMeterpreter(object):
 
     def _core_enumextcmd(self, request, response):
         id_start = packet_get_tlv(request, TLV_TYPE_UINT)['value']
-        id_end = packet_get_tlv(request, TLV_TYPE_LENGTH)['value'] + start
+        id_end = packet_get_tlv(request, TLV_TYPE_LENGTH)['value'] + id_start
         for func_name in self.extension_functions.keys():
             command_id = cmd_string_to_id(func_name)
             if id_start < command_id and command_id < id_end:
@@ -1370,11 +1370,9 @@ class PythonMeterpreter(object):
         extension_name = self.last_registered_extension
 
         if extension_name:
-            sys.stderr.write(extension_name + "\n")
             check_extension = lambda x: x.startswith(extension_name)
             lib_methods = list(filter(check_extension, list(self.extension_functions.keys())))
             for method in lib_methods:
-                sys.stderr.write(extension_name + " -> " + method + "\n")
                 response += tlv_pack(TLV_TYPE_UINT, cmd_string_to_id(method))
         return ERROR_SUCCESS, response
 
