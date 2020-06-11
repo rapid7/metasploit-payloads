@@ -128,7 +128,7 @@ public abstract class Transport {
 
         IvParameterSpec ivSpec = new IvParameterSpec(iv);
         SecretKeySpec keySpec = new SecretKeySpec(this.aesKey, "AES");
-        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5PADDING");
+        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
         synchronized(cipher) {
           cipher.init(Cipher.DECRYPT_MODE, keySpec, ivSpec);
           return cipher.doFinal(encrypted);

@@ -27,7 +27,7 @@ public class core_negotiate_tlv_encryption implements Command {
         try
         {
             PublicKey pubKey = getPublicKey(der);
-            Cipher cipher = Cipher.getInstance("RSA");
+            Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
             cipher.init(Cipher.ENCRYPT_MODE, pubKey);
             response.add(TLVType.TLV_TYPE_ENC_SYM_KEY, cipher.doFinal(aesKey));
         }
@@ -42,7 +42,6 @@ public class core_negotiate_tlv_encryption implements Command {
         return ERROR_SUCCESS;
     }
 
-    // This is here for when we move over to using DER instead of PEM
     private PublicKey getPublicKey(byte[] der) {
         try
         {
