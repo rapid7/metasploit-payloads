@@ -70,7 +70,7 @@ public interface TLVType {
     public static final int TLV_TYPE_SESSION_GUID = TLVPacket.TLV_META_TYPE_RAW    | 462;
 
     // TLV Encryption
-    public static final int TLV_TYPE_RSA_PUB_KEY  = TLVPacket.TLV_META_TYPE_STRING | 550;
+    public static final int TLV_TYPE_RSA_PUB_KEY  = TLVPacket.TLV_META_TYPE_RAW    | 550;
     public static final int TLV_TYPE_SYM_KEY_TYPE = TLVPacket.TLV_META_TYPE_UINT   | 551;
     public static final int TLV_TYPE_SYM_KEY      = TLVPacket.TLV_META_TYPE_RAW    | 552;
     public static final int TLV_TYPE_ENC_SYM_KEY  = TLVPacket.TLV_META_TYPE_RAW    | 553;

@@ -19,6 +19,8 @@ public abstract class Transport {
     public static final int ENC_NONE = 0;
     public static final int ENC_AES256 = 1;
 
+    private static final SecureRandom sr = new SecureRandom();
+
     private Transport prev;
     private Transport next;
     private Meterpreter meterpreter;
@@ -134,14 +136,13 @@ public abstract class Transport {
     }
 
     protected byte[] aesEncrypt(byte[] data) throws Exception {
-        SecureRandom sr = new SecureRandom();
         byte[] iv = new byte[16];
         sr.nextBytes(iv);
 
         byte[] encrypted = null;
         IvParameterSpec ivSpec = new IvParameterSpec(iv);
         SecretKeySpec keySpec = new SecretKeySpec(this.aesKey, "AES");
-        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5PADDING");
+        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
         synchronized(cipher) {
           cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
           encrypted = cipher.doFinal(data);
