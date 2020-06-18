@@ -484,7 +484,8 @@ DWORD request_python_execute(Remote* remote, Packet* packet)
 {
 	DWORD dwResult = ERROR_SUCCESS;
 	Packet* response = met_api->packet.create_response(packet);
-	LPBYTE pythonCode = met_api->packet.get_tlv_value_raw(packet, TLV_TYPE_EXTENSION_PYTHON_CODE);
+	DWORD codeSize = 0;
+	LPBYTE pythonCode = met_api->packet.get_tlv_value_raw(packet, TLV_TYPE_EXTENSION_PYTHON_CODE, &codeSize);
 
 	PyObject* mainModule = PyImport_AddModule("__main__");
 	PyObject* mainDict = PyModule_GetDict(mainModule);

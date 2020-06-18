@@ -687,13 +687,19 @@ DWORD request_railgun_memwrite( Remote * pRemote, Packet * pPacket )
 		if( !lpAddress )
 			BREAK_WITH_ERROR( "[RAILGUN] request_railgun_memwrite: !lpAddress", ERROR_INVALID_PARAMETER );
 
-		pData = met_api->packet.get_tlv_value_raw( pPacket, TLV_TYPE_RAILGUN_MEM_DATA );
+		DWORD pDataLen = 0;
+		pData = met_api->packet.get_tlv_value_raw( pPacket, TLV_TYPE_RAILGUN_MEM_DATA, &pDataLen );
 		if( !pData )
 			BREAK_WITH_ERROR( "[RAILGUN] request_railgun_memwrite: !pData", ERROR_INVALID_PARAMETER );
 
+		// The length of the buffer specified may not match the required read size, so we still
+		// need to have the length specified.
 		dwLength = met_api->packet.get_tlv_value_uint( pPacket, TLV_TYPE_RAILGUN_MEM_LENGTH );
 		if( !dwLength )
 			BREAK_WITH_ERROR( "[RAILGUN] request_railgun_memwrite: !dwLength", ERROR_INVALID_PARAMETER );
+
+		// Let's not be silly and try to read more than the buffer allows?
+		dwLength = min(dwLength, pDataLen);
 
 		__try
 		{

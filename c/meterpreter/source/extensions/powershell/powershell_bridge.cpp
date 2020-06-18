@@ -821,10 +821,10 @@ DWORD request_powershell_assembly_load(Remote *remote, Packet *packet)
 
 	if (response)
 	{
-		BYTE* binary = met_api->packet.get_tlv_value_raw(packet, TLV_TYPE_POWERSHELL_ASSEMBLY);
+		DWORD binarySize = 0;
+		BYTE* binary = met_api->packet.get_tlv_value_raw(packet, TLV_TYPE_POWERSHELL_ASSEMBLY, &binarySize);
 		if (binary != NULL)
 		{
-			DWORD binarySize = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_POWERSHELL_ASSEMBLY_SIZE);
 			dwResult = load_assembly(binary, binarySize);
 		}
 		else

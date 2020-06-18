@@ -162,7 +162,8 @@ static DWORD read_pipe_to_packet(NamedPipeContext* ctx, LPBYTE source, DWORD sou
 				{
 					dprintf("[PIPE] Request ID found and matches expected value");
 					// we have a response to our session guid request
-					LPBYTE sessionGuid = packet_get_tlv_value_raw(packet, TLV_TYPE_SESSION_GUID);
+					DWORD sessionGuidLen = 0;
+					LPBYTE sessionGuid = packet_get_tlv_value_raw(packet, TLV_TYPE_SESSION_GUID, 0);
 #ifdef DEBUGTRACE
 					PUCHAR h = (PUCHAR)&sessionGuid[0];
 					dprintf("[PIPE] Returned session guid: %02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
@@ -754,14 +755,14 @@ DWORD request_core_pivot_add_named_pipe(Remote* remote, Packet* packet)
 			namedPipeServer = ".";
 		}
 
-		LPBYTE pivotId = packet_get_tlv_value_raw(packet, TLV_TYPE_PIVOT_ID);
+		UINT pivotIdLen = 0;
+		LPBYTE pivotId = packet_get_tlv_value_raw(packet, TLV_TYPE_PIVOT_ID, &pivotIdLen);
 		if (pivotId != NULL)
 		{
 			memcpy(&ctx->pivot_id, pivotId, sizeof(ctx->pivot_id));
 		}
 
-		LPVOID stageData = packet_get_tlv_value_raw(packet, TLV_TYPE_PIVOT_STAGE_DATA);
-		ctx->stage_data_size = packet_get_tlv_value_uint(packet, TLV_TYPE_PIVOT_STAGE_DATA_SIZE);
+		LPVOID stageData = packet_get_tlv_value_raw(packet, TLV_TYPE_PIVOT_STAGE_DATA, &ctx->stage_data_size);
 
 		if (stageData && ctx->stage_data_size > 0)
 		{

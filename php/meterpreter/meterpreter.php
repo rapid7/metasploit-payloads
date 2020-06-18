@@ -187,7 +187,7 @@ define("TLV_TYPE_UUID",                TLV_META_TYPE_RAW    | 461);
 define("TLV_TYPE_SESSION_GUID",        TLV_META_TYPE_RAW    | 462);
 
 # Packet encryption
-define("TLV_TYPE_RSA_PUB_KEY",         TLV_META_TYPE_STRING | 550);
+define("TLV_TYPE_RSA_PUB_KEY",         TLV_META_TYPE_RAW    | 550);
 define("TLV_TYPE_SYM_KEY_TYPE",        TLV_META_TYPE_UINT   | 551);
 define("TLV_TYPE_SYM_KEY",             TLV_META_TYPE_RAW    | 552);
 define("TLV_TYPE_ENC_SYM_KEY",         TLV_META_TYPE_RAW    | 553);
@@ -552,6 +552,12 @@ function get_hdd_label() {
   return "";
 }
 
+function der_to_pem($der_data) {
+   $pem = chunk_split(base64_encode($der_data), 64, "\n");
+   $pem = "-----BEGIN PUBLIC KEY-----\n".$pem."-----END PUBLIC KEY-----\n";
+   return $pem;
+}
+
 if (!function_exists('core_negotiate_tlv_encryption')) {
   register_command('core_negotiate_tlv_encryption', COMMAND_ID_CORE_NEGOTIATE_TLV_ENCRYPTION);
   function core_negotiate_tlv_encryption($req, &$pkt) {
@@ -564,7 +570,7 @@ if (!function_exists('core_negotiate_tlv_encryption')) {
         my_print("Encryption via public key is supported");
         $pub_key_tlv = packet_get_tlv($req, TLV_TYPE_RSA_PUB_KEY);
         if ($pub_key_tlv != null) {
-          $key = openssl_pkey_get_public($pub_key_tlv['value']);
+          $key = openssl_pkey_get_public(der_to_pem($pub_key_tlv['value']));
           $enc = '';
           openssl_public_encrypt($GLOBALS['AES_KEY'], $enc, $key, OPENSSL_PKCS1_PADDING);
           packet_add_tlv($pkt, create_tlv(TLV_TYPE_ENC_SYM_KEY, $enc));

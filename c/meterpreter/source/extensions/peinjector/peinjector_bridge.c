@@ -51,8 +51,8 @@ DWORD request_peinjector_inject_shellcode(Remote *remote, Packet *packet)
 
 	if (response)
 	{
-		BYTE* shellcode = met_api->packet.get_tlv_value_raw(packet, TLV_TYPE_PEINJECTOR_SHELLCODE);
-		UINT size = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_PEINJECTOR_SHELLCODE_SIZE);
+		DWORD size = 0;
+		BYTE* shellcode = met_api->packet.get_tlv_value_raw(packet, TLV_TYPE_PEINJECTOR_SHELLCODE, &size);
 		BOOL is_x64 = met_api->packet.get_tlv_value_bool(packet, TLV_TYPE_PEINJECTOR_SHELLCODE_ISX64);
 
 		char* target_executable_path = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_PEINJECTOR_TARGET_EXECUTABLE);
