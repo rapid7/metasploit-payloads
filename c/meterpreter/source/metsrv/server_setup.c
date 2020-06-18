@@ -279,11 +279,13 @@ static void config_create(Remote* remote, LPBYTE uuid, MetsrvConfig** config, LP
 		t = t->next_transport;
 	} while (t != current);
 
-	// account for the last terminating NULL wchar so that the target knows the list has reached the end,
-	// as well as the end of the extensions list. We may support wiring up existing extensions later on.
-	DWORD terminatorSize = sizeof(wchar_t) + sizeof(DWORD);
+	// Terminate the transport with a NULL wchar.
+	// Then terminate the extensions with a zero DWORD.
+	// Then terminate the config with a -1 DWORD
+	DWORD terminatorSize = sizeof(wchar_t) + sizeof(DWORD) + sizeof(DWORD);
 	sess = (MetsrvSession*)realloc(sess, s + terminatorSize);
-	ZeroMemory((LPBYTE)sess + s, terminatorSize);
+	memset((LPBYTE)sess + s, 0xFF, terminatorSize);
+	ZeroMemory((LPBYTE)sess + s, terminatorSize - sizeof(DWORD));
 	s += terminatorSize;
 
 	// hand off the data
