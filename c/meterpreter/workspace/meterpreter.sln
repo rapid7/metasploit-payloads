@@ -12,8 +12,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ext_server_stdapi", "ext_se
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "metsrv", "metsrv\metsrv.vcxproj", "{37E24F8F-1BD9-490B-8CD2-4768B89E5EAB}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ReflectiveDLLInjection", "ReflectiveDLLInjection\ReflectiveDLLInjection.vcxproj", "{72F0246A-A38D-4547-9057-46020E8E503D}"
-EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ext_server_incognito", "ext_server_incognito\ext_server_incognito.vcxproj", "{C427F6B9-C287-4BDA-A5BB-401FC19E207C}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ext_server_espia", "ext_server_espia\ext_server_espia.vcxproj", "{CF56DDCC-505F-4D5C-AC2E-9787C7EF1504}"
@@ -29,8 +27,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "screenshot", "screenshot\sc
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ext_server_lanattacks", "ext_server_lanattacks\ext_server_lanattacks.vcxproj", "{2FCCCE33-77E9-43F3-928E-DBF6B9340A62}"
-EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "backcompat", "backcompat\backcompat.vcxproj", "{C6FB3275-9067-4BBA-9206-0A720D2BC64F}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ext_server_sniffer", "ext_server_sniffer\ext_server_sniffer.vcxproj", "{BF0C0D6E-9119-4518-A3BC-2CF99C0E27D9}"
 EndProject
@@ -66,6 +62,13 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Common", "Common", "{EDE086
 		..\source\common\common_thread.h = ..\source\common\common_thread.h
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Def", "Def", "{275C6D8C-8EC0-4FCF-96CB-F6B793FC38DB}"
+	ProjectSection(SolutionItems) = preProject
+		..\source\def\extension.def = ..\source\def\extension.def
+		..\source\def\metsrv.def = ..\source\def\metsrv.def
+		..\source\def\plugin.def = ..\source\def\plugin.def
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		r7_release|Win32 = r7_release|Win32
@@ -98,14 +101,6 @@ Global
 		{37E24F8F-1BD9-490B-8CD2-4768B89E5EAB}.Release|Win32.Build.0 = Release|Win32
 		{37E24F8F-1BD9-490B-8CD2-4768B89E5EAB}.Release|x64.ActiveCfg = Release|x64
 		{37E24F8F-1BD9-490B-8CD2-4768B89E5EAB}.Release|x64.Build.0 = Release|x64
-		{72F0246A-A38D-4547-9057-46020E8E503D}.r7_release|Win32.ActiveCfg = r7_release|Win32
-		{72F0246A-A38D-4547-9057-46020E8E503D}.r7_release|Win32.Build.0 = r7_release|Win32
-		{72F0246A-A38D-4547-9057-46020E8E503D}.r7_release|x64.ActiveCfg = r7_release|x64
-		{72F0246A-A38D-4547-9057-46020E8E503D}.r7_release|x64.Build.0 = r7_release|x64
-		{72F0246A-A38D-4547-9057-46020E8E503D}.Release|Win32.ActiveCfg = Release|Win32
-		{72F0246A-A38D-4547-9057-46020E8E503D}.Release|Win32.Build.0 = Release|Win32
-		{72F0246A-A38D-4547-9057-46020E8E503D}.Release|x64.ActiveCfg = Release|x64
-		{72F0246A-A38D-4547-9057-46020E8E503D}.Release|x64.Build.0 = Release|x64
 		{C427F6B9-C287-4BDA-A5BB-401FC19E207C}.r7_release|Win32.ActiveCfg = r7_release|Win32
 		{C427F6B9-C287-4BDA-A5BB-401FC19E207C}.r7_release|Win32.Build.0 = r7_release|Win32
 		{C427F6B9-C287-4BDA-A5BB-401FC19E207C}.r7_release|x64.ActiveCfg = r7_release|x64
@@ -146,12 +141,6 @@ Global
 		{2FCCCE33-77E9-43F3-928E-DBF6B9340A62}.Release|Win32.Build.0 = Release|Win32
 		{2FCCCE33-77E9-43F3-928E-DBF6B9340A62}.Release|x64.ActiveCfg = Release|x64
 		{2FCCCE33-77E9-43F3-928E-DBF6B9340A62}.Release|x64.Build.0 = Release|x64
-		{C6FB3275-9067-4BBA-9206-0A720D2BC64F}.r7_release|Win32.ActiveCfg = r7_release|Win32
-		{C6FB3275-9067-4BBA-9206-0A720D2BC64F}.r7_release|Win32.Build.0 = r7_release|Win32
-		{C6FB3275-9067-4BBA-9206-0A720D2BC64F}.r7_release|x64.ActiveCfg = r7_release|Win32
-		{C6FB3275-9067-4BBA-9206-0A720D2BC64F}.Release|Win32.ActiveCfg = Release|Win32
-		{C6FB3275-9067-4BBA-9206-0A720D2BC64F}.Release|Win32.Build.0 = Release|Win32
-		{C6FB3275-9067-4BBA-9206-0A720D2BC64F}.Release|x64.ActiveCfg = Release|Win32
 		{BF0C0D6E-9119-4518-A3BC-2CF99C0E27D9}.r7_release|Win32.ActiveCfg = r7_release|Win32
 		{BF0C0D6E-9119-4518-A3BC-2CF99C0E27D9}.r7_release|Win32.Build.0 = r7_release|Win32
 		{BF0C0D6E-9119-4518-A3BC-2CF99C0E27D9}.r7_release|x64.ActiveCfg = r7_release|x64

@@ -7,7 +7,7 @@
 
 typedef struct _InjectApi
 {
-	DWORD(*dll)(DWORD dwPid, LPVOID lpDllBuffer, DWORD dwDllLenght, char* cpCommandLine);
+	DWORD(*dll)(DWORD dwPid, LPVOID lpDllBuffer, DWORD dwDllLength, LPCSTR reflectiveLoader, char* cpCommandLine);
 	DWORD(*via_apcthread)(Remote* remote, Packet* response, HANDLE hProcess, DWORD dwProcessID, DWORD dwDestinationArch, LPVOID lpStartAddress, LPVOID lpParameter);
 	DWORD(*via_remotethread)(Remote* remote, Packet* response, HANDLE hProcess, DWORD dwDestinationArch, LPVOID lpStartAddress, LPVOID lpParameter);
 	DWORD(*via_remotethread_wow64)(HANDLE hProcess, LPVOID lpStartAddress, LPVOID lpParameter, HANDLE* pThread);
@@ -126,6 +126,7 @@ typedef struct _PacketApi
 	UINT(*get_tlv_value_uint)(Packet* packet, TlvType type);
 	VOID(*destroy)(Packet* packet);
 	wchar_t*(*get_tlv_value_wstring)(Packet* packet, TlvType type);
+	LPCSTR(*get_tlv_value_reflective_loader)(Packet* packet);
 } PacketApi;;
 
 typedef struct _CommandApi

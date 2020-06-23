@@ -16,7 +16,7 @@
 // define this as we want to use our own DllMain function
 #define REFLECTIVEDLLINJECTION_CUSTOM_DLLMAIN
 
-// include the Reflectiveloader() function
+#define RDIDLL_NOEXPORT
 #include "../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
 
 /*

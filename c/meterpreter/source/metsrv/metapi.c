@@ -41,6 +41,7 @@ MetApi api_instance = {
 		packet_get_tlv_value_uint,
 		packet_destroy,
 		packet_get_tlv_value_wstring,
+		packet_get_tlv_value_reflective_loader,
 	},
 	// CommandApi
 	{

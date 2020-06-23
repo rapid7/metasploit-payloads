@@ -98,8 +98,10 @@
     </ClCompile>
     <Lib>
       <OutputFile>$(OutDir)\ReflectiveDllInjection.lib</OutputFile>
-      <AdditionalDependencies>backcompat.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\backcompat\$(Configuration)\</AdditionalLibraryDirectories>
+      <AdditionalDependencies>
+      </AdditionalDependencies>
+      <AdditionalLibraryDirectories>
+      </AdditionalLibraryDirectories>
       <TreatLibWarningAsErrors>true</TreatLibWarningAsErrors>
       <SubSystem>Windows</SubSystem>
     </Lib>
@@ -126,8 +128,10 @@
     </ClCompile>
     <Lib>
       <OutputFile>$(OutDir)\ReflectiveDllInjection.lib</OutputFile>
-      <AdditionalDependencies>backcompat.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\backcompat\$(Configuration)\</AdditionalLibraryDirectories>
+      <AdditionalDependencies>
+      </AdditionalDependencies>
+      <AdditionalLibraryDirectories>
+      </AdditionalLibraryDirectories>
       <TreatLibWarningAsErrors>true</TreatLibWarningAsErrors>
       <SubSystem>Windows</SubSystem>
     </Lib>
@@ -194,14 +198,7 @@
     <ClInclude Include="..\..\source\ReflectiveDLLInjection\dll\src\ReflectiveLoader.h" />
   </ItemGroup>
   <Choose>
-    <When Condition="'$(Platform)'=='Win32'">
-      <ItemGroup>
-        <ProjectReference Include="..\backcompat\backcompat.vcxproj">
-          <Project>{c6fb3275-9067-4bba-9206-0a720d2bc64f}</Project>
-          <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
-        </ProjectReference>
-      </ItemGroup>
-    </When>
+    <When Condition="'$(Platform)'=='Win32'" />
   </Choose>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

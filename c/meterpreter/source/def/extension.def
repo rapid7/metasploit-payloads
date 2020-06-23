@@ -1,0 +1,7 @@
+NAME extension.dll
+EXPORTS
+	ReflectiveLoader @1 NONAME PRIVATE
+	InitServerExtension @2 NONAME PRIVATE
+	DeinitServerExtension @3 NONAME PRIVATE
+	StagelessInit @4 NONAME PRIVATE
+	CommandAdded @5 NONAME PRIVATE

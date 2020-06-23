@@ -1,6 +1,10 @@
 #include "metsrv.h"
 #include "common_metapi.h"
+#include "common_exports.h"
 #include "server_pivot.h"
+
+#define GetProcAddressByOrdinal(mod, ord) GetProcAddress(mod, MAKEINTRESOURCEA(ord))
+#define GetProcAddressByOrdinalR(mod, ord) GetProcAddressR(mod, MAKEINTRESOURCEA(ord))
 
 // see ReflectiveLoader.c...
 extern HINSTANCE hAppInstance;
@@ -226,17 +230,17 @@ DWORD load_extension(HMODULE hLibrary, BOOL bLibLoadedReflectivly, Remote* remot
 		// if the library was loaded via its reflective loader we must use GetProcAddressR()
 		if (bLibLoadedReflectivly)
 		{
-			pExtension->init = (PSRVINIT)GetProcAddressR(pExtension->library, "InitServerExtension");
-			pExtension->deinit = (PSRVDEINIT)GetProcAddressR(pExtension->library, "DeinitServerExtension");
-			pExtension->commandAdded = (PCMDADDED)GetProcAddressR(pExtension->library, "CommandAdded");
-			pExtension->stagelessInit = (PSTAGELESSINIT)GetProcAddressR(pExtension->library, "StagelessInit");
+			pExtension->init = (PSRVINIT)GetProcAddressByOrdinalR(pExtension->library, EXPORT_INITSERVEREXTENSION);
+			pExtension->deinit = (PSRVDEINIT)GetProcAddressByOrdinalR(pExtension->library, EXPORT_DEINITSERVEREXTENSION);
+			pExtension->commandAdded = (PCMDADDED)GetProcAddressByOrdinalR(pExtension->library, EXPORT_COMMANDADDED);
+			pExtension->stagelessInit = (PSTAGELESSINIT)GetProcAddressByOrdinalR(pExtension->library, EXPORT_STAGELESSINIT);
 		}
 		else
 		{
-			pExtension->init = (PSRVINIT)GetProcAddress(pExtension->library, "InitServerExtension");
-			pExtension->deinit = (PSRVDEINIT)GetProcAddress(pExtension->library, "DeinitServerExtension");
-			pExtension->commandAdded = (PCMDADDED)GetProcAddress(pExtension->library, "CommandAdded");
-			pExtension->stagelessInit = (PSTAGELESSINIT)GetProcAddress(pExtension->library, "StagelessInit");
+			pExtension->init = (PSRVINIT)GetProcAddressByOrdinal(pExtension->library, EXPORT_INITSERVEREXTENSION);
+			pExtension->deinit = (PSRVDEINIT)GetProcAddressByOrdinal(pExtension->library, EXPORT_DEINITSERVEREXTENSION);
+			pExtension->commandAdded = (PCMDADDED)GetProcAddressByOrdinal(pExtension->library, EXPORT_COMMANDADDED);
+			pExtension->stagelessInit = (PSTAGELESSINIT)GetProcAddressByOrdinal(pExtension->library, EXPORT_STAGELESSINIT);
 		}
 
 		dprintf("[SERVER] Calling init on extension, address is 0x%p", pExtension->init);
@@ -342,8 +346,10 @@ DWORD request_core_loadlib(Remote *remote, Packet *packet)
 			// If the library is not to be stored on disk, 
 			if (!(flags & LOAD_LIBRARY_FLAG_ON_DISK))
 			{
+				LPCSTR reflectiveLoader = packet_get_tlv_value_reflective_loader(packet);
+
 				// try to load the library via its reflective loader...
-				library = LoadLibraryR(dataTlv.buffer, dataTlv.header.length);
+				library = LoadLibraryR(dataTlv.buffer, dataTlv.header.length, reflectiveLoader);
 				if (library == NULL)
 				{
 					// if that fails, presumably besause the library doesn't support

@@ -1,0 +1,3 @@
+NAME server.dll
+EXPORTS
+	ReflectiveLoader @1 NONAME PRIVATE
