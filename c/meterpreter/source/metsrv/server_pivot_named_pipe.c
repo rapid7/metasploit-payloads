@@ -755,7 +755,7 @@ DWORD request_core_pivot_add_named_pipe(Remote* remote, Packet* packet)
 			namedPipeServer = ".";
 		}
 
-		UINT pivotIdLen = 0;
+		DWORD pivotIdLen = 0;
 		LPBYTE pivotId = packet_get_tlv_value_raw(packet, TLV_TYPE_PIVOT_ID, &pivotIdLen);
 		if (pivotId != NULL)
 		{
