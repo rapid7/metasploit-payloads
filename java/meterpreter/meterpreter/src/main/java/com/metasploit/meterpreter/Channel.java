@@ -30,16 +30,21 @@ public class Channel {
         this.id = meterpreter.registerChannel(this);
         this.in = in;
         this.out = out;
-        new InteractThread(in).start();
+        if (in != null) {
+            new InteractThread(in, true).start();
+        }
     }
 
     /**
      * Close this channel and deregister it from the meterpreter.
      */
     public synchronized void close() throws IOException {
-        in.close();
-        if (out != null)
+        if (in != null) {
+            in.close();
+        }
+        if (out != null) {
             out.close();
+        }
         meterpreter.channelClosed(id);
         active = false;
         closed = true;
@@ -158,9 +163,11 @@ public class Channel {
      */
     protected class InteractThread extends Thread {
         private final InputStream stream;
+        private final boolean handleClose;
 
-        public InteractThread(InputStream stream) {
+        public InteractThread(InputStream stream, boolean handleClose) {
             this.stream = stream;
+            this.handleClose = handleClose;
         }
 
         public void run() {
@@ -174,7 +181,9 @@ public class Channel {
                     System.arraycopy(buffer, 0, data, 0, len);
                     handleInteract(data);
                 }
-                handleInteract(null);
+                if (handleClose) {
+                    handleInteract(null);
+                }
             } catch (Throwable t) {
                 t.printStackTrace(meterpreter.getErrorStream());
             }
