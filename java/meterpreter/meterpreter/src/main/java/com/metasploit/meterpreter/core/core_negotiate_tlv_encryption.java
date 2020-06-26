@@ -47,6 +47,8 @@ public class core_negotiate_tlv_encryption implements Command {
         return ERROR_SUCCESS;
     }
 
+    //https://stackoverflow.com/questions/6481627/java-security-illegal-key-size-or-default-parameters
+    //https://stackoverflow.com/questions/1179672/how-to-avoid-installing-unlimited-strength-jce-policy-files-when-deploying-an
     private static boolean fixKeyLength() {
         int newMaxKeyLength;
         try {
