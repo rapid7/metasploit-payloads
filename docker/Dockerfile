@@ -25,6 +25,8 @@ RUN apt-get update && \
 	apt-get clean && \
 	rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
+RUN update-java-alternatives --set java-1.8.0-openjdk-amd64
+
 # Android NDK
 RUN wget http://dl.google.com/android/ndk/android-ndk-r9d-linux-x86_64.tar.bz2 && \
     tar -xvf android-ndk-r9d-linux-x86_64.tar.bz2 && \
