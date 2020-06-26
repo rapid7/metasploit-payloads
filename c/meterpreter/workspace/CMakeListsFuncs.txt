@@ -9,5 +9,7 @@ endfunction()
 
 function(copyoutput)
     add_custom_command(TARGET ${ARGV0} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${ARGV1})
+    add_custom_command(TARGET ${ARGV0} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${ARGV0}> ${ARGV1})
 endfunction()
