@@ -21,7 +21,8 @@ public class core_negotiate_tlv_encryption implements Command {
 
     public int execute(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws Exception {
         byte[] der = request.getRawValue(TLVType.TLV_TYPE_RSA_PUB_KEY);
-        byte[] aesKey = new byte[16];
+        int encType = (Cipher.getMaxAllowedKeyLength("AES") >= 256 ? Transport.ENC_AES256 : Transport.ENC_AES128);
+        byte[] aesKey = new byte[encType == Transport.ENC_AES256 ? 32 : 16];
         sr.nextBytes(aesKey);
 
         try
@@ -35,7 +36,7 @@ public class core_negotiate_tlv_encryption implements Command {
         {
             response.add(TLVType.TLV_TYPE_SYM_KEY, aesKey);
         }
-        response.add(TLVType.TLV_TYPE_SYM_KEY_TYPE, Transport.ENC_AES128);
+        response.add(TLVType.TLV_TYPE_SYM_KEY_TYPE, encType);
 
         meterpreter.getTransports().current().setAesEncryptionKey(aesKey);
 

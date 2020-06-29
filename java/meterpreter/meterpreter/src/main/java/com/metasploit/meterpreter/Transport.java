@@ -101,7 +101,7 @@ public abstract class Transport {
 
         this.arrayCopy(packet, 32, body, 0, body.length);
         int encFlag = this.readInt(packet, 20);
-        if (encFlag == ENC_AES128 && this.aesKey != null) {
+        if (encFlag != ENC_NONE && this.aesKey != null) {
             try
             {
                 body = aesDecrypt(body);
@@ -162,8 +162,8 @@ public abstract class Transport {
         if (this.aesKey != null) {
             try
             {
-                if (this.aesEnabled) {
-                    encType = ENC_AES128;
+                if (this.aesEnabled && this.aesKey != null) {
+                    encType = (this.aesKey.length == 32 ? ENC_AES256 : ENC_AES128);
                     data = aesEncrypt(data);
                 }
                 else
