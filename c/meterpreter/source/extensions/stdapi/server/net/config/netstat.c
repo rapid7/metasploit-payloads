@@ -103,6 +103,7 @@ char *tcp_connection_states[] = {
    "", "CLOSED", "LISTEN", "SYN_SENT", "SYN_RECV", "ESTABLISHED", "FIN_WAIT1", "FIN_WAIT2", "CLOSE_WAIT",
    "CLOSING", "LAST_ACK", "TIME_WAIT", "DELETE_TCB", "UNKNOWN" };
 
+#ifndef __MINGW32__
 typedef struct _MIB_TCP6ROW_OWNER_MODULE {
   UCHAR         ucLocalAddr[16];
   DWORD         dwLocalScopeId;
@@ -141,11 +142,12 @@ typedef struct {
   MIB_UDP6ROW_OWNER_MODULE table[ANY_SIZE];
 } MIB_UDP6TABLE_OWNER_MODULE, *PMIB_UDP6TABLE_OWNER_MODULE;
 
+#endif
+
 typedef DWORD (WINAPI * ptr_GetExtendedTcpTable)(PVOID, PDWORD pdwSize, BOOL bOrder, ULONG ulAf,TCP_TABLE_CLASS TableClass,
 ULONG Reserved);
 typedef DWORD (WINAPI * ptr_GetExtendedUdpTable)(PVOID, PDWORD pdwSize, BOOL bOrder, ULONG ulAf,TCP_TABLE_CLASS TableClass,
 ULONG Reserved);
-
 
 /*
  * retrieve tcp table for win 2000 and NT4 ?

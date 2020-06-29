@@ -13,7 +13,8 @@ typedef struct _EVENT
 
 #define THREADCALL __stdcall
 
-typedef DWORD (THREADCALL * THREADFUNK)(struct _THREAD * thread);
+typedef struct _THREAD THREAD, *LPTHREAD;
+typedef DWORD (THREADCALL * THREADFUNK)(LPTHREAD thread);
 
 struct _THREAD
 {
@@ -26,6 +27,5 @@ struct _THREAD
 	LPVOID parameter3;
 };
 
-typedef struct _THREAD THREAD, * LPTHREAD;
 
 #endif

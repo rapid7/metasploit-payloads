@@ -2,7 +2,7 @@
 #include "base_inject.h"
 #include "remote_thread.h"
 #include "../../ReflectiveDLLInjection/inject/src/LoadLibraryR.h"
-#include <Tlhelp32.h>
+#include <tlhelp32.h>
 
 // see '/msf3/external/source/shellcode/x86/migrate/executex64.asm'
 // 03.06.2017: fixed an elusive bug on AMD CPUs, http://blog.rewolf.pl/blog/?p=1484
@@ -386,7 +386,7 @@ DWORD inject_via_remotethread_wow64( HANDLE hProcess, LPVOID lpStartAddress, LPV
 
 		// Transition this wow64 process into native x64 and call pX64function( ctx )
 		// The native function will use the native Win64 API's to create a remote thread in the target process.
-		if( !pExecuteX64( pX64function, (DWORD)ctx ) )
+		if( !pExecuteX64( pX64function, (DWORD)(DWORD_PTR)ctx ) )
 		{
 			SetLastError( ERROR_ACCESS_DENIED );
 			BREAK_ON_ERROR( "[INJECT] inject_via_remotethread_wow64: pExecuteX64( pX64function, ctx ) failed" )
@@ -539,7 +539,7 @@ DWORD inject_dll( DWORD dwPid, LPVOID lpDllBuffer, DWORD dwDllLength, LPCSTR ref
 			BREAK_ON_ERROR( "[INJECT] inject_dll. WriteProcessMemory 2 failed" ); 
 
 		// add the offset to ReflectiveLoader() to the remote library address...
-		lpReflectiveLoader = (LPVOID)( (DWORD)lpRemoteLibraryBuffer + (DWORD)dwReflectiveLoaderOffset );
+		lpReflectiveLoader = (LPVOID)((DWORD_PTR)lpRemoteLibraryBuffer + dwReflectiveLoaderOffset);
 	
 		// First we try to inject by directly creating a remote thread in the target process
 		if( inject_via_remotethread( NULL, NULL, hProcess, dwMeterpreterArch, lpReflectiveLoader, lpRemoteCommandLine ) != ERROR_SUCCESS )

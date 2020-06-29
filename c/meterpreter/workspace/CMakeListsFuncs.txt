@@ -1,9 +1,15 @@
 function(editbin)
-    add_custom_command(TARGET ${ARGV0} POST_BUILD
-        COMMAND editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,${ARGV1} $<TARGET_FILE:${ARGV0}> > NUL)
+    if(MSVC)
+        add_custom_command(TARGET ${ARGV0} POST_BUILD
+            COMMAND editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,${ARGV1} $<TARGET_FILE:${ARGV0}> > NUL)
+    else()
+    # TODO: add implementation for mingw
+    endif()
 endfunction()
 
 function(copyoutput)
+    add_custom_command(TARGET ${ARGV0} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${ARGV1})
     add_custom_command(TARGET ${ARGV0} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${ARGV0}> ${ARGV1})
 endfunction()

@@ -2,8 +2,8 @@
 #include "server_pivot_named_pipe.h"
 #include "packet_encryption.h"
 
-#include <AccCtrl.h>
-#include <AclApi.h>
+#include <accctrl.h>
+#include <aclapi.h>
 
 #define PIPE_NAME_SIZE 256
 #define PIPE_BUFFER_SIZE 0x10000
@@ -755,7 +755,7 @@ DWORD request_core_pivot_add_named_pipe(Remote* remote, Packet* packet)
 			namedPipeServer = ".";
 		}
 
-		UINT pivotIdLen = 0;
+		DWORD pivotIdLen = 0;
 		LPBYTE pivotId = packet_get_tlv_value_raw(packet, TLV_TYPE_PIVOT_ID, &pivotIdLen);
 		if (pivotId != NULL)
 		{

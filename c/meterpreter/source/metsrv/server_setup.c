@@ -426,7 +426,7 @@ DWORD server_setup(MetsrvConfig* config)
 					dprintf("[SERVER] attempting to initialise transport 0x%p", remote->transport);
 					// Each transport has its own set of retry settings and each should honour
 					// them individually.
-					if (!remote->transport->transport_init(remote->transport))
+					if (remote->transport->transport_init(remote->transport) != ERROR_SUCCESS)
 					{
 						dprintf("[SERVER] transport initialisation failed, moving to the next transport");
 						remote->transport = remote->transport->next_transport;

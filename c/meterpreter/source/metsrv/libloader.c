@@ -104,8 +104,8 @@ typedef struct _SHELLCODE_CTX {
 	/* Global offset */
 	DWORD				offset;
 	/* Allocated memory sections */
-	DWORD				file_address;
-	DWORD				mapped_address;
+	DWORD_PTR file_address;
+	DWORD_PTR mapped_address;
 	DWORD				size_map;
 
 	/* Hook stub functions */
@@ -333,23 +333,22 @@ void patch_function(SHELLCODE_CTX *ctx, UINT_PTR address, unsigned char *stub,
 	bytes = 5;
 
 	/* Create the stub */
-	WriteProcessMemory((HANDLE)-1, stub, (char *)address,
+	WriteProcessMemory((HANDLE)-1, stub, (LPVOID)address,
 		bytes, &written);
 	*(PBYTE)(stub + bytes) = 0xE9;
-	*(DWORD *)(stub + bytes + 1) = (DWORD)address - ((DWORD)stub + 5);
-
+	*(DWORD *)(stub + bytes + 1) = (DWORD)((DWORD_PTR)address - ((DWORD_PTR)stub + 5));
 
 	/* Patch original function */
 
 	/* Fix protection */
-	VirtualQuery((char *)address, &mbi_thunk,
+	VirtualQuery((LPVOID)address, &mbi_thunk,
 		sizeof(MEMORY_BASIC_INFORMATION));
 	VirtualProtect(mbi_thunk.BaseAddress, mbi_thunk.RegionSize,
 		PAGE_EXECUTE_READWRITE, &mbi_thunk.Protect);
 
 	/* Insert jump */
 	*(PBYTE)address = 0xE9;
-	*(DWORD *)(address + 1) = (DWORD)hook - ((DWORD)address + 5);
+	*(DWORD *)(address + 1) = (DWORD)((DWORD_PTR)hook - ((DWORD_PTR)address + 5));
 
 
 	/* Restore protection */
@@ -424,7 +423,7 @@ void install_hooks(SHELLCODE_CTX *ctx)
 }
 
 /* Restore given function */
-void restore_function(SHELLCODE_CTX *ctx, DWORD address, unsigned char *stub)
+void restore_function(SHELLCODE_CTX *ctx, DWORD_PTR address, unsigned char *stub)
 {
 	DWORD				protect;
 	ULONG 				bytes;
@@ -436,13 +435,13 @@ void restore_function(SHELLCODE_CTX *ctx, DWORD address, unsigned char *stub)
 	/* Patch original function */
 
 	/* Fix protection */
-	VirtualQuery((char *)address, &mbi_thunk,
+	VirtualQuery((LPVOID)address, &mbi_thunk,
 		sizeof(MEMORY_BASIC_INFORMATION));
 	VirtualProtect(mbi_thunk.BaseAddress, mbi_thunk.RegionSize,
 		PAGE_EXECUTE_READWRITE, &mbi_thunk.Protect);
 
 	/* Copy bytes back to function */
-	WriteProcessMemory((HANDLE)-1, (char *)address, stub,
+	WriteProcessMemory((HANDLE)-1, (LPVOID)address, stub,
 		bytes, &written);
 
 	/* Restore protection */
@@ -477,24 +476,24 @@ void remove_hooks(SHELLCODE_CTX *ctx)
 	lNtClose = (f_NtClose)GetProcAddress(ntdll, "NtClose");
 
 	/* NtMapViewOfSection */
-	restore_function(ctx, (DWORD)lNtMapViewOfSection,
+	restore_function(ctx, (DWORD_PTR)lNtMapViewOfSection,
 		ctx->s_NtMapViewOfSection);
 
 	/* NtQueryAttributesFile */
-	restore_function(ctx, (DWORD)lNtQueryAttributesFile,
+	restore_function(ctx, (DWORD_PTR)lNtQueryAttributesFile,
 		 ctx->s_NtQueryAttributesFile);
 
 	/* NtOpenFile */
-	restore_function(ctx, (DWORD)lNtOpenFile, ctx->s_NtOpenFile);
+	restore_function(ctx, (DWORD_PTR)lNtOpenFile, ctx->s_NtOpenFile);
 
 	/* NtCreateSection */
-	restore_function(ctx, (DWORD)lNtCreateSection, ctx->s_NtCreateSection);
+	restore_function(ctx, (DWORD_PTR)lNtCreateSection, ctx->s_NtCreateSection);
 
 	/* NtOpenSection */
-	restore_function(ctx, (DWORD)lNtOpenSection, ctx->s_NtOpenSection);
+	restore_function(ctx, (DWORD_PTR)lNtOpenSection, ctx->s_NtOpenSection);
 
 	/* NtClose */
-	restore_function(ctx, (DWORD)lNtClose, ctx->s_NtClose);
+	restore_function(ctx, (DWORD_PTR)lNtClose, ctx->s_NtClose);
 }
 
 /* Map file in memory as section */
@@ -513,14 +512,14 @@ void map_file(SHELLCODE_CTX *ctx)
 	 * First, try to map the file at ImageBase
 	 *
 	 */
-	ctx->mapped_address = (DWORD)VirtualAlloc((PVOID)nt->OptionalHeader.ImageBase,
+	ctx->mapped_address = (DWORD_PTR)VirtualAlloc((PVOID)nt->OptionalHeader.ImageBase,
 		nt->OptionalHeader.SizeOfImage,
 		MEM_RESERVE|MEM_COMMIT, PAGE_EXECUTE_READWRITE);
 
 
 	/* No success, let the system decide..  */
 	if (ctx->mapped_address == 0) {
-		ctx->mapped_address = (DWORD)VirtualAlloc((PVOID)NULL,
+		ctx->mapped_address = (DWORD_PTR)VirtualAlloc((PVOID)NULL,
 			nt->OptionalHeader.SizeOfImage,
 			MEM_RESERVE|MEM_COMMIT, PAGE_EXECUTE_READWRITE);
 
@@ -593,7 +592,7 @@ HMODULE libloader_load_library(LPCSTR name, PUCHAR buffer, DWORD bufferLength)
 		ctx->liblen = (int)strlen(ctx->libname) + 1;
 
 		// The address of the raw buffer
-		ctx->file_address = (DWORD)buffer;
+		ctx->file_address = (DWORD_PTR)buffer;
 
 		// Map the buffer into memory
 		map_file(ctx);

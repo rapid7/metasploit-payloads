@@ -312,12 +312,15 @@ DWORD request_core_loadlib(Remote *remote, Packet *packet)
 	PCHAR libraryPath;
 	DWORD flags = 0;
 	BOOL bLibLoadedReflectivly = FALSE;
+  dprintf("[LOADLIB] here 1");
 
 	Command *first = extensionCommands;
 
 	do
 	{
+  dprintf("[LOADLIB] here 2");
 		libraryPath = packet_get_tlv_value_string(packet, TLV_TYPE_LIBRARY_PATH);
+  dprintf("[LOADLIB] here 3");
 		flags = packet_get_tlv_value_uint(packet, TLV_TYPE_FLAGS);
 
 		// Invalid library path?
@@ -326,6 +329,7 @@ DWORD request_core_loadlib(Remote *remote, Packet *packet)
 			res = ERROR_INVALID_PARAMETER;
 			break;
 		}
+  dprintf("[LOADLIB] here 4");
 
 		// If the lib does not exist locally, but is being uploaded...
 		if (!(flags & LOAD_LIBRARY_FLAG_LOCAL))
@@ -333,6 +337,7 @@ DWORD request_core_loadlib(Remote *remote, Packet *packet)
 			PCHAR targetPath;
 			Tlv dataTlv;
 
+  dprintf("[LOADLIB] here 5");
 			// Get the library's file contents
 			if ((packet_get_tlv(packet, TLV_TYPE_DATA,
 				&dataTlv) != ERROR_SUCCESS) ||
@@ -343,13 +348,16 @@ DWORD request_core_loadlib(Remote *remote, Packet *packet)
 				break;
 			}
 
+  dprintf("[LOADLIB] here 6");
 			// If the library is not to be stored on disk, 
 			if (!(flags & LOAD_LIBRARY_FLAG_ON_DISK))
 			{
 				LPCSTR reflectiveLoader = packet_get_tlv_value_reflective_loader(packet);
+  dprintf("[LOADLIB] here 7");
 
 				// try to load the library via its reflective loader...
 				library = LoadLibraryR(dataTlv.buffer, dataTlv.header.length, reflectiveLoader);
+  dprintf("[LOADLIB] here 8");
 				if (library == NULL)
 				{
 					// if that fails, presumably besause the library doesn't support
@@ -361,6 +369,7 @@ DWORD request_core_loadlib(Remote *remote, Packet *packet)
 				{
 					bLibLoadedReflectivly = TRUE;
 				}
+  dprintf("[LOADLIB] here 9");
 
 				res = (library) ? ERROR_SUCCESS : ERROR_NOT_FOUND;
 			}
@@ -396,10 +405,12 @@ DWORD request_core_loadlib(Remote *remote, Packet *packet)
 
 	} while (0);
 
+  dprintf("[LOADLIB] here 10");
 	if (response)
 	{
 		packet_transmit_response(res, remote, response);
 	}
+  dprintf("[LOADLIB] here 11");
 
 	return res;
 }

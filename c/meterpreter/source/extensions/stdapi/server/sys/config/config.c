@@ -1,8 +1,8 @@
 #include "precomp.h"
 #include "common_metapi.h"
 
-#include <Sddl.h>
-#include <Lm.h>
+#include <sddl.h>
+#include <lm.h>
 #include <psapi.h>
 
 typedef NTSTATUS(WINAPI *PRtlGetVersion)(LPOSVERSIONINFOEXW);
