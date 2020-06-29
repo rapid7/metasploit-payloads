@@ -1,5 +1,5 @@
 # To build the dev environment.
-# docker build -t rapid7/build:meterpreter .
+# docker build -t rapid7/msf-ubuntu-x64-meterpreter:latest .
 
 FROM ubuntu:focal
 MAINTAINER Brent Cook <bcook@rapid7.com> (@busterbcook)
