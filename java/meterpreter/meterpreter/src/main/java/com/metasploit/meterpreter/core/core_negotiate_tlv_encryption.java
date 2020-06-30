@@ -1,18 +1,15 @@
 package com.metasploit.meterpreter.core;
 
-import javax.xml.bind.DatatypeConverter;
 import java.security.KeyFactory;
 import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.security.spec.X509EncodedKeySpec;
-import java.lang.String;
 import javax.crypto.Cipher;
 
 import com.metasploit.meterpreter.Transport;
 import com.metasploit.meterpreter.Meterpreter;
 import com.metasploit.meterpreter.TLVPacket;
 import com.metasploit.meterpreter.TLVType;
-import com.metasploit.meterpreter.Utils;
 import com.metasploit.meterpreter.command.Command;
 
 public class core_negotiate_tlv_encryption implements Command {
@@ -21,9 +18,16 @@ public class core_negotiate_tlv_encryption implements Command {
 
     public int execute(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws Exception {
         byte[] der = request.getRawValue(TLVType.TLV_TYPE_RSA_PUB_KEY);
-        byte[] aesKey = new byte[32];
+        int encType;
+        byte[] aesKey;
+        if (Cipher.getMaxAllowedKeyLength("AES") < 256) {
+            encType = Transport.ENC_AES128;
+            aesKey = new byte[16];
+        } else {
+            encType = Transport.ENC_AES256;
+            aesKey = new byte[32];
+        }
         sr.nextBytes(aesKey);
-
         try
         {
             PublicKey pubKey = getPublicKey(der);
@@ -35,7 +39,7 @@ public class core_negotiate_tlv_encryption implements Command {
         {
             response.add(TLVType.TLV_TYPE_SYM_KEY, aesKey);
         }
-        response.add(TLVType.TLV_TYPE_SYM_KEY_TYPE, Transport.ENC_AES256);
+        response.add(TLVType.TLV_TYPE_SYM_KEY_TYPE, encType);
 
         meterpreter.getTransports().current().setAesEncryptionKey(aesKey);
 

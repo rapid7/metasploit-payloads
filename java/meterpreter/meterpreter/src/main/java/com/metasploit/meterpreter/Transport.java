@@ -18,6 +18,7 @@ public abstract class Transport {
     public static final long MS = 1000L;
     public static final int ENC_NONE = 0;
     public static final int ENC_AES256 = 1;
+    public static final int ENC_AES128 = 2;
 
     private static final SecureRandom sr = new SecureRandom();
 
@@ -100,7 +101,7 @@ public abstract class Transport {
 
         this.arrayCopy(packet, 32, body, 0, body.length);
         int encFlag = this.readInt(packet, 20);
-        if (encFlag == ENC_AES256 && this.aesKey != null) {
+        if (encFlag != ENC_NONE && this.aesKey != null) {
             try
             {
                 body = aesDecrypt(body);
@@ -162,7 +163,7 @@ public abstract class Transport {
             try
             {
                 if (this.aesEnabled) {
-                    encType = ENC_AES256;
+                    encType = (this.aesKey.length == 32 ? ENC_AES256 : ENC_AES128);
                     data = aesEncrypt(data);
                 }
                 else
