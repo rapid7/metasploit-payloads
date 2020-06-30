@@ -1,6 +1,26 @@
-# Native C meterpreter >
+# Windows Native C meterpreter >
 
-## Building - Windows
+Before you do anything, you're going to need to make sure you have the dependencies set up. Windows Meterpreter has the following repositories set up as submodule dependencies:
+
+* [Reflective DLL Injection](https://github.com/rapid7/ReflectiveDLLInjection)
+* [Dependencies](https://github.com/rapid7/meterpreter-deps)
+
+For Meterpreter to build correctly, these submodules must be initialised and updated,
+like so:
+
+```
+git clone https://github.com/rapid7/metasploit-payloads
+cd metasploit-payloads
+git submodule init
+git submodule update
+```
+
+With the code checked out and the submodules updated, you're ready to run a build. Here you have two main options:
+
+* Compile Windows Meterpreter on Windows with VS2013, VS2017 or VS2019.
+* Cross-compile Windows Meterpreter on Linux, either directly on your host or via a Docker container.
+
+## Building - Windows on Windows
 Meterpreter currently supports being built with multiple versions of Visual Studio, including the free/community editions.
 
 ### VS 2019
@@ -91,27 +111,10 @@ choco install visualstudioexpress2013windowsdesktop -y
 
 Nothing extra needs to be done.
 
-## Dependencies
-
-Windows Meterpreter has the following repositories set up as submodule dependencies:
-
-* [Reflective DLL Injection](https://github.com/rapid7/ReflectiveDLLInjection)
-* [Dependencies](https://github.com/rapid7/meterpreter-deps)
-
-For Meterpreter to build correctly, these submodules must be initialised and updated,
-like so:
-
-```
-git clone https://github.com/rapid7/metasploit-payloads
-cd metasploit-payloads
-git submodule init
-git submodule update
-```
-
 At this point the dependencies will be ready to use and Meterpreter should be ready to
 build.
 
-## Running the Build
+### Running the Build
 
 Open up a Visual Studio command prompt by selecting `Developer Command Prompt for VS201X`
 from the Start menu. Alternatively you can run `vcvars32.bat` from an existing command
@@ -142,6 +145,54 @@ Meterpreter's submodule dependencies can't be found.
 From your git console, please run:
   $ git submodule init && git submodule update
 ```
+
+## Building - Windows on Linux
+
+Configuring a build environment on Linux is a bit of a pain in the rear and is also very likely to change in the near future as we move towards building via clang and making use of llvm for things such as transformations. As a result, we would recommend that you don't try to set up a host environment just yet. The best option is to make use of the docker container that has been built and configured to do the builds for you.
+
+The docker container should be published to the Internet. However, if it isn't, you can build it yourself by running:
+
+```
+make docker-container
+```
+
+This takes a while, so be patient.
+
+If you want to use the pre-built container all you have to do is run a normal build, and the container image will be downloaded if it's not present in the current list of locally available images. To do this, run:
+```
+make docker
+```
+
+### Making the components
+
+As mentioned above, to build the entire supported suite of binaries, run the following:
+```
+make docker
+```
+
+It's possible to build architecture-specific versions by appending the architecture in question.
+```
+# Build x64 only
+make docker-x64
+# Build x86 only
+make docker-x86
+```
+
+There are a number of other options in the `Makefile`, including the ability to build individual sets. Here are some examples:
+```
+# Build metsrv for all architectures
+make docker-metsrv
+# Build stdapi for x86
+make docker-ext-stdapi-x86
+```
+
+All binaries are copied to the local `output` folder. All activites are done under the context of the current user even inside the container, so generated binaries should have the correct ownership.
+
+### Notes
+
+* The builds on Linux aren't not 100% clean yet, this is something we are working on. Expect to see a few warnings pop up.
+* We aren't yet able to build the `python` and `powershell` extensions thanks to some assembly magic and COM nonsense. This is something we hope to resolve in the near future.
+* These binaries _might_ not be ABI compatible with binaries created with Visual Studio. There may be edge cases where memory is allocated in one location and freed in another, and hence if the allocators don't match you end up with pain and suffering. We'll be working on something to resolve this as well so that these binaries can be mixed and matched.
 
 # Testing
 
