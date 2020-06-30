@@ -162,7 +162,7 @@ public abstract class Transport {
         if (this.aesKey != null) {
             try
             {
-                if (this.aesEnabled && this.aesKey != null) {
+                if (this.aesEnabled) {
                     encType = (this.aesKey.length == 32 ? ENC_AES256 : ENC_AES128);
                     data = aesEncrypt(data);
                 }
