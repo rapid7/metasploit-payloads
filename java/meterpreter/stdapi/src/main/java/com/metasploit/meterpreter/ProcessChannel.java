@@ -12,6 +12,7 @@ import java.io.PrintStream;
 public class ProcessChannel extends Channel {
 
     private final Process process;
+    private final InputStream inputStream;
     private final InputStream err;
 
     /**
@@ -21,10 +22,13 @@ public class ProcessChannel extends Channel {
      * @param process     Process of the channel
      */
     public ProcessChannel(Meterpreter meterpreter, Process process) {
-        super(meterpreter, process.getInputStream(), process.getOutputStream());
-        this.process = process;
+        super(meterpreter, null, process.getOutputStream());
+        this.inputStream = process.getInputStream();
         this.err = process.getErrorStream();
-        new StderrThread(err, meterpreter.getErrorStream()).start();
+        this.process = process;
+        Thread stdinThread = new InteractThread(this.inputStream, false);
+        Thread stderrThread = new InteractThread(this.err, false);
+        new CloseThread(stdinThread, stderrThread).start();
     }
 
     /**
@@ -48,30 +52,27 @@ public class ProcessChannel extends Channel {
 
     public void close() throws IOException {
         process.destroy();
+        inputStream.close();
         err.close();
         super.close();
     }
 
-    class StderrThread extends Thread {
-        private final InputStream inputStream;
-        private final PrintStream outputStream;
+    class CloseThread extends Thread {
+        private final Thread stdinThread;
+        private final Thread stderrThread;
 
-        public StderrThread(InputStream inputStream, PrintStream outputStream) {
-            this.inputStream = inputStream;
-            this.outputStream = outputStream;
+        public CloseThread(Thread stdinThread, Thread stderrThread) {
+            this.stdinThread = stdinThread;
+            this.stderrThread = stderrThread;
         }
 
         public void run() {
             try {
-                byte[] buffer = new byte[1024*1024];
-                int len;
-                while ((len = inputStream.read(buffer)) != -1) {
-                    if (len == 0)
-                        continue;
-                    byte[] data = new byte[len];
-                    System.arraycopy(buffer, 0, data, 0, len);
-                    handleInteract(data);
-                }
+                stdinThread.start();
+                stderrThread.start();
+                stdinThread.join();
+                stderrThread.join();
+                handleInteract(null);
             } catch (Throwable t) {
                 t.printStackTrace(this.outputStream);
             }
