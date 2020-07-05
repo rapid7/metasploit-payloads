@@ -10,7 +10,7 @@ all: meterpreter
 clean: meterpreter-x64-clean meterpreter-x86-clean
 
 install:
-	@cp output/*.dll ../../../metasploit-framework/data/meterpreter
+	@cp -f output/*.dll ../../../metasploit-framework/data/meterpreter
 
 ##########################################################################################
 ### Build all
