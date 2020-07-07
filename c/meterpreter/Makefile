@@ -1,5 +1,5 @@
 ID := $(shell id -u)
-DOCKER_CONTAINER=win-meterpreter-build
+DOCKER_CONTAINER=rapid7/msf-ubuntu-x64-meterpreter:latest
 COMMON_GEN=-Wno-dev -DUSE_STATIC_MSVC_RUNTIMES=ON
 COMMON_GEN_X86=-DCMAKE_TOOLCHAIN_FILE=../toolsets/i686-w64-mingw32.cmake -DBUILD_ARCH=Win32 ${COMMON_GEN}
 COMMON_GEN_X64=-DCMAKE_TOOLCHAIN_FILE=../toolsets/x86_64-w64-mingw32.cmake -DBUILD_ARCH=x64 ${COMMON_GEN}
@@ -10,7 +10,7 @@ all: meterpreter
 clean: meterpreter-x64-clean meterpreter-x86-clean
 
 install:
-	@cp output/*.dll ../../../metasploit-framework/data/meterpreter
+	@cp -f output/*.dll ../../../metasploit-framework/data/meterpreter
 
 ##########################################################################################
 ### Build all
