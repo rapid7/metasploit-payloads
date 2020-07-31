@@ -9,7 +9,10 @@
 
 
 #define REFLECTIVEDLLINJECTION_CUSTOM_DLLMAIN
+#define RDIDLL_NOEXPORT
 #include "../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
+#include "../ReflectiveDLLInjection/inject/src/GetProcAddressR.c"
+#include "../ReflectiveDLLInjection/inject/src/LoadLibraryR.c"
 
 DWORD Init(MetsrvConfig* metConfig)
 {
@@ -129,5 +132,5 @@ VOID rand_xor_key(BYTE buffer[4])
 
 BOOL is_null_guid(BYTE guid[sizeof(GUID)])
 {
-	return memcmp(guid, "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", sizeof(guid)) == 0 ? TRUE : FALSE;
+	return memcmp(guid, "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", sizeof(GUID)) == 0 ? TRUE : FALSE;
 }

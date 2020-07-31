@@ -1,6 +1,7 @@
 package com.metasploit.meterpreter.core;
 
 import com.metasploit.meterpreter.CommandManager;
+import com.metasploit.meterpreter.command.CommandId;
 import com.metasploit.meterpreter.ExtensionLoader;
 
 /**
@@ -11,27 +12,27 @@ import com.metasploit.meterpreter.ExtensionLoader;
 public class Loader implements ExtensionLoader {
 
     public void load(CommandManager mgr) throws Exception {
-        mgr.registerCommand("core_channel_close", core_channel_close.class);
-        mgr.registerCommand("core_channel_eof", core_channel_eof.class);
-        mgr.registerCommand("core_channel_interact", core_channel_interact.class);
-        mgr.registerCommand("core_channel_open", core_channel_open.class);
-        mgr.registerCommand("core_channel_read", core_channel_read.class);
-        mgr.registerCommand("core_channel_write", core_channel_write.class);
-        mgr.registerCommand("core_enumextcmd", core_enumextcmd.class);
-        mgr.registerCommand("core_loadlib", core_loadlib.class);
-        mgr.registerCommand("core_set_uuid", core_set_uuid.class);
-        mgr.registerCommand("core_machine_id", core_machine_id.class);
-        mgr.registerCommand("core_get_session_guid", core_get_session_guid.class);
-        mgr.registerCommand("core_set_session_guid", core_set_session_guid.class);
-        mgr.registerCommand("core_patch_url", core_patch_url.class);
-        mgr.registerCommand("core_shutdown", core_shutdown.class);
-        mgr.registerCommand("core_transport_set_timeouts", core_transport_set_timeouts.class);
-        mgr.registerCommand("core_transport_list", core_transport_list.class);
-        mgr.registerCommand("core_transport_add", core_transport_add.class);
-        mgr.registerCommand("core_transport_change", core_transport_change.class);
-        mgr.registerCommand("core_transport_sleep", core_transport_sleep.class);
-        mgr.registerCommand("core_transport_next", core_transport_next.class);
-        mgr.registerCommand("core_transport_prev", core_transport_prev.class);
-        mgr.registerCommand("core_transport_remove", core_transport_remove.class);
+        mgr.registerCommand(CommandId.CORE_CHANNEL_CLOSE, core_channel_close.class);
+        mgr.registerCommand(CommandId.CORE_CHANNEL_EOF, core_channel_eof.class);
+        mgr.registerCommand(CommandId.CORE_CHANNEL_INTERACT, core_channel_interact.class);
+        mgr.registerCommand(CommandId.CORE_CHANNEL_READ, core_channel_read.class);
+        mgr.registerCommand(CommandId.CORE_CHANNEL_WRITE, core_channel_write.class);
+        mgr.registerCommand(CommandId.CORE_ENUMEXTCMD, core_enumextcmd.class);
+        mgr.registerCommand(CommandId.CORE_LOADLIB, core_loadlib.class);
+        mgr.registerCommand(CommandId.CORE_SET_UUID, core_set_uuid.class);
+        mgr.registerCommand(CommandId.CORE_MACHINE_ID, core_machine_id.class);
+        mgr.registerCommand(CommandId.CORE_GET_SESSION_GUID, core_get_session_guid.class);
+        mgr.registerCommand(CommandId.CORE_SET_SESSION_GUID, core_set_session_guid.class);
+        mgr.registerCommand(CommandId.CORE_PATCH_URL, core_patch_url.class);
+        mgr.registerCommand(CommandId.CORE_SHUTDOWN, core_shutdown.class);
+        mgr.registerCommand(CommandId.CORE_TRANSPORT_SET_TIMEOUTS, core_transport_set_timeouts.class);
+        mgr.registerCommand(CommandId.CORE_TRANSPORT_LIST, core_transport_list.class);
+        mgr.registerCommand(CommandId.CORE_TRANSPORT_ADD, core_transport_add.class);
+        mgr.registerCommand(CommandId.CORE_TRANSPORT_CHANGE, core_transport_change.class);
+        mgr.registerCommand(CommandId.CORE_TRANSPORT_SLEEP, core_transport_sleep.class);
+        mgr.registerCommand(CommandId.CORE_TRANSPORT_NEXT, core_transport_next.class);
+        mgr.registerCommand(CommandId.CORE_TRANSPORT_PREV, core_transport_prev.class);
+        mgr.registerCommand(CommandId.CORE_TRANSPORT_REMOVE, core_transport_remove.class);
+        mgr.registerCommand(CommandId.CORE_NEGOTIATE_TLV_ENCRYPTION, core_negotiate_tlv_encryption.class);
     }
 }

@@ -30,7 +30,7 @@ namespace MSF.Powershell.Meterpreter
         {
             Tlv tlv = new Tlv();
 
-            var result = Core.InvokeMeterpreterBinding(true, tlv.ToRequest("stdapi_fs_mount_show"));
+            var result = Core.InvokeMeterpreterBinding(true, tlv.ToRequest(CommandId.StdapiFsMountShow));
 
             if (result != null)
             {

@@ -99,7 +99,7 @@ typedef DWORD TlvMetaType;
 typedef enum
 {
 	TLV_TYPE_ANY                 = TLV_VALUE(TLV_META_TYPE_NONE,        0),   ///! Represents an undefined/arbitrary value.
-	TLV_TYPE_METHOD              = TLV_VALUE(TLV_META_TYPE_STRING,      1),   ///! Represents a method/function name value.
+	TLV_TYPE_COMMAND_ID          = TLV_VALUE(TLV_META_TYPE_UINT,        1),   ///! Represents a command identifier.
 	TLV_TYPE_REQUEST_ID          = TLV_VALUE(TLV_META_TYPE_STRING,      2),   ///! Represents a request identifier value.
 	TLV_TYPE_EXCEPTION           = TLV_VALUE(TLV_META_TYPE_GROUP,       3),   ///! Represents an exception value.
 	TLV_TYPE_RESULT              = TLV_VALUE(TLV_META_TYPE_UINT,        4),   ///! Represents a result value.
@@ -135,15 +135,15 @@ typedef enum
 	TLV_TYPE_LIBRARY_PATH        = TLV_VALUE(TLV_META_TYPE_STRING,    400),   ///! Represents a path to the library to be loaded (string).
 	TLV_TYPE_TARGET_PATH         = TLV_VALUE(TLV_META_TYPE_STRING,    401),   ///! Represents a target path (string).
 	TLV_TYPE_MIGRATE_PID         = TLV_VALUE(TLV_META_TYPE_UINT,      402),   ///! Represents a process identifier of the migration target (unsigned integer).
-	TLV_TYPE_MIGRATE_PAYLOAD_LEN = TLV_VALUE(TLV_META_TYPE_UINT,      403),   ///! Represents a migration payload size/length in bytes (unsigned integer).
-	TLV_TYPE_MIGRATE_PAYLOAD     = TLV_VALUE(TLV_META_TYPE_STRING,    404),   ///! Represents a migration payload (string).
+	TLV_TYPE_MIGRATE_PAYLOAD     = TLV_VALUE(TLV_META_TYPE_RAW,       404),   ///! Represents a migration payload (raw).
 	TLV_TYPE_MIGRATE_ARCH        = TLV_VALUE(TLV_META_TYPE_UINT,      405),   ///! Represents a migration target architecture.
 	TLV_TYPE_MIGRATE_TECHNIQUE   = TLV_VALUE(TLV_META_TYPE_UINT,      406),   ///! Represents a migration technique (unsigned int).
 	TLV_TYPE_MIGRATE_BASE_ADDR   = TLV_VALUE(TLV_META_TYPE_UINT,      407),   ///! Represents a migration payload base address (unsigned int).
 	TLV_TYPE_MIGRATE_ENTRY_POINT = TLV_VALUE(TLV_META_TYPE_UINT,      408),   ///! Represents a migration payload entry point (unsigned int).
 	TLV_TYPE_MIGRATE_SOCKET_PATH = TLV_VALUE(TLV_META_TYPE_STRING,    409),   ///! Represents a unix domain socket path, used to migrate on linux (string)
-	TLV_TYPE_MIGRATE_STUB_LEN    = TLV_VALUE(TLV_META_TYPE_UINT,      410),   ///! Represents a migration stub length (uint).
-	TLV_TYPE_MIGRATE_STUB        = TLV_VALUE(TLV_META_TYPE_STRING,    411),   ///! Represents a migration stub (string).
+	TLV_TYPE_MIGRATE_STUB        = TLV_VALUE(TLV_META_TYPE_RAW,       411),   ///! Represents a migration stub (raw).
+	TLV_TYPE_LIB_LOADER_NAME     = TLV_VALUE(TLV_META_TYPE_STRING,    412),   ///! Represents the name of the ReflectiveLoader function (string).
+	TLV_TYPE_LIB_LOADER_ORDINAL  = TLV_VALUE(TLV_META_TYPE_UINT,      413),   ///! Represents the ordinal of the ReflectiveLoader function (int).
 
 	// Transport switching
 	TLV_TYPE_TRANS_TYPE          = TLV_VALUE(TLV_META_TYPE_UINT,      430),   ///! Represents the type of transport to switch to.
@@ -166,7 +166,7 @@ typedef enum
 	TLV_TYPE_SESSION_GUID        = TLV_VALUE(TLV_META_TYPE_RAW,       462),   ///! Represents a Session GUID.
 
 	// Packet encryption
-	TLV_TYPE_RSA_PUB_KEY         = TLV_VALUE(TLV_META_TYPE_STRING,    550),   ///! Represents PEM-formatter RSA public key
+	TLV_TYPE_RSA_PUB_KEY         = TLV_VALUE(TLV_META_TYPE_RAW,       550),   ///! Represents DER-encoded RSA public key
 	TLV_TYPE_SYM_KEY_TYPE        = TLV_VALUE(TLV_META_TYPE_UINT,      551),   ///! Represents the type of symmetric key
 	TLV_TYPE_SYM_KEY             = TLV_VALUE(TLV_META_TYPE_RAW,       552),   ///! Represents the symmetric key
 	TLV_TYPE_ENC_SYM_KEY         = TLV_VALUE(TLV_META_TYPE_RAW,       553),   ///! Represents and RSA-encrypted symmetric key
@@ -174,7 +174,6 @@ typedef enum
 	// Pivots
 	TLV_TYPE_PIVOT_ID              = TLV_VALUE(TLV_META_TYPE_RAW,     650),   ///! Represents the id of the pivot listener
 	TLV_TYPE_PIVOT_STAGE_DATA      = TLV_VALUE(TLV_META_TYPE_RAW,     651),   ///! Represents the data to be staged on new connections.
-	TLV_TYPE_PIVOT_STAGE_DATA_SIZE = TLV_VALUE(TLV_META_TYPE_UINT,    652),   ///! Represents the size of the data to be staged on new connections.
 	TLV_TYPE_PIVOT_NAMED_PIPE_NAME = TLV_VALUE(TLV_META_TYPE_STRING,  653),   ///! Represents named pipe name.
 
 	TLV_TYPE_EXTENSIONS          = TLV_VALUE(TLV_META_TYPE_COMPLEX, 20000),   ///! Represents an extension value.
@@ -234,7 +233,7 @@ typedef struct _DECOMPRESSED_BUFFER
 
 /*! * @brief Packet request completion notification handler function pointer type. */
 typedef DWORD (*PacketRequestCompletionRoutine)(Remote *remote,
-		Packet *response, LPVOID context, LPCSTR method, DWORD result);
+		Packet *response, LPVOID context, UINT commandId, DWORD result);
 
 typedef struct _PacketRequestCompletion
 {

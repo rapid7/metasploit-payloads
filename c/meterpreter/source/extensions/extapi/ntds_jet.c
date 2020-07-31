@@ -5,14 +5,33 @@
 #include "extapi.h"
 #include "common_metapi.h"
 
-#define JET_VERSION 0x0501
-
 #include <inttypes.h>
-#include <WinCrypt.h>
+#include <wincrypt.h>
 #include "syskey.h"
 #include "ntds_decrypt.h"
 #include "ntds_jet.h"
 #include "ntds.h"
+
+#ifdef __MINGW32__
+typedef JET_ERR (JET_API*PJetGetTableColumnInfo)(JET_SESID sesid, JET_TABLEID tableid, const char* szColumnName, void* pvResult, unsigned long cbMax, unsigned long InfoLevel);
+#endif
+
+JET_ERR JET_API InternalJetGetTableColumnInfo(JET_SESID sesid, JET_TABLEID tableid, const char* szColumnName, void* pvResult, unsigned long cbMax, unsigned long InfoLevel)
+{
+#ifdef __MINGW32__
+	// This function does exist in the x64 version of mingw's compiler.
+	// Doesn't live in the x86 version, and I have no idea why. So add
+	// a dynamic invocation to cover for it at runtime.
+	static PJetGetTableColumnInfo pFunc = NULL;
+	if (pFunc == NULL)
+	{
+		pFunc = (PJetGetTableColumnInfo)GetProcAddress(LoadLibraryA("esent.dll"), "JetGetTableColumnInfo");
+	}
+	return pFunc(sesid, tableid, szColumnName, pvResult, cbMax, InfoLevel);
+#else
+	return JetGetTableColumnInfo(sesid, tableid, szColumnName, pvResult, cbMax, InfoLevel);
+#endif
+}
 
 /*!
 * @brief Shuts down the Jet Instance and frees the jetState struct.
@@ -128,7 +147,7 @@ JET_ERR get_column_info(struct jetState *ntdsState, struct ntdsColumns *accountC
 	};
 	int countColumns = sizeof(columns) / sizeof(columns[0]);
 	for (int i = 0; i < countColumns; i++) {
-		columnError = JetGetTableColumnInfo(ntdsState->jetSession, ntdsState->jetTable, columns[i].name, columns[i].column, sizeof(JET_COLUMNDEF), JET_ColInfo);
+		columnError = InternalJetGetTableColumnInfo(ntdsState->jetSession, ntdsState->jetTable, columns[i].name, columns[i].column, sizeof(JET_COLUMNDEF), JET_ColInfo);
 		if (columnError != JET_errSuccess) {
 			return columnError;
 		}

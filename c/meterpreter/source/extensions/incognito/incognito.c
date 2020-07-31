@@ -14,6 +14,7 @@
 // Required so that use of the API works.
 MetApi* met_api = NULL;
 
+#define RDIDLL_NOEXPORT
 #include "../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
 
 DWORD request_incognito_list_tokens(Remote *remote, Packet *packet);
@@ -203,12 +204,12 @@ cleanup:
 
 Command customCommands[] =
 {
-	COMMAND_REQ( "incognito_list_tokens", request_incognito_list_tokens ),
-	COMMAND_REQ( "incognito_impersonate_token", request_incognito_impersonate_token ),
-	COMMAND_REQ( "incognito_add_user", request_incognito_add_user ),
-	COMMAND_REQ( "incognito_add_group_user", request_incognito_add_group_user ),
-	COMMAND_REQ( "incognito_add_localgroup_user", request_incognito_add_localgroup_user ),
-	COMMAND_REQ( "incognito_snarf_hashes", request_incognito_snarf_hashes ),
+	COMMAND_REQ( COMMAND_ID_INCOGNITO_LIST_TOKENS, request_incognito_list_tokens ),
+	COMMAND_REQ( COMMAND_ID_INCOGNITO_IMPERSONATE_TOKEN, request_incognito_impersonate_token ),
+	COMMAND_REQ( COMMAND_ID_INCOGNITO_ADD_USER, request_incognito_add_user ),
+	COMMAND_REQ( COMMAND_ID_INCOGNITO_ADD_GROUP_USER, request_incognito_add_group_user ),
+	COMMAND_REQ( COMMAND_ID_INCOGNITO_ADD_LOCALGROUP_USER, request_incognito_add_localgroup_user ),
+	COMMAND_REQ( COMMAND_ID_INCOGNITO_SNARF_HASHES, request_incognito_snarf_hashes ),
 	COMMAND_TERMINATOR
 };
 
@@ -218,9 +219,9 @@ Command customCommands[] =
  * @param remote Pointer to the remote instance.
  * @return Indication of success or failure.
  */
-DWORD __declspec(dllexport) InitServerExtension(MetApi* api, Remote* remote)
+DWORD InitServerExtension(MetApi* api, Remote* remote)
 {
-    met_api = api;
+	met_api = api;
 
 	met_api->command.register_all( customCommands );
 
@@ -232,7 +233,7 @@ DWORD __declspec(dllexport) InitServerExtension(MetApi* api, Remote* remote)
  * @param remote Pointer to the remote instance.
  * @return Indication of success or failure.
  */
-DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
+DWORD DeinitServerExtension(Remote *remote)
 {
 	met_api->command.deregister_all( customCommands );
 
@@ -240,13 +241,21 @@ DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
 }
 
 /*!
- * @brief Get the name of the extension.
- * @param buffer Pointer to the buffer to write the name to.
+ * @brief Do a stageless initialisation of the extension.
+ * @param ID of the extension that the init was intended for.
+ * @param buffer Pointer to the buffer that contains the init data.
  * @param bufferSize Size of the \c buffer parameter.
  * @return Indication of success or failure.
  */
-DWORD __declspec(dllexport) GetExtensionName(char* buffer, int bufferSize)
+DWORD StagelessInit(UINT extensionId, const LPBYTE buffer, DWORD bufferSize)
 {
-	strncpy_s(buffer, bufferSize, "incognito", bufferSize - 1);
 	return ERROR_SUCCESS;
+}
+
+/*!
+ * @brief Callback for when a command has been added to the meterpreter instance.
+ * @param commandId The ID of the command that has been added.
+ */
+VOID CommandAdded(UINT commandId)
+{
 }

@@ -6,13 +6,11 @@
 extern "C" {
 #include "extapi.h"
 #include "common_metapi.h"
-#include <Iads.h>
-#include <Adshlp.h>
-#include <AdsErr.h>
+#include <iads.h>
+#include <adshlp.h>
+#include <adserr.h>
 #include "adsi_interface.h"
 }
-
-#pragma comment(lib, "Activeds.lib")
 
 #define VALUE_SIZE 1024
 #define PATH_SIZE 256
@@ -20,7 +18,7 @@ extern "C" {
 typedef BOOL (WINAPI *PCONVERTSIDTOSTRINGSID)(PSID pSid, LPSTR* pStr); 
 
 /*! @brief The GUID of the Directory Search COM object. */
-static const IID IID_IDirectorySearch = { 0x109BA8EC, 0x92F0, 0x11D0, { 0xA7, 0x90, 0x00, 0xC0, 0x4F, 0xD8, 0xD5, 0xA8 } };
+extern const IID IID_IDirectorySearch = { 0x109BA8EC, 0x92F0, 0x11D0, { 0xA7, 0x90, 0x00, 0xC0, 0x4F, 0xD8, 0xD5, 0xA8 } };
 
 static PCONVERTSIDTOSTRINGSID pConvertSidToStringSid = NULL;
 static HMODULE hAdvapi32 = NULL;

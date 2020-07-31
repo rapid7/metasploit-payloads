@@ -26,33 +26,33 @@ typedef BOOL(*INLINE_DISPATCH_ROUTINE)(Remote *remote, Packet *packet, DWORD* re
 /*! @brief Helper macro which defines an empty dispatch handler. */
 #define EMPTY_DISPATCH_HANDLER NULL, NULL, EMPTY_TLV
 /*! @brief Helper macro that defines terminator for command lists. */
-#define COMMAND_TERMINATOR { NULL, { EMPTY_DISPATCH_HANDLER }, { EMPTY_DISPATCH_HANDLER } }
+#define COMMAND_TERMINATOR { 0, { EMPTY_DISPATCH_HANDLER }, { EMPTY_DISPATCH_HANDLER } }
 
 /*!
  * @brief Helper macro that defines a command instance with a request handler only.
  * @remarks The request handler will be executed on a separate thread.
  */
-#define COMMAND_REQ(name, reqHandler) { name, { reqHandler, NULL, EMPTY_TLV }, { EMPTY_DISPATCH_HANDLER } }
+#define COMMAND_REQ(command_id, reqHandler) { command_id, { reqHandler, NULL, EMPTY_TLV }, { EMPTY_DISPATCH_HANDLER } }
 /*!
  * @brief Helper macro that defines a command instance with a response handler only.
  * @remarks The request handler will be executed on a separate thread.
  */
-#define COMMAND_REP(name, repHandler) { name, { EMPTY_DISPATCH_HANDLER }, { repHandler, NULL, EMPTY_TLV } }
+#define COMMAND_REP(command_id, repHandler) { command_id, { EMPTY_DISPATCH_HANDLER }, { repHandler, NULL, EMPTY_TLV } }
 /*!
  * @brief Helper macro that defines a command instance with both a request and response handler.
  * @remarks The request handler will be executed on a separate thread.
  */
-#define COMMAND_REQ_REP(name, reqHandler, repHandler) { name, { reqHandler, NULL, EMPTY_TLV }, { repHandler, NULL, EMPTY_TLV } }
+#define COMMAND_REQ_REP(command_id, reqHandler, repHandler) { command_id, { reqHandler, NULL, EMPTY_TLV }, { repHandler, NULL, EMPTY_TLV } }
 /*!
  * @brief Helper macro that defines a command instance with an inline request handler only.
  * @remarks The request handler will be executed on the server thread.
  */
-#define COMMAND_INLINE_REQ(name, reqHandler) { name, { NULL, reqHandler, EMPTY_TLV }, { EMPTY_DISPATCH_HANDLER } }
+#define COMMAND_INLINE_REQ(command_id, reqHandler) { command_id, { NULL, reqHandler, EMPTY_TLV }, { EMPTY_DISPATCH_HANDLER } }
 /*!
  * @brief Helper macro that defines a command instance with an inline response handler only.
  * @remarks The response handler will be executed on the server thread.
  */
-#define COMMAND_INLINE_REP(name, reqHandler) { name, { EMPTY_DISPATCH_HANDLER }, { NULL, reqHandler, EMPTY_TLV } }
+#define COMMAND_INLINE_REP(command_id, reqHandler) { command_id, { EMPTY_DISPATCH_HANDLER }, { NULL, reqHandler, EMPTY_TLV } }
 
 /*!
  * @brief Defines a command handler for requests and responses.
@@ -82,7 +82,7 @@ typedef struct
  */
 typedef struct command
 {
-	LPCSTR           method;     ///< Identifier for the command.
+	UINT             command_id; ///< Identifier for the command.
 	PacketDispatcher request;    ///< Defines the request handler.
 	PacketDispatcher response;   ///< Defines the response handler.
 

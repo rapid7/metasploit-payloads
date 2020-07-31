@@ -2,6 +2,7 @@ import meterpreter_bindings
 
 from meterpreter.core import *
 from meterpreter.tlv import *
+from meterpreter.command import *
 
 INCOGNITO_NO_TOKENS = 'No tokens available\n'
 
@@ -13,7 +14,7 @@ def list_group_tokens():
 
 def __list_tokens_internal(order):
   tlv = tlv_pack(TLV_TYPE_INCOGNITO_LIST_TOKENS_TOKEN_ORDER, order)
-  resp = invoke_meterpreter('incognito_list_tokens', True, tlv)
+  resp = invoke_meterpreter(COMMAND_ID_INCOGNITO_LIST_TOKENS, True, tlv)
 
   if resp == None:
     return None
@@ -30,7 +31,7 @@ def __list_tokens_internal(order):
 
 def impersonate(user):
   tlv = tlv_pack(TLV_TYPE_INCOGNITO_IMPERSONATE_TOKEN, user)
-  resp = invoke_meterpreter('incognito_impersonate_token', True, tlv)
+  resp = invoke_meterpreter(COMMAND_ID_INCOGNITO_IMPERSONATE_TOKEN, True, tlv)
 
   if resp == None:
     return False
@@ -39,7 +40,7 @@ def impersonate(user):
 
 def snarf_hashes(server):
   tlv = tlv_pack(TLV_TYPE_INCOGNITO_SERVERNAME, server)
-  resp = invoke_meterpreter('incognito_snarf_hashes', True, tlv)
+  resp = invoke_meterpreter(COMMAND_ID_INCOGNITO_SNARF_HASHES, True, tlv)
 
   if resp == None:
     return False
@@ -51,7 +52,7 @@ def add_user(server, username, password):
   tlv += tlv_pack(TLV_TYPE_INCOGNITO_USERNAME, username)
   tlv += tlv_pack(TLV_TYPE_INCOGNITO_PASSWORD, password)
 
-  resp = invoke_meterpreter('incognito_add_user', True, tlv)
+  resp = invoke_meterpreter(COMMAND_ID_INCOGNITO_ADD_USER, True, tlv)
 
   if resp == None:
     return False
@@ -59,10 +60,10 @@ def add_user(server, username, password):
   return packet_get_tlv(resp, TLV_TYPE_RESULT)['value'] == 0
 
 def add_group_user(server, group, username):
-  return __add_group_user_internal('incognito_add_group_user', server, group, username)
+  return __add_group_user_internal(COMMAND_ID_INCOGNITO_ADD_GROUP_USER, server, group, username)
 
 def add_localgroup_user(server, group, username):
-  return __add_group_user_internal('incognito_add_localgroup_user', server, group, username)
+  return __add_group_user_internal(COMMAND_ID_INCOGNITO_ADD_LOCALGROUP_USER, server, group, username)
 
 def __add_group_user_internal(msg, server, group, username):
   tlv = tlv_pack(TLV_TYPE_INCOGNITO_SERVERNAME, server)

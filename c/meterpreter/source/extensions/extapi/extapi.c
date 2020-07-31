@@ -9,6 +9,7 @@
 // Required so that use of the API works.
 MetApi* met_api = NULL;
 
+#define RDIDLL_NOEXPORT
 #include "../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
 
 #include "window.h"
@@ -22,22 +23,22 @@ MetApi* met_api = NULL;
 /*! @brief List of commands that the extended API extension providers. */
 Command customCommands[] =
 {
-	COMMAND_REQ("extapi_window_enum", request_window_enum),
-	COMMAND_REQ("extapi_service_enum", request_service_enum),
-	COMMAND_REQ("extapi_service_query", request_service_query),
-	COMMAND_REQ("extapi_service_control", request_service_control),
-	COMMAND_REQ("extapi_clipboard_get_data", request_clipboard_get_data),
-	COMMAND_REQ("extapi_clipboard_set_data", request_clipboard_set_data),
-	COMMAND_REQ("extapi_clipboard_monitor_start", request_clipboard_monitor_start),
-	COMMAND_REQ("extapi_clipboard_monitor_pause", request_clipboard_monitor_pause),
-	COMMAND_REQ("extapi_clipboard_monitor_resume", request_clipboard_monitor_resume),
-	COMMAND_REQ("extapi_clipboard_monitor_purge", request_clipboard_monitor_purge),
-	COMMAND_REQ("extapi_clipboard_monitor_stop", request_clipboard_monitor_stop),
-	COMMAND_REQ("extapi_clipboard_monitor_dump", request_clipboard_monitor_dump),
-	COMMAND_REQ("extapi_adsi_domain_query", request_adsi_domain_query),
-	COMMAND_REQ("extapi_ntds_parse", ntds_parse),
-	COMMAND_REQ("extapi_wmi_query", request_wmi_query),
-	COMMAND_REQ("extapi_pageant_send_query", request_pageant_send_query),
+	COMMAND_REQ(COMMAND_ID_EXTAPI_WINDOW_ENUM, request_window_enum),
+	COMMAND_REQ(COMMAND_ID_EXTAPI_SERVICE_ENUM, request_service_enum),
+	COMMAND_REQ(COMMAND_ID_EXTAPI_SERVICE_QUERY, request_service_query),
+	COMMAND_REQ(COMMAND_ID_EXTAPI_SERVICE_CONTROL, request_service_control),
+	COMMAND_REQ(COMMAND_ID_EXTAPI_CLIPBOARD_GET_DATA, request_clipboard_get_data),
+	COMMAND_REQ(COMMAND_ID_EXTAPI_CLIPBOARD_SET_DATA, request_clipboard_set_data),
+	COMMAND_REQ(COMMAND_ID_EXTAPI_CLIPBOARD_MONITOR_START, request_clipboard_monitor_start),
+	COMMAND_REQ(COMMAND_ID_EXTAPI_CLIPBOARD_MONITOR_PAUSE, request_clipboard_monitor_pause),
+	COMMAND_REQ(COMMAND_ID_EXTAPI_CLIPBOARD_MONITOR_RESUME, request_clipboard_monitor_resume),
+	COMMAND_REQ(COMMAND_ID_EXTAPI_CLIPBOARD_MONITOR_PURGE, request_clipboard_monitor_purge),
+	COMMAND_REQ(COMMAND_ID_EXTAPI_CLIPBOARD_MONITOR_STOP, request_clipboard_monitor_stop),
+	COMMAND_REQ(COMMAND_ID_EXTAPI_CLIPBOARD_MONITOR_DUMP, request_clipboard_monitor_dump),
+	COMMAND_REQ(COMMAND_ID_EXTAPI_ADSI_DOMAIN_QUERY, request_adsi_domain_query),
+	COMMAND_REQ(COMMAND_ID_EXTAPI_NTDS_PARSE, ntds_parse),
+	COMMAND_REQ(COMMAND_ID_EXTAPI_WMI_QUERY, request_wmi_query),
+	COMMAND_REQ(COMMAND_ID_EXTAPI_PAGEANT_SEND_QUERY, request_pageant_send_query),
 	COMMAND_TERMINATOR
 };
 
@@ -47,9 +48,9 @@ Command customCommands[] =
  * @param remote Pointer to the remote instance.
  * @return Indication of success or failure.
  */
-DWORD __declspec(dllexport) InitServerExtension(MetApi* api, Remote* remote)
+DWORD InitServerExtension(MetApi* api, Remote* remote)
 {
-    met_api = api;
+	met_api = api;
 
 	met_api->command.register_all(customCommands);
 
@@ -64,7 +65,7 @@ DWORD __declspec(dllexport) InitServerExtension(MetApi* api, Remote* remote)
  * @param remote Pointer to the remote instance.
  * @return Indication of success or failure.
  */
-DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
+DWORD DeinitServerExtension(Remote *remote)
 {
 	met_api->command.deregister_all(customCommands);
 
@@ -72,13 +73,21 @@ DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
 }
 
 /*!
- * @brief Get the name of the extension.
- * @param buffer Pointer to the buffer to write the name to.
+ * @brief Do a stageless initialisation of the extension.
+ * @param ID of the extension that the init was intended for.
+ * @param buffer Pointer to the buffer that contains the init data.
  * @param bufferSize Size of the \c buffer parameter.
  * @return Indication of success or failure.
  */
-DWORD __declspec(dllexport) GetExtensionName(char* buffer, int bufferSize)
+DWORD StagelessInit(UINT extensionId, const LPBYTE buffer, DWORD bufferSize)
 {
-	strncpy_s(buffer, bufferSize, "extapi", bufferSize - 1);
 	return ERROR_SUCCESS;
+}
+
+/*!
+ * @brief Callback for when a command has been added to the meterpreter instance.
+ * @param commandId The ID of the command that has been added.
+ */
+VOID CommandAdded(UINT commandId)
+{
 }

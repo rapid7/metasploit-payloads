@@ -8,7 +8,7 @@ DWORD session_id( DWORD dwProcessId );
 
 DWORD session_activeid();
 
-DWORD session_inject( DWORD dwSessionId, DLL_BUFFER * pDllBuffer, char * cpCommandLine );
+DWORD session_inject( DWORD dwSessionId, DLL_BUFFER * pDllBuffer, LPCSTR reflectiveLoader, char * cpCommandLine );
 
 //===============================================================================================//
 #endif

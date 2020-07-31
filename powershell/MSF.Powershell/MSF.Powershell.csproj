@@ -39,6 +39,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Meterpreter\CommandId.cs" />
     <Compile Include="Meterpreter\Elevate.cs" />
     <Compile Include="Meterpreter\Enumerations.cs" />
     <Compile Include="Meterpreter\Core.cs" />

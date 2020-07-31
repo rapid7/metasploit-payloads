@@ -6,11 +6,11 @@
  *          change this stuff unless you know what you're doing!
  */
 #include "metsrv.h"
+#include "common_exports.h"
 #include "packet_encryption.h"
 #include <winhttp.h>
 
-DWORD packet_find_tlv_buf(Packet *packet, PUCHAR payload, DWORD payloadLength, DWORD index,
-		TlvType type, Tlv *tlv);
+DWORD packet_find_tlv_buf(Packet *packet, PUCHAR payload, DWORD payloadLength, DWORD index, TlvType type, Tlv *tlv);
 
 /*! @brief List element that contains packet completion routine details. */
 typedef struct _PacketCompletionRoutineEntry
@@ -83,7 +83,7 @@ VOID core_update_desktop(Remote * remote, DWORD dwSessionID, char * cpStationNam
 		temp_session = remote->curr_sess_id;
 
 		// A session id of -1 resets the state back to the servers real session id
-		if (dwSessionID = -1)
+		if (-1 == dwSessionID)
 		{
 			dwSessionID = remote->orig_sess_id;
 		}
@@ -133,10 +133,10 @@ VOID core_update_desktop(Remote * remote, DWORD dwSessionID, char * cpStationNam
 /*!
  * @brief Create a packet of a given type (request/response) and method.
  * @param type The TLV type that this packet represents.
- * @param method TLV method type (can be \c NULL).
+ * @param commandId TLV command Id 
  * @return Pointer to the newly created \c Packet.
  */
-Packet *packet_create(PacketTlvType type, LPCSTR method)
+Packet* packet_create(PacketTlvType type, UINT commandId)
 {
 	Packet *packet = NULL;
 	BOOL success = FALSE;
@@ -158,8 +158,7 @@ Packet *packet_create(PacketTlvType type, LPCSTR method)
 		packet->payload = NULL;
 		packet->payloadLength = 0;
 
-		// Add the method TLV if provided
-		if (method && packet_add_tlv_string(packet, TLV_TYPE_METHOD, method) != ERROR_SUCCESS)
+		if (commandId > 0 && packet_add_tlv_uint(packet, TLV_TYPE_COMMAND_ID, commandId) != ERROR_SUCCESS)
 		{
 			break;
 		}
@@ -242,7 +241,7 @@ DWORD packet_add_group(Packet* packet, TlvType type, Packet* groupPacket)
 Packet *packet_create_response(Packet *request)
 {
 	Packet *response = NULL;
-	Tlv method, requestId;
+	Tlv requestId;
 	BOOL success = FALSE;
 	PacketTlvType responseType;
 
@@ -255,17 +254,18 @@ Packet *packet_create_response(Packet *request)
 		responseType = PACKET_TLV_TYPE_RESPONSE;
 	}
 
+	UINT commandId = packet_get_tlv_value_uint(request, TLV_TYPE_COMMAND_ID);
+
 	do
 	{
-		// Get the request TLV's method
-		if (packet_get_tlv_string(request, TLV_TYPE_METHOD, &method) != ERROR_SUCCESS)
+		if (commandId == 0)
 		{
-			vdprintf("[PKT] Can't find method");
+			vdprintf("[PKT] Can't find command ID");
 			break;
 		}
 
 		// Try to allocate a response packet
-		if (!(response = packet_create(responseType, (PCHAR)method.buffer)))
+		if (!(response = packet_create(responseType, commandId)))
 		{
 			vdprintf("[PKT] Can't create response");
 			break;
@@ -794,6 +794,24 @@ PCHAR packet_get_tlv_value_string( Packet *packet, TlvType type )
 }
 
 /*!
+ * @brief Helper function to extract the Reflective Loader name or ordinal, and fallback to a sane default.
+ * @param packet Pointer to the packet to get the TLV from.
+ * @retval Pointer to the name, or ordinal representation of provided value or default;
+ */
+LPCSTR packet_get_tlv_value_reflective_loader(Packet* packet)
+{
+	LPCSTR reflectiveLoader = packet_get_tlv_value_string(packet, TLV_TYPE_LIB_LOADER_NAME);
+	if (reflectiveLoader == NULL)
+	{
+		// No loader specified, check for ordinal
+		DWORD reflectiveLoaderOrdinal = packet_get_tlv_value_uint(packet, TLV_TYPE_LIB_LOADER_ORDINAL);
+		// If no ordinal, default to our own sane/known value
+		reflectiveLoader = MAKEINTRESOURCEA(reflectiveLoaderOrdinal == 0 ? EXPORT_REFLECTIVELOADER : reflectiveLoaderOrdinal);
+	}
+	return reflectiveLoader;
+}
+
+/*!
  * @brief Get the string value of a TLV as a wchar_t string.
  * @param packet Pointer to the packet to get the TLV from.
  * @param type Type of TLV to get (optional).
@@ -845,9 +863,10 @@ UINT packet_get_tlv_value_uint(Packet *packet, TlvType type)
  * @brief Get the raw value of a TLV.
  * @param packet Pointer to the packet to get the TLV from.
  * @param type Type of TLV to get (optional).
+ * @param length Variable that will receive the length of the raw data.
  * @return The value found in the TLV.
  */
-BYTE * packet_get_tlv_value_raw(Packet * packet, TlvType type)
+BYTE * packet_get_tlv_value_raw(Packet * packet, TlvType type, DWORD* length)
 {
 	Tlv tlv;
 
@@ -856,6 +875,7 @@ BYTE * packet_get_tlv_value_raw(Packet * packet, TlvType type)
 		return NULL;
 	}
 
+	*length = tlv.header.length;
 	return tlv.buffer;
 }
 
@@ -1156,14 +1176,9 @@ DWORD packet_call_completion_handlers( Remote *remote, Packet *response, LPCSTR 
 	PacketCompletionRoutineEntry *current;
 	DWORD result = packet_get_tlv_value_uint(response, TLV_TYPE_RESULT);
 	DWORD matches = 0;
-	Tlv methodTlv;
-	LPCSTR method = NULL;
 
-	// Get the method associated with this packet
-	if (packet_get_tlv_string(response, TLV_TYPE_METHOD, &methodTlv) == ERROR_SUCCESS)
-	{
-		method = (LPCSTR)methodTlv.buffer;
-	}
+	// Get the command associated with this packet
+	UINT commandId = packet_get_tlv_value_uint(response, TLV_TYPE_COMMAND_ID);
 
 	// Enumerate the completion routine list
 	for (current = packetCompletionRoutineList; current; current = current->next)
@@ -1176,7 +1191,7 @@ DWORD packet_call_completion_handlers( Remote *remote, Packet *response, LPCSTR 
 		}
 
 		// Call the completion routine
-		current->handler.routine(remote, response, current->handler.context, method, result);
+		current->handler.routine(remote, response, current->handler.context, commandId, result);
 
 		// Increment the number of matched handlers
 		matches++;
@@ -1309,20 +1324,15 @@ DWORD packet_transmit(Remote* remote, Packet* packet, PacketRequestCompletion* c
 	{
 		// If a completion routine was supplied and the packet has a request
 		// identifier, insert the completion routine into the list
-		if ((completion) &&
-			(packet_get_tlv_string(packet, TLV_TYPE_REQUEST_ID,
-			&requestId) == ERROR_SUCCESS))
+		if ((completion) && (packet_get_tlv_string(packet, TLV_TYPE_REQUEST_ID, &requestId) == ERROR_SUCCESS))
 		{
 			packet_add_completion_handler((LPCSTR)requestId.buffer, completion);
 		}
 
 		encrypt_packet(remote, packet, &encryptedPacket, &encryptedPacketLength);
-		dprintf("[PACKET] Sending packet to remote, length: %u", encryptedPacketLength);
-
-		dprintf("[PACKET] Remote: %p", remote);
-		dprintf("[PACKET] Transport: %p", remote->transport);
-		dprintf("[PACKET] Packet Transmit: %p", remote->transport->packet_transmit);
+		dprintf("[PACKET] Sending packet to remote, length: %u, command id: %u", encryptedPacketLength, packet_get_tlv_value_uint(packet, TLV_TYPE_COMMAND_ID));
 		SetLastError(remote->transport->packet_transmit(remote, encryptedPacket, encryptedPacketLength));
+		dprintf("[PACKET] Sent packet to remote, length: %u, command id: %u, result: %u", encryptedPacketLength, packet_get_tlv_value_uint(packet, TLV_TYPE_COMMAND_ID), GetLastError());
 	} while (0);
 
 	res = GetLastError();

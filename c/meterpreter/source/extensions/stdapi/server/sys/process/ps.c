@@ -34,13 +34,13 @@ DWORD ps_getarch_dll( LPVOID lpDllBuffer )
 /*
  * Inject a DLL into another process via Reflective DLL Injection.
  */
-DWORD ps_inject( DWORD dwPid, DLL_BUFFER * pDllBuffer, char * cpCommandLine )
+DWORD ps_inject( DWORD dwPid, DLL_BUFFER * pDllBuffer, LPCSTR reflectiveLoader, char * cpCommandLine )
 {
 	DWORD dwResult     = ERROR_ACCESS_DENIED;
 	DWORD dwPidArch    = PROCESS_ARCH_UNKNOWN;
 	DWORD dwDllArch    = PROCESS_ARCH_UNKNOWN;
 	LPVOID lpDllBuffer = NULL;
-	DWORD dwDllLenght  = 0;
+	DWORD dwDllLength  = 0;
 
 	do
 	{
@@ -52,12 +52,12 @@ DWORD ps_inject( DWORD dwPid, DLL_BUFFER * pDllBuffer, char * cpCommandLine )
 		if( dwPidArch == PROCESS_ARCH_X86 )
 		{
 			lpDllBuffer = pDllBuffer->lpPE32DllBuffer;
-			dwDllLenght = pDllBuffer->dwPE32DllLenght;
+			dwDllLength = pDllBuffer->dwPE32DllLength;
 		}
 		else if( dwPidArch == PROCESS_ARCH_X64 )
 		{
 			lpDllBuffer = pDllBuffer->lpPE64DllBuffer;
-			dwDllLenght = pDllBuffer->dwPE64DllLenght;
+			dwDllLength = pDllBuffer->dwPE64DllLength;
 		}
 		else
 		{
@@ -71,8 +71,7 @@ DWORD ps_inject( DWORD dwPid, DLL_BUFFER * pDllBuffer, char * cpCommandLine )
 		if( dwDllArch != dwPidArch )
 			BREAK_WITH_ERROR( "[PS] ps_inject_dll. pid/dll architecture mixup", ERROR_BAD_ENVIRONMENT );
 
-		dwResult = met_api->inject.dll( dwPid, lpDllBuffer, dwDllLenght, cpCommandLine );
-
+		dwResult = met_api->inject.dll( dwPid, lpDllBuffer, dwDllLength, reflectiveLoader, cpCommandLine );
 	} while( 0 );
 
 	return dwResult;

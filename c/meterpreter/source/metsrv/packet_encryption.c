@@ -322,10 +322,10 @@ DWORD encrypt_packet(Remote* remote, Packet* packet, LPBYTE* buffer, LPDWORD buf
 	return result;
 }
 
-DWORD public_key_encrypt(CHAR* publicKeyPem, unsigned char* data, DWORD dataLength, unsigned char** encryptedData, DWORD* encryptedDataLength)
+DWORD public_key_encrypt(BYTE* publicKeyDer, UINT publicKeyDerLen, BYTE* data, DWORD dataLength, BYTE** encryptedData, DWORD* encryptedDataLength)
 {
 	DWORD result = ERROR_SUCCESS;
-	LPBYTE pubKeyBin = NULL;
+	//LPBYTE pubKeyBin = NULL;
 	CERT_PUBLIC_KEY_INFO* pubKeyInfo = NULL;
 	HCRYPTPROV rsaProv = 0;
 	HCRYPTKEY pubCryptKey = 0;
@@ -333,32 +333,14 @@ DWORD public_key_encrypt(CHAR* publicKeyPem, unsigned char* data, DWORD dataLeng
 
 	do
 	{
-		if (publicKeyPem == NULL)
+		if (publicKeyDer == NULL ||  publicKeyDerLen == 0)
 		{
 			result = ERROR_BAD_ARGUMENTS;
 			break;
 		}
 
-		DWORD binaryRequiredSize = 0;
-		CryptStringToBinaryA(publicKeyPem, 0, CRYPT_STRING_BASE64HEADER, NULL, &binaryRequiredSize, NULL, NULL);
-		dprintf("[ENC] Required size for the binary key is: %u (%x)", binaryRequiredSize, binaryRequiredSize);
-
-		pubKeyBin = (LPBYTE)malloc(binaryRequiredSize);
-		if (pubKeyBin == NULL)
-		{
-			result = ERROR_OUTOFMEMORY;
-			break;
-		}
-
-		if (!CryptStringToBinaryA(publicKeyPem, 0, CRYPT_STRING_BASE64HEADER, pubKeyBin, &binaryRequiredSize, NULL, NULL))
-		{
-			result = GetLastError();
-			dprintf("[ENC] Failed to convert the given base64 encoded key into bytes: %u (%x)", result, result);
-			break;
-		}
-
 		DWORD keyRequiredSize = 0;
-		if (!CryptDecodeObjectEx(X509_ASN_ENCODING, X509_PUBLIC_KEY_INFO, pubKeyBin, binaryRequiredSize, CRYPT_ENCODE_ALLOC_FLAG, 0, &pubKeyInfo, &keyRequiredSize))
+		if (!CryptDecodeObjectEx(X509_ASN_ENCODING, X509_PUBLIC_KEY_INFO, publicKeyDer, publicKeyDerLen, CRYPT_ENCODE_ALLOC_FLAG, 0, &pubKeyInfo, &keyRequiredSize))
 		{
 			result = GetLastError();
 			dprintf("[ENC] Failed to decode: %u (%x)", result, result);
@@ -544,10 +526,11 @@ DWORD request_negotiate_aes_key(Remote* remote, Packet* packet)
 		}
 
 		// now we need to encrypt this key data using the public key given
-		CHAR* pubKeyPem = packet_get_tlv_value_string(packet, TLV_TYPE_RSA_PUB_KEY);
+		DWORD pubKeyDerLen = 0;
+		BYTE* pubKeyDer = packet_get_tlv_value_raw(packet, TLV_TYPE_RSA_PUB_KEY, &pubKeyDerLen);
 		unsigned char* cipherText = NULL;
 		DWORD cipherTextLength = 0;
-		DWORD pubEncryptResult = public_key_encrypt(pubKeyPem, remote->enc_ctx->key_data.key, remote->enc_ctx->key_data.length, &cipherText, &cipherTextLength);
+		DWORD pubEncryptResult = public_key_encrypt(pubKeyDer, pubKeyDerLen, remote->enc_ctx->key_data.key, remote->enc_ctx->key_data.length, &cipherText, &cipherTextLength);
 
 		packet_add_tlv_uint(response, TLV_TYPE_SYM_KEY_TYPE, ENC_FLAG_AES256);
 		if (pubEncryptResult == ERROR_SUCCESS && cipherText != NULL)

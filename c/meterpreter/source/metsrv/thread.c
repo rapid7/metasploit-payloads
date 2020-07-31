@@ -195,10 +195,10 @@ void disable_thread_error_reporting()
 	}
 }
 
-static DWORD THREADCALL thread_preamble(THREAD* thread)
+static ULONG THREADCALL thread_preamble(THREAD* thread)
 {
 	disable_thread_error_reporting();
-	return thread->funk(thread);
+	return (ULONG)thread->funk(thread);
 }
 
 /*
@@ -233,7 +233,7 @@ THREAD* thread_create(THREADFUNK funk, LPVOID param1, LPVOID param2, LPVOID para
 	thread->parameter3 = param3;
 	thread->funk = funk;
 
-	thread->handle = CreateThread(NULL, 0, thread_preamble, thread, CREATE_SUSPENDED, &thread->id);
+	thread->handle = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)thread_preamble, thread, CREATE_SUSPENDED, &thread->id);
 
 	if (thread->handle == NULL)
 	{

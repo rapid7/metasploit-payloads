@@ -29,6 +29,22 @@
 #define dwMeterpreterArch PROCESS_ARCH_X86
 #endif
 
+#ifdef __MINGW32__
+#define ERROR_DBG_TERMINATE_THREAD       691L
+#define ERROR_UNHANDLED_EXCEPTION        574L
+#define ERROR_UNSUPPORTED_COMPRESSION    618L
+#define ERROR_NOT_CAPABLE                775L
+#define ERROR_NOTHING_TO_TERMINATE       778L
+#define __try
+#define __except(x) if(0)
+
+#undef GetExceptionCode
+#define GetExceptionCode() 0
+
+#undef GetExceptionInformation
+#define GetExceptionInformation() NULL
+#endif
+
 typedef struct __UNICODE_STRING
 {
 	USHORT Length;
@@ -107,5 +123,6 @@ static _inline void real_dprintf(char *format, ...)
 #include "common_pivot_tree.h"
 #include "common_thread.h"
 #include "common_scheduler.h"
+#include "common_command_ids.h"
 
 #endif

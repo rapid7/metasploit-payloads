@@ -98,7 +98,7 @@
       <CompileAs>CompileAsC</CompileAs>
       <ShowIncludes>false</ShowIncludes>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalIncludeDirectories>..\..\source\common;..\..\source\ReflectiveDLLInjection\common</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\common</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
@@ -111,8 +111,12 @@
       <TargetMachine>MachineX86</TargetMachine>
       <MinimumRequiredVersion>
       </MinimumRequiredVersion>
-      <AdditionalDependencies>backcompat.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\backcompat\$(Configuration);</AdditionalLibraryDirectories>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>
+      </AdditionalLibraryDirectories>
+      <ModuleDefinitionFile>$(ProjectDir)..\..\source\def\plugin.def</ModuleDefinitionFile>
+      <AdditionalOptions>/ignore:4070 %(AdditionalOptions)</AdditionalOptions>
+      <ProgramDatabaseFile />
     </Link>
     <PostBuildEvent>
       <Command>editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,4.0 "$(TargetDir)$(TargetFileName)" &gt; NUL
@@ -135,7 +139,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <CompileAs>CompileAsC</CompileAs>
       <ShowIncludes>false</ShowIncludes>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalIncludeDirectories>..\..\source\common;..\..\source\ReflectiveDLLInjection\common</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\common</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
@@ -148,8 +152,12 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <TargetMachine>MachineX86</TargetMachine>
       <MinimumRequiredVersion>
       </MinimumRequiredVersion>
-      <AdditionalDependencies>backcompat.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\backcompat\$(Configuration);</AdditionalLibraryDirectories>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>
+      </AdditionalLibraryDirectories>
+      <ModuleDefinitionFile>$(ProjectDir)..\..\source\def\plugin.def</ModuleDefinitionFile>
+      <AdditionalOptions>/ignore:4070 %(AdditionalOptions)</AdditionalOptions>
+      <ProgramDatabaseFile />
     </Link>
     <PostBuildEvent>
       <Command>editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,4.0 "$(TargetDir)$(TargetFileName)" &gt; NUL
@@ -174,7 +182,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <CallingConvention>StdCall</CallingConvention>
       <CompileAs>CompileAsC</CompileAs>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalIncludeDirectories>..\..\source\common;..\..\source\ReflectiveDLLInjection\common</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\common</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
@@ -186,6 +194,9 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <DataExecutionPrevention>false</DataExecutionPrevention>
       <TargetMachine>MachineX64</TargetMachine>
       <MinimumRequiredVersion />
+      <ModuleDefinitionFile>$(ProjectDir)..\..\source\def\plugin.def</ModuleDefinitionFile>
+      <AdditionalOptions>/ignore:4070 %(AdditionalOptions)</AdditionalOptions>
+      <ProgramDatabaseFile />
     </Link>
     <PostBuildEvent>
       <Command>editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,5.02 "$(TargetDir)$(TargetFileName)" &gt; NUL
@@ -210,7 +221,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <CallingConvention>StdCall</CallingConvention>
       <CompileAs>CompileAsC</CompileAs>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalIncludeDirectories>..\..\source\common;..\..\source\ReflectiveDLLInjection\common</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\common</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
@@ -222,6 +233,9 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <DataExecutionPrevention>false</DataExecutionPrevention>
       <TargetMachine>MachineX64</TargetMachine>
       <MinimumRequiredVersion />
+      <ModuleDefinitionFile>$(ProjectDir)..\..\source\def\plugin.def</ModuleDefinitionFile>
+      <AdditionalOptions>/ignore:4070 %(AdditionalOptions)</AdditionalOptions>
+      <ProgramDatabaseFile />
     </Link>
     <PostBuildEvent>
       <Command>editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,5.02 "$(TargetDir)$(TargetFileName)" &gt; NUL
@@ -240,21 +254,8 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <ClInclude Include="..\..\source\elevator\tokendup.h" />
   </ItemGroup>
   <Choose>
-    <When Condition="'$(Platform)'=='Win32'">
-      <ItemGroup>
-        <ProjectReference Include="..\backcompat\backcompat.vcxproj">
-          <Project>{c6fb3275-9067-4bba-9206-0a720d2bc64f}</Project>
-          <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
-        </ProjectReference>
-      </ItemGroup>
-    </When>
+    <When Condition="'$(Platform)'=='Win32'" />
   </Choose>
-  <ItemGroup>
-    <ProjectReference Include="..\ReflectiveDLLInjection\ReflectiveDLLInjection.vcxproj">
-      <Project>{72f0246a-a38d-4547-9057-46020e8e503d}</Project>
-      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
-    </ProjectReference>
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
     <Import Project="$(VCTargetsPath)\BuildCustomizations\masm.targets" />

@@ -1,7 +1,7 @@
 # To build the dev environment.
 # docker build -t rapid7/msf-ubuntu-x64-meterpreter:latest .
 
-FROM ubuntu:14.04.5
+FROM ubuntu:focal
 MAINTAINER Brent Cook <bcook@rapid7.com> (@busterbcook)
 
 ENV DEBIAN_FRONTEND noninteractive
@@ -11,15 +11,21 @@ RUN apt-get update && \
 	apt-get dist-upgrade -y && \
 	apt-get -y install software-properties-common && \
 	dpkg --add-architecture i386 && \
-	apt-add-repository ppa:ubuntu-wine && \
 	apt-get update && \
-	apt-get -y install \
-		wine php5-cli python python3 \
-		bison flex gcc gcc-multilib jam make wget \
-		ruby rake bundler git \
-		maven openjdk-7-jdk && \
+  apt-get -y install bison flex gcc gcc-multilib jam make wget \
+    ruby rake bundler git \
+    mingw-w64-x86-64-dev mingw-w64-i686-dev \
+    g++-mingw-w64-i686 g++-mingw-w64-x86-64 \
+    gcc-mingw-w64-i686 gcc-mingw-w64-x86-64 \
+    cmake \
+    maven \
+    wine python python3 \
+    openjdk-8-jdk \
+    php-cli && \
 	apt-get clean && \
 	rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+RUN update-java-alternatives --set java-1.8.0-openjdk-amd64
 
 # Android NDK
 RUN wget http://dl.google.com/android/ndk/android-ndk-r9d-linux-x86_64.tar.bz2 && \
@@ -41,7 +47,7 @@ RUN echo y | /usr/local/android-sdk/tools/android update sdk --filter android-3 
 
 # Pre-cache Maven artifacts
 RUN git clone https://github.com/rapid7/metasploit-payloads.git && \
-	cd metasploit-payloads/java && make && cd .. && rm -fr metasploit-payloads
+	cd metasploit-payloads/java && make ; cd .. && rm -fr metasploit-payloads
 
 ENV ANDROID_HOME /usr/local/android-sdk
 ENV ANDROID_NDK_HOME /usr/local/android-ndk

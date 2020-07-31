@@ -50,6 +50,7 @@ DWORD request_fs_ls(Remote * remote, Packet * packet)
  */
 DWORD request_fs_getwd(Remote * remote, Packet * packet)
 {
+  dprintf("[fs_getwd] running ...");
 	Packet *response = met_api->packet.create_response(packet);
 	char *directory = NULL;
 	DWORD result;
@@ -59,6 +60,7 @@ DWORD request_fs_getwd(Remote * remote, Packet * packet)
 		met_api->packet.add_tlv_string(response, TLV_TYPE_DIRECTORY_PATH, directory);
 		free(directory);
 	}
+  dprintf("[fs_getwd] Done");
 
 	return met_api->packet.transmit_response(result, remote, response);
 }

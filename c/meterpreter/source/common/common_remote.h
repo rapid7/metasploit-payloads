@@ -29,15 +29,15 @@ typedef UINT_PTR(*PTransportGetHandle)(Transport* transport);
 typedef DWORD(*PTransportGetConfigSize)(Transport* transport);
 typedef void(*PTransportSetHandle)(Transport* transport, UINT_PTR handle);
 typedef void(*PTransportReset)(Transport* transport, BOOL shuttingDown);
-typedef BOOL(*PTransportInit)(Transport* transport);
-typedef BOOL(*PTransportDeinit)(Transport* transport);
+typedef DWORD(*PTransportInit)(Transport* transport);
+typedef DWORD(*PTransportDeinit)(Transport* transport);
 typedef void(*PTransportDestroy)(Transport* transport);
 typedef DWORD(*PTransportGetMigrateContext)(Transport* transport, DWORD targetProcessId, HANDLE targetProcessHandle, LPDWORD contextSize, LPBYTE* contextBuffer);
 typedef Transport*(*PTransportCreate)(Remote* remote, MetsrvTransportCommon* config, LPDWORD size);
 typedef void(*PTransportRemove)(Remote* remote, Transport* oldTransport);
 typedef void(*PConfigCreate)(Remote* remote, LPBYTE uuid, MetsrvConfig** config, LPDWORD size);
 
-typedef BOOL(*PServerDispatch)(Remote* remote, THREAD* dispatchThread);
+typedef DWORD(*PServerDispatch)(Remote* remote, THREAD* dispatchThread);
 typedef DWORD(*PPacketTransmit)(Remote* remote, LPBYTE rawPacket, DWORD rawPacketLength);
 
 typedef HANDLE(*PCreateHttpRequest)(HttpTransportContext* ctx, BOOL isGet, const char* direction);

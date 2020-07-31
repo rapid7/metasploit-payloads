@@ -122,24 +122,27 @@
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>backcompat.lib;ws2_32.lib;odbc32.lib;odbccp32.lib;crypt32.lib;wininet.lib;winhttp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;odbc32.lib;odbccp32.lib;crypt32.lib;wininet.lib;winhttp.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <AdditionalLibraryDirectories>..\backcompat\$(Configuration);..\common\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <ModuleDefinitionFile>
-      </ModuleDefinitionFile>
-      <DelayLoadDLLs>%(DelayLoadDLLs)</DelayLoadDLLs>
+      <AdditionalLibraryDirectories>..\common\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <ModuleDefinitionFile>$(ProjectDir)..\..\source\def\$(ProjectName).def</ModuleDefinitionFile>
+      <DelayLoadDLLs>
+      </DelayLoadDLLs>
       <GenerateDebugInformation>false</GenerateDebugInformation>
-      <GenerateMapFile>true</GenerateMapFile>
-      <MapFileName>$(OutDir)\metsrv.map</MapFileName>
+      <GenerateMapFile>false</GenerateMapFile>
+      <MapFileName>
+      </MapFileName>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention>
       </DataExecutionPrevention>
-      <ImportLibrary>$(OutDir)\metsrv.lib</ImportLibrary>
+      <ImportLibrary>
+      </ImportLibrary>
       <TargetMachine>MachineX86</TargetMachine>
       <MinimumRequiredVersion>
       </MinimumRequiredVersion>
       <SubSystem>Windows</SubSystem>
       <AdditionalOptions>/ignore:4070 %(AdditionalOptions)</AdditionalOptions>
+      <ProgramDatabaseFile />
     </Link>
     <Bscmake>
       <SuppressStartupBanner>true</SuppressStartupBanner>
@@ -189,24 +192,27 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>backcompat.lib;ws2_32.lib;odbc32.lib;odbccp32.lib;crypt32.lib;wininet.lib;winhttp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;odbc32.lib;odbccp32.lib;crypt32.lib;wininet.lib;winhttp.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <AdditionalLibraryDirectories>..\backcompat\$(Configuration);..\common\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <ModuleDefinitionFile>
-      </ModuleDefinitionFile>
-      <DelayLoadDLLs>%(DelayLoadDLLs)</DelayLoadDLLs>
+      <AdditionalLibraryDirectories>..\common\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <ModuleDefinitionFile>$(ProjectDir)..\..\source\def\$(ProjectName).def</ModuleDefinitionFile>
+      <DelayLoadDLLs>
+      </DelayLoadDLLs>
       <GenerateDebugInformation>false</GenerateDebugInformation>
-      <GenerateMapFile>true</GenerateMapFile>
-      <MapFileName>$(OutDir)\metsrv.map</MapFileName>
+      <GenerateMapFile>false</GenerateMapFile>
+      <MapFileName>
+      </MapFileName>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention>
       </DataExecutionPrevention>
-      <ImportLibrary>$(OutDir)\metsrv.lib</ImportLibrary>
+      <ImportLibrary>
+      </ImportLibrary>
       <TargetMachine>MachineX86</TargetMachine>
       <MinimumRequiredVersion>
       </MinimumRequiredVersion>
       <SubSystem>Windows</SubSystem>
       <AdditionalOptions>/ignore:4070 %(AdditionalOptions)</AdditionalOptions>
+      <ProgramDatabaseFile />
     </Link>
     <Bscmake>
       <SuppressStartupBanner>true</SuppressStartupBanner>
@@ -259,20 +265,22 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <AdditionalDependencies>ws2_32.lib;odbc32.lib;odbccp32.lib;crypt32.lib;wininet.lib;winhttp.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\common\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <ModuleDefinitionFile>
-      </ModuleDefinitionFile>
+      <ModuleDefinitionFile>$(ProjectDir)..\..\source\def\$(ProjectName).def</ModuleDefinitionFile>
       <GenerateDebugInformation>false</GenerateDebugInformation>
-      <GenerateMapFile>true</GenerateMapFile>
-      <MapFileName>$(OutDir)\metsrv.map</MapFileName>
+      <GenerateMapFile>false</GenerateMapFile>
+      <MapFileName>
+      </MapFileName>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention>
       </DataExecutionPrevention>
-      <ImportLibrary>$(OutDir)\metsrv.lib</ImportLibrary>
+      <ImportLibrary>
+      </ImportLibrary>
       <TargetMachine>MachineX64</TargetMachine>
       <MinimumRequiredVersion>
       </MinimumRequiredVersion>
       <SubSystem>Windows</SubSystem>
       <AdditionalOptions>/ignore:4070 %(AdditionalOptions)</AdditionalOptions>
+      <ProgramDatabaseFile />
     </Link>
     <Bscmake>
       <SuppressStartupBanner>true</SuppressStartupBanner>
@@ -325,20 +333,22 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <AdditionalDependencies>ws2_32.lib;odbc32.lib;odbccp32.lib;crypt32.lib;wininet.lib;winhttp.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\common\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <ModuleDefinitionFile>
-      </ModuleDefinitionFile>
+      <ModuleDefinitionFile>$(ProjectDir)..\..\source\def\$(ProjectName).def</ModuleDefinitionFile>
       <GenerateDebugInformation>false</GenerateDebugInformation>
-      <GenerateMapFile>true</GenerateMapFile>
-      <MapFileName>$(OutDir)\metsrv.map</MapFileName>
+      <GenerateMapFile>false</GenerateMapFile>
+      <MapFileName>
+      </MapFileName>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention>
       </DataExecutionPrevention>
-      <ImportLibrary>$(OutDir)\metsrv.lib</ImportLibrary>
+      <ImportLibrary>
+      </ImportLibrary>
       <TargetMachine>MachineX64</TargetMachine>
       <MinimumRequiredVersion>
       </MinimumRequiredVersion>
       <SubSystem>Windows</SubSystem>
       <AdditionalOptions>/ignore:4070 %(AdditionalOptions)</AdditionalOptions>
+      <ProgramDatabaseFile />
     </Link>
     <Bscmake>
       <SuppressStartupBanner>true</SuppressStartupBanner>
@@ -351,21 +361,8 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <Choose>
-    <When Condition="'$(Platform)'=='Win32'">
-      <ItemGroup>
-        <ProjectReference Include="..\backcompat\backcompat.vcxproj">
-          <Project>{c6fb3275-9067-4bba-9206-0a720d2bc64f}</Project>
-          <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
-        </ProjectReference>
-      </ItemGroup>
-    </When>
+    <When Condition="'$(Platform)'=='Win32'" />
   </Choose>
-  <ItemGroup>
-    <ProjectReference Include="..\ReflectiveDLLInjection\ReflectiveDLLInjection.vcxproj">
-      <Project>{72f0246a-a38d-4547-9057-46020e8e503d}</Project>
-      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
-    </ProjectReference>
-  </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\source\metsrv\base.h" />
     <ClInclude Include="..\..\source\metsrv\base_inject.h" />

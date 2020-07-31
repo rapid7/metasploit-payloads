@@ -2,6 +2,7 @@ package com.metasploit.meterpreter;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.PrintStream;
 
 /**
  * A channel for a started {@link Process}.
@@ -73,7 +74,7 @@ public class ProcessChannel extends Channel {
                 stderrThread.join();
                 handleInteract(null);
             } catch (Throwable t) {
-                t.printStackTrace(meterpreter.getErrorStream());
+                t.printStackTrace(this.outputStream);
             }
         }
     }

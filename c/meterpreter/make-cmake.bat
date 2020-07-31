@@ -110,6 +110,7 @@ GOTO END
 :CLEAN
 IF EXIST "output\" (
   del output\ /S /Q
+  del workspace\build\ /S /Q
 )
 GOTO END
 

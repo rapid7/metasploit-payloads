@@ -16,6 +16,12 @@
 #include "fs_local.h"
 #include "search.h"
 
+#ifdef __MINGW32__
+const GUID MET_DBGUID_DEFAULT = {0xc8b521fb,0x5cf3,0x11ce,{0xad,0xe5,0x00,0xaa,0x00,0x44,0x77,0x3d}};
+#else
+#define MET_DBGUID_DEFAULT DBGUID_DEFAULT
+#endif
+
 /*
  * Helper function to add a search result to the response packet.
  */
@@ -583,7 +589,7 @@ DWORD wds3_search(WDS_INTERFACE * pWDSInterface, wchar_t * wpProtocol, wchar_t *
 		OutputDebugStringW(wpSQL);
 #endif
 
-		hr = ICommandText_SetCommandText(pCommandText, &DBGUID_DEFAULT, wpSQL);
+		hr = ICommandText_SetCommandText(pCommandText, &MET_DBGUID_DEFAULT, wpSQL);
 		if (FAILED(hr)) {
 			BREAK_WITH_ERROR("[SEARCH] wds3_search: ICommandText_SetCommandText Failed", hr);
 		}

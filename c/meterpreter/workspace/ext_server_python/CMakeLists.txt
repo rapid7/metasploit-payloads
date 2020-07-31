@@ -30,6 +30,7 @@ set(SRC_DIR ../../source/extensions/python)
 file(GLOB_RECURSE SRC_FILES
     ${SRC_DIR}/*.c
     ${SRC_DIR}/*.rc
+    ${MOD_DEF_DIR}/extension.def
 )
 
 if(IS_X64)
@@ -39,6 +40,8 @@ endif()
 
 add_library(${PROJECT_NAME} SHARED ${SRC_FILES})
 set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME ${PROJECT_NAME}.${TARGET_ARCH})
+set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS "/DEF:\"${MOD_DEF_DIR}/extension.def\"")
+set_source_files_properties(${MOD_DEF_DIR}/extension.def PROPERTIES HEADER_FILE_ONLY TRUE)
 
 set(LIBRESSL_LIB_DIR ${WORKSPACE_ROOT_DIR}/../deps/libressl/output/${CMAKE_GENERATOR_TOOLSET}/${TARGET_ARCH})
 
@@ -52,10 +55,10 @@ set(LINK_LIBS
     ${LIBRESSL_LIB_DIR}/tls-20.lib
 )
 
-if(IS_X86)
-    set(LINK_LIBS ${LINK_LIBS} backcompat)
-endif()
 target_link_libraries(${PROJECT_NAME} ${LINK_LIBS})
+if(MSVC)
+    target_link_options(${PROJECT_NAME} PUBLIC "/ignore:4070")
+endif()
 
 # Post processing (required for all Meterpreter DLLs)
 editbin(${PROJECT_NAME} ${BIN_SUBSYSTEM})

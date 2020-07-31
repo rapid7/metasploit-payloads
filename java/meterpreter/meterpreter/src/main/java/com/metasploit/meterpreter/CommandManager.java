@@ -17,8 +17,8 @@ import com.metasploit.meterpreter.command.UnsupportedJavaVersionCommand;
 public class CommandManager {
 
     private final int javaVersion;
-    private Map/* <String,Command> */registeredCommands = new HashMap();
-    private Vector/* <String> */newCommands = new Vector();
+    private Map/* <int,Command> */registeredCommands = new HashMap();
+    private Vector/* <int> */newCommands = new Vector();
 
     protected CommandManager() throws Exception {
         // get the API version, which might be different from the
@@ -54,39 +54,39 @@ public class CommandManager {
     /**
      * Register a command that can be executed on all Java versions (from 1.2 onward)
      *
-     * @param command      Name of the command
+     * @param commandId    ID of the command
      * @param commandClass Class that implements the command
      */
-    public void registerCommand(String command, Class commandClass) throws Exception {
-        registerCommand(command, commandClass, ExtensionLoader.V1_2);
+    public void registerCommand(int commandId, Class commandClass) throws Exception {
+        registerCommand(commandId, commandClass, ExtensionLoader.V1_2);
     }
 
     /**
      * Register a command that can be executed only on some Java versions
      *
-     * @param command      Name of the command
+     * @param commandId    ID of the command
      * @param commandClass Stub class for generating the class name that implements the command
      * @param version      Minimum Java version
      */
-    public void registerCommand(String command, Class commandClass, int version) throws Exception {
-        registerCommand(command, commandClass, version, version);
+    public void registerCommand(int commandId, Class commandClass, int version) throws Exception {
+        registerCommand(commandId, commandClass, version, version);
     }
 
     /**
      * Register a command that can be executed only on some Java versions, and has two different implementations for different Java versions.
      *
-     * @param command       Name of the command
+     * @param commandId     ID of the command
      * @param commandClass  Stub class for generating the class name that implements the command
      * @param version       Minimum Java version
      * @param secondVersion Minimum Java version for the second implementation
      */
-    public void registerCommand(String command, Class commandClass, int version, int secondVersion) throws Exception {
+    public void registerCommand(int commandId, Class commandClass, int version, int secondVersion) throws Exception {
         if (secondVersion < version) {
             throw new IllegalArgumentException("secondVersion must be larger than version");
         }
 
         if (javaVersion < version) {
-            registeredCommands.put(command, new UnsupportedJavaVersionCommand(command, version));
+            registeredCommands.put(commandId, new UnsupportedJavaVersionCommand(commandId, version));
             return;
         }
 
@@ -99,26 +99,41 @@ public class CommandManager {
         }
 
         Command cmd = (Command) commandClass.newInstance();
-        registeredCommands.put(command, cmd);
-        Command x = (Command)registeredCommands.get(command);
+        registeredCommands.put(commandId, cmd);
+        Command x = (Command)registeredCommands.get(commandId);
 
-        newCommands.add(command);
+        newCommands.add(commandId);
     }
 
     /**
-     * Get a command for the given name.
+     * Get a command for the given ID.
      */
-    public Command getCommand(String name) {
-        Command cmd = (Command) registeredCommands.get(name);
+    public Command getCommand(int commandId) {
+        Command cmd = (Command) registeredCommands.get(commandId);
         if (cmd == null) {
             cmd = NotYetImplementedCommand.INSTANCE;
         }
         return cmd;
     }
 
+    /**
+     * Get a list of commands registered against a specific extension
+     */
+    public Integer[] getCommandsInRange(Integer start, Integer end) {
+        Vector commandIds = new Vector();
+        for (Object key : registeredCommands.keySet()) {
+            Integer commandId = (Integer)key;
+            if (start < commandId && commandId < end) {
+                commandIds.add(commandId);
+            }
+        }
+        Integer[] result = new Integer[commandIds.size()];
+        return (Integer[])commandIds.toArray(result);
+    }
+
     public int executeCommand(Meterpreter met, TLVPacket request, TLVPacket response) throws IOException {
-        String method = request.getStringValue(TLVType.TLV_TYPE_METHOD);
-        Command cmd = this.getCommand(method);
+        int commandId = request.getIntValue(TLVType.TLV_TYPE_COMMAND_ID);
+        Command cmd = this.getCommand(commandId);
 
         int result;
         try {
@@ -145,16 +160,16 @@ public class CommandManager {
     }
 
     /**
-     * Retrieves the list of commands loaded by the last core_loadlib call
+     * Retrieves the list of command IDs loaded by the last core_loadlib call
      */
-    public String[] getNewCommands() {
-        return (String[]) newCommands.toArray(new String[newCommands.size()]);
+    public Integer[] getNewCommandIds() {
+        return (Integer[]) newCommands.toArray(new Integer[newCommands.size()]);
     }
 
     /**
-     * Retrieves the list of commands
+     * Retrieves the list of command IDs
      */
-    public String[] getCommands() {
-        return (String[]) registeredCommands.keySet().toArray(new String[registeredCommands.size()]);
+    public Integer[] getCommandsIds() {
+        return (Integer[]) registeredCommands.keySet().toArray(new Integer[registeredCommands.size()]);
     }
 }

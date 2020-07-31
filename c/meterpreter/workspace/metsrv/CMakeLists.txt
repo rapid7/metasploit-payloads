@@ -11,23 +11,33 @@ add_definitions(
     -D_CRT_SECURE_NO_WARNINGS
 )
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /MP")
+if(MSVC)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /MP")
+endif()
 
 include_directories(../../source/common)
-include_directories(../../source/ReflectiveDllInjection/common)
+include_directories(../../source/ReflectiveDLLInjection/common)
 
 set(SRC_DIR ../../source/metsrv)
 file(GLOB SRC_FILES
     ${SRC_DIR}/*.c
-    ../../source/ReflectiveDllInjection/inject/src/*.c
+    ${MOD_DEF_DIR}/metsrv.def
 )
 add_library(${PROJECT_NAME} SHARED ${SRC_FILES})
 set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME ${PROJECT_NAME}.${TARGET_ARCH})
+if(MSVC)
+    set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS "/DEF:\"${MOD_DEF_DIR}/metsrv.def\"")
+    set_source_files_properties(${MOD_DEF_DIR}/metsrv.def PROPERTIES HEADER_FILE_ONLY TRUE)
+endif()
 
 set(LINK_LIBS winhttp wininet crypt32)
-if(IS_X86)
-    set(LINK_LIBS ${LINK_LIBS} backcompat)
+
+if(MSVC)
+    target_link_options(${PROJECT_NAME} PUBLIC "/ignore:4070")
+else()
+    set(LINK_LIBS ${LINK_LIBS} ws2_32)
 endif()
+
 target_link_libraries(${PROJECT_NAME} ${LINK_LIBS})
 
 # Post processing (required for all Meterpreter DLLs)

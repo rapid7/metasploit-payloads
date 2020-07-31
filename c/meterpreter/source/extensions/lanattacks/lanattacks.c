@@ -8,6 +8,7 @@
 // Required so that use of the API works.
 MetApi* met_api = NULL;
 
+#define RDIDLL_NOEXPORT
 #include "../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
 #include <windows.h>
 #include "lanattacks.h"
@@ -160,15 +161,15 @@ DWORD request_lanattacks_stop_tftp(Remote *remote, Packet *packet)
 
 Command customCommands[] =
 {
-	COMMAND_REQ("lanattacks_start_dhcp", request_lanattacks_start_dhcp),
-	COMMAND_REQ("lanattacks_reset_dhcp", request_lanattacks_reset_dhcp),
-	COMMAND_REQ("lanattacks_set_dhcp_option", request_lanattacks_set_dhcp_option),
-	COMMAND_REQ("lanattacks_stop_dhcp", request_lanattacks_stop_dhcp),
-	COMMAND_REQ("lanattacks_dhcp_log", request_lanattacks_dhcp_log),
-	COMMAND_REQ("lanattacks_start_tftp", request_lanattacks_start_tftp),
-	COMMAND_REQ("lanattacks_reset_tftp", request_lanattacks_stop_tftp),
-	COMMAND_REQ("lanattacks_add_tftp_file", request_lanattacks_add_tftp_file),
-	COMMAND_REQ("lanattacks_stop_tftp", request_lanattacks_stop_tftp),
+	COMMAND_REQ(COMMAND_ID_LANATTACKS_START_DHCP, request_lanattacks_start_dhcp),
+	COMMAND_REQ(COMMAND_ID_LANATTACKS_RESET_DHCP, request_lanattacks_reset_dhcp),
+	COMMAND_REQ(COMMAND_ID_LANATTACKS_SET_DHCP_OPTION, request_lanattacks_set_dhcp_option),
+	COMMAND_REQ(COMMAND_ID_LANATTACKS_STOP_DHCP, request_lanattacks_stop_dhcp),
+	COMMAND_REQ(COMMAND_ID_LANATTACKS_DHCP_LOG, request_lanattacks_dhcp_log),
+	COMMAND_REQ(COMMAND_ID_LANATTACKS_START_TFTP, request_lanattacks_start_tftp),
+	COMMAND_REQ(COMMAND_ID_LANATTACKS_RESET_TFTP, request_lanattacks_stop_tftp),
+	COMMAND_REQ(COMMAND_ID_LANATTACKS_ADD_TFTP_FILE, request_lanattacks_add_tftp_file),
+	COMMAND_REQ(COMMAND_ID_LANATTACKS_STOP_TFTP, request_lanattacks_stop_tftp),
 	COMMAND_TERMINATOR
 };
 
@@ -178,7 +179,7 @@ Command customCommands[] =
  * @param remote Pointer to the remote instance.
  * @return Indication of success or failure.
  */
-DWORD __declspec(dllexport) InitServerExtension(MetApi* api, Remote* remote)
+DWORD InitServerExtension(MetApi* api, Remote* remote)
 {
 	met_api = api;
 
@@ -200,7 +201,7 @@ DWORD __declspec(dllexport) InitServerExtension(MetApi* api, Remote* remote)
  * @param remote Pointer to the remote instance.
  * @return Indication of success or failure.
  */
-DWORD __declspec(dllexport) DeinitServerExtension(Remote* remote)
+DWORD DeinitServerExtension(Remote* remote)
 {
 	destroyTFTPServer(tftpserver);
 	tftpserver = NULL;
@@ -214,13 +215,21 @@ DWORD __declspec(dllexport) DeinitServerExtension(Remote* remote)
 }
 
 /*!
- * @brief Get the name of the extension.
- * @param buffer Pointer to the buffer to write the name to.
+ * @brief Do a stageless initialisation of the extension.
+ * @param ID of the extension that the init was intended for.
+ * @param buffer Pointer to the buffer that contains the init data.
  * @param bufferSize Size of the \c buffer parameter.
  * @return Indication of success or failure.
  */
-DWORD __declspec(dllexport) GetExtensionName(char* buffer, int bufferSize)
+DWORD StagelessInit(UINT extensionId, const LPBYTE buffer, DWORD bufferSize)
 {
-	strncpy_s(buffer, bufferSize, "lanattacks", bufferSize - 1);
 	return ERROR_SUCCESS;
+}
+
+/*!
+ * @brief Callback for when a command has been added to the meterpreter instance.
+ * @param commandId The ID of the command that has been added.
+ */
+VOID CommandAdded(UINT commandId)
+{
 }

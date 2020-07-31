@@ -7,7 +7,9 @@ add_definitions(
     -D_CRT_SECURE_NO_WARNINGS
 )
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /GF /Gy /TP /MP")
+if(MSVC)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /GF /Gy /TP /MP")
+endif()
 
 set(SRC_DIR ../../source/jpeg-8)
 set(

@@ -9,9 +9,18 @@ import java.io.DataOutputStream;
 import java.io.OutputStream;
 import java.io.IOException;
 
+import java.security.SecureRandom;
+import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
+import javax.crypto.Cipher;
+
 public abstract class Transport {
     public static final long MS = 1000L;
     public static final int ENC_NONE = 0;
+    public static final int ENC_AES256 = 1;
+    public static final int ENC_AES128 = 2;
+
+    private static final SecureRandom sr = new SecureRandom();
 
     private Transport prev;
     private Transport next;
@@ -21,6 +30,8 @@ public abstract class Transport {
     protected long commTimeout;
     protected long retryTotal;
     protected long retryWait;
+    protected byte[] aesKey;
+    protected boolean aesEnabled;
 
     protected abstract boolean tryConnect(Meterpreter met) throws IOException;
 
@@ -34,6 +45,7 @@ public abstract class Transport {
     protected Transport(Meterpreter met, String url) {
         this.meterpreter = met;
         this.url = url;
+        this.aesEnabled = false;
     }
 
     protected void setTimeouts(TransportConfig transportConfig) {
@@ -79,8 +91,6 @@ public abstract class Transport {
         byte[] body = new byte[bodyLen];
         in.readFully(body);
 
-        // TODO: add decryption support here.
-
         // create a complete packet and xor the whole thing. We do this becauase we can't
         // be sure that the content of the body is 4-byte aligned with the xor key, so we
         // do the whole lot to make sure it behaves
@@ -89,8 +99,21 @@ public abstract class Transport {
         this.arrayCopy(body, 0, packet, clonedHeader.length, body.length);
         this.xorBytes(xorKey, packet);
 
-        // Skip the packet TLV header and move straight the first TLV header (by jumping over header.length bytes)
-        ByteArrayInputStream byteStream = new ByteArrayInputStream(packet, clonedHeader.length, body.length);
+        this.arrayCopy(packet, 32, body, 0, body.length);
+        int encFlag = this.readInt(packet, 20);
+        if (encFlag != ENC_NONE && this.aesKey != null) {
+            try
+            {
+                body = aesDecrypt(body);
+            }
+            catch(Exception e)
+            {
+                // if things go back we're basically screwed.
+                return null;
+            }
+        }
+
+        ByteArrayInputStream byteStream = new ByteArrayInputStream(body, 0, body.length);
         DataInputStream inputStream = new DataInputStream(byteStream);
         TLVPacket tlvPacket = new TLVPacket(inputStream, body.length);
         inputStream.close();
@@ -98,19 +121,75 @@ public abstract class Transport {
         return tlvPacket;
     }
 
+    protected byte[] aesDecrypt(byte[] data) throws Exception {
+        byte[] iv = new byte[16];
+        byte[] encrypted = new byte[data.length - iv.length];
+        this.arrayCopy(data, 0, iv, 0, iv.length);
+        this.arrayCopy(data, iv.length, encrypted, 0, encrypted.length);
+
+        IvParameterSpec ivSpec = new IvParameterSpec(iv);
+        SecretKeySpec keySpec = new SecretKeySpec(this.aesKey, "AES");
+        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+        synchronized(cipher) {
+          cipher.init(Cipher.DECRYPT_MODE, keySpec, ivSpec);
+          return cipher.doFinal(encrypted);
+        }
+    }
+
+    protected byte[] aesEncrypt(byte[] data) throws Exception {
+        byte[] iv = new byte[16];
+        sr.nextBytes(iv);
+
+        byte[] encrypted = null;
+        IvParameterSpec ivSpec = new IvParameterSpec(iv);
+        SecretKeySpec keySpec = new SecretKeySpec(this.aesKey, "AES");
+        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+        synchronized(cipher) {
+          cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
+          encrypted = cipher.doFinal(data);
+        }
+
+        data = new byte[encrypted.length + iv.length];
+        this.arrayCopy(iv, 0, data, 0, iv.length);
+        this.arrayCopy(encrypted, 0, data, iv.length, encrypted.length);
+        return data;
+    }
+
     protected void encodePacketAndWrite(TLVPacket tlvPacket, int type, DataOutputStream out) throws IOException {
         byte[] data = tlvPacket.toByteArray();
+
+        int encType = ENC_NONE;
+        if (this.aesKey != null) {
+            try
+            {
+                if (this.aesEnabled) {
+                    encType = (this.aesKey.length == 32 ? ENC_AES256 : ENC_AES128);
+                    data = aesEncrypt(data);
+                }
+                else
+                {
+                    // enabled it after the response packet goes out
+                    this.aesEnabled = true;
+                }
+            }
+            catch(Exception e)
+            {
+                // if things fail during encryption, should we
+                // just fallback to plain? Or terminate?
+                this.aesEnabled = false;
+                this.aesKey = null;
+            }
+        }
+
         byte[] packet = new byte[32 + data.length];
         randXorKey(packet, 0);
-
-        // TODO: add encryption support here
 
         // Include the session guid in the outgoing message
         byte[] sessionGUID = this.meterpreter.getSessionGUID();
         this.arrayCopy(sessionGUID, 0, packet, 4, sessionGUID.length);
 
         // We don't currently support encryption
-        this.writeInt(packet, 20, ENC_NONE);
+        this.writeInt(packet, 20, encType);
 
         // Write the length/type
         this.writeInt(packet, 24, data.length + 8);
@@ -151,6 +230,11 @@ public abstract class Transport {
         }
     }
 
+    public void setAesEncryptionKey(byte[] aesKey) {
+        this.aesKey = aesKey;
+        this.aesEnabled = false;
+    }
+
     public String getUrl() {
         return this.url;
     }
@@ -181,6 +265,8 @@ public abstract class Transport {
 
     public boolean connect(Meterpreter met) {
         long lastAttempt = System.currentTimeMillis();
+        this.aesKey = null;
+        this.aesEnabled = false;
 
         while (System.currentTimeMillis() < lastAttempt + this.retryTotal) {
             try {

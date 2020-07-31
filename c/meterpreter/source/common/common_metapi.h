@@ -7,7 +7,7 @@
 
 typedef struct _InjectApi
 {
-	DWORD(*dll)(DWORD dwPid, LPVOID lpDllBuffer, DWORD dwDllLenght, char* cpCommandLine);
+	DWORD(*dll)(DWORD dwPid, LPVOID lpDllBuffer, DWORD dwDllLength, LPCSTR reflectiveLoader, char* cpCommandLine);
 	DWORD(*via_apcthread)(Remote* remote, Packet* response, HANDLE hProcess, DWORD dwProcessID, DWORD dwDestinationArch, LPVOID lpStartAddress, LPVOID lpParameter);
 	DWORD(*via_remotethread)(Remote* remote, Packet* response, HANDLE hProcess, DWORD dwDestinationArch, LPVOID lpStartAddress, LPVOID lpParameter);
 	DWORD(*via_remotethread_wow64)(HANDLE hProcess, LPVOID lpStartAddress, LPVOID lpParameter, HANDLE* pThread);
@@ -92,7 +92,7 @@ typedef struct _SchedulerApi
 typedef struct _PacketApi
 {
 	BOOL(*get_tlv_value_bool)(Packet* packet, TlvType type);
-	BYTE*(*get_tlv_value_raw)(Packet* packet, TlvType type);
+	BYTE*(*get_tlv_value_raw)(Packet* packet, TlvType type, DWORD* length);
 	DWORD(*add_completion_handler)(LPCSTR requestId, PacketRequestCompletion* completion);
 	DWORD(*add_exception)(Packet* packet, DWORD code, PCHAR fmt, ...);
 	DWORD(*add_group)(Packet* packet, TlvType type, Packet* groupPacket);
@@ -117,7 +117,7 @@ typedef struct _PacketApi
 	DWORD(*transmit_empty_response)(Remote* remote, Packet* packet, DWORD res);
 	DWORD(*transmit_response)(DWORD result, Remote* remote, Packet* response);
 	PCHAR(*get_tlv_value_string)(Packet* packet, TlvType type);
-	Packet*(*create)(PacketTlvType type, LPCSTR method);
+	Packet*(*create)(PacketTlvType type, UINT commandId);
 	Packet*(*create_group)();
 	Packet*(*create_response)(Packet* request);
 	PacketTlvType(*get_type)(Packet* packet);
@@ -126,6 +126,7 @@ typedef struct _PacketApi
 	UINT(*get_tlv_value_uint)(Packet* packet, TlvType type);
 	VOID(*destroy)(Packet* packet);
 	wchar_t*(*get_tlv_value_wstring)(Packet* packet, TlvType type);
+	LPCSTR(*get_tlv_value_reflective_loader)(Packet* packet);
 } PacketApi;;
 
 typedef struct _CommandApi

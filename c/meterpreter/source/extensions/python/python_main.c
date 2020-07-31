@@ -9,6 +9,7 @@
 MetApi* met_api = NULL;
 
 #define REFLECTIVEDLLINJECTION_CUSTOM_DLLMAIN
+#define RDIDLL_NOEXPORT
 #include "../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
 
 #include "python_commands.h"
@@ -23,43 +24,33 @@ Remote* gRemote = NULL;
 /*! @brief List of commands that the extended API extension providers. */
 Command customCommands[] =
 {
-	COMMAND_REQ("python_reset", request_python_reset),
-	COMMAND_REQ("python_execute", request_python_execute),
+	COMMAND_REQ(COMMAND_ID_PYTHON_RESET, request_python_reset),
+	COMMAND_REQ(COMMAND_ID_PYTHON_EXECUTE, request_python_execute),
 	COMMAND_TERMINATOR
 };
 
-BOOL WINAPI DllMain( HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpReserved )
+BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpReserved)
 {
-	switch( dwReason ) 
-    { 
-		case DLL_QUERY_HMODULE:
-			if (lpReserved != NULL)
-			{
-				*(HMODULE *)lpReserved = hAppInstance;
-			}
-			break;
-		case DLL_PROCESS_ATTACH:
-			hAppInstance = hinstDLL;
-			break;
-		case DLL_PROCESS_DETACH:
-		case DLL_THREAD_ATTACH:
-		case DLL_THREAD_DETACH:
-            break;
-    }
+	switch (dwReason)
+	{
+	case DLL_QUERY_HMODULE:
+		if (lpReserved != NULL)
+		{
+			*(HMODULE*)lpReserved = hAppInstance;
+		}
+		break;
+	case DLL_PROCESS_ATTACH:
+		hAppInstance = hinstDLL;
+		break;
+	case DLL_PROCESS_DETACH:
+	case DLL_THREAD_ATTACH:
+	case DLL_THREAD_DETACH:
+		break;
+	}
 
 	PythonDllMain(hinstDLL, dwReason, lpReserved);
 	CtypesDllMain(hinstDLL, dwReason, lpReserved);
 	return TRUE;
-}
-
-
-/*!
- * @brief Callback for when a command has been added to the meterpreter instance.
- * @param commandName The name of the command that has been added.
- */
-VOID __declspec(dllexport) CommandAdded(const char* commandName)
-{
-	binding_add_command(commandName);
 }
 
 /*!
@@ -68,11 +59,11 @@ VOID __declspec(dllexport) CommandAdded(const char* commandName)
  * @param remote Pointer to the remote instance.
  * @return Indication of success or failure.
  */
-DWORD __declspec(dllexport) InitServerExtension(MetApi* api, Remote* remote)
+DWORD InitServerExtension(MetApi* api, Remote* remote)
 {
-    met_api = api;
+	met_api = api;
 
-    met_api->command.register_all(customCommands);
+	met_api->command.register_all(customCommands);
 	gRemote = remote;
 
 	dprintf("[PYTHON] Initialising");
@@ -80,7 +71,7 @@ DWORD __declspec(dllexport) InitServerExtension(MetApi* api, Remote* remote)
 
 	python_prepare_session();
 	dprintf("[PYTHON] Registering commands");
-    met_api->command.register_all(customCommands);
+	met_api->command.register_all(customCommands);
 
 	return ERROR_SUCCESS;
 }
@@ -90,7 +81,7 @@ DWORD __declspec(dllexport) InitServerExtension(MetApi* api, Remote* remote)
  * @param remote Pointer to the remote instance.
  * @return Indication of success or failure.
  */
-DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
+DWORD DeinitServerExtension(Remote *remote)
 {
 	met_api->command.deregister_all(customCommands);
 
@@ -100,26 +91,27 @@ DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
 }
 
 /*!
- * @brief Get the name of the extension.
- * @param buffer Pointer to the buffer to write the name to.
- * @param bufferSize Size of the \c buffer parameter.
- * @return Indication of success or failure.
- */
-DWORD __declspec(dllexport) GetExtensionName(char* buffer, int bufferSize)
-{
-	strncpy_s(buffer, bufferSize, "python", bufferSize - 1);
-	return ERROR_SUCCESS;
-}
-
-/*!
  * @brief Do a stageless initialisation of the extension.
+ * @param ID of the extension that the init was intended for.
  * @param buffer Pointer to the buffer that contains the init data.
  * @param bufferSize Size of the \c buffer parameter.
  * @return Indication of success or failure.
  */
-DWORD __declspec(dllexport) StagelessInit(const LPBYTE buffer, DWORD bufferSize)
+DWORD StagelessInit(UINT extensionId, const LPBYTE buffer, DWORD bufferSize)
 {
-	dprintf("[PYTHON] Executing stagless script:\n%s", (LPCSTR)buffer);
-	python_execute(NULL, (LPSTR)buffer, bufferSize, PY_CODE_TYPE_PY, NULL, NULL);
+	if (extensionId == EXTENSION_ID_PYTHON)
+	{
+		dprintf("[PSH] Executing stagless script:\n%s", (LPCSTR)buffer);
+		python_execute(NULL, (LPSTR)buffer, bufferSize, PY_CODE_TYPE_PY, NULL, NULL);
+	}
 	return ERROR_SUCCESS;
+}
+
+/*!
+ * @brief Callback for when a command has been added to the meterpreter instance.
+ * @param commandId The ID of the command that has been added.
+ */
+VOID CommandAdded(UINT commandId)
+{
+	binding_add_command(commandId);
 }

@@ -22,7 +22,7 @@ public class NotYetImplementedCommand implements Command {
 
     private NotYetImplementedCommand() {
         typeNames.put(new Integer(TLVType.TLV_TYPE_ANY), "TLV_TYPE_ANY");
-        typeNames.put(new Integer(TLVType.TLV_TYPE_METHOD), "TLV_TYPE_METHOD");
+        typeNames.put(new Integer(TLVType.TLV_TYPE_COMMAND_ID), "TLV_TYPE_COMMAND_ID");
         typeNames.put(new Integer(TLVType.TLV_TYPE_REQUEST_ID), "TLV_TYPE_REQUEST_ID");
         typeNames.put(new Integer(TLVType.TLV_TYPE_EXCEPTION), "TLV_TYPE_EXCEPTION");
         typeNames.put(new Integer(TLVType.TLV_TYPE_RESULT), "TLV_TYPE_RESULT");
@@ -149,9 +149,7 @@ public class NotYetImplementedCommand implements Command {
         typeNames.put(new Integer(TLVType.TLV_TYPE_POWER_REASON), "TLV_TYPE_POWER_REASON");
         typeNames.put(new Integer(TLVType.TLV_TYPE_DESKTOP_SCREENSHOT), "TLV_TYPE_DESKTOP_SCREENSHOT");
         typeNames.put(new Integer(TLVType.TLV_TYPE_DESKTOP_SCREENSHOT_QUALITY), "TLV_TYPE_DESKTOP_SCREENSHOT_QUALITY");
-        typeNames.put(new Integer(TLVType.TLV_TYPE_DESKTOP_SCREENSHOT_PE32DLL_LENGTH), "TLV_TYPE_DESKTOP_SCREENSHOT_PE32DLL_LENGTH");
         typeNames.put(new Integer(TLVType.TLV_TYPE_DESKTOP_SCREENSHOT_PE32DLL_BUFFER), "TLV_TYPE_DESKTOP_SCREENSHOT_PE32DLL_BUFFER");
-        typeNames.put(new Integer(TLVType.TLV_TYPE_DESKTOP_SCREENSHOT_PE64DLL_LENGTH), "TLV_TYPE_DESKTOP_SCREENSHOT_PE64DLL_LENGTH");
         typeNames.put(new Integer(TLVType.TLV_TYPE_DESKTOP_SCREENSHOT_PE64DLL_BUFFER), "TLV_TYPE_DESKTOP_SCREENSHOT_PE64DLL_BUFFER");
     }
 

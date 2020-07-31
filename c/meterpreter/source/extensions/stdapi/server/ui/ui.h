@@ -9,7 +9,6 @@ DWORD request_ui_get_idle_time(Remote *remote, Packet *request);
 
 DWORD request_ui_start_keyscan(Remote *remote, Packet *request);
 DWORD request_ui_stop_keyscan(Remote *remote, Packet *request);
-DWORD request_ui_get_keys(Remote *remote, Packet *request);
 DWORD request_ui_get_keys_utf8(Remote *remote, Packet *request);
 
 DWORD request_ui_send_keys(Remote *remote, Packet *request);

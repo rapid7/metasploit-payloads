@@ -7,6 +7,8 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
 
+import com.metasploit.meterpreter.command.CommandId;
+
 /**
  * A channel for a {@link DatagramSocket}.
  *
@@ -75,7 +77,7 @@ public class DatagramSocketChannel extends Channel {
                         tlv.add(TLVType.TLV_TYPE_PEER_PORT, dp.getPort());
                         tlv.add(TLVType.TLV_TYPE_CHANNEL_DATA, data);
                         tlv.add(TLVType.TLV_TYPE_LENGTH, data.length);
-                        getMeterpreter().writeRequestPacket("core_channel_write", tlv);
+                        getMeterpreter().writeRequestPacket(CommandId.CORE_CHANNEL_WRITE, tlv);
                     } catch (SocketException t) {
                         // dirty hack since later java versions add more of those...
                         if (!t.getClass().getName().endsWith("UnreachableException"))

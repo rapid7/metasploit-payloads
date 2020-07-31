@@ -30,9 +30,9 @@ typedef DWORD(WINAPI * GETMODULEBASENAMEW)(HANDLE hProcess, HMODULE hModule, LPW
 typedef struct _DLL_BUFFER
 {
 	LPVOID lpPE32DllBuffer;
-	DWORD  dwPE32DllLenght;
+	DWORD  dwPE32DllLength;
 	LPVOID lpPE64DllBuffer;
-	DWORD  dwPE64DllLenght;
+	DWORD  dwPE64DllLength;
 } DLL_BUFFER;
 
 typedef struct _PROCESS_BASIC_INFORMATION
@@ -65,7 +65,7 @@ typedef struct _RTL_USER_PROCESS_PARAMETERS
 
 //===============================================================================================//
 
-DWORD ps_inject( DWORD dwPid, DLL_BUFFER * pDllBuffer, char * cpCommandLine );
+DWORD ps_inject(DWORD dwPid, DLL_BUFFER* pDllBuffer, LPCSTR reflectiveLoader, char* cpCommandLine);
 
 DWORD ps_getarch( DWORD dwPid );
 

@@ -2,8 +2,8 @@
 #include "server_pivot_named_pipe.h"
 #include "packet_encryption.h"
 
-#include <AccCtrl.h>
-#include <AclApi.h>
+#include <accctrl.h>
+#include <aclapi.h>
 
 #define PIPE_NAME_SIZE 256
 #define PIPE_BUFFER_SIZE 0x10000
@@ -162,7 +162,8 @@ static DWORD read_pipe_to_packet(NamedPipeContext* ctx, LPBYTE source, DWORD sou
 				{
 					dprintf("[PIPE] Request ID found and matches expected value");
 					// we have a response to our session guid request
-					LPBYTE sessionGuid = packet_get_tlv_value_raw(packet, TLV_TYPE_SESSION_GUID);
+					DWORD sessionGuidLen = 0;
+					LPBYTE sessionGuid = packet_get_tlv_value_raw(packet, TLV_TYPE_SESSION_GUID, 0);
 #ifdef DEBUGTRACE
 					PUCHAR h = (PUCHAR)&sessionGuid[0];
 					dprintf("[PIPE] Returned session guid: %02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
@@ -211,7 +212,7 @@ static DWORD read_pipe_to_packet(NamedPipeContext* ctx, LPBYTE source, DWORD sou
 
 					// with the session now established, we need to inform metasploit of the new connection
 					dprintf("[PIPE] Informing MSF of the new named pipe pivot");
-					Packet* notification = packet_create(PACKET_TLV_TYPE_REQUEST, "core_pivot_session_new");
+					Packet* notification = packet_create(PACKET_TLV_TYPE_REQUEST, COMMAND_ID_CORE_PIVOT_SESSION_DIED);
 					packet_add_tlv_raw(notification, TLV_TYPE_SESSION_GUID, (LPVOID)&ctx->pivot_session_guid, sizeof(ctx->pivot_session_guid));
 					packet_add_tlv_raw(notification, TLV_TYPE_PIVOT_ID, (LPVOID)&ctx->pivot_id, sizeof(ctx->pivot_id));
 					packet_transmit(ctx->remote, notification, NULL);
@@ -563,7 +564,7 @@ static DWORD server_notify(Remote* remote, LPVOID entryContext, LPVOID threadCon
 				ResetEvent(serverCtx->read_overlap.hEvent);
 
 				// Prepare the notification packet for dispatching
-				Packet* notification = packet_create(PACKET_TLV_TYPE_REQUEST, "core_pivot_session_died");
+				Packet* notification = packet_create(PACKET_TLV_TYPE_REQUEST, COMMAND_ID_CORE_PIVOT_SESSION_DIED);
 				packet_add_tlv_raw(notification, TLV_TYPE_SESSION_GUID, (LPVOID)&serverCtx->pivot_session_guid, sizeof(serverCtx->pivot_session_guid));
 
 				// Clean up the pivot context
@@ -646,7 +647,7 @@ static DWORD server_notify(Remote* remote, LPVOID entryContext, LPVOID threadCon
 			// session that's come back out of nowhere (transport switching, sleeping, etc). Create a packet
 			// that will request the guid, and track a random request ID to find the response later on.
 			dprintf("[NP-SERVER] Creating the guid request packet");
-			Packet* getGuidPacket = packet_create(PACKET_TLV_TYPE_REQUEST, "core_get_session_guid");
+			Packet* getGuidPacket = packet_create(PACKET_TLV_TYPE_REQUEST, COMMAND_ID_CORE_GET_SESSION_GUID);
 			dprintf("[NP-SERVER] adding the request ID to the guid request packet");
 			packet_add_request_id(getGuidPacket);
 			CHAR* requestId = packet_get_tlv_value_string(getGuidPacket, TLV_TYPE_REQUEST_ID);
@@ -754,14 +755,14 @@ DWORD request_core_pivot_add_named_pipe(Remote* remote, Packet* packet)
 			namedPipeServer = ".";
 		}
 
-		LPBYTE pivotId = packet_get_tlv_value_raw(packet, TLV_TYPE_PIVOT_ID);
+		DWORD pivotIdLen = 0;
+		LPBYTE pivotId = packet_get_tlv_value_raw(packet, TLV_TYPE_PIVOT_ID, &pivotIdLen);
 		if (pivotId != NULL)
 		{
 			memcpy(&ctx->pivot_id, pivotId, sizeof(ctx->pivot_id));
 		}
 
-		LPVOID stageData = packet_get_tlv_value_raw(packet, TLV_TYPE_PIVOT_STAGE_DATA);
-		ctx->stage_data_size = packet_get_tlv_value_uint(packet, TLV_TYPE_PIVOT_STAGE_DATA_SIZE);
+		LPVOID stageData = packet_get_tlv_value_raw(packet, TLV_TYPE_PIVOT_STAGE_DATA, &ctx->stage_data_size);
 
 		if (stageData && ctx->stage_data_size > 0)
 		{

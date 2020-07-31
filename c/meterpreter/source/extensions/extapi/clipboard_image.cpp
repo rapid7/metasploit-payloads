@@ -10,7 +10,11 @@ extern "C" {
 #include "extapi.h"
 #include "clipboard_image.h"
 }
-#include <GdiPlus.h>
+#include <gdiplus.h>
+
+#ifndef max
+#define max(x,y) ((x)>(y)?(x):(y))
+#endif
 
 /*!
  * @brief Get the Class ID of an encoder which supports encoding to the specified MIME type.

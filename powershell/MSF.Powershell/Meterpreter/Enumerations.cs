@@ -39,7 +39,7 @@ namespace MSF.Powershell.Meterpreter
     {
         // Actual types
         Any = MetaType.None,
-        Method = MetaType.String | 1,
+        CommandId = MetaType.Uint | 1,
         RequestId = MetaType.String | 2,
         Exception = MetaType.Group | 3,
         Result = MetaType.Uint | 4,

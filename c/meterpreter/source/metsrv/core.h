@@ -14,7 +14,7 @@
 /*
  * Packet manipulation
  */
-Packet *packet_create(PacketTlvType type, LPCSTR method);
+Packet* packet_create(PacketTlvType type, UINT commandId);
 Packet *packet_create_response(Packet *packet);
 Packet* packet_create_group();
 Packet *packet_duplicate(Packet *packet);
@@ -38,10 +38,11 @@ DWORD packet_get_tlv_string(Packet *packet, TlvType type, Tlv *tlv);
 DWORD packet_get_tlv_group_entry(Packet *packet, Tlv *group, TlvType type,Tlv *entry);
 DWORD packet_enum_tlv(Packet *packet, DWORD index, TlvType type, Tlv *tlv);
 
+LPCSTR packet_get_tlv_value_reflective_loader(Packet* packet);
 PCHAR packet_get_tlv_value_string(Packet *packet, TlvType type);
 wchar_t* packet_get_tlv_value_wstring(Packet* packet, TlvType type);
 UINT packet_get_tlv_value_uint(Packet *packet, TlvType type);
-BYTE * packet_get_tlv_value_raw( Packet * packet, TlvType type );
+BYTE* packet_get_tlv_value_raw(Packet* packet, TlvType type, DWORD* length);
 QWORD packet_get_tlv_value_qword(Packet *packet, TlvType type);
 BOOL packet_get_tlv_value_bool(Packet *packet, TlvType type);
 

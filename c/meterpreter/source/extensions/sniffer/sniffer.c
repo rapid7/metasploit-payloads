@@ -22,19 +22,20 @@ DWORD request_sniffer_capture_dump_read(Remote *remote, Packet *packet);
 /*! @brief List of custom commands provided by the sniffer extension. */
 Command customCommands[] =
 {
-	COMMAND_REQ("sniffer_interfaces", request_sniffer_interfaces),
-	COMMAND_REQ("sniffer_capture_start", request_sniffer_capture_start),
-	COMMAND_REQ("sniffer_capture_stop", request_sniffer_capture_stop),
-	COMMAND_REQ("sniffer_capture_stats", request_sniffer_capture_stats),
-	COMMAND_REQ("sniffer_capture_release", request_sniffer_capture_release),
-	COMMAND_REQ("sniffer_capture_dump", request_sniffer_capture_dump),
-	COMMAND_REQ("sniffer_capture_dump_read", request_sniffer_capture_dump_read),
+	COMMAND_REQ(COMMAND_ID_SNIFFER_INTERFACES, request_sniffer_interfaces),
+	COMMAND_REQ(COMMAND_ID_SNIFFER_CAPTURE_START, request_sniffer_capture_start),
+	COMMAND_REQ(COMMAND_ID_SNIFFER_CAPTURE_STOP, request_sniffer_capture_stop),
+	COMMAND_REQ(COMMAND_ID_SNIFFER_CAPTURE_STATS, request_sniffer_capture_stats),
+	COMMAND_REQ(COMMAND_ID_SNIFFER_CAPTURE_RELEASE, request_sniffer_capture_release),
+	COMMAND_REQ(COMMAND_ID_SNIFFER_CAPTURE_DUMP, request_sniffer_capture_dump),
+	COMMAND_REQ(COMMAND_ID_SNIFFER_CAPTURE_DUMP_READ, request_sniffer_capture_dump_read),
 	COMMAND_TERMINATOR
 };
 
 // include the Reflectiveloader() function, we end up linking back to the metsrv.dll's Init function
 // but this doesnt matter as we wont ever call DLL_METASPLOIT_ATTACH as that is only used by the
 // second stage reflective dll inject payload and not the metsrv itself when it loads extensions.
+#define RDIDLL_NOEXPORT
 #include "../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
 
 #define check_pssdk(); if(!hMgr && pktsdk_initialize()!=0){ met_api->packet.transmit_response(hErr, remote, response);return(hErr); }
@@ -740,12 +741,12 @@ DWORD request_sniffer_capture_dump(Remote *remote, Packet *packet)
  * @param remote Pointer to the remote instance.
  * @return Indication of success or failure.
  */
-DWORD __declspec(dllexport) InitServerExtension(MetApi* api, Remote* remote)
+DWORD InitServerExtension(MetApi* api, Remote* remote)
 {
-    met_api = api;
+	met_api = api;
 
 	dprintf("[SERVER] Registering command handlers...");
-    met_api->command.register_all(customCommands);
+	met_api->command.register_all(customCommands);
 
 	dprintf("[SERVER] Memory reset of open_captures...");
 	memset(open_captures, 0, sizeof(open_captures));
@@ -788,9 +789,9 @@ DWORD __declspec(dllexport) InitServerExtension(MetApi* api, Remote* remote)
  * @param remote Pointer to the remote instance.
  * @return Indication of success or failure.
  */
-DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
+DWORD DeinitServerExtension(Remote *remote)
 {
-    met_api->command.deregister_all(customCommands);
+	met_api->command.deregister_all(customCommands);
 
 	MgrDestroy(hMgr);
 	met_api->lock.destroy(snifferm);
@@ -798,13 +799,21 @@ DWORD __declspec(dllexport) DeinitServerExtension(Remote *remote)
 }
 
 /*!
- * @brief Get the name of the extension.
- * @param buffer Pointer to the buffer to write the name to.
+ * @brief Do a stageless initialisation of the extension.
+ * @param ID of the extension that the init was intended for.
+ * @param buffer Pointer to the buffer that contains the init data.
  * @param bufferSize Size of the \c buffer parameter.
  * @return Indication of success or failure.
  */
-DWORD __declspec(dllexport) GetExtensionName(char* buffer, int bufferSize)
+DWORD StagelessInit(UINT extensionId, const LPBYTE buffer, DWORD bufferSize)
 {
-	strncpy_s(buffer, bufferSize, "sniffer", bufferSize - 1);
 	return ERROR_SUCCESS;
+}
+
+/*!
+ * @brief Callback for when a command has been added to the meterpreter instance.
+ * @param commandId The ID of the command that has been added.
+ */
+VOID CommandAdded(UINT commandId)
+{
 }
