@@ -74,7 +74,7 @@ public class ProcessChannel extends Channel {
                 stderrThread.join();
                 handleInteract(null);
             } catch (Throwable t) {
-                t.printStackTrace(this.outputStream);
+                t.printStackTrace(meterpreter.getErrorStream());
             }
         }
     }
