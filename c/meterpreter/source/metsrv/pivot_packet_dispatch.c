@@ -18,7 +18,7 @@ DWORD THREADCALL pivot_packet_dispatch_thread(THREAD* thread)
 
 DWORD pivot_packet_dispatch(PivotContext* pivotCtx, LPBYTE packetBuffer, DWORD packetSize)
 {
-	THREAD* thread = thread_create(pivot_packet_dispatch_thread, pivotCtx, packetBuffer, (LPVOID)(DWORD_PTR)packetSize);
+	THREAD* thread = thread_create(pivot_packet_dispatch_thread, pivotCtx, packetBuffer, (LPVOID)(DWORD_PTR)packetSize, NULL);
 	if (thread)
 	{
 		dprintf("[PIVOTPACKET] Dispatching packet on new thread %p", thread);

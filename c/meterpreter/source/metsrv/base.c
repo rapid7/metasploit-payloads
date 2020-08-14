@@ -488,7 +488,7 @@ BOOL command_handle(Remote *remote, Packet *packet)
 			*commands = baseCommand;
 			*(commands + 1) = extensionCommand;
 
-			cpt = thread_create(command_process_thread, remote, packet, commands);
+			cpt = thread_create(command_process_thread, remote, packet, commands, NULL);
 			if (cpt)
 			{
 				dprintf("[DISPATCH] created command_process_thread 0x%08X, handle=0x%08X", cpt, cpt->handle);

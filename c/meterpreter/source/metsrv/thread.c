@@ -204,7 +204,7 @@ static ULONG THREADCALL thread_preamble(THREAD* thread)
 /*
  * Create a new thread in a suspended state.
  */
-THREAD* thread_create(THREADFUNK funk, LPVOID param1, LPVOID param2, LPVOID param3)
+THREAD* thread_create(THREADFUNK funk, LPVOID param1, LPVOID param2, LPVOID param3, LPVOID param4)
 {
 	THREAD* thread = NULL;
 
@@ -231,6 +231,7 @@ THREAD* thread_create(THREADFUNK funk, LPVOID param1, LPVOID param2, LPVOID para
 	thread->parameter1 = param1;
 	thread->parameter2 = param2;
 	thread->parameter3 = param3;
+	thread->parameter4 = param4;
 	thread->funk = funk;
 
 	thread->handle = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)thread_preamble, thread, CREATE_SUSPENDED, &thread->id);

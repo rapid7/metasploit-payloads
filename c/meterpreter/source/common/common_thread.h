@@ -25,6 +25,7 @@ struct _THREAD
 	LPVOID parameter1;
 	LPVOID parameter2;
 	LPVOID parameter3;
+	LPVOID parameter4;
 };
 
 
