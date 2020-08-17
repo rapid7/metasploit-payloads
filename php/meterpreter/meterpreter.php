@@ -515,7 +515,7 @@ if (!function_exists('core_enumextcmd')) {
     $id_start_array = packet_get_tlv($req, TLV_TYPE_UINT);
     $id_start = $id_start_array['value'];
     $id_end_array = packet_get_tlv($req, TLV_TYPE_LENGTH);
-    $id_end = $id_end_array['value'] + id_start;
+    $id_end = $id_end_array['value'] + $id_start;
 
     foreach ($id2f as $id => $ext_cmd) {
       my_print("core_enumextcmd - checking " . $ext_cmd . " as " . $id);
