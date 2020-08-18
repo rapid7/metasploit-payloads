@@ -3,5 +3,6 @@
 
 DWORD elevate_via_service_namedpipe( Remote * remote, Packet * packet );
 DWORD elevate_via_service_namedpipe2( Remote * remote, Packet * packet );
+DWORD elevate_via_service_namedpipe_rpcss( Remote* remote, Packet* packet);
 
 #endif
