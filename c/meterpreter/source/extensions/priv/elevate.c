@@ -5,6 +5,7 @@
 #include "precomp.h"
 #include "common_metapi.h"
 #include "namedpipe.h"
+#include "namedpipe_rpcss.h"
 #include "tokendup.h"
 
 /*!
