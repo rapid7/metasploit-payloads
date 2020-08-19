@@ -1,4 +1,3 @@
-#include <winternl.h>
 #include "precomp.h"
 #include "common_metapi.h"
 #include "namedpipe.h"
@@ -82,9 +81,9 @@ DWORD THREADCALL elevate_namedpipe_thread(THREAD * thread)
 					continue;
 			}
 
-			dprintf("[ELEVATE] pipethread. receieved a client connection");
+			dprintf("[ELEVATE] elevate_namedpipe_thread. receieved a client connection");
 
-			// we can't impersonate a client untill we have performed a read on the pipe...
+			// we can't impersonate a client until we have performed a read on the pipe...
 			if (!ReadFile(hPipe, &bMessage, 1, &dwBytes, NULL)) {
 				CONTINUE_ON_ERROR("[ELEVATE] pipethread. ReadFile failed");
 			}
@@ -95,6 +94,7 @@ DWORD THREADCALL elevate_namedpipe_thread(THREAD * thread)
 			}
 
 			if (pPostImpersonation) {
+				dprintf("[ELEVATE] elevate_namedpipe_thread. dispatching to the post impersonation callback");
 				dwResult = pPostImpersonation->pCallback(pPostImpersonation->pCallbackParam);
 				if (dwResult != ERROR_SUCCESS) {
 					RevertToSelf();
@@ -144,7 +144,7 @@ DWORD elevate_via_service_namedpipe(Remote * remote, Packet * packet)
 
 		// filter out Windows NT4
 		if (os.dwMajorVersion == 4 && os.dwMinorVersion == 0) {
-			SetLastError(ERROR_ACCESS_DENIED);
+			SetLastError(ERROR_CALL_NOT_IMPLEMENTED);
 			BREAK_ON_ERROR("[ELEVATE] elevate_via_service_namedpipe: Windows NT4 not supported.")
 		}
 
