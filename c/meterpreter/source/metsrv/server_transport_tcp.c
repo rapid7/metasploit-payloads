@@ -675,7 +675,7 @@ static void transport_reset_tcp(Transport* transport, BOOL shuttingDown)
 				// before cleaning up the socket. This is done in another thread so that functionality
 				// can continue.
 				dprintf("[TCP] It should now be safe to close the socket.");
-				THREAD* t = thread_create(cleanup_socket, (LPVOID)ctx->fd, NULL, NULL, NULL);
+				THREAD* t = thread_create(cleanup_socket, (LPVOID)ctx->fd, NULL, NULL);
 				thread_run(t);
 			}
 		}

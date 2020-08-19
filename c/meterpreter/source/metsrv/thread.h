@@ -50,7 +50,7 @@ BOOL event_poll( EVENT * event, DWORD timeout );
 
 THREAD * thread_open( VOID );
 
-THREAD * thread_create( THREADFUNK funk, LPVOID param1, LPVOID param2, LPVOID param3, LPVOID param4 );
+THREAD * thread_create( THREADFUNK funk, LPVOID param1, LPVOID param2, LPVOID param3 );
 
 void disable_thread_error_reporting(void);
 

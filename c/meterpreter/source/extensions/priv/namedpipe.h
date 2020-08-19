@@ -6,4 +6,9 @@ DWORD THREADCALL elevate_namedpipe_thread(THREAD* thread);
 DWORD elevate_via_service_namedpipe(Remote* remote, Packet* packet);
 DWORD elevate_via_service_namedpipe2(Remote* remote, Packet* packet);
 
+typedef struct _PRIV_POST_IMPERSONATION {
+	PostImpersonationCallback pCallback;
+	PVOID                     pCallbackParam;
+} PRIV_POST_IMPERSONATION, * PPRIV_POST_IMPERSONATION;
+
 #endif

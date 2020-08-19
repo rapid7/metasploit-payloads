@@ -69,7 +69,7 @@ typedef struct _ThreadApi
 	BOOL(*kill)(THREAD* thread);
 	BOOL(*run)(THREAD* thread);
 	BOOL(*sigterm)(THREAD* thread);
-	THREAD*(*create)(THREADFUNK funk, LPVOID param1, LPVOID param2, LPVOID param3, LPVOID param4);
+	THREAD*(*create)(THREADFUNK funk, LPVOID param1, LPVOID param2, LPVOID param3);
 	THREAD*(*open)();
 	HANDLE(*create_remote)(HANDLE hProcess, SIZE_T sStackSize, LPVOID pvStartAddress, LPVOID pvStartParam, DWORD dwCreateFlags, LPDWORD pdwThreadId);
 	HANDLE(*update_token)( Remote *remote, HANDLE token );

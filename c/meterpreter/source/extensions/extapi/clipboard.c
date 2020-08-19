@@ -1230,7 +1230,7 @@ DWORD request_clipboard_monitor_start(Remote *remote, Packet *packet)
 			BREAK_WITH_ERROR("[EXTAPI CLIPBOARD] Unable to allocate memory for clipboard events", ERROR_NOT_ENOUGH_MEMORY);
 		}
 
-		pState->hThread = met_api->thread.create((THREADFUNK)clipboard_monitor_thread_func, pState, NULL, NULL, NULL);
+		pState->hThread = met_api->thread.create((THREADFUNK)clipboard_monitor_thread_func, pState, NULL, NULL);
 
 		if (pState->hThread == NULL)
 		{
