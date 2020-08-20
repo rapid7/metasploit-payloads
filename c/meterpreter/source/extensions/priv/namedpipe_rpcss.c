@@ -330,7 +330,7 @@ DWORD elevate_via_service_namedpipe_rpcss(Remote* remote, Packet* packet)
 		// filter out systems older than Windows 8.1 / Server 2012 R2 (6.3) for this technique
 		if ((os.dwMajorVersion < 6) || (os.dwMajorVersion == 6 && os.dwMinorVersion < 3)) {
 			SetLastError(ERROR_CALL_NOT_IMPLEMENTED);
-			BREAK_ON_ERROR("[ELEVATE] elevate_via_service_namedpipe_rpcss: Windows 2000 and older are unsupported");
+			BREAK_ON_ERROR("[ELEVATE] elevate_via_service_namedpipe_rpcss: Windows versions older than 6.3 are unsupported");
 		}
 
 		// generate a pseudo random name for the pipe
