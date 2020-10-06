@@ -163,18 +163,18 @@ static DWORD read_pipe_to_packet(NamedPipeContext* ctx, LPBYTE source, DWORD sou
 					dprintf("[PIPE] Request ID found and matches expected value");
 					// we have a response to our session guid request
 					DWORD sessionGuidLen = 0;
-					LPBYTE sessionGuid = packet_get_tlv_value_raw(packet, TLV_TYPE_SESSION_GUID, 0);
-#ifdef DEBUGTRACE
-					PUCHAR h = (PUCHAR)&sessionGuid[0];
-					dprintf("[PIPE] Returned session guid: %02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
-						h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15]);
-					h = (PUCHAR)&ctx->pivot_session_guid;
-					dprintf("[PIPE]    Pivot session guid: %02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
-						h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15]);
-					dprintf("[PIPE] Session pivot session guid size: %u", sizeof(ctx->pivot_session_guid));
-#endif
-					if (sessionGuid != NULL && memcmp(&ctx->pivot_session_guid, sessionGuid, sizeof(ctx->pivot_session_guid)) != 0)
+					LPBYTE sessionGuid = packet_get_tlv_value_raw(packet, TLV_TYPE_SESSION_GUID, &sessionGuidLen);
+					if (sessionGuid != NULL && sessionGuidLen == sizeof(ctx->pivot_session_guid) && memcmp(&ctx->pivot_session_guid, sessionGuid, sizeof(ctx->pivot_session_guid)) != 0)
 					{
+#ifdef DEBUGTRACE
+						PUCHAR h = (PUCHAR)&sessionGuid[0];
+						dprintf("[PIPE] Returned session guid: %02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
+							h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15]);
+						h = (PUCHAR)&ctx->pivot_session_guid;
+						dprintf("[PIPE]    Pivot session guid: %02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
+							h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15]);
+						dprintf("[PIPE] Session pivot session guid size: %u", sizeof(ctx->pivot_session_guid));
+#endif
 						dprintf("[PIPE] Session guid returned, looks like the session is a reconnect");
 						memcpy(&ctx->pivot_session_guid, sessionGuid, sizeof(ctx->pivot_session_guid));
 
@@ -212,7 +212,7 @@ static DWORD read_pipe_to_packet(NamedPipeContext* ctx, LPBYTE source, DWORD sou
 
 					// with the session now established, we need to inform metasploit of the new connection
 					dprintf("[PIPE] Informing MSF of the new named pipe pivot");
-					Packet* notification = packet_create(PACKET_TLV_TYPE_REQUEST, COMMAND_ID_CORE_PIVOT_SESSION_DIED);
+					Packet* notification = packet_create(PACKET_TLV_TYPE_REQUEST, COMMAND_ID_CORE_PIVOT_SESSION_NEW);
 					packet_add_tlv_raw(notification, TLV_TYPE_SESSION_GUID, (LPVOID)&ctx->pivot_session_guid, sizeof(ctx->pivot_session_guid));
 					packet_add_tlv_raw(notification, TLV_TYPE_PIVOT_ID, (LPVOID)&ctx->pivot_id, sizeof(ctx->pivot_id));
 					packet_transmit(ctx->remote, notification, NULL);
