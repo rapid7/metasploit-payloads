@@ -35,6 +35,7 @@ DWORD THREADCALL elevate_namedpipe_thread(THREAD * thread)
 	char * cpPipeName                            = NULL;
 	BYTE bMessage[128]                           = {0};
 	DWORD dwBytes                                = 0;
+	BOOL bImpersonated                           = FALSE;
 	PPRIV_POST_IMPERSONATION pPostImpersonation  = NULL;
 
 	do {
@@ -85,11 +86,14 @@ DWORD THREADCALL elevate_namedpipe_thread(THREAD * thread)
 
 			// we can't impersonate a client until we have performed a read on the pipe...
 			if (!ReadFile(hPipe, &bMessage, 1, &dwBytes, NULL)) {
+				DisconnectNamedPipe(hPipe);
 				CONTINUE_ON_ERROR("[ELEVATE] pipethread. ReadFile failed");
 			}
 
 			// impersonate the client!
-			if (!ImpersonateNamedPipeClient(hPipe)) {
+			bImpersonated = ImpersonateNamedPipeClient(hPipe);
+			DisconnectNamedPipe(hPipe);
+			if (!bImpersonated) {
 				CONTINUE_ON_ERROR("[ELEVATE] elevate_namedpipe_thread. ImpersonateNamedPipeClient failed");
 			}
 
@@ -98,7 +102,7 @@ DWORD THREADCALL elevate_namedpipe_thread(THREAD * thread)
 				dwResult = pPostImpersonation->pCallback(pPostImpersonation->pCallbackParam);
 				if (dwResult != ERROR_SUCCESS) {
 					RevertToSelf();
-					CONTINUE_ON_ERROR("[ELEVATE] elevate_namedpipe_thread. the post impersonation callback failed");
+					BREAK_ON_ERROR("[ELEVATE] elevate_namedpipe_thread. the post impersonation callback failed");
 				}
 			}
 			else {
@@ -109,7 +113,6 @@ DWORD THREADCALL elevate_namedpipe_thread(THREAD * thread)
 	} while (0);
 
 	if (hPipe) {
-		DisconnectNamedPipe(hPipe);
 		CLOSE_HANDLE(hPipe);
 	}
 
