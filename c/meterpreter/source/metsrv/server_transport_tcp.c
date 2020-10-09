@@ -308,7 +308,7 @@ static DWORD packet_receive(Remote *remote, Packet **packet)
 	DWORD headerBytes = 0, payloadBytesLeft = 0, res;
 	Packet *localPacket = NULL;
 	PacketHeader header = { 0 };
-	DWORD bytesRead;
+	int bytesRead;
 	BOOL inHeader = TRUE;
 	PUCHAR packetBuffer = NULL;
 	ULONG payloadLength;
