@@ -362,7 +362,6 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <ClInclude Include="..\..\source\extensions\priv\elevate.h" />
     <ClInclude Include="..\..\source\extensions\priv\fs.h" />
     <ClInclude Include="..\..\source\extensions\priv\namedpipe.h" />
-    <ClInclude Include="..\..\source\extensions\priv\namedpipe_rpcss.h" />
     <ClInclude Include="..\..\source\extensions\priv\passwd.h" />
     <ClInclude Include="..\..\source\extensions\priv\precomp.h" />
     <ClInclude Include="..\..\source\extensions\priv\priv.h" />
@@ -373,7 +372,6 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <ClCompile Include="..\..\source\extensions\priv\elevate.c" />
     <ClCompile Include="..\..\source\extensions\priv\fs.c" />
     <ClCompile Include="..\..\source\extensions\priv\namedpipe.c" />
-    <ClCompile Include="..\..\source\extensions\priv\namedpipe_rpcss.c" />
     <ClCompile Include="..\..\source\extensions\priv\passwd.c" />
     <ClCompile Include="..\..\source\extensions\priv\priv.c" />
     <ClCompile Include="..\..\source\extensions\priv\service.c" />

