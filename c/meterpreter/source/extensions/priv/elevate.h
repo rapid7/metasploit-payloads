@@ -5,11 +5,12 @@
 #ifndef _METERPRETER_SOURCE_EXTENSION_PRIV_PRIV_SERVER_ELEVATE_ELEVATE_H
 #define _METERPRETER_SOURCE_EXTENSION_PRIV_PRIV_SERVER_ELEVATE_ELEVATE_H
 
-#define ELEVATE_TECHNIQUE_NONE					-1 ///< Identifier that indicates no technique was successful
-#define ELEVATE_TECHNIQUE_ANY					0  ///< Identifier that indicates that all techniques should be attempted.
-#define ELEVATE_TECHNIQUE_SERVICE_NAMEDPIPE		1  ///< Identifier for the Named Pipe service tecnique (#1)
-#define ELEVATE_TECHNIQUE_SERVICE_NAMEDPIPE2	2  ///< Identifier for the Named Pipe service tecnique (#2)
-#define ELEVATE_TECHNIQUE_SERVICE_TOKENDUP		3  ///< Identifier for the Token Duplication service technique.
+#define ELEVATE_TECHNIQUE_NONE                    -1 ///< Identifier that indicates no technique was successful
+#define ELEVATE_TECHNIQUE_ANY                     0  ///< Identifier that indicates that all techniques should be attempted.
+#define ELEVATE_TECHNIQUE_SERVICE_NAMEDPIPE       1  ///< Identifier for the Named Pipe service technique (#1)
+#define ELEVATE_TECHNIQUE_SERVICE_NAMEDPIPE2      2  ///< Identifier for the Named Pipe service technique (#2)
+#define ELEVATE_TECHNIQUE_SERVICE_TOKENDUP        3  ///< Identifier for the Token Duplication service technique.
+#define ELEVATE_TECHNIQUE_SERVICE_NAMEDPIPE_RPCSS 4  ///< Identifier for the Named Pipe service technique (RPCSS variant)
 
 typedef void (WINAPI * GETNATIVESYSTEMINFO)( LPSYSTEM_INFO lpSystemInfo ); ///< Stolen from ps.h
 
