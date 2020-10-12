@@ -860,7 +860,7 @@ function handle_dead_resource_channel($resource) {
 
     # Notify the client that this channel is dead
     $pkt = pack("N", PACKET_TYPE_REQUEST);
-    packet_add_tlv($pkt, create_tlv(TLV_TYPE_COMMAND_ID, 'core_channel_close'));
+    packet_add_tlv($pkt, create_tlv(TLV_TYPE_COMMAND_ID, COMMAND_ID_CORE_CHANNEL_CLOSE));
     packet_add_tlv($pkt, create_tlv(TLV_TYPE_REQUEST_ID, generate_req_id()));
     packet_add_tlv($pkt, create_tlv(TLV_TYPE_CHANNEL_ID, $cid));
     packet_add_tlv($pkt, create_tlv(TLV_TYPE_UUID, $GLOBALS['UUID']));
@@ -878,7 +878,7 @@ function handle_resource_read_channel($resource, $data) {
 
   # Build a new Packet
   $pkt = pack("N", PACKET_TYPE_REQUEST);
-  packet_add_tlv($pkt, create_tlv(TLV_TYPE_COMMAND_ID, 'core_channel_write'));
+  packet_add_tlv($pkt, create_tlv(TLV_TYPE_COMMAND_ID, COMMAND_ID_CORE_CHANNEL_WRITE));
   if (array_key_exists((int)$resource, $udp_host_map)) {
     list($h,$p) = $udp_host_map[(int)$resource];
     packet_add_tlv($pkt, create_tlv(TLV_TYPE_PEER_HOST, $h));
