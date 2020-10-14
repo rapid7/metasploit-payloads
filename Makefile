@@ -10,17 +10,17 @@ install-all: \
 	install-python
 
 install-windows:
-	@echo "Installing Windows payloads"
-	@if [ -d c/meterpreter/output/x86 ]; then \
-		cp -a c/meterpreter/output/x86/*.dll $(METERPDIR); \
-	else \
-		echo "Note: Windows 32-bit not built, skipping"; \
-	fi
-	@if [ -d c/meterpreter/output/x64 ]; then \
-		cp -a c/meterpreter/output/x64/*.dll $(METERPDIR); \
-	else \
-		echo "Note: Windows 64-bit not built, skipping"; \
-	fi
+		@echo "Installing Windows payloads"
+    ifneq ("$(wildcard c/meterpreter/output/*.x86.dll)","")
+			@cp c/meterpreter/output/*.x86.dll $(METERPDIR) 
+    else
+			@echo "Note: Windows 32-bit not built, skipping"
+    endif
+    ifneq ("$(wildcard c/meterpreter/output/*.x64.dll)","")
+			@cp c/meterpreter/output/*.x64.dll $(METERPDIR) 
+    else
+			@echo "Note: Windows 64-bit not built, skipping"
+    endif
 
 install-java:
 	@echo "Installing Java payloads"
