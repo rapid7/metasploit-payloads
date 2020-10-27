@@ -1383,14 +1383,14 @@ def stdapi_fs_search(request, response):
     if recurse:
         for root, dirs, files in os.walk(search_root):
             for f in filter(lambda f: fnmatch.fnmatch(f, glob), files):
-                file_tlv  = ''
+                file_tlv  = bytes()
                 file_tlv += tlv_pack(TLV_TYPE_FILE_PATH, root)
                 file_tlv += tlv_pack(TLV_TYPE_FILE_NAME, f)
                 file_tlv += tlv_pack(TLV_TYPE_FILE_SIZE, os.stat(os.path.join(root, f)).st_size)
                 response += tlv_pack(TLV_TYPE_SEARCH_RESULTS, file_tlv)
     else:
         for f in filter(lambda f: fnmatch.fnmatch(f, glob), os.listdir(search_root)):
-            file_tlv  = ''
+            file_tlv  = bytes()
             file_tlv += tlv_pack(TLV_TYPE_FILE_PATH, search_root)
             file_tlv += tlv_pack(TLV_TYPE_FILE_NAME, f)
             file_tlv += tlv_pack(TLV_TYPE_FILE_SIZE, os.stat(os.path.join(search_root, f)).st_size)
