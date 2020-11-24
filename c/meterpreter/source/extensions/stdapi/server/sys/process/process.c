@@ -381,14 +381,15 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 			}
 
 			// Try to execute the process with duplicated token
-			if (!CreateProcessAsUser(pToken, NULL, commandLine, NULL, NULL, inherit, createFlags, pEnvironment, NULL, (STARTUPINFOA*)&si, &pi))
+			wchar_t *commandLine_w = met_api->string.utf8_to_wchar(commandLine);
+			if (!CreateProcessAsUserW(pToken, NULL, commandLine_w, NULL, NULL, inherit, createFlags, pEnvironment, NULL, (LPSTARTUPINFOW)&si, &pi))
 			{
 				LPCREATEPROCESSWITHTOKENW pCreateProcessWithTokenW = NULL;
 				HANDLE hAdvapi32 = NULL;
 				wchar_t * wcmdline = NULL;
 				wchar_t * wdesktop = NULL;
 				size_t size = 0;
-
+				free(commandLine_w);
 				result = GetLastError();
 
 				// sf: If we hit an ERROR_PRIVILEGE_NOT_HELD failure we can fall back to CreateProcessWithTokenW but this is only
@@ -484,9 +485,11 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 
 				if (session_id(GetCurrentProcessId()) == session || !hWtsapi32)
 				{
-					if (!CreateProcess(NULL, commandLine, NULL, NULL, inherit, createFlags, NULL, NULL, (STARTUPINFOA*)&si, &pi))
+					wchar_t *commandLine_w = met_api->string.utf8_to_wchar(commandLine);
+					if (!CreateProcessW(NULL, commandLine_w, NULL, NULL, inherit, createFlags, NULL, NULL, (LPSTARTUPINFOW)&si, &pi))
 					{
-						BREAK_ON_ERROR("[PROCESS] execute in self session: CreateProcess failed");
+						free(commandLine_w);
+						BREAK_ON_ERROR("[PROCESS] execute in self session: CreateProcessW failed");
 					}
 				}
 				else
@@ -501,9 +504,10 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 					{
 						BREAK_ON_ERROR("[PROCESS] execute in session: WTSQueryUserToken failed");
 					}
-
-					if (!CreateProcessAsUser(hToken, NULL, commandLine, NULL, NULL, inherit, createFlags, NULL, NULL, (STARTUPINFOA*)&si, &pi))
+					wchar_t *commandLine_w = met_api->string.utf8_to_wchar(commandLine);
+					if (!CreateProcessAsUserW(hToken, NULL, commandLine_w, NULL, NULL, inherit, createFlags, NULL, NULL, (LPSTARTUPINFOW)&si, &pi))
 					{
+						free(commandLine_w);
 						BREAK_ON_ERROR("[PROCESS] execute in session: CreateProcessAsUser failed");
 					}
 				}
@@ -530,9 +534,11 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 		else
 		{
 			// Try to execute the process
-			if (!CreateProcess(NULL, commandLine, NULL, NULL, inherit, createFlags, NULL, NULL, (STARTUPINFOA*)&si, &pi))
+			wchar_t *commandLine_w = met_api->string.utf8_to_wchar(commandLine);
+			if (!CreateProcessW(NULL, commandLine_w, NULL, NULL, inherit, createFlags, NULL, NULL, (LPSTARTUPINFOW)&si, &pi))
 			{
 				result = GetLastError();
+				free(commandLine_w);
 				break;
 			}
 		}
