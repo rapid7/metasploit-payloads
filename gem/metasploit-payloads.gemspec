@@ -41,7 +41,6 @@ Gem::Specification.new do |spec|
   #spec.metadata['source_commit']       = '51b1a6d1dce9f617ab5fe0f27796e2217d9a9ca6'
   #spec.metadata['source_commit_url']   = "#{spec.metadata['source']}/commit/#{spec.metadata['source_commit']}"
 
-  spec.add_development_dependency 'bundler', '~> 1.3'
   spec.add_development_dependency 'rake'
   spec.add_development_dependency 'gem-release'
 end
