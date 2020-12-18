@@ -473,7 +473,7 @@ DWORD request_net_socket_tcp_shutdown(Remote *remote, Packet *packet)
 		how = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_SHUTDOWN_HOW);
 
 		channel = met_api->channel.find_by_id(cid);
-		if (!response)
+		if (!channel)
 		{
 			BREAK_WITH_ERROR("[TCP] request_net_socket_tcp_shutdown. channel == NULL", ERROR_INVALID_HANDLE);
 		}
