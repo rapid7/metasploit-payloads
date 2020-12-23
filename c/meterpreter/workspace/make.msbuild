@@ -6,6 +6,7 @@
 
   <Target Name="all" DependsOnTargets="x86;x64" />
   <Target Name="r7_all" DependsOnTargets="r7_x86;r7_x64" />
+  <Target Name="debug" DependsOnTargets="debug_x86;debug_x64" />
 
   <Target Name="x86">
     <Message Text="Building x86 Release version" />
@@ -25,6 +26,16 @@
   <Target Name="r7_x64">
     <Message Text="Building x64 Release R7 binaries" />
     <MSBuild Projects="$(SolutionPath)" Properties="Configuration=r7_Release;Platform=x64" Targets="Clean;Rebuild"/>
+  </Target>
+
+  <Target Name="debug_x86">
+    <Message Text="Building x86 Debug version" />
+    <MSBuild Projects="$(SolutionPath)" Properties="Configuration=Debug;Platform=Win32" Targets="Clean;Rebuild"/>
+  </Target>
+
+  <Target Name="debug_x64">
+    <Message Text="Building x64 Debug version" />
+    <MSBuild Projects="$(SolutionPath)" Properties="Configuration=Debug;Platform=x64" Targets="Clean;Rebuild"/>
   </Target>
 </Project>
 

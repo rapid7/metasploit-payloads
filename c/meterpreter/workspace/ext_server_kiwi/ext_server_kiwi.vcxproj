@@ -1,6 +1,14 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
     <ProjectConfiguration Include="r7_release|Win32">
       <Configuration>r7_release</Configuration>
       <Platform>Win32</Platform>
@@ -30,6 +38,12 @@
     <WholeProgramOptimization>false</WholeProgramOptimization>
     <PlatformToolset>v141_xp</PlatformToolset>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <CharacterSet>Unicode</CharacterSet>
+    <WholeProgramOptimization>false</WholeProgramOptimization>
+    <PlatformToolset>v141_xp</PlatformToolset>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='r7_release|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <CharacterSet>Unicode</CharacterSet>
@@ -37,6 +51,12 @@
     <PlatformToolset>v141_xp</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <CharacterSet>Unicode</CharacterSet>
+    <WholeProgramOptimization>false</WholeProgramOptimization>
+    <PlatformToolset>v141_xp</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <CharacterSet>Unicode</CharacterSet>
     <WholeProgramOptimization>false</WholeProgramOptimization>
@@ -56,11 +76,19 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="..\meterpreter.props" />
   </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="..\meterpreter.props" />
+  </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='r7_release|Win32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="..\meterpreter.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="..\meterpreter.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="..\meterpreter.props" />
   </ImportGroup>
@@ -72,32 +100,46 @@
   <PropertyGroup>
     <_ProjectFileVersion>10.0.30319.1</_ProjectFileVersion>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(Configuration)\$(Platform)\</OutDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(Configuration)\$(Platform)\</OutDir>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='r7_release|Win32'">$(Configuration)\$(Platform)\</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(Configuration)\$(Platform)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(Configuration)\$(Platform)\</IntDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='r7_release|Win32'">$(Configuration)\$(Platform)\</IntDir>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</LinkIncremental>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</LinkIncremental>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='r7_release|Win32'">false</LinkIncremental>
     <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</GenerateManifest>
+    <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</GenerateManifest>
     <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='r7_release|Win32'">false</GenerateManifest>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(Configuration)\$(Platform)\</OutDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(Configuration)\$(Platform)\</OutDir>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='r7_release|x64'">$(Configuration)\$(Platform)\</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(Configuration)\$(Platform)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(Configuration)\$(Platform)\</IntDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='r7_release|x64'">$(Configuration)\$(Platform)\</IntDir>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkIncremental>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkIncremental>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='r7_release|x64'">false</LinkIncremental>
     <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</GenerateManifest>
+    <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</GenerateManifest>
     <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='r7_release|x64'">false</GenerateManifest>
     <CodeAnalysisRuleSet Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">AllRules.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRuleSet Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">AllRules.ruleset</CodeAnalysisRuleSet>
     <CodeAnalysisRuleSet Condition="'$(Configuration)|$(Platform)'=='r7_release|Win32'">AllRules.ruleset</CodeAnalysisRuleSet>
     <CodeAnalysisRules Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" />
+    <CodeAnalysisRules Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" />
     <CodeAnalysisRules Condition="'$(Configuration)|$(Platform)'=='r7_release|Win32'" />
     <CodeAnalysisRuleAssemblies Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" />
+    <CodeAnalysisRuleAssemblies Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" />
     <CodeAnalysisRuleAssemblies Condition="'$(Configuration)|$(Platform)'=='r7_release|Win32'" />
     <CodeAnalysisRuleSet Condition="'$(Configuration)|$(Platform)'=='Release|x64'">AllRules.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRuleSet Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">AllRules.ruleset</CodeAnalysisRuleSet>
     <CodeAnalysisRuleSet Condition="'$(Configuration)|$(Platform)'=='r7_release|x64'">AllRules.ruleset</CodeAnalysisRuleSet>
     <CodeAnalysisRules Condition="'$(Configuration)|$(Platform)'=='Release|x64'" />
+    <CodeAnalysisRules Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" />
     <CodeAnalysisRules Condition="'$(Configuration)|$(Platform)'=='r7_release|x64'" />
     <CodeAnalysisRuleAssemblies Condition="'$(Configuration)|$(Platform)'=='Release|x64'" />
+    <CodeAnalysisRuleAssemblies Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" />
     <CodeAnalysisRuleAssemblies Condition="'$(Configuration)|$(Platform)'=='r7_release|x64'" />
     <TargetName>$(ProjectName).$(PlatformShortName)</TargetName>
   </PropertyGroup>
@@ -150,6 +192,63 @@
       <ModuleDefinitionFile>$(ProjectDir)..\..\source\def\extension.def</ModuleDefinitionFile>
       <AdditionalOptions>/ignore:4070 %(AdditionalOptions)</AdditionalOptions>
       <ProgramDatabaseFile />
+    </Link>
+    <PostBuildEvent>
+      <Command>editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,4.0 "$(TargetDir)$(TargetFileName)" &gt; NUL
+IF NOT EXIST "$(ProjectDir)..\..\output\" mkdir "$(ProjectDir)..\..\output\"
+copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <Optimization>MinSpace</Optimization>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\kiwi\mimikatz\inc;..\..\source\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>DEBUGTRACE;_POWERKATZ;WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_KIWI_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <StringPooling>true</StringPooling>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <FunctionLevelLinking>false</FunctionLevelLinking>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <AssemblerListingLocation>.\Release\</AssemblerListingLocation>
+      <ObjectFileName>.\Release\</ObjectFileName>
+      <ProgramDataBaseFileName>.\Release\</ProgramDataBaseFileName>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
+      <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <UndefinePreprocessorDefinitions>
+      </UndefinePreprocessorDefinitions>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>version.lib;ncrypt.lib;fltlib.lib;cabinet.lib;userenv.lib;Winscard.lib;advapi32.lib;crypt32.lib;cryptdll.lib;dnsapi.lib;msxml2.lib;netapi32.lib;ntdsapi.lib;ole32.lib;oleaut32.lib;rpcrt4.lib;shlwapi.lib;samlib.lib;secur32.lib;shell32.lib;user32.lib;hid.lib;setupapi.lib;wldap32.lib;advapi32.hash.lib;ntdll.min.lib;msasn1.min.lib;netapi32.min.lib;winsta.lib;psapi.lib;advapi32.lib;user32.lib;secur32.lib;crypt32.lib;shlwapi.lib;wtsapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
+      <AdditionalLibraryDirectories>..\..\source\extensions\kiwi\mimikatz\lib\Win32;..\..\source\jpeg-8\lib\win\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <DelayLoadDLLs>
+      </DelayLoadDLLs>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <GenerateMapFile>false</GenerateMapFile>
+      <MapFileName>
+      </MapFileName>
+      <SubSystem>Windows</SubSystem>
+      <OptimizeReferences>
+      </OptimizeReferences>
+      <EnableCOMDATFolding>
+      </EnableCOMDATFolding>
+      <RandomizedBaseAddress>false</RandomizedBaseAddress>
+      <DataExecutionPrevention>
+      </DataExecutionPrevention>
+      <ImportLibrary>.\Release\ext_server_kiwi.lib</ImportLibrary>
+      <TargetMachine>MachineX86</TargetMachine>
+      <MinimumRequiredVersion>
+      </MinimumRequiredVersion>
+      <ModuleDefinitionFile>$(ProjectDir)..\..\source\def\extension.def</ModuleDefinitionFile>
+      <AdditionalOptions>/ignore:4070 %(AdditionalOptions)</AdditionalOptions>
+      <ProgramDatabaseFile>
+      </ProgramDatabaseFile>
     </Link>
     <PostBuildEvent>
       <Command>editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,4.0 "$(TargetDir)$(TargetFileName)" &gt; NUL
@@ -266,6 +365,67 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <ModuleDefinitionFile>$(ProjectDir)..\..\source\def\extension.def</ModuleDefinitionFile>
       <AdditionalOptions>/ignore:4070 %(AdditionalOptions)</AdditionalOptions>
       <ProgramDatabaseFile />
+    </Link>
+    <PostBuildEvent>
+      <Command>editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,5.02 "$(TargetDir)$(TargetFileName)" &gt; NUL
+IF NOT EXIST "$(ProjectDir)..\..\output\" mkdir "$(ProjectDir)..\..\output\"
+copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Midl>
+      <TargetEnvironment>X64</TargetEnvironment>
+    </Midl>
+    <ClCompile>
+      <Optimization>MinSpace</Optimization>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\kiwi\mimikatz\inc;..\..\source\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>DEBUGTRACE;_POWERKATZ;WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_KIWI_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <StringPooling>true</StringPooling>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <FunctionLevelLinking>false</FunctionLevelLinking>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <AssemblerListingLocation>.\Release\</AssemblerListingLocation>
+      <ObjectFileName>.\Release\</ObjectFileName>
+      <ProgramDataBaseFileName>.\Release\</ProgramDataBaseFileName>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
+      <OmitFramePointers>false</OmitFramePointers>
+      <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <UndefinePreprocessorDefinitions>
+      </UndefinePreprocessorDefinitions>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>version.lib;ncrypt.lib;fltlib.lib;cabinet.lib;userenv.lib;Winscard.lib;advapi32.lib;crypt32.lib;cryptdll.lib;dnsapi.lib;msxml2.lib;netapi32.lib;ntdsapi.lib;ole32.lib;oleaut32.lib;rpcrt4.lib;shlwapi.lib;samlib.lib;secur32.lib;shell32.lib;user32.lib;hid.lib;setupapi.lib;wldap32.lib;advapi32.hash.lib;ntdll.min.lib;msasn1.min.lib;netapi32.min.lib;winsta.lib;psapi.lib;advapi32.lib;user32.lib;secur32.lib;crypt32.lib;shlwapi.lib;wtsapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
+      <AdditionalLibraryDirectories>..\..\source\extensions\kiwi\mimikatz\lib\x64;..\..\source\jpeg-8\lib\win\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <DelayLoadDLLs>
+      </DelayLoadDLLs>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <GenerateMapFile>false</GenerateMapFile>
+      <MapFileName>
+      </MapFileName>
+      <SubSystem>Windows</SubSystem>
+      <OptimizeReferences>
+      </OptimizeReferences>
+      <EnableCOMDATFolding>
+      </EnableCOMDATFolding>
+      <RandomizedBaseAddress>false</RandomizedBaseAddress>
+      <DataExecutionPrevention>
+      </DataExecutionPrevention>
+      <ImportLibrary>.\Release\ext_server_kiwi.lib</ImportLibrary>
+      <TargetMachine>MachineX64</TargetMachine>
+      <MinimumRequiredVersion>
+      </MinimumRequiredVersion>
+      <ModuleDefinitionFile>$(ProjectDir)..\..\source\def\extension.def</ModuleDefinitionFile>
+      <AdditionalOptions>/ignore:4070 %(AdditionalOptions)</AdditionalOptions>
+      <ProgramDatabaseFile>
+      </ProgramDatabaseFile>
     </Link>
     <PostBuildEvent>
       <Command>editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,5.02 "$(TargetDir)$(TargetFileName)" &gt; NUL
@@ -436,16 +596,22 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\sqlite3_omit.c">
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='r7_release|Win32'">_CRT_SECURE_NO_WARNINGS;SQLITE_TEMP_STORE=3;SQLITE_DISABLE_INTRINSIC;SQLITE_DISABLE_LFS;SQLITE_DISABLE_DIRSYNC;SQLITE_DISABLE_FTS3_UNICODE;SQLITE_DISABLE_FTS4_DEFERRED;SQLITE_DISABLE_PAGECACHE_OVERFLOW_STATS;SQLITE_OMIT_TRIGGER;SQLITE_OMIT_WAL;SQLITE_OMIT_VIRTUALTABLE;SQLITE_OMIT_PRAGMA;SQLITE_OMIT_FOREIGN_KEY;SQLITE_OMIT_AUTOVACUUM;SQLITE_OMIT_SUBQUERY;SQLITE_OMIT_COMPOUND_SELECT;SQLITE_OMIT_EXPLAIN;SQLITE_OMIT_DATETIME_FUNCS;SQLITE_OMIT_INTEGRITY_CHECK;SQLITE_OMIT_ATTACH;SQLITE_OMIT_UTF16;SQLITE_OMIT_SHARED_CACHE;SQLITE_OMIT_INCRBLOB;SQLITE_OMIT_ANALYZE;SQLITE_OMIT_AUTHORIZATION;SQLITE_OMIT_VACUUM;SQLITE_OMIT_PAGER_PRAGMAS;SQLITE_OMIT_OR_OPTIMIZATION;SQLITE_OMIT_BUILTIN_TEST;SQLITE_OMIT_XFER_OPT;SQLITE_OMIT_AUTOINCREMENT;SQLITE_OMIT_SCHEMA_PRAGMAS;SQLITE_OMIT_TRACE;SQLITE_OMIT_LOAD_EXTENSION;SQLITE_OMIT_AUTOMATIC_INDEX;SQLITE_OMIT_LIKE_OPTIMIZATION;SQLITE_OMIT_REINDEX;SQLITE_OMIT_GET_TABLE;SQLITE_OMIT_COMPLETE;SQLITE_OMIT_TEMPDB;SQLITE_OMIT_BTREECOUNT;SQLITE_OMIT_LOCALTIME;SQLITE_OMIT_COMPILEOPTION_DIAGS;SQLITE_OMIT_FLAG_PRAGMAS;SQLITE_OMIT_QUICKBALANCE;SQLITE_OMIT_CAST;SQLITE_OMIT_CHECK;SQLITE_OMIT_MEMORYDB;SQLITE_OMIT_BLOB_LITERAL;SQLITE_OMIT_SCHEMA_VERSION_PRAGMAS;SQLITE_OMIT_LOOKASIDE;SQLITE_OMIT_AUTOINIT;SQLITE_OMIT_DECLTYPE;SQLITE_OMIT_DEPRECATED;SQLITE_OMIT_BETWEEN_OPTIMIZATION;SQLITE_OMIT_PROGRESS_CALLBACK;SQLITE_OMIT_TRUNCATE_OPTIMIZATION;SQLITE_OMIT_TCL_VARIABLE;WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_KIWI_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">_CRT_SECURE_NO_WARNINGS;SQLITE_TEMP_STORE=3;SQLITE_DISABLE_INTRINSIC;SQLITE_DISABLE_LFS;SQLITE_DISABLE_DIRSYNC;SQLITE_DISABLE_FTS3_UNICODE;SQLITE_DISABLE_FTS4_DEFERRED;SQLITE_DISABLE_PAGECACHE_OVERFLOW_STATS;SQLITE_OMIT_TRIGGER;SQLITE_OMIT_WAL;SQLITE_OMIT_VIRTUALTABLE;SQLITE_OMIT_PRAGMA;SQLITE_OMIT_FOREIGN_KEY;SQLITE_OMIT_AUTOVACUUM;SQLITE_OMIT_SUBQUERY;SQLITE_OMIT_COMPOUND_SELECT;SQLITE_OMIT_EXPLAIN;SQLITE_OMIT_DATETIME_FUNCS;SQLITE_OMIT_INTEGRITY_CHECK;SQLITE_OMIT_ATTACH;SQLITE_OMIT_UTF16;SQLITE_OMIT_SHARED_CACHE;SQLITE_OMIT_INCRBLOB;SQLITE_OMIT_ANALYZE;SQLITE_OMIT_AUTHORIZATION;SQLITE_OMIT_VACUUM;SQLITE_OMIT_PAGER_PRAGMAS;SQLITE_OMIT_OR_OPTIMIZATION;SQLITE_OMIT_BUILTIN_TEST;SQLITE_OMIT_XFER_OPT;SQLITE_OMIT_AUTOINCREMENT;SQLITE_OMIT_SCHEMA_PRAGMAS;SQLITE_OMIT_TRACE;SQLITE_OMIT_LOAD_EXTENSION;SQLITE_OMIT_AUTOMATIC_INDEX;SQLITE_OMIT_LIKE_OPTIMIZATION;SQLITE_OMIT_REINDEX;SQLITE_OMIT_GET_TABLE;SQLITE_OMIT_COMPLETE;SQLITE_OMIT_TEMPDB;SQLITE_OMIT_BTREECOUNT;SQLITE_OMIT_LOCALTIME;SQLITE_OMIT_COMPILEOPTION_DIAGS;SQLITE_OMIT_FLAG_PRAGMAS;SQLITE_OMIT_QUICKBALANCE;SQLITE_OMIT_CAST;SQLITE_OMIT_CHECK;SQLITE_OMIT_MEMORYDB;SQLITE_OMIT_BLOB_LITERAL;SQLITE_OMIT_SCHEMA_VERSION_PRAGMAS;SQLITE_OMIT_LOOKASIDE;SQLITE_OMIT_AUTOINIT;SQLITE_OMIT_DECLTYPE;SQLITE_OMIT_DEPRECATED;SQLITE_OMIT_BETWEEN_OPTIMIZATION;SQLITE_OMIT_PROGRESS_CALLBACK;SQLITE_OMIT_TRUNCATE_OPTIMIZATION;SQLITE_OMIT_TCL_VARIABLE;WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_KIWI_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">_CRT_SECURE_NO_WARNINGS;SQLITE_TEMP_STORE=3;SQLITE_DISABLE_INTRINSIC;SQLITE_DISABLE_LFS;SQLITE_DISABLE_DIRSYNC;SQLITE_DISABLE_FTS3_UNICODE;SQLITE_DISABLE_FTS4_DEFERRED;SQLITE_DISABLE_PAGECACHE_OVERFLOW_STATS;SQLITE_OMIT_TRIGGER;SQLITE_OMIT_WAL;SQLITE_OMIT_VIRTUALTABLE;SQLITE_OMIT_PRAGMA;SQLITE_OMIT_FOREIGN_KEY;SQLITE_OMIT_AUTOVACUUM;SQLITE_OMIT_SUBQUERY;SQLITE_OMIT_COMPOUND_SELECT;SQLITE_OMIT_EXPLAIN;SQLITE_OMIT_DATETIME_FUNCS;SQLITE_OMIT_INTEGRITY_CHECK;SQLITE_OMIT_ATTACH;SQLITE_OMIT_UTF16;SQLITE_OMIT_SHARED_CACHE;SQLITE_OMIT_INCRBLOB;SQLITE_OMIT_ANALYZE;SQLITE_OMIT_AUTHORIZATION;SQLITE_OMIT_VACUUM;SQLITE_OMIT_PAGER_PRAGMAS;SQLITE_OMIT_OR_OPTIMIZATION;SQLITE_OMIT_BUILTIN_TEST;SQLITE_OMIT_XFER_OPT;SQLITE_OMIT_AUTOINCREMENT;SQLITE_OMIT_SCHEMA_PRAGMAS;SQLITE_OMIT_TRACE;SQLITE_OMIT_LOAD_EXTENSION;SQLITE_OMIT_AUTOMATIC_INDEX;SQLITE_OMIT_LIKE_OPTIMIZATION;SQLITE_OMIT_REINDEX;SQLITE_OMIT_GET_TABLE;SQLITE_OMIT_COMPLETE;SQLITE_OMIT_TEMPDB;SQLITE_OMIT_BTREECOUNT;SQLITE_OMIT_LOCALTIME;SQLITE_OMIT_COMPILEOPTION_DIAGS;SQLITE_OMIT_FLAG_PRAGMAS;SQLITE_OMIT_QUICKBALANCE;SQLITE_OMIT_CAST;SQLITE_OMIT_CHECK;SQLITE_OMIT_MEMORYDB;SQLITE_OMIT_BLOB_LITERAL;SQLITE_OMIT_SCHEMA_VERSION_PRAGMAS;SQLITE_OMIT_LOOKASIDE;SQLITE_OMIT_AUTOINIT;SQLITE_OMIT_DECLTYPE;SQLITE_OMIT_DEPRECATED;SQLITE_OMIT_BETWEEN_OPTIMIZATION;SQLITE_OMIT_PROGRESS_CALLBACK;SQLITE_OMIT_TRUNCATE_OPTIMIZATION;SQLITE_OMIT_TCL_VARIABLE;WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_KIWI_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='r7_release|x64'">_CRT_SECURE_NO_WARNINGS;SQLITE_TEMP_STORE=3;SQLITE_DISABLE_INTRINSIC;SQLITE_DISABLE_LFS;SQLITE_DISABLE_DIRSYNC;SQLITE_DISABLE_FTS3_UNICODE;SQLITE_DISABLE_FTS4_DEFERRED;SQLITE_DISABLE_PAGECACHE_OVERFLOW_STATS;SQLITE_OMIT_TRIGGER;SQLITE_OMIT_WAL;SQLITE_OMIT_VIRTUALTABLE;SQLITE_OMIT_PRAGMA;SQLITE_OMIT_FOREIGN_KEY;SQLITE_OMIT_AUTOVACUUM;SQLITE_OMIT_SUBQUERY;SQLITE_OMIT_COMPOUND_SELECT;SQLITE_OMIT_EXPLAIN;SQLITE_OMIT_DATETIME_FUNCS;SQLITE_OMIT_INTEGRITY_CHECK;SQLITE_OMIT_ATTACH;SQLITE_OMIT_UTF16;SQLITE_OMIT_SHARED_CACHE;SQLITE_OMIT_INCRBLOB;SQLITE_OMIT_ANALYZE;SQLITE_OMIT_AUTHORIZATION;SQLITE_OMIT_VACUUM;SQLITE_OMIT_PAGER_PRAGMAS;SQLITE_OMIT_OR_OPTIMIZATION;SQLITE_OMIT_BUILTIN_TEST;SQLITE_OMIT_XFER_OPT;SQLITE_OMIT_AUTOINCREMENT;SQLITE_OMIT_SCHEMA_PRAGMAS;SQLITE_OMIT_TRACE;SQLITE_OMIT_LOAD_EXTENSION;SQLITE_OMIT_AUTOMATIC_INDEX;SQLITE_OMIT_LIKE_OPTIMIZATION;SQLITE_OMIT_REINDEX;SQLITE_OMIT_GET_TABLE;SQLITE_OMIT_COMPLETE;SQLITE_OMIT_TEMPDB;SQLITE_OMIT_BTREECOUNT;SQLITE_OMIT_LOCALTIME;SQLITE_OMIT_COMPILEOPTION_DIAGS;SQLITE_OMIT_FLAG_PRAGMAS;SQLITE_OMIT_QUICKBALANCE;SQLITE_OMIT_CAST;SQLITE_OMIT_CHECK;SQLITE_OMIT_MEMORYDB;SQLITE_OMIT_BLOB_LITERAL;SQLITE_OMIT_SCHEMA_VERSION_PRAGMAS;SQLITE_OMIT_LOOKASIDE;SQLITE_OMIT_AUTOINIT;SQLITE_OMIT_DECLTYPE;SQLITE_OMIT_DEPRECATED;SQLITE_OMIT_BETWEEN_OPTIMIZATION;SQLITE_OMIT_PROGRESS_CALLBACK;SQLITE_OMIT_TRUNCATE_OPTIMIZATION;SQLITE_OMIT_TCL_VARIABLE;WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_KIWI_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|x64'">_CRT_SECURE_NO_WARNINGS;SQLITE_TEMP_STORE=3;SQLITE_DISABLE_INTRINSIC;SQLITE_DISABLE_LFS;SQLITE_DISABLE_DIRSYNC;SQLITE_DISABLE_FTS3_UNICODE;SQLITE_DISABLE_FTS4_DEFERRED;SQLITE_DISABLE_PAGECACHE_OVERFLOW_STATS;SQLITE_OMIT_TRIGGER;SQLITE_OMIT_WAL;SQLITE_OMIT_VIRTUALTABLE;SQLITE_OMIT_PRAGMA;SQLITE_OMIT_FOREIGN_KEY;SQLITE_OMIT_AUTOVACUUM;SQLITE_OMIT_SUBQUERY;SQLITE_OMIT_COMPOUND_SELECT;SQLITE_OMIT_EXPLAIN;SQLITE_OMIT_DATETIME_FUNCS;SQLITE_OMIT_INTEGRITY_CHECK;SQLITE_OMIT_ATTACH;SQLITE_OMIT_UTF16;SQLITE_OMIT_SHARED_CACHE;SQLITE_OMIT_INCRBLOB;SQLITE_OMIT_ANALYZE;SQLITE_OMIT_AUTHORIZATION;SQLITE_OMIT_VACUUM;SQLITE_OMIT_PAGER_PRAGMAS;SQLITE_OMIT_OR_OPTIMIZATION;SQLITE_OMIT_BUILTIN_TEST;SQLITE_OMIT_XFER_OPT;SQLITE_OMIT_AUTOINCREMENT;SQLITE_OMIT_SCHEMA_PRAGMAS;SQLITE_OMIT_TRACE;SQLITE_OMIT_LOAD_EXTENSION;SQLITE_OMIT_AUTOMATIC_INDEX;SQLITE_OMIT_LIKE_OPTIMIZATION;SQLITE_OMIT_REINDEX;SQLITE_OMIT_GET_TABLE;SQLITE_OMIT_COMPLETE;SQLITE_OMIT_TEMPDB;SQLITE_OMIT_BTREECOUNT;SQLITE_OMIT_LOCALTIME;SQLITE_OMIT_COMPILEOPTION_DIAGS;SQLITE_OMIT_FLAG_PRAGMAS;SQLITE_OMIT_QUICKBALANCE;SQLITE_OMIT_CAST;SQLITE_OMIT_CHECK;SQLITE_OMIT_MEMORYDB;SQLITE_OMIT_BLOB_LITERAL;SQLITE_OMIT_SCHEMA_VERSION_PRAGMAS;SQLITE_OMIT_LOOKASIDE;SQLITE_OMIT_AUTOINIT;SQLITE_OMIT_DECLTYPE;SQLITE_OMIT_DEPRECATED;SQLITE_OMIT_BETWEEN_OPTIMIZATION;SQLITE_OMIT_PROGRESS_CALLBACK;SQLITE_OMIT_TRUNCATE_OPTIMIZATION;SQLITE_OMIT_TCL_VARIABLE;WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_KIWI_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">_CRT_SECURE_NO_WARNINGS;SQLITE_TEMP_STORE=3;SQLITE_DISABLE_INTRINSIC;SQLITE_DISABLE_LFS;SQLITE_DISABLE_DIRSYNC;SQLITE_DISABLE_FTS3_UNICODE;SQLITE_DISABLE_FTS4_DEFERRED;SQLITE_DISABLE_PAGECACHE_OVERFLOW_STATS;SQLITE_OMIT_TRIGGER;SQLITE_OMIT_WAL;SQLITE_OMIT_VIRTUALTABLE;SQLITE_OMIT_PRAGMA;SQLITE_OMIT_FOREIGN_KEY;SQLITE_OMIT_AUTOVACUUM;SQLITE_OMIT_SUBQUERY;SQLITE_OMIT_COMPOUND_SELECT;SQLITE_OMIT_EXPLAIN;SQLITE_OMIT_DATETIME_FUNCS;SQLITE_OMIT_INTEGRITY_CHECK;SQLITE_OMIT_ATTACH;SQLITE_OMIT_UTF16;SQLITE_OMIT_SHARED_CACHE;SQLITE_OMIT_INCRBLOB;SQLITE_OMIT_ANALYZE;SQLITE_OMIT_AUTHORIZATION;SQLITE_OMIT_VACUUM;SQLITE_OMIT_PAGER_PRAGMAS;SQLITE_OMIT_OR_OPTIMIZATION;SQLITE_OMIT_BUILTIN_TEST;SQLITE_OMIT_XFER_OPT;SQLITE_OMIT_AUTOINCREMENT;SQLITE_OMIT_SCHEMA_PRAGMAS;SQLITE_OMIT_TRACE;SQLITE_OMIT_LOAD_EXTENSION;SQLITE_OMIT_AUTOMATIC_INDEX;SQLITE_OMIT_LIKE_OPTIMIZATION;SQLITE_OMIT_REINDEX;SQLITE_OMIT_GET_TABLE;SQLITE_OMIT_COMPLETE;SQLITE_OMIT_TEMPDB;SQLITE_OMIT_BTREECOUNT;SQLITE_OMIT_LOCALTIME;SQLITE_OMIT_COMPILEOPTION_DIAGS;SQLITE_OMIT_FLAG_PRAGMAS;SQLITE_OMIT_QUICKBALANCE;SQLITE_OMIT_CAST;SQLITE_OMIT_CHECK;SQLITE_OMIT_MEMORYDB;SQLITE_OMIT_BLOB_LITERAL;SQLITE_OMIT_SCHEMA_VERSION_PRAGMAS;SQLITE_OMIT_LOOKASIDE;SQLITE_OMIT_AUTOINIT;SQLITE_OMIT_DECLTYPE;SQLITE_OMIT_DEPRECATED;SQLITE_OMIT_BETWEEN_OPTIMIZATION;SQLITE_OMIT_PROGRESS_CALLBACK;SQLITE_OMIT_TRUNCATE_OPTIMIZATION;SQLITE_OMIT_TCL_VARIABLE;WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_KIWI_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <WarningLevel Condition="'$(Configuration)|$(Platform)'=='r7_release|Win32'">Level2</WarningLevel>
       <TreatWarningAsError Condition="'$(Configuration)|$(Platform)'=='r7_release|Win32'">false</TreatWarningAsError>
       <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Level2</WarningLevel>
+      <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Level2</WarningLevel>
       <TreatWarningAsError Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</TreatWarningAsError>
+      <TreatWarningAsError Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</TreatWarningAsError>
       <WarningLevel Condition="'$(Configuration)|$(Platform)'=='r7_release|x64'">Level2</WarningLevel>
       <TreatWarningAsError Condition="'$(Configuration)|$(Platform)'=='r7_release|x64'">false</TreatWarningAsError>
       <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Level2</WarningLevel>
+      <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Level2</WarningLevel>
       <TreatWarningAsError Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</TreatWarningAsError>
+      <TreatWarningAsError Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</TreatWarningAsError>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

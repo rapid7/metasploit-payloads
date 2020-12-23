@@ -53,3 +53,6 @@ docs/*
 # ignore CLion files
 .idea/
 build
+
+# AutoRecover files
+~AutoRecover.*

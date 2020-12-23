@@ -28,6 +28,10 @@ IF "%1"=="x86" GOTO BUILD_X86
 IF "%1"=="X86" GOTO BUILD_X86
 IF "%1"=="x64" GOTO BUILD_X64
 IF "%1"=="X64" GOTO BUILD_X64
+IF "%1"=="debug_x86" GOTO DEBUG_BUILD_X86
+IF "%1"=="debug_x64" GOTO DEBUG_BUILD_X64
+IF "%1"=="debug_X86" GOTO DEBUG_BUILD_X86
+IF "%1"=="debug_X64" GOTO DEBUG_BUILD_X64
 
 ECHO "Building Meterpreter x64 and x86 (Release)"
 SET PLAT=all
@@ -38,8 +42,20 @@ ECHO "Building Meterpreter x86 (Release)"
 SET PLAT=x86
 GOTO RUN
 
+:DEBUG_BUILD_X86
+ECHO "Building Meterpreter x86 (Debug)"
+SET PREF=debug_
+SET PLAT=x86
+GOTO RUN
+
 :BUILD_X64
 ECHO "Building Meterpreter x64 (Release)"
+SET PLAT=x64
+GOTO RUN
+
+:DEBUG_BUILD_X64
+ECHO "Building Meterpreter x64 (Debug)"
+SET PREF=debug_
 SET PLAT=x64
 GOTO RUN
 
