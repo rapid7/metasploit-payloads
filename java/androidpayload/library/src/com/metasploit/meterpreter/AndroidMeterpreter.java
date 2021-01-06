@@ -109,6 +109,7 @@ public class AndroidMeterpreter extends Meterpreter {
         getCommandManager().resetNewCommands();
         CommandManager mgr = getCommandManager();
         Loader.setCWD(new File(writeableDir));
+        mgr.registerCommand(CommandId.CORE_CHANNEL_OPEN, stdapi_channel_open.class);
         mgr.registerCommand(CommandId.STDAPI_FS_CHDIR, stdapi_fs_chdir.class);
         mgr.registerCommand(CommandId.STDAPI_FS_DELETE_DIR, stdapi_fs_delete_dir.class);
         mgr.registerCommand(CommandId.STDAPI_FS_DELETE_FILE, stdapi_fs_delete_file.class);
@@ -121,15 +122,17 @@ public class AndroidMeterpreter extends Meterpreter {
         mgr.registerCommand(CommandId.STDAPI_FS_MD5, stdapi_fs_md5.class);
         mgr.registerCommand(CommandId.STDAPI_FS_SEARCH, stdapi_fs_search.class);
         mgr.registerCommand(CommandId.STDAPI_FS_SEPARATOR, stdapi_fs_separator.class);
-        mgr.registerCommand(CommandId.STDAPI_FS_STAT, stdapi_fs_stat.class);
+        mgr.registerCommand(CommandId.STDAPI_FS_STAT, stdapi_fs_stat_V1_6.class);
         mgr.registerCommand(CommandId.STDAPI_FS_SHA1, stdapi_fs_sha1.class);
-        mgr.registerCommand(CommandId.STDAPI_NET_CONFIG_GET_INTERFACES, stdapi_net_config_get_interfaces_V1_4.class);
+        mgr.registerCommand(CommandId.STDAPI_NET_CONFIG_GET_INTERFACES, stdapi_net_config_get_interfaces_V1_6.class);
         mgr.registerCommand(CommandId.STDAPI_NET_CONFIG_GET_ROUTES, stdapi_net_config_get_routes_V1_4.class);
         mgr.registerCommand(CommandId.STDAPI_NET_SOCKET_TCP_SHUTDOWN, stdapi_net_socket_tcp_shutdown_V1_3.class);
+        mgr.registerCommand(CommandId.STDAPI_SYS_CONFIG_GETENV, stdapi_sys_config_getenv.class);
         mgr.registerCommand(CommandId.STDAPI_SYS_CONFIG_GETUID, stdapi_sys_config_getuid.class);
         mgr.registerCommand(CommandId.STDAPI_SYS_CONFIG_SYSINFO, stdapi_sys_config_sysinfo_android.class);
         mgr.registerCommand(CommandId.STDAPI_SYS_CONFIG_LOCALTIME, stdapi_sys_config_localtime.class);
         mgr.registerCommand(CommandId.STDAPI_SYS_PROCESS_EXECUTE, stdapi_sys_process_execute_V1_3.class);
+        mgr.registerCommand(CommandId.STDAPI_SYS_PROCESS_CLOSE, stdapi_sys_process_close.class);
         mgr.registerCommand(CommandId.STDAPI_SYS_PROCESS_GET_PROCESSES, stdapi_sys_process_get_processes_android.class);
         mgr.registerCommand(CommandId.STDAPI_UI_DESKTOP_SCREENSHOT, stdapi_ui_desktop_screenshot.class);
         if (context != null) {
