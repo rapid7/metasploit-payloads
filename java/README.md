@@ -3,13 +3,43 @@
 1. Install Maven and Java, this will depend on your OS
 1. Download the [Android SDK](https://developer.android.com/sdk/index.html)
 1. Install Android SDK Platforms 3, 10 and 19, and update the "Android SDK Tools" and "Android SDK Platform-tools"
-1. Compile the Android and Java Meterpreter, which deploys to the ../metasploit-frameworks folder
+1. Compile the Android and Java Meterpreter, which deploys to the `../metasploit-framework` folder
 ```
 mvn package -Dandroid.sdk.path=/path/to/android-sdk -Dandroid.release=true -P deploy
 ```
 Next time you run `msfconsole`, you should see: `WARNING: Local files may be incompatible with the Metasploit Framework`.
 This means that msfconsole is now using your newly built version of the Java and Android Meterpreter :)
 
+## Building on Docker
+
+Ensure that both the `metasploit-payloads` and `metasploit-framework` folders co-exist beside eachother:
+```
+$ ls working_directory
+metasploit-framework
+metasploit-payloads
+```
+
+Next you can download a pre-built Docker image from [Rapid7's Docker Hub account](https://hub.docker.com/u/rapid7):
+```
+docker pull rapid7/msf-ubuntu-x64-meterpreter:latest
+```
+
+Or this Docker image can be built manually:
+```
+cd working_directory/metasploit-payloads/docker
+docker build -t rapid7/msf-ubuntu-x64-meterpreter:latest .
+```
+
+Next run the Docker image as a container and mount the `working_directory`.
+This interactive shell will allow you to compile the Android and Java Meterpreter, and deploy
+to the `../metasploit-framework` folder as normal:
+```
+cd working_directory
+docker run --rm  -it -w $(pwd) -v $(pwd):$(pwd) rapid7/msf-ubuntu-x64-meterpreter:latest /bin/bash
+
+cd metasploit-payloads/java
+make android
+```
 
 ## Building on OSX
 ```
