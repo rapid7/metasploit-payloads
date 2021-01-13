@@ -105,6 +105,24 @@ Command baseCommands[] =
 Command* extensionCommands = NULL;
 
 /*!
+ * @brief Register dispatch routines provided by the meterpreter core.
+ */
+Command* register_base_dispatch_routines(void) {
+	Command* pFirstCommand = NULL;
+	command_register_all(baseCommands);
+
+	pFirstCommand = extensionCommands;
+	while (pFirstCommand && pFirstCommand->command_id != baseCommands[0].command_id) {
+		dprintf("[COMMAND LIST] Command: %p command id %u != %u", pFirstCommand, pFirstCommand->command_id, baseCommands[0].command_id);
+		pFirstCommand = pFirstCommand->next;
+	}
+	if (pFirstCommand) {
+		dprintf("Found first command: %p (id: %u)", pFirstCommand, pFirstCommand->command_id);
+	}
+	return pFirstCommand;
+}
+
+/*!
  * @brief Register a full list of commands with meterpreter.
  * @param commands The array of commands that are to be registered for the module/extension.
  */
@@ -241,8 +259,7 @@ VOID command_join_threads(VOID)
 
 /*!
  * @brief Process a command directly on the current thread.
- * @param baseCommand Pointer to the \c Command in the base command list to be executed.
- * @param extensionCommand Pointer to the \c Command in the extension command list to be executed.
+ * @param command Pointer to the \c Command in the extension command list to be executed.
  * @param remote Pointer to the \c Remote endpoint for this command.
  * @param packet Pointer to the \c Packet containing the command detail.
  * @returns Boolean value indicating if the server should continue processing.
@@ -254,82 +271,69 @@ VOID command_join_threads(VOID)
  *          then the result of the \c baseCommand processing is ignored and the result of
  *          \c extensionCommand is returned instead.
  */
-BOOL command_process_inline(Command *baseCommand, Command *extensionCommand, Remote *remote, Packet *packet)
+BOOL command_process_inline(Command *command, Remote *remote, Packet *packet)
 {
 	DWORD result;
 	BOOL serverContinue = TRUE;
 	Tlv requestIdTlv;
 	PCHAR requestId;
 	PacketTlvType packetTlvType;
-	Command *commands[2] = { baseCommand, extensionCommand };
-	Command *command = NULL;
-	DWORD dwIndex;
 	UINT commandId = 0;
 
 	__try
 	{
 		do
 		{
-			for (dwIndex = 0; dwIndex < 2; ++dwIndex)
+			commandId = command->command_id;
+			dprintf("[COMMAND] Executing command %u", commandId);
+
+			// Impersonate the thread token if needed (only on Windows)
+			if (remote->server_token != remote->thread_token)
 			{
-				command = commands[dwIndex];
-
-				if (command == NULL)
+				if (!ImpersonateLoggedOnUser(remote->thread_token))
 				{
-					continue;
+					dprintf("[COMMAND] Failed to impersonate thread token (%u) (%u)", commandId, GetLastError());
 				}
+			}
 
-				commandId = command->command_id;
-				dprintf("[COMMAND] Executing command %u", commandId);
+			// Validate the arguments, if requested.  Always make sure argument
+			// lengths are sane.
+			if (command_validate_arguments(command, packet) != ERROR_SUCCESS)
+			{
+				dprintf("[COMMAND] Command arguments failed to validate");
+				continue;
+			}
 
-				// Impersonate the thread token if needed (only on Windows)
-				if (remote->server_token != remote->thread_token)
+			packetTlvType = packet_get_type(packet);
+			dprintf("[DISPATCH] Packet type for %u is %u", commandId, packetTlvType);
+			switch (packetTlvType)
+			{
+			case PACKET_TLV_TYPE_REQUEST:
+			case PACKET_TLV_TYPE_PLAIN_REQUEST:
+				if (command->request.inline_handler) {
+					dprintf("[DISPATCH] executing inline request handler %u", commandId);
+					serverContinue = command->request.inline_handler(remote, packet, &result) && serverContinue;
+					dprintf("[DISPATCH] executed %u, continue %s", commandId, serverContinue ? "yes" : "no");
+				}
+				else
 				{
-					if (!ImpersonateLoggedOnUser(remote->thread_token))
-					{
-						dprintf("[COMMAND] Failed to impersonate thread token (%u) (%u)", commandId, GetLastError());
-					}
+					dprintf("[DISPATCH] executing request handler %u", commandId);
+					result = command->request.handler(remote, packet);
 				}
-
-				// Validate the arguments, if requested.  Always make sure argument
-				// lengths are sane.
-				if (command_validate_arguments(command, packet) != ERROR_SUCCESS)
+				break;
+			case PACKET_TLV_TYPE_RESPONSE:
+			case PACKET_TLV_TYPE_PLAIN_RESPONSE:
+				if (command->response.inline_handler)
 				{
-					dprintf("[COMMAND] Command arguments failed to validate");
-					continue;
+					dprintf("[DISPATCH] executing inline response handler %u", commandId);
+					serverContinue = command->response.inline_handler(remote, packet, &result) && serverContinue;
 				}
-
-				packetTlvType = packet_get_type(packet);
-				dprintf("[DISPATCH] Packet type for %u is %u", commandId, packetTlvType);
-				switch (packetTlvType)
+				else
 				{
-				case PACKET_TLV_TYPE_REQUEST:
-				case PACKET_TLV_TYPE_PLAIN_REQUEST:
-					if (command->request.inline_handler) {
-						dprintf("[DISPATCH] executing inline request handler %u", commandId);
-						serverContinue = command->request.inline_handler(remote, packet, &result) && serverContinue;
-						dprintf("[DISPATCH] executed %u, continue %s", commandId, serverContinue ? "yes" : "no");
-					}
-					else
-					{
-						dprintf("[DISPATCH] executing request handler %u", commandId);
-						result = command->request.handler(remote, packet);
-					}
-					break;
-				case PACKET_TLV_TYPE_RESPONSE:
-				case PACKET_TLV_TYPE_PLAIN_RESPONSE:
-					if (command->response.inline_handler)
-					{
-						dprintf("[DISPATCH] executing inline response handler %u", commandId);
-						serverContinue = command->response.inline_handler(remote, packet, &result) && serverContinue;
-					}
-					else
-					{
-						dprintf("[DISPATCH] executing response handler %u", commandId);
-						result = command->response.handler(remote, packet);
-					}
-					break;
+					dprintf("[DISPATCH] executing response handler %u", commandId);
+					result = command->response.handler(remote, packet);
 				}
+				break;
 			}
 
 			dprintf("[COMMAND] Calling completion handlers...");
@@ -434,7 +438,6 @@ BOOL command_handle(Remote *remote, Packet *packet)
 {
 	BOOL result = TRUE;
 	THREAD* cpt = NULL;
-	Command* baseCommand = NULL;
 	Command* extensionCommand = NULL;
 	Command** commands = NULL;
 	Packet* response = NULL;
@@ -450,10 +453,9 @@ BOOL command_handle(Remote *remote, Packet *packet)
 			break;
 		}
 
-		baseCommand = command_locate_base(commandId);
 		extensionCommand = command_locate_extension(commandId);
 
-		if (baseCommand == NULL && extensionCommand == NULL)
+		if (extensionCommand == NULL)
 		{
 			dprintf("[DISPATCH] Command not found: %u", commandId);
 			// We have no matching command for this packet, so it won't get handled. We
@@ -472,23 +474,18 @@ BOOL command_handle(Remote *remote, Packet *packet)
 		}
 
 		// if either command is registered as inline, run them inline
-		if ((baseCommand && command_is_inline(baseCommand, packet))
-			|| (extensionCommand && command_is_inline(extensionCommand, packet))
+		if ((extensionCommand && command_is_inline(extensionCommand, packet))
 			|| packet->local)
 		{
 			dprintf("[DISPATCH] Executing inline: %u", commandId);
-			result = command_process_inline(baseCommand, extensionCommand, remote, packet);
+			result = command_process_inline(extensionCommand, remote, packet);
 			dprintf("[DISPATCH] Executed inline: result %u (%x)", result, result);
 		}
 		else
 		{
 			dprintf("[DISPATCH] Executing in thread: %u", commandId);
 
-			commands = (Command**)malloc(sizeof(Command*) * 2);
-			*commands = baseCommand;
-			*(commands + 1) = extensionCommand;
-
-			cpt = thread_create(command_process_thread, remote, packet, commands);
+			cpt = thread_create(command_process_thread, remote, packet, extensionCommand);
 			if (cpt)
 			{
 				dprintf("[DISPATCH] created command_process_thread 0x%08X, handle=0x%08X", cpt, cpt->handle);
@@ -509,7 +506,7 @@ BOOL command_handle(Remote *remote, Packet *packet)
  */
 DWORD THREADCALL command_process_thread(THREAD * thread)
 {
-	Command** commands = NULL;
+	Command* command = NULL;
 	Remote * remote = NULL;
 	Packet * packet = NULL;
 
@@ -532,8 +529,8 @@ DWORD THREADCALL command_process_thread(THREAD * thread)
 		return ERROR_INVALID_DATA;
 	}
 
-	commands = (Command**)thread->parameter3;
-	if (commands == NULL)
+	command = (Command*)thread->parameter3;
+	if (command == NULL)
 	{
 		return ERROR_INVALID_DATA;
 	}
@@ -550,19 +547,14 @@ DWORD THREADCALL command_process_thread(THREAD * thread)
 	list_add(commandThreadList, thread);
 
 	// invoke processing inline, passing in both commands
-	dprintf("[COMMAND] About to execute inline -> Commands: %p Command1: %p Command2: %p", commands, *commands, *(commands + 1));
-	command_process_inline(*commands, *(commands + 1), remote, packet);
-	dprintf("[COMMAND] Executed inline -> Commands: %p Command1: %p Command2: %p", commands, *commands, *(commands + 1));
+	dprintf("[COMMAND] About to execute inline -> Command: %p", command);
+	command_process_inline(command, remote, packet);
+	dprintf("[COMMAND] Executed inline -> Command: %p", command);
 
 	if (list_remove(commandThreadList, thread))
 	{
 		thread_destroy(thread);
 	}
-
-	// free things up now that the command stuff has been finished
-	dprintf("[COMMAND] Cleaning up commands");
-	free(commands);
-
 	return ERROR_SUCCESS;
 }
 

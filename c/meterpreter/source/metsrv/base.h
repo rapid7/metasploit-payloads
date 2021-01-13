@@ -13,5 +13,6 @@ DWORD command_register(Command *command);
 DWORD command_deregister(Command *command);
 VOID command_join_threads( VOID );
 BOOL command_handle( Remote *remote, Packet *packet );
+Command* register_base_dispatch_routines(void);
 
 #endif

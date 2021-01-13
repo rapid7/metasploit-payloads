@@ -94,9 +94,10 @@ BOOL ext_cmd_callback(LPVOID pState, LPVOID pData)
 		PEXTENSION pExt = (PEXTENSION)pData;
 		for (command = pExt->start; command != pExt->end; command = command->next)
 		{
+			dprintf("[LISTEXTCMD] Processing extension: %p", pExt);
 			if (pEnum->command_id_start < command->command_id && command->command_id < pEnum->command_id_end)
 			{
-				dprintf("[DISPATCH] Adding command ID %u", command->command_id);
+				dprintf("[LISTEXTCMD] Adding command ID %u", command->command_id);
 				packet_add_tlv_uint(pEnum->pResponse, TLV_TYPE_UINT, command->command_id);
 			}
 		}
@@ -153,7 +154,17 @@ VOID register_dispatch_routines()
 {
 	gExtensionList = list_create();
 
+	Command* pFirstCommand = register_base_dispatch_routines();
 	command_register_all(customCommands);
+
+	PEXTENSION pExtension = (PEXTENSION)malloc(sizeof(EXTENSION));
+	if (pExtension) {
+		memset(pExtension, 0, sizeof(EXTENSION));
+		pExtension->end = pFirstCommand;
+		pExtension->start = extensionCommands;
+		list_push(gExtensionList, pExtension);
+		dprintf("[EXTENSTION] Registered core pseudo extension %p", pExtension);
+	}
 }
 
 /*
