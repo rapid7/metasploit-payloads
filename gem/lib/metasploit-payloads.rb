@@ -69,9 +69,12 @@ module MetasploitPayloads
   end
 
   #
-  # List all the available extensions for the given suffix.
+  # List all the available extensions, optionally filtered by the given suffix.
   #
-  def self.list_meterpreter_extensions(binary_suffix)
+  # @param [String] binary_suffix An optional suffix to use for filtering results. If omitted, all extensions will be
+  #   returned.
+  # @return [Array<String>] Returns an array of extensions.
+  def self.list_meterpreter_extensions(binary_suffix=nil)
     extensions = []
 
     root_dirs = [local_meterpreter_dir]
@@ -124,13 +127,18 @@ module MetasploitPayloads
   end
 
   #
-  # Enumerate extensions in the given root folder based on the suffix.
+  # Enumerate extensions in the given root folder based on an optional suffix.
   #
-  def self.meterpreter_enum_ext(root_dir, binary_suffix)
+  # @param [String] root_dir The path to the directory from which to enumerate extensions.
+  # @param [String] binary_suffix An optional suffix to use for filtering results. If omitted, all extensions will be
+  #   returned.
+  # @return [Array<String>] Returns an array of extensions.
+  def self.meterpreter_enum_ext(root_dir, binary_suffix=nil)
     exts = []
+    binary_suffix ||= '.*'
     ::Dir.entries(root_dir).each do |f|
       if ::File.readable?(::File.join(root_dir, f)) && \
-         f =~ /#{EXTENSION_PREFIX}(.*)\.#{binary_suffix}/
+         f =~ /#{EXTENSION_PREFIX}(\w+)\.#{binary_suffix}/
         exts.push($1)
       end
     end
