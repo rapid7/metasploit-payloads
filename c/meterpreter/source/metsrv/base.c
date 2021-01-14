@@ -106,20 +106,26 @@ Command* extensionCommands = NULL;
 
 /*!
  * @brief Register dispatch routines provided by the meterpreter core.
+ * @return Returns the first command of the array of commands that was registered.
  */
-Command* register_base_dispatch_routines(void) {
+Command* register_base_dispatch_routines(void)
+{
 	Command* pFirstCommand = NULL;
 	command_register_all(baseCommands);
 
 	pFirstCommand = extensionCommands;
 	while (pFirstCommand && pFirstCommand->command_id != baseCommands[0].command_id) {
-		dprintf("[COMMAND LIST] Command: %p command id %u != %u", pFirstCommand, pFirstCommand->command_id, baseCommands[0].command_id);
 		pFirstCommand = pFirstCommand->next;
 	}
-	if (pFirstCommand) {
-		dprintf("Found first command: %p (id: %u)", pFirstCommand, pFirstCommand->command_id);
-	}
 	return pFirstCommand;
+}
+
+/*!
+ * @brief Deregister dispatch routines provided by the meterpreter core.
+ */
+void deregister_base_dispatch_routines(void)
+{
+	command_deregister_all(baseCommands);
 }
 
 /*!

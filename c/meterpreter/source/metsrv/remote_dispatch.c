@@ -148,6 +148,17 @@ DWORD request_core_enumextcmd(Remote* remote, Packet* packet)
 }
 
 /*
+ * Deinitialize the core pseudo extension
+ */
+static DWORD deinit_server_extension(Remote* remote)
+{
+	command_deregister_all(customCommands);
+	deregister_base_dispatch_routines();
+
+	return ERROR_SUCCESS;
+}
+
+/*
  * Registers custom command handlers
  */
 VOID register_dispatch_routines()
@@ -160,10 +171,11 @@ VOID register_dispatch_routines()
 	PEXTENSION pExtension = (PEXTENSION)malloc(sizeof(EXTENSION));
 	if (pExtension) {
 		memset(pExtension, 0, sizeof(EXTENSION));
+		pExtension->deinit = deinit_server_extension;
 		pExtension->end = pFirstCommand;
 		pExtension->start = extensionCommands;
 		list_push(gExtensionList, pExtension);
-		dprintf("[EXTENSTION] Registered core pseudo extension %p", pExtension);
+		dprintf("[CORE] Registered the core pseudo extension %p", pExtension);
 	}
 }
 
@@ -187,8 +199,6 @@ VOID deregister_dispatch_routines(Remote * remote)
 
 		free(extension);
 	}
-
-	command_deregister_all(customCommands);
 
 	list_destroy(gExtensionList);
 }
