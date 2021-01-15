@@ -75,27 +75,18 @@ module MetasploitPayloads
   #   returned.
   # @return [Array<String>] Returns an array of extensions.
   def self.list_meterpreter_extensions(binary_suffix=nil)
-    extensions = []
+    list_meterpreter_things { |dir| meterpreter_enum_ext(dir, binary_suffix) }
+  end
 
-    root_dirs = [local_meterpreter_dir]
-
-    # Find the valid extensions in the data folder first, if MSF
-    # is installed.
-    if metasploit_installed?
-      root_dirs.unshift(msf_meterpreter_dir)
-      root_dirs.unshift(user_meterpreter_dir)
-    end
-
-    root_dirs.each do |dir|
-      next unless ::File.directory?(dir)
-
-      # Merge in any that don't already exist in the collection.
-      meterpreter_enum_ext(dir, binary_suffix).each do |e|
-        extensions.push(e) unless extensions.include?(e)
-      end
-    end
-
-    extensions
+  #
+  # List all the available suffixs, optionally filtered by the given extension name. This is mostly useful for
+  # determining support for a specific extension.
+  #
+  # @param [String] extension_name An optional extension name to use for filtering results. If omitted, all suffixs will
+  #   be returned.
+  # @return [Array<String>] Returns an array of binary suffixs.
+  def self.list_meterpreter_extension_suffixs(extension_name=nil)
+    list_meterpreter_things { |dir| meterpreter_enum_ext_suffixs(dir, extension_name) }
   end
 
   #
@@ -145,6 +136,25 @@ module MetasploitPayloads
     exts
   end
 
+  #
+  # Enumerate binary suffixs in the given root folder based on an optional extension name.
+  #
+  # @param [String] root_dir The path to the directory from which to enumerate extension suffixs.
+  # @param [String] extension_name An optional extension name to use for filtering results. If omitted, all suffixs will
+  #   be returned.
+  # @return [Array<String>] Returns an array of binary suffixs.
+  def self.meterpreter_enum_ext_suffixs(root_dir, extension_name=nil)
+    suffixes = []
+    extension_name ||= '\w+'
+    ::Dir.entries(root_dir).each do |f|
+      if ::File.readable?(::File.join(root_dir, f)) && \
+         f =~ /#{EXTENSION_PREFIX}#{extension_name}\.(.*)/
+        suffixes.push($1)
+      end
+    end
+    suffixes
+  end
+
   private
 
   #
@@ -170,6 +180,32 @@ module MetasploitPayloads
         STDERR.puts('WARNING: Local files may be incompatible with the Metasploit Framework')
       end
       @local_paths << path
+    end
+  end
+
+  class << self
+    private
+    def list_meterpreter_things(&block)
+      things = [] # *things* is whatever is being enumerated (extension names, suffixes, etc.) as determined by the block
+      root_dirs = [local_meterpreter_dir]
+
+      # Find the valid extensions in the data folder first, if MSF
+      # is installed.
+      if metasploit_installed?
+        root_dirs.unshift(msf_meterpreter_dir)
+        root_dirs.unshift(user_meterpreter_dir)
+      end
+
+      root_dirs.each do |dir|
+	next unless ::File.directory?(dir)
+
+        # Merge in any that don't already exist in the collection.
+        (yield dir).each do |e|
+          things.push(e) unless things.include?(e)
+        end
+      end
+
+      things
     end
   end
 end
