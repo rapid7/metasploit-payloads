@@ -100,13 +100,13 @@ Command baseCommands[] =
 
 /*!
  * @brief Dynamically registered command extensions.
- * @details A linked list of commands registered on the fly by reflectively-loaded extensions.
+ * @details A doubly-linked list of commands registered on the fly by reflectively-loaded extensions.
  */
 Command* extensionCommands = NULL;
 
 /*!
  * @brief Register dispatch routines provided by the meterpreter core.
- * @return Returns the first command of the array of commands that was registered.
+ * @return Returns the first command of the array of commands that were registered.
  */
 Command* register_base_dispatch_routines(void)
 {
@@ -375,29 +375,6 @@ BOOL command_process_inline(Command *command, Remote *remote, Packet *packet)
 	return serverContinue;
 }
 
-/*!
- * @brief Attempt to locate a command in the base command list.
- * @param commandId String that identifies the command.
- * @returns Pointer to the command entry in the base command list.
- * @retval NULL Indicates that no command was found for the given commandId.
- * @retval NON-NULL Pointer to the command that can be executed.
- */
-Command* command_locate_base(UINT commandId)
-{
-	DWORD index;
-
-	dprintf("[COMMAND EXEC] Attempting to locate base command %u", commandId);
-	for (index = 0; baseCommands[index].command_id; ++index)
-	{
-		if (baseCommands[index].command_id == commandId)
-		{
-			return &baseCommands[index];
-		}
-	}
-
-	dprintf("[COMMAND EXEC] Couldn't find base command %u", commandId);
-	return NULL;
-}
 
 /*!
  * @brief Attempt to locate a command in the extensions command list.
@@ -444,8 +421,7 @@ BOOL command_handle(Remote *remote, Packet *packet)
 {
 	BOOL result = TRUE;
 	THREAD* cpt = NULL;
-	Command* extensionCommand = NULL;
-	Command** commands = NULL;
+	Command* command = NULL;
 	Packet* response = NULL;
 
 	UINT commandId = packet_get_tlv_value_uint(packet, TLV_TYPE_COMMAND_ID);
@@ -459,9 +435,9 @@ BOOL command_handle(Remote *remote, Packet *packet)
 			break;
 		}
 
-		extensionCommand = command_locate_extension(commandId);
+		command = command_locate_extension(commandId);
 
-		if (extensionCommand == NULL)
+		if (command == NULL)
 		{
 			dprintf("[DISPATCH] Command not found: %u", commandId);
 			// We have no matching command for this packet, so it won't get handled. We
@@ -480,18 +456,18 @@ BOOL command_handle(Remote *remote, Packet *packet)
 		}
 
 		// if either command is registered as inline, run them inline
-		if ((extensionCommand && command_is_inline(extensionCommand, packet))
+		if ((command && command_is_inline(command, packet))
 			|| packet->local)
 		{
 			dprintf("[DISPATCH] Executing inline: %u", commandId);
-			result = command_process_inline(extensionCommand, remote, packet);
+			result = command_process_inline(command, remote, packet);
 			dprintf("[DISPATCH] Executed inline: result %u (%x)", result, result);
 		}
 		else
 		{
 			dprintf("[DISPATCH] Executing in thread: %u", commandId);
 
-			cpt = thread_create(command_process_thread, remote, packet, extensionCommand);
+			cpt = thread_create(command_process_thread, remote, packet, command);
 			if (cpt)
 			{
 				dprintf("[DISPATCH] created command_process_thread 0x%08X, handle=0x%08X", cpt, cpt->handle);
