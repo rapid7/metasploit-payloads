@@ -375,7 +375,7 @@ DWORD server_setup(MetsrvConfig* config)
 
 			dprintf("[SERVER] Registering dispatch routines...");
 			register_dispatch_routines();
-
+			
 			// this has to be done after dispatch routine are registered
 			LPBYTE configEnd = load_stageless_extensions(remote, (MetsrvExtension*)((LPBYTE)config->transports + transportSize));
 
