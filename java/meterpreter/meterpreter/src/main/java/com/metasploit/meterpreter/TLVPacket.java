@@ -95,11 +95,11 @@ public class TLVPacket {
                 }
                 value = string;
             } else if ((type & TLV_META_TYPE_QWORD) != 0 && len == 16) {
-                value = new Long(in.readLong());
+                value = in.readLong();
             } else if ((type & TLV_META_TYPE_UINT) != 0 && len == 12) {
-                value = new Integer(in.readInt());
+                value = in.readInt();
             } else if ((type & TLV_META_TYPE_BOOL) != 0 && len == 9) {
-                value = new Boolean(in.readBoolean());
+                value = in.readBoolean();
             } else if ((type & TLV_META_TYPE_RAW) != 0) {
                 in.readFully(data);
                 value = data;
@@ -169,7 +169,7 @@ public class TLVPacket {
      * Add a TLV value to this object.
      */
     public void add(int type, boolean value) throws IOException {
-        add(type, new Boolean(value));
+        add(type, Boolean.valueOf(value));
     }
 
     /**
