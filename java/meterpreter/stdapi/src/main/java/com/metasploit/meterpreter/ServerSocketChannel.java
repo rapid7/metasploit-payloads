@@ -22,7 +22,7 @@ public class ServerSocketChannel extends Channel {
      * Create a new socket channel.
      *
      * @param meterpreter The meterpreter this channel should be assigned to.
-     * @param socket      Socket of the channel
+     * @param serverSocket      Socket of the channel
      */
     public ServerSocketChannel(Meterpreter meterpreter, ServerSocket serverSocket) throws IOException {
         super(meterpreter, new ByteArrayInputStream(new byte[0]), null);

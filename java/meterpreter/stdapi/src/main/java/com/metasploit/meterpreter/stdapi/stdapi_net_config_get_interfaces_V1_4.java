@@ -64,7 +64,7 @@ public class stdapi_net_config_get_interfaces_V1_4 extends stdapi_net_config_get
      * the same way for all Java versions.
      *
      * @param iface
-     * @return Array of {@link Interface}
+     * @return Array of {@link Address}
      */
     public Address[] getAddresses(NetworkInterface iface) throws IOException {
         List/* <Address> */result = new ArrayList();

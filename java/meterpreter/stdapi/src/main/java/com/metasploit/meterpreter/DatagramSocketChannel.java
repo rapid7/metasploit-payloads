@@ -23,7 +23,7 @@ public class DatagramSocketChannel extends Channel {
      * Create a new socket channel.
      *
      * @param meterpreter The meterpreter this channel should be assigned to.
-     * @param socket      Socket of the channel
+     * @param datagramSocket      Socket of the channel
      */
     public DatagramSocketChannel(Meterpreter meterpreter, DatagramSocket datagramSocket) throws IOException {
         super(meterpreter, new ByteArrayInputStream(new byte[0]), null);
