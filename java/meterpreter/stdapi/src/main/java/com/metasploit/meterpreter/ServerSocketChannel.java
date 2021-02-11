@@ -30,6 +30,7 @@ public class ServerSocketChannel extends Channel {
         new AcceptThread().start();
     }
 
+    @Override
     public void close() throws IOException {
         closed = true;
         serverSocket.close();
@@ -41,6 +42,7 @@ public class ServerSocketChannel extends Channel {
     }
 
     private class AcceptThread extends Thread {
+        @Override
         public void run() {
             try {
                 while (true) {

@@ -42,10 +42,12 @@ public class HttpTransport extends Transport {
         setTimeouts(transportConfig);
     }
 
+    @Override
     public void bind(DataInputStream in, OutputStream rawOut) {
         // http, we don't bind to anything as we're stateless
     }
 
+    @Override
     public boolean switchUri(String uri) {
         try {
             // can't use getAuthority() here thanks to java 1.2. Ugh.
@@ -105,9 +107,11 @@ public class HttpTransport extends Transport {
         return this.customHeaders;
     }
 
+    @Override
     public void disconnect() {
     }
 
+    @Override
     protected boolean tryConnect(Meterpreter met) throws IOException {
         URLConnection conn = this.createConnection();
 
@@ -143,6 +147,7 @@ public class HttpTransport extends Transport {
         return false;
     }
 
+    @Override
     public TLVPacket readPacket() throws IOException {
         URLConnection conn = this.createConnection();
 
@@ -163,6 +168,7 @@ public class HttpTransport extends Transport {
         return null;
     }
 
+    @Override
     public void writePacket(TLVPacket packet, int type) throws IOException {
         URLConnection conn = this.createConnection();
 
@@ -188,6 +194,7 @@ public class HttpTransport extends Transport {
         }
     }
 
+    @Override
     public boolean dispatch(Meterpreter met) {
         long lastPacket = System.currentTimeMillis();
         long ecount = 0;

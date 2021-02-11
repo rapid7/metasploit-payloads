@@ -41,6 +41,7 @@ public class RMILoader extends ClassLoader implements Serializable {
         return null;
     }
 
+    @Override
     public URL getResource(String name) {
         return getClass().getClassLoader().getResource(name);
     }

@@ -23,6 +23,7 @@ public class SocketChannel extends Channel {
         this.socket = socket;
     }
 
+    @Override
     public void close() throws IOException {
         socket.close();
         super.close();
