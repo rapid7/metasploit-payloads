@@ -31,7 +31,7 @@ public class Utils {
             String result = InetAddress.getLocalHost().getHostName();
             if (result != "")
                 return result;
-        } catch (UnknownHostException e) { }
+        } catch (UnknownHostException ignored) { }
 
         String host = System.getenv("COMPUTERNAME");
         if (host != null)

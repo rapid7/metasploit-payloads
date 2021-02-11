@@ -31,7 +31,7 @@ public class MainService extends Service {
                         if (context != null) {
                             startService(context);
                         }
-                    } catch (Exception e) {
+                    } catch (Exception ignored) {
                     }
                 }
             });
@@ -44,7 +44,7 @@ public class MainService extends Service {
     public static void start() {
         try {
             findContext();
-        } catch (Exception e) {
+        } catch (Exception ignored) {
         }
     }
 

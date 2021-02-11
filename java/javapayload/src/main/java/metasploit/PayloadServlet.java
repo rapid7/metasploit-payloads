@@ -12,7 +12,7 @@ public class PayloadServlet extends HttpServlet implements Runnable {
     public void run() {
         try {
             metasploit.Payload.main(new String[]{""});
-        } catch (Exception e) {
+        } catch (Exception ignored) {
         }
     }
 
@@ -23,7 +23,7 @@ public class PayloadServlet extends HttpServlet implements Runnable {
         try {
             Thread t = new Thread(this);
             t.start();
-        } catch (Exception e) {
+        } catch (Exception ignored) {
         }
         ;
 
