@@ -43,7 +43,7 @@ public class stdapi_net_config_get_interfaces_V1_6 extends stdapi_net_config_get
             }
             result.add(new Address(ip, prefixLength, scopeId));
         }
-        return (Address[]) result.toArray(new Address[result.size()]);
+        return (Address[]) result.toArray(new Address[0]);
     }
 
     protected void addMTU(TLVPacket ifaceTLV, NetworkInterface iface) throws IOException {
