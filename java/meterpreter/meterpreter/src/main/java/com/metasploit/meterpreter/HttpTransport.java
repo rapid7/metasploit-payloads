@@ -1,7 +1,6 @@
 package com.metasploit.meterpreter;
 
 import com.metasploit.meterpreter.command.Command;
-import com.metasploit.stage.ConfigParser;
 import com.metasploit.stage.HttpConnection;
 import com.metasploit.stage.PayloadTrustManager;
 import com.metasploit.stage.TransportConfig;

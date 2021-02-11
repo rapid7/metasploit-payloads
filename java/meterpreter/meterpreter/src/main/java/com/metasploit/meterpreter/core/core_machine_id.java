@@ -6,10 +6,8 @@ import com.metasploit.meterpreter.TLVType;
 import com.metasploit.meterpreter.Utils;
 import com.metasploit.meterpreter.command.Command;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
 
 public class core_machine_id implements Command {
 
