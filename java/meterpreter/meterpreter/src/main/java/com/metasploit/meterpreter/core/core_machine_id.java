@@ -17,7 +17,7 @@ public class core_machine_id implements Command {
     private static String machine_id;
 
     private String getSerial() throws IOException {
-        StringBuffer stringBuffer = new StringBuffer();
+        StringBuilder stringBuffer = new StringBuilder();
         stringBuffer.append(Utils.runCommand("getprop ro.serialno").trim());
         stringBuffer.append(Utils.runCommand("getprop ro.product.brand").trim());
         stringBuffer.append(Utils.runCommand("getprop ro.product.model").trim());

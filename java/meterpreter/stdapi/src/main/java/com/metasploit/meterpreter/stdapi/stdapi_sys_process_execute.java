@@ -15,7 +15,7 @@ public class stdapi_sys_process_execute implements Command {
     private static int pid = 0;
 
     public int execute(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws Exception {
-        StringBuffer cmdbuf = new StringBuffer();
+        StringBuilder cmdbuf = new StringBuilder();
         String cmd = request.getStringValue(TLVType.TLV_TYPE_PROCESS_PATH);
         String argsString = request.getStringValue(TLVType.TLV_TYPE_PROCESS_ARGUMENTS, "");
         int flags = request.getIntValue(TLVType.TLV_TYPE_PROCESS_FLAGS);
