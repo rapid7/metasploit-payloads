@@ -171,8 +171,9 @@ public class NotYetImplementedCommand implements Command {
             String typeName = (String) typeNames.get(new Integer(restType));
 
             Object typeValue = request.getValue(type);
-            if (typeName == null)
+            if (typeName == null) {
                 typeName = "0x" + Integer.toHexString(type).toUpperCase();
+            }
             if (typeValue instanceof byte[]) {
                 typeValue = "(raw data, " + ((byte[]) typeValue).length + " bytes)";
             }

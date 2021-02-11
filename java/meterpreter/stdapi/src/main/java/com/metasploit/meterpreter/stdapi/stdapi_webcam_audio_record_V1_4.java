@@ -35,8 +35,9 @@ public class stdapi_webcam_audio_record_V1_4 extends stdapi_webcam_audio_record 
                 break;
             }
         }
-        if (line == null)
+        if (line == null) {
             throw new UnsupportedOperationException("No recording device found");
+        }
         AudioFormat af = new AudioFormat(11000, 8, 1, true, false);
         line.open(af);
         line.start();

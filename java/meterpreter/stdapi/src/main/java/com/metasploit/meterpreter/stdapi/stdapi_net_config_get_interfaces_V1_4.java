@@ -71,8 +71,9 @@ public class stdapi_net_config_get_interfaces_V1_4 extends stdapi_net_config_get
         for (Enumeration en = iface.getInetAddresses(); en.hasMoreElements(); ) {
             InetAddress addr = (InetAddress) en.nextElement();
             byte[] ip = addr.getAddress();
-            if (ip == null)
+            if (ip == null) {
                 continue;
+            }
             int prefixLength = 0;
             if (ip.length == 4) {
                 // guess netmask by network class...

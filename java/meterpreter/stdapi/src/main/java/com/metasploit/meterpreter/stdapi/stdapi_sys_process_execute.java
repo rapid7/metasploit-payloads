@@ -27,8 +27,9 @@ public class stdapi_sys_process_execute implements Command {
         }
 
 
-        if (cmd.length() == 0)
+        if (cmd.length() == 0) {
             return ERROR_FAILURE;
+        }
 
         Process proc = execute(cmdbuf.toString());
 

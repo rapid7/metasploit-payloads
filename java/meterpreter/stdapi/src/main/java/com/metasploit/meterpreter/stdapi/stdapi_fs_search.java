@@ -31,22 +31,26 @@ public class stdapi_fs_search implements Command {
             glob = glob.substring(0, pos);
         }
 
-        if (glob.length() > text.length())
+        if (glob.length() > text.length()) {
             return false;
+        }
 
         // handle the part up to the first *
-        for (int i = 0; i < glob.length(); i++)
+        for (int i = 0; i < glob.length(); i++) {
             if (glob.charAt(i) != '?'
-                    && !glob.substring(i, i + 1).equalsIgnoreCase(text.substring(i, i + 1)))
+                    && !glob.substring(i, i + 1).equalsIgnoreCase(text.substring(i, i + 1))) {
                 return false;
+            }
+        }
 
         // recurse for the part after the first *, if any
         if (rest == null) {
             return glob.length() == text.length();
         } else {
             for (int i = glob.length(); i <= text.length(); i++) {
-                if (matches(text.substring(i), rest))
+                if (matches(text.substring(i), rest)) {
                     return true;
+                }
             }
             return false;
         }
@@ -64,8 +68,9 @@ public class stdapi_fs_search implements Command {
             path = pathfile.getCanonicalPath();
             File[] lst = new File(path).listFiles();
             List glob = new ArrayList();
-            if (lst == null)
+            if (lst == null) {
                 return glob;
+            }
             for (int i = 0; i < lst.length; i++) {
                 File file = lst[i];
                 if (recurse && file.isDirectory()

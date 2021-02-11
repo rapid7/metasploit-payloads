@@ -44,11 +44,13 @@ public class stdapi_channel_open implements Command {
             channel = null;
             if (fpath.equals("...")) {
                 byte[] data = meterpreter.getErrorBuffer();
-                if (data != null)
+                if (data != null) {
                     channel = new Channel(meterpreter, new ByteArrayInputStream(data), null);
+                }
             }
-            if (channel == null)
+            if (channel == null) {
                 channel = new Channel(meterpreter, new FileInputStream(Loader.expand(fpath)), null);
+            }
         } else if (mode.equals("r") || mode.equals("wb") || mode.equals("wbb")) {
             channel = new Channel(meterpreter, new ByteArrayInputStream(new byte[0]), new FileOutputStream(Loader.expand(fpath).getPath(), false));
         } else if (mode.equals("a") || mode.equals("ab") || mode.equals("abb")) {
@@ -81,10 +83,11 @@ public class stdapi_channel_open implements Command {
         String localHost = request.getStringValue(TLVType.TLV_TYPE_LOCAL_HOST);
         int localPort = request.getIntValue(TLVType.TLV_TYPE_LOCAL_PORT);
         ServerSocket ss;
-        if (localHost.equals("0.0.0.0"))
+        if (localHost.equals("0.0.0.0")) {
             ss = new ServerSocket(localPort);
-        else
+        } else {
             ss = new ServerSocket(localPort, 50, InetAddress.getByName(localHost));
+        }
         Channel channel = new ServerSocketChannel(meterpreter, ss);
         response.add(TLVType.TLV_TYPE_CHANNEL_ID, channel.getID());
         return ERROR_SUCCESS;
@@ -96,8 +99,9 @@ public class stdapi_channel_open implements Command {
         String localHost = request.getStringValue(TLVType.TLV_TYPE_LOCAL_HOST);
         int localPort = request.getIntValue(TLVType.TLV_TYPE_LOCAL_PORT);
         int retries = ((Integer) request.getValue(TLVType.TLV_TYPE_CONNECT_RETRIES, new Integer(1))).intValue();
-        if (retries < 1)
+        if (retries < 1) {
             retries = 1;
+        }
         InetAddress peerAddr = InetAddress.getByName(peerHost);
         InetAddress localAddr = InetAddress.getByName(localHost);
         Socket socket = null;
@@ -106,8 +110,9 @@ public class stdapi_channel_open implements Command {
                 socket = new Socket(peerAddr, peerPort, localAddr, localPort);
                 break;
             } catch (ConnectException ex) {
-                if (i == retries - 1)
+                if (i == retries - 1) {
                     throw ex;
+                }
             }
         }
 

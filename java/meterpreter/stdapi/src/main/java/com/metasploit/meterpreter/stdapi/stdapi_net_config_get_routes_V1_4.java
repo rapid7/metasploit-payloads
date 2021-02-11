@@ -29,8 +29,9 @@ public class stdapi_net_config_get_routes_V1_4 extends stdapi_net_config_get_rou
     }
 
     private static byte[] createNetworkMask(int length, int prefixLength) {
-        if (prefixLength > length * 8)
+        if (prefixLength > length * 8) {
             prefixLength = length * 8;
+        }
         byte[] netmask = new byte[length];
         for (int i = 0; i < prefixLength; i++) {
             netmask[i / 8] |= (1 << (7 - (i % 8)));

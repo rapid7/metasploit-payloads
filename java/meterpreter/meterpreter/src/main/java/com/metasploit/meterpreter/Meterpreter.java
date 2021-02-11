@@ -189,8 +189,9 @@ public class Meterpreter {
         synchronized (this) {
             for (Iterator it = channels.iterator(); it.hasNext(); ) {
                 Channel c = (Channel) it.next();
-                if (c != null)
+                if (c != null) {
                     c.close();
+                }
             }
         }
     }

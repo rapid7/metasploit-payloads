@@ -21,8 +21,9 @@ public class stdapi_net_config_get_interfaces_V1_6 extends stdapi_net_config_get
         for (Iterator it = addresses.iterator(); it.hasNext(); ) {
             InterfaceAddress addr = (InterfaceAddress) it.next();
             byte[] ip = addr.getAddress().getAddress();
-            if (ip == null)
+            if (ip == null) {
                 continue;
+            }
             int prefixLength = addr.getNetworkPrefixLength();
             if (prefixLength == -1 && ip.length == 4) {
                 // guess netmask by network class...

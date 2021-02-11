@@ -29,17 +29,20 @@ public class Utils {
     public static String getHostname() {
         try {
             String result = InetAddress.getLocalHost().getHostName();
-            if (result != "")
+            if (result != "") {
                 return result;
+            }
         } catch (UnknownHostException e) { }
 
         String host = System.getenv("COMPUTERNAME");
-        if (host != null)
+        if (host != null) {
             return host;
+        }
 
         host = System.getenv("HOSTNAME");
-        if (host != null)
+        if (host != null) {
             return host;
+        }
 
         return "unknown";
     }

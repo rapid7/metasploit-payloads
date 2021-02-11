@@ -58,8 +58,9 @@ public class StreamForwarder extends Thread {
             }
         } finally {
             in.close();
-            if (closeOut)
+            if (closeOut) {
                 out.close();
+            }
         }
     }
 
@@ -84,8 +85,9 @@ public class StreamForwarder extends Thread {
         try {
             forward(in, out, closeOut);
         } catch (final Throwable ex) {
-            if (stackTraceOut == null)
+            if (stackTraceOut == null) {
                 throwWrapped(ex);
+            }
             ex.printStackTrace(new PrintStream(stackTraceOut, true));
         }
     }
