@@ -18,7 +18,7 @@ import java.util.Map;
  */
 public class MemoryBufferURLConnection extends URLConnection {
 
-    private static List files = new ArrayList();
+    private static List files;
 
     static {
         // tweak the cache of already loaded protocol handlers via reflection
