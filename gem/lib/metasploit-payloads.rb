@@ -84,6 +84,8 @@ module MetasploitPayloads
     end
 
     root_dirs.each do |dir|
+      next unless ::File.directory?(dir)
+
       # Merge in any that don't already exist in the collection.
       meterpreter_enum_ext(dir, binary_suffix).each do |e|
         extensions.push(e) unless extensions.include?(e)
