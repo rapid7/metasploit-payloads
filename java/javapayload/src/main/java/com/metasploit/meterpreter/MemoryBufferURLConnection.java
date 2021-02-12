@@ -87,17 +87,21 @@ public class MemoryBufferURLConnection extends URLConnection {
         contentType = file.substring(pos + 1);
     }
 
+    @Override
     public void connect() throws IOException {
     }
 
+    @Override
     public InputStream getInputStream() throws IOException {
         return new ByteArrayInputStream(data);
     }
 
+    @Override
     public int getContentLength() {
         return data.length;
     }
 
+    @Override
     public String getContentType() {
         return contentType;
     }

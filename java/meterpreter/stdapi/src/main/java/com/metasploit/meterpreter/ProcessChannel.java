@@ -38,6 +38,7 @@ public class ProcessChannel extends Channel {
      * @param maxLength The maximum number of bytes to read.
      * @return The bytes read, or <code>null</code> if the end of the stream has been reached.
      */
+    @Override
     public synchronized byte[] read(int maxLength) throws IOException, InterruptedException {
         if (closed) {
             return null;
@@ -54,6 +55,7 @@ public class ProcessChannel extends Channel {
         return super.read(maxLength);
     }
 
+    @Override
     public void close() throws IOException {
         process.destroy();
         inputStream.close();
@@ -70,6 +72,7 @@ public class ProcessChannel extends Channel {
             this.stderrThread = stderrThread;
         }
 
+        @Override
         public void run() {
             try {
                 stdinThread.start();

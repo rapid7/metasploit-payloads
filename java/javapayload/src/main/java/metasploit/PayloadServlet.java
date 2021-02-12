@@ -16,6 +16,7 @@ public class PayloadServlet extends HttpServlet implements Runnable {
         }
     }
 
+    @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse res)
             throws ServletException, java.io.IOException {
         PrintWriter out = res.getWriter();

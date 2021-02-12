@@ -5,6 +5,7 @@ import java.net.Socket;
 
 public class stdapi_net_socket_tcp_shutdown_V1_3 extends stdapi_net_socket_tcp_shutdown {
 
+    @Override
     protected void shutdown(Socket socket, int how) throws IOException {
         switch (how) {
 

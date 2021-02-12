@@ -15,6 +15,7 @@ import com.metasploit.meterpreter.TLVType;
 
 public class stdapi_net_config_get_interfaces_V1_6 extends stdapi_net_config_get_interfaces_V1_4 {
 
+    @Override
     public Address[] getAddresses(NetworkInterface iface) throws IOException {
         List/* <Address> */result = new ArrayList();
         List addresses = iface.getInterfaceAddresses();
@@ -47,6 +48,7 @@ public class stdapi_net_config_get_interfaces_V1_6 extends stdapi_net_config_get
         return (Address[]) result.toArray(new Address[result.size()]);
     }
 
+    @Override
     protected void addMTU(TLVPacket ifaceTLV, NetworkInterface iface) throws IOException {
         ifaceTLV.add(TLVType.TLV_TYPE_MTU, iface.getMTU());
     }
