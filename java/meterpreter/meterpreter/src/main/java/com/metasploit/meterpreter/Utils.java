@@ -29,7 +29,7 @@ public class Utils {
     public static String getHostname() {
         try {
             String result = InetAddress.getLocalHost().getHostName();
-            if (result != "") {
+            if (result.length() != 0) {
                 return result;
             }
         } catch (UnknownHostException e) { }
