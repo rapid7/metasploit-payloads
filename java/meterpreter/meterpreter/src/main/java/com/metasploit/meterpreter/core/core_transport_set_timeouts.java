@@ -4,7 +4,6 @@ import com.metasploit.meterpreter.Meterpreter;
 import com.metasploit.meterpreter.TLVPacket;
 import com.metasploit.meterpreter.TLVType;
 import com.metasploit.meterpreter.Transport;
-import com.metasploit.meterpreter.Utils;
 import com.metasploit.meterpreter.command.Command;
 
 public class core_transport_set_timeouts implements Command {

@@ -8,7 +8,6 @@ import com.metasploit.meterpreter.Meterpreter;
 import com.metasploit.meterpreter.TLVPacket;
 import com.metasploit.meterpreter.TLVType;
 import com.metasploit.meterpreter.command.Command;
-import com.metasploit.meterpreter.command.NotYetImplementedCommand;
 
 public class stdapi_fs_file_expand_path implements Command {
 

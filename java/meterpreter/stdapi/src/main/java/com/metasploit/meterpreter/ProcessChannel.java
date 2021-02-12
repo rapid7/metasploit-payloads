@@ -2,7 +2,6 @@ package com.metasploit.meterpreter;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.PrintStream;
 
 /**
  * A channel for a started {@link Process}.

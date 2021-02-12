@@ -7,7 +7,6 @@ import com.metasploit.meterpreter.command.Command;
 
 import java.awt.Robot;
 import java.awt.event.KeyEvent;
-import java.security.Key;
 import java.util.HashMap;
 import java.util.Map;
 

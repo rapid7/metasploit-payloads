@@ -4,7 +4,6 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 
-import junit.framework.Assert;
 import junit.framework.TestCase;
 
 public class ShellTest extends TestCase {

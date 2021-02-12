@@ -3,12 +3,9 @@ package com.metasploit.meterpreter;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.EOFException;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
-import java.io.UnsupportedEncodingException;
 
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -20,7 +17,6 @@ import java.util.List;
 import java.util.Random;
 import java.util.jar.JarInputStream;
 
-import com.metasploit.meterpreter.command.Command;
 import com.metasploit.meterpreter.core.core_loadlib;
 import com.metasploit.stage.Config;
 import com.metasploit.stage.ConfigParser;
