@@ -62,8 +62,8 @@ public class MeterpreterTest extends TestCase {
         byte[] roundtripData = new byte[4096];
         in.readFully(roundtripData);
         Assert.assertEquals(new String(randomData, "ISO-8859-1"), new String(roundtripData, "ISO-8859-1"));
-        Assert.assertEquals(true, in.readBoolean());
-        Assert.assertEquals(true, in.readBoolean());
+        Assert.assertTrue(in.readBoolean());
+        Assert.assertTrue(in.readBoolean());
         Assert.assertEquals(-1, in.read());
 
         // test payload with output redirection disabled
@@ -73,8 +73,8 @@ public class MeterpreterTest extends TestCase {
         roundtripData = new byte[4096];
         in.readFully(roundtripData);
         Assert.assertEquals(new String(randomData, "ISO-8859-1"), new String(roundtripData, "ISO-8859-1"));
-        Assert.assertEquals(true, in.readBoolean());
-        Assert.assertEquals(false, in.readBoolean());
+        Assert.assertTrue(in.readBoolean());
+        Assert.assertFalse(in.readBoolean());
         Assert.assertEquals(-1, in.read());
     }
 }
