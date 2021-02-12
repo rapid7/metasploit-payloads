@@ -397,7 +397,7 @@ def cmd_string_to_id(this_string):
     for that_id, that_string in COMMAND_IDS:
         if this_string == that_string:
             return that_id
-    debug_print('[*] failed to lookup string for command string: ' + this_string)
+    debug_print('[*] failed to lookup id for command string: ' + this_string)
     return None
 
 @export
@@ -1352,6 +1352,8 @@ class PythonMeterpreter(object):
         id_end = packet_get_tlv(request, TLV_TYPE_LENGTH)['value'] + id_start
         for func_name in self.extension_functions.keys():
             command_id = cmd_string_to_id(func_name)
+            if command_id is None:
+                continue
             if id_start < command_id and command_id < id_end:
                 response += tlv_pack(TLV_TYPE_UINT, command_id)
         return ERROR_SUCCESS, response
