@@ -35,7 +35,7 @@ public class core_transport_add implements Command {
             long sessionExpiry = request.getIntValue(TLVType.TLV_TYPE_TRANS_SESSION_EXP);
             meterpreter.setExpiry(sessionExpiry);
         }
-        catch (IllegalArgumentException ex) {
+        catch (IllegalArgumentException ignored) {
         }
 
         try {

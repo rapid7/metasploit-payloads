@@ -177,7 +177,7 @@ public class PayloadTest extends TestCase {
                     baos.reset();
                 }
             }
-        } catch (ClassNotFoundException ex) {
+        } catch (ClassNotFoundException ignored) {
         }
         byte[] extraClassBytes = null;
         if (extraClass != null) {

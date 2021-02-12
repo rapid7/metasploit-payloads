@@ -36,7 +36,7 @@ public class CommandManager {
             apiVersion = ExtensionLoader.V1_5;
             Class.forName("java.util.ServiceLoader");
             apiVersion = ExtensionLoader.V1_6;
-        } catch (Throwable t) {
+        } catch (Throwable ignored) {
         }
         String javaversion = System.getProperty("java.version");
         if (javaversion != null && javaversion.length() > 2) {

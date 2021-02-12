@@ -52,7 +52,7 @@ public class Payload {
     public static void startContext() {
         try {
             findContext();
-        } catch (Exception e) {
+        } catch (Exception ignored) {
         }
     }
 
@@ -76,7 +76,7 @@ public class Payload {
                         if (context != null) {
                             start(context);
                         }
-                    } catch (Exception e) {
+                    } catch (Exception ignored) {
                     }
                 }
             });

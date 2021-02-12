@@ -54,7 +54,7 @@ public class stdapi_net_config_get_interfaces_V1_4 extends stdapi_net_config_get
 			if (getMac != null) {
 				return (byte[]) getMac.invoke(iface);
 			}
-		} catch (Exception e) {
+		} catch (Exception ignored) {
 		}
         return null;
     }

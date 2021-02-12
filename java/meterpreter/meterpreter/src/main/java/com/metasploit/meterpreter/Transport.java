@@ -272,7 +272,7 @@ public abstract class Transport {
                 if (this.tryConnect(met)) {
                     return true;
                 }
-            } catch (Exception e) {
+            } catch (Exception ignored) {
             }
 
             met.sleep(this.retryWait);

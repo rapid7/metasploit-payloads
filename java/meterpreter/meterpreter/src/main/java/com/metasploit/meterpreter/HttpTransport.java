@@ -139,7 +139,7 @@ public class HttpTransport extends Transport {
             // this can happens on reconnect
             return true;
         }
-        catch (Exception ex) {
+        catch (Exception ignored) {
         }
 
         // we get here, thins aren't good.
@@ -161,7 +161,7 @@ public class HttpTransport extends Transport {
             inputStream.close();
             return request;
         }
-        catch (EOFException ex) {
+        catch (EOFException ignored) {
         }
 
         return null;

@@ -49,7 +49,7 @@ public class TcpTransport extends Transport {
                     try {
                         this.in.close();
                     }
-                    catch (IOException ex2) {
+                    catch (IOException ignored) {
                     }
                 }
             }
@@ -67,7 +67,7 @@ public class TcpTransport extends Transport {
                         this.out.flush();
                         this.out.close();
                     }
-                    catch (IOException ex2) {
+                    catch (IOException ignored) {
                     }
                 }
             }
@@ -76,7 +76,7 @@ public class TcpTransport extends Transport {
                 try {
                     this.sock.close();
                 }
-                catch (IOException ex) {
+                catch (IOException ignored) {
                 }
             }
         }

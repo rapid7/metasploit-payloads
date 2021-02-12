@@ -32,7 +32,7 @@ public class Utils {
             if (result.length() != 0) {
                 return result;
             }
-        } catch (UnknownHostException e) { }
+        } catch (UnknownHostException ignored) { }
 
         String host = System.getenv("COMPUTERNAME");
         if (host != null) {
