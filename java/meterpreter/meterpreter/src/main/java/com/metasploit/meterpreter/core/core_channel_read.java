@@ -12,8 +12,9 @@ public class core_channel_read implements Command {
         Channel channel = meterpreter.getChannel(request.getIntValue(TLVType.TLV_TYPE_CHANNEL_ID), true);
         int len = request.getIntValue(TLVType.TLV_TYPE_LENGTH);
         byte[] data = channel.read(len);
-        if (data == null)
+        if (data == null) {
             return ERROR_FAILURE;
+        }
         response.add(TLVType.TLV_TYPE_CHANNEL_DATA, data);
         return ERROR_SUCCESS;
     }

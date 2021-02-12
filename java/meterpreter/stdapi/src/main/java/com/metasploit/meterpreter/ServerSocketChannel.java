@@ -58,8 +58,9 @@ public class ServerSocketChannel extends Channel {
                     ch.startInteract();
                 }
             } catch (SocketException t) {
-                if (closed)
+                if (closed) {
                     return;
+                }
                 t.printStackTrace(getMeterpreter().getErrorStream());
             } catch (Throwable t) {
                 t.printStackTrace(getMeterpreter().getErrorStream());

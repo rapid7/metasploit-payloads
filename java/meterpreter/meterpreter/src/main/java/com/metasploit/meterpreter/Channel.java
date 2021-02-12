@@ -59,11 +59,13 @@ public class Channel {
      * Note that even if this returns false, a subsequent read might return <code>null</code> for EOF, when the channel's state switches from "no data available" to EOF between the two calls.
      */
     public synchronized boolean isEOF() throws IOException {
-        if (active)
+        if (active) {
             throw new IllegalStateException("Cannot read; currently interacting with this channel");
+        }
         // when we are just waiting to read the EOF, close it
-        if (waiting && toRead == null)
+        if (waiting && toRead == null) {
             close();
+        }
         return closed;
     }
 
@@ -74,14 +76,18 @@ public class Channel {
      * @return The bytes read, or <code>null</code> if the end of the stream has been reached.
      */
     public synchronized byte[] read(int maxLength) throws IOException, InterruptedException {
-        if (closed)
+        if (closed) {
             return null;
-        if (active)
+        }
+        if (active) {
             throw new IllegalStateException("Cannot read; currently interacting with this channel");
-        while (!waiting || (toRead != null && toRead.length == 0))
+        }
+        while (!waiting || (toRead != null && toRead.length == 0)) {
             wait();
-        if (toRead == null)
+        }
+        if (toRead == null) {
             return null;
+        }
         byte[] result = new byte[Math.min(toRead.length, maxLength)];
         System.arraycopy(toRead, 0, result, 0, result.length);
         byte[] rest = new byte[toRead.length - result.length];
@@ -98,8 +104,9 @@ public class Channel {
      * @param length The length to write
      */
     public void write(byte[] data, int length, TLVPacket request) throws IOException {
-        if (out == null)
+        if (out == null) {
             throw new IOException("Channel does not have an output stream");
+        }
         out.write(data, 0, length);
         out.flush();
     }
@@ -115,8 +122,9 @@ public class Channel {
      * Start interacting with this channel.
      */
     public synchronized void startInteract() {
-        if (active)
+        if (active) {
             throw new IllegalStateException("Already interacting");
+        }
         active = true;
         notifyAll();
     }
@@ -140,8 +148,9 @@ public class Channel {
         toRead = data;
         waiting = true;
         notifyAll();
-        while (!active && !closed && (toRead == null || toRead.length > 0))
+        while (!active && !closed && (toRead == null || toRead.length > 0)) {
             wait();
+        }
         if ((toRead == null || toRead.length > 0) && !closed) {
             TLVPacket tlv = new TLVPacket();
             tlv.add(TLVType.TLV_TYPE_CHANNEL_ID, getID());
@@ -177,8 +186,9 @@ public class Channel {
                 byte[] buffer = new byte[1024*1024];
                 int len;
                 while ((len = stream.read(buffer)) != -1) {
-                    if (len == 0)
+                    if (len == 0) {
                         continue;
+                    }
                     byte[] data = new byte[len];
                     System.arraycopy(buffer, 0, data, 0, len);
                     handleInteract(data);

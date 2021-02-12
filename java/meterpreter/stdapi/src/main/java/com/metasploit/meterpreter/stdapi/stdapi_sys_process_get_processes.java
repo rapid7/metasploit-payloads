@@ -28,8 +28,9 @@ public class stdapi_sys_process_get_processes implements Command {
             BufferedReader br = new BufferedReader(new InputStreamReader(proc.getInputStream()));
             String line;
             while ((line = br.readLine()) != null) {
-                if (line.length() == 0)
+                if (line.length() == 0) {
                     continue;
+                }
                 line = line.substring(1, line.length() - 1); // strip quotes
                 List parts = new ArrayList();
                 int pos;
@@ -39,8 +40,9 @@ public class stdapi_sys_process_get_processes implements Command {
                     line = line.substring(pos + 3);
                 }
                 parts.add(line);
-                while (parts.size() < 7)
+                while (parts.size() < 7) {
                     parts.add("");
+                }
                 processes.add(new String[]{(String) parts.get(1), (String) parts.get(6), (String) parts.get(0)});
             }
             br.close();

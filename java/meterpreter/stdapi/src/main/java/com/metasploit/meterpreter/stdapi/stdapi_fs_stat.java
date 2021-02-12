@@ -24,10 +24,12 @@ public class stdapi_fs_stat implements Command {
             }
         }
         File file = new File(path);
-        if (!file.exists())
+        if (!file.exists()) {
             file = Loader.expand(path);
-        if (!file.exists())
+        }
+        if (!file.exists()) {
             throw new IOException("File/directory does not exist: " + path);
+        }
         response.add(TLVType.TLV_TYPE_STAT_BUF, stat(file));
         return ERROR_SUCCESS;
     }

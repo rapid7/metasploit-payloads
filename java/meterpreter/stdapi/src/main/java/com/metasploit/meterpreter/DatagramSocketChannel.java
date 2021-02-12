@@ -80,13 +80,15 @@ public class DatagramSocketChannel extends Channel {
                         getMeterpreter().writeRequestPacket(CommandId.CORE_CHANNEL_WRITE, tlv);
                     } catch (SocketException t) {
                         // dirty hack since later java versions add more of those...
-                        if (!t.getClass().getName().endsWith("UnreachableException"))
+                        if (!t.getClass().getName().endsWith("UnreachableException")) {
                             throw t;
+                        }
                     }
                 }
             } catch (SocketException t) {
-                if (closed)
+                if (closed) {
                     return;
+                }
                 t.printStackTrace(getMeterpreter().getErrorStream());
             } catch (Throwable t) {
                 t.printStackTrace(getMeterpreter().getErrorStream());

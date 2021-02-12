@@ -199,8 +199,9 @@ public class Payload {
         int n = 0;
         while (n < byteLen) {
             int count = in.read(bytes, n, byteLen - n);
-            if (count < 0)
+            if (count < 0) {
                 throw new Exception();
+            }
             n += count;
         }
         return bytes;

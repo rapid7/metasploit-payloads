@@ -36,8 +36,9 @@ public class RMICaptureServer {
 
         byte[] hdr = new byte[7];
         in.readFully(hdr);
-        if (!new String(hdr, "ISO-8859-1").equals("JRMI\0\2K"))
+        if (!new String(hdr, "ISO-8859-1").equals("JRMI\0\2K")) {
             throw new IOException("Unsupported RMI header");
+        }
 
         out.write('N');
         out.writeUTF("127.0.0.1");

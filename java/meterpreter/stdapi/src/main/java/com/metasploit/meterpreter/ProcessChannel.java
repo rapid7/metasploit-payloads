@@ -39,14 +39,18 @@ public class ProcessChannel extends Channel {
      * @return The bytes read, or <code>null</code> if the end of the stream has been reached.
      */
     public synchronized byte[] read(int maxLength) throws IOException, InterruptedException {
-        if (closed)
+        if (closed) {
             return null;
-        if (active)
+        }
+        if (active) {
             throw new IllegalStateException("Cannot read; currently interacting with this channel");
-        if (!waiting || (toRead != null && toRead.length == 0))
+        }
+        if (!waiting || (toRead != null && toRead.length == 0)) {
             return new byte[0];
-        if (toRead == null)
+        }
+        if (toRead == null) {
             return null;
+        }
         return super.read(maxLength);
     }
 
