@@ -29,7 +29,7 @@ public class MeterpreterTest extends TestCase {
         Assert.assertEquals(4096, uc.getContentLength());
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         StreamForwarder.forward(uc.getInputStream(), out);
-        Assert.assertEquals(new String(randomData, "ISO-8859-1"), new String(out.toByteArray(), "ISO-8859-1"));
+        Assert.assertEquals(new String(randomData, "ISO-8859-1"), out.toString("ISO-8859-1"));
     }
 
     public void testMeterpreterStage() throws Exception {
@@ -37,7 +37,7 @@ public class MeterpreterTest extends TestCase {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         DataOutputStream dos = new DataOutputStream(baos);
         StreamForwarder.forward(MeterpDummy.class.getResourceAsStream(MeterpDummy.class.getSimpleName() + ".class"), baos);
-        String meterpDummy = new String(baos.toByteArray(), "ISO-8859-1").replace("MeterpDummy", "Meterpreter");
+        String meterpDummy = baos.toString("ISO-8859-1").replace("MeterpDummy", "Meterpreter");
         baos.reset();
         JarOutputStream jos = new JarOutputStream(baos);
         jos.putNextEntry(new ZipEntry("com/metasploit/meterpreter/Meterpreter.class"));
