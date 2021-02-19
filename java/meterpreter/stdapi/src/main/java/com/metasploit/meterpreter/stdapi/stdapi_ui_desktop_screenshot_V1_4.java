@@ -30,7 +30,7 @@ public class stdapi_ui_desktop_screenshot_V1_4 extends stdapi_ui_desktop_screens
         for (int i = 0; i < devices.length; i++) {
             screenBounds = screenBounds.union(devices[i].getDefaultConfiguration().getBounds());
         }
-        ImageWriter writer = (ImageWriter) ImageIO.getImageWritersByFormatName("jpeg").next();
+        ImageWriter writer = ImageIO.getImageWritersByFormatName("jpeg").next();
         ImageWriteParam iwp = writer.getDefaultWriteParam();
         if (quality >= 0 && quality <= 100) {
             iwp.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);

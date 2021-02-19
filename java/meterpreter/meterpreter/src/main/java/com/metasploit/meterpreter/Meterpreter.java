@@ -296,7 +296,7 @@ public class Meterpreter {
             classLoader = new URLClassLoader(new URL[]{url}, classLoader);
         }
         JarInputStream jis = new JarInputStream(new ByteArrayInputStream(data));
-        String loaderName = (String) jis.getManifest().getMainAttributes().getValue("Extension-Loader");
+        String loaderName = jis.getManifest().getMainAttributes().getValue("Extension-Loader");
         ExtensionLoader loader = (ExtensionLoader) classLoader.loadClass(loaderName).newInstance();
         commandManager.resetNewCommands();
         loader.load(commandManager);
