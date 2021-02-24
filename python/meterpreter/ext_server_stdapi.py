@@ -69,7 +69,11 @@ else:
     long = int
     unicode = lambda x: (x.decode('UTF-8') if isinstance(x, bytes) else x)
 
+libc = None
+
 if has_ctypes:
+    if sys.platform == 'darwin' or sys.platform.startswith('linux'):
+        libc = ctypes.CDLL(ctypes.util.find_library('c'))
     size_t = getattr(ctypes, 'c_uint' + str(ctypes.sizeof(ctypes.c_void_p) * 8))
     #
     # Windows Structures
@@ -1863,13 +1867,11 @@ def _linux_check_maps(address, size, perms=''):
     return True
 
 def _linux_if_indextoname(index):
-    libc = ctypes.cdll.LoadLibrary(ctypes.util.find_library('c'))
     name = (ctypes.c_char * 256)()
     if libc.if_indextoname(index, name):
         return name.value.decode('ascii')
 
 def _linux_memread(address, size):
-    libc = ctypes.cdll.LoadLibrary('libc.so.6')
     if not hasattr(libc, 'process_vm_readv'):
         # requires linux 3.2+ / glibc 2.15+, see:
         # http://man7.org/linux/man-pages/man2/process_vm_readv.2.html#VERSIONS
@@ -1892,7 +1894,6 @@ def _linux_memread(address, size):
     return ctarray_to_bytes(buff)
 
 def _linux_memwrite(address, data):
-    libc = ctypes.cdll.LoadLibrary('libc.so.6')
     if not hasattr(libc, 'process_vm_writev'):
         # requires linux 3.2+ / glibc 2.15+, see:
         # http://man7.org/linux/man-pages/man2/process_vm_writev.2.html#VERSIONS
@@ -1916,7 +1917,6 @@ def _linux_memwrite(address, data):
     return size
 
 def _osx_memread(address, size):
-    libc = ctypes.CDLL(ctypes.util.find_library('c'))
     task = libc.mach_task_self()
     libc.mach_vm_read.argtypes = [ctypes.c_uint32, size_t, size_t, ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(ctypes.c_uint32)]
     libc.mach_vm_read.restype = ctypes.c_uint32
@@ -1933,7 +1933,6 @@ def _osx_memread(address, size):
     return ctarray_to_bytes(buff.contents)
 
 def _osx_memwrite(address, data):
-    libc = ctypes.CDLL(ctypes.util.find_library('c'))
     task = libc.mach_task_self()
     libc.mach_vm_write.argtypes = [ctypes.c_uint32, size_t, ctypes.c_void_p, ctypes.c_uint32]
     libc.mach_vm_write.restype = ctypes.c_uint32
@@ -2036,10 +2035,6 @@ def stdapi_railgun_api(request, response):
     debug_print('[*] railgun calling: ' + lib_name + '!' + func_name)
     prototype = func_type(native, *func_args)
     if sys.platform == 'darwin' or sys.platform.startswith('linux'):
-        if sys.platform == 'darwin':
-            libc = ctypes.CDLL(ctypes.util.find_library('c'))
-        else:
-            libc = ctypes.cdll.LoadLibrary('libc.so.6')
         p_errno = ctypes.cast(libc.errno, ctypes.POINTER(ctypes.c_int))
         errno = p_errno.contents
         last_error = ctypes.c_int(0)
