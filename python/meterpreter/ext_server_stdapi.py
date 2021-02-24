@@ -299,6 +299,17 @@ if has_ctypes:
         _fields_ = [("len", ctypes.c_uint16),
             ("type", ctypes.c_uint16)]
 
+    class RTMSG(ctypes.Structure):
+        _fields_ = [("family", ctypes.c_uint8),
+            ("dst_len", ctypes.c_uint8),
+            ("src_len", ctypes.c_uint8),
+            ("tos", ctypes.c_uint8),
+            ("table", ctypes.c_uint8),
+            ("protocol", ctypes.c_uint8),
+            ("scope", ctypes.c_uint8),
+            ("type", ctypes.c_uint8),
+            ("flags", ctypes.c_uint32)]
+
 TLV_EXTENSIONS           = 20000
 #
 # TLV Meta Types
@@ -596,6 +607,23 @@ UNIVERSAL_NAME_INFO_LEVEL = 1
 DRIVE_REMOTE = 4
 
 # Linux Constants
+RT_TABLE_MAIN = 254
+RTA_UNSPEC = 0
+RTA_DST = 1
+RTA_SRC = 2
+RTA_IIF = 3
+RTA_OIF = 4
+RTA_GATEWAY = 5
+RTA_PRIORITY = 6
+RTA_PREFSRC = 7
+RTA_METRICS = 8
+RTA_MULTIPATH = 9
+RTA_PROTOINFO = 10 #/* no longer used */
+RTA_FLOW = 11
+RTA_CACHEINFO = 12
+RTA_SESSION = 13 #/* no longer used */
+RTA_MP_ALGO = 14 #/* no longer used */
+RTA_TABLE = 15
 RTM_GETLINK   = 18
 RTM_GETADDR   = 22
 RTM_GETROUTE  = 26
@@ -797,18 +825,22 @@ def getaddrinfo_from_request(request, socktype, proto):
         local_address_info = None
     return peer_address_info, local_address_info
 
-def netlink_request(req_type):
+def netlink_request(req_type, req_data):
     # See RFC 3549
     NLM_F_REQUEST    = 0x0001
     NLM_F_ROOT       = 0x0100
+    NLM_F_MATCH      = 0x0200
+    NLM_F_DUMP       = NLM_F_ROOT | NLM_F_MATCH
     NLMSG_ERROR      = 0x0002
     NLMSG_DONE       = 0x0003
 
     sock = socket.socket(socket.AF_NETLINK, socket.SOCK_RAW, socket.NETLINK_ROUTE)
     sock.bind((os.getpid(), 0))
     seq = int(time.time())
-    nlmsg = struct.pack('IHHIIB15x', 32, req_type, (NLM_F_REQUEST | NLM_F_ROOT), seq, 0, socket.AF_UNSPEC)
-    sock.send(nlmsg)
+    if isinstance(req_data, ctypes.Structure):
+        req_data = bytes(req_data)
+    nlmsg = bytes(NLMSGHDR(len=ctypes.sizeof(NLMSGHDR) + len(req_data), type=req_type, flags=(NLM_F_REQUEST | NLM_F_DUMP), seq=seq, pid=0))
+    sock.send(nlmsg + req_data)
     responses = []
     if not len(select.select([sock.fileno()], [], [], 0.5)[0]):
         return responses
@@ -817,6 +849,7 @@ def netlink_request(req_type):
     raw_response_data = raw_response_data[ctypes.sizeof(NLMSGHDR):]
     while response.type != NLMSG_DONE:
         if response.type == NLMSG_ERROR:
+            print('NLMSG_ERROR')
             break
         response_data = raw_response_data[:(response.len - 16)]
         responses.append(response_data)
@@ -1504,7 +1537,7 @@ def stdapi_net_config_get_interfaces_via_netlink():
     iface_flags_sorted.sort()
     interfaces = {}
 
-    responses = netlink_request(RTM_GETLINK)
+    responses = netlink_request(RTM_GETLINK, IFINFOMSG())
     for res_data in responses:
         iface = cstruct_unpack(IFINFOMSG, res_data)
         iface_info = {'index':iface.index}
@@ -1528,7 +1561,7 @@ def stdapi_net_config_get_interfaces_via_netlink():
                 iface_info['mtu'] = struct.unpack('<I', attr_data)[0]
         interfaces[iface.index] = iface_info
 
-    responses = netlink_request(RTM_GETADDR)
+    responses = netlink_request(RTM_GETADDR, IFADDRMSG())
     for res_data in responses:
         iface = cstruct_unpack(IFADDRMSG, res_data)
         if not iface.family in (socket.AF_INET, socket.AF_INET6):
@@ -1679,6 +1712,58 @@ def stdapi_net_config_get_interfaces_via_windll_mib():
         interfaces.append(iface_info)
     return interfaces
 
+@register_function
+def stdapi_net_config_get_routes(request, response):
+    if hasattr(socket, 'AF_NETLINK') and hasattr(socket, 'NETLINK_ROUTE'):
+        routes = stdapi_net_config_get_routes_via_netlink()
+    else:
+        return ERROR_FAILURE, response
+    for route_info in routes:
+        route_tlv  = bytes()
+        route_tlv += tlv_pack(TLV_TYPE_SUBNET, route_info['subnet'])
+        route_tlv += tlv_pack(TLV_TYPE_NETMASK, route_info['netmask'])
+        route_tlv += tlv_pack(TLV_TYPE_GATEWAY, route_info['gateway'])
+        route_tlv += tlv_pack(TLV_TYPE_STRING, route_info['iface'])
+        route_tlv += tlv_pack(TLV_TYPE_ROUTE_METRIC, route_info.get('metric', 0))
+        response += tlv_pack(TLV_TYPE_NETWORK_ROUTE, route_tlv)
+    return ERROR_SUCCESS, response
+
+def stdapi_net_config_get_routes_via_netlink():
+    rta_align = lambda l: l+3 & ~3
+    responses = netlink_request(RTM_GETROUTE, RTMSG(family=socket.AF_UNSPEC))
+    routes = []
+    for res_data in responses:
+        rtmsg = cstruct_unpack(RTMSG, res_data)
+        cursor = rta_align(ctypes.sizeof(RTMSG))
+        route = {'table': rtmsg.table}
+        if rtmsg.family == socket.AF_INET:
+            route['gateway'] = route['subnet'] = inet_pton(socket.AF_INET, '0.0.0.0')
+            route['netmask'] = calculate_32bit_netmask(rtmsg.dst_len)
+        elif rtmsg.family == socket.AF_INET6:
+            route['gateway'] = route['subnet'] = inet_pton(socket.AF_INET6, '::')
+            route['netmask'] = calculate_128bit_netmask(rtmsg.dst_len)
+        else:
+          continue
+        while cursor < len(res_data):
+            attribute = cstruct_unpack(RTATTR, res_data[cursor:])
+            at_len = attribute.len
+            attr_data = res_data[cursor + ctypes.sizeof(RTATTR):(cursor + at_len)]
+            cursor += rta_align(at_len)
+            if attribute.type == RTA_DST:
+                route['subnet'] = attr_data
+            if attribute.type == RTA_GATEWAY:
+                route['gateway'] = attr_data
+            elif attribute.type == RTA_TABLE:
+                route['table'] = struct.unpack('<I', attr_data)[0]
+            elif attribute.type == RTA_OIF:
+                route['iface'] = _linux_if_indextoname(struct.unpack('<I', attr_data)[0])
+            elif attribute.type == RTA_PRIORITY:
+                route['metric'] = struct.unpack('<I', attr_data)[0]
+        if route['table'] != RT_TABLE_MAIN:
+            continue
+        routes.append(route)
+    return routes
+
 @register_function_if(has_windll)
 def stdapi_net_config_get_proxy(request, response):
     winhttp = ctypes.windll.winhttp
@@ -1776,6 +1861,12 @@ def _linux_check_maps(address, size, perms=''):
         size -= region['address-end'] - cursor
         cursor = region['address-end']
     return True
+
+def _linux_if_indextoname(index):
+    libc = ctypes.cdll.LoadLibrary(ctypes.util.find_library('c'))
+    name = (ctypes.c_char * 256)()
+    if libc.if_indextoname(index, name):
+        return name.value.decode('ascii')
 
 def _linux_memread(address, size):
     libc = ctypes.cdll.LoadLibrary('libc.so.6')
