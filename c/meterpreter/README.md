@@ -22,6 +22,7 @@ With the code checked out and the submodules updated, you're ready to run a buil
 
 ## Building - Windows on Windows
 Meterpreter currently supports being built with multiple versions of Visual Studio, including the free/community editions.
+Before building make sure to disable antivirus/windows defender.
 
 ### VS 2019
 Building with VS2019 works with any version, including community. If you have an installation already, just make sure you have the following extra bits installed:
@@ -201,3 +202,33 @@ There is currently no automated testing for meterpreter, but we're working on it
 Once you've made changes and compiled a new .dll or .so, copy the contents of the output/ directory into your Metasploit Framework's `data/meterpreter/` directory.
 
 If you made any changes to `metsrv.dll` ensure that all extensions still load and function properly.
+
+# Debugging
+[Debugging wiki page](https://github.com/rapid7/metasploit-payloads/wiki/Debugging-Meterpreter(s))
+
+For debugging it helps to have two machines ready, one Windows (to be setup as described earlier to build meterpreter)
+and one Ubuntu (ths is where you would have your [framework dev envrionment](https://github.com/rapid7/metasploit-framework/wiki/Setting-Up-a-Metasploit-Development-Environment)), these can both be VMs.
+
+`git clone` this repo onto your framework development machine and then map it as a network drive to the Windows machine.
+Don't forget to run `git submodule init && git submodule update`.
+Once that's done you can load the project up in Visual Studio as described in the "Building - Windows on Windows" section of the Readme.
+
+To build in Debug mode all you need to do in the Visual Studio UI is select Debug from the configuration dropwdown (as opposed to Release or r7_Release).
+Now select Win32 or x64 depending on whether you want to build for 32 or 64 bit meterpreter (or both) and then (re)build the solution.
+
+Once you compile code, you need to link it to Framework so you can test it.  Because other people at R7 are super smart, this is not so bad.
+Go to a terminal in the payloads repo that can see both framework and payloads (I do this on my ubuntu machine)
+Run make install-windows
+```
+$ make install-windows
+Installing Windows payloads
+```
+All this does is copy the generated `.dll`'s to `metasploit-framework/data/meterpreter`
+
+Once the dlls are in place, you should get a warning about using local payloads when you generate a session:
+```
+WARNING: Local file /home/dwelch/dev/metasploit-framework/data/meterpreter/metsrv.x64.dll is being used
+WARNING: Local files may be incompatible with the Metasploit Framework
+```
+
+Once that is in place, run debugView as admin on the machine running the payload. Be sure to select "Global_Win32" messages in the "Capture" dropdown box.
