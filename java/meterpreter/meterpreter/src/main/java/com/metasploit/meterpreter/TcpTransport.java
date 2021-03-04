@@ -25,7 +25,7 @@ public class TcpTransport extends Transport {
     // the fact that MSF thinks we've 'died' (and therefore
     // it hangs) when we terminate the socket. We need to wait
     // for MSF to terminate instead.
-    private class SocketDisposer extends Thread {
+    private static class SocketDisposer extends Thread {
         private final Socket sock;
         private final DataInputStream in;
         private final DataOutputStream out;
