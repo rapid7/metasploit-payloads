@@ -56,7 +56,7 @@ DWORD THREADCALL elevate_namedpipe_thread(THREAD * thread)
 
 		// create the named pipe for the client service to connect to
 		hPipe = CreateNamedPipe(cpPipeName,
-			PIPE_ACCESS_DUPLEX, PIPE_TYPE_MESSAGE|PIPE_WAIT, 2, 0, 0, 0, NULL);
+			PIPE_ACCESS_DUPLEX, PIPE_TYPE_MESSAGE|PIPE_WAIT, 1, 0, 0, 0, NULL);
 
 		if (!hPipe) {
 			BREAK_ON_ERROR("[ELEVATE] elevate_namedpipe_thread. CreateNamedPipe failed");
