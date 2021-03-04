@@ -87,7 +87,7 @@ public class stdapi_net_config_get_interfaces_V1_4 extends stdapi_net_config_get
             }
             result.add(new Address(ip, prefixLength, null));
         }
-        return (Address[]) result.toArray(new Address[result.size()]);
+        return (Address[]) result.toArray(new Address[0]);
     }
 
     /**

@@ -54,8 +54,8 @@ public abstract class Transport {
     }
 
     protected void arrayCopy(byte[] src, int srcOffset, byte[] dest, int destOffset, int count) {
-        for (int i = 0; i < count; ++i) {
-            dest[destOffset + i] = src[srcOffset + i];
+        if (count >= 0) {
+            System.arraycopy(src, srcOffset + 0, dest, destOffset + 0, count);
         }
     }
 
