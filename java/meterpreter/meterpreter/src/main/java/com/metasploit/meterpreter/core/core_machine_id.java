@@ -15,10 +15,9 @@ public class core_machine_id implements Command {
     private static String machine_id;
 
     private String getSerial() throws IOException {
-        String stringBuffer = Utils.runCommand("getprop ro.serialno").trim() +
+        return Utils.runCommand("getprop ro.serialno").trim() +
                 Utils.runCommand("getprop ro.product.brand").trim() +
                 Utils.runCommand("getprop ro.product.model").trim();
-        return stringBuffer;
     }
 
     private String getHDLabel() {

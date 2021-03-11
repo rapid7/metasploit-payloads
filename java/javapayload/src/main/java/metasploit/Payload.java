@@ -357,7 +357,7 @@ public class Payload extends ClassLoader {
                 s.push(thisToken);
             }
         }
-        StringBuffer sb = new StringBuffer();
+        StringBuilder sb = new StringBuilder();
         for (int i = 0; i < s.size(); i++) {
             if (i > 1) {
                 // not before the filesystem root and not after it, since root
@@ -384,7 +384,7 @@ public class Payload extends ClassLoader {
             //remove the initial separator; the root has it.
             next = (ca[next] == sep) ? next + 1 : next;
 
-            StringBuffer sbPath = new StringBuffer();
+            StringBuilder sbPath = new StringBuilder();
             // Eliminate consecutive slashes after the drive spec:
             for (int i = next; i < ca.length; i++) {
                 if (ca[i] != sep || ca[i - 1] != sep) {

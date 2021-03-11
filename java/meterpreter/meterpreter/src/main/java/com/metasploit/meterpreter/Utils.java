@@ -17,13 +17,13 @@ public class Utils {
     public static String runCommand(String command) throws IOException {
         Process process = Runtime.getRuntime().exec(command);
         BufferedReader br = new BufferedReader(new InputStreamReader(process.getInputStream()));
-        StringBuffer stringBuffer = new StringBuffer();
+        StringBuilder stringBuilder = new StringBuilder();
         String line;
         while ((line = br.readLine()) != null) {
-            stringBuffer.append(line);
-            stringBuffer.append('\n');
+            stringBuilder.append(line);
+            stringBuilder.append('\n');
         }
-        return stringBuffer.toString();
+        return stringBuilder.toString();
     }
 
     public static String getHostname() {
