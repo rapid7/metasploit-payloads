@@ -104,12 +104,36 @@ if has_ctypes:
         _fields_ = [("lpSockaddr", ctypes.POINTER(SOCKADDR)),
             ("iSockaddrLength", ctypes.c_int)]
 
+    class sockaddr_in(ctypes.Structure):
+        _fields_ = [('sin_family', ctypes.c_short),
+            ('sin_port', ctypes.c_ushort),
+            ('sin_addr', ctypes.c_byte * 4),
+            ('sin_zero', ctypes.c_char * 8)
+        ]
+    SOCKADDR_IN = sockaddr_in
+
+    class sockaddr_in6(ctypes.Structure):
+        _fields_ = [('sin6_family', ctypes.c_short),
+            ('sin6_port', ctypes.c_ushort),
+            ('sin6_flowinfo', ctypes.c_ulong),
+            ('sin6_addr', ctypes.c_byte * 16),
+            ('sin6_scope_id', ctypes.c_ulong)
+        ]
+    SOCKADDR_IN6 = sockaddr_in6
+
+    class SOCKADDR_INET(ctypes.Union):
+        _fields_ = [
+            ('Ipv4', SOCKADDR_IN),
+            ('Ipv6', SOCKADDR_IN6),
+            ('si_family', ctypes.c_short)
+        ]
+
     class IP_ADAPTER_UNICAST_ADDRESS(ctypes.Structure):
         _fields_ = [
             ("s", type(
                     '_s_IP_ADAPTER_UNICAST_ADDRESS',
                     (ctypes.Structure,),
-                    dict(_fields_ = [
+                    dict(_fields_=[
                         ("Length", ctypes.c_ulong),
                         ("Flags", ctypes.c_uint32)
                     ])
@@ -215,6 +239,38 @@ if has_ctypes:
             ("dwReasmSize", ctypes.c_uint32),
             ("unused1", ctypes.c_uint16),
             ("wType", ctypes.c_uint16)]
+
+    class IP_ADDRESS_PREFIX(ctypes.Structure):
+        _fields_ = [
+            ('Prefix', SOCKADDR_INET),
+            ('PrefixLength', ctypes.c_uint8)
+        ]
+
+    class MIB_IPFORWARD_ROW2(ctypes.Structure):
+        _fields_ = [
+            ('InterfaceLuid', ctypes.c_uint64),
+            ('InterfaceIndex', ctypes.c_uint32),
+            ('DestinationPrefix', IP_ADDRESS_PREFIX),
+            ('NextHop', SOCKADDR_INET),
+            ('SitePrefixLength', ctypes.c_uint8),
+            ('ValidLifetime', ctypes.c_uint32),
+            ('PreferredLifetime', ctypes.c_uint32),
+            ('Metric', ctypes.c_uint32),
+            ('Protocol', ctypes.c_uint32),
+            ('Loopback', ctypes.c_byte),
+            ('AutoconfigureAddress', ctypes.c_byte),
+            ('Publish', ctypes.c_byte),
+            ('Immortal', ctypes.c_byte),
+            ('Age', ctypes.c_uint32),
+            ('Origin', ctypes.c_uint32),
+        ]
+    PMIB_IPFORWARD_ROW2 = ctypes.POINTER(MIB_IPFORWARD_ROW2)
+
+    class MIB_IPFORWARD_TABLE2(ctypes.Structure):
+        _fields_ = [("NumEntries", ctypes.c_uint32),
+            ("Table", MIB_IPFORWARD_ROW2 * 0)
+        ]
+    PMIB_IPFORWARD_TABLE2 = ctypes.POINTER(MIB_IPFORWARD_TABLE2)
 
     class OSVERSIONINFOEXW(ctypes.Structure):
         _fields_ = [("dwOSVersionInfoSize", ctypes.c_uint32),
@@ -1720,6 +1776,8 @@ def stdapi_net_config_get_interfaces_via_windll_mib():
 def stdapi_net_config_get_routes(request, response):
     if hasattr(socket, 'AF_NETLINK') and hasattr(socket, 'NETLINK_ROUTE'):
         routes = stdapi_net_config_get_routes_via_netlink()
+    elif has_windll:
+        routes = stdapi_net_config_get_routes_via_windll()
     else:
         return ERROR_FAILURE, response
     for route_info in routes:
@@ -1766,6 +1824,31 @@ def stdapi_net_config_get_routes_via_netlink():
         if route['table'] != RT_TABLE_MAIN:
             continue
         routes.append(route)
+    return routes
+
+def stdapi_net_config_get_routes_via_windll():
+    iphlpapi = ctypes.windll.iphlpapi
+    routes = []
+    for family in [WIN_AF_INET, WIN_AF_INET6]:
+        table = PMIB_IPFORWARD_TABLE2()
+        if iphlpapi.GetIpForwardTable2(family, ctypes.byref(table)):
+            continue
+        table = table.contents
+        rows = ctypes.cast(table.Table, PMIB_IPFORWARD_ROW2)
+        for index in range(table.NumEntries):
+            row = rows[index]
+            route = {}
+            if family == WIN_AF_INET:
+                route['subnet'] = ctarray_to_bytes(row.DestinationPrefix.Prefix.Ipv4.sin_addr)
+                route['netmask'] = calculate_32bit_netmask(row.DestinationPrefix.PrefixLength)
+                route['gateway'] = ctarray_to_bytes(row.NextHop.Ipv4.sin_addr)
+            elif family == WIN_AF_INET6:
+                route['subnet'] = ctarray_to_bytes(row.DestinationPrefix.Prefix.Ipv6.sin6_addr)
+                route['netmask'] = calculate_128bit_netmask(row.DestinationPrefix.PrefixLength)
+                route['gateway'] = ctarray_to_bytes(row.NextHop.Ipv6.sin6_addr)
+            route['metric'] = row.Metric
+            route['iface'] = '???'
+            routes.append(route)
     return routes
 
 @register_function_if(has_windll)
