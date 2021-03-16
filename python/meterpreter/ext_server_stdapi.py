@@ -240,6 +240,44 @@ if has_ctypes:
             ("unused1", ctypes.c_uint16),
             ("wType", ctypes.c_uint16)]
 
+    class MIB_IPINTERFACE_ROW(ctypes.Structure):
+        _fields_ = [
+            ('Family', ctypes.c_uint16),
+            ('InterfaceLuid', ctypes.c_uint64),
+            ('InterfaceIndex', ctypes.c_uint32),
+            ('MaxReassemblySize', ctypes.c_uint32),
+            ('InterfaceIdentifier', ctypes.c_uint64),
+            ('MinRouterAdvertisementInterval', ctypes.c_uint32),
+            ('MaxRouterAdvertisementInterval', ctypes.c_uint32),
+            ('AdvertisingEnabled', ctypes.c_bool),
+            ('ForwardingEnabled', ctypes.c_bool),
+            ('WeakHostSend', ctypes.c_bool),
+            ('WeakHostReceive', ctypes.c_bool),
+            ('UseAutomaticMetric', ctypes.c_bool),
+            ('UseNeighborUnreachabilityDetection', ctypes.c_bool),
+            ('ManagedAddressConfigurationSupported', ctypes.c_bool),
+            ('OtherStatefulConfigurationSupported', ctypes.c_bool),
+            ('AdvertiseDefaultRoute', ctypes.c_bool),
+            ('RouterDiscoveryBehavior', ctypes.c_uint32),
+            ('DadTransmits', ctypes.c_uint32),
+            ('BaseReachableTime', ctypes.c_uint32),
+            ('RetransmitTime', ctypes.c_uint32),
+            ('PathMtuDiscoveryTimeout', ctypes.c_uint32),
+            ('LinkLocalAddressBehavior', ctypes.c_uint32),
+            ('LinkLocalAddressTimeout', ctypes.c_uint32),
+            ('ZoneIndices', ctypes.c_uint32 * 16),
+            ('SitePrefixLength', ctypes.c_uint32),
+            ('Metric', ctypes.c_uint32),
+            ('NlMtu', ctypes.c_uint32),
+            ('Connected', ctypes.c_bool),
+            ('SupportsWakeUpPatterns', ctypes.c_bool),
+            ('SupportsNeighborDiscovery', ctypes.c_bool),
+            ('SupportsRouterDiscovery', ctypes.c_bool),
+            ('ReachableTime', ctypes.c_uint32),
+            ('TransmitOffload', ctypes.c_uint8),
+            ('ReceiveOffload', ctypes.c_uint8),
+            ('DisableDefaultRoutes', ctypes.c_bool),
+        ]
     class IP_ADDRESS_PREFIX(ctypes.Structure):
         _fields_ = [
             ('Prefix', SOCKADDR_INET),
@@ -1829,6 +1867,9 @@ def stdapi_net_config_get_routes_via_netlink():
 def stdapi_net_config_get_routes_via_windll():
     iphlpapi = ctypes.windll.iphlpapi
     routes = []
+    iface_names = {}
+    for iface in stdapi_net_config_get_interfaces_via_windll():
+        iface_names[iface['index']] = iface['name']
     for family in [WIN_AF_INET, WIN_AF_INET6]:
         table = PMIB_IPFORWARD_TABLE2()
         if iphlpapi.GetIpForwardTable2(family, ctypes.byref(table)):
@@ -1846,8 +1887,11 @@ def stdapi_net_config_get_routes_via_windll():
                 route['subnet'] = ctarray_to_bytes(row.DestinationPrefix.Prefix.Ipv6.sin6_addr)
                 route['netmask'] = calculate_128bit_netmask(row.DestinationPrefix.PrefixLength)
                 route['gateway'] = ctarray_to_bytes(row.NextHop.Ipv6.sin6_addr)
-            route['metric'] = row.Metric
-            route['iface'] = '???'
+            iface = MIB_IPINTERFACE_ROW(Family=family, InterfaceIndex=row.InterfaceIndex)
+            if iphlpapi.GetIpInterfaceEntry(ctypes.byref(iface)):
+                continue
+            route['metric'] = row.Metric + iface.Metric
+            route['iface'] = iface_names.get(row.InterfaceIndex, str(row.InterfaceIndex))
             routes.append(route)
     return routes
 
