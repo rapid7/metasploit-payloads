@@ -249,15 +249,15 @@ if has_ctypes:
             ('InterfaceIdentifier', ctypes.c_uint64),
             ('MinRouterAdvertisementInterval', ctypes.c_uint32),
             ('MaxRouterAdvertisementInterval', ctypes.c_uint32),
-            ('AdvertisingEnabled', ctypes.c_bool),
-            ('ForwardingEnabled', ctypes.c_bool),
-            ('WeakHostSend', ctypes.c_bool),
-            ('WeakHostReceive', ctypes.c_bool),
-            ('UseAutomaticMetric', ctypes.c_bool),
-            ('UseNeighborUnreachabilityDetection', ctypes.c_bool),
-            ('ManagedAddressConfigurationSupported', ctypes.c_bool),
-            ('OtherStatefulConfigurationSupported', ctypes.c_bool),
-            ('AdvertiseDefaultRoute', ctypes.c_bool),
+            ('AdvertisingEnabled', ctypes.c_uint8),
+            ('ForwardingEnabled', ctypes.c_uint8),
+            ('WeakHostSend', ctypes.c_uint8),
+            ('WeakHostReceive', ctypes.c_uint8),
+            ('UseAutomaticMetric', ctypes.c_uint8),
+            ('UseNeighborUnreachabilityDetection', ctypes.c_uint8),
+            ('ManagedAddressConfigurationSupported', ctypes.c_uint8),
+            ('OtherStatefulConfigurationSupported', ctypes.c_uint8),
+            ('AdvertiseDefaultRoute', ctypes.c_uint8),
             ('RouterDiscoveryBehavior', ctypes.c_uint32),
             ('DadTransmits', ctypes.c_uint32),
             ('BaseReachableTime', ctypes.c_uint32),
@@ -269,14 +269,14 @@ if has_ctypes:
             ('SitePrefixLength', ctypes.c_uint32),
             ('Metric', ctypes.c_uint32),
             ('NlMtu', ctypes.c_uint32),
-            ('Connected', ctypes.c_bool),
-            ('SupportsWakeUpPatterns', ctypes.c_bool),
-            ('SupportsNeighborDiscovery', ctypes.c_bool),
-            ('SupportsRouterDiscovery', ctypes.c_bool),
+            ('Connected', ctypes.c_uint8),
+            ('SupportsWakeUpPatterns', ctypes.c_uint8),
+            ('SupportsNeighborDiscovery', ctypes.c_uint8),
+            ('SupportsRouterDiscovery', ctypes.c_uint8),
             ('ReachableTime', ctypes.c_uint32),
             ('TransmitOffload', ctypes.c_uint8),
             ('ReceiveOffload', ctypes.c_uint8),
-            ('DisableDefaultRoutes', ctypes.c_bool),
+            ('DisableDefaultRoutes', ctypes.c_uint8),
         ]
     class IP_ADDRESS_PREFIX(ctypes.Structure):
         _fields_ = [
@@ -1407,7 +1407,10 @@ def stdapi_fs_delete_dir(request, response):
         del_func = os.unlink
     else:
         del_func = shutil.rmtree
-    del_func(dir_path)
+    try:
+        del_func(dir_path)
+    except OSError:
+        return ERROR_FAILURE, response
     return ERROR_SUCCESS, response
 
 @register_function
@@ -1415,7 +1418,10 @@ def stdapi_fs_delete_file(request, response):
     file_path = packet_get_tlv(request, TLV_TYPE_FILE_PATH)['value']
     if has_windll:
         subprocess.call(unicode("attrib.exe -r ") + file_path)
-    os.unlink(unicode(file_path))
+    try:
+        os.unlink(unicode(file_path))
+    except OSError:
+        return ERROR_FAILURE, response
     return ERROR_SUCCESS, response
 
 @register_function
@@ -1729,7 +1735,7 @@ def stdapi_net_config_get_interfaces_via_osx_ifconfig():
 
 def stdapi_net_config_get_interfaces_via_windll():
     iphlpapi = ctypes.windll.iphlpapi
-    if not hasattr(iphlpapi, 'GetAdaptersAddresses'):
+    if not hasattr(iphlpapi, 'GetAdaptersAddresses'):  # added in XP / Server 2003
         return stdapi_net_config_get_interfaces_via_windll_mib()
     Flags = (GAA_FLAG_INCLUDE_PREFIX | GAA_FLAG_SKIP_DNS_SERVER | GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_ANYCAST)
     AdapterAddresses = ctypes.c_void_p()
@@ -1741,7 +1747,7 @@ def stdapi_net_config_get_interfaces_via_windll():
     AdapterAddresses = ctypes.string_at(ctypes.byref(AdapterAddressesData), SizePointer.value)
     AdapterAddresses = cstruct_unpack(IP_ADAPTER_ADDRESSES, AdapterAddresses)
     if AdapterAddresses.u.s.Length <= 72:
-        return stdapi_net_config_get_interfaces_via_windll_mib()
+        raise RuntimeError('invalid AdapterAddresses length')
     win_version = windll_GetVersion()
     interfaces = []
     pAdapterAddresses = ctypes.byref(AdapterAddresses)
