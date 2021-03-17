@@ -105,27 +105,26 @@ if has_ctypes:
             ("iSockaddrLength", ctypes.c_int)]
 
     class sockaddr_in(ctypes.Structure):
-        _fields_ = [('sin_family', ctypes.c_short),
-            ('sin_port', ctypes.c_ushort),
-            ('sin_addr', ctypes.c_byte * 4),
-            ('sin_zero', ctypes.c_char * 8)
+        _fields_ = [("sin_family", ctypes.c_short),
+            ("sin_port", ctypes.c_ushort),
+            ("sin_addr", ctypes.c_byte * 4),
+            ("sin_zero", ctypes.c_char * 8)
         ]
     SOCKADDR_IN = sockaddr_in
 
     class sockaddr_in6(ctypes.Structure):
-        _fields_ = [('sin6_family', ctypes.c_short),
-            ('sin6_port', ctypes.c_ushort),
-            ('sin6_flowinfo', ctypes.c_ulong),
-            ('sin6_addr', ctypes.c_byte * 16),
-            ('sin6_scope_id', ctypes.c_ulong)
+        _fields_ = [("sin6_family", ctypes.c_short),
+            ("sin6_port", ctypes.c_ushort),
+            ("sin6_flowinfo", ctypes.c_ulong),
+            ("sin6_addr", ctypes.c_byte * 16),
+            ("sin6_scope_id", ctypes.c_ulong)
         ]
     SOCKADDR_IN6 = sockaddr_in6
 
     class SOCKADDR_INET(ctypes.Union):
-        _fields_ = [
-            ('Ipv4', SOCKADDR_IN),
-            ('Ipv6', SOCKADDR_IN6),
-            ('si_family', ctypes.c_short)
+        _fields_ = [("Ipv4", SOCKADDR_IN),
+            ("Ipv6", SOCKADDR_IN6),
+            ("si_family", ctypes.c_short)
         ]
 
     class IP_ADAPTER_UNICAST_ADDRESS(ctypes.Structure):
@@ -205,102 +204,65 @@ if has_ctypes:
         _fields_ = [("cbSize", ctypes.c_uint32),
             ("dwTime", ctypes.c_uint32)]
 
-    class MIB_IFROW(ctypes.Structure):
-        _fields_ = [("wszName", (ctypes.c_wchar * 256)),
-            ("dwIndex", ctypes.c_uint32),
-            ("dwType", ctypes.c_uint32),
-            ("dwMtu", ctypes.c_uint32),
-            ("dwSpeed", ctypes.c_uint32),
-            ("dwPhysAddrLen", ctypes.c_uint32),
-            ("bPhysAddr", (ctypes.c_uint8 * 8)),
-            ("dwAdminStatus", ctypes.c_uint32),
-            ("dwOperStaus", ctypes.c_uint32),
-            ("dwLastChange", ctypes.c_uint32),
-            ("dwInOctets", ctypes.c_uint32),
-            ("dwInUcastPkts", ctypes.c_uint32),
-            ("dwInNUcastPkts", ctypes.c_uint32),
-            ("dwInDiscards", ctypes.c_uint32),
-            ("dwInErrors", ctypes.c_uint32),
-            ("dwInUnknownProtos", ctypes.c_uint32),
-            ("dwOutOctets", ctypes.c_uint32),
-            ("dwOutUcastPkts", ctypes.c_uint32),
-            ("dwOutNUcastPkts", ctypes.c_uint32),
-            ("dwOutDiscards", ctypes.c_uint32),
-            ("dwOutErrors", ctypes.c_uint32),
-            ("dwOutQLen", ctypes.c_uint32),
-            ("dwDescrLen", ctypes.c_uint32),
-            ("bDescr", (ctypes.c_char * 256))]
-
-    class MIB_IPADDRROW(ctypes.Structure):
-        _fields_ = [("dwAddr", ctypes.c_uint32),
-            ("dwIndex", ctypes.c_uint32),
-            ("dwMask", ctypes.c_uint32),
-            ("dwBCastAddr", ctypes.c_uint32),
-            ("dwReasmSize", ctypes.c_uint32),
-            ("unused1", ctypes.c_uint16),
-            ("wType", ctypes.c_uint16)]
-
     class MIB_IPINTERFACE_ROW(ctypes.Structure):
-        _fields_ = [
-            ('Family', ctypes.c_uint16),
-            ('InterfaceLuid', ctypes.c_uint64),
-            ('InterfaceIndex', ctypes.c_uint32),
-            ('MaxReassemblySize', ctypes.c_uint32),
-            ('InterfaceIdentifier', ctypes.c_uint64),
-            ('MinRouterAdvertisementInterval', ctypes.c_uint32),
-            ('MaxRouterAdvertisementInterval', ctypes.c_uint32),
-            ('AdvertisingEnabled', ctypes.c_uint8),
-            ('ForwardingEnabled', ctypes.c_uint8),
-            ('WeakHostSend', ctypes.c_uint8),
-            ('WeakHostReceive', ctypes.c_uint8),
-            ('UseAutomaticMetric', ctypes.c_uint8),
-            ('UseNeighborUnreachabilityDetection', ctypes.c_uint8),
-            ('ManagedAddressConfigurationSupported', ctypes.c_uint8),
-            ('OtherStatefulConfigurationSupported', ctypes.c_uint8),
-            ('AdvertiseDefaultRoute', ctypes.c_uint8),
-            ('RouterDiscoveryBehavior', ctypes.c_uint32),
-            ('DadTransmits', ctypes.c_uint32),
-            ('BaseReachableTime', ctypes.c_uint32),
-            ('RetransmitTime', ctypes.c_uint32),
-            ('PathMtuDiscoveryTimeout', ctypes.c_uint32),
-            ('LinkLocalAddressBehavior', ctypes.c_uint32),
-            ('LinkLocalAddressTimeout', ctypes.c_uint32),
-            ('ZoneIndices', ctypes.c_uint32 * 16),
-            ('SitePrefixLength', ctypes.c_uint32),
-            ('Metric', ctypes.c_uint32),
-            ('NlMtu', ctypes.c_uint32),
-            ('Connected', ctypes.c_uint8),
-            ('SupportsWakeUpPatterns', ctypes.c_uint8),
-            ('SupportsNeighborDiscovery', ctypes.c_uint8),
-            ('SupportsRouterDiscovery', ctypes.c_uint8),
-            ('ReachableTime', ctypes.c_uint32),
-            ('TransmitOffload', ctypes.c_uint8),
-            ('ReceiveOffload', ctypes.c_uint8),
-            ('DisableDefaultRoutes', ctypes.c_uint8),
+        _fields_ = [("Family", ctypes.c_uint16),
+            ("InterfaceLuid", ctypes.c_uint64),
+            ("InterfaceIndex", ctypes.c_uint32),
+            ("MaxReassemblySize", ctypes.c_uint32),
+            ("InterfaceIdentifier", ctypes.c_uint64),
+            ("MinRouterAdvertisementInterval", ctypes.c_uint32),
+            ("MaxRouterAdvertisementInterval", ctypes.c_uint32),
+            ("AdvertisingEnabled", ctypes.c_uint8),
+            ("ForwardingEnabled", ctypes.c_uint8),
+            ("WeakHostSend", ctypes.c_uint8),
+            ("WeakHostReceive", ctypes.c_uint8),
+            ("UseAutomaticMetric", ctypes.c_uint8),
+            ("UseNeighborUnreachabilityDetection", ctypes.c_uint8),
+            ("ManagedAddressConfigurationSupported", ctypes.c_uint8),
+            ("OtherStatefulConfigurationSupported", ctypes.c_uint8),
+            ("AdvertiseDefaultRoute", ctypes.c_uint8),
+            ("RouterDiscoveryBehavior", ctypes.c_uint32),
+            ("DadTransmits", ctypes.c_uint32),
+            ("BaseReachableTime", ctypes.c_uint32),
+            ("RetransmitTime", ctypes.c_uint32),
+            ("PathMtuDiscoveryTimeout", ctypes.c_uint32),
+            ("LinkLocalAddressBehavior", ctypes.c_uint32),
+            ("LinkLocalAddressTimeout", ctypes.c_uint32),
+            ("ZoneIndices", ctypes.c_uint32 * 16),
+            ("SitePrefixLength", ctypes.c_uint32),
+            ("Metric", ctypes.c_uint32),
+            ("NlMtu", ctypes.c_uint32),
+            ("Connected", ctypes.c_uint8),
+            ("SupportsWakeUpPatterns", ctypes.c_uint8),
+            ("SupportsNeighborDiscovery", ctypes.c_uint8),
+            ("SupportsRouterDiscovery", ctypes.c_uint8),
+            ("ReachableTime", ctypes.c_uint32),
+            ("TransmitOffload", ctypes.c_uint8),
+            ("ReceiveOffload", ctypes.c_uint8),
+            ("DisableDefaultRoutes", ctypes.c_uint8),
         ]
+
     class IP_ADDRESS_PREFIX(ctypes.Structure):
-        _fields_ = [
-            ('Prefix', SOCKADDR_INET),
-            ('PrefixLength', ctypes.c_uint8)
+        _fields_ = [("Prefix", SOCKADDR_INET),
+            ("PrefixLength", ctypes.c_uint8)
         ]
 
     class MIB_IPFORWARD_ROW2(ctypes.Structure):
-        _fields_ = [
-            ('InterfaceLuid', ctypes.c_uint64),
-            ('InterfaceIndex', ctypes.c_uint32),
-            ('DestinationPrefix', IP_ADDRESS_PREFIX),
-            ('NextHop', SOCKADDR_INET),
-            ('SitePrefixLength', ctypes.c_uint8),
-            ('ValidLifetime', ctypes.c_uint32),
-            ('PreferredLifetime', ctypes.c_uint32),
-            ('Metric', ctypes.c_uint32),
-            ('Protocol', ctypes.c_uint32),
-            ('Loopback', ctypes.c_byte),
-            ('AutoconfigureAddress', ctypes.c_byte),
-            ('Publish', ctypes.c_byte),
-            ('Immortal', ctypes.c_byte),
-            ('Age', ctypes.c_uint32),
-            ('Origin', ctypes.c_uint32),
+        _fields_ = [("InterfaceLuid", ctypes.c_uint64),
+            ("InterfaceIndex", ctypes.c_uint32),
+            ("DestinationPrefix", IP_ADDRESS_PREFIX),
+            ("NextHop", SOCKADDR_INET),
+            ("SitePrefixLength", ctypes.c_uint8),
+            ("ValidLifetime", ctypes.c_uint32),
+            ("PreferredLifetime", ctypes.c_uint32),
+            ("Metric", ctypes.c_uint32),
+            ("Protocol", ctypes.c_uint32),
+            ("Loopback", ctypes.c_byte),
+            ("AutoconfigureAddress", ctypes.c_byte),
+            ("Publish", ctypes.c_byte),
+            ("Immortal", ctypes.c_byte),
+            ("Age", ctypes.c_uint32),
+            ("Origin", ctypes.c_uint32),
         ]
     PMIB_IPFORWARD_ROW2 = ctypes.POINTER(MIB_IPFORWARD_ROW2)
 
@@ -1738,8 +1700,6 @@ def stdapi_net_config_get_interfaces_via_osx_ifconfig():
 
 def stdapi_net_config_get_interfaces_via_windll():
     iphlpapi = ctypes.windll.iphlpapi
-    if not hasattr(iphlpapi, 'GetAdaptersAddresses'):  # added in XP / Server 2003
-        return stdapi_net_config_get_interfaces_via_windll_mib()
     Flags = (GAA_FLAG_INCLUDE_PREFIX | GAA_FLAG_SKIP_DNS_SERVER | GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_ANYCAST)
     AdapterAddresses = ctypes.c_void_p()
     SizePointer = ctypes.c_ulong()
@@ -1787,35 +1747,6 @@ def stdapi_net_config_get_interfaces_via_windll():
             else:
                 iface_addresses.append((socket.AF_INET6, ctypes.string_at(ctypes.byref(address.sa_data), 22)[6:], prefix))
             iface_info['addrs'] = iface_addresses
-        interfaces.append(iface_info)
-    return interfaces
-
-def stdapi_net_config_get_interfaces_via_windll_mib():
-    iphlpapi = ctypes.windll.iphlpapi
-    table = (ctypes.c_uint8 * (ctypes.sizeof(MIB_IPADDRROW) * 33))()
-    pdwSize = ctypes.c_ulong()
-    pdwSize.value = ctypes.sizeof(table)
-    if (iphlpapi.GetIpAddrTable(ctypes.byref(table), ctypes.byref(pdwSize), True) != 0):
-        return None
-    interfaces = []
-    table_data = ctypes.string_at(table, pdwSize.value)
-    entries = struct.unpack('I', table_data[:4])[0]
-    table_data = table_data[4:]
-    for i in range(entries):
-        addrrow = ctstruct_unpack(MIB_IPADDRROW, table_data)
-        ifrow = MIB_IFROW()
-        ifrow.dwIndex = addrrow.dwIndex
-        if iphlpapi.GetIfEntry(ctypes.byref(ifrow)) != 0:
-            continue
-        iface_info = {}
-        table_data = table_data[ctypes.sizeof(MIB_IPADDRROW):]
-        iface_info['index'] = addrrow.dwIndex
-        iface_info['addrs'] = [(socket.AF_INET, struct.pack('<I', addrrow.dwAddr), struct.pack('<I', addrrow.dwMask))]
-        if ifrow.dwPhysAddrLen:
-            iface_info['hw_addr'] = ctypes.string_at(ctypes.byref(ifrow.bPhysAddr), ifrow.dwPhysAddrLen)
-        if ifrow.dwDescrLen:
-            iface_info['name'] = ifrow.bDescr
-        iface_info['mtu'] = ifrow.dwMtu
         interfaces.append(iface_info)
     return interfaces
 
