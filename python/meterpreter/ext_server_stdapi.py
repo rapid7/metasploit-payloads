@@ -753,13 +753,6 @@ def bytes_to_ctarray(bytes_):
     ctypes.memmove(ctypes.byref(ctarray), bytes_, len(bytes_))
     return ctarray
 
-def ctarray_to_bytes(ctarray):
-    if not len(ctarray):
-        # work around a bug in v3.1 & v3.2 that results in a segfault when len(ctarray) == 0
-        return bytes()
-    bytes_ = buffer(ctarray) if sys.version_info[0] < 3 else bytes(ctarray)
-    return bytes_[:]
-
 def calculate_32bit_netmask(bits):
     if bits == 32:
         netmask = 0xffffffff
@@ -780,7 +773,17 @@ def calculate_128bit_netmask(bits):
         netmask = struct.pack('!IIII', part, 0, 0, 0)
     return netmask
 
-def cstruct_unpack(structure, raw_data):
+def ctarray_to_bytes(ctarray):
+    if not len(ctarray):
+        # work around a bug in v3.1 & v3.2 that results in a segfault when len(ctarray) == 0
+        return bytes()
+    bytes_ = buffer(ctarray) if sys.version_info[0] < 3 else bytes(ctarray)
+    return bytes_[:]
+
+def ctstruct_pack(structure):
+    return ctypes.string_at(ctypes.byref(structure), ctypes.sizeof(structure))
+
+def ctstruct_unpack(structure, raw_data):
     if not isinstance(structure, ctypes.Structure):
         structure = structure()
     ctypes.memmove(ctypes.byref(structure), raw_data, ctypes.sizeof(structure))
@@ -811,7 +814,7 @@ def get_token_user(handle):
     ctypes.windll.kernel32.CloseHandle(token_handle)
     if not result:
         return None
-    return cstruct_unpack(TOKEN_USER, token_user_buffer)
+    return ctstruct_unpack(TOKEN_USER, token_user_buffer)
 
 def get_username_from_token(token_user):
     user = (ctypes.c_char * 512)()
@@ -936,14 +939,14 @@ def netlink_request(req_type, req_data):
     sock.bind((os.getpid(), 0))
     seq = int(time.time())
     if isinstance(req_data, ctypes.Structure):
-        req_data = bytes(req_data)
-    nlmsg = bytes(NLMSGHDR(len=ctypes.sizeof(NLMSGHDR) + len(req_data), type=req_type, flags=(NLM_F_REQUEST | NLM_F_DUMP), seq=seq, pid=0))
+        req_data = ctstruct_pack(req_data)
+    nlmsg = ctstruct_pack(NLMSGHDR(len=ctypes.sizeof(NLMSGHDR) + len(req_data), type=req_type, flags=(NLM_F_REQUEST | NLM_F_DUMP), seq=seq, pid=0))
     sock.send(nlmsg + req_data)
     responses = []
     if not len(select.select([sock.fileno()], [], [], 0.5)[0]):
         return responses
     raw_response_data = sock.recv(0xfffff)
-    response = cstruct_unpack(NLMSGHDR, raw_response_data[:ctypes.sizeof(NLMSGHDR)])
+    response = ctstruct_unpack(NLMSGHDR, raw_response_data[:ctypes.sizeof(NLMSGHDR)])
     raw_response_data = raw_response_data[ctypes.sizeof(NLMSGHDR):]
     while response.type != NLMSG_DONE:
         if response.type == NLMSG_ERROR:
@@ -956,7 +959,7 @@ def netlink_request(req_type, req_data):
             if not len(select.select([sock.fileno()], [], [], 0.5)[0]):
                 break
             raw_response_data = sock.recv(0xfffff)
-        response = cstruct_unpack(NLMSGHDR, raw_response_data[:ctypes.sizeof(NLMSGHDR)])
+        response = ctstruct_unpack(NLMSGHDR, raw_response_data[:ctypes.sizeof(NLMSGHDR)])
         raw_response_data = raw_response_data[ctypes.sizeof(NLMSGHDR):]
     sock.close()
     return responses
@@ -1348,7 +1351,7 @@ def stdapi_sys_eventlog_read(request, response):
     buf = ctypes.create_unicode_buffer(bytes_needed.value)
     if not adv32.ReadEventLogW(handle, flags, offset, buf, bytes_needed, ctypes.byref(bytes_read), ctypes.byref(bytes_needed)):
         return error_result_windows(), response
-    record = cstruct_unpack(EVENTLOGRECORD, buf)
+    record = ctstruct_unpack(EVENTLOGRECORD, buf)
     response += tlv_pack(TLV_TYPE_EVENT_RECORDNUMBER, record.RecordNumber)
     response += tlv_pack(TLV_TYPE_EVENT_TIMEGENERATED, record.TimeGenerated)
     response += tlv_pack(TLV_TYPE_EVENT_TIMEWRITTEN, record.TimeWritten)
@@ -1584,7 +1587,7 @@ def stdapi_fs_mount_show(request, response):
             buf = ctypes.create_unicode_buffer(1024)
             bufsize = ctypes.c_ulong(1024)
             if mpr.WNetGetUniversalNameW(drive, UNIVERSAL_NAME_INFO_LEVEL, ctypes.byref(buf), ctypes.byref(bufsize)) == 0:
-                pUniversalNameInfo = cstruct_unpack(UNIVERSAL_NAME_INFO, buf)
+                pUniversalNameInfo = ctstruct_unpack(UNIVERSAL_NAME_INFO, buf)
                 mount += tlv_pack(TLV_TYPE_MOUNT_UNCPATH, pUniversalNameInfo.lpUniversalName)
         # Retrieve information about the amount of space that is available on a disk volume
         user_free_bytes = ctypes.c_ulonglong(0)
@@ -1643,7 +1646,7 @@ def stdapi_net_config_get_interfaces_via_netlink():
 
     responses = netlink_request(RTM_GETLINK, IFINFOMSG())
     for res_data in responses:
-        iface = cstruct_unpack(IFINFOMSG, res_data)
+        iface = ctstruct_unpack(IFINFOMSG, res_data)
         iface_info = {'index':iface.index}
         flags = []
         for flag in iface_flags_sorted:
@@ -1652,7 +1655,7 @@ def stdapi_net_config_get_interfaces_via_netlink():
         iface_info['flags'] = ' '.join(flags)
         cursor = ctypes.sizeof(IFINFOMSG)
         while cursor < len(res_data):
-            attribute = cstruct_unpack(RTATTR, res_data[cursor:])
+            attribute = ctstruct_unpack(RTATTR, res_data[cursor:])
             at_len = attribute.len
             attr_data = res_data[cursor + ctypes.sizeof(RTATTR):(cursor + at_len)]
             cursor += rta_align(at_len)
@@ -1667,13 +1670,13 @@ def stdapi_net_config_get_interfaces_via_netlink():
 
     responses = netlink_request(RTM_GETADDR, IFADDRMSG())
     for res_data in responses:
-        iface = cstruct_unpack(IFADDRMSG, res_data)
+        iface = ctstruct_unpack(IFADDRMSG, res_data)
         if not iface.family in (socket.AF_INET, socket.AF_INET6):
             continue
         iface_info = interfaces.get(iface.index, {})
         cursor = ctypes.sizeof(IFADDRMSG)
         while cursor < len(res_data):
-            attribute = cstruct_unpack(RTATTR, res_data[cursor:])
+            attribute = ctstruct_unpack(RTATTR, res_data[cursor:])
             at_len = attribute.len
             attr_data = res_data[cursor + ctypes.sizeof(RTATTR):(cursor + at_len)]
             cursor += rta_align(at_len)
@@ -1745,14 +1748,14 @@ def stdapi_net_config_get_interfaces_via_windll():
     AdapterAddressesData = (ctypes.c_uint8 * SizePointer.value)()
     iphlpapi.GetAdaptersAddresses(socket.AF_UNSPEC, Flags, None, ctypes.byref(AdapterAddressesData), ctypes.byref(SizePointer))
     AdapterAddresses = ctypes.string_at(ctypes.byref(AdapterAddressesData), SizePointer.value)
-    AdapterAddresses = cstruct_unpack(IP_ADAPTER_ADDRESSES, AdapterAddresses)
+    AdapterAddresses = ctstruct_unpack(IP_ADAPTER_ADDRESSES, AdapterAddresses)
     if AdapterAddresses.u.s.Length <= 72:
         raise RuntimeError('invalid AdapterAddresses length')
     win_version = windll_GetVersion()
     interfaces = []
     pAdapterAddresses = ctypes.byref(AdapterAddresses)
     while pAdapterAddresses:
-        AdapterAddresses = cstruct_unpack(IP_ADAPTER_ADDRESSES, pAdapterAddresses)
+        AdapterAddresses = ctstruct_unpack(IP_ADAPTER_ADDRESSES, pAdapterAddresses)
         pAdapterAddresses = AdapterAddresses.Next
         pFirstPrefix = AdapterAddresses.FirstPrefix
         iface_info = {}
@@ -1766,9 +1769,9 @@ def stdapi_net_config_get_interfaces_via_windll():
         iface_info['mtu'] = AdapterAddresses.Mtu
         pUniAddr = AdapterAddresses.FirstUnicastAddress
         while pUniAddr:
-            UniAddr = cstruct_unpack(IP_ADAPTER_UNICAST_ADDRESS, pUniAddr)
+            UniAddr = ctstruct_unpack(IP_ADAPTER_UNICAST_ADDRESS, pUniAddr)
             pUniAddr = UniAddr.Next
-            address = cstruct_unpack(SOCKADDR, UniAddr.Address.lpSockaddr)
+            address = ctstruct_unpack(SOCKADDR, UniAddr.Address.lpSockaddr)
             if not address.sa_family in (socket.AF_INET, socket.AF_INET6):
                 continue
             prefix = 0
@@ -1799,7 +1802,7 @@ def stdapi_net_config_get_interfaces_via_windll_mib():
     entries = struct.unpack('I', table_data[:4])[0]
     table_data = table_data[4:]
     for i in range(entries):
-        addrrow = cstruct_unpack(MIB_IPADDRROW, table_data)
+        addrrow = ctstruct_unpack(MIB_IPADDRROW, table_data)
         ifrow = MIB_IFROW()
         ifrow.dwIndex = addrrow.dwIndex
         if iphlpapi.GetIfEntry(ctypes.byref(ifrow)) != 0:
@@ -1839,7 +1842,7 @@ def stdapi_net_config_get_routes_via_netlink():
     responses = netlink_request(RTM_GETROUTE, RTMSG(family=socket.AF_UNSPEC))
     routes = []
     for res_data in responses:
-        rtmsg = cstruct_unpack(RTMSG, res_data)
+        rtmsg = ctstruct_unpack(RTMSG, res_data)
         cursor = rta_align(ctypes.sizeof(RTMSG))
         route = {'table': rtmsg.table}
         if rtmsg.family == socket.AF_INET:
@@ -1851,7 +1854,7 @@ def stdapi_net_config_get_routes_via_netlink():
         else:
           continue
         while cursor < len(res_data):
-            attribute = cstruct_unpack(RTATTR, res_data[cursor:])
+            attribute = ctstruct_unpack(RTATTR, res_data[cursor:])
             at_len = attribute.len
             attr_data = res_data[cursor + ctypes.sizeof(RTATTR):(cursor + at_len)]
             cursor += rta_align(at_len)
