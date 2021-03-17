@@ -247,6 +247,24 @@ if has_ctypes:
             ("PrefixLength", ctypes.c_uint8)
         ]
 
+    class MIB_IPFORWARDROW(ctypes.Structure):
+        _fields_ = [("dwForwardDest", ctypes.c_uint32),
+            ("dwForwardMask", ctypes.c_uint32),
+            ("dwForwardPolicy", ctypes.c_uint32),
+            ("dwForwardNextHop", ctypes.c_uint32),
+            ("dwForwardIfIndex", ctypes.c_uint32),
+            ("dwForwardType", ctypes.c_uint32),
+            ("dwForwardProto", ctypes.c_uint32),
+            ("dwForwardAge", ctypes.c_uint32),
+            ("dwForwardNextHopAS", ctypes.c_uint32),
+            ("dwForwardMetric1", ctypes.c_uint32),
+            ("dwForwardMetric2", ctypes.c_uint32),
+            ("dwForwardMetric3", ctypes.c_uint32),
+            ("dwForwardMetric4", ctypes.c_uint32),
+            ("dwForwardMetric5", ctypes.c_uint32),
+        ]
+    PMIB_IPFORWARDROW = ctypes.POINTER(MIB_IPFORWARDROW)
+
     class MIB_IPFORWARD_ROW2(ctypes.Structure):
         _fields_ = [("InterfaceLuid", ctypes.c_uint64),
             ("InterfaceIndex", ctypes.c_uint32),
@@ -265,6 +283,13 @@ if has_ctypes:
             ("Origin", ctypes.c_uint32),
         ]
     PMIB_IPFORWARD_ROW2 = ctypes.POINTER(MIB_IPFORWARD_ROW2)
+
+
+    class MIB_IPFORWARDTABLE(ctypes.Structure):
+        _fields_ = [("dwNumEntries", ctypes.c_uint32),
+            ("table", MIB_IPFORWARDROW * 0)
+        ]
+    PMIB_IPFORWARDTABLE = ctypes.POINTER(MIB_IPFORWARDTABLE)
 
     class MIB_IPFORWARD_TABLE2(ctypes.Structure):
         _fields_ = [("NumEntries", ctypes.c_uint32),
@@ -1806,6 +1831,8 @@ def stdapi_net_config_get_routes_via_netlink():
 
 def stdapi_net_config_get_routes_via_windll():
     iphlpapi = ctypes.windll.iphlpapi
+    if not hasattr(iphlpapi, 'GetIpForwardTable2'):  # added in Vista / 2008
+        return stdapi_net_config_get_routes_via_windll2()
     routes = []
     iface_names = {}
     for iface in stdapi_net_config_get_interfaces_via_windll():
@@ -1833,6 +1860,31 @@ def stdapi_net_config_get_routes_via_windll():
             route['metric'] = row.Metric + iface.Metric
             route['iface'] = iface_names.get(row.InterfaceIndex, str(row.InterfaceIndex))
             routes.append(route)
+    return routes
+
+def stdapi_net_config_get_routes_via_windll2():
+    iphlpapi = ctypes.windll.iphlpapi
+    routes = []
+    iface_names = {}
+    for iface in stdapi_net_config_get_interfaces_via_windll():
+        iface_names[iface['index']] = iface['name']
+    size = ctypes.c_uint32(0)
+    table = MIB_IPFORWARDTABLE()
+    iphlpapi.GetIpForwardTable(ctypes.byref(table), ctypes.byref(size), False)
+    if size.value:
+        buffer = (ctypes.c_uint8 * size.value)()
+        table = ctypes.cast(buffer, PMIB_IPFORWARDTABLE).contents
+        iphlpapi.GetIpForwardTable(ctypes.byref(table), ctypes.byref(size), False)
+        rows = ctypes.cast(table.table, PMIB_IPFORWARDROW)
+        for index in range(table.dwNumEntries):
+            row = rows[index]
+            routes.append({
+                'subnet': struct.pack('<I', row.dwForwardDest),
+                'netmask': struct.pack('<I', row.dwForwardMask),
+                'gateway': struct.pack('<I', row.dwForwardNextHop),
+                'metric': row.dwForwardMetric1,
+                'iface': iface_names.get(row.dwForwardIfIndex, str(row.dwForwardIfIndex))
+            })
     return routes
 
 @register_function_if(has_windll)
