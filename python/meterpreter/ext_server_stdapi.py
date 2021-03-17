@@ -937,7 +937,7 @@ def netlink_request(req_type, req_data):
     raw_response_data = raw_response_data[ctypes.sizeof(NLMSGHDR):]
     while response.type != NLMSG_DONE:
         if response.type == NLMSG_ERROR:
-            print('NLMSG_ERROR')
+            debug_print('received NLMSG_ERROR from a netlink request')
             break
         response_data = raw_response_data[:(response.len - 16)]
         responses.append(response_data)
@@ -1779,6 +1779,8 @@ def stdapi_net_config_get_interfaces_via_windll():
 def stdapi_net_config_get_routes(request, response):
     if hasattr(socket, 'AF_NETLINK') and hasattr(socket, 'NETLINK_ROUTE'):
         routes = stdapi_net_config_get_routes_via_netlink()
+    elif sys.platform == 'darwin':
+        routes = stdapi_net_config_get_routes_via_osx_netstat()
     elif has_windll:
         routes = stdapi_net_config_get_routes_via_windll()
     else:
@@ -1827,6 +1829,64 @@ def stdapi_net_config_get_routes_via_netlink():
         if route['table'] != RT_TABLE_MAIN:
             continue
         routes.append(route)
+    return routes
+
+def stdapi_net_config_get_routes_via_osx_netstat():
+    proc_h = subprocess.Popen(['/usr/sbin/netstat', '-rn'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if proc_h.wait():
+        raise Exception('netstat exited with non-zero status')
+    output = proc_h.stdout.read()
+
+    routes = []
+    state = None
+    for line in output.split('\n'):
+        line = line.strip()
+        if state is None:
+            if line == 'Internet:':
+                state = socket.AF_INET
+            elif line == 'Internet6:':
+                state = socket.AF_INET6
+            continue
+        words = line.split()
+        if len(words) < 4:
+            state = None
+            continue
+        if words[0].lower() == 'destination':
+            continue
+        destination, gateway, flags, iface = words[:4]
+        if state == socket.AF_INET:
+            all_nets = '0.0.0.0/0'
+            bits = 32
+            calc_netmask = calculate_32bit_netmask
+        elif state == socket.AF_INET6:
+            all_nets = '::/0'
+            bits = 128
+            calc_netmask = calculate_128bit_netmask
+        else:
+            continue
+        if destination == 'default':
+            destination = all_nets
+        if re.match('link#\d+', gateway) or re.match('([0-9a-f]{1,2}:){5}[0-9a-f]{1,2}', gateway):
+            gateway = all_nets[:-2]
+        if '/' in destination:
+            destination, netmask_bits = destination.rsplit('/', 1)
+            netmask_bits = int(netmask_bits)
+        else:
+            netmask_bits = bits
+        if '%' in destination:
+            destination, _ = destination.rsplit('%', 1)
+        if '%' in gateway:
+            gateway, _ = gateway.rsplit('%', 1)
+        if state == socket.AF_INET:
+            while destination.count('.') < 3:
+                destination += '.0'
+        routes.append({
+            'subnet': inet_pton(state, destination),
+            'netmask': calc_netmask(netmask_bits),
+            'gateway': inet_pton(state, gateway),
+            'metric': 0,
+            'iface': iface
+        })
     return routes
 
 def stdapi_net_config_get_routes_via_windll():
