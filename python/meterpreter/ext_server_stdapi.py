@@ -1839,6 +1839,7 @@ def stdapi_net_config_get_routes_via_osx_netstat():
 
     routes = []
     state = None
+    has_refs = None
     for line in output.split('\n'):
         line = line.strip()
         if state is None:
@@ -1850,10 +1851,15 @@ def stdapi_net_config_get_routes_via_osx_netstat():
         words = line.split()
         if len(words) < 4:
             state = None
+            has_refs = None
             continue
         if words[0].lower() == 'destination':
+            if len(words) > 5 and words[3].lower() == 'refs':
+                has_refs = True
             continue
         destination, gateway, flags, iface = words[:4]
+        if has_refs:
+            iface = words[5]
         if state == socket.AF_INET:
             all_nets = '0.0.0.0/0'
             bits = 32
