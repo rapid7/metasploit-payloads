@@ -953,7 +953,7 @@ def netlink_request(req_type, req_data):
 
 def resolve_host(hostname, family):
     address_info = getaddrinfo(hostname, family=family, socktype=socket.SOCK_DGRAM, proto=socket.IPPROTO_UDP)
-    address = address_info['sockaddr'][0]
+    address = address_info[0]['sockaddr'][0]
     return {'family': family, 'address': address, 'packed_address': inet_pton(family, address)}
 
 def tlv_pack_local_addrinfo(sock):
