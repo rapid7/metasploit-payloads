@@ -49,6 +49,8 @@ define("TLV_TYPE_NETWORK_INTERFACE",   TLV_META_TYPE_GROUP   | 1433);
 define("TLV_TYPE_SUBNET_STRING",       TLV_META_TYPE_STRING  | 1440);
 define("TLV_TYPE_NETMASK_STRING",      TLV_META_TYPE_STRING  | 1441);
 define("TLV_TYPE_GATEWAY_STRING",      TLV_META_TYPE_STRING  | 1442);
+define("TLV_TYPE_ROUTE_METRIC",        TLV_META_TYPE_UINT    | 1443);
+define("TLV_TYPE_ADDR_TYPE",           TLV_META_TYPE_UINT    | 1444);
 
 # Socket
 define("TLV_TYPE_PEER_HOST",           TLV_META_TYPE_STRING  | 1500);
@@ -299,6 +301,12 @@ define("ERROR_CONNECTION_ERROR", 10000);
 my_print("Evaling stdapi");
 
 ##
+# Windows Constants
+##
+define("WIN_AF_INET", 2);
+define("WIN_AF_INET6", 23);
+
+##
 # Search Helpers
 ##
 
@@ -433,6 +441,35 @@ function add_stat_buf($path) {
         return create_tlv(TLV_TYPE_STAT_BUF32, $st_buf);
     }
     return false;
+}
+}
+
+if (!function_exists('resolve_host')) {
+function resolve_host($hostname, $family) {
+    /* requires PHP >= 5 */
+    if ($family == AF_INET) {
+        $dns_family = DNS_A;
+    } elseif ($family == AF_INET6) {
+        $dns_family = DNS_AAAA;
+    } else {
+        throw new Exception('invalid family, must be AF_INET or AF_INET6');
+    }
+
+    $dns = dns_get_record($hostname, $dns_family);
+    if (empty($dns)) {
+        return NULL;
+    }
+
+    $result = array("family" => $family);
+    $record = $dns[0];
+    if ($record["type"] == "A") {
+        $result["address"] = $record["ip"];
+    }
+    if ($record["type"] == "AAAA") {
+        $result["address"] = $record["ipv6"];
+    }
+    $result["packed_address"] = inet_pton($result["address"]);
+    return $result;
 }
 }
 
@@ -1163,7 +1200,61 @@ function stdapi_registry_set_value($req, &$pkt) {
 }
 }
 
+if (!function_exists('stdapi_net_resolve_host')) {
+register_command('stdapi_net_resolve_host', COMMAND_ID_STDAPI_NET_RESOLVE_HOST);
+function stdapi_net_resolve_host($req, &$pkt) {
+    my_print("doing stdapi_net_resolve_host");
+    $hostname = packet_get_tlv($req, TLV_TYPE_HOST_NAME)['value'];
+    $family = packet_get_tlv($req, TLV_TYPE_ADDR_TYPE)['value'];
 
+    if ($family == WIN_AF_INET) {
+        $family = AF_INET;
+    } elseif ($family == WIN_AF_INET6) {
+        $family = AF_INET6;
+    } else {
+        throw new Exception('invalid family');
+    }
+
+    $ret = ERROR_FAILURE;
+    $result = resolve_host($hostname, $family);
+    if ($result != NULL) {
+        $ret = ERROR_SUCCESS;
+        packet_add_tlv($pkt, create_tlv(TLV_TYPE_IP, $result['packed_address']));
+        packet_add_tlv($pkt, create_tlv(TLV_TYPE_ADDR_TYPE, $result['family']));
+    }
+    return $ret;
+}
+}
+
+if (!function_exists('stdapi_net_resolve_hosts')) {
+register_command('stdapi_net_resolve_hosts', COMMAND_ID_STDAPI_NET_RESOLVE_HOSTS);
+function stdapi_net_resolve_hosts($req, &$pkt) {
+    my_print("doing stdapi_net_resolve_hosts");
+    $family = packet_get_tlv($req, TLV_TYPE_ADDR_TYPE)['value'];
+
+    if ($family == WIN_AF_INET) {
+        $family = AF_INET;
+    } elseif ($family == WIN_AF_INET6) {
+        $family = AF_INET6;
+    } else {
+        throw new Exception('invalid family');
+    }
+
+    $hostname_tlvs = packet_get_all_tlvs($req, TLV_TYPE_HOST_NAME);
+    foreach ($hostname_tlvs as $hostname_tlv) {
+        $hostname = $hostname_tlv['value'];
+        $result = resolve_host($hostname, $family);
+        if ($result == NULL) {
+            packet_add_tlv($pkt, create_tlv(TLV_TYPE_IP, ''));
+            packet_add_tlv($pkt, create_tlv(TLV_TYPE_ADDR_TYPE, $family));
+        } else {
+            packet_add_tlv($pkt, create_tlv(TLV_TYPE_IP, $result['packed_address']));
+            packet_add_tlv($pkt, create_tlv(TLV_TYPE_ADDR_TYPE, $result['family']));
+        }
+    }
+    return ERROR_SUCCESS;
+}
+}
 # END STDAPI
 
 
