@@ -6,7 +6,7 @@
 void request_fs_ls_cb(void *arg, char *name, char *short_name, char *path)
 {
 	Packet *response = arg;
-	struct meterp_stat s;
+	struct meterp_stat s = {0};
 
 	/*
 	 * Add the file name, full path and stat information
