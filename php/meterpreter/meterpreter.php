@@ -780,7 +780,7 @@ function xor_bytes($key, $data) {
   $result = '';
 
   for ($i = 0; $i < strlen($data); ++$i) {
-    $result .= $data{$i} ^ $key{$i % 4};
+    $result .= $data[$i] ^ $key[$i % 4];
   }
 
   return $result;
