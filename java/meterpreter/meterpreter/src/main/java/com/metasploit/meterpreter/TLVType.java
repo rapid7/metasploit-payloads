@@ -110,6 +110,8 @@ public interface TLVType {
     public static final int TLV_TYPE_SUBNET_STRING  = TLVPacket.TLV_META_TYPE_STRING | 1440;
     public static final int TLV_TYPE_NETMASK_STRING = TLVPacket.TLV_META_TYPE_STRING | 1441;
     public static final int TLV_TYPE_GATEWAY_STRING = TLVPacket.TLV_META_TYPE_STRING | 1442;
+    public static final int TLV_TYPE_ROUTE_METRIC   = TLVPacket.TLV_META_TYPE_UINT   | 1443;
+    public static final int TLV_TYPE_ADDR_TYPE      = TLVPacket.TLV_META_TYPE_UINT   | 1444;
 
     // Socket
     public static final int TLV_TYPE_PEER_HOST       = TLVPacket.TLV_META_TYPE_STRING | 1500;
