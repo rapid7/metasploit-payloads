@@ -79,14 +79,14 @@ module MetasploitPayloads
   end
 
   #
-  # List all the available suffixs, optionally filtered by the given extension name. This is mostly useful for
+  # List all the available suffixes, optionally filtered by the given extension name. This is mostly useful for
   # determining support for a specific extension.
   #
-  # @param [String] extension_name An optional extension name to use for filtering results. If omitted, all suffixs will
-  #   be returned.
-  # @return [Array<String>] Returns an array of binary suffixs.
-  def self.list_meterpreter_extension_suffixs(extension_name=nil)
-    list_meterpreter_things { |dir| meterpreter_enum_ext_suffixs(dir, extension_name) }
+  # @param [String] extension_name An optional extension name to use for filtering results. If omitted, all suffixes
+  #   will be returned.
+  # @return [Array<String>] Returns an array of binary suffixes.
+  def self.list_meterpreter_extension_suffixes(extension_name=nil)
+    list_meterpreter_things { |dir| meterpreter_enum_ext_suffixes(dir, extension_name) }
   end
 
   #
@@ -137,13 +137,13 @@ module MetasploitPayloads
   end
 
   #
-  # Enumerate binary suffixs in the given root folder based on an optional extension name.
+  # Enumerate binary suffixes in the given root folder based on an optional extension name.
   #
-  # @param [String] root_dir The path to the directory from which to enumerate extension suffixs.
-  # @param [String] extension_name An optional extension name to use for filtering results. If omitted, all suffixs will
+  # @param [String] root_dir The path to the directory from which to enumerate extension suffixes.
+  # @param [String] extension_name An optional extension name to use for filtering results. If omitted, all suffixes will
   #   be returned.
-  # @return [Array<String>] Returns an array of binary suffixs.
-  def self.meterpreter_enum_ext_suffixs(root_dir, extension_name=nil)
+  # @return [Array<String>] Returns an array of binary suffixes.
+  def self.meterpreter_enum_ext_suffixes(root_dir, extension_name=nil)
     suffixes = []
     extension_name ||= '\w+'
     ::Dir.entries(root_dir).each do |f|
