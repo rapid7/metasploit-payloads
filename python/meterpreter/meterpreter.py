@@ -988,15 +988,6 @@ class HttpTransport(Transport):
         self._first_packet = None
         self._empty_cnt = 0
 
-    def _activate(self):
-        return True
-        self._first_packet = None
-        packet = self._get_packet()
-        if packet is None:
-            return False
-        self._first_packet = packet
-        return True
-
     def _get_packet(self):
         if self._first_packet:
             packet = self._first_packet
@@ -1004,31 +995,31 @@ class HttpTransport(Transport):
             return packet
         packet = None
         xor_key = None
+        url_h = None
         request = urllib.Request(self.url, None, self._http_request_headers)
         urlopen_kwargs = {}
         if sys.version_info > (2, 6):
             urlopen_kwargs['timeout'] = self.communication_timeout
         try:
             url_h = urllib.urlopen(request, **urlopen_kwargs)
-            packet = url_h.read()
-            for _ in range(1):
-                if packet == '':
-                    break
+            if url_h.code == 200:
+                packet = url_h.read()
                 if len(packet) < PACKET_HEADER_SIZE:
                     packet = None  # looks corrupt
-                    break
-                xor_key = struct.unpack('BBBB', packet[:PACKET_XOR_KEY_SIZE])
-                header = xor_bytes(xor_key, packet[:PACKET_HEADER_SIZE])
-                pkt_length = struct.unpack('>I', header[PACKET_LENGTH_OFF:PACKET_LENGTH_OFF+PACKET_LENGTH_SIZE])[0] - 8
-                if len(packet) != (pkt_length + PACKET_HEADER_SIZE):
-                    packet = None  # looks corrupt
+                else:
+                    xor_key = struct.unpack('BBBB', packet[:PACKET_XOR_KEY_SIZE])
+                    header = xor_bytes(xor_key, packet[:PACKET_HEADER_SIZE])
+                    pkt_length = struct.unpack('>I', header[PACKET_LENGTH_OFF:PACKET_LENGTH_OFF + PACKET_LENGTH_SIZE])[0] - 8
+                    if len(packet) != (pkt_length + PACKET_HEADER_SIZE):
+                        packet = None  # looks corrupt
         except:
-            debug_traceback('Failure to receive packet from ' + self.url)
+            debug_traceback('[-] failure to receive packet from ' + self.url)
 
         if not packet:
-            delay = 10 * self._empty_cnt
-            if self._empty_cnt >= 0:
-                delay *= 10
+            if url_h and url_h.code == 200:
+                # server has nothing for us but this is fine so update the communication time and wait
+                self.communication_last = time.time()
+            delay = 100 * self._empty_cnt
             self._empty_cnt += 1
             time.sleep(float(min(10000, delay)) / 1000)
             return packet
