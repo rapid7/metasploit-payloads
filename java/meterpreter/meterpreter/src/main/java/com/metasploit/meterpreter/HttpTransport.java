@@ -253,7 +253,7 @@ public class HttpTransport extends Transport {
 
         try {
             conn = this.targetUrl.openConnection();
-            HttpConnection.addRequestHeaders(conn, userAgent, customHeaders);
+            HttpConnection.addRequestHeaders(conn, customHeaders, userAgent);
 
             if (this.targetUrl.getProtocol().equals("https")) {
                 try {
