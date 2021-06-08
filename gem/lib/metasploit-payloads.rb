@@ -75,7 +75,7 @@ module MetasploitPayloads
   #   returned.
   # @return [Array<String>] Returns an array of extensions.
   def self.list_meterpreter_extensions(binary_suffix=nil)
-    list_meterpreter_things { |dir| meterpreter_enum_ext(dir, binary_suffix) }
+    list_meterpreter_dirs { |dir| meterpreter_enum_ext(dir, binary_suffix) }
   end
 
   #
@@ -86,7 +86,7 @@ module MetasploitPayloads
   #   will be returned.
   # @return [Array<String>] Returns an array of binary suffixes.
   def self.list_meterpreter_extension_suffixes(extension_name=nil)
-    list_meterpreter_things { |dir| meterpreter_enum_ext_suffixes(dir, extension_name) }
+    list_meterpreter_dirs { |dir| meterpreter_enum_ext_suffixes(dir, extension_name) }
   end
 
   #
@@ -148,7 +148,7 @@ module MetasploitPayloads
     extension_name ||= '\w+'
     ::Dir.entries(root_dir).each do |f|
       if ::File.readable?(::File.join(root_dir, f)) && \
-         f =~ /#{EXTENSION_PREFIX}#{extension_name}\.(.*)/
+         f =~ /#{EXTENSION_PREFIX}#{extension_name}\.(\w+(\.\w+)*)/
         suffixes.push($1)
       end
     end
@@ -185,7 +185,7 @@ module MetasploitPayloads
 
   class << self
     private
-    def list_meterpreter_things(&block)
+    def list_meterpreter_dirs(&block)
       things = [] # *things* is whatever is being enumerated (extension names, suffixes, etc.) as determined by the block
       root_dirs = [local_meterpreter_dir]
 
@@ -197,7 +197,7 @@ module MetasploitPayloads
       end
 
       root_dirs.each do |dir|
-	next unless ::File.directory?(dir)
+        next unless ::File.directory?(dir)
 
         # Merge in any that don't already exist in the collection.
         (yield dir).each do |e|
