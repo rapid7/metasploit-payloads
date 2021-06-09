@@ -69,30 +69,24 @@ module MetasploitPayloads
   end
 
   #
-  # List all the available extensions for the given suffix.
+  # List all the available extensions, optionally filtered by the given suffix.
   #
-  def self.list_meterpreter_extensions(binary_suffix)
-    extensions = []
+  # @param [String] binary_suffix An optional suffix to use for filtering results. If omitted, all extensions will be
+  #   returned.
+  # @return [Array<String>] Returns an array of extensions.
+  def self.list_meterpreter_extensions(binary_suffix=nil)
+    list_meterpreter_dirs { |dir| meterpreter_enum_ext(dir, binary_suffix) }
+  end
 
-    root_dirs = [local_meterpreter_dir]
-
-    # Find the valid extensions in the data folder first, if MSF
-    # is installed.
-    if metasploit_installed?
-      root_dirs.unshift(msf_meterpreter_dir)
-      root_dirs.unshift(user_meterpreter_dir)
-    end
-
-    root_dirs.each do |dir|
-      next unless ::File.directory?(dir)
-
-      # Merge in any that don't already exist in the collection.
-      meterpreter_enum_ext(dir, binary_suffix).each do |e|
-        extensions.push(e) unless extensions.include?(e)
-      end
-    end
-
-    extensions
+  #
+  # List all the available suffixes, optionally filtered by the given extension name. This is mostly useful for
+  # determining support for a specific extension.
+  #
+  # @param [String] extension_name An optional extension name to use for filtering results. If omitted, all suffixes
+  #   will be returned.
+  # @return [Array<String>] Returns an array of binary suffixes.
+  def self.list_meterpreter_extension_suffixes(extension_name=nil)
+    list_meterpreter_dirs { |dir| meterpreter_enum_ext_suffixes(dir, extension_name) }
   end
 
   #
@@ -124,17 +118,41 @@ module MetasploitPayloads
   end
 
   #
-  # Enumerate extensions in the given root folder based on the suffix.
+  # Enumerate extensions in the given root folder based on an optional suffix.
   #
-  def self.meterpreter_enum_ext(root_dir, binary_suffix)
+  # @param [String] root_dir The path to the directory from which to enumerate extensions.
+  # @param [String] binary_suffix An optional suffix to use for filtering results. If omitted, all extensions will be
+  #   returned.
+  # @return [Array<String>] Returns an array of extensions.
+  def self.meterpreter_enum_ext(root_dir, binary_suffix=nil)
     exts = []
+    binary_suffix ||= '.*'
     ::Dir.entries(root_dir).each do |f|
       if ::File.readable?(::File.join(root_dir, f)) && \
-         f =~ /#{EXTENSION_PREFIX}(.*)\.#{binary_suffix}/
+         f =~ /#{EXTENSION_PREFIX}(\w+)\.#{binary_suffix}/
         exts.push($1)
       end
     end
     exts
+  end
+
+  #
+  # Enumerate binary suffixes in the given root folder based on an optional extension name.
+  #
+  # @param [String] root_dir The path to the directory from which to enumerate extension suffixes.
+  # @param [String] extension_name An optional extension name to use for filtering results. If omitted, all suffixes will
+  #   be returned.
+  # @return [Array<String>] Returns an array of binary suffixes.
+  def self.meterpreter_enum_ext_suffixes(root_dir, extension_name=nil)
+    suffixes = []
+    extension_name ||= '\w+'
+    ::Dir.entries(root_dir).each do |f|
+      if ::File.readable?(::File.join(root_dir, f)) && \
+         f =~ /#{EXTENSION_PREFIX}#{extension_name}\.(\w+(\.\w+)*)/
+        suffixes.push($1)
+      end
+    end
+    suffixes
   end
 
   private
@@ -162,6 +180,32 @@ module MetasploitPayloads
         STDERR.puts('WARNING: Local files may be incompatible with the Metasploit Framework')
       end
       @local_paths << path
+    end
+  end
+
+  class << self
+    private
+    def list_meterpreter_dirs(&block)
+      things = [] # *things* is whatever is being enumerated (extension names, suffixes, etc.) as determined by the block
+      root_dirs = [local_meterpreter_dir]
+
+      # Find the valid extensions in the data folder first, if MSF
+      # is installed.
+      if metasploit_installed?
+        root_dirs.unshift(msf_meterpreter_dir)
+        root_dirs.unshift(user_meterpreter_dir)
+      end
+
+      root_dirs.each do |dir|
+        next unless ::File.directory?(dir)
+
+        # Merge in any that don't already exist in the collection.
+        (yield dir).each do |e|
+          things.push(e) unless things.include?(e)
+        end
+      end
+
+      things
     end
   end
 end
