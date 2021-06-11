@@ -605,7 +605,14 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_ms-nrpc_c.c" />
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_ms-pac.c" />
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_ms-rprn.c" />
-    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\sqlite3.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\sqlite3.c">
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4756;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='r7_release|Win32'">4756;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4756;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4756;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='r7_release|x64'">4756;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4756;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\source\extensions\kiwi\main.h" />
