@@ -1,4 +1,3 @@
-#include <winternl.h>
 #include "precomp.h"
 #include "common_metapi.h"
 #include "namedpipe.h"
