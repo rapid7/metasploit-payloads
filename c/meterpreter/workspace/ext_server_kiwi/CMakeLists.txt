@@ -106,6 +106,9 @@ set(LINK_LIBS
     cabinet
     dnsapi
     version
+    wbemuuid
+    delayimp
+    odbc32
 )
 
 if(MSVC)
@@ -128,6 +131,7 @@ set(LINK_LIBS
     ${KIWI_LIB_DIR}/samlib.lib
     ${KIWI_LIB_DIR}/winsta.lib
     ${KIWI_LIB_DIR}/advapi32.hash.lib
+    ${KIWI_LIB_DIR}/bcrypt.lib
 )
 
 target_link_libraries(${PROJECT_NAME} ${LINK_LIBS})
