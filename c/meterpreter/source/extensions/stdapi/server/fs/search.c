@@ -16,6 +16,8 @@
 #include "fs_local.h"
 #include "search.h"
 
+#define DEBUGTRACE 1
+
 #ifdef __MINGW32__
 const GUID MET_DBGUID_DEFAULT = {0xc8b521fb,0x5cf3,0x11ce,{0xad,0xe5,0x00,0xaa,0x00,0x44,0x77,0x3d}};
 #else
@@ -25,12 +27,10 @@ const GUID MET_DBGUID_DEFAULT = {0xc8b521fb,0x5cf3,0x11ce,{0xad,0xe5,0x00,0xaa,0
 /*
  * Helper function to add a search result to the response packet.
  */
-VOID search_add_result(Packet * pResponse, wchar_t *directory, wchar_t *fileName, DWORD dwFileSize)
+VOID search_add_result(Packet * pResponse, wchar_t *directory, wchar_t *fileName, DWORD dwFileSize, DBTIMESTAMP dwDateValue)
 {
 	char *dir = met_api->string.wchar_to_utf8(directory);
 	char *file = met_api->string.wchar_to_utf8(fileName);
-
-	dprintf("[SEARCH] Found: %s\\%s", dir, file);
 
 	if (dir && file) {
 		Packet* group = met_api->packet.create_group();
@@ -38,6 +38,7 @@ VOID search_add_result(Packet * pResponse, wchar_t *directory, wchar_t *fileName
 		met_api->packet.add_tlv_string(group, TLV_TYPE_FILE_PATH, dir);
 		met_api->packet.add_tlv_string(group, TLV_TYPE_FILE_NAME, file);
 		met_api->packet.add_tlv_uint(group, TLV_TYPE_FILE_SIZE, dwFileSize);
+		met_api->packet.add_tlv_raw(group, TLV_TYPE_SEARCH_DATE, &dwDateValue,16);
 
 		met_api->packet.add_group(pResponse, TLV_TYPE_SEARCH_RESULTS, group);
 	}
@@ -216,7 +217,7 @@ HRESULT wds_execute(ICommand * pCommand, Packet * pResponse)
 	DBCOUNTITEM dbCount         = 0;
 	DWORD dwResult              = 0;
 	HRESULT hr                  = 0;
-	DBBINDING dbBindings[2]     = {0};
+	DBBINDING dbBindings[3]     = {0};
 	SEARCH_ROW rowSearchResults = {0};
 	HROW hRow[1]                = {0};
 	HROW * pRows                = &hRow[0];
@@ -233,7 +234,7 @@ HRESULT wds_execute(ICommand * pCommand, Packet * pResponse)
 			BREAK_WITH_ERROR("[SEARCH] wds_execute: IRowset_QueryInterface _IID_IAccessor Failed", hr);
 		}
 
-		memset(&dbBindings, 0, sizeof(DBBINDING)*2);
+		memset(&dbBindings, 0, sizeof(DBBINDING)*3);
 
 		dbBindings[0].iOrdinal   = 1;
 		dbBindings[0].dwPart     = DBPART_STATUS | DBPART_LENGTH | DBPART_VALUE;
@@ -257,16 +258,28 @@ HRESULT wds_execute(ICommand * pCommand, Packet * pResponse)
 		dbBindings[1].obLength   = offsetof(SEARCH_ROW, dwPathLength);
 		dbBindings[1].obValue    = offsetof(SEARCH_ROW, wPathValue);
 
-		hr = IAccessor_CreateAccessor(pAccessor, DBACCESSOR_ROWDATA, 2, (DBBINDING *)&dbBindings, 0, &hAccessor, NULL);
+
+		dbBindings[2].iOrdinal = 3;
+		dbBindings[2].dwPart = DBPART_STATUS | DBPART_LENGTH | DBPART_VALUE;
+		dbBindings[2].dwMemOwner = DBMEMOWNER_CLIENTOWNED;
+		dbBindings[2].cbMaxLen = sizeof(DWORD);
+		dbBindings[2].dwFlags = 0;
+		dbBindings[2].eParamIO = DBPARAMIO_NOTPARAM;
+		dbBindings[2].wType = DBTYPE_DBTIMESTAMP;
+		dbBindings[2].obStatus = offsetof(SEARCH_ROW, dbDateStatus);
+		dbBindings[2].obLength = offsetof(SEARCH_ROW, dwDateLength);
+		dbBindings[2].obValue = offsetof(SEARCH_ROW, wDateValue);
+
+		hr = IAccessor_CreateAccessor(pAccessor, DBACCESSOR_ROWDATA, 3, (DBBINDING *)&dbBindings, 0, &hAccessor, NULL);
 		if (FAILED(hr)) {
 			BREAK_WITH_ERROR("[SEARCH] wds_execute: IAccessor_CreateAccessor Failed", hr);
 		}
-
 		while (TRUE)
 		{
 			memset(&rowSearchResults, 0, sizeof(SEARCH_ROW));
 
 			hr = IRowset_GetNextRows(pRowset, DB_NULL_HCHAPTER, 0, 1, &dbCount, (HROW **)&pRows);
+
 			if (FAILED(hr)) {
 				BREAK_WITH_ERROR("[SEARCH] wds_execute: IRowset_GetNextRows Failed", hr);
 			}
@@ -276,6 +289,7 @@ HRESULT wds_execute(ICommand * pCommand, Packet * pResponse)
 			}
 
 			hr = IRowset_GetData(pRowset, hRow[0], hAccessor, &rowSearchResults);
+
 			if (FAILED(hr)) {
 				BREAK_WITH_ERROR("[SEARCH] wds_execute: IRowset_GetData Failed", hr);
 			}
@@ -284,16 +298,21 @@ HRESULT wds_execute(ICommand * pCommand, Packet * pResponse)
 			{
 				// "iehistory://{*}/"
 				wchar_t * history = wcsstr(rowSearchResults.wPathValue, L"}");
+
+
 				if (history) {
-					search_add_result(pResponse, L"", history + 2, 0);
+					search_add_result(pResponse, L"", history + 2, 0, rowSearchResults.wDateValue);
 				}
 			}
 			else if (_memicmp(L"mapi:", rowSearchResults.wPathValue, sizeof(L"mapi:")) == 0)
 			{
 				// "mapi://{*}/"
 				wchar_t * history = wcsstr(rowSearchResults.wPathValue, L"}");
+				
+
+
 				if (history) {
-					search_add_result(pResponse, L"", history + 2, 0);
+					search_add_result(pResponse, L"", history + 2, 0, rowSearchResults.wDateValue);
 				}
 			}
 			else if (rowSearchResults.dwSizeValue > 0) {
@@ -302,6 +321,7 @@ HRESULT wds_execute(ICommand * pCommand, Packet * pResponse)
 				wchar_t * fileName  = L"";
 				wchar_t * file      = L"";
 				wchar_t * directory = rowSearchResults.wPathValue;
+				DBTIMESTAMP DateValue = rowSearchResults.wDateValue;
 
 				if (_memicmp(L"file:", directory, wcslen(L"file:")) == 0) {
 					directory = (directory + wcslen(L"file:"));
@@ -325,7 +345,10 @@ HRESULT wds_execute(ICommand * pCommand, Packet * pResponse)
 					directory = L"";
 					fileName  = directory;
 				}
-				search_add_result(pResponse, directory, fileName, rowSearchResults.dwSizeValue);
+				dprintf("%s", directory);
+				dprintf("%s", file);
+
+				search_add_result(pResponse, directory, fileName, rowSearchResults.dwSizeValue, DateValue);
 			}
 
 			hr = IRowset_ReleaseRows(pRowset, dbCount, pRows, NULL, NULL, NULL);
@@ -507,19 +530,20 @@ DWORD wds3_search(WDS_INTERFACE * pWDSInterface, wchar_t * wpProtocol, wchar_t *
 			directory = pOptions->rootDirectory;
 		}
 
+
 		hr = ISearchCatalogManager_GetQueryHelper(pWDSInterface->pSearchCatalogManager, &pQueryHelper);
 		if (FAILED(hr)) {
 			BREAK_WITH_ERROR("[SEARCH] wds3_search: ISearchCatalogManager_GetQueryHelper Failed", hr);
 		}
 
-		hr = ISearchQueryHelper_put_QuerySelectColumns(pQueryHelper, L"size,path");
+		hr = ISearchQueryHelper_put_QuerySelectColumns(pQueryHelper, L"size,path,write");
 		if (FAILED(hr)) {
 			BREAK_WITH_ERROR("[SEARCH] wds3_search: ISearchQueryHelper_put_QuerySelectColumns Failed", hr);
 		}
 
 		if (directory)
 		{
-			size_t len = wcslen(directory) + 128;
+			size_t len = wcslen(directory) + 160;
 			wchar_t *where = calloc(len, sizeof(wchar_t));
 			if (where) {
 				if (pOptions->bResursive) {
@@ -534,6 +558,47 @@ DWORD wds3_search(WDS_INTERFACE * pWDSInterface, wchar_t * wpProtocol, wchar_t *
 				dprintf("[SEARCH] wds3_search: !where", ERROR_OUTOFMEMORY);
 			}
 		}
+
+		wchar_t* date_where_buffer = calloc(160, sizeof(wchar_t));
+		DWORD sd_mask = 0;
+		if (!date_where_buffer){
+			BREAK_WITH_ERROR("[SEARCH] wds3_search: unable to create where query buffer", GetLastError());
+		}
+
+		if (pOptions->startDate) {
+			size_t sdlen = wcslen(pOptions->startDate);
+			if (sdlen > 0) {
+				swprintf_s(date_where_buffer, 80, L"AND System.DateModified>='%s'", pOptions->startDate);
+				sd_mask += 2;
+			}
+
+		}
+		if (pOptions->endDate) {
+			size_t edlen = wcslen(pOptions->endDate);
+			if (edlen > 0) {
+				size_t len = 80;
+				wchar_t* to = calloc(len, sizeof(wchar_t));
+				if (to) {
+					if (sd_mask > 0) {
+						swprintf_s(to, len, L",AND System.DateModified<='%s'", pOptions->endDate);
+					} else {
+						swprintf_s(to, len, L"AND System.DateModified<='%s'", pOptions->endDate);
+					}
+					sd_mask += 1;
+					wcscat(date_where_buffer, to);
+					free(to);
+				}
+				else {
+					dprintf("[SEARCH] wds3_search: !where", ERROR_OUTOFMEMORY);
+				}
+			}
+		}
+		if (date_where_buffer) {
+			ISearchQueryHelper_put_QueryWhereRestrictions(pQueryHelper, date_where_buffer);
+			free(date_where_buffer);
+		}
+
+
 
 		hr = ISearchQueryHelper_GenerateSQLFromUserQuery(pQueryHelper, pOptions->glob, &wpSQL);
 		if (FAILED(hr)) {
@@ -643,20 +708,142 @@ DWORD wds3_search(WDS_INTERFACE * pWDSInterface, wchar_t * wpProtocol, wchar_t *
 /*
  * Search a directory for files.
  */
-DWORD search_files(wchar_t * directory, SEARCH_OPTIONS * pOptions, Packet * pResponse)
+
+HRESULT Iso8601ToDBTimeStamp(wchar_t *string_date, DBTIMESTAMP* dbts) {
+	DWORD dwResult = ERROR_SUCCESS;
+	int i = 0;
+	wchar_t wcs[30];
+	wcscpy(wcs, string_date);
+    wchar_t* token;
+	wchar_t* internal_state;
+	const wchar_t* dash = L"-";
+	const wchar_t* T = L"T";
+	const wchar_t* colon = L":";
+	token= wcstok(wcs, dash, &internal_state);
+	dbts->year =  _wtoi(token);
+	token = wcstok(NULL, dash, &internal_state);
+
+
+	dbts->month = _wtoi(token);
+	token = wcstok(NULL, T, &internal_state);
+
+	dbts->day = _wtoi(token);
+	token = wcstok(NULL, colon, &internal_state);
+
+	dbts->hour = _wtoi(token);
+	token = wcstok(NULL, colon, &internal_state);
+
+	dbts->minute = _wtoi(token);
+	token = wcstok(NULL, colon, &internal_state);
+
+	dbts->second = _wtoi(token);
+	//YYYY-mm-ddTHH:MM:SS
+
+	return dwResult;
+}
+
+BOOLEAN greatercomparetimestamp(DBTIMESTAMP first, DBTIMESTAMP second) {
+/* Returns true if the first DBTIMESTAMP is >= than the second DBTIMESTAMP
+ */
+	if (first.year > second.year) {
+		return 1;
+	} 
+	if (first.year < second.year) {
+		return 0;
+	}
+	if (first.month > second.month) {
+		return 1;
+	}
+	if (first.month < second.month) {
+		return 0;
+	}
+	if (first.day > second.day) {
+		return 1;
+	}
+	if (first.day < second.day) {
+		return 0;
+	}
+	if (first.hour > second.hour) {
+		return 1;
+	}
+	if (first.hour < second.hour) {
+		return 0;
+	}
+	if (first.minute > second.minute) {
+		return 1;
+	}
+	if (first.minute < second.minute) {
+		return 0;
+	}
+	if (first.second > second.second) {
+		return 1;
+	}
+	if (first.second < second.second) {
+		return 0;
+	}
+	return 1;
+}
+
+DWORD search_files(wchar_t * directory, SEARCH_OPTIONS * pOptions, Packet * pResponse, DWORD mask, DBTIMESTAMP sdts, DBTIMESTAMP edts)
 {
 	wchar_t firstFile[FS_MAX_PATH];
 	swprintf_s(firstFile, FS_MAX_PATH, L"%s\\%s", directory, pOptions->glob);
-
+	DWORD hr = 0;
 	WIN32_FIND_DATAW data;
 	HANDLE hFile = FindFirstFileW(firstFile, &data);
+
+
 	if (hFile != INVALID_HANDLE_VALUE) {
 		do
 		{
 			if (wcscmp(data.cFileName, L".") && wcscmp(data.cFileName, L"..") &&
 				!(data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
 			{
-				search_add_result(pResponse, directory, data.cFileName, data.nFileSizeLow);
+				SYSTEMTIME lpSystemTime = { 0 };
+				CONST FILETIME* lpFileTime = &(data.ftLastWriteTime);
+				DBTIMESTAMP result_ts = { 0 };
+				if (FileTimeToSystemTime(lpFileTime, &lpSystemTime)) {
+					result_ts.day = lpSystemTime.wDay;
+					result_ts.year = lpSystemTime.wYear;
+					result_ts.month = lpSystemTime.wMonth;
+					result_ts.hour = lpSystemTime.wHour;
+					result_ts.minute = lpSystemTime.wMinute;
+					result_ts.second = lpSystemTime.wSecond;
+					if (((mask & 2) > 0) && (!greatercomparetimestamp(result_ts, sdts))) {
+						continue;
+					}
+					if (((mask & 1) > 0) && (greatercomparetimestamp(result_ts, edts))) {
+						continue;
+					}
+					
+					search_add_result(pResponse, directory, data.cFileName, data.nFileSizeLow, result_ts);
+				}
+				else {
+					dprintf("Conversion failed... this result won't be added.");
+					continue;
+				}
+
+				/* Because of course this is different... need to convert FILETIME to
+				* https://docs.microsoft.com/en-us/windows/win32/api/minwinbase/ns-minwinbase-filetime
+				* https://docs.microsoft.com/en-us/windows/win32/api/minwinbase/ns-minwinbase-win32_find_dataa
+				* typedef struct _FILETIME {
+				*   DWORD dwLowDateTime;
+				*   DWORD dwHighDateTime;  
+				* }
+				*  to 
+				* DBTIMESTAMP
+				*Typedef struct tagDBTIMESTAMP {
+				SHORT   year;
+				USHORT  month;
+				USHORT  day;
+				USHORT  hour;
+				USHORT  minute;
+				USHORT  second;
+				ULONG   fraction;
+						} DBTIMESTAMP;
+				*/
+				
+
 			}
 		} while (FindNextFileW(hFile, &data) != 0);
 
@@ -677,6 +864,40 @@ DWORD directory_search(wchar_t *directory, SEARCH_OPTIONS * pOptions, Packet * p
 	BOOL bAllreadySearched    = FALSE;
 	WIN32_FIND_DATAW FindData = {0};
 	size_t len                = wcslen(directory) + 5;
+
+	DWORD mask = 0;
+	wchar_t* sd = pOptions->startDate;
+	wchar_t* ed = pOptions->endDate;
+	size_t sdlen = wcslen(pOptions->startDate);
+	size_t edlen = wcslen(pOptions->endDate);
+	DBTIMESTAMP sdts = { 0 };
+	DBTIMESTAMP edts = { 0 };
+	if (sdlen > 0) {
+		dwResult = Iso8601ToDBTimeStamp(sd, &sdts);
+		mask += 2;
+		if FAILED(dwResult) {
+			return GetLastError();
+		}
+
+	}
+	if (edlen > 0) {
+		dwResult = Iso8601ToDBTimeStamp(ed, &edts);
+		mask += 1;
+		if FAILED(dwResult) {
+			return GetLastError();
+		}
+
+	}
+
+
+
+
+
+
+
+
+
+
 
 	if (depth > 32 || len >= FS_MAX_PATH) {
 		return ERROR_SUCCESS;
@@ -714,7 +935,7 @@ DWORD directory_search(wchar_t *directory, SEARCH_OPTIONS * pOptions, Packet * p
 			else if (!bAllreadySearched)
 			{
 				// Call FindFirstFile again to glob specific files in this directory
-				dwResult = search_files(directory, pOptions, pResponse);
+				dwResult = search_files(directory, pOptions, pResponse,mask,sdts,edts);
 
 				bAllreadySearched = TRUE;
 			}
@@ -818,6 +1039,12 @@ DWORD request_fs_search(Remote * pRemote, Packet * pPacket)
 	options.glob = met_api->string.utf8_to_wchar(
 		met_api->packet.get_tlv_value_string(pPacket, TLV_TYPE_SEARCH_GLOB));
 
+	options.startDate = met_api->string.utf8_to_wchar(
+		met_api->packet.get_tlv_value_string(pPacket, TLV_TYPE_SEARCH_FROM_DATE));
+
+	options.endDate = met_api->string.utf8_to_wchar(
+		met_api->packet.get_tlv_value_string(pPacket, TLV_TYPE_SEARCH_TO_DATE));
+
 	if (options.rootDirectory && wcslen(options.rootDirectory) == 0) {
 		free(options.rootDirectory);
 		options.rootDirectory = NULL;
@@ -835,6 +1062,7 @@ DWORD request_fs_search(Remote * pRemote, Packet * pPacket)
 	}
 
 	dprintf("[SEARCH] root: '%S' glob: '%S'", options.rootDirectory, options.glob);
+	dprintf("[SEARCH] dates: from %S to %S", options.startDate, options.endDate);
 
 	options.bResursive = met_api->packet.get_tlv_value_bool(pPacket, TLV_TYPE_SEARCH_RECURSE);
 

@@ -2,6 +2,7 @@
 #define _METERPRETER_SOURCE_EXTENSION_STDAPI_STDAPI_SERVER_FS_SEARCH_H
 
 #include <shlwapi.h>
+#include <windows.h>
 #include <searchapi.h>
 #include <msdasc.h>
 #include <ntquery.h>
@@ -38,6 +39,8 @@ typedef struct _SEARCH_OPTIONS
 	wchar_t *glob;
 	wchar_t *rootDirectory;
 	BOOL bResursive;
+	wchar_t *startDate;
+	wchar_t *endDate;
 } SEARCH_OPTIONS;
 
 // sf: The padding DWORD's ensure we dont get an IAccessor_CreateAccessor error due to alignment on x64.
@@ -54,6 +57,12 @@ typedef struct _SEARCH_ROW
 	DWORD dwPathLength;
 	DWORD dwPadding5;
 	wchar_t wPathValue[MAX_PATH];
+	DBSTATUS dbDateStatus;
+	DWORD dwPadding6;
+	DWORD dwDateLength;
+	DWORD dwPadding7;
+	DBTIMESTAMP wDateValue;
+	DWORD dwPadding8;
 } SEARCH_ROW;
 
 // we manually define these ourselves...
