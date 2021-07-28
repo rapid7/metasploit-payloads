@@ -1158,7 +1158,7 @@ def stdapi_sys_process_execute(request, response):
                     termios.tcsetattr(master, termios.TCSADRAIN, settings)
                 except:
                     pass
-            proc_h = STDProcess(args, stdin=slave, stdout=slave, stderr=slave, bufsize=0, start_new_session=True)
+            proc_h = STDProcess(args, stdin=slave, stdout=slave, stderr=slave, bufsize=0, preexec_fn=os.setsid)
             proc_h.stdin = os.fdopen(master, 'wb')
             proc_h.stdout = os.fdopen(master, 'rb')
             proc_h.stderr = open(os.devnull, 'rb')
