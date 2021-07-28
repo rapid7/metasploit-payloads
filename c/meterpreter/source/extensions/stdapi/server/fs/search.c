@@ -16,7 +16,7 @@
 #include "fs_local.h"
 #include "search.h"
 
-#define DEBUGTRACE 1
+#define DEBUGTRACE 0
 
 #ifdef __MINGW32__
 const GUID MET_DBGUID_DEFAULT = {0xc8b521fb,0x5cf3,0x11ce,{0xad,0xe5,0x00,0xaa,0x00,0x44,0x77,0x3d}};
@@ -27,7 +27,7 @@ const GUID MET_DBGUID_DEFAULT = {0xc8b521fb,0x5cf3,0x11ce,{0xad,0xe5,0x00,0xaa,0
 /*
  * Helper function to add a search result to the response packet.
  */
-VOID search_add_result(Packet * pResponse, wchar_t *directory, wchar_t *fileName, DWORD dwFileSize, DBTIMESTAMP dwDateValue)
+VOID search_add_result(Packet * pResponse, wchar_t *directory, wchar_t *fileName, DWORD dwFileSize, UINT dwDateValue)
 {
 	char *dir = met_api->string.wchar_to_utf8(directory);
 	char *file = met_api->string.wchar_to_utf8(fileName);
@@ -38,14 +38,66 @@ VOID search_add_result(Packet * pResponse, wchar_t *directory, wchar_t *fileName
 		met_api->packet.add_tlv_string(group, TLV_TYPE_FILE_PATH, dir);
 		met_api->packet.add_tlv_string(group, TLV_TYPE_FILE_NAME, file);
 		met_api->packet.add_tlv_uint(group, TLV_TYPE_FILE_SIZE, dwFileSize);
-		met_api->packet.add_tlv_raw(group, TLV_TYPE_SEARCH_DATE, &dwDateValue,16);
-
+		met_api->packet.add_tlv_uint(group, TLV_TYPE_SEARCH_MTIME, dwDateValue);
 		met_api->packet.add_group(pResponse, TLV_TYPE_SEARCH_RESULTS, group);
 	}
 
 	free(dir);
 	free(file);
 }
+
+
+HRESULT uintToFILETIME(UINT epoch, FILETIME* ft) {
+	//converts first from epoch to FILETIME based on https://stackoverflow.com/questions/41016000/how-to-convert-filetime-to-unix-epoch-with-milliseconds-resolution
+	// then converts to systemtime.
+	DWORD dwResult = ERROR_SUCCESS;
+    #define MILI_SEC_TO_UNIX_EPOCH 116444736000000000LL
+	UINT64 multiplier = 10000000;
+	UINT64 t = (multiplier * epoch) + MILI_SEC_TO_UNIX_EPOCH;
+	ULARGE_INTEGER li;
+	li.QuadPart = t;
+	ft->dwHighDateTime = li.HighPart;
+	ft->dwLowDateTime = li.LowPart;
+	return dwResult;
+}
+
+UINT FILETIMETouint(FILETIME* ft) {
+    #define MILI_SEC_TO_UNIX_EPOCH 116444736000000000LL
+	UINT64 multiplier = 10000000;
+	ULARGE_INTEGER li;
+	ULARGE_INTEGER li2;
+	li.HighPart = ft->dwHighDateTime;
+	li.LowPart = ft->dwLowDateTime;
+	UINT64 t;
+	UINT64 y;
+	UINT epoch;
+	t = li.QuadPart;
+	y = (t - MILI_SEC_TO_UNIX_EPOCH) / multiplier;
+
+	li2.QuadPart = y;
+	epoch = li2.LowPart;
+
+	return epoch;
+}
+
+BOOLEAN greatercomparefiletime(FILETIME first, FILETIME second) {
+	/* Returns true if the first FILETIME is >= than the second FILETIME
+	 */
+	if (first.dwHighDateTime > second.dwHighDateTime) {
+		return 1;
+	}
+	if (first.dwHighDateTime < second.dwHighDateTime) {
+		return 0;
+	}
+	if (first.dwLowDateTime > second.dwLowDateTime) {
+		return 1;
+	}
+	if (first.dwLowDateTime < second.dwLowDateTime) {
+		return 0;
+	}
+	return 1;
+}
+
 
 /*
  * Helper function to initilize the Windows Desktop Search v2 and v3 interfaces (if available).
@@ -265,7 +317,7 @@ HRESULT wds_execute(ICommand * pCommand, Packet * pResponse)
 		dbBindings[2].cbMaxLen = sizeof(DWORD);
 		dbBindings[2].dwFlags = 0;
 		dbBindings[2].eParamIO = DBPARAMIO_NOTPARAM;
-		dbBindings[2].wType = DBTYPE_DBTIMESTAMP;
+		dbBindings[2].wType = DBTYPE_FILETIME;
 		dbBindings[2].obStatus = offsetof(SEARCH_ROW, dbDateStatus);
 		dbBindings[2].obLength = offsetof(SEARCH_ROW, dwDateLength);
 		dbBindings[2].obValue = offsetof(SEARCH_ROW, wDateValue);
@@ -301,7 +353,8 @@ HRESULT wds_execute(ICommand * pCommand, Packet * pResponse)
 
 
 				if (history) {
-					search_add_result(pResponse, L"", history + 2, 0, rowSearchResults.wDateValue);
+					UINT epoch = FILETIMETouint(&rowSearchResults.wDateValue);
+					search_add_result(pResponse, L"", history + 2, 0, epoch);
 				}
 			}
 			else if (_memicmp(L"mapi:", rowSearchResults.wPathValue, sizeof(L"mapi:")) == 0)
@@ -312,7 +365,8 @@ HRESULT wds_execute(ICommand * pCommand, Packet * pResponse)
 
 
 				if (history) {
-					search_add_result(pResponse, L"", history + 2, 0, rowSearchResults.wDateValue);
+					UINT epoch = FILETIMETouint(&rowSearchResults.wDateValue);
+					search_add_result(pResponse, L"", history + 2, 0, epoch);
 				}
 			}
 			else if (rowSearchResults.dwSizeValue > 0) {
@@ -321,7 +375,6 @@ HRESULT wds_execute(ICommand * pCommand, Packet * pResponse)
 				wchar_t * fileName  = L"";
 				wchar_t * file      = L"";
 				wchar_t * directory = rowSearchResults.wPathValue;
-				DBTIMESTAMP DateValue = rowSearchResults.wDateValue;
 
 				if (_memicmp(L"file:", directory, wcslen(L"file:")) == 0) {
 					directory = (directory + wcslen(L"file:"));
@@ -345,10 +398,9 @@ HRESULT wds_execute(ICommand * pCommand, Packet * pResponse)
 					directory = L"";
 					fileName  = directory;
 				}
-				dprintf("%s", directory);
-				dprintf("%s", file);
 
-				search_add_result(pResponse, directory, fileName, rowSearchResults.dwSizeValue, DateValue);
+				UINT epoch = FILETIMETouint(&rowSearchResults.wDateValue);
+				search_add_result(pResponse, directory, fileName, rowSearchResults.dwSizeValue, epoch);
 			}
 
 			hr = IRowset_ReleaseRows(pRowset, dbCount, pRows, NULL, NULL, NULL);
@@ -540,11 +592,11 @@ DWORD wds3_search(WDS_INTERFACE * pWDSInterface, wchar_t * wpProtocol, wchar_t *
 		if (FAILED(hr)) {
 			BREAK_WITH_ERROR("[SEARCH] wds3_search: ISearchQueryHelper_put_QuerySelectColumns Failed", hr);
 		}
-
+		wchar_t* where;
 		if (directory)
 		{
 			size_t len = wcslen(directory) + 160;
-			wchar_t *where = calloc(len, sizeof(wchar_t));
+			where = calloc(len, sizeof(wchar_t));
 			if (where) {
 				if (pOptions->bResursive) {
 					swprintf_s(where, len, L"AND SCOPE='%s:%s'", wpProtocol, directory);
@@ -552,8 +604,6 @@ DWORD wds3_search(WDS_INTERFACE * pWDSInterface, wchar_t * wpProtocol, wchar_t *
 				else {
 					swprintf_s(where, len, L"AND DIRECTORY='%s:%s'", wpProtocol, directory);
 				}
-				ISearchQueryHelper_put_QueryWhereRestrictions(pQueryHelper, where);
-				free(where);
 			} else {
 				dprintf("[SEARCH] wds3_search: !where", ERROR_OUTOFMEMORY);
 			}
@@ -565,40 +615,57 @@ DWORD wds3_search(WDS_INTERFACE * pWDSInterface, wchar_t * wpProtocol, wchar_t *
 			BREAK_WITH_ERROR("[SEARCH] wds3_search: unable to create where query buffer", GetLastError());
 		}
 
-		if (pOptions->startDate) {
-			size_t sdlen = wcslen(pOptions->startDate);
-			if (sdlen > 0) {
-				swprintf_s(date_where_buffer, 80, L"AND System.DateModified>='%s'", pOptions->startDate);
-				sd_mask += 2;
-			}
+		if (pOptions->startDate > 0) {
+			DWORD sd = pOptions->startDate;
+			FILETIME ft = { 0 };
+			DWORD HR = ERROR_SUCCESS;
+			HR = uintToFILETIME(sd,&ft);
+		    SYSTEMTIME LPST = { 0 };
+			CONST FILETIME* lpFileTime = &ft;
+			if (!FileTimeToSystemTime(lpFileTime, &LPST)) {
+				BREAK_WITH_ERROR("[SEARCH] unable to convert time", GetLastError());
+			} 
+			char tmp[25] = { 0 };
+			_snprintf_s(tmp,25,25,"%04d-%02d-%02dT%02d:%02d:%02d", LPST.wYear, LPST.wMonth, LPST.wDay, LPST.wHour, LPST.wMinute, LPST.wSecond);
+			swprintf_s(date_where_buffer, 80, L" AND System.DateModified>='%S'",tmp);
+			sd_mask += 2;
 
 		}
-		if (pOptions->endDate) {
-			size_t edlen = wcslen(pOptions->endDate);
-			if (edlen > 0) {
-				size_t len = 80;
-				wchar_t* to = calloc(len, sizeof(wchar_t));
-				if (to) {
-					if (sd_mask > 0) {
-						swprintf_s(to, len, L",AND System.DateModified<='%s'", pOptions->endDate);
-					} else {
-						swprintf_s(to, len, L"AND System.DateModified<='%s'", pOptions->endDate);
-					}
-					sd_mask += 1;
-					wcscat(date_where_buffer, to);
-					free(to);
-				}
-				else {
-					dprintf("[SEARCH] wds3_search: !where", ERROR_OUTOFMEMORY);
-				}
+		if (pOptions->endDate > 0) {
+			DWORD ed = pOptions->endDate;
+			wchar_t tmp[25] = { 0 };
+			wchar_t* to = calloc(80, sizeof(wchar_t));
+			FILETIME ft = { 0 };
+			DWORD HR = ERROR_SUCCESS;
+			HR = uintToFILETIME(ed, &ft);
+			SYSTEMTIME LPST_ed = { 0 };
+			CONST FILETIME* lpFileTime = &ft;
+
+			if (!FileTimeToSystemTime(lpFileTime, &LPST_ed)) {
+				BREAK_WITH_ERROR("[SEARCH] unable to convert time", GetLastError());
 			}
+			dprintf("%u-%u-%u %u:%u:%u", LPST_ed.wYear, LPST_ed.wMonth, LPST_ed.wDay, LPST_ed.wHour, LPST_ed.wMinute, LPST_ed.wSecond);
+			_snwprintf_s(tmp, 25, 25, L"%04d-%02d-%02dT%02d:%02d:%02d", LPST_ed.wYear, LPST_ed.wMonth, LPST_ed.wDay, LPST_ed.wHour, LPST_ed.wMinute, LPST_ed.wSecond);
+			if (sd_mask > 0) {
+				swprintf_s(to, 80, L" AND System.DateModified<='%s'", tmp);
+			} else {
+				swprintf_s(to, 80, L" AND System.DateModified<='%s'", tmp);
+			}
+			sd_mask += 1;
+			wcscat(date_where_buffer, to);
+			free(to);
+
 		}
+
+
 		if (date_where_buffer) {
-			ISearchQueryHelper_put_QueryWhereRestrictions(pQueryHelper, date_where_buffer);
+
+			wcscat(where, date_where_buffer);
 			free(date_where_buffer);
 		}
 
-
+		ISearchQueryHelper_put_QueryWhereRestrictions(pQueryHelper, where);
+		free(where);
 
 		hr = ISearchQueryHelper_GenerateSQLFromUserQuery(pQueryHelper, pOptions->glob, &wpSQL);
 		if (FAILED(hr)) {
@@ -705,86 +772,8 @@ DWORD wds3_search(WDS_INTERFACE * pWDSInterface, wchar_t * wpProtocol, wchar_t *
 	return dwResult;
 }
 
-/*
- * Search a directory for files.
- */
 
-HRESULT Iso8601ToDBTimeStamp(wchar_t *string_date, DBTIMESTAMP* dbts) {
-	DWORD dwResult = ERROR_SUCCESS;
-	int i = 0;
-	wchar_t wcs[30];
-	wcscpy(wcs, string_date);
-    wchar_t* token;
-	wchar_t* internal_state;
-	const wchar_t* dash = L"-";
-	const wchar_t* T = L"T";
-	const wchar_t* colon = L":";
-	token= wcstok(wcs, dash, &internal_state);
-	dbts->year =  _wtoi(token);
-	token = wcstok(NULL, dash, &internal_state);
-
-
-	dbts->month = _wtoi(token);
-	token = wcstok(NULL, T, &internal_state);
-
-	dbts->day = _wtoi(token);
-	token = wcstok(NULL, colon, &internal_state);
-
-	dbts->hour = _wtoi(token);
-	token = wcstok(NULL, colon, &internal_state);
-
-	dbts->minute = _wtoi(token);
-	token = wcstok(NULL, colon, &internal_state);
-
-	dbts->second = _wtoi(token);
-	//YYYY-mm-ddTHH:MM:SS
-
-	return dwResult;
-}
-
-BOOLEAN greatercomparetimestamp(DBTIMESTAMP first, DBTIMESTAMP second) {
-/* Returns true if the first DBTIMESTAMP is >= than the second DBTIMESTAMP
- */
-	if (first.year > second.year) {
-		return 1;
-	} 
-	if (first.year < second.year) {
-		return 0;
-	}
-	if (first.month > second.month) {
-		return 1;
-	}
-	if (first.month < second.month) {
-		return 0;
-	}
-	if (first.day > second.day) {
-		return 1;
-	}
-	if (first.day < second.day) {
-		return 0;
-	}
-	if (first.hour > second.hour) {
-		return 1;
-	}
-	if (first.hour < second.hour) {
-		return 0;
-	}
-	if (first.minute > second.minute) {
-		return 1;
-	}
-	if (first.minute < second.minute) {
-		return 0;
-	}
-	if (first.second > second.second) {
-		return 1;
-	}
-	if (first.second < second.second) {
-		return 0;
-	}
-	return 1;
-}
-
-DWORD search_files(wchar_t * directory, SEARCH_OPTIONS * pOptions, Packet * pResponse, DWORD mask, DBTIMESTAMP sdts, DBTIMESTAMP edts)
+DWORD search_files(wchar_t * directory, SEARCH_OPTIONS * pOptions, Packet * pResponse, DWORD mask, FILETIME sdts, FILETIME edts)
 {
 	wchar_t firstFile[FS_MAX_PATH];
 	swprintf_s(firstFile, FS_MAX_PATH, L"%s\\%s", directory, pOptions->glob);
@@ -799,51 +788,16 @@ DWORD search_files(wchar_t * directory, SEARCH_OPTIONS * pOptions, Packet * pRes
 			if (wcscmp(data.cFileName, L".") && wcscmp(data.cFileName, L"..") &&
 				!(data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
 			{
-				SYSTEMTIME lpSystemTime = { 0 };
-				CONST FILETIME* lpFileTime = &(data.ftLastWriteTime);
-				DBTIMESTAMP result_ts = { 0 };
-				if (FileTimeToSystemTime(lpFileTime, &lpSystemTime)) {
-					result_ts.day = lpSystemTime.wDay;
-					result_ts.year = lpSystemTime.wYear;
-					result_ts.month = lpSystemTime.wMonth;
-					result_ts.hour = lpSystemTime.wHour;
-					result_ts.minute = lpSystemTime.wMinute;
-					result_ts.second = lpSystemTime.wSecond;
-					if (((mask & 2) > 0) && (!greatercomparetimestamp(result_ts, sdts))) {
-						continue;
-					}
-					if (((mask & 1) > 0) && (greatercomparetimestamp(result_ts, edts))) {
-						continue;
-					}
-					
-					search_add_result(pResponse, directory, data.cFileName, data.nFileSizeLow, result_ts);
-				}
-				else {
-					dprintf("Conversion failed... this result won't be added.");
+			
+				FILETIME* lpFileTime = &(data.ftLastWriteTime);
+				if (((mask & 2) > 0) && (!greatercomparefiletime(*lpFileTime, sdts))) {
 					continue;
 				}
-
-				/* Because of course this is different... need to convert FILETIME to
-				* https://docs.microsoft.com/en-us/windows/win32/api/minwinbase/ns-minwinbase-filetime
-				* https://docs.microsoft.com/en-us/windows/win32/api/minwinbase/ns-minwinbase-win32_find_dataa
-				* typedef struct _FILETIME {
-				*   DWORD dwLowDateTime;
-				*   DWORD dwHighDateTime;  
-				* }
-				*  to 
-				* DBTIMESTAMP
-				*Typedef struct tagDBTIMESTAMP {
-				SHORT   year;
-				USHORT  month;
-				USHORT  day;
-				USHORT  hour;
-				USHORT  minute;
-				USHORT  second;
-				ULONG   fraction;
-						} DBTIMESTAMP;
-				*/
-				
-
+				if (((mask & 1) > 0) && (greatercomparefiletime(*lpFileTime, edts))) {
+					continue;
+				}
+				UINT epoch = FILETIMETouint(lpFileTime);
+				search_add_result(pResponse, directory, data.cFileName, data.nFileSizeLow, epoch);
 			}
 		} while (FindNextFileW(hFile, &data) != 0);
 
@@ -866,37 +820,26 @@ DWORD directory_search(wchar_t *directory, SEARCH_OPTIONS * pOptions, Packet * p
 	size_t len                = wcslen(directory) + 5;
 
 	DWORD mask = 0;
-	wchar_t* sd = pOptions->startDate;
-	wchar_t* ed = pOptions->endDate;
-	size_t sdlen = wcslen(pOptions->startDate);
-	size_t edlen = wcslen(pOptions->endDate);
-	DBTIMESTAMP sdts = { 0 };
-	DBTIMESTAMP edts = { 0 };
-	if (sdlen > 0) {
-		dwResult = Iso8601ToDBTimeStamp(sd, &sdts);
+	DWORD sd = pOptions->startDate;
+	DWORD ed = pOptions->endDate;
+	FILETIME sdts = { 0 };
+	FILETIME edts = { 0 };
+	if (sd > 0) {
+		dwResult = uintToFILETIME(sd, &sdts);
 		mask += 2;
 		if FAILED(dwResult) {
 			return GetLastError();
 		}
 
 	}
-	if (edlen > 0) {
-		dwResult = Iso8601ToDBTimeStamp(ed, &edts);
+	if (ed > 0) {
+		dwResult = uintToFILETIME(ed, &edts);
 		mask += 1;
 		if FAILED(dwResult) {
 			return GetLastError();
 		}
 
 	}
-
-
-
-
-
-
-
-
-
 
 
 	if (depth > 32 || len >= FS_MAX_PATH) {
@@ -910,7 +853,6 @@ DWORD directory_search(wchar_t *directory, SEARCH_OPTIONS * pOptions, Packet * p
 	swprintf_s(firstFile, FS_MAX_PATH, L"%s\\*.*", directory);
 
 	HANDLE hFile = FindFirstFileW(firstFile, &FindData);
-	dprintf("%S", directory);
 	if (hFile != INVALID_HANDLE_VALUE)
 	{
 		do
@@ -1039,11 +981,9 @@ DWORD request_fs_search(Remote * pRemote, Packet * pPacket)
 	options.glob = met_api->string.utf8_to_wchar(
 		met_api->packet.get_tlv_value_string(pPacket, TLV_TYPE_SEARCH_GLOB));
 
-	options.startDate = met_api->string.utf8_to_wchar(
-		met_api->packet.get_tlv_value_string(pPacket, TLV_TYPE_SEARCH_FROM_DATE));
-
-	options.endDate = met_api->string.utf8_to_wchar(
-		met_api->packet.get_tlv_value_string(pPacket, TLV_TYPE_SEARCH_TO_DATE));
+	options.startDate = met_api->packet.get_tlv_value_uint(pPacket,TLV_TYPE_SEARCH_FROM_DATE);
+	options.endDate =  met_api->packet.get_tlv_value_uint(pPacket, TLV_TYPE_SEARCH_TO_DATE);
+	
 
 	if (options.rootDirectory && wcslen(options.rootDirectory) == 0) {
 		free(options.rootDirectory);
@@ -1062,7 +1002,7 @@ DWORD request_fs_search(Remote * pRemote, Packet * pPacket)
 	}
 
 	dprintf("[SEARCH] root: '%S' glob: '%S'", options.rootDirectory, options.glob);
-	dprintf("[SEARCH] dates: from %S to %S", options.startDate, options.endDate);
+	dprintf("[SEARCH] dates: from %u to %u", options.startDate, options.endDate);
 
 	options.bResursive = met_api->packet.get_tlv_value_bool(pPacket, TLV_TYPE_SEARCH_RECURSE);
 
