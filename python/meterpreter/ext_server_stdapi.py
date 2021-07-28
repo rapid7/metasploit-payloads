@@ -1146,11 +1146,8 @@ def stdapi_sys_process_execute(request, response):
     flags = packet_get_tlv(request, TLV_TYPE_PROCESS_FLAGS)['value']
     if len(cmd) == 0:
         return ERROR_FAILURE, response
-    if os.path.isfile('/bin/sh'):
-        args = ['/bin/sh', '-c', cmd + ' ' + raw_args]
-    else:
-        args = [cmd]
-        args.extend(shlex.split(raw_args))
+    args = [cmd]
+    args.extend(shlex.split(raw_args))
     if (flags & PROCESS_EXECUTE_FLAG_CHANNELIZED):
         if has_pty:
             master, slave = pty.openpty()
@@ -1161,7 +1158,7 @@ def stdapi_sys_process_execute(request, response):
                     termios.tcsetattr(master, termios.TCSADRAIN, settings)
                 except:
                     pass
-            proc_h = STDProcess(args, stdin=slave, stdout=slave, stderr=slave, bufsize=0)
+            proc_h = STDProcess(args, stdin=slave, stdout=slave, stderr=slave, bufsize=0, start_new_session=True)
             proc_h.stdin = os.fdopen(master, 'wb')
             proc_h.stdout = os.fdopen(master, 'rb')
             proc_h.stderr = open(os.devnull, 'rb')
