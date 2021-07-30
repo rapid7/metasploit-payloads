@@ -649,6 +649,7 @@ PROCESS_EXECUTE_FLAG_HIDDEN = (1 << 0)
 PROCESS_EXECUTE_FLAG_CHANNELIZED = (1 << 1)
 PROCESS_EXECUTE_FLAG_SUSPENDED = (1 << 2)
 PROCESS_EXECUTE_FLAG_USE_THREAD_TOKEN = (1 << 3)
+PROCESS_EXECUTE_FLAG_SUBSHELL         = (1 << 6)
 
 PROCESS_ARCH_UNKNOWN = 0
 PROCESS_ARCH_X86 = 1
@@ -1146,8 +1147,12 @@ def stdapi_sys_process_execute(request, response):
     flags = packet_get_tlv(request, TLV_TYPE_PROCESS_FLAGS)['value']
     if len(cmd) == 0:
         return ERROR_FAILURE, response
-    args = [cmd]
-    args.extend(shlex.split(raw_args))
+    if os.path.isfile('/bin/sh') and (flags & PROCESS_EXECUTE_FLAG_SUBSHELL):
+        args = ['/bin/sh', '-c', cmd, raw_args]
+    else:
+        args = [cmd]
+        args.extend(shlex.split(raw_args))
+
     if (flags & PROCESS_EXECUTE_FLAG_CHANNELIZED):
         if has_pty:
             master, slave = pty.openpty()
