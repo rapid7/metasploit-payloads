@@ -27,7 +27,9 @@ define("TLV_TYPE_SEARCH_RECURSE",      TLV_META_TYPE_BOOL    | 1230);
 define("TLV_TYPE_SEARCH_GLOB",         TLV_META_TYPE_STRING  | 1231);
 define("TLV_TYPE_SEARCH_ROOT",         TLV_META_TYPE_STRING  | 1232);
 define("TLV_TYPE_SEARCH_RESULTS",      TLV_META_TYPE_GROUP   | 1233);
-
+define("TLV_TYPE_SEARCH_MTIME",        TLV_META_TYPE_UINT    | 1235);
+define("TLV_TYPE_SEARCH_FROM_DATE",    TLV_META_TYPE_UINT    | 1236);
+define("TLV_TYPE_SEARCH_TO_DATE",      TLV_META_TYPE_UINT    | 1237);
 define("TLV_TYPE_FILE_MODE_T",         TLV_META_TYPE_UINT    | 1234);
 
 ##
@@ -340,7 +342,7 @@ define('GLOB_RECURSE',2048);
  *   GLOB_NODOTS, GLOB_RECURSE
  */
 if (!function_exists('safe_glob')) {
-function safe_glob($pattern, $flags=0) {
+function safe_glob($pattern, $flags=0, $sd=0, $ed=0) {
     $split=explode('/',str_replace('\\','/',$pattern));
     $mask=array_pop($split);
     $path=implode('/',$split);
@@ -356,14 +358,18 @@ function safe_glob($pattern, $flags=0) {
                     && (!is_link($path."/".$file))
                 )
             ) {
-                $glob = array_merge($glob, array_prepend(safe_glob($path.'/'.$file.'/'.$mask, $flags),
+                $glob = array_merge($glob, array_prepend(safe_glob($path.'/'.$file.'/'.$mask, $flags, $sd, $ed),
                     ($flags&GLOB_PATH?'':$file.'/')));
             }
             // Match file mask
             if (fnmatch($mask,$file)) {
+                $tmp_f_stat = stat($path.'/'.$file);
+                $mtime = $tmp_f_stat['mtime'];
                 if ( ( (!($flags&GLOB_ONLYDIR)) || is_dir("$path/$file") )
                     && ( (!($flags&GLOB_NODIR)) || (!is_dir($path.'/'.$file)) )
-                    && ( (!($flags&GLOB_NODOTS)) || (!in_array($file,array('.','..'))) ) )
+                    && ( (!($flags&GLOB_NODOTS)) || (!in_array($file,array('.','..'))) )
+                    && ( $sd <= $mtime )
+                    && ( ($ed == 0)             || ($ed >= $mtime)) )
                     $glob[] = ($flags&GLOB_PATH?$path.'/':'') . $file . ($flags&GLOB_MARK?'/':'');
             }
         }
@@ -682,6 +688,10 @@ function stdapi_fs_search($req, &$pkt) {
     $glob = canonicalize_path($glob_tlv['value']);
     $recurse_tlv = packet_get_tlv($req, TLV_TYPE_SEARCH_RECURSE);
     $recurse = $recurse_tlv['value'];
+    $sd_tlv = packet_get_tlv($req, TLV_TYPE_SEARCH_FROM_DATE);
+    $sd = $sd_tlv['value'];
+    $ed_tlv = packet_get_tlv($req, TLV_TYPE_SEARCH_TO_DATE);
+    $ed = $ed_tlv['value'];
 
     if (!$root) {
         $root = '.';
@@ -692,7 +702,7 @@ function stdapi_fs_search($req, &$pkt) {
     if ($recurse) {
         $flags |= GLOB_RECURSE;
     }
-    $files = safe_glob($root ."/". $glob, $flags);
+    $files = safe_glob($root ."/". $glob, $flags, $sd, $ed);
     if ($files and is_array($files)) {
         dump_array($files);
         foreach ($files as $file) {
@@ -703,6 +713,7 @@ function stdapi_fs_search($req, &$pkt) {
             $file_tlvs .= tlv_pack(create_tlv(TLV_TYPE_FILE_PATH, $p));
             $file_tlvs .= tlv_pack(create_tlv(TLV_TYPE_FILE_NAME, $f));
             $file_tlvs .= tlv_pack(create_tlv(TLV_TYPE_FILE_SIZE, $s['size']));
+            $file_tlvs .= tlv_pack(create_tlv(TLV_TYPE_SEARCH_MTIME, $s['mtime']));
             packet_add_tlv($pkt, create_tlv(TLV_TYPE_SEARCH_RESULTS, $file_tlvs));
         }
     }
@@ -1353,7 +1364,3 @@ function channel_create_stdapi_net_udp_client($req, &$pkt) {
     return ERROR_SUCCESS;
 }
 }
-
-
-
-

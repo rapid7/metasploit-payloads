@@ -474,6 +474,9 @@ TLV_TYPE_SEARCH_ROOT           = TLV_META_TYPE_STRING  | 1232
 TLV_TYPE_SEARCH_RESULTS        = TLV_META_TYPE_GROUP   | 1233
 
 TLV_TYPE_FILE_MODE_T           = TLV_META_TYPE_UINT    | 1234
+TLV_TYPE_SEARCH_MTIME          = TLV_META_TYPE_UINT    | 1235
+TLV_TYPE_SEARCH_FROM_DATE      = TLV_META_TYPE_UINT    | 1236
+TLV_TYPE_SEARCH_TO_DATE        = TLV_META_TYPE_UINT    | 1237
 
 ##
 # Net
@@ -1518,20 +1521,34 @@ def stdapi_fs_search(request, response):
     search_root = unicode(search_root)
     glob = packet_get_tlv(request, TLV_TYPE_SEARCH_GLOB)['value']
     recurse = packet_get_tlv(request, TLV_TYPE_SEARCH_RECURSE)['value']
+    sd = packet_get_tlv(request,TLV_TYPE_SEARCH_FROM_DATE)['value']
+    ed = packet_get_tlv(request,TLV_TYPE_SEARCH_TO_DATE)['value']
     if recurse:
         for root, dirs, files in os.walk(search_root):
             for f in filter(lambda f: fnmatch.fnmatch(f, glob), files):
+                mtime = int(os.stat(os.path.join(root, f)).st_mtime)
+                if sd > mtime:
+                    continue
+                if ed > 0 and ed < mtime:
+                    continue
                 file_tlv  = bytes()
                 file_tlv += tlv_pack(TLV_TYPE_FILE_PATH, root)
                 file_tlv += tlv_pack(TLV_TYPE_FILE_NAME, f)
                 file_tlv += tlv_pack(TLV_TYPE_FILE_SIZE, os.stat(os.path.join(root, f)).st_size)
+                file_tlv += tlv_pack(TLV_TYPE_SEARCH_MTIME,mtime)
                 response += tlv_pack(TLV_TYPE_SEARCH_RESULTS, file_tlv)
     else:
         for f in filter(lambda f: fnmatch.fnmatch(f, glob), os.listdir(search_root)):
             file_tlv  = bytes()
+            mtime = int(os.stat(os.path.join(root, f)).st_mtime)
+            if sd > 0 and sd > mtime:
+                continue
+            if ed > 0 and ed < mtime:
+                continue
             file_tlv += tlv_pack(TLV_TYPE_FILE_PATH, search_root)
             file_tlv += tlv_pack(TLV_TYPE_FILE_NAME, f)
             file_tlv += tlv_pack(TLV_TYPE_FILE_SIZE, os.stat(os.path.join(search_root, f)).st_size)
+            file_tlv += tlv_pack(TLV_TYPE_SEARCH_MTIME,mtime)
             response += tlv_pack(TLV_TYPE_SEARCH_RESULTS, file_tlv)
     return ERROR_SUCCESS, response
 
