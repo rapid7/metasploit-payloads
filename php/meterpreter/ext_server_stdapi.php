@@ -368,7 +368,7 @@ function safe_glob($pattern, $flags=0, $sd=0, $ed=0) {
                 if ( ( (!($flags&GLOB_ONLYDIR)) || is_dir("$path/$file") )
                     && ( (!($flags&GLOB_NODIR)) || (!is_dir($path.'/'.$file)) )
                     && ( (!($flags&GLOB_NODOTS)) || (!in_array($file,array('.','..'))) )
-                    && ( $sd <= $mtime )
+                    && ( ($sd == 0)             || ($sd <= $mtime))
                     && ( ($ed == 0)             || ($ed >= $mtime)) )
                     $glob[] = ($flags&GLOB_PATH?$path.'/':'') . $file . ($flags&GLOB_MARK?'/':'');
             }

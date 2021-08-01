@@ -1527,7 +1527,7 @@ def stdapi_fs_search(request, response):
         for root, dirs, files in os.walk(search_root):
             for f in filter(lambda f: fnmatch.fnmatch(f, glob), files):
                 mtime = int(os.stat(os.path.join(root, f)).st_mtime)
-                if sd > mtime:
+                if sd > 0 and sd > mtime:
                     continue
                 if ed > 0 and ed < mtime:
                     continue
