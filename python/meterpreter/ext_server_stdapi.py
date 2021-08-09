@@ -40,6 +40,12 @@ except ImportError:
     has_termios = False
 
 try:
+    import fcntl
+    has_fcntl = True
+except ImportError:
+    has_fcntl = False
+
+try:
     import _winreg as winreg
     has_winreg = True
 except ImportError:
@@ -1159,7 +1165,6 @@ def stdapi_sys_process_execute(request, response):
             if has_termios:
                 try:
                     settings = termios.tcgetattr(master)
-                    settings[3] = settings[3] & ~termios.ECHO
                     termios.tcsetattr(master, termios.TCSADRAIN, settings)
                 except:
                     pass
@@ -2547,4 +2552,16 @@ def stdapi_ui_get_idle_time(request, response):
     GetTickCount.restype = ctypes.c_uint32
     idle_time = (GetTickCount() - info.dwTime) / 1000
     response += tlv_pack(TLV_TYPE_IDLE_TIME, idle_time)
+    return ERROR_SUCCESS, response
+
+@register_function_if(has_termios and has_fcntl)
+def stdapi_set_term_size(request, response):
+    channel_id = packet_get_tlv(request, TLV_TYPE_CHANNEL_ID)['value']
+    tlvs = list(packet_enum_tlvs(request, TLV_TYPE_UINT))
+    rows = tlvs[0]['value']
+    columns = tlvs[1]['value']
+    if channel_id in meterpreter.interact_channels:
+        proc_h = meterpreter.channels[channel_id].proc_h
+        winsize = struct.pack("HHHH", rows, columns, 0, 0)
+        fcntl.ioctl(proc_h.stdin, termios.TIOCSWINSZ, winsize)
     return ERROR_SUCCESS, response
