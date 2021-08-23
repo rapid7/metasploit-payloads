@@ -2564,4 +2564,6 @@ def stdapi_set_term_size(request, response):
         proc_h = meterpreter.channels[channel_id].proc_h
         winsize = struct.pack("HHHH", rows, columns, 0, 0)
         fcntl.ioctl(proc_h.stdin, termios.TIOCSWINSZ, winsize)
+    else:
+        return ERROR_FAILURE, response
     return ERROR_SUCCESS, response
