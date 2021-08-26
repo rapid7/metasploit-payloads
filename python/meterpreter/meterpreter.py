@@ -639,13 +639,17 @@ class MeterpreterProcess(MeterpreterChannel):
         super(MeterpreterProcess, self).__init__()
 
     def close(self):
-        self.proc_h.kill()
-        if hasattr(self.proc_h.stdin, 'close'):
-            self.proc_h.stdin.close()
-        if hasattr(self.proc_h.stdout, 'close'):
-            self.proc_h.stdout.close()
-        if hasattr(self.proc_h.stderr, 'close'):
-            self.proc_h.stderr.close()
+        if self.proc_h.poll() is None:
+            self.proc_h.kill()
+        if self.proc_h.ptyfd is not None:
+            os.close(self.proc_h.ptyfd)
+        for stream in (self.proc_h.stdin, self.proc_h.stdout, self.proc_h.stderr):
+            if not hasattr(stream, 'close'):
+                continue
+            try:
+                stream.close()
+            except (IOError, OSError):
+                pass
 
     def is_alive(self):
         return self.proc_h.poll() is None
@@ -739,18 +743,26 @@ class MeterpreterSocketUDPClient(MeterpreterSocket):
 export(MeterpreterSocketUDPClient)
 
 class STDProcessBuffer(threading.Thread):
-    def __init__(self, std, is_alive):
-        threading.Thread.__init__(self)
+    def __init__(self, std, is_alive, name=None):
+        threading.Thread.__init__(self, name=name or self.__class__.__name__)
         self.std = std
         self.is_alive = is_alive
         self.data = bytes()
         self.data_lock = threading.RLock()
 
+    def _read1(self):
+        try:
+            return self.std.read(1)
+        except (IOError, OSError):
+            return bytes()
+
     def run(self):
-        for byte in iter(lambda: self.std.read(1), bytes()):
+        byte = self._read1()
+        while len(byte):
             self.data_lock.acquire()
             self.data += byte
             self.data_lock.release()
+            byte = self._read1()
 
     def is_read_ready(self):
         return len(self.data) != 0
@@ -778,14 +790,15 @@ class STDProcess(subprocess.Popen):
         debug_print('[*] starting process: ' + repr(args[0]))
         subprocess.Popen.__init__(self, *args, **kwargs)
         self.echo_protection = False
+        self.ptyfd = None
 
     def is_alive(self):
         return self.poll() is None
 
     def start(self):
-        self.stdout_reader = STDProcessBuffer(self.stdout, self.is_alive)
+        self.stdout_reader = STDProcessBuffer(self.stdout, self.is_alive, name='STDProcessBuffer.stdout')
         self.stdout_reader.start()
-        self.stderr_reader = STDProcessBuffer(self.stderr, self.is_alive)
+        self.stderr_reader = STDProcessBuffer(self.stderr, self.is_alive, name='STDProcessBuffer.stderr')
         self.stderr_reader.start()
 
     def write(self, channel_data):
@@ -1273,15 +1286,15 @@ class PythonMeterpreter(object):
                 data = bytes()
                 write_request_parts = []
                 if isinstance(channel, MeterpreterProcess):
-                    if not channel_id in self.interact_channels:
-                        continue
-                    proc_h = channel.proc_h
-                    if proc_h.stderr_reader.is_read_ready():
-                        data = proc_h.stderr_reader.read()
-                    elif proc_h.stdout_reader.is_read_ready():
-                        data = proc_h.stdout_reader.read()
-                    elif not channel.is_alive():
+                    if channel_id in self.interact_channels:
+                        proc_h = channel.proc_h
+                        if proc_h.stderr_reader.is_read_ready():
+                            data = proc_h.stderr_reader.read()
+                        elif proc_h.stdout_reader.is_read_ready():
+                            data = proc_h.stdout_reader.read()
+                    if not channel.is_alive():
                         self.handle_dead_resource_channel(channel_id)
+                        channel.close()
                 elif isinstance(channel, MeterpreterSocketTCPClient):
                     while select.select([channel.fileno()], [], [], 0)[0]:
                         try:
@@ -1551,7 +1564,6 @@ class PythonMeterpreter(object):
         channel = self.channels[channel_id]
         status, response = channel.core_eof(request, response)
         return ERROR_SUCCESS, response
-
 
     def _core_channel_interact(self, request, response):
         channel_id = packet_get_tlv(request, TLV_TYPE_CHANNEL_ID)['value']
