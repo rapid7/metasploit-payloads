@@ -1614,7 +1614,10 @@ class PythonMeterpreter(object):
                 if result != ERROR_SUCCESS:
                     debug_print('[-] method ' + handler_name + ' resulted in error: #' + str(result))
         else:
-            debug_print('[-] method ' + handler_name + ' was requested but does not exist')
+            if handler_name is None:
+                debug_print('[-] command id ' + str(commd_id_tlv['value']) + ' was requested but does not exist')
+            else:
+                debug_print('[-] method ' + handler_name + ' was requested but does not exist')
             result = error_result(NotImplementedError)
 
         reqid_tlv = packet_get_tlv(request, TLV_TYPE_REQUEST_ID)
