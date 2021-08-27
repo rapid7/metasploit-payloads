@@ -1167,6 +1167,7 @@ def stdapi_sys_process_execute(request, response):
             proc_h.stdin = os.fdopen(master, 'wb')
             proc_h.stdout = os.fdopen(master, 'rb')
             proc_h.stderr = open(os.devnull, 'rb')
+            proc_h.ptyfd = slave
         else:
             proc_h = STDProcess(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             proc_h.echo_protection = True
