@@ -616,6 +616,9 @@ TLV_TYPE_REGISTER_SIZE         = TLV_META_TYPE_UINT    | 2541
 TLV_TYPE_REGISTER_VALUE_32     = TLV_META_TYPE_UINT    | 2542
 TLV_TYPE_REGISTER              = TLV_META_TYPE_GROUP   | 2550
 
+TLV_TYPE_TERMINAL_ROWS         = TLV_META_TYPE_UINT    | 2600
+TLV_TYPE_TERMINAL_COLUMNS      = TLV_META_TYPE_UINT    | 2601
+
 ##
 # Ui
 ##
@@ -2555,11 +2558,10 @@ def stdapi_ui_get_idle_time(request, response):
     return ERROR_SUCCESS, response
 
 @register_function_if(has_termios and has_fcntl)
-def stdapi_set_term_size(request, response):
+def stdapi_sys_set_term_size(request, response):
     channel_id = packet_get_tlv(request, TLV_TYPE_CHANNEL_ID)['value']
-    tlvs = list(packet_enum_tlvs(request, TLV_TYPE_UINT))
-    rows = tlvs[0]['value']
-    columns = tlvs[1]['value']
+    rows = packet_get_tlv(request, TLV_TYPE_TERMINAL_ROWS)['value']
+    columns = packet_get_tlv(request, TLV_TYPE_TERMINAL_COLUMNS)['value']
     if channel_id in meterpreter.interact_channels:
         proc_h = meterpreter.channels[channel_id].proc_h
         winsize = struct.pack("HHHH", rows, columns, 0, 0)
