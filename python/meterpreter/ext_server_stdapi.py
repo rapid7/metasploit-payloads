@@ -2558,7 +2558,7 @@ def stdapi_ui_get_idle_time(request, response):
     return ERROR_SUCCESS, response
 
 @register_function_if(has_termios and has_fcntl)
-def stdapi_sys_set_term_size(request, response):
+def stdapi_sys_process_set_term_size(request, response):
     channel_id = packet_get_tlv(request, TLV_TYPE_CHANNEL_ID)['value']
     rows = packet_get_tlv(request, TLV_TYPE_TERMINAL_ROWS)['value']
     columns = packet_get_tlv(request, TLV_TYPE_TERMINAL_COLUMNS)['value']

@@ -347,7 +347,7 @@ COMMAND_IDS = (
     (1115, 'stdapi_audio_mic_start'),
     (1116, 'stdapi_audio_mic_stop'),
     (1117, 'stdapi_audio_mic_list'),
-    (1118, 'stdapi_sys_set_term_size'),
+    (1118, 'stdapi_sys_process_set_term_size'),
 
 )
 # ---------------------------------------------------------------
