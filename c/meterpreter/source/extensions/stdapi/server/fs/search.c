@@ -615,8 +615,8 @@ DWORD wds3_search(WDS_INTERFACE * pWDSInterface, wchar_t * wpProtocol, wchar_t *
 			BREAK_WITH_ERROR("[SEARCH] wds3_search: unable to create where query buffer", GetLastError());
 		}
 
-		if (pOptions->startDate > 0) {
-			DWORD sd = pOptions->startDate;
+		if (pOptions->m_startDate > 0) {
+			DWORD sd = pOptions->m_startDate;
 			FILETIME ft = { 0 };
 			DWORD HR = ERROR_SUCCESS;
 			HR = uintToFILETIME(sd,&ft);
@@ -631,8 +631,8 @@ DWORD wds3_search(WDS_INTERFACE * pWDSInterface, wchar_t * wpProtocol, wchar_t *
 			sd_mask += 2;
 
 		}
-		if (pOptions->endDate > 0) {
-			DWORD ed = pOptions->endDate;
+		if (pOptions->m_endDate > 0) {
+			DWORD ed = pOptions->m_endDate;
 			wchar_t tmp[25] = { 0 };
 			wchar_t* to = calloc(80, sizeof(wchar_t));
 			FILETIME ft = { 0 };
@@ -820,8 +820,8 @@ DWORD directory_search(wchar_t *directory, SEARCH_OPTIONS * pOptions, Packet * p
 	size_t len                = wcslen(directory) + 5;
 
 	DWORD mask = 0;
-	DWORD sd = pOptions->startDate;
-	DWORD ed = pOptions->endDate;
+	DWORD sd = pOptions->m_startDate;
+	DWORD ed = pOptions->m_endDate;
 	FILETIME sdts = { 0 };
 	FILETIME edts = { 0 };
 	if (sd > 0) {
@@ -981,8 +981,8 @@ DWORD request_fs_search(Remote * pRemote, Packet * pPacket)
 	options.glob = met_api->string.utf8_to_wchar(
 		met_api->packet.get_tlv_value_string(pPacket, TLV_TYPE_SEARCH_GLOB));
 
-	options.startDate = met_api->packet.get_tlv_value_uint(pPacket,TLV_TYPE_SEARCH_FROM_DATE);
-	options.endDate =  met_api->packet.get_tlv_value_uint(pPacket, TLV_TYPE_SEARCH_TO_DATE);
+	options.m_startDate = met_api->packet.get_tlv_value_uint(pPacket,TLV_TYPE_SEARCH_M_START_DATE);
+	options.m_endDate =  met_api->packet.get_tlv_value_uint(pPacket, TLV_TYPE_SEARCH_M_END_DATE);
 	
 
 	if (options.rootDirectory && wcslen(options.rootDirectory) == 0) {
@@ -1002,7 +1002,7 @@ DWORD request_fs_search(Remote * pRemote, Packet * pPacket)
 	}
 
 	dprintf("[SEARCH] root: '%S' glob: '%S'", options.rootDirectory, options.glob);
-	dprintf("[SEARCH] dates: from %u to %u", options.startDate, options.endDate);
+	dprintf("[SEARCH] dates: from %u to %u", options.m_startDate, options.m_endDate);
 
 	options.bResursive = met_api->packet.get_tlv_value_bool(pPacket, TLV_TYPE_SEARCH_RECURSE);
 

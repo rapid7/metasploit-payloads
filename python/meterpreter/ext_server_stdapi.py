@@ -475,8 +475,8 @@ TLV_TYPE_SEARCH_RESULTS        = TLV_META_TYPE_GROUP   | 1233
 
 TLV_TYPE_FILE_MODE_T           = TLV_META_TYPE_UINT    | 1234
 TLV_TYPE_SEARCH_MTIME          = TLV_META_TYPE_UINT    | 1235
-TLV_TYPE_SEARCH_FROM_DATE      = TLV_META_TYPE_UINT    | 1236
-TLV_TYPE_SEARCH_TO_DATE        = TLV_META_TYPE_UINT    | 1237
+TLV_TYPE_SEARCH_M_START_DATE   = TLV_META_TYPE_UINT    | 1236
+TLV_TYPE_SEARCH_M_END_DATE     = TLV_META_TYPE_UINT    | 1237
 
 ##
 # Net
@@ -1521,8 +1521,8 @@ def stdapi_fs_search(request, response):
     search_root = unicode(search_root)
     glob = packet_get_tlv(request, TLV_TYPE_SEARCH_GLOB)['value']
     recurse = packet_get_tlv(request, TLV_TYPE_SEARCH_RECURSE)['value']
-    sd = packet_get_tlv(request,TLV_TYPE_SEARCH_FROM_DATE)['value']
-    ed = packet_get_tlv(request,TLV_TYPE_SEARCH_TO_DATE)['value']
+    sd = packet_get_tlv(request,TLV_TYPE_SEARCH_M_START_DATE)['value']
+    ed = packet_get_tlv(request,TLV_TYPE_SEARCH_M_END_DATE)['value']
     if recurse:
         for root, dirs, files in os.walk(search_root):
             for f in filter(lambda f: fnmatch.fnmatch(f, glob), files):

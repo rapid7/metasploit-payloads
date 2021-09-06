@@ -39,8 +39,8 @@ typedef struct _SEARCH_OPTIONS
 	wchar_t *glob;
 	wchar_t *rootDirectory;
 	BOOL bResursive;
-	UINT startDate;
-	UINT endDate;
+	UINT m_startDate;
+	UINT m_endDate;
 } SEARCH_OPTIONS;
 
 // sf: The padding DWORD's ensure we dont get an IAccessor_CreateAccessor error due to alignment on x64.

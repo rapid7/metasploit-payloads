@@ -21,8 +21,8 @@ public class stdapi_fs_search implements Command {
     private static final int TLV_TYPE_SEARCH_RESULTS = TLVPacket.TLV_META_TYPE_GROUP | 1233;
 
     private static final int TLV_TYPE_SEARCH_MTIME = TLVPacket.TLV_META_TYPE_UINT | 1235;
-    private static final int TLV_TYPE_SEARCH_FROM_DATE = TLVPacket.TLV_META_TYPE_UINT | 1236;
-    private static final int TLV_TYPE_SEARCH_TO_DATE = TLVPacket.TLV_META_TYPE_UINT | 1237;
+    private static final int TLV_TYPE_SEARCH_M_START_DATE = TLVPacket.TLV_META_TYPE_UINT | 1236;
+    private static final int TLV_TYPE_SEARCH_M_END_DATE = TLVPacket.TLV_META_TYPE_UINT | 1237;
 
 
     /**
@@ -106,8 +106,8 @@ public class stdapi_fs_search implements Command {
         String root = request.getStringValue(TLV_TYPE_SEARCH_ROOT, ".");
         String glob = request.getStringValue(TLV_TYPE_SEARCH_GLOB);
         boolean recurse = request.getBooleanValue(TLV_TYPE_SEARCH_RECURSE);
-        long sd = (long) request.getIntValue(TLV_TYPE_SEARCH_FROM_DATE);
-        long ed = (long) request.getIntValue(TLV_TYPE_SEARCH_TO_DATE);
+        long sd = (long) request.getIntValue(TLV_TYPE_SEARCH_M_START_DATE);
+        long ed = (long) request.getIntValue(TLV_TYPE_SEARCH_M_END_DATE);
 
         List files = findFiles(root, glob, recurse, sd, ed);
         for (int i = 0; i < files.size(); i++) {

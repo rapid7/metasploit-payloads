@@ -28,8 +28,8 @@ define("TLV_TYPE_SEARCH_GLOB",         TLV_META_TYPE_STRING  | 1231);
 define("TLV_TYPE_SEARCH_ROOT",         TLV_META_TYPE_STRING  | 1232);
 define("TLV_TYPE_SEARCH_RESULTS",      TLV_META_TYPE_GROUP   | 1233);
 define("TLV_TYPE_SEARCH_MTIME",        TLV_META_TYPE_UINT    | 1235);
-define("TLV_TYPE_SEARCH_FROM_DATE",    TLV_META_TYPE_UINT    | 1236);
-define("TLV_TYPE_SEARCH_TO_DATE",      TLV_META_TYPE_UINT    | 1237);
+define("TLV_TYPE_SEARCH_M_START_DATE", TLV_META_TYPE_UINT    | 1236);
+define("TLV_TYPE_SEARCH_M_END_DATE",   TLV_META_TYPE_UINT    | 1237);
 define("TLV_TYPE_FILE_MODE_T",         TLV_META_TYPE_UINT    | 1234);
 
 ##
@@ -688,9 +688,9 @@ function stdapi_fs_search($req, &$pkt) {
     $glob = canonicalize_path($glob_tlv['value']);
     $recurse_tlv = packet_get_tlv($req, TLV_TYPE_SEARCH_RECURSE);
     $recurse = $recurse_tlv['value'];
-    $sd_tlv = packet_get_tlv($req, TLV_TYPE_SEARCH_FROM_DATE);
+    $sd_tlv = packet_get_tlv($req, TLV_TYPE_SEARCH_M_START_DATE);
     $sd = $sd_tlv['value'];
-    $ed_tlv = packet_get_tlv($req, TLV_TYPE_SEARCH_TO_DATE);
+    $ed_tlv = packet_get_tlv($req, TLV_TYPE_SEARCH_M_END_DATE);
     $ed = $ed_tlv['value'];
 
     if (!$root) {
