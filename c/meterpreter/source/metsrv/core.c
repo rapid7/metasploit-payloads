@@ -877,7 +877,7 @@ UINT packet_get_tlv_value_uint(Packet *packet, TlvType type)
 		return 0;
 	}
 
-	return ntohl(*(LPDWORD)uintTlv.buffer);
+	return output;
 }
 
 /*!

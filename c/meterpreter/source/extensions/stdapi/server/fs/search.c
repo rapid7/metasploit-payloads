@@ -49,13 +49,12 @@ VOID search_add_result(Packet * pResponse, wchar_t *directory, wchar_t *fileName
 
 //Epoch to FILETIME based on https://stackoverflow.com/questions/41016000/how-to-convert-filetime-to-unix-epoch-with-milliseconds-resolution
 
-HRESULT uintToFILETIME(UINT epoch, FILETIME* ft) {
+void uintToFILETIME(UINT epoch, FILETIME* ft) {
 	UINT64 t = (TICKS_PER_SECOND * epoch) + MILI_SEC_TO_UNIX_EPOCH;
 	ULARGE_INTEGER li;
 	li.QuadPart = t;
 	ft->dwHighDateTime = li.HighPart;
 	ft->dwLowDateTime = li.LowPart;
-	return dwResult;
 }
 
 UINT FILETIMETouint(FILETIME* ft) {
@@ -607,9 +606,8 @@ DWORD wds3_search(WDS_INTERFACE * pWDSInterface, wchar_t * wpProtocol, wchar_t *
 		if (pOptions->m_startDate > 0) {
 			DWORD sd = pOptions->m_startDate;
 			FILETIME ft = { 0 };
-			DWORD HR = ERROR_SUCCESS;
-			HR = uintToFILETIME(sd,&ft);
-		    SYSTEMTIME LPST = { 0 };
+			uintToFILETIME(sd,&ft);
+			SYSTEMTIME LPST = { 0 };
 			CONST FILETIME* lpFileTime = &ft;
 			if (!FileTimeToSystemTime(lpFileTime, &LPST)) {
 				BREAK_WITH_ERROR("[SEARCH] unable to convert time", GetLastError());
@@ -625,8 +623,7 @@ DWORD wds3_search(WDS_INTERFACE * pWDSInterface, wchar_t * wpProtocol, wchar_t *
 			wchar_t tmp[25] = { 0 };
 			wchar_t* to = calloc(80, sizeof(wchar_t));
 			FILETIME ft = { 0 };
-			DWORD HR = ERROR_SUCCESS;
-			HR = uintToFILETIME(ed, &ft);
+			uintToFILETIME(ed, &ft);
 			SYSTEMTIME LPST_ed = { 0 };
 			CONST FILETIME* lpFileTime = &ft;
 
@@ -813,20 +810,12 @@ DWORD directory_search(wchar_t *directory, SEARCH_OPTIONS * pOptions, Packet * p
 	FILETIME sdts = { 0 };
 	FILETIME edts = { 0 };
 	if (sd > 0) {
-		dwResult = uintToFILETIME(sd, &sdts);
+		uintToFILETIME(sd, &sdts);
 		mask += 2;
-		if FAILED(dwResult) {
-			return GetLastError();
-		}
-
 	}
 	if (ed > 0) {
-		dwResult = uintToFILETIME(ed, &edts);
+		uintToFILETIME(ed, &edts);
 		mask += 1;
-		if FAILED(dwResult) {
-			return GetLastError();
-		}
-
 	}
 
 
