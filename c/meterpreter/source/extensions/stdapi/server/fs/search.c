@@ -16,8 +16,6 @@
 #include "fs_local.h"
 #include "search.h"
 
-#define DEBUGTRACE 0
-
 #ifdef __MINGW32__
 const GUID MET_DBGUID_DEFAULT = {0xc8b521fb,0x5cf3,0x11ce,{0xad,0xe5,0x00,0xaa,0x00,0x44,0x77,0x3d}};
 #else
@@ -46,14 +44,13 @@ VOID search_add_result(Packet * pResponse, wchar_t *directory, wchar_t *fileName
 	free(file);
 }
 
+#define TICKS_PER_SECOND 10000000LL
+#define MILI_SEC_TO_UNIX_EPOCH 116444736000000000LL
+
+//Epoch to FILETIME based on https://stackoverflow.com/questions/41016000/how-to-convert-filetime-to-unix-epoch-with-milliseconds-resolution
 
 HRESULT uintToFILETIME(UINT epoch, FILETIME* ft) {
-	//converts first from epoch to FILETIME based on https://stackoverflow.com/questions/41016000/how-to-convert-filetime-to-unix-epoch-with-milliseconds-resolution
-	// then converts to systemtime.
-	DWORD dwResult = ERROR_SUCCESS;
-    #define MILI_SEC_TO_UNIX_EPOCH 116444736000000000LL
-	UINT64 multiplier = 10000000;
-	UINT64 t = (multiplier * epoch) + MILI_SEC_TO_UNIX_EPOCH;
+	UINT64 t = (TICKS_PER_SECOND * epoch) + MILI_SEC_TO_UNIX_EPOCH;
 	ULARGE_INTEGER li;
 	li.QuadPart = t;
 	ft->dwHighDateTime = li.HighPart;
@@ -62,22 +59,14 @@ HRESULT uintToFILETIME(UINT epoch, FILETIME* ft) {
 }
 
 UINT FILETIMETouint(FILETIME* ft) {
-    #define MILI_SEC_TO_UNIX_EPOCH 116444736000000000LL
-	UINT64 multiplier = 10000000;
 	ULARGE_INTEGER li;
-	ULARGE_INTEGER li2;
 	li.HighPart = ft->dwHighDateTime;
 	li.LowPart = ft->dwLowDateTime;
-	UINT64 t;
-	UINT64 y;
-	UINT epoch;
-	t = li.QuadPart;
-	y = (t - MILI_SEC_TO_UNIX_EPOCH) / multiplier;
-
+	UINT64 t = li.QuadPart;
+	UINT64 y = (t - MILI_SEC_TO_UNIX_EPOCH) / TICKS_PER_SECOND;
+	ULARGE_INTEGER li2;
 	li2.QuadPart = y;
-	epoch = li2.LowPart;
-
-	return epoch;
+	return li2.LowPart;
 }
 
 BOOLEAN greatercomparefiletime(FILETIME first, FILETIME second) {
@@ -777,7 +766,6 @@ DWORD search_files(wchar_t * directory, SEARCH_OPTIONS * pOptions, Packet * pRes
 {
 	wchar_t firstFile[FS_MAX_PATH];
 	swprintf_s(firstFile, FS_MAX_PATH, L"%s\\%s", directory, pOptions->glob);
-	DWORD hr = 0;
 	WIN32_FIND_DATAW data;
 	HANDLE hFile = FindFirstFileW(firstFile, &data);
 
