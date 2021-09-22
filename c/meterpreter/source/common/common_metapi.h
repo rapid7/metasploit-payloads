@@ -124,6 +124,7 @@ typedef struct _PacketApi
 	QWORD(*get_tlv_value_qword)(Packet* packet, TlvType type);
 	TlvMetaType(*get_tlv_meta)(Packet* packet, Tlv* tlv);
 	UINT(*get_tlv_value_uint)(Packet* packet, TlvType type);
+	BOOL(*get_tlv_uint)(Packet* packet, TlvType type, UINT* output);
 	VOID(*destroy)(Packet* packet);
 	wchar_t*(*get_tlv_value_wstring)(Packet* packet, TlvType type);
 	LPCSTR(*get_tlv_value_reflective_loader)(Packet* packet);

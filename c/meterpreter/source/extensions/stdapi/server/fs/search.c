@@ -22,10 +22,33 @@ const GUID MET_DBGUID_DEFAULT = {0xc8b521fb,0x5cf3,0x11ce,{0xad,0xe5,0x00,0xaa,0
 #define MET_DBGUID_DEFAULT DBGUID_DEFAULT
 #endif
 
+#define TICKS_PER_SECOND 10000000LL
+#define MILI_SEC_TO_UNIX_EPOCH 116444736000000000LL
+
+//Epoch to FILETIME based on https://stackoverflow.com/questions/41016000/how-to-convert-filetime-to-unix-epoch-with-milliseconds-resolution
+void uintToFILETIME(UINT epoch, FILETIME* ft) {
+	UINT64 t = (TICKS_PER_SECOND * epoch) + MILI_SEC_TO_UNIX_EPOCH;
+	ULARGE_INTEGER li;
+	li.QuadPart = t;
+	ft->dwHighDateTime = li.HighPart;
+	ft->dwLowDateTime = li.LowPart;
+}
+
+UINT FILETIMETouint(FILETIME ft) {
+	ULARGE_INTEGER li;
+	li.HighPart = ft.dwHighDateTime;
+	li.LowPart = ft.dwLowDateTime;
+	UINT64 t = li.QuadPart;
+	UINT64 y = (t - MILI_SEC_TO_UNIX_EPOCH) / TICKS_PER_SECOND;
+	ULARGE_INTEGER li2;
+	li2.QuadPart = y;
+	return li2.LowPart;
+}
+
 /*
  * Helper function to add a search result to the response packet.
  */
-VOID search_add_result(Packet * pResponse, wchar_t *directory, wchar_t *fileName, DWORD dwFileSize, UINT dwDateValue)
+VOID search_add_result(Packet * pResponse, wchar_t *directory, wchar_t *fileName, DWORD dwFileSize, FILETIME ftFileTime)
 {
 	char *dir = met_api->string.wchar_to_utf8(directory);
 	char *file = met_api->string.wchar_to_utf8(fileName);
@@ -36,56 +59,13 @@ VOID search_add_result(Packet * pResponse, wchar_t *directory, wchar_t *fileName
 		met_api->packet.add_tlv_string(group, TLV_TYPE_FILE_PATH, dir);
 		met_api->packet.add_tlv_string(group, TLV_TYPE_FILE_NAME, file);
 		met_api->packet.add_tlv_uint(group, TLV_TYPE_FILE_SIZE, dwFileSize);
-		met_api->packet.add_tlv_uint(group, TLV_TYPE_SEARCH_MTIME, dwDateValue);
+		met_api->packet.add_tlv_uint(group, TLV_TYPE_SEARCH_MTIME, FILETIMETouint(ftFileTime));
 		met_api->packet.add_group(pResponse, TLV_TYPE_SEARCH_RESULTS, group);
 	}
 
 	free(dir);
 	free(file);
 }
-
-#define TICKS_PER_SECOND 10000000LL
-#define MILI_SEC_TO_UNIX_EPOCH 116444736000000000LL
-
-//Epoch to FILETIME based on https://stackoverflow.com/questions/41016000/how-to-convert-filetime-to-unix-epoch-with-milliseconds-resolution
-
-void uintToFILETIME(UINT epoch, FILETIME* ft) {
-	UINT64 t = (TICKS_PER_SECOND * epoch) + MILI_SEC_TO_UNIX_EPOCH;
-	ULARGE_INTEGER li;
-	li.QuadPart = t;
-	ft->dwHighDateTime = li.HighPart;
-	ft->dwLowDateTime = li.LowPart;
-}
-
-UINT FILETIMETouint(FILETIME* ft) {
-	ULARGE_INTEGER li;
-	li.HighPart = ft->dwHighDateTime;
-	li.LowPart = ft->dwLowDateTime;
-	UINT64 t = li.QuadPart;
-	UINT64 y = (t - MILI_SEC_TO_UNIX_EPOCH) / TICKS_PER_SECOND;
-	ULARGE_INTEGER li2;
-	li2.QuadPart = y;
-	return li2.LowPart;
-}
-
-BOOLEAN greatercomparefiletime(FILETIME first, FILETIME second) {
-	/* Returns true if the first FILETIME is >= than the second FILETIME
-	 */
-	if (first.dwHighDateTime > second.dwHighDateTime) {
-		return 1;
-	}
-	if (first.dwHighDateTime < second.dwHighDateTime) {
-		return 0;
-	}
-	if (first.dwLowDateTime > second.dwLowDateTime) {
-		return 1;
-	}
-	if (first.dwLowDateTime < second.dwLowDateTime) {
-		return 0;
-	}
-	return 1;
-}
-
 
 /*
  * Helper function to initilize the Windows Desktop Search v2 and v3 interfaces (if available).
@@ -341,8 +321,7 @@ HRESULT wds_execute(ICommand * pCommand, Packet * pResponse)
 
 
 				if (history) {
-					UINT epoch = FILETIMETouint(&rowSearchResults.wDateValue);
-					search_add_result(pResponse, L"", history + 2, 0, epoch);
+					search_add_result(pResponse, L"", history + 2, 0, rowSearchResults.wDateValue);
 				}
 			}
 			else if (_memicmp(L"mapi:", rowSearchResults.wPathValue, sizeof(L"mapi:")) == 0)
@@ -351,10 +330,8 @@ HRESULT wds_execute(ICommand * pCommand, Packet * pResponse)
 				wchar_t * history = wcsstr(rowSearchResults.wPathValue, L"}");
 				
 
-
 				if (history) {
-					UINT epoch = FILETIMETouint(&rowSearchResults.wDateValue);
-					search_add_result(pResponse, L"", history + 2, 0, epoch);
+					search_add_result(pResponse, L"", history + 2, 0, rowSearchResults.wDateValue);
 				}
 			}
 			else if (rowSearchResults.dwSizeValue > 0) {
@@ -387,8 +364,7 @@ HRESULT wds_execute(ICommand * pCommand, Packet * pResponse)
 					fileName  = directory;
 				}
 
-				UINT epoch = FILETIMETouint(&rowSearchResults.wDateValue);
-				search_add_result(pResponse, directory, fileName, rowSearchResults.dwSizeValue, epoch);
+				search_add_result(pResponse, directory, fileName, rowSearchResults.dwSizeValue, rowSearchResults.wDateValue);
 			}
 
 			hr = IRowset_ReleaseRows(pRowset, dbCount, pRows, NULL, NULL, NULL);
@@ -603,8 +579,8 @@ DWORD wds3_search(WDS_INTERFACE * pWDSInterface, wchar_t * wpProtocol, wchar_t *
 			BREAK_WITH_ERROR("[SEARCH] wds3_search: unable to create where query buffer", GetLastError());
 		}
 
-		if (pOptions->m_startDate > 0) {
-			DWORD sd = pOptions->m_startDate;
+		if (pOptions->uiStartDate > 0) {
+			DWORD sd = pOptions->uiStartDate;
 			FILETIME ft = { 0 };
 			uintToFILETIME(sd,&ft);
 			SYSTEMTIME LPST = { 0 };
@@ -618,8 +594,8 @@ DWORD wds3_search(WDS_INTERFACE * pWDSInterface, wchar_t * wpProtocol, wchar_t *
 			sd_mask += 2;
 
 		}
-		if (pOptions->m_endDate > 0) {
-			DWORD ed = pOptions->m_endDate;
+		if (pOptions->uiEndDate > 0) {
+			DWORD ed = pOptions->uiEndDate;
 			wchar_t tmp[25] = { 0 };
 			wchar_t* to = calloc(80, sizeof(wchar_t));
 			FILETIME ft = { 0 };
@@ -759,7 +735,7 @@ DWORD wds3_search(WDS_INTERFACE * pWDSInterface, wchar_t * wpProtocol, wchar_t *
 }
 
 
-DWORD search_files(wchar_t * directory, SEARCH_OPTIONS * pOptions, Packet * pResponse, DWORD mask, FILETIME sdts, FILETIME edts)
+DWORD search_files(wchar_t * directory, SEARCH_OPTIONS * pOptions, Packet * pResponse)
 {
 	wchar_t firstFile[FS_MAX_PATH];
 	swprintf_s(firstFile, FS_MAX_PATH, L"%s\\%s", directory, pOptions->glob);
@@ -773,16 +749,14 @@ DWORD search_files(wchar_t * directory, SEARCH_OPTIONS * pOptions, Packet * pRes
 			if (wcscmp(data.cFileName, L".") && wcscmp(data.cFileName, L"..") &&
 				!(data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
 			{
-			
-				FILETIME* lpFileTime = &(data.ftLastWriteTime);
-				if (((mask & 2) > 0) && (!greatercomparefiletime(*lpFileTime, sdts))) {
+				UINT epoch = FILETIMETouint(data.ftLastWriteTime);
+				if ((pOptions->uiStartDate != FS_SEARCH_NO_DATE) && (pOptions->uiStartDate > epoch)) {
 					continue;
 				}
-				if (((mask & 1) > 0) && (greatercomparefiletime(*lpFileTime, edts))) {
+				if ((pOptions->uiEndDate != FS_SEARCH_NO_DATE) && (pOptions->uiEndDate < epoch)) {
 					continue;
 				}
-				UINT epoch = FILETIMETouint(lpFileTime);
-				search_add_result(pResponse, directory, data.cFileName, data.nFileSizeLow, epoch);
+				search_add_result(pResponse, directory, data.cFileName, data.nFileSizeLow, data.ftLastWriteTime);
 			}
 		} while (FindNextFileW(hFile, &data) != 0);
 
@@ -803,21 +777,6 @@ DWORD directory_search(wchar_t *directory, SEARCH_OPTIONS * pOptions, Packet * p
 	BOOL bAllreadySearched    = FALSE;
 	WIN32_FIND_DATAW FindData = {0};
 	size_t len                = wcslen(directory) + 5;
-
-	DWORD mask = 0;
-	DWORD sd = pOptions->m_startDate;
-	DWORD ed = pOptions->m_endDate;
-	FILETIME sdts = { 0 };
-	FILETIME edts = { 0 };
-	if (sd > 0) {
-		uintToFILETIME(sd, &sdts);
-		mask += 2;
-	}
-	if (ed > 0) {
-		uintToFILETIME(ed, &edts);
-		mask += 1;
-	}
-
 
 	if (depth > 32 || len >= FS_MAX_PATH) {
 		return ERROR_SUCCESS;
@@ -854,7 +813,7 @@ DWORD directory_search(wchar_t *directory, SEARCH_OPTIONS * pOptions, Packet * p
 			else if (!bAllreadySearched)
 			{
 				// Call FindFirstFile again to glob specific files in this directory
-				dwResult = search_files(directory, pOptions, pResponse,mask,sdts,edts);
+				dwResult = search_files(directory, pOptions, pResponse);
 
 				bAllreadySearched = TRUE;
 			}
@@ -958,9 +917,13 @@ DWORD request_fs_search(Remote * pRemote, Packet * pPacket)
 	options.glob = met_api->string.utf8_to_wchar(
 		met_api->packet.get_tlv_value_string(pPacket, TLV_TYPE_SEARCH_GLOB));
 
-	options.m_startDate = met_api->packet.get_tlv_value_uint(pPacket,TLV_TYPE_SEARCH_M_START_DATE);
-	options.m_endDate =  met_api->packet.get_tlv_value_uint(pPacket, TLV_TYPE_SEARCH_M_END_DATE);
-	
+	if (met_api->packet.get_tlv_uint(pPacket, TLV_TYPE_SEARCH_M_START_DATE, &options.uiStartDate) == FALSE) {
+		options.uiStartDate = FS_SEARCH_NO_DATE;
+	}
+
+	if (met_api->packet.get_tlv_uint(pPacket, TLV_TYPE_SEARCH_M_END_DATE, &options.uiEndDate) == FALSE) {
+		options.uiEndDate = FS_SEARCH_NO_DATE;
+	}
 
 	if (options.rootDirectory && wcslen(options.rootDirectory) == 0) {
 		free(options.rootDirectory);
@@ -979,7 +942,7 @@ DWORD request_fs_search(Remote * pRemote, Packet * pPacket)
 	}
 
 	dprintf("[SEARCH] root: '%S' glob: '%S'", options.rootDirectory, options.glob);
-	dprintf("[SEARCH] dates: from %u to %u", options.m_startDate, options.m_endDate);
+	dprintf("[SEARCH] dates: from %u to %u", options.uiStartDate, options.uiEndDate);
 
 	options.bResursive = met_api->packet.get_tlv_value_bool(pPacket, TLV_TYPE_SEARCH_RECURSE);
 

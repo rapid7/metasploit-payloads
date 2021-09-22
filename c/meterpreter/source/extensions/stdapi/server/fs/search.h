@@ -34,13 +34,16 @@ typedef struct _WDS_INTERFACE
 
 } WDS_INTERFACE;
 
+
+#define FS_SEARCH_NO_DATE UINT_MAX
+
 typedef struct _SEARCH_OPTIONS
 {
 	wchar_t *glob;
 	wchar_t *rootDirectory;
 	BOOL bResursive;
-	UINT m_startDate;
-	UINT m_endDate;
+	UINT uiStartDate;
+	UINT uiEndDate;
 } SEARCH_OPTIONS;
 
 // sf: The padding DWORD's ensure we dont get an IAccessor_CreateAccessor error due to alignment on x64.
