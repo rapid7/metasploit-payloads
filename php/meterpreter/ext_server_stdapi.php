@@ -358,8 +358,11 @@ function safe_glob($pattern, $flags=0, $start_date=null, $end_date=null) {
                     && (!is_link($path."/".$file))
                 )
             ) {
-                $glob = array_merge($glob, array_prepend(safe_glob($path.'/'.$file.'/'.$mask, $flags, $start_date, $end_date),
-                    ($flags&GLOB_PATH?'':$file.'/')));
+                $newglob = safe_glob($path.'/'.$file.'/'.$mask, $flags, $start_date, $end_date);
+                if ($newglob !== false) {
+                    $glob = array_merge($glob, array_prepend($newglob,
+                        ($flags&GLOB_PATH?'':$file.'/')));
+                }
             }
             // Match file mask
             if (fnmatch($mask,$file)) {
