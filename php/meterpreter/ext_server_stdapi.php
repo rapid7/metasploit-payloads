@@ -756,12 +756,12 @@ function stdapi_sys_config_getuid($req, &$pkt) {
     if (is_callable('posix_getuid')) {
         $uid = posix_getuid();
         $pwinfo = posix_getpwuid($uid);
-        $user = $pwinfo['name'] . " ($uid)";
+        $user = $pwinfo['name'];
     } else {
         # The posix functions aren't available, this is probably windows.  Use
         # the functions for getting user name and uid based on file ownership
         # instead.
-        $user = get_current_user() . " (" . getmyuid() . ")";
+        $user = get_current_user();
     }
     my_print("getuid - returning: " . $user);
     packet_add_tlv($pkt, create_tlv(TLV_TYPE_USER_NAME, $user));
