@@ -62,7 +62,7 @@ public class stdapi_fs_search implements Command {
     }
 
 
-    public static List findFiles(String path, String mask, boolean recurse, long sd, long ed) {
+    public static List findFiles(String path, String mask, boolean recurse, Integer startDate, Integer endDate) {
         try {
             File pathfile = Loader.expand(path);
             if (!pathfile.exists() || !pathfile.isDirectory()) {
@@ -82,14 +82,14 @@ public class stdapi_fs_search implements Command {
                 if (recurse && file.isDirectory()
                         // don't follow links to avoid infinite recursion
                         && file.getCanonicalPath().equals(file.getAbsolutePath())) {
-                    glob.addAll(findFiles(file.getAbsolutePath(), mask, true, sd, ed));
+                    glob.addAll(findFiles(file.getAbsolutePath(), mask, true, startDate, endDate));
                 }
                 // Match file mask
                 if (matches(file.getName(), mask)) {
-                    if ((sd > 0) && (sd > (file.lastModified()/1000))){
+                    if (startDate != null && (startDate.longValue() > (file.lastModified()/1000))) {
                         continue;
                     }
-                    if ((ed > 0) && (ed < (file.lastModified()/1000))){
+                    if (endDate != null && (endDate.longValue() < (file.lastModified()/1000))) {
                         continue;
                     }
                     glob.add(path + "/" + file.getName());
@@ -106,10 +106,10 @@ public class stdapi_fs_search implements Command {
         String root = request.getStringValue(TLV_TYPE_SEARCH_ROOT, ".");
         String glob = request.getStringValue(TLV_TYPE_SEARCH_GLOB);
         boolean recurse = request.getBooleanValue(TLV_TYPE_SEARCH_RECURSE);
-        long sd = (long) request.getIntValue(TLV_TYPE_SEARCH_M_START_DATE);
-        long ed = (long) request.getIntValue(TLV_TYPE_SEARCH_M_END_DATE);
+        Integer startDate = (Integer) request.getValue(TLV_TYPE_SEARCH_M_START_DATE, null);
+        Integer endDate = (Integer) request.getValue(TLV_TYPE_SEARCH_M_END_DATE, null);
 
-        List files = findFiles(root, glob, recurse, sd, ed);
+        List files = findFiles(root, glob, recurse, startDate, endDate);
         for (int i = 0; i < files.size(); i++) {
             File f = new File((String) files.get(i));
             long mtime = f.lastModified()/1000;
