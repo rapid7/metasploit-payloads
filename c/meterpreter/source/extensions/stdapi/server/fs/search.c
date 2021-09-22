@@ -25,15 +25,20 @@ const GUID MET_DBGUID_DEFAULT = {0xc8b521fb,0x5cf3,0x11ce,{0xad,0xe5,0x00,0xaa,0
 #define TICKS_PER_SECOND 10000000LL
 #define MILI_SEC_TO_UNIX_EPOCH 116444736000000000LL
 
-//Epoch to FILETIME based on https://stackoverflow.com/questions/41016000/how-to-convert-filetime-to-unix-epoch-with-milliseconds-resolution
-void uintToFILETIME(UINT epoch, FILETIME* ft) {
+BOOL uintToSYSTEMTIME(UINT epoch, SYSTEMTIME* lpst) {
 	UINT64 t = (TICKS_PER_SECOND * epoch) + MILI_SEC_TO_UNIX_EPOCH;
 	ULARGE_INTEGER li;
 	li.QuadPart = t;
-	ft->dwHighDateTime = li.HighPart;
-	ft->dwLowDateTime = li.LowPart;
+	FILETIME ft = {0};
+	ft.dwHighDateTime = li.HighPart;
+	ft.dwLowDateTime = li.LowPart;
+	if (!FileTimeToSystemTime(&ft, lpst)) {
+		return FALSE;
+	}
+	return TRUE;
 }
 
+//Epoch to FILETIME based on https://stackoverflow.com/questions/41016000/how-to-convert-filetime-to-unix-epoch-with-milliseconds-resolution
 UINT FILETIMETouint(FILETIME ft) {
 	ULARGE_INTEGER li;
 	li.HighPart = ft.dwHighDateTime;
@@ -556,78 +561,53 @@ DWORD wds3_search(WDS_INTERFACE * pWDSInterface, wchar_t * wpProtocol, wchar_t *
 		if (FAILED(hr)) {
 			BREAK_WITH_ERROR("[SEARCH] wds3_search: ISearchQueryHelper_put_QuerySelectColumns Failed", hr);
 		}
+
 		wchar_t* where;
+		size_t where_len = 0;
+		size_t where_max_len = 160;
 		if (directory)
 		{
-			size_t len = wcslen(directory) + 160;
-			where = calloc(len, sizeof(wchar_t));
+			where_max_len = wcslen(directory) + where_max_len;
+			where = calloc(where_max_len, sizeof(wchar_t));
 			if (where) {
 				if (pOptions->bResursive) {
-					swprintf_s(where, len, L"AND SCOPE='%s:%s'", wpProtocol, directory);
+					where_len = swprintf_s(where, where_max_len, L"AND SCOPE='%s:%s'", wpProtocol, directory);
 				}
 				else {
-					swprintf_s(where, len, L"AND DIRECTORY='%s:%s'", wpProtocol, directory);
+					where_len = swprintf_s(where, where_max_len, L"AND DIRECTORY='%s:%s'", wpProtocol, directory);
 				}
 			} else {
-				dprintf("[SEARCH] wds3_search: !where", ERROR_OUTOFMEMORY);
+				BREAK_WITH_ERROR("[SEARCH] wds3_search: !where", ERROR_OUTOFMEMORY);
 			}
 		}
 
-		wchar_t* date_where_buffer = calloc(160, sizeof(wchar_t));
-		DWORD sd_mask = 0;
-		if (!date_where_buffer){
-			BREAK_WITH_ERROR("[SEARCH] wds3_search: unable to create where query buffer", GetLastError());
-		}
+		dprintf("Using wds3 search");
 
-		if (pOptions->uiStartDate > 0) {
-			DWORD sd = pOptions->uiStartDate;
-			FILETIME ft = { 0 };
-			uintToFILETIME(sd,&ft);
+		if (pOptions->uiStartDate != FS_SEARCH_NO_DATE) {
 			SYSTEMTIME LPST = { 0 };
-			CONST FILETIME* lpFileTime = &ft;
-			if (!FileTimeToSystemTime(lpFileTime, &LPST)) {
-				BREAK_WITH_ERROR("[SEARCH] unable to convert time", GetLastError());
-			} 
-			char tmp[25] = { 0 };
-			_snprintf_s(tmp,25,25,"%04d-%02d-%02dT%02d:%02d:%02d", LPST.wYear, LPST.wMonth, LPST.wDay, LPST.wHour, LPST.wMinute, LPST.wSecond);
-			swprintf_s(date_where_buffer, 80, L" AND System.DateModified>='%S'",tmp);
-			sd_mask += 2;
-
-		}
-		if (pOptions->uiEndDate > 0) {
-			DWORD ed = pOptions->uiEndDate;
-			wchar_t tmp[25] = { 0 };
-			wchar_t* to = calloc(80, sizeof(wchar_t));
-			FILETIME ft = { 0 };
-			uintToFILETIME(ed, &ft);
-			SYSTEMTIME LPST_ed = { 0 };
-			CONST FILETIME* lpFileTime = &ft;
-
-			if (!FileTimeToSystemTime(lpFileTime, &LPST_ed)) {
-				BREAK_WITH_ERROR("[SEARCH] unable to convert time", GetLastError());
+			if (!uintToSYSTEMTIME(pOptions->uiStartDate, &LPST)) {
+				BREAK_WITH_ERROR("[SEARCH] unable to convert start date", GetLastError());
 			}
-			dprintf("%u-%u-%u %u:%u:%u", LPST_ed.wYear, LPST_ed.wMonth, LPST_ed.wDay, LPST_ed.wHour, LPST_ed.wMinute, LPST_ed.wSecond);
-			_snwprintf_s(tmp, 25, 25, L"%04d-%02d-%02dT%02d:%02d:%02d", LPST_ed.wYear, LPST_ed.wMonth, LPST_ed.wDay, LPST_ed.wHour, LPST_ed.wMinute, LPST_ed.wSecond);
-			if (sd_mask > 0) {
-				swprintf_s(to, 80, L" AND System.DateModified<='%s'", tmp);
-			} else {
-				swprintf_s(to, 80, L" AND System.DateModified<='%s'", tmp);
+			where_len += swprintf_s(where + where_len, where_max_len - where_len, 
+					L" AND System.DateModified>='%04d-%02d-%02dT%02d:%02d:%02d'", 
+					LPST.wYear, LPST.wMonth, LPST.wDay, LPST.wHour, LPST.wMinute, LPST.wSecond);
+		}
+		if (pOptions->uiEndDate != FS_SEARCH_NO_DATE) {
+			SYSTEMTIME LPST = { 0 };
+			if (!uintToSYSTEMTIME(pOptions->uiEndDate, &LPST)) {
+				BREAK_WITH_ERROR("[SEARCH] unable to convert end date", GetLastError());
 			}
-			sd_mask += 1;
-			wcscat(date_where_buffer, to);
-			free(to);
-
+			where_len += swprintf_s(where + where_len, where_max_len - where_len, 
+					L" AND System.DateModified<='%04d-%02d-%02dT%02d:%02d:%02d'", 
+					LPST.wYear, LPST.wMonth, LPST.wDay, LPST.wHour, LPST.wMinute, LPST.wSecond);
 		}
 
-
-		if (date_where_buffer) {
-
-			wcscat(where, date_where_buffer);
-			free(date_where_buffer);
+		if (where) {
+			char *fasd = met_api->string.wchar_to_utf8(where);
+			dprintf("Using wds3 where %s", fasd);
+			ISearchQueryHelper_put_QueryWhereRestrictions(pQueryHelper, where);
+			free(where);
 		}
-
-		ISearchQueryHelper_put_QueryWhereRestrictions(pQueryHelper, where);
-		free(where);
 
 		hr = ISearchQueryHelper_GenerateSQLFromUserQuery(pQueryHelper, pOptions->glob, &wpSQL);
 		if (FAILED(hr)) {
