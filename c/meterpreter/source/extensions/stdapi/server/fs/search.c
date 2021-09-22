@@ -58,6 +58,8 @@ VOID search_add_result(Packet * pResponse, wchar_t *directory, wchar_t *fileName
 	char *dir = met_api->string.wchar_to_utf8(directory);
 	char *file = met_api->string.wchar_to_utf8(fileName);
 
+	dprintf("[SEARCH] Found: %s\\%s", dir, file);
+
 	if (dir && file) {
 		Packet* group = met_api->packet.create_group();
 
@@ -299,12 +301,12 @@ HRESULT wds_execute(ICommand * pCommand, Packet * pResponse)
 		if (FAILED(hr)) {
 			BREAK_WITH_ERROR("[SEARCH] wds_execute: IAccessor_CreateAccessor Failed", hr);
 		}
+
 		while (TRUE)
 		{
 			memset(&rowSearchResults, 0, sizeof(SEARCH_ROW));
 
 			hr = IRowset_GetNextRows(pRowset, DB_NULL_HCHAPTER, 0, 1, &dbCount, (HROW **)&pRows);
-
 			if (FAILED(hr)) {
 				BREAK_WITH_ERROR("[SEARCH] wds_execute: IRowset_GetNextRows Failed", hr);
 			}
@@ -314,7 +316,6 @@ HRESULT wds_execute(ICommand * pCommand, Packet * pResponse)
 			}
 
 			hr = IRowset_GetData(pRowset, hRow[0], hAccessor, &rowSearchResults);
-
 			if (FAILED(hr)) {
 				BREAK_WITH_ERROR("[SEARCH] wds_execute: IRowset_GetData Failed", hr);
 			}
@@ -323,8 +324,6 @@ HRESULT wds_execute(ICommand * pCommand, Packet * pResponse)
 			{
 				// "iehistory://{*}/"
 				wchar_t * history = wcsstr(rowSearchResults.wPathValue, L"}");
-
-
 				if (history) {
 					search_add_result(pResponse, L"", history + 2, 0, rowSearchResults.wDateValue);
 				}
@@ -333,8 +332,6 @@ HRESULT wds_execute(ICommand * pCommand, Packet * pResponse)
 			{
 				// "mapi://{*}/"
 				wchar_t * history = wcsstr(rowSearchResults.wPathValue, L"}");
-				
-
 				if (history) {
 					search_add_result(pResponse, L"", history + 2, 0, rowSearchResults.wDateValue);
 				}
@@ -551,7 +548,6 @@ DWORD wds3_search(WDS_INTERFACE * pWDSInterface, wchar_t * wpProtocol, wchar_t *
 			directory = pOptions->rootDirectory;
 		}
 
-
 		hr = ISearchCatalogManager_GetQueryHelper(pWDSInterface->pSearchCatalogManager, &pQueryHelper);
 		if (FAILED(hr)) {
 			BREAK_WITH_ERROR("[SEARCH] wds3_search: ISearchCatalogManager_GetQueryHelper Failed", hr);
@@ -581,15 +577,14 @@ DWORD wds3_search(WDS_INTERFACE * pWDSInterface, wchar_t * wpProtocol, wchar_t *
 			}
 		}
 
-		dprintf("Using wds3 search");
 
 		if (pOptions->uiStartDate != FS_SEARCH_NO_DATE) {
 			SYSTEMTIME LPST = { 0 };
 			if (!uintToSYSTEMTIME(pOptions->uiStartDate, &LPST)) {
 				BREAK_WITH_ERROR("[SEARCH] unable to convert start date", GetLastError());
 			}
-			where_len += swprintf_s(where + where_len, where_max_len - where_len, 
-					L" AND System.DateModified>='%04d-%02d-%02dT%02d:%02d:%02d'", 
+			where_len += swprintf_s(where + where_len, where_max_len - where_len,
+					L" AND System.DateModified>='%04d-%02d-%02dT%02d:%02d:%02d'",
 					LPST.wYear, LPST.wMonth, LPST.wDay, LPST.wHour, LPST.wMinute, LPST.wSecond);
 		}
 		if (pOptions->uiEndDate != FS_SEARCH_NO_DATE) {
@@ -597,14 +592,12 @@ DWORD wds3_search(WDS_INTERFACE * pWDSInterface, wchar_t * wpProtocol, wchar_t *
 			if (!uintToSYSTEMTIME(pOptions->uiEndDate, &LPST)) {
 				BREAK_WITH_ERROR("[SEARCH] unable to convert end date", GetLastError());
 			}
-			where_len += swprintf_s(where + where_len, where_max_len - where_len, 
-					L" AND System.DateModified<='%04d-%02d-%02dT%02d:%02d:%02d'", 
+			where_len += swprintf_s(where + where_len, where_max_len - where_len,
+					L" AND System.DateModified<='%04d-%02d-%02dT%02d:%02d:%02d'",
 					LPST.wYear, LPST.wMonth, LPST.wDay, LPST.wHour, LPST.wMinute, LPST.wSecond);
 		}
 
 		if (where) {
-			char *fasd = met_api->string.wchar_to_utf8(where);
-			dprintf("Using wds3 where %s", fasd);
 			ISearchQueryHelper_put_QueryWhereRestrictions(pQueryHelper, where);
 			free(where);
 		}
@@ -714,7 +707,9 @@ DWORD wds3_search(WDS_INTERFACE * pWDSInterface, wchar_t * wpProtocol, wchar_t *
 	return dwResult;
 }
 
-
+/*
+ * Search a directory for files.
+ */
 DWORD search_files(wchar_t * directory, SEARCH_OPTIONS * pOptions, Packet * pResponse)
 {
 	wchar_t firstFile[FS_MAX_PATH];
@@ -769,6 +764,7 @@ DWORD directory_search(wchar_t *directory, SEARCH_OPTIONS * pOptions, Packet * p
 	swprintf_s(firstFile, FS_MAX_PATH, L"%s\\*.*", directory);
 
 	HANDLE hFile = FindFirstFileW(firstFile, &FindData);
+	dprintf("%S", directory);
 	if (hFile != INVALID_HANDLE_VALUE)
 	{
 		do
