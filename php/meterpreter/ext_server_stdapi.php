@@ -707,7 +707,7 @@ function stdapi_fs_search($req, &$pkt) {
     }
 
     my_print("glob: $glob, root: $root, recurse: $recurse");
-    $flags = GLOB_PATH;
+    $flags = GLOB_PATH | GLOB_NODOTS;
     if ($recurse) {
         $flags |= GLOB_RECURSE;
     }
@@ -717,8 +717,8 @@ function stdapi_fs_search($req, &$pkt) {
         foreach ($files as $file) {
             $file_tlvs = "";
             $s = stat($file);
-            $p = dirname($file);
-            $f = basename($file);
+            $p = canonicalize_path(dirname($file));
+            $f = canonicalize_path(basename($file));
             $file_tlvs .= tlv_pack(create_tlv(TLV_TYPE_FILE_PATH, $p));
             $file_tlvs .= tlv_pack(create_tlv(TLV_TYPE_FILE_NAME, $f));
             $file_tlvs .= tlv_pack(create_tlv(TLV_TYPE_FILE_SIZE, $s['size']));
