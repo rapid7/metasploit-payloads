@@ -27,7 +27,9 @@ define("TLV_TYPE_SEARCH_RECURSE",      TLV_META_TYPE_BOOL    | 1230);
 define("TLV_TYPE_SEARCH_GLOB",         TLV_META_TYPE_STRING  | 1231);
 define("TLV_TYPE_SEARCH_ROOT",         TLV_META_TYPE_STRING  | 1232);
 define("TLV_TYPE_SEARCH_RESULTS",      TLV_META_TYPE_GROUP   | 1233);
-
+define("TLV_TYPE_SEARCH_MTIME",        TLV_META_TYPE_UINT    | 1235);
+define("TLV_TYPE_SEARCH_M_START_DATE", TLV_META_TYPE_UINT    | 1236);
+define("TLV_TYPE_SEARCH_M_END_DATE",   TLV_META_TYPE_UINT    | 1237);
 define("TLV_TYPE_FILE_MODE_T",         TLV_META_TYPE_UINT    | 1234);
 
 ##
@@ -340,7 +342,7 @@ define('GLOB_RECURSE',2048);
  *   GLOB_NODOTS, GLOB_RECURSE
  */
 if (!function_exists('safe_glob')) {
-function safe_glob($pattern, $flags=0) {
+function safe_glob($pattern, $flags=0, $start_date=null, $end_date=null) {
     $split=explode('/',str_replace('\\','/',$pattern));
     $mask=array_pop($split);
     $path=implode('/',$split);
@@ -356,14 +358,21 @@ function safe_glob($pattern, $flags=0) {
                     && (!is_link($path."/".$file))
                 )
             ) {
-                $glob = array_merge($glob, array_prepend(safe_glob($path.'/'.$file.'/'.$mask, $flags),
-                    ($flags&GLOB_PATH?'':$file.'/')));
+                $newglob = safe_glob($path.'/'.$file.'/'.$mask, $flags, $start_date, $end_date);
+                if ($newglob !== false) {
+                    $glob = array_merge($glob, array_prepend($newglob,
+                        ($flags&GLOB_PATH?'':$file.'/')));
+                }
             }
             // Match file mask
             if (fnmatch($mask,$file)) {
+                $tmp_f_stat = stat($path.'/'.$file);
+                $mtime = $tmp_f_stat['mtime'];
                 if ( ( (!($flags&GLOB_ONLYDIR)) || is_dir("$path/$file") )
                     && ( (!($flags&GLOB_NODIR)) || (!is_dir($path.'/'.$file)) )
-                    && ( (!($flags&GLOB_NODOTS)) || (!in_array($file,array('.','..'))) ) )
+                    && ( (!($flags&GLOB_NODOTS)) || (!in_array($file,array('.','..'))) )
+                    && ( ($start_date === null) || ($start_date <= $mtime))
+                    && ( ($end_date === null) || ($end_date >= $mtime)) )
                     $glob[] = ($flags&GLOB_PATH?$path.'/':'') . $file . ($flags&GLOB_MARK?'/':'');
             }
         }
@@ -682,27 +691,38 @@ function stdapi_fs_search($req, &$pkt) {
     $glob = canonicalize_path($glob_tlv['value']);
     $recurse_tlv = packet_get_tlv($req, TLV_TYPE_SEARCH_RECURSE);
     $recurse = $recurse_tlv['value'];
+    $start_date_tlv = packet_get_tlv($req, TLV_TYPE_SEARCH_M_START_DATE);
+    $start_date = null;
+    if ($start_date_tlv) {
+        $start_date = $start_date_tlv['value'];
+    }
+    $end_date_tlv = packet_get_tlv($req, TLV_TYPE_SEARCH_M_END_DATE);
+    $end_date = null;
+    if ($end_date_tlv) {
+        $end_date = $end_date_tlv['value'];
+    }
 
     if (!$root) {
         $root = '.';
     }
 
     my_print("glob: $glob, root: $root, recurse: $recurse");
-    $flags = GLOB_PATH;
+    $flags = GLOB_PATH | GLOB_NODOTS;
     if ($recurse) {
         $flags |= GLOB_RECURSE;
     }
-    $files = safe_glob($root ."/". $glob, $flags);
+    $files = safe_glob($root ."/". $glob, $flags, $start_date, $end_date);
     if ($files and is_array($files)) {
         dump_array($files);
         foreach ($files as $file) {
             $file_tlvs = "";
             $s = stat($file);
-            $p = dirname($file);
-            $f = basename($file);
+            $p = canonicalize_path(dirname($file));
+            $f = canonicalize_path(basename($file));
             $file_tlvs .= tlv_pack(create_tlv(TLV_TYPE_FILE_PATH, $p));
             $file_tlvs .= tlv_pack(create_tlv(TLV_TYPE_FILE_NAME, $f));
             $file_tlvs .= tlv_pack(create_tlv(TLV_TYPE_FILE_SIZE, $s['size']));
+            $file_tlvs .= tlv_pack(create_tlv(TLV_TYPE_SEARCH_MTIME, $s['mtime']));
             packet_add_tlv($pkt, create_tlv(TLV_TYPE_SEARCH_RESULTS, $file_tlvs));
         }
     }

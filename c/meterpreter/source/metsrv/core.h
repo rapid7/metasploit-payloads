@@ -38,6 +38,8 @@ DWORD packet_get_tlv_string(Packet *packet, TlvType type, Tlv *tlv);
 DWORD packet_get_tlv_group_entry(Packet *packet, Tlv *group, TlvType type,Tlv *entry);
 DWORD packet_enum_tlv(Packet *packet, DWORD index, TlvType type, Tlv *tlv);
 
+BOOL packet_get_tlv_uint(Packet *packet, TlvType type, UINT* output);
+
 LPCSTR packet_get_tlv_value_reflective_loader(Packet* packet);
 PCHAR packet_get_tlv_value_string(Packet *packet, TlvType type);
 wchar_t* packet_get_tlv_value_wstring(Packet* packet, TlvType type);

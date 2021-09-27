@@ -20,6 +20,11 @@ public class stdapi_fs_search implements Command {
     private static final int TLV_TYPE_SEARCH_ROOT = TLVPacket.TLV_META_TYPE_STRING | 1232;
     private static final int TLV_TYPE_SEARCH_RESULTS = TLVPacket.TLV_META_TYPE_GROUP | 1233;
 
+    private static final int TLV_TYPE_SEARCH_MTIME = TLVPacket.TLV_META_TYPE_UINT | 1235;
+    private static final int TLV_TYPE_SEARCH_M_START_DATE = TLVPacket.TLV_META_TYPE_UINT | 1236;
+    private static final int TLV_TYPE_SEARCH_M_END_DATE = TLVPacket.TLV_META_TYPE_UINT | 1237;
+
+
     /**
      * Simple glob implementation.
      */
@@ -56,7 +61,8 @@ public class stdapi_fs_search implements Command {
         }
     }
 
-    public static List findFiles(String path, String mask, boolean recurse) {
+
+    public static List findFiles(String path, String mask, boolean recurse, Integer startDate, Integer endDate) {
         try {
             File pathfile = Loader.expand(path);
             if (!pathfile.exists() || !pathfile.isDirectory()) {
@@ -76,10 +82,16 @@ public class stdapi_fs_search implements Command {
                 if (recurse && file.isDirectory()
                         // don't follow links to avoid infinite recursion
                         && file.getCanonicalPath().equals(file.getAbsolutePath())) {
-                    glob.addAll(findFiles(file.getAbsolutePath(), mask, true));
+                    glob.addAll(findFiles(file.getAbsolutePath(), mask, true, startDate, endDate));
                 }
                 // Match file mask
                 if (matches(file.getName(), mask)) {
+                    if (startDate != null && (startDate.longValue() > (file.lastModified()/1000))) {
+                        continue;
+                    }
+                    if (endDate != null && (endDate.longValue() < (file.lastModified()/1000))) {
+                        continue;
+                    }
                     glob.add(path + "/" + file.getName());
                 }
             }
@@ -94,13 +106,18 @@ public class stdapi_fs_search implements Command {
         String root = request.getStringValue(TLV_TYPE_SEARCH_ROOT, ".");
         String glob = request.getStringValue(TLV_TYPE_SEARCH_GLOB);
         boolean recurse = request.getBooleanValue(TLV_TYPE_SEARCH_RECURSE);
-        List files = findFiles(root, glob, recurse);
+        Integer startDate = (Integer) request.getValue(TLV_TYPE_SEARCH_M_START_DATE, null);
+        Integer endDate = (Integer) request.getValue(TLV_TYPE_SEARCH_M_END_DATE, null);
+
+        List files = findFiles(root, glob, recurse, startDate, endDate);
         for (int i = 0; i < files.size(); i++) {
             File f = new File((String) files.get(i));
+            long mtime = f.lastModified()/1000;
             TLVPacket file_tlvs = new TLVPacket();
             file_tlvs.add(TLVType.TLV_TYPE_FILE_PATH, f.getParentFile().getPath());
             file_tlvs.add(TLVType.TLV_TYPE_FILE_NAME, f.getName());
             file_tlvs.add(TLV_TYPE_FILE_SIZE, (int) f.length());
+            file_tlvs.add(TLV_TYPE_SEARCH_MTIME, (int) mtime);
             response.addOverflow(TLV_TYPE_SEARCH_RESULTS, file_tlvs);
         }
         return ERROR_SUCCESS;

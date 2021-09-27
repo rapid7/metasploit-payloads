@@ -15,23 +15,6 @@ DWORD get_migrate_context(LPDWORD contextSize, LPCOMMONMIGRATECONTEXT* contextBu
 	return ERROR_SUCCESS;
 }
 
-BOOL packet_get_tlv_uint(Packet *packet, TlvType type, UINT* output)
-{
-	Tlv uintTlv;
-	if (packet_get_tlv(packet, type, &uintTlv) != ERROR_SUCCESS)
-	{
-		return FALSE;
-	}
-
-	if ((uintTlv.header.length < sizeof(DWORD)))
-	{
-		return FALSE;
-	}
-
-	*output = ntohl(*(LPDWORD)uintTlv.buffer);
-	return TRUE;
-}
-
 void set_transport_session_expiry(Remote* remote, Packet* packet)
 {
 	int sessionExpiry = 0;

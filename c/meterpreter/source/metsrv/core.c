@@ -843,20 +843,41 @@ wchar_t* packet_get_tlv_value_wstring(Packet* packet, TlvType type)
  * @brief Get the unsigned int value of a TLV.
  * @param packet Pointer to the packet to get the TLV from.
  * @param type Type of TLV to get (optional).
- * @return The value found in the TLV.
- * @todo On failure, 0 is returned. We need to make sure this is the right
- *       thing to do because 0 might also be a valid value.
+ * @param output Pointer to the uint output
+ * @return True if the value could be optioned
+ */
+BOOL packet_get_tlv_uint(Packet *packet, TlvType type, UINT* output)
+{
+	Tlv uintTlv;
+	if (packet_get_tlv(packet, type, &uintTlv) != ERROR_SUCCESS)
+	{
+		return FALSE;
+	}
+
+	if ((uintTlv.header.length < sizeof(DWORD)))
+	{
+		return FALSE;
+	}
+
+	*output = ntohl(*(LPDWORD)uintTlv.buffer);
+	return TRUE;
+}
+
+/*!
+ * @brief Get the unsigned int value of a TLV.
+ * @param packet Pointer to the packet to get the TLV from.
+ * @param type Type of TLV to get (optional).
+ * @return The value found in the TLV, or 0
  */
 UINT packet_get_tlv_value_uint(Packet *packet, TlvType type)
 {
-	Tlv uintTlv;
-
-	if ((packet_get_tlv(packet, type, &uintTlv) != ERROR_SUCCESS) || (uintTlv.header.length < sizeof(DWORD)))
+	UINT output = 0;
+	if (packet_get_tlv_uint(packet, type, &output) == FALSE)
 	{
 		return 0;
 	}
 
-	return ntohl(*(LPDWORD)uintTlv.buffer);
+	return output;
 }
 
 /*!
