@@ -596,6 +596,16 @@ class MeterpreterChannel(object):
         response += tlv_pack(TLV_TYPE_LENGTH, self.write(channel_data))
         return ERROR_SUCCESS, response
 
+    def core_seek(self, request, response):
+        offset = packet_get_tlv(request, TLV_TYPE_SEEK_OFFSET)['value']
+        whence = packet_get_tlv(request, TLV_TYPE_SEEK_WHENCE)['value']
+        self.seek(offset, whence)
+        return ERROR_SUCCESS, response
+
+    def core_tell(self, request, response):
+        response += tlv_pack(TLV_TYPE_SEEK_POS, self.tell())
+        return ERROR_SUCCESS, response
+
     def close(self):
         raise NotImplementedError()
 
@@ -612,6 +622,12 @@ class MeterpreterChannel(object):
         raise NotImplementedError()
 
     def write(self, data):
+        raise NotImplementedError()
+
+    def seek(self, offset, whence=os.SEEK_SET):
+        raise NotImplementedError()
+
+    def tell(self):
         raise NotImplementedError()
 
 #@export
@@ -632,6 +648,12 @@ class MeterpreterFile(MeterpreterChannel):
     def write(self, data):
         self.file_obj.write(data)
         return len(data)
+
+    def seek(self, offset, whence=os.SEEK_SET):
+        self.file_obj.seek(offset, whence)
+
+    def tell(self):
+        return self.file_obj.tell()
 export(MeterpreterFile)
 
 #@export
@@ -1565,7 +1587,7 @@ class PythonMeterpreter(object):
             return ERROR_FAILURE, response
         channel = self.channels[channel_id]
         status, response = channel.core_eof(request, response)
-        return ERROR_SUCCESS, response
+        return status, response
 
     def _core_channel_interact(self, request, response):
         channel_id = packet_get_tlv(request, TLV_TYPE_CHANNEL_ID)['value']
@@ -1604,6 +1626,20 @@ class PythonMeterpreter(object):
         if not channel.is_alive():
             self.handle_dead_resource_channel(channel_id)
         return status, response
+
+    def _core_channel_seek(self, request, response):
+        channel_id = packet_get_tlv(request, TLV_TYPE_CHANNEL_ID)['value']
+        if channel_id not in self.channels:
+            return ERROR_FAILURE, response
+        channel = self.channels[channel_id]
+        return channel.core_seek(request, response)
+
+    def _core_channel_tell(self, request, response):
+        channel_id = packet_get_tlv(request, TLV_TYPE_CHANNEL_ID)['value']
+        if channel_id not in self.channels:
+            return ERROR_FAILURE, response
+        channel = self.channels[channel_id]
+        return channel.core_tell(request, response)
 
     def create_response(self, request):
         response = struct.pack('>I', PACKET_TYPE_RESPONSE)
