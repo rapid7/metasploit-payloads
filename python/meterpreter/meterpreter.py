@@ -667,6 +667,7 @@ class MeterpreterProcess(MeterpreterChannel):
             self.proc_h.kill()
         if self.proc_h.ptyfd is not None:
             os.close(self.proc_h.ptyfd)
+            self.proc_h.ptyfd = None
         for stream in (self.proc_h.stdin, self.proc_h.stdout, self.proc_h.stderr):
             if not hasattr(stream, 'close'):
                 continue
@@ -1362,7 +1363,6 @@ class PythonMeterpreter(object):
                     self.send_packet(tlv_pack_request('core_channel_write', write_request_parts))
 
     def handle_dead_resource_channel(self, channel_id):
-        del self.channels[channel_id]
         if channel_id in self.interact_channels:
             self.interact_channels.remove(channel_id)
         self.send_packet(tlv_pack_request('core_channel_close', [
