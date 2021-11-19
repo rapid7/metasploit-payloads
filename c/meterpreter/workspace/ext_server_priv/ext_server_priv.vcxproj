@@ -152,7 +152,7 @@
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>psapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>psapi.lib;rpcrt4.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <DelayLoadDLLs>
@@ -218,7 +218,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>psapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>psapi.lib;rpcrt4.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <DelayLoadDLLs>
@@ -284,7 +284,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>psapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>psapi.lib;rpcrt4.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <DelayLoadDLLs>
@@ -349,7 +349,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>psapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>psapi.lib;rpcrt4.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>
       </AdditionalLibraryDirectories>
@@ -415,7 +415,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>psapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>psapi.lib;rpcrt4.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>
       </AdditionalLibraryDirectories>
@@ -481,7 +481,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>psapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>psapi.lib;rpcrt4.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>
       </AdditionalLibraryDirectories>
@@ -524,7 +524,9 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <ClInclude Include="..\..\source\extensions\priv\defs.h" />
     <ClInclude Include="..\..\source\extensions\priv\elevate.h" />
     <ClInclude Include="..\..\source\extensions\priv\fs.h" />
+    <ClInclude Include="..\..\source\extensions\priv\ms-rprn_h.h" />
     <ClInclude Include="..\..\source\extensions\priv\namedpipe.h" />
+    <ClInclude Include="..\..\source\extensions\priv\namedpipe_printspooler.h" />
     <ClInclude Include="..\..\source\extensions\priv\namedpipe_rpcss.h" />
     <ClInclude Include="..\..\source\extensions\priv\passwd.h" />
     <ClInclude Include="..\..\source\extensions\priv\precomp.h" />
@@ -535,7 +537,10 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
   <ItemGroup>
     <ClCompile Include="..\..\source\extensions\priv\elevate.c" />
     <ClCompile Include="..\..\source\extensions\priv\fs.c" />
+    <ClCompile Include="..\..\source\extensions\priv\ms-rprn_32.c" />
+    <ClCompile Include="..\..\source\extensions\priv\ms-rprn_64.c" />
     <ClCompile Include="..\..\source\extensions\priv\namedpipe.c" />
+    <ClCompile Include="..\..\source\extensions\priv\namedpipe_printspooler.c" />
     <ClCompile Include="..\..\source\extensions\priv\namedpipe_rpcss.c" />
     <ClCompile Include="..\..\source\extensions\priv\passwd.c" />
     <ClCompile Include="..\..\source\extensions\priv\priv.c" />

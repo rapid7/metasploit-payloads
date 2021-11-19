@@ -11,6 +11,7 @@
 #define ELEVATE_TECHNIQUE_SERVICE_NAMEDPIPE2      2  ///< Identifier for the Named Pipe service technique (#2)
 #define ELEVATE_TECHNIQUE_SERVICE_TOKENDUP        3  ///< Identifier for the Token Duplication service technique.
 #define ELEVATE_TECHNIQUE_SERVICE_NAMEDPIPE_RPCSS 4  ///< Identifier for the Named Pipe service technique (RPCSS variant)
+#define ELEVATE_TECHNIQUE_NAMEDPIPE_PRINTSPOOLER  5  ///< Identifier for the Named Pipe technique (PrintSpooler variant)
 
 typedef void (WINAPI * GETNATIVESYSTEMINFO)( LPSYSTEM_INFO lpSystemInfo ); ///< Stolen from ps.h
 

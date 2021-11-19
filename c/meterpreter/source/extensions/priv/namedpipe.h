@@ -5,6 +5,7 @@ typedef DWORD(*PostImpersonationCallback)(LPVOID);
 DWORD THREADCALL elevate_namedpipe_thread(THREAD* thread);
 DWORD elevate_via_service_namedpipe(Remote* remote, Packet* packet);
 DWORD elevate_via_service_namedpipe2(Remote* remote, Packet* packet);
+DWORD set_meterp_thread_use_current_token(Remote* remote);
 
 typedef struct _PRIV_POST_IMPERSONATION {
 	PostImpersonationCallback pCallback;
