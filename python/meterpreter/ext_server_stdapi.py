@@ -662,6 +662,7 @@ PROCESS_EXECUTE_FLAG_CHANNELIZED = (1 << 1)
 PROCESS_EXECUTE_FLAG_SUSPENDED = (1 << 2)
 PROCESS_EXECUTE_FLAG_USE_THREAD_TOKEN = (1 << 3)
 PROCESS_EXECUTE_FLAG_SUBSHELL         = (1 << 6)
+PROCESS_EXECUTE_FLAG_PTY              = (1 << 7)
 
 PROCESS_ARCH_UNKNOWN = 0
 PROCESS_ARCH_X86 = 1
@@ -1166,7 +1167,7 @@ def stdapi_sys_process_execute(request, response):
         args.extend(shlex.split(raw_args))
 
     if (flags & PROCESS_EXECUTE_FLAG_CHANNELIZED):
-        if has_pty:
+        if has_pty and (flags & PROCESS_EXECUTE_FLAG_PTY):
             master, slave = pty.openpty()
             if has_termios:
                 try:
