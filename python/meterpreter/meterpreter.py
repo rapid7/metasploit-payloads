@@ -680,10 +680,13 @@ class MeterpreterProcess(MeterpreterChannel):
         return self.proc_h.poll() is None
 
     def read(self, length):
-        data = ''
+        data = bytes()
+        stderr_reader = self.proc_h.stderr_reader
         stdout_reader = self.proc_h.stdout_reader
-        if stdout_reader.is_read_ready():
-            data = stdout_reader.read(length)
+        if stderr_reader.is_read_ready() and length > 0:
+            data += stderr_reader.read(length)
+        if stdout_reader.is_read_ready() and (length - len(data)) > 0:
+            data += stdout_reader.read(length - len(data))
         return data
 
     def write(self, data):
@@ -1329,9 +1332,9 @@ class PythonMeterpreter(object):
                     if channel_id in self.interact_channels:
                         proc_h = channel.proc_h
                         if proc_h.stderr_reader.is_read_ready():
-                            data = proc_h.stderr_reader.read()
-                        elif proc_h.stdout_reader.is_read_ready():
-                            data = proc_h.stdout_reader.read()
+                            data += proc_h.stderr_reader.read()
+                        if proc_h.stdout_reader.is_read_ready():
+                            data += proc_h.stdout_reader.read()
                     if not channel.is_alive():
                         self.handle_dead_resource_channel(channel_id)
                         channel.close()
