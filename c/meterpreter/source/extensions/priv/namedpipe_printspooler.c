@@ -32,11 +32,11 @@ DWORD elevate_via_namedpipe_printspooler(Remote* remote, Packet* packet)
 			BREAK_ON_ERROR("[ELEVATE] elevate_via_namedpipe_printspooler: Failed to resolve RtlGetVersion");
 		}
 
+		os.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEXW);
+
 		if (pRtlGetVersion(&os)) {
 			BREAK_ON_ERROR("[ELEVATE] elevate_via_namedpipe_printspooler: RtlGetVersion failed");
 		}
-
-		os.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEXW);
 
 		// Works on 2016/8.1+
 		if (os.dwMajorVersion < 6 || (os.dwMajorVersion == 6 && os.dwMinorVersion < 3)) {
