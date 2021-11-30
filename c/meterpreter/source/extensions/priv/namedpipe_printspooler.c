@@ -16,7 +16,7 @@ DWORD elevate_via_namedpipe_printspooler(Remote* remote, Packet* packet)
 	char cPipeName1[MAX_PATH] = { 0 };
 	WCHAR cPipeName2[MAX_PATH] = { 0 };
 	DWORD dwPipeUid[2] = { 0, 0 };
-	OSVERSIONINFO os = { 0 };
+	OSVERSIONINFOEXW os = { 0 };
 	HMODULE hNtdll = NULL;
 	PRtlGetVersion pRtlGetVersion = NULL;
 	PRIV_POST_IMPERSONATION PostImpersonation;
@@ -36,14 +36,10 @@ DWORD elevate_via_namedpipe_printspooler(Remote* remote, Packet* packet)
 			BREAK_ON_ERROR("[ELEVATE] elevate_via_namedpipe_printspooler: RtlGetVersion failed");
 		}
 
-		os.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
-
-		if (!GetVersionEx(&os)) {
-			BREAK_ON_ERROR("[ELEVATE] elevate_via_namedpipe_printspooler: GetVersionEx failed")
-		}
+		os.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEXW);
 
 		// Works on 2016/8.1+
-		if (os.dwMajorVersion < 10) {
+		if (os.dwMajorVersion < 6 || (os.dwMajorVersion == 6 && os.dwMinorVersion < 3)) {
 			SetLastError(ERROR_CALL_NOT_IMPLEMENTED);
 			BREAK_ON_ERROR("[ELEVATE] elevate_via_namedpipe_printspooler: Windows version not supported.")
 		}
