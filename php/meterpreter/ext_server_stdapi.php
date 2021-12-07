@@ -453,7 +453,7 @@ function resolve_host($hostname, $family) {
         $dns_family = DNS_AAAA;
     } else {
         my_print('invalid family, must be AF_INET or AF_INET6');
-        return ERROR_FAILURE;
+        return NULL;
     }
 
     $dns = dns_get_record($hostname, $dns_family);
