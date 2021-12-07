@@ -461,7 +461,8 @@ function resolve_host($hostname, $family) {
     } elseif ($family == AF_INET6) {
         $dns_family = DNS_AAAA;
     } else {
-        throw new Exception('invalid family, must be AF_INET or AF_INET6');
+        my_print('invalid family, must be AF_INET or AF_INET6');
+        return NULL;
     }
 
     $dns = dns_get_record($hostname, $dns_family);
@@ -1224,15 +1225,18 @@ if (!function_exists('stdapi_net_resolve_host')) {
 register_command('stdapi_net_resolve_host', COMMAND_ID_STDAPI_NET_RESOLVE_HOST);
 function stdapi_net_resolve_host($req, &$pkt) {
     my_print("doing stdapi_net_resolve_host");
-    $hostname = packet_get_tlv($req, TLV_TYPE_HOST_NAME)['value'];
-    $family = packet_get_tlv($req, TLV_TYPE_ADDR_TYPE)['value'];
+    $hostname_tlv = packet_get_tlv($req, TLV_TYPE_HOST_NAME);
+    $hostname = $hostname['value'];
+    $family_tlv = packet_get_tlv($req, TLV_TYPE_ADDR_TYPE);
+    $family = $family['value'];
 
     if ($family == WIN_AF_INET) {
         $family = AF_INET;
     } elseif ($family == WIN_AF_INET6) {
         $family = AF_INET6;
     } else {
-        throw new Exception('invalid family');
+        my_print('invalid family, must be AF_INET or AF_INET6');
+        return ERROR_FAILURE;
     }
 
     $ret = ERROR_FAILURE;
@@ -1250,14 +1254,16 @@ if (!function_exists('stdapi_net_resolve_hosts')) {
 register_command('stdapi_net_resolve_hosts', COMMAND_ID_STDAPI_NET_RESOLVE_HOSTS);
 function stdapi_net_resolve_hosts($req, &$pkt) {
     my_print("doing stdapi_net_resolve_hosts");
-    $family = packet_get_tlv($req, TLV_TYPE_ADDR_TYPE)['value'];
+    $family_tlv = packet_get_tlv($req, TLV_TYPE_ADDR_TYPE);
+    $family = $family_tlv['value'];
 
     if ($family == WIN_AF_INET) {
         $family = AF_INET;
     } elseif ($family == WIN_AF_INET6) {
         $family = AF_INET6;
     } else {
-        throw new Exception('invalid family');
+        my_print('invalid family, must be AF_INET or AF_INET6');
+        return ERROR_FAILURE;
     }
 
     $hostname_tlvs = packet_get_all_tlvs($req, TLV_TYPE_HOST_NAME);
