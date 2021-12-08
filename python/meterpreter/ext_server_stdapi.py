@@ -1147,6 +1147,8 @@ def stdapi_sys_process_close(request, response):
     proc_h_id = proc_h_id['value']
     if proc_h_id in meterpreter.processes:
         del meterpreter.processes[proc_h_id]
+    if not meterpreter.close_channel(proc_h_id):
+        return ERROR_FAILURE, response
     return ERROR_SUCCESS, response
 
 @register_function

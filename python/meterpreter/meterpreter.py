@@ -1242,6 +1242,21 @@ class PythonMeterpreter(object):
         self.next_process_id += 1
         return idx
 
+    def close_channel(self, channel_id):
+        if channel_id not in self.channels:
+            return False
+        channel = self.channels[channel_id]
+        try:
+            channel.close()
+        except Exception:
+            debug_traceback('[-] failed to close channel id: ' + str(channel_id))
+            return False
+        del self.channels[channel_id]
+        if channel_id in self.interact_channels:
+            self.interact_channels.remove(channel_id)
+        debug_print('[*] closed and removed channel id: ' + str(channel_id))
+        return True
+
     def get_packet(self):
         pkt = self.transport.get_packet()
         if pkt is None and self.transport.should_retire:
@@ -1570,16 +1585,9 @@ class PythonMeterpreter(object):
 
     def _core_channel_close(self, request, response):
         channel_id = packet_get_tlv(request, TLV_TYPE_CHANNEL_ID)['value']
-        if channel_id not in self.channels:
+        if not self.close_channel(channel_id):
             return ERROR_FAILURE, response
-        channel = self.channels[channel_id]
-        status, response = channel.core_close(request, response)
-        if status == ERROR_SUCCESS:
-            del self.channels[channel_id]
-            if channel_id in self.interact_channels:
-                self.interact_channels.remove(channel_id)
-            debug_print('[*] closed and removed channel id: ' + str(channel_id))
-        return status, response
+        return ERROR_SUCCESS, response
 
     def _core_channel_eof(self, request, response):
         channel_id = packet_get_tlv(request, TLV_TYPE_CHANNEL_ID)['value']
