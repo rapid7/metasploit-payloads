@@ -1163,7 +1163,9 @@ def stdapi_sys_process_execute(request, response):
     if len(cmd) == 0:
         return ERROR_FAILURE, response
     if os.path.isfile('/bin/sh') and (flags & PROCESS_EXECUTE_FLAG_SUBSHELL):
-        args = ['/bin/sh', '-c', cmd, raw_args]
+        if raw_args:
+            cmd = cmd + ' ' + raw_args
+        args = ['/bin/sh', '-c', cmd]
     else:
         args = [cmd]
         args.extend(shlex.split(raw_args))
