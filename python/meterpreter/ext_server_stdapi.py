@@ -1494,7 +1494,11 @@ def stdapi_fs_ls(request, response):
         file_path = os.path.join(path, file_name)
         response += tlv_pack(TLV_TYPE_FILE_NAME, file_name)
         response += tlv_pack(TLV_TYPE_FILE_PATH, file_path)
-        response += tlv_pack(TLV_TYPE_STAT_BUF, get_stat_buffer(file_path))
+        try:
+            st_buf = get_stat_buffer(file_path)
+        except OSError:
+            st_buf = bytes()
+        response += tlv_pack(TLV_TYPE_STAT_BUF, st_buf)
     return ERROR_SUCCESS, response
 
 @register_function
