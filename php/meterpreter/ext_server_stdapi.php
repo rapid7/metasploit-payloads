@@ -628,8 +628,10 @@ function stdapi_fs_ls($req, &$pkt) {
                 packet_add_tlv($pkt, create_tlv(TLV_TYPE_FILE_NAME, $file));
                 packet_add_tlv($pkt, create_tlv(TLV_TYPE_FILE_PATH, $path . DIRECTORY_SEPARATOR . $file));
                 $st_buf = add_stat_buf($path . DIRECTORY_SEPARATOR . $file);
-                if ($st_buf)
-                    packet_add_tlv($pkt, $st_buf);
+                if (!$st_buf) {
+                    $st_buf = create_tlv(TLV_TYPE_STAT_BUF32, '');
+                }
+                packet_add_tlv($pkt, $st_buf);
             }
         }
         closedir($dir_handle);
