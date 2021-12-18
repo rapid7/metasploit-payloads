@@ -38,8 +38,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.io.Serializable;
 
-public class StreamForwarder extends Thread {
+public class StreamForwarder extends Thread implements Serializable {
     public static void forward(InputStream in, OutputStream out) throws IOException {
         forward(in, out, true);
     }

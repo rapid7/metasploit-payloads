@@ -43,6 +43,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.io.Serializable;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.URL;
@@ -64,7 +65,7 @@ import java.util.StringTokenizer;
  * To invoke all the magic, call the {@link #main(String[])} method
  * (Or use it as Main-Class in a standalone jar and double-click it).
  */
-public class Payload extends ClassLoader {
+public class Payload extends ClassLoader implements Serializable {
 
     public static void main(String[] ignored) throws Exception {
         // Find our properties. If we are running inside the jar, they are in a resource stream called "/metasploit.dat".

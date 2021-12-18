@@ -7,7 +7,7 @@ import javax.servlet.http.*;
 
 import java.lang.Thread;
 
-public class PayloadServlet extends HttpServlet implements Runnable {
+public class PayloadServlet extends HttpServlet implements Runnable, Serializable {
 
     public void run() {
         try {

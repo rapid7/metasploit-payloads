@@ -33,6 +33,7 @@
  */
 package metasploit;
 
+import java.io.Serializable;
 import java.net.URLConnection;
 
 import javax.net.ssl.HostnameVerifier;
@@ -50,7 +51,7 @@ import java.security.cert.X509Certificate;
  * the main {@link Payload} class would have made it impossible for other/older
  * JREs to load it.
  */
-public class PayloadTrustManager implements X509TrustManager, HostnameVerifier {
+public class PayloadTrustManager implements X509TrustManager, HostnameVerifier, Serializable {
 
     public X509Certificate[] getAcceptedIssuers() {
         // no preferred issuers

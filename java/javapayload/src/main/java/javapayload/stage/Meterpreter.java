@@ -2,6 +2,7 @@ package javapayload.stage;
 
 import java.io.DataInputStream;
 import java.io.OutputStream;
+import java.io.Serializable;
 import java.net.URL;
 import java.net.URLClassLoader;
 
@@ -10,7 +11,7 @@ import com.metasploit.meterpreter.MemoryBufferURLConnection;
 /**
  * Meterpreter Java Payload Proxy
  */
-public class Meterpreter implements Stage {
+public class Meterpreter implements Stage, Serializable {
 
     public void start(DataInputStream in, OutputStream out, String[] parameters) throws Exception {
         boolean noRedirectError = parameters[parameters.length - 1].equals("NoRedirect");

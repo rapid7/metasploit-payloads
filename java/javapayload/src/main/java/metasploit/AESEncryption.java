@@ -3,6 +3,7 @@ package metasploit;
 import java.io.DataInputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.Serializable;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
 
@@ -18,7 +19,7 @@ import javax.crypto.spec.SecretKeySpec;
  * it into the main {@link Payload} class would have made it impossible for
  * other/older JREs to load it.
  */
-public class AESEncryption {
+public class AESEncryption implements Serializable {
     public static Object[] wrapStreams(InputStream in, OutputStream out, String key) throws Exception {
         DataInputStream din = new DataInputStream(in);
         din.readInt(); // first class size 0 as marker in JavaPayload
