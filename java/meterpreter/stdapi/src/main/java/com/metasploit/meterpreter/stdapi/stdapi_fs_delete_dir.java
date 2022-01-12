@@ -17,7 +17,9 @@ public class stdapi_fs_delete_dir implements Command {
                 throw new IOException("Cannot delete symbolic link " + file.getCanonicalPath());
             }
         } else if (file.isDirectory()) {
-            rmtree(file);
+            if (!rmtree(file)) {
+                throw new IOException("Cannot delete " + file.getCanonicalPath());
+            }
         } else {
             throw new IOException("Directory not found: " + path);
         }
@@ -35,17 +37,18 @@ public class stdapi_fs_delete_dir implements Command {
         return !canon.getCanonicalFile().equals(canon.getAbsoluteFile());
     }
 
-    private void rmtree(File file) throws IOException {
+    private boolean rmtree(File file) throws IOException {
+        boolean ret = true;
         for (File subFile : file.listFiles()) {
             if (isSymlink(subFile)) {
-                subFile.delete();
+                ret = ret && subFile.delete();
             } else if (subFile.isDirectory()) {
-                rmtree(subFile);
+                ret = ret && rmtree(subFile);
             } else {
-                subFile.delete();
+                ret = ret && subFile.delete();
             }
         }
-        file.delete();
-        return;
+        ret = ret && file.delete();
+        return ret;
     }
 }
