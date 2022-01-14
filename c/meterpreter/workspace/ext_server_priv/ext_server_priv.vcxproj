@@ -128,7 +128,7 @@
     <ClCompile>
       <Optimization>MinSpace</Optimization>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
-      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\priv\server;..\..\source\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\source\extensions\kiwi\mimikatz\modules\rpc;..\..\source\extensions\kiwi\mimikatz\inc;..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\priv\server;..\..\source\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_PRIV_EXPORTS;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -194,7 +194,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <ClCompile>
       <Optimization>MinSpace</Optimization>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
-      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\priv\server;..\..\source\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\source\extensions\kiwi\mimikatz\modules\rpc;..\..\source\extensions\kiwi\mimikatz\inc;..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\priv\server;..\..\source\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>DEBUGTRACE;WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_PRIV_EXPORTS;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -260,7 +260,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <ClCompile>
       <Optimization>MinSpace</Optimization>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
-      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\priv\server;..\..\source\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\source\extensions\kiwi\mimikatz\modules\rpc;..\..\source\extensions\kiwi\mimikatz\inc;..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\priv\server;..\..\source\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_PRIV_EXPORTS;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -326,7 +326,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
-      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\priv\server;..\..\source\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\source\extensions\kiwi\mimikatz\modules\rpc;..\..\source\extensions\kiwi\mimikatz\inc;..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\priv\server;..\..\source\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_PRIV_EXPORTS;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -392,7 +392,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
-      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\priv\server;..\..\source\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\source\extensions\kiwi\mimikatz\modules\rpc;..\..\source\extensions\kiwi\mimikatz\inc;..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\priv\server;..\..\source\common;..\..\source\extensions\kiwi\mimikatz\inc;..\..\source\extensions\kiwi\mimikatz\modules\rpc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>DEBUGTRACE;WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_PRIV_EXPORTS;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -458,7 +458,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
-      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\priv\server;..\..\source\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\source\extensions\kiwi\mimikatz\modules\rpc;..\..\source\extensions\kiwi\mimikatz\inc;..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\priv\server;..\..\source\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_PRIV_EXPORTS;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -521,10 +521,10 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_ms-rprn.h" />
     <ClInclude Include="..\..\source\extensions\priv\defs.h" />
     <ClInclude Include="..\..\source\extensions\priv\elevate.h" />
     <ClInclude Include="..\..\source\extensions\priv\fs.h" />
-    <ClInclude Include="..\..\source\extensions\priv\ms-rprn_h.h" />
     <ClInclude Include="..\..\source\extensions\priv\namedpipe.h" />
     <ClInclude Include="..\..\source\extensions\priv\namedpipe_printspooler.h" />
     <ClInclude Include="..\..\source\extensions\priv\namedpipe_rpcss.h" />
@@ -535,10 +535,9 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <ClInclude Include="..\..\source\extensions\priv\tokendup.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_ms-rprn.c" />
     <ClCompile Include="..\..\source\extensions\priv\elevate.c" />
     <ClCompile Include="..\..\source\extensions\priv\fs.c" />
-    <ClCompile Include="..\..\source\extensions\priv\ms-rprn_32.c" />
-    <ClCompile Include="..\..\source\extensions\priv\ms-rprn_64.c" />
     <ClCompile Include="..\..\source\extensions\priv\namedpipe.c" />
     <ClCompile Include="..\..\source\extensions\priv\namedpipe_printspooler.c" />
     <ClCompile Include="..\..\source\extensions\priv\namedpipe_rpcss.c" />
