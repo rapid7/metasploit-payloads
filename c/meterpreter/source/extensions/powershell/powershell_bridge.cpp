@@ -27,8 +27,8 @@ typedef struct _InteractiveShell
 #define SAFE_RELEASE(x) if((x) != NULL) { (x)->Release(); x = NULL; }
 
 #import "mscorlib.tlb" raw_interfaces_only				\
-    high_property_prefixes("_get","_put","_putref")		\
-    rename("ReportEvent", "InteropServices_ReportEvent")
+	high_property_prefixes("_get","_put","_putref")		\
+	rename("ReportEvent", "InteropServices_ReportEvent")
 using namespace mscorlib;
 
 typedef HRESULT(WINAPI* pClrCreateInstance)(REFCLSID, REFIID, LPVOID*);
@@ -43,10 +43,10 @@ static _AssemblyPtr gClrPowershellAssembly = NULL;
 static _TypePtr gClrPowershellType = NULL;
 static LIST* gLoadedAssemblies = NULL;
 
-DWORD channelise_session(wchar_t* sessionId, Channel* channel, LPVOID context);
-DWORD unchannelise_session(wchar_t* sessionId);
+HRESULT channelise_session(wchar_t* sessionId, Channel* channel, LPVOID context);
+HRESULT unchannelise_session(wchar_t* sessionId);
 
-DWORD load_assembly(BYTE* assemblyData, DWORD assemblySize)
+HRESULT load_assembly(BYTE* assemblyData, DWORD assemblySize)
 {
 	dprintf("[PSH] loading assembly of size %u", assemblySize);
 	HRESULT hr = S_OK;
@@ -60,7 +60,7 @@ DWORD load_assembly(BYTE* assemblyData, DWORD assemblySize)
 	if (gClrAppDomainInterface == NULL)
 	{
 		dprintf("[PSH] Extension wasn't initialised");
-		return ERROR_INVALID_HANDLE;
+		return E_HANDLE;
 	}
 
 	do
@@ -69,7 +69,7 @@ DWORD load_assembly(BYTE* assemblyData, DWORD assemblySize)
 		if (clrByteArray == NULL)
 		{
 			dprintf("[PSH] Failed to create a usable safe array");
-			hr = (HRESULT)ERROR_OUTOFMEMORY;
+			hr = E_OUTOFMEMORY;
 			break;
 		}
 
@@ -96,16 +96,16 @@ DWORD load_assembly(BYTE* assemblyData, DWORD assemblySize)
 
 	if (SUCCEEDED(hr))
 	{
-		return ERROR_SUCCESS;
+		return S_OK;
 	}
 	else
 	{
 		delete loadedAssembly;
 	}
-	return (DWORD)hr;
+	return hr;
 }
 
-DWORD remove_session(wchar_t* sessionId)
+HRESULT remove_session(wchar_t* sessionId)
 {
 	HRESULT hr;
 	bstr_t bstrStaticMethodName(L"Remove");
@@ -148,13 +148,13 @@ DWORD remove_session(wchar_t* sessionId)
 
 	if (SUCCEEDED(hr))
 	{
-		return ERROR_SUCCESS;
+		return S_OK;
 	}
 
-	return (DWORD)hr;
+	return hr;
 }
 
-DWORD invoke_ps_command(wchar_t* sessionId, wchar_t* command, _bstr_t& output)
+HRESULT invoke_ps_command(wchar_t* sessionId, wchar_t* command, _bstr_t& output)
 {
 	HRESULT hr;
 	bstr_t bstrStaticMethodName(L"Execute");
@@ -167,7 +167,7 @@ DWORD invoke_ps_command(wchar_t* sessionId, wchar_t* command, _bstr_t& output)
 
 	if (gClrPowershellType == NULL)
 	{
-		return ERROR_INVALID_HANDLE;
+		return E_HANDLE;
 	}
 
 	psaStaticMethodArgs = SafeArrayCreateVector(VT_VARIANT, 0, 2);
@@ -212,13 +212,13 @@ DWORD invoke_ps_command(wchar_t* sessionId, wchar_t* command, _bstr_t& output)
 
 	if (SUCCEEDED(hr))
 	{
-		return ERROR_SUCCESS;
+		return S_OK;
 	}
 
-	return (DWORD)hr;
+	return hr;
 }
 
-DWORD initialize_dotnet_4(HMODULE hMsCoree,
+HRESULT initialize_dotnet_4(HMODULE hMsCoree,
 	ICLRMetaHost** clrMetaHost,
 	ICLRRuntimeInfo** clrRuntimeInfo,
 	ICorRuntimeHost** clrCorRuntimeHost)
@@ -227,7 +227,7 @@ DWORD initialize_dotnet_4(HMODULE hMsCoree,
 
 	pClrCreateInstance clrCreateInstance = (pClrCreateInstance)GetProcAddress(hMsCoree, "CLRCreateInstance");
 	if (clrCreateInstance == NULL) {
-		return GetLastError();
+		return HRESULT_FROM_WIN32(GetLastError());
 	}
 
 	dprintf("[PSH] .NET 4 method in use");
@@ -271,10 +271,10 @@ DWORD initialize_dotnet_4(HMODULE hMsCoree,
 		return hr;
 	}
 
-	return ERROR_SUCCESS;
+	return S_OK;
 }
 
-DWORD initialize_dotnet_2(HMODULE hMsCoree,
+HRESULT initialize_dotnet_2(HMODULE hMsCoree,
 	ICorRuntimeHost** clrCorRuntimeHost)
 {
 	HRESULT hr;
@@ -292,10 +292,10 @@ DWORD initialize_dotnet_2(HMODULE hMsCoree,
 		return E_NOTIMPL;
 	}
 
-	return ERROR_SUCCESS;
+	return S_OK;
 }
 
-DWORD initialize_dotnet_host()
+HRESULT initialize_dotnet_host()
 {
 	HRESULT hr = S_OK;
 	ICLRMetaHost* clrMetaHost = NULL;
@@ -314,7 +314,7 @@ DWORD initialize_dotnet_host()
 		hMsCoree = LoadLibraryA("mscoree.dll");
 		if (hMsCoree == NULL)
 		{
-			hr = (HRESULT)GetLastError();
+			hr = HRESULT_FROM_WIN32(GetLastError());
 			dprintf("[PSH] Failed to load mscoree, .NET probably isn't installed. 0x%x", hr);
 			break;
 		}
@@ -360,7 +360,7 @@ DWORD initialize_dotnet_host()
 		if (clrByteArray == NULL)
 		{
 			dprintf("[PSH] Failed to create a usable safe array");
-			hr = ERROR_OUTOFMEMORY;
+			hr = E_OUTOFMEMORY;
 			break;
 		}
 
@@ -403,7 +403,7 @@ DWORD initialize_dotnet_host()
 		SAFE_RELEASE(clrCorRuntimeHost);
 		SAFE_RELEASE(clrRuntimeInfo);
 		SAFE_RELEASE(clrMetaHost);
-		return (DWORD)hr;
+		return hr;
 	}
 
 	gClrMetaHost = clrMetaHost;
@@ -420,7 +420,7 @@ DWORD initialize_dotnet_host()
 	dprintf("[PSH] Setting the binding callback pointer:  %S", callbackCmd);
 	invoke_ps_command(NULL, callbackCmd, output);
 
-	return ERROR_SUCCESS;
+	return S_OK;
 }
 
 BOOL destroy_loaded_assembly(LPVOID state, LPVOID data)
@@ -524,15 +524,20 @@ DWORD powershell_channel_write(Channel* channel, Packet* request, LPVOID context
 
 	_bstr_t output;
 
-	DWORD result = invoke_ps_command(shell->session_id, codeMarshall, output);
-	if (result == ERROR_SUCCESS && shell->wait_handle)
+	HRESULT result = invoke_ps_command(shell->session_id, codeMarshall, output);
+	if (SUCCEEDED(result) && shell->wait_handle)
 	{
 		met_api->lock.acquire(shell->buffer_lock);
 		shell->output += output;
 		SetEvent(shell->wait_handle);
 		met_api->lock.release(shell->buffer_lock);
 	}
-	return result;
+    if (SUCCEEDED(result))
+    {
+        return ERROR_SUCCESS;
+    }
+    else
+        return ERROR_FUNCTION_FAILED;
 }
 
 void powershell_channel_streamwrite(__int64 rawContext, __int64 rawMessage)
@@ -571,7 +576,7 @@ DWORD powershell_channel_close(Channel* channel, Packet* request, LPVOID context
 	return ERROR_SUCCESS;
 }
 
-DWORD channelise_session(wchar_t* sessionId, Channel* channel, LPVOID context)
+HRESULT channelise_session(wchar_t* sessionId, Channel* channel, LPVOID context)
 {
 	if (sessionId == NULL)
 	{
@@ -589,7 +594,7 @@ DWORD channelise_session(wchar_t* sessionId, Channel* channel, LPVOID context)
 
 	if (gClrPowershellType == NULL)
 	{
-		return ERROR_INVALID_HANDLE;
+		return E_HANDLE;
 	}
 
 	psaStaticMethodArgs = SafeArrayCreateVector(VT_VARIANT, 0, 3);
@@ -642,13 +647,13 @@ DWORD channelise_session(wchar_t* sessionId, Channel* channel, LPVOID context)
 	if (SUCCEEDED(hr))
 	{
 		dprintf("[PSH SHELL] successfully channelised powershell channel");
-		return ERROR_SUCCESS;
+		return S_OK;
 	}
 
-	return (DWORD)hr;
+	return hr;
 }
 
-DWORD unchannelise_session(wchar_t* sessionId)
+HRESULT unchannelise_session(wchar_t* sessionId)
 {
 	if (sessionId == NULL)
 	{
@@ -664,7 +669,7 @@ DWORD unchannelise_session(wchar_t* sessionId)
 
 	if (gClrPowershellType == NULL)
 	{
-		return ERROR_INVALID_HANDLE;
+		return E_HANDLE;
 	}
 
 	dprintf("[PSH] Attempting to Unchannelise %S", sessionId);
@@ -702,10 +707,10 @@ DWORD unchannelise_session(wchar_t* sessionId)
 
 	if (SUCCEEDED(hr))
 	{
-		return ERROR_SUCCESS;
+		return S_OK;
 	}
 
-	return (DWORD)hr;
+	return hr;
 }
 
 /*!
@@ -714,9 +719,9 @@ DWORD unchannelise_session(wchar_t* sessionId)
  * @param packet Pointer to the request \c Packet.
  * @returns Indication of success or failure.
  */
-DWORD request_powershell_shell(Remote *remote, Packet *packet)
+HRESULT request_powershell_shell(Remote *remote, Packet *packet)
 {
-	DWORD dwResult = ERROR_SUCCESS;
+	HRESULT result = S_OK;
 	Packet* response = met_api->packet.create_response(packet);
 	InteractiveShell* shell = NULL;
 
@@ -730,7 +735,7 @@ DWORD request_powershell_shell(Remote *remote, Packet *packet)
 			if (shell == NULL)
 			{
 				dprintf("[PSH] Failed to allocated memory");
-				dwResult = ERROR_OUTOFMEMORY;
+				result = E_OUTOFMEMORY;
 				break;
 			}
 			shell->session_id = met_api->packet.get_tlv_value_wstring(packet, TLV_TYPE_POWERSHELL_SESSIONID);
@@ -755,15 +760,15 @@ DWORD request_powershell_shell(Remote *remote, Packet *packet)
 			met_api->packet.add_tlv_uint(response, TLV_TYPE_CHANNEL_ID, met_api->channel.get_id(newChannel));
 		} while (0);
 
-		met_api->packet.transmit_response(dwResult, remote, response);
+		met_api->packet.transmit_response(result, remote, response);
 	}
 
-	if (dwResult != ERROR_SUCCESS)
+	if (result != S_OK)
 	{
 		SAFE_FREE(shell);
 	}
 
-	return dwResult;
+	return result;
 }
 
 /*!
@@ -772,9 +777,9 @@ DWORD request_powershell_shell(Remote *remote, Packet *packet)
  * @param packet Pointer to the request \c Packet.
  * @returns Indication of success or failure.
  */
-DWORD request_powershell_execute(Remote *remote, Packet *packet)
+HRESULT request_powershell_execute(Remote *remote, Packet *packet)
 {
-	DWORD dwResult = ERROR_SUCCESS;
+	HRESULT result = S_OK;
 	Packet* response = met_api->packet.create_response(packet);
 	wchar_t* sessionId = NULL;
 
@@ -788,8 +793,8 @@ DWORD request_powershell_execute(Remote *remote, Packet *packet)
 
 			sessionId = met_api->packet.get_tlv_value_wstring(packet, TLV_TYPE_POWERSHELL_SESSIONID);
 
-			dwResult = invoke_ps_command(sessionId, codeMarshall, output);
-			if (dwResult == ERROR_SUCCESS)
+			result = invoke_ps_command(sessionId, codeMarshall, output);
+			if (SUCCEEDED(result))
 			{
 				met_api->packet.add_tlv_string(response, TLV_TYPE_POWERSHELL_RESULT, output);
 			}
@@ -797,14 +802,14 @@ DWORD request_powershell_execute(Remote *remote, Packet *packet)
 		else
 		{
 			dprintf("[PSH] Code parameter missing from call");
-			dwResult = ERROR_INVALID_PARAMETER;
+			result = E_INVALIDARG;
 		}
-		met_api->packet.transmit_response(dwResult, remote, response);
+		met_api->packet.transmit_response(result, remote, response);
 	}
 
 	SAFE_FREE(sessionId);
 
-	return dwResult;
+	return result;
 }
 
 /*!
@@ -813,9 +818,9 @@ DWORD request_powershell_execute(Remote *remote, Packet *packet)
  * @param packet Pointer to the request \c Packet.
  * @returns Indication of success or failure.
  */
-DWORD request_powershell_assembly_load(Remote *remote, Packet *packet)
+HRESULT request_powershell_assembly_load(Remote *remote, Packet *packet)
 {
-	DWORD dwResult = ERROR_SUCCESS;
+	HRESULT result = S_OK;
 	Packet* response = met_api->packet.create_response(packet);
 	wchar_t* sessionId = NULL;
 
@@ -825,19 +830,19 @@ DWORD request_powershell_assembly_load(Remote *remote, Packet *packet)
 		BYTE* binary = met_api->packet.get_tlv_value_raw(packet, TLV_TYPE_POWERSHELL_ASSEMBLY, &binarySize);
 		if (binary != NULL)
 		{
-			dwResult = load_assembly(binary, binarySize);
+			result = load_assembly(binary, binarySize);
 		}
 		else
 		{
 			dprintf("[PSH] Assembly parameter missing from call");
-			dwResult = ERROR_INVALID_PARAMETER;
+			result = E_INVALIDARG;
 		}
-		met_api->packet.transmit_response(dwResult, remote, response);
+		met_api->packet.transmit_response(result, remote, response);
 	}
 
 	SAFE_FREE(sessionId);
 
-	return dwResult;
+	return result;
 }
 
 /*!
@@ -846,9 +851,9 @@ DWORD request_powershell_assembly_load(Remote *remote, Packet *packet)
  * @param packet Pointer to the request \c Packet.
  * @returns Indication of success or failure.
  */
-DWORD request_powershell_session_remove(Remote *remote, Packet *packet)
+HRESULT request_powershell_session_remove(Remote *remote, Packet *packet)
 {
-	DWORD dwResult = ERROR_SUCCESS;
+	HRESULT result = S_OK;
 	Packet* response = met_api->packet.create_response(packet);
 	wchar_t* sessionId = NULL;
 
@@ -856,34 +861,35 @@ DWORD request_powershell_session_remove(Remote *remote, Packet *packet)
 	{
 		sessionId = met_api->packet.get_tlv_value_wstring(packet, TLV_TYPE_POWERSHELL_SESSIONID);
 
-		dwResult = remove_session(sessionId);
+		result = remove_session(sessionId);
 
-		met_api->packet.transmit_response(dwResult, remote, response);
+		met_api->packet.transmit_response(result, remote, response);
 	}
 
 	SAFE_FREE(sessionId);
 
-	return dwResult;
+	return result;
 }
 
-DWORD invoke_startup_script(LPCSTR script)
+HRESULT invoke_startup_script(LPCSTR script)
 {
 	if (script == NULL)
 	{
-		return ERROR_SUCCESS;
+		return S_OK;
 	}
 
 	size_t size;
 	DWORD result = (DWORD)mbstowcs_s(&size, NULL, 0, script, 0);
 
-	if (result != ERROR_SUCCESS)
+	if (result != 0)
 	{
-		return result;
+		return E_FAIL;
 	}
 
 	size++;
 	wchar_t* wideString = (wchar_t*)calloc(size, sizeof(wchar_t));
 
+	HRESULT hresult = S_OK;
 	if (wideString)
 	{
 		_bstr_t output;
@@ -891,10 +897,10 @@ DWORD invoke_startup_script(LPCSTR script)
 
 		// ignore the output, we don't care about it during startup
 		dprintf("[PSH] calling invoke of powershell script: %S", wideString);
-		result = invoke_ps_command(NULL, wideString, output);
+		hresult = invoke_ps_command(NULL, wideString, output);
 		dprintf("[PSH] output of init powershell script is: %S", (wchar_t*)output);
 		free(wideString);
 	}
 
-	return result;
+	return hresult;
 }
