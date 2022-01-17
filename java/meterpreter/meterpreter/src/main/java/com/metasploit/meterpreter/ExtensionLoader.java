@@ -12,6 +12,7 @@ public interface ExtensionLoader {
     public static final int V1_4 = 14;
     public static final int V1_5 = 15;
     public static final int V1_6 = 16;
+    public static final int V1_9 = 19;
 
     /**
      * Load this extension.

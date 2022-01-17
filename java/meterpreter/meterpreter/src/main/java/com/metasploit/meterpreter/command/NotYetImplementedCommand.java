@@ -106,7 +106,6 @@ public class NotYetImplementedCommand implements Command {
         typeNames.put(new Integer(TLVType.TLV_TYPE_MEMORY_STATE), "TLV_TYPE_MEMORY_STATE");
         typeNames.put(new Integer(TLVType.TLV_TYPE_MEMORY_TYPE), "TLV_TYPE_MEMORY_TYPE");
         typeNames.put(new Integer(TLVType.TLV_TYPE_ALLOC_PROTECTION), "TLV_TYPE_ALLOC_PROTECTION");
-        typeNames.put(new Integer(TLVType.TLV_TYPE_PID), "TLV_TYPE_PID");
         typeNames.put(new Integer(TLVType.TLV_TYPE_PROCESS_NAME), "TLV_TYPE_PROCESS_NAME");
         typeNames.put(new Integer(TLVType.TLV_TYPE_PROCESS_PATH), "TLV_TYPE_PROCESS_PATH");
         typeNames.put(new Integer(TLVType.TLV_TYPE_PROCESS_GROUP), "TLV_TYPE_PROCESS_GROUP");
