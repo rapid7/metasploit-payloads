@@ -131,9 +131,6 @@ public class NotYetImplementedCommand implements Command {
         typeNames.put(new Integer(TLVType.TLV_TYPE_IDLE_TIME), "TLV_TYPE_IDLE_TIME");
         typeNames.put(new Integer(TLVType.TLV_TYPE_KEYS_DUMP), "TLV_TYPE_KEYS_DUMP");
         typeNames.put(new Integer(TLVType.TLV_TYPE_DESKTOP), "TLV_TYPE_DESKTOP");
-        typeNames.put(new Integer(TLVType.TLV_TYPE_EVENT_SOURCENAME), "TLV_TYPE_EVENT_SOURCENAME");
-        typeNames.put(new Integer(TLVType.TLV_TYPE_EVENT_HANDLE), "TLV_TYPE_EVENT_HANDLE");
-        typeNames.put(new Integer(TLVType.TLV_TYPE_EVENT_NUMRECORDS), "TLV_TYPE_EVENT_NUMRECORDS");
         typeNames.put(new Integer(TLVType.TLV_TYPE_EVENT_READFLAGS), "TLV_TYPE_EVENT_READFLAGS");
         typeNames.put(new Integer(TLVType.TLV_TYPE_EVENT_RECORDOFFSET), "TLV_TYPE_EVENT_RECORDOFFSET");
         typeNames.put(new Integer(TLVType.TLV_TYPE_EVENT_RECORDNUMBER), "TLV_TYPE_EVENT_RECORDNUMBER");

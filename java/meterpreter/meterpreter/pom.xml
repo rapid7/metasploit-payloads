@@ -41,6 +41,7 @@
 							<artifactSet>
 								<includes>
 									<include>com.metasploit:Metasploit-Java-Shared</include>
+									<include>net.java.dev.jna:jna</include>
 								</includes>
 							</artifactSet>
 						</configuration>

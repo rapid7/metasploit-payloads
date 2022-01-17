@@ -18,6 +18,12 @@
 			<version>4.13.1</version>
 			<scope>test</scope>
 		</dependency>
+		<!-- https://mvnrepository.com/artifact/net.java.dev.jna/jna -->
+		<dependency>
+			<groupId>net.java.dev.jna</groupId>
+			<artifactId>jna</artifactId>
+			<version>5.10.0</version>
+		</dependency>
 	</dependencies>
 	<build>
 		<plugins>
