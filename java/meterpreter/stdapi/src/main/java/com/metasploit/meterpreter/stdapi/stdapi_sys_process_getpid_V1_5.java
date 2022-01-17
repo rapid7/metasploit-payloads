@@ -7,8 +7,9 @@ import com.metasploit.meterpreter.command.Command;
 
 import java.lang.reflect.Method;
 
-public class stdapi_sys_process_getpid_V1_5 implements Command {
-    private static boolean classExists(String className) {
+public class stdapi_sys_process_getpid_V1_5 extends stdapi_sys_process_getpid implements Command {
+
+    protected static boolean classExists(String className) {
         try {
             Class.forName(className);
             return true;

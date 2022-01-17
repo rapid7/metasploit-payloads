@@ -7,15 +7,7 @@ import com.metasploit.meterpreter.command.Command;
 
 import java.lang.reflect.Method;
 
-public class stdapi_sys_process_getpid_V1_9 implements Command {
-    private static boolean classExists(String className) {
-        try {
-            Class.forName(className);
-            return true;
-        } catch (ClassNotFoundException e) {
-            return false;
-        }
-    }
+public class stdapi_sys_process_getpid_V1_9 extends stdapi_sys_process_getpid_V1_5 implements Command {
 
     public int execute(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws Exception {
         if (classExists("java.lang.ProcessHandle"))
