@@ -14,7 +14,7 @@ public class stdapi_sys_eventlog_numrecords extends stdapi_sys_eventlog implemen
         {
             Pointer handle = Pointer.createConstant(request.getLongValue(TLVType.TLV_TYPE_EVENT_HANDLE));
             IntByReference numberOfRecords = new IntByReference();
-            Libraries.AdvAPILibrary.GetNumberOfEventLogRecords(handle, numberOfRecords);
+            AdvAPILibrary.INSTANCE.GetNumberOfEventLogRecords(handle, numberOfRecords);
             response.add(TLVType.TLV_TYPE_EVENT_NUMRECORDS, numberOfRecords.getValue());
             return ERROR_SUCCESS;
         }

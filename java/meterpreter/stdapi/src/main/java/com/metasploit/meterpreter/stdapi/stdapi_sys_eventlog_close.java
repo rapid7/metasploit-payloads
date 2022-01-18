@@ -12,7 +12,7 @@ public class stdapi_sys_eventlog_close extends stdapi_sys_eventlog implements Co
         try
         {
             Pointer handle = Pointer.createConstant(request.getLongValue(TLVType.TLV_TYPE_EVENT_HANDLE));
-            Libraries.AdvAPILibrary.CloseEventLog(handle);
+            AdvAPILibrary.INSTANCE.CloseEventLog(handle);
             return ERROR_SUCCESS;
         }
         catch (Throwable e)

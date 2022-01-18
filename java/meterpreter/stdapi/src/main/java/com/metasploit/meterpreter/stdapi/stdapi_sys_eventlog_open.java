@@ -15,7 +15,7 @@ public class stdapi_sys_eventlog_open extends stdapi_sys_eventlog implements Com
         try
         {
             // Make sure that we are using the correct (String or WString) type here, or we do not get correct results.
-            Pointer handle = Libraries.AdvAPILibrary.OpenEventLog(null, sourceName);
+            Pointer handle = AdvAPILibrary.INSTANCE.OpenEventLog(null, sourceName);
             // Remember to cast the native value to Pointer later.
             response.add(TLVType.TLV_TYPE_EVENT_HANDLE, Pointer.nativeValue(handle));
             return ERROR_SUCCESS;

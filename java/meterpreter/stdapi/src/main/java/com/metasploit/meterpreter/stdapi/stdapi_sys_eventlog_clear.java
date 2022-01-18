@@ -12,13 +12,12 @@ public class stdapi_sys_eventlog_clear extends stdapi_sys_eventlog implements Co
         try
         {
             Pointer handle = Pointer.createConstant(request.getLongValue(TLVType.TLV_TYPE_EVENT_HANDLE));
-            Boolean success = Libraries.AdvAPILibrary.ClearEventLog(handle, null);
+            Boolean success = AdvAPILibrary.INSTANCE.ClearEventLog(handle, null);
             if (!success)
             {
-                Integer error = Libraries.Kernel32Library.GetLastError();
-                return error;
+                return Kernel32Library.INSTANCE.GetLastError();
             }
-            Libraries.AdvAPILibrary.CloseEventLog(handle);
+            AdvAPILibrary.INSTANCE.CloseEventLog(handle);
             return ERROR_SUCCESS;
         }
         catch (Throwable e)
