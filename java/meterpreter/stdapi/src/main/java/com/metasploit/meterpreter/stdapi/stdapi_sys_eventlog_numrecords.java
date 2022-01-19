@@ -8,13 +8,16 @@ import com.sun.jna.Pointer;
 import com.sun.jna.ptr.IntByReference;
 
 public class stdapi_sys_eventlog_numrecords extends stdapi_sys_eventlog implements Command {
-    @Override
     public int execute(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws Exception {
         try
         {
-            Pointer handle = Pointer.createConstant(request.getLongValue(TLVType.TLV_TYPE_EVENT_HANDLE));
+            final Pointer handle = Pointer.createConstant(request.getLongValue(TLVType.TLV_TYPE_EVENT_HANDLE));
             IntByReference numberOfRecords = new IntByReference();
-            AdvAPILibrary.INSTANCE.GetNumberOfEventLogRecords(handle, numberOfRecords);
+            final Boolean successful = AdvAPILibrary.INSTANCE.GetNumberOfEventLogRecords(handle, numberOfRecords);
+            if (!successful)
+            {
+                return Kernel32Library.INSTANCE.GetLastError();
+            }
             response.add(TLVType.TLV_TYPE_EVENT_NUMRECORDS, numberOfRecords.getValue());
             return ERROR_SUCCESS;
         }

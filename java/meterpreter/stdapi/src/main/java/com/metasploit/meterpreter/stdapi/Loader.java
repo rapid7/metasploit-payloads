@@ -76,5 +76,7 @@ public class Loader implements ExtensionLoader {
         mgr.registerCommand(CommandId.STDAPI_SYS_EVENTLOG_CLOSE, stdapi_sys_eventlog_close.class);
         mgr.registerCommand(CommandId.STDAPI_SYS_EVENTLOG_CLEAR, stdapi_sys_eventlog_clear.class);
         mgr.registerCommand(CommandId.STDAPI_SYS_EVENTLOG_NUMRECORDS, stdapi_sys_eventlog_numrecords.class);
+        mgr.registerCommand(CommandId.STDAPI_SYS_EVENTLOG_READ, stdapi_sys_eventlog_read.class);
+        mgr.registerCommand(CommandId.STDAPI_SYS_EVENTLOG_OLDEST, stdapi_sys_eventlog_oldest.class);
     }
 }

@@ -7,17 +7,15 @@ import com.metasploit.meterpreter.command.Command;
 import com.sun.jna.Pointer;
 
 public class stdapi_sys_eventlog_clear extends stdapi_sys_eventlog implements Command {
-    @Override
     public int execute(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws Exception {
         try
         {
-            Pointer handle = Pointer.createConstant(request.getLongValue(TLVType.TLV_TYPE_EVENT_HANDLE));
-            Boolean success = AdvAPILibrary.INSTANCE.ClearEventLog(handle, null);
+            final Pointer handle = Pointer.createConstant(request.getLongValue(TLVType.TLV_TYPE_EVENT_HANDLE));
+            final Boolean success = AdvAPILibrary.INSTANCE.ClearEventLog(handle, null);
             if (!success)
             {
                 return Kernel32Library.INSTANCE.GetLastError();
             }
-            AdvAPILibrary.INSTANCE.CloseEventLog(handle);
             return ERROR_SUCCESS;
         }
         catch (Throwable e)
