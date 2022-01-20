@@ -66,6 +66,9 @@ HTTP_USER_AGENT = None
 HTTP_COOKIE = None
 HTTP_HOST = None
 HTTP_REFERER = None
+LOG_LEVEL_ERROR = 3000
+LOG_LEVEL_DEBUG = 2000
+LOG_LEVEL_INFO = 1000
 PAYLOAD_UUID = ''
 SESSION_GUID = ''
 SESSION_COMMUNICATION_TIMEOUT = 300
@@ -139,6 +142,9 @@ TLV_TYPE_CHANNEL_PARENTID      = TLV_META_TYPE_UINT    | 55
 TLV_TYPE_SEEK_WHENCE           = TLV_META_TYPE_UINT    | 70
 TLV_TYPE_SEEK_OFFSET           = TLV_META_TYPE_UINT    | 71
 TLV_TYPE_SEEK_POS              = TLV_META_TYPE_UINT    | 72
+
+TLV_TYPE_LOG_LEVEL             = TLV_META_TYPE_UINT    | 80
+TLV_TYPE_LOG_SIZE              = TLV_META_TYPE_UINT    | 81
 
 TLV_TYPE_EXCEPTION_CODE        = TLV_META_TYPE_UINT    | 300
 TLV_TYPE_EXCEPTION_STRING      = TLV_META_TYPE_STRING  | 301
@@ -428,13 +434,17 @@ def crc16(data):
 def debug_print(msg):
     if DEBUGGING:
         print(msg)
+    log_channel.log_debug(msg + '\n')
 
 @export
 def debug_traceback(msg=None):
+    formatted = ''
+    if msg:
+        formatted += msg + '\n'
+    formatted += traceback.format_exc()
     if DEBUGGING:
-        if msg:
-            print(msg)
-        traceback.print_exc(file=sys.stderr)
+        sys.stderr.write(formatted)
+    log_channel.log_error(formatted)
 
 @export
 def error_result(exception=None):
@@ -629,6 +639,48 @@ class MeterpreterChannel(object):
 
     def tell(self):
         raise NotImplementedError()
+
+#@export
+class MeterpreterLog(MeterpreterChannel):
+    def __init__(self, level, size, active):
+        self._buffer = ''
+        self.level = level
+        self.size = size
+        self.active = active
+
+    def close(self):
+        self.active = False
+
+    def eof(self):
+        return False
+
+    def read(self, length):
+        chunk = self._buffer[:length]
+        self._buffer = self._buffer[length:]
+        return chunk
+
+    def write(self, data):
+        self._buffer += data
+        self._buffer = self._buffer[-self.size:]
+
+    def log_debug(self, message):
+        if not self.active or self.level > LOG_LEVEL_DEBUG:
+            return
+        self.write(message)
+
+    def log_info(self, message):
+        if not self.active or self.level > LOG_LEVEL_INFO:
+            return
+        self.write(message)
+
+    def log_error(self, message):
+        if not self.active or self.level > LOG_LEVEL_ERROR:
+            return
+        self.write(message)
+export(MeterpreterLog)
+
+# If debugging is enabled start recording logs to the channel immediately
+log_channel = MeterpreterLog(LOG_LEVEL_INFO, 0x2000, DEBUGGING)
 
 #@export
 class MeterpreterFile(MeterpreterChannel):
@@ -1205,7 +1257,7 @@ class PythonMeterpreter(object):
         self.transports = [self.transport]
         self.session_expiry_time = SESSION_EXPIRATION_TIMEOUT
         self.session_expiry_end = time.time() + self.session_expiry_time
-        for func in list(filter(lambda x: x.startswith('_core'), dir(self))):
+        for func in list(filter(lambda x: x.startswith('_core') or x.startswith('_channel'), dir(self))):
             self.extension_functions[func[1:]] = getattr(self, func)
         self.running = True
 
@@ -1236,6 +1288,13 @@ class PythonMeterpreter(object):
         self.channels[idx] = channel
         debug_print('[*] added channel id: ' + str(idx) + ' type: ' + channel.__class__.__name__)
         self.next_channel_id += 1
+        return idx
+
+    def add_log_channel(self, channel):
+        if not isinstance(channel, MeterpreterLog):
+            debug_print('[-] channel object is not an instance of MeterpreterLog')
+            raise TypeError('invalid log channel object')
+        idx = self.add_channel(channel)
         return idx
 
     def add_process(self, process):
@@ -1651,6 +1710,14 @@ class PythonMeterpreter(object):
             return ERROR_FAILURE, response
         channel = self.channels[channel_id]
         return channel.core_tell(request, response)
+
+    def _channel_open_core_logging(self, request, response):
+        log_channel.level = packet_get_tlv(request, TLV_TYPE_LOG_LEVEL).get('value', LOG_LEVEL_INFO)
+        log_channel.size = packet_get_tlv(request, TLV_TYPE_LOG_SIZE).get('value', 0x2000)
+        log_channel.active = True
+        channel_id = self.add_log_channel(log_channel)
+        response += tlv_pack(TLV_TYPE_CHANNEL_ID, channel_id)
+        return ERROR_SUCCESS, response
 
     def create_response(self, request):
         response = struct.pack('>I', PACKET_TYPE_RESPONSE)
