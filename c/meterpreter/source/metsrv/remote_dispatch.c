@@ -68,7 +68,7 @@ DWORD buffer_to_file(LPCSTR filePath, PUCHAR buffer, ULONG length)
 
 		// Keep writing until everything is written
 		while ((bytesLeft) &&
-		       (WriteFile(h, buffer + offset, bytesLeft, &bytesWritten, NULL)))
+			   (WriteFile(h, buffer + offset, bytesLeft, &bytesWritten, NULL)))
 		{
 			bytesLeft -= bytesWritten;
 			offset    += bytesWritten;
@@ -272,6 +272,7 @@ DWORD load_extension(HMODULE hLibrary, BOOL bLibLoadedReflectivly, Remote* remot
 			dprintf("[SERVER] Calling init()...");
 
 			pExtension->end = pFirstCommand;
+			// dwResult can be a mixture of different error types, e.g. HRESULT, win32 error
 			dwResult = pExtension->init(met_api, remote);
 			pExtension->start = extensionCommands;
 
