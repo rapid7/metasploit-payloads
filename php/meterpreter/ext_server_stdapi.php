@@ -483,6 +483,30 @@ function resolve_host($hostname, $family) {
 }
 }
 
+if (!function_exists('rmtree')) {
+function rmtree($path) {
+    $dents = safe_glob($path . '/*');
+    foreach ($dents as $dent) {
+        if (in_array($dent, array('.','..'))) {
+            continue;
+        }
+
+        $subpath = $path . DIRECTORY_SEPARATOR . $dent;
+        if (@is_link($subpath)) {
+            $ret = unlink($subpath);
+        } elseif (@is_dir($subpath)) {
+            $ret = rmtree($subpath);
+        } else {
+            $ret = @unlink($subpath);
+        }
+        if (!$ret) {
+            return false;
+        }
+    }
+    return @rmdir($path);
+}
+}
+
 #
 # Need to nail down what this should actually do.  Ruby's File.expand_path is
 # for canonicalizing a path (e.g., removing /./ and ../) and expanding "~" into
@@ -533,7 +557,14 @@ register_command('stdapi_fs_delete_dir', COMMAND_ID_STDAPI_FS_DELETE_DIR);
 function stdapi_fs_delete_dir($req, &$pkt) {
     my_print("doing rmdir");
     $path_tlv = packet_get_tlv($req, TLV_TYPE_DIRECTORY_PATH);
-    $ret = @rmdir(canonicalize_path($path_tlv['value']));
+    $path = canonicalize_path($path_tlv['value']);
+
+    $ret = false;
+    if (@is_link($path)) {
+        $ret = @unlink($path);
+    } elseif (@is_dir($path)) {
+        $ret = rmtree($path);
+    }
     return $ret ? ERROR_SUCCESS : ERROR_FAILURE;
 }
 }
