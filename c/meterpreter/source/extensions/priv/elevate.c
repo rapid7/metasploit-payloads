@@ -71,7 +71,7 @@ DWORD elevate_getnativearch( VOID )
  */
 DWORD elevate_getsystem( Remote * remote, Packet * packet )
 {
-	DWORD dwResult    = ERROR_SUCCESS;
+	DWORD dwResult    = ERROR_BAD_ARGUMENTS;
 	DWORD dwTechnique = ELEVATE_TECHNIQUE_ANY;
 	Packet * response = NULL;
 
