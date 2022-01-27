@@ -1,6 +1,7 @@
 package com.metasploit.meterpreter.stdapi;
 
 import java.io.File;
+import java.util.Locale;
 
 import com.metasploit.meterpreter.CommandManager;
 import com.metasploit.meterpreter.command.CommandId;
@@ -72,5 +73,10 @@ public class Loader implements ExtensionLoader {
         mgr.registerCommand(CommandId.STDAPI_UI_SEND_KEYEVENT, stdapi_ui_send_keyevent.class, V1_4);
         mgr.registerCommand(CommandId.STDAPI_WEBCAM_AUDIO_RECORD, stdapi_webcam_audio_record.class, V1_4);
         mgr.registerCommand(CommandId.STDAPI_SYS_PROCESS_GETPID, stdapi_sys_process_getpid.class, V1_5, V1_9);
+
+        if (System.getProperty("os.name").toLowerCase(Locale.ENGLISH).contains("windows"))
+        {
+            mgr.registerCommand(CommandId.STDAPI_RAILGUN_API, stdapi_railgun_api.class);
+        }
     }
 }

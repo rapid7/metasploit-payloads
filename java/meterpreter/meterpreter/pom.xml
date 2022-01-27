@@ -25,6 +25,16 @@
 	</dependencies>
 	<build>
 		<finalName>meterpreter</finalName>
+		<resources>
+			<resource>
+				<directory>
+					../stdapi/src/main/java/com/metasploit/meterpreter/stdapi
+				</directory>
+				<includes>
+					<include>railgunLib.dll</include>
+				</includes>
+			</resource>
+		</resources>
 		<plugins>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
