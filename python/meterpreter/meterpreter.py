@@ -67,8 +67,8 @@ HTTP_COOKIE = None
 HTTP_HOST = None
 HTTP_REFERER = None
 LOG_LEVEL_ERROR = 3000
-LOG_LEVEL_DEBUG = 2000
-LOG_LEVEL_INFO = 1000
+LOG_LEVEL_INFO = 2000
+LOG_LEVEL_DEBUG = 1000
 PAYLOAD_UUID = ''
 SESSION_GUID = ''
 SESSION_COMMUNICATION_TIMEOUT = 300
@@ -659,6 +659,9 @@ class MeterpreterLog(MeterpreterChannel):
         self._buffer = self._buffer[length:]
         return chunk
 
+    def read_all(self):
+        return self.read(self.size)
+
     def write(self, data):
         self._buffer += data
         self._buffer = self._buffer[-self.size:]
@@ -680,7 +683,7 @@ class MeterpreterLog(MeterpreterChannel):
 export(MeterpreterLog)
 
 # If debugging is enabled start recording logs to the channel immediately
-log_channel = MeterpreterLog(LOG_LEVEL_INFO, 0x2000, DEBUGGING)
+log_channel = MeterpreterLog(LOG_LEVEL_DEBUG, 0x2000, DEBUGGING)
 
 #@export
 class MeterpreterFile(MeterpreterChannel):
@@ -1290,13 +1293,6 @@ class PythonMeterpreter(object):
         self.next_channel_id += 1
         return idx
 
-    def add_log_channel(self, channel):
-        if not isinstance(channel, MeterpreterLog):
-            debug_print('[-] channel object is not an instance of MeterpreterLog')
-            raise TypeError('invalid log channel object')
-        idx = self.add_channel(channel)
-        return idx
-
     def add_process(self, process):
         idx = self.next_process_id
         self.processes[idx] = process
@@ -1407,6 +1403,9 @@ class PythonMeterpreter(object):
                             self.handle_dead_resource_channel(channel_id)
                             break
                         data += d
+                elif isinstance(channel, MeterpreterLog):
+                    log = channel.read_all()
+                    data += log.encode()
                 elif isinstance(channel, MeterpreterSocketTCPServer):
                     if select.select([channel.fileno()], [], [], 0)[0]:
                         (client_sock, client_addr) = channel.sock.accept()
@@ -1715,7 +1714,7 @@ class PythonMeterpreter(object):
         log_channel.level = packet_get_tlv(request, TLV_TYPE_LOG_LEVEL).get('value', LOG_LEVEL_INFO)
         log_channel.size = packet_get_tlv(request, TLV_TYPE_LOG_SIZE).get('value', 0x2000)
         log_channel.active = True
-        channel_id = self.add_log_channel(log_channel)
+        channel_id = self.add_channel(log_channel)
         response += tlv_pack(TLV_TYPE_CHANNEL_ID, channel_id)
         return ERROR_SUCCESS, response
 
