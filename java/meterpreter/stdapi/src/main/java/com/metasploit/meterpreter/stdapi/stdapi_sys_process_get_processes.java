@@ -9,6 +9,7 @@ import java.util.List;
 import com.metasploit.meterpreter.Meterpreter;
 import com.metasploit.meterpreter.TLVPacket;
 import com.metasploit.meterpreter.TLVType;
+import com.metasploit.meterpreter.Utils;
 import com.metasploit.meterpreter.command.Command;
 
 /**
@@ -23,7 +24,7 @@ public class stdapi_sys_process_get_processes implements Command {
 
     public int execute(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws Exception {
         List processes = new ArrayList();
-        if (File.pathSeparatorChar == ';') {
+        if (Utils.isWindows()) {
             Process proc = Runtime.getRuntime().exec(new String[]{"tasklist.exe", "/v", "/fo", "csv", "/nh"});
             BufferedReader br = new BufferedReader(new InputStreamReader(proc.getInputStream()));
             String line;
@@ -69,7 +70,7 @@ public class stdapi_sys_process_get_processes implements Command {
             grp.add(TLVType.TLV_TYPE_PID, new Integer(proc[0]));
             grp.add(TLVType.TLV_TYPE_USER_NAME, proc[1]);
             String procName = proc[2];
-            if (File.pathSeparatorChar != ';' && procName.indexOf(' ') != -1) {
+            if (!Utils.isWindows() && procName.indexOf(' ') != -1) {
                 procName = procName.substring(0, procName.indexOf(' '));
             }
             grp.add(TLVType.TLV_TYPE_PROCESS_NAME, procName);
