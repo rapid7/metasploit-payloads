@@ -3,7 +3,7 @@
 //
 
 #include "com_metasploit_meterpreter_stdapi_stdapi_railgun_api.h"
-#include <Windows.h>
+#include <windows.h>
 
 typedef ULONG_PTR (__stdcall* STDCALL_FUNC_00)( VOID );
 typedef ULONG_PTR (__stdcall* STDCALL_FUNC_01)( ULONG_PTR );
@@ -65,7 +65,7 @@ typedef ULONG_PTR (__cdecl* CDECL_FUNC_25)( ULONG_PTR, ULONG_PTR, ULONG_PTR, ULO
 
 typedef unsigned __int64 QWORD;
 
-JNIEXPORT void JNICALL Java_com_metasploit_meterpreter_stdapi_stdapi_1railgun_1api_railgunCaller(JNIEnv* env, jobject thisObject, jint sizeOut, jbyteArray stackBlobIn, jbyteArray bufferBlobIn, jbyteArray bufferBlobInOut, jstring libName, jstring funcName, jstring callConv, jbyteArray bufferBlobOut, jintArray errorCode, jstring errorMessage, jlongArray returnValue)
+JNIEXPORT void JNICALL Java_com_metasploit_meterpreter_stdapi_stdapi_1railgun_1api_railgunCaller(JNIEnv* env, jobject thisObject, jint sizeOut, jbyteArray stackBlobIn, jbyteArray bufferBlobIn, jbyteArray bufferBlobInOut, jstring libName, jstring funcName, jstring callConv, jbyteArray bufferBlobOut, jintArray errorCode, jbyteArray errorMessage, jlongArray returnValue)
 {
     HMODULE hDLL = 0;
     VOID* pFuncAddr = 0;
@@ -79,6 +79,10 @@ JNIEXPORT void JNICALL Java_com_metasploit_meterpreter_stdapi_stdapi_1railgun_1a
     pFuncAddr = (VOID*)GetProcAddress(hDLL, functionName);
 
     const char* callingConvention = env->GetStringUTFChars(funcName, 0);
+
+    // error message out
+    jbyte* jErrorMessage = (jbyte*)env->GetByteArrayElements(errorMessage, 0);
+    char* errorMessageOut = (char*)jErrorMessage;
 
     // Buffer in
     jbyte* jBufferIn = (jbyte*)env->GetByteArrayElements(bufferBlobIn, 0);
@@ -214,6 +218,19 @@ JNIEXPORT void JNICALL Java_com_metasploit_meterpreter_stdapi_stdapi_1railgun_1a
     int* returnErrorCode = (int*)jErrorCode;
     returnErrorCode[0] = (int)GetLastError();
 
+    char* outMsgBuffer = 0;
+    FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_IGNORE_INSERTS,
+        0,    // unused with FORMAT_MESSAGE_FROM_SYSTEM
+        returnErrorCode[0], MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+        (LPTSTR) &outMsgBuffer,  // output
+        0, // minimum size for output buffer
+        0);
+
+    for (int i = 0; i < 1024 && i < strlen(outMsgBuffer); i++)
+    {
+        errorMessageOut[i] = outMsgBuffer[i];
+    }
+
     // Free the stuffs.
     free(pStack);
     FreeLibrary(hDLL);
@@ -225,4 +242,6 @@ JNIEXPORT void JNICALL Java_com_metasploit_meterpreter_stdapi_stdapi_1railgun_1a
     env->ReleaseLongArrayElements(returnValue, jReturnValue, 0);
     env->ReleaseIntArrayElements(errorCode, jErrorCode, 0);
     env->ReleaseStringUTFChars(callConv, callingConvention);
+    env->ReleaseByteArrayElements(errorMessage, jErrorMessage, 0);
+    LocalFree(outMsgBuffer);
 }

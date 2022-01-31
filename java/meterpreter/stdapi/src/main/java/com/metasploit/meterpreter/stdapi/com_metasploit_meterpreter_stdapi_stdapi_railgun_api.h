@@ -13,7 +13,7 @@ extern "C" {
  * Signature: (I[B[B[BLjava/lang/String;Ljava/lang/String;Ljava/lang/String;[B[ILjava/lang/String;J)V
  */
 JNIEXPORT void JNICALL Java_com_metasploit_meterpreter_stdapi_stdapi_1railgun_1api_railgunCaller
-  (JNIEnv *, jobject, jint, jbyteArray, jbyteArray, jbyteArray, jstring, jstring, jstring, jbyteArray, jintArray, jstring, jlongArray);
+  (JNIEnv *, jobject, jint, jbyteArray, jbyteArray, jbyteArray, jstring, jstring, jstring, jbyteArray, jintArray, jbyteArray, jlongArray);
 
 #ifdef __cplusplus
 }

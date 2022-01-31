@@ -74,7 +74,7 @@ public class stdapi_railgun_api implements Command {
         LoadLib();
     }
 
-    public native void railgunCaller(int sizeOut, byte[] stackBlobIn, byte[] bufferBlobIn, byte[] bufferBlobInOut, String libName, String funcName, String callConv, byte[] bufferBlobOut, int[] errorCode, String errorMessage, long[] returnValue);
+    public native void railgunCaller(int sizeOut, byte[] stackBlobIn, byte[] bufferBlobIn, byte[] bufferBlobInOut, String libName, String funcName, String callConv, byte[] bufferBlobOut, int[] errorCode, byte[] errorMessage, long[] returnValue);
 
     public int execute(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws Exception {
         final int sizeOut = request.getIntValue(TLVType.TLV_TYPE_RAILGUN_SIZE_OUT);
@@ -89,7 +89,7 @@ public class stdapi_railgun_api implements Command {
         // To change primite types in C land and get the changed values out into Java land,
         // We need to store them in an array.
         int[] errorCode = {0};
-        String errorMessage = "";
+        byte[] errorMessage = new byte[1024];
         long[] returnValue = {0};
 
         try
@@ -97,7 +97,7 @@ public class stdapi_railgun_api implements Command {
             this.railgunCaller(sizeOut, stackBlob, bufferBlobIn, bufferBlobInOut, libName, funcName, callConv, bufferBlobOut, errorCode, errorMessage, returnValue);
 
             response.add(TLVType.TLV_TYPE_RAILGUN_BACK_ERR, errorCode[0]);
-            response.add(TLVType.TLV_TYPE_RAILGUN_BACK_MSG, errorMessage);
+            response.add(TLVType.TLV_TYPE_RAILGUN_BACK_MSG, new String(errorMessage));
             response.add(TLVType.TLV_TYPE_RAILGUN_BACK_RET, returnValue[0]);
             response.add(TLVType.TLV_TYPE_RAILGUN_BACK_BUFFERBLOB_OUT, bufferBlobOut);
             response.add(TLVType.TLV_TYPE_RAILGUN_BACK_BUFFERBLOB_INOUT, bufferBlobInOut);
