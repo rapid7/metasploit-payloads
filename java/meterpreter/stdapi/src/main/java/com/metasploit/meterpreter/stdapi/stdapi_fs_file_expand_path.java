@@ -1,12 +1,12 @@
 package com.metasploit.meterpreter.stdapi;
 
-import java.io.File;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.metasploit.meterpreter.Meterpreter;
 import com.metasploit.meterpreter.TLVPacket;
 import com.metasploit.meterpreter.TLVType;
+import com.metasploit.meterpreter.Utils;
 import com.metasploit.meterpreter.command.Command;
 
 public class stdapi_fs_file_expand_path implements Command {
@@ -59,7 +59,7 @@ public class stdapi_fs_file_expand_path implements Command {
     }
 
     protected String getShellPath() {
-        if (File.pathSeparatorChar == ';') {
+        if (Utils.isWindows()) {
             return "cmd.exe";
         } else {
             return "/bin/sh";

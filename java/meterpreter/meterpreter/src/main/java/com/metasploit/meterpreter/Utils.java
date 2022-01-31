@@ -1,6 +1,7 @@
 package com.metasploit.meterpreter;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 
@@ -8,6 +9,14 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 
 public class Utils {
+
+    public static boolean isWindows() {
+        if (File.pathSeparatorChar == ';') {
+            return true;
+        } else {
+            return false;
+        }
+    }
 
     public static void log(String log) {
         StackTraceElement stack = new Throwable().getStackTrace()[1];
