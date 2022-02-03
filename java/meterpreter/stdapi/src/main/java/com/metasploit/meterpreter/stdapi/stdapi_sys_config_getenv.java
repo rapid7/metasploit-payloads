@@ -22,10 +22,12 @@ public class stdapi_sys_config_getenv implements Command {
                 }
 
                 String envVal = System.getenv(envVar);
-                TLVPacket grp = new TLVPacket();
-                grp.add(TLVType.TLV_TYPE_ENV_VARIABLE, envVar);
-                grp.add(TLVType.TLV_TYPE_ENV_VALUE, envVal);
-                response.addOverflow(TLVType.TLV_TYPE_ENV_GROUP, grp);
+                if (envVal != null) {
+                    TLVPacket grp = new TLVPacket();
+                    grp.add(TLVType.TLV_TYPE_ENV_VARIABLE, envVar);
+                    grp.add(TLVType.TLV_TYPE_ENV_VALUE, envVal);
+                    response.addOverflow(TLVType.TLV_TYPE_ENV_GROUP, grp);
+                }
             }
         } catch (IllegalArgumentException e) {
             Map<String,String> envVals = System.getenv();
