@@ -68,4 +68,24 @@ public class Utils {
         return data;
     }
 
+    public static String getNormalizedArch() {
+        final String arch = System.getProperty("os.arch");
+        if (arch == null) {
+            return null;
+        }
+
+        if (arch.equals("i386") || arch.equals("i486")  || arch.equals("i586") || arch.equals("i686")) {
+            return "x86";
+        }
+        if (arch.equals("amd64") || arch.equals("x86_64")) {
+            return "x64";
+        }
+        if (arch.equals("arm") || arch.equals("arm32")) {
+            return "armle";
+        }
+        if (arch.equals("arm64")) {
+            return "aarch64";
+        }
+        return arch;
+    }
 }
