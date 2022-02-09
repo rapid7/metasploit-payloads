@@ -137,6 +137,7 @@ public interface TLVType {
     public static final int TLV_TYPE_OS_NAME        = TLVPacket.TLV_META_TYPE_STRING | 1041;
     public static final int TLV_TYPE_USER_NAME      = TLVPacket.TLV_META_TYPE_STRING | 1042;
     public static final int TLV_TYPE_ARCHITECTURE   = TLVPacket.TLV_META_TYPE_STRING | 1043;
+    public static final int TLV_TYPE_LANG_SYSTEM    = TLVPacket.TLV_META_TYPE_STRING | 1044;
     public static final int TLV_TYPE_LOCAL_DATETIME = TLVPacket.TLV_META_TYPE_STRING | 1048;
 
     public static final int TLV_TYPE_ENV_VARIABLE = TLVPacket.TLV_META_TYPE_STRING | 1100;
