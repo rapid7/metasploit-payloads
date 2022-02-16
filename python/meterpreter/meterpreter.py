@@ -677,7 +677,7 @@ class MeterpreterProcess(MeterpreterChannel):
                 pass
 
     def is_alive(self):
-        return self.proc_h.poll() is None
+        return self.proc_h.is_alive()
 
     def read(self, length):
         data = bytes()
@@ -777,6 +777,7 @@ class STDProcessBuffer(threading.Thread):
         self.is_alive = is_alive
         self.data = bytes()
         self.data_lock = threading.RLock()
+        self._is_reading = True
 
     def _read1(self):
         try:
@@ -785,12 +786,18 @@ class STDProcessBuffer(threading.Thread):
             return bytes()
 
     def run(self):
-        byte = self._read1()
-        while len(byte):
-            self.data_lock.acquire()
-            self.data += byte
-            self.data_lock.release()
+        try:
             byte = self._read1()
+            while len(byte) > 0:
+                self.data_lock.acquire()
+                self.data += byte
+                self.data_lock.release()
+                byte = self._read1()
+        finally:
+            self._is_reading = False
+
+    def is_reading(self):
+        return self._is_reading or self.is_read_ready()
 
     def is_read_ready(self):
         return len(self.data) != 0
@@ -821,7 +828,11 @@ class STDProcess(subprocess.Popen):
         self.ptyfd = None
 
     def is_alive(self):
-        return self.poll() is None
+        is_proc_alive = self.poll() is None
+        is_stderr_reading = self.stderr_reader.is_reading()
+        is_stdout_reading = self.stdout_reader.is_reading()
+
+        return is_proc_alive or is_stderr_reading or is_stdout_reading
 
     def start(self):
         self.stdout_reader = STDProcessBuffer(self.stdout, self.is_alive, name='STDProcessBuffer.stdout')
