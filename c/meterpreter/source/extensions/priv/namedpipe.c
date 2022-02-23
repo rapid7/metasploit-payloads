@@ -17,6 +17,18 @@ DWORD set_meterp_thread_use_current_token(Remote * remote)
 		return GetLastError();
 	}
 
+	DWORD dwLevel, dwSize;
+	if (!GetTokenInformation(hToken, TokenImpersonationLevel, &dwLevel, sizeof(dwLevel), &dwSize)) {
+		dprintf("[ELEVATE] set_meterp_thread_use_current_token. GetTokenInformation failed");
+		return GetLastError();
+	}
+
+	// check that the token can be used
+	if ((dwLevel == SecurityAnonymous) || (dwLevel == SecurityIdentification)) {
+		SetLastError(ERROR_BAD_IMPERSONATION_LEVEL);
+		return ERROR_BAD_IMPERSONATION_LEVEL;
+	}
+
 	// now we can set the meterpreters thread token to that of our system
 	// token so all subsequent meterpreter threads will use this token.
 	met_api->thread.update_token(remote, hToken);
