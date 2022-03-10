@@ -38,7 +38,7 @@ module MetasploitPayloads
   # Get the path to a meterpreter binary by full name.
   #
   def self.meterpreter_path(name, binary_suffix, debug: false)
-    binary_suffix&.gsub!(/dll$/, 'debug.dll') if debug
+    binary_suffix = binary_suffix&.gsub(/dll$/, 'debug.dll') if debug
     path(METERPRETER_SUBFOLDER, "#{name}.#{binary_suffix}".downcase)
   end
 
