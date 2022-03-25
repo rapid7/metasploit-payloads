@@ -483,7 +483,7 @@ def get_system_arch():
         ctypes.windll.kernel32.GetNativeSystemInfo(ctypes.byref(sysinfo))
         values = {0:'x86', 5:'armle', 6:'IA64', 9:'x64'}
         arch = values.get(sysinfo.wProcessorArchitecture, uname_info[4])
-    if arch == 'x86_64':
+    if arch == 'x86_64' or arch.lower() == 'amd64':
         arch = 'x64'
     return arch
 
