@@ -1,8 +1,6 @@
 # -*- coding:binary -*-
 
-unless defined? MetasploitPayloads::VERSION
-  require 'metasploit-payloads/version'
-end
+require 'metasploit-payloads/version' unless defined? MetasploitPayloads::VERSION
 
 #
 # This module dispenses Metasploit payload binary files
@@ -39,7 +37,8 @@ module MetasploitPayloads
   #
   # Get the path to a meterpreter binary by full name.
   #
-  def self.meterpreter_path(name, binary_suffix)
+  def self.meterpreter_path(name, binary_suffix, debug: false)
+    binary_suffix = binary_suffix&.gsub(/dll$/, 'debug.dll') if debug
     path(METERPRETER_SUBFOLDER, "#{name}.#{binary_suffix}".downcase)
   end
 
@@ -176,9 +175,7 @@ module MetasploitPayloads
   def self.warn_local_path(path)
     unless @local_paths.include?(path)
       STDERR.puts("WARNING: Local file #{path} is being used")
-      if @local_paths.empty?
-        STDERR.puts('WARNING: Local files may be incompatible with the Metasploit Framework')
-      end
+      STDERR.puts('WARNING: Local files may be incompatible with the Metasploit Framework') if @local_paths.empty?
       @local_paths << path
     end
   end
