@@ -35,6 +35,13 @@ if (!isset($GLOBALS['id2f'])) {
   $GLOBALS['id2f'] = array();
 }
 
+if (!defined('AF_INET')) {
+    define('AF_INET', 2);
+}
+if (!defined('AF_INET6')) {
+    define('AF_INET6', 23);
+}
+
 function register_command($c, $i) {
   global $id2f;
   if (! in_array($i, $id2f)) {
