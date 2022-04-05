@@ -979,7 +979,9 @@ function close_process($proc) {
         # real harm in that, so go ahead and just always make sure they get
         # closed.
         foreach ($proc['pipes'] as $f) {
+          if (is_resource($f)) {
             @fclose($f);
+          }
         }
         if (is_callable('proc_get_status')) {
             $status = proc_get_status($proc['handle']);
@@ -1412,7 +1414,3 @@ function channel_create_stdapi_net_udp_client($req, &$pkt) {
     return ERROR_SUCCESS;
 }
 }
-
-
-
-
