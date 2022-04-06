@@ -147,6 +147,11 @@ MetApi api_instance = {
 		list_shift,
 		list_destroy,
 	},
+    // LoggingApi
+	{
+		get_context,
+		get_lock,
+	},
 };
 
 MetApi* met_api = &api_instance;

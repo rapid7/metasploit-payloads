@@ -441,6 +441,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <ClCompile Include="..\..\source\extensions\peinjector\libpetool.c" />
     <ClCompile Include="..\..\source\extensions\peinjector\peinjector.c" />
     <ClCompile Include="..\..\source\extensions\peinjector\peinjector_bridge.c" />
+    <ClCompile Include="..\..\source\common\common_logging.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\source\extensions\peinjector\headers.h" />

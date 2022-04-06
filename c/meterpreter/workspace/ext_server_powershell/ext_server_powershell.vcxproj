@@ -445,6 +445,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <ClCompile Include="..\..\source\extensions\powershell\powershell_bindings.cpp" />
     <ClCompile Include="..\..\source\extensions\powershell\powershell_bridge.cpp" />
     <ClCompile Include="..\..\source\extensions\powershell\powershell_runner.cpp" />
+    <ClCompile Include="..\..\source\common\common_logging.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\source\extensions\powershell\powershell.h" />

@@ -431,6 +431,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
   <ItemGroup>
     <ClCompile Include="..\..\source\extensions\winpmem\winpmem.cpp" />
     <ClCompile Include="..\..\source\extensions\winpmem\winpmem_meterpreter.cpp" />
+    <ClCompile Include="..\..\source\common\common_logging.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\source\extensions\winpmem\elf.h" />

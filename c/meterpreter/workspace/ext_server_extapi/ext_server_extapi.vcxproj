@@ -450,6 +450,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <ClCompile Include="..\..\source\extensions\extapi\wmi.c" />
     <ClCompile Include="..\..\source\extensions\extapi\wmi_interface.cpp" />
     <ClCompile Include="..\..\source\extensions\extapi\wshelpers.c" />
+    <ClCompile Include="..\..\source\common\common_logging.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\source\extensions\extapi\adsi.h" />

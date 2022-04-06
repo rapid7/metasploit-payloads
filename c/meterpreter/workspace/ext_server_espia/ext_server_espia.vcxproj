@@ -451,6 +451,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
   <ItemGroup>
     <ClCompile Include="..\..\source\extensions\espia\espia.c" />
     <ClCompile Include="..\..\source\extensions\espia\screen.c" />
+    <ClCompile Include="..\..\source\common\common_logging.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\source\extensions\espia\espia.h" />

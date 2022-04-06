@@ -413,6 +413,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <ClCompile Include="..\..\source\extensions\lanattacks\dhcpserv.cpp" />
     <ClCompile Include="..\..\source\extensions\lanattacks\TFTPserv.cpp" />
     <ClCompile Include="..\..\source\extensions\lanattacks\lanattacks.c" />
+    <ClCompile Include="..\..\source\common\common_logging.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\source\extensions\lanattacks\dhcpserv.h" />
