@@ -302,11 +302,6 @@ define("ERROR_CONNECTION_ERROR", 10000);
 # eval'd twice
 my_print("Evaling stdapi");
 
-##
-# Windows Constants
-##
-define("WIN_AF_INET", 2);
-define("WIN_AF_INET6", 23);
 
 ##
 # Search Helpers
@@ -456,9 +451,9 @@ function add_stat_buf($path) {
 if (!function_exists('resolve_host')) {
 function resolve_host($hostname, $family) {
     /* requires PHP >= 5 */
-    if ($family == AF_INET) {
+    if ($family == WIN_AF_INET) {
         $dns_family = DNS_A;
-    } elseif ($family == AF_INET6) {
+    } elseif ($family == WIN_AF_INET6) {
         $dns_family = DNS_AAAA;
     } else {
         my_print('invalid family, must be AF_INET or AF_INET6');
@@ -1265,11 +1260,7 @@ function stdapi_net_resolve_host($req, &$pkt) {
     $family_tlv = packet_get_tlv($req, TLV_TYPE_ADDR_TYPE);
     $family = $family['value'];
 
-    if ($family == WIN_AF_INET) {
-        $family = AF_INET;
-    } elseif ($family == WIN_AF_INET6) {
-        $family = AF_INET6;
-    } else {
+    if ($family != WIN_AF_INET && $family != WIN_AF_INET6) {
         my_print('invalid family, must be AF_INET or AF_INET6');
         return ERROR_FAILURE;
     }
@@ -1292,11 +1283,7 @@ function stdapi_net_resolve_hosts($req, &$pkt) {
     $family_tlv = packet_get_tlv($req, TLV_TYPE_ADDR_TYPE);
     $family = $family_tlv['value'];
 
-    if ($family == WIN_AF_INET) {
-        $family = AF_INET;
-    } elseif ($family == WIN_AF_INET6) {
-        $family = AF_INET6;
-    } else {
+    if ($family != WIN_AF_INET && $family != WIN_AF_INET6) {
         my_print('invalid family, must be AF_INET or AF_INET6');
         return ERROR_FAILURE;
     }
