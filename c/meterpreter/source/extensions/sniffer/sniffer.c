@@ -744,6 +744,7 @@ DWORD request_sniffer_capture_dump(Remote *remote, Packet *packet)
 DWORD InitServerExtension(MetApi* api, Remote* remote)
 {
 	met_api = api;
+    setLoggingContext(met_api->logging.get_context(), met_api->logging.get_lock());
 
 	dprintf("[SERVER] Registering command handlers...");
 	met_api->command.register_all(customCommands);
