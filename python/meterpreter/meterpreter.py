@@ -59,6 +59,7 @@ random.seed()
 
 # these values will be patched, DO NOT CHANGE THEM
 DEBUGGING = False
+DEBUGGING_LOG_FILE_PATH = None
 TRY_TO_FORK = True
 HTTP_CONNECTION_URL = None
 HTTP_PROXY = None
@@ -352,6 +353,14 @@ COMMAND_IDS = (
 )
 # ---------------------------------------------------------------
 
+if DEBUGGING:
+    import logging
+    logging.basicConfig(level=logging.DEBUG)
+    if DEBUGGING_LOG_FILE_PATH:
+        file_handler = logging.FileHandler(DEBUGGING_LOG_FILE_PATH)
+        file_handler.setLevel(logging.DEBUG)
+        logging.getLogger().addHandler(file_handler)
+
 class SYSTEM_INFO(ctypes.Structure):
     _fields_ = [("wProcessorArchitecture", ctypes.c_uint16),
         ("wReserved", ctypes.c_uint16),
@@ -427,14 +436,14 @@ def crc16(data):
 @export
 def debug_print(msg):
     if DEBUGGING:
-        print(msg)
+        logging.debug(msg)
 
 @export
 def debug_traceback(msg=None):
     if DEBUGGING:
         if msg:
-            print(msg)
-        traceback.print_exc(file=sys.stderr)
+            debug_print(msg)
+        debug_print(traceback.format_exc())
 
 @export
 def error_result(exception=None):
