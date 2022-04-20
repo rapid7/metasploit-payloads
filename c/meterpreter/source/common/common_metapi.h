@@ -159,12 +159,13 @@ typedef struct _ListApi
 	VOID(*destroy)(PLIST pList);
 } ListApi;
 
+#ifdef DEBUGTRACE
 typedef struct _LoggingApi
 {
-	HANDLE(*get_context)();
+	HANDLE(*get_logging_context)();
 	HANDLE(*get_lock)();
 } LoggingApi;
-
+#endif
 typedef struct _MetApi
 {
     PacketApi packet;
@@ -178,7 +179,9 @@ typedef struct _MetApi
 	InjectApi inject;
 	DesktopApi desktop;
 	ListApi list;
+#ifdef DEBUGTRACE
 	LoggingApi logging;
+#endif
 } MetApi;
 
 extern MetApi* met_api;

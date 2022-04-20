@@ -70,7 +70,10 @@ typedef struct ___u128 {
 #undef X509_NAME
 
 #ifdef DEBUGTRACE
+#include "common_logging.h"
 #define dprintf(...) real_dprintf(__VA_ARGS__)
+#define SET_LOGGING_CONTEXT(api) set_logging_context(api->logging.get_logging_context(), api->logging.get_lock());
+#define INIT_LOGGING(metConfig) init_logging(metConfig->session.log_path);
 #if DEBUGTRACE == 1
 #define vdprintf dprintf
 #else
@@ -79,6 +82,8 @@ typedef struct ___u128 {
 #else
 #define dprintf(...) do{}while(0);
 #define vdprintf(...) do{}while(0);
+#define SET_LOGGING_CONTEXT(...)
+#define INIT_LOGGING(...)
 #endif
 
 /*! @brief Sets `dwResult` to the return value of `GetLastError()`, prints debug output, then does `break;` */
@@ -94,7 +99,6 @@ typedef struct ___u128 {
 #define CLOSE_SERVICE_HANDLE( h )  if( h ) { CloseServiceHandle( h ); h = NULL; }
 /*! @brief Close a handle if not already closed and set the handle to NULL. */
 #define CLOSE_HANDLE( h )          if( h ) { DWORD dwHandleFlags; if(GetHandleInformation( h , &dwHandleFlags)) CloseHandle( h ); h = NULL; }
-#include "common_logging.h"
 
 /*!
  * @brief Output a debug string to the debug console.
@@ -112,7 +116,9 @@ static _inline void real_dprintf(char *format, ...)
 	vsnprintf_s(buffer + len, sizeof(buffer)-len, sizeof(buffer)-len - 3, format, args);
 	strcat_s(buffer, sizeof(buffer), "\r\n");
 	OutputDebugStringA(buffer);
-	logToFile(buffer);
+#ifdef DEBUGTRACE
+	log_to_file(buffer);
+#endif
 	va_end(args);
 }
 

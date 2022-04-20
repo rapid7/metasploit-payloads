@@ -1368,13 +1368,3 @@ DWORD packet_transmit(Remote* remote, Packet* packet, PacketRequestCompletion* c
 
 	return res;
 }
-
-HANDLE get_context()
-{
-	return getLoggingContext();
-}
-
-HANDLE get_lock()
-{
-	return getLock();
-}

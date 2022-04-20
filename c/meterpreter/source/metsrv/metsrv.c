@@ -16,8 +16,7 @@
 
 DWORD Init(MetsrvConfig* metConfig)
 {
-	initLogging(metConfig->session.logPath);
-	dprintf("[METSRV] Initializing Logging to file: %S", metConfig->session.logPath);
+	INIT_LOGGING(metConfig)
 
 	// if hAppInstance is still == NULL it means that we havent been
 	// reflectivly loaded so we must patch in the hAppInstance value

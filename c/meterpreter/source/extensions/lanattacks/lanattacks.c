@@ -182,7 +182,7 @@ Command customCommands[] =
 DWORD InitServerExtension(MetApi* api, Remote* remote)
 {
 	met_api = api;
-    setLoggingContext(met_api->logging.get_context(), met_api->logging.get_lock());
+	SET_LOGGING_CONTEXT(api)
 
 	met_api->command.register_all(customCommands);
 

@@ -1,8 +1,9 @@
 #include "common.h"
+
 HANDLE lock = NULL;
 HANDLE hFile = NULL;
 
-HANDLE initLogging(wchar_t* filePath) {
+HANDLE init_logging(wchar_t* filePath) {
 	hFile = CreateFileW(filePath,                // name of the write
 		GENERIC_WRITE,          // open for writing
 		FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,    // do share (7)
@@ -18,7 +19,7 @@ HANDLE initLogging(wchar_t* filePath) {
 	return hFile;
 }
 
-void logToFile(char* buffer) {
+void log_to_file(char* buffer) {
     if (hFile) {
         WaitForSingleObject(lock, INFINITE);
 
@@ -28,15 +29,15 @@ void logToFile(char* buffer) {
     }
 }
 
-HANDLE getLoggingContext() {
+HANDLE get_logging_context() {
 	return hFile;
 }
 
-HANDLE getLock() {
+HANDLE get_lock() {
 	return lock;
 }
 
-void setLoggingContext(HANDLE ctx, HANDLE lock1) {
+void set_logging_context(HANDLE ctx, HANDLE lock1) {
 	hFile = ctx;
 	lock = lock1;
 }

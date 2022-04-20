@@ -71,11 +71,5 @@ DWORD packet_remove_completion_handler(LPCSTR requestId);
 HANDLE core_update_thread_token( Remote *remote, HANDLE token );
 VOID core_update_desktop( Remote * remote, DWORD dwSessionID, char * cpStationName, char * cpDesktopName );
 
-/*
-* Logging API
-*/
-HANDLE get_context();
-HANDLE get_lock();
-
 
 #endif

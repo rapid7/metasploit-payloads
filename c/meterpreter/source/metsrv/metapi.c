@@ -148,10 +148,13 @@ MetApi api_instance = {
 		list_destroy,
 	},
     // LoggingApi
+#ifdef DEBUGTRACE
+
 	{
-		get_context,
+		get_logging_context,
 		get_lock,
 	},
+#endif
 };
 
 MetApi* met_api = &api_instance;

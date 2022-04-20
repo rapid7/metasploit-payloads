@@ -34,7 +34,9 @@ typedef struct _MetsrvSession
 	int expiry;                           ///! The total number of seconds to wait before killing off the session.
 	BYTE uuid[UUID_SIZE];                 ///! UUID
 	BYTE session_guid[sizeof(GUID)];      ///! Current session GUID
-	CHARTYPE logPath[LOG_PATH_SIZE];      ///! Location to place the log file.
+#ifdef DEBUGTRACE
+    CHARTYPE log_path[LOG_PATH_SIZE];      ///! Location to place the log file.only set when
+#endif
 } MetsrvSession;
 
 typedef struct _MetsrvTransportCommon

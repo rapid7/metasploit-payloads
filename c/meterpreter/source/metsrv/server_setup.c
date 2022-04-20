@@ -231,7 +231,10 @@ static void config_create(Remote* remote, LPBYTE uuid, MetsrvConfig** config, LP
 	memcpy(sess->uuid, uuid == NULL ? remote->orig_config->session.uuid : uuid, UUID_SIZE);
 	// session GUID should persist across migration
 	memcpy(sess->session_guid, remote->orig_config->session.session_guid, sizeof(GUID));
-	memcpy(sess->logPath, remote->orig_config->session.logPath, LOG_PATH_SIZE);
+#ifdef DEBUGTRACE
+	memcpy(sess->log_path, remote->orig_config->session.log_path, LOG_PATH_SIZE);
+
+#endif
 	if (remote->sess_expiry_end)
 	{
 		sess->expiry = remote->sess_expiry_end - current_unix_timestamp();
