@@ -109,6 +109,7 @@ set(LINK_LIBS
     wbemuuid
     delayimp
     odbc32
+    mpr
 )
 
 if(MSVC)
