@@ -588,7 +588,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <ClCompile Include="..\..\source\metsrv\thread.c" />
     <ClCompile Include="..\..\source\metsrv\unicode.c" />
     <ClCompile Include="..\..\source\metsrv\zlib.c" />
-    <ClCompile Include="..\..\source\common\common_logging.c" />
+    <ClCompile Include="..\..\source\logging\logging.c" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

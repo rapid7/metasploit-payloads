@@ -1,4 +1,4 @@
-#include "common.h"
+#include "../../common/common.h"
 
 HANDLE lock = NULL;
 HANDLE hFile = NULL;
@@ -20,13 +20,13 @@ HANDLE init_logging(wchar_t* filePath) {
 }
 
 void log_to_file(char* buffer) {
-    if (hFile) {
-        WaitForSingleObject(lock, INFINITE);
+	if (hFile) {
+		WaitForSingleObject(lock, INFINITE);
 
-        LPDWORD bytesWritten = 0;
-        WriteFile(hFile, buffer, (DWORD)strlen(buffer), bytesWritten, NULL);
-        ReleaseMutex(lock);
-    }
+		LPDWORD bytesWritten = 0;
+		WriteFile(hFile, buffer, (DWORD)strlen(buffer), bytesWritten, NULL);
+		ReleaseMutex(lock);
+	}
 }
 
 HANDLE get_logging_context() {

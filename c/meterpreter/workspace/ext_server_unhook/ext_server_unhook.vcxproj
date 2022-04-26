@@ -435,7 +435,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <ClCompile Include="..\..\source\extensions\unhook\apisetmap.c" />
     <ClCompile Include="..\..\source\extensions\unhook\refresh.c" />
     <ClCompile Include="..\..\source\extensions\unhook\unhook.c" />
-    <ClCompile Include="..\..\source\common\common_logging.c" />
+    <ClCompile Include="..\..\source\logging\logging.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\source\extensions\unhook\apisetmap.h" />

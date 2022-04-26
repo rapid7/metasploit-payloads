@@ -662,7 +662,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <ClCompile Include="..\..\source\extensions\python\python_commands.c" />
     <ClCompile Include="..\..\source\extensions\python\python_main.c" />
     <ClCompile Include="..\..\source\extensions\python\python_meterpreter_binding.c" />
-    <ClCompile Include="..\..\source\common\common_logging.c" />
+    <ClCompile Include="..\..\source\logging\logging.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\source\extensions\python\Include\abstract.h" />

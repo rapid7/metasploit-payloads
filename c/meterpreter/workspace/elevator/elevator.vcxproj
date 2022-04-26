@@ -358,7 +358,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <ClCompile Include="..\..\source\elevator\elevator.c" />
     <ClCompile Include="..\..\source\elevator\namedpipeservice.c" />
     <ClCompile Include="..\..\source\elevator\tokendup.c" />
-    <ClCompile Include="..\..\source\common\common_logging.c" />
+    <ClCompile Include="..\..\source\logging\logging.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\source\elevator\elevator.h" />
