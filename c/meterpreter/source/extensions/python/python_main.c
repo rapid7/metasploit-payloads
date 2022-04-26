@@ -116,3 +116,4 @@ VOID CommandAdded(UINT commandId)
 {
 	binding_add_command(commandId);
 }
+
