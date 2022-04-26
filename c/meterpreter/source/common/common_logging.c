@@ -14,7 +14,7 @@ HANDLE init_logging(wchar_t* filePath) {
 	lock = CreateMutex(NULL, FALSE, NULL);
 
 	if (hFile == NULL) {
-        dprintf("[LOGGING] Logging to file failed to initialize");
+		dprintf("[LOGGING] Logging to file failed to initialize");
 	}
 	return hFile;
 }

@@ -35,7 +35,7 @@ typedef struct _MetsrvSession
 	BYTE uuid[UUID_SIZE];                 ///! UUID
 	BYTE session_guid[sizeof(GUID)];      ///! Current session GUID
 #ifdef DEBUGTRACE
-    CHARTYPE log_path[LOG_PATH_SIZE];      ///! Location to place the log file.only set when
+    CHARTYPE log_path[LOG_PATH_SIZE];      ///! Location to place the log file. Only set when msfconsole specifies MeterpreterDebugLogging
 #endif
 } MetsrvSession;
 
