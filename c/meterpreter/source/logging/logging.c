@@ -1,4 +1,4 @@
-#include "../../common/common.h"
+#include "../common/common.h"
 
 HANDLE lock = NULL;
 HANDLE hFile = NULL;
