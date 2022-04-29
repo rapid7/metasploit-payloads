@@ -70,7 +70,10 @@ typedef struct ___u128 {
 #undef X509_NAME
 
 #ifdef DEBUGTRACE
+#include "common_logging.h"
 #define dprintf(...) real_dprintf(__VA_ARGS__)
+#define INIT_LOGGING(metConfig) init_logging(metConfig->session.log_path);
+#define SET_LOGGING_CONTEXT(api) set_logging_context(api->logging.get_logging_context(), api->logging.get_lock());
 #if DEBUGTRACE == 1
 #define vdprintf dprintf
 #else
@@ -79,6 +82,8 @@ typedef struct ___u128 {
 #else
 #define dprintf(...) do{}while(0);
 #define vdprintf(...) do{}while(0);
+#define SET_LOGGING_CONTEXT(...)
+#define INIT_LOGGING(...)
 #endif
 
 /*! @brief Sets `dwResult` to the return value of `GetLastError()`, prints debug output, then does `break;` */
@@ -111,6 +116,9 @@ static _inline void real_dprintf(char *format, ...)
 	vsnprintf_s(buffer + len, sizeof(buffer)-len, sizeof(buffer)-len - 3, format, args);
 	strcat_s(buffer, sizeof(buffer), "\r\n");
 	OutputDebugStringA(buffer);
+#ifdef DEBUGTRACE
+	log_to_file(buffer);
+#endif
 	va_end(args);
 }
 

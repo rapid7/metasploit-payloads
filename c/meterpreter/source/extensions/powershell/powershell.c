@@ -35,6 +35,7 @@ Command customCommands[] =
 DWORD InitServerExtension(MetApi* api, Remote* remote)
 {
 	met_api = api;
+	SET_LOGGING_CONTEXT(api)
 
 	gRemote = remote;
 

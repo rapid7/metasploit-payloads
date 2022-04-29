@@ -79,6 +79,7 @@ DWORD request_exec_cmd(Remote *remote, Packet *packet)
 DWORD InitServerExtension(MetApi* api, Remote* remote)
 {
 	met_api = api;
+	SET_LOGGING_CONTEXT(api)
 
 	dprintf("[KIWI] Init server extension - initorclean");
 	mimikatz_initOrClean(TRUE);

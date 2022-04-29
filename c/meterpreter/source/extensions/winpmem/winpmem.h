@@ -1,5 +1,6 @@
-#include "common.h"
-
+extern "C" {
+    #include "common.h"
+}
 #include <stdint.h>
 
 #include "tchar.h"

@@ -177,7 +177,7 @@ Command customCommands[] =
 DWORD InitServerExtension(MetApi* api, Remote *remote)
 {
 	met_api = api;
-
+	SET_LOGGING_CONTEXT(api);
 	met_api->command.register_all( customCommands );
 
 	return ERROR_SUCCESS;

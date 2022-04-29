@@ -53,5 +53,6 @@
     <ClCompile Include="..\..\source\metsrv\pivot_packet_dispatch.c" />
     <ClCompile Include="..\..\source\metsrv\server_setup.c" />
     <ClCompile Include="..\..\source\metsrv\metapi.c" />
+    <ClCompile Include="..\..\source\logging\logging.c" />
   </ItemGroup>
 </Project>

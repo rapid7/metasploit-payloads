@@ -16,6 +16,8 @@
 
 DWORD Init(MetsrvConfig* metConfig)
 {
+	INIT_LOGGING(metConfig)
+
 	// if hAppInstance is still == NULL it means that we havent been
 	// reflectivly loaded so we must patch in the hAppInstance value
 	// for use with loading server extensions later.

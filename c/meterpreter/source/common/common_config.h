@@ -13,6 +13,7 @@
 #define PROXY_HOST_SIZE 128
 #define PROXY_USER_SIZE 64
 #define PROXY_PASS_SIZE 64
+#define LOG_PATH_SIZE 260 // https://docs.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation?tabs=cmd
 
 typedef wchar_t CHARTYPE;
 
@@ -33,6 +34,9 @@ typedef struct _MetsrvSession
 	int expiry;                           ///! The total number of seconds to wait before killing off the session.
 	BYTE uuid[UUID_SIZE];                 ///! UUID
 	BYTE session_guid[sizeof(GUID)];      ///! Current session GUID
+#ifdef DEBUGTRACE
+    CHARTYPE log_path[LOG_PATH_SIZE];      ///! Location to place the log file. Only set when msfconsole specifies MeterpreterDebugLogging
+#endif
 } MetsrvSession;
 
 typedef struct _MetsrvTransportCommon

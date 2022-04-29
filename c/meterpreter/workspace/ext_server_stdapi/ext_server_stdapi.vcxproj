@@ -558,6 +558,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <ClCompile Include="..\..\source\extensions\stdapi\server\webcam\audio.c" />
     <ClCompile Include="..\..\source\extensions\stdapi\server\webcam\bmp2jpeg.c" />
     <ClCompile Include="..\..\source\extensions\stdapi\server\webcam\webcam.cpp" />
+    <ClCompile Include="..\..\source\logging\logging.c" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\..\source\extensions\stdapi\server\resource\stdapi.rc" />

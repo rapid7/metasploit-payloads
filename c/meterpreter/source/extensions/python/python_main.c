@@ -62,6 +62,7 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpReserved)
 DWORD InitServerExtension(MetApi* api, Remote* remote)
 {
 	met_api = api;
+	SET_LOGGING_CONTEXT(api)
 
 	met_api->command.register_all(customCommands);
 	gRemote = remote;
@@ -115,3 +116,4 @@ VOID CommandAdded(UINT commandId)
 {
 	binding_add_command(commandId);
 }
+
