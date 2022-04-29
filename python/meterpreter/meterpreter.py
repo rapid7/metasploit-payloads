@@ -1348,6 +1348,7 @@ class PythonMeterpreter(object):
                 channel = self.channels[channel_id]
                 data = bytes()
                 write_request_parts = []
+                close_channel = False
                 if isinstance(channel, MeterpreterProcess):
                     if channel_id in self.interact_channels:
                         proc_h = channel.proc_h
@@ -1355,9 +1356,9 @@ class PythonMeterpreter(object):
                             data += proc_h.stderr_reader.read()
                         if proc_h.stdout_reader.is_read_ready():
                             data += proc_h.stdout_reader.read()
+                    # Defer closing the channel until the data has been sent
                     if not channel.is_alive():
-                        self.handle_dead_resource_channel(channel_id)
-                        channel.close()
+                        close_channel = True
                 elif isinstance(channel, MeterpreterSocketTCPClient):
                     while select.select([channel.fileno()], [], [], 0)[0]:
                         try:
@@ -1400,9 +1401,15 @@ class PythonMeterpreter(object):
                     ])
                     self.send_packet(tlv_pack_request('core_channel_write', write_request_parts))
 
+                if close_channel:
+                    channel.close()
+                    self.handle_dead_resource_channel(channel_id)
+
     def handle_dead_resource_channel(self, channel_id):
         if channel_id in self.interact_channels:
             self.interact_channels.remove(channel_id)
+        if channel_id in self.channels:
+            del self.channels[channel_id]
         self.send_packet(tlv_pack_request('core_channel_close', [
             {'type': TLV_TYPE_CHANNEL_ID, 'value': channel_id},
         ]))
@@ -1641,8 +1648,6 @@ class PythonMeterpreter(object):
             return ERROR_FAILURE, response
         channel = self.channels[channel_id]
         status, response = channel.core_read(request, response)
-        if not channel.is_alive():
-            self.handle_dead_resource_channel(channel_id)
         return status, response
 
     def _core_channel_write(self, request, response):
@@ -1653,9 +1658,6 @@ class PythonMeterpreter(object):
         status = ERROR_FAILURE
         if channel.is_alive():
             status, response = channel.core_write(request, response)
-        # evaluate channel.is_alive() twice because it could have changed
-        if not channel.is_alive():
-            self.handle_dead_resource_channel(channel_id)
         return status, response
 
     def _core_channel_seek(self, request, response):
