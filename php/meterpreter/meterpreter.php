@@ -148,6 +148,13 @@ define("CHANNEL_CLASS_STREAM",   1);
 define("CHANNEL_CLASS_DATAGRAM", 2);
 define("CHANNEL_CLASS_POOL",     3);
 
+
+##
+# Windows Constants
+##
+define("WIN_AF_INET", 2);
+define("WIN_AF_INET6", 23);
+
 #
 # TLV Meta Types
 #
@@ -1095,10 +1102,10 @@ function connect($ipaddr, $port, $proto='tcp') {
   # IPv6 requires brackets around the address in some cases, but not all.
   # Keep track of the un-bracketed address for the functions that don't like
   # brackets, specifically socket_connect and socket_sendto.
-  $ipf = AF_INET;
+  $ipf = WIN_AF_INET;
   $raw_ip = $ipaddr;
   if (FALSE !== strpos($ipaddr, ":")) {
-    $ipf = AF_INET6;
+    $ipf = WIN_AF_INET6;
     $ipaddr = "[". $raw_ip ."]";
   }
 
