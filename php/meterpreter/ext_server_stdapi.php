@@ -1049,7 +1049,7 @@ function stdapi_sys_process_get_processes($req, &$pkt) {
         # full command line
         array_shift($proc);
         array_shift($proc);
-        $grp .= tlv_pack(create_tlv(TLV_TYPE_PROCESS_PATH, join($proc, " ")));
+        $grp .= tlv_pack(create_tlv(TLV_TYPE_PROCESS_PATH, join(" ", $proc)));
         packet_add_tlv($pkt, create_tlv(TLV_TYPE_PROCESS_GROUP, $grp));
     }
     return ERROR_SUCCESS;
