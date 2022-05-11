@@ -1,3 +1,4 @@
+#ifdef DEBUGTRACE
 #include "../common/common.h"
 
 HANDLE lock = NULL;
@@ -8,7 +9,7 @@ HANDLE init_logging(wchar_t* filePath) {
 		GENERIC_WRITE,          // open for writing
 		FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,    // do share (7)
 		NULL,                   // default security
-		CREATE_ALWAYS,             // create new file always
+		OPEN_ALWAYS,             // create new file or open existing file
 		FILE_ATTRIBUTE_NORMAL,  // normal file
 		NULL);                  // no attr. template
 	lock = CreateMutex(NULL, FALSE, NULL);
@@ -41,3 +42,4 @@ void set_logging_context(HANDLE ctx, HANDLE lock1) {
 	hFile = ctx;
 	lock = lock1;
 }
+#endif
