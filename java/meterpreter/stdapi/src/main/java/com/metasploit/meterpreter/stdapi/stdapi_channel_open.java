@@ -33,6 +33,9 @@ public class stdapi_channel_open implements Command {
         if (channelType.equals("stdapi_net_tcp_server")) {
             return executeTcpServer(meterpreter, request, response);
         }
+        if (channelType.equals("stdapi_net_udp_client")) {
+            return executeUdpClient(meterpreter, request, response);
+        }
         return ERROR_FAILURE;
     }
 
@@ -51,7 +54,7 @@ public class stdapi_channel_open implements Command {
             if (channel == null) {
                 channel = new Channel(meterpreter, new FileInputStream(Loader.expand(fpath)), null);
             }
-        } else if (mode.equals("r") || mode.equals("wb") || mode.equals("wbb")) {
+        } else if (mode.equals("w") || mode.equals("wb") || mode.equals("wbb")) {
             channel = new Channel(meterpreter, new ByteArrayInputStream(new byte[0]), new FileOutputStream(Loader.expand(fpath).getPath(), false));
         } else if (mode.equals("a") || mode.equals("ab") || mode.equals("abb")) {
             channel = new Channel(meterpreter, new ByteArrayInputStream(new byte[0]), new FileOutputStream(Loader.expand(fpath).getPath(), true));
@@ -64,7 +67,6 @@ public class stdapi_channel_open implements Command {
     }
 
     private int executeUdpClient(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws Exception {
-
         String localHost = request.getStringValue(TLVType.TLV_TYPE_LOCAL_HOST);
         int localPort = request.getIntValue(TLVType.TLV_TYPE_LOCAL_PORT);
         String peerHost = request.getStringValue(TLVType.TLV_TYPE_PEER_HOST);
