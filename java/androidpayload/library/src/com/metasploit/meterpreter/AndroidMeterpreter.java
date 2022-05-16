@@ -109,7 +109,7 @@ public class AndroidMeterpreter extends Meterpreter {
         getCommandManager().resetNewCommands();
         CommandManager mgr = getCommandManager();
         Loader.setCWD(new File(writeableDir));
-        mgr.registerCommand(CommandId.CORE_CHANNEL_OPEN, stdapi_channel_open.class);
+        mgr.registerCommand(CommandId.CORE_CHANNEL_OPEN, android_channel_open.class);
         mgr.registerCommand(CommandId.STDAPI_FS_CHDIR, stdapi_fs_chdir.class);
         mgr.registerCommand(CommandId.STDAPI_FS_DELETE_DIR, stdapi_fs_delete_dir.class);
         mgr.registerCommand(CommandId.STDAPI_FS_DELETE_FILE, stdapi_fs_delete_file.class);
