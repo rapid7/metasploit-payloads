@@ -521,11 +521,13 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_ms-efsr.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_ms-rprn.h" />
     <ClInclude Include="..\..\source\extensions\priv\defs.h" />
     <ClInclude Include="..\..\source\extensions\priv\elevate.h" />
     <ClInclude Include="..\..\source\extensions\priv\fs.h" />
     <ClInclude Include="..\..\source\extensions\priv\namedpipe.h" />
+    <ClInclude Include="..\..\source\extensions\priv\namedpipe_efs.h" />
     <ClInclude Include="..\..\source\extensions\priv\namedpipe_printspooler.h" />
     <ClInclude Include="..\..\source\extensions\priv\namedpipe_rpcss.h" />
     <ClInclude Include="..\..\source\extensions\priv\passwd.h" />
@@ -535,10 +537,12 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <ClInclude Include="..\..\source\extensions\priv\tokendup.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_ms-efsr_c.c" />
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_ms-rprn.c" />
     <ClCompile Include="..\..\source\extensions\priv\elevate.c" />
     <ClCompile Include="..\..\source\extensions\priv\fs.c" />
     <ClCompile Include="..\..\source\extensions\priv\namedpipe.c" />
+    <ClCompile Include="..\..\source\extensions\priv\namedpipe_efs.c" />
     <ClCompile Include="..\..\source\extensions\priv\namedpipe_printspooler.c" />
     <ClCompile Include="..\..\source\extensions\priv\namedpipe_rpcss.c" />
     <ClCompile Include="..\..\source\extensions\priv\passwd.c" />

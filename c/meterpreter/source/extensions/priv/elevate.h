@@ -12,6 +12,7 @@
 #define ELEVATE_TECHNIQUE_SERVICE_TOKENDUP        3  ///< Identifier for the Token Duplication service technique.
 #define ELEVATE_TECHNIQUE_SERVICE_NAMEDPIPE_RPCSS 4  ///< Identifier for the Named Pipe service technique (RPCSS variant)
 #define ELEVATE_TECHNIQUE_NAMEDPIPE_PRINTSPOOLER  5  ///< Identifier for the Named Pipe technique (PrintSpooler variant)
+#define ELEVATE_TECHNIQUE_NAMEDPIPE_EFS           6  ///< Identifier for the Named Pipe technique (EFSRPC variant - AKA EfsPotato)
 
 typedef void (WINAPI * GETNATIVESYSTEMINFO)( LPSYSTEM_INFO lpSystemInfo ); ///< Stolen from ps.h
 
