@@ -635,6 +635,7 @@ static void query_value(Remote *remote, Packet *packet, HKEY hkey)
 
 	switch (valueType) {
 		case REG_SZ:
+		case REG_MULTI_SZ:
 		case REG_EXPAND_SZ:
 			tmp = met_api->string.wchar_to_utf8((wchar_t *)valueData);
 			if (tmp) {
