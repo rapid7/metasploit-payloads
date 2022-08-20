@@ -1,0 +1,61 @@
+name: Release
+
+on:
+  push:
+    tags: ["v[1-9]+.[0-9]+.[0-9]+"]
+    branches: [main]
+
+jobs:
+  dll-build:
+    name: Build the DLL
+    if: startsWith( github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: OS Packages
+        run: |
+          sudo apt-get update --fix-missing && sudo apt-get -y install \
+          git build-essential zlib1g zlib1g-dev wget zip unzip \
+          mingw-w64 binutils-mingw-w64 g++-mingw-w64 gcc-multilib jq
+
+      - name: Minisign
+        run: |
+          MINISIGN_TMP=`mktemp -d`
+          cd $MINISIGN_TMP
+          wget https://github.com/aead/minisign/releases/download/v0.2.0/minisign-linux-amd64.tar.gz
+          tar xvf minisign-linux-amd64.tar.gz
+          mv ./minisign ~/minisign
+
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Git Fetch Tags
+        run: git fetch --prune --unshallow --tags -f
+
+      - name: Build artifacts
+        run: |
+          make clean
+          make all-dll
+          mkdir artifacts
+          VERSION=$(git describe --tags --abbrev=0)
+          cat extension.json | jq ".version |= \"$VERSION\"" > ./artifacts/extension.json
+          cp LICENSE.txt ./artifacts/LICENSE
+          mv *.dll ./artifacts/
+          cd artifacts
+          tar -czvf ../coff-loader.tar.gz .
+
+      - name: Sign Package
+        run: |
+          touch ~/minisign.key && chmod 600 ~/minisign.key
+          echo -e "${{ secrets.MINISIGN_PRIVATE_KEY }}" > ~/minisign.key
+          MANIFEST=$(cat ./artifacts/extension.json | base64 -w 0)
+          bash -c "echo \"\" | ~/minisign -s ~/minisign.key -S -m ./coff-loader.tar.gz -t \"$MANIFEST\" -x coff-loader.minisig"
+
+      - name: "Publish Release"
+        uses: "marvinpinto/action-automatic-releases@latest"
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          prerelease: false
+          files: |
+            ./coff-loader.tar.gz
+            ./coff-loader.minisig
