@@ -438,12 +438,52 @@ out:
 	return ERROR_SUCCESS;
 }
 
+static char* reg_multi_sz_unparse(wchar_t* str)
+{
+	const char* delimter = "\\0";
+
+	// Count the number of delimter
+	int count = 1;
+	wchar_t* wchunk = str;
+	char* chunk = NULL;
+	size_t chunk_len = 0;
+	size_t total_size = 0;
+	
+	while (chunk_len = wcslen(wchunk))
+	{
+		chunk = met_api->string.wchar_to_utf8(wchunk);
+		count++;
+		wchunk += chunk_len + 1;
+		if (!chunk)
+			continue;
+		total_size += strlen(chunk);
+		free(chunk);
+	}
+
+	char* res = calloc(total_size + (count * strlen(delimter)), sizeof(char));
+
+	wchunk = str;
+	while (chunk_len = wcslen(wchunk))
+	{
+		chunk = met_api->string.wchar_to_utf8(wchunk);
+		wchunk += chunk_len + 1;
+		if (!chunk)
+			continue;
+		strcat(res, chunk);
+		strcat(res, delimter);
+		free(chunk);
+	}
+
+	strcat(res, delimter);
+	return res;
+}
+
 /*
 * Parse the REG_MULTI_SZ registry value types.
 * A sequence of null-terminated strings, would be splited by \0 and terminated by \0\0 .
 * 
 * Example:
-*	"String1\0String2\0String3\0LastString\0\0" => "String1 String2 String3 LastString"
+*	"String1\\0String2\\0String3\\0LastString\\0\\0" => "String1\0String2\0String3\0LastString\0\0"
 * 
 * Reference: https://docs.microsoft.com/en-us/windows/desktop/sysinfo/registry-value-types
 *
@@ -488,8 +528,7 @@ static wchar_t *reg_multi_sz_parse(char* str, size_t *length)
 	wchar_t *ptr = res;  // temp pointer point to res
 	for (i = 0; i < count; i++)
 	{
-		wchar_t * tmp_buf = calloc(strlen(string_arr[i]) + 1, sizeof(wchar_t));
-		tmp_buf = met_api->string.utf8_to_wchar(string_arr[i]);
+		wchar_t* tmp_buf = met_api->string.utf8_to_wchar(string_arr[i]);
 
 		wcsncpy(ptr, tmp_buf, wcslen(tmp_buf) + 1);		// join the splited strings.
 		ptr += wcslen(tmp_buf) + 1;			// append next string to the end of last string, keep the null-terminater.
@@ -641,6 +680,17 @@ static void query_value(Remote *remote, Packet *packet, HKEY hkey)
 				met_api->packet.add_tlv_string(response, TLV_TYPE_VALUE_DATA, tmp);
 				free(tmp);
 			} else {
+				met_api->packet.add_tlv_raw(response, TLV_TYPE_VALUE_DATA,
+					valueData, valueDataSize);
+			}
+			break;
+		case REG_MULTI_SZ:
+			tmp = reg_multi_sz_unparse(valueData);
+			if (tmp) {
+				met_api->packet.add_tlv_string(response, TLV_TYPE_VALUE_DATA, tmp);
+				free(tmp);
+			}
+			else {
 				met_api->packet.add_tlv_raw(response, TLV_TYPE_VALUE_DATA,
 					valueData, valueDataSize);
 			}
