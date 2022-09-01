@@ -22,7 +22,7 @@ DWORD request_registry_check_key_exists(Remote *remote, Packet *packet)
 	if (rootKey && baseKey) {
 		BOOL exists = FALSE;
 		HKEY resultKey = NULL;
-		if (RegOpenKeyW(rootKey, baseKey, &resultKey) == ERROR_SUCCESS) {
+		if (RegOpenKeyExW(rootKey, baseKey, 0, KEY_QUERY_VALUE, &resultKey) == ERROR_SUCCESS) {
 			dprintf("[REG] Key found");
 			RegCloseKey(resultKey);
 			exists = TRUE;
