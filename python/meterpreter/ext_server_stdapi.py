@@ -2463,11 +2463,12 @@ def stdapi_registry_load_key(request, response):
 def _wreg_close_key(hkey):
     ctypes.windll.advapi32.RegCloseKey(hkey)
 
-def _wreg_open_key(request):
+def _wreg_open_key(request, permission=None):
     root_key = packet_get_tlv(request, TLV_TYPE_ROOT_KEY)['value']
     base_key = packet_get_tlv(request, TLV_TYPE_BASE_KEY)['value']
     base_key = ctypes.create_string_buffer(bytes(base_key, 'UTF-8'))
-    permission = packet_get_tlv(request, TLV_TYPE_PERMISSION).get('value', winreg.KEY_ALL_ACCESS)
+    if permission is None:
+        permission = packet_get_tlv(request, TLV_TYPE_PERMISSION).get('value', winreg.KEY_ALL_ACCESS)
     handle_id = ctypes.c_void_p()
     if ctypes.windll.advapi32.RegOpenKeyExA(root_key, ctypes.byref(base_key), 0, permission, ctypes.byref(handle_id)) != ERROR_SUCCESS:
         return error_result_windows(), 0
@@ -2506,6 +2507,16 @@ def _wreg_set_value(request, response, hkey):
     value_data = packet_get_tlv(request, TLV_TYPE_VALUE_DATA)['value']
     result = ctypes.windll.advapi32.RegSetValueExA(hkey, ctypes.byref(value_name), 0, value_type, value_data, len(value_data))
     return result, response
+
+@register_function_if(has_windll)
+def stdapi_registry_check_key_exists(request, response):
+    err, hkey = _wreg_open_key(request, permission=winreg.KEY_QUERY_VALUE)
+    if err == ERROR_SUCCESS:
+        _wreg_close_key(hkey)
+        response += tlv_pack(TLV_TYPE_BOOL, True)
+    else:
+        response += tlv_pack(TLV_TYPE_BOOL, False)
+    return ERROR_SUCCESS, response
 
 @register_function_if(has_windll)
 def stdapi_registry_open_key(request, response):
