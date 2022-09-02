@@ -438,8 +438,13 @@ out:
 	return ERROR_SUCCESS;
 }
 
-// todo: write these docs
-static char* reg_multi_sz_unparse(wchar_t* str, size_t* length)
+/*
+ * @brief Unparse a REG_MULTI_SZ value to send back to Metasploit. Encode the UTF-16LE
+          string array into UTF-8. The caller must free the returned buffer.
+ * @param str The string to convert.
+ * @param length An optional pointer to receive the size in bytes of the resulting buffer.
+ */
+static char* reg_multi_sz_unparse(wchar_t* str, size_t* size)
 {
 	// Count the number of chunks
 	int count = 0;
@@ -465,8 +470,8 @@ static char* reg_multi_sz_unparse(wchar_t* str, size_t* length)
 		SetLastError(ERROR_NOT_ENOUGH_MEMORY);
 		return NULL;
 	}
-	if (length)
-		*length = (total_size + (count - 1) + 2) * sizeof(char);
+	if (size)
+		*size = (total_size + (count - 1) + 2) * sizeof(char);
 
 	char* write_cursor = res;
 	wchunk = str;
@@ -484,8 +489,13 @@ static char* reg_multi_sz_unparse(wchar_t* str, size_t* length)
 	return res;
 }
 
-// todo: write these docs
-static wchar_t *reg_multi_sz_parse(char* str, size_t* length)
+/*
+ * @brief Parse a REG_MULTI_SZ value from Metasploit. Encode the UTF-8
+		  string array into UTF-16LE. The caller must free the returned buffer.
+ * @param str The string to convert.
+ * @param length An  pointer to receive the size in bytes of the resulting buffer.
+ */
+static wchar_t *reg_multi_sz_parse(char* str, size_t* size)
 {
 	// Count the number of chunks
 	int count = 0;
@@ -511,8 +521,8 @@ static wchar_t *reg_multi_sz_parse(char* str, size_t* length)
 		SetLastError(ERROR_NOT_ENOUGH_MEMORY);
 		return NULL;
 	}
-	if (length)
-		*length = (total_size + (count - 1) + 2) * sizeof(wchar_t);
+	if (size)
+		*size = (total_size + (count - 1) + 2) * sizeof(wchar_t);
 
 	wchar_t* write_cursor = res;
 	chunk = str;
