@@ -438,17 +438,17 @@ out:
 	return ERROR_SUCCESS;
 }
 
-static char* reg_multi_sz_unparse(wchar_t* str)
+// todo: write these docs
+static char* reg_multi_sz_unparse(wchar_t* str, size_t* length)
 {
-	const char* delimter = "\\0";
-
-	// Count the number of delimter
-	int count = 1;
-	wchar_t* wchunk = str;
+	// Count the number of chunks
+	int count = 0;
+	wchar_t* wchunk = NULL;
 	char* chunk = NULL;
 	size_t chunk_len = 0;
 	size_t total_size = 0;
 	
+	wchunk = str;
 	while (chunk_len = wcslen(wchunk))
 	{
 		chunk = met_api->string.wchar_to_utf8(wchunk);
@@ -460,8 +460,15 @@ static char* reg_multi_sz_unparse(wchar_t* str)
 		free(chunk);
 	}
 
-	char* res = calloc(total_size + (count * strlen(delimter)), sizeof(char));
+	char* res = calloc(total_size + (count - 1) + 2, sizeof(char));
+	if (!res) {
+		SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+		return NULL;
+	}
+	if (length)
+		*length = (total_size + (count - 1) + 2) * sizeof(char);
 
+	char* write_cursor = res;
 	wchunk = str;
 	while (chunk_len = wcslen(wchunk))
 	{
@@ -469,75 +476,56 @@ static char* reg_multi_sz_unparse(wchar_t* str)
 		wchunk += chunk_len + 1;
 		if (!chunk)
 			continue;
-		strcat(res, chunk);
-		strcat(res, delimter);
+		strcpy(write_cursor, chunk);
+		write_cursor += strlen(chunk) + 1;
 		free(chunk);
 	}
 
-	strcat(res, delimter);
 	return res;
 }
 
-/*
-* Parse the REG_MULTI_SZ registry value types.
-* A sequence of null-terminated strings, would be splited by \0 and terminated by \0\0 .
-* 
-* Example:
-*	"String1\\0String2\\0String3\\0LastString\\0\\0" => "String1\0String2\0String3\0LastString\0\0"
-* 
-* Reference: https://docs.microsoft.com/en-us/windows/desktop/sysinfo/registry-value-types
-*
-*/
-static wchar_t *reg_multi_sz_parse(char* str, size_t *length)
+// todo: write these docs
+static wchar_t *reg_multi_sz_parse(char* str, size_t* length)
 {
-	const char *delimter = "\\0";
-	const char *ender = "\\0\\0";
-	*length = 0;
+	// Count the number of chunks
+	int count = 0;
+	wchar_t* wchunk = NULL;
+	char* chunk = NULL;
+	size_t chunk_len = 0;
+	size_t total_size = 0;
 
-	wchar_t *res = (wchar_t *)calloc(strlen(str) + 1, sizeof(wchar_t));
-
-	char *trun = strstr(str, ender);  // truncated by '\0\0'
-	if (trun)
+	chunk = str;
+	while (chunk_len = strlen(chunk))
 	{
-		str[trun - str] = '\0';
+		wchunk = met_api->string.utf8_to_wchar(chunk);
+		count++;
+		chunk += chunk_len + 1;
+		if (!wchunk)
+			continue;
+		total_size += wcslen(wchunk);
+		free(wchunk);
 	}
-	
-	// Count the number of delimter
-	int count = 1;  
-	const char *tmp = str;
-	while (tmp = strstr(tmp, delimter)) 
-	{
-		count++;	
-		tmp++;
+
+	wchar_t* res = calloc(total_size + (count - 1) + 2, sizeof(wchar_t));
+	if (!res) {
+		SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+		return NULL;
 	}
-	free((char*)tmp);
+	if (length)
+		*length = (total_size + (count - 1) + 2) * sizeof(wchar_t);
 
-	// Split the strings by '\0'
-	char ** string_arr = (char **)malloc(sizeof(char *) * count); 	// store splited strings. 
-	char * ch = strtok(str, delimter); 	// delimter by '\0'
-	int i = 0;
-	while (ch != NULL)
+	wchar_t* write_cursor = res;
+	chunk = str;
+	while (chunk_len = strlen(chunk))
 	{
-		string_arr[i] = (char *)malloc(sizeof(char) * (strlen(ch) + 1));
-		strncpy(string_arr[i], ch, strlen(ch) + 1);		
-		ch = strtok(NULL, delimter);
-		i++;
+		wchunk = met_api->string.utf8_to_wchar(chunk);
+		chunk += chunk_len + 1;
+		if (!wchunk)
+			continue;
+		wcscpy(write_cursor, wchunk);
+		write_cursor += wcslen(wchunk) + 1;
+		free(wchunk);
 	}
-	count = i;	// count splited strings.
-
-	wchar_t *ptr = res;  // temp pointer point to res
-	for (i = 0; i < count; i++)
-	{
-		wchar_t* tmp_buf = met_api->string.utf8_to_wchar(string_arr[i]);
-
-		wcsncpy(ptr, tmp_buf, wcslen(tmp_buf) + 1);		// join the splited strings.
-		ptr += wcslen(tmp_buf) + 1;			// append next string to the end of last string, keep the null-terminater.
-
-		(*length) += wcslen(tmp_buf) + 1;			// count of all strings length
-		free(tmp_buf);
-	}	
-
-	free(string_arr);
 
 	return res;
 }
@@ -573,7 +561,6 @@ static void set_value(Remote *remote, Packet *packet, HKEY hkey)
 				break;
 			case REG_MULTI_SZ:
 				buf = reg_multi_sz_parse(valueData.buffer, &len);
-				len = (len + 1) * sizeof(wchar_t);
 				break;
 			default:
 				len = valueData.header.length;
@@ -643,6 +630,7 @@ static void query_value(Remote *remote, Packet *packet, HKEY hkey)
 
 	wchar_t *valueName;
 	char *tmp;
+	size_t tmp_sz = 0;
 	void *valueData = NULL;
 	DWORD valueDataSize = 0;
 	DWORD result = ERROR_SUCCESS;
@@ -685,9 +673,10 @@ static void query_value(Remote *remote, Packet *packet, HKEY hkey)
 			}
 			break;
 		case REG_MULTI_SZ:
-			tmp = reg_multi_sz_unparse(valueData);
+			tmp = reg_multi_sz_unparse(valueData, &tmp_sz);
 			if (tmp) {
-				met_api->packet.add_tlv_string(response, TLV_TYPE_VALUE_DATA, tmp);
+				met_api->packet.add_tlv_raw(response, TLV_TYPE_VALUE_DATA,
+					tmp, (DWORD)tmp_sz);
 				free(tmp);
 			}
 			else {
