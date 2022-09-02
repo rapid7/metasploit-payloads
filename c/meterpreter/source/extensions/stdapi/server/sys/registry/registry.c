@@ -439,8 +439,10 @@ out:
 }
 
 /*
- * @brief Unparse a REG_MULTI_SZ value to send back to Metasploit. Encode the UTF-16LE
-          string array into UTF-8. The caller must free the returned buffer.
+ * @brief Unparse a REG_MULTI_SZ value to send back to Metasploit. Encode the
+          UTF-16LE string array into UTF-8. The caller must free the returned buffer.
+		  This does assumes that str is terminated by two null characters and is thus
+		  unsafe to call on user-provided data.
  * @param str The string to convert.
  * @param length An optional pointer to receive the size in bytes of the resulting buffer.
  */
@@ -452,6 +454,7 @@ static char* reg_multi_sz_unparse(wchar_t* str, size_t* size)
 	char* chunk = NULL;
 	size_t chunk_len = 0;
 	size_t total_size = 0;
+	char* res = NULL;
 	
 	wchunk = str;
 	while (chunk_len = wcslen(wchunk))
@@ -465,7 +468,7 @@ static char* reg_multi_sz_unparse(wchar_t* str, size_t* size)
 		free(chunk);
 	}
 
-	char* res = calloc(total_size + (count - 1) + 2, sizeof(char));
+	res = calloc(total_size + (count - 1) + 2, sizeof(char));
 	if (!res) {
 		SetLastError(ERROR_NOT_ENOUGH_MEMORY);
 		return NULL;
@@ -492,8 +495,12 @@ static char* reg_multi_sz_unparse(wchar_t* str, size_t* size)
 /*
  * @brief Parse a REG_MULTI_SZ value from Metasploit. Encode the UTF-8
 		  string array into UTF-16LE. The caller must free the returned buffer.
+		  This does not assume that str is terminated by two null characters
+		  which is why it is necessary to pass in the size in bytes of the 
+		  input buffer.
  * @param str The string to convert.
- * @param length An  pointer to receive the size in bytes of the resulting buffer.
+ * @param length A pointer that on input is the size of str in bytes and on
+          output will receive the size in bytes of the resulting buffer.
  */
 static wchar_t *reg_multi_sz_parse(char* str, size_t* size)
 {
@@ -503,8 +510,28 @@ static wchar_t *reg_multi_sz_parse(char* str, size_t* size)
 	char* chunk = NULL;
 	size_t chunk_len = 0;
 	size_t total_size = 0;
+	wchar_t* res = NULL;
+	char* my_str = NULL;
 
-	chunk = str;
+	if ((!size) || (*size < 2)) {
+		SetLastError(ERROR_BAD_ARGUMENTS);
+		return NULL;
+	}
+	// if the input does not end in two null characters create and user our own buffer
+	// this is obviously less effecient if the input isn't properly terminated
+	if ((str[*size - 1] == 0) && (str[*size - 2]) == 0) {
+		my_str = str;
+	} else {
+		my_str = malloc(*size + (2 * sizeof(char)));
+		if (!my_str) {
+			SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+			goto out;
+		}
+		memset(my_str, 0, *size + (2 * sizeof(char)));
+		memcpy(my_str, str, *size);
+	}
+
+	chunk = my_str;
 	while (chunk_len = strlen(chunk))
 	{
 		wchunk = met_api->string.utf8_to_wchar(chunk);
@@ -516,16 +543,16 @@ static wchar_t *reg_multi_sz_parse(char* str, size_t* size)
 		free(wchunk);
 	}
 
-	wchar_t* res = calloc(total_size + (count - 1) + 2, sizeof(wchar_t));
+	res = calloc(total_size + (count - 1) + 2, sizeof(wchar_t));
 	if (!res) {
 		SetLastError(ERROR_NOT_ENOUGH_MEMORY);
-		return NULL;
+		goto out;
 	}
 	if (size)
 		*size = (total_size + (count - 1) + 2) * sizeof(wchar_t);
 
 	wchar_t* write_cursor = res;
-	chunk = str;
+	chunk = my_str;
 	while (chunk_len = strlen(chunk))
 	{
 		wchunk = met_api->string.utf8_to_wchar(chunk);
@@ -537,6 +564,9 @@ static wchar_t *reg_multi_sz_parse(char* str, size_t* size)
 		free(wchunk);
 	}
 
+out:
+	if ((my_str) && (my_str != str))
+		free(my_str);
 	return res;
 }
 
@@ -570,6 +600,7 @@ static void set_value(Remote *remote, Packet *packet, HKEY hkey)
 				len = (wcslen(buf) + 1) * sizeof(wchar_t);
 				break;
 			case REG_MULTI_SZ:
+				len = valueData.header.length;
 				buf = reg_multi_sz_parse(valueData.buffer, &len);
 				break;
 			default:
