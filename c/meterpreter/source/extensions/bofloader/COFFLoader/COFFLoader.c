@@ -16,7 +16,6 @@
 #endif
 
 #include "COFFLoader.h"
-
 /* Enable or disable debug output if testing or adding new relocation types */
 #ifdef DEBUG
 #define DEBUG_PRINT(x, ...) printf(x, ##__VA_ARGS__)
@@ -57,6 +56,9 @@ unsigned char *unhexlify(unsigned char *value, int *outlen)
     }
 
     counter2 = 0;
+    #pragma warning(push)
+    #pragma warning(disable:4018)
+    #pragma warning(disable:4244)
     for (counter = 0; counter < strlen((char *)value); counter += 2)
     {
         memcpy(byteval, value + counter, 2);
@@ -65,10 +67,12 @@ unsigned char *unhexlify(unsigned char *value, int *outlen)
         counter2++;
     }
     *outlen = counter2;
-
+    #pragma warning(pop)
 errcase:
     return retval;
 }
+
+
 
 /* Helper to just get the contents of a file, used for testing. Real
  * implementations of this in an agent would use the tasking from the
@@ -95,7 +99,10 @@ unsigned char *getContents(char *filepath, uint32_t *outsize)
         return NULL;
     }
     memset(tempbuffer, 0, fsize);
+    #pragma warning(push)
+    #pragma warning(disable:4267)
     readsize = fread(tempbuffer, 1, fsize, fin);
+    #pragma warning(pop)
 
     fclose(fin);
     buffer = calloc(readsize, 1);
@@ -314,6 +321,8 @@ int RunCOFF(char *functionname, unsigned char *coff_data, uint32_t filesize, uns
     functionMapping = VirtualAlloc(NULL, 2048, MEM_COMMIT | MEM_RESERVE | MEM_TOP_DOWN, PAGE_READWRITE);
 #endif
 #endif
+    #pragma warning(push)
+    #pragma warning(disable:4244)
 
     /* Start parsing the relocations, and *hopefully* handle them correctly. */
     for (counter = 0; counter < coff_header_ptr->NumberOfSections; counter++)
@@ -377,6 +386,7 @@ int RunCOFF(char *functionname, unsigned char *coff_data, uint32_t filesize, uns
                     offsetvalue += (sectionMapping[coff_sym_ptr[coff_reloc_ptr->SymbolTableIndex].SectionNumber - 1] - (sectionMapping[counter] + coff_reloc_ptr->VirtualAddress + 4));
                     DEBUG_PRINT("\t\tRelative address: 0x%X\n", offsetvalue);
                     memcpy(sectionMapping[counter] + coff_reloc_ptr->VirtualAddress, &offsetvalue, sizeof(uint32_t));
+                    #pragma warning(pop)
                 }
                 else
                 {
@@ -436,7 +446,10 @@ int RunCOFF(char *functionname, unsigned char *coff_data, uint32_t filesize, uns
                         goto cleanup;
                     }
                     DEBUG_PRINT("\t\tReadin offset value: 0x%X\n", offsetvalue);
+                    #pragma warning(push)    
+                    #pragma warning(disable:4244)
                     offsetvalue += (sectionMapping[coff_sym_ptr[coff_reloc_ptr->SymbolTableIndex].SectionNumber - 1] - (sectionMapping[counter] + coff_reloc_ptr->VirtualAddress + 4));
+                    #pragma warning(pop)
                     DEBUG_PRINT("\t\tRelative address: 0x%X\n", offsetvalue);
                     memcpy(sectionMapping[counter] + coff_reloc_ptr->VirtualAddress, &offsetvalue, sizeof(uint32_t));
                 }
@@ -511,6 +524,7 @@ int RunCOFF(char *functionname, unsigned char *coff_data, uint32_t filesize, uns
 #endif
         return 1;
     }
+    #pragma warning(disable:4018)
 
     DEBUG_PRINT("Symbols:\n");
     for (tempcounter = 0; tempcounter < coff_header_ptr->NumberOfSymbols; tempcounter++)
@@ -522,6 +536,7 @@ int RunCOFF(char *functionname, unsigned char *coff_data, uint32_t filesize, uns
 #ifdef _WIN32
             /* So for some reason VS 2017 doesn't like this, but char* casting works, so just going to do that */
 #ifdef _MSC_VER
+    #pragma warning(disable:4047)
             foo = (char *)(sectionMapping[coff_sym_ptr[tempcounter].SectionNumber - 1] + coff_sym_ptr[tempcounter].Value);
 #else
             foo = (void (*)(char *, unsigned long))(sectionMapping[coff_sym_ptr[tempcounter].SectionNumber - 1] + coff_sym_ptr[tempcounter].Value);

@@ -291,6 +291,8 @@ void BeaconGetSpawnTo(BOOL x86, char* buffer, int length) {
     }
     if (x86) {
         tempBufferPath = "C:\\Windows\\"X86PATH"\\"DEFAULTPROCESSNAME;
+        #pragma warning(push)
+        #pragma warning(disable:4018)
         if (strlen(tempBufferPath) > length) {
             return;
         }
@@ -304,6 +306,8 @@ void BeaconGetSpawnTo(BOOL x86, char* buffer, int length) {
         memcpy(buffer, tempBufferPath, strlen(tempBufferPath));
 
     }
+    #pragma warning(pop)
+
     return;
 }
 
