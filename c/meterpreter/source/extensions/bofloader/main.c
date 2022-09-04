@@ -7,10 +7,9 @@
 #include "common_metapi.h" 
 #include <stdint.h>
 #include "main.h"
-#include "stdlib.h"
+
 // Required so that use of the API works.
 MetApi* met_api = NULL;
-#define DEBUGTRACE 1
 #define RDIDLL_NOEXPORT
 #include "../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
 
