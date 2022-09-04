@@ -7,12 +7,13 @@
 #include "common_metapi.h" 
 #include <stdint.h>
 #include "main.h"
-
+#include "stdlib.h"
 // Required so that use of the API works.
 MetApi* met_api = NULL;
-
+#define DEBUGTRACE 1
 #define RDIDLL_NOEXPORT
 #include "../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
+
 
 typedef int (*goCallback)(char *, int);
 extern int LoadAndRun(char *argsBuffer, uint32_t bufferSize, goCallback callback);
@@ -43,6 +44,7 @@ DWORD request_exec_cmd(Remote *remote, Packet *packet)
 	char * output_data = NULL;
 	char * args_buffer = NULL;
 
+	real_dprintf("[BOFLOADER] Inside request cmd\n");
 	if (NULL == response)
 	{
 		met_api->packet.destroy(response);
@@ -51,16 +53,19 @@ DWORD request_exec_cmd(Remote *remote, Packet *packet)
 
 	buffer_size = packet->payloadLength;
 	args_buffer = (char *) met_api->packet.get_tlv_value_raw(packet, TLV_TYPE_BOFLOADER_CMD_EXEC, &buffer_size);
+	real_dprintf("[BOFLOADER] got pkt contents\n");
 
 	if (args_buffer != NULL)
 	{
-
+		real_dprintf("[BOFLOADER] calling load and run\n");
 		if (LoadAndRun(args_buffer, (uint32_t)buffer_size, NULL))
 		{
+			real_dprintf("[BOFLOADER] load and run failed\n");
 			result = ERROR_BAD_COMMAND;
 		}
 		else
 		{
+			real_dprintf("[BOFLOADER] getting out data\n");
 			output_data = BeaconGetOutputData(&outdata_size);
 		}
 		
@@ -68,21 +73,24 @@ DWORD request_exec_cmd(Remote *remote, Packet *packet)
 		{
 			met_api->packet.add_tlv_string(response, TLV_TYPE_BOFLOADER_CMD_RESULT, output_data);
 		}
-
 	}
 	else
 	{
 		result = ERROR_INVALID_PARAMETER;
 	}
 
-	dprintf("[BOFLOADER] Finished executing, if success will recv output data.");
+	real_dprintf("[BOFLOADER] Finished executing, if success will recv output data.");
 	met_api->packet.transmit_response(result, remote, response);
+	real_dprintf("[BOFLOADER] response sent");
 
-	if (NULL != response)
+//FIXME -- freeing the memory crashes meterpreter sessions
+#if 0
+	if (response)
 		met_api->packet.destroy(response);
-	if (NULL != packet)
-		met_api->packet.destroy(packet);
-	dprintf("[BOFLOADER] Done.");
+	if (packet)
+		met_api->packet.destroy(response);
+#endif
+	real_dprintf("[BOFLOADER] Done.");
 
 	return ERROR_SUCCESS;
 }
@@ -93,11 +101,11 @@ DWORD request_exec_cmd(Remote *remote, Packet *packet)
  * @param remote Pointer to the remote instance.
  * @return Indication of success or failure.
  */
+
 DWORD InitServerExtension(MetApi* api, Remote* remote)
 {
 	met_api = api;
 	SET_LOGGING_CONTEXT(api)
-
 	met_api->command.register_all(customCommands);
 
 
