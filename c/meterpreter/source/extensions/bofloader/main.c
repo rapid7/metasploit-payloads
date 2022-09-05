@@ -80,15 +80,7 @@ DWORD request_exec_cmd(Remote *remote, Packet *packet)
 
 	real_dprintf("[BOFLOADER] Finished executing, if success will recv output data.");
 	met_api->packet.transmit_response(result, remote, response);
-	real_dprintf("[BOFLOADER] response sent");
-
-//FIXME -- freeing the memory crashes meterpreter sessions
-#if 0
-	if (response)
-		met_api->packet.destroy(response);
-	if (packet)
-		met_api->packet.destroy(response);
-#endif
+	
 	real_dprintf("[BOFLOADER] Done.");
 
 	return ERROR_SUCCESS;
