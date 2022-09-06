@@ -43,7 +43,7 @@ DWORD request_exec_cmd(Remote *remote, Packet *packet)
 	char * output_data = NULL;
 	char * args_buffer = NULL;
 
-	real_dprintf("[BOFLOADER] Inside request cmd\n");
+	dprintf("[BOFLOADER] Inside request cmd\n");
 	if (NULL == response)
 	{
 		met_api->packet.destroy(response);
@@ -52,19 +52,19 @@ DWORD request_exec_cmd(Remote *remote, Packet *packet)
 
 	buffer_size = packet->payloadLength;
 	args_buffer = (char *) met_api->packet.get_tlv_value_raw(packet, TLV_TYPE_BOFLOADER_CMD_EXEC, &buffer_size);
-	real_dprintf("[BOFLOADER] got pkt contents\n");
+	dprintf("[BOFLOADER] got pkt contents\n");
 
 	if (args_buffer != NULL)
 	{
-		real_dprintf("[BOFLOADER] calling load and run\n");
+		dprintf("[BOFLOADER] calling load and run\n");
 		if (LoadAndRun(args_buffer, (uint32_t)buffer_size, NULL))
 		{
-			real_dprintf("[BOFLOADER] load and run failed\n");
+			dprintf("[BOFLOADER] load and run failed\n");
 			result = ERROR_BAD_COMMAND;
 		}
 		else
 		{
-			real_dprintf("[BOFLOADER] getting out data\n");
+			dprintf("[BOFLOADER] getting out data\n");
 			output_data = BeaconGetOutputData(&outdata_size);
 		}
 		
@@ -78,10 +78,10 @@ DWORD request_exec_cmd(Remote *remote, Packet *packet)
 		result = ERROR_INVALID_PARAMETER;
 	}
 
-	real_dprintf("[BOFLOADER] Finished executing, if success will recv output data.");
+	dprintf("[BOFLOADER] Finished executing, if success will recv output data.");
 	met_api->packet.transmit_response(result, remote, response);
 	
-	real_dprintf("[BOFLOADER] Done.");
+	dprintf("[BOFLOADER] Done.");
 
 	return ERROR_SUCCESS;
 }
