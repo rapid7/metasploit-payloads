@@ -46,7 +46,7 @@ DWORD request_exec_cmd(Remote *remote, Packet *packet)
 	dprintf("[BOFLOADER] Inside request cmd\n");
 	if (NULL == response)
 	{
-		met_api->packet.destroy(response);
+		// Don't delete the response!
 		return ERROR_OUTOFMEMORY;
 	}
 
