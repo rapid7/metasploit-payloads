@@ -20,7 +20,7 @@ DWORD request_exec_cmd(Remote *remote, Packet *packet);
 /*! @brief The enabled commands for this extension. */
 Command customCommands[] =
 {
-	COMMAND_REQ(COMMAND_ID_BOFLOADER_EXEC_CMD, request_exec_cmd),
+	COMMAND_REQ(COMMAND_ID_BOFLOADER_EXECUTE, request_exec_cmd),
 	COMMAND_TERMINATOR
 };
 
@@ -81,7 +81,7 @@ DWORD request_exec_cmd(Remote *remote, Packet *packet)
 	}
 
 	buffer_size = packet->payloadLength;
-	args_buffer = (char *)met_api->packet.get_tlv_value_raw(packet, TLV_TYPE_BOFLOADER_CMD_EXEC, &buffer_size);
+	args_buffer = (char *)met_api->packet.get_tlv_value_raw(packet, TLV_TYPE_BOFLOADER_EXECUTE_BUFFER, &buffer_size);
 	dprintf("[BOFLOADER] got pkt contents");
 
 	if (args_buffer != NULL)
@@ -100,7 +100,7 @@ DWORD request_exec_cmd(Remote *remote, Packet *packet)
 		
 		if (output_data)
 		{
-			met_api->packet.add_tlv_string(response, TLV_TYPE_BOFLOADER_CMD_RESULT, output_data);
+			met_api->packet.add_tlv_string(response, TLV_TYPE_BOFLOADER_EXECUTE_RESULT, output_data);
 		}
 	}
 	else
@@ -122,7 +122,6 @@ DWORD request_exec_cmd(Remote *remote, Packet *packet)
  * @param remote Pointer to the remote instance.
  * @return Indication of success or failure.
  */
-
 DWORD InitServerExtension(MetApi* api, Remote* remote)
 {
 	met_api = api;
