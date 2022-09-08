@@ -5,7 +5,7 @@ from ctypes import *
 import psutil
 
 flag = True
-host = "0.0.0.0" # this should be fixed as it should listen to specific interface and not all interfaces
+HOST = "0.0.0.0" # this should be fixed as it should listen to specific interface and not all interfaces
 
 class IP(Structure):
   _fields_ = [
