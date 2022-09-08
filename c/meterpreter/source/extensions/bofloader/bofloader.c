@@ -1,12 +1,12 @@
 /*!
- * @file main.c
+ * @file bofloader.c
  * @brief Entry point for the bofloader extension.
  */
 
 #include "common.h" 
 #include "common_metapi.h" 
 #include <stdint.h>
-#include "main.h"
+#include "bofloader.h"
 #include "beacon_compatibility.h"
 #include "COFFLoader.h"
 
@@ -14,10 +14,6 @@
 MetApi* met_api = NULL;
 #define RDIDLL_NOEXPORT
 #include "../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
-
-
-extern int LoadAndRun(char *argsBuffer, uint32_t bufferSize);
-extern char * BeaconGetOutputData(int *outsize);
 
 DWORD request_exec_cmd(Remote *remote, Packet *packet);
 
@@ -28,7 +24,7 @@ Command customCommands[] =
 	COMMAND_TERMINATOR
 };
 
-static int LoadAndRun(char* argsBuffer, uint32_t bufferSize)
+static int load_and_run(char* argsBuffer, uint32_t bufferSize)
 {
 #if defined(_WIN32)
 	// argsBuffer:  functionname |coff_data |  args_data
@@ -85,13 +81,13 @@ DWORD request_exec_cmd(Remote *remote, Packet *packet)
 	}
 
 	buffer_size = packet->payloadLength;
-	args_buffer = (char *) met_api->packet.get_tlv_value_raw(packet, TLV_TYPE_BOFLOADER_CMD_EXEC, &buffer_size);
+	args_buffer = (char *)met_api->packet.get_tlv_value_raw(packet, TLV_TYPE_BOFLOADER_CMD_EXEC, &buffer_size);
 	dprintf("[BOFLOADER] got pkt contents");
 
 	if (args_buffer != NULL)
 	{
 		dprintf("[BOFLOADER] calling LoadAndRun(%p, %u)", args_buffer, buffer_size);
-		if (LoadAndRun(args_buffer, (uint32_t)buffer_size))
+		if (load_and_run(args_buffer, (uint32_t)buffer_size))
 		{
 			dprintf("[BOFLOADER] load and run failed");
 			result = ERROR_BAD_COMMAND;
@@ -129,12 +125,9 @@ DWORD request_exec_cmd(Remote *remote, Packet *packet)
 
 DWORD InitServerExtension(MetApi* api, Remote* remote)
 {
-	dprintf("[BOFLOADER] Loading...");
 	met_api = api;
 	SET_LOGGING_CONTEXT(api)
 	met_api->command.register_all(customCommands);
-	dprintf("[BOFLOADER] Loaded.");
-
 
 	return ERROR_SUCCESS;
 }

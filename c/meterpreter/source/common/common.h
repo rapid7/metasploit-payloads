@@ -80,7 +80,7 @@ typedef struct ___u128 {
 #define vdprintf(...) do{}while(0);
 #endif
 #else
-#define dprintf(...) do{}while(0);
+#define dprintf(...) real_dprintf(__VA_ARGS__)
 #define vdprintf(...) do{}while(0);
 #define SET_LOGGING_CONTEXT(...)
 #define INIT_LOGGING(...)

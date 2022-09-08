@@ -29,7 +29,7 @@
   <ItemGroup>
     <ClInclude Include="..\..\source\extensions\bofloader\COFFLoader\beacon_compatibility.h" />
     <ClInclude Include="..\..\source\extensions\bofloader\COFFLoader\COFFLoader.h" />
-    <ClInclude Include="..\..\source\extensions\bofloader\main.h" />
+    <ClInclude Include="..\..\source\extensions\bofloader\bofloader.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\source\extensions\bofloader\COFFLoader\beacon_compatibility.c" />
@@ -41,7 +41,7 @@
       <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='r7_release|x64'">4018;4047;4244;4267;%(DisableSpecificWarnings)</DisableSpecificWarnings>
       <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4018;4047;4244;4267;%(DisableSpecificWarnings)</DisableSpecificWarnings>
     </ClCompile>
-    <ClCompile Include="..\..\source\extensions\bofloader\main.c" />
+    <ClCompile Include="..\..\source\extensions\bofloader\bofloader.c" />
     <ClCompile Include="..\..\source\logging\logging.c" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
