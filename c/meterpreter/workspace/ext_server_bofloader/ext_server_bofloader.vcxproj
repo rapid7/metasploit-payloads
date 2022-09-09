@@ -33,14 +33,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\source\extensions\bofloader\COFFLoader\beacon_compatibility.c" />
-    <ClCompile Include="..\..\source\extensions\bofloader\COFFLoader\COFFLoader.c">
-      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4018;4047;4244;4267;%(DisableSpecificWarnings)</DisableSpecificWarnings>
-      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4018;4047;4244;4267;%(DisableSpecificWarnings)</DisableSpecificWarnings>
-      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='r7_release|Win32'">4018;4047;4244;4267;%(DisableSpecificWarnings)</DisableSpecificWarnings>
-      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4018;4047;4244;4267;%(DisableSpecificWarnings)</DisableSpecificWarnings>
-      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='r7_release|x64'">4018;4047;4244;4267;%(DisableSpecificWarnings)</DisableSpecificWarnings>
-      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4018;4047;4244;4267;%(DisableSpecificWarnings)</DisableSpecificWarnings>
-    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\bofloader\COFFLoader\COFFLoader.c" />
     <ClCompile Include="..\..\source\extensions\bofloader\bofloader.c" />
     <ClCompile Include="..\..\source\logging\logging.c" />
   </ItemGroup>
