@@ -15,48 +15,14 @@ MetApi* met_api = NULL;
 #define RDIDLL_NOEXPORT
 #include "../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
 
-DWORD request_exec_cmd(Remote *remote, Packet *packet);
+DWORD request_execute(Remote *remote, Packet *packet);
 
 /*! @brief The enabled commands for this extension. */
 Command customCommands[] =
 {
-	COMMAND_REQ(COMMAND_ID_BOFLOADER_EXECUTE, request_exec_cmd),
+	COMMAND_REQ(COMMAND_ID_BOFLOADER_EXECUTE, request_execute),
 	COMMAND_TERMINATOR
 };
-
-static int load_and_run(char* argsBuffer, uint32_t bufferSize)
-{
-#if defined(_WIN32)
-	// argsBuffer:  functionname |coff_data |  args_data
-	datap parser;
-	char* functionName;
-	unsigned char* coff_data = NULL;
-	unsigned char* arguments_data = NULL;
-	int filesize = 0;
-	int arguments_size = 0;
-
-	BeaconDataParse(&parser, argsBuffer, bufferSize);
-	functionName = BeaconDataExtract(&parser, NULL);
-	if (functionName == NULL)
-	{
-		return 1;
-	}
-	coff_data = (unsigned char*)BeaconDataExtract(&parser, &filesize);
-	if (coff_data == NULL)
-	{
-		return 1;
-	}
-	arguments_data = (unsigned char*)BeaconDataExtract(&parser, &arguments_size);
-	if (arguments_data == NULL)
-	{
-		return 1;
-	}
-
-	return RunCOFF(functionName, coff_data, filesize, arguments_data, arguments_size);
-#else
-	return 0;
-#endif
-}
 
 /*!
  * @brief Handler for the generic command execution function.
@@ -64,56 +30,60 @@ static int load_and_run(char* argsBuffer, uint32_t bufferSize)
  * @param packet Pointer to the incoming packet.
  * @returns \c ERROR_SUCCESS
  */
-DWORD request_exec_cmd(Remote *remote, Packet *packet)
+DWORD request_execute(Remote* remote, Packet* packet)
 {
-	DWORD result = ERROR_SUCCESS;
-	int outdata_size = 0;
-	DWORD buffer_size = 0;
-	Packet * response = met_api->packet.create_response(packet);
-	char * output_data = NULL;
-	char * args_buffer = NULL;
+	DWORD dwResult = ERROR_BAD_ARGUMENTS;
+	Packet* response = NULL;
+	PBYTE pBuffer = NULL;
+	DWORD dwBufferSize = 0;
+	LPSTR pBufferEntry = NULL;
+	PBYTE pArguments = NULL;
+	DWORD dwArgumentsSize = 0;
+	LPSTR pOutputData = NULL;
+	DWORD dwOutputDataSize = 0;
 
-	dprintf("[BOFLOADER] Inside request cmd");
-	if (NULL == response)
+	do
 	{
-		// Don't delete the response!
-		return ERROR_OUTOFMEMORY;
-	}
+		response = met_api->packet.create_response(packet);
+		if (!response)
+			BREAK_WITH_ERROR("[BOFLOADER] met_api->packet.create_response failed", ERROR_INVALID_HANDLE);
 
-	buffer_size = packet->payloadLength;
-	args_buffer = (char *)met_api->packet.get_tlv_value_raw(packet, TLV_TYPE_BOFLOADER_EXECUTE_BUFFER, &buffer_size);
-	dprintf("[BOFLOADER] got pkt contents");
+		pBuffer = met_api->packet.get_tlv_value_raw(packet, TLV_TYPE_BOFLOADER_EXECUTE_BUFFER, &dwBufferSize);
+		if (!pBuffer)
+			BREAK_WITH_ERROR("[BOFLOADER] No EXECUTE_BUFFER was specified", ERROR_BAD_ARGUMENTS);
 
-	if (args_buffer != NULL)
-	{
-		dprintf("[BOFLOADER] calling LoadAndRun(%p, %u)", args_buffer, buffer_size);
-		if (load_and_run(args_buffer, (uint32_t)buffer_size))
-		{
-			dprintf("[BOFLOADER] load and run failed");
-			result = ERROR_BAD_COMMAND;
-		}
-		else
-		{
-			dprintf("[BOFLOADER] getting out data");
-			output_data = BeaconGetOutputData(&outdata_size);
-		}
+		pBufferEntry = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_BOFLOADER_EXECUTE_BUFFER_ENTRY);
+		if (!pBufferEntry)
+			BREAK_WITH_ERROR("[BOFLOADER] No EXECUTE_BUFFER_ENTRY was specified", ERROR_BAD_ARGUMENTS);
+
+		pArguments = met_api->packet.get_tlv_value_raw(packet, TLV_TYPE_BOFLOADER_EXECUTE_ARGUMENTS, &dwArgumentsSize);
+		if (!pArguments)
+			BREAK_WITH_ERROR("[BOFLOADER] No EXECUTE_ARGUMENTS was specified", ERROR_BAD_ARGUMENTS);
+
+
+		/* do our own check here to make sure the COFF data machine type matches, return ERROR_EXE_MACHINE_TYPE_MISMATCH on failure
+		 */
+		if (RunCOFF(pBufferEntry, pBuffer, dwBufferSize, pArguments, dwArgumentsSize))
+			BREAK_WITH_ERROR("[BOFLOADER] Buffer execution failed", ERROR_ERRORS_ENCOUNTERED);
+		dprintf("[BOFLOADER] Buffer execution succeeded");
 		
-		if (output_data)
-		{
-			met_api->packet.add_tlv_string(response, TLV_TYPE_BOFLOADER_EXECUTE_RESULT, output_data);
+		dprintf("[BOFLOADER] Getting output data");
+		pOutputData = BeaconGetOutputData(&dwOutputDataSize);
+		if (pOutputData) {
+			met_api->packet.add_tlv_string(response, TLV_TYPE_BOFLOADER_EXECUTE_RESULT, pOutputData);
+			ZeroMemory(pOutputData, dwOutputDataSize);
+			free(pOutputData);
 		}
-	}
-	else
+		dwResult = ERROR_SUCCESS;
+
+	} while (0);
+
+	if (response)
 	{
-		result = ERROR_INVALID_PARAMETER;
+		met_api->packet.transmit_response(dwResult, remote, response);
 	}
 
-	dprintf("[BOFLOADER] Finished executing, if success will recv output data.");
-	met_api->packet.transmit_response(result, remote, response);
-	
-	dprintf("[BOFLOADER] Done.");
-
-	return ERROR_SUCCESS;
+	return dwResult;
 }
 
 /*!
