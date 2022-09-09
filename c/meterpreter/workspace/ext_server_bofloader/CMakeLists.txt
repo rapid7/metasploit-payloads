@@ -14,12 +14,13 @@ endif()
 
 include_directories(../../source/common)
 include_directories(../../source/ReflectiveDLLInjection/common)
+include_directories(../../source/extensions/bofloader/COFFLoader)
 
 set(SRC_DIR ../../source/extensions/bofloader)
 
 # Unfortunately we have to be a little judicious with what we include
 set(SRC_FILES
-    ${SRC_DIR}/main.c
+    ${SRC_DIR}/bofloader.c
     ${SRC_DIR}/COFFLoader/beacon_compatibility.c
     ${SRC_DIR}/COFFLoader/COFFLoader.c
     ${MOD_DEF_DIR}/extension.def

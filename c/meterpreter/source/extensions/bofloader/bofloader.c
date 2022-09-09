@@ -64,7 +64,7 @@ DWORD request_execute(Remote* remote, Packet* packet)
 		/* do our own check here to make sure the COFF data machine type matches, return ERROR_EXE_MACHINE_TYPE_MISMATCH on failure
 		 */
 		if (RunCOFF(pBufferEntry, pBuffer, dwBufferSize, pArguments, dwArgumentsSize))
-			BREAK_WITH_ERROR("[BOFLOADER] Buffer execution failed", ERROR_ERRORS_ENCOUNTERED);
+			BREAK_WITH_ERROR("[BOFLOADER] Buffer execution failed", ERROR_INVALID_DATA);
 		dprintf("[BOFLOADER] Buffer execution succeeded");
 		
 		dprintf("[BOFLOADER] Getting output data");
