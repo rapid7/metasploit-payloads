@@ -7,3 +7,6 @@
 [submodule "c/meterpreter/source/extensions/kiwi/mimikatz"]
 	path = c/meterpreter/source/extensions/kiwi/mimikatz
 	url = https://github.com/rapid7/mimikatz
+[submodule "c/meterpreter/source/extensions/bofloader/COFFLoader"]
+	path = c/meterpreter/source/extensions/bofloader/COFFLoader
+	url = https://github.com/TrustedSec/COFFLoader
