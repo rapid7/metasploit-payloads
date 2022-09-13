@@ -15,8 +15,6 @@ MetApi* met_api = NULL;
 #define RDIDLL_NOEXPORT
 #include "../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
 
-DWORD request_execute(Remote *remote, Packet *packet);
-
 /*! @brief The enabled commands for this extension. */
 Command customCommands[] =
 {
@@ -60,7 +58,6 @@ DWORD request_execute(Remote* remote, Packet* packet)
 		if (!pArguments)
 			BREAK_WITH_ERROR("[BOFLOADER] No EXECUTE_ARGUMENTS was specified", ERROR_BAD_ARGUMENTS);
 
-
 		/* do our own check here to make sure the COFF data machine type matches, return ERROR_EXE_MACHINE_TYPE_MISMATCH on failure
 		 */
 		if (RunCOFF(pBufferEntry, pBuffer, dwBufferSize, pArguments, dwArgumentsSize))
@@ -71,7 +68,7 @@ DWORD request_execute(Remote* remote, Packet* packet)
 		pOutputData = BeaconGetOutputData(&dwOutputDataSize);
 		if (pOutputData) {
 			met_api->packet.add_tlv_string(response, TLV_TYPE_BOFLOADER_EXECUTE_RESULT, pOutputData);
-			ZeroMemory(pOutputData, dwOutputDataSize);
+			SecureZeroMemory(pOutputData, dwOutputDataSize);
 			free(pOutputData);
 		}
 		dwResult = ERROR_SUCCESS;
