@@ -440,12 +440,16 @@ out:
 
 /*
  * @brief Unparse a REG_MULTI_SZ value to send back to Metasploit. Encode the
-          UTF-16LE string array into UTF-8. The caller must free the returned buffer.
-		  This does not assume that str is terminated by two null characters
-		  which is why it is necessary to pass in the size in bytes of the
-		  input buffer.
+ *        UTF-16LE string array into UTF-8. The caller must free the returned buffer.
+ *        This does not assume that str is terminated by two null characters
+ *        which is why it is necessary to pass in the size in bytes of the
+ *        input buffer.
+ *
+ *        Example:
+ *          "S1\x00S2\x00\x00" => "S\x001\x00\x00\x00S\x002\x00\x00\x00\x00\x00"
  * @param str The string to convert.
- * @param length An optional pointer to receive the size in bytes of the resulting buffer.
+ * @param size A pointer that on input is the size of str in bytes and on
+ *             output will receive the size in bytes of the resulting buffer.
  */
 static char* reg_multi_sz_unparse(wchar_t* str, size_t* size)
 {
@@ -462,18 +466,18 @@ static char* reg_multi_sz_unparse(wchar_t* str, size_t* size)
 		SetLastError(ERROR_BAD_ARGUMENTS);
 		return NULL;
 	}
-	// if the input does not end in two null characters create and user our own buffer
-	// this is obviously less effecient if the input isn't properly terminated
+	// if the input does not end in two null characters, then create and use our own buffer
+	// which is obviously less efficient if the input isn't properly terminated
 	if ((str[*size - 1] == 0) && (str[*size - 2]) == 0) {
 		my_str = str;
 	}
 	else {
-		my_str = malloc(*size + (2 * sizeof(sizeof(str[0]))));
+		my_str = malloc(*size + (2 * sizeof(str[0])));
 		if (!my_str) {
 			SetLastError(ERROR_NOT_ENOUGH_MEMORY);
 			goto out;
 		}
-		memset(my_str, 0, *size + (2 * sizeof(sizeof(str[0]))));
+		memset(my_str, 0, *size + (2 * sizeof(str[0])));
 		memcpy(my_str, str, *size);
 	}
 
@@ -492,7 +496,7 @@ static char* reg_multi_sz_unparse(wchar_t* str, size_t* size)
 	res = calloc(total_size + (count - 1) + 2, sizeof(char));
 	if (!res) {
 		SetLastError(ERROR_NOT_ENOUGH_MEMORY);
-		return NULL;
+		goto out;
 	}
 	if (size)
 		*size = (total_size + (count - 1) + 2) * sizeof(char);
@@ -518,13 +522,13 @@ out:
 
 /*
  * @brief Parse a REG_MULTI_SZ value from Metasploit. Encode the UTF-8
-		  string array into UTF-16LE. The caller must free the returned buffer.
-		  This does not assume that str is terminated by two null characters
-		  which is why it is necessary to pass in the size in bytes of the 
-		  input buffer.
+ *        string array into UTF-16LE. The caller must free the returned buffer.
+ *        This does not assume that str is terminated by two null characters
+ *        which is why it is necessary to pass in the size in bytes of the 
+ *        input buffer.
  * @param str The string to convert.
- * @param length A pointer that on input is the size of str in bytes and on
-          output will receive the size in bytes of the resulting buffer.
+ * @param size A pointer that on input is the size of str in bytes and on
+ *             output will receive the size in bytes of the resulting buffer.
  */
 static wchar_t *reg_multi_sz_parse(char* str, size_t* size)
 {
@@ -546,12 +550,12 @@ static wchar_t *reg_multi_sz_parse(char* str, size_t* size)
 	if ((str[*size - 1] == 0) && (str[*size - 2]) == 0) {
 		my_str = str;
 	} else {
-		my_str = malloc(*size + (2 * sizeof(sizeof(str[0]))));
+		my_str = malloc(*size + (2 * sizeof(str[0])));
 		if (!my_str) {
 			SetLastError(ERROR_NOT_ENOUGH_MEMORY);
 			goto out;
 		}
-		memset(my_str, 0, *size + (2 * sizeof(sizeof(str[0]))));
+		memset(my_str, 0, *size + (2 * sizeof(str[0])));
 		memcpy(my_str, str, *size);
 	}
 
