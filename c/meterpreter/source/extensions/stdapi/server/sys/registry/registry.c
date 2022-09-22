@@ -22,7 +22,7 @@ DWORD request_registry_check_key_exists(Remote *remote, Packet *packet)
 	if (rootKey && baseKey) {
 		BOOL exists = FALSE;
 		HKEY resultKey = NULL;
-		if (RegOpenKeyW(rootKey, baseKey, &resultKey) == ERROR_SUCCESS) {
+		if (RegOpenKeyExW(rootKey, baseKey, 0, KEY_QUERY_VALUE, &resultKey) == ERROR_SUCCESS) {
 			dprintf("[REG] Key found");
 			RegCloseKey(resultKey);
 			exists = TRUE;
@@ -439,67 +439,162 @@ out:
 }
 
 /*
-* Parse the REG_MULTI_SZ registry value types.
-* A sequence of null-terminated strings, would be splited by \0 and terminated by \0\0 .
-* 
-* Example:
-*	"String1\0String2\0String3\0LastString\0\0" => "String1 String2 String3 LastString"
-* 
-* Reference: https://docs.microsoft.com/en-us/windows/desktop/sysinfo/registry-value-types
-*
-*/
-static wchar_t *reg_multi_sz_parse(char* str, size_t *length)
+ * @brief Unparse a REG_MULTI_SZ value to send back to Metasploit. Encode the
+ *        UTF-16LE string array into UTF-8. The caller must free the returned buffer.
+ *        This does not assume that str is terminated by two null characters
+ *        which is why it is necessary to pass in the size in bytes of the
+ *        input buffer.
+ *
+ *        Example:
+ *          "S1\x00S2\x00\x00" => "S\x001\x00\x00\x00S\x002\x00\x00\x00\x00\x00"
+ * @param str The string to convert.
+ * @param size A pointer that on input is the size of str in bytes and on
+ *             output will receive the size in bytes of the resulting buffer.
+ */
+static char* reg_multi_sz_unparse(wchar_t* str, size_t* size)
 {
-	const char *delimter = "\\0";
-	const char *ender = "\\0\\0";
-	*length = 0;
-
-	wchar_t *res = (wchar_t *)calloc(strlen(str) + 1, sizeof(wchar_t));
-
-	char *trun = strstr(str, ender);  // truncated by '\0\0'
-	if (trun)
-	{
-		str[trun - str] = '\0';
-	}
+	// Count the number of chunks
+	int count = 0;
+	wchar_t* wchunk = NULL;
+	char* chunk = NULL;
+	size_t chunk_len = 0;
+	size_t total_size = 0;
+	char* res = NULL;
+	wchar_t* my_str = NULL;
 	
-	// Count the number of delimter
-	int count = 1;  
-	const char *tmp = str;
-	while (tmp = strstr(tmp, delimter)) 
-	{
-		count++;	
-		tmp++;
+	if ((!size) || (*size < 2 * sizeof(str[0]))) {
+		SetLastError(ERROR_BAD_ARGUMENTS);
+		return NULL;
 	}
-	free((char*)tmp);
-
-	// Split the strings by '\0'
-	char ** string_arr = (char **)malloc(sizeof(char *) * count); 	// store splited strings. 
-	char * ch = strtok(str, delimter); 	// delimter by '\0'
-	int i = 0;
-	while (ch != NULL)
-	{
-		string_arr[i] = (char *)malloc(sizeof(char) * (strlen(ch) + 1));
-		strncpy(string_arr[i], ch, strlen(ch) + 1);		
-		ch = strtok(NULL, delimter);
-		i++;
+	// if the input does not end in two null characters, then create and use our own buffer
+	// which is obviously less efficient if the input isn't properly terminated
+	if ((str[*size - 1] == 0) && (str[*size - 2]) == 0) {
+		my_str = str;
 	}
-	count = i;	// count splited strings.
+	else {
+		my_str = malloc(*size + (2 * sizeof(str[0])));
+		if (!my_str) {
+			SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+			goto out;
+		}
+		memset(my_str, 0, *size + (2 * sizeof(str[0])));
+		memcpy(my_str, str, *size);
+	}
 
-	wchar_t *ptr = res;  // temp pointer point to res
-	for (i = 0; i < count; i++)
+	wchunk = my_str;
+	while (chunk_len = wcslen(wchunk))
 	{
-		wchar_t * tmp_buf = calloc(strlen(string_arr[i]) + 1, sizeof(wchar_t));
-		tmp_buf = met_api->string.utf8_to_wchar(string_arr[i]);
+		chunk = met_api->string.wchar_to_utf8(wchunk);
+		count++;
+		wchunk += chunk_len + 1;
+		if (!chunk)
+			continue;
+		total_size += strlen(chunk);
+		free(chunk);
+	}
 
-		wcsncpy(ptr, tmp_buf, wcslen(tmp_buf) + 1);		// join the splited strings.
-		ptr += wcslen(tmp_buf) + 1;			// append next string to the end of last string, keep the null-terminater.
+	res = calloc(total_size + (count - 1) + 2, sizeof(char));
+	if (!res) {
+		SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+		goto out;
+	}
+	if (size)
+		*size = (total_size + (count - 1) + 2) * sizeof(char);
 
-		(*length) += wcslen(tmp_buf) + 1;			// count of all strings length
-		free(tmp_buf);
-	}	
+	char* write_cursor = res;
+	wchunk = my_str;
+	while (chunk_len = wcslen(wchunk))
+	{
+		chunk = met_api->string.wchar_to_utf8(wchunk);
+		wchunk += chunk_len + 1;
+		if (!chunk)
+			continue;
+		strcpy(write_cursor, chunk);
+		write_cursor += strlen(chunk) + 1;
+		free(chunk);
+	}
 
-	free(string_arr);
+out:
+	if ((my_str) && (my_str != str))
+		free(my_str);
+	return res;
+}
 
+/*
+ * @brief Parse a REG_MULTI_SZ value from Metasploit. Encode the UTF-8
+ *        string array into UTF-16LE. The caller must free the returned buffer.
+ *        This does not assume that str is terminated by two null characters
+ *        which is why it is necessary to pass in the size in bytes of the 
+ *        input buffer.
+ * @param str The string to convert.
+ * @param size A pointer that on input is the size of str in bytes and on
+ *             output will receive the size in bytes of the resulting buffer.
+ */
+static wchar_t *reg_multi_sz_parse(char* str, size_t* size)
+{
+	// Count the number of chunks
+	int count = 0;
+	wchar_t* wchunk = NULL;
+	char* chunk = NULL;
+	size_t chunk_len = 0;
+	size_t total_size = 0;
+	wchar_t* res = NULL;
+	char* my_str = NULL;
+
+	if ((!size) || (*size < 2 * sizeof(str[0]))) {
+		SetLastError(ERROR_BAD_ARGUMENTS);
+		return NULL;
+	}
+	// if the input does not end in two null characters create and user our own buffer
+	// this is obviously less effecient if the input isn't properly terminated
+	if ((str[*size - 1] == 0) && (str[*size - 2]) == 0) {
+		my_str = str;
+	} else {
+		my_str = malloc(*size + (2 * sizeof(str[0])));
+		if (!my_str) {
+			SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+			goto out;
+		}
+		memset(my_str, 0, *size + (2 * sizeof(str[0])));
+		memcpy(my_str, str, *size);
+	}
+
+	chunk = my_str;
+	while (chunk_len = strlen(chunk))
+	{
+		wchunk = met_api->string.utf8_to_wchar(chunk);
+		count++;
+		chunk += chunk_len + 1;
+		if (!wchunk)
+			continue;
+		total_size += wcslen(wchunk);
+		free(wchunk);
+	}
+
+	res = calloc(total_size + (count - 1) + 2, sizeof(wchar_t));
+	if (!res) {
+		SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+		goto out;
+	}
+	if (size)
+		*size = (total_size + (count - 1) + 2) * sizeof(wchar_t);
+
+	wchar_t* write_cursor = res;
+	chunk = my_str;
+	while (chunk_len = strlen(chunk))
+	{
+		wchunk = met_api->string.utf8_to_wchar(chunk);
+		chunk += chunk_len + 1;
+		if (!wchunk)
+			continue;
+		wcscpy(write_cursor, wchunk);
+		write_cursor += wcslen(wchunk) + 1;
+		free(wchunk);
+	}
+
+out:
+	if ((my_str) && (my_str != str))
+		free(my_str);
 	return res;
 }
 
@@ -533,8 +628,8 @@ static void set_value(Remote *remote, Packet *packet, HKEY hkey)
 				len = (wcslen(buf) + 1) * sizeof(wchar_t);
 				break;
 			case REG_MULTI_SZ:
+				len = valueData.header.length;
 				buf = reg_multi_sz_parse(valueData.buffer, &len);
-				len = (len + 1) * sizeof(wchar_t);
 				break;
 			default:
 				len = valueData.header.length;
@@ -604,6 +699,7 @@ static void query_value(Remote *remote, Packet *packet, HKEY hkey)
 
 	wchar_t *valueName;
 	char *tmp;
+	size_t tmp_sz = 0;
 	void *valueData = NULL;
 	DWORD valueDataSize = 0;
 	DWORD result = ERROR_SUCCESS;
@@ -641,6 +737,19 @@ static void query_value(Remote *remote, Packet *packet, HKEY hkey)
 				met_api->packet.add_tlv_string(response, TLV_TYPE_VALUE_DATA, tmp);
 				free(tmp);
 			} else {
+				met_api->packet.add_tlv_raw(response, TLV_TYPE_VALUE_DATA,
+					valueData, valueDataSize);
+			}
+			break;
+		case REG_MULTI_SZ:
+			tmp_sz = valueDataSize;
+			tmp = reg_multi_sz_unparse(valueData, &tmp_sz);
+			if (tmp) {
+				met_api->packet.add_tlv_raw(response, TLV_TYPE_VALUE_DATA,
+					tmp, (DWORD)tmp_sz);
+				free(tmp);
+			}
+			else {
 				met_api->packet.add_tlv_raw(response, TLV_TYPE_VALUE_DATA,
 					valueData, valueDataSize);
 			}
