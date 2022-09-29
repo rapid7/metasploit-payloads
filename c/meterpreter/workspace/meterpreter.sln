@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.30002.166
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.32112.339
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ext_server_priv", "ext_server_priv\ext_server_priv.vcxproj", "{87C64204-C82F-415D-AF45-D0B33BDFE39A}"
 EndProject
@@ -56,13 +56,13 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Common", "Common", "{EDE086
 		..\source\common\common_core.h = ..\source\common\common_core.h
 		..\source\common\common_exports.h = ..\source\common\common_exports.h
 		..\source\common\common_list.h = ..\source\common\common_list.h
-		..\source\logging\logging.c = ..\source\logging\logging.c
 		..\source\common\common_logging.h = ..\source\common\common_logging.h
 		..\source\common\common_metapi.h = ..\source\common\common_metapi.h
 		..\source\common\common_pivot_tree.h = ..\source\common\common_pivot_tree.h
 		..\source\common\common_remote.h = ..\source\common\common_remote.h
 		..\source\common\common_scheduler.h = ..\source\common\common_scheduler.h
 		..\source\common\common_thread.h = ..\source\common\common_thread.h
+		..\source\logging\logging.c = ..\source\logging\logging.c
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Def", "Def", "{275C6D8C-8EC0-4FCF-96CB-F6B793FC38DB}"
@@ -71,6 +71,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Def", "Def", "{275C6D8C-8EC
 		..\source\def\metsrv.def = ..\source\def\metsrv.def
 		..\source\def\plugin.def = ..\source\def\plugin.def
 	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ext_server_bofloader", "ext_server_bofloader\ext_server_bofloader.vcxproj", "{486B160F-C571-486D-AAC3-CB60CEA7CBDD}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -282,6 +284,18 @@ Global
 		{E61592E1-28F4-4AFC-9EE1-9BE833A061C1}.Release|Win32.Build.0 = Release|Win32
 		{E61592E1-28F4-4AFC-9EE1-9BE833A061C1}.Release|x64.ActiveCfg = Release|x64
 		{E61592E1-28F4-4AFC-9EE1-9BE833A061C1}.Release|x64.Build.0 = Release|x64
+		{486B160F-C571-486D-AAC3-CB60CEA7CBDD}.Debug|Win32.ActiveCfg = Debug|Win32
+		{486B160F-C571-486D-AAC3-CB60CEA7CBDD}.Debug|Win32.Build.0 = Debug|Win32
+		{486B160F-C571-486D-AAC3-CB60CEA7CBDD}.Debug|x64.ActiveCfg = Debug|x64
+		{486B160F-C571-486D-AAC3-CB60CEA7CBDD}.Debug|x64.Build.0 = Debug|x64
+		{486B160F-C571-486D-AAC3-CB60CEA7CBDD}.r7_release|Win32.ActiveCfg = r7_release|Win32
+		{486B160F-C571-486D-AAC3-CB60CEA7CBDD}.r7_release|Win32.Build.0 = r7_release|Win32
+		{486B160F-C571-486D-AAC3-CB60CEA7CBDD}.r7_release|x64.ActiveCfg = r7_release|x64
+		{486B160F-C571-486D-AAC3-CB60CEA7CBDD}.r7_release|x64.Build.0 = r7_release|x64
+		{486B160F-C571-486D-AAC3-CB60CEA7CBDD}.Release|Win32.ActiveCfg = Release|Win32
+		{486B160F-C571-486D-AAC3-CB60CEA7CBDD}.Release|Win32.Build.0 = Release|Win32
+		{486B160F-C571-486D-AAC3-CB60CEA7CBDD}.Release|x64.ActiveCfg = Release|x64
+		{486B160F-C571-486D-AAC3-CB60CEA7CBDD}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

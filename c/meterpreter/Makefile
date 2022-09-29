@@ -264,6 +264,26 @@ meterpreter-ext-peinjector-x64-gen:
 meterpreter-ext-peinjector-x64-build:
 	@cmake --build workspace/build/mingw-x64-ext-peinjector $(COMMON_BUILD)
 
+### BofLoader
+
+meterpreter-ext-bofloader: meterpreter-ext-bofloader-x86 meterpreter-ext-bofloader-x64
+
+meterpreter-ext-bofloader-x86: meterpreter-ext-bofloader-x86-gen meterpreter-ext-bofloader-x86-build
+
+meterpreter-ext-bofloader-x86-gen:
+	@cmake -S workspace -B workspace/build/mingw-x86-ext-bofloader -DBUILD_ALL=OFF -DBUILD_EXT_bofloader=ON $(COMMON_GEN_X86)
+
+meterpreter-ext-bofloader-x86-build:
+	@cmake --build workspace/build/mingw-x86-ext-bofloader $(COMMON_BUILD)
+
+meterpreter-ext-bofloader-x64: meterpreter-ext-bofloader-x64-gen meterpreter-ext-bofloader-x64-build
+
+meterpreter-ext-bofloader-x64-gen:
+	@cmake -S workspace -B workspace/build/mingw-x64-ext-bofloader -DBUILD_ALL=OFF -DBUILD_EXT_bofloader=ON $(COMMON_GEN_X64)
+
+meterpreter-ext-bofloader-x64-build:
+	@cmake --build workspace/build/mingw-x64-ext-bofloader $(COMMON_BUILD)
+
 ##########################################################################################
 ### Container-based Builds
 ##########################################################################################
@@ -381,3 +401,12 @@ docker-ext-peinjector-x86:
 
 docker-ext-peinjector-x64:
 	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-peinjector-x64
+
+docker-ext-bofloader:
+	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-bofloader
+
+docker-ext-bofloader-x86:
+	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-bofloader-x86
+
+docker-ext-bofloader-x64:
+	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-bofloader-x64
