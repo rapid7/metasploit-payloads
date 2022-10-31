@@ -21,6 +21,9 @@ except ImportError:
     has_ctypes = False
     has_windll = False
 
+if has_windll:
+    from ctypes import wintypes
+
 try:
     import pty
     has_pty = True
@@ -356,6 +359,36 @@ if has_ctypes:
             ("lpszAutoConfigUrl", ctypes.c_wchar_p),
             ("lpszProxy", ctypes.c_wchar_p),
             ("lpszProxyBypass", ctypes.c_wchar_p)]
+
+    class LUID(ctypes.Structure):
+        _fields_ = [
+            ('LowPart',  wintypes.DWORD),
+            ('HighPart', wintypes.LONG)
+        ]
+
+        def __eq__(self, __o: object) -> bool:
+            return (self.LowPart == __o.LowPart and self.HighPart == __o.HighPart)
+
+        def __ne__(self, __o: object) -> bool:
+            return (self.LowPart != __o.LowPart or self.HighPart != __o.HighPart)
+
+    class LUID_AND_ATTRIBUTES(ctypes.Structure):
+        _fields_ = [
+            ('Luid',       LUID),
+            ('Attributes', wintypes.DWORD)
+        ]
+
+    class TOKEN_PRIVILEGES(ctypes.Structure):
+        _fields_ = [
+            ('PrivilegeCount', wintypes.DWORD),
+            ('Privileges',     LUID_AND_ATTRIBUTES*0),
+        ]
+        def GetArray(self):
+            arrayType = LUID_AND_ATTRIBUTES*self.PrivilegeCount
+            return ctypes.cast(self.Privileges, ctypes.POINTER(arrayType)).contents
+
+    PTOKEN_PRIVILEGES = ctypes.POINTER(TOKEN_PRIVILEGES)
+
 
     #
     # Linux Structures
@@ -999,6 +1032,49 @@ def windll_GetVersion():
     dwBuild        = ((dwVersion & 0xffff0000) >> 16)
     return type('Version', (object,), dict(dwMajorVersion = dwMajorVersion, dwMinorVersion = dwMinorVersion, dwBuild = dwBuild))
 
+def enable_privilege(name, enable=True):
+    TOKEN_ALL_ACCESS = 0xf01ff
+    SE_PRIVILEGE_ENABLED = (0x00000002)
+
+    GetCurrentProcess = ctypes.windll.kernel32.GetCurrentProcess
+    GetCurrentProcess.restype = wintypes.HANDLE
+
+    OpenProcessToken = ctypes.windll.advapi32.OpenProcessToken
+    OpenProcessToken.argtypes = [wintypes.HANDLE, wintypes.DWORD, ctypes.POINTER(wintypes.HANDLE)]
+    OpenProcessToken.restype = wintypes.BOOL
+
+    LookupPrivilegeValue = ctypes.windll.advapi32.LookupPrivilegeValueW
+    LookupPrivilegeValue.argtypes = [wintypes.LPCWSTR, wintypes.LPCWSTR, ctypes.POINTER(LUID)]
+    LookupPrivilegeValue.restype = wintypes.BOOL
+
+    AdjustTokenPrivileges = ctypes.windll.advapi32.AdjustTokenPrivileges
+    AdjustTokenPrivileges.argtypes = [wintypes.HANDLE, wintypes.BOOL, PTOKEN_PRIVILEGES, wintypes.DWORD, PTOKEN_PRIVILEGES, ctypes.POINTER(wintypes.DWORD)]
+    AdjustTokenPrivileges.restype = wintypes.BOOL
+
+    token = wintypes.HANDLE()
+    success = OpenProcessToken(GetCurrentProcess(), TOKEN_ALL_ACCESS, token)
+    if not success:
+        return False
+
+    luid = LUID()
+    name = ctypes.create_unicode_buffer(name)
+    success = LookupPrivilegeValue(None, name, luid)
+    if not success:
+        return False
+
+    size = ctypes.sizeof(TOKEN_PRIVILEGES)
+    size += ctypes.sizeof(LUID_AND_ATTRIBUTES)
+    buffer = ctypes.create_string_buffer(size)
+    tokenPrivileges = ctypes.cast(buffer, PTOKEN_PRIVILEGES).contents
+    tokenPrivileges.PrivilegeCount = 1
+    tokenPrivileges.GetArray()[0].Luid = luid
+    tokenPrivileges.GetArray()[0].Attributes = SE_PRIVILEGE_ENABLED if enable else 0
+    success = AdjustTokenPrivileges(token, False, tokenPrivileges, 0, None, None)
+    if not success:
+        return False
+
+    return True
+
 @register_function
 def channel_open_stdapi_fs_file(request, response):
     fpath = packet_get_tlv(request, TLV_TYPE_FILE_PATH)['value']
@@ -1334,6 +1410,23 @@ def stdapi_sys_process_get_processes(request, response):
     else:
         return stdapi_sys_process_get_processes_via_ps(request, response)
     return ERROR_FAILURE, response
+
+@register_function_if(has_windll)
+def stdapi_sys_power_exitwindows(request, response):
+    SE_SHUTDOWN_NAME = "SeShutdownPrivilege"
+
+    flags = packet_get_tlv(request, TLV_TYPE_POWER_FLAGS)['value']
+    reason = packet_get_tlv(request, TLV_TYPE_POWER_REASON)['value']
+
+    if not enable_privilege(SE_SHUTDOWN_NAME):
+        return error_result_windows(), response
+
+    ExitWindowsEx = ctypes.windll.user32.ExitWindowsEx
+    ExitWindowsEx.argtypes = [ctypes.c_uint32, ctypes.c_ulong]
+    ExitWindowsEx.restype = ctypes.c_int8
+    if not ExitWindowsEx(flags, reason):
+        return error_result_windows(), response
+    return ERROR_SUCCESS, response
 
 @register_function_if(has_windll)
 def stdapi_sys_eventlog_open(request, response):
