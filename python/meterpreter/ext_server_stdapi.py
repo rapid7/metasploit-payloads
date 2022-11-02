@@ -366,10 +366,10 @@ if has_ctypes:
             ('HighPart', wintypes.LONG)
         ]
 
-        def __eq__(self, __o: object) -> bool:
+        def __eq__(self, __o):
             return (self.LowPart == __o.LowPart and self.HighPart == __o.HighPart)
 
-        def __ne__(self, __o: object) -> bool:
+        def __ne__(self, __o):
             return (self.LowPart != __o.LowPart or self.HighPart != __o.HighPart)
 
     class LUID_AND_ATTRIBUTES(ctypes.Structure):
@@ -381,11 +381,11 @@ if has_ctypes:
     class TOKEN_PRIVILEGES(ctypes.Structure):
         _fields_ = [
             ('PrivilegeCount', wintypes.DWORD),
-            ('Privileges',     LUID_AND_ATTRIBUTES*0),
+            ('Privileges',     LUID_AND_ATTRIBUTES * 0),
         ]
-        def GetArray(self):
-            arrayType = LUID_AND_ATTRIBUTES*self.PrivilegeCount
-            return ctypes.cast(self.Privileges, ctypes.POINTER(arrayType)).contents
+        def get_array(self):
+            array_type = LUID_AND_ATTRIBUTES * self.PrivilegeCount
+            return ctypes.cast(self.Privileges, ctypes.POINTER(array_type)).contents
 
     PTOKEN_PRIVILEGES = ctypes.POINTER(TOKEN_PRIVILEGES)
 
@@ -1034,7 +1034,7 @@ def windll_GetVersion():
 
 def enable_privilege(name, enable=True):
     TOKEN_ALL_ACCESS = 0xf01ff
-    SE_PRIVILEGE_ENABLED = (0x00000002)
+    SE_PRIVILEGE_ENABLED = 0x00000002
 
     GetCurrentProcess = ctypes.windll.kernel32.GetCurrentProcess
     GetCurrentProcess.restype = wintypes.HANDLE
@@ -1067,13 +1067,9 @@ def enable_privilege(name, enable=True):
     buffer = ctypes.create_string_buffer(size)
     tokenPrivileges = ctypes.cast(buffer, PTOKEN_PRIVILEGES).contents
     tokenPrivileges.PrivilegeCount = 1
-    tokenPrivileges.GetArray()[0].Luid = luid
-    tokenPrivileges.GetArray()[0].Attributes = SE_PRIVILEGE_ENABLED if enable else 0
-    success = AdjustTokenPrivileges(token, False, tokenPrivileges, 0, None, None)
-    if not success:
-        return False
-
-    return True
+    tokenPrivileges.get_array()[0].Luid = luid
+    tokenPrivileges.get_array()[0].Attributes = SE_PRIVILEGE_ENABLED if enable else 0
+    return AdjustTokenPrivileges(token, False, tokenPrivileges, 0, None, None)
 
 @register_function
 def channel_open_stdapi_fs_file(request, response):
