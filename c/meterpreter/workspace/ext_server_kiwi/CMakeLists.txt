@@ -64,6 +64,7 @@ file(GLOB SRC_FILES
     ${SRC_DIR}/mimikatz/mimikatz/modules/*.c
     ${SRC_DIR}/mimikatz/mimikatz/modules/crypto/*.c
     ${SRC_DIR}/mimikatz/mimikatz/modules/dpapi/*.c
+    ${SRC_DIR}/mimikatz/mimikatz/modules/misc/*.c
     ${SRC_DIR}/mimikatz/mimikatz/modules/dpapi/packages/*.c
     ${SRC_DIR}/mimikatz/mimikatz/modules/kerberos/*.c
     ${SRC_DIR}/mimikatz/mimikatz/modules/lsadump/*.c
