@@ -21,9 +21,6 @@ except ImportError:
     has_ctypes = False
     has_windll = False
 
-if has_windll:
-    from ctypes import wintypes
-
 try:
     import pty
     has_pty = True
@@ -362,8 +359,8 @@ if has_ctypes:
 
     class LUID(ctypes.Structure):
         _fields_ = [
-            ('LowPart',  wintypes.DWORD),
-            ('HighPart', wintypes.LONG)
+            ('LowPart',  ctypes.c_uint32),
+            ('HighPart', ctypes.c_long)
         ]
 
         def __eq__(self, __o):
@@ -375,12 +372,12 @@ if has_ctypes:
     class LUID_AND_ATTRIBUTES(ctypes.Structure):
         _fields_ = [
             ('Luid',       LUID),
-            ('Attributes', wintypes.DWORD)
+            ('Attributes', ctypes.c_uint32)
         ]
 
     class TOKEN_PRIVILEGES(ctypes.Structure):
         _fields_ = [
-            ('PrivilegeCount', wintypes.DWORD),
+            ('PrivilegeCount', ctypes.c_uint32),
             ('Privileges',     LUID_AND_ATTRIBUTES * 0),
         ]
         def get_array(self):
@@ -1037,21 +1034,21 @@ def enable_privilege(name, enable=True):
     SE_PRIVILEGE_ENABLED = 0x00000002
 
     GetCurrentProcess = ctypes.windll.kernel32.GetCurrentProcess
-    GetCurrentProcess.restype = wintypes.HANDLE
+    GetCurrentProcess.restype = ctypes.c_void_p
 
     OpenProcessToken = ctypes.windll.advapi32.OpenProcessToken
-    OpenProcessToken.argtypes = [wintypes.HANDLE, wintypes.DWORD, ctypes.POINTER(wintypes.HANDLE)]
-    OpenProcessToken.restype = wintypes.BOOL
+    OpenProcessToken.argtypes = [ctypes.c_void_p, ctypes.c_uint32, ctypes.POINTER(ctypes.c_void_p)]
+    OpenProcessToken.restype = ctypes.c_bool
 
     LookupPrivilegeValue = ctypes.windll.advapi32.LookupPrivilegeValueW
-    LookupPrivilegeValue.argtypes = [wintypes.LPCWSTR, wintypes.LPCWSTR, ctypes.POINTER(LUID)]
-    LookupPrivilegeValue.restype = wintypes.BOOL
+    LookupPrivilegeValue.argtypes = [ctypes.c_wchar_p, ctypes.c_wchar_p, ctypes.POINTER(LUID)]
+    LookupPrivilegeValue.restype = ctypes.c_bool
 
     AdjustTokenPrivileges = ctypes.windll.advapi32.AdjustTokenPrivileges
-    AdjustTokenPrivileges.argtypes = [wintypes.HANDLE, wintypes.BOOL, PTOKEN_PRIVILEGES, wintypes.DWORD, PTOKEN_PRIVILEGES, ctypes.POINTER(wintypes.DWORD)]
-    AdjustTokenPrivileges.restype = wintypes.BOOL
+    AdjustTokenPrivileges.argtypes = [ctypes.c_void_p, ctypes.c_bool, PTOKEN_PRIVILEGES, ctypes.c_uint32, PTOKEN_PRIVILEGES, ctypes.POINTER(ctypes.c_uint32)]
+    AdjustTokenPrivileges.restype = ctypes.c_bool
 
-    token = wintypes.HANDLE()
+    token = ctypes.c_void_p()
     success = OpenProcessToken(GetCurrentProcess(), TOKEN_ALL_ACCESS, token)
     if not success:
         return False
