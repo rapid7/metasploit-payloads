@@ -189,8 +189,7 @@ SavedToken *get_token_list(DWORD *num_tokens_enum, TOKEN_PRIVS *token_privs)
 				{
 					hObject = NULL;
 
-					if (DuplicateHandle(process, (HANDLE)(DWORD_PTR)((i + 1) * 4),
-						GetCurrentProcess(), &hObject, MAXIMUM_ALLOWED, FALSE, 0x02) != FALSE)
+					if (DuplicateHandle(process, (HANDLE)(DWORD_PTR)((i + 1) * 4), GetCurrentProcess(), &hObject, MAXIMUM_ALLOWED, FALSE, 0x02))
 					{
 						LPWSTR lpwsType = NULL;
 						lpwsType = GetObjectInfo(hObject, ObjectTypeInformation);
@@ -273,7 +272,13 @@ SavedToken *get_token_list(DWORD *num_tokens_enum, TOKEN_PRIVS *token_privs)
 
 									(*num_tokens_enum)++;
 								}
+								else {
+									CloseHandle(hObject);
+								}
 								CloseHandle(hObject2);
+							}
+							else {
+								CloseHandle(hObject);
 							}
 							free(lpwsType);
 						}
@@ -285,76 +290,87 @@ SavedToken *get_token_list(DWORD *num_tokens_enum, TOKEN_PRIVS *token_privs)
 
 				// Also process primary
 				// if has impersonate privs, only needs read access
-				if (OpenProcessToken(process, MAXIMUM_ALLOWED, &hObject) && ImpersonateLoggedOnUser(hObject))
+				if (OpenProcessToken(process, MAXIMUM_ALLOWED, &hObject))
 				{
-					// ImpersonateLoggedOnUser() always returns true. Need to check whether impersonated token kept impersonate status - failure degrades to identification
-					// also revert to self after getting new token context
-					// only process if it was impersonation or higher
-					if (OpenThreadToken(GetCurrentThread(), MAXIMUM_ALLOWED, TRUE, &hObject2))
-					{
-						RevertToSelf();
-						if (is_impersonation_token(hObject2))
+					if (ImpersonateLoggedOnUser(hObject)) {
+						// ImpersonateLoggedOnUser() always returns true. Need to check whether impersonated token kept impersonate status - failure degrades to identification
+						// also revert to self after getting new token context
+						// only process if it was impersonation or higher
+						if (OpenThreadToken(GetCurrentThread(), MAXIMUM_ALLOWED, TRUE, &hObject2))
 						{
-							token_list[*num_tokens_enum].token = hObject;
-							get_domain_username_from_token(hObject, token_list[*num_tokens_enum].username);
-							(*num_tokens_enum)++;
-
-							if (GetTokenInformation(hObject, TokenPrivileges, TokenPrivilegesInfo, BUF_SIZE, &returned_privileges_length))
+							RevertToSelf();
+							if (is_impersonation_token(hObject2))
 							{
-								for (i = 0; i < ((TOKEN_PRIVILEGES*)TokenPrivilegesInfo)->PrivilegeCount; i++)
+								token_list[*num_tokens_enum].token = hObject;
+								get_domain_username_from_token(hObject, token_list[*num_tokens_enum].username);
+								(*num_tokens_enum)++;
+
+								if (GetTokenInformation(hObject, TokenPrivileges, TokenPrivilegesInfo, BUF_SIZE, &returned_privileges_length))
 								{
-									returned_name_length = BUF_SIZE;
-									LookupPrivilegeNameW(NULL, &(((TOKEN_PRIVILEGES*)TokenPrivilegesInfo)->Privileges[i].Luid), privilege_name, &returned_name_length);
-									if (wcscmp(privilege_name, L"SeAssignPrimaryTokenPrivilege") == 0)
+									for (i = 0; i < ((TOKEN_PRIVILEGES*)TokenPrivilegesInfo)->PrivilegeCount; i++)
 									{
-										token_privs->SE_ASSIGNPRIMARYTOKEN_PRIVILEGE = TRUE;
-									}
-									else if (wcscmp(privilege_name, L"SeCreateTokenPrivilege") == 0)
-									{
-										token_privs->SE_CREATE_TOKEN_PRIVILEGE = TRUE;
-									}
-									else if (wcscmp(privilege_name, L"SeTcbPrivilege") == 0)
-									{
-										token_privs->SE_TCB_PRIVILEGE = TRUE;
-									}
-									else if (wcscmp(privilege_name, L"SeTakeOwnershipPrivilege") == 0)
-									{
-										token_privs->SE_TAKE_OWNERSHIP_PRIVILEGE = TRUE;
-									}
-									else if (wcscmp(privilege_name, L"SeBackupPrivilege") == 0)
-									{
-										token_privs->SE_BACKUP_PRIVILEGE = TRUE;
-									}
-									else if (wcscmp(privilege_name, L"SeRestorePrivilege") == 0)
-									{
-										token_privs->SE_RESTORE_PRIVILEGE = TRUE;
-									}
-									else if (wcscmp(privilege_name, L"SeDebugPrivilege") == 0)
-									{
-										token_privs->SE_DEBUG_PRIVILEGE = TRUE;
-									}
-									else if (wcscmp(privilege_name, L"SeImpersonatePrivilege") == 0)
-									{
-										token_privs->SE_IMPERSONATE_PRIVILEGE = TRUE;
-									}
-									else if (wcscmp(privilege_name, L"SeRelabelPrivilege") == 0)
-									{
-										token_privs->SE_RELABEL_PRIVILEGE = TRUE;
-									}
-									else if (wcscmp(privilege_name, L"SeLoadDriverPrivilege") == 0)
-									{
-										token_privs->SE_LOAD_DRIVER_PRIVILEGE = TRUE;
+										returned_name_length = BUF_SIZE;
+										LookupPrivilegeNameW(NULL, &(((TOKEN_PRIVILEGES*)TokenPrivilegesInfo)->Privileges[i].Luid), privilege_name, &returned_name_length);
+										if (wcscmp(privilege_name, L"SeAssignPrimaryTokenPrivilege") == 0)
+										{
+											token_privs->SE_ASSIGNPRIMARYTOKEN_PRIVILEGE = TRUE;
+										}
+										else if (wcscmp(privilege_name, L"SeCreateTokenPrivilege") == 0)
+										{
+											token_privs->SE_CREATE_TOKEN_PRIVILEGE = TRUE;
+										}
+										else if (wcscmp(privilege_name, L"SeTcbPrivilege") == 0)
+										{
+											token_privs->SE_TCB_PRIVILEGE = TRUE;
+										}
+										else if (wcscmp(privilege_name, L"SeTakeOwnershipPrivilege") == 0)
+										{
+											token_privs->SE_TAKE_OWNERSHIP_PRIVILEGE = TRUE;
+										}
+										else if (wcscmp(privilege_name, L"SeBackupPrivilege") == 0)
+										{
+											token_privs->SE_BACKUP_PRIVILEGE = TRUE;
+										}
+										else if (wcscmp(privilege_name, L"SeRestorePrivilege") == 0)
+										{
+											token_privs->SE_RESTORE_PRIVILEGE = TRUE;
+										}
+										else if (wcscmp(privilege_name, L"SeDebugPrivilege") == 0)
+										{
+											token_privs->SE_DEBUG_PRIVILEGE = TRUE;
+										}
+										else if (wcscmp(privilege_name, L"SeImpersonatePrivilege") == 0)
+										{
+											token_privs->SE_IMPERSONATE_PRIVILEGE = TRUE;
+										}
+										else if (wcscmp(privilege_name, L"SeRelabelPrivilege") == 0)
+										{
+											token_privs->SE_RELABEL_PRIVILEGE = TRUE;
+										}
+										else if (wcscmp(privilege_name, L"SeLoadDriverPrivilege") == 0)
+										{
+											token_privs->SE_LOAD_DRIVER_PRIVILEGE = TRUE;
+										}
 									}
 								}
 							}
+							else {
+								CloseHandle(hObject);
+							}
+							CloseHandle(hObject2);
 						}
-
-						CloseHandle(hObject2);
+						else {
+							CloseHandle(hObject);
+						}
+					}
+					else {
+						dprintf("[INCOGNITO] Failed next level impersonation, ImpersonateLoggedOnUser failed with %u (%x)", GetLastError(), GetLastError());
+						CloseHandle(hObject);
 					}
 				}
 				else
 				{
-					dprintf("[INCOGNITO] Failed next level impersonation with %u (%x)", GetLastError(), GetLastError());
+					dprintf("[INCOGNITO] Failed next level impersonation, OpenProcessToken failed with %u (%x)", GetLastError(), GetLastError());
 				}
 				CloseHandle(process);
 			}
