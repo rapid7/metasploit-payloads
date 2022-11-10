@@ -211,6 +211,9 @@ SavedToken *get_token_list(DWORD *num_tokens_enum, TOKEN_PRIVS *token_privs)
 										token_list = (SavedToken*)realloc(token_list, token_list_size * sizeof(SavedToken));
 										if (!token_list)
 										{
+											CloseHandle(hObject2);
+											CloseHandle(hObject);
+											CloseHandle(process);
 											goto cleanup;
 										}
 									}
