@@ -1427,7 +1427,10 @@ def stdapi_sys_power_exitwindows(request, response):
 @register_function_if(has_windll)
 def stdapi_sys_eventlog_open(request, response):
     source_name = packet_get_tlv(request, TLV_TYPE_EVENT_SOURCENAME)['value']
-    handle = ctypes.windll.advapi32.OpenEventLogW(None, source_name)
+    OpenEventLogA = ctypes.windll.advapi32.OpenEventLogA
+    OpenEventLogA.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
+    OpenEventLogA.restype = ctypes.c_void_p
+    handle = OpenEventLogA(None, bytes(source_name, 'UTF-8'))
     if not handle:
         return error_result_windows(), response
     response += tlv_pack(TLV_TYPE_EVENT_HANDLE, handle)
@@ -1438,13 +1441,15 @@ def stdapi_sys_eventlog_read(request, response):
     handle = packet_get_tlv(request, TLV_TYPE_EVENT_HANDLE)['value']
     flags = packet_get_tlv(request, TLV_TYPE_EVENT_READFLAGS)['value']
     offset = packet_get_tlv(request, TLV_TYPE_EVENT_RECORDOFFSET)['value']
-    adv32 = ctypes.windll.advapi32
-    bytes_read = ctypes.c_ulong(0)
-    bytes_needed = ctypes.c_ulong(0)
-    if adv32.ReadEventLogW(handle, flags, offset, ctypes.byref(bytes_read), 0, ctypes.byref(bytes_read), ctypes.byref(bytes_needed)):
+    bytes_read = ctypes.c_uint32(0)
+    bytes_needed = ctypes.c_uint32(0)
+    ReadEventLogA = ctypes.windll.advapi32.ReadEventLogA
+    ReadEventLogA.argtypes = [ctypes.c_void_p, ctypes.c_uint32, ctypes.c_uint32, ctypes.c_void_p, ctypes.c_uint32, ctypes.POINTER(ctypes.c_uint32), ctypes.POINTER(ctypes.c_uint32)]
+    ReadEventLogA.restype = ctypes.c_bool
+    if ReadEventLogA(handle, flags, offset, ctypes.byref(bytes_read), 0, ctypes.byref(bytes_read), ctypes.byref(bytes_needed)):
         return error_result_windows(), response
-    buf = ctypes.create_unicode_buffer(bytes_needed.value)
-    if not adv32.ReadEventLogW(handle, flags, offset, buf, bytes_needed, ctypes.byref(bytes_read), ctypes.byref(bytes_needed)):
+    buf = (ctypes.c_uint8 * bytes_needed.value)()
+    if not ReadEventLogA(handle, flags, offset, buf, bytes_needed, ctypes.byref(bytes_read), ctypes.byref(bytes_needed)):
         return error_result_windows(), response
     record = ctstruct_unpack(EVENTLOGRECORD, buf)
     response += tlv_pack(TLV_TYPE_EVENT_RECORDNUMBER, record.RecordNumber)
@@ -1453,8 +1458,8 @@ def stdapi_sys_eventlog_read(request, response):
     response += tlv_pack(TLV_TYPE_EVENT_ID, record.EventID)
     response += tlv_pack(TLV_TYPE_EVENT_TYPE, record.EventType)
     response += tlv_pack(TLV_TYPE_EVENT_CATEGORY, record.EventCategory)
-    response += tlv_pack(TLV_TYPE_EVENT_DATA, buf.raw[record.DataOffset:record.DataOffset + record.DataLength])
-    event_strings = buf.raw[record.StringOffset:].split('\x00', record.NumStrings)
+    response += tlv_pack(TLV_TYPE_EVENT_DATA, ctarray_to_bytes(buf[record.DataOffset:record.DataOffset + record.DataLength]))
+    event_strings = ctarray_to_bytes(buf[record.StringOffset:]).split(NULL_BYTE, record.NumStrings - 1)
     for event_string in event_strings:
         response += tlv_pack(TLV_TYPE_EVENT_STRING, event_string)
     return ERROR_SUCCESS, response
@@ -1462,14 +1467,20 @@ def stdapi_sys_eventlog_read(request, response):
 @register_function_if(has_windll)
 def stdapi_sys_eventlog_clear(request, response):
     handle = packet_get_tlv(request, TLV_TYPE_EVENT_HANDLE)['value']
-    if not ctypes.windll.advapi32.ClearEventLogW(handle, None):
+    ClearEventLogA = ctypes.windll.advapi32.ClearEventLogA
+    ClearEventLogA.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+    ClearEventLogA.restype = ctypes.c_bool
+    if not ClearEventLogA(handle, None):
         return error_result_windows(), response
     return ERROR_SUCCESS, response
 
 @register_function_if(has_windll)
 def stdapi_sys_eventlog_numrecords(request, response):
     handle = packet_get_tlv(request, TLV_TYPE_EVENT_HANDLE)['value']
-    total = ctypes.c_ulong(0)
+    total = ctypes.c_uint32(0)
+    GetNumberOfEventLogRecords = ctypes.windll.advapi32.GetNumberOfEventLogRecords
+    GetNumberOfEventLogRecords.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint32)]
+    GetNumberOfEventLogRecords.restype = ctypes.c_bool
     if not ctypes.windll.advapi32.GetNumberOfEventLogRecords(handle, ctypes.byref(total)):
         return error_result_windows(), response
     response += tlv_pack(TLV_TYPE_EVENT_NUMRECORDS, total.value)
@@ -1478,16 +1489,22 @@ def stdapi_sys_eventlog_numrecords(request, response):
 @register_function_if(has_windll)
 def stdapi_sys_eventlog_oldest(request, response):
     handle = packet_get_tlv(request, TLV_TYPE_EVENT_HANDLE)['value']
-    oldest = ctypes.c_ulong(0)
-    if not ctypes.windll.advapi32.GetOldestEventLogRecordW(handle, ctypes.byref(oldest)):
+    GetOldestEventLogRecord = ctypes.windll.advapi32.GetOldestEventLogRecord
+    GetOldestEventLogRecord.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint32)]
+    GetOldestEventLogRecord.restype = ctypes.c_bool
+    oldest = ctypes.c_uint32(0)
+    if not GetOldestEventLogRecord(handle, ctypes.byref(oldest)):
         return error_result_windows(), response
-    response += tlv_pack(TLV_TYPE_EVENT_RECORDNUMBER, oldest)
+    response += tlv_pack(TLV_TYPE_EVENT_RECORDNUMBER, oldest.value)
     return ERROR_SUCCESS, response
 
 @register_function_if(has_windll)
 def stdapi_sys_eventlog_close(request, response):
     handle = packet_get_tlv(request, TLV_TYPE_EVENT_HANDLE)['value']
-    if not ctypes.windll.advapi32.CloseEventLogW(handle):
+    CloseEventLog = ctypes.windll.advapi32.CloseEventLog
+    CloseEventLog.argtypes = [ctypes.c_void_p]
+    CloseEventLog.restype = ctypes.c_bool
+    if not CloseEventLog(handle):
         return error_result_windows(), response
     return ERROR_SUCCESS, response
 
