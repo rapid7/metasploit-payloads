@@ -1340,7 +1340,9 @@ def stdapi_sys_config_sysinfo(request, response):
 def stdapi_sys_process_attach(request, response):
     pid = packet_get_tlv(request, TLV_TYPE_PID)['value']
     if not pid:
-        handle = ctypes.windll.kernel32.GetCurrentProcess()
+        GetCurrentProcess = ctypes.windll.kernel32.GetCurrentProcess
+        GetCurrentProcess.restype = ctypes.c_void_p
+        handle = GetCurrentProcess()
     else:
         inherit = packet_get_tlv(request, TLV_TYPE_INHERIT)['value']
         permissions = packet_get_tlv(request, TLV_TYPE_PROCESS_PERMS)['value']
