@@ -1459,7 +1459,8 @@ def stdapi_sys_eventlog_read(request, response):
     response += tlv_pack(TLV_TYPE_EVENT_TYPE, record.EventType)
     response += tlv_pack(TLV_TYPE_EVENT_CATEGORY, record.EventCategory)
     response += tlv_pack(TLV_TYPE_EVENT_DATA, ctarray_to_bytes(buf[record.DataOffset:record.DataOffset + record.DataLength]))
-    event_strings = ctarray_to_bytes(buf[record.StringOffset:]).split(NULL_BYTE, record.NumStrings - 1)
+    event_string_buf = (ctypes.c_uint8 * len(buf[record.StringOffset:]))(*buf[record.StringOffset:])
+    event_strings = ctarray_to_bytes(event_string_buf).split(NULL_BYTE, record.NumStrings)[:record.NumStrings]
     for event_string in event_strings:
         response += tlv_pack(TLV_TYPE_EVENT_STRING, event_string)
     return ERROR_SUCCESS, response
