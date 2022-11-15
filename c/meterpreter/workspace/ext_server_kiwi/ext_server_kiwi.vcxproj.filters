@@ -323,6 +323,10 @@
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_ms-efsr_c.c">
       <Filter>common modules\rpc</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\source\logging\logging.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\misc\kuhl_m_misc_citrix.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\misc\kuhl_m_misc_djoin.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_ms-odj.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\source\extensions\kiwi\main.h" />
@@ -666,6 +670,9 @@
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_ms-efsr.h">
       <Filter>common modules\rpc</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\misc\kuhl_m_misc_citrix.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\misc\kuhl_m_misc_djoin.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_ms-odj.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="local modules">

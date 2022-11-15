@@ -546,6 +546,8 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_ts.c" />
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_vault.c" />
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\lsadump\kuhl_m_lsadump_dc.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\misc\kuhl_m_misc_citrix.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\misc\kuhl_m_misc_djoin.c" />
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\ngc\kuhl_m_ngc.c" />
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\sekurlsa\crypto\kuhl_m_sekurlsa_nt5.c" />
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\sekurlsa\crypto\kuhl_m_sekurlsa_nt6.c" />
@@ -605,6 +607,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_ms-drsr_c.c" />
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_ms-efsr_c.c" />
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_ms-nrpc_c.c" />
+    <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_ms-odj.c" />
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_ms-pac.c" />
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_ms-par_c.c" />
     <ClCompile Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_ms-rprn.c" />
@@ -669,6 +672,8 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_ts.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\kuhl_m_vault.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\lsadump\kuhl_m_lsadump_dc.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\misc\kuhl_m_misc_citrix.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\misc\kuhl_m_misc_djoin.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\ngc\kuhl_m_ngc.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\sekurlsa\crypto\kuhl_m_sekurlsa_nt5.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\mimikatz\modules\sekurlsa\crypto\kuhl_m_sekurlsa_nt6.h" />
@@ -734,6 +739,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_ms-drsr.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_ms-efsr.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_ms-nrpc.h" />
+    <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_ms-odj.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_ms-pac.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_ms-par.h" />
     <ClInclude Include="..\..\source\extensions\kiwi\mimikatz\modules\rpc\kull_m_rpc_ms-rprn.h" />
