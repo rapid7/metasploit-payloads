@@ -386,6 +386,17 @@ if has_ctypes:
 
     PTOKEN_PRIVILEGES = ctypes.POINTER(TOKEN_PRIVILEGES)
 
+    MAXLEN_PHYSADDR = 8
+
+    class MIB_IPNETROW(ctypes.Structure):
+        _fields_ = [
+            ('dwIndex', ctypes.c_uint32),
+            ('dwPhysAddrLen', ctypes.c_uint32),
+            ('bPhysAddr', ctypes.c_byte * MAXLEN_PHYSADDR),
+            ('dwAddr', ctypes.c_uint32),
+            ('dwType', ctypes.c_uint32)
+        ]
+
 
     #
     # Linux Structures
@@ -522,6 +533,7 @@ TLV_TYPE_NETMASK               = TLV_META_TYPE_RAW     | 1421
 TLV_TYPE_GATEWAY               = TLV_META_TYPE_RAW     | 1422
 TLV_TYPE_NETWORK_ROUTE         = TLV_META_TYPE_GROUP   | 1423
 TLV_TYPE_IP_PREFIX             = TLV_META_TYPE_UINT    | 1424
+TLV_TYPE_ARP_ENTRY             = TLV_META_TYPE_GROUP   | 1425
 
 TLV_TYPE_IP                    = TLV_META_TYPE_RAW     | 1430
 TLV_TYPE_MAC_ADDRESS           = TLV_META_TYPE_RAW     | 1431
@@ -705,6 +717,10 @@ PROCESS_ARCH_IA64 = 3
 ERROR_SUCCESS = 0
 # not defined in original C implementation
 ERROR_FAILURE = 1
+
+ERROR_INSUFFICIENT_BUFFER = 0x0000007a
+ERROR_NOT_SUPPORTED = 0x00000032
+ERROR_NO_DATA = 0x000000e8
 
 # Special return value to match up with Windows error codes for network
 # errors.
@@ -1710,6 +1726,49 @@ def stdapi_fs_mount_show(request, response):
             mount += tlv_pack(TLV_TYPE_MOUNT_SPACE_TOTAL, total_bytes.value)
             mount += tlv_pack(TLV_TYPE_MOUNT_SPACE_FREE, total_free_bytes.value)
         response += tlv_pack(TLV_TYPE_MOUNT_GROUP, mount)
+    return ERROR_SUCCESS, response
+
+@register_function_if(has_windll)
+def stdapi_net_config_get_arp_table(request, response):
+    MIB_IPNET_TYPE_DYNAMIC = 3
+    MIB_IPNET_TYPE_STATIC  = 4
+
+    GetIpNetTable = ctypes.windll.iphlpapi.GetIpNetTable
+    GetIpNetTable.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_ulong), ctypes.c_long]
+    GetIpNetTable.restype = ctypes.c_ulong
+
+    ipnet_table = None
+    size = ctypes.c_ulong(0)
+    result = GetIpNetTable(ipnet_table, size, False)
+
+    if result == ERROR_INSUFFICIENT_BUFFER:
+        ipnet_table = ctypes.cast(ctypes.create_string_buffer(b'', size.value), ctypes.c_void_p)
+
+    elif result != ERROR_SUCCESS and result != ERROR_NO_DATA:
+        return error_result_windows(result), response
+
+    if not ipnet_table:
+        return error_result_windows(), response
+
+    result = GetIpNetTable(ipnet_table, size, False)
+    if result != ERROR_SUCCESS:
+        return error_result_windows(result), response
+
+    class MIB_IPNETTABLE(ctypes.Structure):
+        _fields_ = [
+            ('dwNumEntries', ctypes.c_uint32),
+            ('table', MIB_IPNETROW * ctypes.cast(ipnet_table.value, ctypes.POINTER(ctypes.c_ulong)).contents.value)
+        ]
+    
+    ipnet_table = ctypes.cast(ipnet_table, ctypes.POINTER(MIB_IPNETTABLE))
+    for ipnet_row in ipnet_table.contents.table:
+        if (ipnet_row.dwType != MIB_IPNET_TYPE_DYNAMIC and ipnet_row.dwType != MIB_IPNET_TYPE_STATIC):
+            continue
+        arp_tlv  = bytes()
+        arp_tlv += tlv_pack(TLV_TYPE_IP, struct.pack('<L', ipnet_row.dwAddr))
+        arp_tlv += tlv_pack(TLV_TYPE_MAC_ADDRESS, bytes(ipnet_row.bPhysAddr)[:ipnet_row.dwPhysAddrLen])
+        arp_tlv += tlv_pack(TLV_TYPE_MAC_NAME, str(ipnet_row.dwIndex))
+        response += tlv_pack(TLV_TYPE_ARP_ENTRY, arp_tlv)
     return ERROR_SUCCESS, response
 
 @register_function
