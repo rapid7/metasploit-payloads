@@ -669,7 +669,11 @@ TLV_TYPE_TERMINAL_COLUMNS      = TLV_META_TYPE_UINT    | 2601
 ##
 TLV_TYPE_IDLE_TIME             = TLV_META_TYPE_UINT    | 3000
 TLV_TYPE_KEYS_DUMP             = TLV_META_TYPE_STRING  | 3001
-TLV_TYPE_DESKTOP               = TLV_META_TYPE_STRING  | 3002
+
+TLV_TYPE_DESKTOP               = TLV_META_TYPE_GROUP   | 3004
+TLV_TYPE_DESKTOP_SESSION       = TLV_META_TYPE_UINT    | 3005
+TLV_TYPE_DESKTOP_STATION       = TLV_META_TYPE_STRING  | 3006
+TLV_TYPE_DESKTOP_NAME          = TLV_META_TYPE_STRING  | 3007
 
 ##
 # Event Log
@@ -743,6 +747,9 @@ VER_NT_SERVER                     = 0x0003
 VER_PLATFORM_WIN32s               = 0x0000
 VER_PLATFORM_WIN32_WINDOWS        = 0x0001
 VER_PLATFORM_WIN32_NT             = 0x0002
+
+# Windows Access Controls
+MAXIMUM_ALLOWED                   = 0x02000000
 
 WIN_AF_INET  = 2
 WIN_AF_INET6 = 23
@@ -2753,6 +2760,106 @@ def stdapi_ui_get_idle_time(request, response):
     GetTickCount.restype = ctypes.c_uint32
     idle_time = (GetTickCount() - info.dwTime) / 1000
     response += tlv_pack(TLV_TYPE_IDLE_TIME, idle_time)
+    return ERROR_SUCCESS, response
+
+@register_function_if(has_windll)
+def stdapi_ui_desktop_enum(request, response):
+    global ui_desktop_enum_RESPONSE
+    ui_desktop_enum_RESPONSE = response
+
+    class EnumDesktops_Param(ctypes.Structure):
+        _fields_ = [
+            ('sessionId', ctypes.c_ulong),
+            ('cpStationName', ctypes.c_char_p)
+        ]
+
+    EnumDesktopCallbackPrototype = ctypes.WINFUNCTYPE(ctypes.c_long, ctypes.c_char_p, ctypes.POINTER(EnumDesktops_Param))
+    EnumDesktopsA = ctypes.windll.user32.EnumDesktopsA
+    EnumDesktopsA.argtypes = [ctypes.c_void_p, EnumDesktopCallbackPrototype, ctypes.POINTER(EnumDesktops_Param)]
+    EnumDesktopsA.restype = ctypes.c_long
+
+    WindowStationCallbackPrototype = ctypes.WINFUNCTYPE(ctypes.c_long, ctypes.c_char_p, ctypes.c_ulong)
+    EnumWindowStationsA = ctypes.windll.user32.EnumWindowStationsA
+    EnumWindowStationsA.argtypes = [WindowStationCallbackPrototype, ctypes.c_ulong]
+    EnumWindowStationsA.restype = ctypes.c_long
+
+    OpenWindowStationA = ctypes.windll.user32.OpenWindowStationA
+    OpenWindowStationA.argtypes = [ctypes.c_char_p, ctypes.c_long, ctypes.c_ulong]
+    OpenWindowStationA.restype = ctypes.c_void_p
+
+    CloseWindowStation = ctypes.windll.user32.CloseWindowStation
+    CloseWindowStation.argtypes = [ctypes.c_void_p]
+    CloseWindowStation.restype = ctypes.c_long
+
+    GetCurrentProcessId = ctypes.windll.kernel32.GetCurrentProcessId
+    GetCurrentProcessId.restype = ctypes.c_ulong
+
+    GetProcAddress = ctypes.windll.kernel32.GetProcAddress
+    GetProcAddress.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+    GetProcAddress.restype = ctypes.c_void_p
+
+    ProcessIdToSessionIdPrototype = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_ulong, ctypes.POINTER(ctypes.c_ulong))
+
+    def get_session_id(pid):
+        pProcessIdToSessionId = None
+        dwSessionId = ctypes.c_ulong(0)
+
+        hKernel = ctypes.WinDLL('kernel32.dll')
+        if hKernel:
+            pProcessIdToSessionId = GetProcAddress(hKernel._handle, ctypes.c_char_p(b"ProcessIdToSessionId"))
+
+        if not pProcessIdToSessionId:
+            ctypes.windll.kernel32.FreeLibrary(None, handle=hKernel)
+            return dwSessionId
+
+        pProcessIdToSessionId = ProcessIdToSessionIdPrototype(pProcessIdToSessionId)
+        if not pProcessIdToSessionId(ctypes.c_ulong(pid), ctypes.byref(dwSessionId)):
+            dwSessionId = ctypes.c_ulong(-1)
+
+        ctypes.windll.kernel32.FreeLibrary(None, handle=hKernel)
+        return dwSessionId
+
+    @EnumDesktopCallbackPrototype
+    def desktop_enumdesktops_callback(lpszDesktop, lParam):
+        if not lParam or not lpszDesktop:
+            return True
+
+        if not lParam.contents.sessionId or not lParam.contents.cpStationName:
+            return True
+
+        entry  = bytes()
+        entry += tlv_pack(TLV_TYPE_DESKTOP_SESSION, lParam.contents.sessionId)
+        entry += tlv_pack(TLV_TYPE_DESKTOP_STATION, lParam.contents.cpStationName.decode())
+        entry += tlv_pack(TLV_TYPE_DESKTOP_NAME, lpszDesktop.decode())
+
+        global ui_desktop_enum_RESPONSE
+        ui_desktop_enum_RESPONSE += tlv_pack(TLV_TYPE_DESKTOP, entry)
+
+        return True
+
+    @WindowStationCallbackPrototype
+    def desktop_enumstations_callback(lpszWindowStation, lParam):
+        hWindowStation = OpenWindowStationA(lpszWindowStation, False, MAXIMUM_ALLOWED)
+        if not hWindowStation:
+            return False
+
+        param = EnumDesktops_Param()
+        param.sessionId = get_session_id(GetCurrentProcessId())
+        param.cpStationName = lpszWindowStation
+        EnumDesktopsA(hWindowStation, desktop_enumdesktops_callback, ctypes.pointer(param))
+
+        if hWindowStation:
+            CloseWindowStation(hWindowStation)
+
+        return True
+
+    success = EnumWindowStationsA(desktop_enumstations_callback, 0)
+    if not success:
+        return error_result_windows(), response
+
+    response = ui_desktop_enum_RESPONSE
+    del ui_desktop_enum_RESPONSE
+
     return ERROR_SUCCESS, response
 
 @register_function_if(has_termios and has_fcntl)
