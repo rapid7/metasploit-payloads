@@ -1,4 +1,5 @@
 import fnmatch
+import functools
 import getpass
 import os
 import platform
@@ -2765,23 +2766,15 @@ def stdapi_ui_get_idle_time(request, response):
 @register_function_if(has_windll)
 def stdapi_ui_desktop_enum(request, response):
     
-    from functools import partial
-
     response_parts = []
-    class EnumDesktops_Param(ctypes.Structure):
-        _fields_ = [
-            ('sessionId', ctypes.c_ulong),
-            ('cpStationName', ctypes.c_char_p)
-        ]
-    
     if ctypes.sizeof(ctypes.c_long) == ctypes.sizeof(ctypes.c_void_p):
         LPARAM = ctypes.c_long
     elif ctypes.sizeof(ctypes.c_longlong) == ctypes.sizeof(ctypes.c_void_p):
         LPARAM = ctypes.c_longlong
 
-    DESKTOPENUMPROCA = ctypes.WINFUNCTYPE(ctypes.c_long, ctypes.c_char_p, ctypes.POINTER(EnumDesktops_Param))
+    DESKTOPENUMPROCA = ctypes.WINFUNCTYPE(ctypes.c_long, ctypes.c_char_p, LPARAM)
     EnumDesktopsA = ctypes.windll.user32.EnumDesktopsA
-    EnumDesktopsA.argtypes = [ctypes.c_void_p, DESKTOPENUMPROCA, ctypes.POINTER(EnumDesktops_Param)]
+    EnumDesktopsA.argtypes = [ctypes.c_void_p, DESKTOPENUMPROCA, LPARAM]
     EnumDesktopsA.restype = ctypes.c_long
 
     WINSTAENUMPROCA = ctypes.WINFUNCTYPE(ctypes.c_long, ctypes.c_char_p, LPARAM)
@@ -2817,16 +2810,13 @@ def stdapi_ui_desktop_enum(request, response):
         return dwSessionId
 
 
-    def desktop_enumdesktops_callback(response_parts, lpszDesktop, lParam):
-        if not lParam or not lpszDesktop:
-            return True
-
-        if not lParam.contents.sessionId or not lParam.contents.cpStationName:
+    def desktop_enumdesktops_callback(response_parts, session_id, station_name, lpszDesktop, lParam):
+        if not station_name or not lpszDesktop:
             return True
 
         entry  = bytes()
-        entry += tlv_pack(TLV_TYPE_DESKTOP_SESSION, lParam.contents.sessionId)
-        entry += tlv_pack(TLV_TYPE_DESKTOP_STATION, lParam.contents.cpStationName.decode())
+        entry += tlv_pack(TLV_TYPE_DESKTOP_SESSION, session_id)
+        entry += tlv_pack(TLV_TYPE_DESKTOP_STATION, station_name)
         entry += tlv_pack(TLV_TYPE_DESKTOP_NAME, lpszDesktop.decode())
 
         response_parts.append(tlv_pack(TLV_TYPE_DESKTOP, entry))
@@ -2839,13 +2829,12 @@ def stdapi_ui_desktop_enum(request, response):
         if not hWindowStation:
             return True
 
-        callback = partial(desktop_enumdesktops_callback, response_parts)
+        callback = functools.partial(desktop_enumdesktops_callback, response_parts)
+        session_id = get_session_id(GetCurrentProcessId()).value
+        station_name = lpszWindowStation.decode()
+        callback = functools.partial(desktop_enumdesktops_callback, response_parts, session_id, station_name)
         callback = DESKTOPENUMPROCA(callback)
-
-        param = EnumDesktops_Param()
-        param.sessionId = get_session_id(GetCurrentProcessId())
-        param.cpStationName = lpszWindowStation
-        EnumDesktopsA(hWindowStation, callback, ctypes.pointer(param))
+        EnumDesktopsA(hWindowStation, callback, 0)
 
         if hWindowStation:
             CloseWindowStation(hWindowStation)
