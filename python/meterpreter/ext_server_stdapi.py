@@ -2764,27 +2764,33 @@ def stdapi_ui_get_idle_time(request, response):
 
 @register_function_if(has_windll)
 def stdapi_ui_desktop_enum(request, response):
-    global ui_desktop_enum_RESPONSE
-    ui_desktop_enum_RESPONSE = response
+    
+    from functools import partial
 
+    response_parts = []
     class EnumDesktops_Param(ctypes.Structure):
         _fields_ = [
             ('sessionId', ctypes.c_ulong),
             ('cpStationName', ctypes.c_char_p)
         ]
+    
+    if ctypes.sizeof(ctypes.c_long) == ctypes.sizeof(ctypes.c_void_p):
+        LPARAM = ctypes.c_long
+    elif ctypes.sizeof(ctypes.c_longlong) == ctypes.sizeof(ctypes.c_void_p):
+        LPARAM = ctypes.c_longlong
 
-    EnumDesktopCallbackPrototype = ctypes.WINFUNCTYPE(ctypes.c_long, ctypes.c_char_p, ctypes.POINTER(EnumDesktops_Param))
+    DESKTOPENUMPROCA = ctypes.WINFUNCTYPE(ctypes.c_long, ctypes.c_char_p, ctypes.POINTER(EnumDesktops_Param))
     EnumDesktopsA = ctypes.windll.user32.EnumDesktopsA
-    EnumDesktopsA.argtypes = [ctypes.c_void_p, EnumDesktopCallbackPrototype, ctypes.POINTER(EnumDesktops_Param)]
+    EnumDesktopsA.argtypes = [ctypes.c_void_p, DESKTOPENUMPROCA, ctypes.POINTER(EnumDesktops_Param)]
     EnumDesktopsA.restype = ctypes.c_long
 
-    WindowStationCallbackPrototype = ctypes.WINFUNCTYPE(ctypes.c_long, ctypes.c_char_p, ctypes.c_ulong)
+    WINSTAENUMPROCA = ctypes.WINFUNCTYPE(ctypes.c_long, ctypes.c_char_p, LPARAM)
     EnumWindowStationsA = ctypes.windll.user32.EnumWindowStationsA
-    EnumWindowStationsA.argtypes = [WindowStationCallbackPrototype, ctypes.c_ulong]
+    EnumWindowStationsA.argtypes = [WINSTAENUMPROCA, LPARAM]
     EnumWindowStationsA.restype = ctypes.c_long
 
     OpenWindowStationA = ctypes.windll.user32.OpenWindowStationA
-    OpenWindowStationA.argtypes = [ctypes.c_char_p, ctypes.c_long, ctypes.c_ulong]
+    OpenWindowStationA.argtypes = [ctypes.c_char_p, ctypes.c_long, ctypes.c_bool]
     OpenWindowStationA.restype = ctypes.c_void_p
 
     CloseWindowStation = ctypes.windll.user32.CloseWindowStation
@@ -2798,29 +2804,20 @@ def stdapi_ui_desktop_enum(request, response):
     GetProcAddress.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
     GetProcAddress.restype = ctypes.c_void_p
 
-    ProcessIdToSessionIdPrototype = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_ulong, ctypes.POINTER(ctypes.c_ulong))
-
     def get_session_id(pid):
-        pProcessIdToSessionId = None
         dwSessionId = ctypes.c_ulong(0)
 
-        hKernel = ctypes.WinDLL('kernel32.dll')
-        if hKernel:
-            pProcessIdToSessionId = GetProcAddress(hKernel._handle, ctypes.c_char_p(b"ProcessIdToSessionId"))
-
-        if not pProcessIdToSessionId:
-            ctypes.windll.kernel32.FreeLibrary(None, handle=hKernel)
-            return dwSessionId
-
-        pProcessIdToSessionId = ProcessIdToSessionIdPrototype(pProcessIdToSessionId)
-        if not pProcessIdToSessionId(ctypes.c_ulong(pid), ctypes.byref(dwSessionId)):
+        ProcessIdToSessionId = ctypes.windll.kernel32.ProcessIdToSessionId
+        ProcessIdToSessionId.argtypes = [ctypes.c_ulong, ctypes.POINTER(ctypes.c_ulong)]
+        ProcessIdToSessionId.restype = ctypes.c_bool
+        
+        if not ProcessIdToSessionId(ctypes.c_ulong(pid), ctypes.byref(dwSessionId)):
             dwSessionId = ctypes.c_ulong(-1)
 
-        ctypes.windll.kernel32.FreeLibrary(None, handle=hKernel)
         return dwSessionId
 
-    @EnumDesktopCallbackPrototype
-    def desktop_enumdesktops_callback(lpszDesktop, lParam):
+
+    def desktop_enumdesktops_callback(response_parts, lpszDesktop, lParam):
         if not lParam or not lpszDesktop:
             return True
 
@@ -2832,21 +2829,23 @@ def stdapi_ui_desktop_enum(request, response):
         entry += tlv_pack(TLV_TYPE_DESKTOP_STATION, lParam.contents.cpStationName.decode())
         entry += tlv_pack(TLV_TYPE_DESKTOP_NAME, lpszDesktop.decode())
 
-        global ui_desktop_enum_RESPONSE
-        ui_desktop_enum_RESPONSE += tlv_pack(TLV_TYPE_DESKTOP, entry)
+        response_parts.append(tlv_pack(TLV_TYPE_DESKTOP, entry))
 
         return True
 
-    @WindowStationCallbackPrototype
+    @WINSTAENUMPROCA
     def desktop_enumstations_callback(lpszWindowStation, lParam):
         hWindowStation = OpenWindowStationA(lpszWindowStation, False, MAXIMUM_ALLOWED)
         if not hWindowStation:
-            return False
+            return True
+
+        callback = partial(desktop_enumdesktops_callback, response_parts)
+        callback = DESKTOPENUMPROCA(callback)
 
         param = EnumDesktops_Param()
         param.sessionId = get_session_id(GetCurrentProcessId())
         param.cpStationName = lpszWindowStation
-        EnumDesktopsA(hWindowStation, desktop_enumdesktops_callback, ctypes.pointer(param))
+        EnumDesktopsA(hWindowStation, callback, ctypes.pointer(param))
 
         if hWindowStation:
             CloseWindowStation(hWindowStation)
@@ -2857,8 +2856,7 @@ def stdapi_ui_desktop_enum(request, response):
     if not success:
         return error_result_windows(), response
 
-    response = ui_desktop_enum_RESPONSE
-    del ui_desktop_enum_RESPONSE
+    response += bytes().join(response_parts)
 
     return ERROR_SUCCESS, response
 
