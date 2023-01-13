@@ -1133,15 +1133,24 @@ def channel_open_stdapi_net_tcp_client(request, response):
 
 @register_function
 def channel_open_stdapi_net_tcp_server(request, response):
-    local_host = packet_get_tlv(request, TLV_TYPE_LOCAL_HOST).get('value', '0.0.0.0')
+    use_dual_stack = False
+    local_host = packet_get_tlv(request, TLV_TYPE_LOCAL_HOST).get('value', '')
     local_port = packet_get_tlv(request, TLV_TYPE_LOCAL_PORT)['value']
-    local_address_info = getaddrinfo(local_host, local_port, socktype=socket.SOCK_STREAM, proto=socket.IPPROTO_TCP)
-    if not local_address_info:
-        return ERROR_FAILURE, response
-    local_address_info = local_address_info[0]
-    server_sock = socket.socket(local_address_info['family'], local_address_info['socktype'], local_address_info['proto'])
+    if local_host:
+        local_address_info = getaddrinfo(local_host, local_port, socktype=socket.SOCK_STREAM, proto=socket.IPPROTO_TCP, flags=socket.AI_NUMERICHOST)
+        if not local_address_info:
+            return ERROR_FAILURE, response
+        local_address_info = local_address_info[0]
+    else:
+        local_address_info = {
+            'family': socket.AF_INET6,
+            'sockaddr': ('::', local_port, 0, 0)
+        }
+        use_dual_stack = hasattr(socket, 'IPV6_V6ONLY')
+        debug_print('[*] no local host information, binding to all available interfaces...')
+    server_sock = socket.socket(local_address_info['family'], socket.SOCK_STREAM, socket.IPPROTO_TCP)
     server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    if local_address_info['family'] == socket.AF_INET6 and hasattr(socket, 'IPV6_V6ONLY'):
+    if local_address_info['family'] == socket.AF_INET6 and use_dual_stack:
         server_sock.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 0)
     server_sock.bind(local_address_info['sockaddr'])
     server_sock.listen(socket.SOMAXCONN)
