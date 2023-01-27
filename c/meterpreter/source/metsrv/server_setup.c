@@ -426,10 +426,10 @@ DWORD server_setup(MetsrvConfig* config)
 			// Save the initial session/station/desktop names...
 			remote->orig_sess_id = server_sessionid();
 			remote->curr_sess_id = remote->orig_sess_id;
-			GetUserObjectInformation(GetProcessWindowStation(), UOI_NAME, &stationName, 256, NULL);
+			GetUserObjectInformationA(GetProcessWindowStation(), UOI_NAME, &stationName, 256, NULL);
 			remote->orig_station_name = _strdup(stationName);
 			remote->curr_station_name = _strdup(stationName);
-			GetUserObjectInformation(GetThreadDesktop(GetCurrentThreadId()), UOI_NAME, &desktopName, 256, NULL);
+			GetUserObjectInformationA(GetThreadDesktop(GetCurrentThreadId()), UOI_NAME, &desktopName, 256, NULL);
 			remote->orig_desktop_name = _strdup(desktopName);
 			remote->curr_desktop_name = _strdup(desktopName);
 
