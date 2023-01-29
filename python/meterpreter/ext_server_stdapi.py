@@ -2830,7 +2830,7 @@ def stdapi_ui_desktop_enum(request, response):
         ProcessIdToSessionId = ctypes.windll.kernel32.ProcessIdToSessionId
         ProcessIdToSessionId.argtypes = [ctypes.c_ulong, ctypes.POINTER(ctypes.c_ulong)]
         ProcessIdToSessionId.restype = ctypes.c_bool
-        
+
         if not ProcessIdToSessionId(ctypes.c_ulong(pid), ctypes.byref(dwSessionId)):
             dwSessionId = ctypes.c_ulong(-1)
 
@@ -2878,7 +2878,6 @@ def stdapi_ui_desktop_enum(request, response):
 
 @register_function_if(has_windll)
 def stdapi_ui_desktop_get(request, response):
-
     UOI_NAME = 2
 
     GetCurrentProcessId = ctypes.windll.kernel32.GetCurrentProcessId
@@ -2906,12 +2905,12 @@ def stdapi_ui_desktop_get(request, response):
     if not ProcessIdToSessionId(GetCurrentProcessId(), ctypes.byref(dwSessionId)):
         return error_result_windows(), response
 
-    station_name = ctypes.create_string_buffer(bytes(""), 256)
+    station_name = ctypes.create_string_buffer(bytes(), 256)
     success = GetUserObjectInformationA(GetProcessWindowStation(), UOI_NAME, ctypes.byref(station_name), 256, None)
     if not success:
         return error_result_windows(), response
 
-    desktop_name = ctypes.create_string_buffer(bytes(""), 256)
+    desktop_name = ctypes.create_string_buffer(bytes(), 256)
     success = GetUserObjectInformationA(GetThreadDesktop(GetCurrentThreadId()), UOI_NAME, ctypes.byref(desktop_name), 256, None)
     if not success:
         return error_result_windows(), response
