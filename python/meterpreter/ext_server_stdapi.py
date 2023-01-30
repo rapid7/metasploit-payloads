@@ -2792,7 +2792,6 @@ def stdapi_ui_get_idle_time(request, response):
 
 @register_function_if(has_windll)
 def stdapi_ui_desktop_enum(request, response):
-
     response_parts = []
     if ctypes.sizeof(ctypes.c_long) == ctypes.sizeof(ctypes.c_void_p):
         LPARAM = ctypes.c_long
