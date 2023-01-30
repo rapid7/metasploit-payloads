@@ -2792,7 +2792,6 @@ def stdapi_ui_get_idle_time(request, response):
 
 @register_function_if(has_windll)
 def stdapi_ui_desktop_enum(request, response):
-    
     response_parts = []
     if ctypes.sizeof(ctypes.c_long) == ctypes.sizeof(ctypes.c_void_p):
         LPARAM = ctypes.c_long
@@ -2830,7 +2829,7 @@ def stdapi_ui_desktop_enum(request, response):
         ProcessIdToSessionId = ctypes.windll.kernel32.ProcessIdToSessionId
         ProcessIdToSessionId.argtypes = [ctypes.c_ulong, ctypes.POINTER(ctypes.c_ulong)]
         ProcessIdToSessionId.restype = ctypes.c_bool
-        
+
         if not ProcessIdToSessionId(ctypes.c_ulong(pid), ctypes.byref(dwSessionId)):
             dwSessionId = ctypes.c_ulong(-1)
 
@@ -2874,6 +2873,50 @@ def stdapi_ui_desktop_enum(request, response):
 
     response += bytes().join(response_parts)
 
+    return ERROR_SUCCESS, response
+
+@register_function_if(has_windll)
+def stdapi_ui_desktop_get(request, response):
+    UOI_NAME = 2
+
+    GetCurrentProcessId = ctypes.windll.kernel32.GetCurrentProcessId
+    GetCurrentProcessId.restype = ctypes.c_ulong
+
+    GetProcessWindowStation = ctypes.windll.user32.GetProcessWindowStation
+    GetProcessWindowStation.restype = ctypes.c_void_p
+
+    GetUserObjectInformationA = ctypes.windll.user32.GetUserObjectInformationA
+    GetUserObjectInformationA.argtypes = [ctypes.c_void_p, ctypes.c_int32, ctypes.c_void_p, ctypes.c_ulong, ctypes.POINTER(ctypes.c_ulong)]
+    GetUserObjectInformationA.restype = ctypes.c_bool
+
+    GetCurrentThreadId = ctypes.windll.kernel32.GetCurrentThreadId
+    GetCurrentThreadId.restype = ctypes.c_ulong
+
+    GetThreadDesktop = ctypes.windll.user32.GetThreadDesktop
+    GetThreadDesktop.argtypes = [ctypes.c_ulong]
+    GetThreadDesktop.restype = ctypes.c_void_p
+
+    ProcessIdToSessionId = ctypes.windll.kernel32.ProcessIdToSessionId
+    ProcessIdToSessionId.argtypes = [ctypes.c_ulong, ctypes.POINTER(ctypes.c_ulong)]
+    ProcessIdToSessionId.restype = ctypes.c_bool
+
+    dwSessionId = ctypes.c_ulong(0)
+    if not ProcessIdToSessionId(GetCurrentProcessId(), ctypes.byref(dwSessionId)):
+        return error_result_windows(), response
+
+    station_name = ctypes.create_string_buffer(bytes(), 256)
+    success = GetUserObjectInformationA(GetProcessWindowStation(), UOI_NAME, ctypes.byref(station_name), 256, None)
+    if not success:
+        return error_result_windows(), response
+
+    desktop_name = ctypes.create_string_buffer(bytes(), 256)
+    success = GetUserObjectInformationA(GetThreadDesktop(GetCurrentThreadId()), UOI_NAME, ctypes.byref(desktop_name), 256, None)
+    if not success:
+        return error_result_windows(), response
+
+    response += tlv_pack(TLV_TYPE_DESKTOP_SESSION, dwSessionId.value)
+    response += tlv_pack(TLV_TYPE_DESKTOP_STATION, station_name.value.decode())
+    response += tlv_pack(TLV_TYPE_DESKTOP_NAME, desktop_name.value.decode())
     return ERROR_SUCCESS, response
 
 @register_function_if(has_termios and has_fcntl)
