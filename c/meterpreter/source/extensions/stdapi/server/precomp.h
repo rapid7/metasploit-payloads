@@ -6,6 +6,7 @@
 #define  _WIN32_WINNT _WIN32_WINNT_WIN2K
 #include "../stdapi.h"
 #include <tlhelp32.h>
+#include <netioapi.h>
 #include <iphlpapi.h>
 #include "resource/resource.h"
 
