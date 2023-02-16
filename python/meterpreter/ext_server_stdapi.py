@@ -750,6 +750,25 @@ VER_PLATFORM_WIN32s               = 0x0000
 VER_PLATFORM_WIN32_WINDOWS        = 0x0001
 VER_PLATFORM_WIN32_NT             = 0x0002
 
+# Token Constants
+TOKEN_ASSIGN_PRIMARY              = 0x0001
+TOKEN_DUPLICATE                   = 0x0002
+TOKEN_IMPERSONATE                 = 0x0004
+TOKEN_QUERY                       = 0x0008
+TOKEN_QUERY_SOURCE                = 0x0010
+TOKEN_ADJUST_PRIVILEGES           = 0x0020
+TOKEN_ADJUST_GROUPS               = 0x0040
+TOKEN_ADJUST_DEFAULT              = 0x0080
+TOKEN_ADJUST_SESSIONID            = 0x0100
+TOKEN_ALL_ACCESS                  = 0xf01ff
+
+# Privilege Constants
+DISABLED                          = 0x0
+SE_PRIVILEGE_ENABLED_BY_DEFAULT   = 0x1
+SE_PRIVILEGE_ENABLED              = 0x2
+SE_PRIVILEGE_REMOVED              = 0x4
+SE_PRIVILEGE_USED_FOR_ACCESS      = 0x800000000
+
 # Windows Access Controls
 MAXIMUM_ALLOWED                   = 0x02000000
 
@@ -856,7 +875,6 @@ def get_stat_buffer(path):
     return st_buf
 
 def get_token_user(handle):
-    TOKEN_QUERY = 0x0008
     TokenUser = 1
     advapi32 = ctypes.windll.advapi32
     advapi32.OpenProcessToken.argtypes = [ctypes.c_void_p, ctypes.c_uint32, ctypes.POINTER(ctypes.c_void_p)]
@@ -1055,9 +1073,6 @@ def windll_GetVersion():
     return type('Version', (object,), dict(dwMajorVersion = dwMajorVersion, dwMinorVersion = dwMinorVersion, dwBuild = dwBuild))
 
 def enable_privilege(name, enable=True):
-    TOKEN_ALL_ACCESS = 0xf01ff
-    SE_PRIVILEGE_ENABLED = 0x00000002
-
     GetCurrentProcess = ctypes.windll.kernel32.GetCurrentProcess
     GetCurrentProcess.restype = ctypes.c_void_p
 
@@ -1219,10 +1234,6 @@ def stdapi_sys_config_getuid(request, response):
 
 @register_function_if(has_windll)
 def stdapi_sys_config_getprivs(request, response):
-    TOKEN_QUERY = 0x0008
-    TOKEN_ADJUST_PRIVILEGES = 0x0020
-    SE_PRIVILEGE_ENABLED = 0x00000002
-
     GetCurrentProcess = ctypes.windll.kernel32.GetCurrentProcess
     GetCurrentProcess.restype = ctypes.c_void_p
 
@@ -1278,7 +1289,8 @@ def stdapi_sys_config_getprivs(request, response):
         "SeRelabelPrivilege",
         "SeSyncAgentPrivilege",
         "SeTimeZonePrivilege",
-        "SeTrustedCredManAccessPrivilege"
+        "SeTrustedCredManAccessPrivilege",
+        "SeDelegateSessionUserImpersonatePrivilege"
     ]
     for privilege in priv_list:
         luid = LUID()
