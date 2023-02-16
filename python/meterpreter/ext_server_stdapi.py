@@ -489,6 +489,7 @@ TLV_TYPE_HANDLE                = TLV_META_TYPE_QWORD   | 600
 TLV_TYPE_INHERIT               = TLV_META_TYPE_BOOL    | 601
 TLV_TYPE_PROCESS_HANDLE        = TLV_META_TYPE_QWORD   | 630
 TLV_TYPE_THREAD_HANDLE         = TLV_META_TYPE_QWORD   | 631
+TLV_TYPE_PRIVILEGE             = TLV_META_TYPE_STRING  | 632
 
 ##
 # Fs
@@ -749,6 +750,25 @@ VER_PLATFORM_WIN32s               = 0x0000
 VER_PLATFORM_WIN32_WINDOWS        = 0x0001
 VER_PLATFORM_WIN32_NT             = 0x0002
 
+# Token Constants
+TOKEN_ASSIGN_PRIMARY              = 0x0001
+TOKEN_DUPLICATE                   = 0x0002
+TOKEN_IMPERSONATE                 = 0x0004
+TOKEN_QUERY                       = 0x0008
+TOKEN_QUERY_SOURCE                = 0x0010
+TOKEN_ADJUST_PRIVILEGES           = 0x0020
+TOKEN_ADJUST_GROUPS               = 0x0040
+TOKEN_ADJUST_DEFAULT              = 0x0080
+TOKEN_ADJUST_SESSIONID            = 0x0100
+TOKEN_ALL_ACCESS                  = 0xf01ff
+
+# Privilege Constants
+DISABLED                          = 0x0
+SE_PRIVILEGE_ENABLED_BY_DEFAULT   = 0x1
+SE_PRIVILEGE_ENABLED              = 0x2
+SE_PRIVILEGE_REMOVED              = 0x4
+SE_PRIVILEGE_USED_FOR_ACCESS      = 0x800000000
+
 # Windows Access Controls
 MAXIMUM_ALLOWED                   = 0x02000000
 
@@ -855,7 +875,6 @@ def get_stat_buffer(path):
     return st_buf
 
 def get_token_user(handle):
-    TOKEN_QUERY = 0x0008
     TokenUser = 1
     advapi32 = ctypes.windll.advapi32
     advapi32.OpenProcessToken.argtypes = [ctypes.c_void_p, ctypes.c_uint32, ctypes.POINTER(ctypes.c_void_p)]
@@ -1054,9 +1073,6 @@ def windll_GetVersion():
     return type('Version', (object,), dict(dwMajorVersion = dwMajorVersion, dwMinorVersion = dwMinorVersion, dwBuild = dwBuild))
 
 def enable_privilege(name, enable=True):
-    TOKEN_ALL_ACCESS = 0xf01ff
-    SE_PRIVILEGE_ENABLED = 0x00000002
-
     GetCurrentProcess = ctypes.windll.kernel32.GetCurrentProcess
     GetCurrentProcess.restype = ctypes.c_void_p
 
@@ -1214,6 +1230,81 @@ def stdapi_sys_config_getuid(request, response):
     else:
         username = getpass.getuser()
     response += tlv_pack(TLV_TYPE_USER_NAME, username)
+    return ERROR_SUCCESS, response
+
+@register_function_if(has_windll)
+def stdapi_sys_config_getprivs(request, response):
+    GetCurrentProcess = ctypes.windll.kernel32.GetCurrentProcess
+    GetCurrentProcess.restype = ctypes.c_void_p
+
+    advapi32 = ctypes.windll.advapi32
+    OpenProcessToken = advapi32.OpenProcessToken
+    OpenProcessToken.argtypes = [ctypes.c_void_p, ctypes.c_uint32, ctypes.POINTER(ctypes.c_void_p)]
+    OpenProcessToken.restype = ctypes.c_bool
+
+    LookupPrivilegeValue = advapi32.LookupPrivilegeValueW
+    LookupPrivilegeValue.argtypes = [ctypes.c_wchar_p, ctypes.c_wchar_p, ctypes.POINTER(LUID)]
+    LookupPrivilegeValue.restype = ctypes.c_bool
+
+    AdjustTokenPrivileges = advapi32.AdjustTokenPrivileges
+    AdjustTokenPrivileges.argtypes = [ctypes.c_void_p, ctypes.c_bool, PTOKEN_PRIVILEGES, ctypes.c_uint32, PTOKEN_PRIVILEGES, ctypes.POINTER(ctypes.c_uint32)]
+    AdjustTokenPrivileges.restype = ctypes.c_bool
+
+    token = ctypes.c_void_p()
+    success = OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, token)
+    if not success:
+        return error_result_windows(), response
+
+    priv_list = [
+        "SeAssignPrimaryTokenPrivilege",
+        "SeAuditPrivilege",
+        "SeBackupPrivilege",
+        "SeChangeNotifyPrivilege",
+        "SeCreatePagefilePrivilege",
+        "SeCreatePermanentPrivilege",
+        "SeCreateTokenPrivilege",
+        "SeDebugPrivilege",
+        "SeIncreaseBasePriorityPrivilege",
+        "SeIncreaseQuotaPrivilege",
+        "SeLoadDriverPrivilege",
+        "SeLockMemoryPrivilege",
+        "SeMachineAccountPrivilege",
+        "SeProfileSingleProcessPrivilege",
+        "SeRemoteShutdownPrivilege",
+        "SeRestorePrivilege",
+        "SeSecurityPrivilege",
+        "SeShutdownPrivilege",
+        "SeSystemEnvironmentPrivilege",
+        "SeSystemProfilePrivilege",
+        "SeSystemtimePrivilege",
+        "SeTakeOwnershipPrivilege",
+        "SeTcbPrivilege",
+        "SeCreateGlobalPrivilege",
+        "SeCreateSymbolicLinkPrivilege",
+        "SeEnableDelegationPrivilege",
+        "SeImpersonatePrivilege",
+        "SeIncreaseWorkingSetPrivilege",
+        "SeManageVolumePrivilege",
+        "SeRelabelPrivilege",
+        "SeSyncAgentPrivilege",
+        "SeTimeZonePrivilege",
+        "SeTrustedCredManAccessPrivilege",
+        "SeDelegateSessionUserImpersonatePrivilege"
+    ]
+    for privilege in priv_list:
+        luid = LUID()
+        name = ctypes.create_unicode_buffer(privilege)
+        success = LookupPrivilegeValue(None, name, luid)
+        if success:
+            size = ctypes.sizeof(TOKEN_PRIVILEGES)
+            size += ctypes.sizeof(LUID_AND_ATTRIBUTES)
+            buffer = ctypes.create_string_buffer(size)
+            tokenPrivileges = ctypes.cast(buffer, PTOKEN_PRIVILEGES).contents
+            tokenPrivileges.PrivilegeCount = 1
+            tokenPrivileges.get_array()[0].Luid = luid
+            tokenPrivileges.get_array()[0].Attributes = SE_PRIVILEGE_ENABLED
+            if AdjustTokenPrivileges(token, False, tokenPrivileges, 0, None, None):
+                response += tlv_pack(TLV_TYPE_PRIVILEGE, privilege)
     return ERROR_SUCCESS, response
 
 @register_function
@@ -1374,8 +1465,6 @@ def stdapi_sys_process_get_processes_via_ps(request, response):
 
 def stdapi_sys_process_get_processes_via_windll(request, response):
     TH32CS_SNAPPROCESS = 2
-    TOKEN_QUERY = 0x0008
-    TokenUser = 1
     k32 = ctypes.windll.kernel32
     pe32 = PROCESSENTRY32()
     pe32.dwSize = ctypes.sizeof(PROCESSENTRY32)
@@ -1435,7 +1524,6 @@ def stdapi_sys_process_get_processes(request, response):
         return stdapi_sys_process_get_processes_via_windll(request, response)
     else:
         return stdapi_sys_process_get_processes_via_ps(request, response)
-    return ERROR_FAILURE, response
 
 @register_function_if(has_windll)
 def stdapi_sys_power_exitwindows(request, response):
