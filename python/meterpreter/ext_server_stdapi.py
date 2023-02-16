@@ -1279,7 +1279,6 @@ def stdapi_sys_config_getprivs(request, response):
         "SeSystemtimePrivilege",
         "SeTakeOwnershipPrivilege",
         "SeTcbPrivilege",
-        "SeUnsolicitedInputPrivilege",
         "SeCreateGlobalPrivilege",
         "SeCreateSymbolicLinkPrivilege",
         "SeEnableDelegationPrivilege",
