@@ -743,6 +743,7 @@ PROCESS_TERMINATE                 = 0x0001
 PROCESS_VM_READ                   = 0x0010
 PROCESS_QUERY_INFORMATION         = 0x0400
 PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+PROCESS_ALL_ACCESS                = 0x1fffff
 VER_NT_WORKSTATION                = 0x0001
 VER_NT_DOMAIN_CONTROLLER          = 0x0002
 VER_NT_SERVER                     = 0x0003
@@ -1383,11 +1384,17 @@ def stdapi_sys_process_execute(request, response):
         proc_h.start()
     else:
         proc_h = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    proc_h_id = meterpreter.add_process(proc_h)
+
+    win32_handle = None
+    if has_windll:
+        k32 = ctypes.windll.kernel32
+        win32_handle = k32.OpenProcess(PROCESS_ALL_ACCESS, False, proc_h.pid)
+
+    proc_h_id = meterpreter.add_process(proc_h, win32_handle)
     response += tlv_pack(TLV_TYPE_PID, proc_h.pid)
     response += tlv_pack(TLV_TYPE_PROCESS_HANDLE, proc_h_id)
     if (flags & PROCESS_EXECUTE_FLAG_CHANNELIZED):
-        channel_id = meterpreter.add_channel(MeterpreterProcess(proc_h))
+        channel_id = meterpreter.add_channel(MeterpreterProcess(proc_h, win32_handle))
         response += tlv_pack(TLV_TYPE_CHANNEL_ID, channel_id)
     return ERROR_SUCCESS, response
 

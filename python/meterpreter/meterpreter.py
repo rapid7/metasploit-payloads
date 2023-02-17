@@ -667,11 +667,14 @@ export(MeterpreterFile)
 
 #@export
 class MeterpreterProcess(MeterpreterChannel):
-    def __init__(self, proc_h):
+    def __init__(self, proc_h, win32_handle = None):
         self.proc_h = proc_h
+        self.win32_handle = win32_handle
         super(MeterpreterProcess, self).__init__()
 
     def close(self):
+        if has_windll and self.win32_handle:
+            ctypes.windll.kernel32.CloseHandle(self.win32_handle)
         if self.proc_h.poll() is None:
             self.proc_h.kill()
         if self.proc_h.ptyfd is not None:
@@ -1258,11 +1261,13 @@ class PythonMeterpreter(object):
         self.next_channel_id += 1
         return idx
 
-    def add_process(self, process):
+    def add_process(self, process, win32_handle = None):
         idx = self.next_process_id
-        self.processes[idx] = process
+        self.processes[idx] = (process, win32_handle)
         debug_print('[*] added process id: ' + str(idx))
         self.next_process_id += 1
+        if win32_handle:
+            idx = win32_handle
         return idx
 
     def close_channel(self, channel_id):
@@ -1356,6 +1361,9 @@ class PythonMeterpreter(object):
                             data += proc_h.stderr_reader.read()
                         if proc_h.stdout_reader.is_read_ready():
                             data += proc_h.stdout_reader.read()
+                        proc_win32_h = channel.win32_handle
+                        if has_windll and proc_win32_h:
+                            pass  # do what you want
                     # Defer closing the channel until the data has been sent
                     if not channel.is_alive():
                         close_channel = True
