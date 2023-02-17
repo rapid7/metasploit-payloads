@@ -7,6 +7,11 @@
 
 typedef NTSTATUS(WINAPI *PRtlGetVersion)(LPOSVERSIONINFOEXW);
 
+// This may not be defined on some older systems in the header files, so lets define it here manually.
+#ifndef SE_DELEGATE_SESSION_USER_IMPERSONATE_NAME
+#define SE_DELEGATE_SESSION_USER_IMPERSONATE_NAME TEXT("SeDelegateSessionUserImpersonatePrivilege")
+#endif
+
 /*!
  * @brief Add an environment variable / value pair to a response packet.
  * @param response The \c Response packet to add the values to.
@@ -294,6 +299,7 @@ DWORD request_sys_config_getprivs(Remote *remote, Packet *packet)
 		SE_CREATE_SYMBOLIC_LINK_NAME,
 		SE_CREATE_TOKEN_NAME,
 		SE_DEBUG_NAME,
+		SE_DELEGATE_SESSION_USER_IMPERSONATE_NAME,
 		SE_ENABLE_DELEGATION_NAME,
 		SE_IMPERSONATE_NAME,
 		SE_INC_BASE_PRIORITY_NAME,
