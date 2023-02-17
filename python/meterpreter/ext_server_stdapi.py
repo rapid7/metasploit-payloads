@@ -1335,13 +1335,10 @@ def stdapi_sys_config_sysinfo(request, response):
 
 @register_function
 def stdapi_sys_process_close(request, response):
-    proc_h_id = packet_get_tlv(request, TLV_TYPE_HANDLE)
+    proc_h_id = packet_get_tlv(request, TLV_TYPE_HANDLE)['value']
     if not proc_h_id:
         return ERROR_SUCCESS, response
-    proc_h_id = proc_h_id['value']
-    if proc_h_id in meterpreter.processes:
-        del meterpreter.processes[proc_h_id]
-    if not meterpreter.close_channel(proc_h_id):
+    if not meterpreter.close_process(proc_h_id):
         return ERROR_FAILURE, response
     return ERROR_SUCCESS, response
 
@@ -1385,16 +1382,11 @@ def stdapi_sys_process_execute(request, response):
     else:
         proc_h = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-    win32_handle = None
-    if has_windll:
-        k32 = ctypes.windll.kernel32
-        win32_handle = k32.OpenProcess(PROCESS_ALL_ACCESS, False, proc_h.pid)
-
-    proc_h_id = meterpreter.add_process(proc_h, win32_handle)
+    proc_h_id = meterpreter.add_process(proc_h)
     response += tlv_pack(TLV_TYPE_PID, proc_h.pid)
     response += tlv_pack(TLV_TYPE_PROCESS_HANDLE, proc_h_id)
     if (flags & PROCESS_EXECUTE_FLAG_CHANNELIZED):
-        channel_id = meterpreter.add_channel(MeterpreterProcess(proc_h, win32_handle))
+        channel_id = meterpreter.add_channel(MeterpreterProcess(proc_h, proc_h_id))
         response += tlv_pack(TLV_TYPE_CHANNEL_ID, channel_id)
     return ERROR_SUCCESS, response
 
