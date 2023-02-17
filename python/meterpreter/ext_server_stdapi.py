@@ -1256,40 +1256,42 @@ def stdapi_sys_config_getprivs(request, response):
         return error_result_windows(), response
 
     priv_list = [
-        "SeAssignPrimaryTokenPrivilege",
-        "SeAuditPrivilege",
-        "SeBackupPrivilege",
-        "SeChangeNotifyPrivilege",
-        "SeCreatePagefilePrivilege",
-        "SeCreatePermanentPrivilege",
-        "SeCreateTokenPrivilege",
-        "SeDebugPrivilege",
-        "SeIncreaseBasePriorityPrivilege",
-        "SeIncreaseQuotaPrivilege",
-        "SeLoadDriverPrivilege",
-        "SeLockMemoryPrivilege",
-        "SeMachineAccountPrivilege",
-        "SeProfileSingleProcessPrivilege",
-        "SeRemoteShutdownPrivilege",
-        "SeRestorePrivilege",
-        "SeSecurityPrivilege",
-        "SeShutdownPrivilege",
-        "SeSystemEnvironmentPrivilege",
-        "SeSystemProfilePrivilege",
-        "SeSystemtimePrivilege",
-        "SeTakeOwnershipPrivilege",
-        "SeTcbPrivilege",
-        "SeCreateGlobalPrivilege",
-        "SeCreateSymbolicLinkPrivilege",
-        "SeEnableDelegationPrivilege",
-        "SeImpersonatePrivilege",
-        "SeIncreaseWorkingSetPrivilege",
-        "SeManageVolumePrivilege",
-        "SeRelabelPrivilege",
-        "SeSyncAgentPrivilege",
-        "SeTimeZonePrivilege",
-        "SeTrustedCredManAccessPrivilege",
-        "SeDelegateSessionUserImpersonatePrivilege"
+        "SeAssignPrimaryTokenPrivilege",                 # SE_ASSIGNPRIMARYTOKEN_NAME
+        "SeAuditPrivilege",                              # SE_AUDIT_NAME
+        "SeBackupPrivilege",                             # SE_BACKUP_NAME
+        "SeChangeNotifyPrivilege",                       # SE_CHANGE_NOTIFY_NAME
+        "SeCreateGlobalPrivilege",                       # SE_CREATE_GLOBAL_NAME
+        "SeCreatePagefilePrivilege",                     # SE_CREATE_PAGEFILE_NAME
+        "SeCreatePermanentPrivilege",                    # SE_CREATE_PERMANENT_NAME
+        "SeCreateSymbolicLinkPrivilege",                 # SE_CREATE_SYMBOLIC_LINK_NAME
+        "SeCreateTokenPrivilege",                        # SE_CREATE_TOKEN_NAME
+        "SeDebugPrivilege",                              # SE_DEBUG_NAME
+        "SeDelegateSessionUserImpersonatePrivilege",     # SE_DELEGATE_SESSION_USER_IMPERSONATE_NAME
+        "SeEnableDelegationPrivilege",                   # SE_ENABLE_DELEGATION_NAME
+        "SeImpersonatePrivilege",                        # SE_IMPERSONATE_NAME
+        "SeIncreaseBasePriorityPrivilege",               # SE_INC_BASE_PRIORITY_NAME
+        "SeIncreaseQuotaPrivilege",                      # SE_INCREASE_QUOTA_NAME
+        "SeIncreaseWorkingSetPrivilege",                 # SE_INC_WORKING_SET_NAME
+        "SeLoadDriverPrivilege",                         # SE_LOAD_DRIVER_NAME
+        "SeLockMemoryPrivilege",                         # SE_LOCK_MEMORY_NAME
+        "SeMachineAccountPrivilege",                     # SE_MACHINE_ACCOUNT_NAME
+        "SeManageVolumePrivilege",                       # SE_MANAGE_VOLUME_NAME
+        "SeProfileSingleProcessPrivilege",               # SE_PROF_SINGLE_PROCESS_NAME
+        "SeRelabelPrivilege",                            # SE_RELABEL_NAME
+        "SeRemoteShutdownPrivilege",                     # SE_REMOTE_SHUTDOWN_NAME
+        "SeRestorePrivilege",                            # SE_RESTORE_NAME
+        "SeSecurityPrivilege",                           # SE_SECURITY_NAME
+        "SeShutdownPrivilege",                           # SE_SHUTDOWN_NAME
+        "SeSyncAgentPrivilege",                          # SE_SYNC_AGENT_NAME
+        "SeSystemEnvironmentPrivilege",                  # SE_SYSTEM_ENVIRONMENT_NAME
+        "SeSystemProfilePrivilege",                      # SE_SYSTEM_PROFILE_NAME
+        "SeSystemtimePrivilege",                         # SE_SYSTEMTIME_NAME
+        "SeTakeOwnershipPrivilege",                      # SE_TAKE_OWNERSHIP_NAME
+        "SeTcbPrivilege",                                # SE_TCB_NAME
+        "SeTimeZonePrivilege",                           # SE_TIME_ZONE_NAME
+        "SeTrustedCredManAccessPrivilege",               # SE_TRUSTED_CREDMAN_ACCESS_NAME
+        "SeUndockPrivilege",                             # SE_UNDOCK_NAME
+        "SeUnsolicitedInputPrivilege"                    # SE_UNSOLICITED_INPUT_NAME
     ]
     for privilege in priv_list:
         luid = LUID()
