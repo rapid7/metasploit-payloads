@@ -1872,7 +1872,7 @@ def stdapi_net_config_get_arp_table(request, response):
     result = GetIpNetTable(ipnet_table, size, False)
 
     if result == ERROR_INSUFFICIENT_BUFFER:
-        ipnet_table = ctypes.cast(ctypes.create_string_buffer(b'', size.value), ctypes.c_void_p)
+        ipnet_table = ctypes.cast(ctypes.create_string_buffer(bytes(), size.value), ctypes.c_void_p)
 
     elif result != ERROR_SUCCESS and result != ERROR_NO_DATA:
         return error_result_windows(result), response
