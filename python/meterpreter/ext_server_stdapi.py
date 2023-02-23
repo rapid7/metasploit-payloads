@@ -1386,7 +1386,7 @@ def stdapi_sys_process_execute(request, response):
     response += tlv_pack(TLV_TYPE_PID, proc_h.pid)
     response += tlv_pack(TLV_TYPE_PROCESS_HANDLE, proc_h_id)
     if (flags & PROCESS_EXECUTE_FLAG_CHANNELIZED):
-        channel_id = meterpreter.add_channel(MeterpreterProcess(proc_h, proc_h_id))
+        channel_id = meterpreter.add_channel(MeterpreterProcess(proc_h))
         response += tlv_pack(TLV_TYPE_CHANNEL_ID, channel_id)
     return ERROR_SUCCESS, response
 
@@ -1881,7 +1881,7 @@ def stdapi_net_config_get_arp_table(request, response):
             ('dwNumEntries', ctypes.c_uint32),
             ('table', MIB_IPNETROW * ctypes.cast(ipnet_table.value, ctypes.POINTER(ctypes.c_ulong)).contents.value)
         ]
-    
+
     ipnet_table = ctypes.cast(ipnet_table, ctypes.POINTER(MIB_IPNETTABLE))
     for ipnet_row in ipnet_table.contents.table:
         if (ipnet_row.dwType != MIB_IPNET_TYPE_DYNAMIC and ipnet_row.dwType != MIB_IPNET_TYPE_STATIC):
