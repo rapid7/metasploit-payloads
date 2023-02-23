@@ -1851,47 +1851,70 @@ def stdapi_fs_mount_show(request, response):
         response += tlv_pack(TLV_TYPE_MOUNT_GROUP, mount)
     return ERROR_SUCCESS, response
 
-@register_function_if(has_windll)
+@register_function
 def stdapi_net_config_get_arp_table(request, response):
-    MIB_IPNET_TYPE_DYNAMIC = 3
-    MIB_IPNET_TYPE_STATIC  = 4
+    if has_windll:
+        MIB_IPNET_TYPE_DYNAMIC = 3
+        MIB_IPNET_TYPE_STATIC  = 4
 
-    GetIpNetTable = ctypes.windll.iphlpapi.GetIpNetTable
-    GetIpNetTable.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_ulong), ctypes.c_long]
-    GetIpNetTable.restype = ctypes.c_ulong
+        GetIpNetTable = ctypes.windll.iphlpapi.GetIpNetTable
+        GetIpNetTable.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_ulong), ctypes.c_long]
+        GetIpNetTable.restype = ctypes.c_ulong
 
-    ipnet_table = None
-    size = ctypes.c_ulong(0)
-    result = GetIpNetTable(ipnet_table, size, False)
+        ipnet_table = None
+        size = ctypes.c_ulong(0)
+        result = GetIpNetTable(ipnet_table, size, False)
 
-    if result == ERROR_INSUFFICIENT_BUFFER:
-        ipnet_table = ctypes.cast(ctypes.create_string_buffer(bytes(), size.value), ctypes.c_void_p)
+        if result == ERROR_INSUFFICIENT_BUFFER:
+            ipnet_table = ctypes.cast(ctypes.create_string_buffer(bytes(), size.value), ctypes.c_void_p)
 
-    elif result != ERROR_SUCCESS and result != ERROR_NO_DATA:
-        return error_result_windows(result), response
+        elif result != ERROR_SUCCESS and result != ERROR_NO_DATA:
+            return error_result_windows(result), response
 
-    if not ipnet_table:
-        return error_result_windows(), response
+        if not ipnet_table:
+            return error_result_windows(), response
 
-    result = GetIpNetTable(ipnet_table, size, False)
-    if result != ERROR_SUCCESS:
-        return error_result_windows(result), response
+        result = GetIpNetTable(ipnet_table, size, False)
+        if result != ERROR_SUCCESS:
+            return error_result_windows(result), response
 
-    class MIB_IPNETTABLE(ctypes.Structure):
-        _fields_ = [
-            ('dwNumEntries', ctypes.c_uint32),
-            ('table', MIB_IPNETROW * ctypes.cast(ipnet_table.value, ctypes.POINTER(ctypes.c_ulong)).contents.value)
-        ]
-    
-    ipnet_table = ctypes.cast(ipnet_table, ctypes.POINTER(MIB_IPNETTABLE))
-    for ipnet_row in ipnet_table.contents.table:
-        if (ipnet_row.dwType != MIB_IPNET_TYPE_DYNAMIC and ipnet_row.dwType != MIB_IPNET_TYPE_STATIC):
-            continue
-        arp_tlv  = bytes()
-        arp_tlv += tlv_pack(TLV_TYPE_IP, struct.pack('<L', ipnet_row.dwAddr))
-        arp_tlv += tlv_pack(TLV_TYPE_MAC_ADDRESS, bytes(ipnet_row.bPhysAddr)[:ipnet_row.dwPhysAddrLen])
-        arp_tlv += tlv_pack(TLV_TYPE_MAC_NAME, str(ipnet_row.dwIndex))
-        response += tlv_pack(TLV_TYPE_ARP_ENTRY, arp_tlv)
+        class MIB_IPNETTABLE(ctypes.Structure):
+            _fields_ = [
+                ('dwNumEntries', ctypes.c_uint32),
+                ('table', MIB_IPNETROW * ctypes.cast(ipnet_table.value, ctypes.POINTER(ctypes.c_ulong)).contents.value)
+            ]
+
+        ipnet_table = ctypes.cast(ipnet_table, ctypes.POINTER(MIB_IPNETTABLE))
+        for ipnet_row in ipnet_table.contents.table:
+            if (ipnet_row.dwType != MIB_IPNET_TYPE_DYNAMIC and ipnet_row.dwType != MIB_IPNET_TYPE_STATIC):
+                continue
+            arp_tlv  = bytes()
+            arp_tlv += tlv_pack(TLV_TYPE_IP, struct.pack('<L', ipnet_row.dwAddr))
+            arp_tlv += tlv_pack(TLV_TYPE_MAC_ADDRESS, bytes(ipnet_row.bPhysAddr)[:ipnet_row.dwPhysAddrLen])
+            arp_tlv += tlv_pack(TLV_TYPE_MAC_NAME, str(ipnet_row.dwIndex))
+            response += tlv_pack(TLV_TYPE_ARP_ENTRY, arp_tlv)
+
+    elif sys.platform.startswith('linux'):
+        arp_cache_file = '/proc/net/arp'
+        if not os.path.exists(arp_cache_file):
+            return ERROR_NOT_SUPPORTED, response
+
+        with open('/proc/net/arp', 'r') as arp_cache:
+            lines = arp_cache.readlines()
+            import binascii
+            for line in lines[1:]:
+                fields = line.split()
+                ip_address = fields[0]
+                mac_address = fields[3]
+                mac_address = bytes().join(binascii.unhexlify(h) for h in mac_address.split(':'))
+                interface_name = fields[5]
+                arp_tlv  = bytes()
+                arp_tlv += tlv_pack(TLV_TYPE_IP, socket.inet_aton(ip_address))
+                arp_tlv += tlv_pack(TLV_TYPE_MAC_ADDRESS, mac_address)
+                arp_tlv += tlv_pack(TLV_TYPE_MAC_NAME, interface_name)
+                response += tlv_pack(TLV_TYPE_ARP_ENTRY, arp_tlv)
+    else:
+        return ERROR_NOT_SUPPORTED, response
     return ERROR_SUCCESS, response
 
 @register_function
