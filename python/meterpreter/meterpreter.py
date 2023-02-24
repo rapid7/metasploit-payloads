@@ -1282,13 +1282,13 @@ class PythonMeterpreter(object):
                 continue
             if not channel.proc_h is proc_h:
                 continue
-            if has_windll:
-                CloseHandle = ctypes.windll.kernel32.CloseHandle
-                CloseHandle.argtypes = [ctypes.c_void_p]
-                CloseHandle.restype = ctypes.c_long
-                CloseHandle(proc_h_id)
             self.close_channel(channel_id)
             break
+        if has_windll:
+            CloseHandle = ctypes.windll.kernel32.CloseHandle
+            CloseHandle.argtypes = [ctypes.c_void_p]
+            CloseHandle.restype = ctypes.c_long
+            CloseHandle(proc_h_id)
         debug_print('[*] closed and removed process id: ' + str(proc_h.pid) + ', handle: ' + str(proc_h_id))
         return True
 
