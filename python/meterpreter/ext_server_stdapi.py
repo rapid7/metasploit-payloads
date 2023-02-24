@@ -12,6 +12,7 @@ import struct
 import subprocess
 import sys
 import time
+import binascii
 
 try:
     import ctypes
@@ -1851,7 +1852,7 @@ def stdapi_fs_mount_show(request, response):
         response += tlv_pack(TLV_TYPE_MOUNT_GROUP, mount)
     return ERROR_SUCCESS, response
 
-@register_function
+@register_function_if(sys.platform.startswith('linux') or has_windll)
 def stdapi_net_config_get_arp_table(request, response):
     if has_windll:
         MIB_IPNET_TYPE_DYNAMIC = 3
@@ -1899,22 +1900,20 @@ def stdapi_net_config_get_arp_table(request, response):
         if not os.path.exists(arp_cache_file):
             return ERROR_NOT_SUPPORTED, response
 
-        with open('/proc/net/arp', 'r') as arp_cache:
+        with open(arp_cache_file, 'r') as arp_cache:
             lines = arp_cache.readlines()
             import binascii
             for line in lines[1:]:
                 fields = line.split()
                 ip_address = fields[0]
                 mac_address = fields[3]
-                mac_address = bytes().join(binascii.unhexlify(h) for h in mac_address.split(':'))
+                mac_address = binascii.unhexlify(mac_address.replace(':', ''))
                 interface_name = fields[5]
                 arp_tlv  = bytes()
                 arp_tlv += tlv_pack(TLV_TYPE_IP, socket.inet_aton(ip_address))
                 arp_tlv += tlv_pack(TLV_TYPE_MAC_ADDRESS, mac_address)
                 arp_tlv += tlv_pack(TLV_TYPE_MAC_NAME, interface_name)
                 response += tlv_pack(TLV_TYPE_ARP_ENTRY, arp_tlv)
-    else:
-        return ERROR_NOT_SUPPORTED, response
     return ERROR_SUCCESS, response
 
 @register_function
