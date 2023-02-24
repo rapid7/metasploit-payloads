@@ -743,6 +743,7 @@ PROCESS_TERMINATE                 = 0x0001
 PROCESS_VM_READ                   = 0x0010
 PROCESS_QUERY_INFORMATION         = 0x0400
 PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+PROCESS_ALL_ACCESS                = 0x1fffff
 VER_NT_WORKSTATION                = 0x0001
 VER_NT_DOMAIN_CONTROLLER          = 0x0002
 VER_NT_SERVER                     = 0x0003
@@ -1334,13 +1335,10 @@ def stdapi_sys_config_sysinfo(request, response):
 
 @register_function
 def stdapi_sys_process_close(request, response):
-    proc_h_id = packet_get_tlv(request, TLV_TYPE_HANDLE)
+    proc_h_id = packet_get_tlv(request, TLV_TYPE_HANDLE)['value']
     if not proc_h_id:
         return ERROR_SUCCESS, response
-    proc_h_id = proc_h_id['value']
-    if proc_h_id in meterpreter.processes:
-        del meterpreter.processes[proc_h_id]
-    if not meterpreter.close_channel(proc_h_id):
+    if not meterpreter.close_process(proc_h_id):
         return ERROR_FAILURE, response
     return ERROR_SUCCESS, response
 
@@ -1383,6 +1381,7 @@ def stdapi_sys_process_execute(request, response):
         proc_h.start()
     else:
         proc_h = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
     proc_h_id = meterpreter.add_process(proc_h)
     response += tlv_pack(TLV_TYPE_PID, proc_h.pid)
     response += tlv_pack(TLV_TYPE_PROCESS_HANDLE, proc_h_id)
@@ -1882,7 +1881,7 @@ def stdapi_net_config_get_arp_table(request, response):
             ('dwNumEntries', ctypes.c_uint32),
             ('table', MIB_IPNETROW * ctypes.cast(ipnet_table.value, ctypes.POINTER(ctypes.c_ulong)).contents.value)
         ]
-    
+
     ipnet_table = ctypes.cast(ipnet_table, ctypes.POINTER(MIB_IPNETTABLE))
     for ipnet_row in ipnet_table.contents.table:
         if (ipnet_row.dwType != MIB_IPNET_TYPE_DYNAMIC and ipnet_row.dwType != MIB_IPNET_TYPE_STATIC):

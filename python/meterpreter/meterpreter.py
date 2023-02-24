@@ -1260,11 +1260,37 @@ class PythonMeterpreter(object):
         return idx
 
     def add_process(self, process):
-        idx = self.next_process_id
-        self.processes[idx] = process
-        debug_print('[*] added process id: ' + str(idx))
-        self.next_process_id += 1
-        return idx
+        if has_windll:
+            PROCESS_ALL_ACCESS = 0x1fffff
+            OpenProcess = ctypes.windll.kernel32.OpenProcess
+            OpenProcess.argtypes = [ctypes.c_ulong, ctypes.c_long, ctypes.c_ulong]
+            OpenProcess.restype = ctypes.c_void_p
+            handle = OpenProcess(PROCESS_ALL_ACCESS, False, process.pid)
+        else:
+            handle = self.next_process_id
+            self.next_process_id += 1
+        self.processes[handle] = process
+        debug_print('[*] added process id: ' + str(process.pid) + ', handle: ' + str(handle))
+        return handle
+
+    def close_process(self, proc_h_id):
+        proc_h = self.processes.pop(proc_h_id, None)
+        if not proc_h:
+            return False
+        for channel_id, channel in self.channels.items():
+            if not isinstance(channel, MeterpreterProcess):
+                continue
+            if not channel.proc_h is proc_h:
+                continue
+            self.close_channel(channel_id)
+            break
+        if has_windll:
+            CloseHandle = ctypes.windll.kernel32.CloseHandle
+            CloseHandle.argtypes = [ctypes.c_void_p]
+            CloseHandle.restype = ctypes.c_long
+            CloseHandle(proc_h_id)
+        debug_print('[*] closed and removed process id: ' + str(proc_h.pid) + ', handle: ' + str(proc_h_id))
+        return True
 
     def close_channel(self, channel_id):
         if channel_id not in self.channels:
