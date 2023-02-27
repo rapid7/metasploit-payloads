@@ -3,6 +3,8 @@
 #include "common_metapi.h"
 #include <netioapi.h>
 
+typedef NETIO_STATUS(NETIOAPI_API_* GETIPFORWARDTABLE2)(ADDRESS_FAMILY Family, PMIB_IPFORWARD_TABLE2* Table);
+
 typedef struct v6netmask
 {
 	unsigned int mask[4];
@@ -111,12 +113,18 @@ DWORD request_net_config_get_routes(Remote *remote, Packet *packet)
 				route, 5);
 		}
 
-		if (GetIpForwardTable2(AF_INET6, &table_ipv6) != NO_ERROR) {
+		v6netmask v6_mask;
+		MIB_IPINTERFACE_ROW iface = { .Family = AF_INET6 };
+		GETIPFORWARDTABLE2 pGetIpForwardTable2 = (GETIPFORWARDTABLE2)GetProcAddress(GetModuleHandle(TEXT("Iphlpapi.dll")), "GetIpForwardTable2");
+
+		// GetIpForwardTable2 is only available on Windows Vista and later.
+		if (!pGetIpForwardTable2) {
+			break;
+		}
+		if (pGetIpForwardTable2(AF_INET6, &table_ipv6) != NO_ERROR) {
 			BREAK_ON_ERROR("[NET] request_net_config_get_routes: GetIpForwardTable2 failed");
 		}
 
-		v6netmask v6_mask;
-		MIB_IPINTERFACE_ROW iface = { .Family = AF_INET6 };
 		// Enumerate it
 		for (index = 0;
 			index < table_ipv6->NumEntries;
