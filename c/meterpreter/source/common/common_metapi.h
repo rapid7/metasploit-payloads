@@ -159,11 +159,6 @@ typedef struct _ListApi
 	VOID(*destroy)(PLIST pList);
 } ListApi;
 
-typedef struct v6netmask
-{
-	unsigned mask[4];
-} v6netmask;
-
 #ifdef DEBUGTRACE
 typedef struct _LoggingApi
 {
