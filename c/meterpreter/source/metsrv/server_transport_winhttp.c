@@ -292,6 +292,7 @@ static DWORD packet_transmit_http(Remote *remote, LPBYTE rawPacket, DWORD rawPac
 {
 	DWORD result = ERROR_SUCCESS;
 	HINTERNET hReq;
+	BOOL res;
 	HttpTransportContext* ctx = (HttpTransportContext*)remote->transport->ctx;
 
 	lock_acquire(remote->lock);
@@ -305,8 +306,8 @@ static DWORD packet_transmit_http(Remote *remote, LPBYTE rawPacket, DWORD rawPac
 			break;
 		}
 
-		result = ctx->send_req(ctx, hReq, rawPacket, rawPacketLength);
-		if (!result)
+		res = ctx->send_req(ctx, hReq, rawPacket, rawPacketLength);
+		if (!res)
 		{
 			result = GetLastError();
 			break;
