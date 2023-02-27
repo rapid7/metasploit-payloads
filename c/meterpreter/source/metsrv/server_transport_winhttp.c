@@ -292,8 +292,6 @@ static DWORD packet_transmit_http(Remote *remote, LPBYTE rawPacket, DWORD rawPac
 {
 	DWORD result = ERROR_SUCCESS;
 	HINTERNET hReq;
-	BOOL result;
-	DWORD retries = 5;
 	HttpTransportContext* ctx = (HttpTransportContext*)remote->transport->ctx;
 
 	lock_acquire(remote->lock);
