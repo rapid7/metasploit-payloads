@@ -3,7 +3,9 @@
 #include "common_metapi.h"
 #include <netioapi.h>
 
+typedef NETIO_STATUS(NETIOAPI_API_* GETBESTINTERFACE)(IPAddr dwDestAddr, PDWORD pdwBestIfIndex);
 typedef NETIO_STATUS(NETIOAPI_API_* GETIPFORWARDTABLE2)(ADDRESS_FAMILY Family, PMIB_IPFORWARD_TABLE2* Table);
+typedef NETIO_STATUS(NETIOAPI_API_* GETIPINTERFACEENTRY)(PMIB_IPINTERFACE_ROW Row);
 
 typedef struct v6netmask
 {
@@ -215,10 +217,12 @@ DWORD request_net_config_remove_route(Remote *remote, Packet *packet)
 DWORD add_remove_route(Packet *packet, BOOLEAN add)
 {
 	MIB_IPFORWARDROW route;
-	DWORD (WINAPI *LocalGetBestInterface)(IPAddr, LPDWORD) = NULL;
+	GETBESTINTERFACE pGetBestInterface = NULL;
+	GETIPINTERFACEENTRY pGetIpInterfaceEntry = NULL;
 	LPCSTR subnet;
 	LPCSTR netmask;
 	LPCSTR gateway;
+	DWORD dwResult;
 
 	subnet  = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_SUBNET_STRING);
 	netmask = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_NETMASK_STRING);
@@ -229,26 +233,49 @@ DWORD add_remove_route(Packet *packet, BOOLEAN add)
 	route.dwForwardDest    = inet_addr(subnet);
 	route.dwForwardMask    = inet_addr(netmask);
 	route.dwForwardNextHop = inet_addr(gateway);
-	route.dwForwardType    = 4; // Assume next hop.
-	route.dwForwardProto   = 3;
+	route.dwForwardType    = MIB_IPROUTE_TYPE_INDIRECT; // Assume next hop.
+	route.dwForwardProto   = MIB_IPPROTO_NETMGMT;
 	route.dwForwardAge     = -1;
+	route.dwForwardMetric1 = 0;
 
-	if ((LocalGetBestInterface = (DWORD (WINAPI *)(IPAddr, LPDWORD))GetProcAddress(
-			GetModuleHandle("iphlpapi"),
-			"GetBestInterface")))
-	{
-		DWORD result = LocalGetBestInterface(route.dwForwardDest,
-				&route.dwForwardIfIndex);
-
-		if (result != ERROR_SUCCESS)
-			return result;
-	}
-	// I'm lazy.  Need manual lookup of ifindex based on gateway for NT.
-	else
+	pGetBestInterface = (GETBESTINTERFACE)GetProcAddress(GetModuleHandle(TEXT("iphlpapi")), "GetBestInterface");
+	if (!pGetBestInterface) {
+		dprintf("[NET] add_remove_route: GetBestInterface is not available.");
 		return ERROR_NOT_SUPPORTED;
+	}
 
-	if (add)
-		return CreateIpForwardEntry(&route);
-	else
-		return DeleteIpForwardEntry(&route);
+	dwResult = pGetBestInterface(route.dwForwardNextHop, &route.dwForwardIfIndex);
+	if (dwResult != ERROR_SUCCESS) {
+		dprintf("[NET] add_remove_route: GetBestInterface failed. error=%d (0x%x)", dwResult, (ULONG_PTR)dwResult);
+		return dwResult;
+	}
+	dprintf("[NET] add_remove_route: GetBestInterface returned ifIndex=%d.", route.dwForwardIfIndex);
+
+	pGetIpInterfaceEntry = (GETIPINTERFACEENTRY)GetProcAddress(GetModuleHandle(TEXT("iphlpapi")), "GetIpInterfaceEntry");
+	// If GetIpInterfaceEntry is available, use it to set the default metric because newer systems require that
+	if (pGetIpInterfaceEntry) {
+		MIB_IPINTERFACE_ROW iface = { .Family = AF_INET, .InterfaceIndex = route.dwForwardIfIndex };
+		dwResult = pGetIpInterfaceEntry(&iface);
+		if (dwResult == NO_ERROR) {
+			route.dwForwardMetric1 = iface.Metric;
+		}
+		else {
+			dprintf("[NET] add_remove_route: GetIpInterfaceEntry failed. error=%d (0x%x)", dwResult, (ULONG_PTR)dwResult);
+		}
+	}
+	else {
+		dprintf("[NET] add_remove_route: GetIpInterfaceEntry is not available.");
+	}
+
+	if (add) {
+		dwResult = CreateIpForwardEntry(&route);
+	}
+	else {
+		dwResult = DeleteIpForwardEntry(&route);
+	}
+
+	if (dwResult != ERROR_SUCCESS) {
+		dprintf("[NET] add_remove_route: %sIpForwardEntry failed. error=%d (0x%x)", (add ? "Create" : "Delete"), dwResult, (ULONG_PTR)dwResult);
+	}
+	return dwResult;
 }
