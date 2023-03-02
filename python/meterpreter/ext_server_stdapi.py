@@ -1353,6 +1353,8 @@ def stdapi_sys_process_attach(request, response):
         handle = OpenProcess(permissions, inherit, pid)
     if not handle:
         return error_result_windows(), response
+    meterpreter.processes[handle] = None
+    debug_print('[*] added process id: ' + str(pid) + ', handle: ' + str(handle))
     response += tlv_pack(TLV_TYPE_HANDLE, handle)
     return ERROR_SUCCESS, response
 
