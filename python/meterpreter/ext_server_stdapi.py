@@ -727,6 +727,7 @@ ERROR_FAILURE = 1
 ERROR_INSUFFICIENT_BUFFER = 0x0000007a
 ERROR_NOT_SUPPORTED = 0x00000032
 ERROR_NO_DATA = 0x000000e8
+ERROR_INVALID_PARAMETER = 87
 
 # Special return value to match up with Windows error codes for network
 # errors.
@@ -1388,6 +1389,65 @@ def stdapi_sys_process_execute(request, response):
     if (flags & PROCESS_EXECUTE_FLAG_CHANNELIZED):
         channel_id = meterpreter.add_channel(MeterpreterProcess(proc_h))
         response += tlv_pack(TLV_TYPE_CHANNEL_ID, channel_id)
+    return ERROR_SUCCESS, response
+
+@register_function_if(has_windll)
+def stdapi_sys_process_get_info(request, response):
+    proc_h = packet_get_tlv(request, TLV_TYPE_HANDLE)['value']
+    if not proc_h:
+        return ERROR_INVALID_PARAMETER, response
+
+    MAX_PATH = 260
+
+    EnumProcessModules = ctypes.windll.Psapi.EnumProcessModules
+    EnumProcessModules.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_ulong, ctypes.POINTER(ctypes.c_ulong)]
+    EnumProcessModules.restype = ctypes.c_long
+
+    GetModuleFileNameExW = ctypes.windll.Psapi.GetModuleFileNameExW
+    GetModuleFileNameExW.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.POINTER(ctypes.c_ulong)]
+    GetModuleFileNameExW.restype = ctypes.c_ulong
+
+    GetModuleBaseNameW = ctypes.windll.Psapi.GetModuleBaseNameW
+    GetModuleBaseNameW.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_ulong]
+    GetModuleBaseNameW.restype = ctypes.c_ulong
+
+    def enum_process_modules(hProcess):
+        buf_count = 256
+        while True:
+            buffer = (ctypes.c_void_p * buf_count)()
+            buf_size = ctypes.sizeof(buffer)
+            needed = ctypes.c_ulong()
+            if not EnumProcessModules(hProcess, ctypes.byref(buffer), buf_size, ctypes.byref(needed)):
+                raise OSError('EnumProcessModules')
+            if buf_size < needed.value:
+                buf_count = needed.value // (buf_size // buf_count)
+                continue
+            count = needed.value // (buf_size // buf_count)
+            return map(ctypes.c_void_p, buffer[:count])
+
+    def get_module_name(hProcess, hModule):
+        base_name_buffer = ctypes.create_unicode_buffer(MAX_PATH)
+        if not GetModuleBaseNameW(hProcess, hModule, base_name_buffer, MAX_PATH):
+            raise OSError('GetModuleBaseNameW')
+        return base_name_buffer.value
+
+    def get_module_filename(hProcess, hModule):
+        buffer = ctypes.create_unicode_buffer(MAX_PATH)
+        nSize = ctypes.c_ulong()
+        if not GetModuleFileNameExW(hProcess, hModule, ctypes.byref(buffer), ctypes.byref(nSize)):
+            raise OSError('GetModuleFileNameExW')
+        return buffer.value
+
+    try:
+        for hModule in enum_process_modules(proc_h):
+            module_name = get_module_name(proc_h, hModule)
+            module_filename = get_module_filename(proc_h, hModule)
+            response += tlv_pack(TLV_TYPE_PROCESS_NAME, module_name)
+            response += tlv_pack(TLV_TYPE_PROCESS_PATH, module_filename)
+            break
+    except:
+        return error_result_windows(), response
+
     return ERROR_SUCCESS, response
 
 @register_function
