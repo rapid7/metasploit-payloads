@@ -1336,6 +1336,28 @@ def stdapi_sys_config_sysinfo(request, response):
     response += tlv_pack(TLV_TYPE_ARCHITECTURE, get_system_arch())
     return ERROR_SUCCESS, response
 
+@register_function_if(has_windll)
+def stdapi_sys_process_attach(request, response):
+    pid = packet_get_tlv(request, TLV_TYPE_PID)['value']
+    if not pid:
+        GetCurrentProcess = ctypes.windll.kernel32.GetCurrentProcess
+        GetCurrentProcess.restype = ctypes.c_void_p
+        handle = GetCurrentProcess()
+    else:
+        inherit = packet_get_tlv(request, TLV_TYPE_INHERIT)['value']
+        permissions = packet_get_tlv(request, TLV_TYPE_PROCESS_PERMS)['value']
+
+        OpenProcess = ctypes.windll.kernel32.OpenProcess
+        OpenProcess.argtypes = [ctypes.c_uint32, ctypes.c_bool, ctypes.c_uint32]
+        OpenProcess.restype = ctypes.c_void_p
+        handle = OpenProcess(permissions, inherit, pid)
+    if not handle:
+        return error_result_windows(), response
+    meterpreter.processes[handle] = None
+    debug_print('[*] added process id: ' + str(pid) + ', handle: ' + str(handle))
+    response += tlv_pack(TLV_TYPE_HANDLE, handle)
+    return ERROR_SUCCESS, response
+
 @register_function
 def stdapi_sys_process_close(request, response):
     proc_h_id = packet_get_tlv(request, TLV_TYPE_HANDLE)['value']
