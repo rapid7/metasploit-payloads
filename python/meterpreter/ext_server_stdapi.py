@@ -1899,20 +1899,21 @@ def stdapi_net_config_get_arp_table(request, response):
         if not os.path.exists(arp_cache_file):
             return ERROR_NOT_SUPPORTED, response
 
-        with open('/proc/net/arp', 'r') as arp_cache:
-            lines = arp_cache.readlines()
-            import binascii
-            for line in lines[1:]:
-                fields = line.split()
-                ip_address = fields[0]
-                mac_address = fields[3]
-                mac_address = bytes().join(binascii.unhexlify(h) for h in mac_address.split(':'))
-                interface_name = fields[5]
-                arp_tlv  = bytes()
-                arp_tlv += tlv_pack(TLV_TYPE_IP, socket.inet_aton(ip_address))
-                arp_tlv += tlv_pack(TLV_TYPE_MAC_ADDRESS, mac_address)
-                arp_tlv += tlv_pack(TLV_TYPE_MAC_NAME, interface_name)
-                response += tlv_pack(TLV_TYPE_ARP_ENTRY, arp_tlv)
+        arp_cache = open('/proc/net/arp', 'r')
+        lines = arp_cache.readlines()
+        import binascii
+        for line in lines[1:]:
+            fields = line.split()
+            ip_address = fields[0]
+            mac_address = fields[3]
+            mac_address = bytes().join(binascii.unhexlify(h) for h in mac_address.split(':'))
+            interface_name = fields[5]
+            arp_tlv  = bytes()
+            arp_tlv += tlv_pack(TLV_TYPE_IP, socket.inet_aton(ip_address))
+            arp_tlv += tlv_pack(TLV_TYPE_MAC_ADDRESS, mac_address)
+            arp_tlv += tlv_pack(TLV_TYPE_MAC_NAME, interface_name)
+            response += tlv_pack(TLV_TYPE_ARP_ENTRY, arp_tlv)
+        arp_cache.close()
     else:
         return ERROR_NOT_SUPPORTED, response
     return ERROR_SUCCESS, response
@@ -2124,6 +2125,75 @@ def stdapi_net_config_get_routes(request, response):
         route_tlv += tlv_pack(TLV_TYPE_ROUTE_METRIC, route_info.get('metric', 0))
         response += tlv_pack(TLV_TYPE_NETWORK_ROUTE, route_tlv)
     return ERROR_SUCCESS, response
+
+def windll_route_add_remove(is_add, request, response):
+    class IPAddr(ctypes.Structure):
+        _fields_ = [
+            ("S_addr", ctypes.c_ulong)]
+
+    def inet_addr(ip):
+        return IPAddr(struct.unpack("L", socket.inet_aton(ip))[0])
+
+    MIB_IPROUTE_TYPE_INDIRECT = 4
+    MIB_IPPROTO_NETMGMT = 3
+
+    GetBestInterface = ctypes.windll.Iphlpapi.GetBestInterface
+    GetBestInterface.argtypes = [IPAddr, ctypes.POINTER(ctypes.c_ulong)]
+    GetBestInterface.restype = ctypes.c_ulong
+
+    CreateIpForwardEntry = ctypes.windll.Iphlpapi.CreateIpForwardEntry
+    CreateIpForwardEntry.argtypes = [PMIB_IPFORWARDROW]
+    CreateIpForwardEntry.restype = ctypes.c_ulong
+
+    DeleteIpForwardEntry = ctypes.windll.Iphlpapi.DeleteIpForwardEntry
+    DeleteIpForwardEntry.argtypes = [PMIB_IPFORWARDROW]
+    DeleteIpForwardEntry.restype = ctypes.c_ulong
+
+    GetIpInterfaceEntry = ctypes.windll.Iphlpapi.GetIpInterfaceEntry
+    GetIpInterfaceEntry.argtypes = [ctypes.POINTER(MIB_IPINTERFACE_ROW)]
+    GetIpInterfaceEntry.restype = ctypes.c_ulong
+
+    subnet = packet_get_tlv(request, TLV_TYPE_SUBNET_STRING)['value']
+    netmask = packet_get_tlv(request, TLV_TYPE_NETMASK_STRING)['value']
+    gateway = packet_get_tlv(request, TLV_TYPE_GATEWAY_STRING)['value']
+
+    route = MIB_IPFORWARDROW()
+    route.dwForwardDest = struct.unpack("I", socket.inet_aton(subnet))[0]
+    route.dwForwardMask = struct.unpack("I", socket.inet_aton(netmask))[0]
+    route.dwForwardNextHop = struct.unpack("I", socket.inet_aton(gateway))[0]
+    route.dwForwardType = MIB_IPROUTE_TYPE_INDIRECT
+    route.dwForwardProto = MIB_IPPROTO_NETMGMT
+    route.dwForwardAge = -1
+    route.dwForwardMetric1 = 0
+
+    best_iface = ctypes.c_ulong()
+    result = GetBestInterface(inet_addr(subnet), ctypes.byref(best_iface))
+    if result != ERROR_SUCCESS:
+        return error_result_windows(result), response
+    route.dwForwardIfIndex = best_iface
+
+    iface = MIB_IPINTERFACE_ROW(Family=WIN_AF_INET, InterfaceIndex=route.dwForwardIfIndex)
+    result = GetIpInterfaceEntry(ctypes.byref(iface))
+    if result != ERROR_SUCCESS:
+        return error_result_windows(result), response
+    route.dwForwardMetric1 = iface.Metric
+
+    if is_add:
+        result = CreateIpForwardEntry(ctypes.byref(route))
+    else:
+        result = DeleteIpForwardEntry(ctypes.byref(route))
+    if result != ERROR_SUCCESS:
+        return error_result_windows(result), response
+
+    return ERROR_SUCCESS, response
+
+@register_function_if(has_windll)
+def stdapi_net_config_add_route(request, response):
+    return windll_route_add_remove(True, request, response)
+
+@register_function_if(has_windll)
+def stdapi_net_config_remove_route(request, response):
+    return windll_route_add_remove(False, request, response)
 
 def stdapi_net_config_get_routes_via_netlink():
     rta_align = lambda l: l+3 & ~3
