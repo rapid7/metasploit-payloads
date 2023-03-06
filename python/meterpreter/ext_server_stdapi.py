@@ -1393,7 +1393,7 @@ def stdapi_sys_process_execute(request, response):
 
 @register_function_if(has_windll)
 def stdapi_sys_process_get_info(request, response):
-    proc_h = packet_get_tlv(request, TLV_TYPE_HANDLE)['value']
+    proc_h = packet_get_tlv(request, TLV_TYPE_HANDLE).get('value')
     if not proc_h:
         return ERROR_INVALID_PARAMETER, response
 
@@ -1404,7 +1404,7 @@ def stdapi_sys_process_get_info(request, response):
     EnumProcessModules.restype = ctypes.c_long
 
     GetModuleFileNameExW = ctypes.windll.Psapi.GetModuleFileNameExW
-    GetModuleFileNameExW.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.POINTER(ctypes.c_ulong)]
+    GetModuleFileNameExW.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_ulong]
     GetModuleFileNameExW.restype = ctypes.c_ulong
 
     GetModuleBaseNameW = ctypes.windll.Psapi.GetModuleBaseNameW
@@ -1433,8 +1433,8 @@ def stdapi_sys_process_get_info(request, response):
 
     def get_module_filename(hProcess, hModule):
         buffer = ctypes.create_unicode_buffer(MAX_PATH)
-        nSize = ctypes.c_ulong()
-        if not GetModuleFileNameExW(hProcess, hModule, ctypes.byref(buffer), ctypes.byref(nSize)):
+        nSize = ctypes.c_ulong(MAX_PATH)
+        if not GetModuleFileNameExW(hProcess, hModule, ctypes.byref(buffer), nSize):
             raise OSError('GetModuleFileNameExW')
         return buffer.value
 
@@ -1445,7 +1445,8 @@ def stdapi_sys_process_get_info(request, response):
             response += tlv_pack(TLV_TYPE_PROCESS_NAME, module_name)
             response += tlv_pack(TLV_TYPE_PROCESS_PATH, module_filename)
             break
-    except:
+    except OSError as error:
+        debug_print('[-] method stdapi_sys_process_get_info failed on: ' + str(error))
         return error_result_windows(), response
 
     return ERROR_SUCCESS, response
