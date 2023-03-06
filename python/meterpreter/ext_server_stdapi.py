@@ -1002,6 +1002,9 @@ def getaddrinfo_from_request(request, socktype, proto):
         local_address_info = None
     return peer_address_info, local_address_info
 
+def addr_atoi4(address):
+    return struct.unpack('!I',  socket.inet_aton(address))[0]
+
 def netlink_request(req_type, req_data):
     # See RFC 3549
     NLM_F_REQUEST    = 0x0001
@@ -1925,7 +1928,6 @@ def stdapi_net_config_get_arp_table(request, response):
 
         arp_cache = open('/proc/net/arp', 'r')
         lines = arp_cache.readlines()
-        import binascii
         for line in lines[1:]:
             fields = line.split()
             ip_address = fields[0]
@@ -2150,13 +2152,10 @@ def stdapi_net_config_get_routes(request, response):
         response += tlv_pack(TLV_TYPE_NETWORK_ROUTE, route_tlv)
     return ERROR_SUCCESS, response
 
-def windll_route_add_remove(is_add, request, response):
+def _win_route_add_remove(is_add, request, response):
     class IPAddr(ctypes.Structure):
         _fields_ = [
             ("S_addr", ctypes.c_ulong)]
-
-    def inet_addr(ip):
-        return IPAddr(struct.unpack("L", socket.inet_aton(ip))[0])
 
     MIB_IPROUTE_TYPE_INDIRECT = 4
     MIB_IPPROTO_NETMGMT = 3
@@ -2182,16 +2181,17 @@ def windll_route_add_remove(is_add, request, response):
     gateway = packet_get_tlv(request, TLV_TYPE_GATEWAY_STRING)['value']
 
     route = MIB_IPFORWARDROW()
-    route.dwForwardDest = struct.unpack("I", socket.inet_aton(subnet))[0]
-    route.dwForwardMask = struct.unpack("I", socket.inet_aton(netmask))[0]
-    route.dwForwardNextHop = struct.unpack("I", socket.inet_aton(gateway))[0]
+    route.dwForwardDest = socket.ntohl(addr_atoi4(subnet))
+    route.dwForwardMask = socket.ntohl(addr_atoi4(netmask))
+    route.dwForwardNextHop = socket.ntohl(addr_atoi4(gateway))
     route.dwForwardType = MIB_IPROUTE_TYPE_INDIRECT
     route.dwForwardProto = MIB_IPPROTO_NETMGMT
     route.dwForwardAge = -1
     route.dwForwardMetric1 = 0
 
     best_iface = ctypes.c_ulong()
-    result = GetBestInterface(inet_addr(subnet), ctypes.byref(best_iface))
+    ip_addr = IPAddr(socket.ntohl(addr_atoi4(subnet)))
+    result = GetBestInterface(ip_addr, ctypes.byref(best_iface))
     if result != ERROR_SUCCESS:
         return error_result_windows(result), response
     route.dwForwardIfIndex = best_iface
@@ -2213,11 +2213,11 @@ def windll_route_add_remove(is_add, request, response):
 
 @register_function_if(has_windll)
 def stdapi_net_config_add_route(request, response):
-    return windll_route_add_remove(True, request, response)
+    return _win_route_add_remove(True, request, response)
 
 @register_function_if(has_windll)
 def stdapi_net_config_remove_route(request, response):
-    return windll_route_add_remove(False, request, response)
+    return _win_route_add_remove(False, request, response)
 
 def stdapi_net_config_get_routes_via_netlink():
     rta_align = lambda l: l+3 & ~3
