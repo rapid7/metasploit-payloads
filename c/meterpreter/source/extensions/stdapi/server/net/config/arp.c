@@ -45,27 +45,19 @@ DWORD get_arp_table(Remote *remote, Packet *response)
 					arp[1].buffer        = (PUCHAR)pIpNetTable->table[i].bPhysAddr;
 
 					arp[2].header.type   = TLV_TYPE_MAC_NAME;
-
-					BOOL has_description = FALSE;
-					MIB_IFROW iface;
-					iface.dwIndex = pIpNetTable->table[i].dwIndex;
+					MIB_IFROW iface = { .dwIndex = pIpNetTable->table[i].dwIndex };
 					result = GetIfEntry(&iface);
-					if (result == NO_ERROR)
-					{
-						if (iface.bDescr)
-						{
-							arp[2].header.length = (DWORD)strlen(iface.bDescr) + 1;
-							arp[2].buffer = (PUCHAR)iface.bDescr;
-							has_description = TRUE;
-						}
+					if ((result == NO_ERROR) && (iface.bDescr)) {
+						arp[2].header.length = (DWORD)strlen(iface.bDescr) + 1;
+						arp[2].buffer = (PUCHAR)iface.bDescr;
 					}
-
-					if (!has_description) {
+					else {
 						char interface_index[10];
 						sprintf_s(interface_index, sizeof(interface_index), "%d", pIpNetTable->table[i].dwIndex);
 						arp[2].header.length = (DWORD)strlen(interface_index) + 1;
 						arp[2].buffer        = (PUCHAR)interface_index;
 					}
+
 
 					met_api->packet.add_tlv_group(response, TLV_TYPE_ARP_ENTRY, arp, 3);
 				}
