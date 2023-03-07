@@ -290,7 +290,7 @@ static DWORD validate_response_winhttp(HANDLE hReq, HttpTransportContext* ctx)
  */
 static DWORD packet_transmit_http(Remote *remote, LPBYTE rawPacket, DWORD rawPacketLength)
 {
-	DWORD result = ERROR_SUCCESS;
+	DWORD dwResult = ERROR_SUCCESS;
 	HINTERNET hReq;
 	BOOL res;
 	HttpTransportContext* ctx = (HttpTransportContext*)remote->transport->ctx;
@@ -302,32 +302,23 @@ static DWORD packet_transmit_http(Remote *remote, LPBYTE rawPacket, DWORD rawPac
 		hReq = ctx->create_req(ctx, FALSE, "PACKET TRANSMIT");
 		if (hReq == NULL)
 		{
-			result = GetLastError();
-			break;
+			BREAK_ON_ERROR("[PACKET TRANSMIT] Failed create_req");
 		}
 
 		res = ctx->send_req(ctx, hReq, rawPacket, rawPacketLength);
 		if (!res)
 		{
-			result = GetLastError();
-			break;
+			BREAK_ON_ERROR("[PACKET TRANSMIT] Failed send_req");
 		}
-	} while(0);
 
-	if (result != ERROR_SUCCESS)
-	{
-		dprintf("[PACKET TRANSMIT] transmit request failed with return: %d", result);
-	}
-	else
-	{
 		dprintf("[PACKET TRANSMIT] request sent.. apparently");
-	}
+	} while(0);
 
 	ctx->close_req(hReq);
 
 	lock_release(remote->lock);
 
-	return result;
+	return dwResult;
 }
 
 /*!
