@@ -12,6 +12,7 @@ import struct
 import subprocess
 import sys
 import time
+import binascii
 
 try:
     import ctypes
@@ -727,6 +728,7 @@ ERROR_FAILURE = 1
 ERROR_INSUFFICIENT_BUFFER = 0x0000007a
 ERROR_NOT_SUPPORTED = 0x00000032
 ERROR_NO_DATA = 0x000000e8
+ERROR_INVALID_PARAMETER = 87
 
 # Special return value to match up with Windows error codes for network
 # errors.
@@ -743,6 +745,7 @@ PROCESS_TERMINATE                 = 0x0001
 PROCESS_VM_READ                   = 0x0010
 PROCESS_QUERY_INFORMATION         = 0x0400
 PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+PROCESS_ALL_ACCESS                = 0x1fffff
 VER_NT_WORKSTATION                = 0x0001
 VER_NT_DOMAIN_CONTROLLER          = 0x0002
 VER_NT_SERVER                     = 0x0003
@@ -999,6 +1002,9 @@ def getaddrinfo_from_request(request, socktype, proto):
     else:
         local_address_info = None
     return peer_address_info, local_address_info
+
+def addr_atoi4(address):
+    return struct.unpack('!I',  socket.inet_aton(address))[0]
 
 def netlink_request(req_type, req_data):
     # See RFC 3549
@@ -1260,40 +1266,42 @@ def stdapi_sys_config_getprivs(request, response):
         return error_result_windows(), response
 
     priv_list = [
-        "SeAssignPrimaryTokenPrivilege",
-        "SeAuditPrivilege",
-        "SeBackupPrivilege",
-        "SeChangeNotifyPrivilege",
-        "SeCreatePagefilePrivilege",
-        "SeCreatePermanentPrivilege",
-        "SeCreateTokenPrivilege",
-        "SeDebugPrivilege",
-        "SeIncreaseBasePriorityPrivilege",
-        "SeIncreaseQuotaPrivilege",
-        "SeLoadDriverPrivilege",
-        "SeLockMemoryPrivilege",
-        "SeMachineAccountPrivilege",
-        "SeProfileSingleProcessPrivilege",
-        "SeRemoteShutdownPrivilege",
-        "SeRestorePrivilege",
-        "SeSecurityPrivilege",
-        "SeShutdownPrivilege",
-        "SeSystemEnvironmentPrivilege",
-        "SeSystemProfilePrivilege",
-        "SeSystemtimePrivilege",
-        "SeTakeOwnershipPrivilege",
-        "SeTcbPrivilege",
-        "SeCreateGlobalPrivilege",
-        "SeCreateSymbolicLinkPrivilege",
-        "SeEnableDelegationPrivilege",
-        "SeImpersonatePrivilege",
-        "SeIncreaseWorkingSetPrivilege",
-        "SeManageVolumePrivilege",
-        "SeRelabelPrivilege",
-        "SeSyncAgentPrivilege",
-        "SeTimeZonePrivilege",
-        "SeTrustedCredManAccessPrivilege",
-        "SeDelegateSessionUserImpersonatePrivilege"
+        "SeAssignPrimaryTokenPrivilege",                 # SE_ASSIGNPRIMARYTOKEN_NAME
+        "SeAuditPrivilege",                              # SE_AUDIT_NAME
+        "SeBackupPrivilege",                             # SE_BACKUP_NAME
+        "SeChangeNotifyPrivilege",                       # SE_CHANGE_NOTIFY_NAME
+        "SeCreateGlobalPrivilege",                       # SE_CREATE_GLOBAL_NAME
+        "SeCreatePagefilePrivilege",                     # SE_CREATE_PAGEFILE_NAME
+        "SeCreatePermanentPrivilege",                    # SE_CREATE_PERMANENT_NAME
+        "SeCreateSymbolicLinkPrivilege",                 # SE_CREATE_SYMBOLIC_LINK_NAME
+        "SeCreateTokenPrivilege",                        # SE_CREATE_TOKEN_NAME
+        "SeDebugPrivilege",                              # SE_DEBUG_NAME
+        "SeDelegateSessionUserImpersonatePrivilege",     # SE_DELEGATE_SESSION_USER_IMPERSONATE_NAME
+        "SeEnableDelegationPrivilege",                   # SE_ENABLE_DELEGATION_NAME
+        "SeImpersonatePrivilege",                        # SE_IMPERSONATE_NAME
+        "SeIncreaseBasePriorityPrivilege",               # SE_INC_BASE_PRIORITY_NAME
+        "SeIncreaseQuotaPrivilege",                      # SE_INCREASE_QUOTA_NAME
+        "SeIncreaseWorkingSetPrivilege",                 # SE_INC_WORKING_SET_NAME
+        "SeLoadDriverPrivilege",                         # SE_LOAD_DRIVER_NAME
+        "SeLockMemoryPrivilege",                         # SE_LOCK_MEMORY_NAME
+        "SeMachineAccountPrivilege",                     # SE_MACHINE_ACCOUNT_NAME
+        "SeManageVolumePrivilege",                       # SE_MANAGE_VOLUME_NAME
+        "SeProfileSingleProcessPrivilege",               # SE_PROF_SINGLE_PROCESS_NAME
+        "SeRelabelPrivilege",                            # SE_RELABEL_NAME
+        "SeRemoteShutdownPrivilege",                     # SE_REMOTE_SHUTDOWN_NAME
+        "SeRestorePrivilege",                            # SE_RESTORE_NAME
+        "SeSecurityPrivilege",                           # SE_SECURITY_NAME
+        "SeShutdownPrivilege",                           # SE_SHUTDOWN_NAME
+        "SeSyncAgentPrivilege",                          # SE_SYNC_AGENT_NAME
+        "SeSystemEnvironmentPrivilege",                  # SE_SYSTEM_ENVIRONMENT_NAME
+        "SeSystemProfilePrivilege",                      # SE_SYSTEM_PROFILE_NAME
+        "SeSystemtimePrivilege",                         # SE_SYSTEMTIME_NAME
+        "SeTakeOwnershipPrivilege",                      # SE_TAKE_OWNERSHIP_NAME
+        "SeTcbPrivilege",                                # SE_TCB_NAME
+        "SeTimeZonePrivilege",                           # SE_TIME_ZONE_NAME
+        "SeTrustedCredManAccessPrivilege",               # SE_TRUSTED_CREDMAN_ACCESS_NAME
+        "SeUndockPrivilege",                             # SE_UNDOCK_NAME
+        "SeUnsolicitedInputPrivilege"                    # SE_UNSOLICITED_INPUT_NAME
     ]
     for privilege in priv_list:
         luid = LUID()
@@ -1337,15 +1345,34 @@ def stdapi_sys_config_sysinfo(request, response):
     response += tlv_pack(TLV_TYPE_ARCHITECTURE, get_system_arch())
     return ERROR_SUCCESS, response
 
+@register_function_if(has_windll)
+def stdapi_sys_process_attach(request, response):
+    pid = packet_get_tlv(request, TLV_TYPE_PID)['value']
+    if not pid:
+        GetCurrentProcess = ctypes.windll.kernel32.GetCurrentProcess
+        GetCurrentProcess.restype = ctypes.c_void_p
+        handle = GetCurrentProcess()
+    else:
+        inherit = packet_get_tlv(request, TLV_TYPE_INHERIT)['value']
+        permissions = packet_get_tlv(request, TLV_TYPE_PROCESS_PERMS)['value']
+
+        OpenProcess = ctypes.windll.kernel32.OpenProcess
+        OpenProcess.argtypes = [ctypes.c_uint32, ctypes.c_bool, ctypes.c_uint32]
+        OpenProcess.restype = ctypes.c_void_p
+        handle = OpenProcess(permissions, inherit, pid)
+    if not handle:
+        return error_result_windows(), response
+    meterpreter.processes[handle] = None
+    debug_print('[*] added process id: ' + str(pid) + ', handle: ' + str(handle))
+    response += tlv_pack(TLV_TYPE_HANDLE, handle)
+    return ERROR_SUCCESS, response
+
 @register_function
 def stdapi_sys_process_close(request, response):
-    proc_h_id = packet_get_tlv(request, TLV_TYPE_HANDLE)
+    proc_h_id = packet_get_tlv(request, TLV_TYPE_HANDLE)['value']
     if not proc_h_id:
         return ERROR_SUCCESS, response
-    proc_h_id = proc_h_id['value']
-    if proc_h_id in meterpreter.processes:
-        del meterpreter.processes[proc_h_id]
-    if not meterpreter.close_channel(proc_h_id):
+    if not meterpreter.close_process(proc_h_id):
         return ERROR_FAILURE, response
     return ERROR_SUCCESS, response
 
@@ -1388,12 +1415,73 @@ def stdapi_sys_process_execute(request, response):
         proc_h.start()
     else:
         proc_h = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
     proc_h_id = meterpreter.add_process(proc_h)
     response += tlv_pack(TLV_TYPE_PID, proc_h.pid)
     response += tlv_pack(TLV_TYPE_PROCESS_HANDLE, proc_h_id)
     if (flags & PROCESS_EXECUTE_FLAG_CHANNELIZED):
         channel_id = meterpreter.add_channel(MeterpreterProcess(proc_h))
         response += tlv_pack(TLV_TYPE_CHANNEL_ID, channel_id)
+    return ERROR_SUCCESS, response
+
+@register_function_if(has_windll)
+def stdapi_sys_process_get_info(request, response):
+    proc_h = packet_get_tlv(request, TLV_TYPE_HANDLE).get('value')
+    if not proc_h:
+        return ERROR_INVALID_PARAMETER, response
+
+    MAX_PATH = 260
+
+    EnumProcessModules = ctypes.windll.Psapi.EnumProcessModules
+    EnumProcessModules.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_ulong, ctypes.POINTER(ctypes.c_ulong)]
+    EnumProcessModules.restype = ctypes.c_long
+
+    GetModuleFileNameExW = ctypes.windll.Psapi.GetModuleFileNameExW
+    GetModuleFileNameExW.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_ulong]
+    GetModuleFileNameExW.restype = ctypes.c_ulong
+
+    GetModuleBaseNameW = ctypes.windll.Psapi.GetModuleBaseNameW
+    GetModuleBaseNameW.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_ulong]
+    GetModuleBaseNameW.restype = ctypes.c_ulong
+
+    def enum_process_modules(hProcess):
+        buf_count = 256
+        while True:
+            buffer = (ctypes.c_void_p * buf_count)()
+            buf_size = ctypes.sizeof(buffer)
+            needed = ctypes.c_ulong()
+            if not EnumProcessModules(hProcess, ctypes.byref(buffer), buf_size, ctypes.byref(needed)):
+                raise OSError('EnumProcessModules')
+            if buf_size < needed.value:
+                buf_count = needed.value // (buf_size // buf_count)
+                continue
+            count = needed.value // (buf_size // buf_count)
+            return map(ctypes.c_void_p, buffer[:count])
+
+    def get_module_name(hProcess, hModule):
+        base_name_buffer = ctypes.create_unicode_buffer(MAX_PATH)
+        if not GetModuleBaseNameW(hProcess, hModule, base_name_buffer, MAX_PATH):
+            raise OSError('GetModuleBaseNameW')
+        return base_name_buffer.value
+
+    def get_module_filename(hProcess, hModule):
+        buffer = ctypes.create_unicode_buffer(MAX_PATH)
+        nSize = ctypes.c_ulong(MAX_PATH)
+        if not GetModuleFileNameExW(hProcess, hModule, ctypes.byref(buffer), nSize):
+            raise OSError('GetModuleFileNameExW')
+        return buffer.value
+
+    try:
+        for hModule in enum_process_modules(proc_h):
+            module_name = get_module_name(proc_h, hModule)
+            module_filename = get_module_filename(proc_h, hModule)
+            response += tlv_pack(TLV_TYPE_PROCESS_NAME, module_name)
+            response += tlv_pack(TLV_TYPE_PROCESS_PATH, module_filename)
+            break
+    except OSError as error:
+        debug_print('[-] method stdapi_sys_process_get_info failed on: ' + str(error))
+        return error_result_windows(), response
+
     return ERROR_SUCCESS, response
 
 @register_function
@@ -1856,7 +1944,7 @@ def stdapi_fs_mount_show(request, response):
         response += tlv_pack(TLV_TYPE_MOUNT_GROUP, mount)
     return ERROR_SUCCESS, response
 
-@register_function
+@register_function_if(sys.platform.startswith('linux') or has_windll)
 def stdapi_net_config_get_arp_table(request, response):
     if has_windll:
         MIB_IPNET_TYPE_DYNAMIC = 3
@@ -1906,7 +1994,6 @@ def stdapi_net_config_get_arp_table(request, response):
 
         arp_cache = open('/proc/net/arp', 'r')
         lines = arp_cache.readlines()
-        import binascii
         for line in lines[1:]:
             fields = line.split()
             ip_address = fields[0]
@@ -2131,13 +2218,10 @@ def stdapi_net_config_get_routes(request, response):
         response += tlv_pack(TLV_TYPE_NETWORK_ROUTE, route_tlv)
     return ERROR_SUCCESS, response
 
-def windll_route_add_remove(is_add, request, response):
+def _win_route_add_remove(is_add, request, response):
     class IPAddr(ctypes.Structure):
         _fields_ = [
             ("S_addr", ctypes.c_ulong)]
-
-    def inet_addr(ip):
-        return IPAddr(struct.unpack("L", socket.inet_aton(ip))[0])
 
     MIB_IPROUTE_TYPE_INDIRECT = 4
     MIB_IPPROTO_NETMGMT = 3
@@ -2163,16 +2247,17 @@ def windll_route_add_remove(is_add, request, response):
     gateway = packet_get_tlv(request, TLV_TYPE_GATEWAY_STRING)['value']
 
     route = MIB_IPFORWARDROW()
-    route.dwForwardDest = struct.unpack("I", socket.inet_aton(subnet))[0]
-    route.dwForwardMask = struct.unpack("I", socket.inet_aton(netmask))[0]
-    route.dwForwardNextHop = struct.unpack("I", socket.inet_aton(gateway))[0]
+    route.dwForwardDest = socket.ntohl(addr_atoi4(subnet))
+    route.dwForwardMask = socket.ntohl(addr_atoi4(netmask))
+    route.dwForwardNextHop = socket.ntohl(addr_atoi4(gateway))
     route.dwForwardType = MIB_IPROUTE_TYPE_INDIRECT
     route.dwForwardProto = MIB_IPPROTO_NETMGMT
     route.dwForwardAge = -1
     route.dwForwardMetric1 = 0
 
     best_iface = ctypes.c_ulong()
-    result = GetBestInterface(inet_addr(subnet), ctypes.byref(best_iface))
+    ip_addr = IPAddr(socket.ntohl(addr_atoi4(subnet)))
+    result = GetBestInterface(ip_addr, ctypes.byref(best_iface))
     if result != ERROR_SUCCESS:
         return error_result_windows(result), response
     route.dwForwardIfIndex = best_iface
@@ -2194,11 +2279,11 @@ def windll_route_add_remove(is_add, request, response):
 
 @register_function_if(has_windll)
 def stdapi_net_config_add_route(request, response):
-    return windll_route_add_remove(True, request, response)
+    return _win_route_add_remove(True, request, response)
 
 @register_function_if(has_windll)
 def stdapi_net_config_remove_route(request, response):
-    return windll_route_add_remove(False, request, response)
+    return _win_route_add_remove(False, request, response)
 
 def stdapi_net_config_get_routes_via_netlink():
     rta_align = lambda l: l+3 & ~3
