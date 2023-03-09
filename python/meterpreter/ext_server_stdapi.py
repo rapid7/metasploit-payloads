@@ -1256,6 +1256,10 @@ def stdapi_sys_config_getprivs(request, response):
     AdjustTokenPrivileges.argtypes = [ctypes.c_void_p, ctypes.c_bool, PTOKEN_PRIVILEGES, ctypes.c_uint32, PTOKEN_PRIVILEGES, ctypes.POINTER(ctypes.c_uint32)]
     AdjustTokenPrivileges.restype = ctypes.c_bool
 
+    CloseHandle = ctypes.windll.kernel32.CloseHandle
+    CloseHandle.argtypes = [ctypes.c_void_p]
+    CloseHandle.restype = ctypes.c_long
+
     token = ctypes.c_void_p()
     success = OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, token)
     if not success:
@@ -1313,6 +1317,7 @@ def stdapi_sys_config_getprivs(request, response):
             tokenPrivileges.get_array()[0].Attributes = SE_PRIVILEGE_ENABLED
             if AdjustTokenPrivileges(token, False, tokenPrivileges, 0, None, None):
                 response += tlv_pack(TLV_TYPE_PRIVILEGE, privilege)
+    CloseHandle(token)
     return ERROR_SUCCESS, response
 
 @register_function
