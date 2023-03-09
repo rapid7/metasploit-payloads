@@ -302,16 +302,16 @@ static DWORD packet_transmit_http(Remote *remote, LPBYTE rawPacket, DWORD rawPac
 		hReq = ctx->create_req(ctx, FALSE, "PACKET TRANSMIT");
 		if (hReq == NULL)
 		{
-			BREAK_ON_ERROR("[PACKET TRANSMIT] Failed create_req");
+			BREAK_ON_ERROR("[PACKET TRANSMIT HTTP] Failed create_req");
 		}
 
 		res = ctx->send_req(ctx, hReq, rawPacket, rawPacketLength);
 		if (!res)
 		{
-			BREAK_ON_ERROR("[PACKET TRANSMIT] Failed send_req");
+			BREAK_ON_ERROR("[PACKET TRANSMIT HTTP] Failed send_req");
 		}
 
-		dprintf("[PACKET TRANSMIT] request sent.. apparently");
+		dprintf("[PACKET TRANSMIT HTTP] request sent.. apparently");
 	} while(0);
 
 	ctx->close_req(hReq);
