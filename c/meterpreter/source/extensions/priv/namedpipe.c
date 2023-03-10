@@ -390,3 +390,12 @@ DWORD elevate_via_service_namedpipe2(Remote * remote, Packet * packet)
 
 	return dwResult;
 }
+
+BOOL is_pipe_exists(LPWSTR pPipeName)
+{
+	HANDLE hPipe;
+	if ((hPipe = CreateFileW(pPipeName, GENERIC_READ, 0, NULL, OPEN_EXISTING, 0, NULL)) == INVALID_HANDLE_VALUE)
+		return FALSE;
+	CloseHandle(hPipe);
+	return TRUE;
+}

