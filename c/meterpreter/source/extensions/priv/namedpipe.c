@@ -394,7 +394,7 @@ DWORD elevate_via_service_namedpipe2(Remote * remote, Packet * packet)
 BOOL does_pipe_exist(LPWSTR pPipeName)
 {
 	HANDLE hPipe;
-	if ((hPipe = CreateFileW(pPipeName, GENERIC_READ, 0, NULL, OPEN_EXISTING, 0, NULL)) == INVALID_HANDLE_VALUE)
+	if ((hPipe = CreateFileW(pPipeName, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL)) == INVALID_HANDLE_VALUE)
 		return FALSE;
 	CloseHandle(hPipe);
 	return TRUE;
