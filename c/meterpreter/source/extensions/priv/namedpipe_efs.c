@@ -26,6 +26,10 @@ DWORD elevate_via_namedpipe_efs(Remote* remote, Packet* packet)
 	PRIV_POST_IMPERSONATION PostImpersonation;
 
 	do {
+		if (!does_pipe_exist(L"\\\\.\\pipe\\efsrpc")) {
+			BREAK_ON_ERROR("[ELEVATE] elevate_via_namedpipe_efs: \\pipe\\efsrpc is not listening.");
+		}
+
 		hNtdll = GetModuleHandleA("ntdll");
 		if (hNtdll == NULL) {
 			BREAK_ON_ERROR("[ELEVATE] elevate_via_namedpipe_efs: Failed to resolve RtlGetVersion");
