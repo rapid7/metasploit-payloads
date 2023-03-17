@@ -83,7 +83,7 @@ DWORD elevate_via_namedpipe_efs(Remote* remote, Packet* packet)
 			Sleep(500);
 		}
 
-		trigger_efs_connection(cPipeName2);
+		DWORD dwTriggerResult = trigger_efs_connection(cPipeName2);
 
 		// signal our thread to terminate if it is still running
 		met_api->thread.sigterm(pThread);
@@ -98,6 +98,9 @@ DWORD elevate_via_namedpipe_efs(Remote* remote, Packet* packet)
 				ERROR_INVALID_HANDLE);
 		}
 		dprintf("[ELEVATE] dwResult after exit code: %u", dwResult);
+
+		if (dwResult == ERROR_DBG_TERMINATE_THREAD)
+			dwResult = dwTriggerResult;
 
 	} while (0);
 
