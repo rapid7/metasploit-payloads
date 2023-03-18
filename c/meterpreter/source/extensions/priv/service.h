@@ -9,4 +9,6 @@ DWORD service_create( char * cpName, char * cpPath );
 
 DWORD service_destroy( char * cpName );
 
+DWORD query_service_status( char * cpName, DWORD* dwState );
+
 #endif
