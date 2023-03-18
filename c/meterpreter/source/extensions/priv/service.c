@@ -189,11 +189,11 @@ DWORD query_service_status( char* cpName, DWORD* dwState )
 		if( !cpName )
 			BREAK_WITH_ERROR( "[SERVICE] query_service_status. cpName is NULL", ERROR_INVALID_HANDLE );
 
-		hManager = OpenSCManagerA( NULL, NULL, SC_MANAGER_ALL_ACCESS );
+		hManager = OpenSCManagerA( NULL, NULL, SC_MANAGER_CONNECT);
 		if( !hManager )
 			BREAK_ON_ERROR( "[SERVICE] query_service_status. OpenSCManagerA failed" );
 
-		hService = OpenServiceA( hManager, cpName, DELETE ); 
+		hService = OpenServiceA( hManager, cpName, SERVICE_QUERY_STATUS);
 		if( !hService )
 			BREAK_ON_ERROR( "[SERVICE] query_service_status. OpenServiceA failed" );
 
