@@ -217,8 +217,6 @@ DWORD service_query_status( char* cpName, DWORD* dwState )
 	if( hManager )
 		CloseServiceHandle( hManager );
 
-	SetLastError( dwResult );
-
 	return dwResult;
 }
 
