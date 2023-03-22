@@ -194,11 +194,16 @@ DWORD service_query_status( char* cpName, DWORD* dwState )
 			BREAK_ON_ERROR( "[SERVICE] service_query_status. OpenSCManagerA failed" );
 
 		hService = OpenServiceA( hManager, cpName, SERVICE_QUERY_STATUS);
-		if( !hService )
-			BREAK_ON_ERROR( "[SERVICE] service_query_status. OpenServiceA failed");
+		if( !hService ){
+			char buffer[1024];
+			_snprintf_s(buffer, sizeof(buffer), sizeof(buffer) - 1, "[SERVICE] service_query_status. OpenServiceA failed for %s ", cpName);
+			BREAK_ON_ERROR( buffer );
+		}
 
 		if (!QueryServiceStatusEx(hService, SC_STATUS_PROCESS_INFO, (LPBYTE)&procInfo, sizeof(procInfo), &dwBytes)) {
-			BREAK_ON_ERROR("[SERVICE] service_query_status. QueryServiceStatusEx failed");
+			char buffer[1024];
+			_snprintf_s(buffer, sizeof(buffer), sizeof(buffer) - 1, "[SERVICE] service_query_status. QueryServiceStatusEx failed for %s ", cpName);
+			BREAK_ON_ERROR( buffer );
 		}
 		else {
 			*dwState = procInfo.dwCurrentState;
