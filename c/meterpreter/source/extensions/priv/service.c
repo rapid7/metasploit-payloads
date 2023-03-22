@@ -48,8 +48,6 @@ DWORD service_stop( char * cpName )
 	HANDLE hManager               = NULL;
 	HANDLE hService               = NULL;
 	SERVICE_STATUS_PROCESS status = {0};
-	DWORD dwBytes                 = 0;
-	DWORD dwStartTime             = 0;
 	DWORD dwTimeout               = 30000; // 30 seconds
 
 	do
@@ -68,20 +66,8 @@ DWORD service_stop( char * cpName )
 		if( !ControlService( hService, SERVICE_CONTROL_STOP, (SERVICE_STATUS *)&status ) )
 			BREAK_ON_ERROR( "[SERVICE] service_stop. ControlService STOP failed" );
 		
-		dwStartTime = GetTickCount();
-
-		while( TRUE ) 
-		{
-			if( !QueryServiceStatusEx( hService, SC_STATUS_PROCESS_INFO, (LPBYTE)&status, sizeof(SERVICE_STATUS_PROCESS), &dwBytes ) )
-				BREAK_ON_ERROR( "[SERVICE] service_stop. QueryServiceStatusEx failed" );
-			
-			if( status.dwCurrentState == SERVICE_STOPPED )
-				break;
-
-			if( ( GetTickCount() - dwStartTime ) > dwTimeout )
-				BREAK_WITH_ERROR( "[SERVICE] service_stop. Timeout reached", WAIT_TIMEOUT );
-			
-			Sleep( status.dwWaitHint );
+		if (service_wait_for_status(cpName, SERVICE_STOPPED, dwTimeout) != ERROR_SUCCESS) {
+			BREAK_ON_ERROR("[ELEVATE] service_stop: service start timed out.");
 		}
 
 	} while( 0 );
