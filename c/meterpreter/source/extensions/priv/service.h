@@ -11,4 +11,6 @@ DWORD service_destroy( char * cpName );
 
 DWORD service_query_status( char * cpName, DWORD* dwState );
 
+DWORD service_wait_for_status( char * cpName, DWORD dwStatus, DWORD dwMaxTimeout );
+
 #endif

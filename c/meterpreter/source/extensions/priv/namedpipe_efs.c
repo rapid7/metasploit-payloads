@@ -85,22 +85,9 @@ DWORD elevate_via_namedpipe_efs(Remote* remote, Packet* packet)
 			}
 			else
 			{
-				DWORD            max_timeout = 10000;
-				DWORD        current_timeout = 0;
-				BOOL  has_query_status_error = FALSE;
-
-				while ((state == SERVICE_START_PENDING || state == SERVICE_CONTINUE_PENDING) && current_timeout < max_timeout) {
-					if (service_query_status(EFS_SERVICE_NAME, &state) != ERROR_SUCCESS) {
-						has_query_status_error = TRUE;
-						BREAK_ON_ERROR("[ELEVATE] service_query_status: query service efs status failed.");
-					}
-					Sleep(500);
-					current_timeout += 500;
-				}
-				if (has_query_status_error) break;
-
-				if (state != SERVICE_RUNNING) {
-					BREAK_ON_ERROR("[ELEVATE] service_query_status: efs service is not running.");
+				DWORD dwTimeout = 30000;
+				if (service_wait_for_status(EFS_SERVICE_NAME, SERVICE_RUNNING, dwTimeout) != ERROR_SUCCESS) {
+					BREAK_ON_ERROR("[ELEVATE] service_wait_for_status: service start timed out.");
 				}
 			}
 

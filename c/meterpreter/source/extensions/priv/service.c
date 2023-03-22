@@ -212,12 +212,42 @@ DWORD service_query_status( char* cpName, DWORD* dwState )
 	} while( 0 );
 
 	if( hService )
-		CloseServiceHandle( hService ); 
+		CloseServiceHandle( hService );
 
 	if( hManager )
-		CloseServiceHandle( hManager ); 
+		CloseServiceHandle( hManager );
 
 	SetLastError( dwResult );
+
+	return dwResult;
+}
+
+/*
+ * Wait for a service to get into specific status.
+ */
+DWORD service_wait_for_status( char* cpName, DWORD dwStatus, DWORD dwMaxTimeout )
+{
+	DWORD dwCurrentStatus;
+	DWORD dwElapsed = 0;
+	DWORD dwResult;
+	do {
+		dwResult = service_query_status(cpName, &dwCurrentStatus);
+		if (dwResult != ERROR_SUCCESS) {
+			break;
+		}
+		if (dwCurrentStatus == dwStatus) {
+			break;
+		}
+		else {
+			Sleep(250);
+			dwElapsed += 250;
+		}
+	} while (dwElapsed < dwMaxTimeout);
+
+	if ((dwResult == ERROR_SUCCESS) && (dwCurrentStatus != dwStatus)) {
+		dwResult = WAIT_TIMEOUT;
+		SetLastError(dwResult);
+	}
 
 	return dwResult;
 }
