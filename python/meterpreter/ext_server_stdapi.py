@@ -1619,6 +1619,40 @@ def stdapi_sys_process_get_processes(request, response):
         return stdapi_sys_process_get_processes_via_ps(request, response)
 
 @register_function_if(has_windll)
+def stdapi_sys_process_memory_allocate(request, response):
+    handle = packet_get_tlv(request, TLV_TYPE_HANDLE).get('value', 0)
+    base   = packet_get_tlv(request, TLV_TYPE_BASE_ADDRESS).get('value', 0)
+    size   = packet_get_tlv(request, TLV_TYPE_LENGTH).get('value', 0)
+    alloc  = packet_get_tlv(request, TLV_TYPE_ALLOCATION_TYPE).get('value', 0)
+    prot   = packet_get_tlv(request, TLV_TYPE_PROTECTION).get('value', 0)
+
+    VirtualAllocEx = ctypes.windll.kernel32.VirtualAllocEx
+    VirtualAllocEx.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t, ctypes.c_ulong, ctypes.c_ulong]
+    VirtualAllocEx.restype = ctypes.c_void_p
+
+    result = VirtualAllocEx(handle, base, size, alloc, prot)
+    if not result:
+        return error_result_windows(), response
+
+    response += tlv_pack(TLV_TYPE_BASE_ADDRESS, result)
+    return ERROR_SUCCESS, response
+
+@register_function_if(has_windll)
+def stdapi_sys_process_memory_free(request, response):
+    handle = packet_get_tlv(request, TLV_TYPE_HANDLE).get('value', 0)
+    base   = packet_get_tlv(request, TLV_TYPE_BASE_ADDRESS).get('value', 0)
+    size   = packet_get_tlv(request, TLV_TYPE_LENGTH).get('value', 0)
+
+    VirtualFreeEx = ctypes.windll.kernel32.VirtualFreeEx
+    VirtualFreeEx.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t, ctypes.c_ulong]
+    VirtualFreeEx.restype = ctypes.c_long
+
+    MEM_RELEASE = 0x00008000
+    if not VirtualFreeEx(handle, base, size, MEM_RELEASE):
+        return error_result_windows(), response
+    return ERROR_SUCCESS, response
+
+@register_function_if(has_windll)
 def stdapi_sys_power_exitwindows(request, response):
     SE_SHUTDOWN_NAME = "SeShutdownPrivilege"
 
