@@ -176,7 +176,7 @@ DWORD service_destroy( char * cpName )
 /*
  * Query service state.
  */
-DWORD query_service_status( char* cpName, DWORD* dwState )
+DWORD service_query_status( char* cpName, DWORD* dwState )
 {
 	DWORD dwResult  = ERROR_SUCCESS;
 	HANDLE hManager = NULL;
@@ -187,18 +187,18 @@ DWORD query_service_status( char* cpName, DWORD* dwState )
 	do
 	{
 		if( !cpName )
-			BREAK_WITH_ERROR( "[SERVICE] query_service_status. cpName is NULL", ERROR_INVALID_HANDLE );
+			BREAK_WITH_ERROR( "[SERVICE] service_query_status. cpName is NULL", ERROR_INVALID_HANDLE );
 
 		hManager = OpenSCManagerA( NULL, NULL, SC_MANAGER_CONNECT);
 		if( !hManager )
-			BREAK_ON_ERROR( "[SERVICE] query_service_status. OpenSCManagerA failed" );
+			BREAK_ON_ERROR( "[SERVICE] service_query_status. OpenSCManagerA failed" );
 
 		hService = OpenServiceA( hManager, cpName, SERVICE_QUERY_STATUS);
 		if( !hService )
-			BREAK_ON_ERROR( "[SERVICE] query_service_status. OpenServiceA failed" );
+			BREAK_ON_ERROR( "[SERVICE] service_query_status. OpenServiceA failed");
 
 		if (!QueryServiceStatusEx(hService, SC_STATUS_PROCESS_INFO, (LPBYTE)&procInfo, sizeof(procInfo), &dwBytes)) {
-			BREAK_ON_ERROR("[SERVICE] query_service_status. QueryServiceStatusEx failed");
+			BREAK_ON_ERROR("[SERVICE] service_query_status. QueryServiceStatusEx failed");
 		}
 		else {
 			*dwState = procInfo.dwCurrentState;

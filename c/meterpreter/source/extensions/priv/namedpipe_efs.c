@@ -66,23 +66,23 @@ DWORD elevate_via_namedpipe_efs(Remote* remote, Packet* packet)
 		}
 		else {
 			DWORD state;
-			if (query_service_status(EFS_SERVICE_NAME, &state) != ERROR_SUCCESS) {
-				BREAK_ON_ERROR("[ELEVATE] query_service_status: query service efs status failed.");
+			if (service_query_status(EFS_SERVICE_NAME, &state) != ERROR_SUCCESS) {
+				BREAK_ON_ERROR("[ELEVATE] service_query_status: query service efs status failed.");
 			}
 
 			if (state != SERVICE_RUNNING && state != SERVICE_START_PENDING && state != SERVICE_CONTINUE_PENDING) {
-				dprintf("[ELEVATE] query_service_status: efs service is not running. Trying to start ..");
+				dprintf("[ELEVATE] service_query_status: efs service is not running. Trying to start ..");
 				if (service_start(EFS_SERVICE_NAME) != ERROR_SUCCESS) {
 					BREAK_ON_ERROR("[ELEVATE] service_start: starting efs service failed.");
 				}
 			}
 
-			if (query_service_status(EFS_SERVICE_NAME, &state) != ERROR_SUCCESS) {
-				BREAK_ON_ERROR("[ELEVATE] query_service_status: query service efs status failed.");
+			if (service_query_status(EFS_SERVICE_NAME, &state) != ERROR_SUCCESS) {
+				BREAK_ON_ERROR("[ELEVATE] service_query_status: query service efs status failed.");
 			}
 
 			if (state != SERVICE_RUNNING && state != SERVICE_START_PENDING && state != SERVICE_CONTINUE_PENDING) {
-				dprintf("[ELEVATE] query_service_status: efs service is not running.");
+				dprintf("[ELEVATE] service_query_status: efs service is not running.");
 			}
 
 			Sleep(5000);
