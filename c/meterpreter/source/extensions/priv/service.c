@@ -67,7 +67,7 @@ DWORD service_stop( char * cpName )
 			BREAK_ON_ERROR( "[SERVICE] service_stop. ControlService STOP failed" );
 		
 		if (service_wait_for_status(cpName, SERVICE_STOPPED, dwTimeout) != ERROR_SUCCESS) {
-			BREAK_ON_ERROR("[ELEVATE] service_stop: service start timed out.");
+			BREAK_ON_ERROR("[ELEVATE] service_stop: service stop timed out.");
 		}
 
 	} while( 0 );
