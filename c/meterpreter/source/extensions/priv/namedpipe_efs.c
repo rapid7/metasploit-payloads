@@ -5,7 +5,7 @@
 
 typedef NTSTATUS(WINAPI* PRtlGetVersion)(LPOSVERSIONINFOEXW);
 
-RPC_STATUS StubEfsRpcEncryptFileSrv(PMIDL_STUB_DESC stub, handle_t binding_h, wchar_t* FileName);
+long StubEfsRpcEncryptFileSrv(PMIDL_STUB_DESC stub, handle_t binding_h, wchar_t* FileName);
 PMIDL_STUB_DESC GetLsaRpcStub();
 PMIDL_STUB_DESC GetEfsRpcStub();
 
@@ -178,7 +178,7 @@ DWORD WINAPI trigger_efs_connection(RPC_WSTR uuid, RPC_WSTR endpoint, LPWSTR pPi
 				BREAK_WITH_ERROR("[ELEVATE] trigger_efs_connection: Bind error", ERROR_INVALID_HANDLE);
 			}
 			PMIDL_STUB_DESC stub = wcscmp(endpoint, LSARPC_NAMEDPIPE) == 0 ? GetLsaRpcStub() : GetEfsRpcStub();
-			hr = StubEfsRpcEncryptFileSrv(stub, ht, pCaptureServer);
+			hr = (RPC_STATUS)StubEfsRpcEncryptFileSrv(stub, ht, pCaptureServer);
 		RpcExcept(EXCEPTION_EXECUTE_HANDLER)
 			dprintf("[ELEVATE] trigger_efs_connection: RPC Error: 0x%08x", RpcExceptionCode());
 			dwResult = RPC_S_CALL_FAILED;
