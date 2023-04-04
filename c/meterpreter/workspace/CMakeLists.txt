@@ -32,6 +32,7 @@ option(BUILD_EXT_POWERSHELL "Build the POWERSHELL extension" OFF)
 option(BUILD_EXT_PEINJECTOR "Build the PEINJECTOR extension" OFF)
 option(BUILD_EXT_BOFLOADER "Build the BOFLOADER extension" OFF)
 
+option(BUILD_PLG_DUMPSAM "Build the DUMPSAM plugin" OFF)
 
 if(BUILD_ALL)
     set(BUILD_LIB_JPEG ON)
@@ -156,6 +157,7 @@ if(BUILD_EXT_STDAPI)
 endif()
 if(BUILD_EXT_PRIV)
     set(MET_EXTENSIONS ${MET_EXTENSIONS} ext_server_priv)
+    set(BUILD_PLG_DUMPSAM ON)
 endif()
 if(BUILD_EXT_ESPIA)
     set(MET_EXTENSIONS ${MET_EXTENSIONS} ext_server_espia)
@@ -185,6 +187,10 @@ if(BUILD_EXT_BOFLOADER)
     set(MET_EXTENSIONS ${MET_EXTENSIONS} ext_server_bofloader)
 endif()
 
+if(BUILD_PLG_DUMPSAM)
+    set(MET_PLUGINS ${MET_PLUGINS} dump_sam)
+endif()
+
 if(BUILD_EXT_SNIFFER)
     if(MSVC)
         if(EXISTS "${PSSDK_DIR}")
@@ -209,6 +215,7 @@ endif()
 if(MSVC)
     set(
         MET_PLUGINS
+        ${MET_PLUGINS}
         screenshot
         elevator
     )

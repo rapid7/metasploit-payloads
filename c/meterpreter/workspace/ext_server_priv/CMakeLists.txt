@@ -46,13 +46,16 @@ else()
 endif()
 
 include_directories(../../source/common)
+include_directories(../../source/dump_sam)
 include_directories(../../source/ReflectiveDLLInjection/common)
 include_directories(../../source/extensions/kiwi/mimikatz/inc)
 include_directories(../../source/extensions/kiwi/mimikatz/modules/rpc)
+include_directories(../../workspace/ext_server_priv)
 
 set(SRC_DIR ../../source/extensions/priv)
 file(GLOB SRC_FILES
     ${SRC_DIR}/*.c
+    ${SRC_DIR}/*.rc
     ${MOD_DEF_DIR}/extension.def
     ../../source/extensions/kiwi/mimikatz/modules/rpc/kull_m_rpc_ms-rprn.c
     ../../source/extensions/kiwi/mimikatz/modules/rpc/kull_m_rpc_ms-efsr_c.c
