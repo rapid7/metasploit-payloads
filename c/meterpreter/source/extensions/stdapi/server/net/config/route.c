@@ -3,6 +3,7 @@
 #include "common_metapi.h"
 #include <netioapi.h>
 
+typedef VOID(NETIOAPI_API_* FREEMIBTABLE)(PVOID Memory);
 typedef NETIO_STATUS(NETIOAPI_API_* GETBESTINTERFACE)(IPAddr dwDestAddr, PDWORD pdwBestIfIndex);
 typedef NETIO_STATUS(NETIOAPI_API_* GETIPFORWARDTABLE2)(ADDRESS_FAMILY Family, PMIB_IPFORWARD_TABLE2* Table);
 typedef NETIO_STATUS(NETIOAPI_API_* GETIPINTERFACEENTRY)(PMIB_IPINTERFACE_ROW Row);
@@ -15,42 +16,42 @@ typedef struct v6netmask
 DWORD add_remove_route(Packet *request, BOOLEAN add);
 
 static unsigned int bit32mask(unsigned bits){
-    unsigned int netmask;
-    if (bits == 32)
-        netmask = 0xffffffff;
-    else{
-        netmask = ((0xffffffff << (32 - (bits % 32))) & 0xffffffff);
-    }
-    return netmask;
+	unsigned int netmask;
+	if (bits == 32)
+		netmask = 0xffffffff;
+	else{
+		netmask = ((0xffffffff << (32 - (bits % 32))) & 0xffffffff);
+	}
+	return netmask;
 }
 
 static void bit128mask(unsigned int bits, v6netmask* netmask){
-    unsigned int part = bit32mask(bits);
-    if (bits >= 96) {
-        netmask->mask[0] = 0xffffffff;
-        netmask->mask[1] = 0xffffffff;
-        netmask->mask[2] = 0xffffffff;
-        netmask->mask[3] = htonl(part);
-    }
-    else if (bits >= 64) {
-        netmask->mask[0] = 0xffffffff;
-        netmask->mask[1] = 0xffffffff;
-        netmask->mask[2] = htonl(part);
-        netmask->mask[3] = 0x0;
-    }
-    else if (bits >= 32) {
-        netmask->mask[0] = 0xffffffff;
-        netmask->mask[1] = htonl(part);
-        netmask->mask[2] = 0x0;
-        netmask->mask[3] = 0x0;
-    }
-    else {
-        netmask->mask[0] = htonl(part);
-        netmask->mask[1] = 0x0;
-        netmask->mask[2] = 0x0;
-        netmask->mask[3] = 0x0;
-    }
-    return;
+	unsigned int part = bit32mask(bits);
+	if (bits >= 96) {
+		netmask->mask[0] = 0xffffffff;
+		netmask->mask[1] = 0xffffffff;
+		netmask->mask[2] = 0xffffffff;
+		netmask->mask[3] = htonl(part);
+	}
+	else if (bits >= 64) {
+		netmask->mask[0] = 0xffffffff;
+		netmask->mask[1] = 0xffffffff;
+		netmask->mask[2] = htonl(part);
+		netmask->mask[3] = 0x0;
+	}
+	else if (bits >= 32) {
+		netmask->mask[0] = 0xffffffff;
+		netmask->mask[1] = htonl(part);
+		netmask->mask[2] = 0x0;
+		netmask->mask[3] = 0x0;
+	}
+	else {
+		netmask->mask[0] = htonl(part);
+		netmask->mask[1] = 0x0;
+		netmask->mask[2] = 0x0;
+		netmask->mask[3] = 0x0;
+	}
+	return;
 }
 /*
  * Returns zero or more routes to the requestor from the active routing table
@@ -62,6 +63,7 @@ DWORD request_net_config_get_routes(Remote *remote, Packet *packet)
 	DWORD index;
 	DWORD metric_bigendian;
 
+	FREEMIBTABLE pFreeMibTable = (FREEMIBTABLE)GetProcAddress(GetModuleHandle(TEXT("Iphlpapi.dll")), "FreeMibTable");
 	PMIB_IPFORWARDTABLE table_ipv4 = NULL;
 	PMIB_IPFORWARD_TABLE2 table_ipv6 = NULL;
 	DWORD tableSize = sizeof(MIB_IPFORWARDROW) * 96;
@@ -169,10 +171,12 @@ DWORD request_net_config_get_routes(Remote *remote, Packet *packet)
 		}
 	} while (0);
 
-	if(table_ipv4)
+	if (table_ipv4)
 		free(table_ipv4);
-	if(table_ipv6)
-		free(table_ipv6);
+
+	if (table_ipv6 && pFreeMibTable)
+		pFreeMibTable(table_ipv6);
+
 
 	met_api->packet.transmit_response(dwResult, remote, response);
 
