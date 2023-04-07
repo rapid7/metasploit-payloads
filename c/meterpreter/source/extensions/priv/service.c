@@ -181,15 +181,15 @@ DWORD service_query_status( char* cpName, DWORD* dwState )
 
 		hService = OpenServiceA( hManager, cpName, SERVICE_QUERY_STATUS);
 		if( !hService ){
-			char buffer[1024];
-			_snprintf_s(buffer, sizeof(buffer), sizeof(buffer) - 1, "[SERVICE] service_query_status. OpenServiceA failed for %s ", cpName);
-			BREAK_ON_ERROR( buffer );
+			dwResult = GetLastError();
+			dprintf("[SERVICE] service_query_status. QueryServiceStatusEx failed for %s. error=%d (0x%x) ", cpName, dwResult, (ULONG_PTR)dwResult);
+			break;
 		}
 
 		if (!QueryServiceStatusEx(hService, SC_STATUS_PROCESS_INFO, (LPBYTE)&procInfo, sizeof(procInfo), &dwBytes)) {
-			char buffer[1024];
-			_snprintf_s(buffer, sizeof(buffer), sizeof(buffer) - 1, "[SERVICE] service_query_status. QueryServiceStatusEx failed for %s ", cpName);
-			BREAK_ON_ERROR( buffer );
+			dwResult = GetLastError();
+			dprintf("[SERVICE] service_query_status. QueryServiceStatusEx failed for %s. error=%d (0x%x) ", cpName, dwResult, (ULONG_PTR)dwResult);
+			break;
 		}
 		else {
 			*dwState = procInfo.dwCurrentState;
@@ -216,10 +216,10 @@ DWORD service_wait_for_status( char* cpName, DWORD dwStatus, DWORD dwMaxTimeout 
 	DWORD dwResult;
 	do {
 		dwResult = service_query_status(cpName, &dwCurrentStatus);
-		if (dwResult != ERROR_SUCCESS) {
+		if( dwResult != ERROR_SUCCESS ) {
 			break;
 		}
-		if (dwCurrentStatus == dwStatus) {
+		if( dwCurrentStatus == dwStatus ) {
 			break;
 		}
 		else {
@@ -228,7 +228,7 @@ DWORD service_wait_for_status( char* cpName, DWORD dwStatus, DWORD dwMaxTimeout 
 		}
 	} while (dwElapsed < dwMaxTimeout);
 
-	if ((dwResult == ERROR_SUCCESS) && (dwCurrentStatus != dwStatus)) {
+	if( (dwResult == ERROR_SUCCESS) && (dwCurrentStatus != dwStatus) ) {
 		dwResult = WAIT_TIMEOUT;
 		SetLastError(dwResult);
 	}
