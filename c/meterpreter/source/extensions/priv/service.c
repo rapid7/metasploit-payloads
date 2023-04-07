@@ -48,8 +48,6 @@ DWORD service_stop( char * cpName )
 	HANDLE hManager               = NULL;
 	HANDLE hService               = NULL;
 	SERVICE_STATUS_PROCESS status = {0};
-	DWORD dwBytes                 = 0;
-	DWORD dwStartTime             = 0;
 	DWORD dwTimeout               = 30000; // 30 seconds
 
 	do
@@ -68,20 +66,8 @@ DWORD service_stop( char * cpName )
 		if( !ControlService( hService, SERVICE_CONTROL_STOP, (SERVICE_STATUS *)&status ) )
 			BREAK_ON_ERROR( "[SERVICE] service_stop. ControlService STOP failed" );
 		
-		dwStartTime = GetTickCount();
-
-		while( TRUE ) 
-		{
-			if( !QueryServiceStatusEx( hService, SC_STATUS_PROCESS_INFO, (LPBYTE)&status, sizeof(SERVICE_STATUS_PROCESS), &dwBytes ) )
-				BREAK_ON_ERROR( "[SERVICE] service_stop. QueryServiceStatusEx failed" );
-			
-			if( status.dwCurrentState == SERVICE_STOPPED )
-				break;
-
-			if( ( GetTickCount() - dwStartTime ) > dwTimeout )
-				BREAK_WITH_ERROR( "[SERVICE] service_stop. Timeout reached", WAIT_TIMEOUT );
-			
-			Sleep( status.dwWaitHint );
+		if (service_wait_for_status(cpName, SERVICE_STOPPED, dwTimeout) != ERROR_SUCCESS) {
+			BREAK_ON_ERROR("[ELEVATE] service_stop: service stop timed out.");
 		}
 
 	} while( 0 );
@@ -155,7 +141,7 @@ DWORD service_destroy( char * cpName )
 		
 		hService = OpenServiceA( hManager, cpName, DELETE ); 
 		if( !hService )
-			BREAK_ON_ERROR( "[SERVICE] service_stop. OpenServiceA failed" );
+			BREAK_ON_ERROR( "[SERVICE] service_destroy. OpenServiceA failed" );
 
 		if( !DeleteService( hService ) )
 			BREAK_ON_ERROR( "[SERVICE] service_destroy. DeleteService failed" );
@@ -169,6 +155,83 @@ DWORD service_destroy( char * cpName )
 		CloseServiceHandle( hManager ); 
 
 	SetLastError( dwResult );
+
+	return dwResult;
+}
+
+/*
+ * Query service state.
+ */
+DWORD service_query_status( char* cpName, DWORD* dwState )
+{
+	DWORD dwResult  = ERROR_SUCCESS;
+	HANDLE hManager = NULL;
+	HANDLE hService = NULL;
+	DWORD dwBytes;
+	SERVICE_STATUS_PROCESS procInfo;
+
+	do
+	{
+		if( !cpName )
+			BREAK_WITH_ERROR( "[SERVICE] service_query_status. cpName is NULL", ERROR_INVALID_HANDLE );
+
+		hManager = OpenSCManagerA( NULL, NULL, SC_MANAGER_CONNECT);
+		if( !hManager )
+			BREAK_ON_ERROR( "[SERVICE] service_query_status. OpenSCManagerA failed" );
+
+		hService = OpenServiceA( hManager, cpName, SERVICE_QUERY_STATUS);
+		if( !hService ){
+			dwResult = GetLastError();
+			dprintf("[SERVICE] service_query_status. QueryServiceStatusEx failed for %s. error=%d (0x%x) ", cpName, dwResult, (ULONG_PTR)dwResult);
+			break;
+		}
+
+		if (!QueryServiceStatusEx(hService, SC_STATUS_PROCESS_INFO, (LPBYTE)&procInfo, sizeof(procInfo), &dwBytes)) {
+			dwResult = GetLastError();
+			dprintf("[SERVICE] service_query_status. QueryServiceStatusEx failed for %s. error=%d (0x%x) ", cpName, dwResult, (ULONG_PTR)dwResult);
+			break;
+		}
+		else {
+			*dwState = procInfo.dwCurrentState;
+		}
+
+	} while( 0 );
+
+	if( hService )
+		CloseServiceHandle( hService );
+
+	if( hManager )
+		CloseServiceHandle( hManager );
+
+	return dwResult;
+}
+
+/*
+ * Wait for a service to get into specific status.
+ */
+DWORD service_wait_for_status( char* cpName, DWORD dwStatus, DWORD dwMaxTimeout )
+{
+	DWORD dwCurrentStatus;
+	DWORD dwElapsed = 0;
+	DWORD dwResult;
+	do {
+		dwResult = service_query_status(cpName, &dwCurrentStatus);
+		if( dwResult != ERROR_SUCCESS ) {
+			break;
+		}
+		if( dwCurrentStatus == dwStatus ) {
+			break;
+		}
+		else {
+			Sleep(250);
+			dwElapsed += 250;
+		}
+	} while (dwElapsed < dwMaxTimeout);
+
+	if( (dwResult == ERROR_SUCCESS) && (dwCurrentStatus != dwStatus) ) {
+		dwResult = WAIT_TIMEOUT;
+		SetLastError(dwResult);
+	}
 
 	return dwResult;
 }

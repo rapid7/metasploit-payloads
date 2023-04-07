@@ -12,4 +12,6 @@ typedef struct _PRIV_POST_IMPERSONATION {
 	PVOID                     pCallbackParam;
 } PRIV_POST_IMPERSONATION, * PPRIV_POST_IMPERSONATION;
 
+BOOL does_pipe_exist(LPWSTR pPipeName);
+
 #endif
