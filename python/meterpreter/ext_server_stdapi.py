@@ -1638,6 +1638,32 @@ def stdapi_sys_process_memory_allocate(request, response):
     return ERROR_SUCCESS, response
 
 @register_function_if(has_windll)
+def stdapi_sys_process_memory_lock(request, response):
+    base = packet_get_tlv(request, TLV_TYPE_BASE_ADDRESS).get('value', 0)
+    size = packet_get_tlv(request, TLV_TYPE_LENGTH).get('value', 0)
+
+    VirtualLock = ctypes.windll.kernel32.VirtualLock
+    VirtualLock.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
+    VirtualLock.restype = ctypes.c_long
+
+    if not VirtualLock(base, size):
+        return error_result_windows(), response
+    return ERROR_SUCCESS, response
+
+@register_function_if(has_windll)
+def stdapi_sys_process_memory_unlock(request, response):
+    base = packet_get_tlv(request, TLV_TYPE_BASE_ADDRESS).get('value', 0)
+    size = packet_get_tlv(request, TLV_TYPE_LENGTH).get('value', 0)
+
+    VirtualUnlock = ctypes.windll.kernel32.VirtualUnlock
+    VirtualUnlock.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
+    VirtualUnlock.restype = ctypes.c_long
+
+    if not VirtualUnlock(base, size):
+        return error_result_windows(), response
+    return ERROR_SUCCESS, response
+
+@register_function_if(has_windll)
 def stdapi_sys_process_memory_free(request, response):
     handle = packet_get_tlv(request, TLV_TYPE_HANDLE).get('value', 0)
     base   = packet_get_tlv(request, TLV_TYPE_BASE_ADDRESS).get('value', 0)
