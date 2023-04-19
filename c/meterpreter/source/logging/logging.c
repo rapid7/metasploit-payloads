@@ -24,8 +24,8 @@ void log_to_file(char* buffer) {
 	if (hFile) {
 		WaitForSingleObject(lock, INFINITE);
 
-		LPDWORD bytesWritten = 0;
-		WriteFile(hFile, buffer, (DWORD)strlen(buffer), bytesWritten, NULL);
+		DWORD bytesWritten = 0;
+		WriteFile(hFile, buffer, (DWORD)strlen(buffer), &bytesWritten, NULL);
 		ReleaseMutex(lock);
 	}
 }
