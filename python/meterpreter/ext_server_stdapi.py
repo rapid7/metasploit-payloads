@@ -1670,6 +1670,9 @@ def stdapi_sys_process_memory_read(request, response):
     base = packet_get_tlv(request, TLV_TYPE_BASE_ADDRESS).get('value', 0)
     size = packet_get_tlv(request, TLV_TYPE_LENGTH).get('value', 0)
 
+    if not (handle and base and size):
+        return ERROR_INVALID_PARAMETER, response
+
     ReadProcessMemory = ctypes.windll.kernel32.ReadProcessMemory
     ReadProcessMemory.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t, ctypes.POINTER(ctypes.c_size_t)]
     ReadProcessMemory.restype = ctypes.c_bool
@@ -1689,6 +1692,9 @@ def stdapi_sys_process_memory_write(request, response):
     handle = packet_get_tlv(request, TLV_TYPE_HANDLE).get('value', 0)
     base = packet_get_tlv(request, TLV_TYPE_BASE_ADDRESS).get('value', 0)
     data = packet_get_tlv(request, TLV_TYPE_PROCESS_MEMORY).get('value', 0)
+
+    if not (handle and base and data):
+        return ERROR_INVALID_PARAMETER, response
 
     WriteProcessMemory = ctypes.windll.kernel32.WriteProcessMemory
     WriteProcessMemory.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t, ctypes.POINTER(ctypes.c_size_t)]
