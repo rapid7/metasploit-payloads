@@ -1664,6 +1664,50 @@ def stdapi_sys_process_memory_unlock(request, response):
     return ERROR_SUCCESS, response
 
 @register_function_if(has_windll)
+def stdapi_sys_process_memory_read(request, response):
+    ERROR_PARTIAL_COPY = 229
+    handle = packet_get_tlv(request, TLV_TYPE_HANDLE).get('value')
+    base = packet_get_tlv(request, TLV_TYPE_BASE_ADDRESS).get('value')
+    size = packet_get_tlv(request, TLV_TYPE_LENGTH).get('value')
+
+    if not (handle and base and size):
+        return ERROR_INVALID_PARAMETER, response
+
+    ReadProcessMemory = ctypes.windll.kernel32.ReadProcessMemory
+    ReadProcessMemory.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t, ctypes.POINTER(ctypes.c_size_t)]
+    ReadProcessMemory.restype = ctypes.c_bool
+
+    buffer = ctypes.create_string_buffer(size)
+    bytes_read = ctypes.c_size_t(0)
+    if (not ReadProcessMemory(handle, base, ctypes.byref(buffer), ctypes.sizeof(buffer), ctypes.byref(bytes_read))) and (ctypes.windll.kernel32.GetLastError() != ERROR_PARTIAL_COPY):
+        return error_result_windows(), response
+
+    readed_data = buffer.raw[:bytes_read.value]
+    response += tlv_pack(TLV_TYPE_PROCESS_MEMORY, readed_data)
+    return ERROR_SUCCESS, response
+
+@register_function_if(has_windll)
+def stdapi_sys_process_memory_write(request, response):
+    ERROR_PARTIAL_COPY = 229
+    handle = packet_get_tlv(request, TLV_TYPE_HANDLE).get('value')
+    base = packet_get_tlv(request, TLV_TYPE_BASE_ADDRESS).get('value')
+    data = packet_get_tlv(request, TLV_TYPE_PROCESS_MEMORY).get('value')
+
+    if not (handle and base and data):
+        return ERROR_INVALID_PARAMETER, response
+
+    WriteProcessMemory = ctypes.windll.kernel32.WriteProcessMemory
+    WriteProcessMemory.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t, ctypes.POINTER(ctypes.c_size_t)]
+    WriteProcessMemory.restype = ctypes.c_bool
+
+    written = ctypes.c_size_t(0)
+    if (not WriteProcessMemory(handle, base, data, len(data), ctypes.byref(written))) and (ctypes.windll.kernel32.GetLastError() != ERROR_PARTIAL_COPY):
+        return error_result_windows(), response
+
+    response += tlv_pack(TLV_TYPE_LENGTH, written.value)
+    return ERROR_SUCCESS, response
+
+@register_function_if(has_windll)
 def stdapi_sys_process_memory_free(request, response):
     handle = packet_get_tlv(request, TLV_TYPE_HANDLE).get('value', 0)
     base   = packet_get_tlv(request, TLV_TYPE_BASE_ADDRESS).get('value', 0)
