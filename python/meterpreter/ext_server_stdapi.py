@@ -1666,9 +1666,9 @@ def stdapi_sys_process_memory_unlock(request, response):
 @register_function_if(has_windll)
 def stdapi_sys_process_memory_read(request, response):
     ERROR_PARTIAL_COPY = 229
-    handle = packet_get_tlv(request, TLV_TYPE_HANDLE).get('value', 0)
-    base = packet_get_tlv(request, TLV_TYPE_BASE_ADDRESS).get('value', 0)
-    size = packet_get_tlv(request, TLV_TYPE_LENGTH).get('value', 0)
+    handle = packet_get_tlv(request, TLV_TYPE_HANDLE).get('value')
+    base = packet_get_tlv(request, TLV_TYPE_BASE_ADDRESS).get('value')
+    size = packet_get_tlv(request, TLV_TYPE_LENGTH).get('value')
 
     if not (handle and base and size):
         return ERROR_INVALID_PARAMETER, response
@@ -1689,9 +1689,9 @@ def stdapi_sys_process_memory_read(request, response):
 @register_function_if(has_windll)
 def stdapi_sys_process_memory_write(request, response):
     ERROR_PARTIAL_COPY = 229
-    handle = packet_get_tlv(request, TLV_TYPE_HANDLE).get('value', 0)
-    base = packet_get_tlv(request, TLV_TYPE_BASE_ADDRESS).get('value', 0)
-    data = packet_get_tlv(request, TLV_TYPE_PROCESS_MEMORY).get('value', 0)
+    handle = packet_get_tlv(request, TLV_TYPE_HANDLE).get('value')
+    base = packet_get_tlv(request, TLV_TYPE_BASE_ADDRESS).get('value')
+    data = packet_get_tlv(request, TLV_TYPE_PROCESS_MEMORY).get('value')
 
     if not (handle and base and data):
         return ERROR_INVALID_PARAMETER, response
