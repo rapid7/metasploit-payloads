@@ -21,9 +21,11 @@ meterpreter: meterpreter-x86 meterpreter-x64
 meterpreter-x86: meterpreter-x86-gen meterpreter-x86-build
 
 meterpreter-x86-gen:
+	@cmake -S workspace -B workspace/build/mingw-x64-dump-sam -DBUILD_ALL=OFF -DBUILD_PLG_DUMPSAM=ON $(COMMON_GEN_X64)
 	@cmake -S workspace -B workspace/build/mingw-x86 $(COMMON_GEN_X86)
 
 meterpreter-x86-build:
+	@cmake --build workspace/build/mingw-x64-dump-sam $(COMMON_BUILD)
 	@cmake --build workspace/build/mingw-x86 $(COMMON_BUILD)
 
 meterpreter-x86-clean:
@@ -91,9 +93,11 @@ meterpreter-ext-priv: meterpreter-ext-priv-x86 meterpreter-ext-priv-x64
 meterpreter-ext-priv-x86: meterpreter-ext-priv-x86-gen meterpreter-ext-priv-x86-build
 
 meterpreter-ext-priv-x86-gen:
+	@cmake -S workspace -B workspace/build/mingw-x64-dump-sam -DBUILD_ALL=OFF -DBUILD_PLG_DUMPSAM=ON $(COMMON_GEN_X64)
 	@cmake -S workspace -B workspace/build/mingw-x86-ext-priv -DBUILD_ALL=OFF -DBUILD_EXT_PRIV=ON $(COMMON_GEN_X86)
 
 meterpreter-ext-priv-x86-build:
+	@cmake --build workspace/build/mingw-x64-dump-sam $(COMMON_BUILD)
 	@cmake --build workspace/build/mingw-x86-ext-priv $(COMMON_BUILD)
 
 meterpreter-ext-priv-x64: meterpreter-ext-priv-x64-gen meterpreter-ext-priv-x64-build

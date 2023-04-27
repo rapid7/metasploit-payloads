@@ -129,7 +129,7 @@ meterpreter source is located. From here you can:
 * Build the x64 version by running: `make x64`
 * Build both x86 and x64 versions by running: `make`
 
-If you want to build binaries with the `v120_xp` toolset instead of `v141_xp` while using VS2017 or VS2019, you must first install VS2013 as shown above. Then, pass `v120_xp` as a parameter when running `make` (eg. `make v120_xp x64`).
+If you want to build binaries with the `v120_xp` toolset instead of `v141_xp` while using VS2017 or VS2019, you must first install VS2013 as shown above. Then, pass `v120_xp` as a parameter when running `make` (eg. `make v120_xp x64`). The Rapid7 build automation uses v120_xp to build the distributed binaries, so projects must build with that platform toolset.
 
 The compiled binaries are written to the `output` folder.
 

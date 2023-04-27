@@ -22,7 +22,7 @@ jobs:
   mingw:
     runs-on: ubuntu-latest
     timeout-minutes: 40
-    name: Meterpreter C Mingw Docker Build
+    name: Meterpreter MinGW Docker Build
     steps:
       - name: Checkout code
         uses: actions/checkout@v3

@@ -71,7 +71,7 @@ DWORD ps_inject( DWORD dwPid, DLL_BUFFER * pDllBuffer, LPCSTR reflectiveLoader, 
 		if( dwDllArch != dwPidArch )
 			BREAK_WITH_ERROR( "[PS] ps_inject_dll. pid/dll architecture mixup", ERROR_BAD_ENVIRONMENT );
 
-		dwResult = met_api->inject.dll( dwPid, lpDllBuffer, dwDllLength, reflectiveLoader, cpCommandLine );
+		dwResult = met_api->inject.dll( dwPid, dwPidArch, lpDllBuffer, dwDllLength, reflectiveLoader, cpCommandLine, strlen(cpCommandLine) + 1 );
 	} while( 0 );
 
 	return dwResult;
