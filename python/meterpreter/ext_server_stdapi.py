@@ -1708,6 +1708,26 @@ def stdapi_sys_process_memory_write(request, response):
     return ERROR_SUCCESS, response
 
 @register_function_if(has_windll)
+def stdapi_sys_process_memory_protect(request, response):
+    handle = packet_get_tlv(request, TLV_TYPE_HANDLE).get('value')
+    base   = packet_get_tlv(request, TLV_TYPE_BASE_ADDRESS).get('value')
+    size   = packet_get_tlv(request, TLV_TYPE_LENGTH).get('value')
+    prot   = packet_get_tlv(request, TLV_TYPE_PROTECTION).get('value')
+
+    if not (handle and base and size):
+        return ERROR_INVALID_PARAMETER, response
+
+    VirtualProtectEx = ctypes.windll.kernel32.VirtualProtectEx
+    VirtualProtectEx.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t, ctypes.c_ulong, ctypes.c_void_p]
+    VirtualProtectEx.restype = ctypes.c_long
+
+    old_prot = ctypes.c_ulong()
+    if not VirtualProtectEx(handle, base, size, prot, ctypes.byref(old_prot)):
+        return error_result_windows(), response
+    response += tlv_pack(TLV_TYPE_PROTECTION, old_prot.value)
+    return ERROR_SUCCESS, response
+
+@register_function_if(has_windll)
 def stdapi_sys_process_memory_free(request, response):
     handle = packet_get_tlv(request, TLV_TYPE_HANDLE).get('value', 0)
     base   = packet_get_tlv(request, TLV_TYPE_BASE_ADDRESS).get('value', 0)
