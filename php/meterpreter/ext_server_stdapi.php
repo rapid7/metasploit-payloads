@@ -336,6 +336,9 @@ define('GLOB_RECURSE',2048);
  * - 080324 Added support for additional flags: GLOB_NODIR, GLOB_PATH,
  *   GLOB_NODOTS, GLOB_RECURSE
  */
+if (!in_array('glob', explode(',', ini_get('disable_functions'))
+$safe_glob = glob;
+else
 if (!function_exists('safe_glob')) {
 function safe_glob($pattern, $flags=0, $start_date=null, $end_date=null) {
     $split=explode('/',str_replace('\\','/',$pattern));
