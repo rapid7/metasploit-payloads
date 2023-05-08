@@ -1,5 +1,5 @@
-metasploit-payloads >
-=====================
+metasploit-payloads
+===================
 
 Appveyor build status: [![Build Status](https://ci.appveyor.com/api/projects/status/github/rapid7/metasploit-payloads)](https://ci.appveyor.com/project/appveyor-r7/metasploit-payloads)
 
