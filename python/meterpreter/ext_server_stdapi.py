@@ -404,6 +404,7 @@ if has_ctypes:
             ('BaseAddress', ctypes.c_void_p),
             ('AllocationBase', ctypes.c_void_p),
             ('AllocationProtect', ctypes.c_ulong),
+            ('PartitionId', ctypes.c_ushort),
             ('RegionSize', ctypes.c_size_t),
             ('State', ctypes.c_ulong),
             ('Protect', ctypes.c_ulong),
