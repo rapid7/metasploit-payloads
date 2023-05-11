@@ -1756,8 +1756,8 @@ def stdapi_sys_process_memory_query(request, response):
     if size == 0:
         return error_result_windows(), response
 
-    response += tlv_pack(TLV_TYPE_BASE_ADDRESS, info.BaseAddress)
-    response += tlv_pack(TLV_TYPE_ALLOC_BASE_ADDRESS, info.AllocationBase)
+    response += tlv_pack(TLV_TYPE_BASE_ADDRESS, info.BaseAddress or 0)
+    response += tlv_pack(TLV_TYPE_ALLOC_BASE_ADDRESS, info.AllocationBase or 0)
     response += tlv_pack(TLV_TYPE_ALLOC_PROTECTION, info.AllocationProtect)
     response += tlv_pack(TLV_TYPE_LENGTH, info.RegionSize)
     response += tlv_pack(TLV_TYPE_MEMORY_STATE, info.State)
