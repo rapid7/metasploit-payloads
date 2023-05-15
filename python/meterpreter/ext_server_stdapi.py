@@ -399,6 +399,18 @@ if has_ctypes:
             ('dwType', ctypes.c_uint32)
         ]
 
+    class MEMORY_BASIC_INFORMATION(ctypes.Structure):
+        _fields_ = [
+            ('BaseAddress', ctypes.c_void_p),
+            ('AllocationBase', ctypes.c_void_p),
+            ('AllocationProtect', ctypes.c_ulong),
+            ('PartitionId', ctypes.c_ushort),
+            ('RegionSize', ctypes.c_size_t),
+            ('State', ctypes.c_ulong),
+            ('Protect', ctypes.c_ulong),
+            ('Type', ctypes.c_ulong)
+        ]
+
 
     #
     # Linux Structures
@@ -1725,6 +1737,32 @@ def stdapi_sys_process_memory_protect(request, response):
     if not VirtualProtectEx(handle, base, size, prot, ctypes.byref(old_prot)):
         return error_result_windows(), response
     response += tlv_pack(TLV_TYPE_PROTECTION, old_prot.value)
+    return ERROR_SUCCESS, response
+
+@register_function_if(has_windll)
+def stdapi_sys_process_memory_query(request, response):
+    handle = packet_get_tlv(request, TLV_TYPE_HANDLE).get('value')
+    base = packet_get_tlv(request, TLV_TYPE_BASE_ADDRESS).get('value')
+
+    if not handle:
+        return ERROR_INVALID_PARAMETER, response
+
+    VirtualQueryEx = ctypes.windll.kernel32.VirtualQueryEx
+    VirtualQueryEx.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.POINTER(MEMORY_BASIC_INFORMATION), ctypes.c_size_t]
+    VirtualQueryEx.restype = ctypes.c_size_t
+
+    info = MEMORY_BASIC_INFORMATION()
+    size = VirtualQueryEx(handle, base, ctypes.byref(info), ctypes.sizeof(info))
+    if size == 0:
+        return error_result_windows(), response
+
+    response += tlv_pack(TLV_TYPE_BASE_ADDRESS, info.BaseAddress or 0)
+    response += tlv_pack(TLV_TYPE_ALLOC_BASE_ADDRESS, info.AllocationBase or 0)
+    response += tlv_pack(TLV_TYPE_ALLOC_PROTECTION, info.AllocationProtect)
+    response += tlv_pack(TLV_TYPE_LENGTH, info.RegionSize)
+    response += tlv_pack(TLV_TYPE_MEMORY_STATE, info.State)
+    response += tlv_pack(TLV_TYPE_PROTECTION, info.Protect)
+    response += tlv_pack(TLV_TYPE_MEMORY_TYPE, info.Type)
     return ERROR_SUCCESS, response
 
 @register_function_if(has_windll)
