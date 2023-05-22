@@ -1,6 +1,6 @@
 # Building the Java and Android Meterpreter
 
-1. Install Maven and Java, this will depend on your OS
+1. Install Maven and Java 1.8, this will depend on your OS
 1. Download the [Android SDK](https://developer.android.com/sdk/index.html)
 1. Install Android SDK Platforms 3, 10 and 19, and update the "Android SDK Tools" and "Android SDK Platform-tools"
 1. Compile the Android and Java Meterpreter, which deploys to the `../metasploit-framework` folder
@@ -42,9 +42,11 @@ make android
 ```
 
 ## Building on OSX
+
 ```
-brew cask install caskroom/versions/java8
-brew cask install android-sdk
+brew tap homebrew/cask-versions
+brew install --cask temurin8
+brew install --cask android-sdk
 brew install maven
 sdkmanager --licenses
 sdkmanager "platforms;android-3"
@@ -52,6 +54,14 @@ sdkmanager "platforms;android-10"
 sdkmanager "platforms;android-19"
 
 #cd metasploit-payloads/java
+
+# Important: Ensure Java 1.8 is used when compiling
+export JAVA_HOME=/Library/Java/JavaVirtualMachines/openjdk-8.jdk/Contents/Home
+
+# Just Meterpreter
+mvn package -P deploy
+
+# With Android
 mvn package -Dandroid.sdk.path=/usr/local/share/android-sdk -Dandroid.release=true -P deploy
 ```
 
@@ -118,6 +128,8 @@ versions bundled with the metasploit-payloads Ruby gem.
 
 # IDE Support
 
+Note: First ensure you have Java 1.8 installed, and your IDE is using Java 1.8
+
 In case you want to edit/debug JavaPayload for Metasploit or Java Meterpreter
 with an IDE, Maven provides plugins to auto-generate project files for your
 favourite environment (at least for Eclipse, Netbeans or IntelliJ).
@@ -147,6 +159,3 @@ For NetBeans or IntelliJ IDEA, refer to the documentation at
 
 http://maven.apache.org/netbeans-module.html
 http://maven.apache.org/plugins/maven-idea-plugin/
-
-
-
