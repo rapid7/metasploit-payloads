@@ -112,6 +112,7 @@ Command customCommands[] =
 	COMMAND_REQ(COMMAND_ID_STDAPI_SYS_CONFIG_STEAL_TOKEN, request_sys_config_steal_token),
 	COMMAND_REQ(COMMAND_ID_STDAPI_SYS_CONFIG_DROP_TOKEN, request_sys_config_drop_token),
 	COMMAND_REQ(COMMAND_ID_STDAPI_SYS_CONFIG_GETSID, request_sys_config_getsid),
+	COMMAND_REQ(COMMAND_ID_STDAPI_SYS_CONFIG_UPDATE_TOKEN, request_sys_config_update_token),
 
 	// Net
 	COMMAND_REQ(COMMAND_ID_STDAPI_NET_CONFIG_GET_ROUTES, request_net_config_get_routes),

