@@ -285,7 +285,6 @@ DWORD request_sys_config_update_token(Remote* pRemote, Packet* pPacket)
 	Packet* pResponse = met_api->packet.create_response(pPacket);
 	DWORD dwResult = ERROR_SUCCESS;
 	HANDLE hToken = NULL;
-	HANDLE hDupToken = NULL;
 
 	// Get token handle from the client
 	hToken = (HANDLE)met_api->packet.get_tlv_value_qword(pPacket, TLV_TYPE_HANDLE);
@@ -302,8 +301,7 @@ DWORD request_sys_config_update_token(Remote* pRemote, Packet* pPacket)
 	// Store the token handle for future tasks
 	met_api->thread.update_token(pRemote, hToken);
 
-	// Transmit the response
-	met_api->packet.add_tlv_string(pResponse, TLV_TYPE_TOKEN_UPDATE_RESULT, "Token updated and impersonated succesfully.");
+	// Empty response means success
 	met_api->packet.transmit_response(dwResult, pRemote, pResponse);
 
 	return dwResult;
