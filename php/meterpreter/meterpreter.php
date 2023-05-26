@@ -1449,6 +1449,26 @@ if (MY_DEBUGGING) {
   error_reporting(0);
 }
 
+# register global shutdown handler for debugging
+if (MY_DEBUGGING) {
+  if (!isset($GLOBALS['my_shutdown_handler'])) {
+    $GLOBALS['my_shutdown_handler'] = true;
+
+    if (function_exists("register_shutdown_function")) {
+      function my_shutdown_handler() {
+        my_print("shutdown called");
+        $error = error_get_last();
+
+        if($error !== NULL) {
+          dump_array($error);
+        }
+      }
+
+      register_shutdown_function("my_shutdown_handler");
+    }
+  }
+}
+
 @ignore_user_abort(true);
 # Has no effect in safe mode, but try anyway
 @set_time_limit(0);
