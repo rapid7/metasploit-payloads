@@ -173,11 +173,10 @@ module MetasploitPayloads
   @local_paths = []
 
   def self.warn_local_path(path)
-    unless @local_paths.include?(path)
-      STDERR.puts("WARNING: Local file #{path} is being used")
-      STDERR.puts('WARNING: Local files may be incompatible with the Metasploit Framework') if @local_paths.empty?
-      @local_paths << path
-    end
+    STDERR.puts("WARNING: Local file #{path} is being used")
+    STDERR.puts('WARNING: Local files may be incompatible with the Metasploit Framework') if @local_paths.empty?
+    @local_paths << path
+    @local_paths.uniq!
   end
 
   class << self
