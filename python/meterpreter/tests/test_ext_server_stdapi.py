@@ -161,7 +161,7 @@ en0: flags=8863<UP,BROADCAST,SMART,RUNNING,SIMPLEX,MULTICAST> mtu 1500
         self.assertEqual(result[0], ERROR_SUCCESS)
         self.assertIsInstance(result[1], bytes)
 
-        return bytes
+        return result
 
 
 if __name__ == "__main__":
