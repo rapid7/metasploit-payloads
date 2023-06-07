@@ -890,7 +890,9 @@ def get_process_output(args):
 def get_stat_buffer(path):
     si = os.stat(path)
     rdev = 0
-    if hasattr(si, 'st_rdev'):
+    # Older versions of Python on Windows return invalid/negative values for st_rdev - skip it entirely
+    # https://github.com/python/cpython/commit/a10c1f221a5248cedf476736eea365e1dfc84910#diff-b419a047f587ec3afef8493e19dbfc142624bf278f3298bfc74729abd89e311d
+    if hasattr(si, 'st_rdev') and not sys.platform.startswith('win'):
         rdev = si.st_rdev
     st_buf = struct.pack('<III', int(si.st_dev), int(si.st_mode), int(si.st_nlink))
     st_buf += struct.pack('<IIIQ', int(si.st_uid), int(si.st_gid), int(rdev), long(si.st_ino))
