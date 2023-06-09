@@ -53,20 +53,18 @@ DWORD request_sys_process_memory_free(Remote *remote, Packet *packet)
 {
 	Packet *response = met_api->packet.create_response(packet);
 	HANDLE handle;
-	SIZE_T size;
 	LPVOID base;
 	DWORD result = ERROR_SUCCESS;
 
 	handle = (HANDLE)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_HANDLE);
 	base   = (LPVOID)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_BASE_ADDRESS);
-	size   = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_LENGTH);
 
 	// Free the memory
-	if (!VirtualFreeEx(handle, base, size, MEM_RELEASE))
+	if (!VirtualFreeEx(handle, base, 0, MEM_RELEASE))
 		result = GetLastError();
 
 	// Transmit the response
-	met_api->packet.transmit_response(result, remote, packet);
+	met_api->packet.transmit_response(result, remote, response);
 
 	return ERROR_SUCCESS;
 }
