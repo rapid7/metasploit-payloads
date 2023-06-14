@@ -1,4 +1,4 @@
-name: Verify
+name: WindowsMeterpreter
 
 # https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#permissions
 permissions:
@@ -16,10 +16,16 @@ permissions:
   security-events: none
   statuses: none
 
-on: [push, pull_request]
+on:
+  push:
+    paths:
+      - 'c/**'
+  pull_request:
+    paths:
+      - 'c/**'
 
 jobs:
-  mingw:
+  verify:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     name: Meterpreter MinGW Docker Build

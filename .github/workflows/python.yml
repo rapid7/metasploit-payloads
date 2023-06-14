@@ -1,0 +1,73 @@
+name: Python
+
+# https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#permissions
+permissions:
+  actions: none
+  checks: none
+  contents: none
+  deployments: none
+  id-token: none
+  issues: none
+  discussions: none
+  packages: none
+  pages: none
+  pull-requests: none
+  repository-projects: none
+  security-events: none
+  statuses: none
+
+on:
+  push:
+    paths:
+      - 'python/**'
+  pull_request:
+    paths:
+      - 'python/**'
+
+jobs:
+  verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - macos-11
+          - windows-2019
+          - ubuntu-20.04
+        runtime_version:
+          - 3.6
+          - 3.8
+          - 3.11
+        include:
+          # We run older Python versions in Docker - as Github Actions does not support installing these versions on the host
+          - { os: ubuntu-20.04, runtime_version: 2.7, docker_image: 'python:2.7-alpine' }
+          - { os: ubuntu-20.04, runtime_version: 3.3, docker_image: 'python:3.3-alpine' }
+          - { os: ubuntu-20.04, runtime_version: 3.4, docker_image: 'python:3.4-alpine' }
+          - { os: ubuntu-20.04, runtime_version: 3.5, docker_image: 'python:3.5-alpine' }
+
+    timeout-minutes: 40
+    runs-on: ${{ matrix.os }}
+    name: Python ${{ matrix.runtime_version }} ${{ matrix.docker_image && 'Docker' || matrix.os }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Run tests in docker
+        if: ${{ matrix.docker_image }}
+        env:
+          DOCKER_IMAGE: ${{ matrix.docker_image }}
+        run: |
+          cd python/meterpreter
+          docker run --rm -w $(pwd) -v $(pwd):$(pwd) ${DOCKER_IMAGE} /bin/sh -c 'ls -lah; pip install mock; python -m unittest discover -v ./tests'
+
+      - name: Set up Python on host
+        if: ${{ !matrix.docker_image }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.runtime_version }}
+
+      - name: Run tests on host
+        if: ${{ !matrix.docker_image }}
+        run: |
+          cd python/meterpreter
+          python -m unittest discover -v ./tests

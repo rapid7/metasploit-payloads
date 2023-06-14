@@ -2188,8 +2188,8 @@ def stdapi_net_config_get_interfaces(request, response):
         iface_tlv += tlv_pack(TLV_TYPE_MAC_ADDRESS, iface_info.get('hw_addr', '\x00\x00\x00\x00\x00\x00'))
         if 'mtu' in iface_info:
             iface_tlv += tlv_pack(TLV_TYPE_INTERFACE_MTU, iface_info['mtu'])
-        if 'flags' in iface_info:
-            iface_tlv += tlv_pack(TLV_TYPE_INTERFACE_FLAGS, iface_info['flags'])
+        if 'flags_str' in iface_info:
+            iface_tlv += tlv_pack(TLV_TYPE_INTERFACE_FLAGS, iface_info['flags_str'])
         iface_tlv += tlv_pack(TLV_TYPE_INTERFACE_INDEX, iface_info['index'])
         for address in iface_info.get('addrs', []):
             iface_tlv += tlv_pack(TLV_TYPE_IP, address[1])
@@ -2224,7 +2224,8 @@ def stdapi_net_config_get_interfaces_via_netlink():
         for flag in iface_flags_sorted:
             if (iface.flags & flag):
                 flags.append(iface_flags[flag])
-        iface_info['flags'] = ' '.join(flags)
+        iface_info['flags'] = iface.flags
+        iface_info['flags_str'] = ' '.join(flags)
         cursor = ctypes.sizeof(IFINFOMSG)
         while cursor < len(res_data):
             attribute = ctstruct_unpack(RTATTR, res_data[cursor:])
@@ -2271,19 +2272,20 @@ def stdapi_net_config_get_interfaces_via_osx_ifconfig():
     proc_h = subprocess.Popen('/sbin/ifconfig', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if proc_h.wait():
         raise Exception('ifconfig exited with non-zero status')
-    output = proc_h.stdout.read()
+    output = str(proc_h.stdout.read())
 
     interfaces = []
     iface = {}
     for line in output.split('\n'):
-        match = re.match(r'^([a-z0-9]+): flags=(\d+)<[A-Z,]*> mtu (\d+)\s*$', line)
+        match = re.match(r'^([a-z0-9]+): flags=(\d+)<([A-Z,]*)> mtu (\d+)\s*$', line)
         if match is not None:
             if iface:
                 interfaces.append(iface)
             iface = {}
             iface['name'] = match.group(1)
             iface['flags'] = int(match.group(2))
-            iface['mtu'] = int(match.group(3))
+            iface['flags_str'] = match.group(3)
+            iface['mtu'] = int(match.group(4))
             iface['index'] = len(interfaces)
             continue
         match = re.match(r'^\s+ether (([a-f0-9]{2}:){5}[a-f0-9]{2})\s*$', line)
@@ -2487,7 +2489,7 @@ def stdapi_net_config_get_routes_via_osx_netstat():
     proc_h = subprocess.Popen(['/usr/sbin/netstat', '-rn'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if proc_h.wait():
         raise Exception('netstat exited with non-zero status')
-    output = proc_h.stdout.read()
+    output = str(proc_h.stdout.read())
 
     routes = []
     state = None
@@ -2524,7 +2526,7 @@ def stdapi_net_config_get_routes_via_osx_netstat():
             continue
         if destination == 'default':
             destination = all_nets
-        if re.match('link#\d+', gateway) or re.match('([0-9a-f]{1,2}:){5}[0-9a-f]{1,2}', gateway):
+        if re.match('link#\\d+', gateway) or re.match('([0-9a-f]{1,2}:){5}[0-9a-f]{1,2}', gateway):
             gateway = all_nets[:-2]
         if '/' in destination:
             destination, netmask_bits = destination.rsplit('/', 1)
