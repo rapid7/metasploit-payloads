@@ -2525,7 +2525,7 @@ def stdapi_net_config_get_routes_via_osx_netstat():
             continue
         if destination == 'default':
             destination = all_nets
-        if re.match('link#\\d+', gateway) or re.match('([0-9a-f]{1,2}:){5}[0-9a-f]{1,2}', gateway):
+        if re.match('link#\\d+', gateway) or re.match('([0-9a-f]{1,2}:){5}[0-9a-f]{1,2}', gateway) or re.match('([0-9a-f]{1,2}.){5}[0-9a-f]{1,2}', gateway):
             gateway = all_nets[:-2]
         if '/' in destination:
             destination, netmask_bits = destination.rsplit('/', 1)
