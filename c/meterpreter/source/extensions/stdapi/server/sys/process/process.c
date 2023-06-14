@@ -123,6 +123,7 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 	STARTUPINFOEXA si;
 	HANDLE in[2], out[2];
 	PCHAR path, arguments, commandLine = NULL;
+	wchar_t* commandLine_w = NULL;
 	DWORD flags = 0, createFlags = 0, ppid = 0;
 	BOOL inherit = FALSE;
 	HANDLE token, pToken;
@@ -337,6 +338,13 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 			}
 		}
 
+		// Try to execute the process with duplicated token
+		if (!(commandLine_w = met_api->string.utf8_to_wchar(commandLine)))
+		{
+			result = ERROR_NOT_ENOUGH_MEMORY;
+			break;
+		}
+
 		if (flags & PROCESS_EXECUTE_FLAG_USE_THREAD_TOKEN)
 		{
 			// If there is an impersonated token stored, use that one first, otherwise
@@ -380,8 +388,6 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 				}
 			}
 
-			// Try to execute the process with duplicated token
-			wchar_t *commandLine_w = met_api->string.utf8_to_wchar(commandLine);
 			if (!CreateProcessAsUserW(pToken, NULL, commandLine_w, NULL, NULL, inherit, createFlags, pEnvironment, NULL, (LPSTARTUPINFOW)&si, &pi))
 			{
 				LPCREATEPROCESSWITHTOKENW pCreateProcessWithTokenW = NULL;
@@ -389,7 +395,6 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 				wchar_t * wcmdline = NULL;
 				wchar_t * wdesktop = NULL;
 				size_t size = 0;
-				free(commandLine_w);
 				result = GetLastError();
 
 				// sf: If we hit an ERROR_PRIVILEGE_NOT_HELD failure we can fall back to CreateProcessWithTokenW but this is only
@@ -485,10 +490,8 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 
 				if (session_id(GetCurrentProcessId()) == session || !hWtsapi32)
 				{
-					wchar_t *commandLine_w = met_api->string.utf8_to_wchar(commandLine);
 					if (!CreateProcessW(NULL, commandLine_w, NULL, NULL, inherit, createFlags, NULL, NULL, (LPSTARTUPINFOW)&si, &pi))
 					{
-						free(commandLine_w);
 						BREAK_ON_ERROR("[PROCESS] execute in self session: CreateProcessW failed");
 					}
 				}
@@ -504,10 +507,8 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 					{
 						BREAK_ON_ERROR("[PROCESS] execute in session: WTSQueryUserToken failed");
 					}
-					wchar_t *commandLine_w = met_api->string.utf8_to_wchar(commandLine);
 					if (!CreateProcessAsUserW(hToken, NULL, commandLine_w, NULL, NULL, inherit, createFlags, NULL, NULL, (LPSTARTUPINFOW)&si, &pi))
 					{
-						free(commandLine_w);
 						BREAK_ON_ERROR("[PROCESS] execute in session: CreateProcessAsUser failed");
 					}
 				}
@@ -534,11 +535,9 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 		else
 		{
 			// Try to execute the process
-			wchar_t *commandLine_w = met_api->string.utf8_to_wchar(commandLine);
 			if (!CreateProcessW(NULL, commandLine_w, NULL, NULL, inherit, createFlags, NULL, NULL, (LPSTARTUPINFOW)&si, &pi))
 			{
 				result = GetLastError();
-				free(commandLine_w);
 				break;
 			}
 		}
@@ -612,6 +611,11 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 	if (cpDesktop)
 	{
 		free(cpDesktop);
+	}
+
+	if (commandLine_w)
+	{
+		free(commandLine_w);
 	}
 
 	if (si.lpAttributeList)
