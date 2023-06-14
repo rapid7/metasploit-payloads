@@ -879,6 +879,14 @@ def ctstruct_unpack(structure, raw_data):
     ctypes.memmove(ctypes.byref(structure), raw_data, ctypes.sizeof(structure))
     return structure
 
+def get_process_output(args):
+    proc_h = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    stdout, stderr = proc_h.communicate()
+
+    if proc_h.wait():
+        raise Exception(args[0] + ' exited with non-zero status')
+    return str(stdout)
+
 def get_stat_buffer(path):
     si = os.stat(path)
     rdev = 0
@@ -1550,12 +1558,11 @@ def stdapi_sys_process_get_processes_via_proc(request, response):
     return ERROR_SUCCESS, response
 
 def stdapi_sys_process_get_processes_via_ps(request, response):
-    ps_args = ['ps', 'ax', '-w', '-o', 'pid,ppid,user,command']
-    proc_h = subprocess.Popen(ps_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    ps_output = str(proc_h.stdout.read())
-    ps_output = ps_output.split('\n')
-    ps_output.pop(0)
-    for process in ps_output:
+    ps_output = get_process_output(['ps', 'ax', '-w', '-o', 'pid,ppid,user,command'])
+
+    output = ps_output.split('\n')
+    output.pop(0)
+    for process in output:
         process = process.split()
         if len(process) < 4:
             break
@@ -2269,11 +2276,7 @@ def stdapi_net_config_get_interfaces_via_netlink():
     return interfaces.values()
 
 def stdapi_net_config_get_interfaces_via_osx_ifconfig():
-    proc_h = subprocess.Popen('/sbin/ifconfig', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    if proc_h.wait():
-        raise Exception('ifconfig exited with non-zero status')
-    output = str(proc_h.stdout.read())
-
+    output = get_process_output(['/sbin/ifconfig'])
     interfaces = []
     iface = {}
     for line in output.split('\n'):
@@ -2486,11 +2489,7 @@ def stdapi_net_config_get_routes_via_netlink():
     return routes
 
 def stdapi_net_config_get_routes_via_osx_netstat():
-    proc_h = subprocess.Popen(['/usr/sbin/netstat', '-rn'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    if proc_h.wait():
-        raise Exception('netstat exited with non-zero status')
-    output = str(proc_h.stdout.read())
-
+    output = get_process_output(['/usr/sbin/netstat', '-rn'])
     routes = []
     state = None
     has_refs = None

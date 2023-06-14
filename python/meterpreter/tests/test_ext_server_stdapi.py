@@ -57,7 +57,7 @@ class TestExtServerStdApi(unittest.TestCase):
 
     @mock.patch("subprocess.Popen")
     def test_stdapi_net_config_get_routes_via_osx_netstat(self, mock_popen):
-        popen_read_value = b"""
+        command_result = b"""
 Routing tables
 
 Internet:
@@ -71,7 +71,7 @@ default                                 fe80::%utun0                    UGcIg   
 
         process_mock = mock.Mock()
         attrs = {
-            "stdout.read.return_value": popen_read_value,
+            "communicate.return_value": (command_result, b""),
             "wait.return_value": ERROR_SUCCESS,
         }
         process_mock.configure_mock(**attrs)
@@ -102,7 +102,7 @@ default                                 fe80::%utun0                    UGcIg   
 
     @mock.patch("subprocess.Popen")
     def test_stdapi_net_config_get_interfaces_via_osx_ifconfig(self, mock_popen):
-        popen_read_value = b"""
+        command_result = b"""
 en0: flags=8863<UP,BROADCAST,SMART,RUNNING,SIMPLEX,MULTICAST> mtu 1500
         options=400<CHANNEL_IO>
         ether 11:22:33:44:55:66
@@ -113,7 +113,7 @@ en0: flags=8863<UP,BROADCAST,SMART,RUNNING,SIMPLEX,MULTICAST> mtu 1500
 
         process_mock = mock.Mock()
         attrs = {
-            "stdout.read.return_value": popen_read_value,
+            "communicate.return_value": (command_result, b""),
             "wait.return_value": ERROR_SUCCESS,
         }
         process_mock.configure_mock(**attrs)
@@ -143,25 +143,62 @@ en0: flags=8863<UP,BROADCAST,SMART,RUNNING,SIMPLEX,MULTICAST> mtu 1500
 
         self.assertEqual(result, expected)
 
+    @mock.patch("subprocess.Popen")
+    def test_stdapi_sys_process_get_processes_via_ps(self, mock_popen):
+        command_result = b"""
+  PID  PPID USER             COMMAND
+    1     0 root             /sbin/launchd
+   88     1 root             /usr/sbin/syslogd
+   89     1 root             /usr/libexec/UserEventAgent (System)
+""".lstrip()
+
+        process_mock = mock.Mock()
+        attrs = {
+            "communicate.return_value": (command_result, b""),
+            "wait.return_value": ERROR_SUCCESS,
+        }
+        process_mock.configure_mock(**attrs)
+        mock_popen.return_value = process_mock
+
+        request = bytes()
+        response = bytes()
+        result = self.ext_server_stdapi["stdapi_sys_process_get_processes_via_ps"](
+            request, response
+        )
+
+        self.assertErrorSuccess(result)
+
     def test_stdapi_net_config_get_interfaces(self):
         request = bytes()
         response = bytes()
-        self.assertErrorSuccess("stdapi_net_config_get_interfaces", request, response)
+        self.assertMethodErrorSuccess(
+            "stdapi_net_config_get_interfaces", request, response
+        )
 
     def test_stdapi_net_config_get_routes(self):
         request = bytes()
         response = bytes()
-        self.assertErrorSuccess("stdapi_net_config_get_routes", request, response)
+        self.assertMethodErrorSuccess("stdapi_net_config_get_routes", request, response)
 
-    def assertErrorSuccess(self, method_name, request, response):
+    def test_stdapi_sys_process_get_processes(self):
+        request = bytes()
+        response = bytes()
+        self.assertMethodErrorSuccess(
+            "stdapi_sys_process_get_processes", request, response
+        )
+
+    def assertMethodErrorSuccess(self, method_name, request, response):
         request = bytes()
         response = bytes()
         result = self.ext_server_stdapi[method_name](request, response)
 
-        self.assertEqual(result[0], ERROR_SUCCESS)
-        self.assertIsInstance(result[1], bytes)
+        self.assertErrorSuccess(result)
 
         return result
+
+    def assertErrorSuccess(self, result):
+        self.assertEqual(result[0], ERROR_SUCCESS)
+        self.assertIsInstance(result[1], bytes)
 
 
 if __name__ == "__main__":
