@@ -52,23 +52,9 @@ Building with VS2017 works with any version, including community. If you have an
 If you don't have an installation ready, follow these steps:
 
 1. Install [Chocolatey](https://chocolatey.org).
-2. Create a file called `.vsconfig` somewhere on disk with the following contents:
+2. Install VS with all the required components by running the following command in Powershell:
   ```
-{
-    "version": "1.0",
-    "components": [
-        "Microsoft.VisualStudio.Workload.NativeDesktop",
-        "microsoft.visualstudio.component.debugger.justintime",
-        "microsoft.visualstudio.component.vc.diagnostictools",
-        "microsoft.visualstudio.component.vc.cmake.project",
-        "microsoft.visualstudio.component.vc.atl",
-        "microsoft.visualstudio.componentgroup.nativedesktop.winxp"
-    ]
-}
-  ```
-3. Install VS with all the required components by running the following command in Powershell:
-  ```
-choco install visualstudio2017community -y --package-parameters "--config Path\To\Your\.vsconfig"
+choco install visualstudio2019community -y --package-parameters "--config C:\YOUR_PATH\metasploit-payloads\c\meterpreter\vs-configs\vs2017.vsconfig"
   ```
 
 Note: A copy of this file is located in this repository under `c/meterpreter/vs-config/vs2017.vsconfig`.
