@@ -2899,7 +2899,7 @@ def stdapi_railgun_api(request, response):
             if last_error == ERROR_SUCCESS:
                 error_message = 'The operation completed successfully.'
             else:
-                error_message = 'FormatMessage failed to retrieve the error.'
+                error_message = 'FormatMessage failed to retrieve the error for value ' + hex(last_error) + '.'
     else:
         raise RuntimeError('unknown platform')
 
