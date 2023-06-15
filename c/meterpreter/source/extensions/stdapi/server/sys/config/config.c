@@ -93,16 +93,22 @@ DWORD request_sys_config_getenv(Remote *remote, Packet *packet)
 			// grab the value of the variable and stick it in the response.
 			PWCHAR name = met_api->string.utf8_to_wchar(pEnvVarStart);
 			//Ensure we always have > 0 bytes even if env var doesn't exist
-			DWORD envlen = GetEnvironmentVariableW(name, NULL, 0) + 1;
-			PWCHAR wvalue = (PWCHAR)malloc(envlen * sizeof(WCHAR));
-			GetEnvironmentVariableW(name, wvalue, envlen);
+			DWORD envlen = GetEnvironmentVariableW(name, NULL, 0);
+			if ((envlen == 0) && (GetLastError() == ERROR_ENVVAR_NOT_FOUND)) 
+			{
+				dprintf("[ENV] Env var not found");
+			}
+			else 
+			{
+				PWCHAR wvalue = (PWCHAR)malloc(envlen * sizeof(WCHAR));
+				GetEnvironmentVariableW(name, wvalue, envlen);
+				char* value = met_api->string.wchar_to_utf8(wvalue);
+				add_env_pair(response, pEnvVarStart, value);
+				free(wvalue);
+				free(value);
+				dprintf("[ENV] Env var added");
+			}
 			free(name);
-			char* value = met_api->string.wchar_to_utf8(wvalue);
-			free(wvalue);
-			add_env_pair(response, pEnvVarStart, value);
-			free(value);
-
-			dprintf("[ENV] Env var added");
 		}
 	} while (0);
 
