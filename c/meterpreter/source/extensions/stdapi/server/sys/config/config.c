@@ -94,7 +94,8 @@ DWORD request_sys_config_getenv(Remote *remote, Packet *packet)
 			PWCHAR name = met_api->string.utf8_to_wchar(pEnvVarStart);
 			//Ensure we always have > 0 bytes even if env var doesn't exist
 			DWORD envlen = GetEnvironmentVariableW(name, NULL, 0);
-			if ((envlen == 0) && (GetLastError() == ERROR_ENVVAR_NOT_FOUND)) 
+			if (envlen == 0)
+
 			{
 				dprintf("[ENV] Env var not found");
 			}
