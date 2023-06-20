@@ -29,6 +29,12 @@ typedef BOOL (WINAPI* INITIALIZEPROCTHREADATTRIBUTELIST) (
 	PSIZE_T                      lpSize
 );
 
+typedef struct _STARTUPINFOEXW
+{
+	STARTUPINFOW StartupInfo;
+	LPPROC_THREAD_ATTRIBUTE_LIST lpAttributeList;
+} STARTUPINFOEXW, *LPSTARTUPINFOEXW;
+
 const int PROC_THREAD_ATTRIBUTE_PARENT_PROCESS = 0x00020000;
 
 /*
@@ -114,30 +120,30 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 	Tlv inMemoryData;
 	BOOL doInMemory = FALSE;
 	PROCESS_INFORMATION pi;
-	STARTUPINFOW si;
-	LPPROC_THREAD_ATTRIBUTE_LIST lpAttributeList;
+	STARTUPINFOEXW si;
 	HANDLE in[2], out[2];
 	PCHAR path, arguments, commandLine = NULL;
-	wchar_t *commandLine_w = NULL;
-	PCHAR cpDesktop = NULL;
-	wchar_t *cpDesktop_w = NULL;
+	wchar_t* commandLine_w = NULL;
 	DWORD flags = 0, createFlags = 0, ppid = 0;
 	BOOL inherit = FALSE;
 	HANDLE token, pToken;
+	char * cpDesktop = NULL;
 	DWORD session = 0;
 	LPVOID pEnvironment = NULL;
 	LPFNCREATEENVIRONMENTBLOCK  lpfnCreateEnvironmentBlock  = NULL;
 	LPFNDESTROYENVIRONMENTBLOCK lpfnDestroyEnvironmentBlock = NULL;
 	HMODULE hUserEnvLib = NULL;
 	ProcessChannelContext * ctx = NULL;
+	size_t size = 0;
 
 	dprintf( "[PROCESS] request_sys_process_execute" );
 
 	// Initialize the startup information
 	memset( &pi, 0, sizeof(PROCESS_INFORMATION) );
-	memset( &si, 0, sizeof(STARTUPINFOW) );
-	si.cb = sizeof(STARTUPINFOW);
-	lpAttributeList = NULL;
+	memset( &si, 0, sizeof(STARTUPINFOEXW) );
+
+	si.StartupInfo.cb = sizeof(STARTUPINFOW);
+	si.lpAttributeList = NULL;
 
 	// Initialize pipe handles
 	in[0]  = NULL;
@@ -167,25 +173,30 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 
 		if (flags & PROCESS_EXECUTE_FLAG_DESKTOP)
 		{
-			cpDesktop = (char *)malloc(512);
-			if (!cpDesktop) 
+			do
 			{
-				result = ERROR_NOT_ENOUGH_MEMORY;
-				break;
-			}
-			memset(cpDesktop, 0, 512);
-			met_api->lock.acquire(remote->lock);
+				cpDesktop = (char *)calloc(512, sizeof(char));
+				if (!cpDesktop)
+				{
+					break;
+				}
 
-			_snprintf(cpDesktop, 512, "%s\\%s", remote->curr_station_name, remote->curr_desktop_name);
+				met_api->lock.acquire(remote->lock);
 
-			met_api->lock.release(remote->lock);
+				_snprintf(cpDesktop, 512, "%s\\%s", remote->curr_station_name, remote->curr_desktop_name);
 
-			if (!(cpDesktop_w = met_api->string.utf8_to_wchar(cpDesktop)))
-			{
-				result = ERROR_NOT_ENOUGH_MEMORY;
-				break;
-			}
-			si.lpDesktop = cpDesktop_w;
+				met_api->lock.release(remote->lock);
+
+				size = mbstowcs(NULL, cpDesktop, 0);
+				if (size == (size_t)-1)
+				{
+					break;
+				}
+
+				si.StartupInfo.lpDesktop = calloc(size + 1, sizeof(wchar_t));
+				mbstowcs(si.StartupInfo.lpDesktop, cpDesktop, size);
+
+			} while (0);
 		}
 
 		// If the remote endpoint provided arguments, combine them with the
@@ -209,11 +220,6 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 		else
 		{
 			result = ERROR_INVALID_PARAMETER;
-			break;
-		}
-		if (!(commandLine_w = met_api->string.utf8_to_wchar(commandLine)))
-		{
-			result = ERROR_NOT_ENOUGH_MEMORY;
 			break;
 		}
 
@@ -266,10 +272,10 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 			}
 
 			// Initialize the startup info to use the pipe handles
-			si.dwFlags |= STARTF_USESTDHANDLES;
-			si.hStdInput = in[0];
-			si.hStdOutput = out[1];
-			si.hStdError = out[1];
+			si.StartupInfo.dwFlags |= STARTF_USESTDHANDLES;
+			si.StartupInfo.hStdInput = in[0];
+			si.StartupInfo.hStdOutput = out[1];
+			si.StartupInfo.hStdError = out[1];
 			inherit = TRUE;
 			createFlags |= CREATE_NEW_CONSOLE;
 
@@ -285,8 +291,8 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 		// If the hidden flag is set, create the process hidden
 		if (flags & PROCESS_EXECUTE_FLAG_HIDDEN)
 		{
-			si.dwFlags |= STARTF_USESHOWWINDOW;
-			si.wShowWindow = SW_HIDE;
+			si.StartupInfo.dwFlags |= STARTF_USESHOWWINDOW;
+			si.StartupInfo.wShowWindow = SW_HIDE;
 			createFlags |= CREATE_NO_WINDOW;
 		}
 
@@ -312,8 +318,8 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 			) {
 				size_t len = 0;
 				InitializeProcThreadAttributeList(NULL, 1, 0, &len);
-				lpAttributeList = malloc(len);
-				if (!InitializeProcThreadAttributeList(lpAttributeList, 1, 0, &len)) {
+				si.lpAttributeList = malloc(len);
+				if (!InitializeProcThreadAttributeList(si.lpAttributeList, 1, 0, &len)) {
 					printf("[execute] InitializeProcThreadAttributeList: [%d]\n", GetLastError());
 					result = GetLastError();
 					break;
@@ -321,7 +327,7 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 
 				dprintf("[execute] InitializeProcThreadAttributeList\n");
 
-				if (!UpdateProcThreadAttribute(lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_PARENT_PROCESS, &handle, sizeof(HANDLE), 0, 0)) {
+				if (!UpdateProcThreadAttribute(si.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_PARENT_PROCESS, &handle, sizeof(HANDLE), 0, 0)) {
 					printf("[execute] UpdateProcThreadAttribute: [%d]\n", GetLastError());
 					result = GetLastError();
 					break;
@@ -330,6 +336,7 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 				dprintf("[execute] UpdateProcThreadAttribute\n");
 
 				createFlags |= EXTENDED_STARTUPINFO_PRESENT;
+				si.StartupInfo.cb = sizeof(STARTUPINFOEXW);
 
 				FreeLibrary(hKernel32Lib);
 			}
@@ -337,6 +344,13 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 				result = GetLastError();
 				break;
 			}
+		}
+
+		// Try to execute the process with duplicated token
+		if (!(commandLine_w = met_api->string.utf8_to_wchar(commandLine)))
+		{
+			result = ERROR_NOT_ENOUGH_MEMORY;
+			break;
 		}
 
 		if (flags & PROCESS_EXECUTE_FLAG_USE_THREAD_TOKEN)
@@ -382,11 +396,12 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 				}
 			}
 
-			// Try to execute the process with duplicated token
-			if (!CreateProcessAsUserW(pToken, NULL, commandLine_w, NULL, NULL, inherit, createFlags, pEnvironment, NULL, &si, &pi))
+			if (!CreateProcessAsUserW(pToken, NULL, commandLine_w, NULL, NULL, inherit, createFlags, pEnvironment, NULL, &si.StartupInfo, &pi))
 			{
 				LPCREATEPROCESSWITHTOKENW pCreateProcessWithTokenW = NULL;
 				HANDLE hAdvapi32 = NULL;
+				wchar_t * wcmdline = NULL;
+				wchar_t * wdesktop = NULL;
 				result = GetLastError();
 
 				// sf: If we hit an ERROR_PRIVILEGE_NOT_HELD failure we can fall back to CreateProcessWithTokenW but this is only
@@ -400,12 +415,35 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 						{
 							break;
 						}
+
 						pCreateProcessWithTokenW = (LPCREATEPROCESSWITHTOKENW)GetProcAddress(hAdvapi32, "CreateProcessWithTokenW");
 						if (!pCreateProcessWithTokenW)
 						{
 							break;
 						}
-						if (!pCreateProcessWithTokenW(pToken, LOGON_NETCREDENTIALS_ONLY, NULL, commandLine_w, createFlags, pEnvironment, NULL, &si, &pi))
+
+						// convert the multibyte inputs to wide strings (No CreateProcessWithTokenA available unfortunatly)...
+						size = mbstowcs(NULL, commandLine, 0);
+						if (size == (size_t)-1)
+						{
+							break;
+						}
+
+						wcmdline = (wchar_t *)malloc((size + 1) * sizeof(wchar_t));
+						mbstowcs(wcmdline, commandLine, size);
+
+						if (si.StartupInfo.lpDesktop)
+						{
+							size = mbstowcs(NULL, (char *)si.StartupInfo.lpDesktop, 0);
+							if (size != (size_t)-1)
+							{
+								wdesktop = (wchar_t *)malloc((size + 1) * sizeof(wchar_t));
+								mbstowcs(wdesktop, (char *)si.StartupInfo.lpDesktop, size);
+								si.StartupInfo.lpDesktop = wdesktop;
+							}
+						}
+
+						if (!pCreateProcessWithTokenW(pToken, LOGON_NETCREDENTIALS_ONLY, NULL, wcmdline, createFlags, pEnvironment, NULL, &si.StartupInfo, &pi))
 						{
 							result = GetLastError();
 							dprintf("[execute] failed to create the new process via CreateProcessWithTokenW 0x%.8x", result);
@@ -420,6 +458,9 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 					{
 						FreeLibrary(hAdvapi32);
 					}
+
+					SAFE_FREE(wdesktop);
+					SAFE_FREE(wcmdline);
 				}
 				else
 				{
@@ -456,7 +497,7 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 
 				if (session_id(GetCurrentProcessId()) == session || !hWtsapi32)
 				{
-					if (!CreateProcessW(NULL, commandLine_w, NULL, NULL, inherit, createFlags, NULL, NULL, &si, &pi))
+					if (!CreateProcessW(NULL, commandLine_w, NULL, NULL, inherit, createFlags, NULL, NULL, &si.StartupInfo, &pi))
 					{
 						BREAK_ON_ERROR("[PROCESS] execute in self session: CreateProcessW failed");
 					}
@@ -473,7 +514,7 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 					{
 						BREAK_ON_ERROR("[PROCESS] execute in session: WTSQueryUserToken failed");
 					}
-					if (!CreateProcessAsUserW(hToken, NULL, commandLine_w, NULL, NULL, inherit, createFlags, NULL, NULL, &si, &pi))
+					if (!CreateProcessAsUserW(hToken, NULL, commandLine_w, NULL, NULL, inherit, createFlags, NULL, NULL, &si.StartupInfo, &pi))
 					{
 						BREAK_ON_ERROR("[PROCESS] execute in session: CreateProcessAsUser failed");
 					}
@@ -501,7 +542,7 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 		else
 		{
 			// Try to execute the process
-			if (!CreateProcessW(NULL, commandLine_w, NULL, NULL, inherit, createFlags, NULL, NULL, &si, &pi))
+			if (!CreateProcessW(NULL, commandLine_w, NULL, NULL, inherit, createFlags, NULL, NULL, &si.StartupInfo, &pi))
 			{
 				result = GetLastError();
 				break;
@@ -574,24 +615,24 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 		free(commandLine);
 	}
 
-	if (commandLine_w) 
-	{
-		free(commandLine_w);
-	}
-
 	if (cpDesktop)
 	{
 		free(cpDesktop);
 	}
 
-	if (cpDesktop_w)
+	if (commandLine_w)
 	{
-		free(cpDesktop_w);
+		free(commandLine_w);
 	}
 
-	if (lpAttributeList)
+	if (si.StartupInfo.lpDesktop)
 	{
-		free(lpAttributeList);
+		free(si.StartupInfo.lpDesktop);
+	}
+
+	if (si.lpAttributeList)
+	{
+		free(si.lpAttributeList);
 	}
 
 	met_api->packet.transmit_response(result, remote, response);
