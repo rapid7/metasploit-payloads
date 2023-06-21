@@ -22,3 +22,9 @@ python3 ./tests/test_ext_server_stdapi.py TestExtServerStdApi.test_stdapi_net_co
 # Or:
 python3 -m unittest tests.test_ext_server_stdapi.ExtServerStdApiFileSystemTest.test_stdapi_fs_stat
 ```
+
+To debug tests, add the following code snippet to enter into an interactive debugger at the calling stack frame:
+
+```python
+import pdb; pdb.set_trace()
+```
