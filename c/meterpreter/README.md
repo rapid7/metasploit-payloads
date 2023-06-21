@@ -54,7 +54,7 @@ If you don't have an installation ready, follow these steps:
 1. Install [Chocolatey](https://chocolatey.org).
 2. Install VS with all the required components by running the following command in Powershell:
   ```
-choco install visualstudio2019community -y --package-parameters "--config C:\YOUR_PATH\metasploit-payloads\c\meterpreter\vs-configs\vs2017.vsconfig"
+choco install visualstudio2017community -y --package-parameters "--config C:\YOUR_PATH\metasploit-payloads\c\meterpreter\vs-configs\vs2017.vsconfig"
   ```
 
 Note: A copy of this file is located in this repository under `c/meterpreter/vs-config/vs2017.vsconfig`.
