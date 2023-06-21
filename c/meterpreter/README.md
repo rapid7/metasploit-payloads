@@ -35,41 +35,11 @@ Building with VS2019 works with any version, including community. If you have an
 If you don't have an installation ready, follow these steps:
 
 1. Install [Chocolatey](https://chocolatey.org).
-2. Create a file called `.vsconfig` somewhere on disk with the following contents:
   ```
-{
-    "version": "1.0",
-    "components": [
-        "Microsoft.VisualStudio.Component.CoreEditor",
-        "Microsoft.VisualStudio.Workload.CoreEditor",
-        "Microsoft.VisualStudio.Component.NuGet",
-        "Microsoft.VisualStudio.Component.Roslyn.Compiler",
-        "Microsoft.Component.MSBuild",
-        "Microsoft.VisualStudio.Component.TextTemplating",
-        "Microsoft.VisualStudio.Component.IntelliCode",
-        "Microsoft.VisualStudio.Component.VC.CoreIde",
-        "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
-        "Microsoft.VisualStudio.Component.Graphics.Tools",
-        "Microsoft.VisualStudio.Component.VC.DiagnosticTools",
-        "Microsoft.VisualStudio.Component.Windows10SDK.18362",
-        "Microsoft.VisualStudio.Component.Debugger.JustInTime",
-        "Microsoft.VisualStudio.Component.VC.Redist.14.Latest",
-        "Microsoft.VisualStudio.ComponentGroup.NativeDesktop.Core",
-        "Microsoft.VisualStudio.Component.VC.CMake.Project",
-        "Microsoft.VisualStudio.Component.VC.ATL",
-        "Microsoft.VisualStudio.Component.VC.ASAN",
-        "Microsoft.Component.VC.Runtime.UCRTSDK",
-        "Microsoft.VisualStudio.Workload.NativeDesktop",
-        "Microsoft.VisualStudio.Component.WinXP"
-    ]
-}
+2. Install VS with all the required components by running the following command in Powershell:
   ```
-3. Install VS with all the required components by running the following command in Powershell:
+choco install visualstudio2019community -y --package-parameters "--config C:\YOUR_PATH\metasploit-payloads\c\meterpreter\vs-configs\vs2019.vsconfig"
   ```
-choco install visualstudio2019community -y --package-parameters "--config Path\To\Your\.vsconfig"
-  ```
-
-Note: A copy of this file is located in this repository under `c/meterpreter/vs-config/vs2019.vsconfig`.
 
 ### VS 2017
 Building with VS2017 works with any version, including community. If you have an installation already, just make sure you have the following extra bits installed:
@@ -82,23 +52,9 @@ Building with VS2017 works with any version, including community. If you have an
 If you don't have an installation ready, follow these steps:
 
 1. Install [Chocolatey](https://chocolatey.org).
-2. Create a file called `.vsconfig` somewhere on disk with the following contents:
+2. Install VS with all the required components by running the following command in Powershell:
   ```
-{
-    "version": "1.0",
-    "components": [
-        "Microsoft.VisualStudio.Workload.NativeDesktop",
-        "microsoft.visualstudio.component.debugger.justintime",
-        "microsoft.visualstudio.component.vc.diagnostictools",
-        "microsoft.visualstudio.component.vc.cmake.project",
-        "microsoft.visualstudio.component.vc.atl",
-        "microsoft.visualstudio.componentgroup.nativedesktop.winxp"
-    ]
-}
-  ```
-3. Install VS with all the required components by running the following command in Powershell:
-  ```
-choco install visualstudio2017community -y --package-parameters "--config Path\To\Your\.vsconfig"
+choco install visualstudio2017community -y --package-parameters "--config C:\YOUR_PATH\metasploit-payloads\c\meterpreter\vs-configs\vs2017.vsconfig"
   ```
 
 Note: A copy of this file is located in this repository under `c/meterpreter/vs-config/vs2017.vsconfig`.
