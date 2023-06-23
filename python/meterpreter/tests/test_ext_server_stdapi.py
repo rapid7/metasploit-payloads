@@ -13,6 +13,9 @@ else:
 
 ERROR_SUCCESS = 0
 
+is_windows = sys.platform.startswith("win")
+windows_only_test_reason = "Windows only test"
+
 
 def create_meterpreter_context():
     with open("meterpreter.py", "rb") as file:
@@ -68,6 +71,13 @@ class ExtServerStdApiTest(unittest.TestCase):
     def assertErrorSuccess(self, result):
         self.assertEqual(result[0], ERROR_SUCCESS)
         self.assertIsInstance(result[1], bytes)
+
+    def assertRegex(self, text, regexp, msg=None):
+        # Python 2.7
+        if self.assertRegexpMatches:
+            self.assertRegexpMatches(text, regexp, msg)
+        else:
+            super().assertRegex(text, regexp, msg)
 
 
 class ExtServerStdApiNetworkTest(ExtServerStdApiTest):
@@ -202,31 +212,6 @@ en0: flags=8863<UP,BROADCAST,SMART,RUNNING,SIMPLEX,MULTICAST> mtu 1500
 
         self.assertEqual(result, expected)
 
-    @mock.patch("subprocess.Popen")
-    def test_stdapi_sys_process_get_processes_via_ps(self, mock_popen):
-        command_result = b"""
-  PID  PPID USER             COMMAND
-    1     0 root             /sbin/launchd
-   88     1 root             /usr/sbin/syslogd
-   89     1 root             /usr/libexec/UserEventAgent (System)
-""".lstrip()
-
-        process_mock = mock.Mock()
-        attrs = {
-            "communicate.return_value": (command_result, b""),
-            "wait.return_value": ERROR_SUCCESS,
-        }
-        process_mock.configure_mock(**attrs)
-        mock_popen.return_value = process_mock
-
-        request = bytes()
-        response = bytes()
-        result = self.ext_server_stdapi["stdapi_sys_process_get_processes_via_ps"](
-            request, response
-        )
-
-        self.assertErrorSuccess(result)
-
 
 class ExtServerStdApiFileSystemTest(ExtServerStdApiTest):
     def test_stdapi_fs_stat(self):
@@ -271,6 +256,69 @@ class ExtServerStdApiFileSystemTest(ExtServerStdApiTest):
         )
         response = bytes()
         self.assertMethodErrorSuccess("stdapi_fs_stat", request, response)
+
+
+class ExtServerStdApiSysProcess(ExtServerStdApiTest):
+    def test_stdapi_sys_process_get_processes(self):
+        request = bytes()
+        response = bytes()
+        result = self.assertMethodErrorSuccess(
+            "stdapi_sys_process_get_processes", request, response
+        )
+
+        self.assertErrorSuccess(result)
+
+    @mock.patch("subprocess.Popen")
+    def test_stdapi_sys_process_get_processes_via_ps(self, mock_popen):
+        command_result = b"""
+  PID  PPID USER             COMMAND
+    1     0 root             /sbin/launchd
+   88     1 root             /usr/sbin/syslogd
+   89     1 root             /usr/libexec/UserEventAgent (System)
+""".lstrip()
+
+        process_mock = mock.Mock()
+        attrs = {
+            "communicate.return_value": (command_result, b""),
+            "wait.return_value": ERROR_SUCCESS,
+        }
+        process_mock.configure_mock(**attrs)
+        mock_popen.return_value = process_mock
+
+        request = bytes()
+        response = bytes()
+        result = self.ext_server_stdapi["stdapi_sys_process_get_processes_via_ps"](
+            request, response
+        )
+
+        self.assertErrorSuccess(result)
+
+
+class ExtServerStdApiSystemConfigTest(ExtServerStdApiTest):
+    def test_stdapi_sys_config_getuid(self):
+        request = bytes()
+        response = bytes()
+        _result_code, result_tlvs = self.assertMethodErrorSuccess(
+            "stdapi_sys_config_getuid", request, response
+        )
+
+        user_name = self.meterpreter_context["packet_get_tlv"](
+            result_tlvs, self.ext_server_stdapi["TLV_TYPE_USER_NAME"]
+        ).get("value")
+        self.assertRegex(user_name, ".+")
+
+    @unittest.skipUnless(is_windows, windows_only_test_reason)
+    def test_stdapi_sys_config_getsid(self):
+        request = bytes()
+        response = bytes()
+        _result_code, result_tlvs = self.assertMethodErrorSuccess(
+            "stdapi_sys_config_getsid", request, response
+        )
+
+        sid = self.meterpreter_context["packet_get_tlv"](
+            result_tlvs, self.ext_server_stdapi["TLV_TYPE_SID"]
+        ).get("value")
+        self.assertRegex(sid, "S-1-5-.*")
 
 
 if __name__ == "__main__":
