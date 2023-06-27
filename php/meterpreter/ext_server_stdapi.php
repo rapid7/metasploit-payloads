@@ -21,7 +21,7 @@ define("TLV_TYPE_FILE_MODE",           TLV_META_TYPE_STRING  | 1203);
 define("TLV_TYPE_FILE_SIZE",           TLV_META_TYPE_UINT    | 1204);
 define("TLV_TYPE_FILE_HASH",           TLV_META_TYPE_RAW     | 1206);
 
-define("TLV_TYPE_STAT_BUF32",          TLV_META_TYPE_COMPLEX | 1220);
+define("TLV_TYPE_STAT_BUF",            TLV_META_TYPE_COMPLEX | 1221);
 
 define("TLV_TYPE_SEARCH_RECURSE",      TLV_META_TYPE_BOOL    | 1230);
 define("TLV_TYPE_SEARCH_GLOB",         TLV_META_TYPE_STRING  | 1231);
@@ -429,22 +429,37 @@ function add_stat_buf($path) {
     if ($st) {
         $st_buf = "";
         $st_buf .= pack("V", $st['dev']);
-        $st_buf .= pack("v", $st['ino']);
-        $st_buf .= pack("v", $st['mode']);
-        $st_buf .= pack("v", 0);
-        $st_buf .= pack("v", $st['nlink']);
-        $st_buf .= pack("v", $st['uid']);
-        $st_buf .= pack("v", $st['gid']);
+        $st_buf .= pack("V", $st['mode']);
+        $st_buf .= pack("V", $st['nlink']);
+        $st_buf .= pack("V", $st['uid']);
+        $st_buf .= pack("V", $st['gid']);
         $st_buf .= pack("V", $st['rdev']);
-        $st_buf .= pack("V", $st['size']);
-        $st_buf .= pack("V", $st['ctime']);
-        $st_buf .= pack("V", $st['atime']);
-        $st_buf .= pack("V", $st['mtime']);
+
+        $st_buf .= pack_p($st['ino']);
+        $st_buf .= pack_p($st['size']);
+        $st_buf .= pack_p($st['atime']);
+        $st_buf .= pack_p($st['mtime']);
+        $st_buf .= pack_p($st['ctime']);
+        
         $st_buf .= pack("V", $st['blksize']);
         $st_buf .= pack("V", $st['blocks']);
-        return create_tlv(TLV_TYPE_STAT_BUF32, $st_buf);
+       
+        return create_tlv(TLV_TYPE_STAT_BUF, $st_buf);
     }
     return false;
+}
+}
+
+if(!function_exists('pack_p')) {
+# Implements pack('P', $value) - but backwards compatible to PHP4.x
+# https://www.php.net/manual/en/function.pack.php
+# Directive:
+#   P   unsigned long long (always 64 bit, little endian byte order)
+function pack_p($value) {
+    $first_half = pack('V', $value & 0xffffffff);
+    $second_half = pack('V', ($value >> 32) & 0xffffffff);
+
+    return $first_half . $second_half;
 }
 }
 
@@ -655,7 +670,7 @@ function stdapi_fs_ls($req, &$pkt) {
                 packet_add_tlv($pkt, create_tlv(TLV_TYPE_FILE_PATH, $path . DIRECTORY_SEPARATOR . $file));
                 $st_buf = add_stat_buf($path . DIRECTORY_SEPARATOR . $file);
                 if (!$st_buf) {
-                    $st_buf = create_tlv(TLV_TYPE_STAT_BUF32, '');
+                    $st_buf = create_tlv(TLV_TYPE_STAT_BUF, '');
                 }
                 packet_add_tlv($pkt, $st_buf);
             }
