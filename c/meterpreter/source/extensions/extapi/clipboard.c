@@ -258,7 +258,7 @@ DWORD initialise_clipboard()
 }
 
 /*!
- * @brief Attempt to open the clipboard. If opening the clipboard fails, it will be retried until success or failure.
+ * @brief Attempt to open the clipboard. If opening the clipboard fails, it will be retried until max_retry_count is hit, or success occurs.
  * @param hWndNewOwner handle to the window to be associated with the open clipboard. If this parameter is NULL, the open clipboard is associated with the current task.
  * @retval TRUE if the clipboard has been opened
  * @retval FALSE if the clipboard has not been opened
