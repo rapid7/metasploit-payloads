@@ -258,6 +258,27 @@ DWORD initialise_clipboard()
 }
 
 /*!
+ * @brief Attempt to open the clipboard. If opening the clipboard fails, it will be retried until max_retry_count is hit, or success occurs.
+ * @param hWndNewOwner handle to the window to be associated with the open clipboard. If this parameter is NULL, the open clipboard is associated with the current task.
+ * @retval TRUE if the clipboard has been opened
+ * @retval FALSE if the clipboard has not been opened
+ */
+BOOL open_clipboard_with_retries(HWND hWndNewOwner) {
+	int max_retry_count = 5;
+	for (int i = 0; i < max_retry_count; i++) {
+		if (i > 0) {
+			dprintf("[EXTAPI CLIPBOARD] Failed to OpenClipboard, sleeping before trying again");
+			Sleep(100);
+		}
+
+		if (pOpenClipboard(hWndNewOwner)) {
+			return TRUE;
+		}
+	}
+	return FALSE;
+}
+
+/*!
  * @brief Clean up the list of captures in the given list of captures.
  * @param pCaptureList Pointer to the list of captures to clean up.
  * @param bRemoveLock If \c TRUE, remove the list capture lock.
@@ -573,7 +594,7 @@ DWORD capture_clipboard(BOOL bCaptureImageData, ClipboardCapture** ppCapture)
 	do
 	{
 		// Try to get a lock on the clipboard
-		if (!pOpenClipboard(NULL))
+		if (!open_clipboard_with_retries(NULL))
 		{
 			dwResult = GetLastError();
 			BREAK_WITH_ERROR("[EXTAPI CLIPBOARD] Unable to open the clipboard", dwResult);
@@ -1018,7 +1039,7 @@ DWORD request_clipboard_set_data(Remote *remote, Packet *packet)
 		pGlobalUnlock(hClipboardData);
 
 		// Try to get a lock on the clipboard
-		if (!pOpenClipboard(NULL))
+		if (!open_clipboard_with_retries(NULL))
 		{
 			dwResult = GetLastError();
 			BREAK_WITH_ERROR("[EXTAPI CLIPBOARD] Unable to open the clipboard", dwResult);
