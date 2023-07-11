@@ -35,7 +35,7 @@ public class android_dump_contacts implements Command {
         ContentResolver cr = AndroidMeterpreter.getContext()
                 .getContentResolver();
 
-        if (Integer.parseInt(Build.VERSION.RELEASE.substring(0, 1)) >= 2) {
+        if (Integer.parseInt(Build.VERSION.RELEASE.split("\\.")[0]) >= 2) {
             Uri ContactUri = ContactsContract.Contacts.CONTENT_URI;
             Uri PhoneUri = ContactsContract.CommonDataKinds.Phone.CONTENT_URI;
             Uri EmailUri = ContactsContract.CommonDataKinds.Email.CONTENT_URI;
