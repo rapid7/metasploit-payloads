@@ -292,8 +292,8 @@ public class Meterpreter {
     public Integer[] loadExtension(byte[] data) throws Exception {
         ClassLoader classLoader = getClass().getClassLoader();
         if (loadExtensions) {
-            URL url = MemoryBufferURLConnection.createURL(data, "application/jar");
-            classLoader = new URLClassLoader(new URL[]{url}, classLoader);
+            JarFileClassLoader jarLoader = (JarFileClassLoader)classLoader;
+            jarLoader.addJarFile(data);
         }
         JarInputStream jis = new JarInputStream(new ByteArrayInputStream(data));
         String loaderName = jis.getManifest().getMainAttributes().getValue("Extension-Loader");
