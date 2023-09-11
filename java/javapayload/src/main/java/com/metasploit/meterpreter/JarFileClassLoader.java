@@ -50,6 +50,12 @@ public class JarFileClassLoader extends ClassLoader {
 
     @Override
     public Class loadClass(String name) throws ClassNotFoundException {
+        // The dynamic loading requires knowledge of this classloader, but
+        // the default classloader doesn't know about it; so we bridge that
+        // gap by returning our own class when requested.
+        if (name.equals(getClass().getName())) {
+            return getClass();
+        }
         try {
             return super.loadClass(name);
         } catch (ClassNotFoundException e) {
