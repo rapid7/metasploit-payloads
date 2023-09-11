@@ -1,6 +1,7 @@
 package com.metasploit.meterpreter;
 
 import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.io.ByteArrayOutputStream;
 import java.util.HashMap;
 import java.util.zip.ZipInputStream;
@@ -8,32 +9,39 @@ import java.util.zip.ZipEntry;
 
 public class JarFileClassLoader extends ClassLoader {
 
-    HashMap<String, byte[]> classBytes = new HashMap();
+    HashMap<String, byte[]> resourceBytes = new HashMap();
 
     public void addJarFile(byte[] jarFile) throws java.io.IOException {
         ZipInputStream zipReader = new ZipInputStream(new ByteArrayInputStream(jarFile));
         ZipEntry zipEntry;
         while ((zipEntry = zipReader.getNextEntry()) != null) {
             String name = zipEntry.getName();
-            String classSuffix = ".class";
-            if (name.endsWith(classSuffix)) {
-                ByteArrayOutputStream classStream = new ByteArrayOutputStream();
-                final byte[] classfile = new byte[10000];
+            String packagedName = name;
+            ByteArrayOutputStream resourceStream = new ByteArrayOutputStream();
+            final byte[] bytes = new byte[10000];
 
-                int result;
-                while ((result = zipReader.read(classfile, 0, classfile.length)) != -1) {
-                    classStream.write(classfile, 0, result);
-                }
-
-                String packagedName = name.replace("/",".").replace("\\",".").substring(0, name.length() - classSuffix.length());
-                classBytes.put(packagedName, classStream.toByteArray());
+            int result;
+            while ((result = zipReader.read(bytes, 0, bytes.length)) != -1) {
+                resourceStream.write(bytes, 0, result);
             }
+
+            resourceBytes.put(packagedName, resourceStream.toByteArray());
         }
     }
 
     @Override
+    public InputStream getResourceAsStream(String name) {
+        byte[] resource = resourceBytes.getOrDefault(name, null);
+        if (resource == null) {
+            return null;
+        }
+        return new ByteArrayInputStream(resource);
+    }
+
+    @Override
     public Class findClass(String name) throws ClassNotFoundException {
-        byte[] classfile = classBytes.getOrDefault(name, null);
+        String packagedName = name.replace(".","/") + ".class";
+        byte[] classfile = resourceBytes.getOrDefault(packagedName, null);
         if (classfile == null) {
             throw new ClassNotFoundException();
         }
