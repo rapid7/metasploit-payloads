@@ -31,20 +31,20 @@ public class JarFileClassLoader extends ClassLoader {
 
     @Override
     public InputStream getResourceAsStream(String name) {
-        byte[] resource = resourceBytes.getOrDefault(name, null);
-        if (resource == null) {
+        if (!resourceBytes.containsKey(name)) {
             return null;
         }
+        byte[] resource = (byte[])resourceBytes.get(name);
         return new ByteArrayInputStream(resource);
     }
 
     @Override
     public Class findClass(String name) throws ClassNotFoundException {
         String packagedName = name.replace(".","/") + ".class";
-        byte[] classfile = resourceBytes.getOrDefault(packagedName, null);
-        if (classfile == null) {
+        if (!resourceBytes.containsKey(packagedName)) {
             throw new ClassNotFoundException();
         }
+        byte[] classfile = (byte[])resourceBytes.get(packagedName);
         return defineClass(name, classfile, 0, classfile.length, null);
     }
 
