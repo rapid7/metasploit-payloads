@@ -73,11 +73,11 @@ class ExtServerStdApiTest(unittest.TestCase):
         self.assertIsInstance(result[1], bytes)
 
     def assertRegex(self, text, regexp, msg=None):
-        # Python 2.7
-        if self.assertRegexpMatches:
-            self.assertRegexpMatches(text, regexp, msg)
+        if hasattr(super(self.__class__.__bases__[0], self), 'assertRegex'):
+            super(self.__class__.__bases__[0], self).assertRegex(text, regexp, msg)
         else:
-            super().assertRegex(text, regexp, msg)
+            # Python 2.7 fallback
+            self.assertRegexpMatches(text, regexp, msg)
 
 
 class ExtServerStdApiNetworkTest(ExtServerStdApiTest):
