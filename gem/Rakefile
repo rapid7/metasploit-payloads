@@ -1,4 +1,5 @@
 require "bundler/gem_tasks"
+require 'openssl'
 
 c_source = "../c/meterpreter/"
 java_source = "../java"
@@ -6,6 +7,9 @@ php_source = "../php/meterpreter/"
 python_source = "../python/meterpreter/"
 dest = "./data"
 meterpreter_dest = "./data/meterpreter"
+manifest_file = './manifest'
+manifest_uuid_file = './manifest.uuid'
+manifest_hash_type = 'SHA3-256'
 
 platform_config = {
   :windows => {
@@ -90,7 +94,14 @@ task :python_copy do
   copy_files(platform_config[:python], meterpreter_dest)
 end
 
-task :win_prep => [:create_dir, :win_compile, :win_copy] do
+task :create_manifest do
+  all_data_files = ::Dir.glob(dest + '/**/*').select { |f| ::File.file?(f) }.sort
+  manifest = all_data_files.map { |f| [f, manifest_hash_type, ::OpenSSL::Digest.new(manifest_hash_type, ::File.binread(f))].join(':') }
+  ::File.binwrite(manifest_file, manifest.join("\n"))
+  ::File.binwrite(manifest_uuid_file, ::OpenSSL::Digest.new(manifest_hash_type, ::File.binread(manifest_file)))
+end
+
+task :win_prep => [:create_dir, :win_compile, :win_copy, :create_manifest] do
 end
 
 task :java_prep => [:create_dir, :java_compile, :java_copy] do
@@ -102,7 +113,7 @@ end
 task :python_prep => [:create_dir, :python_copy] do
 end
 
-task :default => [:python_prep, :php_prep, :java_prep] do
+task :default => [:python_prep, :php_prep, :java_prep, :create_manifest] do
 end
 
 # Override tag_version in bundler-#.#.#/lib/bundler/gem_helper.rb to force signed tags

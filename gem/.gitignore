@@ -41,3 +41,6 @@ data/*
 # never include private bins!
 # If you're interested in these, consider http://metasploit.pro
 data/meterpreter/ext_server_pivot.*
+
+manifest
+manifest.uuid
