@@ -11,14 +11,22 @@ public class JarFileClassLoader extends ClassLoader {
 
     HashMap<String, byte[]> resourceBytes = new HashMap();
 
+    public JarFileClassLoader(ClassLoader parent) {
+        super(parent);
+    }
+
+    public JarFileClassLoader() {
+        super();
+    }
+
     public void addJarFile(byte[] jarFile) throws java.io.IOException {
         ZipInputStream zipReader = new ZipInputStream(new ByteArrayInputStream(jarFile));
         ZipEntry zipEntry;
+        final byte[] bytes = new byte[10000];
         while ((zipEntry = zipReader.getNextEntry()) != null) {
             String name = zipEntry.getName();
             String packagedName = name;
             ByteArrayOutputStream resourceStream = new ByteArrayOutputStream();
-            final byte[] bytes = new byte[10000];
 
             int result;
             while ((result = zipReader.read(bytes, 0, bytes.length)) != -1) {
@@ -50,12 +58,6 @@ public class JarFileClassLoader extends ClassLoader {
 
     @Override
     public Class loadClass(String name) throws ClassNotFoundException {
-        // The dynamic loading requires knowledge of this classloader, but
-        // the default classloader doesn't know about it; so we bridge that
-        // gap by returning our own class when requested.
-        if (name.equals(getClass().getName())) {
-            return getClass();
-        }
         try {
             return super.loadClass(name);
         } catch (ClassNotFoundException e) {
