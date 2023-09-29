@@ -17,6 +17,7 @@ Gem::Specification.new do |spec|
 
   spec.files         = `git ls-files`.split("\n")
   spec.files        += Dir['data/**/*']
+  spec.files        += Dir['manifest', 'manifest.uuid']
   spec.executables   = []
   spec.require_paths = ['lib']
 
