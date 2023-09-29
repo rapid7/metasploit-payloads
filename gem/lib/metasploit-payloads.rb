@@ -1,6 +1,8 @@
 # -*- coding:binary -*-
 
+require 'openssl' unless defined? OpenSSL::Digest
 require 'metasploit-payloads/version' unless defined? MetasploitPayloads::VERSION
+require 'metasploit-payloads/error' unless defined? MetasploitPayloads::Error
 
 #
 # This module dispenses Metasploit payload binary files
@@ -11,12 +13,70 @@ module MetasploitPayloads
   USER_DATA_SUBFOLDER   = 'payloads'
 
   #
+  # @return [Array<Hash<String, Symbol>>] An array of filenames with warnings. Provides a file name and error.
+  #  Empty if all needed Meterpreter files exist and have the correct hash.
+  def self.manifest_errors
+    manifest_errors = []
+
+    begin
+      manifest_contents = ::File.binread(manifest_path)
+    rescue => e
+      return [{ path: manifest_path, error: e }]
+    end
+
+    begin
+      manifest_uuid_contents = ::File.binread(manifest_uuid_path)
+    rescue => e
+      manifest_errors.append({ path: manifest_uuid_path, error: e })
+    end
+
+    # Check if the hash of the manifest file is correct.
+    if manifest_uuid_contents
+      manifest_digest = ::OpenSSL::Digest.new('SHA3-256', manifest_contents)
+      uuid_matches = (manifest_uuid_contents.chomp == manifest_digest.to_s)
+      unless uuid_matches
+        e = ::MetasploitPayloads::HashMismatchError.new(manifest_path)
+        manifest_errors.append({ path: manifest_path, error: e })
+      end
+    end
+
+    manifest_contents.each_line do |line|
+      filename, hash_type, hash = line.chomp.split(':')
+      begin
+        # self.path prepends the gem data directory, which is already present in the manifest file.
+        out_path = self.path(filename.sub('./data/', ''))
+        # self.path can return a path to the gem data, or user's local data.
+        bundled_file = out_path.start_with?(data_directory)
+        if bundled_file
+          file_hash_match = (::OpenSSL::Digest.new(hash_type, ::File.binread(out_path)).to_s == hash)
+          unless file_hash_match
+            e = ::MetasploitPayloads::HashMismatchError.new(out_path)
+            manifest_errors.append({ path: e.path, error: e })
+          end
+        end
+      rescue ::MetasploitPayloads::NotFoundError, ::MetasploitPayloads::NotReadableError => e
+        manifest_errors.append({ path: e.path, error: e })
+      end
+    end
+
+    manifest_errors
+  end
+
+  #
   # Get the path to an extension based on its name (no prefix).
   #
   def self.meterpreter_ext_path(ext_name, binary_suffix)
     path(METERPRETER_SUBFOLDER, "#{EXTENSION_PREFIX}#{ext_name}.#{binary_suffix}")
   end
 
+  #
+  # Get the path for the first readable path in the provided arguments.
+  # Start with the provided `extra_paths` then fall back to the `gem_path`.
+  #
+  # @param [String] gem_path a path to the gem
+  # @param [Array<String>] extra_paths a path to any extra paths that should be evaluated for local files before `gem_path`
+  # @raise [NotReadableError] if the user doesn't have read permissions for the currently-evaluated path
+  # @return [String,nil] A readable path or nil
   def self.readable_path(gem_path, *extra_paths)
     # Try the MSF path first to see if the file exists, allowing the MSF data
     # folder to override what is in the gem. This is very helpful for
@@ -24,12 +84,18 @@ module MetasploitPayloads
     # each time. We only do this is MSF is installed.
     extra_paths.each do |extra_path|
       if ::File.readable? extra_path
-        warn_local_path(extra_path) if ::File.readable? gem_path
+        warn_local_path(extra_path)
         return extra_path
+      else
+        # Raise rather than falling back;
+        # If there is a local file present, let's assume that the user wants to use it (e.g. local dev. changes)
+        # rather than having MSF Console falling back to the files in the gem
+        raise ::MetasploitPayloads::NotReadableError, extra_path, caller if ::File.exist?(extra_path)
       end
     end
 
     return gem_path if ::File.readable? gem_path
+    raise ::MetasploitPayloads::NotReadableError, gem_path, caller if ::File.exist?(gem_path)
 
     nil
   end
@@ -37,21 +103,36 @@ module MetasploitPayloads
   #
   # Get the path to a meterpreter binary by full name.
   #
+  # @param [String] name The name of the requested binary without any file extensions
+  # @param [String] binary_suffix The binary extension, without the leading '.' char (e.g. `php`, `jar`)
+  # @param [Boolean] debug Request a debug version of the binary. This adds a
+  #  leading '.debug' to the extension if looking for a DLL file.
   def self.meterpreter_path(name, binary_suffix, debug: false)
     binary_suffix = binary_suffix&.gsub(/dll$/, 'debug.dll') if debug
     path(METERPRETER_SUBFOLDER, "#{name}.#{binary_suffix}".downcase)
   end
 
   #
-  # Get the full path to any file packaged in this gem by local path and name.
+  # Get the full path to any file packaged in this gem or other Metasploit Framework directories by local path and name.
   #
+  # @param [Array<String>] path_parts requested path parts that will be joined
+  # @raise [NotFoundError] if the requested path/file does not exist
+  # @raise [NotReadableError] if the requested file exists but the user doesn't have read permissions
+  # @return [String,nil] A path or nil
   def self.path(*path_parts)
     gem_path = expand(data_directory, ::File.join(path_parts))
     if metasploit_installed?
       user_path = expand(Msf::Config.config_directory, ::File.join(USER_DATA_SUBFOLDER, path_parts))
       msf_path = expand(Msf::Config.data_directory, ::File.join(path_parts))
+      out_path = readable_path(gem_path, user_path, msf_path)
+    else
+      out_path = readable_path(gem_path)
     end
-    readable_path(gem_path, user_path, msf_path)
+
+    return out_path unless out_path.nil?
+    raise ::MetasploitPayloads::NotFoundError, ::File.join(gem_path), caller unless ::File.exist?(gem_path)
+
+    nil
   end
 
   #
@@ -61,7 +142,7 @@ module MetasploitPayloads
     file_path = path(path_parts)
     if file_path.nil?
       full_path = ::File.join(path_parts)
-      fail RuntimeError, "#{full_path} not found", caller
+      raise ::MetasploitPayloads::NotFoundError, full_path, caller
     end
 
     ::File.binread(file_path)
@@ -202,6 +283,14 @@ module MetasploitPayloads
       end
 
       things
+    end
+
+    def manifest_path
+      ::File.realpath(::File.join(::File.dirname(__FILE__), '..', 'manifest'))
+    end
+
+    def manifest_uuid_path
+      ::File.realpath(::File.join(::File.dirname(__FILE__), '..', 'manifest.uuid'))
     end
   end
 end
