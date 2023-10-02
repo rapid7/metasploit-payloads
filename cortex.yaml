@@ -1,0 +1,15 @@
+---
+info:
+  title: Metasploit Payloads
+  description: Unified repository for different Metasploit Framework payloads
+  x-cortex-git:
+    github:
+      alias: r7org
+      repository: rapid7/metasploit-payloads
+  x-cortex-tag: metasploit-payloads
+  x-cortex-type: service
+  x-cortex-domain-parents:
+  - tag: metasploit
+openapi: 3.0.1
+servers:
+- url: "/"
