@@ -46,13 +46,28 @@ platform_config = {
   }
 }
 
+def chacha20_encrypt(contents: '')
+  cipher = ::OpenSSL::Cipher.new('chacha20')
+  cipher.encrypt
+  cipher.iv = 'EncryptedPayload'
+  cipher.key = 'Rapid7MetasploitEncryptedPayload'
+
+  encrypted_contents = 'encrypted_payload_chacha20_v1'
+  encrypted_contents << cipher.update(contents)
+  encrypted_contents << cipher.final
+
+  encrypted_contents
+end
+
 def copy_files(cnf, meterpreter_dest)
   cnf[:sources].each do |f|
     cnf[:extensions].each do |ext|
       Dir.glob("#{f}/*.#{ext}").each do |bin|
         target = File.join(meterpreter_dest, File.basename(bin))
         print("Copying: #{bin} -> #{target}\n")
-        FileUtils.cp(bin, target)
+        contents = ::File.binread(::File.expand_path(bin))
+        encrypted_contents = chacha20_encrypt(contents: contents)
+        ::File.binwrite(::File.expand_path(target), encrypted_contents)
       end
     end
   end

@@ -12,6 +12,10 @@ module MetasploitPayloads
   METERPRETER_SUBFOLDER = 'meterpreter'
   USER_DATA_SUBFOLDER   = 'payloads'
 
+  ENCRYPTED_PAYLOAD_HEADER = 'encrypted_payload_chacha20_v1'
+  CHACHA20_IV = 'EncryptedPayload' # 16 bytes
+  CHACHA20_KEY = 'Rapid7MetasploitEncryptedPayload' # 32 bytes
+
   #
   # @return [Array<Hash<String, Symbol>>] An array of filenames with warnings. Provides a file name and error.
   #  Empty if all needed Meterpreter files exist and have the correct hash.
@@ -43,12 +47,13 @@ module MetasploitPayloads
     manifest_contents.each_line do |line|
       filename, hash_type, hash = line.chomp.split(':')
       begin
+        filename = filename.sub('./data/', '')
         # self.path prepends the gem data directory, which is already present in the manifest file.
-        out_path = self.path(filename.sub('./data/', ''))
+        out_path = self.path(filename)
         # self.path can return a path to the gem data, or user's local data.
         bundled_file = out_path.start_with?(data_directory)
         if bundled_file
-          file_hash_match = (::OpenSSL::Digest.new(hash_type, ::File.binread(out_path)).to_s == hash)
+          file_hash_match = (::OpenSSL::Digest.new(hash_type, self.read(filename)).to_s == hash)
           unless file_hash_match
             e = ::MetasploitPayloads::HashMismatchError.new(out_path)
             manifest_errors.append({ path: e.path, error: e })
@@ -137,15 +142,41 @@ module MetasploitPayloads
 
   #
   # Get the contents of any file packaged in this gem by local path and name.
+  # If the file is encrypted using ChaCha20, automatically decrypt it and return the file contents.
   #
   def self.read(*path_parts)
-    file_path = path(path_parts)
-    if file_path.nil?
-      full_path = ::File.join(path_parts)
-      raise ::MetasploitPayloads::NotFoundError, full_path, caller
+    file_path = self.path(path_parts)
+
+    begin
+      file_contents = ::File.binread(file_path)
+    rescue ::Errno::ENOENT => _e
+      raise ::MetasploitPayloads::NotFoundError, file_path, caller
+    rescue ::Errno::EACCES => _e
+      raise ::MetasploitPayloads::NotReadableError, file_path, caller
+    rescue ::StandardError => e
+      raise e
     end
 
-    ::File.binread(file_path)
+    encrypted_file = file_contents.start_with?(ENCRYPTED_PAYLOAD_HEADER)
+    return file_contents unless encrypted_file
+
+    self.decrypt_payload(payload: file_contents)
+  end
+
+  def self.decrypt_payload(payload: '')
+    return payload unless payload.start_with?(ENCRYPTED_PAYLOAD_HEADER)
+
+    # Remove the header from the file.
+    encrypted_contents = payload.sub(ENCRYPTED_PAYLOAD_HEADER, '')
+    cipher = ::OpenSSL::Cipher.new('chacha20')
+    cipher.decrypt # Call before using .key
+    cipher.iv = CHACHA20_IV
+    cipher.key = CHACHA20_KEY
+
+    decrypted_contents = cipher.update(encrypted_contents)
+    decrypted_contents << cipher.final
+
+    decrypted_contents
   end
 
   #
