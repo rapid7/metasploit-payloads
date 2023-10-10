@@ -226,6 +226,8 @@ RSpec.describe ::MetasploitPayloads do
         bundled_file_path = ::MetasploitPayloads.expand(::MetasploitPayloads.data_directory, sample_file[:name])
         error = ::MetasploitPayloads::HashMismatchError.new(bundled_file_path)
         allow(::MetasploitPayloads).to receive(:path).with(sample_file[:name]).and_return(bundled_file_path)
+        # Second call to self.read takes in the splat operator
+        allow(::MetasploitPayloads).to receive(:path).with([sample_file[:name]]).and_return(bundled_file_path)
         allow(::File).to receive(:binread).with(bundled_file_path).and_return('sample_mismatched_contents')
 
         expect(subject.manifest_errors).to include({ path: bundled_file_path, error: error })
@@ -243,6 +245,36 @@ RSpec.describe ::MetasploitPayloads do
         allow(::MetasploitPayloads).to receive(:path).with(sample_file[:name]).and_raise(error)
 
         expect(subject.manifest_errors).to include({ path: sample_file[:name], error: error })
+      end
+    end
+  end
+
+  describe '#read' do
+    let(:encrypted_header) { 'encrypted_payload_chacha20_v1' }
+    let(:raw_file) { { name: 'meterpreter.py', contents: 'sample_file_contents' } }
+    # ChaCha20 encrypted contents
+    let(:encrypted_contents) { "gg\xB7R\x96\xA00\x84\xC4\xBF5\x1D\xDBG6J\n\x86\x06\xF1" }
+    let(:encrypted_file) { { name: raw_file[:name], contents: encrypted_header + encrypted_contents } }
+
+    before :each do
+      allow(::MetasploitPayloads).to receive(:path).and_call_original
+      allow(::MetasploitPayloads).to receive(:path).with([encrypted_file[:name]]).and_return(encrypted_file[:name])
+      allow(::MetasploitPayloads).to receive(:path).with([raw_file[:name]]).and_return(raw_file[:name])
+
+      allow(::File).to receive(:binread).and_call_original
+      allow(::File).to receive(:binread).with(encrypted_file[:name]).and_return(encrypted_file[:contents])
+      allow(::File).to receive(:binread).with(raw_file[:name]).and_return(raw_file[:contents])
+    end
+
+    context 'an encrypted file' do
+      it 'returns plain-text file contents' do
+        expect(subject.read(encrypted_file[:name])).to eq(raw_file[:contents])
+      end
+    end
+
+    context 'a plain-text file' do
+      it 'returns plain-text file contents' do
+        expect(subject.read(raw_file[:name])).to eq(raw_file[:contents])
       end
     end
   end
