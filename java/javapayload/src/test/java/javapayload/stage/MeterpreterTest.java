@@ -13,24 +13,9 @@ import java.util.zip.ZipEntry;
 import junit.framework.Assert;
 import junit.framework.TestCase;
 
-import com.metasploit.meterpreter.MemoryBufferURLConnection;
 import com.metasploit.meterpreter.MeterpDummy;
 
 public class MeterpreterTest extends TestCase {
-
-    public void testMemoryBufferURLConnection() throws Exception {
-        final String CONTENT_TYPE = "application/x-unit-test-example";
-        byte[] randomData = new byte[4096];
-        new Random().nextBytes(randomData);
-        URL url = MemoryBufferURLConnection.createURL(randomData, CONTENT_TYPE);
-        URLConnection uc = url.openConnection();
-        uc.connect();
-        Assert.assertEquals(CONTENT_TYPE, uc.getContentType());
-        Assert.assertEquals(4096, uc.getContentLength());
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        StreamForwarder.forward(uc.getInputStream(), out);
-        Assert.assertEquals(new String(randomData, "ISO-8859-1"), out.toString("ISO-8859-1"));
-    }
 
     public void testMeterpreterStage() throws Exception {
         // build dummy Meterpreter stage

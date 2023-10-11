@@ -39,7 +39,7 @@ import javax.crypto.spec.SecretKeySpec;
 import junit.framework.Assert;
 import junit.framework.TestCase;
 
-import com.metasploit.meterpreter.MemoryBufferURLConnection;
+import com.metasploit.meterpreter.JarFileClassLoader;
 
 public class PayloadTest extends TestCase {
 
@@ -159,7 +159,7 @@ public class PayloadTest extends TestCase {
         return setUpClassLoader(metasploitDat, extraClass).loadClass("metasploit.Payload").getMethod("main", new Class[]{String[].class}).invoke(null, new Object[]{new String[0]});
     }
 
-    private URLClassLoader setUpClassLoader(Properties metasploitDat, Class extraClass) throws Exception {
+    private JarFileClassLoader setUpClassLoader(Properties metasploitDat, Class extraClass) throws Exception {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         StreamForwarder.forward(Payload.class.getResourceAsStream(Payload.class.getSimpleName() + ".class"), baos);
         byte[] payloadClass = baos.toByteArray(), instrumentedPayloadClass = null;
@@ -197,7 +197,7 @@ public class PayloadTest extends TestCase {
         jos.close();
         byte[] payloadJar = baos.toByteArray();
         final byte[] classToDefine = instrumentedPayloadClass;
-        return new URLClassLoader(new URL[]{MemoryBufferURLConnection.createURL(payloadJar, "application/jar")}) {
+        JarFileClassLoader jfcl = new JarFileClassLoader() {
             {
                 if (classToDefine != null) {
                     defineClass(null, classToDefine, 0, classToDefine.length);
@@ -227,6 +227,8 @@ public class PayloadTest extends TestCase {
                 return super.getResource(name);
             }
         };
+        jfcl.addJarFile(payloadJar);
+        return jfcl;
     }
 
     private void handleSocketCommunication(Socket socket) throws Exception {
