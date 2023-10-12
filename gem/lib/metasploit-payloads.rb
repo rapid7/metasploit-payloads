@@ -50,7 +50,7 @@ module MetasploitPayloads
         # self.path can return a path to the gem data, or user's local data.
         bundled_file = out_path.start_with?(data_directory)
         if bundled_file
-          file_hash_match = (::OpenSSL::Digest.new(hash_type, self.read(filename)).to_s == hash)
+          file_hash_match = (::OpenSSL::Digest.new(hash_type, ::File.binread(out_path)).to_s == hash)
           unless file_hash_match
             e = ::MetasploitPayloads::HashMismatchError.new(out_path)
             manifest_errors.append({ path: e.path, error: e })
