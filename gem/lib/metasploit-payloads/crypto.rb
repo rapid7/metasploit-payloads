@@ -2,10 +2,10 @@ require 'openssl'
 
 module MetasploitPayloads
   module Crypto
-    CIPHER_NAME = 'chacha20'.freeze
-    IV = 'EncryptedPayload'.freeze # 16 bytes
-    KEY = 'Rapid7MetasploitEncryptedPayload'.freeze # 32 bytes
-    ENCRYPTED_PAYLOAD_HEADER = 'encrypted_payload_chacha20_v1'.freeze
+    CIPHER_NAME = 'chacha20'.b.freeze
+    IV = 'EncryptedPayload'.b.freeze # 16 bytes
+    KEY = 'Rapid7MetasploitEncryptedPayload'.b.freeze # 32 bytes
+    ENCRYPTED_PAYLOAD_HEADER = 'encrypted_payload_chacha20_v1'.ljust(64, '_').b.freeze
 
     def self.encrypt(plaintext: '')
       raise ::ArgumentError, 'Unable to encrypt plaintext: ' << plaintext, caller unless plaintext.to_s
