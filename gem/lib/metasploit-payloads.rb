@@ -3,6 +3,7 @@
 require 'openssl' unless defined? OpenSSL::Digest
 require 'metasploit-payloads/version' unless defined? MetasploitPayloads::VERSION
 require 'metasploit-payloads/error' unless defined? MetasploitPayloads::Error
+require 'metasploit-payloads/crypto' unless defined? MetasploitPayloads::Crypto
 
 #
 # This module dispenses Metasploit payload binary files
@@ -11,10 +12,6 @@ module MetasploitPayloads
   EXTENSION_PREFIX      = 'ext_server_'
   METERPRETER_SUBFOLDER = 'meterpreter'
   USER_DATA_SUBFOLDER   = 'payloads'
-
-  ENCRYPTED_PAYLOAD_HEADER = 'encrypted_payload_chacha20_v1'
-  CHACHA20_IV = 'EncryptedPayload' # 16 bytes
-  CHACHA20_KEY = 'Rapid7MetasploitEncryptedPayload' # 32 bytes
 
   #
   # @return [Array<Hash<String, Symbol>>] An array of filenames with warnings. Provides a file name and error.
@@ -157,26 +154,10 @@ module MetasploitPayloads
       raise e
     end
 
-    encrypted_file = file_contents.start_with?(ENCRYPTED_PAYLOAD_HEADER)
+    encrypted_file = file_contents.start_with?(Crypto::ENCRYPTED_PAYLOAD_HEADER)
     return file_contents unless encrypted_file
 
-    self.decrypt_payload(payload: file_contents)
-  end
-
-  def self.decrypt_payload(payload: '')
-    return payload unless payload.start_with?(ENCRYPTED_PAYLOAD_HEADER)
-
-    # Remove the header from the file.
-    encrypted_contents = payload.sub(ENCRYPTED_PAYLOAD_HEADER, '')
-    cipher = ::OpenSSL::Cipher.new('chacha20')
-    cipher.decrypt # Call before using .key
-    cipher.iv = CHACHA20_IV
-    cipher.key = CHACHA20_KEY
-
-    decrypted_contents = cipher.update(encrypted_contents)
-    decrypted_contents << cipher.final
-
-    decrypted_contents
+    Crypto.decrypt(ciphertext: file_contents)
   end
 
   #
