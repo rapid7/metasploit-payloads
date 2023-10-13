@@ -226,8 +226,6 @@ RSpec.describe ::MetasploitPayloads do
         bundled_file_path = ::MetasploitPayloads.expand(::MetasploitPayloads.data_directory, sample_file[:name])
         error = ::MetasploitPayloads::HashMismatchError.new(bundled_file_path)
         allow(::MetasploitPayloads).to receive(:path).with(sample_file[:name]).and_return(bundled_file_path)
-        # Second call to self.read takes in the splat operator
-        allow(::MetasploitPayloads).to receive(:path).with([sample_file[:name]]).and_return(bundled_file_path)
         allow(::File).to receive(:binread).with(bundled_file_path).and_return('sample_mismatched_contents')
 
         expect(subject.manifest_errors).to include({ path: bundled_file_path, error: error })
