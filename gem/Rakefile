@@ -8,6 +8,8 @@ php_source = "../php/meterpreter/"
 python_source = "../python/meterpreter/"
 dest = "./data"
 meterpreter_dest = "./data/meterpreter"
+android_dest = "./data/android"
+java_dest = "./data/java"
 manifest_file = './manifest'
 manifest_uuid_file = './manifest.uuid'
 manifest_hash_type = 'SHA3-256'
@@ -69,12 +71,16 @@ platform_config = {
 def copy_files(cnf, meterpreter_dest)
   cnf[:sources].each do |f|
     cnf[:extensions].each do |ext|
-      Dir.glob("#{f}/*.#{ext}").each do |bin|
-        target = File.join(meterpreter_dest, File.basename(bin))
+      Dir.glob("#{f}/**/*.#{ext}").each do |bin|
+        f_path = ::Pathname.new(f)
+        bin_path = ::Pathname.new(bin)
+        target = File.join(meterpreter_dest, bin_path.relative_path_from(f_path))
         print("Copying: #{bin} -> #{target}\n")
-        contents = ::File.binread(::File.expand_path(bin))
+        contents = ::File.binread(bin_path)
         encrypted_contents = ::MetasploitPayloads::Crypto.encrypt(plaintext: contents)
-        ::File.binwrite(::File.expand_path(target), encrypted_contents)
+        output = ::Pathname.new(::File.expand_path(target))
+        ::FileUtils.mkdir_p(output.dirname) unless output.dirname.exist?
+        ::File.binwrite(output, encrypted_contents)
       end
     end
   end
@@ -83,6 +89,8 @@ end
 task :create_dir do
   Dir.mkdir(dest) unless Dir.exist?(dest)
   Dir.mkdir(meterpreter_dest) unless Dir.exist?(meterpreter_dest)
+  Dir.mkdir(java_dest) unless Dir.exist?(java_dest)
+  Dir.mkdir(android_dest) unless Dir.exist?(android_dest)
 end
 
 task :win_compile do
@@ -103,8 +111,8 @@ end
 
 task :java_copy do
   copy_files(platform_config[:java_meterpreter], meterpreter_dest)
-  copy_files(platform_config[:java_output], dest)
-  copy_files(platform_config[:android], dest)
+  copy_files(platform_config[:java_output], java_dest)
+  copy_files(platform_config[:android], android_dest)
 end
 
 task :php_copy do
