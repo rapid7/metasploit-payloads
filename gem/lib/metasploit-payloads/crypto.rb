@@ -7,11 +7,11 @@ module MetasploitPayloads
         name: 'chacha20'.b,
         version: 1,
         iv: {
-          value: 'EncryptedPayload'.b, # 16 bytes
+          value: "\x52\x25\xd7\xab\x52\x8f\x3f\xf8\x94\x97\x08\x42\x33\xb9\xd3\xb6".b, # 16 bytes
           version: 1
         },
         key: {
-          value: 'Rapid7MetasploitEncryptedPayload'.b, # 32 bytes
+          value: "\x28\x39\x97\x4c\x95\x11\x9d\x42\x6c\x8b\xff\x43\x3e\x5d\x3c\x33\x1b\x95\xd3\xea\xeb\xc9\xae\x71\x0a\x36\xe7\x98\x3d\x9d\x09\x52".b, # 32 bytes
           version: 1
         }
       }
