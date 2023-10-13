@@ -246,4 +246,34 @@ RSpec.describe ::MetasploitPayloads do
       end
     end
   end
+
+  describe '#read' do
+    let(:encrypted_header) { 'encrypted_payload_chacha20_v1' }
+    let(:raw_file) { { name: 'meterpreter.py', contents: 'sample_file_contents' } }
+    # ChaCha20 encrypted contents
+    let(:encrypted_contents) { "gg\xB7R\x96\xA00\x84\xC4\xBF5\x1D\xDBG6J\n\x86\x06\xF1" }
+    let(:encrypted_file) { { name: raw_file[:name], contents: encrypted_header + encrypted_contents } }
+
+    before :each do
+      allow(::MetasploitPayloads).to receive(:path).and_call_original
+      allow(::MetasploitPayloads).to receive(:path).with([encrypted_file[:name]]).and_return(encrypted_file[:name])
+      allow(::MetasploitPayloads).to receive(:path).with([raw_file[:name]]).and_return(raw_file[:name])
+
+      allow(::File).to receive(:binread).and_call_original
+      allow(::File).to receive(:binread).with(encrypted_file[:name]).and_return(encrypted_file[:contents])
+      allow(::File).to receive(:binread).with(raw_file[:name]).and_return(raw_file[:contents])
+    end
+
+    context 'an encrypted file' do
+      it 'returns plain-text file contents' do
+        expect(subject.read(encrypted_file[:name])).to eq(raw_file[:contents])
+      end
+    end
+
+    context 'a plain-text file' do
+      it 'returns plain-text file contents' do
+        expect(subject.read(raw_file[:name])).to eq(raw_file[:contents])
+      end
+    end
+  end
 end

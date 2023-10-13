@@ -1,5 +1,6 @@
 require "bundler/gem_tasks"
 require 'openssl'
+require 'metasploit-payloads/crypto'
 
 c_source = "../c/meterpreter/"
 java_source = "../java"
@@ -52,7 +53,9 @@ def copy_files(cnf, meterpreter_dest)
       Dir.glob("#{f}/*.#{ext}").each do |bin|
         target = File.join(meterpreter_dest, File.basename(bin))
         print("Copying: #{bin} -> #{target}\n")
-        FileUtils.cp(bin, target)
+        contents = ::File.binread(::File.expand_path(bin))
+        encrypted_contents = ::MetasploitPayloads::Crypto.encrypt(plaintext: contents)
+        ::File.binwrite(::File.expand_path(target), encrypted_contents)
       end
     end
   end

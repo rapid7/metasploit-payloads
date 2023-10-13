@@ -3,6 +3,7 @@
 require 'openssl' unless defined? OpenSSL::Digest
 require 'metasploit-payloads/version' unless defined? MetasploitPayloads::VERSION
 require 'metasploit-payloads/error' unless defined? MetasploitPayloads::Error
+require 'metasploit-payloads/crypto' unless defined? MetasploitPayloads::Crypto
 
 #
 # This module dispenses Metasploit payload binary files
@@ -43,8 +44,9 @@ module MetasploitPayloads
     manifest_contents.each_line do |line|
       filename, hash_type, hash = line.chomp.split(':')
       begin
+        filename = filename.sub('./data/', '')
         # self.path prepends the gem data directory, which is already present in the manifest file.
-        out_path = self.path(filename.sub('./data/', ''))
+        out_path = self.path(filename)
         # self.path can return a path to the gem data, or user's local data.
         bundled_file = out_path.start_with?(data_directory)
         if bundled_file
@@ -137,15 +139,25 @@ module MetasploitPayloads
 
   #
   # Get the contents of any file packaged in this gem by local path and name.
+  # If the file is encrypted using ChaCha20, automatically decrypt it and return the file contents.
   #
   def self.read(*path_parts)
-    file_path = path(path_parts)
-    if file_path.nil?
-      full_path = ::File.join(path_parts)
-      raise ::MetasploitPayloads::NotFoundError, full_path, caller
+    file_path = self.path(path_parts)
+
+    begin
+      file_contents = ::File.binread(file_path)
+    rescue ::Errno::ENOENT => _e
+      raise ::MetasploitPayloads::NotFoundError, file_path, caller
+    rescue ::Errno::EACCES => _e
+      raise ::MetasploitPayloads::NotReadableError, file_path, caller
+    rescue ::StandardError => e
+      raise e
     end
 
-    ::File.binread(file_path)
+    encrypted_file = file_contents.start_with?(Crypto::ENCRYPTED_PAYLOAD_HEADER)
+    return file_contents unless encrypted_file
+
+    Crypto.decrypt(ciphertext: file_contents)
   end
 
   #
