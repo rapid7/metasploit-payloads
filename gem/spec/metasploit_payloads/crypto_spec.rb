@@ -3,7 +3,7 @@ require 'metasploit-payloads'
 
 RSpec.describe ::MetasploitPayloads::Crypto do
   describe '#encrypt' do
-    let(:encrypted_header) { "encrypted_payload_chacha20_v1".ljust(64, '_').b }
+    let(:encrypted_header) { ::MetasploitPayloads::Crypto::ENCRYPTED_PAYLOAD_HEADER }
     let(:plaintext) { "Hello World!".b }
     let(:ciphertext) { encrypted_header + "\\c\xB6N\x95\xE58\x8D\xDF\xBF4c".b }
 
