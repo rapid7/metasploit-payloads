@@ -21,13 +21,32 @@ platform_config = {
       "dll"
     ]
   },
-  :java => {
+  :java_meterpreter => {
     :sources => [
       "../java/output/data/meterpreter"
     ],
     :extensions => [
       "jar"
     ],
+  },
+  :java_output => {
+    :sources => [
+      "../java/output/data/java"
+    ],
+    :extensions => [
+      "class"
+    ]
+  },
+  :android => {
+    :sources => [
+      "../java/output/data/android"
+    ],
+    :extensions => [
+      "jar",
+      "dex",
+      "xml",
+      "arsc"
+    ]
   },
   :php => {
     :sources => [
@@ -83,10 +102,9 @@ task :win_copy do
 end
 
 task :java_copy do
-  copy_files(platform_config[:java], meterpreter_dest)
-  FileUtils.remove_entry_secure('./java', :force => true)
-  FileUtils.cp_r('../java/output/data/android', dest)
-  FileUtils.cp_r('../java/output/data/java', dest)
+  copy_files(platform_config[:java_meterpreter], meterpreter_dest)
+  copy_files(platform_config[:java_output], dest)
+  copy_files(platform_config[:android], dest)
 end
 
 task :php_copy do
