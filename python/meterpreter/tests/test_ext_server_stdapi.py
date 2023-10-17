@@ -320,6 +320,24 @@ class ExtServerStdApiSystemConfigTest(ExtServerStdApiTest):
         ).get("value")
         self.assertRegex(sid, "S-1-5-.*")
 
+class ExtStdNetResolveTest(ExtServerStdApiTest):
+    def stdapi_net_resolve_hosts(self):
+        # Full request from msfconsole
+        request = b'\x00\x00\x00\x0c\x00\x02\x00\x01\x00\x00\x04\x00\x00\x00\x00)\x00\x01\x00\x0264769531726942037539492283558475\x00\x00\x00\x00\x13\x00\x01\x05xrapid7.com\x00\x00\x00\x00\x0c\x00\x02\x05\xa4\x00\x00\x00\x02'
+        response = bytes()
+        _result_code, result_tlvs = self.assertMethodErrorSuccess(
+            "stdapi_net_resolve_hosts", request, response
+        )
+
+        print(response)
+
+        # TODO: Assert
+        # user_name = self.meterpreter_context["packet_get_tlv"](
+        #     result_tlvs, self.ext_server_stdapi["TLV_TYPE_USER_NAME"]
+        # ).get("value")
+        #
+        #self.assert(response, bytes('......'))
+
 
 if __name__ == "__main__":
     unittest.main()
