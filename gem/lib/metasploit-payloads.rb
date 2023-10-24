@@ -154,9 +154,6 @@ module MetasploitPayloads
       raise e
     end
 
-    encrypted_file = file_contents.start_with?(Crypto::ENCRYPTED_PAYLOAD_HEADER)
-    return file_contents unless encrypted_file
-
     Crypto.decrypt(ciphertext: file_contents)
   end
 
