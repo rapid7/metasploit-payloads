@@ -14,9 +14,21 @@ module MetasploitPayloads
           value: "\x28\x39\x97\x4c\x95\x11\x9d\x42\x6c\x8b\xff\x43\x3e\x5d\x3c\x33\x1b\x95\xd3\xea\xeb\xc9\xae\x71\x0a\x36\xe7\x98\x3d\x9d\x09\x52".b, # 32 bytes
           version: 1
         }
+      },
+      aes_256_cbc: {
+        name: 'aes-256-cbc'.b,
+        version: 2,
+        iv: {
+          value: "\x3c\x09\x85\x95\x19\x09\x10\xff\x76\xf0\x48\xf7\x21\x1a\x5c\x59".b, # 16 bytes
+          version: 1
+        },
+        key: {
+          value: "\x01\x93\x90\xfb\x84\xcd\x70\x16\x90\x1d\xc6\xf4\xf2\xfd\xcf\x59\xc4\x9c\x26\x35\x29\x67\x8c\x2d\x17\xb9\x35\xcb\x7d\xb0\x88\x7a".b, # 32 bytes
+          version: 1
+        }
       }
     }.freeze
-    CURRENT_CIPHER = CIPHERS[:chacha20]
+    CURRENT_CIPHER = CIPHERS[:aes_256_cbc]
     CIPHER_VERSION = CURRENT_CIPHER[:version]
     KEY_VERSION = CURRENT_CIPHER[:key][:version]
     IV_VERSION = CURRENT_CIPHER[:iv][:version]

@@ -5,7 +5,7 @@ RSpec.describe ::MetasploitPayloads::Crypto do
   describe '#encrypt' do
     let(:encrypted_header) { ::MetasploitPayloads::Crypto::ENCRYPTED_PAYLOAD_HEADER }
     let(:plaintext) { "Hello World!".b }
-    let(:ciphertext) { encrypted_header + "\x89:^r\xC1\xC9\xD9\xA1\xDC\xEB\xBFm".b }
+    let(:ciphertext) { encrypted_header + "F=\xF9\xCB\xF6\xA1\xE4h\x89\x96DD\xC0+\x04\xF1".b }
 
     it 'can encrypt plaintext' do
       expect(described_class.encrypt(plaintext: plaintext)).to eq ciphertext
