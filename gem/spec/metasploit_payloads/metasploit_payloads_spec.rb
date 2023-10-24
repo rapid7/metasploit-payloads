@@ -248,10 +248,10 @@ RSpec.describe ::MetasploitPayloads do
   end
 
   describe '#read' do
-    let(:encrypted_header) { 'encrypted_payload_chacha20_v1' }
+    let(:encrypted_header) { "msf\x02\x01\x01" }
     let(:raw_file) { { name: 'meterpreter.py', contents: 'sample_file_contents' } }
-    # ChaCha20 encrypted contents
-    let(:encrypted_contents) { "gg\xB7R\x96\xA00\x84\xC4\xBF5\x1D\xDBG6J\n\x86\x06\xF1" }
+    # AES-256-CBC encrypted contents
+    let(:encrypted_contents) { "\xEA\x00q\xEB\a\xCA\xD2\xD3\xE2',N\x86\x1C\f?\xBE\xC4\x8AJRks\xAD\xD6\xDF\xA3.\xCD\xA7\x84\xD2".b }
     let(:encrypted_file) { { name: raw_file[:name], contents: encrypted_header + encrypted_contents } }
 
     before :each do
