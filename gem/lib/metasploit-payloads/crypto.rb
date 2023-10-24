@@ -65,8 +65,10 @@ module MetasploitPayloads
     def self.decrypt(ciphertext: '')
       raise ::ArgumentError, 'Unable to decrypt ciphertext: ' << ciphertext, caller unless ciphertext.to_s
 
+      return ciphertext unless ciphertext.start_with?('msf'.b)
+
       # Use the correct algorithm based on the version in the header
-      _msf_header, cipher_version, iv_version, key_version = ciphertext.unpack('A3CCC')
+      msf_header, cipher_version, iv_version, key_version = ciphertext.unpack('A3CCC')
 
       current_cipher = CIPHERS[cipher_version]
       cipher = ::OpenSSL::Cipher.new(current_cipher[:name])
@@ -77,8 +79,9 @@ module MetasploitPayloads
       cipher.iv = iv
       cipher.key = key
 
-      # Remove encrypted header if present
-      ciphertext = ciphertext.sub(ENCRYPTED_PAYLOAD_HEADER, '')
+      header = [msf_header, cipher_version, iv_version, key_version].pack('A*CCC').b
+      # Remove encrypted header
+      ciphertext = ciphertext.sub(header, '')
 
       output = cipher.update(ciphertext)
       output << cipher.final
