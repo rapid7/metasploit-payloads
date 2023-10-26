@@ -1087,7 +1087,7 @@ def resolve_host(hostname, family):
         binary_address = inet_pton(family, addr['sockaddr'][0])
         addresses.append(binary_address)
 
-    return [{ 'family': family, 'address': addresses }]
+    return { 'family': family, 'address': addresses }
 
 def tlv_pack_local_addrinfo(sock):
     local_host, local_port = sock.getsockname()[:2]
@@ -2683,12 +2683,10 @@ def stdapi_net_resolve_host(request, response):
 
     result = resolve_host(hostname, family)
 
-    for resolved_host in result:
-        host_tlv  = bytes()
-        for ip in resolved_host['address']:
-            host_tlv +=  tlv_pack(TLV_TYPE_IP, ip)
-            host_tlv += tlv_pack(TLV_TYPE_ADDR_TYPE, family)
-
+    host_tlv  = bytes()
+    for ip in result['address']:
+        host_tlv +=  tlv_pack(TLV_TYPE_IP, ip)
+        host_tlv += tlv_pack(TLV_TYPE_ADDR_TYPE, family)
 
     response += tlv_pack(TLV_TYPE_RESOLVE_HOST_ENTRY, host_tlv)
 
@@ -2709,11 +2707,11 @@ def stdapi_net_resolve_hosts(request, response):
             result = resolve_host(hostname, family)
         except socket.error:
             result = {'family':family, 'packed_address':''}
-        for resolved_host in result:
-            host_tlv  = bytes()
-            for ip in resolved_host['address']:
-                host_tlv +=  tlv_pack(TLV_TYPE_IP, ip)
-                host_tlv += tlv_pack(TLV_TYPE_ADDR_TYPE, family)
+
+        host_tlv  = bytes()
+        for ip in result['address']:
+            host_tlv +=  tlv_pack(TLV_TYPE_IP, ip)
+            host_tlv += tlv_pack(TLV_TYPE_ADDR_TYPE, family)
 
         response += tlv_pack(TLV_TYPE_RESOLVE_HOST_ENTRY, host_tlv)
     return ERROR_SUCCESS, response

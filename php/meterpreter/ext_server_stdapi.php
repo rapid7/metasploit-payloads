@@ -64,6 +64,9 @@ define("TLV_TYPE_CONNECT_RETRIES",     TLV_META_TYPE_UINT    | 1504);
 
 define("TLV_TYPE_SHUTDOWN_HOW",        TLV_META_TYPE_UINT    | 1530);
 
+# Resolve hosts/host
+define("TLV_TYPE_RESOLVE_HOST_ENTRY",       TLV_META_TYPE_GROUP   | 1550);
+
 ##
 # Sys
 ##
@@ -444,10 +447,10 @@ function add_stat_buf($path) {
         $st_buf .= pack_p($st['atime']);
         $st_buf .= pack_p($st['mtime']);
         $st_buf .= pack_p($st['ctime']);
-        
+
         $st_buf .= pack("V", $st['blksize']);
         $st_buf .= pack("V", $st['blocks']);
-       
+
         return create_tlv(TLV_TYPE_STAT_BUF, $st_buf);
     }
     return false;
@@ -484,16 +487,14 @@ function resolve_host($hostname, $family) {
         return NULL;
     }
 
-    $result = array("family" => $family);
-    $record = $dns[0];
-    if ($record["type"] == "A") {
-        $result["address"] = $record["ip"];
-    }
-    if ($record["type"] == "AAAA") {
-        $result["address"] = $record["ipv6"];
-    }
-    $result["packed_address"] = inet_pton($result["address"]);
-    return $result;
+    $addresses = [];
+
+    foreach ($dns as $addr) {
+            $binary_address = inet_pton($addr['ip']);
+            array_push($addresses, $binary_address);
+        }
+
+    return ['family' => $family, 'address' => $addresses];
 }
 }
 
@@ -1335,9 +1336,9 @@ register_command('stdapi_net_resolve_host', COMMAND_ID_STDAPI_NET_RESOLVE_HOST);
 function stdapi_net_resolve_host($req, &$pkt) {
     my_print("doing stdapi_net_resolve_host");
     $hostname_tlv = packet_get_tlv($req, TLV_TYPE_HOST_NAME);
-    $hostname = $hostname['value'];
+    $hostname = $hostname_tlv['value'];
     $family_tlv = packet_get_tlv($req, TLV_TYPE_ADDR_TYPE);
-    $family = $family['value'];
+    $family = $family_tlv['value'];
 
     if ($family != WIN_AF_INET && $family != WIN_AF_INET6) {
         my_print('invalid family, must be AF_INET or AF_INET6');
@@ -1346,11 +1347,19 @@ function stdapi_net_resolve_host($req, &$pkt) {
 
     $ret = ERROR_FAILURE;
     $result = resolve_host($hostname, $family);
+
     if ($result != NULL) {
         $ret = ERROR_SUCCESS;
-        packet_add_tlv($pkt, create_tlv(TLV_TYPE_IP, $result['packed_address']));
-        packet_add_tlv($pkt, create_tlv(TLV_TYPE_ADDR_TYPE, $result['family']));
     }
+
+   $host_tlv = "";
+   foreach($result['address'] as $ip){
+       packet_add_tlv($host_tlv, create_tlv(TLV_TYPE_IP, $ip));
+       packet_add_tlv($host_tlv, create_tlv(TLV_TYPE_ADDR_TYPE, $family));
+   }
+
+   packet_add_tlv($pkt, create_tlv(TLV_TYPE_RESOLVE_HOST_ENTRY, $host_tlv));
+
     return $ret;
 }
 }
@@ -1375,10 +1384,16 @@ function stdapi_net_resolve_hosts($req, &$pkt) {
             packet_add_tlv($pkt, create_tlv(TLV_TYPE_IP, ''));
             packet_add_tlv($pkt, create_tlv(TLV_TYPE_ADDR_TYPE, $family));
         } else {
-            packet_add_tlv($pkt, create_tlv(TLV_TYPE_IP, $result['packed_address']));
-            packet_add_tlv($pkt, create_tlv(TLV_TYPE_ADDR_TYPE, $result['family']));
+           $host_tlv = "";
+           foreach($result['address'] as $ip){
+               packet_add_tlv($host_tlv, create_tlv(TLV_TYPE_IP, $ip));
+               packet_add_tlv($host_tlv, create_tlv(TLV_TYPE_ADDR_TYPE, $family));
+           }
+
+           packet_add_tlv($pkt, create_tlv(TLV_TYPE_RESOLVE_HOST_ENTRY, $host_tlv));
         }
     }
+
     return ERROR_SUCCESS;
 }
 }
