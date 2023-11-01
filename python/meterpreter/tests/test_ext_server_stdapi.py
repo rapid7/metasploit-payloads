@@ -321,7 +321,7 @@ class ExtServerStdApiSystemConfigTest(ExtServerStdApiTest):
         self.assertRegex(sid, "S-1-5-.*")
 
 class ExtStdNetResolveTest(ExtServerStdApiTest):
-    def stdapi_net_resolve_hosts(self):
+    def test_stdapi_net_resolve_host(self):
         # Full request from msfconsole
         request = b'\x00\x00\x00\x0c\x00\x02\x00\x01\x00\x00\x04\x00\x00\x00\x00)\x00\x01\x00\x0264769531726942037539492283558475\x00\x00\x00\x00\x13\x00\x01\x05xrapid7.com\x00\x00\x00\x00\x0c\x00\x02\x05\xa4\x00\x00\x00\x02'
         response = bytes()
@@ -329,15 +329,18 @@ class ExtStdNetResolveTest(ExtServerStdApiTest):
             "stdapi_net_resolve_hosts", request, response
         )
 
-        print(response)
+        resolved_hosts = self.meterpreter_context["packet_get_tlv"](
+            result_tlvs, self.ext_server_stdapi["TLV_TYPE_RESOLVE_HOST_ENTRY"]
+        ).get("value")
 
-        # TODO: Assert
-        # user_name = self.meterpreter_context["packet_get_tlv"](
-        #     result_tlvs, self.ext_server_stdapi["TLV_TYPE_USER_NAME"]
-        # ).get("value")
-        #
-        #self.assert(response, bytes('......'))
+        resolved_hosts = self.meterpreter_context["packet_enum_tlvs"](
+            resolved_hosts, self.ext_server_stdapi["TLV_TYPE_IP"]
+        )
 
+        for host in resolved_hosts:
+            ip = socket.inet_ntop(socket.AF_INET, host['value'])
+            # Checks if IP is a valid IP address
+            self.assertTrue(isinstance(socket.inet_aton(ip), bytes))
 
 if __name__ == "__main__":
     unittest.main()
