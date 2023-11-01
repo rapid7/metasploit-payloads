@@ -322,25 +322,106 @@ class ExtServerStdApiSystemConfigTest(ExtServerStdApiTest):
 
 class ExtStdNetResolveTest(ExtServerStdApiTest):
     def test_stdapi_net_resolve_host(self):
-        # Full request from msfconsole
-        request = b'\x00\x00\x00\x0c\x00\x02\x00\x01\x00\x00\x04\x00\x00\x00\x00)\x00\x01\x00\x0264769531726942037539492283558475\x00\x00\x00\x00\x13\x00\x01\x05xrapid7.com\x00\x00\x00\x00\x0c\x00\x02\x05\xa4\x00\x00\x00\x02'
+        MSF_AF_INET = 2
+
+        request = bytes()
+        request += self.meterpreter_context["tlv_pack"](
+            self.meterpreter_context["TLV_TYPE_COMMAND_ID"],
+            1024
+        )
+
+        request += self.meterpreter_context["tlv_pack"](
+            self.ext_server_stdapi["TLV_TYPE_REQUEST_ID"],
+            "18252822037434405542596288798302"
+        )
+
+        request += self.meterpreter_context["tlv_pack"](
+            self.ext_server_stdapi["TLV_TYPE_HOST_NAME"],
+            "rapid7.com"
+        )
+
+        request += self.meterpreter_context["tlv_pack"](
+            self.ext_server_stdapi["TLV_TYPE_ADDR_TYPE"],
+            MSF_AF_INET
+        )
+
         response = bytes()
         _result_code, result_tlvs = self.assertMethodErrorSuccess(
             "stdapi_net_resolve_hosts", request, response
         )
 
-        resolved_hosts = self.meterpreter_context["packet_get_tlv"](
+        resolve_host_entries = self.meterpreter_context["packet_get_tlv"](
             result_tlvs, self.ext_server_stdapi["TLV_TYPE_RESOLVE_HOST_ENTRY"]
         ).get("value")
 
-        resolved_hosts = self.meterpreter_context["packet_enum_tlvs"](
-            resolved_hosts, self.ext_server_stdapi["TLV_TYPE_IP"]
+        resolved_host_ips = self.meterpreter_context["packet_enum_tlvs"](
+            resolve_host_entries, self.ext_server_stdapi["TLV_TYPE_IP"]
         )
 
-        for host in resolved_hosts:
-            ip = socket.inet_ntop(socket.AF_INET, host['value'])
-            # Checks if IP is a valid IP address
-            self.assertTrue(isinstance(socket.inet_aton(ip), bytes))
+        resolved_host_families = self.meterpreter_context["packet_enum_tlvs"](
+            resolve_host_entries, self.ext_server_stdapi["TLV_TYPE_ADDR_TYPE"]
+        )
+
+        for ip in resolved_host_ips:
+            resolved_ip = socket.inet_ntop(socket.AF_INET, ip['value'])
+            self.assertTrue(isinstance(socket.inet_aton(resolved_ip), bytes))
+
+        for family in resolved_host_families:
+            self.assertEqual(family['value'], MSF_AF_INET)
+
+    def test_stdapi_net_resolve_hosts(self):
+        MSF_AF_INET = 2
+
+        request = bytes()
+        request += self.meterpreter_context["tlv_pack"](
+            self.meterpreter_context["TLV_TYPE_COMMAND_ID"],
+            1025
+        )
+
+        request += self.meterpreter_context["tlv_pack"](
+            self.ext_server_stdapi["TLV_TYPE_REQUEST_ID"],
+            "11047287278261284282680986949856"
+        )
+
+        request += self.meterpreter_context["tlv_pack"](
+            self.ext_server_stdapi["TLV_TYPE_ADDR_TYPE"],
+            MSF_AF_INET
+        )
+
+        request += self.meterpreter_context["tlv_pack"](
+            self.ext_server_stdapi["TLV_TYPE_HOST_NAME"],
+            "rapid7.com"
+        )
+
+        request += self.meterpreter_context["tlv_pack"](
+            self.ext_server_stdapi["TLV_TYPE_HOST_NAME"],
+            "google.com"
+        )
+
+        response = bytes()
+        _result_code, result_tlvs = self.assertMethodErrorSuccess(
+            "stdapi_net_resolve_hosts", request, response
+        )
+
+        resolved_host_entry_list = self.meterpreter_context["packet_enum_tlvs"](
+            result_tlvs, self.ext_server_stdapi["TLV_TYPE_RESOLVE_HOST_ENTRY"]
+        )
+
+        for resolved_host_entry in resolved_host_entry_list:
+            resolved_host_ips = self.meterpreter_context["packet_enum_tlvs"](
+                resolved_host_entry['value'], self.ext_server_stdapi["TLV_TYPE_IP"]
+            )
+
+            resolved_host_families = self.meterpreter_context["packet_enum_tlvs"](
+                resolved_host_entry['value'], self.ext_server_stdapi["TLV_TYPE_ADDR_TYPE"]
+            )
+
+            for ip in resolved_host_ips:
+                resolved_ip = socket.inet_ntop(socket.AF_INET, ip['value'])
+                self.assertTrue(isinstance(socket.inet_aton(resolved_ip), bytes))
+
+            for family in resolved_host_families:
+                self.assertEqual(family['value'], MSF_AF_INET)
 
 if __name__ == "__main__":
     unittest.main()

@@ -65,7 +65,7 @@ define("TLV_TYPE_CONNECT_RETRIES",     TLV_META_TYPE_UINT    | 1504);
 define("TLV_TYPE_SHUTDOWN_HOW",        TLV_META_TYPE_UINT    | 1530);
 
 # Resolve hosts/host
-define("TLV_TYPE_RESOLVE_HOST_ENTRY",       TLV_META_TYPE_GROUP   | 1550);
+define("TLV_TYPE_RESOLVE_HOST_ENTRY",  TLV_META_TYPE_GROUP   | 1550);
 
 ##
 # Sys
@@ -489,12 +489,19 @@ function resolve_host($hostname, $family) {
 
     $addresses = [];
 
-    foreach ($dns as $addr) {
-            $binary_address = inet_pton($addr['ip']);
-            array_push($addresses, $binary_address);
+    foreach ($dns as $record) {
+        if ($record["type"] == "A") {
+            $addr = $record["ip"];
+        }
+        if ($record["type"] == "AAAA") {
+            $addr = $record["ipv6"];
         }
 
-    return ['family' => $family, 'address' => $addresses];
+        $binary_address = inet_pton($addr);
+        array_push($addresses, $binary_address);
+    }
+
+    return ['family' => $family, 'addresses' => $addresses];
 }
 }
 
@@ -1350,15 +1357,14 @@ function stdapi_net_resolve_host($req, &$pkt) {
 
     if ($result != NULL) {
         $ret = ERROR_SUCCESS;
+        $host_tlv = "";
+        foreach($result['addresses'] as $ip){
+            packet_add_tlv($host_tlv, create_tlv(TLV_TYPE_IP, $ip));
+            packet_add_tlv($host_tlv, create_tlv(TLV_TYPE_ADDR_TYPE, $family));
+        }
+
+        packet_add_tlv($pkt, create_tlv(TLV_TYPE_RESOLVE_HOST_ENTRY, $host_tlv));
     }
-
-   $host_tlv = "";
-   foreach($result['address'] as $ip){
-       packet_add_tlv($host_tlv, create_tlv(TLV_TYPE_IP, $ip));
-       packet_add_tlv($host_tlv, create_tlv(TLV_TYPE_ADDR_TYPE, $family));
-   }
-
-   packet_add_tlv($pkt, create_tlv(TLV_TYPE_RESOLVE_HOST_ENTRY, $host_tlv));
 
     return $ret;
 }
@@ -1385,7 +1391,7 @@ function stdapi_net_resolve_hosts($req, &$pkt) {
             packet_add_tlv($pkt, create_tlv(TLV_TYPE_ADDR_TYPE, $family));
         } else {
            $host_tlv = "";
-           foreach($result['address'] as $ip){
+           foreach($result['addresses'] as $ip){
                packet_add_tlv($host_tlv, create_tlv(TLV_TYPE_IP, $ip));
                packet_add_tlv($host_tlv, create_tlv(TLV_TYPE_ADDR_TYPE, $family));
            }

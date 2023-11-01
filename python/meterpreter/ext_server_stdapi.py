@@ -582,7 +582,7 @@ TLV_TYPE_CONNECT_RETRIES       = TLV_META_TYPE_UINT    | 1504
 TLV_TYPE_SHUTDOWN_HOW          = TLV_META_TYPE_UINT    | 1530
 
 # Resolve hosts/host
-TLV_TYPE_RESOLVE_HOST_ENTRY = TLV_META_TYPE_GROUP   | 1550
+TLV_TYPE_RESOLVE_HOST_ENTRY    = TLV_META_TYPE_GROUP   | 1550
 
 ##
 # Railgun
@@ -1087,7 +1087,7 @@ def resolve_host(hostname, family):
         binary_address = inet_pton(family, addr['sockaddr'][0])
         addresses.append(binary_address)
 
-    return { 'family': family, 'address': addresses }
+    return { 'family': family, 'addresses': addresses }
 
 def tlv_pack_local_addrinfo(sock):
     local_host, local_port = sock.getsockname()[:2]
@@ -2683,8 +2683,8 @@ def stdapi_net_resolve_host(request, response):
 
     result = resolve_host(hostname, family)
 
-    host_tlv  = bytes()
-    for ip in result['address']:
+    host_tlv = bytes()
+    for ip in result['addresses']:
         host_tlv +=  tlv_pack(TLV_TYPE_IP, ip)
         host_tlv += tlv_pack(TLV_TYPE_ADDR_TYPE, family)
 
@@ -2708,9 +2708,9 @@ def stdapi_net_resolve_hosts(request, response):
         except socket.error:
             result = {'family':family, 'packed_address':''}
 
-        host_tlv  = bytes()
-        for ip in result['address']:
-            host_tlv +=  tlv_pack(TLV_TYPE_IP, ip)
+        host_tlv = bytes()
+        for ip in result['addresses']:
+            host_tlv += tlv_pack(TLV_TYPE_IP, ip)
             host_tlv += tlv_pack(TLV_TYPE_ADDR_TYPE, family)
 
         response += tlv_pack(TLV_TYPE_RESOLVE_HOST_ENTRY, host_tlv)
