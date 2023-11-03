@@ -18,6 +18,10 @@
 #include "remote_dispatch.h"
 #include "libloader.h"
 
+#define EXITFUNC_SEH      0xEA320EFE
+#define EXITFUNC_THREAD   0x0A2A1DE0
+#define EXITFUNC_PROCESS  0x56A2B5F0
+
 #include "../ReflectiveDLLInjection/inject/src/GetProcAddressR.h"
 #include "../ReflectiveDLLInjection/inject/src/LoadLibraryR.h"
 #include "../ReflectiveDLLInjection/dll/src/ReflectiveLoader.h"
