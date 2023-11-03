@@ -8,6 +8,7 @@
 MetApi* met_api = NULL;
 
 #define RDIDLL_NOEXPORT
+#include "../../ReflectiveDLLInjection/dll/src/ColdGate.c"
 #include "../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
 
 /*!

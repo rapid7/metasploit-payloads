@@ -10,6 +10,7 @@
 
 #define REFLECTIVEDLLINJECTION_CUSTOM_DLLMAIN
 #define RDIDLL_NOEXPORT
+#include "../../ReflectiveDLLInjection/dll/src/ColdGate.c"
 #include "../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
 #include "../ReflectiveDLLInjection/inject/src/GetProcAddressR.c"
 #include "../ReflectiveDLLInjection/inject/src/LoadLibraryR.c"

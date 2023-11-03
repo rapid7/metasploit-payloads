@@ -7,6 +7,7 @@
 #define RDIDLL_NOEXPORT
 #define REFLECTIVEDLLINJECTION_CUSTOM_DLLMAIN
 #define REFLECTIVEDLLINJECTION_VIA_LOADREMOTELIBRARYR
+#include "../ReflectiveDLLInjection/dll/src/ColdGate.c"
 #include "ReflectiveLoader.c"
 
 

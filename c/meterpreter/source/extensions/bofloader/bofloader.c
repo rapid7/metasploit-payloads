@@ -13,6 +13,7 @@
 // Required so that use of the API works.
 MetApi* met_api = NULL;
 #define RDIDLL_NOEXPORT
+#include "../../ReflectiveDLLInjection/dll/src/ColdGate.c"
 #include "../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
 
 /*! @brief The enabled commands for this extension. */
