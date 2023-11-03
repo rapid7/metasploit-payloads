@@ -47,7 +47,7 @@ typedef struct _RAILGUN_OUTPUT
 } RAILGUN_OUTPUT;
 
 #define p(i)		(ULONG_PTR)pStack[i]
-#define function(i)	((STDCALL_FUNC_##i)pFuncAddr)
+#define stdcall_func(i)	((STDCALL_FUNC_##i)pFuncAddr)
 #define cdecl_func(i)	((CDECL_FUNC_##i)pFuncAddr)
 
 typedef ULONG_PTR (__stdcall * STDCALL_FUNC_00)( VOID );

@@ -187,15 +187,27 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\source\ReflectiveDLLInjection\dll\src\ColdGate.c" />
     <ClCompile Include="..\..\source\ReflectiveDLLInjection\inject\src\GetProcAddressR.c" />
     <ClCompile Include="..\..\source\ReflectiveDLLInjection\inject\src\LoadLibraryR.c" />
     <ClCompile Include="..\..\source\ReflectiveDLLInjection\dll\src\ReflectiveLoader.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\source\ReflectiveDLLInjection\dll\src\ColdGate.h" />
     <ClInclude Include="..\..\source\ReflectiveDLLInjection\inject\src\GetProcAddressR.h" />
     <ClInclude Include="..\..\source\ReflectiveDLLInjection\inject\src\LoadLibraryR.h" />
     <ClInclude Include="..\..\source\ReflectiveDLLInjection\common\ReflectiveDLLInjection.h" />
     <ClInclude Include="..\..\source\ReflectiveDLLInjection\dll\src\ReflectiveLoader.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <MASM Include="..\..\source\ReflectiveDLLInjection\dll\src\GateTrampoline32.asm">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='r7_release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </MASM>
+    <MASM Include="..\..\source\ReflectiveDLLInjection\dll\src\GateTrampoline64.asm">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='r7_release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </MASM>
   </ItemGroup>
   <Choose>
     <When Condition="'$(Platform)'=='Win32'" />

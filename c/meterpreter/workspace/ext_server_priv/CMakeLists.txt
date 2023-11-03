@@ -42,6 +42,10 @@ else()
         '-D__success=DISCARD'
         '-D__FUNCTION__=""'
         '-D__struct_bcount=DISCARD'
+        '-D__nullterminated=SAL__nullterminated'
+        '-D__in_range=__RPC__in_range'
+        '-D__callback=SAL__callback'
+        '-D__deref_in_bcount_opt=SAL__deref_in_bcount_opt'
     )
 endif()
 
@@ -68,7 +72,7 @@ if(MSVC)
 endif()
 
 set(LINK_LIBS psapi rpcrt4)
-target_link_libraries(${PROJECT_NAME} ${LINK_LIBS})
+target_link_libraries(${PROJECT_NAME} ${LINK_LIBS} ${MET_RDI_ASM})
 if(MSVC)
     target_link_options(${PROJECT_NAME} PUBLIC "/ignore:4070")
 endif()

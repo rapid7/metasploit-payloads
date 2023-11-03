@@ -174,6 +174,7 @@
       <SubSystem>Windows</SubSystem>
       <AdditionalOptions>/ignore:4070 %(AdditionalOptions)</AdditionalOptions>
       <ProgramDatabaseFile />
+      <ImageHasSafeExceptionHandlers>No</ImageHasSafeExceptionHandlers>
     </Link>
     <Bscmake>
       <SuppressStartupBanner>true</SuppressStartupBanner>
@@ -246,6 +247,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <AdditionalOptions>/ignore:4070 %(AdditionalOptions)</AdditionalOptions>
       <ProgramDatabaseFile>
       </ProgramDatabaseFile>
+      <ImageHasSafeExceptionHandlers>No</ImageHasSafeExceptionHandlers>
     </Link>
     <Bscmake>
       <SuppressStartupBanner>true</SuppressStartupBanner>
@@ -316,6 +318,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(TargetName)
       <SubSystem>Windows</SubSystem>
       <AdditionalOptions>/ignore:4070 %(AdditionalOptions)</AdditionalOptions>
       <ProgramDatabaseFile />
+      <ImageHasSafeExceptionHandlers>No</ImageHasSafeExceptionHandlers>
     </Link>
     <Bscmake>
       <SuppressStartupBanner>true</SuppressStartupBanner>
@@ -338,7 +341,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       </HeaderFileName>
     </Midl>
     <ClCompile>
-      <Optimization>MinSpace</Optimization>
+      <Optimization>Custom</Optimization>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
       <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\server;..\..\source\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -359,6 +362,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <OmitFramePointers>true</OmitFramePointers>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -384,6 +388,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <SubSystem>Windows</SubSystem>
       <AdditionalOptions>/ignore:4070 %(AdditionalOptions)</AdditionalOptions>
       <ProgramDatabaseFile />
+      <ImageHasSafeExceptionHandlers>No</ImageHasSafeExceptionHandlers>
     </Link>
     <Bscmake>
       <SuppressStartupBanner>true</SuppressStartupBanner>
@@ -453,6 +458,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <AdditionalOptions>/ignore:4070 %(AdditionalOptions)</AdditionalOptions>
       <ProgramDatabaseFile>
       </ProgramDatabaseFile>
+      <ImageHasSafeExceptionHandlers>No</ImageHasSafeExceptionHandlers>
     </Link>
     <Bscmake>
       <SuppressStartupBanner>true</SuppressStartupBanner>
@@ -521,6 +527,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(TargetName)
       <SubSystem>Windows</SubSystem>
       <AdditionalOptions>/ignore:4070 %(AdditionalOptions)</AdditionalOptions>
       <ProgramDatabaseFile />
+      <ImageHasSafeExceptionHandlers>No</ImageHasSafeExceptionHandlers>
     </Link>
     <Bscmake>
       <SuppressStartupBanner>true</SuppressStartupBanner>
@@ -589,6 +596,18 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <ClCompile Include="..\..\source\metsrv\unicode.c" />
     <ClCompile Include="..\..\source\metsrv\zlib.c" />
     <ClCompile Include="..\..\source\logging\logging.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <MASM Include="..\..\source\ReflectiveDLLInjection\dll\src\GateTrampoline32.asm">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='r7_release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </MASM>
+    <MASM Include="..\..\source\ReflectiveDLLInjection\dll\src\GateTrampoline64.asm">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='r7_release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </MASM>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -712,4 +712,8 @@
       <UniqueIdentifier>{fdb3471d-bb0a-4de4-95ff-f4f343270ebd}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
+  <ItemGroup>
+    <MASM Include="..\..\source\ReflectiveDLLInjection\dll\src\GateTrampoline64.asm" />
+    <MASM Include="..\..\source\ReflectiveDLLInjection\dll\src\GateTrampoline32.asm" />
+  </ItemGroup>
 </Project>

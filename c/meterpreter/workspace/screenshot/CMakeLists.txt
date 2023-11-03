@@ -25,7 +25,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS "/DEF:\"${MOD_DEF_DI
 set_source_files_properties(${MOD_DEF_DIR}/plugin.def PROPERTIES HEADER_FILE_ONLY TRUE)
 
 set(LINK_LIBS jpeg)
-target_link_libraries(${PROJECT_NAME} ${LINK_LIBS})
+target_link_libraries(${PROJECT_NAME} ${LINK_LIBS} ${MET_RDI_ASM})
 if(MSVC)
     target_link_options(${PROJECT_NAME} PUBLIC "/ignore:4070")
 endif()

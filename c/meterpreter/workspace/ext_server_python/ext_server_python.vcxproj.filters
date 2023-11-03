@@ -1043,6 +1043,7 @@
     <ClCompile Include="..\..\source\extensions\python\Modules\getbuildinfo.c">
       <Filter>Modules</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\source\logging\logging.c" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\..\source\extensions\python\Resource Files\python_core.rc">
@@ -1058,5 +1059,7 @@
     <MASM Include="..\..\source\extensions\python\Modules\_ctypes\libffi_msvc\win64.asm">
       <Filter>Modules\_ctypes</Filter>
     </MASM>
+    <MASM Include="..\..\source\ReflectiveDLLInjection\dll\src\GateTrampoline64.asm" />
+    <MASM Include="..\..\source\ReflectiveDLLInjection\dll\src\GateTrampoline32.asm" />
   </ItemGroup>
 </Project>

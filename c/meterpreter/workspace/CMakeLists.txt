@@ -225,6 +225,8 @@ if(BUILD_METSRV)
     set(MET_SERVERS metsrv)
 endif()
 
+set(MET_RDI_ASM ReflectiveDLLInjection)
+
 set(
     MET_DLLS
     ${MET_SERVERS}
@@ -234,6 +236,7 @@ set(
 
 set(
     MET_PROJECTS
+    ${MET_RDI_ASM}
     ${MET_LIBS}
     ${MET_DLLS}
 )

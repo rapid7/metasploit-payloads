@@ -38,7 +38,7 @@ if(IS_X64)
 endif()
 
 set(LINK_LIBS ${PSSDK_LIB_DIR}/pssdk_vc${PSSDK_VER}_mt.lib ws2_32)
-target_link_libraries(${PROJECT_NAME} ${LINK_LIBS})
+target_link_libraries(${PROJECT_NAME} ${LINK_LIBS} ${MET_RDI_ASM})
 if(MSVC)
     target_link_options(${PROJECT_NAME} PUBLIC "/ignore:4070")
 endif()
