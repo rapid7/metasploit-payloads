@@ -487,7 +487,7 @@ function resolve_host($hostname, $family) {
         return NULL;
     }
 
-    $addresses = [];
+    $addresses = array();
 
     foreach ($dns as $record) {
         if ($record["type"] == "A") {
@@ -501,7 +501,7 @@ function resolve_host($hostname, $family) {
         array_push($addresses, $binary_address);
     }
 
-    return ['family' => $family, 'addresses' => $addresses];
+    return array('family' => $family, 'addresses' => $addresses);
 }
 }
 
@@ -1319,15 +1319,15 @@ function stdapi_net_config_get_arp_table($req, &$pkt) {
     if ($content === false) {
       return ERROR_FAILURE;
     }
-    $lines = explode(PHP_EOL, $content);             
+    $lines = explode(PHP_EOL, $content);
     array_shift($lines); // first line is the header of the array
-    foreach($lines as $line) { 
-      if ($line == '') continue; 
-      $v = preg_split('/\s+/', $line); 
-      $ip = $v[0]; 
-      $mac = $v[3]; 
-      $iface = $v[5]; 
-      my_print("arp line: $ip $mac $iface"); 
+    foreach($lines as $line) {
+      if ($line == '') continue;
+      $v = preg_split('/\s+/', $line);
+      $ip = $v[0];
+      $mac = $v[3];
+      $iface = $v[5];
+      my_print("arp line: $ip $mac $iface");
       $arp_tlv  = tlv_pack(create_tlv(TLV_TYPE_IP, inet_pton($ip)));
       $arp_tlv .= tlv_pack(create_tlv(TLV_TYPE_MAC_ADDRESS, pack("H*", str_replace(':', '', $mac))));
       $arp_tlv .= tlv_pack(create_tlv(TLV_TYPE_MAC_NAME, $iface));

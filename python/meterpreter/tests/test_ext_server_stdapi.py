@@ -327,7 +327,7 @@ class ExtStdNetResolveTest(ExtServerStdApiTest):
         request = bytes()
         request += self.meterpreter_context["tlv_pack"](
             self.meterpreter_context["TLV_TYPE_COMMAND_ID"],
-            1024
+            self.meterpreter_context['cmd_string_to_id']('stdapi_net_resolve_host')
         )
 
         request += self.meterpreter_context["tlv_pack"](
@@ -375,7 +375,7 @@ class ExtStdNetResolveTest(ExtServerStdApiTest):
         request = bytes()
         request += self.meterpreter_context["tlv_pack"](
             self.meterpreter_context["TLV_TYPE_COMMAND_ID"],
-            1025
+            self.meterpreter_context['cmd_string_to_id']('stdapi_net_resolve_hosts')
         )
 
         request += self.meterpreter_context["tlv_pack"](
