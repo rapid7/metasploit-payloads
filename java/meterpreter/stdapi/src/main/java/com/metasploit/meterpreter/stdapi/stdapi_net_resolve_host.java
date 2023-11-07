@@ -10,16 +10,17 @@ import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 
-import java.util.Vector;
+import java.util.List;
+import java.util.ArrayList;
 
 public class stdapi_net_resolve_host implements Command {
 
     private static final int AF_INET = 2;
     private static final int AF_INET6 = 23;
 
-    public static Vector<InetAddress> resolve_host(String host, int family) {
+    public static List<InetAddress> resolve_host(String host, int family) {
         InetAddress[] inetAddresses;
-        Vector<InetAddress> addressList = new Vector<InetAddress>();
+        List<InetAddress> addressList = new ArrayList<InetAddress>();
         try {
             inetAddresses = InetAddress.getAllByName(host);
         } catch (UnknownHostException e) {
@@ -48,7 +49,7 @@ public class stdapi_net_resolve_host implements Command {
     public int execute(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws Exception {
         String host = request.getStringValue(TLVType.TLV_TYPE_HOST_NAME);
         int family = request.getIntValue(TLVType.TLV_TYPE_ADDR_TYPE);
-        Vector<InetAddress> inetAddresses = resolve_host(host, family);
+        List<InetAddress> inetAddresses = resolve_host(host, family);
         if (inetAddresses != null) {
             TLVPacket addrTLV = new TLVPacket();
             for(int i = 0; i < inetAddresses.size(); i++){
