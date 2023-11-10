@@ -29,7 +29,7 @@ if(MSVC)
 endif()
 
 set(LINK_LIBS jpeg)
-target_link_libraries(${PROJECT_NAME} ${LINK_LIBS})
+target_link_libraries(${PROJECT_NAME} ${LINK_LIBS} ${MET_RDI_ASM})
 if(MSVC)
     target_link_options(${PROJECT_NAME} PUBLIC "/ignore:4070")
 endif()
