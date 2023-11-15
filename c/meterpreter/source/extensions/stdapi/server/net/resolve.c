@@ -5,95 +5,138 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 
-DWORD resolve_host(LPCSTR hostname, u_short ai_family, struct in_addr *result, struct in6_addr *result6)
+/// <summary>
+/// Resolve a hostname. Don't forget to call `freeaddrinfo` on the `address_info` parameter once done with it.
+/// </summary>
+/// <param name="hostname">Long pointer to a string</param>
+/// <param name="ai_family">The family to get the IP address for (IPv6 / IPv4)</param>
+/// <param name="address_info">The resulting addrinfo structure</param>
+/// <returns>0 on success, a Windows error code on error</returns>
+DWORD resolve_host(const LPCSTR hostname, UINT ai_family, struct addrinfo **address_info)
 {
-	struct addrinfo hints, *list;
-	struct in_addr addr;
-	struct in6_addr addr6;
-	struct sockaddr_in *sockaddr_ipv4;
-	struct sockaddr_in6 *sockaddr_ipv6;
-	int iResult;
+	if (hostname == NULL)
+	{
+		dprintf("Hostname not set");
+		return ERROR_INVALID_PARAMETER;
+	}
+
+	if (address_info == NULL)
+	{
+		dprintf("Null pointer provided as output to resolve_host");
+		return ERROR_INVALID_PARAMETER;
+	}
 
 	WSADATA wsaData;
-	iResult = WSAStartup(MAKEWORD(2,2), &wsaData);
-	if (iResult != NO_ERROR)
+	DWORD iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
+	if (iResult != ERROR_SUCCESS)
 	{
 		dprintf("Could not initialise Winsock: %x.", iResult);
 		return iResult;
 	}
 
-	memset(&hints, 0, sizeof(hints));
+	struct addrinfo hints = { 0 };
 	hints.ai_socktype = SOCK_DGRAM;
 	hints.ai_protocol = IPPROTO_UDP;
 	hints.ai_family = ai_family;
 
 	dprintf("Attempting to resolve '%s'", hostname);
 
-	iResult = getaddrinfo(hostname, NULL, &hints, &list);
-
-	if (iResult != NO_ERROR)
+	iResult = getaddrinfo(hostname, NULL, &hints, address_info);
+	if (iResult != ERROR_SUCCESS)
 	{
-		dprintf("Unable to resolve host Error: %x.", iResult);
+		dprintf("Unable to resolve host '%s' Error: %x.", hostname, iResult);
 		dprintf("Error msg: %s", gai_strerror(iResult));
+		return iResult;
 	}
-	else
+	dprintf("Resolved host '%s' successfully", hostname);
+
+	dprintf("Performing Win Socket cleanup");
+	iResult = WSACleanup();
+	if (iResult != ERROR_SUCCESS)
 	{
-		switch (list->ai_family) {
+		dprintf("WSACleanup failed with return code %x", iResult);
+		return iResult;
+	}
+	dprintf("WSACleanup completed successfully");
+
+	return ERROR_SUCCESS;
+}
+
+/// <summary>
+/// Add in all resolved IP addresses for a specific hostname to a TLV group.
+/// </summary>
+/// <param name="group">The group to insert resolved host IP addresses into.</param>
+/// <param name="host">The hostname or a list of hostnames to add to the group.</param>
+/// <returns>0 on success.</returns>
+DWORD add_all_host_ips_to_group(Packet* group, struct addrinfo* host)
+{
+	if (group == NULL)
+	{
+		dprintf("Null pointer provided as group");
+		return ERROR_INVALID_PARAMETER;
+	}
+
+	for (struct addrinfo* current = host; current != NULL; current = current->ai_next)
+	{
+		switch (current->ai_family)
+		{
 		case AF_INET:
-			sockaddr_ipv4 = (struct sockaddr_in *) list->ai_addr;
-			addr = sockaddr_ipv4->sin_addr;
-			memcpy((void*)result, &addr, sizeof(result));
-		case AF_INET6:
-			sockaddr_ipv6 = (struct sockaddr_in6 *) list->ai_addr;
-			addr6 = sockaddr_ipv6->sin6_addr;
-			memcpy((void*)result6, &addr6, sizeof(struct in6_addr));
-		default:
+			dprintf("Adding IP v4 Family to Group TLV");
+			met_api->packet.add_tlv_uint(group, TLV_TYPE_ADDR_TYPE, (UINT)current->ai_family);
+			dprintf("Adding IP v4 Address to Group TLV");
+			struct in_addr ipv4_addr = ((struct sockaddr_in*)(current->ai_addr))->sin_addr;
+			met_api->packet.add_tlv_raw(group, TLV_TYPE_IP, &ipv4_addr, sizeof(struct in_addr));
 			break;
+		case AF_INET6:
+			dprintf("Adding IP v6 Family to Group TLV");
+			met_api->packet.add_tlv_uint(group, TLV_TYPE_ADDR_TYPE, (UINT)current->ai_family);
+			dprintf("Adding IP v6 Address to Group TLV");
+			struct in6_addr ipv6_addr = ((struct sockaddr_in6*)(current->ai_addr))->sin6_addr;
+			met_api->packet.add_tlv_raw(group, TLV_TYPE_IP, &ipv6_addr, sizeof(struct in6_addr));
+			break;
+		default:
+			dprintf("Unknown family, skipping entry.");
+			continue;
 		}
 	}
-
-	freeaddrinfo(list);
-	WSACleanup();
-
-	return iResult;
+	return ERROR_SUCCESS;
 }
 
 DWORD request_resolve_host(Remote *remote, Packet *packet)
 {
 	Packet *response = met_api->packet.create_response(packet);
-	LPCSTR hostname = NULL;
-	struct in_addr addr;
-	struct in6_addr addr6;
-	u_short ai_family = AF_INET;
-	int iResult;
+	LPCSTR hostname = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_HOST_NAME);
+	UINT ai_family = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_ADDR_TYPE);
+	DWORD iResult = ERROR_SUCCESS;
 
-	hostname = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_HOST_NAME);
-
-	if (!hostname)
+	struct addrinfo* result;
+	iResult = resolve_host(hostname, ai_family, &result);
+	if (iResult != ERROR_SUCCESS || result == NULL)
 	{
-		iResult = ERROR_INVALID_PARAMETER;
-		dprintf("Hostname not set");
-	}
-	else
-	{
-		ai_family = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_ADDR_TYPE);
-		iResult = resolve_host(hostname, ai_family, &addr, &addr6);
-		if (iResult == NO_ERROR)
-		{
-			if (ai_family == AF_INET)
-			{
-				met_api->packet.add_tlv_raw(response, TLV_TYPE_IP, &addr, sizeof(struct in_addr));
-			} else {
-				met_api->packet.add_tlv_raw(response, TLV_TYPE_IP, &addr6, sizeof(struct in_addr6));
-			}
-			met_api->packet.add_tlv_uint(response, TLV_TYPE_ADDR_TYPE, ai_family);
-		}
-		else
-		{
-			dprintf("Unable to resolve_host %s error: %x", hostname, iResult);
-		}
+		dprintf("Could not resolve_host for '%s': %x", hostname, iResult);
+		goto done;
 	}
 
+	dprintf("Creating group for resolve host entry");
+	Packet* resolved_hosts = met_api->packet.create_group();
+	if (resolved_hosts == NULL)
+	{
+		dprintf("Could not create TLV Group");
+		goto done;
+	}
+
+	if (add_all_host_ips_to_group(resolved_hosts, result) != ERROR_SUCCESS)
+	{
+		dprintf("Error adding resolved host IP addresses to group");
+	}
+
+	dprintf("Adding IP TLVs to Group TLV in response packet");
+	met_api->packet.add_group(response, TLV_TYPE_RESOLVE_HOST_ENTRY, resolved_hosts);
+	dprintf("Freeing addrinfo");
+	freeaddrinfo(result);
+
+done:
+	dprintf("Sending return packet for resolve_host");
 	met_api->packet.transmit_response(iResult, remote, response);
 	return ERROR_SUCCESS;
 }
@@ -103,33 +146,34 @@ DWORD request_resolve_hosts(Remote *remote, Packet *packet)
 	Packet *response = met_api->packet.create_response(packet);
 	Tlv hostname = {0};
 	int index = 0;
-	int iResult;
-	u_short ai_family = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_ADDR_TYPE);
+	int iResult = 0;
+	UINT ai_family = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_ADDR_TYPE);
 
 	while( met_api->packet.enum_tlv( packet, index++, TLV_TYPE_HOST_NAME, &hostname ) == ERROR_SUCCESS )
 	{
-		struct in_addr addr = {0};
-		struct in6_addr addr6 = {0};
+		struct addrinfo* addr = NULL;
 
-		iResult = resolve_host((LPCSTR)hostname.buffer, ai_family, &addr, &addr6);
+		iResult = resolve_host((LPCSTR)hostname.buffer, ai_family, &addr);
 
-		if (iResult == NO_ERROR)
-		{
-			if (ai_family == AF_INET)
-			{
-				met_api->packet.add_tlv_raw(response, TLV_TYPE_IP, &addr, sizeof(struct in_addr));
-			} else {
-				met_api->packet.add_tlv_raw(response, TLV_TYPE_IP, &addr6, sizeof(struct in_addr6));
-			}
-		}
-		else
+		Packet* resolved_host_group = met_api->packet.create_group();
+
+		if (iResult != ERROR_SUCCESS || addr == NULL)
 		{
 			dprintf("Unable to resolve_host %s error: %x", hostname.buffer, iResult);
-			met_api->packet.add_tlv_raw(response, TLV_TYPE_IP, NULL, 0);
+			goto done;
 		}
-		met_api->packet.add_tlv_uint(response, TLV_TYPE_ADDR_TYPE, ai_family);
+
+		if (add_all_host_ips_to_group(resolved_host_group, addr) != ERROR_SUCCESS)
+		{
+			dprintf("Error adding resolved host IP addresses to group");
+			goto done;
+		}
+
+		met_api->packet.add_group(response, TLV_TYPE_RESOLVE_HOST_ENTRY, resolved_host_group);
+		if (addr != NULL) { dprintf("Freeing Address Info for hostname: %s", hostname.buffer); freeaddrinfo(addr); }
 	}
 
-	met_api->packet.transmit_response(NO_ERROR, remote, response);
+done:
+	met_api->packet.transmit_response(iResult, remote, response);
 	return ERROR_SUCCESS;
 }
