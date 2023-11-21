@@ -92,38 +92,10 @@ public class stdapi_channel_open implements Command {
         return ERROR_SUCCESS;
     }
 
-    private ServerSocket getSocket(String localHost, int localPort) throws UnknownHostException, IOException {
-        try {
-            if (localHost.equals("0.0.0.0")) {
-                return getIPv4Socket_java7plus(localHost, localPort);
-            }
-        } catch (UnknownHostException e) {
-            throw e;
-        }
-         catch (Exception e) {
-            // Fall back to old behaviour: will listen on IPv4 and IPv6
-        }
+    protected ServerSocket getSocket(String localHost, int localPort) throws UnknownHostException, IOException {
         return new ServerSocket(localPort, 50, InetAddress.getByName(localHost));
     }
 
-    // Constructing a ServerSocket directly for 0.0.0.0 will listen on both IPv4 and IPv6, which, if the operator has explicitly requested 0.0.0.0,
-    // may not be desirable. Java 7 and later support explicitly specifying IPv4 using ServerSocketChannel.open(StandardProtocolFamily.INET).
-    // To keep backwards-compatibility, we use reflection to call the newer version.
-    private ServerSocket getIPv4Socket_java7plus(String localHost, int localPort) throws Exception {
-        Class standardProtocolFamilyCls = Class.forName("java.net.StandardProtocolFamily");
-        Class protocolFamilyCls = Class.forName("java.net.ProtocolFamily");
-        java.lang.reflect.Method getValueMethod = standardProtocolFamilyCls.getMethod("valueOf", String.class);
-        Object inet = getValueMethod.invoke(null, "INET");
-        Class sscClazz = java.nio.channels.ServerSocketChannel.class;
-        java.lang.reflect.Method method = sscClazz.getMethod("open", protocolFamilyCls);
-        java.nio.channels.ServerSocketChannel server = (java.nio.channels.ServerSocketChannel)method.invoke(null, inet);
-        InetAddress addr = InetAddress.getByName(localHost);
-        InetSocketAddress sockAddr = new InetSocketAddress(addr, localPort);
-        java.lang.reflect.Method bindMethod = sscClazz.getMethod("bind", java.net.SocketAddress.class);
-        bindMethod.invoke(server, sockAddr);
-        ServerSocket ss = server.socket();
-        return ss;
-    }
 
     private int executeTcpClient(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws Exception {
         String peerHost = request.getStringValue(TLVType.TLV_TYPE_PEER_HOST);

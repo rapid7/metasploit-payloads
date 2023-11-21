@@ -30,25 +30,47 @@ public class CommandManager {
         try {
             Class.forName("java.lang.StrictMath");
             apiVersion = ExtensionLoader.V1_3;
+
             Class.forName("java.lang.CharSequence");
             apiVersion = ExtensionLoader.V1_4;
+
             Class.forName("java.net.Proxy");
             apiVersion = ExtensionLoader.V1_5;
+
             Class.forName("java.util.ServiceLoader");
             apiVersion = ExtensionLoader.V1_6;
+
+            Class.forName("java.util.Optional").getMethod("stream");
+            apiVersion = ExtensionLoader.V1_9;
+
+            Class<?> protocolFamilyCls = Class.forName("java.net.ProtocolFamily");
+            Class.forName("java.nio.channels.ServerSocketChannel").getMethod("open", protocolFamilyCls);
+            apiVersion = ExtensionLoader.V1_15;
         } catch (Throwable ignored) {
         }
-        String javaversion = System.getProperty("java.version");
-        if (javaversion != null && javaversion.length() > 2) {
-            int vmVersion = javaversion.charAt(2) - '2' + ExtensionLoader.V1_2;
-            if (vmVersion >= ExtensionLoader.V1_2 && vmVersion < apiVersion) {
-                apiVersion = vmVersion;
-            }
+        int vmVersion = getVersion();
+        if (vmVersion >= ExtensionLoader.V1_2 && vmVersion < apiVersion) {
+            apiVersion = vmVersion;
         }
         this.javaVersion = apiVersion;
 
         // load core commands
         new com.metasploit.meterpreter.core.Loader().load(this);
+    }
+
+    private static int getVersion() {
+        String version = System.getProperty("java.version");
+        // Java version string changed at Java 9 from 1.x.y to just x.y
+        if (version.startsWith("1.")) {
+            version = version.substring(2, 3);
+        } else {
+            int dot = version.indexOf(".");
+            if (dot != -1) {
+                version = version.substring(0, dot);
+            }
+        }
+
+        return Integer.parseInt(version) + ExtensionLoader.V1_base;
     }
 
     /**
@@ -95,7 +117,7 @@ public class CommandManager {
         }
 
         if (version != ExtensionLoader.V1_2) {
-            commandClass = commandClass.getClassLoader().loadClass(commandClass.getName() + "_V1_" + (version - 10));
+            commandClass = commandClass.getClassLoader().loadClass(commandClass.getName() + "_V1_" + (version - ExtensionLoader.V1_base));
         }
 
         Command cmd = (Command) commandClass.newInstance();
