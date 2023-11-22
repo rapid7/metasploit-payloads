@@ -1,20 +1,22 @@
 package com.metasploit.meterpreter.stdapi;
 
-import java.net.ConnectException;
-import java.net.DatagramSocket;
-import java.net.InetAddress;
-import java.net.ServerSocket;
-import java.net.Socket;
-
 import java.io.ByteArrayInputStream;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.IOException;
+import java.net.ConnectException;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.net.UnknownHostException;
 
 import com.metasploit.meterpreter.Channel;
 import com.metasploit.meterpreter.DatagramSocketChannel;
+import com.metasploit.meterpreter.Meterpreter;
 import com.metasploit.meterpreter.ServerSocketChannel;
 import com.metasploit.meterpreter.SocketChannel;
-import com.metasploit.meterpreter.Meterpreter;
 import com.metasploit.meterpreter.TLVPacket;
 import com.metasploit.meterpreter.TLVType;
 import com.metasploit.meterpreter.command.Command;
@@ -81,19 +83,19 @@ public class stdapi_channel_open implements Command {
         return ERROR_SUCCESS;
     }
 
-    private int executeTcpServer(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws Exception {
+    private int executeTcpServer(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws UnknownHostException, IOException {
         String localHost = request.getStringValue(TLVType.TLV_TYPE_LOCAL_HOST);
         int localPort = request.getIntValue(TLVType.TLV_TYPE_LOCAL_PORT);
-        ServerSocket ss;
-        if (localHost.equals("0.0.0.0")) {
-            ss = new ServerSocket(localPort);
-        } else {
-            ss = new ServerSocket(localPort, 50, InetAddress.getByName(localHost));
-        }
+        ServerSocket ss = getSocket(localHost, localPort);
         Channel channel = new ServerSocketChannel(meterpreter, ss);
         response.add(TLVType.TLV_TYPE_CHANNEL_ID, channel.getID());
         return ERROR_SUCCESS;
     }
+
+    protected ServerSocket getSocket(String localHost, int localPort) throws UnknownHostException, IOException {
+        return new ServerSocket(localPort, 50, InetAddress.getByName(localHost));
+    }
+
 
     private int executeTcpClient(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws Exception {
         String peerHost = request.getStringValue(TLVType.TLV_TYPE_PEER_HOST);
