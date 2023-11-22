@@ -13,7 +13,7 @@ import java.net.ServerSocket;
 import java.net.UnknownHostException;
 
 public class stdapi_channel_open_V1_15 extends stdapi_channel_open {
-        
+
     // Constructing a ServerSocket directly for 0.0.0.0 will listen on both IPv4 and IPv6, which, if the operator has explicitly requested 0.0.0.0,
     // may not be desirable. Java 15 and later support explicitly specifying IPv4 using ServerSocketChannel.open(StandardProtocolFamily.INET).
     // To keep backwards-compatibility, we use reflection to call the newer version.
