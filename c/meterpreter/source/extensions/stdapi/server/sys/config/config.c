@@ -556,7 +556,7 @@ DWORD add_windows_os_version(Packet** packet)
 		{
 			if (v.dwMinorVersion == 0)
 			{
-				osName = "Windows 2000";
+				osName = v.wProductType == VER_NT_WORKSTATION ? "Windows 2000" : "Windows Server 2000";
 			}
 			else if (v.dwMinorVersion == 1)
 			{
@@ -571,26 +571,34 @@ DWORD add_windows_os_version(Packet** packet)
 		{
 			if (v.dwMinorVersion == 0)
 			{
-				osName = v.wProductType == VER_NT_WORKSTATION ? "Windows Vista" : "Windows 2008";
+				osName = v.wProductType == VER_NT_WORKSTATION ? "Windows Vista" : "Windows Server 2008";
 			}
 			else if (v.dwMinorVersion == 1)
 			{
-				osName = v.wProductType == VER_NT_WORKSTATION ? "Windows 7" : "Windows 2008 R2";
+				osName = v.wProductType == VER_NT_WORKSTATION ? "Windows 7" : "Windows Server 2008 R2";
 			}
 			else if (v.dwMinorVersion == 2)
 			{
-				osName = v.wProductType == VER_NT_WORKSTATION ? "Windows 8" : "Windows 2012";
+				osName = v.wProductType == VER_NT_WORKSTATION ? "Windows 8" : "Windows Server 2012";
 			}
 			else if (v.dwMinorVersion == 3)
 			{
-				osName = v.wProductType == VER_NT_WORKSTATION ? "Windows 8.1" : "Windows 2012 R2";
+				osName = v.wProductType == VER_NT_WORKSTATION ? "Windows 8.1" : "Windows Server 2012 R2";
 			}
 		}
 		else if (v.dwMajorVersion == 10)
 		{
 			if (v.dwMinorVersion == 0)
 			{
-				osName = v.wProductType == VER_NT_WORKSTATION ? "Windows 10" : "Windows 2016+";
+				if (v.dwBuildNumber < 17763) {
+					osName = v.wProductType == VER_NT_WORKSTATION ? "Windows 10" : "Windows Server 2016";
+				} else if (v.dwBuildNumber < 20348) {
+					osName = v.wProductType == VER_NT_WORKSTATION ? "Windows 10" : "Windows Server 2019";
+				} else if (v.dwBuildNumber < 22000) {
+					osName = v.wProductType == VER_NT_WORKSTATION ? "Windows 10" : "Windows Server 2022";
+				} else {
+					osName = v.wProductType == VER_NT_WORKSTATION ? "Windows 11" : "Windows Server 2022";
+				}
 			}
 		}
 
