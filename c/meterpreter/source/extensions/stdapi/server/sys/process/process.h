@@ -46,6 +46,7 @@ DWORD request_sys_process_memory_query(Remote *remote, Packet *packet);
 DWORD request_sys_process_memory_protect(Remote *remote, Packet *packet);
 DWORD request_sys_process_memory_lock(Remote *remote, Packet *packet);
 DWORD request_sys_process_memory_unlock(Remote *remote, Packet *packet);
+DWORD request_sys_process_memory_search(Remote *remote, Packet *packet);
 
 // Thread
 DWORD request_sys_process_thread_open(Remote *remote, Packet *packet);

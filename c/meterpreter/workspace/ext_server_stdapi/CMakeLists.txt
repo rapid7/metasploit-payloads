@@ -22,6 +22,7 @@ include_directories(../../source/common)
 include_directories(../../source/jpeg-8)
 include_directories(../../source/ReflectiveDLLInjection/common)
 include_directories(../../source/extensions/stdapi/server)
+include_directories(../../source/tiny-regex-c)
 
 set(SRC_DIR ../../source/extensions/stdapi)
 file(GLOB_RECURSE SRC_FILES
@@ -29,6 +30,7 @@ file(GLOB_RECURSE SRC_FILES
     ${SRC_DIR}/*.cpp
     ${SRC_DIR}/*.rc
     ${MOD_DEF_DIR}/extension.def
+    ../../source/tiny-regex-c/*.c
 )
 
 list(REMOVE_ITEM SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/${SRC_DIR}/server/resource/hook.c)
