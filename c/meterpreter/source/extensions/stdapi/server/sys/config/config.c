@@ -564,7 +564,7 @@ DWORD add_windows_os_version(Packet** packet)
 			}
 			else if (v.dwMinorVersion == 2)
 			{
-				osName = "Windows .NET Server";
+				osName = "Windows Server 2003";
 			}
 		}
 		else if (v.dwMajorVersion == 6)
