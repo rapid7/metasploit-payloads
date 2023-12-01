@@ -341,10 +341,6 @@ DWORD request_sys_process_memory_unlock(Remote *remote, Packet *packet)
 	return ERROR_SUCCESS;
 }
 
-typedef NTSTATUS* PNTSTATUS;
-
-#define NT_SUCCESS(Status) ((NTSTATUS)(Status) >= 0)
-
 #ifndef __kernel_entry
     #define __kernel_entry
 #endif
@@ -352,8 +348,6 @@ typedef NTSTATUS* PNTSTATUS;
 typedef __kernel_entry NTSTATUS(WINAPI* NTQUERYINFORMATIONPROCESS) (HANDLE ProcessHandle, DWORD ProcessInformationClass, LPVOID ProcessInformation, ULONG ProcessInformationLength, PULONG ReturnLength);
 
 typedef SIZE_T(WINAPI* VIRTUALQUERYEX) (HANDLE hProcess, LPCVOID lpAddress, PMEMORY_BASIC_INFORMATION lpBuffer, SIZE_T dwLength);
-
-typedef BOOL(WINAPI* READPROCESSMEMORY) (HANDLE hProcess, LPCVOID lpBaseAddress, LPVOID lpBuffer, SIZE_T mSize, SIZE_T* lpNumberOfBytesRead);
 
 typedef BOOL(WINAPI* CLOSEHANDLE) (HANDLE hObject);
 
@@ -369,9 +363,6 @@ typedef NTSTATUS(NTAPI* NTREADVIRTUALMEMORY) (HANDLE ProcessHandle, LPCVOID Base
 typedef enum _MEMORY_INFORMATION_CLASS {
 	MemoryBasicInformation
 } MEMORY_INFORMATION_CLASS, * PMEMORY_INFORMATION_CLASS;
-
-// http://undocumented.ntinternals.net/index.html?page=UserMode%2FUndocumented%20Functions%2FMemory%20Management%2FVirtual%20Memory%2FNtQueryVirtualMemory.html
-typedef __kernel_entry NTSTATUS(NTAPI* NTQUERYVIRTUALMEMORY) (HANDLE ProcessHandle, LPCVOID BaseAddress, MEMORY_INFORMATION_CLASS MemoryInformationClass, LPVOID Buffer, SIZE_T Length, PSIZE_T ResultLength);
 
 typedef struct _UNICODE_STRING {
 	USHORT Length;
@@ -390,27 +381,6 @@ typedef struct _OBJECT_ATTRIBUTES {
 	PVOID           SecurityDescriptor;
 	PVOID           SecurityQualityOfService;
 } OBJECT_ATTRIBUTES, * POBJECT_ATTRIBUTES;
-
-// https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-tsts/a11e7129-685b-4535-8d37-21d4596ac057
-typedef struct _CLIENT_ID {
-	HANDLE UniqueProcess;
-	HANDLE UniqueThread;
-} CLIENT_ID, * PCLIENT_ID;
-
-// http://undocumented.ntinternals.net/index.html?page=UserMode%2FUndocumented%20Functions%2FNT%20Objects%2FProcess%2FNtOpenProcess.html
-// https://ntdoc.m417z.com/ntopenprocess
-typedef NTSTATUS(NTAPI* NTOPENPROCESS) (PHANDLE ProcessHandle, ACCESS_MASK AccessMask, POBJECT_ATTRIBUTES ObjectAttributes, PCLIENT_ID ClientId);
-
-//typedef struct _PEB_LDR_DATA //, 7 elements, 0x28 bytes
-//{
-//	DWORD dwLength;
-//	DWORD dwInitialized;
-//	LPVOID lpSsHandle;
-//	LIST_ENTRY InLoadOrderModuleList;
-//	LIST_ENTRY InMemoryOrderModuleList;
-//	LIST_ENTRY InInitializationOrderModuleList;
-//	LPVOID lpEntryInProgress;
-//} PEB_LDR_DATA, * PPEB_LDR_DATA;
 
 typedef struct _RTL_USER_PROCESS_PARAMETERS {
 	BYTE Reserved1[16];
@@ -473,10 +443,165 @@ struct regex_needle
 	char* raw_needle_buffer;
 	size_t length;
 	regex_t* compiled_needle;
+	unsigned char* char_buf;
 };
 
 #define NEEDLES_MAX (size_t)5
+#define MEMORY_BUFFER_SIZE (size_t)(64 * 1024 * 1024)
 
+/// <summary>
+/// Add the needle results to a packet. This automatically inserts each result into a new group. Returns ERROR_SUCCESS on success, or 1 on failure.
+/// </summary>
+/// <param name="out">The packet to insert the needle goup into</param>
+/// <returns>ERROR_SUCCESS on success, else non-zero</returns>
+NTSTATUS add_needle_results_to_packet(Packet** out, const char* memory_buffer_ptr, size_t match_length, size_t match_address, size_t memory_base_address, size_t memory_region_size)
+{
+	if (out == NULL || memory_buffer_ptr == NULL) { return ERROR_INVALID_PARAMETER; }
+
+	dprintf("[MEM SEARCH] Creating results group");
+
+	Packet* search_results = met_api->packet.create_group();
+	if (search_results == NULL) { dprintf("[MEM SEARCH] Could not create search result group"); return ERROR_OUTOFMEMORY; }
+
+	dprintf("[MEM SEARCH] Adding results to packet group");
+
+	dprintf("[MEM SEARCH] Adding Match bytes");
+	// Note: This raw data needs to be read from the buffer we copied. Trying to read it from mem.BaseAddress directly will make us crash.
+	met_api->packet.add_tlv_raw(search_results, TLV_TYPE_MEMORY_SEARCH_MATCH_STR, (LPVOID)memory_buffer_ptr, (DWORD)match_length + 1);
+
+	dprintf("[MEM SEARCH] Adding Match address");
+	met_api->packet.add_tlv_qword(search_results, TLV_TYPE_MEMORY_SEARCH_MATCH_ADDR, match_address);
+
+	dprintf("[MEM SEARCH] Adding Region base address");
+	met_api->packet.add_tlv_qword(search_results, TLV_TYPE_MEMORY_SEARCH_START_ADDR, memory_base_address);
+
+	dprintf("[MEM SEARCH] Adding Region size");
+	met_api->packet.add_tlv_qword(search_results, TLV_TYPE_MEMORY_SEARCH_SECT_LEN, memory_region_size);
+
+	dprintf("[MEM SEARCH] Adding Match Length");
+	met_api->packet.add_tlv_uint(search_results, TLV_TYPE_MEMORY_SEARCH_MATCH_LEN, (UINT)match_length);
+
+	dprintf("[MEM SEARCH] Adding Group");
+	met_api->packet.add_group(*out, TLV_TYPE_MEMORY_SEARCH_RESULTS, search_results);
+
+	return ERROR_SUCCESS;
+}
+
+/// <summary>
+/// Compile a regular expression in-place.
+/// </summary>
+/// <param name="in_out">A pointer to a regular expression needle struct.</param>
+/// <returns>ERROR_SUCCESS on success, ERROR_INVALID_PARAMETER when provided with a null pointer or the regular expression failed to compile</returns>
+NTSTATUS re_compile_inplace(struct regex_needle** in_out)
+{
+	if (in_out == NULL) { return ERROR_INVALID_PARAMETER; }
+	const int compile_result = re_compile((*in_out)->raw_needle_buffer, (*in_out)->length, MAX_REGEXP_OBJECTS, MAX_CHAR_CLASS_LEN, &(*in_out)->compiled_needle, &(*in_out)->char_buf);
+	if (compile_result != ERROR_SUCCESS) { return ERROR_INVALID_PARAMETER; }
+
+	return ERROR_SUCCESS;
+}
+
+/// <summary>
+/// Sets up a regular expression needle from a TLV.
+/// </summary>
+/// <param name="needle_buffer_tlv">- Pointer to the needle TLV received from the server containing the needle buffer</param>
+/// <param name="out">- The compiled needle</param>
+/// <returns>ERROR_SUCCESS on success, non-zero on failure</returns>
+NTSTATUS setup_needle_from_tlv(const Tlv* needle_buffer_tlv, struct regex_needle** out)
+{
+	// The header contains a null-terminator which we do not need.
+	dprintf("[MEM SEARCH] Getting needle length");
+	const size_t needle_length = needle_buffer_tlv->header.length - 1;
+	if (needle_length == 0) { dprintf("[MEM SEARCH] Got a needle length of 0"); return ERROR_INVALID_PARAMETER; }
+
+	(*out)->length = needle_length;
+	dprintf("[MEM SEARCH] Allocating memory for needle buffer");
+	(*out)->raw_needle_buffer = (char*)malloc(needle_length * sizeof(char));
+	if ((*out)->raw_needle_buffer == NULL) { dprintf("[MEM SEARCH] Could not allocate memory for raw needle buffer"); return ERROR_OUTOFMEMORY; }
+	
+	dprintf("[MEM SEARCH] Copying TLV buffer to needle");
+	memcpy((*out)->raw_needle_buffer, (char*)needle_buffer_tlv->buffer, needle_length);
+
+	dprintf("[MEM SEARCH] Allocating memory for a compiled needle");
+	(*out)->compiled_needle = (regex_t*)malloc(MAX_REGEXP_OBJECTS * sizeof(struct regex_t));
+	if ((*out)->compiled_needle == NULL) { dprintf("[MEM SEARCH] Unable to malloc memory for a compiled needle"); return ERROR_OUTOFMEMORY; }
+
+	dprintf("[MEM SEARCH] Allocating memory for a char buffer");
+	(*out)->char_buf = (unsigned char*)malloc(MAX_CHAR_CLASS_LEN * sizeof(unsigned char));
+	if ((*out)->char_buf == NULL) { dprintf("[MEM SEARCH] Unable to malloc memory for a char buffer"); return ERROR_OUTOFMEMORY; }
+
+	dprintf("[MEM SEARCH] Compiling needle: %.*s", needle_length, (char*)needle_buffer_tlv->buffer);
+	const NTSTATUS compile_result = re_compile_inplace(&(*out));
+	if (compile_result != ERROR_SUCCESS)
+	{ dprintf("[MEM SEARCH] Failed to compile needle"); return ERROR_INVALID_PARAMETER; }
+
+	return ERROR_SUCCESS;
+}
+
+NTSTATUS cleanup_needle(struct regex_needle** in)
+{
+	if (in == NULL || *in == NULL) { return ERROR_INVALID_PARAMETER; }
+
+	if ((*in)->raw_needle_buffer != NULL)
+	{
+		dprintf("[MEM SEARCH] Freeing needle buffer");
+		free((*in)->raw_needle_buffer);
+	}
+
+	if ((*in)->char_buf != NULL)
+	{
+		dprintf("[MEM SEARCH] Freeing char buf");
+		free((*in)->char_buf);
+	}
+
+	if ((*in)->compiled_needle != NULL)
+	{
+		dprintf("[MEM SEARCH] Freeing compiled needle");
+		free((*in)->compiled_needle);
+	}
+
+	dprintf("[MEM SEARCH] Freeing regex needle.");
+	free((*in));
+
+	return ERROR_SUCCESS;
+}
+
+static HMODULE hKernel32 = NULL;
+static HMODULE hNTDLL = NULL;
+
+static GETPROCADDRESS fGetProcAddress = NULL;
+static OPENPROCESS fOpenProcess = NULL;
+static CLOSEHANDLE fCloseHandle = NULL;
+static VIRTUALQUERYEX fVirtualQueryEx = NULL;
+static NTREADVIRTUALMEMORY fNtReadVirtualMemory = NULL;
+
+BOOL setup_handles()
+{
+	if ((hKernel32 = GetModuleHandleA("kernel32.dll")) == NULL) { dprintf("[MEM SEARCH] Could not get kernel32.dll handle"); return ERROR_INVALID_HANDLE; }
+
+	if ((hNTDLL = GetModuleHandleA("ntdll.dll")) == NULL) { dprintf("[MEM SEARCH] Could not get ntdll.dll handle"); return ERROR_INVALID_HANDLE; }
+
+	if ((fGetProcAddress = (GETPROCADDRESS)GetProcAddress(hKernel32, "GetProcAddress")) == NULL) { dprintf("[MEM SEARCH] Could not get GetProcAddress handle"); return ERROR_INVALID_ADDRESS; }
+
+	if ((fVirtualQueryEx = (VIRTUALQUERYEX)fGetProcAddress(hKernel32, "VirtualQueryEx")) == NULL) { dprintf("[MEM SEARCH] Could not get VirtualQueryEx handle"); return ERROR_INVALID_ADDRESS; }
+
+	if ((fOpenProcess = (OPENPROCESS)fGetProcAddress(hKernel32, "OpenProcess")) == NULL) { dprintf("[MEM SEARCH] Could not get OpenProcess handle"); return ERROR_INVALID_ADDRESS; }
+
+	if ((fCloseHandle = (CLOSEHANDLE)fGetProcAddress(hKernel32, "CloseHandle")) == NULL) { dprintf("[MEM SEARCH] Could not get CloseHandle handle"); return ERROR_INVALID_ADDRESS; }
+
+	if ((fNtReadVirtualMemory = (NTREADVIRTUALMEMORY)fGetProcAddress(hNTDLL, "NtReadVirtualMemory")) == NULL ) { dprintf("[MEM SEARCH] Could not get NtReadVirtualMemory handle"); return ERROR_INVALID_ADDRESS; }
+
+	return ERROR_SUCCESS;
+}
+
+/*
+ * Read through all of a process's virtual memory in the search for regular expression needles.
+ *
+ * req: TLV_TYPE_PID                     - The target process ID.
+ * req: TLV_TYPE_MEMORY_SEARCH_NEEDLE    - The regular expression needle to search for.
+ * req: TLV_TYPE_UINT                    - The minimum length of a match.
+ * req: TLV_TYPE_MEMORY_SEARCH_MATCH_LEN - The maximum length of a match.
+ */
 DWORD request_sys_process_memory_search(Remote* remote, Packet* packet)
 {
 	Packet* response = met_api->packet.create_response(packet);
@@ -484,33 +609,28 @@ DWORD request_sys_process_memory_search(Remote* remote, Packet* packet)
 	char* buffer = NULL;
 	size_t needle_enum_index = 0;
 	HANDLE process_handle = NULL;
+	struct regex_needle* regex_needles[NEEDLES_MAX];
 	
-	dprintf("[MEM SEARCH] Getting PID...");
+	dprintf("[MEM SEARCH] Getting PID");
 	const DWORD pid = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_PID);
 	if (pid == 0) { result = ERROR_INVALID_PARAMETER; goto done; }
 	dprintf("[MEM SEARCH] Searching PID: %lu", pid);
 
-	// Iterate over all the needles in the packet.
 	Tlv needle_buffer_tlv = { 0 };
-	struct regex_needle* regex_needles[NEEDLES_MAX];
-	while (needle_enum_index < (size_t)NEEDLES_MAX && met_api->packet.enum_tlv(packet, (DWORD)needle_enum_index, TLV_TYPE_MEMORY_SEARCH_NEEDLE, &needle_buffer_tlv) == ERROR_SUCCESS)
+	while (needle_enum_index < NEEDLES_MAX && met_api->packet.enum_tlv(packet, (DWORD)needle_enum_index, TLV_TYPE_MEMORY_SEARCH_NEEDLE, &needle_buffer_tlv) == ERROR_SUCCESS)
 	{
-		// The header contains a null-terminator which we do not need.
-		const size_t needle_length = needle_buffer_tlv.header.length - 1;
 		dprintf("[MEM SEARCH] Allocating %u bytes of memory for regex needle", sizeof(struct regex_needle));
 		regex_needles[needle_enum_index] = (struct regex_needle*)malloc(sizeof(struct regex_needle));
 		if (regex_needles[needle_enum_index] == NULL) { dprintf("[MEM SEARCH] Could not allocate memory for regex needle"); result = ERROR_OUTOFMEMORY; goto done; }
-
-		regex_needles[needle_enum_index]->length = needle_length;
-		regex_needles[needle_enum_index]->raw_needle_buffer = (char*)malloc(needle_length * sizeof(char));
-		if (regex_needles[needle_enum_index]->raw_needle_buffer == NULL) { dprintf("[MEM SEARCH] Could not allocate memory for raw needle buffer"); result = ERROR_OUTOFMEMORY; goto done; }
-		memcpy(regex_needles[needle_enum_index]->raw_needle_buffer, (char*)needle_buffer_tlv.buffer, needle_length);
-
-		dprintf("[MEM SEARCH] Needle %u : %.*s with size (in bytes) %u", needle_enum_index, needle_length, regex_needles[needle_enum_index]->raw_needle_buffer, needle_length);
-
-		dprintf("[MEM SEARCH] Compiling needle: %.*s", needle_length, (char*)needle_buffer_tlv.buffer);
-		regex_needles[needle_enum_index]->compiled_needle = re_compile(regex_needles[needle_enum_index]->raw_needle_buffer, regex_needles[needle_enum_index]->length);
-		if (regex_needles[needle_enum_index]->compiled_needle == NULL) { dprintf("[MEM SEARCH] Failed to compile needle"); result = ERROR_OUTOFMEMORY; goto done; }
+		
+		dprintf("[MEM SEARCH] Setting up needle from TLV");
+		const NTSTATUS needle_setup_result = setup_needle_from_tlv(&needle_buffer_tlv, &regex_needles[needle_enum_index]);
+		if (needle_setup_result != ERROR_SUCCESS)
+		{
+			dprintf("[MEM SEARCH] Failed to setup needle from TLV packet");
+			result = needle_setup_result;
+			goto done;
+		}
 
 		needle_enum_index++;
 	}
@@ -522,52 +642,23 @@ DWORD request_sys_process_memory_search(Remote* remote, Packet* packet)
 	const size_t current_max_match_length = max_match_length;
 
 	dprintf("[MEM SEARCH] Getting handles & proc addresses");
-	const HMODULE kernel32_dll = GetModuleHandleA("kernel32.dll");
-	if (kernel32_dll == NULL) { dprintf("[MEM SEARCH] Could not get kernel32.dll handle"); result = ERROR_INVALID_HANDLE; goto done; }
-
-	const HMODULE ntdll_dll = GetModuleHandleA("ntdll.dll");
-	if (ntdll_dll == NULL) { dprintf("[MEM SEARCH] Could not get ntdll.dll handle"); result = ERROR_INVALID_HANDLE; goto done; }
-
-	const HANDLE get_proc_address = GetProcAddress(kernel32_dll, "GetProcAddress");
-	if (get_proc_address == NULL) { dprintf("[MEM SEARCH] Could not get GetProcAddress handle"); result = ERROR_INVALID_ADDRESS; goto done; }
-	const GETPROCADDRESS GetProcAddress = (GETPROCADDRESS)get_proc_address;
-
-	const HANDLE virtual_query_ex = GetProcAddress(kernel32_dll, "VirtualQueryEx");
-	if (virtual_query_ex == NULL) { dprintf("[MEM SEARCH] Could not get VirtualQueryEx handle"); result = ERROR_INVALID_ADDRESS; goto done; }
-
-	const HANDLE open_process = GetProcAddress(kernel32_dll, "OpenProcess");
-	if (open_process == NULL) { dprintf("[MEM SEARCH] Could not get OpenProcess handle"); result = ERROR_INVALID_ADDRESS; goto done; }
-
-	const HANDLE close_handle = GetProcAddress(kernel32_dll, "CloseHandle");
-	if (close_handle == NULL) { dprintf("[MEM SEARCH] Could not get CloseHandle handle"); result = ERROR_INVALID_ADDRESS; goto done; }
-
-	const HANDLE nt_read_virtual_memory = GetProcAddress(ntdll_dll, "NtReadVirtualMemory");
-	if (nt_read_virtual_memory == NULL) { dprintf("[MEM SEARCH] Could not get NtReadVirtualMemory handle"); result = ERROR_INVALID_ADDRESS; goto done; }
-
-	const OPENPROCESS OpenProcess = (OPENPROCESS)open_process;
-	const CLOSEHANDLE CloseHandle = (CLOSEHANDLE)close_handle;
-	const VIRTUALQUERYEX VirtualQueryEx = (VIRTUALQUERYEX)virtual_query_ex;
-	const NTREADVIRTUALMEMORY NtReadVirtualMemory = (NTREADVIRTUALMEMORY)nt_read_virtual_memory;
+	const NTSTATUS setup_handles_result = setup_handles();
+	if (setup_handles_result != ERROR_SUCCESS) { dprintf("[MEM SEARCH] Could not set up all necessary handles & proc addresses"); result = setup_handles_result; goto done; }
 
 	const DWORD process_vm_read = 0x0010;
 	const DWORD process_query_information = 0x0400;
 	const DWORD wanted_process_perms = process_vm_read | process_query_information;
 
 	dprintf("[MEM SEARCH] Opening process");
-	process_handle = OpenProcess(wanted_process_perms, FALSE, pid);
+	process_handle = fOpenProcess(wanted_process_perms, FALSE, pid);
 	if (process_handle == NULL) { dprintf("[MEM SEARCH] Could not get process handle"); result = ERROR_INVALID_HANDLE; goto done; }
 
 	MEMORY_BASIC_INFORMATION mem = { 0 };
-	const size_t megabytes_64 = 64 * 1024 * 1024;
-
 	dprintf("[MEM SEARCH] Allocating buffer for storing process memory");
-	buffer = (char*)malloc(megabytes_64);
+	buffer = (char*)malloc(MEMORY_BUFFER_SIZE);
 	if (buffer == NULL) { dprintf("[MEM SEARCH] Could not allocate memory buffer"); result = ERROR_OUTOFMEMORY; goto done; }
 
-	// The maximum length of data that we can read into a buffer at a time from a memory region.
-	const size_t current_max_size = megabytes_64;
-
-	for (size_t current_ptr = 0; VirtualQueryEx(process_handle, (LPCVOID)current_ptr, &mem, sizeof(mem)); current_ptr += mem.RegionSize)
+	for (size_t current_ptr = 0; fVirtualQueryEx(process_handle, (LPCVOID)current_ptr, &mem, sizeof(mem)); current_ptr += mem.RegionSize)
 	{
 		if (!can_read_memory(mem.Protect)) { continue; }
 
@@ -579,14 +670,14 @@ DWORD request_sys_process_memory_search(Remote* remote, Packet* packet)
 		while (mem.RegionSize > memory_region_offset)
 		{
 			const size_t leftover_bytes = mem.RegionSize - memory_region_offset;
-			const size_t bytes_to_read = min(leftover_bytes, current_max_size);
+			const size_t bytes_to_read = min(leftover_bytes, MEMORY_BUFFER_SIZE);
 			dprintf("[MEM SEARCH] Leftover Bytes count: %llu", leftover_bytes);
 			dprintf("[MEM SEARCH] Bytes to read: %llu", bytes_to_read);
 			size_t bytes_read = 0;
 
 			const size_t read_address = (size_t)mem.BaseAddress + memory_region_offset;
 			// Note: This will read up to a maximum of bytes_to_read OR to the end of the memory region if the end of it has been reached.
-			const NTSTATUS read_virtual_memory_status = NtReadVirtualMemory(process_handle, (LPCVOID)read_address, buffer, bytes_to_read, &bytes_read);
+			const NTSTATUS read_virtual_memory_status = fNtReadVirtualMemory(process_handle, (LPCVOID)read_address, buffer, bytes_to_read, &bytes_read);
 			if (read_virtual_memory_status != ERROR_SUCCESS) { dprintf("[MEM SEARCH] Failed to read some virtual memory for process, skipping %u bytes", bytes_to_read); memory_region_offset += bytes_to_read; continue; }
 
 			dprintf("[MEM SEARCH] Read %llu bytes", bytes_read);
@@ -595,7 +686,6 @@ DWORD request_sys_process_memory_search(Remote* remote, Packet* packet)
 
 			for (size_t current_needle_index = 0; current_needle_index < needle_enum_index; current_needle_index++)
 			{
-				// This is the buffer offset for this needle only.
 				size_t current_buffer_offset = 0;
 				size_t match_length = 0;
 				int result = -1;
@@ -609,38 +699,22 @@ DWORD request_sys_process_memory_search(Remote* remote, Packet* packet)
 
 					if (result != -1)
 					{
-						const size_t match_address = read_address + result;
+						const size_t match_address = read_address + current_buffer_offset + result;
 						dprintf("[MEM SEARCH] -- ! FOUND A REGEX MATCH ! --");
 						dprintf("[MEM SEARCH] Address: %p", match_address);
 
-						dprintf("[MEM SEARCH] Creating results group");
-						
-						Packet* search_results = met_api->packet.create_group();
-						if (search_results == NULL) { dprintf("[MEM SEARCH] Could not create search result group"); result = ERROR_OUTOFMEMORY; goto done; }
+						if (match_length < min_match_length)
+						{
+							dprintf("[MEM SEARCH] Match length was too short, skipping.");
+							current_buffer_offset += (result + match_length);
+							continue;
+						}
 
-						dprintf("[MEM SEARCH] Adding results to packet group");
-
-						dprintf("[MEM SEARCH] Adding Match bytes");
 						// TODO: Add a workaround for match length to the regex itself, allowing the regex engine to stop matching once an upper limit has been reached.
 						const size_t current_match_length = min(max_match_length, match_length);
-					
-						// Note: This raw data needs to be read from the buffer we copied. Trying to read it from mem.BaseAddress directly will make us crash.
-						met_api->packet.add_tlv_raw(search_results, TLV_TYPE_MEMORY_SEARCH_MATCH_STR, buffer + current_buffer_offset + result, (DWORD)current_match_length);
-
-						dprintf("[MEM SEARCH] Adding Match address");
-						met_api->packet.add_tlv_qword(search_results, TLV_TYPE_MEMORY_SEARCH_MATCH_ADDR, match_address);
-						
-						dprintf("[MEM SEARCH] Adding Region base address");
-						met_api->packet.add_tlv_qword(search_results, TLV_TYPE_MEMORY_SEARCH_START_ADDR, (size_t)mem.BaseAddress);
-
-						dprintf("[MEM SEARCH] Adding Region size");
-						met_api->packet.add_tlv_qword(search_results, TLV_TYPE_MEMORY_SEARCH_SECT_LEN, mem.RegionSize);
-
-						dprintf("[MEM SEARCH] Adding Match Length");
-						met_api->packet.add_tlv_uint(search_results, TLV_TYPE_MEMORY_SEARCH_MATCH_LEN, (UINT)current_match_length);
-						
-						dprintf("[MEM SEARCH] Adding Group");
-						met_api->packet.add_group(response, TLV_TYPE_MEMORY_SEARCH_RESULTS, search_results);
+						const char* memory_buffer_ptr = buffer + current_buffer_offset + result;
+						const NTSTATUS add_needles_result = add_needle_results_to_packet(&response, memory_buffer_ptr, current_match_length, match_address, (size_t)mem.BaseAddress, mem.RegionSize);
+						if (add_needles_result != ERROR_SUCCESS) { dprintf("[MEM SEARCH] Adding search results to packet was not successful"); }
 
 						current_buffer_offset += (result + current_match_length);
 					}
@@ -658,22 +732,13 @@ DWORD request_sys_process_memory_search(Remote* remote, Packet* packet)
 done:
 	dprintf("[MEM SEARCH] Memory Search complete.");
 	if (buffer != NULL) { dprintf("[MEM SEARCH] Freeing process memory buffer."); free(buffer); }
-	if (process_handle != NULL) { dprintf("[MEM SEARCH] Closing process handle."); CloseHandle(process_handle); }
+	if (process_handle != NULL) { dprintf("[MEM SEARCH] Closing process handle."); fCloseHandle(process_handle); }
 
 	dprintf("[MEM SEARCH] Cleaning up needles");
 	for (size_t i = 0; i < needle_enum_index; i++)
 	{
-		if (regex_needles[i] != NULL)
-		{
-			if (regex_needles[i]->raw_needle_buffer != NULL)
-			{
-				dprintf("[MEM SEARCH] Freeing needle buffer");
-				free(regex_needles[i]->raw_needle_buffer);
-			}
-
-			dprintf("[MEM SEARCH] Freeing regex needle.");
-			free(regex_needles[i]);
-		}
+		const NTSTATUS cleanup_result = cleanup_needle(&regex_needles[i]);
+		if (cleanup_result == ERROR_INVALID_PARAMETER) { dprintf("[MEM SEARCH] Could not clean up needle"); }
 	}
 
 	dprintf("[MEM SEARCH] Transmitting response");

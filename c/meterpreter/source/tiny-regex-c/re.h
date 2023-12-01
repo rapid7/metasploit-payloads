@@ -55,18 +55,14 @@ typedef struct regex_t
 /* Typedef'd pointer to get abstract datatype. */
 typedef struct regex_t* re_t;
 
-
-/* Compile regex string pattern to a regex_t-array. */
-re_t re_compile(const char* pattern, size_t pattern_length);
-
+#define MAX_REGEXP_OBJECTS      255    /* Max number of regex symbols in expression. */
+#define MAX_CHAR_CLASS_LEN      255    /* Max length of character-class buffer in.   */
 
 /* Find matches of the compiled pattern inside text. */
 int re_matchp(re_t pattern, const char* text, size_t text_length, size_t* matchlength);
 
-
-/* Find matches of the txt pattern inside text (will compile automatically first). */
-int re_match(const char* pattern, size_t pattern_length, const char* text, size_t text_length, size_t* matchlength);
-
+/* Compile a regular expression in-place, allowing for multiple needles to be compiled without the usage of a static buffer. Returns ERROR_SUCCESS (0) on success, else 1. */
+int re_compile(const char* pattern, size_t pattern_length, size_t max_regex_objects, size_t max_char_class_len, re_t* out_compiled, unsigned char** out_ccl);
 
 #ifdef __cplusplus
 }

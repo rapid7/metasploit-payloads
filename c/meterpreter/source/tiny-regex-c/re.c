@@ -34,11 +34,7 @@
 
 /* Definitions: */
 
-#define MAX_REGEXP_OBJECTS      256    /* Max number of regex symbols in expression. */
-#define MAX_CHAR_CLASS_LEN      256    /* Max length of character-class buffer in.   */
-
-
-enum { UNUSED, DOT, BEGIN, END, QUESTIONMARK, STAR, PLUS, CHAR, CHAR_CLASS, INV_CHAR_CLASS, DIGIT, NOT_DIGIT, ALPHA, NOT_ALPHA, WHITESPACE, NOT_WHITESPACE, /* BRANCH */ };
+enum { UNUSED, DOT, BEGIN, END, QUESTIONMARK, STAR, PLUS, CHAR_RE, CHAR_CLASS, INV_CHAR_CLASS, DIGIT, NOT_DIGIT, ALPHA, NOT_ALPHA, WHITESPACE, NOT_WHITESPACE, /* BRANCH */ };
 
 /* Private function declarations: */
 static int matchpattern(regex_t* pattern, const char* text, size_t text_length, size_t text_offset, size_t* matchlength);
@@ -54,14 +50,7 @@ static int matchrange(char c, const char* str);
 static int matchdot(char c);
 static int ismetachar(char c);
 
-
-
 /* Public functions: */
-int re_match(const char* pattern, size_t pattern_length, const char* text, size_t text_length, size_t* matchlength)
-{
-  return re_matchp(re_compile(pattern, pattern_length), text, text_length, matchlength);
-}
-
 int re_matchp(re_t pattern, const char* text, size_t text_length, size_t* matchlength)
 {
   *matchlength = 0;
@@ -89,146 +78,135 @@ int re_matchp(re_t pattern, const char* text, size_t text_length, size_t* matchl
   return -1;
 }
 
-re_t re_compile(const char* pattern, size_t pattern_length)
+int re_compile(const char* pattern, size_t pattern_length, size_t max_regex_objects, size_t max_char_class_len, re_t* out_compiled, unsigned char** out_ccl)
 {
-  /* The sizes of the two static arrays below substantiates the static RAM usage of this module.
-     MAX_REGEXP_OBJECTS is the max number of symbols in the expression.
-     MAX_CHAR_CLASS_LEN determines the size of buffer for chars in all char-classes in the expression. */
-  static regex_t re_compiled[MAX_REGEXP_OBJECTS];
-  static unsigned char ccl_buf[MAX_CHAR_CLASS_LEN];
-  int ccl_bufidx = 1;
+    if (out_compiled == NULL || out_ccl == NULL) { return 1; }
 
-  char c;     /* current char in pattern   */
-  int i = 0;  /* index into pattern        */
-  int j = 0;  /* index into re_compiled    */
+    int ccl_bufidx = 1;
 
-  while (i < (int)pattern_length && (j+1 < MAX_REGEXP_OBJECTS))
-  {
-    c = pattern[i];
+    char c;     /* current char in pattern   */
+    int i = 0;  /* index into pattern        */
+    int j = 0;  /* index into re_compiled    */
 
-    switch (c)
+    while (i < (int)pattern_length && (j + 1 < MAX_REGEXP_OBJECTS))
     {
-      /* Meta-characters: */
-      case '^': {    re_compiled[j].type = BEGIN;           } break;
-      case '$': {    re_compiled[j].type = END;             } break;
-      case '.': {    re_compiled[j].type = DOT;             } break;
-      case '*': {    re_compiled[j].type = STAR;            } break;
-      case '+': {    re_compiled[j].type = PLUS;            } break;
-      case '?': {    re_compiled[j].type = QUESTIONMARK;    } break;
-/*    case '|': {    re_compiled[j].type = BRANCH;          } break; <-- not working properly */
+        c = pattern[i];
 
-      /* Escaped character-classes (\s \w ...): */
-      case '\\':
-      {
-        if (i + 1 < (int)pattern_length)
+        switch (c)
         {
-          /* Skip the escape-char '\\' */
-          i += 1;
-          /* ... and check the next */
-          switch (pattern[i])
-          {
-            /* Meta-character: */
-            case 'd': {    re_compiled[j].type = DIGIT;            } break;
-            case 'D': {    re_compiled[j].type = NOT_DIGIT;        } break;
-            case 'w': {    re_compiled[j].type = ALPHA;            } break;
-            case 'W': {    re_compiled[j].type = NOT_ALPHA;        } break;
-            case 's': {    re_compiled[j].type = WHITESPACE;       } break;
-            case 'S': {    re_compiled[j].type = NOT_WHITESPACE;   } break;
+            /* Meta-characters: */
+        case '^': {    (*out_compiled)[j].type = BEGIN;           } break;
+        case '$': {    (*out_compiled)[j].type = END;             } break;
+        case '.': {    (*out_compiled)[j].type = DOT;             } break;
+        case '*': {    (*out_compiled)[j].type = STAR;            } break;
+        case '+': {    (*out_compiled)[j].type = PLUS;            } break;
+        case '?': {    (*out_compiled)[j].type = QUESTIONMARK;    } break;
+            /*    case '|': {    re_compiled[j].type = BRANCH;          } break; <-- not working properly */
 
-            /* Escaped character, e.g. '.' or '$' */
-            default:
+                  /* Escaped character-classes (\s \w ...): */
+        case '\\':
+        {
+            if (i + 1 < (int)pattern_length)
             {
-              re_compiled[j].type = CHAR;
-              re_compiled[j].u.ch = pattern[i];
-            } break;
-          }
-        }
-        /* '\\' as last char in pattern -> invalid regular expression. */
-/*
-        else
-        {
-          re_compiled[j].type = CHAR;
-          re_compiled[j].ch = pattern[i];
-        }
-*/
-      } break;
+                /* Skip the escape-char '\\' */
+                i += 1;
+                /* ... and check the next */
+                switch (pattern[i])
+                {
+                    /* Meta-character: */
+                case 'd': {    (*out_compiled)[j].type = DIGIT;            } break;
+                case 'D': {    (*out_compiled)[j].type = NOT_DIGIT;        } break;
+                case 'w': {    (*out_compiled)[j].type = ALPHA;            } break;
+                case 'W': {    (*out_compiled)[j].type = NOT_ALPHA;        } break;
+                case 's': {    (*out_compiled)[j].type = WHITESPACE;       } break;
+                case 'S': {    (*out_compiled)[j].type = NOT_WHITESPACE;   } break;
 
-      /* Character class: */
-      case '[':
-      {
-        /* Remember where the char-buffer starts. */
-        int buf_begin = ccl_bufidx;
-
-        /* Look-ahead to determine if negated */
-        if (pattern[i+1] == '^')
-        {
-          re_compiled[j].type = INV_CHAR_CLASS;
-          i += 1; /* Increment i to avoid including '^' in the char-buffer */
-          if (pattern[i+1] == 0) /* incomplete pattern, missing non-zero char after '^' */
-          {
-            return 0;
-          }
-        }
-        else
-        {
-          re_compiled[j].type = CHAR_CLASS;
-        }
-
-        /* Copy characters inside [..] to buffer */
-        while (    (pattern[++i] != ']')
-                && (pattern[i]   != '\0')) /* Missing ] */
-        {
-          if (pattern[i] == '\\')
-          {
-            if (ccl_bufidx >= MAX_CHAR_CLASS_LEN - 1)
-            {
-              //fputs("exceeded internal buffer!\n", stderr);
-              return 0;
+                    /* Escaped character, e.g. '.' or '$' */
+                default:
+                {
+                    (*out_compiled)[j].type = CHAR_RE;
+                    (*out_compiled)[j].u.ch = pattern[i];
+                } break;
+                }
             }
-            if (pattern[i+1] == 0) /* incomplete pattern, missing non-zero char after '\\' */
+            else
             {
-              return 0;
+              (*out_compiled)[j].type = CHAR_RE;
+              (*out_compiled)[j].u.ch = pattern[i];
             }
-            ccl_buf[ccl_bufidx++] = pattern[i++];
-          }
-          else if (ccl_bufidx >= MAX_CHAR_CLASS_LEN)
-          {
-              //fputs("exceeded internal buffer!\n", stderr);
-              return 0;
-          }
-          ccl_buf[ccl_bufidx++] = pattern[i];
-        }
-        if (ccl_bufidx >= MAX_CHAR_CLASS_LEN)
+        } break;
+
+        /* Character class: */
+        case '[':
         {
-            /* Catches cases such as [00000000000000000000000000000000000000][ */
-            //fputs("exceeded internal buffer!\n", stderr);
-            return 0;
+            /* Remember where the char-buffer starts. */
+            int buf_begin = ccl_bufidx;
+
+            /* Look-ahead to determine if negated */
+            if (pattern[i + 1] == '^')
+            {
+                (*out_compiled)[j].type = INV_CHAR_CLASS;
+                i += 1; /* Increment i to avoid including '^' in the char-buffer */
+                if (i + 1 == (int)pattern_length) /* incomplete pattern, missing non-zero char after '^' */
+                {
+                    return 1;
+                }
+            }
+            else
+            {
+                (*out_compiled)[j].type = CHAR_CLASS;
+            }
+
+            /* Copy characters inside [..] to buffer */
+            while ((pattern[++i] != ']')
+                && (i < (int)pattern_length)) /* Missing ] */
+            {
+                if (pattern[i] == '\\')
+                {
+                    if (ccl_bufidx >= MAX_CHAR_CLASS_LEN - 1)
+                    {
+                        //fputs("exceeded internal buffer!\n", stderr);
+                        return 1;
+                    }
+                    if (i + 1 == (int)pattern_length) /* incomplete pattern, missing non-zero char after '\\' */
+                    {
+                        return 1;
+                    }
+                    (*out_ccl)[ccl_bufidx++] = pattern[i++];
+                }
+                else if (ccl_bufidx >= MAX_CHAR_CLASS_LEN)
+                {
+                    //fputs("exceeded internal buffer!\n", stderr);
+                    return 1;
+                }
+                (*out_ccl)[ccl_bufidx++] = pattern[i];
+            }
+            if (ccl_bufidx >= MAX_CHAR_CLASS_LEN)
+            {
+                /* Catches cases such as [00000000000000000000000000000000000000][ */
+                //fputs("exceeded internal buffer!\n", stderr);
+                return 1;
+            }
+            /* Null-terminate string end */
+            (*out_ccl)[ccl_bufidx++] = 0;
+            (*out_compiled)[j].u.ccl = &(*out_ccl)[buf_begin];
+        } break;
+
+        /* Other characters: */
+        default:
+        {
+            (*out_compiled)[j].type = CHAR_RE;
+            (*out_compiled)[j].u.ch = c;
+        } break;
         }
-        /* Null-terminate string end */
-        ccl_buf[ccl_bufidx++] = 0;
-        re_compiled[j].u.ccl = &ccl_buf[buf_begin];
-      } break;
 
-      /* Other characters: */
-      default:
-      {
-        re_compiled[j].type = CHAR;
-        re_compiled[j].u.ch = c;
-      } break;
+        i += 1;
+        j += 1;
     }
-    /* no buffer-out-of-bounds access on invalid patterns - see https://github.com/kokke/tiny-regex-c/commit/1a279e04014b70b0695fba559a7c05d55e6ee90b */
-    if (pattern[i] == 0)
-    {
-      return 0;
-    }
+    /* 'UNUSED' is a sentinel used to indicate end-of-pattern */
+    (*out_compiled)[j].type = UNUSED;
 
-    i += 1;
-    j += 1;
-  }
-  /* 'UNUSED' is a sentinel used to indicate end-of-pattern */
-  re_compiled[j].type = UNUSED;
-
-  return (re_t) re_compiled;
+    return 0; // ERROR_SUCCESS
 }
 
 void re_print(regex_t* pattern)
@@ -260,7 +238,7 @@ void re_print(regex_t* pattern)
       }
       printf("]");
     }
-    else if (pattern[i].type == CHAR)
+    else if (pattern[i].type == CHAR_RE)
     {
       printf(" '%c'", pattern[i].u.ch);
     }
