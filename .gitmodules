@@ -1,6 +1,7 @@
 [submodule "source/ReflectiveDLLInjection"]
 	path = c/meterpreter/source/ReflectiveDLLInjection
-	url = https://github.com/rapid7/ReflectiveDLLInjection.git
+    url = https://github.com/cdelafuente-r7/ReflectiveDLLInjection.git
+    branch = direct_syscalls
 [submodule "deps"]
 	path = c/meterpreter/deps
 	url = https://github.com/rapid7/meterpreter-deps
