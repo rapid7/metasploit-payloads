@@ -62,7 +62,7 @@ int re_matchp(re_t pattern, const char* text, size_t text_length, size_t* matchl
       return ((matchpattern(&pattern[1], text, text_length, 0, matchlength)) ? 0 : -1);
   }
   
-  size_t idx = -1;
+  int idx = -1;
 
   do
   {
@@ -70,18 +70,16 @@ int re_matchp(re_t pattern, const char* text, size_t text_length, size_t* matchl
 
       if (matchpattern(pattern, text, text_length, idx, matchlength))
       {
-          return (int)idx;
+          return idx;
       }
   }
-  while (idx < text_length);
+  while ((size_t)idx < text_length);
 
   return -1;
 }
 
-int re_compile(const char* pattern, size_t pattern_length, size_t max_regex_objects, size_t max_char_class_len, re_t* out_compiled, unsigned char** out_ccl)
+int re_compile(const char* pattern, size_t pattern_length, re_t compiled_regex, unsigned char* regex_char_buffer)
 {
-    if (out_compiled == NULL || out_ccl == NULL) { return 1; }
-
     int ccl_bufidx = 1;
 
     char c;     /* current char in pattern   */
@@ -95,13 +93,13 @@ int re_compile(const char* pattern, size_t pattern_length, size_t max_regex_obje
         switch (c)
         {
             /* Meta-characters: */
-        case '^': {    (*out_compiled)[j].type = BEGIN;           } break;
-        case '$': {    (*out_compiled)[j].type = END;             } break;
-        case '.': {    (*out_compiled)[j].type = DOT;             } break;
-        case '*': {    (*out_compiled)[j].type = STAR;            } break;
-        case '+': {    (*out_compiled)[j].type = PLUS;            } break;
-        case '?': {    (*out_compiled)[j].type = QUESTIONMARK;    } break;
-            /*    case '|': {    re_compiled[j].type = BRANCH;          } break; <-- not working properly */
+        case '^': {    compiled_regex[j].type = BEGIN;           } break;
+        case '$': {    compiled_regex[j].type = END;             } break;
+        case '.': {    compiled_regex[j].type = DOT;             } break;
+        case '*': {    compiled_regex[j].type = STAR;            } break;
+        case '+': {    compiled_regex[j].type = PLUS;            } break;
+        case '?': {    compiled_regex[j].type = QUESTIONMARK;    } break;
+            /*    case '|': {    compiled_regex[j].type = BRANCH;          } break; <-- not working properly */
 
                   /* Escaped character-classes (\s \w ...): */
         case '\\':
@@ -114,25 +112,25 @@ int re_compile(const char* pattern, size_t pattern_length, size_t max_regex_obje
                 switch (pattern[i])
                 {
                     /* Meta-character: */
-                case 'd': {    (*out_compiled)[j].type = DIGIT;            } break;
-                case 'D': {    (*out_compiled)[j].type = NOT_DIGIT;        } break;
-                case 'w': {    (*out_compiled)[j].type = ALPHA;            } break;
-                case 'W': {    (*out_compiled)[j].type = NOT_ALPHA;        } break;
-                case 's': {    (*out_compiled)[j].type = WHITESPACE;       } break;
-                case 'S': {    (*out_compiled)[j].type = NOT_WHITESPACE;   } break;
+                case 'd': {    compiled_regex[j].type = DIGIT;            } break;
+                case 'D': {    compiled_regex[j].type = NOT_DIGIT;        } break;
+                case 'w': {    compiled_regex[j].type = ALPHA;            } break;
+                case 'W': {    compiled_regex[j].type = NOT_ALPHA;        } break;
+                case 's': {    compiled_regex[j].type = WHITESPACE;       } break;
+                case 'S': {    compiled_regex[j].type = NOT_WHITESPACE;   } break;
 
                     /* Escaped character, e.g. '.' or '$' */
                 default:
                 {
-                    (*out_compiled)[j].type = CHAR_RE;
-                    (*out_compiled)[j].u.ch = pattern[i];
+                    compiled_regex[j].type = CHAR_RE;
+                    compiled_regex[j].u.ch = pattern[i];
                 } break;
                 }
             }
             else
             {
-              (*out_compiled)[j].type = CHAR_RE;
-              (*out_compiled)[j].u.ch = pattern[i];
+                compiled_regex[j].type = CHAR_RE;
+                compiled_regex[j].u.ch = pattern[i];
             }
         } break;
 
@@ -145,7 +143,7 @@ int re_compile(const char* pattern, size_t pattern_length, size_t max_regex_obje
             /* Look-ahead to determine if negated */
             if (pattern[i + 1] == '^')
             {
-                (*out_compiled)[j].type = INV_CHAR_CLASS;
+                compiled_regex[j].type = INV_CHAR_CLASS;
                 i += 1; /* Increment i to avoid including '^' in the char-buffer */
                 if (i + 1 == (int)pattern_length) /* incomplete pattern, missing non-zero char after '^' */
                 {
@@ -154,7 +152,7 @@ int re_compile(const char* pattern, size_t pattern_length, size_t max_regex_obje
             }
             else
             {
-                (*out_compiled)[j].type = CHAR_CLASS;
+                compiled_regex[j].type = CHAR_CLASS;
             }
 
             /* Copy characters inside [..] to buffer */
@@ -172,14 +170,14 @@ int re_compile(const char* pattern, size_t pattern_length, size_t max_regex_obje
                     {
                         return 1;
                     }
-                    (*out_ccl)[ccl_bufidx++] = pattern[i++];
+                    regex_char_buffer[ccl_bufidx++] = pattern[i++];
                 }
                 else if (ccl_bufidx >= MAX_CHAR_CLASS_LEN)
                 {
                     //fputs("exceeded internal buffer!\n", stderr);
                     return 1;
                 }
-                (*out_ccl)[ccl_bufidx++] = pattern[i];
+                regex_char_buffer[ccl_bufidx++] = pattern[i];
             }
             if (ccl_bufidx >= MAX_CHAR_CLASS_LEN)
             {
@@ -188,15 +186,15 @@ int re_compile(const char* pattern, size_t pattern_length, size_t max_regex_obje
                 return 1;
             }
             /* Null-terminate string end */
-            (*out_ccl)[ccl_bufidx++] = 0;
-            (*out_compiled)[j].u.ccl = &(*out_ccl)[buf_begin];
+            regex_char_buffer[ccl_bufidx++] = 0;
+            compiled_regex[j].u.ccl = &regex_char_buffer[buf_begin];
         } break;
 
         /* Other characters: */
         default:
         {
-            (*out_compiled)[j].type = CHAR_RE;
-            (*out_compiled)[j].u.ch = c;
+            compiled_regex[j].type = CHAR_RE;
+            compiled_regex[j].u.ch = c;
         } break;
         }
 
@@ -204,7 +202,7 @@ int re_compile(const char* pattern, size_t pattern_length, size_t max_regex_obje
         j += 1;
     }
     /* 'UNUSED' is a sentinel used to indicate end-of-pattern */
-    (*out_compiled)[j].type = UNUSED;
+    compiled_regex[j].type = UNUSED;
 
     return 0; // ERROR_SUCCESS
 }
@@ -364,7 +362,7 @@ static int matchstar(regex_t p, regex_t* pattern, const char* text, size_t text_
   const char* prepoint = text;
   while ((text_offset < text_length) && matchone(p, text[text_offset]))
   {
-      text_offset++;
+    text_offset++;
     (*matchlength)++;
   }
   while (&text[text_offset] >= prepoint)
@@ -383,7 +381,7 @@ static int matchplus(regex_t p, regex_t* pattern, const char* text, size_t text_
   const char* prepoint = text;
   while ((text_offset < text_length) && matchone(p, text[text_offset]))
   {
-      text_offset++;
+    text_offset++;
     (*matchlength)++;
   }
   while (text > prepoint)

@@ -62,7 +62,7 @@ typedef struct regex_t* re_t;
 int re_matchp(re_t pattern, const char* text, size_t text_length, size_t* matchlength);
 
 /* Compile a regular expression in-place, allowing for multiple needles to be compiled without the usage of a static buffer. Returns ERROR_SUCCESS (0) on success, else 1. */
-int re_compile(const char* pattern, size_t pattern_length, size_t max_regex_objects, size_t max_char_class_len, re_t* out_compiled, unsigned char** out_ccl);
+int re_compile(const char* pattern, size_t pattern_length, re_t compiled_regex, unsigned char* regex_char_buffer);
 
 #ifdef __cplusplus
 }
