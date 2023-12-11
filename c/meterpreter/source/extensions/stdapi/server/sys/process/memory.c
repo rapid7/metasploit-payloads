@@ -601,8 +601,8 @@ DWORD request_sys_process_memory_search(Remote* remote, Packet* packet)
 				{
 					const unsigned char* current_buffer_ptr = memory_buffer + current_buffer_offset;
 					const size_t bytes_to_regex = bytes_read - current_buffer_offset;
-
-					result = re_matchp((re_t)&regex_needles[current_needle_index].compiled_regex, current_buffer_ptr, bytes_to_regex, &match_length);
+					
+					result = re_matchp((re_t)&regex_needles[current_needle_index].compiled_regex, current_buffer_ptr, bytes_to_regex, current_max_match_length, &match_length);
 
 					if (result != -1)
 					{
@@ -617,15 +617,13 @@ DWORD request_sys_process_memory_search(Remote* remote, Packet* packet)
 							continue;
 						}
 
-						// TODO: Add a workaround for match length to the regex itself, allowing the regex engine to stop matching once an upper limit has been reached.
-						const size_t current_match_length = min(max_match_length, match_length);
 						const unsigned char* memory_buffer_ptr = memory_buffer + current_buffer_offset + result;
-						if (add_needle_results_to_packet(response, memory_buffer_ptr, current_match_length, match_address, (size_t)mem.BaseAddress, mem.RegionSize) != ERROR_SUCCESS)
+						if (add_needle_results_to_packet(response, memory_buffer_ptr, match_length, match_address, (size_t)mem.BaseAddress, mem.RegionSize) != ERROR_SUCCESS)
 						{
 							dprintf("[MEM SEARCH] Adding search results to packet was not successful");
 						}
 
-						current_buffer_offset += (result + current_match_length);
+						current_buffer_offset += (result + match_length);
 					}
 
 				} while (result != -1);

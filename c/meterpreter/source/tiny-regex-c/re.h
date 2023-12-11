@@ -59,7 +59,7 @@ typedef struct regex_t* re_t;
 #define MAX_CHAR_CLASS_LEN      255    /* Max length of character-class buffer in.   */
 
 /* Find matches of the compiled pattern inside text. */
-int re_matchp(re_t pattern, const char* text, size_t text_length, size_t* matchlength);
+int re_matchp(re_t pattern, const char* text, size_t text_length, size_t max_match_length, size_t* matchlength);
 
 /* Compile a regular expression in-place, allowing for multiple needles to be compiled without the usage of a static buffer. Returns ERROR_SUCCESS (0) on success, else 1. */
 int re_compile(const char* pattern, size_t pattern_length, re_t compiled_regex, unsigned char* regex_char_buffer);

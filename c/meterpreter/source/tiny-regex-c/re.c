@@ -37,10 +37,10 @@
 enum { UNUSED, DOT, BEGIN, END, QUESTIONMARK, STAR, PLUS, CHAR_RE, CHAR_CLASS, INV_CHAR_CLASS, DIGIT, NOT_DIGIT, ALPHA, NOT_ALPHA, WHITESPACE, NOT_WHITESPACE, /* BRANCH */ };
 
 /* Private function declarations: */
-static int matchpattern(regex_t* pattern, const char* text, size_t text_length, size_t text_offset, size_t* matchlength);
+static int matchpattern(regex_t* pattern, const char* text, size_t text_length, size_t text_offset, size_t max_match_size, size_t* matchlength);
 static int matchcharclass(char c, const char* str);
-static int matchstar(regex_t p, regex_t* pattern, const char* text, size_t text_length, size_t text_offset, size_t* matchlength);
-static int matchplus(regex_t p, regex_t* pattern, const char* text, size_t text_length, size_t text_offset, size_t* matchlength);
+static int matchstar(regex_t p, regex_t* pattern, const char* text, size_t text_length, size_t text_offset, size_t max_match_size, size_t* matchlength);
+static int matchplus(regex_t p, regex_t* pattern, const char* text, size_t text_length, size_t text_offset, size_t max_match_size, size_t* matchlength);
 static int matchone(regex_t p, char c);
 static int matchdigit(char c);
 static int matchalpha(char c);
@@ -51,15 +51,16 @@ static int matchdot(char c);
 static int ismetachar(char c);
 
 /* Public functions: */
-int re_matchp(re_t pattern, const char* text, size_t text_length, size_t* matchlength)
+int re_matchp(re_t pattern, const char* text, size_t text_length, size_t max_match_length, size_t* matchlength)
 {
+  if (max_match_length == 0) { return -1; }
   *matchlength = 0;
 
   if (pattern == 0 || text_length == 0) { return -1; }
 
   if (pattern[0].type == BEGIN)
   {
-      return ((matchpattern(&pattern[1], text, text_length, 0, matchlength)) ? 0 : -1);
+      return ((matchpattern(&pattern[1], text, text_length, 0, max_match_length, matchlength)) ? 0 : -1);
   }
   
   int idx = -1;
@@ -68,7 +69,7 @@ int re_matchp(re_t pattern, const char* text, size_t text_length, size_t* matchl
   {
       idx += 1;
 
-      if (matchpattern(pattern, text, text_length, idx, matchlength))
+      if (matchpattern(pattern, text, text_length, idx, max_match_length, matchlength))
       {
           return idx;
       }
@@ -356,18 +357,18 @@ static int matchone(regex_t p, char c)
   }
 }
 
-static int matchstar(regex_t p, regex_t* pattern, const char* text, size_t text_length, size_t text_offset, size_t* matchlength)
+static int matchstar(regex_t p, regex_t* pattern, const char* text, size_t text_length, size_t text_offset, size_t max_match_length, size_t* matchlength)
 {
   size_t prelen = *matchlength;
   const char* prepoint = text;
-  while ((text_offset < text_length) && matchone(p, text[text_offset]))
+  while ((text_offset < text_length) && (max_match_length > *matchlength) && matchone(p, text[text_offset]))
   {
     text_offset++;
     (*matchlength)++;
   }
   while (&text[text_offset] >= prepoint)
   {
-    if (matchpattern(pattern, text, text_length, text_offset--, matchlength))
+    if (matchpattern(pattern, text, text_length, text_offset--, max_match_length, matchlength))
       return 1;
     (*matchlength)--;
   }
@@ -376,17 +377,17 @@ static int matchstar(regex_t p, regex_t* pattern, const char* text, size_t text_
   return 0;
 }
 
-static int matchplus(regex_t p, regex_t* pattern, const char* text, size_t text_length, size_t text_offset, size_t* matchlength)
+static int matchplus(regex_t p, regex_t* pattern, const char* text, size_t text_length, size_t text_offset, size_t max_match_length, size_t* matchlength)
 {
   const char* prepoint = text;
-  while ((text_offset < text_length) && matchone(p, text[text_offset]))
+  while ((text_offset < text_length) && (max_match_length > *matchlength) && matchone(p, text[text_offset]))
   {
     text_offset++;
     (*matchlength)++;
   }
   while (text > prepoint)
   {
-    if (matchpattern(pattern, text, text_length, text_offset--, matchlength))
+    if (matchpattern(pattern, text, text_length, text_offset--, max_match_length, matchlength))
       return 1;
     (*matchlength)--;
   }
@@ -394,15 +395,15 @@ static int matchplus(regex_t p, regex_t* pattern, const char* text, size_t text_
   return 0;
 }
 
-static int matchquestion(regex_t p, regex_t* pattern, const char* text, size_t text_length, size_t text_offset, size_t* matchlength)
+static int matchquestion(regex_t p, regex_t* pattern, const char* text, size_t text_length, size_t text_offset, size_t max_match_length, size_t* matchlength)
 {
   if (p.type == UNUSED)
     return 1;
-  if (matchpattern(pattern, text, text_length, text_offset, matchlength))
+  if (matchpattern(pattern, text, text_length, text_offset, max_match_length, matchlength))
       return 1;
-  if ((text_offset < text_length) && matchone(p, text[text_offset++]))
+  if ((text_offset < text_length) && (max_match_length > *matchlength) && matchone(p, text[text_offset++]))
   {
-    if (matchpattern(pattern, text, text_length, text_offset, matchlength))
+    if (matchpattern(pattern, text, text_length, text_offset, max_match_length, matchlength))
     {
       (*matchlength)++;
       return 1;
@@ -449,22 +450,22 @@ static int matchpattern(regex_t* pattern, const char* text, int *matchlength)
 #else
 
 /* Iterative matching */
-static int matchpattern(regex_t* pattern, const char* text, size_t text_length, size_t text_offset, size_t* matchlength)
+static int matchpattern(regex_t* pattern, const char* text, size_t text_length, size_t text_offset, size_t max_match_length, size_t* matchlength)
 {
   size_t pre = *matchlength;
   do
   {
     if ((pattern[0].type == UNUSED) || (pattern[1].type == QUESTIONMARK))
     {
-      return matchquestion(pattern[0], &pattern[2], text, text_length, text_offset, matchlength);
+      return matchquestion(pattern[0], &pattern[2], text, text_length, text_offset, max_match_length, matchlength);
     }
     else if (pattern[1].type == STAR)
     {
-      return matchstar(pattern[0], &pattern[2], text, text_length, text_offset, matchlength);
+      return matchstar(pattern[0], &pattern[2], text, text_length, text_offset, max_match_length, matchlength);
     }
     else if (pattern[1].type == PLUS)
     {
-      return matchplus(pattern[0], &pattern[2], text, text_length, text_offset, matchlength);
+      return matchplus(pattern[0], &pattern[2], text, text_length, text_offset, max_match_length, matchlength);
     }
     else if ((pattern[0].type == END) && pattern[1].type == UNUSED)
     {
@@ -478,7 +479,7 @@ static int matchpattern(regex_t* pattern, const char* text, size_t text_length, 
 */
   (*matchlength)++;
   }
-  while ((text_offset < text_length) && matchone(*pattern++, text[text_offset++]));
+  while ((text_offset < text_length) && (max_match_length > *matchlength) && matchone(*pattern++, text[text_offset++]));
 
   *matchlength = pre;
   return 0;
