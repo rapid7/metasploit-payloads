@@ -49,15 +49,17 @@ public class stdapi_net_resolve_host implements Command {
     public int execute(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws Exception {
         String host = request.getStringValue(TLVType.TLV_TYPE_HOST_NAME);
         int family = request.getIntValue(TLVType.TLV_TYPE_ADDR_TYPE);
+        int return_val = ERROR_FAILURE;
         List<InetAddress> inetAddresses = resolve_host(host, family);
         if (inetAddresses != null) {
             TLVPacket addrTLV = new TLVPacket();
+            return_val = ERROR_SUCCESS;
             for(int i = 0; i < inetAddresses.size(); i++){
                 addrTLV.addOverflow(TLVType.TLV_TYPE_IP, inetAddresses.get(i).getAddress());
                 addrTLV.addOverflow(TLVType.TLV_TYPE_ADDR_TYPE, family);
             }
             response.addOverflow(TLVType.TLV_TYPE_RESOLVE_HOST_ENTRY, addrTLV);
         }
-        return ERROR_SUCCESS;
+        return return_val;
     }
 }
