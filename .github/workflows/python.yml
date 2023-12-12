@@ -19,10 +19,12 @@ permissions:
 on:
   push:
     paths:
-      - 'python/**'
+      - 'c/**'
+      - '.github/**'
   pull_request:
     paths:
-      - 'python/**'
+      - 'c/**'
+      - '.github/**'
 
 jobs:
   verify:

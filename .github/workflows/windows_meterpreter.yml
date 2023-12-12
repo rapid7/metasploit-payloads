@@ -20,12 +20,14 @@ on:
   push:
     paths:
       - 'c/**'
+      - '.github/**'
   pull_request:
     paths:
       - 'c/**'
+      - '.github/**'
 
 jobs:
-  verify:
+  mingw:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     name: Meterpreter MinGW Docker Build
@@ -39,3 +41,19 @@ jobs:
         run: |
           cd c/meterpreter
           script --return --command 'make docker'
+
+  windows:
+    runs-on: windows-2019
+    timeout-minutes: 40
+    name: Meterpreter Visual Studio 2019 Build
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          submodules: 'recursive'
+
+      - name: Compile
+        shell: cmd
+        run: |-
+          cd c/meterpreter
+          "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\Common7\Tools\VsDevCmd.bat" && make.bat
