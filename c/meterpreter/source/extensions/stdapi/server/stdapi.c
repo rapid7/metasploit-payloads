@@ -69,6 +69,7 @@ Command customCommands[] =
 	COMMAND_REQ(COMMAND_ID_STDAPI_SYS_PROCESS_MEMORY_PROTECT, request_sys_process_memory_protect),
 	COMMAND_REQ(COMMAND_ID_STDAPI_SYS_PROCESS_MEMORY_LOCK, request_sys_process_memory_lock),
 	COMMAND_REQ(COMMAND_ID_STDAPI_SYS_PROCESS_MEMORY_UNLOCK, request_sys_process_memory_unlock),
+	COMMAND_REQ(COMMAND_ID_STDAPI_SYS_PROCESS_MEMORY_SEARCH, request_sys_process_memory_search),
 
 	// Thread
 	COMMAND_REQ(COMMAND_ID_STDAPI_SYS_PROCESS_THREAD_OPEN, request_sys_process_thread_open),
