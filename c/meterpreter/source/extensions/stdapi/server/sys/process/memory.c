@@ -595,39 +595,37 @@ DWORD request_sys_process_memory_search(Remote* remote, Packet* packet)
 			{
 				size_t current_buffer_offset = 0;
 				size_t match_length = 0;
-				int result = -1;
+				int match_result = -1;
 
 				do
 				{
 					const unsigned char* current_buffer_ptr = memory_buffer + current_buffer_offset;
 					const size_t bytes_to_regex = bytes_read - current_buffer_offset;
 					
-					result = re_matchp((re_t)&regex_needles[current_needle_index].compiled_regex, current_buffer_ptr, bytes_to_regex, current_max_match_length, &match_length);
+					match_result = re_matchp((re_t)&regex_needles[current_needle_index].compiled_regex, current_buffer_ptr, bytes_to_regex, current_max_match_length, &match_length);
 
-					if (result != -1)
+					if (match_result != -1)
 					{
-						const size_t match_address = read_address + current_buffer_offset + result;
+						const size_t match_address = read_address + current_buffer_offset + match_result;
 						dprintf("[MEM SEARCH] -- ! FOUND A REGEX MATCH ! --");
 						dprintf("[MEM SEARCH] Address: %p", match_address);
 
 						if (match_length < min_match_length)
 						{
 							dprintf("[MEM SEARCH] Match length was too short, skipping.");
-							current_buffer_offset += (result + match_length);
+							current_buffer_offset += (match_result + match_length);
 							continue;
 						}
 
-						const unsigned char* memory_buffer_ptr = memory_buffer + current_buffer_offset + result;
+						const unsigned char* memory_buffer_ptr = memory_buffer + current_buffer_offset + match_result;
 						if (add_needle_results_to_packet(response, memory_buffer_ptr, match_length, match_address, (size_t)mem.BaseAddress, mem.RegionSize) != ERROR_SUCCESS)
 						{
 							dprintf("[MEM SEARCH] Adding search results to packet was not successful");
 						}
 
-						current_buffer_offset += (result + match_length);
+						current_buffer_offset += (match_result + match_length);
 					}
-
 				} while (result != -1);
-
 			}
 
 			memory_region_offset += bytes_to_read;
