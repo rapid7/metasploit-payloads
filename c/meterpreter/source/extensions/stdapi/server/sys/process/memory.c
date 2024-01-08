@@ -625,7 +625,7 @@ DWORD request_sys_process_memory_search(Remote* remote, Packet* packet)
 
 						current_buffer_offset += (match_result + match_length);
 					}
-				} while (result != -1);
+				} while (match_result != -1);
 			}
 
 			memory_region_offset += bytes_to_read;
