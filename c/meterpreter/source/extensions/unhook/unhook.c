@@ -6,7 +6,6 @@
 #include "common_metapi.h"
 
 #define RDIDLL_NOEXPORT
-#include "../../ReflectiveDLLInjection/dll/src/DirectSyscall.c"
 #include "../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
 
 #include "unhook.h"

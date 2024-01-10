@@ -9,7 +9,6 @@
 MetApi* met_api = NULL;
 
 #define RDIDLL_NOEXPORT
-#include "../../ReflectiveDLLInjection/dll/src/DirectSyscall.c"
 #include "../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
 #include <windows.h>
 #include "lanattacks.h"
