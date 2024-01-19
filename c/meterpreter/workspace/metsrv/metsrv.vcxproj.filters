@@ -55,4 +55,8 @@
     <ClCompile Include="..\..\source\metsrv\metapi.c" />
     <ClCompile Include="..\..\source\logging\logging.c" />
   </ItemGroup>
+  <ItemGroup>
+    <MASM Include="..\..\source\ReflectiveDLLInjection\dll\src\GateTrampoline64.asm" />
+    <MASM Include="..\..\source\ReflectiveDLLInjection\dll\src\GateTrampoline32.asm" />
+  </ItemGroup>
 </Project>
