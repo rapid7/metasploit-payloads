@@ -320,6 +320,108 @@ class ExtServerStdApiSystemConfigTest(ExtServerStdApiTest):
         ).get("value")
         self.assertRegex(sid, "S-1-5-.*")
 
+class ExtStdNetResolveTest(ExtServerStdApiTest):
+    def test_stdapi_net_resolve_host(self):
+        MSF_AF_INET = 2
+
+        request = bytes()
+        request += self.meterpreter_context["tlv_pack"](
+            self.meterpreter_context["TLV_TYPE_COMMAND_ID"],
+            self.meterpreter_context['cmd_string_to_id']('stdapi_net_resolve_host')
+        )
+
+        request += self.meterpreter_context["tlv_pack"](
+            self.ext_server_stdapi["TLV_TYPE_REQUEST_ID"],
+            "18252822037434405542596288798302"
+        )
+
+        request += self.meterpreter_context["tlv_pack"](
+            self.ext_server_stdapi["TLV_TYPE_HOST_NAME"],
+            "rapid7.com"
+        )
+
+        request += self.meterpreter_context["tlv_pack"](
+            self.ext_server_stdapi["TLV_TYPE_ADDR_TYPE"],
+            MSF_AF_INET
+        )
+
+        response = bytes()
+        _result_code, result_tlvs = self.assertMethodErrorSuccess(
+            "stdapi_net_resolve_hosts", request, response
+        )
+
+        resolve_host_entries = self.meterpreter_context["packet_get_tlv"](
+            result_tlvs, self.ext_server_stdapi["TLV_TYPE_RESOLVE_HOST_ENTRY"]
+        ).get("value")
+
+        resolved_host_ips = self.meterpreter_context["packet_enum_tlvs"](
+            resolve_host_entries, self.ext_server_stdapi["TLV_TYPE_IP"]
+        )
+
+        resolved_host_families = self.meterpreter_context["packet_enum_tlvs"](
+            resolve_host_entries, self.ext_server_stdapi["TLV_TYPE_ADDR_TYPE"]
+        )
+
+        for ip in resolved_host_ips:
+            resolved_ip = socket.inet_ntop(socket.AF_INET, ip['value'])
+            self.assertTrue(isinstance(socket.inet_aton(resolved_ip), bytes))
+
+        for family in resolved_host_families:
+            self.assertEqual(family['value'], MSF_AF_INET)
+
+    def test_stdapi_net_resolve_hosts(self):
+        MSF_AF_INET = 2
+
+        request = bytes()
+        request += self.meterpreter_context["tlv_pack"](
+            self.meterpreter_context["TLV_TYPE_COMMAND_ID"],
+            self.meterpreter_context['cmd_string_to_id']('stdapi_net_resolve_hosts')
+        )
+
+        request += self.meterpreter_context["tlv_pack"](
+            self.ext_server_stdapi["TLV_TYPE_REQUEST_ID"],
+            "11047287278261284282680986949856"
+        )
+
+        request += self.meterpreter_context["tlv_pack"](
+            self.ext_server_stdapi["TLV_TYPE_ADDR_TYPE"],
+            MSF_AF_INET
+        )
+
+        request += self.meterpreter_context["tlv_pack"](
+            self.ext_server_stdapi["TLV_TYPE_HOST_NAME"],
+            "rapid7.com"
+        )
+
+        request += self.meterpreter_context["tlv_pack"](
+            self.ext_server_stdapi["TLV_TYPE_HOST_NAME"],
+            "google.com"
+        )
+
+        response = bytes()
+        _result_code, result_tlvs = self.assertMethodErrorSuccess(
+            "stdapi_net_resolve_hosts", request, response
+        )
+
+        resolved_host_entry_list = self.meterpreter_context["packet_enum_tlvs"](
+            result_tlvs, self.ext_server_stdapi["TLV_TYPE_RESOLVE_HOST_ENTRY"]
+        )
+
+        for resolved_host_entry in resolved_host_entry_list:
+            resolved_host_ips = self.meterpreter_context["packet_enum_tlvs"](
+                resolved_host_entry['value'], self.ext_server_stdapi["TLV_TYPE_IP"]
+            )
+
+            resolved_host_families = self.meterpreter_context["packet_enum_tlvs"](
+                resolved_host_entry['value'], self.ext_server_stdapi["TLV_TYPE_ADDR_TYPE"]
+            )
+
+            for ip in resolved_host_ips:
+                resolved_ip = socket.inet_ntop(socket.AF_INET, ip['value'])
+                self.assertTrue(isinstance(socket.inet_aton(resolved_ip), bytes))
+
+            for family in resolved_host_families:
+                self.assertEqual(family['value'], MSF_AF_INET)
 
 if __name__ == "__main__":
     unittest.main()
