@@ -160,6 +160,7 @@ public interface TLVType {
     public static final int TLV_TYPE_PROCESS_GROUP      = TLVPacket.TLV_META_TYPE_GROUP  | 2303;
     public static final int TLV_TYPE_PROCESS_FLAGS      = TLVPacket.TLV_META_TYPE_UINT   | 2304;
     public static final int TLV_TYPE_PROCESS_ARGUMENTS  = TLVPacket.TLV_META_TYPE_STRING | 2305;
+    public static final int TLV_TYPE_PROCESS_ARGUMENT   = TLVPacket.TLV_META_TYPE_STRING | 2310;
 
     public static final int TLV_TYPE_IMAGE_FILE        = TLVPacket.TLV_META_TYPE_STRING | 2400;
     public static final int TLV_TYPE_IMAGE_FILE_PATH   = TLVPacket.TLV_META_TYPE_STRING | 2401;
