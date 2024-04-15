@@ -655,6 +655,7 @@ TLV_TYPE_PROCESS_FLAGS         = TLV_META_TYPE_UINT    | 2304
 TLV_TYPE_PROCESS_ARGUMENTS     = TLV_META_TYPE_STRING  | 2305
 TLV_TYPE_PROCESS_ARCH          = TLV_META_TYPE_UINT    | 2306
 TLV_TYPE_PARENT_PID            = TLV_META_TYPE_UINT    | 2307
+TLV_TYPE_PROCESS_ARGUMENT      = TLV_META_TYPE_STRING  | 2310
 
 TLV_TYPE_IMAGE_FILE            = TLV_META_TYPE_STRING  | 2400
 TLV_TYPE_IMAGE_FILE_PATH       = TLV_META_TYPE_STRING  | 2401
@@ -724,6 +725,7 @@ PROCESS_EXECUTE_FLAG_SUSPENDED = (1 << 2)
 PROCESS_EXECUTE_FLAG_USE_THREAD_TOKEN = (1 << 3)
 PROCESS_EXECUTE_FLAG_SUBSHELL         = (1 << 6)
 PROCESS_EXECUTE_FLAG_PTY              = (1 << 7)
+PROCESS_EXECUTE_FLAG_ARG_ARRAY        = (1 << 8)
 
 PROCESS_ARCH_UNKNOWN = 0
 PROCESS_ARCH_X86 = 1
@@ -1409,21 +1411,33 @@ def stdapi_sys_process_close(request, response):
 @register_function
 def stdapi_sys_process_execute(request, response):
     cmd = packet_get_tlv(request, TLV_TYPE_PROCESS_PATH)['value']
-    raw_args = packet_get_tlv(request, TLV_TYPE_PROCESS_ARGUMENTS)
-    if raw_args:
-        raw_args = raw_args['value']
-    else:
-        raw_args = ""
-    flags = packet_get_tlv(request, TLV_TYPE_PROCESS_FLAGS)['value']
+
     if len(cmd) == 0:
         return ERROR_FAILURE, response
-    if os.path.isfile('/bin/sh') and (flags & PROCESS_EXECUTE_FLAG_SUBSHELL):
-        if raw_args:
-            cmd = cmd + ' ' + raw_args
-        args = ['/bin/sh', '-c', cmd]
+
+    flags = packet_get_tlv(request, TLV_TYPE_PROCESS_FLAGS)['value']
+    if flags & PROCESS_EXECUTE_FLAG_ARG_ARRAY:
+        cmd_array = [cmd]
+        for arg in packet_enum_tlvs(request, TLV_TYPE_PROCESS_ARGUMENT):
+            cmd_array.append(arg['value'])
+
+        # In case it's using a subshell:
+        cmd_string = shlex.join(cmd_array)
     else:
-        args = [cmd]
-        args.extend(shlex.split(raw_args))
+        # Legacy argument style
+        arg_string = packet_get_tlv(request, TLV_TYPE_PROCESS_ARGUMENTS)
+        if arg_string:
+            arg_string = arg_string['value']
+        else:
+            arg_string = ""
+        cmd_string = cmd + ' ' + arg_string
+
+        # In case we're not using a subshell:
+        cmd_array = [cmd]
+        cmd_array.extend(shlex.split(arg_string))
+
+    if os.path.isfile('/bin/sh') and (flags & PROCESS_EXECUTE_FLAG_SUBSHELL):
+        cmd_array = ['/bin/sh', '-c', cmd_string]
 
     if (flags & PROCESS_EXECUTE_FLAG_CHANNELIZED):
         if has_pty and (flags & PROCESS_EXECUTE_FLAG_PTY):
@@ -1434,17 +1448,17 @@ def stdapi_sys_process_execute(request, response):
                     termios.tcsetattr(master, termios.TCSADRAIN, settings)
                 except:
                     pass
-            proc_h = STDProcess(args, stdin=slave, stdout=slave, stderr=slave, bufsize=0, preexec_fn=os.setsid)
+            proc_h = STDProcess(cmd_array, stdin=slave, stdout=slave, stderr=slave, bufsize=0, preexec_fn=os.setsid)
             proc_h.stdin = os.fdopen(master, 'wb')
             proc_h.stdout = os.fdopen(master, 'rb')
             proc_h.stderr = open(os.devnull, 'rb')
             proc_h.ptyfd = slave
         else:
-            proc_h = STDProcess(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            proc_h = STDProcess(cmd_array, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             proc_h.echo_protection = True
         proc_h.start()
     else:
-        proc_h = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        proc_h = subprocess.Popen(cmd_array, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
     proc_h_id = meterpreter.add_process(proc_h)
     response += tlv_pack(TLV_TYPE_PID, proc_h.pid)
