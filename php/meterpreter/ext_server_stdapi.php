@@ -70,6 +70,7 @@ define("PROCESS_EXECUTE_FLAG_HIDDEN", (1 << 0));
 define("PROCESS_EXECUTE_FLAG_CHANNELIZED", (1 << 1));
 define("PROCESS_EXECUTE_FLAG_SUSPENDED", (1 << 2));
 define("PROCESS_EXECUTE_FLAG_USE_THREAD_TOKEN", (1 << 3));
+define("PROCESS_EXECUTE_FLAG_ARG_ARRAY", (1 << 8));
 
 # Registry
 define("TLV_TYPE_HKEY",                TLV_META_TYPE_QWORD   | 1000);
@@ -113,6 +114,7 @@ define("TLV_TYPE_PROCESS_PATH",        TLV_META_TYPE_STRING  | 2302);
 define("TLV_TYPE_PROCESS_GROUP",       TLV_META_TYPE_GROUP   | 2303);
 define("TLV_TYPE_PROCESS_FLAGS",       TLV_META_TYPE_UINT    | 2304);
 define("TLV_TYPE_PROCESS_ARGUMENTS",   TLV_META_TYPE_STRING  | 2305);
+define("TLV_TYPE_PROCESS_ARGUMENT",   TLV_META_TYPE_STRING  | 2310);
 
 define("TLV_TYPE_IMAGE_FILE",          TLV_META_TYPE_STRING  | 2400);
 define("TLV_TYPE_IMAGE_FILE_PATH",     TLV_META_TYPE_STRING  | 2401);
@@ -898,20 +900,35 @@ function stdapi_sys_process_execute($req, &$pkt) {
 
     my_print("doing execute");
     $cmd_tlv = packet_get_tlv($req, TLV_TYPE_PROCESS_PATH);
-    $args_tlv = packet_get_tlv($req, TLV_TYPE_PROCESS_ARGUMENTS);
-    $flags_tlv = packet_get_tlv($req, TLV_TYPE_PROCESS_FLAGS);
-
     $cmd = $cmd_tlv['value'];
-    $args = $args_tlv['value'];
-    $flags = $flags_tlv['value'];
 
     # If there was no command specified, well, a user sending an empty command
     # deserves failure.
-    my_print("Cmd: $cmd $args");
     if (0 > strlen($cmd)) {
         return ERROR_FAILURE;
     }
-    $real_cmd = $cmd ." ". $args;
+
+    $flags_tlv = packet_get_tlv($req, TLV_TYPE_PROCESS_FLAGS);
+    $flags = $flags_tlv['value'];
+
+    # proc_open can take either a string or an array of strings
+    # We support both, based on the presence of a flag.
+    # PHP pre-7.4 doesn't support args-as-arrays
+    if (($flags & PROCESS_EXECUTE_FLAG_ARG_ARRAY) && version_compare(PHP_VERSION, '7.4.0') >= 0) {
+        $args_tlv = packet_get_all_tlvs($req, TLV_TYPE_PROCESS_ARGUMENT);
+        $real_cmd = array();
+        array_push($real_cmd, $cmd);
+        foreach ($args_tlv as $arg_tlv) {
+            $arg = $arg_tlv['value'];
+            array_push($real_cmd, $arg);
+        }
+    } else {
+        $args_tlv = packet_get_tlv($req, TLV_TYPE_PROCESS_ARGUMENTS);
+        $args = $args_tlv['value'];
+        $real_cmd = $cmd ." ". $args;
+        my_print("Cmd: $real_cmd");
+    }
+
 
     $pipe_desc = array(array('pipe','r'), array('pipe','w'));
     if (is_windows()) {
