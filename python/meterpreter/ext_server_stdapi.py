@@ -638,24 +638,25 @@ DELETE_KEY_FLAG_RECURSIVE = (1 << 0)
 ##
 # Process
 ##
-TLV_TYPE_BASE_ADDRESS          = TLV_META_TYPE_QWORD   | 2000
-TLV_TYPE_ALLOCATION_TYPE       = TLV_META_TYPE_UINT    | 2001
-TLV_TYPE_PROTECTION            = TLV_META_TYPE_UINT    | 2002
-TLV_TYPE_PROCESS_PERMS         = TLV_META_TYPE_UINT    | 2003
-TLV_TYPE_PROCESS_MEMORY        = TLV_META_TYPE_RAW     | 2004
-TLV_TYPE_ALLOC_BASE_ADDRESS    = TLV_META_TYPE_QWORD   | 2005
-TLV_TYPE_MEMORY_STATE          = TLV_META_TYPE_UINT    | 2006
-TLV_TYPE_MEMORY_TYPE           = TLV_META_TYPE_UINT    | 2007
-TLV_TYPE_ALLOC_PROTECTION      = TLV_META_TYPE_UINT    | 2008
-TLV_TYPE_PID                   = TLV_META_TYPE_UINT    | 2300
-TLV_TYPE_PROCESS_NAME          = TLV_META_TYPE_STRING  | 2301
-TLV_TYPE_PROCESS_PATH          = TLV_META_TYPE_STRING  | 2302
-TLV_TYPE_PROCESS_GROUP         = TLV_META_TYPE_GROUP   | 2303
-TLV_TYPE_PROCESS_FLAGS         = TLV_META_TYPE_UINT    | 2304
-TLV_TYPE_PROCESS_ARGUMENTS     = TLV_META_TYPE_STRING  | 2305
-TLV_TYPE_PROCESS_ARCH          = TLV_META_TYPE_UINT    | 2306
-TLV_TYPE_PARENT_PID            = TLV_META_TYPE_UINT    | 2307
-TLV_TYPE_PROCESS_ARGUMENT      = TLV_META_TYPE_STRING  | 2310
+TLV_TYPE_BASE_ADDRESS           = TLV_META_TYPE_QWORD   | 2000
+TLV_TYPE_ALLOCATION_TYPE        = TLV_META_TYPE_UINT    | 2001
+TLV_TYPE_PROTECTION             = TLV_META_TYPE_UINT    | 2002
+TLV_TYPE_PROCESS_PERMS          = TLV_META_TYPE_UINT    | 2003
+TLV_TYPE_PROCESS_MEMORY         = TLV_META_TYPE_RAW     | 2004
+TLV_TYPE_ALLOC_BASE_ADDRESS     = TLV_META_TYPE_QWORD   | 2005
+TLV_TYPE_MEMORY_STATE           = TLV_META_TYPE_UINT    | 2006
+TLV_TYPE_MEMORY_TYPE            = TLV_META_TYPE_UINT    | 2007
+TLV_TYPE_ALLOC_PROTECTION       = TLV_META_TYPE_UINT    | 2008
+TLV_TYPE_PID                    = TLV_META_TYPE_UINT    | 2300
+TLV_TYPE_PROCESS_NAME           = TLV_META_TYPE_STRING  | 2301
+TLV_TYPE_PROCESS_PATH           = TLV_META_TYPE_STRING  | 2302
+TLV_TYPE_PROCESS_GROUP          = TLV_META_TYPE_GROUP   | 2303
+TLV_TYPE_PROCESS_FLAGS          = TLV_META_TYPE_UINT    | 2304
+TLV_TYPE_PROCESS_ARGUMENTS      = TLV_META_TYPE_STRING  | 2305
+TLV_TYPE_PROCESS_ARCH           = TLV_META_TYPE_UINT    | 2306
+TLV_TYPE_PARENT_PID             = TLV_META_TYPE_UINT    | 2307
+TLV_TYPE_PROCESS_ARGUMENT       = TLV_META_TYPE_STRING  | 2310
+TLV_TYPE_PROCESS_UNESCAPED_PATH = TLV_META_TYPE_STRING  | 2311
 
 TLV_TYPE_IMAGE_FILE            = TLV_META_TYPE_STRING  | 2400
 TLV_TYPE_IMAGE_FILE_PATH       = TLV_META_TYPE_STRING  | 2401
@@ -1410,17 +1411,22 @@ def stdapi_sys_process_close(request, response):
 
 @register_function
 def stdapi_sys_process_execute(request, response):
-    cmd = packet_get_tlv(request, TLV_TYPE_PROCESS_PATH)['value']
-
-    if len(cmd) == 0:
-        return ERROR_FAILURE, response
-
     flags = packet_get_tlv(request, TLV_TYPE_PROCESS_FLAGS)['value']
     if flags & PROCESS_EXECUTE_FLAG_ARG_ARRAY:
+        cmd = packet_get_tlv(request, TLV_TYPE_PROCESS_UNESCAPED_PATH)['value']
+
+        if len(cmd) == 0:
+            return ERROR_FAILURE, response
+
         cmd_array = [cmd]
         for arg in packet_enum_tlvs(request, TLV_TYPE_PROCESS_ARGUMENT):
             cmd_array.append(arg['value'])
     else:
+        cmd = packet_get_tlv(request, TLV_TYPE_PROCESS_PATH)['value']
+
+        if len(cmd) == 0:
+            return ERROR_FAILURE, response
+
         # Legacy argument style
         arg_string = packet_get_tlv(request, TLV_TYPE_PROCESS_ARGUMENTS)
         if arg_string:

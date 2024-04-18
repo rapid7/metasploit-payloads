@@ -136,10 +136,9 @@ DWORD get_commandline(Packet *packet, DWORD flags, PCHAR* commandLine)
 	PCHAR path, arguments = NULL;
 	DWORD backslashCount;
 
-	path = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_PROCESS_PATH);
-
 	if (flags & PROCESS_EXECUTE_FLAG_ARG_ARRAY)
 	{
+	    path = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_PROCESS_UNESCAPED_PATH);
 		// Calculate the potential size of our command line.
 		// The path may need quoting, so two extra chars there, plus null terminator.
 		commandLineLength = strlen(path) + 3;
@@ -236,7 +235,7 @@ DWORD get_commandline(Packet *packet, DWORD flags, PCHAR* commandLine)
 	}
 	else
 	{
-		dprintf("[PROCESS] Using legacy command line: %s", *commandLine);
+	    path = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_PROCESS_PATH);
 		arguments = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_PROCESS_ARGUMENTS);
 		// If the remote endpoint provided arguments, combine them with the
 		// executable to produce a command line
@@ -259,6 +258,7 @@ DWORD get_commandline(Packet *packet, DWORD flags, PCHAR* commandLine)
 		{
 			return ERROR_INVALID_PARAMETER;
 		}
+		dprintf("[PROCESS] Using legacy command line: %s", *commandLine);
 	}
 	return ERROR_SUCCESS;
 }

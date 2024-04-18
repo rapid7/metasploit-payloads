@@ -18,14 +18,14 @@ public class stdapi_sys_process_execute implements Command {
     private static int pid = 0;
 
     public int execute(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws Exception {
-        String cmd = request.getStringValue(TLVType.TLV_TYPE_PROCESS_PATH);
-        if (cmd.length() == 0) {
-            return ERROR_FAILURE;
-        }
-
         int flags = request.getIntValue(TLVType.TLV_TYPE_PROCESS_FLAGS);
         Process proc;
         if ((flags & PROCESS_EXECUTE_FLAG_ARG_ARRAY) != 0) {
+            String cmd = request.getStringValue(TLVType.TLV_TYPE_PROCESS_UNESCAPED_PATH);
+            if (cmd.length() == 0) {
+                return ERROR_FAILURE;
+            }
+
             List rawArgs = request.getValues(TLVType.TLV_TYPE_PROCESS_ARGUMENT);
             ArrayList<String> args = new ArrayList<String>();
             for (int i = 0; i < rawArgs.size(); ++i) {
@@ -33,6 +33,11 @@ public class stdapi_sys_process_execute implements Command {
             }
             proc = execute(cmd, args);
         } else {
+            String cmd = request.getStringValue(TLVType.TLV_TYPE_PROCESS_PATH);
+            if (cmd.length() == 0) {
+                return ERROR_FAILURE;
+            }
+
             String argsString = request.getStringValue(TLVType.TLV_TYPE_PROCESS_ARGUMENTS, "");
             StringBuilder cmdbuf = new StringBuilder();
             cmdbuf.append(cmd);
@@ -65,6 +70,7 @@ public class stdapi_sys_process_execute implements Command {
         cmdAndArgs.add(cmd);
         cmdAndArgs.addAll(args);
         ProcessBuilder builder = new ProcessBuilder(cmdAndArgs);
+        builder.directory(Loader.getCWD());
         return builder.start();
     }
 
