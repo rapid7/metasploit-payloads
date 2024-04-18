@@ -123,7 +123,7 @@ BOOL needs_quoting(PCHAR str)
 	return bNeedsQuoting;
 }
 
-DWORD get_arguments(Packet *packet, DWORD flags, PCHAR* commandLine)
+DWORD get_commandline(Packet *packet, DWORD flags, PCHAR* commandLine)
 {
 	// Check new-style arguments first
 	DWORD dwTlvIndex = 0;
@@ -319,8 +319,8 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 		
 
 		flags = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_PROCESS_FLAGS);
-		// Get the execution arguments
-		result = get_arguments(packet, flags, &commandLine);
+		// Get the execution command line
+		result = get_commandline(packet, flags, &commandLine);
 		if (result != ERROR_SUCCESS)
 		{
 			break;
