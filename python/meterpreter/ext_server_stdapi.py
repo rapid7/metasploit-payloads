@@ -1420,9 +1420,6 @@ def stdapi_sys_process_execute(request, response):
         cmd_array = [cmd]
         for arg in packet_enum_tlvs(request, TLV_TYPE_PROCESS_ARGUMENT):
             cmd_array.append(arg['value'])
-
-        # In case it's using a subshell:
-        cmd_string = shlex.join(cmd_array)
     else:
         # Legacy argument style
         arg_string = packet_get_tlv(request, TLV_TYPE_PROCESS_ARGUMENTS)
@@ -1436,8 +1433,8 @@ def stdapi_sys_process_execute(request, response):
         cmd_array = [cmd]
         cmd_array.extend(shlex.split(arg_string))
 
-    if os.path.isfile('/bin/sh') and (flags & PROCESS_EXECUTE_FLAG_SUBSHELL):
-        cmd_array = ['/bin/sh', '-c', cmd_string]
+        if os.path.isfile('/bin/sh') and (flags & PROCESS_EXECUTE_FLAG_SUBSHELL):
+            cmd_array = ['/bin/sh', '-c', cmd_string]
 
     if (flags & PROCESS_EXECUTE_FLAG_CHANNELIZED):
         if has_pty and (flags & PROCESS_EXECUTE_FLAG_PTY):
