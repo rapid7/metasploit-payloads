@@ -70,6 +70,12 @@ public class CommandManager {
             }
         }
 
+        // Early-access releases add a "-ea" suffix
+        // These are the default versions for Alpine
+        if (version.endsWith("-ea")) {
+            version = version.substring(0, version.length() - 3);
+        }
+
         return Integer.parseInt(version) + ExtensionLoader.V1_base;
     }
 
