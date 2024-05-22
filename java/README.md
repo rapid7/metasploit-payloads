@@ -38,6 +38,8 @@ cd working_directory
 docker run --rm  -it -w $(pwd) -v $(pwd):$(pwd) rapid7/msf-ubuntu-x64-meterpreter:latest /bin/bash
 
 cd metasploit-payloads/java
+# Optional: You may need to run a clean if you are having compilation issues
+make clean
 make android
 ```
 
