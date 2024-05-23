@@ -29,12 +29,6 @@
 			</exclusions>
 		</dependency>
 		<dependency>
-			<groupId>org.json</groupId>
-			<artifactId>json</artifactId>
-			<version>20231013</version>
-			<scope>provided</scope>
-		</dependency>
-		<dependency>
 			<groupId>com.metasploit</groupId>
 			<artifactId>Metasploit-JavaPayload</artifactId>
 			<version>${project.version}</version>
