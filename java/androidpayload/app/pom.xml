@@ -21,6 +21,12 @@
 			<artifactId>android</artifactId>
 			<version>2.3.3</version>
 			<scope>provided</scope>
+			<exclusions>
+				<exclusion>
+					<groupId>org.json</groupId>
+					<artifactId>json</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 		<dependency>
 			<groupId>com.metasploit</groupId>
