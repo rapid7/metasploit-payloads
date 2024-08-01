@@ -776,6 +776,7 @@ DWORD request_sys_config_sysinfo(Remote *remote, Packet *packet)
 			met_api->packet.add_tlv_string(response, TLV_TYPE_DOMAIN, (LPCSTR)domainName);
 			met_api->packet.add_tlv_uint(response, TLV_TYPE_LOGGED_ON_USER_COUNT, localSysinfo->wki102_logged_on_users);
 			free(domainName);
+			NetApiBufferFree(localSysinfo);
 		}
 		else
 		{
