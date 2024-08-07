@@ -81,6 +81,12 @@ typedef struct _POOLPARTYCONTEXT
 		BYTE bPadding2[8];
 	} p;
 
+	union
+	{
+		LPVOID hTriggerEvent;
+		BYTE bPadding2[8];
+	} e;
+
 } POOLPARTYCONTEXT, * LPPOOLPARTYCONTEXT;
 
 //===============================================================================================//
