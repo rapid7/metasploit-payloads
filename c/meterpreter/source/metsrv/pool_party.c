@@ -11,20 +11,28 @@ pNtDll* pNtDll_Init() {
 		bError = ntdll == NULL;
 		if (!bError) {
 			HMODULE hNtDll = LoadLibraryA("ntdll.dll");
-			ntdll->pZwAssociateWaitCompletionPacket = (NTSTATUS(NTAPI*)(HANDLE, HANDLE, HANDLE, PVOID, PVOID, NTSTATUS, ULONG_PTR, PBOOLEAN))GetProcAddress(hNtDll, "ZwAssociateWaitCompletionPacket");
-			ntdll->pZwSetInformationFile = (NTSTATUS(NTAPI*)(HANDLE, PIO_STATUS_BLOCK, PVOID, ULONG, ULONG))GetProcAddress(hNtDll, "ZwSetInformationFile");
-			ntdll->pNtAlpcCreatePort = (NTSTATUS(NTAPI*)(PHANDLE, POBJECT_ATTRIBUTES, PALPC_PORT_ATTRIBUTES))GetProcAddress(hNtDll, "NtAlpcCreatePort");
-			ntdll->pNtAlpcSetInformation = (NTSTATUS(NTAPI*)(HANDLE, ULONG, PVOID, ULONG))GetProcAddress(hNtDll, "NtAlpcSetInformation");
-			ntdll->pNtAlpcConnectPort = (NTSTATUS(NTAPI*)(PHANDLE, PUNICODE_STRING, POBJECT_ATTRIBUTES, PALPC_PORT_ATTRIBUTES, DWORD, PSID, PPORT_MESSAGE, PSIZE_T, PALPC_MESSAGE_ATTRIBUTES, PALPC_MESSAGE_ATTRIBUTES, PLARGE_INTEGER))GetProcAddress(hNtDll, "NtAlpcConnectPort");
-			ntdll->pRtlAdjustPrivilege = (NTSTATUS(NTAPI*)(ULONG, BOOLEAN, BOOLEAN, PBOOLEAN))GetProcAddress(hNtDll, "RtlAdjustPrivilege");
-			ntdll->pZwSetIoCompletion = (NTSTATUS(NTAPI*)(HANDLE, PVOID, PVOID, NTSTATUS, ULONG_PTR))GetProcAddress(hNtDll, "ZwSetIoCompletion");
-			ntdll->pNtSetTimer2 = (NTSTATUS(NTAPI*)(HANDLE, PLARGE_INTEGER, PLARGE_INTEGER, PT2_SET_PARAMETERS))GetProcAddress(hNtDll, "NtSetTimer2");
+
+			// Hijack Handles
 			ntdll->pNtQueryInformationProcess = (NTSTATUS(NTAPI*)(HANDLE, PROCESSINFOCLASS, PVOID, ULONG, PULONG))GetProcAddress(hNtDll, "NtQueryInformationProcess");
 			ntdll->pNtQueryObject = (NTSTATUS(NTAPI*)(HANDLE, OBJECT_INFORMATION_CLASS, PVOID, ULONG, PULONG))GetProcAddress(hNtDll, "NtQueryObject");
-			ntdll->pNtTpAllocAlpcCompletion = (NTSTATUS(NTAPI*)(PVOID, HANDLE, PVOID, PVOID, PVOID))GetProcAddress(hNtDll, "TpAllocAlpcCompletion");
-			ntdll->pTpAllocJobNotification = (NTSTATUS(NTAPI*)(PVOID, HANDLE, PVOID, PVOID, PVOID))GetProcAddress(hNtDll, "TpAllocJobNotification");
-			ntdll->pNtQueryInformationWorkerFactory = (NTSTATUS(NTAPI*)(HANDLE, _WORKERFACTORYINFOCLASS, PVOID, ULONG, PULONG))GetProcAddress(hNtDll, "NtQueryInformationWorkerFactory");
-			ntdll->pNtSetInformationWorkerFactory = (NTSTATUS(NTAPI*)(HANDLE, _WORKERFACTORYINFOCLASS, PVOID, ULONG))GetProcAddress(hNtDll, "NtSetInformationWorkerFactory");
+
+			// Remote TP Wait Insertion
+			ntdll->pZwAssociateWaitCompletionPacket = (NTSTATUS(NTAPI*)(HANDLE, HANDLE, HANDLE, PVOID, PVOID, NTSTATUS, ULONG_PTR, PBOOLEAN))GetProcAddress(hNtDll, "ZwAssociateWaitCompletionPacket"); // WIN 11, WIN 10(?)
+
+			// Remote TP Direct Insertion
+			
+			ntdll->pZwSetIoCompletion = (NTSTATUS(NTAPI*)(HANDLE, PVOID, PVOID, NTSTATUS, ULONG_PTR))GetProcAddress(hNtDll, "ZwSetIoCompletion"); // WIN7
+			
+			//ntdll->pZwSetInformationFile = (NTSTATUS(NTAPI*)(HANDLE, PIO_STATUS_BLOCK, PVOID, ULONG, ULONG))GetProcAddress(hNtDll, "ZwSetInformationFile"); // WIN7
+			//ntdll->pNtAlpcCreatePort = (NTSTATUS(NTAPI*)(PHANDLE, POBJECT_ATTRIBUTES, PALPC_PORT_ATTRIBUTES))GetProcAddress(hNtDll, "NtAlpcCreatePort"); // WIN7
+			//ntdll->pNtAlpcSetInformation = (NTSTATUS(NTAPI*)(HANDLE, ULONG, PVOID, ULONG))GetProcAddress(hNtDll, "NtAlpcSetInformation"); // WIN7
+			//ntdll->pNtAlpcConnectPort = (NTSTATUS(NTAPI*)(PHANDLE, PUNICODE_STRING, POBJECT_ATTRIBUTES, PALPC_PORT_ATTRIBUTES, DWORD, PSID, PPORT_MESSAGE, PSIZE_T, PALPC_MESSAGE_ATTRIBUTES, PALPC_MESSAGE_ATTRIBUTES, PLARGE_INTEGER))GetProcAddress(hNtDll, "NtAlpcConnectPort"); // WIN7
+			//ntdll->pRtlAdjustPrivilege = (NTSTATUS(NTAPI*)(ULONG, BOOLEAN, BOOLEAN, PBOOLEAN))GetProcAddress(hNtDll, "RtlAdjustPrivilege"); // WIN7
+			//ntdll->pNtSetTimer2 = (NTSTATUS(NTAPI*)(HANDLE, PLARGE_INTEGER, PLARGE_INTEGER, PT2_SET_PARAMETERS))GetProcAddress(hNtDll, "NtSetTimer2"); // WIN 10(?)
+			//ntdll->pNtTpAllocAlpcCompletion = (NTSTATUS(NTAPI*)(PVOID, HANDLE, PVOID, PVOID, PVOID))GetProcAddress(hNtDll, "TpAllocAlpcCompletion"); // WIN7
+			//ntdll->pTpAllocJobNotification = (NTSTATUS(NTAPI*)(PVOID, HANDLE, PVOID, PVOID, PVOID))GetProcAddress(hNtDll, "TpAllocJobNotification"); // WIN 10
+			//ntdll->pNtQueryInformationWorkerFactory = (NTSTATUS(NTAPI*)(HANDLE, _WORKERFACTORYINFOCLASS, PVOID, ULONG, PULONG))GetProcAddress(hNtDll, "NtQueryInformationWorkerFactory"); // WIN 7
+			//ntdll->pNtSetInformationWorkerFactory = (NTSTATUS(NTAPI*)(HANDLE, _WORKERFACTORYINFOCLASS, PVOID, ULONG))GetProcAddress(hNtDll, "NtSetInformationWorkerFactory"); // WIN7
 		}
 	}
 
