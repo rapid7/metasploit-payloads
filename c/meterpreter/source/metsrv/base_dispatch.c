@@ -695,11 +695,10 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
 		else {
 			if (inject_via_poolparty(remote, response, hProcess, dwDestinationArch, lpMemory, lpMemory + dwMigrateStubLength) != ERROR_SUCCESS)
 			{
-				BREAK_ON_ERROR("[MIGRATE] inject_via_poolparty failed");
+				SetLastError(ERROR_ACCESS_DENIED);
+				BREAK_WITH_ERROR("[MIGRATE] inject_via_poolparty failed", ERROR_INVALID_FUNCTION);
 			}
 		}
-		dwResult = ERROR_SUCCESS;
-
 	} while (0);
 
 	SAFE_FREE(config);
