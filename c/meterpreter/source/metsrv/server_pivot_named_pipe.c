@@ -618,7 +618,7 @@ static DWORD server_notify(Remote* remote, LPVOID entryContext, LPVOID threadCon
 
 			serverCtx->established = TRUE;
 
-			// The current listener cotnext in the listeners tree points to the server instance that has now
+			// The current listener context in the listeners tree points to the server instance that has now
 			// become a client instance due to the new connection. Therefore we need to update the pivot tree context
 			// to point to the new listener on the named pipe.
 			PivotContext* listenerCtx = pivot_tree_find(remote->pivot_listeners, (LPBYTE)&serverCtx->pivot_id);
