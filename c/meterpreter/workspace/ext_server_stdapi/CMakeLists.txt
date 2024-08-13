@@ -43,6 +43,7 @@ if(MSVC)
 endif()
 
 set(LINK_LIBS
+    advapi32
     jpeg
     mpr
     netapi32
