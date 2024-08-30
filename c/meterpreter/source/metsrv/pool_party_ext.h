@@ -6,15 +6,19 @@ typedef struct IUnknown IUnknown;
 #include <winbase.h>
 #include <winternl.h>
 
+#define TP_DIRECT_STRUCT_SIZE_X64 72
+#define TP_DIRECT_STRUCT_SIZE_X86 56
+#define TP_DIRECT_STRUCT_CB_OFFSET_X64 0x38
+#define TP_DIRECT_STRUCT_CB_OFFSET_X86 0x28
+
 // ---------//
 // Structs //
 // --------//
-#ifndef __MINGW32__
+
 typedef struct _CLIENT_ID {
     HANDLE UniqueProcess;
     HANDLE UniqueThread;
 } CLIENT_ID;
-#endif
 
 //typedef struct _FILE_IO_COMPLETION_INFORMATION
 //{
@@ -505,12 +509,65 @@ typedef VOID(NTAPI* PTP_ALPC_CALLBACK)(
     _In_ PFULL_TP_ALPC Alpc
     );
 
+#define WORKER_FACTORY_RELEASE_WORKER 0x0001
+#define WORKER_FACTORY_WAIT 0x0002
+#define WORKER_FACTORY_SET_INFORMATION 0x0004
+#define WORKER_FACTORY_QUERY_INFORMATION 0x0008
+#define WORKER_FACTORY_READY_WORKER 0x0010
+#define WORKER_FACTORY_SHUTDOWN 0x0020
+
+#define WORKER_FACTORY_ALL_ACCESS ( \
+       STANDARD_RIGHTS_REQUIRED | \
+       WORKER_FACTORY_RELEASE_WORKER | \
+       WORKER_FACTORY_WAIT | \
+       WORKER_FACTORY_SET_INFORMATION | \
+       WORKER_FACTORY_QUERY_INFORMATION | \
+       WORKER_FACTORY_READY_WORKER | \
+       WORKER_FACTORY_SHUTDOWN \
+)
+
+// -----------//
+// Structures //
+// ----------//
+
+typedef struct _WORKER_FACTORY_BASIC_INFORMATION
+{
+    LARGE_INTEGER Timeout;
+    LARGE_INTEGER RetryTimeout;
+    LARGE_INTEGER IdleTimeout;
+    BOOLEAN Paused;
+    BOOLEAN TimerSet;
+    BOOLEAN QueuedToExWorker;
+    BOOLEAN MayCreate;
+    BOOLEAN CreateInProgress;
+    BOOLEAN InsertedIntoQueue;
+    BOOLEAN Shutdown;
+    ULONG BindingCount;
+    ULONG ThreadMinimum;
+    ULONG ThreadMaximum;
+    ULONG PendingWorkerCount;
+    ULONG WaitingWorkerCount;
+    ULONG TotalWorkerCount;
+    ULONG ReleaseCount;
+    LONGLONG InfiniteWaitGoal;
+    PVOID StartRoutine;
+    PVOID StartParameter;
+    HANDLE ProcessId;
+    SIZE_T StackReserve;
+    SIZE_T StackCommit;
+    NTSTATUS LastThreadCreationStatus;
+} WORKER_FACTORY_BASIC_INFORMATION, * PWORKER_FACTORY_BASIC_INFORMATION;
+
 typedef struct pNtDll {
     NTSTATUS(NTAPI* pNtQueryInformationProcess)(HANDLE, PROCESSINFOCLASS, PVOID, ULONG, PULONG);
     NTSTATUS(NTAPI* pNtQueryObject)(HANDLE, OBJECT_INFORMATION_CLASS, PVOID, ULONG, PULONG);
 
     NTSTATUS(NTAPI* pZwAssociateWaitCompletionPacket)(HANDLE, HANDLE, HANDLE, PVOID, PVOID, NTSTATUS, ULONG_PTR, PBOOLEAN);
     NTSTATUS(NTAPI* pZwSetIoCompletion)(HANDLE, PVOID, PVOID, NTSTATUS, ULONG_PTR);
+
+
+    NTSTATUS(NTAPI* pNtQueryInformationWorkerFactory)(HANDLE, _WORKERFACTORYINFOCLASS, PVOID, ULONG, PULONG);
+    NTSTATUS(NTAPI* pNtSetInformationWorkerFactory)(HANDLE, _WORKERFACTORYINFOCLASS, PVOID, ULONG);
  
     //NTSTATUS(NTAPI* pZwSetInformationFile)(HANDLE, PIO_STATUS_BLOCK, PVOID, ULONG, ULONG);
     //NTSTATUS(NTAPI* pNtAlpcCreatePort)(PHANDLE, POBJECT_ATTRIBUTES, PALPC_PORT_ATTRIBUTES);
@@ -522,7 +579,5 @@ typedef struct pNtDll {
     //NTSTATUS(NTAPI* pNtTpAllocAlpcCompletion)(PVOID, HANDLE, PVOID, PVOID, PVOID);
     //NTSTATUS(NTAPI* pTpAllocJobNotification)(PVOID, HANDLE, PVOID, PVOID, PVOID);
 
-    //NTSTATUS(NTAPI* pNtQueryInformationWorkerFactory)(HANDLE, _WORKERFACTORYINFOCLASS, PVOID, ULONG, PULONG);
-    //NTSTATUS(NTAPI* pNtSetInformationWorkerFactory)(HANDLE, _WORKERFACTORYINFOCLASS, PVOID, ULONG);
 }pNtDll;
 #endif
