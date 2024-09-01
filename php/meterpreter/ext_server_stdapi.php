@@ -911,6 +911,10 @@ register_command('stdapi_sys_process_execute', COMMAND_ID_STDAPI_SYS_PROCESS_EXE
 function stdapi_sys_process_execute($req, &$pkt) {
     global $channel_process_map, $processes;
 
+    if (!can_call_function('proc_open')) {
+      return ERROR_FAILURE;
+    }
+
     my_print("doing execute");
     $cmd_tlv = packet_get_tlv($req, TLV_TYPE_PROCESS_PATH);
     $args_tlv = packet_get_tlv($req, TLV_TYPE_PROCESS_ARGUMENTS);
