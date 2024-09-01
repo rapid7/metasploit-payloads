@@ -822,10 +822,17 @@ function channel_read($chan_id, $len) {
 }
 
 function rand_xor_byte() {
+  if (can_call_function('random_int')) {
+    return chr(random_int(1, 255));
+  }
   return chr(mt_rand(1, 255));
 }
 
 function rand_bytes($size) {
+  if (can_call_function('random_bytes')) {
+    return random_bytes($size)
+  }
+
   $b = '';
   for ($i = 0; $i < $size; $i++) {
     $b .= rand_xor_byte();
