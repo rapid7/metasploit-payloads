@@ -879,8 +879,17 @@ if (!function_exists('stdapi_sys_config_sysinfo')) {
 register_command('stdapi_sys_config_sysinfo', COMMAND_ID_STDAPI_SYS_CONFIG_SYSINFO);
 function stdapi_sys_config_sysinfo($req, &$pkt) {
     my_print("doing sysinfo");
-    packet_add_tlv($pkt, create_tlv(TLV_TYPE_COMPUTER_NAME, php_uname("n")));
-    packet_add_tlv($pkt, create_tlv(TLV_TYPE_OS_NAME, php_uname()));
+    if (can_call_function('php_uname')) {
+      packet_add_tlv($pkt, create_tlv(TLV_TYPE_COMPUTER_NAME, php_uname("n")));
+      packet_add_tlv($pkt, create_tlv(TLV_TYPE_OS_NAME, php_uname()));
+      packet_add_tlv($pkt, create_tlv(TLV_TYPE_ARCHITECTURE, php_uname('m')));
+    }
+    $lang = getenv('LANG');
+    if ($lang !== FALSE) {
+      packet_add_tlv($pkt, create_tlv(TLV_TYPE_LANG_SYSTEM, $lang));
+    } else if (can_call_function('locale_get_default')) {
+      packet_add_tlv($pkt, create_tlv(TLV_TYPE_LANG_SYSTEM, locale_get_default()));
+    }
     return ERROR_SUCCESS;
 }
 }
