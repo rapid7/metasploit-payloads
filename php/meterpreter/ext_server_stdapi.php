@@ -506,7 +506,7 @@ function rmtree($path) {
 
         $subpath = $path . DIRECTORY_SEPARATOR . $dent;
         if (@is_link($subpath)) {
-            $ret = unlink($subpath);
+            $ret = @unlink($subpath);
         } elseif (@is_dir($subpath)) {
             $ret = rmtree($subpath);
         } else {
