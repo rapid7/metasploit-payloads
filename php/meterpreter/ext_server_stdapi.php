@@ -820,15 +820,18 @@ function stdapi_fs_sha1($req, &$pkt) {
 if (!function_exists('stdapi_sys_config_getuid')) {
 register_command('stdapi_sys_config_getuid', COMMAND_ID_STDAPI_SYS_CONFIG_GETUID);
 function stdapi_sys_config_getuid($req, &$pkt) {
-    if (is_callable('posix_getuid')) {
+    if (can_call_function('posix_getuid') && can_call_function('posix_getpwuid')) {
         $uid = posix_getuid();
         $pwinfo = posix_getpwuid($uid);
         $user = $pwinfo['name'];
-    } else {
+    } elseif (can_call_function('get_current_user)') {
         # The posix functions aren't available, this is probably windows.  Use
         # the functions for getting user name and uid based on file ownership
         # instead.
         $user = get_current_user();
+    } else {
+      # Best effort
+      $user = getenv("USER");
     }
     my_print("getuid - returning: " . $user);
     packet_add_tlv($pkt, create_tlv(TLV_TYPE_USER_NAME, $user));
