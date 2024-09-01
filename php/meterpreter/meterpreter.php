@@ -670,11 +670,14 @@ if (!function_exists('core_machine_id')) {
   register_command('core_machine_id', COMMAND_ID_CORE_MACHINE_ID);
   function core_machine_id($req, &$pkt) {
     my_print("doing core_machine_id");
-    if (is_callable('gethostname')) {
+    if (can_call_function('gethostname')) {
       # introduced in 5.3
       $machine_id = gethostname();
-    } else {
+    } elseif(can_call_function('php_uname')) {
       $machine_id = php_uname('n');
+    }
+    } else {
+      $machine_id = getenv('HOSTNAME');
     }
     $serial = "";
 
