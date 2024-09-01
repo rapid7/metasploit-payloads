@@ -418,8 +418,7 @@ function array_prepend($array, $string, $deep=false) {
 
 if (!function_exists('canonicalize_path')) {
 function canonicalize_path($path) {
-    $path = str_replace(array("/", "\\"), DIRECTORY_SEPARATOR, $path);
-    return $path;
+    return str_replace(array("/", "\\"), DIRECTORY_SEPARATOR, $path);
 }
 }
 
