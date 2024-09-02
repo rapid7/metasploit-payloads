@@ -163,14 +163,11 @@ DWORD remote_tp_direct_insertion(HANDLE hProcess, DWORD dwDestinationArch, LPVOI
 	pNtDll* ntDll = NULL;
 	DWORD dwResult = ERROR_POOLPARTY_GENERIC;
 	HANDLE hHeap = GetProcessHeap();
-	dwDestinationArch = PROCESS_ARCH_X64;
 	DWORD dwDirectSize = dwDestinationArch == PROCESS_ARCH_X64 ? TP_DIRECT_STRUCT_SIZE_X64 : TP_DIRECT_STRUCT_SIZE_X86;
 
-	WOW64_CONTEXT test = { 0 };
 	LPVOID *Direct = HeapAlloc(hHeap, HEAP_ZERO_MEMORY, dwDirectSize);
 	do {
 		ntDll = GetOrInitNtDll();
-		dprintf("%d fs offset: %p", sizeof(WOW64_CONTEXT), (QWORD)&test.SegFs - (QWORD)&test);
 		if (ntdll == NULL) {
 			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][remote_tp_direct_insertion] Cannot GetOrInitNtDll()", ERROR_POOLPARTY_GENERIC);
 		}

@@ -573,6 +573,7 @@ DWORD inject_via_poolparty(Remote* remote, Packet* response, HANDLE hProcess, DW
 				memcpy(lpStub, x64tox86, sizeof(x64tox86) - 1);
 				memcpy((LPBYTE)lpStub + sizeof(x64tox86) - 1, poolparty_stub_x86, sizeof(poolparty_stub_x86));
 				dwStubSize = sizeof(x64tox86) + sizeof(poolparty_stub_x86) - 2;
+				dwDestinationArch = PROCESS_ARCH_X64;
 			}
 
 			hTriggerEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
