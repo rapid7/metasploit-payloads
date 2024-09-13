@@ -33,7 +33,7 @@ void set_transport_session_expiry(Remote* remote, Packet* packet)
 	}
 }
 
-DWORD create_transport_from_request(Remote* remote, Packet* packet, Transport** transportBufer)
+DWORD create_transport_from_request(Remote* remote, Packet* packet, Transport** transportBuffer)
 {
 	DWORD result = ERROR_NOT_ENOUGH_MEMORY;
 	Transport* transport = NULL;
@@ -160,7 +160,7 @@ DWORD create_transport_from_request(Remote* remote, Packet* packet, Transport** 
 		result = ERROR_SUCCESS;
 	} while (0);
 
-	*transportBufer = transport;
+	*transportBuffer = transport;
 
 	return result;
 }
