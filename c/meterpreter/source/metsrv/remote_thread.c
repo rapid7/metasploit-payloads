@@ -80,7 +80,7 @@ HANDLE create_remote_thread(HANDLE hProcess, SIZE_T sStackSize, LPVOID pvStartAd
 
 			if (ntResult == 0 && pdwThreadId)
 			{
-				*pdwThreadId = (DWORD) ClientId.UniqueThread;
+				*pdwThreadId = PtrToUint(ClientId.UniqueThread);
 			}
 		}
 		else
