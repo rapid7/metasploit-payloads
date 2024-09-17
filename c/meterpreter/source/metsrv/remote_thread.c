@@ -18,7 +18,7 @@ static BOOL pRtlCreateUserThreadAttempted = FALSE;
 typedef DWORD (WINAPI * PGetThreadId)(HANDLE);
 /*! @brief Reference to the loaded GetThreadId function pointer. */
 static PGetThreadId pGetThreadId = NULL;
-/*! @brief Indication of whether an attempt to locate the pGetThreadId pointer has been made. */
+/*! @brief Indication of whether an attempt to locate the pRtlCreateUserThread pointer has been made. */
 static BOOL pGetThreadIdAttempted = FALSE;
 
 /*!
@@ -93,7 +93,7 @@ HANDLE create_remote_thread(HANDLE hProcess, SIZE_T sStackSize, LPVOID pvStartAd
 						pGetThreadId = (PGetThreadId)GetProcAddress(GetModuleHandleA("kernel32"), "GetThreadId");
 						if (pGetThreadId)
 						{
-							dprintf("[REMOTETHREAD] GetThreadId found at %p", pGetThreadId);
+							dprintf("[REMOTHREAD] GetThreadId found at %p", pGetThreadId);
 						}
 					}
 					pGetThreadIdAttempted = TRUE;
