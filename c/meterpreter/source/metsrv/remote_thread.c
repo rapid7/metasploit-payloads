@@ -14,13 +14,6 @@ static PRtlCreateUserThread pRtlCreateUserThread = NULL;
 /*! @brief Indication of whether an attempt to locate the pRtlCreateUserThread pointer has been made. */
 static BOOL pRtlCreateUserThreadAttempted = FALSE;
 
-/*! @brief Function pointer type for the GetThreadId function in kernel32.dll not available in Windows XP SP3 */
-typedef DWORD (WINAPI * PGetThreadId)(HANDLE);
-/*! @brief Reference to the loaded GetThreadId function pointer. */
-static PGetThreadId pGetThreadId = NULL;
-/*! @brief Indication of whether an attempt to locate the pRtlCreateUserThread pointer has been made. */
-static BOOL pGetThreadIdAttempted = FALSE;
-
 /*!
  * @brief Helper function for creating a remote thread in a privileged process.
  * @param hProcess Handle to the target process.
@@ -86,23 +79,7 @@ HANDLE create_remote_thread(HANDLE hProcess, SIZE_T sStackSize, LPVOID pvStartAd
 
 			if (ntResult == 0 && pdwThreadId)
 			{
-				if (!pGetThreadIdAttempted)
-				{
-					if (pGetThreadId == NULL)
-					{
-						pGetThreadId = (PGetThreadId)GetProcAddress(GetModuleHandleA("kernel32"), "GetThreadId");
-						if (pGetThreadId)
-						{
-							dprintf("[REMOTHREAD] GetThreadId found at %p", pGetThreadId);
-						}
-					}
-					pGetThreadIdAttempted = TRUE;
-				}
-
-				if (pGetThreadId != NULL)
-					*pdwThreadId = pGetThreadId(hThread);
-				else
-					*pdwThreadId = 0;
+				*pdwThreadId = GetThreadId(hThread);
 			}
 		}
 		else
