@@ -30,7 +30,7 @@ if(MSVC)
     set_source_files_properties(${MOD_DEF_DIR}/metsrv.def PROPERTIES HEADER_FILE_ONLY TRUE)
 endif()
 
-set(LINK_LIBS winhttp wininet crypt32)
+set(LINK_LIBS advapi32 winhttp wininet crypt32)
 
 if(MSVC)
     target_link_options(${PROJECT_NAME} PUBLIC "/ignore:4070")
