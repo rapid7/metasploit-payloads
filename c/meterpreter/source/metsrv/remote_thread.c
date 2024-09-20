@@ -39,7 +39,8 @@ HANDLE create_remote_thread(HANDLE hProcess, SIZE_T sStackSize, LPVOID pvStartAd
 	BOOL bCreateSuspended;
 	DWORD dwThreadId;
 	HANDLE hThread;
-	
+	CLIENTID ClientId;
+
 	if (pdwThreadId == NULL)
 	{
 		pdwThreadId = &dwThreadId;
@@ -74,12 +75,12 @@ HANDLE create_remote_thread(HANDLE hProcess, SIZE_T sStackSize, LPVOID pvStartAd
 		{
 			dprintf("[REMOTETHREAD] Attempting thread creation with RtlCreateUserThread");
 			bCreateSuspended = (dwCreateFlags & CREATE_SUSPENDED) == CREATE_SUSPENDED;
-			ntResult = pRtlCreateUserThread(hProcess, NULL, bCreateSuspended, 0, 0, 0, (PTHREAD_START_ROUTINE)pvStartAddress, pvStartParam, &hThread, NULL);
+			ntResult = pRtlCreateUserThread(hProcess, NULL, bCreateSuspended, 0, 0, 0, (PTHREAD_START_ROUTINE)pvStartAddress, pvStartParam, &hThread, &ClientId);
 			SetLastError(ntResult);
 
 			if (ntResult == 0 && pdwThreadId)
 			{
-				*pdwThreadId = GetThreadId(hThread);
+				*pdwThreadId = PtrToUint(ClientId.UniqueThread);
 			}
 		}
 		else
