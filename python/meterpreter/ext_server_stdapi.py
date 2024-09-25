@@ -1435,11 +1435,15 @@ def stdapi_sys_process_execute(request, response):
             arg_string = ""
         cmd_string = cmd + ' ' + arg_string
 
-        # In case we're not using a subshell:
-        cmd_array = [cmd]
-        cmd_array.extend(shlex.split(arg_string))
+        if arg_string == '':
+            # Everything was just provided in a single argument. Need to split it out.
+            cmd_array = shlex.split(cmd)
+        else:
+            # In case we're not using a subshell:
+            cmd_array = [cmd]
+            cmd_array.extend(shlex.split(arg_string))
 
-        if os.path.isfile('/bin/sh') and (flags & PROCESS_EXECUTE_FLAG_SUBSHELL):
+        if (flags & PROCESS_EXECUTE_FLAG_SUBSHELL) and os.path.isfile('/bin/sh'):
             cmd_array = ['/bin/sh', '-c', cmd_string]
 
     if (flags & PROCESS_EXECUTE_FLAG_CHANNELIZED):

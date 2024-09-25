@@ -107,11 +107,14 @@ DWORD request_sys_process_close(Remote *remote, Packet *packet)
 
 BOOL needs_quoting(PCHAR str)
 {
-	BOOL bNeedsQuoting = FALSE;
+	// Initial value is to need quoting, in case it's an empty arg
+	BOOL bNeedsQuoting = TRUE;
 	char* pArgIndex = str;
 	// Check whether we'll need to quote the argument
 	while (*pArgIndex != '\0')
 	{
+		// The arg is not empty
+		bNeedsQuoting = FALSE;
 		if (*pArgIndex == '\v' || *pArgIndex == ' ' || *pArgIndex == '\t')
 		{
 			bNeedsQuoting = TRUE;
