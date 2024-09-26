@@ -15,10 +15,12 @@ typedef struct IUnknown IUnknown;
 // Structs //
 // --------//
 
+#ifndef __MINGW32__
 typedef struct _CLIENT_ID {
     HANDLE UniqueProcess;
     HANDLE UniqueThread;
 } CLIENT_ID;
+#endif
 
 //typedef struct _FILE_IO_COMPLETION_INFORMATION
 //{
