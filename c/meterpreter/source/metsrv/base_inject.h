@@ -99,7 +99,7 @@ DWORD inject_via_poolparty(Remote* remote, Packet* response, HANDLE hProcess, DW
 DWORD inject_via_remotethread_wow64(HANDLE hProcess, LPVOID lpStartAddress, LPVOID lpParameter, HANDLE * pThread);
 
 DWORD inject_dll(DWORD dwPid, DWORD dwDestinationArch, LPVOID lpDllBuffer, DWORD dwDllLength, LPCSTR reflectiveLoader, LPVOID lpArg, SIZE_T stArgSize);
-BOOL support_stealth_injection(DWORD dwDestinationArch);
+BOOL supports_poolparty_injection(DWORD dwSourceArch, DWORD dwDestinationArch);
 //===============================================================================================//
 #endif
 //===============================================================================================//

