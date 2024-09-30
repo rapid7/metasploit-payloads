@@ -902,6 +902,7 @@ function stdapi_sys_process_execute($req, &$pkt) {
     my_print("doing execute");
     $flags_tlv = packet_get_tlv($req, TLV_TYPE_PROCESS_FLAGS);
     $flags = $flags_tlv['value'];
+    $options = array();
 
     # proc_open can take either a string or an array of strings
     # We support both, based on the presence of a flag.
@@ -944,13 +945,14 @@ function stdapi_sys_process_execute($req, &$pkt) {
     if (is_windows()) {
         # see http://us2.php.net/manual/en/function.proc-open.php#97012
         array_push($pipe_desc, array('pipe','a'));
+        $options['bypass_shell'] = true;
     } else {
         array_push($pipe_desc, array('pipe','w'));
     }
 
     # Now that we've got the command built, run it. If it worked, we'll send
     # back a handle identifier.
-    $handle = proc_open($real_cmd, $pipe_desc, $pipes);
+    $handle = proc_open($real_cmd, $pipe_desc, $pipes, null, null, $options);
     if (!is_resource($handle)) {
         return ERROR_FAILURE;
     }
