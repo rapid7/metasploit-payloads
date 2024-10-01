@@ -269,6 +269,10 @@ function is_windows() {
   return (strtoupper(substr(PHP_OS,0,3)) == "WIN");
 }
 
+function is_linux() {
+  return (strtoupper(substr(PHP_OS,0,3)) == "LIN");
+}
+
 ##
 # Worker functions
 ##
