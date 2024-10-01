@@ -1418,9 +1418,9 @@ def stdapi_sys_process_execute(request, response):
         if len(cmd) == 0:
             return ERROR_FAILURE, response
 
-        cmd_array = [cmd]
+        command = [cmd]
         for arg in packet_enum_tlvs(request, TLV_TYPE_PROCESS_ARGUMENT):
-            cmd_array.append(arg['value'])
+            command.append(arg['value'])
     else:
         cmd = packet_get_tlv(request, TLV_TYPE_PROCESS_PATH)['value']
 
@@ -1435,16 +1435,19 @@ def stdapi_sys_process_execute(request, response):
             arg_string = ""
         cmd_string = cmd + ' ' + arg_string
 
-        if arg_string == '':
-            # Everything was just provided in a single argument. Need to split it out.
-            cmd_array = shlex.split(cmd)
+        if sys.platform == 'win32':
+            command = cmd_string
         else:
-            # In case we're not using a subshell:
-            cmd_array = [cmd]
-            cmd_array.extend(shlex.split(arg_string))
+            if arg_string == '':
+                # Everything was just provided in a single argument. Need to split it out.
+                command = shlex.split(cmd)
+            else:
+                # In case we're not using a subshell:
+                command = [cmd]
+                command.extend(shlex.split(arg_string))
 
-        if (flags & PROCESS_EXECUTE_FLAG_SUBSHELL) and os.path.isfile('/bin/sh'):
-            cmd_array = ['/bin/sh', '-c', cmd_string]
+            if (flags & PROCESS_EXECUTE_FLAG_SUBSHELL) and os.path.isfile('/bin/sh'):
+                command = ['/bin/sh', '-c', cmd_string]
 
     if (flags & PROCESS_EXECUTE_FLAG_CHANNELIZED):
         if has_pty and (flags & PROCESS_EXECUTE_FLAG_PTY):
@@ -1455,17 +1458,17 @@ def stdapi_sys_process_execute(request, response):
                     termios.tcsetattr(master, termios.TCSADRAIN, settings)
                 except:
                     pass
-            proc_h = STDProcess(cmd_array, stdin=slave, stdout=slave, stderr=slave, bufsize=0, preexec_fn=os.setsid)
+            proc_h = STDProcess(command, stdin=slave, stdout=slave, stderr=slave, bufsize=0, preexec_fn=os.setsid)
             proc_h.stdin = os.fdopen(master, 'wb')
             proc_h.stdout = os.fdopen(master, 'rb')
             proc_h.stderr = open(os.devnull, 'rb')
             proc_h.ptyfd = slave
         else:
-            proc_h = STDProcess(cmd_array, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            proc_h = STDProcess(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             proc_h.echo_protection = True
         proc_h.start()
     else:
-        proc_h = subprocess.Popen(cmd_array, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        proc_h = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
     proc_h_id = meterpreter.add_process(proc_h)
     response += tlv_pack(TLV_TYPE_PID, proc_h.pid)
