@@ -581,6 +581,9 @@ TLV_TYPE_CONNECT_RETRIES       = TLV_META_TYPE_UINT    | 1504
 
 TLV_TYPE_SHUTDOWN_HOW          = TLV_META_TYPE_UINT    | 1530
 
+# Resolve hosts/host
+TLV_TYPE_RESOLVE_HOST_ENTRY    = TLV_META_TYPE_GROUP   | 1550
+
 ##
 # Railgun
 ##
@@ -1076,8 +1079,12 @@ def netlink_request(req_type, req_data):
 
 def resolve_host(hostname, family):
     address_info = getaddrinfo(hostname, family=family, socktype=socket.SOCK_DGRAM, proto=socket.IPPROTO_UDP)
-    address = address_info[0]['sockaddr'][0]
-    return {'family': family, 'address': address, 'packed_address': inet_pton(family, address)}
+    addresses = []
+    for addr in address_info:
+        binary_address = inet_pton(family, addr['sockaddr'][0])
+        addresses.append(binary_address)
+
+    return { 'family': family, 'addresses': addresses }
 
 def tlv_pack_local_addrinfo(sock):
     local_host, local_port = sock.getsockname()[:2]
@@ -2641,9 +2648,16 @@ def stdapi_net_resolve_host(request, response):
         family = socket.AF_INET6
     else:
         raise Exception('invalid family')
+
     result = resolve_host(hostname, family)
-    response += tlv_pack(TLV_TYPE_IP, result['packed_address'])
-    response += tlv_pack(TLV_TYPE_ADDR_TYPE, result['family'])
+
+    host_tlv = bytes()
+    for ip in result['addresses']:
+        host_tlv +=  tlv_pack(TLV_TYPE_IP, ip)
+        host_tlv += tlv_pack(TLV_TYPE_ADDR_TYPE, family)
+
+    response += tlv_pack(TLV_TYPE_RESOLVE_HOST_ENTRY, host_tlv)
+
     return ERROR_SUCCESS, response
 
 @register_function
@@ -2661,8 +2675,13 @@ def stdapi_net_resolve_hosts(request, response):
             result = resolve_host(hostname, family)
         except socket.error:
             result = {'family':family, 'packed_address':''}
-        response += tlv_pack(TLV_TYPE_IP, result['packed_address'])
-        response += tlv_pack(TLV_TYPE_ADDR_TYPE, result['family'])
+
+        host_tlv = bytes()
+        for ip in result['addresses']:
+            host_tlv += tlv_pack(TLV_TYPE_IP, ip)
+            host_tlv += tlv_pack(TLV_TYPE_ADDR_TYPE, family)
+
+        response += tlv_pack(TLV_TYPE_RESOLVE_HOST_ENTRY, host_tlv)
     return ERROR_SUCCESS, response
 
 @register_function
