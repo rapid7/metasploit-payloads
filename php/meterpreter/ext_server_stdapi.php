@@ -924,6 +924,10 @@ function stdapi_sys_process_execute($req, &$pkt) {
             $arg = $arg_tlv['value'];
             array_push($real_cmd, $arg);
         }
+
+        if (is_windows()) {
+            $options['bypass_shell'] = true;
+        }
     } else {
         $cmd_tlv = packet_get_tlv($req, TLV_TYPE_PROCESS_PATH);
         $cmd = $cmd_tlv['value'];
@@ -945,7 +949,6 @@ function stdapi_sys_process_execute($req, &$pkt) {
     if (is_windows()) {
         # see http://us2.php.net/manual/en/function.proc-open.php#97012
         array_push($pipe_desc, array('pipe','a'));
-        $options['bypass_shell'] = true;
     } else {
         array_push($pipe_desc, array('pipe','w'));
     }
