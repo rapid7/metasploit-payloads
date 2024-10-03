@@ -699,9 +699,6 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
 				}
 			}
 		}
-		else {
-			
-		}
 	} while (0);
 
 	SAFE_FREE(config);

