@@ -8,59 +8,68 @@ POOLPARTY_INJECTOR* poolLifeguard = NULL;
 NtDll* GetOrInitNtDll() {
 	BOOL bError = FALSE;
 	HANDLE hHeap = GetProcessHeap();
-	bError = (hHeap == NULL);
 
-	if (pNtDll != NULL) {
-		return pNtDll;
-	}
-
-	if (!bError) {
-		pNtDll = (NtDll*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, sizeof(pNtDll));
-		bError = pNtDll == NULL;
-		if (!bError) {
-			HMODULE hNtDll = NULL;
-			hNtDll = GetModuleHandleA("ntdll.dll");
-			if(hNtDll == NULL || hNtDll == INVALID_HANDLE_VALUE){
-				hNtDll = LoadLibraryA("ntdll.dll");
-			}
-			pNtDll->pNtQueryInformationProcess = (NTSTATUS(NTAPI*)(HANDLE, PROCESSINFOCLASS, PVOID, ULONG, PULONG))GetProcAddress(hNtDll, "NtQueryInformationProcess");
-			pNtDll->pNtQueryObject = (NTSTATUS(NTAPI*)(HANDLE, OBJECT_INFORMATION_CLASS, PVOID, ULONG, PULONG))GetProcAddress(hNtDll, "NtQueryObject");
-
-			if(pNtDll->pNtQueryInformationProcess == NULL || pNtDll->pNtQueryObject == NULL) {
-				HeapFree(hHeap, 0, pNtDll);
-				pNtDll = NULL;
-				return pNtDll;
-			}
-			dprintf("[INJECT][inject_via_poolparty][ntdll_init] NtQueryInformationProcess: %p NtQueryObject: %p", ntdll->pNtQueryInformationProcess, ntdll->pNtQueryObject);
-			
-			pNtDll->pZwSetIoCompletion = (NTSTATUS(NTAPI*)(HANDLE, PVOID, PVOID, NTSTATUS, ULONG_PTR))GetProcAddress(hNtDll, "ZwSetIoCompletion");
-			if (pNtDll->pZwSetIoCompletion != NULL) {
-				if (poolLifeguard != NULL) {
-					poolLifeguard->variants[POOLPARTY_TECHNIQUE_TP_DIRECT_INSERTION].isSystemSupported = TRUE;
-				}
-			}
-			dprintf("[INJECT][inject_via_poolparty][ntdll_init] ZwSetIoCompletion: %p", ntdll->pZwSetIoCompletion);
-
-			//ntdll->pZwAssociateWaitCompletionPacket = (NTSTATUS(NTAPI*)(HANDLE, HANDLE, HANDLE, PVOID, PVOID, NTSTATUS, ULONG_PTR, PBOOLEAN))GetProcAddress(hNtDll, "ZwAssociateWaitCompletionPacket");
-			//if (ntdll->pZwAssociateWaitCompletionPacket != NULL) {
-			//	if (poolLifeguard != NULL) {
-			//		poolLifeguard->variants[POOLPARTY_TECHNIQUE_TP_WAIT_INSERTION].isSystemSupported = TRUE;
-			//	}
-			//}
-			//dprintf("[INJECT][inject_via_poolparty][ntdll_init] ZwAssociateWaitCompletionPacket: %p", ntdll->pZwAssociateWaitCompletionPacket);
-
-			//ntdll->pNtQueryInformationWorkerFactory = (NTSTATUS(NTAPI*)(HANDLE, _WORKERFACTORYINFOCLASS, PVOID, ULONG, PULONG))GetProcAddress(hNtDll, "NtQueryInformationWorkerFactory"); // WIN 7
-			//dprintf("[INJECT][inject_via_poolparty][ntdll_init] NtQueryInformationWorkerFactory: %p", ntdll->pNtQueryInformationWorkerFactory);
-
-			//ntdll->pNtSetInformationWorkerFactory = (NTSTATUS(NTAPI*)(HANDLE, _WORKERFACTORYINFOCLASS, PVOID, ULONG))GetProcAddress(hNtDll, "NtSetInformationWorkerFactory"); // WIN7
-			//dprintf("[INJECT][inject_via_poolparty][ntdll_init] NtSetInformationWorkerFactory: %p", ntdll->pNtSetInformationWorkerFactory);
-
-			//if (ntdll->pNtQueryInformationWorkerFactory != NULL && ntdll->pNtSetInformationWorkerFactory != NULL) {
-			//	if (poolLifeguard != NULL) {
-			//		poolLifeguard->variants[POOLPARTY_TECHNIQUE_WORKER_FACTORY_OVERWRITE].isSystemSupported = TRUE;
-			//	}
-			//}
+	do {
+		if (pNtDll != NULL || hHeap == NULL) {
+			break;
 		}
+
+		pNtDll = (NtDll*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, sizeof(pNtDll));
+		if(!pNtDll) {
+			break;
+		}
+
+		HMODULE hNtDll = NULL;
+		hNtDll = GetModuleHandleA("ntdll.dll");
+		if(!hNtDll) {
+			hNtDll = LoadLibraryA("ntdll.dll");
+			bError = hNtDll == NULL;
+			if(bError) {
+				break;
+			}
+		}
+		
+		pNtDll->pNtQueryInformationProcess = (NTSTATUS(NTAPI*)(HANDLE, PROCESSINFOCLASS, PVOID, ULONG, PULONG))GetProcAddress(hNtDll, "NtQueryInformationProcess");
+		pNtDll->pNtQueryObject = (NTSTATUS(NTAPI*)(HANDLE, OBJECT_INFORMATION_CLASS, PVOID, ULONG, PULONG))GetProcAddress(hNtDll, "NtQueryObject");
+
+		if(pNtDll->pNtQueryInformationProcess == NULL || pNtDll->pNtQueryObject == NULL) {
+			bError = TRUE;
+			break;
+		}
+		dprintf("[INJECT][inject_via_poolparty][ntdll_init] NtQueryInformationProcess: %p NtQueryObject: %p", ntdll->pNtQueryInformationProcess, ntdll->pNtQueryObject);
+		
+		pNtDll->pZwSetIoCompletion = (NTSTATUS(NTAPI*)(HANDLE, PVOID, PVOID, NTSTATUS, ULONG_PTR))GetProcAddress(hNtDll, "ZwSetIoCompletion");
+		if (pNtDll->pZwSetIoCompletion != NULL) {
+			if (poolLifeguard != NULL) {
+				poolLifeguard->variants[POOLPARTY_TECHNIQUE_TP_DIRECT_INSERTION].isSystemSupported = TRUE;
+			}
+		}
+		dprintf("[INJECT][inject_via_poolparty][ntdll_init] ZwSetIoCompletion: %p", ntdll->pZwSetIoCompletion);
+
+		//ntdll->pZwAssociateWaitCompletionPacket = (NTSTATUS(NTAPI*)(HANDLE, HANDLE, HANDLE, PVOID, PVOID, NTSTATUS, ULONG_PTR, PBOOLEAN))GetProcAddress(hNtDll, "ZwAssociateWaitCompletionPacket");
+		//if (ntdll->pZwAssociateWaitCompletionPacket != NULL) {
+		//	if (poolLifeguard != NULL) {
+		//		poolLifeguard->variants[POOLPARTY_TECHNIQUE_TP_WAIT_INSERTION].isSystemSupported = TRUE;
+		//	}
+		//}
+		//dprintf("[INJECT][inject_via_poolparty][ntdll_init] ZwAssociateWaitCompletionPacket: %p", ntdll->pZwAssociateWaitCompletionPacket);
+
+		//ntdll->pNtQueryInformationWorkerFactory = (NTSTATUS(NTAPI*)(HANDLE, _WORKERFACTORYINFOCLASS, PVOID, ULONG, PULONG))GetProcAddress(hNtDll, "NtQueryInformationWorkerFactory"); // WIN 7
+		//dprintf("[INJECT][inject_via_poolparty][ntdll_init] NtQueryInformationWorkerFactory: %p", ntdll->pNtQueryInformationWorkerFactory);
+
+		//ntdll->pNtSetInformationWorkerFactory = (NTSTATUS(NTAPI*)(HANDLE, _WORKERFACTORYINFOCLASS, PVOID, ULONG))GetProcAddress(hNtDll, "NtSetInformationWorkerFactory"); // WIN7
+		//dprintf("[INJECT][inject_via_poolparty][ntdll_init] NtSetInformationWorkerFactory: %p", ntdll->pNtSetInformationWorkerFactory);
+
+		//if (ntdll->pNtQueryInformationWorkerFactory != NULL && ntdll->pNtSetInformationWorkerFactory != NULL) {
+		//	if (poolLifeguard != NULL) {
+		//		poolLifeguard->variants[POOLPARTY_TECHNIQUE_WORKER_FACTORY_OVERWRITE].isSystemSupported = TRUE;
+		//	}
+		//}
+	}while(0);	
+
+	if (bError) {
+		HeapFree(hHeap, 0, pNtDll);
+		pNtDll = NULL;
 	}
 	return pNtDll;
 }
@@ -69,49 +78,47 @@ POOLPARTY_INJECTOR* GetOrInitPoolParty(DWORD dwSourceArch, DWORD dwDestinationAr
 	BOOL bError = FALSE;
 	HANDLE hHeap = GetProcessHeap();
 	bError = (hHeap == NULL);
-	BOOL isWow64;
-	IsWow64Process(GetCurrentProcess(), &isWow64);
+	do {
 
-	if (poolLifeguard != NULL) {
-		return poolLifeguard;
-	}
+		if (poolLifeguard != NULL) {
+			break;
+		}
 
-	if (!bError) {
 		poolLifeguard = (POOLPARTY_INJECTOR*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, sizeof(POOLPARTY_INJECTOR));
-		bError = poolLifeguard == NULL;
+		if(!poolLifeguard) {
+			break;
+		}
 		
-		if(!bError) {
-			poolLifeguard->init = FALSE;
-			if (pNtDll == NULL) {
-				bError = GetOrInitNtDll() == NULL;
-			}
-		}
-
-		if (!bError) {
-			if (dwSourceArch == PROCESS_ARCH_X64) {
-				if (dwDestinationArch == PROCESS_ARCH_X64) {
-					// poolLifeguard->variants[POOLPARTY_TECHNIQUE_TP_WAIT_INSERTION].isInjectionSupported = poolLifeguard->variants[POOLPARTY_TECHNIQUE_TP_WAIT_INSERTION].isSystemSupported;
+		poolLifeguard->init = FALSE;
+		if (pNtDll == NULL) {
+				if(!GetOrInitNtDll()) {
+					// We weren't able to initialize NtDll
+					// Set the bError to true so we can Free the heap allocation.
+					bError = TRUE;
+					break;
 				}
-				poolLifeguard->variants[POOLPARTY_TECHNIQUE_TP_DIRECT_INSERTION].isInjectionSupported = poolLifeguard->variants[POOLPARTY_TECHNIQUE_TP_DIRECT_INSERTION].isSystemSupported;
+		}
+		if (dwSourceArch == PROCESS_ARCH_X64) {
+			if (dwDestinationArch == PROCESS_ARCH_X64) {
+				// poolLifeguard->variants[POOLPARTY_TECHNIQUE_TP_WAIT_INSERTION].isInjectionSupported = poolLifeguard->variants[POOLPARTY_TECHNIQUE_TP_WAIT_INSERTION].isSystemSupported;
 			}
+			poolLifeguard->variants[POOLPARTY_TECHNIQUE_TP_DIRECT_INSERTION].isInjectionSupported = poolLifeguard->variants[POOLPARTY_TECHNIQUE_TP_DIRECT_INSERTION].isSystemSupported;
 		}
+		poolLifeguard->variants[POOLPARTY_TECHNIQUE_TP_DIRECT_INSERTION].handler = remote_tp_direct_insertion;
+		// poolLifeguard->variants[POOLPARTY_TECHNIQUE_TP_WAIT_INSERTION].handler = remote_tp_wait_insertion;
+		// poolLifeguard->variants[POOLPARTY_TECHNIQUE_WORKER_FACTORY_OVERWRITE].handler = worker_factory_start_routine_overwrite;
+		poolLifeguard->init = TRUE;
 
-		if (!bError) {
-			poolLifeguard->variants[POOLPARTY_TECHNIQUE_TP_DIRECT_INSERTION].handler = remote_tp_direct_insertion;
-			// poolLifeguard->variants[POOLPARTY_TECHNIQUE_TP_WAIT_INSERTION].handler = remote_tp_wait_insertion;
-			// poolLifeguard->variants[POOLPARTY_TECHNIQUE_WORKER_FACTORY_OVERWRITE].handler = worker_factory_start_routine_overwrite;
-			poolLifeguard->init = TRUE;
-		}
-	}
+	}while(0);
 
 	if (bError && poolLifeguard != NULL) {
 		HeapFree(hHeap, 0, poolLifeguard);
 		poolLifeguard = NULL;
 	}
 	return poolLifeguard;
-};
+}
 
-// For now we support only Windows >= 10  and x64 -> x64
+// For now we support only Windows >= 10  and x64 | wow64 -> x64
 BOOL supports_poolparty_injection(DWORD dwSourceArch, DWORD dwDestinationArch) {
 	OSVERSIONINFO os = { 0 };
 	os.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
