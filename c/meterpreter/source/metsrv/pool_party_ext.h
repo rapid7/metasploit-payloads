@@ -1,6 +1,5 @@
 #ifndef POOL_PARTY_H
 #define POOL_PARTY_H
-#pragma once
 typedef struct IUnknown IUnknown;
 #include <windows.h>
 #include <winbase.h>
@@ -560,7 +559,7 @@ typedef struct _WORKER_FACTORY_BASIC_INFORMATION
     NTSTATUS LastThreadCreationStatus;
 } WORKER_FACTORY_BASIC_INFORMATION, * PWORKER_FACTORY_BASIC_INFORMATION;
 
-typedef struct pNtDll {
+typedef struct NtDll {
     NTSTATUS(NTAPI* pNtQueryInformationProcess)(HANDLE, PROCESSINFOCLASS, PVOID, ULONG, PULONG);
     NTSTATUS(NTAPI* pNtQueryObject)(HANDLE, OBJECT_INFORMATION_CLASS, PVOID, ULONG, PULONG);
 
@@ -581,5 +580,5 @@ typedef struct pNtDll {
     //NTSTATUS(NTAPI* pNtTpAllocAlpcCompletion)(PVOID, HANDLE, PVOID, PVOID, PVOID);
     //NTSTATUS(NTAPI* pTpAllocJobNotification)(PVOID, HANDLE, PVOID, PVOID, PVOID);
 
-}pNtDll;
+} NtDll;
 #endif
