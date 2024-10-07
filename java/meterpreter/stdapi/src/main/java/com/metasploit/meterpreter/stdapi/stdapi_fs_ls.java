@@ -37,7 +37,7 @@ public class stdapi_fs_ls implements Command {
         }
         String[] entries = path.list();
         for (int i = 0; i < entries.length; i++) {
-            if (entries[i].equals(".") || entries[i].equals("..")) {
+            if (entries[i] == null || entries[i].equals(".") || entries[i].equals("..")) {
                 continue;
             }
             File f = new File(path, entries[i]);

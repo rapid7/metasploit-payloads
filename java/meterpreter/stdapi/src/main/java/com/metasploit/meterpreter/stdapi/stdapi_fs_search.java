@@ -72,13 +72,16 @@ public class stdapi_fs_search implements Command {
                 }
             }
             path = pathfile.getCanonicalPath();
-            File[] lst = new File(path).listFiles();
+            String[] lst = new File(path).list();
             List glob = new ArrayList();
             if (lst == null) {
                 return glob;
             }
             for (int i = 0; i < lst.length; i++) {
-                File file = lst[i];
+                if (lst[i] == null) {
+                    continue;
+                }
+                File file = new File(lst[i]);
                 if (recurse && file.isDirectory()
                         // don't follow links to avoid infinite recursion
                         && file.getCanonicalPath().equals(file.getAbsolutePath())) {
