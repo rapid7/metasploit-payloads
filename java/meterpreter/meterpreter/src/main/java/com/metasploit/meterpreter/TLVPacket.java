@@ -199,7 +199,7 @@ public class TLVPacket {
         ArrayList values = new ArrayList();
         ArrayList indices = (ArrayList) valueMap.get(new Integer(type));
         if (indices == null) {
-            throw new IllegalArgumentException("Cannot find type " + type);
+            return values;
         }
 
         for (int i = 0; i < indices.size(); ++i) {
