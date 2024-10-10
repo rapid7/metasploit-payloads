@@ -37,6 +37,7 @@ define("TLV_TYPE_FILE_MODE_T",         TLV_META_TYPE_UINT    | 1234);
 ##
 define("TLV_TYPE_HOST_NAME",           TLV_META_TYPE_STRING  | 1400);
 define("TLV_TYPE_PORT",                TLV_META_TYPE_UINT    | 1401);
+define("TLV_TYPE_INTERFACE_MTU",       TLV_META_TYPE_UINT    | 1402);
 
 define("TLV_TYPE_SUBNET",              TLV_META_TYPE_RAW     | 1420);
 define("TLV_TYPE_NETMASK",             TLV_META_TYPE_RAW     | 1421);
@@ -1264,6 +1265,40 @@ function stdapi_registry_set_value($req, &$pkt) {
     } else {
         return ERROR_FAILURE;
     }
+}
+}
+
+if (!function_exists('stdapi_net_config_get_interfaces')) {
+if (is_callable(net_get_interfaces)) {
+    register_command('stdapi_net_config_get_interfaces', COMMAND_ID_STDAPI_NET_CONFIG_GET_INTERFACES);
+}
+function stdapi_net_config_get_arp_interfaces($req, &$pkt) {
+    if (!is_callable(net_get_interfaces)) {
+        return ERROR_FAILURE;
+    }
+    $content = net_get_interfaces();
+    if ($content === false) {
+      return ERROR_FAILURE;
+    }
+    foreach($content as $iface_name => $iface_data) {
+      my_print("Info for $iface_name: " . json_encode($iface_data));
+      $iface_tlv = tlv_pack(create_tlv(TLV_TYPE_MAC_NAME, $iface_name));
+      if (array_key_exists('mac', $iface_data)) {
+        $iface_tlv .= tlv_pack(create_tlv(TLV_TYPE_MAC_ADDRESS, pack("H*", str_replace(':', '', $iface_data['mac']))));
+      }
+      if (array_key_exists('mtu', $iface_data)) {
+        $iface_tlv .= tlv_pack(create_tlv(TLV_TYPE_INTERFACE_MTU, $iface_data['mtu']));
+      }
+      if (!array_key_exists('unicast', $iface_data)) {
+        foreach($iface_data['unicast'] as $iface_network) {
+          $iface_tlv .= tlv_pack(create_tlv(TLV_TYPE_IP, inet_pton($iface_network['address'])));
+          $iface_tlv .= tlv_pack(create_tlv(TLV_TYPE_NETMASK, $iface_network['netmask']));
+        }
+      }
+      packet_add_tlv($pkt, create_tlv(TLV_TYPE_NETWORK_INTERFACE, $iface_tlv));
+    }
+
+    return ERROR_SUCCESS;
 }
 }
 
