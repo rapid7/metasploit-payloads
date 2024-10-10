@@ -71,6 +71,7 @@ define("PROCESS_EXECUTE_FLAG_HIDDEN", (1 << 0));
 define("PROCESS_EXECUTE_FLAG_CHANNELIZED", (1 << 1));
 define("PROCESS_EXECUTE_FLAG_SUSPENDED", (1 << 2));
 define("PROCESS_EXECUTE_FLAG_USE_THREAD_TOKEN", (1 << 3));
+define("PROCESS_EXECUTE_FLAG_ARG_ARRAY", (1 << 8));
 
 # Registry
 define("TLV_TYPE_HKEY",                TLV_META_TYPE_QWORD   | 1000);
@@ -99,21 +100,23 @@ define("TLV_TYPE_ENV_GROUP",           TLV_META_TYPE_GROUP   | 1102);
 define("DELETE_KEY_FLAG_RECURSIVE", (1 << 0));
 
 # Process
-define("TLV_TYPE_BASE_ADDRESS",        TLV_META_TYPE_QWORD   | 2000);
-define("TLV_TYPE_ALLOCATION_TYPE",     TLV_META_TYPE_UINT    | 2001);
-define("TLV_TYPE_PROTECTION",          TLV_META_TYPE_UINT    | 2002);
-define("TLV_TYPE_PROCESS_PERMS",       TLV_META_TYPE_UINT    | 2003);
-define("TLV_TYPE_PROCESS_MEMORY",      TLV_META_TYPE_RAW     | 2004);
-define("TLV_TYPE_ALLOC_BASE_ADDRESS",  TLV_META_TYPE_QWORD   | 2005);
-define("TLV_TYPE_MEMORY_STATE",        TLV_META_TYPE_UINT    | 2006);
-define("TLV_TYPE_MEMORY_TYPE",         TLV_META_TYPE_UINT    | 2007);
-define("TLV_TYPE_ALLOC_PROTECTION",    TLV_META_TYPE_UINT    | 2008);
-define("TLV_TYPE_PID",                 TLV_META_TYPE_UINT    | 2300);
-define("TLV_TYPE_PROCESS_NAME",        TLV_META_TYPE_STRING  | 2301);
-define("TLV_TYPE_PROCESS_PATH",        TLV_META_TYPE_STRING  | 2302);
-define("TLV_TYPE_PROCESS_GROUP",       TLV_META_TYPE_GROUP   | 2303);
-define("TLV_TYPE_PROCESS_FLAGS",       TLV_META_TYPE_UINT    | 2304);
-define("TLV_TYPE_PROCESS_ARGUMENTS",   TLV_META_TYPE_STRING  | 2305);
+define("TLV_TYPE_BASE_ADDRESS",           TLV_META_TYPE_QWORD   | 2000);
+define("TLV_TYPE_ALLOCATION_TYPE",        TLV_META_TYPE_UINT    | 2001);
+define("TLV_TYPE_PROTECTION",             TLV_META_TYPE_UINT    | 2002);
+define("TLV_TYPE_PROCESS_PERMS",          TLV_META_TYPE_UINT    | 2003);
+define("TLV_TYPE_PROCESS_MEMORY",         TLV_META_TYPE_RAW     | 2004);
+define("TLV_TYPE_ALLOC_BASE_ADDRESS",     TLV_META_TYPE_QWORD   | 2005);
+define("TLV_TYPE_MEMORY_STATE",           TLV_META_TYPE_UINT    | 2006);
+define("TLV_TYPE_MEMORY_TYPE",            TLV_META_TYPE_UINT    | 2007);
+define("TLV_TYPE_ALLOC_PROTECTION",       TLV_META_TYPE_UINT    | 2008);
+define("TLV_TYPE_PID",                    TLV_META_TYPE_UINT    | 2300);
+define("TLV_TYPE_PROCESS_NAME",           TLV_META_TYPE_STRING  | 2301);
+define("TLV_TYPE_PROCESS_PATH",           TLV_META_TYPE_STRING  | 2302);
+define("TLV_TYPE_PROCESS_GROUP",          TLV_META_TYPE_GROUP   | 2303);
+define("TLV_TYPE_PROCESS_FLAGS",          TLV_META_TYPE_UINT    | 2304);
+define("TLV_TYPE_PROCESS_ARGUMENTS",      TLV_META_TYPE_STRING  | 2305);
+define("TLV_TYPE_PROCESS_ARGUMENT",       TLV_META_TYPE_STRING  | 2310);
+define("TLV_TYPE_PROCESS_UNESCAPED_PATH", TLV_META_TYPE_STRING  | 2311);
 
 define("TLV_TYPE_IMAGE_FILE",          TLV_META_TYPE_STRING  | 2400);
 define("TLV_TYPE_IMAGE_FILE_PATH",     TLV_META_TYPE_STRING  | 2401);
@@ -898,21 +901,50 @@ function stdapi_sys_process_execute($req, &$pkt) {
     global $channel_process_map, $processes;
 
     my_print("doing execute");
-    $cmd_tlv = packet_get_tlv($req, TLV_TYPE_PROCESS_PATH);
-    $args_tlv = packet_get_tlv($req, TLV_TYPE_PROCESS_ARGUMENTS);
     $flags_tlv = packet_get_tlv($req, TLV_TYPE_PROCESS_FLAGS);
-
-    $cmd = $cmd_tlv['value'];
-    $args = $args_tlv['value'];
     $flags = $flags_tlv['value'];
+    $options = array();
 
-    # If there was no command specified, well, a user sending an empty command
-    # deserves failure.
-    my_print("Cmd: $cmd $args");
-    if (0 > strlen($cmd)) {
-        return ERROR_FAILURE;
+    # proc_open can take either a string or an array of strings
+    # We support both, based on the presence of a flag.
+    # PHP pre-7.4 doesn't support args-as-arrays
+    if (($flags & PROCESS_EXECUTE_FLAG_ARG_ARRAY) && version_compare(PHP_VERSION, '7.4.0') >= 0) {
+        $cmd_tlv = packet_get_tlv($req, TLV_TYPE_PROCESS_UNESCAPED_PATH);
+        $cmd = $cmd_tlv['value'];
+
+        # If there was no command specified, well, a user sending an empty command
+        # deserves failure.
+        if (0 > strlen($cmd)) {
+            return ERROR_FAILURE;
+        }
+
+        $args_tlv = packet_get_all_tlvs($req, TLV_TYPE_PROCESS_ARGUMENT);
+        $real_cmd = array();
+        array_push($real_cmd, $cmd);
+        foreach ($args_tlv as $arg_tlv) {
+            $arg = $arg_tlv['value'];
+            array_push($real_cmd, $arg);
+        }
+
+        if (is_windows()) {
+            $options['bypass_shell'] = true;
+        }
+    } else {
+        $cmd_tlv = packet_get_tlv($req, TLV_TYPE_PROCESS_PATH);
+        $cmd = $cmd_tlv['value'];
+
+        # If there was no command specified, well, a user sending an empty command
+        # deserves failure.
+        if (0 > strlen($cmd)) {
+            return ERROR_FAILURE;
+        }
+
+        $args_tlv = packet_get_tlv($req, TLV_TYPE_PROCESS_ARGUMENTS);
+        $args = $args_tlv['value'];
+        $real_cmd = $cmd ." ". $args;
+        my_print("Cmd: $real_cmd");
     }
-    $real_cmd = $cmd ." ". $args;
+
 
     $pipe_desc = array(array('pipe','r'), array('pipe','w'));
     if (is_windows()) {
@@ -924,7 +956,7 @@ function stdapi_sys_process_execute($req, &$pkt) {
 
     # Now that we've got the command built, run it. If it worked, we'll send
     # back a handle identifier.
-    $handle = proc_open($real_cmd, $pipe_desc, $pipes);
+    $handle = proc_open($real_cmd, $pipe_desc, $pipes, null, null, $options);
     if (!is_resource($handle)) {
         return ERROR_FAILURE;
     }

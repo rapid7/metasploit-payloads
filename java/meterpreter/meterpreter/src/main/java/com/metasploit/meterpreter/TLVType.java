@@ -145,21 +145,23 @@ public interface TLVType {
     public static final int TLV_TYPE_ENV_GROUP    = TLVPacket.TLV_META_TYPE_GROUP  | 1102;
 
     // Process
-    public static final int TLV_TYPE_BASE_ADDRESS       = TLVPacket.TLV_META_TYPE_QWORD  | 2000;
-    public static final int TLV_TYPE_ALLOCATION_TYPE    = TLVPacket.TLV_META_TYPE_UINT   | 2001;
-    public static final int TLV_TYPE_PROTECTION         = TLVPacket.TLV_META_TYPE_UINT   | 2002;
-    public static final int TLV_TYPE_PROCESS_PERMS      = TLVPacket.TLV_META_TYPE_UINT   | 2003;
-    public static final int TLV_TYPE_PROCESS_MEMORY     = TLVPacket.TLV_META_TYPE_RAW    | 2004;
-    public static final int TLV_TYPE_ALLOC_BASE_ADDRESS = TLVPacket.TLV_META_TYPE_QWORD  | 2005;
-    public static final int TLV_TYPE_MEMORY_STATE       = TLVPacket.TLV_META_TYPE_UINT   | 2006;
-    public static final int TLV_TYPE_MEMORY_TYPE        = TLVPacket.TLV_META_TYPE_UINT   | 2007;
-    public static final int TLV_TYPE_ALLOC_PROTECTION   = TLVPacket.TLV_META_TYPE_UINT   | 2008;
-    public static final int TLV_TYPE_PID                = TLVPacket.TLV_META_TYPE_UINT   | 2300;
-    public static final int TLV_TYPE_PROCESS_NAME       = TLVPacket.TLV_META_TYPE_STRING | 2301;
-    public static final int TLV_TYPE_PROCESS_PATH       = TLVPacket.TLV_META_TYPE_STRING | 2302;
-    public static final int TLV_TYPE_PROCESS_GROUP      = TLVPacket.TLV_META_TYPE_GROUP  | 2303;
-    public static final int TLV_TYPE_PROCESS_FLAGS      = TLVPacket.TLV_META_TYPE_UINT   | 2304;
-    public static final int TLV_TYPE_PROCESS_ARGUMENTS  = TLVPacket.TLV_META_TYPE_STRING | 2305;
+    public static final int TLV_TYPE_BASE_ADDRESS           = TLVPacket.TLV_META_TYPE_QWORD  | 2000;
+    public static final int TLV_TYPE_ALLOCATION_TYPE        = TLVPacket.TLV_META_TYPE_UINT   | 2001;
+    public static final int TLV_TYPE_PROTECTION             = TLVPacket.TLV_META_TYPE_UINT   | 2002;
+    public static final int TLV_TYPE_PROCESS_PERMS          = TLVPacket.TLV_META_TYPE_UINT   | 2003;
+    public static final int TLV_TYPE_PROCESS_MEMORY         = TLVPacket.TLV_META_TYPE_RAW    | 2004;
+    public static final int TLV_TYPE_ALLOC_BASE_ADDRESS     = TLVPacket.TLV_META_TYPE_QWORD  | 2005;
+    public static final int TLV_TYPE_MEMORY_STATE           = TLVPacket.TLV_META_TYPE_UINT   | 2006;
+    public static final int TLV_TYPE_MEMORY_TYPE            = TLVPacket.TLV_META_TYPE_UINT   | 2007;
+    public static final int TLV_TYPE_ALLOC_PROTECTION       = TLVPacket.TLV_META_TYPE_UINT   | 2008;
+    public static final int TLV_TYPE_PID                    = TLVPacket.TLV_META_TYPE_UINT   | 2300;
+    public static final int TLV_TYPE_PROCESS_NAME           = TLVPacket.TLV_META_TYPE_STRING | 2301;
+    public static final int TLV_TYPE_PROCESS_PATH           = TLVPacket.TLV_META_TYPE_STRING | 2302;
+    public static final int TLV_TYPE_PROCESS_GROUP          = TLVPacket.TLV_META_TYPE_GROUP  | 2303;
+    public static final int TLV_TYPE_PROCESS_FLAGS          = TLVPacket.TLV_META_TYPE_UINT   | 2304;
+    public static final int TLV_TYPE_PROCESS_ARGUMENTS      = TLVPacket.TLV_META_TYPE_STRING | 2305;
+    public static final int TLV_TYPE_PROCESS_ARGUMENT       = TLVPacket.TLV_META_TYPE_STRING | 2310;
+    public static final int TLV_TYPE_PROCESS_UNESCAPED_PATH = TLVPacket.TLV_META_TYPE_STRING | 2311;
 
     public static final int TLV_TYPE_IMAGE_FILE        = TLVPacket.TLV_META_TYPE_STRING | 2400;
     public static final int TLV_TYPE_IMAGE_FILE_PATH   = TLVPacket.TLV_META_TYPE_STRING | 2401;

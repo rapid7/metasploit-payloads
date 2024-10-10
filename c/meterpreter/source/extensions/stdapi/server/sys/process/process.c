@@ -105,6 +105,167 @@ DWORD request_sys_process_close(Remote *remote, Packet *packet)
 	return ERROR_SUCCESS;
 }
 
+BOOL needs_quoting(PCHAR str)
+{
+	// Initial value is to need quoting, in case it's an empty arg
+	BOOL bNeedsQuoting = TRUE;
+	char* pArgIndex = str;
+	// Check whether we'll need to quote the argument
+	while (*pArgIndex != '\0')
+	{
+		// The arg is not empty
+		bNeedsQuoting = FALSE;
+		if (*pArgIndex == '\v' || *pArgIndex == ' ' || *pArgIndex == '\t')
+		{
+			bNeedsQuoting = TRUE;
+			break;
+		}
+		++pArgIndex;
+	}
+	
+	return bNeedsQuoting;
+}
+
+DWORD get_commandline(Packet *packet, DWORD flags, PCHAR* commandLine)
+{
+	// Check new-style arguments first
+	DWORD dwTlvIndex = 0;
+	Tlv argTlv;
+	char* pArgStart;
+	char* pArgIndex;
+	BOOL bNeedsQuoting;
+	size_t commandLineLength = 0;
+	size_t commandLineWriteIndex = 0;
+	PCHAR path, arguments = NULL;
+	DWORD backslashCount;
+
+	if (flags & PROCESS_EXECUTE_FLAG_ARG_ARRAY)
+	{
+	    path = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_PROCESS_UNESCAPED_PATH);
+		// Calculate the potential size of our command line.
+		// The path may need quoting, so two extra chars there, plus null terminator.
+		commandLineLength = strlen(path) + 3;
+
+		// Now look at arguments
+		while (ERROR_SUCCESS == met_api->packet.enum_tlv(packet, dwTlvIndex++, TLV_TYPE_PROCESS_ARGUMENT, &argTlv))
+		{
+			commandLineLength += strlen((char*)argTlv.buffer);
+			commandLineLength += 3; // Two quotes bookending it, plus a space between the arguments
+		}
+
+		// In the worst case, we've got a lot of backslashes just before a quote character, which will need to double in size.
+		// So, allocate for the worst-case expansion.
+		commandLineLength *= 2;
+
+		if (!(*commandLine = (PCHAR)malloc(commandLineLength)))
+		{
+			return ERROR_NOT_ENOUGH_MEMORY;
+		}
+		
+		// Append the path to the command line, possibly quoting, but no escaping
+		bNeedsQuoting = needs_quoting(path);
+		if (bNeedsQuoting)
+		{
+			(*commandLine)[commandLineWriteIndex++] = '"';
+		}
+
+		strncpy_s((*commandLine) + commandLineWriteIndex, commandLineLength - commandLineWriteIndex, path, strlen(path));
+		commandLineWriteIndex += strlen(path);
+		if (bNeedsQuoting)
+		{
+			(*commandLine)[commandLineWriteIndex++] = '"';
+		}
+
+		dwTlvIndex = 0;
+		while (ERROR_SUCCESS == met_api->packet.enum_tlv(packet, dwTlvIndex++, TLV_TYPE_PROCESS_ARGUMENT, &argTlv))
+		{
+			if (dwTlvIndex != 0)
+			{
+				// Add a space between arguments
+				(*commandLine)[commandLineWriteIndex++] = ' ';
+			}
+			
+			pArgStart = (char*)argTlv.buffer;
+			bNeedsQuoting = needs_quoting(pArgStart);
+
+			// Now build up the command line
+			pArgIndex = pArgStart;
+			backslashCount = 0;
+			if (bNeedsQuoting)
+			{
+				(*commandLine)[commandLineWriteIndex++] = '"';
+			}
+
+			while (*pArgIndex != '\0')
+			{
+				if (*pArgIndex == '\\')
+				{
+					++backslashCount;
+				}
+				else
+				{
+					if (*pArgIndex == '"')
+					{
+						// We've encountered a double quote - if there are any backslashes immediately preceding, double them
+						for (DWORD i = 0; i < backslashCount; ++i)
+						{
+							(*commandLine)[commandLineWriteIndex++] = '\\';
+						}
+						// Now actually escape the double-quote
+						(*commandLine)[commandLineWriteIndex++] = '\\';
+					}
+
+					backslashCount = 0;
+				}
+				// Now write out whatever the character was
+				(*commandLine)[commandLineWriteIndex++] = *pArgIndex;
+
+				++pArgIndex;
+			}
+			if (bNeedsQuoting)
+			{
+				// We're about to add another quote - check for backslash doubling again
+				for (DWORD i = 0; i < backslashCount; ++i)
+				{
+					(*commandLine)[commandLineWriteIndex++] = '\\';
+				}
+				(*commandLine)[commandLineWriteIndex++] = '"';
+
+			}
+		}
+		(*commandLine)[commandLineWriteIndex++] = '\0';
+		dprintf("[PROCESS] Created command line: %s", *commandLine);
+	}
+	else
+	{
+	    path = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_PROCESS_PATH);
+		arguments = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_PROCESS_ARGUMENTS);
+		// If the remote endpoint provided arguments, combine them with the
+		// executable to produce a command line
+		if (path && arguments)
+		{
+			commandLineLength = strlen(path) + strlen(arguments) + 2;
+
+			if (!(*commandLine = (PCHAR)malloc(commandLineLength)))
+			{
+				return ERROR_NOT_ENOUGH_MEMORY;
+			}
+
+			_snprintf(*commandLine, commandLineLength, "%s %s", path, arguments);
+		}
+		else if (path)
+		{
+			*commandLine = path;
+		}
+		else
+		{
+			return ERROR_INVALID_PARAMETER;
+		}
+		dprintf("[PROCESS] Using legacy command line: %s", *commandLine);
+	}
+	return ERROR_SUCCESS;
+}
+
 /*
  * Executes a process using the supplied parameters, optionally creating a
  * channel through which output is filtered.
@@ -122,7 +283,7 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 	PROCESS_INFORMATION pi;
 	STARTUPINFOEXW si;
 	HANDLE in[2], out[2];
-	PCHAR path, arguments, commandLine = NULL;
+	PCHAR commandLine = NULL;
 	wchar_t* commandLine_w = NULL;
 	DWORD flags = 0, createFlags = 0, ppid = 0;
 	BOOL inherit = FALSE;
@@ -158,11 +319,16 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 		{
 			break;
 		}
+		
 
-		// Get the execution arguments
-		arguments = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_PROCESS_ARGUMENTS);
-		path = met_api->packet.get_tlv_value_string(packet, TLV_TYPE_PROCESS_PATH);
 		flags = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_PROCESS_FLAGS);
+		// Get the execution command line
+		result = get_commandline(packet, flags, &commandLine);
+		if (result != ERROR_SUCCESS)
+		{
+			break;
+		}
+
 		ppid = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_PARENT_PID);
 
 		if (met_api->packet.get_tlv(packet, TLV_TYPE_VALUE_DATA, &inMemoryData) == ERROR_SUCCESS)
@@ -197,30 +363,6 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 				mbstowcs(si.StartupInfo.lpDesktop, cpDesktop, size);
 
 			} while (0);
-		}
-
-		// If the remote endpoint provided arguments, combine them with the
-		// executable to produce a command line
-		if (path && arguments)
-		{
-			size_t commandLineLength = strlen(path) + strlen(arguments) + 2;
-
-			if (!(commandLine = (PCHAR)malloc(commandLineLength)))
-			{
-				result = ERROR_NOT_ENOUGH_MEMORY;
-				break;
-			}
-
-			_snprintf(commandLine, commandLineLength, "%s %s", path, arguments);
-		}
-		else if (path)
-		{
-			commandLine = path;
-		}
-		else
-		{
-			result = ERROR_INVALID_PARAMETER;
-			break;
 		}
 
 		// If the channelized flag is set, create a pipe for stdin/stdout/stderr
@@ -610,7 +752,7 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 	}
 
 	// Free the command line if necessary
-	if (path && arguments && commandLine)
+	if (commandLine)
 	{
 		free(commandLine);
 	}
