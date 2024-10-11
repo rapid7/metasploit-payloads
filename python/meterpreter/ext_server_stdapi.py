@@ -1147,6 +1147,12 @@ def enable_privilege(name, enable=True):
     tokenPrivileges.get_array()[0].Attributes = SE_PRIVILEGE_ENABLED if enable else 0
     return AdjustTokenPrivileges(token, False, tokenPrivileges, 0, None, None)
 
+def islink_windows(dir_path):
+    if os.path.isdir(dir_path):
+        FILE_ATTRIBUTE_REPARSE_POINT = 0x0400
+        attributes = ctypes.windll.kernel32.GetFileAttributesW(unicode(dir_path))
+        return (attributes & FILE_ATTRIBUTE_REPARSE_POINT) > 0
+
 @register_function
 def channel_open_stdapi_fs_file(request, response):
     fpath = packet_get_tlv(request, TLV_TYPE_FILE_PATH)['value']
@@ -1933,7 +1939,9 @@ def stdapi_fs_chdir(request, response):
 def stdapi_fs_delete_dir(request, response):
     dir_path = packet_get_tlv(request, TLV_TYPE_DIRECTORY_PATH)['value']
     dir_path = unicode(dir_path)
-    if os.path.islink(dir_path):
+    if has_windll and islink_windows(dir_path):
+        del_func = os.rmdir
+    elif not has_windll and os.path.islink(dir_path):
         del_func = os.unlink
     else:
         del_func = shutil.rmtree
