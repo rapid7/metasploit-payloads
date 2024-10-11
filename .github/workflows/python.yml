@@ -19,11 +19,11 @@ permissions:
 on:
   push:
     paths:
-      - 'c/**'
+      - 'python/**'
       - '.github/**'
   pull_request:
     paths:
-      - 'c/**'
+      - 'python/**'
       - '.github/**'
 
 jobs:
