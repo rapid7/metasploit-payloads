@@ -65,10 +65,65 @@ public class stdapi_sys_process_execute implements Command {
         return ERROR_SUCCESS;
     }
 
+    // On Windows, Java quote-escapes _some_ arguments (like those with spaces), but doesn't deal correctly with some
+    // edge cases; e.g. empty strings, strings that already have quotes.
+    protected String escapeArg(String arg) {
+        if (System.getProperty("os.name").toLowerCase().contains("windows")) {
+            if (arg == "") {
+                return "\"\"";
+            } else {
+                StringBuilder sb = new StringBuilder();
+                int numBackslashes = 0;
+                boolean needsQuoting = false;
+                for (int i = 0; i < arg.length(); i++) {
+                    char c = arg.charAt(i);
+                    switch (c) {
+                        case '"': {
+                            for (int nb = 0; nb < numBackslashes; nb++) {
+                                sb.append('\\');
+                            }
+                            numBackslashes = 0;
+                            sb.append('\\');
+                            break;
+                        }
+                        case '\\': {
+                            numBackslashes++;
+                            break;
+                        }
+                        case ' ':
+                        case '\t':
+                        case (char)11:
+                        {
+                            needsQuoting = true;
+                            numBackslashes = 0;
+                            break;
+                        }
+                        default: {
+                            numBackslashes = 0;
+                            break;
+                        }
+                    }
+                    sb.append(c);
+                }
+                if (needsQuoting) {
+                    for (int nb = 0; nb < numBackslashes; nb++) {
+                        sb.append('\\');
+                    }
+                    return "\"" + sb.toString() + "\"";
+                }
+                return sb.toString();
+            }
+        } else {
+            return arg;
+        }
+    }
+
     protected Process execute(String cmd, ArrayList<String> args) throws IOException {
         ArrayList<String> cmdAndArgs = new ArrayList<String>();
         cmdAndArgs.add(cmd);
-        cmdAndArgs.addAll(args);
+        for (String arg : args) {
+            cmdAndArgs.add(escapeArg(arg));
+        }
         ProcessBuilder builder = new ProcessBuilder(cmdAndArgs);
         builder.directory(Loader.getCWD());
         return builder.start();
