@@ -68,8 +68,12 @@ public class stdapi_sys_process_execute implements Command {
     // On Windows, Java quote-escapes _some_ arguments (like those with spaces), but doesn't deal correctly with some
     // edge cases; e.g. empty strings, strings that already have quotes.
     protected String escapeArg(String arg) {
-        if (System.getProperty("os.name").toLowerCase().contains("windows")) {
-            if (arg == "") {
+        if (arg == null) {
+            return null;
+        }
+        String osName = System.getProperty("os.name");
+        if (osName != null && osName.toLowerCase().contains("windows")) {
+            if (arg.equals("")) {
                 return "\"\"";
             } else {
                 StringBuilder sb = new StringBuilder();
