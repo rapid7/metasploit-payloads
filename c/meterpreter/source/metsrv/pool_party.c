@@ -1,3 +1,4 @@
+#include <ntstatus.h>
 #include "common.h"
 #include "pool_party.h"
 #include "pool_party_ext.h"
@@ -156,10 +157,10 @@ HANDLE GetRemoteHandle(HANDLE hProcess, LPCWSTR typeName, DWORD dwDesiredAccess)
 		return INVALID_HANDLE_VALUE;
 	}
 	dprintf("[INJECT][inject_via_poolparty][get_remote_handle] lpProcessInfo: %p", lpProcessInfo);
-	while (ntStatus != ERROR_SUCCESS) {
+	while (ntStatus != STATUS_SUCCESS) {
 		ntStatus = pNtDll->pNtQueryInformationProcess(hProcess, ProcessHandleInformation, lpProcessInfo, dwInformationSizeIn, &dwInformationSizeOut);
 		dprintf("[INJECT][inject_via_poolparty][get_remote_handle] NtQueryInformationProcess() : %p", ntStatus);
-		if (ntStatus == 0xC0000004L && dwInformationSizeIn != dwInformationSizeOut) {
+		if (ntStatus == STATUS_INFO_LENGTH_MISMATCH && dwInformationSizeIn != dwInformationSizeOut) {
 			lpProcessInfo = HeapReAlloc(hHeap, 0, lpProcessInfo, dwInformationSizeOut);
 			if(lpProcessInfo == NULL) {
 				dprintf("[INJECT][inject_via_poolparty][get_remote_handle] HeapReAlloc() returned NULL");
@@ -169,7 +170,7 @@ HANDLE GetRemoteHandle(HANDLE hProcess, LPCWSTR typeName, DWORD dwDesiredAccess)
 			dwInformationSizeIn = dwInformationSizeOut;
 			continue;
 		}
-		if (ntStatus != ERROR_SUCCESS && ntStatus != 0xC0000004L) {
+		if (ntStatus != STATUS_SUCCESS && ntStatus != STATUS_INFO_LENGTH_MISMATCH) {
 			HeapFree(hHeap, 0, lpProcessInfo);
 			return INVALID_HANDLE_VALUE;
 		}
