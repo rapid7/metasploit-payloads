@@ -5,6 +5,9 @@ typedef struct IUnknown IUnknown;
 #include <winbase.h>
 #include <winternl.h>
 
+#define STATUS_SUCCESS 0
+#define STATUS_INFO_LENGTH_MISMATCH 0xC0000004
+
 #define TP_DIRECT_STRUCT_SIZE_X64 72
 #define TP_DIRECT_STRUCT_SIZE_X86 56
 #define TP_DIRECT_STRUCT_CB_OFFSET_X64 0x38

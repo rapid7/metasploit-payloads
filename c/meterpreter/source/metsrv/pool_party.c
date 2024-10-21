@@ -1,4 +1,3 @@
-#include <ntstatus.h>
 #include "common.h"
 #include "pool_party.h"
 #include "pool_party_ext.h"
