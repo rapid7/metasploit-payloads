@@ -128,7 +128,7 @@ BOOL supports_poolparty_injection(DWORD dwSourceArch, DWORD dwDestinationArch) {
 		dprintf("[INJECT][supports_poolparty_injection] dwSourceArch: %d dwDestinationArch: %d", dwSourceArch, dwDestinationArch);
 		dprintf("[INJECT][supports_poolparty_injection] os.dwMajorVersion: %d os.dwMinorVersion: %d", os.dwMajorVersion, os.dwMinorVersion);
 		if (os.dwMajorVersion >= 10) {
-			if (dwDestinationArch == dwSourceArch && (dwSourceArch == PROCESS_ARCH_X64 || dwSourceArch == PROCESS_ARCH_X86)) {
+			if (dwDestinationArch == PROCESS_ARCH_X64 && (dwSourceArch == PROCESS_ARCH_X64 || dwSourceArch == PROCESS_ARCH_X86)) {
 				return TRUE;
 			}
 		}
