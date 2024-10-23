@@ -98,7 +98,7 @@ POOLPARTY_INJECTOR* GetOrInitPoolParty(DWORD dwSourceArch, DWORD dwDestinationAr
 					break;
 				}
 		}
-		if (dwSourceArch == PROCESS_ARCH_X64) {
+		if (dwSourceArch == PROCESS_ARCH_X64 || dwSourceArch == PROCESS_ARCH_X86) {
 			if (dwDestinationArch == PROCESS_ARCH_X64) {
 				// poolLifeguard->variants[POOLPARTY_TECHNIQUE_TP_WAIT_INSERTION].isInjectionSupported = poolLifeguard->variants[POOLPARTY_TECHNIQUE_TP_WAIT_INSERTION].isSystemSupported;
 			}
