@@ -527,7 +527,7 @@ DWORD inject_via_poolparty(Remote* remote, Packet* response, HANDLE hProcess, DW
 	do
 	{
 	
-		if (dwDestinationArch == PROCESS_ARCH_X64 && (dwMeterpreterArch == PROCESS_ARCH_X86 || dwMeterpreterArch == PROCESS_ARCH_X86)) {
+		if (dwDestinationArch == PROCESS_ARCH_X64 && (dwMeterpreterArch == PROCESS_ARCH_X64 || dwMeterpreterArch == PROCESS_ARCH_X86)) {
 			dprintf("[INJECT][inject_via_poolparty] using: poolparty_stub_x64");
 			lpStub = &poolparty_stub_x64;
 			dwStubSize = sizeof(poolparty_stub_x64);
