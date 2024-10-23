@@ -7,6 +7,7 @@
 #define MIGRATE_TECHNIQUE_REMOTETHREAD		0
 #define MIGRATE_TECHNIQUE_REMOTETHREADWOW64	1
 #define MIGRATE_TECHNIQUE_APCQUEUE			2
+#define MIGRATE_TECHNIQUE_POOLPARTY         3
 
 //===============================================================================================//
 
@@ -65,16 +66,40 @@ typedef struct _WOW64CONTEXT
 	} t;
 } WOW64CONTEXT, * LPWOW64CONTEXT;
 
+// The context used for injection via migrate_via_poolparty
+typedef struct _POOLPARTYCONTEXT
+{
+	union
+	{
+		LPVOID lpStartAddress;
+		BYTE bPadding[8];
+	} s;
+
+	union
+	{
+		LPVOID lpParameter;
+		BYTE bPadding[8];
+	} p;
+
+	union
+	{
+		LPVOID hTriggerEvent;
+		BYTE bPadding[8];
+	} e;
+
+} POOLPARTYCONTEXT, * LPPOOLPARTYCONTEXT;
+
 //===============================================================================================//
 
 DWORD inject_via_apcthread(Remote * remote, Packet * response, HANDLE hProcess, DWORD dwProcessID, DWORD dwDestinationArch, LPVOID lpStartAddress, LPVOID lpParameter);
 
 DWORD inject_via_remotethread(Remote * remote, Packet * response, HANDLE hProcess, DWORD dwDestinationArch, LPVOID lpStartAddress, LPVOID lpParameter);
+DWORD inject_via_poolparty(Remote* remote, Packet* response, HANDLE hProcess, DWORD dwDestinationArch, LPVOID lpStartAddress, LPVOID lpParameter);
 
 DWORD inject_via_remotethread_wow64(HANDLE hProcess, LPVOID lpStartAddress, LPVOID lpParameter, HANDLE * pThread);
 
 DWORD inject_dll(DWORD dwPid, DWORD dwDestinationArch, LPVOID lpDllBuffer, DWORD dwDllLength, LPCSTR reflectiveLoader, LPVOID lpArg, SIZE_T stArgSize);
-
+BOOL supports_poolparty_injection(DWORD dwSourceArch, DWORD dwDestinationArch);
 //===============================================================================================//
 #endif
 //===============================================================================================//
