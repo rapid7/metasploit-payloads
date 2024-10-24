@@ -53,5 +53,5 @@ jobs:
   build:
     uses: rapid7/metasploit-framework/.github/workflows/shared_meterpreter_acceptance.yml@master
     with:
-      metasploit-framework_commit: ${{ github.event.inputs.metasploitFrameworkCommit }}
+      metasploit_framework_commit: ${{ github.event.inputs.metasploitFrameworkCommit }}
       build_metasploit_payloads: true
