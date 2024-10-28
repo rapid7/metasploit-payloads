@@ -1269,11 +1269,11 @@ function stdapi_registry_set_value($req, &$pkt) {
 }
 
 if (!function_exists('stdapi_net_config_get_interfaces')) {
-if (is_callable(net_get_interfaces)) {
+if (is_callable('net_get_interfaces')) {
     register_command('stdapi_net_config_get_interfaces', COMMAND_ID_STDAPI_NET_CONFIG_GET_INTERFACES);
 }
 function stdapi_net_config_get_arp_interfaces($req, &$pkt) {
-    if (!is_callable(net_get_interfaces)) {
+    if (!is_callable('net_get_interfaces')) {
         return ERROR_FAILURE;
     }
     $content = net_get_interfaces();
