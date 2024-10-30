@@ -25,6 +25,8 @@
     <ClInclude Include="..\..\source\metsrv\metsrv.h" />
     <ClInclude Include="..\..\source\metsrv\packet_encryption.h" />
     <ClInclude Include="..\..\source\metsrv\metapi.h" />
+    <ClInclude Include="..\..\source\metsrv\pool_party.h" />
+    <ClInclude Include="..\..\source\metsrv\pool_party_ext.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\source\metsrv\pivot_tree.c" />
@@ -54,6 +56,7 @@
     <ClCompile Include="..\..\source\metsrv\server_setup.c" />
     <ClCompile Include="..\..\source\metsrv\metapi.c" />
     <ClCompile Include="..\..\source\logging\logging.c" />
+    <ClCompile Include="..\..\source\metsrv\pool_party.c" />
   </ItemGroup>
   <ItemGroup>
     <MASM Include="..\..\source\ReflectiveDLLInjection\dll\src\GateTrampoline64.asm" />
