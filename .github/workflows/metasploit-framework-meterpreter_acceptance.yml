@@ -36,15 +36,6 @@ on:
   pull_request:
     branches:
       - '*'
-    paths:
-      - 'metsploit-framework.gemspec'
-      - 'Gemfile.lock'
-      - 'docker/**'
-      - 'java/**'
-      - 'php/**'
-      - 'powershell/**'
-      - 'python/**'
-      - '.github/**'
 #   Example of running as a cron, to weed out flaky tests
 #  schedule:
 #    - cron: '*/15 * * * *'
