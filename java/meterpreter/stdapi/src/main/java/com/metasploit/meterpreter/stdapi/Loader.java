@@ -42,7 +42,7 @@ public class Loader implements ExtensionLoader {
     public void load(CommandManager mgr) throws Exception {
         mgr.registerCommand(CommandId.CORE_CHANNEL_OPEN, stdapi_channel_open.class, V1_2, V1_15);
         mgr.registerCommand(CommandId.STDAPI_FS_CHDIR, stdapi_fs_chdir.class);
-        mgr.registerCommand(CommandId.STDAPI_FS_DELETE_DIR, stdapi_fs_delete_dir.class);
+        mgr.registerCommand(CommandId.STDAPI_FS_DELETE_DIR, stdapi_fs_delete_dir.class, V1_2, V1_7);
         mgr.registerCommand(CommandId.STDAPI_FS_DELETE_FILE, stdapi_fs_delete_file.class);
         mgr.registerCommand(CommandId.STDAPI_FS_FILE_EXPAND_PATH, stdapi_fs_file_expand_path.class, V1_2, V1_5); // %COMSPEC% only
         mgr.registerCommand(CommandId.STDAPI_FS_FILE_MOVE, stdapi_fs_file_move.class);
