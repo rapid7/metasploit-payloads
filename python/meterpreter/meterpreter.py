@@ -1082,7 +1082,7 @@ class HttpTransport(Transport):
                     if len(packet) != (pkt_length + PACKET_HEADER_SIZE):
                         packet = None
         except requests.RequestException as e:
-            debug_traceback(f"[-] Failure to receive packet from {self.url}: {e}")
+            debug_traceback("[-] Failure to receive packet from " + str(self.url) + ": " + str(e))
 
         if not packet:
             self.communication_last = time.time()
