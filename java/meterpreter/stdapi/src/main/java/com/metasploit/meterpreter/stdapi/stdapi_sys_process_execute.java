@@ -147,7 +147,7 @@ public class stdapi_sys_process_execute implements Command {
     }
 
     protected Process execute(String cmdstr) throws IOException {
-        Process proc = Runtime.getRuntime().exec(cmdstr);
+        Process proc = Runtime.getRuntime().exec(cmdstr, null, Loader.getCWD());
         return proc;
     }
 }

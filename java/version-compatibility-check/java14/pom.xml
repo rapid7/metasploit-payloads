@@ -27,7 +27,7 @@
 							<target>
 								<mkdir dir="${project.basedir}/target/generated-sources/copy/" />
 								<copy todir="${project.basedir}/target/generated-sources/copy">
-									<fileset dir="${project.basedir}/../java15/target/generated-sources/copy" includes="**/*.java" excludes="**/*_V1_5.java"/>
+									<fileset dir="${project.basedir}/../java15/target/generated-sources/copy" includes="**/*.java" excludes="**/*_V1_5.java" />
 								</copy>
 							</target>
 						</configuration>
