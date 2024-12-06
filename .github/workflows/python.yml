@@ -60,13 +60,18 @@ jobs:
           DOCKER_IMAGE: ${{ matrix.docker_image }}
         run: |
           cd python/meterpreter
-          docker run --rm -w $(pwd) -v $(pwd):$(pwd) ${DOCKER_IMAGE} /bin/sh -c 'ls -lah; pip install mock; python -m unittest discover -v ./tests'
+          docker run --rm -w $(pwd) -v $(pwd):$(pwd) ${DOCKER_IMAGE} /bin/sh -c 'ls -lah; pip install mock requests; python -m unittest discover -v ./tests'
 
       - name: Set up Python on host
         if: ${{ !matrix.docker_image }}
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.runtime_version }}
+          
+      - name: Install dependencies on host
+        if: ${{ !matrix.docker_image }}
+        run: |
+          pip install mock requests
 
       - name: Run tests on host
         if: ${{ !matrix.docker_image }}
