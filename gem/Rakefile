@@ -101,7 +101,7 @@ end
 
 task :java_compile do
   Dir.chdir(java_source) do
-    system('mvn package -Ddeploy.path=output -Dandroid.sdk.path=$ANDROID_HOME -Dandroid.ndk.path=$ANDROID_NDK_HOME -Dandroid.release=true -q -P deploy')
+    system('mvn package -Ddeploy.path=output -Dandroid.sdk.path=$ANDROID_HOME -Dandroid.ndk.path=$ANDROID_NDK_HOME -Dandroid.release=true -P deploy')
   end
 end
 
