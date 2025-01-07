@@ -15,12 +15,17 @@ public class stdapi_net_resolve_hosts implements Command {
         int family = request.getIntValue(TLVType.TLV_TYPE_ADDR_TYPE);
         for (int i=0;i<hosts.size();i++) {
             String host = hosts.get(i);
-            InetAddress inetAddress = stdapi_net_resolve_host.resolve_host(host, family);
-            if (inetAddress != null) {
-                response.addOverflow(TLVType.TLV_TYPE_IP, inetAddress.getAddress());
-                response.addOverflow(TLVType.TLV_TYPE_ADDR_TYPE, family);
+            List<InetAddress> inetAddresses = stdapi_net_resolve_host.resolve_host(host, family);
+            TLVPacket addrTLV = new TLVPacket();
+            if (inetAddresses != null) {
+                for(int j = 0; j < inetAddresses.size(); j++){
+                    addrTLV.addOverflow(TLVType.TLV_TYPE_IP, inetAddresses.get(j).getAddress());
+                    addrTLV.addOverflow(TLVType.TLV_TYPE_ADDR_TYPE, family);
+                }
+                response.addOverflow(TLVType.TLV_TYPE_RESOLVE_HOST_ENTRY, addrTLV);
             } else {
-                response.addOverflow(TLVType.TLV_TYPE_IP, new byte[0]);
+                addrTLV.addOverflow(TLVType.TLV_TYPE_IP, new byte[0]);
+                response.addOverflow(TLVType.TLV_TYPE_RESOLVE_HOST_ENTRY, addrTLV);
                 response.addOverflow(TLVType.TLV_TYPE_ADDR_TYPE, family);
             }
         }
