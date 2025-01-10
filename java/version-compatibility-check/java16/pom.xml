@@ -28,10 +28,21 @@
 								<mkdir dir="${project.basedir}/target/generated-sources/copy/" />
 								<copy todir="${project.basedir}/target/generated-sources/copy">
 									<fileset dir="${project.basedir}/../../javapayload/src/main/java" includes="**/*.java" excludes="rmi/**" />
-									<fileset dir="${project.basedir}/../../meterpreter/meterpreter/src/main/java" includes="**/*.java"/>
-									<fileset dir="${project.basedir}/../../meterpreter/shared/src/main/java" includes="**/*.java"/>
-									<!-- Webcam_audio_record_V1_4 depends on Sun proprietary API -->
-									<fileset dir="${project.basedir}/../../meterpreter/meterpreter/target/extension-src" includes="**/*.java" excludes="**/stdapi_webcam_audio_record_V1_4.java" />
+									<fileset dir="${project.basedir}/../../meterpreter/meterpreter/src/main/java" includes="**/*.java" />
+									<fileset dir="${project.basedir}/../../meterpreter/shared/src/main/java" includes="**/*.java" />
+									<fileset dir="${project.basedir}/../../meterpreter/meterpreter/target/extension-src" includes="**/*.java">
+										<!-- stdapi_webcam_audio_record_V1_4 depends on Sun proprietary API -->
+										<exclude name="**/stdapi_webcam_audio_record_V1_4.java" />
+										<scriptselector language="javascript">
+											if (!(new RegExp('_V[0-9]_[0-9]+\.java')).test(filename)) {
+												self.setSelected(true);
+											} else if ((new RegExp('_V1_[0-6]\.java')).test(filename)) {
+												self.setSelected(true);
+											} else {
+												self.setSelected(false);
+											}
+										</scriptselector>
+									</fileset>
 								</copy>
 							</target>
 						</configuration>

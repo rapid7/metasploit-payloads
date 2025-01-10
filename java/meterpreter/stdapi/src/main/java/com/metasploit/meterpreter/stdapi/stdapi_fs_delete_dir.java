@@ -12,8 +12,8 @@ public class stdapi_fs_delete_dir implements Command {
     public int execute(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws Exception {
         String path = request.getStringValue(TLVType.TLV_TYPE_DIRECTORY_PATH);
         File file = Loader.expand(path);
-        if (isSymlink(file)) {
-            if (!file.delete()) {
+        if (FsUtils.isSymlink(file)) {
+            if (!deleteSymlink(file)) {
                 throw new IOException("Cannot delete symbolic link " + file.getCanonicalPath());
             }
         } else if (file.isDirectory()) {
@@ -26,22 +26,15 @@ public class stdapi_fs_delete_dir implements Command {
         return ERROR_SUCCESS;
     }
 
-    private static boolean isSymlink(File file) throws IOException {
-        File canon;
-        if (file.getParent() == null) {
-            canon = file;
-        } else {
-            File canonDir = file.getParentFile().getCanonicalFile();
-            canon = new File(canonDir, file.getName());
-        }
-        return !canon.getCanonicalFile().equals(canon.getAbsoluteFile());
+    protected boolean deleteSymlink(File file) throws IOException {
+        return file.delete();
     }
 
     private boolean rmtree(File file) throws IOException {
         boolean ret = true;
         for (File subFile : file.listFiles()) {
-            if (isSymlink(subFile)) {
-                ret = ret && subFile.delete();
+            if (FsUtils.isSymlink(subFile)) {
+                ret = ret && deleteSymlink(subFile);
             } else if (subFile.isDirectory()) {
                 ret = ret && rmtree(subFile);
             } else {

@@ -40,6 +40,12 @@ public class CommandManager {
             Class.forName("java.util.ServiceLoader");
             apiVersion = ExtensionLoader.V1_6;
 
+            Class.forName("java.util.Objects");
+            apiVersion = ExtensionLoader.V1_7;
+
+            Class.forName("java.util.Optional");
+            apiVersion = ExtensionLoader.V1_8;
+
             Class.forName("java.util.Optional").getMethod("stream");
             apiVersion = ExtensionLoader.V1_9;
 

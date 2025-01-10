@@ -24,10 +24,10 @@ public class stdapi_fs_stat implements Command {
             }
         }
         File file = new File(path);
-        if (!file.exists()) {
+        if (!exists(file)) {
             file = Loader.expand(path);
         }
-        if (!file.exists()) {
+        if (!exists(file)) {
             throw new IOException("File/directory does not exist: " + path);
         }
         response.add(TLVType.TLV_TYPE_STAT_BUF, stat(file));
@@ -74,6 +74,10 @@ public class stdapi_fs_stat implements Command {
      */
     protected boolean canExecute(File file) {
         return false;
+    }
+
+    private boolean exists(File file) throws IOException {
+        return file.exists() || FsUtils.isSymlink(file);
     }
 
     /**
