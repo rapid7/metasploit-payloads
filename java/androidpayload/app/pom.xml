@@ -64,7 +64,7 @@
 					<sdk>
 						<!-- platform or api level (api level 10 = platform 2.3)-->
 						<platform>10</platform>
-						<buildTools>29.0.3</buildTools>
+						<buildTools>23.0.3</buildTools>
 					</sdk>
 					<proguard>
 						<skip>false</skip>

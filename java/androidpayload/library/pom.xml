@@ -81,7 +81,7 @@
 					<sdk>
 						<!-- platform or api level (api level 19 = platform 4.4 (kitkat))-->
 						<platform>19</platform>
-						<buildTools>29.0.3</buildTools>
+						<buildTools>23.0.3</buildTools>
 					</sdk>
 				</configuration>
 			</plugin>
@@ -113,7 +113,7 @@
 								</goals>
 								<configuration>
 									<target>
-										<property name="dx.filepath" value="build-tools/29.0.3/lib/dx.jar" />
+										<property name="dx.filepath" value="build-tools/23.0.3/lib/dx.jar" />
 
 										<echo>Building shell</echo>
 										<delete dir="${project.basedir}/target/dx" />
