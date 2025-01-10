@@ -67,7 +67,7 @@
 						<buildTools>29.0.3</buildTools>
 					</sdk>
 					<proguard>
-						<skip>true</skip>
+						<skip>false</skip>
 						<config>proguard.cfg</config>
 					</proguard>
 				</configuration>
@@ -91,7 +91,7 @@
 				<plugins>
 					<plugin>
 						<artifactId>maven-antrun-plugin</artifactId>
-						<version>1.7</version>
+						<version>1.8</version>
 						<executions>
 							<execution>
 								<phase>package</phase>

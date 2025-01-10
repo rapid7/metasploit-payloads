@@ -113,10 +113,7 @@
 								</goals>
 								<configuration>
 									<target>
-										<condition property="dx.filename" value="dx.bat">
-											<os family="windows" />
-										</condition>
-										<property name="dx.filename" value="dx" />
+										<property name="dx.filepath" value="build-tools/29.0.3/lib/dx.jar" />
 
 										<echo>Building shell</echo>
 										<delete dir="${project.basedir}/target/dx" />
@@ -131,7 +128,7 @@
 										<exec executable="java" failonerror="true">
 											<arg value="-Xmx1024M" />
 											<arg value="-jar" />
-											<arg value="${android.sdk.path}/build-tools/29.0.3/lib/dx.jar" />
+											<arg value="${android.sdk.path}/${dx.filepath}" />
 											<arg value="--verbose" />
 											<arg value="--dex" />
 											<arg value="--output=${project.basedir}/../../${deploy.path}/data/android/shell.jar" />
@@ -149,7 +146,7 @@
 										<exec executable="java" failonerror="true">
 											<arg value="-Xmx1024M" />
 											<arg value="-jar" />
-											<arg value="${android.sdk.path}/build-tools/29.0.3/lib/dx.jar" />
+											<arg value="${android.sdk.path}/${dx.filepath}" />
 											<arg value="--verbose" />
 											<arg value="--dex" />
 											<arg value="--output=${project.basedir}/../../${deploy.path}/data/android/metstage.jar" />
@@ -167,7 +164,7 @@
 										<exec executable="java" failonerror="true">
 											<arg value="-Xmx1024M" />
 											<arg value="-jar" />
-											<arg value="${android.sdk.path}/build-tools/29.0.3/lib/dx.jar" />
+											<arg value="${android.sdk.path}/${dx.filepath}" />
 											<arg value="--verbose" />
 											<arg value="--dex" />
 											<arg value="--output=${project.basedir}/../../${deploy.path}/data/android/meterpreter.jar" />
@@ -182,7 +179,7 @@
 										<exec executable="java" failonerror="true">
 											<arg value="-Xmx1024M" />
 											<arg value="-jar" />
-											<arg value="${android.sdk.path}/build-tools/29.0.3/lib/dx.jar" />
+											<arg value="${android.sdk.path}/${dx.filepath}" />
 											<arg value="--verbose" />
 											<arg value="--dex" />
 											<arg value="--output=${project.basedir}/../../${deploy.path}/data/android/meterpreter.dex" />
