@@ -2,7 +2,7 @@
 
 1. Install Maven and Java 1.8, this will depend on your OS
 1. Download the [Android SDK](https://developer.android.com/sdk/index.html)
-1. Install Android SDK Platforms 3, 10 and 19, and update the "Android SDK Tools" and "Android SDK Platform-tools"
+1. Install Android SDK Platforms 3, 10, 19 and 29, and update the "Android SDK Tools" and "Android SDK Platform-tools" (if you does not find android sdk tools, you must uncheck `Hide Obsolete Packages` in Android SDK Manager)
 1. Compile the Android and Java Meterpreter, which deploys to the `../metasploit-framework` folder
 ```
 mvn package -Dandroid.sdk.path=/path/to/android-sdk -Dandroid.release=true -P deploy
@@ -41,6 +41,13 @@ cd metasploit-payloads/java
 # Optional: You may need to run a clean if you are having compilation issues
 make clean
 make android
+```
+
+## Building on Windows
+
+```powershell
+# Important: Ensure Java 1.8 is used when compiling
+$env:JAVA_HOME="C:\Program Files\Java\jdk-1.8"
 ```
 
 ## Building on OSX
