@@ -80,7 +80,7 @@
 									<target>
 										<mkdir dir="${project.basedir}/target/tmp" />
 										<unzip src="${project.basedir}/target/${project.build.finalName}.jar" dest="${project.basedir}/target/tmp" />
-										<touch datetime="01/01/2000 00:00 AM">
+										<touch datetime="01/01/2000 00:00:00 AM" pattern="MM/dd/YYYY hh:mm:ss a">
 											<fileset dir="${project.basedir}/target/tmp" includes="**/*" />
 										</touch>
 										<delete file="${project.basedir}/../../${deploy.path}/data/meterpreter/${project.build.finalName}.jar"/>
