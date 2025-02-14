@@ -81,6 +81,7 @@
 					<sdk>
 						<!-- platform or api level (api level 19 = platform 4.4 (kitkat))-->
 						<platform>19</platform>
+						<buildTools>23.0.3</buildTools>
 					</sdk>
 				</configuration>
 			</plugin>
@@ -112,10 +113,7 @@
 								</goals>
 								<configuration>
 									<target>
-										<condition property="dx.filename" value="dx.bat">
-											<os family="windows" />
-										</condition>
-										<property name="dx.filename" value="dx" />
+										<property name="dx.filepath" value="build-tools/23.0.3/lib/dx.jar" />
 
 										<echo>Building shell</echo>
 										<delete dir="${project.basedir}/target/dx" />
@@ -127,7 +125,10 @@
 											<zipfileset src="${com.metasploit:Metasploit-JavaPayload:jar}" includes="javapayload/stage/StreamForwarder.class" />
 											<zipfileset src="${com.metasploit:Metasploit-JavaPayload:jar}" includes="javapayload/stage/Stage.class" />
 										</copy>
-										<exec executable="${android.sdk.path}/platforms/android-3/tools/${dx.filename}" failonerror="true">
+										<exec executable="java" failonerror="true">
+											<arg value="-Xmx1024M" />
+											<arg value="-jar" />
+											<arg value="${android.sdk.path}/${dx.filepath}" />
 											<arg value="--verbose" />
 											<arg value="--dex" />
 											<arg value="--output=${project.basedir}/../../${deploy.path}/data/android/shell.jar" />
@@ -142,7 +143,10 @@
 											</fileset>
 											<zipfileset src="${com.metasploit:Metasploit-JavaPayload:jar}" includes="javapayload/stage/Stage.class" />
 										</copy>
-										<exec executable="${android.sdk.path}/platforms/android-3/tools/${dx.filename}" failonerror="true">
+										<exec executable="java" failonerror="true">
+											<arg value="-Xmx1024M" />
+											<arg value="-jar" />
+											<arg value="${android.sdk.path}/${dx.filepath}" />
 											<arg value="--verbose" />
 											<arg value="--dex" />
 											<arg value="--output=${project.basedir}/../../${deploy.path}/data/android/metstage.jar" />
@@ -156,7 +160,11 @@
 												<include name="com/metasploit/meterpreter/**/*.class" />
 											</fileset>
 										</copy>
-										<exec executable="${android.sdk.path}/platforms/android-3/tools/${dx.filename}" failonerror="true">
+
+										<exec executable="java" failonerror="true">
+											<arg value="-Xmx1024M" />
+											<arg value="-jar" />
+											<arg value="${android.sdk.path}/${dx.filepath}" />
 											<arg value="--verbose" />
 											<arg value="--dex" />
 											<arg value="--output=${project.basedir}/../../${deploy.path}/data/android/meterpreter.jar" />
@@ -167,7 +175,11 @@
 										</exec>
 
 										<echo>Building stageless meterpreter</echo>
-										<exec executable="${android.sdk.path}/platforms/android-3/tools/${dx.filename}" failonerror="true">
+
+										<exec executable="java" failonerror="true">
+											<arg value="-Xmx1024M" />
+											<arg value="-jar" />
+											<arg value="${android.sdk.path}/${dx.filepath}" />
 											<arg value="--verbose" />
 											<arg value="--dex" />
 											<arg value="--output=${project.basedir}/../../${deploy.path}/data/android/meterpreter.dex" />
