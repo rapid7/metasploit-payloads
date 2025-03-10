@@ -27,7 +27,7 @@
 /*
  * sf - Sept 2010 - Modified for x64 support and merged into stdapi.
  */
-
+#ifdef STDAPI_NAMESPACE_RAILGUN
 #include "precomp.h"
 #include "common_metapi.h"
 #include "railgun.h"
@@ -721,3 +721,4 @@ DWORD request_railgun_memwrite( Remote * pRemote, Packet * pPacket )
 
 	return dwResult;
 }
+#endif

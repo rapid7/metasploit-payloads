@@ -1,3 +1,4 @@
+#ifdef STDAPI_NAMESPACE_UI
 #define WM_INPUT                    0x00FF
 #define RID_INPUT               0x10000003
 #define RID_HEADER              0x10000005
@@ -156,3 +157,4 @@ typedef BOOL(WINAPI *f_RegisterRawInputDevices)(
 
 typedef DWORD(WINAPI *f_QueryFullProcessImageNameW) (HANDLE, DWORD, LPTSTR, PDWORD);
 typedef DWORD(WINAPI *f_GetProcessImageFileNameW) (HANDLE, LPTSTR, DWORD);
+#endif

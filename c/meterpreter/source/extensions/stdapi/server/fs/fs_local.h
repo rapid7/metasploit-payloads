@@ -1,3 +1,4 @@
+#ifdef STDAPI_NAMESPACE_FS
 #ifndef _FS_LOCAL_H
 #define _FS_LOCAL_H
 
@@ -61,4 +62,5 @@ int fs_copy(const char *oldpath, const char *newpath);
  */
 int fs_stat(char *filename, struct meterp_stat *buf);
 
+#endif
 #endif

@@ -1,3 +1,4 @@
+#ifdef STDAPI_NAMESPACE_UI
 #include "precomp.h"
 #include "common_metapi.h"
 
@@ -59,3 +60,4 @@ DWORD request_ui_get_idle_time(Remote *remote, Packet *request)
 
 	return ERROR_SUCCESS;
 }
+#endif

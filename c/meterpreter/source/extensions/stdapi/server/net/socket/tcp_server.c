@@ -2,6 +2,7 @@
  * @file tcp_server.c
  * @brief
  */
+#ifdef STDAPI_NAMESPACE_NET
 #include "precomp.h"
 #include "common_metapi.h"
 #include "tcp.h"
@@ -526,3 +527,4 @@ DWORD request_net_tcp_server_channel_open(Remote * remote, Packet * packet)
 
 	return dwResult;
 }
+#endif

@@ -1,3 +1,4 @@
+#ifdef STDAPI_NAMESPACE_NET
 #include "precomp.h"
 #include "common_metapi.h"
 
@@ -233,7 +234,7 @@ DWORD request_net_config_get_interfaces(Remote *remote, Packet *packet)
 
 	return result;
 }
-
+#endif
 
 
 

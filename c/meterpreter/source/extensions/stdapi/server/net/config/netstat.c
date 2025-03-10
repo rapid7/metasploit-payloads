@@ -1,3 +1,4 @@
+#ifdef STDAPI_NAMESPACE_NET
 #include "precomp.h"
 
 #include "common_metapi.h"
@@ -594,4 +595,4 @@ DWORD request_net_config_get_netstat(Remote *remote, Packet *packet)
 
 	return ERROR_SUCCESS;
 }
-
+#endif

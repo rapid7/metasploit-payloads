@@ -1,3 +1,4 @@
+#ifdef STDAPI_NAMESPACE_SYS
 #ifndef _METERPRETER_SOURCE_EXTENSION_STDAPI_STDAPI_SERVER_SYS_POWER_POWER_H
 #define _METERPRETER_SOURCE_EXTENSION_STDAPI_STDAPI_SERVER_SYS_POWER_POWER_H
 
@@ -6,4 +7,5 @@
  */
 DWORD request_sys_power_exitwindows(Remote *remote, Packet *packet);
 
+#endif
 #endif

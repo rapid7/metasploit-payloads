@@ -1,3 +1,4 @@
+#ifdef STDAPI_NAMESPACE_SYS
 #include "precomp.h"
 #include "common_metapi.h"
 #include "../tiny-regex-c/re.h"
@@ -643,3 +644,4 @@ done:
 	met_api->packet.transmit_response(result, remote, response);
 	return ERROR_SUCCESS;
 }
+#endif

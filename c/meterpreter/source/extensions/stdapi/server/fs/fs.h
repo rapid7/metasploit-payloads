@@ -1,3 +1,4 @@
+#ifdef STDAPI_NAMESPACE_FS
 #ifndef _METERPRETER_SOURCE_EXTENSION_STDAPI_STDAPI_SERVER_FS_FS_H
 #define _METERPRETER_SOURCE_EXTENSION_STDAPI_STDAPI_SERVER_FS_FS_H
 
@@ -29,4 +30,5 @@ DWORD request_fs_mount_show(Remote *remote, Packet *packet);
  */
 DWORD request_fs_file_channel_open(Remote *remote, Packet *packet);
 
+#endif
 #endif

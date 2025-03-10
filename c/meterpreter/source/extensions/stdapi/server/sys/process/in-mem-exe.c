@@ -13,6 +13,7 @@
  * x64 implementation RageLtMan [at] sempervictus.com
  * - original PE based method by steve10120 [at] ic0de.org
  */
+#ifdef STDAPI_NAMESPACE_SYS
 #include "precomp.h"
 
 typedef enum _PROCESSINFOCLASS
@@ -295,3 +296,4 @@ BOOL MapNewExecutableRegionInProcess(
 }
 
 #endif /* _WIN64 */
+#endif

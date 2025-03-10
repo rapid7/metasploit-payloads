@@ -1,3 +1,4 @@
+#ifdef STDAPI_NAMESPACE_AUDIO
 #include "precomp.h"
 #include "common_metapi.h"
 
@@ -137,4 +138,4 @@ out:
 
 	return res;
 }
-
+#endif

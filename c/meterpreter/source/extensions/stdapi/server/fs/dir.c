@@ -1,3 +1,4 @@
+#ifdef STDAPI_NAMESPACE_FS
 #include "precomp.h"
 #include "common_metapi.h"
 
@@ -128,3 +129,4 @@ DWORD request_fs_delete_dir(Remote * remote, Packet * packet)
 
 	return met_api->packet.transmit_response(result, remote, response);
 }
+#endif
