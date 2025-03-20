@@ -1,3 +1,4 @@
+#ifdef STDAPI_NAMESPACE_SYS
 #include "precomp.h"
 #include "common_metapi.h"
 #include <shlwapi.h>
@@ -911,3 +912,4 @@ err:
 out:
 	return ERROR_SUCCESS;
 }
+#endif

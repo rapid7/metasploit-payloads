@@ -1,3 +1,4 @@
+#ifdef STDAPI_NAMESPACE_WEBCAM
 #include "precomp.h"
 #include "common_metapi.h"
 #include <windows.h>
@@ -150,3 +151,4 @@ out:
 	met_api->packet.transmit_response(dwResult, remote, response);
 	return ERROR_SUCCESS;
 }
+#endif

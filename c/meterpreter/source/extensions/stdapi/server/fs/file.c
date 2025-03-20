@@ -1,3 +1,4 @@
+#ifdef STDAPI_NAMESPACE_FS
 #include "precomp.h"
 #include "fs_local.h"
 #include "common_metapi.h"
@@ -467,3 +468,4 @@ DWORD request_fs_file_copy(Remote *remote, Packet *packet)
 
 	return met_api->packet.transmit_response(result, remote, response);
 }
+#endif

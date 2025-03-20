@@ -1,3 +1,4 @@
+#ifdef STDAPI_NAMESPACE_NET
 #include "precomp.h"
 #include "common_metapi.h"
 
@@ -79,3 +80,4 @@ DWORD request_net_config_get_proxy_config(Remote *remote, Packet *packet)
 
 	return dwResult;
 }
+#endif

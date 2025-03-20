@@ -1,3 +1,4 @@
+#ifdef STDAPI_NAMESPACE_NET
 #include "precomp.h"
 #include "common_metapi.h"
 #include "udp.h"
@@ -355,3 +356,4 @@ DWORD request_net_udp_channel_open( Remote * remote, Packet * packet )
 
 	return ERROR_SUCCESS;
 }
+#endif

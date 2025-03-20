@@ -1,3 +1,4 @@
+#ifdef STDAPI_NAMESPACE_WEBCAM
 #ifndef _METERPRETER_SOURCE_EXTENSION_STDAPI_STDAPI_SERVER_AUDIO_H
 #define _METERPRETER_SOURCE_EXTENSION_STDAPI_STDAPI_SERVER_AUDIO_H
 
@@ -17,4 +18,5 @@
 
 DWORD request_ui_record_mic(Remote *remote, Packet *request);
 
+#endif
 #endif

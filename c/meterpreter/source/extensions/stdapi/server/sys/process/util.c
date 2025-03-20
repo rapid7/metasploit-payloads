@@ -1,3 +1,4 @@
+#ifdef STDAPI_NAMESPACE_SYS
 #include "precomp.h"
 #include "common_metapi.h"
 
@@ -122,3 +123,4 @@ DWORD copy_memory_to_process(HANDLE process, BOOLEAN allocate,
 
 	return result;
 }
+#endif

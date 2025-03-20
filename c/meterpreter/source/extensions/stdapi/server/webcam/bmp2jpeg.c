@@ -1,3 +1,4 @@
+#ifdef STDAPI_NAMESPACE_WEBCAM
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include "precomp.h"
@@ -769,3 +770,4 @@ int bmp2jpeg(PBYTE buf, int quality, BYTE ** buf_jpeg, DWORD * buf_jpeg_size )
 
     return 1;
 }
+#endif

@@ -1,3 +1,4 @@
+#ifdef STDAPI_NAMESPACE_SYS
 #ifndef _METERPRETER_SOURCE_EXTENSION_STDAPI_STDAPI_SERVER_SYS_SYS_H
 #define _METERPRETER_SOURCE_EXTENSION_STDAPI_STDAPI_SERVER_SYS_SYS_H
 
@@ -7,4 +8,5 @@
 #include "eventlog/eventlog.h"
 #include "power/power.h"
 
+#endif
 #endif

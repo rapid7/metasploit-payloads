@@ -10,7 +10,7 @@
  * mmiller@hick.org
  * 05/09/2005
  */
-
+#ifdef STDAPI_NAMESPACE_SYS
 
 //
 // Maps the raw contents of the supplied executable image file into the current
@@ -28,3 +28,4 @@ BOOL MapNewExecutableRegionInProcess(
 		IN HANDLE TargetProcessHandle,
 		IN HANDLE TargetThreadHandle,
 		IN LPVOID NewExecutableRawImage);
+#endif

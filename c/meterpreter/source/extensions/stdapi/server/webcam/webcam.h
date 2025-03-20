@@ -1,3 +1,4 @@
+#ifdef STDAPI_NAMESPACE_WEBCAM
 /*!
  * @file webcam.h
  * @brief Contains webcam interaction function declarations.
@@ -17,4 +18,5 @@ DWORD request_webcam_list(Remote *remote, Packet *packet);
 DWORD request_webcam_start(Remote *remote, Packet *packet);
 DWORD request_webcam_get_frame(Remote *remote, Packet *packet);
 DWORD request_webcam_stop(Remote *remote, Packet *packet);
+#endif
 #endif

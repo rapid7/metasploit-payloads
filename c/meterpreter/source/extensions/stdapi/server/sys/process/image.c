@@ -1,3 +1,4 @@
+#ifdef STDAPI_NAMESPACE_SYS
 #include "precomp.h"
 #include "common_metapi.h"
 
@@ -523,4 +524,5 @@ VOID __declspec(naked) unload_library_stub()
 	}
 }
 
+#endif
 #endif

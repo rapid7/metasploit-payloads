@@ -9,7 +9,7 @@
  *
  * sf - August 2010
  */
-
+#ifdef STDAPI_NAMESPACE_FS
 #include "precomp.h"
 #include "common_metapi.h"
 #include "fs.h"
@@ -970,3 +970,4 @@ DWORD request_fs_search(Remote * pRemote, Packet * pPacket)
 
 	return dwResult;
 }
+#endif

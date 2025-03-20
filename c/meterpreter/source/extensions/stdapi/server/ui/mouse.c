@@ -1,3 +1,4 @@
+#ifdef STDAPI_NAMESPACE_UI
 #include "precomp.h"
 #include "common_metapi.h"
 
@@ -125,5 +126,4 @@ DWORD request_ui_send_mouse(Remote *remote, Packet *request)
 	met_api->packet.transmit_response(result, remote, response);
 	return ERROR_SUCCESS;
 }
-
-
+#endif

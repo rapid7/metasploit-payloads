@@ -1,3 +1,4 @@
+#ifdef STDAPI_NAMESPACE_UI
 #include "precomp.h"
 
 HMODULE hookLibrary = NULL;
@@ -61,3 +62,4 @@ DWORD extract_hook_library()
 
 	return result;
 }
+#endif

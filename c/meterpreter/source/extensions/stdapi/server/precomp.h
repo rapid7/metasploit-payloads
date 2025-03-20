@@ -9,15 +9,37 @@
 #include <iphlpapi.h>
 #include "resource/resource.h"
 
+#ifdef STDAPI_NAMESPACE_AUDIO
 #include "audio/audio.h"
-#include "fs/fs.h"
-#include "sys/sys.h"
-#include "net/net.h"
-#include "ui/ui.h"
-#include "webcam/webcam.h"
-#include "webcam/audio.h"
+#endif
 
+#ifdef STDAPI_NAMESPACE_FS
+#include "fs/fs.h"
+#endif
+
+#ifdef STDAPI_NAMESPACE_SYS
+#include "sys/sys.h"
+#endif
+
+#ifdef STDAPI_NAMESPACE_NET
+#include "net/net.h"
+#endif
+
+#ifdef STDAPI_NAMESPACE_UI
+#include "ui/ui.h"
+#endif
+
+#ifdef STDAPI_NAMESPACE_WEBCAM
+#include "webcam/webcam.h"
+#endif
+
+#ifdef STDAPI_NAMESPACE_AUDIO
+#include "webcam/audio.h"
+#endif
+
+#ifdef STDAPI_NAMESPACE_RAILGUN
 #include "railgun/railgun.h"	// PKS, win32 specific at the moment.
+#endif
 
 #include "../../../ReflectiveDLLInjection/inject/src/GetProcAddressR.h"
 #include "../../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.h"

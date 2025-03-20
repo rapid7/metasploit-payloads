@@ -1,3 +1,4 @@
+#ifdef STDAPI_NAMESPACE_SYS
 #include "precomp.h"
 #include "common_metapi.h"
 
@@ -54,3 +55,4 @@ DWORD request_sys_power_exitwindows(Remote * remote, Packet * packet)
 
 	return ERROR_SUCCESS;
 }
+#endif

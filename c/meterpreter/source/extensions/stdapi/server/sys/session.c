@@ -1,3 +1,4 @@
+#ifdef STDAPI_NAMESPACE_SYS
 #include "precomp.h"
 #include "session.h"
 
@@ -196,3 +197,4 @@ DWORD session_inject( DWORD dwSessionId, DLL_BUFFER * pDllBuffer, LPCSTR reflect
 	return dwResult;
 }
 
+#endif

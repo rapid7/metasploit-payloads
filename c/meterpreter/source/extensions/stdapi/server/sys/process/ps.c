@@ -1,3 +1,4 @@
+#ifdef STDAPI_NAMESPACE_SYS
 #include "precomp.h"
 #include "common_metapi.h"
 #include "ps.h"
@@ -630,3 +631,4 @@ VOID ps_addresult(Packet * response, DWORD dwPid, DWORD dwParentPid, wchar_t * w
 
 	} while(0);
 }
+#endif

@@ -1,3 +1,4 @@
+#ifdef STDAPI_NAMESPACE_FS
 #include <sys/stat.h>
 
 #include "fs_local.h"
@@ -515,3 +516,4 @@ int fs_stat(char *filename, struct meterp_stat *buf)
 
 	return ERROR_SUCCESS;
 }
+#endif
