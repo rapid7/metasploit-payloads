@@ -121,6 +121,7 @@ public interface TLVType {
     public static final int TLV_TYPE_CONNECT_RETRIES = TLVPacket.TLV_META_TYPE_UINT   | 1504;
 
     public static final int TLV_TYPE_SHUTDOWN_HOW = TLVPacket.TLV_META_TYPE_UINT | 1530;
+    public static final int TLV_TYPE_RESOLVE_HOST_ENTRY = TLVPacket.TLV_META_TYPE_GROUP | 1550;
 
     // Registry
     public static final int TLV_TYPE_HKEY       = TLVPacket.TLV_META_TYPE_QWORD  | 1000;
