@@ -116,7 +116,7 @@ DWORD request_sys_process_thread_create(Remote *remote, Packet *packet)
 			dprintf("[THREAD CREATE] Failed to create remote thread");
 			dwResult = GetLastError();
 
-			if (dwResult == ERROR_ACCESS_DENIED
+			if ((dwResult == ERROR_ACCESS_DENIED || dwResult == ERROR_INVALID_HANDLE)
 				&& dwMeterpreterArch == PROCESS_ARCH_X86
 				&& LocalIsWow64Process(GetCurrentProcess())
 				&& !LocalIsWow64Process(hProcess))
