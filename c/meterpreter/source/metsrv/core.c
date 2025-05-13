@@ -29,7 +29,7 @@ typedef struct _PacketCompletionRoutineEntry
 PacketCompletionRoutineEntry *packetCompletionRoutineList = NULL;
 
 /*!
- * @todo I have no idea why this is here, need someone else to explain.
+ * @brief Keep track of the current impersonation token
  */
 HANDLE core_update_thread_token(Remote *remote, HANDLE token)
 {
