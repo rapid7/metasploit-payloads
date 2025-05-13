@@ -293,124 +293,124 @@ meterpreter-ext-bofloader-x64-build:
 ##########################################################################################
 
 docker:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make
 
 docker-container:
 	@docker build ../../docker -t $(DOCKER_CONTAINER)
 
 docker-shell:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) bash
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) bash
 
 docker-x64:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-x64
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-x64
 
 docker-x86:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-x86
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-x86
 
 docker-metsrv:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-metsrv
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-metsrv
 
 docker-metsrv-x86:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-metsrv-x86
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-metsrv-x86
 
 docker-metsrv-x64:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-metsrv-x64
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-metsrv-x64
 
 docker-ext-stdapi:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi
 
 docker-ext-stdapi-x86:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi-x86
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi-x86
 
 docker-ext-stdapi-x64:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi-x64
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi-x64
 
 docker-ext-priv:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-priv
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-priv
 
 docker-ext-priv-x86:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-priv-x86
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-priv-x86
 
 docker-ext-priv-x64:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-priv-x64
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-priv-x64
 
 docker-ext-extapi:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-extapi
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-extapi
 
 docker-ext-extapi-x86:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-extapi-x86
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-extapi-x86
 
 docker-ext-extapi-x64:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-extapi-x64
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-extapi-x64
 
 docker-ext-incognito:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-incognito
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-incognito
 
 docker-ext-incognito-x86:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-incognito-x86
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-incognito-x86
 
 docker-ext-incognito-x64:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-incognito-x64
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-incognito-x64
 
 docker-ext-espia:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-espia
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-espia
 
 docker-ext-espia-x86:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-espia-x86
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-espia-x86
 
 docker-ext-espia-x64:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-espia-x64
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-espia-x64
 
 docker-ext-lanattacks:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-lanattacks
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-lanattacks
 
 docker-ext-lanattacks-x86:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-lanattacks-x86
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-lanattacks-x86
 
 docker-ext-lanattacks-x64:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-lanattacks-x64
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-lanattacks-x64
 
 docker-ext-unhook:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-unhook
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-unhook
 
 docker-ext-unhook-x86:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-unhook-x86
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-unhook-x86
 
 docker-ext-unhook-x64:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-unhook-x64
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-unhook-x64
 
 docker-ext-winpmem:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-winpmem
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-winpmem
 
 docker-ext-winpmem-x86:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-winpmem-x86
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-winpmem-x86
 
 docker-ext-winpmem-x64:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-winpmem-x64
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-winpmem-x64
 
 docker-ext-kiwi:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-kiwi
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-kiwi
 
 docker-ext-kiwi-x86:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-kiwi-x86
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-kiwi-x86
 
 docker-ext-kiwi-x64:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-kiwi-x64
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-kiwi-x64
 
 docker-ext-peinjector:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-peinjector
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-peinjector
 
 docker-ext-peinjector-x86:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-peinjector-x86
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-peinjector-x86
 
 docker-ext-peinjector-x64:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-peinjector-x64
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-peinjector-x64
 
 docker-ext-bofloader:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-bofloader
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-bofloader
 
 docker-ext-bofloader-x86:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-bofloader-x86
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-bofloader-x86
 
 docker-ext-bofloader-x64:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-bofloader-x64
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-ext-bofloader-x64
