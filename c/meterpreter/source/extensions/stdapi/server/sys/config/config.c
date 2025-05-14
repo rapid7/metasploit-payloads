@@ -590,14 +590,93 @@ DWORD add_windows_os_version(Packet** packet)
 		{
 			if (v.dwMinorVersion == 0)
 			{
-				if (v.dwBuildNumber < 17763) {
-					osName = v.wProductType == VER_NT_WORKSTATION ? "Windows 10" : "Windows Server 2016";
-				} else if (v.dwBuildNumber < 20348) {
-					osName = v.wProductType == VER_NT_WORKSTATION ? "Windows 10" : "Windows Server 2019";
-				} else if (v.dwBuildNumber < 22000) {
-					osName = v.wProductType == VER_NT_WORKSTATION ? "Windows 10" : "Windows Server 2022";
-				} else {
-					osName = v.wProductType == VER_NT_WORKSTATION ? "Windows 11" : "Windows Server 2022";
+				if (v.wProductType == VER_NT_WORKSTATION) {
+					if (v.dwBuildNumber < 10586) {
+						osName = "Windows 10";
+					}
+					else if (v.dwBuildNumber < 14393) {
+						osName = "Windows 10_1511";
+					}
+					else if (v.dwBuildNumber < 15063) {
+						osName = "Windows 10_1607";
+					}
+					else if (v.dwBuildNumber < 16299) {
+						osName = "Windows 10_1703";
+					}
+					else if (v.dwBuildNumber < 17134) {
+						osName = "Windows 10_1709";
+					}
+					else if (v.dwBuildNumber < 17763) {
+						osName = "Windows 10_1803";
+					}
+					else if (v.dwBuildNumber < 18362) {
+						osName = "Windows 10_1809";
+					}
+					else if (v.dwBuildNumber < 18363) {
+						osName = "Windows 10_1903";
+					}
+					else if (v.dwBuildNumber < 19041) {
+						osName = "Windows 10_1909";
+					}
+					else if (v.dwBuildNumber < 19042) {
+						osName = "Windows 10_2004";
+					}
+					else if (v.dwBuildNumber < 19043) {
+						osName = "Windows 10_20H2";
+					}
+					else if (v.dwBuildNumber < 19044) {
+						osName = "Windows 10_21H2";
+					}
+					else if (v.dwBuildNumber < 19045) {
+						osName = "Windows 10_22H2";
+					}
+					else if (v.dwBuildNumber < 22000) {
+						osName = "Windows 10_22H2+";
+					}
+					else if (v.dwBuildNumber < 22621) {
+						osName = "Windows 11_21H2";
+					}
+					else if (v.dwBuildNumber < 22631) {
+						osName = "Windows 11_22H2";
+					}
+					else {
+						osName = "Windows 11_22H2+";
+					}
+				}
+				else {
+					if (v.dwBuildNumber < 16299) {
+						osName = "Windows Server 2016";
+					}
+					else if (v.dwBuildNumber < 17134) {
+						osName = "Windows Server 1709";
+					}
+					else if (v.dwBuildNumber < 17763) {
+						osName = "Windows Server 1803";
+					}
+					else if (v.dwBuildNumber < 18362) {
+						osName = "Windows Server 1809";
+					}
+					else if (v.dwBuildNumber < 18363) {
+						osName = "Windows Server 1903";
+					}
+					else if (v.dwBuildNumber < 19041) {
+						osName = "Windows Server 1909";
+					}
+					else if (v.dwBuildNumber < 19042) {
+						osName = "Windows Server 2004";
+					}
+					else if (v.dwBuildNumber < 20348) {
+						osName = "Windows Server 20H2";
+					}
+					else if (v.dwBuildNumber < 25398) {
+						osName = "Windows Server 21H2";
+					}
+					else if (v.dwBuildNumber < 26100) {
+						osName = "Windows Server 23H2";
+					}
+					else {
+						osName = "Windows Server 2025";
+					}
 				}
 			}
 		}
