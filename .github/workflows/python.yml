@@ -33,18 +33,21 @@ jobs:
       matrix:
         os:
           - macos-13
-          - windows-2019
-          - ubuntu-20.04
+          - windows-2022
+          - ubuntu-22.04
         runtime_version:
           - 3.6
+          - 3.7
           - 3.8
           - 3.11
         include:
           # We run older Python versions in Docker - as Github Actions does not support installing these versions on the host
-          - { os: ubuntu-20.04, runtime_version: 2.7, docker_image: 'python:2.7-alpine' }
-          - { os: ubuntu-20.04, runtime_version: 3.3, docker_image: 'python:3.3-alpine' }
-          - { os: ubuntu-20.04, runtime_version: 3.4, docker_image: 'python:3.4-alpine' }
-          - { os: ubuntu-20.04, runtime_version: 3.5, docker_image: 'python:3.5-alpine' }
+          - { os: ubuntu-latest, runtime_version: 2.7, docker_image: 'python:2.7-alpine' }
+          - { os: ubuntu-latest, runtime_version: 3.3, docker_image: 'python:3.3-alpine' }
+          - { os: ubuntu-latest, runtime_version: 3.4, docker_image: 'python:3.4-alpine' }
+          - { os: ubuntu-latest, runtime_version: 3.5, docker_image: 'python:3.5-alpine' }
+        exclude:
+          - { os: ubuntu-22.04, runtime_version: 3.6 }
 
     timeout-minutes: 40
     runs-on: ${{ matrix.os }}
