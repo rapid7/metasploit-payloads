@@ -46,6 +46,8 @@ WARNING: Local file /home/gwillcox/.msf4/payloads/meterpreter/ext_server_stdapi.
 [*] Meterpreter session 1 opened (192.168.153.128:4444 -> 192.168.153.1:50334) at 2022-12-13 12:49:49 -0600
 ```
 
+When making changes to Meterpreter - ensure that the [test modules](https://docs.metasploit.com/docs/development/quality/loading-test-modules.html) are verified as working.
+
   [csource]: https://github.com/rapid7/meterpreter
   [creadme]: https://github.com/rapid7/metasploit-payloads/tree/master/c/meterpreter
   [javasource]: https://github.com/rapid7/metasploit-javapayload
