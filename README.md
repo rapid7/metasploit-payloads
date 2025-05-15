@@ -22,9 +22,9 @@ As an example, here is how this might look like for a Python Meterpreter edit:
 ```bash
 mkdir ~/.msf4/payloads # If this doesn't exist already
 cd ~/git/metasploit-payloads
-ln -s /home/gwillcox/git/metasploit-payloads/python/meterpreter/ext_server_stdapi.py /home/gwillcox/.msf4/payloads/meterpreter/ext_server_stdapi.py
+ln -s /home/your_user/git/metasploit-payloads/python/meterpreter/ext_server_stdapi.py /home/your_user/.msf4/payloads/meterpreter/ext_server_stdapi.py
 file ~/.msf4/payloads/meterpreter/ext_server_stdapi.py
-       /home/gwillcox/.msf4/payloads/meterpreter/ext_server_stdapi.py: symbolic link to /home/gwillcox/git/metasploit-payloads/python/meterpreter/ext_server_stdapi.py
+       /home/your_user/.msf4/payloads/meterpreter/ext_server_stdapi.py: symbolic link to /home/your_user/git/metasploit-payloads/python/meterpreter/ext_server_stdapi.py
 ```
 
 If things went right you should see a warning message when selecting one of the corresponding Meterpreter payloads and recieving a session:
@@ -38,11 +38,11 @@ msf6 payload(python/meterpreter/reverse_tcp) > generate -f raw -o reverse.py
 msf6 payload(python/meterpreter/reverse_tcp) > to_handler
 [*] Payload Handler Started as Job 0
 
-[*] Started reverse TCP handler on 192.168.153.128:4444 
-msf6 payload(python/meterpreter/reverse_tcp) > WARNING: Local file /home/gwillcox/.msf4/payloads/meterpreter/meterpreter.py is being used
+[*] Started reverse TCP handler on 192.168.153.128:4444
+msf6 payload(python/meterpreter/reverse_tcp) > WARNING: Local file /home/your_user/.msf4/payloads/meterpreter/meterpreter.py is being used
 WARNING: Local files may be incompatible with the Metasploit Framework
 [*] Sending stage (24380 bytes) to 192.168.153.1
-WARNING: Local file /home/gwillcox/.msf4/payloads/meterpreter/ext_server_stdapi.py is being used
+WARNING: Local file /home/your_user/.msf4/payloads/meterpreter/ext_server_stdapi.py is being used
 [*] Meterpreter session 1 opened (192.168.153.128:4444 -> 192.168.153.1:50334) at 2022-12-13 12:49:49 -0600
 ```
 
