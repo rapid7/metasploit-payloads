@@ -40,14 +40,21 @@ jobs:
           - 3.7
           - 3.8
           - 3.11
+          - 3.12
+          - 3.13
         include:
           # We run older Python versions in Docker - as Github Actions does not support installing these versions on the host
           - { os: ubuntu-latest, runtime_version: 2.7, docker_image: 'python:2.7-alpine' }
           - { os: ubuntu-latest, runtime_version: 3.3, docker_image: 'python:3.3-alpine' }
           - { os: ubuntu-latest, runtime_version: 3.4, docker_image: 'python:3.4-alpine' }
           - { os: ubuntu-latest, runtime_version: 3.5, docker_image: 'python:3.5-alpine' }
+          - { os: ubuntu-latest, runtime_version: 3.6, docker_image: 'python:3.6-alpine' }
         exclude:
+          # Older install not available
           - { os: ubuntu-22.04, runtime_version: 3.6 }
+          # Tests fail on windows 3.12/3.13 - https://github.com/rapid7/metasploit-payloads/issues/751
+          - { os: windows-2022, runtime_version: 3.12 }
+          - { os: windows-2022, runtime_version: 3.13 }
 
     timeout-minutes: 40
     runs-on: ${{ matrix.os }}
