@@ -315,6 +315,30 @@ DWORD request_sys_config_update_token(Remote* pRemote, Packet* pPacket)
 }
 
 /*
+ * @brief Get the current thread impersonation token, or empty if no impersonation is present.
+ * @param pRemote Pointer to the \c Remote instance.
+ * @param pRequest Pointer to the \c Request packet.
+ * @returns Indication of success or failure.
+ */
+DWORD request_sys_config_get_token_handle(Remote* pRemote, Packet* pPacket)
+{
+	Packet* pResponse = met_api->packet.create_response(pPacket);
+	DWORD dwResult = ERROR_SUCCESS;
+	HANDLE hToken = NULL;
+
+	if (pRemote->thread_token != pRemote->server_token)
+	{
+		hToken = pRemote->thread_token;
+	}
+	dprintf("[GET-TOKEN] Got Token %x", hToken);
+	met_api->packet.add_tlv_qword(pResponse, TLV_TYPE_HANDLE, (QWORD)hToken);
+
+	met_api->packet.transmit_response(dwResult, pRemote, pResponse);
+
+	return dwResult;
+}
+
+/*
  * sys_getprivs
  * ----------
  *

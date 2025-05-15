@@ -12,5 +12,6 @@ DWORD request_sys_config_steal_token(Remote *remote, Packet *packet);
 DWORD request_sys_config_drop_token(Remote *remote, Packet *packet);
 DWORD request_sys_config_driver_list(Remote *remote, Packet *packet);
 DWORD request_sys_config_update_token(Remote* pRemote, Packet* pPacket);
+DWORD request_sys_config_get_token_handle(Remote* pRemote, Packet* pPacket);
 
 #endif
