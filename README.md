@@ -20,9 +20,9 @@ For Python and PHP Meterpreter, you can test changes to these files by symlinkin
 As an example, here is how this might look like for a Python Meterpreter edit:
 
 ```bash
-mkdir ~/.msf4/payloads # If this doesn't exist already
-cd ~/git/metasploit-payloads
-ln -s /home/your_user/git/metasploit-payloads/python/meterpreter/ext_server_stdapi.py /home/your_user/.msf4/payloads/meterpreter/ext_server_stdapi.py
+mkdir -p ~/.msf4/payloads
+cd ~/metasploit-payloads
+ln -s ~/metasploit-payloads/python/meterpreter/ext_server_stdapi.py ~/.msf4/payloads/meterpreter/ext_server_stdapi.py
 file ~/.msf4/payloads/meterpreter/ext_server_stdapi.py
        /home/your_user/.msf4/payloads/meterpreter/ext_server_stdapi.py: symbolic link to /home/your_user/git/metasploit-payloads/python/meterpreter/ext_server_stdapi.py
 ```
