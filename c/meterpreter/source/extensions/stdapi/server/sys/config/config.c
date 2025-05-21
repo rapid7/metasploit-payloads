@@ -595,52 +595,55 @@ DWORD add_windows_os_version(Packet** packet)
 						osName = "Windows 10";
 					}
 					else if (v.dwBuildNumber < 14393) {
-						osName = "Windows 10_1511";
+						osName = "Windows 10 1511";
 					}
 					else if (v.dwBuildNumber < 15063) {
-						osName = "Windows 10_1607";
+						osName = "Windows 10 1607";
 					}
 					else if (v.dwBuildNumber < 16299) {
-						osName = "Windows 10_1703";
+						osName = "Windows 10 1703";
 					}
 					else if (v.dwBuildNumber < 17134) {
-						osName = "Windows 10_1709";
+						osName = "Windows 10 1709";
 					}
 					else if (v.dwBuildNumber < 17763) {
-						osName = "Windows 10_1803";
+						osName = "Windows 10 1803";
 					}
 					else if (v.dwBuildNumber < 18362) {
-						osName = "Windows 10_1809";
+						osName = "Windows 10 1809";
 					}
 					else if (v.dwBuildNumber < 18363) {
-						osName = "Windows 10_1903";
+						osName = "Windows 10 1903";
 					}
 					else if (v.dwBuildNumber < 19041) {
-						osName = "Windows 10_1909";
+						osName = "Windows 10 1909";
 					}
 					else if (v.dwBuildNumber < 19042) {
-						osName = "Windows 10_2004";
+						osName = "Windows 10 2004";
 					}
 					else if (v.dwBuildNumber < 19043) {
-						osName = "Windows 10_20H2";
+						osName = "Windows 10 20H2";
 					}
 					else if (v.dwBuildNumber < 19044) {
-						osName = "Windows 10_21H2";
+						osName = "Windows 10 21H1";
 					}
 					else if (v.dwBuildNumber < 19045) {
-						osName = "Windows 10_22H2";
+						osName = "Windows 10 21H2";
 					}
 					else if (v.dwBuildNumber < 22000) {
-						osName = "Windows 10_22H2+";
+						osName = "Windows 10 22H2+";
 					}
 					else if (v.dwBuildNumber < 22621) {
-						osName = "Windows 11_21H2";
+						osName = "Windows 11 21H2";
 					}
 					else if (v.dwBuildNumber < 22631) {
-						osName = "Windows 11_22H2";
+						osName = "Windows 11 22H2";
+					}
+					else if (v.dwBuildNumber < 26100) {
+						osName = "Windows 11 23H2";
 					}
 					else {
-						osName = "Windows 11_22H2+";
+						osName = "Windows 11 24H2+";
 					}
 				}
 				else {
