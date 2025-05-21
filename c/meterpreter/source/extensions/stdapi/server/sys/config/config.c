@@ -657,7 +657,7 @@ DWORD add_windows_os_version(Packet** packet)
 						osName = "Windows Server 1803";
 					}
 					else if (v.dwBuildNumber < 18362) {
-						osName = "Windows Server 1809";
+						osName = "Windows Server 2019/1809";
 					}
 					else if (v.dwBuildNumber < 18363) {
 						osName = "Windows Server 1903";
