@@ -13,15 +13,23 @@ install-windows:
 		@echo "Installing Windows payloads"
     ifneq ("$(wildcard c/meterpreter/output/*.x86.dll)","")
 			@cp c/meterpreter/output/*.x86.dll $(METERPDIR) 
+    else
+			@echo "Note: Windows 32-bit Release not built, skipping"
+    endif
+    ifneq ("$(wildcard c/meterpreter/output/*.x86.debug.dll)","")
 			@cp c/meterpreter/output/*.x86.debug.dll $(METERPDIR) 
     else
-			@echo "Note: Windows 32-bit not built, skipping"
+			@echo "Note: Windows 32-bit Debug not built, skipping"
     endif
     ifneq ("$(wildcard c/meterpreter/output/*.x64.dll)","")
 			@cp c/meterpreter/output/*.x64.dll $(METERPDIR) 
+    else
+			@echo "Note: Windows 64-bit Release not built, skipping"
+    endif
+    ifneq ("$(wildcard c/meterpreter/output/*.x64.debug.dll)","")
 			@cp c/meterpreter/output/*.x64.debug.dll $(METERPDIR) 
     else
-			@echo "Note: Windows 64-bit not built, skipping"
+			@echo "Note: Windows 64-bit Debug not built, skipping"
     endif
 
 install-java:
