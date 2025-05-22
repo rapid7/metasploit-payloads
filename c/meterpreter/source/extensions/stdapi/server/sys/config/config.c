@@ -647,38 +647,17 @@ DWORD add_windows_os_version(Packet** packet)
 					}
 				}
 				else {
-					if (v.dwBuildNumber < 16299) {
+					if (v.dwBuildNumber < 17763) {
 						osName = "Windows Server 2016";
 					}
-					else if (v.dwBuildNumber < 17134) {
-						osName = "Windows Server 1709";
-					}
-					else if (v.dwBuildNumber < 17763) {
-						osName = "Windows Server 1803";
-					}
 					else if (v.dwBuildNumber < 18362) {
-						osName = "Windows Server 2019/1809";
-					}
-					else if (v.dwBuildNumber < 18363) {
-						osName = "Windows Server 1903";
-					}
-					else if (v.dwBuildNumber < 19041) {
-						osName = "Windows Server 1909";
-					}
-					else if (v.dwBuildNumber < 19042) {
-						osName = "Windows Server 2004";
-					}
-					else if (v.dwBuildNumber < 20348) {
-						osName = "Windows Server 20H2";
-					}
-					else if (v.dwBuildNumber < 25398) {
-						osName = "Windows Server 21H2";
+						osName = "Windows Server 2019";
 					}
 					else if (v.dwBuildNumber < 26100) {
-						osName = "Windows Server 23H2";
+						osName = "Windows Server 2022";
 					}
 					else {
-						osName = "Windows Server 2025";
+						osName = "Windows Server 2025+";
 					}
 				}
 			}
