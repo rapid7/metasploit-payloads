@@ -46,6 +46,12 @@ make android
 
 ## Building on Windows
 
+For building on Windows, you must follow all steps describe in first lines, but before run 
+```
+mvn package -Dandroid.sdk.path=/path/to/android-sdk -Dandroid.release=true -P deploy
+```
+you must esure Java 1.8 is used (like that)
+
 ```powershell
 # Important: Ensure Java 1.8 is used when compiling
 $env:JAVA_HOME="C:\Program Files\Java\jdk-1.8"
