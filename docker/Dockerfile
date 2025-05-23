@@ -40,7 +40,7 @@ RUN wget http://dl.google.com/android/android-sdk_r24-linux.tgz && \
     mv android-sdk-linux /usr/local/android-sdk
 RUN echo y | /usr/local/android-sdk/tools/android update sdk --filter tools --no-ui -a
 RUN echo y | /usr/local/android-sdk/tools/android update sdk --filter platform-tools --no-ui -a
-RUN echo y | /usr/local/android-sdk/tools/android update sdk --filter build-tools-23.0.3 --no-ui -a
+RUN echo y | /usr/local/android-sdk/tools/android update sdk --filter build-tools-23.0.1 --no-ui -a
 RUN echo y | /usr/local/android-sdk/tools/android update sdk --filter android-10 --no-ui -a
 RUN echo y | /usr/local/android-sdk/tools/android update sdk --filter android-19 --no-ui -a
 RUN echo y | /usr/local/android-sdk/tools/android update sdk --filter android-3 --no-ui -a
