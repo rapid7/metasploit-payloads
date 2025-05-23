@@ -64,6 +64,7 @@
 					<sdk>
 						<!-- platform or api level (api level 10 = platform 2.3)-->
 						<platform>10</platform>
+						<buildTools>23.0.3</buildTools>
 					</sdk>
 					<proguard>
 						<skip>false</skip>
@@ -71,6 +72,15 @@
 					</proguard>
 				</configuration>
 			</plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.0</version>
+                <configuration>
+                    <source>1.7</source>
+                    <target>1.7</target>
+                </configuration>
+            </plugin>
 		</plugins>
 	</build>
 	<profiles>
@@ -81,7 +91,7 @@
 				<plugins>
 					<plugin>
 						<artifactId>maven-antrun-plugin</artifactId>
-						<version>1.7</version>
+						<version>1.8</version>
 						<executions>
 							<execution>
 								<phase>package</phase>
