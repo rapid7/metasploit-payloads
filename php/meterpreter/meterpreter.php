@@ -675,7 +675,6 @@ if (!function_exists('core_machine_id')) {
       $machine_id = gethostname();
     } elseif(can_call_function('php_uname')) {
       $machine_id = php_uname('n');
-    }
     } else {
       $machine_id = getenv('HOSTNAME');
     }
