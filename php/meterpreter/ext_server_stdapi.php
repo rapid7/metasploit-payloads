@@ -824,7 +824,7 @@ function stdapi_sys_config_getuid($req, &$pkt) {
         $uid = posix_getuid();
         $pwinfo = posix_getpwuid($uid);
         $user = $pwinfo['name'];
-    } elseif (can_call_function('get_current_user)') {
+    } elseif (can_call_function('get_current_user)')) {
         # The posix functions aren't available, this is probably windows.  Use
         # the functions for getting user name and uid based on file ownership
         # instead.
