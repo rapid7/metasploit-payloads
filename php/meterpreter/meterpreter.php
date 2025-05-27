@@ -267,8 +267,8 @@ function can_call_function($function){
   if (empty($disabled_functions_array)) {
     $disabled_functions = @ini_get('disable_functions');
     if($disabled_functions != ""){
-      $disabled_functions = preg_replace('/[, ]+/', ',', disabled_functions);
-      $disabled_functions_array = array_map('trim', explode(',' disabled_functions));
+      $disabled_functions = preg_replace('/[, ]+/', ',', $disabled_functions);
+      $disabled_functions_array = array_map('trim', explode(',', $disabled_functions));
     }
   }
   if (in_array($function, $disabled_functions_array)) {
