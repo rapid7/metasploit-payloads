@@ -829,7 +829,7 @@ function rand_xor_byte() {
 
 function rand_bytes($size) {
   if (can_call_function('random_bytes')) {
-    return random_bytes($size)
+    return random_bytes($size);
   }
 
   $b = '';
