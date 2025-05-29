@@ -1,4 +1,4 @@
-# Windows Native C meterpreter >
+# Windows Native C meterpreter
 
 Before you do anything, you're going to need to make sure you have the dependencies set up. Windows Meterpreter has the following repositories set up as submodule dependencies:
 
