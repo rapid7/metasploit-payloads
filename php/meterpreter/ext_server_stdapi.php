@@ -422,8 +422,7 @@ function array_prepend($array, $string, $deep=false) {
 
 if (!function_exists('canonicalize_path')) {
 function canonicalize_path($path) {
-    $path = str_replace(array("/", "\\"), DIRECTORY_SEPARATOR, $path);
-    return $path;
+    return str_replace(array("/", "\\"), DIRECTORY_SEPARATOR, $path);
 }
 }
 
@@ -479,6 +478,10 @@ function resolve_host($hostname, $family) {
         return NULL;
     }
 
+    if (!can_call_function('dns_get_record')) {
+      return NULL;
+    }
+
     $dns = dns_get_record($hostname, $dns_family);
     if (empty($dns)) {
         return NULL;
@@ -507,7 +510,7 @@ function rmtree($path) {
 
         $subpath = $path . DIRECTORY_SEPARATOR . $dent;
         if (@is_link($subpath)) {
-            $ret = unlink($subpath);
+            $ret = @unlink($subpath);
         } elseif (@is_dir($subpath)) {
             $ret = rmtree($subpath);
         } else {
@@ -821,15 +824,18 @@ function stdapi_fs_sha1($req, &$pkt) {
 if (!function_exists('stdapi_sys_config_getuid')) {
 register_command('stdapi_sys_config_getuid', COMMAND_ID_STDAPI_SYS_CONFIG_GETUID);
 function stdapi_sys_config_getuid($req, &$pkt) {
-    if (is_callable('posix_getuid')) {
+    if (can_call_function('posix_getuid') && can_call_function('posix_getpwuid')) {
         $uid = posix_getuid();
         $pwinfo = posix_getpwuid($uid);
         $user = $pwinfo['name'];
-    } else {
+    } elseif (can_call_function('get_current_user)')) {
         # The posix functions aren't available, this is probably windows.  Use
         # the functions for getting user name and uid based on file ownership
         # instead.
         $user = get_current_user();
+    } else {
+      # Best effort
+      $user = getenv("USER");
     }
     my_print("getuid - returning: " . $user);
     packet_add_tlv($pkt, create_tlv(TLV_TYPE_USER_NAME, $user));
@@ -877,8 +883,17 @@ if (!function_exists('stdapi_sys_config_sysinfo')) {
 register_command('stdapi_sys_config_sysinfo', COMMAND_ID_STDAPI_SYS_CONFIG_SYSINFO);
 function stdapi_sys_config_sysinfo($req, &$pkt) {
     my_print("doing sysinfo");
-    packet_add_tlv($pkt, create_tlv(TLV_TYPE_COMPUTER_NAME, php_uname("n")));
-    packet_add_tlv($pkt, create_tlv(TLV_TYPE_OS_NAME, php_uname()));
+    if (can_call_function('php_uname')) {
+      packet_add_tlv($pkt, create_tlv(TLV_TYPE_COMPUTER_NAME, php_uname("n")));
+      packet_add_tlv($pkt, create_tlv(TLV_TYPE_OS_NAME, php_uname()));
+      packet_add_tlv($pkt, create_tlv(TLV_TYPE_ARCHITECTURE, php_uname('m')));
+    }
+    $lang = getenv('LANG');
+    if ($lang !== FALSE) {
+      packet_add_tlv($pkt, create_tlv(TLV_TYPE_LANG_SYSTEM, $lang));
+    } else if (can_call_function('locale_get_default')) {
+      packet_add_tlv($pkt, create_tlv(TLV_TYPE_LANG_SYSTEM, locale_get_default()));
+    }
     return ERROR_SUCCESS;
 }
 }
@@ -899,6 +914,10 @@ if (!function_exists('stdapi_sys_process_execute')) {
 register_command('stdapi_sys_process_execute', COMMAND_ID_STDAPI_SYS_PROCESS_EXECUTE);
 function stdapi_sys_process_execute($req, &$pkt) {
     global $channel_process_map, $processes;
+
+    if (!can_call_function('proc_open')) {
+      return ERROR_FAILURE;
+    }
 
     my_print("doing execute");
     $flags_tlv = packet_get_tlv($req, TLV_TYPE_PROCESS_FLAGS);
@@ -961,7 +980,7 @@ function stdapi_sys_process_execute($req, &$pkt) {
         return ERROR_FAILURE;
     }
 
-    if (is_callable('proc_get_status')) {
+    if (can_call_function('proc_get_status')) {
         $status = proc_get_status($handle);
         $pid = $status['pid'];
     } else {
@@ -1026,7 +1045,7 @@ function close_process($proc) {
             @fclose($f);
           }
         }
-        if (is_callable('proc_get_status')) {
+        if (can_call_function('proc_get_status')) {
             $status = proc_get_status($proc['handle']);
         } else {
             # fake a running process on php < 4.3
@@ -1040,7 +1059,7 @@ function close_process($proc) {
         if ($status['running'] == false) {
             proc_close($proc['handle']);
         } else {
-            if (is_callable('proc_terminate')) {
+            if (can_call_function('proc_terminate')) {
                 proc_terminate($proc['handle'], 9);
             }
         }
@@ -1109,6 +1128,9 @@ if (!function_exists('stdapi_sys_process_getpid')) {
 register_command('stdapi_sys_process_getpid', COMMAND_ID_STDAPI_SYS_PROCESS_GETPID);
 function stdapi_sys_process_getpid($req, &$pkt) {
     my_print("doing getpid");
+    if (!can_call_function('getmypid')) {
+      return ERROR_FAILURE;
+    }
     packet_add_tlv($pkt, create_tlv(TLV_TYPE_PID, getmypid()));
     return ERROR_SUCCESS;
 }
@@ -1123,7 +1145,7 @@ function stdapi_sys_process_kill($req, &$pkt) {
     my_print("doing kill");
     $pid_tlv = packet_get_tlv($req, TLV_TYPE_PID);
     $pid = $pid_tlv['value'];
-    if (is_callable('posix_kill')) {
+    if (can_call_function('posix_kill')) {
         $ret = posix_kill($pid, 9);
         $ret = $ret ? ERROR_SUCCESS : posix_get_last_error();
         if ($ret != ERROR_SUCCESS) {
@@ -1152,13 +1174,11 @@ function stdapi_net_socket_tcp_shutdown($req, &$pkt) {
     $cid_tlv = packet_get_tlv($req, TLV_TYPE_CHANNEL_ID);
     $c = get_channel_by_id($cid_tlv['value']);
 
-    if ($c && $c['type'] == 'socket') {
+    if ($c && $c['type'] == 'socket' && can_call_function('socket_shutdown')) {
         @socket_shutdown($c[0], $how);
-        $ret = ERROR_SUCCESS;
-    } else {
-        $ret = ERROR_FAILURE;
+        return ERROR_SUCCESS;
     }
-    return $ret;
+    return ERROR_FAILURE;
 }
 }
 
@@ -1192,7 +1212,7 @@ if (is_windows() and is_callable('reg_open_key')) {
 }
 function stdapi_registry_create_key($req, &$pkt) {
     my_print("doing stdapi_registry_create_key");
-    if (is_windows() and is_callable('reg_open_key')) {
+    if (is_windows() and can_call_function('reg_open_key')) {
         $root_tlv = packet_get_tlv($req, TLV_TYPE_ROOT_KEY);
         $base_tlv = packet_get_tlv($req, TLV_TYPE_BASE_KEY);
         $perm_tlv = packet_get_tlv($req, TLV_TYPE_PERMISSION);
@@ -1227,7 +1247,7 @@ if (is_windows() and is_callable('reg_open_key')) {
     register_command('stdapi_registry_close_key', COMMAND_ID_STDAPI_REGISTRY_CLOSE_KEY);
 }
 function stdapi_registry_close_key($req, &$pkt) {
-    if (is_windows() and is_callable('reg_open_key')) {
+    if (is_windows() and can_call_function('reg_open_key')) {
         global $registry_handles;
         my_print("doing stdapi_registry_close_key");
         $key_id_tlv = packet_get_tlv($req, TLV_TYPE_ROOT_KEY);
