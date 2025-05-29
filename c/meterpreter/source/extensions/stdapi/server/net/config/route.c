@@ -1,3 +1,4 @@
+#ifdef STDAPI_NAMESPACE_NET
 #include "precomp.h"
 #include "common.h"
 #include "common_metapi.h"
@@ -283,3 +284,4 @@ DWORD add_remove_route(Packet *packet, BOOLEAN add)
 	}
 	return dwResult;
 }
+#endif

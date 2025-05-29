@@ -1,3 +1,4 @@
+#ifdef STDAPI_NAMESPACE_SYS
 #include "precomp.h"
 #include "common_metapi.h"
 #include "ps.h" // include the code for listing proceses
@@ -1203,3 +1204,4 @@ DWORD request_sys_process_wait(Remote *remote, Packet *packet)
 
 	return result;
 }
+#endif

@@ -1,3 +1,4 @@
+#ifdef STDAPI_NAMESPACE_UI
 #include "precomp.h"
 #include "common_metapi.h"
 #include "./../sys/session.h"
@@ -520,3 +521,4 @@ DWORD request_ui_desktop_screenshot(Remote * remote, Packet * request)
 
 	return dwResult;
 }
+#endif

@@ -1,3 +1,4 @@
+#ifdef STDAPI_NAMESPACE_NET
 #ifndef _METERPRETER_SOURCE_EXTENSION_STDAPI_STDAPI_SERVER_NET_NET_H
 #define _METERPRETER_SOURCE_EXTENSION_STDAPI_STDAPI_SERVER_NET_NET_H
 
@@ -71,4 +72,5 @@ VOID free_socket_context(SocketContext *ctx);
 const char * inet_ntop(int af, const void *src, char *dst, socklen_t size);
 DWORD net_tlv_pack_local_addrinfo(SocketContext *sock_ctx, Packet *packet);
 
+#endif
 #endif

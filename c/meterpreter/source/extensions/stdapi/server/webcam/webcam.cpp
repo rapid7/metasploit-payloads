@@ -7,7 +7,7 @@
  *       but not bother with a new thread if it doesn't.
  * @remark This software is based on Touchless, which is released under MS-PL.
  */
-
+#ifdef STDAPI_NAMESPACE_WEBCAM
 #ifdef CINTERFACE
 #undef CINTERFACE
 #endif
@@ -813,3 +813,4 @@ extern "C" {
 		return dwResult;
 	}
 }
+#endif

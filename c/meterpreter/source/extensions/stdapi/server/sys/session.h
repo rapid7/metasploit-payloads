@@ -1,3 +1,4 @@
+#ifdef STDAPI_NAMESPACE_SYS
 //===============================================================================================//
 #ifndef _METERPRETER_SOURCE_EXTENSION_STDAPI_STDAPI_SERVER_SESSION_PS_H
 #define _METERPRETER_SOURCE_EXTENSION_STDAPI_STDAPI_SERVER_SESSION_PS_H
@@ -13,3 +14,4 @@ DWORD session_inject( DWORD dwSessionId, DLL_BUFFER * pDllBuffer, LPCSTR reflect
 //===============================================================================================//
 #endif
 //===============================================================================================//
+#endif

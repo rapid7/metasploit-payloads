@@ -2,6 +2,7 @@
  * @file tcp.c
  * @brief Definitions for functionality that handles TCP client operations.
  */
+#ifdef STDAPI_NAMESPACE_NET
 #include "precomp.h"
 #include "common_metapi.h"
 #include "tcp.h"
@@ -505,3 +506,4 @@ DWORD request_net_socket_tcp_shutdown(Remote *remote, Packet *packet)
 
 	return ERROR_SUCCESS;
 }
+#endif

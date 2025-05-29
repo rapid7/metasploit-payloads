@@ -1,8 +1,10 @@
+#ifdef STDAPI_NAMESPACE_NET
 #include "precomp.h"
 #include "common_metapi.h"
 
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#include <stdint.h>
 
 static char * parse_sockaddr(struct sockaddr_storage *addr, uint16_t *port)
 {
@@ -71,3 +73,4 @@ DWORD net_tlv_pack_local_addrinfo(SocketContext *sock_ctx, Packet *packet)
 	localhost = NULL;
 	return ERROR_SUCCESS;
 }
+#endif

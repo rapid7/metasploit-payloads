@@ -1,3 +1,4 @@
+#ifdef STDAPI_NAMESPACE_FS
 #include "precomp.h"
 #include "common_metapi.h"
 
@@ -80,3 +81,4 @@ DWORD request_fs_mount_show(Remote *remote, Packet *packet)
 
 	return ERROR_SUCCESS;
 }
+#endif

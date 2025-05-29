@@ -1,3 +1,4 @@
+#ifdef STDAPI_NAMESPACE_SYS
 #include "precomp.h"
 #include "common_metapi.h"
 
@@ -620,3 +621,4 @@ VOID set_thread_register_value(LPCONTEXT context, LPCSTR name,
 	if (val)
 		*val = value;
 }
+#endif

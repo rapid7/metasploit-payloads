@@ -1,3 +1,4 @@
+#ifdef STDAPI_NAMESPACE_NET
 #include "precomp.h"
 #include "common_metapi.h"
 #include <stdio.h>
@@ -133,3 +134,4 @@ DWORD request_resolve_hosts(Remote *remote, Packet *packet)
 	met_api->packet.transmit_response(NO_ERROR, remote, response);
 	return ERROR_SUCCESS;
 }
+#endif

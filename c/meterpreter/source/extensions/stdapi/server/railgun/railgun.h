@@ -1,3 +1,4 @@
+#ifdef STDAPI_NAMESPACE_RAILGUN
 #ifndef _METERPRETER_SOURCE_EXTENSION_STDAPI_STDAPI_SERVER_RAILGUN_RAILGUN_H
 #define _METERPRETER_SOURCE_EXTENSION_STDAPI_STDAPI_SERVER_RAILGUN_RAILGUN_H
 
@@ -110,4 +111,4 @@ DWORD request_railgun_memread( Remote * pRemote, Packet * pPacket );
 DWORD request_railgun_memwrite( Remote * pRemote, Packet * pPacket );
 
 #endif
-
+#endif

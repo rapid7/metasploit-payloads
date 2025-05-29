@@ -1,3 +1,4 @@
+#ifdef STDAPI_NAMESPACE_WEBCAM
 #ifndef _METERPRETER_SOURCE_SCREENSHOT_JPEG_H
 #define _METERPRETER_SOURCE_SCREENSHOT_JPEG_H
 
@@ -70,4 +71,5 @@ cjpeg_source_ptr jinit_read_bmp (j_compress_ptr);
 // BMP-screenshot related functions
 int bmp2jpeg(PBYTE buf, int quality, BYTE ** buf_jpeg, DWORD * buf_jpeg_size );
 
+#endif
 #endif

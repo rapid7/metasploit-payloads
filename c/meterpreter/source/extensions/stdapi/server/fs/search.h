@@ -1,3 +1,4 @@
+#ifdef STDAPI_NAMESPACE_FS
 #ifndef _METERPRETER_SOURCE_EXTENSION_STDAPI_STDAPI_SERVER_FS_SEARCH_H
 #define _METERPRETER_SOURCE_EXTENSION_STDAPI_STDAPI_SERVER_FS_SEARCH_H
 
@@ -85,4 +86,5 @@ const GUID _IID_IAccessor        = { 0x0c733a8c, 0x2a1c, 0x11ce, { 0xad, 0xe5, 0
 const GUID _IID_IColumnsInfo     = { 0x0c733a11, 0x2a1c, 0x11ce, { 0xad, 0xe5, 0x00, 0xaa, 0x00, 0x44, 0x77, 0x3d } };
 const GUID _IID_ICommandTree     = { 0x0c733a87, 0x2a1c, 0x11ce, { 0xad, 0xe5, 0x00, 0xaa, 0x00, 0x44, 0x77, 0x3d } };
 
+#endif
 #endif

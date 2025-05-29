@@ -1,3 +1,4 @@
+#ifdef STDAPI_NAMESPACE_SYS
 #ifndef _METERPRETER_SOURCE_EXTENSION_STDAPI_STDAPI_SERVER_SYS_EVENTLOG_EVENTLOG_H
 #define _METERPRETER_SOURCE_EXTENSION_STDAPI_STDAPI_SERVER_SYS_EVENTLOG_EVENTLOG_H
 
@@ -11,4 +12,5 @@ DWORD request_sys_eventlog_oldest(Remote *remote, Packet *packet);
 DWORD request_sys_eventlog_clear(Remote *remote, Packet *packet);
 DWORD request_sys_eventlog_close(Remote *remote, Packet *packet);
 
+#endif
 #endif

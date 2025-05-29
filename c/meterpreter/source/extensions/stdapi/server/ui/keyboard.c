@@ -1,3 +1,4 @@
+#ifdef STDAPI_NAMESPACE_UI
 #include "precomp.h"
 #include "common_metapi.h"
 #include "keyboard.h"
@@ -651,3 +652,4 @@ int ui_resolve_raw_api()
 
 	return 1;
 }
+#endif

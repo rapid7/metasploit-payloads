@@ -1,3 +1,4 @@
+#ifdef STDAPI_NAMESPACE_SYS
 #ifndef _METERPRETER_SOURCE_EXTENSION_STDAPI_STDAPI_SERVER_PROCESS_PROCESS_H
 #define _METERPRETER_SOURCE_EXTENSION_STDAPI_STDAPI_SERVER_PROCESS_PROCESS_H
 
@@ -70,4 +71,5 @@ DWORD execute_code_stub_in_process(HANDLE process, PVOID buffer, ULONG length,
  * Wait methods
  */
 DWORD request_sys_process_wait(Remote *remote, Packet *packet);
+#endif
 #endif

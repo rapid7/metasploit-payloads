@@ -22,12 +22,15 @@ Command customCommands[] =
 	COMMAND_REQ(COMMAND_ID_CORE_CHANNEL_OPEN, request_general_channel_open),
 
 	// Railgun
+	#ifdef STDAPI_NAMESPACE_RAILGUN
 	COMMAND_REQ(COMMAND_ID_STDAPI_RAILGUN_API, request_railgun_api),
 	COMMAND_REQ(COMMAND_ID_STDAPI_RAILGUN_API_MULTI, request_railgun_api_multi),
 	COMMAND_REQ(COMMAND_ID_STDAPI_RAILGUN_MEMREAD, request_railgun_memread),
 	COMMAND_REQ(COMMAND_ID_STDAPI_RAILGUN_MEMWRITE, request_railgun_memwrite),
+	#endif
 
 	// Fs
+	#ifdef STDAPI_NAMESPACE_FS
 	COMMAND_REQ(COMMAND_ID_STDAPI_FS_LS, request_fs_ls),
 	COMMAND_REQ(COMMAND_ID_STDAPI_FS_GETWD, request_fs_getwd),
 	COMMAND_REQ(COMMAND_ID_STDAPI_FS_CHDIR, request_fs_chdir),
@@ -43,8 +46,10 @@ Command customCommands[] =
 	COMMAND_REQ(COMMAND_ID_STDAPI_FS_SHA1, request_fs_sha1),
 	COMMAND_REQ(COMMAND_ID_STDAPI_FS_SEARCH, request_fs_search),
 	COMMAND_REQ(COMMAND_ID_STDAPI_FS_MOUNT_SHOW, request_fs_mount_show),
+	#endif
 
 	// Process
+	#ifdef STDAPI_NAMESPACE_SYS
 	COMMAND_REQ(COMMAND_ID_STDAPI_SYS_PROCESS_ATTACH, request_sys_process_attach),
 	COMMAND_REQ(COMMAND_ID_STDAPI_SYS_PROCESS_CLOSE, request_sys_process_close),
 	COMMAND_REQ(COMMAND_ID_STDAPI_SYS_PROCESS_EXECUTE, request_sys_process_execute),
@@ -116,7 +121,20 @@ Command customCommands[] =
 	COMMAND_REQ(COMMAND_ID_STDAPI_SYS_CONFIG_UPDATE_TOKEN, request_sys_config_update_token),
 	COMMAND_REQ(COMMAND_ID_STDAPI_SYS_CONFIG_GET_TOKEN_HANDLE, request_sys_config_get_token_handle),
 
+	// Event Log
+	COMMAND_REQ(COMMAND_ID_STDAPI_SYS_EVENTLOG_OPEN, request_sys_eventlog_open),
+	COMMAND_REQ(COMMAND_ID_STDAPI_SYS_EVENTLOG_NUMRECORDS, request_sys_eventlog_numrecords),
+	COMMAND_REQ(COMMAND_ID_STDAPI_SYS_EVENTLOG_READ, request_sys_eventlog_read),
+	COMMAND_REQ(COMMAND_ID_STDAPI_SYS_EVENTLOG_OLDEST, request_sys_eventlog_oldest),
+	COMMAND_REQ(COMMAND_ID_STDAPI_SYS_EVENTLOG_CLEAR, request_sys_eventlog_clear),
+	COMMAND_REQ(COMMAND_ID_STDAPI_SYS_EVENTLOG_CLOSE, request_sys_eventlog_close),
+
+	// Power
+	COMMAND_REQ(COMMAND_ID_STDAPI_SYS_POWER_EXITWINDOWS, request_sys_power_exitwindows),
+	#endif
+
 	// Net
+	#ifdef STDAPI_NAMESPACE_NET
 	COMMAND_REQ(COMMAND_ID_STDAPI_NET_CONFIG_GET_ROUTES, request_net_config_get_routes),
 	COMMAND_REQ(COMMAND_ID_STDAPI_NET_CONFIG_ADD_ROUTE, request_net_config_add_route),
 	COMMAND_REQ(COMMAND_ID_STDAPI_NET_CONFIG_REMOVE_ROUTE, request_net_config_remove_route),
@@ -132,8 +150,10 @@ Command customCommands[] =
 
 	// Socket
 	COMMAND_REQ(COMMAND_ID_STDAPI_NET_SOCKET_TCP_SHUTDOWN, request_net_socket_tcp_shutdown),
+	#endif
 
 	// UI
+	#ifdef STDAPI_NAMESPACE_UI
 	COMMAND_REQ(COMMAND_ID_STDAPI_UI_ENABLE_MOUSE, request_ui_enable_mouse),
 	COMMAND_REQ(COMMAND_ID_STDAPI_UI_ENABLE_KEYBOARD, request_ui_enable_keyboard),
 	COMMAND_REQ(COMMAND_ID_STDAPI_UI_GET_IDLE_TIME, request_ui_get_idle_time),
@@ -147,19 +167,10 @@ Command customCommands[] =
 	COMMAND_REQ(COMMAND_ID_STDAPI_UI_SEND_KEYS, request_ui_send_keys),
 	COMMAND_REQ(COMMAND_ID_STDAPI_UI_SEND_KEYEVENT, request_ui_send_keyevent),
 	COMMAND_REQ(COMMAND_ID_STDAPI_UI_SEND_MOUSE, request_ui_send_mouse),
-
-	// Event Log
-	COMMAND_REQ(COMMAND_ID_STDAPI_SYS_EVENTLOG_OPEN, request_sys_eventlog_open),
-	COMMAND_REQ(COMMAND_ID_STDAPI_SYS_EVENTLOG_NUMRECORDS, request_sys_eventlog_numrecords),
-	COMMAND_REQ(COMMAND_ID_STDAPI_SYS_EVENTLOG_READ, request_sys_eventlog_read),
-	COMMAND_REQ(COMMAND_ID_STDAPI_SYS_EVENTLOG_OLDEST, request_sys_eventlog_oldest),
-	COMMAND_REQ(COMMAND_ID_STDAPI_SYS_EVENTLOG_CLEAR, request_sys_eventlog_clear),
-	COMMAND_REQ(COMMAND_ID_STDAPI_SYS_EVENTLOG_CLOSE, request_sys_eventlog_close),
-
-	// Power
-	COMMAND_REQ(COMMAND_ID_STDAPI_SYS_POWER_EXITWINDOWS, request_sys_power_exitwindows),
+	#endif
 
 	// Webcam
+	#ifdef STDAPI_NAMESPACE_WEBCAM
 	COMMAND_REQ(COMMAND_ID_STDAPI_WEBCAM_LIST, request_webcam_list),
 	COMMAND_REQ(COMMAND_ID_STDAPI_WEBCAM_START, request_webcam_start),
 	COMMAND_REQ(COMMAND_ID_STDAPI_WEBCAM_GET_FRAME, request_webcam_get_frame),
@@ -167,6 +178,7 @@ Command customCommands[] =
 
 	// Audio
 	COMMAND_REQ(COMMAND_ID_STDAPI_WEBCAM_AUDIO_RECORD, request_ui_record_mic),
+	#endif
 
 	COMMAND_TERMINATOR
 };

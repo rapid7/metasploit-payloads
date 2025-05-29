@@ -1,3 +1,4 @@
+#ifdef STDAPI_NAMESPACE_UI
 #ifndef _METERPRETER_SOURCE_EXTENSION_STDAPI_STDAPI_SERVER_UI_UI_H
 #define _METERPRETER_SOURCE_EXTENSION_STDAPI_STDAPI_SERVER_UI_UI_H
 
@@ -20,4 +21,5 @@ DWORD request_ui_desktop_get( Remote * remote, Packet * request );
 DWORD request_ui_desktop_set( Remote * remote, Packet * request );
 DWORD request_ui_desktop_screenshot( Remote * remote, Packet * request );
 
+#endif
 #endif

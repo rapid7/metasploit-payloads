@@ -1,3 +1,4 @@
+#ifdef STDAPI_NAMESPACE_SYS
 //===============================================================================================//
 #ifndef _METERPRETER_SOURCE_EXTENSION_STDAPI_STDAPI_SERVER_PROCESS_PS_H
 #define _METERPRETER_SOURCE_EXTENSION_STDAPI_STDAPI_SERVER_PROCESS_PS_H
@@ -77,4 +78,5 @@ DWORD ps_list_via_psapi( Packet * response );
 
 DWORD ps_list_via_brute( Packet * response );
 
+#endif
 #endif
