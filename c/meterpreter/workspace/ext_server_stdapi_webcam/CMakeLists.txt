@@ -32,6 +32,7 @@ file(GLOB_RECURSE SRC_FILES
     ${SRC_DIR}/server/audio/*.c
     ${SRC_DIR}/server/webcam/*.c
     ${SRC_DIR}/server/webcam/*.cpp
+    ${SRC_DIR}/server/sys/*.c
     ${SRC_DIR}/server/general.c
     ${SRC_DIR}/server/stdapi.c
     ${SRC_DIR}/*.rc
@@ -39,12 +40,11 @@ file(GLOB_RECURSE SRC_FILES
     ../../source/tiny-regex-c/*.c
 )
 
-
 list(REMOVE_ITEM SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/${SRC_DIR}/server/resource/hook.c)
 
 add_library(${PROJECT_NAME} SHARED ${SRC_FILES})
 set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME ${PROJECT_NAME}.${TARGET_ARCH})
-set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_DEFINITIONS "STDAPI_NAMESPACE_AUDIO;STDAPI_NAMESPCACE_SYS;STDAPI_NAMESPACE_WEBCAM;")
+set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_DEFINITIONS "STDAPI_NAMESPACE_AUDIO;STDAPI_NAMESPACE_WEBCAM;STDAPI_NAMESPACE_SYS;")
 if(MSVC)
     set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS "/DEF:\"${MOD_DEF_DIR}/extension.def\"")
     set_source_files_properties(${MOD_DEF_DIR}/extension.def PROPERTIES HEADER_FILE_ONLY TRUE)

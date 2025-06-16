@@ -530,6 +530,18 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <ClCompile Include="..\..\source\extensions\stdapi\server\webcam\audio.c" />
     <ClCompile Include="..\..\source\extensions\stdapi\server\webcam\bmp2jpeg.c" />
     <ClCompile Include="..\..\source\extensions\stdapi\server\webcam\webcam.cpp" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\sys\session.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\sys\process\image.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\sys\process\in-mem-exe.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\sys\process\memory.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\sys\process\process.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\sys\process\ps.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\sys\process\thread.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\sys\process\util.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\sys\registry\registry.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\sys\power\power.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\sys\eventlog\eventlog.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\sys\config\config.c" />
     <ClCompile Include="..\..\source\logging\logging.c" />
     <ClCompile Include="..\..\source\tiny-regex-c\re.c" />
   </ItemGroup>
@@ -538,11 +550,20 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\source\extensions\stdapi\server\precomp.h" />
+    <ClInclude Include="..\..\source\extensions\stdapi\server\sys\config\config.h" />
     <ClInclude Include="..\..\source\extensions\stdapi\stdapi.h" />
     <ClInclude Include="..\..\source\extensions\stdapi\server\webcam\audio.h" />
     <ClInclude Include="..\..\source\extensions\stdapi\server\webcam\bmp2jpeg.h" />
     <ClInclude Include="..\..\source\extensions\stdapi\server\webcam\webcam.h" />
     <ClInclude Include="..\..\source\extensions\stdapi\server\audio\audio.h" />
+    <ClInclude Include="..\..\source\extensions\stdapi\server\sys\session.h" />
+    <ClInclude Include="..\..\source\extensions\stdapi\server\sys\sys.h" />
+    <ClInclude Include="..\..\source\extensions\stdapi\server\sys\process\in-mem-exe.h" />
+    <ClInclude Include="..\..\source\extensions\stdapi\server\sys\process\process.h" />
+    <ClInclude Include="..\..\source\extensions\stdapi\server\sys\process\ps.h" />
+    <ClInclude Include="..\..\source\extensions\stdapi\server\sys\registry\registry.h" />
+    <ClInclude Include="..\..\source\extensions\stdapi\server\sys\power\power.h" />
+    <ClInclude Include="..\..\source\extensions\stdapi\server\sys\eventlog\eventlog.h" />
     <ClInclude Include="..\..\source\tiny-regex-c\re.h" />
   </ItemGroup>
   <ItemGroup>
