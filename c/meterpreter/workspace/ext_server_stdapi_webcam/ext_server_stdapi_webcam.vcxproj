@@ -27,7 +27,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{405245AB-0071-4CB9-BFBE-ED4E2A987EFF}</ProjectGuid>
+    <ProjectGuid>{D951E73C-7446-4FC8-A1DF-ADCC4AF6558F}</ProjectGuid>
     <RootNamespace>ext_server_stdapi</RootNamespace>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -129,7 +129,6 @@
       <Optimization>MinSpace</Optimization>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\stdapi\server;..\..\source\jpeg-8;..\..\source\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_SYS_EXPORTS;_CRT_SECURE_NO_WARNINGS;CINTERFACE;COBJMACROS;STDAPI_NAMESPACE_AUDIO;STDAPI_NAMESPACE_FS;STDAPI_NAMESPACE_NET;STDAPI_NAMESPACE_RAILGUN;STDAPI_NAMESPACE_SYS;STDAPI_NAMESPACE_UI;STDAPI_NAMESPACE_WEBCAM;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <FunctionLevelLinking>false</FunctionLevelLinking>
@@ -145,6 +144,7 @@
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_SYS_EXPORTS;_CRT_SECURE_NO_WARNINGS;CINTERFACE;COBJMACROS;STDAPI_NAMESPACE_AUDIO;STDAPI_NAMESPACE_SYS;STDAPI_NAMESPACE_WEBCAM;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -197,7 +197,6 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <Optimization>MinSpace</Optimization>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\stdapi\server;..\..\source\jpeg-8;..\..\source\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>DEBUGTRACE;WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_SYS_EXPORTS;_CRT_SECURE_NO_WARNINGS;CINTERFACE;COBJMACROS;STDAPI_NAMESPACE_AUDIO;STDAPI_NAMESPACE_FS;STDAPI_NAMESPACE_NET;STDAPI_NAMESPACE_RAILGUN;STDAPI_NAMESPACE_SYS;STDAPI_NAMESPACE_UI;STDAPI_NAMESPACE_WEBCAM;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <FunctionLevelLinking>false</FunctionLevelLinking>
@@ -213,6 +212,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <PreprocessorDefinitions>DEBUGTRACE;WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_SYS_EXPORTS;_CRT_SECURE_NO_WARNINGS;CINTERFACE;COBJMACROS;STDAPI_NAMESPACE_AUDIO;STDAPI_NAMESPACE_SYS;STDAPI_NAMESPACE_WEBCAM;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -266,7 +266,6 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(TargetName)
       <Optimization>MinSpace</Optimization>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\stdapi\server;..\..\source\jpeg-8;..\..\source\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_SYS_EXPORTS;_CRT_SECURE_NO_WARNINGS;CINTERFACE;COBJMACROS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <FunctionLevelLinking>false</FunctionLevelLinking>
@@ -334,7 +333,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <Optimization>MaxSpeed</Optimization>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\stdapi\server;..\..\source\jpeg-8;..\..\source\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_SYS_EXPORTS;_CRT_SECURE_NO_WARNINGS;CINTERFACE;COBJMACROS;STDAPI_NAMESPACE_AUDIO;STDAPI_NAMESPACE_FS;STDAPI_NAMESPACE_NET;STDAPI_NAMESPACE_RAILGUN;STDAPI_NAMESPACE_SYS;STDAPI_NAMESPACE_UI;STDAPI_NAMESPACE_WEBCAM;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_SYS_EXPORTS;_CRT_SECURE_NO_WARNINGS;CINTERFACE;COBJMACROS;STDAPI_NAMESPACE_AUDIO;STDAPI_NAMESPACE_SYS;STDAPI_NAMESPACE_WEBCAM;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <FunctionLevelLinking>false</FunctionLevelLinking>
@@ -401,7 +400,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <Optimization>MaxSpeed</Optimization>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\stdapi\server;..\..\source\jpeg-8;..\..\source\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>DEBUGTRACE;WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_SYS_EXPORTS;_CRT_SECURE_NO_WARNINGS;CINTERFACE;COBJMACROS;STDAPI_NAMESPACE_AUDIO;STDAPI_NAMESPACE_FS;STDAPI_NAMESPACE_NET;STDAPI_NAMESPACE_RAILGUN;STDAPI_NAMESPACE_SYS;STDAPI_NAMESPACE_UI;STDAPI_NAMESPACE_WEBCAM;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>DEBUGTRACE;WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_SYS_EXPORTS;_CRT_SECURE_NO_WARNINGS;CINTERFACE;COBJMACROS;STDAPI_NAMESPACE_AUDIO;STDAPI_NAMESPACE_SYS;STDAPI_NAMESPACE_WEBCAM;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <FunctionLevelLinking>false</FunctionLevelLinking>
@@ -524,25 +523,13 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\source\extensions\stdapi\server\audio\output.c" />
-    <ClCompile Include="..\..\source\extensions\stdapi\server\fs\mount_win.c" />
     <ClCompile Include="..\..\source\extensions\stdapi\server\general.c" />
-    <ClCompile Include="..\..\source\extensions\stdapi\server\net\config\arp.c" />
-    <ClCompile Include="..\..\source\extensions\stdapi\server\net\config\netstat.c" />
-    <ClCompile Include="..\..\source\extensions\stdapi\server\net\config\proxy_config.c" />
-    <ClCompile Include="..\..\source\extensions\stdapi\server\net\resolve.c" />
     <ClCompile Include="..\..\source\extensions\stdapi\server\stdapi.c">
       <PreCompiledHeader>Create</PreCompiledHeader>
     </ClCompile>
-    <ClCompile Include="..\..\source\extensions\stdapi\server\fs\dir.c" />
-    <ClCompile Include="..\..\source\extensions\stdapi\server\fs\file.c" />
-    <ClCompile Include="..\..\source\extensions\stdapi\server\fs\fs_win.c" />
-    <ClCompile Include="..\..\source\extensions\stdapi\server\fs\search.c" />
-    <ClCompile Include="..\..\source\extensions\stdapi\server\net\net.c" />
-    <ClCompile Include="..\..\source\extensions\stdapi\server\net\config\interface.c" />
-    <ClCompile Include="..\..\source\extensions\stdapi\server\net\config\route.c" />
-    <ClCompile Include="..\..\source\extensions\stdapi\server\net\socket\tcp.c" />
-    <ClCompile Include="..\..\source\extensions\stdapi\server\net\socket\tcp_server.c" />
-    <ClCompile Include="..\..\source\extensions\stdapi\server\net\socket\udp.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\webcam\audio.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\webcam\bmp2jpeg.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\webcam\webcam.cpp" />
     <ClCompile Include="..\..\source\extensions\stdapi\server\sys\session.c" />
     <ClCompile Include="..\..\source\extensions\stdapi\server\sys\process\image.c" />
     <ClCompile Include="..\..\source\extensions\stdapi\server\sys\process\in-mem-exe.c" />
@@ -555,15 +542,6 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <ClCompile Include="..\..\source\extensions\stdapi\server\sys\power\power.c" />
     <ClCompile Include="..\..\source\extensions\stdapi\server\sys\eventlog\eventlog.c" />
     <ClCompile Include="..\..\source\extensions\stdapi\server\sys\config\config.c" />
-    <ClCompile Include="..\..\source\extensions\stdapi\server\ui\desktop.c" />
-    <ClCompile Include="..\..\source\extensions\stdapi\server\ui\idle.c" />
-    <ClCompile Include="..\..\source\extensions\stdapi\server\ui\keyboard.c" />
-    <ClCompile Include="..\..\source\extensions\stdapi\server\ui\mouse.c" />
-    <ClCompile Include="..\..\source\extensions\stdapi\server\ui\ui.c" />
-    <ClCompile Include="..\..\source\extensions\stdapi\server\railgun\railgun.c" />
-    <ClCompile Include="..\..\source\extensions\stdapi\server\webcam\audio.c" />
-    <ClCompile Include="..\..\source\extensions\stdapi\server\webcam\bmp2jpeg.c" />
-    <ClCompile Include="..\..\source\extensions\stdapi\server\webcam\webcam.cpp" />
     <ClCompile Include="..\..\source\logging\logging.c" />
     <ClCompile Include="..\..\source\tiny-regex-c\re.c" />
   </ItemGroup>
@@ -574,9 +552,10 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <ClInclude Include="..\..\source\extensions\stdapi\server\precomp.h" />
     <ClInclude Include="..\..\source\extensions\stdapi\server\sys\config\config.h" />
     <ClInclude Include="..\..\source\extensions\stdapi\stdapi.h" />
-    <ClInclude Include="..\..\source\extensions\stdapi\server\net\net.h" />
-    <ClInclude Include="..\..\source\extensions\stdapi\server\net\socket\tcp.h" />
-    <ClInclude Include="..\..\source\extensions\stdapi\server\net\socket\udp.h" />
+    <ClInclude Include="..\..\source\extensions\stdapi\server\webcam\audio.h" />
+    <ClInclude Include="..\..\source\extensions\stdapi\server\webcam\bmp2jpeg.h" />
+    <ClInclude Include="..\..\source\extensions\stdapi\server\webcam\webcam.h" />
+    <ClInclude Include="..\..\source\extensions\stdapi\server\audio\audio.h" />
     <ClInclude Include="..\..\source\extensions\stdapi\server\sys\session.h" />
     <ClInclude Include="..\..\source\extensions\stdapi\server\sys\sys.h" />
     <ClInclude Include="..\..\source\extensions\stdapi\server\sys\process\in-mem-exe.h" />
@@ -585,15 +564,6 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <ClInclude Include="..\..\source\extensions\stdapi\server\sys\registry\registry.h" />
     <ClInclude Include="..\..\source\extensions\stdapi\server\sys\power\power.h" />
     <ClInclude Include="..\..\source\extensions\stdapi\server\sys\eventlog\eventlog.h" />
-    <ClInclude Include="..\..\source\extensions\stdapi\server\ui\ui.h" />
-    <ClInclude Include="..\..\source\extensions\stdapi\server\railgun\railgun.h" />
-    <ClInclude Include="..\..\source\extensions\stdapi\server\webcam\audio.h" />
-    <ClInclude Include="..\..\source\extensions\stdapi\server\webcam\bmp2jpeg.h" />
-    <ClInclude Include="..\..\source\extensions\stdapi\server\webcam\webcam.h" />
-    <ClInclude Include="..\..\source\extensions\stdapi\server\audio\audio.h" />
-    <ClInclude Include="..\..\source\extensions\stdapi\server\fs\fs.h" />
-    <ClInclude Include="..\..\source\extensions\stdapi\server\fs\fs_local.h" />
-    <ClInclude Include="..\..\source\extensions\stdapi\server\fs\search.h" />
     <ClInclude Include="..\..\source\tiny-regex-c\re.h" />
   </ItemGroup>
   <ItemGroup>
