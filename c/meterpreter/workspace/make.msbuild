@@ -10,32 +10,32 @@
 
   <Target Name="x86">
     <Message Text="Building x86 Release version" />
-    <MSBuild Projects="$(SolutionPath)" Properties="Configuration=Release;Platform=Win32" Targets="Clean;Rebuild"/>
+    <MSBuild Projects="$(SolutionPath)" Properties="Configuration=Release;Platform=Win32;XPDeprecationWarning=false" Targets="Clean;Rebuild"/>
   </Target>
 
   <Target Name="r7_x86">
     <Message Text="Building x86 Release R7 binaries" />
-    <MSBuild Projects="$(SolutionPath)" Properties="Configuration=r7_Release;Platform=Win32" Targets="Clean;Rebuild"/>
+    <MSBuild Projects="$(SolutionPath)" Properties="Configuration=r7_Release;Platform=Win32;XPDeprecationWarning=false" Targets="Clean;Rebuild"/>
   </Target>
 
   <Target Name="x64">
     <Message Text="Building x64 Release version" />
-    <MSBuild Projects="$(SolutionPath)" Properties="Configuration=Release;Platform=x64" Targets="Clean;Rebuild"/>
+    <MSBuild Projects="$(SolutionPath)" Properties="Configuration=Release;Platform=x64;XPDeprecationWarning=false" Targets="Clean;Rebuild"/>
   </Target>
 
   <Target Name="r7_x64">
     <Message Text="Building x64 Release R7 binaries" />
-    <MSBuild Projects="$(SolutionPath)" Properties="Configuration=r7_Release;Platform=x64" Targets="Clean;Rebuild"/>
+    <MSBuild Projects="$(SolutionPath)" Properties="Configuration=r7_Release;Platform=x64;XPDeprecationWarning=false" Targets="Clean;Rebuild"/>
   </Target>
 
   <Target Name="debug_x86">
     <Message Text="Building x86 Debug version" />
-    <MSBuild Projects="$(SolutionPath)" Properties="Configuration=Debug;Platform=Win32" Targets="Clean;Rebuild"/>
+    <MSBuild Projects="$(SolutionPath)" Properties="Configuration=Debug;Platform=Win32;XPDeprecationWarning=false" Targets="Clean;Rebuild"/>
   </Target>
 
   <Target Name="debug_x64">
     <Message Text="Building x64 Debug version" />
-    <MSBuild Projects="$(SolutionPath)" Properties="Configuration=Debug;Platform=x64" Targets="Clean;Rebuild"/>
+    <MSBuild Projects="$(SolutionPath)" Properties="Configuration=Debug;Platform=x64;XPDeprecationWarning=false" Targets="Clean;Rebuild"/>
   </Target>
 </Project>
 
