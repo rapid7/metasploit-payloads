@@ -36,6 +36,7 @@ if(EXCLUDE_REFLECTIVE_LOADER)
 endif()
 if(MSVC)
     target_link_options(${PROJECT_NAME} PUBLIC "/ignore:4070")
+    target_link_options(${PROJECT_NAME} PUBLIC "/safeseh:no")
 endif()
 
 # Post processing (required for all Meterpreter DLLs)
