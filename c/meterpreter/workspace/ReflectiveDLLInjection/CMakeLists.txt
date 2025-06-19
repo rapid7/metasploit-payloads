@@ -4,21 +4,25 @@ set(PROJECT_NAME ReflectiveDLLInjection)
 
 project(${PROJECT_NAME} ASM)
 set(ASM_SUFFIX "s")
+set(BITS "64")
+
 if(MSVC)
     enable_language(ASM_MASM)
     set(ASM_SUFFIX "asm")
 endif()
 
+message(CMAKE_GENERATOR_PLATFORM="${CMAKE_GENERATOR_PLATFORM}")
 set(SRC_DIR ../../source/ReflectiveDLLInjection/dll/src)
-if(MSVC AND "${CMAKE_GENERATOR_PLATFORM}" STREQUAL "x64")
-    set(SRC_FILES "${SRC_DIR}/GateTrampoline64.${ASM_SUFFIX}")
-elseif(MSVC AND "${CMAKE_GENERATOR_PLATFORM}" STREQUAL "Win32")
-    set(SRC_FILES "${SRC_DIR}/GateTrampoline32.${ASM_SUFFIX}")
-elseif("${CMAKE_SYSTEM_PROCESSOR}" MATCHES "(x86_64|amd64|AMD64)")
-    set(SRC_FILES "${SRC_DIR}/GateTrampoline64.${ASM_SUFFIX}")
-elseif("${CMAKE_SYSTEM_PROCESSOR}" MATCHES "(i386|i686)")
-    set(SRC_FILES "${SRC_DIR}/GateTrampoline32.${ASM_SUFFIX}")
+# On windows, cmake sets the CMAKE_GENERATOR_PLATFORM value to the target
+# arch that we're building to, so we can rely on that. In docker, we can't
+# because the value isn't set.
+if(MSVC AND "${CMAKE_GENERATOR_PLATFORM}" STREQUAL "Win32")
+    set(BITS "32")
+elseif(NOT MSVC AND "${CMAKE_SYSTEM_PROCESSOR}" MATCHES "(i386|i686)")
+    set(BITS "32")
 endif()
+
+set(SRC_FILES "${SRC_DIR}/GateTrampoline${BITS}.${ASM_SUFFIX}")
 
 set_property(DIRECTORY PROPERTY COMPILE_DEFINITIONS)
 set_property(DIRECTORY PROPERTY INCLUDE_DIRECTORIES)
