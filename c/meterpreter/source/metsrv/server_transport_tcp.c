@@ -455,7 +455,7 @@ static DWORD packet_receive(Remote *remote, Packet **packet)
 		dprintf("[TCP] Packet Session GUID: %02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
 			h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15]);
 #endif
-		if (is_null_guid(header.session_guid) || memcmp(remote->orig_config->session.session_guid, header.session_guid, sizeof(header.session_guid)) == 0)
+		if (is_null_guid(header.session_guid) || memcmp(remote->session_guid, header.session_guid, sizeof(header.session_guid)) == 0)
 		{
 			dprintf("[TCP] Session GUIDs match (or packet guid is null), decrypting packet");
 			SetLastError(decrypt_packet(remote, packet, packetBuffer, packetSize));
@@ -814,8 +814,9 @@ DWORD packet_transmit_tcp(Remote* remote, LPBYTE rawPacket, DWORD rawPacketLengt
  * @param transport Transport data to create the configuration from.
  * @return config Pointer to the config block to write to.
  */
-void transport_write_tcp_config(Transport* transport, MetsrvTransportTcp* config)
+void transport_write_tcp_config(Transport* transport, Packet* packet, Tlv* configTlv)
 {
+#ifdef FDJKSLF
 	if (transport && config)
 	{
 		config->common.comms_timeout = transport->timeouts.comms;
@@ -823,6 +824,7 @@ void transport_write_tcp_config(Transport* transport, MetsrvTransportTcp* config
 		config->common.retry_wait = transport->timeouts.retry_wait;
 		wcsncpy(config->common.url, transport->url, URL_SIZE);
 	}
+#endif
 }
 
 /*!
@@ -857,41 +859,28 @@ static DWORD get_migrate_context_tcp(Transport* transport, DWORD targetProcessId
 }
 
 /*!
- * @brief Gets the size of the memory space required to store the configuration for this transport.
- * @param t Pointer to the transport.
- * @return Size, in bytes of the required memory block.
- */
-static DWORD transport_get_config_size_tcp(Transport* t)
-{
-	return sizeof(MetsrvTransportTcp);
-}
-
-/*!
  * @brief Creates a new TCP transport instance.
  * @param config The TCP configuration block.
  * @param size Pointer to the size of the parsed config block.
  * @return Pointer to the newly configured/created TCP transport instance.
  */
-Transport* transport_create_tcp(MetsrvTransportTcp* config, LPDWORD size)
+Transport* transport_create_tcp(Packet* packet, Tlv* c2Tlv)
 {
 	Transport* transport = (Transport*)malloc(sizeof(Transport));
 	TcpTransportContext* ctx = (TcpTransportContext*)malloc(sizeof(TcpTransportContext));
 
-	if (size)
-	{
-		*size = sizeof(MetsrvTransportTcp);
-	}
+	PWSTR url = packet_get_tlv_group_entry_value_wstring(packet, c2Tlv, TLV_TYPE_C2_URL, NULL);
 
-	dprintf("[TRANS TCP] Creating tcp transport for url %S", config->common.url);
+	dprintf("[TRANS TCP] Creating tcp transport for url %S", url);
 
 	memset(transport, 0, sizeof(Transport));
 	memset(ctx, 0, sizeof(TcpTransportContext));
 
 	transport->type = METERPRETER_TRANSPORT_TCP;
-	transport->timeouts.comms = config->common.comms_timeout;
-	transport->timeouts.retry_total = config->common.retry_total;
-	transport->timeouts.retry_wait = config->common.retry_wait;
-	transport->url = _wcsdup(config->common.url);
+	transport->timeouts.comms = packet_get_tlv_group_entry_value_uint(packet, c2Tlv, TLV_TYPE_C2_COMM_TIMEOUT);
+	transport->timeouts.retry_total = packet_get_tlv_group_entry_value_uint(packet, c2Tlv, TLV_TYPE_C2_RETRY_TOTAL);
+	transport->timeouts.retry_wait = packet_get_tlv_group_entry_value_uint(packet, c2Tlv, TLV_TYPE_C2_RETRY_WAIT);
+	transport->url = url;
 	transport->packet_transmit = packet_transmit_tcp;
 	transport->transport_init = configure_tcp_connection;
 	transport->transport_destroy = transport_destroy_tcp;
@@ -902,7 +891,6 @@ Transport* transport_create_tcp(MetsrvTransportTcp* config, LPDWORD size)
 	transport->ctx = ctx;
 	transport->comms_last_packet = current_unix_timestamp();
 	transport->get_migrate_context = get_migrate_context_tcp;
-	transport->get_config_size = transport_get_config_size_tcp;
 
 	return transport;
 }

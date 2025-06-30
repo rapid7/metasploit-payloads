@@ -90,6 +90,11 @@ typedef enum
 /*! @brief An indication of whether the content written to the channel should be compressed. */
 #define CHANNEL_FLAG_COMPRESS       (1 << 1)
 
+
+#define C2_ENCODING_FLAG_B64        (1 << 0) //! straight Base64 encoding
+#define C2_ENCODING_FLAG_B64URL     (1 << 1) //! encoding Base64 with URL-safe values
+#define C2_ENCODING_FLAG_URL        (1 << 2) //! straight URL encoding
+
 /*! @brief Type definition with defines `TlvMetaType` as an double-word. */
 typedef DWORD TlvMetaType;
 
@@ -176,6 +181,31 @@ typedef enum
 	TLV_TYPE_PIVOT_STAGE_DATA      = TLV_VALUE(TLV_META_TYPE_RAW,     651),   ///! Represents the data to be staged on new connections.
 	TLV_TYPE_PIVOT_NAMED_PIPE_NAME = TLV_VALUE(TLV_META_TYPE_STRING,  653),   ///! Represents named pipe name.
 
+	TLV_TYPE_CONFIG_BLOCK          = TLV_VALUE(TLV_META_TYPE_GROUP,   700),   ///! container for the entire configuration block
+	TLV_TYPE_SESSION_EXPIRY        = TLV_VALUE(TLV_META_TYPE_UINT,    701),   ///! Session expiration time
+	TLV_TYPE_EXITFUNC              = TLV_VALUE(TLV_META_TYPE_UINT,    702),   ///! identifier of the exit function to use
+	TLV_TYPE_DEBUG_LOG             = TLV_VALUE(TLV_META_TYPE_STRING,  703),   ///! path to write debug log
+	TLV_TYPE_EXTENSION             = TLV_VALUE(TLV_META_TYPE_GROUP,   704),   ///! Group containing extension info
+	TLV_TYPE_C2                    = TLV_VALUE(TLV_META_TYPE_GROUP,   705),   ///! a C2/transport grouping
+	TLV_TYPE_C2_COMM_TIMEOUT       = TLV_VALUE(TLV_META_TYPE_UINT,    706),   ///! the timeout for this C2 group
+	TLV_TYPE_C2_RETRY_TOTAL        = TLV_VALUE(TLV_META_TYPE_UINT,    707),   ///! number of times to retry this C2
+	TLV_TYPE_C2_RETRY_WAIT         = TLV_VALUE(TLV_META_TYPE_UINT,    708),   ///! how long to wait between reconnect attempts
+	TLV_TYPE_C2_URL                = TLV_VALUE(TLV_META_TYPE_STRING,  709),   ///! base URL of this C2 (scheme://host:port/uri)
+	TLV_TYPE_C2_URI                = TLV_VALUE(TLV_META_TYPE_STRING,  710),   ///! URI to append to base URL (for HTTP(s)), if any
+	TLV_TYPE_C2_PROXY_HOST         = TLV_VALUE(TLV_META_TYPE_STRING,  711),   ///! Host name of proxy
+	TLV_TYPE_C2_PROXY_USER         = TLV_VALUE(TLV_META_TYPE_STRING,  712),   ///! Proxy user name
+	TLV_TYPE_C2_PROXY_PASS         = TLV_VALUE(TLV_META_TYPE_STRING,  713),   ///! Proxy password
+	TLV_TYPE_C2_GET                = TLV_VALUE(TLV_META_TYPE_GROUP,   714),   ///! A grouping of params associated with GET requests
+	TLV_TYPE_C2_POST               = TLV_VALUE(TLV_META_TYPE_GROUP,   715),   ///! A grouping of params associated with POST requests
+	TLV_TYPE_C2_HEADER             = TLV_VALUE(TLV_META_TYPE_STRING,  716),   ///! Custom headers (GET or POST context)
+	TLV_TYPE_C2_UA                 = TLV_VALUE(TLV_META_TYPE_STRING,  717),   ///! User agent
+	TLV_TYPE_C2_CERT_HASH          = TLV_VALUE(TLV_META_TYPE_RAW,     718),   ///! Expected SSL certificate hash
+	TLV_TYPE_C2_REQ_PREFIX         = TLV_VALUE(TLV_META_TYPE_STRING,  719),   ///! Data to prepend to the outgoing payload (in global, GET or POST context)
+	TLV_TYPE_C2_REQ_SUFFIX         = TLV_VALUE(TLV_META_TYPE_STRING,  720),   ///! Data to append to the outgoing payload (in global, GET or POST context)
+	TLV_TYPE_C2_REQ_ENC            = TLV_VALUE(TLV_META_TYPE_UINT,    722),   ///! Request encoding flags (Base64|URL|Base64url)
+	TLV_TYPE_C2_RESP_SKIP_COUNT    = TLV_VALUE(TLV_META_TYPE_UINT,    723),   ///! Number of bytes of the incoming payload to ignore before parsing
+	TLV_TYPE_C2_RESP_ENC           = TLV_VALUE(TLV_META_TYPE_UINT,    724),   ///! Response encoding flags (Base64|URL|Base64url)
+
 	TLV_TYPE_EXTENSIONS          = TLV_VALUE(TLV_META_TYPE_COMPLEX, 20000),   ///! Represents an extension value.
 	TLV_TYPE_USER                = TLV_VALUE(TLV_META_TYPE_COMPLEX, 40000),   ///! Represents a user value.
 	TLV_TYPE_TEMP                = TLV_VALUE(TLV_META_TYPE_COMPLEX, 60000),   ///! Represents a temporary value.
@@ -188,19 +218,19 @@ typedef unsigned __int64	QWORD;
 #define ntohq( qword )		( (QWORD)ntohl( qword & 0xFFFFFFFF ) << 32 ) | ntohl( qword >> 32 )
 #define htonq( qword )		ntohq( qword )
 
-typedef struct
+typedef struct _TlvHeader
 {
 	DWORD length;
 	DWORD type;
 } TlvHeader;
 
-typedef struct
+typedef struct _Tlv
 {
 	TlvHeader header;
 	PUCHAR    buffer;
 } Tlv;
 
-typedef struct
+typedef struct _PacketHeader
 {
 	BYTE xor_key[4];
 	BYTE session_guid[sizeof(GUID)];

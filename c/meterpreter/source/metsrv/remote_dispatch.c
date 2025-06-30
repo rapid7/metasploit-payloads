@@ -451,7 +451,7 @@ DWORD request_core_set_uuid(Remote* remote, Packet* packet)
 
 	if (newUuid != NULL)
 	{
-		memcpy(remote->orig_config->session.uuid, newUuid, UUID_SIZE);
+		memcpy(remote->uuid, newUuid, UUID_SIZE);
 	}
 
 	if (response)
@@ -473,7 +473,7 @@ DWORD request_core_get_session_guid(Remote* remote, Packet* packet)
 	Packet* response = packet_create_response(packet);
 	if (response)
 	{
-		packet_add_tlv_raw(response, TLV_TYPE_SESSION_GUID, &remote->orig_config->session.session_guid, sizeof(GUID));
+		packet_add_tlv_raw(response, TLV_TYPE_SESSION_GUID, remote->session_guid, sizeof(remote->session_guid));
 		packet_transmit_response(ERROR_SUCCESS, remote, response);
 	}
 	return ERROR_SUCCESS;
@@ -493,7 +493,7 @@ DWORD request_core_set_session_guid(Remote* remote, Packet* packet)
 
 	if (sessionGuid != NULL)
 	{
-		memcpy(remote->orig_config->session.session_guid, sessionGuid, sizeof(GUID));
+		memcpy(remote->session_guid, sessionGuid, sizeof(GUID));
 	}
 	else
 	{

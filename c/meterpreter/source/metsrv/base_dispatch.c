@@ -35,6 +35,8 @@ void set_transport_session_expiry(Remote* remote, Packet* packet)
 
 DWORD create_transport_from_request(Remote* remote, Packet* packet, Transport** transportBuffer)
 {
+	return ERROR_SUCCESS;
+#ifdef FJDKLSA
 	DWORD result = ERROR_NOT_ENOUGH_MEMORY;
 	Transport* transport = NULL;
 	wchar_t* transportUrl = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_URL);
@@ -163,6 +165,7 @@ DWORD create_transport_from_request(Remote* remote, Packet* packet, Transport** 
 	*transportBuffer = transport;
 
 	return result;
+#endif
 }
 
 DWORD remote_request_core_transport_list(Remote* remote, Packet* packet)

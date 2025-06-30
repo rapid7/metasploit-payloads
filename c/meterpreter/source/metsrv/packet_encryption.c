@@ -182,7 +182,7 @@ DWORD encrypt_packet(Remote* remote, Packet* packet, LPBYTE* buffer, LPDWORD buf
 	rand_xor_key(packet->header.xor_key);
 
 	// copy the session ID to the header as this will be used later to identify the packet's destination session
-	memcpy_s(packet->header.session_guid, sizeof(packet->header.session_guid), remote->orig_config->session.session_guid, sizeof(remote->orig_config->session.session_guid));
+	memcpy_s(packet->header.session_guid, sizeof(packet->header.session_guid), remote->session_guid, sizeof(remote->session_guid));
 
 	// Only encrypt if the context was set up correctly
 	if (remote->enc_ctx != NULL && remote->enc_ctx->valid)

