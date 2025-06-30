@@ -45,7 +45,6 @@ DWORD remote_response_core_console_write(Remote *remote, Packet *packet)
 }
 
 BOOL command_is_inline(Command *command, Packet *packet);
-Command* command_locate(Packet *packet);
 DWORD command_validate_arguments(Command *command, Packet *packet);
 DWORD THREADCALL command_process_thread(THREAD * thread);
 

