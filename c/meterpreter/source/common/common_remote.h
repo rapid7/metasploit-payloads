@@ -17,6 +17,7 @@ typedef CHARTYPE* STRTYPE;
 
 // Forward declarations required to keep compilers happy.
 typedef struct _Packet Packet;
+typedef struct _Tlv Tlv;
 typedef struct _PacketRequestCompletion PacketRequestCompletion;
 typedef struct _Transport Transport;
 typedef struct _SslLib SslLib;
@@ -26,14 +27,13 @@ typedef struct _HttpTransportContext HttpTransportContext;
 typedef struct _PacketEncryptionContext PacketEncryptionContext;
 
 typedef UINT_PTR(*PTransportGetHandle)(Transport* transport);
-typedef DWORD(*PTransportGetConfigSize)(Transport* transport);
 typedef void(*PTransportSetHandle)(Transport* transport, UINT_PTR handle);
 typedef void(*PTransportReset)(Transport* transport, BOOL shuttingDown);
 typedef DWORD(*PTransportInit)(Transport* transport);
 typedef DWORD(*PTransportDeinit)(Transport* transport);
 typedef void(*PTransportDestroy)(Transport* transport);
 typedef DWORD(*PTransportGetMigrateContext)(Transport* transport, DWORD targetProcessId, HANDLE targetProcessHandle, LPDWORD contextSize, LPBYTE* contextBuffer);
-typedef Transport*(*PTransportCreate)(Remote* remote, MetsrvTransportCommon* config, LPDWORD size);
+typedef Transport*(*PTransportCreate)(Remote* remote, Packet* packet, Tlv* c2Tlv);
 typedef void(*PTransportRemove)(Remote* remote, Transport* oldTransport);
 typedef void(*PConfigCreate)(Remote* remote, LPBYTE uuid, MetsrvConfig** config, LPDWORD size);
 
@@ -104,7 +104,6 @@ typedef struct _Transport
 	DWORD type;                           ///! The type of transport in use.
 	PTransportGetHandle get_handle;       ///! Function to get the socket/handle from the transport.
 	PTransportSetHandle set_handle;       ///! Function to set the socket/handle on the transport.
-	PTransportGetConfigSize get_config_size; ///! Function to get the size of the configuration for the transport.
 	PTransportReset transport_reset;      ///! Function to reset/clean the transport ready for restarting.
 	PTransportInit transport_init;        ///! Initialises the transport.
 	PTransportDeinit transport_deinit;    ///! Deinitialises the transport.
@@ -138,9 +137,10 @@ typedef struct _Remote
 	Transport* next_transport;            ///! Set externally when transports are requested to be changed.
 	DWORD next_transport_wait;            ///! Number of seconds to wait before going to the next transport (used for sleeping).
 
-	MetsrvConfig* orig_config;            ///! Pointer to the original configuration.
-
 	LOCK* lock;                           ///! General transport usage lock (used by SSL, and desktop stuff too).
+
+	BYTE uuid[UUID_SIZE];                 ///! payload UUID
+	BYTE session_guid[sizeof(GUID)];      ///! GUID of the current session
 
 	HANDLE server_thread;                 ///! Handle to the current server thread.
 	HANDLE server_token;                  ///! Handle to the current server security token.
