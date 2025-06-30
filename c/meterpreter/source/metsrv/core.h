@@ -15,10 +15,10 @@
  * Packet manipulation
  */
 Packet* packet_create(PacketTlvType type, UINT commandId);
-Packet *packet_create_response(Packet *packet);
+Packet* packet_create_response(Packet *packet);
 Packet* packet_create_group();
-Packet *packet_duplicate(Packet *packet);
 VOID packet_destroy(Packet *packet);
+
 
 DWORD packet_add_group(Packet* packet, TlvType type, Packet* groupPacket);
 DWORD packet_add_tlv_string(Packet *packet, TlvType type, LPCSTR str);
@@ -37,6 +37,12 @@ DWORD packet_get_tlv(Packet *packet, TlvType type, Tlv *tlv);
 DWORD packet_get_tlv_string(Packet *packet, TlvType type, Tlv *tlv);
 DWORD packet_get_tlv_group_entry(Packet *packet, Tlv *group, TlvType type,Tlv *entry);
 DWORD packet_enum_tlv(Packet *packet, DWORD index, TlvType type, Tlv *tlv);
+DWORD packet_enum_group_tlv(Packet* packet, Tlv* group, DWORD index, TlvType type, Tlv* tlv);
+
+UINT packet_get_tlv_group_entry_value_uint(Packet* packet, Tlv* group, TlvType type);
+LPBYTE packet_get_tlv_group_entry_value_raw(Packet* packet, Tlv* group, TlvType type, DWORD* size);
+PCHAR packet_get_tlv_group_entry_value_string(Packet *packet, Tlv *group, TlvType type, DWORD* size);
+PWCHAR packet_get_tlv_group_entry_value_wstring(Packet *packet, Tlv *group, TlvType type, DWORD* size);
 
 BOOL packet_get_tlv_uint(Packet *packet, TlvType type, UINT* output);
 

