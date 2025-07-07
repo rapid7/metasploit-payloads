@@ -814,17 +814,14 @@ DWORD packet_transmit_tcp(Remote* remote, LPBYTE rawPacket, DWORD rawPacketLengt
  * @param transport Transport data to create the configuration from.
  * @return config Pointer to the config block to write to.
  */
-void transport_write_tcp_config(Transport* transport, Packet* packet, Tlv* configTlv)
+void transport_write_tcp_config(Transport* transport, Packet* configPacket)
 {
-#ifdef FDJKSLF
-	if (transport && config)
-	{
-		config->common.comms_timeout = transport->timeouts.comms;
-		config->common.retry_total = transport->timeouts.retry_total;
-		config->common.retry_wait = transport->timeouts.retry_wait;
-		wcsncpy(config->common.url, transport->url, URL_SIZE);
-	}
-#endif
+	Packet* c2Packet = packet_create_group();
+	packet_add_tlv_wstring(c2Packet, TLV_TYPE_C2_URL, transport->url);
+	packet_add_tlv_uint(c2Packet, TLV_TYPE_C2_COMM_TIMEOUT, transport->timeouts.comms);
+	packet_add_tlv_uint(c2Packet, TLV_TYPE_C2_RETRY_WAIT, transport->timeouts.retry_wait);
+	packet_add_tlv_uint(c2Packet, TLV_TYPE_C2_RETRY_TOTAL, transport->timeouts.retry_total);
+	packet_add_group(configPacket, TLV_TYPE_C2, c2Packet);
 }
 
 /*!
@@ -891,6 +888,7 @@ Transport* transport_create_tcp(Packet* packet, Tlv* c2Tlv)
 	transport->ctx = ctx;
 	transport->comms_last_packet = current_unix_timestamp();
 	transport->get_migrate_context = get_migrate_context_tcp;
+	transport->write_config = transport_write_tcp_config;
 
 	return transport;
 }

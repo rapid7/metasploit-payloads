@@ -64,7 +64,7 @@ DWORD decrypt_packet(Remote* remote, Packet** packet, LPBYTE buffer, DWORD buffe
 		vdprintf("[DEC] Encryption flags set to %x", encFlags);
 
 		// Only decrypt if the context was set up correctly
-		if (remote->enc_ctx != NULL && remote->enc_ctx->valid && encFlags != ENC_FLAG_NONE)
+		if (remote && remote->enc_ctx != NULL && remote->enc_ctx->valid && encFlags != ENC_FLAG_NONE)
 		{
 			vdprintf("[DEC] Context is valid, moving on ... ");
 			LPBYTE payload = buffer + sizeof(PacketHeader);
