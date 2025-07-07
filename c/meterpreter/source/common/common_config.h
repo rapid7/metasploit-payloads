@@ -30,7 +30,7 @@ typedef struct _MetsrvConfig
 		UINT_PTR handle;
 		BYTE padding[8];
 	} comms_handle;                       ///! Socket/handle for communications (if there is one).
-	BYTE config_tlv[1];
+	BYTE config_packet[1];                ///! Pointer to the configuration packet
 } MetsrvConfig;
 
 // We force 64bit alignment for HANDLES and POINTERS in order

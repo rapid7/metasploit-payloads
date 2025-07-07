@@ -638,17 +638,14 @@ static void transport_set_handle_named_pipe(Transport* transport, UINT_PTR handl
  * @param transport Transport data to create the configuration from.
  * @param config Pointer to the config block to write to.
  */
-void transport_write_named_pipe_config(Transport* transport, Packet* packet, Tlv* configTlv)
+void transport_write_named_pipe_config(Transport* transport, Packet* configPacket)
 {
-#ifdef FDJKLS
-	if (transport && config)
-	{
-		config->common.comms_timeout = transport->timeouts.comms;
-		config->common.retry_total = transport->timeouts.retry_total;
-		config->common.retry_wait = transport->timeouts.retry_wait;
-		wcsncpy(config->common.url, transport->url, URL_SIZE);
-	}
-#endif
+	Packet* c2Packet = packet_create_group();
+	packet_add_tlv_wstring(c2Packet, TLV_TYPE_C2_URL, transport->url);
+	packet_add_tlv_uint(c2Packet, TLV_TYPE_C2_COMM_TIMEOUT, transport->timeouts.comms);
+	packet_add_tlv_uint(c2Packet, TLV_TYPE_C2_RETRY_WAIT, transport->timeouts.retry_wait);
+	packet_add_tlv_uint(c2Packet, TLV_TYPE_C2_RETRY_TOTAL, transport->timeouts.retry_total);
+	packet_add_group(configPacket, TLV_TYPE_C2, c2Packet);
 }
 
 /*!
@@ -711,6 +708,7 @@ Transport* transport_create_named_pipe(Packet* packet, Tlv* c2Tlv)
 	transport->ctx = ctx;
 	transport->comms_last_packet = current_unix_timestamp();
 	transport->get_migrate_context = get_migrate_context_named_pipe;
+	transport->write_config = transport_write_named_pipe_config;
 
 	return transport;
 }

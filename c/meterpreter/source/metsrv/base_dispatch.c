@@ -208,6 +208,8 @@ DWORD remote_request_core_transport_list(Remote* remote, Packet* packet)
 			dprintf("[DISPATCH] Adding Retry wait %u", current->timeouts.retry_wait);
 			packet_add_tlv_uint(transportGroup, TLV_TYPE_TRANS_RETRY_WAIT, current->timeouts.retry_wait);
 
+			// TODO OJ - fill this back in
+#if FALSE
 			switch (current->type)
 			{
 				case METERPRETER_TRANSPORT_HTTP:
@@ -242,6 +244,7 @@ DWORD remote_request_core_transport_list(Remote* remote, Packet* packet)
 					break;
 				}
 			}
+#endif
 
 			packet_add_group(response, TLV_TYPE_TRANS_GROUP, transportGroup);
 

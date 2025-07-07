@@ -33,6 +33,7 @@ typedef DWORD(*PTransportInit)(Transport* transport);
 typedef DWORD(*PTransportDeinit)(Transport* transport);
 typedef void(*PTransportDestroy)(Transport* transport);
 typedef DWORD(*PTransportGetMigrateContext)(Transport* transport, DWORD targetProcessId, HANDLE targetProcessHandle, LPDWORD contextSize, LPBYTE* contextBuffer);
+typedef void(*PWriteConfig)(Transport* transport, Packet* configPacket);
 typedef Transport*(*PTransportCreate)(Remote* remote, Packet* packet, Tlv* c2Tlv);
 typedef void(*PTransportRemove)(Remote* remote, Transport* oldTransport);
 typedef void(*PConfigCreate)(Remote* remote, LPBYTE uuid, MetsrvConfig** config, LPDWORD size);
@@ -41,7 +42,7 @@ typedef DWORD(*PServerDispatch)(Remote* remote, THREAD* dispatchThread);
 typedef DWORD(*PPacketTransmit)(Remote* remote, LPBYTE rawPacket, DWORD rawPacketLength);
 
 typedef HANDLE(*PCreateHttpRequest)(HttpTransportContext* ctx, BOOL isGet, const char* direction);
-typedef BOOL(*PSendHttpRequest)(HttpTransportContext* ctx, HANDLE hReq, LPVOID buffer, DWORD size);
+typedef BOOL(*PSendHttpRequest)(HttpTransportContext* ctx, HANDLE hReq, BOOL isGet, LPVOID buffer, DWORD size);
 typedef BOOL(*PCloseRequest)(HANDLE hReq);
 typedef DWORD(*PValidateResponse)(HANDLE hReq, HttpTransportContext* ctx);
 typedef BOOL(*PReceiveResponse)(HANDLE hReq);
@@ -70,21 +71,40 @@ typedef struct _NamedPipeTransportContext
 	LOCK* write_lock;                     ///! Reference to the thread write lock.
 } NamedPipeTransportContext;
 
+typedef struct _HttpRequestOptions
+{
+	STRTYPE uri;
+	STRTYPE ua;
+	STRTYPE accept_types;
+	STRTYPE referrer;
+	STRTYPE other_headers;                ///! Custom headers that aren't user agent, accept types, or referrer
+	STRTYPE payload_prefix;               ///! String to prepend to outgoing payloads.
+	STRTYPE payload_suffix;               ///! String to append to outgoing payloads.
+	UINT payload_skip_count;              ///! Number of bytes of the incoming data to skip to reach the payload.
+	UINT encode_flags;                    ///! Flags to indicate what kind of encoding to apply, if any.
+} HttpRequestOptions;
+
+typedef struct _HttpConnection
+{
+	HANDLE internet;
+	HANDLE connection;
+	HttpRequestOptions options;
+} HttpConnection;
+
 typedef struct _HttpTransportContext
 {
 	BOOL ssl;                             ///! Flag indicating whether the connection uses SSL.
-	HANDLE internet;                      ///! Handle to the internet module for use with HTTP and HTTPS.
-	HANDLE connection;                    ///! Handle to the HTTP or HTTPS connection.
-	unsigned char* cert_hash;             ///! Pointer to the 20-byte certificate hash to validate
+	HttpConnection get_connection;        ///! connection data for GET requests.
+	HttpConnection post_connection;       ///! connection data for POST requests.
+	unsigned char* cert_hash;             ///! Pointer to the 20-byte certificate hash to validate.
 
 	CSTRTYPE url;                         ///! Pointer to the URL stored with the transport.
-	STRTYPE ua;                           ///! User agent string.
-	STRTYPE uri;                          ///! UUID encoded as a URI.
-	STRTYPE new_uri;                      ///! New URI for stageless URI switches
+	STRTYPE new_uri;                      ///! New URI for stageless URI switches.
 	STRTYPE proxy;                        ///! Proxy details.
 	STRTYPE proxy_user;                   ///! Proxy username.
 	STRTYPE proxy_pass;                   ///! Proxy password.
-	STRTYPE custom_headers;               ///! List of custom headers to add to outgoing requests.
+
+	HttpRequestOptions default_options;   ///! default request options
 
 	BOOL proxy_configured;                ///! Indication of whether the proxy has been configured.
 	LPVOID proxy_for_url;                 ///! Pointer to the proxy for the current url (if required).
@@ -111,6 +131,7 @@ typedef struct _Transport
 	PServerDispatch server_dispatch;      ///! Transport dispatch function.
 	PPacketTransmit packet_transmit;      ///! Transmits a packet over the transport.
 	PTransportGetMigrateContext get_migrate_context; ///! Creates a migrate context that is transport-specific.
+	PWriteConfig write_config;            ///! Write the transport configuration.
 	STRTYPE url;                          ///! Full URL describing the comms in use.
 	VOID* ctx;                            ///! Pointer to the type-specific transport context;
 	TimeoutSettings timeouts;             ///! Container for the timeout settings.

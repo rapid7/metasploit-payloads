@@ -54,7 +54,7 @@ VOID xor_bytes(BYTE xorKey[4], LPBYTE buffer, DWORD bufferSize);
 BOOL is_null_guid(BYTE guid[sizeof(GUID)]);
 VOID rand_xor_key(BYTE buffer[4]);
 
-DWORD server_setup(MetsrvConfig* config, Packet* configPacket, Tlv* configTlv);
+DWORD server_setup(MetsrvConfig* config, Packet* configPacket);
 typedef DWORD (*PSRVINIT)(MetApi* api, Remote *remote);
 typedef DWORD (*PSRVDEINIT)(Remote *remote);
 typedef VOID (*PCMDADDED)(UINT command_id);
