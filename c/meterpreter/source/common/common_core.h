@@ -199,12 +199,15 @@ typedef enum
 	TLV_TYPE_C2_OTHER_HEADERS      = TLV_VALUE(TLV_META_TYPE_STRING,  715),   ///! Custom headers
 	TLV_TYPE_C2_UA                 = TLV_VALUE(TLV_META_TYPE_STRING,  716),   ///! User agent
 	TLV_TYPE_C2_CERT_HASH          = TLV_VALUE(TLV_META_TYPE_RAW,     717),   ///! Expected SSL certificate hash
-	TLV_TYPE_C2_PREFIX             = TLV_VALUE(TLV_META_TYPE_STRING,  718),   ///! Data to prepend to the outgoing payload
-	TLV_TYPE_C2_SUFFIX             = TLV_VALUE(TLV_META_TYPE_STRING,  719),   ///! Data to append to the outgoing payload
+	TLV_TYPE_C2_PREFIX             = TLV_VALUE(TLV_META_TYPE_RAW,     718),   ///! Data to prepend to the outgoing payload
+	TLV_TYPE_C2_SUFFIX             = TLV_VALUE(TLV_META_TYPE_RAW,     719),   ///! Data to append to the outgoing payload
 	TLV_TYPE_C2_ENC                = TLV_VALUE(TLV_META_TYPE_UINT,    720),   ///! Request encoding flags (Base64|URL|Base64url)
 	TLV_TYPE_C2_SKIP_COUNT         = TLV_VALUE(TLV_META_TYPE_UINT,    721),   ///! Number of bytes of the incoming payload to ignore before parsing
 	TLV_TYPE_C2_REFERRER           = TLV_VALUE(TLV_META_TYPE_STRING,  722),   ///! Referrer string
 	TLV_TYPE_C2_ACCEPT_TYPES       = TLV_VALUE(TLV_META_TYPE_STRING,  723),   ///! Accept types string
+	TLV_TYPE_C2_UUID_COOKIE        = TLV_VALUE(TLV_META_TYPE_STRING,  724),   ///! Name of the cookie to put the UUID in
+	TLV_TYPE_C2_UUID_GET           = TLV_VALUE(TLV_META_TYPE_STRING,  725),   ///! Name of the GET parameter to put the UUID in
+	TLV_TYPE_C2_UUID_HEADER        = TLV_VALUE(TLV_META_TYPE_STRING,  726),   ///! Name of the header to put the UUID in
 
 	TLV_TYPE_EXTENSIONS            = TLV_VALUE(TLV_META_TYPE_COMPLEX, 20000), ///! Represents an extension value.
 	TLV_TYPE_USER                  = TLV_VALUE(TLV_META_TYPE_COMPLEX, 40000), ///! Represents a user value.

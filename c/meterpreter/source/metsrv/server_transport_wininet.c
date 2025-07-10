@@ -156,15 +156,16 @@ static DWORD validate_response_wininet(HANDLE hReq, HttpTransportContext* ctx)
 
 static DWORD server_init_connection(HttpTransportContext* ctx, HttpConnection* conn, PWSTR host, INTERNET_PORT port)
 {
+	PWSTR userAgent = conn->options.ua ? conn->options.ua : ctx->default_options.ua;
 	// configure proxy
 	if (ctx->proxy)
 	{
 		dprintf("[DISPATCH] Configuring with proxy: %S", ctx->proxy);
-		conn->internet = InternetOpenW(conn->options.ua, INTERNET_OPEN_TYPE_PROXY, ctx->proxy, NULL, 0);
+		conn->internet = InternetOpenW(userAgent, INTERNET_OPEN_TYPE_PROXY, ctx->proxy, NULL, 0);
 	}
 	else
 	{
-		conn->internet = InternetOpenW(conn->options.ua, INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
+		conn->internet = InternetOpenW(userAgent, INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
 	}
 
 	if (!conn->internet)

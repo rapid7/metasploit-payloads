@@ -78,10 +78,15 @@ typedef struct _HttpRequestOptions
 	STRTYPE accept_types;
 	STRTYPE referrer;
 	STRTYPE other_headers;                ///! Custom headers that aren't user agent, accept types, or referrer
-	STRTYPE payload_prefix;               ///! String to prepend to outgoing payloads.
-	STRTYPE payload_suffix;               ///! String to append to outgoing payloads.
+	PBYTE payload_prefix;                 ///! Bytes to prepend to outgoing payloads.
+	UINT payload_prefix_size;             ///! Size of the payload prefix
+	PBYTE payload_suffix;                 ///! Bytes to append to outgoing payloads.
+	UINT payload_suffix_size;             ///! Size of the payload suffix
 	UINT payload_skip_count;              ///! Number of bytes of the incoming data to skip to reach the payload.
 	UINT encode_flags;                    ///! Flags to indicate what kind of encoding to apply, if any.
+	STRTYPE uuid_get;                     ///! The name of the GET/query string parameter to put the UUID in (optional).
+	STRTYPE uuid_cookie;                  ///! The name of the cookie to put the UUID in (optional).
+	STRTYPE uuid_header;                  ///! The name of the HTTP Header to put the UUID in (optional).
 } HttpRequestOptions;
 
 typedef struct _HttpConnection
