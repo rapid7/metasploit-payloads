@@ -811,6 +811,27 @@ PWCHAR packet_get_tlv_group_entry_value_wstring(Packet *packet, Tlv *group, TlvT
 	return result;
 }
 
+LPBYTE packet_get_tlv_group_entry_value_raw_copy(Packet* packet, Tlv* group, TlvType type, DWORD* size)
+{
+	DWORD valueSize = 0;
+	LPBYTE value = packet_get_tlv_group_entry_value_raw(packet, group, type, &valueSize);
+	if (value)
+	{
+		LPBYTE copy = (LPBYTE)calloc(valueSize, 1);
+		memcpy_s(copy, valueSize, value, valueSize);
+		if (size != NULL)
+		{
+			*size = valueSize;
+		}
+		return copy;
+	}
+	if (size != NULL)
+	{
+		*size = 0;
+	}
+	return NULL;
+}
+
 LPBYTE packet_get_tlv_group_entry_value_raw(Packet *packet, Tlv *group, TlvType type, DWORD* size)
 {
 	Tlv entry = { 0 };
