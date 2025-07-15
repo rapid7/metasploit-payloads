@@ -150,7 +150,7 @@ static HINTERNET get_request_winhttp(HttpTransportContext *ctx, BOOL isGet, cons
 
 					if (WinHttpGetProxyForUrl(conn->internet, ctx->url, &autoProxyOpts, &proxyInfo))
 					{
-						ctx->proxy_for_url = malloc(sizeof(WINHTTP_PROXY_INFO));
+						ctx->proxy_for_url = calloc(1, sizeof(WINHTTP_PROXY_INFO));
 						memcpy(ctx->proxy_for_url, &proxyInfo, sizeof(WINHTTP_PROXY_INFO));
 					}
 				}
@@ -564,7 +564,7 @@ static DWORD packet_receive_http(Remote *remote, Packet **packet)
 	payloadBytesLeft = payloadLength;
 
 	// Allocate the payload
-	if (!(packetBuffer = (PUCHAR)malloc(packetSize)))
+	if (!(packetBuffer = (PUCHAR)calloc(1, packetSize)))
 	{
 		dprintf("[REC HTTP] Failed to create the packet buffer");
 		SetLastError(ERROR_NOT_ENOUGH_MEMORY);
@@ -958,15 +958,25 @@ static DWORD server_dispatch_http(Remote* remote, THREAD* dispatchThread)
 
 static void destroy_options(HttpRequestOptions* options)
 {
+	dprintf("SAFE_FREE(options->ua);");
 	SAFE_FREE(options->ua);
+	dprintf("SAFE_FREE(options->uri);");
 	SAFE_FREE(options->uri);
+	dprintf("SAFE_FREE(options->other_headers);");
 	SAFE_FREE(options->other_headers);
+	dprintf("SAFE_FREE(options->payload_prefix);");
 	SAFE_FREE(options->payload_prefix);
+	dprintf("SAFE_FREE(options->payload_suffix);");
 	SAFE_FREE(options->payload_suffix);
+	dprintf("SAFE_FREE(options->referrer);");
 	SAFE_FREE(options->referrer);
+	dprintf("SAFE_FREE(options->accept_types);");
 	SAFE_FREE(options->accept_types);
+	dprintf("SAFE_FREE(options->uuid_cookie);");
 	SAFE_FREE(options->uuid_cookie);
+	dprintf("SAFE_FREE(options->uuid_header);");
 	SAFE_FREE(options->uuid_header);
+	dprintf("SAFE_FREE(options->uuid_get);");
 	SAFE_FREE(options->uuid_get);
 }
 
@@ -984,13 +994,20 @@ static void transport_destroy_http(Transport* transport)
 
 		if (ctx)
 		{
+			dprintf("SAFE_FREE(ctx->cert_hash);");
 			SAFE_FREE(ctx->cert_hash);
+			dprintf("SAFE_FREE(ctx->proxy);");
 			SAFE_FREE(ctx->proxy);
+			dprintf("SAFE_FREE(ctx->proxy_pass);");
 			SAFE_FREE(ctx->proxy_pass);
+			dprintf("SAFE_FREE(ctx->proxy_user);");
 			SAFE_FREE(ctx->proxy_user);
 
+			dprintf("destroy_options(&ctx->post_connection.options);");
 			destroy_options(&ctx->post_connection.options);
+			dprintf("destroy_options(&ctx->get_connection.options);");
 			destroy_options(&ctx->get_connection.options);
+			dprintf("destroy_options(&ctx->default_options);");
 			destroy_options(&ctx->default_options);
 
 			if (ctx->proxy_for_url)
@@ -998,71 +1015,134 @@ static void transport_destroy_http(Transport* transport)
 				WINHTTP_PROXY_INFO* proxyInfo = (WINHTTP_PROXY_INFO*)ctx->proxy_for_url;
 				if (proxyInfo->lpszProxy)
 				{
+					dprintf("GlobalFree(proxyInfo->lpszProxy);");
 					GlobalFree(proxyInfo->lpszProxy);
 				}
 				if (proxyInfo->lpszProxyBypass)
 				{
+					dprintf("GlobalFree(proxyInfo->lpszProxyBypass);");
 					GlobalFree(proxyInfo->lpszProxyBypass);
 				}
 			}
+			dprintf("SAFE_FREE(ctx->proxy_for_url);");
 			SAFE_FREE(ctx->proxy_for_url);
 		}
+		dprintf("SAFE_FREE(transport->url);");
 		SAFE_FREE(transport->url);
+		dprintf("SAFE_FREE(transport->ctx);");
 		SAFE_FREE(transport->ctx);
+		dprintf("SAFE_FREE(transport);");
 		SAFE_FREE(transport);
+		dprintf("[TRANS HTTP] Destroyed");
 	}
+}
+
+BOOL set_http_options_to_tlv(Packet* optionsPacket, HttpRequestOptions* sourceOptions)
+{
+	if (sourceOptions->encode_flags != 0)
+	{
+		packet_add_tlv_uint(optionsPacket, TLV_TYPE_C2_ENC, sourceOptions->encode_flags);
+	}
+	if (sourceOptions->other_headers != NULL)
+	{
+		packet_add_tlv_wstring(optionsPacket, TLV_TYPE_C2_OTHER_HEADERS, sourceOptions->other_headers);
+	}
+	if (sourceOptions->payload_prefix != NULL && sourceOptions->payload_prefix_size > 0)
+	{
+		packet_add_tlv_raw(optionsPacket, TLV_TYPE_C2_PREFIX, sourceOptions->payload_prefix, sourceOptions->payload_prefix_size);
+	}
+	if (sourceOptions->payload_skip_count > 0)
+	{
+		packet_add_tlv_uint(optionsPacket, TLV_TYPE_C2_SKIP_COUNT, sourceOptions->payload_skip_count);
+	}
+	if (sourceOptions->payload_suffix != NULL && sourceOptions->payload_suffix_size > 0)
+	{
+		packet_add_tlv_raw(optionsPacket, TLV_TYPE_C2_SUFFIX, sourceOptions->payload_suffix, sourceOptions->payload_suffix_size);
+	}
+	if (sourceOptions->referrer != NULL)
+	{
+		packet_add_tlv_wstring(optionsPacket, TLV_TYPE_C2_REFERRER, sourceOptions->referrer);
+	}
+	if (sourceOptions->ua != NULL)
+	{
+		packet_add_tlv_wstring(optionsPacket, TLV_TYPE_C2_UA, sourceOptions->ua);
+	}
+	if (sourceOptions->uri != NULL)
+	{
+		packet_add_tlv_wstring(optionsPacket, TLV_TYPE_C2_URI, sourceOptions->uri);
+	}
+	if (sourceOptions->accept_types != NULL)
+	{
+		packet_add_tlv_wstring(optionsPacket, TLV_TYPE_C2_ACCEPT_TYPES, sourceOptions->accept_types);
+	}
+	if (sourceOptions->uuid_cookie != NULL)
+	{
+		packet_add_tlv_wstring(optionsPacket, TLV_TYPE_C2_UUID_COOKIE, sourceOptions->uuid_cookie);
+	}
+	if (sourceOptions->uuid_get != NULL)
+	{
+		packet_add_tlv_wstring(optionsPacket, TLV_TYPE_C2_UUID_GET, sourceOptions->uuid_get);
+	}
+	if (sourceOptions->uuid_header != NULL)
+	{
+		packet_add_tlv_wstring(optionsPacket, TLV_TYPE_C2_UUID_HEADER, sourceOptions->uuid_header);
+	}
+
+	return TRUE;
 }
 
 void transport_write_http_config(Transport* transport, Packet* configPacket)
 {
-	Packet* c2Packet = packet_create_group();
-	packet_add_tlv_wstring(c2Packet, TLV_TYPE_C2_URL, transport->url);
-	packet_add_tlv_uint(c2Packet, TLV_TYPE_C2_COMM_TIMEOUT, transport->timeouts.comms);
-	packet_add_tlv_uint(c2Packet, TLV_TYPE_C2_RETRY_WAIT, transport->timeouts.retry_wait);
-	packet_add_tlv_uint(c2Packet, TLV_TYPE_C2_RETRY_TOTAL, transport->timeouts.retry_total);
+	if (transport->type == METERPRETER_TRANSPORT_HTTP || transport->type == METERPRETER_TRANSPORT_HTTPS)
+	{
+		Packet* c2Packet = packet_create_group();
+		packet_add_tlv_wstring(c2Packet, TLV_TYPE_C2_URL, transport->url);
+		packet_add_tlv_uint(c2Packet, TLV_TYPE_C2_COMM_TIMEOUT, transport->timeouts.comms);
+		packet_add_tlv_uint(c2Packet, TLV_TYPE_C2_RETRY_WAIT, transport->timeouts.retry_wait);
+		packet_add_tlv_uint(c2Packet, TLV_TYPE_C2_RETRY_TOTAL, transport->timeouts.retry_total);
 
-	// TODO OJ - fill this in
+		HttpTransportContext* ctx = (HttpTransportContext*)transport->ctx;
+		set_http_options_to_tlv(c2Packet, &ctx->default_options);
 
-#if FALSE
-	HttpTransportContext* ctx = (HttpTransportContext*)transport->ctx;
-	if (ctx->ua)
-	{
-		packet_add_tlv_wstring(c2Packet, TLV_TYPE_C2_UA, ctx->ua);
-	}
-	if (ctx->proxy)
-	{
-		packet_add_tlv_wstring(c2Packet, TLV_TYPE_C2_PROXY_HOST, ctx->proxy);
-	}
-	if (ctx->proxy_user)
-	{
-		packet_add_tlv_wstring(c2Packet, TLV_TYPE_C2_PROXY_USER, ctx->proxy_user);
-	}
-	if (ctx->proxy_pass)
-	{
-		packet_add_tlv_wstring(c2Packet, TLV_TYPE_C2_PROXY_PASS, ctx->proxy_pass);
-	}
-	if (ctx->other_headers)
-	{
-		packet_add_tlv_wstring(c2Packet, TLV_TYPE_C2_HEADERS, ctx->other_headers);
-	}
-	if (ctx->cert_hash)
-	{
-		packet_add_tlv_raw(c2Packet, TLV_TYPE_C2_CERT_HASH, ctx->cert_hash, CERT_HASH_SIZE);
-	}
+		Packet* getOptionsPacket = packet_create_group();
+		set_http_options_to_tlv(getOptionsPacket, &ctx->get_connection.options);
+		packet_add_group(c2Packet, TLV_TYPE_C2_GET, getOptionsPacket);
+		packet_destroy(getOptionsPacket);
 
-	// TODO: OJ - add the get/post munging prefixes/suffixes
-#endif
+		Packet* postOptionsPacket = packet_create_group();
+		set_http_options_to_tlv(postOptionsPacket, &ctx->post_connection.options);
+		packet_add_group(c2Packet, TLV_TYPE_C2_POST, postOptionsPacket);
+		packet_destroy(postOptionsPacket);
 
-	packet_add_group(configPacket, TLV_TYPE_C2, c2Packet);
+		if (ctx->proxy)
+		{
+			packet_add_tlv_wstring(c2Packet, TLV_TYPE_C2_PROXY_HOST, ctx->proxy);
+		}
+		if (ctx->proxy_user)
+		{
+			packet_add_tlv_wstring(c2Packet, TLV_TYPE_C2_PROXY_USER, ctx->proxy_user);
+		}
+		if (ctx->proxy_pass)
+		{
+			packet_add_tlv_wstring(c2Packet, TLV_TYPE_C2_PROXY_PASS, ctx->proxy_pass);
+		}
+		if (ctx->cert_hash)
+		{
+			packet_add_tlv_raw(c2Packet, TLV_TYPE_C2_CERT_HASH, ctx->cert_hash, CERT_HASH_SIZE);
+		}
+
+		packet_add_group(configPacket, TLV_TYPE_C2, c2Packet);
+		packet_destroy(c2Packet);
+	}
 }
 
 BOOL get_http_options_from_tlv(Packet* packet, Tlv* optionsTlv, HttpRequestOptions* targetOptions)
 {
 	targetOptions->encode_flags = packet_get_tlv_group_entry_value_uint(packet, optionsTlv, TLV_TYPE_C2_ENC);
 	targetOptions->other_headers = packet_get_tlv_group_entry_value_wstring(packet, optionsTlv, TLV_TYPE_C2_OTHER_HEADERS, NULL);
-	targetOptions->payload_prefix = packet_get_tlv_group_entry_value_raw(packet, optionsTlv, TLV_TYPE_C2_PREFIX, &targetOptions->payload_prefix_size);
+	targetOptions->payload_prefix = packet_get_tlv_group_entry_value_raw_copy(packet, optionsTlv, TLV_TYPE_C2_PREFIX, &targetOptions->payload_prefix_size);
 	targetOptions->payload_skip_count = packet_get_tlv_group_entry_value_uint(packet, optionsTlv, TLV_TYPE_C2_SKIP_COUNT);
-	targetOptions->payload_suffix = packet_get_tlv_group_entry_value_raw(packet, optionsTlv, TLV_TYPE_C2_SUFFIX, &targetOptions->payload_suffix_size);
+	targetOptions->payload_suffix = packet_get_tlv_group_entry_value_raw_copy(packet, optionsTlv, TLV_TYPE_C2_SUFFIX, &targetOptions->payload_suffix_size);
 	targetOptions->referrer = packet_get_tlv_group_entry_value_wstring(packet, optionsTlv, TLV_TYPE_C2_REFERRER, NULL);
 	targetOptions->ua = packet_get_tlv_group_entry_value_wstring(packet, optionsTlv, TLV_TYPE_C2_UA, NULL);
 	targetOptions->uri = packet_get_tlv_group_entry_value_wstring(packet, optionsTlv, TLV_TYPE_C2_URI, NULL);
@@ -1089,7 +1169,9 @@ static void debug_print_http_options(PSTR type, HttpRequestOptions* options)
 	dprintf("[HTTP OPTION] - %s - Accept Types: %S", type, options->accept_types);
 	dprintf("[HTTP OPTION] - %s - Encode Flags: 0x%x", type, options->encode_flags);
 	dprintf("[HTTP OPTION] - %s - Other Headers: %S", type, options->other_headers);
+	dprintf("[HTTP OPTION] - %s - Payload Prefix: %s", type, options->payload_prefix);
 	dprintf("[HTTP OPTION] - %s - Payload Prefix Size: %u", type, options->payload_prefix_size);
+	dprintf("[HTTP OPTION] - %s - Payload Suffix: %s", type, options->payload_suffix);
 	dprintf("[HTTP OPTION] - %s - Payload Suffix Size: %u", type, options->payload_suffix_size);
 	dprintf("[HTTP OPTION] - %s - Referrer: %S", type, options->referrer);
 	dprintf("[HTTP OPTION] - %s - URI: %S", type, options->uri);
@@ -1108,8 +1190,8 @@ static void debug_print_http_options(PSTR type, HttpRequestOptions* options)
  */
 Transport* transport_create_http(Packet* packet, Tlv* c2Tlv)
 {
-	Transport* transport = (Transport*)malloc(sizeof(Transport));
-	HttpTransportContext* ctx = (HttpTransportContext*)malloc(sizeof(HttpTransportContext));
+	Transport* transport = (Transport*)calloc(1, sizeof(Transport));
+	HttpTransportContext* ctx = (HttpTransportContext*)calloc(1, sizeof(HttpTransportContext));
 
 	PWSTR url = packet_get_tlv_group_entry_value_wstring(packet, c2Tlv, TLV_TYPE_C2_URL, NULL);
 
@@ -1128,7 +1210,7 @@ Transport* transport_create_http(Packet* packet, Tlv* c2Tlv)
 	ctx->ssl = wcsncmp(url, L"https", 5) == 0;
 
 	// only apply the cert hash if we're given one and it's not the global value
-	LPBYTE certHash = packet_get_tlv_group_entry_value_raw(packet, c2Tlv, TLV_TYPE_C2_CERT_HASH, NULL);
+	LPBYTE certHash = packet_get_tlv_group_entry_value_raw_copy(packet, c2Tlv, TLV_TYPE_C2_CERT_HASH, NULL);
 	if (certHash != NULL)
 	{
 		dprintf("[SERVER] Received HTTPS Hash: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
@@ -1138,12 +1220,7 @@ Transport* transport_create_http(Packet* packet, Tlv* c2Tlv)
 			certHash[12], certHash[13], certHash[14], certHash[15],
 			certHash[16], certHash[17], certHash[18], certHash[19]);
 
-		unsigned char emptyHash[CERT_HASH_SIZE] = { 0 };
-		if (memcmp(certHash, emptyHash, CERT_HASH_SIZE))
-		{
-			ctx->cert_hash = (PBYTE)malloc(CERT_HASH_SIZE);
-			memcpy_s(ctx->cert_hash, CERT_HASH_SIZE, certHash, CERT_HASH_SIZE);
-		}
+		ctx->cert_hash = certHash;
 	}
 
 	// default http parameters/options

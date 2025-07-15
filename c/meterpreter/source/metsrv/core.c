@@ -809,6 +809,18 @@ PWCHAR packet_get_tlv_group_entry_value_wstring(Packet *packet, Tlv *group, TlvT
 	return result;
 }
 
+LPBYTE packet_get_tlv_group_entry_value_raw_copy(Packet* packet, Tlv* group, TlvType type, DWORD* size)
+{
+	LPBYTE value = packet_get_tlv_group_entry_value_raw(packet, group, type, size);
+	if (value)
+	{
+		LPBYTE copy = (LPBYTE)calloc(*size, 1);
+		memcpy_s(copy, *size, value, *size);
+		return copy;
+	}
+	return NULL;
+}
+
 LPBYTE packet_get_tlv_group_entry_value_raw(Packet *packet, Tlv *group, TlvType type, DWORD* size)
 {
 	Tlv entry = { 0 };

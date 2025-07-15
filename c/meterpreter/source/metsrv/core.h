@@ -41,6 +41,7 @@ DWORD packet_enum_group_tlv(Packet* packet, Tlv* group, DWORD index, TlvType typ
 
 UINT packet_get_tlv_group_entry_value_uint(Packet* packet, Tlv* group, TlvType type);
 LPBYTE packet_get_tlv_group_entry_value_raw(Packet* packet, Tlv* group, TlvType type, DWORD* size);
+LPBYTE packet_get_tlv_group_entry_value_raw_copy(Packet* packet, Tlv* group, TlvType type, DWORD* size);
 PCHAR packet_get_tlv_group_entry_value_string(Packet *packet, Tlv *group, TlvType type, DWORD* size);
 PWCHAR packet_get_tlv_group_entry_value_wstring(Packet *packet, Tlv *group, TlvType type, DWORD* size);
 

@@ -206,95 +206,67 @@ static BOOL create_transports(Remote* remote, Packet* packet)
 
 static void config_create(Remote* remote, LPBYTE uuid, MetsrvConfig** config, LPDWORD size)
 {
-	// TODO OJ: fill this in when the rest is done.
-#ifdef FDJSKL
-	// This function is really only used for migration purposes.
-	DWORD s = sizeof(MetsrvSession);
-	MetsrvSession* sess = (MetsrvSession*)malloc(s);
-	ZeroMemory(sess, s);
-
-	dprintf("[CONFIG] preparing the configuration");
-
-	// start by preparing the session, using the given UUID if specified, otherwise using
-	// the existing session UUID
-	memcpy(sess->uuid, uuid == NULL ? remote->orig_config->session.uuid : uuid, UUID_SIZE);
-	// session GUID should persist across migration
-	memcpy(sess->session_guid, remote->orig_config->session.session_guid, sizeof(GUID));
-#ifdef DEBUGTRACE
-	memcpy(sess->log_path, remote->orig_config->session.log_path, LOG_PATH_SIZE);
-#endif
-
-	if (remote->sess_expiry_end)
+	dprintf("[METSRV] - config_create -- starting");
+	UINT_PTR commsHandle = 0;
+	Packet* configPacket = packet_create(PACKET_TLV_TYPE_CONFIG, 0);
+	dprintf("[METSRV] - config_create -- created config packet");
+	packet_add_tlv_uint(configPacket, TLV_TYPE_SESSION_EXPIRY, remote->sess_expiry_end ? remote->sess_expiry_end - current_unix_timestamp() : 0);
+	dprintf("[METSRV] - config_create -- added Session Expiry");
+	if (uuid == NULL)
 	{
-		sess->expiry = remote->sess_expiry_end - current_unix_timestamp();
+		uuid = remote->uuid;
 	}
-	else
+	packet_add_tlv_raw(configPacket, TLV_TYPE_UUID, uuid, UUID_SIZE);
+	dprintf("[METSRV] - config_create -- added uuid");
+	packet_add_tlv_raw(configPacket, TLV_TYPE_SESSION_GUID, remote->session_guid, sizeof(remote->session_guid));
+	dprintf("[METSRV] - config_create -- added Session GUID");
+	packet_add_tlv_uint(configPacket, TLV_TYPE_EXITFUNC, EXITFUNC_THREAD);
+	dprintf("[METSRV] - config_create -- added exitfunc");
+
+	if (remote->enc_ctx->valid && remote->enc_ctx->enabled)
 	{
-		sess->expiry = 0;
+		// TODO OJ: confirm that it's worth doing this?
+		packet_add_tlv_raw(configPacket, TLV_TYPE_SYM_KEY, remote->enc_ctx->key_data.key, remote->enc_ctx->key_data.length);
 	}
-	sess->exit_func = EXITFUNC_THREAD; // migration we default to this.
+
+	// Can't support DEBUG LOGGING during migration?
 
 	Transport* current = remote->transport;
 	Transport* t = remote->transport;
 	do
 	{
-		// extend memory appropriately
-		DWORD neededSize = t->get_config_size(t);
-
-		dprintf("[CONFIG] Allocating %u bytes for transport, total of %u bytes", neededSize, s + neededSize);
-
-		sess = (MetsrvSession*)realloc(sess, s + neededSize);
-
-		// load up the transport specifics
-		LPBYTE target = (LPBYTE)sess + s;
-
-		ZeroMemory(target, neededSize);
-		s += neededSize;
-
 		if (t == current && t->get_handle != NULL)
 		{
-			sess->comms_handle.handle = t->get_handle(t);
-			dprintf("[CONFIG] Comms handle set to %p", (UINT_PTR)sess->comms_handle.handle);
+			commsHandle = t->get_handle(t);
+			dprintf("[CONFIG] Comms handle set to %p", commsHandle);
 		}
-
-		// TODO: switch this to use the new transport->write_config function
-		switch (t->type)
-		{
-			case METERPRETER_TRANSPORT_TCP:
-			{
-				transport_write_tcp_config(t, (MetsrvTransportTcp*)target);
-				break;
-			}
-			case METERPRETER_TRANSPORT_PIPE:
-			{
-				transport_write_named_pipe_config(t, (MetsrvTransportNamedPipe*)target);
-				break;
-			}
-			case METERPRETER_TRANSPORT_HTTP:
-			case METERPRETER_TRANSPORT_HTTPS:
-			{
-				transport_write_http_config(t, (MetsrvTransportHttp*)target);
-				break;
-			}
-		}
+		dprintf("[METSRV] - config_create -- adding transport");
+		t->write_config(t, configPacket);
 
 		t = t->next_transport;
 	} while (t != current);
 
-	// Terminate the transport with a NULL wchar.
-	// Then terminate the extensions with a zero DWORD.
-	// Then terminate the config with a -1 DWORD
-	DWORD terminatorSize = sizeof(wchar_t) + sizeof(DWORD) + sizeof(DWORD);
-	sess = (MetsrvSession*)realloc(sess, s + terminatorSize);
-	memset((LPBYTE)sess + s, 0xFF, terminatorSize);
-	ZeroMemory((LPBYTE)sess + s, terminatorSize - sizeof(DWORD));
-	s += terminatorSize;
+	LPBYTE packetData = NULL;
+	DWORD packetDataSize = 0;
 
-	// hand off the data
-	dprintf("[CONFIG] Total of %u bytes located at 0x%p", s, sess);
-	*size = s;
-	*config = (MetsrvConfig*)sess;
-#endif
+	dprintf("[METSRV] - config_create -- transports done, serializing...");
+	// serialize and xor the packet (config packets aren't encrypted)
+	if (encrypt_packet(remote, configPacket, &packetData, &packetDataSize) == ERROR_SUCCESS)
+	{
+		dprintf("[METSRV] - config_create -- serialized, constructing config block");
+		// put the final result in a config block
+		*size = packetDataSize + sizeof(MetsrvConfig);
+		*config = (MetsrvConfig*)calloc(1, *size);
+		(*config)->comms_handle.handle = commsHandle;
+		memcpy_s((*config)->config_packet, packetDataSize, packetData, packetDataSize);
+	}
+
+	if (packetData != NULL)
+	{
+		free(packetData);
+	}
+
+	packet_destroy(configPacket);
 }
 
 /*!
@@ -378,6 +350,14 @@ DWORD server_setup(MetsrvConfig* config, Packet* configPacket)
 				// not good, bail out!
 				SetLastError(ERROR_BAD_ARGUMENTS);
 				break;
+			}
+
+			DWORD keySize = 0;
+			LPBYTE key = packet_get_tlv_value_raw(configPacket, TLV_TYPE_SYM_KEY, &keySize);
+			if (key != NULL && keySize > 0)
+			{
+				dprintf("[DISPATCH] AES key provided in configuration, setting up!");
+				create_enc_ctx_from_key(remote, key, keySize);
 			}
 
 			dprintf("[DISPATCH] Transport handle is %p", (LPVOID)config->comms_handle.handle);
@@ -500,9 +480,6 @@ DWORD server_setup(MetsrvConfig* config, Packet* configPacket)
 					// the wait is a once-off thing, needs to be reset each time
 					remote->next_transport_wait = 0;
 				}
-
-				// if we had an encryption context we should clear it up.
-				free_encryption_context(remote);
 			}
 
 			// clean up the transports
@@ -510,6 +487,9 @@ DWORD server_setup(MetsrvConfig* config, Packet* configPacket)
 			{
 				remove_transport(remote, remote->transport);
 			}
+
+			// if we had an encryption context we should clear it up.
+			free_encryption_context(remote);
 
 			dprintf("[SERVER] Deregistering dispatch routines...");
 			deregister_dispatch_routines(remote);
