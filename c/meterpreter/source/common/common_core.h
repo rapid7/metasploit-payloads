@@ -27,6 +27,7 @@ typedef enum
 {
 	PACKET_TLV_TYPE_REQUEST        = 0,   ///< Indicates a request packet.
 	PACKET_TLV_TYPE_RESPONSE       = 1,   ///< Indicates a response packet.
+	PACKET_TLV_TYPE_CONFIG         = 2,   ///< Indicates a configuration packet.
 	PACKET_TLV_TYPE_PLAIN_REQUEST  = 10,  ///< Indicates a plain request packet.
 	PACKET_TLV_TYPE_PLAIN_RESPONSE = 11,  ///< Indicates a plain response packet.
 } PacketTlvType;

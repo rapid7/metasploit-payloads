@@ -29,6 +29,7 @@ typedef struct _Packet Packet;
 
 DWORD decrypt_packet(Remote* remote, Packet** packet, LPBYTE buffer, DWORD bufferSize);
 DWORD encrypt_packet(Remote* remote, Packet* packet, LPBYTE* buffer, LPDWORD bufferSize);
+DWORD create_enc_ctx_from_key(Remote* remote, LPBYTE key, DWORD keySize);
 DWORD request_negotiate_aes_key(Remote* remote, Packet* packet);
 DWORD free_encryption_context(Remote* remote);
 
