@@ -75,9 +75,7 @@ typedef struct _HttpRequestOptions
 {
 	STRTYPE uri;
 	STRTYPE ua;
-	STRTYPE accept_types;
-	STRTYPE referrer;
-	STRTYPE other_headers;                ///! Custom headers that aren't user agent, accept types, or referrer
+	STRTYPE other_headers;                ///! Custom headers, including accept types or referrer if required.
 	PBYTE payload_prefix;                 ///! Bytes to prepend to outgoing payloads.
 	UINT payload_prefix_size;             ///! Size of the payload prefix
 	PBYTE payload_suffix;                 ///! Bytes to append to outgoing payloads.
