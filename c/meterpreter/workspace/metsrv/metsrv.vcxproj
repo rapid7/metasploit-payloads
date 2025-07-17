@@ -558,6 +558,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <ClInclude Include="..\..\source\metsrv\remote_dispatch.h" />
     <ClInclude Include="..\..\source\metsrv\remote_thread.h" />
     <ClInclude Include="..\..\source\metsrv\scheduler.h" />
+    <ClInclude Include="..\..\source\metsrv\server_http_utils.h" />
     <ClInclude Include="..\..\source\metsrv\server_pivot.h" />
     <ClInclude Include="..\..\source\metsrv\server_pivot_named_pipe.h" />
     <ClInclude Include="..\..\source\metsrv\server_transport_named_pipe.h" />
@@ -587,6 +588,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <ClCompile Include="..\..\source\metsrv\remote_dispatch.c" />
     <ClCompile Include="..\..\source\metsrv\remote_thread.c" />
     <ClCompile Include="..\..\source\metsrv\scheduler.c" />
+    <ClCompile Include="..\..\source\metsrv\server_http_utils.c" />
     <ClCompile Include="..\..\source\metsrv\server_pivot.c" />
     <ClCompile Include="..\..\source\metsrv\server_pivot_named_pipe.c" />
     <ClCompile Include="..\..\source\metsrv\server_setup.c" />

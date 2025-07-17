@@ -8,73 +8,13 @@
 #include <winhttp.h>
 #include "packet_encryption.h"
 #include "pivot_packet_dispatch.h"
+#include "server_http_utils.h"
 
 #ifdef DEBUGTRACE
 #define DBG_PRINT_OPTIONS(t, o) debug_print_http_options(t, o)
 #else
 #define DBG_PRINT_OPTIONS(t, o)
 #endif
-
-static PWSTR generate_uri(HttpTransportContext* ctx, HttpConnection* conn)
-{
-	PWCHAR baseUri = ctx->default_options.uri;
-	if (conn->options.uri)
-	{
-		baseUri = conn->options.uri;
-	}
-
-	// If there's no URI for this connection, then the base URI is used, and that will (at least
-	// currently) contain the UUID string that's required. So we can just return that.
-	if (!conn->options.uri)
-	{
-		return _wcsdup(ctx->default_options.uri);
-	}
-
-	// If we do have a URi specified for this conneciton, we need to parse it. But only
-	// if the UUID location parameter is not specified in the cookie/httpheader/querystring
-	if (conn->options.uuid_cookie || conn->options.uuid_get || conn->options.uuid_header)
-	{
-		// return a copy of the baseUri in this case, the caller should free the result.
-		return _wcsdup(conn->options.uri);
-	}
-
-	// If we do need to put the UUID in the URI, the we need to pull it from the base URI
-	// and put it in place before any query string parameters in the current URI
-	PWCHAR queryString = wcschr(conn->options.uri, L'?');
-	dprintf("[GENURI] query string: %S", queryString);
-	size_t queryStringLen = queryString ? wcslen(queryString) : 0;
-	dprintf("[GENURI] query string len: %u", queryStringLen);
-	size_t baseUriLen = wcslen(conn->options.uri) - queryStringLen;
-	dprintf("[GENURI] base URI len: %u", baseUriLen);
-
-	// The base URI should contain the UUID string (for now) and shouldn't contain any query string
-	// parameters. Search for '/' from the second-last char in this URI
-	PWCHAR uuidUri = ctx->default_options.uri + wcslen(ctx->default_options.uri) - 1;
-	while (uuidUri > ctx->default_options.uri && *(--uuidUri) != L'/');
-
-	dprintf("[GENURI] uuid string: %S", uuidUri);
-	size_t uuidUriLen = wcslen(uuidUri);
-
-	// now let's clue the things together (with NULL terminator)
-	size_t uriLen = baseUriLen + queryStringLen + uuidUriLen + 1;
-	dprintf("[GENURI] Total URI length required: %u", uriLen);
-	PWCHAR uri = (PWCHAR)calloc(uriLen, sizeof(wchar_t));
-
-	wcsncpy_s(uri, uriLen, baseUri, baseUriLen);
-	dprintf("[GENURI] uri 1: %S", uri);
-	wcscat_s(uri, uriLen, uuidUri);
-	dprintf("[GENURI] uri 2: %S", uri);
-
-	if (queryString)
-	{
-		wcscat_s(uri, uriLen, queryString);
-		dprintf("[GENURI] uri 3: %S", uri);
-	}
-
-	dprintf("[GENURI] final URI: %S", uri);
-
-	return uri;
-}
 
 /*!
  * @brief Prepare a winHTTP request with the given context.
@@ -548,7 +488,7 @@ static DWORD packet_receive_http(Remote *remote, Packet **packet)
 			goto out;
 		}
 
-		vdprintf("[PACKET RECEIVE WINHTTP] Data received: %u bytes", bytesRead);
+		vdprintf("[PACKET RECEIVE HTTP] Data received: %u bytes", bytesRead);
 
 		// If the response contains no data, this is fine, it just means the
 		// remote side had nothing to tell us. Indicate this through a

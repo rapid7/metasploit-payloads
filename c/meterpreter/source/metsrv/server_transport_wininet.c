@@ -3,6 +3,7 @@
  */
 #include "metsrv.h"
 #include <wininet.h>
+#include "server_http_utils.h"
 
 /*!
  * @brief Prepare a wininet request with the given context.
@@ -29,18 +30,15 @@ static HINTERNET get_request_wininet(HttpTransportContext *ctx, BOOL isGet, cons
 	}
 
 	HttpConnection* conn = isGet ? &ctx->get_connection : &ctx->post_connection;
-	PWCHAR uri = ctx->default_options.uri;
-	if (conn->options.uri)
-	{
-		// TODO OJ: include the default URI/UUID in here somehow?
-		uri = conn->options.uri;
-	}
+
+	PWSTR uri = generate_uri(ctx, conn);
 
 	do
 	{
-
 		vdprintf("[%s] opening request on connection %x to %S", direction, conn->connection, uri);
 		hReq = HttpOpenRequestW(conn->connection, isGet ? L"GET" : L"POST", uri, NULL, NULL, NULL, flags, 0);
+
+		free(uri);
 
 		if (hReq == NULL)
 		{
@@ -119,13 +117,38 @@ static BOOL send_request_wininet(HttpTransportContext* ctx, HANDLE hReq, BOOL is
 		headers = conn->options.other_headers;
 	}
 
-	if (headers)
+	DWORD headerLength = headers == NULL ? 0 : -1L;
+	DWORD totalSize = size + conn->options.payload_prefix_size + conn->options.payload_suffix_size;
+
+	// WININET doesn't give us the ability to write in chunks without using HttpSendRequestEx, which sucks
+	// because that's a one-stop-shop for the whole request that requires changing the way we do things quite
+	// a bit. So, in the rare cases that we're dropping back to WININET, we're going to just construct a
+	// buffer with all the data we need in it.
+	PBYTE optionalData = NULL;
+
+	if (totalSize > 0)
 	{
-		dprintf("[WINHTTP] Sending with custom headers: %S", headers);
-		return HttpSendRequestW(hReq, headers, -1L, buffer, size);
+		optionalData = (PBYTE)calloc(totalSize, 1);
+
+		if (conn->options.payload_prefix_size > 0)
+		{
+			memcpy_s(optionalData, conn->options.payload_prefix_size, conn->options.payload_prefix, conn->options.payload_prefix_size);
+		}
+		if (size > 0)
+		{
+			memcpy_s(optionalData + conn->options.payload_prefix_size, size, buffer, size);
+		}
+		if (conn->options.payload_prefix_size > 0)
+		{
+			memcpy_s(optionalData + conn->options.payload_prefix_size + size, conn->options.payload_suffix_size, conn->options.payload_suffix, conn->options.payload_suffix_size);
+		}
 	}
 
-	return HttpSendRequestW(hReq, NULL, 0, buffer, size);
+	dprintf("[WININET] Sending payload");
+	BOOL result = HttpSendRequestW(hReq, headers, headerLength, optionalData, totalSize);
+	SAFE_FREE(optionalData);
+
+	return result;
 }
 
 /*!
