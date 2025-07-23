@@ -151,21 +151,6 @@ typedef enum
 	TLV_TYPE_LIB_LOADER_NAME     = TLV_VALUE(TLV_META_TYPE_STRING,    412),   ///! Represents the name of the ReflectiveLoader function (string).
 	TLV_TYPE_LIB_LOADER_ORDINAL  = TLV_VALUE(TLV_META_TYPE_UINT,      413),   ///! Represents the ordinal of the ReflectiveLoader function (int).
 
-	// Transport switching
-	TLV_TYPE_TRANS_TYPE          = TLV_VALUE(TLV_META_TYPE_UINT,      430),   ///! Represents the type of transport to switch to.
-	TLV_TYPE_TRANS_URL           = TLV_VALUE(TLV_META_TYPE_STRING,    431),   ///! Represents the new URL of the transport to use.
-	TLV_TYPE_TRANS_UA            = TLV_VALUE(TLV_META_TYPE_STRING,    432),   ///! Represents the user agent (for http).
-	TLV_TYPE_TRANS_COMM_TIMEOUT  = TLV_VALUE(TLV_META_TYPE_UINT,      433),   ///! Represents the communications timeout.
-	TLV_TYPE_TRANS_SESSION_EXP   = TLV_VALUE(TLV_META_TYPE_UINT,      434),   ///! Represents the session expiration.
-	TLV_TYPE_TRANS_CERT_HASH     = TLV_VALUE(TLV_META_TYPE_RAW,       435),   ///! Represents the certificate hash (for https).
-	TLV_TYPE_TRANS_PROXY_HOST    = TLV_VALUE(TLV_META_TYPE_STRING,    436),   ///! Represents the proxy host string (for http/s).
-	TLV_TYPE_TRANS_PROXY_USER    = TLV_VALUE(TLV_META_TYPE_STRING,    437),   ///! Represents the proxy user name (for http/s).
-	TLV_TYPE_TRANS_PROXY_PASS    = TLV_VALUE(TLV_META_TYPE_STRING,    438),   ///! Represents the proxy password (for http/s).
-	TLV_TYPE_TRANS_RETRY_TOTAL   = TLV_VALUE(TLV_META_TYPE_UINT,      439),   ///! Total time (seconds) to continue retrying comms.
-	TLV_TYPE_TRANS_RETRY_WAIT    = TLV_VALUE(TLV_META_TYPE_UINT,      440),   ///! Time (seconds) to wait between reconnect attempts.
-	TLV_TYPE_TRANS_HEADERS       = TLV_VALUE(TLV_META_TYPE_STRING,    441),   ///! List of custom headers to send with the requests.
-	TLV_TYPE_TRANS_GROUP         = TLV_VALUE(TLV_META_TYPE_GROUP,     442),   ///! A single transport grouping.
-
 	// session/machine identification
 	TLV_TYPE_MACHINE_ID          = TLV_VALUE(TLV_META_TYPE_STRING,    460),   ///! Represents a machine identifier.
 	TLV_TYPE_UUID                = TLV_VALUE(TLV_META_TYPE_RAW,       461),   ///! Represents a UUID.
@@ -197,7 +182,7 @@ typedef enum
 	TLV_TYPE_C2_PROXY_PASS         = TLV_VALUE(TLV_META_TYPE_STRING,  712),   ///! Proxy password
 	TLV_TYPE_C2_GET                = TLV_VALUE(TLV_META_TYPE_GROUP,   713),   ///! A grouping of params associated with GET requests
 	TLV_TYPE_C2_POST               = TLV_VALUE(TLV_META_TYPE_GROUP,   714),   ///! A grouping of params associated with POST requests
-	TLV_TYPE_C2_OTHER_HEADERS      = TLV_VALUE(TLV_META_TYPE_STRING,  715),   ///! Custom headers
+	TLV_TYPE_C2_HEADERS            = TLV_VALUE(TLV_META_TYPE_STRING,  715),   ///! Custom headers
 	TLV_TYPE_C2_UA                 = TLV_VALUE(TLV_META_TYPE_STRING,  716),   ///! User agent
 	TLV_TYPE_C2_CERT_HASH          = TLV_VALUE(TLV_META_TYPE_RAW,     717),   ///! Expected SSL certificate hash
 	TLV_TYPE_C2_PREFIX             = TLV_VALUE(TLV_META_TYPE_RAW,     718),   ///! Data to prepend to the outgoing payload
@@ -207,6 +192,7 @@ typedef enum
 	TLV_TYPE_C2_UUID_COOKIE        = TLV_VALUE(TLV_META_TYPE_STRING,  722),   ///! Name of the cookie to put the UUID in
 	TLV_TYPE_C2_UUID_GET           = TLV_VALUE(TLV_META_TYPE_STRING,  723),   ///! Name of the GET parameter to put the UUID in
 	TLV_TYPE_C2_UUID_HEADER        = TLV_VALUE(TLV_META_TYPE_STRING,  724),   ///! Name of the header to put the UUID in
+	TLV_TYPE_C2_UUID               = TLV_VALUE(TLV_META_TYPE_STRING,  725),   ///! The UUID string to use for the C2 transport
 
 	TLV_TYPE_EXTENSIONS            = TLV_VALUE(TLV_META_TYPE_COMPLEX, 20000), ///! Represents an extension value.
 	TLV_TYPE_USER                  = TLV_VALUE(TLV_META_TYPE_COMPLEX, 40000), ///! Represents a user value.

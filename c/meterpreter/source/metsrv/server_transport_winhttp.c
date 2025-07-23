@@ -234,12 +234,12 @@ static BOOL write_to_request(HANDLE hReq, LPVOID buffer, DWORD size)
  */
 static BOOL send_request_winhttp(HttpTransportContext* ctx, HANDLE hReq, BOOL isGet, LPVOID buffer, DWORD size)
 {
-	PWSTR headers = ctx->default_options.other_headers;
+	PWSTR headers = ctx->default_options.headers;
 	HttpConnection* conn = isGet ? &ctx->get_connection : &ctx->post_connection;
 
-	if (conn->options.other_headers)
+	if (conn->options.headers)
 	{
-		headers = conn->options.other_headers;
+		headers = conn->options.headers;
 	}
 
 	DWORD headerLength = headers == NULL ? 0 : -1L;
@@ -860,61 +860,6 @@ static DWORD server_dispatch_http(Remote* remote, THREAD* dispatchThread)
 			{
 				running = command_handle(remote, packet);
 				dprintf("[DISPATCH] command_process result: %s", (running ? "continue" : "stop"));
-
-				if (ctx->new_uri != NULL)
-				{
-					dprintf("[DISPATCH] Recieved hot-patched URL for stageless: %S", ctx->new_uri);
-					dprintf("[DISPATCH] Old URI is: %S", ctx->default_options.uri);
-					dprintf("[DISPATCH] Old URL is: %S", transport->url);
-
-					// if the new URI needs more space, let's realloc space for the new URL now
-					int diff = (int)wcslen(ctx->new_uri) - (int)wcslen(ctx->default_options.uri);
-					if (diff > 0)
-					{
-						dprintf("[DISPATCH] New URI is bigger by %d", diff);
-						transport->url = (wchar_t*)realloc(transport->url, (wcslen(transport->url) + diff + 1) * sizeof(wchar_t));
-					}
-
-					// we also need to patch the new URI into the original transport URL, not just the currently
-					// active URI for comms. If we don't, then migration behaves badly.
-					// The URL looks like this:  http(s)://<domain-or-ip>:port/lurivalue/UUIDJUNK/
-					// Start by locating the start of the URI in the current URL, by finding the third slash,
-					// as this value includes the LURI
-					wchar_t* csr = transport->url;
-					for (int i = 0; i < 3; ++i)
-					{
-						// We need to move to the next character first in case
-						// we are currently pointing at the previously found /
-						// we know we're safe skipping the first character in the whole
-						// URL because that'll be part of the scheme (ie. 'h' in http)
-						++csr;
-
-						while (*csr != L'\0' && *csr != L'/')
-						{
-							++csr;
-						}
-
-						dprintf("[DISPATCH] %d csr: %p -> %S", i, csr, csr);
-
-						// this shouldn't happen!
-						if (*csr == L'\0')
-						{
-							break;
-						}
-					}
-
-					// the pointer that we have will be
-					dprintf("[DISPATCH] Pointer is at: %p -> %S", csr, csr);
-
-					// patch in the new URI
-					wcscpy_s(csr, wcslen(diff > 0 ? ctx->new_uri : ctx->default_options.uri) + 1, ctx->new_uri);
-					dprintf("[DISPATCH] New URL is: %S", transport->url);
-
-					// clean up
-					SAFE_FREE(ctx->default_options.uri);
-					ctx->default_options.uri = ctx->new_uri;
-					ctx->new_uri = NULL;
-				}
 			}
 			else
 			{
@@ -930,7 +875,7 @@ static void destroy_options(HttpRequestOptions* options)
 {
 	SAFE_FREE(options->ua);
 	SAFE_FREE(options->uri);
-	SAFE_FREE(options->other_headers);
+	SAFE_FREE(options->headers);
 	SAFE_FREE(options->payload_prefix);
 	SAFE_FREE(options->payload_suffix);
 	SAFE_FREE(options->uuid_cookie);
@@ -956,6 +901,7 @@ static void transport_destroy_http(Transport* transport)
 			SAFE_FREE(ctx->proxy);
 			SAFE_FREE(ctx->proxy_pass);
 			SAFE_FREE(ctx->proxy_user);
+			SAFE_FREE(ctx->uuid);
 
 			destroy_options(&ctx->post_connection.options);
 			destroy_options(&ctx->get_connection.options);
@@ -987,9 +933,9 @@ BOOL set_http_options_to_tlv(Packet* optionsPacket, HttpRequestOptions* sourceOp
 	{
 		packet_add_tlv_uint(optionsPacket, TLV_TYPE_C2_ENC, sourceOptions->encode_flags);
 	}
-	if (sourceOptions->other_headers != NULL)
+	if (sourceOptions->headers != NULL)
 	{
-		packet_add_tlv_wstring(optionsPacket, TLV_TYPE_C2_OTHER_HEADERS, sourceOptions->other_headers);
+		packet_add_tlv_wstring(optionsPacket, TLV_TYPE_C2_HEADERS, sourceOptions->headers);
 	}
 	if (sourceOptions->payload_prefix != NULL && sourceOptions->payload_prefix_size > 0)
 	{
@@ -1033,6 +979,7 @@ void transport_write_http_config(Transport* transport, Packet* configPacket)
 	{
 		Packet* c2Packet = packet_create_group();
 		packet_add_tlv_wstring(c2Packet, TLV_TYPE_C2_URL, transport->url);
+		packet_add_tlv_wstring(c2Packet, TLV_TYPE_C2_UUID, transport->url);
 		packet_add_tlv_uint(c2Packet, TLV_TYPE_C2_COMM_TIMEOUT, transport->timeouts.comms);
 		packet_add_tlv_uint(c2Packet, TLV_TYPE_C2_RETRY_WAIT, transport->timeouts.retry_wait);
 		packet_add_tlv_uint(c2Packet, TLV_TYPE_C2_RETRY_TOTAL, transport->timeouts.retry_total);
@@ -1072,7 +1019,7 @@ void transport_write_http_config(Transport* transport, Packet* configPacket)
 BOOL get_http_options_from_tlv(Packet* packet, Tlv* optionsTlv, HttpRequestOptions* targetOptions)
 {
 	targetOptions->encode_flags = packet_get_tlv_group_entry_value_uint(packet, optionsTlv, TLV_TYPE_C2_ENC);
-	targetOptions->other_headers = packet_get_tlv_group_entry_value_wstring(packet, optionsTlv, TLV_TYPE_C2_OTHER_HEADERS, NULL);
+	targetOptions->headers = packet_get_tlv_group_entry_value_wstring(packet, optionsTlv, TLV_TYPE_C2_HEADERS, NULL);
 	targetOptions->payload_prefix = packet_get_tlv_group_entry_value_raw_copy(packet, optionsTlv, TLV_TYPE_C2_PREFIX, &targetOptions->payload_prefix_size);
 	targetOptions->payload_skip_count = packet_get_tlv_group_entry_value_uint(packet, optionsTlv, TLV_TYPE_C2_SKIP_COUNT);
 	targetOptions->payload_suffix = packet_get_tlv_group_entry_value_raw_copy(packet, optionsTlv, TLV_TYPE_C2_SUFFIX, &targetOptions->payload_suffix_size);
@@ -1098,7 +1045,7 @@ BOOL get_http_options_from_config(Packet* packet, Tlv* c2Tlv, UINT tlvType, Http
 static void debug_print_http_options(PSTR type, HttpRequestOptions* options)
 {
 	dprintf("[HTTP OPTION] - %s - Encode Flags: 0x%x", type, options->encode_flags);
-	dprintf("[HTTP OPTION] - %s - Other Headers: %S", type, options->other_headers);
+	dprintf("[HTTP OPTION] - %s - Headers: %S", type, options->headers);
 	dprintf("[HTTP OPTION] - %s - Payload Prefix Size: %u", type, options->payload_prefix_size);
 	dprintf("[HTTP OPTION] - %s - Payload Prefix: %s", type, options->payload_prefix);
 	dprintf("[HTTP OPTION] - %s - Payload Suffix Size: %u", type, options->payload_suffix_size);
@@ -1129,6 +1076,45 @@ Transport* transport_create_http(Packet* packet, Tlv* c2Tlv)
 
 	memset(transport, 0, sizeof(Transport));
 	memset(ctx, 0, sizeof(HttpTransportContext));
+
+	ctx->uuid = packet_get_tlv_group_entry_value_wstring(packet, c2Tlv, TLV_TYPE_C2_UUID, NULL);
+	dprintf("[TRANS HTTP] Given UUID: %S", ctx->uuid);
+	if (ctx->uuid == NULL)
+	{
+		// given no UUID, so pull it out of the URL
+		PWCHAR queryString = wcschr(url, L'?');
+		PWSTR uriEnd = (queryString ? queryString : url + wcslen(url)) - 1;
+		dprintf("[TRANS HTTP] Uri End: %C %S", *uriEnd, uriEnd);
+		if (*uriEnd == L'/')
+		{
+			--uriEnd;
+		}
+		dprintf("[TRANS HTTP] Uri End Now: %C %S", *uriEnd, uriEnd);
+		PWSTR uriStart = uriEnd - 1;
+		while (*(uriStart - 1) != L'/')
+		{
+			--uriStart;
+		}
+		dprintf("[TRANS HTTP] Uri Start: %S", uriStart);
+
+		size_t uriLen = uriEnd - uriStart + 1;
+		dprintf("[TRANS HTTP] UUID uri length: %u", uriLen);
+		size_t uriSize = uriLen + 1;
+
+		ctx->uuid = (PWSTR)calloc(sizeof(wchar_t), uriSize);
+		wcsncpy_s(ctx->uuid, uriSize, uriStart, uriLen);
+		dprintf("[TRANS HTTP] Calculated UUID: %S", ctx->uuid);
+
+		// terminate the existing URI
+		*uriStart = 0;
+		dprintf("[TRANS HTTP] Adjusted URL 1: %S", url);
+		if (queryString)
+		{
+			// copy over the query string if it's there
+			wcscpy_s(uriStart, wcslen(queryString), queryString);
+		}
+		dprintf("[TRANS HTTP] Adjusted URL 2: %S", url);
+	}
 
 	ctx->proxy = packet_get_tlv_group_entry_value_wstring(packet, c2Tlv, TLV_TYPE_C2_PROXY_HOST, NULL);
 	dprintf("[TRANS HTTP] Given proxy user: %S", ctx->proxy);

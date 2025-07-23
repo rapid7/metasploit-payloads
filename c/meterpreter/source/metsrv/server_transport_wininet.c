@@ -109,12 +109,12 @@ static BOOL read_response_wininet(HANDLE hReq, LPVOID buffer, DWORD bytesToRead,
  */
 static BOOL send_request_wininet(HttpTransportContext* ctx, HANDLE hReq, BOOL isGet, LPVOID buffer, DWORD size)
 {
-	PWSTR headers = ctx->default_options.other_headers;
+	PWSTR headers = ctx->default_options.headers;
 	HttpConnection* conn = isGet ? &ctx->get_connection : &ctx->post_connection;
 
-	if (conn->options.other_headers)
+	if (conn->options.headers)
 	{
-		headers = conn->options.other_headers;
+		headers = conn->options.headers;
 	}
 
 	DWORD headerLength = headers == NULL ? 0 : -1L;

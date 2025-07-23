@@ -18,7 +18,7 @@ DWORD get_migrate_context(LPDWORD contextSize, LPCOMMONMIGRATECONTEXT* contextBu
 void set_transport_session_expiry(Remote* remote, Packet* packet)
 {
 	int sessionExpiry = 0;
-	if (packet_get_tlv_uint(packet, TLV_TYPE_TRANS_SESSION_EXP, &sessionExpiry))
+	if (packet_get_tlv_uint(packet, TLV_TYPE_SESSION_EXPIRY, &sessionExpiry))
 	{
 		if (sessionExpiry)
 		{
@@ -35,137 +35,16 @@ void set_transport_session_expiry(Remote* remote, Packet* packet)
 
 DWORD create_transport_from_request(Remote* remote, Packet* packet, Transport** transportBuffer)
 {
-	return ERROR_SUCCESS;
-#ifdef FJDKLSA
-	DWORD result = ERROR_NOT_ENOUGH_MEMORY;
-	Transport* transport = NULL;
-	wchar_t* transportUrl = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_URL);
-
-	TimeoutSettings timeouts = { 0 };
-
-	timeouts.comms = (int)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_COMM_TIMEOUT);
-	timeouts.retry_total = (DWORD)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_RETRY_TOTAL);
-	timeouts.retry_wait = (DWORD)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_RETRY_WAIT);
+	Tlv c2Tlv = { 0 };
+	if (packet_get_tlv(packet, TLV_TYPE_C2, &c2Tlv) == ERROR_SUCCESS)
+	{
+		*transportBuffer = remote->trans_create(remote, packet, &c2Tlv);
+	}
 
 	// special case, will still leave this in here even if it's not transport related
 	set_transport_session_expiry(remote, packet);
 
-	if (timeouts.comms == 0)
-	{
-		timeouts.comms = remote->transport->timeouts.comms;
-	}
-	if (timeouts.retry_total == 0)
-	{
-		timeouts.retry_total = remote->transport->timeouts.retry_total;
-	}
-	if (timeouts.retry_wait == 0)
-	{
-		timeouts.retry_wait = remote->transport->timeouts.retry_wait;
-	}
-
-	dprintf("[CHANGE TRANS] Url: %S", transportUrl);
-	dprintf("[CHANGE TRANS] Comms: %d", timeouts.comms);
-	dprintf("[CHANGE TRANS] Retry Total: %u", timeouts.retry_total);
-	dprintf("[CHANGE TRANS] Retry Wait: %u", timeouts.retry_wait);
-
-	do
-	{
-		if (transportUrl == NULL)
-		{
-			dprintf("[CHANGE TRANS] Something was NULL");
-			break;
-		}
-
-		if (wcsncmp(transportUrl, L"tcp", 3) == 0)
-		{
-			MetsrvTransportTcp config = { 0 };
-			config.common.comms_timeout = timeouts.comms;
-			config.common.retry_total = timeouts.retry_total;
-			config.common.retry_wait = timeouts.retry_wait;
-			memcpy(config.common.url, transportUrl, sizeof(config.common.url));
-			transport = remote->trans_create(remote, &config.common, NULL);
-		}
-		else if (wcsncmp(transportUrl, L"pipe", 4) == 0)
-		{
-			MetsrvTransportNamedPipe config = { 0 };
-			config.common.comms_timeout = timeouts.comms;
-			config.common.retry_total = timeouts.retry_total;
-			config.common.retry_wait = timeouts.retry_wait;
-			memcpy(config.common.url, transportUrl, sizeof(config.common.url));
-			transport = remote->trans_create(remote, &config.common, NULL);
-		}
-		else
-		{
-			BOOL ssl = wcsncmp(transportUrl, L"https", 5) == 0;
-			wchar_t* ua = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_UA);
-			wchar_t* proxy = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_PROXY_HOST);
-			wchar_t* proxyUser = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_PROXY_USER);
-			wchar_t* proxyPass = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_PROXY_PASS);
-			DWORD certHashLen = 0;
-			PBYTE certHash = packet_get_tlv_value_raw(packet, TLV_TYPE_TRANS_CERT_HASH, &certHashLen);
-			wchar_t* headers = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_HEADERS);
-
-			size_t configSize = sizeof(MetsrvTransportHttp);
-			if (headers)
-			{
-				// this already caters for the null byte because it's included in the structure.
-				configSize += wcslen(headers);
-			}
-
-			MetsrvTransportHttp* config = (MetsrvTransportHttp*)calloc(1, configSize);
-			config->common.comms_timeout = timeouts.comms;
-			config->common.retry_total = timeouts.retry_total;
-			config->common.retry_wait = timeouts.retry_wait;
-			wcsncpy(config->common.url, transportUrl, URL_SIZE);
-
-			if (proxy)
-			{
-				wcsncpy(config->proxy.hostname, proxy, PROXY_HOST_SIZE);
-				free(proxy);
-			}
-
-			if (proxyUser)
-			{
-				wcsncpy(config->proxy.username, proxyUser, PROXY_USER_SIZE);
-				free(proxyUser);
-			}
-
-			if (proxyPass)
-			{
-				wcsncpy(config->proxy.password, proxyPass, PROXY_PASS_SIZE);
-				free(proxyPass);
-			}
-
-			if (ua)
-			{
-				wcsncpy(config->ua, ua, UA_SIZE);
-				free(ua);
-			}
-
-			if (certHash)
-			{
-				memcpy(config->ssl_cert_hash, certHash, CERT_HASH_SIZE);
-				// No need to free this up as it's not a wchar_t
-			}
-
-			if (headers)
-			{
-				wcscpy(config->custom_headers, headers);
-			}
-
-			transport = remote->trans_create(remote, &config->common, NULL);
-
-			free(config);
-		}
-
-		// tell the server dispatch to exit, it should pick up the new transport
-		result = ERROR_SUCCESS;
-	} while (0);
-
-	*transportBuffer = transport;
-
-	return result;
-#endif
+	return ERROR_SUCCESS;
 }
 
 DWORD remote_request_core_transport_list(Remote* remote, Packet* packet)
@@ -184,69 +63,24 @@ DWORD remote_request_core_transport_list(Remote* remote, Packet* packet)
 		}
 
 		// Add the session timeout to the top level
-		packet_add_tlv_uint(response, TLV_TYPE_TRANS_SESSION_EXP, remote->sess_expiry_end - current_unix_timestamp());
+		packet_add_tlv_uint(response, TLV_TYPE_SESSION_EXPIRY, remote->sess_expiry_end - current_unix_timestamp());
 
 		Transport* current = remote->transport;
 		Transport* first = remote->transport;
 
 		do
 		{
-			Packet* transportGroup = packet_create_group();
+			Packet* c2Packet = packet_create_group();
 
-			if (!transportGroup)
+			if (!c2Packet)
 			{
 				// bomb out, returning what we have so far.
 				break;
 			}
 
-			dprintf("[DISPATCH] Adding URL %S", current->url);
-			packet_add_tlv_wstring(transportGroup, TLV_TYPE_TRANS_URL, current->url);
-			dprintf("[DISPATCH] Adding Comms timeout %u", current->timeouts.comms);
-			packet_add_tlv_uint(transportGroup, TLV_TYPE_TRANS_COMM_TIMEOUT, current->timeouts.comms);
-			dprintf("[DISPATCH] Adding Retry total %u", current->timeouts.retry_total);
-			packet_add_tlv_uint(transportGroup, TLV_TYPE_TRANS_RETRY_TOTAL, current->timeouts.retry_total);
-			dprintf("[DISPATCH] Adding Retry wait %u", current->timeouts.retry_wait);
-			packet_add_tlv_uint(transportGroup, TLV_TYPE_TRANS_RETRY_WAIT, current->timeouts.retry_wait);
+			current->write_config(current, c2Packet);
 
-			// TODO OJ - fill this back in
-#if FALSE
-			switch (current->type)
-			{
-				case METERPRETER_TRANSPORT_HTTP:
-				case METERPRETER_TRANSPORT_HTTPS:
-				{
-					HttpTransportContext* ctx = (HttpTransportContext*)current->ctx;
-					dprintf("[DISPATCH] Transport is HTTP/S");
-					if (ctx->ua)
-					{
-						packet_add_tlv_wstring(transportGroup, TLV_TYPE_TRANS_UA, ctx->ua);
-					}
-					if (ctx->proxy)
-					{
-						packet_add_tlv_wstring(transportGroup, TLV_TYPE_TRANS_PROXY_HOST, ctx->proxy);
-					}
-					if (ctx->proxy_user)
-					{
-						packet_add_tlv_wstring(transportGroup, TLV_TYPE_TRANS_PROXY_USER, ctx->proxy_user);
-					}
-					if (ctx->proxy_pass)
-					{
-						packet_add_tlv_wstring(transportGroup, TLV_TYPE_TRANS_PROXY_PASS, ctx->proxy_pass);
-					}
-					if (ctx->cert_hash)
-					{
-						packet_add_tlv_raw(transportGroup, TLV_TYPE_TRANS_CERT_HASH, ctx->cert_hash, CERT_HASH_SIZE);
-					}
-					if (ctx->custom_headers && ctx->custom_headers[0])
-					{
-						packet_add_tlv_wstring(transportGroup, TLV_TYPE_TRANS_HEADERS, ctx->custom_headers);
-					}
-					break;
-				}
-			}
-#endif
-
-			packet_add_group(response, TLV_TYPE_TRANS_GROUP, transportGroup);
+			packet_add_group(response, TLV_TYPE_C2, c2Packet);
 
 			current = current->next_transport;
 		} while (first != current);
@@ -315,7 +149,7 @@ DWORD remote_request_core_transport_remove(Remote* remote, Packet* packet)
 	{
 		Transport* found = NULL;
 		Transport* transport = remote->transport;
-		wchar_t* transportUrl = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_URL);
+		wchar_t* transportUrl = packet_get_tlv_value_wstring(packet, TLV_TYPE_C2_URL);
 
 		do
 		{
@@ -361,7 +195,7 @@ DWORD remote_request_core_transport_add(Remote* remote, Packet* packet)
 BOOL remote_request_core_transport_sleep(Remote* remote, Packet* packet, DWORD* result)
 {
 	// we'll reuse the comm timeout TLV for this purpose
-	DWORD seconds = packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_COMM_TIMEOUT);
+	DWORD seconds = packet_get_tlv_value_uint(packet, TLV_TYPE_C2_COMM_TIMEOUT);
 
 	dprintf("[DISPATCH] request received to sleep for %u seconds", seconds);
 
@@ -421,7 +255,7 @@ DWORD remote_request_core_transport_setcerthash(Remote* remote, Packet* packet)
 		}
 
 		DWORD certHashLen = 0;
-		unsigned char* certHash = packet_get_tlv_value_raw(packet, TLV_TYPE_TRANS_CERT_HASH, &certHashLen);
+		unsigned char* certHash = packet_get_tlv_value_raw(packet, TLV_TYPE_C2_CERT_HASH, &certHashLen);
 		HttpTransportContext* ctx = (HttpTransportContext*)remote->transport->ctx;
 
 		// Support adding a new cert hash if one doesn't exist
@@ -503,7 +337,7 @@ DWORD remote_request_core_transport_getcerthash(Remote* remote, Packet* packet)
 			HttpTransportContext* ctx = (HttpTransportContext*)remote->transport->ctx;
 			if (ctx->cert_hash)
 			{
-				packet_add_tlv_raw(response, TLV_TYPE_TRANS_CERT_HASH, ctx->cert_hash, CERT_HASH_SIZE);
+				packet_add_tlv_raw(response, TLV_TYPE_C2_CERT_HASH, ctx->cert_hash, CERT_HASH_SIZE);
 			}
 		}
 
@@ -761,9 +595,9 @@ DWORD remote_request_core_transport_set_timeouts(Remote * remote, Packet * packe
 			break;
 		}
 
-		int commsTimeout = (int)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_COMM_TIMEOUT);
-		DWORD retryTotal = (DWORD)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_RETRY_TOTAL);
-		DWORD retryWait = (DWORD)packet_get_tlv_value_uint(packet, TLV_TYPE_TRANS_RETRY_WAIT);
+		int commsTimeout = (int)packet_get_tlv_value_uint(packet, TLV_TYPE_C2_COMM_TIMEOUT);
+		DWORD retryTotal = (DWORD)packet_get_tlv_value_uint(packet, TLV_TYPE_C2_RETRY_TOTAL);
+		DWORD retryWait = (DWORD)packet_get_tlv_value_uint(packet, TLV_TYPE_C2_RETRY_WAIT);
 
 		set_transport_session_expiry(remote, packet);
 
@@ -789,11 +623,11 @@ DWORD remote_request_core_transport_set_timeouts(Remote * remote, Packet * packe
 		// for the session expiry, return how many seconds are left before the session actually expires
 		if (remote->sess_expiry_end)
 		{
-			packet_add_tlv_uint(response, TLV_TYPE_TRANS_SESSION_EXP, remote->sess_expiry_end - current_unix_timestamp());
+			packet_add_tlv_uint(response, TLV_TYPE_SESSION_EXPIRY, remote->sess_expiry_end - current_unix_timestamp());
 		}
-		packet_add_tlv_uint(response, TLV_TYPE_TRANS_COMM_TIMEOUT, remote->transport->timeouts.comms);
-		packet_add_tlv_uint(response, TLV_TYPE_TRANS_RETRY_TOTAL, remote->transport->timeouts.retry_total);
-		packet_add_tlv_uint(response, TLV_TYPE_TRANS_RETRY_WAIT, remote->transport->timeouts.retry_wait);
+		packet_add_tlv_uint(response, TLV_TYPE_C2_COMM_TIMEOUT, remote->transport->timeouts.comms);
+		packet_add_tlv_uint(response, TLV_TYPE_C2_RETRY_TOTAL, remote->transport->timeouts.retry_total);
+		packet_add_tlv_uint(response, TLV_TYPE_C2_RETRY_WAIT, remote->transport->timeouts.retry_wait);
 
 	} while (0);
 

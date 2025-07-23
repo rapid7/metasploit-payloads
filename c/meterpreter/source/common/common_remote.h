@@ -75,7 +75,7 @@ typedef struct _HttpRequestOptions
 {
 	STRTYPE uri;
 	STRTYPE ua;
-	STRTYPE other_headers;                ///! Custom headers that aren't user agent, accept types, or referrer
+	STRTYPE headers;                ///! Custom headers that aren't user agent, accept types, or referrer
 	PBYTE payload_prefix;                 ///! Bytes to prepend to outgoing payloads.
 	UINT payload_prefix_size;             ///! Size of the payload prefix
 	PBYTE payload_suffix;                 ///! Bytes to append to outgoing payloads.
@@ -102,7 +102,7 @@ typedef struct _HttpTransportContext
 	unsigned char* cert_hash;             ///! Pointer to the 20-byte certificate hash to validate.
 
 	CSTRTYPE url;                         ///! Pointer to the URL stored with the transport.
-	STRTYPE new_uri;                      ///! New URI for stageless URI switches.
+	STRTYPE uuid;                         ///! UUID to use for the HTTP connection
 	STRTYPE proxy;                        ///! Proxy details.
 	STRTYPE proxy_user;                   ///! Proxy username.
 	STRTYPE proxy_pass;                   ///! Proxy password.
