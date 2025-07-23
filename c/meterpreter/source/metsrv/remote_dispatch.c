@@ -119,7 +119,7 @@ BOOL request_core_patch_url(Remote* remote, Packet* packet, DWORD* result)
 	else
 	{
 		HttpTransportContext* ctx = (HttpTransportContext*)remote->transport->ctx;
-		ctx->new_uri = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_URL);
+		ctx->uuid = packet_get_tlv_value_wstring(packet, TLV_TYPE_C2_UUID);
 		*result = ERROR_SUCCESS;
 	}
 	return TRUE;
