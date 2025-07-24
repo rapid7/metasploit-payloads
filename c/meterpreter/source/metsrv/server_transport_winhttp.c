@@ -206,19 +206,16 @@ static BOOL read_response_winhttp(HANDLE hReq, LPVOID buffer, DWORD bytesToRead,
  */
 static BOOL write_to_request(HANDLE hReq, LPVOID buffer, DWORD size)
 {
-	if (buffer != NULL && size > 0)
+	while (buffer != NULL && size > 0)
 	{
 		LPBYTE data = (LPBYTE)buffer;
-		while (size > 0)
+		DWORD written = 0;
+		dprintf("[WINHTTP] writing data to request. %u (0x%x) from %p", size, size, data + written);
+		if (!WinHttpWriteData(hReq, data + written, size, &written))
 		{
-			DWORD written = 0;
-			dprintf("[WINHTTP] writing data to request. %u (0x%x) from %p", size, size, data + written);
-			if (!WinHttpWriteData(hReq, data + written, size, &written))
-			{
-				return FALSE;
-			}
-			size -= written;
+			return FALSE;
 		}
+		size -= written;
 	}
 	return TRUE;
 }
@@ -242,11 +239,43 @@ static BOOL send_request_winhttp(HttpTransportContext* ctx, HANDLE hReq, BOOL is
 		headers = conn->options.headers;
 	}
 
-	DWORD headerLength = headers == NULL ? 0 : -1L;
+	PWSTR outboundHeaders = NULL;
+	PWSTR uuidHeader = conn->options.uuid_header ? conn->options.uuid_header : ctx->default_options.uuid_header;
+	if (uuidHeader)
+	{
+		// UUID is going in the header, so we need to add it. Let's hope people aren't
+		// stupid enough to double-up this header. Length needs to include space for \r\n and the colon/space,
+		// AND the UUID length itself.
+		size_t extraHeaderLength = wcslen(uuidHeader) + 2 + wcslen(ctx->uuid) + 2;
+		size_t totalHeaderLength = extraHeaderLength + (headers ? wcslen(headers) : 0) + 2;
+		outboundHeaders = (PWCHAR)calloc(totalHeaderLength, sizeof(wchar_t));
+
+		if (headers)
+		{
+			wcscat_s(outboundHeaders, totalHeaderLength, headers);
+			wcscat_s(outboundHeaders, totalHeaderLength, L"\r\n");
+		}
+		wcscat_s(outboundHeaders, totalHeaderLength, uuidHeader);
+		wcscat_s(outboundHeaders, totalHeaderLength, L": ");
+		wcscat_s(outboundHeaders, totalHeaderLength, ctx->uuid);
+	}
+	else if (headers)
+	{
+		outboundHeaders = _wcsdup(headers);
+	}
+
+	if (outboundHeaders)
+	{
+		dprintf("[WINHTTP] Outbound headers for this request: %S", outboundHeaders);
+	}
+
+	DWORD headerLength = outboundHeaders == NULL ? 0 : -1L;
 	DWORD totalSize = size + conn->options.payload_prefix_size + conn->options.payload_suffix_size;
 
+	BOOL result = FALSE;
+
 	// Start a request without including any data
-	if (WinHttpSendRequest(hReq, headers, headerLength, NULL, 0, totalSize, 0))
+	if (WinHttpSendRequest(hReq, outboundHeaders, headerLength, NULL, 0, totalSize, 0))
 	{
 		dprintf("[WINHTTP] Sending prefix");
 		// Then write the prefix first
@@ -258,12 +287,18 @@ static BOOL send_request_winhttp(HttpTransportContext* ctx, HANDLE hReq, BOOL is
 			{
 				dprintf("[WINHTTP] Sending suffix");
 				// .. then the suffix
-				return write_to_request(hReq, conn->options.payload_suffix, conn->options.payload_suffix_size);
+				result = write_to_request(hReq, conn->options.payload_suffix, conn->options.payload_suffix_size);
 			}
 		}
 	}
+	else
+	{
+		dprintf("[WINHTTP] WinHttpSendRequestFailed: %u 0x%x", GetLastError(), GetLastError());
+	}
 
-	return FALSE;
+	SAFE_FREE(outboundHeaders);
+
+	return result;
 }
 
 /*!
