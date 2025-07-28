@@ -39,6 +39,20 @@ DWORD create_transport_from_request(Remote* remote, Packet* packet, Transport** 
 	if (packet_get_tlv(packet, TLV_TYPE_C2, &c2Tlv) == ERROR_SUCCESS)
 	{
 		*transportBuffer = remote->trans_create(remote, packet, &c2Tlv);
+
+		// Default to the same timeouts as the current transport if not specified.
+		if ((*transportBuffer)->timeouts.comms == 0)
+		{
+			(*transportBuffer)->timeouts.comms = remote->transport->timeouts.comms;
+		}
+		if ((*transportBuffer)->timeouts.retry_total == 0)
+		{
+			(*transportBuffer)->timeouts.retry_total = remote->transport->timeouts.retry_total;
+		}
+		if ((*transportBuffer)->timeouts.retry_wait == 0)
+		{
+			(*transportBuffer)->timeouts.retry_wait = remote->transport->timeouts.retry_wait;
+		}
 	}
 
 	// special case, will still leave this in here even if it's not transport related

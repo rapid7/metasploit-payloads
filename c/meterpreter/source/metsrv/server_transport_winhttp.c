@@ -1008,18 +1008,18 @@ BOOL set_http_options_to_tlv(Packet* optionsPacket, HttpRequestOptions* sourceOp
 	return TRUE;
 }
 
-void transport_write_http_config(Transport* transport, Packet* configPacket)
+void transport_write_http_config(Transport* transport, Packet* c2Packet)
 {
 	if (transport->type == METERPRETER_TRANSPORT_HTTP || transport->type == METERPRETER_TRANSPORT_HTTPS)
 	{
-		Packet* c2Packet = packet_create_group();
 		packet_add_tlv_wstring(c2Packet, TLV_TYPE_C2_URL, transport->url);
-		packet_add_tlv_wstring(c2Packet, TLV_TYPE_C2_UUID, transport->url);
 		packet_add_tlv_uint(c2Packet, TLV_TYPE_C2_COMM_TIMEOUT, transport->timeouts.comms);
 		packet_add_tlv_uint(c2Packet, TLV_TYPE_C2_RETRY_WAIT, transport->timeouts.retry_wait);
 		packet_add_tlv_uint(c2Packet, TLV_TYPE_C2_RETRY_TOTAL, transport->timeouts.retry_total);
 
 		HttpTransportContext* ctx = (HttpTransportContext*)transport->ctx;
+		packet_add_tlv_wstring(c2Packet, TLV_TYPE_C2_UUID, ctx->uuid);
+
 		set_http_options_to_tlv(c2Packet, &ctx->default_options);
 
 		Packet* getOptionsPacket = packet_create_group();
@@ -1046,8 +1046,6 @@ void transport_write_http_config(Transport* transport, Packet* configPacket)
 		{
 			packet_add_tlv_raw(c2Packet, TLV_TYPE_C2_CERT_HASH, ctx->cert_hash, CERT_HASH_SIZE);
 		}
-
-		packet_add_group(configPacket, TLV_TYPE_C2, c2Packet);
 	}
 }
 
@@ -1196,6 +1194,7 @@ Transport* transport_create_http(Packet* packet, Tlv* c2Tlv)
 	transport->timeouts.comms = packet_get_tlv_group_entry_value_uint(packet, c2Tlv, TLV_TYPE_C2_COMM_TIMEOUT);
 	transport->timeouts.retry_total = packet_get_tlv_group_entry_value_uint(packet, c2Tlv, TLV_TYPE_C2_RETRY_TOTAL);
 	transport->timeouts.retry_wait = packet_get_tlv_group_entry_value_uint(packet, c2Tlv, TLV_TYPE_C2_RETRY_WAIT);
+
 	transport->type = ctx->ssl ? METERPRETER_TRANSPORT_HTTPS : METERPRETER_TRANSPORT_HTTP;
 	ctx->url = transport->url = url;
 	transport->packet_transmit = packet_transmit_http;
