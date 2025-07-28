@@ -638,14 +638,12 @@ static void transport_set_handle_named_pipe(Transport* transport, UINT_PTR handl
  * @param transport Transport data to create the configuration from.
  * @param config Pointer to the config block to write to.
  */
-void transport_write_named_pipe_config(Transport* transport, Packet* configPacket)
+void transport_write_named_pipe_config(Transport* transport, Packet* c2Packet)
 {
-	Packet* c2Packet = packet_create_group();
 	packet_add_tlv_wstring(c2Packet, TLV_TYPE_C2_URL, transport->url);
 	packet_add_tlv_uint(c2Packet, TLV_TYPE_C2_COMM_TIMEOUT, transport->timeouts.comms);
 	packet_add_tlv_uint(c2Packet, TLV_TYPE_C2_RETRY_WAIT, transport->timeouts.retry_wait);
 	packet_add_tlv_uint(c2Packet, TLV_TYPE_C2_RETRY_TOTAL, transport->timeouts.retry_total);
-	packet_add_group(configPacket, TLV_TYPE_C2, c2Packet);
 }
 
 /*!
