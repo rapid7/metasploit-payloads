@@ -418,6 +418,13 @@ static DWORD packet_transmit_http(Remote *remote, LPBYTE rawPacket, DWORD rawPac
 		}
 
 		dprintf("[PACKET TRANSMIT HTTP] request sent.. apparently");
+		res = ctx->receive_response(hReq);
+		if (!res)
+		{
+			BREAK_ON_ERROR("[PACKET TRANSMIT HTTP] Failed receive_response");
+		}
+
+		dprintf("[PACKET TRANSMIT HTTP] response received. Apparently. %u", GetLastError());
 	} while(0);
 
 	ctx->close_req(hReq);
