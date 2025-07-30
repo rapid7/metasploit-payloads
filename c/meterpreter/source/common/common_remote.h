@@ -24,6 +24,7 @@ typedef struct _SslLib SslLib;
 typedef struct _Remote Remote;
 typedef struct _TimeoutSettings TimeoutSettings;
 typedef struct _HttpTransportContext HttpTransportContext;
+typedef struct _HttpConnection HttpConnection;
 typedef struct _PacketEncryptionContext PacketEncryptionContext;
 
 typedef UINT_PTR(*PTransportGetHandle)(Transport* transport);
@@ -42,9 +43,9 @@ typedef DWORD(*PServerDispatch)(Remote* remote, THREAD* dispatchThread);
 typedef DWORD(*PPacketTransmit)(Remote* remote, LPBYTE rawPacket, DWORD rawPacketLength);
 
 typedef HANDLE(*PCreateHttpRequest)(HttpTransportContext* ctx, BOOL isGet, const char* direction);
-typedef BOOL(*PSendHttpRequest)(HttpTransportContext* ctx, HANDLE hReq, BOOL isGet, LPVOID buffer, DWORD size);
+typedef BOOL(*PSendHttpRequest)(HttpTransportContext* ctx, HANDLE hReq, HttpConnection* conn, LPVOID buffer, DWORD size);
 typedef BOOL(*PCloseRequest)(HANDLE hReq);
-typedef DWORD(*PValidateResponse)(HANDLE hReq, HttpTransportContext* ctx);
+typedef DWORD(*PValidateResponse)(HANDLE hReq, HttpTransportContext* ctx, LPDWORD contentLength);
 typedef BOOL(*PReceiveResponse)(HANDLE hReq);
 typedef BOOL(*PReadResponse)(HANDLE hReq, LPVOID buffer, DWORD bytesToRead, LPDWORD bytesRead);
 
@@ -80,7 +81,8 @@ typedef struct _HttpRequestOptions
 	UINT payload_prefix_size;             ///! Size of the payload prefix
 	PBYTE payload_suffix;                 ///! Bytes to append to outgoing payloads.
 	UINT payload_suffix_size;             ///! Size of the payload suffix
-	UINT payload_skip_count;              ///! Number of bytes of the incoming data to skip to reach the payload.
+	UINT payload_prefix_skip;             ///! Size of the incoming prefix to ignore
+	UINT payload_suffix_skip;             ///! Size of the incoming suffix to ignore
 	UINT encode_flags;                    ///! Flags to indicate what kind of encoding to apply, if any.
 	STRTYPE uuid_get;                     ///! The name of the GET/query string parameter to put the UUID in (optional).
 	STRTYPE uuid_cookie;                  ///! The name of the cookie to put the UUID in (optional).
