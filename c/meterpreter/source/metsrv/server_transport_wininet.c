@@ -107,15 +107,9 @@ static BOOL read_response_wininet(HANDLE hReq, LPVOID buffer, DWORD bytesToRead,
  * @param size Buffer size.
  * @return An indication of the result of sending the request.
  */
-static BOOL send_request_wininet(HttpTransportContext* ctx, HANDLE hReq, BOOL isGet, LPVOID buffer, DWORD size)
+static BOOL send_request_wininet(HttpTransportContext* ctx, HANDLE hReq, HttpConnection* conn, LPVOID buffer, DWORD size)
 {
-	PWSTR headers = ctx->default_options.headers;
-	HttpConnection* conn = isGet ? &ctx->get_connection : &ctx->post_connection;
-
-	if (conn->options.headers)
-	{
-		headers = conn->options.headers;
-	}
+	PWSTR headers = generate_headers(ctx, conn);
 
 	DWORD headerLength = headers == NULL ? 0 : -1L;
 	DWORD totalSize = size + conn->options.payload_prefix_size + conn->options.payload_suffix_size;
@@ -155,9 +149,10 @@ static BOOL send_request_wininet(HttpTransportContext* ctx, HANDLE hReq, BOOL is
  * @brief Wrapper around WinINET-specific request response validation.
  * @param hReq HTTP request handle.
  * @param ctx The HTTP transport context.
+ * @param contentLength Pointer to a DWORD receiving the content length of the response.
  * @return An indication of the result of getting a response.
  */
-static DWORD validate_response_wininet(HANDLE hReq, HttpTransportContext* ctx)
+static DWORD validate_response_wininet(HANDLE hReq, HttpTransportContext* ctx, LPDWORD contentLength)
 {
 	DWORD statusCode;
 	DWORD statusCodeSize = sizeof(statusCode);
@@ -174,7 +169,9 @@ static DWORD validate_response_wininet(HANDLE hReq, HttpTransportContext* ctx)
 		}
 	}
 
-	return ERROR_SUCCESS;
+	DWORD size = sizeof(DWORD);
+	HttpQueryInfoA(hReq, HTTP_QUERY_CONTENT_LENGTH | HTTP_QUERY_FLAG_NUMBER, contentLength, &size, NULL);
+	return GetLastError();
 }
 
 static DWORD server_init_connection(HttpTransportContext* ctx, HttpConnection* conn, PWSTR host, INTERNET_PORT port)
