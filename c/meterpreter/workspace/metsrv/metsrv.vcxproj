@@ -558,6 +558,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <ClInclude Include="..\..\source\metsrv\remote_dispatch.h" />
     <ClInclude Include="..\..\source\metsrv\remote_thread.h" />
     <ClInclude Include="..\..\source\metsrv\scheduler.h" />
+    <ClInclude Include="..\..\source\metsrv\server_http_utils.h" />
     <ClInclude Include="..\..\source\metsrv\server_pivot.h" />
     <ClInclude Include="..\..\source\metsrv\server_pivot_named_pipe.h" />
     <ClInclude Include="..\..\source\metsrv\server_transport_named_pipe.h" />
@@ -587,6 +588,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <ClCompile Include="..\..\source\metsrv\remote_dispatch.c" />
     <ClCompile Include="..\..\source\metsrv\remote_thread.c" />
     <ClCompile Include="..\..\source\metsrv\scheduler.c" />
+    <ClCompile Include="..\..\source\metsrv\server_http_utils.c" />
     <ClCompile Include="..\..\source\metsrv\server_pivot.c" />
     <ClCompile Include="..\..\source\metsrv\server_pivot_named_pipe.c" />
     <ClCompile Include="..\..\source\metsrv\server_setup.c" />
@@ -602,14 +604,10 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
   </ItemGroup>
   <ItemGroup>
     <MASM Include="..\..\source\ReflectiveDLLInjection\dll\src\GateTrampoline32.asm">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='r7_release|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Platform)'=='x64'">true</ExcludedFromBuild>
     </MASM>
     <MASM Include="..\..\source\ReflectiveDLLInjection\dll\src\GateTrampoline64.asm">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='r7_release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Platform)'=='Win32'">true</ExcludedFromBuild>
     </MASM>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

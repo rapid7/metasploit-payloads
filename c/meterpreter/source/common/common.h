@@ -72,7 +72,7 @@ typedef struct ___u128 {
 #ifdef DEBUGTRACE
 #include "common_logging.h"
 #define dprintf(...) real_dprintf(__VA_ARGS__)
-#define INIT_LOGGING(metConfig) init_logging(metConfig->session.log_path);
+#define INIT_LOGGING(path) init_logging(path);
 #define SET_LOGGING_CONTEXT(api) set_logging_context(api->logging.get_logging_context(), api->logging.get_lock());
 #if DEBUGTRACE == 1
 #define vdprintf dprintf

@@ -27,6 +27,7 @@ set_source_files_properties(${MOD_DEF_DIR}/plugin.def PROPERTIES HEADER_FILE_ONL
 target_link_libraries(${PROJECT_NAME} ${LINK_LIBS} ${MET_RDI_ASM})
 if(MSVC)
     target_link_options(${PROJECT_NAME} PUBLIC "/ignore:4070")
+    target_link_options(${PROJECT_NAME} PUBLIC "/safeseh:no")
 endif()
 
 # Post processing (required for all Meterpreter DLLs)
