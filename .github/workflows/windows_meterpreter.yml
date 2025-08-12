@@ -43,17 +43,34 @@ jobs:
           script --return --command 'make docker'
 
   windows:
-    runs-on: windows-2019
+    runs-on: windows-2022
     timeout-minutes: 40
-    name: Meterpreter Visual Studio 2019 Build
+    name: Meterpreter Visual Studio 2022 Build
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
         with:
           submodules: 'recursive'
 
+      # https://github.com/actions/runner-images/issues/4051#issuecomment-916971476
+      - name: Install WinXP dependencies
+        shell: pwsh
+        run: |-
+          Set-Location "C:\Program Files (x86)\Microsoft Visual Studio\Installer\"
+          dir
+          $InstallPath = "C:\Program Files\Microsoft Visual Studio\2022\Enterprise"
+          $WorkLoads = '--add Microsoft.VisualStudio.Component.WinXP'
+          $Arguments = ('/c', "vs_installer.exe", 'modify', '--installPath', "`"$InstallPath`"", $WorkLoads, '--quiet', '--norestart', '--nocache')
+          $process = Start-Process -FilePath cmd.exe -ArgumentList $Arguments -Wait -PassThru -WindowStyle Hidden
+          if ($process.ExitCode -eq 0) {
+            Write-Host "components have been successfully added"
+          } else {
+            Write-Host "components were not installed"
+            exit 1
+          }
+
       - name: Compile
         shell: cmd
         run: |-
           cd c/meterpreter
-          "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\Common7\Tools\VsDevCmd.bat" && make.bat
+          "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\Tools\VsDevCmd.bat" && make.bat
