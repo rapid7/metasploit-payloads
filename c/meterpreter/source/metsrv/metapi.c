@@ -147,6 +147,13 @@ MetApi api_instance = {
 		list_shift,
 		list_destroy,
 	},
+	// WinApi
+	{
+		// Kernel32
+		{
+			winapi_kernel32_WriteProcessMemory
+		}
+	},
 #ifdef DEBUGTRACE
 		// LoggingApi
 	{
