@@ -151,7 +151,12 @@ MetApi api_instance = {
 	{
 		// Kernel32
 		{
-			winapi_kernel32_WriteProcessMemory
+			winapi_kernel32_WriteProcessMemory,
+			winapi_kernel32_OpenProcess,
+			winapi_kernel32_VirtualAlloc,
+			winapi_kernel32_VirtualAllocEx,
+			winapi_kernel32_VirtualProtect,
+			winapi_kernel32_VirtualProtectEx
 		}
 	},
 #ifdef DEBUGTRACE
