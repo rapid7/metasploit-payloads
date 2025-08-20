@@ -18,10 +18,10 @@ typedef struct IUnknown IUnknown;
 // --------//
 
 #ifndef __MINGW32__
-typedef struct _CLIENT_ID {
+/*typedef struct _CLIENT_ID { // I commented this because the solution couldn't be built.
     HANDLE UniqueProcess;
     HANDLE UniqueThread;
-} CLIENT_ID;
+} CLIENT_ID;*/
 #endif
 
 //typedef struct _FILE_IO_COMPLETION_INFORMATION
@@ -154,23 +154,24 @@ enum PROCESS_INFOCLASS
 
 typedef enum _WORKERFACTORYINFOCLASS
 {
-    WorkerFactoryTimeout,
-    WorkerFactoryRetryTimeout,
-    WorkerFactoryIdleTimeout,
-    WorkerFactoryBindingCount,
-    WorkerFactoryThreadMinimum,
-    WorkerFactoryThreadMaximum,
-    WorkerFactoryPaused,
-    WorkerFactoryBasicInformation,
+    WorkerFactoryTimeout, // LARGE_INTEGER
+    WorkerFactoryRetryTimeout, // LARGE_INTEGER
+    WorkerFactoryIdleTimeout, // s: LARGE_INTEGER
+    WorkerFactoryBindingCount, // s: ULONG
+    WorkerFactoryThreadMinimum, // s: ULONG
+    WorkerFactoryThreadMaximum, // s: ULONG
+    WorkerFactoryPaused, // ULONG or BOOLEAN
+    WorkerFactoryBasicInformation, // q: WORKER_FACTORY_BASIC_INFORMATION
     WorkerFactoryAdjustThreadGoal,
     WorkerFactoryCallbackType,
     WorkerFactoryStackInformation, // 10
-    WorkerFactoryThreadBasePriority,
-    WorkerFactoryTimeoutWaiters, // since THRESHOLD
-    WorkerFactoryFlags,
-    WorkerFactoryThreadSoftMaximum,
+    WorkerFactoryThreadBasePriority, // s: ULONG
+    WorkerFactoryTimeoutWaiters, // s: ULONG, since THRESHOLD
+    WorkerFactoryFlags, // s: ULONG
+    WorkerFactoryThreadSoftMaximum, // s: ULONG
+    WorkerFactoryThreadCpuSets, // since REDSTONE5
     MaxWorkerFactoryInfoClass
-} _WORKERFACTORYINFOCLASS;
+} WORKERFACTORYINFOCLASS, * PWORKERFACTORYINFOCLASS;
 
 // ---------//
 // Structs //
@@ -570,8 +571,8 @@ typedef struct NtDll {
     NTSTATUS(NTAPI* pZwSetIoCompletion)(HANDLE, PVOID, PVOID, NTSTATUS, ULONG_PTR);
 
 
-    NTSTATUS(NTAPI* pNtQueryInformationWorkerFactory)(HANDLE, _WORKERFACTORYINFOCLASS, PVOID, ULONG, PULONG);
-    NTSTATUS(NTAPI* pNtSetInformationWorkerFactory)(HANDLE, _WORKERFACTORYINFOCLASS, PVOID, ULONG);
+    NTSTATUS(NTAPI* pNtQueryInformationWorkerFactory)(HANDLE, WORKERFACTORYINFOCLASS, PVOID, ULONG, PULONG);
+    NTSTATUS(NTAPI* pNtSetInformationWorkerFactory)(HANDLE, WORKERFACTORYINFOCLASS, PVOID, ULONG);
  
     //NTSTATUS(NTAPI* pZwSetInformationFile)(HANDLE, PIO_STATUS_BLOCK, PVOID, ULONG, ULONG);
     //NTSTATUS(NTAPI* pNtAlpcCreatePort)(PHANDLE, POBJECT_ATTRIBUTES, PALPC_PORT_ATTRIBUTES);
