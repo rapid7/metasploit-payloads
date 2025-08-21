@@ -333,7 +333,7 @@ void patch_function(SHELLCODE_CTX *ctx, UINT_PTR address, unsigned char *stub,
 	bytes = 5;
 
 	/* Create the stub */
-	WriteProcessMemory((HANDLE)-1, stub, (LPVOID)address,
+	met_api->winapi.kernel32.WriteProcessMemory((HANDLE)-1, stub, (LPVOID)address,
 		bytes, &written);
 	*(PBYTE)(stub + bytes) = 0xE9;
 	*(DWORD *)(stub + bytes + 1) = (DWORD)((DWORD_PTR)address - ((DWORD_PTR)stub + 5));
@@ -343,7 +343,7 @@ void patch_function(SHELLCODE_CTX *ctx, UINT_PTR address, unsigned char *stub,
 	/* Fix protection */
 	VirtualQuery((LPVOID)address, &mbi_thunk,
 		sizeof(MEMORY_BASIC_INFORMATION));
-	VirtualProtect(mbi_thunk.BaseAddress, mbi_thunk.RegionSize,
+	met_api->winapi.kernel32.VirtualProtect(mbi_thunk.BaseAddress, mbi_thunk.RegionSize,
 		PAGE_EXECUTE_READWRITE, &mbi_thunk.Protect);
 
 	/* Insert jump */
@@ -352,7 +352,7 @@ void patch_function(SHELLCODE_CTX *ctx, UINT_PTR address, unsigned char *stub,
 
 
 	/* Restore protection */
-	VirtualProtect(mbi_thunk.BaseAddress, mbi_thunk.RegionSize,
+	met_api->winapi.kernel32.VirtualProtect(mbi_thunk.BaseAddress, mbi_thunk.RegionSize,
 		mbi_thunk.Protect, &protect);
 	FlushInstructionCache((HANDLE)-1, mbi_thunk.BaseAddress,
 		mbi_thunk.RegionSize);
@@ -437,15 +437,15 @@ void restore_function(SHELLCODE_CTX *ctx, DWORD_PTR address, unsigned char *stub
 	/* Fix protection */
 	VirtualQuery((LPVOID)address, &mbi_thunk,
 		sizeof(MEMORY_BASIC_INFORMATION));
-	VirtualProtect(mbi_thunk.BaseAddress, mbi_thunk.RegionSize,
+	met_api->winapi.kernel32.VirtualProtect(mbi_thunk.BaseAddress, mbi_thunk.RegionSize,
 		PAGE_EXECUTE_READWRITE, &mbi_thunk.Protect);
 
 	/* Copy bytes back to function */
-	WriteProcessMemory((HANDLE)-1, (LPVOID)address, stub,
+	met_api->winapi.kernel32.WriteProcessMemory((HANDLE)-1, (LPVOID)address, stub,
 		bytes, &written);
 
 	/* Restore protection */
-	VirtualProtect(mbi_thunk.BaseAddress, mbi_thunk.RegionSize,
+	met_api->winapi.kernel32.VirtualProtect(mbi_thunk.BaseAddress, mbi_thunk.RegionSize,
 		mbi_thunk.Protect, &protect);
 	FlushInstructionCache((HANDLE)-1, mbi_thunk.BaseAddress,
 		mbi_thunk.RegionSize);
@@ -512,14 +512,14 @@ void map_file(SHELLCODE_CTX *ctx)
 	 * First, try to map the file at ImageBase
 	 *
 	 */
-	ctx->mapped_address = (DWORD_PTR)VirtualAlloc((PVOID)nt->OptionalHeader.ImageBase,
+	ctx->mapped_address = (DWORD_PTR)met_api->winapi.kernel32.VirtualAlloc((PVOID)nt->OptionalHeader.ImageBase,
 		nt->OptionalHeader.SizeOfImage,
 		MEM_RESERVE|MEM_COMMIT, PAGE_EXECUTE_READWRITE);
 
 
 	/* No success, let the system decide..  */
 	if (ctx->mapped_address == 0) {
-		ctx->mapped_address = (DWORD_PTR)VirtualAlloc((PVOID)NULL,
+		ctx->mapped_address = (DWORD_PTR)met_api->winapi.kernel32.VirtualAlloc((PVOID)NULL,
 			nt->OptionalHeader.SizeOfImage,
 			MEM_RESERVE|MEM_COMMIT, PAGE_EXECUTE_READWRITE);
 
@@ -549,13 +549,13 @@ void map_file(SHELLCODE_CTX *ctx)
 	}
 
 	/* Write headers */
-	WriteProcessMemory((HANDLE)-1, (LPVOID)ctx->mapped_address,
+	met_api->winapi.kernel32.WriteProcessMemory((HANDLE)-1, (LPVOID)ctx->mapped_address,
 		(LPVOID)ctx->file_address, nt->OptionalHeader.SizeOfHeaders, 0);
 
 	/* Write sections */
 	sect = IMAGE_FIRST_SECTION(nt);
 	for (i = 0; i < nt->FileHeader.NumberOfSections; i++) {
-		WriteProcessMemory((HANDLE)-1,
+		met_api->winapi.kernel32.WriteProcessMemory((HANDLE)-1,
 			(PCHAR)ctx->mapped_address + sect[i].VirtualAddress,
 			(PCHAR)ctx->file_address + sect[i].PointerToRawData,
 			sect[i].SizeOfRawData, 0);
@@ -574,7 +574,7 @@ HMODULE libloader_load_library(LPCSTR name, PUCHAR buffer, DWORD bufferLength)
 	if ((slash = strrchr(name, '\\')))
 		shortName = slash+1;
 
-	ctx = (SHELLCODE_CTX *)VirtualAlloc(
+	ctx = (SHELLCODE_CTX *)met_api->winapi.kernel32.VirtualAlloc(
 			NULL,
 			sizeof(SHELLCODE_CTX),
 			MEM_COMMIT,
