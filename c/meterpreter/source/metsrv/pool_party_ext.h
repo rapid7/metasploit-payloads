@@ -18,7 +18,7 @@ typedef struct IUnknown IUnknown;
 // --------//
 
 #ifndef __MINGW32__
-typedef struct _CLIENT_ID { // I commented this because the solution couldn't be built.
+typedef struct _CLIENT_ID {
     HANDLE UniqueProcess;
     HANDLE UniqueThread;
 } CLIENT_ID;
