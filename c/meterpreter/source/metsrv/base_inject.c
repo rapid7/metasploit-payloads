@@ -567,6 +567,7 @@ DWORD inject_via_poolparty(Remote* remote, Packet* response, HANDLE hProcess, DW
 #ifdef DEBUGTRACE
 				char* VARIANT_POS_TO_STR[POOLPARTY_TECHNIQUE_COUNT] = {
 					"POOLPARTY_TECHNIQUE_TP_DIRECT_INSERTION",
+					"POOLPARTY_TECHNIQUE_WORKER_FACTORY_OVERWRITE",
 				};
 				dprintf("[INJECT][inject_via_poolparty] Attempting injection with variant %s", VARIANT_POS_TO_STR[variant]);
 #endif
