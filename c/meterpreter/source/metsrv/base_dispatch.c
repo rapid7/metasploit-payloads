@@ -638,7 +638,7 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
 
 
 		// Allocate memory for the migrate stub, context, payload and configuration block
-		lpMemory = (LPBYTE)VirtualAllocEx(hProcess, NULL, dwMigrateStubLength + ctxSize + dwPayloadLength + configSize, MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+		lpMemory = (LPBYTE)met_api->winapi.kernel32.VirtualAllocEx(hProcess, NULL, dwMigrateStubLength + ctxSize + dwPayloadLength + configSize, MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE);
 		if (!lpMemory)
 		{
 			BREAK_ON_ERROR("[MIGRATE] VirtualAllocEx failed");
