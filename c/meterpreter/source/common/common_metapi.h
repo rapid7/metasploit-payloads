@@ -5,6 +5,8 @@
 #ifndef _METERPRETER_COMMON_METAPI_H
 #define _METERPRETER_COMMON_METAPI_H
 
+#include "common_winapi.h"
+
 typedef struct _InjectApi
 {
 	DWORD(*dll)(DWORD dwPid, DWORD dwDestinationArch, LPVOID lpDllBuffer, DWORD dwDllLength, LPCSTR reflectiveLoader, LPVOID lpArg, SIZE_T stArgSize);
@@ -179,6 +181,7 @@ typedef struct _MetApi
 	InjectApi inject;
 	DesktopApi desktop;
 	ListApi list;
+	WinApi winapi;
 #ifdef DEBUGTRACE
 	LoggingApi logging;
 #endif
