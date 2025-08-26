@@ -1,19 +1,26 @@
 #ifndef _METERPRETER_WINAPI_H
 #define _METERPRETER_WINAPI_H
 
-#include <windows.h>
+#include "common.h"
 
 #define KERNEL32_DLL "kernel32.dll"
 #define NTDLL_DLL "ntdll.dll"
 
 void *GetFunction(LPCSTR lpModuleName, LPCSTR lpFunctionName) {
-    HMODULE hModule;
+    HMODULE hModule = NULL;
+    FARPROC lpOutput = NULL;
     hModule = GetModuleHandleA(lpModuleName);
     if(hModule == NULL) {
         hModule = LoadLibraryA(lpModuleName);
     }
     if(hModule != NULL) {
-        return GetProcAddress(hModule, lpFunctionName);
+        lpOutput = GetProcAddress(hModule, lpFunctionName);
+    }
+    if(hModule == NULL) {
+        dprintf("[WINAPI][GetFunction] Unable to find or load '%s' module.", lpModuleName);
+    }
+    if(lpOutput == NULL) {
+        dprintf("[WINAPI][GetFunction] Unable to find '%s' function's address.", lpFunctionName);
     }
     return NULL;
 }
