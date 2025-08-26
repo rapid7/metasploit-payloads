@@ -181,7 +181,7 @@ typedef struct _MetApi
 	InjectApi inject;
 	DesktopApi desktop;
 	ListApi list;
-	WinApi winapi;
+	WinApi win_api;
 #ifdef DEBUGTRACE
 	LoggingApi logging;
 #endif
