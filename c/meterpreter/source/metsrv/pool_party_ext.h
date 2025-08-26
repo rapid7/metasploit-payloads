@@ -585,4 +585,5 @@ typedef struct NtDll {
     //NTSTATUS(NTAPI* pTpAllocJobNotification)(PVOID, HANDLE, PVOID, PVOID, PVOID);
 
 } NtDll;
+
 #endif
