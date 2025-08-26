@@ -1,8 +1,6 @@
 #ifndef _METERPRETER_COMMON_WINAPI_H
 #define _METERPRETER_COMMON_WINAPI_H
 
-#include <windows.h>
-
 typedef struct _WinApiKernel32 {
     BOOL (*WriteProcessMemory)(HANDLE hProcess, LPVOID lpBaseAddress, LPCVOID lpBuffer, SIZE_T nSize, SIZE_T  *lpNumberOfBytesWritten);
     HANDLE (*OpenProcess)(DWORD dwDesiredAccess, BOOL bInheritHandle, DWORD dwProcessId);
