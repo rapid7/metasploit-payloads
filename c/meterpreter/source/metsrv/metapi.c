@@ -158,6 +158,9 @@ MetApi api_instance = {
 			winapi_kernel32_VirtualAllocEx,
 			winapi_kernel32_VirtualProtect,
 			winapi_kernel32_VirtualProtectEx,
+			winapi_kernel32_VirtualQuery,
+			winapi_kernel32_VirtualQueryEx,
+			winapi_kernel32_VirtualFree,
 			winapi_kernel32_CreateRemoteThread
 		}
 	},

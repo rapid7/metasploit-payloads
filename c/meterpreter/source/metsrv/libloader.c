@@ -341,7 +341,7 @@ void patch_function(SHELLCODE_CTX *ctx, UINT_PTR address, unsigned char *stub,
 	/* Patch original function */
 
 	/* Fix protection */
-	VirtualQuery((LPVOID)address, &mbi_thunk,
+	met_api->win_api.kernel32.VirtualQuery((LPVOID)address, &mbi_thunk,
 		sizeof(MEMORY_BASIC_INFORMATION));
 	met_api->win_api.kernel32.VirtualProtect(mbi_thunk.BaseAddress, mbi_thunk.RegionSize,
 		PAGE_EXECUTE_READWRITE, &mbi_thunk.Protect);
@@ -435,7 +435,7 @@ void restore_function(SHELLCODE_CTX *ctx, DWORD_PTR address, unsigned char *stub
 	/* Patch original function */
 
 	/* Fix protection */
-	VirtualQuery((LPVOID)address, &mbi_thunk,
+	met_api->win_api.kernel32.VirtualQuery((LPVOID)address, &mbi_thunk,
 		sizeof(MEMORY_BASIC_INFORMATION));
 	met_api->win_api.kernel32.VirtualProtect(mbi_thunk.BaseAddress, mbi_thunk.RegionSize,
 		PAGE_EXECUTE_READWRITE, &mbi_thunk.Protect);
@@ -607,7 +607,7 @@ HMODULE libloader_load_library(LPCSTR name, PUCHAR buffer, DWORD bufferLength)
 
 	remove_hooks(ctx);
 
-	VirtualFree(ctx, 0, MEM_RELEASE);
+	met_api->win_api.kernel32.VirtualFree(ctx, 0, MEM_RELEASE);
 
 	return mod;
 }

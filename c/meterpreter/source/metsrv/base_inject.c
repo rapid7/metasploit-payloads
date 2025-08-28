@@ -208,7 +208,7 @@ DWORD inject_via_apcthread( Remote * remote, Packet * response, HANDLE hProcess,
 				if( !lpRemoteAddress )
 					BREAK_ON_ERROR( "[INJECT] inject_via_apcthread: VirtualAllocEx 0x6B0095F0 failed" );
 
-				if( VirtualQueryEx( hProcess, lpRemoteAddress, &mbi, sizeof(MEMORY_BASIC_INFORMATION) ) == 0 )
+				if( met_api->win_api.kernel32.VirtualQueryEx( hProcess, lpRemoteAddress, &mbi, sizeof(MEMORY_BASIC_INFORMATION) ) == 0 )
 					BREAK_ON_ERROR( "[INJECT] inject_via_apcthread: VirtualQueryEx failed" );
 
 				lpNopSled = (BYTE *)malloc( mbi.RegionSize );

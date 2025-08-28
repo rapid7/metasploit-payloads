@@ -74,6 +74,30 @@ BOOL winapi_kernel32_VirtualProtectEx(HANDLE hProcess, LPVOID lpAddress, SIZE_T 
     return FALSE;
 }
 
+SIZE_T winapi_kernel32_VirtualQuery(LPCVOID lpAddress, PMEMORY_BASIC_INFORMATION lpBuffer,SIZE_T dwLength) {
+    SIZE_T (*pVirtualQuery)(LPCVOID lpAddress, PMEMORY_BASIC_INFORMATION lpBuffer,SIZE_T dwLength) = GetFunction(KERNEL32_DLL, "VirtualQuery");
+    if(pVirtualQuery) {
+        return pVirtualQuery(lpAddress, lpBuffer, dwLength);
+    }
+    return 0;
+}
+
+SIZE_T winapi_kernel32_VirtualQueryEx(HANDLE hProcess, LPCVOID lpAddress, PMEMORY_BASIC_INFORMATION lpBuffer, SIZE_T dwLength) {
+    SIZE_T (*pVirtualQueryEx)(HANDLE hProcess, LPCVOID lpAddress, PMEMORY_BASIC_INFORMATION lpBuffer, SIZE_T dwLength) = GetFunction(KERNEL32_DLL, "VirtualQueryEx");
+    if(pVirtualQueryEx) {
+        return pVirtualQueryEx(hProcess, lpAddress, lpBuffer, dwLength);
+    }
+    return 0;
+}
+
+BOOL winapi_kernel32_VirtualFree(LPVOID lpAddress, SIZE_T dwSize, DWORD  dwFreeType) {
+    BOOL (*pVirtualFree)(LPVOID lpAddress, SIZE_T dwSize, DWORD  dwFreeType) = GetFunction(KERNEL32_DLL, "VirtualFree");
+    if(pVirtualFree) {
+        return pVirtualFree(lpAddress, dwSize, dwFreeType);
+    }
+    return FALSE;
+}
+
 HANDLE winapi_kernel32_CreateRemoteThread(HANDLE hProcess, LPSECURITY_ATTRIBUTES lpThreadAttributes, SIZE_T dwStackSize, LPTHREAD_START_ROUTINE lpStartAddress, LPVOID lpParameter, DWORD dwCreationFlags, LPDWORD lpThreadId) {
     HANDLE (*pCreateRemoteThread)(HANDLE hProcess, LPSECURITY_ATTRIBUTES lpThreadAttributes, SIZE_T dwStackSize, LPTHREAD_START_ROUTINE lpStartAddress, LPVOID lpParameter, DWORD dwCreationFlags, LPDWORD lpThreadId) = GetFunction(KERNEL32_DLL, "CreateRemoteThread");
     if(pCreateRemoteThread) {
