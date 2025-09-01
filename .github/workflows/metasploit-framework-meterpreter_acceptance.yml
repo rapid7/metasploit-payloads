@@ -42,7 +42,7 @@ on:
 
 jobs:
   build:
-    uses: rapid7/metasploit-framework/.github/workflows/shared_meterpreter_acceptance.yml@master
+    uses: dledda-r7/metasploit-framework/.github/workflows/shared_meterpreter_acceptance.yml@fix/update-metasploit-payloads-runner
     with:
       metasploit_framework_commit: ${{ github.event.inputs.metasploitFrameworkCommit }}
       build_metasploit_payloads: true
