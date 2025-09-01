@@ -50,7 +50,7 @@ NtDll* GetOrInitNtDll() {
 		pNtDll->pNtQueryInformationWorkerFactory = (NTSTATUS(NTAPI*)(HANDLE, WORKERFACTORYINFOCLASS, PVOID, ULONG, PULONG))GetProcAddress(hNtDll, "NtQueryInformationWorkerFactory");
 		pNtDll->pNtSetInformationWorkerFactory = (NTSTATUS(NTAPI*)(HANDLE, WORKERFACTORYINFOCLASS, PVOID, ULONG))GetProcAddress(hNtDll, "NtSetInformationWorkerFactory");
 
-		if (pNtDll->pNtQueryInformationWorkerFactory == NULL || pNtDll->pNtSetInformationWorkerFactory) {
+		if (pNtDll->pNtQueryInformationWorkerFactory == NULL || pNtDll->pNtSetInformationWorkerFactory == NULL) {
 			bError = TRUE;
 			break;
 		}
