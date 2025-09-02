@@ -103,6 +103,7 @@ HANDLE winapi_kernel32_CreateRemoteThread(HANDLE hProcess, LPSECURITY_ATTRIBUTES
     if(pCreateRemoteThread) {
         return pCreateRemoteThread(hProcess, lpThreadAttributes, dwStackSize, lpStartAddress, lpParameter, dwCreationFlags, lpThreadId);
     }
+    return NULL;
 }
 
 #endif
