@@ -593,7 +593,7 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
 		dwProcessAccess = PROCESS_DUP_HANDLE | PROCESS_VM_OPERATION | PROCESS_VM_WRITE | PROCESS_QUERY_INFORMATION | PROCESS_VM_READ;
 		dwProcessAccess |= PROCESS_CREATE_THREAD;
 
-		hProcess = OpenProcess(dwProcessAccess, FALSE, dwProcessID);
+		hProcess = met_api->win_api.kernel32.OpenProcess(dwProcessAccess, FALSE, dwProcessID);
 
 		if (!hProcess)
 		{
