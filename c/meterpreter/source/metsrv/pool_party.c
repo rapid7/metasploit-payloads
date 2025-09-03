@@ -1,7 +1,7 @@
 #include "common.h"
+#include "common_metapi.h"
 #include "pool_party.h"
 #include "pool_party_ext.h"
-#include "metapi.h"
 
 NtDll *pNtDll = NULL;
 POOLPARTY_INJECTOR* poolLifeguard = NULL;
