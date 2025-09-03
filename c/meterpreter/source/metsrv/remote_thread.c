@@ -1,5 +1,6 @@
 #include "common.h"
 #include "remote_thread.h"
+#include "metapi.h"
 
 /*! @brief Container structure for a client identifer used when creating remote threads with RtlCreateUserThread. */
 typedef struct _MIMI_CLIENT_ID {
@@ -46,7 +47,7 @@ HANDLE create_remote_thread(HANDLE hProcess, SIZE_T sStackSize, LPVOID pvStartAd
 		pdwThreadId = &dwThreadId;
 	}
 
-	hThread = CreateRemoteThread(hProcess, NULL, sStackSize, (LPTHREAD_START_ROUTINE)pvStartAddress, pvStartParam, dwCreateFlags, pdwThreadId);
+	hThread = met_api->win_api.kernel32.CreateRemoteThread(hProcess, NULL, sStackSize, (LPTHREAD_START_ROUTINE)pvStartAddress, pvStartParam, dwCreateFlags, pdwThreadId);
 
 	// ERROR_NOT_ENOUGH_MEMORY is returned when the function fails due to insufficient privs
 	// on Vista and later.

