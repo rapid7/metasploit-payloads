@@ -462,7 +462,7 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 				InitializeProcThreadAttributeList(NULL, 1, 0, &len);
 				si.lpAttributeList = malloc(len);
 				if (!InitializeProcThreadAttributeList(si.lpAttributeList, 1, 0, &len)) {
-					printf("[execute] InitializeProcThreadAttributeList: [%d]\n", GetLastError());
+					dprintf("[execute] InitializeProcThreadAttributeList: [%d]\n", GetLastError());
 					result = GetLastError();
 					break;
 				}
@@ -470,7 +470,7 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 				dprintf("[execute] InitializeProcThreadAttributeList\n");
 
 				if (!UpdateProcThreadAttribute(si.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_PARENT_PROCESS, &handle, sizeof(HANDLE), 0, 0)) {
-					printf("[execute] UpdateProcThreadAttribute: [%d]\n", GetLastError());
+					dprintf("[execute] UpdateProcThreadAttribute: [%d]\n", GetLastError());
 					result = GetLastError();
 					break;
 				}
