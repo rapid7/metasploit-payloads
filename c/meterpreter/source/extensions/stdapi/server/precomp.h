@@ -7,6 +7,7 @@
 #include "../stdapi.h"
 #include <tlhelp32.h>
 #include <iphlpapi.h>
+#include <stdint.h>
 #include "resource/resource.h"
 
 #ifdef STDAPI_NAMESPACE_AUDIO
