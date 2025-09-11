@@ -3,7 +3,6 @@
 
 #include <winsock2.h>
 #include <ws2tcpip.h>
-#include <stdint.h>
 
 static char * parse_sockaddr(struct sockaddr_storage *addr, uint16_t *port)
 {
