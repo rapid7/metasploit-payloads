@@ -21,15 +21,12 @@ Command customCommands[] =
 	// General
 	COMMAND_REQ(COMMAND_ID_CORE_CHANNEL_OPEN, request_general_channel_open),
 
-	#ifdef STDAPI_NAMESPACE_RAILGUN
 	// Railgun
 	COMMAND_REQ(COMMAND_ID_STDAPI_RAILGUN_API, request_railgun_api),
 	COMMAND_REQ(COMMAND_ID_STDAPI_RAILGUN_API_MULTI, request_railgun_api_multi),
 	COMMAND_REQ(COMMAND_ID_STDAPI_RAILGUN_MEMREAD, request_railgun_memread),
 	COMMAND_REQ(COMMAND_ID_STDAPI_RAILGUN_MEMWRITE, request_railgun_memwrite),
-	#endif
 
-	#ifdef STDAPI_NAMESPACE_FS
 	// Fs
 	COMMAND_REQ(COMMAND_ID_STDAPI_FS_LS, request_fs_ls),
 	COMMAND_REQ(COMMAND_ID_STDAPI_FS_GETWD, request_fs_getwd),
@@ -46,9 +43,7 @@ Command customCommands[] =
 	COMMAND_REQ(COMMAND_ID_STDAPI_FS_SHA1, request_fs_sha1),
 	COMMAND_REQ(COMMAND_ID_STDAPI_FS_SEARCH, request_fs_search),
 	COMMAND_REQ(COMMAND_ID_STDAPI_FS_MOUNT_SHOW, request_fs_mount_show),
-	#endif
 
-	#ifdef STDAPI_NAMESPACE_SYS
 	// Process
 	COMMAND_REQ(COMMAND_ID_STDAPI_SYS_PROCESS_ATTACH, request_sys_process_attach),
 	COMMAND_REQ(COMMAND_ID_STDAPI_SYS_PROCESS_CLOSE, request_sys_process_close),
@@ -120,19 +115,7 @@ Command customCommands[] =
 	COMMAND_REQ(COMMAND_ID_STDAPI_SYS_CONFIG_GETSID, request_sys_config_getsid),
 	COMMAND_REQ(COMMAND_ID_STDAPI_SYS_CONFIG_UPDATE_TOKEN, request_sys_config_update_token),
 	COMMAND_REQ(COMMAND_ID_STDAPI_SYS_CONFIG_GET_TOKEN_HANDLE, request_sys_config_get_token_handle),
-	
-	// Event Log
-	COMMAND_REQ(COMMAND_ID_STDAPI_SYS_EVENTLOG_OPEN, request_sys_eventlog_open),
-	COMMAND_REQ(COMMAND_ID_STDAPI_SYS_EVENTLOG_NUMRECORDS, request_sys_eventlog_numrecords),
-	COMMAND_REQ(COMMAND_ID_STDAPI_SYS_EVENTLOG_READ, request_sys_eventlog_read),
-	COMMAND_REQ(COMMAND_ID_STDAPI_SYS_EVENTLOG_OLDEST, request_sys_eventlog_oldest),
-	COMMAND_REQ(COMMAND_ID_STDAPI_SYS_EVENTLOG_CLEAR, request_sys_eventlog_clear),
-	COMMAND_REQ(COMMAND_ID_STDAPI_SYS_EVENTLOG_CLOSE, request_sys_eventlog_close),
 
-	// Power
-	COMMAND_REQ(COMMAND_ID_STDAPI_SYS_POWER_EXITWINDOWS, request_sys_power_exitwindows),
-	#endif
-	#ifdef STDAPI_NAMESPACE_NET
 	// Net
 	COMMAND_REQ(COMMAND_ID_STDAPI_NET_CONFIG_GET_ROUTES, request_net_config_get_routes),
 	COMMAND_REQ(COMMAND_ID_STDAPI_NET_CONFIG_ADD_ROUTE, request_net_config_add_route),
@@ -143,15 +126,13 @@ Command customCommands[] =
 
 	// Proxy
 	COMMAND_REQ(COMMAND_ID_STDAPI_NET_CONFIG_GET_PROXY, request_net_config_get_proxy_config),
-
 	// Resolve
 	COMMAND_REQ(COMMAND_ID_STDAPI_NET_RESOLVE_HOST, request_resolve_host),
 	COMMAND_REQ(COMMAND_ID_STDAPI_NET_RESOLVE_HOSTS, request_resolve_hosts),
 
 	// Socket
 	COMMAND_REQ(COMMAND_ID_STDAPI_NET_SOCKET_TCP_SHUTDOWN, request_net_socket_tcp_shutdown),
-	#endif
-	#ifdef STDAPI_NAMESPACE_UI
+
 	// UI
 	COMMAND_REQ(COMMAND_ID_STDAPI_UI_ENABLE_MOUSE, request_ui_enable_mouse),
 	COMMAND_REQ(COMMAND_ID_STDAPI_UI_ENABLE_KEYBOARD, request_ui_enable_keyboard),
@@ -166,16 +147,27 @@ Command customCommands[] =
 	COMMAND_REQ(COMMAND_ID_STDAPI_UI_SEND_KEYS, request_ui_send_keys),
 	COMMAND_REQ(COMMAND_ID_STDAPI_UI_SEND_KEYEVENT, request_ui_send_keyevent),
 	COMMAND_REQ(COMMAND_ID_STDAPI_UI_SEND_MOUSE, request_ui_send_mouse),
-	// Audio
-	COMMAND_REQ(COMMAND_ID_STDAPI_WEBCAM_AUDIO_RECORD, request_ui_record_mic),
-	#endif
-	#ifdef STDAPI_NAMESPACE_WEBCAM
+
+	// Event Log
+	COMMAND_REQ(COMMAND_ID_STDAPI_SYS_EVENTLOG_OPEN, request_sys_eventlog_open),
+	COMMAND_REQ(COMMAND_ID_STDAPI_SYS_EVENTLOG_NUMRECORDS, request_sys_eventlog_numrecords),
+	COMMAND_REQ(COMMAND_ID_STDAPI_SYS_EVENTLOG_READ, request_sys_eventlog_read),
+	COMMAND_REQ(COMMAND_ID_STDAPI_SYS_EVENTLOG_OLDEST, request_sys_eventlog_oldest),
+	COMMAND_REQ(COMMAND_ID_STDAPI_SYS_EVENTLOG_CLEAR, request_sys_eventlog_clear),
+	COMMAND_REQ(COMMAND_ID_STDAPI_SYS_EVENTLOG_CLOSE, request_sys_eventlog_close),
+
+	// Power
+	COMMAND_REQ(COMMAND_ID_STDAPI_SYS_POWER_EXITWINDOWS, request_sys_power_exitwindows),
+
 	// Webcam
 	COMMAND_REQ(COMMAND_ID_STDAPI_WEBCAM_LIST, request_webcam_list),
 	COMMAND_REQ(COMMAND_ID_STDAPI_WEBCAM_START, request_webcam_start),
 	COMMAND_REQ(COMMAND_ID_STDAPI_WEBCAM_GET_FRAME, request_webcam_get_frame),
 	COMMAND_REQ(COMMAND_ID_STDAPI_WEBCAM_STOP, request_webcam_stop),
-	#endif
+
+	// Audio
+	COMMAND_REQ(COMMAND_ID_STDAPI_WEBCAM_AUDIO_RECORD, request_ui_record_mic),
+
 	COMMAND_TERMINATOR
 };
 
