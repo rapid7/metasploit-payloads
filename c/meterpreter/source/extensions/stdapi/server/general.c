@@ -2,10 +2,14 @@
 
 #include "common_metapi.h"
 
+#ifdef STDAPI_NAMESPACE_AUDIO
 extern DWORD request_audio_output_channel_open(Remote *remote, Packet *packet);
+#endif
+#ifdef STDAPI_NAMESPACE_NET
 extern DWORD request_net_tcp_client_channel_open(Remote *remote, Packet *packet);
 extern DWORD request_net_tcp_server_channel_open(Remote *remote, Packet *packet);
 extern DWORD request_net_udp_channel_open(Remote *remote, Packet *packet);
+#endif
 
 // Channel type dispatch table
 struct
@@ -14,11 +18,17 @@ struct
 	DWORD  (*handler)(Remote *, Packet *);
 } channel_open_handlers[] =
 {
+	#ifdef STDAPI_NAMESPACE_FS
 	{ "stdapi_fs_file",        request_fs_file_channel_open        },
+	#endif
+	#ifdef STDAPI_NAMESPACE_AUDIO
 	{ "audio_output",          request_audio_output_channel_open   },
+	#endif
+	#ifdef STDAPI_NAMESPACE_NET
 	{ "stdapi_net_tcp_client", request_net_tcp_client_channel_open },
 	{ "stdapi_net_tcp_server", request_net_tcp_server_channel_open },
 	{ "stdapi_net_udp_client", request_net_udp_channel_open        },
+	#endif
 	{ NULL,                    NULL                                },
 };
 
