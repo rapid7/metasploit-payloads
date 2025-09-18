@@ -42,7 +42,7 @@ on:
 
 jobs:
   build:
-    uses: bwatters-r7/metasploit-framework/.github/workflows/shared_meterpreter_acceptance.yml@spec/add-x64-meterp
+    uses: bwatters-r7/metasploit-framework/.github/workflows/shared_meterpreter_acceptance.yml@spec/add-x64-meterp-acc-tests
     with:
       metasploit_framework_commit: ${{ github.event.inputs.metasploitFrameworkCommit }}
       build_metasploit_payloads: true
