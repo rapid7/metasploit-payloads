@@ -2,24 +2,10 @@
 IF "%1"=="clean" GOTO CLEAN
 IF "%1"=="docs" GOTO DOCS
 IF "%VCINSTALLDIR%" == "" GOTO NEED_VS
-IF NOT EXIST "source\ReflectiveDLLInjection\.git" (
-  ECHO Meterpreter's submodule dependencies can't be found.
-  ECHO From your git console, please run:
-  ECHO   $ git submodule init ^&^& git submodule update
-  GOTO END
-)
+IF NOT EXIST "source\ReflectiveDLLInjection\.git" GOTO NEED_RDLL
 
 SET PSSDK_VER=19
 SET PTS_VER=v141_xp
-
-IF "%1"=="v120_xp" SET PTS_VER=%1
-IF "%2"=="v120_xp" SET PTS_VER=%2
-IF "%3"=="v120_xp" SET PTS_VER=%3
-
-IF "%VisualStudioVersion%" == "12.0" (
-    SET PSSDK_VER=12
-    SET PTS_VER=v120_xp
-)
 
 SET PREF=
 IF EXIST "..\..\..\pssdk\PSSDK_VC%PSSDK_VER%_LIB\_Libs\pssdk_vc%PSSDK_VER%_mt.lib" SET PREF=r7_
@@ -96,8 +82,15 @@ GOTO END
 tools\doxygen\doxygen.exe doxygen.cnf
 GOTO END
 
+:NEED_RDLL
+ECHO Meterpreter's submodule dependencies can't be found.
+ECHO From your git console, please run:
+ECHO   $ git submodule init ^&^& git submodule update
+GOTO END
+
 :NEED_VS
 ECHO "This command must be executed from within a Visual Studio Command prompt."
-ECHO "This can be found under Microsoft Visual Studio (2013|2017|2019) -> Visual Studio Tools"
+ECHO "This can be found under Microsoft Visual Studio 20XX > Visual Studio Tools"
+ECHO "Visual Studio 2017 or later is required (v141_xp toolchain)."
 
 :END
