@@ -1,4 +1,7 @@
-set(PROJECT_NAME ext_server_stdapi)
+#
+# STDAPI WEBCAM
+#
+set(PROJECT_NAME ext_server_stdapi_webcam)
 
 project(${PROJECT_NAME} C CXX)
 
@@ -26,8 +29,12 @@ include_directories(../../source/tiny-regex-c)
 
 set(SRC_DIR ../../source/extensions/stdapi)
 file(GLOB_RECURSE SRC_FILES
-    ${SRC_DIR}/*.c
-    ${SRC_DIR}/*.cpp
+    ${SRC_DIR}/server/audio/*.c
+    ${SRC_DIR}/server/webcam/*.c
+    ${SRC_DIR}/server/webcam/*.cpp
+    ${SRC_DIR}/server/sys/*.c
+    ${SRC_DIR}/server/general.c
+    ${SRC_DIR}/server/stdapi.c
     ${SRC_DIR}/*.rc
     ${MOD_DEF_DIR}/extension.def
     ../../source/tiny-regex-c/*.c
@@ -37,7 +44,7 @@ list(REMOVE_ITEM SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/${SRC_DIR}/server/resourc
 
 add_library(${PROJECT_NAME} SHARED ${SRC_FILES})
 set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME ${PROJECT_NAME}.${TARGET_ARCH})
-set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_DEFINITIONS "STDAPI_NAMESPACE_AUDIO;STDAPI_NAMESPACE_FS;STDAPI_NAMESPACE_NET;STDAPI_NAMESPACE_RAILGUN;STDAPI_NAMESPACE_SYS;STDAPI_NAMESPACE_UI;STDAPI_NAMESPACE_WEBCAM")
+set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_DEFINITIONS "STDAPI_NAMESPACE_AUDIO;STDAPI_NAMESPACE_WEBCAM;STDAPI_NAMESPACE_SYS;")
 if(MSVC)
     set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS "/DEF:\"${MOD_DEF_DIR}/extension.def\"")
     set_source_files_properties(${MOD_DEF_DIR}/extension.def PROPERTIES HEADER_FILE_ONLY TRUE)
@@ -64,3 +71,4 @@ target_link_libraries(${PROJECT_NAME} ${LINK_LIBS} ${MET_RDI_ASM})
 # Post processing (required for all Meterpreter DLLs)
 editbin(${PROJECT_NAME} ${BIN_SUBSYSTEM})
 copyoutput(${PROJECT_NAME} ${BIN_OUTPUT_DIR})
+
