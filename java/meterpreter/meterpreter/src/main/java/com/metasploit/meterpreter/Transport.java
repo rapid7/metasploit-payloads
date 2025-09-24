@@ -1,5 +1,6 @@
 package com.metasploit.meterpreter;
 
+import com.metasploit.TLVPacket;
 import com.metasploit.stage.TransportConfig;
 
 import java.io.ByteArrayInputStream;

@@ -10,6 +10,8 @@ import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 
+import com.metasploit.TLVPacket;
+import com.metasploit.TLVType;
 import com.metasploit.meterpreter.command.Command;
 import com.metasploit.stage.TransportConfig;
 

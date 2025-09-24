@@ -4,11 +4,11 @@ import android.content.ContentResolver;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
-
 import android.provider.ContactsContract;
+
+import com.metasploit.TLVPacket;
 import com.metasploit.meterpreter.AndroidMeterpreter;
 import com.metasploit.meterpreter.Meterpreter;
-import com.metasploit.meterpreter.TLVPacket;
 import com.metasploit.meterpreter.command.Command;
 
 public class android_dump_contacts implements Command {

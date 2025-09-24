@@ -2,10 +2,10 @@ package com.metasploit.meterpreter.android;
 
 import android.media.MediaPlayer;
 
+import com.metasploit.TLVPacket;
+import com.metasploit.TLVType;
 import com.metasploit.meterpreter.Channel;
 import com.metasploit.meterpreter.Meterpreter;
-import com.metasploit.meterpreter.TLVPacket;
-import com.metasploit.meterpreter.TLVType;
 import com.metasploit.meterpreter.command.NotYetImplementedCommand;
 import com.metasploit.meterpreter.stdapi.Loader;
 import com.metasploit.meterpreter.stdapi.stdapi_channel_open;

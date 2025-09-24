@@ -2,6 +2,9 @@ package com.metasploit.meterpreter;
 
 import android.content.Context;
 
+import com.metasploit.TLVPacket;
+import com.metasploit.TLVType;
+
 import java.io.ByteArrayOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;

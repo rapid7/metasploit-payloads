@@ -4,6 +4,8 @@ import android.content.Context;
 import android.location.Location;
 import android.location.LocationManager;
 
+import com.metasploit.TLVPacket;
+import com.metasploit.TLVType;
 import com.metasploit.meterpreter.android.android_interval_collect;
 
 import java.io.DataInputStream;

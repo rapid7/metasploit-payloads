@@ -1,14 +1,14 @@
 package com.metasploit.meterpreter.stdapi;
 
-import com.metasploit.meterpreter.Meterpreter;
-import com.metasploit.meterpreter.TLVPacket;
-import com.metasploit.meterpreter.TLVType;
-import com.metasploit.meterpreter.command.Command;
-
 import java.text.Format;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
+
+import com.metasploit.TLVPacket;
+import com.metasploit.TLVType;
+import com.metasploit.meterpreter.Meterpreter;
+import com.metasploit.meterpreter.command.Command;
 
 public class stdapi_sys_config_localtime implements Command {
     private static final Format formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z", Locale.ENGLISH);

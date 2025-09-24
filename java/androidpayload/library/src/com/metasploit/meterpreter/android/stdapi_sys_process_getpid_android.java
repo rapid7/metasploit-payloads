@@ -2,9 +2,9 @@ package com.metasploit.meterpreter.android;
 
 import android.os.Process;
 
+import com.metasploit.TLVPacket;
+import com.metasploit.TLVType;
 import com.metasploit.meterpreter.Meterpreter;
-import com.metasploit.meterpreter.TLVPacket;
-import com.metasploit.meterpreter.TLVType;
 import com.metasploit.meterpreter.command.Command;
 import com.metasploit.meterpreter.stdapi.stdapi_sys_process_getpid;
 

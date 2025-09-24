@@ -1,7 +1,7 @@
 package com.metasploit.meterpreter.core;
 
+import com.metasploit.TLVPacket;
 import com.metasploit.meterpreter.Meterpreter;
-import com.metasploit.meterpreter.TLVPacket;
 
 public class core_transport_change extends core_transport_add {
 

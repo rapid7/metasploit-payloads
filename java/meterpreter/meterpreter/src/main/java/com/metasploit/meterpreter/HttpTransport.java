@@ -1,5 +1,7 @@
 package com.metasploit.meterpreter;
 
+import com.metasploit.TLVPacket;
+import com.metasploit.TLVType;
 import com.metasploit.meterpreter.command.Command;
 import com.metasploit.stage.HttpConnection;
 import com.metasploit.stage.PayloadTrustManager;

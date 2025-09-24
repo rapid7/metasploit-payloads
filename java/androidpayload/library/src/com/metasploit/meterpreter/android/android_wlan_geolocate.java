@@ -17,9 +17,9 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.util.Log;
 
+import com.metasploit.TLVPacket;
 import com.metasploit.meterpreter.AndroidMeterpreter;
 import com.metasploit.meterpreter.Meterpreter;
-import com.metasploit.meterpreter.TLVPacket;
 import com.metasploit.meterpreter.command.Command;
 
 public class android_wlan_geolocate implements Command {

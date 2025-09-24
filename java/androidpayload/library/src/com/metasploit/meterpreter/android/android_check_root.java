@@ -2,8 +2,8 @@ package com.metasploit.meterpreter.android;
 
 import java.io.File;
 
+import com.metasploit.TLVPacket;
 import com.metasploit.meterpreter.Meterpreter;
-import com.metasploit.meterpreter.TLVPacket;
 import com.metasploit.meterpreter.command.Command;
 
 public class android_check_root implements Command {

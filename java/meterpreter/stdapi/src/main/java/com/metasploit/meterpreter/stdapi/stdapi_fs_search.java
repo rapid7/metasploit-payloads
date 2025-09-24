@@ -6,9 +6,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import com.metasploit.TLVPacket;
+import com.metasploit.TLVType;
 import com.metasploit.meterpreter.Meterpreter;
-import com.metasploit.meterpreter.TLVPacket;
-import com.metasploit.meterpreter.TLVType;
 import com.metasploit.meterpreter.command.Command;
 
 public class stdapi_fs_search implements Command {

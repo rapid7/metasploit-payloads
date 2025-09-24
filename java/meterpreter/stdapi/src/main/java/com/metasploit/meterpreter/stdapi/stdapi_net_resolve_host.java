@@ -1,14 +1,14 @@
 package com.metasploit.meterpreter.stdapi;
 
-import com.metasploit.meterpreter.Meterpreter;
-import com.metasploit.meterpreter.TLVPacket;
-import com.metasploit.meterpreter.TLVType;
-import com.metasploit.meterpreter.command.Command;
-
 import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+
+import com.metasploit.TLVPacket;
+import com.metasploit.TLVType;
+import com.metasploit.meterpreter.Meterpreter;
+import com.metasploit.meterpreter.command.Command;
 
 public class stdapi_net_resolve_host implements Command {
 
