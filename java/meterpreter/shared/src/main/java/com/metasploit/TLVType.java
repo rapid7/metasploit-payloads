@@ -1,4 +1,4 @@
-package com.metasploit.meterpreter;
+package com.metasploit;
 
 /**
  * All defined TLV types.

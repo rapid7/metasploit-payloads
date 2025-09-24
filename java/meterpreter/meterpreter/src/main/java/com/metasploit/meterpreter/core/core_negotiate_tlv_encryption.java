@@ -6,10 +6,10 @@ import java.security.SecureRandom;
 import java.security.spec.X509EncodedKeySpec;
 import javax.crypto.Cipher;
 
+import com.metasploit.TLVPacket;
+import com.metasploit.TLVType;
 import com.metasploit.meterpreter.Transport;
 import com.metasploit.meterpreter.Meterpreter;
-import com.metasploit.meterpreter.TLVPacket;
-import com.metasploit.meterpreter.TLVType;
 import com.metasploit.meterpreter.command.Command;
 
 public class core_negotiate_tlv_encryption implements Command {

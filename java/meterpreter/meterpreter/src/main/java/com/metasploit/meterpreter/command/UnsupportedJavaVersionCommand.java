@@ -1,8 +1,8 @@
 package com.metasploit.meterpreter.command;
 
+import com.metasploit.TLVPacket;
 import com.metasploit.meterpreter.ExtensionLoader;
 import com.metasploit.meterpreter.Meterpreter;
-import com.metasploit.meterpreter.TLVPacket;
 
 /**
  * A command that represents a command that is implemented, but not for the current Java version.
