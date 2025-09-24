@@ -1,8 +1,8 @@
 package com.metasploit.meterpreter.command;
 
+import com.metasploit.TLVPacket;
 import com.metasploit.meterpreter.CommandManager;
 import com.metasploit.meterpreter.Meterpreter;
-import com.metasploit.meterpreter.TLVPacket;
 
 /**
  * A command that can be executed inside meterpreter. Each command has a name and can be registered using the {@link CommandManager#registerCommand(int commandId, Class commandClass)} command.

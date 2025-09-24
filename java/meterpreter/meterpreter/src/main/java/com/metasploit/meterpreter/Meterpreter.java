@@ -8,8 +8,6 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 
 import java.net.MalformedURLException;
-import java.net.URL;
-import java.net.URLClassLoader;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -17,6 +15,8 @@ import java.util.List;
 import java.util.Random;
 import java.util.jar.JarInputStream;
 
+import com.metasploit.TLVPacket;
+import com.metasploit.TLVType;
 import com.metasploit.meterpreter.core.core_loadlib;
 import com.metasploit.stage.Config;
 import com.metasploit.stage.ConfigParser;

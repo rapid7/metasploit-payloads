@@ -1,5 +1,7 @@
 package com.metasploit.meterpreter;
 
+import com.metasploit.TLVPacket;
+import com.metasploit.TLVType;
 import com.metasploit.meterpreter.android.android_interval_collect;
 
 import android.content.Context;
