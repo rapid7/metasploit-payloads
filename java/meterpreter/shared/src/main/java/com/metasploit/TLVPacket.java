@@ -1,4 +1,4 @@
-package com.metasploit.meterpreter;
+package com.metasploit;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;

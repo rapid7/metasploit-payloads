@@ -3,9 +3,9 @@ package com.metasploit.meterpreter.stdapi;
 import java.io.FileInputStream;
 import java.security.MessageDigest;
 
+import com.metasploit.TLVPacket;
+import com.metasploit.TLVType;
 import com.metasploit.meterpreter.Meterpreter;
-import com.metasploit.meterpreter.TLVPacket;
-import com.metasploit.meterpreter.TLVType;
 import com.metasploit.meterpreter.command.Command;
 
 public abstract class HashCommand implements Command {
