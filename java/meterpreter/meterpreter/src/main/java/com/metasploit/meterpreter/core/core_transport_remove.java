@@ -17,7 +17,7 @@ public class core_transport_remove implements Command {
             return ERROR_FAILURE;
         }
 
-        String transportUrl = request.getStringValue(TLVType.TLV_TYPE_TRANS_URL);
+        String transportUrl = request.getStringValue(TLVType.TLV_TYPE_C2_URL);
         Transport found = null;
 
         do {
