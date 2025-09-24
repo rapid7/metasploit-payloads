@@ -12,7 +12,7 @@ public class core_transport_add implements Command {
 
     public int execute(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws Exception {
         Transport t = null;
-        String transportUrl = request.getStringValue(TLVType.TLV_TYPE_TRANS_URL);
+        String transportUrl = request.getStringValue(TLVType.TLV_TYPE_C2_URL);
 
         if (transportUrl.startsWith("tcp")) {
             t = new TcpTransport(meterpreter, transportUrl);
@@ -20,26 +20,26 @@ public class core_transport_add implements Command {
             HttpTransport h = new HttpTransport(meterpreter, transportUrl);
 
             // do the HTTP specific stuff here, since we know what we are
-            h.setUserAgent(request.getStringValue(TLVType.TLV_TYPE_TRANS_UA, ""));
-            h.setProxy(request.getStringValue(TLVType.TLV_TYPE_TRANS_PROXY_HOST, ""));
-            h.setProxyUser(request.getStringValue(TLVType.TLV_TYPE_TRANS_PROXY_USER, ""));
-            h.setProxyPass(request.getStringValue(TLVType.TLV_TYPE_TRANS_PROXY_PASS, ""));
-            h.setCertHash(request.getRawValue(TLVType.TLV_TYPE_TRANS_CERT_HASH, null));
+            h.setUserAgent(request.getStringValue(TLVType.TLV_TYPE_C2_UA, ""));
+            h.setProxy(request.getStringValue(TLVType.TLV_TYPE_C2_PROXY_HOST, ""));
+            h.setProxyUser(request.getStringValue(TLVType.TLV_TYPE_C2_PROXY_USER, ""));
+            h.setProxyPass(request.getStringValue(TLVType.TLV_TYPE_C2_PROXY_PASS, ""));
+            h.setCertHash(request.getRawValue(TLVType.TLV_TYPE_C2_CERT_HASH, null));
 
             t = h;
         }
 
         // set the timeouts, defaulting the values that are currently set
-        // for the current sesion if nothing has been specified
+        // for the current session if nothing has been specified
         try {
-            long sessionExpiry = request.getIntValue(TLVType.TLV_TYPE_TRANS_SESSION_EXP);
+            long sessionExpiry = request.getIntValue(TLVType.TLV_TYPE_SESSION_EXPIRY);
             meterpreter.setExpiry(sessionExpiry);
         }
         catch (IllegalArgumentException ignored) {
         }
 
         try {
-            long commTimeout = request.getIntValue(TLVType.TLV_TYPE_TRANS_COMM_TIMEOUT);
+            long commTimeout = request.getIntValue(TLVType.TLV_TYPE_C2_COMM_TIMEOUT);
             t.setCommTimeout(commTimeout);
         }
         catch (IllegalArgumentException ex) {
@@ -47,7 +47,7 @@ public class core_transport_add implements Command {
         }
 
         try {
-            long retryTotal = request.getIntValue(TLVType.TLV_TYPE_TRANS_RETRY_TOTAL);
+            long retryTotal = request.getIntValue(TLVType.TLV_TYPE_C2_RETRY_TOTAL);
             t.setRetryTotal(retryTotal);
         }
         catch (IllegalArgumentException ex) {
@@ -55,7 +55,7 @@ public class core_transport_add implements Command {
         }
 
         try {
-            long retryWait = request.getIntValue(TLVType.TLV_TYPE_TRANS_RETRY_WAIT);
+            long retryWait = request.getIntValue(TLVType.TLV_TYPE_C2_RETRY_WAIT);
             t.setRetryWait(retryWait);
         }
         catch (IllegalArgumentException ex) {
