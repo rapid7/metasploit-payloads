@@ -541,11 +541,10 @@ DWORD inject_via_poolparty(Remote* remote, Packet* response, HANDLE hProcess, DW
 
 	do
 	{
-    
-    if(poolparty == NULL)
-    {
-      BREAK_ON_ERROR("[INJECT][inject_via_poolparty] The pool party could not be initialized");
-    }
+		if(poolparty == NULL)
+		{
+			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty] The pool party could not be initialized", ERROR_INVALID_FUNCTION);
+		}
 
 		if (dwDestinationArch == PROCESS_ARCH_X64 && (dwMeterpreterArch == PROCESS_ARCH_X64 || dwMeterpreterArch == PROCESS_ARCH_X86)) {
 			dprintf("[INJECT][inject_via_poolparty] using: poolparty_stub_x64");
