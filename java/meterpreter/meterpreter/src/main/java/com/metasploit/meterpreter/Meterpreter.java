@@ -44,8 +44,17 @@ public class Meterpreter {
     private byte[] sessionGUID;
     private long sessionExpiry;
 
-    protected void loadConfiguration(DataInputStream in, OutputStream rawOut, byte[] configuration) throws MalformedURLException {
-        Config config = ConfigParser.parseConfig(configuration);
+    protected void loadConfiguration(DataInputStream in, OutputStream rawOut, byte[] configBlock) throws MalformedURLException {
+        byte[] configHandle = new byte[8];
+        byte[] configPacket = new byte[configBlock.length - configHandle.length];
+
+        System.arraycopy(configBlock, 0, configHandle, 0, configHandle.length);
+        System.arraycopy(configBlock, configHandle.length, configPacket, 0, configPacket.length);
+
+        Config config = ConfigParser.parseConfig(configPacket);
+        if (config == null) {
+            return;
+        }
         this.sessionExpiry = config.session_expiry + System.currentTimeMillis();
         this.uuid = config.uuid;
         this.sessionGUID = config.session_guid;
@@ -144,9 +153,9 @@ public class Meterpreter {
         if (beginExecution) {
 
             int configLen = in.readInt();
-            byte[] configBytes = new byte[configLen];
-            in.readFully(configBytes);
-            loadConfiguration(in, rawOut, configBytes);
+            byte[] configBlock = new byte[configLen];
+            in.readFully(configBlock);
+            loadConfiguration(in, rawOut, configBlock);
 
             // after the configuration block is a 32 bit integer that tells us
             // how many stages were wired into the payload. We need to stash this
