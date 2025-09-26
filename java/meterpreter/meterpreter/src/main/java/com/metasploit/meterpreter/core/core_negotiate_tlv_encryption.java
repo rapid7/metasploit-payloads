@@ -21,10 +21,10 @@ public class core_negotiate_tlv_encryption implements Command {
         int encType;
         byte[] aesKey;
         if (Cipher.getMaxAllowedKeyLength("AES") < 256) {
-            encType = Transport.ENC_AES128;
+            encType = TLVPacket.ENC_AES128;
             aesKey = new byte[16];
         } else {
-            encType = Transport.ENC_AES256;
+            encType = TLVPacket.ENC_AES256;
             aesKey = new byte[32];
         }
         sr.nextBytes(aesKey);

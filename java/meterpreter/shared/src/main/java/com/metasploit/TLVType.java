@@ -78,7 +78,7 @@ public interface TLVType {
     public static final int TLV_TYPE_C2_RETRY_WAIT         = TLVPacket.TLV_META_TYPE_UINT   | 707; // how long to wait between reconnect attempts
     public static final int TLV_TYPE_C2_URL                = TLVPacket.TLV_META_TYPE_STRING | 708; // base URL of this C2 (scheme://host:port/uri)
     public static final int TLV_TYPE_C2_URI                = TLVPacket.TLV_META_TYPE_STRING | 709; // URI to append to base URL (for HTTP(s)), if any
-    public static final int TLV_TYPE_C2_PROXY_HOST         = TLVPacket.TLV_META_TYPE_STRING | 710; // Host name of proxy
+    public static final int TLV_TYPE_C2_PROXY_URL          = TLVPacket.TLV_META_TYPE_STRING | 710; // Proxy URL
     public static final int TLV_TYPE_C2_PROXY_USER         = TLVPacket.TLV_META_TYPE_STRING | 711; // Proxy user name
     public static final int TLV_TYPE_C2_PROXY_PASS         = TLVPacket.TLV_META_TYPE_STRING | 712; // Proxy password
     public static final int TLV_TYPE_C2_GET                = TLVPacket.TLV_META_TYPE_GROUP  | 713; // A grouping of params associated with GET requests

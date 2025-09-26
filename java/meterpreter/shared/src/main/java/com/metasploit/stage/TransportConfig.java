@@ -8,7 +8,7 @@ public class TransportConfig {
     public long retry_wait;
 
     // HTTP only
-    public String proxy;
+    public String proxy_url;
     public String proxy_user;
     public String proxy_pass;
     public String user_agent;

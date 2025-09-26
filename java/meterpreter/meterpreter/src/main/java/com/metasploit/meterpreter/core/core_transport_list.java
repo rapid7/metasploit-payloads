@@ -31,8 +31,8 @@ public class core_transport_list implements Command {
                     transportData.add(TLVType.TLV_TYPE_C2_UA, h.getUserAgent());
                 }
 
-                if (h.getProxy().length() > 0) {
-                    transportData.add(TLVType.TLV_TYPE_C2_PROXY_HOST, h.getProxy());
+                if (h.getProxyUrl().length() > 0) {
+                    transportData.add(TLVType.TLV_TYPE_C2_PROXY_URL, h.getProxyUrl());
                 }
 
                 if (h.getProxyUser().length() > 0) {

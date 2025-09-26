@@ -1,10 +1,15 @@
 package com.metasploit;
 
+import javax.crypto.Cipher;
+import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -18,6 +23,12 @@ import java.util.Map;
  * @author mihi
  */
 public class TLVPacket {
+
+    public static final int ENC_NONE = 0;
+    public static final int ENC_AES256 = 1;
+    public static final int ENC_AES128 = 2;
+
+    private static final SecureRandom secureRandom = new SecureRandom();
 
     // constants
     public static final int PACKET_TYPE_REQUEST = 0;
@@ -117,8 +128,124 @@ public class TLVPacket {
             add(type, value);
         }
         if (remaining != 0) {
-            throw new IOException("Incomplete packets detected");
+            throw new IOException("Incomplete packets detected (" + remaining + " remaining bytes)");
         }
+    }
+
+    public TLVPacket(byte[] packetBytes) throws IOException {
+        this(new DataInputStream(new ByteArrayInputStream(packetBytes)), packetBytes.length);
+    }
+
+    public static TLVPacket fromEncoded(byte[] packetBytes, byte[] aesKey) throws IOException {
+        return fromEncoded(new DataInputStream(new ByteArrayInputStream(packetBytes)), aesKey);
+    }
+
+    public static TLVPacket fromEncoded(DataInputStream in, byte[] aesKey) throws IOException {
+        byte[] header = new byte[32];
+        in.readFully(header);
+        byte[] clonedHeader = header.clone();
+
+        byte[] xorKey = new byte[4];
+        arrayCopy(header, 0, xorKey, 0, 4);
+
+        // XOR the whole header first
+        xorBytes(xorKey, header, 0);
+
+
+        // extract the length
+        int bodyLen = readInt(header, 24) - 8;
+
+        byte[] body = new byte[bodyLen];
+        in.readFully(body);
+
+        // create a complete packet and xor the whole thing. We do this because we can't
+        // be sure that the content of the body is 4-byte aligned with the xor key, so we
+        // do the whole lot to make sure it behaves
+        byte[] packet = new byte[clonedHeader.length + body.length];
+        arrayCopy(clonedHeader, 0, packet, 0, clonedHeader.length);
+        arrayCopy(body, 0, packet, clonedHeader.length, body.length);
+        xorBytes(xorKey, packet, 0);
+
+        arrayCopy(packet, 32, body, 0, body.length);
+        int encFlag = readInt(packet, 20);
+        if (encFlag != ENC_NONE && aesKey != null) {
+            try
+            {
+                body = aesDecrypt(body, aesKey);
+            }
+            catch(GeneralSecurityException e)
+            {
+                // if things go back we're basically screwed.
+                throw new IOException("AES decryption failed: " + e.getMessage());
+            }
+        }
+
+        ByteArrayInputStream byteStream = new ByteArrayInputStream(body, 0, body.length);
+        DataInputStream inputStream = new DataInputStream(byteStream);
+        TLVPacket tlvPacket = new TLVPacket(inputStream, body.length);
+        inputStream.close();
+
+        return tlvPacket;
+    }
+
+    private static byte[] aesDecrypt(byte[] encryptedData, byte[] aesKey) throws GeneralSecurityException {
+        byte[] iv = new byte[16];
+        byte[] encrypted = new byte[encryptedData.length - iv.length];
+        arrayCopy(encryptedData, 0, iv, 0, iv.length);
+        arrayCopy(encryptedData, iv.length, encrypted, 0, encrypted.length);
+
+        IvParameterSpec ivSpec = new IvParameterSpec(iv);
+        SecretKeySpec keySpec = new SecretKeySpec(aesKey, "AES");
+        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+        synchronized(cipher) {
+            cipher.init(Cipher.DECRYPT_MODE, keySpec, ivSpec);
+            return cipher.doFinal(encrypted);
+        }
+    }
+
+    private static byte[] aesEncrypt(byte[] data, byte[] aesKey) throws GeneralSecurityException {
+        byte[] iv = new byte[16];
+        secureRandom.nextBytes(iv);
+
+        byte[] encrypted = null;
+        IvParameterSpec ivSpec = new IvParameterSpec(iv);
+        SecretKeySpec keySpec = new SecretKeySpec(aesKey, "AES");
+        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+        synchronized(cipher) {
+            cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
+            encrypted = cipher.doFinal(data);
+        }
+
+        data = new byte[encrypted.length + iv.length];
+        arrayCopy(iv, 0, data, 0, iv.length);
+        arrayCopy(encrypted, 0, data, iv.length, encrypted.length);
+        return data;
+    }
+
+    private static void arrayCopy(byte[] src, int srcPos, byte[] dest, int destPos, int length) {
+        if (length > 0) {
+            System.arraycopy(src, srcPos + 0, dest, destPos + 0, length);
+        }
+    }
+
+    private static void xorBytes(byte[] xorKey, byte[] bytes, int offset) {
+        for (int i = 0; i < bytes.length - offset; ++i) {
+            bytes[i + offset] ^= xorKey[i % 4];
+        }
+    }
+
+    private static int readInt(byte[] source, int offset) {
+        return (0xFF & source[offset]) << 24 |
+                (0xFF & source[1 + offset]) << 16 |
+                (0xFF & source[2 + offset]) << 8 |
+                (0xFF & source[3 + offset]);
+    }
+
+    private static void writeInt(byte[] dest, int offset, int value) {
+        dest[offset] = (byte)((value >> 24) & 0xFF);
+        dest[offset + 1] = (byte)((value >> 16) & 0xFF);
+        dest[offset + 2] = (byte)((value >> 8) & 0xFF);
+        dest[offset + 3] = (byte)(value & 0xFF);
     }
 
     /**
@@ -338,5 +465,45 @@ public class TLVPacket {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         write(new DataOutputStream(baos));
         return baos.toByteArray();
+    }
+
+    public byte[] toEncoded(int type, byte[] aesKey, byte[] sessionGUID) throws IOException {
+        byte[] data = this.toByteArray();
+
+        int encType = ENC_NONE;
+        if (aesKey != null) {
+            encType = (aesKey.length == 32 ? ENC_AES256 : ENC_AES128);
+            try {
+                data = aesEncrypt(data, aesKey);
+            } catch (GeneralSecurityException e) {
+                throw new IOException("AES encryption failed: " + e.getMessage());
+            }
+        }
+
+        byte[] packet = new byte[32 + data.length];
+        byte[] xorKey = {
+            (byte)(0xFF & (int)((Math.random() * 255) + 1)),
+            (byte)(0xFF & (int)((Math.random() * 255) + 1)),
+            (byte)(0xFF & (int)((Math.random() * 255) + 1)),
+            (byte)(0xFF & (int)((Math.random() * 255) + 1))
+        };
+        arrayCopy(xorKey, 0, packet, 0, 4);
+        if (sessionGUID != null) {
+            // Include the session guid in the outgoing message
+            arrayCopy(sessionGUID, 0, packet, 4, sessionGUID.length);
+        }
+
+        writeInt(packet, 20, encType);
+
+        // Write the length/type
+        writeInt(packet, 24, data.length + 8);
+        writeInt(packet, 28, type);
+
+        // finally write the data
+        arrayCopy(data, 0, packet, 32, data.length);
+
+        // Xor the packet bytes
+        xorBytes(xorKey, packet, 4);
+        return packet;
     }
 }
