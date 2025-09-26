@@ -118,7 +118,6 @@ public class Payload {
         if ((config.flags & Config.FLAG_HIDE_APP_ICON) != 0) {
             hideAppIcon();
         }
-        stageless_class = config.stageless_class;
         TransportConfig transportConfig = config.transportConfigList.get(0);
         String url = transportConfig.url;
         long currentTime = System.currentTimeMillis();

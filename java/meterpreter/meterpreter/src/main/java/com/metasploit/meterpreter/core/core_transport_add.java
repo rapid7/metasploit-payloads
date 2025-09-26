@@ -21,7 +21,7 @@ public class core_transport_add implements Command {
 
             // do the HTTP specific stuff here, since we know what we are
             h.setUserAgent(request.getStringValue(TLVType.TLV_TYPE_C2_UA, ""));
-            h.setProxy(request.getStringValue(TLVType.TLV_TYPE_C2_PROXY_HOST, ""));
+            h.setProxyUrl(request.getStringValue(TLVType.TLV_TYPE_C2_PROXY_URL, ""));
             h.setProxyUser(request.getStringValue(TLVType.TLV_TYPE_C2_PROXY_USER, ""));
             h.setProxyPass(request.getStringValue(TLVType.TLV_TYPE_C2_PROXY_PASS, ""));
             h.setCertHash(request.getRawValue(TLVType.TLV_TYPE_C2_CERT_HASH, null));
