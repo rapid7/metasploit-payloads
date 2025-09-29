@@ -986,7 +986,7 @@ void transport_write_http_config(Transport* transport, Packet* c2Packet)
 
 		if (ctx->proxy)
 		{
-			packet_add_tlv_wstring(c2Packet, TLV_TYPE_C2_PROXY_HOST, ctx->proxy);
+			packet_add_tlv_wstring(c2Packet, TLV_TYPE_C2_PROXY_URL, ctx->proxy);
 		}
 		if (ctx->proxy_user)
 		{
@@ -1120,13 +1120,14 @@ Transport* transport_create_http(Packet* packet, Tlv* c2Tlv)
 		dprintf("[TRANS HTTP] Adjusted URL 2: %S", url);
 	}
 
-	ctx->proxy = packet_get_tlv_group_entry_value_wstring(packet, c2Tlv, TLV_TYPE_C2_PROXY_HOST, NULL);
-	dprintf("[TRANS HTTP] Given proxy user: %S", ctx->proxy);
+	ctx->proxy = packet_get_tlv_group_entry_value_wstring(packet, c2Tlv, TLV_TYPE_C2_PROXY_URL, NULL);
+	dprintf("[TRANS HTTP] Given proxy: %S", ctx->proxy);
 
 	ctx->proxy_user = packet_get_tlv_group_entry_value_wstring(packet, c2Tlv, TLV_TYPE_C2_PROXY_USER, NULL);
-	dprintf("[TRANS HTTP] Given proxy pass: %S", ctx->proxy_user);
+	dprintf("[TRANS HTTP] Given proxy user: %S", ctx->proxy_user);
 
 	ctx->proxy_pass = packet_get_tlv_group_entry_value_wstring(packet, c2Tlv, TLV_TYPE_C2_PROXY_PASS, NULL);
+	dprintf("[TRANS HTTP] Given proxy pass: %S", ctx->proxy_pass);
 	ctx->ssl = wcsncmp(url, L"https", 5) == 0;
 
 	// only apply the cert hash if we're given one and it's not the global value
