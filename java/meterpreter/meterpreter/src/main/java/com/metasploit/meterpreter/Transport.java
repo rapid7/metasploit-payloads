@@ -29,7 +29,7 @@ public abstract class Transport {
     public abstract boolean dispatch(Meterpreter met);
     public abstract void writePacket(TLVPacket packet, int type) throws IOException;
     public abstract TLVPacket readPacket() throws IOException;
-    public abstract boolean switchUri(String uri);
+    public abstract boolean patchUuid(String uuid);
 
     protected Transport(Meterpreter met, String url) {
         this.meterpreter = met;
