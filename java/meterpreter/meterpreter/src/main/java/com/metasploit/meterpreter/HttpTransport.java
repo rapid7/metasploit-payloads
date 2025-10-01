@@ -49,13 +49,13 @@ public class HttpTransport extends Transport {
     }
 
     @Override
-    public boolean switchUri(String uri) {
+    public boolean patchUuid(String uuid) {
         try {
             // can't use getAuthority() here thanks to java 1.2. Ugh.
             String newUrl = this.targetUrl.getProtocol() + "://"
               + this.targetUrl.getHost() + ":"
-              + this.targetUrl.getPort()
-              + uri;
+              + this.targetUrl.getPort() + "/"
+              + uuid;
             this.nextUrl = new URL(newUrl);
             return true;
         }
