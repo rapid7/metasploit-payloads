@@ -1,8 +1,8 @@
 package com.metasploit.meterpreter.core;
 
+import com.metasploit.TLVPacket;
+import com.metasploit.TLVType;
 import com.metasploit.meterpreter.Meterpreter;
-import com.metasploit.meterpreter.TLVPacket;
-import com.metasploit.meterpreter.TLVType;
 import com.metasploit.meterpreter.Transport;
 import com.metasploit.meterpreter.command.Command;
 
@@ -12,7 +12,7 @@ public class core_transport_sleep implements Command {
         int result = EXIT_DISPATCH;
 
         try {
-            long sleep = request.getIntValue(TLVType.TLV_TYPE_TRANS_COMM_TIMEOUT) * Transport.MS;
+            long sleep = request.getIntValue(TLVType.TLV_TYPE_C2_COMM_TIMEOUT) * Transport.MS;
             meterpreter.getTransports().setNext(meterpreter.getTransports().current(), sleep);
         }
         catch (Exception ex) {

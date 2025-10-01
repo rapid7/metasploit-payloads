@@ -3,6 +3,7 @@
  */
 #include "metsrv.h"
 #include <wininet.h>
+#include "server_http_utils.h"
 
 /*!
  * @brief Prepare a wininet request with the given context.
@@ -28,10 +29,16 @@ static HINTERNET get_request_wininet(HttpTransportContext *ctx, BOOL isGet, cons
 		dprintf("[%s] Setting secure request flag..", direction);
 	}
 
+	HttpConnection* conn = isGet ? &ctx->get_connection : &ctx->post_connection;
+
+	PWSTR uri = generate_uri(ctx, conn);
+
 	do
 	{
-		vdprintf("[%s] opening request on connection %x to %S", direction, ctx->connection, ctx->uri);
-		hReq = HttpOpenRequestW(ctx->connection, isGet ? L"GET" : L"POST", ctx->uri, NULL, NULL, NULL, flags, 0);
+		vdprintf("[%s] opening request on connection %x to %S", direction, conn->connection, uri);
+		hReq = HttpOpenRequestW(conn->connection, isGet ? L"GET" : L"POST", uri, NULL, NULL, NULL, flags, 0);
+
+		free(uri);
 
 		if (hReq == NULL)
 		{
@@ -95,28 +102,57 @@ static BOOL read_response_wininet(HANDLE hReq, LPVOID buffer, DWORD bytesToRead,
  * @brief Wrapper around WinINET-specific sending functionality.
  * @param ctx Pointer to the current HTTP transport context.
  * @param hReq HTTP request handle.
+ * @param isGet Specifies if this request is a GET request (compared to POST).
  * @param buffer Pointer to the buffer to receive the data.
  * @param size Buffer size.
  * @return An indication of the result of sending the request.
  */
-static BOOL send_request_wininet(HttpTransportContext* ctx, HANDLE hReq, LPVOID buffer, DWORD size)
+static BOOL send_request_wininet(HttpTransportContext* ctx, HANDLE hReq, HttpConnection* conn, LPVOID buffer, DWORD size)
 {
-	if (ctx->custom_headers)
+	PWSTR headers = generate_headers(ctx, conn);
+
+	DWORD headerLength = headers == NULL ? 0 : -1L;
+	DWORD totalSize = size + conn->options.payload_prefix_size + conn->options.payload_suffix_size;
+
+	// WININET doesn't give us the ability to write in chunks without using HttpSendRequestEx, which sucks
+	// because that's a one-stop-shop for the whole request that requires changing the way we do things quite
+	// a bit. So, in the rare cases that we're dropping back to WININET, we're going to just construct a
+	// buffer with all the data we need in it.
+	PBYTE optionalData = NULL;
+
+	if (totalSize > 0)
 	{
-		dprintf("[WINHTTP] Sending with custom headers: %S", ctx->custom_headers);
-		return HttpSendRequestW(hReq, ctx->custom_headers, -1L, buffer, size);
+		optionalData = (PBYTE)calloc(totalSize, 1);
+
+		if (conn->options.payload_prefix_size > 0)
+		{
+			memcpy_s(optionalData, conn->options.payload_prefix_size, conn->options.payload_prefix, conn->options.payload_prefix_size);
+		}
+		if (size > 0)
+		{
+			memcpy_s(optionalData + conn->options.payload_prefix_size, size, buffer, size);
+		}
+		if (conn->options.payload_prefix_size > 0)
+		{
+			memcpy_s(optionalData + conn->options.payload_prefix_size + size, conn->options.payload_suffix_size, conn->options.payload_suffix, conn->options.payload_suffix_size);
+		}
 	}
 
-	return HttpSendRequestW(hReq, NULL, 0, buffer, size);
+	dprintf("[WININET] Sending payload");
+	BOOL result = HttpSendRequestW(hReq, headers, headerLength, optionalData, totalSize);
+	SAFE_FREE(optionalData);
+
+	return result;
 }
 
 /*!
  * @brief Wrapper around WinINET-specific request response validation.
  * @param hReq HTTP request handle.
  * @param ctx The HTTP transport context.
+ * @param contentLength Pointer to a DWORD receiving the content length of the response.
  * @return An indication of the result of getting a response.
  */
-static DWORD validate_response_wininet(HANDLE hReq, HttpTransportContext* ctx)
+static DWORD validate_response_wininet(HANDLE hReq, HttpTransportContext* ctx, LPDWORD contentLength)
 {
 	DWORD statusCode;
 	DWORD statusCodeSize = sizeof(statusCode);
@@ -133,6 +169,56 @@ static DWORD validate_response_wininet(HANDLE hReq, HttpTransportContext* ctx)
 		}
 	}
 
+	DWORD size = sizeof(DWORD);
+	HttpQueryInfoA(hReq, HTTP_QUERY_CONTENT_LENGTH | HTTP_QUERY_FLAG_NUMBER, contentLength, &size, NULL);
+	return GetLastError();
+}
+
+static DWORD server_init_connection(HttpTransportContext* ctx, HttpConnection* conn, PWSTR host, INTERNET_PORT port)
+{
+	PWSTR userAgent = conn->options.ua ? conn->options.ua : ctx->default_options.ua;
+	// configure proxy
+	if (ctx->proxy)
+	{
+		dprintf("[DISPATCH] Configuring with proxy: %S", ctx->proxy);
+		conn->internet = InternetOpenW(userAgent, INTERNET_OPEN_TYPE_PROXY, ctx->proxy, NULL, 0);
+	}
+	else
+	{
+		conn->internet = InternetOpenW(userAgent, INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
+	}
+
+	if (!conn->internet)
+	{
+		dprintf("[DISPATCH] Failed WinHttpOpen: %d", GetLastError());
+		return GetLastError();
+	}
+
+	dprintf("[DISPATCH] Configured hInternet: 0x%.8x", conn->internet);
+
+
+	// Allocate the connection handle
+	conn->connection = InternetConnectW(conn->internet, host, port, NULL, NULL, INTERNET_SERVICE_HTTP, 0, 0);
+	if (!conn->connection)
+	{
+		dprintf("[DISPATCH] Failed InternetConnectW: %d", GetLastError());
+		return GetLastError();
+	}
+
+	if (ctx->proxy)
+	{
+		if (ctx->proxy_user)
+		{
+			InternetSetOptionW(conn->connection, INTERNET_OPTION_PROXY_USERNAME, ctx->proxy_user,  (DWORD)wcslen(ctx->proxy_user));
+		}
+		if (ctx->proxy_pass)
+		{
+			InternetSetOptionW(conn->connection, INTERNET_OPTION_PROXY_PASSWORD, ctx->proxy_pass, (DWORD)wcslen(ctx->proxy_pass));
+		}
+	}
+
+	dprintf("[DISPATCH] Configured hConnection: 0x%.8x", conn->connection);
+
 	return ERROR_SUCCESS;
 }
 
@@ -143,31 +229,12 @@ static DWORD validate_response_wininet(HANDLE hReq, HttpTransportContext* ctx)
  */
 static DWORD server_init_wininet(Transport* transport)
 {
+	dprintf("[WININET] Initialising ...");
+
 	URL_COMPONENTS bits;
 	wchar_t tmpHostName[URL_SIZE];
 	wchar_t tmpUrlPath[URL_SIZE];
 	HttpTransportContext* ctx = (HttpTransportContext*)transport->ctx;
-
-	dprintf("[WININET] Initialising ...");
-
-	// configure proxy
-	if (ctx->proxy)
-	{
-		dprintf("[DISPATCH] Configuring with proxy: %S", ctx->proxy);
-		ctx->internet = InternetOpenW(ctx->ua, INTERNET_OPEN_TYPE_PROXY, ctx->proxy, NULL, 0);
-	}
-	else
-	{
-		ctx->internet = InternetOpenW(ctx->ua, INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
-	}
-
-	if (!ctx->internet)
-	{
-		dprintf("[DISPATCH] Failed InternetOpenW: %d", GetLastError());
-		return GetLastError();
-	}
-
-	dprintf("[DISPATCH] Configured hInternet: 0x%.8x", ctx->internet);
 
 	// The InternetCrackUrl method was poorly designed...
 	ZeroMemory(tmpHostName, sizeof(tmpHostName));
@@ -183,38 +250,21 @@ static DWORD server_init_wininet(Transport* transport)
 	bits.lpszUrlPath = tmpUrlPath;
 
 	dprintf("[DISPATCH] About to crack URL: %S", transport->url);
-	InternetCrackUrlW(transport->url, 0, 0, &bits);
+	InternetCrackUrl(transport->url, 0, 0, &bits);
 
-	SAFE_FREE(ctx->uri);
-	ctx->uri = _wcsdup(tmpUrlPath);
-	transport->comms_last_packet = current_unix_timestamp();
+	SAFE_FREE(ctx->default_options.uri);
+	ctx->default_options.uri = _wcsdup(tmpUrlPath);
 
-	dprintf("[DISPATCH] Configured URI: %S", ctx->uri);
+	dprintf("[DISPATCH] Configured URI: %S", ctx->default_options.uri);
 	dprintf("[DISPATCH] Host: %S Port: %u", tmpHostName, bits.nPort);
 
-	// Allocate the connection handle
-	ctx->connection = InternetConnectW(ctx->internet, tmpHostName, bits.nPort, NULL, NULL, INTERNET_SERVICE_HTTP, 0, 0);
-	if (!ctx->connection)
-	{
-		dprintf("[DISPATCH] Failed InternetConnect: %d", GetLastError());
-		return GetLastError();
-	}
+	DWORD result = server_init_connection(ctx, &ctx->get_connection, tmpHostName, bits.nPort);
+	result = server_init_connection(ctx, &ctx->post_connection, tmpHostName, bits.nPort);
 
-	if (ctx->proxy)
-	{
-		if (ctx->proxy_user)
-		{
-			InternetSetOptionW(ctx->connection, INTERNET_OPTION_PROXY_USERNAME, ctx->proxy_user,  (DWORD)wcslen(ctx->proxy_user));
-		}
-		if (ctx->proxy_pass)
-		{
-			InternetSetOptionW(ctx->connection, INTERNET_OPTION_PROXY_PASSWORD, ctx->proxy_pass, (DWORD)wcslen(ctx->proxy_pass));
-		}
-	}
+	transport->comms_last_packet = current_unix_timestamp();
 
-	dprintf("[DISPATCH] Configured hConnection: 0x%.8x", ctx->connection);
+	return result;
 
-	return ERROR_SUCCESS;
 }
 
 /*!

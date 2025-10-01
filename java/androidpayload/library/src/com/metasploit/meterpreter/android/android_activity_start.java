@@ -7,14 +7,13 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 
+import com.metasploit.TLVPacket;
 import com.metasploit.meterpreter.AndroidMeterpreter;
 import com.metasploit.meterpreter.Meterpreter;
-import com.metasploit.meterpreter.TLVPacket;
 import com.metasploit.meterpreter.command.Command;
 
 import java.net.URISyntaxException;
 import java.util.List;
-
 
 public class android_activity_start implements Command {
 

@@ -8,6 +8,9 @@ import android.os.Handler;
 import android.os.Looper;
 import android.text.format.DateFormat;
 
+import com.metasploit.TLVPacket;
+import com.metasploit.TLVType;
+
 import java.io.IOException;
 import java.util.Date;
 import java.util.LinkedList;

@@ -27,6 +27,7 @@ typedef enum
 {
 	PACKET_TLV_TYPE_REQUEST        = 0,   ///< Indicates a request packet.
 	PACKET_TLV_TYPE_RESPONSE       = 1,   ///< Indicates a response packet.
+	PACKET_TLV_TYPE_CONFIG         = 2,   ///< Indicates a configuration packet.
 	PACKET_TLV_TYPE_PLAIN_REQUEST  = 10,  ///< Indicates a plain request packet.
 	PACKET_TLV_TYPE_PLAIN_RESPONSE = 11,  ///< Indicates a plain response packet.
 } PacketTlvType;
@@ -90,6 +91,15 @@ typedef enum
 /*! @brief An indication of whether the content written to the channel should be compressed. */
 #define CHANNEL_FLAG_COMPRESS       (1 << 1)
 
+//! No encoding at all
+#define C2_ENCODING_NONE       0
+//! Base64 encoding
+#define C2_ENCODING_B64        1
+//! Base64 encoding with URI-safe characters
+#define C2_ENCODING_B64URI     2
+//! URL encoding
+#define C2_ENCODING_URL        3
+
 /*! @brief Type definition with defines `TlvMetaType` as an double-word. */
 typedef DWORD TlvMetaType;
 
@@ -145,21 +155,6 @@ typedef enum
 	TLV_TYPE_LIB_LOADER_NAME     = TLV_VALUE(TLV_META_TYPE_STRING,    412),   ///! Represents the name of the ReflectiveLoader function (string).
 	TLV_TYPE_LIB_LOADER_ORDINAL  = TLV_VALUE(TLV_META_TYPE_UINT,      413),   ///! Represents the ordinal of the ReflectiveLoader function (int).
 
-	// Transport switching
-	TLV_TYPE_TRANS_TYPE          = TLV_VALUE(TLV_META_TYPE_UINT,      430),   ///! Represents the type of transport to switch to.
-	TLV_TYPE_TRANS_URL           = TLV_VALUE(TLV_META_TYPE_STRING,    431),   ///! Represents the new URL of the transport to use.
-	TLV_TYPE_TRANS_UA            = TLV_VALUE(TLV_META_TYPE_STRING,    432),   ///! Represents the user agent (for http).
-	TLV_TYPE_TRANS_COMM_TIMEOUT  = TLV_VALUE(TLV_META_TYPE_UINT,      433),   ///! Represents the communications timeout.
-	TLV_TYPE_TRANS_SESSION_EXP   = TLV_VALUE(TLV_META_TYPE_UINT,      434),   ///! Represents the session expiration.
-	TLV_TYPE_TRANS_CERT_HASH     = TLV_VALUE(TLV_META_TYPE_RAW,       435),   ///! Represents the certificate hash (for https).
-	TLV_TYPE_TRANS_PROXY_HOST    = TLV_VALUE(TLV_META_TYPE_STRING,    436),   ///! Represents the proxy host string (for http/s).
-	TLV_TYPE_TRANS_PROXY_USER    = TLV_VALUE(TLV_META_TYPE_STRING,    437),   ///! Represents the proxy user name (for http/s).
-	TLV_TYPE_TRANS_PROXY_PASS    = TLV_VALUE(TLV_META_TYPE_STRING,    438),   ///! Represents the proxy password (for http/s).
-	TLV_TYPE_TRANS_RETRY_TOTAL   = TLV_VALUE(TLV_META_TYPE_UINT,      439),   ///! Total time (seconds) to continue retrying comms.
-	TLV_TYPE_TRANS_RETRY_WAIT    = TLV_VALUE(TLV_META_TYPE_UINT,      440),   ///! Time (seconds) to wait between reconnect attempts.
-	TLV_TYPE_TRANS_HEADERS       = TLV_VALUE(TLV_META_TYPE_STRING,    441),   ///! List of custom headers to send with the requests.
-	TLV_TYPE_TRANS_GROUP         = TLV_VALUE(TLV_META_TYPE_GROUP,     442),   ///! A single transport grouping.
-
 	// session/machine identification
 	TLV_TYPE_MACHINE_ID          = TLV_VALUE(TLV_META_TYPE_STRING,    460),   ///! Represents a machine identifier.
 	TLV_TYPE_UUID                = TLV_VALUE(TLV_META_TYPE_RAW,       461),   ///! Represents a UUID.
@@ -176,9 +171,37 @@ typedef enum
 	TLV_TYPE_PIVOT_STAGE_DATA      = TLV_VALUE(TLV_META_TYPE_RAW,     651),   ///! Represents the data to be staged on new connections.
 	TLV_TYPE_PIVOT_NAMED_PIPE_NAME = TLV_VALUE(TLV_META_TYPE_STRING,  653),   ///! Represents named pipe name.
 
-	TLV_TYPE_EXTENSIONS          = TLV_VALUE(TLV_META_TYPE_COMPLEX, 20000),   ///! Represents an extension value.
-	TLV_TYPE_USER                = TLV_VALUE(TLV_META_TYPE_COMPLEX, 40000),   ///! Represents a user value.
-	TLV_TYPE_TEMP                = TLV_VALUE(TLV_META_TYPE_COMPLEX, 60000),   ///! Represents a temporary value.
+	TLV_TYPE_SESSION_EXPIRY        = TLV_VALUE(TLV_META_TYPE_UINT,    700),   ///! Session expiration time
+	TLV_TYPE_EXITFUNC              = TLV_VALUE(TLV_META_TYPE_UINT,    701),   ///! identifier of the exit function to use
+	TLV_TYPE_DEBUG_LOG             = TLV_VALUE(TLV_META_TYPE_STRING,  702),   ///! path to write debug log
+	TLV_TYPE_EXTENSION             = TLV_VALUE(TLV_META_TYPE_GROUP,   703),   ///! Group containing extension info
+	TLV_TYPE_C2                    = TLV_VALUE(TLV_META_TYPE_GROUP,   704),   ///! a C2/transport grouping
+	TLV_TYPE_C2_COMM_TIMEOUT       = TLV_VALUE(TLV_META_TYPE_UINT,    705),   ///! the timeout for this C2 group
+	TLV_TYPE_C2_RETRY_TOTAL        = TLV_VALUE(TLV_META_TYPE_UINT,    706),   ///! number of times to retry this C2
+	TLV_TYPE_C2_RETRY_WAIT         = TLV_VALUE(TLV_META_TYPE_UINT,    707),   ///! how long to wait between reconnect attempts
+	TLV_TYPE_C2_URL                = TLV_VALUE(TLV_META_TYPE_STRING,  708),   ///! base URL of this C2 (scheme://host:port/uri)
+	TLV_TYPE_C2_URI                = TLV_VALUE(TLV_META_TYPE_STRING,  709),   ///! URI to append to base URL (for HTTP(s)), if any
+	TLV_TYPE_C2_PROXY_URL          = TLV_VALUE(TLV_META_TYPE_STRING,  710),   ///! Proxy URL
+	TLV_TYPE_C2_PROXY_USER         = TLV_VALUE(TLV_META_TYPE_STRING,  711),   ///! Proxy user name
+	TLV_TYPE_C2_PROXY_PASS         = TLV_VALUE(TLV_META_TYPE_STRING,  712),   ///! Proxy password
+	TLV_TYPE_C2_GET                = TLV_VALUE(TLV_META_TYPE_GROUP,   713),   ///! A grouping of params associated with GET requests
+	TLV_TYPE_C2_POST               = TLV_VALUE(TLV_META_TYPE_GROUP,   714),   ///! A grouping of params associated with POST requests
+	TLV_TYPE_C2_HEADERS            = TLV_VALUE(TLV_META_TYPE_STRING,  715),   ///! Custom headers
+	TLV_TYPE_C2_UA                 = TLV_VALUE(TLV_META_TYPE_STRING,  716),   ///! User agent
+	TLV_TYPE_C2_CERT_HASH          = TLV_VALUE(TLV_META_TYPE_RAW,     717),   ///! Expected SSL certificate hash
+	TLV_TYPE_C2_PREFIX             = TLV_VALUE(TLV_META_TYPE_RAW,     718),   ///! Data to prepend to the outgoing payload
+	TLV_TYPE_C2_SUFFIX             = TLV_VALUE(TLV_META_TYPE_RAW,     719),   ///! Data to append to the outgoing payload
+	TLV_TYPE_C2_ENC                = TLV_VALUE(TLV_META_TYPE_UINT,    720),   ///! Request encoding flags (Base64|URL|Base64url)
+	TLV_TYPE_C2_PREFIX_SKIP        = TLV_VALUE(TLV_META_TYPE_UINT,    721),   ///! Size of prefix to skip (in bytes)
+	TLV_TYPE_C2_SUFFIX_SKIP        = TLV_VALUE(TLV_META_TYPE_UINT,    722),   ///! Size of suffix to skip (in bytes)
+	TLV_TYPE_C2_UUID_COOKIE        = TLV_VALUE(TLV_META_TYPE_STRING,  723),   ///! Name of the cookie to put the UUID in
+	TLV_TYPE_C2_UUID_GET           = TLV_VALUE(TLV_META_TYPE_STRING,  724),   ///! Name of the GET parameter to put the UUID in
+	TLV_TYPE_C2_UUID_HEADER        = TLV_VALUE(TLV_META_TYPE_STRING,  725),   ///! Name of the header to put the UUID in
+	TLV_TYPE_C2_UUID               = TLV_VALUE(TLV_META_TYPE_STRING,  726),   ///! The UUID string to use for the C2 transport
+
+	TLV_TYPE_EXTENSIONS            = TLV_VALUE(TLV_META_TYPE_COMPLEX, 20000), ///! Represents an extension value.
+	TLV_TYPE_USER                  = TLV_VALUE(TLV_META_TYPE_COMPLEX, 40000), ///! Represents a user value.
+	TLV_TYPE_TEMP                  = TLV_VALUE(TLV_META_TYPE_COMPLEX, 60000), ///! Represents a temporary value.
 } TlvType;
 
 #ifndef QWORD
@@ -188,19 +211,19 @@ typedef unsigned __int64	QWORD;
 #define ntohq( qword )		( (QWORD)ntohl( qword & 0xFFFFFFFF ) << 32 ) | ntohl( qword >> 32 )
 #define htonq( qword )		ntohq( qword )
 
-typedef struct
+typedef struct _TlvHeader
 {
 	DWORD length;
 	DWORD type;
 } TlvHeader;
 
-typedef struct
+typedef struct _Tlv
 {
 	TlvHeader header;
 	PUCHAR    buffer;
 } Tlv;
 
-typedef struct
+typedef struct _PacketHeader
 {
 	BYTE xor_key[4];
 	BYTE session_guid[sizeof(GUID)];

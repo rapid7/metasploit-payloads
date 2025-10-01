@@ -3,9 +3,9 @@ package com.metasploit.meterpreter.android;
 import android.app.WallpaperManager;
 import android.content.Context;
 
+import com.metasploit.TLVPacket;
 import com.metasploit.meterpreter.AndroidMeterpreter;
 import com.metasploit.meterpreter.Meterpreter;
-import com.metasploit.meterpreter.TLVPacket;
 import com.metasploit.meterpreter.command.Command;
 
 import java.io.ByteArrayInputStream;
