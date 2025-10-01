@@ -104,8 +104,8 @@ public class TcpTransport extends Transport {
     }
 
     @Override
-    public boolean switchUri(String uri) {
-        // tcp transports don't support URL switching
+    public boolean patchUuid(String uuid) {
+        // TCP transports don't support UUID switching
         return false;
     }
 
