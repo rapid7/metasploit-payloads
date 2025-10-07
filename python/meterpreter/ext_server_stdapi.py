@@ -1538,8 +1538,8 @@ def stdapi_sys_process_get_info(request, response):
             response += tlv_pack(TLV_TYPE_PROCESS_NAME, module_name)
             response += tlv_pack(TLV_TYPE_PROCESS_PATH, module_filename)
             break
-    except OSError as error:
-        debug_print('[-] method stdapi_sys_process_get_info failed on: ' + str(error))
+    except OSError:
+        debug_print('[-] method stdapi_sys_process_get_info failed')
         return error_result_windows(), response
 
     return ERROR_SUCCESS, response
