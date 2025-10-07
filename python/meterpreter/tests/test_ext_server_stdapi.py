@@ -22,7 +22,7 @@ def create_meterpreter_context():
         # Read and patch out the Meterpreter socket connection logic side effect onwards
         source = file.read()
         source_without_socket_connection = source[
-            0 : source.index(b"# PATCH-SETUP-ENCRYPTION #")
+            0 : source.index(b"_try_to_fork = TRY_TO_FORK")
         ]
 
         context = {}
