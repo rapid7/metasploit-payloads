@@ -2,6 +2,7 @@
 #include "unicode.h"
 #include "remote_thread.h"
 #include "base_inject.h"
+#include "winapi.h"
 
 MetApi api_instance = {
 	// PacketApi
@@ -146,6 +147,22 @@ MetApi api_instance = {
 		list_pop,
 		list_shift,
 		list_destroy,
+	},
+	// WinApi
+	{
+		// Kernel32
+		{
+			winapi_kernel32_WriteProcessMemory,
+			winapi_kernel32_OpenProcess,
+			winapi_kernel32_VirtualAlloc,
+			winapi_kernel32_VirtualAllocEx,
+			winapi_kernel32_VirtualProtect,
+			winapi_kernel32_VirtualProtectEx,
+			winapi_kernel32_VirtualQuery,
+			winapi_kernel32_VirtualQueryEx,
+			winapi_kernel32_VirtualFree,
+			winapi_kernel32_CreateRemoteThread
+		}
 	},
 #ifdef DEBUGTRACE
 		// LoggingApi
