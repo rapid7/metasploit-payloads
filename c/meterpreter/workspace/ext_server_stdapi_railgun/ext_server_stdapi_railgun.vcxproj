@@ -27,44 +27,44 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{37E24F8F-1BD9-490B-8CD2-4768B89E5EAB}</ProjectGuid>
-    <RootNamespace>metsrv</RootNamespace>
+    <ProjectGuid>{9850D8C6-C36E-4F85-B4BC-EE8668C052AF}</ProjectGuid>
+    <RootNamespace>ext_server_stdapi</RootNamespace>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseOfMfc>false</UseOfMfc>
-    <CharacterSet>Unicode</CharacterSet>
+    <CharacterSet>MultiByte</CharacterSet>
     <PlatformToolset>v141_xp</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseOfMfc>false</UseOfMfc>
-    <CharacterSet>Unicode</CharacterSet>
+    <CharacterSet>MultiByte</CharacterSet>
     <PlatformToolset>v141_xp</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='r7_release|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseOfMfc>false</UseOfMfc>
-    <CharacterSet>Unicode</CharacterSet>
+    <CharacterSet>MultiByte</CharacterSet>
     <PlatformToolset>v141_xp</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseOfMfc>false</UseOfMfc>
-    <CharacterSet>Unicode</CharacterSet>
+    <CharacterSet>MultiByte</CharacterSet>
     <PlatformToolset>v141_xp</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseOfMfc>false</UseOfMfc>
-    <CharacterSet>Unicode</CharacterSet>
+    <CharacterSet>MultiByte</CharacterSet>
     <PlatformToolset>v141_xp</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='r7_release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseOfMfc>false</UseOfMfc>
-    <CharacterSet>Unicode</CharacterSet>
+    <CharacterSet>MultiByte</CharacterSet>
     <PlatformToolset>v141_xp</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
@@ -104,8 +104,8 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
     <_ProjectFileVersion>10.0.30319.1</_ProjectFileVersion>
-    <OutDir>.\$(Configuration)\$(Platform)\</OutDir>
-    <IntDir>.\$(Configuration)\$(Platform)\</IntDir>
+    <OutDir>$(Configuration)\$(Platform)\</OutDir>
+    <IntDir>$(Configuration)\$(Platform)\</IntDir>
     <LinkIncremental Condition="'$(Configuration)'=='Release'">false</LinkIncremental>
     <LinkIncremental Condition="'$(Configuration)'=='Debug'">false</LinkIncremental>
     <LinkIncremental Condition="'$(Configuration)'=='r7_release'">false</LinkIncremental>
@@ -121,22 +121,18 @@
       <MkTypLibCompatible>true</MkTypLibCompatible>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <TargetEnvironment>Win32</TargetEnvironment>
-      <TypeLibraryName>$(OutDir)\metsrv.tlb</TypeLibraryName>
+      <TypeLibraryName>$(OutDir)\ext_server_stdapi.tlb</TypeLibraryName>
       <HeaderFileName>
       </HeaderFileName>
     </Midl>
     <ClCompile>
       <Optimization>MinSpace</Optimization>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
-      <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
-      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\server;..\..\source\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;METSRV_EXPORTS;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <StringPooling>false</StringPooling>
+      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\stdapi\server;..\..\source\jpeg-8;..\..\source\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_SYS_EXPORTS;_CRT_SECURE_NO_WARNINGS;CINTERFACE;COBJMACROS;STDAPI_NAMESPACE_RAILGUN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <FunctionLevelLinking>false</FunctionLevelLinking>
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
-      <PrecompiledHeaderFile>metsrv.h</PrecompiledHeaderFile>
-      <PrecompiledHeaderOutputFile>$(OutDir)\metsrv.pch</PrecompiledHeaderOutputFile>
       <AssemblerListingLocation>$(OutDir)\</AssemblerListingLocation>
       <ObjectFileName>$(OutDir)\</ObjectFileName>
       <ProgramDataBaseFileName>$(OutDir)\</ProgramDataBaseFileName>
@@ -144,6 +140,8 @@
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <BufferSecurityCheck>false</BufferSecurityCheck>
+      <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
+      <PrecompiledHeaderFile>precomp.h</PrecompiledHeaderFile>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -153,32 +151,31 @@
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>ws2_32.lib;odbc32.lib;odbccp32.lib;crypt32.lib;wininet.lib;winhttp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>strmiids.lib;mpr.lib;netapi32.lib;psapi.lib;winmm.lib;iphlpapi.lib;shlwapi.lib;ws2_32.lib;odbc32.lib;odbccp32.lib;jpeg.$(PlatformShortName).lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <AdditionalLibraryDirectories>..\common\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <ModuleDefinitionFile>$(ProjectDir)..\..\source\def\$(ProjectName).def</ModuleDefinitionFile>
+      <AdditionalLibraryDirectories>..\backcompat\$(Configuration);..\..\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <DelayLoadDLLs>
       </DelayLoadDLLs>
-      <GenerateDebugInformation>false</GenerateDebugInformation>
       <GenerateMapFile>false</GenerateMapFile>
       <MapFileName>
       </MapFileName>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention>
       </DataExecutionPrevention>
-      <ImportLibrary>
-      </ImportLibrary>
+      <ImportLibrary>$(OutDir)\ext_server_stdapi.lib</ImportLibrary>
       <TargetMachine>MachineX86</TargetMachine>
       <MinimumRequiredVersion>
       </MinimumRequiredVersion>
       <SubSystem>Windows</SubSystem>
+      <ModuleDefinitionFile>$(ProjectDir)..\..\source\def\extension.def</ModuleDefinitionFile>
       <AdditionalOptions>/ignore:4070 %(AdditionalOptions)</AdditionalOptions>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
       <ProgramDatabaseFile />
       <ImageHasSafeExceptionHandlers>No</ImageHasSafeExceptionHandlers>
     </Link>
     <Bscmake>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <OutputFile>$(OutDir)\metsrv.bsc</OutputFile>
+      <OutputFile>$(OutDir)\ext_server_stdapi.bsc</OutputFile>
     </Bscmake>
     <PostBuildEvent>
       <Command>editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,4.0 "$(TargetDir)$(TargetFileName)" &gt; NUL
@@ -192,22 +189,18 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <MkTypLibCompatible>true</MkTypLibCompatible>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <TargetEnvironment>Win32</TargetEnvironment>
-      <TypeLibraryName>$(OutDir)\metsrv.tlb</TypeLibraryName>
+      <TypeLibraryName>$(OutDir)\ext_server_stdapi.tlb</TypeLibraryName>
       <HeaderFileName>
       </HeaderFileName>
     </Midl>
     <ClCompile>
       <Optimization>MinSpace</Optimization>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
-      <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
-      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\server;..\..\source\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>DEBUGTRACE;WIN32;NDEBUG;_WINDOWS;_USRDLL;METSRV_EXPORTS;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <StringPooling>false</StringPooling>
+      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\stdapi\server;..\..\source\jpeg-8;..\..\source\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>DEBUGTRACE;WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_SYS_EXPORTS;_CRT_SECURE_NO_WARNINGS;CINTERFACE;COBJMACROS;STDAPI_NAMESPACE_RAILGUN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <FunctionLevelLinking>false</FunctionLevelLinking>
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
-      <PrecompiledHeaderFile>metsrv.h</PrecompiledHeaderFile>
-      <PrecompiledHeaderOutputFile>$(OutDir)\metsrv.pch</PrecompiledHeaderOutputFile>
       <AssemblerListingLocation>$(OutDir)\</AssemblerListingLocation>
       <ObjectFileName>$(OutDir)\</ObjectFileName>
       <ProgramDataBaseFileName>$(OutDir)\</ProgramDataBaseFileName>
@@ -215,43 +208,43 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <BufferSecurityCheck>false</BufferSecurityCheck>
+      <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
+      <PrecompiledHeaderFile>precomp.h</PrecompiledHeaderFile>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <PreprocessToFile>false</PreprocessToFile>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>ws2_32.lib;odbc32.lib;odbccp32.lib;crypt32.lib;wininet.lib;winhttp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>strmiids.lib;mpr.lib;netapi32.lib;psapi.lib;winmm.lib;iphlpapi.lib;shlwapi.lib;ws2_32.lib;odbc32.lib;odbccp32.lib;jpeg.$(PlatformShortName).lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <AdditionalLibraryDirectories>..\common\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <ModuleDefinitionFile>$(ProjectDir)..\..\source\def\$(ProjectName).def</ModuleDefinitionFile>
+      <AdditionalLibraryDirectories>..\backcompat\$(Configuration);..\..\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <DelayLoadDLLs>
       </DelayLoadDLLs>
-      <GenerateDebugInformation>false</GenerateDebugInformation>
       <GenerateMapFile>false</GenerateMapFile>
       <MapFileName>
       </MapFileName>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention>
       </DataExecutionPrevention>
-      <ImportLibrary>
-      </ImportLibrary>
+      <ImportLibrary>$(OutDir)\ext_server_stdapi.lib</ImportLibrary>
       <TargetMachine>MachineX86</TargetMachine>
       <MinimumRequiredVersion>
       </MinimumRequiredVersion>
       <SubSystem>Windows</SubSystem>
+      <ModuleDefinitionFile>$(ProjectDir)..\..\source\def\extension.def</ModuleDefinitionFile>
       <AdditionalOptions>/ignore:4070 %(AdditionalOptions)</AdditionalOptions>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
       <ProgramDatabaseFile>
       </ProgramDatabaseFile>
       <ImageHasSafeExceptionHandlers>No</ImageHasSafeExceptionHandlers>
     </Link>
     <Bscmake>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <OutputFile>$(OutDir)\metsrv.bsc</OutputFile>
+      <OutputFile>$(OutDir)\ext_server_stdapi.bsc</OutputFile>
     </Bscmake>
     <PostBuildEvent>
       <Command>editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,4.0 "$(TargetDir)$(TargetFileName)" &gt; NUL
@@ -265,22 +258,18 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(TargetName)
       <MkTypLibCompatible>true</MkTypLibCompatible>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <TargetEnvironment>Win32</TargetEnvironment>
-      <TypeLibraryName>$(OutDir)\metsrv.tlb</TypeLibraryName>
+      <TypeLibraryName>$(OutDir)\ext_server_stdapi.tlb</TypeLibraryName>
       <HeaderFileName>
       </HeaderFileName>
     </Midl>
     <ClCompile>
       <Optimization>MinSpace</Optimization>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
-      <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
-      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\server;..\..\source\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;METSRV_EXPORTS;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <StringPooling>false</StringPooling>
+      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\stdapi\server;..\..\source\jpeg-8;..\..\source\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_SYS_EXPORTS;_CRT_SECURE_NO_WARNINGS;CINTERFACE;COBJMACROS;STDAPI_NAMESPACE_RAILGUN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <FunctionLevelLinking>false</FunctionLevelLinking>
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
-      <PrecompiledHeaderFile>metsrv.h</PrecompiledHeaderFile>
-      <PrecompiledHeaderOutputFile>$(OutDir)\metsrv.pch</PrecompiledHeaderOutputFile>
       <AssemblerListingLocation>$(OutDir)\</AssemblerListingLocation>
       <ObjectFileName>$(OutDir)\</ObjectFileName>
       <ProgramDataBaseFileName>$(OutDir)\</ProgramDataBaseFileName>
@@ -288,6 +277,8 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(TargetName)
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <BufferSecurityCheck>false</BufferSecurityCheck>
+      <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
+      <PrecompiledHeaderFile>precomp.h</PrecompiledHeaderFile>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -297,32 +288,31 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(TargetName)
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>ws2_32.lib;odbc32.lib;odbccp32.lib;crypt32.lib;wininet.lib;winhttp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>strmiids.lib;mpr.lib;netapi32.lib;psapi.lib;winmm.lib;iphlpapi.lib;shlwapi.lib;ws2_32.lib;odbc32.lib;odbccp32.lib;jpeg.$(PlatformShortName).lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <AdditionalLibraryDirectories>..\common\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <ModuleDefinitionFile>$(ProjectDir)..\..\source\def\$(ProjectName).def</ModuleDefinitionFile>
+      <AdditionalLibraryDirectories>..\backcompat\$(Configuration);..\..\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <DelayLoadDLLs>
       </DelayLoadDLLs>
-      <GenerateDebugInformation>false</GenerateDebugInformation>
       <GenerateMapFile>false</GenerateMapFile>
       <MapFileName>
       </MapFileName>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention>
       </DataExecutionPrevention>
-      <ImportLibrary>
-      </ImportLibrary>
+      <ImportLibrary>$(OutDir)\ext_server_stdapi.lib</ImportLibrary>
       <TargetMachine>MachineX86</TargetMachine>
       <MinimumRequiredVersion>
       </MinimumRequiredVersion>
       <SubSystem>Windows</SubSystem>
+      <ModuleDefinitionFile>$(ProjectDir)..\..\source\def\extension.def</ModuleDefinitionFile>
       <AdditionalOptions>/ignore:4070 %(AdditionalOptions)</AdditionalOptions>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
       <ProgramDatabaseFile />
       <ImageHasSafeExceptionHandlers>No</ImageHasSafeExceptionHandlers>
     </Link>
     <Bscmake>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <OutputFile>$(OutDir)\metsrv.bsc</OutputFile>
+      <OutputFile>$(OutDir)\ext_server_stdapi.bsc</OutputFile>
     </Bscmake>
     <PostBuildEvent>
       <Command>editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,4.0 "$(TargetDir)$(TargetFileName)" &gt; NUL
@@ -336,22 +326,18 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <MkTypLibCompatible>true</MkTypLibCompatible>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <TargetEnvironment>X64</TargetEnvironment>
-      <TypeLibraryName>$(OutDir)\metsrv.tlb</TypeLibraryName>
+      <TypeLibraryName>$(OutDir)\ext_server_stdapi.tlb</TypeLibraryName>
       <HeaderFileName>
       </HeaderFileName>
     </Midl>
     <ClCompile>
-      <Optimization>Custom</Optimization>
+      <Optimization>MaxSpeed</Optimization>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
-      <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
-      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\server;..\..\source\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;METSRV_EXPORTS;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\stdapi\server;..\..\source\jpeg-8;..\..\source\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_SYS_EXPORTS;_CRT_SECURE_NO_WARNINGS;CINTERFACE;COBJMACROS;STDAPI_NAMESPACE_RAILGUN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <FunctionLevelLinking>false</FunctionLevelLinking>
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
-      <PrecompiledHeaderFile>metsrv.h</PrecompiledHeaderFile>
-      <PrecompiledHeaderOutputFile>$(OutDir)\metsrv.pch</PrecompiledHeaderOutputFile>
       <AssemblerListingLocation>$(OutDir)\</AssemblerListingLocation>
       <ObjectFileName>$(OutDir)\</ObjectFileName>
       <ProgramDataBaseFileName>$(OutDir)\</ProgramDataBaseFileName>
@@ -359,40 +345,41 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <BufferSecurityCheck>false</BufferSecurityCheck>
+      <PrecompiledHeaderFile>precomp.h</PrecompiledHeaderFile>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <OmitFramePointers>true</OmitFramePointers>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>ws2_32.lib;odbc32.lib;odbccp32.lib;crypt32.lib;wininet.lib;winhttp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>strmiids.lib;mpr.lib;netapi32.lib;psapi.lib;winmm.lib;iphlpapi.lib;shlwapi.lib;ws2_32.lib;odbc32.lib;odbccp32.lib;jpeg.$(PlatformShortName).lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <AdditionalLibraryDirectories>..\common\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <ModuleDefinitionFile>$(ProjectDir)..\..\source\def\$(ProjectName).def</ModuleDefinitionFile>
-      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>..\..\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <DelayLoadDLLs>
+      </DelayLoadDLLs>
       <GenerateMapFile>false</GenerateMapFile>
       <MapFileName>
       </MapFileName>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention>
       </DataExecutionPrevention>
-      <ImportLibrary>
-      </ImportLibrary>
+      <ImportLibrary>$(OutDir)\ext_server_stdapi.lib</ImportLibrary>
       <TargetMachine>MachineX64</TargetMachine>
       <MinimumRequiredVersion>
       </MinimumRequiredVersion>
       <SubSystem>Windows</SubSystem>
+      <ModuleDefinitionFile>$(ProjectDir)..\..\source\def\extension.def</ModuleDefinitionFile>
       <AdditionalOptions>/ignore:4070 %(AdditionalOptions)</AdditionalOptions>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
       <ProgramDatabaseFile />
       <ImageHasSafeExceptionHandlers>No</ImageHasSafeExceptionHandlers>
     </Link>
     <Bscmake>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <OutputFile>$(OutDir)\metsrv.bsc</OutputFile>
+      <OutputFile>$(OutDir)\ext_server_stdapi.bsc</OutputFile>
     </Bscmake>
     <PostBuildEvent>
       <Command>editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,5.02 "$(TargetDir)$(TargetFileName)" &gt; NUL
@@ -406,22 +393,18 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <MkTypLibCompatible>true</MkTypLibCompatible>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <TargetEnvironment>X64</TargetEnvironment>
-      <TypeLibraryName>$(OutDir)\metsrv.tlb</TypeLibraryName>
+      <TypeLibraryName>$(OutDir)\ext_server_stdapi.tlb</TypeLibraryName>
       <HeaderFileName>
       </HeaderFileName>
     </Midl>
     <ClCompile>
-      <Optimization>MinSpace</Optimization>
+      <Optimization>MaxSpeed</Optimization>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
-      <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
-      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\server;..\..\source\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>DEBUGTRACE;WIN32;NDEBUG;_WINDOWS;_USRDLL;METSRV_EXPORTS;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\stdapi\server;..\..\source\jpeg-8;..\..\source\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>DEBUGTRACE;WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_SYS_EXPORTS;_CRT_SECURE_NO_WARNINGS;CINTERFACE;COBJMACROS;STDAPI_NAMESPACE_RAILGUN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <FunctionLevelLinking>false</FunctionLevelLinking>
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
-      <PrecompiledHeaderFile>metsrv.h</PrecompiledHeaderFile>
-      <PrecompiledHeaderOutputFile>$(OutDir)\metsrv.pch</PrecompiledHeaderOutputFile>
       <AssemblerListingLocation>$(OutDir)\</AssemblerListingLocation>
       <ObjectFileName>$(OutDir)\</ObjectFileName>
       <ProgramDataBaseFileName>$(OutDir)\</ProgramDataBaseFileName>
@@ -429,6 +412,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <BufferSecurityCheck>false</BufferSecurityCheck>
+      <PrecompiledHeaderFile>precomp.h</PrecompiledHeaderFile>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -438,31 +422,32 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>ws2_32.lib;odbc32.lib;odbccp32.lib;crypt32.lib;wininet.lib;winhttp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>strmiids.lib;mpr.lib;netapi32.lib;psapi.lib;winmm.lib;iphlpapi.lib;shlwapi.lib;ws2_32.lib;odbc32.lib;odbccp32.lib;jpeg.$(PlatformShortName).lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <AdditionalLibraryDirectories>..\common\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <ModuleDefinitionFile>$(ProjectDir)..\..\source\def\$(ProjectName).def</ModuleDefinitionFile>
-      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>..\..\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <DelayLoadDLLs>
+      </DelayLoadDLLs>
       <GenerateMapFile>false</GenerateMapFile>
       <MapFileName>
       </MapFileName>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention>
       </DataExecutionPrevention>
-      <ImportLibrary>
-      </ImportLibrary>
+      <ImportLibrary>$(OutDir)\ext_server_stdapi.lib</ImportLibrary>
       <TargetMachine>MachineX64</TargetMachine>
       <MinimumRequiredVersion>
       </MinimumRequiredVersion>
       <SubSystem>Windows</SubSystem>
+      <ModuleDefinitionFile>$(ProjectDir)..\..\source\def\extension.def</ModuleDefinitionFile>
       <AdditionalOptions>/ignore:4070 %(AdditionalOptions)</AdditionalOptions>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
       <ProgramDatabaseFile>
       </ProgramDatabaseFile>
       <ImageHasSafeExceptionHandlers>No</ImageHasSafeExceptionHandlers>
     </Link>
     <Bscmake>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <OutputFile>$(OutDir)\metsrv.bsc</OutputFile>
+      <OutputFile>$(OutDir)\ext_server_stdapi.bsc</OutputFile>
     </Bscmake>
     <PostBuildEvent>
       <Command>editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,5.02 "$(TargetDir)$(TargetFileName)" &gt; NUL
@@ -476,22 +461,18 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(TargetName)
       <MkTypLibCompatible>true</MkTypLibCompatible>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <TargetEnvironment>X64</TargetEnvironment>
-      <TypeLibraryName>$(OutDir)\metsrv.tlb</TypeLibraryName>
+      <TypeLibraryName>$(OutDir)\ext_server_stdapi.tlb</TypeLibraryName>
       <HeaderFileName>
       </HeaderFileName>
     </Midl>
     <ClCompile>
-      <Optimization>MinSpace</Optimization>
+      <Optimization>MaxSpeed</Optimization>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
-      <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
-      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\server;..\..\source\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;METSRV_EXPORTS;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\extensions\stdapi\server;..\..\source\jpeg-8;..\..\source\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;EXT_SERVER_SYS_EXPORTS;_CRT_SECURE_NO_WARNINGS;CINTERFACE;COBJMACROS;STDAPI_NAMESPACE_RAILGUN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <FunctionLevelLinking>false</FunctionLevelLinking>
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
-      <PrecompiledHeaderFile>metsrv.h</PrecompiledHeaderFile>
-      <PrecompiledHeaderOutputFile>$(OutDir)\metsrv.pch</PrecompiledHeaderOutputFile>
       <AssemblerListingLocation>$(OutDir)\</AssemblerListingLocation>
       <ObjectFileName>$(OutDir)\</ObjectFileName>
       <ProgramDataBaseFileName>$(OutDir)\</ProgramDataBaseFileName>
@@ -499,6 +480,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(TargetName)
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <BufferSecurityCheck>false</BufferSecurityCheck>
+      <PrecompiledHeaderFile>precomp.h</PrecompiledHeaderFile>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -508,30 +490,31 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(TargetName)
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>ws2_32.lib;odbc32.lib;odbccp32.lib;crypt32.lib;wininet.lib;winhttp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>strmiids.lib;mpr.lib;netapi32.lib;psapi.lib;winmm.lib;iphlpapi.lib;shlwapi.lib;ws2_32.lib;odbc32.lib;odbccp32.lib;jpeg.$(PlatformShortName).lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <AdditionalLibraryDirectories>..\common\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <ModuleDefinitionFile>$(ProjectDir)..\..\source\def\$(ProjectName).def</ModuleDefinitionFile>
-      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>..\..\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <DelayLoadDLLs>
+      </DelayLoadDLLs>
       <GenerateMapFile>false</GenerateMapFile>
       <MapFileName>
       </MapFileName>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention>
       </DataExecutionPrevention>
-      <ImportLibrary>
-      </ImportLibrary>
+      <ImportLibrary>$(OutDir)\ext_server_stdapi.lib</ImportLibrary>
       <TargetMachine>MachineX64</TargetMachine>
       <MinimumRequiredVersion>
       </MinimumRequiredVersion>
       <SubSystem>Windows</SubSystem>
+      <ModuleDefinitionFile>$(ProjectDir)..\..\source\def\extension.def</ModuleDefinitionFile>
       <AdditionalOptions>/ignore:4070 %(AdditionalOptions)</AdditionalOptions>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
       <ProgramDatabaseFile />
       <ImageHasSafeExceptionHandlers>No</ImageHasSafeExceptionHandlers>
     </Link>
     <Bscmake>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <OutputFile>$(OutDir)\metsrv.bsc</OutputFile>
+      <OutputFile>$(OutDir)\ext_server_stdapi.bsc</OutputFile>
     </Bscmake>
     <PostBuildEvent>
       <Command>editbin.exe /NOLOGO /OSVERSION:5.0 /SUBSYSTEM:WINDOWS,5.02 "$(TargetDir)$(TargetFileName)" &gt; NUL
@@ -539,68 +522,26 @@ IF NOT EXIST "$(ProjectDir)..\..\output\" mkdir "$(ProjectDir)..\..\output\"
 copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
-  <Choose>
-    <When Condition="'$(Platform)'=='Win32'" />
-  </Choose>
   <ItemGroup>
-    <ClInclude Include="..\..\source\metsrv\base.h" />
-    <ClInclude Include="..\..\source\metsrv\base_inject.h" />
-    <ClInclude Include="..\..\source\metsrv\channel.h" />
-    <ClInclude Include="..\..\source\metsrv\core.h" />
-    <ClInclude Include="..\..\source\metsrv\libloader.h" />
-    <ClInclude Include="..\..\source\metsrv\list.h" />
-    <ClInclude Include="..\..\source\metsrv\metsrv.h" />
-    <ClInclude Include="..\..\source\metsrv\metapi.h" />
-    <ClInclude Include="..\..\source\metsrv\packet_encryption.h" />
-    <ClInclude Include="..\..\source\metsrv\pivot_packet_dispatch.h" />
-    <ClInclude Include="..\..\source\metsrv\pivot_tree.h" />
-    <ClInclude Include="..\..\source\metsrv\remote.h" />
-    <ClInclude Include="..\..\source\metsrv\remote_dispatch.h" />
-    <ClInclude Include="..\..\source\metsrv\remote_thread.h" />
-    <ClInclude Include="..\..\source\metsrv\scheduler.h" />
-    <ClInclude Include="..\..\source\metsrv\server_pivot.h" />
-    <ClInclude Include="..\..\source\metsrv\server_pivot_named_pipe.h" />
-    <ClInclude Include="..\..\source\metsrv\server_transport_named_pipe.h" />
-    <ClInclude Include="..\..\source\metsrv\server_transport_tcp.h" />
-    <ClInclude Include="..\..\source\metsrv\server_transport_winhttp.h" />
-    <ClInclude Include="..\..\source\metsrv\server_transport_wininet.h" />
-    <ClInclude Include="..\..\source\metsrv\thread.h" />
-    <ClInclude Include="..\..\source\metsrv\unicode.h" />
-    <ClInclude Include="..\..\source\metsrv\zlib.h" />
-    <ClInclude Include="..\..\source\metsrv\pool_party.h" />
-    <ClInclude Include="..\..\source\metsrv\pool_party_ext.h" />
-    <ClInclude Include="..\..\source\metsrv\winapi.h" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\general.c" />
+    <ClCompile Include="..\..\source\extensions\stdapi\server\stdapi.c">
+      <PreCompiledHeader>Create</PreCompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\source\extensions\stdapi\server\railgun\railgun.c" />
+    <ClCompile Include="..\..\source\logging\logging.c" />
+    <ClCompile Include="..\..\source\tiny-regex-c\re.c" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\source\metsrv\base.c" />
-    <ClCompile Include="..\..\source\metsrv\base_dispatch.c" />
-    <ClCompile Include="..\..\source\metsrv\base_inject.c" />
-    <ClCompile Include="..\..\source\metsrv\channel.c" />
-    <ClCompile Include="..\..\source\metsrv\core.c" />
-    <ClCompile Include="..\..\source\metsrv\libloader.c" />
-    <ClCompile Include="..\..\source\metsrv\list.c" />
-    <ClCompile Include="..\..\source\metsrv\metsrv.c" />
-    <ClCompile Include="..\..\source\metsrv\metapi.c" />
-    <ClCompile Include="..\..\source\metsrv\packet_encryption.c" />
-    <ClCompile Include="..\..\source\metsrv\pivot_packet_dispatch.c" />
-    <ClCompile Include="..\..\source\metsrv\pivot_tree.c" />
-    <ClCompile Include="..\..\source\metsrv\remote.c" />
-    <ClCompile Include="..\..\source\metsrv\remote_dispatch.c" />
-    <ClCompile Include="..\..\source\metsrv\remote_thread.c" />
-    <ClCompile Include="..\..\source\metsrv\scheduler.c" />
-    <ClCompile Include="..\..\source\metsrv\server_pivot.c" />
-    <ClCompile Include="..\..\source\metsrv\server_pivot_named_pipe.c" />
-    <ClCompile Include="..\..\source\metsrv\server_setup.c" />
-    <ClCompile Include="..\..\source\metsrv\server_transport_named_pipe.c" />
-    <ClCompile Include="..\..\source\metsrv\server_transport_tcp.c" />
-    <ClCompile Include="..\..\source\metsrv\server_transport_winhttp.c" />
-    <ClCompile Include="..\..\source\metsrv\server_transport_wininet.c" />
-    <ClCompile Include="..\..\source\metsrv\thread.c" />
-    <ClCompile Include="..\..\source\metsrv\unicode.c" />
-    <ClCompile Include="..\..\source\metsrv\zlib.c" />
-    <ClCompile Include="..\..\source\logging\logging.c" />
-    <ClCompile Include="..\..\source\metsrv\pool_party.c" />
-    <ClCompile Include="..\..\source\metsrv\winapi.c" />
+    <ResourceCompile Include="..\..\source\extensions\stdapi\server\resource\stdapi.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\source\extensions\stdapi\server\precomp.h" />
+    <ClInclude Include="..\..\source\extensions\stdapi\stdapi.h" />
+    <ClInclude Include="..\..\source\extensions\stdapi\server\railgun\railgun.h" />
+    <ClInclude Include="..\..\source\tiny-regex-c\re.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\source\extensions\stdapi\server\resource\hook.dll" />
   </ItemGroup>
   <ItemGroup>
     <MASM Include="..\..\source\ReflectiveDLLInjection\dll\src\GateTrampoline32.asm">
@@ -614,6 +555,9 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
     </MASM>
   </ItemGroup>
+  <Choose>
+    <When Condition="'$(Platform)'=='Win32'" />
+  </Choose>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
     <Import Project="$(VCTargetsPath)\BuildCustomizations\masm.targets" />

