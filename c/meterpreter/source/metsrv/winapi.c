@@ -2,8 +2,6 @@
 #define _METERPRETER_WINAPI_H
 #include "winapi.h"
 
-#include <ntdef.h>
-
 #include "../ReflectiveDLLInjection/dll/src/DirectSyscall.h"
 #include "common.h"
 
@@ -18,6 +16,15 @@ typedef struct _CLIENT_ID {
 typedef enum _MEMORY_INFORMATION_CLASS {
     MemoryBasicInformation
 } MEMORY_INFORMATION_CLASS;
+
+typedef struct _OBJECT_ATTRIBUTES {
+    ULONG Length;
+    HANDLE RootDirectory;
+    PVOID ObjectName; // PUNICODE_STRING
+    ULONG Attributes;
+    PVOID SecurityDescriptor;
+    PVOID SecurityQualityOfService;
+} OBJECT_ATTRIBUTES, * POBJECT_ATTRIBUTES;
 
 typedef struct NtDllFunction {
     LPCSTR lpFunctionName;
@@ -43,6 +50,7 @@ enum NtDllSyscall {
     ZwFreeVirtualMemory
 };
 
+#define STATUS_SUCCESS 0
 Syscall** lpWinApiSyscalls = NULL;
 
 extern NTSTATUS SyscallStub(Syscall *pSyscall, ...);
@@ -60,7 +68,7 @@ Syscall** GetOrInitWinApiSyscalls() {
             bError = lpWinApiSyscalls == NULL;
         }
         if (!bError) {
-            for (int i = 0; i < dwNumbOfSyscalls; i++) {
+            for (DWORD i = 0; i < dwNumbOfSyscalls; i++) {
                 lpSyscall = HeapAlloc(hHeap, HEAP_ZERO_MEMORY, sizeof(Syscall));
                 bError = lpSyscall == NULL;
                 if (bError) {
@@ -69,16 +77,21 @@ Syscall** GetOrInitWinApiSyscalls() {
                 lpSyscall->dwCryptedHash = _hash((char*)lpFunctionsTobeLoaded[i].lpFunctionName);
                 lpSyscall->dwNumberOfArgs = lpFunctionsTobeLoaded[i].dwNumberOfArgs;
                 lpWinApiSyscalls[i] = lpSyscall;
-                dprintf("[WINAPI][GetOrInitWinApiSyscalls] lpSyscall = %p; dwCryptedHash = %d", lpSyscall, lpSyscall->dwCryptedHash);
+                dprintf("[WINAPI][GetOrInitWinApiSyscalls] lpSyscall = %p; dwCryptedHash = %p", lpSyscall, lpSyscall->dwCryptedHash);
             }
         }
         if (!bError) {
             bError = !getSyscalls(GetModuleHandleA(NTDLL_DLL), lpWinApiSyscalls, dwNumbOfSyscalls);
+            if (!bError) {
+                for (DWORD i = 0; i < dwNumbOfSyscalls; i++) {
+                    dprintf("[WINAPI][GetOrInitWinApiSyscalls] Index: %d pStub: %p, dwSyscallNr: %d", i, lpWinApiSyscalls[i]->pStub, lpWinApiSyscalls[i]->dwSyscallNr);
+                }
+            }
         }
         if (bError) {
             dprintf("[WINAPI][GetOrInitWinApiSyscalls] Error creating Syscall structure.");
             if (lpWinApiSyscalls != NULL) {
-                for (int i = 0; i < dwNumbOfSyscalls; i++) {
+                for (DWORD i = 0; i < dwNumbOfSyscalls; i++) {
                     lpSyscall = lpWinApiSyscalls[i];
                     if (lpSyscall != NULL) {
                         HeapFree(hHeap, 0, lpSyscall);
@@ -95,11 +108,11 @@ Syscall** GetOrInitWinApiSyscalls() {
 
 BOOL hasDirectSyscallSupport() {
     if(lpWinApiSyscalls == NULL) {
-        if(GetOrInitWinApiSyscalls() != NULL) {
-            return TRUE;
+        if(GetOrInitWinApiSyscalls() == NULL) {
+            return FALSE;
         }
     }
-    return FALSE;
+    return TRUE;
 }
 
 void* GetFunction(LPCSTR lpModuleName, LPCSTR lpFunctionName) {
@@ -151,9 +164,12 @@ NTSTATUS winapi_ntdll_ZwFreeVirtualMemory(HANDLE ProcessHandle, PVOID* BaseAddre
 
 BOOL winapi_kernel32_WriteProcessMemory(HANDLE hProcess, LPVOID lpBaseAddress, LPCVOID lpBuffer, SIZE_T nSize, SIZE_T* lpNumberOfBytesWritten) {
     if (hasDirectSyscallSupport()) {
-        return winapi_ntdll_ZwWriteVirtualMemory(hProcess, lpBaseAddress, (LPVOID)lpBuffer, nSize, (PULONG)lpNumberOfBytesWritten) == ERROR_SUCCESS;
+        NTSTATUS dwStatus = winapi_ntdll_ZwWriteVirtualMemory(hProcess, lpBaseAddress, (LPVOID)lpBuffer, (ULONG)nSize, (PULONG)lpNumberOfBytesWritten);
+        dprintf("[WINAPI][winapi_kernel32_WriteProcessMemory] Syscall ZwWriteVirtualMemory returned: %d", dwStatus);
+        return dwStatus == STATUS_SUCCESS;
     } else {
         BOOL (*pWriteProcessMemory)(HANDLE hProcess, LPVOID lpBaseAddress, LPCVOID lpBuffer, SIZE_T nSize, SIZE_T* lpNumberOfBytesWritten) = GetFunction(KERNEL32_DLL, "WriteProcessMemory");
+        dprintf("[WINAPI][winapi_kernel32_WriteProcessMemory] Calling WriteProcessMemory @ %p", pWriteProcessMemory);
         if (pWriteProcessMemory) {
             return pWriteProcessMemory(hProcess, lpBaseAddress, lpBuffer, nSize, lpNumberOfBytesWritten);
         }
@@ -163,9 +179,12 @@ BOOL winapi_kernel32_WriteProcessMemory(HANDLE hProcess, LPVOID lpBaseAddress, L
 
 BOOL winapi_kernel32_ReadProcessMemory(HANDLE hProcess, LPCVOID lpBaseAddress, LPVOID lpBuffer, SIZE_T nSize, SIZE_T* lpNumberOfBytesRead) {
     if (hasDirectSyscallSupport()) {
-        return winapi_ntdll_ZwReadVirtualMemory(hProcess, (LPVOID)lpBaseAddress, lpBuffer, nSize, (PULONG)lpNumberOfBytesRead) == ERROR_SUCCESS;
+        NTSTATUS dwStatus = winapi_ntdll_ZwReadVirtualMemory(hProcess, (LPVOID)lpBaseAddress, lpBuffer, (ULONG)nSize, (PULONG)lpNumberOfBytesRead);
+        dprintf("[WINAPI][winapi_kernel32_ReadProcessMemory] Syscall ZwReadVirtualMemory returned: %d", dwStatus);
+        return dwStatus == STATUS_SUCCESS;
     } else {
         BOOL (*pReadProcessMemory)(HANDLE hProcess, LPCVOID lpBaseAddress, LPVOID lpBuffer, SIZE_T nSize, SIZE_T* lpNumberOfBytesRead) = GetFunction(KERNEL32_DLL, "ReadProcessMemory");
+        dprintf("[WINAPI][winapi_kernel32_ReadProcessMemory] Calling ReadProcessMemory @ %p", pReadProcessMemory);
         if (pReadProcessMemory) {
             return pReadProcessMemory(hProcess, lpBaseAddress, lpBuffer, nSize, lpNumberOfBytesRead);
         }
@@ -175,18 +194,20 @@ BOOL winapi_kernel32_ReadProcessMemory(HANDLE hProcess, LPCVOID lpBaseAddress, L
 
 HANDLE winapi_kernel32_OpenProcess(DWORD dwDesiredAccess, BOOL bInheritHandle, DWORD dwProcessId) {
     if (hasDirectSyscallSupport()) {
-        OBJECT_ATTRIBUTES objAttributes;
+        OBJECT_ATTRIBUTES objAttributes = { 0 };
+        objAttributes.Length = sizeof(OBJECT_ATTRIBUTES);
         CLIENT_ID clientId;
         HANDLE hProcess = NULL;
         clientId.UniqueThread = NULL;
         clientId.UniqueProcess = (HANDLE)((ULONG_PTR)dwProcessId);
-        InitializeObjectAttributes(&objAttributes, NULL, 0, NULL, NULL);
         NTSTATUS dwStatus = winapi_ntdll_ZwOpenProcess(&hProcess, dwDesiredAccess, &objAttributes, &clientId);
-        if (dwStatus == ERROR_SUCCESS) {
+        dprintf("[WINAPI][winapi_kernel32_OpenProcess] Syscall ZwOpenProcess returned: %d", dwStatus);
+        if (dwStatus == STATUS_SUCCESS) {
             return hProcess;
         }
     } else {
         HANDLE (*pOpenProcess)(DWORD dwDesiredAccess, BOOL bInheritHandle, DWORD dwProcessId) = GetFunction(KERNEL32_DLL, "OpenProcess");
+        dprintf("[WINAPI][winapi_kernel32_OpenProcess] Calling OpenProcess @ %p", pOpenProcess);
         if (pOpenProcess) {
             return pOpenProcess(dwDesiredAccess, bInheritHandle, dwProcessId);
         }
@@ -199,11 +220,13 @@ LPVOID winapi_kernel32_VirtualAlloc(LPVOID lpAddress, SIZE_T dwSize, DWORD flAll
         LPVOID lpBaseAddr = lpAddress;
         SIZE_T dwDataSize = dwSize;
         NTSTATUS dwStatus = winapi_ntdll_ZwAllocateVirtualMemory(GetCurrentProcess(), &lpBaseAddr, 0, &dwDataSize, flAllocationType, flProtect);
-        if (dwStatus == ERROR_SUCCESS) {
+        dprintf("[WINAPI][winapi_kernel32_VirtualAlloc] Syscall ZwAllocateVirtualMemory returned: %d", dwStatus);
+        if (dwStatus == STATUS_SUCCESS) {
             return lpBaseAddr;
         }
     } else {
         LPVOID (*pVirtualAlloc)(LPVOID lpAddress, SIZE_T dwSize, DWORD flAllocationType, DWORD flProtect) = GetFunction(KERNEL32_DLL, "VirtualAlloc");
+        dprintf("[WINAPI][winapi_kernel32_VirtualAlloc] Calling VirtualAlloc @ %p", pVirtualAlloc);
         if (pVirtualAlloc) {
             return pVirtualAlloc(lpAddress, dwSize, flAllocationType, flProtect);
         }
@@ -216,11 +239,13 @@ LPVOID winapi_kernel32_VirtualAllocEx(HANDLE hProcess, LPVOID lpAddress, SIZE_T 
         LPVOID lpBaseAddr = lpAddress;
         SIZE_T dwDataSize = dwSize;
         NTSTATUS dwStatus = winapi_ntdll_ZwAllocateVirtualMemory(hProcess, &lpBaseAddr, 0, &dwDataSize, flAllocationType, flProtect);
-        if (dwStatus == ERROR_SUCCESS) {
+        dprintf("[WINAPI][winapi_kernel32_VirtualAllocEx] Syscall ZwAllocateVirtualMemory returned: %d", dwStatus);
+        if (dwStatus == STATUS_SUCCESS) {
             return lpBaseAddr;
         }
     } else {
         LPVOID (*pVirtualAllocEx)(HANDLE hProcess, LPVOID lpAddress, SIZE_T dwSize, DWORD flAllocationType, DWORD flProtect) = GetFunction(KERNEL32_DLL, "VirtualAllocEx");
+        dprintf("[WINAPI][winapi_kernel32_VirtualAllocEx] Calling VirtualAllocEx @ %p", pVirtualAllocEx);
         if (pVirtualAllocEx) {
             return pVirtualAllocEx(hProcess, lpAddress, dwSize, flAllocationType, flProtect);
         }
@@ -231,9 +256,12 @@ LPVOID winapi_kernel32_VirtualAllocEx(HANDLE hProcess, LPVOID lpAddress, SIZE_T 
 BOOL winapi_kernel32_VirtualProtect(LPVOID lpAddress, SIZE_T dwSize, DWORD flNewProtect, PDWORD lpflOldProtect) {
     if (hasDirectSyscallSupport()) {
         SIZE_T dwDataSize = dwSize;
-        return winapi_ntdll_ZwProtectVirtualMemory(GetCurrentProcess(), lpAddress, &dwDataSize, flNewProtect, lpflOldProtect) == ERROR_SUCCESS;
+        NTSTATUS dwStatus = winapi_ntdll_ZwProtectVirtualMemory(GetCurrentProcess(), lpAddress, &dwDataSize, flNewProtect, lpflOldProtect);
+        dprintf("[WINAPI][winapi_kernel32_VirtualProtect] Syscall ZwProtectVirtualMemory returned: %d", dwStatus);
+        return dwStatus == STATUS_SUCCESS;
     } else {
         BOOL (*pVirtualProtect)(LPVOID lpAddress, SIZE_T dwSize, DWORD flNewProtect, PDWORD lpflOldProtect) = GetFunction(KERNEL32_DLL, "VirtualProtect");
+        dprintf("[WINAPI][winapi_kernel32_VirtualProtect] Calling VirtualProtect @ %p", pVirtualProtect);
         if (pVirtualProtect) {
             return pVirtualProtect(lpAddress, dwSize, flNewProtect, lpflOldProtect);
         }
@@ -244,9 +272,12 @@ BOOL winapi_kernel32_VirtualProtect(LPVOID lpAddress, SIZE_T dwSize, DWORD flNew
 BOOL winapi_kernel32_VirtualProtectEx(HANDLE hProcess, LPVOID lpAddress, SIZE_T dwSize, DWORD flNewProtect, PDWORD lpflOldProtect) {
     if (hasDirectSyscallSupport()) {
         SIZE_T dwDataSize = dwSize;
-        return winapi_ntdll_ZwProtectVirtualMemory(hProcess, lpAddress, &dwDataSize, flNewProtect, lpflOldProtect) == ERROR_SUCCESS;
+        NTSTATUS dwStatus = winapi_ntdll_ZwProtectVirtualMemory(hProcess, lpAddress, &dwDataSize, flNewProtect, lpflOldProtect);
+        dprintf("[WINAPI][winapi_kernel32_VirtualProtectEx] Syscall ZwProtectVirtualMemory returned: %d", dwStatus);
+        return dwStatus == STATUS_SUCCESS;
     } else {
         BOOL (*pVirtualProtectEx)(HANDLE hProcess, LPVOID lpAddress, SIZE_T dwSize, DWORD flNewProtect, PDWORD lpflOldProtect) = GetFunction(KERNEL32_DLL, "VirtualProtectEx");
+        dprintf("[WINAPI][winapi_kernel32_VirtualProtectEx] Calling VirtualProtectEx @ %p", pVirtualProtectEx);
         if (pVirtualProtectEx) {
             return pVirtualProtectEx(hProcess, lpAddress, dwSize, flNewProtect, lpflOldProtect);
         }
@@ -258,11 +289,13 @@ SIZE_T winapi_kernel32_VirtualQuery(LPCVOID lpAddress, PMEMORY_BASIC_INFORMATION
     if (hasDirectSyscallSupport()) {
         SIZE_T returnLength = 0;
         NTSTATUS dwStatus = winapi_ntdll_ZwQueryVirtualMemory(GetCurrentProcess(), (LPVOID)lpAddress, MemoryBasicInformation, lpBuffer, sizeof(MEMORY_BASIC_INFORMATION), &returnLength);
-        if (dwStatus == ERROR_SUCCESS) {
+        dprintf("[WINAPI][winapi_kernel32_VirtualQuery] Syscall ZwQueryVirtualMemory returned: %d", dwStatus);
+        if (dwStatus == STATUS_SUCCESS) {
             return returnLength;
         }
     } else {
         SIZE_T (*pVirtualQuery)(LPCVOID lpAddress, PMEMORY_BASIC_INFORMATION lpBuffer, SIZE_T dwLength) = GetFunction(KERNEL32_DLL, "VirtualQuery");
+        dprintf("[WINAPI][winapi_kernel32_VirtualQuery] Calling VirtualQuery @ %p", pVirtualQuery);
         if (pVirtualQuery) {
             return pVirtualQuery(lpAddress, lpBuffer, dwLength);
         }
@@ -273,13 +306,14 @@ SIZE_T winapi_kernel32_VirtualQuery(LPCVOID lpAddress, PMEMORY_BASIC_INFORMATION
 SIZE_T winapi_kernel32_VirtualQueryEx(HANDLE hProcess, LPCVOID lpAddress, PMEMORY_BASIC_INFORMATION lpBuffer, SIZE_T dwLength) {
     if (hasDirectSyscallSupport()) {
         SIZE_T returnLength = 0;
-
         NTSTATUS dwStatus = winapi_ntdll_ZwQueryVirtualMemory(hProcess, (LPVOID)lpAddress, MemoryBasicInformation, lpBuffer, dwLength, &returnLength);
-        if (dwStatus == ERROR_SUCCESS) {
+        dprintf("[WINAPI][winapi_kernel32_VirtualQueryEx] Syscall ZwQueryVirtualMemory returned: %d", dwStatus);
+        if (dwStatus == STATUS_SUCCESS) {
             return returnLength;
         }
     } else {
         SIZE_T (*pVirtualQueryEx)(HANDLE hProcess, LPCVOID lpAddress, PMEMORY_BASIC_INFORMATION lpBuffer, SIZE_T dwLength) = GetFunction(KERNEL32_DLL, "VirtualQueryEx");
+        dprintf("[WINAPI][winapi_kernel32_VirtualQueryEx] Calling VirtualQueryEx @ %p", pVirtualQueryEx);
         if (pVirtualQueryEx) {
             return pVirtualQueryEx(hProcess, lpAddress, lpBuffer, dwLength);
         }
@@ -290,9 +324,12 @@ SIZE_T winapi_kernel32_VirtualQueryEx(HANDLE hProcess, LPCVOID lpAddress, PMEMOR
 BOOL winapi_kernel32_VirtualFree(LPVOID lpAddress, SIZE_T dwSize, DWORD dwFreeType) {
     if(hasDirectSyscallSupport()) {
         SIZE_T dwDataSize = dwSize;
-        return winapi_ntdll_ZwFreeVirtualMemory(GetCurrentProcess(), lpAddress, &dwDataSize, dwFreeType) == ERROR_SUCCESS;
+        NTSTATUS dwStatus = winapi_ntdll_ZwFreeVirtualMemory(GetCurrentProcess(), lpAddress, &dwDataSize, dwFreeType);
+        dprintf("[WINAPI][winapi_kernel32_VirtualFree] Syscall ZwFreeVirtualMemory returned: %d", dwStatus);
+        return dwStatus == STATUS_SUCCESS;
     }else{
         BOOL (*pVirtualFree)(LPVOID lpAddress, SIZE_T dwSize, DWORD dwFreeType) = GetFunction(KERNEL32_DLL, "VirtualFree");
+        dprintf("[WINAPI][winapi_kernel32_VirtualFree] Calling VirtualFree @ %p", pVirtualFree);
         if (pVirtualFree) {
             return pVirtualFree(lpAddress, dwSize, dwFreeType);
         }
