@@ -4,6 +4,37 @@
 #include <tlhelp32.h>
 #include <windows.h>
 
+typedef enum _MEMORY_INFORMATION_CLASS {
+    MemoryBasicInformation
+} MEMORY_INFORMATION_CLASS;
+
+#if !defined(_METERPRETER_POOLPARTY_C)
+typedef struct _CLIENT_ID {
+    HANDLE UniqueProcess;
+    HANDLE UniqueThread;
+} CLIENT_ID, *PCLIENT_ID;
+
+typedef struct _OBJECT_ATTRIBUTES {
+    ULONG Length;
+    HANDLE RootDirectory;
+    PVOID ObjectName;  // PUNICODE_STRING
+    ULONG Attributes;
+    PVOID SecurityDescriptor;
+    PVOID SecurityQualityOfService;
+} OBJECT_ATTRIBUTES, *POBJECT_ATTRIBUTES;
+#endif
+
+typedef struct _WinApiNtdll {
+    NTSTATUS (*ZwAllocateVirtualMemory)(HANDLE hProcess, PVOID* pBaseAddress, ULONG_PTR pZeroBits, PSIZE_T pRegionSize, ULONG ulAllocationType, ULONG ulProtect);
+    NTSTATUS (*ZwOpenProcess)(PHANDLE ProcessHandle, ACCESS_MASK DesiredAccess, OBJECT_ATTRIBUTES* ObjectAttributes, CLIENT_ID* ClientId);
+    NTSTATUS (*ZwWriteVirtualMemory)(HANDLE ProcessHandle, PVOID BaseAddress, PVOID Buffer, ULONG NumberOfBytesToWrite, PULONG NumberOfBytesWritten);
+    NTSTATUS (*ZwReadVirtualMemory)(HANDLE ProcessHandle, PVOID BaseAddress, PVOID Buffer, ULONG NumberOfBytesToRead, PULONG NumberOfBytesRead);
+    NTSTATUS (*ZwProtectVirtualMemory)(HANDLE ProcessHandle, PVOID* BaseAddress, PSIZE_T RegionSize, ULONG NewProtect, PULONG OldProtect);
+    NTSTATUS (*ZwQueryVirtualMemory)(HANDLE ProcessHandle, PVOID BaseAddress, MEMORY_INFORMATION_CLASS MemoryInformationClass, PVOID MemoryInformation, SIZE_T MemoryInformationLength, PSIZE_T ReturnLength);
+    NTSTATUS (*ZwFreeVirtualMemory)(HANDLE ProcessHandle, PVOID* BaseAddress, PSIZE_T RegionSize, ULONG FreeType);
+    NTSTATUS (*NtQueueApcThread)(HANDLE ThreadHandle, PVOID ApcRoutine, PVOID ApcContext, PVOID Argument1, PVOID Argument2);
+} WinApiNtdll;
+
 typedef struct _WinApiKernel32 {
     // Process and Memory Management
     BOOL (*WriteProcessMemory)(HANDLE hProcess, LPVOID lpBaseAddress, LPCVOID lpBuffer, SIZE_T nSize, SIZE_T* lpNumberOfBytesWritten);
@@ -49,7 +80,9 @@ typedef struct _WinApiKernel32 {
 
 } WinApiKernel32;
 
+// Top-level container for all dynamically resolved APIs.
 typedef struct _WinApi {
+    WinApiNtdll    ntdll;
     WinApiKernel32 kernel32;
 } WinApi;
 #endif  // _METERPRETER_COMMON_WINAPI_H

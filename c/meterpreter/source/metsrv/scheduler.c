@@ -276,7 +276,7 @@ DWORD THREADCALL scheduler_waitable_thread( THREAD * thread )
 	while( !terminate )
 	{
 		dprintf( "[SCHEDULER] About to wait ( 0x%08X )", thread );
-		result = WaitForMultipleObjects( 3, waitableHandles, FALSE, INFINITE );
+		result = met_api->win_api.kernel32.WaitForMultipleObjects( 3, waitableHandles, FALSE, INFINITE );
 		dprintf( "[SCHEDULER] Wait returned ( 0x%08X )", thread );
 		signalIndex = result - WAIT_OBJECT_0;
 		switch( signalIndex )
@@ -312,7 +312,7 @@ DWORD THREADCALL scheduler_waitable_thread( THREAD * thread )
 		}
 		else if( entry->waitable ) {
 			dprintf( "[SCHEDULER] scheduler_waitable_thread( 0x%08X ) closing handle 0x%08X", thread, entry->waitable);
-			CloseHandle( entry->waitable );
+			met_api->win_api.kernel32.CloseHandle( entry->waitable );
 		}
 
 		event_destroy( entry->resume );

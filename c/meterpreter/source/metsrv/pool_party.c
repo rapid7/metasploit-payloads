@@ -1,8 +1,9 @@
+#ifndef _METERPRETER_POOLPARTY_C
+#define _METERPRETER_POOLPARTY_C
+#include "pool_party_ext.h"
 #include "common.h"
 #include "common_metapi.h"
 #include "pool_party.h"
-#include "pool_party_ext.h"
-
 NtDll *pNtDll = NULL;
 POOLPARTY_INJECTOR* poolLifeguard = NULL;
 
@@ -23,7 +24,7 @@ NtDll* GetOrInitNtDll() {
 		HMODULE hNtDll = NULL;
 		hNtDll = GetModuleHandleA("ntdll.dll");
 		if(!hNtDll) {
-			hNtDll = LoadLibraryA("ntdll.dll");
+			hNtDll = met_api->win_api.kernel32.LoadLibraryA("ntdll.dll");
 			bError = hNtDll == NULL;
 			if(bError) {
 				break;
@@ -323,4 +324,4 @@ DWORD remote_tp_direct_insertion(HANDLE hProcess, DWORD dwDestinationArch, LPVOI
 //	return dwResult;
 //}
 //
-
+#endif

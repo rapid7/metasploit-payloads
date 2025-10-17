@@ -151,6 +151,17 @@ MetApi api_instance = {
     },
     // WinApi
     {
+		// Ntdll
+		{
+			winapi_ntdll_ZwAllocateVirtualMemory,
+			winapi_ntdll_ZwOpenProcess,
+			winapi_ntdll_ZwWriteVirtualMemory,
+			winapi_ntdll_ZwReadVirtualMemory,
+			winapi_ntdll_ZwProtectVirtualMemory,
+			winapi_ntdll_ZwQueryVirtualMemory,
+			winapi_ntdll_ZwFreeVirtualMemory,
+			winapi_ntdll_NtQueueApcThread
+    	},
         // Kernel32
         {
             // Process and Memory Management
