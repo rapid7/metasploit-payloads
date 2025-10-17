@@ -587,7 +587,7 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
 				}
 			}
 
-			CloseHandle(hToken);
+			met_api->win_api.kernel32.CloseHandle(hToken);
 		}
 
 		dwProcessAccess = PROCESS_DUP_HANDLE | PROCESS_VM_OPERATION | PROCESS_VM_WRITE | PROCESS_QUERY_INFORMATION | PROCESS_VM_READ;
@@ -629,7 +629,7 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
 		}
 
 		// Duplicate the event handle for the target process
-		if (!DuplicateHandle(GetCurrentProcess(), hEvent, hProcess, &ctx->e.hEvent, 0, TRUE, DUPLICATE_SAME_ACCESS))
+		if (!met_api->win_api.kernel32.DuplicateHandle(GetCurrentProcess(), hEvent, hProcess, &ctx->e.hEvent, 0, TRUE, DUPLICATE_SAME_ACCESS))
 		{
 			BREAK_ON_ERROR("[MIGRATE] DuplicateHandle failed");
 		}
@@ -714,13 +714,13 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
 	if (hProcess)
 	{
 		dprintf("[MIGRATE] Closing the process handle 0x%08x", hProcess);
-		CloseHandle(hProcess);
+		met_api->win_api.kernel32.CloseHandle(hProcess);
 	}
 
 	if (hEvent)
 	{
 		dprintf("[MIGRATE] Closing the event handle 0x%08x", hEvent);
-		CloseHandle(hEvent);
+		met_api->win_api.kernel32.CloseHandle(hEvent);
 	}
 
 	if (pResult)

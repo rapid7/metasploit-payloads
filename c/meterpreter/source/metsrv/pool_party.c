@@ -1,3 +1,6 @@
+#ifndef _METERPRETER_POOLPARTY_C
+#define _METERPRETER_POOLPARTY_C
+#include "pool_party_ext.h"
 #include "common.h"
 #include "common_metapi.h"
 #include "pool_party.h"

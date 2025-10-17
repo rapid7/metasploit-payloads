@@ -5,6 +5,23 @@
 
 /*****************************************************************************************/
 
+typedef struct __OBJECT_ATTRIBUTES
+{
+	ULONG Length;
+	HANDLE RootDirectory;
+	_PUNICODE_STRING ObjectName;
+	ULONG Attributes;
+	PVOID SecurityDescriptor;
+	PVOID SecurityQualityOfService;
+} _OBJECT_ATTRIBUTES, * _POBJECT_ATTRIBUTES;
+
+typedef struct __CLIENT_ID
+{
+  PVOID UniqueProcess;
+  PVOID UniqueThread;
+} _CLIENT_ID, * _PCLIENT_ID;
+typedef DWORD (WINAPI * NTOPENTHREAD)( PHANDLE, ACCESS_MASK, _POBJECT_ATTRIBUTES, _PCLIENT_ID ); // ntdll!NtOpenThread
+
 /*
  * Create a new lock. We choose Mutex's over CriticalSections as their appears to be an issue
  * when using CriticalSections with OpenSSL on some Windows systems. Mutex's are not as optimal
@@ -175,10 +192,10 @@ THREAD* thread_open(VOID)
 				pNtOpenThread(&thread->handle, THREAD_TERMINATE | THREAD_SUSPEND_RESUME, &oa, &cid);
 			}
 
-			FreeLibrary(hNtDll);
+			met_api->win_api.kernel32.FreeLibrary(hNtDll);
 		}
 
-		FreeLibrary(hKernel32);
+		met_api->win_api.kernel32.FreeLibrary(hKernel32);
 	}
 
 	return thread;
@@ -255,7 +272,7 @@ BOOL thread_run(THREAD* thread)
 		return FALSE;
 	}
 
-	if (ResumeThread(thread->handle) < 0)
+	if (met_api->win_api.kernel32.ResumeThread(thread->handle) < 0)
 	{
 		return FALSE;
 	}
@@ -330,7 +347,7 @@ BOOL thread_destroy(THREAD* thread)
 
 	event_destroy(thread->sigterm);
 
-	CloseHandle(thread->handle);
+	met_api->win_api.kernel32.CloseHandle(thread->handle);
 
 	free(thread);
 
