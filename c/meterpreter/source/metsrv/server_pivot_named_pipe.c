@@ -71,9 +71,9 @@ static DWORD server_destroy(HANDLE waitable, LPVOID entryContext, LPVOID threadC
 	{
 		dprintf("[PIVOT] Cleaning up the pipe pivot context");
 		lock_acquire(ctx->remote->lock);
-		CloseHandle(ctx->pipe);
-		CloseHandle(ctx->read_overlap.hEvent);
-		CloseHandle(ctx->write_overlap.hEvent);
+		met_api->win_api.kernel32.CloseHandle(ctx->pipe);
+		met_api->win_api.kernel32.CloseHandle(ctx->read_overlap.hEvent);
+		met_api->win_api.kernel32.CloseHandle(ctx->write_overlap.hEvent);
 		SAFE_FREE(ctx->stage_data);
 		lock_destroy(ctx->write_lock);
 		lock_release(ctx->remote->lock);
@@ -260,7 +260,7 @@ static DWORD named_pipe_write_raw(LPVOID state, LPBYTE raw, DWORD rawLength)
 	while (bytesWritten < rawLength)
 	{
 		DWORD byteCount = 0;
-		WriteFile(ctx->pipe, raw, rawLength - bytesWritten, NULL, &ctx->write_overlap);
+		met_api->win_api.kernel32.WriteFile(ctx->pipe, raw, rawLength - bytesWritten, NULL, &ctx->write_overlap);
 		//WriteFile(ctx->pipe, raw, min(rawLength - bytesWritten, PIPE_BUFFER_SIZE), NULL, &ctx->write_overlap);
 
 		// blocking here is just fine, it's the reads we care about
@@ -390,7 +390,7 @@ DWORD toggle_privilege(LPCWSTR privName, BOOL enable, BOOL* wasEnabled)
 	*wasEnabled = (prevTp.Privileges[0].Attributes & SE_PRIVILEGE_ENABLED) == SE_PRIVILEGE_ENABLED ? TRUE : FALSE;
 	dprintf("[NP-PRIV] the %S token was %senabled, and is now %s", privName, *wasEnabled ? "" : "not ", enable ? "enabled" : "disabled");
 
-	CloseHandle(accessToken);
+	met_api->win_api.kernel32.CloseHandle(accessToken);
 
 	return ERROR_SUCCESS;
 }
@@ -470,7 +470,7 @@ static VOID free_server_context(NamedPipeContext* ctx)
 		dprintf("[NP-SERVER] freeing up pipe handle 0x%x", ctx->pipe);
 		if (ctx->pipe != INVALID_HANDLE_VALUE && ctx->pipe != INVALID_HANDLE_VALUE)
 		{
-			CloseHandle(ctx->pipe);
+			met_api->win_api.kernel32.CloseHandle(ctx->pipe);
 			ctx->pipe = INVALID_HANDLE_VALUE;
 		}
 
@@ -483,7 +483,7 @@ static VOID free_server_context(NamedPipeContext* ctx)
 
 		if (ctx->write_overlap.hEvent != NULL)
 		{
-			CloseHandle(ctx->write_overlap.hEvent);
+			met_api->win_api.kernel32.CloseHandle(ctx->write_overlap.hEvent);
 			ctx->write_overlap.hEvent = NULL;
 		}
 
@@ -819,13 +819,13 @@ DWORD request_core_pivot_add_named_pipe(Remote* remote, Packet* packet)
 		if (ctx->read_overlap.hEvent != NULL)
 		{
 			dprintf("[NP-SERVER] Destroying wait handle");
-			CloseHandle(ctx->read_overlap.hEvent);
+			met_api->win_api.kernel32.CloseHandle(ctx->read_overlap.hEvent);
 		}
 
 		if (ctx->pipe != NULL && ctx->pipe != INVALID_HANDLE_VALUE)
 		{
 			dprintf("[NP-SERVER] Destroying pipe");
-			CloseHandle(ctx->pipe);
+			met_api->win_api.kernel32.CloseHandle(ctx->pipe);
 		}
 
 		free(ctx);

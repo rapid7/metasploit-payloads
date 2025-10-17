@@ -52,7 +52,7 @@ HANDLE core_update_thread_token(Remote *remote, HANDLE token)
 		// Close the old token if its not one of the two active tokens
 		if (temp && temp != remote->server_token && temp != remote->thread_token)
 		{
-			CloseHandle(temp);
+			met_api->win_api.kernel32.CloseHandle(temp);
 		}
 	} while (0);
 
