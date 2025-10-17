@@ -48,7 +48,7 @@ static BOOL WINAPI AddMandatoryAce(PACL pAcl, DWORD dwAceRevision, DWORD dwAceFl
 	{
 		attempted = TRUE;
 
-		HMODULE lib = LoadLibraryA("advapi32.dll");
+		HMODULE lib = met_api->win_api.kernel32.LoadLibraryA("advapi32.dll");
 		if (lib != NULL)
 		{
 			pAddMandatoryAce = (PAddMandatoryAce)GetProcAddress(lib, "AddMandatoryAce");
@@ -264,7 +264,7 @@ static DWORD named_pipe_write_raw(LPVOID state, LPBYTE raw, DWORD rawLength)
 		//WriteFile(ctx->pipe, raw, min(rawLength - bytesWritten, PIPE_BUFFER_SIZE), NULL, &ctx->write_overlap);
 
 		// blocking here is just fine, it's the reads we care about
-		if (GetOverlappedResult(ctx->pipe, &ctx->write_overlap, &byteCount, TRUE))
+		if (met_api->win_api.kernel32.GetOverlappedResult(ctx->pipe, &ctx->write_overlap, &byteCount, TRUE))
 		{
 			dprintf("[NP-SERVER] Wrote %u", byteCount);
 			bytesWritten += byteCount;
@@ -411,7 +411,7 @@ DWORD create_pipe_server_instance(NamedPipeContext* ctx)
 			// set up a session that let's anyone with SMB access connect
 			SECURITY_ATTRIBUTES sa = { 0 };
 			create_pipe_security_attributes(&sa);
-			ctx->pipe = CreateNamedPipeA(ctx->name, PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED, PIPE_TYPE_BYTE, PIPE_UNLIMITED_INSTANCES, PIPE_BUFFER_SIZE, PIPE_BUFFER_SIZE, 0, &sa);
+			ctx->pipe = met_api->win_api.kernel32.CreateNamedPipeA(ctx->name, PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED, PIPE_TYPE_BYTE, PIPE_UNLIMITED_INSTANCES, PIPE_BUFFER_SIZE, PIPE_BUFFER_SIZE, 0, &sa);
 
 			if (wasEnabled == FALSE)
 			{
@@ -422,7 +422,7 @@ DWORD create_pipe_server_instance(NamedPipeContext* ctx)
 		if (ctx->pipe == INVALID_HANDLE_VALUE)
 		{
 			// Fallback on a pipe with simpler security attributes
-			ctx->pipe = CreateNamedPipeA(ctx->name, PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED, PIPE_TYPE_BYTE, PIPE_UNLIMITED_INSTANCES, PIPE_BUFFER_SIZE, PIPE_BUFFER_SIZE, 0, NULL);
+			ctx->pipe = met_api->win_api.kernel32.CreateNamedPipeA(ctx->name, PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED, PIPE_TYPE_BYTE, PIPE_UNLIMITED_INSTANCES, PIPE_BUFFER_SIZE, PIPE_BUFFER_SIZE, 0, NULL);
 		}
 
 		if (ctx->pipe == INVALID_HANDLE_VALUE)
@@ -524,7 +524,7 @@ static DWORD server_notify(Remote* remote, LPVOID entryContext, LPVOID threadCon
 		{
 			serverCtx->connecting = TRUE;
 			dprintf("[NP-SERVER] Connecting to the named pipe async");
-			ConnectNamedPipe(serverCtx->pipe, &serverCtx->read_overlap);
+			met_api->win_api.kernel32.ConnectNamedPipe(serverCtx->pipe, &serverCtx->read_overlap);
 
 			dwResult = GetLastError();
 			dprintf("[NP-SERVER] checking the result of connect %u 0x%x", dwResult, dwResult);
@@ -548,7 +548,7 @@ static DWORD server_notify(Remote* remote, LPVOID entryContext, LPVOID threadCon
 
 		DWORD bytesProcessed = 0;
 		dprintf("[NP-SERVER] Checking the overlapped result");
-		if (!GetOverlappedResult(serverCtx->pipe, &serverCtx->read_overlap, &bytesProcessed, FALSE))
+		if (!met_api->win_api.kernel32.GetOverlappedResult(serverCtx->pipe, &serverCtx->read_overlap, &bytesProcessed, FALSE))
 		{
 			dwResult = GetLastError();
 			dprintf("[NP-SERVER] server_notify. unable to get the result, %u", dwResult);
@@ -561,7 +561,7 @@ static DWORD server_notify(Remote* remote, LPVOID entryContext, LPVOID threadCon
 			{
 				dprintf("[NP-SERVER] the client appears to have bailed out, disconnecting...");
 				// Reset the read event so that our schedular loop witll exit properly
-				ResetEvent(serverCtx->read_overlap.hEvent);
+				met_api->win_api.kernel32.ResetEvent(serverCtx->read_overlap.hEvent);
 
 				// Prepare the notification packet for dispatching
 				Packet* notification = packet_create(PACKET_TLV_TYPE_REQUEST, COMMAND_ID_CORE_PIVOT_SESSION_DIED);
@@ -688,7 +688,7 @@ static DWORD server_notify(Remote* remote, LPVOID entryContext, LPVOID threadCon
 	if (serverCtx->read_overlap.hEvent != NULL)
 	{
 		dprintf("[NP-SERVER] Resetting the event handle");
-		ResetEvent(serverCtx->read_overlap.hEvent);
+		met_api->win_api.kernel32.ResetEvent(serverCtx->read_overlap.hEvent);
 	}
 
 	// this has to be done after the signal is reset, otherwise ... STRANGE THINGS HAPPEN!
@@ -700,7 +700,7 @@ static DWORD server_notify(Remote* remote, LPVOID entryContext, LPVOID threadCon
 
 		// read the data from the pipe, we're async, so the return value of the function is meaningless.
 		dprintf("[NP-SERVER] kicking off another read operation...");
-		ReadFile(serverCtx->pipe, serverCtx->read_buffer, PIPE_BUFFER_SIZE, NULL, &serverCtx->read_overlap);
+		met_api->win_api.kernel32.ReadFile(serverCtx->pipe, serverCtx->read_buffer, PIPE_BUFFER_SIZE, NULL, &serverCtx->read_overlap);
 	}
 
 	return dwResult;

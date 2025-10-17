@@ -1,12 +1,6 @@
-#ifndef _METERPRETER_WINAPI_H
-#define _METERPRETER_WINAPI_H
+#ifndef _METERPRETER_WINAPI_C
+#define _METERPRETER_WINAPI_C
 #include "winapi.h"
-#include <winsock2.h>
-#include <windows.h>
-#include <winhttp.h>
-#include <tlhelp32.h>
-#include <wincrypt.h>
-
 
 #include "../ReflectiveDLLInjection/dll/src/DirectSyscall.h"
 #include "common.h"
@@ -20,24 +14,6 @@
 #define RPCRT4_DLL "rpcrt4.dll"
 #define WINHTTP_DLL "winhttp.dll"
 #define WININET_DLL "wininet.dll"
-
-typedef struct _CLIENT_ID {
-    HANDLE UniqueProcess;
-    HANDLE UniqueThread;
-} CLIENT_ID, *PCLIENT_ID;
-
-typedef enum _MEMORY_INFORMATION_CLASS {
-    MemoryBasicInformation
-} MEMORY_INFORMATION_CLASS;
-
-typedef struct _OBJECT_ATTRIBUTES {
-    ULONG Length;
-    HANDLE RootDirectory;
-    PVOID ObjectName;  // PUNICODE_STRING
-    ULONG Attributes;
-    PVOID SecurityDescriptor;
-    PVOID SecurityQualityOfService;
-} OBJECT_ATTRIBUTES, *POBJECT_ATTRIBUTES;
 
 typedef struct NtDllFunction {
     LPCSTR lpFunctionName;
@@ -184,6 +160,15 @@ NTSTATUS winapi_ntdll_NtQueueApcThread(HANDLE ThreadHandle, PVOID ApcRoutine, PV
         return pNtQueueApcThread(ThreadHandle, ApcRoutine, ApcContext, Argument1, Argument2);
     }
     return 0xC0000001;  // STATUS_UNSUCCESSFUL
+}
+
+NTSTATUS winapi_ntdll_NtOpenThread(PHANDLE ThreadHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, PCLIENT_ID ClientId) {
+    NTSTATUS (*pNtOpenThread)(PHANDLE, ACCESS_MASK, POBJECT_ATTRIBUTES, PCLIENT_ID) = GetFunction(NTDLL_DLL, "NtOpenThread");
+    dprintf("[WINAPI][winapi_ntdll_NtOpenThread] Calling NtOpenThread @ %p", pNtOpenThread);
+    if (pNtOpenThread) {
+        return pNtOpenThread(ThreadHandle, DesiredAccess, ObjectAttributes, ClientId);
+    }
+    return 0xC0000001; // STATUS_UNSUCCESSFUL
 }
 
 // END: ntdll.dll
@@ -525,6 +510,69 @@ HGLOBAL winapi_kernel32_GlobalFree(HGLOBAL hMem) {
     return hMem;  // Per documentation, on failure, the handle is returned.
 }
 
+HANDLE winapi_kernel32_CreateNamedPipeA(LPCSTR lpName, DWORD dwOpenMode, DWORD dwPipeMode, DWORD nMaxInstances, DWORD nOutBufferSize, DWORD nInBufferSize, DWORD nDefaultTimeOut, LPSECURITY_ATTRIBUTES lpSecurityAttributes) {
+    HANDLE (*pCreateNamedPipeA)(LPCSTR, DWORD, DWORD, DWORD, DWORD, DWORD, DWORD, LPSECURITY_ATTRIBUTES) = GetFunction(KERNEL32_DLL, "CreateNamedPipeA");
+    dprintf("[WINAPI][winapi_kernel32_CreateNamedPipeA] Calling CreateNamedPipeA @ %p", pCreateNamedPipeA);
+    if (pCreateNamedPipeA) {
+        return pCreateNamedPipeA(lpName, dwOpenMode, dwPipeMode, nMaxInstances, nOutBufferSize, nInBufferSize, nDefaultTimeOut, lpSecurityAttributes);
+    }
+    return INVALID_HANDLE_VALUE;
+}
+
+BOOL winapi_kernel32_ConnectNamedPipe(HANDLE hNamedPipe, LPOVERLAPPED lpOverlapped) {
+    BOOL (*pConnectNamedPipe)(HANDLE, LPOVERLAPPED) = GetFunction(KERNEL32_DLL, "ConnectNamedPipe");
+    dprintf("[WINAPI][winapi_kernel32_ConnectNamedPipe] Calling ConnectNamedPipe @ %p", pConnectNamedPipe);
+    if (pConnectNamedPipe) {
+        return pConnectNamedPipe(hNamedPipe, lpOverlapped);
+    }
+    return FALSE;
+}
+
+BOOL winapi_kernel32_GetOverlappedResult(HANDLE hFile, LPOVERLAPPED lpOverlapped, LPDWORD lpNumberOfBytesTransferred, BOOL bWait) {
+    BOOL (*pGetOverlappedResult)(HANDLE, LPOVERLAPPED, LPDWORD, BOOL) = GetFunction(KERNEL32_DLL, "GetOverlappedResult");
+    dprintf("[WINAPI][winapi_kernel32_GetOverlappedResult] Calling GetOverlappedResult @ %p", pGetOverlappedResult);
+    if (pGetOverlappedResult) {
+        return pGetOverlappedResult(hFile, lpOverlapped, lpNumberOfBytesTransferred, bWait);
+    }
+    return FALSE;
+}
+
+BOOL winapi_kernel32_ReadFile(HANDLE hFile, LPVOID lpBuffer, DWORD nNumberOfBytesToRead, LPDWORD lpNumberOfBytesRead, LPOVERLAPPED lpOverlapped) {
+    BOOL (*pReadFile)(HANDLE, LPVOID, DWORD, LPDWORD, LPOVERLAPPED) = GetFunction(KERNEL32_DLL, "ReadFile");
+    dprintf("[WINAPI][winapi_kernel32_ReadFile] Calling ReadFile @ %p", pReadFile);
+    if (pReadFile) {
+        return pReadFile(hFile, lpBuffer, nNumberOfBytesToRead, lpNumberOfBytesRead, lpOverlapped);
+    }
+    return FALSE;
+}
+
+HANDLE winapi_kernel32_CreateThread(LPSECURITY_ATTRIBUTES lpThreadAttributes, SIZE_T dwStackSize, LPTHREAD_START_ROUTINE lpStartAddress, LPVOID lpParameter, DWORD dwCreationFlags, LPDWORD lpThreadId) {
+    HANDLE (*pCreateThread)(LPSECURITY_ATTRIBUTES, SIZE_T, LPTHREAD_START_ROUTINE, LPVOID, DWORD, LPDWORD) = GetFunction(KERNEL32_DLL, "CreateThread");
+    dprintf("[WINAPI][winapi_kernel32_CreateThread] Calling CreateThread @ %p", pCreateThread);
+    if (pCreateThread) {
+        return pCreateThread(lpThreadAttributes, dwStackSize, lpStartAddress, lpParameter, dwCreationFlags, lpThreadId);
+    }
+    return NULL;
+}
+
+BOOL winapi_kernel32_ResetEvent(HANDLE hEvent) {
+    BOOL (*pResetEvent)(HANDLE) = GetFunction(KERNEL32_DLL, "ResetEvent");
+    dprintf("[WINAPI][winapi_kernel32_ResetEvent] Calling ResetEvent @ %p", pResetEvent);
+    if (pResetEvent) {
+        return pResetEvent(hEvent);
+    }
+    return FALSE;
+}
+
+BOOL winapi_kernel32_SetThreadErrorMode(DWORD dwNewMode, LPDWORD lpOldMode) {
+    BOOL (*pSetThreadErrorMode)(DWORD, LPDWORD) = GetFunction(KERNEL32_DLL, "SetThreadErrorMode");
+    dprintf("[WINAPI][winapi_kernel32_SetThreadErrorMode] Calling SetThreadErrorMode @ %p", pSetThreadErrorMode);
+    if (pSetThreadErrorMode) {
+        return pSetThreadErrorMode(dwNewMode, lpOldMode);
+    }
+    return FALSE;
+}
+
 // END: kernel32.dll
 // START: advapi32.dll
 
@@ -632,6 +680,69 @@ BOOL winapi_advapi32_OpenThreadToken(HANDLE ThreadHandle, DWORD DesiredAccess, B
     dprintf("[WINAPI][winapi_advapi32_OpenThreadToken] Calling OpenThreadToken @ %p", pOpenThreadToken);
     if (pOpenThreadToken) {
         return pOpenThreadToken(ThreadHandle, DesiredAccess, OpenAsSelf, TokenHandle);
+    }
+    return FALSE;
+}
+
+BOOL winapi_advapi32_AllocateAndInitializeSid(PSID_IDENTIFIER_AUTHORITY pIdentifierAuthority, BYTE nSubAuthorityCount, DWORD dwSubAuthority0, DWORD dwSubAuthority1, DWORD dwSubAuthority2, DWORD dwSubAuthority3, DWORD dwSubAuthority4, DWORD dwSubAuthority5, DWORD dwSubAuthority6, DWORD dwSubAuthority7, PSID *pSid) {
+    BOOL (*pAllocateAndInitializeSid)(PSID_IDENTIFIER_AUTHORITY, BYTE, DWORD, DWORD, DWORD, DWORD, DWORD, DWORD, DWORD, DWORD, PSID *) = GetFunction(ADVAPI32_DLL, "AllocateAndInitializeSid");
+    dprintf("[WINAPI][winapi_advapi32_AllocateAndInitializeSid] Calling AllocateAndInitializeSid @ %p", pAllocateAndInitializeSid);
+    if (pAllocateAndInitializeSid) {
+        return pAllocateAndInitializeSid(pIdentifierAuthority, nSubAuthorityCount, dwSubAuthority0, dwSubAuthority1, dwSubAuthority2, dwSubAuthority3, dwSubAuthority4, dwSubAuthority5, dwSubAuthority6, dwSubAuthority7, pSid);
+    }
+    return FALSE;
+}
+
+DWORD winapi_advapi32_SetEntriesInAclW(ULONG cCountOfExplicitEntries, PEXPLICIT_ACCESS_W pListOfExplicitEntries, PACL OldAcl, PACL *NewAcl) {
+    DWORD (*pSetEntriesInAclW)(ULONG, PEXPLICIT_ACCESS_W, PACL, PACL *) = GetFunction(ADVAPI32_DLL, "SetEntriesInAclW");
+    dprintf("[WINAPI][winapi_advapi32_SetEntriesInAclW] Calling SetEntriesInAclW @ %p", pSetEntriesInAclW);
+    if (pSetEntriesInAclW) {
+        return pSetEntriesInAclW(cCountOfExplicitEntries, pListOfExplicitEntries, OldAcl, NewAcl);
+    }
+    return ERROR_INVALID_FUNCTION; // Generic error code
+}
+
+BOOL winapi_advapi32_InitializeAcl(PACL pAcl, DWORD nAclLength, DWORD dwAclRevision) {
+    BOOL (*pInitializeAcl)(PACL, DWORD, DWORD) = GetFunction(ADVAPI32_DLL, "InitializeAcl");
+    dprintf("[WINAPI][winapi_advapi32_InitializeAcl] Calling InitializeAcl @ %p", pInitializeAcl);
+    if (pInitializeAcl) {
+        return pInitializeAcl(pAcl, nAclLength, dwAclRevision);
+    }
+    return FALSE;
+}
+
+BOOL winapi_advapi32_InitializeSecurityDescriptor(PSECURITY_DESCRIPTOR pSecurityDescriptor, DWORD dwRevision) {
+    BOOL (*pInitializeSecurityDescriptor)(PSECURITY_DESCRIPTOR, DWORD) = GetFunction(ADVAPI32_DLL, "InitializeSecurityDescriptor");
+    dprintf("[WINAPI][winapi_advapi32_InitializeSecurityDescriptor] Calling InitializeSecurityDescriptor @ %p", pInitializeSecurityDescriptor);
+    if (pInitializeSecurityDescriptor) {
+        return pInitializeSecurityDescriptor(pSecurityDescriptor, dwRevision);
+    }
+    return FALSE;
+}
+
+BOOL winapi_advapi32_SetSecurityDescriptorDacl(PSECURITY_DESCRIPTOR pSecurityDescriptor, BOOL bDaclPresent, PACL pDacl, BOOL bDaclDefaulted) {
+    BOOL (*pSetSecurityDescriptorDacl)(PSECURITY_DESCRIPTOR, BOOL, PACL, BOOL) = GetFunction(ADVAPI32_DLL, "SetSecurityDescriptorDacl");
+    dprintf("[WINAPI][winapi_advapi32_SetSecurityDescriptorDacl] Calling SetSecurityDescriptorDacl @ %p", pSetSecurityDescriptorDacl);
+    if (pSetSecurityDescriptorDacl) {
+        return pSetSecurityDescriptorDacl(pSecurityDescriptor, bDaclPresent, pDacl, bDaclDefaulted);
+    }
+    return FALSE;
+}
+
+BOOL winapi_advapi32_SetSecurityDescriptorSacl(PSECURITY_DESCRIPTOR pSecurityDescriptor, BOOL bSaclPresent, PACL pSacl, BOOL bSaclDefaulted) {
+    BOOL (*pSetSecurityDescriptorSacl)(PSECURITY_DESCRIPTOR, BOOL, PACL, BOOL) = GetFunction(ADVAPI32_DLL, "SetSecurityDescriptorSacl");
+    dprintf("[WINAPI][winapi_advapi32_SetSecurityDescriptorSacl] Calling SetSecurityDescriptorSacl @ %p", pSetSecurityDescriptorSacl);
+    if (pSetSecurityDescriptorSacl) {
+        return pSetSecurityDescriptorSacl(pSecurityDescriptor, bSaclPresent, pSacl, bSaclDefaulted);
+    }
+    return FALSE;
+}
+
+BOOL winapi_advapi32_LookupPrivilegeValueW(LPCWSTR lpSystemName, LPCWSTR lpName, PLUID lpLuid) {
+    BOOL (*pLookupPrivilegeValueW)(LPCWSTR, LPCWSTR, PLUID) = GetFunction(ADVAPI32_DLL, "LookupPrivilegeValueW");
+    dprintf("[WINAPI][winapi_advapi32_LookupPrivilegeValueW] Calling LookupPrivilegeValueW @ %p", pLookupPrivilegeValueW);
+    if (pLookupPrivilegeValueW) {
+        return pLookupPrivilegeValueW(lpSystemName, lpName, lpLuid);
     }
     return FALSE;
 }

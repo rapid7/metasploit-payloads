@@ -68,7 +68,7 @@ DWORD buffer_to_file(LPCSTR filePath, PUCHAR buffer, ULONG length)
 
 		// Keep writing until everything is written
 		while ((bytesLeft) &&
-			   (WriteFile(h, buffer + offset, bytesLeft, &bytesWritten, NULL)))
+			   (met_api->win_api.kernel32.WriteFile(h, buffer + offset, bytesLeft, &bytesWritten, NULL)))
 		{
 			bytesLeft -= bytesWritten;
 			offset    += bytesWritten;
@@ -79,7 +79,7 @@ DWORD buffer_to_file(LPCSTR filePath, PUCHAR buffer, ULONG length)
 	} while (0);
 
 	if (h != INVALID_HANDLE_VALUE)
-		CloseHandle(h);
+		met_api->win_api.kernel32.CloseHandle(h);
 
 	return res;
 }
