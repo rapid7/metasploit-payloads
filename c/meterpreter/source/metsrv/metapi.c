@@ -153,15 +153,16 @@ MetApi api_instance = {
     {
 		// Ntdll
 		{
-			winapi_ntdll_ZwAllocateVirtualMemory,
-			winapi_ntdll_ZwOpenProcess,
-			winapi_ntdll_ZwWriteVirtualMemory,
-			winapi_ntdll_ZwReadVirtualMemory,
-			winapi_ntdll_ZwProtectVirtualMemory,
-			winapi_ntdll_ZwQueryVirtualMemory,
-			winapi_ntdll_ZwFreeVirtualMemory,
-			winapi_ntdll_NtQueueApcThread
-    	},
+            winapi_ntdll_ZwAllocateVirtualMemory,
+            winapi_ntdll_ZwOpenProcess,
+            winapi_ntdll_ZwWriteVirtualMemory,
+            winapi_ntdll_ZwReadVirtualMemory,
+            winapi_ntdll_ZwProtectVirtualMemory,
+            winapi_ntdll_ZwQueryVirtualMemory,
+            winapi_ntdll_ZwFreeVirtualMemory,
+            winapi_ntdll_NtQueueApcThread,
+            winapi_ntdll_NtOpenThread
+        },
         // Kernel32
         {
             // Process and Memory Management
@@ -176,35 +177,38 @@ MetApi api_instance = {
             winapi_kernel32_VirtualQueryEx,
             winapi_kernel32_VirtualFree,
             winapi_kernel32_FlushInstructionCache,
-
-            // Thread Management
+            // Thread and Synchronization
             winapi_kernel32_CreateRemoteThread,
             winapi_kernel32_OpenThread,
             winapi_kernel32_SuspendThread,
             winapi_kernel32_ResumeThread,
             winapi_kernel32_WaitForMultipleObjects,
-
+            winapi_kernel32_CreateThread,
+            winapi_kernel32_ResetEvent,
+            winapi_kernel32_SetThreadErrorMode,
             // Handle Management
             winapi_kernel32_CloseHandle,
             winapi_kernel32_DuplicateHandle,
             winapi_kernel32_SetHandleInformation,
-
             // Tool-Help Snapshot APIs
             winapi_kernel32_CreateToolhelp32Snapshot,
             winapi_kernel32_Thread32First,
             winapi_kernel32_Thread32Next,
-
             // Module/Library Management
             winapi_kernel32_LoadLibraryA,
             winapi_kernel32_FreeLibrary,
-
-            // File Management
+            // File and Pipe I/O
             winapi_kernel32_CreateFileA,
             winapi_kernel32_WriteFile,
-
-            // Memory Management (Legacy)
+            winapi_kernel32_CreateNamedPipeA,
+            winapi_kernel32_ConnectNamedPipe,
+            winapi_kernel32_GetOverlappedResult,
+            winapi_kernel32_ReadFile,
+            // Legacy Memory Management
             winapi_kernel32_LocalFree,
-            winapi_kernel32_GlobalFree}},
+            winapi_kernel32_GlobalFree
+        }
+    },
 #ifdef DEBUGTRACE
     // LoggingApi
     {

