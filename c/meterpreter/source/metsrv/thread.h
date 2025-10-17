@@ -3,12 +3,6 @@
 
 #include "common_thread.h"
 
-/*****************************************************************************************/
-// Win32/64 specific definitions...
-
-typedef HANDLE (WINAPI * OPENTHREAD)( DWORD, BOOL, DWORD ); // kernel32!OpenThread
-/*****************************************************************************************/
-
 LOCK * lock_create( VOID );
 
 VOID lock_destroy( LOCK * lock );
