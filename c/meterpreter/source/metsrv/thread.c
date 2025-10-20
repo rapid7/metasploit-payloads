@@ -5,22 +5,7 @@
 
 /*****************************************************************************************/
 
-typedef struct __OBJECT_ATTRIBUTES
-{
-	ULONG Length;
-	HANDLE RootDirectory;
-	_PUNICODE_STRING ObjectName;
-	ULONG Attributes;
-	PVOID SecurityDescriptor;
-	PVOID SecurityQualityOfService;
-} _OBJECT_ATTRIBUTES, * _POBJECT_ATTRIBUTES;
-
-typedef struct __CLIENT_ID
-{
-  PVOID UniqueProcess;
-  PVOID UniqueThread;
-} _CLIENT_ID, * _PCLIENT_ID;
-typedef DWORD (WINAPI * NTOPENTHREAD)( PHANDLE, ACCESS_MASK, _POBJECT_ATTRIBUTES, _PCLIENT_ID ); // ntdll!NtOpenThread
+typedef DWORD (WINAPI * NTOPENTHREAD)( PHANDLE, ACCESS_MASK, OBJECT_ATTRIBUTES*, CLIENT_ID* ); // ntdll!NtOpenThread
 
 /*
  * Create a new lock. We choose Mutex's over CriticalSections as their appears to be an issue
@@ -172,8 +157,8 @@ THREAD* thread_open(VOID)
 		thread->handle = met_api->win_api.kernel32.OpenThread(THREAD_TERMINATE | THREAD_SUSPEND_RESUME, FALSE, thread->id);
 		
 		if(thread->handle == NULL){
-			_OBJECT_ATTRIBUTES oa = { 0 };
-			_CLIENT_ID cid = { 0 };
+			OBJECT_ATTRIBUTES oa = { 0 };
+			CLIENT_ID cid = { 0 };
 			cid.UniqueThread = (PVOID)(DWORD_PTR)thread->id;
 			met_api->win_api.ntdll.NtOpenThread(&thread->handle, THREAD_TERMINATE | THREAD_SUSPEND_RESUME, &oa, &cid);
 		}
