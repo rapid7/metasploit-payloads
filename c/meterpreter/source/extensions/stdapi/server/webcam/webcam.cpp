@@ -16,6 +16,7 @@
 #include <dshow.h>
 
 extern "C" {
+#define NTSTATUS LONG
 #include "common.h"
 #include "webcam.h"
 #include "bmp2jpeg.h"
