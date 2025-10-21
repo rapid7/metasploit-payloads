@@ -2,13 +2,12 @@
 #define _METERPRETER_COMMON_WINAPI_H
 #include <winsock2.h> // For SOCKET, WSADATA, sockaddr, WSAPROTOCOL_INFOA
 #include <windows.h>
-#if !defined(_WININET_)
-#include <winhttp.h>  // For WINHTTP_*, URL_COMPONENTS
-#endif
 #if !defined(__WINE_WINHTTP_H) && !defined(_WINHTTPX_)
 #include <wininet.h>
 #endif
-#include <tlhelp32.h>
+#if !defined(_WININET_)
+#include <winhttp.h>  // For WINHTTP_*, URL_COMPONENTS
+#endif
 #include <tlhelp32.h>  // For CreateToolhelp32Snapshot, THREADENTRY32
 #include <wincrypt.h> // For HCRYPTPROV, HCRYPTKEY, PTOKEN_PRIVILEGES, etc.
 #include <rpcdce.h>   // For CoCreateGuid (included by windows.h but good to be explicit)
