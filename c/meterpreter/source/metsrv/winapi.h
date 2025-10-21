@@ -2,11 +2,18 @@
 #define _METERPRETER_WINAPI_H
 
 #ifndef _METERPRETER_COMMON_WINAPI_H
-#include <winsock2.h>
+#include <winsock2.h> // For SOCKET, WSADATA, sockaddr, WSAPROTOCOL_INFOA
 #include <windows.h>
-#include <winhttp.h>
+#if !defined(__WINE_WINHTTP_H) && !defined(_WINHTTPX_)
+#include <wininet.h>
+#endif
+#if !defined(_WININET_)
+#include <winhttp.h>  // For WINHTTP_*, URL_COMPONENTS
+#endif
 #include <tlhelp32.h>
-#include <wincrypt.h>
+#include <tlhelp32.h>  // For CreateToolhelp32Snapshot, THREADENTRY32
+#include <wincrypt.h> // For HCRYPTPROV, HCRYPTKEY, PTOKEN_PRIVILEGES, etc.
+#include <rpcdce.h>   // For CoCreateGuid (included by windows.h but good to be explicit)
 #include <accctrl.h>
 typedef enum _MEMORY_INFORMATION_CLASS {
     MemoryBasicInformation
@@ -25,6 +32,11 @@ typedef struct _OBJECT_ATTRIBUTES {
     PVOID SecurityDescriptor;
     PVOID SecurityQualityOfService;
 } OBJECT_ATTRIBUTES, *POBJECT_ATTRIBUTES;
+#ifdef _WININET_
+typedef VOID WINHTTP_CURRENT_USER_IE_PROXY_CONFIG;
+typedef VOID WINHTTP_AUTOPROXY_OPTIONS;
+typedef VOID WINHTTP_PROXY_INFO;
+#endif
 #endif
 
 NTSTATUS winapi_ntdll_ZwAllocateVirtualMemory(HANDLE hProcess, PVOID* pBaseAddress, ULONG_PTR pZeroBits, PSIZE_T pRegionSize, ULONG ulAllocationType, ULONG ulProtect);
