@@ -151,8 +151,8 @@ MetApi api_instance = {
     },
     // WinApi
     {
-		// Ntdll
-		{
+            // ntdll
+        {
             winapi_ntdll_ZwAllocateVirtualMemory,
             winapi_ntdll_ZwOpenProcess,
             winapi_ntdll_ZwWriteVirtualMemory,
@@ -163,9 +163,8 @@ MetApi api_instance = {
             winapi_ntdll_NtQueueApcThread,
             winapi_ntdll_NtOpenThread
         },
-        // Kernel32
+        // kernel32
         {
-            // Process and Memory Management
             winapi_kernel32_WriteProcessMemory,
             winapi_kernel32_ReadProcessMemory,
             winapi_kernel32_OpenProcess,
@@ -176,37 +175,105 @@ MetApi api_instance = {
             winapi_kernel32_VirtualQuery,
             winapi_kernel32_VirtualQueryEx,
             winapi_kernel32_VirtualFree,
-            winapi_kernel32_FlushInstructionCache,
-            // Thread and Synchronization
             winapi_kernel32_CreateRemoteThread,
-            winapi_kernel32_OpenThread,
-            winapi_kernel32_SuspendThread,
-            winapi_kernel32_ResumeThread,
-            winapi_kernel32_WaitForMultipleObjects,
-            winapi_kernel32_CreateThread,
-            winapi_kernel32_ResetEvent,
-            winapi_kernel32_SetThreadErrorMode,
-            // Handle Management
             winapi_kernel32_CloseHandle,
             winapi_kernel32_DuplicateHandle,
-            winapi_kernel32_SetHandleInformation,
-            // Tool-Help Snapshot APIs
             winapi_kernel32_CreateToolhelp32Snapshot,
             winapi_kernel32_Thread32First,
+            winapi_kernel32_OpenThread,
+            winapi_kernel32_SuspendThread,
             winapi_kernel32_Thread32Next,
-            // Module/Library Management
-            winapi_kernel32_LoadLibraryA,
+            winapi_kernel32_ResumeThread,
             winapi_kernel32_FreeLibrary,
-            // File and Pipe I/O
+            winapi_kernel32_FlushInstructionCache,
+            winapi_kernel32_LocalFree,
             winapi_kernel32_CreateFileA,
             winapi_kernel32_WriteFile,
+            winapi_kernel32_LoadLibraryA,
+            winapi_kernel32_WaitForMultipleObjects,
+            winapi_kernel32_SetHandleInformation,
+            winapi_kernel32_GlobalFree,
             winapi_kernel32_CreateNamedPipeA,
             winapi_kernel32_ConnectNamedPipe,
             winapi_kernel32_GetOverlappedResult,
             winapi_kernel32_ReadFile,
-            // Legacy Memory Management
-            winapi_kernel32_LocalFree,
-            winapi_kernel32_GlobalFree
+            winapi_kernel32_CreateThread,
+            winapi_kernel32_ResetEvent,
+            winapi_kernel32_SetThreadErrorMode
+        },
+        // advapi32
+        {
+            winapi_advapi32_OpenProcessToken,
+            winapi_advapi32_AdjustTokenPrivileges,
+            winapi_advapi32_ImpersonateLoggedOnUser,
+            winapi_advapi32_CryptDuplicateKey,
+            winapi_advapi32_CryptSetKeyParam,
+            winapi_advapi32_CryptDecrypt,
+            winapi_advapi32_CryptGenRandom,
+            winapi_advapi32_CryptEncrypt,
+            winapi_advapi32_CryptDestroyKey,
+            winapi_advapi32_CryptReleaseContext,
+            winapi_advapi32_CryptImportKey,
+            winapi_advapi32_OpenThreadToken,
+            winapi_advapi32_AllocateAndInitializeSid,
+            winapi_advapi32_SetEntriesInAclW,
+            winapi_advapi32_InitializeAcl,
+            winapi_advapi32_InitializeSecurityDescriptor,
+            winapi_advapi32_SetSecurityDescriptorDacl,
+            winapi_advapi32_SetSecurityDescriptorSacl,
+            winapi_advapi32_LookupPrivilegeValueW
+        },
+        // crypt32
+        {
+            winapi_crypt32_CryptDecodeObjectEx,
+            winapi_crypt32_CryptImportPublicKeyInfo,
+            winapi_crypt32_CertGetCertificateContextProperty
+        },
+        // user32
+        {
+            winapi_user32_GetUserObjectInformationA,
+            winapi_user32_GetThreadDesktop
+        },
+        // ws2_32
+        {
+            winapi_ws2_32_WSAStartup,
+            winapi_ws2_32_socket,
+            winapi_ws2_32_connect,
+            winapi_ws2_32_accept,
+            winapi_ws2_32_setsockopt,
+            winapi_ws2_32_recv,
+            winapi_ws2_32_WSADuplicateSocketA
+        },
+        // wininet
+        {
+            winapi_wininet_InternetOpenW,
+            winapi_wininet_InternetConnectW,
+            winapi_wininet_HttpOpenRequestW,
+            winapi_wininet_InternetSetOptionW,
+            winapi_wininet_HttpSendRequestW,
+            winapi_wininet_HttpQueryInfoW,
+            winapi_wininet_InternetReadFile,
+            winapi_wininet_InternetCloseHandle,
+            winapi_wininet_InternetCrackUrlW
+        },
+        // rpcrt4
+        {
+            winapi_rpcrt4_CoCreateGuid
+        },
+        // winhttp
+        {
+            winapi_winhttp_WinHttpOpen,
+            winapi_winhttp_WinHttpConnect,
+            winapi_winhttp_WinHttpOpenRequest,
+            winapi_winhttp_WinHttpGetIEProxyConfigForCurrentUser,
+            winapi_winhttp_WinHttpGetProxyForUrl,
+            winapi_winhttp_WinHttpSetOption,
+            winapi_winhttp_WinHttpSendRequest,
+            winapi_winhttp_WinHttpReceiveResponse,
+            winapi_winhttp_WinHttpQueryHeaders,
+            winapi_winhttp_WinHttpReadData,
+            winapi_winhttp_WinHttpQueryOption,
+            winapi_winhttp_WinHttpCrackUrl
         }
     },
 #ifdef DEBUGTRACE
