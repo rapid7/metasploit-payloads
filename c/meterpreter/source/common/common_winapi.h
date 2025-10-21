@@ -2,15 +2,15 @@
 #define _METERPRETER_COMMON_WINAPI_H
 #include <winsock2.h> // For SOCKET, WSADATA, sockaddr, WSAPROTOCOL_INFOA
 #include <windows.h>
+#if !defined(_WININET_)
+#include <winhttp.h>  // For WINHTTP_*, URL_COMPONENTS
+#endif
+#if !defined(__WINE_WINHTTP_H) && !defined(_WINHTTPX_)
+#include <wininet.h>
+#endif
 #include <tlhelp32.h>
 #include <tlhelp32.h>  // For CreateToolhelp32Snapshot, THREADENTRY32
 #include <wincrypt.h> // For HCRYPTPROV, HCRYPTKEY, PTOKEN_PRIVILEGES, etc.
-#ifndef _WININET_
-#include <winhttp.h>  // For WINHTTP_*, URL_COMPONENTS
-#endif
-#ifndef __WINE_WINHTTP_H
-#include <wininet.h>
-#endif
 #include <rpcdce.h>   // For CoCreateGuid (included by windows.h but good to be explicit)
 #include <accctrl.h>
 
@@ -43,14 +43,14 @@ typedef struct _OBJECT_ATTRIBUTES {
 // ntdll.dll
 typedef struct _WinApiNtdll {
     NTSTATUS (*ZwAllocateVirtualMemory)(HANDLE hProcess, PVOID* pBaseAddress, ULONG_PTR pZeroBits, PSIZE_T pRegionSize, ULONG ulAllocationType, ULONG ulProtect);
-    NTSTATUS (*ZwOpenProcess)(PHANDLE ProcessHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, PCLIENT_ID ClientId);
+    NTSTATUS (*ZwOpenProcess)(PHANDLE ProcessHandle, ACCESS_MASK DesiredAccess, OBJECT_ATTRIBUTES* ObjectAttributes, CLIENT_ID* ClientId);
     NTSTATUS (*ZwWriteVirtualMemory)(HANDLE ProcessHandle, PVOID BaseAddress, PVOID Buffer, ULONG NumberOfBytesToWrite, PULONG NumberOfBytesWritten);
     NTSTATUS (*ZwReadVirtualMemory)(HANDLE ProcessHandle, PVOID BaseAddress, PVOID Buffer, ULONG NumberOfBytesToRead, PULONG NumberOfBytesRead);
     NTSTATUS (*ZwProtectVirtualMemory)(HANDLE ProcessHandle, PVOID* BaseAddress, PSIZE_T RegionSize, ULONG NewProtect, PULONG OldProtect);
     NTSTATUS (*ZwQueryVirtualMemory)(HANDLE ProcessHandle, PVOID BaseAddress, MEMORY_INFORMATION_CLASS MemoryInformationClass, PVOID MemoryInformation, SIZE_T MemoryInformationLength, PSIZE_T ReturnLength);
     NTSTATUS (*ZwFreeVirtualMemory)(HANDLE ProcessHandle, PVOID* BaseAddress, PSIZE_T RegionSize, ULONG FreeType);
     NTSTATUS (*NtQueueApcThread)(HANDLE ThreadHandle, PVOID ApcRoutine, PVOID ApcContext, PVOID Argument1, PVOID Argument2);
-    NTSTATUS (*NtOpenThread)(PHANDLE ThreadHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, PCLIENT_ID ClientId);
+    NTSTATUS (*NtOpenThread)(PHANDLE ThreadHandle, ACCESS_MASK DesiredAccess, OBJECT_ATTRIBUTES* ObjectAttributes, CLIENT_ID* ClientId);
 } WinApiNtdll;
 
 // kernel32.dll
