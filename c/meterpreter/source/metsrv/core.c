@@ -5,10 +5,12 @@
  *          of the Meterpreter code base, and hence it's very important. Don't
  *          change this stuff unless you know what you're doing!
  */
+#include <winsock2.h>
+#include <windows.h>
+#include <winhttp.h>
 #include "metsrv.h"
 #include "common_exports.h"
 #include "packet_encryption.h"
-#include <winhttp.h>
 
 DWORD packet_find_tlv_buf(Packet *packet, PUCHAR payload, DWORD payloadLength, DWORD index, TlvType type, Tlv *tlv);
 
