@@ -1,14 +1,13 @@
 #ifndef _METERPRETER_WINAPI_H
 #define _METERPRETER_WINAPI_H
 
+#ifndef _METERPRETER_COMMON_WINAPI_H
 #include <winsock2.h>
 #include <windows.h>
 #include <winhttp.h>
 #include <tlhelp32.h>
 #include <wincrypt.h>
 #include <accctrl.h>
-
-#ifndef _METERPRETER_COMMON_WINAPI_H
 typedef enum _MEMORY_INFORMATION_CLASS {
     MemoryBasicInformation
 } MEMORY_INFORMATION_CLASS;
