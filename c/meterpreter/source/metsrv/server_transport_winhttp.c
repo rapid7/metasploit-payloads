@@ -3,9 +3,11 @@
  * @remark This file doesn't use precompiled headers because metsrv.h includes a bunch of
  *         of definitions that clash with those found in winhttp.h. Hooray Win32 API. I hate you.
  */
+#include <winsock2.h>
+#include <windows.h>
+#include <winhttp.h>
 #include "metsrv.h"
 #include "server_transport_wininet.h"
-#include <winhttp.h>
 #include "packet_encryption.h"
 #include "pivot_packet_dispatch.h"
 
