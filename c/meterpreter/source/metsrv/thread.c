@@ -5,6 +5,8 @@
 
 /*****************************************************************************************/
 
+typedef DWORD (WINAPI * NTOPENTHREAD)( PHANDLE, ACCESS_MASK, OBJECT_ATTRIBUTES*, CLIENT_ID* ); // ntdll!NtOpenThread
+
 /*
  * Create a new lock. We choose Mutex's over CriticalSections as their appears to be an issue
  * when using CriticalSections with OpenSSL on some Windows systems. Mutex's are not as optimal
@@ -31,7 +33,7 @@ VOID lock_destroy( LOCK * lock )
 	{
 		lock_release( lock );
 
-		CloseHandle( lock->handle );
+		met_api->win_api.kernel32.CloseHandle( lock->handle );
 
 		free( lock );
 	}
@@ -90,7 +92,7 @@ BOOL event_destroy( EVENT * event )
 	if( event == NULL )
 		return FALSE;
 
-	CloseHandle( event->handle );
+	met_api->win_api.kernel32.CloseHandle( event->handle );
 
 	free( event );
 
@@ -137,7 +139,6 @@ BOOL event_poll( EVENT * event, DWORD timeout )
 THREAD* thread_open(VOID)
 {
 	THREAD* thread = NULL;
-	OPENTHREAD pOpenThread = NULL;
 	HMODULE hKernel32 = NULL;
 
 	thread = (THREAD*)malloc(sizeof(THREAD));
@@ -153,32 +154,14 @@ THREAD* thread_open(VOID)
 		// for now.
 
 		// First we try to use the normal OpenThread function, available on Windows 2000 and up...
-		hKernel32 = LoadLibraryA("kernel32.dll");
-		pOpenThread = (OPENTHREAD)GetProcAddress(hKernel32, "OpenThread");
-		if (pOpenThread)
-		{
-			thread->handle = pOpenThread(THREAD_TERMINATE | THREAD_SUSPEND_RESUME, FALSE, thread->id);
+		thread->handle = met_api->win_api.kernel32.OpenThread(THREAD_TERMINATE | THREAD_SUSPEND_RESUME, FALSE, thread->id);
+		
+		if(thread->handle == NULL){
+			OBJECT_ATTRIBUTES oa = { 0 };
+			CLIENT_ID cid = { 0 };
+			cid.UniqueThread = (PVOID)(DWORD_PTR)thread->id;
+			met_api->win_api.ntdll.NtOpenThread(&thread->handle, THREAD_TERMINATE | THREAD_SUSPEND_RESUME, &oa, &cid);
 		}
-		else
-		{
-			NTOPENTHREAD pNtOpenThread = NULL;
-			// If we can't use OpenThread, we try the older NtOpenThread function as found on NT4 machines.
-			HMODULE hNtDll = LoadLibraryA("ntdll.dll");
-			pNtOpenThread = (NTOPENTHREAD)GetProcAddress(hNtDll, "NtOpenThread");
-			if (pNtOpenThread)
-			{
-				_OBJECT_ATTRIBUTES oa = { 0 };
-				_CLIENT_ID cid = { 0 };
-
-				cid.UniqueThread = (PVOID)(DWORD_PTR)thread->id;
-
-				pNtOpenThread(&thread->handle, THREAD_TERMINATE | THREAD_SUSPEND_RESUME, &oa, &cid);
-			}
-
-			FreeLibrary(hNtDll);
-		}
-
-		FreeLibrary(hKernel32);
 	}
 
 	return thread;
@@ -186,13 +169,7 @@ THREAD* thread_open(VOID)
 
 void disable_thread_error_reporting()
 {
-	HMODULE hKernel32 = LoadLibraryA("kernel32.dll");
-	DWORD(WINAPI * pSetThreadErrorMode)(DWORD, DWORD*);
-	pSetThreadErrorMode = (void*)GetProcAddress(hKernel32, "SetThreadErrorMode");
-	if (pSetThreadErrorMode)
-	{
-		pSetThreadErrorMode(SEM_FAILCRITICALERRORS, NULL);
-	}
+	met_api->win_api.kernel32.SetThreadErrorMode(SEM_FAILCRITICALERRORS, NULL);
 }
 
 static ULONG THREADCALL thread_preamble(THREAD* thread)
@@ -233,7 +210,7 @@ THREAD* thread_create(THREADFUNK funk, LPVOID param1, LPVOID param2, LPVOID para
 	thread->parameter3 = param3;
 	thread->funk = funk;
 
-	thread->handle = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)thread_preamble, thread, CREATE_SUSPENDED, &thread->id);
+	thread->handle = met_api->win_api.kernel32.CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)thread_preamble, thread, CREATE_SUSPENDED, &thread->id);
 
 	if (thread->handle == NULL)
 	{
@@ -255,7 +232,7 @@ BOOL thread_run(THREAD* thread)
 		return FALSE;
 	}
 
-	if (ResumeThread(thread->handle) < 0)
+	if (met_api->win_api.kernel32.ResumeThread(thread->handle) < 0)
 	{
 		return FALSE;
 	}
@@ -330,7 +307,7 @@ BOOL thread_destroy(THREAD* thread)
 
 	event_destroy(thread->sigterm);
 
-	CloseHandle(thread->handle);
+	met_api->win_api.kernel32.CloseHandle(thread->handle);
 
 	free(thread);
 
