@@ -104,6 +104,92 @@ BOOL hasDirectSyscallSupport() {
     return TRUE;
 }
 
+
+// Disable Spectre mitigation warning for this sensitive, low-level code.
+#if _MSC_VER >= 1914
+#pragma warning(disable : 5045) // warning C5045: Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified
+#endif
+
+FARPROC WINAPI GetProcAddressH(HANDLE hModule, DWORD dwFunctionHash)
+{
+	if (!hModule)
+		return NULL;
+
+	UINT_PTR uiLibraryAddress = (UINT_PTR)hModule;
+	PIMAGE_DOS_HEADER pDosHeader = (PIMAGE_DOS_HEADER)uiLibraryAddress;
+	PIMAGE_NT_HEADERS pNtHeaders = NULL;
+	PIMAGE_EXPORT_DIRECTORY pExportDirectory = NULL;
+
+	// STEP 1: Validate the PE headers to ensure we are parsing a valid module.
+	if (pDosHeader->e_magic != IMAGE_DOS_SIGNATURE)
+		return NULL;
+
+	pNtHeaders = (PIMAGE_NT_HEADERS)(uiLibraryAddress + pDosHeader->e_lfanew);
+	if (pNtHeaders->Signature != IMAGE_NT_SIGNATURE)
+		return NULL;
+
+	// STEP 2: Locate the Export Address Table (EAT). If the module has no exports, return NULL.
+	PIMAGE_DATA_DIRECTORY pDataDirectory = &pNtHeaders->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT];
+	if (pDataDirectory->VirtualAddress == 0)
+		return NULL;
+
+	pExportDirectory = (PIMAGE_EXPORT_DIRECTORY)(uiLibraryAddress + pDataDirectory->VirtualAddress);
+
+	// STEP 3: Get pointers to the three critical arrays within the EAT.
+	// AddressOfFunctions: RVAs to the actual function code.
+	PDWORD pdwAddressArray = (PDWORD)(uiLibraryAddress + pExportDirectory->AddressOfFunctions);
+	// AddressOfNames: RVAs to the function name strings.
+	PDWORD pdwNameArray = (PDWORD)(uiLibraryAddress + pExportDirectory->AddressOfNames);
+	// AddressOfNameOrdinals: An array of WORDs that maps names to ordinals.
+	PWORD pwNameOrdinals = (PWORD)(uiLibraryAddress + pExportDirectory->AddressOfNameOrdinals);
+    // ---- IMPORT BY NAME ----
+    // Iterate through the array of exported function names.
+    for (DWORD i = 0; i < pExportDirectory->NumberOfNames; i++)
+    {
+        LPCSTR cpExportedFunctionName = (LPCSTR)(uiLibraryAddress + pdwNameArray[i]);
+
+        // Perform a case-sensitive string comparison to find a match.
+        if (_hash(cpExportedFunctionName) == dwFunctionHash)
+        {
+            // Match found. The index 'i' is the key to link the three arrays.
+            // Use 'i' to get the function's ordinal from the name ordinals array.
+            WORD wFunctionOrdinal = pwNameOrdinals[i];
+
+            // Use the ordinal to get the function's RVA from the address table.
+            DWORD dwFunctionRva = pdwAddressArray[wFunctionOrdinal];
+
+            // This should not happen for a named export, but as a safeguard.
+            if (dwFunctionRva == 0)
+                return NULL;
+
+            // Return the absolute address of the function.
+            return (FARPROC)(uiLibraryAddress + dwFunctionRva);
+        }
+	}
+
+	// The requested function was not found in the export table.
+	return NULL;
+}
+
+void* GetFunctionH(LPCSTR lpModuleName, DWORD dwFunctionHash) {
+    HMODULE hModule = NULL;
+    FARPROC lpOutput = NULL;
+    hModule = GetModuleHandleA(lpModuleName);
+    if (hModule == NULL) {
+        hModule = LoadLibraryA(lpModuleName);
+    }
+    if (hModule != NULL) {
+        lpOutput = GetProcAddressH(hModule, dwFunctionHash);
+    }
+    if (hModule == NULL) {
+        dprintf("[WINAPI][GetFunctionH] Unable to find or load '%s' module.", lpModuleName);
+    }
+    if (lpOutput == NULL) {
+        dprintf("[WINAPI][GetFunctionH] Unable to find function's address (Hash: %p).", dwFunctionHash);
+    }
+    return lpOutput;
+}
+
 void* GetFunction(LPCSTR lpModuleName, LPCSTR lpFunctionName) {
     HMODULE hModule = NULL;
     FARPROC lpOutput = NULL;
