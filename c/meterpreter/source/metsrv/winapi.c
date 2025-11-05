@@ -149,7 +149,7 @@ FARPROC WINAPI GetProcAddressH(HANDLE hModule, DWORD dwFunctionHash)
         LPCSTR cpExportedFunctionName = (LPCSTR)(uiLibraryAddress + pdwNameArray[i]);
 
         // Perform a case-sensitive string comparison to find a match.
-        if (_hash(cpExportedFunctionName) == dwFunctionHash)
+        if (_hash((char *)cpExportedFunctionName) == dwFunctionHash)
         {
             // Match found. The index 'i' is the key to link the three arrays.
             // Use 'i' to get the function's ordinal from the name ordinals array.
