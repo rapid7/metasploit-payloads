@@ -443,10 +443,10 @@ function add_stat_buf($path) {
         $st_buf .= pack_p($st['atime']);
         $st_buf .= pack_p($st['mtime']);
         $st_buf .= pack_p($st['ctime']);
-        
+
         $st_buf .= pack("V", $st['blksize']);
         $st_buf .= pack("V", $st['blocks']);
-       
+
         return create_tlv(TLV_TYPE_STAT_BUF, $st_buf);
     }
     return false;
@@ -1331,15 +1331,15 @@ function stdapi_net_config_get_arp_table($req, &$pkt) {
     if ($content === false) {
       return ERROR_FAILURE;
     }
-    $lines = explode(PHP_EOL, $content);             
+    $lines = explode(PHP_EOL, $content);
     array_shift($lines); // first line is the header of the array
-    foreach($lines as $line) { 
-      if ($line == '') continue; 
-      $v = preg_split('/\s+/', $line); 
-      $ip = $v[0]; 
-      $mac = $v[3]; 
-      $iface = $v[5]; 
-      my_print("arp line: $ip $mac $iface"); 
+    foreach($lines as $line) {
+      if ($line == '') continue;
+      $v = preg_split('/\s+/', $line);
+      $ip = $v[0];
+      $mac = $v[3];
+      $iface = $v[5];
+      my_print("arp line: $ip $mac $iface");
       $arp_tlv  = tlv_pack(create_tlv(TLV_TYPE_IP, inet_pton($ip)));
       $arp_tlv .= tlv_pack(create_tlv(TLV_TYPE_MAC_ADDRESS, pack("H*", str_replace(':', '', $mac))));
       $arp_tlv .= tlv_pack(create_tlv(TLV_TYPE_MAC_NAME, $iface));
@@ -1432,6 +1432,34 @@ function channel_create_stdapi_fs_file($req, &$pkt) {
 }
 }
 
+if (!function_exists('packet_add_tlv_local_addrinfo')) {
+function packet_add_tlv_local_addrinfo(&$pkt, $sock) {
+    switch (get_resource_type($sock)) {
+    case 'Socket':
+        $local_host = '';
+        $local_port = 0;
+        socket_getsockname($sock, $local_host, $local_port);
+        packet_add_tlv($pkt, create_tlv(TLV_TYPE_LOCAL_HOST, $local_host));
+        packet_add_tlv($pkt, create_tlv(TLV_TYPE_LOCAL_PORT, $local_port));
+    case 'stream':
+        $local_name = stream_socket_get_name($sock, false);
+        if (preg_match('/^\[([^\]]+)\]:(\d+)$/', $local_name, $matches)) {
+            // IPv6 with brackets
+            packet_add_tlv($pkt, create_tlv(TLV_TYPE_LOCAL_HOST, $matches[1]));
+            packet_add_tlv($pkt, create_tlv(TLV_TYPE_LOCAL_PORT, (int)$matches[2]));
+        } elseif (preg_match('/^([^:]+):(\d+)$/', $local_name, $matches)) {
+            // IPv4
+            packet_add_tlv($pkt, create_tlv(TLV_TYPE_LOCAL_HOST, $matches[1]));
+            packet_add_tlv($pkt, create_tlv(TLV_TYPE_LOCAL_PORT, (int)$matches[2]));
+        } else {
+            return false;
+        }
+    default:
+        return false;
+    }
+    return true;
+}
+}
 
 if (!function_exists('channel_create_stdapi_net_tcp_client')) {
 function channel_create_stdapi_net_tcp_client($req, &$pkt) {
@@ -1465,6 +1493,7 @@ function channel_create_stdapi_net_tcp_client($req, &$pkt) {
 
     $id = register_channel($sock);
     packet_add_tlv($pkt, create_tlv(TLV_TYPE_CHANNEL_ID, $id));
+    packet_add_tlv_local_addrinfo($pkt, $sock);
     add_reader($sock);
     return ERROR_SUCCESS;
 }
@@ -1496,6 +1525,7 @@ function channel_create_stdapi_net_udp_client($req, &$pkt) {
 
     $id = register_channel($sock);
     packet_add_tlv($pkt, create_tlv(TLV_TYPE_CHANNEL_ID, $id));
+    packet_add_tlv_local_addrinfo($pkt, $sock);
     add_reader($sock);
     return ERROR_SUCCESS;
 }
