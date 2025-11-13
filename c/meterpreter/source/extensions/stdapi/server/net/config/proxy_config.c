@@ -1,14 +1,6 @@
 #include "precomp.h"
 #include "common_metapi.h"
 
-typedef struct
-{
-    BOOL    fAutoDetect;
-    LPWSTR  lpszAutoConfigUrl;
-    LPWSTR  lpszProxy;
-    LPWSTR  lpszProxyBypass;
-} WINHTTP_CURRENT_USER_IE_PROXY_CONFIG;
-
 typedef BOOL (WINAPI * PWINHTTPGETIEPROXYCONFIGFORCURRENTUSER)(
 	WINHTTP_CURRENT_USER_IE_PROXY_CONFIG *pProxyConfig
 );

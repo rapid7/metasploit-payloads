@@ -15,10 +15,6 @@
 #define IPPROTO_IPV6 41
 #endif
 
-#if !defined(in6addr_any) && !defined(__MINGW32__)
-extern IN6_ADDR in6addr_any;
-#endif
-
 /*!
  * @brief Get the address family.
  * @param address The address.

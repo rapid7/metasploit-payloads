@@ -1,8 +1,10 @@
 /*!
  * @file server_transport_wininet.c
  */
-#include "metsrv.h"
+#include <winsock2.h>
+#include <windows.h>
 #include <wininet.h>
+#include "metsrv.h"
 
 /*!
  * @brief Prepare a wininet request with the given context.

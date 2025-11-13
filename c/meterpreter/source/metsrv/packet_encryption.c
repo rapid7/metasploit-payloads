@@ -420,7 +420,7 @@ DWORD public_key_encrypt(BYTE* publicKeyDer, UINT publicKeyDerLen, BYTE* data, D
 
 	if (pubKeyInfo != NULL)
 	{
-		LocalFree(pubKeyInfo);
+		met_api->win_api.kernel32.LocalFree(pubKeyInfo);
 	}
 
 	if (pubCryptKey != 0)
