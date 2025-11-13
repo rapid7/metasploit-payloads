@@ -135,7 +135,13 @@ POOLPARTY_INJECTOR* GetOrInitPoolParty(DWORD dwSourceArch, DWORD dwDestinationAr
 	return poolLifeguard;
 }
 
-// For now we support only Windows >= 10  and x64 | wow64 -> x64
+// Current support:
+// OS: Win10+
+// Host -> Guest:
+// x64 -> x64 (tp_direct_insertion, worker_factory_start_routine_overwrite)
+// x86 -> x86 (worker_factory_start_routine_overwrite)
+// wow64 -> x64 (tp_direct_insertion)
+
 BOOL supports_poolparty_injection(DWORD dwSourceArch, DWORD dwDestinationArch) {
 	OSVERSIONINFO os = { 0 };
 	os.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
@@ -145,7 +151,12 @@ BOOL supports_poolparty_injection(DWORD dwSourceArch, DWORD dwDestinationArch) {
 		dprintf("[INJECT][supports_poolparty_injection] dwSourceArch: %d dwDestinationArch: %d", dwSourceArch, dwDestinationArch);
 		dprintf("[INJECT][supports_poolparty_injection] os.dwMajorVersion: %d os.dwMinorVersion: %d", os.dwMajorVersion, os.dwMinorVersion);
 		if (os.dwMajorVersion >= 10) {
-			if ((dwDestinationArch == PROCESS_ARCH_X64 && (dwSourceArch == PROCESS_ARCH_X64 || dwSourceArch == PROCESS_ARCH_X86)) || (dwDestinationArch == PROCESS_ARCH_X86 && dwSourceArch == PROCESS_ARCH_X86)) {
+			if(dwDestinationArch == PROCESS_ARCH_X64 && (dwSourceArch == PROCESS_ARCH_X64 || dwSourceArch == PROCESS_ARCH_X86)) {
+				return TRUE; // tp_direct_insertion
+			}
+			BOOL bIsWow64 = FALSE;
+			BOOL bResult = IsWow64Process(GetCurrentProcess(), &bIsWow64);
+			if (dwDestinationArch == PROCESS_ARCH_X86 && dwSourceArch == PROCESS_ARCH_X86 && !bIsWow64 && bResult != 0) {
 				return TRUE;
 			}
 		}
@@ -208,22 +219,26 @@ HANDLE GetRemoteHandle(HANDLE hProcess, LPCWSTR typeName, DWORD dwDesiredAccess)
 					break;
 				}
 			}
-			else if (dwInformationSizeOut > dwInformationSizeIn) {
+			else {
 				lpObjectInfo = HeapReAlloc(hHeap, 0, lpObjectInfo, dwInformationSizeOut);
 				if (lpObjectInfo == NULL) {
 					dprintf("[INJECT][inject_via_poolparty][get_remote_handle] HeapReAlloc for lpObjectInfo returned NULL");
-					return INVALID_HANDLE_VALUE;
+					break;
 				}
 				dwInformationSizeIn = dwInformationSizeOut;
 				pNtDll->pNtQueryObject(hHijackHandle, ObjectTypeInformation, lpObjectInfo, dwInformationSizeIn, &dwInformationSizeOut); // get the whole context this time...
-				if (!lstrcmpW(typeName, lpObjectInfo->TypeName.Buffer)) { break; }
+				if (!lstrcmpW(typeName, lpObjectInfo->TypeName.Buffer) == 0) { break; }
 			}
 			CloseHandle(hHijackHandle);
 		}
 		hHijackHandle = INVALID_HANDLE_VALUE;
 	}
-	HeapFree(hHeap, 0, lpObjectInfo);
-	HeapFree(hHeap, 0, lpProcessInfo);
+	if(lpObjectInfo != NULL) {
+		HeapFree(hHeap, 0, lpObjectInfo);
+	}
+	if(lpProcessInfo != NULL) {
+		HeapFree(hHeap, 0, lpProcessInfo);
+	}
 	dprintf("[INJECT][inject_via_poolparty][get_remote_handle] hHijackHandle: %p", hHijackHandle);
 	return hHijackHandle;
 }
