@@ -227,7 +227,7 @@ HANDLE GetRemoteHandle(HANDLE hProcess, LPCWSTR typeName, DWORD dwDesiredAccess)
 				}
 				dwInformationSizeIn = dwInformationSizeOut;
 				pNtDll->pNtQueryObject(hHijackHandle, ObjectTypeInformation, lpObjectInfo, dwInformationSizeIn, &dwInformationSizeOut); // get the whole context this time...
-				if (!lstrcmpW(typeName, lpObjectInfo->TypeName.Buffer) == 0) { break; }
+				if (lstrcmpW(typeName, lpObjectInfo->TypeName.Buffer) == 0) { break; }
 			}
 			CloseHandle(hHijackHandle);
 		}
