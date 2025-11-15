@@ -15,7 +15,7 @@ NtDll* GetOrInitNtDll() {
 			break;
 		}
 
-		pNtDll = (NtDll*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, sizeof(pNtDll));
+		pNtDll = (NtDll*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, sizeof(*pNtDll));
 		if(!pNtDll) {
 			break;
 		}
