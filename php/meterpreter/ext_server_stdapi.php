@@ -1441,6 +1441,7 @@ function packet_add_tlv_local_addrinfo(&$pkt, $sock) {
         socket_getsockname($sock, $local_host, $local_port);
         packet_add_tlv($pkt, create_tlv(TLV_TYPE_LOCAL_HOST, $local_host));
         packet_add_tlv($pkt, create_tlv(TLV_TYPE_LOCAL_PORT, $local_port));
+        break;
     case 'stream':
         $local_name = stream_socket_get_name($sock, false);
         if (preg_match('/^\[([^\]]+)\]:(\d+)$/', $local_name, $matches)) {
@@ -1454,6 +1455,7 @@ function packet_add_tlv_local_addrinfo(&$pkt, $sock) {
         } else {
             return false;
         }
+        break;
     default:
         return false;
     }
