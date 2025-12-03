@@ -761,7 +761,8 @@ function &get_channel_by_id($chan_id) {
 function channel_write($chan_id, $data) {
   $c = get_channel_by_id($chan_id);
   if ($c && is_resource($c[0])) {
-    my_print("---Writing '$data' to channel $chan_id");
+    $hex_data = bin2hex($data);
+    my_print("---Writing '{$hex_data}' to channel $chan_id");
     return write($c[0], $data);
   } else {
     return false;
@@ -1136,71 +1137,72 @@ function register_stream($stream, $ipaddr=null, $port=null) {
   }
 }
 
-function connect($ipaddr, $port, $proto='tcp') {
-  my_print("Doing connect($ipaddr, $port)");
+function connect($peerhost, $port, $proto='tcp', $localhost=null, $localport=null) {
+  my_print("Doing connect($peerhost, $port)");
   $sock = false;
 
   # IPv6 requires brackets around the address in some cases, but not all.
   # Keep track of the un-bracketed address for the functions that don't like
   # brackets, specifically socket_connect and socket_sendto.
   $ipf = WIN_AF_INET;
-  $raw_ip = $ipaddr;
-  if (FALSE !== strpos($ipaddr, ":")) {
+  $raw_ip = $peerhost;
+  if (FALSE !== strpos($peerhost, ":")) {
     $ipf = WIN_AF_INET6;
-    $ipaddr = "[". $raw_ip ."]";
+    $peerhost = "[". $raw_ip ."]";
   }
 
   # Prefer the stream versions so we don't have to use both select functions
   # unnecessarily, but fall back to socket_create if they aren't available.
-  if (can_call_function('stream_socket_client')) {
-    my_print("stream_socket_client({$proto}://{$ipaddr}:{$port})");
+  if (can_call_function('socket_create') && $proto == 'udp') {
+    my_print("socket_create @udp");
+    $sock = socket_create($ipf, SOCK_DGRAM, SOL_UDP);
+    if (!$sock) { return false; }
+    socket_bind($sock, $localhost, $localport);
+    register_socket($sock, $peerhost, $port);
+  } elseif (can_call_function('stream_socket_client')) {
+    my_print("stream_socket_client({$proto}://{$peerhost}:{$port})");
     if ($proto == 'ssl') {
-      $sock = stream_socket_client("ssl://{$ipaddr}:{$port}",
+      $sock = stream_socket_client("ssl://{$peerhost}:{$port}",
         $errno, $errstr, 5, STREAM_CLIENT_ASYNC_CONNECT);
       if (!$sock) { return false; }
       stream_set_blocking($sock, 0);
       register_stream($sock);
     } elseif ($proto == 'tcp') {
-      $sock = stream_socket_client("tcp://{$ipaddr}:{$port}");
+      $sock = stream_socket_client("tcp://{$peerhost}:{$port}");
       if (!$sock) { return false; }
       register_stream($sock);
     } elseif ($proto == 'udp') {
-      $sock = stream_socket_client("udp://{$ipaddr}:{$port}");
+      $sock = stream_socket_client("udp://{$peerhost}:{$port}");
       if (!$sock) { return false; }
-      register_stream($sock, $ipaddr, $port);
+      register_stream($sock, $peerhost, $port);
     }
-  } else
-    if (can_call_function('fsockopen')) {
-      my_print("fsockopen");
-      if ($proto == 'ssl') {
-        $sock = fsockopen("ssl://{$ipaddr}:{$port}");
-        stream_set_blocking($sock, 0);
-        register_stream($sock);
-      } elseif ($proto == 'tcp') {
-        $sock = fsockopen($ipaddr, $port);
-        if (!$sock) { return false; }
-        if (can_call_function('socket_set_timeout')) {
-          socket_set_timeout($sock, 2);
-        }
-        register_stream($sock);
-      } else {
-        $sock = fsockopen($proto."://".$ipaddr,$port);
-        if (!$sock) { return false; }
-        register_stream($sock, $ipaddr, $port);
+  } elseif (can_call_function('fsockopen')) {
+    my_print("fsockopen");
+    if ($proto == 'ssl') {
+      $sock = fsockopen("ssl://{$peerhost}:{$port}");
+      stream_set_blocking($sock, 0);
+      register_stream($sock);
+    } elseif ($proto == 'tcp') {
+      $sock = fsockopen($peerhost, $port);
+      if (!$sock) { return false; }
+      if (can_call_function('socket_set_timeout')) {
+        socket_set_timeout($sock, 2);
       }
-    } else
-      if (can_call_function('socket_create')) {
-        my_print("socket_create");
-        if ($proto == 'tcp') {
-          $sock = socket_create($ipf, SOCK_STREAM, SOL_TCP);
-          $res = socket_connect($sock, $raw_ip, $port);
-          if (!$res) { return false; }
-          register_socket($sock);
-        } elseif ($proto == 'udp') {
-          $sock = socket_create($ipf, SOCK_DGRAM, SOL_UDP);
-          register_socket($sock, $raw_ip, $port);
-        }
-      }
+      register_stream($sock);
+    } else {
+      $sock = fsockopen($proto."://".$peerhost,$peerport);
+      if (!$sock) { return false; }
+      register_stream($sock, $peerhost, $peerport);
+    }
+  } elseif (can_call_function('socket_create') && $proto == 'tcp') {
+    my_print("socket_create @tcp");
+    $sock = socket_create($ipf, SOCK_STREAM, SOL_TCP);
+    if (!$sock) { return false; }
+    if ($localhost) { socket_bind($sock, $localhost, $localport); }
+    $res = socket_connect($sock, $raw_ip, $peerport);
+    if (!$res) { return false; }
+    register_socket($sock);
+  }
 
   return $sock;
 }
@@ -1357,9 +1359,9 @@ function write($resource, $buff, $len=0) {
   switch (get_rtype($resource)) {
   case 'socket':
     if (array_key_exists((int)$resource, $udp_host_map)) {
-      my_print("Writing UDP socket");
       list($host,$port) = $udp_host_map[(int)$resource];
-      $count = socket_sendto($resource, $buff, $len, $host, $port);
+      my_print("Writing UDP socket to {$host}:{$port}");
+      $count = socket_sendto($resource, $buff, $len, 0, $host, $port);
     } else {
       $count = socket_write($resource, $buff, $len);
     }
