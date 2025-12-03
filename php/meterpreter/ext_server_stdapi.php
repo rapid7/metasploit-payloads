@@ -1441,6 +1441,7 @@ function packet_add_tlv_local_addrinfo(&$pkt, $sock) {
         socket_getsockname($sock, $local_host, $local_port);
         packet_add_tlv($pkt, create_tlv(TLV_TYPE_LOCAL_HOST, $local_host));
         packet_add_tlv($pkt, create_tlv(TLV_TYPE_LOCAL_PORT, $local_port));
+        break;
     case 'stream':
         $local_name = stream_socket_get_name($sock, false);
         if (preg_match('/^\[([^\]]+)\]:(\d+)$/', $local_name, $matches)) {
@@ -1454,6 +1455,7 @@ function packet_add_tlv_local_addrinfo(&$pkt, $sock) {
         } else {
             return false;
         }
+        break;
     default:
         return false;
     }
@@ -1505,14 +1507,10 @@ function channel_create_stdapi_net_udp_client($req, &$pkt) {
 
     $peer_host_tlv = packet_get_tlv($req, TLV_TYPE_PEER_HOST);
     $peer_port_tlv = packet_get_tlv($req, TLV_TYPE_PEER_PORT);
+    $local_host_tlv = packet_get_tlv($req, TLV_TYPE_LOCAL_HOST);
+    $local_port_tlv = packet_get_tlv($req, TLV_TYPE_LOCAL_PORT);
 
-    # We can't actually do anything with local_host and local_port because PHP
-    # doesn't let us specify these values in any of the exposed socket API
-    # functions.
-    #$local_host_tlv = packet_get_tlv($req, TLV_TYPE_LOCAL_HOST);
-    #$local_port_tlv = packet_get_tlv($req, TLV_TYPE_LOCAL_PORT);
-
-    $sock = connect($peer_host_tlv['value'], $peer_port_tlv['value'], 'udp');
+    $sock = connect($peer_host_tlv['value'], $peer_port_tlv['value'], 'udp', $local_host_tlv['value'], $local_port_tlv['value']);
     my_print("UDP channel on {$sock}");
 
     if (!$sock) {
