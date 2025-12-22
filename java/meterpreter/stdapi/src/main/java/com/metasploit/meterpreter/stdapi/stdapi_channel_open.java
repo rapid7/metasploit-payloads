@@ -80,6 +80,8 @@ public class stdapi_channel_open implements Command {
         }
         Channel channel = new DatagramSocketChannel(meterpreter, ds);
         response.add(TLVType.TLV_TYPE_CHANNEL_ID, channel.getID());
+        response.add(TLVType.TLV_TYPE_LOCAL_HOST, ds.getLocalAddress().getHostAddress());
+        response.add(TLVType.TLV_TYPE_LOCAL_PORT, ds.getLocalPort());
         return ERROR_SUCCESS;
     }
 
@@ -89,13 +91,14 @@ public class stdapi_channel_open implements Command {
         ServerSocket ss = getSocket(localHost, localPort);
         Channel channel = new ServerSocketChannel(meterpreter, ss);
         response.add(TLVType.TLV_TYPE_CHANNEL_ID, channel.getID());
+        response.add(TLVType.TLV_TYPE_LOCAL_HOST, ss.getInetAddress().getHostAddress());
+        response.add(TLVType.TLV_TYPE_LOCAL_PORT, ss.getLocalPort());
         return ERROR_SUCCESS;
     }
 
     protected ServerSocket getSocket(String localHost, int localPort) throws UnknownHostException, IOException {
         return new ServerSocket(localPort, 50, InetAddress.getByName(localHost));
     }
-
 
     private int executeTcpClient(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws Exception {
         String peerHost = request.getStringValue(TLVType.TLV_TYPE_PEER_HOST);
@@ -124,6 +127,8 @@ public class stdapi_channel_open implements Command {
         Channel channel = new SocketChannel(meterpreter, socket);
         channel.startInteract();
         response.add(TLVType.TLV_TYPE_CHANNEL_ID, channel.getID());
+        response.add(TLVType.TLV_TYPE_LOCAL_HOST, socket.getLocalAddress().getHostAddress());
+        response.add(TLVType.TLV_TYPE_LOCAL_PORT, socket.getLocalPort());
         return ERROR_SUCCESS;
     }
 }
