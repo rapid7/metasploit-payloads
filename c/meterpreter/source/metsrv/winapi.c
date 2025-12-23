@@ -18,16 +18,9 @@
 typedef struct NtDllFunction {
     LPCSTR lpFunctionName;
     DWORD dwNumberOfArgs;
+    DWORD dwCryptedHash; // _hash of lpFunctionName
 } NtDllFunction;
 
-NtDllFunction lpFunctionsTobeLoaded[] = {
-    {.lpFunctionName = "ZwAllocateVirtualMemory", .dwNumberOfArgs = 6},
-    {.lpFunctionName = "ZwOpenProcess", .dwNumberOfArgs = 4},
-    {.lpFunctionName = "ZwWriteVirtualMemory", .dwNumberOfArgs = 5},
-    {.lpFunctionName = "ZwReadVirtualMemory", .dwNumberOfArgs = 5},
-    {.lpFunctionName = "ZwProtectVirtualMemory", .dwNumberOfArgs = 5},
-    {.lpFunctionName = "ZwQueryVirtualMemory", .dwNumberOfArgs = 6},
-    {.lpFunctionName = "ZwFreeVirtualMemory", .dwNumberOfArgs = 4}};
 
 enum NtDllSyscall {
     ZwAllocateVirtualMemory,
@@ -38,6 +31,115 @@ enum NtDllSyscall {
     ZwQueryVirtualMemory,
     ZwFreeVirtualMemory
 };
+
+enum HashedFunctions {
+    H_ZwAllocateVirtualMemory = 0xD33D4AED,
+    H_ZwOpenProcess = 0xF0D09D60,
+    H_ZwWriteVirtualMemory = 0xC5D0A4C2,
+    H_ZwReadVirtualMemory = 0x3DEFA5C2,
+    H_ZwProtectVirtualMemory = 0xBC3F4D89,
+    H_ZwQueryVirtualMemory = 0x4FD39C92,
+    H_ZwFreeVirtualMemory = 0xDE63B5C3,
+    H_NtQueueApcThread = 0x52E9A746,
+    H_NtOpenThread = 0x59651E8C,
+    H_WriteProcessMemory = 0xD83D6AA1,
+    H_ReadProcessMemory = 0x579D1BE9,
+    H_OpenProcess = 0xEFE297C0,
+    H_VirtualAlloc = 0x91AFCA54,
+    H_VirtualAllocEx = 0x6E1A959C,
+    H_VirtualProtect = 0x7946C61B,
+    H_VirtualProtectEx = 0x53D98756,
+    H_VirtualQuery = 0xA3C8C8AA,
+    H_VirtualQueryEx = 0xF45A2B20,
+    H_VirtualFree = 0x30633AC,
+    H_CreateRemoteThread = 0x72BD9CDD,
+    H_CloseHandle = 0xFFD97FB,
+    H_DuplicateHandle = 0xBD566724,
+    H_CreateToolhelp32Snapshot = 0xE454DFED,
+    H_Thread32First = 0xB83BB6EA,
+    H_OpenThread = 0x58C91E6F,
+    H_SuspendThread = 0xE8C2CDC,
+    H_Thread32Next = 0x86FED608,
+    H_ResumeThread = 0x9E4A3F88,
+    H_FreeLibrary = 0x4DC9D5A0,
+    H_FlushInstructionCache = 0x53120980,
+    H_LocalFree = 0x5CBAEAF6,
+    H_CreateFileA = 0x7C0017A5,
+    H_WriteFile = 0xE80A791F,
+    H_LoadLibraryA = 0xEC0E4E8E,
+    H_WaitForMultipleObjects = 0x23EAD524,
+    H_SetHandleInformation = 0x7F9E1144,
+    H_GlobalFree = 0x7CB922F6,
+    H_CreateNamedPipeA = 0xB2D6846,
+    H_ConnectNamedPipe = 0xCB09C9F9,
+    H_GetOverlappedResult = 0xC087DCE8,
+    H_ReadFile = 0x10FA6516,
+    H_CreateThread = 0xCA2BD06B,
+    H_ResetEvent = 0x560B084F,
+    H_SetThreadErrorMode = 0x5922C47C,
+    H_OpenProcessToken = 0x591EA70F,
+    H_AdjustTokenPrivileges = 0x24488A0F,
+    H_ImpersonateLoggedOnUser = 0x6D821B37,
+    H_CryptDuplicateKey = 0x738BCBF6,
+    H_CryptSetKeyParam = 0x180E1DA8,
+    H_CryptDecrypt = 0x59202584,
+    H_CryptGenRandom = 0x4AABDD73,
+    H_CryptEncrypt = 0xD9242588,
+    H_CryptDestroyKey = 0x95E24580,
+    H_CryptReleaseContext = 0x5AE8E894,
+    H_CryptImportKey = 0xD864E84D,
+    H_OpenThreadToken = 0x8D91EA66,
+    H_AllocateAndInitializeSid = 0x5BDCE983,
+    H_SetEntriesInAclW = 0xB142E54,
+    H_InitializeAcl = 0xF8AF61AB,
+    H_InitializeSecurityDescriptor = 0x230EA37F,
+    H_SetSecurityDescriptorDacl = 0x534E5FC2,
+    H_SetSecurityDescriptorSacl = 0x714E5FC2,
+    H_LookupPrivilegeValueW = 0x97E8C2B8,
+    H_CryptDecodeObjectEx = 0x22BA7198,
+    H_CryptImportPublicKeyInfo = 0x35A052E0,
+    H_CertGetCertificateContextProperty = 0x481F9127,
+    H_GetUserObjectInformationA = 0x11EFCB2B,
+    H_GetThreadDesktop = 0x56641B89,
+    H_WSAStartup = 0x3BFCEDCB,
+    H_socket = 0x492F0B6E,
+    H_connect = 0x60AAF9EC,
+    H_accept = 0x498649E5,
+    H_setsockopt = 0xC055F2EC,
+    H_recv = 0xE71819B6,
+    H_WSADuplicateSocketA = 0x5DCA3BD3,
+    H_InternetOpenW = 0x57E8443F,
+    H_InternetConnectW = 0x1E4BE824,
+    H_HttpOpenRequestW = 0xF7DE76B5,
+    H_InternetSetOptionW = 0xF5EFA023,
+    H_HttpSendRequestW = 0x2DE6BEB3,
+    H_HttpQueryInfoW = 0xFB2F4610,
+    H_InternetReadFile = 0x5FE34B8B,
+    H_InternetCloseHandle = 0xFA9B69C7,
+    H_InternetCrackUrlW = 0xA5955290,
+    H_CoCreateGuid = 0xC55A929A,
+    H_WinHttpOpen = 0xD1026DBE,
+    H_WinHttpConnect = 0x8AAE8F,
+    H_WinHttpOpenRequest = 0x8F34E1C1,
+    H_WinHttpGetIEProxyConfigForCurrentUser = 0xA206024C,
+    H_WinHttpGetProxyForUrl = 0x88DD3F88,
+    H_WinHttpSetOption = 0xD83C501E,
+    H_WinHttpSendRequest = 0x98348882,
+    H_WinHttpReceiveResponse = 0xDE22845E,
+    H_WinHttpQueryHeaders = 0x4F8B3B75,
+    H_WinHttpReadData = 0xB24F660F,
+    H_WinHttpQueryOption = 0xDB0FB31,
+    H_WinHttpCrackUrl = 0x73513B,
+};
+
+NtDllFunction lpFunctionsTobeLoaded[] = {
+    {.lpFunctionName = NULL /* ZwAllocateVirtualMemory */, .dwNumberOfArgs = 6, .dwCryptedHash = H_ZwAllocateVirtualMemory},
+    {.lpFunctionName = NULL /* ZwOpenProcess */, .dwNumberOfArgs = 4, .dwCryptedHash = H_ZwOpenProcess},
+    {.lpFunctionName = NULL /* ZwWriteVirtualMemory */, .dwNumberOfArgs = 5, .dwCryptedHash = H_ZwWriteVirtualMemory},
+    {.lpFunctionName = NULL /* ZwReadVirtualMemory */, .dwNumberOfArgs = 5, .dwCryptedHash = H_ZwReadVirtualMemory},
+    {.lpFunctionName = NULL /* ZwProtectVirtualMemory */, .dwNumberOfArgs = 5, .dwCryptedHash = H_ZwProtectVirtualMemory},
+    {.lpFunctionName = NULL /* ZwQueryVirtualMemory */, .dwNumberOfArgs = 6, .dwCryptedHash = H_ZwQueryVirtualMemory},
+    {.lpFunctionName = NULL /* ZwFreeVirtualMemory */, .dwNumberOfArgs = 4, .dwCryptedHash = H_ZwFreeVirtualMemory},};
 
 #define STATUS_SUCCESS 0
 Syscall** lpWinApiSyscalls = NULL;
@@ -63,7 +165,11 @@ Syscall** GetOrInitWinApiSyscalls() {
                 if (bError) {
                     break;
                 }
-                lpSyscall->dwCryptedHash = _hash((char*)lpFunctionsTobeLoaded[i].lpFunctionName);
+                if(lpFunctionsTobeLoaded[i].lpFunctionName != NULL) {
+                    lpSyscall->dwCryptedHash = _hash((char*)lpFunctionsTobeLoaded[i].lpFunctionName);
+                } else {
+                    lpSyscall->dwCryptedHash = lpFunctionsTobeLoaded[i].dwCryptedHash;
+                }
                 lpSyscall->dwNumberOfArgs = lpFunctionsTobeLoaded[i].dwNumberOfArgs;
                 lpWinApiSyscalls[i] = lpSyscall;
                 dprintf("[WINAPI][GetOrInitWinApiSyscalls] lpSyscall = %p; dwCryptedHash = %p", lpSyscall, lpSyscall->dwCryptedHash);
@@ -240,7 +346,7 @@ NTSTATUS winapi_ntdll_ZwFreeVirtualMemory(HANDLE ProcessHandle, PVOID* BaseAddre
 }
 
 NTSTATUS winapi_ntdll_NtQueueApcThread(HANDLE ThreadHandle, PVOID ApcRoutine, PVOID ApcContext, PVOID Argument1, PVOID Argument2) {
-    NTSTATUS (*pNtQueueApcThread)(HANDLE ThreadHandle, PVOID ApcRoutine, PVOID ApcContext, PVOID Argument1, PVOID Argument2) = GetFunction(NTDLL_DLL, "NtQueueApcThread");
+    NTSTATUS (*pNtQueueApcThread)(HANDLE ThreadHandle, PVOID ApcRoutine, PVOID ApcContext, PVOID Argument1, PVOID Argument2) = GetFunctionH(NTDLL_DLL, H_NtQueueApcThread);
     dprintf("[WINAPI][winapi_ntdll_NtQueueApcThread] Calling NtQueueApcThread @ %p", pNtQueueApcThread);
     if (pNtQueueApcThread) {
         return pNtQueueApcThread(ThreadHandle, ApcRoutine, ApcContext, Argument1, Argument2);
@@ -249,7 +355,7 @@ NTSTATUS winapi_ntdll_NtQueueApcThread(HANDLE ThreadHandle, PVOID ApcRoutine, PV
 }
 
 NTSTATUS winapi_ntdll_NtOpenThread(PHANDLE ThreadHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, PCLIENT_ID ClientId) {
-    NTSTATUS (*pNtOpenThread)(PHANDLE ThreadHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, PCLIENT_ID ClientId) = GetFunction(NTDLL_DLL, "NtOpenThread");
+    NTSTATUS (*pNtOpenThread)(PHANDLE ThreadHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, PCLIENT_ID ClientId) = GetFunctionH(NTDLL_DLL, H_NtOpenThread);
     dprintf("[WINAPI][winapi_ntdll_NtOpenThread] Calling NtOpenThread @ %p", pNtOpenThread);
     if (pNtOpenThread) {
         return pNtOpenThread(ThreadHandle, DesiredAccess, ObjectAttributes, ClientId);
@@ -266,7 +372,7 @@ BOOL winapi_kernel32_WriteProcessMemory(HANDLE hProcess, LPVOID lpBaseAddress, L
         dprintf("[WINAPI][winapi_kernel32_WriteProcessMemory] Syscall ZwWriteVirtualMemory returned: %d", dwStatus);
         return dwStatus == STATUS_SUCCESS;
     } else {
-        BOOL (*pWriteProcessMemory)(HANDLE hProcess, LPVOID lpBaseAddress, LPCVOID lpBuffer, SIZE_T nSize, SIZE_T* lpNumberOfBytesWritten) = GetFunction(KERNEL32_DLL, "WriteProcessMemory");
+        BOOL (*pWriteProcessMemory)(HANDLE hProcess, LPVOID lpBaseAddress, LPCVOID lpBuffer, SIZE_T nSize, SIZE_T* lpNumberOfBytesWritten) = GetFunctionH(KERNEL32_DLL, H_WriteProcessMemory);
         dprintf("[WINAPI][winapi_kernel32_WriteProcessMemory] Calling WriteProcessMemory @ %p", pWriteProcessMemory);
         if (pWriteProcessMemory) {
             return pWriteProcessMemory(hProcess, lpBaseAddress, lpBuffer, nSize, lpNumberOfBytesWritten);
@@ -281,7 +387,7 @@ BOOL winapi_kernel32_ReadProcessMemory(HANDLE hProcess, LPCVOID lpBaseAddress, L
         dprintf("[WINAPI][winapi_kernel32_ReadProcessMemory] Syscall ZwReadVirtualMemory returned: %d", dwStatus);
         return dwStatus == STATUS_SUCCESS;
     } else {
-        BOOL (*pReadProcessMemory)(HANDLE hProcess, LPCVOID lpBaseAddress, LPVOID lpBuffer, SIZE_T nSize, SIZE_T* lpNumberOfBytesRead) = GetFunction(KERNEL32_DLL, "ReadProcessMemory");
+        BOOL (*pReadProcessMemory)(HANDLE hProcess, LPCVOID lpBaseAddress, LPVOID lpBuffer, SIZE_T nSize, SIZE_T* lpNumberOfBytesRead) = GetFunctionH(KERNEL32_DLL, H_ReadProcessMemory);
         dprintf("[WINAPI][winapi_kernel32_ReadProcessMemory] Calling ReadProcessMemory @ %p", pReadProcessMemory);
         if (pReadProcessMemory) {
             return pReadProcessMemory(hProcess, lpBaseAddress, lpBuffer, nSize, lpNumberOfBytesRead);
@@ -304,7 +410,7 @@ HANDLE winapi_kernel32_OpenProcess(DWORD dwDesiredAccess, BOOL bInheritHandle, D
             return hProcess;
         }
     } else {
-        HANDLE (*pOpenProcess)(DWORD dwDesiredAccess, BOOL bInheritHandle, DWORD dwProcessId) = GetFunction(KERNEL32_DLL, "OpenProcess");
+        HANDLE (*pOpenProcess)(DWORD dwDesiredAccess, BOOL bInheritHandle, DWORD dwProcessId) = GetFunctionH(KERNEL32_DLL, H_OpenProcess);
         dprintf("[WINAPI][winapi_kernel32_OpenProcess] Calling OpenProcess @ %p", pOpenProcess);
         if (pOpenProcess) {
             return pOpenProcess(dwDesiredAccess, bInheritHandle, dwProcessId);
@@ -323,7 +429,7 @@ LPVOID winapi_kernel32_VirtualAlloc(LPVOID lpAddress, SIZE_T dwSize, DWORD flAll
             return lpBaseAddr;
         }
     } else {
-        LPVOID (*pVirtualAlloc)(LPVOID lpAddress, SIZE_T dwSize, DWORD flAllocationType, DWORD flProtect) = GetFunction(KERNEL32_DLL, "VirtualAlloc");
+        LPVOID (*pVirtualAlloc)(LPVOID lpAddress, SIZE_T dwSize, DWORD flAllocationType, DWORD flProtect) = GetFunctionH(KERNEL32_DLL, H_VirtualAlloc);
         dprintf("[WINAPI][winapi_kernel32_VirtualAlloc] Calling VirtualAlloc @ %p", pVirtualAlloc);
         if (pVirtualAlloc) {
             return pVirtualAlloc(lpAddress, dwSize, flAllocationType, flProtect);
@@ -342,7 +448,7 @@ LPVOID winapi_kernel32_VirtualAllocEx(HANDLE hProcess, LPVOID lpAddress, SIZE_T 
             return lpBaseAddr;
         }
     } else {
-        LPVOID (*pVirtualAllocEx)(HANDLE hProcess, LPVOID lpAddress, SIZE_T dwSize, DWORD flAllocationType, DWORD flProtect) = GetFunction(KERNEL32_DLL, "VirtualAllocEx");
+        LPVOID (*pVirtualAllocEx)(HANDLE hProcess, LPVOID lpAddress, SIZE_T dwSize, DWORD flAllocationType, DWORD flProtect) = GetFunctionH(KERNEL32_DLL, H_VirtualAllocEx);
         dprintf("[WINAPI][winapi_kernel32_VirtualAllocEx] Calling VirtualAllocEx @ %p", pVirtualAllocEx);
         if (pVirtualAllocEx) {
             return pVirtualAllocEx(hProcess, lpAddress, dwSize, flAllocationType, flProtect);
@@ -358,7 +464,7 @@ BOOL winapi_kernel32_VirtualProtect(LPVOID lpAddress, SIZE_T dwSize, DWORD flNew
         dprintf("[WINAPI][winapi_kernel32_VirtualProtect] Syscall ZwProtectVirtualMemory returned: %d", dwStatus);
         return dwStatus == STATUS_SUCCESS;
     } else {
-        BOOL (*pVirtualProtect)(LPVOID lpAddress, SIZE_T dwSize, DWORD flNewProtect, PDWORD lpflOldProtect) = GetFunction(KERNEL32_DLL, "VirtualProtect");
+        BOOL (*pVirtualProtect)(LPVOID lpAddress, SIZE_T dwSize, DWORD flNewProtect, PDWORD lpflOldProtect) = GetFunctionH(KERNEL32_DLL, H_VirtualProtect);
         dprintf("[WINAPI][winapi_kernel32_VirtualProtect] Calling VirtualProtect @ %p", pVirtualProtect);
         if (pVirtualProtect) {
             return pVirtualProtect(lpAddress, dwSize, flNewProtect, lpflOldProtect);
@@ -374,7 +480,7 @@ BOOL winapi_kernel32_VirtualProtectEx(HANDLE hProcess, LPVOID lpAddress, SIZE_T 
         dprintf("[WINAPI][winapi_kernel32_VirtualProtectEx] Syscall ZwProtectVirtualMemory returned: %d", dwStatus);
         return dwStatus == STATUS_SUCCESS;
     } else {
-        BOOL (*pVirtualProtectEx)(HANDLE hProcess, LPVOID lpAddress, SIZE_T dwSize, DWORD flNewProtect, PDWORD lpflOldProtect) = GetFunction(KERNEL32_DLL, "VirtualProtectEx");
+        BOOL (*pVirtualProtectEx)(HANDLE hProcess, LPVOID lpAddress, SIZE_T dwSize, DWORD flNewProtect, PDWORD lpflOldProtect) = GetFunctionH(KERNEL32_DLL, H_VirtualProtectEx);
         dprintf("[WINAPI][winapi_kernel32_VirtualProtectEx] Calling VirtualProtectEx @ %p", pVirtualProtectEx);
         if (pVirtualProtectEx) {
             return pVirtualProtectEx(hProcess, lpAddress, dwSize, flNewProtect, lpflOldProtect);
@@ -392,7 +498,7 @@ SIZE_T winapi_kernel32_VirtualQuery(LPCVOID lpAddress, PMEMORY_BASIC_INFORMATION
             return returnLength;
         }
     } else {
-        SIZE_T (*pVirtualQuery)(LPCVOID lpAddress, PMEMORY_BASIC_INFORMATION lpBuffer, SIZE_T dwLength) = GetFunction(KERNEL32_DLL, "VirtualQuery");
+        SIZE_T (*pVirtualQuery)(LPCVOID lpAddress, PMEMORY_BASIC_INFORMATION lpBuffer, SIZE_T dwLength) = GetFunctionH(KERNEL32_DLL, H_VirtualQuery);
         dprintf("[WINAPI][winapi_kernel32_VirtualQuery] Calling VirtualQuery @ %p", pVirtualQuery);
         if (pVirtualQuery) {
             return pVirtualQuery(lpAddress, lpBuffer, dwLength);
@@ -410,7 +516,7 @@ SIZE_T winapi_kernel32_VirtualQueryEx(HANDLE hProcess, LPCVOID lpAddress, PMEMOR
             return returnLength;
         }
     } else {
-        SIZE_T (*pVirtualQueryEx)(HANDLE hProcess, LPCVOID lpAddress, PMEMORY_BASIC_INFORMATION lpBuffer, SIZE_T dwLength) = GetFunction(KERNEL32_DLL, "VirtualQueryEx");
+        SIZE_T (*pVirtualQueryEx)(HANDLE hProcess, LPCVOID lpAddress, PMEMORY_BASIC_INFORMATION lpBuffer, SIZE_T dwLength) = GetFunctionH(KERNEL32_DLL, H_VirtualQueryEx);
         dprintf("[WINAPI][winapi_kernel32_VirtualQueryEx] Calling VirtualQueryEx @ %p", pVirtualQueryEx);
         if (pVirtualQueryEx) {
             return pVirtualQueryEx(hProcess, lpAddress, lpBuffer, dwLength);
@@ -426,7 +532,7 @@ BOOL winapi_kernel32_VirtualFree(LPVOID lpAddress, SIZE_T dwSize, DWORD dwFreeTy
         dprintf("[WINAPI][winapi_kernel32_VirtualFree] Syscall ZwFreeVirtualMemory returned: %d", dwStatus);
         return dwStatus == STATUS_SUCCESS;
     } else {
-        BOOL (*pVirtualFree)(LPVOID lpAddress, SIZE_T dwSize, DWORD dwFreeType) = GetFunction(KERNEL32_DLL, "VirtualFree");
+        BOOL (*pVirtualFree)(LPVOID lpAddress, SIZE_T dwSize, DWORD dwFreeType) = GetFunctionH(KERNEL32_DLL, H_VirtualFree);
         dprintf("[WINAPI][winapi_kernel32_VirtualFree] Calling VirtualFree @ %p", pVirtualFree);
         if (pVirtualFree) {
             return pVirtualFree(lpAddress, dwSize, dwFreeType);
@@ -436,7 +542,7 @@ BOOL winapi_kernel32_VirtualFree(LPVOID lpAddress, SIZE_T dwSize, DWORD dwFreeTy
 }
 
 HANDLE winapi_kernel32_CreateRemoteThread(HANDLE hProcess, LPSECURITY_ATTRIBUTES lpThreadAttributes, SIZE_T dwStackSize, LPTHREAD_START_ROUTINE lpStartAddress, LPVOID lpParameter, DWORD dwCreationFlags, LPDWORD lpThreadId) {
-    HANDLE (*pCreateRemoteThread)(HANDLE hProcess, LPSECURITY_ATTRIBUTES lpThreadAttributes, SIZE_T dwStackSize, LPTHREAD_START_ROUTINE lpStartAddress, LPVOID lpParameter, DWORD dwCreationFlags, LPDWORD lpThreadId) = GetFunction(KERNEL32_DLL, "CreateRemoteThread");
+    HANDLE (*pCreateRemoteThread)(HANDLE hProcess, LPSECURITY_ATTRIBUTES lpThreadAttributes, SIZE_T dwStackSize, LPTHREAD_START_ROUTINE lpStartAddress, LPVOID lpParameter, DWORD dwCreationFlags, LPDWORD lpThreadId) = GetFunctionH(KERNEL32_DLL, H_CreateRemoteThread);
     if (pCreateRemoteThread) {
         return pCreateRemoteThread(hProcess, lpThreadAttributes, dwStackSize, lpStartAddress, lpParameter, dwCreationFlags, lpThreadId);
     }
@@ -444,7 +550,7 @@ HANDLE winapi_kernel32_CreateRemoteThread(HANDLE hProcess, LPSECURITY_ATTRIBUTES
 }
 
 BOOL winapi_kernel32_CloseHandle(HANDLE hObject) {
-    BOOL (*pCloseHandle)(HANDLE hObject) = GetFunction(KERNEL32_DLL, "CloseHandle");
+    BOOL (*pCloseHandle)(HANDLE hObject) = GetFunctionH(KERNEL32_DLL, H_CloseHandle);
     dprintf("[WINAPI][winapi_kernel32_CloseHandle] Calling CloseHandle @ %p", pCloseHandle);
     if (pCloseHandle) {
         return pCloseHandle(hObject);
@@ -453,7 +559,7 @@ BOOL winapi_kernel32_CloseHandle(HANDLE hObject) {
 }
 
 BOOL winapi_kernel32_DuplicateHandle(HANDLE hSourceProcessHandle, HANDLE hSourceHandle, HANDLE hTargetProcessHandle, LPHANDLE lpTargetHandle, DWORD dwDesiredAccess, BOOL bInheritHandle, DWORD dwOptions) {
-    BOOL (*pDuplicateHandle)(HANDLE hSourceProcessHandle, HANDLE hSourceHandle, HANDLE hTargetProcessHandle, LPHANDLE lpTargetHandle, DWORD dwDesiredAccess, BOOL bInheritHandle, DWORD dwOptions) = GetFunction(KERNEL32_DLL, "DuplicateHandle");
+    BOOL (*pDuplicateHandle)(HANDLE hSourceProcessHandle, HANDLE hSourceHandle, HANDLE hTargetProcessHandle, LPHANDLE lpTargetHandle, DWORD dwDesiredAccess, BOOL bInheritHandle, DWORD dwOptions) = GetFunctionH(KERNEL32_DLL, H_DuplicateHandle);
     dprintf("[WINAPI][winapi_kernel32_DuplicateHandle] Calling DuplicateHandle @ %p", pDuplicateHandle);
     if (pDuplicateHandle) {
         return pDuplicateHandle(hSourceProcessHandle, hSourceHandle, hTargetProcessHandle, lpTargetHandle, dwDesiredAccess, bInheritHandle, dwOptions);
@@ -462,7 +568,7 @@ BOOL winapi_kernel32_DuplicateHandle(HANDLE hSourceProcessHandle, HANDLE hSource
 }
 
 HANDLE winapi_kernel32_CreateToolhelp32Snapshot(DWORD dwFlags, DWORD th32ProcessID) {
-    HANDLE (*pCreateToolhelp32Snapshot)(DWORD dwFlags, DWORD th32ProcessID) = GetFunction(KERNEL32_DLL, "CreateToolhelp32Snapshot");
+    HANDLE (*pCreateToolhelp32Snapshot)(DWORD dwFlags, DWORD th32ProcessID) = GetFunctionH(KERNEL32_DLL, H_CreateToolhelp32Snapshot);
     dprintf("[WINAPI][winapi_kernel32_CreateToolhelp32Snapshot] Calling CreateToolhelp32Snapshot @ %p", pCreateToolhelp32Snapshot);
     if (pCreateToolhelp32Snapshot) {
         return pCreateToolhelp32Snapshot(dwFlags, th32ProcessID);
@@ -471,7 +577,7 @@ HANDLE winapi_kernel32_CreateToolhelp32Snapshot(DWORD dwFlags, DWORD th32Process
 }
 
 BOOL winapi_kernel32_Thread32First(HANDLE hSnapshot, LPTHREADENTRY32 lpte) {
-    BOOL (*pThread32First)(HANDLE hSnapshot, LPTHREADENTRY32 lpte) = GetFunction(KERNEL32_DLL, "Thread32First");
+    BOOL (*pThread32First)(HANDLE hSnapshot, LPTHREADENTRY32 lpte) = GetFunctionH(KERNEL32_DLL, H_Thread32First);
     dprintf("[WINAPI][winapi_kernel32_Thread32First] Calling Thread32First @ %p", pThread32First);
     if (pThread32First) {
         return pThread32First(hSnapshot, lpte);
@@ -480,7 +586,7 @@ BOOL winapi_kernel32_Thread32First(HANDLE hSnapshot, LPTHREADENTRY32 lpte) {
 }
 
 HANDLE winapi_kernel32_OpenThread(DWORD dwDesiredAccess, BOOL bInheritHandle, DWORD dwThreadId) {
-    HANDLE (*pOpenThread)(DWORD dwDesiredAccess, BOOL bInheritHandle, DWORD dwThreadId) = GetFunction(KERNEL32_DLL, "OpenThread");
+    HANDLE (*pOpenThread)(DWORD dwDesiredAccess, BOOL bInheritHandle, DWORD dwThreadId) = GetFunctionH(KERNEL32_DLL, H_OpenThread);
     dprintf("[WINAPI][winapi_kernel32_OpenThread] Calling OpenThread @ %p", pOpenThread);
     if (pOpenThread) {
         return pOpenThread(dwDesiredAccess, bInheritHandle, dwThreadId);
@@ -489,7 +595,7 @@ HANDLE winapi_kernel32_OpenThread(DWORD dwDesiredAccess, BOOL bInheritHandle, DW
 }
 
 DWORD winapi_kernel32_SuspendThread(HANDLE hThread) {
-    DWORD (*pSuspendThread)(HANDLE hThread) = GetFunction(KERNEL32_DLL, "SuspendThread");
+    DWORD (*pSuspendThread)(HANDLE hThread) = GetFunctionH(KERNEL32_DLL, H_SuspendThread);
     dprintf("[WINAPI][winapi_kernel32_SuspendThread] Calling SuspendThread @ %p", pSuspendThread);
     if (pSuspendThread) {
         return pSuspendThread(hThread);
@@ -498,7 +604,7 @@ DWORD winapi_kernel32_SuspendThread(HANDLE hThread) {
 }
 
 BOOL winapi_kernel32_Thread32Next(HANDLE hSnapshot, LPTHREADENTRY32 lpte) {
-    BOOL (*pThread32Next)(HANDLE hSnapshot, LPTHREADENTRY32 lpte) = GetFunction(KERNEL32_DLL, "Thread32Next");
+    BOOL (*pThread32Next)(HANDLE hSnapshot, LPTHREADENTRY32 lpte) = GetFunctionH(KERNEL32_DLL, H_Thread32Next);
     dprintf("[WINAPI][winapi_kernel32_Thread32Next] Calling Thread32Next @ %p", pThread32Next);
     if (pThread32Next) {
         return pThread32Next(hSnapshot, lpte);
@@ -507,7 +613,7 @@ BOOL winapi_kernel32_Thread32Next(HANDLE hSnapshot, LPTHREADENTRY32 lpte) {
 }
 
 DWORD winapi_kernel32_ResumeThread(HANDLE hThread) {
-    DWORD (*pResumeThread)(HANDLE hThread) = GetFunction(KERNEL32_DLL, "ResumeThread");
+    DWORD (*pResumeThread)(HANDLE hThread) = GetFunctionH(KERNEL32_DLL, H_ResumeThread);
     dprintf("[WINAPI][winapi_kernel32_ResumeThread] Calling ResumeThread @ %p", pResumeThread);
     if (pResumeThread) {
         return pResumeThread(hThread);
@@ -516,7 +622,7 @@ DWORD winapi_kernel32_ResumeThread(HANDLE hThread) {
 }
 
 BOOL winapi_kernel32_FreeLibrary(HMODULE hLibModule) {
-    BOOL (*pFreeLibrary)(HMODULE hLibModule) = GetFunction(KERNEL32_DLL, "FreeLibrary");
+    BOOL (*pFreeLibrary)(HMODULE hLibModule) = GetFunctionH(KERNEL32_DLL, H_FreeLibrary);
     dprintf("[WINAPI][winapi_kernel32_FreeLibrary] Calling FreeLibrary @ %p", pFreeLibrary);
     if (pFreeLibrary) {
         return pFreeLibrary(hLibModule);
@@ -525,7 +631,7 @@ BOOL winapi_kernel32_FreeLibrary(HMODULE hLibModule) {
 }
 
 BOOL winapi_kernel32_FlushInstructionCache(HANDLE hProcess, LPCVOID lpBaseAddress, SIZE_T dwSize) {
-    BOOL (*pFlushInstructionCache)(HANDLE hProcess, LPCVOID lpBaseAddress, SIZE_T dwSize) = GetFunction(KERNEL32_DLL, "FlushInstructionCache");
+    BOOL (*pFlushInstructionCache)(HANDLE hProcess, LPCVOID lpBaseAddress, SIZE_T dwSize) = GetFunctionH(KERNEL32_DLL, H_FlushInstructionCache);
     dprintf("[WINAPI][winapi_kernel32_FlushInstructionCache] Calling FlushInstructionCache @ %p", pFlushInstructionCache);
     if (pFlushInstructionCache) {
         return pFlushInstructionCache(hProcess, lpBaseAddress, dwSize);
@@ -534,7 +640,7 @@ BOOL winapi_kernel32_FlushInstructionCache(HANDLE hProcess, LPCVOID lpBaseAddres
 }
 
 HLOCAL winapi_kernel32_LocalFree(HLOCAL hMem) {
-    HLOCAL (*pLocalFree)(HLOCAL hMem) = GetFunction(KERNEL32_DLL, "LocalFree");
+    HLOCAL (*pLocalFree)(HLOCAL hMem) = GetFunctionH(KERNEL32_DLL, H_LocalFree);
     dprintf("[WINAPI][winapi_kernel32_LocalFree] Calling LocalFree @ %p", pLocalFree);
     if (pLocalFree) {
         return pLocalFree(hMem);
@@ -543,7 +649,7 @@ HLOCAL winapi_kernel32_LocalFree(HLOCAL hMem) {
 }
 
 HANDLE winapi_kernel32_CreateFileA(LPCSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, DWORD dwFlagsAndAttributes, HANDLE hTemplateFile) {
-    HANDLE (*pCreateFileA)(LPCSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, DWORD dwFlagsAndAttributes, HANDLE hTemplateFile) = GetFunction(KERNEL32_DLL, "CreateFileA");
+    HANDLE (*pCreateFileA)(LPCSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, DWORD dwFlagsAndAttributes, HANDLE hTemplateFile) = GetFunctionH(KERNEL32_DLL, H_CreateFileA);
     dprintf("[WINAPI][winapi_kernel32_CreateFileA] Calling CreateFileA @ %p", pCreateFileA);
     if (pCreateFileA) {
         return pCreateFileA(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
@@ -552,7 +658,7 @@ HANDLE winapi_kernel32_CreateFileA(LPCSTR lpFileName, DWORD dwDesiredAccess, DWO
 }
 
 BOOL winapi_kernel32_WriteFile(HANDLE hFile, LPCVOID lpBuffer, DWORD nNumberOfBytesToWrite, LPDWORD lpNumberOfBytesWritten, LPOVERLAPPED lpOverlapped) {
-    BOOL (*pWriteFile)(HANDLE hFile, LPCVOID lpBuffer, DWORD nNumberOfBytesToWrite, LPDWORD lpNumberOfBytesWritten, LPOVERLAPPED lpOverlapped) = GetFunction(KERNEL32_DLL, "WriteFile");
+    BOOL (*pWriteFile)(HANDLE hFile, LPCVOID lpBuffer, DWORD nNumberOfBytesToWrite, LPDWORD lpNumberOfBytesWritten, LPOVERLAPPED lpOverlapped) = GetFunctionH(KERNEL32_DLL, H_WriteFile);
     dprintf("[WINAPI][winapi_kernel32_WriteFile] Calling WriteFile @ %p", pWriteFile);
     if (pWriteFile) {
         return pWriteFile(hFile, lpBuffer, nNumberOfBytesToWrite, lpNumberOfBytesWritten, lpOverlapped);
@@ -561,7 +667,7 @@ BOOL winapi_kernel32_WriteFile(HANDLE hFile, LPCVOID lpBuffer, DWORD nNumberOfBy
 }
 
 HMODULE winapi_kernel32_LoadLibraryA(LPCSTR lpLibFileName) {
-    HMODULE (*pLoadLibraryA)(LPCSTR lpLibFileName) = GetFunction(KERNEL32_DLL, "LoadLibraryA");
+    HMODULE (*pLoadLibraryA)(LPCSTR lpLibFileName) = GetFunctionH(KERNEL32_DLL, H_LoadLibraryA);
     dprintf("[WINAPI][winapi_kernel32_LoadLibraryA] Calling LoadLibraryA @ %p", pLoadLibraryA);
     if (pLoadLibraryA) {
         return pLoadLibraryA(lpLibFileName);
@@ -570,7 +676,7 @@ HMODULE winapi_kernel32_LoadLibraryA(LPCSTR lpLibFileName) {
 }
 
 DWORD winapi_kernel32_WaitForMultipleObjects(DWORD nCount, const HANDLE* lpHandles, BOOL bWaitAll, DWORD dwMilliseconds) {
-    DWORD (*pWaitForMultipleObjects)(DWORD nCount, const HANDLE* lpHandles, BOOL bWaitAll, DWORD dwMilliseconds) = GetFunction(KERNEL32_DLL, "WaitForMultipleObjects");
+    DWORD (*pWaitForMultipleObjects)(DWORD nCount, const HANDLE* lpHandles, BOOL bWaitAll, DWORD dwMilliseconds) = GetFunctionH(KERNEL32_DLL, H_WaitForMultipleObjects);
     dprintf("[WINAPI][winapi_kernel32_WaitForMultipleObjects] Calling WaitForMultipleObjects @ %p", pWaitForMultipleObjects);
     if (pWaitForMultipleObjects) {
         return pWaitForMultipleObjects(nCount, lpHandles, bWaitAll, dwMilliseconds);
@@ -579,7 +685,7 @@ DWORD winapi_kernel32_WaitForMultipleObjects(DWORD nCount, const HANDLE* lpHandl
 }
 
 BOOL winapi_kernel32_SetHandleInformation(HANDLE hObject, DWORD dwMask, DWORD dwFlags) {
-    BOOL (*pSetHandleInformation)(HANDLE hObject, DWORD dwMask, DWORD dwFlags) = GetFunction(KERNEL32_DLL, "SetHandleInformation");
+    BOOL (*pSetHandleInformation)(HANDLE hObject, DWORD dwMask, DWORD dwFlags) = GetFunctionH(KERNEL32_DLL, H_SetHandleInformation);
     dprintf("[WINAPI][winapi_kernel32_SetHandleInformation] Calling SetHandleInformation @ %p", pSetHandleInformation);
     if (pSetHandleInformation) {
         return pSetHandleInformation(hObject, dwMask, dwFlags);
@@ -588,7 +694,7 @@ BOOL winapi_kernel32_SetHandleInformation(HANDLE hObject, DWORD dwMask, DWORD dw
 }
 
 HGLOBAL winapi_kernel32_GlobalFree(HGLOBAL hMem) {
-    HGLOBAL (*pGlobalFree)(HGLOBAL hMem) = GetFunction(KERNEL32_DLL, "GlobalFree");
+    HGLOBAL (*pGlobalFree)(HGLOBAL hMem) = GetFunctionH(KERNEL32_DLL, H_GlobalFree);
     dprintf("[WINAPI][winapi_kernel32_GlobalFree] Calling GlobalFree @ %p", pGlobalFree);
     if (pGlobalFree) {
         return pGlobalFree(hMem);
@@ -597,7 +703,7 @@ HGLOBAL winapi_kernel32_GlobalFree(HGLOBAL hMem) {
 }
 
 HANDLE winapi_kernel32_CreateNamedPipeA(LPCSTR lpName, DWORD dwOpenMode, DWORD dwPipeMode, DWORD nMaxInstances, DWORD nOutBufferSize, DWORD nInBufferSize, DWORD nDefaultTimeOut, LPSECURITY_ATTRIBUTES lpSecurityAttributes) {
-    HANDLE (*pCreateNamedPipeA)(LPCSTR lpName, DWORD dwOpenMode, DWORD dwPipeMode, DWORD nMaxInstances, DWORD nOutBufferSize, DWORD nInBufferSize, DWORD nDefaultTimeOut, LPSECURITY_ATTRIBUTES lpSecurityAttributes) = GetFunction(KERNEL32_DLL, "CreateNamedPipeA");
+    HANDLE (*pCreateNamedPipeA)(LPCSTR lpName, DWORD dwOpenMode, DWORD dwPipeMode, DWORD nMaxInstances, DWORD nOutBufferSize, DWORD nInBufferSize, DWORD nDefaultTimeOut, LPSECURITY_ATTRIBUTES lpSecurityAttributes) = GetFunctionH(KERNEL32_DLL, H_CreateNamedPipeA);
     dprintf("[WINAPI][winapi_kernel32_CreateNamedPipeA] Calling CreateNamedPipeA @ %p", pCreateNamedPipeA);
     if (pCreateNamedPipeA) {
         return pCreateNamedPipeA(lpName, dwOpenMode, dwPipeMode, nMaxInstances, nOutBufferSize, nInBufferSize, nDefaultTimeOut, lpSecurityAttributes);
@@ -606,7 +712,7 @@ HANDLE winapi_kernel32_CreateNamedPipeA(LPCSTR lpName, DWORD dwOpenMode, DWORD d
 }
 
 BOOL winapi_kernel32_ConnectNamedPipe(HANDLE hNamedPipe, LPOVERLAPPED lpOverlapped) {
-    BOOL (*pConnectNamedPipe)(HANDLE hNamedPipe, LPOVERLAPPED lpOverlapped) = GetFunction(KERNEL32_DLL, "ConnectNamedPipe");
+    BOOL (*pConnectNamedPipe)(HANDLE hNamedPipe, LPOVERLAPPED lpOverlapped) = GetFunctionH(KERNEL32_DLL, H_ConnectNamedPipe);
     dprintf("[WINAPI][winapi_kernel32_ConnectNamedPipe] Calling ConnectNamedPipe @ %p", pConnectNamedPipe);
     if (pConnectNamedPipe) {
         return pConnectNamedPipe(hNamedPipe, lpOverlapped);
@@ -615,7 +721,7 @@ BOOL winapi_kernel32_ConnectNamedPipe(HANDLE hNamedPipe, LPOVERLAPPED lpOverlapp
 }
 
 BOOL winapi_kernel32_GetOverlappedResult(HANDLE hFile, LPOVERLAPPED lpOverlapped, LPDWORD lpNumberOfBytesTransferred, BOOL bWait) {
-    BOOL (*pGetOverlappedResult)(HANDLE hFile, LPOVERLAPPED lpOverlapped, LPDWORD lpNumberOfBytesTransferred, BOOL bWait) = GetFunction(KERNEL32_DLL, "GetOverlappedResult");
+    BOOL (*pGetOverlappedResult)(HANDLE hFile, LPOVERLAPPED lpOverlapped, LPDWORD lpNumberOfBytesTransferred, BOOL bWait) = GetFunctionH(KERNEL32_DLL, H_GetOverlappedResult);
     dprintf("[WINAPI][winapi_kernel32_GetOverlappedResult] Calling GetOverlappedResult @ %p", pGetOverlappedResult);
     if (pGetOverlappedResult) {
         return pGetOverlappedResult(hFile, lpOverlapped, lpNumberOfBytesTransferred, bWait);
@@ -624,7 +730,7 @@ BOOL winapi_kernel32_GetOverlappedResult(HANDLE hFile, LPOVERLAPPED lpOverlapped
 }
 
 BOOL winapi_kernel32_ReadFile(HANDLE hFile, LPVOID lpBuffer, DWORD nNumberOfBytesToRead, LPDWORD lpNumberOfBytesRead, LPOVERLAPPED lpOverlapped) {
-    BOOL (*pReadFile)(HANDLE hFile, LPVOID lpBuffer, DWORD nNumberOfBytesToRead, LPDWORD lpNumberOfBytesRead, LPOVERLAPPED lpOverlapped) = GetFunction(KERNEL32_DLL, "ReadFile");
+    BOOL (*pReadFile)(HANDLE hFile, LPVOID lpBuffer, DWORD nNumberOfBytesToRead, LPDWORD lpNumberOfBytesRead, LPOVERLAPPED lpOverlapped) = GetFunctionH(KERNEL32_DLL, H_ReadFile);
     dprintf("[WINAPI][winapi_kernel32_ReadFile] Calling ReadFile @ %p", pReadFile);
     if (pReadFile) {
         return pReadFile(hFile, lpBuffer, nNumberOfBytesToRead, lpNumberOfBytesRead, lpOverlapped);
@@ -633,7 +739,7 @@ BOOL winapi_kernel32_ReadFile(HANDLE hFile, LPVOID lpBuffer, DWORD nNumberOfByte
 }
 
 HANDLE winapi_kernel32_CreateThread(LPSECURITY_ATTRIBUTES lpThreadAttributes, SIZE_T dwStackSize, LPTHREAD_START_ROUTINE lpStartAddress, LPVOID lpParameter, DWORD dwCreationFlags, LPDWORD lpThreadId) {
-    HANDLE (*pCreateThread)(LPSECURITY_ATTRIBUTES lpThreadAttributes, SIZE_T dwStackSize, LPTHREAD_START_ROUTINE lpStartAddress, LPVOID lpParameter, DWORD dwCreationFlags, LPDWORD lpThreadId) = GetFunction(KERNEL32_DLL, "CreateThread");
+    HANDLE (*pCreateThread)(LPSECURITY_ATTRIBUTES lpThreadAttributes, SIZE_T dwStackSize, LPTHREAD_START_ROUTINE lpStartAddress, LPVOID lpParameter, DWORD dwCreationFlags, LPDWORD lpThreadId) = GetFunctionH(KERNEL32_DLL, H_CreateThread);
     dprintf("[WINAPI][winapi_kernel32_CreateThread] Calling CreateThread @ %p", pCreateThread);
     if (pCreateThread) {
         return pCreateThread(lpThreadAttributes, dwStackSize, lpStartAddress, lpParameter, dwCreationFlags, lpThreadId);
@@ -642,7 +748,7 @@ HANDLE winapi_kernel32_CreateThread(LPSECURITY_ATTRIBUTES lpThreadAttributes, SI
 }
 
 BOOL winapi_kernel32_ResetEvent(HANDLE hEvent) {
-    BOOL (*pResetEvent)(HANDLE hEvent) = GetFunction(KERNEL32_DLL, "ResetEvent");
+    BOOL (*pResetEvent)(HANDLE hEvent) = GetFunctionH(KERNEL32_DLL, H_ResetEvent);
     dprintf("[WINAPI][winapi_kernel32_ResetEvent] Calling ResetEvent @ %p", pResetEvent);
     if (pResetEvent) {
         return pResetEvent(hEvent);
@@ -651,7 +757,7 @@ BOOL winapi_kernel32_ResetEvent(HANDLE hEvent) {
 }
 
 BOOL winapi_kernel32_SetThreadErrorMode(DWORD dwNewMode, LPDWORD lpOldMode) {
-    BOOL (*pSetThreadErrorMode)(DWORD dwNewMode, LPDWORD lpOldMode) = GetFunction(KERNEL32_DLL, "SetThreadErrorMode");
+    BOOL (*pSetThreadErrorMode)(DWORD dwNewMode, LPDWORD lpOldMode) = GetFunctionH(KERNEL32_DLL, H_SetThreadErrorMode);
     dprintf("[WINAPI][winapi_kernel32_SetThreadErrorMode] Calling SetThreadErrorMode @ %p", pSetThreadErrorMode);
     if (pSetThreadErrorMode) {
         return pSetThreadErrorMode(dwNewMode, lpOldMode);
@@ -663,7 +769,7 @@ BOOL winapi_kernel32_SetThreadErrorMode(DWORD dwNewMode, LPDWORD lpOldMode) {
 // START: advapi32.dll
 
 BOOL winapi_advapi32_OpenProcessToken(HANDLE ProcessHandle, DWORD DesiredAccess, PHANDLE TokenHandle) {
-    BOOL (*pOpenProcessToken)(HANDLE ProcessHandle, DWORD DesiredAccess, PHANDLE TokenHandle) = GetFunction(ADVAPI32_DLL, "OpenProcessToken");
+    BOOL (*pOpenProcessToken)(HANDLE ProcessHandle, DWORD DesiredAccess, PHANDLE TokenHandle) = GetFunctionH(ADVAPI32_DLL, H_OpenProcessToken);
     dprintf("[WINAPI][winapi_advapi32_OpenProcessToken] Calling OpenProcessToken @ %p", pOpenProcessToken);
     if (pOpenProcessToken) {
         return pOpenProcessToken(ProcessHandle, DesiredAccess, TokenHandle);
@@ -672,7 +778,7 @@ BOOL winapi_advapi32_OpenProcessToken(HANDLE ProcessHandle, DWORD DesiredAccess,
 }
 
 BOOL winapi_advapi32_AdjustTokenPrivileges(HANDLE TokenHandle, BOOL DisableAllPrivileges, PTOKEN_PRIVILEGES NewState, DWORD BufferLength, PTOKEN_PRIVILEGES PreviousState, PDWORD ReturnLength) {
-    BOOL (*pAdjustTokenPrivileges)(HANDLE TokenHandle, BOOL DisableAllPrivileges, PTOKEN_PRIVILEGES NewState, DWORD BufferLength, PTOKEN_PRIVILEGES PreviousState, PDWORD ReturnLength) = GetFunction(ADVAPI32_DLL, "AdjustTokenPrivileges");
+    BOOL (*pAdjustTokenPrivileges)(HANDLE TokenHandle, BOOL DisableAllPrivileges, PTOKEN_PRIVILEGES NewState, DWORD BufferLength, PTOKEN_PRIVILEGES PreviousState, PDWORD ReturnLength) = GetFunctionH(ADVAPI32_DLL, H_AdjustTokenPrivileges);
     dprintf("[WINAPI][winapi_advapi32_AdjustTokenPrivileges] Calling AdjustTokenPrivileges @ %p", pAdjustTokenPrivileges);
     if (pAdjustTokenPrivileges) {
         return pAdjustTokenPrivileges(TokenHandle, DisableAllPrivileges, NewState, BufferLength, PreviousState, ReturnLength);
@@ -681,7 +787,7 @@ BOOL winapi_advapi32_AdjustTokenPrivileges(HANDLE TokenHandle, BOOL DisableAllPr
 }
 
 BOOL winapi_advapi32_ImpersonateLoggedOnUser(HANDLE hToken) {
-    BOOL (*pImpersonateLoggedOnUser)(HANDLE hToken) = GetFunction(ADVAPI32_DLL, "ImpersonateLoggedOnUser");
+    BOOL (*pImpersonateLoggedOnUser)(HANDLE hToken) = GetFunctionH(ADVAPI32_DLL, H_ImpersonateLoggedOnUser);
     dprintf("[WINAPI][winapi_advapi32_ImpersonateLoggedOnUser] Calling ImpersonateLoggedOnUser @ %p", pImpersonateLoggedOnUser);
     if (pImpersonateLoggedOnUser) {
         return pImpersonateLoggedOnUser(hToken);
@@ -690,7 +796,7 @@ BOOL winapi_advapi32_ImpersonateLoggedOnUser(HANDLE hToken) {
 }
 
 BOOL winapi_advapi32_CryptDuplicateKey(HCRYPTKEY hKey, DWORD* pdwReserved, DWORD dwFlags, HCRYPTKEY* phKey) {
-    BOOL (*pCryptDuplicateKey)(HCRYPTKEY hKey, DWORD* pdwReserved, DWORD dwFlags, HCRYPTKEY* phKey) = GetFunction(ADVAPI32_DLL, "CryptDuplicateKey");
+    BOOL (*pCryptDuplicateKey)(HCRYPTKEY hKey, DWORD* pdwReserved, DWORD dwFlags, HCRYPTKEY* phKey) = GetFunctionH(ADVAPI32_DLL, H_CryptDuplicateKey);
     dprintf("[WINAPI][winapi_advapi32_CryptDuplicateKey] Calling CryptDuplicateKey @ %p", pCryptDuplicateKey);
     if (pCryptDuplicateKey) {
         return pCryptDuplicateKey(hKey, pdwReserved, dwFlags, phKey);
@@ -699,7 +805,7 @@ BOOL winapi_advapi32_CryptDuplicateKey(HCRYPTKEY hKey, DWORD* pdwReserved, DWORD
 }
 
 BOOL winapi_advapi32_CryptSetKeyParam(HCRYPTKEY hKey, DWORD dwParam, const BYTE* pbData, DWORD dwFlags) {
-    BOOL (*pCryptSetKeyParam)(HCRYPTKEY hKey, DWORD dwParam, const BYTE* pbData, DWORD dwFlags) = GetFunction(ADVAPI32_DLL, "CryptSetKeyParam");
+    BOOL (*pCryptSetKeyParam)(HCRYPTKEY hKey, DWORD dwParam, const BYTE* pbData, DWORD dwFlags) = GetFunctionH(ADVAPI32_DLL, H_CryptSetKeyParam);
     dprintf("[WINAPI][winapi_advapi32_CryptSetKeyParam] Calling CryptSetKeyParam @ %p", pCryptSetKeyParam);
     if (pCryptSetKeyParam) {
         return pCryptSetKeyParam(hKey, dwParam, pbData, dwFlags);
@@ -708,7 +814,7 @@ BOOL winapi_advapi32_CryptSetKeyParam(HCRYPTKEY hKey, DWORD dwParam, const BYTE*
 }
 
 BOOL winapi_advapi32_CryptDecrypt(HCRYPTKEY hKey, HCRYPTHASH hHash, BOOL Final, DWORD dwFlags, BYTE* pbData, DWORD* pdwDataLen) {
-    BOOL (*pCryptDecrypt)(HCRYPTKEY hKey, HCRYPTHASH hHash, BOOL Final, DWORD dwFlags, BYTE* pbData, DWORD* pdwDataLen) = GetFunction(ADVAPI32_DLL, "CryptDecrypt");
+    BOOL (*pCryptDecrypt)(HCRYPTKEY hKey, HCRYPTHASH hHash, BOOL Final, DWORD dwFlags, BYTE* pbData, DWORD* pdwDataLen) = GetFunctionH(ADVAPI32_DLL, H_CryptDecrypt);
     dprintf("[WINAPI][winapi_advapi32_CryptDecrypt] Calling CryptDecrypt @ %p", pCryptDecrypt);
     if (pCryptDecrypt) {
         return pCryptDecrypt(hKey, hHash, Final, dwFlags, pbData, pdwDataLen);
@@ -717,7 +823,7 @@ BOOL winapi_advapi32_CryptDecrypt(HCRYPTKEY hKey, HCRYPTHASH hHash, BOOL Final, 
 }
 
 BOOL winapi_advapi32_CryptGenRandom(HCRYPTPROV hProv, DWORD dwLen, BYTE* pbBuffer) {
-    BOOL (*pCryptGenRandom)(HCRYPTPROV hProv, DWORD dwLen, BYTE* pbBuffer) = GetFunction(ADVAPI32_DLL, "CryptGenRandom");
+    BOOL (*pCryptGenRandom)(HCRYPTPROV hProv, DWORD dwLen, BYTE* pbBuffer) = GetFunctionH(ADVAPI32_DLL, H_CryptGenRandom);
     dprintf("[WINAPI][winapi_advapi32_CryptGenRandom] Calling CryptGenRandom @ %p", pCryptGenRandom);
     if (pCryptGenRandom) {
         return pCryptGenRandom(hProv, dwLen, pbBuffer);
@@ -726,7 +832,7 @@ BOOL winapi_advapi32_CryptGenRandom(HCRYPTPROV hProv, DWORD dwLen, BYTE* pbBuffe
 }
 
 BOOL winapi_advapi32_CryptEncrypt(HCRYPTKEY hKey, HCRYPTHASH hHash, BOOL Final, DWORD dwFlags, BYTE* pbData, DWORD* pdwDataLen, DWORD dwBufLen) {
-    BOOL (*pCryptEncrypt)(HCRYPTKEY hKey, HCRYPTHASH hHash, BOOL Final, DWORD dwFlags, BYTE* pbData, DWORD* pdwDataLen, DWORD dwBufLen) = GetFunction(ADVAPI32_DLL, "CryptEncrypt");
+    BOOL (*pCryptEncrypt)(HCRYPTKEY hKey, HCRYPTHASH hHash, BOOL Final, DWORD dwFlags, BYTE* pbData, DWORD* pdwDataLen, DWORD dwBufLen) = GetFunctionH(ADVAPI32_DLL, H_CryptEncrypt);
     dprintf("[WINAPI][winapi_advapi32_CryptEncrypt] Calling CryptEncrypt @ %p", pCryptEncrypt);
     if (pCryptEncrypt) {
         return pCryptEncrypt(hKey, hHash, Final, dwFlags, pbData, pdwDataLen, dwBufLen);
@@ -735,7 +841,7 @@ BOOL winapi_advapi32_CryptEncrypt(HCRYPTKEY hKey, HCRYPTHASH hHash, BOOL Final, 
 }
 
 BOOL winapi_advapi32_CryptDestroyKey(HCRYPTKEY hKey) {
-    BOOL (*pCryptDestroyKey)(HCRYPTKEY hKey) = GetFunction(ADVAPI32_DLL, "CryptDestroyKey");
+    BOOL (*pCryptDestroyKey)(HCRYPTKEY hKey) = GetFunctionH(ADVAPI32_DLL, H_CryptDestroyKey);
     dprintf("[WINAPI][winapi_advapi32_CryptDestroyKey] Calling CryptDestroyKey @ %p", pCryptDestroyKey);
     if (pCryptDestroyKey) {
         return pCryptDestroyKey(hKey);
@@ -744,7 +850,7 @@ BOOL winapi_advapi32_CryptDestroyKey(HCRYPTKEY hKey) {
 }
 
 BOOL winapi_advapi32_CryptReleaseContext(HCRYPTPROV hProv, DWORD dwFlags) {
-    BOOL (*pCryptReleaseContext)(HCRYPTPROV hProv, DWORD dwFlags) = GetFunction(ADVAPI32_DLL, "CryptReleaseContext");
+    BOOL (*pCryptReleaseContext)(HCRYPTPROV hProv, DWORD dwFlags) = GetFunctionH(ADVAPI32_DLL, H_CryptReleaseContext);
     dprintf("[WINAPI][winapi_advapi32_CryptReleaseContext] Calling CryptReleaseContext @ %p", pCryptReleaseContext);
     if (pCryptReleaseContext) {
         return pCryptReleaseContext(hProv, dwFlags);
@@ -753,7 +859,7 @@ BOOL winapi_advapi32_CryptReleaseContext(HCRYPTPROV hProv, DWORD dwFlags) {
 }
 
 BOOL winapi_advapi32_CryptImportKey(HCRYPTPROV hProv, const BYTE* pbData, DWORD dwDataLen, HCRYPTKEY hPubKey, DWORD dwFlags, HCRYPTKEY* phKey) {
-    BOOL (*pCryptImportKey)(HCRYPTPROV hProv, const BYTE* pbData, DWORD dwDataLen, HCRYPTKEY hPubKey, DWORD dwFlags, HCRYPTKEY* phKey) = GetFunction(ADVAPI32_DLL, "CryptImportKey");
+    BOOL (*pCryptImportKey)(HCRYPTPROV hProv, const BYTE* pbData, DWORD dwDataLen, HCRYPTKEY hPubKey, DWORD dwFlags, HCRYPTKEY* phKey) = GetFunctionH(ADVAPI32_DLL, H_CryptImportKey);
     dprintf("[WINAPI][winapi_advapi32_CryptImportKey] Calling CryptImportKey @ %p", pCryptImportKey);
     if (pCryptImportKey) {
         return pCryptImportKey(hProv, pbData, dwDataLen, hPubKey, dwFlags, phKey);
@@ -762,7 +868,7 @@ BOOL winapi_advapi32_CryptImportKey(HCRYPTPROV hProv, const BYTE* pbData, DWORD 
 }
 
 BOOL winapi_advapi32_OpenThreadToken(HANDLE ThreadHandle, DWORD DesiredAccess, BOOL OpenAsSelf, PHANDLE TokenHandle) {
-    BOOL (*pOpenThreadToken)(HANDLE ThreadHandle, DWORD DesiredAccess, BOOL OpenAsSelf, PHANDLE TokenHandle) = GetFunction(ADVAPI32_DLL, "OpenThreadToken");
+    BOOL (*pOpenThreadToken)(HANDLE ThreadHandle, DWORD DesiredAccess, BOOL OpenAsSelf, PHANDLE TokenHandle) = GetFunctionH(ADVAPI32_DLL, H_OpenThreadToken);
     dprintf("[WINAPI][winapi_advapi32_OpenThreadToken] Calling OpenThreadToken @ %p", pOpenThreadToken);
     if (pOpenThreadToken) {
         return pOpenThreadToken(ThreadHandle, DesiredAccess, OpenAsSelf, TokenHandle);
@@ -771,7 +877,7 @@ BOOL winapi_advapi32_OpenThreadToken(HANDLE ThreadHandle, DWORD DesiredAccess, B
 }
 
 BOOL winapi_advapi32_AllocateAndInitializeSid(PSID_IDENTIFIER_AUTHORITY pIdentifierAuthority, BYTE nSubAuthorityCount, DWORD dwSubAuthority0, DWORD dwSubAuthority1, DWORD dwSubAuthority2, DWORD dwSubAuthority3, DWORD dwSubAuthority4, DWORD dwSubAuthority5, DWORD dwSubAuthority6, DWORD dwSubAuthority7, PSID* pSid) {
-    BOOL (*pAllocateAndInitializeSid)(PSID_IDENTIFIER_AUTHORITY pIdentifierAuthority, BYTE nSubAuthorityCount, DWORD dwSubAuthority0, DWORD dwSubAuthority1, DWORD dwSubAuthority2, DWORD dwSubAuthority3, DWORD dwSubAuthority4, DWORD dwSubAuthority5, DWORD dwSubAuthority6, DWORD dwSubAuthority7, PSID* pSid) = GetFunction(ADVAPI32_DLL, "AllocateAndInitializeSid");
+    BOOL (*pAllocateAndInitializeSid)(PSID_IDENTIFIER_AUTHORITY pIdentifierAuthority, BYTE nSubAuthorityCount, DWORD dwSubAuthority0, DWORD dwSubAuthority1, DWORD dwSubAuthority2, DWORD dwSubAuthority3, DWORD dwSubAuthority4, DWORD dwSubAuthority5, DWORD dwSubAuthority6, DWORD dwSubAuthority7, PSID* pSid) = GetFunctionH(ADVAPI32_DLL, H_AllocateAndInitializeSid);
     dprintf("[WINAPI][winapi_advapi32_AllocateAndInitializeSid] Calling AllocateAndInitializeSid @ %p", pAllocateAndInitializeSid);
     if (pAllocateAndInitializeSid) {
         return pAllocateAndInitializeSid(pIdentifierAuthority, nSubAuthorityCount, dwSubAuthority0, dwSubAuthority1, dwSubAuthority2, dwSubAuthority3, dwSubAuthority4, dwSubAuthority5, dwSubAuthority6, dwSubAuthority7, pSid);
@@ -780,7 +886,7 @@ BOOL winapi_advapi32_AllocateAndInitializeSid(PSID_IDENTIFIER_AUTHORITY pIdentif
 }
 
 DWORD winapi_advapi32_SetEntriesInAclW(ULONG cCountOfExplicitEntries, PEXPLICIT_ACCESS_W pListOfExplicitEntries, PACL OldAcl, PACL* NewAcl) {
-    DWORD (*pSetEntriesInAclW)(ULONG cCountOfExplicitEntries, PEXPLICIT_ACCESS_W pListOfExplicitEntries, PACL OldAcl, PACL* NewAcl) = GetFunction(ADVAPI32_DLL, "SetEntriesInAclW");
+    DWORD (*pSetEntriesInAclW)(ULONG cCountOfExplicitEntries, PEXPLICIT_ACCESS_W pListOfExplicitEntries, PACL OldAcl, PACL* NewAcl) = GetFunctionH(ADVAPI32_DLL, H_SetEntriesInAclW);
     dprintf("[WINAPI][winapi_advapi32_SetEntriesInAclW] Calling SetEntriesInAclW @ %p", pSetEntriesInAclW);
     if (pSetEntriesInAclW) {
         return pSetEntriesInAclW(cCountOfExplicitEntries, pListOfExplicitEntries, OldAcl, NewAcl);
@@ -789,7 +895,7 @@ DWORD winapi_advapi32_SetEntriesInAclW(ULONG cCountOfExplicitEntries, PEXPLICIT_
 }
 
 BOOL winapi_advapi32_InitializeAcl(PACL pAcl, DWORD nAclLength, DWORD dwAclRevision) {
-    BOOL (*pInitializeAcl)(PACL pAcl, DWORD nAclLength, DWORD dwAclRevision) = GetFunction(ADVAPI32_DLL, "InitializeAcl");
+    BOOL (*pInitializeAcl)(PACL pAcl, DWORD nAclLength, DWORD dwAclRevision) = GetFunctionH(ADVAPI32_DLL, H_InitializeAcl);
     dprintf("[WINAPI][winapi_advapi32_InitializeAcl] Calling InitializeAcl @ %p", pInitializeAcl);
     if (pInitializeAcl) {
         return pInitializeAcl(pAcl, nAclLength, dwAclRevision);
@@ -798,7 +904,7 @@ BOOL winapi_advapi32_InitializeAcl(PACL pAcl, DWORD nAclLength, DWORD dwAclRevis
 }
 
 BOOL winapi_advapi32_InitializeSecurityDescriptor(PSECURITY_DESCRIPTOR pSecurityDescriptor, DWORD dwRevision) {
-    BOOL (*pInitializeSecurityDescriptor)(PSECURITY_DESCRIPTOR pSecurityDescriptor, DWORD dwRevision) = GetFunction(ADVAPI32_DLL, "InitializeSecurityDescriptor");
+    BOOL (*pInitializeSecurityDescriptor)(PSECURITY_DESCRIPTOR pSecurityDescriptor, DWORD dwRevision) = GetFunctionH(ADVAPI32_DLL, H_InitializeSecurityDescriptor);
     dprintf("[WINAPI][winapi_advapi32_InitializeSecurityDescriptor] Calling InitializeSecurityDescriptor @ %p", pInitializeSecurityDescriptor);
     if (pInitializeSecurityDescriptor) {
         return pInitializeSecurityDescriptor(pSecurityDescriptor, dwRevision);
@@ -807,7 +913,7 @@ BOOL winapi_advapi32_InitializeSecurityDescriptor(PSECURITY_DESCRIPTOR pSecurity
 }
 
 BOOL winapi_advapi32_SetSecurityDescriptorDacl(PSECURITY_DESCRIPTOR pSecurityDescriptor, BOOL bDaclPresent, PACL pDacl, BOOL bDaclDefaulted) {
-    BOOL (*pSetSecurityDescriptorDacl)(PSECURITY_DESCRIPTOR pSecurityDescriptor, BOOL bDaclPresent, PACL pDacl, BOOL bDaclDefaulted) = GetFunction(ADVAPI32_DLL, "SetSecurityDescriptorDacl");
+    BOOL (*pSetSecurityDescriptorDacl)(PSECURITY_DESCRIPTOR pSecurityDescriptor, BOOL bDaclPresent, PACL pDacl, BOOL bDaclDefaulted) = GetFunctionH(ADVAPI32_DLL, H_SetSecurityDescriptorDacl);
     dprintf("[WINAPI][winapi_advapi32_SetSecurityDescriptorDacl] Calling SetSecurityDescriptorDacl @ %p", pSetSecurityDescriptorDacl);
     if (pSetSecurityDescriptorDacl) {
         return pSetSecurityDescriptorDacl(pSecurityDescriptor, bDaclPresent, pDacl, bDaclDefaulted);
@@ -816,7 +922,7 @@ BOOL winapi_advapi32_SetSecurityDescriptorDacl(PSECURITY_DESCRIPTOR pSecurityDes
 }
 
 BOOL winapi_advapi32_SetSecurityDescriptorSacl(PSECURITY_DESCRIPTOR pSecurityDescriptor, BOOL bSaclPresent, PACL pSacl, BOOL bSaclDefaulted) {
-    BOOL (*pSetSecurityDescriptorSacl)(PSECURITY_DESCRIPTOR pSecurityDescriptor, BOOL bSaclPresent, PACL pSacl, BOOL bSaclDefaulted) = GetFunction(ADVAPI32_DLL, "SetSecurityDescriptorSacl");
+    BOOL (*pSetSecurityDescriptorSacl)(PSECURITY_DESCRIPTOR pSecurityDescriptor, BOOL bSaclPresent, PACL pSacl, BOOL bSaclDefaulted) = GetFunctionH(ADVAPI32_DLL, H_SetSecurityDescriptorSacl);
     dprintf("[WINAPI][winapi_advapi32_SetSecurityDescriptorSacl] Calling SetSecurityDescriptorSacl @ %p", pSetSecurityDescriptorSacl);
     if (pSetSecurityDescriptorSacl) {
         return pSetSecurityDescriptorSacl(pSecurityDescriptor, bSaclPresent, pSacl, bSaclDefaulted);
@@ -825,7 +931,7 @@ BOOL winapi_advapi32_SetSecurityDescriptorSacl(PSECURITY_DESCRIPTOR pSecurityDes
 }
 
 BOOL winapi_advapi32_LookupPrivilegeValueW(LPCWSTR lpSystemName, LPCWSTR lpName, PLUID lpLuid) {
-    BOOL (*pLookupPrivilegeValueW)(LPCWSTR lpSystemName, LPCWSTR lpName, PLUID lpLuid) = GetFunction(ADVAPI32_DLL, "LookupPrivilegeValueW");
+    BOOL (*pLookupPrivilegeValueW)(LPCWSTR lpSystemName, LPCWSTR lpName, PLUID lpLuid) = GetFunctionH(ADVAPI32_DLL, H_LookupPrivilegeValueW);
     dprintf("[WINAPI][winapi_advapi32_LookupPrivilegeValueW] Calling LookupPrivilegeValueW @ %p", pLookupPrivilegeValueW);
     if (pLookupPrivilegeValueW) {
         return pLookupPrivilegeValueW(lpSystemName, lpName, lpLuid);
@@ -837,7 +943,7 @@ BOOL winapi_advapi32_LookupPrivilegeValueW(LPCWSTR lpSystemName, LPCWSTR lpName,
 // START: crypt32.dll
 
 BOOL winapi_crypt32_CryptDecodeObjectEx(DWORD dwCertEncodingType, LPCSTR lpszStructType, const BYTE* pbEncoded, DWORD cbEncoded, DWORD dwFlags, PCRYPT_DECODE_PARA pDecodePara, void* pvStructInfo, DWORD* pcbStructInfo) {
-    BOOL (*pCryptDecodeObjectEx)(DWORD dwCertEncodingType, LPCSTR lpszStructType, const BYTE* pbEncoded, DWORD cbEncoded, DWORD dwFlags, PCRYPT_DECODE_PARA pDecodePara, void* pvStructInfo, DWORD* pcbStructInfo) = GetFunction(CRYPT32_DLL, "CryptDecodeObjectEx");
+    BOOL (*pCryptDecodeObjectEx)(DWORD dwCertEncodingType, LPCSTR lpszStructType, const BYTE* pbEncoded, DWORD cbEncoded, DWORD dwFlags, PCRYPT_DECODE_PARA pDecodePara, void* pvStructInfo, DWORD* pcbStructInfo) = GetFunctionH(CRYPT32_DLL, H_CryptDecodeObjectEx);
     dprintf("[WINAPI][winapi_crypt32_CryptDecodeObjectEx] Calling CryptDecodeObjectEx @ %p", pCryptDecodeObjectEx);
     if (pCryptDecodeObjectEx) {
         return pCryptDecodeObjectEx(dwCertEncodingType, lpszStructType, pbEncoded, cbEncoded, dwFlags, pDecodePara, pvStructInfo, pcbStructInfo);
@@ -846,7 +952,7 @@ BOOL winapi_crypt32_CryptDecodeObjectEx(DWORD dwCertEncodingType, LPCSTR lpszStr
 }
 
 BOOL winapi_crypt32_CryptImportPublicKeyInfo(HCRYPTPROV hCryptProv, DWORD dwCertEncodingType, PCERT_PUBLIC_KEY_INFO pInfo, HCRYPTKEY* phKey) {
-    BOOL (*pCryptImportPublicKeyInfo)(HCRYPTPROV hCryptProv, DWORD dwCertEncodingType, PCERT_PUBLIC_KEY_INFO pInfo, HCRYPTKEY* phKey) = GetFunction(CRYPT32_DLL, "CryptImportPublicKeyInfo");
+    BOOL (*pCryptImportPublicKeyInfo)(HCRYPTPROV hCryptProv, DWORD dwCertEncodingType, PCERT_PUBLIC_KEY_INFO pInfo, HCRYPTKEY* phKey) = GetFunctionH(CRYPT32_DLL, H_CryptImportPublicKeyInfo);
     dprintf("[WINAPI][winapi_crypt32_CryptImportPublicKeyInfo] Calling CryptImportPublicKeyInfo @ %p", pCryptImportPublicKeyInfo);
     if (pCryptImportPublicKeyInfo) {
         return pCryptImportPublicKeyInfo(hCryptProv, dwCertEncodingType, pInfo, phKey);
@@ -855,7 +961,7 @@ BOOL winapi_crypt32_CryptImportPublicKeyInfo(HCRYPTPROV hCryptProv, DWORD dwCert
 }
 
 BOOL winapi_crypt32_CertGetCertificateContextProperty(PCCERT_CONTEXT pCertContext, DWORD dwPropId, void* pvData, DWORD* pcbData) {
-    BOOL (*pCertGetCertificateContextProperty)(PCCERT_CONTEXT pCertContext, DWORD dwPropId, void* pvData, DWORD* pcbData) = GetFunction(CRYPT32_DLL, "CertGetCertificateContextProperty");
+    BOOL (*pCertGetCertificateContextProperty)(PCCERT_CONTEXT pCertContext, DWORD dwPropId, void* pvData, DWORD* pcbData) = GetFunctionH(CRYPT32_DLL, H_CertGetCertificateContextProperty);
     dprintf("[WINAPI][winapi_crypt32_CertGetCertificateContextProperty] Calling CertGetCertificateContextProperty @ %p", pCertGetCertificateContextProperty);
     if (pCertGetCertificateContextProperty) {
         return pCertGetCertificateContextProperty(pCertContext, dwPropId, pvData, pcbData);
@@ -867,7 +973,7 @@ BOOL winapi_crypt32_CertGetCertificateContextProperty(PCCERT_CONTEXT pCertContex
 // START: user32.dll
 
 BOOL winapi_user32_GetUserObjectInformationA(HANDLE hObj, int nIndex, PVOID pvInfo, DWORD nLength, LPDWORD lpnLengthNeeded) {
-    BOOL (*pGetUserObjectInformationA)(HANDLE hObj, int nIndex, PVOID pvInfo, DWORD nLength, LPDWORD lpnLengthNeeded) = GetFunction(USER32_DLL, "GetUserObjectInformationA");
+    BOOL (*pGetUserObjectInformationA)(HANDLE hObj, int nIndex, PVOID pvInfo, DWORD nLength, LPDWORD lpnLengthNeeded) = GetFunctionH(USER32_DLL, H_GetUserObjectInformationA);
     dprintf("[WINAPI][winapi_user32_GetUserObjectInformationA] Calling GetUserObjectInformationA @ %p", pGetUserObjectInformationA);
     if (pGetUserObjectInformationA) {
         return pGetUserObjectInformationA(hObj, nIndex, pvInfo, nLength, lpnLengthNeeded);
@@ -876,7 +982,7 @@ BOOL winapi_user32_GetUserObjectInformationA(HANDLE hObj, int nIndex, PVOID pvIn
 }
 
 HDESK winapi_user32_GetThreadDesktop(DWORD dwThreadId) {
-    HDESK (*pGetThreadDesktop)(DWORD dwThreadId) = GetFunction(USER32_DLL, "GetThreadDesktop");
+    HDESK (*pGetThreadDesktop)(DWORD dwThreadId) = GetFunctionH(USER32_DLL, H_GetThreadDesktop);
     dprintf("[WINAPI][winapi_user32_GetThreadDesktop] Calling GetThreadDesktop @ %p", pGetThreadDesktop);
     if (pGetThreadDesktop) {
         return pGetThreadDesktop(dwThreadId);
@@ -887,7 +993,7 @@ HDESK winapi_user32_GetThreadDesktop(DWORD dwThreadId) {
 // END: user32.dll
 // START: ws2_32.dll
 int winapi_ws2_32_WSAStartup(WORD wVersionRequired, LPWSADATA lpWSAData) {
-    int (*pWSAStartup)(WORD wVersionRequired, LPWSADATA lpWSAData) = GetFunction(WS2_32_DLL, "WSAStartup");
+    int (*pWSAStartup)(WORD wVersionRequired, LPWSADATA lpWSAData) = GetFunctionH(WS2_32_DLL, H_WSAStartup);
     dprintf("[WINAPI][winapi_ws2_32_WSAStartup] Calling WSAStartup @ %p", pWSAStartup);
     if (pWSAStartup) {
         return pWSAStartup(wVersionRequired, lpWSAData);
@@ -896,7 +1002,7 @@ int winapi_ws2_32_WSAStartup(WORD wVersionRequired, LPWSADATA lpWSAData) {
 }
 
 SOCKET winapi_ws2_32_socket(int af, int type, int protocol) {
-    SOCKET (*psocket)(int af, int type, int protocol) = GetFunction(WS2_32_DLL, "socket");
+    SOCKET (*psocket)(int af, int type, int protocol) = GetFunctionH(WS2_32_DLL, H_socket);
     dprintf("[WINAPI][winapi_ws2_32_socket] Calling socket @ %p", psocket);
     if (psocket) {
         return psocket(af, type, protocol);
@@ -905,7 +1011,7 @@ SOCKET winapi_ws2_32_socket(int af, int type, int protocol) {
 }
 
 int winapi_ws2_32_connect(SOCKET s, const struct sockaddr* name, int namelen) {
-    int (*pconnect)(SOCKET s, const struct sockaddr* name, int namelen) = GetFunction(WS2_32_DLL, "connect");
+    int (*pconnect)(SOCKET s, const struct sockaddr* name, int namelen) = GetFunctionH(WS2_32_DLL, H_connect);
     dprintf("[WINAPI][winapi_ws2_32_connect] Calling connect @ %p", pconnect);
     if (pconnect) {
         return pconnect(s, name, namelen);
@@ -914,7 +1020,7 @@ int winapi_ws2_32_connect(SOCKET s, const struct sockaddr* name, int namelen) {
 }
 
 SOCKET winapi_ws2_32_accept(SOCKET s, struct sockaddr* addr, int* addrlen) {
-    SOCKET (*paccept)(SOCKET s, struct sockaddr* addr, int* addrlen) = GetFunction(WS2_32_DLL, "accept");
+    SOCKET (*paccept)(SOCKET s, struct sockaddr* addr, int* addrlen) = GetFunctionH(WS2_32_DLL, H_accept);
     dprintf("[WINAPI][winapi_ws2_32_accept] Calling accept @ %p", paccept);
     if (paccept) {
         return paccept(s, addr, addrlen);
@@ -923,7 +1029,7 @@ SOCKET winapi_ws2_32_accept(SOCKET s, struct sockaddr* addr, int* addrlen) {
 }
 
 int winapi_ws2_32_setsockopt(SOCKET s, int level, int optname, const char* optval, int optlen) {
-    int (*psetsockopt)(SOCKET s, int level, int optname, const char* optval, int optlen) = GetFunction(WS2_32_DLL, "setsockopt");
+    int (*psetsockopt)(SOCKET s, int level, int optname, const char* optval, int optlen) = GetFunctionH(WS2_32_DLL, H_setsockopt);
     dprintf("[WINAPI][winapi_ws2_32_setsockopt] Calling setsockopt @ %p", psetsockopt);
     if (psetsockopt) {
         return psetsockopt(s, level, optname, optval, optlen);
@@ -932,7 +1038,7 @@ int winapi_ws2_32_setsockopt(SOCKET s, int level, int optname, const char* optva
 }
 
 int winapi_ws2_32_recv(SOCKET s, char* buf, int len, int flags) {
-    int (*precv)(SOCKET s, char* buf, int len, int flags) = GetFunction(WS2_32_DLL, "recv");
+    int (*precv)(SOCKET s, char* buf, int len, int flags) = GetFunctionH(WS2_32_DLL, H_recv);
     dprintf("[WINAPI][winapi_ws2_32_recv] Calling recv @ %p", precv);
     if (precv) {
         return precv(s, buf, len, flags);
@@ -941,7 +1047,7 @@ int winapi_ws2_32_recv(SOCKET s, char* buf, int len, int flags) {
 }
 
 int winapi_ws2_32_WSADuplicateSocketA(SOCKET s, DWORD dwProcessId, LPWSAPROTOCOL_INFOA lpProtocolInfo) {
-    int (*pWSADuplicateSocketA)(SOCKET s, DWORD dwProcessId, LPWSAPROTOCOL_INFOA lpProtocolInfo) = GetFunction(WS2_32_DLL, "WSADuplicateSocketA");
+    int (*pWSADuplicateSocketA)(SOCKET s, DWORD dwProcessId, LPWSAPROTOCOL_INFOA lpProtocolInfo) = GetFunctionH(WS2_32_DLL, H_WSADuplicateSocketA);
     dprintf("[WINAPI][winapi_ws2_32_WSADuplicateSocketA] Calling WSADuplicateSocketA @ %p", pWSADuplicateSocketA);
     if (pWSADuplicateSocketA) {
         return pWSADuplicateSocketA(s, dwProcessId, lpProtocolInfo);
@@ -953,7 +1059,7 @@ int winapi_ws2_32_WSADuplicateSocketA(SOCKET s, DWORD dwProcessId, LPWSAPROTOCOL
 // START: wininet.dll
 
 HINTERNET winapi_wininet_InternetOpenW(LPCWSTR lpszAgent, DWORD dwAccessType, LPCWSTR lpszProxy, LPCWSTR lpszProxyBypass, DWORD dwFlags) {
-    HINTERNET (*pInternetOpenW)(LPCWSTR lpszAgent, DWORD dwAccessType, LPCWSTR lpszProxy, LPCWSTR lpszProxyBypass, DWORD dwFlags) = GetFunction(WININET_DLL, "InternetOpenW");
+    HINTERNET (*pInternetOpenW)(LPCWSTR lpszAgent, DWORD dwAccessType, LPCWSTR lpszProxy, LPCWSTR lpszProxyBypass, DWORD dwFlags) = GetFunctionH(WININET_DLL, H_InternetOpenW);
     dprintf("[WINAPI][winapi_wininet_InternetOpenW] Calling InternetOpenW @ %p", pInternetOpenW);
     if (pInternetOpenW) {
         return pInternetOpenW(lpszAgent, dwAccessType, lpszProxy, lpszProxyBypass, dwFlags);
@@ -962,7 +1068,7 @@ HINTERNET winapi_wininet_InternetOpenW(LPCWSTR lpszAgent, DWORD dwAccessType, LP
 }
 
 HINTERNET winapi_wininet_InternetConnectW(HINTERNET hInternet, LPCWSTR lpszServerName, INTERNET_PORT nServerPort, LPCWSTR lpszUserName, LPCWSTR lpszPassword, DWORD dwService, DWORD dwFlags, DWORD_PTR dwContext) {
-    HINTERNET (*pInternetConnectW)(HINTERNET hInternet, LPCWSTR lpszServerName, INTERNET_PORT nServerPort, LPCWSTR lpszUserName, LPCWSTR lpszPassword, DWORD dwService, DWORD dwFlags, DWORD_PTR dwContext) = GetFunction(WININET_DLL, "InternetConnectW");
+    HINTERNET (*pInternetConnectW)(HINTERNET hInternet, LPCWSTR lpszServerName, INTERNET_PORT nServerPort, LPCWSTR lpszUserName, LPCWSTR lpszPassword, DWORD dwService, DWORD dwFlags, DWORD_PTR dwContext) = GetFunctionH(WININET_DLL, H_InternetConnectW);
     dprintf("[WINAPI][winapi_wininet_InternetConnectW] Calling InternetConnectW @ %p", pInternetConnectW);
     if (pInternetConnectW) {
         return pInternetConnectW(hInternet, lpszServerName, nServerPort, lpszUserName, lpszPassword, dwService, dwFlags, dwContext);
@@ -971,7 +1077,7 @@ HINTERNET winapi_wininet_InternetConnectW(HINTERNET hInternet, LPCWSTR lpszServe
 }
 
 HINTERNET winapi_wininet_HttpOpenRequestW(HINTERNET hConnect, LPCWSTR lpszVerb, LPCWSTR lpszObjectName, LPCWSTR lpszVersion, LPCWSTR lpszReferrer, LPCWSTR* lplpszAcceptTypes, DWORD dwFlags, DWORD_PTR dwContext) {
-    HINTERNET (*pHttpOpenRequestW)(HINTERNET hConnect, LPCWSTR lpszVerb, LPCWSTR lpszObjectName, LPCWSTR lpszVersion, LPCWSTR lpszReferrer, LPCWSTR* lplpszAcceptTypes, DWORD dwFlags, DWORD_PTR dwContext) = GetFunction(WININET_DLL, "HttpOpenRequestW");
+    HINTERNET (*pHttpOpenRequestW)(HINTERNET hConnect, LPCWSTR lpszVerb, LPCWSTR lpszObjectName, LPCWSTR lpszVersion, LPCWSTR lpszReferrer, LPCWSTR* lplpszAcceptTypes, DWORD dwFlags, DWORD_PTR dwContext) = GetFunctionH(WININET_DLL, H_HttpOpenRequestW);
     dprintf("[WINAPI][winapi_wininet_HttpOpenRequestW] Calling HttpOpenRequestW @ %p", pHttpOpenRequestW);
     if (pHttpOpenRequestW) {
         return pHttpOpenRequestW(hConnect, lpszVerb, lpszObjectName, lpszVersion, lpszReferrer, lplpszAcceptTypes, dwFlags, dwContext);
@@ -980,7 +1086,7 @@ HINTERNET winapi_wininet_HttpOpenRequestW(HINTERNET hConnect, LPCWSTR lpszVerb, 
 }
 
 BOOL winapi_wininet_InternetSetOptionW(HINTERNET hInternet, DWORD dwOption, LPVOID lpBuffer, DWORD dwBufferLength) {
-    BOOL (*pInternetSetOptionW)(HINTERNET hInternet, DWORD dwOption, LPVOID lpBuffer, DWORD dwBufferLength) = GetFunction(WININET_DLL, "InternetSetOptionW");
+    BOOL (*pInternetSetOptionW)(HINTERNET hInternet, DWORD dwOption, LPVOID lpBuffer, DWORD dwBufferLength) = GetFunctionH(WININET_DLL, H_InternetSetOptionW);
     dprintf("[WINAPI][winapi_wininet_InternetSetOptionW] Calling InternetSetOptionW @ %p", pInternetSetOptionW);
     if (pInternetSetOptionW) {
         return pInternetSetOptionW(hInternet, dwOption, lpBuffer, dwBufferLength);
@@ -989,7 +1095,7 @@ BOOL winapi_wininet_InternetSetOptionW(HINTERNET hInternet, DWORD dwOption, LPVO
 }
 
 BOOL winapi_wininet_HttpSendRequestW(HINTERNET hRequest, LPCWSTR lpszHeaders, DWORD dwHeadersLength, LPVOID lpOptional, DWORD dwOptionalLength) {
-    BOOL (*pHttpSendRequestW)(HINTERNET hRequest, LPCWSTR lpszHeaders, DWORD dwHeadersLength, LPVOID lpOptional, DWORD dwOptionalLength) = GetFunction(WININET_DLL, "HttpSendRequestW");
+    BOOL (*pHttpSendRequestW)(HINTERNET hRequest, LPCWSTR lpszHeaders, DWORD dwHeadersLength, LPVOID lpOptional, DWORD dwOptionalLength) = GetFunctionH(WININET_DLL, H_HttpSendRequestW);
     dprintf("[WINAPI][winapi_wininet_HttpSendRequestW] Calling HttpSendRequestW @ %p", pHttpSendRequestW);
     if (pHttpSendRequestW) {
         return pHttpSendRequestW(hRequest, lpszHeaders, dwHeadersLength, lpOptional, dwOptionalLength);
@@ -998,7 +1104,7 @@ BOOL winapi_wininet_HttpSendRequestW(HINTERNET hRequest, LPCWSTR lpszHeaders, DW
 }
 
 BOOL winapi_wininet_HttpQueryInfoW(HINTERNET hRequest, DWORD dwInfoLevel, LPVOID lpBuffer, LPDWORD lpdwBufferLength, LPDWORD lpdwIndex) {
-    BOOL (*pHttpQueryInfoW)(HINTERNET hRequest, DWORD dwInfoLevel, LPVOID lpBuffer, LPDWORD lpdwBufferLength, LPDWORD lpdwIndex) = GetFunction(WININET_DLL, "HttpQueryInfoW");
+    BOOL (*pHttpQueryInfoW)(HINTERNET hRequest, DWORD dwInfoLevel, LPVOID lpBuffer, LPDWORD lpdwBufferLength, LPDWORD lpdwIndex) = GetFunctionH(WININET_DLL, H_HttpQueryInfoW);
     dprintf("[WINAPI][winapi_wininet_HttpQueryInfoW] Calling HttpQueryInfoW @ %p", pHttpQueryInfoW);
     if (pHttpQueryInfoW) {
         return pHttpQueryInfoW(hRequest, dwInfoLevel, lpBuffer, lpdwBufferLength, lpdwIndex);
@@ -1007,7 +1113,7 @@ BOOL winapi_wininet_HttpQueryInfoW(HINTERNET hRequest, DWORD dwInfoLevel, LPVOID
 }
 
 BOOL winapi_wininet_InternetReadFile(HINTERNET hFile, LPVOID lpBuffer, DWORD dwNumberOfBytesToRead, LPDWORD lpdwNumberOfBytesRead) {
-    BOOL (*pInternetReadFile)(HINTERNET hFile, LPVOID lpBuffer, DWORD dwNumberOfBytesToRead, LPDWORD lpdwNumberOfBytesRead) = GetFunction(WININET_DLL, "InternetReadFile");
+    BOOL (*pInternetReadFile)(HINTERNET hFile, LPVOID lpBuffer, DWORD dwNumberOfBytesToRead, LPDWORD lpdwNumberOfBytesRead) = GetFunctionH(WININET_DLL, H_InternetReadFile);
     dprintf("[WINAPI][winapi_wininet_InternetReadFile] Calling InternetReadFile @ %p", pInternetReadFile);
     if (pInternetReadFile) {
         return pInternetReadFile(hFile, lpBuffer, dwNumberOfBytesToRead, lpdwNumberOfBytesRead);
@@ -1016,7 +1122,7 @@ BOOL winapi_wininet_InternetReadFile(HINTERNET hFile, LPVOID lpBuffer, DWORD dwN
 }
 
 BOOL winapi_wininet_InternetCloseHandle(HINTERNET hInternet) {
-    BOOL (*pInternetCloseHandle)(HINTERNET hInternet) = GetFunction(WININET_DLL, "InternetCloseHandle");
+    BOOL (*pInternetCloseHandle)(HINTERNET hInternet) = GetFunctionH(WININET_DLL, H_InternetCloseHandle);
     dprintf("[WINAPI][winapi_wininet_InternetCloseHandle] Calling InternetCloseHandle @ %p", pInternetCloseHandle);
     if (pInternetCloseHandle) {
         return pInternetCloseHandle(hInternet);
@@ -1025,7 +1131,7 @@ BOOL winapi_wininet_InternetCloseHandle(HINTERNET hInternet) {
 }
 
 BOOL winapi_wininet_InternetCrackUrlW(LPCWSTR lpszUrl, DWORD dwUrlLength, DWORD dwFlags, LPURL_COMPONENTSW lpUrlComponents) {
-    BOOL (*pInternetCrackUrlW)(LPCWSTR lpszUrl, DWORD dwUrlLength, DWORD dwFlags, LPURL_COMPONENTSW lpUrlComponents) = GetFunction(WININET_DLL, "InternetCrackUrlW");
+    BOOL (*pInternetCrackUrlW)(LPCWSTR lpszUrl, DWORD dwUrlLength, DWORD dwFlags, LPURL_COMPONENTSW lpUrlComponents) = GetFunctionH(WININET_DLL, H_InternetCrackUrlW);
     dprintf("[WINAPI][winapi_wininet_InternetCrackUrlW] Calling InternetCrackUrlW @ %p", pInternetCrackUrlW);
     if (pInternetCrackUrlW) {
         return pInternetCrackUrlW(lpszUrl, dwUrlLength, dwFlags, lpUrlComponents);
@@ -1037,7 +1143,7 @@ BOOL winapi_wininet_InternetCrackUrlW(LPCWSTR lpszUrl, DWORD dwUrlLength, DWORD 
 // START: rpcrt4.dll
 
 HRESULT winapi_rpcrt4_CoCreateGuid(GUID* pguid) {
-    HRESULT (*pCoCreateGuid)(GUID* pguid) = GetFunction(RPCRT4_DLL, "CoCreateGuid");
+    HRESULT (*pCoCreateGuid)(GUID* pguid) = GetFunctionH(RPCRT4_DLL, H_CoCreateGuid);
     dprintf("[WINAPI][winapi_rpcrt4_CoCreateGuid] Calling CoCreateGuid @ %p", pCoCreateGuid);
     if (pCoCreateGuid) {
         return pCoCreateGuid(pguid);
@@ -1049,7 +1155,7 @@ HRESULT winapi_rpcrt4_CoCreateGuid(GUID* pguid) {
 // START: winhttp.dll
 
 HINTERNET winapi_winhttp_WinHttpOpen(LPCWSTR pszAgentW, DWORD dwAccessType, LPCWSTR pszProxyW, LPCWSTR pszProxyBypassW, DWORD dwFlags) {
-    HINTERNET (*pWinHttpOpen)(LPCWSTR pszAgentW, DWORD dwAccessType, LPCWSTR pszProxyW, LPCWSTR pszProxyBypassW, DWORD dwFlags) = GetFunction(WINHTTP_DLL, "WinHttpOpen");
+    HINTERNET (*pWinHttpOpen)(LPCWSTR pszAgentW, DWORD dwAccessType, LPCWSTR pszProxyW, LPCWSTR pszProxyBypassW, DWORD dwFlags) = GetFunctionH(WINHTTP_DLL, H_WinHttpOpen);
     dprintf("[WINAPI][winapi_winhttp_WinHttpOpen] Calling WinHttpOpen @ %p", pWinHttpOpen);
     if (pWinHttpOpen) {
         return pWinHttpOpen(pszAgentW, dwAccessType, pszProxyW, pszProxyBypassW, dwFlags);
@@ -1058,7 +1164,7 @@ HINTERNET winapi_winhttp_WinHttpOpen(LPCWSTR pszAgentW, DWORD dwAccessType, LPCW
 }
 
 HINTERNET winapi_winhttp_WinHttpConnect(HINTERNET hSession, LPCWSTR pswzServerName, INTERNET_PORT nServerPort, DWORD dwReserved) {
-    HINTERNET (*pWinHttpConnect)(HINTERNET hSession, LPCWSTR pswzServerName, INTERNET_PORT nServerPort, DWORD dwReserved) = GetFunction(WINHTTP_DLL, "WinHttpConnect");
+    HINTERNET (*pWinHttpConnect)(HINTERNET hSession, LPCWSTR pswzServerName, INTERNET_PORT nServerPort, DWORD dwReserved) = GetFunctionH(WINHTTP_DLL, H_WinHttpConnect);
     dprintf("[WINAPI][winapi_winhttp_WinHttpConnect] Calling WinHttpConnect @ %p", pWinHttpConnect);
     if (pWinHttpConnect) {
         return pWinHttpConnect(hSession, pswzServerName, nServerPort, dwReserved);
@@ -1067,7 +1173,7 @@ HINTERNET winapi_winhttp_WinHttpConnect(HINTERNET hSession, LPCWSTR pswzServerNa
 }
 
 HINTERNET winapi_winhttp_WinHttpOpenRequest(HINTERNET hConnect, LPCWSTR pwszVerb, LPCWSTR pwszObjectName, LPCWSTR pwszVersion, LPCWSTR pwszReferrer, LPCWSTR* ppwszAcceptTypes, DWORD dwFlags) {
-    HINTERNET (*pWinHttpOpenRequest)(HINTERNET hConnect, LPCWSTR pwszVerb, LPCWSTR pwszObjectName, LPCWSTR pwszVersion, LPCWSTR pwszReferrer, LPCWSTR* ppwszAcceptTypes, DWORD dwFlags) = GetFunction(WINHTTP_DLL, "WinHttpOpenRequest");
+    HINTERNET (*pWinHttpOpenRequest)(HINTERNET hConnect, LPCWSTR pwszVerb, LPCWSTR pwszObjectName, LPCWSTR pwszVersion, LPCWSTR pwszReferrer, LPCWSTR* ppwszAcceptTypes, DWORD dwFlags) = GetFunctionH(WINHTTP_DLL, H_WinHttpOpenRequest);
     dprintf("[WINAPI][winapi_winhttp_WinHttpOpenRequest] Calling WinHttpOpenRequest @ %p", pWinHttpOpenRequest);
     if (pWinHttpOpenRequest) {
         return pWinHttpOpenRequest(hConnect, pwszVerb, pwszObjectName, pwszVersion, pwszReferrer, ppwszAcceptTypes, dwFlags);
@@ -1076,7 +1182,7 @@ HINTERNET winapi_winhttp_WinHttpOpenRequest(HINTERNET hConnect, LPCWSTR pwszVerb
 }
 
 BOOL winapi_winhttp_WinHttpGetIEProxyConfigForCurrentUser(WINHTTP_CURRENT_USER_IE_PROXY_CONFIG* pProxyConfig) {
-    BOOL (*pWinHttpGetIEProxyConfigForCurrentUser)(WINHTTP_CURRENT_USER_IE_PROXY_CONFIG* pProxyConfig) = GetFunction(WINHTTP_DLL, "WinHttpGetIEProxyConfigForCurrentUser");
+    BOOL (*pWinHttpGetIEProxyConfigForCurrentUser)(WINHTTP_CURRENT_USER_IE_PROXY_CONFIG* pProxyConfig) = GetFunctionH(WINHTTP_DLL, H_WinHttpGetIEProxyConfigForCurrentUser);
     dprintf("[WINAPI][winapi_winhttp_WinHttpGetIEProxyConfigForCurrentUser] Calling WinHttpGetIEProxyConfigForCurrentUser @ %p", pWinHttpGetIEProxyConfigForCurrentUser);
     if (pWinHttpGetIEProxyConfigForCurrentUser) {
         return pWinHttpGetIEProxyConfigForCurrentUser(pProxyConfig);
@@ -1085,7 +1191,7 @@ BOOL winapi_winhttp_WinHttpGetIEProxyConfigForCurrentUser(WINHTTP_CURRENT_USER_I
 }
 
 BOOL winapi_winhttp_WinHttpGetProxyForUrl(HINTERNET hSession, LPCWSTR lpcwszUrl, WINHTTP_AUTOPROXY_OPTIONS* pAutoProxyOptions, WINHTTP_PROXY_INFO* pProxyInfo) {
-    BOOL (*pWinHttpGetProxyForUrl)(HINTERNET hSession, LPCWSTR lpcwszUrl, WINHTTP_AUTOPROXY_OPTIONS* pAutoProxyOptions, WINHTTP_PROXY_INFO* pProxyInfo) = GetFunction(WINHTTP_DLL, "WinHttpGetProxyForUrl");
+    BOOL (*pWinHttpGetProxyForUrl)(HINTERNET hSession, LPCWSTR lpcwszUrl, WINHTTP_AUTOPROXY_OPTIONS* pAutoProxyOptions, WINHTTP_PROXY_INFO* pProxyInfo) = GetFunctionH(WINHTTP_DLL, H_WinHttpGetProxyForUrl);
     dprintf("[WINAPI][winapi_winhttp_WinHttpGetProxyForUrl] Calling WinHttpGetProxyForUrl @ %p", pWinHttpGetProxyForUrl);
     if (pWinHttpGetProxyForUrl) {
         return pWinHttpGetProxyForUrl(hSession, lpcwszUrl, pAutoProxyOptions, pProxyInfo);
@@ -1094,7 +1200,7 @@ BOOL winapi_winhttp_WinHttpGetProxyForUrl(HINTERNET hSession, LPCWSTR lpcwszUrl,
 }
 
 BOOL winapi_winhttp_WinHttpSetOption(HINTERNET hInternet, DWORD dwOption, LPVOID lpBuffer, DWORD dwBufferLength) {
-    BOOL (*pWinHttpSetOption)(HINTERNET hInternet, DWORD dwOption, LPVOID lpBuffer, DWORD dwBufferLength) = GetFunction(WINHTTP_DLL, "WinHttpSetOption");
+    BOOL (*pWinHttpSetOption)(HINTERNET hInternet, DWORD dwOption, LPVOID lpBuffer, DWORD dwBufferLength) = GetFunctionH(WINHTTP_DLL, H_WinHttpSetOption);
     dprintf("[WINAPI][winapi_winhttp_WinHttpSetOption] Calling WinHttpSetOption @ %p", pWinHttpSetOption);
     if (pWinHttpSetOption) {
         return pWinHttpSetOption(hInternet, dwOption, lpBuffer, dwBufferLength);
@@ -1103,7 +1209,7 @@ BOOL winapi_winhttp_WinHttpSetOption(HINTERNET hInternet, DWORD dwOption, LPVOID
 }
 
 BOOL winapi_winhttp_WinHttpSendRequest(HINTERNET hRequest, LPCWSTR lpszHeaders, DWORD dwHeadersLength, LPVOID lpOptional, DWORD dwOptionalLength, DWORD dwTotalLength, DWORD_PTR dwContext) {
-    BOOL (*pWinHttpSendRequest)(HINTERNET hRequest, LPCWSTR lpszHeaders, DWORD dwHeadersLength, LPVOID lpOptional, DWORD dwOptionalLength, DWORD dwTotalLength, DWORD_PTR dwContext) = GetFunction(WINHTTP_DLL, "WinHttpSendRequest");
+    BOOL (*pWinHttpSendRequest)(HINTERNET hRequest, LPCWSTR lpszHeaders, DWORD dwHeadersLength, LPVOID lpOptional, DWORD dwOptionalLength, DWORD dwTotalLength, DWORD_PTR dwContext) = GetFunctionH(WINHTTP_DLL, H_WinHttpSendRequest);
     dprintf("[WINAPI][winapi_winhttp_WinHttpSendRequest] Calling WinHttpSendRequest @ %p", pWinHttpSendRequest);
     if (pWinHttpSendRequest) {
         return pWinHttpSendRequest(hRequest, lpszHeaders, dwHeadersLength, lpOptional, dwOptionalLength, dwTotalLength, dwContext);
@@ -1112,7 +1218,7 @@ BOOL winapi_winhttp_WinHttpSendRequest(HINTERNET hRequest, LPCWSTR lpszHeaders, 
 }
 
 BOOL winapi_winhttp_WinHttpReceiveResponse(HINTERNET hRequest, LPVOID lpReserved) {
-    BOOL (*pWinHttpReceiveResponse)(HINTERNET hRequest, LPVOID lpReserved) = GetFunction(WINHTTP_DLL, "WinHttpReceiveResponse");
+    BOOL (*pWinHttpReceiveResponse)(HINTERNET hRequest, LPVOID lpReserved) = GetFunctionH(WINHTTP_DLL, H_WinHttpReceiveResponse);
     dprintf("[WINAPI][winapi_winhttp_WinHttpReceiveResponse] Calling WinHttpReceiveResponse @ %p", pWinHttpReceiveResponse);
     if (pWinHttpReceiveResponse) {
         return pWinHttpReceiveResponse(hRequest, lpReserved);
@@ -1121,7 +1227,7 @@ BOOL winapi_winhttp_WinHttpReceiveResponse(HINTERNET hRequest, LPVOID lpReserved
 }
 
 BOOL winapi_winhttp_WinHttpQueryHeaders(HINTERNET hRequest, DWORD dwInfoLevel, LPCWSTR pwszName, LPVOID lpvBuffer, LPDWORD lpdwBufferLength, LPDWORD lpdwIndex) {
-    BOOL (*pWinHttpQueryHeaders)(HINTERNET hRequest, DWORD dwInfoLevel, LPCWSTR pwszName, LPVOID lpvBuffer, LPDWORD lpdwBufferLength, LPDWORD lpdwIndex) = GetFunction(WINHTTP_DLL, "WinHttpQueryHeaders");
+    BOOL (*pWinHttpQueryHeaders)(HINTERNET hRequest, DWORD dwInfoLevel, LPCWSTR pwszName, LPVOID lpvBuffer, LPDWORD lpdwBufferLength, LPDWORD lpdwIndex) = GetFunctionH(WINHTTP_DLL, H_WinHttpQueryHeaders);
     dprintf("[WINAPI][winapi_winhttp_WinHttpQueryHeaders] Calling WinHttpQueryHeaders @ %p", pWinHttpQueryHeaders);
     if (pWinHttpQueryHeaders) {
         return pWinHttpQueryHeaders(hRequest, dwInfoLevel, pwszName, lpvBuffer, lpdwBufferLength, lpdwIndex);
@@ -1130,7 +1236,7 @@ BOOL winapi_winhttp_WinHttpQueryHeaders(HINTERNET hRequest, DWORD dwInfoLevel, L
 }
 
 BOOL winapi_winhttp_WinHttpReadData(HINTERNET hRequest, LPVOID lpBuffer, DWORD dwNumberOfBytesToRead, LPDWORD lpdwNumberOfBytesRead) {
-    BOOL (*pWinHttpReadData)(HINTERNET hRequest, LPVOID lpBuffer, DWORD dwNumberOfBytesToRead, LPDWORD lpdwNumberOfBytesRead) = GetFunction(WINHTTP_DLL, "WinHttpReadData");
+    BOOL (*pWinHttpReadData)(HINTERNET hRequest, LPVOID lpBuffer, DWORD dwNumberOfBytesToRead, LPDWORD lpdwNumberOfBytesRead) = GetFunctionH(WINHTTP_DLL, H_WinHttpReadData);
     dprintf("[WINAPI][winapi_winhttp_WinHttpReadData] Calling WinHttpReadData @ %p", pWinHttpReadData);
     if (pWinHttpReadData) {
         return pWinHttpReadData(hRequest, lpBuffer, dwNumberOfBytesToRead, lpdwNumberOfBytesRead);
@@ -1139,7 +1245,7 @@ BOOL winapi_winhttp_WinHttpReadData(HINTERNET hRequest, LPVOID lpBuffer, DWORD d
 }
 
 BOOL winapi_winhttp_WinHttpQueryOption(HINTERNET hInternet, DWORD dwOption, LPVOID lpBuffer, LPDWORD lpdwBufferLength) {
-    BOOL (*pWinHttpQueryOption)(HINTERNET hInternet, DWORD dwOption, LPVOID lpBuffer, LPDWORD lpdwBufferLength) = GetFunction(WINHTTP_DLL, "WinHttpQueryOption");
+    BOOL (*pWinHttpQueryOption)(HINTERNET hInternet, DWORD dwOption, LPVOID lpBuffer, LPDWORD lpdwBufferLength) = GetFunctionH(WINHTTP_DLL, H_WinHttpQueryOption);
     dprintf("[WINAPI][winapi_winhttp_WinHttpQueryOption] Calling WinHttpQueryOption @ %p", pWinHttpQueryOption);
     if (pWinHttpQueryOption) {
         return pWinHttpQueryOption(hInternet, dwOption, lpBuffer, lpdwBufferLength);
@@ -1148,7 +1254,7 @@ BOOL winapi_winhttp_WinHttpQueryOption(HINTERNET hInternet, DWORD dwOption, LPVO
 }
 
 BOOL winapi_winhttp_WinHttpCrackUrl(LPCWSTR pwszUrl, DWORD dwUrlLength, DWORD dwFlags, LPURL_COMPONENTS lpUrlComponents) {
-    BOOL (*pWinHttpCrackUrl)(LPCWSTR pwszUrl, DWORD dwUrlLength, DWORD dwFlags, LPURL_COMPONENTS lpUrlComponents) = GetFunction(WINHTTP_DLL, "WinHttpCrackUrl");
+    BOOL (*pWinHttpCrackUrl)(LPCWSTR pwszUrl, DWORD dwUrlLength, DWORD dwFlags, LPURL_COMPONENTS lpUrlComponents) = GetFunctionH(WINHTTP_DLL, H_WinHttpCrackUrl);
     dprintf("[WINAPI][winapi_winhttp_WinHttpCrackUrl] Calling WinHttpCrackUrl @ %p", pWinHttpCrackUrl);
     if (pWinHttpCrackUrl) {
         return pWinHttpCrackUrl(pwszUrl, dwUrlLength, dwFlags, lpUrlComponents);
