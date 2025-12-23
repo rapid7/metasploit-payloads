@@ -57,7 +57,7 @@ DWORD buffer_to_file(LPCSTR filePath, PUCHAR buffer, ULONG length)
 	do
 	{
 		// Try to open the file for writing
-		if ((h = CreateFileA(filePath, GENERIC_WRITE, 0, NULL, CREATE_NEW,
+		if ((h = met_api->win_api.kernel32.CreateFileA(filePath, GENERIC_WRITE, 0, NULL, CREATE_NEW,
 				FILE_ATTRIBUTE_NORMAL, NULL)) == INVALID_HANDLE_VALUE)
 		{
 			res = GetLastError();
@@ -68,7 +68,7 @@ DWORD buffer_to_file(LPCSTR filePath, PUCHAR buffer, ULONG length)
 
 		// Keep writing until everything is written
 		while ((bytesLeft) &&
-			   (WriteFile(h, buffer + offset, bytesLeft, &bytesWritten, NULL)))
+			   (met_api->win_api.kernel32.WriteFile(h, buffer + offset, bytesLeft, &bytesWritten, NULL)))
 		{
 			bytesLeft -= bytesWritten;
 			offset    += bytesWritten;
@@ -79,7 +79,7 @@ DWORD buffer_to_file(LPCSTR filePath, PUCHAR buffer, ULONG length)
 	} while (0);
 
 	if (h != INVALID_HANDLE_VALUE)
-		CloseHandle(h);
+		met_api->win_api.kernel32.CloseHandle(h);
 
 	return res;
 }
@@ -413,7 +413,7 @@ DWORD request_core_loadlib(Remote *remote, Packet *packet)
 		}
 
 		// Load the library
-		if (!library && !(library = LoadLibraryA(libraryPath)))
+		if (!library && !(library = met_api->win_api.kernel32.LoadLibraryA(libraryPath)))
 		{
 			res = GetLastError();
 		}
