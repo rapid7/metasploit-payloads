@@ -1434,8 +1434,8 @@ function channel_create_stdapi_fs_file($req, &$pkt) {
 
 if (!function_exists('packet_add_tlv_local_addrinfo')) {
 function packet_add_tlv_local_addrinfo(&$pkt, $sock) {
-    switch (get_resource_type($sock)) {
-    case 'Socket':
+    switch (get_rtype($sock)) {
+    case 'socket':
         $local_host = '';
         $local_port = 0;
         socket_getsockname($sock, $local_host, $local_port);
@@ -1511,7 +1511,6 @@ function channel_create_stdapi_net_udp_client($req, &$pkt) {
     $local_port_tlv = packet_get_tlv($req, TLV_TYPE_LOCAL_PORT);
 
     $sock = connect($peer_host_tlv['value'], $peer_port_tlv['value'], 'udp', $local_host_tlv['value'], $local_port_tlv['value']);
-    my_print("UDP channel on {$sock}");
 
     if (!$sock) {
         return ERROR_CONNECTION_ERROR;

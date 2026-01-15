@@ -83,6 +83,8 @@ function dump_array($arr, $name=null) {
     if (is_array($val)) {
       # recurse
       dump_array($val, "{$name}[{$key}]");
+    } elseif ($val instanceof Socket) {
+      my_print(sprintf("    $key (Socket)"));
     } else {
       my_print(sprintf("    $key ($val)"));
     }
@@ -598,7 +600,8 @@ if (!function_exists('core_set_uuid')) {
     $new_uuid = packet_get_tlv($req, TLV_TYPE_UUID);
     if ($new_uuid != null) {
       $GLOBALS['UUID'] = $new_uuid['value'];
-      my_print("New UUID is {$GLOBALS['UUID']}");
+      $hex_uuid = bin2hex($GLOBALS['UUID']);
+      my_print("New UUID is {$hex_uuid}");
     }
     return ERROR_SUCCESS;
   }
@@ -711,8 +714,9 @@ function register_channel($in, $out=null, $err=null) {
   $channels[] = array(0 => $in, 1 => $out, 2 => $err, 'type' => get_rtype($in), 'data' => '');
 
   # Grab the last index and use it as the new ID.
-  $id = end(array_keys($channels));
-  my_print("Created new channel $in, with id $id");
+  $keys = array_keys($channels);
+  $id = end($keys);
+  my_print("Created new channel, with id $id");
   return $id;
 }
 
@@ -760,7 +764,7 @@ function &get_channel_by_id($chan_id) {
 # Write data to the channel's stdin
 function channel_write($chan_id, $data) {
   $c = get_channel_by_id($chan_id);
-  if ($c && is_resource($c[0])) {
+  if ($c && (is_resource($c[0]) || is_object($c[0]))) {
     $hex_data = bin2hex($data);
     my_print("---Writing '{$hex_data}' to channel $chan_id");
     return write($c[0], $data);
@@ -946,13 +950,12 @@ function handle_dead_resource_channel($resource) {
 function handle_resource_read_channel($resource, $data) {
   global $udp_host_map;
   $cid = get_channel_id_from_resource($resource);
-  my_print("Handling data from $resource");
 
   # Build a new Packet
   $pkt = pack("N", PACKET_TYPE_REQUEST);
   packet_add_tlv($pkt, create_tlv(TLV_TYPE_COMMAND_ID, COMMAND_ID_CORE_CHANNEL_WRITE));
-  if (array_key_exists((int)$resource, $udp_host_map)) {
-    list($h,$p) = $udp_host_map[(int)$resource];
+  if (array_key_exists(get_resource_map_id($resource), $udp_host_map)) {
+    list($h,$p) = $udp_host_map[get_resource_map_id($resource)];
     packet_add_tlv($pkt, create_tlv(TLV_TYPE_PEER_HOST, $h));
     packet_add_tlv($pkt, create_tlv(TLV_TYPE_PEER_PORT, $p));
   }
@@ -1114,14 +1117,23 @@ function packet_get_all_tlvs($pkt, $type) {
 ##
 # Functions for genericizing the stream/socket conundrum
 ##
-
+function get_resource_map_id($resource) {
+  if (is_object($resource)) {
+    if (function_exists('spl_object_id')) {
+        return spl_object_id($resource);  # PHP 7.2+
+    }
+    # Fallback for PHP 7.0-7.1
+    return spl_object_hash($resource);  # Returns string hash
+  }
+  return (int)$resource;  # Works for resources in PHP < 8
+}
 
 function register_socket($sock, $ipaddr=null, $port=null) {
   global $resource_type_map, $udp_host_map;
-  my_print("Registering socket $sock for ($ipaddr:$port)");
-  $resource_type_map[(int)$sock] = 'socket';
+  my_print("Registering socket for ($ipaddr:$port)");
+  $resource_type_map[get_resource_map_id($sock)] = 'socket';
   if ($ipaddr) {
-    $udp_host_map[(int)$sock] = array($ipaddr, $port);
+    $udp_host_map[get_resource_map_id($sock)] = array($ipaddr, $port);
     #dump_array($udp_host_map, "UDP Map after registering a new socket");
   }
 }
@@ -1130,9 +1142,9 @@ function register_socket($sock, $ipaddr=null, $port=null) {
 function register_stream($stream, $ipaddr=null, $port=null) {
   global $resource_type_map, $udp_host_map;
   my_print("Registering stream $stream for ($ipaddr:$port)");
-  $resource_type_map[(int)$stream] = 'stream';
+  $resource_type_map[get_resource_map_id($stream)] = 'stream';
   if ($ipaddr) {
-    $udp_host_map[(int)$stream] = array($ipaddr, $port);
+    $udp_host_map[get_resource_map_id($stream)] = array($ipaddr, $port);
     #dump_array($udp_host_map, "UDP Map after registering a new stream");
   }
 }
@@ -1244,12 +1256,12 @@ function close($resource) {
   case 'stream': $ret = fclose($resource); break;
   }
   # Every resource should be in the resource type map, but check anyway
-  if (array_key_exists((int)$resource, $resource_type_map)) {
-    unset($resource_type_map[(int)$resource]);
+  if (array_key_exists(get_resource_map_id($resource), $resource_type_map)) {
+    unset($resource_type_map[get_resource_map_id($resource)]);
   }
-  if (array_key_exists((int)$resource, $udp_host_map)) {
+  if (array_key_exists(get_resource_map_id($resource), $udp_host_map)) {
     my_print("Removing $resource from udp_host_map");
-    unset($udp_host_map[(int)$resource]);
+    unset($udp_host_map[get_resource_map_id($resource)]);
   }
   return $ret;
 }
@@ -1265,9 +1277,9 @@ function read($resource, $len=null) {
   $buff = '';
   switch (get_rtype($resource)) {
   case 'socket':
-    if (array_key_exists((int)$resource, $udp_host_map)) {
+    if (array_key_exists(get_resource_map_id($resource), $udp_host_map)) {
       my_print("Reading UDP socket");
-      list($host,$port) = $udp_host_map[(int)$resource];
+      list($host,$port) = $udp_host_map[get_resource_map_id($resource)];
       socket_recvfrom($resource, $buff, $len, PHP_BINARY_READ, $host, $port);
     } else {
       my_print("Reading TCP socket");
@@ -1358,8 +1370,8 @@ function write($resource, $buff, $len=0) {
   $count = false;
   switch (get_rtype($resource)) {
   case 'socket':
-    if (array_key_exists((int)$resource, $udp_host_map)) {
-      list($host,$port) = $udp_host_map[(int)$resource];
+    if (array_key_exists(get_resource_map_id($resource), $udp_host_map)) {
+      list($host,$port) = $udp_host_map[get_resource_map_id($resource)];
       my_print("Writing UDP socket to {$host}:{$port}");
       $count = socket_sendto($resource, $buff, $len, 0, $host, $port);
     } else {
@@ -1377,8 +1389,8 @@ function write($resource, $buff, $len=0) {
 
 function get_rtype($resource) {
   global $resource_type_map;
-  if (array_key_exists((int)$resource, $resource_type_map)) {
-    return $resource_type_map[(int)$resource];
+  if (array_key_exists(get_resource_map_id($resource), $resource_type_map)) {
+    return $resource_type_map[get_resource_map_id($resource)];
   }
   return false;
 }
@@ -1459,7 +1471,7 @@ function select(&$r, &$w, &$e, $tv_sec=0, $tv_usec=0) {
 
 function add_reader($resource) {
   global $readers;
-  if (is_resource($resource) && !in_array($resource, $readers)) {
+  if ((is_resource($resource) || is_object($resource)) && !in_array($resource, $readers)) {
     $readers[] = $resource;
   }
 }
