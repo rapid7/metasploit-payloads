@@ -346,7 +346,7 @@ NTSTATUS winapi_ntdll_ZwFreeVirtualMemory(HANDLE ProcessHandle, PVOID* BaseAddre
 }
 
 NTSTATUS winapi_ntdll_NtQueueApcThread(HANDLE ThreadHandle, PVOID ApcRoutine, PVOID ApcContext, PVOID Argument1, PVOID Argument2) {
-    NTSTATUS (WINAPI *pNtQueueApcThread)(HANDLE ThreadHandle, PVOID ApcRoutine, PVOID ApcContext, PVOID Argument1, PVOID Argument2) = GetFunctionH(NTDLL_DLL, H_NtQueueApcThread);
+    NTSTATUS (NTAPI *pNtQueueApcThread)(HANDLE ThreadHandle, PVOID ApcRoutine, PVOID ApcContext, PVOID Argument1, PVOID Argument2) = GetFunctionH(NTDLL_DLL, H_NtQueueApcThread);
     dprintf("[WINAPI][winapi_ntdll_NtQueueApcThread] Calling NtQueueApcThread @ %p", pNtQueueApcThread);
     if (pNtQueueApcThread) {
         return pNtQueueApcThread(ThreadHandle, ApcRoutine, ApcContext, Argument1, Argument2);
@@ -355,7 +355,7 @@ NTSTATUS winapi_ntdll_NtQueueApcThread(HANDLE ThreadHandle, PVOID ApcRoutine, PV
 }
 
 NTSTATUS winapi_ntdll_NtOpenThread(PHANDLE ThreadHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, PCLIENT_ID ClientId) {
-    NTSTATUS (WINAPI *pNtOpenThread)(PHANDLE ThreadHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, PCLIENT_ID ClientId) = GetFunctionH(NTDLL_DLL, H_NtOpenThread);
+    NTSTATUS (NTAPI *pNtOpenThread)(PHANDLE ThreadHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, PCLIENT_ID ClientId) = GetFunctionH(NTDLL_DLL, H_NtOpenThread);
     dprintf("[WINAPI][winapi_ntdll_NtOpenThread] Calling NtOpenThread @ %p", pNtOpenThread);
     if (pNtOpenThread) {
         return pNtOpenThread(ThreadHandle, DesiredAccess, ObjectAttributes, ClientId);
@@ -993,7 +993,7 @@ HDESK winapi_user32_GetThreadDesktop(DWORD dwThreadId) {
 // END: user32.dll
 // START: ws2_32.dll
 int winapi_ws2_32_WSAStartup(WORD wVersionRequired, LPWSADATA lpWSAData) {
-    int (WINAPI *pWSAStartup)(WORD wVersionRequired, LPWSADATA lpWSAData) = GetFunctionH(WS2_32_DLL, H_WSAStartup);
+    int (WSAAPI *pWSAStartup)(WORD wVersionRequired, LPWSADATA lpWSAData) = GetFunctionH(WS2_32_DLL, H_WSAStartup);
     dprintf("[WINAPI][winapi_ws2_32_WSAStartup] Calling WSAStartup @ %p", pWSAStartup);
     if (pWSAStartup) {
         return pWSAStartup(wVersionRequired, lpWSAData);
@@ -1002,7 +1002,7 @@ int winapi_ws2_32_WSAStartup(WORD wVersionRequired, LPWSADATA lpWSAData) {
 }
 
 SOCKET winapi_ws2_32_socket(int af, int type, int protocol) {
-    SOCKET (WINAPI *psocket)(int af, int type, int protocol) = GetFunctionH(WS2_32_DLL, H_socket);
+    SOCKET (WSAAPI *psocket)(int af, int type, int protocol) = GetFunctionH(WS2_32_DLL, H_socket);
     dprintf("[WINAPI][winapi_ws2_32_socket] Calling socket @ %p", psocket);
     if (psocket) {
         return psocket(af, type, protocol);
@@ -1011,7 +1011,7 @@ SOCKET winapi_ws2_32_socket(int af, int type, int protocol) {
 }
 
 int winapi_ws2_32_connect(SOCKET s, const struct sockaddr* name, int namelen) {
-    int (WINAPI *pconnect)(SOCKET s, const struct sockaddr* name, int namelen) = GetFunctionH(WS2_32_DLL, H_connect);
+    int (WSAAPI *pconnect)(SOCKET s, const struct sockaddr* name, int namelen) = GetFunctionH(WS2_32_DLL, H_connect);
     dprintf("[WINAPI][winapi_ws2_32_connect] Calling connect @ %p", pconnect);
     if (pconnect) {
         return pconnect(s, name, namelen);
@@ -1020,7 +1020,7 @@ int winapi_ws2_32_connect(SOCKET s, const struct sockaddr* name, int namelen) {
 }
 
 SOCKET winapi_ws2_32_accept(SOCKET s, struct sockaddr* addr, int* addrlen) {
-    SOCKET (WINAPI *paccept)(SOCKET s, struct sockaddr* addr, int* addrlen) = GetFunctionH(WS2_32_DLL, H_accept);
+    SOCKET (WSAAPI *paccept)(SOCKET s, struct sockaddr* addr, int* addrlen) = GetFunctionH(WS2_32_DLL, H_accept);
     dprintf("[WINAPI][winapi_ws2_32_accept] Calling accept @ %p", paccept);
     if (paccept) {
         return paccept(s, addr, addrlen);
@@ -1029,7 +1029,7 @@ SOCKET winapi_ws2_32_accept(SOCKET s, struct sockaddr* addr, int* addrlen) {
 }
 
 int winapi_ws2_32_setsockopt(SOCKET s, int level, int optname, const char* optval, int optlen) {
-    int (WINAPI *psetsockopt)(SOCKET s, int level, int optname, const char* optval, int optlen) = GetFunctionH(WS2_32_DLL, H_setsockopt);
+    int (WSAAPI *psetsockopt)(SOCKET s, int level, int optname, const char* optval, int optlen) = GetFunctionH(WS2_32_DLL, H_setsockopt);
     dprintf("[WINAPI][winapi_ws2_32_setsockopt] Calling setsockopt @ %p", psetsockopt);
     if (psetsockopt) {
         return psetsockopt(s, level, optname, optval, optlen);
@@ -1038,7 +1038,7 @@ int winapi_ws2_32_setsockopt(SOCKET s, int level, int optname, const char* optva
 }
 
 int winapi_ws2_32_recv(SOCKET s, char* buf, int len, int flags) {
-    int (WINAPI *precv)(SOCKET s, char* buf, int len, int flags) = GetFunctionH(WS2_32_DLL, H_recv);
+    int (WSAAPI *precv)(SOCKET s, char* buf, int len, int flags) = GetFunctionH(WS2_32_DLL, H_recv);
     dprintf("[WINAPI][winapi_ws2_32_recv] Calling recv @ %p", precv);
     if (precv) {
         return precv(s, buf, len, flags);
@@ -1047,7 +1047,7 @@ int winapi_ws2_32_recv(SOCKET s, char* buf, int len, int flags) {
 }
 
 int winapi_ws2_32_WSADuplicateSocketA(SOCKET s, DWORD dwProcessId, LPWSAPROTOCOL_INFOA lpProtocolInfo) {
-    int (WINAPI *pWSADuplicateSocketA)(SOCKET s, DWORD dwProcessId, LPWSAPROTOCOL_INFOA lpProtocolInfo) = GetFunctionH(WS2_32_DLL, H_WSADuplicateSocketA);
+    int (WSAAPI *pWSADuplicateSocketA)(SOCKET s, DWORD dwProcessId, LPWSAPROTOCOL_INFOA lpProtocolInfo) = GetFunctionH(WS2_32_DLL, H_WSADuplicateSocketA);
     dprintf("[WINAPI][winapi_ws2_32_WSADuplicateSocketA] Calling WSADuplicateSocketA @ %p", pWSADuplicateSocketA);
     if (pWSADuplicateSocketA) {
         return pWSADuplicateSocketA(s, dwProcessId, lpProtocolInfo);
@@ -1143,7 +1143,7 @@ BOOL winapi_wininet_InternetCrackUrlW(LPCWSTR lpszUrl, DWORD dwUrlLength, DWORD 
 // START: rpcrt4.dll
 
 HRESULT winapi_rpcrt4_CoCreateGuid(GUID* pguid) {
-    HRESULT (WINAPI *pCoCreateGuid)(GUID* pguid) = GetFunctionH(RPCRT4_DLL, H_CoCreateGuid);
+    HRESULT (RPC_ENTRY *pCoCreateGuid)(GUID* pguid) = GetFunctionH(RPCRT4_DLL, H_CoCreateGuid);
     dprintf("[WINAPI][winapi_rpcrt4_CoCreateGuid] Calling CoCreateGuid @ %p", pCoCreateGuid);
     if (pCoCreateGuid) {
         return pCoCreateGuid(pguid);
