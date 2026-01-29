@@ -6,4 +6,5 @@ typedef struct {
 } RC4_CTX;
 
 BOOL InitRc4(RC4_CTX* Context, unsigned char* Key, size_t len);
+BOOL RC4Cipher(RC4_CTX* Context, unsigned char* buf, size_t len);
 
