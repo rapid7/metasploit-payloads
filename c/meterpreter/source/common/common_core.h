@@ -85,6 +85,13 @@ typedef enum
  */
 #define LOAD_LIBRARY_FLAG_LOCAL     (1 << 2)
 
+ /*!
+  * @brief Indicates that the library in question supports runtime encryption.
+  * @detail Libraries can be encrypted runtime, depending on how they interact with the system
+  *         if this flag is present, it means this library support the runtime encryption.
+  */
+#define LOAD_LIBRARY_EXTENSION_ENCRYPTABLE (1 << 3)
+
 /*! @brief An indication of whether the challen is synchronous or asynchronous. */
 #define CHANNEL_FLAG_SYNCHRONOUS    (1 << 0)
 /*! @brief An indication of whether the content written to the channel should be compressed. */
