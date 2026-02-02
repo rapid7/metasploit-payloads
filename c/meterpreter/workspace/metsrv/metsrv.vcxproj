@@ -570,7 +570,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <ClInclude Include="..\..\source\metsrv\pool_party.h" />
     <ClInclude Include="..\..\source\metsrv\pool_party_ext.h" />
     <ClInclude Include="..\..\source\metsrv\winapi.h" />
-    <ClInclude Include="rc4.h" />
+    <ClInclude Include="..\..\source\metsrv\rc4.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\source\metsrv\base.c" />
@@ -602,7 +602,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <ClCompile Include="..\..\source\logging\logging.c" />
     <ClCompile Include="..\..\source\metsrv\pool_party.c" />
     <ClCompile Include="..\..\source\metsrv\winapi.c" />
-    <ClCompile Include="rc4.c" />
+    <ClCompile Include="..\..\source\metsrv\rc4.c" />
   </ItemGroup>
   <ItemGroup>
     <MASM Include="..\..\source\ReflectiveDLLInjection\dll\src\GateTrampoline32.asm">
