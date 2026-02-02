@@ -423,6 +423,9 @@ DWORD request_core_loadlib(Remote *remote, Packet *packet)
 		if ((flags & LOAD_LIBRARY_FLAG_EXTENSION) && library)
 		{
 			res = load_extension(library, bLibLoadedReflectivly, remote, response, first);
+			if (flags & LOAD_LIBRARY_EXTENSION_ENCRYPTABLE) {
+				dprintf("[DEBUG] This extension can be encrypted!");
+			}
 		}
 
 	} while (0);
