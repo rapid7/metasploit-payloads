@@ -37,7 +37,7 @@ DWORD cryptographic_manager_rc4_initialize(LPVOID* lpCryptoContext, LPVOID lpPar
 	}
 
 	RC4_CTX* ctx = (RC4_CTX*)(*lpCryptoContext);
-	InitRc4(ctx, (LPSTR)lpParams, strlen((LPSTR)lpParams));
+	InitRc4(ctx, (unsigned char *)lpParams, KEY_SIZE_RC4);
 	return 0;
 }
 
@@ -47,7 +47,8 @@ DWORD cryptographic_manager_rc4_refresh(LPVOID lpCryptoContext, LPVOID lpParams)
 		dprintf("[cryptographic_manager_rc4_refresh] lpCryptoContext is NULL.");
 		return ERROR_INVALID_PARAMETER;
 	}
-	InitRc4(ctx, (LPSTR)lpParams, strlen((LPSTR)lpParams));
+	InitRc4(ctx, (unsigned char *)lpParams, KEY_SIZE_RC4);
+	dprintf("[cryptographic_manager_rc4] Refreshed RC4 Cryptographic Manager.");
 	return 0;
 }
 
@@ -93,6 +94,7 @@ BOOL cryptographic_manager_rc4(CryptographicManager* manager, LPVOID lpParams) {
 		dprintf("[cryptographic_manager_rc4] Invalid parameters.");
 		return FALSE;
 	}
+	dprintf("[cryptographic_manager_rc4] Initializing RC4 Cryptographic Manager.");
 	manager->bInitialized = TRUE;
 	manager->bNeedsRefresh = TRUE;
 	manager->initialize = cryptographic_manager_rc4_initialize;
@@ -203,7 +205,13 @@ BOOL extension_encryption_add(LPVOID lpExtensionLocation, DWORD dwExtensionSize)
 	lpExtensionStatus->lpLoc = lpExtensionLocation;
 	lpExtensionStatus->dwSize = dwExtensionSize;
 	lpExtensionStatus->dwLastUsedTime = GetTickCount();
+	dprintf("[extension_encryption][extension_encryption_add] lpExtensionStatus->bEncryptable: %d", lpExtensionStatus->bEncryptable);
+	dprintf("[extension_encryption][extension_encryption_add] lpExtensionStatus->bEncrypted: %d", lpExtensionStatus->bEncrypted);
+	dprintf("[extension_encryption][extension_encryption_add] lpExtensionStatus->lpLoc: %p", lpExtensionStatus->lpLoc);
+	dprintf("[extension_encryption][extension_encryption_add] lpExtensionStatus->dwSize: %u", lpExtensionStatus->dwSize);
+	dprintf("[extension_encryption][extension_encryption_add] lpExtensionStatus->dwLastUsedTime: %u", lpExtensionStatus->dwLastUsedTime);
 	g_ExtensionEncryptionManager->extensionStatuses[g_ExtensionEncryptionManager->dwExtensionsCount - 1] = lpExtensionStatus;
+	dprintf("[extension_encryption][extension_encryption_add] Added extension at %p of size %u", lpExtensionLocation, dwExtensionSize);
 	ret = TRUE;
 	LeaveCriticalSection(&g_ExtensionEncryptionManager->cs);
 	return ret;
@@ -313,6 +321,7 @@ BOOL extension_encryption_encrypt(ExtensionEncryptionStatus* lpExtensionStatus) 
 	}
 
 	lpExtensionStatus->dwLastUsedTime = GetTickCount();
+	lpExtensionStatus->bEncrypted = TRUE;
 	LeaveCriticalSection(&g_ExtensionEncryptionManager->cs);
 	return ret;
 }
@@ -356,12 +365,11 @@ BOOL extension_encryption_decrypt(ExtensionEncryptionStatus* lpExtensionStatus) 
 
 	if( g_ExtensionEncryptionManager->cryptoManager.bNeedsRefresh ) {
 		if (g_ExtensionEncryptionManager->cryptoManager.refresh != NULL) {
-			if (g_ExtensionEncryptionManager->cryptoManager.refresh(g_ExtensionEncryptionManager->cryptoManager.lpCryptoContext, g_ExtensionEncryptionManager->cryptoManager.lpCryptoParams) != 0) {
+			if (g_ExtensionEncryptionManager->cryptoManager.refresh(g_ExtensionEncryptionManager->cryptoManager.lpCryptoContext, (LPVOID) g_ExtensionEncryptionManager->cryptoManager.lpCryptoParams) != 0) {
 				dprintf("[extension_encryption][extension_encryption_decrypt] CryptographicManager refresh failed.");
 				LeaveCriticalSection(&g_ExtensionEncryptionManager->cs);
 				return FALSE;
 			}
-			g_ExtensionEncryptionManager->cryptoManager.bNeedsRefresh = FALSE;
 		}
 	}
 
@@ -387,6 +395,7 @@ BOOL extension_encryption_decrypt(ExtensionEncryptionStatus* lpExtensionStatus) 
 	}
 
 	lpExtensionStatus->dwLastUsedTime = GetTickCount();
+	lpExtensionStatus->bEncrypted = FALSE;
 	LeaveCriticalSection(&g_ExtensionEncryptionManager->cs);
 	return ret;
 }

@@ -49,7 +49,7 @@ typedef struct {
 		BOOL (*remove)(ExtensionEncryptionStatus* lpStatus);
 		BOOL (*encrypt)(ExtensionEncryptionStatus* lpStatus);
 		BOOL (*decrypt)(ExtensionEncryptionStatus* lpStatus);
-		void (*encryptUnused)(VOID);
+		void (*encryptUnused)();
 	};
 } ExtensionEncryptionManager;
 
