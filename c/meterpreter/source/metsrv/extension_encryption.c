@@ -193,8 +193,6 @@ BOOL extension_encryption_add(LPVOID lpExtensionLocation, DWORD dwExtensionSize)
 		dprintf("[extension_encryption][extension_encryption_add] Invalid parameters.");
 		return ret;
 	}
-
-	g_ExtensionEncryptionManager->dwExtensionsCount++;
 	ExtensionEncryptionStatus* lpExtensionStatus = (ExtensionEncryptionStatus*)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(ExtensionEncryptionStatus));
 	if (lpExtensionStatus == NULL) {
 		dprintf("[extension_encryption][extension_encryption_add] HeapAlloc failed.");
@@ -211,6 +209,7 @@ BOOL extension_encryption_add(LPVOID lpExtensionLocation, DWORD dwExtensionSize)
 	dprintf("[extension_encryption][extension_encryption_add] lpExtensionStatus->dwSize: %u", lpExtensionStatus->dwSize);
 	dprintf("[extension_encryption][extension_encryption_add] lpExtensionStatus->dwLastUsedTime: %u", lpExtensionStatus->dwLastUsedTime);
 	g_ExtensionEncryptionManager->extensionStatuses[g_ExtensionEncryptionManager->dwExtensionsCount - 1] = lpExtensionStatus;
+	g_ExtensionEncryptionManager->dwExtensionsCount++;
 	dprintf("[extension_encryption][extension_encryption_add] Added extension at %p of size %u", lpExtensionLocation, dwExtensionSize);
 	ret = TRUE;
 	LeaveCriticalSection(&g_ExtensionEncryptionManager->cs);
@@ -224,7 +223,7 @@ BOOL extension_encryption_get(LPVOID lpHandlerFunction, ExtensionEncryptionStatu
 		dprintf("[extension_encryption][extension_encryption_get] Invalid parameters.");
 		return ret;
 	}
-	for (int i = 0; i < MAX_EXTENSIONS; i++) {
+	for (int i = 0; i < g_ExtensionEncryptionManager->dwExtensionsCount; i++) {
 		if (g_ExtensionEncryptionManager->extensionStatuses[i] != NULL 
 			&& g_ExtensionEncryptionManager->extensionStatuses[i]->lpLoc <= lpHandlerFunction
 			&& (unsigned char*)lpHandlerFunction <(unsigned char*)g_ExtensionEncryptionManager->extensionStatuses[i]->lpLoc + g_ExtensionEncryptionManager->extensionStatuses[i]->dwSize) 
@@ -245,7 +244,7 @@ BOOL extension_encryption_remove(ExtensionEncryptionStatus* lpExtensionStatus) {
 		dprintf("[extension_encryption][extension_encryption_remove] lpExtensionStatus is NULL.");
 		return ret;
 	}
-	for (int i = 0; i < MAX_EXTENSIONS; i++) {
+	for (int i = 0; i < g_ExtensionEncryptionManager->dwExtensionsCount; i++) {
 		if (g_ExtensionEncryptionManager->extensionStatuses[i] == lpExtensionStatus) {
 			g_ExtensionEncryptionManager->extensionStatuses[i] = g_ExtensionEncryptionManager->extensionStatuses[g_ExtensionEncryptionManager->dwExtensionsCount - 1];
 			g_ExtensionEncryptionManager->extensionStatuses[g_ExtensionEncryptionManager->dwExtensionsCount - 1] = NULL;
@@ -404,9 +403,8 @@ void extension_encryption_encrypt_unused() {
 
 	EnterCriticalSection(&g_ExtensionEncryptionManager->cs);
 	ExtensionEncryptionStatus** extension_statuses = g_ExtensionEncryptionManager->extensionStatuses;
-	DWORD extensions_count = g_ExtensionEncryptionManager->dwExtensionsCount;
 	DWORD current_time = GetTickCount();
-	for (DWORD i = 0; i < extensions_count; i++) {
+	for (DWORD i = 0; i < g_ExtensionEncryptionManager->dwExtensionsCount; i++) {
 		ExtensionEncryptionStatus* status = extension_statuses[i];
 		if (status != NULL && status->bEncryptable && !status->bEncrypted) {
 			if (current_time - status->dwLastUsedTime > ENCRYPTION_UNUSED_COOLDOWN_MS) {
