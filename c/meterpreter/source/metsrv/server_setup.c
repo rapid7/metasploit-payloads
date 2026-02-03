@@ -399,16 +399,11 @@ DWORD server_setup(MetsrvConfig* config)
 			dprintf("[SERVER] Registering dispatch routines...");
 			register_dispatch_routines();
 
-			ExtensionEncryptionManager* encryptionManager = GetExtensionEncryptionManager();
-			if(encryptionManager != NULL) {
-				dprintf("[SERVER] Initializing Extension Encryption Manager and loading stageless extensions...");
-				encryptionManager = InitExtensionEncryptionManager(CRYPTOGRAPHIC_MANAGER_TYPE_DEBUG, NULL);
-			}
-
+			ExtensionEncryptionManager* encryptionManager = InitExtensionEncryptionManager(CRYPTOGRAPHIC_MANAGER_TYPE_DEBUG, NULL);
 			if(encryptionManager == NULL) {
 				dprintf("[SERVER] Extension Encryption Manager Initialization failed! proceeding without extension encryption.");
 			}
-			
+
 			// this has to be done after dispatch routine are registered
 			LPBYTE configEnd = load_stageless_extensions(remote, (MetsrvExtension*)((LPBYTE)config->transports + transportSize));
 
