@@ -157,6 +157,7 @@ ExtensionEncryptionManager* InitExtensionEncryptionManager(CryptographicManagerT
 	}
 	InitializeCriticalSection(&g_ExtensionEncryptionManager->cs);
 	g_ExtensionEncryptionManager->add = extension_encryption_add;
+	g_ExtensionEncryptionManager->get = extension_encryption_get;
 	g_ExtensionEncryptionManager->remove = extension_encryption_remove;
 	g_ExtensionEncryptionManager->encrypt = extension_encryption_encrypt;
 	g_ExtensionEncryptionManager->decrypt = extension_encryption_decrypt;
@@ -178,73 +179,94 @@ ExtensionEncryptionManager* InitExtensionEncryptionManager(CryptographicManagerT
 			return NULL;
 		}
 	}
+	dprintf("[extension_encryption][extension_encryption_init_manager] Encryption Manager Initialized");
 	return g_ExtensionEncryptionManager;
 }
 
 BOOL extension_encryption_add(LPVOID lpExtensionLocation, DWORD dwExtensionSize) {
-	BOOL ret = FALSE;
+	BOOL ret = TRUE;
+	HANDLE hHeap = GetProcessHeap();
+	ExtensionEncryptionStatus* lpExtensionStatus = NULL;
+
 	EnterCriticalSection(&g_ExtensionEncryptionManager->cs);
+
+	dprintf("[extension_encryption][extension_encryption_add] Adding extension");
 	if (g_ExtensionEncryptionManager->dwExtensionsCount >= MAX_EXTENSIONS) {
 		dprintf("[extension_encryption][extension_encryption_add] Maximum number of extensions reached.");
-		return ret;
+		ret = FALSE;
 	}
 
 	if (lpExtensionLocation == NULL || dwExtensionSize == 0) {
 		dprintf("[extension_encryption][extension_encryption_add] Invalid parameters.");
-		return ret;
+		ret = FALSE;
 	}
-	ExtensionEncryptionStatus* lpExtensionStatus = (ExtensionEncryptionStatus*)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(ExtensionEncryptionStatus));
-	if (lpExtensionStatus == NULL) {
-		dprintf("[extension_encryption][extension_encryption_add] HeapAlloc failed.");
-		return ret;
+
+	if (ret) {
+		lpExtensionStatus = (ExtensionEncryptionStatus*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, sizeof(ExtensionEncryptionStatus));
+		if (lpExtensionStatus == NULL) {
+			dprintf("[extension_encryption][extension_encryption_add] HeapAlloc failed.");
+			ret = FALSE;
+		}
 	}
-	lpExtensionStatus->bEncryptable = TRUE;
-	lpExtensionStatus->bEncrypted = FALSE;
-	lpExtensionStatus->lpLoc = lpExtensionLocation;
-	lpExtensionStatus->dwSize = dwExtensionSize;
-	lpExtensionStatus->dwLastUsedTime = GetTickCount();
-	dprintf("[extension_encryption][extension_encryption_add] lpExtensionStatus->bEncryptable: %d", lpExtensionStatus->bEncryptable);
-	dprintf("[extension_encryption][extension_encryption_add] lpExtensionStatus->bEncrypted: %d", lpExtensionStatus->bEncrypted);
-	dprintf("[extension_encryption][extension_encryption_add] lpExtensionStatus->lpLoc: %p", lpExtensionStatus->lpLoc);
-	dprintf("[extension_encryption][extension_encryption_add] lpExtensionStatus->dwSize: %u", lpExtensionStatus->dwSize);
-	dprintf("[extension_encryption][extension_encryption_add] lpExtensionStatus->dwLastUsedTime: %u", lpExtensionStatus->dwLastUsedTime);
-	g_ExtensionEncryptionManager->extensionStatuses[g_ExtensionEncryptionManager->dwExtensionsCount - 1] = lpExtensionStatus;
-	g_ExtensionEncryptionManager->dwExtensionsCount++;
-	dprintf("[extension_encryption][extension_encryption_add] Added extension at %p of size %u", lpExtensionLocation, dwExtensionSize);
-	ret = TRUE;
+	if (ret) {
+		lpExtensionStatus->bEncryptable = TRUE;
+		lpExtensionStatus->bEncrypted = FALSE;
+		lpExtensionStatus->lpLoc = lpExtensionLocation;
+		lpExtensionStatus->dwSize = dwExtensionSize;
+		lpExtensionStatus->dwLastUsedTime = GetTickCount();
+		dprintf("[extension_encryption][extension_encryption_add] lpExtensionStatus->bEncryptable: %d", lpExtensionStatus->bEncryptable);
+		dprintf("[extension_encryption][extension_encryption_add] lpExtensionStatus->bEncrypted: %d", lpExtensionStatus->bEncrypted);
+		dprintf("[extension_encryption][extension_encryption_add] lpExtensionStatus->lpLoc: %p", lpExtensionStatus->lpLoc);
+		dprintf("[extension_encryption][extension_encryption_add] lpExtensionStatus->dwSize: %u", lpExtensionStatus->dwSize);
+		dprintf("[extension_encryption][extension_encryption_add] lpExtensionStatus->dwLastUsedTime: %u", lpExtensionStatus->dwLastUsedTime);
+		g_ExtensionEncryptionManager->extensionStatuses[g_ExtensionEncryptionManager->dwExtensionsCount - 1] = lpExtensionStatus;
+		g_ExtensionEncryptionManager->dwExtensionsCount++;
+		dprintf("[extension_encryption][extension_encryption_add] Added extension at %p of size %u", lpExtensionLocation, dwExtensionSize);
+	}
+	dprintf("[extension_encryption][extension_encryption_add] Funtion exiting");
 	LeaveCriticalSection(&g_ExtensionEncryptionManager->cs);
 	return ret;
 }
 
 BOOL extension_encryption_get(LPVOID lpHandlerFunction, ExtensionEncryptionStatus** lpOutExtensionStatus) {
-	BOOL ret = FALSE;
+	BOOL ret = TRUE;
 	EnterCriticalSection(&g_ExtensionEncryptionManager->cs);
+	dprintf("[extension_encryption][extension_encryption_get] Getting extension.");
 	if (lpHandlerFunction == NULL || lpOutExtensionStatus == NULL) {
 		dprintf("[extension_encryption][extension_encryption_get] Invalid parameters.");
-		return ret;
+		ret = FALSE;
 	}
-	for (int i = 0; i < g_ExtensionEncryptionManager->dwExtensionsCount; i++) {
-		if (g_ExtensionEncryptionManager->extensionStatuses[i] != NULL 
-			&& g_ExtensionEncryptionManager->extensionStatuses[i]->lpLoc <= lpHandlerFunction
-			&& (unsigned char*)lpHandlerFunction <(unsigned char*)g_ExtensionEncryptionManager->extensionStatuses[i]->lpLoc + g_ExtensionEncryptionManager->extensionStatuses[i]->dwSize) 
+	if (g_ExtensionEncryptionManager->dwExtensionsCount == 0) {
+		dprintf("[extension_encryption][extension_encryption_get] No extension present.");
+		ret = FALSE;
+	}
+	if (ret) {
+		ret = FALSE;
+		for (DWORD i = 0; i < g_ExtensionEncryptionManager->dwExtensionsCount; i++) {
+			if (g_ExtensionEncryptionManager->extensionStatuses[i] != NULL
+				&& g_ExtensionEncryptionManager->extensionStatuses[i]->lpLoc <= lpHandlerFunction
+				&& (unsigned char*)lpHandlerFunction < (unsigned char*)g_ExtensionEncryptionManager->extensionStatuses[i]->lpLoc + g_ExtensionEncryptionManager->extensionStatuses[i]->dwSize)
 			{
 				*lpOutExtensionStatus = g_ExtensionEncryptionManager->extensionStatuses[i];
 				ret = TRUE;
 				break;
 			}
+		}
 	}
+	dprintf("[extension_encryption][extension_encryption_get] Function exiting.");
 	LeaveCriticalSection(&g_ExtensionEncryptionManager->cs);
 	return ret;
 }
 
 BOOL extension_encryption_remove(ExtensionEncryptionStatus* lpExtensionStatus) {
-	BOOL ret = FALSE;
+	BOOL ret = TRUE;
 	EnterCriticalSection(&g_ExtensionEncryptionManager->cs);
+	dprintf("[extension_encryption][extension_encryption_remove] Removing extension.");
 	if (lpExtensionStatus == NULL) {
 		dprintf("[extension_encryption][extension_encryption_remove] lpExtensionStatus is NULL.");
 		return ret;
 	}
-	for (int i = 0; i < g_ExtensionEncryptionManager->dwExtensionsCount; i++) {
+	for (DWORD i = 0; i < g_ExtensionEncryptionManager->dwExtensionsCount; i++) {
 		if (g_ExtensionEncryptionManager->extensionStatuses[i] == lpExtensionStatus) {
 			g_ExtensionEncryptionManager->extensionStatuses[i] = g_ExtensionEncryptionManager->extensionStatuses[g_ExtensionEncryptionManager->dwExtensionsCount - 1];
 			g_ExtensionEncryptionManager->extensionStatuses[g_ExtensionEncryptionManager->dwExtensionsCount - 1] = NULL;
@@ -265,6 +287,7 @@ BOOL extension_encryption_encrypt(ExtensionEncryptionStatus* lpExtensionStatus) 
 	EnterCriticalSection(&g_ExtensionEncryptionManager->cs);
 
 	BOOL ret = FALSE;
+	BOOL bError = FALSE;
 	unsigned char *lpTempBufferRead = NULL;
 	unsigned char *lpTempBufferWrite = NULL;
 	HANDLE hHeap = GetProcessHeap();
@@ -273,61 +296,66 @@ BOOL extension_encryption_encrypt(ExtensionEncryptionStatus* lpExtensionStatus) 
 
 	if(!lpExtensionStatus->bEncryptable) {
 		dprintf("[extension_encryption][extension_encryption_encrypt] Extension is not encryptable.");
-		return ret;
+		bError = TRUE;
 	}
 
-	if(lpExtensionStatus->bEncrypted) {
+	if(!bError && lpExtensionStatus->bEncrypted) {
 		dprintf("[extension_encryption][extension_encryption_encrypt] Extension is already encrypted.");
 		ret = TRUE;
-		return ret;
-	}
-	lpTempBufferRead = (unsigned char*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, BUFFER_SIZE);
-	lpTempBufferWrite = (unsigned char*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, BUFFER_SIZE);
-
-	if (lpTempBufferRead == NULL) {
-		dprintf("[extension_encryption][extension_encryption_encrypt] HeapAlloc failed on lpTempBufferRead.");
-		return ret;
-	}
-	
-	if (lpTempBufferWrite == NULL) {
-		dprintf("[extension_encryption][extension_encryption_encrypt] HeapAlloc failed on lpTempBufferWrite.");
-		HeapFree(hHeap, 0, lpTempBufferRead);
-		return ret;
+		bError = TRUE;
 	}
 
-	LPVOID ExtensionLoc = lpExtensionStatus->lpLoc;
-	DWORD ExtensionSize = lpExtensionStatus->dwSize;
+	if (!bError) {
+		lpTempBufferRead = (unsigned char*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, BUFFER_SIZE);
+		lpTempBufferWrite = (unsigned char*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, BUFFER_SIZE);
 
-	for(DWORD i = 0; i != ExtensionSize; i += diff) {
-		if ((ExtensionSize - i) < BUFFER_SIZE) {
-			diff = ExtensionSize - i;
+		if (lpTempBufferRead == NULL) {
+			dprintf("[extension_encryption][extension_encryption_encrypt] HeapAlloc failed on lpTempBufferRead.");
+			bError = TRUE;
 		}
-		ret = ReadProcessMemory(GetCurrentProcess(), (unsigned char*)ExtensionLoc + i, lpTempBufferRead, diff, &ByteCounter);
-		if (!ret || ByteCounter != diff) {
-			dprintf("[extension_encryption][extension_encryption_encrypt] ReadProcessMemory failed with error 0x%x", GetLastError());
-			break;
-		}
-		if (!g_ExtensionEncryptionManager->cryptoManager.encrypt(lpTempBufferRead, diff, lpTempBufferWrite, BUFFER_SIZE)) {
-			dprintf("[extension_encryption][extension_encryption_encrypt] CryptographicManager encrypt failed.");
-			ret = FALSE;
-			break;
-		}
-		ret = WriteProcessMemory(GetCurrentProcess(), (unsigned char*)ExtensionLoc + i, lpTempBufferWrite, diff, &ByteCounter);
-		if (!ret || ByteCounter != diff) {
-			dprintf("[extension_encryption][extension_encryption_encrypt] WriteProcessMemory failed with error 0x%x", GetLastError());
-			break;
+
+		if (lpTempBufferWrite == NULL) {
+			dprintf("[extension_encryption][extension_encryption_encrypt] HeapAlloc failed on lpTempBufferWrite.");
+			HeapFree(hHeap, 0, lpTempBufferRead);
+			bError = TRUE;
 		}
 	}
 
-	lpExtensionStatus->dwLastUsedTime = GetTickCount();
-	lpExtensionStatus->bEncrypted = TRUE;
+	if (!bError) {
+		LPVOID ExtensionLoc = lpExtensionStatus->lpLoc;
+		DWORD ExtensionSize = lpExtensionStatus->dwSize;
+
+		for (DWORD i = 0; i != ExtensionSize; i += diff) {
+			if ((ExtensionSize - i) < BUFFER_SIZE) {
+				diff = ExtensionSize - i;
+			}
+			ret = ReadProcessMemory(GetCurrentProcess(), (unsigned char*)ExtensionLoc + i, lpTempBufferRead, diff, &ByteCounter);
+			if (!ret || ByteCounter != diff) {
+				dprintf("[extension_encryption][extension_encryption_encrypt] ReadProcessMemory failed with error 0x%x", GetLastError());
+				break;
+			}
+			if (!g_ExtensionEncryptionManager->cryptoManager.encrypt(lpTempBufferRead, diff, lpTempBufferWrite, BUFFER_SIZE)) {
+				dprintf("[extension_encryption][extension_encryption_encrypt] CryptographicManager encrypt failed.");
+				ret = FALSE;
+				break;
+			}
+			ret = WriteProcessMemory(GetCurrentProcess(), (unsigned char*)ExtensionLoc + i, lpTempBufferWrite, diff, &ByteCounter);
+			if (!ret || ByteCounter != diff) {
+				dprintf("[extension_encryption][extension_encryption_encrypt] WriteProcessMemory failed with error 0x%x", GetLastError());
+				break;
+			}
+		}
+
+		lpExtensionStatus->dwLastUsedTime = GetTickCount();
+		lpExtensionStatus->bEncrypted = TRUE;
+	}
 	LeaveCriticalSection(&g_ExtensionEncryptionManager->cs);
 	return ret;
 }
 
 BOOL extension_encryption_decrypt(ExtensionEncryptionStatus* lpExtensionStatus) {
 	EnterCriticalSection(&g_ExtensionEncryptionManager->cs);
-
+	BOOL bError = FALSE;
 	BOOL ret = FALSE;
 	unsigned char *lpTempBufferRead = NULL;
 	unsigned char *lpTempBufferWrite = NULL;
@@ -337,64 +365,72 @@ BOOL extension_encryption_decrypt(ExtensionEncryptionStatus* lpExtensionStatus) 
 
 	if(!lpExtensionStatus->bEncryptable) {
 		dprintf("[extension_encryption][extension_encryption_decrypt] Extension is not encryptable.");
-		return ret;
+		bError = TRUE;
 	}
 
-	if(!lpExtensionStatus->bEncrypted) {
+	if(!bError && !lpExtensionStatus->bEncrypted) {
 		dprintf("[extension_encryption][extension_encryption_decrypt] Extension is already decrypted.");
 		ret = TRUE;
-		return ret;
-	}
-	lpTempBufferRead = (unsigned char*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, BUFFER_SIZE);
-	lpTempBufferWrite = (unsigned char*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, BUFFER_SIZE);
-
-	if (lpTempBufferRead == NULL) {
-		dprintf("[extension_encryption][extension_encryption_decrypt] HeapAlloc failed on lpTempBufferRead.");
-		return ret;
-	}
-	
-	if (lpTempBufferWrite == NULL) {
-		dprintf("[extension_encryption][extension_encryption_decrypt] HeapAlloc failed on lpTempBufferWrite.");
-		HeapFree(hHeap, 0, lpTempBufferRead);
-		return ret;
+		bError = TRUE;
 	}
 
 	LPVOID ExtensionLoc = lpExtensionStatus->lpLoc;
 	DWORD ExtensionSize = lpExtensionStatus->dwSize;
 
-	if( g_ExtensionEncryptionManager->cryptoManager.bNeedsRefresh ) {
-		if (g_ExtensionEncryptionManager->cryptoManager.refresh != NULL) {
-			if (g_ExtensionEncryptionManager->cryptoManager.refresh(g_ExtensionEncryptionManager->cryptoManager.lpCryptoContext, (LPVOID) g_ExtensionEncryptionManager->cryptoManager.lpCryptoParams) != 0) {
-				dprintf("[extension_encryption][extension_encryption_decrypt] CryptographicManager refresh failed.");
-				LeaveCriticalSection(&g_ExtensionEncryptionManager->cs);
-				return FALSE;
+	if (!bError) {
+		lpTempBufferRead = (unsigned char*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, BUFFER_SIZE);
+		lpTempBufferWrite = (unsigned char*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, BUFFER_SIZE);
+
+		if (lpTempBufferRead == NULL) {
+			dprintf("[extension_encryption][extension_encryption_decrypt] HeapAlloc failed on lpTempBufferRead.");
+			bError = TRUE;
+		}
+
+		if (lpTempBufferWrite == NULL) {
+			dprintf("[extension_encryption][extension_encryption_decrypt] HeapAlloc failed on lpTempBufferWrite.");
+			HeapFree(hHeap, 0, lpTempBufferRead);
+			bError = FALSE;
+		}
+	}
+
+	if (!bError) {
+		if (g_ExtensionEncryptionManager->cryptoManager.bNeedsRefresh) {
+			if (g_ExtensionEncryptionManager->cryptoManager.refresh != NULL) {
+				if (g_ExtensionEncryptionManager->cryptoManager.refresh(g_ExtensionEncryptionManager->cryptoManager.lpCryptoContext, (LPVOID)g_ExtensionEncryptionManager->cryptoManager.lpCryptoParams) != 0) {
+					dprintf("[extension_encryption][extension_encryption_decrypt] CryptographicManager refresh failed.");
+					bError = TRUE;
+				}
 			}
 		}
 	}
 
-	for(DWORD i = 0; i != ExtensionSize; i += diff) {
-		if ((ExtensionSize - i) < BUFFER_SIZE) {
-			diff = ExtensionSize - i;
+	if (!bError) {
+		for (DWORD i = 0; i != ExtensionSize; i += diff) {
+			if ((ExtensionSize - i) < BUFFER_SIZE) {
+				diff = ExtensionSize - i;
+			}
+			ret = ReadProcessMemory(GetCurrentProcess(), (unsigned char*)ExtensionLoc + i, lpTempBufferRead, diff, &ByteCounter);
+			if (!ret || ByteCounter != diff) {
+				dprintf("[extension_encryption][extension_encryption_decrypt] ReadProcessMemory failed with error 0x%x", GetLastError());
+				bError = TRUE;
+				break;
+			}
+			if (!g_ExtensionEncryptionManager->cryptoManager.decrypt(lpTempBufferRead, diff, lpTempBufferWrite, BUFFER_SIZE)) {
+				dprintf("[extension_encryption][extension_encryption_decrypt] CryptographicManager decrypt failed.");
+				ret = FALSE;
+				bError = TRUE;
+				break;
+			}
+			ret = WriteProcessMemory(GetCurrentProcess(), (unsigned char*)ExtensionLoc + i, lpTempBufferWrite, diff, &ByteCounter);
+			if (!ret || ByteCounter != diff) {
+				dprintf("[extension_encryption][extension_encryption_decrypt] WriteProcessMemory failed with error 0x%x", GetLastError());
+				bError = TRUE;
+				break;
+			}
 		}
-		ret = ReadProcessMemory(GetCurrentProcess(), (unsigned char*)ExtensionLoc + i, lpTempBufferRead, diff, &ByteCounter);
-		if (!ret || ByteCounter != diff) {
-			dprintf("[extension_encryption][extension_encryption_decrypt] ReadProcessMemory failed with error 0x%x", GetLastError());
-			break;
-		}
-		if (!g_ExtensionEncryptionManager->cryptoManager.decrypt(lpTempBufferRead, diff, lpTempBufferWrite, BUFFER_SIZE)) {
-			dprintf("[extension_encryption][extension_encryption_decrypt] CryptographicManager decrypt failed.");
-			ret = FALSE;
-			break;
-		}
-		ret = WriteProcessMemory(GetCurrentProcess(), (unsigned char*)ExtensionLoc + i, lpTempBufferWrite, diff, &ByteCounter);
-		if (!ret || ByteCounter != diff) {
-			dprintf("[extension_encryption][extension_encryption_decrypt] WriteProcessMemory failed with error 0x%x", GetLastError());
-			break;
-		}
+		lpExtensionStatus->dwLastUsedTime = GetTickCount();
+		lpExtensionStatus->bEncrypted = FALSE;
 	}
-
-	lpExtensionStatus->dwLastUsedTime = GetTickCount();
-	lpExtensionStatus->bEncrypted = FALSE;
 	LeaveCriticalSection(&g_ExtensionEncryptionManager->cs);
 	return ret;
 }
