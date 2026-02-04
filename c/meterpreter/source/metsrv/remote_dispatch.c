@@ -2,6 +2,7 @@
 #include "common_metapi.h"
 #include "common_exports.h"
 #include "server_pivot.h"
+#include "extension_encryption.h"
 
 #define GetProcAddressByOrdinal(mod, ord) GetProcAddress(mod, MAKEINTRESOURCEA(ord))
 #define GetProcAddressByOrdinalR(mod, ord) GetProcAddressR(mod, MAKEINTRESOURCEA(ord))
@@ -334,6 +335,10 @@ DWORD request_core_loadlib(Remote *remote, Packet *packet)
 	PCHAR libraryPath;
 	DWORD flags = 0;
 	BOOL bLibLoadedReflectivly = FALSE;
+
+	LPVOID lpLibraryLocation = NULL;
+	DWORD dwLibrarySize = 0;
+
   dprintf("[LOADLIB] here 1");
 
 	Command *first = extensionCommands;
@@ -390,6 +395,8 @@ DWORD request_core_loadlib(Remote *remote, Packet *packet)
 				else
 				{
 					bLibLoadedReflectivly = TRUE;
+					lpLibraryLocation = dataTlv.buffer;
+					dwLibrarySize = dataTlv.header.length;
 				}
   dprintf("[LOADLIB] here 9");
 
@@ -423,8 +430,11 @@ DWORD request_core_loadlib(Remote *remote, Packet *packet)
 		if ((flags & LOAD_LIBRARY_FLAG_EXTENSION) && library)
 		{
 			res = load_extension(library, bLibLoadedReflectivly, remote, response, first);
-			if (flags & LOAD_LIBRARY_EXTENSION_ENCRYPTABLE) {
-				dprintf("[DEBUG] This extension can be encrypted!");
+			if (flags & LOAD_LIBRARY_EXTENSION_ENCRYPTABLE && bLibLoadedReflectivly) {
+				ExtensionEncryptionManager* encryptionManager = GetExtensionEncryptionManager();
+				if(encryptionManager) {
+					encryptionManager->add(lpLibraryLocation, dwLibrarySize);
+				}
 			}
 		}
 

@@ -9,6 +9,7 @@
 #include "server_transport_tcp.h"
 #include "server_transport_named_pipe.h"
 #include "packet_encryption.h"
+#include "extension_encryption.h"
 
 extern Command* extensionCommands;
 
@@ -73,6 +74,10 @@ LPBYTE load_stageless_extensions(Remote* remote, MetsrvExtension* stagelessExten
 		dprintf("[SERVER] Extension located at 0x%p: %u bytes", stagelessExtensions->dll, stagelessExtensions->size);
 		HMODULE hLibrary = LoadLibraryR(stagelessExtensions->dll, stagelessExtensions->size, MAKEINTRESOURCEA(EXPORT_REFLECTIVELOADER));
 		load_extension(hLibrary, TRUE, remote, NULL, extensionCommands);
+		// ExtensionEncryptionManager* encryptionManager = GetExtensionEncryptionManager();
+		// if(encryptionManager != NULL) {
+		// 	encryptionManager->add(stagelessExtensions->dll, stagelessExtensions->size);
+		// }
 		stagelessExtensions = (MetsrvExtension*)((LPBYTE)stagelessExtensions->dll + stagelessExtensions->size);
 	}
 
@@ -393,7 +398,12 @@ DWORD server_setup(MetsrvConfig* config)
 
 			dprintf("[SERVER] Registering dispatch routines...");
 			register_dispatch_routines();
-			
+
+			ExtensionEncryptionManager* encryptionManager = InitExtensionEncryptionManager(CRYPTOGRAPHIC_MANAGER_TYPE_DEBUG, NULL);
+			if(encryptionManager == NULL) {
+				dprintf("[SERVER] Extension Encryption Manager Initialization failed! proceeding without extension encryption.");
+			}
+
 			// this has to be done after dispatch routine are registered
 			LPBYTE configEnd = load_stageless_extensions(remote, (MetsrvExtension*)((LPBYTE)config->transports + transportSize));
 
