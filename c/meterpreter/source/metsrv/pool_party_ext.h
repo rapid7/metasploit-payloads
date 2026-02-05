@@ -1,6 +1,7 @@
 #ifndef POOL_PARTY_H
 #define POOL_PARTY_H
 typedef struct IUnknown IUnknown;
+#include <winsock2.h>
 #include <windows.h>
 #include <winbase.h>
 #include <winternl.h>
