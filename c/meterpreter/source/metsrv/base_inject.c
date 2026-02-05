@@ -586,6 +586,7 @@ DWORD inject_via_poolparty(Remote* remote, Packet* response, HANDLE hProcess, DW
 			BREAK_ON_ERROR("[INJECT][inject_via_poolparty] Cannot write poolparty shellcode prologue!");
 		}
 
+		dwResult = ERROR_INVALID_FUNCTION; // Set a default failure
 		for (UINT8 variant = POOLPARTY_TECHNIQUE_TP_DIRECT_INSERTION; variant < POOLPARTY_TECHNIQUE_COUNT; variant++) {
 			if (poolparty->variants[variant].isInjectionSupported) {
 #ifdef DEBUGTRACE
