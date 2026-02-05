@@ -6,6 +6,7 @@
 #include "pool_party.h"
 #include "pool_party_ext.h"
 
+
 NtDll* pNtDll = NULL;
 POOLPARTY_INJECTOR* poolLifeguard = NULL;
 
@@ -145,24 +146,53 @@ POOLPARTY_INJECTOR* GetOrInitPoolParty(DWORD dwSourceArch, DWORD dwDestinationAr
 // wow64 -> x64 (tp_direct_insertion)
 
 BOOL supports_poolparty_injection(DWORD dwSourceArch, DWORD dwDestinationArch) {
-    OSVERSIONINFO os = {0};
-    os.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
-    NTSTATUS (*pRtlGetVersion)(OSVERSIONINFO* os) = (NTSTATUS (*)(OSVERSIONINFO* os))GetProcAddress(GetModuleHandleA("ntdll.dll"), "RtlGetVersion");
-    dprintf("[INJECT][supports_poolparty_injection] RtlGetVersion: %p", pRtlGetVersion);
-    if (!pRtlGetVersion(&os)) {
-        dprintf("[INJECT][supports_poolparty_injection] dwSourceArch: %d dwDestinationArch: %d", dwSourceArch, dwDestinationArch);
-        dprintf("[INJECT][supports_poolparty_injection] os.dwMajorVersion: %d os.dwMinorVersion: %d", os.dwMajorVersion, os.dwMinorVersion);
-        if (os.dwMajorVersion >= 10) {
-            if (dwDestinationArch == PROCESS_ARCH_X64 && (dwSourceArch == PROCESS_ARCH_X64 || dwSourceArch == PROCESS_ARCH_X86)) {
-                return TRUE;  // tp_direct_insertion
-            }
-            BOOL bIsWow64 = FALSE;
-            BOOL bResult = IsWow64Process(GetCurrentProcess(), &bIsWow64);
-            if (dwDestinationArch == PROCESS_ARCH_X86 && dwSourceArch == PROCESS_ARCH_X86 && !bIsWow64 && bResult != 0) {
-                return TRUE;
-            }
-        }
+    // Allocate OSVERSIONINFOEXW structure
+    OSVERSIONINFOEXW os = {0};
+    os.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEXW);
+    
+    // Get RtlGetVersion function pointer
+    HMODULE hNtdll = GetModuleHandleA("ntdll.dll");
+    if (hNtdll == NULL) {
+        dprintf("[INJECT][supports_poolparty_injection] Failed to get ntdll.dll handle");
+        return FALSE;
     }
+    
+    typedef NTSTATUS (WINAPI *RtlGetVersionPtr)(PRTL_OSVERSIONINFOEXW);
+    RtlGetVersionPtr pRtlGetVersion = (RtlGetVersionPtr)GetProcAddress(hNtdll, "RtlGetVersion");
+    
+    if (pRtlGetVersion == NULL) {
+        dprintf("[INJECT][supports_poolparty_injection] Failed to get RtlGetVersion address");
+        return FALSE;
+    }
+    
+    // Call RtlGetVersion
+    NTSTATUS status = pRtlGetVersion((PRTL_OSVERSIONINFOEXW)&os);
+    if (status != STATUS_SUCCESS) {
+        dprintf("[INJECT][supports_poolparty_injection] RtlGetVersion failed with status: 0x%x", status);
+        return FALSE;
+    }
+    
+    dprintf("[INJECT][supports_poolparty_injection] dwSourceArch: %d dwDestinationArch: %d", dwSourceArch, dwDestinationArch);
+    dprintf("[INJECT][supports_poolparty_injection] OS Version: %d.%d Build: %d", 
+            os.dwMajorVersion, os.dwMinorVersion, os.dwBuildNumber);
+    
+    // Check if Windows 10 or greater (major version >= 10)
+    if (os.dwMajorVersion < 10) {
+        dprintf("[INJECT][supports_poolparty_injection] OS version is less than Windows 10");
+        return FALSE;
+    }
+    
+    // Check architecture compatibility
+    if (dwDestinationArch == PROCESS_ARCH_X64 && (dwSourceArch == PROCESS_ARCH_X64 || dwSourceArch == PROCESS_ARCH_X86)) {
+        return TRUE;  // tp_direct_insertion
+    }
+    
+    BOOL bIsWow64 = FALSE;
+    BOOL bResult = IsWow64Process(GetCurrentProcess(), &bIsWow64);
+    if (dwDestinationArch == PROCESS_ARCH_X86 && dwSourceArch == PROCESS_ARCH_X86 && !bIsWow64 && bResult != 0) {
+        return TRUE;
+    }
+    
     return FALSE;
 }
 
