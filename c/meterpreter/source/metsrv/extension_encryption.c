@@ -303,6 +303,7 @@ BOOL extension_encryption_encrypt(ExtensionEncryptionStatus* lpExtensionStatus) 
 		dprintf("[extension_encryption][extension_encryption_encrypt] Extension is already encrypted.");
 		ret = TRUE;
 		bError = TRUE;
+		lpExtensionStatus->dwLastUsedTime = GetTickCount();
 	}
 
 	if (!bError) {
@@ -316,7 +317,9 @@ BOOL extension_encryption_encrypt(ExtensionEncryptionStatus* lpExtensionStatus) 
 
 		if (lpTempBufferWrite == NULL) {
 			dprintf("[extension_encryption][extension_encryption_encrypt] HeapAlloc failed on lpTempBufferWrite.");
-			HeapFree(hHeap, 0, lpTempBufferRead);
+			if (lpTempBufferRead != NULL) {
+				HeapFree(hHeap, 0, lpTempBufferRead);
+			}
 			bError = TRUE;
 		}
 	}
@@ -350,6 +353,12 @@ BOOL extension_encryption_encrypt(ExtensionEncryptionStatus* lpExtensionStatus) 
 		lpExtensionStatus->bEncrypted = TRUE;
 	}
 	LeaveCriticalSection(&g_ExtensionEncryptionManager->cs);
+	
+	if (lpTempBufferWrite != NULL && lpTempBufferRead != NULL) {
+		HeapFree(hHeap, 0, lpTempBufferWrite);
+		HeapFree(hHeap, 0, lpTempBufferRead);
+	}
+
 	return ret;
 }
 
@@ -372,6 +381,7 @@ BOOL extension_encryption_decrypt(ExtensionEncryptionStatus* lpExtensionStatus) 
 		dprintf("[extension_encryption][extension_encryption_decrypt] Extension is already decrypted.");
 		ret = TRUE;
 		bError = TRUE;
+		lpExtensionStatus->dwLastUsedTime = GetTickCount();
 	}
 
 	LPVOID ExtensionLoc = lpExtensionStatus->lpLoc;
@@ -385,11 +395,13 @@ BOOL extension_encryption_decrypt(ExtensionEncryptionStatus* lpExtensionStatus) 
 			dprintf("[extension_encryption][extension_encryption_decrypt] HeapAlloc failed on lpTempBufferRead.");
 			bError = TRUE;
 		}
-
+		
 		if (lpTempBufferWrite == NULL) {
 			dprintf("[extension_encryption][extension_encryption_decrypt] HeapAlloc failed on lpTempBufferWrite.");
-			HeapFree(hHeap, 0, lpTempBufferRead);
-			bError = FALSE;
+			if (lpTempBufferRead != NULL) {
+				HeapFree(hHeap, 0, lpTempBufferRead);
+			}
+			bError = TRUE;
 		}
 	}
 
@@ -432,6 +444,12 @@ BOOL extension_encryption_decrypt(ExtensionEncryptionStatus* lpExtensionStatus) 
 		lpExtensionStatus->bEncrypted = FALSE;
 	}
 	LeaveCriticalSection(&g_ExtensionEncryptionManager->cs);
+	
+	if (lpTempBufferWrite != NULL && lpTempBufferRead != NULL) {
+		HeapFree(hHeap, 0, lpTempBufferWrite);
+		HeapFree(hHeap, 0, lpTempBufferRead);
+	}
+
 	return ret;
 }
 
