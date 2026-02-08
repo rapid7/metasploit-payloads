@@ -303,7 +303,6 @@ BOOL extension_encryption_encrypt(ExtensionEncryptionStatus* lpExtensionStatus) 
 		dprintf("[extension_encryption][extension_encryption_encrypt] Extension is already encrypted.");
 		ret = TRUE;
 		bError = TRUE;
-		lpExtensionStatus->dwLastUsedTime = GetTickCount();
 	}
 
 	if (!bError) {
