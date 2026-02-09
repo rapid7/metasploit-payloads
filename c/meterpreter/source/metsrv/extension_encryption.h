@@ -11,6 +11,11 @@
 #define ENCRYPTION_30_MINUTES_MS (30 * 60 * 1000)
 #define ENCRYPTION_1_HOUR_MS (60 * 60 * 1000)
 
+#define EXTENSION_ENCRYPTION_INVALID_HANDLER_FUNCTION 1
+#define EXTENSION_ENCRYPTION_INVALID_EXTENSION_MANAGER 2
+#define EXTENSION_ENCRYPTION_EXTENSION_NOT_FOUND 3
+#define EXTENSION_ENCRYPTION_DECRYPTION_ERROR 4
+
 
 #define ENCRYPTION_UNUSED_COOLDOWN_MS ENCRYPTION_5_MINUTES_MS
 
@@ -62,3 +67,4 @@ BOOL extension_encryption_remove(ExtensionEncryptionStatus* lpStatus);
 BOOL extension_encryption_encrypt(ExtensionEncryptionStatus* lpStatus);
 BOOL extension_encryption_decrypt(ExtensionEncryptionStatus* lpStatus);
 void extension_encryption_encrypt_unused();
+DWORD extensionFindDecrypt(LPVOID lpHandlerFunction);

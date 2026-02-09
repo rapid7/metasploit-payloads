@@ -467,3 +467,31 @@ void extension_encryption_encrypt_unused() {
 	}
 	LeaveCriticalSection(&g_ExtensionEncryptionManager->cs);
 }
+
+DWORD extensionFindDecrypt(LPVOID lpHandlerFunction) {
+	ExtensionEncryptionManager* encryptionManager = NULL;
+	ExtensionEncryptionStatus* extensionStatus = NULL;
+
+	if (lpHandlerFunction == NULL) {
+		dprintf("[extension_encryption][extensionFindDecrypt] lpHandlerFunction is NULL");
+		return EXTENSION_ENCRYPTION_INVALID_HANDLER_FUNCTION;
+	}
+
+	if ((encryptionManager = GetExtensionEncryptionManager()) == NULL) {
+		dprintf("[extension_encryption][extensionFindDecrypt] Couldn't get the extension encryption manager ");
+		return EXTENSION_ENCRYPTION_INVALID_EXTENSION_MANAGER;
+	}
+
+	if (!encryptionManager->get(lpHandlerFunction, &extensionStatus)) {
+		dprintf("[extension_encryption][extensionFindDecrypt] Couldn't get extension status");
+		return EXTENSION_ENCRYPTION_EXTENSION_NOT_FOUND;
+	}
+
+	if (!encryptionManager->decrypt(extensionStatus)) {
+		dprintf("[extension_encryption][extensionFindDecrypt] Decryption of the extension is failed");
+		return EXTENSION_ENCRYPTION_DECRYPTION_ERROR;
+	}
+
+	return ERROR_SUCCESS;
+
+}
