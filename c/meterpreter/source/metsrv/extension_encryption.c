@@ -482,12 +482,12 @@ DWORD extensionFindDecrypt(LPVOID lpHandlerFunction) {
 		return EXTENSION_ENCRYPTION_INVALID_EXTENSION_MANAGER;
 	}
 
-	if (!encryptionManager->get(lpHandlerFunction, &extensionStatus)) {
+	if (!encryptionManager->get(lpHandlerFunction, &extensionStatus) || extensionStatus == NULL) {
 		dprintf("[extension_encryption][extensionFindDecrypt] Couldn't get extension status");
 		return EXTENSION_ENCRYPTION_EXTENSION_NOT_FOUND;
 	}
 
-	if (!encryptionManager->decrypt(extensionStatus)) {
+	if (!extensionStatus->bEncrypted || !encryptionManager->decrypt(extensionStatus)) {
 		dprintf("[extension_encryption][extensionFindDecrypt] Decryption of the extension is failed");
 		return EXTENSION_ENCRYPTION_DECRYPTION_ERROR;
 	}

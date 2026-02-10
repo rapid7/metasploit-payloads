@@ -291,9 +291,6 @@ BOOL command_process_inline(Command *command, Remote *remote, Packet *packet)
 	{
 		do
 		{
-			ExtensionEncryptionManager* encryptionManager = GetExtensionEncryptionManager();
-			ExtensionEncryptionStatus* extStatus = NULL;
-
 			commandId = command->command_id;
 			dprintf("[COMMAND] Executing command %u", commandId);
 
@@ -322,15 +319,12 @@ BOOL command_process_inline(Command *command, Remote *remote, Packet *packet)
 			case PACKET_TLV_TYPE_PLAIN_REQUEST:
 				if (command->request.inline_handler) {
 					dprintf("[DISPATCH] executing inline request handler %u", commandId);
-					if(encryptionManager != NULL && encryptionManager->get(command->request.inline_handler, &extStatus)) {
-						if(extStatus != NULL && extStatus->bEncrypted) {
-							dprintf("[COMMAND] Decrypting Extension having command %u", commandId);
-							if(encryptionManager->decrypt(extStatus)){
-								dprintf("[COMMAND] Decryption successful for command %u", commandId);
-							} else {
-								dprintf("[COMMAND] Decryption failed for command %u", commandId);
-							}
-						}
+					dprintf("[DISPATCH] Calling extensionFindDecrypt for command %u", commandId);
+					if (!extensionFindDecrypt(command->request.inline_handler)) {
+						dprintf("[COMMAND] Decryption successful for command %u", commandId);
+					}
+					else {
+						dprintf("[COMMAND] Decryption failed for command %u", commandId);
 					}
 					serverContinue = command->request.inline_handler(remote, packet, &result) && serverContinue;
 					dprintf("[DISPATCH] executed %u, continue %s", commandId, serverContinue ? "yes" : "no");
@@ -338,15 +332,12 @@ BOOL command_process_inline(Command *command, Remote *remote, Packet *packet)
 				else
 				{
 					dprintf("[DISPATCH] executing request handler %u", commandId);
-					if(encryptionManager != NULL && encryptionManager->get(command->request.handler, &extStatus)) {
-						if(extStatus != NULL && extStatus->bEncrypted) {
-							dprintf("[COMMAND] Decrypting Extension having command %u", commandId);
-							if(encryptionManager->decrypt(extStatus)){
-								dprintf("[COMMAND] Decryption successful for command %u", commandId);
-							} else {
-								dprintf("[COMMAND] Decryption failed for command %u", commandId);
-							}
-						}
+					dprintf("[DISPATCH] Calling extensionFindDecrypt for command %u", commandId);
+					if (!extensionFindDecrypt(command->request.handler)) {
+						dprintf("[COMMAND] Decryption successful for command %u", commandId);
+					}
+					else {
+						dprintf("[COMMAND] Decryption failed for command %u", commandId);
 					}
 					result = command->request.handler(remote, packet);
 				}
@@ -356,30 +347,24 @@ BOOL command_process_inline(Command *command, Remote *remote, Packet *packet)
 				if (command->response.inline_handler)
 				{
 					dprintf("[DISPATCH] executing inline response handler %u", commandId);
-					if(encryptionManager != NULL && encryptionManager->get(command->response.inline_handler, &extStatus)) {
-						if(extStatus != NULL && extStatus->bEncrypted) {
-							dprintf("[COMMAND] Decrypting Extension having command %u", commandId);
-							if(encryptionManager->decrypt(extStatus)){
-								dprintf("[COMMAND] Decryption successful for command %u", commandId);
-							} else {
-								dprintf("[COMMAND] Decryption failed for command %u", commandId);
-							}
-						}
+					dprintf("[DISPATCH] Calling extensionFindDecrypt for command %u", commandId);
+					if (!extensionFindDecrypt(command->response.inline_handler)) {
+						dprintf("[COMMAND] Decryption successful for command %u", commandId);
+					}
+					else {
+						dprintf("[COMMAND] Decryption failed for command %u", commandId);
 					}
 					serverContinue = command->response.inline_handler(remote, packet, &result) && serverContinue;
 				}
 				else
 				{
 					dprintf("[DISPATCH] executing response handler %u", commandId);
-					if(encryptionManager != NULL && encryptionManager->get(command->response.handler, &extStatus)) {
-						if(extStatus != NULL && extStatus->bEncrypted) {
-							dprintf("[COMMAND] Decrypting Extension having command %u", commandId);
-							if(encryptionManager->decrypt(extStatus)){
-								dprintf("[COMMAND] Decryption successful for command %u", commandId);
-							} else {
-								dprintf("[COMMAND] Decryption failed for command %u", commandId);
-							}
-						}
+					dprintf("[DISPATCH] Calling extensionFindDecrypt for command %u", commandId);
+					if (!extensionFindDecrypt(command->response.handler)) {
+						dprintf("[COMMAND] Decryption successful for command %u", commandId);
+					}
+					else {
+						dprintf("[COMMAND] Decryption failed for command %u", commandId);
 					}
 					result = command->response.handler(remote, packet);
 				}
