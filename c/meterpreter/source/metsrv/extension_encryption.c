@@ -219,7 +219,7 @@ BOOL extension_encryption_add(LPVOID lpExtensionLocation, DWORD dwExtensionSize)
 		dprintf("[extension_encryption][extension_encryption_add] lpExtensionStatus->lpLoc: %p", lpExtensionStatus->lpLoc);
 		dprintf("[extension_encryption][extension_encryption_add] lpExtensionStatus->dwSize: %u", lpExtensionStatus->dwSize);
 		dprintf("[extension_encryption][extension_encryption_add] lpExtensionStatus->dwLastUsedTime: %u", lpExtensionStatus->dwLastUsedTime);
-		g_ExtensionEncryptionManager->extensionStatuses[g_ExtensionEncryptionManager->dwExtensionsCount - 1] = lpExtensionStatus;
+		g_ExtensionEncryptionManager->extensionStatuses[g_ExtensionEncryptionManager->dwExtensionsCount] = lpExtensionStatus;
 		g_ExtensionEncryptionManager->dwExtensionsCount++;
 		dprintf("[extension_encryption][extension_encryption_add] Added extension at %p of size %u", lpExtensionLocation, dwExtensionSize);
 	}
