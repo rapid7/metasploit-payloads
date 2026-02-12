@@ -367,11 +367,13 @@ int fs_mkdir(char *directory)
 			dir_w = met_api->string.utf8_to_wchar(base_dir);
 			if (dir_w == NULL) {
 				rc = GetLastError();
+				free(dir_w);
 				goto out;
 			}
 
 			if (CreateDirectoryW(dir_w, NULL) == 0) {
 				rc = GetLastError();
+				free(dir_w);
 				goto out;
 			}
 
