@@ -358,7 +358,10 @@ int fs_mkdir(char *directory)
 
 	while (dir != NULL)
 	{
-		fs_stat(base_dir, &s);
+		if (fs_stat(base_dir, &s) != ERROR_SUCCESS)
+		{
+			goto out;
+		}
 
 		if (!(s.st_mode & _S_IFDIR)) {
 			dir_w = met_api->string.utf8_to_wchar(base_dir);
@@ -371,17 +374,22 @@ int fs_mkdir(char *directory)
 				rc = GetLastError();
 				goto out;
 			}
+
+			dir_w = NULL;
 		}
 
 		dir = strtok(NULL, "\\");
-		sprintf(base_dir, "%s%s\\", base_dir, dir);
+		if (dir != NULL){
+			sprintf(base_dir, "%s%s\\", base_dir, dir);
+		}
+
 		memset(&s, 0, sizeof(struct meterp_stat));
+		free(dir_w);
 	}
 
 
 out:
 	free(dir_w);
-	free(dir);
 	return rc;
 }
 
