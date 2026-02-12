@@ -376,8 +376,6 @@ int fs_mkdir(char *directory)
 				free(dir_w);
 				goto out;
 			}
-
-			dir_w = NULL;
 		}
 
 		dir = strtok(NULL, "\\");
