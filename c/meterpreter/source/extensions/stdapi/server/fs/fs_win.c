@@ -369,6 +369,7 @@ int fs_mkdir(char *directory)
 
 			if (CreateDirectoryW(dir_w, NULL) == 0) {
 				rc = GetLastError();
+				goto out;
 			}
 		}
 
