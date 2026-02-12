@@ -345,22 +345,50 @@ out:
 	return rc;
 }
 
-int fs_mkdir(const char *directory)
+int fs_mkdir(char *directory)
 {
 	int rc = ERROR_SUCCESS;
-	wchar_t *dir_w = met_api->string.utf8_to_wchar(directory);
+	struct meterp_stat s = { 0 };
+	wchar_t* dir_w;
+	char base_dir[255];
 
-	if (dir_w == NULL) {
-		rc = GetLastError();
-		goto out;
+	char* dir = strtok(directory, "\\");
+
+	sprintf(base_dir, "%s\\", dir);
+
+	while (dir != NULL)
+	{
+		if (fs_stat(base_dir, &s) != ERROR_SUCCESS)
+		{
+			goto out;
+		}
+
+		if (!(s.st_mode & _S_IFDIR)) {
+			dir_w = met_api->string.utf8_to_wchar(base_dir);
+			if (dir_w == NULL) {
+				rc = GetLastError();
+				free(dir_w);
+				goto out;
+			}
+
+			if (CreateDirectoryW(dir_w, NULL) == 0) {
+				rc = GetLastError();
+				free(dir_w);
+				goto out;
+			}
+		}
+
+		dir = strtok(NULL, "\\");
+		if (dir != NULL){
+			sprintf(base_dir, "%s%s\\", base_dir, dir);
+		}
+
+		memset(&s, 0, sizeof(struct meterp_stat));
+		free(dir_w);
 	}
 
-	if (CreateDirectoryW(dir_w, NULL) == 0) {
-		rc = GetLastError();
-	}
 
 out:
-	free(dir_w);
 	return rc;
 }
 
