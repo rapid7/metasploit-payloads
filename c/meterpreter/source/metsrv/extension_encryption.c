@@ -162,6 +162,7 @@ ExtensionEncryptionManager* InitExtensionEncryptionManager(CryptographicManagerT
 	g_ExtensionEncryptionManager->encrypt = extension_encryption_encrypt;
 	g_ExtensionEncryptionManager->decrypt = extension_encryption_decrypt;
 	g_ExtensionEncryptionManager->encryptUnused = extension_encryption_encrypt_unused;
+	g_ExtensionEncryptionManager->dwCryptoManagerType = type;
 
 	if(type == CRYPTOGRAPHIC_MANAGER_TYPE_RC4 ) {
 		if (!cryptographic_manager_rc4(&g_ExtensionEncryptionManager->cryptoManager, lpCryptoParams)) {
@@ -223,7 +224,7 @@ BOOL extension_encryption_add(LPVOID lpExtensionLocation, DWORD dwExtensionSize)
 		g_ExtensionEncryptionManager->dwExtensionsCount++;
 		dprintf("[extension_encryption][extension_encryption_add] Added extension at %p of size %u", lpExtensionLocation, dwExtensionSize);
 	}
-	dprintf("[extension_encryption][extension_encryption_add] Funtion exiting");
+	dprintf("[extension_encryption][extension_encryption_add] Function exiting");
 	LeaveCriticalSection(&g_ExtensionEncryptionManager->cs);
 	return ret;
 }

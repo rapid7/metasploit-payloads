@@ -47,6 +47,7 @@ typedef struct {
 	CRITICAL_SECTION cs;
 	ExtensionEncryptionStatus* extensionStatuses[MAX_EXTENSIONS];
 	DWORD dwExtensionsCount;
+	DWORD dwCryptoManagerType;
 	CryptographicManager cryptoManager;
 	struct {
 		BOOL (*add)(LPVOID lpExtensionLocation, DWORD dwExtensionSize);
