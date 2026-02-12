@@ -389,7 +389,6 @@ int fs_mkdir(char *directory)
 
 
 out:
-	free(dir_w);
 	return rc;
 }
 
