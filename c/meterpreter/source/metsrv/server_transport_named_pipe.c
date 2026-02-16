@@ -114,7 +114,7 @@ static DWORD packet_receive_named_pipe(Remote *remote, Packet **packet)
 	// Read the packet length
 	while (inHeader)
 	{
-		if (!ReadFile(ctx->pipe, ((PUCHAR)&header + headerBytes), sizeof(PacketHeader)-headerBytes, &bytesRead, NULL))
+		if (!met_api->win_api.kernel32.ReadFile(ctx->pipe, ((PUCHAR)&header + headerBytes), sizeof(PacketHeader)-headerBytes, &bytesRead, NULL))
 		{
 			SetLastError(ERROR_NOT_FOUND);
 			goto out;
@@ -354,7 +354,7 @@ static void transport_reset_named_pipe(Transport* transport, BOOL shuttingDown)
 		if (ctx->pipe && ctx->pipe != INVALID_HANDLE_VALUE)
 		{
 			dprintf("[NP] Closing the handle");
-			if (!CloseHandle(ctx->pipe))
+			if (!met_api->win_api.kernel32.CloseHandle(ctx->pipe))
 			{
 				dprintf("[NP] Handle close failed: %u", GetLastError());
 			}
@@ -441,7 +441,7 @@ static HANDLE bind_named_pipe(wchar_t *pipe_name, TimeoutSettings *timeouts)
 	int start = current_unix_timestamp();
 	do
 	{
-		if (ConnectNamedPipe(hPipe, NULL))
+		if (met_api->win_api.kernel32.ConnectNamedPipe(hPipe, NULL))
 		{
 			return hPipe;
 		}
@@ -456,7 +456,7 @@ static HANDLE bind_named_pipe(wchar_t *pipe_name, TimeoutSettings *timeouts)
 		sleep(1);
 	} while (((DWORD)current_unix_timestamp() - (DWORD)start) < timeouts->retry_total);
 
-	CloseHandle(hPipe);
+	met_api->win_api.kernel32.CloseHandle(hPipe);
 	return INVALID_HANDLE_VALUE;
 }
 
@@ -551,7 +551,7 @@ static DWORD configure_named_pipe_connection(Transport* transport)
 	dprintf("[SERVER] Looking good, FORWARD!");
 
 	// Do not allow the file descriptor to be inherited by child processes
-	SetHandleInformation((HANDLE)ctx->pipe, HANDLE_FLAG_INHERIT, 0);
+	met_api->win_api.kernel32.SetHandleInformation((HANDLE)ctx->pipe, HANDLE_FLAG_INHERIT, 0);
 
 	transport->comms_last_packet = current_unix_timestamp();
 
@@ -579,7 +579,7 @@ DWORD packet_transmit_named_pipe(Remote* remote, LPBYTE rawPacket, DWORD rawPack
 	while (totalWritten < rawPacketLength)
 	{
 		vdprintf("[TRANSMIT PIPE] Calling WriteFile");
-		if (!WriteFile(ctx->pipe, rawPacket + totalWritten, rawPacketLength - totalWritten, &written, NULL))
+		if (!met_api->win_api.kernel32.WriteFile(ctx->pipe, rawPacket + totalWritten, rawPacketLength - totalWritten, &written, NULL))
 		{
 			vdprintf("[TRANSMIT PIPE] WriteFile failed: %u (%x)", GetLastError(), GetLastError());
 			result = GetLastError();
@@ -665,7 +665,7 @@ static DWORD get_migrate_context_named_pipe(Transport* transport, DWORD targetPr
 	// Duplicate the handle for the pipe
 	dprintf("[NP-MIGRATE] pipe handle: %p", ((NamedPipeTransportContext*)transport->ctx)->pipe);
 	dprintf("[NP-MIGRATE] targetprocess handle: %p", targetProcessHandle);
-	if (!DuplicateHandle(GetCurrentProcess(), ((NamedPipeTransportContext*)transport->ctx)->pipe, targetProcessHandle, &ctx->h.pipe_handle, 0, TRUE, DUPLICATE_SAME_ACCESS))
+	if (!met_api->win_api.kernel32.DuplicateHandle(GetCurrentProcess(), ((NamedPipeTransportContext*)transport->ctx)->pipe, targetProcessHandle, &ctx->h.pipe_handle, 0, TRUE, DUPLICATE_SAME_ACCESS))
 	{
 		free(ctx);
 		return GetLastError();

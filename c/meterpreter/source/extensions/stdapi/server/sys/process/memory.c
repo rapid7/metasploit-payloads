@@ -20,11 +20,6 @@ typedef FARPROC(WINAPI* GETPROCADDRESS) (HMODULE hModule, LPCSTR lpProcName);
 // https://ntdoc.m417z.com/ntreadvirtualmemory
 typedef NTSTATUS(NTAPI* NTREADVIRTUALMEMORY) (HANDLE ProcessHandle, LPCVOID BaseAddress, LPVOID Buffer, SIZE_T NumberOfBytesToRead, PSIZE_T NumberOfBytesRead);
 
-// http://undocumented.ntinternals.net/index.html?page=UserMode%2FUndocumented%20Functions%2FMemory%20Management%2FVirtual%20Memory%2FMEMORY_INFORMATION_CLASS.html
-typedef enum _MEMORY_INFORMATION_CLASS {
-	MemoryBasicInformation
-} MEMORY_INFORMATION_CLASS, * PMEMORY_INFORMATION_CLASS;
-
 typedef struct _UNICODE_STRING {
 	USHORT Length;
 	USHORT MaximumLength;
@@ -33,6 +28,12 @@ typedef struct _UNICODE_STRING {
 typedef UNICODE_STRING* PUNICODE_STRING;
 typedef const UNICODE_STRING* PCUNICODE_STRING;
 
+#ifndef _METERPRETER_COMMON_WINAPI_H
+// This will be removed when using the WinApi on MetApi
+// http://undocumented.ntinternals.net/index.html?page=UserMode%2FUndocumented%20Functions%2FMemory%20Management%2FVirtual%20Memory%2FMEMORY_INFORMATION_CLASS.html
+typedef enum _MEMORY_INFORMATION_CLASS {
+	MemoryBasicInformation
+} MEMORY_INFORMATION_CLASS, * PMEMORY_INFORMATION_CLASS;
 // https://learn.microsoft.com/en-us/windows/win32/api/ntdef/ns-ntdef-_object_attributes
 typedef struct _OBJECT_ATTRIBUTES {
 	ULONG           Length;
@@ -42,6 +43,7 @@ typedef struct _OBJECT_ATTRIBUTES {
 	PVOID           SecurityDescriptor;
 	PVOID           SecurityQualityOfService;
 } OBJECT_ATTRIBUTES, * POBJECT_ATTRIBUTES;
+#endif
 
 typedef struct _RTL_USER_PROCESS_PARAMETERS {
 	BYTE Reserved1[16];

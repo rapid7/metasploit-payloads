@@ -3,9 +3,11 @@
  * @remark This file doesn't use precompiled headers because metsrv.h includes a bunch of
  *         of definitions that clash with those found in winhttp.h. Hooray Win32 API. I hate you.
  */
+#include <winsock2.h>
+#include <windows.h>
+#include <winhttp.h>
 #include "metsrv.h"
 #include "server_transport_wininet.h"
-#include <winhttp.h>
 #include "packet_encryption.h"
 #include "pivot_packet_dispatch.h"
 
@@ -100,15 +102,15 @@ static HINTERNET get_request_winhttp(HttpTransportContext *ctx, BOOL isGet, cons
 
 				if (ieConfig.lpszAutoConfigUrl)
 				{
-					GlobalFree(ieConfig.lpszAutoConfigUrl);
+					met_api->win_api.kernel32.GlobalFree(ieConfig.lpszAutoConfigUrl);
 				}
 				if (ieConfig.lpszProxy)
 				{
-					GlobalFree(ieConfig.lpszProxy);
+					met_api->win_api.kernel32.GlobalFree(ieConfig.lpszProxy);
 				}
 				if (ieConfig.lpszProxyBypass)
 				{
-					GlobalFree(ieConfig.lpszProxyBypass);
+					met_api->win_api.kernel32.GlobalFree(ieConfig.lpszProxyBypass);
 				}
 			}
 
@@ -832,11 +834,11 @@ static void transport_destroy_http(Transport* transport)
 				WINHTTP_PROXY_INFO* proxyInfo = (WINHTTP_PROXY_INFO*)ctx->proxy_for_url;
 				if (proxyInfo->lpszProxy)
 				{
-					GlobalFree(proxyInfo->lpszProxy);
+					met_api->win_api.kernel32.GlobalFree(proxyInfo->lpszProxy);
 				}
 				if (proxyInfo->lpszProxyBypass)
 				{
-					GlobalFree(proxyInfo->lpszProxyBypass);
+					met_api->win_api.kernel32.GlobalFree(proxyInfo->lpszProxyBypass);
 				}
 			}
 			SAFE_FREE(ctx->proxy_for_url);

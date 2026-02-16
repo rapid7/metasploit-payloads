@@ -33,7 +33,7 @@ DWORD server_sessionid()
 	{
 		if (!processIdToSessionId)
 		{
-			kernel = LoadLibraryA("kernel32.dll");
+			kernel = met_api->win_api.kernel32.LoadLibraryA("kernel32.dll");
 			if (kernel)
 			{
 				processIdToSessionId = (PROCESSIDTOSESSIONID)GetProcAddress(kernel, "ProcessIdToSessionId");
@@ -54,7 +54,7 @@ DWORD server_sessionid()
 
 	if (kernel)
 	{
-		FreeLibrary(kernel);
+		met_api->win_api.kernel32.FreeLibrary(kernel);
 	}
 
 	return sessionId;

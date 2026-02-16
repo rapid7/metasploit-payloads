@@ -21,6 +21,22 @@
 
 #include "libloader.h"
 
+#ifndef _METERPRETER_COMMON_WINAPI_H
+typedef struct _CLIENT_ID {
+    HANDLE UniqueProcess;
+    HANDLE UniqueThread;
+} CLIENT_ID, *PCLIENT_ID;
+
+typedef struct _OBJECT_ATTRIBUTES {
+    ULONG Length;
+    HANDLE RootDirectory;
+    PVOID ObjectName;  // PUNICODE_STRING
+    ULONG Attributes;
+    PVOID SecurityDescriptor;
+    PVOID SecurityQualityOfService;
+} OBJECT_ATTRIBUTES, *POBJECT_ATTRIBUTES;
+#endif
+
 /* NTSTATUS values */
 #define STATUS_SUCCESS 			0x00000000
 #define STATUS_IMAGE_NOT_AT_BASE	0x40000003
@@ -75,16 +91,6 @@ typedef enum _SECTION_INHERIT {
 	ViewShare = 1,
 	ViewUnmap = 2
 } SECTION_INHERIT;
-
-typedef struct _OBJECT_ATTRIBUTES {
-	ULONG Length;
-	HANDLE RootDirectory;
-	PUNICODE_STRING ObjectName;
-	ULONG Attributes;
-	PVOID SecurityDescriptor;
-	PVOID SecurityQualityOfService;
-} OBJECT_ATTRIBUTES;
-typedef OBJECT_ATTRIBUTES *POBJECT_ATTRIBUTES;
 
 typedef NTSTATUS (NTAPI *f_NtOpenSection)(PHANDLE, ACCESS_MASK, POBJECT_ATTRIBUTES);
 typedef NTSTATUS (NTAPI *f_NtQueryAttributesFile)(POBJECT_ATTRIBUTES, PFILE_BASIC_INFORMATION);
@@ -354,7 +360,7 @@ void patch_function(SHELLCODE_CTX *ctx, UINT_PTR address, unsigned char *stub,
 	/* Restore protection */
 	met_api->win_api.kernel32.VirtualProtect(mbi_thunk.BaseAddress, mbi_thunk.RegionSize,
 		mbi_thunk.Protect, &protect);
-	FlushInstructionCache((HANDLE)-1, mbi_thunk.BaseAddress,
+	met_api->win_api.kernel32.FlushInstructionCache((HANDLE)-1, mbi_thunk.BaseAddress,
 		mbi_thunk.RegionSize);
 
 }
@@ -447,7 +453,7 @@ void restore_function(SHELLCODE_CTX *ctx, DWORD_PTR address, unsigned char *stub
 	/* Restore protection */
 	met_api->win_api.kernel32.VirtualProtect(mbi_thunk.BaseAddress, mbi_thunk.RegionSize,
 		mbi_thunk.Protect, &protect);
-	FlushInstructionCache((HANDLE)-1, mbi_thunk.BaseAddress,
+	met_api->win_api.kernel32.FlushInstructionCache((HANDLE)-1, mbi_thunk.BaseAddress,
 		mbi_thunk.RegionSize);
 
 }
@@ -463,7 +469,7 @@ void remove_hooks(SHELLCODE_CTX *ctx)
 	f_NtClose lNtClose;
 	HMODULE ntdll;
 
-	if (!(ntdll = LoadLibraryA("ntdll")))
+	if (!(ntdll = met_api->win_api.kernel32.LoadLibraryA("ntdll")))
 	{
 		return;
 	}
@@ -598,7 +604,7 @@ HMODULE libloader_load_library(LPCSTR name, PUCHAR buffer, DWORD bufferLength)
 		map_file(ctx);
 
 		// Load the fake library
-		if (!(mod = LoadLibraryA(ctx->libname)))
+		if (!(mod = met_api->win_api.kernel32.LoadLibraryA(ctx->libname)))
 		{
 			break;
 		}
