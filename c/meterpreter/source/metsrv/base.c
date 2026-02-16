@@ -506,7 +506,7 @@ BOOL command_handle(Remote *remote, Packet *packet)
 		}
 
 	} while (0);
-
+	extension_encryption_encrypt_unused();
 	return result;
 }
 
