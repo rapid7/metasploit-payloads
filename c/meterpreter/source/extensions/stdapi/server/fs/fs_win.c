@@ -354,7 +354,7 @@ int fs_mkdir(char *directory)
 
 	char* dir = strtok(directory, "\\");
 
-	sprintf(base_dir, "%s\\", dir);
+	sprintf_s(base_dir, 255, "%s\\", dir);
 
 	while (dir != NULL)
 	{
@@ -380,7 +380,7 @@ int fs_mkdir(char *directory)
 
 		dir = strtok(NULL, "\\");
 		if (dir != NULL){
-			sprintf(base_dir, "%s%s\\", base_dir, dir);
+			sprintf_s(base_dir, 255, "%s%s\\", base_dir, dir);
 		}
 
 		memset(&s, 0, sizeof(struct meterp_stat));
