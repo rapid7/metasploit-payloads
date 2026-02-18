@@ -350,24 +350,23 @@ int fs_mkdir(char *directory)
 	int rc = ERROR_SUCCESS;
 	struct meterp_stat s = { 0 };
 	wchar_t* dir_w;
-	char base_dir[255];
+	size_t directory_length;
+	char* base_dir;
+	char* dir;
+	
+	// Add 2 because of NULL character and additional backslash
+	directory_length = lstrlenA(directory)+2;
+	base_dir = (char *)HeapAlloc(GetProcessHeap(), 0, directory_length);
+	dir = strtok(directory, "\\");
 
-	char* dir = strtok(directory, "\\");
-
-	sprintf_s(base_dir, 255, "%s\\", dir);
+	sprintf_s(base_dir, directory_length, "%s\\", dir);
 
 	while (dir != NULL)
 	{
-		if (fs_stat(base_dir, &s) != ERROR_SUCCESS)
-		{
-			goto out;
-		}
-
-		if (!(s.st_mode & _S_IFDIR)) {
+		if (fs_stat(base_dir, &s) != ERROR_SUCCESS) {
 			dir_w = met_api->string.utf8_to_wchar(base_dir);
 			if (dir_w == NULL) {
 				rc = GetLastError();
-				free(dir_w);
 				goto out;
 			}
 
@@ -376,19 +375,21 @@ int fs_mkdir(char *directory)
 				free(dir_w);
 				goto out;
 			}
+			free(dir_w);
 		}
 
 		dir = strtok(NULL, "\\");
+		
 		if (dir != NULL){
-			sprintf_s(base_dir, 255, "%s%s\\", base_dir, dir);
+			sprintf_s((char*)(base_dir+lstrlenA(base_dir)), directory_length, "%s\\",dir);
 		}
-
+		
 		memset(&s, 0, sizeof(struct meterp_stat));
-		free(dir_w);
 	}
 
 
 out:
+	HeapFree(GetProcessHeap(),0, base_dir);
 	return rc;
 }
 
