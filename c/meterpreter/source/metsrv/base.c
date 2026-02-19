@@ -287,6 +287,8 @@ BOOL command_process_inline(Command *command, Remote *remote, Packet *packet)
 	PacketTlvType packetTlvType;
 	UINT commandId = 0;
 
+	DWORD extensionFindDecryptVal = ERROR_SUCCESS;
+
 	__try
 	{
 		do
@@ -320,11 +322,13 @@ BOOL command_process_inline(Command *command, Remote *remote, Packet *packet)
 				if (command->request.inline_handler) {
 					dprintf("[DISPATCH] executing inline request handler %u", commandId);
 					dprintf("[DISPATCH] Calling extensionFindDecrypt for command %u", commandId);
-					if (!extensionFindDecrypt(command->request.inline_handler)) {
+					extensionFindDecryptVal = extensionFindDecrypt(command->request.inline_handler);
+					if (!extensionFindDecryptVal || extensionFindDecryptVal == EXTENSION_ENCRYPTION_EXTENSION_NOT_ENCRYPTABLE) {
 						dprintf("[COMMAND] Decryption successful for command %u", commandId);
 					}
 					else {
 						dprintf("[COMMAND] Decryption failed for command %u", commandId);
+						//break;
 					}
 					serverContinue = command->request.inline_handler(remote, packet, &result) && serverContinue;
 					dprintf("[DISPATCH] executed %u, continue %s", commandId, serverContinue ? "yes" : "no");
@@ -333,11 +337,13 @@ BOOL command_process_inline(Command *command, Remote *remote, Packet *packet)
 				{
 					dprintf("[DISPATCH] executing request handler %u", commandId);
 					dprintf("[DISPATCH] Calling extensionFindDecrypt for command %u", commandId);
-					if (!extensionFindDecrypt(command->request.handler)) {
+					extensionFindDecryptVal = extensionFindDecrypt(command->request.handler);
+					if (!extensionFindDecryptVal || extensionFindDecryptVal == EXTENSION_ENCRYPTION_EXTENSION_NOT_ENCRYPTABLE) {
 						dprintf("[COMMAND] Decryption successful for command %u", commandId);
 					}
 					else {
 						dprintf("[COMMAND] Decryption failed for command %u", commandId);
+						//break;
 					}
 					result = command->request.handler(remote, packet);
 				}
@@ -348,11 +354,13 @@ BOOL command_process_inline(Command *command, Remote *remote, Packet *packet)
 				{
 					dprintf("[DISPATCH] executing inline response handler %u", commandId);
 					dprintf("[DISPATCH] Calling extensionFindDecrypt for command %u", commandId);
-					if (!extensionFindDecrypt(command->response.inline_handler)) {
+					extensionFindDecryptVal = extensionFindDecrypt(command->response.inline_handler);
+					if (!extensionFindDecryptVal || extensionFindDecryptVal == EXTENSION_ENCRYPTION_EXTENSION_NOT_ENCRYPTABLE) {
 						dprintf("[COMMAND] Decryption successful for command %u", commandId);
 					}
 					else {
 						dprintf("[COMMAND] Decryption failed for command %u", commandId);
+						//break;
 					}
 					serverContinue = command->response.inline_handler(remote, packet, &result) && serverContinue;
 				}
@@ -360,11 +368,13 @@ BOOL command_process_inline(Command *command, Remote *remote, Packet *packet)
 				{
 					dprintf("[DISPATCH] executing response handler %u", commandId);
 					dprintf("[DISPATCH] Calling extensionFindDecrypt for command %u", commandId);
-					if (!extensionFindDecrypt(command->response.handler)) {
+					extensionFindDecryptVal = extensionFindDecrypt(command->response.handler);
+					if (!extensionFindDecryptVal || extensionFindDecryptVal == EXTENSION_ENCRYPTION_EXTENSION_NOT_ENCRYPTABLE) {
 						dprintf("[COMMAND] Decryption successful for command %u", commandId);
 					}
 					else {
 						dprintf("[COMMAND] Decryption failed for command %u", commandId);
+						//break;
 					}
 					result = command->response.handler(remote, packet);
 				}

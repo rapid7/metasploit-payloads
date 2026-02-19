@@ -252,6 +252,8 @@ DWORD THREADCALL scheduler_waitable_thread( THREAD * thread )
 	BOOL terminate            = FALSE;
 	UINT signalIndex          = 0;
 
+	DWORD extensionFindDecryptValue = ERROR_SUCCESS;
+
 	if( thread == NULL )
 		return ERROR_INVALID_HANDLE;
 
@@ -295,7 +297,8 @@ DWORD THREADCALL scheduler_waitable_thread( THREAD * thread )
 			case 2:
 				//dprintf( "[SCHEDULER] scheduler_waitable_thread( 0x%08X ), signaled on waitable...", thread );
 				dprintf("[SCHEDULER] scheduler_waitable_thread( 0x%08X ), calling extensionFindDecrypt");
-				if (extensionFindDecrypt(entry->routine)) {
+				extensionFindDecryptValue = extensionFindDecrypt(entry->routine);
+				if (extensionFindDecryptValue && extensionFindDecryptValue != EXTENSION_ENCRYPTION_EXTENSION_NOT_ENCRYPTABLE) {
 					dprintf("[SCHEDULER] scheduler_waitable_thread ( 0x%08X ), decryption of the extension failed");
 					//break;
 				}

@@ -489,6 +489,11 @@ DWORD extensionFindDecrypt(LPVOID lpHandlerFunction) {
 		return EXTENSION_ENCRYPTION_EXTENSION_NOT_FOUND;
 	}
 
+	if (!extensionStatus->bEncryptable) {
+		dprintf("[extension_encryption][extensionFindDecrypt] Extension isn't encryptable");
+		return EXTENSION_ENCRYPTION_EXTENSION_NOT_ENCRYPTABLE;
+	}
+
 	if (!extensionStatus->bEncrypted || !encryptionManager->decrypt(extensionStatus)) {
 		dprintf("[extension_encryption][extensionFindDecrypt] Decryption of the extension is failed");
 		return EXTENSION_ENCRYPTION_DECRYPTION_ERROR;
