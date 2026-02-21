@@ -203,6 +203,7 @@ define("TLV_TYPE_CHANNEL_TYPE",        TLV_META_TYPE_STRING |  51);
 define("TLV_TYPE_CHANNEL_DATA",        TLV_META_TYPE_RAW    |  52);
 define("TLV_TYPE_CHANNEL_DATA_GROUP",  TLV_META_TYPE_GROUP  |  53);
 define("TLV_TYPE_CHANNEL_CLASS",       TLV_META_TYPE_UINT   |  54);
+define("TLV_TYPE_CHANNEL_PARENTID",    TLV_META_TYPE_UINT   |  55);
 
 define("TLV_TYPE_SEEK_WHENCE",         TLV_META_TYPE_UINT   |  70);
 define("TLV_TYPE_SEEK_OFFSET",         TLV_META_TYPE_UINT   |  71);
@@ -442,7 +443,7 @@ if (!function_exists('channel_close_handles')) {
     $c = $channels[$cid];
     for($i = 0; $i < 3; $i++) {
       #my_print("closing channel fd $i, {$c[$i]}");
-      if (array_key_exists($i, $c) && is_resource($c[$i])) {
+      if (array_key_exists($i, $c) && (is_resource($c[$i]) || is_object($c[$i]))) {
         close($c[$i]);
         # Make sure the main loop doesn't select on this resource after we
         # close it.
@@ -707,11 +708,11 @@ if (!function_exists('core_machine_id')) {
 }
 $channels = array();
 
-function register_channel($in, $out=null, $err=null) {
+function register_channel($in, $out=null, $err=null, $subtype=null) {
   global $channels;
   if ($out == null) { $out = $in; }
   if ($err == null) { $err = $out; }
-  $channels[] = array(0 => $in, 1 => $out, 2 => $err, 'type' => get_rtype($in), 'data' => '');
+  $channels[] = array(0 => $in, 1 => $out, 2 => $err, 'type' => get_rtype($in), 'subtype' => $subtype, 'data' => '');
 
   # Grab the last index and use it as the new ID.
   $keys = array_keys($channels);
@@ -741,9 +742,11 @@ function get_channel_id_from_resource($resource) {
     return false;
   }
   foreach ($channels as $i => $chan_ary) {
-    if (in_array($resource, $chan_ary)) {
-      my_print("Found channel id $i");
-      return $i;
+    for ($idx = 0; $idx <= 2; $idx++) {
+      if (array_key_exists($idx, $chan_ary) && $chan_ary[$idx] === $resource) {
+        my_print("Found channel id $i");
+        return $i;
+      }
     }
   }
   return false;
@@ -751,13 +754,15 @@ function get_channel_id_from_resource($resource) {
 
 function &get_channel_by_id($chan_id) {
   global $channels;
+  static $null = null;
   my_print("Looking up channel id $chan_id");
   #dump_channels("in get_channel_by_id");
   if (array_key_exists($chan_id, $channels)) {
     my_print("Found one");
     return $channels[$chan_id];
   } else {
-    return false;
+    $null = null;
+    return $null;
   }
 }
 
@@ -784,7 +789,7 @@ function channel_read($chan_id, $len) {
 
     # Next grab stderr if we have it and it's not the same file descriptor
     # as stdout.
-    if (strlen($ret) < $len and is_resource($c[2]) and $c[1] != $c[2]) {
+    if (strlen($ret) < $len and (is_resource($c[2]) || is_object($c[2])) and $c[1] != $c[2]) {
       # Read as much as possible into the channel's data buffer
       $read = read($c[2]);
       $c['data'] .= $read;
@@ -801,7 +806,7 @@ function channel_read($chan_id, $len) {
     }
 
     # Then if there's still room, grab stdout
-    if (strlen($ret) < $len and is_resource($c[1])) {
+    if (strlen($ret) < $len and (is_resource($c[1]) || is_object($c[1]))) {
       # Same as above, but for stdout.  This will overwrite a false
       # return value from reading stderr but the two should generally
       # EOF at the same time, so it should be fine.
@@ -916,20 +921,20 @@ function write_tlv_to_socket($resource, $raw) {
 function handle_dead_resource_channel($resource) {
   global $msgsock;
 
-  if (!is_resource($resource)) {
+  if (!is_resource($resource) && !is_object($resource)) {
     return;
   }
 
   $cid = get_channel_id_from_resource($resource);
   if ($cid === false) {
-    my_print("Resource has no channel: {$resource}");
+    my_print("Resource has no channel: " . get_resource_map_id($resource));
 
     # Make sure the provided resource gets closed regardless of it's status
     # as a channel
     remove_reader($resource);
     close($resource);
   } else {
-    my_print("Handling dead resource: {$resource}, for channel: {$cid}");
+    my_print("Handling dead resource: " . get_resource_map_id($resource) . ", for channel: {$cid}");
 
     # Make sure we close other handles associated with this channel as well
     channel_close_handles($cid);
@@ -1247,7 +1252,7 @@ function eof($resource) {
 }
 
 function close($resource) {
-  my_print("Closing resource $resource");
+  my_print("Closing resource " . get_resource_map_id($resource));
   global $resource_type_map, $udp_host_map;
 
   remove_reader($resource);
@@ -1260,7 +1265,7 @@ function close($resource) {
     unset($resource_type_map[get_resource_map_id($resource)]);
   }
   if (array_key_exists(get_resource_map_id($resource), $udp_host_map)) {
-    my_print("Removing $resource from udp_host_map");
+    my_print("Removing " . get_resource_map_id($resource) . " from udp_host_map");
     unset($udp_host_map[get_resource_map_id($resource)]);
   }
   return $ret;
@@ -1299,7 +1304,7 @@ function read($resource, $len=null) {
     # > Use of stream_select() on file descriptors returned by proc_open()
     #   will fail and return FALSE under Windows.
     $r = Array($resource);
-    my_print("Calling select to see if there's data on $resource");
+    my_print("Calling select to see if there's data on " . get_resource_map_id($resource));
     $last_requested_len = 0;
     while (true) {
       $w=NULL;$e=NULL;$t=0;
@@ -1316,14 +1321,14 @@ function read($resource, $len=null) {
       if ($cnt === false or feof($resource)) {
         my_print("Checking for failed read...");
         if (empty($buff)) {
-          my_print("----  EOF ON $resource  ----");
+          my_print("----  EOF ON " . get_resource_map_id($resource) . "  ----");
           $buff = false;
         }
         break;
       }
 
       $md = stream_get_meta_data($resource);
-      dump_array($md, "Metadata for {$resource}");
+      dump_array($md, "Metadata for " . get_resource_map_id($resource));
       if ($md['unread_bytes'] > 0) {
         $last_requested_len = min($len, $md['unread_bytes']);
         $buff .= fread($resource, $last_requested_len);
@@ -1340,7 +1345,7 @@ function read($resource, $len=null) {
       if ($resource != $msgsock) { my_print("buff: '$buff'"); }
       $r = Array($resource);
     }
-    my_print(sprintf("Done with the big read loop on $resource, got %d bytes, asked for %d bytes", strlen($buff), $last_requested_len));
+    my_print(sprintf("Done with the big read loop on %s, got %d bytes, asked for %d bytes", get_resource_map_id($resource), strlen($buff), $last_requested_len));
     break;
   default:
     # then this is possibly a closed channel resource, see if we have any
@@ -1352,7 +1357,7 @@ function read($resource, $len=null) {
       $c['data'] = substr($c['data'], $len);
       my_print("Aha!  got some leftovers");
     } else {
-      my_print("Wtf don't know how to read from resource $resource, c: $c");
+      my_print("Wtf don't know how to read from resource " . get_resource_map_id($resource) . ", c: $c");
       if (is_array($c)) {
         dump_array($c);
       }
@@ -1382,7 +1387,7 @@ function write($resource, $buff, $len=0) {
     $count = fwrite($resource, $buff, $len);
     fflush($resource);
     break;
-  default: my_print("Wtf don't know how to write to resource $resource"); break;
+  default: my_print("Wtf don't know how to write to resource " . get_resource_map_id($resource)); break;
   }
   return $count;
 }
@@ -1471,7 +1476,7 @@ function select(&$r, &$w, &$e, $tv_sec=0, $tv_usec=0) {
 
 function add_reader($resource) {
   global $readers;
-  if ((is_resource($resource) || is_object($resource)) && !in_array($resource, $readers)) {
+  if ((is_resource($resource) || is_object($resource)) && !in_array($resource, $readers, true)) {
     $readers[] = $resource;
   }
 }
@@ -1480,9 +1485,9 @@ function remove_reader($resource) {
   global $readers;
   #my_print("Removing reader: $resource");
   #dump_readers();
-  if (in_array($resource, $readers)) {
+  if (in_array($resource, $readers, true)) {
     foreach ($readers as $key => $r) {
-      if ($r == $resource) {
+      if ($r === $resource) {
         unset($readers[$key]);
       }
     }
@@ -1578,14 +1583,88 @@ while (false !== ($cnt = select($r, $w, $e, $t))) {
       write_tlv_to_socket($msgsock, $response);
     } else {
       #my_print("not Msgsock: $ready");
-      $data = read($ready);
-      if (false === $data) {
-        handle_dead_resource_channel($ready);
-      } elseif (strlen($data) > 0){
-        my_print(sprintf("Read returned %s bytes", strlen($data)));
-        $request = handle_resource_read_channel($ready, $data);
-        if ($request) {
-          write_tlv_to_socket($msgsock, $request);
+      $chan_id = get_channel_id_from_resource($ready);
+      $channel = false;
+      if ($chan_id !== false) {
+        $channel = get_channel_by_id($chan_id);
+      }
+
+      if ($channel && isset($channel['subtype']) && $channel['subtype'] == 'tcp_server') {
+        $client_sock = false;
+        $client_addr = '';
+        $client_port = 0;
+        $server_addr = '';
+        $server_port = 0;
+
+        switch (get_rtype($ready)) {
+        case 'socket':
+          $client_sock = @socket_accept($ready);
+          if ($client_sock) {
+            @socket_getpeername($client_sock, $client_addr, $client_port);
+            @socket_getsockname($ready, $server_addr, $server_port);
+            register_socket($client_sock);
+          }
+          break;
+        case 'stream':
+          $peer_name = '';
+          $client_sock = @stream_socket_accept($ready, 0, $peer_name);
+          if ($client_sock) {
+            $local_name = stream_socket_get_name($ready, false);
+            if (!is_string($peer_name)) {
+              $peer_name = '';
+            }
+            if (!is_string($local_name)) {
+              $local_name = '';
+            }
+
+            if (preg_match('/^\[([^\]]+)\]:(\d+)$/', $peer_name, $matches)) {
+              $client_addr = $matches[1];
+              $client_port = (int)$matches[2];
+            } elseif (preg_match('/^([^:]+):(\d+)$/', $peer_name, $matches)) {
+              $client_addr = $matches[1];
+              $client_port = (int)$matches[2];
+            }
+
+            if (preg_match('/^\[([^\]]+)\]:(\d+)$/', $local_name, $matches)) {
+              $server_addr = $matches[1];
+              $server_port = (int)$matches[2];
+            } elseif (preg_match('/^([^:]+):(\d+)$/', $local_name, $matches)) {
+              $server_addr = $matches[1];
+              $server_port = (int)$matches[2];
+            }
+
+            register_stream($client_sock);
+          }
+          break;
+        }
+
+        if ($client_sock) {
+          $client_channel_id = register_channel($client_sock);
+          add_reader($client_sock);
+
+          $pkt = pack("N", PACKET_TYPE_REQUEST);
+          packet_add_tlv($pkt, create_tlv(TLV_TYPE_COMMAND_ID, COMMAND_ID_STDAPI_NET_TCP_CHANNEL_OPEN));
+          packet_add_tlv($pkt, create_tlv(TLV_TYPE_REQUEST_ID, generate_req_id()));
+          packet_add_tlv($pkt, create_tlv(TLV_TYPE_CHANNEL_ID, $client_channel_id));
+          packet_add_tlv($pkt, create_tlv(TLV_TYPE_CHANNEL_PARENTID, $chan_id));
+          packet_add_tlv($pkt, create_tlv(TLV_TYPE_LOCAL_HOST, $server_addr));
+          packet_add_tlv($pkt, create_tlv(TLV_TYPE_LOCAL_PORT, $server_port));
+          packet_add_tlv($pkt, create_tlv(TLV_TYPE_PEER_HOST, $client_addr));
+          packet_add_tlv($pkt, create_tlv(TLV_TYPE_PEER_PORT, $client_port));
+          packet_add_tlv($pkt, create_tlv(TLV_TYPE_UUID, $GLOBALS['UUID']));
+          $pkt = pack("N", strlen($pkt) + 4) . $pkt;
+          write_tlv_to_socket($msgsock, $pkt);
+        }
+      } else {
+        $data = read($ready);
+        if (false === $data) {
+          handle_dead_resource_channel($ready);
+        } elseif (strlen($data) > 0){
+          my_print(sprintf("Read returned %s bytes", strlen($data)));
+          $request = handle_resource_read_channel($ready, $data);
+          if ($request) {
+            write_tlv_to_socket($msgsock, $request);
+          }
         }
       }
     }
