@@ -1538,21 +1538,12 @@ function channel_create_stdapi_net_tcp_server($req, &$pkt) {
     $local_host_tlv = packet_get_tlv($req, TLV_TYPE_LOCAL_HOST);
     $local_port_tlv = packet_get_tlv($req, TLV_TYPE_LOCAL_PORT);
 
-    $local_host = $local_host_tlv ? $local_host_tlv['value'] : '';
+    $local_host = $local_host_tlv && $local_host_tlv['value'] ? $local_host_tlv['value'] : '0.0.0.0';
     $local_port = $local_port_tlv ? $local_port_tlv['value'] : 0;
     $sock = false;
 
-    if (empty($local_host)) {
-        $local_host = '0.0.0.0';
-    }
-
     if (can_call_function('stream_socket_server')) {
-        if (strpos($local_host, ':') !== false) {
-            $address = "tcp://[{$local_host}]:{$local_port}";
-        } else {
-            $address = "tcp://{$local_host}:{$local_port}";
-        }
-
+        $address = "tcp://{$local_host}:{$local_port}";
         $sock = @stream_socket_server($address, $errno, $errstr, STREAM_SERVER_BIND | STREAM_SERVER_LISTEN);
         if ($sock) {
             stream_set_blocking($sock, 0);
