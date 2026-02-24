@@ -345,22 +345,61 @@ out:
 	return rc;
 }
 
-int fs_mkdir(const char *directory)
+int fs_mkdir(char *directory)
 {
 	int rc = ERROR_SUCCESS;
-	wchar_t *dir_w = met_api->string.utf8_to_wchar(directory);
-
-	if (dir_w == NULL) {
-		rc = GetLastError();
-		goto out;
+	struct meterp_stat s = { 0 };
+	wchar_t* dir_w;
+	size_t directory_length;
+	char* base_dir;
+	char* dir;
+		
+	if(directory == NULL){
+		return ERROR_INVALID_PARAMETER;
 	}
 
-	if (CreateDirectoryW(dir_w, NULL) == 0) {
+	// Add 2 because of NULL character and additional backslash
+	directory_length = lstrlenA(directory)+2;
+	base_dir = (char *)HeapAlloc(GetProcessHeap(), 0, directory_length);
+	
+	if(base_dir == NULL){
 		rc = GetLastError();
+		return rc;
 	}
+
+	dir = strtok(directory, "\\");
+
+	sprintf_s(base_dir, directory_length, "%s\\", dir);
+
+	while (dir != NULL)
+	{
+		if (fs_stat(base_dir, &s) != ERROR_SUCCESS) {
+			dir_w = met_api->string.utf8_to_wchar(base_dir);
+			if (dir_w == NULL) {
+				rc = GetLastError();
+				goto out;
+			}
+
+			if (CreateDirectoryW(dir_w, NULL) == 0) {
+				rc = GetLastError();
+				free(dir_w);
+				goto out;
+			}
+			free(dir_w);
+		}
+
+		dir = strtok(NULL, "\\");
+		
+		if (dir != NULL){
+			sprintf_s((char*)(base_dir+lstrlenA(base_dir)), directory_length, "%s\\",dir);
+		}
+		
+		memset(&s, 0, sizeof(struct meterp_stat));
+	}
+
 
 out:
-	free(dir_w);
+	HeapFree(GetProcessHeap(),0, base_dir);
 	return rc;
 }
 
