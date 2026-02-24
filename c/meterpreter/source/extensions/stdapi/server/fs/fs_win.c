@@ -353,10 +353,20 @@ int fs_mkdir(char *directory)
 	size_t directory_length;
 	char* base_dir;
 	char* dir;
-	
+		
+	if(directory == NULL){
+		return ERROR_INVALID_PARAMETER;
+	}
+
 	// Add 2 because of NULL character and additional backslash
 	directory_length = lstrlenA(directory)+2;
 	base_dir = (char *)HeapAlloc(GetProcessHeap(), 0, directory_length);
+	
+	if(base_dir == NULL){
+		rc = GetLastError();
+		return rc;
+	}
+
 	dir = strtok(directory, "\\");
 
 	sprintf_s(base_dir, directory_length, "%s\\", dir);
