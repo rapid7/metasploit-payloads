@@ -188,6 +188,11 @@ BOOL extension_encryption_add(LPVOID lpExtensionLocation, DWORD dwExtensionSize)
 	BOOL ret = TRUE;
 	HANDLE hHeap = GetProcessHeap();
 	ExtensionEncryptionStatus* lpExtensionStatus = NULL;
+	PIMAGE_DOS_HEADER pDosHeader = NULL;
+	PIMAGE_NT_HEADERS pNtHeaders = NULL;
+	PIMAGE_SECTION_HEADER pSectionHeader = NULL;
+	LPVOID lpTextSection = NULL;
+	DWORD dwTextSize = 0;
 
 	EnterCriticalSection(&g_ExtensionEncryptionManager->cs);
 
@@ -201,6 +206,50 @@ BOOL extension_encryption_add(LPVOID lpExtensionLocation, DWORD dwExtensionSize)
 		dprintf("[extension_encryption][extension_encryption_add] Invalid parameters.");
 		ret = FALSE;
 	}
+	if (ret) {
+		pDosHeader = (PIMAGE_DOS_HEADER)lpExtensionLocation;
+	}
+
+	if (ret && pDosHeader->e_magic != IMAGE_DOS_SIGNATURE) {
+		dprintf("[extension_encryption][extension_encryption_add] Invalid DOS Signature.");
+		ret = FALSE;
+	}
+
+	if (ret) {
+		pNtHeaders = (PIMAGE_NT_HEADERS)((BYTE*)lpExtensionLocation + pDosHeader->e_lfanew);
+	}
+	
+	if (ret && pNtHeaders->Signature != IMAGE_NT_SIGNATURE) {
+		dprintf("[extension_encryption][extension_encryption_add] Invalid NT Signature");
+		ret = FALSE;
+	}
+	
+	if (ret) {
+		pSectionHeader = IMAGE_FIRST_SECTION(pNtHeaders);
+	}
+	
+	if (ret && pSectionHeader == NULL) {
+		dprintf("[extension_encryption][extension_encryption_add] Invalid section header");
+		ret = FALSE;
+	}
+
+	for (WORD i = 0; ret && i < pNtHeaders->FileHeader.NumberOfSections; i++) {
+		if (!strncmp(pSectionHeader[i].Name, ".text", 5)) {
+			dprintf("[extension_encryption][extension_encryption_add] .text section of the extension is found!");
+			lpTextSection = (BYTE*)lpExtensionLocation + pSectionHeader[i].VirtualAddress;
+			dwTextSize = pSectionHeader[i].Misc.VirtualSize;
+			break;
+		}
+	}
+	if (lpTextSection == NULL) {
+		dprintf("[extension_encryption][extension_encryption_add] couldn't get text section of the encryption");
+		ret = FALSE;
+	}
+
+	if (dwExtensionSize == 0) {
+		dprintf("[extension_encryption][extension_encryption_add] couldn't get size of text section of the extension");
+		ret = FALSE;
+	}
 
 	if (ret) {
 		lpExtensionStatus = (ExtensionEncryptionStatus*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, sizeof(ExtensionEncryptionStatus));
@@ -212,8 +261,8 @@ BOOL extension_encryption_add(LPVOID lpExtensionLocation, DWORD dwExtensionSize)
 	if (ret) {
 		lpExtensionStatus->bEncryptable = TRUE;
 		lpExtensionStatus->bEncrypted = FALSE;
-		lpExtensionStatus->lpLoc = lpExtensionLocation;
-		lpExtensionStatus->dwSize = dwExtensionSize;
+		lpExtensionStatus->lpLoc = lpTextSection;
+		lpExtensionStatus->dwSize = dwTextSize;
 		lpExtensionStatus->dwLastUsedTime = GetTickCount();
 		dprintf("[extension_encryption][extension_encryption_add] lpExtensionStatus->bEncryptable: %d", lpExtensionStatus->bEncryptable);
 		dprintf("[extension_encryption][extension_encryption_add] lpExtensionStatus->bEncrypted: %d", lpExtensionStatus->bEncrypted);
@@ -222,7 +271,7 @@ BOOL extension_encryption_add(LPVOID lpExtensionLocation, DWORD dwExtensionSize)
 		dprintf("[extension_encryption][extension_encryption_add] lpExtensionStatus->dwLastUsedTime: %u", lpExtensionStatus->dwLastUsedTime);
 		g_ExtensionEncryptionManager->extensionStatuses[g_ExtensionEncryptionManager->dwExtensionsCount] = lpExtensionStatus;
 		g_ExtensionEncryptionManager->dwExtensionsCount++;
-		dprintf("[extension_encryption][extension_encryption_add] Added extension at %p of size %u", lpExtensionLocation, dwExtensionSize);
+		dprintf("[extension_encryption][extension_encryption_add] Added extension text section at %p of size %u", lpExtensionStatus->lpLoc,lpExtensionStatus->dwSize);
 	}
 	dprintf("[extension_encryption][extension_encryption_add] Function exiting");
 	LeaveCriticalSection(&g_ExtensionEncryptionManager->cs);
@@ -265,6 +314,7 @@ BOOL extension_encryption_remove(ExtensionEncryptionStatus* lpExtensionStatus) {
 	dprintf("[extension_encryption][extension_encryption_remove] Removing extension.");
 	if (lpExtensionStatus == NULL) {
 		dprintf("[extension_encryption][extension_encryption_remove] lpExtensionStatus is NULL.");
+		LeaveCriticalSection(&g_ExtensionEncryptionManager->cs);
 		return ret;
 	}
 	for (DWORD i = 0; i < g_ExtensionEncryptionManager->dwExtensionsCount; i++) {
@@ -294,8 +344,16 @@ BOOL extension_encryption_encrypt(ExtensionEncryptionStatus* lpExtensionStatus) 
 	HANDLE hHeap = GetProcessHeap();
 	DWORD diff = BUFFER_SIZE;
 	size_t ByteCounter = 0;
+	LPVOID ExtensionLoc = NULL;
+	DWORD ExtensionSize = 0;
+	DWORD dwOldProtect = 0;
 
-	if(!lpExtensionStatus->bEncryptable) {
+	if (lpExtensionStatus == NULL) {
+		dprintf("[extension_encryption][extension_encryption_encrypt] lpExtensionStatus is NULL");
+		bError = TRUE;
+	}
+
+	if(!bError && !lpExtensionStatus->bEncryptable) {
 		dprintf("[extension_encryption][extension_encryption_encrypt] Extension is not encryptable.");
 		bError = TRUE;
 	}
@@ -326,9 +384,16 @@ BOOL extension_encryption_encrypt(ExtensionEncryptionStatus* lpExtensionStatus) 
 	}
 
 	if (!bError) {
-		LPVOID ExtensionLoc = lpExtensionStatus->lpLoc;
-		DWORD ExtensionSize = lpExtensionStatus->dwSize;
+		ExtensionLoc = lpExtensionStatus->lpLoc;
+		ExtensionSize = lpExtensionStatus->dwSize;
+		
+		if (!VirtualProtect(ExtensionLoc, ExtensionSize, PAGE_READWRITE, &dwOldProtect)) {
+			dprintf("[extension_encryption][extension_encryption_encrypt] VirtualProtect 1 failed with error 0x%x", GetLastError());
+			bError = TRUE;
+		}
+	}
 
+	if (!bError) {
 		for (DWORD i = 0; i != ExtensionSize; i += diff) {
 			if ((ExtensionSize - i) < BUFFER_SIZE) {
 				diff = ExtensionSize - i;
@@ -353,6 +418,13 @@ BOOL extension_encryption_encrypt(ExtensionEncryptionStatus* lpExtensionStatus) 
 		lpExtensionStatus->dwLastUsedTime = GetTickCount();
 		lpExtensionStatus->bEncrypted = TRUE;
 	}
+
+	if (!bError && !VirtualProtect(ExtensionLoc,ExtensionSize,dwOldProtect,&dwOldProtect)){
+		dprintf("[extension_encryption][extension_encryption_encrypt] VirtualProtect 2 failed with error 0x%x", GetLastError());
+		bError = TRUE;
+		ret = FALSE;
+	}
+
 	LeaveCriticalSection(&g_ExtensionEncryptionManager->cs);
 	
 	if (lpTempBufferWrite != NULL && lpTempBufferRead != NULL) {
@@ -372,8 +444,16 @@ BOOL extension_encryption_decrypt(ExtensionEncryptionStatus* lpExtensionStatus) 
 	HANDLE hHeap = GetProcessHeap();
 	DWORD diff = BUFFER_SIZE;
 	size_t ByteCounter = 0;
+	LPVOID ExtensionLoc = NULL;
+	DWORD ExtensionSize = 0;
+	DWORD dwOldProtect = 0;
 
-	if(!lpExtensionStatus->bEncryptable) {
+	if (lpExtensionStatus == NULL) {
+		dprintf("[extension_encryption][extension_encryption_decrypt] lpExtensionStatus is NULL");
+		bError = TRUE;
+	}
+
+	if(!bError &&!lpExtensionStatus->bEncryptable) {
 		dprintf("[extension_encryption][extension_encryption_decrypt] Extension is not encryptable.");
 		bError = TRUE;
 	}
@@ -385,8 +465,15 @@ BOOL extension_encryption_decrypt(ExtensionEncryptionStatus* lpExtensionStatus) 
 		lpExtensionStatus->dwLastUsedTime = GetTickCount();
 	}
 
-	LPVOID ExtensionLoc = lpExtensionStatus->lpLoc;
-	DWORD ExtensionSize = lpExtensionStatus->dwSize;
+	if (!bError) {
+		ExtensionLoc = lpExtensionStatus->lpLoc;
+		ExtensionSize = lpExtensionStatus->dwSize;
+
+		if (!VirtualProtect(ExtensionLoc, ExtensionSize, PAGE_READWRITE, &dwOldProtect)) {
+			dprintf("[extension_encryption][extension_encryption_decrypt] VirtualProtect 1 failed with error 0x%x", GetLastError());
+			bError = TRUE;
+		}
+	}
 
 	if (!bError) {
 		lpTempBufferRead = (unsigned char*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, BUFFER_SIZE);
@@ -444,6 +531,13 @@ BOOL extension_encryption_decrypt(ExtensionEncryptionStatus* lpExtensionStatus) 
 		lpExtensionStatus->dwLastUsedTime = GetTickCount();
 		lpExtensionStatus->bEncrypted = FALSE;
 	}
+
+	if (!bError && !VirtualProtect(ExtensionLoc,ExtensionSize,dwOldProtect,&dwOldProtect)){
+			dprintf("[extension_encryption][extension_encryption_decrypt] VirtualProtect 2 failed with error 0x%x", GetLastError());
+			bError = TRUE;
+			ret = FALSE;
+	}
+
 	LeaveCriticalSection(&g_ExtensionEncryptionManager->cs);
 	
 	if (lpTempBufferWrite != NULL && lpTempBufferRead != NULL) {
