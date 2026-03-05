@@ -184,9 +184,10 @@ ExtensionEncryptionManager* InitExtensionEncryptionManager(CryptographicManagerT
 	return g_ExtensionEncryptionManager;
 }
 
-BOOL extension_encryption_add(LPVOID lpExtensionLocation, DWORD dwExtensionSize) {
-	BOOL ret = TRUE;
+BOOL extension_encryption_add(LPVOID lpExtensionLocation) {
+	DWORD dwResult = ERROR_SUCCESS;
 	HANDLE hHeap = GetProcessHeap();
+	HANDLE hLib = (HMODULE)lpExtensionLocation;
 	ExtensionEncryptionStatus* lpExtensionStatus = NULL;
 	PIMAGE_DOS_HEADER pDosHeader = NULL;
 	PIMAGE_NT_HEADERS pNtHeaders = NULL;
@@ -195,70 +196,49 @@ BOOL extension_encryption_add(LPVOID lpExtensionLocation, DWORD dwExtensionSize)
 	DWORD dwTextSize = 0;
 
 	EnterCriticalSection(&g_ExtensionEncryptionManager->cs);
-
-	dprintf("[extension_encryption][extension_encryption_add] Adding extension");
-	if (g_ExtensionEncryptionManager->dwExtensionsCount >= MAX_EXTENSIONS) {
-		dprintf("[extension_encryption][extension_encryption_add] Maximum number of extensions reached.");
-		ret = FALSE;
-	}
-
-	if (lpExtensionLocation == NULL || dwExtensionSize == 0) {
-		dprintf("[extension_encryption][extension_encryption_add] Invalid parameters.");
-		ret = FALSE;
-	}
-	if (ret) {
-		pDosHeader = (PIMAGE_DOS_HEADER)lpExtensionLocation;
-	}
-
-	if (ret && pDosHeader->e_magic != IMAGE_DOS_SIGNATURE) {
-		dprintf("[extension_encryption][extension_encryption_add] Invalid DOS Signature.");
-		ret = FALSE;
-	}
-
-	if (ret) {
-		pNtHeaders = (PIMAGE_NT_HEADERS)((BYTE*)lpExtensionLocation + pDosHeader->e_lfanew);
-	}
-	
-	if (ret && pNtHeaders->Signature != IMAGE_NT_SIGNATURE) {
-		dprintf("[extension_encryption][extension_encryption_add] Invalid NT Signature");
-		ret = FALSE;
-	}
-	
-	if (ret) {
-		pSectionHeader = IMAGE_FIRST_SECTION(pNtHeaders);
-	}
-	
-	if (ret && pSectionHeader == NULL) {
-		dprintf("[extension_encryption][extension_encryption_add] Invalid section header");
-		ret = FALSE;
-	}
-
-	for (WORD i = 0; ret && i < pNtHeaders->FileHeader.NumberOfSections; i++) {
-		if (!strncmp(pSectionHeader[i].Name, ".text", 5)) {
-			dprintf("[extension_encryption][extension_encryption_add] .text section of the extension is found!");
-			lpTextSection = (BYTE*)lpExtensionLocation + pSectionHeader[i].VirtualAddress;
-			dwTextSize = pSectionHeader[i].Misc.VirtualSize;
-			break;
+	do {
+		dprintf("[extension_encryption][extension_encryption_add] Adding extension");
+		if (g_ExtensionEncryptionManager->dwExtensionsCount >= MAX_EXTENSIONS) {
+			BREAK_WITH_ERROR("[extension_encryption][extension_encryption_add] Maximum number of extensions reached.", ERROR_NOT_ENOUGH_MEMORY);
 		}
-	}
-	if (lpTextSection == NULL) {
-		dprintf("[extension_encryption][extension_encryption_add] couldn't get text section of the encryption");
-		ret = FALSE;
-	}
 
-	if (dwExtensionSize == 0) {
-		dprintf("[extension_encryption][extension_encryption_add] couldn't get size of text section of the extension");
-		ret = FALSE;
-	}
+		if (hLib == NULL || hLib == INVALID_HANDLE_VALUE) {
+			BREAK_WITH_ERROR("[extension_encryption][extension_encryption_add] Invalid parameters.", ERROR_INVALID_PARAMETER);
+		}
 
-	if (ret) {
+		pDosHeader = (PIMAGE_DOS_HEADER)lpExtensionLocation;
+		if(pDosHeader->e_magic != IMAGE_DOS_SIGNATURE) {
+			BREAK_WITH_ERROR("[extension_encryption][extension_encryption_add] Invalid DOS Signature.", ERROR_INVALID_PARAMETER);
+		}
+		pNtHeaders = (PIMAGE_NT_HEADERS)((BYTE*)lpExtensionLocation + pDosHeader->e_lfanew);
+		
+		if (pNtHeaders->Signature != IMAGE_NT_SIGNATURE) {
+			BREAK_WITH_ERROR("[extension_encryption][extension_encryption_add] Invalid NT Signature.", ERROR_INVALID_PARAMETER);
+		}
+		pSectionHeader = IMAGE_FIRST_SECTION(pNtHeaders);
+		if (pSectionHeader == NULL) {
+			BREAK_WITH_ERROR("[extension_encryption][extension_encryption_add] Invalid section header.", ERROR_INVALID_PARAMETER);
+		}
+
+		for (WORD i = 0; i < pNtHeaders->FileHeader.NumberOfSections; i++) {
+			if (!strncmp(pSectionHeader[i].Name, ".text", 5)) {
+				dprintf("[extension_encryption][extension_encryption_add] .text section of the extension is found!");
+				lpTextSection = (BYTE*)lpExtensionLocation + pSectionHeader[i].VirtualAddress;
+				dwTextSize = pSectionHeader[i].Misc.VirtualSize;
+				break;
+			}
+		}
+		if (lpTextSection == NULL) {
+			BREAK_WITH_ERROR("[extension_encryption][extension_encryption_add] couldn't get text section of the encryption.", ERROR_INVALID_PARAMETER);
+		}
+
+		if (dwTextSize == 0) {
+			BREAK_WITH_ERROR("[extension_encryption][extension_encryption_add] couldn't get size of text section of the extension.", ERROR_INVALID_PARAMETER);
+		}
 		lpExtensionStatus = (ExtensionEncryptionStatus*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, sizeof(ExtensionEncryptionStatus));
 		if (lpExtensionStatus == NULL) {
-			dprintf("[extension_encryption][extension_encryption_add] HeapAlloc failed.");
-			ret = FALSE;
+			BREAK_WITH_ERROR("[extension_encryption][extension_encryption_add] HeapAlloc failed.", ERROR_NOT_ENOUGH_MEMORY);
 		}
-	}
-	if (ret) {
 		lpExtensionStatus->bEncryptable = TRUE;
 		lpExtensionStatus->bEncrypted = FALSE;
 		lpExtensionStatus->lpLoc = lpTextSection;
@@ -272,10 +252,10 @@ BOOL extension_encryption_add(LPVOID lpExtensionLocation, DWORD dwExtensionSize)
 		g_ExtensionEncryptionManager->extensionStatuses[g_ExtensionEncryptionManager->dwExtensionsCount] = lpExtensionStatus;
 		g_ExtensionEncryptionManager->dwExtensionsCount++;
 		dprintf("[extension_encryption][extension_encryption_add] Added extension text section at %p of size %u", lpExtensionStatus->lpLoc,lpExtensionStatus->dwSize);
-	}
-	dprintf("[extension_encryption][extension_encryption_add] Function exiting");
-	LeaveCriticalSection(&g_ExtensionEncryptionManager->cs);
-	return ret;
+		dprintf("[extension_encryption][extension_encryption_add] Function exiting");
+		LeaveCriticalSection(&g_ExtensionEncryptionManager->cs);
+	} while (0);
+	return dwResult == ERROR_SUCCESS;
 }
 
 BOOL extension_encryption_get(LPVOID lpHandlerFunction, ExtensionEncryptionStatus** lpOutExtensionStatus) {

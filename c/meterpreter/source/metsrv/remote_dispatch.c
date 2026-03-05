@@ -335,9 +335,7 @@ DWORD request_core_loadlib(Remote *remote, Packet *packet)
 	PCHAR libraryPath;
 	DWORD flags = 0;
 	BOOL bLibLoadedReflectivly = FALSE;
-
 	LPVOID lpLibraryLocation = NULL;
-	DWORD dwLibrarySize = 0;
 
   dprintf("[LOADLIB] here 1");
 
@@ -395,8 +393,7 @@ DWORD request_core_loadlib(Remote *remote, Packet *packet)
 				else
 				{
 					bLibLoadedReflectivly = TRUE;
-					lpLibraryLocation = dataTlv.buffer;
-					dwLibrarySize = dataTlv.header.length;
+					lpLibraryLocation = (LPVOID)library;
 				}
   dprintf("[LOADLIB] here 9");
 
@@ -433,7 +430,7 @@ DWORD request_core_loadlib(Remote *remote, Packet *packet)
 			if (flags & LOAD_LIBRARY_EXTENSION_ENCRYPTABLE && bLibLoadedReflectivly) {
 				ExtensionEncryptionManager* encryptionManager = GetExtensionEncryptionManager();
 				if(encryptionManager) {
-					encryptionManager->add(lpLibraryLocation, dwLibrarySize);
+					encryptionManager->add(lpLibraryLocation);
 				}
 			}
 		}
