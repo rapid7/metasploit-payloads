@@ -51,7 +51,7 @@ typedef struct {
 	DWORD dwCryptoManagerType;
 	CryptographicManager cryptoManager;
 	struct {
-		BOOL (*add)(LPVOID lpExtensionLocation, DWORD dwExtensionSize);
+		BOOL (*add)(LPVOID lpExtensionLocation);
 		BOOL (*get)(LPVOID lpHandlerFunction, ExtensionEncryptionStatus** lpOutExtensionStatus);
 		BOOL (*remove)(ExtensionEncryptionStatus* lpStatus);
 		BOOL (*encrypt)(ExtensionEncryptionStatus* lpStatus);
@@ -62,7 +62,7 @@ typedef struct {
 
 ExtensionEncryptionManager *GetExtensionEncryptionManager(VOID);
 ExtensionEncryptionManager *InitExtensionEncryptionManager(CryptographicManagerType type, LPVOID lpCryptoParams);
-BOOL extension_encryption_add(LPVOID lpExtensionLocation, DWORD dwExtensionSize);
+BOOL extension_encryption_add(LPVOID lpExtensionLocation);
 BOOL extension_encryption_get(LPVOID lpHandlerFunction, ExtensionEncryptionStatus** lpOutExtensionStatus);
 BOOL extension_encryption_remove(ExtensionEncryptionStatus* lpStatus);
 
