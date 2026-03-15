@@ -3,11 +3,12 @@ DOCKER_CONTAINER=rapid7/msf-ubuntu-x64-meterpreter:latest
 COMMON_GEN=-Wno-dev -DUSE_STATIC_MSVC_RUNTIMES=ON
 COMMON_GEN_X86=-DCMAKE_TOOLCHAIN_FILE=../toolsets/i686-w64-mingw32.cmake -DBUILD_ARCH=Win32 ${COMMON_GEN}
 COMMON_GEN_X64=-DCMAKE_TOOLCHAIN_FILE=../toolsets/x86_64-w64-mingw32.cmake -DBUILD_ARCH=x64 ${COMMON_GEN}
+COMMON_GEN_ARM64=-DCMAKE_TOOLCHAIN_FILE=../toolsets/aarch64-w64-mingw32.cmake -DBUILD_ARCH=ARM64 ${COMMON_GEN}
 COMMON_BUILD=--config Release
 
 all: meterpreter
 
-clean: meterpreter-x64-clean meterpreter-x86-clean
+clean: meterpreter-x64-clean meterpreter-x86-clean meterpreter-arm64-clean
 
 install:
 	@cp -f output/*.dll ../../../metasploit-framework/data/meterpreter
@@ -16,7 +17,22 @@ install:
 ### Build all
 ##########################################################################################
 
-meterpreter: meterpreter-x86 meterpreter-x64
+meterpreter: meterpreter-x86 meterpreter-x64 meterpreter-arm64
+
+meterpreter-arm64: meterpreter-arm64-gen meterpreter-arm64-build
+meterpreter-arm64-gen:
+	@cmake -S workspace -B workspace/build/mingw-arm64 $(COMMON_GEN_ARM64)
+meterpreter-arm64-build:
+	@cmake --build workspace/build/mingw-arm64 $(COMMON_BUILD)
+meterpreter-arm64-clean:
+	@rm -rf workspace/build/mingw-arm64* && rm -rf output/*.arm64.dll
+meterpreter-metsrv-arm64: meterpreter-metsrv-arm64-gen meterpreter-metsrv-arm64-build
+meterpreter-metsrv-arm64-gen:
+	@cmake -S workspace -B workspace/build/mingw-arm64-metsrv -DBUILD_ALL=OFF -DBUILD_METSRV=ON $(COMMON_GEN_ARM64)
+meterpreter-metsrv-arm64-build:
+	@cmake --build workspace/build/mingw-arm64-metsrv $(COMMON_BUILD)
+
+clean: meterpreter-x64-clean meterpreter-x86-clean meterpreter-arm64-clean
 
 meterpreter-x86: meterpreter-x86-gen meterpreter-x86-build
 

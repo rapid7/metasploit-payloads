@@ -133,6 +133,12 @@ if(BUILD_ARCH MATCHES "Win32")
     set(IS_X86 true)
     set(IS_X64 false)
     set(BIN_SUBSYSTEM "4.0")
+elseif(BUILD_ARCH MATCHES "ARM64")
+    set(TARGET_ARCH "arm64")
+    set(IS_X86 false)
+    set(IS_X64 false)
+    set(IS_ARM64 true)
+    set(BIN_SUBSYSTEM "6.02")
 else()
     set(TARGET_ARCH "x64")
     set(IS_X86 false)
@@ -185,6 +191,14 @@ if(IS_X64)
         -D_WIN64
         -D_X64
         -DX64
+    )
+endif()
+if(IS_ARM64)
+    add_definitions(
+        -DWIN64
+        -D_WIN64
+        -D_ARM64
+        -DARM64
     )
 endif()
 
