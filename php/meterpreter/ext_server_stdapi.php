@@ -1543,7 +1543,11 @@ function channel_create_stdapi_net_tcp_server($req, &$pkt) {
     $sock = false;
 
     if (can_call_function('stream_socket_server')) {
-        $address = "tcp://{$local_host}:{$local_port}";
+        if (strpos($local_host, ':') !== false) {
+            $address = "tcp://[{$local_host}]:{$local_port}";
+        } else {
+            $address = "tcp://{$local_host}:{$local_port}";
+        }
         $sock = @stream_socket_server($address, $errno, $errstr, STREAM_SERVER_BIND | STREAM_SERVER_LISTEN);
         if ($sock) {
             stream_set_blocking($sock, 0);
