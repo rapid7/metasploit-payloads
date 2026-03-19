@@ -14,7 +14,12 @@
 
 #define SAFE_FREE(x) if(x){free(x);x=NULL;}
 
+// Minimum Windows Vista for inet_pton and modern APIs
+#ifndef _WIN32_WINNT
+#define _WIN32_WINNT 0x0600
+#endif
 #include <winsock2.h>
+#include <ws2tcpip.h>
 #include <windows.h>
 
 // Simple trick to get the current meterpreters arch

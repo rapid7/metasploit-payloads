@@ -10,7 +10,7 @@
 typedef struct _TCPMIGRATECONTEXT
 {
 	COMMONMIGRATECONTEXT common;
-	WSAPROTOCOL_INFOA info;
+	WSAPROTOCOL_INFOW info;
 } TCPMIGRATECONTEXT, * LPTCPMIGRATECONTEXT;
 
 // These fields aren't defined unless the SDK version is set to something old enough.
@@ -78,7 +78,7 @@ static DWORD reverse_tcp4(const char* host, u_short port, DWORD retryTotal, DWOR
 	char* targetIp = inet_ntoa(*(struct in_addr *)*target->h_addr_list);
 
 	SOCKADDR_IN sock = { 0 };
-	sock.sin_addr.s_addr = inet_addr(targetIp);
+	inet_pton(AF_INET, targetIp, &sock.sin_addr);
 	sock.sin_family = AF_INET;
 	sock.sin_port = htons(port);
 
@@ -844,7 +844,7 @@ static DWORD get_migrate_context_tcp(Transport* transport, DWORD targetProcessId
 	}
 
 	// Duplicate the socket for the target process
-	if (WSADuplicateSocketA(((TcpTransportContext*)transport->ctx)->fd, targetProcessId, &ctx->info) != NO_ERROR)
+	if (WSADuplicateSocketW(((TcpTransportContext*)transport->ctx)->fd, targetProcessId, &ctx->info) != NO_ERROR)
 	{
 		free(ctx);
 		return WSAGetLastError();

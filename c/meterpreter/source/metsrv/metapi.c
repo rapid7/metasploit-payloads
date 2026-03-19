@@ -128,7 +128,9 @@ MetApi api_instance = {
         inject_dll,
         inject_via_apcthread,
         inject_via_remotethread,
+    #ifndef _M_ARM64
         inject_via_remotethread_wow64,
+    #endif
     },
     // DesktopApi
     {

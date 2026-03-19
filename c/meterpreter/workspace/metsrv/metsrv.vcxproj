@@ -603,7 +603,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <AdditionalLibraryDirectories>..\common\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     <ModuleDefinitionFile>$(ProjectDir)..\..\source\def\$(ProjectName).def</ModuleDefinitionFile>
     <GenerateDebugInformation>false</GenerateDebugInformation>
-    <RandomizedBaseAddress>false</RandomizedBaseAddress>
+    <RandomizedBaseAddress>true</RandomizedBaseAddress>
     <TargetMachine>MachineARM64</TargetMachine>
     <SubSystem>Windows</SubSystem>
     <ImportLibrary></ImportLibrary>
@@ -634,7 +634,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <AdditionalLibraryDirectories>..\common\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     <ModuleDefinitionFile>$(ProjectDir)..\..\source\def\$(ProjectName).def</ModuleDefinitionFile>
     <GenerateDebugInformation>false</GenerateDebugInformation>
-    <RandomizedBaseAddress>false</RandomizedBaseAddress>
+    <RandomizedBaseAddress>true</RandomizedBaseAddress>
     <TargetMachine>MachineARM64</TargetMachine>
     <SubSystem>Windows</SubSystem>
     <ImportLibrary></ImportLibrary>
@@ -665,7 +665,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(TargetName)
     <AdditionalLibraryDirectories>..\common\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     <ModuleDefinitionFile>$(ProjectDir)..\..\source\def\$(ProjectName).def</ModuleDefinitionFile>
     <GenerateDebugInformation>false</GenerateDebugInformation>
-    <RandomizedBaseAddress>false</RandomizedBaseAddress>
+    <RandomizedBaseAddress>true</RandomizedBaseAddress>
     <TargetMachine>MachineARM64</TargetMachine>
     <SubSystem>Windows</SubSystem>
     <ImportLibrary></ImportLibrary>
