@@ -4,9 +4,58 @@
  */
 #include "metsrv.h"
 
-#ifndef CRYPT_STRING_BASE64URI
-#define CRYPT_STRING_BASE64URI 0xd
-#endif
+/*!
+ * @brief Convert a Base64URL-encoded string to standard Base64 in-place.
+ * @param str Pointer to the string to convert (modified in-place).
+ * @param len Length of the string.
+ * @param paddedLen Pointer that will receive the length of the padded string.
+ * @return Pointer to a new buffer containing the standard Base64 string (with
+ *         padding), or NULL on allocation failure. The caller must free() the
+ *         returned buffer.
+ */
+static LPBYTE b64uri_to_b64(LPBYTE str, DWORD len, LPDWORD paddedLen)
+{
+	DWORD padNeeded = (4 - (len % 4)) % 4;
+	*paddedLen = len + padNeeded;
+
+	LPBYTE result = (LPBYTE)calloc(sizeof(BYTE), *paddedLen + 1);
+	if (result == NULL)
+	{
+		return NULL;
+	}
+
+	memcpy(result, str, len);
+
+	for (DWORD i = 0; i < len; i++)
+	{
+		if (result[i] == '-') result[i] = '+';
+		else if (result[i] == '_') result[i] = '/';
+	}
+
+	memset(result + len, '=', padNeeded);
+
+	return result;
+}
+
+/*!
+ * @brief Convert a standard Base64 string to Base64URL in-place.
+ * @param str Pointer to the string to convert (modified in-place).
+ * @param len Pointer to the length of the string; updated to reflect
+ *        the new length after padding is stripped.
+ */
+static void b64_to_b64uri(LPBYTE str, LPDWORD len)
+{
+	DWORD i;
+	for (i = 0; i < *len; i++)
+	{
+		if (str[i] == '+') str[i] = '-';
+		else if (str[i] == '/') str[i] = '_';
+		else if (str[i] == '=') break;
+	}
+
+	str[i] = '\0';
+	*len = i;
+}
 
 /*!
  * @brief Decode incoming packet data based on the configuration.
@@ -36,14 +85,26 @@ BOOL decode_encoded_packet(HttpTransportContext* ctx, LPBYTE encodedData, DWORD 
 	case C2_ENCODING_B64:
 	case C2_ENCODING_B64URI:
 	{
-		DWORD flags = conn->options.encode_flags == C2_ENCODING_B64 ? CRYPT_STRING_BASE64 : CRYPT_STRING_BASE64URI;
+		LPBYTE decodeInput = encodedData;
+		DWORD decodeInputLen = encodedDataLen;
+		LPBYTE convertedBuf = NULL;
 
-		if (CryptStringToBinaryA(encodedData, encodedDataLen, flags, NULL, dataLen, NULL, NULL))
+		if (conn->options.encode_flags == C2_ENCODING_B64URI)
+		{
+			convertedBuf = b64uri_to_b64(encodedData, encodedDataLen, &decodeInputLen);
+			if (convertedBuf == NULL)
+			{
+				break;
+			}
+			decodeInput = convertedBuf;
+		}
+
+		if (CryptStringToBinaryA(decodeInput, decodeInputLen, CRYPT_STRING_BASE64, NULL, dataLen, NULL, NULL))
 		{
 			LPBYTE decoded = (LPBYTE)calloc(sizeof(BYTE), *dataLen + 1);
 			if (decoded != NULL)
 			{
-				if (CryptStringToBinaryA(encodedData, encodedDataLen, flags, decoded, dataLen, NULL, NULL))
+				if (CryptStringToBinaryA(decodeInput, decodeInputLen, CRYPT_STRING_BASE64, decoded, dataLen, NULL, NULL))
 				{
 					result = TRUE;
 					*data = decoded;
@@ -53,6 +114,11 @@ BOOL decode_encoded_packet(HttpTransportContext* ctx, LPBYTE encodedData, DWORD 
 					free(decoded);
 				}
 			}
+		}
+
+		if (convertedBuf)
+		{
+			free(convertedBuf);
 		}
 
 		break;
@@ -102,8 +168,7 @@ BOOL encode_raw_packet(HttpTransportContext* ctx, LPBYTE data, DWORD dataLen, LP
 	case C2_ENCODING_B64:
 	case C2_ENCODING_B64URI:
 	{
-		DWORD flags = conn->options.encode_flags == C2_ENCODING_B64 ? CRYPT_STRING_BASE64 : CRYPT_STRING_BASE64URI;
-		flags |= CRYPT_STRING_NOCRLF;
+		DWORD flags = CRYPT_STRING_BASE64 | CRYPT_STRING_NOCRLF;
 
 		if (CryptBinaryToStringA(data, dataLen, flags, NULL, encodedDataLen))
 		{
@@ -112,6 +177,11 @@ BOOL encode_raw_packet(HttpTransportContext* ctx, LPBYTE data, DWORD dataLen, LP
 			{
 				if (CryptBinaryToStringA(data, dataLen, flags, encoded, encodedDataLen))
 				{
+					if (conn->options.encode_flags == C2_ENCODING_B64URI)
+					{
+						b64_to_b64uri(encoded, encodedDataLen);
+					}
+
 					result = TRUE;
 					*encodedData = encoded;
 				}
