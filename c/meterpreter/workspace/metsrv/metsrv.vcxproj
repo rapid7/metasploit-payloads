@@ -9,6 +9,10 @@
       <Configuration>Debug</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|ARM64">
+      <Configuration>Debug</Configuration>
+      <Platform>ARM64</Platform>
+    </ProjectConfiguration>
     <ProjectConfiguration Include="r7_release|Win32">
       <Configuration>r7_release</Configuration>
       <Platform>Win32</Platform>
@@ -17,6 +21,10 @@
       <Configuration>r7_release</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
+    <ProjectConfiguration Include="r7_release|ARM64">
+      <Configuration>r7_release</Configuration>
+      <Platform>ARM64</Platform>
+    </ProjectConfiguration>
     <ProjectConfiguration Include="Release|Win32">
       <Configuration>Release</Configuration>
       <Platform>Win32</Platform>
@@ -24,6 +32,10 @@
     <ProjectConfiguration Include="Release|x64">
       <Configuration>Release</Configuration>
       <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|ARM64">
+      <Configuration>Release</Configuration>
+      <Platform>ARM64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
@@ -67,9 +79,27 @@
     <CharacterSet>Unicode</CharacterSet>
     <PlatformToolset>v141_xp</PlatformToolset>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>  
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='r7_release|ARM64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
-    <Import Project="$(VCTargetsPath)\BuildCustomizations\masm.props" />
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\marmasm.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
@@ -99,6 +129,18 @@
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='r7_release|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC60.props" />
+    <Import Project="..\meterpreter.props" />
+  </ImportGroup>
+    <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="..\meterpreter.props" />
+  </ImportGroup>
+    <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="..\meterpreter.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='r7_release|ARM64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="..\meterpreter.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
@@ -539,6 +581,100 @@ IF NOT EXIST "$(ProjectDir)..\..\output\" mkdir "$(ProjectDir)..\..\output\"
 copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
+
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
+  <ClCompile>
+    <Optimization>MinSpace</Optimization>
+    <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+    <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
+    <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\server;..\..\source\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;METSRV_EXPORTS;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+    <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    <WarningLevel>Level3</WarningLevel>
+    <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+    <BufferSecurityCheck>false</BufferSecurityCheck>
+    <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
+    <TreatWarningAsError>true</TreatWarningAsError>
+    <MultiProcessorCompilation>true</MultiProcessorCompilation>
+  </ClCompile>
+  <Link>
+    <AdditionalDependencies>ws2_32.lib;odbc32.lib;odbccp32.lib;crypt32.lib;wininet.lib;winhttp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    <AdditionalLibraryDirectories>..\common\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    <ModuleDefinitionFile>$(ProjectDir)..\..\source\def\$(ProjectName).def</ModuleDefinitionFile>
+    <GenerateDebugInformation>false</GenerateDebugInformation>
+    <RandomizedBaseAddress>false</RandomizedBaseAddress>
+    <TargetMachine>MachineARM64</TargetMachine>
+    <SubSystem>Windows</SubSystem>
+    <ImportLibrary></ImportLibrary>
+  </Link>
+  <PostBuildEvent>
+    <Command>IF NOT EXIST "$(ProjectDir)..\..\output\" mkdir "$(ProjectDir)..\..\output\"
+copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
+  </PostBuildEvent>
+</ItemDefinitionGroup>
+<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
+  <ClCompile>
+    <Optimization>MinSpace</Optimization>
+    <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+    <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
+    <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\server;..\..\source\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    <PreprocessorDefinitions>DEBUGTRACE;WIN32;NDEBUG;_WINDOWS;_USRDLL;METSRV_EXPORTS;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+    <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    <WarningLevel>Level3</WarningLevel>
+    <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+    <BufferSecurityCheck>false</BufferSecurityCheck>
+    <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
+    <TreatWarningAsError>true</TreatWarningAsError>
+    <MultiProcessorCompilation>true</MultiProcessorCompilation>
+  </ClCompile>
+  <Link>
+    <AdditionalDependencies>ws2_32.lib;odbc32.lib;odbccp32.lib;crypt32.lib;wininet.lib;winhttp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    <AdditionalLibraryDirectories>..\common\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    <ModuleDefinitionFile>$(ProjectDir)..\..\source\def\$(ProjectName).def</ModuleDefinitionFile>
+    <GenerateDebugInformation>false</GenerateDebugInformation>
+    <RandomizedBaseAddress>false</RandomizedBaseAddress>
+    <TargetMachine>MachineARM64</TargetMachine>
+    <SubSystem>Windows</SubSystem>
+    <ImportLibrary></ImportLibrary>
+  </Link>
+  <PostBuildEvent>
+    <Command>IF NOT EXIST "$(ProjectDir)..\..\output\" mkdir "$(ProjectDir)..\..\output\"
+copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\$(TargetName).debug$(TargetExt)"</Command>
+  </PostBuildEvent>
+</ItemDefinitionGroup>
+<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='r7_release|ARM64'">
+  <ClCompile>
+    <Optimization>MinSpace</Optimization>
+    <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+    <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
+    <AdditionalIncludeDirectories>..\..\source\ReflectiveDLLInjection\common;..\..\source\server;..\..\source\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;METSRV_EXPORTS;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+    <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    <WarningLevel>Level3</WarningLevel>
+    <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+    <BufferSecurityCheck>false</BufferSecurityCheck>
+    <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
+    <TreatWarningAsError>true</TreatWarningAsError>
+    <MultiProcessorCompilation>true</MultiProcessorCompilation>
+  </ClCompile>
+  <Link>
+    <AdditionalDependencies>ws2_32.lib;odbc32.lib;odbccp32.lib;crypt32.lib;wininet.lib;winhttp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    <AdditionalLibraryDirectories>..\common\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    <ModuleDefinitionFile>$(ProjectDir)..\..\source\def\$(ProjectName).def</ModuleDefinitionFile>
+    <GenerateDebugInformation>false</GenerateDebugInformation>
+    <RandomizedBaseAddress>false</RandomizedBaseAddress>
+    <TargetMachine>MachineARM64</TargetMachine>
+    <SubSystem>Windows</SubSystem>
+    <ImportLibrary></ImportLibrary>
+  </Link>
+  <PostBuildEvent>
+    <Command>IF NOT EXIST "$(ProjectDir)..\..\output\" mkdir "$(ProjectDir)..\..\output\"
+copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
+  </PostBuildEvent>
+</ItemDefinitionGroup>
   <Choose>
     <When Condition="'$(Platform)'=='Win32'" />
   </Choose>
@@ -609,15 +745,21 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='r7_release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='r7_release|ARM64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">true</ExcludedFromBuild>
     </MASM>
-    <MASM Include="..\..\source\ReflectiveDLLInjection\dll\src\GateTrampoline64.asm">
+    <MARMASM Include="..\..\source\ReflectiveDLLInjection\dll\src\GateTrampolineARM64.asm">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='r7_release|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-    </MASM>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='r7_release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </MARMASM>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
-    <Import Project="$(VCTargetsPath)\BuildCustomizations\masm.targets" />
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\marmasm.targets" />
   </ImportGroup>
 </Project>
