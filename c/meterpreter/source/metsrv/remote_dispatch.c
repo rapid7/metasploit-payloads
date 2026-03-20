@@ -386,6 +386,7 @@ BOOL LoadReflectively(IN ULONG_PTR lpBuffer, OUT HMODULE *phModule) {
 	PBYTE pBaseAddress = (PBYTE)lpBuffer;
 	PBYTE pDLLBaseAddress = NULL;
 	PIMAGE_SECTION_HEADER pSectionHeader = NULL;
+	*phModule = NULL;
 	
 	PIMAGE_DOS_HEADER pDosHeader = (PIMAGE_DOS_HEADER)(lpBuffer);
 	
@@ -480,13 +481,6 @@ BOOL LoadReflectively(IN ULONG_PTR lpBuffer, OUT HMODULE *phModule) {
 	}
 
 	*phModule = (HMODULE)pDLLBaseAddress;
-//	dprintf("[LOADREFLECTIVELY] Calling entry point\n");
-//	if (dEntryPoint((HINSTANCE)pDLLBaseAddress, 6, phModule) == FALSE)
-//	{
-//		dprintf("[LOADREFLECTIVELY] DllMain returned FALSE\n");
-//		return FALSE;
-//	}
-//
 
 	return TRUE;
 }
@@ -637,14 +631,12 @@ DWORD request_core_loadlib(Remote *remote, Packet *packet)
 			// If the library is not to be stored on disk, 
 			if (!(flags & LOAD_LIBRARY_FLAG_ON_DISK))
 			{
-				//LPCSTR reflectiveLoader = packet_get_tlv_value_reflective_loader(packet);
-
   dprintf("[LOADLIB] here 7");
 
 				// try to load the library via the reflective loader...
 				 LoadReflectively((ULONG_PTR)dataTlv.buffer, &library);
 				 dprintf("[LOADLIB] LoadReflectively returned, library is %p", library);
-  dprintf("[LOADLIB] here 8");
+				 
 				if (library == NULL)
 				{
 					// if that fails, presumably besause the library doesn't support
