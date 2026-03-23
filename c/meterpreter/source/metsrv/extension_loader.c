@@ -175,7 +175,6 @@ BOOL FixPermissions(PIMAGE_NT_HEADERS pNtHeaders, PBYTE pBaseAddress)
 BOOL LoadReflectively(IN ULONG_PTR lpBuffer, OUT HMODULE *phModule) {
 	
 	dprintf("[LOADREFLECTIVELY] Loading library reflectively from buffer %p\n", lpBuffer);
-    __debugbreak();
 	PBYTE pBaseAddress = (PBYTE)lpBuffer;
 	PBYTE pDLLBaseAddress = NULL;
 	PIMAGE_SECTION_HEADER pSectionHeader = NULL;
