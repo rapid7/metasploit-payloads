@@ -256,6 +256,31 @@ BOOL FixRelocations(PIMAGE_DATA_DIRECTORY dRelocBaseAddress, ULONG_PTR pBaseAddr
 			case IMAGE_REL_BASED_HIGHLOW:
 				*((DWORD*)(pBaseAddress + pBaseRelocationTable->VirtualAddress + pBaseRelocEntry->Offset)) += (DWORD)delta;
 				break;
+			#if defined(_M_ARM)
+			case IMAGE_REL_BASED_ARM_MOV32T:
+				DWORD dwInstruction = *(DWORD *)((ULONG_PTR)pBaseAddress + pBaseRelocationTable->VirtualAddress + pBaseRelocEntry->Offset + sizeof(DWORD));
+				// Flip the words to get the instruction as expected (account for endianness/instruction packing).
+				dwInstruction = MAKELONG(HIWORD(dwInstruction), LOWORD(dwInstruction));
+				if ((dwInstruction & ARM_MOV_MASK) == ARM_MOVT)
+				{
+					// Pull out the encoded 16-bit immediate value (high portion of the address-to-relocate).
+					WORD wImm = (WORD)(dwInstruction & 0x000000FF);
+					wImm |= (WORD)((dwInstruction & 0x00007000) >> 4);
+					wImm |= (WORD)((dwInstruction & 0x04000000) >> 15);
+					wImm |= (WORD)((dwInstruction & 0x000F0000) >> 4);
+					// Apply the relocation delta to the target address.
+					DWORD dwAddress = ((WORD)HIWORD(uiDelta) + wImm) & 0xFFFF;
+					// Create a new instruction with the same opcode and register parameters.
+					dwInstruction &= ARM_MOV_MASK2;
+					// Patch in the relocated address, re-encoding the immediate value.
+					dwInstruction |= (DWORD)(dwAddress & 0x00FF);
+					dwInstruction |= (DWORD)(dwAddress & 0x0700) << 4;
+					dwInstruction |= (DWORD)(dwAddress & 0x0800) << 15;
+					dwInstruction |= (DWORD)(dwAddress & 0xF000) << 4;
+					// Flip the instructions words and patch back into the code.
+					*(DWORD *)((ULONG_PTR)pBaseAddress + pBaseRelocationTable->VirtualAddress + pBaseRelocEntry->Offset + sizeof(DWORD)) = MAKELONG(HIWORD(dwInstruction), LOWORD(dwInstruction));
+				}
+			#endif
 			case IMAGE_REL_BASED_HIGH:
 				*((WORD*)(pBaseAddress + pBaseRelocationTable->VirtualAddress + pBaseRelocEntry->Offset)) += HIWORD(delta);
 				break;
