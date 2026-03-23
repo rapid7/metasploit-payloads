@@ -1014,9 +1014,9 @@ BOOL get_http_options_from_tlv(Packet* packet, Tlv* optionsTlv, HttpRequestOptio
 {
 	targetOptions->encode_flags = packet_get_tlv_group_entry_value_uint(packet, optionsTlv, TLV_TYPE_C2_ENC);
 	targetOptions->headers = packet_get_tlv_group_entry_value_wstring(packet, optionsTlv, TLV_TYPE_C2_HEADERS, NULL);
-	targetOptions->payload_prefix = packet_get_tlv_group_entry_value_raw_copy(packet, optionsTlv, TLV_TYPE_C2_PREFIX, &targetOptions->payload_prefix_size);
+	targetOptions->payload_prefix = packet_get_tlv_group_entry_value_raw_copy(packet, optionsTlv, TLV_TYPE_C2_PREFIX, (DWORD*)&targetOptions->payload_prefix_size);
 	targetOptions->payload_prefix_skip = packet_get_tlv_group_entry_value_uint(packet, optionsTlv, TLV_TYPE_C2_PREFIX_SKIP);
-	targetOptions->payload_suffix = packet_get_tlv_group_entry_value_raw_copy(packet, optionsTlv, TLV_TYPE_C2_SUFFIX, &targetOptions->payload_suffix_size);
+	targetOptions->payload_suffix = packet_get_tlv_group_entry_value_raw_copy(packet, optionsTlv, TLV_TYPE_C2_SUFFIX, (DWORD*)&targetOptions->payload_suffix_size);
 	targetOptions->payload_suffix_skip = packet_get_tlv_group_entry_value_uint(packet, optionsTlv, TLV_TYPE_C2_SUFFIX_SKIP);
 	targetOptions->ua = packet_get_tlv_group_entry_value_wstring(packet, optionsTlv, TLV_TYPE_C2_UA, NULL);
 	targetOptions->uri = packet_get_tlv_group_entry_value_wstring(packet, optionsTlv, TLV_TYPE_C2_URI, NULL);
