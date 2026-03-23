@@ -18,7 +18,7 @@ typedef struct IUnknown IUnknown;
 // Structs //
 // --------//
 
-#if !defined(__MINGW32__) && !defined(_WINTERNL_) && !defined(_CLIENT_ID_DEFINED)
+#if !defined(__MINGW32__) && !defined(_CLIENT_ID_DEFINED)
 typedef struct _CLIENT_ID {
     HANDLE UniqueProcess;
     HANDLE UniqueThread;
