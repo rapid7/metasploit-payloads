@@ -10,11 +10,12 @@
  */
 #define METSRV_VERSION_NUMBER 0x00010001
 
-#undef _WIN32_WINNT
-#ifdef _M_ARM64
-#define _WIN32_WINNT 0x0600
-#else
-#define _WIN32_WINNT _WIN32_WINNT_WINXP
+#ifndef _WIN32_WINNT
+  #ifdef _M_ARM64
+    #define _WIN32_WINNT 0x0600
+  #else
+    #define _WIN32_WINNT _WIN32_WINNT_WINXP
+  #endif
 #endif
 #define USE_DLL
 
