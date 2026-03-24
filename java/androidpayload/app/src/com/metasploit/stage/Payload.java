@@ -235,6 +235,7 @@ public class Payload {
             fop.close();
 
             // Load the stage
+            file.setReadOnly();
             DexClassLoader classLoader = new DexClassLoader(jarPath, path, path,
                     Payload.class.getClassLoader());
             Class<?> myClass = classLoader.loadClass(classFile);
