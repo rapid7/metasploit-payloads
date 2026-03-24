@@ -45,13 +45,7 @@ public class Meterpreter {
     private long sessionExpiry;
 
     protected void loadConfiguration(DataInputStream in, OutputStream rawOut, byte[] configBlock) throws MalformedURLException {
-        byte[] configHandle = new byte[8];
-        byte[] configPacket = new byte[configBlock.length - configHandle.length];
-
-        System.arraycopy(configBlock, 0, configHandle, 0, configHandle.length);
-        System.arraycopy(configBlock, configHandle.length, configPacket, 0, configPacket.length);
-
-        Config config = ConfigParser.parseConfig(configPacket);
+        Config config = ConfigParser.parseConfig(configBlock);
         if (config == null) {
             return;
         }
