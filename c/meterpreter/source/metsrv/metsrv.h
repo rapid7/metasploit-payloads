@@ -56,7 +56,7 @@ BOOL is_null_guid(BYTE guid[sizeof(GUID)]);
 VOID rand_xor_key(BYTE buffer[4]);
 
 DWORD server_setup(MetsrvConfig* config);
-typedef DWORD (*PSRVINIT)(MetApi* api, Remote *remote);
+typedef DWORD (*PSRVINIT)(MetApi* api, Remote *remote, HMODULE hInstance);
 typedef DWORD (*PSRVDEINIT)(Remote *remote);
 typedef VOID (*PCMDADDED)(UINT command_id);
 typedef DWORD (*PSTAGELESSINIT)(UINT extensionId, LPBYTE data, DWORD dataSize);

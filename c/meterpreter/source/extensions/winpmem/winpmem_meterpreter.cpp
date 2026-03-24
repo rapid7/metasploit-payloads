@@ -6,8 +6,8 @@ extern "C" {
 #include "common.h"
 #include "common_metapi.h"
 
-#define RDIDLL_NOEXPORT
-#include "../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
+//#define RDIDLL_NOEXPORT
+//#include "../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
 
 #ifndef min
 #define min(x,y) ((x)<(y)?(x):(y))

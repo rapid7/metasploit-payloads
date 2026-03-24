@@ -188,5 +188,5 @@ typedef struct _MetApi
 } MetApi;
 
 extern MetApi* met_api;
-
+extern HINSTANCE hAppInstance;
 #endif
