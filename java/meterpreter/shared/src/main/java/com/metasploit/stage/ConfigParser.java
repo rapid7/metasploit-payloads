@@ -45,26 +45,48 @@ public class ConfigParser  {
             }
 
             if (transportConfig.url.startsWith("http")) {
-                String proxyUrl = null;
-                byte[] loadedHash;
                 try {
-                    proxyUrl = c2Group.getStringValue(TLVType.TLV_TYPE_C2_PROXY_URL);
-                } catch (IllegalArgumentException illegalArgumentException) {
-                }
-                if (proxyUrl != null) {
-                    transportConfig.proxy_url = proxyUrl;
+                    transportConfig.proxy_url = c2Group.getStringValue(TLVType.TLV_TYPE_C2_PROXY_URL);
                     transportConfig.proxy_user = c2Group.getStringValue(TLVType.TLV_TYPE_C2_PROXY_USER, "");
                     transportConfig.proxy_pass = c2Group.getStringValue(TLVType.TLV_TYPE_C2_PROXY_PASS, "");
-                    transportConfig.user_agent = c2Group.getStringValue(TLVType.TLV_TYPE_C2_UA, "");
-                    transportConfig.custom_headers = c2Group.getStringValue(TLVType.TLV_TYPE_C2_HEADERS, "");
-                    loadedHash = c2Group.getRawValue(TLVType.TLV_TYPE_C2_CERT_HASH, new byte[0]);
-                    if (loadedHash.length > 0) {
-                        transportConfig.cert_hash = loadedHash;
-                    }
+                } catch (IllegalArgumentException illegalArgumentException) {
                 }
+
+                transportConfig.user_agent = c2Group.getStringValue(TLVType.TLV_TYPE_C2_UA, "");
+                transportConfig.custom_headers = c2Group.getStringValue(TLVType.TLV_TYPE_C2_HEADERS, "");
+
+                byte[] loadedHash = c2Group.getRawValue(TLVType.TLV_TYPE_C2_CERT_HASH, new byte[0]);
+                if (loadedHash.length > 0) {
+                    transportConfig.cert_hash = loadedHash;
+                }
+
+                // Parse C2 profile GET/POST sub-groups
+                transportConfig.c2Get = parseC2VerbGroup(c2Group, TLVType.TLV_TYPE_C2_GET);
+                transportConfig.c2Post = parseC2VerbGroup(c2Group, TLVType.TLV_TYPE_C2_POST);
             }
             config.transportConfigList.add(transportConfig);
         }
+        return config;
+    }
+
+    private static C2VerbConfig parseC2VerbGroup(TLVPacket c2Group, int groupType) {
+        TLVPacket verbGroup;
+        try {
+            verbGroup = (TLVPacket) c2Group.getValue(groupType);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+
+        C2VerbConfig config = new C2VerbConfig();
+        config.uri = verbGroup.getStringValue(TLVType.TLV_TYPE_C2_URI, null);
+        config.enc = (Integer) verbGroup.getValue(TLVType.TLV_TYPE_C2_ENC, new Integer(0));
+        config.prefix = verbGroup.getRawValue(TLVType.TLV_TYPE_C2_PREFIX, null);
+        config.suffix = verbGroup.getRawValue(TLVType.TLV_TYPE_C2_SUFFIX, null);
+        config.prefixSkip = (Integer) verbGroup.getValue(TLVType.TLV_TYPE_C2_PREFIX_SKIP, new Integer(0));
+        config.suffixSkip = (Integer) verbGroup.getValue(TLVType.TLV_TYPE_C2_SUFFIX_SKIP, new Integer(0));
+        config.uuidGet = verbGroup.getStringValue(TLVType.TLV_TYPE_C2_UUID_GET, null);
+        config.uuidHeader = verbGroup.getStringValue(TLVType.TLV_TYPE_C2_UUID_HEADER, null);
+        config.uuidCookie = verbGroup.getStringValue(TLVType.TLV_TYPE_C2_UUID_COOKIE, null);
         return config;
     }
 }

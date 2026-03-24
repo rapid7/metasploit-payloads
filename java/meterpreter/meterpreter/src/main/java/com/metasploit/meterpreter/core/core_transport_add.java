@@ -7,6 +7,7 @@ import com.metasploit.meterpreter.Transport;
 import com.metasploit.meterpreter.TcpTransport;
 import com.metasploit.meterpreter.HttpTransport;
 import com.metasploit.meterpreter.command.Command;
+import com.metasploit.stage.C2VerbConfig;
 
 public class core_transport_add implements Command {
 
@@ -25,6 +26,10 @@ public class core_transport_add implements Command {
             h.setProxyUser(request.getStringValue(TLVType.TLV_TYPE_C2_PROXY_USER, ""));
             h.setProxyPass(request.getStringValue(TLVType.TLV_TYPE_C2_PROXY_PASS, ""));
             h.setCertHash(request.getRawValue(TLVType.TLV_TYPE_C2_CERT_HASH, null));
+
+            // Parse C2 profile GET/POST sub-groups if present
+            h.setC2Get(parseC2VerbGroup(request, TLVType.TLV_TYPE_C2_GET));
+            h.setC2Post(parseC2VerbGroup(request, TLVType.TLV_TYPE_C2_POST));
 
             t = h;
         }
@@ -66,5 +71,25 @@ public class core_transport_add implements Command {
 
         return ERROR_SUCCESS;
     }
-}
 
+    private static C2VerbConfig parseC2VerbGroup(TLVPacket request, int groupType) {
+        TLVPacket verbGroup;
+        try {
+            verbGroup = (TLVPacket) request.getValue(groupType);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+
+        C2VerbConfig config = new C2VerbConfig();
+        config.uri = verbGroup.getStringValue(TLVType.TLV_TYPE_C2_URI, null);
+        config.enc = (Integer) verbGroup.getValue(TLVType.TLV_TYPE_C2_ENC, new Integer(0));
+        config.prefix = verbGroup.getRawValue(TLVType.TLV_TYPE_C2_PREFIX, null);
+        config.suffix = verbGroup.getRawValue(TLVType.TLV_TYPE_C2_SUFFIX, null);
+        config.prefixSkip = (Integer) verbGroup.getValue(TLVType.TLV_TYPE_C2_PREFIX_SKIP, new Integer(0));
+        config.suffixSkip = (Integer) verbGroup.getValue(TLVType.TLV_TYPE_C2_SUFFIX_SKIP, new Integer(0));
+        config.uuidGet = verbGroup.getStringValue(TLVType.TLV_TYPE_C2_UUID_GET, null);
+        config.uuidHeader = verbGroup.getStringValue(TLVType.TLV_TYPE_C2_UUID_HEADER, null);
+        config.uuidCookie = verbGroup.getStringValue(TLVType.TLV_TYPE_C2_UUID_COOKIE, null);
+        return config;
+    }
+}
