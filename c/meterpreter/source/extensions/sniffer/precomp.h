@@ -5,11 +5,11 @@
 
 #include "sniffer.h"
 
-#include "../../ReflectiveDLLInjection/inject/src/GetProcAddressR.h"
-#include "../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.h"
+//#include "../../ReflectiveDLLInjection/inject/src/GetProcAddressR.h"
+//#include "../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.h"
 
 // declared in ReflectiveLoader.c and set by DllMain also in ReflectiveLoader.c
-extern HINSTANCE hAppInstance;
+//extern HINSTANCE hAppInstance;
 
 #define strcasecmp stricmp
 

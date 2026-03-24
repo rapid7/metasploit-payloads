@@ -298,7 +298,7 @@ DWORD request_sys_process_image_get_images(Remote *remote, Packet *packet)
 				break;
 			}
 
-			base = htonl((DWORD)modules[index]);
+			base = htonq((QWORD)modules[index]);
 
 			tlvs[0].header.length = sizeof(HMODULE);
 			tlvs[0].header.type   = TLV_TYPE_IMAGE_BASE;

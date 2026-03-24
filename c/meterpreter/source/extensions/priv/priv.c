@@ -7,6 +7,7 @@
 // Required so that use of the API works.
 MetApi* met_api = NULL;
 
+
 #ifndef NO_REFLECTIVE_LOADER
 #define RDIDLL_NOEXPORT
 #include "../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
@@ -36,9 +37,10 @@ Command customCommands[] =
  * @param remote Pointer to the remote instance.
  * @return Indication of success or failure.
  */
-DWORD InitServerExtension(MetApi* api, Remote* remote)
+DWORD InitServerExtension(MetApi* api, Remote* remote, HINSTANCE hinst)
 {
 	met_api = api;
+	hAppInstance = hinst;
 	SET_LOGGING_CONTEXT(api)
 
 	met_api->command.register_all(customCommands);
@@ -54,7 +56,7 @@ DWORD InitServerExtension(MetApi* api, Remote* remote)
 DWORD DeinitServerExtension(Remote* remote)
 {
 	met_api->command.deregister_all(customCommands);
-
+	hAppInstance = NULL;
 	return ERROR_SUCCESS;
 }
 
