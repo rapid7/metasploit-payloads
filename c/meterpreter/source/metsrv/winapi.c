@@ -42,6 +42,7 @@ enum HashedFunctions {
     H_ZwFreeVirtualMemory = 0xDE63B5C3,
     H_NtQueueApcThread = 0x52E9A746,
     H_NtOpenThread = 0x59651E8C,
+    H_RtlGetVersion = 0xD0C1869C,
     H_WriteProcessMemory = 0xD83D6AA1,
     H_ReadProcessMemory = 0x579D1BE9,
     H_OpenProcess = 0xEFE297C0,
@@ -146,6 +147,20 @@ Syscall** lpWinApiSyscalls = NULL;
 
 extern NTSTATUS SyscallStub(Syscall *pSyscall, DWORD dwNumberOfArgs, ULONG_PTR *lpArgs);
 
+DWORD GetWindowsMajorMinVer() {
+    DWORD dwResult = 0;
+    OSVERSIONINFOEXW os = {0};
+    os.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEXW);
+
+    NTSTATUS status = winapi_ntdll_RtlGetVersion(&os);
+    if(status != STATUS_SUCCESS) {
+        dprintf("[WINAPI][GetWindowsMajorMinVer] RtlGetVersion returned %p", status);
+        return 0;
+    }
+    dwResult = (os.dwMajorVersion << 8 & 0xff00) | (os.dwMinorVersion & 0xff);
+    return dwResult; 
+}
+
 Syscall** GetOrInitWinApiSyscalls() {
     if (lpWinApiSyscalls == NULL) {
         BOOL bError = FALSE;
@@ -202,12 +217,15 @@ Syscall** GetOrInitWinApiSyscalls() {
 }
 
 BOOL hasDirectSyscallSupport() {
-    if (lpWinApiSyscalls == NULL) {
-        if (GetOrInitWinApiSyscalls() == NULL) {
-            return FALSE;
+    DWORD dwVersion = GetWindowsMajorMinVer();
+
+    if(dwVersion != 0 || ((dwVersion & 0xff00 >> 8) >= 6 && (dwVersion & 0xff) >= 1)) {
+        if(lpWinApiSyscalls == NULL) {
+            GetOrInitWinApiSyscalls();
         }
+        return lpWinApiSyscalls != NULL;
     }
-    return TRUE;
+    return FALSE;
 }
 
 
@@ -370,6 +388,14 @@ NTSTATUS winapi_ntdll_NtOpenThread(PHANDLE ThreadHandle, ACCESS_MASK DesiredAcce
     return 0xC0000001; // STATUS_UNSUCCESSFUL
 }
 
+NTSTATUS winapi_ntdll_RtlGetVersion(PRTL_OSVERSIONINFOEXW os) {
+    NTSTATUS (NTAPI *pRtlGetVersion)(PRTL_OSVERSIONINFOEXW os) = GetFunctionH(NTDLL_DLL, H_RtlGetVersion);
+    dprintf("[WINAPI][winapi_ntdll_RtlGetVersion] Calling RtlGetVersion @ %p", pRtlGetVersion);
+    if(pRtlGetVersion) {
+        return pRtlGetVersion(os);
+    }
+    return 0xC0000001;
+}
 // END: ntdll.dll
 // START: kernel32.dll
 
