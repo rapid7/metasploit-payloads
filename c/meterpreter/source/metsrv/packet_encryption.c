@@ -64,7 +64,7 @@ DWORD decrypt_packet(Remote* remote, Packet** packet, LPBYTE buffer, DWORD buffe
 		vdprintf("[DEC] Encryption flags set to %x", encFlags);
 
 		// Only decrypt if the context was set up correctly
-		if (remote->enc_ctx != NULL && remote->enc_ctx->valid && encFlags != ENC_FLAG_NONE)
+		if (remote && remote->enc_ctx != NULL && remote->enc_ctx->valid && encFlags != ENC_FLAG_NONE)
 		{
 			vdprintf("[DEC] Context is valid, moving on ... ");
 			LPBYTE payload = buffer + sizeof(PacketHeader);
@@ -182,10 +182,14 @@ DWORD encrypt_packet(Remote* remote, Packet* packet, LPBYTE* buffer, LPDWORD buf
 	rand_xor_key(packet->header.xor_key);
 
 	// copy the session ID to the header as this will be used later to identify the packet's destination session
-	memcpy_s(packet->header.session_guid, sizeof(packet->header.session_guid), remote->orig_config->session.session_guid, sizeof(remote->orig_config->session.session_guid));
+	memcpy_s(packet->header.session_guid, sizeof(packet->header.session_guid), remote->session_guid, sizeof(remote->session_guid));
 
-	// Only encrypt if the context was set up correctly
-	if (remote->enc_ctx != NULL && remote->enc_ctx->valid)
+	// Only encrypt if the context was set up correctly and it's not a config packet
+	if (ntohl(packet->header.type) == PACKET_TLV_TYPE_CONFIG)
+	{
+		vdprintf("[ENC] Config packet found, no encryption will be performed");
+	}
+	else if (remote->enc_ctx != NULL && remote->enc_ctx->valid)
 	{
 		vdprintf("[ENC] Context is valid, moving on ... ");
 		// only encrypt the packet if encryption has been enabled
@@ -287,6 +291,7 @@ DWORD encrypt_packet(Remote* remote, Packet* packet, LPBYTE* buffer, LPDWORD buf
 	if (*buffer == NULL)
 	{
 		*bufferSize = packet->payloadLength + sizeof(packet->header);
+		vdprintf("[ENC] Creating buffer for payload, size: %u", *bufferSize);
 		*buffer = (BYTE*)malloc(*bufferSize);
 
 		BYTE* headerPos = *buffer;
@@ -462,10 +467,72 @@ DWORD free_encryption_context(Remote* remote)
 	return result;
 }
 
-DWORD request_negotiate_aes_key(Remote* remote, Packet* packet)
+DWORD create_enc_ctx_from_key(Remote* remote, LPBYTE key, DWORD keySize)
 {
 	DWORD result = ERROR_SUCCESS;
+
+	do
+	{
+		if (remote->enc_ctx != NULL)
+		{
+			free_encryption_context(remote);
+		}
+
+		remote->enc_ctx = (PacketEncryptionContext*)calloc(1, sizeof(PacketEncryptionContext));
+
+		if (remote->enc_ctx == NULL)
+		{
+			dprintf("[ENC] failed to allocate the encryption context");
+			result = ERROR_OUTOFMEMORY;
+			break;
+		}
+
+		PacketEncryptionContext* ctx = remote->enc_ctx;
+
+		for (int i = 0; i < _countof(AesProviders); ++i)
+		{
+			if (!CryptAcquireContext(&ctx->provider, NULL, AesProviders[i].provider, AesProviders[i].type, AesProviders[i].flags))
+			{
+				result = GetLastError();
+				dprintf("[ENC] failed to acquire the crypt context %d: %d (%x)", i, result, result);
+			}
+			else
+			{
+				result = ERROR_SUCCESS;
+				ctx->provider_idx = i;
+				dprintf("[ENC] managed to acquire the crypt context %d!", i);
+				break;
+			}
+		}
+
+		if (result != ERROR_SUCCESS)
+		{
+			break;
+		}
+
+		ctx->key_data.header.bType = PLAINTEXTKEYBLOB;
+		ctx->key_data.header.bVersion = CUR_BLOB_VERSION;
+		ctx->key_data.header.aiKeyAlg = CALG_AES_256;
+		ctx->key_data.length = keySize;
+		memcpy_s(ctx->key_data.key, sizeof(ctx->key_data.key), key, keySize);
+
+		if (!CryptImportKey(ctx->provider, (const BYTE*)&ctx->key_data, sizeof(Aes256Key), 0, 0, &ctx->aes_key))
+		{
+			result = GetLastError();
+			dprintf("[ENC] failed to import random key: %d (%x)", result, result);
+			break;
+		}
+
+		ctx->valid = TRUE;
+	} while (0);
+
+	return result;
+}
+
+DWORD request_negotiate_aes_key(Remote* remote, Packet* packet)
+{
 	Packet* response = packet_create_response(packet);
+	DWORD result = ERROR_SUCCESS;
 
 	do
 	{
@@ -552,5 +619,6 @@ DWORD request_negotiate_aes_key(Remote* remote, Packet* packet)
 
 	remote->enc_ctx->enabled = TRUE;
 
-	return ERROR_SUCCESS;
+	return result;
 }
+

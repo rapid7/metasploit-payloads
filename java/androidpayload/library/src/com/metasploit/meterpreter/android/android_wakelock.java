@@ -2,10 +2,11 @@ package com.metasploit.meterpreter.android;
 
 import android.content.Context;
 import android.os.PowerManager;
+
+import com.metasploit.TLVPacket;
+import com.metasploit.TLVType;
 import com.metasploit.meterpreter.AndroidMeterpreter;
 import com.metasploit.meterpreter.Meterpreter;
-import com.metasploit.meterpreter.TLVPacket;
-import com.metasploit.meterpreter.TLVType;
 import com.metasploit.meterpreter.command.Command;
 
 public class android_wakelock implements Command {

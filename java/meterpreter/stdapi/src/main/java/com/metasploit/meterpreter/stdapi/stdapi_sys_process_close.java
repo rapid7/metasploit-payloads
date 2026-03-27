@@ -1,5 +1,7 @@
 package com.metasploit.meterpreter.stdapi;
 
+import com.metasploit.TLVPacket;
+import com.metasploit.TLVType;
 import com.metasploit.meterpreter.*;
 import com.metasploit.meterpreter.command.Command;
 

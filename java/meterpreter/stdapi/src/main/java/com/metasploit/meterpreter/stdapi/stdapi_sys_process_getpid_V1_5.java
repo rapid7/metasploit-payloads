@@ -1,11 +1,11 @@
 package com.metasploit.meterpreter.stdapi;
 
-import com.metasploit.meterpreter.Meterpreter;
-import com.metasploit.meterpreter.TLVPacket;
-import com.metasploit.meterpreter.TLVType;
-import com.metasploit.meterpreter.command.Command;
-
 import java.lang.reflect.Method;
+
+import com.metasploit.TLVPacket;
+import com.metasploit.TLVType;
+import com.metasploit.meterpreter.Meterpreter;
+import com.metasploit.meterpreter.command.Command;
 
 public class stdapi_sys_process_getpid_V1_5 extends stdapi_sys_process_getpid implements Command {
 

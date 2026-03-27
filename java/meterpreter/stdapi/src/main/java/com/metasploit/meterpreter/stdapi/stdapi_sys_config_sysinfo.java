@@ -1,12 +1,12 @@
 package com.metasploit.meterpreter.stdapi;
 
+import java.util.Locale;
+
+import com.metasploit.TLVPacket;
+import com.metasploit.TLVType;
 import com.metasploit.meterpreter.Meterpreter;
-import com.metasploit.meterpreter.TLVPacket;
-import com.metasploit.meterpreter.TLVType;
 import com.metasploit.meterpreter.Utils;
 import com.metasploit.meterpreter.command.Command;
-
-import java.util.Locale;
 
 public class stdapi_sys_config_sysinfo implements Command {
 

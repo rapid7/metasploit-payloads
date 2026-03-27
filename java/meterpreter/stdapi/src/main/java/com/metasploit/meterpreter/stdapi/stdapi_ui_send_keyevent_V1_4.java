@@ -1,14 +1,14 @@
 package com.metasploit.meterpreter.stdapi;
 
-import com.metasploit.meterpreter.Meterpreter;
-import com.metasploit.meterpreter.TLVPacket;
-import com.metasploit.meterpreter.TLVType;
-import com.metasploit.meterpreter.command.Command;
-
 import java.awt.Robot;
 import java.awt.event.KeyEvent;
 import java.util.HashMap;
 import java.util.Map;
+
+import com.metasploit.TLVPacket;
+import com.metasploit.TLVType;
+import com.metasploit.meterpreter.Meterpreter;
+import com.metasploit.meterpreter.command.Command;
 
 public class stdapi_ui_send_keyevent_V1_4 extends stdapi_ui_send_keyevent implements Command {
 

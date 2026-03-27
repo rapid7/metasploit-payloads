@@ -3,10 +3,10 @@ package com.metasploit.meterpreter.stdapi;
 import java.io.IOException;
 import java.net.Socket;
 
+import com.metasploit.TLVPacket;
+import com.metasploit.TLVType;
 import com.metasploit.meterpreter.Meterpreter;
 import com.metasploit.meterpreter.SocketChannel;
-import com.metasploit.meterpreter.TLVPacket;
-import com.metasploit.meterpreter.TLVType;
 import com.metasploit.meterpreter.command.Command;
 
 public class stdapi_net_socket_tcp_shutdown implements Command {

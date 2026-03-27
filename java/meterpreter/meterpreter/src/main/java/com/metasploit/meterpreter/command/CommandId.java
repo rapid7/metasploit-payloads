@@ -22,7 +22,7 @@ public interface CommandId {
     public static final int CORE_MIGRATE = 14;
     public static final int CORE_NATIVE_ARCH = 15;
     public static final int CORE_NEGOTIATE_TLV_ENCRYPTION = 16;
-    public static final int CORE_PATCH_URL = 17;
+    public static final int CORE_PATCH_UUID = 17;
     public static final int CORE_PIVOT_ADD = 18;
     public static final int CORE_PIVOT_REMOVE = 19;
     public static final int CORE_PIVOT_SESSION_DIED = 20;

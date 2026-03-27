@@ -34,6 +34,7 @@ set(LINK_LIBS advapi32 winhttp wininet crypt32)
 
 if(MSVC)
     target_link_options(${PROJECT_NAME} PUBLIC "/ignore:4070")
+    target_link_options(${PROJECT_NAME} PUBLIC "/safeseh:no")
 else()
     set(LINK_LIBS ${LINK_LIBS} ws2_32)
 endif()

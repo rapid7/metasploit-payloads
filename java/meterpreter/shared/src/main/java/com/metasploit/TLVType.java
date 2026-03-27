@@ -1,4 +1,4 @@
-package com.metasploit.meterpreter;
+package com.metasploit;
 
 /**
  * All defined TLV types.
@@ -51,20 +51,6 @@ public interface TLVType {
     public static final int TLV_TYPE_MIGRATE_STUB_LEN    = TLVPacket.TLV_META_TYPE_UINT   | 410;
     public static final int TLV_TYPE_MIGRATE_STUB        = TLVPacket.TLV_META_TYPE_STRING | 411;
 
-    public static final int TLV_TYPE_TRANS_TYPE         = TLVPacket.TLV_META_TYPE_UINT   | 430;
-    public static final int TLV_TYPE_TRANS_URL          = TLVPacket.TLV_META_TYPE_STRING | 431;
-    public static final int TLV_TYPE_TRANS_UA           = TLVPacket.TLV_META_TYPE_STRING | 432;
-    public static final int TLV_TYPE_TRANS_COMM_TIMEOUT = TLVPacket.TLV_META_TYPE_UINT   | 433;
-    public static final int TLV_TYPE_TRANS_SESSION_EXP  = TLVPacket.TLV_META_TYPE_UINT   | 434;
-    public static final int TLV_TYPE_TRANS_CERT_HASH    = TLVPacket.TLV_META_TYPE_RAW    | 435;
-    public static final int TLV_TYPE_TRANS_PROXY_HOST   = TLVPacket.TLV_META_TYPE_STRING | 436;
-    public static final int TLV_TYPE_TRANS_PROXY_USER   = TLVPacket.TLV_META_TYPE_STRING | 437;
-    public static final int TLV_TYPE_TRANS_PROXY_PASS   = TLVPacket.TLV_META_TYPE_STRING | 438;
-    public static final int TLV_TYPE_TRANS_RETRY_TOTAL  = TLVPacket.TLV_META_TYPE_UINT   | 439;
-    public static final int TLV_TYPE_TRANS_RETRY_WAIT   = TLVPacket.TLV_META_TYPE_UINT   | 440;
-    public static final int TLV_TYPE_TRANS_HEADERS      = TLVPacket.TLV_META_TYPE_STRING | 441;
-    public static final int TLV_TYPE_TRANS_GROUP        = TLVPacket.TLV_META_TYPE_GROUP  | 442;
-
     public static final int TLV_TYPE_MACHINE_ID   = TLVPacket.TLV_META_TYPE_STRING | 460;
     public static final int TLV_TYPE_UUID         = TLVPacket.TLV_META_TYPE_RAW    | 461;
     public static final int TLV_TYPE_SESSION_GUID = TLVPacket.TLV_META_TYPE_RAW    | 462;
@@ -80,6 +66,35 @@ public interface TLVType {
     public static final int TLV_TYPE_INHERIT        = TLVPacket.TLV_META_TYPE_BOOL  | 601;
     public static final int TLV_TYPE_PROCESS_HANDLE = TLVPacket.TLV_META_TYPE_QWORD | 630;
     public static final int TLV_TYPE_THREAD_HANDLE  = TLVPacket.TLV_META_TYPE_QWORD | 631;
+
+    // C2 options
+    public static final int TLV_TYPE_SESSION_EXPIRY        = TLVPacket.TLV_META_TYPE_UINT   | 700; // Session expiration time
+    public static final int TLV_TYPE_EXITFUNC              = TLVPacket.TLV_META_TYPE_UINT   | 701; // identifier of the exit function to use
+    public static final int TLV_TYPE_DEBUG_LOG             = TLVPacket.TLV_META_TYPE_STRING | 702; // path to write debug log
+    public static final int TLV_TYPE_EXTENSION             = TLVPacket.TLV_META_TYPE_GROUP  | 703; // Group containing extension info
+    public static final int TLV_TYPE_C2                    = TLVPacket.TLV_META_TYPE_GROUP  | 704; // a C2/transport grouping
+    public static final int TLV_TYPE_C2_COMM_TIMEOUT       = TLVPacket.TLV_META_TYPE_UINT   | 705; // the timeout for this C2 group
+    public static final int TLV_TYPE_C2_RETRY_TOTAL        = TLVPacket.TLV_META_TYPE_UINT   | 706; // number of times to retry this C2
+    public static final int TLV_TYPE_C2_RETRY_WAIT         = TLVPacket.TLV_META_TYPE_UINT   | 707; // how long to wait between reconnect attempts
+    public static final int TLV_TYPE_C2_URL                = TLVPacket.TLV_META_TYPE_STRING | 708; // base URL of this C2 (scheme://host:port/uri)
+    public static final int TLV_TYPE_C2_URI                = TLVPacket.TLV_META_TYPE_STRING | 709; // URI to append to base URL (for HTTP(s)), if any
+    public static final int TLV_TYPE_C2_PROXY_URL          = TLVPacket.TLV_META_TYPE_STRING | 710; // Proxy URL
+    public static final int TLV_TYPE_C2_PROXY_USER         = TLVPacket.TLV_META_TYPE_STRING | 711; // Proxy user name
+    public static final int TLV_TYPE_C2_PROXY_PASS         = TLVPacket.TLV_META_TYPE_STRING | 712; // Proxy password
+    public static final int TLV_TYPE_C2_GET                = TLVPacket.TLV_META_TYPE_GROUP  | 713; // A grouping of params associated with GET requests
+    public static final int TLV_TYPE_C2_POST               = TLVPacket.TLV_META_TYPE_GROUP  | 714; // A grouping of params associated with POST requests
+    public static final int TLV_TYPE_C2_HEADERS            = TLVPacket.TLV_META_TYPE_STRING | 715; // Custom headers
+    public static final int TLV_TYPE_C2_UA                 = TLVPacket.TLV_META_TYPE_STRING | 716; // User agent
+    public static final int TLV_TYPE_C2_CERT_HASH          = TLVPacket.TLV_META_TYPE_RAW    | 717; // Expected SSL certificate hash
+    public static final int TLV_TYPE_C2_PREFIX             = TLVPacket.TLV_META_TYPE_RAW    | 718; // Data to prepend to the outgoing payload
+    public static final int TLV_TYPE_C2_SUFFIX             = TLVPacket.TLV_META_TYPE_RAW    | 719; // Data to append to the outgoing payload
+    public static final int TLV_TYPE_C2_ENC                = TLVPacket.TLV_META_TYPE_UINT   | 720; // Request encoding flags (Base64|URL|Base64url)
+    public static final int TLV_TYPE_C2_PREFIX_SKIP        = TLVPacket.TLV_META_TYPE_UINT   | 721; // Size of prefix to skip (in bytes)
+    public static final int TLV_TYPE_C2_SUFFIX_SKIP        = TLVPacket.TLV_META_TYPE_UINT   | 722; // Size of suffix to skip (in bytes)
+    public static final int TLV_TYPE_C2_UUID_COOKIE        = TLVPacket.TLV_META_TYPE_STRING | 723; // Name of the cookie to put the UUID in
+    public static final int TLV_TYPE_C2_UUID_GET           = TLVPacket.TLV_META_TYPE_STRING | 724; // Name of the GET parameter to put the UUID in
+    public static final int TLV_TYPE_C2_UUID_HEADER        = TLVPacket.TLV_META_TYPE_STRING | 725; // Name of the header to put the UUID in
+    public static final int TLV_TYPE_C2_UUID               = TLVPacket.TLV_META_TYPE_STRING | 726; // string representation of the UUID for C2s
 
     // Fs
     public static final int TLV_TYPE_DIRECTORY_PATH = TLVPacket.TLV_META_TYPE_STRING  | 1200;

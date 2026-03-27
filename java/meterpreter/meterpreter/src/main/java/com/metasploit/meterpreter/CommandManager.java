@@ -5,6 +5,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Vector;
 
+import com.metasploit.TLVPacket;
+import com.metasploit.TLVType;
 import com.metasploit.meterpreter.command.Command;
 import com.metasploit.meterpreter.command.NotYetImplementedCommand;
 import com.metasploit.meterpreter.command.UnsupportedJavaVersionCommand;

@@ -1,5 +1,7 @@
 package com.metasploit.meterpreter;
 
+import com.metasploit.TLVPacket;
+import com.metasploit.TLVType;
 import com.metasploit.meterpreter.command.Command;
 import com.metasploit.stage.HttpConnection;
 import com.metasploit.stage.PayloadTrustManager;
@@ -19,7 +21,7 @@ public class HttpTransport extends Transport {
     private URL targetUrl = null;
     private URL nextUrl = null;
     private String userAgent;
-    private String proxy;
+    private String proxyUrl;
     private String proxyUser;
     private String proxyPass;
     private String customHeaders;
@@ -33,7 +35,7 @@ public class HttpTransport extends Transport {
     public HttpTransport(Meterpreter met, String url, TransportConfig transportConfig) throws MalformedURLException {
         this(met, url);
         userAgent = transportConfig.user_agent;
-        proxy = transportConfig.proxy;
+        proxyUrl = transportConfig.proxy_url;
         proxyUser = transportConfig.proxy_user;
         proxyPass = transportConfig.proxy_pass;
         certHash = transportConfig.cert_hash;
@@ -47,13 +49,13 @@ public class HttpTransport extends Transport {
     }
 
     @Override
-    public boolean switchUri(String uri) {
+    public boolean patchUuid(String uuid) {
         try {
             // can't use getAuthority() here thanks to java 1.2. Ugh.
             String newUrl = this.targetUrl.getProtocol() + "://"
               + this.targetUrl.getHost() + ":"
-              + this.targetUrl.getPort()
-              + uri;
+              + this.targetUrl.getPort() + "/"
+              + uuid;
             this.nextUrl = new URL(newUrl);
             return true;
         }
@@ -70,12 +72,12 @@ public class HttpTransport extends Transport {
         this.userAgent = userAgent;
     }
 
-    public String getProxy() {
-        return this.proxy;
+    public String getProxyUrl() {
+        return this.proxyUrl;
     }
 
-    public void setProxy(String proxy) {
-        this.proxy = proxy;
+    public void setProxyUrl(String proxyUrl) {
+        this.proxyUrl = proxyUrl;
     }
 
     public String getProxyUser() {
@@ -142,7 +144,7 @@ public class HttpTransport extends Transport {
         catch (Exception ignored) {
         }
 
-        // we get here, thins aren't good.
+        // we get here, things aren't good.
         return false;
     }
 

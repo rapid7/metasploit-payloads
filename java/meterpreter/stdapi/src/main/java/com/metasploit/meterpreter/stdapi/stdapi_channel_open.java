@@ -12,13 +12,13 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
 
+import com.metasploit.TLVPacket;
+import com.metasploit.TLVType;
 import com.metasploit.meterpreter.Channel;
 import com.metasploit.meterpreter.DatagramSocketChannel;
 import com.metasploit.meterpreter.Meterpreter;
 import com.metasploit.meterpreter.ServerSocketChannel;
 import com.metasploit.meterpreter.SocketChannel;
-import com.metasploit.meterpreter.TLVPacket;
-import com.metasploit.meterpreter.TLVType;
 import com.metasploit.meterpreter.command.Command;
 import com.metasploit.meterpreter.command.NotYetImplementedCommand;
 

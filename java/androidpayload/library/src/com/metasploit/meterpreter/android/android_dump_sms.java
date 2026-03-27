@@ -3,9 +3,9 @@ package com.metasploit.meterpreter.android;
 import android.database.Cursor;
 import android.net.Uri;
 
+import com.metasploit.TLVPacket;
 import com.metasploit.meterpreter.AndroidMeterpreter;
 import com.metasploit.meterpreter.Meterpreter;
-import com.metasploit.meterpreter.TLVPacket;
 import com.metasploit.meterpreter.command.Command;
 
 public class android_dump_sms implements Command {

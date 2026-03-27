@@ -23,7 +23,7 @@ public class Loader implements ExtensionLoader {
         mgr.registerCommand(CommandId.CORE_MACHINE_ID, core_machine_id.class);
         mgr.registerCommand(CommandId.CORE_GET_SESSION_GUID, core_get_session_guid.class);
         mgr.registerCommand(CommandId.CORE_SET_SESSION_GUID, core_set_session_guid.class);
-        mgr.registerCommand(CommandId.CORE_PATCH_URL, core_patch_url.class);
+        mgr.registerCommand(CommandId.CORE_PATCH_UUID, core_patch_uuid.class);
         mgr.registerCommand(CommandId.CORE_SHUTDOWN, core_shutdown.class);
         mgr.registerCommand(CommandId.CORE_TRANSPORT_SET_TIMEOUTS, core_transport_set_timeouts.class);
         mgr.registerCommand(CommandId.CORE_TRANSPORT_LIST, core_transport_list.class);

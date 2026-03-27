@@ -6,10 +6,10 @@ import java.security.SecureRandom;
 import java.security.spec.X509EncodedKeySpec;
 import javax.crypto.Cipher;
 
+import com.metasploit.TLVPacket;
+import com.metasploit.TLVType;
 import com.metasploit.meterpreter.Transport;
 import com.metasploit.meterpreter.Meterpreter;
-import com.metasploit.meterpreter.TLVPacket;
-import com.metasploit.meterpreter.TLVType;
 import com.metasploit.meterpreter.command.Command;
 
 public class core_negotiate_tlv_encryption implements Command {
@@ -21,10 +21,10 @@ public class core_negotiate_tlv_encryption implements Command {
         int encType;
         byte[] aesKey;
         if (Cipher.getMaxAllowedKeyLength("AES") < 256) {
-            encType = Transport.ENC_AES128;
+            encType = TLVPacket.ENC_AES128;
             aesKey = new byte[16];
         } else {
-            encType = Transport.ENC_AES256;
+            encType = TLVPacket.ENC_AES256;
             aesKey = new byte[32];
         }
         sr.nextBytes(aesKey);

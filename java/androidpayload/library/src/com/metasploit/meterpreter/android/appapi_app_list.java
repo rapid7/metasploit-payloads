@@ -8,9 +8,9 @@ import android.content.pm.PackageManager;
 
 import java.util.List;
 
+import com.metasploit.TLVPacket;
 import com.metasploit.meterpreter.AndroidMeterpreter;
 import com.metasploit.meterpreter.Meterpreter;
-import com.metasploit.meterpreter.TLVPacket;
 import com.metasploit.meterpreter.command.Command;
 
 public class appapi_app_list implements Command {
