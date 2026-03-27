@@ -206,7 +206,7 @@ BOOL LoadReflectively(IN ULONG_PTR lpBuffer, OUT HMODULE *phModule) {
 		return FALSE;
 	}
 	
-	dprintf("[LOADREFLECTIVELY] Allocation succesfull, got %p\n", pDLLBaseAddress);
+	dprintf("[LOADREFLECTIVELY] Allocation successful, got %p\n", pDLLBaseAddress);
 
 	pSectionHeader = (PIMAGE_SECTION_HEADER)((PBYTE)(&(pNtHeaders->OptionalHeader)) + pNtHeaders->FileHeader.SizeOfOptionalHeader);
 
