@@ -102,13 +102,12 @@ BOOL FixIAT(PIMAGE_DATA_DIRECTORY pDataDirectoryImportTable, PBYTE pBaseAddress)
 			{
 				// import by ordinal
 				//fncPointer = (ULONG_PTR)GetProcAddress(hModule, (LPCSTR)(IMAGE_ORDINAL(pINT->u1.Ordinal)));
-				fncName = (LPCSTR)(IMAGE_ORDINAL(pINT->u1.Ordinal));
+				fncName = (LPCSTR)MAKEINTRESOURCEA(IMAGE_ORDINAL(pINT->u1.Ordinal));
 			}
 			else {
 
 				// import by name
 				PIMAGE_IMPORT_BY_NAME pImgImportByName = (PIMAGE_IMPORT_BY_NAME)(pBaseAddress + pINT->u1.AddressOfData);
-				//fncPointer = (ULONG_PTR)GetProcAddress(hModule, pImgImportByName->Name);
 				fncName = pImgImportByName->Name;
 			}
 			
@@ -132,10 +131,11 @@ BOOL FixIAT(PIMAGE_DATA_DIRECTORY pDataDirectoryImportTable, PBYTE pBaseAddress)
 BOOL FixPermissions(PIMAGE_NT_HEADERS pNtHeaders, PBYTE pBaseAddress)
 {
 	PIMAGE_SECTION_HEADER pSectionHeader = (PIMAGE_SECTION_HEADER)((PBYTE)(&(pNtHeaders->OptionalHeader)) + pNtHeaders->FileHeader.SizeOfOptionalHeader);
-
+	DWORD dwProtection, dwOldFlags;
+	
 	for (int i = 0; i < pNtHeaders->FileHeader.NumberOfSections; i++)
 	{
-		DWORD dwProtection, dwOldFlags;
+		dwProtection = 0;
 
 		if (pSectionHeader[i].Characteristics & IMAGE_SCN_MEM_WRITE)
 			dwProtection = PAGE_WRITECOPY;
@@ -160,7 +160,8 @@ BOOL FixPermissions(PIMAGE_NT_HEADERS pNtHeaders, PBYTE pBaseAddress)
 
 		dprintf("[FIXPERM] Setting permissions for section %p to %x with size %x\n",pBaseAddress + pSectionHeader[i].VirtualAddress , dwProtection, pSectionHeader[i].SizeOfRawData);
 		LPVOID lpAddress = (PBYTE)pBaseAddress + pSectionHeader[i].VirtualAddress;
-		if(met_api->win_api.kernel32.VirtualProtect(&(lpAddress), pSectionHeader[i].SizeOfRawData, dwProtection, &dwOldFlags) == 0)
+		SIZE_T dwSectionSize = pSectionHeader[i].SizeOfRawData;
+		if(dwSectionSize != 0 && met_api->win_api.kernel32.VirtualProtect(lpAddress, dwSectionSize, dwProtection, &dwOldFlags) == 0)
 		{
 			dprintf("[LOADREFLECTIVELY] Failed to fix permissions for section %d\n", i);
 			return FALSE;
@@ -203,6 +204,7 @@ BOOL LoadReflectively(IN ULONG_PTR lpBuffer, OUT HMODULE *phModule) {
 	if (pDLLBaseAddress == NULL)
 	{
 		dprintf("[LOADREFLECTIVELY] VirtualAlloc failed\n");
+		met_api->win_api.kernel32.VirtualFree(pDLLBaseAddress, 0, MEM_RELEASE);
 		return FALSE;
 	}
 	
@@ -242,6 +244,7 @@ BOOL LoadReflectively(IN ULONG_PTR lpBuffer, OUT HMODULE *phModule) {
 	if(!FixRelocations(pRelocationTableDirectory, (ULONG_PTR)pDLLBaseAddress, pNtHeaders->OptionalHeader.ImageBase))
 	{
 		dprintf("[LOADREFLECTIVELY] Failed to fix relocations\n");
+		met_api->win_api.kernel32.VirtualFree(pDLLBaseAddress, 0, MEM_RELEASE);
 		return FALSE;
 	}
 
@@ -250,6 +253,7 @@ BOOL LoadReflectively(IN ULONG_PTR lpBuffer, OUT HMODULE *phModule) {
 	if(!FixIAT(pImportTableDirectory, pDLLBaseAddress))
 	{
 		dprintf("[LOADREFLECTIVELY] Failed to fix IAT\n");
+		met_api->win_api.kernel32.VirtualFree(pDLLBaseAddress, 0, MEM_RELEASE);
 		return FALSE;
 	}
 
