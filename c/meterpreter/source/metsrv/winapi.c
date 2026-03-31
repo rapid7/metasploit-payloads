@@ -218,8 +218,9 @@ Syscall** GetOrInitWinApiSyscalls() {
 
 BOOL hasDirectSyscallSupport() {
     DWORD dwVersion = GetWindowsMajorMinVer();
-
-    if(dwVersion != 0 || ((dwVersion & 0xff00 >> 8) >= 6 && (dwVersion & 0xff) >= 1)) {
+    DWORD dwMajor = (dwVersion & 0xff00) >> 8;
+    DWORD dwMinor = dwVersion & 0xff;
+    if(dwVersion != 0 && (dwMajor >= 6 && dwMinor >= 1)) {
         if(lpWinApiSyscalls == NULL) {
             GetOrInitWinApiSyscalls();
         }
