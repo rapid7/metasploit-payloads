@@ -161,7 +161,8 @@ MetApi api_instance = {
             winapi_ntdll_ZwQueryVirtualMemory,
             winapi_ntdll_ZwFreeVirtualMemory,
             winapi_ntdll_NtQueueApcThread,
-            winapi_ntdll_NtOpenThread
+            winapi_ntdll_NtOpenThread,
+            winapi_ntdll_RtlGetVersion
         },
         // kernel32
         {

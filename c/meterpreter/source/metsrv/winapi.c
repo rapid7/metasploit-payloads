@@ -42,6 +42,7 @@ enum HashedFunctions {
     H_ZwFreeVirtualMemory = 0xDE63B5C3,
     H_NtQueueApcThread = 0x52E9A746,
     H_NtOpenThread = 0x59651E8C,
+    H_RtlGetVersion = 0xD0C1869C,
     H_WriteProcessMemory = 0xD83D6AA1,
     H_ReadProcessMemory = 0x579D1BE9,
     H_OpenProcess = 0xEFE297C0,
@@ -144,7 +145,21 @@ NtDllFunction lpFunctionsTobeLoaded[] = {
 #define STATUS_SUCCESS 0
 Syscall** lpWinApiSyscalls = NULL;
 
-extern NTSTATUS SyscallStub(Syscall* pSyscall, ...);
+extern NTSTATUS SyscallStub(Syscall *pSyscall, DWORD dwNumberOfArgs, ULONG_PTR *lpArgs);
+
+DWORD GetWindowsMajorMinVer() {
+    DWORD dwResult = 0;
+    OSVERSIONINFOEXW os = {0};
+    os.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEXW);
+
+    NTSTATUS status = winapi_ntdll_RtlGetVersion(&os);
+    if(status != STATUS_SUCCESS) {
+        dprintf("[WINAPI][GetWindowsMajorMinVer] RtlGetVersion returned %p", status);
+        return 0;
+    }
+    dwResult = (os.dwMajorVersion << 8 & 0xff00) | (os.dwMinorVersion & 0xff);
+    return dwResult; 
+}
 
 Syscall** GetOrInitWinApiSyscalls() {
     if (lpWinApiSyscalls == NULL) {
@@ -202,12 +217,16 @@ Syscall** GetOrInitWinApiSyscalls() {
 }
 
 BOOL hasDirectSyscallSupport() {
-    if (lpWinApiSyscalls == NULL) {
-        if (GetOrInitWinApiSyscalls() == NULL) {
-            return FALSE;
+    DWORD dwVersion = GetWindowsMajorMinVer();
+    DWORD dwMajor = (dwVersion & 0xff00) >> 8;
+    DWORD dwMinor = dwVersion & 0xff;
+    if(dwVersion != 0 && (dwMajor >= 6 && dwMinor >= 1)) {
+        if(lpWinApiSyscalls == NULL) {
+            GetOrInitWinApiSyscalls();
         }
+        return lpWinApiSyscalls != NULL;
     }
-    return TRUE;
+    return FALSE;
 }
 
 
@@ -318,31 +337,38 @@ void* GetFunction(LPCSTR lpModuleName, LPCSTR lpFunctionName) {
 // START: ntdll.dll
 
 NTSTATUS winapi_ntdll_ZwAllocateVirtualMemory(HANDLE hProcess, PVOID* pBaseAddress, ULONG_PTR pZeroBits, PSIZE_T pRegionSize, ULONG ulAllocationType, ULONG ulProtect) {
-    return SyscallStub(lpWinApiSyscalls[ZwAllocateVirtualMemory], hProcess, pBaseAddress, pZeroBits, pRegionSize, ulAllocationType, ulProtect);
+    ULONG_PTR lpArgs[] = { (ULONG_PTR)hProcess, (ULONG_PTR)pBaseAddress, (ULONG_PTR)pZeroBits, (ULONG_PTR)pRegionSize, (ULONG_PTR)ulAllocationType, (ULONG_PTR)ulProtect };
+    return SyscallStub(lpWinApiSyscalls[ZwAllocateVirtualMemory], sizeof(lpArgs) / sizeof(ULONG_PTR), (ULONG_PTR *)&lpArgs);
 }
 
 NTSTATUS winapi_ntdll_ZwOpenProcess(PHANDLE ProcessHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, PCLIENT_ID ClientId) {
-    return SyscallStub(lpWinApiSyscalls[ZwOpenProcess], ProcessHandle, DesiredAccess, ObjectAttributes, ClientId);
+    ULONG_PTR lpArgs[] = { (ULONG_PTR)ProcessHandle, (ULONG_PTR)DesiredAccess, (ULONG_PTR)ObjectAttributes, (ULONG_PTR)ClientId };
+    return SyscallStub(lpWinApiSyscalls[ZwOpenProcess], sizeof(lpArgs) / sizeof(ULONG_PTR), (ULONG_PTR *)&lpArgs);
 }
 
 NTSTATUS winapi_ntdll_ZwWriteVirtualMemory(HANDLE ProcessHandle, PVOID BaseAddress, PVOID Buffer, ULONG NumberOfBytesToWrite, PULONG NumberOfBytesWritten) {
-    return SyscallStub(lpWinApiSyscalls[ZwWriteVirtualMemory], ProcessHandle, BaseAddress, Buffer, NumberOfBytesToWrite, NumberOfBytesWritten);
+    ULONG_PTR lpArgs[] = { (ULONG_PTR)ProcessHandle, (ULONG_PTR)BaseAddress, (ULONG_PTR)Buffer, (ULONG_PTR)NumberOfBytesToWrite, (ULONG_PTR)NumberOfBytesWritten };
+    return SyscallStub(lpWinApiSyscalls[ZwWriteVirtualMemory], sizeof(lpArgs) / sizeof(ULONG_PTR), (ULONG_PTR *)&lpArgs);
 }
 
 NTSTATUS winapi_ntdll_ZwReadVirtualMemory(HANDLE ProcessHandle, PVOID BaseAddress, PVOID Buffer, ULONG NumberOfBytesToRead, PULONG NumberOfBytesRead) {
-    return SyscallStub(lpWinApiSyscalls[ZwReadVirtualMemory], ProcessHandle, BaseAddress, Buffer, NumberOfBytesRead, NumberOfBytesRead);
+    ULONG_PTR lpArgs[] = { (ULONG_PTR)ProcessHandle, (ULONG_PTR)BaseAddress, (ULONG_PTR)Buffer, (ULONG_PTR)NumberOfBytesToRead, (ULONG_PTR)NumberOfBytesRead };
+    return SyscallStub(lpWinApiSyscalls[ZwReadVirtualMemory], sizeof(lpArgs) / sizeof(ULONG_PTR), (ULONG_PTR *)&lpArgs);
 }
 
 NTSTATUS winapi_ntdll_ZwProtectVirtualMemory(HANDLE ProcessHandle, PVOID* BaseAddress, PSIZE_T RegionSize, ULONG NewProtect, PULONG OldProtect) {
-    return SyscallStub(lpWinApiSyscalls[ZwProtectVirtualMemory], ProcessHandle, BaseAddress, RegionSize, NewProtect, OldProtect);
+    ULONG_PTR lpArgs[] = { (ULONG_PTR)ProcessHandle, (ULONG_PTR)BaseAddress, (ULONG_PTR)RegionSize, (ULONG_PTR)NewProtect, (ULONG_PTR)OldProtect };
+    return SyscallStub(lpWinApiSyscalls[ZwProtectVirtualMemory], sizeof(lpArgs) / sizeof(ULONG_PTR), (ULONG_PTR *)&lpArgs);
 }
 
 NTSTATUS winapi_ntdll_ZwQueryVirtualMemory(HANDLE ProcessHandle, PVOID BaseAddress, MEMORY_INFORMATION_CLASS MemoryInformationClass, PVOID MemoryInformation, SIZE_T MemoryInformationLength, PSIZE_T ReturnLength) {
-    return SyscallStub(lpWinApiSyscalls[ZwQueryVirtualMemory], ProcessHandle, BaseAddress, MemoryInformationClass, MemoryInformation, MemoryInformationLength, ReturnLength);
+    ULONG_PTR lpArgs[] = { (ULONG_PTR)ProcessHandle, (ULONG_PTR)BaseAddress, (ULONG_PTR)MemoryInformationClass, (ULONG_PTR)MemoryInformation, (ULONG_PTR)MemoryInformationLength, (ULONG_PTR)ReturnLength };
+    return SyscallStub(lpWinApiSyscalls[ZwQueryVirtualMemory], sizeof(lpArgs) / sizeof(ULONG_PTR), (ULONG_PTR *)&lpArgs);
 }
 
 NTSTATUS winapi_ntdll_ZwFreeVirtualMemory(HANDLE ProcessHandle, PVOID* BaseAddress, PSIZE_T RegionSize, ULONG FreeType) {
-    return SyscallStub(lpWinApiSyscalls[ZwFreeVirtualMemory], ProcessHandle, BaseAddress, RegionSize, FreeType);
+    ULONG_PTR lpArgs[] = { (ULONG_PTR)ProcessHandle, (ULONG_PTR)BaseAddress, (ULONG_PTR)RegionSize, (ULONG_PTR)FreeType };
+    return SyscallStub(lpWinApiSyscalls[ZwFreeVirtualMemory], sizeof(lpArgs) / sizeof(ULONG_PTR), (ULONG_PTR *)&lpArgs);
 }
 
 NTSTATUS winapi_ntdll_NtQueueApcThread(HANDLE ThreadHandle, PVOID ApcRoutine, PVOID ApcContext, PVOID Argument1, PVOID Argument2) {
@@ -363,6 +389,14 @@ NTSTATUS winapi_ntdll_NtOpenThread(PHANDLE ThreadHandle, ACCESS_MASK DesiredAcce
     return 0xC0000001; // STATUS_UNSUCCESSFUL
 }
 
+NTSTATUS winapi_ntdll_RtlGetVersion(PRTL_OSVERSIONINFOEXW os) {
+    NTSTATUS (NTAPI *pRtlGetVersion)(PRTL_OSVERSIONINFOEXW os) = GetFunctionH(NTDLL_DLL, H_RtlGetVersion);
+    dprintf("[WINAPI][winapi_ntdll_RtlGetVersion] Calling RtlGetVersion @ %p", pRtlGetVersion);
+    if(pRtlGetVersion) {
+        return pRtlGetVersion(os);
+    }
+    return 0xC0000001;
+}
 // END: ntdll.dll
 // START: kernel32.dll
 
