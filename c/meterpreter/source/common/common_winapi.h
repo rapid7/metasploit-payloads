@@ -50,6 +50,7 @@ typedef struct _WinApiNtdll {
     NTSTATUS (*ZwFreeVirtualMemory)(HANDLE ProcessHandle, PVOID* BaseAddress, PSIZE_T RegionSize, ULONG FreeType);
     NTSTATUS (*NtQueueApcThread)(HANDLE ThreadHandle, PVOID ApcRoutine, PVOID ApcContext, PVOID Argument1, PVOID Argument2);
     NTSTATUS (*NtOpenThread)(PHANDLE ThreadHandle, ACCESS_MASK DesiredAccess, OBJECT_ATTRIBUTES* ObjectAttributes, CLIENT_ID* ClientId);
+    NTSTATUS (*RtlGetVersion)(PRTL_OSVERSIONINFOEXW os);
 } WinApiNtdll;
 
 // kernel32.dll
