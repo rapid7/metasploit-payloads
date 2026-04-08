@@ -7,7 +7,6 @@
 
 // Required so that use of the API works.
 MetApi* met_api = NULL;
-HINSTANCE hAppInstance = NULL;
 
 #ifndef NO_REFLECTIVE_LOADER
 #define REFLECTIVEDLLINJECTION_CUSTOM_DLLMAIN
@@ -35,6 +34,7 @@ Command customCommands[] =
 	COMMAND_TERMINATOR
 };
 
+<<<<<<< HEAD
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpReserved)
 {
 	switch (dwReason)
@@ -62,17 +62,41 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpReserved)
 	return TRUE;
 }
 
+=======
+BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpReserved)
+{
+	switch (dwReason)
+	{
+	case DLL_QUERY_HMODULE:
+		if (lpReserved != NULL)
+		{
+			*(HMODULE*)lpReserved = hAppInstance;
+		}
+		break;
+	case DLL_PROCESS_ATTACH:
+		hAppInstance = hinstDLL;
+		break;
+	case DLL_PROCESS_DETACH:
+	case DLL_THREAD_ATTACH:
+	case DLL_THREAD_DETACH:
+		break;
+	}
+
+	PythonDllMain(hinstDLL, dwReason, lpReserved);
+	CtypesDllMain(hinstDLL, dwReason, lpReserved);
+	return TRUE;
+}
+
+>>>>>>> 288858c6 (Restores extensions)
 /*!
  * @brief Initialize the server extension.
  * @param api Pointer to the Meterpreter API structure.
  * @param remote Pointer to the remote instance.
- * @param hinst Pointer to the HINSTANCE.
  * @return Indication of success or failure.
  */
-DWORD InitServerExtension(MetApi* api, Remote* remote, HINSTANCE hinst)
+DWORD InitServerExtension(MetApi* api, Remote* remote)
 {
 	met_api = api;
-	hAppInstance = hinst;
 	SET_LOGGING_CONTEXT(api)
 
 	met_api->command.register_all(customCommands);
@@ -95,6 +119,7 @@ DWORD InitServerExtension(MetApi* api, Remote* remote, HINSTANCE hinst)
  */
 DWORD DeinitServerExtension(Remote *remote)
 {
+<<<<<<< HEAD
 	met_api->command.deregister_all(customCommands);
 <<<<<<< HEAD
 =======
@@ -102,6 +127,11 @@ DWORD DeinitServerExtension(Remote *remote)
 >>>>>>> ca8b5071 (Removes reflective loader from extensions)
 
 	python_destroy_session();
+=======
+	met_api->command.deregister_all(customCommands);
+
+	python_destroy_session();
+>>>>>>> 288858c6 (Restores extensions)
 
 	return ERROR_SUCCESS;
 }

@@ -35,7 +35,7 @@
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-//#include "../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.h"
+#include "../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.h"
 
 
 _PPEB GetProcessEnvironmentBlock();

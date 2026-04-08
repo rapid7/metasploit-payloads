@@ -37,10 +37,9 @@ Command customCommands[] =
  * @param remote Pointer to the remote instance.
  * @return Indication of success or failure.
  */
-DWORD InitServerExtension(MetApi* api, Remote* remote, HINSTANCE hinst)
+DWORD InitServerExtension(MetApi* api, Remote* remote)
 {
 	met_api = api;
-	hAppInstance = hinst;
 	SET_LOGGING_CONTEXT(api)
 
 	met_api->command.register_all(customCommands);
@@ -56,7 +55,7 @@ DWORD InitServerExtension(MetApi* api, Remote* remote, HINSTANCE hinst)
 DWORD DeinitServerExtension(Remote* remote)
 {
 	met_api->command.deregister_all(customCommands);
-	hAppInstance = NULL;
+
 	return ERROR_SUCCESS;
 }
 

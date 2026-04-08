@@ -7,8 +7,12 @@
 #include "passwd.h"
 #include "fs.h"
 
+#include "../../ReflectiveDLLInjection/inject/src/GetProcAddressR.h"
+#include "../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.h"
 
 #define strcasecmp stricmp
 
+// declared in ReflectiveLoader.c and set by DllMain also in ReflectiveLoader.c
+extern HINSTANCE hAppInstance;
 
 #endif
