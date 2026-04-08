@@ -8,10 +8,9 @@
 
 // Required so that use of the API works.
 MetApi* met_api = NULL;
-HINSTANCE hAppInstance = NULL;
 
-//#define RDIDLL_NOEXPORT
-//#include "../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
+#define RDIDLL_NOEXPORT
+#include "../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
 
 #include "main.h"
 
@@ -75,13 +74,11 @@ DWORD request_exec_cmd(Remote *remote, Packet *packet)
  * @brief Initialize the server extension.
  * @param api Pointer to the Meterpreter API structure.
  * @param remote Pointer to the remote instance.
- * @param hinst Pointer to the HINSTANCE.
  * @return Indication of success or failure.
  */
-DWORD InitServerExtension(MetApi* api, Remote* remote, HINSTANCE hinst)
+DWORD InitServerExtension(MetApi* api, Remote* remote)
 {
 	met_api = api;
-	hAppInstance = hinst;
 	SET_LOGGING_CONTEXT(api)
 
 	dprintf("[KIWI] Init server extension - initorclean");
@@ -104,7 +101,6 @@ DWORD DeinitServerExtension(Remote *remote)
 {
 	mimikatz_initOrClean(FALSE);
 	met_api->command.deregister_all(customCommands);
-	hAppInstance = NULL;
 
 	return ERROR_SUCCESS;
 }

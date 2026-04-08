@@ -1,5 +1,4 @@
 #include "precomp.h"
-#include "common_metapi.h"
 
 HMODULE hookLibrary = NULL;
 

@@ -94,12 +94,12 @@ BOOL MapNewExecutableRegionInProcess(
 	DosHeader = (PIMAGE_DOS_HEADER)NewExecutableRawImage;
 	if (DosHeader->e_magic == IMAGE_DOS_SIGNATURE)
 	{
-		NtHeader64 = (PIMAGE_NT_HEADERS64)((PBYTE)NewExecutableRawImage + DosHeader->e_lfanew);
+		NtHeader64 = (PIMAGE_NT_HEADERS64)((DWORD)NewExecutableRawImage + DosHeader->e_lfanew);
 		if (NtHeader64->Signature == IMAGE_NT_SIGNATURE)
 		{
 			RtlZeroMemory(&BasicInformation, sizeof(PROCESS_INFORMATION));
 			ThreadContext = (PCONTEXT)VirtualAlloc(NULL, sizeof(ThreadContext) + 4, MEM_COMMIT, PAGE_READWRITE);
-			ThreadContext = (PCONTEXT)Align((DWORD_PTR)ThreadContext, 4);
+			ThreadContext = (PCONTEXT)Align((DWORD)ThreadContext, 4);
 			ThreadContext->ContextFlags = CONTEXT_FULL;
 			if (GetThreadContext(TargetThreadHandle, ThreadContext)) //used to be LPCONTEXT(ThreadContext)
 			{

@@ -1,8 +1,8 @@
 #include "precomp.h"
 #include "common_metapi.h"
 #include "tokendup.h"
-//#include "../../ReflectiveDLLInjection/inject/src/LoadLibraryR.h"
-//#include "../../ReflectiveDLLInjection/inject/src/LoadLibraryR.c"
+#include "../../ReflectiveDLLInjection/inject/src/LoadLibraryR.h"
+#include "../../ReflectiveDLLInjection/inject/src/LoadLibraryR.c"
 
 /*
  * Enable or disable a privilege in our processes current token.
