@@ -353,14 +353,22 @@ int fs_mkdir(char *directory)
 	size_t directory_length;
 	char* base_dir;
 	char* dir;
+	HANDLE process_heap = NULL;
 		
 	if(directory == NULL){
 		return ERROR_INVALID_PARAMETER;
 	}
 
+	process_heap =  GetProcessHeap();
+
+	if(process_heap == NULL){
+		rc = GetLastError();
+		return rc;
+	}
+
 	// Add 2 because of NULL character and additional backslash
 	directory_length = lstrlenA(directory)+2;
-	base_dir = (char *)HeapAlloc(GetProcessHeap(), 0, directory_length);
+	base_dir = (char *)HeapAlloc(process_heap, 0, directory_length);
 	
 	if(base_dir == NULL){
 		rc = GetLastError();
@@ -399,7 +407,7 @@ int fs_mkdir(char *directory)
 
 
 out:
-	HeapFree(GetProcessHeap(),0, base_dir);
+	HeapFree(process_heap,0, base_dir);
 	return rc;
 }
 
