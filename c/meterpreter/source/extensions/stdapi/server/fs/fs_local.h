@@ -49,7 +49,7 @@ int fs_ls(const char *directory, fs_ls_cb_t cb, void *arg);
 
 int fs_getwd(char **directory);
 
-int fs_mkdir(const char *directory);
+int fs_mkdir(char *directory);
 
 int fs_move(const char *oldpath, const char *newpath);
 
