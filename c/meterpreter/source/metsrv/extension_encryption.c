@@ -253,8 +253,8 @@ BOOL extension_encryption_add(LPVOID lpExtensionLocation) {
 		g_ExtensionEncryptionManager->dwExtensionsCount++;
 		dprintf("[extension_encryption][extension_encryption_add] Added extension text section at %p of size %u", lpExtensionStatus->lpLoc,lpExtensionStatus->dwSize);
 		dprintf("[extension_encryption][extension_encryption_add] Function exiting");
-		LeaveCriticalSection(&g_ExtensionEncryptionManager->cs);
 	} while (0);
+	LeaveCriticalSection(&g_ExtensionEncryptionManager->cs);
 	return dwResult == ERROR_SUCCESS;
 }
 
@@ -381,22 +381,27 @@ BOOL extension_encryption_encrypt(ExtensionEncryptionStatus* lpExtensionStatus) 
 			ret = ReadProcessMemory(GetCurrentProcess(), (unsigned char*)ExtensionLoc + i, lpTempBufferRead, diff, &ByteCounter);
 			if (!ret || ByteCounter != diff) {
 				dprintf("[extension_encryption][extension_encryption_encrypt] ReadProcessMemory failed with error 0x%x", GetLastError());
+				bError = TRUE;
 				break;
 			}
 			if (!g_ExtensionEncryptionManager->cryptoManager.encrypt(lpTempBufferRead, diff, lpTempBufferWrite, BUFFER_SIZE)) {
 				dprintf("[extension_encryption][extension_encryption_encrypt] CryptographicManager encrypt failed.");
 				ret = FALSE;
+				bError = TRUE;
 				break;
 			}
 			ret = WriteProcessMemory(GetCurrentProcess(), (unsigned char*)ExtensionLoc + i, lpTempBufferWrite, diff, &ByteCounter);
 			if (!ret || ByteCounter != diff) {
 				dprintf("[extension_encryption][extension_encryption_encrypt] WriteProcessMemory failed with error 0x%x", GetLastError());
+				bError = TRUE;
 				break;
 			}
 		}
 
-		lpExtensionStatus->dwLastUsedTime = GetTickCount();
-		lpExtensionStatus->bEncrypted = TRUE;
+		if (!bError) {
+			lpExtensionStatus->dwLastUsedTime = GetTickCount();
+			lpExtensionStatus->bEncrypted = TRUE;
+		}
 	}
 
 	if (!bError && !VirtualProtect(ExtensionLoc,ExtensionSize,dwOldProtect,&dwOldProtect)){
@@ -508,8 +513,11 @@ BOOL extension_encryption_decrypt(ExtensionEncryptionStatus* lpExtensionStatus) 
 				break;
 			}
 		}
-		lpExtensionStatus->dwLastUsedTime = GetTickCount();
-		lpExtensionStatus->bEncrypted = FALSE;
+
+		if (!bError) {
+			lpExtensionStatus->dwLastUsedTime = GetTickCount();
+			lpExtensionStatus->bEncrypted = FALSE;
+		}
 	}
 
 	if (!bError && !VirtualProtect(ExtensionLoc,ExtensionSize,dwOldProtect,&dwOldProtect)){
@@ -568,8 +576,8 @@ DWORD extensionFindDecrypt(LPVOID lpHandlerFunction) {
 		return EXTENSION_ENCRYPTION_EXTENSION_NOT_ENCRYPTABLE;
 	}
 
-	if (!extensionStatus->bEncrypted || !encryptionManager->decrypt(extensionStatus)) {
-		dprintf("[extension_encryption][extensionFindDecrypt] Decryption of the extension is failed");
+	if (extensionStatus->bEncrypted && !encryptionManager->decrypt(extensionStatus)) {
+		dprintf("[extension_encryption][extensionFindDecrypt] Decryption of the extension failed");
 		return EXTENSION_ENCRYPTION_DECRYPTION_ERROR;
 	}
 
