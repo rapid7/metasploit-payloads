@@ -328,7 +328,7 @@ BOOL command_process_inline(Command *command, Remote *remote, Packet *packet)
 					}
 					else {
 						dprintf("[COMMAND] Decryption failed for command %u", commandId);
-						//break;
+						break;
 					}
 					serverContinue = command->request.inline_handler(remote, packet, &result) && serverContinue;
 					dprintf("[DISPATCH] executed %u, continue %s", commandId, serverContinue ? "yes" : "no");
@@ -343,7 +343,7 @@ BOOL command_process_inline(Command *command, Remote *remote, Packet *packet)
 					}
 					else {
 						dprintf("[COMMAND] Decryption failed for command %u", commandId);
-						//break;
+						break;
 					}
 					result = command->request.handler(remote, packet);
 				}
@@ -360,7 +360,7 @@ BOOL command_process_inline(Command *command, Remote *remote, Packet *packet)
 					}
 					else {
 						dprintf("[COMMAND] Decryption failed for command %u", commandId);
-						//break;
+						break;
 					}
 					serverContinue = command->response.inline_handler(remote, packet, &result) && serverContinue;
 				}
@@ -374,7 +374,7 @@ BOOL command_process_inline(Command *command, Remote *remote, Packet *packet)
 					}
 					else {
 						dprintf("[COMMAND] Decryption failed for command %u", commandId);
-						//break;
+						break;
 					}
 					result = command->response.handler(remote, packet);
 				}

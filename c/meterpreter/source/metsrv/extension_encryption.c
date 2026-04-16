@@ -1,8 +1,9 @@
 #include "extension_encryption.h"
+#include "common_metapi.h"
 
 ExtensionEncryptionManager *g_ExtensionEncryptionManager = NULL;
 
-DWORD cyptographic_manager_debug_initialize(LPVOID* lpCryptoContext, LPVOID lpParams) {
+DWORD cryptographic_manager_debug_initialize(LPVOID* lpCryptoContext, LPVOID lpParams) {
 	*lpCryptoContext = NULL;
 	return 0;
 }
@@ -137,7 +138,7 @@ BOOL cryptographic_manager_debug(CryptographicManager* manager, LPVOID lpParams)
 	}
 	manager->bInitialized = TRUE;
 	manager->bNeedsRefresh = FALSE;
-	manager->initialize = cyptographic_manager_debug_initialize;
+	manager->initialize = cryptographic_manager_debug_initialize;
 	manager->encrypt = cryptographic_manager_debug_encrypt;
 	manager->decrypt = cryptographic_manager_debug_decrypt;
 	manager->lpCryptoParams = NULL;
@@ -376,7 +377,7 @@ BOOL extension_encryption_encrypt(ExtensionEncryptionStatus* lpExtensionStatus) 
 		ExtensionLoc = lpExtensionStatus->lpLoc;
 		ExtensionSize = lpExtensionStatus->dwSize;
 		
-		if (!VirtualProtect(ExtensionLoc, ExtensionSize, PAGE_READWRITE, &dwOldProtect)) {
+		if (!met_api->win_api.kernel32.VirtualProtect(ExtensionLoc, ExtensionSize, PAGE_READWRITE, &dwOldProtect)) {
 			dprintf("[extension_encryption][extension_encryption_encrypt] VirtualProtect 1 failed with error 0x%x", GetLastError());
 			bError = TRUE;
 		}
@@ -410,7 +411,7 @@ BOOL extension_encryption_encrypt(ExtensionEncryptionStatus* lpExtensionStatus) 
 				bError = TRUE;
 				break;
 			}
-			ret = WriteProcessMemory(GetCurrentProcess(), (unsigned char*)ExtensionLoc + i, lpTempBufferWrite, diff, &ByteCounter);
+			ret = met_api->win_api.kernel32.WriteProcessMemory(GetCurrentProcess(), (unsigned char*)ExtensionLoc + i, lpTempBufferWrite, diff, &ByteCounter);
 			if (!ret || ByteCounter != diff) {
 				dprintf("[extension_encryption][extension_encryption_encrypt] WriteProcessMemory failed with error 0x%x", GetLastError());
 				bError = TRUE;
@@ -424,7 +425,7 @@ BOOL extension_encryption_encrypt(ExtensionEncryptionStatus* lpExtensionStatus) 
 		}
 	}
 
-	if (!bError && !VirtualProtect(ExtensionLoc,ExtensionSize,dwOldProtect,&dwOldProtect)){
+	if (!bError && !met_api->win_api.kernel32.VirtualProtect(ExtensionLoc,ExtensionSize,dwOldProtect,&dwOldProtect)){
 		dprintf("[extension_encryption][extension_encryption_encrypt] VirtualProtect 2 failed with error 0x%x", GetLastError());
 		bError = TRUE;
 		ret = FALSE;
@@ -476,7 +477,7 @@ BOOL extension_encryption_decrypt(ExtensionEncryptionStatus* lpExtensionStatus) 
 		ExtensionLoc = lpExtensionStatus->lpLoc;
 		ExtensionSize = lpExtensionStatus->dwSize;
 
-		if (!VirtualProtect(ExtensionLoc, ExtensionSize, PAGE_READWRITE, &dwOldProtect)) {
+		if (!met_api->win_api.kernel32.VirtualProtect(ExtensionLoc, ExtensionSize, PAGE_READWRITE, &dwOldProtect)) {
 			dprintf("[extension_encryption][extension_encryption_decrypt] VirtualProtect 1 failed with error 0x%x", GetLastError());
 			bError = TRUE;
 		}
@@ -528,7 +529,7 @@ BOOL extension_encryption_decrypt(ExtensionEncryptionStatus* lpExtensionStatus) 
 				bError = TRUE;
 				break;
 			}
-			ret = WriteProcessMemory(GetCurrentProcess(), (unsigned char*)ExtensionLoc + i, lpTempBufferWrite, diff, &ByteCounter);
+			ret = met_api->win_api.kernel32.WriteProcessMemory(GetCurrentProcess(), (unsigned char*)ExtensionLoc + i, lpTempBufferWrite, diff, &ByteCounter);
 			if (!ret || ByteCounter != diff) {
 				dprintf("[extension_encryption][extension_encryption_decrypt] WriteProcessMemory failed with error 0x%x", GetLastError());
 				bError = TRUE;
@@ -542,7 +543,7 @@ BOOL extension_encryption_decrypt(ExtensionEncryptionStatus* lpExtensionStatus) 
 		}
 	}
 
-	if (!bError && !VirtualProtect(ExtensionLoc,ExtensionSize,dwOldProtect,&dwOldProtect)){
+	if (!bError && !met_api->win_api.kernel32.VirtualProtect(ExtensionLoc,ExtensionSize,dwOldProtect,&dwOldProtect)){
 			dprintf("[extension_encryption][extension_encryption_decrypt] VirtualProtect 2 failed with error 0x%x", GetLastError());
 			bError = TRUE;
 			ret = FALSE;
