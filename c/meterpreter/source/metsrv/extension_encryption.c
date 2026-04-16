@@ -538,6 +538,10 @@ BOOL extension_encryption_decrypt(ExtensionEncryptionStatus* lpExtensionStatus) 
 
 void extension_encryption_encrypt_unused() {
 
+	if (g_ExtensionEncryptionManager == NULL) {
+		return;
+	}
+
 	EnterCriticalSection(&g_ExtensionEncryptionManager->cs);
 	ExtensionEncryptionStatus** extension_statuses = g_ExtensionEncryptionManager->extensionStatuses;
 	DWORD current_time = GetTickCount();
