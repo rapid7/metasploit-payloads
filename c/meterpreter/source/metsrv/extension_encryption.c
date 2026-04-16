@@ -109,10 +109,19 @@ BOOL cryptographic_manager_rc4(CryptographicManager* manager, LPVOID lpParams) {
 			dprintf("[cryptographic_manager_rc4] HeapAlloc failed.");
 			return FALSE;
 		}
-		srand((unsigned int)GetTickCount());
-		for(int i = 0; i < KEY_SIZE_RC4; i++) {
-			((char*)manager->lpCryptoParams)[i] = (char)(rand() % 256);
+		HCRYPTPROV hProv = 0;
+		if (!CryptAcquireContext(&hProv, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT)) {
+			dprintf("[cryptographic_manager_rc4] CryptAcquireContext failed.");
+			HeapFree(GetProcessHeap(), 0, (LPVOID)manager->lpCryptoParams);
+			return FALSE;
 		}
+		if (!CryptGenRandom(hProv, KEY_SIZE_RC4, (BYTE*)manager->lpCryptoParams)) {
+			dprintf("[cryptographic_manager_rc4] CryptGenRandom failed.");
+			CryptReleaseContext(hProv, 0);
+			HeapFree(GetProcessHeap(), 0, (LPVOID)manager->lpCryptoParams);
+			return FALSE;
+		}
+		CryptReleaseContext(hProv, 0);
 	}
 	if (manager->initialize(&manager->lpCryptoContext, (LPVOID)manager->lpCryptoParams) != 0) {
 		dprintf("[cryptographic_manager_rc4] Initialization failed.");
@@ -289,7 +298,7 @@ BOOL extension_encryption_get(LPVOID lpHandlerFunction, ExtensionEncryptionStatu
 }
 
 BOOL extension_encryption_remove(ExtensionEncryptionStatus* lpExtensionStatus) {
-	BOOL ret = TRUE;
+	BOOL ret = FALSE;
 	EnterCriticalSection(&g_ExtensionEncryptionManager->cs);
 	dprintf("[extension_encryption][extension_encryption_remove] Removing extension.");
 	if (lpExtensionStatus == NULL) {
@@ -374,6 +383,17 @@ BOOL extension_encryption_encrypt(ExtensionEncryptionStatus* lpExtensionStatus) 
 	}
 
 	if (!bError) {
+		if (g_ExtensionEncryptionManager->cryptoManager.bNeedsRefresh) {
+			if (g_ExtensionEncryptionManager->cryptoManager.refresh != NULL) {
+				if (g_ExtensionEncryptionManager->cryptoManager.refresh(g_ExtensionEncryptionManager->cryptoManager.lpCryptoContext, (LPVOID)g_ExtensionEncryptionManager->cryptoManager.lpCryptoParams) != 0) {
+					dprintf("[extension_encryption][extension_encryption_encrypt] CryptographicManager refresh failed.");
+					bError = TRUE;
+				}
+			}
+		}
+	}
+
+	if (!bError) {
 		for (DWORD i = 0; i != ExtensionSize; i += diff) {
 			if ((ExtensionSize - i) < BUFFER_SIZE) {
 				diff = ExtensionSize - i;
@@ -412,8 +432,10 @@ BOOL extension_encryption_encrypt(ExtensionEncryptionStatus* lpExtensionStatus) 
 
 	LeaveCriticalSection(&g_ExtensionEncryptionManager->cs);
 	
-	if (lpTempBufferWrite != NULL && lpTempBufferRead != NULL) {
+	if (lpTempBufferWrite != NULL) {
 		HeapFree(hHeap, 0, lpTempBufferWrite);
+	}
+	if (lpTempBufferRead != NULL) {
 		HeapFree(hHeap, 0, lpTempBufferRead);
 	}
 
@@ -528,8 +550,10 @@ BOOL extension_encryption_decrypt(ExtensionEncryptionStatus* lpExtensionStatus) 
 
 	LeaveCriticalSection(&g_ExtensionEncryptionManager->cs);
 	
-	if (lpTempBufferWrite != NULL && lpTempBufferRead != NULL) {
+	if (lpTempBufferWrite != NULL) {
 		HeapFree(hHeap, 0, lpTempBufferWrite);
+	}
+	if (lpTempBufferRead != NULL) {
 		HeapFree(hHeap, 0, lpTempBufferRead);
 	}
 
