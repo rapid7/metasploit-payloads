@@ -229,7 +229,6 @@ DWORD stagelessinit_extension(UINT extensionId, LPBYTE data, DWORD dataSize)
 }
 
 
-
 /*
  * @brief Load an extension from the given library handle.
  * @param hLibrary handle to the library to load/init.
@@ -276,7 +275,7 @@ DWORD load_extension(HMODULE hLibrary, BOOL bLibLoadedReflectivly, Remote* remot
 
 			pExtension->end = pFirstCommand;
 			// dwResult can be a mixture of different error types, e.g. HRESULT, win32 error
-			dwResult = pExtension->init(met_api, remote, pExtension->library);
+			dwResult = pExtension->init(met_api, remote);
 			pExtension->start = extensionCommands;
 
 			if (dwResult == ERROR_SUCCESS)

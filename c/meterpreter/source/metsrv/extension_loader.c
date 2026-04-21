@@ -179,104 +179,105 @@ BOOL LoadReflectively(IN ULONG_PTR lpBuffer, OUT HMODULE *phModule) {
 	PBYTE pBaseAddress = (PBYTE)lpBuffer;
 	PBYTE pDLLBaseAddress = NULL;
 	PIMAGE_SECTION_HEADER pSectionHeader = NULL;
+	DWORD dwResult = ERROR_SUCCESS;
 	*phModule = NULL;
-	
-	PIMAGE_DOS_HEADER pDosHeader = (PIMAGE_DOS_HEADER)(lpBuffer);
-	
-	if(pDosHeader->e_magic != IMAGE_DOS_SIGNATURE)
-	{
-		dprintf("[LOADREFLECTIVELY] DOS signature not valid\n");
-		return FALSE;
-	}
+	do {
+		PIMAGE_DOS_HEADER pDosHeader = (PIMAGE_DOS_HEADER)(lpBuffer);
+		
+		if(pDosHeader->e_magic != IMAGE_DOS_SIGNATURE)
+		{
+			BREAK_WITH_ERROR("[LOADREFLECTIVELY] DOS signature not valid\n", ERROR_INVALID_DATA);
+		}
 
-	PIMAGE_NT_HEADERS pNtHeaders = (PIMAGE_NT_HEADERS)(pDosHeader->e_lfanew + pBaseAddress);
+		PIMAGE_NT_HEADERS pNtHeaders = (PIMAGE_NT_HEADERS)(pDosHeader->e_lfanew + pBaseAddress);
 
-	if(pNtHeaders->Signature != IMAGE_NT_SIGNATURE)
-	{
-		dprintf("[LOADREFLECTIVELY] NT signature not valid\n");
-		return FALSE;
-	}
-	dprintf("[LOADREFLECTIVELY] PE headers are valid\n");
-	
-	dprintf("[LOADREFLECTIVELY] Allocating memory for the library\n");
-	pDLLBaseAddress = (PBYTE)met_api->win_api.kernel32.VirtualAlloc(NULL, pNtHeaders->OptionalHeader.SizeOfImage, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+		if(pNtHeaders->Signature != IMAGE_NT_SIGNATURE)
+		{
+			BREAK_WITH_ERROR("[LOADREFLECTIVELY] NT signature not valid\n", ERROR_INVALID_DATA);
+		}
+		dprintf("[LOADREFLECTIVELY] PE headers are valid\n");
+		
+		dprintf("[LOADREFLECTIVELY] Allocating memory for the library\n");
+		pDLLBaseAddress = (PBYTE)met_api->win_api.kernel32.VirtualAlloc(NULL, pNtHeaders->OptionalHeader.SizeOfImage, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 
-	if (pDLLBaseAddress == NULL)
-	{
-		dprintf("[LOADREFLECTIVELY] VirtualAlloc failed\n");
-		met_api->win_api.kernel32.VirtualFree(pDLLBaseAddress, 0, MEM_RELEASE);
-		return FALSE;
-	}
-	
-	dprintf("[LOADREFLECTIVELY] Allocation successful, got %p\n", pDLLBaseAddress);
+		if (pDLLBaseAddress == NULL)
+		{
+			BREAK_WITH_ERROR("[LOADREFLECTIVELY] VirtualAlloc failed\n", ERROR_OUTOFMEMORY);
+		}
+		
+		dprintf("[LOADREFLECTIVELY] Allocation successful, got %p\n", pDLLBaseAddress);
 
-	pSectionHeader = (PIMAGE_SECTION_HEADER)((PBYTE)(&(pNtHeaders->OptionalHeader)) + pNtHeaders->FileHeader.SizeOfOptionalHeader);
+		pSectionHeader = (PIMAGE_SECTION_HEADER)((PBYTE)(&(pNtHeaders->OptionalHeader)) + pNtHeaders->FileHeader.SizeOfOptionalHeader);
 
-	DWORD dwSizeOfHeaders = pNtHeaders->OptionalHeader.SizeOfHeaders;
-	PBYTE pSourceBase = pBaseAddress;
-	PBYTE pDestinationBase = pDLLBaseAddress;
+		DWORD dwSizeOfHeaders = pNtHeaders->OptionalHeader.SizeOfHeaders;
+		PBYTE pSourceBase = pBaseAddress;
+		PBYTE pDestinationBase = pDLLBaseAddress;
 
-	dprintf("[LOADREFLECTIVELY] Copying headers\n");
-	
-	while (dwSizeOfHeaders--)
-		*pDestinationBase++ = *pSourceBase++;
-
-	dprintf("[LOADREFLECTIVELY] Copying PE sections\n");
-	
-	// 1. Copy the PE headers to the new location
-	for(DWORD i = 0; i < pNtHeaders->FileHeader.NumberOfSections; i++)
-	{ 
-
-		PBYTE pDestinationBase = pDLLBaseAddress + pSectionHeader[i].VirtualAddress;
-		PBYTE pSourceBase = pBaseAddress + pSectionHeader[i].PointerToRawData;
-		DWORD dwSizeOfHeaders = pSectionHeader[i].SizeOfRawData;
-		dprintf("[LOADREFLECTIVELY] Copying section %p to %p with length %x\n", pSourceBase, pDestinationBase, dwSizeOfHeaders);
+		dprintf("[LOADREFLECTIVELY] Copying headers\n");
+		
 		while (dwSizeOfHeaders--)
 			*pDestinationBase++ = *pSourceBase++;
-	}
 
-	// 2. Get all necessary sections	
-	PIMAGE_DATA_DIRECTORY pImportTableDirectory = &pNtHeaders->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT];
-	PIMAGE_DATA_DIRECTORY pRelocationTableDirectory = &pNtHeaders->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_BASERELOC];
+		dprintf("[LOADREFLECTIVELY] Copying PE sections\n");
+		
+		// 1. Copy the PE sections to the new location
+		for(DWORD i = 0; i < pNtHeaders->FileHeader.NumberOfSections; i++)
+		{ 
 
-	// 3. Fix relocations
-	dprintf("[LOADREFLECTIVELY] Fixing relocations\n");
-	if(!FixRelocations(pRelocationTableDirectory, (ULONG_PTR)pDLLBaseAddress, pNtHeaders->OptionalHeader.ImageBase))
+			PBYTE pDestinationBase = pDLLBaseAddress + pSectionHeader[i].VirtualAddress;
+			PBYTE pSourceBase = pBaseAddress + pSectionHeader[i].PointerToRawData;
+			DWORD dwSizeOfHeaders = pSectionHeader[i].SizeOfRawData;
+			dprintf("[LOADREFLECTIVELY] Copying section %p to %p with length %x\n", pSourceBase, pDestinationBase, dwSizeOfHeaders);
+			while (dwSizeOfHeaders--)
+				*pDestinationBase++ = *pSourceBase++;
+		}
+
+		// 2. Get all necessary sections	
+		PIMAGE_DATA_DIRECTORY pImportTableDirectory = &pNtHeaders->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT];
+		PIMAGE_DATA_DIRECTORY pRelocationTableDirectory = &pNtHeaders->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_BASERELOC];
+
+		// 3. Fix relocations
+		dprintf("[LOADREFLECTIVELY] Fixing relocations\n");
+		if(pRelocationTableDirectory->Size > 0 && !FixRelocations(pRelocationTableDirectory, (ULONG_PTR)pDLLBaseAddress, pNtHeaders->OptionalHeader.ImageBase))
+		{
+			BREAK_WITH_ERROR("[LOADREFLECTIVELY] Failed to fix relocations\n", ERROR_INVALID_DATA);
+		}
+
+		// 4. Fix the IAT
+		dprintf("[LOADREFLECTIVELY] Fixing IAT\n");
+		if(!FixIAT(pImportTableDirectory, pDLLBaseAddress))
+		{
+			BREAK_WITH_ERROR("[LOADREFLECTIVELY] Failed to fix IAT\n", ERROR_INVALID_DATA);
+		}
+
+		// 5. Set the correct permissions for the sections
+		dprintf("[LOADREFLECTIVELY] Fixing permissions\n");
+		if(!FixPermissions(pNtHeaders, pDLLBaseAddress))
+		{
+			BREAK_WITH_ERROR("[LOADREFLECTIVELY] Failed to fix permissions\n", ERROR_INVALID_DATA);
+		}
+
+		// 6. Call the entry point
+
+		dprintf("[LOADREFLECTIVELY] Calling entry point\n");
+		DLLMAIN dEntryPoint = (DLLMAIN)(pDLLBaseAddress + pNtHeaders->OptionalHeader.AddressOfEntryPoint);
+
+		if (dEntryPoint((HINSTANCE)pDLLBaseAddress, DLL_PROCESS_ATTACH, NULL) == FALSE)
+		{
+			BREAK_WITH_ERROR("[LOADREFLECTIVELY] DllMain returned FALSE\n", ERROR_INVALID_DATA);
+		}
+
+		*phModule = (HMODULE)pDLLBaseAddress;
+	}while(FALSE);
+
+	if(dwResult != ERROR_SUCCESS)
 	{
-		dprintf("[LOADREFLECTIVELY] Failed to fix relocations\n");
-		met_api->win_api.kernel32.VirtualFree(pDLLBaseAddress, 0, MEM_RELEASE);
+		if(pDLLBaseAddress != NULL)
+		{
+			met_api->win_api.kernel32.VirtualFree(pDLLBaseAddress, 0, MEM_RELEASE);
+		}
+		dprintf("[LOADREFLECTIVELY] Failed to load library reflectively with error code %d\n", dwResult);
 		return FALSE;
 	}
-
-	// 4. Fix the IAT
-	dprintf("[LOADREFLECTIVELY] Fixing IAT\n");
-	if(!FixIAT(pImportTableDirectory, pDLLBaseAddress))
-	{
-		dprintf("[LOADREFLECTIVELY] Failed to fix IAT\n");
-		met_api->win_api.kernel32.VirtualFree(pDLLBaseAddress, 0, MEM_RELEASE);
-		return FALSE;
-	}
-
-	// 5. Set the correct permissions for the sections
-	dprintf("[LOADREFLECTIVELY] Fixing permissions\n");
-	if(!FixPermissions(pNtHeaders, pDLLBaseAddress))
-	{
-		dprintf("[LOADREFLECTIVELY] Failed to fix permissions\n");
-		return FALSE;
-	}
-
-	// 6. Call the entry point
-
-	dprintf("[LOADREFLECTIVELY] Calling entry point\n");
-	DLLMAIN dEntryPoint = (DLLMAIN)(pDLLBaseAddress + pNtHeaders->OptionalHeader.AddressOfEntryPoint);
-
-	if (dEntryPoint((HINSTANCE)pDLLBaseAddress, DLL_PROCESS_ATTACH, NULL) == FALSE)
-	{
-		dprintf("[LOADREFLECTIVELY] DllMain returned FALSE\n");
-		return FALSE;
-	}
-
-	*phModule = (HMODULE)pDLLBaseAddress;
-
 	return TRUE;
 }
