@@ -654,7 +654,7 @@ DWORD inject_via_poolparty(Remote* remote, Packet* response, HANDLE hProcess, DW
  */
 
 
-DWORD inject_dll(DWORD dwPid, DWORD dwDestinationArch, LPVOID lpDllBuffer, DWORD dwDllLength, LPCSTR reflectiveLoader, LPVOID lpArg, SIZE_T stArgSize)
+DWORD inject_dll(DWORD dwPid, DWORD dwDestinationArch, LPVOID lpDllBuffer, DWORD dwDllLength, LPCSTR reflectiveLoader, DWORD dwActualReflectiveLoaderOffset, LPVOID lpArg, SIZE_T stArgSize)
 {
 	DWORD dwResult = ERROR_ACCESS_DENIED;
 	LPVOID lpRemoteArg = NULL;
@@ -672,6 +672,10 @@ DWORD inject_dll(DWORD dwPid, DWORD dwDestinationArch, LPVOID lpDllBuffer, DWORD
 
 		// check if the library has a ReflectiveLoader...
 		dwReflectiveLoaderOffset = GetReflectiveLoaderOffset(lpDllBuffer, reflectiveLoader);
+		if(dwActualReflectiveLoaderOffset != 0) {
+			dprintf("[INJECT] inject_dll. Overriding ReflectiveLoader offset with supplied value: 0x%08X", dwActualReflectiveLoaderOffset);
+			dwReflectiveLoaderOffset = dwActualReflectiveLoaderOffset;
+		}
 		if (!dwReflectiveLoaderOffset)
 			BREAK_WITH_ERROR("[INJECT] inject_dll. GetReflectiveLoaderOffset failed.", ERROR_INVALID_FUNCTION);
 
