@@ -53,6 +53,7 @@ enum HashedFunctions {
     H_VirtualQuery = 0xA3C8C8AA,
     H_VirtualQueryEx = 0xF45A2B20,
     H_VirtualFree = 0x30633AC,
+    H_VirtualFreeEx = 0xC3B4EB78,
     H_CreateRemoteThread = 0x72BD9CDD,
     H_CloseHandle = 0xFFD97FB,
     H_DuplicateHandle = 0xBD566724,
@@ -570,6 +571,22 @@ BOOL winapi_kernel32_VirtualFree(LPVOID lpAddress, SIZE_T dwSize, DWORD dwFreeTy
         dprintf("[WINAPI][winapi_kernel32_VirtualFree] Calling VirtualFree @ %p", pVirtualFree);
         if (pVirtualFree) {
             return pVirtualFree(lpAddress, dwSize, dwFreeType);
+        }
+    }
+    return FALSE;
+}
+
+BOOL winapi_kernel32_VirtualFreeEx(HANDLE hProcess, LPVOID lpAddress, SIZE_T dwSize, DWORD dwFreeType) {
+    if (hasDirectSyscallSupport()) {
+        SIZE_T dwDataSize = dwSize;
+        NTSTATUS dwStatus = winapi_ntdll_ZwFreeVirtualMemory(hProcess, &lpAddress, &dwDataSize, dwFreeType);
+        dprintf("[WINAPI][winapi_kernel32_VirtualFreeEx] Syscall ZwFreeVirtualMemory returned: %d", dwStatus);
+        return dwStatus == STATUS_SUCCESS;
+    } else {
+        BOOL (WINAPI *pVirtualFreeEx)(HANDLE hProcess, LPVOID lpAddress, SIZE_T dwSize, DWORD dwFreeType) = GetFunctionH(KERNEL32_DLL, H_VirtualFreeEx);
+        dprintf("[WINAPI][winapi_kernel32_VirtualFreeEx] Calling VirtualFreeEx @ %p", pVirtualFreeEx);
+        if (pVirtualFreeEx) {
+            return pVirtualFreeEx(hProcess, lpAddress, dwSize, dwFreeType);
         }
     }
     return FALSE;

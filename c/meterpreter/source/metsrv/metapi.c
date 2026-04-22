@@ -176,6 +176,7 @@ MetApi api_instance = {
             winapi_kernel32_VirtualQuery,
             winapi_kernel32_VirtualQueryEx,
             winapi_kernel32_VirtualFree,
+            winapi_kernel32_VirtualFreeEx,
             winapi_kernel32_CreateRemoteThread,
             winapi_kernel32_CloseHandle,
             winapi_kernel32_DuplicateHandle,
