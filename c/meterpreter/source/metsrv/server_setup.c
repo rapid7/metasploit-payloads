@@ -401,7 +401,8 @@ DWORD server_setup(MetsrvConfig* config)
 
 			ExtensionEncryptionManager* encryptionManager = InitExtensionEncryptionManager(CRYPTOGRAPHIC_MANAGER_TYPE_DEBUG, NULL);
 			if(encryptionManager == NULL) {
-				dprintf("[SERVER] Extension Encryption Manager Initialization failed! proceeding without extension encryption.");
+				dprintf("[SERVER] Extension Encryption Manager Initialization failed, aborting!");
+				break;
 			}
 
 			// this has to be done after dispatch routine are registered

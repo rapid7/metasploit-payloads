@@ -383,13 +383,11 @@ BOOL extension_encryption_encrypt(ExtensionEncryptionStatus* lpExtensionStatus) 
 		}
 	}
 
-	if (!bError) {
+	if (!bError && g_ExtensionEncryptionManager->cryptoManager.refresh != NULL) { // We shouldnt only think about rc4. Because other algorithms might not support refresh. So checking for NULL in the first place is a good idea.
 		if (g_ExtensionEncryptionManager->cryptoManager.bNeedsRefresh) {
-			if (g_ExtensionEncryptionManager->cryptoManager.refresh != NULL) {
-				if (g_ExtensionEncryptionManager->cryptoManager.refresh(g_ExtensionEncryptionManager->cryptoManager.lpCryptoContext, (LPVOID)g_ExtensionEncryptionManager->cryptoManager.lpCryptoParams) != 0) {
-					dprintf("[extension_encryption][extension_encryption_encrypt] CryptographicManager refresh failed.");
-					bError = TRUE;
-				}
+			if (g_ExtensionEncryptionManager->cryptoManager.refresh(g_ExtensionEncryptionManager->cryptoManager.lpCryptoContext, (LPVOID)g_ExtensionEncryptionManager->cryptoManager.lpCryptoParams) != 0) {
+				dprintf("[extension_encryption][extension_encryption_decrypt] CryptographicManager refresh failed.");
+				bError = TRUE;
 			}
 		}
 	}
@@ -422,10 +420,14 @@ BOOL extension_encryption_encrypt(ExtensionEncryptionStatus* lpExtensionStatus) 
 		if (!bError) {
 			lpExtensionStatus->dwLastUsedTime = GetTickCount();
 			lpExtensionStatus->bEncrypted = TRUE;
+			if (g_ExtensionEncryptionManager->cryptoManager.refresh != NULL) {
+				g_ExtensionEncryptionManager->cryptoManager.bNeedsRefresh = TRUE;
+			}
+			
 		}
 	}
 
-	if (!bError && !met_api->win_api.kernel32.VirtualProtect(ExtensionLoc,ExtensionSize,dwOldProtect,&dwOldProtect)){
+	if (!dwOldProtect || !met_api->win_api.kernel32.VirtualProtect(ExtensionLoc,ExtensionSize,dwOldProtect,&dwOldProtect)){
 		dprintf("[extension_encryption][extension_encryption_encrypt] VirtualProtect 2 failed with error 0x%x", GetLastError());
 		bError = TRUE;
 		ret = FALSE;
@@ -501,13 +503,11 @@ BOOL extension_encryption_decrypt(ExtensionEncryptionStatus* lpExtensionStatus) 
 		}
 	}
 
-	if (!bError) {
+	if (!bError && g_ExtensionEncryptionManager->cryptoManager.refresh != NULL) { // We shouldnt only think about rc4. Because other algorithms might not support refresh. So checking for NULL in the first place is a good idea.
 		if (g_ExtensionEncryptionManager->cryptoManager.bNeedsRefresh) {
-			if (g_ExtensionEncryptionManager->cryptoManager.refresh != NULL) {
-				if (g_ExtensionEncryptionManager->cryptoManager.refresh(g_ExtensionEncryptionManager->cryptoManager.lpCryptoContext, (LPVOID)g_ExtensionEncryptionManager->cryptoManager.lpCryptoParams) != 0) {
-					dprintf("[extension_encryption][extension_encryption_decrypt] CryptographicManager refresh failed.");
-					bError = TRUE;
-				}
+			if (g_ExtensionEncryptionManager->cryptoManager.refresh(g_ExtensionEncryptionManager->cryptoManager.lpCryptoContext, (LPVOID)g_ExtensionEncryptionManager->cryptoManager.lpCryptoParams) != 0) {
+				dprintf("[extension_encryption][extension_encryption_decrypt] CryptographicManager refresh failed.");
+				bError = TRUE;
 			}
 		}
 	}
@@ -540,10 +540,13 @@ BOOL extension_encryption_decrypt(ExtensionEncryptionStatus* lpExtensionStatus) 
 		if (!bError) {
 			lpExtensionStatus->dwLastUsedTime = GetTickCount();
 			lpExtensionStatus->bEncrypted = FALSE;
+			if (g_ExtensionEncryptionManager->cryptoManager.refresh != NULL) {
+				g_ExtensionEncryptionManager->cryptoManager.bNeedsRefresh = TRUE;
+			}
 		}
 	}
 
-	if (!bError && !met_api->win_api.kernel32.VirtualProtect(ExtensionLoc,ExtensionSize,dwOldProtect,&dwOldProtect)){
+	if (!dwOldProtect || !met_api->win_api.kernel32.VirtualProtect(ExtensionLoc,ExtensionSize,dwOldProtect,&dwOldProtect)){
 			dprintf("[extension_encryption][extension_encryption_decrypt] VirtualProtect 2 failed with error 0x%x", GetLastError());
 			bError = TRUE;
 			ret = FALSE;
@@ -564,6 +567,7 @@ BOOL extension_encryption_decrypt(ExtensionEncryptionStatus* lpExtensionStatus) 
 void extension_encryption_encrypt_unused() {
 
 	if (g_ExtensionEncryptionManager == NULL) {
+		dprintf("[extension_encryption][extension_encryption_encrypt_unused] g_ExtensionEncryptionManager is NULL.");
 		return;
 	}
 
