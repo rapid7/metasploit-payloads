@@ -1,8 +1,9 @@
 #include "extension_encryption.h"
+#include "common_metapi.h"
 
 ExtensionEncryptionManager *g_ExtensionEncryptionManager = NULL;
 
-DWORD cyptographic_manager_debug_initialize(LPVOID* lpCryptoContext, LPVOID lpParams) {
+DWORD cryptographic_manager_debug_initialize(LPVOID* lpCryptoContext, LPVOID lpParams) {
 	*lpCryptoContext = NULL;
 	return 0;
 }
@@ -109,10 +110,19 @@ BOOL cryptographic_manager_rc4(CryptographicManager* manager, LPVOID lpParams) {
 			dprintf("[cryptographic_manager_rc4] HeapAlloc failed.");
 			return FALSE;
 		}
-		srand((unsigned int)GetTickCount());
-		for(int i = 0; i < KEY_SIZE_RC4; i++) {
-			((char*)manager->lpCryptoParams)[i] = (char)(rand() % 256);
+		HCRYPTPROV hProv = 0;
+		if (!CryptAcquireContext(&hProv, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT)) {
+			dprintf("[cryptographic_manager_rc4] CryptAcquireContext failed.");
+			HeapFree(GetProcessHeap(), 0, (LPVOID)manager->lpCryptoParams);
+			return FALSE;
 		}
+		if (!CryptGenRandom(hProv, KEY_SIZE_RC4, (BYTE*)manager->lpCryptoParams)) {
+			dprintf("[cryptographic_manager_rc4] CryptGenRandom failed.");
+			CryptReleaseContext(hProv, 0);
+			HeapFree(GetProcessHeap(), 0, (LPVOID)manager->lpCryptoParams);
+			return FALSE;
+		}
+		CryptReleaseContext(hProv, 0);
 	}
 	if (manager->initialize(&manager->lpCryptoContext, (LPVOID)manager->lpCryptoParams) != 0) {
 		dprintf("[cryptographic_manager_rc4] Initialization failed.");
@@ -128,7 +138,7 @@ BOOL cryptographic_manager_debug(CryptographicManager* manager, LPVOID lpParams)
 	}
 	manager->bInitialized = TRUE;
 	manager->bNeedsRefresh = FALSE;
-	manager->initialize = cyptographic_manager_debug_initialize;
+	manager->initialize = cryptographic_manager_debug_initialize;
 	manager->encrypt = cryptographic_manager_debug_encrypt;
 	manager->decrypt = cryptographic_manager_debug_decrypt;
 	manager->lpCryptoParams = NULL;
@@ -253,8 +263,8 @@ BOOL extension_encryption_add(LPVOID lpExtensionLocation) {
 		g_ExtensionEncryptionManager->dwExtensionsCount++;
 		dprintf("[extension_encryption][extension_encryption_add] Added extension text section at %p of size %u", lpExtensionStatus->lpLoc,lpExtensionStatus->dwSize);
 		dprintf("[extension_encryption][extension_encryption_add] Function exiting");
-		LeaveCriticalSection(&g_ExtensionEncryptionManager->cs);
 	} while (0);
+	LeaveCriticalSection(&g_ExtensionEncryptionManager->cs);
 	return dwResult == ERROR_SUCCESS;
 }
 
@@ -289,7 +299,7 @@ BOOL extension_encryption_get(LPVOID lpHandlerFunction, ExtensionEncryptionStatu
 }
 
 BOOL extension_encryption_remove(ExtensionEncryptionStatus* lpExtensionStatus) {
-	BOOL ret = TRUE;
+	BOOL ret = FALSE;
 	EnterCriticalSection(&g_ExtensionEncryptionManager->cs);
 	dprintf("[extension_encryption][extension_encryption_remove] Removing extension.");
 	if (lpExtensionStatus == NULL) {
@@ -367,9 +377,20 @@ BOOL extension_encryption_encrypt(ExtensionEncryptionStatus* lpExtensionStatus) 
 		ExtensionLoc = lpExtensionStatus->lpLoc;
 		ExtensionSize = lpExtensionStatus->dwSize;
 		
-		if (!VirtualProtect(ExtensionLoc, ExtensionSize, PAGE_READWRITE, &dwOldProtect)) {
+		if (!met_api->win_api.kernel32.VirtualProtect(ExtensionLoc, ExtensionSize, PAGE_READWRITE, &dwOldProtect)) {
 			dprintf("[extension_encryption][extension_encryption_encrypt] VirtualProtect 1 failed with error 0x%x", GetLastError());
 			bError = TRUE;
+		}
+	}
+
+	if (!bError) {
+		if (g_ExtensionEncryptionManager->cryptoManager.bNeedsRefresh) {
+			if (g_ExtensionEncryptionManager->cryptoManager.refresh != NULL) {
+				if (g_ExtensionEncryptionManager->cryptoManager.refresh(g_ExtensionEncryptionManager->cryptoManager.lpCryptoContext, (LPVOID)g_ExtensionEncryptionManager->cryptoManager.lpCryptoParams) != 0) {
+					dprintf("[extension_encryption][extension_encryption_encrypt] CryptographicManager refresh failed.");
+					bError = TRUE;
+				}
+			}
 		}
 	}
 
@@ -381,25 +402,30 @@ BOOL extension_encryption_encrypt(ExtensionEncryptionStatus* lpExtensionStatus) 
 			ret = ReadProcessMemory(GetCurrentProcess(), (unsigned char*)ExtensionLoc + i, lpTempBufferRead, diff, &ByteCounter);
 			if (!ret || ByteCounter != diff) {
 				dprintf("[extension_encryption][extension_encryption_encrypt] ReadProcessMemory failed with error 0x%x", GetLastError());
+				bError = TRUE;
 				break;
 			}
 			if (!g_ExtensionEncryptionManager->cryptoManager.encrypt(lpTempBufferRead, diff, lpTempBufferWrite, BUFFER_SIZE)) {
 				dprintf("[extension_encryption][extension_encryption_encrypt] CryptographicManager encrypt failed.");
 				ret = FALSE;
+				bError = TRUE;
 				break;
 			}
-			ret = WriteProcessMemory(GetCurrentProcess(), (unsigned char*)ExtensionLoc + i, lpTempBufferWrite, diff, &ByteCounter);
+			ret = met_api->win_api.kernel32.WriteProcessMemory(GetCurrentProcess(), (unsigned char*)ExtensionLoc + i, lpTempBufferWrite, diff, &ByteCounter);
 			if (!ret || ByteCounter != diff) {
 				dprintf("[extension_encryption][extension_encryption_encrypt] WriteProcessMemory failed with error 0x%x", GetLastError());
+				bError = TRUE;
 				break;
 			}
 		}
 
-		lpExtensionStatus->dwLastUsedTime = GetTickCount();
-		lpExtensionStatus->bEncrypted = TRUE;
+		if (!bError) {
+			lpExtensionStatus->dwLastUsedTime = GetTickCount();
+			lpExtensionStatus->bEncrypted = TRUE;
+		}
 	}
 
-	if (!bError && !VirtualProtect(ExtensionLoc,ExtensionSize,dwOldProtect,&dwOldProtect)){
+	if (!bError && !met_api->win_api.kernel32.VirtualProtect(ExtensionLoc,ExtensionSize,dwOldProtect,&dwOldProtect)){
 		dprintf("[extension_encryption][extension_encryption_encrypt] VirtualProtect 2 failed with error 0x%x", GetLastError());
 		bError = TRUE;
 		ret = FALSE;
@@ -407,8 +433,10 @@ BOOL extension_encryption_encrypt(ExtensionEncryptionStatus* lpExtensionStatus) 
 
 	LeaveCriticalSection(&g_ExtensionEncryptionManager->cs);
 	
-	if (lpTempBufferWrite != NULL && lpTempBufferRead != NULL) {
+	if (lpTempBufferWrite != NULL) {
 		HeapFree(hHeap, 0, lpTempBufferWrite);
+	}
+	if (lpTempBufferRead != NULL) {
 		HeapFree(hHeap, 0, lpTempBufferRead);
 	}
 
@@ -449,7 +477,7 @@ BOOL extension_encryption_decrypt(ExtensionEncryptionStatus* lpExtensionStatus) 
 		ExtensionLoc = lpExtensionStatus->lpLoc;
 		ExtensionSize = lpExtensionStatus->dwSize;
 
-		if (!VirtualProtect(ExtensionLoc, ExtensionSize, PAGE_READWRITE, &dwOldProtect)) {
+		if (!met_api->win_api.kernel32.VirtualProtect(ExtensionLoc, ExtensionSize, PAGE_READWRITE, &dwOldProtect)) {
 			dprintf("[extension_encryption][extension_encryption_decrypt] VirtualProtect 1 failed with error 0x%x", GetLastError());
 			bError = TRUE;
 		}
@@ -501,18 +529,21 @@ BOOL extension_encryption_decrypt(ExtensionEncryptionStatus* lpExtensionStatus) 
 				bError = TRUE;
 				break;
 			}
-			ret = WriteProcessMemory(GetCurrentProcess(), (unsigned char*)ExtensionLoc + i, lpTempBufferWrite, diff, &ByteCounter);
+			ret = met_api->win_api.kernel32.WriteProcessMemory(GetCurrentProcess(), (unsigned char*)ExtensionLoc + i, lpTempBufferWrite, diff, &ByteCounter);
 			if (!ret || ByteCounter != diff) {
 				dprintf("[extension_encryption][extension_encryption_decrypt] WriteProcessMemory failed with error 0x%x", GetLastError());
 				bError = TRUE;
 				break;
 			}
 		}
-		lpExtensionStatus->dwLastUsedTime = GetTickCount();
-		lpExtensionStatus->bEncrypted = FALSE;
+
+		if (!bError) {
+			lpExtensionStatus->dwLastUsedTime = GetTickCount();
+			lpExtensionStatus->bEncrypted = FALSE;
+		}
 	}
 
-	if (!bError && !VirtualProtect(ExtensionLoc,ExtensionSize,dwOldProtect,&dwOldProtect)){
+	if (!bError && !met_api->win_api.kernel32.VirtualProtect(ExtensionLoc,ExtensionSize,dwOldProtect,&dwOldProtect)){
 			dprintf("[extension_encryption][extension_encryption_decrypt] VirtualProtect 2 failed with error 0x%x", GetLastError());
 			bError = TRUE;
 			ret = FALSE;
@@ -520,8 +551,10 @@ BOOL extension_encryption_decrypt(ExtensionEncryptionStatus* lpExtensionStatus) 
 
 	LeaveCriticalSection(&g_ExtensionEncryptionManager->cs);
 	
-	if (lpTempBufferWrite != NULL && lpTempBufferRead != NULL) {
+	if (lpTempBufferWrite != NULL) {
 		HeapFree(hHeap, 0, lpTempBufferWrite);
+	}
+	if (lpTempBufferRead != NULL) {
 		HeapFree(hHeap, 0, lpTempBufferRead);
 	}
 
@@ -529,6 +562,10 @@ BOOL extension_encryption_decrypt(ExtensionEncryptionStatus* lpExtensionStatus) 
 }
 
 void extension_encryption_encrypt_unused() {
+
+	if (g_ExtensionEncryptionManager == NULL) {
+		return;
+	}
 
 	EnterCriticalSection(&g_ExtensionEncryptionManager->cs);
 	ExtensionEncryptionStatus** extension_statuses = g_ExtensionEncryptionManager->extensionStatuses;
@@ -568,8 +605,8 @@ DWORD extensionFindDecrypt(LPVOID lpHandlerFunction) {
 		return EXTENSION_ENCRYPTION_EXTENSION_NOT_ENCRYPTABLE;
 	}
 
-	if (!extensionStatus->bEncrypted || !encryptionManager->decrypt(extensionStatus)) {
-		dprintf("[extension_encryption][extensionFindDecrypt] Decryption of the extension is failed");
+	if (extensionStatus->bEncrypted && !encryptionManager->decrypt(extensionStatus)) {
+		dprintf("[extension_encryption][extensionFindDecrypt] Decryption of the extension failed");
 		return EXTENSION_ENCRYPTION_DECRYPTION_ERROR;
 	}
 

@@ -300,7 +300,7 @@ DWORD THREADCALL scheduler_waitable_thread( THREAD * thread )
 				extensionFindDecryptValue = extensionFindDecrypt(entry->routine);
 				if (extensionFindDecryptValue && extensionFindDecryptValue != EXTENSION_ENCRYPTION_EXTENSION_NOT_ENCRYPTABLE) {
 					dprintf("[SCHEDULER] scheduler_waitable_thread ( 0x%08X ), decryption of the extension failed");
-					//break;
+					break;
 				}
 				dprintf("[SCHEDULER] scheduler_waitable_thread ( 0x%08X ), the extension is decrypted successfully!");
 				entry->routine( entry->remote, entry->context, thread->parameter2 );

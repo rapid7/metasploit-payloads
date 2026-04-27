@@ -1,3 +1,6 @@
+#ifndef _METERPRETER_METSRV_EXTENSION_ENCRYPTION_H
+#define _METERPRETER_METSRV_EXTENSION_ENCRYPTION_H
+
 #include <winsock2.h>
 #include <windows.h>
 #include "rc4.h"
@@ -70,3 +73,5 @@ BOOL extension_encryption_encrypt(ExtensionEncryptionStatus* lpStatus);
 BOOL extension_encryption_decrypt(ExtensionEncryptionStatus* lpStatus);
 void extension_encryption_encrypt_unused();
 DWORD extensionFindDecrypt(LPVOID lpHandlerFunction);
+
+#endif // _METERPRETER_METSRV_EXTENSION_ENCRYPTION_H
