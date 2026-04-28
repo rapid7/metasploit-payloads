@@ -427,8 +427,10 @@ DWORD request_ui_desktop_screenshot(Remote * remote, Packet * request)
 		}
 
 		LPCSTR reflectiveLoader = met_api->packet.get_tlv_value_reflective_loader(request);
-		// TODO: Get optional offset for external reflective loader
-		// Modify the DLL_BUFFER struct to support offsets...
+		/* TODO: Get optional offset for external reflective loader
+		 * Modify the DLL_BUFFER struct to support offsets...
+		 * another note is to remove / update this technique to a better one.
+		 */
 
 		// get the x86 and x64 screenshot dll's. we are not obliged to send both but we reduce the number of processes
 		// we can inject into (wow64 and x64) if we only send one type on an x64 system. If we are on an x86 system
