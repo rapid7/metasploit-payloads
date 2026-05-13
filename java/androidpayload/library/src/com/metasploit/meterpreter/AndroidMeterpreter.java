@@ -11,6 +11,7 @@ import com.metasploit.meterpreter.android.*;
 import com.metasploit.meterpreter.stdapi.*;
 
 import com.metasploit.stage.Config;
+import com.metasploit.stage.ConfigParser;
 
 import java.io.DataInputStream;
 import java.io.File;
@@ -80,7 +81,9 @@ public class AndroidMeterpreter extends Meterpreter {
         writeableDir = (String)parameters[0];
         byte[] config = (byte[]) parameters[1];
 
-        boolean stageless = (config != null && (config[0] & Config.FLAG_STAGELESS) != 0);
+        Config parsedConfig = (config != null) ? ConfigParser.parseConfig(config) : null;
+        boolean stageless = (parsedConfig != null
+                && (parsedConfig.flags & Config.FLAG_STAGELESS) != 0);
 
         if (stageless) {
             loadConfiguration(in, rawOut, config);
