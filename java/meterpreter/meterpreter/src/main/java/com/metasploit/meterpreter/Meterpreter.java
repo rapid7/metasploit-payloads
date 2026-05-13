@@ -3,6 +3,7 @@ package com.metasploit.meterpreter;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
@@ -52,6 +53,15 @@ public class Meterpreter {
         this.sessionExpiry = config.session_expiry + System.currentTimeMillis();
         this.uuid = config.uuid;
         this.sessionGUID = config.session_guid;
+
+        if (config.debug_log != null && config.debug_log.length() > 0) {
+            try {
+                PrintStream debugStream = new PrintStream(new FileOutputStream(config.debug_log, true));
+                System.setErr(debugStream);
+            } catch (IOException ignored) {
+                // failed to open log file; carry on without debug logging
+            }
+        }
 
         // here we need to loop through all the given transports, we know that we're
         // going to get at least one.
