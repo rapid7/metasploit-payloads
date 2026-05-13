@@ -95,6 +95,7 @@ public interface TLVType {
     public static final int TLV_TYPE_C2_UUID_GET           = TLVPacket.TLV_META_TYPE_STRING | 724; // Name of the GET parameter to put the UUID in
     public static final int TLV_TYPE_C2_UUID_HEADER        = TLVPacket.TLV_META_TYPE_STRING | 725; // Name of the header to put the UUID in
     public static final int TLV_TYPE_C2_UUID               = TLVPacket.TLV_META_TYPE_STRING | 726; // string representation of the UUID for C2s
+    public static final int TLV_TYPE_SESSION_FLAGS         = TLVPacket.TLV_META_TYPE_UINT   | 727; // session-level configuration flags (FLAG_STAGELESS, FLAG_DEBUG, FLAG_WAKELOCK, FLAG_HIDE_APP_ICON)
 
     // Fs
     public static final int TLV_TYPE_DIRECTORY_PATH = TLVPacket.TLV_META_TYPE_STRING  | 1200;

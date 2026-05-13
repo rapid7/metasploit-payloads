@@ -23,6 +23,7 @@ public class ConfigParser  {
             config.uuid = configPacket.getRawValue(TLVType.TLV_TYPE_UUID);
             config.session_guid = configPacket.getRawValue(TLVType.TLV_TYPE_SESSION_GUID);
             config.debug_log = configPacket.getStringValue(TLVType.TLV_TYPE_DEBUG_LOG, null);
+            config.flags = ((Integer) configPacket.getValue(TLVType.TLV_TYPE_SESSION_FLAGS, new Integer(0))).intValue();
         } catch (IOException ioException) {
             return null;
         } catch (IllegalArgumentException illegalArgumentException) {
