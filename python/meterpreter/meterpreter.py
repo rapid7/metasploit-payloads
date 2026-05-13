@@ -907,6 +907,7 @@ class Transport(object):
         self.request_retire = False
         self.aes_enabled = False
         self.aes_key = None
+        self.c2_uuid = None
 
     def __repr__(self):
         return "<{0} url='{1}' >".format(self.__class__.__name__, self.url)
@@ -970,6 +971,7 @@ class Transport(object):
         transport.communication_timeout = packet_get_tlv(request, TLV_TYPE_C2_COMM_TIMEOUT).get('value', SESSION_COMMUNICATION_TIMEOUT)
         transport.retry_total = packet_get_tlv(request, TLV_TYPE_C2_RETRY_TOTAL).get('value', SESSION_RETRY_TOTAL)
         transport.retry_wait = packet_get_tlv(request, TLV_TYPE_C2_RETRY_WAIT).get('value', SESSION_RETRY_WAIT)
+        transport.c2_uuid = packet_get_tlv(request, TLV_TYPE_C2_UUID).get('value')
         return transport
 
     def _activate(self):
@@ -1163,7 +1165,9 @@ class HttpTransport(Transport):
         return headers
 
     def _get_uuid(self):
-        """Extract the UUID/conn_id portion from the current URL."""
+        # Prefer TLV_TYPE_C2_UUID; fall back to URL path's last segment.
+        if self.c2_uuid:
+            return self.c2_uuid
         match = re.match(r'https?://[^/]+/(.*?)/?$', self.url)
         if match:
             return match.group(1).split('/')[-1]
@@ -1251,10 +1255,10 @@ class HttpTransport(Transport):
         response = url_h.read()
 
     def patch_uuid(self, new_uuid):
+        self.c2_uuid = new_uuid
         match = re.match(r'https?://[^/]+(/.*$)', self.url)
-        if match is None:
-            return False
-        self.url = self.url[:match.span(1)[0]] + '/' + new_uuid
+        if match is not None:
+            self.url = self.url[:match.span(1)[0]] + '/' + new_uuid
         return True
 
     def tlv_pack_transport_group(self):

