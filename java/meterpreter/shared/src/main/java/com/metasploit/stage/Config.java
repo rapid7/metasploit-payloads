@@ -17,6 +17,7 @@ public class Config {
     public long session_expiry;
     public byte[] uuid;
     public byte[] session_guid;
+    public String debug_log;
 
     public List<TransportConfig> transportConfigList = new LinkedList<TransportConfig>();
 

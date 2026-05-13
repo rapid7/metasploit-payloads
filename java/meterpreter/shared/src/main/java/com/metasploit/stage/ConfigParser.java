@@ -22,6 +22,7 @@ public class ConfigParser  {
             config.session_expiry = MS * configPacket.getIntValue(TLVType.TLV_TYPE_SESSION_EXPIRY);
             config.uuid = configPacket.getRawValue(TLVType.TLV_TYPE_UUID);
             config.session_guid = configPacket.getRawValue(TLVType.TLV_TYPE_SESSION_GUID);
+            config.debug_log = configPacket.getStringValue(TLVType.TLV_TYPE_DEBUG_LOG, null);
         } catch (IOException ioException) {
             return null;
         } catch (IllegalArgumentException illegalArgumentException) {
