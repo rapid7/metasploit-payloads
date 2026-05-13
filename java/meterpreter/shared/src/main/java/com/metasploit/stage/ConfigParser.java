@@ -55,6 +55,7 @@ public class ConfigParser  {
 
                 transportConfig.user_agent = c2Group.getStringValue(TLVType.TLV_TYPE_C2_UA, "");
                 transportConfig.custom_headers = c2Group.getStringValue(TLVType.TLV_TYPE_C2_HEADERS, "");
+                transportConfig.c2_uuid = c2Group.getStringValue(TLVType.TLV_TYPE_C2_UUID, null);
 
                 byte[] loadedHash = c2Group.getRawValue(TLVType.TLV_TYPE_C2_CERT_HASH, new byte[0]);
                 if (loadedHash.length > 0) {

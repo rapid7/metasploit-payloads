@@ -35,6 +35,7 @@ public class HttpTransport extends Transport {
     private String proxyPass;
     private String customHeaders;
     private byte[] certHash;
+    private String c2Uuid;
     private C2VerbConfig c2Get;
     private C2VerbConfig c2Post;
 
@@ -51,6 +52,7 @@ public class HttpTransport extends Transport {
         proxyPass = transportConfig.proxy_pass;
         certHash = transportConfig.cert_hash;
         customHeaders = transportConfig.custom_headers;
+        c2Uuid = transportConfig.c2_uuid;
         c2Get = transportConfig.c2Get;
         c2Post = transportConfig.c2Post;
         setTimeouts(transportConfig);
@@ -63,6 +65,7 @@ public class HttpTransport extends Transport {
 
     @Override
     public boolean patchUuid(String uuid) {
+        this.c2Uuid = uuid;
         try {
             // can't use getAuthority() here thanks to java 1.2. Ugh.
             String newUrl = this.targetUrl.getProtocol() + "://"
@@ -75,6 +78,10 @@ public class HttpTransport extends Transport {
         catch (MalformedURLException ex) {
           return false;
         }
+    }
+
+    public void setC2Uuid(String c2Uuid) {
+        this.c2Uuid = c2Uuid;
     }
 
     public String getUserAgent() {
@@ -305,16 +312,18 @@ public class HttpTransport extends Transport {
     }
 
     private String getUuidFromUrl() {
+        // Prefer TLV_TYPE_C2_UUID; fall back to URL path's last segment.
+        if (this.c2Uuid != null && this.c2Uuid.length() > 0) {
+            return this.c2Uuid;
+        }
         String path = this.targetUrl.getPath();
         if (path == null || path.length() <= 1) {
             return "";
         }
-        // Strip leading slash and any trailing slash
         path = path.substring(1);
         if (path.endsWith("/")) {
             path = path.substring(0, path.length() - 1);
         }
-        // Get the last path segment
         int lastSlash = path.lastIndexOf('/');
         if (lastSlash >= 0) {
             return path.substring(lastSlash + 1);

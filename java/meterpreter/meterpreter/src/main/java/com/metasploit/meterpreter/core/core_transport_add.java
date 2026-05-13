@@ -27,6 +27,7 @@ public class core_transport_add implements Command {
             h.setProxyPass(request.getStringValue(TLVType.TLV_TYPE_C2_PROXY_PASS, ""));
             h.setCustomHeaders(request.getStringValue(TLVType.TLV_TYPE_C2_HEADERS, ""));
             h.setCertHash(request.getRawValue(TLVType.TLV_TYPE_C2_CERT_HASH, null));
+            h.setC2Uuid(request.getStringValue(TLVType.TLV_TYPE_C2_UUID, null));
 
             // Parse C2 profile GET/POST sub-groups if present
             h.setC2Get(parseC2VerbGroup(request, TLVType.TLV_TYPE_C2_GET));
