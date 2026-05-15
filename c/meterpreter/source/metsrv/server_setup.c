@@ -9,6 +9,7 @@
 #include "server_transport_tcp.h"
 #include "server_transport_named_pipe.h"
 #include "packet_encryption.h"
+#include "extension_loader.h"
 
 extern Command* extensionCommands;
 
@@ -71,7 +72,12 @@ LPBYTE load_stageless_extensions(Remote* remote, MetsrvExtension* stagelessExten
 	while (stagelessExtensions->size > 0)
 	{
 		dprintf("[SERVER] Extension located at 0x%p: %u bytes", stagelessExtensions->dll, stagelessExtensions->size);
-		HMODULE hLibrary = LoadLibraryR(stagelessExtensions->dll, stagelessExtensions->size, MAKEINTRESOURCEA(EXPORT_REFLECTIVELOADER));
+		HMODULE hLibrary = NULL;
+		if(LoadReflectively((ULONG_PTR)stagelessExtensions->dll, &hLibrary) == FALSE || hLibrary == NULL)
+		{
+			dprintf("[SERVER] Failed to load extension reflectively");
+			break;
+		}
 		load_extension(hLibrary, TRUE, remote, NULL, extensionCommands);
 		stagelessExtensions = (MetsrvExtension*)((LPBYTE)stagelessExtensions->dll + stagelessExtensions->size);
 	}
