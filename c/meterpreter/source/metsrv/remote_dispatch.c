@@ -2,6 +2,7 @@
 #include "common_metapi.h"
 #include "common_exports.h"
 #include "server_pivot.h"
+#include "extension_loader.h"
 
 #define GetProcAddressByOrdinal(mod, ord) GetProcAddress(mod, MAKEINTRESOURCEA(ord))
 #define GetProcAddressByOrdinalR(mod, ord) GetProcAddressR(mod, MAKEINTRESOURCEA(ord))
@@ -227,6 +228,7 @@ DWORD stagelessinit_extension(UINT extensionId, LPBYTE data, DWORD dataSize)
 	return ERROR_SUCCESS;
 }
 
+
 /*
  * @brief Load an extension from the given library handle.
  * @param hLibrary handle to the library to load/init.
@@ -374,12 +376,12 @@ DWORD request_core_loadlib(Remote *remote, Packet *packet)
 			// If the library is not to be stored on disk, 
 			if (!(flags & LOAD_LIBRARY_FLAG_ON_DISK))
 			{
-				LPCSTR reflectiveLoader = packet_get_tlv_value_reflective_loader(packet);
   dprintf("[LOADLIB] here 7");
 
-				// try to load the library via its reflective loader...
-				library = LoadLibraryR(dataTlv.buffer, dataTlv.header.length, reflectiveLoader);
-  dprintf("[LOADLIB] here 8");
+				// try to load the library via the reflective loader...
+				 LoadReflectively((ULONG_PTR)dataTlv.buffer, &library);
+				 dprintf("[LOADLIB] LoadReflectively returned, library is %p", library);
+				 
 				if (library == NULL)
 				{
 					// if that fails, presumably besause the library doesn't support

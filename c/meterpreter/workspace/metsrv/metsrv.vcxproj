@@ -547,6 +547,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <ClInclude Include="..\..\source\metsrv\base_inject.h" />
     <ClInclude Include="..\..\source\metsrv\channel.h" />
     <ClInclude Include="..\..\source\metsrv\core.h" />
+    <ClInclude Include="..\..\source\metsrv\extension_loader.h" />
     <ClInclude Include="..\..\source\metsrv\libloader.h" />
     <ClInclude Include="..\..\source\metsrv\list.h" />
     <ClInclude Include="..\..\source\metsrv\metsrv.h" />
@@ -578,6 +579,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <ClCompile Include="..\..\source\metsrv\base_inject.c" />
     <ClCompile Include="..\..\source\metsrv\channel.c" />
     <ClCompile Include="..\..\source\metsrv\core.c" />
+    <ClCompile Include="..\..\source\metsrv\extension_loader.c" />
     <ClCompile Include="..\..\source\metsrv\libloader.c" />
     <ClCompile Include="..\..\source\metsrv\list.c" />
     <ClCompile Include="..\..\source\metsrv\metsrv.c" />
