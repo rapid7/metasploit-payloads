@@ -79,8 +79,15 @@ public class Meterpreter {
             this.transports.add(t);
         }
 
-        // we don't currently support extensions, so when we reach the end of the
-        // list of transports we just bomb out.
+        // Hot-load extensions baked into the config block (EXTENSIONS=) so
+        // their commands are registered before the first C2 dispatch.
+        for (byte[] extData : config.extensions) {
+            try {
+                loadExtension(extData);
+            } catch (Throwable t) {
+                t.printStackTrace(System.err);
+            }
+        }
     }
 
     public byte[] getUUID() {
