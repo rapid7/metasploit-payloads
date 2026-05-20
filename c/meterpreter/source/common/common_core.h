@@ -191,7 +191,8 @@ typedef enum
 	TLV_TYPE_C2_CERT_HASH          = TLV_VALUE(TLV_META_TYPE_RAW,     717),   ///! Expected SSL certificate hash
 	TLV_TYPE_C2_PREFIX             = TLV_VALUE(TLV_META_TYPE_RAW,     718),   ///! Data to prepend to the outgoing payload
 	TLV_TYPE_C2_SUFFIX             = TLV_VALUE(TLV_META_TYPE_RAW,     719),   ///! Data to append to the outgoing payload
-	TLV_TYPE_C2_ENC                = TLV_VALUE(TLV_META_TYPE_UINT,    720),   ///! Request encoding flags (Base64|URL|Base64url)
+	TLV_TYPE_C2_ENC_INBOUND        = TLV_VALUE(TLV_META_TYPE_UINT,    720),   ///! Server->client (response) body encoding flags
+	TLV_TYPE_C2_ENC_OUTBOUND       = TLV_VALUE(TLV_META_TYPE_UINT,    728),   ///! Client->server (request) body encoding flags
 	TLV_TYPE_C2_PREFIX_SKIP        = TLV_VALUE(TLV_META_TYPE_UINT,    721),   ///! Size of prefix to skip (in bytes)
 	TLV_TYPE_C2_SUFFIX_SKIP        = TLV_VALUE(TLV_META_TYPE_UINT,    722),   ///! Size of suffix to skip (in bytes)
 	TLV_TYPE_C2_UUID_COOKIE        = TLV_VALUE(TLV_META_TYPE_STRING,  723),   ///! Name of the cookie to put the UUID in

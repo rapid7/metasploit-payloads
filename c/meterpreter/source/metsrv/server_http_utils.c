@@ -75,7 +75,7 @@ BOOL decode_encoded_packet(HttpTransportContext* ctx, LPBYTE encodedData, DWORD 
 	HttpConnection* conn = &ctx->get_connection;
 	BOOL result = FALSE;
 
-	switch (conn->options.encode_flags)
+	switch (conn->options.encode_flags_inbound)
 	{
 	case C2_ENCODING_URL:
 	{
@@ -89,7 +89,7 @@ BOOL decode_encoded_packet(HttpTransportContext* ctx, LPBYTE encodedData, DWORD 
 		DWORD decodeInputLen = encodedDataLen;
 		LPBYTE convertedBuf = NULL;
 
-		if (conn->options.encode_flags == C2_ENCODING_B64URI)
+		if (conn->options.encode_flags_inbound == C2_ENCODING_B64URI)
 		{
 			convertedBuf = b64uri_to_b64(encodedData, encodedDataLen, &decodeInputLen);
 			if (convertedBuf == NULL)
@@ -158,7 +158,7 @@ BOOL encode_raw_packet(HttpTransportContext* ctx, LPBYTE data, DWORD dataLen, LP
 	HttpConnection* conn = &ctx->post_connection;
 	BOOL result = FALSE;
 
-	switch (conn->options.encode_flags)
+	switch (conn->options.encode_flags_outbound)
 	{
 	case C2_ENCODING_URL:
 	{
@@ -177,7 +177,7 @@ BOOL encode_raw_packet(HttpTransportContext* ctx, LPBYTE data, DWORD dataLen, LP
 			{
 				if (CryptBinaryToStringA(data, dataLen, flags, encoded, encodedDataLen))
 				{
-					if (conn->options.encode_flags == C2_ENCODING_B64URI)
+					if (conn->options.encode_flags_outbound == C2_ENCODING_B64URI)
 					{
 						b64_to_b64uri(encoded, encodedDataLen);
 					}
