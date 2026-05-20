@@ -22,6 +22,8 @@ public class ConfigParser  {
             config.session_expiry = MS * configPacket.getIntValue(TLVType.TLV_TYPE_SESSION_EXPIRY);
             config.uuid = configPacket.getRawValue(TLVType.TLV_TYPE_UUID);
             config.session_guid = configPacket.getRawValue(TLVType.TLV_TYPE_SESSION_GUID);
+            config.debug_log = configPacket.getStringValue(TLVType.TLV_TYPE_DEBUG_LOG, null);
+            config.flags = ((Integer) configPacket.getValue(TLVType.TLV_TYPE_SESSION_FLAGS, new Integer(0))).intValue();
         } catch (IOException ioException) {
             return null;
         } catch (IllegalArgumentException illegalArgumentException) {
@@ -45,26 +47,62 @@ public class ConfigParser  {
             }
 
             if (transportConfig.url.startsWith("http")) {
-                String proxyUrl = null;
-                byte[] loadedHash;
                 try {
-                    proxyUrl = c2Group.getStringValue(TLVType.TLV_TYPE_C2_PROXY_URL);
-                } catch (IllegalArgumentException illegalArgumentException) {
-                }
-                if (proxyUrl != null) {
-                    transportConfig.proxy_url = proxyUrl;
+                    transportConfig.proxy_url = c2Group.getStringValue(TLVType.TLV_TYPE_C2_PROXY_URL);
                     transportConfig.proxy_user = c2Group.getStringValue(TLVType.TLV_TYPE_C2_PROXY_USER, "");
                     transportConfig.proxy_pass = c2Group.getStringValue(TLVType.TLV_TYPE_C2_PROXY_PASS, "");
-                    transportConfig.user_agent = c2Group.getStringValue(TLVType.TLV_TYPE_C2_UA, "");
-                    transportConfig.custom_headers = c2Group.getStringValue(TLVType.TLV_TYPE_C2_HEADERS, "");
-                    loadedHash = c2Group.getRawValue(TLVType.TLV_TYPE_C2_CERT_HASH, new byte[0]);
-                    if (loadedHash.length > 0) {
-                        transportConfig.cert_hash = loadedHash;
-                    }
+                } catch (IllegalArgumentException illegalArgumentException) {
                 }
+
+                transportConfig.user_agent = c2Group.getStringValue(TLVType.TLV_TYPE_C2_UA, "");
+                transportConfig.custom_headers = c2Group.getStringValue(TLVType.TLV_TYPE_C2_HEADERS, "");
+                transportConfig.c2_uuid = c2Group.getStringValue(TLVType.TLV_TYPE_C2_UUID, null);
+
+                byte[] loadedHash = c2Group.getRawValue(TLVType.TLV_TYPE_C2_CERT_HASH, new byte[0]);
+                if (loadedHash.length > 0) {
+                    transportConfig.cert_hash = loadedHash;
+                }
+
+                // Parse C2 profile GET/POST sub-groups
+                transportConfig.c2Get = parseC2VerbGroup(c2Group, TLVType.TLV_TYPE_C2_GET);
+                transportConfig.c2Post = parseC2VerbGroup(c2Group, TLVType.TLV_TYPE_C2_POST);
             }
             config.transportConfigList.add(transportConfig);
         }
+
+        List<TLVPacket> extensionGroups = configPacket.getValues(TLVType.TLV_TYPE_EXTENSION);
+        for (int i = 0; i < extensionGroups.size(); ++i) {
+            byte[] data = extensionGroups.get(i).getRawValue(TLVType.TLV_TYPE_DATA, null);
+            if (data != null && data.length > 0) {
+                config.extensions.add(data);
+            }
+        }
+
+        return config;
+    }
+
+    private static C2VerbConfig parseC2VerbGroup(TLVPacket c2Group, int groupType) {
+        TLVPacket verbGroup;
+        try {
+            verbGroup = (TLVPacket) c2Group.getValue(groupType);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+
+        C2VerbConfig config = new C2VerbConfig();
+        config.uri = verbGroup.getStringValue(TLVType.TLV_TYPE_C2_URI, null);
+        config.encInbound = (Integer) verbGroup.getValue(TLVType.TLV_TYPE_C2_ENC_INBOUND, new Integer(0));
+        config.encOutbound = (Integer) verbGroup.getValue(TLVType.TLV_TYPE_C2_ENC_OUTBOUND, new Integer(0));
+        config.encUuid = (Integer) verbGroup.getValue(TLVType.TLV_TYPE_C2_ENC_UUID, new Integer(0));
+        config.prefix = verbGroup.getRawValue(TLVType.TLV_TYPE_C2_PREFIX, null);
+        config.suffix = verbGroup.getRawValue(TLVType.TLV_TYPE_C2_SUFFIX, null);
+        config.uuidPrefix = verbGroup.getStringValue(TLVType.TLV_TYPE_C2_UUID_PREFIX, "");
+        config.uuidSuffix = verbGroup.getStringValue(TLVType.TLV_TYPE_C2_UUID_SUFFIX, "");
+        config.prefixSkip = (Integer) verbGroup.getValue(TLVType.TLV_TYPE_C2_PREFIX_SKIP, new Integer(0));
+        config.suffixSkip = (Integer) verbGroup.getValue(TLVType.TLV_TYPE_C2_SUFFIX_SKIP, new Integer(0));
+        config.uuidGet = verbGroup.getStringValue(TLVType.TLV_TYPE_C2_UUID_GET, null);
+        config.uuidHeader = verbGroup.getStringValue(TLVType.TLV_TYPE_C2_UUID_HEADER, null);
+        config.uuidCookie = verbGroup.getStringValue(TLVType.TLV_TYPE_C2_UUID_COOKIE, null);
         return config;
     }
 }

@@ -88,13 +88,18 @@ public interface TLVType {
     public static final int TLV_TYPE_C2_CERT_HASH          = TLVPacket.TLV_META_TYPE_RAW    | 717; // Expected SSL certificate hash
     public static final int TLV_TYPE_C2_PREFIX             = TLVPacket.TLV_META_TYPE_RAW    | 718; // Data to prepend to the outgoing payload
     public static final int TLV_TYPE_C2_SUFFIX             = TLVPacket.TLV_META_TYPE_RAW    | 719; // Data to append to the outgoing payload
-    public static final int TLV_TYPE_C2_ENC                = TLVPacket.TLV_META_TYPE_UINT   | 720; // Request encoding flags (Base64|URL|Base64url)
+    public static final int TLV_TYPE_C2_ENC_INBOUND        = TLVPacket.TLV_META_TYPE_UINT   | 720; // Server->client (response) body encoding
     public static final int TLV_TYPE_C2_PREFIX_SKIP        = TLVPacket.TLV_META_TYPE_UINT   | 721; // Size of prefix to skip (in bytes)
     public static final int TLV_TYPE_C2_SUFFIX_SKIP        = TLVPacket.TLV_META_TYPE_UINT   | 722; // Size of suffix to skip (in bytes)
     public static final int TLV_TYPE_C2_UUID_COOKIE        = TLVPacket.TLV_META_TYPE_STRING | 723; // Name of the cookie to put the UUID in
     public static final int TLV_TYPE_C2_UUID_GET           = TLVPacket.TLV_META_TYPE_STRING | 724; // Name of the GET parameter to put the UUID in
     public static final int TLV_TYPE_C2_UUID_HEADER        = TLVPacket.TLV_META_TYPE_STRING | 725; // Name of the header to put the UUID in
     public static final int TLV_TYPE_C2_UUID               = TLVPacket.TLV_META_TYPE_STRING | 726; // string representation of the UUID for C2s
+    public static final int TLV_TYPE_SESSION_FLAGS         = TLVPacket.TLV_META_TYPE_UINT   | 727; // session-level configuration flags (FLAG_STAGELESS, FLAG_DEBUG, FLAG_WAKELOCK, FLAG_HIDE_APP_ICON)
+    public static final int TLV_TYPE_C2_ENC_OUTBOUND       = TLVPacket.TLV_META_TYPE_UINT   | 728; // Client->server (request) body encoding (POST only)
+    public static final int TLV_TYPE_C2_ENC_UUID           = TLVPacket.TLV_META_TYPE_UINT   | 729; // Encoding applied to the UUID before placement
+    public static final int TLV_TYPE_C2_UUID_PREFIX        = TLVPacket.TLV_META_TYPE_STRING | 730; // String to prepend to the encoded UUID
+    public static final int TLV_TYPE_C2_UUID_SUFFIX        = TLVPacket.TLV_META_TYPE_STRING | 731; // String to append to the encoded UUID
 
     // Fs
     public static final int TLV_TYPE_DIRECTORY_PATH = TLVPacket.TLV_META_TYPE_STRING  | 1200;

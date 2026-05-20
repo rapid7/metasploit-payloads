@@ -852,6 +852,8 @@ static void destroy_options(HttpRequestOptions* options)
 	SAFE_FREE(options->headers);
 	SAFE_FREE(options->payload_prefix);
 	SAFE_FREE(options->payload_suffix);
+	SAFE_FREE(options->uuid_prefix);
+	SAFE_FREE(options->uuid_suffix);
 	SAFE_FREE(options->uuid_cookie);
 	SAFE_FREE(options->uuid_header);
 	SAFE_FREE(options->uuid_get);
@@ -909,9 +911,25 @@ static void transport_destroy_http(Transport* transport)
  */
 BOOL set_http_options_to_tlv(Packet* optionsPacket, HttpRequestOptions* sourceOptions)
 {
-	if (sourceOptions->encode_flags != 0)
+	if (sourceOptions->encode_flags_inbound != 0)
 	{
-		packet_add_tlv_uint(optionsPacket, TLV_TYPE_C2_ENC, sourceOptions->encode_flags);
+		packet_add_tlv_uint(optionsPacket, TLV_TYPE_C2_ENC_INBOUND, sourceOptions->encode_flags_inbound);
+	}
+	if (sourceOptions->encode_flags_outbound != 0)
+	{
+		packet_add_tlv_uint(optionsPacket, TLV_TYPE_C2_ENC_OUTBOUND, sourceOptions->encode_flags_outbound);
+	}
+	if (sourceOptions->encode_flags_uuid != 0)
+	{
+		packet_add_tlv_uint(optionsPacket, TLV_TYPE_C2_ENC_UUID, sourceOptions->encode_flags_uuid);
+	}
+	if (sourceOptions->uuid_prefix != NULL)
+	{
+		packet_add_tlv_wstring(optionsPacket, TLV_TYPE_C2_UUID_PREFIX, sourceOptions->uuid_prefix);
+	}
+	if (sourceOptions->uuid_suffix != NULL)
+	{
+		packet_add_tlv_wstring(optionsPacket, TLV_TYPE_C2_UUID_SUFFIX, sourceOptions->uuid_suffix);
 	}
 	if (sourceOptions->headers != NULL)
 	{
@@ -1012,7 +1030,11 @@ void transport_write_http_config(Transport* transport, Packet* c2Packet)
  */
 BOOL get_http_options_from_tlv(Packet* packet, Tlv* optionsTlv, HttpRequestOptions* targetOptions)
 {
-	targetOptions->encode_flags = packet_get_tlv_group_entry_value_uint(packet, optionsTlv, TLV_TYPE_C2_ENC);
+	targetOptions->encode_flags_inbound = packet_get_tlv_group_entry_value_uint(packet, optionsTlv, TLV_TYPE_C2_ENC_INBOUND);
+	targetOptions->encode_flags_outbound = packet_get_tlv_group_entry_value_uint(packet, optionsTlv, TLV_TYPE_C2_ENC_OUTBOUND);
+	targetOptions->encode_flags_uuid = packet_get_tlv_group_entry_value_uint(packet, optionsTlv, TLV_TYPE_C2_ENC_UUID);
+	targetOptions->uuid_prefix = packet_get_tlv_group_entry_value_wstring(packet, optionsTlv, TLV_TYPE_C2_UUID_PREFIX, NULL);
+	targetOptions->uuid_suffix = packet_get_tlv_group_entry_value_wstring(packet, optionsTlv, TLV_TYPE_C2_UUID_SUFFIX, NULL);
 	targetOptions->headers = packet_get_tlv_group_entry_value_wstring(packet, optionsTlv, TLV_TYPE_C2_HEADERS, NULL);
 	targetOptions->payload_prefix = packet_get_tlv_group_entry_value_raw_copy(packet, optionsTlv, TLV_TYPE_C2_PREFIX, (DWORD*)&targetOptions->payload_prefix_size);
 	targetOptions->payload_prefix_skip = packet_get_tlv_group_entry_value_uint(packet, optionsTlv, TLV_TYPE_C2_PREFIX_SKIP);
@@ -1047,7 +1069,11 @@ BOOL get_http_options_from_config(Packet* packet, Tlv* c2Tlv, UINT tlvType, Http
 
 static void debug_print_http_options(PSTR type, HttpRequestOptions* options)
 {
-	dprintf("[HTTP OPTION] - %s - Encode Flags: 0x%x", type, options->encode_flags);
+	dprintf("[HTTP OPTION] - %s - Encode Flags Inbound: 0x%x", type, options->encode_flags_inbound);
+	dprintf("[HTTP OPTION] - %s - Encode Flags Outbound: 0x%x", type, options->encode_flags_outbound);
+	dprintf("[HTTP OPTION] - %s - Encode Flags UUID: 0x%x", type, options->encode_flags_uuid);
+	dprintf("[HTTP OPTION] - %s - UUID Prefix: %S", type, options->uuid_prefix);
+	dprintf("[HTTP OPTION] - %s - UUID Suffix: %S", type, options->uuid_suffix);
 	dprintf("[HTTP OPTION] - %s - Headers: %S", type, options->headers);
 	dprintf("[HTTP OPTION] - %s - Payload Prefix Size: %u", type, options->payload_prefix_size);
 	dprintf("[HTTP OPTION] - %s - Payload Prefix: %s", type, options->payload_prefix);

