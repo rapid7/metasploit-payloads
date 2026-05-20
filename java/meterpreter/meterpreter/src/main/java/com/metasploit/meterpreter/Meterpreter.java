@@ -44,6 +44,7 @@ public class Meterpreter {
     private byte[] uuid;
     private byte[] sessionGUID;
     private long sessionExpiry;
+    private JarFileClassLoader extensionLoader;
 
     protected void loadConfiguration(DataInputStream in, OutputStream rawOut, byte[] configBlock) throws MalformedURLException {
         Config config = ConfigParser.parseConfig(configBlock);
@@ -57,7 +58,7 @@ public class Meterpreter {
         if (config.debug_log != null && config.debug_log.length() > 0) {
             try {
                 PrintStream debugStream = new PrintStream(new FileOutputStream(config.debug_log, true));
-                System.setErr(debugStream);
+                // System.setErr(debugStream);  // TEMP DEBUG: leave stderr on the console
             } catch (IOException ignored) {
                 // failed to open log file; carry on without debug logging
             }
@@ -331,7 +332,21 @@ public class Meterpreter {
     public Integer[] loadExtension(byte[] data) throws Exception {
         ClassLoader classLoader = getClass().getClassLoader();
         if (loadExtensions) {
-            JarFileClassLoader jarLoader = (JarFileClassLoader)classLoader;
+            // Staged payloads bootstrap us through a JarFileClassLoader so
+            // this.getClass().getClassLoader() is already one. The stageless
+            // jar runs under the JVM's AppClassLoader, so create our own
+            // JarFileClassLoader on first load and reuse it across calls so
+            // previously-loaded extensions stay reachable.
+            JarFileClassLoader jarLoader;
+            if (classLoader instanceof JarFileClassLoader) {
+                jarLoader = (JarFileClassLoader) classLoader;
+            } else {
+                if (extensionLoader == null) {
+                    extensionLoader = new JarFileClassLoader(classLoader);
+                }
+                jarLoader = extensionLoader;
+                classLoader = jarLoader;
+            }
             jarLoader.addJarFile(data);
         }
         JarInputStream jis = new JarInputStream(new ByteArrayInputStream(data));

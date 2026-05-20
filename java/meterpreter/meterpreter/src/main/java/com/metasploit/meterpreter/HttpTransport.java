@@ -65,7 +65,12 @@ public class HttpTransport extends Transport {
 
     @Override
     public boolean patchUuid(String uuid) {
+        // MC2 mode: only swap the UUID; the profile rebuilds the URL.
+        System.err.println("[MC2DBG] patchUuid uuid=" + uuid + " c2Get=" + (c2Get != null) + " c2Post=" + (c2Post != null));
         this.c2Uuid = uuid;
+        if (this.c2Get != null || this.c2Post != null) {
+            return true;
+        }
         try {
             // can't use getAuthority() here thanks to java 1.2. Ugh.
             String newUrl = this.targetUrl.getProtocol() + "://"
@@ -312,11 +317,12 @@ public class HttpTransport extends Transport {
     }
 
     private String getUuidFromUrl() {
-        // Prefer TLV_TYPE_C2_UUID; fall back to URL path's last segment.
         if (this.c2Uuid != null && this.c2Uuid.length() > 0) {
+            System.err.println("[MC2DBG] getUuidFromUrl c2Uuid=" + this.c2Uuid);
             return this.c2Uuid;
         }
         String path = this.targetUrl.getPath();
+        System.err.println("[MC2DBG] getUuidFromUrl targetUrl.path=" + path);
         if (path == null || path.length() <= 1) {
             return "";
         }
@@ -325,14 +331,34 @@ public class HttpTransport extends Transport {
             path = path.substring(0, path.length() - 1);
         }
         int lastSlash = path.lastIndexOf('/');
-        if (lastSlash >= 0) {
-            return path.substring(lastSlash + 1);
+        String result = (lastSlash >= 0) ? path.substring(lastSlash + 1) : path;
+        System.err.println("[MC2DBG] getUuidFromUrl from URL -> " + result);
+        return result;
+    }
+
+    /**
+     * Apply the profile's UUID transform (encode + prepend + append) to the
+     * raw UUID before placement. Returns the rendered string, or "" for empty
+     * input.
+     */
+    private static String renderUuid(C2VerbConfig profile, String uuid) {
+        if (uuid == null || uuid.length() == 0) {
+            return "";
         }
-        return path;
+        if (profile == null) {
+            return uuid;
+        }
+        byte[] encoded = c2Encode(uuid.getBytes(), profile.encUuid);
+        String body = new String(encoded);  // base64/base64url output is ASCII
+        String prefix = profile.uuidPrefix != null ? profile.uuidPrefix : "";
+        String suffix = profile.uuidSuffix != null ? profile.uuidSuffix : "";
+        return prefix + body + suffix;
     }
 
     private URL buildProfileUrl(C2VerbConfig profile) throws MalformedURLException {
+        System.err.println("[MC2DBG] buildProfileUrl profile=" + (profile == null ? "null" : "set") + " profile.uri=" + (profile != null ? profile.uri : "(n/a)"));
         if (profile == null || profile.uri == null) {
+            System.err.println("[MC2DBG] buildProfileUrl falling through to targetUrl=" + this.targetUrl);
             return this.targetUrl;
         }
 
@@ -346,16 +372,25 @@ public class HttpTransport extends Transport {
         }
 
         String fullUrl = baseUrl + uri;
+        String renderedUuid = renderUuid(profile, getUuidFromUrl());
+        System.err.println("[MC2DBG] buildProfileUrl baseUrl=" + baseUrl + " uri=" + uri + " renderedUuid=" + renderedUuid);
 
-        // Add UUID as query parameter if configured
         if (profile.uuidGet != null) {
-            String uuid = getUuidFromUrl();
-            if (uuid.length() > 0) {
+            if (renderedUuid.length() > 0) {
                 String separator = fullUrl.indexOf('?') >= 0 ? "&" : "?";
-                fullUrl = fullUrl + separator + profile.uuidGet + "=" + uuid;
+                fullUrl = fullUrl + separator + profile.uuidGet + "=" + renderedUuid;
+            }
+        } else if (profile.uuidHeader == null && profile.uuidCookie == null) {
+            // No param/header/cookie placement => carry the id in the URI path.
+            if (renderedUuid.length() > 0) {
+                if (fullUrl.endsWith("/")) {
+                    fullUrl = fullUrl.substring(0, fullUrl.length() - 1);
+                }
+                fullUrl = fullUrl + "/" + renderedUuid;
             }
         }
 
+        System.err.println("[MC2DBG] buildProfileUrl final fullUrl=" + fullUrl);
         return new URL(fullUrl);
     }
 
@@ -364,13 +399,13 @@ public class HttpTransport extends Transport {
             return;
         }
         if (profile.uuidHeader != null) {
-            String uuid = getUuidFromUrl();
+            String uuid = renderUuid(profile, getUuidFromUrl());
             if (uuid.length() > 0) {
                 conn.addRequestProperty(profile.uuidHeader, uuid);
             }
         }
         if (profile.uuidCookie != null) {
-            String uuid = getUuidFromUrl();
+            String uuid = renderUuid(profile, getUuidFromUrl());
             if (uuid.length() > 0) {
                 conn.addRequestProperty("Cookie", profile.uuidCookie + "=" + uuid);
             }
@@ -556,7 +591,7 @@ public class HttpTransport extends Transport {
         byte[] stripped = new byte[end - start];
         System.arraycopy(rawResponse, start, stripped, 0, stripped.length);
 
-        return c2Decode(stripped, profile.enc);
+        return c2Decode(stripped, profile.encInbound);
     }
 
     private static byte[] encodeRequest(byte[] data, C2VerbConfig profile) {
@@ -564,7 +599,7 @@ public class HttpTransport extends Transport {
             return data;
         }
 
-        byte[] encoded = c2Encode(data, profile.enc);
+        byte[] encoded = c2Encode(data, profile.encOutbound);
 
         byte[] prefix = profile.prefix;
         byte[] suffix = profile.suffix;
