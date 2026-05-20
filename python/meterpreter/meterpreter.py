@@ -179,8 +179,8 @@ TLV_TYPE_C2_SUFFIX             = TLV_META_TYPE_RAW    | 719 # Data to append to 
 TLV_TYPE_C2_ENC_INBOUND        = TLV_META_TYPE_UINT   | 720 # Server->client (response) body encoding
 TLV_TYPE_C2_ENC_OUTBOUND       = TLV_META_TYPE_UINT   | 728 # Client->server (request) body encoding (POST only)
 TLV_TYPE_C2_ENC_UUID           = TLV_META_TYPE_UINT   | 729 # Encoding applied to the UUID before placement
-TLV_TYPE_C2_UUID_PREFIX        = TLV_META_TYPE_RAW    | 730 # Bytes to prepend to the encoded UUID
-TLV_TYPE_C2_UUID_SUFFIX        = TLV_META_TYPE_RAW    | 731 # Bytes to append to the encoded UUID
+TLV_TYPE_C2_UUID_PREFIX        = TLV_META_TYPE_STRING | 730 # String to prepend to the encoded UUID
+TLV_TYPE_C2_UUID_SUFFIX        = TLV_META_TYPE_STRING | 731 # String to append to the encoded UUID
 TLV_TYPE_C2_PREFIX_SKIP        = TLV_META_TYPE_UINT   | 721 # Size of prefix to skip (in bytes)
 TLV_TYPE_C2_SUFFIX_SKIP        = TLV_META_TYPE_UINT   | 722 # Size of suffix to skip (in bytes)
 TLV_TYPE_C2_UUID_COOKIE        = TLV_META_TYPE_STRING | 723 # Name of the cookie to put the UUID in
@@ -930,8 +930,8 @@ class Transport(object):
         opts['enc_inbound'] = packet_get_tlv(group_bytes, TLV_TYPE_C2_ENC_INBOUND).get('value', C2_ENCODING_NONE)
         opts['enc_outbound'] = packet_get_tlv(group_bytes, TLV_TYPE_C2_ENC_OUTBOUND).get('value', C2_ENCODING_NONE)
         opts['enc_uuid'] = packet_get_tlv(group_bytes, TLV_TYPE_C2_ENC_UUID).get('value', C2_ENCODING_NONE)
-        opts['uuid_prefix'] = packet_get_tlv(group_bytes, TLV_TYPE_C2_UUID_PREFIX).get('value', b'')
-        opts['uuid_suffix'] = packet_get_tlv(group_bytes, TLV_TYPE_C2_UUID_SUFFIX).get('value', b'')
+        opts['uuid_prefix'] = packet_get_tlv(group_bytes, TLV_TYPE_C2_UUID_PREFIX).get('value', '')
+        opts['uuid_suffix'] = packet_get_tlv(group_bytes, TLV_TYPE_C2_UUID_SUFFIX).get('value', '')
         opts['prefix_skip'] = packet_get_tlv(group_bytes, TLV_TYPE_C2_PREFIX_SKIP).get('value', 0)
         opts['suffix_skip'] = packet_get_tlv(group_bytes, TLV_TYPE_C2_SUFFIX_SKIP).get('value', 0)
         opts['prefix'] = packet_get_tlv(group_bytes, TLV_TYPE_C2_PREFIX).get('value')
@@ -1139,15 +1139,19 @@ class HttpTransport(Transport):
 
     @staticmethod
     def _render_uuid(c2_opts, uuid):
-        """Apply the profile's UUID transform (encode + prepend + append)."""
+        """Apply the profile's UUID transform (encode + prepend + append).
+        prefix/suffix are profile strings; the encoded UUID is base64/base64url
+        ASCII — everything lives in the string domain."""
         if not uuid:
             return ''
         enc = c2_opts.get('enc_uuid', C2_ENCODING_NONE)
-        prefix = c2_opts.get('uuid_prefix') or b''
-        suffix = c2_opts.get('uuid_suffix') or b''
+        prefix = c2_opts.get('uuid_prefix') or ''
+        suffix = c2_opts.get('uuid_suffix') or ''
         uuid_bytes = uuid.encode() if is_str(uuid) else uuid
         encoded = HttpTransport._c2_encode(uuid_bytes, enc)
-        return (prefix + encoded + suffix).decode('latin-1')
+        if isinstance(encoded, bytes):
+            encoded = encoded.decode('latin-1')
+        return prefix + encoded + suffix
 
     def _build_request_url(self, c2_opts, uuid=None):
         """Build the request URL using C2 profile options."""

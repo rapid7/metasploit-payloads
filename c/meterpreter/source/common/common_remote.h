@@ -85,6 +85,9 @@ typedef struct _HttpRequestOptions
 	UINT payload_suffix_skip;             ///! Size of the incoming suffix to ignore
 	UINT encode_flags_inbound;            ///! Flags to indicate how server->client (response) bodies are encoded.
 	UINT encode_flags_outbound;           ///! Flags to indicate how client->server (request) bodies are encoded.
+	UINT encode_flags_uuid;               ///! Flags to indicate how the UUID is encoded before placement.
+	STRTYPE uuid_prefix;                  ///! String to prepend to the (encoded) UUID before placement.
+	STRTYPE uuid_suffix;                  ///! String to append to the (encoded) UUID after placement.
 	STRTYPE uuid_get;                     ///! The name of the GET/query string parameter to put the UUID in (optional).
 	STRTYPE uuid_cookie;                  ///! The name of the cookie to put the UUID in (optional).
 	STRTYPE uuid_header;                  ///! The name of the HTTP Header to put the UUID in (optional).

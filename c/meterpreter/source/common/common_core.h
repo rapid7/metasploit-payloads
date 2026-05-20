@@ -193,6 +193,9 @@ typedef enum
 	TLV_TYPE_C2_SUFFIX             = TLV_VALUE(TLV_META_TYPE_RAW,     719),   ///! Data to append to the outgoing payload
 	TLV_TYPE_C2_ENC_INBOUND        = TLV_VALUE(TLV_META_TYPE_UINT,    720),   ///! Server->client (response) body encoding flags
 	TLV_TYPE_C2_ENC_OUTBOUND       = TLV_VALUE(TLV_META_TYPE_UINT,    728),   ///! Client->server (request) body encoding flags
+	TLV_TYPE_C2_ENC_UUID           = TLV_VALUE(TLV_META_TYPE_UINT,    729),   ///! Encoding applied to the UUID before placement
+	TLV_TYPE_C2_UUID_PREFIX        = TLV_VALUE(TLV_META_TYPE_STRING,  730),   ///! String to prepend to the encoded UUID
+	TLV_TYPE_C2_UUID_SUFFIX        = TLV_VALUE(TLV_META_TYPE_STRING,  731),   ///! String to append to the encoded UUID
 	TLV_TYPE_C2_PREFIX_SKIP        = TLV_VALUE(TLV_META_TYPE_UINT,    721),   ///! Size of prefix to skip (in bytes)
 	TLV_TYPE_C2_SUFFIX_SKIP        = TLV_VALUE(TLV_META_TYPE_UINT,    722),   ///! Size of suffix to skip (in bytes)
 	TLV_TYPE_C2_UUID_COOKIE        = TLV_VALUE(TLV_META_TYPE_STRING,  723),   ///! Name of the cookie to put the UUID in
