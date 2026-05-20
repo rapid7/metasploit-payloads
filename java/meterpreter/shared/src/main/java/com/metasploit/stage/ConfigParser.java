@@ -69,6 +69,15 @@ public class ConfigParser  {
             }
             config.transportConfigList.add(transportConfig);
         }
+
+        List<TLVPacket> extensionGroups = configPacket.getValues(TLVType.TLV_TYPE_EXTENSION);
+        for (int i = 0; i < extensionGroups.size(); ++i) {
+            byte[] data = extensionGroups.get(i).getRawValue(TLVType.TLV_TYPE_DATA, null);
+            if (data != null && data.length > 0) {
+                config.extensions.add(data);
+            }
+        }
+
         return config;
     }
 
