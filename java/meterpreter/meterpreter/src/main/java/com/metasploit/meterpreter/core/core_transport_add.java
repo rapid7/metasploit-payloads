@@ -84,9 +84,13 @@ public class core_transport_add implements Command {
 
         C2VerbConfig config = new C2VerbConfig();
         config.uri = verbGroup.getStringValue(TLVType.TLV_TYPE_C2_URI, null);
-        config.enc = (Integer) verbGroup.getValue(TLVType.TLV_TYPE_C2_ENC, new Integer(0));
+        config.encInbound = (Integer) verbGroup.getValue(TLVType.TLV_TYPE_C2_ENC_INBOUND, new Integer(0));
+        config.encOutbound = (Integer) verbGroup.getValue(TLVType.TLV_TYPE_C2_ENC_OUTBOUND, new Integer(0));
+        config.encUuid = (Integer) verbGroup.getValue(TLVType.TLV_TYPE_C2_ENC_UUID, new Integer(0));
         config.prefix = verbGroup.getRawValue(TLVType.TLV_TYPE_C2_PREFIX, null);
         config.suffix = verbGroup.getRawValue(TLVType.TLV_TYPE_C2_SUFFIX, null);
+        config.uuidPrefix = verbGroup.getStringValue(TLVType.TLV_TYPE_C2_UUID_PREFIX, "");
+        config.uuidSuffix = verbGroup.getStringValue(TLVType.TLV_TYPE_C2_UUID_SUFFIX, "");
         config.prefixSkip = (Integer) verbGroup.getValue(TLVType.TLV_TYPE_C2_PREFIX_SKIP, new Integer(0));
         config.suffixSkip = (Integer) verbGroup.getValue(TLVType.TLV_TYPE_C2_SUFFIX_SKIP, new Integer(0));
         config.uuidGet = verbGroup.getStringValue(TLVType.TLV_TYPE_C2_UUID_GET, null);
