@@ -40,36 +40,6 @@ If you don't have an installation ready, follow these steps:
 choco install visualstudio2019community -y --package-parameters "--config C:\YOUR_PATH\metasploit-payloads\c\meterpreter\vs-configs\vs2019.vsconfig"
   ```
 
-### VS 2017
-Building with VS2017 works with any version, including community. If you have an installation already, just make sure you have the following extra bits installed:
-
-* Under `Workloads`:
-    * `Desktop Development with C++`
-* Under `Individual Components`:
-    * `Windows XP support for C++`
-
-If you don't have an installation ready, follow these steps:
-
-1. Install [Chocolatey](https://chocolatey.org).
-2. Install VS with all the required components by running the following command in Powershell:
-  ```
-choco install visualstudio2017community -y --package-parameters "--config C:\YOUR_PATH\metasploit-payloads\c\meterpreter\vs-configs\vs2017.vsconfig"
-  ```
-
-Note: A copy of this file is located in this repository under `c/meterpreter/vs-config/vs2017.vsconfig`.
-
-### VS 2013
-Download and install the `Visual Studio Express 2013 for Windows Desktop` edition. It is important that you use _this exact version_. To do this with Chocolatey, run the following:
-
-```
-choco install visualstudioexpress2013windowsdesktop -y
-```
-
-Nothing extra needs to be done.
-
-At this point the dependencies will be ready to use and Meterpreter should be ready to
-build.
-
 ### Running the Build
 
 Open up a Visual Studio command prompt by selecting `Developer Command Prompt for VS201X`
@@ -84,7 +54,7 @@ meterpreter source is located. From here you can:
 * Build the x64 version by running: `make x64`
 * Build both x86 and x64 versions by running: `make`
 
-If you want to build binaries with the `v120_xp` toolset instead of `v141_xp` while using VS2017 or VS2019, you must first install VS2013 as shown above. Then, pass `v120_xp` as a parameter when running `make` (eg. `make v120_xp x64`). The Rapid7 build automation uses v120_xp to build the distributed binaries, so projects must build with that platform toolset.
+The Rapid7 build automation uses v141_xp to build the distributed binaries, so projects must build with that platform toolset.
 
 The compiled binaries are written to the `output` folder.
 
