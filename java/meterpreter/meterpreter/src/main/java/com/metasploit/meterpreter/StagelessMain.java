@@ -27,6 +27,6 @@ public class StagelessMain {
         } finally {
             cfg.close();
         }
-        new Meterpreter(buf.toByteArray(), true, false);
+        new Meterpreter(buf.toByteArray(), true, true);
     }
 }
