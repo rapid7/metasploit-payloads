@@ -404,7 +404,7 @@ PWSTR generate_uri(HttpTransportContext* ctx, HttpConnection* conn)
 	if (getParam)
 	{
 		wcscat_s(uri, uriLen, queryString ? L"&" : L"?");
-		wcscat_s(uri, uriLen, conn->options.uuid_get);
+		wcscat_s(uri, uriLen, getParam);
 		wcscat_s(uri, uriLen, L"=");
 		wcscat_s(uri, uriLen, uuidValue);
 	}
