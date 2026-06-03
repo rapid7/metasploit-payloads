@@ -66,7 +66,6 @@ public class HttpTransport extends Transport {
     @Override
     public boolean patchUuid(String uuid) {
         // MC2 mode: only swap the UUID; the profile rebuilds the URL.
-        System.err.println("[MC2DBG] patchUuid uuid=" + uuid + " c2Get=" + (c2Get != null) + " c2Post=" + (c2Post != null));
         this.c2Uuid = uuid;
         if (this.c2Get != null || this.c2Post != null) {
             return true;
@@ -318,11 +317,9 @@ public class HttpTransport extends Transport {
 
     private String getUuidFromUrl() {
         if (this.c2Uuid != null && this.c2Uuid.length() > 0) {
-            System.err.println("[MC2DBG] getUuidFromUrl c2Uuid=" + this.c2Uuid);
             return this.c2Uuid;
         }
         String path = this.targetUrl.getPath();
-        System.err.println("[MC2DBG] getUuidFromUrl targetUrl.path=" + path);
         if (path == null || path.length() <= 1) {
             return "";
         }
@@ -331,9 +328,7 @@ public class HttpTransport extends Transport {
             path = path.substring(0, path.length() - 1);
         }
         int lastSlash = path.lastIndexOf('/');
-        String result = (lastSlash >= 0) ? path.substring(lastSlash + 1) : path;
-        System.err.println("[MC2DBG] getUuidFromUrl from URL -> " + result);
-        return result;
+        return (lastSlash >= 0) ? path.substring(lastSlash + 1) : path;
     }
 
     /**
@@ -356,9 +351,7 @@ public class HttpTransport extends Transport {
     }
 
     private URL buildProfileUrl(C2VerbConfig profile) throws MalformedURLException {
-        System.err.println("[MC2DBG] buildProfileUrl profile=" + (profile == null ? "null" : "set") + " profile.uri=" + (profile != null ? profile.uri : "(n/a)"));
         if (profile == null || profile.uri == null) {
-            System.err.println("[MC2DBG] buildProfileUrl falling through to targetUrl=" + this.targetUrl);
             return this.targetUrl;
         }
 
@@ -373,7 +366,6 @@ public class HttpTransport extends Transport {
 
         String fullUrl = baseUrl + uri;
         String renderedUuid = renderUuid(profile, getUuidFromUrl());
-        System.err.println("[MC2DBG] buildProfileUrl baseUrl=" + baseUrl + " uri=" + uri + " renderedUuid=" + renderedUuid);
 
         if (profile.uuidGet != null) {
             if (renderedUuid.length() > 0) {
@@ -390,7 +382,6 @@ public class HttpTransport extends Transport {
             }
         }
 
-        System.err.println("[MC2DBG] buildProfileUrl final fullUrl=" + fullUrl);
         return new URL(fullUrl);
     }
 
