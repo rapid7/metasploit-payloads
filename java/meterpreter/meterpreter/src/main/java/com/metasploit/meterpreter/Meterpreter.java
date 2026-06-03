@@ -58,7 +58,7 @@ public class Meterpreter {
         if (config.debug_log != null && config.debug_log.length() > 0) {
             try {
                 PrintStream debugStream = new PrintStream(new FileOutputStream(config.debug_log, true));
-                // System.setErr(debugStream);  // TEMP DEBUG: leave stderr on the console
+                System.setErr(debugStream);
             } catch (IOException ignored) {
                 // failed to open log file; carry on without debug logging
             }
