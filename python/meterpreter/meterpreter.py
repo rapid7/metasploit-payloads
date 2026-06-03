@@ -1967,6 +1967,8 @@ def parse_config_block(raw):
     extensions = []
     for ext_tlv in packet_enum_tlvs(config_bytes, TLV_TYPE_EXTENSION):
         data_tlv = packet_get_tlv(ext_tlv['value'], TLV_TYPE_DATA)
+        if (data_tlv.get('type', 0) & TLV_META_TYPE_COMPRESSED) == TLV_META_TYPE_COMPRESSED:
+            continue
         data = data_tlv.get('value')
         extensions.append(data) if data else None
     config['extensions'] = extensions
