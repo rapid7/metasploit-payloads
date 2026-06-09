@@ -13,6 +13,12 @@ public class StagelessMain {
     private static final String CONFIG_RESOURCE = "/META-INF/data";
 
     public static void main(String[] args) throws Exception {
+        // Allow MC2 profiles to override restricted HTTP headers (Host,
+        // Connection, Content-Length, ...). Must run before any
+        // HttpURLConnection is touched so HttpURLConnection's static
+        // initializer reads this property.
+        System.setProperty("sun.net.http.allowRestrictedHeaders", "true");
+
         InputStream cfg = StagelessMain.class.getResourceAsStream(CONFIG_RESOURCE);
         if (cfg == null) {
             throw new RuntimeException("no embedded config block");
