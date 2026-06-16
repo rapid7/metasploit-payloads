@@ -264,10 +264,9 @@ static DWORD server_init_wininet(Transport* transport)
 	dprintf("[DISPATCH] About to crack URL: %S", transport->url);
 	InternetCrackUrl(transport->url, 0, 0, &bits);
 
-	SAFE_FREE(ctx->default_options.uri);
-	ctx->default_options.uri = _wcsdup(tmpUrlPath);
+	http_options_set_single_uri(&ctx->default_options, tmpUrlPath);
 
-	dprintf("[DISPATCH] Configured URI: %S", ctx->default_options.uri);
+	dprintf("[DISPATCH] Configured URI: %S", tmpUrlPath);
 	dprintf("[DISPATCH] Host: %S Port: %u", tmpHostName, bits.nPort);
 
 	DWORD result = server_init_connection(ctx, &ctx->get_connection, tmpHostName, bits.nPort);
