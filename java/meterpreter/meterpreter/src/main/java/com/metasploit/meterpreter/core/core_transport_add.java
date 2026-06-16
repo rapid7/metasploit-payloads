@@ -9,6 +9,8 @@ import com.metasploit.meterpreter.HttpTransport;
 import com.metasploit.meterpreter.command.Command;
 import com.metasploit.stage.C2VerbConfig;
 
+import java.util.List;
+
 public class core_transport_add implements Command {
 
     public int execute(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws Exception {
@@ -83,7 +85,11 @@ public class core_transport_add implements Command {
         }
 
         C2VerbConfig config = new C2VerbConfig();
-        config.uri = verbGroup.getStringValue(TLVType.TLV_TYPE_C2_URI, null);
+        // A profile's `set uri` may list several candidate URIs, emitted as
+        // repeated TLV_TYPE_C2_URI values. Collect them all; the request
+        // builder picks one at random per request (Cobalt Strike semantics).
+        List uriValues = verbGroup.getValues(TLVType.TLV_TYPE_C2_URI);
+        config.uris = (String[]) uriValues.toArray(new String[0]);
         config.encInbound = (Integer) verbGroup.getValue(TLVType.TLV_TYPE_C2_ENC_INBOUND, new Integer(0));
         config.encOutbound = (Integer) verbGroup.getValue(TLVType.TLV_TYPE_C2_ENC_OUTBOUND, new Integer(0));
         config.encUuid = (Integer) verbGroup.getValue(TLVType.TLV_TYPE_C2_ENC_UUID, new Integer(0));
