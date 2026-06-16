@@ -2,7 +2,7 @@ package com.metasploit.stage;
 
 public class C2VerbConfig {
 
-    public String uri;
+    public String[] uris;        // candidate request URIs; one chosen at random per request
     public int encInbound;       // server->client (response body) encoding
     public int encOutbound;      // client->server (request body, POST only) encoding
     public int encUuid;          // encoding applied to the UUID before placement
