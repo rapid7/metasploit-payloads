@@ -1320,8 +1320,13 @@ function packet_enum_tlvs($pkt, $type) {
 
 function parse_c2_verb_config($group_bytes) {
   $config = array();
-  $tlv = packet_get_tlv_raw($group_bytes, TLV_TYPE_C2_URI);
-  $config['uri'] = ($tlv != null) ? $tlv['value'] : null;
+  # A profile's `set uri` may list several candidate URIs, emitted as
+  # repeated TLV_TYPE_C2_URI values. Collect them all; the request builder
+  # picks one at random per request (Cobalt Strike semantics).
+  $config['uris'] = array();
+  foreach (packet_enum_tlvs_raw($group_bytes, TLV_TYPE_C2_URI) as $uri_tlv) {
+    $config['uris'][] = $uri_tlv['value'];
+  }
   $tlv = packet_get_tlv_raw($group_bytes, TLV_TYPE_C2_ENC_INBOUND);
   $config['enc_inbound'] = ($tlv != null) ? $tlv['value'] : C2_ENCODING_NONE;
   $tlv = packet_get_tlv_raw($group_bytes, TLV_TYPE_C2_ENC_OUTBOUND);
@@ -2199,9 +2204,10 @@ function http_build_profile_url($transport, $profile) {
   $base = $parsed['scheme'] . '://' . $parsed['host'];
   if (isset($parsed['port'])) { $base .= ':' . $parsed['port']; }
 
+  # Pick one of the profile's candidate URIs at random per request.
   $uri = '';
-  if (isset($profile['uri']) && $profile['uri'] != null) {
-    $uri = $profile['uri'];
+  if (!empty($profile['uris'])) {
+    $uri = $profile['uris'][array_rand($profile['uris'])];
     if ($uri[0] != '/') { $uri = '/' . $uri; }
   }
   $url = $base . $uri;
