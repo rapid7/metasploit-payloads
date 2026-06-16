@@ -74,7 +74,8 @@ typedef struct _NamedPipeTransportContext
 
 typedef struct _HttpRequestOptions
 {
-	STRTYPE uri;
+	STRTYPE* uris;                        ///! Request URIs (base, or profile candidates); one chosen at random per request.
+	UINT uri_count;                       ///! Number of entries in uris.
 	STRTYPE ua;
 	STRTYPE headers;                      ///! Custom headers, including accept types or referrer if required.
 	PBYTE payload_prefix;                 ///! Bytes to prepend to outgoing payloads.
