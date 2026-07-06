@@ -10,7 +10,7 @@
 #endif
 #include <tlhelp32.h>  // For CreateToolhelp32Snapshot, THREADENTRY32
 #include <wincrypt.h> // For HCRYPTPROV, HCRYPTKEY, PTOKEN_PRIVILEGES, etc.
-#include <rpcdce.h>   // For CoCreateGuid (included by windows.h but good to be explicit)
+#include <rpcdce.h>   // For UUID generation.
 #include <accctrl.h>
 
 #ifdef _WININET_
@@ -154,7 +154,7 @@ typedef struct _WinApiWinInet {
 
 // rpcrt4.dll
 typedef struct _WinApiRpcRt4 {
-    HRESULT (*CoCreateGuid)(GUID* pguid);
+    RPC_STATUS (*UuidCreate)(UUID* Uuid);
 } WinApiRpcRt4;
 
 // winhttp.dll

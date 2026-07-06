@@ -259,7 +259,7 @@ MetApi api_instance = {
         },
         // rpcrt4
         {
-            winapi_rpcrt4_CoCreateGuid
+            winapi_rpcrt4_UuidCreate
         },
         // winhttp
         {

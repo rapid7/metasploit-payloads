@@ -191,7 +191,7 @@ static DWORD read_pipe_to_packet(NamedPipeContext* ctx, LPBYTE source, DWORD sou
 						dprintf("[PIPE] Session guid not found, looks like the session is new");
 
 						// We need to generate a new session GUID and inform metasploit of the new session
-						CoCreateGuid(&ctx->pivot_session_guid);
+						met_api->win_api.rpcrt4.UuidCreate(&ctx->pivot_session_guid);
 
 						// swizzle the values around so that endianness isn't an issue before casting to a block of bytes
 						ctx->pivot_session_guid.Data1 = htonl(ctx->pivot_session_guid.Data1);

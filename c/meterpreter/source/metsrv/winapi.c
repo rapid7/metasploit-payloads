@@ -118,7 +118,7 @@ enum HashedFunctions {
     H_InternetReadFile = 0x5FE34B8B,
     H_InternetCloseHandle = 0xFA9B69C7,
     H_InternetCrackUrlW = 0xA5955290,
-    H_CoCreateGuid = 0xC55A929A,
+    H_UuidCreate = 0xC439EDE7,
     H_WinHttpOpen = 0xD1026DBE,
     H_WinHttpConnect = 0x8AAE8F,
     H_WinHttpOpenRequest = 0x8F34E1C1,
@@ -1176,11 +1176,11 @@ BOOL winapi_wininet_InternetCrackUrlW(LPCWSTR lpszUrl, DWORD dwUrlLength, DWORD 
 // END: wininet.dll
 // START: rpcrt4.dll
 
-HRESULT winapi_rpcrt4_CoCreateGuid(GUID* pguid) {
-    HRESULT (RPC_ENTRY *pCoCreateGuid)(GUID* pguid) = GetFunctionH(RPCRT4_DLL, H_CoCreateGuid);
-    dprintf("[WINAPI][winapi_rpcrt4_CoCreateGuid] Calling CoCreateGuid @ %p", pCoCreateGuid);
-    if (pCoCreateGuid) {
-        return pCoCreateGuid(pguid);
+RPC_STATUS winapi_rpcrt4_UuidCreate(UUID* Uuid) {
+    RPC_STATUS (RPC_ENTRY *pUuidCreate)(UUID* Uuid) = GetFunctionH(RPCRT4_DLL, H_UuidCreate);
+    dprintf("[WINAPI][winapi_rpcrt4_UuidCreate] Calling UuidCreate @ %p", pUuidCreate);
+    if (pUuidCreate) {
+        return pUuidCreate(Uuid);
     }
     return RPC_S_INTERNAL_ERROR;
 }
