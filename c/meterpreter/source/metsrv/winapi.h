@@ -13,7 +13,7 @@
 #include <tlhelp32.h>
 #include <tlhelp32.h>  // For CreateToolhelp32Snapshot, THREADENTRY32
 #include <wincrypt.h> // For HCRYPTPROV, HCRYPTKEY, PTOKEN_PRIVILEGES, etc.
-#include <rpcdce.h>   // For CoCreateGuid (included by windows.h but good to be explicit)
+#include <rpcdce.h>   // For UUID generation.
 #include <accctrl.h>
 typedef enum _MEMORY_INFORMATION_CLASS {
     MemoryBasicInformation
@@ -124,7 +124,7 @@ BOOL winapi_wininet_HttpQueryInfoW(HINTERNET hRequest, DWORD dwInfoLevel, LPVOID
 BOOL winapi_wininet_InternetReadFile(HINTERNET hFile, LPVOID lpBuffer, DWORD dwNumberOfBytesToRead, LPDWORD lpdwNumberOfBytesRead);
 BOOL winapi_wininet_InternetCloseHandle(HINTERNET hInternet);
 BOOL winapi_wininet_InternetCrackUrlW(LPCWSTR lpszUrl, DWORD dwUrlLength, DWORD dwFlags, LPURL_COMPONENTSW lpUrlComponents);
-HRESULT winapi_rpcrt4_CoCreateGuid(GUID* pguid);
+RPC_STATUS winapi_rpcrt4_UuidCreate(UUID* Uuid);
 HINTERNET winapi_winhttp_WinHttpOpen(LPCWSTR pszAgentW, DWORD dwAccessType, LPCWSTR pszProxyW, LPCWSTR pszProxyBypassW, DWORD dwFlags);
 HINTERNET winapi_winhttp_WinHttpConnect(HINTERNET hSession, LPCWSTR pswzServerName, INTERNET_PORT nServerPort, DWORD dwReserved);
 HINTERNET winapi_winhttp_WinHttpOpenRequest(HINTERNET hConnect, LPCWSTR pwszVerb, LPCWSTR pwszObjectName, LPCWSTR pwszVersion, LPCWSTR pwszReferrer, LPCWSTR* ppwszAcceptTypes, DWORD dwFlags);
