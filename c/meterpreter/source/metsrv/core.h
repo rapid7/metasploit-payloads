@@ -36,6 +36,7 @@ TlvMetaType packet_get_tlv_meta(Packet *packet, Tlv *tlv);
 DWORD packet_get_tlv(Packet *packet, TlvType type, Tlv *tlv);
 DWORD packet_get_tlv_string(Packet *packet, TlvType type, Tlv *tlv);
 DWORD packet_get_tlv_group_entry(Packet *packet, Tlv *group, TlvType type,Tlv *entry);
+DWORD packet_get_tlv_group_entry_n(Packet *packet, Tlv *group, DWORD index, TlvType type, Tlv *entry);
 DWORD packet_enum_tlv(Packet *packet, DWORD index, TlvType type, Tlv *tlv);
 DWORD packet_enum_group_tlv(Packet* packet, Tlv* group, DWORD index, TlvType type, Tlv* tlv);
 
