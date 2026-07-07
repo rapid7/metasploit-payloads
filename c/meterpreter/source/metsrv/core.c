@@ -760,6 +760,11 @@ DWORD packet_get_tlv_group_entry(Packet *packet, Tlv *group, TlvType type, Tlv *
 	return packet_find_tlv_buf(packet, group->buffer, group->header.length, 0, type, entry);
 }
 
+DWORD packet_get_tlv_group_entry_n(Packet *packet, Tlv *group, DWORD index, TlvType type, Tlv *entry)
+{
+	return packet_find_tlv_buf(packet, group->buffer, group->header.length, index, type, entry);
+}
+
 PCHAR packet_get_tlv_group_entry_value_string(Packet *packet, Tlv *group, TlvType type, DWORD* size)
 {
 	Tlv entry = { 0 };
