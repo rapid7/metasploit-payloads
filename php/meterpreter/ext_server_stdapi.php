@@ -110,6 +110,7 @@ define("TLV_TYPE_MEMORY_STATE",           TLV_META_TYPE_UINT    | 2006);
 define("TLV_TYPE_MEMORY_TYPE",            TLV_META_TYPE_UINT    | 2007);
 define("TLV_TYPE_ALLOC_PROTECTION",       TLV_META_TYPE_UINT    | 2008);
 define("TLV_TYPE_PID",                    TLV_META_TYPE_UINT    | 2300);
+define("TLV_TYPE_PARENT_PID",             TLV_META_TYPE_UINT    | 2307);
 define("TLV_TYPE_PROCESS_NAME",           TLV_META_TYPE_STRING  | 2301);
 define("TLV_TYPE_PROCESS_PATH",           TLV_META_TYPE_STRING  | 2302);
 define("TLV_TYPE_PROCESS_GROUP",          TLV_META_TYPE_GROUP   | 2303);
@@ -1099,10 +1100,15 @@ function stdapi_sys_process_get_processes($req, &$pkt) {
             array_push($list, $proc_info);
         }
     } else {
-        # This command produces a line like:
-        #    1553 root     /sbin/getty -8 38400 tty1
-        $output = my_cmd("ps ax -w -o pid,user,cmd --no-header 2>/dev/null");
+        # This command produces output like:
+        #   PID  PPID USER             ARGS
+        #     1     0 root             /sbin/launchd
+        #   120     1 root             /usr/libexec/logd
+        # 'args' is the POSIX name for the full command line with arguments,
+        # supported on Linux, macOS, and FreeBSD (unlike 'command'/'cmd').
+        $output = my_cmd("ps ax -w -o pid,ppid,user,args 2>/dev/null");
         $lines = explode("\n", trim($output));
+        array_shift($lines); # skip header
         foreach ($lines as $line) {
             array_push($list, preg_split("/\s+/", trim($line)));
         }
@@ -1110,12 +1116,15 @@ function stdapi_sys_process_get_processes($req, &$pkt) {
     foreach ($list as $proc) {
         $grp = "";
         $grp .= tlv_pack(create_tlv(TLV_TYPE_PID, $proc[0]));
-        $grp .= tlv_pack(create_tlv(TLV_TYPE_USER_NAME, $proc[1]));
-        $grp .= tlv_pack(create_tlv(TLV_TYPE_PROCESS_NAME, $proc[2]));
-        # Strip the pid and the user name off the front; the rest will be the
-        # full command line
-        array_shift($proc);
-        array_shift($proc);
+        array_shift($proc); # remove pid
+        if (!is_windows()) {
+            $grp .= tlv_pack(create_tlv(TLV_TYPE_PARENT_PID, $proc[0]));
+            array_shift($proc); # remove ppid
+        }
+        $grp .= tlv_pack(create_tlv(TLV_TYPE_USER_NAME, $proc[0]));
+        array_shift($proc); # remove user
+        $grp .= tlv_pack(create_tlv(TLV_TYPE_PROCESS_NAME, $proc[0]));
+        # The rest of $proc (from index 0 onwards after shifts) is the full command line
         $grp .= tlv_pack(create_tlv(TLV_TYPE_PROCESS_PATH, join(" ", $proc)));
         packet_add_tlv($pkt, create_tlv(TLV_TYPE_PROCESS_GROUP, $grp));
     }
