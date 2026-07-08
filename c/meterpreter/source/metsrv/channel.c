@@ -599,7 +599,7 @@ DWORD channel_write(Channel *channel, Remote *remote, Tlv *addend, DWORD addendL
 			packet_add_tlv_raw(request, TLV_TYPE_CHANNEL_DATA, buffer, length);
 		}
 
-		packet_add_tlv_uint(request, TLV_TYPE_LENGTH, channel_get_id(channel));
+		packet_add_tlv_uint(request, TLV_TYPE_LENGTH, length);
 
 		// Initialize the packet completion routine
 		if (completionRoutine)
@@ -627,6 +627,8 @@ DWORD channel_close(Channel *channel, Remote *remote, Tlv *addend,
 	PacketRequestCompletion requestCompletion, *realRequestCompletion = NULL;
 	DWORD res = ERROR_SUCCESS;
 	Tlv commandIdTlv;
+
+	dprintf("[CHANNEL] channel_close ENTER. channel=%p id=%u", (void*)channel, channel ? channel_get_id(channel) : 0);
 
 	do
 	{
@@ -658,7 +660,7 @@ DWORD channel_close(Channel *channel, Remote *remote, Tlv *addend,
 			realRequestCompletion = &requestCompletion;
 		}
 
-		dprintf("[CHANNEL] channel_close. channel=0x%08X completion=0x%.8x", channel, completionRoutine);
+		dprintf("[CHANNEL] channel_close. channel=0x%08X id=%u completion=0x%.8x", channel, channel ? channel_get_id(channel) : 0, completionRoutine);
 
 		// Transmit the packet with the supplied completion routine, if any.
 		res = packet_transmit(remote, request, realRequestCompletion);
