@@ -108,19 +108,47 @@ DWORD tcp_channel_client_close(Channel *channel, Packet *request, LPVOID context
 {
 	TcpClientContext *ctx = (TcpClientContext *)context;
 
-	dprintf( "[TCP] tcp_channel_client_close. channel=0x%08X, ctx=0x%08X", channel, ctx );
+	dprintf("[TCP] tcp_channel_client_close. channel=%p id=%u ctx=%p", (void*)channel, met_api->channel.get_id(channel), (void*)ctx);
 
 	if (ctx)
 	{
-		// Set the context channel to NULL so we don't try to close the
-		// channel (since it's already being closed)
-		ctx->channel = NULL;
+		// The framework has told us to close this channel. There are two
+		// possibilities:
+		//   1. Only this path is running (no local peer close in flight).
+		//      We must fully tear down the context here.
+		//   2. tcp_channel_client_local_notify is also running because the
+		//      local peer closed at roughly the same time. In that case we
+		//      must NOT double-free the context: the local-notify thread
+		//      owns cleanup and will observe the closed fd/NULL channel.
+		//
+		// Atomically claim ownership of ctx->channel. If we swap a non-NULL
+		// value, no other thread has started teardown; we own it.
+		// If we swap NULL, the local-notify path already claimed cleanup;
+		// we must leave ctx alone.
+		PVOID prev = InterlockedExchangePointer((PVOID*)&ctx->channel, NULL);
 
-		// Free the context
-		free_tcp_client_context(ctx);
-
-		// Set the native channel operations context to NULL
+		// Detach the native context from the channel regardless, so that
+		// channel_destroy's subsequent free of `channel` cannot be observed
+		// via ops->context from any other path.
 		met_api->channel.set_native_io_context(channel, NULL);
+
+		if (prev != NULL)
+		{
+			// We won the race: no local-notify teardown is in flight. Free
+			// the context ourselves.
+			free_tcp_client_context(ctx);
+		}
+		else
+		{
+			// The local-notify thread is (or was) handling teardown. Close
+			// the socket to wake it up in case it's still blocked on recv,
+			// but do NOT free ctx - that thread owns it.
+			if (ctx->fd)
+			{
+				closesocket(ctx->fd);
+				ctx->fd = 0;
+			}
+		}
 	}
 
 	return ERROR_SUCCESS;
@@ -185,15 +213,44 @@ DWORD tcp_channel_client_local_notify(Remote * remote, TcpClientContext * ctx)
 
 		if (dwBytesRead == 0)
 		{
-			dprintf("[TCP] tcp_channel_client_local_notify. [closed] channel=0x%08X read=0x%.8x", ctx->channel, dwBytesRead);
+			// The local peer closed the connection, OR tcp_channel_client_close
+			// (running on the packet dispatcher thread in response to a framework
+			// core_channel_close) closed our fd out from under us to wake us up.
+			//
+			// Atomically claim ownership of ctx->channel. If we swap a non-NULL
+			// value the framework hasn't started closing this channel yet, so we
+			// must notify it. If we swap NULL, the framework is (or was) already
+			// closing this channel and its tcp_channel_client_close ran; that
+			// path has left cleanup of ctx to us but is no longer using the
+			// Channel struct.
+			Channel *chan = (Channel *)InterlockedExchangePointer((PVOID *)&ctx->channel, NULL);
 
-			// Set the native channel operations context to NULL
-			met_api->channel.set_native_io_context(ctx->channel, NULL);
+			dprintf("[TCP] tcp_channel_client_local_notify. [closed] chan=%p fd=%llu read=0x%.8x",
+				(void*)chan, (unsigned long long)ctx->fd, dwBytesRead);
 
-			// Sleep for a quarter second
+			if (chan != NULL)
+			{
+				// We won the race. Detach `chan` from ctx first so that a
+				// core_channel_close request arriving between now and the
+				// channel_close send below will see ops->context == NULL and
+				// short-circuit tcp_channel_client_close.
+				//
+				// After set_native_io_context, `chan` is still valid: only
+				// channel_destroy frees the Channel struct, and channel_destroy
+				// is invoked from a request handler that runs on the packet
+				// dispatcher thread. That thread has not yet processed our
+				// upcoming close notification, so `chan` cannot be freed until
+				// we return from this function and the packet is round-tripped.
+				met_api->channel.set_native_io_context(chan, NULL);
+				met_api->channel.close(chan, remote, NULL, 0, NULL);
+			}
+
+			// Sleep briefly to let the framework drain buffered channel data
+			// before we tear down the underlying socket.
 			Sleep(250);
 
-			// Free the context
+			// We own cleanup of ctx now; free_socket_context will skip the
+			// channel.close branch because ctx->channel is NULL.
 			free_tcp_client_context(ctx);
 
 			// Stop processing
@@ -418,6 +475,9 @@ VOID free_socket_context(SocketContext *ctx)
 {
 	dprintf("[TCP] free_socket_context. ctx=0x%08X", ctx);
 
+	// Capture fd before closing so it can be logged accurately below
+	SOCKET originalFd = ctx->fd;
+
 	// Close the socket and notification handle
 	if (ctx->fd)
 	{
@@ -427,6 +487,7 @@ VOID free_socket_context(SocketContext *ctx)
 
 	if (ctx->channel)
 	{
+		dprintf("[TCP] free_socket_context. closing channel=%p id=%u fd=%llu", (void*)ctx->channel, met_api->channel.get_id(ctx->channel), (unsigned long long)originalFd);
 		met_api->channel.close(ctx->channel, ctx->remote, NULL, 0, NULL);
 		ctx->channel = NULL;
 	}
