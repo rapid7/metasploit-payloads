@@ -197,11 +197,14 @@ static BOOL create_transports(Remote* remote, Packet* packet)
 
 	while (packet_enum_tlv(packet, index, TLV_TYPE_C2, &c2Tlv) == ERROR_SUCCESS)
 	{
-		create_transport(remote, packet, &c2Tlv);
+		if (create_transport(remote, packet, &c2Tlv) == NULL)
+		{
+			return FALSE;
+		}
 		++index;
 	}
 
-	return TRUE;
+	return remote->transport != NULL;
 }
 
 static void config_create(Remote* remote, LPBYTE uuid, MetsrvConfig** config, LPDWORD size)
@@ -241,7 +244,13 @@ static void config_create(Remote* remote, LPBYTE uuid, MetsrvConfig** config, LP
 			dprintf("[CONFIG] Comms handle set to %p", commsHandle);
 		}
 		dprintf("[METSRV] - config_create -- adding transport");
-		t->write_config(t, configPacket);
+		Packet* c2Packet = packet_create_group();
+		if (!c2Packet)
+		{
+			break;
+		}
+		t->write_config(t, c2Packet);
+		packet_add_group(configPacket, TLV_TYPE_C2, c2Packet);
 
 		t = t->next_transport;
 	} while (t != current);
