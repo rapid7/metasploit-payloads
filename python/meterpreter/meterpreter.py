@@ -378,8 +378,9 @@ COMMAND_IDS = (
 )
 # ---------------------------------------------------------------
 
-# Note: DEBUGGING is driven by the runtime config block, not a build-time
-# constant, so logging is configured where DEBUGGING is enabled (below).
+# Note: DEBUGGING is driven by either the runtime config block, or a build-time
+# constant, so logging is configured lazily on first use in debug_print.
+_logging_configured = False
 
 if has_windll:
     class SYSTEM_INFO(ctypes.Structure):
@@ -457,6 +458,14 @@ def crc16(data):
 @export
 def debug_print(msg):
     if DEBUGGING:
+        global _logging_configured
+        if not _logging_configured:
+            logging.basicConfig(level=logging.DEBUG)
+            if DEBUGGING_LOG_FILE_PATH:
+                file_handler = logging.FileHandler(DEBUGGING_LOG_FILE_PATH)
+                file_handler.setLevel(logging.DEBUG)
+                logging.getLogger().addHandler(file_handler)
+            _logging_configured = True
         logging.debug(msg)
 
 def debug_hexdump(label, data):
@@ -2298,11 +2307,6 @@ if not _try_to_fork or (_try_to_fork and os.fork() == 0):
     if config.get('debug_log'):
         DEBUGGING = True
         DEBUGGING_LOG_FILE_PATH = config['debug_log']
-        logging.basicConfig(level=logging.DEBUG)
-        if DEBUGGING_LOG_FILE_PATH:
-            _dbg_fh = logging.FileHandler(DEBUGGING_LOG_FILE_PATH)
-            _dbg_fh.setLevel(logging.DEBUG)
-            logging.getLogger().addHandler(_dbg_fh)
     transport = config['transports'][0]
     # PATCH-SETUP-STAGELESS-TCP-SOCKET #
     # For staged/stageless TCP payloads where the socket `s` is already
