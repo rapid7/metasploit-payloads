@@ -14,16 +14,22 @@
 
 #define SAFE_FREE(x) if(x){free(x);x=NULL;}
 
+// Minimum Windows Vista for inet_pton and modern APIs
 #include <winsock2.h>
+#ifdef _M_ARM64
+#include <ws2tcpip.h>
+#endif
 #include <windows.h>
 
 // Simple trick to get the current meterpreters arch
-#define PROCESS_ARCH_UNKNOWN				0
-#define PROCESS_ARCH_X86					1
-#define PROCESS_ARCH_X64					2
-#define PROCESS_ARCH_IA64					3
-
-#ifdef _WIN64
+#define PROCESS_ARCH_UNKNOWN                0
+#define PROCESS_ARCH_X86                    1
+#define PROCESS_ARCH_X64                    2
+#define PROCESS_ARCH_IA64                   3
+#define PROCESS_ARCH_ARM64                  4
+#ifdef _M_ARM64
+#define dwMeterpreterArch PROCESS_ARCH_ARM64
+#elif defined(_WIN64)
 #define dwMeterpreterArch PROCESS_ARCH_X64
 #else
 #define dwMeterpreterArch PROCESS_ARCH_X86

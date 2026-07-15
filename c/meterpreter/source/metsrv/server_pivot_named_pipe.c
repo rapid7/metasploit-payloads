@@ -38,11 +38,12 @@ static DWORD server_destroy(HANDLE waitable, LPVOID entryContext, LPVOID threadC
 static DWORD named_pipe_write_raw(LPVOID state, LPBYTE raw, DWORD rawLength);
 static VOID free_server_context(NamedPipeContext* ctx);
 
-typedef BOOL (WINAPI *PAddMandatoryAce)(PACL pAcl, DWORD dwAceRevision, DWORD dwAceFlags, DWORD dwMandatoryPolicy, PSID pLabelSid);
-static BOOL WINAPI AddMandatoryAce(PACL pAcl, DWORD dwAceRevision, DWORD dwAceFlags, DWORD dwMandatoryPolicy, PSID pLabelSid)
+
+typedef BOOL (WINAPI *PAddMandatoryAce_)(PACL pAcl, DWORD dwAceRevision, DWORD dwAceFlags, DWORD dwMandatoryPolicy, PSID pLabelSid);
+static BOOL WINAPI AddMandatoryAce_(PACL pAcl, DWORD dwAceRevision, DWORD dwAceFlags, DWORD dwMandatoryPolicy, PSID pLabelSid)
 {
 	static BOOL attempted = FALSE;
-	static PAddMandatoryAce pAddMandatoryAce = NULL;
+	static PAddMandatoryAce_ pAddMandatoryAce = NULL;
 
 	if (attempted)
 	{
@@ -51,12 +52,12 @@ static BOOL WINAPI AddMandatoryAce(PACL pAcl, DWORD dwAceRevision, DWORD dwAceFl
 		HMODULE lib = met_api->win_api.kernel32.LoadLibraryA("advapi32.dll");
 		if (lib != NULL)
 		{
-			pAddMandatoryAce = (PAddMandatoryAce)GetProcAddress(lib, "AddMandatoryAce");
+			pAddMandatoryAce = (PAddMandatoryAce_)GetProcAddress(lib, "AddMandatoryAce");
 			dprintf("[NP-SERVER] AddMandatoryAce: %p", pAddMandatoryAce);
 		}
 	}
 
-	if (pAddMandatoryAce != NULL)
+	if (pAddMandatoryAce  != NULL)
 	{
 		pAddMandatoryAce(pAcl, dwAceRevision, dwAceFlags, dwMandatoryPolicy, pLabelSid);
 	}
@@ -328,7 +329,7 @@ VOID create_pipe_security_attributes(PSECURITY_ATTRIBUTES psa)
 		dprintf("[NP-SERVER] InitializeAcl failed: %u", GetLastError());
 	}
 
-	if (!AddMandatoryAce(sacl, ACL_REVISION_DS, NO_PROPAGATE_INHERIT_ACE, 0, sidLow))
+	if (!AddMandatoryAce_(sacl, ACL_REVISION_DS, NO_PROPAGATE_INHERIT_ACE, 0, sidLow))
 	{
 		dprintf("[NP-SERVER] AddMandatoryAce failed: %u", GetLastError());
 	}
