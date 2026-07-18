@@ -21,6 +21,7 @@ DWORD request_core_machine_id(Remote* remote, Packet* packet);
 DWORD request_core_get_session_guid(Remote* remote, Packet* packet);
 DWORD request_core_set_session_guid(Remote* remote, Packet* packet);
 DWORD request_core_set_uuid(Remote* remote, Packet* packet);
+DWORD request_core_async_mode(Remote* remote, Packet* packet);
 BOOL request_core_patch_url(Remote* remote, Packet* packet, DWORD* result);
 
 // Dispatch table
@@ -34,6 +35,7 @@ Command customCommands[] =
 	COMMAND_REQ(COMMAND_ID_CORE_SET_UUID, request_core_set_uuid),
 	COMMAND_REQ(COMMAND_ID_CORE_PIVOT_ADD, request_core_pivot_add),
 	COMMAND_REQ(COMMAND_ID_CORE_PIVOT_REMOVE, request_core_pivot_remove),
+	COMMAND_REQ(COMMAND_ID_CORE_ASYNC_MODE, request_core_async_mode),
 	COMMAND_INLINE_REP(COMMAND_ID_CORE_PATCH_URL, request_core_patch_url),
 	COMMAND_TERMINATOR
 };
