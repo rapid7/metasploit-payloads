@@ -221,6 +221,7 @@ typedef enum
 	TLV_TYPE_ASYNC_WORK_START      = TLV_VALUE(TLV_META_TYPE_UINT,    703),   ///! Business hours start (0-23).
 	TLV_TYPE_ASYNC_WORK_END        = TLV_VALUE(TLV_META_TYPE_UINT,    704),   ///! Business hours end (0-23).
 	TLV_TYPE_ASYNC_WORK_DAYS       = TLV_VALUE(TLV_META_TYPE_UINT,    705),   ///! Bitmask of active days (bit0=Sun..bit6=Sat).
+	TLV_TYPE_ASYNC_SMART_SYNC      = TLV_VALUE(TLV_META_TYPE_UINT,    706),   ///! Smart-sync burst window in seconds (0 = disabled).
 } TlvType;
 
 #ifndef QWORD
