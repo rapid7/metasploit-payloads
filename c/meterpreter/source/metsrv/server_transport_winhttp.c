@@ -21,6 +21,7 @@
 // Async mode helpers (defined in core_async.c)
 extern BOOL async_in_work_hours(HttpTransportContext* ctx);
 extern DWORD async_calculate_sleep_ms(HttpTransportContext* ctx);
+extern VOID async_touch_activity(HttpTransportContext* ctx);
 
 /*!
  * @brief Prepare a winHTTP request with the given context.
@@ -408,6 +409,13 @@ static DWORD packet_transmit_http(Remote *remote, LPBYTE rawPacket, DWORD rawPac
 		}
 
 		dprintf("[PACKET TRANSMIT HTTP] response received. Apparently. %u", GetLastError());
+
+		// Async smart-sync: record that we just sent a response so the next
+		// idle poll uses the short burst delay instead of the full poll interval.
+		if (ctx->async_mode)
+		{
+			async_touch_activity(ctx);
+		}
 	} while(0);
 
 	ctx->close_req(hReq);
@@ -900,6 +908,14 @@ static DWORD server_dispatch_http(Remote* remote, THREAD* dispatchThread)
 
 			// Reset the empty count when we receive a packet
 			ecount = 0;
+
+			// Async smart-sync: an actual request from the framework means an
+			// operator interaction is in flight; the next idle poll should
+			// stay in the tight burst loop.
+			if (ctx->async_mode)
+			{
+				async_touch_activity(ctx);
+			}
 
 			dprintf("[DISPATCH] Returned result: %d", result);
 
