@@ -91,6 +91,16 @@ typedef struct _HttpTransportContext
 
 	BOOL move_to_wininet;                 ///! If set, winhttp is busted, and we need to move to wininet.
 
+	BOOL async_mode;                      ///! Flag indicating whether async mode is enabled.
+	UINT async_poll_interval;             ///! Seconds between poll check-ins in async mode.
+	UINT async_poll_jitter;               ///! Jitter percentage (0-99) applied to poll interval.
+	UINT async_work_start;                ///! Business hours start hour (0-23).
+	UINT async_work_end;                  ///! Business hours end hour (0-23).
+	UINT async_work_days;                 ///! Bitmask of active days (bit0=Sun..bit6=Sat).
+	UINT async_smart_sync_seconds;        ///! Smart-sync burst window in seconds (0 = disabled).
+	DWORD async_last_activity_ticks;      ///! GetTickCount() at last observed request/response.
+	HANDLE async_wake_event;              ///! Event signaled to interrupt async sleep early.
+
 	PCreateHttpRequest create_req;        ///! WinHTTP/WinINET specific request creation.
 	PSendHttpRequest send_req;            ///! WinHTTP/WinINET specifc request sending.
 	PCloseRequest close_req;              ///! WinHTTP/WinINET specifc request closing.
@@ -165,6 +175,8 @@ typedef struct _Remote
 	PivotTree* pivot_listeners;           ///! Collection of active Meterpreter pivot listeners.
 
 	PacketEncryptionContext* enc_ctx;     ///! Reference to the packet encryption context.
+
+	BOOL async_mode;                      ///! When TRUE, command_handle processes commands inline.
 } Remote;
 
 #endif

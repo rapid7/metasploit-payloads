@@ -183,6 +183,15 @@ typedef enum
 	TLV_TYPE_PIVOT_STAGE_DATA      = TLV_VALUE(TLV_META_TYPE_RAW,     651),   ///! Represents the data to be staged on new connections.
 	TLV_TYPE_PIVOT_NAMED_PIPE_NAME = TLV_VALUE(TLV_META_TYPE_STRING,  653),   ///! Represents named pipe name.
 
+	// Async mode
+	TLV_TYPE_ASYNC_ENABLED         = TLV_VALUE(TLV_META_TYPE_BOOL,    700),   ///! Enable/disable async mode.
+	TLV_TYPE_ASYNC_POLL_INTERVAL   = TLV_VALUE(TLV_META_TYPE_UINT,    701),   ///! Seconds between check-ins.
+	TLV_TYPE_ASYNC_POLL_JITTER     = TLV_VALUE(TLV_META_TYPE_UINT,    702),   ///! Jitter percentage 0-99.
+	TLV_TYPE_ASYNC_WORK_START      = TLV_VALUE(TLV_META_TYPE_UINT,    703),   ///! Business hours start (0-23).
+	TLV_TYPE_ASYNC_WORK_END        = TLV_VALUE(TLV_META_TYPE_UINT,    704),   ///! Business hours end (0-23).
+	TLV_TYPE_ASYNC_WORK_DAYS       = TLV_VALUE(TLV_META_TYPE_UINT,    705),   ///! Bitmask of active days (bit0=Sun..bit6=Sat).
+	TLV_TYPE_ASYNC_SMART_SYNC      = TLV_VALUE(TLV_META_TYPE_UINT,    706),   ///! Smart-sync burst window in seconds (0 = disabled).
+
 	TLV_TYPE_EXTENSIONS          = TLV_VALUE(TLV_META_TYPE_COMPLEX, 20000),   ///! Represents an extension value.
 	TLV_TYPE_USER                = TLV_VALUE(TLV_META_TYPE_COMPLEX, 40000),   ///! Represents a user value.
 	TLV_TYPE_TEMP                = TLV_VALUE(TLV_META_TYPE_COMPLEX, 60000),   ///! Represents a temporary value.
