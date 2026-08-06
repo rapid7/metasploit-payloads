@@ -22,7 +22,6 @@ HINSTANCE hAppInstance = NULL;
 #include "../../ReflectiveDLLInjection/dll/src/DirectSyscall.c"
 #endif
 
-
 DWORD request_incognito_list_tokens(Remote *remote, Packet *packet);
 DWORD request_incognito_impersonate_user(Remote *remote, Packet *packet);
 

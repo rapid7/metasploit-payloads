@@ -34,35 +34,6 @@ Command customCommands[] =
 	COMMAND_TERMINATOR
 };
 
-<<<<<<< HEAD
-BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpReserved)
-{
-	switch (dwReason)
-	{
-<<<<<<< HEAD
-	case DLL_QUERY_HMODULE:
-		if (lpReserved != NULL)
-		{
-			*(HMODULE*)lpReserved = hAppInstance;
-		}
-		break;
-=======
->>>>>>> ca8b5071 (Removes reflective loader from extensions)
-	case DLL_PROCESS_ATTACH:
-		hAppInstance = hinstDLL;
-		break;
-	case DLL_PROCESS_DETACH:
-	case DLL_THREAD_ATTACH:
-	case DLL_THREAD_DETACH:
-		break;
-	}
-
-	PythonDllMain(hinstDLL, dwReason, lpReserved);
-	CtypesDllMain(hinstDLL, dwReason, lpReserved);
-	return TRUE;
-}
-
-=======
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpReserved)
 {
 	switch (dwReason)
@@ -87,7 +58,6 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpReserved)
 	return TRUE;
 }
 
->>>>>>> 288858c6 (Restores extensions)
 /*!
  * @brief Initialize the server extension.
  * @param api Pointer to the Meterpreter API structure.
@@ -119,19 +89,9 @@ DWORD InitServerExtension(MetApi* api, Remote* remote)
  */
 DWORD DeinitServerExtension(Remote *remote)
 {
-<<<<<<< HEAD
-	met_api->command.deregister_all(customCommands);
-<<<<<<< HEAD
-=======
-	hAppInstance = NULL;
->>>>>>> ca8b5071 (Removes reflective loader from extensions)
-
-	python_destroy_session();
-=======
 	met_api->command.deregister_all(customCommands);
 
 	python_destroy_session();
->>>>>>> 288858c6 (Restores extensions)
 
 	return ERROR_SUCCESS;
 }
