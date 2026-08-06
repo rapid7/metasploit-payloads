@@ -8,7 +8,6 @@
 // Required so that use of the API works.
 MetApi* met_api = NULL;
 
-<<<<<<< HEAD
 #ifndef NO_REFLECTIVE_LOADER
 #define RDIDLL_NOEXPORT
 #include "../../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
@@ -16,10 +15,6 @@ MetApi* met_api = NULL;
 HINSTANCE hAppInstance = NULL;
 #include "../../../ReflectiveDLLInjection/dll/src/DirectSyscall.c"
 #endif
-=======
-#define RDIDLL_NOEXPORT
-#include "../../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
->>>>>>> 288858c6 (Restores extensions)
 
 // NOTE: _CRT_SECURE_NO_WARNINGS has been added to Configuration->C/C++->Preprocessor->Preprocessor
 
