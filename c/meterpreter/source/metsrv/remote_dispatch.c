@@ -374,10 +374,20 @@ DWORD request_core_loadlib(Remote *remote, Packet *packet)
 			// If the library is not to be stored on disk, 
 			if (!(flags & LOAD_LIBRARY_FLAG_ON_DISK))
 			{
-  dprintf("[LOADLIB] here 7");
+        dprintf("[LOADLIB] here 7");
 
-				// try to load the library via the reflective loader...
-				 LoadReflectively((ULONG_PTR)dataTlv.buffer, &library);
+        LPCSTR reflectiveLoader = packet_get_tlv_value_reflective_loader(packet); 
+
+        if(reflectiveLoader)
+        {
+          dprintf("[LOADLIB] Legacy reflective loader called!");
+          // try to load the library via the reflective loader...
+          LoadReflectively((ULONG_PTR)dataTlv.buffer, &library);
+        } else {
+          dprintf("[LOADLIB] Calling new custom reflective loader");
+          library = LoadLibraryR(dataTlv.buffer, dataTlv.header.length, reflectiveLoader);
+        }
+
 				 dprintf("[LOADLIB] LoadReflectively returned, library is %p", library);
 				 
 				if (library == NULL)
