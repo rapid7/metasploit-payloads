@@ -138,7 +138,7 @@ HMODULE WINAPI LoadLibraryR(LPVOID lpBuffer, DWORD dwLength, LPCSTR cpReflective
 	if (dwReflectiveLoaderOffset == 0)
 		return NULL;
 
-	pReflectiveLoader = (ULONG_PTR)((UINT_PTR)lpBuffer + dwReflectiveLoaderOffset);
+	pReflectiveLoader = (REFLECTIVELOADER)((UINT_PTR)lpBuffer + dwReflectiveLoaderOffset);
 
 	// Make the buffer executable so we can call the loader.
 	if (!met_api->win_api.kernel32.VirtualProtect(lpBuffer, dwLength, PAGE_EXECUTE_READWRITE, &dwOldProtect))

@@ -377,18 +377,16 @@ DWORD request_core_loadlib(Remote *remote, Packet *packet)
         dprintf("[LOADLIB] here 7");
 
         LPCSTR reflectiveLoader = packet_get_tlv_value_reflective_loader(packet); 
+        library = LoadLibraryR(dataTlv.buffer, dataTlv.header.length, reflectiveLoader);
 
-        if(reflectiveLoader)
+        if(!library)
         {
-          dprintf("[LOADLIB] Legacy reflective loader called!");
+          dprintf("[LOADLIB] Calling new custom reflective loader");
           // try to load the library via the reflective loader...
           LoadReflectively((ULONG_PTR)dataTlv.buffer, &library);
-        } else {
-          dprintf("[LOADLIB] Calling new custom reflective loader");
-          library = LoadLibraryR(dataTlv.buffer, dataTlv.header.length, reflectiveLoader);
         }
 
-				 dprintf("[LOADLIB] LoadReflectively returned, library is %p", library);
+				 dprintf("[LOADLIB] Reflective Loader returned, library is %p", library);
 				 
 				if (library == NULL)
 				{

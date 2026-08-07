@@ -2,7 +2,7 @@
 #include "base_inject.h"
 #include "remote_thread.h"
 #include "pool_party.h"
-#include "../../ReflectiveDLLInjection/inject/src/LoadLibraryR.h"
+#include "load_library_r.h"
 #include <tlhelp32.h>
 
 // see '/msf/external/source/shellcode/windows/x86/src/migrate/executex64.asm'
@@ -635,7 +635,7 @@ DWORD inject_via_poolparty(Remote* remote, Packet* response, HANDLE hProcess, DW
  *       an x86 (wow64) process or a PE64 DLL for an x64 process). The wrapper function ps_inject_dll()
  *       in stdapi will handle this automatically.
  *
- * Note: GetReflectiveLoaderOffset() has a limitation of currenlty not being able to work for PE32 DLL's 
+ * Note: GetReflectiveLoaderOffset() has a limitation of currently not being able to work for PE32 DLL's 
  *       in a native x64 meterpereter due to compile time assumptions, however GetReflectiveLoaderOffset() 
  *       will check for this and fail gracefully.
  *

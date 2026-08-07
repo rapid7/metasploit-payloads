@@ -5,3 +5,4 @@
 typedef ULONG_PTR (WINAPI * REFLECTIVELOADER)( VOID );
 typedef BOOL (WINAPI * DLLMAIN)( HINSTANCE, DWORD, LPVOID );
 HANDLE WINAPI load_library_r(HANDLE hProcess, LPVOID lpBuffer, DWORD dwLength, LPCSTR cpReflectiveLoaderName, DWORD dwActualReflectiveLoaderOffset, LPVOID lpParameter);
+DWORD GetReflectiveLoaderOffset(VOID* lpReflectiveDllBuffer, LPCSTR cpReflectiveLoaderName);
