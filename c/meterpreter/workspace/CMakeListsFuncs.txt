@@ -11,8 +11,6 @@ function(copyoutput)
     add_custom_command(TARGET ${ARGV0} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory ${ARGV1})
     if(DBGTRACE OR DBGTRACE_VERBOSE)
-        # Mirrors Visual Studio's Debug configuration, which copies the post-build binary as
-        # "$(TargetName).debug$(TargetExt)" so it doesn't clobber the Release output.
         add_custom_command(TARGET ${ARGV0} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${ARGV0}> ${ARGV1}$<TARGET_FILE_BASE_NAME:${ARGV0}>.debug$<TARGET_FILE_SUFFIX:${ARGV0}>)
     else()
