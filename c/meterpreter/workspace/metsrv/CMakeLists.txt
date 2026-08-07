@@ -34,6 +34,10 @@ set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME ${PROJECT_NAME}.${T
 if(MSVC)
     set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS "/DEF:\"${MOD_DEF_DIR}/metsrv.def\"")
     set_source_files_properties(${MOD_DEF_DIR}/metsrv.def PROPERTIES HEADER_FILE_ONLY TRUE)
+else()
+    # Prevent MinGW from auto-exporting symbols.
+    # With metsrv.def present this yields a single explicit export; without it, zero exports.
+    target_link_options(${PROJECT_NAME} PRIVATE "-Wl,--exclude-all-symbols")
 endif()
 
 set(LINK_LIBS advapi32 winhttp wininet crypt32)
