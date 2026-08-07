@@ -9,6 +9,14 @@ ifdef EXCLUDE_REFLECTIVE_LOADER
 COMMON_GEN += -DEXCLUDE_REFLECTIVE_LOADER=ON
 endif
 
+ifdef DBGTRACE
+COMMON_GEN += -DDBGTRACE=ON
+endif
+
+ifdef DBGTRACE_VERBOSE
+COMMON_GEN += -DDBGTRACE_VERBOSE=ON
+endif
+
 all: meterpreter
 
 clean: meterpreter-x64-clean meterpreter-x86-clean
@@ -410,172 +418,172 @@ docker-x86:
 	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter --rm $(DOCKER_CONTAINER) make meterpreter-x86
 
 docker-metsrv:
-	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-metsrv
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-metsrv
 
 docker-metsrv-x86:
-	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-metsrv-x86
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-metsrv-x86
 
 docker-metsrv-x64:
-	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-metsrv-x64
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-metsrv-x64
 
 docker-ext-stdapi:
-	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi
 
 docker-ext-stdapi-x86:
-	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi-x86
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi-x86
 
 docker-ext-stdapi-x64:
-	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi-x64
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi-x64
 
 docker-ext-stdapi-audio:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi-audio
+	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi-audio
 
 docker-ext-stdapi-audio-x86:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi-audio-x86
+	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi-audio-x86
 
 docker-ext-stdapi-audio-x64:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi-audio-x64
+	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi-audio-x64
 
 docker-ext-stdapi-fs:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi-fs
+	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi-fs
 
 docker-ext-stdapi-fs-x86:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi-fs-x86
+	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi-fs-x86
 
 docker-ext-stdapi-fs-x64:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi-fs-x64
+	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi-fs-x64
 
 docker-ext-stdapi-net:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi-net
+	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi-net
 
 docker-ext-stdapi-net-x86:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi-net-x86
+	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi-net-x86
 
 docker-ext-stdapi-net-x64:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi-net-x64
+	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi-net-x64
 
 docker-ext-stdapi-railgun:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi-railgun
+	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi-railgun
 
 docker-ext-stdapi-railgun-x86:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi-railgun-x86
+	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi-railgun-x86
 
 docker-ext-stdapi-railgun-x64:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi-railgun-x64
+	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi-railgun-x64
 
 docker-ext-stdapi-sys:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi-sys
+	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi-sys
 
 docker-ext-stdapi-sys-x86:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi-sys-x86
+	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi-sys-x86
 
 docker-ext-stdapi-sys-x64:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi-sys-x64
+	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi-sys-x64
 
 docker-ext-stdapi-ui:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi-ui
+	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi-ui
 
 docker-ext-stdapi-ui-x86:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi-ui-x86
+	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi-ui-x86
 
 docker-ext-stdapi-ui-x64:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi-ui-x64
+	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi-ui-x64
 
 docker-ext-stdapi-webcam:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi-webcam
+	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi-webcam
 
 docker-ext-stdapi-webcam-x86:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi-webcam-x86
+	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi-webcam-x86
 
 docker-ext-stdapi-webcam-x64:
-	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi-webcam-x64
+	@docker run -u $(ID):$(ID) -it -v ${PWD}:/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-stdapi-webcam-x64
 
 docker-ext-priv:
-	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-priv
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-priv
 
 docker-ext-priv-x86:
-	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-priv-x86
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-priv-x86
 
 docker-ext-priv-x64:
-	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-priv-x64
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-priv-x64
 
 docker-ext-extapi:
-	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-extapi
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-extapi
 
 docker-ext-extapi-x86:
-	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-extapi-x86
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-extapi-x86
 
 docker-ext-extapi-x64:
-	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-extapi-x64
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-extapi-x64
 
 docker-ext-incognito:
-	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-incognito
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-incognito
 
 docker-ext-incognito-x86:
-	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-incognito-x86
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-incognito-x86
 
 docker-ext-incognito-x64:
-	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-incognito-x64
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-incognito-x64
 
 docker-ext-espia:
-	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-espia
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-espia
 
 docker-ext-espia-x86:
-	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-espia-x86
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-espia-x86
 
 docker-ext-espia-x64:
-	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-espia-x64
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-espia-x64
 
 docker-ext-lanattacks:
-	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-lanattacks
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-lanattacks
 
 docker-ext-lanattacks-x86:
-	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-lanattacks-x86
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-lanattacks-x86
 
 docker-ext-lanattacks-x64:
-	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-lanattacks-x64
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-lanattacks-x64
 
 docker-ext-unhook:
-	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-unhook
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-unhook
 
 docker-ext-unhook-x86:
-	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-unhook-x86
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-unhook-x86
 
 docker-ext-unhook-x64:
-	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-unhook-x64
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-unhook-x64
 
 docker-ext-winpmem:
-	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-winpmem
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-winpmem
 
 docker-ext-winpmem-x86:
-	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-winpmem-x86
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-winpmem-x86
 
 docker-ext-winpmem-x64:
-	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-winpmem-x64
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-winpmem-x64
 
 docker-ext-kiwi:
-	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-kiwi
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-kiwi
 
 docker-ext-kiwi-x86:
-	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-kiwi-x86
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-kiwi-x86
 
 docker-ext-kiwi-x64:
-	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-kiwi-x64
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-kiwi-x64
 
 docker-ext-peinjector:
-	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-peinjector
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-peinjector
 
 docker-ext-peinjector-x86:
-	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-peinjector-x86
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-peinjector-x86
 
 docker-ext-peinjector-x64:
-	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-peinjector-x64
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-peinjector-x64
 
 docker-ext-bofloader:
-	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-bofloader
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-bofloader
 
 docker-ext-bofloader-x86:
-	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-bofloader-x86
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-bofloader-x86
 
 docker-ext-bofloader-x64:
-	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-bofloader-x64
+	@docker run -u $(ID):$(ID) -it -v "${PWD}":/meterpreter -w /meterpreter -e DBGTRACE -e DBGTRACE_VERBOSE -e EXCLUDE_REFLECTIVE_LOADER --rm $(DOCKER_CONTAINER) make meterpreter-ext-bofloader-x64

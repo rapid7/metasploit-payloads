@@ -29,6 +29,7 @@ else()
         ${MOD_DEF_DIR}/metsrv.def
     )
 endif()
+list(APPEND SRC_FILES ../../source/logging/logging.c)
 add_library(${PROJECT_NAME} SHARED ${SRC_FILES})
 set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME ${PROJECT_NAME}.${TARGET_ARCH})
 if(MSVC)

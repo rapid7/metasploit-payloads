@@ -24,6 +24,7 @@ file(GLOB SRC_FILES
     ${SRC_DIR}/*.cpp
     ${EXTENSION_DEF_FILE}
 )
+list(APPEND SRC_FILES ../../source/logging/logging.c)
 add_library(${PROJECT_NAME} SHARED ${SRC_FILES})
 set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME ${PROJECT_NAME}.${TARGET_ARCH})
 if(MSVC)
