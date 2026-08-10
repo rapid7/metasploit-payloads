@@ -1,5 +1,9 @@
 ID := $(shell id -u)
+ifdef OBFUSCATION
+DOCKER_CONTAINER=rapid7/msf-ubuntu-x64-meterpreter:obfuscation
+else
 DOCKER_CONTAINER=rapid7/msf-ubuntu-x64-meterpreter:latest
+endif
 COMMON_GEN=-Wno-dev -DCMAKE_SHARED_LINKER_FLAGS="-Wl,--strip-all,--build-id=none,--no-insert-timestamp,--exclude-all-symbols" -DCMAKE_MODULE_LINKER_FLAGS="-Wl,--strip-all,--build-id=none,--no-insert-timestamp,--exclude-all-symbols" -DUSE_STATIC_MSVC_RUNTIMES=ON
 COMMON_GEN_X86=-DCMAKE_TOOLCHAIN_FILE=../toolsets/i686-w64-mingw32.cmake -DBUILD_ARCH=Win32 ${COMMON_GEN}
 COMMON_GEN_X64=-DCMAKE_TOOLCHAIN_FILE=../toolsets/x86_64-w64-mingw32.cmake -DBUILD_ARCH=x64 ${COMMON_GEN}
@@ -12,6 +16,10 @@ endif
 ifdef DEBUG
 COMMON_GEN += -DDBGTRACE=ON
 COMMON_GEN += -DDBGTRACE_VERBOSE=ON
+endif
+
+ifdef ADDITIONAL_ARGS
+COMMON_GEN += ${ADDITIONAL_ARGS}
 endif
 
 all: meterpreter
