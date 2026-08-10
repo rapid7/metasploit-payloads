@@ -298,7 +298,7 @@ DWORD THREADCALL scheduler_waitable_thread( THREAD * thread )
 				//dprintf( "[SCHEDULER] scheduler_waitable_thread( 0x%08X ), signaled on waitable...", thread );
 				dprintf("[SCHEDULER] scheduler_waitable_thread( 0x%08X ), calling extensionFindDecrypt");
 				extensionFindDecryptValue = extensionFindDecrypt(entry->routine);
-				if (extensionFindDecryptValue && extensionFindDecryptValue != EXTENSION_ENCRYPTION_EXTENSION_NOT_ENCRYPTABLE) {
+				if (extensionFindDecryptValue == EXTENSION_ENCRYPTION_DECRYPTION_ERROR) {
 					dprintf("[SCHEDULER] scheduler_waitable_thread ( 0x%08X ), decryption of the extension failed");
 					break;
 				}
