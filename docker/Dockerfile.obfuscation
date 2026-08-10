@@ -44,4 +44,4 @@ ENV PATH="$TOOLCHAIN_PREFIX/bin:${PATH}"
 ENV EXCLUDE_REFLECTIVE_LOADER=1
 ENV LLVM_ADDITIONAL_ARGS="-Wl,--strip-all,--build-id=none,--no-insert-timestamp,--exclude-all-symbols -fmodule-name=lib.dll -O0 -Wno-macro-redefined -Wno-unused-command-line-argument -Wno-error=incompatible-pointer-types"
 ENV ARKARI_ADDITIONAL_ARGS="-mllvm -irobf-indbr -mllvm -irobf-icall -mllvm -irobf-indgv -mllvm -irobf-cse -mllvm -irobf-fla"
-ENV ADDITIONAL_ARGS="-DCMAKE_CXX_FLAGS=\"$LLVM_ADDITIONAL_ARGS $ARKARI_ADDITIONAL_ARGS\" -DCMAKE_C_FLAGS=\"$LLVM_ADDITIONAL_ARGS $ARKARI_ADDITIONAL_ARGS\" -DCMAKE_ASM_FLAGS=\"-O0\""
+ENV ADDITIONAL_ARGS="-DCMAKE_CXX_FLAGS=\"$LLVM_ADDITIONAL_ARGS $ARKARI_ADDITIONAL_ARGS\" -DCMAKE_C_FLAGS=\"$LLVM_ADDITIONAL_ARGS $ARKARI_ADDITIONAL_ARGS\" -DCMAKE_ASM_FLAGS=\"-O0\" -DEXCLUDE_REFLECTIVE_LOADER=ON"
