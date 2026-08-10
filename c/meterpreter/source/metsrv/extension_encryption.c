@@ -368,6 +368,7 @@ BOOL extension_encryption_encrypt(ExtensionEncryptionStatus* lpExtensionStatus) 
 			dprintf("[extension_encryption][extension_encryption_encrypt] HeapAlloc failed on lpTempBufferWrite.");
 			if (lpTempBufferRead != NULL) {
 				HeapFree(hHeap, 0, lpTempBufferRead);
+				lpTempBufferRead = NULL;
 			}
 			bError = TRUE;
 		}
