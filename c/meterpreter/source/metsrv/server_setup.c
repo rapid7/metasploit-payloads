@@ -82,10 +82,9 @@ VOID load_stageless_extensions(Remote* remote, Packet* configPacket)
 		HMODULE hLibrary = LoadLibraryR(dll, dllSize, MAKEINTRESOURCEA(EXPORT_REFLECTIVELOADER));
 		load_extension(hLibrary, TRUE, remote, NULL, extensionCommands);
 		// ExtensionEncryptionManager* encryptionManager = GetExtensionEncryptionManager();
-		// if(encryptionManager != NULL) {
-		// 	encryptionManager->add(stagelessExtensions->dll, stagelessExtensions->size);
+		// if(encryptionManager != NULL && ENCRYPTABLE_LOGIC) {
+		// 	encryptionManager->add(hLibrary, dllSize);
 		// }
-		stagelessExtensions = (MetsrvExtension*)((LPBYTE)stagelessExtensions->dll + stagelessExtensions->size);
 		++index;
 	}
 
