@@ -27,6 +27,7 @@
     <ClInclude Include="..\..\source\metsrv\metapi.h" />
     <ClInclude Include="..\..\source\metsrv\pool_party.h" />
     <ClInclude Include="..\..\source\metsrv\pool_party_ext.h" />
+    <ClInclude Include="..\..\source\metsrv\server_http_utils.h" />
     <ClInclude Include="..\..\source\metsrv\winapi.h" />
     <ClInclude Include="..\..\source\metsrv\rc4.h" />
     <ClInclude Include="..\..\source\metsrv\extension_encryption.h" />
@@ -60,6 +61,7 @@
     <ClCompile Include="..\..\source\metsrv\metapi.c" />
     <ClCompile Include="..\..\source\logging\logging.c" />
     <ClCompile Include="..\..\source\metsrv\pool_party.c" />
+    <ClCompile Include="..\..\source\metsrv\server_http_utils.c" />
     <ClCompile Include="..\..\source\metsrv\winapi.c" />
     <ClCompile Include="..\..\source\metsrv\rc4.c" />
     <ClCompile Include="..\..\source\metsrv\extension_encryption.c" />

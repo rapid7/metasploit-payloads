@@ -36,7 +36,7 @@ file(GLOB_RECURSE SRC_FILES
     ${SRC_DIR}/server/general.c
     ${SRC_DIR}/server/stdapi.c
     ${SRC_DIR}/*.rc
-    ${MOD_DEF_DIR}/extension.def
+    ${EXTENSION_DEF_FILE}
     ../../source/tiny-regex-c/*.c
 )
 
@@ -46,8 +46,8 @@ add_library(${PROJECT_NAME} SHARED ${SRC_FILES})
 set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME ${PROJECT_NAME}.${TARGET_ARCH})
 set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_DEFINITIONS "STDAPI_NAMESPACE_AUDIO;STDAPI_NAMESPACE_WEBCAM;STDAPI_NAMESPACE_SYS;")
 if(MSVC)
-    set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS "/DEF:\"${MOD_DEF_DIR}/extension.def\"")
-    set_source_files_properties(${MOD_DEF_DIR}/extension.def PROPERTIES HEADER_FILE_ONLY TRUE)
+    set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS "/DEF:\"${EXTENSION_DEF_FILE}\"")
+    set_source_files_properties(${EXTENSION_DEF_FILE} PROPERTIES HEADER_FILE_ONLY TRUE)
 endif()
 
 set(LINK_LIBS
@@ -68,6 +68,10 @@ if(MSVC)
 endif()
 
 target_link_libraries(${PROJECT_NAME} ${LINK_LIBS} ${MET_RDI_ASM})
+
+if(EXCLUDE_REFLECTIVE_LOADER)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE NO_REFLECTIVE_LOADER)
+endif()
 # Post processing (required for all Meterpreter DLLs)
 editbin(${PROJECT_NAME} ${BIN_SUBSYSTEM})
 copyoutput(${PROJECT_NAME} ${BIN_OUTPUT_DIR})

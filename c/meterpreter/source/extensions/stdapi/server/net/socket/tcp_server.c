@@ -15,10 +15,6 @@
 #define IPPROTO_IPV6 41
 #endif
 
-#if !defined(in6addr_any) && !defined(__MINGW32__)
-extern IN6_ADDR in6addr_any;
-#endif
-
 /*!
  * @brief Get the address family.
  * @param address The address.
@@ -94,7 +90,7 @@ VOID free_tcp_server_context(TcpServerContext * ctx)
 			break;
 		}
 
-		dprintf("[TCP-SERVER] free_tcp_server_context. ctx=0x%08X", ctx);
+		dprintf("[TCP-SERVER] free_tcp_server_context. ctx=0x%08X channel=0x%08X id=%u fd=%u", ctx, ctx->channel, ctx->channel ? met_api->channel.get_id(ctx->channel) : 0, (DWORD)ctx->fd);
 
 		if (ctx->fd)
 		{
@@ -133,7 +129,7 @@ DWORD tcp_channel_server_close(Channel * channel, Packet * request, LPVOID conte
 
 	do
 	{
-		dprintf("[TCP-SERVER] tcp_channel_server_close. channel=0x%08X, ctx=0x%08X", channel, ctx);
+		dprintf("[TCP-SERVER] tcp_channel_server_close. channel=0x%08X id=%u ctx=0x%08X", channel, met_api->channel.get_id(channel), ctx);
 
 		if (!ctx)
 		{

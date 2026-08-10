@@ -8,8 +8,13 @@
 // Required so that use of the API works.
 MetApi* met_api = NULL;
 
+#ifndef NO_REFLECTIVE_LOADER
 #define RDIDLL_NOEXPORT
 #include "../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
+#else
+HINSTANCE hAppInstance = NULL;
+#include "../../ReflectiveDLLInjection/dll/src/DirectSyscall.c"
+#endif
 #include <windows.h>
 #include "lanattacks.h"
 

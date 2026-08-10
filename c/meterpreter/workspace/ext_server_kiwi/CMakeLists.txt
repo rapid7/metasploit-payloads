@@ -76,7 +76,7 @@ file(GLOB SRC_FILES
     ${SRC_DIR}/mimikatz/mimikatz/modules/sekurlsa/*.c
     ${SRC_DIR}/mimikatz/mimikatz/modules/sekurlsa/crypto/*.c
     ${SRC_DIR}/mimikatz/mimikatz/modules/sekurlsa/packages/*.c
-    ${MOD_DEF_DIR}/extension.def
+    ${EXTENSION_DEF_FILE}
 )
 
 # Ditch some old stuff that shouldn't even be here in the mimikatz repo!
@@ -85,8 +85,8 @@ list(REMOVE_ITEM SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/${SRC_DIR}/mimikatz/mimik
 add_library(${PROJECT_NAME} SHARED ${SRC_FILES})
 set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME ${PROJECT_NAME}.${TARGET_ARCH})
 if(MSVC)
-    set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS "/DEF:\"${MOD_DEF_DIR}/extension.def\"")
-    set_source_files_properties(${MOD_DEF_DIR}/extension.def PROPERTIES HEADER_FILE_ONLY TRUE)
+    set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS "/DEF:\"${EXTENSION_DEF_FILE}\"")
+    set_source_files_properties(${EXTENSION_DEF_FILE} PROPERTIES HEADER_FILE_ONLY TRUE)
 endif()
 
 if(IS_X86)
@@ -141,8 +141,13 @@ set(LINK_LIBS
 )
 
 target_link_libraries(${PROJECT_NAME} ${LINK_LIBS} ${MET_RDI_ASM})
+
+if(EXCLUDE_REFLECTIVE_LOADER)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE NO_REFLECTIVE_LOADER)
+endif()
 if(MSVC)
     target_link_options(${PROJECT_NAME} PUBLIC "/ignore:4070")
+    target_link_options(${PROJECT_NAME} PUBLIC "/safeseh:no")
 endif()
 
 # Post processing (required for all Meterpreter DLLs)

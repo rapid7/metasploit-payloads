@@ -11,8 +11,8 @@ IF NOT EXIST "source\ReflectiveDLLInjection\.git" (
   GOTO END
 )
 
-SET VS_TITLE=Visual Studio 16 2019
-SET VS_VER=VS2019
+SET VS_TITLE=Visual Studio 17 2022
+SET VS_VER=VS2022
 SET PTS_VER=v141_xp
 SET PSSDK_VER=19
 SET BUILD_64=Y
@@ -20,7 +20,7 @@ SET BUILD_86=Y
 SET SNIFFER=OFF
 SET DBGTRACE=OFF
 SET DBGTRACE_VERBOSE=OFF
-set DO_BUILD=Y
+SET DO_BUILD=Y
 
 IF "%1" == "NOBUILD" SET DO_BUILD=N
 IF "%2" == "NOBUILD" SET DO_BUILD=N
@@ -102,9 +102,7 @@ IF "%BUILD_86%" == "Y" (
     )
 )
 
-FOR /F "usebackq tokens=1,2 delims==" %%i IN (`wmic os get LocalDateTime /VALUE 2^>NUL`) DO IF '.%%i.'=='.LocalDateTime.' SET LDT=%%j
-SET LDT=%LDT:~0,4%-%LDT:~4,2%-%LDT:~6,2% %LDT:~8,2%:%LDT:~10,2%:%LDT:~12,6%
-echo Finished %ldt%
+echo Finished %TIME%
 GOTO END
 
 :CLEAN

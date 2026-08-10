@@ -35,8 +35,13 @@ Command customCommands[] =
 // include the Reflectiveloader() function, we end up linking back to the metsrv.dll's Init function
 // but this doesnt matter as we wont ever call DLL_METASPLOIT_ATTACH as that is only used by the
 // second stage reflective dll inject payload and not the metsrv itself when it loads extensions.
+#ifndef NO_REFLECTIVE_LOADER
 #define RDIDLL_NOEXPORT
 #include "../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
+#else
+HINSTANCE hAppInstance = NULL;
+#include "../../ReflectiveDLLInjection/dll/src/DirectSyscall.c"
+#endif
 
 #define check_pssdk(); if(!hMgr && pktsdk_initialize()!=0){ met_api->packet.transmit_response(hErr, remote, response);return(hErr); }
 

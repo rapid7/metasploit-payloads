@@ -8,9 +8,14 @@
 // Required so that use of the API works.
 MetApi* met_api = NULL;
 
+#ifndef NO_REFLECTIVE_LOADER
 #define REFLECTIVEDLLINJECTION_CUSTOM_DLLMAIN
 #define RDIDLL_NOEXPORT
 #include "../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
+#else
+HINSTANCE hAppInstance = NULL;
+#include "../../ReflectiveDLLInjection/dll/src/DirectSyscall.c"
+#endif
 
 #include "python_commands.h"
 #include "python_meterpreter_binding.h"

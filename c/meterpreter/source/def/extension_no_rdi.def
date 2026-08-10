@@ -1,0 +1,6 @@
+NAME extension.dll
+EXPORTS
+        InitServerExtension @2 NONAME PRIVATE
+        DeinitServerExtension @3 NONAME PRIVATE
+        StagelessInit @4 NONAME PRIVATE
+        CommandAdded @5 NONAME PRIVATE

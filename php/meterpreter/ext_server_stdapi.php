@@ -110,6 +110,7 @@ define("TLV_TYPE_MEMORY_STATE",           TLV_META_TYPE_UINT    | 2006);
 define("TLV_TYPE_MEMORY_TYPE",            TLV_META_TYPE_UINT    | 2007);
 define("TLV_TYPE_ALLOC_PROTECTION",       TLV_META_TYPE_UINT    | 2008);
 define("TLV_TYPE_PID",                    TLV_META_TYPE_UINT    | 2300);
+define("TLV_TYPE_PARENT_PID",             TLV_META_TYPE_UINT    | 2307);
 define("TLV_TYPE_PROCESS_NAME",           TLV_META_TYPE_STRING  | 2301);
 define("TLV_TYPE_PROCESS_PATH",           TLV_META_TYPE_STRING  | 2302);
 define("TLV_TYPE_PROCESS_GROUP",          TLV_META_TYPE_GROUP   | 2303);
@@ -1099,10 +1100,15 @@ function stdapi_sys_process_get_processes($req, &$pkt) {
             array_push($list, $proc_info);
         }
     } else {
-        # This command produces a line like:
-        #    1553 root     /sbin/getty -8 38400 tty1
-        $output = my_cmd("ps ax -w -o pid,user,cmd --no-header 2>/dev/null");
+        # This command produces output like:
+        #   PID  PPID USER             ARGS
+        #     1     0 root             /sbin/launchd
+        #   120     1 root             /usr/libexec/logd
+        # 'args' is the POSIX name for the full command line with arguments,
+        # supported on Linux, macOS, and FreeBSD (unlike 'command'/'cmd').
+        $output = my_cmd("ps ax -w -o pid,ppid,user,args 2>/dev/null");
         $lines = explode("\n", trim($output));
+        array_shift($lines); # skip header
         foreach ($lines as $line) {
             array_push($list, preg_split("/\s+/", trim($line)));
         }
@@ -1110,12 +1116,15 @@ function stdapi_sys_process_get_processes($req, &$pkt) {
     foreach ($list as $proc) {
         $grp = "";
         $grp .= tlv_pack(create_tlv(TLV_TYPE_PID, $proc[0]));
-        $grp .= tlv_pack(create_tlv(TLV_TYPE_USER_NAME, $proc[1]));
-        $grp .= tlv_pack(create_tlv(TLV_TYPE_PROCESS_NAME, $proc[2]));
-        # Strip the pid and the user name off the front; the rest will be the
-        # full command line
-        array_shift($proc);
-        array_shift($proc);
+        array_shift($proc); # remove pid
+        if (!is_windows()) {
+            $grp .= tlv_pack(create_tlv(TLV_TYPE_PARENT_PID, $proc[0]));
+            array_shift($proc); # remove ppid
+        }
+        $grp .= tlv_pack(create_tlv(TLV_TYPE_USER_NAME, $proc[0]));
+        array_shift($proc); # remove user
+        $grp .= tlv_pack(create_tlv(TLV_TYPE_PROCESS_NAME, $proc[0]));
+        # The rest of $proc (from index 0 onwards after shifts) is the full command line
         $grp .= tlv_pack(create_tlv(TLV_TYPE_PROCESS_PATH, join(" ", $proc)));
         packet_add_tlv($pkt, create_tlv(TLV_TYPE_PROCESS_GROUP, $grp));
     }
@@ -1444,6 +1453,9 @@ function packet_add_tlv_local_addrinfo(&$pkt, $sock) {
         break;
     case 'stream':
         $local_name = stream_socket_get_name($sock, false);
+        if (!is_string($local_name)) {
+            return false;
+        }
         if (preg_match('/^\[([^\]]+)\]:(\d+)$/', $local_name, $matches)) {
             // IPv6 with brackets
             packet_add_tlv($pkt, create_tlv(TLV_TYPE_LOCAL_HOST, $matches[1]));
@@ -1521,6 +1533,55 @@ function channel_create_stdapi_net_udp_client($req, &$pkt) {
     #
 
     $id = register_channel($sock);
+    packet_add_tlv($pkt, create_tlv(TLV_TYPE_CHANNEL_ID, $id));
+    packet_add_tlv_local_addrinfo($pkt, $sock);
+    add_reader($sock);
+    return ERROR_SUCCESS;
+}
+}
+
+if (!function_exists('channel_create_stdapi_net_tcp_server')) {
+function channel_create_stdapi_net_tcp_server($req, &$pkt) {
+    my_print("creating tcp server");
+
+    $local_host_tlv = packet_get_tlv($req, TLV_TYPE_LOCAL_HOST);
+    $local_port_tlv = packet_get_tlv($req, TLV_TYPE_LOCAL_PORT);
+
+    $local_host = $local_host_tlv && $local_host_tlv['value'] ? $local_host_tlv['value'] : '0.0.0.0';
+    $local_port = $local_port_tlv ? $local_port_tlv['value'] : 0;
+    $sock = false;
+
+    if (can_call_function('stream_socket_server')) {
+        if (strpos($local_host, ':') !== false) {
+            $address = "tcp://[{$local_host}]:{$local_port}";
+        } else {
+            $address = "tcp://{$local_host}:{$local_port}";
+        }
+        $sock = @stream_socket_server($address, $errno, $errstr, STREAM_SERVER_BIND | STREAM_SERVER_LISTEN);
+        if ($sock) {
+            stream_set_blocking($sock, 0);
+            register_stream($sock);
+        }
+    } elseif (can_call_function('socket_create')) {
+        $af = (strpos($local_host, ':') !== false) ? AF_INET6 : AF_INET;
+        $sock = @socket_create($af, SOCK_STREAM, SOL_TCP);
+        if ($sock) {
+            @socket_set_option($sock, SOL_SOCKET, SO_REUSEADDR, 1);
+            if (@socket_bind($sock, $local_host, $local_port) && @socket_listen($sock, 128)) {
+                @socket_set_nonblock($sock);
+                register_socket($sock);
+            } else {
+                @socket_close($sock);
+                $sock = false;
+            }
+        }
+    }
+
+    if (!$sock) {
+        return ERROR_CONNECTION_ERROR;
+    }
+
+    $id = register_channel($sock, null, null, 'tcp_server');
     packet_add_tlv($pkt, create_tlv(TLV_TYPE_CHANNEL_ID, $id));
     packet_add_tlv_local_addrinfo($pkt, $sock);
     add_reader($sock);

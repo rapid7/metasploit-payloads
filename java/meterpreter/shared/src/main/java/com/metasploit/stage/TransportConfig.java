@@ -8,11 +8,18 @@ public class TransportConfig {
     public long retry_wait;
 
     // HTTP only
-    public String proxy;
+    public String proxy_url;
     public String proxy_user;
     public String proxy_pass;
     public String user_agent;
     public byte[] cert_hash;
     public String custom_headers;
+
+    // Per-transport UUID for C2 profile placement; falls back to URL path when null.
+    public String c2_uuid;
+
+    // C2 profile (HTTP only)
+    public C2VerbConfig c2Get;
+    public C2VerbConfig c2Post;
 
 }

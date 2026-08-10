@@ -1,8 +1,8 @@
 package com.metasploit.meterpreter.android;
 
+import com.metasploit.TLVPacket;
+import com.metasploit.TLVType;
 import com.metasploit.meterpreter.Meterpreter;
-import com.metasploit.meterpreter.TLVPacket;
-import com.metasploit.meterpreter.TLVType;
 import com.metasploit.meterpreter.Utils;
 import com.metasploit.meterpreter.command.Command;
 import com.metasploit.meterpreter.stdapi.stdapi_sys_config_sysinfo;

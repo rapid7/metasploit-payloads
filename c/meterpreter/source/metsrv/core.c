@@ -5,10 +5,12 @@
  *          of the Meterpreter code base, and hence it's very important. Don't
  *          change this stuff unless you know what you're doing!
  */
+#include <winsock2.h>
+#include <windows.h>
+#include <winhttp.h>
 #include "metsrv.h"
 #include "common_exports.h"
 #include "packet_encryption.h"
-#include <winhttp.h>
 
 DWORD packet_find_tlv_buf(Packet *packet, PUCHAR payload, DWORD payloadLength, DWORD index, TlvType type, Tlv *tlv);
 
@@ -52,7 +54,7 @@ HANDLE core_update_thread_token(Remote *remote, HANDLE token)
 		// Close the old token if its not one of the two active tokens
 		if (temp && temp != remote->server_token && temp != remote->thread_token)
 		{
-			CloseHandle(temp);
+			met_api->win_api.kernel32.CloseHandle(temp);
 		}
 	} while (0);
 
@@ -758,9 +760,118 @@ DWORD packet_get_tlv_group_entry(Packet *packet, Tlv *group, TlvType type, Tlv *
 	return packet_find_tlv_buf(packet, group->buffer, group->header.length, 0, type, entry);
 }
 
+DWORD packet_get_tlv_group_entry_n(Packet *packet, Tlv *group, DWORD index, TlvType type, Tlv *entry)
+{
+	return packet_find_tlv_buf(packet, group->buffer, group->header.length, index, type, entry);
+}
+
+PCHAR packet_get_tlv_group_entry_value_string(Packet *packet, Tlv *group, TlvType type, DWORD* size)
+{
+	Tlv entry = { 0 };
+	if (size != NULL)
+	{
+		*size = 0;
+	}
+
+	if (packet_get_tlv_group_entry(packet, group, type, &entry) == ERROR_SUCCESS)
+	{
+		if (size != NULL)
+		{
+			*size = entry.header.length;
+		}
+		return (PCHAR)entry.buffer;
+	}
+
+	return NULL;
+}
+
+PWCHAR packet_get_tlv_group_entry_value_wstring(Packet *packet, Tlv *group, TlvType type, DWORD* size)
+{
+	PWCHAR result = NULL;
+
+	if (size != NULL)
+	{
+		*size = 0;
+	}
+
+	DWORD s = 0;
+	PCHAR v = packet_get_tlv_group_entry_value_string(packet, group, type, &s);
+
+	if (v != NULL)
+	{
+
+		s = (DWORD)mbstowcs(NULL, v, 0) + 1;
+		result = (PWCHAR)calloc(s, sizeof(wchar_t));
+		if (result)
+		{
+			mbstowcs(result, v, s);
+
+			if (size != NULL)
+			{
+				*size = s;
+			}
+		}
+	}
+
+	return result;
+}
+
+LPBYTE packet_get_tlv_group_entry_value_raw_copy(Packet* packet, Tlv* group, TlvType type, DWORD* size)
+{
+	DWORD valueSize = 0;
+	LPBYTE value = packet_get_tlv_group_entry_value_raw(packet, group, type, &valueSize);
+	if (value)
+	{
+		LPBYTE copy = (LPBYTE)calloc(valueSize, 1);
+		memcpy_s(copy, valueSize, value, valueSize);
+		if (size != NULL)
+		{
+			*size = valueSize;
+		}
+		return copy;
+	}
+	if (size != NULL)
+	{
+		*size = 0;
+	}
+	return NULL;
+}
+
+LPBYTE packet_get_tlv_group_entry_value_raw(Packet *packet, Tlv *group, TlvType type, DWORD* size)
+{
+	Tlv entry = { 0 };
+	if (size != NULL)
+	{
+		*size = 0;
+	}
+
+	if (packet_get_tlv_group_entry(packet, group, type, &entry) == ERROR_SUCCESS)
+	{
+		if (size != NULL)
+		{
+			*size = entry.header.length;
+		}
+		return entry.buffer;
+	}
+
+	return NULL;
+}
+
+UINT packet_get_tlv_group_entry_value_uint(Packet *packet, Tlv *group, TlvType type)
+{
+	Tlv entry = { 0 };
+	if (packet_get_tlv_group_entry(packet, group, type, &entry) == ERROR_SUCCESS)
+	{
+		return ntohl(*(UINT*)entry.buffer);
+	}
+
+	return 0;
+}
+
 /*!
  * @brief Enumerate a TLV (with the option of constraining its type).
  * @param packet Pointer to the packet to get the TLV from.
+ * @param index The index of the TLV to extract.
  * @param type Type of TLV to get (optional).
  * @param tlv Pointer to the TLV that will receive the data.
  * @return Indication of success or failure.
@@ -771,6 +882,23 @@ DWORD packet_enum_tlv(Packet *packet, DWORD index, TlvType type, Tlv *tlv)
 {
 	return packet_find_tlv_buf(packet, packet->payload, packet->payloadLength, index, type, tlv);
 }
+
+/*!
+ * @brief Enumerate a TLV of a given type from a group TLV in the packet.
+ * @param packet Pointer to the packet to get the TLV from.
+ * @param group Pointer to the group TLV to get the value from.
+ * @param index The index of the TLV to extract.
+ * @param type Type of TLV to get.
+ * @param tlv Pointer to the TLV that will receive the data.
+ * @return Indication of success or failure.
+ * @retval ERROR_SUCCESS The operation completed successfully.
+ * @retval ERROR_NOT_FOUND Unable to find the TLV.
+ */
+DWORD packet_enum_group_tlv(Packet* packet, Tlv* group, DWORD index, TlvType type, Tlv* tlv)
+{
+	return packet_find_tlv_buf(packet, group->buffer, group->header.length, index, type, tlv);
+}
+
 
 /*!
  * @brief Get the string value of a TLV.
@@ -896,7 +1024,10 @@ BYTE * packet_get_tlv_value_raw(Packet * packet, TlvType type, DWORD* length)
 		return NULL;
 	}
 
-	*length = tlv.header.length;
+	if (length != NULL)
+	{
+		*length = tlv.header.length;
+	}
 	return tlv.buffer;
 }
 
@@ -1339,7 +1470,7 @@ DWORD packet_transmit(Remote* remote, Packet* packet, PacketRequestCompletion* c
 	packet_add_request_id(packet);
 
 	// Always add the UUID to the packet as well, so that MSF knows who and what we are
-  	packet_add_tlv_raw(packet, TLV_TYPE_UUID, remote->orig_config->session.uuid, UUID_SIZE);
+  	packet_add_tlv_raw(packet, TLV_TYPE_UUID, remote->uuid, UUID_SIZE);
 
 	do
 	{

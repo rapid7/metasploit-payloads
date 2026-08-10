@@ -20,14 +20,14 @@ set(SRC_DIR ../../source/extensions/extapi)
 file(GLOB SRC_FILES
     ${SRC_DIR}/*.c
     ${SRC_DIR}/*.cpp
-    ${MOD_DEF_DIR}/extension.def
+    ${EXTENSION_DEF_FILE}
 )
 
 add_library(${PROJECT_NAME} SHARED ${SRC_FILES})
 set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME ${PROJECT_NAME}.${TARGET_ARCH})
 if(MSVC)
-    set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS "/DEF:\"${MOD_DEF_DIR}/extension.def\"")
-    set_source_files_properties(${MOD_DEF_DIR}/extension.def PROPERTIES HEADER_FILE_ONLY TRUE)
+    set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS "/DEF:\"${EXTENSION_DEF_FILE}\"")
+    set_source_files_properties(${EXTENSION_DEF_FILE} PROPERTIES HEADER_FILE_ONLY TRUE)
 endif()
 
 set(LINK_LIBS
@@ -44,8 +44,13 @@ else()
 endif()
 
 target_link_libraries(${PROJECT_NAME} ${LINK_LIBS} ${MET_RDI_ASM})
+
+if(EXCLUDE_REFLECTIVE_LOADER)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE NO_REFLECTIVE_LOADER)
+endif()
 if(MSVC)
     target_link_options(${PROJECT_NAME} PUBLIC "/ignore:4070")
+    target_link_options(${PROJECT_NAME} PUBLIC "/safeseh:no")
 endif()
 
 # Post processing (required for all Meterpreter DLLs)

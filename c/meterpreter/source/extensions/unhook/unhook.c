@@ -5,8 +5,13 @@
 #include "common.h"
 #include "common_metapi.h"
 
+#ifndef NO_REFLECTIVE_LOADER
 #define RDIDLL_NOEXPORT
 #include "../../ReflectiveDLLInjection/dll/src/ReflectiveLoader.c"
+#else
+HINSTANCE hAppInstance = NULL;
+#include "../../ReflectiveDLLInjection/dll/src/DirectSyscall.c"
+#endif
 
 #include "unhook.h"
 #include "refresh.h"
