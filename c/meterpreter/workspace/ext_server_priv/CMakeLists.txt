@@ -64,6 +64,7 @@ file(GLOB SRC_FILES
     ../../source/extensions/kiwi/mimikatz/modules/rpc/kull_m_rpc_ms-rprn.c
     ../../source/extensions/kiwi/mimikatz/modules/rpc/kull_m_rpc_ms-efsr_c.c
 )
+append_debug_sources(SRC_FILES)
 add_library(${PROJECT_NAME} SHARED ${SRC_FILES})
 set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME ${PROJECT_NAME}.${TARGET_ARCH})
 if(MSVC)

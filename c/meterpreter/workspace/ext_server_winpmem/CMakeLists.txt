@@ -30,6 +30,7 @@ else()
     set(SRC_FILES ${SRC_FILES} ${SRC_DIR}/winpmem-mingw.rc)
 endif()
 
+append_debug_sources(SRC_FILES)
 add_library(${PROJECT_NAME} SHARED ${SRC_FILES})
 set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME ${PROJECT_NAME}.${TARGET_ARCH})
 if(MSVC)
