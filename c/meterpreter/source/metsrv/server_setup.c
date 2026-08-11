@@ -9,6 +9,7 @@
 #include "server_transport_tcp.h"
 #include "server_transport_named_pipe.h"
 #include "packet_encryption.h"
+#include "extension_encryption.h"
 
 extern Command* extensionCommands;
 
@@ -80,6 +81,10 @@ VOID load_stageless_extensions(Remote* remote, Packet* configPacket)
 		dprintf("[SERVER] Extension located at 0x%p: %u bytes", dll, dllSize);
 		HMODULE hLibrary = LoadLibraryR(dll, dllSize, MAKEINTRESOURCEA(EXPORT_REFLECTIVELOADER));
 		load_extension(hLibrary, TRUE, remote, NULL, extensionCommands);
+		// ExtensionEncryptionManager* encryptionManager = GetExtensionEncryptionManager();
+		// if(encryptionManager != NULL && ENCRYPTABLE_LOGIC) {
+		// 	encryptionManager->add(hLibrary, dllSize);
+		// }
 		++index;
 	}
 
@@ -387,7 +392,13 @@ DWORD server_setup(MetsrvConfig* config, Packet* configPacket)
 
 			dprintf("[SERVER] Registering dispatch routines...");
 			register_dispatch_routines();
-			
+
+			ExtensionEncryptionManager* encryptionManager = InitExtensionEncryptionManager(CRYPTOGRAPHIC_MANAGER_TYPE_DEBUG, NULL);
+			if(encryptionManager == NULL) {
+				dprintf("[SERVER] Extension Encryption Manager Initialization failed, aborting!");
+				break;
+			}
+
 			// this has to be done after dispatch routine are registered
 			load_stageless_extensions(remote, configPacket);
 
