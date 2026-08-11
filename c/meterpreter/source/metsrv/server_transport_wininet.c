@@ -38,7 +38,7 @@ static HINTERNET get_request_wininet(HttpTransportContext *ctx, BOOL isGet, cons
 	do
 	{
 		vdprintf("[%s] opening request on connection %x to %S", direction, conn->connection, uri);
-		hReq = HttpOpenRequestW(conn->connection, isGet ? L"GET" : L"POST", uri, NULL, NULL, NULL, flags, 0);
+		hReq = met_api->win_api.wininet.HttpOpenRequestW(conn->connection, isGet ? L"GET" : L"POST", uri, NULL, NULL, NULL, flags, 0);
 
 		free(uri);
 
@@ -58,7 +58,7 @@ static HINTERNET get_request_wininet(HttpTransportContext *ctx, BOOL isGet, cons
 				| SECURITY_FLAG_IGNORE_REVOCATION;
 
 			dprintf("[%s] Setting secure option flags", direction);
-			if (!InternetSetOptionW(hReq, INTERNET_OPTION_SECURITY_FLAGS, &secureFlags, sizeof(secureFlags)))
+			if (!met_api->win_api.wininet.InternetSetOptionW(hReq, INTERNET_OPTION_SECURITY_FLAGS, &secureFlags, sizeof(secureFlags)))
 			{
 				dprintf("[%s] Failed InternetSetOptionW: %d", direction, GetLastError());
 				SetLastError(ERROR_NOT_FOUND);
@@ -71,7 +71,7 @@ static HINTERNET get_request_wininet(HttpTransportContext *ctx, BOOL isGet, cons
 
 	if (hReq != NULL)
 	{
-		InternetCloseHandle(hReq);
+		met_api->win_api.wininet.InternetCloseHandle(hReq);
 	}
 
 	return NULL;
@@ -84,7 +84,7 @@ static HINTERNET get_request_wininet(HttpTransportContext *ctx, BOOL isGet, cons
  */
 static BOOL close_request_wininet(HANDLE hReq)
 {
-	return InternetCloseHandle(hReq);
+	return met_api->win_api.wininet.InternetCloseHandle(hReq);
 }
 
 /*!
@@ -97,7 +97,7 @@ static BOOL close_request_wininet(HANDLE hReq)
  */
 static BOOL read_response_wininet(HANDLE hReq, LPVOID buffer, DWORD bytesToRead, LPDWORD bytesRead)
 {
-	return InternetReadFile(hReq, buffer, bytesToRead, bytesRead);
+	return met_api->win_api.wininet.InternetReadFile(hReq, buffer, bytesToRead, bytesRead);
 }
 
 /*!
@@ -146,7 +146,7 @@ static BOOL send_request_wininet(HttpTransportContext* ctx, HANDLE hReq, HttpCon
 	}
 
 	dprintf("[WININET] Sending payload");
-	BOOL result = HttpSendRequestW(hReq, headers, headerLength, optionalData, totalSize);
+	BOOL result = met_api->win_api.wininet.HttpSendRequestW(hReq, headers, headerLength, optionalData, totalSize);
 	SAFE_FREE(optionalData);
 	SAFE_FREE(headers);
 
@@ -165,7 +165,7 @@ static DWORD validate_response_wininet(HANDLE hReq, HttpTransportContext* ctx, L
 	DWORD statusCode;
 	DWORD statusCodeSize = sizeof(statusCode);
 	vdprintf("[PACKET RECEIVE WININET] Getting the result code...");
-	if (HttpQueryInfoW(hReq, HTTP_QUERY_STATUS_CODE | HTTP_QUERY_FLAG_NUMBER, &statusCode, &statusCodeSize, 0))
+	if (met_api->win_api.wininet.HttpQueryInfoW(hReq, HTTP_QUERY_STATUS_CODE | HTTP_QUERY_FLAG_NUMBER, &statusCode, &statusCodeSize, 0))
 	{
 		vdprintf("[PACKET RECEIVE WININET] Returned status code is %d", statusCode);
 
@@ -178,7 +178,7 @@ static DWORD validate_response_wininet(HANDLE hReq, HttpTransportContext* ctx, L
 	}
 
 	DWORD size = sizeof(DWORD);
-	if (!HttpQueryInfoA(hReq, HTTP_QUERY_CONTENT_LENGTH | HTTP_QUERY_FLAG_NUMBER, contentLength, &size, NULL))
+	if (!met_api->win_api.wininet.HttpQueryInfoA(hReq, HTTP_QUERY_CONTENT_LENGTH | HTTP_QUERY_FLAG_NUMBER, contentLength, &size, NULL))
 	{
 		return GetLastError();
 	}
@@ -193,11 +193,11 @@ static DWORD server_init_connection(HttpTransportContext* ctx, HttpConnection* c
 	if (ctx->proxy)
 	{
 		dprintf("[DISPATCH] Configuring with proxy: %S", ctx->proxy);
-		conn->internet = InternetOpenW(userAgent, INTERNET_OPEN_TYPE_PROXY, ctx->proxy, NULL, 0);
+		conn->internet = met_api->win_api.wininet.InternetOpenW(userAgent, INTERNET_OPEN_TYPE_PROXY, ctx->proxy, NULL, 0);
 	}
 	else
 	{
-		conn->internet = InternetOpenW(userAgent, INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
+		conn->internet = met_api->win_api.wininet.InternetOpenW(userAgent, INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
 	}
 
 	if (!conn->internet)
@@ -210,7 +210,7 @@ static DWORD server_init_connection(HttpTransportContext* ctx, HttpConnection* c
 
 
 	// Allocate the connection handle
-	conn->connection = InternetConnectW(conn->internet, host, port, NULL, NULL, INTERNET_SERVICE_HTTP, 0, 0);
+	conn->connection = met_api->win_api.wininet.InternetConnectW(conn->internet, host, port, NULL, NULL, INTERNET_SERVICE_HTTP, 0, 0);
 	if (!conn->connection)
 	{
 		dprintf("[DISPATCH] Failed InternetConnectW: %d", GetLastError());
@@ -221,11 +221,11 @@ static DWORD server_init_connection(HttpTransportContext* ctx, HttpConnection* c
 	{
 		if (ctx->proxy_user)
 		{
-			InternetSetOptionW(conn->connection, INTERNET_OPTION_PROXY_USERNAME, ctx->proxy_user,  (DWORD)wcslen(ctx->proxy_user));
+			met_api->win_api.wininet.InternetSetOptionW(conn->connection, INTERNET_OPTION_PROXY_USERNAME, ctx->proxy_user,  (DWORD)wcslen(ctx->proxy_user));
 		}
 		if (ctx->proxy_pass)
 		{
-			InternetSetOptionW(conn->connection, INTERNET_OPTION_PROXY_PASSWORD, ctx->proxy_pass, (DWORD)wcslen(ctx->proxy_pass));
+			met_api->win_api.wininet.InternetSetOptionW(conn->connection, INTERNET_OPTION_PROXY_PASSWORD, ctx->proxy_pass, (DWORD)wcslen(ctx->proxy_pass));
 		}
 	}
 
@@ -262,7 +262,7 @@ static DWORD server_init_wininet(Transport* transport)
 	bits.lpszUrlPath = tmpUrlPath;
 
 	dprintf("[DISPATCH] About to crack URL: %S", transport->url);
-	InternetCrackUrl(transport->url, 0, 0, &bits);
+	met_api->win_api.wininet.InternetCrackUrlW(transport->url, 0, 0, &bits);
 
 	http_options_set_single_uri(&ctx->default_options, tmpUrlPath);
 

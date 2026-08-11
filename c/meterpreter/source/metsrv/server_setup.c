@@ -24,38 +24,11 @@ int exceptionfilter(unsigned int code, struct _EXCEPTION_POINTERS *ep)
  */
 DWORD server_sessionid()
 {
-	typedef BOOL (WINAPI * PROCESSIDTOSESSIONID)( DWORD pid, LPDWORD id );
-
-	static PROCESSIDTOSESSIONID processIdToSessionId = NULL;
-	HMODULE kernel	 = NULL;
 	DWORD sessionId = 0;
 
-	do
+	if (!met_api->win_api.kernel32.ProcessIdToSessionId(GetCurrentProcessId(), &sessionId))
 	{
-		if (!processIdToSessionId)
-		{
-			kernel = met_api->win_api.kernel32.LoadLibraryA("kernel32.dll");
-			if (kernel)
-			{
-				processIdToSessionId = (PROCESSIDTOSESSIONID)GetProcAddress(kernel, "ProcessIdToSessionId");
-			}
-		}
-
-		if (!processIdToSessionId)
-		{
-			break;
-		}
-
-		if (!processIdToSessionId(GetCurrentProcessId(), &sessionId))
-		{
-			sessionId = -1;
-		}
-
-	} while( 0 );
-
-	if (kernel)
-	{
-		met_api->win_api.kernel32.FreeLibrary(kernel);
+		sessionId = -1;
 	}
 
 	return sessionId;
@@ -394,9 +367,9 @@ DWORD server_setup(MetsrvConfig* config, Packet* configPacket)
 			load_stageless_extensions(remote, configPacket);
 
 			// Store our process token
-			if (!OpenThreadToken(remote->server_thread, TOKEN_ALL_ACCESS, TRUE, &remote->server_token))
+			if (!met_api->win_api.advapi32.OpenThreadToken(remote->server_thread, TOKEN_ALL_ACCESS, TRUE, &remote->server_token))
 			{
-				OpenProcessToken(GetCurrentProcess(), TOKEN_ALL_ACCESS, &remote->server_token);
+				met_api->win_api.advapi32.OpenProcessToken(GetCurrentProcess(), TOKEN_ALL_ACCESS, &remote->server_token);
 			}
 
 			if (scheduler_initialize(remote) != ERROR_SUCCESS)
@@ -411,7 +384,7 @@ DWORD server_setup(MetsrvConfig* config, Packet* configPacket)
 			// Save the initial session/station/desktop names...
 			remote->orig_sess_id = server_sessionid();
 			remote->curr_sess_id = remote->orig_sess_id;
-			GetUserObjectInformationA(GetProcessWindowStation(), UOI_NAME, &stationName, 256, NULL);
+			GetUserObjectInformationA(met_api->win_api.user32.GetProcessWindowStation(), UOI_NAME, &stationName, 256, NULL);
 			remote->orig_station_name = _strdup(stationName);
 			remote->curr_station_name = _strdup(stationName);
 			GetUserObjectInformationA(GetThreadDesktop(GetCurrentThreadId()), UOI_NAME, &desktopName, 256, NULL);

@@ -153,8 +153,8 @@ Packet* packet_create(PacketTlvType type, UINT commandId)
 		memset(packet, 0, sizeof(Packet));
 
 		// Initialize the header length and message type
-		packet->header.length = htonl(sizeof(TlvHeader));
-		packet->header.type = htonl((DWORD)type);
+		packet->header.length = met_api->win_api.ws2_32.htonl(sizeof(TlvHeader));
+		packet->header.type = met_api->win_api.ws2_32.htonl((DWORD)type);
 
 		// Initialize the payload to be blank
 		packet->payload = NULL;
@@ -423,7 +423,7 @@ DWORD packet_add_tlv_wstring(Packet *packet, TlvType type, LPCWSTR str)
  */
 DWORD packet_add_tlv_uint(Packet *packet, TlvType type, UINT val)
 {
-	val = htonl(val);
+	val = met_api->win_api.ws2_32.htonl(val);
 
 	return packet_add_tlv_raw(packet, type, (PUCHAR)&val, sizeof(val));
 }
@@ -498,8 +498,8 @@ DWORD packet_add_tlv_group(Packet *packet, TlvType type, Tlv *entries, DWORD num
 			TlvHeader rawHeader;
 
 			// Convert byte order for storage
-			rawHeader.length = htonl(entries[index].header.length + sizeof(TlvHeader));
-			rawHeader.type = htonl((DWORD)entries[index].header.type);
+			rawHeader.length = met_api->win_api.ws2_32.htonl(entries[index].header.length + sizeof(TlvHeader));
+			rawHeader.type = met_api->win_api.ws2_32.htonl((DWORD)entries[index].header.type);
 
 			// Copy the TLV header & payload
 			memcpy(buffer + offset, &rawHeader, sizeof(TlvHeader));
@@ -597,13 +597,13 @@ DWORD packet_add_tlv_raw_compressed(Packet *packet, TlvType type, LPVOID buf, DW
 		}
 
 		// Populate the new TLV
-		((LPDWORD)(newPayload + packet->payloadLength))[0] = htonl(realLength);
-		((LPDWORD)(newPayload + packet->payloadLength))[1] = htonl((DWORD)type);
+		((LPDWORD)(newPayload + packet->payloadLength))[0] = met_api->win_api.ws2_32.htonl(realLength);
+		((LPDWORD)(newPayload + packet->payloadLength))[1] = met_api->win_api.ws2_32.htonl((DWORD)type);
 
 		memcpy(newPayload + packet->payloadLength + headerLength, compressed_buf, compressed_length);
 
 		// Update the header length and payload length
-		packet->header.length = htonl(ntohl(packet->header.length) + realLength);
+		packet->header.length = met_api->win_api.ws2_32.htonl(met_api->win_api.ws2_32.ntohl(packet->header.length) + realLength);
 		packet->payload = newPayload;
 		packet->payloadLength = newPayloadLength;
 
@@ -656,13 +656,13 @@ DWORD packet_add_tlv_raw(Packet *packet, TlvType type, LPVOID buf, DWORD length)
 	}
 
 	// Populate the new TLV
-	((LPDWORD)(newPayload + packet->payloadLength))[0] = htonl(realLength);
-	((LPDWORD)(newPayload + packet->payloadLength))[1] = htonl((DWORD)type);
+	((LPDWORD)(newPayload + packet->payloadLength))[0] = met_api->win_api.ws2_32.htonl(realLength);
+	((LPDWORD)(newPayload + packet->payloadLength))[1] = met_api->win_api.ws2_32.htonl((DWORD)type);
 
 	memcpy(newPayload + packet->payloadLength + headerLength, buf, length);
 
 	// Update the header length and payload length
-	packet->header.length = htonl(ntohl(packet->header.length) + realLength);
+	packet->header.length = met_api->win_api.ws2_32.htonl(met_api->win_api.ws2_32.ntohl(packet->header.length) + realLength);
 	packet->payload = newPayload;
 	packet->payloadLength = newPayloadLength;
 
@@ -696,7 +696,7 @@ DWORD packet_is_tlv_null_terminated( Tlv *tlv )
  */
 PacketTlvType packet_get_type( Packet *packet )
 {
-	return (PacketTlvType)ntohl( packet->header.type );
+	return (PacketTlvType)met_api->win_api.ws2_32.ntohl( packet->header.type );
 }
 
 /*!
@@ -862,7 +862,7 @@ UINT packet_get_tlv_group_entry_value_uint(Packet *packet, Tlv *group, TlvType t
 	Tlv entry = { 0 };
 	if (packet_get_tlv_group_entry(packet, group, type, &entry) == ERROR_SUCCESS)
 	{
-		return ntohl(*(UINT*)entry.buffer);
+		return met_api->win_api.ws2_32.ntohl(*(UINT*)entry.buffer);
 	}
 
 	return 0;
@@ -987,7 +987,7 @@ BOOL packet_get_tlv_uint(Packet *packet, TlvType type, UINT* output)
 		return FALSE;
 	}
 
-	*output = ntohl(*(LPDWORD)uintTlv.buffer);
+	*output = met_api->win_api.ws2_32.ntohl(*(LPDWORD)uintTlv.buffer);
 	return TRUE;
 }
 
@@ -1086,7 +1086,7 @@ BOOL packet_get_tlv_value_bool(Packet *packet, TlvType type)
  */
 DWORD packet_add_exception(Packet *packet, DWORD code, PCHAR fmt, ...)
 {
-	DWORD codeNbo = htonl(code);
+	DWORD codeNbo = met_api->win_api.ws2_32.htonl(code);
 	char buf[8192];
 	Tlv entries[2];
 	va_list ap;
@@ -1153,11 +1153,11 @@ DWORD packet_find_tlv_buf(Packet *packet, PUCHAR payload, DWORD payloadLength, D
 			}
 
 			// TLV's length
-			length = ntohl(header->length);
+			length = met_api->win_api.ws2_32.ntohl(header->length);
 			vdprintf("[PKT FIND] TLV header length: %u", length);
 
 			// Matching type?
-			current_type = (TlvType)ntohl(header->type);
+			current_type = (TlvType)met_api->win_api.ws2_32.ntohl(header->type);
 			vdprintf("[PKT FIND] TLV header type: %u", current_type);
 
 			// if the type has been compressed, temporarily remove the compression flag as compression is to be transparent.
@@ -1194,8 +1194,8 @@ DWORD packet_find_tlv_buf(Packet *packet, PUCHAR payload, DWORD payloadLength, D
 				break;
 			}
 
-			tlv->header.type = ntohl(header->type);
-			tlv->header.length = ntohl(header->length) - sizeof(TlvHeader);
+			tlv->header.type = met_api->win_api.ws2_32.ntohl(header->type);
+			tlv->header.length = met_api->win_api.ws2_32.ntohl(header->length) - sizeof(TlvHeader);
 			tlv->buffer = payload + offset + sizeof(TlvHeader);
 			vdprintf("[PKT FIND] Found!");
 
@@ -1212,7 +1212,7 @@ DWORD packet_find_tlv_buf(Packet *packet, PUCHAR payload, DWORD payloadLength, D
 					}
 
 					// the first DWORD in a compressed buffer is the decompressed buffer length.
-					decompressed_buf->length = ntohl(*(DWORD *)tlv->buffer);
+					decompressed_buf->length = met_api->win_api.ws2_32.ntohl(*(DWORD *)tlv->buffer);
 					if (!decompressed_buf->length)
 					{
 						break;

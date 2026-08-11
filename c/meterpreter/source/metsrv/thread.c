@@ -19,7 +19,7 @@ LOCK * lock_create( VOID )
 	{
 		memset( lock, 0, sizeof( LOCK ) );
 
-		lock->handle = CreateMutex( NULL, FALSE, NULL );
+		lock->handle = met_api->win_api.kernel32.CreateMutexA( NULL, FALSE, NULL );
 	}
 	return lock;
 }
@@ -45,7 +45,7 @@ VOID lock_destroy( LOCK * lock )
 VOID lock_acquire( LOCK * lock )
 {
 	if( lock != NULL  ) {
-		WaitForSingleObject( lock->handle, INFINITE );
+		met_api->win_api.kernel32.WaitForSingleObject( lock->handle, INFINITE );
 	}
 }
 
@@ -55,7 +55,7 @@ VOID lock_acquire( LOCK * lock )
 VOID lock_release( LOCK * lock )
 {
 	if( lock != NULL  ) {
-		ReleaseMutex( lock->handle );
+		met_api->win_api.kernel32.ReleaseMutex( lock->handle );
 	}
 }
 
@@ -74,7 +74,7 @@ EVENT * event_create( VOID )
 
 	memset( event, 0, sizeof( EVENT ) );
 
-	event->handle = CreateEvent( NULL, FALSE, FALSE, NULL );
+	event->handle = met_api->win_api.kernel32.CreateEventA( NULL, FALSE, FALSE, NULL );
 	if( event->handle == NULL )
 	{
 		free( event );
@@ -108,7 +108,7 @@ BOOL event_signal( EVENT * event )
 		return FALSE;
 
 	dprintf( "Signalling 0x%x", event->handle );
-	if( SetEvent( event->handle ) == 0 ) {
+	if( met_api->win_api.kernel32.SetEvent( event->handle ) == 0 ) {
 		dprintf( "Signalling 0x%x failed %u", event->handle, GetLastError() );
 		return FALSE;
 	}
@@ -125,7 +125,7 @@ BOOL event_poll( EVENT * event, DWORD timeout )
 	if( event == NULL )
 		return FALSE;
 
-	if( WaitForSingleObject( event->handle, timeout ) == WAIT_OBJECT_0 )
+	if( met_api->win_api.kernel32.WaitForSingleObject( event->handle, timeout ) == WAIT_OBJECT_0 )
 		return TRUE;
 
 	return FALSE;
@@ -160,7 +160,7 @@ THREAD* thread_open(VOID)
 			OBJECT_ATTRIBUTES oa = { 0 };
 			CLIENT_ID cid = { 0 };
 			cid.UniqueThread = (PVOID)(DWORD_PTR)thread->id;
-			met_api->win_api.ntdll.NtOpenThread(&thread->handle, THREAD_TERMINATE | THREAD_SUSPEND_RESUME, &oa, &cid);
+			met_api->win_api.ntdll.ZwOpenThread(&thread->handle, THREAD_TERMINATE | THREAD_SUSPEND_RESUME, &oa, &cid);
 		}
 	}
 
@@ -268,7 +268,7 @@ BOOL thread_kill(THREAD* thread)
 		return FALSE;
 	}
 
-	if (TerminateThread(thread->handle, -1) == 0)
+	if (met_api->win_api.kernel32.TerminateThread(thread->handle, -1) == 0)
 	{
 		return FALSE;
 	}
@@ -286,7 +286,7 @@ BOOL thread_join(THREAD* thread)
 		return FALSE;
 	}
 
-	if (WaitForSingleObject(thread->handle, INFINITE) == WAIT_OBJECT_0)
+	if (met_api->win_api.kernel32.WaitForSingleObject(thread->handle, INFINITE) == WAIT_OBJECT_0)
 	{
 		return TRUE;
 	}

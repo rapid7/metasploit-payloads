@@ -295,7 +295,7 @@ BOOL command_process_inline(Command *command, Remote *remote, Packet *packet)
 			// Impersonate the thread token if needed (only on Windows)
 			if (remote->server_token != remote->thread_token)
 			{
-				if (!ImpersonateLoggedOnUser(remote->thread_token))
+				if (!met_api->win_api.advapi32.ImpersonateLoggedOnUser(remote->thread_token))
 				{
 					dprintf("[COMMAND] Failed to impersonate thread token (%u) (%u)", commandId, GetLastError());
 				}

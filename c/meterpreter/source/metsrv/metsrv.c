@@ -31,7 +31,7 @@ DWORD Init(MetsrvConfig* config)
 	// decode as it might be xor'd
 	xor_bytes(header.xor_key, (PUCHAR)&header + sizeof(header.xor_key), sizeof(PacketHeader) - sizeof(header.xor_key));
 
-	UINT configLength = ntohl(header.length) - sizeof(TlvHeader);
+	UINT configLength = met_api->win_api.ws2_32.ntohl(header.length) - sizeof(TlvHeader);
 	UINT configBlockSize = sizeof(PacketHeader) + configLength;
 	dprintf("[METSRV] Config length is %u 0x%08x", configLength, configLength);
 	dprintf("[METSRV] Config block size is %u 0x%08x", configBlockSize, configBlockSize);
@@ -117,8 +117,8 @@ int current_unix_timestamp(void) {
 	FILETIME file_time;
 	ULARGE_INTEGER ularge;
 
-	GetSystemTime(&system_time);
-	SystemTimeToFileTime(&system_time, &file_time);
+	met_api->win_api.kernel32.GetSystemTime(&system_time);
+	met_api->win_api.kernel32.SystemTimeToFileTime(&system_time, &file_time);
 
 	ularge.LowPart = file_time.dwLowDateTime;
 	ularge.HighPart = file_time.dwHighDateTime;
@@ -129,16 +129,16 @@ int current_unix_timestamp(void) {
  * @brief Sleep for the given number of seconds.
  * @param seconds DWORD value representing the number of seconds to sleep.
  * @remark This was implemented so that extended sleep times can be used (beyond the
- *         49 day limit imposed by Sleep()).
+ *         49 day limit imposed by met_api->win_api.kernel32.Sleep()).
  */
 VOID sleep(DWORD seconds)
 {
 	while (seconds > SLEEP_MAX_SEC)
 	{
-		Sleep(SLEEP_MAX_SEC * 1000);
+		met_api->win_api.kernel32.Sleep(SLEEP_MAX_SEC * 1000);
 		seconds -= SLEEP_MAX_SEC;
 	}
-	Sleep(seconds * 1000);
+	met_api->win_api.kernel32.Sleep(seconds * 1000);
 }
 
 VOID xor_bytes(BYTE xorKey[4], LPBYTE buffer, DWORD bufferSize)

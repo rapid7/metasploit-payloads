@@ -39,7 +39,7 @@ static DWORD server_pipe_poll(Remote* remote, long timeout)
 	lock_acquire(remote->lock);
 
 	vdprintf("[NP DISPATCH] testing for data on the pipe, making sure there's enough for a packet header");
-	BOOL ready = PeekNamedPipe(ctx->pipe, NULL, 0, NULL, &bytesAvailable, NULL) && bytesAvailable >= sizeof(PacketHeader);
+	BOOL ready = met_api->win_api.kernel32.PeekNamedPipe(ctx->pipe, NULL, 0, NULL, &bytesAvailable, NULL) && bytesAvailable >= sizeof(PacketHeader);
 	DWORD result = GetLastError();
 
 	lock_release(remote->lock);
@@ -55,7 +55,7 @@ static DWORD server_pipe_poll(Remote* remote, long timeout)
 		{
 			// simulate a wait so that we don't bash the crap out of the CPU?
 			vdprintf("[NP DISPATCH] pipe data not found, sleeping (error %u)", GetLastError());
-			Sleep(timeout);
+			met_api->win_api.kernel32.Sleep(timeout);
 			result = ERROR_NO_DATA;
 		}
 	}
@@ -75,7 +75,7 @@ DWORD read_raw_bytes_to_buffer(NamedPipeTransportContext* ctx, LPBYTE buffer, DW
 	{
 		dprintf("[PIPE] Trying to read %u (0x%x) bytes", min(STUPID_PIPE_BUFFER_LIMIT, bytesToRead - *bytesRead), min(STUPID_PIPE_BUFFER_LIMIT, bytesToRead - *bytesRead));
 		// read the bytes fromi there.
-		if (!ReadFile(ctx->pipe, buffer + *bytesRead, min(STUPID_PIPE_BUFFER_LIMIT, bytesToRead - *bytesRead), &bytesReadThisIteration, NULL))
+		if (!met_api->win_api.kernel32.ReadFile(ctx->pipe, buffer + *bytesRead, min(STUPID_PIPE_BUFFER_LIMIT, bytesToRead - *bytesRead), &bytesReadThisIteration, NULL))
 		{
 			result = GetLastError();
 			dprintf("[PIPE] ReadFile returned error %u 0x%x", result, result);
@@ -188,7 +188,7 @@ static DWORD packet_receive_named_pipe(Remote *remote, Packet **packet)
 			memcpy_s(remote->session_guid, sizeof(remote->session_guid), header.session_guid, sizeof(header.session_guid));
 		}
 
-		payloadLength = ntohl(header.length) - sizeof(TlvHeader);
+		payloadLength = met_api->win_api.ws2_32.ntohl(header.length) - sizeof(TlvHeader);
 		dprintf("[PIPE] Payload length is %u 0x%08x", payloadLength, payloadLength);
 		DWORD packetSize = sizeof(PacketHeader) + payloadLength;
 		dprintf("[PIPE] total buffer size for the packet is %u 0x%08x", packetSize, packetSize);
@@ -383,7 +383,7 @@ static HANDLE reverse_named_pipe(wchar_t *pipe_name, TimeoutSettings *timeouts)
 	do
 	{
 		dprintf("[NP CONFIGURE] pipe name is %S, attempting to create", pipe_name);
-		hPipe = CreateFileW(pipe_name, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
+		hPipe = met_api->win_api.kernel32.CreateFileW(pipe_name, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
 		if (hPipe != INVALID_HANDLE_VALUE)
 		{
 			break;
@@ -415,7 +415,7 @@ static HANDLE bind_named_pipe(wchar_t *pipe_name, TimeoutSettings *timeouts)
 	{
 		SECURITY_ATTRIBUTES sa = { 0 };
 		create_pipe_security_attributes(&sa); // allow access anyone
-		hPipe = CreateNamedPipeW(pipe_name, PIPE_ACCESS_DUPLEX, PIPE_TYPE_BYTE | PIPE_WAIT, PIPE_UNLIMITED_INSTANCES,
+		hPipe = met_api->win_api.kernel32.CreateNamedPipeW(pipe_name, PIPE_ACCESS_DUPLEX, PIPE_TYPE_BYTE | PIPE_WAIT, PIPE_UNLIMITED_INSTANCES,
 								 STUPID_PIPE_BUFFER_LIMIT, STUPID_PIPE_BUFFER_LIMIT, 0, &sa);
 		result = GetLastError();
 		if (wasEnabled == FALSE)
@@ -427,7 +427,7 @@ static HANDLE bind_named_pipe(wchar_t *pipe_name, TimeoutSettings *timeouts)
 	if (hPipe == INVALID_HANDLE_VALUE)
 	{
 		// Fallback on a pipe with simpler security attributes
-		hPipe = CreateNamedPipeW(pipe_name, PIPE_ACCESS_DUPLEX, PIPE_TYPE_BYTE | PIPE_WAIT, PIPE_UNLIMITED_INSTANCES,
+		hPipe = met_api->win_api.kernel32.CreateNamedPipeW(pipe_name, PIPE_ACCESS_DUPLEX, PIPE_TYPE_BYTE | PIPE_WAIT, PIPE_UNLIMITED_INSTANCES,
 								 STUPID_PIPE_BUFFER_LIMIT, STUPID_PIPE_BUFFER_LIMIT, 0, NULL);
 		result = GetLastError();
 	}
@@ -517,7 +517,7 @@ static DWORD configure_named_pipe_connection(Transport* transport)
 	{
 		// Configure PIPE_WAIT. Stager doesn't do this because ConnectNamedPipe may never return.
 		DWORD mode = 0;
-		SetNamedPipeHandleState((HANDLE)ctx->pipe, &mode, NULL, NULL);
+		met_api->win_api.kernel32.SetNamedPipeHandleState((HANDLE)ctx->pipe, &mode, NULL, NULL);
 		dprintf("[NP] Connection already running on %u", ctx->pipe);
 	}
 	else
