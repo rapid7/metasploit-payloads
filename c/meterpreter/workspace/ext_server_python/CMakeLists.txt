@@ -38,7 +38,7 @@ if(IS_X64)
     list(REMOVE_ITEM SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/${SRC_DIR}/Modules/_ctypes/libffi_msvc/win32.c)
 endif()
 
-list(APPEND SRC_FILES ../../source/logging/logging.c)
+append_debug_sources(SRC_FILES)
 add_library(${PROJECT_NAME} SHARED ${SRC_FILES})
 set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME ${PROJECT_NAME}.${TARGET_ARCH})
 set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS "/DEF:\"${EXTENSION_DEF_FILE}\"")

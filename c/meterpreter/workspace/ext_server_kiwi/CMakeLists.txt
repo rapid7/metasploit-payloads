@@ -82,7 +82,7 @@ file(GLOB SRC_FILES
 # Ditch some old stuff that shouldn't even be here in the mimikatz repo!
 list(REMOVE_ITEM SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/${SRC_DIR}/mimikatz/mimikatz/modules/kuhl_m_dpapi.c)
 
-list(APPEND SRC_FILES ../../source/logging/logging.c)
+append_debug_sources(SRC_FILES)
 add_library(${PROJECT_NAME} SHARED ${SRC_FILES})
 set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME ${PROJECT_NAME}.${TARGET_ARCH})
 if(MSVC)
