@@ -2,6 +2,15 @@
 #include "remote.h"
 #include "packet_encryption.h"
 
+// The provider name strings below (MS_ENH_RSA_AES_PROV, MS_ENHANCED_PROV) are
+// TCHAR — LPCWSTR under UNICODE (MSVC vcxproj build), LPCSTR under the mingw
+// docker build. Route through the matching A/W wrapper so both toolchains build.
+#ifdef UNICODE
+#define WINAPI_CryptAcquireContext_TCHAR met_api->win_api.advapi32.CryptAcquireContextW
+#else
+#define WINAPI_CryptAcquireContext_TCHAR met_api->win_api.advapi32.CryptAcquireContextA
+#endif
+
 typedef struct _CryptProviderParams
 {
 	const TCHAR* provider;
@@ -353,10 +362,10 @@ DWORD public_key_encrypt(BYTE* publicKeyDer, UINT publicKeyDerLen, BYTE* data, D
 
 		dprintf("[ENC] Key algo: %s", pubKeyInfo->Algorithm.pszObjId);
 
-		if (!met_api->win_api.advapi32.CryptAcquireContextA(&rsaProv, NULL, MS_ENHANCED_PROV, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT))
+		if (!WINAPI_CryptAcquireContext_TCHAR(&rsaProv, NULL, MS_ENHANCED_PROV, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT))
 		{
 			dprintf("[ENC] Failed to create the RSA provider with CRYPT_VERIFYCONTEXT");
-			if (!met_api->win_api.advapi32.CryptAcquireContextA(&rsaProv, NULL, MS_ENHANCED_PROV, PROV_RSA_FULL, CRYPT_NEWKEYSET))
+			if (!WINAPI_CryptAcquireContext_TCHAR(&rsaProv, NULL, MS_ENHANCED_PROV, PROV_RSA_FULL, CRYPT_NEWKEYSET))
 			{
 				result = GetLastError();
 				dprintf("[ENC] Failed to create the RSA provider with CRYPT_NEWKEYSET: %u (%x)", result, result);
@@ -490,7 +499,7 @@ DWORD create_enc_ctx_from_key(Remote* remote, LPBYTE key, DWORD keySize)
 
 		for (int i = 0; i < _countof(AesProviders); ++i)
 		{
-			if (!met_api->win_api.advapi32.CryptAcquireContextA(&ctx->provider, NULL, AesProviders[i].provider, AesProviders[i].type, AesProviders[i].flags))
+			if (!WINAPI_CryptAcquireContext_TCHAR(&ctx->provider, NULL, AesProviders[i].provider, AesProviders[i].type, AesProviders[i].flags))
 			{
 				result = GetLastError();
 				dprintf("[ENC] failed to acquire the crypt context %d: %d (%x)", i, result, result);
@@ -553,7 +562,7 @@ DWORD request_negotiate_aes_key(Remote* remote, Packet* packet)
 
 		for (int i = 0; i < _countof(AesProviders); ++i)
 		{
-			if (!met_api->win_api.advapi32.CryptAcquireContextA(&ctx->provider, NULL, AesProviders[i].provider, AesProviders[i].type, AesProviders[i].flags))
+			if (!WINAPI_CryptAcquireContext_TCHAR(&ctx->provider, NULL, AesProviders[i].provider, AesProviders[i].type, AesProviders[i].flags))
 			{
 				result = GetLastError();
 				dprintf("[ENC] failed to acquire the crypt context %d: %d (%x)", i, result, result);
