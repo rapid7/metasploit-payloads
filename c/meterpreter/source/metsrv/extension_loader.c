@@ -110,11 +110,6 @@ BOOL FixIAT(PIMAGE_DATA_DIRECTORY pDataDirectoryImportTable, PBYTE pBaseAddress)
 				PIMAGE_IMPORT_BY_NAME pImgImportByName = (PIMAGE_IMPORT_BY_NAME)(pBaseAddress + pINT->u1.AddressOfData);
 				fncName = pImgImportByName->Name;
 			}
-
-      if(fncName == NULL)
-      {
-        continue;
-      }
 			
 			fncPointer = (ULONG_PTR)GetProcAddress(hModule, fncName);
 			if (fncPointer == 0)
@@ -140,18 +135,7 @@ BOOL FixPermissions(PIMAGE_NT_HEADERS pNtHeaders, PBYTE pBaseAddress)
 	
 	for (int i = 0; i < pNtHeaders->FileHeader.NumberOfSections; i++)
 	{
-		LPVOID lpAddress = (PBYTE)pBaseAddress + pSectionHeader[i].VirtualAddress;
-    SIZE_T dwSectionSize = pSectionHeader[i].Misc.VirtualSize;
-    
-    dprintf("[FIXPERM] Got section with address %p\n", lpAddress);
-	  
-    if(dwSectionSize == 0)
-      dwSectionSize = pSectionHeader[i].SizeOfRawData;
-
-    if(dwSectionSize == 0)
-      continue;
-
-		dwProtection = PAGE_NOACCESS;
+		dwProtection = 0;
 
 		if (pSectionHeader[i].Characteristics & IMAGE_SCN_MEM_WRITE)
 			dwProtection = PAGE_WRITECOPY;
@@ -161,6 +145,7 @@ BOOL FixPermissions(PIMAGE_NT_HEADERS pNtHeaders, PBYTE pBaseAddress)
 
 		if ((pSectionHeader[i].Characteristics & IMAGE_SCN_MEM_WRITE) && (pSectionHeader[i].Characteristics & IMAGE_SCN_MEM_READ))
 			dwProtection = PAGE_READWRITE;
+
 		if (pSectionHeader[i].Characteristics & IMAGE_SCN_MEM_EXECUTE)
 			dwProtection = PAGE_EXECUTE;
 
@@ -173,15 +158,10 @@ BOOL FixPermissions(PIMAGE_NT_HEADERS pNtHeaders, PBYTE pBaseAddress)
 		if ((pSectionHeader[i].Characteristics & IMAGE_SCN_MEM_EXECUTE) && (pSectionHeader[i].Characteristics & IMAGE_SCN_MEM_WRITE) && (pSectionHeader[i].Characteristics & IMAGE_SCN_MEM_READ))
 			dwProtection = PAGE_EXECUTE_READWRITE;
 
-
-    if( dwProtection == 0 || dwSectionSize == 0)
-    {
-      continue;
-    }
-	
-    dprintf("[FIXPERM] Setting permissions for section %p to %x with size %x\n",pBaseAddress + pSectionHeader[i].VirtualAddress , dwProtection, pSectionHeader[i].SizeOfRawData);
-
-		if(met_api->win_api.kernel32.VirtualProtect(lpAddress, dwSectionSize, dwProtection, &dwOldFlags) == 0)
+		dprintf("[FIXPERM] Setting permissions for section %p to %x with size %x\n",pBaseAddress + pSectionHeader[i].VirtualAddress , dwProtection, pSectionHeader[i].SizeOfRawData);
+		LPVOID lpAddress = (PBYTE)pBaseAddress + pSectionHeader[i].VirtualAddress;
+		SIZE_T dwSectionSize = pSectionHeader[i].SizeOfRawData;
+		if(dwSectionSize != 0 && met_api->win_api.kernel32.VirtualProtect(lpAddress, dwSectionSize, dwProtection, &dwOldFlags) == 0)
 		{
 			dprintf("[LOADREFLECTIVELY] Failed to fix permissions for section %d\n", i);
 			return FALSE;
@@ -279,7 +259,6 @@ BOOL LoadReflectively(IN ULONG_PTR lpBuffer, OUT HMODULE *phModule) {
 
 		// 6. Call the entry point
 
-    met_api->win_api.kernel32.FlushInstructionCache(GetCurrentProcess(), NULL, 0);
 		dprintf("[LOADREFLECTIVELY] Calling entry point\n");
 		DLLMAIN dEntryPoint = (DLLMAIN)(pDLLBaseAddress + pNtHeaders->OptionalHeader.AddressOfEntryPoint);
 
