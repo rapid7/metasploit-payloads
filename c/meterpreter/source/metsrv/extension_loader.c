@@ -258,7 +258,9 @@ BOOL LoadReflectively(IN ULONG_PTR lpBuffer, OUT HMODULE *phModule) {
 		}
 
 		// 6. Call the entry point
-
+  
+    met_api->win_api.kernel32.FlushInstructionCache((HANDLE)-1, NULL, 0);
+    
 		dprintf("[LOADREFLECTIVELY] Calling entry point\n");
 		DLLMAIN dEntryPoint = (DLLMAIN)(pDLLBaseAddress + pNtHeaders->OptionalHeader.AddressOfEntryPoint);
 
