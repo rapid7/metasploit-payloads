@@ -495,7 +495,7 @@ LPVOID winapi_kernel32_VirtualAllocEx(HANDLE hProcess, LPVOID lpAddress, SIZE_T 
 BOOL winapi_kernel32_VirtualProtect(LPVOID lpAddress, SIZE_T dwSize, DWORD flNewProtect, PDWORD lpflOldProtect) {
     if (hasDirectSyscallSupport()) {
         SIZE_T dwDataSize = dwSize;
-        NTSTATUS dwStatus = winapi_ntdll_ZwProtectVirtualMemory(GetCurrentProcess(), lpAddress, &dwDataSize, flNewProtect, lpflOldProtect);
+        NTSTATUS dwStatus = winapi_ntdll_ZwProtectVirtualMemory(GetCurrentProcess(), &lpAddress, &dwDataSize, flNewProtect, lpflOldProtect);
         dprintf("[WINAPI][winapi_kernel32_VirtualProtect] Syscall ZwProtectVirtualMemory returned: %d", dwStatus);
         return dwStatus == STATUS_SUCCESS;
     } else {
