@@ -17,7 +17,7 @@ HINSTANCE hAppInstance = NULL;
 #include "../ReflectiveDLLInjection/dll/src/DirectSyscall.c"
 #endif
 #include "../ReflectiveDLLInjection/inject/src/GetProcAddressR.c"
-#include "../ReflectiveDLLInjection/inject/src/LoadLibraryR.c"
+// #include "../ReflectiveDLLInjection/inject/src/LoadLibraryR.c"
 
 #include "packet_encryption.h"
 

@@ -161,6 +161,7 @@ typedef enum
 	TLV_TYPE_MIGRATE_STUB        = TLV_VALUE(TLV_META_TYPE_RAW,       411),   ///! Represents a migration stub (raw).
 	TLV_TYPE_LIB_LOADER_NAME     = TLV_VALUE(TLV_META_TYPE_STRING,    412),   ///! Represents the name of the ReflectiveLoader function (string).
 	TLV_TYPE_LIB_LOADER_ORDINAL  = TLV_VALUE(TLV_META_TYPE_UINT,      413),   ///! Represents the ordinal of the ReflectiveLoader function (int).
+	TLV_TYPE_LIB_LOADER_OFFSET   = TLV_VALUE(TLV_META_TYPE_UINT,      414),   ///! Represents the offset of the ReflectiveLoader function (unsigned int).
 
 	// session/machine identification
 	TLV_TYPE_MACHINE_ID          = TLV_VALUE(TLV_META_TYPE_STRING,    460),   ///! Represents a machine identifier.

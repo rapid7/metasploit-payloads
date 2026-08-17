@@ -9,6 +9,7 @@
 #include "server_transport_tcp.h"
 #include "server_transport_named_pipe.h"
 #include "packet_encryption.h"
+#include "extension_loader.h"
 
 extern Command* extensionCommands;
 
@@ -74,6 +75,7 @@ VOID load_stageless_extensions(Remote* remote, Packet* configPacket)
 	// start by loading the extensions before doing any init scripts
 	while (packet_enum_tlv(configPacket, index, TLV_TYPE_EXTENSION, &extensionTlv) == ERROR_SUCCESS)
 	{
+     
 		DWORD dllSize = 0;
 		LPBYTE dll = packet_get_tlv_group_entry_value_raw(configPacket, &extensionTlv, TLV_TYPE_DATA, &dllSize);
 

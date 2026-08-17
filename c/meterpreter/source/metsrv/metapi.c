@@ -4,6 +4,7 @@
 #include "remote_thread.h"
 #include "unicode.h"
 #include "winapi.h"
+#include "load_library_r.h"
 
 MetApi api_instance = {
     // PacketApi
@@ -129,6 +130,9 @@ MetApi api_instance = {
         inject_via_apcthread,
         inject_via_remotethread,
         inject_via_remotethread_wow64,
+        {
+            load_library_r,
+        }
     },
     // DesktopApi
     {
@@ -176,6 +180,7 @@ MetApi api_instance = {
             winapi_kernel32_VirtualQuery,
             winapi_kernel32_VirtualQueryEx,
             winapi_kernel32_VirtualFree,
+            winapi_kernel32_VirtualFreeEx,
             winapi_kernel32_CreateRemoteThread,
             winapi_kernel32_CloseHandle,
             winapi_kernel32_DuplicateHandle,
