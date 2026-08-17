@@ -118,6 +118,7 @@ typedef struct _WinApiKernel32 {
     BOOL   (*HeapFree)(HANDLE hHeap, DWORD dwFlags, LPVOID lpMem);
     BOOL   (*IsWow64Process)(HANDLE hProcess, PBOOL Wow64Process);
     BOOL   (*ProcessIdToSessionId)(DWORD dwProcessId, DWORD* pSessionId);
+    DWORD  (*GetCurrentThreadId)(VOID);
     LPVOID (*HeapReAlloc)(HANDLE hHeap, DWORD dwFlags, LPVOID lpMem, SIZE_T dwBytes);
     HLOCAL (*LocalAlloc)(UINT uFlags, SIZE_T uBytes);
     VOID   (*GetSystemTime)(LPSYSTEMTIME lpSystemTime);

@@ -841,7 +841,7 @@ static DWORD get_migrate_context_tcp(Transport* transport, DWORD targetProcessId
 	}
 
 	// Duplicate the socket for the target process
-	if (WSADuplicateSocketA(((TcpTransportContext*)transport->ctx)->fd, targetProcessId, &ctx->info) != NO_ERROR)
+	if (met_api->win_api.ws2_32.WSADuplicateSocketA(((TcpTransportContext*)transport->ctx)->fd, targetProcessId, &ctx->info) != NO_ERROR)
 	{
 		free(ctx);
 		return met_api->win_api.ws2_32.WSAGetLastError();

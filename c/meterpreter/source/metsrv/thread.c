@@ -146,7 +146,7 @@ THREAD* thread_open(VOID)
 	{
 		memset(thread, 0, sizeof(THREAD));
 
-		thread->id = GetCurrentThreadId();
+		thread->id = met_api->win_api.kernel32.GetCurrentThreadId();
 		thread->sigterm = event_create();
 
 		// Windows specific process of opening a handle to the current thread which

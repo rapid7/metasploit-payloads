@@ -44,107 +44,6 @@ enum NtDllSyscall {
     ZwLockVirtualMemory
 };
 
-enum HashedFunctions {
-    H_ZwAllocateVirtualMemory = 0xD33D4AED,
-    H_ZwOpenProcess = 0xF0D09D60,
-    H_ZwWriteVirtualMemory = 0xC5D0A4C2,
-    H_ZwReadVirtualMemory = 0x3DEFA5C2,
-    H_ZwProtectVirtualMemory = 0xBC3F4D89,
-    H_ZwQueryVirtualMemory = 0x4FD39C92,
-    H_ZwFreeVirtualMemory = 0xDE63B5C3,
-    H_NtQueueApcThread = 0x52E9A746,
-    H_NtOpenThread = 0x59651E8C,
-    H_RtlGetVersion = 0xD0C1869C,
-    H_WriteProcessMemory = 0xD83D6AA1,
-    H_ReadProcessMemory = 0x579D1BE9,
-    H_OpenProcess = 0xEFE297C0,
-    H_VirtualAlloc = 0x91AFCA54,
-    H_VirtualAllocEx = 0x6E1A959C,
-    H_VirtualProtect = 0x7946C61B,
-    H_VirtualProtectEx = 0x53D98756,
-    H_VirtualQuery = 0xA3C8C8AA,
-    H_VirtualQueryEx = 0xF45A2B20,
-    H_VirtualFree = 0x30633AC,
-    H_VirtualFreeEx = 0xC3B4EB78,
-    H_CreateRemoteThread = 0x72BD9CDD,
-    H_CloseHandle = 0xFFD97FB,
-    H_DuplicateHandle = 0xBD566724,
-    H_CreateToolhelp32Snapshot = 0xE454DFED,
-    H_Thread32First = 0xB83BB6EA,
-    H_OpenThread = 0x58C91E6F,
-    H_SuspendThread = 0xE8C2CDC,
-    H_Thread32Next = 0x86FED608,
-    H_ResumeThread = 0x9E4A3F88,
-    H_FreeLibrary = 0x4DC9D5A0,
-    H_FlushInstructionCache = 0x53120980,
-    H_LocalFree = 0x5CBAEAF6,
-    H_CreateFileA = 0x7C0017A5,
-    H_WriteFile = 0xE80A791F,
-    H_LoadLibraryA = 0xEC0E4E8E,
-    H_WaitForMultipleObjects = 0x23EAD524,
-    H_SetHandleInformation = 0x7F9E1144,
-    H_GlobalFree = 0x7CB922F6,
-    H_CreateNamedPipeA = 0xB2D6846,
-    H_ConnectNamedPipe = 0xCB09C9F9,
-    H_GetOverlappedResult = 0xC087DCE8,
-    H_ReadFile = 0x10FA6516,
-    H_CreateThread = 0xCA2BD06B,
-    H_ResetEvent = 0x560B084F,
-    H_SetThreadErrorMode = 0x5922C47C,
-    H_OpenProcessToken = 0x591EA70F,
-    H_AdjustTokenPrivileges = 0x24488A0F,
-    H_ImpersonateLoggedOnUser = 0x6D821B37,
-    H_CryptDuplicateKey = 0x738BCBF6,
-    H_CryptSetKeyParam = 0x180E1DA8,
-    H_CryptDecrypt = 0x59202584,
-    H_CryptGenRandom = 0x4AABDD73,
-    H_CryptEncrypt = 0xD9242588,
-    H_CryptDestroyKey = 0x95E24580,
-    H_CryptReleaseContext = 0x5AE8E894,
-    H_CryptImportKey = 0xD864E84D,
-    H_OpenThreadToken = 0x8D91EA66,
-    H_AllocateAndInitializeSid = 0x5BDCE983,
-    H_SetEntriesInAclW = 0xB142E54,
-    H_InitializeAcl = 0xF8AF61AB,
-    H_InitializeSecurityDescriptor = 0x230EA37F,
-    H_SetSecurityDescriptorDacl = 0x534E5FC2,
-    H_SetSecurityDescriptorSacl = 0x714E5FC2,
-    H_LookupPrivilegeValueW = 0x97E8C2B8,
-    H_CryptDecodeObjectEx = 0x22BA7198,
-    H_CryptImportPublicKeyInfo = 0x35A052E0,
-    H_CertGetCertificateContextProperty = 0x481F9127,
-    H_GetUserObjectInformationA = 0x11EFCB2B,
-    H_GetThreadDesktop = 0x56641B89,
-    H_WSAStartup = 0x3BFCEDCB,
-    H_socket = 0x492F0B6E,
-    H_connect = 0x60AAF9EC,
-    H_accept = 0x498649E5,
-    H_setsockopt = 0xC055F2EC,
-    H_recv = 0xE71819B6,
-    H_WSADuplicateSocketA = 0x5DCA3BD3,
-    H_InternetOpenW = 0x57E8443F,
-    H_InternetConnectW = 0x1E4BE824,
-    H_HttpOpenRequestW = 0xF7DE76B5,
-    H_InternetSetOptionW = 0xF5EFA023,
-    H_HttpSendRequestW = 0x2DE6BEB3,
-    H_HttpQueryInfoW = 0xFB2F4610,
-    H_InternetReadFile = 0x5FE34B8B,
-    H_InternetCloseHandle = 0xFA9B69C7,
-    H_InternetCrackUrlW = 0xA5955290,
-    H_UuidCreate = 0xC439EDE7,
-    H_WinHttpOpen = 0xD1026DBE,
-    H_WinHttpConnect = 0x8AAE8F,
-    H_WinHttpOpenRequest = 0x8F34E1C1,
-    H_WinHttpGetIEProxyConfigForCurrentUser = 0xA206024C,
-    H_WinHttpGetProxyForUrl = 0x88DD3F88,
-    H_WinHttpSetOption = 0xD83C501E,
-    H_WinHttpSendRequest = 0x98348882,
-    H_WinHttpReceiveResponse = 0xDE22845E,
-    H_WinHttpQueryHeaders = 0x4F8B3B75,
-    H_WinHttpReadData = 0xB24F660F,
-    H_WinHttpQueryOption = 0xDB0FB31,
-    H_WinHttpCrackUrl = 0x73513B,
-};
 
 NtDllFunction lpFunctionsTobeLoaded[] = {
     {.lpFunctionName = NULL /* ZwAllocateVirtualMemory */, .dwNumberOfArgs = 6, .dwCryptedHash = H_ZwAllocateVirtualMemory},
@@ -1166,6 +1065,15 @@ BOOL winapi_kernel32_ProcessIdToSessionId(DWORD dwProcessId, DWORD* pSessionId) 
         return pProcessIdToSessionId(dwProcessId, pSessionId);
     }
     return FALSE;
+}
+
+DWORD winapi_kernel32_GetCurrentThreadId(VOID) {
+    DWORD (WINAPI *pGetCurrentThreadId)(VOID) = GetFunctionH(KERNEL32_DLL, H_GetCurrentThreadId);
+    dprintf("[WINAPI][winapi_kernel32_GetCurrentThreadId] Calling GetCurrentThreadId @ %p", pGetCurrentThreadId);
+    if (pGetCurrentThreadId) {
+        return pGetCurrentThreadId();
+    }
+    return 0;
 }
 
 // END: kernel32.dll

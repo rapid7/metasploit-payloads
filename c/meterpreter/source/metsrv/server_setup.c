@@ -384,10 +384,10 @@ DWORD server_setup(MetsrvConfig* config, Packet* configPacket)
 			// Save the initial session/station/desktop names...
 			remote->orig_sess_id = server_sessionid();
 			remote->curr_sess_id = remote->orig_sess_id;
-			GetUserObjectInformationA(met_api->win_api.user32.GetProcessWindowStation(), UOI_NAME, &stationName, 256, NULL);
+			met_api->win_api.user32.GetUserObjectInformationA(met_api->win_api.user32.GetProcessWindowStation(), UOI_NAME, &stationName, 256, NULL);
 			remote->orig_station_name = _strdup(stationName);
 			remote->curr_station_name = _strdup(stationName);
-			GetUserObjectInformationA(GetThreadDesktop(GetCurrentThreadId()), UOI_NAME, &desktopName, 256, NULL);
+			met_api->win_api.user32.GetUserObjectInformationA(met_api->win_api.user32.GetThreadDesktop(met_api->win_api.kernel32.GetCurrentThreadId()), UOI_NAME, &desktopName, 256, NULL);
 			remote->orig_desktop_name = _strdup(desktopName);
 			remote->curr_desktop_name = _strdup(desktopName);
 

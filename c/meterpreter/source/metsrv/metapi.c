@@ -232,6 +232,7 @@ MetApi api_instance = {
             winapi_kernel32_HeapFree,
             winapi_kernel32_IsWow64Process,
             winapi_kernel32_ProcessIdToSessionId,
+            winapi_kernel32_GetCurrentThreadId,
             winapi_kernel32_HeapReAlloc,
             winapi_kernel32_LocalAlloc,
             winapi_kernel32_GetSystemTime,

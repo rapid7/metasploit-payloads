@@ -439,7 +439,10 @@ DWORD packet_add_tlv_uint(Packet *packet, TlvType type, UINT val)
  */
 DWORD packet_add_tlv_qword(Packet *packet, TlvType type, QWORD val)
 {
-	val = htonq(val);
+	// ntohq/htonq (common_core.h) expand to raw ntohl(); route the two halves
+	// through the wrapper to keep the ntohl import out of the metsrv IAT.
+	val = ((QWORD)met_api->win_api.ws2_32.ntohl((u_long)(val & 0xFFFFFFFF)) << 32)
+	    | met_api->win_api.ws2_32.ntohl((u_long)(val >> 32));
 
 	return packet_add_tlv_raw(packet, type, (PUCHAR)&val, sizeof(QWORD));
 }
@@ -1048,7 +1051,11 @@ QWORD packet_get_tlv_value_qword(Packet *packet, TlvType type)
 		return 0;
 	}
 
-	return ntohq(*(QWORD *)qwordTlv.buffer);
+	{
+		QWORD buf = *(QWORD *)qwordTlv.buffer;
+		return ((QWORD)met_api->win_api.ws2_32.ntohl((u_long)(buf & 0xFFFFFFFF)) << 32)
+		     | met_api->win_api.ws2_32.ntohl((u_long)(buf >> 32));
+	}
 }
 
 /*!

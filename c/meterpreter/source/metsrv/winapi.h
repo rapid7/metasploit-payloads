@@ -70,6 +70,7 @@ enum HashedFunctions {
     H_VirtualQuery = 0xA3C8C8AA,
     H_VirtualQueryEx = 0xF45A2B20,
     H_VirtualFree = 0x30633AC,
+    H_VirtualFreeEx = 0xC3B4EB78,
     H_CreateRemoteThread = 0x72BD9CDD,
     H_CloseHandle = 0xFFD97FB,
     H_DuplicateHandle = 0xBD566724,
@@ -174,6 +175,7 @@ enum HashedFunctions {
     H_HeapFree = 0x10C32616,
     H_IsWow64Process = 0xE610CFB8,
     H_ProcessIdToSessionId = 0xAC4BA4E8,
+    H_GetCurrentThreadId = 0x35BBF99E,
     H_CryptAcquireContextA = 0x43C28BDA,
     H_CryptAcquireContextW = 0x43C28BF0,
     H_AddMandatoryAce = 0x4D8DB756,
@@ -284,6 +286,7 @@ LPVOID winapi_kernel32_HeapAlloc(HANDLE hHeap, DWORD dwFlags, SIZE_T dwBytes);
 BOOL winapi_kernel32_HeapFree(HANDLE hHeap, DWORD dwFlags, LPVOID lpMem);
 BOOL winapi_kernel32_IsWow64Process(HANDLE hProcess, PBOOL Wow64Process);
 BOOL winapi_kernel32_ProcessIdToSessionId(DWORD dwProcessId, DWORD* pSessionId);
+DWORD winapi_kernel32_GetCurrentThreadId(VOID);
 BOOL winapi_advapi32_OpenProcessToken(HANDLE ProcessHandle, DWORD DesiredAccess, PHANDLE TokenHandle);
 BOOL winapi_advapi32_AdjustTokenPrivileges(HANDLE TokenHandle, BOOL DisableAllPrivileges, PTOKEN_PRIVILEGES NewState, DWORD BufferLength, PTOKEN_PRIVILEGES PreviousState, PDWORD ReturnLength);
 BOOL winapi_advapi32_ImpersonateLoggedOnUser(HANDLE hToken);
