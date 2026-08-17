@@ -500,6 +500,7 @@ DWORD inject_via_poolparty(Remote* remote, Packet* response, HANDLE hProcess, DW
 
 	LPVOID lpStub = NULL;
 	DWORD dwStubSize = 0;
+	size_t stStubDecoded = 0;
 	HANDLE hHeap = met_api->win_api.kernel32.GetProcessHeap();
 	
 
