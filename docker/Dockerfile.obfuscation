@@ -1,5 +1,5 @@
 # To build the dev environment.
-#  docker build -t msf-ubuntu-x64-meterpreter:obfuscation -f ./Dockerfile.obfuscation .
+#  docker build -t rapid7/msf-ubuntu-x64-meterpreter-obfuscation -f ./Dockerfile.obfuscation .
 FROM ubuntu:24.04
 
 ENV DEBIAN_FRONTEND noninteractive
