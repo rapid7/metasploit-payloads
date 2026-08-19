@@ -1,6 +1,7 @@
 #ifndef _METERPRETER_COMMON_WINAPI_H
 #define _METERPRETER_COMMON_WINAPI_H
 #include <winsock2.h> // For SOCKET, WSADATA, sockaddr, WSAPROTOCOL_INFOA
+#include <ws2tcpip.h> // For ADDRINFOA / PADDRINFOA
 #include <windows.h>
 #if !defined(__WINE_WINHTTP_H) && !defined(_WINHTTPX_)
 #include <wininet.h>
@@ -48,9 +49,22 @@ typedef struct _WinApiNtdll {
     NTSTATUS (*ZwProtectVirtualMemory)(HANDLE ProcessHandle, PVOID* BaseAddress, PSIZE_T RegionSize, ULONG NewProtect, PULONG OldProtect);
     NTSTATUS (*ZwQueryVirtualMemory)(HANDLE ProcessHandle, PVOID BaseAddress, MEMORY_INFORMATION_CLASS MemoryInformationClass, PVOID MemoryInformation, SIZE_T MemoryInformationLength, PSIZE_T ReturnLength);
     NTSTATUS (*ZwFreeVirtualMemory)(HANDLE ProcessHandle, PVOID* BaseAddress, PSIZE_T RegionSize, ULONG FreeType);
-    NTSTATUS (*NtQueueApcThread)(HANDLE ThreadHandle, PVOID ApcRoutine, PVOID ApcContext, PVOID Argument1, PVOID Argument2);
-    NTSTATUS (*NtOpenThread)(PHANDLE ThreadHandle, ACCESS_MASK DesiredAccess, OBJECT_ATTRIBUTES* ObjectAttributes, CLIENT_ID* ClientId);
+    NTSTATUS (*ZwQueueApcThread)(HANDLE ThreadHandle, PVOID ApcRoutine, PVOID ApcContext, PVOID Argument1, PVOID Argument2);
+    NTSTATUS (*ZwOpenThread)(PHANDLE ThreadHandle, ACCESS_MASK DesiredAccess, OBJECT_ATTRIBUTES* ObjectAttributes, CLIENT_ID* ClientId);
     NTSTATUS (*RtlGetVersion)(PRTL_OSVERSIONINFOEXW os);
+    NTSTATUS (*ZwQueryInformationProcess)(HANDLE ProcessHandle, INT ProcessInformationClass, PVOID ProcessInformation, ULONG ProcessInformationLength, PULONG ReturnLength);
+    NTSTATUS (*ZwQueryObject)(HANDLE Handle, INT ObjectInformationClass, PVOID ObjectInformation, ULONG ObjectInformationLength, PULONG ReturnLength);
+    NTSTATUS (*ZwQueryInformationWorkerFactory)(HANDLE WorkerFactoryHandle, INT WorkerFactoryInformationClass, PVOID WorkerFactoryInformation, ULONG WorkerFactoryInformationLength, PULONG ReturnLength);
+    NTSTATUS (*ZwSetInformationWorkerFactory)(HANDLE WorkerFactoryHandle, INT WorkerFactoryInformationClass, PVOID WorkerFactoryInformation, ULONG WorkerFactoryInformationLength);
+    NTSTATUS (*ZwSetIoCompletion)(HANDLE IoCompletionHandle, PVOID KeyContext, PVOID ApcContext, NTSTATUS IoStatus, ULONG_PTR IoStatusInformation);
+    NTSTATUS (*RtlCreateUserThread)(HANDLE ProcessHandle, PVOID SecurityDescriptor, BOOL CreateSuspended, ULONG StackZeroBits, SIZE_T StackReserve, SIZE_T StackCommit, PVOID StartAddress, PVOID StartParameter, PHANDLE ThreadHandle, PVOID ClientId);
+    NTSTATUS (*ZwMapViewOfSection)(HANDLE SectionHandle, HANDLE ProcessHandle, PVOID* BaseAddress, ULONG ZeroBits, ULONG CommitSize, PLARGE_INTEGER SectionOffset, PULONG ViewSize, DWORD InheritDisposition, ULONG AllocationType, ULONG Win32Protect);
+    NTSTATUS (*ZwCreateSection)(PHANDLE SectionHandle, ULONG DesiredAccess, OBJECT_ATTRIBUTES* ObjectAttributes, PLARGE_INTEGER MaximumSize, ULONG SectionPageProtection, ULONG AllocationAttributes, HANDLE FileHandle);
+    NTSTATUS (*ZwOpenSection)(PHANDLE SectionHandle, ACCESS_MASK DesiredAccess, OBJECT_ATTRIBUTES* ObjectAttributes);
+    NTSTATUS (*ZwOpenFile)(PHANDLE FileHandle, ACCESS_MASK DesiredAccess, OBJECT_ATTRIBUTES* ObjectAttributes, PVOID IoStatusBlock, ULONG ShareAccess, ULONG OpenOptions);
+    NTSTATUS (*ZwQueryAttributesFile)(OBJECT_ATTRIBUTES* ObjectAttributes, PVOID FileInformation);
+    NTSTATUS (*ZwClose)(HANDLE Handle);
+    NTSTATUS (*ZwLockVirtualMemory)(HANDLE ProcessHandle, PVOID* BaseAddress, PULONG RegionSize, ULONG MapType);
 } WinApiNtdll;
 
 // kernel32.dll
@@ -91,6 +105,33 @@ typedef struct _WinApiKernel32 {
     HANDLE (*CreateThread)(LPSECURITY_ATTRIBUTES lpThreadAttributes, SIZE_T dwStackSize, LPTHREAD_START_ROUTINE lpStartAddress, LPVOID lpParameter, DWORD dwCreationFlags, LPDWORD lpThreadId);
     BOOL   (*ResetEvent)(HANDLE hEvent);
     BOOL   (*SetThreadErrorMode)(DWORD dwNewMode, LPDWORD lpOldMode);
+    HMODULE (*GetModuleHandleA)(LPCSTR lpModuleName);
+    HANDLE (*CreateFileW)(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, DWORD dwFlagsAndAttributes, HANDLE hTemplateFile);
+    HANDLE (*CreateNamedPipeW)(LPCWSTR lpName, DWORD dwOpenMode, DWORD dwPipeMode, DWORD nMaxInstances, DWORD nOutBufferSize, DWORD nInBufferSize, DWORD nDefaultTimeOut, LPSECURITY_ATTRIBUTES lpSecurityAttributes);
+    HANDLE (*CreateEventA)(LPSECURITY_ATTRIBUTES lpEventAttributes, BOOL bManualReset, BOOL bInitialState, LPCSTR lpName);
+    HANDLE (*CreateEventW)(LPSECURITY_ATTRIBUTES lpEventAttributes, BOOL bManualReset, BOOL bInitialState, LPCWSTR lpName);
+    BOOL   (*SetEvent)(HANDLE hEvent);
+    DWORD  (*WaitForSingleObject)(HANDLE hHandle, DWORD dwMilliseconds);
+    VOID   (*Sleep)(DWORD dwMilliseconds);
+    HANDLE (*GetProcessHeap)(VOID);
+    LPVOID (*HeapAlloc)(HANDLE hHeap, DWORD dwFlags, SIZE_T dwBytes);
+    BOOL   (*HeapFree)(HANDLE hHeap, DWORD dwFlags, LPVOID lpMem);
+    BOOL   (*IsWow64Process)(HANDLE hProcess, PBOOL Wow64Process);
+    BOOL   (*ProcessIdToSessionId)(DWORD dwProcessId, DWORD* pSessionId);
+    DWORD  (*GetCurrentThreadId)(VOID);
+    LPVOID (*HeapReAlloc)(HANDLE hHeap, DWORD dwFlags, LPVOID lpMem, SIZE_T dwBytes);
+    HLOCAL (*LocalAlloc)(UINT uFlags, SIZE_T uBytes);
+    VOID   (*GetSystemTime)(LPSYSTEMTIME lpSystemTime);
+    BOOL   (*SystemTimeToFileTime)(const SYSTEMTIME* lpSystemTime, LPFILETIME lpFileTime);
+    int    (*MultiByteToWideChar)(UINT CodePage, DWORD dwFlags, LPCCH lpMultiByteStr, int cbMultiByte, LPWSTR lpWideCharStr, int cchWideChar);
+    int    (*WideCharToMultiByte)(UINT CodePage, DWORD dwFlags, LPCWCH lpWideCharStr, int cchWideChar, LPSTR lpMultiByteStr, int cbMultiByte, LPCCH lpDefaultChar, LPBOOL lpUsedDefaultChar);
+    BOOL   (*PeekNamedPipe)(HANDLE hNamedPipe, LPVOID lpBuffer, DWORD nBufferSize, LPDWORD lpBytesRead, LPDWORD lpTotalBytesAvail, LPDWORD lpBytesLeftThisMessage);
+    BOOL   (*SetNamedPipeHandleState)(HANDLE hNamedPipe, LPDWORD lpMode, LPDWORD lpMaxCollectionCount, LPDWORD lpCollectDataTimeout);
+    BOOL   (*ReleaseMutex)(HANDLE hMutex);
+    HANDLE (*CreateMutexA)(LPSECURITY_ATTRIBUTES lpMutexAttributes, BOOL bInitialOwner, LPCSTR lpName);
+    HANDLE (*CreateMutexW)(LPSECURITY_ATTRIBUTES lpMutexAttributes, BOOL bInitialOwner, LPCWSTR lpName);
+    BOOL   (*TerminateThread)(HANDLE hThread, DWORD dwExitCode);
+    int    (*lstrcmpW)(LPCWSTR lpString1, LPCWSTR lpString2);
 } WinApiKernel32;
 
 // advapi32.dll
@@ -114,6 +155,9 @@ typedef struct _WinApiAdvApi32 {
     BOOL  (*SetSecurityDescriptorDacl)(PSECURITY_DESCRIPTOR pSecurityDescriptor, BOOL bDaclPresent, PACL pDacl, BOOL bDaclDefaulted);
     BOOL  (*SetSecurityDescriptorSacl)(PSECURITY_DESCRIPTOR pSecurityDescriptor, BOOL bSaclPresent, PACL pSacl, BOOL bSaclDefaulted);
     BOOL  (*LookupPrivilegeValueW)(LPCWSTR lpSystemName, LPCWSTR lpName, PLUID lpLuid);
+    BOOL  (*CryptAcquireContextA)(HCRYPTPROV* phProv, LPCSTR szContainer, LPCSTR szProvider, DWORD dwProvType, DWORD dwFlags);
+    BOOL  (*CryptAcquireContextW)(HCRYPTPROV* phProv, LPCWSTR szContainer, LPCWSTR szProvider, DWORD dwProvType, DWORD dwFlags);
+    BOOL  (*AddMandatoryAce)(PACL pAcl, DWORD dwAceRevision, DWORD AceFlags, DWORD MandatoryPolicy, PSID pLabelSid);
 } WinApiAdvApi32;
 
 // crypt32.dll
@@ -121,12 +165,15 @@ typedef struct _WinApiCrypt32 {
     BOOL (*CryptDecodeObjectEx)(DWORD dwCertEncodingType, LPCSTR lpszStructType, const BYTE* pbEncoded, DWORD cbEncoded, DWORD dwFlags, PCRYPT_DECODE_PARA pDecodePara, void* pvStructInfo, DWORD* pcbStructInfo);
     BOOL (*CryptImportPublicKeyInfo)(HCRYPTPROV hCryptProv, DWORD dwCertEncodingType, PCERT_PUBLIC_KEY_INFO pInfo, HCRYPTKEY* phKey);
     BOOL (*CertGetCertificateContextProperty)(PCCERT_CONTEXT pCertContext, DWORD dwPropId, void* pvData, DWORD* pcbData);
+    BOOL (*CryptBinaryToStringA)(const BYTE* pbBinary, DWORD cbBinary, DWORD dwFlags, LPSTR pszString, DWORD* pcchString);
+    BOOL (*CryptStringToBinaryA)(LPCSTR pszString, DWORD cchString, DWORD dwFlags, BYTE* pbBinary, DWORD* pcbBinary, DWORD* pdwSkip, DWORD* pdwFlags);
 } WinApiCrypt32;
 
 // user32.dll
 typedef struct _WinApiUser32 {
     BOOL  (*GetUserObjectInformationA)(HANDLE hObj, int nIndex, PVOID pvInfo, DWORD nLength, LPDWORD lpnLengthNeeded);
     HDESK (*GetThreadDesktop)(DWORD dwThreadId);
+    HWINSTA (*GetProcessWindowStation)(VOID);
 } WinApiUser32;
 
 // ws2_32.dll
@@ -138,6 +185,20 @@ typedef struct _WinApiWs2_32 {
     int    (*setsockopt)(SOCKET s, int level, int optname, const char* optval, int optlen);
     int    (*recv)(SOCKET s, char* buf, int len, int flags);
     int    (*WSADuplicateSocketA)(SOCKET s, DWORD dwProcessId, LPWSAPROTOCOL_INFOA lpProtocolInfo);
+    int    (*send)(SOCKET s, const char* buf, int len, int flags);
+    int    (*bind)(SOCKET s, const struct sockaddr* name, int namelen);
+    int    (*listen)(SOCKET s, int backlog);
+    int    (*closesocket)(SOCKET s);
+    int    (*select)(int nfds, fd_set* readfds, fd_set* writefds, fd_set* exceptfds, const struct timeval* timeout);
+    struct hostent* (*gethostbyname)(const char* name);
+    int    (*getaddrinfo)(PCSTR pNodeName, PCSTR pServiceName, const ADDRINFOA* pHints, PADDRINFOA* ppResult);
+    VOID   (*freeaddrinfo)(PADDRINFOA pAddrInfo);
+    u_short (*htons)(u_short hostshort);
+    u_long (*htonl)(u_long hostlong);
+    u_long (*ntohl)(u_long netlong);
+    unsigned long (*inet_addr)(const char* cp);
+    int    (*WSAGetLastError)(VOID);
+    char*  (*inet_ntoa)(struct in_addr in);
 } WinApiWs2_32;
 
 // wininet.dll
@@ -151,6 +212,7 @@ typedef struct _WinApiWinInet {
     BOOL      (*InternetReadFile)(HINTERNET hFile, LPVOID lpBuffer, DWORD dwNumberOfBytesToRead, LPDWORD lpdwNumberOfBytesRead);
     BOOL      (*InternetCloseHandle)(HINTERNET hInternet);
     BOOL      (*InternetCrackUrlW)(LPCWSTR lpszUrl, DWORD dwUrlLength, DWORD dwFlags, LPURL_COMPONENTSW lpUrlComponents);
+    BOOL      (*HttpQueryInfoA)(HINTERNET hRequest, DWORD dwInfoLevel, LPVOID lpBuffer, LPDWORD lpdwBufferLength, LPDWORD lpdwIndex);
 } WinApiWinInet;
 
 // rpcrt4.dll
@@ -172,6 +234,8 @@ typedef struct _WinApiWinHttp {
     BOOL      (*WinHttpReadData)(HINTERNET hRequest, LPVOID lpBuffer, DWORD dwNumberOfBytesToRead, LPDWORD lpdwNumberOfBytesRead);
     BOOL      (*WinHttpQueryOption)(HINTERNET hInternet, DWORD dwOption, LPVOID lpBuffer, LPDWORD lpdwBufferLength);
     BOOL      (*WinHttpCrackUrl)(LPCWSTR pwszUrl, DWORD dwUrlLength, DWORD dwFlags, LPURL_COMPONENTS lpUrlComponents);
+    BOOL      (*WinHttpCloseHandle)(HINTERNET hInternet);
+    BOOL      (*WinHttpWriteData)(HINTERNET hRequest, LPCVOID lpBuffer, DWORD dwNumberOfBytesToWrite, LPDWORD lpdwNumberOfBytesWritten);
 } WinApiWinHttp;
 
 // Top-level container for all dynamically resolved APIs.

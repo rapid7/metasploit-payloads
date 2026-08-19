@@ -164,9 +164,22 @@ MetApi api_instance = {
             winapi_ntdll_ZwProtectVirtualMemory,
             winapi_ntdll_ZwQueryVirtualMemory,
             winapi_ntdll_ZwFreeVirtualMemory,
-            winapi_ntdll_NtQueueApcThread,
-            winapi_ntdll_NtOpenThread,
-            winapi_ntdll_RtlGetVersion
+            winapi_ntdll_ZwQueueApcThread,
+            winapi_ntdll_ZwOpenThread,
+            winapi_ntdll_RtlGetVersion,
+            winapi_ntdll_ZwQueryInformationProcess,
+            winapi_ntdll_ZwQueryObject,
+            winapi_ntdll_ZwQueryInformationWorkerFactory,
+            winapi_ntdll_ZwSetInformationWorkerFactory,
+            winapi_ntdll_ZwSetIoCompletion,
+            winapi_ntdll_RtlCreateUserThread,
+            winapi_ntdll_ZwMapViewOfSection,
+            winapi_ntdll_ZwCreateSection,
+            winapi_ntdll_ZwOpenSection,
+            winapi_ntdll_ZwOpenFile,
+            winapi_ntdll_ZwQueryAttributesFile,
+            winapi_ntdll_ZwClose,
+            winapi_ntdll_ZwLockVirtualMemory
         },
         // kernel32
         {
@@ -205,7 +218,34 @@ MetApi api_instance = {
             winapi_kernel32_ReadFile,
             winapi_kernel32_CreateThread,
             winapi_kernel32_ResetEvent,
-            winapi_kernel32_SetThreadErrorMode
+            winapi_kernel32_SetThreadErrorMode,
+            winapi_kernel32_GetModuleHandleA,
+            winapi_kernel32_CreateFileW,
+            winapi_kernel32_CreateNamedPipeW,
+            winapi_kernel32_CreateEventA,
+            winapi_kernel32_CreateEventW,
+            winapi_kernel32_SetEvent,
+            winapi_kernel32_WaitForSingleObject,
+            winapi_kernel32_Sleep,
+            winapi_kernel32_GetProcessHeap,
+            winapi_kernel32_HeapAlloc,
+            winapi_kernel32_HeapFree,
+            winapi_kernel32_IsWow64Process,
+            winapi_kernel32_ProcessIdToSessionId,
+            winapi_kernel32_GetCurrentThreadId,
+            winapi_kernel32_HeapReAlloc,
+            winapi_kernel32_LocalAlloc,
+            winapi_kernel32_GetSystemTime,
+            winapi_kernel32_SystemTimeToFileTime,
+            winapi_kernel32_MultiByteToWideChar,
+            winapi_kernel32_WideCharToMultiByte,
+            winapi_kernel32_PeekNamedPipe,
+            winapi_kernel32_SetNamedPipeHandleState,
+            winapi_kernel32_ReleaseMutex,
+            winapi_kernel32_CreateMutexA,
+            winapi_kernel32_CreateMutexW,
+            winapi_kernel32_TerminateThread,
+            winapi_kernel32_lstrcmpW
         },
         // advapi32
         {
@@ -227,18 +267,24 @@ MetApi api_instance = {
             winapi_advapi32_InitializeSecurityDescriptor,
             winapi_advapi32_SetSecurityDescriptorDacl,
             winapi_advapi32_SetSecurityDescriptorSacl,
-            winapi_advapi32_LookupPrivilegeValueW
+            winapi_advapi32_LookupPrivilegeValueW,
+            winapi_advapi32_CryptAcquireContextA,
+            winapi_advapi32_CryptAcquireContextW,
+            winapi_advapi32_AddMandatoryAce
         },
         // crypt32
         {
             winapi_crypt32_CryptDecodeObjectEx,
             winapi_crypt32_CryptImportPublicKeyInfo,
-            winapi_crypt32_CertGetCertificateContextProperty
+            winapi_crypt32_CertGetCertificateContextProperty,
+            winapi_crypt32_CryptBinaryToStringA,
+            winapi_crypt32_CryptStringToBinaryA
         },
         // user32
         {
             winapi_user32_GetUserObjectInformationA,
-            winapi_user32_GetThreadDesktop
+            winapi_user32_GetThreadDesktop,
+            winapi_user32_GetProcessWindowStation
         },
         // ws2_32
         {
@@ -248,7 +294,21 @@ MetApi api_instance = {
             winapi_ws2_32_accept,
             winapi_ws2_32_setsockopt,
             winapi_ws2_32_recv,
-            winapi_ws2_32_WSADuplicateSocketA
+            winapi_ws2_32_WSADuplicateSocketA,
+            winapi_ws2_32_send,
+            winapi_ws2_32_bind,
+            winapi_ws2_32_listen,
+            winapi_ws2_32_closesocket,
+            winapi_ws2_32_select,
+            winapi_ws2_32_gethostbyname,
+            winapi_ws2_32_getaddrinfo,
+            winapi_ws2_32_freeaddrinfo,
+            winapi_ws2_32_htons,
+            winapi_ws2_32_htonl,
+            winapi_ws2_32_ntohl,
+            winapi_ws2_32_inet_addr,
+            winapi_ws2_32_WSAGetLastError,
+            winapi_ws2_32_inet_ntoa
         },
         // wininet
         {
@@ -260,7 +320,8 @@ MetApi api_instance = {
             winapi_wininet_HttpQueryInfoW,
             winapi_wininet_InternetReadFile,
             winapi_wininet_InternetCloseHandle,
-            winapi_wininet_InternetCrackUrlW
+            winapi_wininet_InternetCrackUrlW,
+            winapi_wininet_HttpQueryInfoA
         },
         // rpcrt4
         {
@@ -279,7 +340,9 @@ MetApi api_instance = {
             winapi_winhttp_WinHttpQueryHeaders,
             winapi_winhttp_WinHttpReadData,
             winapi_winhttp_WinHttpQueryOption,
-            winapi_winhttp_WinHttpCrackUrl
+            winapi_winhttp_WinHttpCrackUrl,
+            winapi_winhttp_WinHttpCloseHandle,
+            winapi_winhttp_WinHttpWriteData
         }
     },
 #ifdef DEBUGTRACE

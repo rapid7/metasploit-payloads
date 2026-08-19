@@ -99,12 +99,12 @@ BOOL decode_encoded_packet(HttpTransportContext* ctx, LPBYTE encodedData, DWORD 
 			decodeInput = convertedBuf;
 		}
 
-		if (CryptStringToBinaryA(decodeInput, decodeInputLen, CRYPT_STRING_BASE64, NULL, dataLen, NULL, NULL))
+		if (met_api->win_api.crypt32.CryptStringToBinaryA(decodeInput, decodeInputLen, CRYPT_STRING_BASE64, NULL, dataLen, NULL, NULL))
 		{
 			LPBYTE decoded = (LPBYTE)calloc(sizeof(BYTE), *dataLen + 1);
 			if (decoded != NULL)
 			{
-				if (CryptStringToBinaryA(decodeInput, decodeInputLen, CRYPT_STRING_BASE64, decoded, dataLen, NULL, NULL))
+				if (met_api->win_api.crypt32.CryptStringToBinaryA(decodeInput, decodeInputLen, CRYPT_STRING_BASE64, decoded, dataLen, NULL, NULL))
 				{
 					result = TRUE;
 					*data = decoded;
@@ -167,7 +167,7 @@ static LPBYTE c2_encode_buf(LPBYTE data, DWORD dataLen, UINT enc, LPDWORD outLen
 	}
 
 	DWORD flags = CRYPT_STRING_BASE64 | CRYPT_STRING_NOCRLF;
-	if (!CryptBinaryToStringA(data, dataLen, flags, NULL, outLen))
+	if (!met_api->win_api.crypt32.CryptBinaryToStringA(data, dataLen, flags, NULL, outLen))
 	{
 		return NULL;
 	}
@@ -178,7 +178,7 @@ static LPBYTE c2_encode_buf(LPBYTE data, DWORD dataLen, UINT enc, LPDWORD outLen
 		return NULL;
 	}
 
-	if (!CryptBinaryToStringA(data, dataLen, flags, encoded, outLen))
+	if (!met_api->win_api.crypt32.CryptBinaryToStringA(data, dataLen, flags, encoded, outLen))
 	{
 		free(encoded);
 		return NULL;

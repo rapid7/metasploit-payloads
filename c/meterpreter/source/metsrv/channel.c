@@ -274,7 +274,7 @@ DWORD channel_write_to_remote(Remote *remote, Channel *channel, PUCHAR chunk,
 			break;
 		}
 
-		idNbo = htonl(channel_get_id(channel));
+		idNbo = met_api->win_api.ws2_32.htonl(channel_get_id(channel));
 
 		entries[0].header.type   = TLV_TYPE_CHANNEL_ID;
 		entries[0].header.length = sizeof(DWORD);
@@ -436,7 +436,7 @@ DWORD _channel_packet_completion_routine(Remote *remote, Packet *packet,
 		// Get the number of bytes written to the channel
 		if ((packet_get_tlv(packet, TLV_TYPE_LENGTH, &lengthTlv) == ERROR_SUCCESS) && (lengthTlv.header.length >= sizeof(DWORD)))
 		{
-			length = ntohl(*(LPDWORD)lengthTlv.buffer);
+			length = met_api->win_api.ws2_32.ntohl(*(LPDWORD)lengthTlv.buffer);
 		}
 
 		res = comp->routine.write(remote, channel, comp->context, result, length);

