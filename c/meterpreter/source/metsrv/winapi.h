@@ -2,6 +2,7 @@
 #define _METERPRETER_WINAPI_H
 
 #ifndef _METERPRETER_COMMON_WINAPI_H
+#include <stdarg.h>
 #include <winsock2.h> // For SOCKET, WSADATA, sockaddr, WSAPROTOCOL_INFOA
 #include <ws2tcpip.h> // For ADDRINFOA / PADDRINFOA
 #include <windows.h>
@@ -16,6 +17,15 @@
 #include <wincrypt.h> // For HCRYPTPROV, HCRYPTKEY, PTOKEN_PRIVILEGES, etc.
 #include <rpcdce.h>   // For UUID generation.
 #include <accctrl.h>
+#include <iphlpapi.h>
+#include <netioapi.h>
+#include <lm.h>
+#include <mmsystem.h>
+#include <objbase.h>
+#include <oleauto.h>
+#include <psapi.h>
+#include <shlwapi.h>
+#include <winnetwk.h>
 typedef enum _MEMORY_INFORMATION_CLASS {
     MemoryBasicInformation
 } MEMORY_INFORMATION_CLASS;
@@ -45,6 +55,22 @@ typedef VOID WINHTTP_PROXY_INFO;
 // the winapi_* wrappers and any call site that needs a raw function pointer
 // without adding a static string to the binary (e.g. libloader splice-hooks).
 FARPROC WINAPI GetProcAddressH(HANDLE hModule, DWORD dwFunctionHash);
+
+// A zero-initialized cache for one export from a system DLL. The first lookup
+// pins the module and any forwarded-export modules, then publishes success or
+// failure permanently; contending callers resolve without waiting.
+// GetFunctionHCached preserves the calling thread's last-error value. Optional
+// system exports are supported because their availability cannot change while
+// the retained module is loaded. Do not reuse one cache for more than one
+// module/hash pair or for a module that is expected to appear later at runtime.
+typedef struct _WinApiFunctionCache {
+    volatile LONG state;
+    FARPROC volatile function;
+} WinApiFunctionCache;
+
+#define WINAPI_FUNCTION_CACHE_INIT { 0, NULL }
+
+FARPROC GetFunctionHCached(WinApiFunctionCache* cache, LPCSTR moduleName, DWORD functionHash);
 
 // Compile-time hashes of the exports the wrappers below resolve. Exposed
 // here so other TUs can pass them to GetProcAddressH without repeating the
@@ -212,6 +238,166 @@ enum HashedFunctions {
     H_HttpQueryInfoA = 0xFB2F45FA,
     H_CryptBinaryToStringA = 0x7CC2AAAF,
     H_CryptStringToBinaryA = 0xF29E1FE8,
+    H_GetLastError = 0x75DA1966,
+    H_CryptCreateHash = 0x4105A130,
+    H_CryptDestroyHash = 0x25D4AE7A,
+    H_CryptGetHashParam = 0xC7AFB4A9,
+    H_CryptHashData = 0xC2122629,
+    H_CopyFileW = 0x99EC8974,
+    H_CreateDirectoryW = 0x9FCF597B,
+    H_DeleteFileA = 0xC2FFB025,
+    H_DeleteFileW = 0xC2FFB03B,
+    H_DisconnectNamedPipe = 0xDC7CCD45,
+    H_ExpandEnvironmentStringsA = 0xEEB585D8,
+    H_ExpandEnvironmentStringsW = 0xEEB585EE,
+    H_FileTimeToSystemTime = 0x3810CB0F,
+    H_FindClose = 0x23545978,
+    H_FindFirstFileW = 0x63D6C07B,
+    H_FindNextFileW = 0xA5E1ACAD,
+    H_FindResourceA = 0x3BD09A55,
+    H_GetCurrentDirectoryW = 0xBFC6EB65,
+    H_GetCurrentProcessId = 0xE60DFA02,
+    H_GetDateFormatW = 0xF72A53D0,
+    H_GetDiskFreeSpaceExA = 0xCB2210,
+    H_GetDriveTypeA = 0xE9D18E21,
+    H_GetDriveTypeW = 0xE9D18E37,
+    H_GetExitCodeThread = 0x1B3F95F9,
+    H_GetFileAttributesA = 0x56F7390A,
+    H_GetFileAttributesExW = 0xC18E43EC,
+    H_GetFileAttributesW = 0x56F73920,
+    H_GetHandleInformation = 0x7F9DF944,
+    H_GetLogicalDriveStringsA = 0x79B4095D,
+    H_GetLogicalDrives = 0x14C22B19,
+    H_GetProcAddress = 0x7C0DFCAA,
+    H_GetSystemDefaultLCID = 0x7695E96B,
+    H_GetTickCount = 0xF791FB23,
+    H_GetTimeFormatW = 0xF02A93D4,
+    H_GetVersionExA = 0xC75FC483,
+    H_LoadResource = 0x934E1F7B,
+    H_LockResource = 0x9A4E2F7B,
+    H_OutputDebugStringW = 0x470D22D2,
+    H_MoveFileW = 0xA404896A,
+    H_RemoveDirectoryW = 0x83D3265D,
+    H_SetCurrentDirectoryW = 0xBFC70365,
+    H_SetFileAttributesW = 0x56F73980,
+    H_SetLastError = 0x75F21966,
+    H_SizeofResource = 0x3F2A9609,
+    H_lstrcmpiW = 0x4B1E5AF1,
+    H_lstrcpyW = 0xCB9B4A11,
+    H_lstrlenA = 0xDD43473B,
+    H_lstrlenW = 0xDD434751,
+    H_RevertToSelf = 0x50DEC82A,
+    H_CloseDesktop = 0xCE18D25E,
+    H_CloseWindowStation = 0xEF8D2D7A,
+    H_CreateWindowExA = 0x84454941,
+    H_DefWindowProcA = 0xB9A87723,
+    H_DestroyWindow = 0x94305BE0,
+    H_DispatchMessageA = 0x690A1701,
+    H_EnumChildWindows = 0x94260FDB,
+    H_EnumDesktopsA = 0xE84AD584,
+    H_EnumWindowStationsA = 0xDD24D8F5,
+    H_ExitWindowsEx = 0x89DABEF5,
+    H_GetAsyncKeyState = 0x2B245A7A,
+    H_GetForegroundWindow = 0x6215F501,
+    H_GetKeyboardState = 0xB73BFDCF,
+    H_GetKeyNameTextW = 0x10745604,
+    H_GetKeyState = 0xA13C7A54,
+    H_GetMessageA = 0x7AC67BED,
+    H_GetSystemMetrics = 0xA84AA1DC,
+    H_GetWindowThreadProcessId = 0xA3E2C997,
+    H_MapVirtualKeyA = 0x35063658,
+    H_OpenDesktopA = 0xDBBBFCD7,
+    H_OpenWindowStationA = 0x9B189FC0,
+    H_RegisterClassExA = 0x51E20CCA,
+    H_SendInput = 0x3464B947,
+    H_SendMessageA = 0xEB6CC3F4,
+    H_SetProcessWindowStation = 0x1337502D,
+    H_SetThreadDesktop = 0xD6641B8A,
+    H_SwitchDesktop = 0xFE80FFED,
+    H_ToUnicodeEx = 0xA0D68FBF,
+    H_TranslateMessage = 0x8FDE2C7E,
+    H_UnregisterClassA = 0xD53A4038,
+    H_wvsprintfW = 0x56FA73F1,
+    H_getsockname = 0x952DFF51,
+    H_ntohs = 0xEB46FC33,
+    H_recvfrom = 0x51138B5F,
+    H_sendto = 0x5FA669A9,
+    H_shutdown = 0x4D5F6AC9,
+    H_WSAAddressToStringA = 0x535B7BB9,
+    H_WSACleanup = 0x19BD2C47,
+    H_WSACreateEvent = 0xC24A0B48,
+    H_WSAEventSelect = 0x2DF42CE0,
+    H_WSASetLastError = 0x9F737976,
+    H_WSASocketA = 0xADF509D9,
+    H_CreateIpForwardEntry = 0xDA4F2E1E,
+    H_DeleteIpForwardEntry = 0xD7133056,
+    H_GetIfEntry = 0x45BAB42D,
+    H_GetIpAddrTable = 0x6C60EC01,
+    H_GetIpForwardTable = 0xC385CC60,
+    H_GetIpInterfaceEntry = 0x5EC1D3F7,
+    H_GetIpNetTable = 0x37C5AF6D,
+    H_GetTcpTable = 0xFAF48BAF,
+    H_GetUdpTable = 0xFAF88BCF,
+    H_WNetGetUniversalNameA = 0xD8FA8C8,
+    H_CoCreateInstance = 0x6E26C880,
+    H_CoInitialize = 0x8C2E8016,
+    H_CoUninitialize = 0x6DD38706,
+    H_VariantClear = 0x8673E625,
+    H_VariantInit = 0x88D67161,
+    H_sndPlaySoundA = 0xDBE99F54,
+    H_waveInAddBuffer = 0x830ECA06,
+    H_waveInOpen = 0x83C6C353,
+    H_waveInPrepareHeader = 0x5DE12405,
+    H_waveInStart = 0x22BC5DAA,
+    H_waveInStop = 0x8C16C455,
+    H_FormatMessageA = 0x1EAA62E7,
+    H_CreatePipe = 0x170C8F80,
+    H_CreateProcessW = 0x16B3FE88,
+    H_GetComputerNameA = 0x96A4228F,
+    H_GetCurrentProcess = 0x7B8F17E6,
+    H_GetCurrentThread = 0xE8CDCFE4,
+    H_GetEnvironmentVariableW = 0xF2E1A979,
+    H_GetLocalTime = 0xB98C88CF,
+    H_GetLocaleInfoA = 0xE8983477,
+    H_GetThreadContext = 0x68A7C7D2,
+    H_GetTimeZoneInformation = 0x51268313,
+    H_SetThreadContext = 0xE8A7C7D3,
+    H_TerminateProcess = 0x78B5B983,
+    H_VirtualLock = 0xEF632F2,
+    H_VirtualUnlock = 0x52A4ADF3,
+    H_WaitForSingleObjectEx = 0x839E6BEB,
+    H_ClearEventLogA = 0x442101D1,
+    H_CloseEventLog = 0x93329886,
+    H_ConvertSidToStringSidA = 0xA20AE292,
+    H_CreateProcessAsUserW = 0x635DC4A1,
+    H_DuplicateTokenEx = 0x3A55BBB2,
+    H_GetNumberOfEventLogRecords = 0xFD988251,
+    H_GetOldestEventLogRecord = 0x761A13FB,
+    H_GetTokenInformation = 0xDBDB6E5A,
+    H_LookupAccountSidW = 0x64AC441D,
+    H_LookupPrivilegeValueA = 0x97E8C2A2,
+    H_OpenEventLogA = 0x22B6E002,
+    H_ReadEventLogA = 0x22A09031,
+    H_RegCloseKey = 0x35E273E6,
+    H_RegConnectRegistryW = 0x2C21BFD6,
+    H_RegCreateKeyExW = 0x8B64E6CA,
+    H_RegDeleteKeyW = 0xC12E9C8B,
+    H_RegDeleteValueW = 0xB4CEEACC,
+    H_RegEnumKeyW = 0x28A1A87,
+    H_RegEnumValueW = 0xBAE699D,
+    H_RegLoadKeyW = 0x28D8B5D,
+    H_RegOpenKeyExW = 0xA84AEB97,
+    H_RegQueryInfoKeyA = 0xC8F63C08,
+    H_RegQueryInfoKeyW = 0xC8F63C1E,
+    H_RegQueryValueExW = 0xFCBA95C1,
+    H_RegSetValueExW = 0x2D1C9AF3,
+    H_RegUnLoadKeyW = 0x4A571082,
+    H_NetApiBufferFree = 0xC0AAF20C,
+    H_NetWkstaGetInfo = 0x7D863F9D,
+    H_EnumDeviceDrivers = 0xCB3AD6F8,
+    H_GetDeviceDriverBaseNameW = 0x9E77D81,
+    H_GetDeviceDriverFileNameW = 0xDCB7E81,
+    H_SHDeleteKeyW = 0x10A9764,
 };
 
 NTSTATUS winapi_ntdll_ZwAllocateVirtualMemory(HANDLE hProcess, PVOID* pBaseAddress, ULONG_PTR pZeroBits, PSIZE_T pRegionSize, ULONG ulAllocationType, ULONG ulProtect);
@@ -309,6 +495,10 @@ BOOL winapi_advapi32_LookupPrivilegeValueW(LPCWSTR lpSystemName, LPCWSTR lpName,
 BOOL winapi_advapi32_CryptAcquireContextA(HCRYPTPROV* phProv, LPCSTR szContainer, LPCSTR szProvider, DWORD dwProvType, DWORD dwFlags);
 BOOL winapi_advapi32_CryptAcquireContextW(HCRYPTPROV* phProv, LPCWSTR szContainer, LPCWSTR szProvider, DWORD dwProvType, DWORD dwFlags);
 BOOL winapi_advapi32_AddMandatoryAce(PACL pAcl, DWORD dwAceRevision, DWORD AceFlags, DWORD MandatoryPolicy, PSID pLabelSid);
+BOOL winapi_advapi32_CryptCreateHash(HCRYPTPROV hProv, ALG_ID Algid, HCRYPTKEY hKey, DWORD dwFlags, HCRYPTHASH* phHash);
+BOOL winapi_advapi32_CryptDestroyHash(HCRYPTHASH hHash);
+BOOL winapi_advapi32_CryptGetHashParam(HCRYPTHASH hHash, DWORD dwParam, BYTE* pbData, DWORD* pdwDataLen, DWORD dwFlags);
+BOOL winapi_advapi32_CryptHashData(HCRYPTHASH hHash, const BYTE* pbData, DWORD dwDataLen, DWORD dwFlags);
 BOOL winapi_crypt32_CryptDecodeObjectEx(DWORD dwCertEncodingType, LPCSTR lpszStructType, const BYTE* pbEncoded, DWORD cbEncoded, DWORD dwFlags, PCRYPT_DECODE_PARA pDecodePara, void* pvStructInfo, DWORD* pcbStructInfo);
 BOOL winapi_crypt32_CryptImportPublicKeyInfo(HCRYPTPROV hCryptProv, DWORD dwCertEncodingType, PCERT_PUBLIC_KEY_INFO pInfo, HCRYPTKEY* phKey);
 BOOL winapi_crypt32_CertGetCertificateContextProperty(PCCERT_CONTEXT pCertContext, DWORD dwPropId, void* pvData, DWORD* pcbData);
@@ -370,12 +560,189 @@ HANDLE winapi_kernel32_CreateMutexA(LPSECURITY_ATTRIBUTES lpMutexAttributes, BOO
 HANDLE winapi_kernel32_CreateMutexW(LPSECURITY_ATTRIBUTES lpMutexAttributes, BOOL bInitialOwner, LPCWSTR lpName);
 BOOL winapi_kernel32_TerminateThread(HANDLE hThread, DWORD dwExitCode);
 int winapi_kernel32_lstrcmpW(LPCWSTR lpString1, LPCWSTR lpString2);
+DWORD winapi_kernel32_GetLastError(VOID);
 HWINSTA winapi_user32_GetProcessWindowStation(VOID);
 int winapi_ws2_32_WSAGetLastError(VOID);
 char* winapi_ws2_32_inet_ntoa(struct in_addr in);
 BOOL winapi_wininet_HttpQueryInfoA(HINTERNET hRequest, DWORD dwInfoLevel, LPVOID lpBuffer, LPDWORD lpdwBufferLength, LPDWORD lpdwIndex);
 BOOL winapi_crypt32_CryptBinaryToStringA(const BYTE* pbBinary, DWORD cbBinary, DWORD dwFlags, LPSTR pszString, DWORD* pcchString);
 BOOL winapi_crypt32_CryptStringToBinaryA(LPCSTR pszString, DWORD cchString, DWORD dwFlags, BYTE* pbBinary, DWORD* pcbBinary, DWORD* pdwSkip, DWORD* pdwFlags);
+
+BOOL winapi_kernel32_CopyFileW(LPCWSTR lpExistingFileName, LPCWSTR lpNewFileName, BOOL bFailIfExists);
+BOOL winapi_kernel32_CreateDirectoryW(LPCWSTR lpPathName, LPSECURITY_ATTRIBUTES lpSecurityAttributes);
+BOOL winapi_kernel32_DeleteFileA(LPCSTR lpFileName);
+BOOL winapi_kernel32_DeleteFileW(LPCWSTR lpFileName);
+BOOL winapi_kernel32_DisconnectNamedPipe(HANDLE hNamedPipe);
+DWORD winapi_kernel32_ExpandEnvironmentStringsA(LPCSTR lpSrc, LPSTR lpDst, DWORD nSize);
+DWORD winapi_kernel32_ExpandEnvironmentStringsW(LPCWSTR lpSrc, LPWSTR lpDst, DWORD nSize);
+BOOL winapi_kernel32_FileTimeToSystemTime(const FILETIME* lpFileTime, LPSYSTEMTIME lpSystemTime);
+BOOL winapi_kernel32_FindClose(HANDLE hFindFile);
+HANDLE winapi_kernel32_FindFirstFileW(LPCWSTR lpFileName, LPWIN32_FIND_DATAW lpFindFileData);
+BOOL winapi_kernel32_FindNextFileW(HANDLE hFindFile, LPWIN32_FIND_DATAW lpFindFileData);
+HRSRC winapi_kernel32_FindResourceA(HMODULE hModule, LPCSTR lpName, LPCSTR lpType);
+DWORD winapi_kernel32_GetCurrentDirectoryW(DWORD nBufferLength, LPWSTR lpBuffer);
+DWORD winapi_kernel32_GetCurrentProcessId(VOID);
+int winapi_kernel32_GetDateFormatW(LCID Locale, DWORD dwFlags, const SYSTEMTIME* lpDate, LPCWSTR lpFormat, LPWSTR lpDateStr, int cchDate);
+BOOL winapi_kernel32_GetDiskFreeSpaceExA(LPCSTR lpDirectoryName, PULARGE_INTEGER lpFreeBytesAvailableToCaller, PULARGE_INTEGER lpTotalNumberOfBytes, PULARGE_INTEGER lpTotalNumberOfFreeBytes);
+UINT winapi_kernel32_GetDriveTypeA(LPCSTR lpRootPathName);
+UINT winapi_kernel32_GetDriveTypeW(LPCWSTR lpRootPathName);
+BOOL winapi_kernel32_GetExitCodeThread(HANDLE hThread, LPDWORD lpExitCode);
+DWORD winapi_kernel32_GetFileAttributesA(LPCSTR lpFileName);
+BOOL winapi_kernel32_GetFileAttributesExW(LPCWSTR lpFileName, GET_FILEEX_INFO_LEVELS fInfoLevelId, LPVOID lpFileInformation);
+DWORD winapi_kernel32_GetFileAttributesW(LPCWSTR lpFileName);
+BOOL winapi_kernel32_GetHandleInformation(HANDLE hObject, LPDWORD lpdwFlags);
+DWORD winapi_kernel32_GetLogicalDriveStringsA(DWORD nBufferLength, LPSTR lpBuffer);
+DWORD winapi_kernel32_GetLogicalDrives(VOID);
+FARPROC winapi_kernel32_GetProcAddress(HMODULE hModule, LPCSTR lpProcName);
+LCID winapi_kernel32_GetSystemDefaultLCID(VOID);
+DWORD winapi_kernel32_GetTickCount(VOID);
+int winapi_kernel32_GetTimeFormatW(LCID Locale, DWORD dwFlags, const SYSTEMTIME* lpTime, LPCWSTR lpFormat, LPWSTR lpTimeStr, int cchTime);
+BOOL winapi_kernel32_GetVersionExA(LPOSVERSIONINFOA lpVersionInformation);
+HGLOBAL winapi_kernel32_LoadResource(HMODULE hModule, HRSRC hResInfo);
+LPVOID winapi_kernel32_LockResource(HGLOBAL hResData);
+VOID winapi_kernel32_OutputDebugStringW(LPCWSTR lpOutputString);
+BOOL winapi_kernel32_MoveFileW(LPCWSTR lpExistingFileName, LPCWSTR lpNewFileName);
+BOOL winapi_kernel32_RemoveDirectoryW(LPCWSTR lpPathName);
+BOOL winapi_kernel32_SetCurrentDirectoryW(LPCWSTR lpPathName);
+BOOL winapi_kernel32_SetFileAttributesW(LPCWSTR lpFileName, DWORD dwFileAttributes);
+VOID winapi_kernel32_SetLastError(DWORD dwErrCode);
+DWORD winapi_kernel32_SizeofResource(HMODULE hModule, HRSRC hResInfo);
+int winapi_kernel32_lstrcmpiW(LPCWSTR lpString1, LPCWSTR lpString2);
+LPWSTR winapi_kernel32_lstrcpyW(LPWSTR lpString1, LPCWSTR lpString2);
+int winapi_kernel32_lstrlenA(LPCSTR lpString);
+int winapi_kernel32_lstrlenW(LPCWSTR lpString);
+PVOID winapi_kernel32_InterlockedExchangePointer(PVOID volatile* Target, PVOID Value);
+DWORD winapi_kernel32_FormatMessageA(DWORD dwFlags, LPCVOID lpSource, DWORD dwMessageId, DWORD dwLanguageId, LPSTR lpBuffer, DWORD nSize, va_list* Arguments);
+BOOL winapi_kernel32_CreatePipe(PHANDLE hReadPipe, PHANDLE hWritePipe, LPSECURITY_ATTRIBUTES lpPipeAttributes, DWORD nSize);
+BOOL winapi_kernel32_CreateProcessW(LPCWSTR lpApplicationName, LPWSTR lpCommandLine, LPSECURITY_ATTRIBUTES lpProcessAttributes, LPSECURITY_ATTRIBUTES lpThreadAttributes, BOOL bInheritHandles, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCWSTR lpCurrentDirectory, LPSTARTUPINFOW lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation);
+BOOL winapi_kernel32_GetComputerNameA(LPSTR lpBuffer, LPDWORD nSize);
+HANDLE winapi_kernel32_GetCurrentProcess(VOID);
+HANDLE winapi_kernel32_GetCurrentThread(VOID);
+DWORD winapi_kernel32_GetEnvironmentVariableW(LPCWSTR lpName, LPWSTR lpBuffer, DWORD nSize);
+VOID winapi_kernel32_GetLocalTime(LPSYSTEMTIME lpSystemTime);
+int winapi_kernel32_GetLocaleInfoA(LCID Locale, LCTYPE LCType, LPSTR lpLCData, int cchData);
+BOOL winapi_kernel32_GetThreadContext(HANDLE hThread, LPCONTEXT lpContext);
+DWORD winapi_kernel32_GetTimeZoneInformation(LPTIME_ZONE_INFORMATION lpTimeZoneInformation);
+BOOL winapi_kernel32_SetThreadContext(HANDLE hThread, const CONTEXT* lpContext);
+BOOL winapi_kernel32_TerminateProcess(HANDLE hProcess, UINT uExitCode);
+BOOL winapi_kernel32_VirtualLock(LPVOID lpAddress, SIZE_T dwSize);
+BOOL winapi_kernel32_VirtualUnlock(LPVOID lpAddress, SIZE_T dwSize);
+DWORD winapi_kernel32_WaitForSingleObjectEx(HANDLE hHandle, DWORD dwMilliseconds, BOOL bAlertable);
+HANDLE winapi_kernel32_OpenProcessNative(DWORD dwDesiredAccess, BOOL bInheritHandle, DWORD dwProcessId);
+BOOL winapi_kernel32_ReadProcessMemoryNative(HANDLE hProcess, LPCVOID lpBaseAddress, LPVOID lpBuffer, SIZE_T nSize, SIZE_T* lpNumberOfBytesRead);
+BOOL winapi_kernel32_WriteProcessMemoryNative(HANDLE hProcess, LPVOID lpBaseAddress, LPCVOID lpBuffer, SIZE_T nSize, SIZE_T* lpNumberOfBytesWritten);
+LPVOID winapi_kernel32_VirtualAllocNative(LPVOID lpAddress, SIZE_T dwSize, DWORD flAllocationType, DWORD flProtect);
+LPVOID winapi_kernel32_VirtualAllocExNative(HANDLE hProcess, LPVOID lpAddress, SIZE_T dwSize, DWORD flAllocationType, DWORD flProtect);
+BOOL winapi_kernel32_VirtualFreeExNative(HANDLE hProcess, LPVOID lpAddress, SIZE_T dwSize, DWORD dwFreeType);
+BOOL winapi_kernel32_VirtualProtectExNative(HANDLE hProcess, LPVOID lpAddress, SIZE_T dwSize, DWORD flNewProtect, PDWORD lpflOldProtect);
+SIZE_T winapi_kernel32_VirtualQueryExNative(HANDLE hProcess, LPCVOID lpAddress, PMEMORY_BASIC_INFORMATION lpBuffer, SIZE_T dwLength);
+
+BOOL winapi_advapi32_RevertToSelf(VOID);
+BOOL winapi_advapi32_ClearEventLogA(HANDLE hEventLog, LPCSTR lpBackupFileName);
+BOOL winapi_advapi32_CloseEventLog(HANDLE hEventLog);
+BOOL winapi_advapi32_ConvertSidToStringSidA(PSID Sid, LPSTR* StringSid);
+BOOL winapi_advapi32_CreateProcessAsUserW(HANDLE hToken, LPCWSTR lpApplicationName, LPWSTR lpCommandLine, LPSECURITY_ATTRIBUTES lpProcessAttributes, LPSECURITY_ATTRIBUTES lpThreadAttributes, BOOL bInheritHandles, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCWSTR lpCurrentDirectory, LPSTARTUPINFOW lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation);
+BOOL winapi_advapi32_DuplicateTokenEx(HANDLE hExistingToken, DWORD dwDesiredAccess, LPSECURITY_ATTRIBUTES lpTokenAttributes, SECURITY_IMPERSONATION_LEVEL ImpersonationLevel, TOKEN_TYPE TokenType, PHANDLE phNewToken);
+BOOL winapi_advapi32_GetNumberOfEventLogRecords(HANDLE hEventLog, PDWORD NumberOfRecords);
+BOOL winapi_advapi32_GetOldestEventLogRecord(HANDLE hEventLog, PDWORD OldestRecord);
+BOOL winapi_advapi32_GetTokenInformation(HANDLE TokenHandle, TOKEN_INFORMATION_CLASS TokenInformationClass, LPVOID TokenInformation, DWORD TokenInformationLength, PDWORD ReturnLength);
+BOOL winapi_advapi32_LookupAccountSidW(LPCWSTR lpSystemName, PSID Sid, LPWSTR Name, LPDWORD cchName, LPWSTR ReferencedDomainName, LPDWORD cchReferencedDomainName, PSID_NAME_USE peUse);
+BOOL winapi_advapi32_LookupPrivilegeValueA(LPCSTR lpSystemName, LPCSTR lpName, PLUID lpLuid);
+HANDLE winapi_advapi32_OpenEventLogA(LPCSTR lpUNCServerName, LPCSTR lpSourceName);
+BOOL winapi_advapi32_ReadEventLogA(HANDLE hEventLog, DWORD dwReadFlags, DWORD dwRecordOffset, LPVOID lpBuffer, DWORD nNumberOfBytesToRead, DWORD* pnBytesRead, DWORD* pnMinNumberOfBytesNeeded);
+LSTATUS winapi_advapi32_RegCloseKey(HKEY hKey);
+LSTATUS winapi_advapi32_RegConnectRegistryW(LPCWSTR lpMachineName, HKEY hKey, PHKEY phkResult);
+LSTATUS winapi_advapi32_RegCreateKeyExW(HKEY hKey, LPCWSTR lpSubKey, DWORD Reserved, LPWSTR lpClass, DWORD dwOptions, REGSAM samDesired, const LPSECURITY_ATTRIBUTES lpSecurityAttributes, PHKEY phkResult, LPDWORD lpdwDisposition);
+LSTATUS winapi_advapi32_RegDeleteKeyW(HKEY hKey, LPCWSTR lpSubKey);
+LSTATUS winapi_advapi32_RegDeleteValueW(HKEY hKey, LPCWSTR lpValueName);
+LSTATUS winapi_advapi32_RegEnumKeyW(HKEY hKey, DWORD dwIndex, LPWSTR lpName, DWORD cchName);
+LSTATUS winapi_advapi32_RegEnumValueW(HKEY hKey, DWORD dwIndex, LPWSTR lpValueName, LPDWORD lpcchValueName, LPDWORD lpReserved, LPDWORD lpType, LPBYTE lpData, LPDWORD lpcbData);
+LSTATUS winapi_advapi32_RegLoadKeyW(HKEY hKey, LPCWSTR lpSubKey, LPCWSTR lpFile);
+LSTATUS winapi_advapi32_RegOpenKeyExW(HKEY hKey, LPCWSTR lpSubKey, DWORD ulOptions, REGSAM samDesired, PHKEY phkResult);
+LSTATUS winapi_advapi32_RegQueryInfoKeyA(HKEY hKey, LPSTR lpClass, LPDWORD lpcchClass, LPDWORD lpReserved, LPDWORD lpcSubKeys, LPDWORD lpcbMaxSubKeyLen, LPDWORD lpcbMaxClassLen, LPDWORD lpcValues, LPDWORD lpcbMaxValueNameLen, LPDWORD lpcbMaxValueLen, LPDWORD lpcbSecurityDescriptor, PFILETIME lpftLastWriteTime);
+LSTATUS winapi_advapi32_RegQueryInfoKeyW(HKEY hKey, LPWSTR lpClass, LPDWORD lpcchClass, LPDWORD lpReserved, LPDWORD lpcSubKeys, LPDWORD lpcbMaxSubKeyLen, LPDWORD lpcbMaxClassLen, LPDWORD lpcValues, LPDWORD lpcbMaxValueNameLen, LPDWORD lpcbMaxValueLen, LPDWORD lpcbSecurityDescriptor, PFILETIME lpftLastWriteTime);
+LSTATUS winapi_advapi32_RegQueryValueExW(HKEY hKey, LPCWSTR lpValueName, LPDWORD lpReserved, LPDWORD lpType, LPBYTE lpData, LPDWORD lpcbData);
+LSTATUS winapi_advapi32_RegSetValueExW(HKEY hKey, LPCWSTR lpValueName, DWORD Reserved, DWORD dwType, const BYTE* lpData, DWORD cbData);
+LSTATUS winapi_advapi32_RegUnLoadKeyW(HKEY hKey, LPCWSTR lpSubKey);
+
+BOOL winapi_user32_CloseDesktop(HDESK hDesktop);
+BOOL winapi_user32_CloseWindowStation(HWINSTA hWinSta);
+HWND winapi_user32_CreateWindowExA(DWORD dwExStyle, LPCSTR lpClassName, LPCSTR lpWindowName, DWORD dwStyle, int X, int Y, int nWidth, int nHeight, HWND hWndParent, HMENU hMenu, HINSTANCE hInstance, LPVOID lpParam);
+LRESULT winapi_user32_DefWindowProcA(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam);
+BOOL winapi_user32_DestroyWindow(HWND hWnd);
+LRESULT winapi_user32_DispatchMessageA(const MSG* lpMsg);
+BOOL winapi_user32_EnumChildWindows(HWND hWndParent, WNDENUMPROC lpEnumFunc, LPARAM lParam);
+BOOL winapi_user32_EnumDesktopsA(HWINSTA hwinsta, DESKTOPENUMPROCA lpEnumFunc, LPARAM lParam);
+BOOL winapi_user32_EnumWindowStationsA(WINSTAENUMPROCA lpEnumFunc, LPARAM lParam);
+BOOL winapi_user32_ExitWindowsEx(UINT uFlags, DWORD dwReason);
+SHORT winapi_user32_GetAsyncKeyState(int vKey);
+HWND winapi_user32_GetForegroundWindow(VOID);
+BOOL winapi_user32_GetKeyboardState(PBYTE lpKeyState);
+int winapi_user32_GetKeyNameTextW(LONG lParam, LPWSTR lpString, int cchSize);
+SHORT winapi_user32_GetKeyState(int nVirtKey);
+BOOL winapi_user32_GetMessageA(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax);
+int winapi_user32_GetSystemMetrics(int nIndex);
+DWORD winapi_user32_GetWindowThreadProcessId(HWND hWnd, LPDWORD lpdwProcessId);
+UINT winapi_user32_MapVirtualKeyA(UINT uCode, UINT uMapType);
+HDESK winapi_user32_OpenDesktopA(LPCSTR lpszDesktop, DWORD dwFlags, BOOL fInherit, ACCESS_MASK dwDesiredAccess);
+HWINSTA winapi_user32_OpenWindowStationA(LPCSTR lpszWinSta, BOOL fInherit, ACCESS_MASK dwDesiredAccess);
+ATOM winapi_user32_RegisterClassExA(const WNDCLASSEXA* unnamedParam1);
+UINT winapi_user32_SendInput(UINT cInputs, LPINPUT pInputs, int cbSize);
+LRESULT winapi_user32_SendMessageA(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam);
+BOOL winapi_user32_SetProcessWindowStation(HWINSTA hWinSta);
+BOOL winapi_user32_SetThreadDesktop(HDESK hDesktop);
+BOOL winapi_user32_SwitchDesktop(HDESK hDesktop);
+int winapi_user32_ToUnicodeEx(UINT wVirtKey, UINT wScanCode, const BYTE* lpKeyState, LPWSTR pwszBuff, int cchBuff, UINT wFlags, HKL dwhkl);
+BOOL winapi_user32_TranslateMessage(const MSG* lpMsg);
+BOOL winapi_user32_UnregisterClassA(LPCSTR lpClassName, HINSTANCE hInstance);
+int winapi_user32_wsprintfW(LPWSTR unnamedParam1, LPCWSTR unnamedParam2, ...);
+
+int winapi_ws2_32_getsockname(SOCKET s, struct sockaddr* name, int* namelen);
+u_short winapi_ws2_32_ntohs(u_short netshort);
+int winapi_ws2_32_recvfrom(SOCKET s, char* buf, int len, int flags, struct sockaddr* from, int* fromlen);
+int winapi_ws2_32_sendto(SOCKET s, const char* buf, int len, int flags, const struct sockaddr* to, int tolen);
+int winapi_ws2_32_shutdown(SOCKET s, int how);
+INT winapi_ws2_32_WSAAddressToStringA(LPSOCKADDR lpsaAddress, DWORD dwAddressLength, LPWSAPROTOCOL_INFOA lpProtocolInfo, LPSTR lpszAddressString, LPDWORD lpdwAddressStringLength);
+int winapi_ws2_32_WSACleanup(VOID);
+WSAEVENT winapi_ws2_32_WSACreateEvent(VOID);
+int winapi_ws2_32_WSAEventSelect(SOCKET s, WSAEVENT hEventObject, long lNetworkEvents);
+VOID winapi_ws2_32_WSASetLastError(int iError);
+SOCKET winapi_ws2_32_WSASocketA(int af, int type, int protocol, LPWSAPROTOCOL_INFOA lpProtocolInfo, GROUP g, DWORD dwFlags);
+
+DWORD winapi_iphlpapi_CreateIpForwardEntry(PMIB_IPFORWARDROW pRoute);
+DWORD winapi_iphlpapi_DeleteIpForwardEntry(PMIB_IPFORWARDROW pRoute);
+DWORD winapi_iphlpapi_GetIfEntry(PMIB_IFROW pIfRow);
+DWORD winapi_iphlpapi_GetIpAddrTable(PMIB_IPADDRTABLE pIpAddrTable, PULONG pdwSize, BOOL bOrder);
+DWORD winapi_iphlpapi_GetIpForwardTable(PMIB_IPFORWARDTABLE pIpForwardTable, PULONG pdwSize, BOOL bOrder);
+NETIO_STATUS winapi_iphlpapi_GetIpInterfaceEntry(PMIB_IPINTERFACE_ROW Row);
+ULONG winapi_iphlpapi_GetIpNetTable(PMIB_IPNETTABLE IpNetTable, PULONG SizePointer, BOOL Order);
+ULONG winapi_iphlpapi_GetTcpTable(PMIB_TCPTABLE TcpTable, PULONG SizePointer, BOOL Order);
+ULONG winapi_iphlpapi_GetUdpTable(PMIB_UDPTABLE UdpTable, PULONG SizePointer, BOOL Order);
+
+DWORD winapi_mpr_WNetGetUniversalNameA(LPCSTR lpLocalPath, DWORD dwInfoLevel, LPVOID lpBuffer, LPDWORD lpBufferSize);
+
+HRESULT winapi_ole32_CoCreateInstance(REFCLSID rclsid, LPUNKNOWN pUnkOuter, DWORD dwClsContext, REFIID riid, LPVOID* ppv);
+HRESULT winapi_ole32_CoInitialize(LPVOID pvReserved);
+VOID winapi_ole32_CoUninitialize(VOID);
+
+HRESULT winapi_oleaut32_VariantClear(VARIANTARG* pvarg);
+VOID winapi_oleaut32_VariantInit(VARIANTARG* pvarg);
+
+BOOL winapi_winmm_sndPlaySoundA(LPCSTR pszSound, UINT fuSound);
+MMRESULT winapi_winmm_waveInAddBuffer(HWAVEIN hwi, LPWAVEHDR pwh, UINT cbwh);
+MMRESULT winapi_winmm_waveInOpen(LPHWAVEIN phwi, UINT uDeviceID, LPCWAVEFORMATEX pwfx, DWORD_PTR dwCallback, DWORD_PTR dwInstance, DWORD fdwOpen);
+MMRESULT winapi_winmm_waveInPrepareHeader(HWAVEIN hwi, LPWAVEHDR pwh, UINT cbwh);
+MMRESULT winapi_winmm_waveInStart(HWAVEIN hwi);
+MMRESULT winapi_winmm_waveInStop(HWAVEIN hwi);
+
+NET_API_STATUS winapi_netapi32_NetApiBufferFree(LPVOID Buffer);
+NET_API_STATUS winapi_netapi32_NetWkstaGetInfo(LMSTR servername, DWORD level, LPBYTE* bufptr);
+
+BOOL winapi_psapi_EnumDeviceDrivers(LPVOID* lpImageBase, DWORD cb, LPDWORD lpcbNeeded);
+DWORD winapi_psapi_GetDeviceDriverBaseNameW(LPVOID ImageBase, LPWSTR lpBaseName, DWORD nSize);
+DWORD winapi_psapi_GetDeviceDriverFileNameW(LPVOID ImageBase, LPWSTR lpFilename, DWORD nSize);
+
+LSTATUS winapi_shlwapi_SHDeleteKeyW(HKEY hkey, LPCWSTR pszSubKey);
                                                                                                                              
 
 #endif

@@ -245,7 +245,76 @@ MetApi api_instance = {
             winapi_kernel32_CreateMutexA,
             winapi_kernel32_CreateMutexW,
             winapi_kernel32_TerminateThread,
-            winapi_kernel32_lstrcmpW
+            winapi_kernel32_lstrcmpW,
+            winapi_kernel32_GetLastError,
+            winapi_kernel32_CopyFileW,
+            winapi_kernel32_CreateDirectoryW,
+            winapi_kernel32_DeleteFileA,
+            winapi_kernel32_DeleteFileW,
+            winapi_kernel32_DisconnectNamedPipe,
+            winapi_kernel32_ExpandEnvironmentStringsA,
+            winapi_kernel32_ExpandEnvironmentStringsW,
+            winapi_kernel32_FileTimeToSystemTime,
+            winapi_kernel32_FindClose,
+            winapi_kernel32_FindFirstFileW,
+            winapi_kernel32_FindNextFileW,
+            winapi_kernel32_FindResourceA,
+            winapi_kernel32_GetCurrentDirectoryW,
+            winapi_kernel32_GetCurrentProcessId,
+            winapi_kernel32_GetDateFormatW,
+            winapi_kernel32_GetDiskFreeSpaceExA,
+            winapi_kernel32_GetDriveTypeA,
+            winapi_kernel32_GetDriveTypeW,
+            winapi_kernel32_GetExitCodeThread,
+            winapi_kernel32_GetFileAttributesA,
+            winapi_kernel32_GetFileAttributesExW,
+            winapi_kernel32_GetFileAttributesW,
+            winapi_kernel32_GetHandleInformation,
+            winapi_kernel32_GetLogicalDriveStringsA,
+            winapi_kernel32_GetLogicalDrives,
+            winapi_kernel32_GetProcAddress,
+            winapi_kernel32_GetSystemDefaultLCID,
+            winapi_kernel32_GetTickCount,
+            winapi_kernel32_GetTimeFormatW,
+            winapi_kernel32_GetVersionExA,
+            winapi_kernel32_LoadResource,
+            winapi_kernel32_LockResource,
+            winapi_kernel32_OutputDebugStringW,
+            winapi_kernel32_MoveFileW,
+            winapi_kernel32_RemoveDirectoryW,
+            winapi_kernel32_SetCurrentDirectoryW,
+            winapi_kernel32_SetFileAttributesW,
+            winapi_kernel32_SetLastError,
+            winapi_kernel32_SizeofResource,
+            winapi_kernel32_lstrcmpiW,
+            winapi_kernel32_lstrcpyW,
+            winapi_kernel32_lstrlenA,
+            winapi_kernel32_lstrlenW,
+            winapi_kernel32_InterlockedExchangePointer,
+            winapi_kernel32_FormatMessageA,
+            winapi_kernel32_CreatePipe,
+            winapi_kernel32_CreateProcessW,
+            winapi_kernel32_GetComputerNameA,
+            winapi_kernel32_GetCurrentProcess,
+            winapi_kernel32_GetCurrentThread,
+            winapi_kernel32_GetEnvironmentVariableW,
+            winapi_kernel32_GetLocalTime,
+            winapi_kernel32_GetLocaleInfoA,
+            winapi_kernel32_GetThreadContext,
+            winapi_kernel32_GetTimeZoneInformation,
+            winapi_kernel32_SetThreadContext,
+            winapi_kernel32_TerminateProcess,
+            winapi_kernel32_VirtualLock,
+            winapi_kernel32_VirtualUnlock,
+            winapi_kernel32_WaitForSingleObjectEx,
+            winapi_kernel32_OpenProcessNative,
+            winapi_kernel32_ReadProcessMemoryNative,
+            winapi_kernel32_WriteProcessMemoryNative,
+            winapi_kernel32_VirtualAllocNative,
+            winapi_kernel32_VirtualAllocExNative,
+            winapi_kernel32_VirtualFreeExNative,
+            winapi_kernel32_VirtualProtectExNative,
+            winapi_kernel32_VirtualQueryExNative
         },
         // advapi32
         {
@@ -270,7 +339,38 @@ MetApi api_instance = {
             winapi_advapi32_LookupPrivilegeValueW,
             winapi_advapi32_CryptAcquireContextA,
             winapi_advapi32_CryptAcquireContextW,
-            winapi_advapi32_AddMandatoryAce
+            winapi_advapi32_AddMandatoryAce,
+            winapi_advapi32_CryptCreateHash,
+            winapi_advapi32_CryptDestroyHash,
+            winapi_advapi32_CryptGetHashParam,
+            winapi_advapi32_CryptHashData,
+            winapi_advapi32_RevertToSelf,
+            winapi_advapi32_ClearEventLogA,
+            winapi_advapi32_CloseEventLog,
+            winapi_advapi32_ConvertSidToStringSidA,
+            winapi_advapi32_CreateProcessAsUserW,
+            winapi_advapi32_DuplicateTokenEx,
+            winapi_advapi32_GetNumberOfEventLogRecords,
+            winapi_advapi32_GetOldestEventLogRecord,
+            winapi_advapi32_GetTokenInformation,
+            winapi_advapi32_LookupAccountSidW,
+            winapi_advapi32_LookupPrivilegeValueA,
+            winapi_advapi32_OpenEventLogA,
+            winapi_advapi32_ReadEventLogA,
+            winapi_advapi32_RegCloseKey,
+            winapi_advapi32_RegConnectRegistryW,
+            winapi_advapi32_RegCreateKeyExW,
+            winapi_advapi32_RegDeleteKeyW,
+            winapi_advapi32_RegDeleteValueW,
+            winapi_advapi32_RegEnumKeyW,
+            winapi_advapi32_RegEnumValueW,
+            winapi_advapi32_RegLoadKeyW,
+            winapi_advapi32_RegOpenKeyExW,
+            winapi_advapi32_RegQueryInfoKeyA,
+            winapi_advapi32_RegQueryInfoKeyW,
+            winapi_advapi32_RegQueryValueExW,
+            winapi_advapi32_RegSetValueExW,
+            winapi_advapi32_RegUnLoadKeyW
         },
         // crypt32
         {
@@ -284,7 +384,38 @@ MetApi api_instance = {
         {
             winapi_user32_GetUserObjectInformationA,
             winapi_user32_GetThreadDesktop,
-            winapi_user32_GetProcessWindowStation
+            winapi_user32_GetProcessWindowStation,
+            winapi_user32_CloseDesktop,
+            winapi_user32_CloseWindowStation,
+            winapi_user32_CreateWindowExA,
+            winapi_user32_DefWindowProcA,
+            winapi_user32_DestroyWindow,
+            winapi_user32_DispatchMessageA,
+            winapi_user32_EnumChildWindows,
+            winapi_user32_EnumDesktopsA,
+            winapi_user32_EnumWindowStationsA,
+            winapi_user32_ExitWindowsEx,
+            winapi_user32_GetAsyncKeyState,
+            winapi_user32_GetForegroundWindow,
+            winapi_user32_GetKeyboardState,
+            winapi_user32_GetKeyNameTextW,
+            winapi_user32_GetKeyState,
+            winapi_user32_GetMessageA,
+            winapi_user32_GetSystemMetrics,
+            winapi_user32_GetWindowThreadProcessId,
+            winapi_user32_MapVirtualKeyA,
+            winapi_user32_OpenDesktopA,
+            winapi_user32_OpenWindowStationA,
+            winapi_user32_RegisterClassExA,
+            winapi_user32_SendInput,
+            winapi_user32_SendMessageA,
+            winapi_user32_SetProcessWindowStation,
+            winapi_user32_SetThreadDesktop,
+            winapi_user32_SwitchDesktop,
+            winapi_user32_ToUnicodeEx,
+            winapi_user32_TranslateMessage,
+            winapi_user32_UnregisterClassA,
+            winapi_user32_wsprintfW
         },
         // ws2_32
         {
@@ -308,7 +439,18 @@ MetApi api_instance = {
             winapi_ws2_32_ntohl,
             winapi_ws2_32_inet_addr,
             winapi_ws2_32_WSAGetLastError,
-            winapi_ws2_32_inet_ntoa
+            winapi_ws2_32_inet_ntoa,
+            winapi_ws2_32_getsockname,
+            winapi_ws2_32_ntohs,
+            winapi_ws2_32_recvfrom,
+            winapi_ws2_32_sendto,
+            winapi_ws2_32_shutdown,
+            winapi_ws2_32_WSAAddressToStringA,
+            winapi_ws2_32_WSACleanup,
+            winapi_ws2_32_WSACreateEvent,
+            winapi_ws2_32_WSAEventSelect,
+            winapi_ws2_32_WSASetLastError,
+            winapi_ws2_32_WSASocketA
         },
         // wininet
         {
@@ -343,6 +485,57 @@ MetApi api_instance = {
             winapi_winhttp_WinHttpCrackUrl,
             winapi_winhttp_WinHttpCloseHandle,
             winapi_winhttp_WinHttpWriteData
+        },
+        // iphlpapi
+        {
+            winapi_iphlpapi_CreateIpForwardEntry,
+            winapi_iphlpapi_DeleteIpForwardEntry,
+            winapi_iphlpapi_GetIfEntry,
+            winapi_iphlpapi_GetIpAddrTable,
+            winapi_iphlpapi_GetIpForwardTable,
+            winapi_iphlpapi_GetIpInterfaceEntry,
+            winapi_iphlpapi_GetIpNetTable,
+            winapi_iphlpapi_GetTcpTable,
+            winapi_iphlpapi_GetUdpTable
+        },
+        // mpr
+        {
+            winapi_mpr_WNetGetUniversalNameA
+        },
+        // ole32
+        {
+            winapi_ole32_CoCreateInstance,
+            winapi_ole32_CoInitialize,
+            winapi_ole32_CoUninitialize
+        },
+        // oleaut32
+        {
+            winapi_oleaut32_VariantClear,
+            winapi_oleaut32_VariantInit
+        },
+        // winmm
+        {
+            winapi_winmm_sndPlaySoundA,
+            winapi_winmm_waveInAddBuffer,
+            winapi_winmm_waveInOpen,
+            winapi_winmm_waveInPrepareHeader,
+            winapi_winmm_waveInStart,
+            winapi_winmm_waveInStop
+        },
+        // netapi32
+        {
+            winapi_netapi32_NetApiBufferFree,
+            winapi_netapi32_NetWkstaGetInfo
+        },
+        // psapi
+        {
+            winapi_psapi_EnumDeviceDrivers,
+            winapi_psapi_GetDeviceDriverBaseNameW,
+            winapi_psapi_GetDeviceDriverFileNameW
+        },
+        // shlwapi
+        {
+            winapi_shlwapi_SHDeleteKeyW
         }
     },
 #ifdef DEBUGTRACE

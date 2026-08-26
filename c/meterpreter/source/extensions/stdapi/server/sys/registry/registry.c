@@ -22,9 +22,9 @@ DWORD request_registry_check_key_exists(Remote *remote, Packet *packet)
 	if (rootKey && baseKey) {
 		BOOL exists = FALSE;
 		HKEY resultKey = NULL;
-		if (RegOpenKeyExW(rootKey, baseKey, 0, KEY_QUERY_VALUE, &resultKey) == ERROR_SUCCESS) {
+		if (met_api->win_api.advapi32.RegOpenKeyExW(rootKey, baseKey, 0, KEY_QUERY_VALUE, &resultKey) == ERROR_SUCCESS) {
 			dprintf("[REG] Key found");
-			RegCloseKey(resultKey);
+			met_api->win_api.advapi32.RegCloseKey(resultKey);
 			exists = TRUE;
 		}
 
@@ -63,7 +63,7 @@ DWORD request_registry_load_key(Remote *remote, Packet *packet)
 
 	DWORD result = ERROR_INVALID_PARAMETER;
 	if (rootKey && baseKey && hiveFile) {
-		result = RegLoadKeyW(rootKey, baseKey, hiveFile);
+		result = met_api->win_api.advapi32.RegLoadKeyW(rootKey, baseKey, hiveFile);
 	}
 
 	free(baseKey);
@@ -85,7 +85,7 @@ DWORD request_registry_unload_key(Remote *remote, Packet *packet)
 
 	DWORD result = ERROR_INVALID_PARAMETER;
 	if (rootKey && baseKey) {
-		result = RegUnLoadKeyW(rootKey, baseKey);
+		result = met_api->win_api.advapi32.RegUnLoadKeyW(rootKey, baseKey);
 	}
 
 	free(baseKey);
@@ -107,7 +107,7 @@ static DWORD open_key(Packet *packet, HKEY *rootKey, HKEY *resKey)
 			permission = KEY_ALL_ACCESS;
 		}
 
-		result = RegOpenKeyExW(*rootKey, baseKey, 0, permission, resKey);
+		result = met_api->win_api.advapi32.RegOpenKeyExW(*rootKey, baseKey, 0, permission, resKey);
 	}
 
 	free(baseKey);
@@ -170,7 +170,7 @@ DWORD request_registry_open_remote_key(Remote *remote, Packet *packet)
 	// Validate the parameters and then attempt to create the key
 	DWORD result = ERROR_INVALID_PARAMETER;
 	if (rootKey && targetHost) {
-		result = RegConnectRegistryW(targetHost, rootKey, &resKey);
+		result = met_api->win_api.advapi32.RegConnectRegistryW(targetHost, rootKey, &resKey);
 	}
 
 	// Add the HKEY if we succeeded, but always return a result
@@ -213,7 +213,7 @@ DWORD request_registry_create_key(Remote *remote, Packet *packet)
 			permission = KEY_ALL_ACCESS;
 		}
 
-		result = RegCreateKeyExW(rootKey, baseKey, 0, NULL, 0,
+		result = met_api->win_api.advapi32.RegCreateKeyExW(rootKey, baseKey, 0, NULL, 0,
 				permission, NULL, &resKey, NULL);
 	}
 
@@ -241,7 +241,7 @@ static void enum_key(Remote *remote, Packet *packet, HKEY hkey)
 	}
 
 	DWORD maxSubKeyLen;
-	result = RegQueryInfoKeyW(hkey, NULL, NULL, NULL, NULL, &maxSubKeyLen,
+	result = met_api->win_api.advapi32.RegQueryInfoKeyW(hkey, NULL, NULL, NULL, NULL, &maxSubKeyLen,
 		NULL, NULL, NULL, NULL, NULL, NULL);
 	if (result != ERROR_SUCCESS) {
 		goto err;
@@ -257,7 +257,7 @@ static void enum_key(Remote *remote, Packet *packet, HKEY hkey)
 
 	while (1)
 	{
-		result = RegEnumKeyW(hkey, index, name, maxSubKeyLen);
+		result = met_api->win_api.advapi32.RegEnumKeyW(hkey, index, name, maxSubKeyLen);
 
 		if (result == ERROR_SUCCESS) {
 			char *tmp = met_api->string.wchar_to_utf8(name);
@@ -293,7 +293,7 @@ static void enum_value(Remote *remote, Packet *packet, HKEY hkey)
 	}
 
 	DWORD maxValueNameLen;
-	result = RegQueryInfoKeyW(hkey, NULL, NULL, NULL, NULL, NULL, NULL,
+	result = met_api->win_api.advapi32.RegQueryInfoKeyW(hkey, NULL, NULL, NULL, NULL, NULL, NULL,
 			NULL, &maxValueNameLen, NULL, NULL, NULL);
 	if (result != ERROR_SUCCESS) {
 		goto err;
@@ -310,7 +310,7 @@ static void enum_value(Remote *remote, Packet *packet, HKEY hkey)
 	while (1)
 	{
 		DWORD valueLen = maxValueNameLen;
-		result = RegEnumValueW(hkey, index, name, &valueLen,
+		result = met_api->win_api.advapi32.RegEnumValueW(hkey, index, name, &valueLen,
 				NULL, NULL, NULL, NULL);
 
 		if (result == ERROR_SUCCESS) {
@@ -369,7 +369,7 @@ DWORD request_registry_enum_key_direct(Remote *remote, Packet *packet)
 	open_key(packet, &rootkey, &hkey);
 	enum_key(remote, packet, hkey);
 	if (hkey) {
-		RegCloseKey(hkey);
+		met_api->win_api.advapi32.RegCloseKey(hkey);
 	}
 
 	return ERROR_SUCCESS;
@@ -399,9 +399,9 @@ DWORD request_registry_delete_key(Remote *remote, Packet *packet)
 	DWORD result = ERROR_INVALID_PARAMETER;
 	if (rootKey && baseKey) {
 		if (flags & DELETE_KEY_FLAG_RECURSIVE) {
-			result = SHDeleteKeyW(rootKey, baseKey);
+			result = met_api->win_api.shlwapi.SHDeleteKeyW(rootKey, baseKey);
 		} else {
-			result = RegDeleteKeyW(rootKey, baseKey);
+			result = met_api->win_api.advapi32.RegDeleteKeyW(rootKey, baseKey);
 		}
 	}
 
@@ -429,7 +429,7 @@ DWORD request_registry_close_key(Remote *remote, Packet *packet)
 
 	DWORD result = ERROR_INVALID_PARAMETER;
 	if (hkey) {
-		result = RegCloseKey(hkey);
+		result = met_api->win_api.advapi32.RegCloseKey(hkey);
 	}
 
 	// Set the result and send the response
@@ -463,7 +463,7 @@ static char* reg_multi_sz_unparse(wchar_t* str, size_t* size)
 	wchar_t* my_str = NULL;
 	
 	if ((!size) || (*size < 2 * sizeof(str[0]))) {
-		SetLastError(ERROR_BAD_ARGUMENTS);
+		met_api->win_api.kernel32.SetLastError(ERROR_BAD_ARGUMENTS);
 		return NULL;
 	}
 	// if the input does not end in two null characters, then create and use our own buffer
@@ -474,7 +474,7 @@ static char* reg_multi_sz_unparse(wchar_t* str, size_t* size)
 	else {
 		my_str = malloc(*size + (2 * sizeof(str[0])));
 		if (!my_str) {
-			SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+			met_api->win_api.kernel32.SetLastError(ERROR_NOT_ENOUGH_MEMORY);
 			goto out;
 		}
 		memset(my_str, 0, *size + (2 * sizeof(str[0])));
@@ -495,7 +495,7 @@ static char* reg_multi_sz_unparse(wchar_t* str, size_t* size)
 
 	res = calloc(total_size + (count - 1) + 2, sizeof(char));
 	if (!res) {
-		SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+		met_api->win_api.kernel32.SetLastError(ERROR_NOT_ENOUGH_MEMORY);
 		goto out;
 	}
 	if (size)
@@ -542,7 +542,7 @@ static wchar_t *reg_multi_sz_parse(char* str, size_t* size)
 	char* my_str = NULL;
 
 	if ((!size) || (*size < 2 * sizeof(str[0]))) {
-		SetLastError(ERROR_BAD_ARGUMENTS);
+		met_api->win_api.kernel32.SetLastError(ERROR_BAD_ARGUMENTS);
 		return NULL;
 	}
 	// if the input does not end in two null characters create and user our own buffer
@@ -552,7 +552,7 @@ static wchar_t *reg_multi_sz_parse(char* str, size_t* size)
 	} else {
 		my_str = malloc(*size + (2 * sizeof(str[0])));
 		if (!my_str) {
-			SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+			met_api->win_api.kernel32.SetLastError(ERROR_NOT_ENOUGH_MEMORY);
 			goto out;
 		}
 		memset(my_str, 0, *size + (2 * sizeof(str[0])));
@@ -573,7 +573,7 @@ static wchar_t *reg_multi_sz_parse(char* str, size_t* size)
 
 	res = calloc(total_size + (count - 1) + 2, sizeof(wchar_t));
 	if (!res) {
-		SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+		met_api->win_api.kernel32.SetLastError(ERROR_NOT_ENOUGH_MEMORY);
 		goto out;
 	}
 	if (size)
@@ -635,7 +635,7 @@ static void set_value(Remote *remote, Packet *packet, HKEY hkey)
 				len = valueData.header.length;
 				buf = valueData.buffer;
 		}
-		result = RegSetValueExW(hkey, valueName, 0, valueType, buf, (DWORD)len);
+		result = met_api->win_api.advapi32.RegSetValueExW(hkey, valueName, 0, valueType, buf, (DWORD)len);
 		if (buf != valueData.buffer) {
 			free(buf);
 		}
@@ -684,7 +684,7 @@ DWORD request_registry_set_value_direct(Remote *remote, Packet *packet)
 	open_key(packet, &rootkey, &hkey);
 	set_value(remote, packet, hkey);
 	if (hkey) {
-		RegCloseKey(hkey);
+		met_api->win_api.advapi32.RegCloseKey(hkey);
 	}
 
 	return ERROR_SUCCESS;
@@ -708,7 +708,7 @@ static void query_value(Remote *remote, Packet *packet, HKEY hkey)
 	valueName = met_api->string.utf8_to_wchar(met_api->packet.get_tlv_value_string(packet, TLV_TYPE_VALUE_NAME));
 
 	// Get the size of the value data
-	if ((result = RegQueryValueExW(hkey, valueName, 0, NULL, NULL,
+	if ((result = met_api->win_api.advapi32.RegQueryValueExW(hkey, valueName, 0, NULL, NULL,
 	    &valueDataSize)) != ERROR_SUCCESS) {
 		goto err;
 	}
@@ -721,7 +721,7 @@ static void query_value(Remote *remote, Packet *packet, HKEY hkey)
 	}
 
 	// Query the value's information
-	if ((result = RegQueryValueExW(hkey, valueName, 0, &valueType, valueData,
+	if ((result = met_api->win_api.advapi32.RegQueryValueExW(hkey, valueName, 0, &valueType, valueData,
 	    &valueDataSize)) != ERROR_SUCCESS) {
 		goto err;
 	}
@@ -803,7 +803,7 @@ DWORD request_registry_query_value_direct(Remote *remote, Packet *packet)
 	open_key(packet, &rootkey, &hkey);
 	query_value(remote, packet, hkey);
 	if (hkey) {
-		RegCloseKey(hkey);
+		met_api->win_api.advapi32.RegCloseKey(hkey);
 	}
 
 	return ERROR_SUCCESS;
@@ -840,7 +840,7 @@ DWORD request_registry_enum_value_direct(Remote *remote, Packet *packet)
 	open_key(packet, &rootkey, &hkey);
 	enum_value(remote, packet, hkey);
 	if (hkey) {
-		RegCloseKey(hkey);
+		met_api->win_api.advapi32.RegCloseKey(hkey);
 	}
 
 	return ERROR_SUCCESS;
@@ -866,7 +866,7 @@ DWORD request_registry_delete_value(Remote *remote, Packet *packet)
 
 	DWORD result = ERROR_INVALID_PARAMETER;
 	if (hkey && valueName) {
-		result = RegDeleteValueW(hkey, valueName);
+		result = met_api->win_api.advapi32.RegDeleteValueW(hkey, valueName);
 	}
 
 	free(valueName);
@@ -899,7 +899,7 @@ DWORD request_registry_query_class(Remote *remote, Packet *packet)
 	DWORD classNameLen = 4096;
 	char className[4096];
 
-	result = RegQueryInfoKeyA(hkey, className, &classNameLen,
+	result = met_api->win_api.advapi32.RegQueryInfoKeyA(hkey, className, &classNameLen,
 		NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	if (result == ERROR_SUCCESS) {
 		met_api->packet.add_tlv_raw(response, TLV_TYPE_VALUE_DATA,

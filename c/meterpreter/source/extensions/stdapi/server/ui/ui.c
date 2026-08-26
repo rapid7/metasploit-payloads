@@ -1,4 +1,5 @@
 #include "precomp.h"
+#include "common_metapi.h"
 
 HMODULE hookLibrary = NULL;
 
@@ -19,26 +20,26 @@ DWORD extract_hook_library()
 
 	do
 	{
-		ExpandEnvironmentStrings("%TEMP%\\hook.dll", tempFile, 
+		met_api->win_api.kernel32.ExpandEnvironmentStringsA("%TEMP%\\hook.dll", tempFile,
 				sizeof(tempFile) - 1);
 
-		fileHandle = FindResource( hAppInstance, 
+		fileHandle = met_api->win_api.kernel32.FindResourceA(hAppInstance,
 				MAKEINTRESOURCE(IDR_HOOK_DLL), "IMG");
 
 		if (!fileHandle)
 		{
-			result = GetLastError();
+			result = met_api->win_api.kernel32.GetLastError();
 			break;
 		}
 
-		global  = LoadResource( hAppInstance, fileHandle );
-		raw     = LockResource(global);
-		rawSize = SizeofResource( hAppInstance, fileHandle );
+		global  = met_api->win_api.kernel32.LoadResource(hAppInstance, fileHandle);
+		raw     = met_api->win_api.kernel32.LockResource(global);
+		rawSize = met_api->win_api.kernel32.SizeofResource(hAppInstance, fileHandle);
 
-		DeleteFile(tempFile);
+		met_api->win_api.kernel32.DeleteFileA(tempFile);
 
 		// Write the file to disk
-		if (GetFileAttributes(tempFile) == INVALID_FILE_ATTRIBUTES)
+		if (met_api->win_api.kernel32.GetFileAttributesA(tempFile) == INVALID_FILE_ATTRIBUTES)
 		{
 			if ((fd = fopen(tempFile, "wb")))
 			{
@@ -47,13 +48,13 @@ DWORD extract_hook_library()
 				fclose(fd);
 			}
 			else
-				result = GetLastError();
+				result = met_api->win_api.kernel32.GetLastError();
 		}
 
 		// Try to load the library
-		if (!(hookLibrary = LoadLibrary(tempFile)))
+		if (!(hookLibrary = met_api->win_api.kernel32.LoadLibraryA(tempFile)))
 		{
-			result = GetLastError();
+			result = met_api->win_api.kernel32.GetLastError();
 			break;
 		}
 

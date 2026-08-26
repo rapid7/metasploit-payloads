@@ -38,30 +38,30 @@ DWORD execute_code_stub_in_process(HANDLE process, PVOID buffer, ULONG length,
 		// Create the thread in the target process
 		if (!(thread = met_api->thread.create_remote(process, 0, codeInProcess, paramInProcess, 0, &threadId)))
 		{
-			result = GetLastError();
+			result = met_api->win_api.kernel32.GetLastError();
 			break;
 		}
 
 		// Wait for the thread to terminate
-		while ((wait = WaitForSingleObjectEx(thread, 1000, TRUE)) != WAIT_OBJECT_0)
+		while ((wait = met_api->win_api.kernel32.WaitForSingleObjectEx(thread, 1000, TRUE)) != WAIT_OBJECT_0)
 		{
 			if (wait == WAIT_FAILED)
 			{
-				result = GetLastError();
+				result = met_api->win_api.kernel32.GetLastError();
 				break;
 			}
 		}
 		
 		if (rv)
 		{
-			GetExitCodeThread(thread, rv);
+			met_api->win_api.kernel32.GetExitCodeThread(thread, rv);
 		}
 
 		// Free the memory in the process
-		if ((!VirtualFreeEx(process, codeInProcess, 0, MEM_RELEASE)) ||
-		    (!VirtualFreeEx(process, paramInProcess, 0, MEM_RELEASE)))
+		if ((!met_api->win_api.kernel32.VirtualFreeExNative(process, codeInProcess, 0, MEM_RELEASE)) ||
+		    (!met_api->win_api.kernel32.VirtualFreeExNative(process, paramInProcess, 0, MEM_RELEASE)))
 		{
-			result = GetLastError();
+			result = met_api->win_api.kernel32.GetLastError();
 			break;
 		}
 	} while (0);
@@ -69,7 +69,7 @@ DWORD execute_code_stub_in_process(HANDLE process, PVOID buffer, ULONG length,
 	// Close the thread handle if one was obtained
 	if (thread)
 	{
-		CloseHandle(thread);
+		met_api->win_api.kernel32.CloseHandle(thread);
 	}
 
 	return result;
@@ -90,17 +90,17 @@ DWORD copy_memory_to_process(HANDLE process, BOOLEAN allocate,
 		if (allocate)
 		{
 			// Allocate storage for the buffer
-			if (!(remoteBuffer = VirtualAllocEx(process, NULL, length, MEM_COMMIT, PAGE_EXECUTE_READWRITE)))
+			if (!(remoteBuffer = met_api->win_api.kernel32.VirtualAllocExNative(process, NULL, length, MEM_COMMIT, PAGE_EXECUTE_READWRITE)))
 			{
-				result = GetLastError();
+				result = met_api->win_api.kernel32.GetLastError();
 				break;
 			}
 		}
 
 		// Copy the memory from local to remote
-		if (!WriteProcessMemory(process, remoteBuffer, *buffer, length, &written))
+		if (!met_api->win_api.kernel32.WriteProcessMemoryNative(process, remoteBuffer, *buffer, length, &written))
 		{
-			result = GetLastError();
+			result = met_api->win_api.kernel32.GetLastError();
 			break;
 		}
 
@@ -109,9 +109,9 @@ DWORD copy_memory_to_process(HANDLE process, BOOLEAN allocate,
 		{
 			DWORD old;
 
-			if (!VirtualProtectEx(process, remoteBuffer, length, prot, &old))
+			if (!met_api->win_api.kernel32.VirtualProtectExNative(process, remoteBuffer, length, prot, &old))
 			{
-				result = GetLastError();
+				result = met_api->win_api.kernel32.GetLastError();
 				break;
 			}
 		}
