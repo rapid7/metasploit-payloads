@@ -33,11 +33,11 @@ DWORD tcp_channel_client_write(Channel *channel, Packet *request, LPVOID context
 			BREAK_WITH_ERROR("[TCP] tcp_channel_client_write. ctx == NULL", ERROR_INVALID_HANDLE);
 		}
 
-		written = send(ctx->fd, buffer, bufferSize, 0);
+		written = met_api->win_api.ws2_32.send(ctx->fd, buffer, bufferSize, 0);
 
 		if (written == SOCKET_ERROR)
 		{
-			dwResult = WSAGetLastError();
+			dwResult = met_api->win_api.ws2_32.WSAGetLastError();
 
 			if (dwResult == WSAEWOULDBLOCK)
 			{
@@ -55,7 +55,7 @@ DWORD tcp_channel_client_write(Channel *channel, Packet *request, LPVOID context
 					FD_ZERO(&set);
 					FD_SET(ctx->fd, &set);
 
-					res = select(0, NULL, &set, NULL, &tv);
+					res = met_api->win_api.ws2_32.select(0, NULL, &set, NULL, &tv);
 					if (res > 0)
 					{
 						dwResult = ERROR_SUCCESS;
@@ -63,11 +63,11 @@ DWORD tcp_channel_client_write(Channel *channel, Packet *request, LPVOID context
 					}
 					else if (res == SOCKET_ERROR)
 					{
-						dwResult = WSAGetLastError();
+						dwResult = met_api->win_api.ws2_32.WSAGetLastError();
 						break;
 					}
 
-					Sleep(100);
+					met_api->win_api.kernel32.Sleep(100);
 				}
 
 				if (dwResult == ERROR_SUCCESS)
@@ -125,7 +125,7 @@ DWORD tcp_channel_client_close(Channel *channel, Packet *request, LPVOID context
 		// value, no other thread has started teardown; we own it.
 		// If we swap NULL, the local-notify path already claimed cleanup;
 		// we must leave ctx alone.
-		PVOID prev = InterlockedExchangePointer((PVOID*)&ctx->channel, NULL);
+		PVOID prev = (met_api->win_api.kernel32.InterlockedExchangePointer)((PVOID*)&ctx->channel, NULL);
 
 		// Detach the native context from the channel regardless, so that
 		// channel_destroy's subsequent free of `channel` cannot be observed
@@ -145,7 +145,7 @@ DWORD tcp_channel_client_close(Channel *channel, Packet *request, LPVOID context
 			// but do NOT free ctx - that thread owns it.
 			if (ctx->fd)
 			{
-				closesocket(ctx->fd);
+				met_api->win_api.ws2_32.closesocket(ctx->fd);
 				ctx->fd = 0;
 			}
 		}
@@ -175,7 +175,7 @@ DWORD tcp_channel_client_local_notify(Remote * remote, TcpClientContext * ctx)
 	do
 	{
 		// Reset the notification event
-		ResetEvent(ctx->notify);
+		met_api->win_api.kernel32.ResetEvent(ctx->notify);
 
 		FD_ZERO(&set);
 		FD_SET(ctx->fd, &set);
@@ -184,11 +184,11 @@ DWORD tcp_channel_client_local_notify(Remote * remote, TcpClientContext * ctx)
 		tv.tv_usec = 0;
 
 		// Read data from the client connection
-		dwBytesRead = recv(ctx->fd, buf, sizeof(buf), 0);
+		dwBytesRead = met_api->win_api.ws2_32.recv(ctx->fd, buf, sizeof(buf), 0);
 
 		if (dwBytesRead == SOCKET_ERROR)
 		{
-			DWORD dwError = WSAGetLastError();
+			DWORD dwError = met_api->win_api.ws2_32.WSAGetLastError();
 
 			// WSAECONNRESET: The connection was forcibly closed by the remote host.
 			// WSAECONNABORTED: The connection was terminated due to a time-out or other failure.
@@ -223,7 +223,7 @@ DWORD tcp_channel_client_local_notify(Remote * remote, TcpClientContext * ctx)
 			// closing this channel and its tcp_channel_client_close ran; that
 			// path has left cleanup of ctx to us but is no longer using the
 			// Channel struct.
-			Channel *chan = (Channel *)InterlockedExchangePointer((PVOID *)&ctx->channel, NULL);
+			Channel *chan = (Channel *)(met_api->win_api.kernel32.InterlockedExchangePointer)((PVOID *)&ctx->channel, NULL);
 
 			dprintf("[TCP] tcp_channel_client_local_notify. [closed] chan=%p fd=%llu read=0x%.8x",
 				(void*)chan, (unsigned long long)ctx->fd, dwBytesRead);
@@ -247,7 +247,7 @@ DWORD tcp_channel_client_local_notify(Remote * remote, TcpClientContext * ctx)
 
 			// Sleep briefly to let the framework drain buffered channel data
 			// before we tear down the underlying socket.
-			Sleep(250);
+			met_api->win_api.kernel32.Sleep(250);
 
 			// We own cleanup of ctx now; free_socket_context will skip the
 			// channel.close branch because ctx->channel is NULL.
@@ -269,7 +269,7 @@ DWORD tcp_channel_client_local_notify(Remote * remote, TcpClientContext * ctx)
 			}
 		}
 
-	} while (select(1, &set, NULL, NULL, &tv) > 0);
+	} while (met_api->win_api.ws2_32.select(1, &set, NULL, NULL, &tv) > 0);
 
 	return ERROR_SUCCESS;
 }
@@ -356,25 +356,25 @@ DWORD create_tcp_client_channel(Remote *remote, LPCSTR remoteHost, USHORT remote
 	do
 	{
 		// Allocate a client socket
-		if ((clientFd = WSASocket(AF_INET, SOCK_STREAM, 0, NULL, 0, 0)) == INVALID_SOCKET)
+		if ((clientFd = met_api->win_api.ws2_32.WSASocketA(AF_INET, SOCK_STREAM, 0, NULL, 0, 0)) == INVALID_SOCKET)
 		{
 			clientFd = 0;
-			result = GetLastError();
+			result = met_api->win_api.kernel32.GetLastError();
 			break;
 		}
 
 		s.sin_family = AF_INET;
-		s.sin_port = htons(remotePort);
-		s.sin_addr.s_addr = inet_addr(remoteHost);
+		s.sin_port = met_api->win_api.ws2_32.htons(remotePort);
+		s.sin_addr.s_addr = met_api->win_api.ws2_32.inet_addr(remoteHost);
 
 		// Resolve the host name locally
 		if (s.sin_addr.s_addr == (DWORD)-1)
 		{
 			struct hostent *h;
 
-			if (!(h = gethostbyname(remoteHost)))
+			if (!(h = met_api->win_api.ws2_32.gethostbyname(remoteHost)))
 			{
-				result = GetLastError();
+				result = met_api->win_api.kernel32.GetLastError();
 				break;
 			}
 
@@ -383,9 +383,9 @@ DWORD create_tcp_client_channel(Remote *remote, LPCSTR remoteHost, USHORT remote
 
 		dprintf("[TCP] create_tcp_client_channel. host=%s, port=%d connecting...", remoteHost, remotePort);
 		// Try to connect to the host/port
-		if (connect(clientFd, (struct sockaddr *)&s, sizeof(s)) == SOCKET_ERROR)
+		if (met_api->win_api.ws2_32.connect(clientFd, (struct sockaddr *)&s, sizeof(s)) == SOCKET_ERROR)
 		{
-			result = WSAGetLastError();
+			result = met_api->win_api.ws2_32.WSAGetLastError();
 			dprintf("[TCP] create client failed host=%s, port=%d error=%u 0x%x", remoteHost, remotePort, result, result);
 			break;
 		}
@@ -425,9 +425,9 @@ DWORD create_tcp_client_channel(Remote *remote, LPCSTR remoteHost, USHORT remote
 		// Finally, create a waitable event and insert it into the scheduler's
 		// waitable list
 		dprintf("[TCP] create_tcp_client_channel. host=%s, port=%d creating the notify", remoteHost, remotePort);
-		if ((ctx->notify = WSACreateEvent()))
+		if ((ctx->notify = met_api->win_api.ws2_32.WSACreateEvent()))
 		{
-			WSAEventSelect(ctx->fd, ctx->notify, FD_READ | FD_CLOSE);
+			met_api->win_api.ws2_32.WSAEventSelect(ctx->fd, ctx->notify, FD_READ | FD_CLOSE);
 			dprintf("[TCP] create_tcp_client_channel. host=%s, port=%d created the notify %.8x", remoteHost, remotePort, ctx->notify);
 
 			met_api->scheduler.insert_waitable(ctx->notify, ctx, NULL, (WaitableNotifyRoutine)tcp_channel_client_local_notify, NULL);
@@ -449,7 +449,7 @@ DWORD create_tcp_client_channel(Remote *remote, LPCSTR remoteHost, USHORT remote
 
 		if (clientFd)
 		{
-			closesocket(clientFd);
+			met_api->win_api.ws2_32.closesocket(clientFd);
 		}
 
 		channel = NULL;
@@ -481,7 +481,7 @@ VOID free_socket_context(SocketContext *ctx)
 	// Close the socket and notification handle
 	if (ctx->fd)
 	{
-		closesocket(ctx->fd);
+		met_api->win_api.ws2_32.closesocket(ctx->fd);
 		ctx->fd = 0;
 	}
 
@@ -547,9 +547,11 @@ DWORD request_net_socket_tcp_shutdown(Remote *remote, Packet *packet)
 			BREAK_WITH_ERROR("[TCP] request_net_socket_tcp_shutdown. ctx == NULL", ERROR_INVALID_HANDLE);
 		}
 
-		if (shutdown(ctx->fd, how) == SOCKET_ERROR)
+		if (met_api->win_api.ws2_32.shutdown(ctx->fd, how) == SOCKET_ERROR)
 		{
-			BREAK_ON_WSAERROR("[TCP] request_net_socket_tcp_shutdown. shutdown failed");
+			dwResult = met_api->win_api.ws2_32.WSAGetLastError();
+			dprintf("[TCP] request_net_socket_tcp_shutdown. shutdown failed. error=%d (0x%x)", dwResult, (ULONG_PTR)dwResult);
+			break;
 		}
 
 		// sf: we dont seem to need to call this here, as the channels tcp_channel_client_local_notify() will

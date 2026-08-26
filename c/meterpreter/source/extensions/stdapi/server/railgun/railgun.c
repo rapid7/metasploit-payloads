@@ -129,13 +129,13 @@ DWORD railgun_call( RAILGUN_INPUT * pInput, RAILGUN_OUTPUT * pOutput )
 #endif
 
 		// get address of function
-		hDll = LoadLibraryA( pInput->cpDllName ); // yes this increases the counter. lib should never be released. maybe the user just did a WSAStartup etc.
+		hDll = met_api->win_api.kernel32.LoadLibraryA( pInput->cpDllName ); // yes this increases the counter. lib should never be released. maybe the user just did a WSAStartup etc.
 		if( !hDll )
-			BREAK_ON_ERROR( "[RAILGUN] railgun_call: LoadLibraryA Failed." );
+			BREAK_WITH_ERROR( "[RAILGUN] railgun_call: LoadLibraryA Failed.", met_api->win_api.kernel32.GetLastError() );
 
-		pFuncAddr = (VOID *)GetProcAddress( hDll, pInput->cpFuncName );
+		pFuncAddr = (VOID *)met_api->win_api.kernel32.GetProcAddress( hDll, pInput->cpFuncName );
 		if( !pFuncAddr )
-			BREAK_ON_ERROR( "[RAILGUN] railgun_call: GetProcAddress Failed." );
+			BREAK_WITH_ERROR( "[RAILGUN] railgun_call: GetProcAddress Failed.", met_api->win_api.kernel32.GetLastError() );
 
 		if( ( pInput->pStackDescriptorTlv.header.length % ( 2 * sizeof(ULONG_PTR) ) ) != 0 )
 			dprintf( "[RAILGUN] railgun_call: Warning: blob size makes no sense." );
@@ -213,7 +213,7 @@ DWORD railgun_call( RAILGUN_INPUT * pInput, RAILGUN_OUTPUT * pOutput )
 		dprintf( "[RAILGUN] railgun_call: Calling %s!%s @ 0x%08X...", pInput->cpDllName, pInput->cpFuncName, pFuncAddr );
 #endif
 
-		SetLastError( ERROR_SUCCESS );
+		met_api->win_api.kernel32.SetLastError( ERROR_SUCCESS );
 
 		__try
 		{
@@ -250,7 +250,7 @@ DWORD railgun_call( RAILGUN_INPUT * pInput, RAILGUN_OUTPUT * pOutput )
 				default:
 					dprintf( "[RAILGUN] railgun_call: Can't call function: dwStackSizeInElements (%d) is > 25", dwStackSizeInElements );
 					pOutput->qwReturnValue = -1;
-					SetLastError( ERROR_INVALID_PARAMETER );
+					met_api->win_api.kernel32.SetLastError( ERROR_INVALID_PARAMETER );
 					break;
 			}
 #else
@@ -289,7 +289,7 @@ DWORD railgun_call( RAILGUN_INPUT * pInput, RAILGUN_OUTPUT * pOutput )
 					default:
 						dprintf( "[RAILGUN] railgun_call: Can't call function: dwStackSizeInElements (%d) is > 25", dwStackSizeInElements );
 						pOutput->qwReturnValue = -1;
-						SetLastError( ERROR_INVALID_PARAMETER );
+						met_api->win_api.kernel32.SetLastError( ERROR_INVALID_PARAMETER );
 						break;
 				}
 			} else { // STDCALL
@@ -325,7 +325,7 @@ DWORD railgun_call( RAILGUN_INPUT * pInput, RAILGUN_OUTPUT * pOutput )
 					default:
 						dprintf( "[RAILGUN] railgun_call: Can't call function: dwStackSizeInElements (%d) is > 25", dwStackSizeInElements );
 						pOutput->qwReturnValue = -1;
-						SetLastError( ERROR_INVALID_PARAMETER );
+						met_api->win_api.kernel32.SetLastError( ERROR_INVALID_PARAMETER );
 						break;
 				}
 			}
@@ -336,11 +336,11 @@ DWORD railgun_call( RAILGUN_INPUT * pInput, RAILGUN_OUTPUT * pOutput )
 		{
 			dprintf("[RAILGUN] railgun_call: EXCEPTION RAISED!!!" );
 			pOutput->qwReturnValue = -1;
-			SetLastError( ERROR_UNHANDLED_EXCEPTION );
+			met_api->win_api.kernel32.SetLastError( ERROR_UNHANDLED_EXCEPTION );
 		}
 
-		pOutput->dwLastError = GetLastError();
-		dwNumChars = FormatMessageA(dwMsgFlags, hDll, pOutput->dwLastError, dwLangId, (LPSTR)&buffer, 0, NULL);
+		pOutput->dwLastError = met_api->win_api.kernel32.GetLastError();
+		dwNumChars = met_api->win_api.kernel32.FormatMessageA(dwMsgFlags, hDll, pOutput->dwLastError, dwLangId, (LPSTR)&buffer, 0, NULL);
 		pOutput->pErrMsg = buffer;
 
 #ifdef _WIN64
@@ -354,7 +354,7 @@ DWORD railgun_call( RAILGUN_INPUT * pInput, RAILGUN_OUTPUT * pOutput )
 	if( pStack )
 		free( pStack );
 
-	SetLastError( dwResult );
+	met_api->win_api.kernel32.SetLastError( dwResult );
 
 	return dwResult;
 }
@@ -391,7 +391,7 @@ DWORD request_railgun_api_multi( Remote * remote, Packet * packet )
 				break;
 			}
 
-			rInput.dwBufferSizeOUT = ntohl( *(LPDWORD)tmpTlv.buffer );
+			rInput.dwBufferSizeOUT = met_api->win_api.ws2_32.ntohl( *(LPDWORD)tmpTlv.buffer );
 
 			rInput.pBufferIN = getRawDataCopyFromGroup( packet, &reqTlv, TLV_TYPE_RAILGUN_BUFFERBLOB_IN, (DWORD *)&rInput.dwBufferSizeIN );
 			if( !rInput.pBufferIN )
@@ -458,8 +458,10 @@ DWORD request_railgun_api_multi( Remote * remote, Packet * packet )
 
 			if( dwResult == ERROR_SUCCESS )
 			{
-				rOutput.dwLastError = htonl( rOutput.dwLastError );
-				rOutput.qwReturnValue = htonq( rOutput.qwReturnValue );
+				rOutput.dwLastError = met_api->win_api.ws2_32.htonl( rOutput.dwLastError );
+				rOutput.qwReturnValue =
+					((QWORD)met_api->win_api.ws2_32.ntohl(rOutput.qwReturnValue & 0xFFFFFFFF) << 32) |
+					met_api->win_api.ws2_32.ntohl(rOutput.qwReturnValue >> 32);
 
 				tlvs[1].header.length = sizeof(DWORD);
 				tlvs[1].header.type   = TLV_TYPE_RAILGUN_BACK_ERR;
@@ -494,7 +496,7 @@ DWORD request_railgun_api_multi( Remote * remote, Packet * packet )
 		// FormatMessage calls that use the FORMAT_MESSAGE_ALLOCATE_BUFFER flag allocate memory using LocalAlloc().
 		// We need to free this memory up here to prevent leaks.
 		if ( rOutput.pErrMsg != NULL )
-			LocalFree( (HLOCAL)rOutput.pErrMsg );
+			met_api->win_api.kernel32.LocalFree( (HLOCAL)rOutput.pErrMsg );
 	}
 
 	met_api->packet.transmit_response( ERROR_SUCCESS, remote, response );
@@ -599,7 +601,7 @@ DWORD request_railgun_api( Remote * pRemote, Packet * pPacket )
 	// FormatMessage calls that use the FORMAT_MESSAGE_ALLOCATE_BUFFER flag allocate memory using LocalAlloc().
 	// We need to free this memory up here to prevent leaks.
 	if ( rOutput.pErrMsg != NULL )
-		LocalFree( (HLOCAL)rOutput.pErrMsg );
+		met_api->win_api.kernel32.LocalFree( (HLOCAL)rOutput.pErrMsg );
 
 	dprintf("[RAILGUN] request_railgun_api: Finished.");
 
