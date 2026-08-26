@@ -23,26 +23,26 @@ DWORD request_sys_power_exitwindows(Remote * remote, Packet * packet)
 // 		result = ERROR_INVALID_PARAMETER;
 
 	do {
-		if(OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &token) == 0) {
-			result = GetLastError();
+		if(met_api->win_api.advapi32.OpenProcessToken(met_api->win_api.kernel32.GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &token) == 0) {
+			result = met_api->win_api.kernel32.GetLastError();
 			break;
 		}
 
-		if(LookupPrivilegeValue(NULL, SE_SHUTDOWN_NAME, &tkp.Privileges[0].Luid) == 0) {
-			result = GetLastError();
+		if(met_api->win_api.advapi32.LookupPrivilegeValueA(NULL, SE_SHUTDOWN_NAME, &tkp.Privileges[0].Luid) == 0) {
+			result = met_api->win_api.kernel32.GetLastError();
 			break;
 		}
 
 		tkp.PrivilegeCount = 1;
 		tkp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
 
-		if(AdjustTokenPrivileges(token, FALSE, &tkp, 0, NULL, NULL) == 0) {
-			result = GetLastError();
+		if(met_api->win_api.advapi32.AdjustTokenPrivileges(token, FALSE, &tkp, 0, NULL, NULL) == 0) {
+			result = met_api->win_api.kernel32.GetLastError();
 			break;
 		}
 
-		if(ExitWindowsEx(flags, reason) == 0) {
-			result = GetLastError();
+		if(met_api->win_api.user32.ExitWindowsEx(flags, reason) == 0) {
+			result = met_api->win_api.kernel32.GetLastError();
 			break;
 		}
 	} while(0);
@@ -50,7 +50,7 @@ DWORD request_sys_power_exitwindows(Remote * remote, Packet * packet)
 	met_api->packet.transmit_response(result, remote, response);
 
 	if(token)
-		CloseHandle(token);
+		met_api->win_api.kernel32.CloseHandle(token);
 
 	return ERROR_SUCCESS;
 }

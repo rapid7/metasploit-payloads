@@ -14,72 +14,72 @@ BOOL DeleteFolderWR(LPCWSTR szPath)
 	wchar_t cPath[MAX_PATH], cCurrentFile[MAX_PATH];
 
 	if (szPath == NULL) {
-		SetLastError(ERROR_INVALID_PARAMETER);
+		met_api->win_api.kernel32.SetLastError(ERROR_INVALID_PARAMETER);
 		return FALSE;
 	}
 
-	if (szPath[0] == L'\\' || szPath[0] == L'\0' || szPath[0] == L'.' || lstrcmpiW(szPath, L"..") == 0) {
-		SetLastError(ERROR_INVALID_PARAMETER);
+	if (szPath[0] == L'\\' || szPath[0] == L'\0' || szPath[0] == L'.' || met_api->win_api.kernel32.lstrcmpiW(szPath, L"..") == 0) {
+		met_api->win_api.kernel32.SetLastError(ERROR_INVALID_PARAMETER);
 		return FALSE;
 	}
 
-	dwAttrs = GetFileAttributesW(szPath);
+	dwAttrs = met_api->win_api.kernel32.GetFileAttributesW(szPath);
 	if (dwAttrs == INVALID_FILE_ATTRIBUTES) {
 		return FALSE;
 	}
 
 	if (~dwAttrs & FILE_ATTRIBUTE_DIRECTORY) {
-		SetLastError(ERROR_INVALID_PARAMETER);
+		met_api->win_api.kernel32.SetLastError(ERROR_INVALID_PARAMETER);
 		return FALSE;
 	}
 
-	SetLastError(0);
+	met_api->win_api.kernel32.SetLastError(0);
 
-	bRes = RemoveDirectoryW(szPath);
+	bRes = met_api->win_api.kernel32.RemoveDirectoryW(szPath);
 	if (bRes == TRUE)
 		return TRUE;
 
-	if (bRes == FALSE  && GetLastError() != ERROR_DIR_NOT_EMPTY)
+	if (bRes == FALSE  && met_api->win_api.kernel32.GetLastError() != ERROR_DIR_NOT_EMPTY)
 		return FALSE;
 
-	nLength = lstrlenW(szPath);
+	nLength = met_api->win_api.kernel32.lstrlenW(szPath);
 
-	if (nLength + lstrlenW(L"\\*.*") + 1> MAX_PATH)
+	if (nLength + met_api->win_api.kernel32.lstrlenW(L"\\*.*") + 1> MAX_PATH)
 		return FALSE;
 
 	if (szPath[nLength - 1] == L'\\')
-		wsprintfW(cPath, L"%s*.*", szPath);
+		met_api->win_api.user32.wsprintfW(cPath, L"%s*.*", szPath);
 	else
-		wsprintfW(cPath, L"%s\\*.*", szPath);
+		met_api->win_api.user32.wsprintfW(cPath, L"%s\\*.*", szPath);
 
-	hFind = FindFirstFileW(cPath, &findFileData);
+	hFind = met_api->win_api.kernel32.FindFirstFileW(cPath, &findFileData);
 	if (hFind == INVALID_HANDLE_VALUE)
 		return FALSE;
 
-	lstrcpyW(cPath, szPath);
+	met_api->win_api.kernel32.lstrcpyW(cPath, szPath);
 
 	if (cPath[nLength - 1] == L'\\')
 		cPath[nLength - 1] = L'\0';
 
 	do
 	{
-		if (lstrcmpiW(findFileData.cFileName, L".") == 0 || lstrcmpiW(findFileData.cFileName, L"..") == 0)
+		if (met_api->win_api.kernel32.lstrcmpiW(findFileData.cFileName, L".") == 0 || met_api->win_api.kernel32.lstrcmpiW(findFileData.cFileName, L"..") == 0)
 			continue;
 
-		if (lstrlenW(cPath) + lstrlenW(L"\\") + lstrlenW(findFileData.cFileName) + 1 > MAX_PATH)
+		if (met_api->win_api.kernel32.lstrlenW(cPath) + met_api->win_api.kernel32.lstrlenW(L"\\") + met_api->win_api.kernel32.lstrlenW(findFileData.cFileName) + 1 > MAX_PATH)
 			continue;
 
-		wsprintfW(cCurrentFile, L"%s\\%s", cPath, findFileData.cFileName);
+		met_api->win_api.user32.wsprintfW(cCurrentFile, L"%s\\%s", cPath, findFileData.cFileName);
 		if (findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 		{
 			if (findFileData.dwFileAttributes & FILE_ATTRIBUTE_READONLY)
 			{
 				findFileData.dwFileAttributes &= ~FILE_ATTRIBUTE_READONLY;
-				SetFileAttributesW(cCurrentFile, findFileData.dwFileAttributes);
+				met_api->win_api.kernel32.SetFileAttributesW(cCurrentFile, findFileData.dwFileAttributes);
 			}
 
 			if (findFileData.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)
-				bRes = RemoveDirectoryW(cCurrentFile);
+				bRes = met_api->win_api.kernel32.RemoveDirectoryW(cCurrentFile);
 			else
 				bRes = DeleteFolderWR(cCurrentFile);
 		}
@@ -88,21 +88,21 @@ BOOL DeleteFolderWR(LPCWSTR szPath)
 
 			if ((findFileData.dwFileAttributes & FILE_ATTRIBUTE_READONLY) ||
 				(findFileData.dwFileAttributes & FILE_ATTRIBUTE_SYSTEM))
-				SetFileAttributesW(cCurrentFile, FILE_ATTRIBUTE_NORMAL);
+				met_api->win_api.kernel32.SetFileAttributesW(cCurrentFile, FILE_ATTRIBUTE_NORMAL);
 
-			DeleteFileW(cCurrentFile);
+			met_api->win_api.kernel32.DeleteFileW(cCurrentFile);
 		}
-	} while (FindNextFileW(hFind, &findFileData));
+	} while (met_api->win_api.kernel32.FindNextFileW(hFind, &findFileData));
 
-	dwError = GetLastError();
+	dwError = met_api->win_api.kernel32.GetLastError();
 
 	if (hFind != INVALID_HANDLE_VALUE)
-		FindClose(hFind);
+		met_api->win_api.kernel32.FindClose(hFind);
 
 	if (dwError != ERROR_NO_MORE_FILES)
 		return FALSE;
 
-	bRes = RemoveDirectoryW(szPath);
+	bRes = met_api->win_api.kernel32.RemoveDirectoryW(szPath);
 
 	return bRes;
 }
@@ -117,7 +117,7 @@ char * fs_expand_path(const char *regular)
 		return NULL;
 	}
 
-	if (ExpandEnvironmentStringsW(regular_w, expanded_path, FS_MAX_PATH) == 0) {
+	if (met_api->win_api.kernel32.ExpandEnvironmentStringsW(regular_w, expanded_path, FS_MAX_PATH) == 0) {
 		free(regular_w);
 		return NULL;
 	}
@@ -177,19 +177,19 @@ int fs_ls(const char *directory, fs_ls_cb_t cb, void *arg)
 	WIN32_FIND_DATAW data;
 	wchar_t *path_w = met_api->string.utf8_to_wchar(expanded);
 	if (path_w == NULL) {
-		result = GetLastError();
+		result = met_api->win_api.kernel32.GetLastError();
 		goto out;
 	}
 
-	HANDLE ctx = FindFirstFileW(path_w, &data);
+	HANDLE ctx = met_api->win_api.kernel32.FindFirstFileW(path_w, &data);
 	if (ctx == NULL) {
-		result = GetLastError();
+		result = met_api->win_api.kernel32.GetLastError();
 		goto out;
 	}
 
 	do {
 		if (ctx == INVALID_HANDLE_VALUE) {
-			result = GetLastError();
+			result = met_api->win_api.kernel32.GetLastError();
 			break;
 		}
 
@@ -208,12 +208,12 @@ int fs_ls(const char *directory, fs_ls_cb_t cb, void *arg)
 		free(filename);
 		free(short_filename);
 
-	} while (FindNextFileW(ctx, &data));
+	} while (met_api->win_api.kernel32.FindNextFileW(ctx, &data));
 
 	/*
 	 * Clean up resources
 	 */
-	FindClose(ctx);
+	met_api->win_api.kernel32.FindClose(ctx);
 	free(expanded);
 out:
 	free(baseDirectory);
@@ -227,12 +227,12 @@ int fs_chdir(const char *directory)
 	wchar_t *dir_w = met_api->string.utf8_to_wchar(directory);
 
 	if (dir_w == NULL) {
-		rc = GetLastError();
+		rc = met_api->win_api.kernel32.GetLastError();
 		goto out;
 	}
 
-	if (SetCurrentDirectoryW(dir_w) == 0) {
-		rc = GetLastError();
+	if (met_api->win_api.kernel32.SetCurrentDirectoryW(dir_w) == 0) {
+		rc = met_api->win_api.kernel32.GetLastError();
 	}
 
 out:
@@ -246,12 +246,12 @@ int fs_delete_dir(const char *directory)
 	wchar_t *dir_w = met_api->string.utf8_to_wchar(directory);
 
 	if (dir_w == NULL) {
-		rc = GetLastError();
+		rc = met_api->win_api.kernel32.GetLastError();
 		goto out;
 	}
 
 	if (DeleteFolderWR(dir_w) == 0) {
-		rc = GetLastError();
+		rc = met_api->win_api.kernel32.GetLastError();
 	}
 
 out:
@@ -265,18 +265,18 @@ int fs_delete_file(const char *path)
 	wchar_t *path_w = met_api->string.utf8_to_wchar(path);
 
 	if (path_w == NULL) {
-		rc = GetLastError();
+		rc = met_api->win_api.kernel32.GetLastError();
 		goto out;
 	}
 
-	DWORD attrs = GetFileAttributesW(path_w);
+	DWORD attrs = met_api->win_api.kernel32.GetFileAttributesW(path_w);
 	if ((attrs != INVALID_FILE_ATTRIBUTES) && (attrs & FILE_ATTRIBUTE_READONLY)) {
 		attrs &= ~FILE_ATTRIBUTE_READONLY;
-		SetFileAttributesW(path_w, attrs);
+		met_api->win_api.kernel32.SetFileAttributesW(path_w, attrs);
 	}
 
-	if (DeleteFileW(path_w) == 0) {
-		rc = GetLastError();
+	if (met_api->win_api.kernel32.DeleteFileW(path_w) == 0) {
+		rc = met_api->win_api.kernel32.GetLastError();
 	}
 
 out:
@@ -289,14 +289,14 @@ int fs_getwd(char **dir)
 	int rc = ERROR_SUCCESS;
 	wchar_t dir_w[FS_MAX_PATH];
 
-	if (GetCurrentDirectoryW(FS_MAX_PATH, dir_w) == 0) {
-		rc = GetLastError();
+	if (met_api->win_api.kernel32.GetCurrentDirectoryW(FS_MAX_PATH, dir_w) == 0) {
+		rc = met_api->win_api.kernel32.GetLastError();
 		goto out;
 	}
 
 	*dir = met_api->string.wchar_to_utf8(dir_w);
 	if (*dir == NULL) {
-		rc = GetLastError();
+		rc = met_api->win_api.kernel32.GetLastError();
 	}
 
 out:
@@ -310,12 +310,12 @@ int fs_move(const char *oldpath, const char *newpath)
 	wchar_t *new_w = met_api->string.utf8_to_wchar(newpath);
 
 	if ((old_w == NULL) || (new_w == NULL)) {
-		rc = GetLastError();
+		rc = met_api->win_api.kernel32.GetLastError();
 		goto out;
 	}
 
-	if (MoveFileW(old_w, new_w) == 0) {
-		rc = GetLastError();
+	if (met_api->win_api.kernel32.MoveFileW(old_w, new_w) == 0) {
+		rc = met_api->win_api.kernel32.GetLastError();
 	}
 
 out:
@@ -331,12 +331,12 @@ int fs_copy(const char *oldpath, const char *newpath)
 	wchar_t *new_w = met_api->string.utf8_to_wchar(newpath);
 
 	if ((old_w == NULL) || (new_w == NULL)) {
-		rc = GetLastError();
+		rc = met_api->win_api.kernel32.GetLastError();
 		goto out;
 	}
 
-	if (CopyFileW(old_w, new_w, 0) == 0) {
-		rc = GetLastError();
+	if (met_api->win_api.kernel32.CopyFileW(old_w, new_w, 0) == 0) {
+		rc = met_api->win_api.kernel32.GetLastError();
 	}
 
 out:
@@ -359,19 +359,19 @@ int fs_mkdir(char *directory)
 		return ERROR_INVALID_PARAMETER;
 	}
 
-	process_heap =  GetProcessHeap();
+	process_heap = met_api->win_api.kernel32.GetProcessHeap();
 
 	if(process_heap == NULL){
-		rc = GetLastError();
+		rc = met_api->win_api.kernel32.GetLastError();
 		return rc;
 	}
 
 	// Add 2 because of NULL character and additional backslash
-	directory_length = lstrlenA(directory)+2;
-	base_dir = (char *)HeapAlloc(process_heap, 0, directory_length);
+	directory_length = met_api->win_api.kernel32.lstrlenA(directory)+2;
+	base_dir = (char *)met_api->win_api.kernel32.HeapAlloc(process_heap, 0, directory_length);
 	
 	if(base_dir == NULL){
-		rc = GetLastError();
+		rc = met_api->win_api.kernel32.GetLastError();
 		return rc;
 	}
 
@@ -384,12 +384,12 @@ int fs_mkdir(char *directory)
 		if (fs_stat(base_dir, &s) != ERROR_SUCCESS) {
 			dir_w = met_api->string.utf8_to_wchar(base_dir);
 			if (dir_w == NULL) {
-				rc = GetLastError();
+				rc = met_api->win_api.kernel32.GetLastError();
 				goto out;
 			}
 
-			if (CreateDirectoryW(dir_w, NULL) == 0) {
-				rc = GetLastError();
+			if (met_api->win_api.kernel32.CreateDirectoryW(dir_w, NULL) == 0) {
+				rc = met_api->win_api.kernel32.GetLastError();
 				free(dir_w);
 				goto out;
 			}
@@ -399,7 +399,8 @@ int fs_mkdir(char *directory)
 		dir = strtok(NULL, "\\");
 		
 		if (dir != NULL){
-			sprintf_s((char*)(base_dir+lstrlenA(base_dir)), directory_length, "%s\\",dir);
+			size_t base_dir_length = met_api->win_api.kernel32.lstrlenA(base_dir);
+			sprintf_s(base_dir + base_dir_length, directory_length - base_dir_length, "%s\\", dir);
 		}
 		
 		memset(&s, 0, sizeof(struct meterp_stat));
@@ -407,7 +408,7 @@ int fs_mkdir(char *directory)
 
 
 out:
-	HeapFree(process_heap,0, base_dir);
+	met_api->win_api.kernel32.HeapFree(process_heap, 0, base_dir);
 	return rc;
 }
 
@@ -437,7 +438,7 @@ int fs_fopen(const char *path, const char *mode, FILE **f)
 	Mode[1] = L'b';
 	*f = _wfopen(path_w, Mode);
 	if (*f == NULL) {
-		rc = GetLastError();
+		rc = met_api->win_api.kernel32.GetLastError();
 	}
 
 out:
@@ -469,11 +470,11 @@ attributes_from_dir_w(LPCWSTR pszFile, LPWIN32_FILE_ATTRIBUTE_DATA pfad)
 {
 	HANDLE hFindFile;
 	WIN32_FIND_DATAW FileData;
-	hFindFile = FindFirstFileW(pszFile, &FileData);
+	hFindFile = met_api->win_api.kernel32.FindFirstFileW(pszFile, &FileData);
 	if (hFindFile == INVALID_HANDLE_VALUE) {
 		return -1;
 	}
-	FindClose(hFindFile);
+	met_api->win_api.kernel32.FindClose(hFindFile);
 	pfad->dwFileAttributes = FileData.dwFileAttributes;
 	pfad->ftCreationTime = FileData.ftCreationTime;
 	pfad->ftLastAccessTime = FileData.ftLastAccessTime;
@@ -521,8 +522,8 @@ win32_wstat(const wchar_t* path, struct meterp_stat *result)
 	int code;
 	const wchar_t *dot;
 	WIN32_FILE_ATTRIBUTE_DATA info;
-	if (!GetFileAttributesExW(path, GetFileExInfoStandard, &info)) {
-		if (GetLastError() != ERROR_SHARING_VIOLATION) {
+	if (!met_api->win_api.kernel32.GetFileAttributesExW(path, GetFileExInfoStandard, &info)) {
+		if (met_api->win_api.kernel32.GetLastError() != ERROR_SHARING_VIOLATION) {
 			return -1;
 		}
 		else {
@@ -555,7 +556,7 @@ int fs_stat(char *filename, struct meterp_stat *buf)
 	}
 
 	if (win32_wstat(filename_w, buf) == -1) {
-		return GetLastError();
+		return met_api->win_api.kernel32.GetLastError();
 	}
 
 	free(filename_w);

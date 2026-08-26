@@ -29,7 +29,7 @@ static DWORD file_channel_write(Channel *channel, Packet *request,
 	if (bufferSize) {
 		written = fwrite(buffer, 1, bufferSize, ctx->fd);
 		if (written < bufferSize) {
-			result  = GetLastError();
+			result  = met_api->win_api.kernel32.GetLastError();
 		}
 	}
 
@@ -69,7 +69,7 @@ static DWORD file_channel_read(Channel *channel, Packet *request,
 	if (bufferSize) {
 	       	bytes = fread(buffer, 1, bufferSize, ctx->fd);
 		if (bytes < bufferSize) {
-			result = GetLastError();
+			result = met_api->win_api.kernel32.GetLastError();
 		}
 	}
 
@@ -113,7 +113,7 @@ static DWORD file_channel_tell(Channel *channel, Packet *request,
 	LONG pos = 0;
 
 	if ((pos = ftell(ctx->fd)) < 0) {
-		result = GetLastError();
+		result = met_api->win_api.kernel32.GetLastError();
 	}
 
 	if (offset)
@@ -322,29 +322,29 @@ DWORD request_fs_file_hash(Remote* remote, Packet* packet, ALG_ID hashType)
 		if (result != ERROR_SUCCESS)
 		{
 			dprintf("[FILE HASH] Failed to open file: %s", filePath);
-			result = GetLastError();
+			result = met_api->win_api.kernel32.GetLastError();
 			break;
 		}
 
-		if (!CryptAcquireContext(&cryptProv, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT))
+		if (!met_api->win_api.advapi32.CryptAcquireContextA(&cryptProv, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT))
 		{
-			result = GetLastError();
+			result = met_api->win_api.kernel32.GetLastError();
 			dprintf("[FILE HASH] Failed to get the Crypt context: %d (%x)", result, result);
 			break;
 		}
 
-		if (!CryptCreateHash(cryptProv, hashType, 0, 0, &hashInstance))
+		if (!met_api->win_api.advapi32.CryptCreateHash(cryptProv, hashType, 0, 0, &hashInstance))
 		{
-			result = GetLastError();
+			result = met_api->win_api.kernel32.GetLastError();
 			dprintf("[FILE HASH] Failed to get the hash instance: %d (%x)", result, result);
 			break;
 		}
 
 		BOOL failed = FALSE;
 		while ((ret = fread(buff, 1, sizeof(buff), fd)) > 0) {
-			if (!CryptHashData(hashInstance, buff, (DWORD)ret, 0))
+			if (!met_api->win_api.advapi32.CryptHashData(hashInstance, buff, (DWORD)ret, 0))
 			{
-				result = GetLastError();
+				result = met_api->win_api.kernel32.GetLastError();
 				dprintf("[FILE HASH] Failed to hash a chunk of data", result, result);
 				failed = TRUE;
 				break;
@@ -358,9 +358,9 @@ DWORD request_fs_file_hash(Remote* remote, Packet* packet, ALG_ID hashType)
 
 		DWORD hashSize = 0;
 		DWORD hashBufferSize = sizeof(hashSize);
-		if (!CryptGetHashParam(hashInstance, HP_HASHSIZE, (BYTE*)&hashSize, &hashBufferSize, 0) || hashSize == 0)
+		if (!met_api->win_api.advapi32.CryptGetHashParam(hashInstance, HP_HASHSIZE, (BYTE*)&hashSize, &hashBufferSize, 0) || hashSize == 0)
 		{
-			result = GetLastError();
+			result = met_api->win_api.kernel32.GetLastError();
 			dprintf("[FILE HASH] Failed to get the hash size: %d (%x)", result, result);
 		}
 
@@ -368,9 +368,9 @@ DWORD request_fs_file_hash(Remote* remote, Packet* packet, ALG_ID hashType)
 
 		// We'll reuse the buff var here because it's more than big enough for the
 		// size of any hash that'll be calculated
-		if (!CryptGetHashParam(hashInstance, HP_HASHVAL, buff, &hashSize, 0))
+		if (!met_api->win_api.advapi32.CryptGetHashParam(hashInstance, HP_HASHVAL, buff, &hashSize, 0))
 		{
-			result = GetLastError();
+			result = met_api->win_api.kernel32.GetLastError();
 			dprintf("[FILE HASH] Failed to get the hash value: %d (%x)", result, result);
 			break;
 		}
@@ -383,12 +383,12 @@ DWORD request_fs_file_hash(Remote* remote, Packet* packet, ALG_ID hashType)
 
 	if (hashInstance != 0)
 	{
-		CryptDestroyHash(hashInstance);
+		met_api->win_api.advapi32.CryptDestroyHash(hashInstance);
 	}
 
 	if (cryptProv != 0)
 	{
-		CryptReleaseContext(cryptProv, 0);
+		met_api->win_api.advapi32.CryptReleaseContext(cryptProv, 0);
 	}
 
 	if (fd != NULL)
