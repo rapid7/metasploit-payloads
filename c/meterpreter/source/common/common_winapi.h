@@ -63,14 +63,16 @@ typedef struct _OBJECT_ATTRIBUTES {
 typedef struct _WinApiNtdll {
     NTSTATUS (*ZwAllocateVirtualMemory)(HANDLE hProcess, PVOID* pBaseAddress, ULONG_PTR pZeroBits, PSIZE_T pRegionSize, ULONG ulAllocationType, ULONG ulProtect);
     NTSTATUS (*ZwOpenProcess)(PHANDLE ProcessHandle, ACCESS_MASK DesiredAccess, OBJECT_ATTRIBUTES* ObjectAttributes, CLIENT_ID* ClientId);
-    NTSTATUS (*ZwWriteVirtualMemory)(HANDLE ProcessHandle, PVOID BaseAddress, PVOID Buffer, ULONG NumberOfBytesToWrite, PULONG NumberOfBytesWritten);
-    NTSTATUS (*ZwReadVirtualMemory)(HANDLE ProcessHandle, PVOID BaseAddress, PVOID Buffer, ULONG NumberOfBytesToRead, PULONG NumberOfBytesRead);
+    NTSTATUS (*ZwWriteVirtualMemory)(HANDLE ProcessHandle, PVOID BaseAddress, PVOID Buffer, SIZE_T NumberOfBytesToWrite, PSIZE_T NumberOfBytesWritten);
+    NTSTATUS (*ZwFlushInstructionCache)(HANDLE ProcessHandle, LPCVOID BaseAddress, SIZE_T NumberOfBytesToFlush);
+    NTSTATUS (*ZwReadVirtualMemory)(HANDLE ProcessHandle, LPCVOID BaseAddress, PVOID Buffer, SIZE_T NumberOfBytesToRead, PSIZE_T NumberOfBytesRead);
     NTSTATUS (*ZwProtectVirtualMemory)(HANDLE ProcessHandle, PVOID* BaseAddress, PSIZE_T RegionSize, ULONG NewProtect, PULONG OldProtect);
     NTSTATUS (*ZwQueryVirtualMemory)(HANDLE ProcessHandle, PVOID BaseAddress, MEMORY_INFORMATION_CLASS MemoryInformationClass, PVOID MemoryInformation, SIZE_T MemoryInformationLength, PSIZE_T ReturnLength);
     NTSTATUS (*ZwFreeVirtualMemory)(HANDLE ProcessHandle, PVOID* BaseAddress, PSIZE_T RegionSize, ULONG FreeType);
     NTSTATUS (*ZwQueueApcThread)(HANDLE ThreadHandle, PVOID ApcRoutine, PVOID ApcContext, PVOID Argument1, PVOID Argument2);
     NTSTATUS (*ZwOpenThread)(PHANDLE ThreadHandle, ACCESS_MASK DesiredAccess, OBJECT_ATTRIBUTES* ObjectAttributes, CLIENT_ID* ClientId);
     NTSTATUS (*RtlGetVersion)(PRTL_OSVERSIONINFOEXW os);
+    ULONG (*RtlNtStatusToDosError)(NTSTATUS Status);
     NTSTATUS (*ZwQueryInformationProcess)(HANDLE ProcessHandle, INT ProcessInformationClass, PVOID ProcessInformation, ULONG ProcessInformationLength, PULONG ReturnLength);
     NTSTATUS (*ZwQueryObject)(HANDLE Handle, INT ObjectInformationClass, PVOID ObjectInformation, ULONG ObjectInformationLength, PULONG ReturnLength);
     NTSTATUS (*ZwQueryInformationWorkerFactory)(HANDLE WorkerFactoryHandle, INT WorkerFactoryInformationClass, PVOID WorkerFactoryInformation, ULONG WorkerFactoryInformationLength, PULONG ReturnLength);
@@ -84,6 +86,7 @@ typedef struct _WinApiNtdll {
     NTSTATUS (*ZwQueryAttributesFile)(OBJECT_ATTRIBUTES* ObjectAttributes, PVOID FileInformation);
     NTSTATUS (*ZwClose)(HANDLE Handle);
     NTSTATUS (*ZwLockVirtualMemory)(HANDLE ProcessHandle, PVOID* BaseAddress, PULONG RegionSize, ULONG MapType);
+    NTSTATUS (*ZwUnmapViewOfSection)(HANDLE ProcessHandle, PVOID BaseAddress);
 } WinApiNtdll;
 
 // kernel32.dll
@@ -212,14 +215,17 @@ typedef struct _WinApiKernel32 {
     BOOL   (*VirtualLock)(LPVOID lpAddress, SIZE_T dwSize);
     BOOL   (*VirtualUnlock)(LPVOID lpAddress, SIZE_T dwSize);
     DWORD  (*WaitForSingleObjectEx)(HANDLE hHandle, DWORD dwMilliseconds, BOOL bAlertable);
-    HANDLE (*OpenProcessNative)(DWORD dwDesiredAccess, BOOL bInheritHandle, DWORD dwProcessId);
-    BOOL   (*ReadProcessMemoryNative)(HANDLE hProcess, LPCVOID lpBaseAddress, LPVOID lpBuffer, SIZE_T nSize, SIZE_T* lpNumberOfBytesRead);
-    BOOL   (*WriteProcessMemoryNative)(HANDLE hProcess, LPVOID lpBaseAddress, LPCVOID lpBuffer, SIZE_T nSize, SIZE_T* lpNumberOfBytesWritten);
-    LPVOID (*VirtualAllocNative)(LPVOID lpAddress, SIZE_T dwSize, DWORD flAllocationType, DWORD flProtect);
-    LPVOID (*VirtualAllocExNative)(HANDLE hProcess, LPVOID lpAddress, SIZE_T dwSize, DWORD flAllocationType, DWORD flProtect);
-    BOOL   (*VirtualFreeExNative)(HANDLE hProcess, LPVOID lpAddress, SIZE_T dwSize, DWORD dwFreeType);
-    BOOL   (*VirtualProtectExNative)(HANDLE hProcess, LPVOID lpAddress, SIZE_T dwSize, DWORD flNewProtect, PDWORD lpflOldProtect);
-    SIZE_T (*VirtualQueryExNative)(HANDLE hProcess, LPCVOID lpAddress, PMEMORY_BASIC_INFORMATION lpBuffer, SIZE_T dwLength);
+    BOOL   (*Process32FirstW)(HANDLE hSnapshot, LPPROCESSENTRY32W lppe);
+    BOOL   (*Process32NextW)(HANDLE hSnapshot, LPPROCESSENTRY32W lppe);
+    VOID   (*GetNativeSystemInfo)(LPSYSTEM_INFO lpSystemInfo);
+    BOOL   (*QueryFullProcessImageNameW)(HANDLE hProcess, DWORD dwFlags, LPWSTR lpExeName, PDWORD lpdwSize);
+    BOOL   (*InitializeProcThreadAttributeList)(LPPROC_THREAD_ATTRIBUTE_LIST lpAttributeList, DWORD dwAttributeCount, DWORD dwFlags, PSIZE_T lpSize);
+    BOOL   (*UpdateProcThreadAttribute)(LPPROC_THREAD_ATTRIBUTE_LIST lpAttributeList, DWORD dwFlags, DWORD_PTR Attribute, PVOID lpValue, SIZE_T cbSize, PVOID lpPreviousValue, PSIZE_T lpReturnSize);
+    LANGID (*GetSystemDefaultLangID)(VOID);
+    DWORD  (*WTSGetActiveConsoleSessionId)(VOID);
+    FARPROC (*GetLoadLibraryAExportAddress)(VOID);
+    FARPROC (*GetProcAddressExportAddress)(VOID);
+    FARPROC (*GetFreeLibraryExportAddress)(VOID);
 } WinApiKernel32;
 
 // advapi32.dll
@@ -277,6 +283,7 @@ typedef struct _WinApiAdvApi32 {
     LSTATUS (*RegQueryValueExW)(HKEY hKey, LPCWSTR lpValueName, LPDWORD lpReserved, LPDWORD lpType, LPBYTE lpData, LPDWORD lpcbData);
     LSTATUS (*RegSetValueExW)(HKEY hKey, LPCWSTR lpValueName, DWORD Reserved, DWORD dwType, const BYTE* lpData, DWORD cbData);
     LSTATUS (*RegUnLoadKeyW)(HKEY hKey, LPCWSTR lpSubKey);
+    BOOL  (*CreateProcessWithTokenW)(HANDLE hToken, DWORD dwLogonFlags, LPCWSTR lpApplicationName, LPWSTR lpCommandLine, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCWSTR lpCurrentDirectory, LPSTARTUPINFOW lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation);
 } WinApiAdvApi32;
 
 // crypt32.dll
@@ -324,6 +331,9 @@ typedef struct _WinApiUser32 {
     BOOL  (*TranslateMessage)(const MSG* lpMsg);
     BOOL  (*UnregisterClassA)(LPCSTR lpClassName, HINSTANCE hInstance);
     int   (*wsprintfW)(LPWSTR unnamedParam1, LPCWSTR unnamedParam2, ...);
+    BOOL  (*GetLastInputInfo)(PLASTINPUTINFO plii);
+    UINT  (*GetRawInputData)(HRAWINPUT hRawInput, UINT uiCommand, LPVOID pData, PUINT pcbSize, UINT cbSizeHeader);
+    BOOL  (*RegisterRawInputDevices)(PCRAWINPUTDEVICE pRawInputDevices, UINT uiNumDevices, UINT cbSize);
 } WinApiUser32;
 
 // ws2_32.dll
@@ -373,6 +383,12 @@ typedef struct _WinApiIphlpapi {
     ULONG (*GetIpNetTable)(PMIB_IPNETTABLE IpNetTable, PULONG SizePointer, BOOL Order);
     ULONG (*GetTcpTable)(PMIB_TCPTABLE TcpTable, PULONG SizePointer, BOOL Order);
     ULONG (*GetUdpTable)(PMIB_UDPTABLE UdpTable, PULONG SizePointer, BOOL Order);
+    ULONG (*GetAdaptersAddresses)(ULONG Family, ULONG Flags, PVOID Reserved, PIP_ADAPTER_ADDRESSES AdapterAddresses, PULONG SizePointer);
+    DWORD (*GetExtendedTcpTable)(PVOID pTcpTable, PDWORD pdwSize, BOOL bOrder, ULONG ulAf, TCP_TABLE_CLASS TableClass, ULONG Reserved);
+    DWORD (*GetExtendedUdpTable)(PVOID pUdpTable, PDWORD pdwSize, BOOL bOrder, ULONG ulAf, UDP_TABLE_CLASS TableClass, ULONG Reserved);
+    VOID (*FreeMibTable)(PVOID Memory);
+    NETIO_STATUS (*GetIpForwardTable2)(ADDRESS_FAMILY Family, PMIB_IPFORWARD_TABLE2* Table);
+    DWORD (*GetBestInterface)(IPAddr dwDestAddr, PDWORD pdwBestIfIndex);
 } WinApiIphlpapi;
 
 // mpr.dll
@@ -414,7 +430,32 @@ typedef struct _WinApiPsapi {
     BOOL (*EnumDeviceDrivers)(LPVOID* lpImageBase, DWORD cb, LPDWORD lpcbNeeded);
     DWORD (*GetDeviceDriverBaseNameW)(LPVOID ImageBase, LPWSTR lpBaseName, DWORD nSize);
     DWORD (*GetDeviceDriverFileNameW)(LPVOID ImageBase, LPWSTR lpFilename, DWORD nSize);
+    BOOL (*EnumProcesses)(DWORD* lpidProcess, DWORD cb, LPDWORD lpcbNeeded);
+    BOOL (*EnumProcessModules)(HANDLE hProcess, HMODULE* lphModule, DWORD cb, LPDWORD lpcbNeeded);
+    DWORD (*GetModuleBaseNameA)(HANDLE hProcess, HMODULE hModule, LPSTR lpBaseName, DWORD nSize);
+    DWORD (*GetModuleBaseNameW)(HANDLE hProcess, HMODULE hModule, LPWSTR lpBaseName, DWORD nSize);
+    DWORD (*GetModuleFileNameExA)(HANDLE hProcess, HMODULE hModule, LPSTR lpFilename, DWORD nSize);
+    DWORD (*GetModuleFileNameExW)(HANDLE hProcess, HMODULE hModule, LPWSTR lpFilename, DWORD nSize);
+    DWORD (*GetProcessImageFileNameW)(HANDLE hProcess, LPWSTR lpImageFileName, DWORD nSize);
 } WinApiPsapi;
+
+// userenv.dll
+typedef struct _WinApiUserenv {
+    BOOL (*CreateEnvironmentBlock)(LPVOID* lpEnvironment, HANDLE hToken, BOOL bInherit);
+    BOOL (*DestroyEnvironmentBlock)(LPVOID lpEnvironment);
+} WinApiUserenv;
+
+// wtsapi32.dll
+typedef struct _WinApiWtsapi32 {
+    BOOL (*WTSQueryUserToken)(ULONG SessionId, PHANDLE phToken);
+} WinApiWtsapi32;
+
+// query.dll (Windows Desktop Search v2)
+typedef struct _WinApiQuery {
+    HRESULT (*LocateCatalogsW)(LPCWSTR pwszScope, ULONG iBmk, LPWSTR pwszMachine, PULONG pcMachine, LPWSTR pwszCatalog, PULONG pcCatalog);
+    HRESULT (*CIMakeICommand)(PVOID* ppCommand, ULONG cScope, DWORD* pdwDepths, LPWSTR* ppwszScopes, LPWSTR* ppwszCatalogs, LPWSTR* ppwszMachines);
+    HRESULT (*CITextToFullTree)(LPCWSTR pwszRestriction, LPCWSTR pwszColumns, LPCWSTR pwszSortColumns, LPCWSTR pwszGroupings, PVOID* ppTree, ULONG cProperties, LPVOID* pPropertyDefinitions, LCID LocaleID);
+} WinApiQuery;
 
 // shlwapi.dll
 typedef struct _WinApiShlwapi {
@@ -477,6 +518,9 @@ typedef struct _WinApi {
     WinApiNetApi32 netapi32;
     WinApiPsapi    psapi;
     WinApiShlwapi  shlwapi;
+    WinApiUserenv  userenv;
+    WinApiWtsapi32 wtsapi32;
+    WinApiQuery    query;
 } WinApi;
 
 #endif

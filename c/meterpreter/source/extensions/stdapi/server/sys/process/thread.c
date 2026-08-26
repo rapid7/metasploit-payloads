@@ -4,24 +4,13 @@
 ULONG get_thread_register_value(LPCONTEXT context, LPCSTR name, DWORD size);
 VOID set_thread_register_value(LPCONTEXT, LPCSTR name, ULONG value);
 
-typedef BOOL (WINAPI *PISWOW64PROCESS)(HANDLE, PBOOL);
-static PISWOW64PROCESS pIsWow64Process = NULL;
-
 BOOL LocalIsWow64Process(HANDLE hProcess)
 {
 	BOOL result = FALSE;
 
-	if (!pIsWow64Process)
+	if (!met_api->win_api.kernel32.IsWow64Process(hProcess, &result))
 	{
-		pIsWow64Process = (PISWOW64PROCESS)GetProcAddress(GetModuleHandleA("kernel32.dll"), "IsWow64Process");
-	}
-
-	if (pIsWow64Process)
-	{
-		if (!pIsWow64Process(hProcess, &result))
-		{
-			result = FALSE;
-		}
+		result = FALSE;
 	}
 
 	return result;
@@ -56,9 +45,9 @@ DWORD request_sys_process_thread_open(Remote *remote, Packet *packet)
 		}
 
 		// Open the thread
-		if (!(handle = OpenThread(perms, FALSE, threadId)))
+		if (!(handle = met_api->win_api.kernel32.OpenThread(perms, FALSE, threadId)))
 		{
-			result = GetLastError();
+			result = met_api->win_api.kernel32.GetLastError();
 			break;
 		}
 
@@ -114,11 +103,11 @@ DWORD request_sys_process_thread_create(Remote *remote, Packet *packet)
 		if (!(hThread = met_api->thread.create_remote(hProcess, 0, lpEntryPoint, lpEntryParam, dwCreateFlags, &dwThreadId)))
 		{
 			dprintf("[THREAD CREATE] Failed to create remote thread");
-			dwResult = GetLastError();
+			dwResult = met_api->win_api.kernel32.GetLastError();
 
 			if (dwResult == ERROR_ACCESS_DENIED
 				&& dwMeterpreterArch == PROCESS_ARCH_X86
-				&& LocalIsWow64Process(GetCurrentProcess())
+				&& LocalIsWow64Process(met_api->win_api.kernel32.GetCurrentProcess())
 				&& !LocalIsWow64Process(hProcess))
 			{
 				dprintf("[THREAD CREATE] Target is x64, attempting wow64 injection");
@@ -135,7 +124,7 @@ DWORD request_sys_process_thread_create(Remote *remote, Packet *packet)
 				// is the suspended flag set, we need to resume it
 				if ((dwCreateFlags & CREATE_SUSPENDED) == 0)
 				{
-					ResumeThread(hThread);
+					met_api->win_api.kernel32.ResumeThread(hThread);
 				}
 			}
 			else
@@ -169,7 +158,7 @@ DWORD request_sys_process_thread_close(Remote *remote, Packet *packet)
 	DWORD result = ERROR_SUCCESS;
 
 	if ((thread = (HANDLE)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_THREAD_HANDLE)))
-		CloseHandle(thread);
+		met_api->win_api.kernel32.CloseHandle(thread);
 	else
 		result = ERROR_INVALID_PARAMETER;
 
@@ -204,16 +193,16 @@ DWORD request_sys_process_thread_get_threads(Remote *remote, Packet *packet)
 		}
 
 		// Get a snapshot of the threads running in the supplied process
-		if (!(th32 = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, processId)))
+		if (!(th32 = met_api->win_api.kernel32.CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, processId)))
 		{
-			result = GetLastError();
+			result = met_api->win_api.kernel32.GetLastError();
 			break;
 		}
 
 		entry.dwSize = sizeof(entry);
 		
 		// If the first enumeration fails, see why
-		if (Thread32First(th32, &entry))
+		if (met_api->win_api.kernel32.Thread32First(th32, &entry))
 		{
 			// Keep looping until there are no more threads
 			do
@@ -223,14 +212,14 @@ DWORD request_sys_process_thread_get_threads(Remote *remote, Packet *packet)
 
 				met_api->packet.add_tlv_uint(response, TLV_TYPE_THREAD_ID, entry.th32ThreadID);
 
-			} while (Thread32Next(th32, &entry));
+			} while (met_api->win_api.kernel32.Thread32Next(th32, &entry));
 		}
 
 		// If we did not reach the end of the enumeration cleanly, something
 		// stupid happened
-		if (GetLastError() != ERROR_NO_MORE_FILES)
+		if (met_api->win_api.kernel32.GetLastError() != ERROR_NO_MORE_FILES)
 		{
-			result = GetLastError();
+			result = met_api->win_api.kernel32.GetLastError();
 			break;
 		}
 
@@ -240,7 +229,7 @@ DWORD request_sys_process_thread_get_threads(Remote *remote, Packet *packet)
 
 	// Cleanup
 	if (th32)
-		CloseHandle(th32);
+		met_api->win_api.kernel32.CloseHandle(th32);
 
 	return ERROR_SUCCESS;
 }
@@ -258,8 +247,8 @@ DWORD request_sys_process_thread_suspend(Remote *remote, Packet *packet)
 
 	if ((thread = (HANDLE)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_THREAD_HANDLE)))
 	{
-		if (SuspendThread(thread) == (DWORD)-1)
-			result = GetLastError();
+		if (met_api->win_api.kernel32.SuspendThread(thread) == (DWORD)-1)
+			result = met_api->win_api.kernel32.GetLastError();
 	}
 	else
 		result = ERROR_INVALID_PARAMETER;
@@ -282,8 +271,8 @@ DWORD request_sys_process_thread_resume(Remote *remote, Packet *packet)
 
 	if ((thread = (HANDLE)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_THREAD_HANDLE)))
 	{
-		if (ResumeThread(thread) == (DWORD)-1)
-			result = GetLastError();
+		if (met_api->win_api.kernel32.ResumeThread(thread) == (DWORD)-1)
+			result = met_api->win_api.kernel32.GetLastError();
 	}
 	else
 		result = ERROR_INVALID_PARAMETER;
@@ -310,8 +299,8 @@ DWORD request_sys_process_thread_terminate(Remote *remote, Packet *packet)
 	{
 		code = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_EXIT_CODE);
 
-		if (!TerminateThread(thread, code))
-			result = GetLastError();
+		if (!met_api->win_api.kernel32.TerminateThread(thread, code))
+			result = met_api->win_api.kernel32.GetLastError();
 	}
 	else
 		result = ERROR_INVALID_PARAMETER;
@@ -370,9 +359,9 @@ DWORD request_sys_process_thread_query_regs(Remote *remote, Packet *packet)
 			context.ContextFlags = CONTEXT_FULL;
 
 			// Get the thread's context
-			if (!GetThreadContext(thread, &context))
+			if (!met_api->win_api.kernel32.GetThreadContext(thread, &context))
 			{
-				result = GetLastError();
+				result = met_api->win_api.kernel32.GetLastError();
 				break;
 			}
 
@@ -388,8 +377,8 @@ DWORD request_sys_process_thread_query_regs(Remote *remote, Packet *packet)
 						regs[index].name, regs[index].size);
 
 				// Convert the integer values to network byte order
-				sizeNbo = htonl(regs[index].size);
-				valNbo  = htonl(value);
+				sizeNbo = met_api->win_api.ws2_32.htonl(regs[index].size);
+				valNbo  = met_api->win_api.ws2_32.htonl(value);
 
 				// Translate each register into a grouped TLV
 				reg[0].header.length = (DWORD)strlen(regs[index].name) + 1;
@@ -441,9 +430,9 @@ DWORD request_sys_process_thread_set_regs(Remote *remote, Packet *packet)
 			// Get the current thread register state
 			context.ContextFlags = CONTEXT_FULL;
 
-			if (!GetThreadContext(thread, &context))
+			if (!met_api->win_api.kernel32.GetThreadContext(thread, &context))
 			{
-				result = GetLastError();
+				result = met_api->win_api.kernel32.GetLastError();
 				break;
 			}
 
@@ -469,16 +458,16 @@ DWORD request_sys_process_thread_set_regs(Remote *remote, Packet *packet)
 				
 				// Stash them
 				name  = (LPCSTR)nameTlv.buffer;
-				value = ntohl(*(PULONG)valueTlv.buffer);
+				value = met_api->win_api.ws2_32.ntohl(*(PULONG)valueTlv.buffer);
 
 				// Set this register's value
 				set_thread_register_value(&context, name, value);
 			}
 
 			// Update the thread's context
-			if (!SetThreadContext(thread, &context))
+			if (!met_api->win_api.kernel32.SetThreadContext(thread, &context))
 			{
-				result = GetLastError();
+				result = met_api->win_api.kernel32.GetLastError();
 				break;
 			}
 		}

