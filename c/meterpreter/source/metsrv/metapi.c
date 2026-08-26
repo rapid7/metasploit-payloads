@@ -160,6 +160,7 @@ MetApi api_instance = {
             winapi_ntdll_ZwAllocateVirtualMemory,
             winapi_ntdll_ZwOpenProcess,
             winapi_ntdll_ZwWriteVirtualMemory,
+            winapi_ntdll_ZwFlushInstructionCache,
             winapi_ntdll_ZwReadVirtualMemory,
             winapi_ntdll_ZwProtectVirtualMemory,
             winapi_ntdll_ZwQueryVirtualMemory,
@@ -167,6 +168,7 @@ MetApi api_instance = {
             winapi_ntdll_ZwQueueApcThread,
             winapi_ntdll_ZwOpenThread,
             winapi_ntdll_RtlGetVersion,
+            winapi_ntdll_RtlNtStatusToDosError,
             winapi_ntdll_ZwQueryInformationProcess,
             winapi_ntdll_ZwQueryObject,
             winapi_ntdll_ZwQueryInformationWorkerFactory,
@@ -179,7 +181,8 @@ MetApi api_instance = {
             winapi_ntdll_ZwOpenFile,
             winapi_ntdll_ZwQueryAttributesFile,
             winapi_ntdll_ZwClose,
-            winapi_ntdll_ZwLockVirtualMemory
+            winapi_ntdll_ZwLockVirtualMemory,
+            winapi_ntdll_ZwUnmapViewOfSection
         },
         // kernel32
         {
@@ -307,14 +310,17 @@ MetApi api_instance = {
             winapi_kernel32_VirtualLock,
             winapi_kernel32_VirtualUnlock,
             winapi_kernel32_WaitForSingleObjectEx,
-            winapi_kernel32_OpenProcessNative,
-            winapi_kernel32_ReadProcessMemoryNative,
-            winapi_kernel32_WriteProcessMemoryNative,
-            winapi_kernel32_VirtualAllocNative,
-            winapi_kernel32_VirtualAllocExNative,
-            winapi_kernel32_VirtualFreeExNative,
-            winapi_kernel32_VirtualProtectExNative,
-            winapi_kernel32_VirtualQueryExNative
+            winapi_kernel32_Process32FirstW,
+            winapi_kernel32_Process32NextW,
+            winapi_kernel32_GetNativeSystemInfo,
+            winapi_kernel32_QueryFullProcessImageNameW,
+            winapi_kernel32_InitializeProcThreadAttributeList,
+            winapi_kernel32_UpdateProcThreadAttribute,
+            winapi_kernel32_GetSystemDefaultLangID,
+            winapi_kernel32_WTSGetActiveConsoleSessionId,
+            winapi_kernel32_GetLoadLibraryAExportAddress,
+            winapi_kernel32_GetProcAddressExportAddress,
+            winapi_kernel32_GetFreeLibraryExportAddress
         },
         // advapi32
         {
@@ -370,7 +376,8 @@ MetApi api_instance = {
             winapi_advapi32_RegQueryInfoKeyW,
             winapi_advapi32_RegQueryValueExW,
             winapi_advapi32_RegSetValueExW,
-            winapi_advapi32_RegUnLoadKeyW
+            winapi_advapi32_RegUnLoadKeyW,
+            winapi_advapi32_CreateProcessWithTokenW
         },
         // crypt32
         {
@@ -415,7 +422,10 @@ MetApi api_instance = {
             winapi_user32_ToUnicodeEx,
             winapi_user32_TranslateMessage,
             winapi_user32_UnregisterClassA,
-            winapi_user32_wsprintfW
+            winapi_user32_wsprintfW,
+            winapi_user32_GetLastInputInfo,
+            winapi_user32_GetRawInputData,
+            winapi_user32_RegisterRawInputDevices
         },
         // ws2_32
         {
@@ -496,7 +506,13 @@ MetApi api_instance = {
             winapi_iphlpapi_GetIpInterfaceEntry,
             winapi_iphlpapi_GetIpNetTable,
             winapi_iphlpapi_GetTcpTable,
-            winapi_iphlpapi_GetUdpTable
+            winapi_iphlpapi_GetUdpTable,
+            winapi_iphlpapi_GetAdaptersAddresses,
+            winapi_iphlpapi_GetExtendedTcpTable,
+            winapi_iphlpapi_GetExtendedUdpTable,
+            winapi_iphlpapi_FreeMibTable,
+            winapi_iphlpapi_GetIpForwardTable2,
+            winapi_iphlpapi_GetBestInterface
         },
         // mpr
         {
@@ -531,11 +547,33 @@ MetApi api_instance = {
         {
             winapi_psapi_EnumDeviceDrivers,
             winapi_psapi_GetDeviceDriverBaseNameW,
-            winapi_psapi_GetDeviceDriverFileNameW
+            winapi_psapi_GetDeviceDriverFileNameW,
+            winapi_psapi_EnumProcesses,
+            winapi_psapi_EnumProcessModules,
+            winapi_psapi_GetModuleBaseNameA,
+            winapi_psapi_GetModuleBaseNameW,
+            winapi_psapi_GetModuleFileNameExA,
+            winapi_psapi_GetModuleFileNameExW,
+            winapi_psapi_GetProcessImageFileNameW
         },
         // shlwapi
         {
             winapi_shlwapi_SHDeleteKeyW
+        },
+        // userenv
+        {
+            winapi_userenv_CreateEnvironmentBlock,
+            winapi_userenv_DestroyEnvironmentBlock
+        },
+        // wtsapi32
+        {
+            winapi_wtsapi32_WTSQueryUserToken
+        },
+        // query
+        {
+            winapi_query_LocateCatalogsW,
+            winapi_query_CIMakeICommand,
+            winapi_query_CITextToFullTree
         }
     },
 #ifdef DEBUGTRACE

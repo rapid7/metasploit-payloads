@@ -32,7 +32,7 @@ BOOL uintToSYSTEMTIME(UINT epoch, SYSTEMTIME* lpst) {
 	FILETIME ft = {0};
 	ft.dwHighDateTime = li.HighPart;
 	ft.dwLowDateTime = li.LowPart;
-	if (!FileTimeToSystemTime(&ft, lpst)) {
+	if (!met_api->win_api.kernel32.FileTimeToSystemTime(&ft, lpst)) {
 		return FALSE;
 	}
 	return TRUE;
@@ -86,40 +86,17 @@ VOID wds_startup(WDS_INTERFACE * pWDSInterface)
 	{
 		memset(pWDSInterface, 0, sizeof(WDS_INTERFACE));
 
-		hr = CoInitialize(NULL);
+		hr = met_api->win_api.ole32.CoInitialize(NULL);
 		if (FAILED(hr)) {
 			BREAK_WITH_ERROR("[SEARCH] wds_startup: CoInitializeEx Failed", hr);
 		}
 
-		do
-		{
-			pWDSInterface->hQuery = LoadLibraryA("query.dll");
-			if (!pWDSInterface->hQuery) {
-				BREAK_ON_ERROR("[SEARCH] wds_startup:v2: LoadLibraryA query.dll Failed");
-			}
-
-			pWDSInterface->pLocateCatalogsW = (LOCATECATALOGSW)GetProcAddress(pWDSInterface->hQuery, "LocateCatalogsW");
-			if (!pWDSInterface->pLocateCatalogsW) {
-				BREAK_ON_ERROR("[SEARCH] wds_startup:v2: GetProcAddress LocateCatalogsW Failed");
-			}
-
-			pWDSInterface->pCIMakeICommand = (CIMAKEICOMMAND)GetProcAddress(pWDSInterface->hQuery, "CIMakeICommand");
-			if (!pWDSInterface->pCIMakeICommand) {
-				BREAK_ON_ERROR("[SEARCH] wds_startup:v2: GetProcAddress CIMakeICommand Failed");
-			}
-
-			pWDSInterface->pCITextToFullTree = (CITEXTTOFULLTREE)GetProcAddress(pWDSInterface->hQuery, "CITextToFullTree");
-			if (!pWDSInterface->pCITextToFullTree) {
-				BREAK_ON_ERROR("[SEARCH] wds_startup:v2: GetProcAddress CITextToFullTree Failed");
-			}
-
-			pWDSInterface->bWDS2Available = TRUE;
-
-		} while (0);
+		// The query.dll wrappers report E_NOTIMPL when WDS v2 is unavailable.
+		pWDSInterface->bWDS2Available = TRUE;
 
 		do
 		{
-			hr = CoCreateInstance(&_CLSID_CSearchManager, NULL, CLSCTX_ALL, &_IID_ISearchManager, (LPVOID *)&pWDSInterface->pSearchManager);
+			hr = met_api->win_api.ole32.CoCreateInstance(&_CLSID_CSearchManager, NULL, CLSCTX_ALL, &_IID_ISearchManager, (LPVOID *)&pWDSInterface->pSearchManager);
 			if (FAILED(hr)) {
 				BREAK_WITH_ERROR("[SEARCH] wds_startup:v3: CoCreateInstance _IID_ISearchManager Failed", hr);
 			}
@@ -153,15 +130,6 @@ VOID wds_shutdown(WDS_INTERFACE * pWDSInterface)
 			break;
 		}
 
-		if (pWDSInterface->hQuery)
-		{
-			FreeLibrary(pWDSInterface->hQuery);
-		}
-
-		pWDSInterface->pLocateCatalogsW  = NULL;
-		pWDSInterface->pCIMakeICommand   = NULL;
-		pWDSInterface->pCITextToFullTree = NULL;
-
 		pWDSInterface->bWDS2Available    = FALSE;
 
 		if (pWDSInterface->pCrawlScopeManager)
@@ -184,7 +152,7 @@ VOID wds_shutdown(WDS_INTERFACE * pWDSInterface)
 
 		pWDSInterface->bWDS3Available = FALSE;
 
-		CoUninitialize();
+		met_api->win_api.ole32.CoUninitialize();
 
 	} while (0);
 }
@@ -204,7 +172,7 @@ BOOL wds2_indexed(WDS_INTERFACE * pWDSInterface, wchar_t * directory)
 		return FALSE;
 	}
 
-	while (pWDSInterface->pLocateCatalogsW(directory, index++, machine,
+	while (met_api->win_api.query.LocateCatalogsW(directory, index++, machine,
 	    &machineLength, catalog, &catalogLength) == S_OK)
 	{
 		if (wcscmp(machine, L".") == 0 && _wcsicmp(catalog, L"system") == 0)
@@ -454,7 +422,7 @@ DWORD wds2_search(WDS_INTERFACE * pWDSInterface, wchar_t *directory, SEARCH_OPTI
 		wcCatalog[0]  = L"System";
 		wcMachines[0] = L".";
 
-		hr = pWDSInterface->pCIMakeICommand((ICommand**)&pCommand, 1,
+		hr = met_api->win_api.query.CIMakeICommand((PVOID*)&pCommand, 1,
 		    (DWORD *)&dwDepth, (wchar_t **)&wcScope, (wchar_t **)&wcCatalog,
 			(wchar_t **)&wcMachines);
 		if (FAILED(hr)) {
@@ -475,7 +443,7 @@ DWORD wds2_search(WDS_INTERFACE * pWDSInterface, wchar_t *directory, SEARCH_OPTI
 
 		swprintf_s(query, (dwLength + 128), L"#filename = %s", pOptions->glob);
 
-		hr = pWDSInterface->pCITextToFullTree(query, L"size,path", NULL, NULL, &pTree, 0, NULL, GetSystemDefaultLCID());
+		hr = met_api->win_api.query.CITextToFullTree(query, L"size,path", NULL, NULL, (PVOID*)&pTree, 0, NULL, met_api->win_api.kernel32.GetSystemDefaultLCID());
 		if (FAILED(hr)) {
 			BREAK_WITH_ERROR("[SEARCH] wds2_search: CITextToFullTree Failed", hr);
 		}
@@ -581,7 +549,7 @@ DWORD wds3_search(WDS_INTERFACE * pWDSInterface, wchar_t * wpProtocol, wchar_t *
 		if (pOptions->uiStartDate != FS_SEARCH_NO_DATE) {
 			SYSTEMTIME LPST = { 0 };
 			if (!uintToSYSTEMTIME(pOptions->uiStartDate, &LPST)) {
-				BREAK_WITH_ERROR("[SEARCH] unable to convert start date", GetLastError());
+				BREAK_WITH_ERROR("[SEARCH] unable to convert start date", met_api->win_api.kernel32.GetLastError());
 			}
 			where_len += swprintf_s(where + where_len, where_max_len - where_len,
 					L" AND System.DateModified>='%04d-%02d-%02dT%02d:%02d:%02d'",
@@ -590,7 +558,7 @@ DWORD wds3_search(WDS_INTERFACE * pWDSInterface, wchar_t * wpProtocol, wchar_t *
 		if (pOptions->uiEndDate != FS_SEARCH_NO_DATE) {
 			SYSTEMTIME LPST = { 0 };
 			if (!uintToSYSTEMTIME(pOptions->uiEndDate, &LPST)) {
-				BREAK_WITH_ERROR("[SEARCH] unable to convert end date", GetLastError());
+				BREAK_WITH_ERROR("[SEARCH] unable to convert end date", met_api->win_api.kernel32.GetLastError());
 			}
 			where_len += swprintf_s(where + where_len, where_max_len - where_len,
 					L" AND System.DateModified<='%04d-%02d-%02dT%02d:%02d:%02d'",
@@ -607,7 +575,7 @@ DWORD wds3_search(WDS_INTERFACE * pWDSInterface, wchar_t * wpProtocol, wchar_t *
 			BREAK_WITH_ERROR("[SEARCH] wds3_search: ISearchQueryHelper_GenerateSQLFromUserQuery Failed", hr);
 		}
 
-		hr = CoCreateInstance(&_CLSID_MSDAInitialize, NULL, CLSCTX_ALL, &_IID_IDataInitialize, (LPVOID *)&pDataInitialize);
+		hr = met_api->win_api.ole32.CoCreateInstance(&_CLSID_MSDAInitialize, NULL, CLSCTX_ALL, &_IID_IDataInitialize, (LPVOID *)&pDataInitialize);
 		if (FAILED(hr)) {
 			BREAK_WITH_ERROR("[SEARCH] wds3_search: CoCreateInstance _IID_IDataInitialize Failed", hr);
 		}
@@ -653,7 +621,7 @@ DWORD wds3_search(WDS_INTERFACE * pWDSInterface, wchar_t * wpProtocol, wchar_t *
 		}
 
 #ifdef DEBUGTRACE
-		OutputDebugStringW(wpSQL);
+		met_api->win_api.kernel32.OutputDebugStringW(wpSQL);
 #endif
 
 		hr = ICommandText_SetCommandText(pCommandText, &MET_DBGUID_DEFAULT, wpSQL);
@@ -715,7 +683,7 @@ DWORD search_files(wchar_t * directory, SEARCH_OPTIONS * pOptions, Packet * pRes
 	wchar_t firstFile[FS_MAX_PATH];
 	swprintf_s(firstFile, FS_MAX_PATH, L"%s\\%s", directory, pOptions->glob);
 	WIN32_FIND_DATAW data;
-	HANDLE hFile = FindFirstFileW(firstFile, &data);
+	HANDLE hFile = met_api->win_api.kernel32.FindFirstFileW(firstFile, &data);
 
 
 	if (hFile != INVALID_HANDLE_VALUE) {
@@ -733,13 +701,13 @@ DWORD search_files(wchar_t * directory, SEARCH_OPTIONS * pOptions, Packet * pRes
 				}
 				search_add_result(pResponse, directory, data.cFileName, data.nFileSizeLow, data.ftLastWriteTime);
 			}
-		} while (FindNextFileW(hFile, &data) != 0);
+		} while (met_api->win_api.kernel32.FindNextFileW(hFile, &data) != 0);
 
-		FindClose(hFile);
+		met_api->win_api.kernel32.FindClose(hFile);
 	} else {
-		if (GetLastError() != ERROR_FILE_NOT_FOUND) {
+		if (met_api->win_api.kernel32.GetLastError() != ERROR_FILE_NOT_FOUND) {
 			dprintf("[SEARCH] search_files: FindFirstFileW Failed.");
-			return GetLastError();
+			return met_api->win_api.kernel32.GetLastError();
 		}
 	}
 
@@ -761,9 +729,9 @@ DWORD directory_search(wchar_t *directory, SEARCH_OPTIONS * pOptions, Packet * p
 	if (!firstFile) {
 		return ERROR_SUCCESS;
 	}
-	swprintf_s(firstFile, FS_MAX_PATH, L"%s\\*.*", directory);
+	swprintf_s(firstFile, len, L"%s\\*.*", directory);
 
-	HANDLE hFile = FindFirstFileW(firstFile, &FindData);
+	HANDLE hFile = met_api->win_api.kernel32.FindFirstFileW(firstFile, &FindData);
 	dprintf("%S", directory);
 	if (hFile != INVALID_HANDLE_VALUE)
 	{
@@ -793,13 +761,13 @@ DWORD directory_search(wchar_t *directory, SEARCH_OPTIONS * pOptions, Packet * p
 
 				bAllreadySearched = TRUE;
 			}
-		} while (FindNextFileW(hFile, &FindData) != 0);
+		} while (met_api->win_api.kernel32.FindNextFileW(hFile, &FindData) != 0);
 
-		FindClose(hFile);
+		met_api->win_api.kernel32.FindClose(hFile);
 	} else {
-		if (GetLastError() != ERROR_FILE_NOT_FOUND) {
+		if (met_api->win_api.kernel32.GetLastError() != ERROR_FILE_NOT_FOUND) {
 			dprintf("[SEARCH] search_files: FindFirstFileW Failed.");
-			dwResult = GetLastError();
+			dwResult = met_api->win_api.kernel32.GetLastError();
 		}
 	}
 
@@ -840,7 +808,7 @@ DWORD search(WDS_INTERFACE * pWDSInterface, wchar_t *directory, SEARCH_OPTIONS *
 
 DWORD search_all_drives(WDS_INTERFACE *pWDSInterface, SEARCH_OPTIONS *options, Packet *pResponse) //!!! VOID -> DWORD
 {
-	DWORD dwLogicalDrives = GetLogicalDrives();
+	DWORD dwLogicalDrives = met_api->win_api.kernel32.GetLogicalDrives();
 	DWORD dwResult;
 	for (wchar_t index = L'a'; index <= L'z'; index++)
 	{
@@ -851,7 +819,7 @@ DWORD search_all_drives(WDS_INTERFACE *pWDSInterface, SEARCH_OPTIONS *options, P
 
 			swprintf_s(drive, 3, L"%c:", index);
 
-			dwType = GetDriveTypeW(drive);
+			dwType = met_api->win_api.kernel32.GetDriveTypeW(drive);
 
 			if (dwType == DRIVE_FIXED || dwType == DRIVE_REMOTE)
 			{

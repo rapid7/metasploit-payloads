@@ -57,8 +57,9 @@ typedef VOID WINHTTP_PROXY_INFO;
 FARPROC WINAPI GetProcAddressH(HANDLE hModule, DWORD dwFunctionHash);
 
 // A zero-initialized cache for one export from a system DLL. The first lookup
-// pins the module and any forwarded-export modules, then publishes success or
-// failure permanently; contending callers resolve without waiting.
+// retains the requested module and the final forwarded-export module, then
+// publishes success or failure permanently; contending callers resolve without
+// waiting.
 // GetFunctionHCached preserves the calling thread's last-error value. Optional
 // system exports are supported because their availability cannot change while
 // the retained module is loaded. Do not reuse one cache for more than one
@@ -79,6 +80,7 @@ enum HashedFunctions {
     H_ZwAllocateVirtualMemory = 0xD33D4AED,
     H_ZwOpenProcess = 0xF0D09D60,
     H_ZwWriteVirtualMemory = 0xC5D0A4C2,
+    H_ZwFlushInstructionCache = 0x534D8AE8,
     H_ZwReadVirtualMemory = 0x3DEFA5C2,
     H_ZwProtectVirtualMemory = 0xBC3F4D89,
     H_ZwQueryVirtualMemory = 0x4FD39C92,
@@ -86,6 +88,7 @@ enum HashedFunctions {
     H_ZwQueueApcThread = 0xD2E9B347,
     H_ZwOpenThread = 0x197D1E8D,
     H_RtlGetVersion = 0xD0C1869C,
+    H_RtlNtStatusToDosError = 0x651BD789,
     H_WriteProcessMemory = 0xD83D6AA1,
     H_ReadProcessMemory = 0x579D1BE9,
     H_OpenProcess = 0xEFE297C0,
@@ -398,18 +401,52 @@ enum HashedFunctions {
     H_GetDeviceDriverBaseNameW = 0x9E77D81,
     H_GetDeviceDriverFileNameW = 0xDCB7E81,
     H_SHDeleteKeyW = 0x10A9764,
+    H_ZwUnmapViewOfSection = 0xF2D04FD0,
+    H_Process32FirstW = 0xD53992A4,
+    H_Process32NextW = 0x2A523C0A,
+    H_GetNativeSystemInfo = 0xDD2B205D,
+    H_QueryFullProcessImageNameW = 0xF660F694,
+    H_InitializeProcThreadAttributeList = 0xDE64CEFF,
+    H_UpdateProcThreadAttribute = 0x41E5D7CB,
+    H_GetSystemDefaultLangID = 0xF1C443E1,
+    H_WTSGetActiveConsoleSessionId = 0x3C795949,
+    H_GetLastInputInfo = 0x3ABEA2D0,
+    H_GetRawInputData = 0xC99041F4,
+    H_RegisterRawInputDevices = 0x49AEAE6F,
+    H_CreateProcessWithTokenW = 0xE40B58F7,
+    H_GetAdaptersAddresses = 0x7E0F2EF6,
+    H_GetExtendedTcpTable = 0x18067538,
+    H_GetExtendedUdpTable = 0x180A7558,
+    H_FreeMibTable = 0xAC988AD3,
+    H_GetIpForwardTable2 = 0x63061C60,
+    H_GetBestInterface = 0x74BE7EDE,
+    H_EnumProcesses = 0xFBC9E812,
+    H_EnumProcessModules = 0x6AB34F7B,
+    H_GetModuleBaseNameA = 0x41CC6C76,
+    H_GetModuleBaseNameW = 0x41CC6C8C,
+    H_GetModuleFileNameExA = 0x6FDB5ED2,
+    H_GetModuleFileNameExW = 0x6FDB5EE8,
+    H_GetProcessImageFileNameW = 0xF763EC93,
+    H_CreateEnvironmentBlock = 0x1E84C562,
+    H_DestroyEnvironmentBlock = 0x32E9E44A,
+    H_WTSQueryUserToken = 0x6167853F,
+    H_LocateCatalogsW = 0xDEB544B5,
+    H_CIMakeICommand = 0x25A04EA5,
+    H_CITextToFullTree = 0xA6F6B051,
 };
 
 NTSTATUS winapi_ntdll_ZwAllocateVirtualMemory(HANDLE hProcess, PVOID* pBaseAddress, ULONG_PTR pZeroBits, PSIZE_T pRegionSize, ULONG ulAllocationType, ULONG ulProtect);
 NTSTATUS winapi_ntdll_ZwOpenProcess(PHANDLE ProcessHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, PCLIENT_ID ClientId);
-NTSTATUS winapi_ntdll_ZwWriteVirtualMemory(HANDLE ProcessHandle, PVOID BaseAddress, PVOID Buffer, ULONG NumberOfBytesToWrite, PULONG NumberOfBytesWritten); 
-NTSTATUS winapi_ntdll_ZwReadVirtualMemory(HANDLE ProcessHandle, PVOID BaseAddress, PVOID Buffer, ULONG NumberOfBytesToRead, PULONG NumberOfBytesRead);
+NTSTATUS winapi_ntdll_ZwWriteVirtualMemory(HANDLE ProcessHandle, PVOID BaseAddress, PVOID Buffer, SIZE_T NumberOfBytesToWrite, PSIZE_T NumberOfBytesWritten);
+NTSTATUS winapi_ntdll_ZwFlushInstructionCache(HANDLE ProcessHandle, LPCVOID BaseAddress, SIZE_T NumberOfBytesToFlush);
+NTSTATUS winapi_ntdll_ZwReadVirtualMemory(HANDLE ProcessHandle, LPCVOID BaseAddress, PVOID Buffer, SIZE_T NumberOfBytesToRead, PSIZE_T NumberOfBytesRead);
 NTSTATUS winapi_ntdll_ZwProtectVirtualMemory(HANDLE ProcessHandle, PVOID* BaseAddress, PSIZE_T RegionSize, ULONG NewProtect, PULONG OldProtect);
 NTSTATUS winapi_ntdll_ZwQueryVirtualMemory(HANDLE ProcessHandle, PVOID BaseAddress, MEMORY_INFORMATION_CLASS MemoryInformationClass, PVOID MemoryInformation, SIZE_T MemoryInformationLength, PSIZE_T ReturnLength);
 NTSTATUS winapi_ntdll_ZwFreeVirtualMemory(HANDLE ProcessHandle, PVOID* BaseAddress, PSIZE_T RegionSize, ULONG FreeType);
 NTSTATUS winapi_ntdll_ZwQueueApcThread(HANDLE ThreadHandle, PVOID ApcRoutine, PVOID ApcContext, PVOID Argument1, PVOID Argument2); 
 NTSTATUS winapi_ntdll_ZwOpenThread(PHANDLE ThreadHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, PCLIENT_ID ClientId);
 NTSTATUS winapi_ntdll_RtlGetVersion(PRTL_OSVERSIONINFOEXW os);
+ULONG winapi_ntdll_RtlNtStatusToDosError(NTSTATUS Status);
 NTSTATUS winapi_ntdll_ZwQueryInformationProcess(HANDLE ProcessHandle, INT ProcessInformationClass, PVOID ProcessInformation, ULONG ProcessInformationLength, PULONG ReturnLength);
 NTSTATUS winapi_ntdll_ZwQueryObject(HANDLE Handle, INT ObjectInformationClass, PVOID ObjectInformation, ULONG ObjectInformationLength, PULONG ReturnLength);
 NTSTATUS winapi_ntdll_ZwQueryInformationWorkerFactory(HANDLE WorkerFactoryHandle, INT WorkerFactoryInformationClass, PVOID WorkerFactoryInformation, ULONG WorkerFactoryInformationLength, PULONG ReturnLength);
@@ -628,14 +665,6 @@ BOOL winapi_kernel32_TerminateProcess(HANDLE hProcess, UINT uExitCode);
 BOOL winapi_kernel32_VirtualLock(LPVOID lpAddress, SIZE_T dwSize);
 BOOL winapi_kernel32_VirtualUnlock(LPVOID lpAddress, SIZE_T dwSize);
 DWORD winapi_kernel32_WaitForSingleObjectEx(HANDLE hHandle, DWORD dwMilliseconds, BOOL bAlertable);
-HANDLE winapi_kernel32_OpenProcessNative(DWORD dwDesiredAccess, BOOL bInheritHandle, DWORD dwProcessId);
-BOOL winapi_kernel32_ReadProcessMemoryNative(HANDLE hProcess, LPCVOID lpBaseAddress, LPVOID lpBuffer, SIZE_T nSize, SIZE_T* lpNumberOfBytesRead);
-BOOL winapi_kernel32_WriteProcessMemoryNative(HANDLE hProcess, LPVOID lpBaseAddress, LPCVOID lpBuffer, SIZE_T nSize, SIZE_T* lpNumberOfBytesWritten);
-LPVOID winapi_kernel32_VirtualAllocNative(LPVOID lpAddress, SIZE_T dwSize, DWORD flAllocationType, DWORD flProtect);
-LPVOID winapi_kernel32_VirtualAllocExNative(HANDLE hProcess, LPVOID lpAddress, SIZE_T dwSize, DWORD flAllocationType, DWORD flProtect);
-BOOL winapi_kernel32_VirtualFreeExNative(HANDLE hProcess, LPVOID lpAddress, SIZE_T dwSize, DWORD dwFreeType);
-BOOL winapi_kernel32_VirtualProtectExNative(HANDLE hProcess, LPVOID lpAddress, SIZE_T dwSize, DWORD flNewProtect, PDWORD lpflOldProtect);
-SIZE_T winapi_kernel32_VirtualQueryExNative(HANDLE hProcess, LPCVOID lpAddress, PMEMORY_BASIC_INFORMATION lpBuffer, SIZE_T dwLength);
 
 BOOL winapi_advapi32_RevertToSelf(VOID);
 BOOL winapi_advapi32_ClearEventLogA(HANDLE hEventLog, LPCSTR lpBackupFileName);
@@ -743,6 +772,49 @@ DWORD winapi_psapi_GetDeviceDriverBaseNameW(LPVOID ImageBase, LPWSTR lpBaseName,
 DWORD winapi_psapi_GetDeviceDriverFileNameW(LPVOID ImageBase, LPWSTR lpFilename, DWORD nSize);
 
 LSTATUS winapi_shlwapi_SHDeleteKeyW(HKEY hkey, LPCWSTR pszSubKey);
-                                                                                                                             
+
+NTSTATUS winapi_ntdll_ZwUnmapViewOfSection(HANDLE ProcessHandle, PVOID BaseAddress);
+
+BOOL winapi_kernel32_Process32FirstW(HANDLE hSnapshot, LPPROCESSENTRY32W lppe);
+BOOL winapi_kernel32_Process32NextW(HANDLE hSnapshot, LPPROCESSENTRY32W lppe);
+VOID winapi_kernel32_GetNativeSystemInfo(LPSYSTEM_INFO lpSystemInfo);
+BOOL winapi_kernel32_QueryFullProcessImageNameW(HANDLE hProcess, DWORD dwFlags, LPWSTR lpExeName, PDWORD lpdwSize);
+BOOL winapi_kernel32_InitializeProcThreadAttributeList(LPPROC_THREAD_ATTRIBUTE_LIST lpAttributeList, DWORD dwAttributeCount, DWORD dwFlags, PSIZE_T lpSize);
+BOOL winapi_kernel32_UpdateProcThreadAttribute(LPPROC_THREAD_ATTRIBUTE_LIST lpAttributeList, DWORD dwFlags, DWORD_PTR Attribute, PVOID lpValue, SIZE_T cbSize, PVOID lpPreviousValue, PSIZE_T lpReturnSize);
+LANGID winapi_kernel32_GetSystemDefaultLangID(VOID);
+DWORD winapi_kernel32_WTSGetActiveConsoleSessionId(VOID);
+FARPROC winapi_kernel32_GetLoadLibraryAExportAddress(VOID);
+FARPROC winapi_kernel32_GetProcAddressExportAddress(VOID);
+FARPROC winapi_kernel32_GetFreeLibraryExportAddress(VOID);
+
+BOOL winapi_advapi32_CreateProcessWithTokenW(HANDLE hToken, DWORD dwLogonFlags, LPCWSTR lpApplicationName, LPWSTR lpCommandLine, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCWSTR lpCurrentDirectory, LPSTARTUPINFOW lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation);
+
+BOOL winapi_user32_GetLastInputInfo(PLASTINPUTINFO plii);
+UINT winapi_user32_GetRawInputData(HRAWINPUT hRawInput, UINT uiCommand, LPVOID pData, PUINT pcbSize, UINT cbSizeHeader);
+BOOL winapi_user32_RegisterRawInputDevices(PCRAWINPUTDEVICE pRawInputDevices, UINT uiNumDevices, UINT cbSize);
+
+ULONG winapi_iphlpapi_GetAdaptersAddresses(ULONG Family, ULONG Flags, PVOID Reserved, PIP_ADAPTER_ADDRESSES AdapterAddresses, PULONG SizePointer);
+DWORD winapi_iphlpapi_GetExtendedTcpTable(PVOID pTcpTable, PDWORD pdwSize, BOOL bOrder, ULONG ulAf, TCP_TABLE_CLASS TableClass, ULONG Reserved);
+DWORD winapi_iphlpapi_GetExtendedUdpTable(PVOID pUdpTable, PDWORD pdwSize, BOOL bOrder, ULONG ulAf, UDP_TABLE_CLASS TableClass, ULONG Reserved);
+VOID winapi_iphlpapi_FreeMibTable(PVOID Memory);
+NETIO_STATUS winapi_iphlpapi_GetIpForwardTable2(ADDRESS_FAMILY Family, PMIB_IPFORWARD_TABLE2* Table);
+DWORD winapi_iphlpapi_GetBestInterface(IPAddr dwDestAddr, PDWORD pdwBestIfIndex);
+
+BOOL winapi_psapi_EnumProcesses(DWORD* lpidProcess, DWORD cb, LPDWORD lpcbNeeded);
+BOOL winapi_psapi_EnumProcessModules(HANDLE hProcess, HMODULE* lphModule, DWORD cb, LPDWORD lpcbNeeded);
+DWORD winapi_psapi_GetModuleBaseNameA(HANDLE hProcess, HMODULE hModule, LPSTR lpBaseName, DWORD nSize);
+DWORD winapi_psapi_GetModuleBaseNameW(HANDLE hProcess, HMODULE hModule, LPWSTR lpBaseName, DWORD nSize);
+DWORD winapi_psapi_GetModuleFileNameExA(HANDLE hProcess, HMODULE hModule, LPSTR lpFilename, DWORD nSize);
+DWORD winapi_psapi_GetModuleFileNameExW(HANDLE hProcess, HMODULE hModule, LPWSTR lpFilename, DWORD nSize);
+DWORD winapi_psapi_GetProcessImageFileNameW(HANDLE hProcess, LPWSTR lpImageFileName, DWORD nSize);
+
+BOOL winapi_userenv_CreateEnvironmentBlock(LPVOID* lpEnvironment, HANDLE hToken, BOOL bInherit);
+BOOL winapi_userenv_DestroyEnvironmentBlock(LPVOID lpEnvironment);
+
+BOOL winapi_wtsapi32_WTSQueryUserToken(ULONG SessionId, PHANDLE phToken);
+
+HRESULT winapi_query_LocateCatalogsW(LPCWSTR pwszScope, ULONG iBmk, LPWSTR pwszMachine, PULONG pcMachine, LPWSTR pwszCatalog, PULONG pcCatalog);
+HRESULT winapi_query_CIMakeICommand(PVOID* ppCommand, ULONG cScope, DWORD* pdwDepths, LPWSTR* ppwszScopes, LPWSTR* ppwszCatalogs, LPWSTR* ppwszMachines);
+HRESULT winapi_query_CITextToFullTree(LPCWSTR pwszRestriction, LPCWSTR pwszColumns, LPCWSTR pwszSortColumns, LPCWSTR pwszGroupings, PVOID* ppTree, ULONG cProperties, LPVOID* pPropertyDefinitions, LCID LocaleID);
 
 #endif

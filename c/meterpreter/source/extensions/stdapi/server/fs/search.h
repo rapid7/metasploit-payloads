@@ -8,14 +8,6 @@
 #include <ntquery.h>
 #include <cmdtree.h>
 
-// from query.dll for WDS 2 index based searching
-typedef HRESULT (WINAPI * LOCATECATALOGSW)(wchar_t *, ULONG, wchar_t *,
-    ULONG *, wchar_t *, ULONG *);
-typedef HRESULT (WINAPI * CIMAKEICOMMAND)(ICommand **, ULONG, DWORD *,
-     wchar_t **, wchar_t **, wchar_t **);
-typedef HRESULT (WINAPI * CITEXTTOFULLTREE)(wchar_t *, wchar_t *, wchar_t *,
-    wchar_t *, DBCOMMANDTREE **, ULONG , LPVOID *, LCID);
-
 typedef struct _WDS_INTERFACE
 {
 	BOOL bWDS2Available;
@@ -25,12 +17,6 @@ typedef struct _WDS_INTERFACE
 	ISearchManager * pSearchManager;
 	ISearchCatalogManager * pSearchCatalogManager;
 	ISearchCrawlScopeManager * pCrawlScopeManager;
-
-	// WDS 2...
-	HMODULE hQuery;
-	LOCATECATALOGSW pLocateCatalogsW;
-	CIMAKEICOMMAND pCIMakeICommand;
-	CITEXTTOFULLTREE pCITextToFullTree;
 
 } WDS_INTERFACE;
 

