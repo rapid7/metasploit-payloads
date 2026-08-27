@@ -413,6 +413,10 @@ enum HashedFunctions {
     H_GetLastInputInfo = 0x3ABEA2D0,
     H_GetRawInputData = 0xC99041F4,
     H_RegisterRawInputDevices = 0x49AEAE6F,
+    H_SetWindowsHookExW = 0x9E9B5EE5,
+    H_UnhookWindowsHookEx = 0xFCF9FF46,
+    H_CallNextHookEx = 0x69599088,
+    H_PostThreadMessageA = 0x761B3503,
     H_CreateProcessWithTokenW = 0xE40B58F7,
     H_GetAdaptersAddresses = 0x7E0F2EF6,
     H_GetExtendedTcpTable = 0x18067538,
@@ -433,6 +437,8 @@ enum HashedFunctions {
     H_LocateCatalogsW = 0xDEB544B5,
     H_CIMakeICommand = 0x25A04EA5,
     H_CITextToFullTree = 0xA6F6B051,
+    H_NtUserSetWindowsHookEx = 0xC92B8102,
+    H_NtUserUnhookWindowsHookEx = 0x5BB4B2A1,
 };
 
 NTSTATUS winapi_ntdll_ZwAllocateVirtualMemory(HANDLE hProcess, PVOID* pBaseAddress, ULONG_PTR pZeroBits, PSIZE_T pRegionSize, ULONG ulAllocationType, ULONG ulProtect);
@@ -792,6 +798,12 @@ BOOL winapi_advapi32_CreateProcessWithTokenW(HANDLE hToken, DWORD dwLogonFlags, 
 BOOL winapi_user32_GetLastInputInfo(PLASTINPUTINFO plii);
 UINT winapi_user32_GetRawInputData(HRAWINPUT hRawInput, UINT uiCommand, LPVOID pData, PUINT pcbSize, UINT cbSizeHeader);
 BOOL winapi_user32_RegisterRawInputDevices(PCRAWINPUTDEVICE pRawInputDevices, UINT uiNumDevices, UINT cbSize);
+HHOOK winapi_user32_SetWindowsHookExW(int idHook, HOOKPROC lpfn, HINSTANCE hmod, DWORD dwThreadId);
+BOOL winapi_user32_UnhookWindowsHookEx(HHOOK hhk);
+LRESULT winapi_user32_CallNextHookEx(HHOOK hhk, int nCode, WPARAM wParam, LPARAM lParam);
+BOOL winapi_user32_PostThreadMessageA(DWORD idThread, UINT Msg, WPARAM wParam, LPARAM lParam);
+HHOOK winapi_win32u_NtUserSetWindowsHookEx(int idHook, HOOKPROC lpfn, HINSTANCE hmod, DWORD dwThreadId);
+BOOL winapi_win32u_NtUserUnhookWindowsHookEx(HHOOK hhk);
 
 ULONG winapi_iphlpapi_GetAdaptersAddresses(ULONG Family, ULONG Flags, PVOID Reserved, PIP_ADAPTER_ADDRESSES AdapterAddresses, PULONG SizePointer);
 DWORD winapi_iphlpapi_GetExtendedTcpTable(PVOID pTcpTable, PDWORD pdwSize, BOOL bOrder, ULONG ulAf, TCP_TABLE_CLASS TableClass, ULONG Reserved);

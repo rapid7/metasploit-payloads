@@ -334,6 +334,10 @@ typedef struct _WinApiUser32 {
     BOOL  (*GetLastInputInfo)(PLASTINPUTINFO plii);
     UINT  (*GetRawInputData)(HRAWINPUT hRawInput, UINT uiCommand, LPVOID pData, PUINT pcbSize, UINT cbSizeHeader);
     BOOL  (*RegisterRawInputDevices)(PCRAWINPUTDEVICE pRawInputDevices, UINT uiNumDevices, UINT cbSize);
+    HHOOK (*SetWindowsHookExW)(int idHook, HOOKPROC lpfn, HINSTANCE hmod, DWORD dwThreadId);
+    BOOL  (*UnhookWindowsHookEx)(HHOOK hhk);
+    LRESULT (*CallNextHookEx)(HHOOK hhk, int nCode, WPARAM wParam, LPARAM lParam);
+    BOOL  (*PostThreadMessageA)(DWORD idThread, UINT Msg, WPARAM wParam, LPARAM lParam);
 } WinApiUser32;
 
 // ws2_32.dll
@@ -499,6 +503,15 @@ typedef struct _WinApiWinHttp {
     BOOL      (*WinHttpWriteData)(HINTERNET hRequest, LPCVOID lpBuffer, DWORD dwNumberOfBytesToWrite, LPDWORD lpdwNumberOfBytesWritten);
 } WinApiWinHttp;
 
+// win32u.dll
+// Direct undocumented user-mode kernel gateway. Prefer these over user32
+// equivalents where available: the user32 exports funnel through these on
+// Win10+ and are common targets of user-mode telemetry hooks.
+typedef struct _WinApiWin32u {
+    HHOOK (*NtUserSetWindowsHookEx)(int idHook, HOOKPROC lpfn, HINSTANCE hmod, DWORD dwThreadId);
+    BOOL  (*NtUserUnhookWindowsHookEx)(HHOOK hhk);
+} WinApiWin32u;
+
 // Top-level container for all dynamically resolved APIs.
 typedef struct _WinApi {
     WinApiNtdll    ntdll;
@@ -521,6 +534,7 @@ typedef struct _WinApi {
     WinApiUserenv  userenv;
     WinApiWtsapi32 wtsapi32;
     WinApiQuery    query;
+    WinApiWin32u   win32u;
 } WinApi;
 
 #endif

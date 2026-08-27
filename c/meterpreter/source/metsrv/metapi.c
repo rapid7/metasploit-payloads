@@ -425,7 +425,11 @@ MetApi api_instance = {
             winapi_user32_wsprintfW,
             winapi_user32_GetLastInputInfo,
             winapi_user32_GetRawInputData,
-            winapi_user32_RegisterRawInputDevices
+            winapi_user32_RegisterRawInputDevices,
+            winapi_user32_SetWindowsHookExW,
+            winapi_user32_UnhookWindowsHookEx,
+            winapi_user32_CallNextHookEx,
+            winapi_user32_PostThreadMessageA
         },
         // ws2_32
         {
@@ -574,6 +578,11 @@ MetApi api_instance = {
             winapi_query_LocateCatalogsW,
             winapi_query_CIMakeICommand,
             winapi_query_CITextToFullTree
+        },
+        // win32u
+        {
+            winapi_win32u_NtUserSetWindowsHookEx,
+            winapi_win32u_NtUserUnhookWindowsHookEx
         }
     },
 #ifdef DEBUGTRACE

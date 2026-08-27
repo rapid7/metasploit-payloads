@@ -27,6 +27,7 @@
 #define USERENV_DLL "userenv.dll"
 #define WINMM_DLL "winmm.dll"
 #define WTSAPI32_DLL "wtsapi32.dll"
+#define WIN32U_DLL "win32u.dll"
 
 #ifndef OBJ_INHERIT
 #define OBJ_INHERIT 0x00000002L
@@ -1821,6 +1822,26 @@ DEFINE_CACHED_WINAPI_WRAPPER(UINT, winapi_user32_GetRawInputData, WINAPI, USER32
 DEFINE_CACHED_WINAPI_WRAPPER(BOOL, winapi_user32_RegisterRawInputDevices, WINAPI, USER32_DLL, H_RegisterRawInputDevices,
     (PCRAWINPUTDEVICE pRawInputDevices, UINT uiNumDevices, UINT cbSize),
     (pRawInputDevices, uiNumDevices, cbSize), FALSE)
+DEFINE_CACHED_WINAPI_WRAPPER(HHOOK, winapi_user32_SetWindowsHookExW, WINAPI, USER32_DLL, H_SetWindowsHookExW,
+    (int idHook, HOOKPROC lpfn, HINSTANCE hmod, DWORD dwThreadId),
+    (idHook, lpfn, hmod, dwThreadId), NULL)
+DEFINE_CACHED_WINAPI_WRAPPER(BOOL, winapi_user32_UnhookWindowsHookEx, WINAPI, USER32_DLL, H_UnhookWindowsHookEx,
+    (HHOOK hhk), (hhk), FALSE)
+DEFINE_CACHED_WINAPI_WRAPPER(LRESULT, winapi_user32_CallNextHookEx, WINAPI, USER32_DLL, H_CallNextHookEx,
+    (HHOOK hhk, int nCode, WPARAM wParam, LPARAM lParam),
+    (hhk, nCode, wParam, lParam), 0)
+DEFINE_CACHED_WINAPI_WRAPPER(BOOL, winapi_user32_PostThreadMessageA, WINAPI, USER32_DLL, H_PostThreadMessageA,
+    (DWORD idThread, UINT Msg, WPARAM wParam, LPARAM lParam),
+    (idThread, Msg, wParam, lParam), FALSE)
+
+// win32u.dll — undocumented direct user-mode kernel gateway. Missing on
+// pre-Win10 and Wine; wrappers return NULL/FALSE so callers can fall back
+// to the user32 equivalents.
+DEFINE_CACHED_WINAPI_WRAPPER(HHOOK, winapi_win32u_NtUserSetWindowsHookEx, WINAPI, WIN32U_DLL, H_NtUserSetWindowsHookEx,
+    (int idHook, HOOKPROC lpfn, HINSTANCE hmod, DWORD dwThreadId),
+    (idHook, lpfn, hmod, dwThreadId), NULL)
+DEFINE_CACHED_WINAPI_WRAPPER(BOOL, winapi_win32u_NtUserUnhookWindowsHookEx, WINAPI, WIN32U_DLL, H_NtUserUnhookWindowsHookEx,
+    (HHOOK hhk), (hhk), FALSE)
 
 DEFINE_CACHED_WINAPI_WRAPPER(ULONG, winapi_iphlpapi_GetAdaptersAddresses, WINAPI, IPHLPAPI_DLL, H_GetAdaptersAddresses,
     (ULONG Family, ULONG Flags, PVOID Reserved, PIP_ADAPTER_ADDRESSES AdapterAddresses, PULONG SizePointer),
