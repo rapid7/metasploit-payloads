@@ -3,11 +3,6 @@
 #include "common_metapi.h"
 #include <netioapi.h>
 
-typedef VOID(NETIOAPI_API_* FREEMIBTABLE)(PVOID Memory);
-typedef NETIO_STATUS(NETIOAPI_API_* GETBESTINTERFACE)(IPAddr dwDestAddr, PDWORD pdwBestIfIndex);
-typedef NETIO_STATUS(NETIOAPI_API_* GETIPFORWARDTABLE2)(ADDRESS_FAMILY Family, PMIB_IPFORWARD_TABLE2* Table);
-typedef NETIO_STATUS(NETIOAPI_API_* GETIPINTERFACEENTRY)(PMIB_IPINTERFACE_ROW Row);
-
 typedef struct v6netmask
 {
 	unsigned int mask[4];
@@ -31,22 +26,22 @@ static void bit128mask(unsigned int bits, v6netmask* netmask){
 		netmask->mask[0] = 0xffffffff;
 		netmask->mask[1] = 0xffffffff;
 		netmask->mask[2] = 0xffffffff;
-		netmask->mask[3] = htonl(part);
+		netmask->mask[3] = met_api->win_api.ws2_32.htonl(part);
 	}
 	else if (bits >= 64) {
 		netmask->mask[0] = 0xffffffff;
 		netmask->mask[1] = 0xffffffff;
-		netmask->mask[2] = htonl(part);
+		netmask->mask[2] = met_api->win_api.ws2_32.htonl(part);
 		netmask->mask[3] = 0x0;
 	}
 	else if (bits >= 32) {
 		netmask->mask[0] = 0xffffffff;
-		netmask->mask[1] = htonl(part);
+		netmask->mask[1] = met_api->win_api.ws2_32.htonl(part);
 		netmask->mask[2] = 0x0;
 		netmask->mask[3] = 0x0;
 	}
 	else {
-		netmask->mask[0] = htonl(part);
+		netmask->mask[0] = met_api->win_api.ws2_32.htonl(part);
 		netmask->mask[1] = 0x0;
 		netmask->mask[2] = 0x0;
 		netmask->mask[3] = 0x0;
@@ -63,7 +58,6 @@ DWORD request_net_config_get_routes(Remote *remote, Packet *packet)
 	DWORD index;
 	DWORD metric_bigendian;
 
-	FREEMIBTABLE pFreeMibTable = (FREEMIBTABLE)GetProcAddress(GetModuleHandle(TEXT("Iphlpapi.dll")), "FreeMibTable");
 	PMIB_IPFORWARDTABLE table_ipv4 = NULL;
 	PMIB_IPFORWARD_TABLE2 table_ipv6 = NULL;
 	DWORD tableSize = sizeof(MIB_IPFORWARDROW) * 96;
@@ -79,9 +73,11 @@ DWORD request_net_config_get_routes(Remote *remote, Packet *packet)
 		}
 
 		// Get the routing table
-		if (GetIpForwardTable(table_ipv4, &tableSize, TRUE) != NO_ERROR)
+		dwResult = met_api->win_api.iphlpapi.GetIpForwardTable(table_ipv4, &tableSize, TRUE);
+		if (dwResult != NO_ERROR)
 		{
-			BREAK_ON_ERROR("[NET] request_net_config_get_routes: GetIpForwardTable failed");
+			dprintf("[NET] request_net_config_get_routes: GetIpForwardTable failed. error=%d (0x%x)", dwResult, (ULONG_PTR)dwResult);
+			break;
 		}
 
 		// Enumerate it
@@ -108,7 +104,7 @@ DWORD request_net_config_get_routes(Remote *remote, Packet *packet)
 			route[3].header.length = (DWORD)strlen(int_name) + 1;
 			route[3].buffer = (PUCHAR)int_name;
 
-			metric_bigendian = htonl(table_ipv4->table[index].dwForwardMetric1);
+			metric_bigendian = met_api->win_api.ws2_32.htonl(table_ipv4->table[index].dwForwardMetric1);
 			route[4].header.type = TLV_TYPE_ROUTE_METRIC;
 			route[4].header.length = sizeof(DWORD);
 			route[4].buffer = (PUCHAR)&metric_bigendian;
@@ -119,14 +115,16 @@ DWORD request_net_config_get_routes(Remote *remote, Packet *packet)
 
 		v6netmask v6_mask;
 		MIB_IPINTERFACE_ROW iface = { .Family = AF_INET6 };
-		GETIPFORWARDTABLE2 pGetIpForwardTable2 = (GETIPFORWARDTABLE2)GetProcAddress(GetModuleHandle(TEXT("Iphlpapi.dll")), "GetIpForwardTable2");
+		NETIO_STATUS tableResult = met_api->win_api.iphlpapi.GetIpForwardTable2(AF_INET6, &table_ipv6);
 
 		// GetIpForwardTable2 is only available on Windows Vista and later.
-		if (!pGetIpForwardTable2) {
+		if (tableResult == ERROR_PROC_NOT_FOUND) {
 			break;
 		}
-		if (pGetIpForwardTable2(AF_INET6, &table_ipv6) != NO_ERROR) {
-			BREAK_ON_ERROR("[NET] request_net_config_get_routes: GetIpForwardTable2 failed");
+		if (tableResult != NO_ERROR) {
+			dwResult = tableResult;
+			dprintf("[NET] request_net_config_get_routes: GetIpForwardTable2 failed. error=%d (0x%x)", dwResult, (ULONG_PTR)dwResult);
+			break;
 		}
 
 		// Enumerate it
@@ -137,9 +135,12 @@ DWORD request_net_config_get_routes(Remote *remote, Packet *packet)
 			Tlv route[5];
 			memset(int_name, 0, sizeof(int_name));
 			iface.InterfaceIndex = table_ipv6->Table[index].InterfaceIndex;
-			if (GetIpInterfaceEntry(&iface) != NO_ERROR)
+			tableResult = met_api->win_api.iphlpapi.GetIpInterfaceEntry(&iface);
+			if (tableResult != NO_ERROR)
 			{
-				CONTINUE_ON_ERROR("[NET] request_net_config_get_routes: GetIpInterfaceEntry failed");
+				dwResult = tableResult;
+				dprintf("[NET] request_net_config_get_routes: GetIpInterfaceEntry failed. error=%d (0x%x)", dwResult, (ULONG_PTR)dwResult);
+				continue;
 			}
 
 			route[0].header.type   = TLV_TYPE_SUBNET;
@@ -161,7 +162,7 @@ DWORD request_net_config_get_routes(Remote *remote, Packet *packet)
 			route[3].header.length = (DWORD)strlen(int_name)+1;
 			route[3].buffer        = (PUCHAR)int_name;
 
-			metric_bigendian = htonl(table_ipv6->Table[index].Metric + iface.Metric);
+			metric_bigendian = met_api->win_api.ws2_32.htonl(table_ipv6->Table[index].Metric + iface.Metric);
 			route[4].header.type   = TLV_TYPE_ROUTE_METRIC;
 			route[4].header.length = sizeof(DWORD);
 			route[4].buffer        = (PUCHAR)&metric_bigendian;
@@ -174,8 +175,8 @@ DWORD request_net_config_get_routes(Remote *remote, Packet *packet)
 	if (table_ipv4)
 		free(table_ipv4);
 
-	if (table_ipv6 && pFreeMibTable)
-		pFreeMibTable(table_ipv6);
+	if (table_ipv6)
+		met_api->win_api.iphlpapi.FreeMibTable(table_ipv6);
 
 
 	met_api->packet.transmit_response(dwResult, remote, response);
@@ -221,8 +222,7 @@ DWORD request_net_config_remove_route(Remote *remote, Packet *packet)
 DWORD add_remove_route(Packet *packet, BOOLEAN add)
 {
 	MIB_IPFORWARDROW route;
-	GETBESTINTERFACE pGetBestInterface = NULL;
-	GETIPINTERFACEENTRY pGetIpInterfaceEntry = NULL;
+	MIB_IPINTERFACE_ROW iface;
 	LPCSTR subnet;
 	LPCSTR netmask;
 	LPCSTR gateway;
@@ -234,48 +234,45 @@ DWORD add_remove_route(Packet *packet, BOOLEAN add)
 
 	memset(&route, 0, sizeof(route));
 
-	route.dwForwardDest    = inet_addr(subnet);
-	route.dwForwardMask    = inet_addr(netmask);
-	route.dwForwardNextHop = inet_addr(gateway);
+	route.dwForwardDest    = met_api->win_api.ws2_32.inet_addr(subnet);
+	route.dwForwardMask    = met_api->win_api.ws2_32.inet_addr(netmask);
+	route.dwForwardNextHop = met_api->win_api.ws2_32.inet_addr(gateway);
 	route.dwForwardType    = MIB_IPROUTE_TYPE_INDIRECT; // Assume next hop.
 	route.dwForwardProto   = MIB_IPPROTO_NETMGMT;
 	route.dwForwardAge     = -1;
 	route.dwForwardMetric1 = 0;
 
-	pGetBestInterface = (GETBESTINTERFACE)GetProcAddress(GetModuleHandle(TEXT("iphlpapi")), "GetBestInterface");
-	if (!pGetBestInterface) {
+	dwResult = met_api->win_api.iphlpapi.GetBestInterface(route.dwForwardNextHop, &route.dwForwardIfIndex);
+	if (dwResult == ERROR_PROC_NOT_FOUND) {
 		dprintf("[NET] add_remove_route: GetBestInterface is not available.");
 		return ERROR_NOT_SUPPORTED;
 	}
-
-	dwResult = pGetBestInterface(route.dwForwardNextHop, &route.dwForwardIfIndex);
 	if (dwResult != ERROR_SUCCESS) {
 		dprintf("[NET] add_remove_route: GetBestInterface failed. error=%d (0x%x)", dwResult, (ULONG_PTR)dwResult);
 		return dwResult;
 	}
 	dprintf("[NET] add_remove_route: GetBestInterface returned ifIndex=%d.", route.dwForwardIfIndex);
 
-	pGetIpInterfaceEntry = (GETIPINTERFACEENTRY)GetProcAddress(GetModuleHandle(TEXT("iphlpapi")), "GetIpInterfaceEntry");
-	// If GetIpInterfaceEntry is available, use it to set the default metric because newer systems require that
-	if (pGetIpInterfaceEntry) {
-		MIB_IPINTERFACE_ROW iface = { .Family = AF_INET, .InterfaceIndex = route.dwForwardIfIndex };
-		dwResult = pGetIpInterfaceEntry(&iface);
-		if (dwResult == NO_ERROR) {
-			route.dwForwardMetric1 = iface.Metric;
-		}
-		else {
-			dprintf("[NET] add_remove_route: GetIpInterfaceEntry failed. error=%d (0x%x)", dwResult, (ULONG_PTR)dwResult);
-		}
+	// If GetIpInterfaceEntry is available, use it to set the default metric because newer systems require that.
+	memset(&iface, 0, sizeof(iface));
+	iface.Family = AF_INET;
+	iface.InterfaceIndex = route.dwForwardIfIndex;
+	dwResult = met_api->win_api.iphlpapi.GetIpInterfaceEntry(&iface);
+	if (dwResult == NO_ERROR) {
+		route.dwForwardMetric1 = iface.Metric;
+	}
+	else if (dwResult == ERROR_PROC_NOT_FOUND) {
+		dprintf("[NET] add_remove_route: GetIpInterfaceEntry is not available.");
 	}
 	else {
-		dprintf("[NET] add_remove_route: GetIpInterfaceEntry is not available.");
+		dprintf("[NET] add_remove_route: GetIpInterfaceEntry failed. error=%d (0x%x)", dwResult, (ULONG_PTR)dwResult);
 	}
 
 	if (add) {
-		dwResult = CreateIpForwardEntry(&route);
+		dwResult = met_api->win_api.iphlpapi.CreateIpForwardEntry(&route);
 	}
 	else {
-		dwResult = DeleteIpForwardEntry(&route);
+		dwResult = met_api->win_api.iphlpapi.DeleteIpForwardEntry(&route);
 	}
 
 	if (dwResult != ERROR_SUCCESS) {

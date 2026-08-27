@@ -17,7 +17,7 @@ DWORD get_interfaces_mib(Remote *remote, Packet *response)
 	}
 
 	// attempt with an insufficient buffer size
-	DWORD result = GetIpAddrTable(table, &tableSize, TRUE);
+	DWORD result = met_api->win_api.iphlpapi.GetIpAddrTable(table, &tableSize, TRUE);
 	if (result == ERROR_INSUFFICIENT_BUFFER)
 	{
 		table = (PMIB_IPADDRTABLE)realloc(table, tableSize);
@@ -27,17 +27,17 @@ DWORD get_interfaces_mib(Remote *remote, Packet *response)
 			return ERROR_OUTOFMEMORY;
 		}
 
-		if (GetIpAddrTable(table, &tableSize, TRUE) != NO_ERROR)
+		if (met_api->win_api.iphlpapi.GetIpAddrTable(table, &tableSize, TRUE) != NO_ERROR)
 		{
 			free(table);
-			return GetLastError();
+			return met_api->win_api.kernel32.GetLastError();
 		}
 	}
 	// it might have worked with a single row!
 	else if (result != NO_ERROR)
 	{
 		free(table);
-		return GetLastError();
+		return met_api->win_api.kernel32.GetLastError();
 	}
 
 	// Enumerate the entries
@@ -52,7 +52,7 @@ DWORD get_interfaces_mib(Remote *remote, Packet *response)
 		iface.dwIndex = table->table[index].dwIndex;
 
 		// If interface information can get gotten, use it.
-		if (GetIfEntry(&iface) == NO_ERROR)
+		if (met_api->win_api.iphlpapi.GetIfEntry(&iface) == NO_ERROR)
 		{
 			met_api->packet.add_tlv_raw(group, TLV_TYPE_MAC_ADDR, (PUCHAR)iface.bPhysAddr, iface.dwPhysAddrLen);
 			met_api->packet.add_tlv_uint(group, TLV_TYPE_INTERFACE_MTU, iface.dwMtu);
@@ -86,7 +86,6 @@ DWORD get_interfaces(Remote *remote, Packet *response)
 	IP_ADAPTER_ADDRESSES *pAdapters = NULL;
 	IP_ADAPTER_ADDRESSES *pCurr = NULL;
 	ULONG outBufLen = 0;
-	DWORD(WINAPI *gaa)(DWORD, DWORD, void *, void *, void *);
 
 	// Use the newer version so we're guaranteed to have a large enough struct.
 	// Unfortunately, using these probably means it won't compile on older
@@ -101,25 +100,26 @@ DWORD get_interfaces(Remote *remote, Packet *response)
 	// We can't rely on the `Length` parameter of the IP_ADAPTER_PREFIX_XP struct
 	// to tell us if we're on Vista or not because it always comes out at 48 bytes
 	// so we have to check the version manually.
-	OSVERSIONINFOEX v;
+	OSVERSIONINFOEXA v;
 
-	gaa = (DWORD(WINAPI *)(DWORD, DWORD, void*, void*, void*))GetProcAddress(
-		GetModuleHandle("iphlpapi"), "GetAdaptersAddresses");
-	if (!gaa)
+	result = met_api->win_api.iphlpapi.GetAdaptersAddresses(family, flags, NULL, pAdapters, &outBufLen);
+	if (result == ERROR_PROC_NOT_FOUND)
 	{
 		dprintf("[INTERFACE] No 'GetAdaptersAddresses'. Falling back on get_interfaces_mib");
 		return get_interfaces_mib(remote, response);
 	}
-
-	gaa(family, flags, NULL, pAdapters, &outBufLen);
+	if (result != ERROR_BUFFER_OVERFLOW)
+	{
+		return result;
+	}
 	if (!(pAdapters = malloc(outBufLen)))
 	{
 		return ERROR_NOT_ENOUGH_MEMORY;
 	}
 
-	if (gaa(family, flags, NULL, pAdapters, &outBufLen))
+	result = met_api->win_api.iphlpapi.GetAdaptersAddresses(family, flags, NULL, pAdapters, &outBufLen);
+	if (result != NO_ERROR)
 	{
-		result = GetLastError();
 		goto out;
 	}
 
@@ -137,7 +137,7 @@ DWORD get_interfaces(Remote *remote, Packet *response)
 	// we'll need to know the version later on
 	memset(&v, 0, sizeof(v));
 	v.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
-	GetVersionEx((LPOSVERSIONINFO)&v);
+	met_api->win_api.kernel32.GetVersionExA((LPOSVERSIONINFOA)&v);
 
 	// Enumerate the entries
 	for (pCurr = pAdapters; pCurr; pCurr = pCurr->Next)
@@ -174,12 +174,12 @@ DWORD get_interfaces(Remote *remote, Packet *response)
 				// Then this is Vista+ and the OnLinkPrefixLength member
 				// will be populated
 				dprintf("[INTERFACES] >= Vista, using prefix: %x", pAddr->OnLinkPrefixLength);
-				prefix = htonl(pAddr->OnLinkPrefixLength);
+				prefix = met_api->win_api.ws2_32.htonl(pAddr->OnLinkPrefixLength);
 			}
 			else if (pPrefix)
 			{
 				dprintf("[INTERFACES] < Vista, using prefix: %x", pPrefix->PrefixLength);
-				prefix = htonl(pPrefix->PrefixLength);
+				prefix = met_api->win_api.ws2_32.htonl(pPrefix->PrefixLength);
 			}
 			else
 			{

@@ -65,7 +65,7 @@ static DWORD audio_channel_close(Channel *channel, Packet *request, LPVOID conte
 	AudioContext *ctx = (AudioContext *)context;
 
 	// Play the audio buffer
-	sndPlaySound(ctx->buffer, SND_MEMORY);
+	met_api->win_api.winmm.sndPlaySoundA(ctx->buffer, SND_MEMORY);
 
 	if (ctx->buffer)
 	{
