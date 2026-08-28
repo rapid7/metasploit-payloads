@@ -9,6 +9,8 @@
 #include <windows.h>
 #include <winhttp.h>
 #include "metsrv.h"
+
+extern BOOL async_lease_is_active(HttpTransportContext* ctx);
 #include "common_exports.h"
 #include "packet_encryption.h"
 
@@ -1422,6 +1424,27 @@ DWORD packet_transmit_empty_response(Remote *remote, Packet *packet, DWORD res)
 	return packet_transmit_response(res, remote, response);
 }
 
+VOID packet_add_target_time(Packet* response)
+{
+	SYSTEMTIME localTime;
+	FILETIME utcFileTime;
+	FILETIME localFileTime;
+	ULARGE_INTEGER utcTicks;
+	ULARGE_INTEGER localTicks;
+	const QWORD unixEpochTicks = 116444736000000000ULL;
+
+	GetSystemTimeAsFileTime(&utcFileTime);
+	GetLocalTime(&localTime);
+	SystemTimeToFileTime(&localTime, &localFileTime);
+
+	utcTicks.LowPart = utcFileTime.dwLowDateTime;
+	utcTicks.HighPart = utcFileTime.dwHighDateTime;
+	localTicks.LowPart = localFileTime.dwLowDateTime;
+	localTicks.HighPart = localFileTime.dwHighDateTime;
+	packet_add_tlv_qword(response, TLV_TYPE_TARGET_UNIX_TS, (utcTicks.QuadPart - unixEpochTicks) / 10000000ULL);
+	packet_add_tlv_qword(response, TLV_TYPE_TARGET_LOCAL_UNIX_TS, (localTicks.QuadPart - unixEpochTicks) / 10000000ULL);
+}
+
 /*!
  * @brief Transmit a `TLV_TYPE_RESULT` response if `response` is present.
  * @param result The result to be sent.
@@ -1432,6 +1455,20 @@ DWORD packet_transmit_response(DWORD result, Remote* remote, Packet* response)
 {
 	if (response)
 	{
+		Tlv targetTime = { 0 };
+		Tlv asyncLease = { 0 };
+		if (remote != NULL && remote->async_mode && packet_get_tlv(response, TLV_TYPE_TARGET_UNIX_TS, &targetTime) != ERROR_SUCCESS)
+		{
+			packet_add_target_time(response);
+		}
+		if (remote != NULL && remote->async_mode && packet_get_tlv(response, TLV_TYPE_ASYNC_LEASE_ENABLED, &asyncLease) != ERROR_SUCCESS)
+		{
+			BOOL leaseActive = remote->transport != NULL
+				&& (remote->transport->type & METERPRETER_TRANSPORT_HTTP)
+				&& async_lease_is_active((HttpTransportContext*)remote->transport->ctx);
+			packet_add_tlv_bool(response, TLV_TYPE_ASYNC_LEASE_ENABLED, leaseActive);
+		}
+
 		packet_add_tlv_uint(response, TLV_TYPE_RESULT, result);
 		return packet_transmit(remote, response, NULL);
 	}

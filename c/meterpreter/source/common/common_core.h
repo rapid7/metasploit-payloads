@@ -179,6 +179,18 @@ typedef enum
 	TLV_TYPE_PIVOT_STAGE_DATA      = TLV_VALUE(TLV_META_TYPE_RAW,     651),   ///! Represents the data to be staged on new connections.
 	TLV_TYPE_PIVOT_NAMED_PIPE_NAME = TLV_VALUE(TLV_META_TYPE_STRING,  653),   ///! Represents named pipe name.
 
+	// Async mode
+	TLV_TYPE_ASYNC_ENABLED         = TLV_VALUE(TLV_META_TYPE_BOOL,    700),   ///! Enable/disable async mode.
+	TLV_TYPE_ASYNC_POLL_INTERVAL   = TLV_VALUE(TLV_META_TYPE_UINT,    701),   ///! Seconds between check-ins.
+	TLV_TYPE_ASYNC_POLL_JITTER     = TLV_VALUE(TLV_META_TYPE_UINT,    702),   ///! Jitter percentage 0-99.
+	TLV_TYPE_ASYNC_WORK_START      = TLV_VALUE(TLV_META_TYPE_UINT,    703),   ///! Business hours start (0-23).
+	TLV_TYPE_ASYNC_WORK_END        = TLV_VALUE(TLV_META_TYPE_UINT,    704),   ///! Business hours end (0-24).
+	TLV_TYPE_ASYNC_WORK_DAYS       = TLV_VALUE(TLV_META_TYPE_UINT,    705),   ///! Bitmask of active days (bit0=Sun..bit6=Sat).
+	TLV_TYPE_TARGET_UNIX_TS        = TLV_VALUE(TLV_META_TYPE_QWORD,   707),   ///! Target UTC seconds since Unix epoch.
+	TLV_TYPE_TARGET_LOCAL_UNIX_TS  = TLV_VALUE(TLV_META_TYPE_QWORD,   708),   ///! Target local wall-clock seconds as UTC.
+	TLV_TYPE_ASYNC_LEASE_ENABLED   = TLV_VALUE(TLV_META_TYPE_BOOL,    709),   ///! Enable or release a rapid-poll job lease.
+	TLV_TYPE_ASYNC_LEASE_TTL       = TLV_VALUE(TLV_META_TYPE_UINT,    710),   ///! Job lease expiry timeout in seconds.
+
 	TLV_TYPE_SESSION_EXPIRY        = TLV_VALUE(TLV_META_TYPE_UINT,    700),   ///! Session expiration time
 	TLV_TYPE_EXITFUNC              = TLV_VALUE(TLV_META_TYPE_UINT,    701),   ///! identifier of the exit function to use
 	TLV_TYPE_DEBUG_LOG             = TLV_VALUE(TLV_META_TYPE_STRING,  702),   ///! path to write debug log
