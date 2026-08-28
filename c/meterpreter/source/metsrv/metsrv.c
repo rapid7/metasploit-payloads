@@ -73,10 +73,8 @@ DWORD Init(MetsrvConfig* config)
 	case EXITFUNC_THREAD:
 		ExitThread(0);
 		break;
-	case EXITFUNC_PROCESS:
-		ExitProcess(0);
-		break;
 	default:
+		ExitProcess(0);
 		break;
 	}
 	return result;
