@@ -127,8 +127,9 @@ typedef struct _HttpTransportContext
 	UINT async_work_start;                ///! Business hours start hour (0-23).
 	UINT async_work_end;                  ///! Business hours end hour (0-23).
 	UINT async_work_days;                 ///! Bitmask of active days (bit0=Sun..bit6=Sat).
-	UINT async_smart_sync_seconds;        ///! Smart-sync burst window in seconds (0 = disabled).
-	DWORD async_last_activity_ticks;      ///! GetTickCount() at last observed request/response.
+	BOOL async_lease_active;              ///! Whether a controller-owned rapid-poll lease is active.
+	UINT async_lease_ttl;                 ///! Lease renewal timeout in seconds.
+	DWORD async_lease_deadline_ticks;     ///! Monotonic lease expiry deadline.
 	HANDLE async_wake_event;              ///! Event signaled to interrupt async sleep early.
 
 	PCreateHttpRequest create_req;        ///! WinHTTP/WinINET specific request creation.

