@@ -10,6 +10,29 @@ endfunction()
 function(copyoutput)
     add_custom_command(TARGET ${ARGV0} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory ${ARGV1})
-    add_custom_command(TARGET ${ARGV0} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${ARGV0}> ${ARGV1})
+    if(DBGTRACE OR DBGTRACE_VERBOSE)
+        add_custom_command(TARGET ${ARGV0} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${ARGV0}> ${ARGV1}$<TARGET_FILE_BASE_NAME:${ARGV0}>.debug$<TARGET_FILE_SUFFIX:${ARGV0}>)
+    else()
+        add_custom_command(TARGET ${ARGV0} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${ARGV0}> ${ARGV1})
+    endif()
+endfunction()
+
+function(append_debug_sources out_var)
+    if(DBGTRACE OR DBGTRACE_VERBOSE)
+        set(${out_var}
+            ${${out_var}}
+            ${CMAKE_SOURCE_DIR}/../source/logging/logging.c
+            PARENT_SCOPE)
+    endif()
+endfunction()
+
+function(add_rdi)
+    enable_language(ASM_MASM)
+    if("${CMAKE_SYSTEM_PROCESSOR}" MATCHES "(x86_64|amd64|AMD64)")
+        set(SRC_FILES ${SRC_FILES} ../../source/ReflectiveDLLInjection/dll/src/GateTrampoline64.asm PARENT_SCOPE)
+    elseif("${CMAKE_SYSTEM_PROCESSOR}" MATCHES "(i386|i686)")
+        set(SRC_FILES ${SRC_FILES} ../../source/ReflectiveDLLInjection/dll/src/GateTrampoline32.asm PARENT_SCOPE)
+    endif()
 endfunction()

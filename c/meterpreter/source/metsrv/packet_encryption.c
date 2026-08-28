@@ -2,6 +2,15 @@
 #include "remote.h"
 #include "packet_encryption.h"
 
+// The provider name strings below (MS_ENH_RSA_AES_PROV, MS_ENHANCED_PROV) are
+// TCHAR — LPCWSTR under UNICODE (MSVC vcxproj build), LPCSTR under the mingw
+// docker build. Route through the matching A/W wrapper so both toolchains build.
+#ifdef UNICODE
+#define WINAPI_CryptAcquireContext_TCHAR met_api->win_api.advapi32.CryptAcquireContextW
+#else
+#define WINAPI_CryptAcquireContext_TCHAR met_api->win_api.advapi32.CryptAcquireContextA
+#endif
+
 typedef struct _CryptProviderParams
 {
 	const TCHAR* provider;
@@ -60,11 +69,11 @@ DWORD decrypt_packet(Remote* remote, Packet** packet, LPBYTE buffer, DWORD buffe
 			break;
 		}
 
-		DWORD encFlags = ntohl(header->enc_flags);
+		DWORD encFlags = met_api->win_api.ws2_32.ntohl(header->enc_flags);
 		vdprintf("[DEC] Encryption flags set to %x", encFlags);
 
 		// Only decrypt if the context was set up correctly
-		if (remote->enc_ctx != NULL && remote->enc_ctx->valid && encFlags != ENC_FLAG_NONE)
+		if (remote && remote->enc_ctx != NULL && remote->enc_ctx->valid && encFlags != ENC_FLAG_NONE)
 		{
 			vdprintf("[DEC] Context is valid, moving on ... ");
 			LPBYTE payload = buffer + sizeof(PacketHeader);
@@ -76,13 +85,13 @@ DWORD decrypt_packet(Remote* remote, Packet** packet, LPBYTE buffer, DWORD buffe
 				iv[0], iv[1], iv[2], iv[3], iv[4], iv[5], iv[6], iv[7], iv[8], iv[9], iv[10], iv[11], iv[12], iv[13], iv[14], iv[15]);
 
 			// the rest of the payload bytes contains the actual encrypted data
-			DWORD encryptedSize = ntohl(header->length) - sizeof(TlvHeader) - AES256_BLOCKSIZE;
+			DWORD encryptedSize = met_api->win_api.ws2_32.ntohl(header->length) - sizeof(TlvHeader) - AES256_BLOCKSIZE;
 			LPBYTE encryptedData = payload + AES256_BLOCKSIZE;
 
 			vdprintf("[DEC] Encrypted Size: %u (%x)", encryptedSize, encryptedSize);
 			vdprintf("[DEC] Encrypted Size mod AES256_BLOCKSIZE: %u", encryptedSize % AES256_BLOCKSIZE);
 
-			if (!CryptDuplicateKey(remote->enc_ctx->aes_key, NULL, 0, &dupKey))
+			if (!met_api->win_api.advapi32.CryptDuplicateKey(remote->enc_ctx->aes_key, NULL, 0, &dupKey))
 			{
 				result = GetLastError();
 				vdprintf("[DEC] Failed to duplicate key: %d (%x)", result, result);
@@ -90,7 +99,7 @@ DWORD decrypt_packet(Remote* remote, Packet** packet, LPBYTE buffer, DWORD buffe
 			}
 
 			DWORD mode = CRYPT_MODE_CBC;
-			if (!CryptSetKeyParam(dupKey, KP_MODE, (const BYTE*)&mode, 0))
+			if (!met_api->win_api.advapi32.CryptSetKeyParam(dupKey, KP_MODE, (const BYTE*)&mode, 0))
 			{
 				result = GetLastError();
 				dprintf("[ENC] Failed to set mode to CBC: %d (%x)", result, result);
@@ -98,14 +107,14 @@ DWORD decrypt_packet(Remote* remote, Packet** packet, LPBYTE buffer, DWORD buffe
 			}
 
 			// decrypt!
-			if (!CryptSetKeyParam(dupKey, KP_IV, iv, 0))
+			if (!met_api->win_api.advapi32.CryptSetKeyParam(dupKey, KP_IV, iv, 0))
 			{
 				result = GetLastError();
 				vdprintf("[DEC] Failed to set IV: %d (%x)", result, result);
 				break;
 			}
 
-			if (!CryptDecrypt(dupKey, 0, TRUE, 0, encryptedData, &encryptedSize))
+			if (!met_api->win_api.advapi32.CryptDecrypt(dupKey, 0, TRUE, 0, encryptedData, &encryptedSize))
 			{
 				result = GetLastError();
 				vdprintf("[DEC] Failed to decrypt: %d (%x)", result, result);
@@ -117,17 +126,17 @@ DWORD decrypt_packet(Remote* remote, Packet** packet, LPBYTE buffer, DWORD buffe
 			memmove_s(iv, encryptedSize, encryptedData, encryptedSize);
 
 			// adjust the header size
-			header->length = htonl(encryptedSize + sizeof(TlvHeader));
+			header->length = met_api->win_api.ws2_32.htonl(encryptedSize + sizeof(TlvHeader));
 
 			// done, the packet parsing can continue as normal now
 		}
 
 		localPacket->header.length = header->length;
 		localPacket->header.type = header->type;
-		localPacket->payloadLength = ntohl(localPacket->header.length) - sizeof(TlvHeader);
+		localPacket->payloadLength = met_api->win_api.ws2_32.ntohl(localPacket->header.length) - sizeof(TlvHeader);
 
 		vdprintf("[DEC] Actual payload Length: %d", localPacket->payloadLength);
-		vdprintf("[DEC] Header Type: %d", ntohl(localPacket->header.type));
+		vdprintf("[DEC] Header Type: %d", met_api->win_api.ws2_32.ntohl(localPacket->header.type));
 
 		localPacket->payload = malloc(localPacket->payloadLength);
 		if (localPacket->payload == NULL)
@@ -144,7 +153,7 @@ DWORD decrypt_packet(Remote* remote, Packet** packet, LPBYTE buffer, DWORD buffe
 		h = localPacket->payload;
 		vdprintf("[DEC] TLV 1 length / type: [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X]",
 			h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7]);
-		DWORD tl = ntohl(((TlvHeader*)h)->length);
+		DWORD tl = met_api->win_api.ws2_32.ntohl(((TlvHeader*)h)->length);
 		vdprintf("[DEC] Skipping %u bytes", tl);
 		h += tl;
 		vdprintf("[DEC] TLV 2 length / type: [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X]",
@@ -164,12 +173,11 @@ DWORD decrypt_packet(Remote* remote, Packet** packet, LPBYTE buffer, DWORD buffe
 	}
 	if (dupKey != 0)
 	{
-		CryptDestroyKey(dupKey);
+		met_api->win_api.advapi32.CryptDestroyKey(dupKey);
 	}
 
 	return result;
 }
-
 DWORD encrypt_packet(Remote* remote, Packet* packet, LPBYTE* buffer, LPDWORD bufferSize)
 {
 	DWORD result = ERROR_SUCCESS;
@@ -182,10 +190,14 @@ DWORD encrypt_packet(Remote* remote, Packet* packet, LPBYTE* buffer, LPDWORD buf
 	rand_xor_key(packet->header.xor_key);
 
 	// copy the session ID to the header as this will be used later to identify the packet's destination session
-	memcpy_s(packet->header.session_guid, sizeof(packet->header.session_guid), remote->orig_config->session.session_guid, sizeof(remote->orig_config->session.session_guid));
+	memcpy_s(packet->header.session_guid, sizeof(packet->header.session_guid), remote->session_guid, sizeof(remote->session_guid));
 
-	// Only encrypt if the context was set up correctly
-	if (remote->enc_ctx != NULL && remote->enc_ctx->valid)
+	// Only encrypt if the context was set up correctly and it's not a config packet
+	if (met_api->win_api.ws2_32.ntohl(packet->header.type) == PACKET_TLV_TYPE_CONFIG)
+	{
+		vdprintf("[ENC] Config packet found, no encryption will be performed");
+	}
+	else if (remote->enc_ctx != NULL && remote->enc_ctx->valid)
 	{
 		vdprintf("[ENC] Context is valid, moving on ... ");
 		// only encrypt the packet if encryption has been enabled
@@ -195,7 +207,7 @@ DWORD encrypt_packet(Remote* remote, Packet* packet, LPBYTE* buffer, LPDWORD buf
 			{
 				vdprintf("[ENC] Context is enabled, doing the AES encryption");
 
-				if (!CryptDuplicateKey(remote->enc_ctx->aes_key, NULL, 0, &dupKey))
+				if (!met_api->win_api.advapi32.CryptDuplicateKey(remote->enc_ctx->aes_key, NULL, 0, &dupKey))
 				{
 					result = GetLastError();
 					vdprintf("[ENC] Failed to duplicate AES key: %d (%x)", result, result);
@@ -203,7 +215,7 @@ DWORD encrypt_packet(Remote* remote, Packet* packet, LPBYTE* buffer, LPDWORD buf
 				}
 
 				DWORD mode = CRYPT_MODE_CBC;
-				if (!CryptSetKeyParam(dupKey, KP_MODE, (const BYTE*)&mode, 0))
+				if (!met_api->win_api.advapi32.CryptSetKeyParam(dupKey, KP_MODE, (const BYTE*)&mode, 0))
 				{
 					result = GetLastError();
 					dprintf("[ENC] Failed to set mode to CBC: %d (%x)", result, result);
@@ -211,7 +223,7 @@ DWORD encrypt_packet(Remote* remote, Packet* packet, LPBYTE* buffer, LPDWORD buf
 				}
 
 				BYTE iv[AES256_BLOCKSIZE];
-				if (!CryptGenRandom(remote->enc_ctx->provider, sizeof(iv), iv))
+				if (!met_api->win_api.advapi32.CryptGenRandom(remote->enc_ctx->provider, sizeof(iv), iv))
 				{
 					result = GetLastError();
 					vdprintf("[ENC] Failed to generate random IV: %d (%x)", result, result);
@@ -221,7 +233,7 @@ DWORD encrypt_packet(Remote* remote, Packet* packet, LPBYTE* buffer, LPDWORD buf
 					iv[0], iv[1], iv[2], iv[3], iv[4], iv[5], iv[6], iv[7], iv[8], iv[9], iv[10], iv[11], iv[12], iv[13], iv[14], iv[15]);
 
 
-				if (!CryptSetKeyParam(dupKey, KP_IV, iv, 0))
+				if (!met_api->win_api.advapi32.CryptSetKeyParam(dupKey, KP_IV, iv, 0))
 				{
 					result = GetLastError();
 					vdprintf("[ENC] Failed to set IV: %d (%x)", result, result);
@@ -230,7 +242,7 @@ DWORD encrypt_packet(Remote* remote, Packet* packet, LPBYTE* buffer, LPDWORD buf
 
 				vdprintf("[ENC] IV Set successfully");
 				// mark this packet as an encrypted packet
-				packet->header.enc_flags = htonl(ENC_FLAG_AES256);
+				packet->header.enc_flags = met_api->win_api.ws2_32.htonl(ENC_FLAG_AES256);
 
 
 				// Round up
@@ -248,7 +260,7 @@ DWORD encrypt_packet(Remote* remote, Packet* packet, LPBYTE* buffer, LPDWORD buf
 				// prepare the payload
 				memcpy_s(payloadPos, packet->payloadLength, packet->payload, packet->payloadLength);
 
-				if (!CryptEncrypt(dupKey, 0, TRUE, 0, payloadPos, bufferSize, maxEncryptSize))
+				if (!met_api->win_api.advapi32.CryptEncrypt(dupKey, 0, TRUE, 0, payloadPos, bufferSize, maxEncryptSize))
 				{
 					result = GetLastError();
 					vdprintf("[ENC] Failed to encrypt: %d (%x)", result, result);
@@ -259,7 +271,7 @@ DWORD encrypt_packet(Remote* remote, Packet* packet, LPBYTE* buffer, LPDWORD buf
 				}
 
 				// update the length to match the size of the encrypted data with IV and the TlVHeader
-				packet->header.length = ntohl(*bufferSize + sizeof(iv) + sizeof(TlvHeader));
+				packet->header.length = met_api->win_api.ws2_32.ntohl(*bufferSize + sizeof(iv) + sizeof(TlvHeader));
 
 				// update the returned total size to include both the IV and header size.
 				*bufferSize += sizeof(iv) + sizeof(packet->header);
@@ -287,13 +299,14 @@ DWORD encrypt_packet(Remote* remote, Packet* packet, LPBYTE* buffer, LPDWORD buf
 	if (*buffer == NULL)
 	{
 		*bufferSize = packet->payloadLength + sizeof(packet->header);
+		vdprintf("[ENC] Creating buffer for payload, size: %u", *bufferSize);
 		*buffer = (BYTE*)malloc(*bufferSize);
 
 		BYTE* headerPos = *buffer;
 		BYTE* payloadPos = headerPos + sizeof(packet->header);
 
 		// mark this packet as a non-encrypted packet
-		packet->header.enc_flags = htonl(ENC_FLAG_NONE);
+		packet->header.enc_flags = met_api->win_api.ws2_32.htonl(ENC_FLAG_NONE);
 
 		memcpy_s(headerPos, sizeof(packet->header), &packet->header, sizeof(packet->header));
 		memcpy_s(payloadPos, packet->payloadLength, packet->payload, packet->payloadLength);
@@ -316,7 +329,7 @@ DWORD encrypt_packet(Remote* remote, Packet* packet, LPBYTE* buffer, LPDWORD buf
 
 	if (dupKey != 0)
 	{
-		CryptDestroyKey(dupKey);
+		met_api->win_api.advapi32.CryptDestroyKey(dupKey);
 	}
 
 	return result;
@@ -340,7 +353,7 @@ DWORD public_key_encrypt(BYTE* publicKeyDer, UINT publicKeyDerLen, BYTE* data, D
 		}
 
 		DWORD keyRequiredSize = 0;
-		if (!CryptDecodeObjectEx(X509_ASN_ENCODING, X509_PUBLIC_KEY_INFO, publicKeyDer, publicKeyDerLen, CRYPT_ENCODE_ALLOC_FLAG, 0, &pubKeyInfo, &keyRequiredSize))
+		if (!met_api->win_api.crypt32.CryptDecodeObjectEx(X509_ASN_ENCODING, X509_PUBLIC_KEY_INFO, publicKeyDer, publicKeyDerLen, CRYPT_ENCODE_ALLOC_FLAG, 0, &pubKeyInfo, &keyRequiredSize))
 		{
 			result = GetLastError();
 			dprintf("[ENC] Failed to decode: %u (%x)", result, result);
@@ -349,10 +362,10 @@ DWORD public_key_encrypt(BYTE* publicKeyDer, UINT publicKeyDerLen, BYTE* data, D
 
 		dprintf("[ENC] Key algo: %s", pubKeyInfo->Algorithm.pszObjId);
 
-		if (!CryptAcquireContext(&rsaProv, NULL, MS_ENHANCED_PROV, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT))
+		if (!WINAPI_CryptAcquireContext_TCHAR(&rsaProv, NULL, MS_ENHANCED_PROV, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT))
 		{
 			dprintf("[ENC] Failed to create the RSA provider with CRYPT_VERIFYCONTEXT");
-			if (!CryptAcquireContext(&rsaProv, NULL, MS_ENHANCED_PROV, PROV_RSA_FULL, CRYPT_NEWKEYSET))
+			if (!WINAPI_CryptAcquireContext_TCHAR(&rsaProv, NULL, MS_ENHANCED_PROV, PROV_RSA_FULL, CRYPT_NEWKEYSET))
 			{
 				result = GetLastError();
 				dprintf("[ENC] Failed to create the RSA provider with CRYPT_NEWKEYSET: %u (%x)", result, result);
@@ -368,7 +381,7 @@ DWORD public_key_encrypt(BYTE* publicKeyDer, UINT publicKeyDerLen, BYTE* data, D
 			dprintf("[ENC] Created the RSA provider with CRYPT_VERIFYCONTEXT");
 		}
 
-		if (!CryptImportPublicKeyInfo(rsaProv, X509_ASN_ENCODING, pubKeyInfo, &pubCryptKey))
+		if (!met_api->win_api.crypt32.CryptImportPublicKeyInfo(rsaProv, X509_ASN_ENCODING, pubKeyInfo, &pubCryptKey))
 		{
 			result = GetLastError();
 			dprintf("[ENC] Failed to import the key: %u (%x)", result, result);
@@ -376,7 +389,7 @@ DWORD public_key_encrypt(BYTE* publicKeyDer, UINT publicKeyDerLen, BYTE* data, D
 		}
 
 		DWORD requiredEncSize = dataLength;
-		CryptEncrypt(pubCryptKey, 0, TRUE, 0, NULL, &requiredEncSize, requiredEncSize);
+		met_api->win_api.advapi32.CryptEncrypt(pubCryptKey, 0, TRUE, 0, NULL, &requiredEncSize, requiredEncSize);
 		dprintf("[ENC] Encrypted data length: %u (%x)", requiredEncSize, requiredEncSize);
 
 		cipherText = (LPBYTE)calloc(1, requiredEncSize);
@@ -388,7 +401,7 @@ DWORD public_key_encrypt(BYTE* publicKeyDer, UINT publicKeyDerLen, BYTE* data, D
 
 		memcpy_s(cipherText, requiredEncSize, data, dataLength);
 
-		if (!CryptEncrypt(pubCryptKey, 0, TRUE, 0, cipherText, &dataLength, requiredEncSize))
+		if (!met_api->win_api.advapi32.CryptEncrypt(pubCryptKey, 0, TRUE, 0, cipherText, &dataLength, requiredEncSize))
 		{
 			result = GetLastError();
 			dprintf("[ENC] Failed to encrypt: %u (%x)", result, result);
@@ -425,12 +438,12 @@ DWORD public_key_encrypt(BYTE* publicKeyDer, UINT publicKeyDerLen, BYTE* data, D
 
 	if (pubCryptKey != 0)
 	{
-		CryptDestroyKey(pubCryptKey);
+		met_api->win_api.advapi32.CryptDestroyKey(pubCryptKey);
 	}
 
 	if (rsaProv != 0)
 	{
-		CryptReleaseContext(rsaProv, 0);
+		met_api->win_api.advapi32.CryptReleaseContext(rsaProv, 0);
 	}
 
 	return result;
@@ -446,13 +459,13 @@ DWORD free_encryption_context(Remote* remote)
 		dprintf("[ENC] Encryption context not null, so ditching AES key %ul", remote->enc_ctx->aes_key);
 		if (remote->enc_ctx->aes_key != 0)
 		{
-			CryptDestroyKey(remote->enc_ctx->aes_key);
+			met_api->win_api.advapi32.CryptDestroyKey(remote->enc_ctx->aes_key);
 		}
 
 		dprintf("[ENC] Encryption context not null, so ditching provider");
 		if (remote->enc_ctx->provider != 0)
 		{
-			CryptReleaseContext(remote->enc_ctx->provider, 0);
+			met_api->win_api.advapi32.CryptReleaseContext(remote->enc_ctx->provider, 0);
 		}
 
 		dprintf("[ENC] Encryption context not null, so freeing the context");
@@ -462,10 +475,9 @@ DWORD free_encryption_context(Remote* remote)
 	return result;
 }
 
-DWORD request_negotiate_aes_key(Remote* remote, Packet* packet)
+DWORD create_enc_ctx_from_key(Remote* remote, LPBYTE key, DWORD keySize)
 {
 	DWORD result = ERROR_SUCCESS;
-	Packet* response = packet_create_response(packet);
 
 	do
 	{
@@ -487,7 +499,70 @@ DWORD request_negotiate_aes_key(Remote* remote, Packet* packet)
 
 		for (int i = 0; i < _countof(AesProviders); ++i)
 		{
-			if (!CryptAcquireContext(&ctx->provider, NULL, AesProviders[i].provider, AesProviders[i].type, AesProviders[i].flags))
+			if (!WINAPI_CryptAcquireContext_TCHAR(&ctx->provider, NULL, AesProviders[i].provider, AesProviders[i].type, AesProviders[i].flags))
+			{
+				result = GetLastError();
+				dprintf("[ENC] failed to acquire the crypt context %d: %d (%x)", i, result, result);
+			}
+			else
+			{
+				result = ERROR_SUCCESS;
+				ctx->provider_idx = i;
+				dprintf("[ENC] managed to acquire the crypt context %d!", i);
+				break;
+			}
+		}
+
+		if (result != ERROR_SUCCESS)
+		{
+			break;
+		}
+
+		ctx->key_data.header.bType = PLAINTEXTKEYBLOB;
+		ctx->key_data.header.bVersion = CUR_BLOB_VERSION;
+		ctx->key_data.header.aiKeyAlg = CALG_AES_256;
+		ctx->key_data.length = keySize;
+		memcpy_s(ctx->key_data.key, sizeof(ctx->key_data.key), key, keySize);
+
+		if (!met_api->win_api.advapi32.CryptImportKey(ctx->provider, (const BYTE*)&ctx->key_data, sizeof(Aes256Key), 0, 0, &ctx->aes_key))
+		{
+			result = GetLastError();
+			dprintf("[ENC] failed to import random key: %d (%x)", result, result);
+			break;
+		}
+
+		ctx->valid = TRUE;
+	} while (0);
+
+	return result;
+}
+
+DWORD request_negotiate_aes_key(Remote* remote, Packet* packet)
+{
+	Packet* response = packet_create_response(packet);
+	DWORD result = ERROR_SUCCESS;
+
+	do
+	{
+		if (remote->enc_ctx != NULL)
+		{
+			free_encryption_context(remote);
+		}
+
+		remote->enc_ctx = (PacketEncryptionContext*)calloc(1, sizeof(PacketEncryptionContext));
+
+		if (remote->enc_ctx == NULL)
+		{
+			dprintf("[ENC] failed to allocate the encryption context");
+			result = ERROR_OUTOFMEMORY;
+			break;
+		}
+
+		PacketEncryptionContext* ctx = remote->enc_ctx;
+
+		for (int i = 0; i < _countof(AesProviders); ++i)
+		{
+			if (!WINAPI_CryptAcquireContext_TCHAR(&ctx->provider, NULL, AesProviders[i].provider, AesProviders[i].type, AesProviders[i].flags))
 			{
 				result = GetLastError();
 				dprintf("[ENC] failed to acquire the crypt context %d: %d (%x)", i, result, result);
@@ -511,14 +586,14 @@ DWORD request_negotiate_aes_key(Remote* remote, Packet* packet)
 		ctx->key_data.header.aiKeyAlg = CALG_AES_256;
 		ctx->key_data.length = sizeof(ctx->key_data.key);
 
-		if (!CryptGenRandom(ctx->provider, ctx->key_data.length, ctx->key_data.key))
+		if (!met_api->win_api.advapi32.CryptGenRandom(ctx->provider, ctx->key_data.length, ctx->key_data.key))
 		{
 			result = GetLastError();
 			dprintf("[ENC] failed to generate random key: %d (%x)", result, result);
 			break;
 		}
 
-		if (!CryptImportKey(ctx->provider, (const BYTE*)&ctx->key_data, sizeof(Aes256Key), 0, 0, &ctx->aes_key))
+		if (!met_api->win_api.advapi32.CryptImportKey(ctx->provider, (const BYTE*)&ctx->key_data, sizeof(Aes256Key), 0, 0, &ctx->aes_key))
 		{
 			result = GetLastError();
 			dprintf("[ENC] failed to import random key: %d (%x)", result, result);
@@ -552,5 +627,5 @@ DWORD request_negotiate_aes_key(Remote* remote, Packet* packet)
 
 	remote->enc_ctx->enabled = TRUE;
 
-	return ERROR_SUCCESS;
+	return result;
 }

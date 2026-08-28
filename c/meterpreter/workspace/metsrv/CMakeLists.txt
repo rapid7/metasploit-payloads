@@ -29,17 +29,23 @@ else()
         ${MOD_DEF_DIR}/metsrv.def
     )
 endif()
+append_debug_sources(SRC_FILES)
 add_library(${PROJECT_NAME} SHARED ${SRC_FILES})
 set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME ${PROJECT_NAME}.${TARGET_ARCH})
 if(MSVC)
     set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS "/DEF:\"${MOD_DEF_DIR}/metsrv.def\"")
     set_source_files_properties(${MOD_DEF_DIR}/metsrv.def PROPERTIES HEADER_FILE_ONLY TRUE)
+else()
+    # Prevent MinGW from auto-exporting symbols.
+    # With metsrv.def present this yields a single explicit export; without it, zero exports.
+    target_link_options(${PROJECT_NAME} PRIVATE "-Wl,--exclude-all-symbols")
 endif()
 
 set(LINK_LIBS advapi32 winhttp wininet crypt32)
 
 if(MSVC)
     target_link_options(${PROJECT_NAME} PUBLIC "/ignore:4070")
+    target_link_options(${PROJECT_NAME} PUBLIC "/safeseh:no")
 else()
     set(LINK_LIBS ${LINK_LIBS} ws2_32)
 endif()

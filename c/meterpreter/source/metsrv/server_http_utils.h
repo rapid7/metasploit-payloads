@@ -1,0 +1,18 @@
+/*!
+ * @file server_http_utils.h
+ * @remark HTTP utility function declarations.
+ */
+#ifndef _METERPRETER_METSRV_SERVER_HTTP_UTILS
+#define _METERPRETER_METSRV_SERVER_HTTP_UTILS
+
+#include "metsrv.h"
+
+BOOL decode_encoded_packet(HttpTransportContext* ctx, LPBYTE encodedData, DWORD encodedDataLen, LPBYTE* data, LPDWORD dataLen);
+BOOL encode_raw_packet(HttpTransportContext* conn, LPBYTE data, DWORD dataLen, LPBYTE* encodedData, LPDWORD encodedDataLen);
+PWSTR generate_headers(HttpTransportContext* ctx, HttpConnection* conn);
+PWSTR generate_uri(HttpTransportContext* ctx, HttpConnection* conn);
+PWSTR render_uuid(HttpTransportContext* ctx, HttpConnection* conn, PCWSTR uuid);
+void http_options_free_uris(HttpRequestOptions* options);
+void http_options_set_single_uri(HttpRequestOptions* options, PCWSTR uri);
+
+#endif

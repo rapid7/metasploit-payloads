@@ -41,27 +41,7 @@ static VOID free_server_context(NamedPipeContext* ctx);
 typedef BOOL (WINAPI *PAddMandatoryAce)(PACL pAcl, DWORD dwAceRevision, DWORD dwAceFlags, DWORD dwMandatoryPolicy, PSID pLabelSid);
 static BOOL WINAPI AddMandatoryAce(PACL pAcl, DWORD dwAceRevision, DWORD dwAceFlags, DWORD dwMandatoryPolicy, PSID pLabelSid)
 {
-	static BOOL attempted = FALSE;
-	static PAddMandatoryAce pAddMandatoryAce = NULL;
-
-	if (attempted)
-	{
-		attempted = TRUE;
-
-		HMODULE lib = met_api->win_api.kernel32.LoadLibraryA("advapi32.dll");
-		if (lib != NULL)
-		{
-			pAddMandatoryAce = (PAddMandatoryAce)GetProcAddress(lib, "AddMandatoryAce");
-			dprintf("[NP-SERVER] AddMandatoryAce: %p", pAddMandatoryAce);
-		}
-	}
-
-	if (pAddMandatoryAce != NULL)
-	{
-		pAddMandatoryAce(pAcl, dwAceRevision, dwAceFlags, dwMandatoryPolicy, pLabelSid);
-	}
-
-	return TRUE;
+	return met_api->win_api.advapi32.AddMandatoryAce(pAcl, dwAceRevision, dwAceFlags, dwMandatoryPolicy, pLabelSid);
 }
 
 static DWORD server_destroy(HANDLE waitable, LPVOID entryContext, LPVOID threadContext)
@@ -132,7 +112,7 @@ static DWORD read_pipe_to_packet(NamedPipeContext* ctx, LPBYTE source, DWORD sou
 			dprintf("[PIVOT] Packet header after XOR: [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X] [0x%02X 0x%02X 0x%02X 0x%02X]",
 				h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15], h[16], h[17], h[18], h[19], h[20], h[21], h[22], h[23], h[24], h[25], h[26], h[27], h[28], h[29], h[30], h[31]);
 #endif
-			ctx->packet_required_size = ntohl(header->length) + sizeof(PacketHeader) - sizeof(TlvHeader);
+			ctx->packet_required_size = met_api->win_api.ws2_32.ntohl(header->length) + sizeof(PacketHeader) - sizeof(TlvHeader);
 			xor_bytes(header->xor_key, (LPBYTE)&header->length, sizeof(header->length));
 			dprintf("[PIVOT] Required size is %u bytes", ctx->packet_required_size);
 		}
@@ -154,7 +134,7 @@ static DWORD read_pipe_to_packet(NamedPipeContext* ctx, LPBYTE source, DWORD sou
 				Packet* packet = (Packet*)calloc(1, sizeof(Packet));
 				packet->header.length = header->length;
 				packet->header.type = header->type;
-				packet->payloadLength = ntohl(packet->header.length) - sizeof(TlvHeader);
+				packet->payloadLength = met_api->win_api.ws2_32.ntohl(packet->header.length) - sizeof(TlvHeader);
 				packet->payload = ctx->packet_buffer + sizeof(PacketHeader);
 
 				CHAR* requestId = packet_get_tlv_value_string(packet, TLV_TYPE_REQUEST_ID);
@@ -191,12 +171,12 @@ static DWORD read_pipe_to_packet(NamedPipeContext* ctx, LPBYTE source, DWORD sou
 						dprintf("[PIPE] Session guid not found, looks like the session is new");
 
 						// We need to generate a new session GUID and inform metasploit of the new session
-						CoCreateGuid(&ctx->pivot_session_guid);
+						met_api->win_api.rpcrt4.UuidCreate(&ctx->pivot_session_guid);
 
 						// swizzle the values around so that endianness isn't an issue before casting to a block of bytes
-						ctx->pivot_session_guid.Data1 = htonl(ctx->pivot_session_guid.Data1);
-						ctx->pivot_session_guid.Data2 = htons(ctx->pivot_session_guid.Data2);
-						ctx->pivot_session_guid.Data3 = htons(ctx->pivot_session_guid.Data3);
+						ctx->pivot_session_guid.Data1 = met_api->win_api.ws2_32.htonl(ctx->pivot_session_guid.Data1);
+						ctx->pivot_session_guid.Data2 = met_api->win_api.ws2_32.htons(ctx->pivot_session_guid.Data2);
+						ctx->pivot_session_guid.Data3 = met_api->win_api.ws2_32.htons(ctx->pivot_session_guid.Data3);
 					}
 
 					ctx->session_established = TRUE;
@@ -288,7 +268,7 @@ VOID create_pipe_security_attributes(PSECURITY_ATTRIBUTES psa)
 	// Start with the DACL (perhaps try the NULL sid if it doesn't work?)
 	SID_IDENTIFIER_AUTHORITY sidWorld = SECURITY_WORLD_SID_AUTHORITY;
 	PSID sidEveryone = NULL;
-	if (!AllocateAndInitializeSid(&sidWorld, 1, SECURITY_WORLD_RID, 0, 0, 0, 0, 0, 0, 0, &sidEveryone))
+	if (!met_api->win_api.advapi32.AllocateAndInitializeSid(&sidWorld, 1, SECURITY_WORLD_RID, 0, 0, 0, 0, 0, 0, 0, &sidEveryone))
 	{
 		dprintf("[NP-SERVER] AllocateAndInitializeSid failed: %u", GetLastError());
 		return;
@@ -304,9 +284,9 @@ VOID create_pipe_security_attributes(PSECURITY_ATTRIBUTES psa)
 	ea.Trustee.TrusteeType = TRUSTEE_IS_WELL_KNOWN_GROUP;
 	ea.Trustee.ptstrName = (LPWSTR)sidEveryone;
 
-	//PACL dacl = (PACL)LocalAlloc(LPTR, 256);
+	//PACL dacl = (PACL)met_api->win_api.kernel32.LocalAlloc(LPTR, 256);
 	PACL dacl = NULL;
-	DWORD result = SetEntriesInAclW(1, &ea, NULL, &dacl);
+	DWORD result = met_api->win_api.advapi32.SetEntriesInAclW(1, &ea, NULL, &dacl);
 	if (result != ERROR_SUCCESS)
 	{
 		dprintf("[NP-SERVER] SetEntriesInAclW failed: %u", result);
@@ -316,14 +296,14 @@ VOID create_pipe_security_attributes(PSECURITY_ATTRIBUTES psa)
 	// set up the sacl
 	SID_IDENTIFIER_AUTHORITY sidLabel = SECURITY_MANDATORY_LABEL_AUTHORITY;
 	PSID sidLow = NULL;
-	if (!AllocateAndInitializeSid(&sidLabel, 1, SECURITY_MANDATORY_LOW_RID, 0, 0, 0, 0, 0, 0, 0, &sidLow))
+	if (!met_api->win_api.advapi32.AllocateAndInitializeSid(&sidLabel, 1, SECURITY_MANDATORY_LOW_RID, 0, 0, 0, 0, 0, 0, 0, &sidLow))
 	{
 		dprintf("[NP-SERVER] AllocateAndInitializeSid failed: %u", GetLastError());
 	}
 	dprintf("[NP-SERVER] sidLow: %p", dacl);
 
-	PACL sacl = (PACL)LocalAlloc(LPTR, 256);
-	if (!InitializeAcl(sacl, 256, ACL_REVISION_DS))
+	PACL sacl = (PACL)met_api->win_api.kernel32.LocalAlloc(LPTR, 256);
+	if (!met_api->win_api.advapi32.InitializeAcl(sacl, 256, ACL_REVISION_DS))
 	{
 		dprintf("[NP-SERVER] InitializeAcl failed: %u", GetLastError());
 	}
@@ -334,20 +314,20 @@ VOID create_pipe_security_attributes(PSECURITY_ATTRIBUTES psa)
 	}
 
 	// now build the descriptor
-	PSECURITY_DESCRIPTOR sd = (PSECURITY_DESCRIPTOR)LocalAlloc(LPTR, SECURITY_DESCRIPTOR_MIN_LENGTH);
-	if (!InitializeSecurityDescriptor(sd, SECURITY_DESCRIPTOR_REVISION))
+	PSECURITY_DESCRIPTOR sd = (PSECURITY_DESCRIPTOR)met_api->win_api.kernel32.LocalAlloc(LPTR, SECURITY_DESCRIPTOR_MIN_LENGTH);
+	if (!met_api->win_api.advapi32.InitializeSecurityDescriptor(sd, SECURITY_DESCRIPTOR_REVISION))
 	{
 		dprintf("[NP-SERVER] InitializeSecurityDescriptor failed: %u", GetLastError());
 	}
 
 	// add the dacl
-	if (!SetSecurityDescriptorDacl(sd, TRUE, dacl, FALSE))
+	if (!met_api->win_api.advapi32.SetSecurityDescriptorDacl(sd, TRUE, dacl, FALSE))
 	{
 		dprintf("[NP-SERVER] SetSecurityDescriptorDacl failed: %u", GetLastError());
 	}
 
 	// now the sacl
-	if (!SetSecurityDescriptorSacl(sd, TRUE, sacl, FALSE))
+	if (!met_api->win_api.advapi32.SetSecurityDescriptorSacl(sd, TRUE, sacl, FALSE))
 	{
 		dprintf("[NP-SERVER] SetSecurityDescriptorSacl failed: %u", GetLastError());
 	}
@@ -365,13 +345,13 @@ DWORD toggle_privilege(LPCWSTR privName, BOOL enable, BOOL* wasEnabled)
 	LUID luid;
 	DWORD tpLen;
 
-	if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &accessToken))
+	if (!met_api->win_api.advapi32.OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &accessToken))
 	{
 		dprintf("[NP-PRIV] Couldn't open process token: %u (%x)", GetLastError(), GetLastError());
 		return GetLastError();
 	}
 
-	if (!LookupPrivilegeValueW(NULL, privName, &luid))
+	if (!met_api->win_api.advapi32.LookupPrivilegeValueW(NULL, privName, &luid))
 	{
 		dprintf("[NP-PRIV] Couldn't look up the value: %u (%x)", GetLastError(), GetLastError());
 		return GetLastError();
@@ -381,7 +361,7 @@ DWORD toggle_privilege(LPCWSTR privName, BOOL enable, BOOL* wasEnabled)
 	tp.Privileges[0].Luid = luid;
 	tp.Privileges[0].Attributes = enable ? SE_PRIVILEGE_ENABLED : 0;
 
-	if (!AdjustTokenPrivileges(accessToken, FALSE, &tp, sizeof(tp), &prevTp, &tpLen))
+	if (!met_api->win_api.advapi32.AdjustTokenPrivileges(accessToken, FALSE, &tp, sizeof(tp), &prevTp, &tpLen))
 	{
 		dprintf("[NP-PRIV] Couldn't adjust the token privs: %u (%x)", GetLastError(), GetLastError());
 		return GetLastError();
@@ -432,14 +412,14 @@ DWORD create_pipe_server_instance(NamedPipeContext* ctx)
 
 		dprintf("[NP-SERVER] Creating the handler event");
 		// This must be signalled, so that the connect event kicks off on the new thread.
-		ctx->read_overlap.hEvent = CreateEvent(NULL, TRUE, TRUE, NULL);
+		ctx->read_overlap.hEvent = met_api->win_api.kernel32.CreateEventA(NULL, TRUE, TRUE, NULL);
 		if (ctx->read_overlap.hEvent == NULL)
 		{
 			BREAK_ON_ERROR("[NP-SERVER] Failed to create connect event for read overlap.");
 		}
 
 		// this should not be signalled as it's just for handling named pipe writes.
-		ctx->write_overlap.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+		ctx->write_overlap.hEvent = met_api->win_api.kernel32.CreateEventA(NULL, TRUE, FALSE, NULL);
 		if (ctx->write_overlap.hEvent == NULL)
 		{
 			BREAK_ON_ERROR("[NP-SERVER] Failed to create connect event for read overlap.");

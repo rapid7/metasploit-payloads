@@ -39,7 +39,7 @@ static DWORD server_pipe_poll(Remote* remote, long timeout)
 	lock_acquire(remote->lock);
 
 	vdprintf("[NP DISPATCH] testing for data on the pipe, making sure there's enough for a packet header");
-	BOOL ready = PeekNamedPipe(ctx->pipe, NULL, 0, NULL, &bytesAvailable, NULL) && bytesAvailable >= sizeof(PacketHeader);
+	BOOL ready = met_api->win_api.kernel32.PeekNamedPipe(ctx->pipe, NULL, 0, NULL, &bytesAvailable, NULL) && bytesAvailable >= sizeof(PacketHeader);
 	DWORD result = GetLastError();
 
 	lock_release(remote->lock);
@@ -55,7 +55,7 @@ static DWORD server_pipe_poll(Remote* remote, long timeout)
 		{
 			// simulate a wait so that we don't bash the crap out of the CPU?
 			vdprintf("[NP DISPATCH] pipe data not found, sleeping (error %u)", GetLastError());
-			Sleep(timeout);
+			met_api->win_api.kernel32.Sleep(timeout);
 			result = ERROR_NO_DATA;
 		}
 	}
@@ -75,7 +75,7 @@ DWORD read_raw_bytes_to_buffer(NamedPipeTransportContext* ctx, LPBYTE buffer, DW
 	{
 		dprintf("[PIPE] Trying to read %u (0x%x) bytes", min(STUPID_PIPE_BUFFER_LIMIT, bytesToRead - *bytesRead), min(STUPID_PIPE_BUFFER_LIMIT, bytesToRead - *bytesRead));
 		// read the bytes fromi there.
-		if (!ReadFile(ctx->pipe, buffer + *bytesRead, min(STUPID_PIPE_BUFFER_LIMIT, bytesToRead - *bytesRead), &bytesReadThisIteration, NULL))
+		if (!met_api->win_api.kernel32.ReadFile(ctx->pipe, buffer + *bytesRead, min(STUPID_PIPE_BUFFER_LIMIT, bytesToRead - *bytesRead), &bytesReadThisIteration, NULL))
 		{
 			result = GetLastError();
 			dprintf("[PIPE] ReadFile returned error %u 0x%x", result, result);
@@ -183,12 +183,12 @@ static DWORD packet_receive_named_pipe(Remote *remote, Packet **packet)
 #endif
 
 		// if we don't have a GUID yet, we need to take the one given in the packet
-		if (is_null_guid(remote->orig_config->session.session_guid))
+		if (is_null_guid(remote->session_guid))
 		{
-			memcpy(remote->orig_config->session.session_guid, header.session_guid, sizeof(remote->orig_config->session.session_guid));
+			memcpy_s(remote->session_guid, sizeof(remote->session_guid), header.session_guid, sizeof(header.session_guid));
 		}
 
-		payloadLength = ntohl(header.length) - sizeof(TlvHeader);
+		payloadLength = met_api->win_api.ws2_32.ntohl(header.length) - sizeof(TlvHeader);
 		dprintf("[PIPE] Payload length is %u 0x%08x", payloadLength, payloadLength);
 		DWORD packetSize = sizeof(PacketHeader) + payloadLength;
 		dprintf("[PIPE] total buffer size for the packet is %u 0x%08x", packetSize, packetSize);
@@ -383,7 +383,7 @@ static HANDLE reverse_named_pipe(wchar_t *pipe_name, TimeoutSettings *timeouts)
 	do
 	{
 		dprintf("[NP CONFIGURE] pipe name is %S, attempting to create", pipe_name);
-		hPipe = CreateFileW(pipe_name, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
+		hPipe = met_api->win_api.kernel32.CreateFileW(pipe_name, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
 		if (hPipe != INVALID_HANDLE_VALUE)
 		{
 			break;
@@ -415,7 +415,7 @@ static HANDLE bind_named_pipe(wchar_t *pipe_name, TimeoutSettings *timeouts)
 	{
 		SECURITY_ATTRIBUTES sa = { 0 };
 		create_pipe_security_attributes(&sa); // allow access anyone
-		hPipe = CreateNamedPipeW(pipe_name, PIPE_ACCESS_DUPLEX, PIPE_TYPE_BYTE | PIPE_WAIT, PIPE_UNLIMITED_INSTANCES,
+		hPipe = met_api->win_api.kernel32.CreateNamedPipeW(pipe_name, PIPE_ACCESS_DUPLEX, PIPE_TYPE_BYTE | PIPE_WAIT, PIPE_UNLIMITED_INSTANCES,
 								 STUPID_PIPE_BUFFER_LIMIT, STUPID_PIPE_BUFFER_LIMIT, 0, &sa);
 		result = GetLastError();
 		if (wasEnabled == FALSE)
@@ -427,7 +427,7 @@ static HANDLE bind_named_pipe(wchar_t *pipe_name, TimeoutSettings *timeouts)
 	if (hPipe == INVALID_HANDLE_VALUE)
 	{
 		// Fallback on a pipe with simpler security attributes
-		hPipe = CreateNamedPipeW(pipe_name, PIPE_ACCESS_DUPLEX, PIPE_TYPE_BYTE | PIPE_WAIT, PIPE_UNLIMITED_INSTANCES,
+		hPipe = met_api->win_api.kernel32.CreateNamedPipeW(pipe_name, PIPE_ACCESS_DUPLEX, PIPE_TYPE_BYTE | PIPE_WAIT, PIPE_UNLIMITED_INSTANCES,
 								 STUPID_PIPE_BUFFER_LIMIT, STUPID_PIPE_BUFFER_LIMIT, 0, NULL);
 		result = GetLastError();
 	}
@@ -517,7 +517,7 @@ static DWORD configure_named_pipe_connection(Transport* transport)
 	{
 		// Configure PIPE_WAIT. Stager doesn't do this because ConnectNamedPipe may never return.
 		DWORD mode = 0;
-		SetNamedPipeHandleState((HANDLE)ctx->pipe, &mode, NULL, NULL);
+		met_api->win_api.kernel32.SetNamedPipeHandleState((HANDLE)ctx->pipe, &mode, NULL, NULL);
 		dprintf("[NP] Connection already running on %u", ctx->pipe);
 	}
 	else
@@ -638,15 +638,12 @@ static void transport_set_handle_named_pipe(Transport* transport, UINT_PTR handl
  * @param transport Transport data to create the configuration from.
  * @param config Pointer to the config block to write to.
  */
-void transport_write_named_pipe_config(Transport* transport, MetsrvTransportNamedPipe* config)
+void transport_write_named_pipe_config(Transport* transport, Packet* c2Packet)
 {
-	if (transport && config)
-	{
-		config->common.comms_timeout = transport->timeouts.comms;
-		config->common.retry_total = transport->timeouts.retry_total;
-		config->common.retry_wait = transport->timeouts.retry_wait;
-		wcsncpy(config->common.url, transport->url, URL_SIZE);
-	}
+	packet_add_tlv_wstring(c2Packet, TLV_TYPE_C2_URL, transport->url);
+	packet_add_tlv_uint(c2Packet, TLV_TYPE_C2_COMM_TIMEOUT, transport->timeouts.comms);
+	packet_add_tlv_uint(c2Packet, TLV_TYPE_C2_RETRY_WAIT, transport->timeouts.retry_wait);
+	packet_add_tlv_uint(c2Packet, TLV_TYPE_C2_RETRY_TOTAL, transport->timeouts.retry_total);
 }
 
 /*!
@@ -677,41 +674,28 @@ static DWORD get_migrate_context_named_pipe(Transport* transport, DWORD targetPr
 }
 
 /*!
- * @brief Gets the size of the memory space required to store the configuration for this transport.
- * @param t Pointer to the transport.
- * @return Size, in bytes of the required memory block.
- */
-static DWORD transport_get_config_size_named_pipe(Transport* t)
-{
-	return sizeof(MetsrvTransportNamedPipe);
-}
-
-/*!
  * @brief Creates a new named pipe transport instance.
  * @param config The Named Pipe configuration block.
  * @param size Pointer to the size of the parsed config block.
  * @return Pointer to the newly configured/created Named Pipe transport instance.
  */
-Transport* transport_create_named_pipe(MetsrvTransportNamedPipe* config, LPDWORD size)
+Transport* transport_create_named_pipe(Packet* packet, Tlv* c2Tlv)
 {
 	Transport* transport = (Transport*)calloc(1, sizeof(Transport));
 	NamedPipeTransportContext* ctx = (NamedPipeTransportContext*)calloc(1, sizeof(NamedPipeTransportContext));
 
-	if (size)
-	{
-		*size = sizeof(MetsrvTransportNamedPipe);
-	}
-
 	// Lock used to synchronise writes
 	ctx->write_lock = lock_create();
 
-	dprintf("[TRANS NP] Creating pipe transport for url %S", config->common.url);
+	PWSTR url = packet_get_tlv_group_entry_value_wstring(packet, c2Tlv, TLV_TYPE_C2_URL, NULL);
+
+	dprintf("[TRANS NP] Creating pipe transport for url %S", url);
 
 	transport->type = METERPRETER_TRANSPORT_PIPE;
-	transport->timeouts.comms = config->common.comms_timeout;
-	transport->timeouts.retry_total = config->common.retry_total;
-	transport->timeouts.retry_wait = config->common.retry_wait;
-	transport->url = _wcsdup(config->common.url);
+	transport->timeouts.comms = packet_get_tlv_group_entry_value_uint(packet, c2Tlv, TLV_TYPE_C2_COMM_TIMEOUT);
+	transport->timeouts.retry_total = packet_get_tlv_group_entry_value_uint(packet, c2Tlv, TLV_TYPE_C2_RETRY_TOTAL);
+	transport->timeouts.retry_wait = packet_get_tlv_group_entry_value_uint(packet, c2Tlv, TLV_TYPE_C2_RETRY_WAIT);
+	transport->url = url;
 	transport->packet_transmit = packet_transmit_named_pipe;
 	transport->transport_init = configure_named_pipe_connection;
 	transport->transport_destroy = transport_destroy_named_pipe;
@@ -722,7 +706,7 @@ Transport* transport_create_named_pipe(MetsrvTransportNamedPipe* config, LPDWORD
 	transport->ctx = ctx;
 	transport->comms_last_packet = current_unix_timestamp();
 	transport->get_migrate_context = get_migrate_context_named_pipe;
-	transport->get_config_size = transport_get_config_size_named_pipe;
+	transport->write_config = transport_write_named_pipe_config;
 
 	return transport;
 }

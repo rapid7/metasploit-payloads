@@ -19,6 +19,7 @@ file(GLOB SRC_FILES
     ${SRC_DIR}/*.cpp
     ${EXTENSION_DEF_FILE}
 )
+append_debug_sources(SRC_FILES)
 add_library(${PROJECT_NAME} SHARED ${SRC_FILES})
 set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME ${PROJECT_NAME}.${TARGET_ARCH})
 set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS "/DEF:\"${EXTENSION_DEF_FILE}\"")
@@ -32,6 +33,7 @@ if(EXCLUDE_REFLECTIVE_LOADER)
 endif()
 if(MSVC)
     target_link_options(${PROJECT_NAME} PUBLIC "/ignore:4070")
+    target_link_options(${PROJECT_NAME} PUBLIC "/safeseh:no")
 endif()
 
 # Post processing (required for all Meterpreter DLLs)

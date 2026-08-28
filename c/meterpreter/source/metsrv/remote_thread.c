@@ -8,13 +8,6 @@ typedef struct _MIMI_CLIENT_ID {
 	PVOID UniqueThread;
 } CLIENTID;
 
-/*! @brief Function pointer type for the RtlCreateUserThread function in ntdll.dll */
-typedef NTSTATUS (WINAPI * PRtlCreateUserThread)(HANDLE, PSECURITY_DESCRIPTOR, BOOL, ULONG, SIZE_T, SIZE_T, PTHREAD_START_ROUTINE, PVOID, PHANDLE, CLIENTID*);
-/*! @brief Reference to the loaded RtlCreateUserThread function pointer. */
-static PRtlCreateUserThread pRtlCreateUserThread = NULL;
-/*! @brief Indication of whether an attempt to locate the pRtlCreateUserThread pointer has been made. */
-static BOOL pRtlCreateUserThreadAttempted = FALSE;
-
 /*!
  * @brief Helper function for creating a remote thread in a privileged process.
  * @param hProcess Handle to the target process.
@@ -56,38 +49,14 @@ HANDLE create_remote_thread(HANDLE hProcess, SIZE_T sStackSize, LPVOID pvStartAd
 		dprintf("[REMOTETHREAD] CreateRemoteThread seems to lack permissions, trying alternative options");
 		hThread = NULL;
 
-		// Only attempt to load the function pointer if we haven't attempted it already.
-		if (!pRtlCreateUserThreadAttempted)
-		{
-			if (pRtlCreateUserThread == NULL)
-			{
-				pRtlCreateUserThread = (PRtlCreateUserThread)GetProcAddress(GetModuleHandleA("ntdll"), "RtlCreateUserThread");
-				if (pRtlCreateUserThread)
-				{
-					dprintf("[REMOTETHREAD] RtlCreateUserThread found at %p, using for backup remote thread creation", pRtlCreateUserThread);
-				}
-			}
-			pRtlCreateUserThreadAttempted = TRUE;
-		}
+		dprintf("[REMOTETHREAD] Attempting thread creation with RtlCreateUserThread");
+		bCreateSuspended = (dwCreateFlags & CREATE_SUSPENDED) == CREATE_SUSPENDED;
+		ntResult = met_api->win_api.ntdll.RtlCreateUserThread(hProcess, NULL, bCreateSuspended, 0, 0, 0, (PVOID)pvStartAddress, pvStartParam, &hThread, &ClientId);
+		SetLastError(ntResult);
 
-		// if at this point we don't have a valid pointer, it means that we don't have this function available
-		// on the current OS
-		if (pRtlCreateUserThread)
+		if (ntResult == 0 && pdwThreadId)
 		{
-			dprintf("[REMOTETHREAD] Attempting thread creation with RtlCreateUserThread");
-			bCreateSuspended = (dwCreateFlags & CREATE_SUSPENDED) == CREATE_SUSPENDED;
-			ntResult = pRtlCreateUserThread(hProcess, NULL, bCreateSuspended, 0, 0, 0, (PTHREAD_START_ROUTINE)pvStartAddress, pvStartParam, &hThread, &ClientId);
-			SetLastError(ntResult);
-
-			if (ntResult == 0 && pdwThreadId)
-			{
-				*pdwThreadId = PtrToUint(ClientId.UniqueThread);
-			}
-		}
-		else
-		{
-			// restore the previous error so that it looks like we haven't done anything else
-			SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+			*pdwThreadId = PtrToUint(ClientId.UniqueThread);
 		}
 	}
 

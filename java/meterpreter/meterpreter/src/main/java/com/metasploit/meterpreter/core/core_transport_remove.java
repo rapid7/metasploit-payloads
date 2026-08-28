@@ -1,8 +1,8 @@
 package com.metasploit.meterpreter.core;
 
+import com.metasploit.TLVPacket;
+import com.metasploit.TLVType;
 import com.metasploit.meterpreter.Meterpreter;
-import com.metasploit.meterpreter.TLVPacket;
-import com.metasploit.meterpreter.TLVType;
 import com.metasploit.meterpreter.Transport;
 import com.metasploit.meterpreter.command.Command;
 
@@ -17,7 +17,7 @@ public class core_transport_remove implements Command {
             return ERROR_FAILURE;
         }
 
-        String transportUrl = request.getStringValue(TLVType.TLV_TYPE_TRANS_URL);
+        String transportUrl = request.getStringValue(TLVType.TLV_TYPE_C2_URL);
         Transport found = null;
 
         do {

@@ -4,6 +4,7 @@
  */
 
 #include "common.h"
+#include "metapi.h"
 
 wchar_t *utf8_to_wchar(const char *in)
 {
@@ -14,7 +15,7 @@ wchar_t *utf8_to_wchar(const char *in)
 		return NULL;
 	}
 
-	len = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, in, -1, NULL, 0);
+	len = met_api->win_api.kernel32.MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, in, -1, NULL, 0);
 	if (len <= 0) {
 		return NULL;
 	}
@@ -24,7 +25,7 @@ wchar_t *utf8_to_wchar(const char *in)
 		return NULL;
 	}
 
-	if (MultiByteToWideChar(CP_UTF8, 0, in, -1, out, len) == 0) {
+	if (met_api->win_api.kernel32.MultiByteToWideChar(CP_UTF8, 0, in, -1, out, len) == 0) {
 		free(out);
 		out = NULL;
 	}
@@ -41,7 +42,7 @@ char *wchar_to_utf8(const wchar_t *in)
 		return NULL;
 	}
 
-	len = WideCharToMultiByte(CP_UTF8, 0, in, -1, NULL, 0, NULL, NULL);
+	len = met_api->win_api.kernel32.WideCharToMultiByte(CP_UTF8, 0, in, -1, NULL, 0, NULL, NULL);
 	if (len <= 0) {
 		return NULL;
 	}
@@ -51,7 +52,7 @@ char *wchar_to_utf8(const wchar_t *in)
 		return NULL;
 	}
 
-	if (WideCharToMultiByte(CP_UTF8, 0, in, -1, out, len, NULL, FALSE) == 0) {
+	if (met_api->win_api.kernel32.WideCharToMultiByte(CP_UTF8, 0, in, -1, out, len, NULL, FALSE) == 0) {
 		free(out);
 		out = NULL;
 	}

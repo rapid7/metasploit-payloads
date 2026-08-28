@@ -45,7 +45,6 @@ DWORD remote_response_core_console_write(Remote *remote, Packet *packet)
 }
 
 BOOL command_is_inline(Command *command, Packet *packet);
-Command* command_locate(Packet *packet);
 DWORD command_validate_arguments(Command *command, Packet *packet);
 DWORD THREADCALL command_process_thread(THREAD * thread);
 
@@ -296,7 +295,7 @@ BOOL command_process_inline(Command *command, Remote *remote, Packet *packet)
 			// Impersonate the thread token if needed (only on Windows)
 			if (remote->server_token != remote->thread_token)
 			{
-				if (!ImpersonateLoggedOnUser(remote->thread_token))
+				if (!met_api->win_api.advapi32.ImpersonateLoggedOnUser(remote->thread_token))
 				{
 					dprintf("[COMMAND] Failed to impersonate thread token (%u) (%u)", commandId, GetLastError());
 				}

@@ -29,109 +29,21 @@ enum NtDllSyscall {
     ZwReadVirtualMemory,
     ZwProtectVirtualMemory,
     ZwQueryVirtualMemory,
-    ZwFreeVirtualMemory
+    ZwFreeVirtualMemory,
+    ZwQueryInformationProcess,
+    ZwQueryObject,
+    ZwQueryInformationWorkerFactory,
+    ZwSetInformationWorkerFactory,
+    ZwSetIoCompletion,
+    ZwMapViewOfSection,
+    ZwCreateSection,
+    ZwOpenSection,
+    ZwOpenFile,
+    ZwQueryAttributesFile,
+    ZwClose,
+    ZwLockVirtualMemory
 };
 
-enum HashedFunctions {
-    H_ZwAllocateVirtualMemory = 0xD33D4AED,
-    H_ZwOpenProcess = 0xF0D09D60,
-    H_ZwWriteVirtualMemory = 0xC5D0A4C2,
-    H_ZwReadVirtualMemory = 0x3DEFA5C2,
-    H_ZwProtectVirtualMemory = 0xBC3F4D89,
-    H_ZwQueryVirtualMemory = 0x4FD39C92,
-    H_ZwFreeVirtualMemory = 0xDE63B5C3,
-    H_NtQueueApcThread = 0x52E9A746,
-    H_NtOpenThread = 0x59651E8C,
-    H_RtlGetVersion = 0xD0C1869C,
-    H_WriteProcessMemory = 0xD83D6AA1,
-    H_ReadProcessMemory = 0x579D1BE9,
-    H_OpenProcess = 0xEFE297C0,
-    H_VirtualAlloc = 0x91AFCA54,
-    H_VirtualAllocEx = 0x6E1A959C,
-    H_VirtualProtect = 0x7946C61B,
-    H_VirtualProtectEx = 0x53D98756,
-    H_VirtualQuery = 0xA3C8C8AA,
-    H_VirtualQueryEx = 0xF45A2B20,
-    H_VirtualFree = 0x30633AC,
-    H_CreateRemoteThread = 0x72BD9CDD,
-    H_CloseHandle = 0xFFD97FB,
-    H_DuplicateHandle = 0xBD566724,
-    H_CreateToolhelp32Snapshot = 0xE454DFED,
-    H_Thread32First = 0xB83BB6EA,
-    H_OpenThread = 0x58C91E6F,
-    H_SuspendThread = 0xE8C2CDC,
-    H_Thread32Next = 0x86FED608,
-    H_ResumeThread = 0x9E4A3F88,
-    H_FreeLibrary = 0x4DC9D5A0,
-    H_FlushInstructionCache = 0x53120980,
-    H_LocalFree = 0x5CBAEAF6,
-    H_CreateFileA = 0x7C0017A5,
-    H_WriteFile = 0xE80A791F,
-    H_LoadLibraryA = 0xEC0E4E8E,
-    H_WaitForMultipleObjects = 0x23EAD524,
-    H_SetHandleInformation = 0x7F9E1144,
-    H_GlobalFree = 0x7CB922F6,
-    H_CreateNamedPipeA = 0xB2D6846,
-    H_ConnectNamedPipe = 0xCB09C9F9,
-    H_GetOverlappedResult = 0xC087DCE8,
-    H_ReadFile = 0x10FA6516,
-    H_CreateThread = 0xCA2BD06B,
-    H_ResetEvent = 0x560B084F,
-    H_SetThreadErrorMode = 0x5922C47C,
-    H_OpenProcessToken = 0x591EA70F,
-    H_AdjustTokenPrivileges = 0x24488A0F,
-    H_ImpersonateLoggedOnUser = 0x6D821B37,
-    H_CryptDuplicateKey = 0x738BCBF6,
-    H_CryptSetKeyParam = 0x180E1DA8,
-    H_CryptDecrypt = 0x59202584,
-    H_CryptGenRandom = 0x4AABDD73,
-    H_CryptEncrypt = 0xD9242588,
-    H_CryptDestroyKey = 0x95E24580,
-    H_CryptReleaseContext = 0x5AE8E894,
-    H_CryptImportKey = 0xD864E84D,
-    H_OpenThreadToken = 0x8D91EA66,
-    H_AllocateAndInitializeSid = 0x5BDCE983,
-    H_SetEntriesInAclW = 0xB142E54,
-    H_InitializeAcl = 0xF8AF61AB,
-    H_InitializeSecurityDescriptor = 0x230EA37F,
-    H_SetSecurityDescriptorDacl = 0x534E5FC2,
-    H_SetSecurityDescriptorSacl = 0x714E5FC2,
-    H_LookupPrivilegeValueW = 0x97E8C2B8,
-    H_CryptDecodeObjectEx = 0x22BA7198,
-    H_CryptImportPublicKeyInfo = 0x35A052E0,
-    H_CertGetCertificateContextProperty = 0x481F9127,
-    H_GetUserObjectInformationA = 0x11EFCB2B,
-    H_GetThreadDesktop = 0x56641B89,
-    H_WSAStartup = 0x3BFCEDCB,
-    H_socket = 0x492F0B6E,
-    H_connect = 0x60AAF9EC,
-    H_accept = 0x498649E5,
-    H_setsockopt = 0xC055F2EC,
-    H_recv = 0xE71819B6,
-    H_WSADuplicateSocketA = 0x5DCA3BD3,
-    H_InternetOpenW = 0x57E8443F,
-    H_InternetConnectW = 0x1E4BE824,
-    H_HttpOpenRequestW = 0xF7DE76B5,
-    H_InternetSetOptionW = 0xF5EFA023,
-    H_HttpSendRequestW = 0x2DE6BEB3,
-    H_HttpQueryInfoW = 0xFB2F4610,
-    H_InternetReadFile = 0x5FE34B8B,
-    H_InternetCloseHandle = 0xFA9B69C7,
-    H_InternetCrackUrlW = 0xA5955290,
-    H_CoCreateGuid = 0xC55A929A,
-    H_WinHttpOpen = 0xD1026DBE,
-    H_WinHttpConnect = 0x8AAE8F,
-    H_WinHttpOpenRequest = 0x8F34E1C1,
-    H_WinHttpGetIEProxyConfigForCurrentUser = 0xA206024C,
-    H_WinHttpGetProxyForUrl = 0x88DD3F88,
-    H_WinHttpSetOption = 0xD83C501E,
-    H_WinHttpSendRequest = 0x98348882,
-    H_WinHttpReceiveResponse = 0xDE22845E,
-    H_WinHttpQueryHeaders = 0x4F8B3B75,
-    H_WinHttpReadData = 0xB24F660F,
-    H_WinHttpQueryOption = 0xDB0FB31,
-    H_WinHttpCrackUrl = 0x73513B,
-};
 
 NtDllFunction lpFunctionsTobeLoaded[] = {
     {.lpFunctionName = NULL /* ZwAllocateVirtualMemory */, .dwNumberOfArgs = 6, .dwCryptedHash = H_ZwAllocateVirtualMemory},
@@ -140,7 +52,19 @@ NtDllFunction lpFunctionsTobeLoaded[] = {
     {.lpFunctionName = NULL /* ZwReadVirtualMemory */, .dwNumberOfArgs = 5, .dwCryptedHash = H_ZwReadVirtualMemory},
     {.lpFunctionName = NULL /* ZwProtectVirtualMemory */, .dwNumberOfArgs = 5, .dwCryptedHash = H_ZwProtectVirtualMemory},
     {.lpFunctionName = NULL /* ZwQueryVirtualMemory */, .dwNumberOfArgs = 6, .dwCryptedHash = H_ZwQueryVirtualMemory},
-    {.lpFunctionName = NULL /* ZwFreeVirtualMemory */, .dwNumberOfArgs = 4, .dwCryptedHash = H_ZwFreeVirtualMemory},};
+    {.lpFunctionName = NULL /* ZwFreeVirtualMemory */, .dwNumberOfArgs = 4, .dwCryptedHash = H_ZwFreeVirtualMemory},
+    {.lpFunctionName = NULL /* ZwQueryInformationProcess */, .dwNumberOfArgs = 5, .dwCryptedHash = H_ZwQueryInformationProcess},
+    {.lpFunctionName = NULL /* ZwQueryObject */, .dwNumberOfArgs = 5, .dwCryptedHash = H_ZwQueryObject},
+    {.lpFunctionName = NULL /* ZwQueryInformationWorkerFactory */, .dwNumberOfArgs = 5, .dwCryptedHash = H_ZwQueryInformationWorkerFactory},
+    {.lpFunctionName = NULL /* ZwSetInformationWorkerFactory */, .dwNumberOfArgs = 4, .dwCryptedHash = H_ZwSetInformationWorkerFactory},
+    {.lpFunctionName = NULL /* ZwSetIoCompletion */, .dwNumberOfArgs = 5, .dwCryptedHash = H_ZwSetIoCompletion},
+    {.lpFunctionName = NULL /* ZwMapViewOfSection */, .dwNumberOfArgs = 10, .dwCryptedHash = H_ZwMapViewOfSection},
+    {.lpFunctionName = NULL /* ZwCreateSection */, .dwNumberOfArgs = 7, .dwCryptedHash = H_ZwCreateSection},
+    {.lpFunctionName = NULL /* ZwOpenSection */, .dwNumberOfArgs = 3, .dwCryptedHash = H_ZwOpenSection},
+    {.lpFunctionName = NULL /* ZwOpenFile */, .dwNumberOfArgs = 6, .dwCryptedHash = H_ZwOpenFile},
+    {.lpFunctionName = NULL /* ZwQueryAttributesFile */, .dwNumberOfArgs = 2, .dwCryptedHash = H_ZwQueryAttributesFile},
+    {.lpFunctionName = NULL /* ZwClose */, .dwNumberOfArgs = 1, .dwCryptedHash = H_ZwClose},
+    {.lpFunctionName = NULL /* ZwLockVirtualMemory */, .dwNumberOfArgs = 4, .dwCryptedHash = H_ZwLockVirtualMemory},};
 
 #define STATUS_SUCCESS 0
 Syscall** lpWinApiSyscalls = NULL;
@@ -258,7 +182,9 @@ FARPROC WINAPI GetProcAddressH(HANDLE hModule, DWORD dwFunctionHash)
 	if (pDataDirectory->VirtualAddress == 0)
 		return NULL;
 
-	pExportDirectory = (PIMAGE_EXPORT_DIRECTORY)(uiLibraryAddress + pDataDirectory->VirtualAddress);
+	DWORD dwExportDirRva = pDataDirectory->VirtualAddress;
+	DWORD dwExportDirSize = pDataDirectory->Size;
+	pExportDirectory = (PIMAGE_EXPORT_DIRECTORY)(uiLibraryAddress + dwExportDirRva);
 
 	// STEP 3: Get pointers to the three critical arrays within the EAT.
 	// AddressOfFunctions: RVAs to the actual function code.
@@ -286,6 +212,39 @@ FARPROC WINAPI GetProcAddressH(HANDLE hModule, DWORD dwFunctionHash)
             // This should not happen for a named export, but as a safeguard.
             if (dwFunctionRva == 0)
                 return NULL;
+
+            // Forwarder detection: if the RVA falls inside the export directory,
+            // the "address" is actually a forwarder string of the form
+            // "TargetDll.TargetFunction" (or ".#Ordinal"). We must resolve it in
+            // the target DLL rather than returning the string as a function.
+            if (dwFunctionRva >= dwExportDirRva && dwFunctionRva < (dwExportDirRva + dwExportDirSize))
+            {
+                LPCSTR cpForwarder = (LPCSTR)(uiLibraryAddress + dwFunctionRva);
+                CHAR szDllName[64] = { 0 };
+                DWORD dwDot = 0;
+                while (cpForwarder[dwDot] && cpForwarder[dwDot] != '.') dwDot++;
+                if (cpForwarder[dwDot] != '.' || dwDot == 0 || dwDot + 5 > sizeof(szDllName)) {
+                    return NULL;
+                }
+                for (DWORD k = 0; k < dwDot; k++) szDllName[k] = cpForwarder[k];
+                // Append ".dll" so LoadLibrary/GetModuleHandle find it.
+                szDllName[dwDot + 0] = '.';
+                szDllName[dwDot + 1] = 'd';
+                szDllName[dwDot + 2] = 'l';
+                szDllName[dwDot + 3] = 'l';
+                szDllName[dwDot + 4] = 0;
+
+                HMODULE hFwdModule = GetModuleHandleA(szDllName);
+                if (hFwdModule == NULL) {
+                    hFwdModule = LoadLibraryA(szDllName);
+                }
+                if (hFwdModule == NULL) {
+                    return NULL;
+                }
+                // Resolve by re-hashing the target function name (everything after '.').
+                DWORD dwFwdHash = _hash((char *)(cpForwarder + dwDot + 1));
+                return GetProcAddressH(hFwdModule, dwFwdHash);
+            }
 
             // Return the absolute address of the function.
             return (FARPROC)(uiLibraryAddress + dwFunctionRva);
@@ -371,20 +330,20 @@ NTSTATUS winapi_ntdll_ZwFreeVirtualMemory(HANDLE ProcessHandle, PVOID* BaseAddre
     return SyscallStub(lpWinApiSyscalls[ZwFreeVirtualMemory], sizeof(lpArgs) / sizeof(ULONG_PTR), (ULONG_PTR *)&lpArgs);
 }
 
-NTSTATUS winapi_ntdll_NtQueueApcThread(HANDLE ThreadHandle, PVOID ApcRoutine, PVOID ApcContext, PVOID Argument1, PVOID Argument2) {
-    NTSTATUS (NTAPI *pNtQueueApcThread)(HANDLE ThreadHandle, PVOID ApcRoutine, PVOID ApcContext, PVOID Argument1, PVOID Argument2) = GetFunctionH(NTDLL_DLL, H_NtQueueApcThread);
-    dprintf("[WINAPI][winapi_ntdll_NtQueueApcThread] Calling NtQueueApcThread @ %p", pNtQueueApcThread);
-    if (pNtQueueApcThread) {
-        return pNtQueueApcThread(ThreadHandle, ApcRoutine, ApcContext, Argument1, Argument2);
+NTSTATUS winapi_ntdll_ZwQueueApcThread(HANDLE ThreadHandle, PVOID ApcRoutine, PVOID ApcContext, PVOID Argument1, PVOID Argument2) {
+    NTSTATUS (NTAPI *pZwQueueApcThread)(HANDLE ThreadHandle, PVOID ApcRoutine, PVOID ApcContext, PVOID Argument1, PVOID Argument2) = GetFunctionH(NTDLL_DLL, H_ZwQueueApcThread);
+    dprintf("[WINAPI][winapi_ntdll_ZwQueueApcThread] Calling ZwQueueApcThread @ %p", pZwQueueApcThread);
+    if (pZwQueueApcThread) {
+        return pZwQueueApcThread(ThreadHandle, ApcRoutine, ApcContext, Argument1, Argument2);
     }
     return 0xC0000001;  // STATUS_UNSUCCESSFUL
 }
 
-NTSTATUS winapi_ntdll_NtOpenThread(PHANDLE ThreadHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, PCLIENT_ID ClientId) {
-    NTSTATUS (NTAPI *pNtOpenThread)(PHANDLE ThreadHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, PCLIENT_ID ClientId) = GetFunctionH(NTDLL_DLL, H_NtOpenThread);
-    dprintf("[WINAPI][winapi_ntdll_NtOpenThread] Calling NtOpenThread @ %p", pNtOpenThread);
-    if (pNtOpenThread) {
-        return pNtOpenThread(ThreadHandle, DesiredAccess, ObjectAttributes, ClientId);
+NTSTATUS winapi_ntdll_ZwOpenThread(PHANDLE ThreadHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, PCLIENT_ID ClientId) {
+    NTSTATUS (NTAPI *pZwOpenThread)(PHANDLE ThreadHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, PCLIENT_ID ClientId) = GetFunctionH(NTDLL_DLL, H_ZwOpenThread);
+    dprintf("[WINAPI][winapi_ntdll_ZwOpenThread] Calling ZwOpenThread @ %p", pZwOpenThread);
+    if (pZwOpenThread) {
+        return pZwOpenThread(ThreadHandle, DesiredAccess, ObjectAttributes, ClientId);
     }
     return 0xC0000001; // STATUS_UNSUCCESSFUL
 }
@@ -394,6 +353,183 @@ NTSTATUS winapi_ntdll_RtlGetVersion(PRTL_OSVERSIONINFOEXW os) {
     dprintf("[WINAPI][winapi_ntdll_RtlGetVersion] Calling RtlGetVersion @ %p", pRtlGetVersion);
     if(pRtlGetVersion) {
         return pRtlGetVersion(os);
+    }
+    return 0xC0000001;
+}
+
+NTSTATUS winapi_ntdll_ZwQueryInformationProcess(HANDLE ProcessHandle, INT ProcessInformationClass, PVOID ProcessInformation, ULONG ProcessInformationLength, PULONG ReturnLength) {
+    if (hasDirectSyscallSupport()) {
+        ULONG_PTR lpArgs[] = { (ULONG_PTR)ProcessHandle, (ULONG_PTR)ProcessInformationClass, (ULONG_PTR)ProcessInformation, (ULONG_PTR)ProcessInformationLength, (ULONG_PTR)ReturnLength };
+        return SyscallStub(lpWinApiSyscalls[ZwQueryInformationProcess], sizeof(lpArgs) / sizeof(ULONG_PTR), (ULONG_PTR *)&lpArgs);
+    } else {
+        NTSTATUS (NTAPI *pZwQueryInformationProcess)(HANDLE, INT, PVOID, ULONG, PULONG) = GetFunctionH(NTDLL_DLL, H_ZwQueryInformationProcess);
+        dprintf("[WINAPI][winapi_ntdll_ZwQueryInformationProcess] Calling ZwQueryInformationProcess @ %p", pZwQueryInformationProcess);
+        if (pZwQueryInformationProcess) {
+            return pZwQueryInformationProcess(ProcessHandle, ProcessInformationClass, ProcessInformation, ProcessInformationLength, ReturnLength);
+        }
+    }
+    return 0xC0000001;
+}
+
+NTSTATUS winapi_ntdll_ZwQueryObject(HANDLE Handle, INT ObjectInformationClass, PVOID ObjectInformation, ULONG ObjectInformationLength, PULONG ReturnLength) {
+    if (hasDirectSyscallSupport()) {
+        ULONG_PTR lpArgs[] = { (ULONG_PTR)Handle, (ULONG_PTR)ObjectInformationClass, (ULONG_PTR)ObjectInformation, (ULONG_PTR)ObjectInformationLength, (ULONG_PTR)ReturnLength };
+        return SyscallStub(lpWinApiSyscalls[ZwQueryObject], sizeof(lpArgs) / sizeof(ULONG_PTR), (ULONG_PTR *)&lpArgs);
+    } else {
+        NTSTATUS (NTAPI *pZwQueryObject)(HANDLE, INT, PVOID, ULONG, PULONG) = GetFunctionH(NTDLL_DLL, H_ZwQueryObject);
+        dprintf("[WINAPI][winapi_ntdll_ZwQueryObject] Calling ZwQueryObject @ %p", pZwQueryObject);
+        if (pZwQueryObject) {
+            return pZwQueryObject(Handle, ObjectInformationClass, ObjectInformation, ObjectInformationLength, ReturnLength);
+        }
+    }
+    return 0xC0000001;
+}
+
+NTSTATUS winapi_ntdll_ZwQueryInformationWorkerFactory(HANDLE WorkerFactoryHandle, INT WorkerFactoryInformationClass, PVOID WorkerFactoryInformation, ULONG WorkerFactoryInformationLength, PULONG ReturnLength) {
+    if (hasDirectSyscallSupport()) {
+        ULONG_PTR lpArgs[] = { (ULONG_PTR)WorkerFactoryHandle, (ULONG_PTR)WorkerFactoryInformationClass, (ULONG_PTR)WorkerFactoryInformation, (ULONG_PTR)WorkerFactoryInformationLength, (ULONG_PTR)ReturnLength };
+        return SyscallStub(lpWinApiSyscalls[ZwQueryInformationWorkerFactory], sizeof(lpArgs) / sizeof(ULONG_PTR), (ULONG_PTR *)&lpArgs);
+    } else {
+        NTSTATUS (NTAPI *pZwQueryInformationWorkerFactory)(HANDLE, INT, PVOID, ULONG, PULONG) = GetFunctionH(NTDLL_DLL, H_ZwQueryInformationWorkerFactory);
+        dprintf("[WINAPI][winapi_ntdll_ZwQueryInformationWorkerFactory] Calling ZwQueryInformationWorkerFactory @ %p", pZwQueryInformationWorkerFactory);
+        if (pZwQueryInformationWorkerFactory) {
+            return pZwQueryInformationWorkerFactory(WorkerFactoryHandle, WorkerFactoryInformationClass, WorkerFactoryInformation, WorkerFactoryInformationLength, ReturnLength);
+        }
+    }
+    return 0xC0000001;
+}
+
+NTSTATUS winapi_ntdll_ZwSetInformationWorkerFactory(HANDLE WorkerFactoryHandle, INT WorkerFactoryInformationClass, PVOID WorkerFactoryInformation, ULONG WorkerFactoryInformationLength) {
+    if (hasDirectSyscallSupport()) {
+        ULONG_PTR lpArgs[] = { (ULONG_PTR)WorkerFactoryHandle, (ULONG_PTR)WorkerFactoryInformationClass, (ULONG_PTR)WorkerFactoryInformation, (ULONG_PTR)WorkerFactoryInformationLength };
+        return SyscallStub(lpWinApiSyscalls[ZwSetInformationWorkerFactory], sizeof(lpArgs) / sizeof(ULONG_PTR), (ULONG_PTR *)&lpArgs);
+    } else {
+        NTSTATUS (NTAPI *pZwSetInformationWorkerFactory)(HANDLE, INT, PVOID, ULONG) = GetFunctionH(NTDLL_DLL, H_ZwSetInformationWorkerFactory);
+        dprintf("[WINAPI][winapi_ntdll_ZwSetInformationWorkerFactory] Calling ZwSetInformationWorkerFactory @ %p", pZwSetInformationWorkerFactory);
+        if (pZwSetInformationWorkerFactory) {
+            return pZwSetInformationWorkerFactory(WorkerFactoryHandle, WorkerFactoryInformationClass, WorkerFactoryInformation, WorkerFactoryInformationLength);
+        }
+    }
+    return 0xC0000001;
+}
+
+NTSTATUS winapi_ntdll_ZwSetIoCompletion(HANDLE IoCompletionHandle, PVOID KeyContext, PVOID ApcContext, NTSTATUS IoStatus, ULONG_PTR IoStatusInformation) {
+    if (hasDirectSyscallSupport()) {
+        ULONG_PTR lpArgs[] = { (ULONG_PTR)IoCompletionHandle, (ULONG_PTR)KeyContext, (ULONG_PTR)ApcContext, (ULONG_PTR)IoStatus, (ULONG_PTR)IoStatusInformation };
+        return SyscallStub(lpWinApiSyscalls[ZwSetIoCompletion], sizeof(lpArgs) / sizeof(ULONG_PTR), (ULONG_PTR *)&lpArgs);
+    } else {
+        NTSTATUS (NTAPI *pZwSetIoCompletion)(HANDLE, PVOID, PVOID, NTSTATUS, ULONG_PTR) = GetFunctionH(NTDLL_DLL, H_ZwSetIoCompletion);
+        dprintf("[WINAPI][winapi_ntdll_ZwSetIoCompletion] Calling ZwSetIoCompletion @ %p", pZwSetIoCompletion);
+        if (pZwSetIoCompletion) {
+            return pZwSetIoCompletion(IoCompletionHandle, KeyContext, ApcContext, IoStatus, IoStatusInformation);
+        }
+    }
+    return 0xC0000001;
+}
+
+NTSTATUS winapi_ntdll_RtlCreateUserThread(HANDLE ProcessHandle, PVOID SecurityDescriptor, BOOL CreateSuspended, ULONG StackZeroBits, SIZE_T StackReserve, SIZE_T StackCommit, PVOID StartAddress, PVOID StartParameter, PHANDLE ThreadHandle, PVOID ClientId) {
+    NTSTATUS (NTAPI *pRtlCreateUserThread)(HANDLE, PVOID, BOOL, ULONG, SIZE_T, SIZE_T, PVOID, PVOID, PHANDLE, PVOID) = GetFunctionH(NTDLL_DLL, H_RtlCreateUserThread);
+    dprintf("[WINAPI][winapi_ntdll_RtlCreateUserThread] Calling RtlCreateUserThread @ %p", pRtlCreateUserThread);
+    if (pRtlCreateUserThread) {
+        return pRtlCreateUserThread(ProcessHandle, SecurityDescriptor, CreateSuspended, StackZeroBits, StackReserve, StackCommit, StartAddress, StartParameter, ThreadHandle, ClientId);
+    }
+    return 0xC0000001;
+}
+
+NTSTATUS winapi_ntdll_ZwMapViewOfSection(HANDLE SectionHandle, HANDLE ProcessHandle, PVOID* BaseAddress, ULONG ZeroBits, ULONG CommitSize, PLARGE_INTEGER SectionOffset, PULONG ViewSize, DWORD InheritDisposition, ULONG AllocationType, ULONG Win32Protect) {
+    if (hasDirectSyscallSupport()) {
+        ULONG_PTR lpArgs[] = { (ULONG_PTR)SectionHandle, (ULONG_PTR)ProcessHandle, (ULONG_PTR)BaseAddress, (ULONG_PTR)ZeroBits, (ULONG_PTR)CommitSize, (ULONG_PTR)SectionOffset, (ULONG_PTR)ViewSize, (ULONG_PTR)InheritDisposition, (ULONG_PTR)AllocationType, (ULONG_PTR)Win32Protect };
+        return SyscallStub(lpWinApiSyscalls[ZwMapViewOfSection], sizeof(lpArgs) / sizeof(ULONG_PTR), (ULONG_PTR *)&lpArgs);
+    } else {
+        NTSTATUS (NTAPI *pZwMapViewOfSection)(HANDLE, HANDLE, PVOID*, ULONG, ULONG, PLARGE_INTEGER, PULONG, DWORD, ULONG, ULONG) = GetFunctionH(NTDLL_DLL, H_ZwMapViewOfSection);
+        dprintf("[WINAPI][winapi_ntdll_ZwMapViewOfSection] Calling ZwMapViewOfSection @ %p", pZwMapViewOfSection);
+        if (pZwMapViewOfSection) {
+            return pZwMapViewOfSection(SectionHandle, ProcessHandle, BaseAddress, ZeroBits, CommitSize, SectionOffset, ViewSize, InheritDisposition, AllocationType, Win32Protect);
+        }
+    }
+    return 0xC0000001;
+}
+
+NTSTATUS winapi_ntdll_ZwCreateSection(PHANDLE SectionHandle, ULONG DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, PLARGE_INTEGER MaximumSize, ULONG SectionPageProtection, ULONG AllocationAttributes, HANDLE FileHandle) {
+    if (hasDirectSyscallSupport()) {
+        ULONG_PTR lpArgs[] = { (ULONG_PTR)SectionHandle, (ULONG_PTR)DesiredAccess, (ULONG_PTR)ObjectAttributes, (ULONG_PTR)MaximumSize, (ULONG_PTR)SectionPageProtection, (ULONG_PTR)AllocationAttributes, (ULONG_PTR)FileHandle };
+        return SyscallStub(lpWinApiSyscalls[ZwCreateSection], sizeof(lpArgs) / sizeof(ULONG_PTR), (ULONG_PTR *)&lpArgs);
+    } else {
+        NTSTATUS (NTAPI *pZwCreateSection)(PHANDLE, ULONG, POBJECT_ATTRIBUTES, PLARGE_INTEGER, ULONG, ULONG, HANDLE) = GetFunctionH(NTDLL_DLL, H_ZwCreateSection);
+        dprintf("[WINAPI][winapi_ntdll_ZwCreateSection] Calling ZwCreateSection @ %p", pZwCreateSection);
+        if (pZwCreateSection) {
+            return pZwCreateSection(SectionHandle, DesiredAccess, ObjectAttributes, MaximumSize, SectionPageProtection, AllocationAttributes, FileHandle);
+        }
+    }
+    return 0xC0000001;
+}
+
+NTSTATUS winapi_ntdll_ZwOpenSection(PHANDLE SectionHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes) {
+    if (hasDirectSyscallSupport()) {
+        ULONG_PTR lpArgs[] = { (ULONG_PTR)SectionHandle, (ULONG_PTR)DesiredAccess, (ULONG_PTR)ObjectAttributes };
+        return SyscallStub(lpWinApiSyscalls[ZwOpenSection], sizeof(lpArgs) / sizeof(ULONG_PTR), (ULONG_PTR *)&lpArgs);
+    } else {
+        NTSTATUS (NTAPI *pZwOpenSection)(PHANDLE, ACCESS_MASK, POBJECT_ATTRIBUTES) = GetFunctionH(NTDLL_DLL, H_ZwOpenSection);
+        dprintf("[WINAPI][winapi_ntdll_ZwOpenSection] Calling ZwOpenSection @ %p", pZwOpenSection);
+        if (pZwOpenSection) {
+            return pZwOpenSection(SectionHandle, DesiredAccess, ObjectAttributes);
+        }
+    }
+    return 0xC0000001;
+}
+
+NTSTATUS winapi_ntdll_ZwOpenFile(PHANDLE FileHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, PVOID IoStatusBlock, ULONG ShareAccess, ULONG OpenOptions) {
+    if (hasDirectSyscallSupport()) {
+        ULONG_PTR lpArgs[] = { (ULONG_PTR)FileHandle, (ULONG_PTR)DesiredAccess, (ULONG_PTR)ObjectAttributes, (ULONG_PTR)IoStatusBlock, (ULONG_PTR)ShareAccess, (ULONG_PTR)OpenOptions };
+        return SyscallStub(lpWinApiSyscalls[ZwOpenFile], sizeof(lpArgs) / sizeof(ULONG_PTR), (ULONG_PTR *)&lpArgs);
+    } else {
+        NTSTATUS (NTAPI *pZwOpenFile)(PHANDLE, ACCESS_MASK, POBJECT_ATTRIBUTES, PVOID, ULONG, ULONG) = GetFunctionH(NTDLL_DLL, H_ZwOpenFile);
+        dprintf("[WINAPI][winapi_ntdll_ZwOpenFile] Calling ZwOpenFile @ %p", pZwOpenFile);
+        if (pZwOpenFile) {
+            return pZwOpenFile(FileHandle, DesiredAccess, ObjectAttributes, IoStatusBlock, ShareAccess, OpenOptions);
+        }
+    }
+    return 0xC0000001;
+}
+
+NTSTATUS winapi_ntdll_ZwQueryAttributesFile(POBJECT_ATTRIBUTES ObjectAttributes, PVOID FileInformation) {
+    if (hasDirectSyscallSupport()) {
+        ULONG_PTR lpArgs[] = { (ULONG_PTR)ObjectAttributes, (ULONG_PTR)FileInformation };
+        return SyscallStub(lpWinApiSyscalls[ZwQueryAttributesFile], sizeof(lpArgs) / sizeof(ULONG_PTR), (ULONG_PTR *)&lpArgs);
+    } else {
+        NTSTATUS (NTAPI *pZwQueryAttributesFile)(POBJECT_ATTRIBUTES, PVOID) = GetFunctionH(NTDLL_DLL, H_ZwQueryAttributesFile);
+        dprintf("[WINAPI][winapi_ntdll_ZwQueryAttributesFile] Calling ZwQueryAttributesFile @ %p", pZwQueryAttributesFile);
+        if (pZwQueryAttributesFile) {
+            return pZwQueryAttributesFile(ObjectAttributes, FileInformation);
+        }
+    }
+    return 0xC0000001;
+}
+
+NTSTATUS winapi_ntdll_ZwClose(HANDLE Handle) {
+    if (hasDirectSyscallSupport()) {
+        ULONG_PTR lpArgs[] = { (ULONG_PTR)Handle };
+        return SyscallStub(lpWinApiSyscalls[ZwClose], sizeof(lpArgs) / sizeof(ULONG_PTR), (ULONG_PTR *)&lpArgs);
+    } else {
+        NTSTATUS (NTAPI *pZwClose)(HANDLE) = GetFunctionH(NTDLL_DLL, H_ZwClose);
+        dprintf("[WINAPI][winapi_ntdll_ZwClose] Calling ZwClose @ %p", pZwClose);
+        if (pZwClose) {
+            return pZwClose(Handle);
+        }
+    }
+    return 0xC0000001;
+}
+
+NTSTATUS winapi_ntdll_ZwLockVirtualMemory(HANDLE ProcessHandle, PVOID* BaseAddress, PULONG RegionSize, ULONG MapType) {
+    if (hasDirectSyscallSupport()) {
+        ULONG_PTR lpArgs[] = { (ULONG_PTR)ProcessHandle, (ULONG_PTR)BaseAddress, (ULONG_PTR)RegionSize, (ULONG_PTR)MapType };
+        return SyscallStub(lpWinApiSyscalls[ZwLockVirtualMemory], sizeof(lpArgs) / sizeof(ULONG_PTR), (ULONG_PTR *)&lpArgs);
+    } else {
+        NTSTATUS (NTAPI *pZwLockVirtualMemory)(HANDLE, PVOID*, PULONG, ULONG) = GetFunctionH(NTDLL_DLL, H_ZwLockVirtualMemory);
+        dprintf("[WINAPI][winapi_ntdll_ZwLockVirtualMemory] Calling ZwLockVirtualMemory @ %p", pZwLockVirtualMemory);
+        if (pZwLockVirtualMemory) {
+            return pZwLockVirtualMemory(ProcessHandle, BaseAddress, RegionSize, MapType);
+        }
     }
     return 0xC0000001;
 }
@@ -494,7 +630,7 @@ LPVOID winapi_kernel32_VirtualAllocEx(HANDLE hProcess, LPVOID lpAddress, SIZE_T 
 BOOL winapi_kernel32_VirtualProtect(LPVOID lpAddress, SIZE_T dwSize, DWORD flNewProtect, PDWORD lpflOldProtect) {
     if (hasDirectSyscallSupport()) {
         SIZE_T dwDataSize = dwSize;
-        NTSTATUS dwStatus = winapi_ntdll_ZwProtectVirtualMemory(GetCurrentProcess(), lpAddress, &dwDataSize, flNewProtect, lpflOldProtect);
+        NTSTATUS dwStatus = winapi_ntdll_ZwProtectVirtualMemory(GetCurrentProcess(), &lpAddress, &dwDataSize, flNewProtect, lpflOldProtect);
         dprintf("[WINAPI][winapi_kernel32_VirtualProtect] Syscall ZwProtectVirtualMemory returned: %d", dwStatus);
         return dwStatus == STATUS_SUCCESS;
     } else {
@@ -570,6 +706,22 @@ BOOL winapi_kernel32_VirtualFree(LPVOID lpAddress, SIZE_T dwSize, DWORD dwFreeTy
         dprintf("[WINAPI][winapi_kernel32_VirtualFree] Calling VirtualFree @ %p", pVirtualFree);
         if (pVirtualFree) {
             return pVirtualFree(lpAddress, dwSize, dwFreeType);
+        }
+    }
+    return FALSE;
+}
+
+BOOL winapi_kernel32_VirtualFreeEx(HANDLE hProcess, LPVOID lpAddress, SIZE_T dwSize, DWORD dwFreeType) {
+    if (hasDirectSyscallSupport()) {
+        SIZE_T dwDataSize = dwSize;
+        NTSTATUS dwStatus = winapi_ntdll_ZwFreeVirtualMemory(hProcess, &lpAddress, &dwDataSize, dwFreeType);
+        dprintf("[WINAPI][winapi_kernel32_VirtualFreeEx] Syscall ZwFreeVirtualMemory returned: %d", dwStatus);
+        return dwStatus == STATUS_SUCCESS;
+    } else {
+        BOOL (WINAPI *pVirtualFreeEx)(HANDLE hProcess, LPVOID lpAddress, SIZE_T dwSize, DWORD dwFreeType) = GetFunctionH(KERNEL32_DLL, H_VirtualFreeEx);
+        dprintf("[WINAPI][winapi_kernel32_VirtualFreeEx] Calling VirtualFreeEx @ %p", pVirtualFreeEx);
+        if (pVirtualFreeEx) {
+            return pVirtualFreeEx(hProcess, lpAddress, dwSize, dwFreeType);
         }
     }
     return FALSE;
@@ -799,7 +951,251 @@ BOOL winapi_kernel32_SetThreadErrorMode(DWORD dwNewMode, LPDWORD lpOldMode) {
     return FALSE;
 }
 
+HMODULE winapi_kernel32_GetModuleHandleA(LPCSTR lpModuleName) {
+    HMODULE (WINAPI *pGetModuleHandleA)(LPCSTR) = GetFunctionH(KERNEL32_DLL, H_GetModuleHandleA);
+    dprintf("[WINAPI][winapi_kernel32_GetModuleHandleA] Calling GetModuleHandleA @ %p", pGetModuleHandleA);
+    if (pGetModuleHandleA) {
+        return pGetModuleHandleA(lpModuleName);
+    }
+    return NULL;
+}
+
+HANDLE winapi_kernel32_CreateFileW(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, DWORD dwFlagsAndAttributes, HANDLE hTemplateFile) {
+    HANDLE (WINAPI *pCreateFileW)(LPCWSTR, DWORD, DWORD, LPSECURITY_ATTRIBUTES, DWORD, DWORD, HANDLE) = GetFunctionH(KERNEL32_DLL, H_CreateFileW);
+    dprintf("[WINAPI][winapi_kernel32_CreateFileW] Calling CreateFileW @ %p", pCreateFileW);
+    if (pCreateFileW) {
+        return pCreateFileW(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
+    }
+    return INVALID_HANDLE_VALUE;
+}
+
+HANDLE winapi_kernel32_CreateNamedPipeW(LPCWSTR lpName, DWORD dwOpenMode, DWORD dwPipeMode, DWORD nMaxInstances, DWORD nOutBufferSize, DWORD nInBufferSize, DWORD nDefaultTimeOut, LPSECURITY_ATTRIBUTES lpSecurityAttributes) {
+    HANDLE (WINAPI *pCreateNamedPipeW)(LPCWSTR, DWORD, DWORD, DWORD, DWORD, DWORD, DWORD, LPSECURITY_ATTRIBUTES) = GetFunctionH(KERNEL32_DLL, H_CreateNamedPipeW);
+    dprintf("[WINAPI][winapi_kernel32_CreateNamedPipeW] Calling CreateNamedPipeW @ %p", pCreateNamedPipeW);
+    if (pCreateNamedPipeW) {
+        return pCreateNamedPipeW(lpName, dwOpenMode, dwPipeMode, nMaxInstances, nOutBufferSize, nInBufferSize, nDefaultTimeOut, lpSecurityAttributes);
+    }
+    return INVALID_HANDLE_VALUE;
+}
+
+HANDLE winapi_kernel32_CreateEventA(LPSECURITY_ATTRIBUTES lpEventAttributes, BOOL bManualReset, BOOL bInitialState, LPCSTR lpName) {
+    HANDLE (WINAPI *pCreateEventA)(LPSECURITY_ATTRIBUTES, BOOL, BOOL, LPCSTR) = GetFunctionH(KERNEL32_DLL, H_CreateEventA);
+    dprintf("[WINAPI][winapi_kernel32_CreateEventA] Calling CreateEventA @ %p", pCreateEventA);
+    if (pCreateEventA) {
+        return pCreateEventA(lpEventAttributes, bManualReset, bInitialState, lpName);
+    }
+    return NULL;
+}
+
+HANDLE winapi_kernel32_CreateEventW(LPSECURITY_ATTRIBUTES lpEventAttributes, BOOL bManualReset, BOOL bInitialState, LPCWSTR lpName) {
+    HANDLE (WINAPI *pCreateEventW)(LPSECURITY_ATTRIBUTES, BOOL, BOOL, LPCWSTR) = GetFunctionH(KERNEL32_DLL, H_CreateEventW);
+    dprintf("[WINAPI][winapi_kernel32_CreateEventW] Calling CreateEventW @ %p", pCreateEventW);
+    if (pCreateEventW) {
+        return pCreateEventW(lpEventAttributes, bManualReset, bInitialState, lpName);
+    }
+    return NULL;
+}
+
+BOOL winapi_kernel32_SetEvent(HANDLE hEvent) {
+    BOOL (WINAPI *pSetEvent)(HANDLE) = GetFunctionH(KERNEL32_DLL, H_SetEvent);
+    dprintf("[WINAPI][winapi_kernel32_SetEvent] Calling SetEvent @ %p", pSetEvent);
+    if (pSetEvent) {
+        return pSetEvent(hEvent);
+    }
+    return FALSE;
+}
+
+DWORD winapi_kernel32_WaitForSingleObject(HANDLE hHandle, DWORD dwMilliseconds) {
+    DWORD (WINAPI *pWaitForSingleObject)(HANDLE, DWORD) = GetFunctionH(KERNEL32_DLL, H_WaitForSingleObject);
+    dprintf("[WINAPI][winapi_kernel32_WaitForSingleObject] Calling WaitForSingleObject @ %p", pWaitForSingleObject);
+    if (pWaitForSingleObject) {
+        return pWaitForSingleObject(hHandle, dwMilliseconds);
+    }
+    return WAIT_FAILED;
+}
+
+VOID winapi_kernel32_Sleep(DWORD dwMilliseconds) {
+    VOID (WINAPI *pSleep)(DWORD) = GetFunctionH(KERNEL32_DLL, H_Sleep);
+    dprintf("[WINAPI][winapi_kernel32_Sleep] Calling Sleep @ %p", pSleep);
+    if (pSleep) {
+        pSleep(dwMilliseconds);
+    }
+}
+
+HANDLE winapi_kernel32_GetProcessHeap(VOID) {
+    HANDLE (WINAPI *pGetProcessHeap)(VOID) = GetFunctionH(KERNEL32_DLL, H_GetProcessHeap);
+    dprintf("[WINAPI][winapi_kernel32_GetProcessHeap] Calling GetProcessHeap @ %p", pGetProcessHeap);
+    if (pGetProcessHeap) {
+        return pGetProcessHeap();
+    }
+    return NULL;
+}
+
+LPVOID winapi_kernel32_HeapAlloc(HANDLE hHeap, DWORD dwFlags, SIZE_T dwBytes) {
+    LPVOID (WINAPI *pHeapAlloc)(HANDLE, DWORD, SIZE_T) = GetFunctionH(KERNEL32_DLL, H_HeapAlloc);
+    dprintf("[WINAPI][winapi_kernel32_HeapAlloc] Calling HeapAlloc @ %p", pHeapAlloc);
+    if (pHeapAlloc) {
+        return pHeapAlloc(hHeap, dwFlags, dwBytes);
+    }
+    return NULL;
+}
+
+BOOL winapi_kernel32_HeapFree(HANDLE hHeap, DWORD dwFlags, LPVOID lpMem) {
+    BOOL (WINAPI *pHeapFree)(HANDLE, DWORD, LPVOID) = GetFunctionH(KERNEL32_DLL, H_HeapFree);
+    dprintf("[WINAPI][winapi_kernel32_HeapFree] Calling HeapFree @ %p", pHeapFree);
+    if (pHeapFree) {
+        return pHeapFree(hHeap, dwFlags, lpMem);
+    }
+    return FALSE;
+}
+
+BOOL winapi_kernel32_IsWow64Process(HANDLE hProcess, PBOOL Wow64Process) {
+    BOOL (WINAPI *pIsWow64Process)(HANDLE, PBOOL) = GetFunctionH(KERNEL32_DLL, H_IsWow64Process);
+    dprintf("[WINAPI][winapi_kernel32_IsWow64Process] Calling IsWow64Process @ %p", pIsWow64Process);
+    if (pIsWow64Process) {
+        return pIsWow64Process(hProcess, Wow64Process);
+    }
+    return FALSE;
+}
+
+BOOL winapi_kernel32_ProcessIdToSessionId(DWORD dwProcessId, DWORD* pSessionId) {
+    BOOL (WINAPI *pProcessIdToSessionId)(DWORD, DWORD*) = GetFunctionH(KERNEL32_DLL, H_ProcessIdToSessionId);
+    dprintf("[WINAPI][winapi_kernel32_ProcessIdToSessionId] Calling ProcessIdToSessionId @ %p", pProcessIdToSessionId);
+    if (pProcessIdToSessionId) {
+        return pProcessIdToSessionId(dwProcessId, pSessionId);
+    }
+    return FALSE;
+}
+
+DWORD winapi_kernel32_GetCurrentThreadId(VOID) {
+    DWORD (WINAPI *pGetCurrentThreadId)(VOID) = GetFunctionH(KERNEL32_DLL, H_GetCurrentThreadId);
+    dprintf("[WINAPI][winapi_kernel32_GetCurrentThreadId] Calling GetCurrentThreadId @ %p", pGetCurrentThreadId);
+    if (pGetCurrentThreadId) {
+        return pGetCurrentThreadId();
+    }
+    return 0;
+}
+
 // END: kernel32.dll
+// START: kernel32 extensions.dll
+
+LPVOID winapi_kernel32_HeapReAlloc(HANDLE hHeap, DWORD dwFlags, LPVOID lpMem, SIZE_T dwBytes) {
+    LPVOID (WINAPI *pHeapReAlloc)(HANDLE, DWORD, LPVOID, SIZE_T) = GetFunctionH(KERNEL32_DLL, H_HeapReAlloc);
+    dprintf("[WINAPI][winapi_kernel32_HeapReAlloc] Calling HeapReAlloc @ %p", pHeapReAlloc);
+    if (pHeapReAlloc) {
+        return pHeapReAlloc(hHeap, dwFlags, lpMem, dwBytes);
+    }
+    return NULL;
+}
+
+HLOCAL winapi_kernel32_LocalAlloc(UINT uFlags, SIZE_T uBytes) {
+    HLOCAL (WINAPI *pLocalAlloc)(UINT, SIZE_T) = GetFunctionH(KERNEL32_DLL, H_LocalAlloc);
+    dprintf("[WINAPI][winapi_kernel32_LocalAlloc] Calling LocalAlloc @ %p", pLocalAlloc);
+    if (pLocalAlloc) {
+        return pLocalAlloc(uFlags, uBytes);
+    }
+    return NULL;
+}
+
+VOID winapi_kernel32_GetSystemTime(LPSYSTEMTIME lpSystemTime) {
+    VOID (WINAPI *pGetSystemTime)(LPSYSTEMTIME) = GetFunctionH(KERNEL32_DLL, H_GetSystemTime);
+    dprintf("[WINAPI][winapi_kernel32_GetSystemTime] Calling GetSystemTime @ %p", pGetSystemTime);
+    if (pGetSystemTime) {
+        pGetSystemTime(lpSystemTime);
+    }
+}
+
+BOOL winapi_kernel32_SystemTimeToFileTime(const SYSTEMTIME* lpSystemTime, LPFILETIME lpFileTime) {
+    BOOL (WINAPI *pSystemTimeToFileTime)(const SYSTEMTIME*, LPFILETIME) = GetFunctionH(KERNEL32_DLL, H_SystemTimeToFileTime);
+    dprintf("[WINAPI][winapi_kernel32_SystemTimeToFileTime] Calling SystemTimeToFileTime @ %p", pSystemTimeToFileTime);
+    if (pSystemTimeToFileTime) {
+        return pSystemTimeToFileTime(lpSystemTime, lpFileTime);
+    }
+    return FALSE;
+}
+
+int winapi_kernel32_MultiByteToWideChar(UINT CodePage, DWORD dwFlags, LPCCH lpMultiByteStr, int cbMultiByte, LPWSTR lpWideCharStr, int cchWideChar) {
+    int (WINAPI *pMultiByteToWideChar)(UINT, DWORD, LPCCH, int, LPWSTR, int) = GetFunctionH(KERNEL32_DLL, H_MultiByteToWideChar);
+    dprintf("[WINAPI][winapi_kernel32_MultiByteToWideChar] Calling MultiByteToWideChar @ %p", pMultiByteToWideChar);
+    if (pMultiByteToWideChar) {
+        return pMultiByteToWideChar(CodePage, dwFlags, lpMultiByteStr, cbMultiByte, lpWideCharStr, cchWideChar);
+    }
+    return 0;
+}
+
+int winapi_kernel32_WideCharToMultiByte(UINT CodePage, DWORD dwFlags, LPCWCH lpWideCharStr, int cchWideChar, LPSTR lpMultiByteStr, int cbMultiByte, LPCCH lpDefaultChar, LPBOOL lpUsedDefaultChar) {
+    int (WINAPI *pWideCharToMultiByte)(UINT, DWORD, LPCWCH, int, LPSTR, int, LPCCH, LPBOOL) = GetFunctionH(KERNEL32_DLL, H_WideCharToMultiByte);
+    dprintf("[WINAPI][winapi_kernel32_WideCharToMultiByte] Calling WideCharToMultiByte @ %p", pWideCharToMultiByte);
+    if (pWideCharToMultiByte) {
+        return pWideCharToMultiByte(CodePage, dwFlags, lpWideCharStr, cchWideChar, lpMultiByteStr, cbMultiByte, lpDefaultChar, lpUsedDefaultChar);
+    }
+    return 0;
+}
+
+BOOL winapi_kernel32_PeekNamedPipe(HANDLE hNamedPipe, LPVOID lpBuffer, DWORD nBufferSize, LPDWORD lpBytesRead, LPDWORD lpTotalBytesAvail, LPDWORD lpBytesLeftThisMessage) {
+    BOOL (WINAPI *pPeekNamedPipe)(HANDLE, LPVOID, DWORD, LPDWORD, LPDWORD, LPDWORD) = GetFunctionH(KERNEL32_DLL, H_PeekNamedPipe);
+    dprintf("[WINAPI][winapi_kernel32_PeekNamedPipe] Calling PeekNamedPipe @ %p", pPeekNamedPipe);
+    if (pPeekNamedPipe) {
+        return pPeekNamedPipe(hNamedPipe, lpBuffer, nBufferSize, lpBytesRead, lpTotalBytesAvail, lpBytesLeftThisMessage);
+    }
+    return FALSE;
+}
+
+BOOL winapi_kernel32_SetNamedPipeHandleState(HANDLE hNamedPipe, LPDWORD lpMode, LPDWORD lpMaxCollectionCount, LPDWORD lpCollectDataTimeout) {
+    BOOL (WINAPI *pSetNamedPipeHandleState)(HANDLE, LPDWORD, LPDWORD, LPDWORD) = GetFunctionH(KERNEL32_DLL, H_SetNamedPipeHandleState);
+    dprintf("[WINAPI][winapi_kernel32_SetNamedPipeHandleState] Calling SetNamedPipeHandleState @ %p", pSetNamedPipeHandleState);
+    if (pSetNamedPipeHandleState) {
+        return pSetNamedPipeHandleState(hNamedPipe, lpMode, lpMaxCollectionCount, lpCollectDataTimeout);
+    }
+    return FALSE;
+}
+
+BOOL winapi_kernel32_ReleaseMutex(HANDLE hMutex) {
+    BOOL (WINAPI *pReleaseMutex)(HANDLE) = GetFunctionH(KERNEL32_DLL, H_ReleaseMutex);
+    dprintf("[WINAPI][winapi_kernel32_ReleaseMutex] Calling ReleaseMutex @ %p", pReleaseMutex);
+    if (pReleaseMutex) {
+        return pReleaseMutex(hMutex);
+    }
+    return FALSE;
+}
+
+HANDLE winapi_kernel32_CreateMutexA(LPSECURITY_ATTRIBUTES lpMutexAttributes, BOOL bInitialOwner, LPCSTR lpName) {
+    HANDLE (WINAPI *pCreateMutexA)(LPSECURITY_ATTRIBUTES, BOOL, LPCSTR) = GetFunctionH(KERNEL32_DLL, H_CreateMutexA);
+    dprintf("[WINAPI][winapi_kernel32_CreateMutexA] Calling CreateMutexA @ %p", pCreateMutexA);
+    if (pCreateMutexA) {
+        return pCreateMutexA(lpMutexAttributes, bInitialOwner, lpName);
+    }
+    return NULL;
+}
+
+HANDLE winapi_kernel32_CreateMutexW(LPSECURITY_ATTRIBUTES lpMutexAttributes, BOOL bInitialOwner, LPCWSTR lpName) {
+    HANDLE (WINAPI *pCreateMutexW)(LPSECURITY_ATTRIBUTES, BOOL, LPCWSTR) = GetFunctionH(KERNEL32_DLL, H_CreateMutexW);
+    dprintf("[WINAPI][winapi_kernel32_CreateMutexW] Calling CreateMutexW @ %p", pCreateMutexW);
+    if (pCreateMutexW) {
+        return pCreateMutexW(lpMutexAttributes, bInitialOwner, lpName);
+    }
+    return NULL;
+}
+
+BOOL winapi_kernel32_TerminateThread(HANDLE hThread, DWORD dwExitCode) {
+    BOOL (WINAPI *pTerminateThread)(HANDLE, DWORD) = GetFunctionH(KERNEL32_DLL, H_TerminateThread);
+    dprintf("[WINAPI][winapi_kernel32_TerminateThread] Calling TerminateThread @ %p", pTerminateThread);
+    if (pTerminateThread) {
+        return pTerminateThread(hThread, dwExitCode);
+    }
+    return FALSE;
+}
+
+int winapi_kernel32_lstrcmpW(LPCWSTR lpString1, LPCWSTR lpString2) {
+    int (WINAPI *plstrcmpW)(LPCWSTR, LPCWSTR) = GetFunctionH(KERNEL32_DLL, H_lstrcmpW);
+    dprintf("[WINAPI][winapi_kernel32_lstrcmpW] Calling lstrcmpW @ %p", plstrcmpW);
+    if (plstrcmpW) {
+        return plstrcmpW(lpString1, lpString2);
+    }
+    return 0;
+}
+
+// END: kernel32 extensions.dll
 // START: advapi32.dll
 
 BOOL winapi_advapi32_OpenProcessToken(HANDLE ProcessHandle, DWORD DesiredAccess, PHANDLE TokenHandle) {
@@ -973,6 +1369,33 @@ BOOL winapi_advapi32_LookupPrivilegeValueW(LPCWSTR lpSystemName, LPCWSTR lpName,
     return FALSE;
 }
 
+BOOL winapi_advapi32_CryptAcquireContextA(HCRYPTPROV* phProv, LPCSTR szContainer, LPCSTR szProvider, DWORD dwProvType, DWORD dwFlags) {
+    BOOL (WINAPI *pCryptAcquireContextA)(HCRYPTPROV*, LPCSTR, LPCSTR, DWORD, DWORD) = GetFunctionH(ADVAPI32_DLL, H_CryptAcquireContextA);
+    dprintf("[WINAPI][winapi_advapi32_CryptAcquireContextA] Calling CryptAcquireContextA @ %p", pCryptAcquireContextA);
+    if (pCryptAcquireContextA) {
+        return pCryptAcquireContextA(phProv, szContainer, szProvider, dwProvType, dwFlags);
+    }
+    return FALSE;
+}
+
+BOOL winapi_advapi32_CryptAcquireContextW(HCRYPTPROV* phProv, LPCWSTR szContainer, LPCWSTR szProvider, DWORD dwProvType, DWORD dwFlags) {
+    BOOL (WINAPI *pCryptAcquireContextW)(HCRYPTPROV*, LPCWSTR, LPCWSTR, DWORD, DWORD) = GetFunctionH(ADVAPI32_DLL, H_CryptAcquireContextW);
+    dprintf("[WINAPI][winapi_advapi32_CryptAcquireContextW] Calling CryptAcquireContextW @ %p", pCryptAcquireContextW);
+    if (pCryptAcquireContextW) {
+        return pCryptAcquireContextW(phProv, szContainer, szProvider, dwProvType, dwFlags);
+    }
+    return FALSE;
+}
+
+BOOL winapi_advapi32_AddMandatoryAce(PACL pAcl, DWORD dwAceRevision, DWORD AceFlags, DWORD MandatoryPolicy, PSID pLabelSid) {
+    BOOL (WINAPI *pAddMandatoryAce)(PACL, DWORD, DWORD, DWORD, PSID) = GetFunctionH(ADVAPI32_DLL, H_AddMandatoryAce);
+    dprintf("[WINAPI][winapi_advapi32_AddMandatoryAce] Calling AddMandatoryAce @ %p", pAddMandatoryAce);
+    if (pAddMandatoryAce) {
+        return pAddMandatoryAce(pAcl, dwAceRevision, AceFlags, MandatoryPolicy, pLabelSid);
+    }
+    return FALSE;
+}
+
 // END: advapi32.dll
 // START: crypt32.dll
 
@@ -1003,6 +1426,24 @@ BOOL winapi_crypt32_CertGetCertificateContextProperty(PCCERT_CONTEXT pCertContex
     return FALSE;
 }
 
+BOOL winapi_crypt32_CryptBinaryToStringA(const BYTE* pbBinary, DWORD cbBinary, DWORD dwFlags, LPSTR pszString, DWORD* pcchString) {
+    BOOL (WINAPI *pCryptBinaryToStringA)(const BYTE*, DWORD, DWORD, LPSTR, DWORD*) = GetFunctionH(CRYPT32_DLL, H_CryptBinaryToStringA);
+    dprintf("[WINAPI][winapi_crypt32_CryptBinaryToStringA] Calling CryptBinaryToStringA @ %p", pCryptBinaryToStringA);
+    if (pCryptBinaryToStringA) {
+        return pCryptBinaryToStringA(pbBinary, cbBinary, dwFlags, pszString, pcchString);
+    }
+    return FALSE;
+}
+
+BOOL winapi_crypt32_CryptStringToBinaryA(LPCSTR pszString, DWORD cchString, DWORD dwFlags, BYTE* pbBinary, DWORD* pcbBinary, DWORD* pdwSkip, DWORD* pdwFlags) {
+    BOOL (WINAPI *pCryptStringToBinaryA)(LPCSTR, DWORD, DWORD, BYTE*, DWORD*, DWORD*, DWORD*) = GetFunctionH(CRYPT32_DLL, H_CryptStringToBinaryA);
+    dprintf("[WINAPI][winapi_crypt32_CryptStringToBinaryA] Calling CryptStringToBinaryA @ %p", pCryptStringToBinaryA);
+    if (pCryptStringToBinaryA) {
+        return pCryptStringToBinaryA(pszString, cchString, dwFlags, pbBinary, pcbBinary, pdwSkip, pdwFlags);
+    }
+    return FALSE;
+}
+
 // END: crypt32.dll
 // START: user32.dll
 
@@ -1020,6 +1461,15 @@ HDESK winapi_user32_GetThreadDesktop(DWORD dwThreadId) {
     dprintf("[WINAPI][winapi_user32_GetThreadDesktop] Calling GetThreadDesktop @ %p", pGetThreadDesktop);
     if (pGetThreadDesktop) {
         return pGetThreadDesktop(dwThreadId);
+    }
+    return NULL;
+}
+
+HWINSTA winapi_user32_GetProcessWindowStation(VOID) {
+    HWINSTA (WINAPI *pGetProcessWindowStation)(VOID) = GetFunctionH(USER32_DLL, H_GetProcessWindowStation);
+    dprintf("[WINAPI][winapi_user32_GetProcessWindowStation] Calling GetProcessWindowStation @ %p", pGetProcessWindowStation);
+    if (pGetProcessWindowStation) {
+        return pGetProcessWindowStation();
     }
     return NULL;
 }
@@ -1089,7 +1539,135 @@ int winapi_ws2_32_WSADuplicateSocketA(SOCKET s, DWORD dwProcessId, LPWSAPROTOCOL
     return SOCKET_ERROR;
 }
 
+int winapi_ws2_32_send(SOCKET s, const char* buf, int len, int flags) {
+    int (WSAAPI *pSend)(SOCKET, const char*, int, int) = GetFunctionH(WS2_32_DLL, H_send);
+    dprintf("[WINAPI][winapi_ws2_32_send] Calling send @ %p", pSend);
+    if (pSend) {
+        return pSend(s, buf, len, flags);
+    }
+    return SOCKET_ERROR;
+}
+
+int winapi_ws2_32_bind(SOCKET s, const struct sockaddr* name, int namelen) {
+    int (WSAAPI *pBind)(SOCKET, const struct sockaddr*, int) = GetFunctionH(WS2_32_DLL, H_bind);
+    dprintf("[WINAPI][winapi_ws2_32_bind] Calling bind @ %p", pBind);
+    if (pBind) {
+        return pBind(s, name, namelen);
+    }
+    return SOCKET_ERROR;
+}
+
+int winapi_ws2_32_listen(SOCKET s, int backlog) {
+    int (WSAAPI *pListen)(SOCKET, int) = GetFunctionH(WS2_32_DLL, H_listen);
+    dprintf("[WINAPI][winapi_ws2_32_listen] Calling listen @ %p", pListen);
+    if (pListen) {
+        return pListen(s, backlog);
+    }
+    return SOCKET_ERROR;
+}
+
+int winapi_ws2_32_closesocket(SOCKET s) {
+    int (WSAAPI *pClosesocket)(SOCKET) = GetFunctionH(WS2_32_DLL, H_closesocket);
+    dprintf("[WINAPI][winapi_ws2_32_closesocket] Calling closesocket @ %p", pClosesocket);
+    if (pClosesocket) {
+        return pClosesocket(s);
+    }
+    return SOCKET_ERROR;
+}
+
+int winapi_ws2_32_select(int nfds, fd_set* readfds, fd_set* writefds, fd_set* exceptfds, const struct timeval* timeout) {
+    int (WSAAPI *pSelect)(int, fd_set*, fd_set*, fd_set*, const struct timeval*) = GetFunctionH(WS2_32_DLL, H_select);
+    dprintf("[WINAPI][winapi_ws2_32_select] Calling select @ %p", pSelect);
+    if (pSelect) {
+        return pSelect(nfds, readfds, writefds, exceptfds, timeout);
+    }
+    return SOCKET_ERROR;
+}
+
+struct hostent* winapi_ws2_32_gethostbyname(const char* name) {
+    struct hostent* (WSAAPI *pGethostbyname)(const char*) = GetFunctionH(WS2_32_DLL, H_gethostbyname);
+    dprintf("[WINAPI][winapi_ws2_32_gethostbyname] Calling gethostbyname @ %p", pGethostbyname);
+    if (pGethostbyname) {
+        return pGethostbyname(name);
+    }
+    return NULL;
+}
+
+int winapi_ws2_32_getaddrinfo(PCSTR pNodeName, PCSTR pServiceName, const ADDRINFOA* pHints, PADDRINFOA* ppResult) {
+    int (WSAAPI *pGetaddrinfo)(PCSTR, PCSTR, const ADDRINFOA*, PADDRINFOA*) = GetFunctionH(WS2_32_DLL, H_getaddrinfo);
+    dprintf("[WINAPI][winapi_ws2_32_getaddrinfo] Calling getaddrinfo @ %p", pGetaddrinfo);
+    if (pGetaddrinfo) {
+        return pGetaddrinfo(pNodeName, pServiceName, pHints, ppResult);
+    }
+    return WSAEINVAL;
+}
+
+VOID winapi_ws2_32_freeaddrinfo(PADDRINFOA pAddrInfo) {
+    VOID (WSAAPI *pFreeaddrinfo)(PADDRINFOA) = GetFunctionH(WS2_32_DLL, H_freeaddrinfo);
+    dprintf("[WINAPI][winapi_ws2_32_freeaddrinfo] Calling freeaddrinfo @ %p", pFreeaddrinfo);
+    if (pFreeaddrinfo) {
+        pFreeaddrinfo(pAddrInfo);
+    }
+}
+
+u_short winapi_ws2_32_htons(u_short hostshort) {
+    u_short (WSAAPI *pHtons)(u_short) = GetFunctionH(WS2_32_DLL, H_htons);
+    dprintf("[WINAPI][winapi_ws2_32_htons] Calling htons @ %p", pHtons);
+    if (pHtons) {
+        return pHtons(hostshort);
+    }
+    return 0;
+}
+
+u_long winapi_ws2_32_htonl(u_long hostlong) {
+    u_long (WSAAPI *pHtonl)(u_long) = GetFunctionH(WS2_32_DLL, H_htonl);
+    dprintf("[WINAPI][winapi_ws2_32_htonl] Calling htonl @ %p", pHtonl);
+    if (pHtonl) {
+        return pHtonl(hostlong);
+    }
+    return 0;
+}
+
+u_long winapi_ws2_32_ntohl(u_long netlong) {
+    u_long (WSAAPI *pNtohl)(u_long) = GetFunctionH(WS2_32_DLL, H_ntohl);
+    dprintf("[WINAPI][winapi_ws2_32_ntohl] Calling ntohl @ %p", pNtohl);
+    if (pNtohl) {
+        return pNtohl(netlong);
+    }
+    return 0;
+}
+
+unsigned long winapi_ws2_32_inet_addr(const char* cp) {
+    unsigned long (WSAAPI *pInet_addr)(const char*) = GetFunctionH(WS2_32_DLL, H_inet_addr);
+    dprintf("[WINAPI][winapi_ws2_32_inet_addr] Calling inet_addr @ %p", pInet_addr);
+    if (pInet_addr) {
+        return pInet_addr(cp);
+    }
+    return INADDR_NONE;
+}
+
 // END: ws2_32.dll
+// START: ws2_32 extensions.dll
+
+int winapi_ws2_32_WSAGetLastError(VOID) {
+    int (WSAAPI *pWSAGetLastError)(VOID) = GetFunctionH(WS2_32_DLL, H_WSAGetLastError);
+    dprintf("[WINAPI][winapi_ws2_32_WSAGetLastError] Calling WSAGetLastError @ %p", pWSAGetLastError);
+    if (pWSAGetLastError) {
+        return pWSAGetLastError();
+    }
+    return 0;
+}
+
+char* winapi_ws2_32_inet_ntoa(struct in_addr in) {
+    char* (WSAAPI *pInet_ntoa)(struct in_addr) = GetFunctionH(WS2_32_DLL, H_inet_ntoa);
+    dprintf("[WINAPI][winapi_ws2_32_inet_ntoa] Calling inet_ntoa @ %p", pInet_ntoa);
+    if (pInet_ntoa) {
+        return pInet_ntoa(in);
+    }
+    return NULL;
+}
+
+// END: ws2_32 extensions.dll
 // START: wininet.dll
 
 HINTERNET winapi_wininet_InternetOpenW(LPCWSTR lpszAgent, DWORD dwAccessType, LPCWSTR lpszProxy, LPCWSTR lpszProxyBypass, DWORD dwFlags) {
@@ -1174,13 +1752,25 @@ BOOL winapi_wininet_InternetCrackUrlW(LPCWSTR lpszUrl, DWORD dwUrlLength, DWORD 
 }
 
 // END: wininet.dll
+// START: wininet extensions.dll
+
+BOOL winapi_wininet_HttpQueryInfoA(HINTERNET hRequest, DWORD dwInfoLevel, LPVOID lpBuffer, LPDWORD lpdwBufferLength, LPDWORD lpdwIndex) {
+    BOOL (WINAPI *pHttpQueryInfoA)(HINTERNET, DWORD, LPVOID, LPDWORD, LPDWORD) = GetFunctionH(WININET_DLL, H_HttpQueryInfoA);
+    dprintf("[WINAPI][winapi_wininet_HttpQueryInfoA] Calling HttpQueryInfoA @ %p", pHttpQueryInfoA);
+    if (pHttpQueryInfoA) {
+        return pHttpQueryInfoA(hRequest, dwInfoLevel, lpBuffer, lpdwBufferLength, lpdwIndex);
+    }
+    return FALSE;
+}
+
+// END: wininet extensions.dll
 // START: rpcrt4.dll
 
-HRESULT winapi_rpcrt4_CoCreateGuid(GUID* pguid) {
-    HRESULT (RPC_ENTRY *pCoCreateGuid)(GUID* pguid) = GetFunctionH(RPCRT4_DLL, H_CoCreateGuid);
-    dprintf("[WINAPI][winapi_rpcrt4_CoCreateGuid] Calling CoCreateGuid @ %p", pCoCreateGuid);
-    if (pCoCreateGuid) {
-        return pCoCreateGuid(pguid);
+RPC_STATUS winapi_rpcrt4_UuidCreate(UUID* Uuid) {
+    RPC_STATUS (RPC_ENTRY *pUuidCreate)(UUID* Uuid) = GetFunctionH(RPCRT4_DLL, H_UuidCreate);
+    dprintf("[WINAPI][winapi_rpcrt4_UuidCreate] Calling UuidCreate @ %p", pUuidCreate);
+    if (pUuidCreate) {
+        return pUuidCreate(Uuid);
     }
     return RPC_S_INTERNAL_ERROR;
 }
@@ -1292,6 +1882,24 @@ BOOL winapi_winhttp_WinHttpCrackUrl(LPCWSTR pwszUrl, DWORD dwUrlLength, DWORD dw
     dprintf("[WINAPI][winapi_winhttp_WinHttpCrackUrl] Calling WinHttpCrackUrl @ %p", pWinHttpCrackUrl);
     if (pWinHttpCrackUrl) {
         return pWinHttpCrackUrl(pwszUrl, dwUrlLength, dwFlags, lpUrlComponents);
+    }
+    return FALSE;
+}
+
+BOOL winapi_winhttp_WinHttpCloseHandle(HINTERNET hInternet) {
+    BOOL (WINAPI *pWinHttpCloseHandle)(HINTERNET) = GetFunctionH(WINHTTP_DLL, H_WinHttpCloseHandle);
+    dprintf("[WINAPI][winapi_winhttp_WinHttpCloseHandle] Calling WinHttpCloseHandle @ %p", pWinHttpCloseHandle);
+    if (pWinHttpCloseHandle) {
+        return pWinHttpCloseHandle(hInternet);
+    }
+    return FALSE;
+}
+
+BOOL winapi_winhttp_WinHttpWriteData(HINTERNET hRequest, LPCVOID lpBuffer, DWORD dwNumberOfBytesToWrite, LPDWORD lpdwNumberOfBytesWritten) {
+    BOOL (WINAPI *pWinHttpWriteData)(HINTERNET, LPCVOID, DWORD, LPDWORD) = GetFunctionH(WINHTTP_DLL, H_WinHttpWriteData);
+    dprintf("[WINAPI][winapi_winhttp_WinHttpWriteData] Calling WinHttpWriteData @ %p", pWinHttpWriteData);
+    if (pWinHttpWriteData) {
+        return pWinHttpWriteData(hRequest, lpBuffer, dwNumberOfBytesToWrite, lpdwNumberOfBytesWritten);
     }
     return FALSE;
 }

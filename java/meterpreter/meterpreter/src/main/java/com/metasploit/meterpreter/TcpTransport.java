@@ -10,6 +10,8 @@ import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 
+import com.metasploit.TLVPacket;
+import com.metasploit.TLVType;
 import com.metasploit.meterpreter.command.Command;
 import com.metasploit.stage.TransportConfig;
 
@@ -102,8 +104,8 @@ public class TcpTransport extends Transport {
     }
 
     @Override
-    public boolean switchUri(String uri) {
-        // tcp transports don't support URL switching
+    public boolean patchUuid(String uuid) {
+        // TCP transports don't support UUID switching
         return false;
     }
 

