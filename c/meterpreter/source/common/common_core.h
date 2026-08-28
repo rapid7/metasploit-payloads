@@ -184,13 +184,13 @@ typedef enum
 	TLV_TYPE_ASYNC_POLL_INTERVAL   = TLV_VALUE(TLV_META_TYPE_UINT,    701),   ///! Seconds between check-ins.
 	TLV_TYPE_ASYNC_POLL_JITTER     = TLV_VALUE(TLV_META_TYPE_UINT,    702),   ///! Jitter percentage 0-99.
 	TLV_TYPE_ASYNC_WORK_START      = TLV_VALUE(TLV_META_TYPE_UINT,    703),   ///! Business hours start (0-23).
-	TLV_TYPE_ASYNC_WORK_END        = TLV_VALUE(TLV_META_TYPE_UINT,    704),   ///! Business hours end (0-23).
+	TLV_TYPE_ASYNC_WORK_END        = TLV_VALUE(TLV_META_TYPE_UINT,    704),   ///! Business hours end (0-24).
 	TLV_TYPE_ASYNC_WORK_DAYS       = TLV_VALUE(TLV_META_TYPE_UINT,    705),   ///! Bitmask of active days (bit0=Sun..bit6=Sat).
-	TLV_TYPE_ASYNC_SMART_SYNC      = TLV_VALUE(TLV_META_TYPE_UINT,    706),   ///! Smart-sync burst window in seconds (0 = disabled).
+	TLV_TYPE_TARGET_UNIX_TS        = TLV_VALUE(TLV_META_TYPE_QWORD,   707),   ///! Target UTC seconds since Unix epoch.
+	TLV_TYPE_TARGET_LOCAL_UNIX_TS  = TLV_VALUE(TLV_META_TYPE_QWORD,   708),   ///! Target local wall-clock seconds as UTC.
+	TLV_TYPE_ASYNC_LEASE_ENABLED   = TLV_VALUE(TLV_META_TYPE_BOOL,    709),   ///! Enable or release a rapid-poll job lease.
+	TLV_TYPE_ASYNC_LEASE_TTL       = TLV_VALUE(TLV_META_TYPE_UINT,    710),   ///! Job lease expiry timeout in seconds.
 
-	TLV_TYPE_EXTENSIONS          = TLV_VALUE(TLV_META_TYPE_COMPLEX, 20000),   ///! Represents an extension value.
-	TLV_TYPE_USER                = TLV_VALUE(TLV_META_TYPE_COMPLEX, 40000),   ///! Represents a user value.
-	TLV_TYPE_TEMP                = TLV_VALUE(TLV_META_TYPE_COMPLEX, 60000),   ///! Represents a temporary value.
 	TLV_TYPE_SESSION_EXPIRY        = TLV_VALUE(TLV_META_TYPE_UINT,    700),   ///! Session expiration time
 	TLV_TYPE_EXITFUNC              = TLV_VALUE(TLV_META_TYPE_UINT,    701),   ///! identifier of the exit function to use
 	TLV_TYPE_DEBUG_LOG             = TLV_VALUE(TLV_META_TYPE_STRING,  702),   ///! path to write debug log

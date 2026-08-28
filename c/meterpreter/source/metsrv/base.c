@@ -454,13 +454,9 @@ BOOL command_handle(Remote *remote, Packet *packet)
 			break;
 		}
 
-		// if either command is registered as inline, run them inline.
-		// In async mode, force inline so the result is POSTed before the
-		// next GET poll — this lets the dispatch loop drain the queue
-		// in a tight poll-execute-respond cycle.
+		// if either command is registered as inline, run them inline
 		if ((command && command_is_inline(command, packet))
-			|| packet->local
-			|| remote->async_mode)
+			|| packet->local)
 		{
 			dprintf("[DISPATCH] Executing inline: %u", commandId);
 			result = command_process_inline(command, remote, packet);
