@@ -1,6 +1,6 @@
 ID := $(shell id -u)
 ifdef OBFUSCATION
-DOCKER_CONTAINER=rapid7/msf-ubuntu-x64-meterpreter:obfuscation
+DOCKER_CONTAINER=rapid7/msf-ubuntu-x64-meterpreter-obfuscation
 else
 DOCKER_CONTAINER=rapid7/msf-ubuntu-x64-meterpreter:latest
 endif
