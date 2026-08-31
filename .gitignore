@@ -4,3 +4,4 @@
 .vs
 *.user
 .vscode
+**/.env
