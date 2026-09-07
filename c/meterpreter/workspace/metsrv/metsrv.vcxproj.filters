@@ -15,6 +15,7 @@
     <ClInclude Include="..\..\source\metsrv\server_transport_wininet.h" />
     <ClInclude Include="..\..\source\metsrv\thread.h" />
     <ClInclude Include="..\..\source\metsrv\unicode.h" />
+    <ClInclude Include="..\..\source\metsrv\util_b64.h" />
     <ClInclude Include="..\..\source\metsrv\zlib.h" />
     <ClInclude Include="..\..\source\metsrv\base.h" />
     <ClInclude Include="..\..\source\metsrv\base_inject.h" />
@@ -46,6 +47,7 @@
     <ClCompile Include="..\..\source\metsrv\server_transport_wininet.c" />
     <ClCompile Include="..\..\source\metsrv\thread.c" />
     <ClCompile Include="..\..\source\metsrv\unicode.c" />
+    <ClCompile Include="..\..\source\metsrv\util_b64.c" />
     <ClCompile Include="..\..\source\metsrv\zlib.c" />
     <ClCompile Include="..\..\source\metsrv\base.c" />
     <ClCompile Include="..\..\source\metsrv\base_dispatch.c" />
