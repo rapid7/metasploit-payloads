@@ -162,6 +162,12 @@ typedef enum
 	TLV_TYPE_LIB_LOADER_NAME     = TLV_VALUE(TLV_META_TYPE_STRING,    412),   ///! Represents the name of the ReflectiveLoader function (string).
 	TLV_TYPE_LIB_LOADER_ORDINAL  = TLV_VALUE(TLV_META_TYPE_UINT,      413),   ///! Represents the ordinal of the ReflectiveLoader function (int).
 	TLV_TYPE_LIB_LOADER_OFFSET   = TLV_VALUE(TLV_META_TYPE_UINT,      414),   ///! Represents the offset of the ReflectiveLoader function (unsigned int).
+	TLV_TYPE_MICRO_NAME          = TLV_VALUE(TLV_META_TYPE_STRING,    415),   ///! Represents a microextension name.
+	TLV_TYPE_MICRO_HANDLE        = TLV_VALUE(TLV_META_TYPE_QWORD,     416),   ///! Represents a microextension handle.
+	TLV_TYPE_MICRO_IMAGE         = TLV_VALUE(TLV_META_TYPE_RAW,       417),   ///! Represents a microextension COFF object.
+	TLV_TYPE_MICRO_ENTRY         = TLV_VALUE(TLV_META_TYPE_GROUP,     418),   ///! Represents a loaded microextension.
+	TLV_TYPE_MICRO_ABI           = TLV_VALUE(TLV_META_TYPE_UINT,      419),   ///! Represents a microextension ABI version.
+	TLV_TYPE_MICRO_DIAGNOSTIC    = TLV_VALUE(TLV_META_TYPE_STRING,    420),   ///! Represents a microextension load failure phase.
 
 	// session/machine identification
 	TLV_TYPE_MACHINE_ID          = TLV_VALUE(TLV_META_TYPE_STRING,    460),   ///! Represents a machine identifier.
