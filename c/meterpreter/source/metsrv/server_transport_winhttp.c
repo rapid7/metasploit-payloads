@@ -411,12 +411,6 @@ static DWORD packet_transmit_http(Remote *remote, LPBYTE rawPacket, DWORD rawPac
 
 		dprintf("[PACKET TRANSMIT HTTP] response received. Apparently. %u", GetLastError());
 
-		// Async smart-sync: record that we just sent a response so the next
-		// idle poll uses the short burst delay instead of the full poll interval.
-		if (ctx->async_mode)
-		{
-			async_touch_activity(ctx);
-		}
 	} while(0);
 
 	ctx->close_req(hReq);
