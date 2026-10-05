@@ -196,7 +196,14 @@ typedef struct _WinApiKernel32 {
     VOID   (*SetLastError)(DWORD dwErrCode);
     DWORD  (*SizeofResource)(HMODULE hModule, HRSRC hResInfo);
     int    (*lstrcmpiW)(LPCWSTR lpString1, LPCWSTR lpString2);
+#if defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable: 4995)
+#endif
     LPWSTR (*lstrcpyW)(LPWSTR lpString1, LPCWSTR lpString2);
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
     int    (*lstrlenA)(LPCSTR lpString);
     int    (*lstrlenW)(LPCWSTR lpString);
     PVOID  (*InterlockedExchangePointer)(PVOID volatile* Target, PVOID Value);
@@ -331,7 +338,14 @@ typedef struct _WinApiUser32 {
     int   (*ToUnicodeEx)(UINT wVirtKey, UINT wScanCode, const BYTE* lpKeyState, LPWSTR pwszBuff, int cchBuff, UINT wFlags, HKL dwhkl);
     BOOL  (*TranslateMessage)(const MSG* lpMsg);
     BOOL  (*UnregisterClassA)(LPCSTR lpClassName, HINSTANCE hInstance);
+#if defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable: 4995)
+#endif
     int   (*wsprintfW)(LPWSTR unnamedParam1, LPCWSTR unnamedParam2, ...);
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
     BOOL  (*GetLastInputInfo)(PLASTINPUTINFO plii);
     UINT  (*GetRawInputData)(HRAWINPUT hRawInput, UINT uiCommand, LPVOID pData, PUINT pcbSize, UINT cbSizeHeader);
     BOOL  (*RegisterRawInputDevices)(PCRAWINPUTDEVICE pRawInputDevices, UINT uiNumDevices, UINT cbSize);

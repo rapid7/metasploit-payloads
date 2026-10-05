@@ -4,6 +4,11 @@
 #include "precomp.h"
 #include "common_metapi.h"
 
+#if defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable: 4995)
+#endif
+
 BOOL DeleteFolderWR(LPCWSTR szPath)
 {
 	WIN32_FIND_DATAW findFileData;
@@ -106,6 +111,10 @@ BOOL DeleteFolderWR(LPCWSTR szPath)
 
 	return bRes;
 }
+
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
 
 char * fs_expand_path(const char *regular)
 {
