@@ -61,7 +61,20 @@ enum NtDllSyscall {
     ZwQueryAttributesFile,
     ZwClose,
     ZwLockVirtualMemory,
-    ZwUnmapViewOfSection
+    ZwUnmapViewOfSection,
+    ZwGetContextThread,
+    ZwSetContextThread,
+    ZwTerminateProcess,
+    ZwOpenProcessToken,
+    ZwOpenThreadToken,
+    ZwQueryInformationToken,
+    ZwQueueApcThread,
+    ZwOpenThread,
+    ZwSuspendThread,
+    ZwResumeThread,
+    ZwSetEvent,
+    ZwResetEvent,
+    ZwReleaseMutant
 };
 
 
@@ -86,7 +99,21 @@ NtDllFunction lpFunctionsTobeLoaded[] = {
     {.lpFunctionName = NULL /* ZwQueryAttributesFile */, .dwNumberOfArgs = 2, .dwCryptedHash = H_ZwQueryAttributesFile},
     {.lpFunctionName = NULL /* ZwClose */, .dwNumberOfArgs = 1, .dwCryptedHash = H_ZwClose},
     {.lpFunctionName = NULL /* ZwLockVirtualMemory */, .dwNumberOfArgs = 4, .dwCryptedHash = H_ZwLockVirtualMemory},
-    {.lpFunctionName = NULL /* ZwUnmapViewOfSection */, .dwNumberOfArgs = 2, .dwCryptedHash = H_ZwUnmapViewOfSection},};
+    {.lpFunctionName = NULL /* ZwUnmapViewOfSection */, .dwNumberOfArgs = 2, .dwCryptedHash = H_ZwUnmapViewOfSection},
+    {.lpFunctionName = NULL /* ZwGetContextThread */, .dwNumberOfArgs = 2, .dwCryptedHash = H_ZwGetContextThread},
+    {.lpFunctionName = NULL /* ZwSetContextThread */, .dwNumberOfArgs = 2, .dwCryptedHash = H_ZwSetContextThread},
+    {.lpFunctionName = NULL /* ZwTerminateProcess */, .dwNumberOfArgs = 2, .dwCryptedHash = H_ZwTerminateProcess},
+    {.lpFunctionName = NULL /* ZwOpenProcessToken */, .dwNumberOfArgs = 3, .dwCryptedHash = H_ZwOpenProcessToken},
+    {.lpFunctionName = NULL /* ZwOpenThreadToken */, .dwNumberOfArgs = 4, .dwCryptedHash = H_ZwOpenThreadToken},
+    {.lpFunctionName = NULL /* ZwQueryInformationToken */, .dwNumberOfArgs = 5, .dwCryptedHash = H_ZwQueryInformationToken},
+    {.lpFunctionName = NULL /* ZwQueueApcThread */, .dwNumberOfArgs = 5, .dwCryptedHash = H_ZwQueueApcThread},
+    {.lpFunctionName = NULL /* ZwOpenThread */, .dwNumberOfArgs = 4, .dwCryptedHash = H_ZwOpenThread},
+    {.lpFunctionName = NULL /* ZwSuspendThread */, .dwNumberOfArgs = 2, .dwCryptedHash = H_ZwSuspendThread},
+    {.lpFunctionName = NULL /* ZwResumeThread */, .dwNumberOfArgs = 2, .dwCryptedHash = H_ZwResumeThread},
+    {.lpFunctionName = NULL /* ZwSetEvent */, .dwNumberOfArgs = 2, .dwCryptedHash = H_ZwSetEvent},
+    {.lpFunctionName = NULL /* ZwResetEvent */, .dwNumberOfArgs = 2, .dwCryptedHash = H_ZwResetEvent},
+    {.lpFunctionName = NULL /* ZwReleaseMutant */, .dwNumberOfArgs = 2, .dwCryptedHash = H_ZwReleaseMutant},
+};
 
 #define STATUS_SUCCESS 0
 Syscall** volatile lpWinApiSyscalls = NULL;
@@ -539,13 +566,31 @@ NTSTATUS winapi_ntdll_ZwFreeVirtualMemory(HANDLE ProcessHandle, PVOID* BaseAddre
     return SyscallStub(lpWinApiSyscalls[ZwFreeVirtualMemory], sizeof(lpArgs) / sizeof(ULONG_PTR), (ULONG_PTR *)&lpArgs);
 }
 
-DEFINE_CACHED_WINAPI_WRAPPER(NTSTATUS, winapi_ntdll_ZwQueueApcThread, NTAPI, NTDLL_DLL, H_ZwQueueApcThread,
+static DEFINE_CACHED_WINAPI_WRAPPER(NTSTATUS, winapi_ntdll_ZwQueueApcThreadFallback, NTAPI, NTDLL_DLL, H_ZwQueueApcThread,
     (HANDLE ThreadHandle, PVOID ApcRoutine, PVOID ApcContext, PVOID Argument1, PVOID Argument2),
     (ThreadHandle, ApcRoutine, ApcContext, Argument1, Argument2), 0xC0000001)
 
-DEFINE_CACHED_WINAPI_WRAPPER(NTSTATUS, winapi_ntdll_ZwOpenThread, NTAPI, NTDLL_DLL, H_ZwOpenThread,
+NTSTATUS winapi_ntdll_ZwQueueApcThread(HANDLE ThreadHandle, PVOID ApcRoutine, PVOID ApcContext, PVOID Argument1, PVOID Argument2) {
+    if (hasDirectSyscallSupport()) {
+        ULONG_PTR lpArgs[] = { (ULONG_PTR)ThreadHandle, (ULONG_PTR)ApcRoutine, (ULONG_PTR)ApcContext, (ULONG_PTR)Argument1, (ULONG_PTR)Argument2 };
+        return SyscallStub(lpWinApiSyscalls[ZwQueueApcThread], sizeof(lpArgs) / sizeof(ULONG_PTR), (ULONG_PTR *)&lpArgs);
+    }
+
+    return winapi_ntdll_ZwQueueApcThreadFallback(ThreadHandle, ApcRoutine, ApcContext, Argument1, Argument2);
+}
+
+static DEFINE_CACHED_WINAPI_WRAPPER(NTSTATUS, winapi_ntdll_ZwOpenThreadFallback, NTAPI, NTDLL_DLL, H_ZwOpenThread,
     (PHANDLE ThreadHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, PCLIENT_ID ClientId),
     (ThreadHandle, DesiredAccess, ObjectAttributes, ClientId), 0xC0000001)
+
+NTSTATUS winapi_ntdll_ZwOpenThread(PHANDLE ThreadHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, PCLIENT_ID ClientId) {
+    if (hasDirectSyscallSupport()) {
+        ULONG_PTR lpArgs[] = { (ULONG_PTR)ThreadHandle, (ULONG_PTR)DesiredAccess, (ULONG_PTR)ObjectAttributes, (ULONG_PTR)ClientId };
+        return SyscallStub(lpWinApiSyscalls[ZwOpenThread], sizeof(lpArgs) / sizeof(ULONG_PTR), (ULONG_PTR *)&lpArgs);
+    }
+
+    return winapi_ntdll_ZwOpenThreadFallback(ThreadHandle, DesiredAccess, ObjectAttributes, ClientId);
+}
 
 DEFINE_CACHED_WINAPI_WRAPPER(NTSTATUS, winapi_ntdll_RtlGetVersion, NTAPI, NTDLL_DLL, H_RtlGetVersion,
     (PRTL_OSVERSIONINFOEXW os), (os), 0xC0000001)
@@ -627,12 +672,12 @@ DEFINE_CACHED_WINAPI_WRAPPER(NTSTATUS, winapi_ntdll_RtlCreateUserThread, NTAPI, 
     (HANDLE ProcessHandle, PVOID SecurityDescriptor, BOOL CreateSuspended, ULONG StackZeroBits, SIZE_T StackReserve, SIZE_T StackCommit, PVOID StartAddress, PVOID StartParameter, PHANDLE ThreadHandle, PVOID ClientId),
     (ProcessHandle, SecurityDescriptor, CreateSuspended, StackZeroBits, StackReserve, StackCommit, StartAddress, StartParameter, ThreadHandle, ClientId), 0xC0000001)
 
-NTSTATUS winapi_ntdll_ZwMapViewOfSection(HANDLE SectionHandle, HANDLE ProcessHandle, PVOID* BaseAddress, ULONG ZeroBits, ULONG CommitSize, PLARGE_INTEGER SectionOffset, PULONG ViewSize, DWORD InheritDisposition, ULONG AllocationType, ULONG Win32Protect) {
+NTSTATUS winapi_ntdll_ZwMapViewOfSection(HANDLE SectionHandle, HANDLE ProcessHandle, PVOID* BaseAddress, ULONG_PTR ZeroBits, SIZE_T CommitSize, PLARGE_INTEGER SectionOffset, PSIZE_T ViewSize, DWORD InheritDisposition, ULONG AllocationType, ULONG Win32Protect) {
     if (hasDirectSyscallSupport()) {
         ULONG_PTR lpArgs[] = { (ULONG_PTR)SectionHandle, (ULONG_PTR)ProcessHandle, (ULONG_PTR)BaseAddress, (ULONG_PTR)ZeroBits, (ULONG_PTR)CommitSize, (ULONG_PTR)SectionOffset, (ULONG_PTR)ViewSize, (ULONG_PTR)InheritDisposition, (ULONG_PTR)AllocationType, (ULONG_PTR)Win32Protect };
         return SyscallStub(lpWinApiSyscalls[ZwMapViewOfSection], sizeof(lpArgs) / sizeof(ULONG_PTR), (ULONG_PTR *)&lpArgs);
     } else {
-        NTSTATUS (NTAPI *pZwMapViewOfSection)(HANDLE, HANDLE, PVOID*, ULONG, ULONG, PLARGE_INTEGER, PULONG, DWORD, ULONG, ULONG) = GetFunctionH(NTDLL_DLL, H_ZwMapViewOfSection);
+        NTSTATUS (NTAPI *pZwMapViewOfSection)(HANDLE, HANDLE, PVOID*, ULONG_PTR, SIZE_T, PLARGE_INTEGER, PSIZE_T, DWORD, ULONG, ULONG) = GetFunctionH(NTDLL_DLL, H_ZwMapViewOfSection);
         dprintf("[WINAPI][winapi_ntdll_ZwMapViewOfSection] Calling ZwMapViewOfSection @ %p", pZwMapViewOfSection);
         if (pZwMapViewOfSection) {
             return pZwMapViewOfSection(SectionHandle, ProcessHandle, BaseAddress, ZeroBits, CommitSize, SectionOffset, ViewSize, InheritDisposition, AllocationType, Win32Protect);
@@ -711,12 +756,12 @@ NTSTATUS winapi_ntdll_ZwClose(HANDLE Handle) {
     return 0xC0000001;
 }
 
-NTSTATUS winapi_ntdll_ZwLockVirtualMemory(HANDLE ProcessHandle, PVOID* BaseAddress, PULONG RegionSize, ULONG MapType) {
+NTSTATUS winapi_ntdll_ZwLockVirtualMemory(HANDLE ProcessHandle, PVOID* BaseAddress, PSIZE_T RegionSize, ULONG MapType) {
     if (hasDirectSyscallSupport()) {
         ULONG_PTR lpArgs[] = { (ULONG_PTR)ProcessHandle, (ULONG_PTR)BaseAddress, (ULONG_PTR)RegionSize, (ULONG_PTR)MapType };
         return SyscallStub(lpWinApiSyscalls[ZwLockVirtualMemory], sizeof(lpArgs) / sizeof(ULONG_PTR), (ULONG_PTR *)&lpArgs);
     } else {
-        NTSTATUS (NTAPI *pZwLockVirtualMemory)(HANDLE, PVOID*, PULONG, ULONG) = GetFunctionH(NTDLL_DLL, H_ZwLockVirtualMemory);
+        NTSTATUS (NTAPI *pZwLockVirtualMemory)(HANDLE, PVOID*, PSIZE_T, ULONG) = GetFunctionH(NTDLL_DLL, H_ZwLockVirtualMemory);
         dprintf("[WINAPI][winapi_ntdll_ZwLockVirtualMemory] Calling ZwLockVirtualMemory @ %p", pZwLockVirtualMemory);
         if (pZwLockVirtualMemory) {
             return pZwLockVirtualMemory(ProcessHandle, BaseAddress, RegionSize, MapType);
@@ -1023,8 +1068,37 @@ BOOL winapi_kernel32_VirtualFreeEx(HANDLE hProcess, LPVOID lpAddress, SIZE_T dwS
 DEFINE_CACHED_WINAPI_WRAPPER(HANDLE, winapi_kernel32_CreateRemoteThread, WINAPI, KERNEL32_DLL, H_CreateRemoteThread,
     (HANDLE hProcess, LPSECURITY_ATTRIBUTES lpThreadAttributes, SIZE_T dwStackSize, LPTHREAD_START_ROUTINE lpStartAddress, LPVOID lpParameter, DWORD dwCreationFlags, LPDWORD lpThreadId),
     (hProcess, lpThreadAttributes, dwStackSize, lpStartAddress, lpParameter, dwCreationFlags, lpThreadId), NULL)
-DEFINE_CACHED_WINAPI_WRAPPER(BOOL, winapi_kernel32_CloseHandle, WINAPI, KERNEL32_DLL, H_CloseHandle,
+static DEFINE_CACHED_WINAPI_WRAPPER(BOOL, winapi_kernel32_CloseHandleFallback, WINAPI, KERNEL32_DLL, H_CloseHandle,
     (HANDLE hObject), (hObject), FALSE)
+
+static BOOL winapi_IsStdHandleId(HANDLE hObject) {
+    ULONG_PTR handleValue = (ULONG_PTR)hObject;
+    return handleValue == (ULONG_PTR)STD_INPUT_HANDLE ||
+        handleValue == (ULONG_PTR)STD_OUTPUT_HANDLE ||
+        handleValue == (ULONG_PTR)STD_ERROR_HANDLE;
+}
+
+static BOOL winapi_IsLegacyConsoleHandle(HANDLE hObject) {
+    return (((ULONG_PTR)hObject & (ULONG_PTR)0x10000003) == (ULONG_PTR)0x3);
+}
+
+BOOL winapi_kernel32_CloseHandle(HANDLE hObject) {
+    // Kernel32 translates raw standard-handle IDs and routes legacy console
+    // handles through its console path; neither can be closed with ZwClose.
+    if (winapi_IsStdHandleId(hObject) || winapi_IsLegacyConsoleHandle(hObject)) {
+        return winapi_kernel32_CloseHandleFallback(hObject);
+    }
+
+    if (hasDirectSyscallSupport()) {
+        ULONG_PTR lpArgs[] = { (ULONG_PTR)hObject };
+        NTSTATUS dwStatus = SyscallStub(lpWinApiSyscalls[ZwClose], sizeof(lpArgs) / sizeof(ULONG_PTR), (ULONG_PTR *)&lpArgs);
+        dprintf("[WINAPI][winapi_kernel32_CloseHandle] Syscall ZwClose returned: %d", dwStatus);
+        return winapi_NtStatusSucceeded(dwStatus);
+    }
+
+    return winapi_kernel32_CloseHandleFallback(hObject);
+}
+
 DEFINE_CACHED_WINAPI_WRAPPER(BOOL, winapi_kernel32_DuplicateHandle, WINAPI, KERNEL32_DLL, H_DuplicateHandle,
     (HANDLE hSourceProcessHandle, HANDLE hSourceHandle, HANDLE hTargetProcessHandle, LPHANDLE lpTargetHandle, DWORD dwDesiredAccess, BOOL bInheritHandle, DWORD dwOptions),
     (hSourceProcessHandle, hSourceHandle, hTargetProcessHandle, lpTargetHandle, dwDesiredAccess, bInheritHandle, dwOptions), FALSE)
@@ -1034,12 +1108,46 @@ DEFINE_CACHED_WINAPI_WRAPPER(BOOL, winapi_kernel32_Thread32First, WINAPI, KERNEL
     (HANDLE hSnapshot, LPTHREADENTRY32 lpte), (hSnapshot, lpte), FALSE)
 DEFINE_CACHED_WINAPI_WRAPPER(HANDLE, winapi_kernel32_OpenThread, WINAPI, KERNEL32_DLL, H_OpenThread,
     (DWORD dwDesiredAccess, BOOL bInheritHandle, DWORD dwThreadId), (dwDesiredAccess, bInheritHandle, dwThreadId), NULL)
-DEFINE_CACHED_WINAPI_WRAPPER(DWORD, winapi_kernel32_SuspendThread, WINAPI, KERNEL32_DLL, H_SuspendThread,
+static DEFINE_CACHED_WINAPI_WRAPPER(DWORD, winapi_kernel32_SuspendThreadFallback, WINAPI, KERNEL32_DLL, H_SuspendThread,
     (HANDLE hThread), (hThread), (DWORD)-1)
+
+DWORD winapi_kernel32_SuspendThread(HANDLE hThread) {
+    if (hasDirectSyscallSupport()) {
+        ULONG dwPreviousSuspendCount = 0;
+        ULONG_PTR lpArgs[] = { (ULONG_PTR)hThread, (ULONG_PTR)&dwPreviousSuspendCount };
+        NTSTATUS dwStatus = SyscallStub(lpWinApiSyscalls[ZwSuspendThread], sizeof(lpArgs) / sizeof(ULONG_PTR), (ULONG_PTR *)&lpArgs);
+        dprintf("[WINAPI][winapi_kernel32_SuspendThread] Syscall ZwSuspendThread returned: %d", dwStatus);
+        if (!winapi_NtStatusSucceeded(dwStatus)) {
+            return (DWORD)-1;
+        }
+
+        return dwPreviousSuspendCount;
+    }
+
+    return winapi_kernel32_SuspendThreadFallback(hThread);
+}
+
 DEFINE_CACHED_WINAPI_WRAPPER(BOOL, winapi_kernel32_Thread32Next, WINAPI, KERNEL32_DLL, H_Thread32Next,
     (HANDLE hSnapshot, LPTHREADENTRY32 lpte), (hSnapshot, lpte), FALSE)
-DEFINE_CACHED_WINAPI_WRAPPER(DWORD, winapi_kernel32_ResumeThread, WINAPI, KERNEL32_DLL, H_ResumeThread,
+static DEFINE_CACHED_WINAPI_WRAPPER(DWORD, winapi_kernel32_ResumeThreadFallback, WINAPI, KERNEL32_DLL, H_ResumeThread,
     (HANDLE hThread), (hThread), (DWORD)-1)
+
+DWORD winapi_kernel32_ResumeThread(HANDLE hThread) {
+    if (hasDirectSyscallSupport()) {
+        ULONG dwPreviousSuspendCount = 0;
+        ULONG_PTR lpArgs[] = { (ULONG_PTR)hThread, (ULONG_PTR)&dwPreviousSuspendCount };
+        NTSTATUS dwStatus = SyscallStub(lpWinApiSyscalls[ZwResumeThread], sizeof(lpArgs) / sizeof(ULONG_PTR), (ULONG_PTR *)&lpArgs);
+        dprintf("[WINAPI][winapi_kernel32_ResumeThread] Syscall ZwResumeThread returned: %d", dwStatus);
+        if (!winapi_NtStatusSucceeded(dwStatus)) {
+            return (DWORD)-1;
+        }
+
+        return dwPreviousSuspendCount;
+    }
+
+    return winapi_kernel32_ResumeThreadFallback(hThread);
+}
+
 DEFINE_CACHED_WINAPI_WRAPPER(BOOL, winapi_kernel32_FreeLibrary, WINAPI, KERNEL32_DLL, H_FreeLibrary,
     (HMODULE hLibModule), (hLibModule), FALSE)
 static DEFINE_CACHED_WINAPI_WRAPPER(BOOL, winapi_kernel32_FlushInstructionCacheFallback, WINAPI, KERNEL32_DLL, H_FlushInstructionCache,
@@ -1087,8 +1195,19 @@ DEFINE_CACHED_WINAPI_WRAPPER(BOOL, winapi_kernel32_ReadFile, WINAPI, KERNEL32_DL
 DEFINE_CACHED_WINAPI_WRAPPER(HANDLE, winapi_kernel32_CreateThread, WINAPI, KERNEL32_DLL, H_CreateThread,
     (LPSECURITY_ATTRIBUTES lpThreadAttributes, SIZE_T dwStackSize, LPTHREAD_START_ROUTINE lpStartAddress, LPVOID lpParameter, DWORD dwCreationFlags, LPDWORD lpThreadId),
     (lpThreadAttributes, dwStackSize, lpStartAddress, lpParameter, dwCreationFlags, lpThreadId), NULL)
-DEFINE_CACHED_WINAPI_WRAPPER(BOOL, winapi_kernel32_ResetEvent, WINAPI, KERNEL32_DLL, H_ResetEvent,
+static DEFINE_CACHED_WINAPI_WRAPPER(BOOL, winapi_kernel32_ResetEventFallback, WINAPI, KERNEL32_DLL, H_ResetEvent,
     (HANDLE hEvent), (hEvent), FALSE)
+
+BOOL winapi_kernel32_ResetEvent(HANDLE hEvent) {
+    if (hasDirectSyscallSupport()) {
+        ULONG_PTR lpArgs[] = { (ULONG_PTR)hEvent, (ULONG_PTR)NULL };
+        NTSTATUS dwStatus = SyscallStub(lpWinApiSyscalls[ZwResetEvent], sizeof(lpArgs) / sizeof(ULONG_PTR), (ULONG_PTR *)&lpArgs);
+        dprintf("[WINAPI][winapi_kernel32_ResetEvent] Syscall ZwResetEvent returned: %d", dwStatus);
+        return winapi_NtStatusSucceeded(dwStatus);
+    }
+
+    return winapi_kernel32_ResetEventFallback(hEvent);
+}
 
 DEFINE_CACHED_WINAPI_WRAPPER(BOOL, winapi_kernel32_SetThreadErrorMode, WINAPI, KERNEL32_DLL, H_SetThreadErrorMode,
     (DWORD dwNewMode, LPDWORD lpOldMode), (dwNewMode, lpOldMode), FALSE)
@@ -1106,8 +1225,20 @@ DEFINE_CACHED_WINAPI_WRAPPER(HANDLE, winapi_kernel32_CreateEventA, WINAPI, KERNE
 DEFINE_CACHED_WINAPI_WRAPPER(HANDLE, winapi_kernel32_CreateEventW, WINAPI, KERNEL32_DLL, H_CreateEventW,
     (LPSECURITY_ATTRIBUTES lpEventAttributes, BOOL bManualReset, BOOL bInitialState, LPCWSTR lpName),
     (lpEventAttributes, bManualReset, bInitialState, lpName), NULL)
-DEFINE_CACHED_WINAPI_WRAPPER(BOOL, winapi_kernel32_SetEvent, WINAPI, KERNEL32_DLL, H_SetEvent,
+static DEFINE_CACHED_WINAPI_WRAPPER(BOOL, winapi_kernel32_SetEventFallback, WINAPI, KERNEL32_DLL, H_SetEvent,
     (HANDLE hEvent), (hEvent), FALSE)
+
+BOOL winapi_kernel32_SetEvent(HANDLE hEvent) {
+    if (hasDirectSyscallSupport()) {
+        ULONG_PTR lpArgs[] = { (ULONG_PTR)hEvent, (ULONG_PTR)NULL };
+        NTSTATUS dwStatus = SyscallStub(lpWinApiSyscalls[ZwSetEvent], sizeof(lpArgs) / sizeof(ULONG_PTR), (ULONG_PTR *)&lpArgs);
+        dprintf("[WINAPI][winapi_kernel32_SetEvent] Syscall ZwSetEvent returned: %d", dwStatus);
+        return winapi_NtStatusSucceeded(dwStatus);
+    }
+
+    return winapi_kernel32_SetEventFallback(hEvent);
+}
+
 DEFINE_CACHED_WINAPI_WRAPPER(DWORD, winapi_kernel32_WaitForSingleObject, WINAPI, KERNEL32_DLL, H_WaitForSingleObject,
     (HANDLE hHandle, DWORD dwMilliseconds), (hHandle, dwMilliseconds), WAIT_FAILED)
 DEFINE_CACHED_WINAPI_VOID_WRAPPER(winapi_kernel32_Sleep, WINAPI, KERNEL32_DLL, H_Sleep,
@@ -1148,8 +1279,20 @@ DEFINE_CACHED_WINAPI_WRAPPER(BOOL, winapi_kernel32_PeekNamedPipe, WINAPI, KERNEL
 DEFINE_CACHED_WINAPI_WRAPPER(BOOL, winapi_kernel32_SetNamedPipeHandleState, WINAPI, KERNEL32_DLL, H_SetNamedPipeHandleState,
     (HANDLE hNamedPipe, LPDWORD lpMode, LPDWORD lpMaxCollectionCount, LPDWORD lpCollectDataTimeout),
     (hNamedPipe, lpMode, lpMaxCollectionCount, lpCollectDataTimeout), FALSE)
-DEFINE_CACHED_WINAPI_WRAPPER(BOOL, winapi_kernel32_ReleaseMutex, WINAPI, KERNEL32_DLL, H_ReleaseMutex,
+static DEFINE_CACHED_WINAPI_WRAPPER(BOOL, winapi_kernel32_ReleaseMutexFallback, WINAPI, KERNEL32_DLL, H_ReleaseMutex,
     (HANDLE hMutex), (hMutex), FALSE)
+
+BOOL winapi_kernel32_ReleaseMutex(HANDLE hMutex) {
+    if (hasDirectSyscallSupport()) {
+        ULONG_PTR lpArgs[] = { (ULONG_PTR)hMutex, (ULONG_PTR)NULL };
+        NTSTATUS dwStatus = SyscallStub(lpWinApiSyscalls[ZwReleaseMutant], sizeof(lpArgs) / sizeof(ULONG_PTR), (ULONG_PTR *)&lpArgs);
+        dprintf("[WINAPI][winapi_kernel32_ReleaseMutex] Syscall ZwReleaseMutant returned: %d", dwStatus);
+        return winapi_NtStatusSucceeded(dwStatus);
+    }
+
+    return winapi_kernel32_ReleaseMutexFallback(hMutex);
+}
+
 DEFINE_CACHED_WINAPI_WRAPPER(HANDLE, winapi_kernel32_CreateMutexA, WINAPI, KERNEL32_DLL, H_CreateMutexA,
     (LPSECURITY_ATTRIBUTES lpMutexAttributes, BOOL bInitialOwner, LPCSTR lpName),
     (lpMutexAttributes, bInitialOwner, lpName), NULL)
@@ -1166,8 +1309,20 @@ DEFINE_CACHED_WINAPI_WRAPPER(DWORD, winapi_kernel32_GetLastError, WINAPI, KERNEL
 // END: kernel32 extensions.dll
 // START: advapi32.dll
 
-DEFINE_CACHED_WINAPI_WRAPPER(BOOL, winapi_advapi32_OpenProcessToken, WINAPI, ADVAPI32_DLL, H_OpenProcessToken,
+static DEFINE_CACHED_WINAPI_WRAPPER(BOOL, winapi_advapi32_OpenProcessTokenFallback, WINAPI, ADVAPI32_DLL, H_OpenProcessToken,
     (HANDLE ProcessHandle, DWORD DesiredAccess, PHANDLE TokenHandle), (ProcessHandle, DesiredAccess, TokenHandle), FALSE)
+
+BOOL winapi_advapi32_OpenProcessToken(HANDLE ProcessHandle, DWORD DesiredAccess, PHANDLE TokenHandle) {
+    if (hasDirectSyscallSupport()) {
+        ULONG_PTR lpArgs[] = { (ULONG_PTR)ProcessHandle, (ULONG_PTR)DesiredAccess, (ULONG_PTR)TokenHandle };
+        NTSTATUS dwStatus = SyscallStub(lpWinApiSyscalls[ZwOpenProcessToken], sizeof(lpArgs) / sizeof(ULONG_PTR), (ULONG_PTR *)&lpArgs);
+        dprintf("[WINAPI][winapi_advapi32_OpenProcessToken] Syscall ZwOpenProcessToken returned: %d", dwStatus);
+        return winapi_NtStatusSucceeded(dwStatus);
+    }
+
+    return winapi_advapi32_OpenProcessTokenFallback(ProcessHandle, DesiredAccess, TokenHandle);
+}
+
 DEFINE_CACHED_WINAPI_WRAPPER(BOOL, winapi_advapi32_AdjustTokenPrivileges, WINAPI, ADVAPI32_DLL, H_AdjustTokenPrivileges,
     (HANDLE TokenHandle, BOOL DisableAllPrivileges, PTOKEN_PRIVILEGES NewState, DWORD BufferLength, PTOKEN_PRIVILEGES PreviousState, PDWORD ReturnLength),
     (TokenHandle, DisableAllPrivileges, NewState, BufferLength, PreviousState, ReturnLength), FALSE)
@@ -1192,8 +1347,20 @@ DEFINE_CACHED_WINAPI_WRAPPER(BOOL, winapi_advapi32_CryptReleaseContext, WINAPI, 
 DEFINE_CACHED_WINAPI_WRAPPER(BOOL, winapi_advapi32_CryptImportKey, WINAPI, ADVAPI32_DLL, H_CryptImportKey,
     (HCRYPTPROV hProv, const BYTE* pbData, DWORD dwDataLen, HCRYPTKEY hPubKey, DWORD dwFlags, HCRYPTKEY* phKey),
     (hProv, pbData, dwDataLen, hPubKey, dwFlags, phKey), FALSE)
-DEFINE_CACHED_WINAPI_WRAPPER(BOOL, winapi_advapi32_OpenThreadToken, WINAPI, ADVAPI32_DLL, H_OpenThreadToken,
+static DEFINE_CACHED_WINAPI_WRAPPER(BOOL, winapi_advapi32_OpenThreadTokenFallback, WINAPI, ADVAPI32_DLL, H_OpenThreadToken,
     (HANDLE ThreadHandle, DWORD DesiredAccess, BOOL OpenAsSelf, PHANDLE TokenHandle), (ThreadHandle, DesiredAccess, OpenAsSelf, TokenHandle), FALSE)
+
+BOOL winapi_advapi32_OpenThreadToken(HANDLE ThreadHandle, DWORD DesiredAccess, BOOL OpenAsSelf, PHANDLE TokenHandle) {
+    if (hasDirectSyscallSupport()) {
+        ULONG_PTR lpArgs[] = { (ULONG_PTR)ThreadHandle, (ULONG_PTR)DesiredAccess, (ULONG_PTR)(OpenAsSelf != FALSE), (ULONG_PTR)TokenHandle };
+        NTSTATUS dwStatus = SyscallStub(lpWinApiSyscalls[ZwOpenThreadToken], sizeof(lpArgs) / sizeof(ULONG_PTR), (ULONG_PTR *)&lpArgs);
+        dprintf("[WINAPI][winapi_advapi32_OpenThreadToken] Syscall ZwOpenThreadToken returned: %d", dwStatus);
+        return winapi_NtStatusSucceeded(dwStatus);
+    }
+
+    return winapi_advapi32_OpenThreadTokenFallback(ThreadHandle, DesiredAccess, OpenAsSelf, TokenHandle);
+}
+
 DEFINE_CACHED_WINAPI_WRAPPER(BOOL, winapi_advapi32_AllocateAndInitializeSid, WINAPI, ADVAPI32_DLL, H_AllocateAndInitializeSid,
     (PSID_IDENTIFIER_AUTHORITY pIdentifierAuthority, BYTE nSubAuthorityCount, DWORD dwSubAuthority0, DWORD dwSubAuthority1,
         DWORD dwSubAuthority2, DWORD dwSubAuthority3, DWORD dwSubAuthority4, DWORD dwSubAuthority5, DWORD dwSubAuthority6,
@@ -1532,14 +1699,55 @@ DEFINE_CACHED_WINAPI_VOID_WRAPPER(winapi_kernel32_GetLocalTime, WINAPI, KERNEL32
     (LPSYSTEMTIME lpSystemTime), (lpSystemTime))
 DEFINE_CACHED_WINAPI_WRAPPER(int, winapi_kernel32_GetLocaleInfoA, WINAPI, KERNEL32_DLL, H_GetLocaleInfoA,
     (LCID Locale, LCTYPE LCType, LPSTR lpLCData, int cchData), (Locale, LCType, lpLCData, cchData), 0)
-DEFINE_CACHED_WINAPI_WRAPPER(BOOL, winapi_kernel32_GetThreadContext, WINAPI, KERNEL32_DLL, H_GetThreadContext,
+static DEFINE_CACHED_WINAPI_WRAPPER(BOOL, winapi_kernel32_GetThreadContextFallback, WINAPI, KERNEL32_DLL, H_GetThreadContext,
     (HANDLE hThread, LPCONTEXT lpContext), (hThread, lpContext), FALSE)
+
+BOOL winapi_kernel32_GetThreadContext(HANDLE hThread, LPCONTEXT lpContext) {
+    if (hasDirectSyscallSupport()) {
+        ULONG_PTR lpArgs[] = { (ULONG_PTR)hThread, (ULONG_PTR)lpContext };
+        NTSTATUS dwStatus = SyscallStub(lpWinApiSyscalls[ZwGetContextThread], sizeof(lpArgs) / sizeof(ULONG_PTR), (ULONG_PTR *)&lpArgs);
+        dprintf("[WINAPI][winapi_kernel32_GetThreadContext] Syscall ZwGetContextThread returned: %d", dwStatus);
+        return winapi_NtStatusSucceeded(dwStatus);
+    }
+
+    return winapi_kernel32_GetThreadContextFallback(hThread, lpContext);
+}
+
 DEFINE_CACHED_WINAPI_WRAPPER(DWORD, winapi_kernel32_GetTimeZoneInformation, WINAPI, KERNEL32_DLL, H_GetTimeZoneInformation,
     (LPTIME_ZONE_INFORMATION lpTimeZoneInformation), (lpTimeZoneInformation), TIME_ZONE_ID_INVALID)
-DEFINE_CACHED_WINAPI_WRAPPER(BOOL, winapi_kernel32_SetThreadContext, WINAPI, KERNEL32_DLL, H_SetThreadContext,
+static DEFINE_CACHED_WINAPI_WRAPPER(BOOL, winapi_kernel32_SetThreadContextFallback, WINAPI, KERNEL32_DLL, H_SetThreadContext,
     (HANDLE hThread, const CONTEXT* lpContext), (hThread, lpContext), FALSE)
-DEFINE_CACHED_WINAPI_WRAPPER(BOOL, winapi_kernel32_TerminateProcess, WINAPI, KERNEL32_DLL, H_TerminateProcess,
+
+BOOL winapi_kernel32_SetThreadContext(HANDLE hThread, const CONTEXT* lpContext) {
+    if (hasDirectSyscallSupport()) {
+        ULONG_PTR lpArgs[] = { (ULONG_PTR)hThread, (ULONG_PTR)lpContext };
+        NTSTATUS dwStatus = SyscallStub(lpWinApiSyscalls[ZwSetContextThread], sizeof(lpArgs) / sizeof(ULONG_PTR), (ULONG_PTR *)&lpArgs);
+        dprintf("[WINAPI][winapi_kernel32_SetThreadContext] Syscall ZwSetContextThread returned: %d", dwStatus);
+        return winapi_NtStatusSucceeded(dwStatus);
+    }
+
+    return winapi_kernel32_SetThreadContextFallback(hThread, lpContext);
+}
+
+static DEFINE_CACHED_WINAPI_WRAPPER(BOOL, winapi_kernel32_TerminateProcessFallback, WINAPI, KERNEL32_DLL, H_TerminateProcess,
     (HANDLE hProcess, UINT uExitCode), (hProcess, uExitCode), FALSE)
+
+BOOL winapi_kernel32_TerminateProcess(HANDLE hProcess, UINT uExitCode) {
+    if (hProcess == NULL) {
+        SetLastError(ERROR_INVALID_HANDLE);
+        return FALSE;
+    }
+
+    if (hasDirectSyscallSupport()) {
+        ULONG_PTR lpArgs[] = { (ULONG_PTR)hProcess, (ULONG_PTR)(NTSTATUS)uExitCode };
+        NTSTATUS dwStatus = SyscallStub(lpWinApiSyscalls[ZwTerminateProcess], sizeof(lpArgs) / sizeof(ULONG_PTR), (ULONG_PTR *)&lpArgs);
+        dprintf("[WINAPI][winapi_kernel32_TerminateProcess] Syscall ZwTerminateProcess returned: %d", dwStatus);
+        return winapi_NtStatusSucceeded(dwStatus);
+    }
+
+    return winapi_kernel32_TerminateProcessFallback(hProcess, uExitCode);
+}
+
 DEFINE_CACHED_WINAPI_WRAPPER(BOOL, winapi_kernel32_VirtualLock, WINAPI, KERNEL32_DLL, H_VirtualLock,
     (LPVOID lpAddress, SIZE_T dwSize), (lpAddress, dwSize), FALSE)
 DEFINE_CACHED_WINAPI_WRAPPER(BOOL, winapi_kernel32_VirtualUnlock, WINAPI, KERNEL32_DLL, H_VirtualUnlock,
@@ -1565,9 +1773,21 @@ DEFINE_CACHED_WINAPI_WRAPPER(BOOL, winapi_advapi32_GetNumberOfEventLogRecords, W
     (HANDLE hEventLog, PDWORD NumberOfRecords), (hEventLog, NumberOfRecords), FALSE)
 DEFINE_CACHED_WINAPI_WRAPPER(BOOL, winapi_advapi32_GetOldestEventLogRecord, WINAPI, ADVAPI32_DLL, H_GetOldestEventLogRecord,
     (HANDLE hEventLog, PDWORD OldestRecord), (hEventLog, OldestRecord), FALSE)
-DEFINE_CACHED_WINAPI_WRAPPER(BOOL, winapi_advapi32_GetTokenInformation, WINAPI, ADVAPI32_DLL, H_GetTokenInformation,
+static DEFINE_CACHED_WINAPI_WRAPPER(BOOL, winapi_advapi32_GetTokenInformationFallback, WINAPI, ADVAPI32_DLL, H_GetTokenInformation,
     (HANDLE TokenHandle, TOKEN_INFORMATION_CLASS TokenInformationClass, LPVOID TokenInformation, DWORD TokenInformationLength, PDWORD ReturnLength),
     (TokenHandle, TokenInformationClass, TokenInformation, TokenInformationLength, ReturnLength), FALSE)
+
+BOOL winapi_advapi32_GetTokenInformation(HANDLE TokenHandle, TOKEN_INFORMATION_CLASS TokenInformationClass, LPVOID TokenInformation, DWORD TokenInformationLength, PDWORD ReturnLength) {
+    if (hasDirectSyscallSupport()) {
+        ULONG_PTR lpArgs[] = { (ULONG_PTR)TokenHandle, (ULONG_PTR)TokenInformationClass, (ULONG_PTR)TokenInformation, (ULONG_PTR)TokenInformationLength, (ULONG_PTR)ReturnLength };
+        NTSTATUS dwStatus = SyscallStub(lpWinApiSyscalls[ZwQueryInformationToken], sizeof(lpArgs) / sizeof(ULONG_PTR), (ULONG_PTR *)&lpArgs);
+        dprintf("[WINAPI][winapi_advapi32_GetTokenInformation] Syscall ZwQueryInformationToken returned: %d", dwStatus);
+        return winapi_NtStatusSucceeded(dwStatus);
+    }
+
+    return winapi_advapi32_GetTokenInformationFallback(TokenHandle, TokenInformationClass, TokenInformation, TokenInformationLength, ReturnLength);
+}
+
 DEFINE_CACHED_WINAPI_WRAPPER(BOOL, winapi_advapi32_LookupAccountSidW, WINAPI, ADVAPI32_DLL, H_LookupAccountSidW,
     (LPCWSTR lpSystemName, PSID Sid, LPWSTR Name, LPDWORD cchName, LPWSTR ReferencedDomainName, LPDWORD cchReferencedDomainName, PSID_NAME_USE peUse),
     (lpSystemName, Sid, Name, cchName, ReferencedDomainName, cchReferencedDomainName, peUse), FALSE)

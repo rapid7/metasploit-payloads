@@ -99,8 +99,8 @@ typedef void (NTAPI *f_NtOpenFile)(PHANDLE, ACCESS_MASK, POBJECT_ATTRIBUTES,
 		PIO_STATUS_BLOCK, ULONG ShareAccess, ULONG);
 typedef NTSTATUS (NTAPI *f_NtCreateSection)(PHANDLE, ULONG, POBJECT_ATTRIBUTES, PLARGE_INTEGER,
 		ULONG, ULONG, HANDLE);
-typedef NTSTATUS (NTAPI *f_NtMapViewOfSection)(HANDLE, HANDLE, PVOID *, ULONG, ULONG,
-		PLARGE_INTEGER, PULONG, SECTION_INHERIT, ULONG, ULONG);
+typedef NTSTATUS (NTAPI *f_NtMapViewOfSection)(HANDLE, HANDLE, PVOID *, ULONG_PTR, SIZE_T,
+		PLARGE_INTEGER, PSIZE_T, SECTION_INHERIT, ULONG, ULONG);
 typedef NTSTATUS (NTAPI *f_NtClose)(HANDLE);
 
 typedef struct _SHELLCODE_CTX {
@@ -272,10 +272,10 @@ NTSTATUS NTAPI m_NtMapViewOfSection(
 	HANDLE SectionHandle,
 	HANDLE ProcessHandle,
 	PVOID *BaseAddress,
-	ULONG ZeroBits,
-	ULONG CommitSize,
+	ULONG_PTR ZeroBits,
+	SIZE_T CommitSize,
 	PLARGE_INTEGER SectionOffset,
-	PULONG ViewSize,
+	PSIZE_T ViewSize,
 	SECTION_INHERIT InheritDisposition,
 	ULONG AllocationType,
 	ULONG Protect)
@@ -537,7 +537,7 @@ void map_file(SHELLCODE_CTX *ctx)
 	/* Lock the mapping in memory */
 	{
 		PVOID base = (PVOID)ctx->mapped_address;
-		ULONG sz = nt->OptionalHeader.SizeOfImage;
+		SIZE_T sz = nt->OptionalHeader.SizeOfImage;
 
 		met_api->win_api.ntdll.ZwLockVirtualMemory(
 				(HANDLE)-1,

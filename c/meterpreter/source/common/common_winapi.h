@@ -4,6 +4,7 @@
 #include <winsock2.h> // For SOCKET, WSADATA, sockaddr, WSAPROTOCOL_INFOA
 #include <ws2tcpip.h> // For ADDRINFOA / PADDRINFOA
 #include <windows.h>
+#include <winuser.h>  // For HRAWINPUT, PCRAWINPUTDEVICE
 #if !defined(__WINE_WINHTTP_H) && !defined(_WINHTTPX_)
 #include <wininet.h>
 #endif
@@ -79,13 +80,13 @@ typedef struct _WinApiNtdll {
     NTSTATUS (*ZwSetInformationWorkerFactory)(HANDLE WorkerFactoryHandle, INT WorkerFactoryInformationClass, PVOID WorkerFactoryInformation, ULONG WorkerFactoryInformationLength);
     NTSTATUS (*ZwSetIoCompletion)(HANDLE IoCompletionHandle, PVOID KeyContext, PVOID ApcContext, NTSTATUS IoStatus, ULONG_PTR IoStatusInformation);
     NTSTATUS (*RtlCreateUserThread)(HANDLE ProcessHandle, PVOID SecurityDescriptor, BOOL CreateSuspended, ULONG StackZeroBits, SIZE_T StackReserve, SIZE_T StackCommit, PVOID StartAddress, PVOID StartParameter, PHANDLE ThreadHandle, PVOID ClientId);
-    NTSTATUS (*ZwMapViewOfSection)(HANDLE SectionHandle, HANDLE ProcessHandle, PVOID* BaseAddress, ULONG ZeroBits, ULONG CommitSize, PLARGE_INTEGER SectionOffset, PULONG ViewSize, DWORD InheritDisposition, ULONG AllocationType, ULONG Win32Protect);
+    NTSTATUS (*ZwMapViewOfSection)(HANDLE SectionHandle, HANDLE ProcessHandle, PVOID* BaseAddress, ULONG_PTR ZeroBits, SIZE_T CommitSize, PLARGE_INTEGER SectionOffset, PSIZE_T ViewSize, DWORD InheritDisposition, ULONG AllocationType, ULONG Win32Protect);
     NTSTATUS (*ZwCreateSection)(PHANDLE SectionHandle, ULONG DesiredAccess, OBJECT_ATTRIBUTES* ObjectAttributes, PLARGE_INTEGER MaximumSize, ULONG SectionPageProtection, ULONG AllocationAttributes, HANDLE FileHandle);
     NTSTATUS (*ZwOpenSection)(PHANDLE SectionHandle, ACCESS_MASK DesiredAccess, OBJECT_ATTRIBUTES* ObjectAttributes);
     NTSTATUS (*ZwOpenFile)(PHANDLE FileHandle, ACCESS_MASK DesiredAccess, OBJECT_ATTRIBUTES* ObjectAttributes, PVOID IoStatusBlock, ULONG ShareAccess, ULONG OpenOptions);
     NTSTATUS (*ZwQueryAttributesFile)(OBJECT_ATTRIBUTES* ObjectAttributes, PVOID FileInformation);
     NTSTATUS (*ZwClose)(HANDLE Handle);
-    NTSTATUS (*ZwLockVirtualMemory)(HANDLE ProcessHandle, PVOID* BaseAddress, PULONG RegionSize, ULONG MapType);
+    NTSTATUS (*ZwLockVirtualMemory)(HANDLE ProcessHandle, PVOID* BaseAddress, PSIZE_T RegionSize, ULONG MapType);
     NTSTATUS (*ZwUnmapViewOfSection)(HANDLE ProcessHandle, PVOID BaseAddress);
 } WinApiNtdll;
 
