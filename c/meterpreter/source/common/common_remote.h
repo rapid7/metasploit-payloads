@@ -207,8 +207,6 @@ typedef struct _Remote
 	PivotTree* pivot_listeners;           ///! Collection of active Meterpreter pivot listeners.
 
 	PacketEncryptionContext* enc_ctx;     ///! Reference to the packet encryption context.
-
-	BOOL async_mode;                      ///! When TRUE, command_handle processes commands inline.
 } Remote;
 
 #endif

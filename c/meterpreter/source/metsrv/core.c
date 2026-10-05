@@ -1457,15 +1457,19 @@ DWORD packet_transmit_response(DWORD result, Remote* remote, Packet* response)
 	{
 		Tlv targetTime = { 0 };
 		Tlv asyncLease = { 0 };
-		if (remote != NULL && remote->async_mode && packet_get_tlv(response, TLV_TYPE_TARGET_UNIX_TS, &targetTime) != ERROR_SUCCESS)
+		HttpTransportContext* asyncContext = NULL;
+		if (remote != NULL && remote->transport != NULL && (remote->transport->type & METERPRETER_TRANSPORT_HTTP))
+		{
+			asyncContext = (HttpTransportContext*)remote->transport->ctx;
+		}
+
+		if (asyncContext != NULL && asyncContext->async_mode && packet_get_tlv(response, TLV_TYPE_TARGET_UNIX_TS, &targetTime) != ERROR_SUCCESS)
 		{
 			packet_add_target_time(response);
 		}
-		if (remote != NULL && remote->async_mode && packet_get_tlv(response, TLV_TYPE_ASYNC_LEASE_ENABLED, &asyncLease) != ERROR_SUCCESS)
+		if (asyncContext != NULL && asyncContext->async_mode && packet_get_tlv(response, TLV_TYPE_ASYNC_LEASE_ENABLED, &asyncLease) != ERROR_SUCCESS)
 		{
-			BOOL leaseActive = remote->transport != NULL
-				&& (remote->transport->type & METERPRETER_TRANSPORT_HTTP)
-				&& async_lease_is_active((HttpTransportContext*)remote->transport->ctx);
+			BOOL leaseActive = async_lease_is_active(asyncContext);
 			packet_add_tlv_bool(response, TLV_TYPE_ASYNC_LEASE_ENABLED, leaseActive);
 		}
 

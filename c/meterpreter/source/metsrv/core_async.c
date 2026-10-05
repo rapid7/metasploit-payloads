@@ -139,7 +139,6 @@ DWORD request_core_async_mode(Remote* remote, Packet* packet)
 
 		BOOL enabled = met_api->packet.get_tlv_value_bool(packet, TLV_TYPE_ASYNC_ENABLED);
 		ctx->async_mode = enabled;
-		remote->async_mode = enabled;
 
 		if (enabled)
 		{
