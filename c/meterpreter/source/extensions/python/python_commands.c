@@ -157,7 +157,7 @@ static PyObject* handle_write(LIST* target, PyObject* self, PyObject* args)
 		dprintf("[PYTHON] something written to %p: %s", target, written);
 		if (target != NULL)
 		{
-			met_api->list.add(target, strdup(written));
+			met_api->list.add(target, _strdup(written));
 		}
 	}
 	else
