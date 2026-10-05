@@ -2,13 +2,14 @@
  * @file python_commands.c
  * @brief Definitions for the python command bindings.
  */
+#include "common.h"
+#include "common_metapi.h"
+#include "python_main.h"
 #include "Python.h"
 #include "marshal.h"
-#include "python_main.h"
 #include "python_commands.h"
 #include "python_meterpreter_binding.h"
 #include "Resource Files/python_core.rh"
-#include "common_metapi.h"
 
 ///! @brief Struct that contains pointer to init function and name.
 typedef struct _InitFunc
