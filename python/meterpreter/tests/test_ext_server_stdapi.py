@@ -257,6 +257,41 @@ class ExtServerStdApiFileSystemTest(ExtServerStdApiTest):
         response = bytes()
         self.assertMethodErrorSuccess("stdapi_fs_stat", request, response)
 
+    # Python 3.12+ on Windows reports a 64-bit st_dev, which does not fit the
+    # 32-bit field in the stat wire format. get_stat_buffer must mask it rather
+    # than raise struct.error. https://github.com/rapid7/metasploit-payloads/issues/751
+    @mock.patch("os.stat")
+    @mock.patch("sys.platform")
+    def test_stdapi_fs_stat_with_64bit_st_dev_on_windows(
+        self, mock_sys_platform, mock_os_stat
+    ):
+        os_stat_result = mock.MagicMock()
+        os_stat_result.configure_mock(
+            **{
+                "st_mode": 33206,
+                "st_ino": 281474976726344,
+                "st_dev": 9007199254742210,
+                "st_nlink": 1,
+                "st_uid": 0,
+                "st_gid": 0,
+                "st_size": 9884,
+                "st_rdev": 0,
+                "st_atime": 1686079301.2200336,
+                "st_mtime": 1686079301.2200336,
+                "st_ctime": 1686079301.2200336,
+            }
+        )
+
+        mock_os_stat.return_value = os_stat_result
+        mock_sys_platform.return_value = "win32"
+
+        request = bytes()
+        request += self.meterpreter_context["tlv_pack"](
+            self.ext_server_stdapi["TLV_TYPE_FILE_PATH"], "/mock/path"
+        )
+        response = bytes()
+        self.assertMethodErrorSuccess("stdapi_fs_stat", request, response)
+
 
 class ExtServerStdApiSysProcess(ExtServerStdApiTest):
     def test_stdapi_sys_process_get_processes(self):
