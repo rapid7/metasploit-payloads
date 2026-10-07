@@ -1677,7 +1677,10 @@ def stdapi_sys_process_get_processes_via_windll(request, response):
 
 @register_function
 def stdapi_sys_process_get_processes(request, response):
-    if os.path.isdir('/proc'):
+    # The /proc dir will exist on FreeBSD , but its status files do not have Linux's Uid field.
+    if sys.platform.startswith('freebsd'):
+        return stdapi_sys_process_get_processes_via_ps(request, response)
+    elif os.path.isdir('/proc'):
         return stdapi_sys_process_get_processes_via_proc(request, response)
     elif has_windll:
         return stdapi_sys_process_get_processes_via_windll(request, response)
