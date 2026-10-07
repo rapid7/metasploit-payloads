@@ -1945,7 +1945,7 @@ function read($resource, $len=null) {
     if (array_key_exists(get_resource_map_id($resource), $udp_host_map)) {
       my_print("Reading UDP socket");
       list($host,$port) = $udp_host_map[get_resource_map_id($resource)];
-      socket_recvfrom($resource, $buff, $len, PHP_BINARY_READ, $host, $port);
+      socket_recvfrom($resource, $buff, $len, 0, $host, $port);
     } else {
       my_print("Reading TCP socket");
       $result = socket_read($resource, $len, PHP_BINARY_READ);
