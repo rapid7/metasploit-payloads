@@ -27,7 +27,7 @@ file ~/.msf4/payloads/meterpreter/ext_server_stdapi.py
        /home/your_user/.msf4/payloads/meterpreter/ext_server_stdapi.py: symbolic link to /home/your_user/git/metasploit-payloads/python/meterpreter/ext_server_stdapi.py
 ```
 
-If things went right you should see a warning message when selecting one of the corresponding Meterpreter payloads and recieving a session:
+If things went right you should see a warning message when selecting one of the corresponding Meterpreter payloads and receiving a session:
 
 ```
 msf6 > use payload/python/meterpreter/reverse_tcp
