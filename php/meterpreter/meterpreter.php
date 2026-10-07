@@ -1585,6 +1585,7 @@ function activate_transport_with_retry(&$transport) {
 
 function dispatch_tcp(&$transport) {
   $msgsock = $transport['_socket'];
+  $packet_buffer = '';
   add_reader($msgsock);
   $r = $GLOBALS['readers'];
   $w = null; $e = null; $t = 1;
@@ -1600,27 +1601,33 @@ function dispatch_tcp(&$transport) {
     for ($i = 0; $i < $cnt; $i++) {
       $ready = $r[$i];
       if ($ready == $msgsock) {
-        $packet = read($msgsock, 32);
-        if (false == $packet) {
+        $chunk = read($msgsock);
+        if ($chunk === false) {
           remove_reader($msgsock); close($msgsock);
           return DISPATCH_RETIRE;
         }
-        $xor = substr($packet, 0, 4);
-        $header = xor_bytes($xor, substr($packet, 4, 28));
-        $len_array = unpack("Nlen", substr($header, 20, 4));
-        $len = $len_array['len'] + 32 - 8;
-        while (strlen($packet) < $len) {
-          $chunk = read($msgsock, $len - strlen($packet));
-          if ($chunk === false || $chunk === '') {
-            # The C2 socket closed mid-packet; the partial packet is
-            # unprocessable so retire rather than attempt a corrupt response.
+        $packet_buffer .= $chunk;
+        # Preserve incomplete headers and bodies until the socket is readable again.
+        while (strlen($packet_buffer) >= 32) {
+          $xor = substr($packet_buffer, 0, 4);
+          $header = xor_bytes($xor, substr($packet_buffer, 4, 28));
+          $len_array = unpack("Nlen", substr($header, 20, 4));
+          $len = $len_array['len'] + 32 - 8;
+          if ($len < 32) {
             remove_reader($msgsock); close($msgsock);
             return DISPATCH_RETIRE;
           }
-          $packet .= $chunk;
+          if (strlen($packet_buffer) < $len) {
+            break;
+          }
+          $packet = substr($packet_buffer, 0, $len);
+          $packet_buffer = substr($packet_buffer, $len);
+          $response = create_response(decrypt_packet(xor_bytes($xor, $packet)));
+          write_tlv_to_socket($msgsock, $response);
+          if (empty($GLOBALS['running']) || $GLOBALS['next_transport_idx'] !== null) {
+            break;
+          }
         }
-        $response = create_response(decrypt_packet(xor_bytes($xor, $packet)));
-        write_tlv_to_socket($msgsock, $response);
       } else {
         #my_print("not Msgsock: $ready");
         $chan_id = get_channel_id_from_resource($ready);
