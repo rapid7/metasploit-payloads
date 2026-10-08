@@ -11,6 +11,7 @@ void command_register_all(Command commands[]);
 void command_deregister_all(Command commands[]);
 DWORD command_register(Command *command);
 DWORD command_deregister(Command *command);
+Command* command_locate_extension(UINT commandId);
 VOID command_join_threads( VOID );
 BOOL command_handle( Remote *remote, Packet *packet );
 

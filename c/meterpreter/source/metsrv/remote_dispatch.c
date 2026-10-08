@@ -3,6 +3,7 @@
 #include "common_exports.h"
 #include "server_pivot.h"
 #include "extension_loader.h"
+#include "micro_extension.h"
 
 #define GetProcAddressByOrdinal(mod, ord) GetProcAddress(mod, MAKEINTRESOURCEA(ord))
 #define GetProcAddressByOrdinalR(mod, ord) GetProcAddressR(mod, MAKEINTRESOURCEA(ord))
@@ -29,6 +30,10 @@ Command customCommands[] =
 {
 	COMMAND_REQ(COMMAND_ID_CORE_LOADLIB, request_core_loadlib),
 	COMMAND_REQ(COMMAND_ID_CORE_ENUMEXTCMD, request_core_enumextcmd),
+	COMMAND_INLINE_REQ(COMMAND_ID_CORE_MICRO_HAS_COMMAND, micro_request_has_command),
+	COMMAND_INLINE_REQ(COMMAND_ID_CORE_MICRO_LOAD, micro_request_load),
+	COMMAND_INLINE_REQ(COMMAND_ID_CORE_MICRO_ENUM, micro_request_enum),
+	COMMAND_INLINE_REQ(COMMAND_ID_CORE_MICRO_UNLOAD, micro_request_unload),
 	COMMAND_REQ(COMMAND_ID_CORE_MACHINE_ID, request_core_machine_id),
 	COMMAND_REQ(COMMAND_ID_CORE_GET_SESSION_GUID, request_core_get_session_guid),
 	COMMAND_REQ(COMMAND_ID_CORE_SET_SESSION_GUID, request_core_set_session_guid),
@@ -38,14 +43,6 @@ Command customCommands[] =
 	COMMAND_INLINE_REP(COMMAND_ID_CORE_PATCH_UUID, request_core_patch_uuid),
 	COMMAND_TERMINATOR
 };
-
-typedef struct _EnumExtensions
-{
-	Packet* pResponse;
-	UINT command_id_start;
-	UINT command_id_end;
-} EnumExtensions, * PEnumExtensions;
-
 
 /*
  * Writes a buffer to a file
@@ -85,27 +82,6 @@ DWORD buffer_to_file(LPCSTR filePath, PUCHAR buffer, ULONG length)
 	return res;
 }
 
-BOOL ext_cmd_callback(LPVOID pState, LPVOID pData)
-{
-	PEnumExtensions pEnum = (PEnumExtensions)pState;
-	Command* command = NULL;
-
-	if (pEnum != NULL && pEnum->pResponse != NULL && pData != NULL)
-	{
-		PEXTENSION pExt = (PEXTENSION)pData;
-		for (command = pExt->start; command != pExt->end; command = command->next)
-		{
-			dprintf("[LISTEXTCMD] Processing extension: %p", pExt);
-			if (pEnum->command_id_start < command->command_id && command->command_id < pEnum->command_id_end)
-			{
-				dprintf("[LISTEXTCMD] Adding command ID %u", command->command_id);
-				packet_add_tlv_uint(pEnum->pResponse, TLV_TYPE_UINT, command->command_id);
-			}
-		}
-	}
-	return FALSE;
-}
-
 BOOL request_core_patch_uuid(Remote* remote, Packet* packet, DWORD* result)
 {
 	// this is a special case because we don't actually send
@@ -126,19 +102,22 @@ BOOL request_core_patch_uuid(Remote* remote, Packet* packet, DWORD* result)
 
 DWORD request_core_enumextcmd(Remote* remote, Packet* packet)
 {
-	BOOL bResult = FALSE;
 	Packet* pResponse = packet_create_response(packet);
 
 	if (pResponse != NULL)
 	{
-		EnumExtensions enumExt;
-		enumExt.pResponse = pResponse;
-		enumExt.command_id_start = packet_get_tlv_value_uint(packet, TLV_TYPE_UINT);
-		enumExt.command_id_end = packet_get_tlv_value_uint(packet, TLV_TYPE_LENGTH) + enumExt.command_id_start;
+		UINT commandIdStart = packet_get_tlv_value_uint(packet, TLV_TYPE_UINT);
+		UINT commandIdEnd = packet_get_tlv_value_uint(packet, TLV_TYPE_LENGTH) + commandIdStart;
+		Command* command = NULL;
 
-		dprintf("[LISTEXTCMD] Listing extension commands between %u and %u", enumExt.command_id_start, enumExt.command_id_end);
-		// Start by enumerating the names of the extensions
-		bResult = list_enumerate(gExtensionList, ext_cmd_callback, &enumExt);
+		dprintf("[LISTEXTCMD] Listing conventional commands between %u and %u", commandIdStart, commandIdEnd);
+		for (command = extensionCommands; command; command = command->next)
+		{
+			if (commandIdStart < command->command_id && command->command_id < commandIdEnd && !micro_extension_owns_command(command->command_id))
+			{
+				packet_add_tlv_uint(pResponse, TLV_TYPE_UINT, command->command_id);
+			}
+		}
 
 		packet_transmit_response(ERROR_SUCCESS, remote, pResponse);
 	}
@@ -151,6 +130,7 @@ DWORD request_core_enumextcmd(Remote* remote, Packet* packet)
  */
 static DWORD deinit_server_extension(Remote* remote)
 {
+	micro_extension_destroy(remote);
 	command_deregister_all(customCommands);
 	deregister_base_dispatch_routines();
 
@@ -163,6 +143,7 @@ static DWORD deinit_server_extension(Remote* remote)
 VOID register_dispatch_routines()
 {
 	gExtensionList = list_create();
+	micro_extension_initialize();
 
 	Command* pFirstCommand = register_base_dispatch_routines();
 	command_register_all(customCommands);
