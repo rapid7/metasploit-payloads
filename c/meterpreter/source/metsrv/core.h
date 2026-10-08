@@ -62,6 +62,7 @@ DWORD packet_add_exception(Packet *packet, DWORD code,PCHAR string, ...);
  * Packet transmission
  */
 DWORD packet_transmit_response(DWORD result, Remote* remote, Packet* response);
+VOID packet_add_target_time(Packet* response);
 DWORD packet_transmit(Remote* remote, Packet* packet, PacketRequestCompletion* completion);
 DWORD packet_transmit_empty_response(Remote *remote, Packet *packet, DWORD res);
 DWORD packet_add_request_id(Packet* packet);

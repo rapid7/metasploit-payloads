@@ -583,6 +583,7 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <ClCompile Include="..\..\source\metsrv\core.c" />
     <ClCompile Include="..\..\source\metsrv\extension_loader.c" />
     <ClCompile Include="..\..\source\metsrv\load_library_r.c" />
+    <ClCompile Include="..\..\source\metsrv\core_async.c" />
     <ClCompile Include="..\..\source\metsrv\libloader.c" />
     <ClCompile Include="..\..\source\metsrv\list.c" />
     <ClCompile Include="..\..\source\metsrv\metsrv.c" />
