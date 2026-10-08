@@ -15,7 +15,7 @@ DWORD resolve_host(LPCSTR hostname, u_short ai_family, struct in_addr *result, s
 	int iResult;
 
 	WSADATA wsaData;
-	iResult = WSAStartup(MAKEWORD(2,2), &wsaData);
+	iResult = met_api->win_api.ws2_32.WSAStartup(MAKEWORD(2,2), &wsaData);
 	if (iResult != NO_ERROR)
 	{
 		dprintf("Could not initialise Winsock: %x.", iResult);
@@ -29,12 +29,11 @@ DWORD resolve_host(LPCSTR hostname, u_short ai_family, struct in_addr *result, s
 
 	dprintf("Attempting to resolve '%s'", hostname);
 
-	iResult = getaddrinfo(hostname, NULL, &hints, &list);
+	iResult = met_api->win_api.ws2_32.getaddrinfo(hostname, NULL, &hints, &list);
 
 	if (iResult != NO_ERROR)
 	{
 		dprintf("Unable to resolve host Error: %x.", iResult);
-		dprintf("Error msg: %s", gai_strerror(iResult));
 	}
 	else
 	{
@@ -52,8 +51,8 @@ DWORD resolve_host(LPCSTR hostname, u_short ai_family, struct in_addr *result, s
 		}
 	}
 
-	freeaddrinfo(list);
-	WSACleanup();
+	met_api->win_api.ws2_32.freeaddrinfo(list);
+	met_api->win_api.ws2_32.WSACleanup();
 
 	return iResult;
 }

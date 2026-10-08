@@ -11,7 +11,7 @@ DWORD get_arp_table(Remote *remote, Packet *response)
 	DWORD i;
 
 	do {
-		dwRetVal = GetIpNetTable(NULL, &dwSize, 0);
+		dwRetVal = met_api->win_api.iphlpapi.GetIpNetTable(NULL, &dwSize, 0);
 
 		/* Get the size required by GetIpNetTable() */
 		if (dwRetVal == ERROR_INSUFFICIENT_BUFFER) {
@@ -24,11 +24,11 @@ DWORD get_arp_table(Remote *remote, Packet *response)
 		}
 
 		if (pIpNetTable == NULL) {
-			result = GetLastError();
+			result = met_api->win_api.kernel32.GetLastError();
 			break;
 		}
 
-		if ((dwRetVal = GetIpNetTable(pIpNetTable, &dwSize, 0)) == NO_ERROR) {
+		if ((dwRetVal = met_api->win_api.iphlpapi.GetIpNetTable(pIpNetTable, &dwSize, 0)) == NO_ERROR) {
 			dprintf("[ARP] found %d arp entries", pIpNetTable->dwNumEntries);
 			for (i = 0 ; i < pIpNetTable->dwNumEntries ; i++) {
 				// send only dynamic or static entry
@@ -46,7 +46,7 @@ DWORD get_arp_table(Remote *remote, Packet *response)
 
 					arp[2].header.type   = TLV_TYPE_MAC_NAME;
 					MIB_IFROW iface = { .dwIndex = pIpNetTable->table[i].dwIndex };
-					result = GetIfEntry(&iface);
+					result = met_api->win_api.iphlpapi.GetIfEntry(&iface);
 					if ((result == NO_ERROR) && (iface.bDescr)) {
 						arp[2].header.length = (DWORD)strlen(iface.bDescr) + 1;
 						arp[2].buffer = (PUCHAR)iface.bDescr;
@@ -65,7 +65,7 @@ DWORD get_arp_table(Remote *remote, Packet *response)
 			free(pIpNetTable);
 		}
 		else { // GetIpNetTable failed
-			result = GetLastError();
+			result = met_api->win_api.kernel32.GetLastError();
 			break;
 		}
 	} while (0);

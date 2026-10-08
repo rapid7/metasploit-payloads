@@ -1,7 +1,6 @@
 #include "precomp.h"
 #include "common_metapi.h"
-
-extern HMODULE hookLibrary;
+#include "ui.h"
 
 /*
  * Enables or disables mouse input
@@ -14,21 +13,7 @@ DWORD request_ui_enable_mouse(Remote *remote, Packet *request)
 
 	enable = met_api->packet.get_tlv_value_bool(request, TLV_TYPE_BOOL);
 
-	// If there's no hook library loaded yet
-	if (!hookLibrary)
-		extract_hook_library();
-
-	// If the hook library is loaded successfully...
-	if (hookLibrary)
-	{
-		DWORD (*enableMouseInput)(BOOL enable) = (DWORD (*)(BOOL))GetProcAddress(
-				hookLibrary, "enable_mouse_input");
-
-		if (enableMouseInput)
-			result = enableMouseInput(enable);
-	}
-	else
-		result = GetLastError();
+	result = input_gate_set_mouse(enable);
 
 	// Transmit the response
 	met_api->packet.transmit_response(result, remote, response);
@@ -53,6 +38,7 @@ DWORD request_ui_send_mouse(Remote *remote, Packet *request)
 	INPUT input = {0};
 	input.type = INPUT_MOUSE;
 	input.mi.mouseData = 0;
+	input.mi.dwExtraInfo = input_gate_marker();
 	if (action == 0)
 	{
 		input.mi.dwFlags = MOUSEEVENTF_MOVE;
@@ -87,38 +73,38 @@ DWORD request_ui_send_mouse(Remote *remote, Packet *request)
 	}
 	if (x != -1 || y != -1) 
 	{
-		double width = GetSystemMetrics(SM_CXSCREEN)-1;
-		double height = GetSystemMetrics(SM_CYSCREEN)-1;
+		double width = met_api->win_api.user32.GetSystemMetrics(SM_CXSCREEN)-1;
+		double height = met_api->win_api.user32.GetSystemMetrics(SM_CYSCREEN)-1;
 		double dx = x*(65535.0f / width);
 		double dy = y*(65535.0f / height);
 		input.mi.dx = (LONG)dx;
 		input.mi.dy = (LONG)dy;
 		input.mi.dwFlags |= MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_MOVE;
 	}
-	SendInput(1, &input, sizeof(INPUT));
+	met_api->win_api.user32.SendInput(1, &input, sizeof(INPUT));
 	if (action == 1)
 	{
 		input.mi.dwFlags &= ~(MOUSEEVENTF_LEFTDOWN);
 		input.mi.dwFlags |= MOUSEEVENTF_LEFTUP;
-		SendInput(1, &input, sizeof(INPUT));
+		met_api->win_api.user32.SendInput(1, &input, sizeof(INPUT));
 	}
 	else if (action == 4)
 	{
 		input.mi.dwFlags &= ~(MOUSEEVENTF_RIGHTDOWN);
 		input.mi.dwFlags |= MOUSEEVENTF_RIGHTUP;
-		SendInput(1, &input, sizeof(INPUT));
+		met_api->win_api.user32.SendInput(1, &input, sizeof(INPUT));
 	}
 	else if (action == 7)
 	{
 		input.mi.dwFlags &= ~(MOUSEEVENTF_LEFTDOWN);
 		input.mi.dwFlags |= MOUSEEVENTF_LEFTUP;
-		SendInput(1, &input, sizeof(INPUT));
+		met_api->win_api.user32.SendInput(1, &input, sizeof(INPUT));
 		input.mi.dwFlags &= ~(MOUSEEVENTF_LEFTUP);
 		input.mi.dwFlags |= MOUSEEVENTF_LEFTDOWN;
-		SendInput(1, &input, sizeof(INPUT));
+		met_api->win_api.user32.SendInput(1, &input, sizeof(INPUT));
 		input.mi.dwFlags &= ~(MOUSEEVENTF_LEFTDOWN);
 		input.mi.dwFlags |= MOUSEEVENTF_LEFTUP;
-		SendInput(1, &input, sizeof(INPUT));
+		met_api->win_api.user32.SendInput(1, &input, sizeof(INPUT));
 	}
 
 	// Transmit the response

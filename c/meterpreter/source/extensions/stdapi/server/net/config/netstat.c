@@ -58,11 +58,6 @@ DWORD check_and_allocate(struct connection_table **table_connection)
 	return ERROR_SUCCESS;
 }
 
-typedef HANDLE (WINAPI *ptr_CreateToolhelp32Snapshot)(DWORD dwFlags,DWORD th32ProcessID);
-typedef BOOL (WINAPI *ptr_Process32First)(HANDLE hSnapshot, LPPROCESSENTRY32 lppe);
-typedef BOOL (WINAPI *ptr_Process32Next)(HANDLE hSnapshot, LPPROCESSENTRY32 lppe);
-
-
 /*
  * write pid/process_name in buffer
  */
@@ -70,32 +65,21 @@ typedef BOOL (WINAPI *ptr_Process32Next)(HANDLE hSnapshot, LPPROCESSENTRY32 lppe
 DWORD set_process_name(DWORD pid, char * buffer, DWORD buffer_size)
 {
 	HANDLE hSnapshot;
-	ptr_CreateToolhelp32Snapshot ct32s = NULL;
-	ptr_Process32First p32f = NULL;
-	ptr_Process32Next p32n = NULL;
 
-
-	ct32s = (ptr_CreateToolhelp32Snapshot)GetProcAddress(GetModuleHandle("kernel32"), "CreateToolhelp32Snapshot");
-	p32f = (ptr_Process32First)GetProcAddress(GetModuleHandle("kernel32"), "Process32First");
-	p32n = (ptr_Process32Next)GetProcAddress(GetModuleHandle("kernel32"), "Process32Next");
-
-	if ((!ct32s) || (!p32f) || (!p32n))
-		return -1;
-
-	hSnapshot = ct32s(TH32CS_SNAPPROCESS,0);
-	if(hSnapshot) {
-		PROCESSENTRY32 pe32;
-		pe32.dwSize = sizeof(PROCESSENTRY32);
-		if(p32f(hSnapshot,&pe32)) {
+	hSnapshot = met_api->win_api.kernel32.CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+	if (hSnapshot != INVALID_HANDLE_VALUE) {
+		PROCESSENTRY32W pe32;
+		pe32.dwSize = sizeof(PROCESSENTRY32W);
+		if (met_api->win_api.kernel32.Process32FirstW(hSnapshot, &pe32)) {
 			do {
 				if (pe32.th32ProcessID == pid) {
-					_snprintf_s(buffer, buffer_size-1, _TRUNCATE, "%d/%s",pid, pe32.szExeFile);
+					_snprintf_s(buffer, buffer_size-1, _TRUNCATE, "%d/%S", pid, pe32.szExeFile);
 					break;
 				}
-            } while(p32n(hSnapshot,&pe32));
-         }
-         CloseHandle(hSnapshot);
-    }
+			} while (met_api->win_api.kernel32.Process32NextW(hSnapshot, &pe32));
+		}
+		met_api->win_api.kernel32.CloseHandle(hSnapshot);
+	}
 	return ERROR_SUCCESS;
 }
 
@@ -144,11 +128,6 @@ typedef struct {
 
 #endif
 
-typedef DWORD (WINAPI * ptr_GetExtendedTcpTable)(PVOID, PDWORD pdwSize, BOOL bOrder, ULONG ulAf,TCP_TABLE_CLASS TableClass,
-ULONG Reserved);
-typedef DWORD (WINAPI * ptr_GetExtendedUdpTable)(PVOID, PDWORD pdwSize, BOOL bOrder, ULONG ulAf,TCP_TABLE_CLASS TableClass,
-ULONG Reserved);
-
 /*
  * retrieve tcp table for win 2000 and NT4 ?
  */
@@ -162,7 +141,7 @@ DWORD get_tcp_table_win2000_down(struct connection_table **table_connection)
 	DWORD i, state;
 
 	do {
-		dwRetVal = GetTcpTable(pTcpTable, &dwSize, TRUE);
+		dwRetVal = met_api->win_api.iphlpapi.GetTcpTable(pTcpTable, &dwSize, TRUE);
 		dprintf("[NETSTAT TCP] need %d bytes",dwSize);
 		/* Get the size required by GetTcpTable() */
 		if (dwRetVal == ERROR_INSUFFICIENT_BUFFER) {
@@ -173,7 +152,7 @@ DWORD get_tcp_table_win2000_down(struct connection_table **table_connection)
 				break;
 		}
 
-		if ((dwRetVal = GetTcpTable(pTcpTable, &dwSize, TRUE)) == NO_ERROR) {
+		if ((dwRetVal = met_api->win_api.iphlpapi.GetTcpTable(pTcpTable, &dwSize, TRUE)) == NO_ERROR) {
 			dprintf("[NETSTAT] found %d tcp connections", pTcpTable->dwNumEntries);
 			for (i = 0 ; i < pTcpTable->dwNumEntries ; i++) {
 				// check available memory and allocate if necessary
@@ -185,12 +164,12 @@ DWORD get_tcp_table_win2000_down(struct connection_table **table_connection)
 				current_connection->type             = AF_INET;
 				current_connection->local_addr.addr  = pTcpTable->table[i].dwLocalAddr;
 				current_connection->remote_addr.addr = pTcpTable->table[i].dwRemoteAddr;
-				current_connection->local_port       = ntohs((u_short)(pTcpTable->table[i].dwLocalPort & 0x0000ffff));
+				current_connection->local_port       = met_api->win_api.ws2_32.ntohs((u_short)(pTcpTable->table[i].dwLocalPort & 0x0000ffff));
 				// if socket is in LISTEN, remote_port is garbage, force value to 0
 				if (pTcpTable->table[i].dwState == MIB_TCP_STATE_LISTEN)
 					current_connection->remote_port  = 0;
 				else
-					current_connection->remote_port  = ntohs((u_short)(pTcpTable->table[i].dwRemotePort & 0x0000ffff));
+					current_connection->remote_port  = met_api->win_api.ws2_32.ntohs((u_short)(pTcpTable->table[i].dwRemotePort & 0x0000ffff));
 
 				state = pTcpTable->table[i].dwState;
 				if ((state <= 0) || (state > 12))
@@ -206,7 +185,7 @@ DWORD get_tcp_table_win2000_down(struct connection_table **table_connection)
 			free(pTcpTable);
 		}
 		else { // GetTcpTable failed
-			result = GetLastError();
+			result = met_api->win_api.kernel32.GetLastError();
 			break;
 		}
 	} while (0) ;
@@ -225,23 +204,20 @@ DWORD get_tcp_table(struct connection_table **table_connection)
 	MIB_TCP6TABLE_OWNER_MODULE * tablev6 = NULL;
 	MIB_TCPROW_OWNER_MODULE  * currentv4 = NULL;
 	MIB_TCP6ROW_OWNER_MODULE * currentv6 = NULL;
-	DWORD i, state, dwSize;
+	DWORD i, state, dwSize, tableResult;
 
-
-	ptr_GetExtendedTcpTable gett            = NULL;
-
-	gett    = (ptr_GetExtendedTcpTable)GetProcAddress(GetModuleHandle("iphlpapi"), "GetExtendedTcpTable");
-
-	// systems that don't support GetExtendedTcpTable
-	if (gett == NULL) {
-		return get_tcp_table_win2000_down(table_connection);
-	}
 	do {
 		// IPv4 part
 		dwSize = 0;
-		if (gett(NULL,&dwSize, TRUE, AF_INET, TCP_TABLE_OWNER_MODULE_ALL, 0) == ERROR_INSUFFICIENT_BUFFER) {
+		tableResult = met_api->win_api.iphlpapi.GetExtendedTcpTable(NULL, &dwSize, TRUE, AF_INET, TCP_TABLE_OWNER_MODULE_ALL, 0);
+		// Systems that don't support GetExtendedTcpTable use the legacy table.
+		if (tableResult == ERROR_PROC_NOT_FOUND) {
+			return get_tcp_table_win2000_down(table_connection);
+		}
+		if (tableResult == ERROR_INSUFFICIENT_BUFFER) {
 			tablev4 = (MIB_TCPTABLE_OWNER_MODULE *)malloc(dwSize);
-			if (gett(tablev4, &dwSize, TRUE, AF_INET, TCP_TABLE_OWNER_MODULE_ALL, 0) == NO_ERROR) {
+			tableResult = met_api->win_api.iphlpapi.GetExtendedTcpTable(tablev4, &dwSize, TRUE, AF_INET, TCP_TABLE_OWNER_MODULE_ALL, 0);
+			if (tableResult == NO_ERROR) {
 				for(i=0; i<tablev4->dwNumEntries; i++) {
 					// check available memory and allocate if necessary
 					if (check_and_allocate(table_connection) == ERROR_NOT_ENOUGH_MEMORY) {
@@ -253,12 +229,12 @@ DWORD get_tcp_table(struct connection_table **table_connection)
 					current_connection->type             = AF_INET;
 					current_connection->local_addr.addr  = currentv4->dwLocalAddr;
 					current_connection->remote_addr.addr = currentv4->dwRemoteAddr;
-					current_connection->local_port       = ntohs((u_short)(currentv4->dwLocalPort & 0x0000ffff));
+					current_connection->local_port       = met_api->win_api.ws2_32.ntohs((u_short)(currentv4->dwLocalPort & 0x0000ffff));
 					// if socket is in LISTEN, remote_port is garbage, force value to 0
 					if (currentv4->dwState == MIB_TCP_STATE_LISTEN)
 						current_connection->remote_port  = 0;
 					else
-						current_connection->remote_port  = ntohs((u_short)(currentv4->dwRemotePort & 0x0000ffff));
+						current_connection->remote_port  = met_api->win_api.ws2_32.ntohs((u_short)(currentv4->dwRemotePort & 0x0000ffff));
 
 					state = currentv4->dwState;
 					if ((state <= 0) || (state > 12))
@@ -274,8 +250,8 @@ DWORD get_tcp_table(struct connection_table **table_connection)
 					(*table_connection)->entries++;
 				}
 			}
-			else { // gett failed
-				result = GetLastError();
+			else { // GetExtendedTcpTable failed
+				result = tableResult;
 				if (tablev4)
 					free(tablev4);
 				break;
@@ -285,9 +261,11 @@ DWORD get_tcp_table(struct connection_table **table_connection)
 		}
 		// IPv6 part
 		dwSize = 0;
-		if (gett(NULL,&dwSize, TRUE, AF_INET6, TCP_TABLE_OWNER_MODULE_ALL, 0) == ERROR_INSUFFICIENT_BUFFER) {
+		tableResult = met_api->win_api.iphlpapi.GetExtendedTcpTable(NULL, &dwSize, TRUE, AF_INET6, TCP_TABLE_OWNER_MODULE_ALL, 0);
+		if (tableResult == ERROR_INSUFFICIENT_BUFFER) {
 			tablev6 = (MIB_TCP6TABLE_OWNER_MODULE *)malloc(dwSize);
-			if (gett(tablev6, &dwSize, TRUE, AF_INET6, TCP_TABLE_OWNER_MODULE_ALL, 0) == NO_ERROR) {
+			tableResult = met_api->win_api.iphlpapi.GetExtendedTcpTable(tablev6, &dwSize, TRUE, AF_INET6, TCP_TABLE_OWNER_MODULE_ALL, 0);
+			if (tableResult == NO_ERROR) {
 				for(i=0; i<tablev6->dwNumEntries; i++) {
 					// check available memory and allocate if necessary
 					if (check_and_allocate(table_connection) == ERROR_NOT_ENOUGH_MEMORY) {
@@ -299,12 +277,12 @@ DWORD get_tcp_table(struct connection_table **table_connection)
 					current_connection->type             = AF_INET6;
 					memcpy(&current_connection->local_addr.addr6, currentv6->ucLocalAddr, sizeof(current_connection->local_addr.addr6));
 					memcpy(&current_connection->remote_addr.addr6, currentv6->ucRemoteAddr, sizeof(current_connection->remote_addr.addr6));
-					current_connection->local_port       = ntohs((u_short)(currentv6->dwLocalPort & 0x0000ffff));
+					current_connection->local_port       = met_api->win_api.ws2_32.ntohs((u_short)(currentv6->dwLocalPort & 0x0000ffff));
 					// if socket is in LISTEN, remote_port is garbage, force value to 0
 					if (currentv6->dwState == MIB_TCP_STATE_LISTEN)
 						current_connection->remote_port  = 0;
 					else
-						current_connection->remote_port  = ntohs((u_short)(currentv6->dwRemotePort & 0x0000ffff));
+						current_connection->remote_port  = met_api->win_api.ws2_32.ntohs((u_short)(currentv6->dwRemotePort & 0x0000ffff));
 
 					state = currentv6->dwState;
 					if ((state <= 0) || (state > 12))
@@ -320,8 +298,8 @@ DWORD get_tcp_table(struct connection_table **table_connection)
 					(*table_connection)->entries++;
 				}
 			}
-			else { // gett failed
-				result = GetLastError();
+			else { // GetExtendedTcpTable failed
+				result = tableResult;
 				if (tablev6)
 					free(tablev6);
 				break;
@@ -347,7 +325,7 @@ DWORD get_udp_table_win2000_down(struct connection_table **table_connection)
 	DWORD i;
 
 	do {
-		dwRetVal = GetUdpTable(pUdpTable, &dwSize, TRUE);
+		dwRetVal = met_api->win_api.iphlpapi.GetUdpTable(pUdpTable, &dwSize, TRUE);
 		dprintf("[NETSTAT UDP] need %d bytes",dwSize);
 		/* Get the size required by GetUdpTable() */
 		if (dwRetVal == ERROR_INSUFFICIENT_BUFFER) {
@@ -358,7 +336,7 @@ DWORD get_udp_table_win2000_down(struct connection_table **table_connection)
 				break;
 		}
 
-		if ((dwRetVal = GetUdpTable(pUdpTable, &dwSize, TRUE)) == NO_ERROR) {
+		if ((dwRetVal = met_api->win_api.iphlpapi.GetUdpTable(pUdpTable, &dwSize, TRUE)) == NO_ERROR) {
 			dprintf("[NETSTAT] found %d udp connections", pUdpTable->dwNumEntries);
 			for (i = 0 ; i < pUdpTable->dwNumEntries ; i++) {
 				// check available memory and allocate if necessary
@@ -371,7 +349,7 @@ DWORD get_udp_table_win2000_down(struct connection_table **table_connection)
 				current_connection->type             = AF_INET;
 				current_connection->local_addr.addr  = pUdpTable->table[i].dwLocalAddr;
 				current_connection->remote_addr.addr = 0;
-				current_connection->local_port       = ntohs((u_short)(pUdpTable->table[i].dwLocalPort & 0x0000ffff));
+				current_connection->local_port       = met_api->win_api.ws2_32.ntohs((u_short)(pUdpTable->table[i].dwLocalPort & 0x0000ffff));
 				current_connection->remote_port      = 0;
 
 				// force state to ""
@@ -386,7 +364,7 @@ DWORD get_udp_table_win2000_down(struct connection_table **table_connection)
 			free(pUdpTable);
 		}
 		else { // GetUdpTable failed
-			result = GetLastError();
+			result = met_api->win_api.kernel32.GetLastError();
 			break;
 		}
 	} while (0) ;
@@ -406,22 +384,20 @@ DWORD get_udp_table(struct connection_table **table_connection)
 	MIB_UDP6TABLE_OWNER_MODULE * tablev6 = NULL;
 	MIB_UDPROW_OWNER_MODULE  * currentv4 = NULL;
 	MIB_UDP6ROW_OWNER_MODULE * currentv6 = NULL;
-	DWORD i, dwSize;
+	DWORD i, dwSize, tableResult;
 
-	ptr_GetExtendedUdpTable geut            = NULL;
-
-	geut    = (ptr_GetExtendedTcpTable)GetProcAddress(GetModuleHandle("iphlpapi"), "GetExtendedUdpTable");
-
-	// systems that don't support GetExtendedUdpTable
-	if (geut == NULL) {
-		return get_udp_table_win2000_down(table_connection);
-	}
 	do {
 		// IPv4 part
 		dwSize = 0;
-		if (geut(NULL,&dwSize, TRUE, AF_INET, UDP_TABLE_OWNER_MODULE, 0) == ERROR_INSUFFICIENT_BUFFER) {
+		tableResult = met_api->win_api.iphlpapi.GetExtendedUdpTable(NULL, &dwSize, TRUE, AF_INET, UDP_TABLE_OWNER_MODULE, 0);
+		// Systems that don't support GetExtendedUdpTable use the legacy table.
+		if (tableResult == ERROR_PROC_NOT_FOUND) {
+			return get_udp_table_win2000_down(table_connection);
+		}
+		if (tableResult == ERROR_INSUFFICIENT_BUFFER) {
 			tablev4 = (MIB_UDPTABLE_OWNER_MODULE *)malloc(dwSize);
-			if (geut(tablev4, &dwSize, TRUE, AF_INET, UDP_TABLE_OWNER_MODULE, 0) == NO_ERROR) {
+			tableResult = met_api->win_api.iphlpapi.GetExtendedUdpTable(tablev4, &dwSize, TRUE, AF_INET, UDP_TABLE_OWNER_MODULE, 0);
+			if (tableResult == NO_ERROR) {
 				for(i=0; i<tablev4->dwNumEntries; i++) {
 					// check available memory and allocate if necessary
 					if (check_and_allocate(table_connection) == ERROR_NOT_ENOUGH_MEMORY) {
@@ -434,7 +410,7 @@ DWORD get_udp_table(struct connection_table **table_connection)
 					current_connection->type             = AF_INET;
 					current_connection->local_addr.addr  = currentv4->dwLocalAddr;
 					current_connection->remote_addr.addr = 0;
-					current_connection->local_port       = ntohs((u_short)(currentv4->dwLocalPort & 0x0000ffff));
+					current_connection->local_port       = met_api->win_api.ws2_32.ntohs((u_short)(currentv4->dwLocalPort & 0x0000ffff));
 					current_connection->remote_port  = 0;
 
 					strncpy((char*)current_connection->state, "", sizeof(current_connection->state) - 1);
@@ -448,8 +424,8 @@ DWORD get_udp_table(struct connection_table **table_connection)
 					(*table_connection)->entries++;
 				}
 			}
-			else { // geut failed
-				result = GetLastError();
+			else { // GetExtendedUdpTable failed
+				result = tableResult;
 				if (tablev4)
 					free(tablev4);
 				break;
@@ -459,9 +435,11 @@ DWORD get_udp_table(struct connection_table **table_connection)
 		}
 		// IPv6 part
 		dwSize = 0;
-		if (geut(NULL,&dwSize, TRUE, AF_INET6, UDP_TABLE_OWNER_MODULE, 0) == ERROR_INSUFFICIENT_BUFFER) {
+		tableResult = met_api->win_api.iphlpapi.GetExtendedUdpTable(NULL, &dwSize, TRUE, AF_INET6, UDP_TABLE_OWNER_MODULE, 0);
+		if (tableResult == ERROR_INSUFFICIENT_BUFFER) {
 			tablev6 = (MIB_UDP6TABLE_OWNER_MODULE *)malloc(dwSize);
-			if (geut(tablev6, &dwSize, TRUE, AF_INET6, UDP_TABLE_OWNER_MODULE, 0) == NO_ERROR) {
+			tableResult = met_api->win_api.iphlpapi.GetExtendedUdpTable(tablev6, &dwSize, TRUE, AF_INET6, UDP_TABLE_OWNER_MODULE, 0);
+			if (tableResult == NO_ERROR) {
 				for(i=0; i<tablev6->dwNumEntries; i++) {
 					// check available memory and allocate if necessary
 					if (check_and_allocate(table_connection) == ERROR_NOT_ENOUGH_MEMORY) {
@@ -473,7 +451,7 @@ DWORD get_udp_table(struct connection_table **table_connection)
 					current_connection->type          = AF_INET6;
 					memcpy(&current_connection->local_addr.addr6, currentv6->ucLocalAddr, sizeof(current_connection->local_addr.addr6));
 					memset(&current_connection->remote_addr.addr6, 0, sizeof(current_connection->remote_addr.addr6));
-					current_connection->local_port   = ntohs((u_short)(currentv6->dwLocalPort & 0x0000ffff));
+					current_connection->local_port   = met_api->win_api.ws2_32.ntohs((u_short)(currentv6->dwLocalPort & 0x0000ffff));
 					current_connection->remote_port  = 0;
 
 					strncpy((char*)current_connection->state, "", sizeof(current_connection->state) - 1);
@@ -487,8 +465,8 @@ DWORD get_udp_table(struct connection_table **table_connection)
 					(*table_connection)->entries++;
 				}
 			}
-			else { // gett failed
-				result = GetLastError();
+			else { // GetExtendedUdpTable failed
+				result = tableResult;
 				if (tablev6)
 					free(tablev6);
 				break;
@@ -546,12 +524,12 @@ DWORD get_connection_table(Remote *remote, Packet *response)
 			connection[1].buffer           = (PUCHAR)&current_connection->remote_addr.addr6;
 		}
 
-		local_port_be = htonl(current_connection->local_port);
+		local_port_be = met_api->win_api.ws2_32.htonl(current_connection->local_port);
 		connection[2].header.type      = TLV_TYPE_LOCAL_PORT;
 		connection[2].header.length    = sizeof(__u32);
 		connection[2].buffer           = (PUCHAR)&local_port_be;
 
-		remote_port_be = htonl(current_connection->remote_port);
+		remote_port_be = met_api->win_api.ws2_32.htonl(current_connection->remote_port);
 		connection[3].header.type      = TLV_TYPE_PEER_PORT;
 		connection[3].header.length    = sizeof(__u32);
 		connection[3].buffer           = (PUCHAR)&remote_port_be;

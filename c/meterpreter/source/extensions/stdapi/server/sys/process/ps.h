@@ -10,21 +10,6 @@
 
 VOID ps_addresult( Packet * response, DWORD dwPid, DWORD dwParentPid, wchar_t * cpExeName, wchar_t * cpExePath, wchar_t * cpUserName, DWORD dwProcessArch );
 
-typedef DWORD(WINAPI * GETMODULEFILENAMEEXW)(HANDLE hProcess, HMODULE hModule, LPWSTR lpExeName, DWORD dwSize);
-typedef DWORD(WINAPI * GETPROCESSIMAGEFILENAMEW)(HANDLE hProcess, LPWSTR lpExeName, DWORD dwSize);
-typedef BOOL(WINAPI * QUERYFULLPROCESSIMAGENAMEW)(HANDLE hProcess, DWORD dwFlags, LPWSTR lpExeName, PDWORD lpdwSize);
-typedef HANDLE (WINAPI * CREATETOOLHELP32SNAPSHOT)( DWORD dwFlags, DWORD th32ProcessID );
-typedef BOOL (WINAPI * PROCESS32FIRSTW)( HANDLE hSnapshot, LPPROCESSENTRY32W lppe );
-typedef BOOL (WINAPI * PROCESS32NEXTW)( HANDLE hSnapshot, LPPROCESSENTRY32W lppe );
-typedef void (WINAPI * GETNATIVESYSTEMINFO)( LPSYSTEM_INFO lpSystemInfo );
-typedef BOOL (WINAPI * ISWOW64PROCESS)( HANDLE hProcess, PBOOL Wow64Process );
-
-typedef NTSTATUS (WINAPI * NTQUERYINFORMATIONPROCESS)( HANDLE ProcessHandle, DWORD ProcessInformationClass, PVOID ProcessInformation, ULONG ProcessInformationLength, PULONG ReturnLength );
-
-typedef BOOL (WINAPI * ENUMPROCESSES)( DWORD * pProcessIds, DWORD cb, DWORD * pBytesReturned );
-typedef BOOL (WINAPI * ENUMPROCESSMODULES)( HANDLE hProcess, HMODULE *lphModule, DWORD cb, LPDWORD lpcbNeeded );
-typedef DWORD(WINAPI * GETMODULEBASENAMEW)(HANDLE hProcess, HMODULE hModule, LPWSTR lpBaseName, DWORD nSize);
-
 //===============================================================================================//
 
 typedef struct _DLL_BUFFER

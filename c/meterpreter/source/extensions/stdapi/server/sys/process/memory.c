@@ -2,24 +2,6 @@
 #include "common_metapi.h"
 #include "../tiny-regex-c/re.h"
 
-#ifndef __kernel_entry
-#define __kernel_entry
-#endif
-
-typedef __kernel_entry NTSTATUS(WINAPI* NTQUERYINFORMATIONPROCESS) (HANDLE ProcessHandle, DWORD ProcessInformationClass, LPVOID ProcessInformation, ULONG ProcessInformationLength, PULONG ReturnLength);
-
-typedef SIZE_T(WINAPI* VIRTUALQUERYEX) (HANDLE hProcess, LPCVOID lpAddress, PMEMORY_BASIC_INFORMATION lpBuffer, SIZE_T dwLength);
-
-typedef BOOL(WINAPI* CLOSEHANDLE) (HANDLE hObject);
-
-typedef HANDLE(WINAPI* OPENPROCESS) (DWORD dwDesiredAccess, BOOL bInheritHandle, DWORD dwProcessId);
-
-typedef FARPROC(WINAPI* GETPROCADDRESS) (HMODULE hModule, LPCSTR lpProcName);
-
-// http://undocumented.ntinternals.net/index.html?page=UserMode%2FUndocumented%20Functions%2FMemory%20Management%2FVirtual%20Memory%2FNtReadVirtualMemory.html
-// https://ntdoc.m417z.com/ntreadvirtualmemory
-typedef NTSTATUS(NTAPI* NTREADVIRTUALMEMORY) (HANDLE ProcessHandle, LPCVOID BaseAddress, LPVOID Buffer, SIZE_T NumberOfBytesToRead, PSIZE_T NumberOfBytesRead);
-
 typedef struct _UNICODE_STRING {
 	USHORT Length;
 	USHORT MaximumLength;
@@ -113,13 +95,13 @@ DWORD request_sys_process_memory_allocate(Remote *remote, Packet *packet)
 	prot = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_PROTECTION);
 
 	// Allocate the memory
-	if ((base = VirtualAllocEx(handle, base, size, alloc, prot)))
+	if ((base = met_api->win_api.kernel32.VirtualAllocEx(handle, base, size, alloc, prot)))
 	{
 		met_api->packet.add_tlv_qword(response, TLV_TYPE_BASE_ADDRESS, (QWORD)base);
 	}
 	else
 	{
-		result = GetLastError();
+		result = met_api->win_api.kernel32.GetLastError();
 	}
 
 	// Transmit the response
@@ -146,8 +128,8 @@ DWORD request_sys_process_memory_free(Remote *remote, Packet *packet)
 	base   = (LPVOID)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_BASE_ADDRESS);
 
 	// Free the memory
-	if (!VirtualFreeEx(handle, base, 0, MEM_RELEASE))
-		result = GetLastError();
+	if (!met_api->win_api.kernel32.VirtualFreeEx(handle, base, 0, MEM_RELEASE))
+		result = met_api->win_api.kernel32.GetLastError();
 
 	// Transmit the response
 	met_api->packet.transmit_response(result, remote, response);
@@ -196,10 +178,10 @@ DWORD request_sys_process_memory_read(Remote *remote, Packet *packet)
 		}
 
 		// Read the memory from the process...break out on failure
-		if ((!ReadProcessMemory(handle, base, buffer, size, &bytesRead)) &&
-		    (GetLastError() != ERROR_PARTIAL_COPY))
+		if ((!met_api->win_api.kernel32.ReadProcessMemory(handle, base, buffer, size, &bytesRead)) &&
+		    (met_api->win_api.kernel32.GetLastError() != ERROR_PARTIAL_COPY))
 		{
-			result = GetLastError();
+			result = met_api->win_api.kernel32.GetLastError();
 			break;
 		}
 
@@ -233,7 +215,7 @@ DWORD request_sys_process_memory_write(Remote *remote, Packet *packet)
 	HANDLE handle;
 	LPVOID base;
 	DWORD result = ERROR_SUCCESS;
-	size_t written = 0;
+	SIZE_T written = 0;
 	Tlv data;
 
 	handle = (HANDLE)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_HANDLE);
@@ -251,11 +233,11 @@ DWORD request_sys_process_memory_write(Remote *remote, Packet *packet)
 		}
 
 		// Write the memory
-		if ((!WriteProcessMemory(handle, base, data.buffer, data.header.length, 
+		if ((!met_api->win_api.kernel32.WriteProcessMemory(handle, base, data.buffer, data.header.length,
 				&written)) &&
-		    (GetLastError() != ERROR_PARTIAL_COPY))
+		    (met_api->win_api.kernel32.GetLastError() != ERROR_PARTIAL_COPY))
 		{
-			result = GetLastError();
+			result = met_api->win_api.kernel32.GetLastError();
 			break;
 		}
 
@@ -301,9 +283,9 @@ DWORD request_sys_process_memory_query(Remote *remote, Packet *packet)
 		}
 
 		// No bytes returned?  Suck.
-		if (!(size = VirtualQueryEx(handle, base, &info, sizeof(info))))
+		if (!(size = met_api->win_api.kernel32.VirtualQueryEx(handle, base, &info, sizeof(info))))
 		{
-			result = GetLastError();
+			result = met_api->win_api.kernel32.GetLastError();
 			break;
 		}
 
@@ -358,9 +340,9 @@ DWORD request_sys_process_memory_protect(Remote *remote, Packet *packet)
 		}
 
 		// Change the protection mask
-		if (!VirtualProtectEx(handle, base, size, prot, &old))
+		if (!met_api->win_api.kernel32.VirtualProtectEx(handle, base, size, prot, &old))
 		{
-			result = GetLastError();
+			result = met_api->win_api.kernel32.GetLastError();
 			break;
 		}
 
@@ -392,8 +374,8 @@ DWORD request_sys_process_memory_lock(Remote *remote, Packet *packet)
 	base = (LPVOID)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_BASE_ADDRESS);
 	size = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_LENGTH);
 
-	if (!VirtualLock(base, size))
-		result = GetLastError();
+	if (!met_api->win_api.kernel32.VirtualLock(base, size))
+		result = met_api->win_api.kernel32.GetLastError();
 
 	// Transmit the response
 	met_api->packet.transmit_response(result, remote, response);
@@ -417,8 +399,8 @@ DWORD request_sys_process_memory_unlock(Remote *remote, Packet *packet)
 	base = (LPVOID)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_BASE_ADDRESS);
 	size = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_LENGTH);
 
-	if (!VirtualUnlock(base, size))
-		result = GetLastError();
+	if (!met_api->win_api.kernel32.VirtualUnlock(base, size))
+		result = met_api->win_api.kernel32.GetLastError();
 
 	// Transmit the response
 	met_api->packet.transmit_response(result, remote, response);
@@ -473,34 +455,6 @@ NTSTATUS add_needle_results_to_packet(Packet* packet, const unsigned char* memor
 	return ERROR_SUCCESS;
 }
 
-static HMODULE hKernel32 = NULL;
-static HMODULE hNTDLL = NULL;
-
-static GETPROCADDRESS fGetProcAddress = NULL;
-static OPENPROCESS fOpenProcess = NULL;
-static CLOSEHANDLE fCloseHandle = NULL;
-static VIRTUALQUERYEX fVirtualQueryEx = NULL;
-static NTREADVIRTUALMEMORY fNtReadVirtualMemory = NULL;
-
-NTSTATUS setup_handles()
-{
-	if ((hKernel32 = GetModuleHandleA("kernel32.dll")) == NULL) { dprintf("[MEM SEARCH] Could not get kernel32.dll handle"); return ERROR_INVALID_HANDLE; }
-
-	if ((hNTDLL = GetModuleHandleA("ntdll.dll")) == NULL) { dprintf("[MEM SEARCH] Could not get ntdll.dll handle"); return ERROR_INVALID_HANDLE; }
-
-	if ((fGetProcAddress = (GETPROCADDRESS)GetProcAddress(hKernel32, "GetProcAddress")) == NULL) { dprintf("[MEM SEARCH] Could not get GetProcAddress handle"); return ERROR_INVALID_ADDRESS; }
-
-	if ((fVirtualQueryEx = (VIRTUALQUERYEX)fGetProcAddress(hKernel32, "VirtualQueryEx")) == NULL) { dprintf("[MEM SEARCH] Could not get VirtualQueryEx handle"); return ERROR_INVALID_ADDRESS; }
-
-	if ((fOpenProcess = (OPENPROCESS)fGetProcAddress(hKernel32, "OpenProcess")) == NULL) { dprintf("[MEM SEARCH] Could not get OpenProcess handle"); return ERROR_INVALID_ADDRESS; }
-
-	if ((fCloseHandle = (CLOSEHANDLE)fGetProcAddress(hKernel32, "CloseHandle")) == NULL) { dprintf("[MEM SEARCH] Could not get CloseHandle handle"); return ERROR_INVALID_ADDRESS; }
-
-	if ((fNtReadVirtualMemory = (NTREADVIRTUALMEMORY)fGetProcAddress(hNTDLL, "NtReadVirtualMemory")) == NULL ) { dprintf("[MEM SEARCH] Could not get NtReadVirtualMemory handle"); return ERROR_INVALID_ADDRESS; }
-
-	return ERROR_SUCCESS;
-}
-
 /*
  * Read through all of a process's virtual memory in the search for regular expression needles.
  *
@@ -543,19 +497,12 @@ DWORD request_sys_process_memory_search(Remote* remote, Packet* packet)
 	if (min_match_length > max_match_length || max_match_length == 0) { dprintf("[MEM SEARCH] Incorrect min or max match lengths"); result = ERROR_INVALID_PARAMETER; goto done; }
 	const size_t current_max_match_length = max_match_length;
 
-	dprintf("[MEM SEARCH] Getting handles & proc addresses");
-	if ((result = setup_handles()) != ERROR_SUCCESS)
-	{
-		dprintf("[MEM SEARCH] Could not set up all necessary handles & proc addresses");
-		goto done;
-	}
-
 	const DWORD process_vm_read = 0x0010;
 	const DWORD process_query_information = 0x0400;
 	const DWORD wanted_process_perms = process_vm_read | process_query_information;
 
 	dprintf("[MEM SEARCH] Opening process");
-	process_handle = fOpenProcess(wanted_process_perms, FALSE, pid);
+	process_handle = met_api->win_api.kernel32.OpenProcess(wanted_process_perms, FALSE, pid);
 	if (process_handle == NULL) { dprintf("[MEM SEARCH] Could not get process handle"); result = ERROR_INVALID_HANDLE; goto done; }
 
 	MEMORY_BASIC_INFORMATION mem = { 0 };
@@ -563,7 +510,7 @@ DWORD request_sys_process_memory_search(Remote* remote, Packet* packet)
 	memory_buffer = (unsigned char*)malloc(MEMORY_BUFFER_SIZE * sizeof(unsigned char));
 	if (memory_buffer == NULL) { dprintf("[MEM SEARCH] Could not allocate memory buffer"); result = ERROR_OUTOFMEMORY; goto done; }
 
-	for (size_t current_ptr = 0; fVirtualQueryEx(process_handle, (LPCVOID)current_ptr, &mem, sizeof(mem)); current_ptr += mem.RegionSize)
+	for (size_t current_ptr = 0; met_api->win_api.kernel32.VirtualQueryEx(process_handle, (LPCVOID)current_ptr, &mem, sizeof(mem)); current_ptr += mem.RegionSize)
 	{
 		if (!can_read_memory(mem.Protect)) { continue; }
 
@@ -578,11 +525,11 @@ DWORD request_sys_process_memory_search(Remote* remote, Packet* packet)
 			const size_t bytes_to_read = min(leftover_bytes, MEMORY_BUFFER_SIZE * sizeof(unsigned char));
 			dprintf("[MEM SEARCH] Leftover Bytes count: %llu", leftover_bytes);
 			dprintf("[MEM SEARCH] Bytes to read: %llu", bytes_to_read);
-			size_t bytes_read = 0;
+			SIZE_T bytes_read = 0;
 
 			const size_t read_address = (size_t)mem.BaseAddress + memory_region_offset;
 			// Note: This will read up to a maximum of bytes_to_read OR to the end of the memory region if the end of it has been reached.
-			if (fNtReadVirtualMemory(process_handle, (LPCVOID)read_address, memory_buffer, bytes_to_read, &bytes_read) != ERROR_SUCCESS)
+			if (met_api->win_api.ntdll.ZwReadVirtualMemory(process_handle, (LPCVOID)read_address, memory_buffer, bytes_to_read, &bytes_read) != ERROR_SUCCESS)
 			{
 				dprintf("[MEM SEARCH] Failed to read some virtual memory for process, skipping %u bytes", bytes_to_read);
 				memory_region_offset += bytes_to_read;
@@ -639,7 +586,7 @@ DWORD request_sys_process_memory_search(Remote* remote, Packet* packet)
 done:
 	dprintf("[MEM SEARCH] Memory Search complete.");
 	if (memory_buffer != NULL) { dprintf("[MEM SEARCH] Freeing process memory buffer."); free(memory_buffer); }
-	if (process_handle != NULL) { dprintf("[MEM SEARCH] Closing process handle."); fCloseHandle(process_handle); }
+	if (process_handle != NULL) { dprintf("[MEM SEARCH] Closing process handle."); met_api->win_api.kernel32.CloseHandle(process_handle); }
 
 	dprintf("[MEM SEARCH] Transmitting response");
 	met_api->packet.transmit_response(result, remote, response);

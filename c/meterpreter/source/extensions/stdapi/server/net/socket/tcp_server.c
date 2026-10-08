@@ -29,9 +29,9 @@ static int get_ai_family(const char* address) {
 	};
 
 	int ai_family = AF_UNSPEC;
-	if (getaddrinfo(address, NULL, &hints, &resolved_host) == 0) {
+	if (met_api->win_api.ws2_32.getaddrinfo(address, NULL, &hints, &resolved_host) == 0) {
 		ai_family = resolved_host->ai_family;
-		freeaddrinfo(resolved_host);
+		met_api->win_api.ws2_32.freeaddrinfo(resolved_host);
 	}
 	return ai_family;
 }
@@ -46,21 +46,21 @@ static int inet_pton(int af, const char* src, void* dst) {
 	};
 
 	if ((src == NULL) || (dst == NULL)) {
-		WSASetLastError(WSAEFAULT);
+		met_api->win_api.ws2_32.WSASetLastError(WSAEFAULT);
 		return -1;
 	}
 
 	if ((af != AF_INET) && (af != AF_INET6)) {
-		WSASetLastError(WSAEAFNOSUPPORT);
+		met_api->win_api.ws2_32.WSASetLastError(WSAEAFNOSUPPORT);
 		return -1;
 	}
 	
 	int ai_family = AF_UNSPEC;
-	if (getaddrinfo(src, NULL, &hints, &resolved_host)) {
+	if (met_api->win_api.ws2_32.getaddrinfo(src, NULL, &hints, &resolved_host)) {
 		return 0;
 	}
 	if (resolved_host->ai_family != af) {  // verify the returned address is of the expected family
-		freeaddrinfo(resolved_host);
+		met_api->win_api.ws2_32.freeaddrinfo(resolved_host);
 		return 0;
 	}
 	if (af == AF_INET) {
@@ -68,7 +68,7 @@ static int inet_pton(int af, const char* src, void* dst) {
 	} else if (af == AF_INET6) {
 		error = memcpy_s(dst, sizeof(struct in_addr6), &((struct sockaddr_in6*)resolved_host->ai_addr)->sin6_addr, sizeof(struct in_addr6));
 	}
-	freeaddrinfo(resolved_host);
+	met_api->win_api.ws2_32.freeaddrinfo(resolved_host);
 
 	if (error) {
 		return 0;
@@ -94,7 +94,7 @@ VOID free_tcp_server_context(TcpServerContext * ctx)
 
 		if (ctx->fd)
 		{
-			closesocket(ctx->fd);
+			met_api->win_api.ws2_32.closesocket(ctx->fd);
 			ctx->fd = 0;
 		}
 
@@ -181,15 +181,19 @@ TcpClientContext * tcp_channel_server_create_client(TcpServerContext * serverCtx
 		clientctx->remote = serverCtx->remote;
 		clientctx->fd = sock;
 
-		clientctx->notify = WSACreateEvent();
+		clientctx->notify = met_api->win_api.ws2_32.WSACreateEvent();
 		if (clientctx->notify == WSA_INVALID_EVENT)
 		{
-			BREAK_ON_WSAERROR("[TCP-SERVER] tcp_channel_server_create_client. WSACreateEvent failed");
+			dwResult = met_api->win_api.ws2_32.WSAGetLastError();
+			dprintf("[TCP-SERVER] tcp_channel_server_create_client. WSACreateEvent failed. error=%d (0x%x)", dwResult, (ULONG_PTR)dwResult);
+			break;
 		}
 
-		if (WSAEventSelect(clientctx->fd, clientctx->notify, FD_READ | FD_CLOSE) == SOCKET_ERROR)
+		if (met_api->win_api.ws2_32.WSAEventSelect(clientctx->fd, clientctx->notify, FD_READ | FD_CLOSE) == SOCKET_ERROR)
 		{
-			BREAK_ON_WSAERROR("[TCP-SERVER] tcp_channel_server_create_client. WSAEventSelect failed");
+			dwResult = met_api->win_api.ws2_32.WSAGetLastError();
+			dprintf("[TCP-SERVER] tcp_channel_server_create_client. WSAEventSelect failed. error=%d (0x%x)", dwResult, (ULONG_PTR)dwResult);
+			break;
 		}
 
 		memset(&chops, 0, sizeof(StreamChannelOps));
@@ -235,7 +239,7 @@ DWORD tcp_channel_server_notify(Remote * remote, TcpServerContext * serverCtx)
 	SOCKADDR_IN6 clientaddr = { 0 };
 	SOCKADDR_IN6 serveraddr = { 0 };
 	SOCKET sock = 0;
-	DWORD size = 0;
+	int size = 0;
 	char* localhost = NULL;
 	char* peerhost = NULL;
 	int localport = 0;
@@ -248,20 +252,22 @@ DWORD tcp_channel_server_notify(Remote * remote, TcpServerContext * serverCtx)
 			BREAK_WITH_ERROR("[TCP-SERVER] tcp_channel_server_notify. serverCtx == NULL", ERROR_INVALID_HANDLE);
 		}
 
-		ResetEvent(serverCtx->notify);
+		met_api->win_api.kernel32.ResetEvent(serverCtx->notify);
 
 		size = sizeof(SOCKADDR_IN6);
 
-		sock = accept(serverCtx->fd, (SOCKADDR*)&clientaddr, &size);
+		sock = met_api->win_api.ws2_32.accept(serverCtx->fd, (SOCKADDR*)&clientaddr, &size);
 		if (sock == INVALID_SOCKET)
 		{
-			if (WSAGetLastError() == WSAEWOULDBLOCK)
+			if (met_api->win_api.ws2_32.WSAGetLastError() == WSAEWOULDBLOCK)
 			{
-				Sleep(100);
+				met_api->win_api.kernel32.Sleep(100);
 				break;
 			}
 
-			BREAK_ON_WSAERROR("[TCP-SERVER] tcp_channel_server_notify. accept failed");
+			dwResult = met_api->win_api.ws2_32.WSAGetLastError();
+			dprintf("[TCP-SERVER] tcp_channel_server_notify. accept failed. error=%d (0x%x)", dwResult, (ULONG_PTR)dwResult);
+			break;
 		}
 
 		dprintf("[TCP-SERVER] tcp_channel_server_notify. Got new client connection on channel %d. sock=%d", met_api->channel.get_id(serverCtx->channel), sock);
@@ -274,14 +280,16 @@ DWORD tcp_channel_server_notify(Remote * remote, TcpServerContext * serverCtx)
 
 		size = sizeof(SOCKADDR_IN6);
 
-		if (getsockname(serverCtx->fd, (SOCKADDR *)&serveraddr, &size) == SOCKET_ERROR)
+		if (met_api->win_api.ws2_32.getsockname(serverCtx->fd, (SOCKADDR *)&serveraddr, &size) == SOCKET_ERROR)
 		{
-			BREAK_ON_WSAERROR("[TCP-SERVER] request_net_tcp_server_channel_open. getsockname failed");
+			dwResult = met_api->win_api.ws2_32.WSAGetLastError();
+			dprintf("[TCP-SERVER] request_net_tcp_server_channel_open. getsockname failed. error=%d (0x%x)", dwResult, (ULONG_PTR)dwResult);
+			break;
 		}
 
 		if (!serverCtx->ipv6)
 		{
-			localhost = inet_ntoa(((SOCKADDR_IN*)&serveraddr)->sin_addr);
+			localhost = met_api->win_api.ws2_32.inet_ntoa(((SOCKADDR_IN*)&serveraddr)->sin_addr);
 		}
 
 		if (!localhost)
@@ -289,11 +297,11 @@ DWORD tcp_channel_server_notify(Remote * remote, TcpServerContext * serverCtx)
 			localhost = "";
 		}
 
-		localport = ntohs(serverCtx->ipv6 ? serveraddr.sin6_port : ((SOCKADDR_IN*)&serveraddr)->sin_port);
+		localport = met_api->win_api.ws2_32.ntohs(serverCtx->ipv6 ? serveraddr.sin6_port : ((SOCKADDR_IN*)&serveraddr)->sin_port);
 
 		if (!serverCtx->ipv6)
 		{
-			peerhost = inet_ntoa(((SOCKADDR_IN*)&clientaddr)->sin_addr);
+			peerhost = met_api->win_api.ws2_32.inet_ntoa(((SOCKADDR_IN*)&clientaddr)->sin_addr);
 		}
 
 		if (!peerhost)
@@ -301,7 +309,7 @@ DWORD tcp_channel_server_notify(Remote * remote, TcpServerContext * serverCtx)
 			peerhost = "";
 		}
 
-		peerport = ntohs(serverCtx->ipv6 ? clientaddr.sin6_port : ((SOCKADDR_IN*)&clientaddr)->sin_port);
+		peerport = met_api->win_api.ws2_32.ntohs(serverCtx->ipv6 ? clientaddr.sin6_port : ((SOCKADDR_IN*)&clientaddr)->sin_port);
 
 		dprintf("[TCP-SERVER] tcp_channel_server_notify. New connection %s:%d <- %s:%d", localhost, localport, peerhost, peerport);
 
@@ -378,31 +386,33 @@ DWORD request_net_tcp_server_channel_open(Remote * remote, Packet * packet)
 			ai_family = AF_INET6;
 		}
 
-		ctx->fd = WSASocket(ai_family, SOCK_STREAM, IPPROTO_TCP, 0, 0, 0);
+		ctx->fd = met_api->win_api.ws2_32.WSASocketA(ai_family, SOCK_STREAM, IPPROTO_TCP, 0, 0, 0);
 		if (ctx->fd == INVALID_SOCKET)
 		{
 			if ((ai_family == AF_INET6) && (!localHost)) {
 				// if the socket that failed to be created was IPv6 but it was only selected because no
 				// address was specified, fail back to IPv4
 				ai_family = AF_INET;
-				ctx->fd = WSASocket(ai_family, SOCK_STREAM, IPPROTO_TCP, 0, 0, 0);
+				ctx->fd = met_api->win_api.ws2_32.WSASocketA(ai_family, SOCK_STREAM, IPPROTO_TCP, 0, 0, 0);
 			}	
 		}
 		else if (ai_family == AF_INET6)
 		{
 			int no = 0;
-			if (setsockopt(ctx->fd, IPPROTO_IPV6, IPV6_V6ONLY, (char*)&no, sizeof(no)) == SOCKET_ERROR)
+			if (met_api->win_api.ws2_32.setsockopt(ctx->fd, IPPROTO_IPV6, IPV6_V6ONLY, (char*)&no, sizeof(no)) == SOCKET_ERROR)
 			{
 				// fallback to ipv4 - we're probably running on Windows XP or earlier here, which means that to
 				// support IPv4 and IPv6 we'd need to create two separate sockets. IPv6 on XP isn't that common
 				// so instead, we'll just revert back to v4 and listen on that one address instead.
-				closesocket(ctx->fd);
+				met_api->win_api.ws2_32.closesocket(ctx->fd);
 				ai_family = AF_INET;
-				ctx->fd = WSASocket(ai_family, SOCK_STREAM, IPPROTO_TCP, 0, 0, 0);
+				ctx->fd = met_api->win_api.ws2_32.WSASocketA(ai_family, SOCK_STREAM, IPPROTO_TCP, 0, 0, 0);
 			}
 		}
 		if (ctx->fd == INVALID_SOCKET) {
-			BREAK_ON_WSAERROR("[TCP-SERVER] request_net_tcp_server_channel_open. WSASocket failed");
+			dwResult = met_api->win_api.ws2_32.WSAGetLastError();
+			dprintf("[TCP-SERVER] request_net_tcp_server_channel_open. WSASocket failed. error=%d (0x%x)", dwResult, (ULONG_PTR)dwResult);
+			break;
 		}
 
 		struct sockaddr_in6 sockAddr = { 0 };
@@ -416,10 +426,10 @@ DWORD request_net_tcp_server_channel_open(Remote * remote, Packet * packet)
 				iResult = inet_pton(AF_INET, localHost, &v4Addr->sin_addr);
 			}
 			else {
-				v4Addr->sin_addr.s_addr = htons(INADDR_ANY);
+				v4Addr->sin_addr.s_addr = met_api->win_api.ws2_32.htons(INADDR_ANY);
 			}
 			v4Addr->sin_family = AF_INET;
-			v4Addr->sin_port = htons(localPort);
+			v4Addr->sin_port = met_api->win_api.ws2_32.htons(localPort);
 			sockAddrSize = sizeof(struct sockaddr_in);
 			ctx->ipv6 = FALSE;
 		}
@@ -429,10 +439,10 @@ DWORD request_net_tcp_server_channel_open(Remote * remote, Packet * packet)
 				iResult = inet_pton(AF_INET6, localHost, &sockAddr.sin6_addr);
 			}
 			else {
-				sockAddr.sin6_addr = in6addr_any;
+				memset(&sockAddr.sin6_addr, 0, sizeof(sockAddr.sin6_addr));
 			}
 			sockAddr.sin6_family = AF_INET6;
-			sockAddr.sin6_port = htons(localPort);
+			sockAddr.sin6_port = met_api->win_api.ws2_32.htons(localPort);
 			sockAddrSize = sizeof(struct sockaddr_in6);
 			ctx->ipv6 = TRUE;
 		}
@@ -442,31 +452,41 @@ DWORD request_net_tcp_server_channel_open(Remote * remote, Packet * packet)
 
 		// inet_pton returns 1 on success, 0 and -1 on failure depending on if an error is placed in WSAGetLastError
 		if (iResult == -1) {
-			BREAK_ON_WSAERROR("[TCP-SERVER] request_net_tcp_server_channel_open. bind failed, invalid address (inet_pton failure, WSAError)");
+			dwResult = met_api->win_api.ws2_32.WSAGetLastError();
+			dprintf("[TCP-SERVER] request_net_tcp_server_channel_open. bind failed, invalid address (inet_pton failure, WSAError). error=%d (0x%x)", dwResult, (ULONG_PTR)dwResult);
+			break;
 		} else if (iResult != 1) {
 			BREAK_WITH_ERROR("[TCP-SERVER] request_net_tcp_server_channel_open. bind failed, invalid address (inet_pton failure)", ERROR_INVALID_PARAMETER);
 		}
 
 
-		if (bind(ctx->fd, (SOCKADDR *)&sockAddr, sockAddrSize) == SOCKET_ERROR)
+		if (met_api->win_api.ws2_32.bind(ctx->fd, (SOCKADDR *)&sockAddr, sockAddrSize) == SOCKET_ERROR)
 		{
-			BREAK_ON_WSAERROR("[TCP-SERVER] request_net_tcp_server_channel_open. bind failed");
+			dwResult = met_api->win_api.ws2_32.WSAGetLastError();
+			dprintf("[TCP-SERVER] request_net_tcp_server_channel_open. bind failed. error=%d (0x%x)", dwResult, (ULONG_PTR)dwResult);
+			break;
 		}
 
-		if (listen(ctx->fd, SOMAXCONN) == SOCKET_ERROR)
+		if (met_api->win_api.ws2_32.listen(ctx->fd, SOMAXCONN) == SOCKET_ERROR)
 		{
-			BREAK_ON_WSAERROR("[TCP-SERVER] request_net_tcp_server_channel_open. listen failed");
+			dwResult = met_api->win_api.ws2_32.WSAGetLastError();
+			dprintf("[TCP-SERVER] request_net_tcp_server_channel_open. listen failed. error=%d (0x%x)", dwResult, (ULONG_PTR)dwResult);
+			break;
 		}
 
-		ctx->notify = WSACreateEvent();
+		ctx->notify = met_api->win_api.ws2_32.WSACreateEvent();
 		if (ctx->notify == WSA_INVALID_EVENT)
 		{
-			BREAK_ON_WSAERROR("[TCP-SERVER] request_net_tcp_server_channel_open. WSACreateEvent failed");
+			dwResult = met_api->win_api.ws2_32.WSAGetLastError();
+			dprintf("[TCP-SERVER] request_net_tcp_server_channel_open. WSACreateEvent failed. error=%d (0x%x)", dwResult, (ULONG_PTR)dwResult);
+			break;
 		}
 
-		if (WSAEventSelect(ctx->fd, ctx->notify, FD_ACCEPT) == SOCKET_ERROR)
+		if (met_api->win_api.ws2_32.WSAEventSelect(ctx->fd, ctx->notify, FD_ACCEPT) == SOCKET_ERROR)
 		{
-			BREAK_ON_WSAERROR("[TCP-SERVER] request_net_tcp_server_channel_open. WSAEventSelect failed");
+			dwResult = met_api->win_api.ws2_32.WSAGetLastError();
+			dprintf("[TCP-SERVER] request_net_tcp_server_channel_open. WSAEventSelect failed. error=%d (0x%x)", dwResult, (ULONG_PTR)dwResult);
+			break;
 		}
 
 		memset(&chops, 0, sizeof(StreamChannelOps));
@@ -507,7 +527,7 @@ DWORD request_net_tcp_server_channel_open(Remote * remote, Packet * packet)
 		if (ctx->fd)
 		{
 			dprintf("[TCP-SERVER] Destroying socket");
-			closesocket(ctx->fd);
+			met_api->win_api.ws2_32.closesocket(ctx->fd);
 		}
 
 		if (ctx->channel)
