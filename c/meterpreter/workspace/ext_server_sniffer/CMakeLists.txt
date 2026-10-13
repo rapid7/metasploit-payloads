@@ -16,11 +16,7 @@ include_directories(../../source/common)
 include_directories(../../source/ReflectiveDllInjection/common)
 include_directories(${PSSDK_DIR}/_include)
 
-if(${CMAKE_GENERATOR_TOOLSET} MATCHES "v120_xp")
-    set(PSSDK_VER 12)
-else()
-    set(PSSDK_VER 19)
-endif()
+set(PSSDK_VER 19)
 
 set(SRC_DIR ../../source/extensions/sniffer)
 file(GLOB SRC_FILES
