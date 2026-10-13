@@ -532,16 +532,10 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(ProjectDir)..\..\output\"</Command>
     <ClCompile Include="..\..\source\tiny-regex-c\re.c" />
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="..\..\source\extensions\stdapi\server\resource\stdapi.rc" />
-  </ItemGroup>
-  <ItemGroup>
     <ClInclude Include="..\..\source\extensions\stdapi\server\precomp.h" />
     <ClInclude Include="..\..\source\extensions\stdapi\stdapi.h" />
     <ClInclude Include="..\..\source\extensions\stdapi\server\railgun\railgun.h" />
     <ClInclude Include="..\..\source\tiny-regex-c\re.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="..\..\source\extensions\stdapi\server\resource\hook.dll" />
   </ItemGroup>
   <ItemGroup>
     <MASM Include="..\..\source\ReflectiveDLLInjection\dll\src\GateTrampoline32.asm">

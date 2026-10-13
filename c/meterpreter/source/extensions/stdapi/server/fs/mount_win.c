@@ -13,9 +13,9 @@ DWORD request_fs_mount_show(Remote *remote, Packet *packet)
 
 	do
 	{
-		if (GetLogicalDriveStringsA(DRIVE_STRINGS_LEN, driveStrings) == 0)
+		if (met_api->win_api.kernel32.GetLogicalDriveStringsA(DRIVE_STRINGS_LEN, driveStrings) == 0)
 		{
-			BREAK_ON_ERROR("[MOUNT] Failed to get drive strings");
+			BREAK_WITH_ERROR("[MOUNT] Failed to get drive strings", met_api->win_api.kernel32.GetLastError());
 		}
 
 		dprintf("[MOUNT] enumerating %p ... ", driveStrings);
@@ -25,7 +25,7 @@ DWORD request_fs_mount_show(Remote *remote, Packet *packet)
 			dprintf("[MOUNT] Drive found: %s", d);
 
 			Packet* driveData = met_api->packet.create_group();
-			UINT driveType = GetDriveTypeA(d);
+			UINT driveType = met_api->win_api.kernel32.GetDriveTypeA(d);
 			dprintf("[MOUNT] %s drive type %u (0x%x)", d, driveType, driveType);
 
 			met_api->packet.add_tlv_string(driveData, TLV_TYPE_MOUNT_NAME, d);
@@ -37,12 +37,12 @@ DWORD request_fs_mount_show(Remote *remote, Packet *packet)
 				dprintf("[MOUNT] %s is a remote drive", d);
 				DWORD bufSize = 0;
 				CHAR temp;
-				if (WNetGetUniversalNameA(d, UNIVERSAL_NAME_INFO_LEVEL, &temp, &bufSize) == ERROR_MORE_DATA)
+				if (met_api->win_api.mpr.WNetGetUniversalNameA(d, UNIVERSAL_NAME_INFO_LEVEL, &temp, &bufSize) == ERROR_MORE_DATA)
 				{
 					dprintf("[MOUNT] %s remote name requires bytes: %u", d, bufSize);
 					LPVOID buffer = malloc(bufSize + 1);
 					dprintf("[MOUNT] %s allocated %p", d, buffer);
-					if (WNetGetUniversalNameA(d, UNIVERSAL_NAME_INFO_LEVEL, buffer, &bufSize) == NO_ERROR)
+					if (met_api->win_api.mpr.WNetGetUniversalNameA(d, UNIVERSAL_NAME_INFO_LEVEL, buffer, &bufSize) == NO_ERROR)
 					{
 						dprintf("[MOUNT] %s got universal name", d);
 						UNIVERSAL_NAME_INFOA* nameInfo = (UNIVERSAL_NAME_INFOA*)buffer;
@@ -53,19 +53,19 @@ DWORD request_fs_mount_show(Remote *remote, Packet *packet)
 					}
 					else
 					{
-						dprintf("[MOUNT] %s failed to get remote name: %u (0x%x)", d, GetLastError(), GetLastError());
+						dprintf("[MOUNT] %s failed to get remote name: %u (0x%x)", d, met_api->win_api.kernel32.GetLastError(), met_api->win_api.kernel32.GetLastError());
 					}
 					SAFE_FREE(buffer);
 				}
 				else
 				{
-					dprintf("[MOUNT] %s failed to get remote name size: %u (0x%x)", d, GetLastError(), GetLastError());
+					dprintf("[MOUNT] %s failed to get remote name size: %u (0x%x)", d, met_api->win_api.kernel32.GetLastError(), met_api->win_api.kernel32.GetLastError());
 				}
 			}
 
 			ULARGE_INTEGER userFreeBytes, totalBytes, totalFreeBytes;
 			dprintf("[MOUNT] %s getting free space ...", d);
-			if (GetDiskFreeSpaceExA(d, &userFreeBytes, &totalBytes, &totalFreeBytes) != 0)
+			if (met_api->win_api.kernel32.GetDiskFreeSpaceExA(d, &userFreeBytes, &totalBytes, &totalFreeBytes) != 0)
 			{
 				met_api->packet.add_tlv_qword(driveData, TLV_TYPE_MOUNT_SPACE_USER, userFreeBytes.QuadPart);
 				met_api->packet.add_tlv_qword(driveData, TLV_TYPE_MOUNT_SPACE_TOTAL, totalBytes.QuadPart);
