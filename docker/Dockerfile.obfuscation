@@ -1,3 +1,59 @@
 # To build the dev environment.
-#  docker build -t rapid7/msf-ubuntu-x64-meterpreter-obfuscation -f ./Dockerfile.obfuscation .
-FROM ubuntu:24.04
+#  Example usage:
+#      cp .env.example .env
+#      nano .env (set your obfuscation options)
+#      set -a && . ./.env && set +a
+#      docker build --build-arg LLVM_REPOSITORY --build-arg LLVM_VERSION --build-arg LLVM_MINGW_REPOSITORY --build-arg LLVM_MINGW_VERSION --build-arg LLVM_MINGW_ADDITIONAL_ARGS -t rapid7/msf-ubuntu-x64-meterpreter-obfuscation -f Dockerfile.obfuscation .
+FROM --platform=linux/amd64 ubuntu:24.04
+
+ARG LLVM_REPOSITORY
+ARG LLVM_VERSION
+ARG LLVM_MINGW_REPOSITORY
+ARG LLVM_MINGW_VERSION
+ARG LLVM_MINGW_ADDITIONAL_ARGS
+
+ENV LLVM_ADDITIONAL_ARGS="-Wl,--strip-all,--build-id=none,--no-insert-timestamp,--exclude-all-symbols -fmodule-name=lib.dll -O0 -Wno-macro-redefined -Wno-unused-command-line-argument -Wno-error=incompatible-pointer-types"
+ENV DEBIAN_FRONTEND noninteractive
+ENV TOOLCHAIN_PREFIX=/opt/llvm-mingw
+ARG TOOLCHAIN_ARCHS="i686 x86_64"
+ARG DEFAULT_CRT=msvcrt
+ARG CFGUARD_ARGS=""
+
+RUN echo "Building with LLVM repository: $LLVM_REPOSITORY, version: $LLVM_VERSION"
+RUN echo "Using LLVM MinGW repository: $LLVM_MINGW_REPOSITORY, version: $LLVM_MINGW_VERSION"
+RUN echo "LLVM MinGW additional args: $LLVM_MINGW_ADDITIONAL_ARGS"
+# Other meterpreters
+RUN apt-get update && \
+	apt-get dist-upgrade -y && \
+	apt-get -y install software-properties-common && \
+	dpkg --add-architecture i386 && \
+	apt-get update
+
+RUN mkdir -p $TOOLCHAIN_PREFIX
+RUN mkdir /tmp/build
+
+RUN DEBIAN_FRONTEND="noninteractive" apt-get install -qqy --no-install-recommends \
+    git wget bzip2 file unzip libtool pkg-config cmake build-essential \
+    automake nasm gettext autopoint vim-tiny python3 \
+    ninja-build ca-certificates curl less zip && \
+    apt-get clean -y && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN git clone "$LLVM_MINGW_REPOSITORY" --branch="$LLVM_MINGW_VERSION" --single-branch /tmp/build
+WORKDIR /tmp/build
+
+RUN ./build-llvm.sh $TOOLCHAIN_PREFIX && \
+    ./build-lldb-mi.sh $TOOLCHAIN_PREFIX && \
+    ./strip-llvm.sh $TOOLCHAIN_PREFIX && \
+    ./install-wrappers.sh $TOOLCHAIN_PREFIX && \
+    ./build-mingw-w64.sh $TOOLCHAIN_PREFIX --with-default-msvcrt=$DEFAULT_CRT $CFGUARD_ARGS && \
+    ./build-mingw-w64-tools.sh $TOOLCHAIN_PREFIX && \
+    ./build-compiler-rt.sh $TOOLCHAIN_PREFIX $CFGUARD_ARGS && \
+    ./build-libcxx.sh $TOOLCHAIN_PREFIX $CFGUARD_ARGS && \
+    ./build-mingw-w64-libraries.sh $TOOLCHAIN_PREFIX $CFGUARD_ARGS && \
+    ./build-compiler-rt.sh $TOOLCHAIN_PREFIX --build-sanitizers && \
+    ./build-openmp.sh $TOOLCHAIN_PREFIX $CFGUARD_ARGS && \
+    rm -rf /build/*
+ENV PATH="$TOOLCHAIN_PREFIX/bin:${PATH}"
+ENV EXCLUDE_REFLECTIVE_LOADER=1
+ENV ADDITIONAL_ARGS="-DCMAKE_CXX_FLAGS=\"$LLVM_ADDITIONAL_ARGS $LLVM_MINGW_ADDITIONAL_ARGS\" -DCMAKE_C_FLAGS=\"$LLVM_ADDITIONAL_ARGS $LLVM_MINGW_ADDITIONAL_ARGS\" -DCMAKE_ASM_FLAGS=\"-O0\" -DEXCLUDE_REFLECTIVE_LOADER=ON"
