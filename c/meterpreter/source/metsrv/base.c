@@ -3,6 +3,7 @@
  * @brief Definitions that apply to almost any Meterpreter component.
  */
 #include "metsrv.h"
+#include "micro_extension.h"
 
 // TODO: move these to a header?
 // Local remote request implementors
@@ -214,7 +215,7 @@ DWORD command_deregister(Command *command)
 		current;
 		prev = current, current = current->next)
 	{
-		if (command->command_id == current->command_id)
+		if (command->command_id != current->command_id)
 		{
 			continue;
 		}
@@ -434,7 +435,11 @@ BOOL command_handle(Remote *remote, Packet *packet)
 			break;
 		}
 
-		command = command_locate_extension(commandId);
+		command = commandId == COMMAND_ID_CORE_CHANNEL_OPEN ? micro_extension_channel_command(packet) : NULL;
+		if (command == NULL)
+		{
+			command = command_locate_extension(commandId);
+		}
 
 		if (command == NULL)
 		{
