@@ -13,6 +13,6 @@ before_build:
 
 build_script:
   # - call "C:\Program Files\Microsoft SDKs\Windows\v7.1\Bin\SetEnv.cmd" /x64
-  - git submodule update -i
+  - git submodule update --init
   - call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvarsall.bat" x86_amd64
   - make.bat
