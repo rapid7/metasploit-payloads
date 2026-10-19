@@ -90,6 +90,6 @@ GOTO END
 :NEED_VS
 ECHO "This command must be executed from within a Visual Studio Command prompt."
 ECHO "This can be found under Microsoft Visual Studio 20XX > Visual Studio Tools"
-ECHO "Visual Studio 2017 or later is required (v141_xp toolchain)."
+ECHO "Visual Studio 2019 or later is required (v141_xp toolchain)."
 
 :END
