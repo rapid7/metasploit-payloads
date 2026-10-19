@@ -17,11 +17,11 @@ git submodule update
 
 With the code checked out and the submodules updated, you're ready to run a build. Here you have two main options:
 
-* Compile Windows Meterpreter on Windows with VS2013, VS2017 or VS2019.
+* Compile Windows Meterpreter on Windows with VS2019 or later.
 * Cross-compile Windows Meterpreter on Linux, either directly on your host or via a Docker container.
 
 ## Building - Windows on Windows
-Meterpreter currently supports being built with multiple versions of Visual Studio, including the free/community editions.
+Meterpreter currently supports being built with Visual Studio 2019 or later, including the free/community editions.
 Before building make sure to disable antivirus/windows defender.
 
 ### VS 2019
@@ -42,8 +42,8 @@ choco install visualstudio2019community -y --package-parameters "--config C:\YOU
 
 ### Running the Build
 
-Open up a Visual Studio command prompt by selecting `Developer Command Prompt for VS201X`
-from the Start menu. Alternatively you can run `vcvars32.bat` from an existing command
+Open a `Developer Command Prompt` for Visual Studio 2019 or later from the Start menu.
+Alternatively you can run `vcvars32.bat` from an existing command
 line prompt, just make sure it's the right one if you have multiple versions of VS
 installed on your machine.
 
