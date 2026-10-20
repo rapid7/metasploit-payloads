@@ -957,6 +957,13 @@ static void transport_destroy_http(Transport* transport)
 
 		if (ctx)
 		{
+			if (ctx->async_wake_event != NULL)
+			{
+				met_api->win_api.kernel32.SetEvent(ctx->async_wake_event);
+				met_api->win_api.kernel32.CloseHandle(ctx->async_wake_event);
+				ctx->async_wake_event = NULL;
+			}
+
 			SAFE_FREE(ctx->cert_hash);
 			SAFE_FREE(ctx->proxy);
 			SAFE_FREE(ctx->proxy_pass);

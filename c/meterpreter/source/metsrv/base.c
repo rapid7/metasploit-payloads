@@ -454,9 +454,14 @@ BOOL command_handle(Remote *remote, Packet *packet)
 			break;
 		}
 
-		// if either command is registered as inline, run them inline
+		// Async HTTP polling shares the remote lock with response POSTs. Finish
+		// each command before the next poll so queued work drains reliably.
 		if ((command && command_is_inline(command, packet))
-			|| packet->local)
+			|| packet->local
+			|| (remote->transport
+				&& (remote->transport->type & METERPRETER_TRANSPORT_HTTP)
+				&& remote->transport->ctx
+				&& ((HttpTransportContext*)remote->transport->ctx)->async_mode))
 		{
 			dprintf("[DISPATCH] Executing inline: %u", commandId);
 			result = command_process_inline(command, remote, packet);
