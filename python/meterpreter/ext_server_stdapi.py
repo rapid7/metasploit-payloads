@@ -2058,7 +2058,7 @@ def stdapi_fs_mkdir(request, response):
     dir_path = packet_get_tlv(request, TLV_TYPE_DIRECTORY_PATH)['value']
     dir_path = unicode(dir_path)
     if not os.path.isdir(dir_path):
-        os.mkdir(dir_path)
+        os.makedirs(dir_path)
     return ERROR_SUCCESS, response
 
 @register_function

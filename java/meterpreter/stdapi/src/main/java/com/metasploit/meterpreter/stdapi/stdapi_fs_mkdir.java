@@ -13,10 +13,7 @@ public class stdapi_fs_mkdir implements Command {
     public int execute(Meterpreter meterpreter, TLVPacket request, TLVPacket response) throws Exception {
         String path = request.getStringValue(TLVType.TLV_TYPE_DIRECTORY_PATH);
         File file = Loader.expand(path);
-        if (!file.getParentFile().exists() || !file.getParentFile().isDirectory()) {
-            throw new IOException("Parent directory not found: " + path);
-        }
-        if (!file.mkdirs()) {
+        if (!file.mkdirs() && !file.isDirectory()) {
             throw new IOException("Cannot create directory " + file.getCanonicalPath());
         }
         return ERROR_SUCCESS;
