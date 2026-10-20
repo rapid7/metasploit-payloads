@@ -6,6 +6,7 @@
 #define _METERPRETER_COMMON_REMOTE_H
 
 #include "common_thread.h"
+#include "common_list.h"
 #include "common_config.h"
 #include "common_pivot_tree.h"
 
@@ -131,6 +132,12 @@ typedef struct _HttpTransportContext
 	UINT async_lease_ttl;                 ///! Lease renewal timeout in seconds.
 	DWORD async_lease_deadline_ticks;     ///! Monotonic lease expiry deadline.
 	HANDLE async_wake_event;              ///! Event signaled to interrupt async sleep early.
+	LIST* async_response_queue;           ///! Completed response packets waiting to be transmitted.
+	EVENT* async_response_wake_event;     ///! Event signaled when a completed response is queued.
+	THREAD* async_response_thread;        ///! Sole owner of HTTP response POST operations in async mode.
+	BOOL async_response_queueing;         ///! Whether HTTP responses must be queued for the response worker.
+	BOOL async_response_stop_when_idle;   ///! Whether the response worker exits after draining completed responses.
+	LONG async_active_commands;           ///! Number of async command workers that can still produce a response.
 
 	PCreateHttpRequest create_req;        ///! WinHTTP/WinINET specific request creation.
 	PSendHttpRequest send_req;            ///! WinHTTP/WinINET specifc request sending.

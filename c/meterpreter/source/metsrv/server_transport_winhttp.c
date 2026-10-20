@@ -23,6 +23,157 @@ extern BOOL async_in_work_hours(HttpTransportContext* ctx);
 extern DWORD async_calculate_sleep_ms(HttpTransportContext* ctx);
 extern BOOL async_lease_is_active(HttpTransportContext* ctx);
 
+typedef struct _AsyncHttpResponse
+{
+	LPBYTE buffer;
+	DWORD length;
+} AsyncHttpResponse;
+
+static DWORD transmit_http_response(HttpTransportContext* ctx, LPBYTE encodedPacket, DWORD encodedPacketLength);
+
+static VOID async_http_response_free(AsyncHttpResponse* response)
+{
+	if (response != NULL)
+	{
+		SAFE_FREE(response->buffer);
+		free(response);
+	}
+}
+
+static DWORD THREADCALL async_http_response_worker(THREAD* thread)
+{
+	HttpTransportContext* ctx = (HttpTransportContext*)thread->parameter1;
+	AsyncHttpResponse* response = NULL;
+
+	while (TRUE)
+	{
+		while ((response = (AsyncHttpResponse*)list_shift(ctx->async_response_queue)) != NULL)
+		{
+			transmit_http_response(ctx, response->buffer, response->length);
+			async_http_response_free(response);
+		}
+
+		if (event_poll(thread->sigterm, 0))
+		{
+			break;
+		}
+		if (ctx->async_response_stop_when_idle && InterlockedCompareExchange(&ctx->async_active_commands, 0, 0) == 0)
+		{
+			ctx->async_response_stop_when_idle = FALSE;
+			ctx->async_response_queueing = FALSE;
+			break;
+		}
+
+		event_poll(ctx->async_response_wake_event, 1000);
+	}
+
+	return ERROR_SUCCESS;
+}
+
+BOOL async_http_response_queue_start(Remote* remote)
+{
+	HttpTransportContext* ctx = (HttpTransportContext*)remote->transport->ctx;
+
+	if (ctx->async_response_queueing)
+	{
+		ctx->async_response_stop_when_idle = FALSE;
+		return TRUE;
+	}
+
+	if (ctx->async_response_thread != NULL)
+	{
+		thread_join(ctx->async_response_thread);
+		thread_destroy(ctx->async_response_thread);
+		ctx->async_response_thread = NULL;
+	}
+	if (ctx->async_response_queue == NULL)
+	{
+		ctx->async_response_queue = list_create();
+	}
+	if (ctx->async_response_wake_event == NULL)
+	{
+		ctx->async_response_wake_event = event_create();
+	}
+	ctx->async_response_thread = thread_create(async_http_response_worker, ctx, NULL, NULL);
+	if (ctx->async_response_queue == NULL || ctx->async_response_wake_event == NULL || ctx->async_response_thread == NULL)
+	{
+		if (ctx->async_response_thread != NULL)
+		{
+			thread_destroy(ctx->async_response_thread);
+			ctx->async_response_thread = NULL;
+		}
+		if (ctx->async_response_wake_event != NULL)
+		{
+			event_destroy(ctx->async_response_wake_event);
+			ctx->async_response_wake_event = NULL;
+		}
+		if (ctx->async_response_queue != NULL)
+		{
+			list_destroy(ctx->async_response_queue);
+			ctx->async_response_queue = NULL;
+		}
+		return FALSE;
+	}
+
+	ctx->async_response_queueing = TRUE;
+	if (!thread_run(ctx->async_response_thread))
+	{
+		ctx->async_response_queueing = FALSE;
+		thread_destroy(ctx->async_response_thread);
+		ctx->async_response_thread = NULL;
+		event_destroy(ctx->async_response_wake_event);
+		ctx->async_response_wake_event = NULL;
+		list_destroy(ctx->async_response_queue);
+		ctx->async_response_queue = NULL;
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+VOID async_http_response_queue_stop_when_idle(Remote* remote)
+{
+	HttpTransportContext* ctx = (HttpTransportContext*)remote->transport->ctx;
+
+	if (ctx->async_response_queueing)
+	{
+		ctx->async_response_stop_when_idle = TRUE;
+		event_signal(ctx->async_response_wake_event);
+	}
+}
+
+static VOID async_http_response_queue_stop(HttpTransportContext* ctx)
+{
+	AsyncHttpResponse* response = NULL;
+
+	ctx->async_response_queueing = FALSE;
+	ctx->async_response_stop_when_idle = FALSE;
+	if (ctx->async_response_thread != NULL)
+	{
+		thread_sigterm(ctx->async_response_thread);
+		event_signal(ctx->async_response_wake_event);
+		thread_join(ctx->async_response_thread);
+		thread_destroy(ctx->async_response_thread);
+		ctx->async_response_thread = NULL;
+	}
+
+	if (ctx->async_response_wake_event != NULL)
+	{
+		event_destroy(ctx->async_response_wake_event);
+		ctx->async_response_wake_event = NULL;
+	}
+
+	if (ctx->async_response_queue != NULL)
+	{
+		while ((response = (AsyncHttpResponse*)list_shift(ctx->async_response_queue)) != NULL)
+		{
+			async_http_response_free(response);
+		}
+		list_destroy(ctx->async_response_queue);
+		ctx->async_response_queue = NULL;
+	}
+}
+
 /*!
  * @brief Prepare a winHTTP request with the given context.
  * @param ctx Pointer to the HTTP transport context to prepare the request from.
@@ -373,18 +524,11 @@ static DWORD validate_response_winhttp(HANDLE hReq, HttpTransportContext* ctx, L
  * @param packet Pointer to the \c Packet that is to be sent.
  * @return An indication of the result of processing the transmission request.
  */
-static DWORD packet_transmit_http(Remote *remote, LPBYTE rawPacket, DWORD rawPacketLength)
+static DWORD transmit_http_response(HttpTransportContext* ctx, LPBYTE encodedPacket, DWORD encodedPacketLength)
 {
 	DWORD dwResult = ERROR_SUCCESS;
-	HINTERNET hReq;
+	HINTERNET hReq = NULL;
 	BOOL res;
-	HttpTransportContext* ctx = (HttpTransportContext*)remote->transport->ctx;
-	LPBYTE encodedPacket = NULL;
-	DWORD encodedPacketLength = 0;
-
-	BOOL freeEncodedPacket = encode_raw_packet(ctx, rawPacket, rawPacketLength, &encodedPacket, &encodedPacketLength);
-
-	lock_acquire(remote->lock);
 
 	do
 	{
@@ -413,14 +557,64 @@ static DWORD packet_transmit_http(Remote *remote, LPBYTE rawPacket, DWORD rawPac
 
 	} while(0);
 
-	ctx->close_req(hReq);
+	if (hReq != NULL)
+	{
+		ctx->close_req(hReq);
+	}
+	return dwResult;
+}
+
+static DWORD packet_transmit_http(Remote *remote, LPBYTE rawPacket, DWORD rawPacketLength)
+{
+	DWORD dwResult = ERROR_SUCCESS;
+	HttpTransportContext* ctx = (HttpTransportContext*)remote->transport->ctx;
+	LPBYTE encodedPacket = NULL;
+	DWORD encodedPacketLength = 0;
+
+	BOOL freeEncodedPacket = encode_raw_packet(ctx, rawPacket, rawPacketLength, &encodedPacket, &encodedPacketLength);
+
+	if (ctx->async_response_queueing)
+	{
+		AsyncHttpResponse* response = (AsyncHttpResponse*)calloc(1, sizeof(AsyncHttpResponse));
+		if (response == NULL)
+		{
+			dwResult = ERROR_NOT_ENOUGH_MEMORY;
+		}
+		else
+		{
+			response->buffer = (LPBYTE)malloc(encodedPacketLength);
+			if (response->buffer == NULL)
+			{
+				async_http_response_free(response);
+				dwResult = ERROR_NOT_ENOUGH_MEMORY;
+			}
+			else
+			{
+				memcpy(response->buffer, encodedPacket, encodedPacketLength);
+				response->length = encodedPacketLength;
+				if (list_push(ctx->async_response_queue, response))
+				{
+					event_signal(ctx->async_response_wake_event);
+				}
+				else
+				{
+					async_http_response_free(response);
+					dwResult = ERROR_NOT_ENOUGH_MEMORY;
+				}
+			}
+		}
+	}
+	else
+	{
+		lock_acquire(remote->lock);
+		dwResult = transmit_http_response(ctx, encodedPacket, encodedPacketLength);
+		lock_release(remote->lock);
+	}
 
 	if (freeEncodedPacket)
 	{
 		SAFE_FREE(encodedPacket);
 	}
-
-	lock_release(remote->lock);
 
 	return dwResult;
 }
@@ -441,8 +635,13 @@ static DWORD packet_receive_http(Remote *remote, Packet **packet)
 	BOOL freePacketData = FALSE;
 	HttpTransportContext* ctx = (HttpTransportContext*)remote->transport->ctx;
 	DWORD retries = 5;
+	BOOL remoteLockHeld = FALSE;
 
-	lock_acquire(remote->lock);
+	if (!ctx->async_response_queueing)
+	{
+		lock_acquire(remote->lock);
+		remoteLockHeld = TRUE;
+	}
 
 	hReq = ctx->create_req(ctx, TRUE, "PACKET RECEIVE");
 	if (hReq == NULL)
@@ -625,7 +824,10 @@ out:
 		ctx->close_req(hReq);
 	}
 
-	lock_release(remote->lock);
+	if (remoteLockHeld)
+	{
+		lock_release(remote->lock);
+	}
 
 	dprintf("[HTTP] Packet receive finished");
 
@@ -755,6 +957,7 @@ static DWORD server_deinit_http(Transport* transport)
 
 	dprintf("[HTTP] Deinitialising ...");
 
+	async_http_response_queue_stop(ctx);
 	close_connection(ctx, &ctx->get_connection);
 	close_connection(ctx, &ctx->post_connection);
 
@@ -957,6 +1160,7 @@ static void transport_destroy_http(Transport* transport)
 
 		if (ctx)
 		{
+			async_http_response_queue_stop(ctx);
 			if (ctx->async_wake_event != NULL)
 			{
 				met_api->win_api.kernel32.SetEvent(ctx->async_wake_event);

