@@ -52,6 +52,7 @@
     <ClCompile Include="..\..\source\metsrv\base_inject.c" />
     <ClCompile Include="..\..\source\metsrv\channel.c" />
     <ClCompile Include="..\..\source\metsrv\core.c" />
+    <ClCompile Include="..\..\source\metsrv\core_async.c" />
     <ClCompile Include="..\..\source\metsrv\libloader.c" />
     <ClCompile Include="..\..\source\metsrv\list.c" />
     <ClCompile Include="..\..\source\metsrv\metsrv.c" />
