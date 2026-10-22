@@ -220,6 +220,7 @@ DWORD stagelessinit_extension(UINT extensionId, LPBYTE data, DWORD dataSize)
 DWORD load_extension(HMODULE hLibrary, BOOL bLibLoadedReflectivly, Remote* remote, Packet* response, Command* pFirstCommand)
 {
 	DWORD dwResult = ERROR_OUTOFMEMORY;
+	DWORD registrationResult = ERROR_SUCCESS;
 	PEXTENSION pExtension = (PEXTENSION)malloc(sizeof(EXTENSION));
 
 	dprintf("[SERVER] Initialising extension %x", hLibrary);
@@ -253,12 +254,24 @@ DWORD load_extension(HMODULE hLibrary, BOOL bLibLoadedReflectivly, Remote* remot
 			dprintf("[SERVER] Calling init()...");
 
 			pExtension->end = pFirstCommand;
+			command_registration_scope_begin(pFirstCommand);
 			// dwResult can be a mixture of different error types, e.g. HRESULT, win32 error
 			dwResult = pExtension->init(met_api, remote);
 			pExtension->start = extensionCommands;
+			registrationResult = command_registration_scope_error();
+
+			if (dwResult == ERROR_SUCCESS && registrationResult != ERROR_SUCCESS)
+			{
+				if (pExtension->deinit)
+				{
+					pExtension->deinit(remote);
+				}
+				dwResult = registrationResult;
+			}
 
 			if (dwResult == ERROR_SUCCESS)
 			{
+				command_registration_scope_end();
 				// inform the new extension of the existing commands
 				if (pExtension->commandAdded)
 				{
@@ -269,33 +282,36 @@ DWORD load_extension(HMODULE hLibrary, BOOL bLibLoadedReflectivly, Remote* remot
 				}
 
 				list_push(gExtensionList, pExtension);
+
+				if (response)
+				{
+					for (Command* command = pExtension->start; command != pExtension->end; command = command->next)
+					{
+						dprintf("[LOAD EXTENSION] Adding command ID to response: %u", command->command_id);
+						packet_add_tlv_uint(response, TLV_TYPE_UINT, command->command_id);
+
+						// inform existing extensions of the new commands
+						for (PNODE node = gExtensionList->start; node != NULL; node = node->next)
+						{
+							PEXTENSION ext = (PEXTENSION)node->data;
+							// don't inform the extension of itself
+							if (ext != pExtension && ext->commandAdded)
+							{
+								ext->commandAdded(command->command_id);
+							}
+						}
+					}
+				}
 			}
 			else
 			{
+				command_registration_scope_rollback();
+				command_registration_scope_end();
 				free(pExtension);
 			}
 		}
 
 		dprintf("[SERVER] Called init()...");
-		if (response)
-		{
-			for (Command* command = pExtension->start; command != pExtension->end; command = command->next)
-			{
-				dprintf("[LOAD EXTENSION] Adding command ID to response: %u", command->command_id);
-				packet_add_tlv_uint(response, TLV_TYPE_UINT, command->command_id);
-
-				// inform existing extensions of the new commands
-				for (PNODE node = gExtensionList->start; node != NULL; node = node->next)
-				{
-					PEXTENSION ext = (PEXTENSION)node->data;
-					// don't inform the extension of itself
-					if (ext != pExtension && ext->commandAdded)
-					{
-						ext->commandAdded(command->command_id);
-					}
-				}
-			}
-		}
 	}
 
 	return dwResult;

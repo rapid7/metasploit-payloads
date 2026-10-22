@@ -104,6 +104,16 @@ Command baseCommands[] =
  */
 Command* extensionCommands = NULL;
 
+/*
+ * Extension initialization registers through callbacks that cannot report a
+ * failed command_register_all entry. Keep a narrow transaction around
+ * load_extension so a collision can reject and roll back that extension
+ * without deregistering an older provider with the same command ID.
+ */
+static BOOL commandRegistrationScopeActive = FALSE;
+static Command* commandRegistrationBoundary = NULL;
+static DWORD commandRegistrationError = ERROR_SUCCESS;
+
 /*!
  * @brief Register dispatch routines provided by the meterpreter core.
  * @return Returns the first command of the array of commands that were registered.
@@ -153,6 +163,39 @@ void command_register_all(Command commands[])
 #endif
 }
 
+VOID command_registration_scope_begin(Command* boundary)
+{
+	commandRegistrationScopeActive = TRUE;
+	commandRegistrationBoundary = boundary;
+	commandRegistrationError = ERROR_SUCCESS;
+}
+
+DWORD command_registration_scope_error(VOID)
+{
+	return commandRegistrationError;
+}
+
+VOID command_registration_scope_rollback(VOID)
+{
+	while (extensionCommands != commandRegistrationBoundary)
+	{
+		Command* command = extensionCommands;
+		extensionCommands = command->next;
+		if (extensionCommands != NULL)
+		{
+			extensionCommands->prev = NULL;
+		}
+		free(command);
+	}
+}
+
+VOID command_registration_scope_end(VOID)
+{
+	commandRegistrationScopeActive = FALSE;
+	commandRegistrationBoundary = NULL;
+	commandRegistrationError = ERROR_SUCCESS;
+}
+
 /*!
  * @brief Dynamically register a custom command handler
  * @param command Pointer to the command that should be registered.
@@ -163,6 +206,14 @@ DWORD command_register(Command *command)
 	Command *newCommand;
 
 	dprintf("Registering a new command (%u)...", command->command_id);
+	if (command_locate_extension(command->command_id) != NULL)
+	{
+		if (commandRegistrationScopeActive)
+		{
+			commandRegistrationError = ERROR_ALREADY_EXISTS;
+		}
+		return ERROR_ALREADY_EXISTS;
+	}
 	if (!(newCommand = (Command *)malloc(sizeof(Command))))
 	{
 		return ERROR_NOT_ENOUGH_MEMORY;
@@ -215,6 +266,10 @@ DWORD command_deregister(Command *command)
 		current;
 		prev = current, current = current->next)
 	{
+		if (commandRegistrationScopeActive && current == commandRegistrationBoundary)
+		{
+			break;
+		}
 		if (command->command_id != current->command_id)
 		{
 			continue;
