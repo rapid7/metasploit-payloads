@@ -592,7 +592,8 @@ register_command('stdapi_fs_mkdir', COMMAND_ID_STDAPI_FS_MKDIR);
 function stdapi_fs_mkdir($req, &$pkt) {
     my_print("doing mkdir");
     $path_tlv = packet_get_tlv($req, TLV_TYPE_DIRECTORY_PATH);
-    $ret = @mkdir(canonicalize_path($path_tlv['value']));
+    $path = canonicalize_path($path_tlv['value']);
+    $ret = @is_dir($path) || @mkdir($path, 0777, true);
     return $ret ? ERROR_SUCCESS : ERROR_FAILURE;
 }
 }
