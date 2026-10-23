@@ -2,6 +2,10 @@
 #include "common_metapi.h"
 #include "../tiny-regex-c/re.h"
 
+#ifndef STATUS_PROCEDURE_NOT_FOUND
+#define STATUS_PROCEDURE_NOT_FOUND ((NTSTATUS)0xC000007AL)
+#endif
+
 typedef struct _UNICODE_STRING {
 	USHORT Length;
 	USHORT MaximumLength;
@@ -510,8 +514,18 @@ DWORD request_sys_process_memory_search(Remote* remote, Packet* packet)
 	memory_buffer = (unsigned char*)malloc(MEMORY_BUFFER_SIZE * sizeof(unsigned char));
 	if (memory_buffer == NULL) { dprintf("[MEM SEARCH] Could not allocate memory buffer"); result = ERROR_OUTOFMEMORY; goto done; }
 
-	for (size_t current_ptr = 0; met_api->win_api.kernel32.VirtualQueryEx(process_handle, (LPCVOID)current_ptr, &mem, sizeof(mem)); current_ptr += mem.RegionSize)
+	for (size_t current_ptr = 0; ; current_ptr += mem.RegionSize)
 	{
+		if (!met_api->win_api.kernel32.VirtualQueryEx(process_handle, (LPCVOID)current_ptr, &mem, sizeof(mem)))
+		{
+			const DWORD query_error = met_api->win_api.kernel32.GetLastError();
+			// ERROR_INVALID_PARAMETER marks the end of the address space. Any
+			// other failure, including export resolution, aborts the request.
+			if (query_error != ERROR_INVALID_PARAMETER)
+				result = query_error;
+			break;
+		}
+
 		if (!can_read_memory(mem.Protect)) { continue; }
 
 		size_t memory_region_offset = 0;
@@ -529,8 +543,14 @@ DWORD request_sys_process_memory_search(Remote* remote, Packet* packet)
 
 			const size_t read_address = (size_t)mem.BaseAddress + memory_region_offset;
 			// Note: This will read up to a maximum of bytes_to_read OR to the end of the memory region if the end of it has been reached.
-			if (met_api->win_api.ntdll.ZwReadVirtualMemory(process_handle, (LPCVOID)read_address, memory_buffer, bytes_to_read, &bytes_read) != ERROR_SUCCESS)
+			const NTSTATUS read_status = met_api->win_api.ntdll.ZwReadVirtualMemory(process_handle, (LPCVOID)read_address, memory_buffer, bytes_to_read, &bytes_read);
+			if (read_status != ERROR_SUCCESS)
 			{
+				if (read_status == STATUS_PROCEDURE_NOT_FOUND)
+				{
+					result = ERROR_PROC_NOT_FOUND;
+					goto done;
+				}
 				dprintf("[MEM SEARCH] Failed to read some virtual memory for process, skipping %u bytes", bytes_to_read);
 				memory_region_offset += bytes_to_read;
 				continue;
@@ -580,8 +600,6 @@ DWORD request_sys_process_memory_search(Remote* remote, Packet* packet)
 			memory_region_offset += bytes_to_read;
 		}
 	}
-
-	result = ERROR_SUCCESS;
 
 done:
 	dprintf("[MEM SEARCH] Memory Search complete.");

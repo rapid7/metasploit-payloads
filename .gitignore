@@ -4,6 +4,3 @@
 .vs
 *.user
 .vscode
-
-# Local agent workspace
-.github/agent-workspace/

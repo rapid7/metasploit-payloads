@@ -428,42 +428,37 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 				break;
 			}
 
-			// Missing optional exports preserve LastError, so seed a deterministic
-			// result before using the wrapper as an availability probe.
-			met_api->win_api.kernel32.SetLastError(ERROR_PROC_NOT_FOUND);
-			met_api->win_api.kernel32.InitializeProcThreadAttributeList(NULL, 1, 0, &len);
+			BOOL attributeQueryResult = met_api->win_api.kernel32.InitializeProcThreadAttributeList(NULL, 1, 0, &len);
 			DWORD attributeError = met_api->win_api.kernel32.GetLastError();
 			dprintf("[execute] OpenProcess: opened process %d with permission %d: 0x%p [%d]\n", ppid, permission, parentHandle, attributeError);
-			if (len != 0) {
-				si.lpAttributeList = malloc(len);
-				if (!si.lpAttributeList) {
-					result = ERROR_NOT_ENOUGH_MEMORY;
-					break;
-				}
-				if (!met_api->win_api.kernel32.InitializeProcThreadAttributeList(si.lpAttributeList, 1, 0, &len)) {
-					result = met_api->win_api.kernel32.GetLastError();
-					dprintf("[execute] InitializeProcThreadAttributeList: [%d]\n", result);
-					break;
-				}
-
-				dprintf("[execute] InitializeProcThreadAttributeList\n");
-
-				met_api->win_api.kernel32.SetLastError(ERROR_PROC_NOT_FOUND);
-				if (!met_api->win_api.kernel32.UpdateProcThreadAttribute(si.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_PARENT_PROCESS, &parentHandle, sizeof(HANDLE), 0, 0)) {
-					result = met_api->win_api.kernel32.GetLastError();
-					dprintf("[execute] UpdateProcThreadAttribute: [%d]\n", result);
-					break;
-				}
-
-				dprintf("[execute] UpdateProcThreadAttribute\n");
-
-				createFlags |= EXTENDED_STARTUPINFO_PRESENT;
-				si.StartupInfo.cb = sizeof(STARTUPINFOEXW);
-			}
-			else {
-				result = attributeError;
+			if (attributeQueryResult || attributeError != ERROR_INSUFFICIENT_BUFFER) {
+				result = attributeQueryResult ? ERROR_INVALID_FUNCTION : attributeError;
 				break;
 			}
+
+			si.lpAttributeList = malloc(len);
+			if (!si.lpAttributeList) {
+				result = ERROR_NOT_ENOUGH_MEMORY;
+				break;
+			}
+			if (!met_api->win_api.kernel32.InitializeProcThreadAttributeList(si.lpAttributeList, 1, 0, &len)) {
+				result = met_api->win_api.kernel32.GetLastError();
+				dprintf("[execute] InitializeProcThreadAttributeList: [%d]\n", result);
+				break;
+			}
+
+			dprintf("[execute] InitializeProcThreadAttributeList\n");
+
+			if (!met_api->win_api.kernel32.UpdateProcThreadAttribute(si.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_PARENT_PROCESS, &parentHandle, sizeof(HANDLE), 0, 0)) {
+				result = met_api->win_api.kernel32.GetLastError();
+				dprintf("[execute] UpdateProcThreadAttribute: [%d]\n", result);
+				break;
+			}
+
+			dprintf("[execute] UpdateProcThreadAttribute\n");
+
+			createFlags |= EXTENDED_STARTUPINFO_PRESENT;
+			si.StartupInfo.cb = sizeof(STARTUPINFOEXW);
 		}
 
 		// Try to execute the process with duplicated token
@@ -588,7 +583,6 @@ DWORD request_sys_process_execute(Remote *remote, Packet *packet)
 				}
 				else
 				{
-					met_api->win_api.kernel32.SetLastError(ERROR_PROC_NOT_FOUND);
 					if (!met_api->win_api.wtsapi32.WTSQueryUserToken(session, &hToken))
 					{
 						dwResult = met_api->win_api.kernel32.GetLastError();

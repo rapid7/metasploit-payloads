@@ -50,6 +50,10 @@ typedef VOID WINHTTP_PROXY_INFO;
 #endif
 #endif
 
+struct ICommand;
+struct tagDBCOMMANDTREE;
+struct tagCIPROPERTYDEF;
+
 // Hash-based function resolver: parses the module's export directory and
 // returns the address of the export whose _hash(name) matches. Used by both
 // the winapi_* wrappers and any call site that needs a raw function pointer
@@ -813,9 +817,8 @@ HHOOK winapi_user32_SetWindowsHookExW(int idHook, HOOKPROC lpfn, HINSTANCE hmod,
 BOOL winapi_user32_UnhookWindowsHookEx(HHOOK hhk);
 LRESULT winapi_user32_CallNextHookEx(HHOOK hhk, int nCode, WPARAM wParam, LPARAM lParam);
 BOOL winapi_user32_PostThreadMessageA(DWORD idThread, UINT Msg, WPARAM wParam, LPARAM lParam);
-HHOOK winapi_win32u_NtUserSetWindowsHookEx(int idHook, HOOKPROC lpfn, HINSTANCE hmod, DWORD dwThreadId);
+HHOOK winapi_win32u_NtUserSetWindowsHookEx(HINSTANCE hmod, PVOID pModuleName, DWORD dwThreadId, int idHook, HOOKPROC lpfn, BOOL ansi);
 BOOL winapi_win32u_NtUserUnhookWindowsHookEx(HHOOK hhk);
-
 ULONG winapi_iphlpapi_GetAdaptersAddresses(ULONG Family, ULONG Flags, PVOID Reserved, PIP_ADAPTER_ADDRESSES AdapterAddresses, PULONG SizePointer);
 DWORD winapi_iphlpapi_GetExtendedTcpTable(PVOID pTcpTable, PDWORD pdwSize, BOOL bOrder, ULONG ulAf, TCP_TABLE_CLASS TableClass, ULONG Reserved);
 DWORD winapi_iphlpapi_GetExtendedUdpTable(PVOID pUdpTable, PDWORD pdwSize, BOOL bOrder, ULONG ulAf, UDP_TABLE_CLASS TableClass, ULONG Reserved);
@@ -837,7 +840,7 @@ BOOL winapi_userenv_DestroyEnvironmentBlock(LPVOID lpEnvironment);
 BOOL winapi_wtsapi32_WTSQueryUserToken(ULONG SessionId, PHANDLE phToken);
 
 HRESULT winapi_query_LocateCatalogsW(LPCWSTR pwszScope, ULONG iBmk, LPWSTR pwszMachine, PULONG pcMachine, LPWSTR pwszCatalog, PULONG pcCatalog);
-HRESULT winapi_query_CIMakeICommand(PVOID* ppCommand, ULONG cScope, DWORD* pdwDepths, LPWSTR* ppwszScopes, LPWSTR* ppwszCatalogs, LPWSTR* ppwszMachines);
-HRESULT winapi_query_CITextToFullTree(LPCWSTR pwszRestriction, LPCWSTR pwszColumns, LPCWSTR pwszSortColumns, LPCWSTR pwszGroupings, PVOID* ppTree, ULONG cProperties, LPVOID* pPropertyDefinitions, LCID LocaleID);
+HRESULT winapi_query_CIMakeICommand(struct ICommand **ppCommand, ULONG cScope, const DWORD *pdwDepths, const WCHAR *const *ppwszScopes, const WCHAR *const *ppwszCatalogs, const WCHAR *const *ppwszMachines);
+HRESULT winapi_query_CITextToFullTree(LPCWSTR pwszRestriction, LPCWSTR pwszColumns, LPCWSTR pwszSortColumns, LPCWSTR pwszGroupings, struct tagDBCOMMANDTREE **ppTree, ULONG cProperties, struct tagCIPROPERTYDEF *pPropertyDefinitions, LCID localeID);
 
 #endif

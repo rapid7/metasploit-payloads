@@ -11,7 +11,6 @@ DWORD session_id( DWORD dwProcessId )
 {
 	DWORD dwSessionId = 0;
 
-	met_api->win_api.kernel32.SetLastError(ERROR_PROC_NOT_FOUND);
 	if( !met_api->win_api.kernel32.ProcessIdToSessionId( dwProcessId, &dwSessionId ) )
 	{
 		// ProcessIdToSessionId is absent on NT4, where session zero is the

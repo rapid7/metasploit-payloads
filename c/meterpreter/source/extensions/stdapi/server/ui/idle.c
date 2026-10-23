@@ -25,7 +25,6 @@ DWORD request_ui_get_idle_time(Remote *remote, Packet *request)
 	{
 		info.cbSize = sizeof(info);
 
-		met_api->win_api.kernel32.SetLastError(ERROR_PROC_NOT_FOUND);
 		if (met_api->win_api.user32.GetLastInputInfo(&info))
 			met_api->packet.add_tlv_uint(response, TLV_TYPE_IDLE_TIME,
 					(met_api->win_api.kernel32.GetTickCount() - info.dwTime) / 1000);

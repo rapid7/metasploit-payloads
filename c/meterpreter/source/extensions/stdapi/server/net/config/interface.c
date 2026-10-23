@@ -136,7 +136,7 @@ DWORD get_interfaces(Remote *remote, Packet *response)
 
 	// we'll need to know the version later on
 	memset(&v, 0, sizeof(v));
-	v.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
+	v.dwOSVersionInfoSize = sizeof(v);
 	met_api->win_api.kernel32.GetVersionExA((LPOSVERSIONINFOA)&v);
 
 	// Enumerate the entries

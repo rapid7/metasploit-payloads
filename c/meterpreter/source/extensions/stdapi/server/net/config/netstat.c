@@ -73,7 +73,11 @@ DWORD set_process_name(DWORD pid, char * buffer, DWORD buffer_size)
 		if (met_api->win_api.kernel32.Process32FirstW(hSnapshot, &pe32)) {
 			do {
 				if (pe32.th32ProcessID == pid) {
-					_snprintf_s(buffer, buffer_size-1, _TRUNCATE, "%d/%S", pid, pe32.szExeFile);
+					char *process_name = met_api->string.wchar_to_utf8(pe32.szExeFile);
+					if (process_name) {
+						_snprintf_s(buffer, buffer_size - 1, _TRUNCATE, "%d/%s", pid, process_name);
+						free(process_name);
+					}
 					break;
 				}
 			} while (met_api->win_api.kernel32.Process32NextW(hSnapshot, &pe32));

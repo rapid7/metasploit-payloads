@@ -25,6 +25,12 @@
 #include <shlwapi.h>
 #include <winnetwk.h>
 
+// query.dll uses OLE DB types whose complete definitions are only needed by
+// stdapi's search implementation.
+struct ICommand;
+struct tagDBCOMMANDTREE;
+struct tagCIPROPERTYDEF;
+
 // strsafe/dontuse deliberately macro-poisons these deprecated API names. They
 // are table member names here, not direct calls to the deprecated imports.
 #ifdef lstrcpyW
@@ -472,8 +478,8 @@ typedef struct _WinApiWtsapi32 {
 // query.dll (Windows Desktop Search v2)
 typedef struct _WinApiQuery {
     HRESULT (*LocateCatalogsW)(LPCWSTR pwszScope, ULONG iBmk, LPWSTR pwszMachine, PULONG pcMachine, LPWSTR pwszCatalog, PULONG pcCatalog);
-    HRESULT (*CIMakeICommand)(PVOID* ppCommand, ULONG cScope, DWORD* pdwDepths, LPWSTR* ppwszScopes, LPWSTR* ppwszCatalogs, LPWSTR* ppwszMachines);
-    HRESULT (*CITextToFullTree)(LPCWSTR pwszRestriction, LPCWSTR pwszColumns, LPCWSTR pwszSortColumns, LPCWSTR pwszGroupings, PVOID* ppTree, ULONG cProperties, LPVOID* pPropertyDefinitions, LCID LocaleID);
+    HRESULT (*CIMakeICommand)(struct ICommand **ppCommand, ULONG cScope, const DWORD *pdwDepths, const WCHAR *const *ppwszScopes, const WCHAR *const *ppwszCatalogs, const WCHAR *const *ppwszMachines);
+    HRESULT (*CITextToFullTree)(LPCWSTR pwszRestriction, LPCWSTR pwszColumns, LPCWSTR pwszSortColumns, LPCWSTR pwszGroupings, struct tagDBCOMMANDTREE **ppTree, ULONG cProperties, struct tagCIPROPERTYDEF *pPropertyDefinitions, LCID localeID);
 } WinApiQuery;
 
 // shlwapi.dll
@@ -518,12 +524,9 @@ typedef struct _WinApiWinHttp {
     BOOL      (*WinHttpWriteData)(HINTERNET hRequest, LPCVOID lpBuffer, DWORD dwNumberOfBytesToWrite, LPDWORD lpdwNumberOfBytesWritten);
 } WinApiWinHttp;
 
-// win32u.dll
-// Direct undocumented user-mode kernel gateway. Prefer these over user32
-// equivalents where available: the user32 exports funnel through these on
-// Win10+ and are common targets of user-mode telemetry hooks.
+// win32u.dll undocumented user-mode kernel gateways.
 typedef struct _WinApiWin32u {
-    HHOOK (*NtUserSetWindowsHookEx)(int idHook, HOOKPROC lpfn, HINSTANCE hmod, DWORD dwThreadId);
+    HHOOK (*NtUserSetWindowsHookEx)(HINSTANCE hmod, PVOID pModuleName, DWORD dwThreadId, int idHook, HOOKPROC lpfn, BOOL ansi);
     BOOL  (*NtUserUnhookWindowsHookEx)(HHOOK hhk);
 } WinApiWin32u;
 

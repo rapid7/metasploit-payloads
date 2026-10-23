@@ -28,27 +28,14 @@ typedef struct {
 static InputGateState g_gate;
 static volatile LONG g_gate_init_state = 0; // 0 = uninit, 1 = initing, 2 = ready
 
-/*
- * Prefer win32u.dll's undocumented NtUser* variants (Win10+); they are the
- * user-mode kernel gateway that user32 funnels through and are a less common
- * target of EDR user-mode telemetry hooks. Fall back to user32 when the
- * win32u exports are absent (older Windows, Wine, or unresolved).
- */
 static HHOOK input_gate_install(int idHook, HOOKPROC proc)
 {
-    HHOOK h = met_api->win_api.win32u.NtUserSetWindowsHookEx(idHook, proc, hAppInstance, 0);
-    if (h) {
-        return h;
-    }
     return met_api->win_api.user32.SetWindowsHookExW(idHook, proc, hAppInstance, 0);
 }
 
 static BOOL input_gate_uninstall(HHOOK h)
 {
     if (!h) {
-        return TRUE;
-    }
-    if (met_api->win_api.win32u.NtUserUnhookWindowsHookEx(h)) {
         return TRUE;
     }
     return met_api->win_api.user32.UnhookWindowsHookEx(h);

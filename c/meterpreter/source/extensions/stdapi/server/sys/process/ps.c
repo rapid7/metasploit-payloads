@@ -97,6 +97,11 @@ DWORD ps_getarch( DWORD dwPid )
 		// first we default to 'x86' as if kernel32!IsWow64Process is not present then we are on an older x86 system.
 		result = PROCESS_ARCH_X86;
 
+		// Every process on a native x86 system is x86, including processes we
+		// cannot open. This also preserves the pre-IsWow64Process fallback.
+		if( dwNativeArch == PROCESS_ARCH_X86 )
+			break;
+
 		// now we must default to an unknown architecture as the process may be either x86/x64 and we may not have the rights to open it
 		result = PROCESS_ARCH_UNKNOWN;
 
@@ -108,7 +113,6 @@ DWORD ps_getarch( DWORD dwPid )
 				break;
 		}
 
-		met_api->win_api.kernel32.SetLastError(ERROR_PROC_NOT_FOUND);
 		if( !met_api->win_api.kernel32.IsWow64Process( hProcess, &bIsWow64 ) )
 		{
 			// IsWow64Process is absent on older x86-only systems.
@@ -142,6 +146,7 @@ DWORD ps_getnativearch( VOID )
 	{
 		// default to 'x86' as if kernel32!GetNativeSystemInfo is not present then we are on an old x86 system.
 		dwNativeArch = PROCESS_ARCH_X86;
+		SystemInfo.wProcessorArchitecture = PROCESSOR_ARCHITECTURE_INTEL;
 
 		met_api->win_api.kernel32.GetNativeSystemInfo( &SystemInfo );
 		switch( SystemInfo.wProcessorArchitecture )
@@ -340,6 +345,7 @@ DWORD ps_list_via_toolhelp( Packet * response )
 	DWORD result                                       = ERROR_INVALID_HANDLE;
 	HANDLE hProcessSnap                                = NULL;
 	PROCESSENTRY32W pe32                               = {0};
+	BOOL hasNext                                       = FALSE;
 
 	do
 	{
@@ -350,7 +356,12 @@ DWORD ps_list_via_toolhelp( Packet * response )
 		pe32.dwSize = sizeof( PROCESSENTRY32W );
 
 		if( !met_api->win_api.kernel32.Process32FirstW( hProcessSnap, &pe32 ) )
+		{
+			result = met_api->win_api.kernel32.GetLastError();
+			if( result == ERROR_NO_MORE_FILES )
+				result = ERROR_SUCCESS;
 			break;
+		}
 
 		result = ERROR_SUCCESS;
 
@@ -369,7 +380,12 @@ DWORD ps_list_via_toolhelp( Packet * response )
 
 			ps_addresult(response, pe32.th32ProcessID, pe32.th32ParentProcessID, pe32.szExeFile, wcExePath, wcUserName, dwProcessArch);
 
-		} while( met_api->win_api.kernel32.Process32NextW( hProcessSnap, &pe32 ) );
+			hasNext = met_api->win_api.kernel32.Process32NextW( hProcessSnap, &pe32 );
+		} while( hasNext );
+
+		result = met_api->win_api.kernel32.GetLastError();
+		if( result == ERROR_NO_MORE_FILES )
+			result = ERROR_SUCCESS;
 
 	} while(0);
 

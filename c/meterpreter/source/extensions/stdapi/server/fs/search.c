@@ -370,9 +370,9 @@ DWORD wds2_search(WDS_INTERFACE * pWDSInterface, wchar_t *directory, SEARCH_OPTI
 	wchar_t * query               = NULL;
 	wchar_t * newCurrent          = NULL;
 	DWORD dwDepth[1]            = {0};
-	wchar_t * wcScope[1]          = {0};
-	wchar_t * wcCatalog[1]        = {0};
-	wchar_t * wcMachines[1]       = {0};
+	const wchar_t * wcScope[1]    = {0};
+	const wchar_t * wcCatalog[1]  = {0};
+	const wchar_t * wcMachines[1] = {0};
 	HRESULT hr                  = 0;
 	size_t dwLength             = 0;
 
@@ -422,9 +422,8 @@ DWORD wds2_search(WDS_INTERFACE * pWDSInterface, wchar_t *directory, SEARCH_OPTI
 		wcCatalog[0]  = L"System";
 		wcMachines[0] = L".";
 
-		hr = met_api->win_api.query.CIMakeICommand((PVOID*)&pCommand, 1,
-		    (DWORD *)&dwDepth, (wchar_t **)&wcScope, (wchar_t **)&wcCatalog,
-			(wchar_t **)&wcMachines);
+		hr = met_api->win_api.query.CIMakeICommand(&pCommand, 1,
+		    dwDepth, wcScope, wcCatalog, wcMachines);
 		if (FAILED(hr)) {
 			BREAK_WITH_ERROR("[SEARCH] wds2_search: CIMakeICommand Failed", hr);
 		}
@@ -443,7 +442,7 @@ DWORD wds2_search(WDS_INTERFACE * pWDSInterface, wchar_t *directory, SEARCH_OPTI
 
 		swprintf_s(query, (dwLength + 128), L"#filename = %s", pOptions->glob);
 
-		hr = met_api->win_api.query.CITextToFullTree(query, L"size,path", NULL, NULL, (PVOID*)&pTree, 0, NULL, met_api->win_api.kernel32.GetSystemDefaultLCID());
+		hr = met_api->win_api.query.CITextToFullTree(query, L"size,path", NULL, NULL, &pTree, 0, NULL, met_api->win_api.kernel32.GetSystemDefaultLCID());
 		if (FAILED(hr)) {
 			BREAK_WITH_ERROR("[SEARCH] wds2_search: CITextToFullTree Failed", hr);
 		}

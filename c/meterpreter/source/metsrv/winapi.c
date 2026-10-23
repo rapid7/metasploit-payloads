@@ -33,6 +33,10 @@
 #define OBJ_INHERIT 0x00000002L
 #endif
 
+#ifndef STATUS_PROCEDURE_NOT_FOUND
+#define STATUS_PROCEDURE_NOT_FOUND ((NTSTATUS)0xC000007AL)
+#endif
+
 typedef struct NtDllFunction {
     LPCSTR lpFunctionName;
     DWORD dwNumberOfArgs;
@@ -444,8 +448,9 @@ DECLSPEC_NOINLINE FARPROC GetFunctionHCached(WinApiFunctionCache* cache, LPCSTR 
         function = GetFunctionHRetained(moduleName, functionHash);
     }
 
-    // Module loading and export parsing are implementation details of the
-    // wrapper and must not alter the error observed by its caller.
+    // The lookup itself preserves the caller's error. The public wrapper sets
+    // ERROR_PROC_NOT_FOUND if this returns NULL, making resolution failure
+    // distinct from the native call's own failure.
     SetLastError(lastError);
     return function;
 }
@@ -474,6 +479,7 @@ DECLSPEC_NOINLINE FARPROC GetFunctionHCached(WinApiFunctionCache* cache, LPCSTR 
         if (function) { \
             return function arguments; \
         } \
+        SetLastError(ERROR_PROC_NOT_FOUND); \
         return (failureValue); \
     }
 
@@ -485,6 +491,8 @@ DECLSPEC_NOINLINE FARPROC GetFunctionHCached(WinApiFunctionCache* cache, LPCSTR 
         WINAPI_CACHE_DPRINTF("[WINAPI][%s] Calling export @ %p", #wrapperName, function); \
         if (function) { \
             function arguments; \
+        } else { \
+            SetLastError(ERROR_PROC_NOT_FOUND); \
         } \
     }
 
@@ -493,7 +501,11 @@ DECLSPEC_NOINLINE FARPROC GetFunctionHCached(WinApiFunctionCache* cache, LPCSTR 
 #define DEFINE_CACHED_WINAPI_ADDRESS_GETTER(wrapperName, moduleName, functionHash) \
     FARPROC wrapperName(VOID) { \
         static WinApiFunctionCache cache = WINAPI_FUNCTION_CACHE_INIT; \
-        return GetFunctionHCached(&cache, moduleName, functionHash); \
+        FARPROC function = GetFunctionHCached(&cache, moduleName, functionHash); \
+        if (function == NULL) { \
+            SetLastError(ERROR_PROC_NOT_FOUND); \
+        } \
+        return function; \
     }
 
 void* GetFunction(LPCSTR lpModuleName, LPCSTR lpFunctionName) {
@@ -548,7 +560,7 @@ NTSTATUS winapi_ntdll_ZwReadVirtualMemory(HANDLE ProcessHandle, LPCVOID BaseAddr
             return pZwReadVirtualMemory(ProcessHandle, BaseAddress, Buffer, NumberOfBytesToRead, NumberOfBytesRead);
         }
     }
-    return 0xC0000001;
+    return STATUS_PROCEDURE_NOT_FOUND;
 }
 
 NTSTATUS winapi_ntdll_ZwProtectVirtualMemory(HANDLE ProcessHandle, PVOID* BaseAddress, PSIZE_T RegionSize, ULONG NewProtect, PULONG OldProtect) {
@@ -568,7 +580,7 @@ NTSTATUS winapi_ntdll_ZwFreeVirtualMemory(HANDLE ProcessHandle, PVOID* BaseAddre
 
 static DEFINE_CACHED_WINAPI_WRAPPER(NTSTATUS, winapi_ntdll_ZwQueueApcThreadFallback, NTAPI, NTDLL_DLL, H_ZwQueueApcThread,
     (HANDLE ThreadHandle, PVOID ApcRoutine, PVOID ApcContext, PVOID Argument1, PVOID Argument2),
-    (ThreadHandle, ApcRoutine, ApcContext, Argument1, Argument2), 0xC0000001)
+    (ThreadHandle, ApcRoutine, ApcContext, Argument1, Argument2), STATUS_PROCEDURE_NOT_FOUND)
 
 NTSTATUS winapi_ntdll_ZwQueueApcThread(HANDLE ThreadHandle, PVOID ApcRoutine, PVOID ApcContext, PVOID Argument1, PVOID Argument2) {
     if (hasDirectSyscallSupport()) {
@@ -581,7 +593,7 @@ NTSTATUS winapi_ntdll_ZwQueueApcThread(HANDLE ThreadHandle, PVOID ApcRoutine, PV
 
 static DEFINE_CACHED_WINAPI_WRAPPER(NTSTATUS, winapi_ntdll_ZwOpenThreadFallback, NTAPI, NTDLL_DLL, H_ZwOpenThread,
     (PHANDLE ThreadHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, PCLIENT_ID ClientId),
-    (ThreadHandle, DesiredAccess, ObjectAttributes, ClientId), 0xC0000001)
+    (ThreadHandle, DesiredAccess, ObjectAttributes, ClientId), STATUS_PROCEDURE_NOT_FOUND)
 
 NTSTATUS winapi_ntdll_ZwOpenThread(PHANDLE ThreadHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, PCLIENT_ID ClientId) {
     if (hasDirectSyscallSupport()) {
@@ -593,7 +605,7 @@ NTSTATUS winapi_ntdll_ZwOpenThread(PHANDLE ThreadHandle, ACCESS_MASK DesiredAcce
 }
 
 DEFINE_CACHED_WINAPI_WRAPPER(NTSTATUS, winapi_ntdll_RtlGetVersion, NTAPI, NTDLL_DLL, H_RtlGetVersion,
-    (PRTL_OSVERSIONINFOEXW os), (os), 0xC0000001)
+    (PRTL_OSVERSIONINFOEXW os), (os), STATUS_PROCEDURE_NOT_FOUND)
 
 DEFINE_CACHED_WINAPI_WRAPPER(ULONG, winapi_ntdll_RtlNtStatusToDosError, NTAPI, NTDLL_DLL, H_RtlNtStatusToDosError,
     (NTSTATUS Status), (Status), ERROR_GEN_FAILURE)
@@ -609,7 +621,7 @@ NTSTATUS winapi_ntdll_ZwQueryInformationProcess(HANDLE ProcessHandle, INT Proces
             return pZwQueryInformationProcess(ProcessHandle, ProcessInformationClass, ProcessInformation, ProcessInformationLength, ReturnLength);
         }
     }
-    return 0xC0000001;
+    return STATUS_PROCEDURE_NOT_FOUND;
 }
 
 NTSTATUS winapi_ntdll_ZwQueryObject(HANDLE Handle, INT ObjectInformationClass, PVOID ObjectInformation, ULONG ObjectInformationLength, PULONG ReturnLength) {
@@ -623,7 +635,7 @@ NTSTATUS winapi_ntdll_ZwQueryObject(HANDLE Handle, INT ObjectInformationClass, P
             return pZwQueryObject(Handle, ObjectInformationClass, ObjectInformation, ObjectInformationLength, ReturnLength);
         }
     }
-    return 0xC0000001;
+    return STATUS_PROCEDURE_NOT_FOUND;
 }
 
 NTSTATUS winapi_ntdll_ZwQueryInformationWorkerFactory(HANDLE WorkerFactoryHandle, INT WorkerFactoryInformationClass, PVOID WorkerFactoryInformation, ULONG WorkerFactoryInformationLength, PULONG ReturnLength) {
@@ -637,7 +649,7 @@ NTSTATUS winapi_ntdll_ZwQueryInformationWorkerFactory(HANDLE WorkerFactoryHandle
             return pZwQueryInformationWorkerFactory(WorkerFactoryHandle, WorkerFactoryInformationClass, WorkerFactoryInformation, WorkerFactoryInformationLength, ReturnLength);
         }
     }
-    return 0xC0000001;
+    return STATUS_PROCEDURE_NOT_FOUND;
 }
 
 NTSTATUS winapi_ntdll_ZwSetInformationWorkerFactory(HANDLE WorkerFactoryHandle, INT WorkerFactoryInformationClass, PVOID WorkerFactoryInformation, ULONG WorkerFactoryInformationLength) {
@@ -651,7 +663,7 @@ NTSTATUS winapi_ntdll_ZwSetInformationWorkerFactory(HANDLE WorkerFactoryHandle, 
             return pZwSetInformationWorkerFactory(WorkerFactoryHandle, WorkerFactoryInformationClass, WorkerFactoryInformation, WorkerFactoryInformationLength);
         }
     }
-    return 0xC0000001;
+    return STATUS_PROCEDURE_NOT_FOUND;
 }
 
 NTSTATUS winapi_ntdll_ZwSetIoCompletion(HANDLE IoCompletionHandle, PVOID KeyContext, PVOID ApcContext, NTSTATUS IoStatus, ULONG_PTR IoStatusInformation) {
@@ -665,12 +677,12 @@ NTSTATUS winapi_ntdll_ZwSetIoCompletion(HANDLE IoCompletionHandle, PVOID KeyCont
             return pZwSetIoCompletion(IoCompletionHandle, KeyContext, ApcContext, IoStatus, IoStatusInformation);
         }
     }
-    return 0xC0000001;
+    return STATUS_PROCEDURE_NOT_FOUND;
 }
 
 DEFINE_CACHED_WINAPI_WRAPPER(NTSTATUS, winapi_ntdll_RtlCreateUserThread, NTAPI, NTDLL_DLL, H_RtlCreateUserThread,
     (HANDLE ProcessHandle, PVOID SecurityDescriptor, BOOL CreateSuspended, ULONG StackZeroBits, SIZE_T StackReserve, SIZE_T StackCommit, PVOID StartAddress, PVOID StartParameter, PHANDLE ThreadHandle, PVOID ClientId),
-    (ProcessHandle, SecurityDescriptor, CreateSuspended, StackZeroBits, StackReserve, StackCommit, StartAddress, StartParameter, ThreadHandle, ClientId), 0xC0000001)
+    (ProcessHandle, SecurityDescriptor, CreateSuspended, StackZeroBits, StackReserve, StackCommit, StartAddress, StartParameter, ThreadHandle, ClientId), STATUS_PROCEDURE_NOT_FOUND)
 
 NTSTATUS winapi_ntdll_ZwMapViewOfSection(HANDLE SectionHandle, HANDLE ProcessHandle, PVOID* BaseAddress, ULONG_PTR ZeroBits, SIZE_T CommitSize, PLARGE_INTEGER SectionOffset, PSIZE_T ViewSize, DWORD InheritDisposition, ULONG AllocationType, ULONG Win32Protect) {
     if (hasDirectSyscallSupport()) {
@@ -683,7 +695,7 @@ NTSTATUS winapi_ntdll_ZwMapViewOfSection(HANDLE SectionHandle, HANDLE ProcessHan
             return pZwMapViewOfSection(SectionHandle, ProcessHandle, BaseAddress, ZeroBits, CommitSize, SectionOffset, ViewSize, InheritDisposition, AllocationType, Win32Protect);
         }
     }
-    return 0xC0000001;
+    return STATUS_PROCEDURE_NOT_FOUND;
 }
 
 NTSTATUS winapi_ntdll_ZwCreateSection(PHANDLE SectionHandle, ULONG DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, PLARGE_INTEGER MaximumSize, ULONG SectionPageProtection, ULONG AllocationAttributes, HANDLE FileHandle) {
@@ -697,7 +709,7 @@ NTSTATUS winapi_ntdll_ZwCreateSection(PHANDLE SectionHandle, ULONG DesiredAccess
             return pZwCreateSection(SectionHandle, DesiredAccess, ObjectAttributes, MaximumSize, SectionPageProtection, AllocationAttributes, FileHandle);
         }
     }
-    return 0xC0000001;
+    return STATUS_PROCEDURE_NOT_FOUND;
 }
 
 NTSTATUS winapi_ntdll_ZwOpenSection(PHANDLE SectionHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes) {
@@ -711,7 +723,7 @@ NTSTATUS winapi_ntdll_ZwOpenSection(PHANDLE SectionHandle, ACCESS_MASK DesiredAc
             return pZwOpenSection(SectionHandle, DesiredAccess, ObjectAttributes);
         }
     }
-    return 0xC0000001;
+    return STATUS_PROCEDURE_NOT_FOUND;
 }
 
 NTSTATUS winapi_ntdll_ZwOpenFile(PHANDLE FileHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, PVOID IoStatusBlock, ULONG ShareAccess, ULONG OpenOptions) {
@@ -725,7 +737,7 @@ NTSTATUS winapi_ntdll_ZwOpenFile(PHANDLE FileHandle, ACCESS_MASK DesiredAccess, 
             return pZwOpenFile(FileHandle, DesiredAccess, ObjectAttributes, IoStatusBlock, ShareAccess, OpenOptions);
         }
     }
-    return 0xC0000001;
+    return STATUS_PROCEDURE_NOT_FOUND;
 }
 
 NTSTATUS winapi_ntdll_ZwQueryAttributesFile(POBJECT_ATTRIBUTES ObjectAttributes, PVOID FileInformation) {
@@ -739,7 +751,7 @@ NTSTATUS winapi_ntdll_ZwQueryAttributesFile(POBJECT_ATTRIBUTES ObjectAttributes,
             return pZwQueryAttributesFile(ObjectAttributes, FileInformation);
         }
     }
-    return 0xC0000001;
+    return STATUS_PROCEDURE_NOT_FOUND;
 }
 
 NTSTATUS winapi_ntdll_ZwClose(HANDLE Handle) {
@@ -753,7 +765,7 @@ NTSTATUS winapi_ntdll_ZwClose(HANDLE Handle) {
             return pZwClose(Handle);
         }
     }
-    return 0xC0000001;
+    return STATUS_PROCEDURE_NOT_FOUND;
 }
 
 NTSTATUS winapi_ntdll_ZwLockVirtualMemory(HANDLE ProcessHandle, PVOID* BaseAddress, PSIZE_T RegionSize, ULONG MapType) {
@@ -767,7 +779,7 @@ NTSTATUS winapi_ntdll_ZwLockVirtualMemory(HANDLE ProcessHandle, PVOID* BaseAddre
             return pZwLockVirtualMemory(ProcessHandle, BaseAddress, RegionSize, MapType);
         }
     }
-    return 0xC0000001;
+    return STATUS_PROCEDURE_NOT_FOUND;
 }
 
 NTSTATUS winapi_ntdll_ZwUnmapViewOfSection(HANDLE ProcessHandle, PVOID BaseAddress) {
@@ -781,7 +793,7 @@ NTSTATUS winapi_ntdll_ZwUnmapViewOfSection(HANDLE ProcessHandle, PVOID BaseAddre
             return pZwUnmapViewOfSection(ProcessHandle, BaseAddress);
         }
     }
-    return 0xC0000001;
+    return STATUS_PROCEDURE_NOT_FOUND;
 }
 // END: ntdll.dll
 // START: kernel32.dll
@@ -792,6 +804,8 @@ static BOOL winapi_NtStatusSucceeded(NTSTATUS status)
         return TRUE;
     }
 
+    // Direct syscalls do not update the Win32 last-error value themselves.
+    // Translate their failure so these adapters match their kernel32 APIs.
     SetLastError(winapi_ntdll_RtlNtStatusToDosError(status));
     return FALSE;
 }
@@ -2054,12 +2068,9 @@ DEFINE_CACHED_WINAPI_WRAPPER(BOOL, winapi_user32_PostThreadMessageA, WINAPI, USE
     (DWORD idThread, UINT Msg, WPARAM wParam, LPARAM lParam),
     (idThread, Msg, wParam, lParam), FALSE)
 
-// win32u.dll — undocumented direct user-mode kernel gateway. Missing on
-// pre-Win10 and Wine; wrappers return NULL/FALSE so callers can fall back
-// to the user32 equivalents.
 DEFINE_CACHED_WINAPI_WRAPPER(HHOOK, winapi_win32u_NtUserSetWindowsHookEx, WINAPI, WIN32U_DLL, H_NtUserSetWindowsHookEx,
-    (int idHook, HOOKPROC lpfn, HINSTANCE hmod, DWORD dwThreadId),
-    (idHook, lpfn, hmod, dwThreadId), NULL)
+    (HINSTANCE hmod, PVOID pModuleName, DWORD dwThreadId, int idHook, HOOKPROC lpfn, BOOL ansi),
+    (hmod, pModuleName, dwThreadId, idHook, lpfn, ansi), NULL)
 DEFINE_CACHED_WINAPI_WRAPPER(BOOL, winapi_win32u_NtUserUnhookWindowsHookEx, WINAPI, WIN32U_DLL, H_NtUserUnhookWindowsHookEx,
     (HHOOK hhk), (hhk), FALSE)
 
@@ -2112,11 +2123,11 @@ DEFINE_CACHED_WINAPI_WRAPPER(HRESULT, winapi_query_LocateCatalogsW, WINAPI, QUER
     (LPCWSTR pwszScope, ULONG iBmk, LPWSTR pwszMachine, PULONG pcMachine, LPWSTR pwszCatalog, PULONG pcCatalog),
     (pwszScope, iBmk, pwszMachine, pcMachine, pwszCatalog, pcCatalog), E_NOTIMPL)
 DEFINE_CACHED_WINAPI_WRAPPER(HRESULT, winapi_query_CIMakeICommand, WINAPI, QUERY_DLL, H_CIMakeICommand,
-    (PVOID* ppCommand, ULONG cScope, DWORD* pdwDepths, LPWSTR* ppwszScopes, LPWSTR* ppwszCatalogs, LPWSTR* ppwszMachines),
+    (struct ICommand **ppCommand, ULONG cScope, const DWORD *pdwDepths, const WCHAR *const *ppwszScopes, const WCHAR *const *ppwszCatalogs, const WCHAR *const *ppwszMachines),
     (ppCommand, cScope, pdwDepths, ppwszScopes, ppwszCatalogs, ppwszMachines), E_NOTIMPL)
 DEFINE_CACHED_WINAPI_WRAPPER(HRESULT, winapi_query_CITextToFullTree, WINAPI, QUERY_DLL, H_CITextToFullTree,
-    (LPCWSTR pwszRestriction, LPCWSTR pwszColumns, LPCWSTR pwszSortColumns, LPCWSTR pwszGroupings, PVOID* ppTree, ULONG cProperties, LPVOID* pPropertyDefinitions, LCID LocaleID),
-    (pwszRestriction, pwszColumns, pwszSortColumns, pwszGroupings, ppTree, cProperties, pPropertyDefinitions, LocaleID), E_NOTIMPL)
+    (LPCWSTR pwszRestriction, LPCWSTR pwszColumns, LPCWSTR pwszSortColumns, LPCWSTR pwszGroupings, struct tagDBCOMMANDTREE **ppTree, ULONG cProperties, struct tagCIPROPERTYDEF *pPropertyDefinitions, LCID localeID),
+    (pwszRestriction, pwszColumns, pwszSortColumns, pwszGroupings, ppTree, cProperties, pPropertyDefinitions, localeID), E_NOTIMPL)
 
 // END: expanded stdapi surface
 #endif
