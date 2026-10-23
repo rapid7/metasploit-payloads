@@ -12,12 +12,12 @@ static char * parse_sockaddr(struct sockaddr_storage *addr, uint16_t *port)
 	if (host) {
 		if (addr->ss_family == AF_INET) {
 			struct sockaddr_in *s = (struct sockaddr_in *)addr;
-			*port = ntohs(s->sin_port);
+			*port = met_api->win_api.ws2_32.ntohs(s->sin_port);
 			inet_ntop(AF_INET, &s->sin_addr, host, INET6_ADDRSTRLEN);
 		}
 		else if (addr->ss_family == AF_INET6) {
 			struct sockaddr_in6 *s = (struct sockaddr_in6 *)addr;
-			*port = ntohs(s->sin6_port);
+			*port = met_api->win_api.ws2_32.ntohs(s->sin6_port);
 			inet_ntop(AF_INET6, &s->sin6_addr, host, INET6_ADDRSTRLEN);
 		}
 	}
@@ -37,7 +37,7 @@ const char * inet_ntop(int af, const void *src, char *dst, socklen_t size) {
 		((struct sockaddr_in6 *)&addr)->sin6_addr = *(struct in6_addr *)src;
 	}
 
-	if (!WSAAddressToStringA((struct sockaddr *)&addr, sizeof(addr), NULL, dst, &size)) {
+	if (!met_api->win_api.ws2_32.WSAAddressToStringA((struct sockaddr *)&addr, sizeof(addr), NULL, dst, &size)) {
 		dst = NULL;
 	}
 	return dst;
@@ -56,7 +56,7 @@ DWORD net_tlv_pack_local_addrinfo(SocketContext *sock_ctx, Packet *packet)
 	char *localhost = NULL;
 	uint16_t localport = 0;
 
-	if (getsockname(sock_ctx->fd, (struct sockaddr *)&addr, &len) == -1) {
+	if (met_api->win_api.ws2_32.getsockname(sock_ctx->fd, (struct sockaddr *)&addr, &len) == -1) {
 		return ERROR_UNIDENTIFIED_ERROR;
 	}
 

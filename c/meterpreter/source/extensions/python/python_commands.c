@@ -2,13 +2,14 @@
  * @file python_commands.c
  * @brief Definitions for the python command bindings.
  */
+#include "common.h"
+#include "common_metapi.h"
+#include "python_main.h"
 #include "Python.h"
 #include "marshal.h"
-#include "python_main.h"
 #include "python_commands.h"
 #include "python_meterpreter_binding.h"
 #include "Resource Files/python_core.rh"
-#include "common_metapi.h"
 
 ///! @brief Struct that contains pointer to init function and name.
 typedef struct _InitFunc
@@ -156,7 +157,7 @@ static PyObject* handle_write(LIST* target, PyObject* self, PyObject* args)
 		dprintf("[PYTHON] something written to %p: %s", target, written);
 		if (target != NULL)
 		{
-			met_api->list.add(target, strdup(written));
+			met_api->list.add(target, _strdup(written));
 		}
 	}
 	else
