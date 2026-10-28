@@ -454,7 +454,6 @@ BOOL command_handle(Remote *remote, Packet *packet)
 			break;
 		}
 
-		// if either command is registered as inline, run them inline
 		if ((command && command_is_inline(command, packet))
 			|| packet->local)
 		{
@@ -490,6 +489,7 @@ DWORD THREADCALL command_process_thread(THREAD * thread)
 	Command* command = NULL;
 	Remote * remote = NULL;
 	Packet * packet = NULL;
+	HttpTransportContext* asyncContext = NULL;
 
 	dprintf("[COMMAND] executing in thread %p", thread);
 
@@ -525,12 +525,26 @@ DWORD THREADCALL command_process_thread(THREAD * thread)
 		}
 	}
 
+	if (remote->transport
+		&& (remote->transport->type & METERPRETER_TRANSPORT_HTTP)
+		&& remote->transport->ctx
+		&& ((HttpTransportContext*)remote->transport->ctx)->async_response_queueing)
+	{
+		asyncContext = (HttpTransportContext*)remote->transport->ctx;
+		InterlockedIncrement(&asyncContext->async_active_commands);
+	}
+
 	list_add(commandThreadList, thread);
 
 	// invoke processing inline, passing in both commands
 	dprintf("[COMMAND] About to execute inline -> Command: %p", command);
 	command_process_inline(command, remote, packet);
 	dprintf("[COMMAND] Executed inline -> Command: %p", command);
+	if (asyncContext != NULL)
+	{
+		InterlockedDecrement(&asyncContext->async_active_commands);
+		event_signal(asyncContext->async_response_wake_event);
+	}
 
 	if (list_remove(commandThreadList, thread))
 	{
