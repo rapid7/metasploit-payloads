@@ -1,7 +1,14 @@
 #ifndef _METERPRETER_SOURCE_EXTENSION_STDAPI_STDAPI_SERVER_UI_UI_H
 #define _METERPRETER_SOURCE_EXTENSION_STDAPI_STDAPI_SERVER_UI_UI_H
 
-DWORD extract_hook_library();
+// Local input suppression. Formerly implemented by a resource-extracted
+// hook.dll; now inlined in ui.c. mouse.c/keyboard.c call the two setters,
+// and tag their SendInput calls with input_gate_marker() so the LL hook
+// procs can distinguish operator-generated events from physical input
+// without relying on the LLMHF_INJECTED flag.
+DWORD input_gate_set_mouse(BOOL allow);
+DWORD input_gate_set_kb(BOOL allow);
+ULONG_PTR input_gate_marker(void);
 
 DWORD request_ui_enable_keyboard(Remote *remote, Packet *request);
 DWORD request_ui_enable_mouse(Remote *remote, Packet *request);

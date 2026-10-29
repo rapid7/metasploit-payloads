@@ -28,12 +28,9 @@ set(SRC_DIR ../../source/extensions/stdapi)
 file(GLOB_RECURSE SRC_FILES
     ${SRC_DIR}/*.c
     ${SRC_DIR}/*.cpp
-    ${SRC_DIR}/*.rc
     ${EXTENSION_DEF_FILE}
     ../../source/tiny-regex-c/*.c
 )
-
-list(REMOVE_ITEM SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/${SRC_DIR}/server/resource/hook.c)
 
 append_debug_sources(SRC_FILES)
 add_library(${PROJECT_NAME} SHARED ${SRC_FILES})

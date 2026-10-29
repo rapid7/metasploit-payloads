@@ -40,20 +40,20 @@ DWORD udp_channel_write( Channel * channel, Packet * request, LPVOID context, LP
 		}
 		else
 		{
-			rhost = inet_addr( host );
+			rhost = met_api->win_api.ws2_32.inet_addr( host );
 		}
 
 		saddr.sin_family      = AF_INET;
-		saddr.sin_port        = htons( rport );
+		saddr.sin_port        = met_api->win_api.ws2_32.htons( rport );
 		saddr.sin_addr.s_addr = rhost;
 
-		dprintf( "[UDP] udp_channel_write. channel=0x%08X, buffsize=%d to %s:%d", channel, dwBufferSize, inet_ntoa(saddr.sin_addr), ntohs(saddr.sin_port) );
+		dprintf( "[UDP] udp_channel_write. channel=0x%08X, buffsize=%d to %s:%d", channel, dwBufferSize, met_api->win_api.ws2_32.inet_ntoa(saddr.sin_addr), met_api->win_api.ws2_32.ntohs(saddr.sin_port) );
 
-		dwWritten = sendto( ctx->sock.fd, buffer, dwBufferSize, 0, (SOCKADDR *)&saddr, sizeof(SOCKADDR_IN) );
+		dwWritten = met_api->win_api.ws2_32.sendto( ctx->sock.fd, buffer, dwBufferSize, 0, (SOCKADDR *)&saddr, sizeof(SOCKADDR_IN) );
 
 		if( dwWritten == SOCKET_ERROR )
 		{
-			dwResult = WSAGetLastError();
+			dwResult = met_api->win_api.ws2_32.WSAGetLastError();
 
 			if( dwResult == WSAEWOULDBLOCK )
 			{
@@ -71,7 +71,7 @@ DWORD udp_channel_write( Channel * channel, Packet * request, LPVOID context, LP
 					FD_ZERO( &set );
 					FD_SET( ctx->sock.fd, &set );
 
-					res = select( 0, NULL, &set, NULL, &tv );
+					res = met_api->win_api.ws2_32.select( 0, NULL, &set, NULL, &tv );
 					if( res > 0 )
 					{
 						dwResult = ERROR_SUCCESS;
@@ -79,11 +79,11 @@ DWORD udp_channel_write( Channel * channel, Packet * request, LPVOID context, LP
 					}
 					else if( res == SOCKET_ERROR )
 					{
-						dwResult = WSAGetLastError();
+						dwResult = met_api->win_api.ws2_32.WSAGetLastError();
 						break;
 					}
 
-					Sleep( 100 );
+					met_api->win_api.kernel32.Sleep( 100 );
 				}
 
 				if( dwResult == ERROR_SUCCESS )
@@ -116,7 +116,7 @@ VOID free_udp_context( UdpSocketContext * ctx )
 	// Close the socket and notification handle
 	if( ctx->sock.fd )
 	{
-		closesocket( ctx->sock.fd );
+		met_api->win_api.ws2_32.closesocket( ctx->sock.fd );
 		ctx->sock.fd = 0;
 	}
 	
@@ -145,20 +145,20 @@ DWORD udp_channel_notify( Remote * remote, UdpClientContext * ctx )
 {
 	DWORD dwResult     = ERROR_SUCCESS;
 	SOCKADDR_IN from   = {0};
-	DWORD dwFromLength = 0;
+	int dwFromLength = 0;
 	DWORD dwBytesRead  = 0;
 	BYTE bBuffer[65535];
 
 	do
 	{
-		ResetEvent( ctx->sock.notify );
+		met_api->win_api.kernel32.ResetEvent( ctx->sock.notify );
 
 		dwFromLength = sizeof( SOCKADDR_IN );
 
-		dwBytesRead = recvfrom( ctx->sock.fd, bBuffer, 65535, 0, (SOCKADDR *)&from, &dwFromLength );
+		dwBytesRead = met_api->win_api.ws2_32.recvfrom( ctx->sock.fd, bBuffer, 65535, 0, (SOCKADDR *)&from, &dwFromLength );
 		if( dwBytesRead == SOCKET_ERROR )
 		{
-			DWORD dwError = WSAGetLastError();
+			DWORD dwError = met_api->win_api.ws2_32.WSAGetLastError();
 
 			if( dwError == WSAECONNRESET )
 			{
@@ -180,7 +180,7 @@ DWORD udp_channel_notify( Remote * remote, UdpClientContext * ctx )
 
 			met_api->channel.set_native_io_context( ctx->sock.channel, NULL );
 			
-			Sleep( 250 );
+			met_api->win_api.kernel32.Sleep( 250 );
 
 			free_udp_context( ctx );
 
@@ -195,11 +195,11 @@ DWORD udp_channel_notify( Remote * remote, UdpClientContext * ctx )
 			if( !ctx->sock.channel )
 				break;
 
-			cpPeerHost = inet_ntoa( from.sin_addr );
+			cpPeerHost = met_api->win_api.ws2_32.inet_ntoa( from.sin_addr );
 			if( !cpPeerHost )
 				cpPeerHost = "0.0.0.0";
 
-			dwPeerPort = htonl( ntohs( from.sin_port ) );
+			dwPeerPort = met_api->win_api.ws2_32.htonl( met_api->win_api.ws2_32.ntohs( from.sin_port ) );
 
 			addend[0].header.type   = TLV_TYPE_PEER_HOST;
 			addend[0].header.length = (DWORD)(strlen(cpPeerHost) + 1);
@@ -209,7 +209,7 @@ DWORD udp_channel_notify( Remote * remote, UdpClientContext * ctx )
 			addend[1].header.length = sizeof(DWORD);
 			addend[1].buffer        = (PUCHAR)&dwPeerPort;
 
-			dprintf( "[UDP] udp_channel_notify. Data on channel=0x%08X, read %d bytes from %s:%d", ctx->sock.channel, dwBytesRead, cpPeerHost, ntohs( from.sin_port ) );
+			dprintf( "[UDP] udp_channel_notify. Data on channel=0x%08X, read %d bytes from %s:%d", ctx->sock.channel, dwBytesRead, cpPeerHost, met_api->win_api.ws2_32.ntohs( from.sin_port ) );
 
 			met_api->channel.write( ctx->sock.channel, ctx->sock.remote, addend, 2, bBuffer, dwBytesRead, NULL );
 		}
@@ -286,7 +286,7 @@ DWORD request_net_udp_channel_open( Remote * remote, Packet * packet )
 
 		lhost = met_api->packet.get_tlv_value_string( packet, TLV_TYPE_LOCAL_HOST );
 		if( lhost )
-			ctx->localhost.s_addr = inet_addr( lhost );
+			ctx->localhost.s_addr = met_api->win_api.ws2_32.inet_addr( lhost );
 		else
 			ctx->localhost.s_addr = INADDR_ANY;
 
@@ -294,26 +294,42 @@ DWORD request_net_udp_channel_open( Remote * remote, Packet * packet )
 		if( phost )
 		{
 			dprintf( "[UDP] request_net_udp_channel_open. phost=%s", phost );
-			ctx->peerhost.s_addr = inet_addr( phost );
+			ctx->peerhost.s_addr = met_api->win_api.ws2_32.inet_addr( phost );
 		}
 
-		ctx->sock.fd = WSASocket( AF_INET, SOCK_DGRAM, IPPROTO_UDP, 0, 0, 0 );
+		ctx->sock.fd = met_api->win_api.ws2_32.WSASocketA( AF_INET, SOCK_DGRAM, IPPROTO_UDP, 0, 0, 0 );
 		if( ctx->sock.fd == INVALID_SOCKET )
-			BREAK_ON_WSAERROR( "[UDP] request_net_udp_channel_open. WSASocket failed" );
+		{
+			dwResult = met_api->win_api.ws2_32.WSAGetLastError();
+			dprintf( "[UDP] request_net_udp_channel_open. WSASocket failed. error=%d (0x%x)", dwResult, (ULONG_PTR)dwResult );
+			break;
+		}
 
 		saddr.sin_family      = AF_INET;
-		saddr.sin_port        = htons( ctx->localport );
+		saddr.sin_port        = met_api->win_api.ws2_32.htons( ctx->localport );
 		saddr.sin_addr.s_addr = ctx->localhost.s_addr;
 
-		if( bind( ctx->sock.fd, (SOCKADDR *)&saddr, sizeof(SOCKADDR_IN) ) == SOCKET_ERROR )
-			BREAK_ON_WSAERROR( "[UDP] request_net_udp_channel_open. bind failed" );
+		if( met_api->win_api.ws2_32.bind( ctx->sock.fd, (SOCKADDR *)&saddr, sizeof(SOCKADDR_IN) ) == SOCKET_ERROR )
+		{
+			dwResult = met_api->win_api.ws2_32.WSAGetLastError();
+			dprintf( "[UDP] request_net_udp_channel_open. bind failed. error=%d (0x%x)", dwResult, (ULONG_PTR)dwResult );
+			break;
+		}
 		
-		ctx->sock.notify = WSACreateEvent();
+		ctx->sock.notify = met_api->win_api.ws2_32.WSACreateEvent();
 		if( ctx->sock.notify == WSA_INVALID_EVENT )
-			BREAK_ON_WSAERROR( "[UDP] request_net_udp_channel_open. WSACreateEvent failed" );
+		{
+			dwResult = met_api->win_api.ws2_32.WSAGetLastError();
+			dprintf( "[UDP] request_net_udp_channel_open. WSACreateEvent failed. error=%d (0x%x)", dwResult, (ULONG_PTR)dwResult );
+			break;
+		}
 
-		if( WSAEventSelect( ctx->sock.fd, ctx->sock.notify, FD_READ ) == SOCKET_ERROR )
-			BREAK_ON_WSAERROR( "[UDP] request_net_udp_channel_open. WSAEventSelect failed" );
+		if( met_api->win_api.ws2_32.WSAEventSelect( ctx->sock.fd, ctx->sock.notify, FD_READ ) == SOCKET_ERROR )
+		{
+			dwResult = met_api->win_api.ws2_32.WSAGetLastError();
+			dprintf( "[UDP] request_net_udp_channel_open. WSAEventSelect failed. error=%d (0x%x)", dwResult, (ULONG_PTR)dwResult );
+			break;
+		}
 
 		memset( &chops, 0, sizeof(DatagramChannelOps) );
 		chops.native.context = ctx;
@@ -329,7 +345,7 @@ DWORD request_net_udp_channel_open( Remote * remote, Packet * packet )
 		met_api->packet.add_tlv_uint( response, TLV_TYPE_CHANNEL_ID, met_api->channel.get_id(ctx->sock.channel) );
 		net_tlv_pack_local_addrinfo( &ctx->sock, response );
 
-		dprintf( "[UDP] request_net_udp_channel_open. UDP socket on channel %d (The local specified was %s:%d ) (The peer specified was %s:%d)",  met_api->channel.get_id( ctx->sock.channel ), inet_ntoa( ctx->localhost ), ctx->localport, inet_ntoa( ctx->peerhost ), ctx->peerport );
+		dprintf( "[UDP] request_net_udp_channel_open. UDP socket on channel %d (The local specified was %s:%d ) (The peer specified was %s:%d)",  met_api->channel.get_id( ctx->sock.channel ), met_api->win_api.ws2_32.inet_ntoa( ctx->localhost ), ctx->localport, met_api->win_api.ws2_32.inet_ntoa( ctx->peerhost ), ctx->peerport );
 
 	} while( 0 );
 
@@ -344,7 +360,7 @@ DWORD request_net_udp_channel_open( Remote * remote, Packet * packet )
 			break;
 
 		if( ctx->sock.fd )
-			closesocket( ctx->sock.fd );
+			met_api->win_api.ws2_32.closesocket( ctx->sock.fd );
 			
 		if( ctx->sock.channel )
 			met_api->channel.destroy( ctx->sock.channel, packet );
