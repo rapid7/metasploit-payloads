@@ -454,6 +454,7 @@ BOOL command_handle(Remote *remote, Packet *packet)
 			break;
 		}
 
+		// Run registered inline commands and local packets on the current thread.
 		if ((command && command_is_inline(command, packet))
 			|| packet->local)
 		{
