@@ -6,6 +6,7 @@
 #define _METERPRETER_COMMON_REMOTE_H
 
 #include "common_thread.h"
+#include "common_list.h"
 #include "common_config.h"
 #include "common_pivot_tree.h"
 
@@ -120,6 +121,23 @@ typedef struct _HttpTransportContext
 	LPVOID proxy_for_url;                 ///! Pointer to the proxy for the current url (if required).
 
 	BOOL move_to_wininet;                 ///! If set, winhttp is busted, and we need to move to wininet.
+
+	BOOL async_mode;                      ///! Flag indicating whether async mode is enabled.
+	UINT async_poll_interval;             ///! Seconds between poll check-ins in async mode.
+	UINT async_poll_jitter;               ///! Jitter percentage (0-99) applied to poll interval.
+	UINT async_work_start;                ///! Business hours start hour (0-23).
+	UINT async_work_end;                  ///! Business hours end hour (0-23).
+	UINT async_work_days;                 ///! Bitmask of active days (bit0=Sun..bit6=Sat).
+	BOOL async_lease_active;              ///! Whether a controller-owned rapid-poll lease is active.
+	UINT async_lease_ttl;                 ///! Lease renewal timeout in seconds.
+	DWORD async_lease_deadline_ticks;     ///! Monotonic lease expiry deadline.
+	HANDLE async_wake_event;              ///! Event signaled to interrupt async sleep early.
+	LIST* async_response_queue;           ///! Completed response packets waiting to be transmitted.
+	EVENT* async_response_wake_event;     ///! Event signaled when a completed response is queued.
+	THREAD* async_response_thread;        ///! Sole owner of HTTP response POST operations in async mode.
+	BOOL async_response_queueing;         ///! Whether HTTP responses must be queued for the response worker.
+	BOOL async_response_stop_when_idle;   ///! Whether the response worker exits after draining completed responses.
+	LONG async_active_commands;           ///! Number of async command workers that can still produce a response.
 
 	PCreateHttpRequest create_req;        ///! WinHTTP/WinINET specific request creation.
 	PSendHttpRequest send_req;            ///! WinHTTP/WinINET specifc request sending.
